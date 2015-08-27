@@ -1414,7 +1414,7 @@ end
 local cairoview = glue.inherit({}, view)
 
 function window:cairoview(t)
-	return cairoview:_new(self, self.backend.cairoview, t)
+	return cairoview:_new(self, self.backend.cairoview2, t)
 end
 
 --menus ----------------------------------------------------------------------

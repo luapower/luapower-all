@@ -11,7 +11,7 @@ window.cairoview = cairoview
 
 function cairoview:_create_surface(x, y, w, h)
 	--create a pixman surface on the window's backbuffer.
-	local bb = self.window:backbuffer()
+	local bb = self.window:bitmap()
 
 	local data = ffi.cast('uint8_t*', bb.data) + (y * bb.w + x) * 4
 	local stride = bb.w * 4
@@ -47,9 +47,7 @@ function cairoview:free()
 end
 
 function cairoview:invalidate()
-	--ask the window backend to invalidate this view and any overlapping views.
-	self.window:invalidate_view(self.frontend)
-	self.window:redraw()
+	self:redraw()
 end
 
 function cairoview:redraw()

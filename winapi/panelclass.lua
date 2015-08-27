@@ -22,7 +22,7 @@ Panel = subclass({
 	},
 	__defaults = {
 		--class style bits
-		noclose = false,
+		closeable = true,
 		dropshadow = false,
 		receive_double_clicks = true, --receive double click messages
 		--other class properties

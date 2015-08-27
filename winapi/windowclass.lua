@@ -11,7 +11,7 @@ require'winapi.waitemlistclass'
 
 Window = subclass({
 	__class_style_bitmask = bitmask{ --only static, frame styles here
-		noclose = CS_NOCLOSE, --disable close button and ALT+F4
+		closeable = negate(CS_NOCLOSE), --enable close button and ALT+F4
 		dropshadow = CS_DROPSHADOW, --only for non-movable windows
 		own_dc = CS_OWNDC, --for opengl or other purposes
 		receive_double_clicks = CS_DBLCLKS, --receive double click messages
@@ -19,9 +19,9 @@ Window = subclass({
 	__style_bitmask = bitmask{ --only static, frame styles here
 		border = WS_BORDER, 		--a frameless window is one without WS_BORDER, WS_DLGFRAME, WS_SIZEBOX and WS_EX_WINDOWEDGE
 		frame = WS_DLGFRAME,    --for the titlebar to appear you need both WS_BORDER and WS_DLGFRAME
-		minimize_button = WS_MINIMIZEBOX,
-		maximize_button = WS_MAXIMIZEBOX,
-		sizeable = WS_SIZEBOX,  --needs WS_DLGFRAME
+		minimizable = WS_MINIMIZEBOX,
+		maximizable = WS_MAXIMIZEBOX,
+		resizeable = WS_SIZEBOX,  --needs WS_DLGFRAME
 		sysmenu = WS_SYSMENU,   --not setting this hides all buttons
 		vscroll = WS_VSCROLL,
 		hscroll = WS_HSCROLL,
@@ -43,16 +43,16 @@ Window = subclass({
 	},
 	__defaults = {
 		--class style bits
-		noclose = false,
+		closeable = true,
 		dropshadow = false,
 		own_dc = false,
 		receive_double_clicks = true,
 		--window style bits
 		border = true,
 		frame = true,
-		minimize_button = true,
-		maximize_button = true,
-		sizeable = true, --...and has a 3px resizing border
+		minimizable = true,
+		maximizable = true,
+		resizeable = true, --...and has a 3px resizing border
 		sysmenu = true,
 		vscroll = false,
 		hscroll = false,
@@ -469,8 +469,8 @@ require'winapi.icon'
 require'winapi.font'
 
 local c = Window{title = 'Main',
-	border = true, frame = true, window_edge = true, sizeable = true, control_parent = true,
-	help_button = true, maximize_button = false, minimize_button = false, maximized = true,
+	border = true, frame = true, window_edge = true, resizeable = true, control_parent = true,
+	help_button = true, maximizable = false, minimizable = false, maximized = true,
 	autoquit = true, w = 500, h = 300, visible = false}
 c:show()
 
@@ -489,7 +489,7 @@ print('restored  ', c.visible, c.minimized, c.maximized)
 c:shownormal()
 print('shownormal', c.visible, c.minimized, c.maximized)
 
-local c3 = Window{topmost = true, title='Topmost', h = 300, w = 300, sizeable = false}
+local c3 = Window{topmost = true, title='Topmost', h = 300, w = 300, resizeable = false}
 
 local c2 = Window{title = 'Owned by Main', frame = true, w = 500, h = 100, visible = true, owner = c,
 							--taskbar_button = true --force a button on taskbar even when owned
@@ -502,7 +502,7 @@ local c4 = Window{x = 400, y = 400, w = 400, h = 200,
 						frame = false,
 						window_edge = false,
 						--dialog_frame = false,
-						sizeable = false,
+						resizeable = false,
 						owner = c,
 						}
 

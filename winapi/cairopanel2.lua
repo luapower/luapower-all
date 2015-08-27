@@ -78,7 +78,7 @@ end
 
 function CairoPanel:__create_surface(surface) end --stub
 function CairoPanel:__destroy_surface(surface) end --stub
-function CairoPanel:on_render(cr) end --stub
+function CairoPanel:on_render(surface) end --stub
 
 function CairoPanel:on_resized()
 	self:_free_surface()

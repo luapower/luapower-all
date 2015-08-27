@@ -180,28 +180,57 @@ update(WM_NOTIFY_NAMES, constants{
 
 ## Making new classes
 
+### Subclassing
+
 The easiest way to create a new class is to use the code of an existing
-class as a template. Generally you subclass from `Control` if you are
-creating a new kind of control, from `WindowClass` if you are creating
-a new kind of top-level window, or from `VObject` if it's a non-visual class.
+class as a template. There are base classes for almost everything, so:
 
-`BaseWindowClass` contains extensive automation to help with binding,
-so that binding a new control is mainly an issue of filling up the following
-tables:
+   * subclass from `Control` if you are creating a new kind of control.
+	* subclass from `WindowClass` if you are creating a new kind of top-level window.
+	* subclass from `VObject` if it's a non-visual class.
+	* subclass from `ItemList` if your class represents a list of objects.
 
-	__class_style_bitmask = bitmask{}, --for windows that own their WNDCLASS
-	__style_bitmask = bitmask{},       --style bits
-	__style_ex_bitmask = bitmask{},    --extended style bits
-	__defaults = {},
-	__init_properties = {}, --properties to be set after window creation
-	__wm_handler_names = index{} --message name -> handler name mapping
-	__wm_syscommand_handler_names = {}, --WM_SYSCOMMAND code -> handler name map
-	__wm_command_handler_names = {},    --WM_COMMAND code -> handler name map
-	__wm_notify_handler_names = {},     --WM_NOTIFY code -> handler name map
+### Initialization
 
-Initialization also contains pre- and post-creation hooks:
+Initialization is done by overriding the `__init` constructor.
+`BaseWindowClass` also provides pre- and post-window-creation hooks
+which you can override:
 
 	__before_create(self, info, args)
 	__after_create(self, info, args)
 
-Look at an existing control for how these are used.
+### Auto-generation of properties and events
+
+`BaseWindowClass` contains extensive automation to help with binding
+of HWND-based classes, so that binding a new window or control is mainly
+an issue of filling up the following tables:
+
+	__class_style_bitmask = bitmask{}  --for windows that own their WNDCLASS
+	__style_bitmask = bitmask{}        --style bits
+	__style_ex_bitmask = bitmask{}     --extended style bits
+	__defaults = {}
+	__init_properties = {}  --properties to be set after window creation
+	__wm_handler_names = {} --message name -> event name mapping
+	__wm_syscommand_handler_names = {} --WM_SYSCOMMAND code -> event name map
+	__wm_command_handler_names = {}    --WM_COMMAND code -> event name map
+	__wm_notify_handler_names = {}     --WM_NOTIFY code -> event name map
+
+The `__*_bitmask` tables map property names to class style, window style
+and extended window style constants respectively so that individual
+properties can be created automatically based on those definitions.
+
+Windows messages as well as WM_SYSCOMMAND, WM_COMMAND and WM_NOTIFY messages
+are routed automatically to their respective windows and decoded
+and individual events are generated per `__wm_*` tables.
+
+### Item lists
+
+Some controls (eg. listbox) need to manage a list of items. To add this you need to:
+
+  * subclass `ItemList` for the list itself and implement at least
+  add() and remove() methods (plus other properties and methods
+  that apply to the items or to the item list as a whole).
+
+  * instantiate your custom list class in the control's constructor
+  (i.e. `__init`, which you override).
+

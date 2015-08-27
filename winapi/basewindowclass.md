@@ -29,10 +29,13 @@ __NOTE:__ in the table below `i` means initial field, `r` means property
 which can be read, `w` means property which can be set.
 
 ----------------------- -------- -------------------------- ----------------- ---------------------
-__field/property__		__irw__	__description__				__default__			__reference__
+__state__					__irw__	__description__				__default__			__reference__
 visible						irw		visibility						true					WS_VISIBLE
+is_visible					 r			is actually visible?									IsWindowVisible
 enabled						irw		focusability					true					WS_DISABLED
 focused						 rw		focused state											GetFocus
+dead							 r			was it destroyed?										WM_NCDESTROY
+__positioning__			__irw__	__description__				__default__			__reference__
 x, y							irw		position													SetWindowPos
 w, h							irw		size														SetWindowPos
 rect							 rw		outer rect (RECT)										SetWindowPos
@@ -41,13 +44,13 @@ client_rect					 r			inner rect (RECT)										GetClientRect
 screen_rect					 r			outer rect in screen space							GetWindowRect
 min_w, min_h				irw		minimum size											WM_WINDOWPOSCHANGING
 max_w, max_h				irw		maximum size											WM_WINDOWPOSCHANGING
+monitor						 r			monitor (HMONITOR)									MonitorFromWindow
+__painting__				__irw__	__description__				__default__			__reference__
+updating						 w			control automatic radraw							SetRedraw
+__other__					__irw__	__description__				__default__			__reference__
 font							irw		default font					DEFAULT_GUI_FONT	Get/SetWindowFont
 text							 rw		depends on control									Get/SetWindowText
 cursor_pos					 r			mouse position (POINT)								GetCursorPos
-monitor						 r			monitor (HMONITOR)									MonitorFromWindow
-is_visible					 r			is actually visible?									IsWindowVisible
-updating						 w			control automatic radraw							SetRedraw
-dead							 r			was it destroyed?										WM_NCDESTROY
 ----------------------- -------- -------------------------- ----------------- ---------------------
 </div>
 

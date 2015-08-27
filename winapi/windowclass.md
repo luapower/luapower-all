@@ -23,49 +23,53 @@ __NOTE:__ in the table below `i` means initial field, `r` means property
 which can be read, `w` means property which can be set.
 
 ----------------------- -------- ----------------------------------------- -------------- ---------------------
-__field/property__		__irw__	__description__									__default__		__reference__
-noclose						irw		remove the close button							false				CS_NOCLOSE
-dropshadow					irw		(for non-movable windows)						false				CS_DROPSHADOW
-own_dc						irw		own the DC											false				CS_OWNDC
-receive_double_clicks	irw		enable double click events						true				CS_DBLCLKS
-border						irw		add a border										true				WS_BORDER
-frame 						irw		add a titlebar	(needs border)					true				WS_DLGFRAME
-minimize_button			irw		add a minimize button							true				WS_MINIMIZEBOX
-maximize_button			irw		add a maximize button							true				WS_MAXIMIZEBOX
-sizeable						irw		enable resizing 									true				WS_SIZEBOX
-sysmenu						irw		add a system menu									true				WS_SYSMENU
-vscroll						irw		add a vertical scrollbar						false				WS_VSCROLL
-hscroll						irw		add a horizontal scrollbar						false				WS_HSCROLL
-clip_children				irw		clip children										true				WS_CLIPCHILDREN
-clip_siblings				irw		clip siblings										true				WS_CLIPSIBLINGS
-child							irw		(for non-activable tool windows)	 			false				WS_CHILD
-topmost						irw		stay above all windows							false				WS_EX_TOPMOST
-window_edge					irw		(needs to be the same as frame)				true				WS_EX_WINDOWEDGE
-dialog_frame				irw		double border and no sysmenu icon			false				WS_EX_DLGMODALFRAME
-help_button					irw		add a help button									false				WS_EX_CONTEXTHELP
-tool_window					irw		tool window frame									false				WS_EX_TOOLWINDOW
-transparent					irw		(use layered instead)		 					false				WS_EX_TRANSPARENT
-layered						irw		layered mode								 		false				WS_EX_LAYERED
-control_parent				irw		recursive tabbing	between controls			true				WS_EX_CONTROLPARENT
-activatable					irw		activate and show on taskbar					true				WS_EX_NOACTIVATE
-taskbar_button				irw		force showing on taskbar						false				WS_EX_APPWINDOW
-background					irw		background color									COLOR_WINDOW
-cursor						irw		default cursor										IDC_ARROW
-title							irw		titlebar												''
+__positioning__			__irw__	__description__									__default__		__reference__
 x, y							irw		frame position										CW_USEDEFAULT
 w, h							irw		frame size											CW_USEDEFAULT
-autoquit						irw		stop the loop when closed						false
-menu							irw		menu bar
-remember_maximized_pos	irw		maximize to last known position				false
-minimized					ir			minimized state									false				WS_MINIMIZE
-maximized					ir			maximized state									false				WS_MAXIMIZE
+__customization__			__irw__	__description__									__default__		__reference__
+title							irw		titlebar												''
+background					irw		background color									COLOR_WINDOW
+cursor						irw		default cursor										IDC_ARROW
 icon							irw		window's icon
 small_icon					irw		window's small icon
-owner							irw		window's owner
+vscroll						irw		vertical scrollbar								false				WS_VSCROLL
+hscroll						irw		horizontal scrollbar								false				WS_HSCROLL
+menu							irw		menu bar
+accelerators				 rw		accelerators
+__state__					__irw__	__description__									__default__		__reference__
+minimized					ir			minimized state									false				WS_MINIMIZE
+maximized					ir			maximized state									false				WS_MAXIMIZE
 foreground					 r			foreground state
 normal_rect					 rw		frame rect in normal state
 restore_to_maximized		 rw		unminimize to maximized state
-accelerators				 rw		list of of accelerators
+owner							irw		window's owner
+__behavior__				__irw__	__description__									__default__		__reference__
+autoquit						irw		stop the loop when closed						false
+closeable					irw		can be closed										false				CS_NOCLOSE
+minimizable					irw		can be minimized									true				WS_MINIMIZEBOX
+maximizable					irw		can be maximized									true				WS_MAXIMIZEBOX
+resizeable					irw		can be resized 									true				WS_SIZEBOX
+activable					irw		activate and show on taskbar					true				WS_EX_NOACTIVATE
+topmost						irw		stay above all windows							false				WS_EX_TOPMOST
+help_button					irw		help button											false				WS_EX_CONTEXTHELP
+sysmenu						irw		system menu											true				WS_SYSMENU
+receive_double_clicks	irw		enable double click events						true				CS_DBLCLKS
+clip_children				irw		clip children										true				WS_CLIPCHILDREN
+clip_siblings				irw		clip siblings										true				WS_CLIPSIBLINGS
+layered						irw		layered mode								 		false				WS_EX_LAYERED
+own_dc						irw		own the DC											false				CS_OWNDC
+control_parent				irw		recursive tabbing	between controls			true				WS_EX_CONTROLPARENT
+taskbar_button				irw		force showing on taskbar						false				WS_EX_APPWINDOW
+remember_maximized_pos	irw		maximize to last known position				false
+child							irw		(for non-activable tool windows)	 			false				WS_CHILD
+__framing__					__irw__	__description__									__default__		__reference__
+border						irw		add a border										true				WS_BORDER
+frame 						irw		add a titlebar	(needs border)					true				WS_DLGFRAME
+window_edge					irw		(needs to be the same as frame)				true				WS_EX_WINDOWEDGE
+dropshadow					irw		(for non-movable windows)						false				CS_DROPSHADOW
+tool_window					irw		tool window frame									false				WS_EX_TOOLWINDOW
+dialog_frame				irw		double border and no sysmenu icon			false				WS_EX_DLGMODALFRAME
+transparent					irw		(use layered instead)		 					false				WS_EX_TRANSPARENT
 ----------------------- -------- ----------------------------------------- -------------- ---------------------
 </div>
 
@@ -94,7 +98,7 @@ bring_to_front([rel_to_win])		move above other windows/specific window		SetWindo
 
 <div class=small>
 -------------------------------- -------------------------------------------- ----------------------
-__event__								__description__										__reference__
+__state__								__description__										__reference__
 on_close()								was closed												WM_CLOSE
 on_activate()							was activated											WM_ACTIVATE
 on_deactivate()						was deactivated										WM_ACTIVATE
@@ -108,7 +112,7 @@ on_maximizing(x, y)					maximizing: return false to prevent				SC_MAXIMIZE
 on_restoring(x, y) 					unmaximizing: return false to prevent			SC_RESTORE
 on_menu_key(char_code)				get the 'f' in Alt+F on a '&File' menu			SC_KEYMENU
 on_get_minmax_info(MINMAXINFO)	set the min/max size constraints					WM_GETMINMAXINFO
-__system event__						__description__										__winapi message__
+__system events__						__description__										__winapi message__
 on_query_end_session()				logging off (return false to prevent)			WM_QUERYENDSESSION
 on_end_session()						logging off	(after all apps agreed)				WM_ENDSESSION
 on_system_color_change()			system colors changed								WM_SYSCOLORCHANGE
@@ -122,4 +126,3 @@ on_user_change()						used has logged off									WM_USERCHANGED
 on_display_change()					display resolution changed							WM_DISPLAYCHANGE
 ----------------------- --------	-------------------------------------------- ---------------------
 </div>
-

@@ -27,10 +27,10 @@ local winapi = require'winapi'
 require'winapi.windowclass'
 
 local win = winapi.Window{
-	w = 500,                --these are initial fields
+	w = 500,                --all these are "initial fields"
 	h = 300,
 	title = 'Lua rulez',
-	autoquit = true,
+	autoquit = true,        --this is to quit app when the window is closed
 	visible = false,        --this field is from BaseWindow
 }
 
@@ -45,10 +45,11 @@ win:show()                 --this is a method call
 os.exit(winapi.MessageLoop()) --start the message loop
 ~~~
 
-For a more compehensive demo, see [winapi_demo].
+## Demo
+
+Run [winapi_demo] to see all controls in action.
 
 [winapi_demo]: https://github.com/luapower/winapi/blob/master/winapi_demo.lua
-
 
 ## Documentation
 

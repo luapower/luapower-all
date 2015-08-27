@@ -39,11 +39,11 @@ local function about_box()
 		w = 300,
 		h = 200,
 		title = 'About winapi',
-		maximize_button = false,
-		minimize_button = false,
+		maximizable = false,
+		minimizable = false,
+		resizeable = false,
 		owner = win, --don't show it in taskbar
 		tool_window = true,
-		sizeable = false,
 	}
 
 	local w, h = 100, 24

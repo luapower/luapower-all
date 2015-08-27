@@ -107,7 +107,7 @@ function window:new(app, frontend, t)
 	local framed = t.frame == 'normal' or t.frame == 'toolbox'
 	self._layered = t.transparent
 
-	--NOTE: sizeable flag (WS_SIZEBOX) needs the frame flag (WS_DLGFRAME),
+	--NOTE: resizeable flag (WS_SIZEBOX) needs the frame flag (WS_DLGFRAME),
 	--which means we can't have frameless windows that are also resizeable.
 	self.win = Window{
 		--state
@@ -133,10 +133,10 @@ function window:new(app, frontend, t)
 		owner = t.parent and t.parent.backend.win,
 		--behavior
 		topmost = t.topmost,
-		minimize_button = t.minimizable,
-		maximize_button = t.maximizable,
-		noclose = not t.closeable,
-		sizeable = framed and t.resizeable, --must be off for frameless windows!
+		minimizable = t.minimizable,
+		maximizable = t.maximizable,
+		closeable = t.closeable,
+		resizeable = framed and t.resizeable, --must be off for frameless windows!
 		activable = t.activable,
 		receive_double_clicks = false, --we do our own double-clicking
 		remember_maximized_pos = true, --to emulate OSX behavior for maximized windows with minsize/maxsize constrains
@@ -365,7 +365,7 @@ function window:enter_fullscreen()
 		maximized = self:maximized(), --NOTE: this assumes that maximize() is synchronous
 		normal_rect = self.win.normal_rect,
 		frame = self.win.frame,
-		sizeable = self.win.sizeable,
+		resizeable = self.win.resizeable,
 	}
 
 	--if it's a layered window, clear it, otherwise the taskbar won't
@@ -382,7 +382,7 @@ function window:enter_fullscreen()
 	--remove the frame
 	self.win.frame = false
 	self.win.border = false
-	self.win.sizeable = false
+	self.win.resizeable = false
 
 	--set normal rect
 	local display = self:display() or self.app:active_display()
@@ -414,7 +414,7 @@ function window:exit_fullscreen()
 	--put back the frame and normal rect
 	self.win.frame = self._fs.frame
 	self.win.border = self._fs.frame
-	self.win.sizeable = self._fs.sizeable
+	self.win.resizeable = self._fs.resizeable
 	self.win.normal_rect = self._fs.normal_rect --we set this after maximize() above.
 
 	--restore events, invalidate and show.
@@ -465,8 +465,8 @@ local function frame_args(frame, has_menu)
 		border = framed,
 		frame = framed,
 		window_edge = framed,
-		sizeable = framed,
-		menu = has_menu and true or false,
+		resizeable = framed,
+		menu = has_menu or nil,
 	}
 end
 
@@ -1408,7 +1408,7 @@ function window:_create_dynbitmap()
 	if self._dynbitmap then return end
 	self._dynbitmap = dynbitmap{
 		size = function()
-			return self.frontend:size()
+			return self.frontend:client_size()
 		end,
 		freeing = function(_, bitmap)
 			self.frontend:_backend_free_bitmap(bitmap)
