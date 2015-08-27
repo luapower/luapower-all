@@ -8,7 +8,7 @@ require'winapi.comctl'
 
 --creation
 
-WC_LISTBOX             = 'ListBox'
+WC_LISTBOX             = 'LISTBOX'
 
 LBS_NOTIFY             = 0x0001
 LBS_SORT               = 0x0002
@@ -175,7 +175,7 @@ function ListBox_SetTabStops(hwnd, tabs)
 end
 
 function ListBox_GetHorizontalExtent(hwnd)
-	SNDMSG(hwnd, LB_GETHORIZONTALEXTENT)
+	return SNDMSG(hwnd, LB_GETHORIZONTALEXTENT)
 end
 
 function ListBox_SetHorizontalExtent(hwnd, cxExtent)

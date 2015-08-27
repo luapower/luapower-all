@@ -32,9 +32,10 @@ select						irw		'single', 'multiple', 'extended'				'single'			LBS_MULTIPLE/EXT
 tabstops						irw		focus on tab										false				LBS_USETABSTOPS
 free_height					irw		TODO													true				LBS_NOINTEGRALHEIGHT
 multicolumn					irw		TODO													false				LBS_MULTICOLUMN
-always_show_scrollbar	irw		always show scrollbar							true				LBS_DISABLENOSCROLL
-vscroll						irw		vertical scrollbar								false				WS_VSCROLL
-hscroll						irw		horizontal scrollbar								false				WS_HSCROLL
+vscroll						irw		show vertical scrollbar							true				WS_VSCROLL
+hscroll						irw		show horizontal scrollbar						true				WS_HSCROLL
+always_show_scrollbars	irw		always show scrollbars							true				LBS_DISABLENOSCROLL
+hextent						irw		horizontal extent									0					LB_GET/SETHORIZONTALEXTENT
 allow_select				irw		allow select										true				LBS_NOSEL
 client_edge					irw		bordered												true				WS_EX_CLIENTEDGE
 ----------------------- -------- ----------------------------------------- -------------- ---------------------

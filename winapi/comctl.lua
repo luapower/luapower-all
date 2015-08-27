@@ -51,7 +51,7 @@ function InitCommonControlsEx(ICC)
 	checknz(comctl.InitCommonControlsEx(icex))
 end
 
---InitCommonControlsEx()
+InitCommonControlsEx()
 
 --common styles for rebar controls, toolbar controls, and status windows
 
