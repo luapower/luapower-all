@@ -45,9 +45,12 @@ win:show()                 --this is a method call
 os.exit(winapi.MessageLoop()) --start the message loop
 ~~~
 
-## Demo
+## Demos
 
-Run [winapi_demo] to see all controls in action.
+Check out [winapi_demo] to see all the controls in action.
+
+Also, many modules can be run as standalone scripts, which will
+showcase their functionality, so there's lots of little demos there too.
 
 [winapi_demo]: https://github.com/luapower/winapi/blob/master/winapi_demo.lua
 
@@ -91,6 +94,3 @@ and empirical knowledge, so do check out the source code.
 ## Modules
 
 {{module_list}}
-
-__Tip:__ Some modules can be run as standalone scripts, which will
-showcase the module's functionality.
