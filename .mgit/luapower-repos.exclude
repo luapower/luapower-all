@@ -1,0 +1,11 @@
+*
+!/.mgit/
+!/.mgit/luapower-repos.exclude
+!/.mgit/*.origin
+!/.mgit/*.baseurl
+!/.mgit/*.release
+!/.mgit/luapower-repos.help
+!/.mgit/*.sh
+.mgit/bundle*.sh
+!/.mgit/luapower-cat.md
+/.mgit/luapower-repos.origin

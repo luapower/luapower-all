@@ -1,0 +1,2 @@
+minizip 1.1 from http://www.winimage.com/zLibDll/minizip.html (MIT License)
+requires: zlib

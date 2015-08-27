@@ -1,0 +1,4 @@
+terra {
+  global: luaopen_terra; terra_*;
+  local: *;
+};

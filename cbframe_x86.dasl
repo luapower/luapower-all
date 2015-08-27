@@ -1,0 +1,270 @@
+--go@ luajit dynasm.lua *
+--go@ luajit cbframe.lua
+local ffi = require'ffi'
+local dasm = require'dasm'
+require'cbframe_x86_h'
+
+|.arch ARCH
+|.actionlist actions
+|.globalnames globalnames
+
+local slotnum = 1024                               --max. number of live callbacks
+local g_cpustate = ffi.new'D_CPUSTATE[64]'         --global stack for dumping the CPU state ~42KB
+local g_cpustate_top = ffi.new('D_CPUSTATE*[1]', g_cpustate) --cpu state stack top pointer
+local g_callbacks = ffi.new('void*[?]', slotnum)   --global array of ffi callback pointers
+dasm.g_cpustate = g_cpustate                       --pin it because it's only referenced in asm!
+dasm.g_cpustate_top = g_cpustate_top               --pin it because it's only referenced in asm!
+
+local Dst, globals = dasm.new(actions)
+
+--raw float -> double converter: `double(__cdecl*)(const uint8_t*)`
+|->float80to64:
+|.if X86
+|	mov eax, dword [esp+4]     --arg1      -> eax
+|	fld tword [eax]            --*arg1     -> push st0
+|.elif WINDOWS
+|	fld tword [rcx]            --*arg1     -> push st0
+|	fstp qword [rsp-8]         --pop st0   -> local
+|	movq xmm0, qword [rsp-8]   --local     -> retval
+|.else
+|	fld tword [rdi]            --*arg1     -> push st0
+|	fstp qword [rsp-8]         --pop st0   -> local
+|	movq xmm0, qword [rsp-8]   --local     -> retval
+|.endif
+|	ret
+
+--double -> raw float converter: `void(__cdecl*)(double, uint8_t*)`
+|->float64to80:
+|.if X86
+|	fld qword [esp+4]          --arg1      -> push st0
+|	mov eax, dword [esp+12]    --arg2      -> eax
+|	fstp tword [eax]           --*arg2     -> pop st0
+|.elif WINDOWS
+|	movlps qword [rsp-8], xmm0 --arg1      -> local
+|	fld qword [rsp-8]          --local     -> push st0
+|	fstp tword [rdx]           --pop st0   -> *arg2 (ptr arg 1)
+|.else
+|	movlps qword [rsp-8], xmm0 --arg1      -> local
+|	fld qword [rsp-8]          --local     -> push st0
+|	fstp tword [rdi]           --pop st0   -> *arg2 (ptr arg 1)
+|.endif
+|	ret
+
+|->main:
+|
+|.if X86
+|	pushfd           --eflags
+|	push eax         --initial eax
+|	.type CPU, D_CPUSTATE, eax
+|	mov eax, [g_cpustate_top] --eax = CPU base address
+|	add dword [g_cpustate_top], ffi.sizeof'D_CPUSTATE'
+|	--save CPU state and pop callback slot number in ecx
+|	mov CPU.ECX, ecx
+|	mov CPU.EDX, edx
+|	mov CPU.ESI, esi
+|	mov CPU.EDI, edi
+|	mov CPU.EBP, ebp
+|	mov ecx, eax
+|	pop eax          --initial eax
+|	mov CPU:ecx.EAX, eax
+|	mov eax, ecx
+|	pop ecx          --initial eflags
+|	mov CPU.EFLAGS, ecx
+|	pop ecx          --callback slot number
+|	mov CPU.ESP, esp --esp has initial value now
+|	fxsave CPU.FCW   --save FPU/MMX and SSE state in one shot
+|	--call user callback
+|	mov edx, g_callbacks
+|	shl ecx, 2
+|	add edx, ecx     --callbacks + (slot number << 2) = callback pointer
+|	sub esp, 4       --align stack for OSX to 16 bytes
+|	push ebp         --make call frame
+|	mov ebp, esp
+|	push eax         --arg 1 = CPU
+|	call dword [edx]
+|	sub dword [g_cpustate_top], ffi.sizeof'D_CPUSTATE'
+|	pop eax          --restore CPU base address
+|	--load CPU state
+|	fxrstor CPU.FCW  --load FPU/MMX and SSE state in one shot
+|	push dword CPU.EFLAGS
+|	popfd
+|	mov ecx, CPU.ECX
+|	mov edx, CPU.EDX
+|	mov esi, CPU.ESI
+|	mov edi, CPU.EDI
+|	mov ebp, CPU.EBP
+|	mov esp, CPU.ESP
+|	mov eax, CPU.EAX
+|	ret
+|.else
+|	pushfq           --eflags
+|	push rax         --initiial rax
+|	.type CPU, D_CPUSTATE, rax
+|	mov64 rax, [g_cpustate_top] --rax = CPU base address
+|	add qword [g_cpustate_top], ffi.sizeof'D_CPUSTATE'
+|	--save CPU state and pop callback slot number in rcx
+|	mov CPU.RBX, rbx
+|	mov CPU.RCX, rcx
+|	mov CPU.RDX, rdx
+|	mov CPU.RSI, rsi
+|	mov CPU.RDI, rdi
+|	mov CPU.RBP, rbp
+|	mov rcx, rax
+|	pop rax          --initial rax
+|	mov CPU:rcx.RAX, rax
+|	mov rax, rcx
+|	pop rcx          --initial eflags
+|	mov CPU.EFLAGS, rcx
+|	pop rcx          --callback slot number
+|	mov CPU.RSP, rsp --rsp has initial value now
+|	mov CPU.R8,  r8
+|	mov CPU.R9,  r9
+|	mov CPU.R10, r10
+|	mov CPU.R11, r11
+|	mov CPU.R12, r12
+|	mov CPU.R13, r13
+|	mov CPU.R14, r14
+|	mov CPU.R15, r15
+|	fxsave CPU.FCW   --save FPU/MMX and SSE state in one shot
+|	--call user callback
+|	mov64 rdx, g_callbacks
+|	shl rcx, 3
+|	add rdx, rcx     --callbacks + (slot number << 3) = callback pointer
+|	sub rsp, 8       --align stack for OSX to 16 bytes
+|	push rbp         --make call frame
+|	mov rbp, rsp
+|	push rax
+|.if WINDOWS
+|	sub rsp, 32      --add shadow space
+|	mov rcx, rax     --ptr arg 1 in rcx
+|	call qword [rdx]
+|	add rsp, 32
+|.else
+|	mov rdi, rax     --ptr arg 1 in rdi
+|	call qword [rdx]
+|.endif
+|	sub qword [g_cpustate_top], ffi.sizeof'D_CPUSTATE'
+|	pop rax          --restore CPU base address
+|	--load CPU state
+|	fxrstor CPU.FCW  --load FPU/MMX and SSE state in one shot
+|	push qword CPU.EFLAGS
+|	popfq
+|	mov rbx, CPU.RBX
+|	mov rcx, CPU.RCX
+|	mov rdx, CPU.RDX
+|	mov rsi, CPU.RSI
+|	mov rdi, CPU.RDI
+|	mov rbp, CPU.RBP
+|	mov rsp, CPU.RSP
+|	mov r8,  CPU.R8
+|	mov r9,  CPU.R9
+|	mov r10, CPU.R10
+|	mov r11, CPU.R11
+|	mov r12, CPU.R12
+|	mov r13, CPU.R13
+|	mov r14, CPU.R14
+|	mov r15, CPU.R15
+|	mov rax, CPU.RAX
+|	ret
+|.endif
+
+--make callback slots
+Dst:growpc(slotnum)
+for i=0,slotnum-1 do
+	|=>i:
+	|	push aword i
+	|	jmp ->main
+end
+
+--build the code and get the globals
+
+local g_buf, g_sz = Dst:build() --dasm.dump(g_buf, g_sz)
+local globals = dasm.globals(globals, globalnames)
+
+--raw float converter
+
+local float80to64 = ffi.cast('double(__cdecl*)(const uint8_t*)', globals.float80to64)
+local float64to80 = ffi.cast('void(__cdecl*)(double, uint8_t*)', globals.float64to80)
+
+--cb slot management
+
+local freeslots = {}
+for i=0,slotnum-1 do
+	freeslots[i] = true
+end
+
+local function getslot()
+	return assert(next(freeslots), 'no free slots')
+end
+
+local function setslot(slot, cb)
+	g_callbacks[slot] = cb
+	freeslots[slot] = nil
+	return Dst:getpclabel(slot, g_buf)
+end
+
+local function freeslot(slot)
+	g_callbacks[slot] = nil
+	freeslots[slot] = true
+end
+
+--cbframe API
+
+local fficb_ct = ffi.typeof'void(*)(D_CPUSTATE*)'
+local cbframe_ct = ffi.typeof('struct { $ ffiptr; int slot; void* p; }', fficb_ct)
+local cbframe = {}
+ffi.metatype(cbframe_ct, {__index = cbframe})
+
+local function cbframe_new(func)
+	local self = cbframe_ct()
+	self.slot = getslot()
+	return self:set(func)
+end
+
+local fficbs = {} --{cbframe = fficb}
+
+function cbframe:set(func)
+	if not func then
+		error('function expected, got '..type(func))
+	end
+	if self.slot == -1 then
+		self.slot = getslot()
+	end
+	if self.ffiptr ~= nil then
+		fficbs[self]:free()
+	end
+	local fficb = ffi.cast(fficb_ct, func)
+	fficbs[self] = fficb
+	self.ffiptr = fficb
+	self.p = setslot(self.slot, self.ffiptr)
+	return self
+end
+
+function cbframe:free()
+	if self.ffiptr ~= nil then
+		fficbs[self]:free()
+		fficbs[self] = nil
+		self.ffiptr = nil
+	end
+	if self.slot ~= -1 then
+		freeslot(self.slot)
+		self.slot = -1
+	end
+	ffi.gc(self, nil)
+end
+
+--module API
+
+local autoload = {dump = 'cbframe_dump', cast = 'cbframe_abi'}
+
+return setmetatable({
+	float80to64 = float80to64,
+	float64to80 = float64to80,
+	new = cbframe_new,
+}, {__index = function(t,k)
+	if autoload[k] then
+		require(autoload[k])
+	end
+	return rawget(t, k)
+end})
+

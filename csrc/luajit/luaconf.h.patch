@@ -1,0 +1,15 @@
+--- luaconf.h	2014-11-08 01:43:16 +0200
++++ ../../luaconf-2.0.3.h	2014-11-08 01:19:15 +0200
+@@ -21,9 +21,10 @@
+ #define LUA_LDIR	"!\\lua\\"
+ #define LUA_CDIR	"!\\"
+ #define LUA_PATH_DEFAULT \
+-  ".\\?.lua;" LUA_LDIR"?.lua;" LUA_LDIR"?\\init.lua;"
++  ".\\?.lua;" LUA_LDIR"?.lua;" LUA_LDIR"?\\init.lua;" \
++  "!\\..\\..\\?.lua;" "!\\..\\..\\?\\init.lua;"
+ #define LUA_CPATH_DEFAULT \
+-  ".\\?.dll;" LUA_CDIR"?.dll;" LUA_CDIR"loadall.dll"
++  ".\\?.dll;" LUA_CDIR"clib\\?.dll;" LUA_CDIR"loadall.dll"
+ #else
+ /*
+ ** Note to distribution maintainers: do NOT patch the following lines!

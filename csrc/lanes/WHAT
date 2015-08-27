@@ -1,0 +1,5 @@
+LuaLanes 3.9.3 from https://github.com/LuaLanes/lanes (MIT license)
+
+lanes.lua moved to root dir.
+
+PROPAGATE_ALLOCF set to 0 in tools.h (needed for 64bit LuaJIT builds)

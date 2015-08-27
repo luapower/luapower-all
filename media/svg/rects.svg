@@ -1,0 +1,19 @@
+<?xml version="1.0"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+         "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns="http://www.w3.org/2000/svg"
+     xmlns:xlink="http://www.w3.org/1999/xlink">
+
+  <rect x="20" y="20" width="300" height="250"
+        fill="none" stroke="blue" stroke-width="2"/>
+
+  <rect x="120" y="50" width="100" height="40"
+        fill="yellow" stroke="navy" stroke-width="3"/>
+
+  <g transform="translate(0, 120) rotate(30, 160, 60)">
+
+      <rect x="120" y="50" width="100" height="40" rx="10" ry="10"
+            fill="none" stroke="purple" stroke-width="3"/>
+  </g>
+
+</svg>

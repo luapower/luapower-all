@@ -1,0 +1,35 @@
+local dlist = require'dlist'
+
+local list = dlist()
+
+local function test(t) --test length and list traversal in both directions
+	assert(list.length == #t)
+	local i = 0
+	for item in list:items() do
+		i = i + 1
+		assert(item[1] == t[i])
+	end
+	assert(i == #t)
+	local i = #t + 1
+	for item in list:reverse_items() do
+		i = i - 1
+		assert(item[1] == t[i])
+	end
+	assert(i == 1)
+end
+
+list:push({'a'}); test{'a'}
+list:push({'b'}); test{'a','b'}
+list:unshift({'0'}); test{'0','a','b'}
+list:insert({'1'}, list:next()); test{'0','1','a','b'}
+assert(list:pop()[1] == 'b'); test{'0','1','a'}
+assert(list:shift()[1] == '0'); test{'1','a'}
+assert(list:remove(list:next())[1] == '1'); test{'a'}
+assert(list:remove(list:prev())[1] == 'a'); test{}
+
+list:clear(); test{}
+assert(list:pop() == nil)
+
+list:clear(); list:unshift({'a'}); test{'a'}
+list:clear(); list:insert({'a'}); test{'a'}
+

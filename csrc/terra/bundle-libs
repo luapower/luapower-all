@@ -1,0 +1,1 @@
+P="$(../../.mgit/platform.sh)" ./build.sh libs

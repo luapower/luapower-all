@@ -1,0 +1,8 @@
+harfbuzz 0.9.25 from http://www.freedesktop.org/software/harfbuzz/release/ (MIT License)
+requires: ucdn
+
+NOTE: mingw32 has a MemoryBarrier() definition that harfbuzz can't work with,
+so I changed harfbuzz (hb-atomic-private.hh line 50) to use its own definition in that case.
+Mingw-w64 works fine.
+
+NOTE: ragel is needed to compile the .rl files after updating harfbuzz to a new version.

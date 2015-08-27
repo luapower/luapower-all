@@ -1,0 +1,5 @@
+libwinpthread 0.5.0 from http://sourceforge.net/projects/mingw-w64/files/Toolchains%20targetting%20Win32/Personal%20Builds/mingw-builds/ (BSD)
+
+
+libwinpthread wasn't built from source.
+it was taken from mingw64 mingw-builds 4.9.2.
