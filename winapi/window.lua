@@ -1053,6 +1053,10 @@ function WM.WM_SHOWWINDOW(wParam, lParam) --shown/hidden, show_status (nil if Sh
 	return wParam == 1, show_status[tonumber(lParam)]
 end
 
+function WM.WM_ENABLE(wParam)
+	return wParam == 1
+end
+
 -- window activation
 
 local activate_flags = {[0] = 'inactive', 'active', 'clickactive'}

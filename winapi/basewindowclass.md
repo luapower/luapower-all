@@ -99,7 +99,7 @@ stoptimer(id)									cancel a timer											KillTimer
 __lifetime__											__description__								__reference__
 on_destroy()											before destroying								WM_DESTROY
 on_destroyed()											after being destroyed						WM_NCDESTROY
-__movement__											__description__								__reference__
+__state__												__description__								__reference__
 on_pos_changing(WINDOWPOS)							resizing (or changing state)				WM_WINDOWPOSCHANGING
 on_parent_resizing(WINDOWPOS)						parent is resizing							WM_WINDOWPOSCHANGING
 on_pos_changed()										resized or state changed					WM_WINDOWPOSCHANGED
@@ -111,11 +111,8 @@ on_begin_sizemove()									moving or resizing started					WM_ENTERSIZEMOVE
 on_end_sizemove()										moving or resizing ended					WM_EXITSIZEMOVE
 on_focus()												was focused										WM_SETFOCUS
 on_blur()												was unfocused									WM_KILLFOCUS
-on_enable()												was enabled										WM_ENABLE
+on_enable(enabled)									was enabled or disabled						WM_ENABLE
 on_show()												was shown										WM_SHOWWINDOW
-__queries__												__description__								__reference__
-on_help()												user pressed F1								WM_HELP
-on_set_cursor()										cursor changed									WM_SETCURSOR
 __mouse__												__description__								__reference__
 on_mouse_move(x, y, btns)							mouse moved										WM_MOUSEMOVE
 on_mouse_over(x, y, btns)							mouse entered the client area (*) 		WM_MOUSEHOVER
@@ -134,6 +131,7 @@ on_xbutton_down(x, y, btns, which)				other mouse button down						WM_XBUTTONDOW
 on_xbutton_up(x, y, btns, which)					other mouse button up						WM_XBUTTONUP
 on_mouse_wheel(x, y, btns, delta)				mouse wheel roll								WM_MOUSEWHEEL
 on_mouse_hwheel(x, y, btns, delta)				mouse horizontal wheel roll				WM_MOUSEHWHEEL
+on_set_cursor()										cursor changed									WM_SETCURSOR
 __keyboard__											__description__								__reference__
 on_key_down(VK_code, flags)						key down											WM_KEYDOWN
 on_key_up(VK_code, flags)							key up											WM_KEYUP
@@ -143,6 +141,7 @@ on_key_down_char(utf8_char, flags)				key down	char									WM_CHAR
 on_syskey_down_char(utf8_char, flags)			syskey down char								WM_SYSCHAR
 on_dead_key_up_char(VK_code, flags)				dead key up char								WM_DEADCHAR
 on_dead_syskey_down_char(VK_code, flags)		dead syskey down char						WM_SYSDEADCHAR
+on_help()												user pressed F1								WM_HELP
 __raw input__											__description__								__reference__
 on_raw_input(RAWINPUT)								raw input event								WM_INPUT
 on_device_change(how, HRAWINPUT)					input device added/removed					WM_INPUT_DEVICE_CHANGE
