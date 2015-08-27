@@ -1,12 +1,34 @@
 ---
-tagline: Windows OpenGL surface widget
+tagline: OpenGL panels
 ---
 
 ## `require'winapi.wglpanel'`
 
-## `winapi.WGLPanel(properties) -> WGLPanel`
+This module implements the `WGLPanel` class which allows drawing
+on a panel using [OpenGL][opengl].
 
-Example:
+## WGLPanel
+
+### Hierarchy
+
+* [Object][winapi.object]
+	* [VObject][winapi.vobject]
+		* [BaseWindow][winapi.basewindowclass]
+			* [Control][winapi.controlclass]
+				* [Panel][winapi.panelclass]
+					* WGLPanel
+
+### Events
+
+<div class=small>
+-------------------------------------------- -------------------------------------- -------------------------
+__painting__											__description__								__reference__
+on_render()												panel needs repainting						WM_PAINT
+on_set_viewport()										window was resized
+-------------------------------------------- -------------------------------------- -------------------------
+</div>
+
+### Usage
 
 ~~~{.lua}
 local winapi = require'winapi'

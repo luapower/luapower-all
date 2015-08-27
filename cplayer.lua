@@ -1,5 +1,5 @@
 --cairo player: procedural graphics player with immediate mode gui toolkit
-local CairoPanel = require'winapi.cairopanel2'
+local CairoPanel = require'winapi.cairopanel'
 local winapi = require'winapi'
 require'winapi.windowclass'
 require'winapi.keyboard'
@@ -173,20 +173,11 @@ function player:window(t)
 
 	--panel receives painting and mouse events
 
-	function panel.__create_surface(panel, surface)
-		self.surface = surface
-		self.cr = surface:create_context()
-	end
-
-	function panel.__destroy_surface(panel, surface)
-		self.cr:free()
-		self.surface = nil
-		self.cr = nil
-	end
-
 	local fps = fps_function()
 
-	function panel.on_render(panel, surface)
+	function panel.on_cairo_paint(panel, context)
+		self.cr = context
+
 		--set the window title
 		local title = self.title or string.format('Cairo %s', cairo.cairo_version_string())
 		if self.continuous_rendering then

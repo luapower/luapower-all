@@ -69,6 +69,10 @@ showcase their functionality, so there's lots of little demos there too.
 		* [BaseWindow][winapi.basewindowclass] - base class for top-level windows and controls
 			* [Window][winapi.windowclass] - final class for top level windows
 			* [Control][winapi.controlclass] - base class for controls
+				* [Panel][winapi.panelclass] - custom-painted child windows
+					* [BitmapPanel][winapi.bitmappanel] - RGBA [bitmap] panels
+						* [CairoPanel][winapi.cairopanel] - [cairo] panels
+					* [WGLPanel][winapi.wglpanel] - [OpenGL][opengl] panels
 				* [BaseButton][winapi.basebuttonclass] - base class for buttons
 					* [Button][winapi.buttonclass] - push-buttons
 					* [CheckBox][winapi.checkboxclass] - checkboxes
@@ -80,9 +84,6 @@ showcase their functionality, so there's lots of little demos there too.
 				* [ListView][winapi.listviewclass] - list views
 				* [TabControl][winapi.tabcontrolclass] - tab bars
 				* [Toolbar][winapi.toolbarclass] - toolbars
-				* [Panel][winapi.menuclass] - custom frameless windows
-				* [WGLPanel][winapi.wglpanel] - [OpenGL][opengl] panel
-				* [CairoPanel][winapi.cairopanel] - [cairo] panel
 		* [Menu][winapi.menuclass] - menus and menu bars
 		* [NotifyIcon][winapi.notifyiconclass] - system tray icons
 
@@ -94,3 +95,4 @@ and empirical knowledge, so do check out the source code.
 ## Modules
 
 {{module_list}}
+

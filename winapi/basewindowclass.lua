@@ -122,7 +122,7 @@ function MessageLoop(after_process)
 			after_process(msg)
 		end
 	end
-	return msg.signed_wParam --WM_QUIT sends an int exit code in wParam
+	return tonumber(msg.signed_wParam) --WM_QUIT sends an int exit code in wParam
 end
 
 --process all pending messages from the queue (if any) and return.
@@ -822,12 +822,23 @@ function BaseWindow:invalidate(r, erase_background)
 	InvalidateRect(self.hwnd, r, erase_background ~= false)
 end
 
+function BaseWindow:__WM_PAINT_pass(ok, ...)
+	EndPaint(self.hwnd, self.__paintstruct)
+	if ok then return ... end
+	if ffi.abi'32bit' then
+		error(...)
+	else
+		--exceptions in WM_PAINT are caught by Windows on x64, see:
+		--http://stackoverflow.com/questions/1487950/access-violation-in-wm-paint-not-caught
+		print(...)
+	end
+end
+
 function BaseWindow:WM_PAINT()
 	if self.on_paint then
 		self.__paintstruct = types.PAINTSTRUCT(self.__paintstruct)
 		local hdc = BeginPaint(self.hwnd, self.__paintstruct)
-		self:on_paint(hdc)
-		EndPaint(self.hwnd, self.__paintstruct)
+		self:__WM_PAINT_pass(xpcall(self.on_paint, debug.traceback, self, hdc))
 		return 0
 	end
 end
