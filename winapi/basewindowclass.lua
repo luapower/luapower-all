@@ -108,6 +108,8 @@ function ProcessMessage(msg)
 	--posted by Window objects to unregister their WNDCLASS after they're gone.
 	if msg.message == WM_UNREGISTER_CLASS then
 		UnregisterClass(msg.wParam)
+	elseif msg.message == WM_EXCEPTION then
+		error'WM_EXCEPTION'
 	end
 end
 
@@ -831,6 +833,7 @@ function BaseWindow:__WM_PAINT_pass(ok, ...)
 		--exceptions in WM_PAINT are caught by Windows on x64, see:
 		--http://stackoverflow.com/questions/1487950/access-violation-in-wm-paint-not-caught
 		print(...)
+		PostMessage(nil, WM_EXCEPTION)
 	end
 end
 

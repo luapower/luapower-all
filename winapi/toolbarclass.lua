@@ -122,9 +122,9 @@ if not ... then
 		image_list = ImageList{w = 16, h = 16, masked = true, colors = '32bit'},
 		items = {
 			--NOTE: using `iBitmap` instead of `i` because `i` counts from 1
-			--{iBitmap = STD_FILENEW,  text = 'New'},
-			--{iBitmap = STD_FILEOPEN, text = 'Open', style = {toggle = true}},
-			--{iBitmap = STD_FILESAVE, text = 'Save', style = {type = 'dropdown'}},
+			{iBitmap = STD_FILENEW,  text = 'New'},
+			{iBitmap = STD_FILEOPEN, text = 'Open', style = {toggle = true}},
+			{iBitmap = STD_FILESAVE, text = 'Save', style = {type = 'dropdown'}},
 		},
 		anchors = {left = true, right = true},
 	}
@@ -134,6 +134,7 @@ if not ... then
 		print('dropdown', info.button.iBitmap, info.rect.x, info.rect.y)
 	end
 
+	--TODO: this gives "The handle is invalid."
 	--local item = tb.items:get(3)
 	--print(require'pp'.format(item.state))
 

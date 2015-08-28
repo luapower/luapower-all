@@ -26,15 +26,14 @@ function Struct:set(cdata, field, value) --hot code
 			cdata[self.mask] = setbit(cdata[self.mask] or 0, mask, value ~= nil)
 		end
 		if name then
-			value = setter(value, cdata)
-			--cdata values are pinned to the struct automatically.
-			--only the current value is pinned for each struct field.
-			--the old value is released when the new value is set.
+			local value = setter(value, cdata)
+			--cdata values are pinned to their respective struct field automatically.
+			--only the current value is pinned. the old value is released when a new value is set.
 			if type(value) == 'cdata' then
-				local t = pins[value]
+				local t = pins[cdata]
 				if not t then
 					t = {}
-					pins[value] = t
+					pins[cdata] = t
 				end
 				t[field] = value
 			end

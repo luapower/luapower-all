@@ -161,7 +161,7 @@ for i = 1, 5 do
 		y = 10 + i * 22,
 		w = 60,
 		text = 'Option &'..i,
-		checked = i == 3,
+		checked = i == 3 or i == 5,
 	}
 end
 

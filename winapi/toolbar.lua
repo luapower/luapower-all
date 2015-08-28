@@ -125,16 +125,13 @@ typedef struct _TBBUTTON {
     BYTE fsStyle;
     BYTE bReserved[%d];
     DWORD_PTR dwData;
-    INT_PTR iString;
+    union {
+		WCHAR* pString;
+		INT_PTR iString;
+	};
 } TBBUTTON, *PTBBUTTON, *LPTBBUTTON;
 typedef const TBBUTTON *LPCTBBUTTON;
 ]], ffi.abi('64bit') and 6 or 2))
-
-local function intptr_wcs(s, cdata)
-	local buf = wcs(s)
-	pin(buf, cdata)
-	return ffi.cast('INT_PTR', buf)
-end
 
 local style_bitmask = bitmask{
 	auto_width = BTNS_AUTOSIZE,
@@ -165,7 +162,7 @@ TBBUTTON = struct{
 		'command', 'idCommand', pass, pass,
 		'__state', 'fsState', flags, pass, --TBSTATE_*
 		'style', 'fsStyle', set_style, get_style, --TBSTYLE_*
-		'text', 'iString', intptr_wcs, pass, --used as pointer
+		'text', 'pString', wcs, pass, --used as pointer
 		'text_index', 'iString', pass, pass, --used as index
 	},
 	bitfields = {

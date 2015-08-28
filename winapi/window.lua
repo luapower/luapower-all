@@ -1034,6 +1034,9 @@ register_message'WM_UNREGISTER_CLASS'
 --default message routed by BaseWindowClass through the NotifyIcons tracker.
 register_message'WM_NOTIFYICON'
 
+--message sent to the thread to raise an error (see WM_PAINT handling in BaseWindowClass).
+register_message'WM_EXCEPTION'
+
 --decode a message based on registered decoders from various submodules.
 function DecodeMessage(WM_, wParam, lParam) --returns decoded results...
 	local decoder = WM[WM_NAMES[WM_]] or pass

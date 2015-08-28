@@ -48,7 +48,6 @@ function Control:set_parent(parent)
 			WS_CHILD))
 	end
 	SetParent(self.hwnd, parent and parent.hwnd)
-	pin(self, parent)
 	if not parent and old_parent then --child windows can become popup windows (diff. from overlapped)
 		SetWindowStyle(self.hwnd,
 			setbits(GetWindowStyle(self.hwnd),
