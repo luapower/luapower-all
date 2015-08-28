@@ -279,8 +279,8 @@ end
 --ctype constructor ----------------------------------------------------------
 
 --use arg = types.FOO(arg) instead of arg = ffi.new('FOO', arg): if arg is
---already a FOO, it is passed through instead of being copied over, thus
---allowing the user to pre-allocate args if needed to lower gc pressure.
+--already a FOO or FOO*, it is passed through instead of being copied over,
+--thus allowing the user to pre-allocate args if needed to lower gc pressure.
 
 types = {}
 setmetatable(types, types)

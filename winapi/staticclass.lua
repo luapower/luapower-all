@@ -1,4 +1,3 @@
-
 --oo/controls/static: standard label control
 --Written by Cosmin Apreutesei. Public Domain.
 
