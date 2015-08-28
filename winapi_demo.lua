@@ -60,8 +60,18 @@ local function about_box()
 	local okbtn = Button{
 		x = (aboutwin.client_w - w) / 2,
 		y = aboutwin.client_h * 5/6 - h,
+		w = w, h = h,
 		parent = aboutwin,
 		default = true, --respond to pressing Enter
+	}
+
+	local lb = Label{
+		x = 0, y = 40,
+		w = aboutwin.client_w,
+		h = aboutwin.client_h,
+		parent = aboutwin,
+		align = 'center',
+		text = 'Windows API Binding Demo',
 	}
 
 	--make it modal

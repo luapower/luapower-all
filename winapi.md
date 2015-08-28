@@ -11,14 +11,19 @@ OpenGL and cairo.
 ## Features
 
   * UTF8 Lua strings everywhere (also works with wide char buffers)
-  * all calls are error-checked
-  * memory management (managing ownership; allocation of in/out buffers)
-  * flags can be passed as `'FLAG1 FLAG2'`
-  * counting from 1 everywhere
-  * object system with virtual properties (`win.title = 'hello'` sets the title)
+  * OpenGL, cairo and bitmap widgets
   * anchor-based layout model for all controls
+  * object system with virtual properties (`win.title = 'hello'` sets the title)
   * binding helpers for easy binding of new and future APIs
-  * cairo and OpenGL widgets.
+  * all calls are error-checked
+  * automatic memory management (ownership; buffers)
+  * flags can be passed as `'FLAG1 FLAG2'`
+  * counting from 1 everywhere.
+
+## Status
+
+[Current status](https://github.com/luapower/winapi/issues/26)
+and [issues](https://github.com/luapower/winapi/issues).
 
 ## Hello World
 
@@ -47,7 +52,9 @@ os.exit(winapi.MessageLoop()) --start the message loop
 
 ## Demos
 
-Check out [winapi_demo] to see all the controls in action.
+Check out [winapi_demo] to see all the controls in action:
+
+![screnshot](/files/luapower/media/www/winapi_demo.png)
 
 Also, many modules can be run as standalone scripts, which will
 showcase their functionality, so there's lots of little demos there too.
@@ -96,4 +103,5 @@ and empirical knowledge, so do check out the source code.
 ## Modules
 
 {{module_list}}
+
 

@@ -48,6 +48,6 @@ between controls or having to specify percentages.
 The default value of `anchors` is `{left = true, top = true}`.
 
 Anchors can also be set and read in short form using the `anc` property:
-each anchored side is represented by one of the letters `ltrb`
-(the default value of `anc` is thus `lt`: `anc` always reflects
+each anchored side is represented by one of the letters 'ltrb'
+(the default value of `anc` is thus 'lt': `anc` always reflects
 the value of `anchors`).
