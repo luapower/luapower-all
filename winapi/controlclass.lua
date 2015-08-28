@@ -17,9 +17,29 @@ Control = subclass({
 	},
 }, BaseWindow)
 
+function parse_anchors(s)
+	if type(s) == 'string' then
+		return {
+			left   = s:find('l', 1, true) and true or nil,
+			top    = s:find('t', 1, true) and true or nil,
+			right  = s:find('r', 1, true) and true or nil,
+			bottom = s:find('b', 1, true) and true or nil,
+		}
+	end
+	return s
+end
+
+function format_anchors(t)
+	return
+		(t.left   and 'l')..
+		(t.top    and 't')..
+		(t.right  and 'r')..
+		(t.bottom and 'b')
+end
+
 function Control:__before_create(info, args)
 	Control.__index.__before_create(self, info, args)
-	self.anchors = info.anchors
+	self.anchors = info.anc and parse_anchors(info.anc) or info.anchors
 	--parent is either a window object or a handle. if it's a handle, self.parent will return nil.
 	args.parent = info.parent and info.parent.hwnd or info.parent
 	args.style = bit.bor(args.style, args.parent and WS_CHILD or WS_POPUP, WS_CLIPSIBLINGS, WS_CLIPCHILDREN)
@@ -129,3 +149,10 @@ function Control:__parent_resizing(wp)
 	if h and rh ~= h then self.__anchor_h = h - rh else self.__anchor_h = nil end
 end
 
+function Control:get_anc()
+	return format_anchors(self.anchors)
+end
+
+function Control:set_anc(s)
+	self.anchors = parse_anchors(s)
+end

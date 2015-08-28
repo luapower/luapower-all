@@ -27,23 +27,27 @@ which can be read, `w` means property which can be set.
 
 ----------------------- -------- ----------------------------------------- -------------- ---------------------
 __field/property__		__irw__	__description__									__default__		__reference__
-anchors.left				irw		left anchor											true
-anchors.top					irw		top anchor											true
-anchors.right				irw		right anchor										false
-anchors.bottom				irw		bottom anchor										false
+anchors						irw		anchors												see below
+anc							ire		anchors (string form)							see below
 parent						irw		control's parent														Get/SetParent
 ----------------------- -------- ----------------------------------------- -------------- ---------------------
 </div>
 
 ### Anchors
 
-Anchors are a simple but very powerful way of doing layouting (if you grew
-up with Delphi like I did then you know what I mean).
-This is how they work: setting an anchor on a side of a control fixates
-the distance between that side and the same side of the parent control,
-so that when the parent is moved/resized, the child is also moved/resized
-in order to preserve the initial distance. With anchors alone you can
-define pretty much every elastic layout that you see in typical desktop apps
-and you can do that without having to be explicit about the relationships
+Anchors are a simple but very powerful way of doing layouting.
+This is how they work: there's four anchors for each side of a control.
+Setting an anchor on one side fixates the distance between that side
+and the same side of the parent control, so that when the parent is
+moved/resized, the child is also moved/resized in order to preserve
+the initial distance. With anchors alone you can define pretty much
+every elastic layout that you see in typical desktop apps and you can
+do that without having to be explicit about the relationships
 between controls or having to specify percentages.
-So try'em out, you'll love'em!
+
+The default value of `anchors` is `{left = true, top = true}`.
+
+Anchors can also be set and read in short form using the `anc` property:
+each anchored side is represented by one of the letters `ltrb`
+(the default value of `anc` is thus `lt`: `anc` always reflects
+the value of `anchors`).

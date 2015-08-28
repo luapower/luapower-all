@@ -158,7 +158,7 @@ BaseWindow = {
 		--on_destroyed = WM_NCDESTROY, --manually triggered
 		--movement
 		on_pos_changing = WM_WINDOWPOSCHANGING,
-		on_pos_changed = WM_WINDOWPOSCHANGED,
+		on_pos_change = WM_WINDOWPOSCHANGED,
 		on_moving = WM_MOVING,
 		on_moved = WM_MOVE,
 		on_resizing = WM_SIZING,
@@ -203,7 +203,7 @@ BaseWindow = {
 		on_raw_input = WM_INPUT,
 		on_device_change = WM_INPUT_DEVICE_CHANGE,
 		--system events
-		on_dpi_changed = WM_DPICHANGED,
+		on_dpi_change = WM_DPICHANGED,
 	},
 	__wm_syscommand_handler_names = {}, --WM_SYSCOMMAND code -> handler name map
 	__wm_command_handler_names = {},    --WM_COMMAND code -> handler name map
@@ -564,14 +564,23 @@ function BaseWindow:disable() self.enabled = false end
 function BaseWindow:get_focused() return GetFocus() == self.hwnd end
 function BaseWindow:focus() SetFocus(self.hwnd) end
 
-function BaseWindow:children()
-	local t = EnumChildWindows(self.hwnd)
+function BaseWindow:children(recursive)
+	local t
+	if recursive then
+		t = EnumChildWindows(self.hwnd)
+	else
+		t = {}
+		for win in GetChildWindows(self.hwnd) do
+			t[#t+1] = win
+		end
+	end
 	local i = 0
 	return function()
 		i = i + 1
 		return Windows:find(t[i])
 	end
 end
+
 
 function BaseWindow:get_cursor_pos()
 	return Windows:get_cursor_pos(self)
@@ -751,7 +760,7 @@ end
 
 function BaseWindow:WM_WINDOWPOSCHANGING(wp)
 	if not getbit(wp.flags, SWP_NOSIZE) then
-		--enable anchors and constraints in child windows.
+		--this is to enable anchors and constraints in child windows.
 		for child in self:children() do
 			child:__parent_resizing(wp)
 		end
@@ -766,22 +775,6 @@ end
 
 function BaseWindow:real_child_at(...) --x,y or point
 	return Windows:find(RealChildWindowFromPoint(self.hwnd, ...))
-end
-
-function BaseWindow:child_at_recursive(...) --x,y or point
-	for w in self:children() do
-		local child = w:child_at_recursive(...)
-		if child then return child end
-	end
-	return self:child_at(...)
-end
-
-function BaseWindow:real_child_at_recursive(...) --x,y or point
-	for w in self:children() do
-		local child = w:real_child_at_recursive(...)
-		if child then return child end
-	end
-	return self:real_child_at(...)
 end
 
 --z order --------------------------------------------------------------------

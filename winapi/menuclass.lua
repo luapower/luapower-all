@@ -133,8 +133,7 @@ function Menu:__init(info)
 	self.items = MenuItemList(self, info.items)
 
 	local style = info
-	local t = update({}, info); t.items = nil --TODO: find another way
-	info = MENUINFO(t)
+	info = MENUINFO(info)
 	info.style = style_bitmask:set(MNS_NOTIFYBYPOS, style)
 	SetMenuInfo(self.hmenu, info)
 end

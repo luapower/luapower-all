@@ -69,7 +69,8 @@ function Struct:set(cdata, field, value) --hot code
 			end
 		end
 	end
-	error(string.format('struct "%s" has no field "%s"', self.ctype, field), 5)
+	--TODO: find a way to raise this error on assignment but not on initialization.
+	--error(string.format('struct "%s" has no field "%s"', self.ctype, field), 5)
 end
 
 local getbit = getbit
@@ -136,7 +137,7 @@ end
 function Struct:init(cdata) end --stub
 
 --create a struct with a clear mask and default values.
---cdata are passed through.
+--cdata passes through untouched.
 function Struct:new(t)
 	if type(t) == 'cdata' then return t end
 	local cdata = self.ctype_cons()
@@ -175,12 +176,12 @@ function Struct:collect(cdata)
 	return t
 end
 
---compute the struct's full mask (i.e. with all bitmasks set).
+--compute the struct's full mask (i.e. with all mask bits set).
 function Struct:compute_mask()
 	local mask = 0
 	for field, def in pairs(self.fields) do
-		local bitmask = def[2]
-		if bitmask then mask = bit.bor(mask, bitmask) end
+		local maskbit = def[2]
+		if maskbit then mask = bit.bor(mask, maskbit) end
 	end
 	return mask
 end

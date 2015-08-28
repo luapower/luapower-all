@@ -14,7 +14,8 @@ require'winapi.editclass'
 require'winapi.tabcontrolclass'
 require'winapi.listboxclass'
 require'winapi.comboboxclass'
-require'winapi.staticclass'
+require'winapi.labelclass'
+require'winapi.listviewclass'
 --panels
 require'winapi.bitmappanel'
 local have_wgl   = pcall(require, 'winapi.wglpanel')
@@ -27,7 +28,7 @@ local moninfo = GetMonitorInfo(mon)
 
 --create the main window -----------------------------------------------------
 
-local w, h = 550, 600
+local w, h = 550, 550
 local win = Window{
 	x = (moninfo.work_rect.w - w) / 2, --center the window on the monitor
 	y = (moninfo.work_rect.h - h) / 2,
@@ -115,7 +116,6 @@ local toolbar = Toolbar{
 		{iBitmap = STD_FILEOPEN, text = 'Open'},
 		{iBitmap = STD_FILESAVE, text = 'Save'},
 	},
-	anchors = {top = true, left = true, right = true},
 }
 toolbar:load_images(IDB_STD_SMALL_COLOR)
 
@@ -173,11 +173,28 @@ local tabs = TabControl{
 	y = 70,
 	w = 100,
 	h = 100,
+	anc = 'ltr',
 	items = {
 		{text = 'Tab1',},
 		{text = 'Tab2',},
 	},
 }
+
+local tablabel = Label{
+	parent = tabs,
+	x = 10, y = 30,
+	w = 50, h = 50,
+	anc = 'ltr',
+}
+tablabel.name = 'label'
+tabs.name = 'tabs'
+win.name = '!win'
+
+function tabs:on_tab_change()
+	tablabel.text = 'Selected tab: '..tostring(self.selected_index)
+end
+
+tabs:on_tab_change()
 
 --create a bitmap panel ------------------------------------------------------
 
@@ -329,7 +346,7 @@ local closebtn = Button{
 	w = 100,
 	text = '&Close',
 	parent = win,
-	anchors = {right = true, bottom = true},
+	anc = 'rb',
 }
 
 function closebtn:on_click()
@@ -343,7 +360,7 @@ win.min_ch = win.client_h
 
 local lb = ListBox{parent = win, x = 260, y = 187, h = 160, hextent = 100}
 for i = 1,100 do
-	lb.items:add(' xxx test xxx xxx  '..i)
+	lb.items:add('ListBox item '..i)
 end
 
 --create an edit box ---------------------------------------------------------
@@ -370,15 +387,30 @@ end
 
 --create some labels ---------------------------------------------------------
 
-local lb1 = Static{parent = win, x = 20, y = 50, text = 'BitmapPanel'}
-local lb2 = Static{parent = win, x = 140, y = 50, text = 'CairoPanel'}
-local lb3 = Static{parent = win, x = 260, y = 50, text = 'WGLPanel'}
+local lb1 = Label{parent = win, x = 20, y = 50, text = 'BitmapPanel'}
+local lb2 = Label{parent = win, x = 140, y = 50, text = 'CairoPanel'}
+local lb3 = Label{parent = win, x = 260, y = 50, text = 'WGLPanel'}
 
 --create an accelerator ------------------------------------------------------
 
 win.accelerators:add{
 	hotkey = 'escape', --VK_ESCAPE
 	handler = function() win:close() end,
+}
+
+--create some list views -----------------------------------------------------
+
+local rlv = ReportListView{
+	parent = win,
+	x = 20,
+	y = 360,
+	w = 220,
+	h = 100,
+	columns = {'name', 'address'},
+	items = {
+		{text = 'Louis Armstrong',  subitems = {'Basin Street'}},
+		{text = 'Django Reinhardt', subitems = {'Beyond The Sea'}},
+	},
 }
 
 --start the message loop -----------------------------------------------------

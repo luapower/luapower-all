@@ -147,38 +147,38 @@ function ComboBox:get_selected() return self.items:get(self:get_selected_index()
 --showcase
 
 if not ... then
-require'winapi.showcase'
-local window = ShowcaseWindow{w=300,h=200}
-local cb1 = ComboBox{parent = window, x = 10, y = 10, type = 'dropdownlist'}
-cb1.image_list = ShowcaseImageList()
-cb1.items:add{text = 'Option #1', image = 5}
-cb1.items:add{text = 'Option #2'}
-cb1.items:add{text = 'Option #3 (2nd option is gone)',
-						image = 1, selected_image = 2, overlay_image = 3}
-cb1.items:remove(2)
-assert(cb1.items.count == 2)
-print(cb1.items:get(2).text)
-print(cb1.items:get(1).text)
-cb1.selected_index = 1
-cb1.dropped_width = 160
-cb1.dropped_down = true
-assert(cb1.dropped_down)
-cb1.dropped_down = false
+	require'winapi.showcase'
+	local window = ShowcaseWindow{w=300,h=200}
+	local cb1 = ComboBox{parent = window, x = 10, y = 10, type = 'dropdownlist'}
+	cb1.image_list = ShowcaseImageList()
+	cb1.items:add{text = 'Option #1', image = 5}
+	cb1.items:add{text = 'Option #2'}
+	cb1.items:add{text = 'Option #3 (2nd option is gone)',
+							image = 1, selected_image = 2, overlay_image = 3}
+	cb1.items:remove(2)
+	assert(cb1.items.count == 2)
+	print(cb1.items:get(2).text)
+	print(cb1.items:get(1).text)
+	cb1.selected_index = 1
+	cb1.dropped_width = 160
+	cb1.dropped_down = true
+	assert(cb1.dropped_down)
+	cb1.dropped_down = false
 
-cb2 = ComboBox{parent = window, x = 10, y = 40, h = 80, type = 'dropdown', text = 'dude'}
-cb2.items:add'Option #1'
-cb2.items:add'Option #2'
+	cb2 = ComboBox{parent = window, x = 10, y = 40, h = 80, type = 'dropdown', text = 'dude'}
+	cb2.items:add'Option #1'
+	cb2.items:add'Option #2'
 
-cb3 = ComboBox{parent = window, x = 120, y = 10, h = 80,
-					type = 'simple', vscroll = false, autohscroll = true}
-cb3.image_list = ShowcaseImageList()
-cb3.items:add{text = 'Option #1', image = 1}
-cb3.items:add{text = 'Option #2', image = 3, overlay_image = 4}
-cb3.items:add{text = 'Option #3', image = 3, overlay_image = 4}
-cb3.items:add{text = 'Option #4', image = 3, overlay_image = 4}
-cb3.edit_height = 12
-cb3.item_height = 14
+	cb3 = ComboBox{parent = window, x = 120, y = 10, h = 80,
+						type = 'simple', vscroll = false, autohscroll = true}
+	cb3.image_list = ShowcaseImageList()
+	cb3.items:add{text = 'Option #1', image = 1}
+	cb3.items:add{text = 'Option #2', image = 3, overlay_image = 4}
+	cb3.items:add{text = 'Option #3', image = 3, overlay_image = 4}
+	cb3.items:add{text = 'Option #4', image = 3, overlay_image = 4}
+	cb3.edit_height = 12
+	cb3.item_height = 14
 
-MessageLoop()
+	MessageLoop()
 end
 

@@ -33,17 +33,14 @@ Edit = subclass({
 	__style_ex_bitmask = bitmask{
 		client_edge = WS_EX_CLIENTEDGE,
 	},
-	__default_style = {
-		tabstop = true,
-		client_edge = true,
-		align = 'left',
-		case = 'normal',
-	},
 	__defaults = {
 		text = '',
 		w = 100, h = 21,
 		readonly = false,
 		client_edge = true,
+		tabstop = true,
+		align = 'left',
+		case = 'normal',
 	},
 	__init_properties = {
 		'text', 'limit', 'password_char', 'tabstops', 'margins', 'cue',

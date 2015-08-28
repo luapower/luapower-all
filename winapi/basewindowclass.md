@@ -72,11 +72,9 @@ map_rect(to_win, RECT) -> RECT			map a RECT to a window's space					MapWindowRec
 client_to_frame(nil, RECT) -> RECT		inner->outer frame space conversion				AdjustWindowRect
 frame_to_client(nil, RECT) -> RECT		outer->inner frame space conversion				AdjustWindowRect
 __children__									__description__										__reference__
-children() -> iter() -> win				iterate children										EnumChildWindows
-child_at(POINT) -> win						child window at position							ChildWindowFromPoint
-real_child_at(POINT) -> win 				same but go through transparent children		RealChildWindowFromPoint
-child_at_recursive(POINT) -> win			same but recursive									ChildWindowFromPoint
-real_child_at_recursive(POINT) -> win	same but go through transparent children		RealChildWindowFromPoint
+children([all]) -> iter() -> win			iterate children										Get/EnumChildWindows
+child_at(POINT) -> win						direct child window at position					ChildWindowFromPoint
+real_child_at(POINT) -> win 				same but ignore transparent ones					RealChildWindowFromPoint
 __z-order__										__description__										__reference__
 send_to_back([rel_to_win])					move below of other windows						SetWindowPos
 bring_to_front([rel_to_win])				bring in front of other windows					SetWindowPos

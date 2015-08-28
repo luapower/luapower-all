@@ -1,5 +1,5 @@
 
---proc/controls/static: standard label control
+--proc/controls/static: label/shape/image control
 --Written by Cosmin Apreutesei. Public Domain.
 
 setfenv(1, require'winapi')
@@ -37,9 +37,9 @@ SS_ETCHEDFRAME       = 0x00000012
 SS_NOTIFY            = 0x00000100
 
 --other styles
-SS_USERITEM          = 0x0000000A
+SS_USERITEM          = 0x0000000A --undocumented
 SS_OWNERDRAW         = 0x0000000D
-SS_TYPEMASK          = 0x0000001F
+SS_TYPEMASK          = 0x0000001F --deprecated
 SS_REALSIZECONTROL   = 0x00000040
 SS_CENTERIMAGE       = 0x00000200
 SS_RIGHTJUST         = 0x00000400
@@ -57,11 +57,13 @@ STM_SETICON          = 0x0170
 STM_GETICON          = 0x0171
 STM_SETIMAGE         = 0x0172
 STM_GETIMAGE         = 0x0173
+
+--notifications
+
 STN_CLICKED          = 0
 STN_DBLCLK           = 1
 STN_ENABLE           = 2
 STN_DISABLE          = 3
-STM_MSGMAX           = 0x0174
 
 Static_Enable = EnableWindow
 Static_GetText = GetWindowText
