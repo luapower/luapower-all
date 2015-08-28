@@ -51,18 +51,6 @@ SS_PATHELLIPSIS      = 0x00008000
 SS_WORDELLIPSIS      = 0x0000C000
 SS_ELLIPSISMASK      = 0x0000C000
 
-STATIC_DEFAULTS = {
-	class = WC_STATIC,
-	text = 'n/a',
-	style = bit.bor(WS_CHILD, WS_VISIBLE),
-	x = 10, y = 10, w = 100, h = 24,
-}
-
-function CreateStatic(info)
-	info = update({}, STATIC_DEFAULTS, info)
-	return CreateWindow(info)
-end
-
 --commands
 
 STM_SETICON          = 0x0170
@@ -78,23 +66,13 @@ STM_MSGMAX           = 0x0174
 Static_Enable = EnableWindow
 Static_GetText = GetWindowText
 Static_SetText = SetWindowText
+
+--[[
 function Static_SetIcon(st, icon)
-	return SNDMSG(st, STM_SETICON, icon, 0,
-							'HICON', nil, checkh, 'HICON')
+	return SNDMSG(st, STM_SETICON, icon, 0, 'HICON', nil, checkh, 'HICON')
 end
 
-function Static_GetIcon(st, icon)
-	return SNDMSG(st, STM_GETICON, 0, 0,
-							nil, nil, checkh, 'HICON')
+function Static_GetIcon(st)
+	return SNDMSG(st, STM_GETICON, 0, 0, nil, nil, checkh, 'HICON')
 end
-
---showcase
-
-if not ... then
-require'winapi.showcase'
-local window = ShowcaseWindow()
-local label = CreateStatic{text = 'Hi there my sweet lemon drops!', h = 100, parent = window.hwnd}
-local label = CreateStatic{text = 'Hi there my sweet lemon drops!', h = 100, parent = window.hwnd}
-MessageLoop()
-end
-
+]]

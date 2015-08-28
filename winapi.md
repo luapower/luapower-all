@@ -73,6 +73,7 @@ showcase their functionality, so there's lots of little demos there too.
 					* [BitmapPanel][winapi.bitmappanel] - RGBA [bitmap] panels
 						* [CairoPanel][winapi.cairopanel] - [cairo] panels
 					* [WGLPanel][winapi.wglpanel] - [OpenGL][opengl] panels
+				* [Static][winapi.staticclass] - labels
 				* [BaseButton][winapi.basebuttonclass] - base class for buttons
 					* [Button][winapi.buttonclass] - push-buttons
 					* [CheckBox][winapi.checkboxclass] - checkboxes

@@ -15,7 +15,7 @@ local modifier_masks = {
 
 local function parse_hotkey(s) --parse hotkeys like "shift + alt + F5" or "ctrl + C"; note: say "C" instead of "shift + c"
 	local key, modifiers = nil, 0
-	for k in s:gmatch'([^%+])+' do
+	for k in s:gmatch'([^%+]+)' do
 		k = trim(k)
 		local m = modifier_masks[k:lower()]
 		if m then

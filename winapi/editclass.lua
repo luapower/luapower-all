@@ -46,7 +46,7 @@ Edit = subclass({
 		client_edge = true,
 	},
 	__init_properties = {
-		'limit', 'password_char', 'tabstops', 'margins', 'cue',
+		'text', 'limit', 'password_char', 'tabstops', 'margins', 'cue',
 	},
 	__wm_command_handler_names = index{
 		on_setfocus = EN_SETFOCUS,
@@ -110,37 +110,37 @@ function Edit:hide_balloon() Edit_HideBalloonTip(self.hwnd) end
 --showcase
 
 if not ... then
-require'winapi.showcase'
-local window = ShowcaseWindow{w=300,h=200}
-local e1 = Edit{parent = window, x = 10, y = 10, case = 'upper', limit = 8}
-function e1:on_change() print('changed', self.text) end
-e1.text = 'hello'
+	require'winapi.showcase'
+	local window = ShowcaseWindow{w=300,h=200}
+	local e1 = Edit{parent = window, x = 10, y = 10, case = 'upper', limit = 8}
+	function e1:on_change() print('changed', self.text) end
+	e1.text = 'hello'
 
-local e2 = Edit{parent = window, x = 10, y = 40, align = 'right'}
-e2.text = 'hola'
+	local e2 = Edit{parent = window, x = 10, y = 40, align = 'right'}
+	e2.text = 'hola'
 
-local e3 = Edit{x = 10, y = 70, visible = false}
-e3.parent = window
-e3.visible = true
-window.visible = false
-print('visible', e2.visible, e2.is_visible)
-for e in window:children() do print(e.text) end
-window.visible = true
+	local e3 = Edit{x = 10, y = 70, visible = false}
+	e3.parent = window
+	e3.visible = true
+	window.visible = false
+	print('visible', e2.visible, e2.is_visible)
+	for e in window:children() do print(e.text) end
+	window.visible = true
 
-e1:focus()
-e1:select(2,4)
-print(unpack(e1.selection_indices))
-e1.selection_text = 'xx'
-e1.margins = {15, 15}
-print(unpack(e1.margins))
+	e1:focus()
+	e1:select(2,4)
+	print(unpack(e1.selection_indices))
+	e1.selection_text = 'xx'
+	e1.margins = {15, 15}
+	print(unpack(e1.margins))
 
-e3:set_cue('Search', true)
-require'winapi.tooltip'
-e3:show_balloon('Duude', 'This is Cool!', TTI_INFO)
+	e3:set_cue('Search', true)
+	require'winapi.tooltip'
+	e3:show_balloon('Duude', 'This is Cool!', TTI_INFO)
 
-e4 = Edit{x = 10, y = 100, parent = window, readonly = true}
-e4.text = "Can't touch this"
+	e4 = Edit{x = 10, y = 100, parent = window, readonly = true}
+	e4.text = "Can't touch this"
 
-MessageLoop()
+	MessageLoop()
 end
 

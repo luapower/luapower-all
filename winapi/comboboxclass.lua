@@ -48,10 +48,6 @@ function CBItemList:get_count()
 	return ComboBox_GetCount(self.hwnd)
 end
 
-function CBItemList:select(i) ComboBox_SetCurSel(self.hwnd, i) end
-function CBItemList:get_selected_index() return ComboBox_GetCurSel(self.hwnd) end
-function CBItemList:get_selected() return self:get(self:get_selected_index()) end
-
 --for ownerdraw lists only
 function CBItemList:set_height(i, h) ComboBox_SetItemHeight(self.hwnd, i, h) end
 function CBItemList:get_height(i) return ComboBox_GetItemHeight(self.hwnd, i) end
@@ -89,7 +85,7 @@ ComboBox = subclass({
 		case = 'normal',
 		w = 100, h = 100,
 	},
-	__init_properties = {},
+	__init_properties = {'text', 'selected_index'},
 	__wm_command_handler_names = index{
 		on_memory_error = CBN_ERRSPACE,
 		on_selection_change = CBN_SELCHANGE,
@@ -108,12 +104,13 @@ ComboBox = subclass({
 function ComboBox:__before_create(info, args)
 	ComboBox.__index.__before_create(self, info, args)
 	args.class = WC_COMBOBOXEX
+	args.text = info.text --ignored by CreateWindowEx; solved with __init_properies.
 	--args.style_ex = bit.bor(args.style_ex, WS_EX_COMPOSITED)
 end
 
-function ComboBox:__init(info)
-	ComboBox.__index.__init(self, info)
-	self.items = CBItemList(self)
+function ComboBox:__after_create(info, args)
+	ComboBox.__index.__after_create(self, info, args)
+	self.items = CBItemList(self, info.items)
 end
 
 function ComboBox:set_image_list(iml)
@@ -143,6 +140,10 @@ function ComboBox:get_dropped_down() return ComboBox_DroppedDown(self.hwnd) end
 function ComboBox:set_dropped_width(w) ComboBox_SetDroppedWidth(self.hwnd, w) end
 function ComboBox:get_dropped_width() return ComboBox_GetDroppedWidth(self.hwnd) end
 
+function ComboBox:set_selected_index(i) ComboBox_SetCurSel(self.hwnd, i) end
+function ComboBox:get_selected_index() return ComboBox_GetCurSel(self.hwnd) end
+function ComboBox:get_selected() return self.items:get(self:get_selected_index()) end
+
 --showcase
 
 if not ... then
@@ -164,8 +165,7 @@ cb1.dropped_down = true
 assert(cb1.dropped_down)
 cb1.dropped_down = false
 
-cb2 = ComboBox{parent = window, x = 10, y = 40, h = 80, type = 'dropdown'}
-cb2.text = 'dude'
+cb2 = ComboBox{parent = window, x = 10, y = 40, h = 80, type = 'dropdown', text = 'dude'}
 cb2.items:add'Option #1'
 cb2.items:add'Option #2'
 

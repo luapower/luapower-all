@@ -1,4 +1,3 @@
---go@ ../bin/mingw32/luajit -e io.stdout:setvbuf'no';io.stderr:setvbuf'no';require'strict';pp=require'pp' *
 
 --oo/controls/listbox: standard listbox control
 --Written by Cosmin Apreutesei. Public Domain.

@@ -1,6 +1,8 @@
---go@ bin/mingw32/luajit -e io.stdout:setvbuf'no';io.stderr:setvbuf'no';require'strict';pp=require'pp' *
-
 setfenv(1, require'winapi')
+--functions
+require'winapi.monitor'
+require'winapi.cursor'
+--standard controls
 require'winapi.windowclass'
 require'winapi.menuclass'
 require'winapi.buttonclass'
@@ -10,10 +12,11 @@ require'winapi.checkboxclass'
 require'winapi.radiobuttonclass'
 require'winapi.editclass'
 require'winapi.tabcontrolclass'
-require'winapi.monitor'
-require'winapi.cursor'
-require'winapi.bitmappanel'
 require'winapi.listboxclass'
+require'winapi.comboboxclass'
+require'winapi.staticclass'
+--panels
+require'winapi.bitmappanel'
 local have_wgl   = pcall(require, 'winapi.wglpanel')
 local have_cairo = pcall(require, 'winapi.cairopanel')
 
@@ -24,7 +27,7 @@ local moninfo = GetMonitorInfo(mon)
 
 --create the main window -----------------------------------------------------
 
-local w, h = 600, 700
+local w, h = 550, 600
 local win = Window{
 	x = (moninfo.work_rect.w - w) / 2, --center the window on the monitor
 	y = (moninfo.work_rect.h - h) / 2,
@@ -121,7 +124,7 @@ toolbar:load_images(IDB_STD_SMALL_COLOR)
 local groupbox1 = GroupBox{
 	parent = win,
 	x = 20,
-	y = 160,
+	y = 180,
 	w = 100,
 	h = 170,
 	text = 'Group 1',
@@ -130,7 +133,7 @@ local groupbox1 = GroupBox{
 local groupbox2 = GroupBox{
 	parent = win,
 	x = 140,
-	y = 160,
+	y = 180,
 	w = 100,
 	h = 170,
 	text = 'Group 2',
@@ -167,8 +170,8 @@ end
 local tabs = TabControl{
 	parent = win,
 	x = 380,
-	y = 50,
-	w = 200,
+	y = 70,
+	w = 100,
 	h = 100,
 	items = {
 		{text = 'Tab1',},
@@ -178,7 +181,7 @@ local tabs = TabControl{
 
 --create a bitmap panel ------------------------------------------------------
 
-local bmppanel = BitmapPanel{w = 100, h = 100, x = 20, y = 50, parent = win}
+local bmppanel = BitmapPanel{w = 100, h = 100, x = 20, y = 70, parent = win}
 
 function bmppanel:on_bitmap_paint(bmp)
 	local p = self.cursor_pos
@@ -204,7 +207,7 @@ end)
 if have_cairo then
 
 local cairo = require'cairo'
-local cairopanel = CairoPanel{w = 100, h = 100, x = 140, y = 50, parent = win}
+local cairopanel = CairoPanel{w = 100, h = 100, x = 140, y = 70, parent = win}
 
 local r = 0
 function cairopanel:on_cairo_paint(cr)
@@ -250,7 +253,7 @@ end
 
 if have_wgl then
 
-local wglpanel = WGLPanel{w = 100, h = 100, x = 260, y = 50, parent = win}
+local wglpanel = WGLPanel{w = 100, h = 100, x = 260, y = 70, parent = win}
 
 local function cube(w, r)
 	gl.glPushMatrix()
@@ -338,10 +341,45 @@ win.min_ch = win.client_h
 
 --create a list box ----------------------------------------------------------
 
-local lb = ListBox{parent = win, x = 260, y = 167, h = 160, hextent = 100}
+local lb = ListBox{parent = win, x = 260, y = 187, h = 160, hextent = 100}
 for i = 1,100 do
 	lb.items:add(' xxx test xxx xxx  '..i)
 end
+
+--create an edit box ---------------------------------------------------------
+
+local edit = Edit{parent = win, x = 380, y = 187, cue = 'Edit me'}
+
+--create a combo box ---------------------------------------------------------
+
+local combo = ComboBox{
+	parent = win,
+	x = 380,
+	y = 220,
+	type = 'dropdownlist',
+	items = {
+		{text = 'First item'},
+		{text = 'Second item'},
+	},
+	selected_index = 2,
+}
+
+for i = 1, 10 do
+	combo.items:add{text = 'Item '..i}
+end
+
+--create some labels ---------------------------------------------------------
+
+local lb1 = Static{parent = win, x = 20, y = 50, text = 'BitmapPanel'}
+local lb2 = Static{parent = win, x = 140, y = 50, text = 'CairoPanel'}
+local lb3 = Static{parent = win, x = 260, y = 50, text = 'WGLPanel'}
+
+--create an accelerator ------------------------------------------------------
+
+win.accelerators:add{
+	hotkey = 'escape', --VK_ESCAPE
+	handler = function() win:close() end,
+}
 
 --start the message loop -----------------------------------------------------
 

@@ -73,9 +73,6 @@ function BaseButton:get_image_list()
 	}
 end
 
-function BaseButton:get_text() return GetWindowText(self.hwnd) end
-function BaseButton:set_text(text) SetWindowText(self.hwnd, text) end
-
 function BaseButton:set_icon(icon)
 	SetWindowStyle(self.hwnd, setbit(GetWindowStyle(self.hwnd), BS_ICON, icon))
 	Button_SetIcon(self.hwnd, icon)
