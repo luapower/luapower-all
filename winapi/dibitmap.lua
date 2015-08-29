@@ -4,14 +4,14 @@
 
 setfenv(1, require'winapi')
 
---initialize a new or existing DIB header for a top-down bgra8 bitmap.
-local function dib_header(w, h, bi)
-	if bi then
-		ffi.fill(bi, ffi.sizeof'BITMAPV5HEADER')
-		bi.bV5Size = ffi.sizeof'BITMAPV5HEADER'
-	else
-		bi = BITMAPV5HEADER()
-	end
+--make a DIB that can be painted on any DC and on a WS_EX_LAYERED window.
+function DIBitmap(w, h, compat_hwnd)
+
+	--can't create a zero-sized bitmap
+	assert(w > 0 and h > 0, 'invalid size')
+
+	--initialize a new DIB header for a top-down bgra8 bitmap.
+	local bi = BITMAPV5HEADER()
 	bi.bV5Width  = w
 	bi.bV5Height = -h
 	bi.bV5Planes = 1
@@ -25,28 +25,16 @@ local function dib_header(w, h, bi)
 	bi.bV5AlphaMask = 0xFF000000
 	--this flag is important for making clipboard-compatible packed DIBs!
 	bi.bV5CSType = LCS_WINDOWS_COLOR_SPACE
-	return bi
-end
 
---make a top-down bgra8 DIB and return it along with the pixel buffer.
-local function dib(w, h, compat_hwnd)
-	local bi = dib_header(w, h)
+	--create a DC compatible with compat_hwnd or with the current screen,
+	--if compat_hwnd is not given.
+	local compat_hdc = GetDC(compat_hwnd)
+	local hdc = CreateCompatibleDC(compat_hdc)
+	ReleaseDC(nil, compat_hdc)
+
 	local info = ffi.cast('BITMAPINFO*', bi)
-	local hdc = GetDC(compat_hwnd)
 	local hbmp, data = CreateDIBSection(hdc, info, DIB_RGB_COLORS)
-	ReleaseDC(nil, hdc)
-	return hbmp, data
-end
-
---make a DIB that can be painted on any DC and on a WS_EX_LAYERED window.
-function DIBitmap(w, h, compat_hwnd)
-
-	--can't create a zero-sized bitmap
-	assert(w > 0 and h > 0, 'invalid size')
-
-	local hbmp, data = dib(w, h, compat_hwnd)
-	local hdc = CreateCompatibleDC(compat_hwnd)
-	local oldhbmp = SelectObject(hdc, hbmp)
+	local old_hbmp = SelectObject(hdc, hbmp)
 
 	local bitmap = {
 		--bitmap format
@@ -92,7 +80,7 @@ function DIBitmap(w, h, compat_hwnd)
 	--free the bitmap and DC.
 	local function free()
 		ffi.gc(hbmp, nil)
-		SelectObject(hdc, oldhbmp)
+		SelectObject(hdc, old_hbmp)
 		DeleteObject(hbmp)
 		DeleteDC(hdc)
 		bitmap.data = nil

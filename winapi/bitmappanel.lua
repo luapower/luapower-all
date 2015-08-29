@@ -17,7 +17,7 @@ function BitmapPanel:on_paint(hdc)
 	if not bmp then
 		local w, h = self.client_w, self.client_h
 		if w <= 0 or h <= 0 then return end
-		bmp = DIBitmap(w, h)
+		bmp = DIBitmap(w, h, self.hwnd)
 		self.__bmp = bmp
 		self:on_bitmap_create(bmp)
 	end
