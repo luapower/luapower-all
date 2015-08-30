@@ -65,14 +65,10 @@ ffi.metatype('POINT', {__tostring = struct_tostring{'POINT','x','y'}})
 ffi.metatype('RECT', {
 	__tostring = struct_tostring{'RECT','x1','y1','x2','y2'},
 	__index = function(r,k)
-		if k == 'x' then return r.x1 end
-		if k == 'y' then return r.y1 end
 		if k == 'w' then return r.x2 - r.x1 end
 		if k == 'h' then return r.y2 - r.y1 end
 	end,
 	__newindex = function(r,k,v)
-		if k == 'x' then r.x2 = v + r.x2 - r.x1; r.x1 = v end
-		if k == 'y' then r.y2 = v + r.y2 - r.y1; r.y1 = v end
 		if k == 'w' then r.x2 = r.x1 + v end
 		if k == 'h' then r.y2 = r.y1 + v end
 	end,

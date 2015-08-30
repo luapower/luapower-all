@@ -821,7 +821,7 @@ function BaseWindow:__WM_PAINT_pass(ok, ...)
 	EndPaint(self.hwnd, self.__paintstruct)
 	if ok then return ... end
 	if ffi.abi'32bit' then
-		error(...)
+		error(..., 4)
 	else
 		--exceptions in WM_PAINT are caught by Windows on x64, see:
 		--http://stackoverflow.com/questions/1487950/access-violation-in-wm-paint-not-caught

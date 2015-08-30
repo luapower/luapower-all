@@ -256,7 +256,7 @@ function WM.WM_INPUT(wParam, lParam)
 		pbuf = ffi.cast('PRAWINPUT', buf)
 	end
 	local szz = GetRawInputData(hraw, RID_INPUT, buf, sz, hsz)
-	assert(szz == sz[0])
+	assert(szz == sz[0]) --TODO: this failed once but can't reproduce
 	return pbuf
 end
 

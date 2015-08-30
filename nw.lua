@@ -1301,16 +1301,37 @@ function window:bitmap()
 	return self.backend:bitmap()
 end
 
+function window:cairo()
+	local cairo = require'cairo'
+	local bitmap = self:bitmap()
+	if bitmap then
+		if not bitmap.cairo_surface then
+			bitmap.cairo_surface = cairo.cairo_image_surface_create_for_data(
+				bitmap.data, cairo.CAIRO_FORMAT_ARGB32, bitmap.w, bitmap.h, bitmap.stride)
+			bitmap.cairo_context = bitmap.cairo_surface:create_context()
+		end
+		return bitmap.cairo_context
+	end
+end
+
+function window:gl()
+	return self.backend:gl()
+end
+
 function window:invalidate()
 	self:_check()
 	return self.backend:invalidate()
 end
 
-function window:_backend_repaint(x, y, w, h)
-	self:_event('repaint', x, y, w, h)
+function window:_backend_repaint(...)
+	self:_event('repaint', ...)
 end
 
 function window:_backend_free_bitmap(bitmap)
+	if bitmap.cairo_context then
+		bitmap.cairo_context:free()
+		bitmap.cairo_surface:free()
+	end
 	self:_event('free_bitmap', bitmap)
 end
 
@@ -1343,11 +1364,19 @@ function window:view_count()
 	return #self._views
 end
 
+function window:view(t)
+	return view:_new(self, self.backend.view, t)
+end
+
 function view:_new(window, backend_class, t)
 	local self = glue.inherit({
 		window = window,
 		app = window.app,
 	}, self)
+
+	self._mouse = {}
+	self._down = {}
+
 	self.backend = backend_class:new(window.backend, self, t)
 	table.insert(window._views, self)
 	return self
@@ -1367,26 +1396,36 @@ function view:free()
 	table.remove(self.window._views, indexof(self, self.window._views))
 end
 
-function view:_backend_render(...)
-	self:_event('render', ...)
-end
-
 function view:invalidate()
 	self:_check()
 	self.backend:invalidate()
 end
 
-function app:invalidate()
-	for i,win in ipairs(self:windows()) do
-		if not win:dead() then
-			win:invalidate()
+function view:rect(x, y, w, h)
+	if x or y or w or h then
+		if not (x and y and w and h) then
+			x, y, w, h = override_rect(x, y, w, h, self.backend:get_rect())
 		end
+		self.backend:set_rect(x, y, w, h)
+	else
+		return self.backend:get_rect()
 	end
 end
 
-function view:rect()
-	return self.backend:rect()
+function view:size(w, h)
+	if w or h then
+		if not (w and h) then
+			local w0, h0 = self:size()
+			w = w or w0
+			h = h or h0
+		end
+		self.backend:set_size(w, h)
+	else
+		return select(3, self.backend:get_rect())
+	end
 end
+
+view:_property'anchors'
 
 function view:zorder(zorder, relto)
 	if zorder == nil then
@@ -1403,19 +1442,34 @@ function view:zorder(zorder, relto)
 	end
 end
 
-local glview = glue.inherit({}, view)
+--mouse
 
-function window:glview(t)
-	--check that the window is not layered (winapi limitation)
-	assert(not self:transparent(), 'opengl views cannot render on transparent windows')
-	return glview:_new(self, self.backend.glview, t)
+function view:mouse(var)
+	--hidden or minimized windows don't have a mouse state.
+	if not self.window:visible() or self.window:minimized() then return nil end
+	if var then
+		return self._mouse[var]
+	else
+		return self._mouse
+	end
 end
 
-local cairoview = glue.inherit({}, view)
+view._backend_mousedown   = window._backend_mousedown
+view._backend_mouseup     = window._backend_mouseup
+view._backend_mouseenter  = window._backend_mouseenter
+view._backend_mouseleave  = window._backend_mouseleave
+view._backend_mousemove   = window._backend_mousemove
+view._backend_mousewheel  = window._backend_mousewheel
+view._backend_mousehwheel = window._backend_mousehwheel
 
-function window:cairoview(t)
-	return cairoview:_new(self, self.backend.cairoview2, t)
-end
+--rendering
+
+view.bitmap = window.bitmap
+view.cairo = window.cairo
+view.gl = window.gl
+view.invalidate = window.invalidate
+view._backend_repaint = window._backend_repaint
+view._backend_free_bitmap = window._backend_free_bitmap
 
 --menus ----------------------------------------------------------------------
 

@@ -1,3 +1,4 @@
+--go@ c:/luapower/bin/mingw32/luajit -e io.stdout:setvbuf'no';io.stderr:setvbuf'no';require'strict';pp=require'pp' nw_test.lua check-view-cairo
 
 --native widgets - winapi backend.
 --Written by Cosmin Apreutesei. Public domain.
@@ -15,6 +16,7 @@ require'winapi.systemmetrics'
 require'winapi.windowclass'
 require'winapi.gdi'
 require'winapi.bitmap'
+require'winapi.dibitmap'
 require'winapi.icon'
 require'winapi.dpiaware'
 require'winapi.devcaps'
@@ -28,6 +30,7 @@ require'winapi.filedialogs'
 require'winapi.clipboard'
 require'winapi.shellapi'
 require'winapi.dragdrop'
+require'winapi.panelclass'
 
 local nw = {name = 'winapi'}
 
@@ -347,7 +350,7 @@ function window:shownormal()
 	end
 end
 
-function Window:on_pos_changed(pos)
+function Window:on_pos_change(pos)
 	self.frontend:_backend_changed()
 end
 
@@ -1257,135 +1260,32 @@ function window:mouse_pos()
 	return winapi.GetMessagePos()
 end
 
---bitmaps --------------------------------------------------------------------
-
---initialize a new or existing DIB header for a top-down bgra8 bitmap.
-local function dib_header(w, h, bi)
-	if bi then
-		ffi.fill(bi, ffi.sizeof'BITMAPV5HEADER')
-		bi.bV5Size = ffi.sizeof'BITMAPV5HEADER'
-	else
-		bi = winapi.BITMAPV5HEADER()
-	end
-	bi.bV5Width  = w
-	bi.bV5Height = -h
-	bi.bV5Planes = 1
-	bi.bV5BitCount = 32
-	bi.bV5Compression = winapi.BI_BITFIELDS
-	bi.bV5SizeImage = w * h * 4
-	--this mask specifies a supported 32bpp alpha format for Windows XP.
-	bi.bV5RedMask   = 0x00FF0000
-	bi.bV5GreenMask = 0x0000FF00
-	bi.bV5BlueMask  = 0x000000FF
-	bi.bV5AlphaMask = 0xFF000000
-	--this flag is important for making clipboard-compatible packed DIBs!
-	bi.bV5CSType = winapi.LCS_WINDOWS_COLOR_SPACE
-	return bi
-end
-
---make a top-down bgra8 DIB and return it along with the pixel buffer.
-local function dib(w, h)
-	local bi = dib_header(w, h)
-	local info = ffi.cast('BITMAPINFO*', bi)
-	local hdc = winapi.GetDC()
-	local hbmp, data = winapi.CreateDIBSection(hdc, info, winapi.DIB_RGB_COLORS)
-	winapi.ReleaseDC(nil, hdc)
-	return hbmp, data
-end
-
---make a top-down bgra8 DIB with a bitmap frontend for access to pixels.
-local function dib_bitmap(w, h, data)
-	return {
-		w = w,
-		h = h,
-		data = data,
-		stride = w * 4,
-		size = w * h * 4,
-		format = 'bgra8',
-	}
-end
-
---make a DIB and APIs to paint the DIB on a DC and on a WS_EX_LAYERED window.
-local function dib_bitmap_api(w, h)
-
-	--can't create a zero-sized bitmap
-	if w <= 0 or h <= 0 then return end
-
-	local hbmp, data = dib(w, h)
-	local bitmap = dib_bitmap(w, h, data)
-	local hdc = winapi.CreateCompatibleDC()
-	local oldhbmp = winapi.SelectObject(hdc, hbmp)
-
-	local api = {bitmap = bitmap, hbmp = hbmp}
-
-	--paint the bitmap on a DC.
-	function api:paint(dest_hdc)
-		winapi.BitBlt(dest_hdc, 0, 0, w, h, hdc, 0, 0, winapi.SRCCOPY)
-	end
-
-	--update a WS_EX_LAYERED window with the bitmap contents and size.
-	--the bitmap must have window's client rectangle size, otherwise
-	--Windows **resizes the window** to the size of the bitmap.
-	local pos = winapi.POINT()
-	local topleft = winapi.POINT()
-	local size = winapi.SIZE(w, h)
-	local blendfunc = winapi.types.BLENDFUNCTION{
-		AlphaFormat = winapi.AC_SRC_ALPHA,
-		BlendFlags = 0,
-		BlendOp = winapi.AC_SRC_OVER,
-		SourceConstantAlpha = 255,
-	}
-	function api:update_layered(win)
-		local r = win.screen_rect
-		pos.x = r.x
-		pos.y = r.y
-		if not winapi.UpdateLayeredWindow(win.hwnd, nil, pos, size, hdc,
-			topleft, 0, blendfunc, winapi.ULW_ALPHA)
-		then
-			--TODO: fallback to chroma-key alpha on Remote Desktop,
-			--or disable layered rendering altogether.
-			--winapi.SetLayeredWindowAttributes(win.hwnd, 0, 0, winapi.LWA_COLORKEY)
-		end
-	end
-
-	function api:free()
-		--trigger a user-supplied destructor.
-		if bitmap.free then
-			bitmap:free()
-		end
-		--free the bitmap and dc.
-		winapi.SelectObject(hdc, oldhbmp)
-		winapi.DeleteObject(hbmp)
-		winapi.DeleteDC(hdc)
-		bitmap.data = nil
-		bitmap = nil
-	end
-
-	return api
-end
+--dynamic bitmaps ------------------------------------------------------------
 
 --a dynamic bitmap is an API that creates a new bitmap everytime its size
 --changes. user supplies the :size() function, :get() gets the bitmap,
 --and :freeing(bitmap) is triggered before the bitmap is freed.
-local function dynbitmap(api)
+local function dynbitmap(api, win)
 
 	api = api or {}
 
-	local w, h, dib
+	local dib
 
 	function api:get()
 		local w1, h1 = api:size()
-		if w1 ~= w or h1 ~= h then
+		if not dib or w1 ~= dib.w or h1 ~= dib.h then
 			self:free()
-			dib = dib_bitmap_api(w1, h1)
-			w, h = w1, h1
+			dib = winapi.DIBitmap(w1, h1, win.hwnd)
+			function dib:clear()
+				ffi.fill(dib.data, dib.size)
+			end
 		end
-		return dib and dib.bitmap
+		return dib
 	end
 
 	function api:free()
 		if not dib then return end
-		self:freeing(dib.bitmap)
+		self:freeing(dib)
 		dib:free()
 	end
 
@@ -1394,9 +1294,10 @@ local function dynbitmap(api)
 		dib:paint(hdc)
 	end
 
-	function api:update_layered(win)
+	function api:update_layered()
 		if not dib then return end
-		dib:update_layered(win)
+		local r = win.screen_rect
+		dib:update_layered(win.hwnd, r.x, r.y)
 	end
 
 	return api
@@ -1406,7 +1307,7 @@ end
 
 function window:_create_dynbitmap()
 	if self._dynbitmap then return end
-	self._dynbitmap = dynbitmap{
+	self._dynbitmap = dynbitmap({
 		size = function()
 			return self.frontend:client_size()
 		end,
@@ -1414,7 +1315,7 @@ function window:_create_dynbitmap()
 			self.frontend:_backend_free_bitmap(bitmap)
 			self._bitmap = nil
 		end,
-	}
+	}, self.win)
 end
 
 function window:bitmap()
@@ -1435,7 +1336,7 @@ end
 
 function window:_update_layered()
 	if not self._bitmap then return end
-	self._dynbitmap:update_layered(self.win)
+	self._dynbitmap:update_layered()
 end
 
 function window:invalidate(x, y, w, h)
@@ -1456,7 +1357,7 @@ end
 function window:_clear_layered()
 	if not self._bitmap or not self._layered then return end
 	local bmp = self._bitmap
-	ffi.fill(bmp.data, bmp.stride * bmp.h)
+	self._bitmap:clear()
 	self:_update_layered()
 end
 
@@ -1482,24 +1383,158 @@ function view:new(window, frontend, t)
 		frontend = frontend,
 	}, self)
 
-	self:_init(t)
+	self._panel = winapi.Panel{
+		parent = window.win,
+		x = t.x, y = t.y, w = t.w, h = t.h,
+		anc = t.anc,
+		own_dc = true, --for opengl
+	}
+
+	function self._panel.on_paint(panel, hdc)
+		self.frontend:_backend_repaint()
+		if self._bitmap then
+			self._bitmap:paint(hdc)
+		end
+		if self._gl then
+			winapi.SwapBuffers(hdc)
+		end
+	end
+
+	function self._panel.WM_ERASEBKGND(panel)
+		--skip drawing the background to prevent flicker.
+		if self._dynbitmap or self._gl then return false end
+	end
 
 	return self
 end
 
-glue.autoload(window, {
-	glview    = 'nw_winapi_glview',
-	cairoview = 'nw_winapi_cairoview',
-	cairoview2 = 'nw_winapi_cairoview2',
-})
-
-function window:getcairoview()
-	if self._layered then
-		return self.cairoview
-	else
-		return self.cairoview2
-	end
+function view:get_anchors()
+	return self._panel.anc
 end
+
+function view:set_anchors(a)
+	self._panel.anc = a
+end
+
+function view:get_rect()
+	local r = self._panel.rect
+	return r.x, r.y, r.w, r.h
+end
+
+function view:set_rect(x, y, w, h)
+	self._panel.rect = {x = x, y = y, w = w, h = h}
+end
+
+function view:free()
+	if self._bitmap then
+		self._dynbitmap:free()
+	end
+	if self._gl then
+		self:_gl_free()
+	end
+	self._panel:free()
+	self.panel = nil
+end
+
+function view:invalidate()
+	self._panel:invalidate()
+end
+
+function view:bitmap()
+	if not self._dynbitmap then
+		self._dynbitmap = dynbitmap({
+			size = function()
+				return select(3, self:get_rect())
+			end,
+			freeing = function(_, bitmap)
+				self.frontend:_backend_free_bitmap(bitmap)
+				self._bitmap = nil
+			end,
+		}, self.window.win)
+	end
+	self._bitmap = self._dynbitmap:get()
+	return self._bitmap
+end
+
+function view:_gl_free()
+	if not self._gl then return end
+
+	local gl = winapi.gl
+	gl.wglDeleteContext(self._hrc)
+	gl.wglMakeCurrent(self._hdc, nil)
+	self._hrc = nil
+	self._gl = nil
+end
+
+function view:gl()
+
+	require'winapi.gl11'
+	require'winapi.wglext'
+	local gl = winapi.gl
+
+	self._hdc = winapi.GetDC(self._panel.hwnd)
+	if not self._hrc then
+
+		local pfd = winapi.PIXELFORMATDESCRIPTOR{
+			flags = 'PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER',
+			pixel_type = 'PFD_TYPE_RGBA',
+			cColorBits = 32,
+			cDepthBits = 24,
+			cStencilBits = 8,
+			layer_type = 'PFD_MAIN_PLANE',
+		}
+		winapi.SetPixelFormat(self._hdc, winapi.ChoosePixelFormat(self._hdc, pfd), pfd)
+		self._hrc = gl.wglCreateContext(self._hdc)
+
+		if gl.wglSwapIntervalEXT then --enable vsync
+			gl.wglSwapIntervalEXT(1)
+		end
+
+		self._gl = true
+	end
+
+	gl.wglMakeCurrent(self._hdc, self._hrc)
+
+	if not self._pixel then
+		if gl.wglChoosePixelFormatARB then
+			local pixelFormat = ffi.new'int32_t[1]'
+			local numFormats = ffi.new'uint32_t[1]'
+			local fAttributes = ffi.new('float[?]', 2)
+			local opts = {
+				winapi.WGL_DRAW_TO_WINDOW_ARB, gl.GL_TRUE,
+				winapi.WGL_SUPPORT_OPENGL_ARB, gl.GL_TRUE,
+				winapi.WGL_ACCELERATION_ARB, winapi.WGL_FULL_ACCELERATION_ARB,
+				winapi.WGL_COLOR_BITS_ARB, 32,
+				winapi.WGL_DEPTH_BITS_ARB, 16,
+				winapi.WGL_ALPHA_BITS_ARB, 8,
+				winapi.WGL_STENCIL_BITS_ARB, 0,
+				winapi.WGL_DOUBLE_BUFFER_ARB, gl.GL_TRUE,
+				winapi.WGL_SAMPLE_BUFFERS_ARB, gl.GL_TRUE,
+				winapi.WGL_SAMPLES_ARB, 4, --4x FSAA
+				0, 0}
+			local iAttributes = ffi.new('int32_t[?]', #opts, opts)
+
+			--First We Check To See If We Can Get A Pixel Format For 4 Samples
+			local valid = gl.wglChoosePixelFormatARB(self._hdc, iAttributes, fAttributes, 1, pixelFormat, numFormats)
+
+			if valid == 0 or numFormats[0] == 0 then
+				-- Our Pixel Format With 4 Samples Failed, Test For 2 Samples
+				iAttributes[19] = 2
+				valid = gl.wglChoosePixelFormatARB(self._hdc, iAttributes, fAttributes, 1, pixelFormat, numFormats)
+			end
+
+			if not (valid == 0 or numFormats[0] == 0) then
+				--TODO: finish this
+				--winapi.SetPixelFormat(self._hdc, pixelFormat[0], pfd)
+			end
+		end
+		self._pixel = true
+	end
+
+
+	return gl
+end
+
 
 --hi-dpi support -------------------------------------------------------------
 
@@ -1546,7 +1581,7 @@ function app:_get_scaling_factor(monitor)
 	end
 end
 
-function Window:on_dpi_changed(dpix)
+function Window:on_dpi_change(dpix)
 	self.frontend:_backend_scalingfactor_changed(dpix / 96)
 end
 

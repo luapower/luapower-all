@@ -1,15 +1,15 @@
+
 --nw cocoa backend for cairoview.
+--Written by Cosmin Apreutesei. Public domain.
+
+if not ... then require'nw_test'; return end
+
 local nw = require'nw_cocoa'
 local ffi = require'ffi'
 local glue = require'glue'
 local cairo = require'cairo'
 local objc = require'objc'
 --objc.load'ApplicationServices'
-
-ffi.cdef[[
-void* malloc (size_t size);
-void  free   (void*);
-]]
 
 local function unpack_nsrect(r)
 	return r.origin.x, r.origin.y, r.size.width, r.size.height
@@ -82,7 +82,7 @@ function cairoview:_create_surface()
 	local w, h = sz.width, sz.height
 	local stride = w * 4
 	self.size = stride * h
-	self.pixels = ffi.C.malloc(self.size)
+	self.pixels = glue.malloc(self.size)
 	assert(self.pixels ~= nil)
 	self.provider = objc.CGDataProviderCreateWithData(nil, self.pixels, self.size, nil)
 	self.pixman_surface = cairo.cairo_image_surface_create_for_data(self.pixels,
@@ -96,7 +96,7 @@ function cairoview:_free_surface()
 	self.pixman_surface:free()
 	objc.CGColorSpaceRelease(self.colorSpace)
 	objc.CGDataProviderRelease(self.provider)
-	ffi.C.free(self.pixels)
+	glue.free(self.pixels)
 	self.pixels = nil
 end
 
@@ -139,5 +139,3 @@ function cairoview:_draw()
 	objc.CGImageRelease(image)
 end
 
-
-if not ... then require'nw_test' end

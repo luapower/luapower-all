@@ -1030,7 +1030,7 @@ local function init_check(t, child)
 						for x = 0, bmp.w-1 do
 							local i = (i % bmp.w)
 							local c = x >= i and x <= i + 50 and 255 or 100
-							setpixel(x, y, c, c, c, 255)
+							setpixel(x, y, c, c, c, 200)
 						end
 					end
 					return allow_rendering
@@ -2689,9 +2689,9 @@ local function render()
 	cube(1)
 end
 
-add('view-gl', function()
+add('check-view-gl', function()
 	local win = app:window{cw = 700, ch = 500}
-	local glv = win:glview{x = 50, y = 50, w = 600, h = 400}
+	local glv = win:glview{x = 50, y = 50, w = 600, h = 400, anchors = 'ltrb'}
 	function glv:render()
 		render()
 	end
@@ -2701,7 +2701,7 @@ add('view-gl', function()
 	app:run()
 end)
 
-add('view-cairo', function()
+add('check-view-cairo', function()
 	local win = app:window{w = 500, h = 300}--, frame = 'none', transparent = true}
 	local fps = 60
 
@@ -2711,11 +2711,15 @@ add('view-cairo', function()
 	local step = 0.02 * 60 / fps
 	local alpha, angle = 0, 0
 
-	local view = win:cairoview{x = x, y = y, w = w, h = h}
-	function view:render(cr)
+	local view = win:view{x = x, y = y, w = w, h = h, anc = 'ltrb'}
+	function view:repaint()
+
+		self:bitmap():clear()
+		local cr = self:cairo()
 
 		cr:identity_matrix()
 
+		local w, h = self:size()
 		alpha = alpha + step; if alpha <= 0 or alpha >= 1 then step = -step end
 		angle = angle + math.abs(step)
 		cr:rectangle(0, 0, w, h)
@@ -2735,10 +2739,15 @@ add('view-cairo', function()
 	local step = 0.02 * 60 / fps
 	local alpha, angle = 0, 0
 
-	local view2 = win:cairoview{x = x, y = y, w = w, h = h}
-	function view2:render(cr)
+	local view2 = win:view{x = x, y = y, w = w, h = h}
+	function view2:repaint()
+
+		self:bitmap():clear()
+		local cr = self:cairo()
+
 		cr:identity_matrix()
 
+		local w, h = self:size()
 		alpha = alpha + step; if alpha <= 0 or alpha >= 1 then step = -step end
 		angle = angle - math.abs(step)
 		cr:rectangle(0, 0, w, h)
@@ -2757,8 +2766,10 @@ add('view-cairo', function()
 	local x, y = 100, 170
 	local w, h = 300, 80
 
-	local glview2 = win2:glview{x = x, y = y, w = w, h = h}
-	function glview2:render()
+	local glview2 = win2:view{x = x, y = y, w = w, h = h}
+	function glview2:repaint()
+
+		local gl = self:gl()
 
 		--set default viewport
 		gl.glViewport(0, 0, w, h)
@@ -2784,8 +2795,7 @@ add('view-cairo', function()
 		if not win:dead() then
 			view:invalidate()
 			view2:invalidate()
-			glview:invalidate()
-			--win:invalidate()
+			win:invalidate()
 		end
 		if not win2:dead() then
 			glview2:invalidate()
