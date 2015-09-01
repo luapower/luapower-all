@@ -360,8 +360,8 @@ function Window:set_normal_rect(...) --x1,y1,x2,y2 or rect
 	if self.maximized then
 		local minw, minh, maxw, maxh = self:__constraints()
 		if minw or minh or maxw or maxh then
-			r.w = clamp(r.w, minw, maxw)
-			r.h = clamp(r.h, minh, maxh)
+			r.x2 = r.x1 + clamp(r.w, minw, maxw)
+			r.y2 = r.y1 + clamp(r.h, minh, maxh)
 		end
 	end
 

@@ -62,14 +62,14 @@ end
 
 ffi.metatype('SIZE', {__tostring = struct_tostring{'SIZE','w','h'}})
 ffi.metatype('POINT', {__tostring = struct_tostring{'POINT','x','y'}})
+
+--NOTE: there's no __newindex for virtual fields because Lua's
+--assignment order in multiple assignment is undefined (and even
+--if it were defined, it would be significant which is a bug nest).
 ffi.metatype('RECT', {
 	__tostring = struct_tostring{'RECT','x1','y1','x2','y2'},
 	__index = function(r,k)
 		if k == 'w' then return r.x2 - r.x1 end
 		if k == 'h' then return r.y2 - r.y1 end
-	end,
-	__newindex = function(r,k,v)
-		if k == 'w' then r.x2 = r.x1 + v end
-		if k == 'h' then r.y2 = r.y1 + v end
 	end,
 })

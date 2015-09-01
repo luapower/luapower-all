@@ -97,10 +97,19 @@ function Control:__apply_constraints(r, left, top, right, bottom)
 	local w1 = clamp(r.w, min_w, max_w)
 	local h1 = clamp(r.h, min_h, max_h)
 
-	if top    then r.y, r.h = r.y + r.h - h1, h1 end
-	if bottom then r.h = h1 end
-	if left   then r.x, r.w = r.x + r.w - w1, w1 end
-	if right  then r.w = w1 end
+	if top then
+		r.y1 = r.y2 - h1
+		r.y2 = r.y1 + h1 end
+	if bottom then
+		r.y2 = r.y1 + h1
+	end
+	if left then
+		r.x1 = r.x2 - w1
+		r.x2 = r.x1 + w1
+	end
+	if right then
+		r.x2 = r.x1 + w1
+	end
 
 	return r
 end
@@ -133,10 +142,10 @@ function Control:__parent_resizing(wp)
 		pr.y1 + wp.h - pr.y2, r.y1, r.h, self.__anchor_h)
 
 	--override rect with the changed sides.
-	if x then r.x = x end
-	if y then r.y = y end
-	if w then r.w = w end
-	if h then r.h = h end
+	if x then r.x1 = x end
+	if y then r.y1 = y end
+	if w then r.x2 = r.x1 + w end
+	if h then r.y2 = r.y1 + h end
 
 	--apply constraints only on the changed (thus movable) sides of rect.
 	self.rect = self:__apply_constraints(r, x, y, w, h)

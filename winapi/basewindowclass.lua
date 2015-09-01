@@ -711,10 +711,10 @@ end
 function BaseWindow:frame_to_client(info, ...) --x1,y1,x2,y2 or rect
 	local cr = RECT(...)
 	local dr = self:client_to_frame(info, 0, 0, 200, 200)
-	cr.x = cr.x - dr.x
-	cr.y = cr.y - dr.y
-	cr.w = cr.w - (dr.w - 200) - dr.x
-	cr.h = cr.h - (dr.h - 200) - dr.y
+	cr.x1 = cr.x1 - dr.x1
+	cr.y1 = cr.y1 - dr.y1
+	cr.x2 = cr.x2 - (dr.w - 200) - dr.x
+	cr.y2 = cr.y2 - (dr.h - 200) - dr.y
 	return cr
 end
 
