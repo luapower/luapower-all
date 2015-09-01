@@ -481,7 +481,7 @@ end
 function GetWindowStyle(hwnd) return tonumber(GetWindowLong(hwnd, GWL_STYLE)) end
 function SetWindowStyle(hwnd, style) SetWindowLong(hwnd, GWL_STYLE, flags(style)) end
 
-function GetWindowExStyle(hwnd) return GetWindowLong(hwnd, GWL_EXSTYLE) end
+function GetWindowExStyle(hwnd) return tonumber(GetWindowLong(hwnd, GWL_EXSTYLE)) end
 function SetWindowExStyle(hwnd, style) SetWindowLong(hwnd, GWL_EXSTYLE, flags(style)) end
 
 function GetWindowInstance(hwnd) return ffi.cast('HMODULE', GetWindowLong(hwnd, GWL_HINSTANCE)) end
@@ -1213,7 +1213,7 @@ SC_SEPARATOR     = 0xF00F
 SCF_ISSECURE     = 0x00000001
 
 function WM.WM_SYSCOMMAND(wParam, lParam)
-	local SC = bit.band(wParam, 0xfff0)
+	local SC = bit.band(tonumber(wParam), 0xfff0)
 	if SC == SC_KEYMENU then
 		return SC, tonumber(lParam) --SC, char_code
 	else

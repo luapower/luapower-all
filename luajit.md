@@ -6,9 +6,10 @@ tagline: LuaJIT binary
 
 LuaJIT binaries (frontend, static library, dynamic library).
 
-Comes bundled with the `luajit` command, which is a simple shell script that
-finds and loads the appropriate luajit executable for your platform, so that
-typing `./luajit` (that's `luajit` on Windows) always works.
+Comes bundled with the `luajit` and `luajit32` commands, which are simple
+shell scripts that find and load the appropriate luajit executable for
+your platform/arch, so that typing `./luajit` or `./luajit32`
+(that's `luajit` and `luajit32` on Windows) always works.
 
 LuaJIT was compiled using its own makefile.
 
