@@ -79,11 +79,15 @@ function DIBitmap(w, h, compat_hwnd)
 
 	--free the bitmap and DC.
 	local function free()
+		assert(hbmp, 'double free')
 		ffi.gc(hbmp, nil)
 		SelectObject(hdc, old_hbmp)
 		DeleteObject(hbmp)
 		DeleteDC(hdc)
+		data, hbmp, hdc = nil
 		bitmap.data = nil
+		bitmap.hbmp = nil
+		bitmap.hdc = nil
 	end
 	ffi.gc(hbmp, free)
 	bitmap.free = free

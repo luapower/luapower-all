@@ -825,7 +825,7 @@ function BaseWindow:__WM_PAINT_pass(ok, ...)
 	else
 		--exceptions in WM_PAINT are caught by Windows on x64, see:
 		--http://stackoverflow.com/questions/1487950/access-violation-in-wm-paint-not-caught
-		print(...)
+		io.stderr:write((...)..'\n')
 		PostMessage(nil, WM_EXCEPTION)
 	end
 end

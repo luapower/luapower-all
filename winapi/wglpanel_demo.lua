@@ -1,4 +1,4 @@
-7local winapi = require'winapi'
+local winapi = require'winapi'
 require'winapi.windowclass'
 require'winapi.wglpanel'
 local gl = require'winapi.gl11'
