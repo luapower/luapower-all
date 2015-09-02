@@ -26,7 +26,7 @@ __app quitting__
 `app:quit()`											close all windows and stop the loop
 `app:autoquit(true|false)`							quit when the last window is closed
 `app:autoquit() -> true|false`					autoquit enabled
-`app:quitting() -> [false]`						quitting event/query
+`app:quitting()`										quitting event (return false to refuse)
 __timers__
 `app:runevery(seconds, func)`						run a function on a timer (timer stops if func returns false)
 `app:runafter(seconds, func)`						run a function on a timer once
