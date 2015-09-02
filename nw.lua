@@ -571,6 +571,8 @@ end
 
 function window:_backend_changed()
 
+	if self._events_disabled then return end
+
 	--check if the state has really changed and generate synthetic events
 	--for each state flag that has actually changed.
 	local old = self._state
@@ -665,11 +667,9 @@ function window:_backend_was_closed()
 	self._closed = true --_backend_closing() and _backend_closed() barrier
 
 	self:_event'was_closed'
-	self:_free_views()
-
-	--trigger closed event before declaring the window dead.
 	self.app:_window_closed(self)
 
+	self:_free_views()
 	self._dead = true
 
 	if self._quitting then
@@ -1036,7 +1036,7 @@ function window:_getmagnets()
 		for i,disp in ipairs(self.app:displays()) do
 			local x, y, w, h = disp:client_rect()
 			t[#t+1] = {x = x, y = y, w = w, h = h}
-			local x, y, w, h = disp:rect()
+			local x, y, w, h = disp:screen_rect()
 			t[#t+1] = {x = x, y = y, w = w, h = h}
 		end
 	end
@@ -1072,7 +1072,7 @@ function app:_display(backend)
 	return glue.inherit(backend, display)
 end
 
-function display:rect()
+function display:screen_rect()
 	return self.x, self.y, self.w, self.h
 end
 
@@ -1296,31 +1296,35 @@ end
 
 --rendering ------------------------------------------------------------------
 
-function window:bitmap()
-	if self:dead() then return end
-	return self.backend:bitmap()
+local bitmap = {}
+
+function bitmap:clear()
+	ffi.fill(self.data, self.size)
 end
 
-function window:cairo()
+function window:bitmap()
+	if self:dead() then return end
+	local self = self.backend:bitmap()
+	return self and glue.update(self, bitmap)
+end
+
+function bitmap:cairo()
 	local cairo = require'cairo'
-	local bitmap = self:bitmap()
-	if bitmap then
-		if not bitmap.cairo_surface then
-			bitmap.cairo_surface = cairo.cairo_image_surface_create_for_data(
-				bitmap.data, cairo.CAIRO_FORMAT_ARGB32, bitmap.w, bitmap.h, bitmap.stride)
-			bitmap.cairo_context = bitmap.cairo_surface:create_context()
-		end
-		return bitmap.cairo_context
+	if not self.cairo_surface then
+		self.cairo_surface = cairo.cairo_image_surface_create_for_data(
+			self.data, cairo.CAIRO_FORMAT_ARGB32, self.w, self.h, self.stride)
+		self.cairo_context = self.cairo_surface:create_context()
 	end
+	return self.cairo_context
 end
 
 function window:gl()
 	return self.backend:gl()
 end
 
-function window:invalidate()
+function window:invalidate(...)
 	self:_check()
-	return self.backend:invalidate()
+	return self.backend:invalidate(...)
 end
 
 function window:_backend_repaint(...)
@@ -1354,10 +1358,10 @@ end
 
 --views ----------------------------------------------------------------------
 
-local view = glue.update({}, object)
+local view = glue.update({_anchors = 'lt'}, object)
 
 function window:views()
-	return glue.extend({}, self._views) --take a snapshot; back-to-front order
+	return glue.extend({}, self._views) --take a snapshot; creation order.
 end
 
 function window:view_count()
@@ -1372,6 +1376,7 @@ function view:_new(window, backend_class, t)
 	local self = glue.inherit({
 		window = window,
 		app = window.app,
+		_anchors = t.anchors,
 	}, self)
 
 	self._mouse = {}
@@ -1379,6 +1384,13 @@ function view:_new(window, backend_class, t)
 
 	self.backend = backend_class:new(window.backend, self, t)
 	table.insert(window._views, self)
+
+	self:_init_anchors()
+
+	if t.visible then
+		self:show()
+	end
+
 	return self
 end
 
@@ -1396,9 +1408,16 @@ function view:free()
 	table.remove(self.window._views, indexof(self, self.window._views))
 end
 
-function view:invalidate()
-	self:_check()
-	self.backend:invalidate()
+function view:visible(visible)
+	if visible ~= nil then
+		if visible then
+			self.backend:show()
+		else
+			self.backend:hide()
+		end
+	else
+		return self.backend:visible()
+	end
 end
 
 function view:rect(x, y, w, h)
@@ -1425,21 +1444,62 @@ function view:size(w, h)
 	end
 end
 
-view:_property'anchors'
+--anchors
 
-function view:zorder(zorder, relto)
-	if zorder == nil then
-		return indexof(self, self.window._views)
+function view:anchors(a)
+	if a ~= nil then
+		self._anchors = a
 	else
-		if zorder == 'front' then
-			--TODO
-		elseif zorder == 'back' then
-			--TODO
-		else --number
-			zorder = math.min(math.max(zorder, 1), self.window:view_count())
-		end
-		self.backend:set_zorder(zorder)
+		return self._anchors
 	end
+end
+
+function view:_init_anchors()
+	self._rect = {self:rect()}
+
+	local pw0, ph0 = self.window:client_size()
+	local x1, y1, w0, h0 = self:rect()
+	local x2, y2 = pw0-w0, ph0-h0
+
+	local function anchor(left, right, x1, x2, w, dw)
+		if left then
+			if right then --resize
+				return x1, w + dw, x1, x2 + dw
+			end
+		elseif right then --move
+			return x1 + dw, w, x1 + dw, x2
+		end
+		return x1, w, x1, x2
+	end
+
+	self.window:on('was_resized', function(window, pw, ph)
+		local a = self._anchors
+		local x, y, w, h
+		x, w, x1, x2 = anchor(a:find('l', 1, true), a:find('r', 1, true), x1, x2, w0, pw-pw0)
+		y, h, y1, y2 = anchor(a:find('t', 1, true), a:find('b', 1, true), y1, y2, h0, ph-ph0)
+		self:rect(x, y, w, h)
+		pw0, ph0 = pw, ph
+		w0, h0 = w, h
+	end)
+end
+
+--events
+
+function view:_backend_changed()
+	local x1, y1, w1, h1 = self:rect()
+	local x0, y0, w0, h0 = unpack(self._rect)
+	local moved = x1 ~= x0 or y1 ~= y0
+	local resized = w1 ~= w0 or h1 ~= h0
+	if moved or resized then
+		self:_event('rect_changed', x1, y1, w1, h1)
+	end
+	if moved then
+		self:_event('was_moved', x1, y1)
+	end
+	if resized then
+		self:_event('was_resized', w1, h1)
+	end
+	self._rect = {x1, y1, w1, h1}
 end
 
 --mouse

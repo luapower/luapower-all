@@ -1,5 +1,5 @@
 
---oo/controls/static: standard label control
+--oo/controls/label: standard label control
 --Written by Cosmin Apreutesei. Public Domain.
 
 setfenv(1, require'winapi')

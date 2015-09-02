@@ -1,4 +1,4 @@
---go@ c:/luapower/bin/mingw32/luajit -e io.stdout:setvbuf'no';io.stderr:setvbuf'no';require'strict';pp=require'pp' nw_test.lua check-view-cairo
+--go@ c:/luapower/bin/mingw64/luajit -e io.stdout:setvbuf'no';io.stderr:setvbuf'no';require'strict';pp=require'pp' nw_test.lua check-view-cairo
 
 --native widgets - winapi backend.
 --Written by Cosmin Apreutesei. Public domain.
@@ -42,7 +42,7 @@ end
 
 local function pack_rect(rect, x, y, w, h)
 	rect = rect or winapi.RECT()
-	rect.x, rect.y, rect.w, rect.h = x, y, w, h
+	rect.x1, rect.y1, rect.x2, rect.y2 = x, y, x + w, y + h
 	return rect
 end
 
@@ -143,6 +143,7 @@ function window:new(app, frontend, t)
 		activable = t.activable,
 		receive_double_clicks = false, --we do our own double-clicking
 		remember_maximized_pos = true, --to emulate OSX behavior for maximized windows with minsize/maxsize constrains
+		own_dc = true, --for opengl
 	}
 
 	--must set WS_CHILD **after** window is created for non-activable toolboxes!
@@ -212,6 +213,7 @@ function Window:on_destroy()
 	if not self.nw_destroyed then
 		self.nw_destroyed = true
 		self.backend:_free_bitmap()
+		self.backend:_free_gl()
 		self.backend:_free_icon_api()
 		self.backend:_free_drop_target()
 		winmap[self] = nil
@@ -382,14 +384,14 @@ function window:enter_fullscreen()
 	--this flickers but without it the taskbar won't dissapear immediately.
 	self.win:hide()
 
-	--remove the frame
+	--remove the frame: this enlarges client_rect to what frame_rect was!
 	self.win.frame = false
 	self.win.border = false
 	self.win.resizeable = false
 
 	--set normal rect
 	local display = self:display() or self.app:active_display()
-	local dx, dy, dw, dh = display:rect()
+	local dx, dy, dw, dh = display:screen_rect()
 	self.win.normal_rect = pack_rect(nil, dx, dy, dw, dh)
 
 	--center it if constrained and set it again, consistent with OSX.
@@ -401,7 +403,6 @@ function window:enter_fullscreen()
 	self._fullscreen = true
 	self._norepaint = false
 	self.frontend:events(events)
-	self:invalidate()
 
 	--show synchronously to avoid re-entring.
 	self.win:shownormal()
@@ -1112,7 +1113,13 @@ local function unpack_buttons(b)
 	return b.lbutton, b.rbutton, b.mbutton, b.xbutton1, b.xbutton2
 end
 
-function window:_update_mouse()
+--the following methods apply to both window and view classes, so make sure
+--that only fields and methods that are common to both are used.
+
+local mouse = {}
+local Mouse = {}
+
+function mouse:_update_mouse()
 	local m = self.frontend._mouse
 	local pos = self.win.cursor_pos
 	m.x = pos.x
@@ -1125,7 +1132,7 @@ function window:_update_mouse()
 	m.inside = box2d.hit(m.x, m.y, unpack_rect(self.win.client_rect))
 end
 
-function window:_setmouse(x, y, buttons)
+function mouse:_setmouse(x, y, buttons)
 
 	--set mouse state
 	local m = self.frontend._mouse
@@ -1145,49 +1152,49 @@ function window:_setmouse(x, y, buttons)
 	end
 end
 
-function Window:on_mouse_move(x, y, buttons)
+function Mouse:on_mouse_move(x, y, buttons)
 	local m = self.frontend._mouse
 	self.backend:_setmouse(x, y, buttons)
 	self.frontend:_backend_mousemove(x, y)
 end
 
-function Window:on_mouse_leave()
+function Mouse:on_mouse_leave()
 	if not self.frontend._mouse.inside then return end
 	self.frontend._mouse.inside = false
 	self.frontend:_backend_mouseleave()
 end
 
-function Window:capture_mouse()
+function Mouse:capture_mouse()
 	self.capture_count = (self.capture_count or 0) + 1
 	winapi.SetCapture(self.hwnd)
 end
 
-function Window:uncapture_mouse()
+function Mouse:uncapture_mouse()
 	self.capture_count = math.max(0, (self.capture_count or 0) - 1)
 	if self.capture_count == 0 then
 		winapi.ReleaseCapture()
 	end
 end
 
-function Window:on_lbutton_down(x, y, buttons)
+function Mouse:on_lbutton_down(x, y, buttons)
 	self.backend:_setmouse(x, y, buttons)
 	self:capture_mouse()
 	self.frontend:_backend_mousedown('left', x, y)
 end
 
-function Window:on_mbutton_down(x, y, buttons)
+function Mouse:on_mbutton_down(x, y, buttons)
 	self.backend:_setmouse(x, y, buttons)
 	self:capture_mouse()
 	self.frontend:_backend_mousedown('middle', x, y)
 end
 
-function Window:on_rbutton_down(x, y, buttons)
+function Mouse:on_rbutton_down(x, y, buttons)
 	self.backend:_setmouse(x, y, buttons)
 	self:capture_mouse()
 	self.frontend:_backend_mousedown('right', x, y)
 end
 
-function Window:on_xbutton_down(x, y, buttons)
+function Mouse:on_xbutton_down(x, y, buttons)
 	self.backend:_setmouse(x, y, buttons)
 	if buttons.xbutton1 then
 		self:capture_mouse()
@@ -1199,25 +1206,25 @@ function Window:on_xbutton_down(x, y, buttons)
 	end
 end
 
-function Window:on_lbutton_up(x, y, buttons)
+function Mouse:on_lbutton_up(x, y, buttons)
 	self.backend:_setmouse(x, y, buttons)
 	self:uncapture_mouse()
 	self.frontend:_backend_mouseup('left', x, y)
 end
 
-function Window:on_mbutton_up(x, y, buttons)
+function Mouse:on_mbutton_up(x, y, buttons)
 	self.backend:_setmouse(x, y, buttons)
 	self:uncapture_mouse()
 	self.frontend:_backend_mouseup('middle', x, y)
 end
 
-function Window:on_rbutton_up(x, y, buttons)
+function Mouse:on_rbutton_up(x, y, buttons)
 	self.backend:_setmouse(x, y, buttons)
 	self:uncapture_mouse()
 	self.frontend:_backend_mouseup('right', x, y)
 end
 
-function Window:on_xbutton_up(x, y, buttons)
+function Mouse:on_xbutton_up(x, y, buttons)
 	self.backend:_setmouse(x, y, buttons)
 	if buttons.xbutton1 then
 		self:uncapture_mouse()
@@ -1235,7 +1242,7 @@ local function wheel_scroll_lines()
 	return wsl_buf[0]
 end
 
-function Window:on_mouse_wheel(x, y, buttons, delta)
+function Mouse:on_mouse_wheel(x, y, buttons, delta)
 	if (delta - 1) % 120 == 0 then --correction for my ms mouse when scrolling back
 		delta = delta - 1
 	end
@@ -1244,235 +1251,112 @@ function Window:on_mouse_wheel(x, y, buttons, delta)
 	self.frontend:_backend_mousewheel(delta, x, y)
 end
 
+local buf = ffi.new'UINT[1]'
 local function wheel_scroll_chars()
-	self.wsc_buf = self.wsc_buf or ffi.new'UINT[1]'
-	winapi.SystemParametersInfo(winapi.SPI_GETWHEELSCROLLCHARS, 0, self.wsc_buf)
-	return self.wsc_buf[0]
+	winapi.SystemParametersInfo(winapi.SPI_GETWHEELSCROLLCHARS, 0, buf)
+	return buf[0]
 end
 
-function Window:on_mouse_hwheel(x, y, buttons, delta)
+function Mouse:on_mouse_hwheel(x, y, buttons, delta)
 	delta = delta / 120 * wheel_scroll_chars()
 	self.backend:_setmouse(x, y, buttons)
 	self.frontend:_backend_mousehwheel(delta, x, y)
 end
 
-function window:mouse_pos()
+function mouse:mouse_pos()
 	return winapi.GetMessagePos()
 end
 
---dynamic bitmaps ------------------------------------------------------------
+glue.update(window, mouse)
+glue.update(Window, Mouse)
 
---a dynamic bitmap is an API that creates a new bitmap everytime its size
---changes. user supplies the :size() function, :get() gets the bitmap,
---and :freeing(bitmap) is triggered before the bitmap is freed.
-local function dynbitmap(api, win)
+--rendering/common -----------------------------------------------------------
 
-	api = api or {}
+local rendering = {}
+local Rendering = {}
 
-	local dib
-
-	function api:get()
-		local w1, h1 = api:size()
-		if not dib or w1 ~= dib.w or h1 ~= dib.h then
-			self:free()
-			dib = winapi.DIBitmap(w1, h1, win.hwnd)
-			function dib:clear()
-				ffi.fill(dib.data, dib.size)
-			end
-		end
-		return dib
-	end
-
-	function api:free()
-		if not dib then return end
-		self:freeing(dib)
-		dib:free()
-	end
-
-	function api:paint(hdc)
-		if not dib then return end
-		dib:paint(hdc)
-	end
-
-	function api:update_layered()
-		if not dib then return end
-		local r = win.screen_rect
-		dib:update_layered(win.hwnd, r.x, r.y)
-	end
-
-	return api
-end
-
---rendering ------------------------------------------------------------------
-
-function window:_create_dynbitmap()
-	if self._dynbitmap then return end
-	self._dynbitmap = dynbitmap({
-		size = function()
-			return self.frontend:client_size()
-		end,
-		freeing = function(_, bitmap)
-			self.frontend:_backend_free_bitmap(bitmap)
-			self._bitmap = nil
-		end,
-	}, self.win)
-end
-
-function window:bitmap()
-	self:_create_dynbitmap()
-	self._bitmap = self._dynbitmap:get()
-	return self._bitmap
-end
-
-function window:_free_bitmap()
-	if not self._bitmap then return end
-	self._dynbitmap:free()
-end
-
-function window:_paint_bitmap(hdc)
-	if not self._bitmap then return end
-	self._dynbitmap:paint(hdc)
-end
-
-function window:_update_layered()
-	if not self._bitmap then return end
-	self._dynbitmap:update_layered()
-end
-
-function window:invalidate(x, y, w, h)
-	if self._norepaint then return end
-	if self._layered then
-		self.frontend:_backend_repaint()
-		self:_update_layered()
+function rendering:_invalidate(x, y, w, h)
+	if x then
+		self.win:invalidate(winapi.RECT(x, y, x + w, y + h))
 	else
-		if x and y and w and h then
-			self.win:invalidate(winapi.RECT(x, y, x + w, y + h))
-		else
-			self.win:invalidate()
-		end
+		self.win:invalidate()
 	end
 end
 
---clear the bitmap's pixels and update the layered window.
-function window:_clear_layered()
-	if not self._bitmap or not self._layered then return end
-	local bmp = self._bitmap
-	self._bitmap:clear()
-	self:_update_layered()
+function Rendering:on_paint(hdc)
+	self.frontend:_backend_repaint()
+	self.backend:_paint_bitmap(hdc)
+	self.backend:_paint_gl(hdc)
 end
 
-function Window:WM_ERASEBKGND()
-	if not self.backend._dynbitmap then return end
+function Rendering:WM_ERASEBKGND()
+	if not (self.backend._bitmap or self.backend._gl) then return end
 	return false --skip drawing the background to prevent flicker.
 end
 
-function Window:on_paint(hdc)
-	self.frontend:_backend_repaint()
-	self.backend:_paint_bitmap(hdc)
-end
+--rendering/bitmap -----------------------------------------------------------
 
---views ----------------------------------------------------------------------
-
-local view = {}
-window.view = view
-
-function view:new(window, frontend, t)
-	local self = glue.inherit({
-		window = window,
-		app = window.app,
-		frontend = frontend,
-	}, self)
-
-	self._panel = winapi.Panel{
-		parent = window.win,
-		x = t.x, y = t.y, w = t.w, h = t.h,
-		anc = t.anc,
-		own_dc = true, --for opengl
-	}
-
-	function self._panel.on_paint(panel, hdc)
-		self.frontend:_backend_repaint()
-		if self._bitmap then
-			self._bitmap:paint(hdc)
-		end
-		if self._gl then
-			winapi.SwapBuffers(hdc)
+function rendering:_create_bitmap()
+	local w1, h1 = self:_bitmap_size()
+	if not self._bitmap or w1 ~= self._bitmap.w or h1 ~= self._bitmap.h then
+		self:_free_bitmap()
+		if w1 > 0 and h1 > 0 then
+			self._bitmap = winapi.DIBitmap(w1, h1, self.win.hwnd)
 		end
 	end
-
-	function self._panel.WM_ERASEBKGND(panel)
-		--skip drawing the background to prevent flicker.
-		if self._dynbitmap or self._gl then return false end
-	end
-
-	return self
 end
 
-function view:get_anchors()
-	return self._panel.anc
-end
-
-function view:set_anchors(a)
-	self._panel.anc = a
-end
-
-function view:get_rect()
-	local r = self._panel.rect
-	return r.x, r.y, r.w, r.h
-end
-
-function view:set_rect(x, y, w, h)
-	self._panel.rect = {x = x, y = y, w = w, h = h}
-end
-
-function view:free()
-	if self._bitmap then
-		self._dynbitmap:free()
-	end
-	if self._gl then
-		self:_gl_free()
-	end
-	self._panel:free()
-	self.panel = nil
-end
-
-function view:invalidate()
-	self._panel:invalidate()
-end
-
-function view:bitmap()
-	if not self._dynbitmap then
-		self._dynbitmap = dynbitmap({
-			size = function()
-				return select(3, self:get_rect())
-			end,
-			freeing = function(_, bitmap)
-				self.frontend:_backend_free_bitmap(bitmap)
-				self._bitmap = nil
-			end,
-		}, self.window.win)
-	end
-	self._bitmap = self._dynbitmap:get()
+function rendering:bitmap()
+	self:_free_gl()
+	self:_create_bitmap()
 	return self._bitmap
 end
 
-function view:_gl_free()
-	if not self._gl then return end
+function rendering:_free_bitmap()
+	if not self._bitmap then return end
+	self.frontend:_backend_free_bitmap(self._bitmap)
+	self._bitmap:free()
+	self._bitmap = nil
+end
 
-	local gl = winapi.gl
+function rendering:_paint_bitmap(hdc)
+	if not self._bitmap then return end
+	self._bitmap:paint(hdc)
+end
+
+--rendering/opengl -----------------------------------------------------------
+
+local function gl()
+	require'winapi.gl11'
+	require'winapi.wglext'
+	return winapi.gl
+end
+
+function rendering:_paint_gl(hdc)
+	if not self._gl then return end
+	assert(self._hdc == hdc, 'WGL need CS_OWNDC')
+	if self._gl_swap then
+		winapi.SwapBuffers(hdc)
+		self._gl_swap = false
+	end
+end
+
+function rendering:_free_gl()
+	if not self._gl then return end
+	local gl = gl()
 	gl.wglDeleteContext(self._hrc)
 	gl.wglMakeCurrent(self._hdc, nil)
 	self._hrc = nil
 	self._gl = nil
 end
 
-function view:gl()
+function rendering:gl()
 
-	require'winapi.gl11'
-	require'winapi.wglext'
-	local gl = winapi.gl
+	self:_free_bitmap()
 
-	self._hdc = winapi.GetDC(self._panel.hwnd)
+	local gl = gl()
+
+	self._hdc = winapi.GetDC(self.win.hwnd)
 	if not self._hrc then
 
 		local pfd = winapi.PIXELFORMATDESCRIPTOR{
@@ -1515,12 +1399,14 @@ function view:gl()
 			local iAttributes = ffi.new('int32_t[?]', #opts, opts)
 
 			--First We Check To See If We Can Get A Pixel Format For 4 Samples
-			local valid = gl.wglChoosePixelFormatARB(self._hdc, iAttributes, fAttributes, 1, pixelFormat, numFormats)
+			local valid = gl.wglChoosePixelFormatARB(self._hdc, iAttributes,
+				fAttributes, 1, pixelFormat, numFormats)
 
 			if valid == 0 or numFormats[0] == 0 then
 				-- Our Pixel Format With 4 Samples Failed, Test For 2 Samples
 				iAttributes[19] = 2
-				valid = gl.wglChoosePixelFormatARB(self._hdc, iAttributes, fAttributes, 1, pixelFormat, numFormats)
+				valid = gl.wglChoosePixelFormatARB(self._hdc, iAttributes,
+					fAttributes, 1, pixelFormat, numFormats)
 			end
 
 			if not (valid == 0 or numFormats[0] == 0) then
@@ -1531,10 +1417,109 @@ function view:gl()
 		self._pixel = true
 	end
 
-
+	self._gl_swap = true
 	return gl
 end
 
+--rendering/window -----------------------------------------------------------
+
+function window:_update_layered()
+	if not self._bitmap then return end
+	local r = self.win.screen_rect
+	self._bitmap:update_layered(self.win.hwnd, r.x, r.y)
+end
+
+function window:invalidate(...)
+	if self._norepaint then return end
+	if self._layered then
+		self.frontend:_backend_repaint()
+		self:_update_layered()
+	else
+		self:_invalidate(...)
+	end
+end
+
+--clear the bitmap's pixels and update the layered window.
+function window:_clear_layered()
+	if not self._bitmap or not self._layered then return end
+	self._bitmap:clear()
+	self:_update_layered()
+end
+
+window._bitmap_size = window.get_client_size
+
+glue.update(window, rendering)
+glue.update(Window, Rendering)
+
+--views ----------------------------------------------------------------------
+
+local view = {}
+window.view = view
+
+local View = winapi.subclass({}, winapi.Panel)
+
+function view:new(window, frontend, t)
+	local self = glue.inherit({
+		window = window,
+		app = window.app,
+		frontend = frontend,
+	}, self)
+
+	self.win = View{
+		parent = window.win,
+		x = t.x, y = t.y, w = t.w, h = t.h,
+		own_dc = true, --for opengl
+		visible = false,
+	}
+	self.win.backend = self
+	self.win.frontend = frontend
+	return self
+end
+
+function view:visible()
+	return self.win.visible
+end
+
+function view:show()
+	self.win:show() --sync call
+end
+
+function view:hide()
+	self.win:hide() --sync call
+end
+
+function view:get_rect()
+	local r = self.win.rect
+	return r.x, r.y, r.w, r.h
+end
+
+function view:set_rect(x, y, w, h)
+	self.win.rect = pack_rect(nil, x, y, w, h)
+end
+
+view.invalidate = rendering._invalidate
+
+function view:_bitmap_size()
+	return select(3, self:get_rect())
+end
+
+function view:free()
+	self:_free_bitmap()
+	self:_free_gl()
+	self.win:free()
+	self.win = nil
+end
+
+function View:on_moved()
+	self.frontend:_backend_changed()
+end
+
+function View:on_resized()
+	self.frontend:_backend_changed()
+end
+
+glue.update(view, mouse, rendering)
+glue.update(View, Mouse, Rendering)
 
 --hi-dpi support -------------------------------------------------------------
 
