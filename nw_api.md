@@ -14,12 +14,9 @@ app object														nw:app() -> app
 message loop		app:run() \								app:running()
 						app:stop()
 
-quitting				app:autoquit(?) \						app:autoquit() -> ? \					\
-						win:autoquit(?) \						win:autoquit() -> ?						\
-						app:quit()																				app:quitting() -> ?
-
-time																app:time() -> time \
-																	app:timediff(time1, time2) -> ms
+quitting				app:autoquit(t|f) \					app:autoquit() -> t|f \					\
+						win:autoquit(t|f) \					win:autoquit() -> t|f					\
+						app:quit()																				`app:quitting() -> [refuse]`
 
 timers				app:runevery(seconds, func) \														func() -> continue?
 						app:runafter(seconds, func)
@@ -27,23 +24,23 @@ timers				app:runevery(seconds, func) \														func() -> continue?
 window list														app:windows([order]) -> {win1,...}\	app:window_created() \
 																	app:window_count() -> n  				app:window_closed()
 
-windows				app:window(params) -> win \		\												\
-						win:close() 							win:dead() -> ? 							win:closing() -> ? \
+windows				app:window(t) -> win \				\												\
+						win:close() 							win:dead() -> t|f							win:closing() -> t|f \
 																													win:closed()
 
-app activation		app:activate()	\						app:active() -> ? \						app:activated() \
+app activation		app:activate()	\						app:active() -> t|f \					app:activated() \
 																													app:deactivated()
 
-window activation	win:activate()							win:active() -> ? \						win:activated() \
+window activation	win:activate()							win:active() -> t|f \					win:activated() \
 																	app:active_window() -> win				win:deactivated()
 
-window state		win:show() \							win:visible() -> ? \						win:was_shown() \
+window state		win:show() \							win:visible() -> t|f \					win:was_shown() \
 						win:hide() \							\												win:was_hidden() \
-						win:minimize() \						win:minimized() -> ? \					win:was_minimized() \
-						win:maximize() \						win:maximized() -> ? \					win:was_maximized() \
+						win:minimize() \						win:minimized() -> t|f \				win:was_minimized() \
+						win:maximize() \						win:maximized() -> t|f \				win:was_maximized() \
 						win:restore() \						\												win:was_unminimized() \
 						win:shownormal() \					\												win:was_unmaximized() \
-						win:fullscreen()						win:fullscreen() -> ?					win:entered_fullscreen() \
+						win:fullscreen()						win:fullscreen() -> t|f					win:entered_fullscreen() \
 																													win:exited_fullscreen()
 
 position				win:frame_rect(x, y, w, h)			win:frame_rect() -> x, y, w, h \		win:resizing(how, x, y, w, h) -> x, y, w, h \
@@ -61,25 +58,25 @@ mouse pointer		win:cursor(name)
 
 frame					win:title(title) \					win:title() -> title \
 						\											win:frame() -> frame \
-						\											win:minimizable() -> ? \
-						\											win:maximizable() -> ? \
-						\											win:closeable() -> ? \
-						\											win:resizeable() -> ? \
-						\											win:fullscreenable() -> ? \
-						win:edgesnapping(?)					win:edgesnapping() -> ?
+						\											win:minimizable() -> t|f \
+						\											win:maximizable() -> t|f \
+						\											win:closeable() -> t|f \
+						\											win:resizeable() -> t|f \
+						\											win:fullscreenable() -> t|f \
+						win:edgesnapping(?)					win:edgesnapping() -> t|f
 
-z-order				win:topmost(?) \						win:topmost() -> ? \
+z-order				win:topmost(?) \						win:topmost() -> t|f \
 						win:order(z|'back'|'front')		win:zorder() -> z
 
 parent															win:parent() -> parent
 
-keyboard				app:ignore_numlock(?)				app:ignore_numlock() -> ? \			win:keydown(key, vkey) \
-																	win:key(keyquery) -> pressed?			win:keyup(key, vkey) \
+keyboard				app:ignore_numlock(t|f)				app:ignore_numlock() -> t|f \			win:keydown(key, vkey) \
+																	win:key(keyquery) -> t|f				win:keyup(key, vkey) \
 																													win:keypress(key, vkey) \
 																													win:keychar(char)
 
 mouse																win:mouse() -> m \						win:mousedown(button) \
-																	m.x, m.y, \									win:click(button, count) -> reset? \
+																	m.x, m.y, \									win:click(button, count) -> t|f \
 																	m.left, m.right, m.middle, \			win:mouseup(button) \
 																	m.ex1, m.ex2 \								win:mouseenter() \
 																	win:mouse(var) -> m[var]				win:mouseleave() \
@@ -97,8 +94,8 @@ menus					app:menu() -> menu \					win:menubar() -> menu \
 						menu:set(index, text, menu) \		\
 						menu:set(menuitem) \					menu:get(index) -> menuitem \
 						\											menu:item_count() -> n \
-						menu:checked(index, ?) \			menu:checked(index) -> ? \
-						menu:enabled(index, ?)				menu:enabled(index) -> ?
+						menu:checked(index, t|f) \			menu:checked(index) -> ? \
+						menu:enabled(index, t|f)			menu:enabled(index) -> ?
 
 backends				nw:init([backendname]) 				nw.backends-> {OS = backendname} \
 																	nw.backend.name -> name \

@@ -329,14 +329,8 @@ end
 --window list ----------------------------------------------------------------
 
 --get existing windows in creation order
-function app:windows(order)
-	if order == 'zorder' then
-		--TODO
-	elseif order == '-zorder' then
-		--TODO
-	else
-		return glue.update({}, self._windows) --take a snapshot
-	end
+function app:windows()
+	return glue.update({}, self._windows) --take a snapshot
 end
 
 function app:window_count(filter)
@@ -368,7 +362,6 @@ local defaults = {
 	--state
 	visible = true,
 	minimized = false,
-	fullscreen = false,
 	maximized = false,
 	enabled = true,
 	--frame
@@ -517,101 +510,6 @@ function window:_new(app, backend_class, useropt)
 	end
 
 	return self
-end
-
---state ----------------------------------------------------------------------
-
-local function select_flag(which, state)
-	if which then
-		return state:find(which, 1, true) and true or false
-	end
-	return state
-end
-
-function window:state(which)
-	local t = {}
-	table.insert(t, self:visible() and 'visible' or nil)
-	table.insert(t, self:minimized() and 'minimized' or nil)
-	table.insert(t, self:maximized() and 'maximized' or nil)
-	table.insert(t, self:fullscreen() and 'fullscreen' or nil)
-	table.insert(t, self:active() and 'active' or nil)
-	local state = table.concat(t, ' ')
-	return select_flag(which, state)
-end
-
-function app:state(which)
-	local t = {}
-	table.insert(t, self:hidden() and 'hidden' or nil)
-	table.insert(t, self:active() and 'active' or nil)
-	local state = table.concat(t, ' ')
-	return select_flag(which, state)
-end
-
-local function diff(s, old, new)
-	local olds = old:find(s, 1, true) and 1 or 0
-	local news = new:find(s, 1, true) and 1 or 0
-	return news - olds
-end
-
-local function trigger(self, diff, event_up, event_down)
-	if diff > 0 then
-		self:_event(event_up)
-	elseif diff < 0 then
-		self:_event(event_down)
-	end
-end
-
-function window:_backend_changed()
-
-	if self._events_disabled then return end
-
-	--check if the state has really changed and generate synthetic events
-	--for each state flag that has actually changed.
-	local old = self._state
-	local new = self:state()
-	self._state = new
-	local changed
-	if new ~= old then
-		changed = true
-		self:_event('changed', old, new)
-		trigger(self, diff('visible', old, new), 'was_shown', 'was_hidden')
-		trigger(self, diff('minimized', old, new), 'was_minimized', 'was_unminimized')
-		trigger(self, diff('maximized', old, new), 'was_maximized', 'was_unmaximized')
-		trigger(self, diff('fullscreen', old, new), 'entered_fullscreen', 'exited_fullscreen')
-		trigger(self, diff('active', old, new), 'was_activated', 'was_deactivated')
-	end
-
-	--check if client rectangle changed and generate 'moved' and 'resized' events.
-	if self:dead() then return end
-	local cx0, cy0, cw0, ch0 = unpack(self._client_rect)
-	local cx, cy, cw, ch = self:client_rect()
-	local t = self._client_rect
-	t[1], t[2], t[3], t[4] = cx, cy, cw, ch
-	if cw ~= cw0 or ch ~= ch0 then
-		if not changed then
-			changed = true
-			self:_event('changed', old, new)
-		end
-		self:_event('was_resized', cw, ch)
-	end
-	if cx ~= cx0 or cy ~= cy0 then
-		if not changed then
-			changed = true
-			self:_event('changed', old, new)
-		end
-		self:_event('was_moved', cx, cy)
-	end
-end
-
-function app:_backend_changed()
-	local old = self._state
-	local new = self:state()
-	self._state = new
-	if new ~= old then
-		self:_event('changed', old, new)
-		trigger(self, diff('hidden', old, new), 'was_hidden', 'was_unhidden')
-		trigger(self, diff('active', old, new), 'was_activated', 'was_deactivated')
-	end
 end
 
 --closing --------------------------------------------------------------------
@@ -794,34 +692,112 @@ function window:fullscreen(fullscreen)
 	end
 end
 
+--state/state string ---------------------------------------------------------
+
+function window:state()
+	local t = {}
+	table.insert(t, self:visible() and 'visible' or nil)
+	table.insert(t, self:minimized() and 'minimized' or nil)
+	table.insert(t, self:maximized() and 'maximized' or nil)
+	table.insert(t, self:fullscreen() and 'fullscreen' or nil)
+	table.insert(t, self:active() and 'active' or nil)
+	return table.concat(t, ' ')
+end
+
+function app:state()
+	local t = {}
+	table.insert(t, self:hidden() and 'hidden' or nil)
+	table.insert(t, self:active() and 'active' or nil)
+	return table.concat(t, ' ')
+end
+
+--state/change event ---------------------------------------------------------
+
+local function diff(s, old, new)
+	local olds = old:find(s, 1, true) and 1 or 0
+	local news = new:find(s, 1, true) and 1 or 0
+	return news - olds
+end
+
+local function trigger(self, diff, event_up, event_down)
+	if diff > 0 then
+		self:_event(event_up)
+	elseif diff < 0 then
+		self:_event(event_down)
+	end
+end
+
+function window:_backend_changed()
+
+	if self._events_disabled then return end
+
+	--check if the state has really changed and generate synthetic events
+	--for each state flag that has actually changed.
+	local old = self._state
+	local new = self:state()
+	self._state = new
+	local changed
+	if new ~= old then
+		changed = true
+		self:_event('changed', old, new)
+		trigger(self, diff('visible', old, new), 'was_shown', 'was_hidden')
+		trigger(self, diff('minimized', old, new), 'was_minimized', 'was_unminimized')
+		trigger(self, diff('maximized', old, new), 'was_maximized', 'was_unmaximized')
+		trigger(self, diff('fullscreen', old, new), 'entered_fullscreen', 'exited_fullscreen')
+		trigger(self, diff('active', old, new), 'was_activated', 'was_deactivated')
+	end
+
+	--check if client rectangle changed and generate 'moved' and 'resized' events.
+	if self:dead() then return end
+	local cx0, cy0, cw0, ch0 = unpack(self._client_rect)
+	local cx, cy, cw, ch = self:client_rect()
+	local t = self._client_rect
+	t[1], t[2], t[3], t[4] = cx, cy, cw, ch
+	if cw ~= cw0 or ch ~= ch0 then
+		if not changed then
+			changed = true
+			self:_event('changed', old, new)
+		end
+		self:_event('was_resized', cw, ch)
+	end
+	if cx ~= cx0 or cy ~= cy0 then
+		if not changed then
+			changed = true
+			self:_event('changed', old, new)
+		end
+		self:_event('was_moved', cx, cy)
+	end
+end
+
+function app:_backend_changed()
+	local old = self._state
+	local new = self:state()
+	self._state = new
+	if new ~= old then
+		self:_event('changed', old, new)
+		trigger(self, diff('hidden', old, new), 'was_hidden', 'was_unhidden')
+		trigger(self, diff('active', old, new), 'was_activated', 'was_deactivated')
+	end
+end
+
 --state/enabled --------------------------------------------------------------
 
 window:_property'enabled'
 
 --positioning/conversions ----------------------------------------------------
 
-local function point_or_rect(x, y, w, h)
-	if not w and not h then
-		return x, y
-	else
-		assert(w, 'width missing')
-		assert(h, 'height missing')
-		return x, y, w, h
-	end
-end
-
---point or rect in client space to screen space.
-function window:to_screen(x, y, w, h)
+--convert point in client space to screen space.
+function window:to_screen(x, y)
 	self:_check()
 	x, y = self.backend:to_screen(x, y)
-	return point_or_rect(x, y, w, h)
+	return x, y
 end
 
---point or rect in screen space to client space.
-function window:to_client(x, y, w, h)
+--convert point in screen space to client space.
+function window:to_client(x, y)
 	self:_check()
 	x, y = self.backend:to_client(x, y)
-	return point_or_rect(x, y, w, h)
+	return x, y
 end
 
 --frame rect for a frame type and client rectangle in screen coordinates.
@@ -889,7 +865,8 @@ function window:client_rect(x1, y1, w1, h1)
 		local dw, dh = w - ccw, h - cch
 		self.backend:set_frame_rect(cx + dx, cy + dy, cw + dw, ch + dh)
 	else
-		return self:to_screen(0, 0, self:client_size())
+		local x, y = self:to_screen(0, 0)
+		return x, y, self:client_size()
 	end
 end
 
@@ -1052,7 +1029,7 @@ function window:lower(relto)
 	self.backend:lower(relto)
 end
 
---titlebar -------------------------------------------------------------------
+--title ----------------------------------------------------------------------
 
 window:_property'title'
 
@@ -1325,6 +1302,7 @@ end
 
 function window:_backend_free_bitmap(bitmap)
 	if bitmap.cairo_context then
+		self:_event('free_cairo', bitmap.cairo_context)
 		bitmap.cairo_context:free()
 		bitmap.cairo_surface:free()
 	end
@@ -1379,7 +1357,7 @@ function view:_new(window, backend_class, t)
 
 	self:_init_anchors()
 
-	if t.visible then
+	if t.visible ~= false then
 		self:show()
 	end
 
@@ -1403,13 +1381,21 @@ end
 function view:visible(visible)
 	if visible ~= nil then
 		if visible then
-			self.backend:show()
+			self:show()
 		else
-			self.backend:hide()
+			self:hide()
 		end
 	else
 		return self.backend:visible()
 	end
+end
+
+function view:show()
+	self.backend:show()
+end
+
+function view:hide()
+	self.backend:hide()
 end
 
 function view:rect(x, y, w, h)
