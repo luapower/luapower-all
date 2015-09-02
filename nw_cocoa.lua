@@ -1,5 +1,5 @@
 
---native widgets - cococa backend.
+--native windows - cococa backend.
 --Written by Cosmin Apreutesei. Public domain.
 
 local ffi   = require'ffi'

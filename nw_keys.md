@@ -1,5 +1,5 @@
 ---
-tagline:   native widgets key codes
+tagline: native windows key codes
 ---
 
 ## Types of keys

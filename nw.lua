@@ -1,5 +1,5 @@
 
---native widgets - frontend.
+--native windows - frontend.
 --Written by Cosmin Apreutesei. Public domain.
 
 local ffi   = require'ffi'
@@ -56,17 +56,6 @@ end
 
 local object = {}
 
---poor man's overriding sugar. usage:
---		win:override('mousemove', function(self, inherited, x, y)
---			inherited(self, x, y)
---		end)
-function object:override(name, func)
-	local inherited = self[name]
-	self[name] = function(self, ...)
-		return func(self, inherited, ...)
-	end
-end
-
 function object:dead()
 	return self._dead or false
 end
@@ -93,9 +82,7 @@ end
 
 --register a function to be called for a specific event
 function object:on(event, func)
-	self.observers = self.observers or {} --{event = {func = true, ...}}
-	self.observers[event] = self.observers[event] or {}
-	self.observers[event][func] = true
+	glue.attr(glue.attr(self, '_observers'), event)[func] = true --{event = {func = true}}
 end
 
 --handle a query event by calling its event handler
@@ -111,8 +98,8 @@ function object:_fire(event, ...)
 	if self._dead then return end
 	if self._events_disabled then return end
 	--call any observers
-	if self.observers and self.observers[event] then
-		for obs in pairs(self.observers[event]) do
+	if self._observers and self._observers[event] then
+		for obs in pairs(self._observers[event]) do
 			obs(self, ...)
 		end
 	end
@@ -137,6 +124,9 @@ end
 
 --enable or disable events. returns the old state.
 function object:events(enabled)
+	if enabled == nil then
+		return not self._events_disabled
+	end
 	local old = not self._events_disabled
 	self._events_disabled = not enabled
 	return old
@@ -213,7 +203,7 @@ function app:ver(q)
 	return qcache[q]
 end
 
---message loop ---------------------------------------------------------------
+--message loop and timers ----------------------------------------------------
 
 local password = {} --distinguish yielding via app:sleep() from other yielding
 
@@ -232,11 +222,15 @@ function app:run(func)
 			func()
 			coroutine.yield(password) --proc finished
 		end)
+		local was_running = self._running
 		local function step()
 			local pwd, sleep_time = proc()
 			assert(pwd == password, 'yield in async proc')
 			if not sleep_time then --proc finished
-				self:stop()
+				--if app was not running when we started, stop it back
+				if not was_running then
+					self:stop()
+				end
 				return
 			end
 			if sleep_time == true then return end --sleep forever
@@ -261,6 +255,18 @@ function app:stop()
 	if self._stopping then return end --ignore repeated attempts
 	self._stopping = true
 	self.backend:stop()
+end
+
+function app:runevery(seconds, func)
+	seconds = math.max(0, seconds)
+	self.backend:runevery(seconds, func)
+end
+
+function app:runafter(seconds, func)
+	self:runevery(seconds, function()
+		func()
+		return false
+	end)
 end
 
 --quitting -------------------------------------------------------------------
@@ -318,20 +324,6 @@ end
 
 function app:_backend_quitting()
 	self:quit()
-end
-
---timers ---------------------------------------------------------------------
-
-function app:runevery(seconds, func)
-	seconds = math.max(0, seconds)
-	self.backend:runevery(seconds, func)
-end
-
-function app:runafter(seconds, func)
-	self:runevery(seconds, function()
-		func()
-		return false
-	end)
 end
 
 --window list ----------------------------------------------------------------

@@ -37,16 +37,18 @@ app activation		app:activate()	\						app:active() -> ? \						app:activated() \
 window activation	win:activate()							win:active() -> ? \						win:activated() \
 																	app:active_window() -> win				win:deactivated()
 
-window state		win:show() \							win:visible() -> ? \
-						win:hide() \							\
-						win:minimize() \						win:minimized() -> ? \					win:state_changed(how)
-						win:maximize() \						win:maximized() -> ? \
-						win:restore() \						\
-						win:shownormal() \					\
-						win:fullscreen()						win:fullscreen() -> ?
+window state		win:show() \							win:visible() -> ? \						win:was_shown() \
+						win:hide() \							\												win:was_hidden() \
+						win:minimize() \						win:minimized() -> ? \					win:was_minimized() \
+						win:maximize() \						win:maximized() -> ? \					win:was_maximized() \
+						win:restore() \						\												win:was_unminimized() \
+						win:shownormal() \					\												win:was_unmaximized() \
+						win:fullscreen()						win:fullscreen() -> ?					win:entered_fullscreen() \
+																													win:exited_fullscreen()
 
 position				win:frame_rect(x, y, w, h)			win:frame_rect() -> x, y, w, h \		win:resizing(how, x, y, w, h) -> x, y, w, h \
-																	win:client_rect() -> x, y, w, h		win:resized()
+																	win:client_rect() -> x, y, w, h		win:was_resized(w, h) \
+																													win:was_moved(x, y)
 
 displays															app:displays() -> {disp1, ...} \		app:displays_changed()
 																	app:display_count() -> n \
@@ -87,8 +89,8 @@ mouse																win:mouse() -> m \						win:mousedown(button) \
 
 rendering			win:invalidate()																		win:render(cr)
 
-menus					app:menu() -> menu					win:menubar() -> menu \
-						menu:add([i,]text,action) -> i\	\												action()
+menus					app:menu() -> menu \					win:menubar() -> menu \
+						menu:add([i,]text,action) -> i \	\
 						menu:add([i,]text,menu) -> i \	\
 						menu:add(args) -> i \				\
 						menu:set(index, text, action) \	menu:get(index) -> {text=,...} \
@@ -103,8 +105,6 @@ backends				nw:init([backendname]) 				nw.backends-> {OS = backendname} \
 																	nw:os() -> os_version \
 																	nw:os(compat_version) -> ?
 
-OOP					obj:override(method, func)
-
-events				obj:observe(event, func) 															obj:event(name, args...) \
+events				obj:on(event, func		) 															obj:event(name, args...) \
 																													obj:\<eventname\>(args...)
 -----------------------------------------------------------------------------------------------------------------

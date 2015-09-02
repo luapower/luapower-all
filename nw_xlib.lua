@@ -1,5 +1,5 @@
 
---native widgets - Xlib backend.
+--native windows - Xlib backend.
 --Written by Cosmin Apreutesei. Public domain.
 
 --Thanks to X authors for making this a torturous coding experience.

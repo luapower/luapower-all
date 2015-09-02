@@ -1,6 +1,5 @@
---go@ c:/luapower/bin/mingw64/luajit -e io.stdout:setvbuf'no';io.stderr:setvbuf'no';require'strict';pp=require'pp' nw_test.lua check-view-cairo
 
---native widgets - winapi backend.
+--native windows - winapi backend.
 --Written by Cosmin Apreutesei. Public domain.
 
 local ffi = require'ffi'

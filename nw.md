@@ -1,5 +1,5 @@
 ---
-tagline:   native widgets
+tagline:   native windows
 platforms: mingw32, mingw64, osx32, osx64
 ---
 
@@ -7,17 +7,31 @@ platforms: mingw32, mingw64, osx32, osx64
 
 ## `local nw = require'nw'`
 
-Cross-platform library for displaying and manipulating native windows, drawing in their client area
-using [cairo] or [opengl], and accessing keyboard, mouse and touchpad events in a consistent and
-well-specified manner across Windows, Linux and OS X.
+Cross-platform library for displaying and manipulating native windows,
+drawing in their client area using [cairo] or [opengl], and accessing
+input devices in a consistent and well-specified manner across Windows,
+Linux and OS X.
 
 ## API
 
+<div class=small>
 -------------------------------------------- -----------------------------------------------------------------------------
-__application loop__
-`nw:app() -> app`										return the application object (singleton)
-`app:run()`												run the main loop until the last window is closed
-`app:quit()`											close all windows; abandon on the first window that refuses to close.
+__app__
+`nw:app() -> app`										the application object (singleton)
+__app loop__
+`app:run()`												run the loop
+`app:stop()`											stop the loop
+`app:running() -> true|false`						check if the loop is running
+__app quitting__
+`app:quit()`											close all windows and stop the loop
+`app:autoquit(true|false)`							quit when the last window is closed
+`app:autoquit() -> true|false`					autoquit enabled
+`app:quitting() -> [false]`						quitting event/query
+__timers__
+`app:runevery(seconds, func)`						run a function on a timer (timer stops if func returns false)
+`app:runafter(seconds, func)`						run a function on a timer once
+`app:run(func)`										(star the loop and) run a function on a zero-second timer once
+`app:sleep(seconds)`									sleep without blocking inside a function run with app:run()
 __displays__
 `app:displays() -> iter() -> display`			get displays in no specific order
 `app:main_display() -> display`					get the display whose screen rect starts at (0,0)
@@ -92,14 +106,17 @@ __rendering__
 `win:invalidate()`									request window redrawing
 `win:client_rect() -> x, y, w, h`				get the client area rect (relative to itself)
 __events__
-`win:event(event, ...)`								post an event
-`win:observe(event, func(...) end)`				observe an event i.e. call `func` when `event` happens
-`app:<event>(win, ...)`								window events are forwarded to the app object
+`obj:on(event, func)`								call `func` when `event` happens
+`obj:events(enabled) -> prev_state`				enable/disable events
+__lifetime__
+`obj:dead() -> true|false`							check if an object was freed
+__version checks__
+`app:ver(query) -> true|false`					check OS version eg. app:ver'OSX 10.8' == true on OSX 10.8+
 __extending__
-`app.window_class`									the table that windows inherit from
-`app.window_class.defaults`						default values for window creation arguments
-`nw.impl`												nw implementation class
+`nw.backends -> {os -> module_name}`			default backend modules for each OS
+`nw:init([backend_name])`							init `nw` with a specific backend (can be called only once)
 -------------------------------------------- -----------------------------------------------------------------------------
+</div>
 
 ## Quick Example
 

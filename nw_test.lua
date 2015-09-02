@@ -1,4 +1,3 @@
---go@ c:/luapower/bin/mingw64/luajit -e io.stdout:setvbuf'no';io.stderr:setvbuf'no';require'strict';pp=require'pp' nw_test.lua check
 io.stdout:setvbuf'no'
 io.stderr:setvbuf'no'
 
