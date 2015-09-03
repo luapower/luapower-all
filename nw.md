@@ -358,74 +358,91 @@ initializes nw with the default backend for the current platform.
 
 ### App loop
 
-#### `app:run()`												run the loop
-#### `app:stop()`											stop the loop
-#### `app:running() -> t|f`								check if the loop is running
+#### `app:run()`
+
+Run the loop. Ignore if already running.
+
+#### `app:stop()`
+
+Stop the loop. Ignore if not running.
+
+#### `app:running() -> t|f`
+
+Check if the loop is running.
 
 ### App quitting
 
 #### `app:quit()`
 
-quit app, i.e. close all windows and stop the loop
+Quit app, i.e. close all windows and stop the loop. The first window
+which refuses to close (by returning false from its `closing` event)
+cancels the quitting process.
+
+> Calling quit() when the loop is not running or if already quitting
+does nothing.
+
+> If new windows are created before all current windows are closed
+the quit process is canceled.
 
 #### `app:autoquit(t|f)`
 
-flag: quit the app when the last window is closed
+Quit the app when the last window is closed.
 
 #### `app:autoquit() -> t|f`
 
-get app autoquit flag
+Get the app autoquit flag.
 
 #### `app:quitting() -> [false]`
 
-event: quitting (return false to refuse)
+Event: quitting (return false to refuse).
 
 #### `win:autoquit(t|f)`
 
-flag: quit the app when the window is closed
+Quit the app when the window is closed.
 
 #### `win:autoquit() -> t|f`
 
-get window autoquit flag
-
+Get window autoquit flag.
 
 ### Timers
 
 #### `app:runevery(seconds, func)`
 
-run a function on a timer (timer stops if func returns false)
+Run a function on a timer (timer stops if func returns false).
 
 #### `app:runafter(seconds, func)`
 
-run a function on a timer once
+Run a function on a timer once.
 
 #### `app:run(func)`
 
-(star the loop and) run a function on a zero-second timer once
+Run a function on a zero-second timer once.
+
+If the loop is not already started, it is started and stopped after func finishes.
 
 #### `app:sleep(seconds)`
 
-sleep without blocking inside a function run with app:run()
+Sleep without blocking inside a function run with app:run().
 
+> Calling this outside an app:run() function raises an error.
 
 ### Window list
 
 #### `app:windows() -> {win1, ...}`
 
-all windows in creation order
+List all windows in creation order.
 
 #### `app:window_count([top_level]) -> n`
 
-number of (top-level) windows
+Number of (top-level) windows.
 
 #### `app:window_created(win)`
 
-event: a window was created
+Event: a window was created.
 
 #### `app:window_closed(win)`
 
-event: a window was closed
-
+Event: a window was closed.
 
 ### Window creation
 
@@ -433,35 +450,35 @@ event: a window was closed
 
 Create a window (fields of _t_ below):
 
-	*__position__*
-	*`x`, `y`*		 										frame position (nil, nil)
-	*`w`, `h`*												frame size (this or cw,ch required)
-	*`cx`, `cy`*											client area position (nil, nil)
-	*`cw`, `ch`*											client area size (this or w,h required)
-	*`min_cw`, `min_ch`*									min client rect size
-	*`max_cw`, `max_ch`*									max client rect size
-	*__state__*
-	*`visible`*												start visible (true)
-	*`minimized`*											start minimized (false)
-	*`maximized`*											start maximized (false)
-	*`enabled`*												start enabled (true)
-	*__frame__*
-	*`title`* 												initial title ('')
-	*`transparent`*										make it transparent (false)
-	*__behavior__*
-	*`parent`*												parent window (nil)
-	*`sticky`*												moves with parent (false)
-	*`topmost`*												stays on top of other windows (false)
-	*`minimizable`*										allow minimization (true)
-	*`maximizable`*										allow maximization (true)
-	*`closeable`*											allow closing (true)
-	*`resizeable`*											allow resizing (true)
-	*`fullscreenable`*									allow full screen mode (true)
-	*`activable`*											allow activation (true); only for 'toolbox' frames
-	*`autoquit`*											quit the app on closing (false)
-	*`edgesnapping`*										magnetized edges ('screen')
-	*__menu__*
-	*`menu`*													menu bar
+* __position__
+	* `x`, `y`		 										frame position (nil, nil)
+	* `w`, `h`												frame size (this or cw,ch required)
+	* `cx`, `cy`											client area position (nil, nil)
+	* `cw`, `ch`											client area size (this or w,h required)
+	* `min_cw`, `min_ch`									min client rect size
+	* `max_cw`, `max_ch`									max client rect size
+* __state__
+	* `visible`												start visible (true)
+	* `minimized`											start minimized (false)
+	* `maximized`											start maximized (false)
+	* `enabled`												start enabled (true)
+* __frame__
+	* `title` 												initial title ('')
+	* `transparent`										make it transparent (false)
+* __behavior__
+	* `parent`												parent window (nil)
+	* `sticky`												moves with parent (false)
+	* `topmost`												stays on top of other windows (false)
+	* `minimizable`										allow minimization (true)
+	* `maximizable`										allow maximization (true)
+	* `closeable`											allow closing (true)
+	* `resizeable`											allow resizing (true)
+	* `fullscreenable`									allow full screen mode (true)
+	* `activable`											allow activation (true); only for 'toolbox' frames
+	* `autoquit`											quit the app on closing (false)
+	* `edgesnapping`										magnetized edges ('screen')
+* __menu__
+	* `menu`													menu bar
 
 ### Closing
 
