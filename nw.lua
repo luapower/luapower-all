@@ -1535,11 +1535,16 @@ function window:menubar()
 end
 
 function window:popup(menu, x, y)
-	return self.backend:popup(menu, x or 0, y or 0)
+	return self.backend:popup(menu, x, y)
 end
 
-function menu:popup(win, x, y)
-	win:popup(self, x, y)
+function view:popup(menu, x, y)
+	local vx, vy = self:rect()
+	return self.window:popup(menu, vx + x, vy + y)
+end
+
+function menu:popup(target, x, y)
+	return target:popup(self, x, y)
 end
 
 function menu:_parseargs(index, text, action, options)
