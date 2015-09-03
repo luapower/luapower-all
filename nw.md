@@ -26,7 +26,7 @@ __app loop__
 `app:stop()`											stop the loop
 `app:running() -> t|f`								check if the loop is running
 __app quitting__
-`app:quit()`											quit app, i.e. close all windows and stop the loop
+`app:quit()`											quit the app, i.e. close all windows and stop the loop
 `app:autoquit(t|f)`									flag: quit the app when the last window is closed
 `app:autoquit() -> t|f`								get app autoquit flag (true)
 `app:quitting() -> [false]`						event: quitting (return false to refuse)
@@ -334,7 +334,9 @@ function win:repaint()        --called when window needs repainting
 	cr:paint()
 end
 
-app:run() --start the message loop
+win:show() --show it now that it was properly set up
+
+app:run()  --start the message loop
 ~~~
 
 ## Status
@@ -379,44 +381,42 @@ Check if the loop is running.
 
 #### `app:quit()`
 
-Quit app, i.e. close all windows and stop the loop.
+Quit the app, i.e. close all windows and stop the loop.
 
 Quitting is a multi-phase process:
 
-	1. the `app:quitting()` event is fired. If it returns false,
-	quitting is aborted.
-	2. the `win:closing()` event is fired on all top-level
-	(i.e. without a parent) windows. If any of them returns false,
-	quitting is aborted.
-	3. `win:close(true)` is called on all windows. If new windows are
-	created during this process, quitting is aborted.
-	4. the app loop is stopped.
+1. the `app:quitting()` event is fired. If it returns false, quitting is aborted.
+2. the `win:closing()` event is fired on all non-parented windows.
+   If any of them returns false, quitting is aborted.
+3. `win:close(true)` is called on all windows. If new windows are created
+   during this process, quitting is aborted.
+4. the app loop is stopped.
 
 Calling quit() when the loop is not running or if quitting
 is in progress does nothing.
 
-#### `app:autoquit(t|f)` <br/> `app:autoquit() -> t|f`
+#### `app:autoquit(t|f)` <br> `app:autoquit() -> t|f`
 
 Get/set the app autoquit flag (default: true).
-Enabling it causes the app to quit when the last window is closed.
+When this flag is true, the app quits when the last window is closed.
 
 #### `app:quitting() -> [false]`
 
-Event: quitting. Return false from this event to refuse.
+Event: the app wants to quit, but none of the windows were yet closed
+to that effect. Return false from this event to refuse to quit.
 
-#### `win:autoquit(t|f)`
-#### `win:autoquit() -> t|f`
+#### `win:autoquit(t|f)` <br> `win:autoquit() -> t|f`
 
 Get/set the window autoquit flag (default: false).
-Enabling it causes the app when this window is closed.
-This flag can be used on the app's main window if there is such thing.
+When this flag is true, the app quits when the window is closed.
+This flag can be used on the app's main window if there is such a thing.
 
 ### Timers
 
 #### `app:runevery(seconds, func)`
 
-Run a function on a recurrent timer. The timer can be stopped from inside
-the function by returning false.
+Run a function on a recurrent timer.
+The timer can be stopped by returning false from the function.
 
 #### `app:runafter(seconds, func)`
 
@@ -432,8 +432,8 @@ the function finishes.
 
 #### `app:sleep(seconds)`
 
-Sleep without blocking inside a function run with app:run(). While this
-function is sleeping (can you say "coroutine"?), other timers
+Sleep without blocking from inside a function that was run via app:run().
+While the function is sleeping (can you say "coroutine"?), other timers
 and events continue to be processed.
 
 This is poor man's multi-threading based on timers and coroutines.
@@ -503,8 +503,7 @@ Create a window (fields of _t_ below):
 
 #### `win:close()`
 
-Close the window and destroy it.
-Any children are closed first.
+Close the window and destroy it. Children are closed first.
 
 #### `win:dead() -> t|f`
 
@@ -548,7 +547,6 @@ Event: the app was activated.
 
 Event: the app was deactivated.
 
-
 ### Window activation
 
 #### `app:active_window() -> win`
@@ -585,7 +583,7 @@ Get the activable flag (read-only; only for windows with 'toolbox' frame).
 Toolbox windows can be made non-activable. It is sometimes useful to have
 toolboxes that don't steal keyboard focus away from the main window when clicked.
 
-> __NOTE:__ This [does not work](https://github.com/luapower/nw/issues/26) in Linux.
+__NOTE:__ This [does not work](https://github.com/luapower/nw/issues/26) in Linux.
 
 ### App visibility (OSX only)
 
@@ -597,52 +595,42 @@ Check if the app is hidden.
 
 Show or hide the app.
 
-#### `app:hide()`
+#### `app:hide()` <br> `app:unhide()`
 
-Hide the app.
+Hide/unhide the app.
 
-#### `app:unhide()`
+#### `app:was_hidden()` <br> `app:was_unhidden()`
 
-Unhide the app.
-
-#### `app:was_hidden()`
-
-Event: app was hidden.
-
-#### `app:was_unhidden()`
-
-Event: app was unhidden.
-
+Event: app was hidden/unhidden.
 
 ### Window visibility
-
-#### `win:visible() -> t|f`
-
-Check if the window is visible. A minimized window is still considered visible.
-
-#### `win:visible(t|f)`
-
-Show or hide the window.
 
 #### `win:show()`
 
 Show the window in its previous state (which can include any combination
 of minimized, maximized, and fullscreen states).
 
-If the window is minimized it will not be activated, otherwise it will.
+When a hidden window is shown it is also activated, except if it was
+previously minimized, in which case it is shown in minimized state
+without activating.
+
+Calling show() on a visible (that includes minimized) window does nothing.
 
 #### `win:hide()`
 
 Hide the window from the screen and from the taskbar.
 
-#### `win:was_shown()`
+Calling hide() on a hidden window does nothing.
 
-Event: window was shown.
+#### `win:visible() -> t|f` <br> `win:visible(t|f)`
 
-#### `win:was_hidden()`
+Get/set window visibility.
 
-Event: window was hidden.
+A minimized window is considered visible.
 
+#### `win:was_shown()` <br> `win:was_hidden()`
+
+Event: window was shown/hidden.
 
 ### Minimization
 
@@ -652,21 +640,16 @@ Get the minimizable flag (read-only).
 
 #### `win:minimized() -> t|f`
 
-Get the minimized state. This flag stays true if a minimized window is hidden.
+Get the minimized state. This flag remains true when a minimized window is hidden.
 
 #### `win:minimize()`
 
 Minimize the window and deactivate it. If the window is hidden,
 it is shown in minimized state (and the taskbar button is not activated).
 
-#### `win:was_minimized()`
+#### `win:was_minimized()` <br> `win:was_unminimized()`
 
-Event: window was minimized.
-
-#### `win:was_unminimized()`
-
-Event: window was unminimized.
-
+Event: window was minimized/unminimized.
 
 ### Maximization
 
@@ -686,14 +669,9 @@ it is shown in maximized state and activated.
 
 If the window is already maximized it is not activated.
 
-#### `win:was_maximized()`
+#### `win:was_maximized()` <br> `win:was_unmaximized()`
 
-Event: window was maximized.
-
-#### `win:was_unmaximized()`
-
-Event: window was unmaximized.
-
+Event: window was maximized/unmaximized.
 
 ### Fullscreen mode
 
@@ -722,7 +700,6 @@ Event: entered fullscreen mode.
 
 Event: exited fullscreen mode.
 
-
 ### Restoring
 
 #### `win:restore()`
@@ -739,7 +716,6 @@ Show the window in normal state.
 
 The window is always activated even when it's already in normal mode.
 
-
 ### State strings
 
 #### `win:state() -> state`
@@ -750,19 +726,16 @@ Get the window's full state string, eg. 'visible maximized active'.
 
 Get the app's full state string, eg. 'visible active'.
 
-
 ### Enabled state
 
-#### `win:enabled(t|f)`
-#### `win:enabled() -> t|f`
+#### `win:enabled(t|f)` <br> `win:enabled() -> t|f`
 
-Get/set the enabled flag. A disabled window cannot receive
+Get/set the enabled flag (default: true). A disabled window cannot receive
 mouse or keyboard focus. Disabled windows are useful for implementing
 modal windows: make a child window and disable the parent while showing
 the child, and enable back the parent when closing the child.
 
-> __NOTE:__ This [doesn't work](https://github.com/luapower/nw/issues/25) on Linux.
-
+__NOTE:__ This [doesn't work](https://github.com/luapower/nw/issues/25) on Linux.
 
 ### Client/screen conversion
 
@@ -773,7 +746,6 @@ Convert a point from the window's client space to screen space.
 #### `win:to_client(x, y) -> x, y`
 
 Convert a point from screen space to the window's client space.
-
 
 ### Frame/client conversion
 
@@ -836,7 +808,6 @@ Event: window was moved.
 
 Event: window was resized.
 
-
 ### Size constraints
 
 #### `win:resizeable() -> t|f`
@@ -851,6 +822,8 @@ Get the minimum client rect size.
 
 Set the minimum client rect size.
 
+The window is resized if it was smaller than this size.
+
 #### `win:maxsize() -> cw, ch`
 
 Get the maximum client rect size.
@@ -859,6 +832,9 @@ Get the maximum client rect size.
 
 Set the maximum client rect size.
 
+The window is resized if it was larger than this size.
+
+This constraint applies to the maximized state too.
 
 ### Window edge snapping
 
@@ -868,20 +844,18 @@ Set the maximum client rect size.
 Get/set edge snapping mode, which can be any combination of the words
 'app', 'other', 'screen', 'all' separated by spaces (eg. 'app screen').
 
-> __NOTE:__ Edge snapping doesn't work on Linux. It is however already
+__NOTE:__ Edge snapping doesn't work on Linux. It is however already
 (poorly) implemented by some window managers (Unity) so all is not lost.
 
 #### `win:magnets(which) -> {r1, ...}`
 
 Event: get edge snapping rectangles (rectangles are tables with x, y, w, h fields).
 
-
 ### Window z-order
 
-#### `win:topmost() -> t|f`
-#### `win:topmost(t|f)`
+#### `win:topmost() -> t|f` <br> `win:topmost(t|f)`
 
-Get/set the topmost flag. A topmost window stays on top of other non-topmost windows.
+Get/set the topmost flag. A topmost window stays on top of all other non-topmost windows.
 
 #### `win:raise([rel_to_win])`
 
@@ -891,19 +865,16 @@ Raise above all windows/specific window.
 
 Lower below all windows/specific window.
 
-
 ### Window title
 
-#### `win:title() -> title`
-#### `win:title(title)`
+#### `win:title() -> title` <br> `win:title(title)`
 
-Get/set window's title.
-
+Get/set the window's title.
 
 ### Displays
 
 In non-mirrored multi-monitor setups, the displays are mapped
-on a virtual surface, with the main display at (0, 0).
+on a virtual surface, with the main display's top-left corner at (0, 0).
 
 #### `app:displays() -> {disp1, ...}`
 
@@ -913,23 +884,21 @@ Get displays (in no specific order).
 
 Get the display count without wasting a table.
 
-#### `app:main_display() -> disp	`
+#### `app:main_display() -> disp`
 
-Get the display whose screen rect starts at (0, 0).
+Get the display whose screen rect is at (0, 0).
 
 #### `app:active_display() -> disp`
 
-Get the display which has keyboard focus.
+Get the display which has the keyboard focus.
 
-#### `disp:screen_rect() -> x, y, w, h`
-#### `disp.x, disp.y, disp.w, disp.h`
+#### `disp:screen_rect() -> x, y, w, h` <br> `disp.x, disp.y, disp.w, disp.h`
 
-Display's screen rectangle.
+Get the display's screen rectangle.
 
-#### `disp:client_rect() -> x, y, w, h`
-#### `disp.cx, disp.cy, disp.cw, disp.ch`
+#### `disp:client_rect() -> x, y, w, h` <br> `disp.cx, disp.cy, disp.cw, disp.ch`
 
-Display's screen rectangle minus the taskbar.
+Get the display's screen rectangle minus the taskbar.
 
 #### `app:displays_changed()`
 
@@ -937,45 +906,37 @@ Event: displays changed.
 
 #### `win:display() -> disp`
 
-The display the window is on.
-
+Get the display the window is currently on.
 
 ### Cursors
 
-#### `win:cursor() -> name`
+#### `win:cursor() -> name` <br> `win:cursor(name)`
 
-Get the mouse cursor.
-
-#### `win:cursor(name)`
-
-Set the mouse cursor.
-
+Get/set the mouse cursor.
 
 ### Frame flags
 
 #### `win:frame() -> frame`
 
-Window's frame. One of 'normal', 'none', 'toolbox'.
+Get the window frame type (read-only). Can be 'normal', 'none', or 'toolbox'.
 
 #### `win:transparent() -> t|f`
 
-Transparent flag.
-
+Get the transparent flag (read-only).
 
 ### Child windows
 
 #### `win:parent() -> win|nil`
 
-Window's parent.
+Get the window's parent (read-only).
 
 #### `win:children() -> {win1, ...}`
 
-Window's children.
+Get the window's children (those whose parent() is this window).
 
 #### `win:sticky() -> t|f`
 
-Sticky flag, for child windows to move with the parent when the parent is moved.
-
+Get the sticky flag (read-only).
 
 ### Keyboard
 
@@ -999,8 +960,13 @@ Event: sent after each keydown, including repeats.
 
 Event: sent after keypress for displayable characters; char is utf-8.
 
-
 ### Hi-DPI support
+
+By default, windows contents are scaled by the OS on Hi-DPI screens,
+so they look blurry but they are readable even if the app is unaware
+of Hi-DPI. Making the app Hi-DPI-aware means disabling this automatic
+raster scaling of the OS and allowing the app to scale the UI itself
+to make it readable on Hi-DPI screens.
 
 #### `app:autoscaling() -> t|f`
 
@@ -1010,33 +976,48 @@ Check if autoscaling is enabled.
 
 Enable/disable autoscaling.
 
+__NOTE:__ This function must be called before the OS stretcher kicks in,
+i.e. before creating any windows or calling any display APIs.
+It will silently fail otherwise.
+
 #### `disp.scalingfactor`
 
-Display's scaling factor.
+Get the display's scaling factor. This is 1 when autoscaling is enabled.
+
+If autoscaling is disabled, windows must check their display's
+scaling factor and scale the UI accordingly.
 
 #### `win:scalingfactor_changed()`
 
 A window's display scaling factor changed or most likely the window
 was moved to a screen with a different scaling factor.
 
-
 ### Views
+
+Views allow partitioning a window's client area into multiple non-overlapping
+rectangle-shaped regions that can be rendered using different technologies.
+In particular, you can use OpenGL on some rectangles, while using bitmaps
+(and thus cairo) on others. This gives a simple path for drawing
+an antialiased 2D UI around a 3D scene as an alternative to drawing
+on textures that stretch over orto-projected quads. Mouse events work
+the same on views as they do on windows (note: the window doesn't receive
+mouse events while the mouse is over a view).
 
 #### `win:views() -> {view1, ...}`
 
-List views.
+Get the window's views.
 
 #### `win:view_count() -> n`
 
-Number of views.
+Get the number of views without wasting a table.
 
 #### `win:view(t) -> view`
 
-Create a view (fields of _t_ below).
+Create a view (fields of _t_ below):
 
-*`x`, `y`, `w`, `h`	- view's position (in window's client space) and size
-*`visible`				- start visible (true)
-*`anchors`				- resizing anchors ('lt'); can be 'ltrb'
+* `x`, `y`, `w`, `h`	- view's position (in window's client space) and size
+* `visible`				- start visible (default: true)
+* `anchors`				- resizing anchors (default: 'lt'); can be 'ltrb'
 
 #### `view:free()`
 
@@ -1046,14 +1027,6 @@ Destroy the view.
 
 Check if the view was destroyed.
 
-#### `view:visible() -> t|f`
-
-Check if the view is visible.
-
-#### `view:visible(t|f)`
-
-Show or hide the view.
-
 #### `view:show()`
 
 Show the view.
@@ -1062,30 +1035,31 @@ Show the view.
 
 Hide the view. The view's position is preserved (anchors keep working).
 
-#### `view:rect() -> x, y, w, h`
+#### `view:visible() -> t|f` <br> `view:visible(t|f)`
 
-Get view's position (in window's client space) and size.
+Get/set the view's visibility.
 
-#### `view:rect(x, y, w, h)`
+#### `view:rect() -> x, y, w, h` <br> `view:rect(x, y, w, h)`
 
-Set view's position and/or size.
+Get/set the view's position (in window's client space) and size.
 
-#### `view:size() -> w, h`
+> The view rect is valid and can be changed while the view is hidden.
 
-Get view's size.
+#### `view:size() -> w, h` <br> `view:size(w, h)`
 
-#### `view:size(w, h)`
+Get/set the view's size.
 
-Set view's size.
+#### `view:anchors() -> anchors` <br> `view:anchors(anchors)`
 
-#### `view:anchors() -> anchors`
-
-Get anchors.
-
-#### `view:anchors(anchors)`
-
-Set anchors. The anchors can be any combination of 'ltrb' characters
+Get/set the anchors: they can be any combination of 'ltrb' characters
 representing left, top, right and bottom anchors respectively.
+
+Anchors are a simple but very powerful way of doing stitched layouting.
+This is how they work: there's four anchors for each side of a view.
+Setting an anchor on one side fixates the distance between that side
+and the same side of the window the view is on, so that when the window
+is moved/resized, the view is also moved/resized in order to preserve
+the initial distance to that side of the window.
 
 #### `view:rect_changed(x, y, w, h)`
 
@@ -1099,45 +1073,78 @@ Event: view was moved.
 
 Event: view was resized.
 
-
 ### Mouse
 
 #### `win/view:mouse() -> t`
 
-Mouse state: _x, y, inside, left, right, middle, ex1, ex2_
+Get the mouse state, which is a table with fields:
+_x, y, inside, left, right, middle, ex1, ex2_
 
-#### `win/view:mouseenter()`
+The mouse state is not queried: it is the state at the time of the last mouse event.
 
-Event: mouse entered the client area of the window.
+#### `win/view:mouseenter()` <br> `win/view:mouseleave()`
 
-#### `win/view:mouseleave()`
+Event: mouse entered/left the client area of the window.
 
-Event: mouse left the client area of the window.
+These events do not fire while the mouse is captured (see mousedown)
+but a mouseleave event _will_ fire after mouseup _if_ mouseup happens
+outside the client area of the window/view that captured the mouse.
 
 #### `win/view:mousemove(x, y)`
 
-Event: mouse was moved.
+Event: the mouse was moved.
 
 #### `win/view:mousedown(button, x, y)`
 
-Event: mouse button was pressed; button can be 'left', 'right', 'middle', 'ex1', 'ex2'.
+Event: a mouse button was pressed; button can be 'left', 'right', 'middle', 'ex1', 'ex2'.
+
+While a mouse button is down, the mouse is _captured_ by the window/view
+which received the mousedown event, which means that the same window/view
+will continue to receive mousemove events even if the mouse leaves
+its client area.
 
 #### `win/view:mouseup(button, x, y)`
 
-Event: mouse button was depressed.
+Event: a mouse button was depressed.
 
 #### `win/view:click(button, count, x, y)`
 
-Event: mouse button was clicked.
+Event: a mouse button was clicked (fires immediately after mousedown).
 
-#### `win/view:wheel(delta, x, y)`
+#### Repeated clicks
 
-Event: mouse wheel was moved.
+When the user clicks the mouse repeatedly, with a small enough interval
+between clicks and over the same target, a counter is incremented.
+When the interval between two clicks is larger than the threshold
+or the mouse is moved too far away from the initial target,
+the counter is reset (i.e. the click-chain is interrupted).
+Returning true on the `click` event also resets the counter
+(i.e. interrupts the click chain).
 
-#### `win/view:hwheel(delta, x, y)`
+This allows processing of double-clicks, triple-clicks, or multi-clicks
+by checking the `count` argument on the `click` event. If your app
+doesn't need to process double-clicks or multi-clicks, you can just ignore
+the `count` argument. If it does, you must return true after processing
+the multi-click event so that the counter is reset.
 
-Event: mouse horizontal wheel was moved.
+For instance, if your app supports double-click over some target,
+you must return true when count is 2, otherwise you might get a count of 3
+on the next click sometimes, instead of 1 as expected. If your app
+supports both double-click and triple-click over a target,
+you must return true when the count is 3 to break the click chain,
+but you must not return anything when the count is 2,
+or you'll never get a count of 3.
 
+The double-click time interval is the interval that the user
+has set in the OS and it is queried on every click.
+
+#### `win/view:wheel(delta, x, y)` <br> `win/view:hwheel(delta, x, y)`
+
+Event: the mouse vertical or horizontal wheel was moved.
+The delta represents the number of lines to scroll.
+
+The number of lines per scroll notch is the number that the user
+has set in the OS and it is queried on every wheel event.
 
 ### Rendering
 
@@ -1415,24 +1422,6 @@ end
 
 The `app:run()` call returns after the last window is destroyed. Because of that, `app:quit()`
 only has to close all windows, and it tries to do that in reverse-creation order.
-
-### Multi-clicks
-
-When the user clicks the mouse repeatedly, with a small enough interval between clicks and over the same target,
-a counter is incremented. When the interval between two clicks is larger than the threshold or the mouse is moved
-too far away from the initial target, the counter is reset (i.e. the click-chain is interrupted).
-Returning true on the `click` event also resets the counter (i.e. interrupts the click chain).
-
-This allows processing of double-clicks, triple-clicks, or multi-clicks by checking the `count` argument on
-the `click` event. If your app doesn't need to process double-clicks or multi-clicks, you can just ignore
-the `count` argument. If it does, you must return true after processing the multi-click event so that
-the counter is reset.
-
-For instance, if your app supports double-click over some target, you must return true when count is 2,
-otherwise you might get a count of 3 on the next click sometimes, instead of 1 as expected. If your app
-supports both double-click and triple-click over a target, you must return true when the count is 3
-to break the click chain, but you must not return anything when the count is 2, or you'll never get
-a count of 3.
 
 ### Corner cases
 
