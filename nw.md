@@ -92,14 +92,14 @@ __window activation__
 `win:activable() -> t|f`							activable flag (for 'toolbox' windows)
 __app visibility (OSX)__
 `app:hidden() -> t|f`								check if app is hidden
-`app:hidden(t|f)`										change app visibility
+`app:hidden(t|f)`										change if the app is hidden
 `app:hide()`											hide the app
 `app:unhide()`											unhide the app
 `app:was_hidden()`									event: app was hidden
 `app:was_unhidden()`									event: app was unhidden
 __window visibility__
-`win:visible() -> t|f`								check if window is visible
-`win:visible(t|f)`									change window's visibility
+`win:visible() -> t|f`								check if the window is visible
+`win:visible(t|f)`									show or hide the window
 `win:show()`											show window (in its previous state)
 `win:hide()`											hide window
 `win:was_shown()`										event: window was shown
@@ -183,8 +183,8 @@ __displays__
 `app:displays_changed()`							event: displays changed
 `win:display() -> disp`								the display the window is on
 __cursors__
-`win:cursor() -> name`								get the cursor
-`win:cursor(name)`									set the cursor
+`win:cursor() -> name`								get the mouse cursor
+`win:cursor(name)`									set the mouse cursor
 __frame flags__
 `win:frame() -> frame`								window's frame: 'normal', 'none', 'toolbox'
 `win:transparent() -> t|f`							transparent flag
@@ -212,8 +212,8 @@ __views__
 *`anchors`*												resizing anchors ('lt'); can be 'ltrb'
 `view:free()`											destroy the view
 `view:dead() -> t|f`									check if the view was freed
-`view:visible() -> t|f`								get visibility
-`view:visible(t|f)`									set visibility
+`view:visible() -> t|f`								check if the view is visible
+`view:visible(t|f)`									show or hide the view
 `view:show()`											show the view
 `view:hide()`											hide the view
 `view:rect() -> x, y, w, h`						get view's position (in window's client space) and size
@@ -451,34 +451,34 @@ Event: a window was closed.
 Create a window (fields of _t_ below):
 
 * __position__
-	* `x`, `y`		 										frame position (nil, nil)
-	* `w`, `h`												frame size (this or cw,ch required)
-	* `cx`, `cy`											client area position (nil, nil)
-	* `cw`, `ch`											client area size (this or w,h required)
-	* `min_cw`, `min_ch`									min client rect size
-	* `max_cw`, `max_ch`									max client rect size
+	* `x`, `y`		 				- frame position (nil, nil)
+	* `w`, `h`						- frame size (this or cw,ch required)
+	* `cx`, `cy`					- client area position (nil, nil)
+	* `cw`, `ch`					- client area size (this or w,h required)
+	* `min_cw`, `min_ch`			- min client rect size
+	* `max_cw`, `max_ch`			- max client rect size
 * __state__
-	* `visible`												start visible (true)
-	* `minimized`											start minimized (false)
-	* `maximized`											start maximized (false)
-	* `enabled`												start enabled (true)
+	* `visible`						- start visible (true)
+	* `minimized`					- start minimized (false)
+	* `maximized`					- start maximized (false)
+	* `enabled`						- start enabled (true)
 * __frame__
-	* `title` 												initial title ('')
-	* `transparent`										make it transparent (false)
+	* `title` 						- initial title ('')
+	* `transparent`				- make it transparent (false)
 * __behavior__
-	* `parent`												parent window (nil)
-	* `sticky`												moves with parent (false)
-	* `topmost`												stays on top of other windows (false)
-	* `minimizable`										allow minimization (true)
-	* `maximizable`										allow maximization (true)
-	* `closeable`											allow closing (true)
-	* `resizeable`											allow resizing (true)
-	* `fullscreenable`									allow full screen mode (true)
-	* `activable`											allow activation (true); only for 'toolbox' frames
-	* `autoquit`											quit the app on closing (false)
-	* `edgesnapping`										magnetized edges ('screen')
+	* `parent`						- parent window (nil)
+	* `sticky`						- moves with parent (false)
+	* `topmost`						- stays on top of other windows (false)
+	* `minimizable`				- allow minimization (true)
+	* `maximizable`				- allow maximization (true)
+	* `closeable`					- allow closing (true)
+	* `resizeable`					- allow resizing (true)
+	* `fullscreenable`			- allow full screen mode (true)
+	* `activable`					- allow activation (true); only for 'toolbox' frames
+	* `autoquit`					- quit the app on closing (false)
+	* `edgesnapping`				- magnetized edges ('screen')
 * __menu__
-	* `menu`													menu bar
+	* `menu`							- menu bar
 
 ### Closing
 
@@ -548,559 +548,565 @@ activable flag (for 'toolbox' windows)
 
 #### `app:hidden() -> t|f`
 
-check if app is hidden
+Check if the app is hidden.
 
 #### `app:hidden(t|f)`
 
-change app visibility
+Show or hide the app.
 
 #### `app:hide()`
 
-hide the app
+Hide the app.
 
 #### `app:unhide()`
 
-unhide the app
+Unhide the app
 
 #### `app:was_hidden()`
 
-event: app was hidden
+Event: app was hidden.
 
 #### `app:was_unhidden()`
 
-event: app was unhidden
+Event: app was unhidden.
 
 
 ### Window visibility
 
 #### `win:visible() -> t|f`
 
-check if window is visible
+Check if the window is visible. A minimized window is still considered visible.
 
 #### `win:visible(t|f)`
 
-change window's visibility
+Show or hide the window.
 
 #### `win:show()`
 
-show window (in its previous state)
+Show the window in its previous state (which includes minimized, maximized,
+or fullscreen state).
 
 #### `win:hide()`
 
-hide window
+Hide the window from the screen and from the taskbar.
 
 #### `win:was_shown()`
 
-event: window was shown
+Event: window was shown.
 
 #### `win:was_hidden()`
 
-event: window was hidden
+Event: window was hidden.
 
 
 ### Minimization
 
 #### `win:minimizable() -> t|f`
 
-minimizable flag
+Get the minimizable flag.
 
 #### `win:minimized() -> t|f`
 
-check if the window is minimized
+Get the windows' minimized state. This flag stays true if a minimized window
+is hidden. If the window was hidden, it is shown in minimized state.
 
 #### `win:minimize()`
 
-minimize the window
+Minimize the window.
 
 #### `win:was_minimized()`
 
-event: window was minimized
+Event: window was minimized.
 
 #### `win:was_unminimized()`
 
-event: window was unminimized
+Event: window was unminimized.
 
 
 ### Maximization
 
 #### `win:maximizable() -> t|f`
 
-maximizable flag
+Get the maximizable flag.
 
 #### `win:maximized() -> t|f`
 
-check if the window is maximized
+Get the window's maximized state. This flag stays true if a maximized
+window is minimized, hidden or in fullscreen mode.
 
 #### `win:maximize()`
 
-maximize the window
+Maximize the window. If the window was hidden, it is shown in maximized state.
 
 #### `win:was_maximized()`
 
-event: window was maximized
+Event: window was maximized.
 
 #### `win:was_unmaximized()`
 
-event: window was unmaximized
+Event: window was unmaximized.
 
 
 ### Fullscreen mode
 
 #### `win:fullscreenable() -> t|f`
 
-fullscreenable flag
+Check if a window is allowed to go in fullscreen mode. This flag only
+affects OSX which presents a fullscreen button on the title bar.
+Full screen mode can still be enabled programatically.
 
 #### `win:fullscreen() -> t|f`
 
-check if the window is in fullscreen state
+Get the fullscreen state.
 
 #### `win:fullscreen(t|f)`
 
-enter/exit fullscreen state
+Enter or exit fullscreen mode. If the window is hidden, it is shown
+in fullscreen mode.
 
 #### `win:entered_fullscreen()`
 
-event: entered fullscreen state
+Event: entered fullscreen mode.
 
 #### `win:exited_fullscreen()`
 
-event: exited fullscreen state
+Event: exited fullscreen mode.
 
 
 ### Restoring
 
 #### `win:restore()`
 
-restore from minimized or maximized state
+Restore from minimized, maximized or fullscreen state, i.e. unminimize
+if the window was minimized, exit fullscreen if it was in fullscreen mode,
+or unmaximize it if it was maximized (otherwise do nothing).
 
 #### `win:shownormal()`
 
-show in normal state
+Show the window in normal state.
 
 
 ### State strings
 
 #### `win:state() -> state`
 
-full window state string
+Get the window's full state string, eg. 'visible maximized active'.
 
 #### `app:state() -> state`
 
-full app state string
+Get the app's full state string, eg. 'visible active'.
 
 
 ### Enabled state
 
 #### `win:enabled(t|f)`
 
-enable/disable the window
+Enable/disable the window. A disabled window cannot receive
+mouse or keyboard focus. Disabled windows are useful for implementing
+modal windows by making a child window and disabling the parent
+while showing it (and enabling it back when closing it).
 
 #### `win:enabled() -> t|f`
 
-check if the window is enabled
+Check if the window is enabled.
 
 
 ### Client/screen conversion
 
 #### `win:to_screen(x, y) -> x, y`
 
-client space -> screen space conversion
+Client space -> screen space conversion.
 
 #### `win:to_client(x, y) -> x, y`
 
-screen space -> client space conversion
+Screen space -> client space conversion.
 
 
 ### Frame/client conversion
 
-#### `app:client_to_frame(frame, has_menu,`
+#### `app:client_to_frame(frame, has_menu, x, y, w, h) -> x, y, w, h`
 
-client rect -> window frame rect conversion
+Client rect -> window frame rect conversion.
 
-	`x, y, w, h) -> x, y, w, h`
-#### `app:frame_to_client(frame, has_menu,`
+#### `app:frame_to_client(frame, has_menu, x, y, w, h) -> x, y, w, h`
 
-window frame rect -> client rect conversion
+Window frame rect -> client rect conversion.
 
-	`x, y, w, h) -> x, y, w, h`
-#### `app:frame_extents(frame, has_menu)`
+#### `app:frame_extents(frame, has_menu) -> left, top, right, bottom`
 
-frame extents for a frame type
-
-	`-> left, top, right, bottom`
+Get the frame extents for a frame type.
 
 ### Size and position
 
 #### `win:frame_rect() -> x, y, w, h`
 
-get frame rect in current state
+Get frame rect in current state.
 
 #### `win:frame_rect(x, y, w, h)`
 
-set frame rect (and change state to normal)
+Get frame rect (and change state to normal).
 
 #### `win:normal_frame_rect() -> x, y, w, h`
 
-get frame rect in normal state
+Get frame rect in normal state.
 
 #### `win:client_rect() -> cx, cy, cw, ch`
 
-get client rect in current state
+Get client rect in current state.
 
 #### `win:client_rect(cx, cy, cw, ch)`
 
-set client rect (and change state to normal)
+Set client rect (and change state to normal).
 
 #### `win:client_size() -> cw, ch`
 
-get client rect size
+Get a window's client rect size.
 
 #### `win:client_size(cw, ch)`
 
-set client rect size
+Resize the window by client rect.
 
-#### `win:sizing(when, how, x, y, w, h)`
+#### `win:sizing(when, how, x, y, w, h) -> [x, y, w, h]`
 
-event: window size/position is about to change
+Event: window size/position is about to change.
+Return a new rectangle to affect the window's final size and position.
 
-	`-> [x, y, w, h]`
+> NOTE: not triggered on Linux.
+
 #### `win:was_moved(cx, cy)`
 
-event: window was moved
+Event: window was moved.
 
 #### `win:was_resized(cw, ch)`
 
-event: window was resized
+Event: window was resized.
 
 
 ### Size constraints
 
 #### `win:resizeable() -> t|f`
 
-resizeable flag
+Get the resizeable flag.
 
 #### `win:minsize() -> cw, ch`
 
-get min client rect size
+Get the minimum client rect size.
 
 #### `win:minsize(cw, ch)`
 
-set min client rect size
+Set the minimum client rect size.
 
 #### `win:maxsize() -> cw, ch`
 
-get max client rect size
+Get the maximum client rect size.
 
 #### `win:maxsize(cw, ch)`
 
-set max client rect size
+Set the maximum client rect size.
 
 
 ### Window edge snapping
 
 #### `win:edgesnapping() -> mode`
 
-get edge snapping mode
+Get edge snapping mode.
 
 #### `win:edgesnapping(mode)`
 
-set edge snapping mode
+Set edge snapping mode (any combination of 'app other screen all').
 
 #### `win:magnets(which) -> {r1, ...}`
 
-event: get edge snapping rectangles
+Event: get edge snapping rectangles.
 
 
 ### Window z-order
 
 #### `win:topmost() -> t|f`
 
-get the topmost flag
+Get the topmost flag.
 
 #### `win:topmost(t|f)`
 
-set the topmost flag
+Set the topmost flag. A topmost window stays on top of other non-topmost windows.
 
 #### `win:raise([rel_to_win])`
 
-raise above all windows/specific window
+Raise above all windows/specific window.
 
 #### `win:lower([rel_to_win])`
 
-lower below all windows/specific window
+Lower below all windows/specific window.
 
 
 ### Window title
 
 #### `win:title() -> title`
 
-get title
+Get window's title.
 
 #### `win:title(title)`
 
-set title
+Set window's title.
 
 
 ### Displays
 
 #### `app:displays() -> {disp1, ...}`
 
-get displays (in no specific order)
+Get displays (in no specific order).
 
 #### `app:display_count() -> n`
 
-number of displays
+Number of displays.
 
 #### `app:main_display() -> disp	`
 
-get the display whose screen rect starts at (0,0)
+Get the display whose screen rect starts at (0,0).
 
 #### `app:active_display() -> disp`
 
-get the display which has keyboard focus
+Get the display which has keyboard focus.
 
 #### `disp:screen_rect() -> x, y, w, h`
-
-display's screen rectangle
-
 #### `disp.x, disp.y, disp.w, disp.h`
 
-
+Display's screen rectangle.
 
 #### `disp:client_rect() -> x, y, w, h`
-
-display's screen rectangle minus the taskbar
-
 #### `disp.cx, disp.cy, disp.cw, disp.ch`
 
-
+Display's screen rectangle minus the taskbar.
 
 #### `app:displays_changed()`
 
-event: displays changed
+Event: displays changed.
 
 #### `win:display() -> disp`
 
-the display the window is on
+The display the window is on.
 
 
 ### Cursors
 
 #### `win:cursor() -> name`
 
-get the cursor
+Get the mouse cursor.
 
 #### `win:cursor(name)`
 
-set the cursor
+Set the mouse cursor.
 
 
 ### Frame flags
 
 #### `win:frame() -> frame`
 
-window's frame: 'normal', 'none', 'toolbox'
+Window's frame. One of 'normal', 'none', 'toolbox'.
 
 #### `win:transparent() -> t|f`
 
-transparent flag
+Transparent flag.
 
 
 ### Child windows
 
 #### `win:parent() -> win|nil`
 
-window's parent
+Window's parent.
 
 #### `win:children() -> {win1, ...}`
 
-window's children
+Window's children.
 
 #### `win:sticky() -> t|f`
 
-sticky flag
+Sticky flag, for child windows to move with the parent when the parent is moved.
 
 
 ### Keyboard
 
 #### `app:key(query) -> t|f`
 
-get key pressed and toggle states
+Get key pressed and toggle states. TODO
 
 #### `win:keydown(key)`
 
-event: a key was pressed
+Event: a key was pressed.
 
 #### `win:keyup(key)`
 
-event: a key was depressed
+Event: a key was depressed.
 
 #### `win:keypress(key)`
 
-event: sent after each keydown, including repeats
+Event: sent after each keydown, including repeats.
 
 #### `win:keychar(char)`
 
-event: sent after keypress for displayable characters; char is utf-8
+Event: sent after keypress for displayable characters; char is utf-8.
 
 
 ### Hi-DPI support
 
 #### `app:autoscaling() -> t|f`
 
-check if autoscaling is enabled
+Check if autoscaling is enabled.
 
 #### `app:autoscaling(t|f)`
 
-enable/disable autoscaling
+Enable/disable autoscaling.
 
 #### `disp.scalingfactor`
 
-display's scaling factor
+Display's scaling factor.
 
 #### `win:scalingfactor_changed()`
 
-a window's display scaling factor changed
+A window's display scaling factor changed or most likely the window
+was moved to a screen with a different scaling factor.
 
 
 ### Views
 
 #### `win:views() -> {view1, ...}`
 
-list views
+List views.
 
 #### `win:view_count() -> n`
 
-number of views
+Number of views.
 
 #### `win:view(t) -> view`
 
-create a view (fields of _t_ below)
+Create a view (fields of _t_ below).
 
-*`x`, `y`, `w`, `h`*									view's position (in window's client space) and size
-*`visible`*												start visible (true)
-*`anchors`*												resizing anchors ('lt'); can be 'ltrb'
+*`x`, `y`, `w`, `h`	- view's position (in window's client space) and size
+*`visible`				- start visible (true)
+*`anchors`				- resizing anchors ('lt'); can be 'ltrb'
+
 #### `view:free()`
 
-destroy the view
+Destroy the view.
 
 #### `view:dead() -> t|f`
 
-check if the view was freed
+Check if the view was destroyed.
 
 #### `view:visible() -> t|f`
 
-get visibility
+Check if the view is visible.
 
 #### `view:visible(t|f)`
 
-set visibility
+Show or hide the view.
 
 #### `view:show()`
 
-show the view
+Show the view.
 
 #### `view:hide()`
 
-hide the view
+Hide the view. The view's position is preserved (anchors keep working).
 
 #### `view:rect() -> x, y, w, h`
 
-get view's position (in window's client space) and size
+Get view's position (in window's client space) and size.
 
 #### `view:rect(x, y, w, h)`
 
-set view's position and/or size
+Set view's position and/or size.
 
 #### `view:size() -> w, h`
 
-get view's size
+Get view's size.
 
 #### `view:size(w, h)`
 
-set view's size
+Set view's size.
 
 #### `view:anchors() -> anchors`
 
-get anchors
+Get anchors.
 
 #### `view:anchors(anchors)`
 
-set anchors
+Set anchors. The anchors can be any combination of 'ltrb' characters
+representing left, top, right and bottom anchors respectively.
 
 #### `view:rect_changed(x, y, w, h)`
 
-event: view's size and/or position changed
+Event: view's size and/or position changed.
 
 #### `view:was_moved(x, y)`
 
-event: view was moved
+Event: view was moved.
 
 #### `view:was_resized(w, h)`
 
-event: view was resized
+Event: view was resized.
 
 
 ### Mouse
 
 #### `win/view:mouse() -> t`
 
-mouse state: _x, y, inside, left, right, middle, ex1, ex2_
+Mouse state: _x, y, inside, left, right, middle, ex1, ex2_
 
 #### `win/view:mouseenter()`
 
-event: mouse entered the client area of the window
+Event: mouse entered the client area of the window.
 
 #### `win/view:mouseleave()`
 
-event: mouse left the client area of the window
+Event: mouse left the client area of the window.
 
 #### `win/view:mousemove(x, y)`
 
-event: mouse was moved
+Event: mouse was moved.
 
 #### `win/view:mousedown(button, x, y)`
 
-event: mouse button was pressed; button is _'left', 'right', 'middle', 'ex1', 'ex2'_
+Event: mouse button was pressed; button can be 'left', 'right', 'middle', 'ex1', 'ex2'.
 
 #### `win/view:mouseup(button, x, y)`
 
-event: mouse button was depressed
+Event: mouse button was depressed.
 
 #### `win/view:click(button, count, x, y)`
 
-event: mouse button was clicked
+Event: mouse button was clicked.
 
 #### `win/view:wheel(delta, x, y)`
 
-event: mouse wheel was moved
+Event: mouse wheel was moved.
 
 #### `win/view:hwheel(delta, x, y)`
 
-event: mouse horizontal wheel was moved
+Event: mouse horizontal wheel was moved.
 
 
 ### Rendering
 
 #### `win/view:repaint()`
 
-event: window needs redrawing
+Event: window needs redrawing.
 
 #### `win/view:invalidate()`
 
-request window redrawing
+Request window redrawing.
 
 #### `win/view:bitmap() -> bmp`
 
-get a bgra8 [bitmap] object to draw on
+Get a bgra8 [bitmap] object to draw on.
 
 #### `bmp:clear()`
 
-fill the bitmap with zero bytes
+Fill the bitmap with zero bytes.
 
 #### `bmp:cairo() -> cr`
 
-get a cairo context on the bitmap
+Get a cairo context on the bitmap.
 
 #### `win/view:free_cairo()`
 
