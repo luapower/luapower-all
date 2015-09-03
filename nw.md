@@ -10,10 +10,10 @@ platforms: mingw32, mingw64, osx32, osx64
 Cross-platform library for accessing windows, graphics and input
 in a consistent manner across Windows, Linux and OS X.
 
-Supports transparent windows, unicode, rgba8 bitmaps everywhere,
-drawing via [cairo] and [opengl], edge snapping, fullscreen mode,
-multiple displays, hi-dpi, key mappings, triple-click events,
-native menus, notification icons, and more.
+Supports transparent windows, bgra8 bitmaps everywhere, drawing via [cairo]
+and [opengl], edge snapping, fullscreen mode, multiple displays, hi-dpi,
+key mappings, triple-click events, timers, cursors, native menus,
+notification icons, all text in utf8, and more.
 
 ## API
 
@@ -28,7 +28,7 @@ __app loop__
 __app quitting__
 `app:quit()`											quit app, i.e. close all windows and stop the loop
 `app:autoquit(t|f)`									flag: quit the app when the last window is closed
-`app:autoquit() -> t|f`								get app autoquit flag
+`app:autoquit() -> t|f`								get app autoquit flag (true)
 `app:quitting() -> [false]`						event: quitting (return false to refuse)
 `win:autoquit(t|f)`									flag: quit the app when the window is closed
 `win:autoquit() -> t|f`								get window autoquit flag
@@ -39,7 +39,7 @@ __timers__
 `app:sleep(seconds)`									sleep without blocking inside a function run with app:run()
 __window list__
 `app:windows() -> {win1, ...}`					all windows in creation order
-`app:window_count([top_level]) -> n`			number of (top-level) windows
+`app:window_count([filter]) -> n`				number of windows
 `app:window_created(win)`							event: a window was created
 `app:window_closed(win)`							event: a window was closed
 __window creation__
@@ -67,14 +67,14 @@ __window creation__
 *`maximizable`*										allow maximization (true)
 *`closeable`*											allow closing (true)
 *`resizeable`*											allow resizing (true)
-*`fullscreenable`*									allow full screen mode (true)
+*`fullscreenable`*									allow fullscreen mode (true)
 *`activable`*											allow activation (true); only for 'toolbox' frames
 *`autoquit`*											quit the app on closing (false)
 *`edgesnapping`*										magnetized edges ('screen')
 *__menu__*
 *`menu`*													menu bar
 __closing__
-`win:close()`											close the window and destroy it
+`win:close([force])`									close the window and destroy it
 `win:dead() -> t|f`									check if the window was destroyed
 `win:closing()`										event: closing (return false to refuse)
 `win:was_closed()`									event: closed (but not dead yet)
@@ -87,6 +87,7 @@ __app activation__
 __window activation__
 `app:active_window() -> win`						the active window, if any
 `win:active() -> t|f`								check if window is active
+`win:activate()`										activate the window
 `win:was_activated()`								event: window was activated
 `win:was_deactivated()`								event: window was deactivated
 `win:activable() -> t|f`							activable flag (for 'toolbox' windows)
@@ -360,11 +361,15 @@ initializes nw with the default backend for the current platform.
 
 #### `app:run()`
 
-Run the loop. Ignore if already running.
+Run the loop.
+
+Calling run() when the loop is already running does nothing.
 
 #### `app:stop()`
 
-Stop the loop. Ignore if not running.
+Stop the loop.
+
+Calling stop() when the loop is not running does nothing.
 
 #### `app:running() -> t|f`
 
@@ -374,41 +379,44 @@ Check if the loop is running.
 
 #### `app:quit()`
 
-Quit app, i.e. close all windows and stop the loop. The first window
-which refuses to close (by returning false from its `closing` event)
-cancels the quitting process.
+Quit app, i.e. close all windows and stop the loop.
 
-> Calling quit() when the loop is not running or if already quitting
-does nothing.
+Quitting is a multi-phase process:
 
-> If new windows are created before all current windows are closed
-the quit process is canceled.
+	1. the `app:quitting()` event is fired. If it returns false,
+	quitting is aborted.
+	2. the `win:closing()` event is fired on all top-level
+	(i.e. without a parent) windows. If any of them returns false,
+	quitting is aborted.
+	3. `win:close(true)` is called on all windows. If new windows are
+	created during this process, quitting is aborted.
+	4. the app loop is stopped.
 
-#### `app:autoquit(t|f)`
+Calling quit() when the loop is not running or if quitting
+is in progress does nothing.
 
-Quit the app when the last window is closed.
+#### `app:autoquit(t|f)` <br/> `app:autoquit() -> t|f`
 
-#### `app:autoquit() -> t|f`
-
-Get the app autoquit flag.
+Get/set the app autoquit flag (default: true).
+Enabling it causes the app to quit when the last window is closed.
 
 #### `app:quitting() -> [false]`
 
-Event: quitting (return false to refuse).
+Event: quitting. Return false from this event to refuse.
 
 #### `win:autoquit(t|f)`
-
-Quit the app when the window is closed.
-
 #### `win:autoquit() -> t|f`
 
-Get window autoquit flag.
+Get/set the window autoquit flag (default: false).
+Enabling it causes the app when this window is closed.
+This flag can be used on the app's main window if there is such thing.
 
 ### Timers
 
 #### `app:runevery(seconds, func)`
 
-Run a function on a timer (timer stops if func returns false).
+Run a function on a recurrent timer. The timer can be stopped from inside
+the function by returning false.
 
 #### `app:runafter(seconds, func)`
 
@@ -416,33 +424,44 @@ Run a function on a timer once.
 
 #### `app:run(func)`
 
-Run a function on a zero-second timer once.
+Run a function on a zero-second timer once. This allows calling
+`app:sleep()` inside the function (see below).
 
-If the loop is not already started, it is started and stopped after func finishes.
+If the loop is not already started, it is started and then stopped after
+the function finishes.
 
 #### `app:sleep(seconds)`
 
-Sleep without blocking inside a function run with app:run().
+Sleep without blocking inside a function run with app:run(). While this
+function is sleeping (can you say "coroutine"?), other timers
+and events continue to be processed.
 
-> Calling this outside an app:run() function raises an error.
+This is poor man's multi-threading based on timers and coroutines.
+It can be used to create complex temporal sequences (eg. animation)
+withoug having to chain timer callbacks.
+
+Calling sleep() outside an app:run() function raises an error.
 
 ### Window list
 
 #### `app:windows() -> {win1, ...}`
 
-List all windows in creation order.
+Get all windows in creation order.
 
-#### `app:window_count([top_level]) -> n`
+#### `app:window_count([filter]) -> n`
 
-Number of (top-level) windows.
+Get the number of windows (dead or alive). `filter` can be 'top-level'
+which returns the number of top-level (i.e. non-parented) windows.
 
 #### `app:window_created(win)`
 
 Event: a window was created.
+Fired right after the window's `was_created` event is fired.
 
 #### `app:window_closed(win)`
 
 Event: a window was closed.
+Fired right after the window's `was_closed` event is fired.
 
 ### Window creation
 
@@ -473,7 +492,7 @@ Create a window (fields of _t_ below):
 	* `maximizable`				- allow maximization (true)
 	* `closeable`					- allow closing (true)
 	* `resizeable`					- allow resizing (true)
-	* `fullscreenable`			- allow full screen mode (true)
+	* `fullscreenable`			- allow fullscreen mode (true)
 	* `activable`					- allow activation (true); only for 'toolbox' frames
 	* `autoquit`					- quit the app on closing (false)
 	* `edgesnapping`				- magnetized edges ('screen')
@@ -484,67 +503,91 @@ Create a window (fields of _t_ below):
 
 #### `win:close()`
 
-close the window and destroy it
+Close the window and destroy it.
+Any children are closed first.
 
 #### `win:dead() -> t|f`
 
-check if the window was destroyed
+Check if the window was destroyed.
 
 #### `win:closing()`
 
-event: closing (return false to refuse)
+Event: The window is about to close.
+Return false from the event handler to refuse.
 
 #### `win:was_closed()`
 
-event: closed (but not dead yet)
+Event: The window was closed.
+Fired after all children are closed, but before the window itself
+is destroyed (`win:dead()` still returns true).
 
 #### `win:closeable() -> t|f`
 
-closeable flag
-
+Get the closeable flag (read-only).
 
 ### App activation
+
 #### `app:active() -> t|f`
 
-check if the app is active
+Check if the app is active.
 
 #### `app:activate()`
 
-activate the app
+Activate the app, which implies activating the last window that was active
+before the app got deactivated.
+
+On Windows, this only flashes the window on the taskbar instead of popping
+it up in user's face. OSX and Linux don't have this feature, so calling
+activate() on these platforms is very, very rude.
 
 #### `app:was_activated()`
 
-event: app was activated
+Event: the app was activated.
 
 #### `app:was_deactivated()`
 
-event: app was deactivated
+Event: the app was deactivated.
 
 
 ### Window activation
 
 #### `app:active_window() -> win`
 
-the active window, if any
+Get the active window, if any.
+
+When the app is inactive, this always returns nil.
 
 #### `win:active() -> t|f`
 
-check if window is active
+Check if the window is active.
+
+When the app is inactive, this returns false for all windows.
+
+#### `win:activate()`
+
+Activate the window. If the app is inactive, this does not activate the app.
+Instead it only marks this window to be activated when the app becomes active.
+If you want to force the window to become active, call `app:activate()`
+after calling this function (very rude).
 
 #### `win:was_activated()`
 
-event: window was activated
+Event: window was activated.
 
 #### `win:was_deactivated()`
 
-event: window was deactivated
+Event: window was deactivated.
 
 #### `win:activable() -> t|f`
 
-activable flag (for 'toolbox' windows)
+Get the activable flag (read-only; only for windows with 'toolbox' frame).
 
+Toolbox windows can be made non-activable. It is sometimes useful to have
+toolboxes that don't steal keyboard focus away from the main window when clicked.
 
-### App visibility (OSX)
+> __NOTE:__ This [does not work](https://github.com/luapower/nw/issues/26) in Linux.
+
+### App visibility (OSX only)
 
 #### `app:hidden() -> t|f`
 
@@ -560,7 +603,7 @@ Hide the app.
 
 #### `app:unhide()`
 
-Unhide the app
+Unhide the app.
 
 #### `app:was_hidden()`
 
@@ -583,8 +626,10 @@ Show or hide the window.
 
 #### `win:show()`
 
-Show the window in its previous state (which includes minimized, maximized,
-or fullscreen state).
+Show the window in its previous state (which can include any combination
+of minimized, maximized, and fullscreen states).
+
+If the window is minimized it will not be activated, otherwise it will.
 
 #### `win:hide()`
 
@@ -603,16 +648,16 @@ Event: window was hidden.
 
 #### `win:minimizable() -> t|f`
 
-Get the minimizable flag.
+Get the minimizable flag (read-only).
 
 #### `win:minimized() -> t|f`
 
-Get the windows' minimized state. This flag stays true if a minimized window
-is hidden. If the window was hidden, it is shown in minimized state.
+Get the minimized state. This flag stays true if a minimized window is hidden.
 
 #### `win:minimize()`
 
-Minimize the window.
+Minimize the window and deactivate it. If the window is hidden,
+it is shown in minimized state (and the taskbar button is not activated).
 
 #### `win:was_minimized()`
 
@@ -627,16 +672,19 @@ Event: window was unminimized.
 
 #### `win:maximizable() -> t|f`
 
-Get the maximizable flag.
+Get the maximizable flag (read-only).
 
 #### `win:maximized() -> t|f`
 
-Get the window's maximized state. This flag stays true if a maximized
-window is minimized, hidden or in fullscreen mode.
+Get the maximized state. This flag stays true if a maximized window
+is minimized, hidden or enters fullscreen mode.
 
 #### `win:maximize()`
 
-Maximize the window. If the window was hidden, it is shown in maximized state.
+Maximize the window and activate it. If the window was hidden,
+it is shown in maximized state and activated.
+
+If the window is already maximized it is not activated.
 
 #### `win:was_maximized()`
 
@@ -651,9 +699,9 @@ Event: window was unmaximized.
 
 #### `win:fullscreenable() -> t|f`
 
-Check if a window is allowed to go in fullscreen mode. This flag only
-affects OSX which presents a fullscreen button on the title bar.
-Full screen mode can still be enabled programatically.
+Check if a window is allowed to go in fullscreen mode (read-only).
+This flag only affects OSX - the only platform which presents a fullscreen
+button on the title bar. Fullscreen mode can always be entered programatically.
 
 #### `win:fullscreen() -> t|f`
 
@@ -661,8 +709,10 @@ Get the fullscreen state.
 
 #### `win:fullscreen(t|f)`
 
-Enter or exit fullscreen mode. If the window is hidden, it is shown
-in fullscreen mode.
+Enter or exit fullscreen mode and activate the window. If the window is hidden
+or minimized, it is shown in fullscreen mode and activated.
+
+If the window is already in the desired mode it is not activated.
 
 #### `win:entered_fullscreen()`
 
@@ -681,9 +731,13 @@ Restore from minimized, maximized or fullscreen state, i.e. unminimize
 if the window was minimized, exit fullscreen if it was in fullscreen mode,
 or unmaximize it if it was maximized (otherwise do nothing).
 
+The window is always activated unless it's in normal mode.
+
 #### `win:shownormal()`
 
 Show the window in normal state.
+
+The window is always activated even when it's already in normal mode.
 
 
 ### State strings
@@ -700,78 +754,79 @@ Get the app's full state string, eg. 'visible active'.
 ### Enabled state
 
 #### `win:enabled(t|f)`
-
-Enable/disable the window. A disabled window cannot receive
-mouse or keyboard focus. Disabled windows are useful for implementing
-modal windows by making a child window and disabling the parent
-while showing it (and enabling it back when closing it).
-
 #### `win:enabled() -> t|f`
 
-Check if the window is enabled.
+Get/set the enabled flag. A disabled window cannot receive
+mouse or keyboard focus. Disabled windows are useful for implementing
+modal windows: make a child window and disable the parent while showing
+the child, and enable back the parent when closing the child.
+
+> __NOTE:__ This [doesn't work](https://github.com/luapower/nw/issues/25) on Linux.
 
 
 ### Client/screen conversion
 
 #### `win:to_screen(x, y) -> x, y`
 
-Client space -> screen space conversion.
+Convert a point from the window's client space to screen space.
 
 #### `win:to_client(x, y) -> x, y`
 
-Screen space -> client space conversion.
+Convert a point from screen space to the window's client space.
 
 
 ### Frame/client conversion
 
 #### `app:client_to_frame(frame, has_menu, x, y, w, h) -> x, y, w, h`
 
-Client rect -> window frame rect conversion.
+Given a client rectangle, return the frame rectangle for a certain
+frame type. If `has_menu` is true, then the window also has a menu.
 
 #### `app:frame_to_client(frame, has_menu, x, y, w, h) -> x, y, w, h`
 
-Window frame rect -> client rect conversion.
+Given a frame rectangle, return the client rectangle for a certain
+frame type. If `has_menu` is true, then the window also has a menu.
 
 #### `app:frame_extents(frame, has_menu) -> left, top, right, bottom`
 
-Get the frame extents for a frame type.
+Get the frame extents for a certain frame type.
 
 ### Size and position
 
 #### `win:frame_rect() -> x, y, w, h`
 
-Get frame rect in current state.
+Get the frame rect in current state (in screen coordinates).
 
 #### `win:frame_rect(x, y, w, h)`
 
-Get frame rect (and change state to normal).
+Set the frame rect (and change state to normal).
 
 #### `win:normal_frame_rect() -> x, y, w, h`
 
-Get frame rect in normal state.
+Get the frame rect in normal state (in screen coordinates).
 
 #### `win:client_rect() -> cx, cy, cw, ch`
 
-Get client rect in current state.
+Get the client rect in current state (in screen coordinates).
 
 #### `win:client_rect(cx, cy, cw, ch)`
 
-Set client rect (and change state to normal).
+Move/resize the window to accomodate a specified client area position and size.
 
 #### `win:client_size() -> cw, ch`
 
-Get a window's client rect size.
+Get the size of the window's client area.
 
 #### `win:client_size(cw, ch)`
 
-Resize the window by client rect.
+Resize the window to accomodate a specified client area size.
 
 #### `win:sizing(when, how, x, y, w, h) -> [x, y, w, h]`
 
 Event: window size/position is about to change.
 Return a new rectangle to affect the window's final size and position.
 
-> NOTE: not triggered on Linux.
+> __NOTE:__ This does not fire in Linux (most windows managers don't allow it).
 
 #### `win:was_moved(cx, cy)`
 
@@ -808,27 +863,25 @@ Set the maximum client rect size.
 ### Window edge snapping
 
 #### `win:edgesnapping() -> mode`
-
-Get edge snapping mode.
-
 #### `win:edgesnapping(mode)`
 
-Set edge snapping mode (any combination of 'app other screen all').
+Get/set edge snapping mode, which can be any combination of the words
+'app', 'other', 'screen', 'all' separated by spaces (eg. 'app screen').
+
+> __NOTE:__ Edge snapping doesn't work on Linux. It is however already
+(poorly) implemented by some window managers (Unity) so all is not lost.
 
 #### `win:magnets(which) -> {r1, ...}`
 
-Event: get edge snapping rectangles.
+Event: get edge snapping rectangles (rectangles are tables with x, y, w, h fields).
 
 
 ### Window z-order
 
 #### `win:topmost() -> t|f`
-
-Get the topmost flag.
-
 #### `win:topmost(t|f)`
 
-Set the topmost flag. A topmost window stays on top of other non-topmost windows.
+Get/set the topmost flag. A topmost window stays on top of other non-topmost windows.
 
 #### `win:raise([rel_to_win])`
 
@@ -842,15 +895,15 @@ Lower below all windows/specific window.
 ### Window title
 
 #### `win:title() -> title`
-
-Get window's title.
-
 #### `win:title(title)`
 
-Set window's title.
+Get/set window's title.
 
 
 ### Displays
+
+In non-mirrored multi-monitor setups, the displays are mapped
+on a virtual surface, with the main display at (0, 0).
 
 #### `app:displays() -> {disp1, ...}`
 
@@ -858,11 +911,11 @@ Get displays (in no specific order).
 
 #### `app:display_count() -> n`
 
-Number of displays.
+Get the display count without wasting a table.
 
 #### `app:main_display() -> disp	`
 
-Get the display whose screen rect starts at (0,0).
+Get the display whose screen rect starts at (0, 0).
 
 #### `app:active_display() -> disp`
 
@@ -1322,18 +1375,30 @@ init with a specific backend (can be called only once)
 
 ## API Notes
 
+### Coordinate systems
+
+  * window-relative positions are relative to the top-left corner of the window's client area.
+  * screen-relative positions are relative to the top-left corner of the main screen.
 
 ### State variables
 
-State variables are independent of each other, so a window can be maximized, in full screen mode and hidden
-all at the same time. Changing the state to 'minimized' won't affect the fact that the window is still hidden,
-nor that it is in full screen mode. If the window is shown, it will be in full screen mode. Out of full screen
-mode it will be minimized. Likewise, moving or resizing the window affects the frame rectangle of the
-'normal' mode. If the window is maximized, resizing it won't have an immediate effect, but changing the state
-to 'normal' will show the window in its new size.
+State variables are independent of each other, so a window can be maximized,
+maximized and hidden all at the same time. If such a window is shown, it will
+show minimized. If the user unminimizes it, it will restore to maximized state.
 
-Maximizing or restoring a window while visible has the side effect of activating the window,
-if it's not active already.
+### Common mistakes
+
+#### Assuming that calls are blocking
+
+The number one mistake you can make is to assume that all calls are blocking.
+It's very easy to make that mistake because some of them actually are blocking
+on some platforms (in order of sanity: Windows, OSX and Linux -- X11 designers
+particularly confuse UI design with network protocol design so all calls are
+asynchronous). In a perfect world they would all be blocking and non-failing
+which would make programming with them much more robust. The real world is
+an unspecified mess. So never, never mix queries with commands, i.e.
+never assume that when you perform some command the state of the window
+actually changed when the call returns.
 
 ### Closing windows
 
