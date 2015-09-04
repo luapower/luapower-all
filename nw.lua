@@ -334,7 +334,7 @@ function app:windows()
 end
 
 function app:window_count(filter)
-	if filter == 'top-level' then
+	if filter == 'root' then
 		local n = 0
 		for i,win in ipairs(self._windows) do
 			n = n + (not win:dead() and not win:parent() and 1 or 0)
@@ -431,7 +431,7 @@ function window:_new(app, backend_class, useropt)
 		assert(opt.parent, 'sticky windows must have a parent')
 	end
 
-	--top-level toolboxes don't make sense because they don't show in taskbar
+	--unparented toolboxes don't make sense because they don't show in taskbar
 	--so they can't be activated when they are completely behind other windows.
 	--they can't be (minimiz|maximiz|fullscreen)able either (winapi/X11 limitation).
 	if frame == 'toolbox' then
@@ -542,8 +542,8 @@ function window:_backend_closing()
 
 	if self:autoquit() or (
 		self.app:autoquit()
-		and not self:parent() --closing a top-level window
-		and self.app:window_count'top-level' == 1 --the only one
+		and not self:parent() --closing a root window
+		and self.app:window_count'root' == 1 --the only one
 	) then
 		self._quitting = true
 		return self.app:_canquit()

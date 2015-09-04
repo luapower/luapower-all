@@ -19,13 +19,13 @@ notification icons, all text in utf8, and more.
 
 <div class=small>
 -------------------------------------------- -----------------------------------------------------------------------------
-__app__
-`nw:app() -> app`										the application object (singleton)
+__app object__
+[`nw:app() -> app`](nw_app)						the application object (singleton)
 __app loop__
 `app:run()`												run the loop
 `app:stop()`											stop the loop
 `app:running() -> t|f`								check if the loop is running
-__app quitting__
+__quitting__
 `app:quit()`											quit the app, i.e. close all windows and stop the loop
 `app:autoquit(t|f)`									flag: quit the app when the last window is closed
 `app:autoquit() -> t|f`								get app autoquit flag (true)
@@ -346,20 +346,26 @@ and [milestones](https://github.com/luapower/nw/milestones).
 
 ## Backends
 
-  * cocoa: OSX 10.7+
-  * winapi: Windows XP/2000+
-  * xlib: Ubuntu/Unity 10.04+
+API            Library     Platform                Most tested on
+-------------- ----------- ----------------------- -------------------------
+Windows API    [winapi]    Windows XP/2000+        Windows 7 x64
+Cocoa          [objc]      OSX 10.7+               OSX 10.9
+Xlib           [xlib]      Ubuntu 10.04+ (Unity)   Ubuntu 10.04 (Unity)
 
 ## API Documentation
 
-### App
+### The app object
+
+The app object is the API from which everything else gets created.
 
 #### `nw:app() -> app`
 
-Get the singleton application object. This calls `nw:init()` which
-initializes nw with the default backend for the current platform.
+Get the global application object.
 
-### App loop
+This calls `nw:init()` which initializes the library with the default
+backend for the current platform.
+
+### The app loop
 
 #### `app:run()`
 
@@ -377,7 +383,7 @@ Calling stop() when the loop is not running does nothing.
 
 Check if the loop is running.
 
-### App quitting
+### Quitting
 
 #### `app:quit()`
 
@@ -402,8 +408,8 @@ When this flag is true, the app quits when the last window is closed.
 
 #### `app:quitting() -> [false]`
 
-Event: the app wants to quit, but none of the windows were yet closed
-to that effect. Return false from this event to refuse to quit.
+Event: the app wants to quit, but nothing was done to that effect.
+Return false from this event to cancel the process.
 
 #### `win:autoquit(t|f)` <br> `win:autoquit() -> t|f`
 
@@ -424,8 +430,8 @@ Run a function on a timer once.
 
 #### `app:run(func)`
 
-Run a function on a zero-second timer once. This allows calling
-`app:sleep()` inside the function (see below).
+Run a function on a zero-second timer once, inside a coroutine.
+This allows calling `app:sleep()` inside the function (see below).
 
 If the loop is not already started, it is started and then stopped after
 the function finishes.
@@ -433,8 +439,8 @@ the function finishes.
 #### `app:sleep(seconds)`
 
 Sleep without blocking from inside a function that was run via app:run().
-While the function is sleeping (can you say "coroutine"?), other timers
-and events continue to be processed.
+While the function is sleeping, other timers and events continue
+to be processed.
 
 This is poor man's multi-threading based on timers and coroutines.
 It can be used to create complex temporal sequences (eg. animation)
@@ -450,8 +456,8 @@ Get all windows in creation order.
 
 #### `app:window_count([filter]) -> n`
 
-Get the number of windows (dead or alive). `filter` can be 'top-level'
-which returns the number of top-level (i.e. non-parented) windows.
+Get the number of windows (dead or alive). `filter` can be 'root'
+which returns the number of non-dead non-parented windows.
 
 #### `app:window_created(win)`
 
@@ -482,6 +488,7 @@ Create a window (fields of _t_ below):
 	* `maximized`					- start maximized (false)
 	* `enabled`						- start enabled (true)
 * __frame__
+   * `frame`                  - frame type: 'normal', 'none', 'toolbox' ('normal')
 	* `title` 						- initial title ('')
 	* `transparent`				- make it transparent (false)
 * __behavior__
@@ -798,7 +805,7 @@ Resize the window to accomodate a specified client area size.
 Event: window size/position is about to change.
 Return a new rectangle to affect the window's final size and position.
 
-> __NOTE:__ This does not fire in Linux (most windows managers don't allow it).
+__NOTE:__ This does not fire in Linux (most windows managers don't allow it).
 
 #### `win:was_moved(cx, cy)`
 
@@ -925,6 +932,21 @@ Get the window frame type (read-only). Can be 'normal', 'none', or 'toolbox'.
 Get the transparent flag (read-only).
 
 ### Child windows
+
+Child windows are top-level windows that stay on top of their parent
+and don't appear in the taskbar.
+
+The following defaults are different for child windows:
+
+  * minimizable: false
+  * maximizable: false
+  * fullscreenable: false
+  * edgesnapping: 'parent siblings screen'
+  * sticky: true
+
+Child windows can't be minimizable because they don't appear in the taskbar.
+
+__NOTE:__ The sticky flag [doesn't work](https://github.com/luapower/nw/issues/27) on Linux.
 
 #### `win:parent() -> win|nil`
 
