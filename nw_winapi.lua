@@ -1639,7 +1639,6 @@ function menu:set_enabled(index, enabled)
 	self.winmenu.items:setenabled(index, enabled)
 end
 
---in Windows, each window has its own menu bar.
 function window:menubar()
 	if not self._menu then
 		local menubar = winapi.MenuBar()

@@ -1556,7 +1556,7 @@ function menu:_parseargs(index, text, action, options)
 	--		([index, ]text, [action], [options])
 	--		{index=, text=, action=, optionX=...}
 	if type(index) == 'table' then
-		args = index
+		args = glue.update({}, index)
 		index = args.index
 	elseif type(index) ~= 'number' then
 		index, args.text, args.action, options = nil, index, text, action --index is optional
