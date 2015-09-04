@@ -1005,7 +1005,7 @@ function window:_getmagnets()
 	if opt.screen then
 		t = t or {}
 		for i,disp in ipairs(self.app:displays()) do
-			local x, y, w, h = disp:client_rect()
+			local x, y, w, h = disp:desktop_rect()
 			t[#t+1] = {x = x, y = y, w = w, h = h}
 			local x, y, w, h = disp:screen_rect()
 			t[#t+1] = {x = x, y = y, w = w, h = h}
@@ -1047,7 +1047,7 @@ function display:screen_rect()
 	return self.x, self.y, self.w, self.h
 end
 
-function display:client_rect()
+function display:desktop_rect()
 	return self.cx, self.cy, self.cw, self.ch
 end
 

@@ -634,7 +634,7 @@ function Window:on_resized(flag)
 		--frameless windows maximize to the entire screen, covering the taskbar. fix that.
 		if not self.frame then
 			self.nw_maximizing = true --on_resized() barrier
-			self.rect = pack_rect(nil, self.backend:display():client_rect())
+			self.rect = pack_rect(nil, self.backend:display():desktop_rect())
 			self.nw_maximizing = false
 		end
 		self.backend:invalidate()

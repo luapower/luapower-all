@@ -43,7 +43,7 @@ __window tracking__
 `app:window_created(win)`							event: a window was created
 `app:window_closed(win)`							event: a window was closed
 __window creation__
-`app:window(t) -> win`								create a window (fields of _t_ below)
+`app:window(t) -> win`								create a window (fields of _`t`_ below)
 *__position__*
 *`x`, `y`*		 										frame position (nil, nil)
 *`w`, `h`*												frame size (this or cw,ch required)
@@ -208,7 +208,7 @@ __hi-dpi support__
 __views__
 `win:views() -> {view1, ...}`						list views
 `win:view_count() -> n`								number of views
-`win:view(t) -> view`								create a view (fields of _t_ below)
+`win:view(t) -> view`								create a view (fields of _`t`_ below)
 *`x`, `y`, `w`, `h`*									view's position (in window's client space) and size
 *`visible`*												start visible (true)
 *`anchors`*												resizing anchors ('lt'); can be 'ltrb'
@@ -473,7 +473,7 @@ Fired right after the window's `was_closed` event is fired.
 
 #### `app:window(t) -> win`
 
-Create a window (fields of _t_ below):
+Create a window (fields of _`t`_ below):
 
 * __position__
 	* `x`, `y`		 				- frame position
@@ -661,9 +661,9 @@ When the app is inactive, this returns false for all windows.
 #### `win:activate()`
 
 Activate the window. If the app is inactive, this does not activate the app.
-Instead it only marks this window to be activated when the app becomes active.
-If you want to force the window to become active, call `app:activate()`
-after calling this function (very rude).
+Instead it only marks the window to be activated when the app becomes active.
+If you want to alert the user that it should pay attention to the window,
+call `app:activate()` after calling this function.
 
 #### `win:was_activated()`
 
@@ -677,24 +677,16 @@ Event: window was deactivated.
 
 Get the activable flag (read-only; only for windows with 'toolbox' frame).
 
-Toolbox windows can be made non-activable. It is sometimes useful to have
+Only toolbox windows can be made non-activable. It is sometimes useful to have
 toolboxes that don't steal keyboard focus away from the main window when clicked.
 
-__NOTE:__ This [does not work](https://github.com/luapower/nw/issues/26) in Linux.
+__NOTE:__ This [doesn't work](https://github.com/luapower/nw/issues/26) in Linux.
 
 ## App visibility (OSX)
 
-#### `app:hidden() -> t|f`
+#### `app:hidden() -> t|f` <br> `app:hidden(t|f)` <br> `app:hide()` <br> `app:unhide()`
 
-Check if the app is hidden.
-
-#### `app:hidden(t|f)`
-
-Show or hide the app.
-
-#### `app:hide()` <br> `app:unhide()`
-
-Hide/unhide the app.
+Get/set app visibility.
 
 #### `app:was_hidden()` <br> `app:was_unhidden()`
 
@@ -705,25 +697,27 @@ Event: app was hidden/unhidden.
 #### `win:show()`
 
 Show the window in its previous state (which can include any combination
-of minimized, maximized, and fullscreen states).
+of minimized, maximized, and fullscreen state flags).
 
 When a hidden window is shown it is also activated, except if it was
 previously minimized, in which case it is shown in minimized state
-without activating.
+without being activated.
 
-Calling show() on a visible (that includes minimized) window does nothing.
+Calling show() on a visible (which includes minimized) window does nothing.
 
 #### `win:hide()`
 
-Hide the window from the screen and from the taskbar.
+Hide the window from the screen and from the taskbar, preserving its full state.
 
 Calling hide() on a hidden window does nothing.
 
-#### `win:visible() -> t|f` <br> `win:visible(t|f)`
+#### `win:visible() -> t|f`
 
-Get/set window visibility.
+Check if a window is visible (note: that includes minimized).
 
-A minimized window is considered visible.
+#### `win:visible(t|f)`
+
+Call `show()` or `hide()` to change the window's visibility.
 
 #### `win:was_shown()` <br> `win:was_hidden()`
 
@@ -776,7 +770,7 @@ Event: window was maximized/unmaximized.
 
 Check if a window is allowed to go in fullscreen mode (read-only).
 This flag only affects OSX - the only platform which presents a fullscreen
-button on the title bar. Fullscreen mode can always be entered programatically.
+button on the title bar. Fullscreen mode can always be engaged programatically.
 
 #### `win:fullscreen() -> t|f`
 
@@ -789,13 +783,9 @@ or minimized, it is shown in fullscreen mode and activated.
 
 If the window is already in the desired mode it is not activated.
 
-#### `win:entered_fullscreen()`
+#### `win:entered_fullscreen()` <br> `win:exited_fullscreen()`
 
-Event: entered fullscreen mode.
-
-#### `win:exited_fullscreen()`
-
-Event: exited fullscreen mode.
+Event: entered/exited fullscreen mode.
 
 ## Restoring
 
@@ -805,7 +795,7 @@ Restore from minimized, maximized or fullscreen state, i.e. unminimize
 if the window was minimized, exit fullscreen if it was in fullscreen mode,
 or unmaximize it if it was maximized (otherwise do nothing).
 
-The window is always activated unless it's in normal mode.
+The window is always activated unless it was in normal mode.
 
 #### `win:shownormal()`
 
@@ -906,7 +896,7 @@ Resize the window to accomodate a specified client area size.
 Event: window size/position is about to change.
 Return a new rectangle to affect the window's final size and position.
 
-__NOTE:__ This does not fire in Linux (most windows managers don't allow it).
+__NOTE:__ This does not fire in Linux.
 
 #### `win:was_moved(cx, cy)`
 
@@ -946,18 +936,24 @@ This constraint applies to the maximized state too.
 
 ## Edge snapping
 
-#### `win:edgesnapping() -> mode`
-#### `win:edgesnapping(mode)`
+#### `win:edgesnapping() -> mode` <br> `win:edgesnapping(mode)`
 
-Get/set edge snapping mode, which can be any combination of the words
-'app', 'other', 'screen', 'all' separated by spaces (eg. 'app screen').
+Get/set edge snapping mode, which is a string containing any combination
+of the words 'app', 'other', 'screen', 'all' separated by spaces
+(eg. 'app screen'):
 
-__NOTE:__ Edge snapping doesn't work on Linux. It is however already
-(poorly) implemented by some window managers (Unity) so all is not lost.
+  * 'app' - snap to app's windows
+  * 'other' - snap to other windows
+  * 'screen' - snap to screen edges
+  * 'all' - equivalent to 'app other screen'
+
+__NOTE:__ Edge snapping doesn't work on Linux because the `sizing` event
+doesn't fire there. It is however already (poorly) implemented by some
+window managers (eg. Unity) so all is not lost.
 
 #### `win:magnets(which) -> {r1, ...}`
 
-Event: get edge snapping rectangles (rectangles are tables with x, y, w, h fields).
+Event: get edge snapping rectangles (rectangles are tables with fields _x, y, w, h_).
 
 ## Z-Order
 
@@ -1004,9 +1000,9 @@ Get the display which has the keyboard focus.
 
 Get the display's screen rectangle.
 
-#### `disp:client_rect() -> x, y, w, h` <br> `disp.cx, disp.cy, disp.cw, disp.ch`
+#### `disp:desktop_rect() -> cx, cy, cw, ch` <br> `disp.cx, disp.cy, disp.cw, disp.ch`
 
-Get the display's screen rectangle minus the taskbar.
+Get the display's desktop rectangle (screen minus any taskbars).
 
 #### `app:displays_changed()`
 
@@ -1020,13 +1016,30 @@ Get the display the window is currently on.
 
 #### `win:cursor() -> name` <br> `win:cursor(name)`
 
-Get/set the mouse cursor.
+Get/set the mouse cursor. The name can be:
+
+  * 'arrow' (default)
+  * 'text'
+  * 'hand'
+  * 'cross'
+  * 'forbidden'
+  * 'size_diag1' (i.e. NE-SW)
+  * 'size_diag2' (i.e. NW-SE)
+  * 'size_h'
+  * 'size_v'
+  * 'move'
+  * 'busy_arrow'
 
 ## Keyboard
 
 #### `app:key(query) -> t|f`
 
-Get key pressed and toggle states. TODO
+Get key pressed and toggle states. The query can be one or more
+[key names][nw_keys] separated by spaces or by `+` eg. 'alt+f3' or 'alt f3'.
+The key name can start with `^` in which case the toggle state of that key
+is queried instead eg. '^capslock' returns the toggle state of the
+caps lock key while 'capslock' returns its pressed state.
+(only the capslock, numlock and scrolllock keys have toggle states).
 
 #### `win:keydown(key)`
 
@@ -1097,7 +1110,7 @@ Get the number of views without wasting a table.
 
 #### `win:view(t) -> view`
 
-Create a view (fields of _t_ below):
+Create a view (fields of _`t`_ below):
 
 * `x`, `y`, `w`, `h`	- view's position (in window's client space) and size
 * `visible`				- start visible (default: true)
