@@ -526,6 +526,11 @@ it will show minimized. If the user then unminimizes it, it will restore
 to maximized state. If the user unmaximizes it, it will restore to its
 initial position and size.
 
+### Coordinate systems
+
+  * window-relative positions are relative to the top-left corner of the window's client area.
+  * screen-relative positions are relative to the top-left corner of the main screen.
+
 ## Child windows
 
 Child windows are top-level windows that stay on top of their parent,
@@ -595,6 +600,9 @@ end
 
 Close the window and destroy it. Children are closed first.
 The `force` arg allows closing the window without firing the `closing` event.
+
+Calling `close()` on a closed window does nothing.
+Calling any other method raises an error.
 
 #### `win:dead() -> t|f`
 
@@ -1320,12 +1328,15 @@ Pop up a menu at a point relative to a window or view.
 
 Add/set a menu item. The options are:
 
-  * `action` - can be a function or another menu to be used as a submenu.
-  * `text` - the text to display; it can be the empty string (the default)
-  which means that the menu item is a separator.
-  * `submenu` - a submenu (same as when `action` is a submenu).
-  * `enabled` - enabled state (true)
-  * `checked` - checked state (false)
+* `action` - can be a function or another menu to be used as a submenu
+* `text` - the text to display:
+	* `&` before a letter creates an _access key_
+	* `\t` followed by a key combination creates a _shortcut key_
+	* the empty string (the default) creates a separator
+	* eg. `'&Close\tAlt+F4'` shows as '<u>C</u>lose Alt+F4' and activates on `Alt+C` and on `Alt+F4`
+* `submenu` - a submenu (same as when `action` is a submenu)
+* `enabled` - enabled state (true)
+* `checked` - checked state (false)
 
 #### `menu:remove(index)`
 
@@ -1379,7 +1390,7 @@ Get the window's icon. The `which` arg can be: 'big' (default), 'small'.
 
 Get the app's dock icon.
 
-### Notification icons
+### Notification icons (Windows, OSX)
 
 #### `app:notifyicon(t) -> icon`
 
@@ -1442,50 +1453,40 @@ Default backend modules for each OS.
 
 Init `nw` with a specific backend (can be called only once).
 
-## Coordinate systems
-
-  * window-relative positions are relative to the top-left corner of the window's client area.
-  * screen-relative positions are relative to the top-left corner of the main screen.
-
 ## Common mistakes
-
-### Creating windows in visible state
-
-When creating windows the `visible` flag defaults to true, but you should
-really create windows with `visible = false`, set up all the event handlers
-on them and then call `win:show()`, otherwise you will not catch any events
-that trigger before you set up the event handlers (sometimes that includes
-the `repaint` event so you will be showing a non-painted window).
 
 ### Assuming that calls are blocking
 
 The number one mistake you can make is to assume that all calls are blocking.
 It's very easy to make that mistake because some of them actually are blocking
-on some platforms (in order of sanity: Windows, OSX and Linux -- X11 designers
-particularly confuse UI design with network protocol design so all calls are
-asynchronous). In a perfect world they would all be blocking and non-failing
-which would make programming with them much more robust. The real world is
-an unspecified mess. So never, never mix queries with commands, i.e.
-never assume that when you perform some command the state of the window
-actually changed when the call returns.
+on some platforms (in order of sanity: Windows, OSX and Linux -- X11 is
+particularly bad because _all_ calls are asynchronous there).
+In a perfect world they would all be blocking and non-failing
+which would make programming with them much more robust and intuitive.
+The real world is an unspecified mess. So __never, ever mix queries
+with commands__, i.e. never assume that after a state-changing function
+returns you can make any assumptions about the state of the objects involved.
 
-## Corner cases
+### Creating windows in visible state
 
-  * calling any method on a closed window results in error, except for win:free() which does nothing.
-  * calling app:run() while running is a no op.
-  * app:windows() can return dead windows (but not new windows).
-  * calling display functions on an invalid display object results in error (monitors can come and go too you know).
-
+The `visible` flag when creating windows defaults to `true`, but you should
+really create windows with `visible = false`, set up all the event handlers
+on them and then call `win:show()`, otherwise you will not catch any events
+that trigger before you set up the event handlers (sometimes that includes
+the `repaint` event so you will be showing a non-painted window).
 
 ## Getting Involved
 
-This is one of the bigger bricks in luapower but it lends itself well
-to community development IMO. The frontend uses composition rather than
-inheritance to connect to the backend so the communication between the two
-is always explicit. Features are well separated functionally and visually
+This is one of the bigger bricks of luapower but it is one which lends
+itself well to community development. The frontend uses composition rather
+than inheritance to connect to the backend so the communication between the
+two is always explicit. Features are well separated functionally and visually
 in the code so they can be developed separately without much risk of
-regressions, and there's unit tests which can help with that too.
-The code follows the luapower [coding-style] and [api-design] guidelines.
+regressions. The code is well commented and there's unit tests and
+interactive tests which cover most of the functionality. The code follows
+the luapower [coding-style] and [api-design] guidelines.
+
+### Development process
 
 All the development planning, coordination and communication is done via
 github issues and milestones.
