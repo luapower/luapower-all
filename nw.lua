@@ -298,9 +298,11 @@ end
 function app:_forcequit()
 	self._quitting = true --quit() barrier
 
-	for i,win in ipairs(self:windows()) do
+	local t = self:windows()
+	for i = #t, 1, -1 do
+		local win = t[i]
 		if not win:dead() and not win:parent() then
-			win:close(true)
+			win:close'force'
 		end
 	end
 
