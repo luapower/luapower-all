@@ -1043,7 +1043,7 @@ caps lock key while 'capslock' returns its pressed state.
 
 #### `win:keydown(key)`
 
-Event: a key was pressed.
+Event: a key was pressed (not sent on repeat).
 
 #### `win:keyup(key)`
 
@@ -1051,19 +1051,21 @@ Event: a key was depressed.
 
 #### `win:keypress(key)`
 
-Event: sent after each keydown, including repeats.
+Event: sent after keydown and on key repeat.
 
-#### `win:keychar(char)`
+#### `win:keychar(s)`
 
-Event: sent after keypress for displayable characters; char is utf-8.
+Event: sent after keypress for displayable characters; _`s`_ is a utf-8
+string and can contain one or more code points.
 
 ## Hi-DPI support
 
 By default, windows contents are scaled by the OS on Hi-DPI screens,
 so they look blurry but they are readable even if the app is unaware
-of Hi-DPI. Making the app Hi-DPI-aware means disabling this automatic
-raster scaling of the OS and allowing the app to scale the UI itself
-to make it readable on Hi-DPI screens.
+that it is showing on a dense screen. Making the app Hi-DPI-aware means
+telling the OS to disable this automatic raster scaling and allow the
+app to scale the UI itself (but this time in vector space) in order
+to make it readable again on a dense screen.
 
 #### `app:autoscaling() -> t|f`
 
@@ -1093,11 +1095,11 @@ was moved to a screen with a different scaling factor.
 
 Views allow partitioning a window's client area into multiple non-overlapping
 rectangle-shaped regions that can be rendered using different technologies.
-In particular, you can use OpenGL on some rectangles, while using bitmaps
+In particular, you can use OpenGL on some regions, while using bitmaps
 (and thus cairo) on others. This gives a simple path for drawing
 an antialiased 2D UI around a 3D scene as an alternative to drawing
-on textures that stretch over orto-projected quads. Mouse events work
-the same on views as they do on windows (note: the window doesn't receive
+on the textures of orto-projected quads. Mouse events work the same
+on views as they do on windows (note: the window doesn't receive
 mouse events while the mouse is over a view).
 
 #### `win:views() -> {view1, ...}`
@@ -1124,17 +1126,11 @@ Destroy the view.
 
 Check if the view was destroyed.
 
-#### `view:show()`
-
-Show the view.
-
-#### `view:hide()`
-
-Hide the view. The view's position is preserved (anchors keep working).
-
-#### `view:visible() -> t|f` <br> `view:visible(t|f)`
+#### `view:visible() -> t|f` <br> `view:visible(t|f)` <br> `view:show()` <br> `view:hide()`
 
 Get/set the view's visibility.
+
+The position and size of the view are preserved while hidden (anchors keep working).
 
 #### `view:rect() -> x, y, w, h` <br> `view:rect(x, y, w, h)`
 
@@ -1151,24 +1147,17 @@ Get/set the view's size.
 Get/set the anchors: they can be any combination of 'ltrb' characters
 representing left, top, right and bottom anchors respectively.
 
-Anchors are a simple but very powerful way of doing stitched layouting.
-This is how they work: there's four anchors for each side of a view.
-Setting an anchor on one side fixates the distance between that side
-and the same side of the window the view is on, so that when the window
-is moved/resized, the view is also moved/resized in order to preserve
-the initial distance to that side of the window.
+Anchors are a simple but very effective way of doing stitched layouting.
+This is how they work: there's four possible anchors which you can set,
+one for each side of the view. Setting an anchor on one side fixates
+the distance between that side and the same side of the window
+the view is on, so that when the window is moved/resized, the view
+is also moved/resized in order to preserve the initial distance
+to that side of the window.
 
-#### `view:rect_changed(x, y, w, h)`
+#### `view:rect_changed(x, y, w, h)` <br> `view:was_moved(x, y)` <br> `view:was_resized(w, h)`
 
 Event: view's size and/or position changed.
-
-#### `view:was_moved(x, y)`
-
-Event: view was moved.
-
-#### `view:was_resized(w, h)`
-
-Event: view was resized.
 
 ## Mouse
 

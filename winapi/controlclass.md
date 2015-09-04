@@ -36,7 +36,8 @@ parent						irw		control's parent														Get/SetParent
 ### Anchors
 
 Anchors are a simple but very powerful way of doing layouting.
-This is how they work: there's four anchors for each side of a control.
+This is how they work: there's four possible anchors,
+one for each side of a control.
 Setting an anchor on one side fixates the distance between that side
 and the same side of the parent control, so that when the parent is
 moved/resized, the child is also moved/resized in order to preserve
