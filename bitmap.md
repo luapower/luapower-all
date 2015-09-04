@@ -29,7 +29,7 @@ tagline: in-memory bitmaps
 
 ## What's a bitmap?
 
-A bitmap is a table with the following fields:
+A bitmap is an interface, i.e. any table with the following fields is a bitmap:
 
   * `w`, `h` - bitmap dimensions, in pixels.
   * `stride` - row stride in bytes. must be at least `w * bpp / 8`

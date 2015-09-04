@@ -1440,8 +1440,35 @@ The name and args of the event are passed in.
 
 #### `app:ver(query) -> t|f`
 
-Check the OS _minimum_ version, eg. `app:ver'OSX 10.8'` returns `true`
-on OSX 10.8 and beyond.
+Check that a certain backend API is at a specified version or beyond.
+The query has the form `'<API> <version>'` where API can be
+'Windows', 'OSX' or 'X'.
+
+Example: `app:ver'OSX 10.8'` returns `true` on OSX 10.8 and beyond.
+
+For Windows you can use the following table:
+
+Windows							Version
+-------------------------- -----------
+Windows 10						10.0 (6.2)
+Windows Server 2016 TP		10.0 (6.2)
+Windows 8.1						6.3 (6.2)
+Windows Server 2012 R2		6.3 (6.2)
+Windows 8						6.2
+Windows Server 2012			6.2
+Windows 7						6.1
+Windows Server 2008 R2		6.1
+Windows Server 2008			6.0
+Windows Vista					6.0
+Windows Server 2003 R2		5.2
+Windows Server 2003			5.2
+Windows XP 64-Bit Edition	5.2
+Windows XP						5.1
+Windows 2000					5.0
+
+__NOTE:__ Apps not manifested for Windows 8.1 or Windows 10
+will report platforms greater than 6.2 as 6.2 (the [luajit] package
+comes with proper manifest files).
 
 ## Extending
 

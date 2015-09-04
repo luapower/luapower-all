@@ -538,7 +538,7 @@ function demo.window()
 	local win = NSWin:alloc():initWithContentRect_styleMask_backing_defer(
 						NSMakeRect(300, 300, 500, 300), style, NSBackingStoreBuffered, false)
 	win:setDelegate(win)
-	win:setTitle"▀▄▀▄▀▄ [ Lua Rocks ] ▄▀▄▀▄▀"
+	win:setTitle"▀▄▀▄▀▄ [ Lua Rulez ] ▄▀▄▀▄▀"
 
 	app:activateIgnoringOtherApps(true)
 	win:makeKeyAndOrderFront(nil)
