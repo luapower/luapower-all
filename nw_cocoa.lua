@@ -91,6 +91,17 @@ function app:run()
 	self.nsapp:run()
 end
 
+function app:poll()
+	--[[
+	local event = self.nsapp:nextEventMatchingMask_untilDate_inMode_dequeue(
+		objc.NSAnyEventMask, nil, objc.NSDefaultRunLoopMode, true)
+	if not event then return false end
+	--
+	return true
+	]]
+	error'NYI'
+end
+
 function app:stop()
 	self.nsapp:stop(nil)
 	--post a dummy event to ensure the stopping

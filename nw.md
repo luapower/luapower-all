@@ -25,6 +25,7 @@ __app loop__
 `app:run()`												run the loop
 `app:stop()`											stop the loop
 `app:running() -> t|f`								check if the loop is running
+`app:poll() -> t|f`									process the next pending event (return true if there was one)
 __quitting__
 `app:quit()`											quit the app, i.e. close all windows and stop the loop
 `app:autoquit(t|f)`									quit the app when the last window is closed (true)
@@ -209,9 +210,9 @@ __views__
 `win:views() -> {view1, ...}`						list views
 `win:view_count() -> n`								number of views
 `win:view(t) -> view`								create a view (fields of _`t`_ below)
-*`x`, `y`, `w`, `h`*									view's position (in window's client space) and size
-*`visible`*												start visible (true)
-*`anchors`*												resizing anchors ('lt'); can be 'ltrb'
+&nbsp;&nbsp; *`x`, `y`, `w`, `h`*				view's position (in window's client space) and size
+&nbsp;&nbsp; *`visible`*							start visible (true)
+&nbsp;&nbsp; *`anchors`*							resizing anchors ('lt'); can be 'ltrb'
 `view:free()`											destroy the view
 `view:dead() -> t|f`									check if the view was freed
 `view:visible() -> t|f`								check if the view is visible
@@ -337,7 +338,7 @@ end
 
 win:show() --show it now that it was properly set up
 
-app:run()  --start the message loop
+app:run()  --start the event loop
 ~~~
 
 ## Status
@@ -381,6 +382,11 @@ Calling stop() when the loop is not running does nothing.
 ### `app:running() -> t|f`
 
 Check if the loop is running.
+
+### `app:poll() -> t|f`
+
+Process the next pending event from the event queue.
+Return true if there was an event to process, false if there wasn't.
 
 ## Quitting
 
@@ -462,12 +468,12 @@ non-parented windows.
 ### `app:window_created(win)`
 
 Event: a window was created.
-Fired right after the window's `was_created` event is fired.
+Fired right after `win:was_created()` event is fired.
 
 ### `app:window_closed(win)`
 
 Event: a window was closed.
-Fired right after the window's `was_closed` event is fired.
+Fired right after `win:was_closed()` event is fired.
 
 ## Creating windows
 
@@ -533,8 +539,9 @@ initial position and size.
 
 ## Child windows
 
-Child windows are top-level windows that stay on top of their parent,
-minimize along with their parent, and don't appear in the taskbar.
+Child windows (`parent = win`) are top-level windows that stay on top
+of their parent, minimize along with their parent, and don't appear
+in the taskbar.
 
 The following defaults are different for child windows:
 
@@ -557,7 +564,7 @@ Get the window's children (those whose parent() is this window).
 
 ### Sticky windows
 
-Sticky windows follow their parent when their parent is moved.
+Sticky windows (`sticky = true`) follow their parent when their parent is moved.
 
 __NOTE:__ Sticky windows [don't work](https://github.com/luapower/nw/issues/27) on Linux.
 
@@ -573,8 +580,8 @@ They must be parented. They can be non-activable (`activable = false`).
 
 ## Transparent windows
 
-Transparent windows allow using the full alpha channel when drawing on them.
-They also come with some limitations (mostly from Windows):
+Transparent windows (`transparent = true`) allow using the full alpha channel
+when drawing on them. They also come with some limitations (mostly from Windows):
 
   * they can't be framed so you must pass `frame = 'none'`.
   * they can't have views.
@@ -587,7 +594,7 @@ Get the transparent flag (read-only).
 ## Window closing
 
 Closing the window destroys it by default.
-You can prevent that by returning false in the `closing` event:
+You can prevent that by returning false in the `win:closing()` event:
 
 ~~~{.lua}
 function win:closing()
@@ -599,7 +606,8 @@ end
 ### `win:close([force])`
 
 Close the window and destroy it. Children are closed first.
-The `force` arg allows closing the window without firing the `closing` event.
+The `force` arg allows closing the window without firing
+the `win:closing()` event.
 
 Calling `close()` on a closed window does nothing.
 Calling any other method raises an error.
@@ -946,17 +954,16 @@ This constraint applies to the maximized state too.
 ### `win:edgesnapping() -> mode` <br> `win:edgesnapping(mode)`
 
 Get/set edge snapping mode, which is a string containing any combination
-of the words 'app', 'other', 'screen', 'all' separated by spaces
-(eg. 'app screen'):
+of the following words separated by spaces:
 
   * 'app' - snap to app's windows
   * 'other' - snap to other windows
   * 'screen' - snap to screen edges
   * 'all' - equivalent to 'app other screen'
 
-__NOTE:__ Edge snapping doesn't work on Linux because the `sizing` event
-doesn't fire there. It is however already (poorly) implemented by some
-window managers (eg. Unity) so all is not lost.
+__NOTE:__ Edge snapping doesn't work on Linux because the `win:sizing()`
+event doesn't fire there. It is however already (poorly) implemented
+by some window managers (eg. Unity) so all is not lost.
 
 ### `win:magnets(which) -> {r1, ...}`
 
@@ -989,11 +996,11 @@ on a virtual surface, with the main display's top-left corner at (0, 0).
 
 ### `app:displays() -> {disp1, ...}`
 
-Get displays (in no specific order).
+Get displays (in no specific order). Mirror displays are not included.
 
 ### `app:display_count() -> n`
 
-Get the display count without wasting a table.
+Get the display count without enumerating them.
 
 ### `app:main_display() -> disp`
 
@@ -1226,10 +1233,10 @@ between clicks and over the same target, a counter is incremented.
 When the interval between two clicks is larger than the threshold
 or the mouse is moved too far away from the initial target,
 the counter is reset (i.e. the click-chain is interrupted).
-Returning `true` on the `click` event also resets the counter.
+Returning `true` on the `click()` event also resets the counter.
 
 This allows processing of double-clicks, triple-clicks, or multi-clicks
-by checking the `count` argument on the `click` event. If your app
+by checking the `count` argument on the `click()` event. If your app
 doesn't need to process double-clicks or multi-clicks, you can just ignore
 the `count` argument. If it does, you must return `true` after processing
 the event with the highest count so that the counter is reset.
@@ -1255,10 +1262,10 @@ has set in the OS and it is queried on every wheel event.
 
 ## Rendering
 
-Drawing on a window or view must be done inside the `repaint` event
+Drawing on a window or view must be done inside the `repaint()` event
 by requesting the window's bitmap or OpenGL context and drawing on it.
 The OS fires `repaint` whenever it loses (part of) the contents
-of the window. To force a repaint anytime, use `invalidate()`.
+of the window. To force a repaint anytime, use `win:invalidate()`.
 
 ### `win/view:repaint()`
 
@@ -1273,7 +1280,7 @@ Request window redrawing.
 
 Get a bgra8 [bitmap] object to draw on. The bitmap is freed when
 the window's client area changes size, so keeping a reference to it
-outside the `repaint` event is generally not useful.
+outside the `repaint()` event is generally not useful.
 
 The alpha channel is not used unless this is a transparent window
 (note: views cannot be transparent).
@@ -1414,19 +1421,19 @@ Get/set the status bar item's length (OSX only).
 
 ## Events
 
-### `app/win/view:on(event, func)`
+### `app/win/view:on(event_name, func)`
 
-Call `func` when `event` happens. Multiple functions can be attached
+Call `func` when `event_name` happens. Multiple functions can be attached
 to the same event.
 
 ### `app/win/view:events(enabled) -> prev_state`
 
 Enable/disable events.
 
-### `app/win/view:event(name, args...)`
+### `app/win/view:event(event_name, args...)`
 
 This is a meta-event fired on every other event.
-The name and args of the event are passed in.
+The event's name and args are passed in.
 
 ## Version checks
 
@@ -1492,7 +1499,7 @@ The `visible` flag when creating windows defaults to `true`, but you should
 really create windows with `visible = false`, set up all the event handlers
 on them and then call `win:show()`, otherwise you will not catch any events
 that trigger before you set up the event handlers (sometimes that includes
-the `repaint` event so you will be showing a non-painted window).
+the `repaint()` event so you will be showing a non-painted window).
 
 ## Getting Involved
 

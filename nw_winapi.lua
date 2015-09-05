@@ -20,6 +20,7 @@ require'winapi.icon'
 require'winapi.dpiaware'
 require'winapi.devcaps'
 require'winapi.monitor'
+require'winapi.ddev'
 require'winapi.cursor'
 require'winapi.keyboard'
 require'winapi.rawinput'
@@ -79,6 +80,10 @@ end
 
 function app:run()
 	winapi.MessageLoop()
+end
+
+function app:poll()
+	return winapi.ProcessNextMessage()
 end
 
 function app:stop()
@@ -692,9 +697,16 @@ end
 --displays -------------------------------------------------------------------
 
 function app:_display(monitor)
+
 	local ok, info = pcall(winapi.GetMonitorInfo, monitor)
 	if not ok then return end
+
+	--skip displays that are mirroring pseudo-displays.
+	local dd = winapi.EnumDisplayDevices(info.szDevice)
+	if bit.band(dd.state_flags, winapi.DISPLAY_DEVICE_MIRRORING_DRIVER) ~= 0 then return end
+
 	local sf = self:_get_scaling_factor(monitor)
+
 	return self.frontend:_display{
 		x = info.monitor_rect.x,
 		y = info.monitor_rect.y,
@@ -721,6 +733,8 @@ function app:displays()
 end
 
 function app:display_count()
+	--NOTE: SM_CMONITORS doesn't count mirroring pseudo-displays
+	--so it matches the number of displays returned with app:displays().
 	return winapi.GetSystemMetrics'SM_CMONITORS'
 end
 

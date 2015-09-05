@@ -2275,11 +2275,11 @@ end)
 --client rect has a sane size
 local function test_display(display)
 
-	local x, y, w, h = display:rect()
-	print('rect       ',  x, y, w, h)
+	local x, y, w, h = display:screen_rect()
+	print('screen_rect ',  x, y, w, h)
 
-	local cx, cy, cw, ch = display:client_rect()
-	print('client_rect', cx, cy, cw, ch)
+	local cx, cy, cw, ch = display:desktop_rect()
+	print('desktop_rect', cx, cy, cw, ch)
 
 	--client rect has a sane size
 	assert(cw > 100)
@@ -2302,7 +2302,7 @@ add('display-list', function()
 		test_display(display)
 		if i == 1 then
 			--main screen is first, and at (0, 0)
-			local x, y = display:rect()
+			local x, y = display:screen_rect()
 			assert(x == 0)
 			assert(y == 0)
 		end
@@ -2359,7 +2359,7 @@ local function test_autoscaling(scaling)
 	for i,d in ipairs(app:displays()) do
 
 		print(string.format('display %d scaling factor:', i), d.scalingfactor)
-		print(string.format('display %d rectangle:     ', i), d:rect())
+		print(string.format('display %d rectangle:     ', i), d:screen_rect())
 
 		--create a window on this display and check its dimensions
 		local x = d.x + 100
@@ -2377,7 +2377,7 @@ local function test_autoscaling(scaling)
 		assert(cw == cw0)
 		assert(ch == ch0)
 		print(string.format('window at (%d,%d):', x, y))
-		print('', 'display:    ', d:rect())
+		print('', 'display:    ', d:screen_rect())
 		print('', 'client size:', win:client_size())
 
 		win:close()
@@ -2388,7 +2388,7 @@ add('display-autoscaling-off', function() test_autoscaling(false) end)
 add('display-autoscaling-on', function() test_autoscaling(true) end)
 
 --move the window between screens with different scaling factors to see the event.
-add('display-scalingfactor-changed-check', function()
+add('check-display-scalingfactor-changed', function()
 	app:autoscaling(false)
 	local win = app:window{cw = 300, ch = 200}
 	function win:scalingfactor_changed(factor)

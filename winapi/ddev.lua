@@ -3,7 +3,6 @@
 --Written by Cosmin Apreutesei. Public Domain.
 
 setfenv(1, require'winapi')
-require'winapi.winuser'
 
 DISPLAY_DEVICE_ATTACHED_TO_DESKTOP = 0x00000001
 DISPLAY_DEVICE_MULTI_DRIVER        = 0x00000002

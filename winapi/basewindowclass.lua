@@ -140,12 +140,16 @@ function MessageLoop(after_process)
 	return tonumber(msg.signed_wParam) --WM_QUIT sends an int exit code in wParam
 end
 
+function ProcessNextMessage()
+	local ok, msg = PeekMessage(nil, 0, 0, PM_REMOVE)
+	if not ok then return false end
+	ProcessMessage(msg)
+	return true
+end
+
 --process all pending messages from the queue (if any) and return.
 function ProcessMessages(after_process)
-	while true do
-		local ok, msg = PeekMessage(nil, 0, 0, PM_REMOVE)
-		if not ok then return end
-		ProcessMessage(msg)
+	while ProcessNextMessage() do
 		if after_process then
 			after_process(msg)
 		end

@@ -1,8 +1,10 @@
---math for 2D rectangles defined as (x, y, w, h). (Cosmin Apreutesei, public domain).
---terminology: a 1D segment is defined as (x1, x2); a side is defined as (x1, x2, y) so it's a segment + an altitude.
---the corners are (x1, y1, x2, y2), where (x1, y1) is the top-left corner and (x2, y2) is the bottom-right corner.
 
---if not ... then require'cplayer.toolbox_demo' end
+--math for 2D rectangles defined as (x, y, w, h).
+--Written by Cosmin Apreutesei. Public Domain.
+
+--a "1D segment" is defined as (x1, x2); a "side" is defined as (x1, x2, y)
+--so it's a segment + an altitude. the corners are (x1, y1, x2, y2), where
+--(x1, y1) is the top-left corner and (x2, y2) is the bottom-right corner.
 
 local min, max, abs = math.min, math.max, math.abs
 
@@ -141,15 +143,16 @@ local function offset_seg(d, x1, x2) --offset a 1D segment by d (outward if d is
 	return x1 - d, x2 + d
 end
 
---if side A (ax1, ax2, ay) should snap to parallel side B (bx1, bx2, by), then return side B's y.
---to snap, sides should be close enough and overlapping, and side A should be closer to side B than to side C, if any.
+--if side A (ax1, ax2, ay) should snap to parallel side B (bx1, bx2, by),
+--then return side B's y. To snap, sides should be close enough and
+--overlapping, and side A should be closer to side B than to side C, if any.
 local function snap_side(d, cy, ax1, ax2, ay, bx1, bx2, by)
 	return near(by, ay, d) and (not cy or closer(by, ay, cy)) and
 				overlap_seg(ax1, ax2, offset_seg(d, bx1, bx2)) and by
 end
 
---snap the sides of a rectangle against a list of overlapping, transparent rectangles.
---return the corners of the snapped rectangle.
+--snap the sides of a rectangle against a list of overlapping, transparent
+--rectangles. return the corners of the snapped rectangle.
 local function snap_transparent(d, ax1, ay1, ax2, ay2, rectangles)
 
 	local cx1, cy1, cx2, cy2 --snapped sides
@@ -177,8 +180,9 @@ local function side_inside_rect(ax1, ax2, ay, bx1, by1, bx2, by2)
 	return ay >= by1 and ay <= by2 and ax1 >= bx1 and ax2 <= bx2
 end
 
---check if a side is entirely inside at least one rectangle from a limited list of rectangles.
---in context this means: check if a potential snap side is entirely occluded by any of the rectangles in front of it.
+--check if a side is entirely inside at least one rectangle from a limited
+--list of rectangles. In context this means: check if a potential snap side
+--is entirely occluded by any of the rectangles in front of it.
 local function side_inside_rects(ax1, ax2, ay, rectangles, stop_index, vert)
 	if ax1 > ax2 then
 		return true

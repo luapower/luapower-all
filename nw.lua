@@ -246,6 +246,10 @@ function app:run(func)
 	self._stopping = false --stop() barrier
 end
 
+function app:step()
+	self.backend:step()
+end
+
 function app:running()
 	return self._running
 end

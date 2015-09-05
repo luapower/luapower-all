@@ -188,11 +188,12 @@ activate() on a window.
 ## The message loop
 
 <div class=small>
------------------------ ------------------------------------------------------
-`MessageLoop()`			start the message loop
-`ProcessMessages()`		process pending messages (if any) and return
-`PostQuitMessage()`		post a quit message to the message loop to stop it
------------------------ ------------------------------------------------------
+-------------------------------------- -----------------------------------------------------------------------
+`MessageLoop()`								start the message loop
+`ProcessNextMessage() -> true|false`	process the next pending message (return true if there even was one)
+`ProcessMessages()`							process all pending messages (if any) and return
+`PostQuitMessage()`							post a quit message to the message loop to stop it
+-------------------------------------- -----------------------------------------------------------------------
 
 > __NOTE:__ The message loop returns an exit code, so you can call it
 like this: `os.exit(MessageLoop())`.
