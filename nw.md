@@ -27,11 +27,11 @@ __app loop__
 `app:running() -> t|f`								check if the loop is running
 __quitting__
 `app:quit()`											quit the app, i.e. close all windows and stop the loop
-`app:autoquit(t|f)`									flag: quit the app when the last window is closed
+`app:autoquit(t|f)`									quit the app when the last window is closed (true)
 `app:autoquit() -> t|f`								get app autoquit flag (true)
 `app:quitting() -> [false]`						event: quitting (return false to refuse)
-`win:autoquit(t|f)`									flag: quit the app when the window is closed
-`win:autoquit() -> t|f`								get window autoquit flag
+`win:autoquit(t|f)`									quit the app when the window is closed (false)
+`win:autoquit() -> t|f`								get window autoquit flag (false)
 __timers__
 `app:runevery(seconds, func)`						run a function on a timer (timer stops if func returns false)
 `app:runafter(seconds, func)`						run a function on a timer once
@@ -44,36 +44,36 @@ __window tracking__
 `app:window_closed(win)`							event: a window was closed
 __window creation__
 `app:window(t) -> win`								create a window (fields of _`t`_ below)
-*__position__*
-*`x`, `y`*		 										frame position (nil, nil)
-*`w`, `h`*												frame size (this or cw,ch required)
-*`cx`, `cy`*											client area position (nil, nil)
-*`cw`, `ch`*											client area size (this or w,h required)
-*`min_cw`, `min_ch`*									min client rect size
-*`max_cw`, `max_ch`*									max client rect size
-*__state__*
-*`visible`*												start visible (true)
-*`minimized`*											start minimized (false)
-*`maximized`*											start maximized (false)
-*`enabled`*												start enabled (true)
-*__frame__*
-*`frame`*												frame type: 'normal', 'none', 'toolbox' ('normal')
-*`title`* 												initial title ('')
-*`transparent`*										make it transparent (false)
-*__behavior__*
-*`parent`*												parent window (nil)
-*`sticky`*												moves with parent (false)
-*`topmost`*												stays on top of other windows (false)
-*`minimizable`*										allow minimization (true)
-*`maximizable`*										allow maximization (true)
-*`closeable`*											allow closing (true)
-*`resizeable`*											allow resizing (true)
-*`fullscreenable`*									allow fullscreen mode (true)
-*`activable`*											allow activation (true); only for 'toolbox' frames
-*`autoquit`*											quit the app on closing (false)
-*`edgesnapping`*										magnetized edges ('screen')
-*__menu__*
-*`menu`*													menu bar
+&nbsp;&nbsp; *__position__*
+&nbsp;&nbsp; *`x`, `y`*		 						frame position
+&nbsp;&nbsp; *`w`, `h`*								frame size (this or cw,ch required)
+&nbsp;&nbsp; *`cx`, `cy`*							client area position
+&nbsp;&nbsp; *`cw`, `ch`*							client area size (this or w,h required)
+&nbsp;&nbsp; *`min_cw`, `min_ch`*				min client rect size
+&nbsp;&nbsp; *`max_cw`, `max_ch`*				max client rect size
+&nbsp;&nbsp; *__state__*
+&nbsp;&nbsp; *`visible`*							start visible (true)
+&nbsp;&nbsp; *`minimized`*							start minimized (false)
+&nbsp;&nbsp; *`maximized`*							start maximized (false)
+&nbsp;&nbsp; *`enabled`*							start enabled (true)
+&nbsp;&nbsp; *__frame__*
+&nbsp;&nbsp; *`frame`*								frame type: 'normal', 'none', 'toolbox' ('normal')
+&nbsp;&nbsp; *`title`* 								initial title ('')
+&nbsp;&nbsp; *`transparent`*						make it transparent (false)
+&nbsp;&nbsp; *__behavior__*
+&nbsp;&nbsp; *`parent`*								parent window (nil)
+&nbsp;&nbsp; *`sticky`*								moves with parent (false)
+&nbsp;&nbsp; *`topmost`*							stays on top of other windows (false)
+&nbsp;&nbsp; *`minimizable`*						allow minimization (true)
+&nbsp;&nbsp; *`maximizable`*						allow maximization (true)
+&nbsp;&nbsp; *`closeable`*							allow closing (true)
+&nbsp;&nbsp; *`resizeable`*						allow resizing (true)
+&nbsp;&nbsp; *`fullscreenable`*					allow fullscreen mode (true)
+&nbsp;&nbsp; *`activable`*							allow activation (true); only for 'toolbox' frames
+&nbsp;&nbsp; *`autoquit`*							quit the app on closing (false)
+&nbsp;&nbsp; *`edgesnapping`*						magnetized edges ('screen')
+&nbsp;&nbsp; *__menu__*
+&nbsp;&nbsp; *`menu`*								menu bar
 __closing__
 `win:close([force])`									close the window and destroy it
 `win:dead() -> t|f`									check if the window was destroyed
@@ -366,25 +366,25 @@ backend for the current platform.
 
 ## The app loop
 
-#### `app:run()`
+### `app:run()`
 
 Run the loop.
 
 Calling run() when the loop is already running does nothing.
 
-#### `app:stop()`
+### `app:stop()`
 
 Stop the loop.
 
 Calling stop() when the loop is not running does nothing.
 
-#### `app:running() -> t|f`
+### `app:running() -> t|f`
 
 Check if the loop is running.
 
 ## Quitting
 
-#### `app:quit()`
+### `app:quit()`
 
 Quit the app, i.e. close all windows and stop the loop.
 
@@ -400,17 +400,17 @@ Quitting is a multi-phase process:
 Calling `quit()` when the loop is not running or while quitting
 is in progress does nothing.
 
-#### `app:autoquit(t|f)` <br> `app:autoquit() -> t|f`
+### `app:autoquit(t|f)` <br> `app:autoquit() -> t|f`
 
 Get/set the app autoquit flag (default: true).
 When this flag is true, the app quits when the last window is closed.
 
-#### `app:quitting() -> [false]`
+### `app:quitting() -> [false]`
 
 Event: the app wants to quit, but nothing was done to that effect.
 Return false from this event to cancel the process.
 
-#### `win:autoquit(t|f)` <br> `win:autoquit() -> t|f`
+### `win:autoquit(t|f)` <br> `win:autoquit() -> t|f`
 
 Get/set the window autoquit flag (default: false).
 When this flag is true, the app quits when the window is closed.
@@ -418,16 +418,16 @@ This flag can be used on the app's main window if there is such a thing.
 
 ## Timers
 
-#### `app:runevery(seconds, func)`
+### `app:runevery(seconds, func)`
 
 Run a function on a recurrent timer.
 The timer can be stopped by returning false from the function.
 
-#### `app:runafter(seconds, func)`
+### `app:runafter(seconds, func)`
 
 Run a function on a timer once.
 
-#### `app:run(func)`
+### `app:run(func)`
 
 Run a function on a zero-second timer, once, inside a coroutine.
 This allows calling `app:sleep()` inside the function (see below).
@@ -435,7 +435,7 @@ This allows calling `app:sleep()` inside the function (see below).
 If the loop is not already started, it is started and then stopped after
 the function finishes.
 
-#### `app:sleep(seconds)`
+### `app:sleep(seconds)`
 
 Sleep without blocking from inside a function that was run via app:run().
 While the function is sleeping, other timers and events continue
@@ -449,29 +449,29 @@ Calling sleep() outside an app:run() function raises an error.
 
 ## Window tracking
 
-#### `app:windows() -> {win1, ...}`
+### `app:windows() -> {win1, ...}`
 
 Get all windows in creation order.
 
-#### `app:window_count([filter]) -> n`
+### `app:window_count([filter]) -> n`
 
 Get the number of windows (dead or alive) without wasting a table.
 `filter` can be 'root' which returns the number of non-dead
 non-parented windows.
 
-#### `app:window_created(win)`
+### `app:window_created(win)`
 
 Event: a window was created.
 Fired right after the window's `was_created` event is fired.
 
-#### `app:window_closed(win)`
+### `app:window_closed(win)`
 
 Event: a window was closed.
 Fired right after the window's `was_closed` event is fired.
 
 ## Creating windows
 
-#### `app:window(t) -> win`
+### `app:window(t) -> win`
 
 Create a window (fields of _`t`_ below):
 
@@ -547,11 +547,11 @@ The following defaults are different for child windows:
 Child windows can't be minimizable because they don't appear in the taskbar
 (they minimize when their parent is minimized).
 
-#### `win:parent() -> win|nil`
+### `win:parent() -> win|nil`
 
 Get the window's parent (read-only).
 
-#### `win:children() -> {win1, ...}`
+### `win:children() -> {win1, ...}`
 
 Get the window's children (those whose parent() is this window).
 
@@ -561,7 +561,7 @@ Sticky windows follow their parent when their parent is moved.
 
 __NOTE:__ Sticky windows [don't work](https://github.com/luapower/nw/issues/27) on Linux.
 
-#### `win:sticky() -> t|f`
+### `win:sticky() -> t|f`
 
 Get the sticky flag (read-only).
 
@@ -580,7 +580,7 @@ They also come with some limitations (mostly from Windows):
   * they can't have views.
   * you can't draw on them using OpenGL.
 
-#### `win:transparent() -> t|f`
+### `win:transparent() -> t|f`
 
 Get the transparent flag (read-only).
 
@@ -596,7 +596,7 @@ function win:closing()
 end
 ~~~
 
-#### `win:close([force])`
+### `win:close([force])`
 
 Close the window and destroy it. Children are closed first.
 The `force` arg allows closing the window without firing the `closing` event.
@@ -604,32 +604,32 @@ The `force` arg allows closing the window without firing the `closing` event.
 Calling `close()` on a closed window does nothing.
 Calling any other method raises an error.
 
-#### `win:dead() -> t|f`
+### `win:dead() -> t|f`
 
 Check if the window was destroyed.
 
-#### `win:closing()`
+### `win:closing()`
 
 Event: The window is about to close.
 Return false from the event handler to refuse.
 
-#### `win:was_closed()`
+### `win:was_closed()`
 
 Event: The window was closed.
 Fired after all children are closed, but before the window itself
 is destroyed (`win:dead()` still returns false at this point).
 
-#### `win:closeable() -> t|f`
+### `win:closeable() -> t|f`
 
 Get the closeable flag (read-only).
 
 ## App activation
 
-#### `app:active() -> t|f`
+### `app:active() -> t|f`
 
 Check if the app is active.
 
-#### `app:activate([mode])`
+### `app:activate([mode])`
 
 Activate the app, which activates the last window that was active
 before the app got deactivated.
@@ -651,36 +651,36 @@ On OSX and Linux it pops up the window in the user's face
 The 'info' mode: this special mode allows bouncing up the dock icon
 on OSX only once. On other platforms it's the same as the default 'alert' mode.
 
-#### `app:was_activated()` <br> `app:was_deactivated()`
+### `app:was_activated()` <br> `app:was_deactivated()`
 
 Event: the app was activated/deactivated.
 
 ## Window activation
 
-#### `app:active_window() -> win`
+### `app:active_window() -> win`
 
 Get the active window, if any.
 
 When the app is inactive, this always returns nil.
 
-#### `win:active() -> t|f`
+### `win:active() -> t|f`
 
 Check if the window is active.
 
 When the app is inactive, this returns false for all windows.
 
-#### `win:activate()`
+### `win:activate()`
 
 Activate the window. If the app is inactive, this does not activate the app.
 Instead it only marks the window to be activated when the app becomes active.
 If you want to alert the user that it should pay attention to the window,
 call `app:activate()` after calling this function.
 
-#### `win:was_activated()` <br> `win:was_deactivated()`
+### `win:was_activated()` <br> `win:was_deactivated()`
 
 Event: window was activated/deactivated.
 
-#### `win:activable() -> t|f`
+### `win:activable() -> t|f`
 
 Get the activable flag (read-only).
 
@@ -691,17 +691,17 @@ __NOTE:__ This [doesn't work](https://github.com/luapower/nw/issues/26) in Linux
 
 ## App visibility (OSX)
 
-#### `app:hidden() -> t|f` <br> `app:hidden(t|f)` <br> `app:hide()` <br> `app:unhide()`
+### `app:hidden() -> t|f` <br> `app:hidden(t|f)` <br> `app:hide()` <br> `app:unhide()`
 
 Get/set app visibility.
 
-#### `app:was_hidden()` <br> `app:was_unhidden()`
+### `app:was_hidden()` <br> `app:was_unhidden()`
 
 Event: app was hidden/unhidden.
 
 ## Window visibility
 
-#### `win:show()`
+### `win:show()`
 
 Show the window in its previous state (which can include any combination
 of minimized, maximized, and fullscreen state flags).
@@ -712,91 +712,91 @@ without being activated.
 
 Calling show() on a visible (which includes minimized) window does nothing.
 
-#### `win:hide()`
+### `win:hide()`
 
 Hide the window from the screen and from the taskbar, preserving its full state.
 
 Calling hide() on a hidden window does nothing.
 
-#### `win:visible() -> t|f`
+### `win:visible() -> t|f`
 
 Check if a window is visible (note: that includes minimized).
 
-#### `win:visible(t|f)`
+### `win:visible(t|f)`
 
 Call `show()` or `hide()` to change the window's visibility.
 
-#### `win:was_shown()` <br> `win:was_hidden()`
+### `win:was_shown()` <br> `win:was_hidden()`
 
 Event: window was shown/hidden.
 
 ## Minimization
 
-#### `win:minimizable() -> t|f`
+### `win:minimizable() -> t|f`
 
 Get the minimizable flag (read-only).
 
-#### `win:minimized() -> t|f`
+### `win:minimized() -> t|f`
 
 Get the minimized state. This flag remains true when a minimized window is hidden.
 
-#### `win:minimize()`
+### `win:minimize()`
 
 Minimize the window and deactivate it. If the window is hidden,
 it is shown in minimized state (and the taskbar button is not activated).
 
-#### `win:was_minimized()` <br> `win:was_unminimized()`
+### `win:was_minimized()` <br> `win:was_unminimized()`
 
 Event: window was minimized/unminimized.
 
 ## Maximization
 
-#### `win:maximizable() -> t|f`
+### `win:maximizable() -> t|f`
 
 Get the maximizable flag (read-only).
 
-#### `win:maximized() -> t|f`
+### `win:maximized() -> t|f`
 
 Get the maximized state. This flag stays true if a maximized window
 is minimized, hidden or enters fullscreen mode.
 
-#### `win:maximize()`
+### `win:maximize()`
 
 Maximize the window and activate it. If the window was hidden,
 it is shown in maximized state and activated.
 
 If the window is already maximized it is not activated.
 
-#### `win:was_maximized()` <br> `win:was_unmaximized()`
+### `win:was_maximized()` <br> `win:was_unmaximized()`
 
 Event: window was maximized/unmaximized.
 
 ## Fullscreen mode
 
-#### `win:fullscreenable() -> t|f`
+### `win:fullscreenable() -> t|f`
 
 Check if a window is allowed to go in fullscreen mode (read-only).
 This flag only affects OSX - the only platform which presents a fullscreen
 button on the title bar. Fullscreen mode can always be engaged programatically.
 
-#### `win:fullscreen() -> t|f`
+### `win:fullscreen() -> t|f`
 
 Get the fullscreen state.
 
-#### `win:fullscreen(t|f)`
+### `win:fullscreen(t|f)`
 
 Enter or exit fullscreen mode and activate the window. If the window is hidden
 or minimized, it is shown in fullscreen mode and activated.
 
 If the window is already in the desired mode it is not activated.
 
-#### `win:entered_fullscreen()` <br> `win:exited_fullscreen()`
+### `win:entered_fullscreen()` <br> `win:exited_fullscreen()`
 
 Event: entered/exited fullscreen mode.
 
 ## Restoring
 
-#### `win:restore()`
+### `win:restore()`
 
 Restore from minimized, maximized or fullscreen state, i.e. unminimize
 if the window was minimized, exit fullscreen if it was in fullscreen mode,
@@ -804,7 +804,7 @@ or unmaximize it if it was maximized (otherwise do nothing).
 
 The window is always activated unless it was in normal mode.
 
-#### `win:shownormal()`
+### `win:shownormal()`
 
 Show the window in normal state.
 
@@ -815,25 +815,25 @@ The window is always activated even when it's already in normal mode.
 State tracking is about getting and tracking the entire user-changeable
 state of a window (of or the app) as a whole.
 
-#### `win:state() -> state`
+### `win:state() -> state`
 
 Get the window's full state string, eg. 'visible maximized active'.
 
-#### `win:changed(old_state, new_state)`
+### `win:changed(old_state, new_state)`
 
 Event: window state has changed.
 
-#### `app:state() -> state`
+### `app:state() -> state`
 
 Get the app's full state string, eg. 'visible active'.
 
-#### `app:changed(old_state, new_state)`
+### `app:changed(old_state, new_state)`
 
 Event: app state has changed.
 
 ## Enabled state
 
-#### `win:enabled(t|f)` <br> `win:enabled() -> t|f`
+### `win:enabled(t|f)` <br> `win:enabled() -> t|f`
 
 Get/set the enabled flag (default: true). A disabled window cannot receive
 mouse or keyboard focus. Disabled windows are useful for implementing
@@ -844,96 +844,96 @@ __NOTE:__ This [doesn't work](https://github.com/luapower/nw/issues/25) on Linux
 
 ## Client/screen conversion
 
-#### `win:to_screen(x, y) -> x, y`
+### `win:to_screen(x, y) -> x, y`
 
 Convert a point from the window's client space to screen space.
 
-#### `win:to_client(x, y) -> x, y`
+### `win:to_client(x, y) -> x, y`
 
 Convert a point from screen space to the window's client space.
 
 ## Frame/client conversion
 
-#### `app:client_to_frame(frame, has_menu, x, y, w, h) -> x, y, w, h`
+### `app:client_to_frame(frame, has_menu, x, y, w, h) -> x, y, w, h`
 
 Given a client rectangle, return the frame rectangle for a certain
 frame type. If `has_menu` is true, then the window also has a menu.
 
-#### `app:frame_to_client(frame, has_menu, x, y, w, h) -> x, y, w, h`
+### `app:frame_to_client(frame, has_menu, x, y, w, h) -> x, y, w, h`
 
 Given a frame rectangle, return the client rectangle for a certain
 frame type. If `has_menu` is true, then the window also has a menu.
 
-#### `app:frame_extents(frame, has_menu) -> left, top, right, bottom`
+### `app:frame_extents(frame, has_menu) -> left, top, right, bottom`
 
 Get the frame extents for a certain frame type.
 
 ## Size and position
 
-#### `win:frame_rect() -> x, y, w, h`
+### `win:frame_rect() -> x, y, w, h`
 
 Get the frame rect in current state (in screen coordinates).
 
-#### `win:frame_rect(x, y, w, h)`
+### `win:frame_rect(x, y, w, h)`
 
 Set the frame rect (and change state to normal).
 
-#### `win:normal_frame_rect() -> x, y, w, h`
+### `win:normal_frame_rect() -> x, y, w, h`
 
 Get the frame rect in normal state (in screen coordinates).
 
-#### `win:client_rect() -> cx, cy, cw, ch`
+### `win:client_rect() -> cx, cy, cw, ch`
 
 Get the client rect in current state (in screen coordinates).
 
-#### `win:client_rect(cx, cy, cw, ch)`
+### `win:client_rect(cx, cy, cw, ch)`
 
 Move/resize the window to accomodate a specified client area position and size.
 
-#### `win:client_size() -> cw, ch`
+### `win:client_size() -> cw, ch`
 
 Get the size of the window's client area.
 
-#### `win:client_size(cw, ch)`
+### `win:client_size(cw, ch)`
 
 Resize the window to accomodate a specified client area size.
 
-#### `win:sizing(when, how, x, y, w, h) -> [x, y, w, h]`
+### `win:sizing(when, how, x, y, w, h) -> [x, y, w, h]`
 
 Event: window size/position is about to change.
 Return a new rectangle to affect the window's final size and position.
 
 __NOTE:__ This does not fire in Linux.
 
-#### `win:was_moved(cx, cy)`
+### `win:was_moved(cx, cy)`
 
 Event: window was moved.
 
-#### `win:was_resized(cw, ch)`
+### `win:was_resized(cw, ch)`
 
 Event: window was resized.
 
 ## Size constraints
 
-#### `win:resizeable() -> t|f`
+### `win:resizeable() -> t|f`
 
 Get the resizeable flag.
 
-#### `win:minsize() -> cw, ch`
+### `win:minsize() -> cw, ch`
 
 Get the minimum client rect size.
 
-#### `win:minsize(cw, ch)`
+### `win:minsize(cw, ch)`
 
 Set the minimum client rect size.
 
 The window is resized if it was smaller than this size.
 
-#### `win:maxsize() -> cw, ch`
+### `win:maxsize() -> cw, ch`
 
 Get the maximum client rect size.
 
-#### `win:maxsize(cw, ch)`
+### `win:maxsize(cw, ch)`
 
 Set the maximum client rect size.
 
@@ -943,7 +943,7 @@ This constraint applies to the maximized state too.
 
 ## Edge snapping
 
-#### `win:edgesnapping() -> mode` <br> `win:edgesnapping(mode)`
+### `win:edgesnapping() -> mode` <br> `win:edgesnapping(mode)`
 
 Get/set edge snapping mode, which is a string containing any combination
 of the words 'app', 'other', 'screen', 'all' separated by spaces
@@ -958,27 +958,27 @@ __NOTE:__ Edge snapping doesn't work on Linux because the `sizing` event
 doesn't fire there. It is however already (poorly) implemented by some
 window managers (eg. Unity) so all is not lost.
 
-#### `win:magnets(which) -> {r1, ...}`
+### `win:magnets(which) -> {r1, ...}`
 
 Event: get edge snapping rectangles (rectangles are tables with fields _x, y, w, h_).
 
 ## Z-Order
 
-#### `win:topmost() -> t|f` <br> `win:topmost(t|f)`
+### `win:topmost() -> t|f` <br> `win:topmost(t|f)`
 
 Get/set the topmost flag. A topmost window stays on top of all other non-topmost windows.
 
-#### `win:raise([rel_to_win])`
+### `win:raise([rel_to_win])`
 
 Raise above all windows/specific window.
 
-#### `win:lower([rel_to_win])`
+### `win:lower([rel_to_win])`
 
 Lower below all windows/specific window.
 
 ## Window title
 
-#### `win:title() -> title` <br> `win:title(title)`
+### `win:title() -> title` <br> `win:title(title)`
 
 Get/set the window's title.
 
@@ -987,41 +987,41 @@ Get/set the window's title.
 In non-mirrored multi-monitor setups, the displays are mapped
 on a virtual surface, with the main display's top-left corner at (0, 0).
 
-#### `app:displays() -> {disp1, ...}`
+### `app:displays() -> {disp1, ...}`
 
 Get displays (in no specific order).
 
-#### `app:display_count() -> n`
+### `app:display_count() -> n`
 
 Get the display count without wasting a table.
 
-#### `app:main_display() -> disp`
+### `app:main_display() -> disp`
 
 Get the display whose screen rect is at (0, 0).
 
-#### `app:active_display() -> disp`
+### `app:active_display() -> disp`
 
 Get the display which has the keyboard focus.
 
-#### `disp:screen_rect() -> x, y, w, h` <br> `disp.x, disp.y, disp.w, disp.h`
+### `disp:screen_rect() -> x, y, w, h` <br> `disp.x, disp.y, disp.w, disp.h`
 
 Get the display's screen rectangle.
 
-#### `disp:desktop_rect() -> cx, cy, cw, ch` <br> `disp.cx, disp.cy, disp.cw, disp.ch`
+### `disp:desktop_rect() -> cx, cy, cw, ch` <br> `disp.cx, disp.cy, disp.cw, disp.ch`
 
 Get the display's desktop rectangle (screen minus any taskbars).
 
-#### `app:displays_changed()`
+### `app:displays_changed()`
 
 Event: displays changed.
 
-#### `win:display() -> disp`
+### `win:display() -> disp`
 
 Get the display the window is currently on.
 
 ## Cursors
 
-#### `win:cursor() -> name` <br> `win:cursor(name)`
+### `win:cursor() -> name` <br> `win:cursor(name)`
 
 Get/set the mouse cursor. The name can be:
 
@@ -1039,7 +1039,7 @@ Get/set the mouse cursor. The name can be:
 
 ## Keyboard
 
-#### `app:key(query) -> t|f`
+### `app:key(query) -> t|f`
 
 Get key pressed and toggle states. The query can be one or more
 [key names][nw_keys] separated by spaces or by `+` eg. 'alt+f3' or 'alt f3'.
@@ -1048,19 +1048,19 @@ is queried instead eg. '^capslock' returns the toggle state of the
 caps lock key while 'capslock' returns its pressed state.
 (only the capslock, numlock and scrolllock keys have toggle states).
 
-#### `win:keydown(key)`
+### `win:keydown(key)`
 
 Event: a key was pressed (not sent on repeat).
 
-#### `win:keyup(key)`
+### `win:keyup(key)`
 
 Event: a key was depressed.
 
-#### `win:keypress(key)`
+### `win:keypress(key)`
 
 Event: sent after keydown and on key repeat.
 
-#### `win:keychar(s)`
+### `win:keychar(s)`
 
 Event: sent after keypress for displayable characters; _`s`_ is a utf-8
 string and can contain one or more code points.
@@ -1074,11 +1074,11 @@ telling the OS to disable this automatic raster scaling and allow the
 app to scale the UI itself (but this time in vector space) in order
 to make it readable again on a dense screen.
 
-#### `app:autoscaling() -> t|f`
+### `app:autoscaling() -> t|f`
 
 Check if autoscaling is enabled.
 
-#### `app:autoscaling(t|f)`
+### `app:autoscaling(t|f)`
 
 Enable/disable autoscaling.
 
@@ -1086,14 +1086,14 @@ __NOTE:__ This function must be called before the OS stretcher kicks in,
 i.e. before creating any windows or calling any display APIs.
 It will silently fail otherwise.
 
-#### `disp.scalingfactor`
+### `disp.scalingfactor`
 
 Get the display's scaling factor. This is 1 when autoscaling is enabled.
 
 If autoscaling is disabled, windows must check their display's
 scaling factor and scale the UI accordingly.
 
-#### `win:scalingfactor_changed()`
+### `win:scalingfactor_changed()`
 
 A window's display scaling factor changed or most likely the window
 was moved to a screen with a different scaling factor.
@@ -1109,15 +1109,15 @@ on the textures of orto-projected quads. Mouse events work the same
 on views as they do on windows (note: the window doesn't receive
 mouse events while the mouse is over a view).
 
-#### `win:views() -> {view1, ...}`
+### `win:views() -> {view1, ...}`
 
 Get the window's views.
 
-#### `win:view_count() -> n`
+### `win:view_count() -> n`
 
 Get the number of views without wasting a table.
 
-#### `win:view(t) -> view`
+### `win:view(t) -> view`
 
 Create a view (fields of _`t`_ below):
 
@@ -1125,31 +1125,31 @@ Create a view (fields of _`t`_ below):
 * `visible`				- start visible (default: true)
 * `anchors`				- resizing anchors (default: 'lt'); can be 'ltrb'
 
-#### `view:free()`
+### `view:free()`
 
 Destroy the view.
 
-#### `view:dead() -> t|f`
+### `view:dead() -> t|f`
 
 Check if the view was destroyed.
 
-#### `view:visible() -> t|f` <br> `view:visible(t|f)` <br> `view:show()` <br> `view:hide()`
+### `view:visible() -> t|f` <br> `view:visible(t|f)` <br> `view:show()` <br> `view:hide()`
 
 Get/set the view's visibility.
 
 The position and size of the view are preserved while hidden (anchors keep working).
 
-#### `view:rect() -> x, y, w, h` <br> `view:rect(x, y, w, h)`
+### `view:rect() -> x, y, w, h` <br> `view:rect(x, y, w, h)`
 
 Get/set the view's position (in window's client space) and size.
 
 The view rect is valid and can be changed while the view is hidden.
 
-#### `view:size() -> w, h` <br> `view:size(w, h)`
+### `view:size() -> w, h` <br> `view:size(w, h)`
 
 Get/set the view's size.
 
-#### `view:anchors() -> anchors` <br> `view:anchors(anchors)`
+### `view:anchors() -> anchors` <br> `view:anchors(anchors)`
 
 Get/set the anchors: they can be any combination of 'ltrb' characters
 representing left, top, right and bottom anchors respectively.
@@ -1162,20 +1162,20 @@ the view is on, so that when the window is moved/resized, the view
 is also moved/resized in order to preserve the initial distance
 to that side of the window.
 
-#### `view:rect_changed(x, y, w, h)` <br> `view:was_moved(x, y)` <br> `view:was_resized(w, h)`
+### `view:rect_changed(x, y, w, h)` <br> `view:was_moved(x, y)` <br> `view:was_resized(w, h)`
 
 Event: view's size and/or position changed.
 
 ## Mouse
 
-#### `win/view:mouse() -> t`
+### `win/view:mouse() -> t`
 
 Get the mouse state, which is a table with fields:
 _x, y, inside, left, right, middle, ex1, ex2_
 
 The mouse state is not queried: it is the state at the time of the last mouse event.
 
-#### `win/view:mouseenter()` <br> `win/view:mouseleave()`
+### `win/view:mouseenter()` <br> `win/view:mouseleave()`
 
 Event: mouse entered/left the client area of the window.
 
@@ -1183,11 +1183,11 @@ These events do not fire while the mouse is captured (see mousedown)
 but a mouseleave event _will_ fire after mouseup _if_ mouseup happens
 outside the client area of the window/view that captured the mouse.
 
-#### `win/view:mousemove(x, y)`
+### `win/view:mousemove(x, y)`
 
 Event: the mouse was moved.
 
-#### `win/view:mousedown(button, x, y)`
+### `win/view:mousedown(button, x, y)`
 
 Event: a mouse button was pressed; button can be 'left', 'right', 'middle', 'ex1', 'ex2'.
 
@@ -1196,11 +1196,11 @@ which received the mousedown event, which means that the same window/view
 will continue to receive mousemove events even if the mouse leaves
 its client area.
 
-#### `win/view:mouseup(button, x, y)`
+### `win/view:mouseup(button, x, y)`
 
 Event: a mouse button was depressed.
 
-#### `win/view:click(button, count, x, y)`
+### `win/view:click(button, count, x, y)`
 
 Event: a mouse button was clicked (fires immediately after mousedown).
 
@@ -1245,7 +1245,7 @@ or you'll never get a count of 3.
 The double-click time interval is the interval that the user
 has set in the OS and it is queried on every click.
 
-#### `win/view:wheel(delta, x, y)` <br> `win/view:hwheel(delta, x, y)`
+### `win/view:wheel(delta, x, y)` <br> `win/view:hwheel(delta, x, y)`
 
 Event: the mouse vertical or horizontal wheel was moved.
 The delta represents the number of lines to scroll.
@@ -1260,16 +1260,16 @@ by requesting the window's bitmap or OpenGL context and drawing on it.
 The OS fires `repaint` whenever it loses (part of) the contents
 of the window. To force a repaint anytime, use `invalidate()`.
 
-#### `win/view:repaint()`
+### `win/view:repaint()`
 
 Event: window needs redrawing. To redraw the window, simply request
 the window's bitmap or OpenGL context and draw using that.
 
-#### `win/view:invalidate()`
+### `win/view:invalidate()`
 
 Request window redrawing.
 
-#### `win/view:bitmap() -> bmp`
+### `win/view:bitmap() -> bmp`
 
 Get a bgra8 [bitmap] object to draw on. The bitmap is freed when
 the window's client area changes size, so keeping a reference to it
@@ -1278,45 +1278,45 @@ outside the `repaint` event is generally not useful.
 The alpha channel is not used unless this is a transparent window
 (note: views cannot be transparent).
 
-#### `bmp:clear()`
+### `bmp:clear()`
 
 Fill the bitmap with zeroes.
 
-#### `bmp:cairo() -> cr`
+### `bmp:cairo() -> cr`
 
 Get a [cairo] context on the bitmap. The context lasts as long as the bitmap lasts.
 
-#### `win/view:free_cairo(cr)`
+### `win/view:free_cairo(cr)`
 
 Event: cairo context needs to be freed.
 
-#### `win/view:free_bitmap(bmp)`
+### `win/view:free_bitmap(bmp)`
 
 Event: bitmap needs to be freed.
 
-#### `win/view:gl() -> gl`
+### `win/view:gl() -> gl`
 
 Get an OpenGL context/API to draw on the window or view.
 
 ## Menus
 
-#### `app:menu() -> menu`
+### `app:menu() -> menu`
 
 Create a menu.
 
-#### `app:menubar() -> menu`
+### `app:menubar() -> menu`
 
 Get the app's menu bar (OSX)
 
-#### `win:menubar() -> menu|nil` `win:menubar(menu|nil)`
+### `win:menubar() -> menu|nil` `win:menubar(menu|nil)`
 
 Get/set/remove the window's menu bar (Windows, Linux).
 
-#### `win/view:popup(menu, cx, cy)` <br> `menu:popup(win/view, cx, cy)`
+### `win/view:popup(menu, cx, cy)` <br> `menu:popup(win/view, cx, cy)`
 
 Pop up a menu at a point relative to a window or view.
 
-#### `menu:add([index, ]text, [action], [options])` <br> `menu:set(index, text, [action], [options])` <br> `menu:add{index =, text =, action =, <option> =}` <br> `menu:set{index =, text =, action =, <option> =}`
+### `menu:add([index, ]text, [action], [options])` <br> `menu:set(index, text, [action], [options])` <br> `menu:add{index =, text =, action =, <option> =}` <br> `menu:set{index =, text =, action =, <option> =}`
 
 Add/set a menu item. The options are:
 
@@ -1330,23 +1330,23 @@ Add/set a menu item. The options are:
 * `enabled` - enabled state (true)
 * `checked` - checked state (false)
 
-#### `menu:remove(index)`
+### `menu:remove(index)`
 
 Remove menu item at index.
 
-#### `menu:get(index) -> item` <br> `menu:get(index, prop) -> val`
+### `menu:get(index) -> item` <br> `menu:get(index, prop) -> val`
 
 Get a menu item, or the value of one of its properties.
 
-#### `menu:item_count() -> n`
+### `menu:item_count() -> n`
 
 Get the number of items in the menu.
 
-#### `menu:items([prop]) -> {item1, ...}`
+### `menu:items([prop]) -> {item1, ...}`
 
 Get the menu items.
 
-#### `menu:checked(index) -> t|f` <br> `menu:checked(index, t|f)`
+### `menu:checked(index) -> t|f` <br> `menu:checked(index, t|f)`
 
 Get/set the checked state of a menu item.
 
@@ -1354,83 +1354,83 @@ Get/set the checked state of a menu item.
 
 ### Common API
 
-#### `icon:bitmap() -> bmp`
+### `icon:bitmap() -> bmp`
 
 Get the icon's bitmap.
 
-#### `icon:invalidate()`
+### `icon:invalidate()`
 
 Request icon redrawing.
 
-#### `icon:repaint()`
+### `icon:repaint()`
 
 Event: icon needs redrawing.
 
-#### `icon:free_bitmap(bmp)`
+### `icon:free_bitmap(bmp)`
 
 Event: the icon's bitmap needs to be freed.
 
 ### Window icon (Windows)
 
-#### `win:icon([which]) -> icon`
+### `win:icon([which]) -> icon`
 
 Get the window's icon. The `which` arg can be: 'big' (default), 'small'.
 
 ### Dock icon (OSX)
 
-#### `app:dockicon() -> icon`
+### `app:dockicon() -> icon`
 
 Get the app's dock icon.
 
 ### Notification icons (Windows, OSX)
 
-#### `app:notifyicon(t) -> icon`
+### `app:notifyicon(t) -> icon`
 
 Create a notification icon.
 
-#### `app:notifyicon_count() -> n`
+### `app:notifyicon_count() -> n`
 
 Get the number of notification icons.
 
-#### `app:notifyicons() -> {icon1, ...}`
+### `app:notifyicons() -> {icon1, ...}`
 
 Get all the notification icons.
 
-#### `icon:tooltip() -> s` <br> `icon:tooltip(s)`
+### `icon:tooltip() -> s` <br> `icon:tooltip(s)`
 
 Get/set the icon's tooltip.
 
-#### `icon:menu() -> menu` <br> `icon:menu(menu)`
+### `icon:menu() -> menu` <br> `icon:menu(menu)`
 
 Get/set a menu for the icon.
 
-#### `icon:text() -> s` <br> `icon:text(s)`
+### `icon:text() -> s` <br> `icon:text(s)`
 
 Get/set the status bar item's text (OSX only).
 
-#### `icon:length() -> n` <br> `icon:length(n)`
+### `icon:length() -> n` <br> `icon:length(n)`
 
 Get/set the status bar item's length (OSX only).
 
 ## Events
 
-#### `app/win/view:on(event, func)`
+### `app/win/view:on(event, func)`
 
 Call `func` when `event` happens. Multiple functions can be attached
 to the same event.
 
-#### `app/win/view:events(enabled) -> prev_state`
+### `app/win/view:events(enabled) -> prev_state`
 
 Enable/disable events.
 
-#### `app/win/view:event(name, args...)`
+### `app/win/view:event(name, args...)`
 
 This is a meta-event fired on every other event.
 The name and args of the event are passed in.
 
 ## Version checks
 
-#### `app:ver(query) -> t|f`
+### `app:ver(query) -> t|f`
 
 Check that a certain backend API is at a specified version or beyond.
 The query has the form `'<API> <version>'` where API can be
@@ -1464,11 +1464,11 @@ comes with proper manifest files).
 
 ## Extending
 
-#### `nw.backends -> {os -> module_name}`
+### `nw.backends -> {os -> module_name}`
 
 Default backend modules for each OS.
 
-#### `nw:init([backend_name])`
+### `nw:init([backend_name])`
 
 Init `nw` with a specific backend (can be called only once).
 
