@@ -357,7 +357,7 @@ Xlib       [xlib]      Ubuntu/Unity 10.04+     Ubuntu/Unity 10.04 x64
 
 The global app object is the API from which everything else gets created.
 
-#### `nw:app() -> app`
+### `nw:app() -> app`
 
 Get the global application object.
 
