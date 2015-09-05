@@ -362,7 +362,7 @@ AC_SRC_ALPHA = 0x01
 --showcase
 
 if not ... then
-print(GetStockObject(WHITE_BRUSH))
-print(GetStockObject(DEFAULT_GUI_FONT))
+	print(GetStockObject(WHITE_BRUSH))
+	print(GetStockObject(DEFAULT_GUI_FONT))
 end
 

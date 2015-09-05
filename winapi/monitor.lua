@@ -5,7 +5,8 @@
 setfenv(1, require'winapi')
 require'winapi.winuser'
 
---NOTE: EnumDisplayMonitors() returns the monitors in random order, that can also change between reboots.
+--NOTE: EnumDisplayMonitors() returns the monitors in random order
+--which can also change between reboots.
 
 ffi.cdef[[
 HMONITOR MonitorFromPoint(POINT pt, DWORD dwFlags);
@@ -45,6 +46,7 @@ MONITORINFOF_PRIMARY = 0x00000001 --the only flag in dwFlags
 MONITORINFOEX = struct{ctype = 'MONITORINFOEXW', size = 'cbSize',
 	fields = sfields{
 		'flags', 'dwFlags', flags, pass,
+		'device', '', wc_set'szDevice', wc_get'szDevice',
 	}
 }
 
@@ -78,10 +80,13 @@ function EnumDisplayMonitors(hdc, cliprect)
 	return t
 end
 
+
+--showcase
+
 if not ... then
 	for i,monitor in ipairs(EnumDisplayMonitors()) do
 		local info = GetMonitorInfo(monitor)
-		print(i, info.monitor_rect, info.work_rect)
+		print(i, info.monitor_rect, info.work_rect, info.device)
 	end
 end
 
