@@ -651,13 +651,9 @@ On OSX and Linux it pops up the window in the user's face
 The 'info' mode: this special mode allows bouncing up the dock icon
 on OSX only once. On other platforms it's the same as the default 'alert' mode.
 
-#### `app:was_activated()`
+#### `app:was_activated()` <br> `app:was_deactivated()`
 
-Event: the app was activated.
-
-#### `app:was_deactivated()`
-
-Event: the app was deactivated.
+Event: the app was activated/deactivated.
 
 ## Window activation
 
@@ -680,20 +676,16 @@ Instead it only marks the window to be activated when the app becomes active.
 If you want to alert the user that it should pay attention to the window,
 call `app:activate()` after calling this function.
 
-#### `win:was_activated()`
+#### `win:was_activated()` <br> `win:was_deactivated()`
 
-Event: window was activated.
-
-#### `win:was_deactivated()`
-
-Event: window was deactivated.
+Event: window was activated/deactivated.
 
 #### `win:activable() -> t|f`
 
-Get the activable flag (read-only; only for windows with 'toolbox' frame).
+Get the activable flag (read-only).
 
-Only toolbox windows can be made non-activable. It is sometimes useful to have
-toolboxes that don't steal keyboard focus away from the main window when clicked.
+Only toolbox windows can be made non-activable. This is useful for toolboxes
+that can be clicked inside without stealing keyboard focus away from the main window.
 
 __NOTE:__ This [doesn't work](https://github.com/luapower/nw/issues/26) in Linux.
 
@@ -1446,9 +1438,9 @@ The query has the form `'<API> <version>'` where API can be
 
 Example: `app:ver'OSX 10.8'` returns `true` on OSX 10.8 and beyond.
 
-For Windows you can use the following table:
+For Windows you can use the following table to figure it out:
 
-Windows							Version
+Release							Version
 -------------------------- -----------
 Windows 10						10.0 (6.2)
 Windows Server 2016 TP		10.0 (6.2)
