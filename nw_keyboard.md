@@ -2,28 +2,43 @@
 tagline: native windows key codes
 ---
 
-## Types of keys
+## Using the keyboard
 
-Keys on a keyboard are classified as follows:
+Keyboards are used differently depending on purpose, which can be text input,
+navigation, editing, shortcuts and other functions.
 
-~~~
-naming			represents			numlock-sensitive		left-right distinction
---------------	-----------------	--------------------	-----------------------
-key				functional keys	yes						no
-vkey				virtual keys		yes						yes
-pkey				physical keys		no							yes
-~~~
+For text input it's a combination of physical layout, logical layout
+input method, capslock state, numlock state, shift state, key pause
+and repeat intervals that determines what is being typed.
+Since all this is very complex and involves various user settings,
+this is entirely serviced by OS: we just get an event with one or more
+unicode code points representing what is being typed.
 
-Functional keys are useful for creating shortcuts, while physical keys are useful for games.
-Virtual keys are not generally useful, except when you need to distinguish
-between left/right key variations or between numapd keys and standalone cursor keys,
-but you also need to respect the numlock key.
+For navigation the physical location of the keys matters. WASD games use
+keys normally used for text input (thus layout-dependent) for the purpose
+of navigation, so there needs to be a way to identify character and
+punctuation keys based on their physical positon on the standard
+US keyboard regerdless of the keyboard's actual layout. This also
+creates the need to get the keycap name for those keys. Games also want
+to ignore the numlock and capslock states, and may want to distinguish
+between left and right modifier keys.
 
-## Full list
+Editing keys (tab, enter), as well as function, control and modifier keys
+are universal, but not all of them are available between PC, Mac and laptop
+keyboards.
 
-Here's the full list of functional keys and their corresponding virtual keys.
-You get physical keys instead of virtual keys if you set the `ignore_numlock` option,
-in which case the keyboard API will act as if numlock is always on.
+Shortcuts involving character and punctuation keys must use layout-dependent
+keys so there needs to be a way to query the pressed state of character
+and punctuation keys based on the the current layout. Most shortcuts don't
+distinguish between left and right modifiers but some do.
+
+For shortcuts there's also the issue of certain key combinations being
+used by the OS and what these are is different beteween Windows,
+OSX and Linux so care must be taken not to use those. And then
+there's cultural differences that need to be accounted for like how
+Windows' Ctrl+C needs to be Command+C on a Mac.
+
+## Key names
 
 ~~~
 key				vkeys									comments
@@ -111,9 +126,9 @@ volumeup
 
 Windows keyboards can be used on OSX and Mac keyboards can be used on Windows.
 Each OS will try to simulate its own keyboard on the foreign keyboard.
-For example, the numlock key on the Windows keyboard is mapped to numclear in OSX,
-because that's where the typical Mac user expects numclear to be, regardless
-of what is written on the key cap.
+For example, the numlock key on the Windows keyboard is mapped to numclear
+in OSX, because that's where the typical Mac user expects numclear to be,
+regardless of what is written on the key cap.
 
 Here's how the mappings go:
 
@@ -139,7 +154,7 @@ insert!				help
 
 ### Mac Keyboard on Windows
 
-If you have a mac keyboard and a windows box, please fill these up.
+If you have a Mac keyboard on a Windows box, please fill these up.
 
 ~~~
 mac keyboard		key on Windows

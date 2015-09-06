@@ -19,7 +19,7 @@ notification icons, all text in utf8, and more.
 
 <div class=small>
 -------------------------------------------- -----------------------------------------------------------------------------
-__app object__
+__[The app object](#the-app-object)__
 `nw:app() -> app`										the global application object
 __app loop__
 `app:run()`												run the loop
@@ -296,10 +296,10 @@ __file choose dialogs__
 &nbsp;&nbsp; *`initial_dir`*						initial dir
 __clipboard__
 `app:getclipboard(format) -> data|nil`			get data in clipboard (format is 'text', 'files', 'bitmap')
-`app:getclipboard() -> {format1,...}`			get data formats in clipboard
+`app:getclipboard() -> formats`					get data formats in clipboard
 `app:setclipboard(f|data[, format])`			clear or set clipboard
 __drag & drop__
-`win/view:dropfiles(x, y, {path1, ...})`		event: files are dropped
+`win/view:dropfiles(x, y, files)`				event: files are dropped
 `win/view:dragging(stage, t, x, y)`				event: something is being dragged
 __events__
 `app/win/view:on(event, func)`					call _func_ when _event_ happens
@@ -1058,10 +1058,12 @@ Get/set the mouse cursor and/or visibility. The name can be:
 
 ## Keyboard
 
+See [nw_keyboard] for the list of key names.
+
 ### `app:key(query) -> t|f`
 
 Get key pressed and toggle states. The query can be one or more
-[key names][nw_keys] separated by spaces or by `+` eg. 'alt+f3' or 'alt f3'.
+key names separated by spaces or by `+` eg. 'alt+f3' or 'alt f3'.
 The key name can start with `^` in which case the toggle state of that key
 is queried instead eg. '^capslock' returns the toggle state of the
 caps lock key while 'capslock' returns its pressed state.
@@ -1467,7 +1469,7 @@ Get the clipboard contents in one of the available formats. The format can be:
   * 'files' - returns `{path1, ...}`
   * 'bitmap' - returns a [bitmap]
 
-### `app:getclipboard() -> {format1,...}`
+### `app:getclipboard() -> {format = true}`
 
 Get the data formats currently in clipboard.
 
@@ -1480,7 +1482,7 @@ Clear or set the clipboard. Passing `false` clears it, otherwise `data` can be:
   * a table `{format = ..., data = ...}`.
   * a list of strings (for format: 'files').
 
-## Drag & drop
+## Drag & Drop
 
 ### `win/view:dropfiles(x, y, {filename1, ...})`
 

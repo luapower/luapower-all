@@ -1970,12 +1970,11 @@ end
 function app:get_clipboard_formats()
 	return with_clipboard(function()
 		local names = winapi.GetClipboardFormatNames()
-		local t,dupes = {},{}
+		local t = {}
 		for i=1,#names do
 			local format = clipboard_formats[names[i]]
-			if format and not dupes[format] then
-				dupes[format] = true
-				t[#t+1] = format
+			if format then
+				t[format] = true
 			end
 		end
 		return t
