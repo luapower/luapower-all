@@ -80,8 +80,10 @@ function GetCursorPos(p, pci)
 	else
 		p = POINT(pci.ptScreenPos)
 	end
-	return p
+	return p, pci
 end
+
+SetCursorPos = C.SetCursorPos
 
 --messages
 
