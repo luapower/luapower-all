@@ -2203,21 +2203,21 @@ end
 local function Drop(self, idataobject, key_state, x, y, peffect)
 	local backend = backend(self)
 	x, y = backend:to_client(x, y)
-	local ret = drag_result(backend.frontend:_backend_dragging('drop',
+	drag_result(backend.frontend:_backend_dragging('drop',
 		backend._drag_payload, x, y), peffect)
 	backend._drag_payload = nil
-	return ret
+	return 0 --S_OK
 end
 
 local function DragLeave(self)
 	local backend = backend(self)
-	backend.frontend:_backend_dragging'exit'
+	backend.frontend:_backend_dragging'leave'
 	backend._drag_payload = nil
-	return 0
+	return 0 --S_OK
 end
 
 if ffi.abi'64bit' then
-	--TODO: wrap with cbframe
+	--TODO: wrap with cbframe because of pt.
 	DragEnter = nil
 	DragOver = nil
 	Drop = nil

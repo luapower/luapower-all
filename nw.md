@@ -295,12 +295,12 @@ __file choose dialogs__
 &nbsp;&nbsp; *`filename`*							default filename
 &nbsp;&nbsp; *`initial_dir`*						initial dir
 __clipboard__
-`app:getclipboard() -> {format1,...}`			get formats in clipboard
-`app:getclipboard(format) -> data`				get clipboard contents (format is 'text', 'files', 'bitmap')
+`app:getclipboard(format) -> data|nil`			get data in clipboard (format is 'text', 'files', 'bitmap')
+`app:getclipboard() -> {format1,...}`			get data formats in clipboard
 `app:setclipboard(f|data[, format])`			clear or set clipboard
 __drag & drop__
 `win/view:dropfiles(x, y, {path1, ...})`		event: files are dropped
-`win/view:dragging(how, data, x, y)->effect`	event: something is being dragged
+`win/view:dragging(stage, t, x, y)`				event: something is being dragged
 __events__
 `app/win/view:on(event, func)`					call _func_ when _event_ happens
 `app/win/view:events(enabled) -> prev_state`	enable/disable events
@@ -1459,17 +1459,17 @@ If the user closes the dialog without choosing a file, it returns ni.
 
 ## Clipboard
 
-### `app:getclipboard() -> {format1,...}`
-
-Get the formats currently in clipboard.
-
-### `app:getclipboard(format) -> data`
+### `app:getclipboard(format) -> data|nil`
 
 Get the clipboard contents in one of the available formats. The format can be:
 
   * 'text' - returns a string.
   * 'files' - returns `{path1, ...}`
   * 'bitmap' - returns a [bitmap]
+
+### `app:getclipboard() -> {format1,...}`
+
+Get the data formats currently in clipboard.
 
 ### `app:setclipboard(f|data[, format])`
 
@@ -1484,11 +1484,31 @@ Clear or set the clipboard. Passing `false` clears it, otherwise `data` can be:
 
 ### `win/view:dropfiles(x, y, {filename1, ...})`
 
-Event: files were dropped over the window/view.
+Event: files are dropped over the window/view.
 
-### `win/view:dragging(how, data, x, y) -> effect`
+### `win/view:dragging('enter', data, x, y) -> effect` <br> `win/view:dragging('hover', data, x, y) -> effect` <br> `win/view:dragging('drop', data, x, y)` <br> `win/view:dragging('leave')`
 
-Event: something is being dragged over the window/view.
+Event: something is being dragged over the window/view. The first arg
+corresponds to the following mouse events:
+
+  * 'enter' - mouse enter
+  * 'hover' - mouse move
+  * 'drop' - mouse button up
+  * 'leave' - mouse leave
+
+The `data` arg is a table cotaining the drag payload in one or more formats:
+`{format = data}`. The `x`, `y` args are the mouse coordinates in window/view
+client space.
+
+You can respond to the 'enter' and 'hover' stages by returning:
+
+  * 'copy' - show a cursor indicating that the data is being copied
+  * 'link' - show a cursor indicating that the data is being linked
+  * 'none' - show the normal arrow cursor
+  * 'abort' - show the forbidden icon
+  * true - means 'copy'
+  * false - means 'abort'
+  * nil/nothing - means 'abort'
 
 ## Events
 

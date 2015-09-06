@@ -1851,7 +1851,7 @@ end
 
 local effect_arg = optarg({'copy', 'link', 'none', 'abort'}, 'copy', 'abort', 'abort')
 
-function window:_backend_dragging(how, data, x, y)
+function window:_backend_dragging(stage, data, x, y)
 	local effect = effect_arg(self:_handle('dragging', how, data, x, y))
 	self:_fire('dragging', how, data, x, y, effect)
 	return effect
