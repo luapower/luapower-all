@@ -218,7 +218,7 @@ function Window:on_destroy()
 		self.nw_destroyed = true
 		self.backend:_free_bitmap()
 		self.backend:_free_gl()
-		self.backend:_free_icon_api()
+		self.backend:_free_icon()
 		self.backend:_free_drop_target()
 		winmap[self] = nil
 		--register another random window as the last active window so that
@@ -785,7 +785,9 @@ local cursors = {
 }
 
 function window:update_cursor()
-	self:invalidate() --trigger WM_SETCURSOR
+	--trigger WM_SETCURSOR without having to invalidate the whole window.
+	local p = winapi.GetCursorPos()
+	winapi.SetCursorPos(p.x, p.y)
 end
 
 function Window:on_set_cursor(_, ht)
@@ -1694,7 +1696,7 @@ end
 
 function notifyicon:free()
 	self.ni:free()
-	self:_free_icon_api()
+	self:_free_icon()
 	self.ni = nil
 end
 
@@ -1804,7 +1806,7 @@ local function icon_api(which)
 end
 
 function notifyicon:_init_icon_api()
-	self.bitmap, self._get_icon, self._free_icon_api = icon_api()
+	self.bitmap, self._get_icon, self._free_icon = icon_api()
 end
 
 function notifyicon:invalidate()
@@ -1855,7 +1857,7 @@ function window:_call_icon_api(which, name, ...)
 	return self._icon_api[which][name](...)
 end
 
-function window:_free_icon_api()
+function window:_free_icon()
 	self.win.icon = nil --must release the old ones first so we can free them.
 	self.win.small_icon = nil --must release the old ones first so we can free them.
 	self:_call_icon_api('big', 'free_all')
@@ -1911,6 +1913,7 @@ function app:opendialog(opt)
 		filter = filter,
 		filter_index = 1, --first in list is default, like OSX
 		flags = flags,
+		initial_dir = opt.initial_dir,
 	}
 
 	if not ok then return end
@@ -1931,7 +1934,7 @@ function app:savedialog(opt)
 		--fortunately, this matches OSX behavior exactly.
 		default_ext = opt.filetypes and opt.filetypes[1],
 		filepath = opt.filename,
-		initial_dir = opt.path,
+		initial_dir = opt.initial_dir,
 		flags = 'OFN_OVERWRITEPROMPT', --like in OSX
 	}
 

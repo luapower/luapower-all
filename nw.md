@@ -186,8 +186,8 @@ __displays__
 `app:displays_changed()`							event: displays changed
 `win:display() -> disp`								the display the window is on
 __cursors__
-`win:cursor() -> name`								get the mouse cursor
-`win:cursor(name)`									set the mouse cursor
+`win:cursor() -> name, t|f`						get the mouse cursor and visibility
+`win:cursor(name|t|f)`								set the mouse cursor or visibility
 __frame flags__
 `win:frame() -> frame`								window's frame: 'normal', 'none', 'toolbox'
 `win:transparent() -> t|f`							transparent flag
@@ -261,15 +261,16 @@ __menus__
 `menu:items([prop]) -> {item1, ...}`
 `menu:checked(index) -> t|f`
 `menu:checked(index, t|f)`
-__notification icons__
-`app:notifyicon(t) -> icon`
+__icons (common API)__
 `icon:free()`
-`app:notifyicon_count() -> n`
-`app:notifyicons() -> {icon1, ...}`				list notification icons
 `icon:bitmap() -> bmp`								get a bgra8 [bitmap] object
 `icon:invalidate()`									request bitmap redrawing
 `icon:repaint()`										event: bitmap needs redrawing
 `icon:free_bitmap(bmp)`								event: bitmap needs freeing
+__notification icons__
+`app:notifyicon(t) -> icon`
+`app:notifyicon_count() -> n`
+`app:notifyicons() -> {icon1, ...}`				list notification icons
 `icon:tooltip() -> s`								get tooltip
 `icon:tooltip(s)`										set tooltip
 `icon:menu() -> menu`								get menu
@@ -280,15 +281,26 @@ __notification icons__
 `icon:length(n)`										set length (OSX)
 __window icon (Windows)__
 `win:icon([which]) -> icon`						window's icon ('big'); which can be: 'big', 'small'
-`icon:bitmap() -> bmp`								icon's bitmap
-`icon:invalidate()`									request icon redrawing
-`icon:repaint()`										event: icon needs redrawing
 __dock icon (OSX)__
 `app:dockicon() -> icon`
-`icon:bitmap() -> bmp`								icon's bitmap
-`icon:invalidate()`									request icon redrawing
-`icon:repaint()`										event: icon needs redrawing
-`icon:free_bitmap(bmp)`								event: bitmap needs to be freed
+__file choose dialogs__
+`app:opendialog(t) -> path|{path1,...}|nil`	open a standard "open file" dialog
+&nbsp;&nbsp; *`title`*								dialog's title
+&nbsp;&nbsp; *`filetypes`*							supported file types
+&nbsp;&nbsp; *`multiselect`*						allow multiple selection (false)
+&nbsp;&nbsp; *`initial_dir`*						initial dir
+`app:savedialog(t) -> path|nil`					open a standard "save file" dialog
+&nbsp;&nbsp; *`title`*								dialog's title
+&nbsp;&nbsp; *`filetypes`*							supported file types
+&nbsp;&nbsp; *`filename`*							default filename
+&nbsp;&nbsp; *`initial_dir`*						initial dir
+__clipboard__
+`app:clipboard() -> {format1,...}`				get formats in clipboard
+`app:clipboard(format) -> data`					get clipboard contents (format is 'text', 'files', 'bitmap')
+`app:setclipboard(data[, format|f])`			set or clear clipboard
+__drag & drop__
+`win/view:dropfiles(x, y, {filename1, ...})`	event: files are dropped
+`win/view:dragging(how, data, x, y)->effect`	event: something is being dragged
 __events__
 `app/win/view:on(event, func)`					call _func_ when _event_ happens
 `app/win/view:events(enabled) -> prev_state`	enable/disable events
@@ -1028,9 +1040,9 @@ Get the display the window is currently on.
 
 ## Cursors
 
-### `win:cursor() -> name` <br> `win:cursor(name)`
+### `win:cursor() -> name, t|f` <br> `win:cursor(name|t|f)`
 
-Get/set the mouse cursor. The name can be:
+Get/set the mouse cursor and/or visibility. The name can be:
 
   * 'arrow' (default)
   * 'text'
@@ -1249,16 +1261,16 @@ you must return `true` when the count is 3 to break the click chain,
 but you must not return anything when the count is 2,
 or you'll never get a count of 3.
 
-The double-click time interval is the interval that the user
-has set in the OS and it is queried on every click.
+The double-click time interval is from the user's mouse settings
+and it is queried on every click.
 
 ### `win/view:wheel(delta, x, y)` <br> `win/view:hwheel(delta, x, y)`
 
 Event: the mouse vertical or horizontal wheel was moved.
 The delta represents the number of lines to scroll.
 
-The number of lines per scroll notch is the number that the user
-has set in the OS and it is queried on every wheel event.
+The number of lines per scroll notch is from the user's mouse settings
+and it is queried on every wheel event (Windows, OSX).
 
 ## Rendering
 
@@ -1418,6 +1430,25 @@ Get/set the status bar item's text (OSX only).
 ### `icon:length() -> n` <br> `icon:length(n)`
 
 Get/set the status bar item's length (OSX only).
+
+__file choose dialogs__
+`app:opendialog(t) -> path|{path1,...}|nil`	open a standard "open file" dialog
+&nbsp;&nbsp; *`title`*								dialog's title
+&nbsp;&nbsp; *`filetypes`*							supported file types
+&nbsp;&nbsp; *`multiselect`*						allow multiple selection (false)
+&nbsp;&nbsp; *`initial_dir`*						initial dir
+`app:savedialog(t) -> path|nil`					open a standard "save file" dialog
+&nbsp;&nbsp; *`title`*								dialog's title
+&nbsp;&nbsp; *`filetypes`*							supported file types
+&nbsp;&nbsp; *`filename`*							default filename
+&nbsp;&nbsp; *`initial_dir`*						initial dir
+__clipboard__
+`app:clipboard() -> {format1,...}`				get formats in clipboard
+`app:clipboard(format) -> data`					get clipboard contents (format is 'text', 'files', 'bitmap')
+`app:setclipboard(data[, format|f])`			set or clear clipboard
+__drag & drop__
+`win/view:dropfiles(x, y, {filename1, ...})`	event: files are dropped
+`win/view:dragging(how, data, x, y)->effect`	event: something is being dragged
 
 ## Events
 

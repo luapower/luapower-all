@@ -2334,6 +2334,9 @@ function app:opendialog(opt)
 	if opt.multiselect then
 		dlg:setAllowsMultipleSelection(true)
 	end
+	if opt.initial_dir then
+		dlg:setDirectoryURL(objc.NSURL:fileURLWithPath(opt.initial_dir))
+	end
 
 	if dlg:runModal() == objc.NSOKButton then
 		local files = dlg:URLs()
@@ -2357,8 +2360,8 @@ function app:savedialog(opt)
 		dlg:setAllowedFileTypes(opt.filetypes)
 		dlg:setAllowsOtherFileTypes(not opt.filetypes)
 	end
-	if opt.path then
-		dlg:setDirectoryURL(objc.NSURL:fileURLWithPath(opt.path))
+	if opt.initial_dir then
+		dlg:setDirectoryURL(objc.NSURL:fileURLWithPath(opt.initial_dir))
 	end
 	if opt.filename then
 		dlg:setNameFieldStringValue(opt.filename)

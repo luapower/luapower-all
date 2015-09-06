@@ -503,8 +503,6 @@ function window:_new(app, backend_class, useropt)
 	self._sticky = opt.sticky
 	self:edgesnapping(opt.edgesnapping)
 
-	self.event = opt.event
-
 	self._state = self:state()
 	self._client_rect = {self:client_rect()}
 
@@ -1793,6 +1791,7 @@ local defaults = {
 	title = nil,
 	filetypes = nil, --{'png', 'txt', ...}; first is default
 	multiselect = false,
+	initial_dir = nil,
 }
 
 function app:opendialog(opt)
@@ -1800,20 +1799,20 @@ function app:opendialog(opt)
 	assert(not opt.filetypes or #opt.filetypes > 0, 'filetypes cannot be an empty list')
 	local paths = self.backend:opendialog(opt)
 	if not paths then return nil end
-	return opt.multiselect and paths or paths[1]
+	return opt.multiselect and paths or paths[1] or nil
 end
 
 local defaults = {
 	title = nil,
 	filetypes = nil, --{'png', 'txt', ...}; first is default
 	filename = nil,
-	path = nil,
+	initial_dir = nil,
 }
 
 function app:savedialog(opt)
 	opt = glue.update({}, defaults, opt)
 	assert(not opt.filetypes or #opt.filetypes > 0, 'filetypes cannot be an empty list')
-	return self.backend:savedialog(opt)
+	return self.backend:savedialog(opt) or nil
 end
 
 --clipboard ------------------------------------------------------------------

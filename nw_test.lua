@@ -2402,7 +2402,8 @@ end)
 
 --cursors --------------------------------------------------------------------
 
-local cursors = {'arrow', 'text', 'hand', 'cross', 'no', 'nwse', 'nesw', 'ew', 'ns', 'move', 'busyarrow'}
+local cursors = {'arrow', 'text', 'hand', 'cross', 'forbidden', 'size_diag1',
+	'size_diag2', 'size_v', 'size_h', 'move', 'busy_arrow'}
 
 add('cursors', function()
 	local win = app:window(winpos{resizeable = true})
@@ -3031,10 +3032,12 @@ end)
 
 add('dialog-open-custom', function()
 	--custom title, custom file types, default file type, multiselect.
+	local path = app:ver'OSX' and '/' or app:ver'Windows' and 'C:\\'
 	local paths = app:opendialog{
 		title = 'What do you mean "open him up"?',
 		filetypes = {'png', 'jpeg'}, --only if files = true
 		multiselect = true,
+		path = path,
 	}
 	pp(paths)
 end)
@@ -3045,7 +3048,7 @@ end)
 
 add('dialog-save-custom', function()
 	--custom title, custom file types, default file type.
-	local path = nw:os'OSX' and '/' or nw:os'Windows' and 'C:\\'
+	local path = app:ver'OSX' and '/' or app:ver'Windows' and 'C:\\'
 	local path = app:savedialog{
 		title = 'Save time!',
 		filetypes = {'png', 'jpeg'},
