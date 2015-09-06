@@ -2448,7 +2448,7 @@ local type_map = {
 
 local rev_type_map = glue.index(type_map)
 
-function app:clipboard_formats()
+function app:get_clipboard_formats()
 	local pasteboard = objc.NSPasteboard:generalPasteboard()
 	local t = {}
 	for i,elem in objc.ipairs(pasteboard:types()) do
@@ -2458,7 +2458,7 @@ function app:clipboard_formats()
 	return t
 end
 
-function app:get_clipboard(format)
+function app:get_clipboard_data(format)
 	local pasteboard = objc.NSPasteboard:generalPasteboard()
 	if format == 'text' then
 		local data = pasteboard:dataForType(objc.NSStringPboardType)

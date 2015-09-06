@@ -1817,11 +1817,11 @@ end
 
 --clipboard ------------------------------------------------------------------
 
-function app:clipboard(format)
+function app:getclipboard(format)
 	if not format then
-		return self.backend:clipboard_formats()
+		return self.backend:get_clipboard_formats()
 	else
-		return self.backend:get_clipboard(format)
+		return self.backend:get_clipboard_data(format)
 	end
 end
 

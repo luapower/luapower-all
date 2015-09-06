@@ -1967,7 +1967,7 @@ local function with_clipboard(func)
 	return ret
 end
 
-function app:clipboard_formats()
+function app:get_clipboard_formats()
 	return with_clipboard(function()
 		local names = winapi.GetClipboardFormatNames()
 		local t,dupes = {},{}
@@ -1982,7 +1982,7 @@ function app:clipboard_formats()
 	end)
 end
 
-function app:get_clipboard(format)
+function app:get_clipboard_data(format)
 	return with_clipboard(function()
 		if format == 'text' then
 			return winapi.GetClipboardText()

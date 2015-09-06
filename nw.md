@@ -295,11 +295,11 @@ __file choose dialogs__
 &nbsp;&nbsp; *`filename`*							default filename
 &nbsp;&nbsp; *`initial_dir`*						initial dir
 __clipboard__
-`app:clipboard() -> {format1,...}`				get formats in clipboard
-`app:clipboard(format) -> data`					get clipboard contents (format is 'text', 'files', 'bitmap')
-`app:setclipboard(data[, format|f])`			set or clear clipboard
+`app:getclipboard() -> {format1,...}`			get formats in clipboard
+`app:getclipboard(format) -> data`				get clipboard contents (format is 'text', 'files', 'bitmap')
+`app:setclipboard(f|data[, format])`			clear or set clipboard
 __drag & drop__
-`win/view:dropfiles(x, y, {filename1, ...})`	event: files are dropped
+`win/view:dropfiles(x, y, {path1, ...})`		event: files are dropped
 `win/view:dragging(how, data, x, y)->effect`	event: something is being dragged
 __events__
 `app/win/view:on(event, func)`					call _func_ when _event_ happens
@@ -1431,24 +1431,64 @@ Get/set the status bar item's text (OSX only).
 
 Get/set the status bar item's length (OSX only).
 
-__file choose dialogs__
-`app:opendialog(t) -> path|{path1,...}|nil`	open a standard "open file" dialog
-&nbsp;&nbsp; *`title`*								dialog's title
-&nbsp;&nbsp; *`filetypes`*							supported file types
-&nbsp;&nbsp; *`multiselect`*						allow multiple selection (false)
-&nbsp;&nbsp; *`initial_dir`*						initial dir
-`app:savedialog(t) -> path|nil`					open a standard "save file" dialog
-&nbsp;&nbsp; *`title`*								dialog's title
-&nbsp;&nbsp; *`filetypes`*							supported file types
-&nbsp;&nbsp; *`filename`*							default filename
-&nbsp;&nbsp; *`initial_dir`*						initial dir
-__clipboard__
-`app:clipboard() -> {format1,...}`				get formats in clipboard
-`app:clipboard(format) -> data`					get clipboard contents (format is 'text', 'files', 'bitmap')
-`app:setclipboard(data[, format|f])`			set or clear clipboard
-__drag & drop__
-`win/view:dropfiles(x, y, {filename1, ...})`	event: files are dropped
-`win/view:dragging(how, data, x, y)->effect`	event: something is being dragged
+## File choose dialogs
+
+### `app:opendialog(t) -> path|{path1,...}|nil`
+
+Open a standard "open file" dialog and wait for it to close. Fields of _`t`_:
+
+  * `title` - dialog's title
+  * `filetypes` - supported file extensions eg. `{'txt', 'jpg', ...}`
+  * `multiselect` - allow multiple selection (false)
+  * `initial_dir` - initial dir
+
+When `multiselect = true` the dialog returns a list of paths,
+otherwise it returns a path. If the user closes the dialog without
+choosing a file, it returns ni.
+
+### `app:savedialog(t) -> path|nil`
+
+Open a standard "save file" dialog and wait for it to close. Fields of _`t`_:
+
+  * `title` dialog's title
+  * `filetypes` - supported file extensions eg. `{'txt', 'jpg', ...}`
+  * `filename` - default filename
+  * `initial_dir` - initial dir
+
+If the user closes the dialog without choosing a file, it returns ni.
+
+## Clipboard
+
+### `app:getclipboard() -> {format1,...}`
+
+Get the formats currently in clipboard.
+
+### `app:getclipboard(format) -> data`
+
+Get the clipboard contents in one of the available formats. The format can be:
+
+  * 'text' - returns a string.
+  * 'files' - returns `{path1, ...}`
+  * 'bitmap' - returns a [bitmap]
+
+### `app:setclipboard(f|data[, format])`
+
+Clear or set the clipboard. Passing `false` clears it, otherwise `data` can be:
+
+  * a string (assuming 'text' format).
+  * a bitmap (assuming 'bitmap' format).
+  * a table `{format = ..., data = ...}`.
+  * a list of strings (for format: 'files').
+
+## Drag & drop
+
+### `win/view:dropfiles(x, y, {filename1, ...})`
+
+Event: files were dropped over the window/view.
+
+### `win/view:dragging(how, data, x, y) -> effect`
+
+Event: something is being dragged over the window/view.
 
 ## Events
 
