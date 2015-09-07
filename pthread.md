@@ -15,36 +15,36 @@ system otherwise).
 
 ----------------------------------------------- ----------------------------------
 __threads__
-pthread.new(func_ptr[, attrs]) -> th            create and start a new thread
-th:equal(other_th) -> true | false              check if two threads are equal
-th:join() -> status                             wait for a thread to finish
-th:detach()                                     detach a thread
-th:priority(new_priority)                       set thread priority
-th:priority() -> priority                       get thread priority
-pthread.min_priority() -> priority              get min. priority
-pthread.max_priority() -> priority              get max. priority
+`pthread.new(func_ptr[, attrs]) -> th`          create and start a new thread
+`th:equal(other_th) -> true | false`            check if two threads are equal
+`th:join() -> status`                           wait for a thread to finish
+`th:detach()`                                   detach a thread
+`th:priority(new_priority)`                     set thread priority
+`th:priority() -> priority`                     get thread priority
+`pthread.min_priority() -> priority`            get min. priority
+`pthread.max_priority() -> priority`            get max. priority
 __mutexes__
-pthread.mutex([mattrs]) -> mutex                create a mutex
-mutex:free()                                    free a mutex
-mutex:lock()                                    lock a mutex
-mutex:unlock()                                  unlock a mutex
-mutex:trylock() -> true | false                 lock a mutex or return false
+`pthread.mutex([mattrs]) -> mutex`              create a mutex
+`mutex:free()`                                  free a mutex
+`mutex:lock()`                                  lock a mutex
+`mutex:unlock()`                                unlock a mutex
+`mutex:trylock() -> true | false`               lock a mutex or return false
 __condition variables__
-pthread.cond() -> cond                          create a condition variable
-cond:free()                                     free the condition variable
-cond:broadcast()                                broadcast
-cond:signal()                                   signal
-cond:wait(mutex[, timeout]) -> true | false     wait with optional timeout (*)
+`pthread.cond() -> cond`                        create a condition variable
+`cond:free()`                                   free the condition variable
+`cond:broadcast()`                              broadcast
+`cond:signal()`                                 signal
+`cond:wait(mutex[, timeout]) -> true | false`   wait with optional timeout (*)
 __read/write locks__
-pthread.rwlock() -> rwlock                      create a r/w lock
-rwlock:free()                                   free a r/w lock
-rwlock:writelock()                              lock for writing
-rwlock:readlock()                               lock for reading
-rwlock:trywritelock() -> true | false           try to lock for writing
-rwlock:tryreadlock() -> true | false            try to lock for reading
-rwlock:unlock()                                 unlock the r/w lock
+`pthread.rwlock() -> rwlock`                    create a r/w lock
+`rwlock:free()`                                 free a r/w lock
+`rwlock:writelock()`                            lock for writing
+`rwlock:readlock()`                             lock for reading
+`rwlock:trywritelock() -> true | false`         try to lock for writing
+`rwlock:tryreadlock() -> true | false`          try to lock for reading
+`rwlock:unlock()`                               unlock the r/w lock
 __scheduler__
-pthread.yield()                                 relinquish control to the scheduler
+`pthread.yield()`                               relinquish control to the scheduler
 ----------------------------------------------- ----------------------------------
 
 > (*) timeout is an os.time() or [time].time() timestamp, not a time period.
@@ -143,7 +143,7 @@ Create a mutex. The optional mattrs table can have the fields:
 
 ## Portability notes
 
-POSIX is a standard hostile to binary compatibility, resulting in each
+POSIX is a standard indifferent to binary compatibility, resulting in each
 implementation having a different ABI. Moreso, different implementations
 cover different parts of the API.
 

@@ -222,75 +222,68 @@ and probably the simplest JIT compiler you could write. It too works on Windows,
 
 ## DynASM API
 
------------------------------------------------------ --------------------------------------------------
+<div class=small>
+-------------------------------------------------------- --------------------------------------------------
 __hi-level__
-
-dynasm.loadfile(infile[, opt]) -> chunk					load a dasl file and return it as a Lua chunk
-
-dynasm.loadstring(s[, opt]) -> chunk						load a dasl string and return it as a Lua chunk
-
+`dynasm.loadfile(infile[, opt]) -> chunk`						load a dasl file and return it as a Lua chunk
+`dynasm.loadstring(s[, opt]) -> chunk`							load a dasl string and return it as a Lua chunk
 __low-level__
-
-dynasm.translate(infile, outfile[, opt])					translate a dasc or dasl file
-
-dynasm.string_infile(s) -> infile							use a string as an infile to translate()
-
-dynasm.func_outfile(func) -> outfile						make an outfile that calls func(s) for each piece
-
-dynasm.table_outfile(t) -> outfile							make an outfile that writes pieces to a table
-
-dynasm.translate_tostring(infile[, opt]) -> s			translate to a string
-
-dynasm.translate_toiter(infile[, opt]) -> iter() -> s	translate to an iterator of string pieces
------------------------------------------------------ --------------------------------------------------
-
+`dynasm.translate(infile, outfile[, opt])`					translate a dasc or dasl file
+`dynasm.string_infile(s) -> infile`								use a string as an infile to translate()
+`dynasm.func_outfile(func) -> outfile`							make an outfile that calls func(s) for each piece
+`dynasm.table_outfile(t) -> outfile`							make an outfile that writes pieces to a table
+`dynasm.translate_tostring(infile[, opt]) -> s`				translate to a string
+`dynasm.translate_toiter(infile[, opt]) -> iter() -> s`	translate to an iterator of string pieces
+-------------------------------------------------------- --------------------------------------------------
+</div>
 
 ## DASM API
 
+<div class=small>
 ----------------------------------------------------- --------------------------------------------------
 __hi-level__
 
-dasm.new(\                                            make a dasm state for an action list. \
-	actionlist, \                                      -> per `.actionlist` directive. \
-	[externnames], \												-> per `.externnames` directive. \
-   [sectioncount], \												-> DASM_MAXSECTION from `.sections` directive. \
- 	[globalcount],	\												-> DASM_MAXGLOBAL from `.globals` directive. \
-	[externget], \													-> `func(externname) -> addr`, for solving `extern`s \
-	[globals]) -> state, globals								-> `void*[DASM_MAXGLOBAL]`, to hold globals
+`dasm.new(` \														make a dasm state for an action list. \
+	`actionlist,` \												-> per `.actionlist` directive. \
+	`[externnames],` \											-> per `.externnames` directive. \
+   `[sectioncount],` \											-> DASM_MAXSECTION from `.sections` directive. \
+ 	`[globalcount],`	\											-> DASM_MAXGLOBAL from `.globals` directive. \
+	`[externget],` \												-> `func(externname) -> addr`, for solving `extern`s \
+	`[globals]) -> state, globals`							-> `void*[DASM_MAXGLOBAL]`, to hold globals
 
-state:build() -> buf, size										check, link, alloc, encode and mprotect the code
+`state:build() -> buf, size`									check, link, alloc, encode and mprotect the code
 
-dasm.dump(buf, size)												dump the code using the included disassembler in luajit
+`dasm.dump(buf, size)`											dump the code using the included disassembler in luajit
 
-dasm.globals(globals, globalnames) -> {name -> addr}	given the globals array returned by dasm.new() and
+`dasm.globals(globals, globalnames)->{name -> addr}`	given the globals array returned by dasm.new() and
 																		the globalnames list per `.globalnames` directive,
 																		return a table that maps the names to their address.
 
 __low-level__
 
-state:init(maxsection)											init a state
+`state:init(maxsection)`										init a state
 
-state:free()														free the state
+`state:free()`														free the state
 
-state:setupglobal(globals, globalcount)					set up the globals buffer
+`state:setupglobal(globals, globalcount)`					set up the globals buffer
 
-state:growpc(maxpc)												grow the number of available pc labels
+`state:growpc(maxpc)`											grow the number of available pc labels
 
-state:setup(actionlist)											set up the state with an action list
+`state:setup(actionlist)`										set up the state with an action list
 
-state:put(state, ...)											the assembler generates these calls
+`state:put(state, ...)`											the assembler generates these calls
 
-state:link() -> size												link the code and get its size
+`state:link() -> size`											link the code and get its size
 
-state:encode(buf)													encode the code into a buffer
+`state:encode(buf)`												encode the code into a buffer
 
-state:getpclabel(pclabel[, buf])								get pc label offset, or pointer if buf is passed
+`state:getpclabel(pclabel[, buf])`							get pc label offset, or pointer if buf is passed
 
-state:checkstep(secmatch)										check code before encoding
+`state:checkstep(secmatch)`									check code before encoding
 
-state:setupextern(externnames, getter)						set up a new `extern` handler
+`state:setupextern(externnames, getter)`					set up a new `extern` handler
 ----------------------------------------------------- --------------------------------------------------
-
+</div>
 
 ## Changes to DynASM
 
