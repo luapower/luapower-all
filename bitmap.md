@@ -97,7 +97,8 @@ __pixel access__
 `bitmap.pixel_interface(src) -> getpixel, setpixel`	get a pixel interface
 `bitmap.channel_interface(bmp, n) -> getval, setval`	get a channel interface
 __dithering__
-`bitmap.dither.fs|ordered(bmp, rN, gN, bN, aN)`			apply dithering
+`bitmap.dither.fs(bmp, rN, gN, bN, aN)`					apply dithering
+`bitmap.dither.ordered(bmp, rN, gN, bN, aN)`				apply dithering
 __effects__
 `bitmap.invert(bmp)`												invert colors
 `bitmap.grayscale(bmp)`											desaturate
@@ -280,10 +281,9 @@ end
 
 ## Resizing
 
-### `bitmap.resize.<method>(bmp, w, h) -> new_bmp`
-### `bitmap.resize.<method>(source_bmp, dest_bmp) -> dest_bmp`
+### `bitmap.resize.nearest|bilinear(bmp, w, h) -> new_bmp` <br> `bitmap.resize.nearest|bilinear(source_bmp, dest_bmp) -> dest_bmp`
 
-Resize a bitmap. The method can be `nearest` or `bilinear`.
+Resize a bitmap.
 
 
 ## Utilities
@@ -355,4 +355,3 @@ A custom colortype definition is a table with the following fields:
 ## TODO
 
   * premuliply / unpremultiply alpha
-
