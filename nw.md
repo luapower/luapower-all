@@ -19,9 +19,9 @@ notification icons, all text in utf8, and more.
 
 <div class=small>
 -------------------------------------------- -----------------------------------------------------------------------------
-__[The app object](#the-app-object)__
+__the app object__
 `nw:app() -> app`										the global application object
-__app loop__
+__the app loop__
 `app:run()`												run the loop
 `app:stop()`											stop the loop
 `app:running() -> t|f`								check if the loop is running
@@ -83,7 +83,7 @@ __closing__
 `win:closeable() -> t|f`							closeable flag
 __app activation__
 `app:active() -> t|f`								check if the app is active
-`app:activate()`										activate the app
+`app:activate([mode])`								activate the app
 `app:was_activated()`								event: app was activated
 `app:was_deactivated()`								event: app was deactivated
 __window activation__
@@ -153,7 +153,6 @@ __size and position__
 `win:client_size() -> cw, ch`						get client rect size
 `win:client_size(cw, ch)`							set client rect size
 `win:sizing(when, how, x, y, w, h)`				event: window size/position is about to change
-	`-> [x, y, w, h]`
 `win:was_moved(cx, cy)`								event: window was moved
 `win:was_resized(cw, ch)`							event: window was resized
 __size constraints__
@@ -181,7 +180,7 @@ __displays__
 `app:active_display() -> disp`					get the display which has keyboard focus
 `disp:screen_rect() -> x, y, w, h`				display's screen rectangle
 `disp.x, disp.y, disp.w, disp.h`
-`disp:client_rect() -> x, y, w, h`				display's screen rectangle minus the taskbar
+`disp:desktop_rect() -> cx, cy, cw, ch`		display's screen rectangle minus the taskbar
 `disp.cx, disp.cy, disp.cw, disp.ch`
 `app:displays_changed()`							event: displays changed
 `win:display() -> disp`								the display the window is on
@@ -200,7 +199,7 @@ __keyboard__
 `win:keydown(key)`									event: a key was pressed
 `win:keyup(key)`										event: a key was depressed
 `win:keypress(key)`									event: sent after each keydown, including repeats
-`win:keychar(char)`									event: sent after keypress for displayable characters; char is utf-8
+`win:keychar(s)`										event: input char pressed; _`s`_ is utf-8
 __hi-dpi support__
 `app:autoscaling() -> t|f`							check if autoscaling is enabled
 `app:autoscaling(t|f)`								enable/disable autoscaling
@@ -244,19 +243,20 @@ __rendering__
 `win/view:bitmap() -> bmp`							get a bgra8 [bitmap] object to draw on
 `bmp:clear()`											fill the bitmap with zero bytes
 `bmp:cairo() -> cr`									get a cairo context on the bitmap
-`win/view:free_cairo()`								event: cairo context needs freeing
+`win/view:free_cairo(cr)`							event: cairo context needs freeing
 `win/view:free_bitmap(bmp)`						event: bitmap needs freeing
 `win/view:gl() -> gl`								get an OpenGL API for the window
 __menus__
 `app:menu() -> menu`									create a menu (or menu bar)
 `app:menubar() -> menu`								get app's menu bar (OSX)
-`win:menubar() -> menu`								get window's menu bar (Windows, Linux)
+`win:menubar() -> menu|nil`						get window's menu bar (Windows, Linux)
 `win/view:popup(menu, cx, cy)`					pop up a menu relative to a window or view
 `menu:popup(win/view, cx, cy)`					pop up a menu relative to a window or view
 `menu:add(...)`
 `menu:set(...)`
 `menu:remove(index)`
-`menu:get(index[, prop])`
+`menu:get(index) -> item`							get the menu item at index
+`menu:get(index, prop) -> val`					get the value of a property of the menu item at index
 `menu:item_count() -> n`
 `menu:items([prop]) -> {item1, ...}`
 `menu:checked(index) -> t|f`
@@ -300,7 +300,10 @@ __clipboard__
 `app:setclipboard(f|data[, format])`			clear or set clipboard
 __drag & drop__
 `win/view:dropfiles(x, y, files)`				event: files are dropped
-`win/view:dragging(stage, t, x, y)`				event: something is being dragged
+`win/view:dragging('enter', t, x, y) -> s`   event: mouse enter with payload
+`win/view:dragging('hover', t, x, y) -> s`   event: mouse move with payload
+`win/view:dragging('drop', t, x, y)`         event: dropped the payload
+`win/view:dragging('leave')`                 event: mouse left with payload
 __events__
 `app/win/view:on(event, func)`					call _func_ when _event_ happens
 `app/win/view:events(enabled) -> prev_state`	enable/disable events
@@ -918,10 +921,10 @@ Get the size of the window's client area.
 
 Resize the window to accomodate a specified client area size.
 
-### `win:sizing(when, how, x, y, w, h) -> [x, y, w, h]`
+### `win:sizing(when, how, x, y, w, h)`
 
 Event: window size/position is about to change.
-Return a new rectangle to affect the window's final size and position.
+Return a new rectangle (x, y, w, h) to affect the window's final size and position.
 
 __NOTE:__ This does not fire in Linux.
 
@@ -1375,6 +1378,10 @@ Get/set the checked state of a menu item.
 
 ### Common API
 
+### `icon:free()`
+
+Free the icon.
+
 ### `icon:bitmap() -> bmp`
 
 Get the icon's bitmap.
@@ -1469,9 +1476,9 @@ Get the clipboard contents in one of the available formats. The format can be:
   * 'files' - returns `{path1, ...}`
   * 'bitmap' - returns a [bitmap]
 
-### `app:getclipboard() -> {format = true}`
+### `app:getclipboard() -> formats`
 
-Get the data formats currently in clipboard.
+Get the data formats (`{format = true}`) currently in clipboard.
 
 ### `app:setclipboard(f|data[, format])`
 
@@ -1484,11 +1491,11 @@ Clear or set the clipboard. Passing `false` clears it, otherwise `data` can be:
 
 ## Drag & Drop
 
-### `win/view:dropfiles(x, y, {filename1, ...})`
+### `win/view:dropfiles(x, y, files)`
 
-Event: files are dropped over the window/view.
+Event: files (`{filename1, ...}`) are dropped over the window/view.
 
-### `win/view:dragging('enter', data, x, y) -> effect` <br> `win/view:dragging('hover', data, x, y) -> effect` <br> `win/view:dragging('drop', data, x, y)` <br> `win/view:dragging('leave')`
+### `win/view:dragging('enter', t, x, y) -> s` <br> `win/view:dragging('hover', t, x, y) -> s` <br> `win/view:dragging('drop', t, x, y)` <br> `win/view:dragging('leave')`
 
 Event: something is being dragged over the window/view. The first arg
 corresponds to the following mouse events:
@@ -1498,7 +1505,7 @@ corresponds to the following mouse events:
   * 'drop' - mouse button up
   * 'leave' - mouse leave
 
-The `data` arg is a table cotaining the drag payload in one or more formats:
+The `t` arg is a table cotaining the drag payload in one or more formats:
 `{format = data}`. The `x`, `y` args are the mouse coordinates in window/view
 client space.
 
@@ -1514,7 +1521,7 @@ You can respond to the 'enter' and 'hover' stages by returning:
 
 ## Events
 
-### `app/win/view:on(event_name, func)`
+### `app/win/view:on(event, func)`
 
 Call `func` when `event_name` happens. Multiple functions can be attached
 to the same event.
@@ -1523,7 +1530,7 @@ to the same event.
 
 Enable/disable events.
 
-### `app/win/view:event(event_name, args...)`
+### `app/win/view:event(name, args...)`
 
 This is a meta-event fired on every other event.
 The event's name and args are passed in.
