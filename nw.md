@@ -176,14 +176,14 @@ __window title__
 __displays__
 `app:displays() -> {disp1, ...}`					get displays (in no specific order)
 `app:display_count() -> n`							number of displays
-`app:main_display() -> disp	`					get the display whose screen rect starts at (0,0)
-`app:active_display() -> disp`					get the display which has keyboard focus
+`app:main_display() -> disp	`					the display whose screen rect starts at (0,0)
+`app:active_display() -> disp`					the display which contains the active window
 `disp:screen_rect() -> x, y, w, h`				display's screen rectangle
 `disp.x, disp.y, disp.w, disp.h`
 `disp:desktop_rect() -> cx, cy, cw, ch`		display's screen rectangle minus the taskbar
 `disp.cx, disp.cy, disp.cw, disp.ch`
 `app:displays_changed()`							event: displays changed
-`win:display() -> disp`								the display the window is on
+`win:display() -> disp|nil`						the display the window is on
 __cursors__
 `win:cursor() -> name, t|f`						get the mouse cursor and visibility
 `win:cursor(name|t|f)`								set the mouse cursor or visibility
@@ -1023,7 +1023,8 @@ Get the display whose screen rect is at (0, 0).
 
 ### `app:active_display() -> disp`
 
-Get the display which has the keyboard focus.
+Get the display which contains the active window.
+Fallback to the main display if there is no active window.
 
 ### `disp:screen_rect() -> x, y, w, h` <br> `disp.x, disp.y, disp.w, disp.h`
 
@@ -1037,9 +1038,11 @@ Get the display's desktop rectangle (screen minus any taskbars).
 
 Event: displays changed.
 
-### `win:display() -> disp`
+### `win:display() -> disp|nil`
 
-Get the display the window is currently on.
+Get the display the window is currently on. Returns nil if the window
+is off-screen. Returns the correct display based on the window's coordinates
+even if the window is hidden.
 
 ## Cursors
 
