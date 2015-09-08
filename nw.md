@@ -17,297 +17,237 @@ notification icons, all text in utf8, and more.
 
 ## API
 
+NOTE: In the table below, `foo(t|f) /-> t|f` is a shortcut for saying that
+`foo(t|f)` sets the value of foo, and `foo() -> t|f` gets it.
+`t|f` means that foo is a boolean.
+
 <div class=small>
--------------------------------------------- -----------------------------------------------------------------------------
-__the app object__
-`nw:app() -> app`										the global application object
-__the app loop__
-`app:run()`												run the loop
-`app:stop()`											stop the loop
-`app:running() -> t|f`								check if the loop is running
-`app:poll() -> t|f`									process the next pending event (return true if there was one)
-__quitting__
-`app:quit()`											quit the app, i.e. close all windows and stop the loop
-`app:autoquit(t|f)`									quit the app when the last window is closed (true)
-`app:autoquit() -> t|f`								get app autoquit flag (true)
-`app:quitting() -> [false]`						event: quitting (return false to refuse)
-`win:autoquit(t|f)`									quit the app when the window is closed (false)
-`win:autoquit() -> t|f`								get window autoquit flag (false)
-__timers__
-`app:runevery(seconds, func)`						run a function on a timer (timer stops if func returns false)
-`app:runafter(seconds, func)`						run a function on a timer once
-`app:run(func)`										(star the loop and) run a function on a zero-second timer once
-`app:sleep(seconds)`									sleep without blocking inside a function run with app:run()
-__window tracking__
-`app:windows() -> {win1, ...}`					all windows in creation order
-`app:window_created(win)`							event: a window was created
-`app:window_closed(win)`							event: a window was closed
-__window creation__
-`app:window(t) -> win`								create a window (fields of _`t`_ below)
-&nbsp;&nbsp; *__position__*
-&nbsp;&nbsp; *`x`, `y`*		 						frame position
-&nbsp;&nbsp; *`w`, `h`*								frame size (this or cw,ch required)
-&nbsp;&nbsp; *`cx`, `cy`*							client area position
-&nbsp;&nbsp; *`cw`, `ch`*							client area size (this or w,h required)
-&nbsp;&nbsp; *`min_cw`, `min_ch`*				min client rect size
-&nbsp;&nbsp; *`max_cw`, `max_ch`*				max client rect size
-&nbsp;&nbsp; *__state__*
-&nbsp;&nbsp; *`visible`*							start visible (true)
-&nbsp;&nbsp; *`minimized`*							start minimized (false)
-&nbsp;&nbsp; *`maximized`*							start maximized (false)
-&nbsp;&nbsp; *`enabled`*							start enabled (true)
-&nbsp;&nbsp; *__frame__*
-&nbsp;&nbsp; *`frame`*								frame type: 'normal', 'none', 'toolbox' ('normal')
-&nbsp;&nbsp; *`title`* 								initial title ('')
-&nbsp;&nbsp; *`transparent`*						make it transparent (false)
-&nbsp;&nbsp; *__behavior__*
-&nbsp;&nbsp; *`parent`*								parent window (nil)
-&nbsp;&nbsp; *`sticky`*								moves with parent (false)
-&nbsp;&nbsp; *`topmost`*							stays on top of other windows (false)
-&nbsp;&nbsp; *`minimizable`*						allow minimization (true)
-&nbsp;&nbsp; *`maximizable`*						allow maximization (true)
-&nbsp;&nbsp; *`closeable`*							allow closing (true)
-&nbsp;&nbsp; *`resizeable`*						allow resizing (true)
-&nbsp;&nbsp; *`fullscreenable`*					allow fullscreen mode (true)
-&nbsp;&nbsp; *`activable`*							allow activation (true); only for 'toolbox' frames
-&nbsp;&nbsp; *`autoquit`*							quit the app on closing (false)
-&nbsp;&nbsp; *`edgesnapping`*						magnetized edges ('screen')
-&nbsp;&nbsp; *__rendering__*
-&nbsp;&nbsp; *`opengl = {opts...}`*				enable & [configure](#winviewgl---gl) OpenGL
-&nbsp;&nbsp; *__menu__*
-&nbsp;&nbsp; *`menu`*								menu bar
-__closing__
-`win:close([force])`									close the window and destroy it
-`win:dead() -> t|f`									check if the window was destroyed
-`win:closing()`										event: closing (return false to refuse)
-`win:was_closed()`									event: closed (but not dead yet)
-`win:closeable() -> t|f`							closeable flag
-__app activation__
-`app:active() -> t|f`								check if the app is active
-`app:activate([mode])`								activate the app
-`app:was_activated()`								event: app was activated
-`app:was_deactivated()`								event: app was deactivated
-__window activation__
-`app:active_window() -> win`						the active window, if any
-`win:active() -> t|f`								check if window is active
-`win:activate()`										activate the window
-`win:was_activated()`								event: window was activated
-`win:was_deactivated()`								event: window was deactivated
-`win:activable() -> t|f`							activable flag (for 'toolbox' windows)
-__app visibility (OSX)__
-`app:hidden() -> t|f`								check if app is hidden
-`app:hidden(t|f)`										change if the app is hidden
-`app:hide()`											hide the app
-`app:unhide()`											unhide the app
-`app:was_hidden()`									event: app was hidden
-`app:was_unhidden()`									event: app was unhidden
-__window visibility__
-`win:visible() -> t|f`								check if the window is visible
-`win:visible(t|f)`									show or hide the window
-`win:show()`											show window (in its previous state)
-`win:hide()`											hide window
-`win:was_shown()`										event: window was shown
-`win:was_hidden()`									event: window was hidden
-__minimization__
-`win:minimizable() -> t|f`							minimizable flag
-`win:minimized() -> t|f`							check if the window is minimized
-`win:minimize()`										minimize the window
-`win:was_minimized()`								event: window was minimized
-`win:was_unminimized()`								event: window was unminimized
-__maximization__
-`win:maximizable() -> t|f`							maximizable flag
-`win:maximized() -> t|f`							check if the window is maximized
-`win:maximize()`										maximize the window
-`win:was_maximized()`								event: window was maximized
-`win:was_unmaximized()`								event: window was unmaximized
-__fullscreen mode__
-`win:fullscreenable() -> t|f`						fullscreenable flag
-`win:fullscreen() -> t|f`							check if the window is in fullscreen state
-`win:fullscreen(t|f)`								enter/exit fullscreen state
-`win:entered_fullscreen()`							event: entered fullscreen state
-`win:exited_fullscreen()`							event: exited fullscreen state
-__restoring__
-`win:restore()`										restore from minimized or maximized state
-`win:shownormal()`									show in normal state
-__state strings__
-`win:state() -> state`								full window state string
-`app:state() -> state`								full app state string
-__enabled state__
-`win:enabled(t|f)`									enable/disable the window
-`win:enabled() -> t|f`								check if the window is enabled
-__client/screen conversion__
-`win:to_screen(x, y) -> x, y`						client space -> screen space conversion
-`win:to_client(x, y) -> x, y`						screen space -> client space conversion
-__frame/client conversion__
-`app:client_to_frame(...) -> ...`				client rect -> window frame rect conversion
-`app:frame_to_client(...) -> ...`				window frame rect -> client rect conversion
-`app:frame_extents(...) -> ...`					frame extents for a frame type
-__size and position__
-`win:frame_rect() -> x, y, w, h`					get frame rect in current state
-`win:frame_rect(x, y, w, h)`						set frame rect (and change state to normal)
-`win:normal_frame_rect() -> x, y, w, h`		get frame rect in normal state
-`win:client_rect() -> cx, cy, cw, ch`			get client rect in current state
-`win:client_rect(cx, cy, cw, ch)`				set client rect (and change state to normal)
-`win:client_size() -> cw, ch`						get client rect size
-`win:client_size(cw, ch)`							set client rect size
-`win:sizing(when, how, x, y, w, h)`				event: window size/position is about to change
-`win:was_moved(cx, cy)`								event: window was moved
-`win:was_resized(cw, ch)`							event: window was resized
-__size constraints__
-`win:resizeable() -> t|f`							resizeable flag
-`win:minsize() -> cw, ch`							get min client rect size
-`win:minsize(cw, ch)`								set min client rect size
-`win:maxsize() -> cw, ch`							get max client rect size
-`win:maxsize(cw, ch)`								set max client rect size
-__window edge snapping__
-`win:edgesnapping() -> mode`						get edge snapping mode
-`win:edgesnapping(mode)`							set edge snapping mode
-`win:magnets(which) -> {r1, ...}`				event: get edge snapping rectangles
-__window z-order__
-`win:topmost() -> t|f`								get the topmost flag
-`win:topmost(t|f)`									set the topmost flag
-`win:raise([rel_to_win])`							raise above all windows/specific window
-`win:lower([rel_to_win])`							lower below all windows/specific window
-__window title__
-`win:title() -> title`								get title
-`win:title(title)`									set title
-__displays__
-`app:displays() -> {disp1, ...}`					get displays (in no specific order)
-`app:main_display() -> disp	`					the display whose screen rect starts at (0,0)
-`app:active_display() -> disp`					the display which contains the active window
-`disp:screen_rect() -> x, y, w, h`				display's screen rectangle
-`disp.x, disp.y, disp.w, disp.h`
-`disp:desktop_rect() -> cx, cy, cw, ch`		display's screen rectangle minus the taskbar
-`disp.cx, disp.cy, disp.cw, disp.ch`
-`app:displays_changed()`							event: displays changed
-`win:display() -> disp|nil`						the display the window is on
-__cursors__
-`win:cursor() -> name, t|f`						get the mouse cursor and visibility
-`win:cursor(name|t|f)`								set the mouse cursor or visibility
-__frame flags__
-`win:frame() -> frame`								window's frame: 'normal', 'none', 'toolbox'
-`win:transparent() -> t|f`							transparent flag
-__child windows__
-`win:parent() -> win|nil`							window's parent
-`win:children() -> {win1, ...}`					window's children
-`win:sticky() -> t|f`								sticky flag
-__keyboard__
-`app:key(query) -> t|f`								get key pressed and toggle states
-`win:keydown(key)`									event: a key was pressed
-`win:keyup(key)`										event: a key was depressed
-`win:keypress(key)`									event: sent after each keydown, including repeats
-`win:keychar(s)`										event: input char pressed; _`s`_ is utf-8
-__hi-dpi support__
-`app:autoscaling() -> t|f`							check if autoscaling is enabled
-`app:autoscaling(t|f)`								enable/disable autoscaling
-`disp.scalingfactor`									display's scaling factor
-`win:scalingfactor_changed()`						a window's display scaling factor changed
-__views__
-`win:views() -> {view1, ...}`						list views
-`win:view(t) -> view`								create a view (fields of _`t`_ below)
-&nbsp;&nbsp; *`x`, `y`, `w`, `h`*				view's position (in window's client space) and size
-&nbsp;&nbsp; *`visible`*							start visible (true)
-&nbsp;&nbsp; *`anchors`*							resizing anchors ('lt'); can be 'ltrb'
-`view:free()`											destroy the view
-`view:dead() -> t|f`									check if the view was freed
-`view:visible() -> t|f`								check if the view is visible
-`view:visible(t|f)`									show or hide the view
-`view:show()`											show the view
-`view:hide()`											hide the view
-`view:rect() -> x, y, w, h`						get view's position (in window's client space) and size
-`view:rect(x, y, w, h)`								set view's position and/or size
-`view:size() -> w, h`								get view's size
-`view:size(w, h)`										set view's size
-`view:anchors() -> anchors`						get anchors
-`view:anchors(anchors)`								set anchors
-`view:rect_changed(x, y, w, h)`					event: view's size and/or position changed
-`view:was_moved(x, y)`								event: view was moved
-`view:was_resized(w, h)`							event: view was resized
-__mouse__
-`win/view:mouse() -> t`								mouse state: _x, y, inside, left, right, middle, ex1, ex2_
-`win/view:mouseenter()`								event: mouse entered the client area of the window
-`win/view:mouseleave()`								event: mouse left the client area of the window
-`win/view:mousemove(x, y)`							event: mouse was moved
-`win/view:mousedown(button, x, y)`				event: mouse button was pressed; button is _'left', 'right', 'middle', 'ex1', 'ex2'_
-`win/view:mouseup(button, x, y)`					event: mouse button was depressed
-`win/view:click(button, count, x, y)`			event: mouse button was clicked
-`win/view:wheel(delta, x, y)`						event: mouse wheel was moved
-`win/view:hwheel(delta, x, y)`					event: mouse horizontal wheel was moved
-__rendering__
-`win/view:repaint()`									event: window needs redrawing
-`win/view:invalidate()`								request window redrawing
-`win/view:bitmap() -> bmp`							get a bgra8 [bitmap] object to draw on
-`bmp:clear()`											fill the bitmap with zero bytes
-`bmp:cairo() -> cr`									get a cairo context on the bitmap
-`win/view:free_cairo(cr)`							event: cairo context needs freeing
-`win/view:free_bitmap(bmp)`						event: bitmap needs freeing
-`win/view:gl() -> gl`								get an OpenGL context to draw with
-__menus__
-`app:menu() -> menu`									create a menu (or menu bar)
-`app:menubar() -> menu`								get app's menu bar (OSX)
-`win:menubar() -> menu|nil`						get window's menu bar (Windows, Linux)
-`win/view:popup(menu, cx, cy)`					pop up a menu relative to a window or view
-`menu:popup(win/view, cx, cy)`					pop up a menu relative to a window or view
-`menu:add(...)`
-`menu:set(...)`
-`menu:remove(index)`
-`menu:get(index) -> item`							get the menu item at index
-`menu:get(index, prop) -> val`					get the value of a property of the menu item at index
-`menu:items([prop]) -> {item1, ...}`
-`menu:checked(index) -> t|f`
-`menu:checked(index, t|f)`
-__icons (common API)__
-`icon:free()`
-`icon:bitmap() -> bmp`								get a bgra8 [bitmap] object
-`icon:invalidate()`									request bitmap redrawing
-`icon:repaint()`										event: bitmap needs redrawing
-`icon:free_bitmap(bmp)`								event: bitmap needs freeing
-__notification icons__
-`app:notifyicon(t) -> icon`
-`app:notifyicons() -> {icon1, ...}`				list notification icons
-`icon:tooltip() -> s`								get tooltip
-`icon:tooltip(s)`										set tooltip
-`icon:menu() -> menu`								get menu
-`icon:menu(menu)`										set menu
-`icon:text() -> s`									get text (OSX)
-`icon:text(s)`											set text (OSX)
-`icon:length() -> n`									get length (OSX)
-`icon:length(n)`										set length (OSX)
-__window icon (Windows)__
-`win:icon([which]) -> icon`						window's icon ('big'); which can be: 'big', 'small'
-__dock icon (OSX)__
-`app:dockicon() -> icon`
-__file choose dialogs__
-`app:opendialog(t) -> path|{path1,...}|nil`	open a standard "open file" dialog
-&nbsp;&nbsp; *`title`*								dialog's title
-&nbsp;&nbsp; *`filetypes`*							supported file types
-&nbsp;&nbsp; *`multiselect`*						allow multiple selection (false)
-&nbsp;&nbsp; *`initial_dir`*						initial dir
-`app:savedialog(t) -> path|nil`					open a standard "save file" dialog
-&nbsp;&nbsp; *`title`*								dialog's title
-&nbsp;&nbsp; *`filetypes`*							supported file types
-&nbsp;&nbsp; *`filename`*							default filename
-&nbsp;&nbsp; *`initial_dir`*						initial dir
-__clipboard__
-`app:getclipboard(format) -> data|nil`			get data in clipboard (format is 'text', 'files', 'bitmap')
-`app:getclipboard() -> formats`					get data formats in clipboard
-`app:setclipboard(f|data[, format])`			clear or set clipboard
-__drag & drop__
-`win/view:dropfiles(x, y, files)`				event: files are dropped
-`win/view:dragging('enter', t, x, y) -> s`   event: mouse enter with payload
-`win/view:dragging('hover', t, x, y) -> s`   event: mouse move with payload
-`win/view:dragging('drop', t, x, y)`         event: dropped the payload
-`win/view:dragging('leave')`                 event: mouse left with payload
-__events__
-`app/win/view:on(event, func)`					call _func_ when _event_ happens
-`app/win/view:events(enabled) -> prev_state`	enable/disable events
-`app/win/view:event(name, args...)`				meta-event fired on every other event
-__version checks__
-`app:ver(query) -> t|f`								check OS _minimum_ version (eg. 'OSX 10.8')
-__extending__
-`nw.backends -> {os -> module_name}`			default backend modules for each OS
-`nw:init([backend_name])`							init with a specific backend (can be called only once)
--------------------------------------------- -----------------------------------------------------------------------------
+-- -------------------------------------------- -----------------------------------------------------------------------------
+   __the app object__
+*  `nw:app() -> app`										the global application object
+   __the app loop__
+M  `app:run()`												run the loop
+M  `app:stop()`											stop the loop
+R  `app:running() -> t|f`								check if the loop is running
+M  `app:poll() -> t|f`									process the next pending event (return true if there was one)
+   __quitting__
+M  `app:quit()`											quit the app, i.e. close all windows and stop the loop
+RW `app:autoquit(t|f) /-> t|f`						quit the app when the last window is closed (true)
+E  `app:quitting() -> [false]`						event: quitting (return false to refuse)
+RW  `win:autoquit(t|f) /-> t|f`						quit the app when the window is closed (false)
+   __timers__
+M  `app:runevery(seconds, func)`						run a function on a timer (return false to stop it)
+M  `app:runafter(seconds, func)`						run a function on a timer once
+M  `app:run(func)`										run a function on a zero-second timer once
+M  `app:sleep(seconds)`									sleep without blocking inside a function run with app:run()
+   __window tracking__
+R  `app:windows() -> {win1, ...}`					all windows in creation order
+E  `app:window_created(win)`							event: a window was created
+E  `app:window_closed(win)`							event: a window was closed
+   __window creation__
+>  `app:window(t) -> win`								create a window
+   __closing__
+<  `win:close([force])`									close the window and destroy it
+R  `win:dead() -> t|f`									check if the window was destroyed
+E  `win:closing()`										event: closing (return false to refuse)
+E  `win:was_closed()`									event: closed (but not dead yet)
+R  `win:closeable() -> t|f`							closeable flag
+   __app activation__
+   `app:active() -> t|f`								check if the app is active
+   `app:activate([mode])`								activate the app
+   `app:was_activated()`								event: app was activated
+   `app:was_deactivated()`								event: app was deactivated
+   __window activation__
+   `app:active_window() -> win`						the active window, if any
+   `win:active() -> t|f`								check if window is active
+   `win:activate()`										activate the window
+   `win:was_activated()`								event: window was activated
+   `win:was_deactivated()`								event: window was deactivated
+   `win:activable() -> t|f`							activable flag (for 'toolbox' windows)
+   __app visibility (OSX)__
+   `app:hidden(t|f) /-> t|f`							get/set app visibility
+   `app:hide()`											hide the app
+   `app:unhide()`											unhide the app
+   `app:was_hidden()`									event: app was hidden
+   `app:was_unhidden()`									event: app was unhidden
+   __window visibility__
+   `win:visible(t|f) /-> t|f`							get/set window visibility
+   `win:show()`											show window (in its previous state)
+   `win:hide()`											hide window
+   `win:was_shown()`										event: window was shown
+   `win:was_hidden()`									event: window was hidden
+   __minimization__
+   `win:minimizable() -> t|f`							minimizable flag
+   `win:minimized() -> t|f`							check if the window is minimized
+   `win:minimize()`										minimize the window
+   `win:was_minimized()`								event: window was minimized
+   `win:was_unminimized()`								event: window was unminimized
+   __maximization__
+   `win:maximizable() -> t|f`							maximizable flag
+   `win:maximized() -> t|f`							check if the window is maximized
+   `win:maximize()`										maximize the window
+   `win:was_maximized()`								event: window was maximized
+   `win:was_unmaximized()`								event: window was unmaximized
+   __fullscreen mode__
+   `win:fullscreenable() -> t|f`						fullscreenable flag
+   `win:fullscreen(t|f) /-> t|f`						get/enter/exit fullscreen mode
+   `win:entered_fullscreen()`							event: entered fullscreen mode
+   `win:exited_fullscreen()`							event: exited fullscreen mode
+   __restoring__
+   `win:restore()`										restore from minimized or maximized state
+   `win:shownormal()`									show in normal state
+   __state tracking__
+   `win:state() -> state`								full window state string
+   `win:changed(old_state, new_state)`				event: window state changed
+   `app:state() -> state`								full app state string
+   `app:changed(old_state, new_state)`				event: app state changed
+   __enabled state__
+   `win:enabled(t|f) /-> t|f`							get/set window enabled flag
+   __client/screen conversion__
+   `win:to_screen(x, y) -> x, y`						client space -> screen space conversion
+   `win:to_client(x, y) -> x, y`						screen space -> client space conversion
+   __frame/client conversion__
+   `app:client_to_frame(...) -> ...`				client rect -> window frame rect conversion
+   `app:frame_to_client(...) -> ...`				window frame rect -> client rect conversion
+   `app:frame_extents(...) -> ...`					frame extents for a frame type
+   __size and position__
+   `win:frame_rect(x,y,w,h) /-> x,y,w,h`			get/set frame rect in current state
+   `win:normal_frame_rect(x,y,w,h) /-> x,y,w,h`	get/set frame rect in normal state
+   `win:client_rect(x,y,w,h) -> x,y,w,h`			get client rect in current state
+   `win:client_size(cw, ch) /-> cw, ch`			get/set client rect size
+   `win:sizing(when, how, x, y, w, h)`				event: window size/position is about to change
+   `win:was_moved(cx, cy)`								event: window was moved
+   `win:was_resized(cw, ch)`							event: window was resized
+   __size constraints__
+   `win:resizeable() -> t|f`							resizeable flag
+   `win:minsize() -> cw, ch`							get min client rect size
+   `win:minsize(cw, ch)`								set min client rect size
+   `win:maxsize() -> cw, ch`							get max client rect size
+   `win:maxsize(cw, ch)`								set max client rect size
+   __window edge snapping__
+   `win:edgesnapping(mode) /-> mode`				get/set edge snapping mode
+   `win:magnets(which) -> {r1, ...}`				event: get edge snapping rectangles
+   __window z-order__
+   `win:topmost(t|f) /-> t|f`							get/set the topmost flag
+   `win:raise([rel_to_win])`							raise above all windows/specific window
+   `win:lower([rel_to_win])`							lower below all windows/specific window
+   __window title__
+   `win:title(title) /-> title`						get/set title
+   __displays__
+   `app:displays() -> {disp1, ...}`					get displays (in no specific order)
+   `app:main_display() -> disp	`					the display whose screen rect starts at (0,0)
+   `app:active_display() -> disp`					the display which contains the active window
+   `disp:screen_rect() -> x, y, w, h`				display's screen rectangle
+   `disp.x, disp.y, disp.w, disp.h`
+   `disp:desktop_rect() -> cx, cy, cw, ch`		display's screen rectangle minus the taskbar
+   `disp.cx, disp.cy, disp.cw, disp.ch`
+   `app:displays_changed()`							event: displays changed
+   `win:display() -> disp|nil`						the display the window is on
+   __cursors__
+   `win:cursor(name|t|f) /-> name, t|f`			get/set the mouse cursor and visibility
+   __frame flags__
+   `win:frame() -> frame`								window's frame: 'normal', 'none', 'toolbox'
+   `win:transparent() -> t|f`							transparent flag
+   __child windows__
+   `win:parent() -> win|nil`							window's parent
+   `win:children() -> {win1, ...}`					window's children
+   `win:sticky() -> t|f`								sticky flag
+   __keyboard__
+   `app:key(query) -> t|f`								get key pressed and toggle states
+   `win:keydown(key)`									event: a key was pressed
+   `win:keyup(key)`										event: a key was depressed
+   `win:keypress(key)`									event: sent after each keydown, including repeats
+   `win:keychar(s)`										event: input char pressed; _`s`_ is utf-8
+   __hi-dpi support__
+   `app:autoscaling(t|f) /-> t|f`					get/enable/disable autoscaling
+   `disp.scalingfactor`									display's scaling factor
+   `win:scalingfactor_changed()`						a window's display scaling factor changed
+   __views__
+   `win:views() -> {view1, ...}`						list views
+   `win:view(t) -> view`								create a view
+   `view:free()`											destroy the view
+   `view:dead() -> t|f`									check if the view was freed
+   `view:visible(t|f) /-> t|f`						get/set view's visibility
+   `view:show()`											show the view
+   `view:hide()`											hide the view
+   `view:rect(x, y, w, h) /-> x, y, w, h`			get/set view's position (in window's client space) and size
+   `view:size(w, h) /-> w, h`							get/set view's size
+   `view:anchors(anchors) /-> anchors`				get/set anchors
+   `view:rect_changed(x, y, w, h)`					event: view's size and/or position changed
+   `view:was_moved(x, y)`								event: view was moved
+   `view:was_resized(w, h)`							event: view was resized
+   __mouse__
+   `win/view:mouse() -> t`								mouse state: _x, y, inside, left, right, middle, ex1, ex2_
+   `win/view:mouseenter()`								event: mouse entered the client area of the window
+   `win/view:mouseleave()`								event: mouse left the client area of the window
+   `win/view:mousemove(x, y)`							event: mouse was moved
+   `win/view:mousedown(button, x, y)`				event: mouse button was pressed
+   `win/view:mouseup(button, x, y)`					event: mouse button was depressed
+   `win/view:click(button, count, x, y)`			event: mouse button was clicked
+   `win/view:wheel(delta, x, y)`						event: mouse wheel was moved
+   `win/view:hwheel(delta, x, y)`					event: mouse horizontal wheel was moved
+   __rendering__
+   `win/view:repaint()`									event: window needs redrawing
+   `win/view:invalidate()`								request window redrawing
+   `win/view:bitmap() -> bmp`							get a bgra8 [bitmap] object to draw on
+   `bmp:clear()`											fill the bitmap with zero bytes
+   `bmp:cairo() -> cr`									get a cairo context on the bitmap
+   `win/view:free_cairo(cr)`							event: cairo context needs freeing
+   `win/view:free_bitmap(bmp)`						event: bitmap needs freeing
+   `win/view:gl() -> gl`								get an OpenGL context to draw with
+   __menus__
+   `app:menu() -> menu`									create a menu (or menu bar)
+   `app:menubar() -> menu`								get app's menu bar (OSX)
+   `win:menubar() -> menu|nil`						get window's menu bar (Windows, Linux)
+   `win/view:popup(menu, cx, cy)`					pop up a menu relative to a window or view
+   `menu:popup(win/view, cx, cy)`					pop up a menu relative to a window or view
+   `menu:add(...)`
+   `menu:set(...)`
+   `menu:remove(index)`
+   `menu:get(index) -> item`							get the menu item at index
+   `menu:get(index, prop) -> val`					get the value of a property of the menu item at index
+   `menu:items([prop]) -> {item1, ...}`
+   `menu:checked(index, t|f) /-> t|f`				get/set a menu item's checked state
+   __icons (common API)__
+   `icon:free()`
+   `icon:bitmap() -> bmp`								get a bgra8 [bitmap] object
+   `icon:invalidate()`									request bitmap redrawing
+   `icon:repaint()`										event: bitmap needs redrawing
+   `icon:free_bitmap(bmp)`								event: bitmap needs freeing
+   __notification icons__
+   `app:notifyicon(t) -> icon`
+   `app:notifyicons() -> {icon1, ...}`				list notification icons
+   `icon:tooltip(s) /-> s`								get/set icon's tooltip
+   `icon:menu(menu) /-> menu`							get/set icon's menu
+   `icon:text(s) /-> s`									get/set text (OSX)
+   `icon:length(n) /-> n`								get/set length (OSX)
+   __window icon (Windows)__
+   `win:icon([which]) -> icon`						window's icon ('big'); which can be: 'big', 'small'
+   __dock icon (OSX)__
+   `app:dockicon() -> icon`
+   __file choose dialogs__
+   `app:opendialog(t) -> path|{path1,...}|nil`	open a standard "open file" dialog
+   `app:savedialog(t) -> path|nil`					open a standard "save file" dialog
+   __clipboard__
+   `app:getclipboard(format) -> data|nil`			get data in clipboard (format is 'text', 'files', 'bitmap')
+   `app:getclipboard() -> formats`					get data formats in clipboard
+   `app:setclipboard(f|data[, format])`			clear or set clipboard
+   __drag & drop__
+   `win/view:dropfiles(x, y, files)`				event: files are dropped
+   `win/view:dragging('enter',t,x,y) -> s`      event: mouse enter with payload
+   `win/view:dragging('hover',t,x,y) -> s`      event: mouse move with payload
+   `win/view:dragging('drop',t,x,y)`            event: dropped the payload
+   `win/view:dragging('leave')`                 event: mouse left with payload
+   __events__
+   `app/win/view:on(event, func)`					call _func_ when _event_ happens
+   `app/win/view:events(enabled) -> prev_state`	enable/disable events
+   `app/win/view:event(name, args...)`				meta-event fired on every other event
+   __version checks__
+   `app:ver(query) -> t|f`								check OS _minimum_ version (eg. 'OSX 10.8')
+   __extending__
+   `nw.backends -> {os -> module_name}`			default backend modules for each OS
+   `nw:init([backend_name])`							init with a specific backend (can be called only once)
+-- ----------------------------------------- -----------------------------------------------------------------------------
 </div>
 
 
@@ -415,7 +355,7 @@ Quitting is a multi-phase process:
 Calling `quit()` when the loop is not running or while quitting
 is in progress does nothing.
 
-### `app:autoquit(t|f)` <br> `app:autoquit() -> t|f`
+### `app:autoquit() -> t|f` <br> `app:autoquit(t|f)`
 
 Get/set the app autoquit flag (default: true).
 When this flag is true, the app quits when the last window is closed.
@@ -425,7 +365,7 @@ When this flag is true, the app quits when the last window is closed.
 Event: the app wants to quit, but nothing was done to that effect.
 Return false from this event to cancel the process.
 
-### `win:autoquit(t|f)` <br> `win:autoquit() -> t|f`
+### `win:autoquit() -> t|f` <br> `win:autoquit(t|f)`
 
 Get/set the window autoquit flag (default: false).
 When this flag is true, the app quits when the window is closed.
@@ -851,7 +791,7 @@ Event: app state has changed.
 
 ## Enabled state
 
-### `win:enabled(t|f)` <br> `win:enabled() -> t|f`
+### `win:enabled() -> t|f` <br> `win:enabled(t|f)`
 
 Get/set the enabled flag (default: true). A disabled window cannot receive
 mouse or keyboard focus. Disabled windows are useful for implementing
@@ -1578,7 +1518,8 @@ Default backend modules for each OS.
 
 ### `nw:init([backend_name])`
 
-Init `nw` with a specific backend (can be called only once).
+Init the library with a specific backend. Calling this again
+with a different backend name raises an error.
 
 ## Common mistakes
 
