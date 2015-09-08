@@ -1730,7 +1730,7 @@ local function icon_api(which)
 		free_bitmaps()
 		w, h = w1, h1
 		--create a bgra8 bitmap.
-		bmp, data = dib(w, h)
+		bmp, data = winapi.DIBitmap(w, h)
 		--create an empty mask bitmap.
 		maskbmp = winapi.CreateBitmap(w, h, 1, 1)
 	end

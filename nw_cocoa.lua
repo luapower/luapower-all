@@ -182,6 +182,10 @@ function window:new(app, frontend, t)
 	self.nswin = Window:alloc():initWithContentRect_styleMask_backing_defer(
 							content_rect, style, objc.NSBackingStoreBuffered, false)
 
+	--init drawable content view.
+	self.nsview = self:_create_view(content_rect, frontend, false, t)
+	self.nswin:setContentView(self.nsview)
+
 	--we have to own the window because we use luavars.
 	self.nswin:setReleasedWhenClosed(false)
 
@@ -240,22 +244,6 @@ function window:new(app, frontend, t)
 
 	--enable keyboard API.
 	self.nswin:reset_keystate()
-
-	--init drawable content view.
-	self:_init_content_view()
-
-	--enable mouse enter/leave events on the newly set content view.
-	local opts = bit.bor(
-		objc.NSTrackingActiveAlways,           --also when inactive (emulate Windows behavior)
-		objc.NSTrackingInVisibleRect,          --only if unobscured (duh)
-		objc.NSTrackingEnabledDuringMouseDrag, --also when dragging *into* the window
-		objc.NSTrackingMouseEnteredAndExited,
-		objc.NSTrackingMouseMoved,
-		objc.NSTrackingCursorUpdate) --TODO: fix this with NSTrackingActiveAlways
-	local rect = self.nswin:contentView():bounds()
-	local area = objc.NSTrackingArea:alloc():initWithRect_options_owner_userInfo(
-		rect, opts, self.nswin:contentView(), nil)
-	self.nswin:contentView():addTrackingArea(area)
 
 	--set constraints.
 	if t.min_cw or t.min_ch then
@@ -345,13 +333,12 @@ function Window:windowWillClose()
 	end
 
 	self.frontend:_backend_was_closed()
-	self.backend:_free_bitmap()
 
 	winmap[objc.nptr(self)] = nil --unregister
 	self:setDelegate(nil) --ignore further events
 
 	--release the view manually.
-	self.backend.nsview:release()
+	self.backend:_free_view(self.backend.nsview)
 	self.backend.nsview = nil
 
 	--release the window manually.
@@ -1078,7 +1065,7 @@ function Window:sendEvent(event)
 	local etype = event:type()
 	if self.dragging then
 		if etype == objc.NSLeftMouseDragged then
-			self:setmouse(event)
+			self:contentView():nw_setmouse(event)
 			local mx = self.frontend._mouse.x - self.dragpoint_x
 			local my = self.frontend._mouse.y - self.dragpoint_y
 			local x, y, w, h = flip_screen_rect(nil, unpack_nsrect(self:frame()))
@@ -1103,7 +1090,7 @@ function Window:sendEvent(event)
 		and not self:nw_titlebar_buttons_hit(event)
 		and not self:nw_resize_area_hit(event)
 	then
-		self:setmouse(event)
+		self:contentView():nw_setmouse(event)
 		self:makeKeyAndOrderFront(nil) --NOTE: async operation
 		self.app:activate()
 		self.dragging = true
@@ -1639,7 +1626,7 @@ function app:key(name)
 	end
 end
 
---mouse ----------------------------------------------------------------------
+--mouse/settings -------------------------------------------------------------
 
 function app:double_click_time()
 	return objc.NSEvent:doubleClickInterval() --seconds
@@ -1649,129 +1636,9 @@ function app:double_click_target_area()
 	return 4, 4 --like in Windows
 end
 
-function Window:setmouse(event)
-	local m = self.frontend._mouse
-	local pos = event:locationInWindow()
-	m.x = pos.x
-	m.y = self.backend:_flip_y(pos.y)
-	local btns = tonumber(event:pressedMouseButtons())
-	m.left = bit.band(btns, 1) ~= 0
-	m.right = bit.band(btns, 2) ~= 0
-	m.middle = bit.band(btns, 4) ~= 0
-	m.ex1 = bit.band(btns, 8) ~= 0
-	m.ex2 = bit.band(btns, 16) ~= 0
-	return m
-end
-
---disable mousemove events when exiting client area, but only if no mouse
---buttons are down, to emulate Windows behavior.
-function window:_check_mousemove(event, m)
-	if not m.inside and event:pressedMouseButtons() == 0 then
-		self.nswin:setAcceptsMouseMovedEvents(false)
-	end
-end
-
-function Window:mouseDown(event)
-	local m = self:setmouse(event)
-	self.frontend:_backend_mousedown('left', m.x, m.y)
-end
-
-function Window:mouseUp(event)
-	local m = self:setmouse(event)
-	self.backend:_check_mousemove(event, m)
-	self.frontend:_backend_mouseup('left', m.x, m.y)
-end
-
-function Window:rightMouseDown(event)
-	local m = self:setmouse(event)
-	self.frontend:_backend_mousedown('right', m.x, m.y)
-end
-
-function Window:rightMouseUp(event)
-	local m = self:setmouse(event)
-	self.backend:_check_mousemove(event, m)
-	self.frontend:_backend_mouseup('right', m.x, m.y)
-end
-
-local other_buttons = {'', 'middle', 'ex1', 'ex2'}
-
-function Window:otherMouseDown(event)
-	local btn = other_buttons[tonumber(event:buttonNumber())]
-	if not btn then return end
-	local m = self:setmouse(event)
-	self.frontend:_backend_mousedown(btn, m.x, m.y)
-end
-
-function Window:otherMouseUp(event)
-	local btn = other_buttons[tonumber(event:buttonNumber())]
-	if not btn then return end
-	local m = self:setmouse(event)
-	self.backend:_check_mousemove(event, m)
-	self.frontend:_backend_mouseup(btn, m.x, m.y)
-end
-
-function Window:mouseMoved(event)
-	local m = self:setmouse(event)
-	self.frontend:_backend_mousemove(m.x, m.y)
-end
-
-function Window:mouseDragged(event)
-	self:mouseMoved(event)
-end
-
-function Window:rightMouseDragged(event)
-	self:mouseMoved(event)
-end
-
-function Window:otherMouseDragged(event)
-	self:mouseMoved(event)
-end
-
-function Window:mouseEntered(event)
-	local m = self:setmouse(event)
-	m.inside = true
-	--enable mousemove events only inside the client area to emulate Windows behavior.
-	self:setAcceptsMouseMovedEvents(true)
-	--mute mousenter() if buttons are pressed to emulate Windows behavior.
-	if event:pressedMouseButtons() ~= 0 then return end
-	self.frontend:_backend_mouseenter()
-end
-
-function Window:mouseExited(event)
-	local m = self:setmouse(event)
-	m.inside = false
-	self.backend:_check_mousemove(event, m)
-	--mute mouseleave() if buttons are pressed to emulate Windows behavior.
-	if event:pressedMouseButtons() ~= 0 then return end
-	self.frontend:_backend_mouseleave()
-end
-
-function Window:scrollWheel(event)
-	local m = self:setmouse(event)
-	local x, y = m.x, m.y
-	local dx = event:deltaX()
-	if dx ~= 0 then
-		self.frontend:_backend_mousehwheel(dx, x, y)
-	end
-	local dy = event:deltaY()
-	if dy ~= 0 then
-		self.frontend:_backend_mousewheel(dy, x, y)
-	end
-end
-
-function window:mouse_pos()
-	--return objc.NSEvent:
-end
-
-function Window:acceptsFirstMouse()
-	--get mouseDown when clicked while not active to emulate Windows behavior.
-	return true
-end
-
---dynamic bitmaps ------------------------------------------------------------
+--rendering/bitmap -----------------------------------------------------------
 
 --make a bitmap that can be painted on the current NSGraphicsContext.
---to that effect, a paint() function and a free() function are provided along with the bitmap.
 local function make_bitmap(w, h)
 
 	--can't create a zero-sized bitmap
@@ -1779,7 +1646,6 @@ local function make_bitmap(w, h)
 
 	local stride = w * 4
 	local size = stride * h
-
 	local data = glue.malloc(size)
 
 	local bitmap = {
@@ -1801,7 +1667,8 @@ local function make_bitmap(w, h)
 	bounds.size.width = w
 	bounds.size.height = h
 
-	local function paint()
+	function bitmap:paint()
+		assert(bitmap)
 
 		--CGImage expects the pixel buffer to be immutable, which is why
 		--we create a new one every time. bummer.
@@ -1825,12 +1692,7 @@ local function make_bitmap(w, h)
 		objc.CGImageRelease(image)
 	end
 
-	local function free()
-
-		--trigger a user-supplied destructor
-		if bitmap.free then
-			bitmap:free()
-		end
+	function bitmap:free()
 
 		--free image args
 		objc.CGColorSpaceRelease(colorspace)
@@ -1842,50 +1704,77 @@ local function make_bitmap(w, h)
 		bitmap = nil
 	end
 
-	return bitmap, free, paint
+	return bitmap
 end
 
 --a dynamic bitmap is an API that creates a new bitmap everytime its size
 --changes. user supplies the :size() function, :get() gets the bitmap,
 --and :freeing(bitmap) is triggered before the bitmap is freed.
 local function dynbitmap(api)
-
-	api = api or {}
-
-	local w, h, bitmap, free, paint
-
+	local w, h, bitmap
 	function api:get()
 		local w1, h1 = api:size()
 		if w1 ~= w or h1 ~= h then
 			self:free()
-			bitmap, free, paint = make_bitmap(w1, h1)
+			bitmap = make_bitmap(w1, h1)
 			w, h = w1, h1
 		end
 		return bitmap
 	end
-
 	function api:free()
-		if not free then return end
+		if not bitmap then return end
 		self:freeing(bitmap)
-		free()
+		bitmap:free()
+		bitmap = nil
 	end
-
 	function api:paint()
-		if not paint then return end
-		paint()
+		if not bitmap then return end
+		bitmap:paint()
 	end
-
 	return api
 end
 
---repaint views --------------------------------------------------------------
+--View -----------------------------------------------------------------------
 
---a repaint view calls the Lua method nw_repaint() on drawRect().
+--NOTE: a View can be initialized with a window frontend or with a view
+--frontend which will be used to fire events and to fill the _mouse state.
 
-local RepaintView = objc.class('View', 'NSView')
+function window:_create_view(rect, frontend, hidden, t)
 
-function RepaintView.drawRect(cpu)
+	local self = t.opengl and
+		self:_create_gl_view(rect, t.opengl) or
+		self:_create_bitmap_view(rect)
 
+	self:setHidden(hidden)
+	self.frontend = frontend
+
+	--enable mouse enter/leave events.
+	local opts = bit.bor(
+		objc.NSTrackingActiveAlways,           --also when inactive (emulate Windows behavior)
+		objc.NSTrackingInVisibleRect,          --only if unobscured (duh)
+		objc.NSTrackingEnabledDuringMouseDrag, --also when dragging *into* the window
+		objc.NSTrackingMouseEnteredAndExited,
+		objc.NSTrackingMouseMoved,
+		objc.NSTrackingCursorUpdate) --TODO: fix this with NSTrackingActiveAlways
+	local area = objc.NSTrackingArea:alloc():initWithRect_options_owner_userInfo(
+		rect, opts, self, nil)
+	self:addTrackingArea(area)
+
+	return self
+end
+
+function window:_free_view(nsview)
+	nsview:nw_free()
+	nsview:release()
+end
+
+local View = {} --common methods for BitmapView and GLView
+
+function View:isFlipped()
+	return true
+end
+
+function View.drawRect(cpu)
 	--get arg1 from the ABI guts.
 	local self
 	if ffi.arch == 'x64' then
@@ -1893,58 +1782,281 @@ function RepaintView.drawRect(cpu)
 	else
 		self = ffi.cast('id', cpu.ESP.dp[1].p) --ESP[1] = self
 	end
-
-	self:nw_repaint()
+	self:nw_paint()
 end
 
---rendering ------------------------------------------------------------------
+function View:nw_invalidate(x, y, w, h)
+	if x then
+		self:setNeedsDisplayInRect(objc.NSMakeRect(x, y, w, h))
+	else
+		self:setNeedsDisplay(true)
+	end
+end
 
-function window:_init_content_view()
+function window:invalidate(...)
+	self.nsview:nw_invalidate(...)
+end
 
-	--create the dynbitmap to paint on the content view.
-	self._dynbitmap = dynbitmap{
+--View/mouse -----------------------------------------------------------------
+
+function View:nw_setmouse(event)
+	local m = self.frontend._mouse
+	local pos = event:locationInWindow()
+	local pos = self:convertPoint_fromView(pos, nil)
+	m.x = pos.x
+	m.y = pos.y
+	local btns = tonumber(event:pressedMouseButtons())
+	m.left = bit.band(btns, 1) ~= 0
+	m.right = bit.band(btns, 2) ~= 0
+	m.middle = bit.band(btns, 4) ~= 0
+	m.ex1 = bit.band(btns, 8) ~= 0
+	m.ex2 = bit.band(btns, 16) ~= 0
+	return m
+end
+
+--disable mousemove events when exiting client area, but only if no mouse
+--buttons are down, to emulate Windows behavior.
+function View:nw_check_mousemove(event, m)
+	if not m.inside and event:pressedMouseButtons() == 0 then
+		self:window():setAcceptsMouseMovedEvents(false)
+	end
+end
+
+function View:mouseDown(event)
+	local m = self:nw_setmouse(event)
+	self.frontend:_backend_mousedown('left', m.x, m.y)
+end
+
+function View:mouseUp(event)
+	local m = self:nw_setmouse(event)
+	self:nw_check_mousemove(event, m)
+	self.frontend:_backend_mouseup('left', m.x, m.y)
+end
+
+function View:rightMouseDown(event)
+	local m = self:nw_setmouse(event)
+	self.frontend:_backend_mousedown('right', m.x, m.y)
+end
+
+function View:rightMouseUp(event)
+	local m = self:nw_setmouse(event)
+	self:nw_check_mousemove(event, m)
+	self.frontend:_backend_mouseup('right', m.x, m.y)
+end
+
+local other_buttons = {'', 'middle', 'ex1', 'ex2'}
+
+function View:otherMouseDown(event)
+	local btn = other_buttons[tonumber(event:buttonNumber())]
+	if not btn then return end
+	local m = self:nw_setmouse(event)
+	self.frontend:_backend_mousedown(btn, m.x, m.y)
+end
+
+function View:otherMouseUp(event)
+	local btn = other_buttons[tonumber(event:buttonNumber())]
+	if not btn then return end
+	local m = self:nw_setmouse(event)
+	self:nw_check_mousemove(event, m)
+	self.frontend:_backend_mouseup(btn, m.x, m.y)
+end
+
+function View:mouseMoved(event)
+	local m = self:nw_setmouse(event)
+	self.frontend:_backend_mousemove(m.x, m.y)
+end
+
+function View:mouseDragged(event)
+	self:mouseMoved(event)
+end
+
+function View:rightMouseDragged(event)
+	self:mouseMoved(event)
+end
+
+function View:otherMouseDragged(event)
+	self:mouseMoved(event)
+end
+
+function View:mouseEntered(event)
+	local m = self:nw_setmouse(event)
+	m.inside = true
+	--enable mousemove events only inside the client area to emulate Windows behavior.
+	self:window():setAcceptsMouseMovedEvents(true)
+	--mute mousenter() if buttons are pressed to emulate Windows behavior.
+	if event:pressedMouseButtons() ~= 0 then return end
+	self.frontend:_backend_mouseenter()
+end
+
+function View:mouseExited(event)
+	local m = self:nw_setmouse(event)
+	m.inside = false
+	self:nw_check_mousemove(event, m)
+	--mute mouseleave() if buttons are pressed to emulate Windows behavior.
+	if event:pressedMouseButtons() ~= 0 then return end
+	self.frontend:_backend_mouseleave()
+end
+
+function View:scrollWheel(event)
+	local m = self:nw_setmouse(event)
+	local x, y = m.x, m.y
+	local dx = event:deltaX()
+	if dx ~= 0 then
+		self.frontend:_backend_mousehwheel(dx, x, y)
+	end
+	local dy = event:deltaY()
+	if dy ~= 0 then
+		self.frontend:_backend_mousewheel(dy, x, y)
+	end
+end
+
+function View:acceptsFirstMouse()
+	--get mouseDown when clicked while not active to emulate Windows behavior.
+	return true
+end
+
+--BitmapView -----------------------------------------------------------------
+
+function window:_create_bitmap_view(rect)
+
+	local self = objc.BitmapView:alloc():initWithFrame(rect)
+
+	self.nw_dynbitmap = dynbitmap{
 		size = function()
-			return self.frontend:client_size()
+			local _, _, w, h = unpack_nsrect(self:frame())
+			return w, h
 		end,
 		freeing = function(_, bitmap)
 			self.frontend:_backend_free_bitmap(bitmap)
 		end,
 	}
 
-	--create our custom view and set it as the content view.
-	local bounds = self.nswin:contentView():bounds()
-	self.nsview = RepaintView:alloc():initWithFrame(bounds)
+	return self
+end
 
-	function self.nsview.nw_repaint()
-		--let the user request the bitmap and draw on it.
-		self.frontend:_backend_repaint()
-		--paint the bitmap on the current graphics context.
-		self._dynbitmap:paint()
-	end
+local BitmapView = objc.class('BitmapView', 'NSView')
 
-	self.nswin:setContentView(self.nsview)
+glue.update(BitmapView, View)
+
+function BitmapView:nw_paint()
+	self.frontend:_backend_repaint()
+	self.nw_dynbitmap:paint()
+end
+
+function BitmapView:nw_free()
+	self.nw_dynbitmap:free()
+end
+
+function BitmapView:nw_bitmap()
+	return self.nw_dynbitmap:get()
+end
+
+function BitmapView:nw_gl()
+	error('not an OpenGL view', 2)
 end
 
 function window:bitmap()
-	return self._dynbitmap:get()
+	return self.nsview:nw_bitmap()
 end
 
-function window:_free_bitmap()
-	self._dynbitmap:free()
+--GLView ---------------------------------------------------------------------
+
+function window:_create_gl_view(rect, t)
+
+	local pixelFormatAttributes = ffi.new('NSOpenGLPixelFormatAttribute[?]', 10,
+		objc.NSOpenGLPFAOpenGLProfile, objc.NSOpenGLProfileVersionLegacy, --objc.NSOpenGLProfileVersion3_2Core,
+		objc.NSOpenGLPFAColorSize, 24,
+		objc.NSOpenGLPFAAlphaSize, 8,
+		objc.NSOpenGLPFADoubleBuffer,
+		objc.NSOpenGLPFAAccelerated,
+		objc.NSOpenGLPFANoRecovery,
+		0)
+	local pixelFormat = objc.NSOpenGLPixelFormat:alloc():initWithAttributes(pixelFormatAttributes)
+
+	return objc.GLView:alloc():initWithFrame_pixelFormat(rect, pixelFormat)
 end
 
-function window:invalidate(x, y, w, h)
-	if x then
-		self.nswin:contentView():setNeedsDisplayInRect(objc.NSMakeRect(x, y, w, h))
-	else
-		self.nswin:contentView():setNeedsDisplay(true)
-	end
+ffi.cdef[[
+enum {
+   NSOpenGLPFAAllRenderers       =   1,
+   NSOpenGLPFATripleBuffer       =   3,
+   NSOpenGLPFADoubleBuffer       =   5,
+   NSOpenGLPFAStereo             =   6,
+   NSOpenGLPFAAuxBuffers         =   7,
+   NSOpenGLPFAColorSize          =   8,
+   NSOpenGLPFAAlphaSize          =  11,
+   NSOpenGLPFADepthSize          =  12,
+   NSOpenGLPFAStencilSize        =  13,
+   NSOpenGLPFAAccumSize          =  14,
+   NSOpenGLPFAMinimumPolicy      =  51,
+   NSOpenGLPFAMaximumPolicy      =  52,
+   NSOpenGLPFAOffScreen          =  53,
+   NSOpenGLPFAFullScreen         =  54,
+   NSOpenGLPFASampleBuffers      =  55,
+   NSOpenGLPFASamples            =  56,
+   NSOpenGLPFAAuxDepthStencil    =  57,
+   NSOpenGLPFAColorFloat         =  58,
+   NSOpenGLPFAMultisample        =  59,
+   NSOpenGLPFASupersample        =  60,
+   NSOpenGLPFASampleAlpha        =  61,
+   NSOpenGLPFARendererID         =  70,
+   NSOpenGLPFASingleRenderer     =  71,
+   NSOpenGLPFANoRecovery         =  72,
+   NSOpenGLPFAAccelerated        =  73,
+   NSOpenGLPFAClosestPolicy      =  74,
+   NSOpenGLPFARobust             =  75,
+   NSOpenGLPFABackingStore       =  76,
+   NSOpenGLPFAMPSafe             =  78,
+   NSOpenGLPFAWindow             =  80,
+   NSOpenGLPFAMultiScreen        =  81,
+   NSOpenGLPFACompliant          =  83,
+   NSOpenGLPFAScreenMask         =  84,
+   NSOpenGLPFAPixelBuffer        =  90,
+   NSOpenGLPFARemotePixelBuffer  =  91,
+   NSOpenGLPFAAllowOfflineRenderers = 96,
+   NSOpenGLPFAAcceleratedCompute =  97,
+   NSOpenGLPFAOpenGLProfile      =  99,
+   NSOpenGLPFAVirtualScreenCount = 128
+};
+enum {
+   NSOpenGLProfileVersionLegacy    = 0x1000,
+   NSOpenGLProfileVersion3_2Core   = 0x3200
+};
+typedef uint32_t NSOpenGLPixelFormatAttribute;
+]]
+
+local GLView = objc.class('GLView', 'NSOpenGLView')
+
+glue.update(GLView, View)
+
+function GLView:nw_free()
+
+end
+
+function GLView:nw_paint()
+	self.frontend:_backend_repaint()
+	self:openGLContext():flushBuffer()
+end
+
+function BitmapView:nw_bitmap()
+	error('cannot get the bitmap of an OpenGL view', 2)
+end
+
+function GLView:nw_gl()
+	self:openGLContext():makeCurrentContext()
+	objc.load'OpenGL'
+	return objc
+end
+
+function window:gl()
+	return self.nsview:nw_gl()
 end
 
 --views ----------------------------------------------------------------------
 
---NOTE: you can't put a view in front of an OpenGL view. You can put a child NSWindow,
---which will follow the parent around, but it won't be clipped by the parent.
+--NOTE: you can't put a view in front of an OpenGL view. You can put a
+--child NSWindow, which will follow the parent around, but it won't be
+--clipped so that's no good.
 
 local view = {}
 window.view = view
@@ -1956,19 +2068,36 @@ function view:new(window, frontend, t)
 		frontend = frontend,
 	}, self)
 
-	self:_init(t)
-
+	local rect = objc.NSMakeRect(t.x, t.y, t.w, t.h)
+	self.nsview = self.window:_create_view(rect, frontend, true)
+	self.window.nswin:contentView():addSubview(self.nsview)
 	return self
 end
 
-glue.autoload(window, {
-	cairoview = 'nw_cocoa_cairoview',
-	glview    = 'nw_cocoa_glview',
-})
-
-function window:getcairoview()
-	return self.cairoview
+function view:free()
+	self.window:_free_view(self.nsview)
+	self.nsview = nil
 end
+
+function view:get_rect()
+	return unpack_nsrect(self.nsview:frame())
+end
+
+function view:set_rect(x, y, w, h)
+	self.nsview:setFrame(objc.NSMakeRect(x, y, w, h))
+end
+
+function view:show()
+	self.nsview:setHidden(false)
+end
+
+function view:hide()
+	self.nsview:setHidden(true)
+end
+
+view.invalidate = window.invalidate
+view.bitmap = window.bitmap
+view.gl = window.gl
 
 --hi-dpi support -------------------------------------------------------------
 
@@ -2287,7 +2416,7 @@ end
 function app:dockicon_invalidate()
 	if not self.dkview then
 		--create our custom view and set it as the content view.
-		self.dkview = RepaintView:alloc():init()
+		self.dkview = View:alloc():init()
 
 		function self.dkview.nw_repaint()
 

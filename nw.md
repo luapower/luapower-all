@@ -73,6 +73,8 @@ __window creation__
 &nbsp;&nbsp; *`activable`*							allow activation (true); only for 'toolbox' frames
 &nbsp;&nbsp; *`autoquit`*							quit the app on closing (false)
 &nbsp;&nbsp; *`edgesnapping`*						magnetized edges ('screen')
+&nbsp;&nbsp; *__rendering__*
+&nbsp;&nbsp; *`opengl = {opts...}`*				enable & [configure](#winviewgl---gl) OpenGL
 &nbsp;&nbsp; *__menu__*
 &nbsp;&nbsp; *`menu`*								menu bar
 __closing__
@@ -245,7 +247,7 @@ __rendering__
 `bmp:cairo() -> cr`									get a cairo context on the bitmap
 `win/view:free_cairo(cr)`							event: cairo context needs freeing
 `win/view:free_bitmap(bmp)`						event: bitmap needs freeing
-`win/view:gl() -> gl`								get an OpenGL API for the window
+`win/view:gl() -> gl`								get an OpenGL context to draw with
 __menus__
 `app:menu() -> menu`									create a menu (or menu bar)
 `app:menubar() -> menu`								get app's menu bar (OSX)
@@ -363,7 +365,7 @@ and [milestones](https://github.com/luapower/nw/milestones).
 
 ## Backends
 
-API        Library     Min. platform           Most tested platform
+API        Library     Supported Platforms     Developed On
 ---------- ----------- ----------------------- ------------------------
 WinAPI     [winapi]    Windows XP/2000+        Windows 7 x64
 Cocoa      [objc]      OSX 10.7+               OSX 10.9
@@ -494,7 +496,7 @@ Fired right after `win:was_closed()` event is fired.
 
 ### `app:window(t) -> win`
 
-Create a window (fields of _`t`_ below):
+Create a window (fields of _`t`_ below with default value in parenthesis):
 
 * __position__
 	* `x`, `y`		 				- frame position
@@ -596,11 +598,15 @@ They must be parented. They can be non-activable (`activable = false`).
 ## Transparent windows
 
 Transparent windows (`transparent = true`) allow using the full alpha channel
-when drawing on them. They also come with some limitations (mostly from Windows):
+when drawing on them. They also come with serious limitations (mostly from Windows):
 
   * they can't be framed so you must pass `frame = 'none'`.
   * they can't have views.
   * you can't draw on them using OpenGL.
+  * they don't show over Remote Desktop.
+
+Despite these limitations, transparent windows are the only way to create
+free-floating tooltips and custom-shaped notification windows.
 
 ### `win:transparent() -> t|f`
 
@@ -1115,7 +1121,9 @@ It will silently fail otherwise.
 
 ### `disp.scalingfactor`
 
-Get the display's scaling factor. This is 1 when autoscaling is enabled.
+The display's scaling factor is an attribute of display objects.
+This is 1 when autoscaling is enabled and > 1 when disabled
+and the display is hi-dpi.
 
 If autoscaling is disabled, windows must check their display's
 scaling factor and scale the UI accordingly.
@@ -1127,14 +1135,18 @@ was moved to a screen with a different scaling factor.
 
 ## Views
 
+A view object defines a rectangular region within a window for drawing
+and receiving mouse events.
+
 Views allow partitioning a window's client area into multiple non-overlapping
-rectangle-shaped regions that can be rendered using different technologies.
-In particular, you can use OpenGL on some regions, while using bitmaps
+regions that can be rendered using different technologies.
+In particular, you can use OpenGL on some views, while using bitmaps
 (and thus cairo) on others. This gives a simple path for drawing
 an antialiased 2D UI around a 3D scene as an alternative to drawing
-on the textures of orto-projected quads. Mouse events work the same
-on views as they do on windows (note: the window doesn't receive
-mouse events while the mouse is over a view).
+on the textures of orto-projected quads.
+
+> __NOTE:__ the window doesn't receive mouse move events while
+the mouse is over a view.
 
 ### `win:views() -> {view1, ...}`
 
@@ -1283,9 +1295,14 @@ and it is queried on every wheel event (Windows, OSX).
 ## Rendering
 
 Drawing on a window or view must be done inside the `repaint()` event
-by requesting the window's bitmap or OpenGL context and drawing on it.
+by requesting the window/view's bitmap or OpenGL context and drawing on it.
 The OS fires `repaint` whenever it loses (part of) the contents
 of the window. To force a repaint anytime, use `win:invalidate()`.
+
+__NOTE:__ You can't request a bitmap on an OpenGL-enabled window/view
+and you can't request an OpenGL context on a non-OpenGL-enabled window/view.
+To enable OpenGL on a window/view you must pass an `opengl` options table
+to the window/view creation function (it can be an empty table or just `true`).
 
 ### `win/view:repaint()`
 
@@ -1323,7 +1340,13 @@ Event: bitmap needs to be freed.
 
 ### `win/view:gl() -> gl`
 
-Get an OpenGL context/API to draw on the window or view.
+Get an OpenGL context/API to draw on the window or view. For this to work
+OpenGL must be enabled on teh window or view via the `opengl` options table,
+which can have the fields:
+
+  * `version` - OpenGL version to use: '1.0', '2.0', '3.0' ('1.0')
+  * `fsaa`    - multisampling: 0, 2, 4, 8, 16, true, false (false)
+  * `vsync`   - vertical sync: true, false (true)
 
 ## Menus
 

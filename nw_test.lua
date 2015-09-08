@@ -2774,8 +2774,14 @@ end)
 
 add('check-view-mouse', function()
 	local win = app:window{cw = 700, ch = 500}
-	local gl = win:view{x = 50, y = 50, w = 600, h = 400, anchors = 'ltrb'}
-	gl:bitmap():clear()
+	local view = win:view{x = 50, y = 50, w = 600, h = 400, anchors = 'ltrb', visible = false}
+	function view:repaint()
+		view:bitmap():clear()
+	end
+	view:show()
+	function view:event(...)
+		print(...)
+	end
 	app:run()
 end)
 
