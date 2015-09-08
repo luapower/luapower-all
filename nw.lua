@@ -310,7 +310,7 @@ function app:_forcequit()
 		end
 	end
 
-	if self:window_count() == 0 then --no windows created while closing
+	if self:windows'#' == 0 then --no windows created while closing
 		--free notify icons otherwise they hang around (both in XP and in OSX).
 		self:_free_notifyicons()
 		self:_free_dockicon()
@@ -335,19 +335,18 @@ end
 --window list ----------------------------------------------------------------
 
 --get existing windows in creation order
-function app:windows()
-	return glue.update({}, self._windows) --take a snapshot
-end
-
-function app:window_count(filter)
-	if filter == 'root' then
-		local n = 0
-		for i,win in ipairs(self._windows) do
-			n = n + (not win:dead() and not win:parent() and 1 or 0)
+function app:windows(arg, filter)
+	if arg == '#' then
+		if filter == 'root' then
+			local n = 0
+			for i,win in ipairs(self._windows) do
+				n = n + (not win:dead() and not win:parent() and 1 or 0)
+			end
+			return n
 		end
-		return n
+		return #self._windows
 	end
-	return #self._windows
+	return glue.update({}, self._windows) --take a snapshot
 end
 
 function app:_window_created(win)
@@ -547,7 +546,7 @@ function window:_backend_closing()
 	if self:autoquit() or (
 		self.app:autoquit()
 		and not self:parent() --closing a root window
-		and self.app:window_count'root' == 1 --the only one
+		and self.app:windows('#', 'root') == 1 --the only one
 	) then
 		self._quitting = true
 		return self.app:_canquit()
@@ -1053,12 +1052,11 @@ function display:desktop_rect()
 	return self.cx, self.cy, self.cw, self.ch
 end
 
-function app:displays()
+function app:displays(arg)
+	if arg == '#' then
+		return self.backend:display_count()
+	end
 	return self.backend:displays()
-end
-
-function app:display_count()
-	return self.backend:display_count()
 end
 
 function app:main_display() --the display at (0,0)
@@ -1334,12 +1332,11 @@ end
 
 local view = glue.update({_anchors = 'lt'}, object)
 
-function window:views()
+function window:views(arg)
+	if arg == '#' then
+		return #self._views
+	end
 	return glue.extend({}, self._views) --take a snapshot; creation order.
-end
-
-function window:view_count()
-	return #self._views
 end
 
 function window:view(t)
@@ -1621,13 +1618,12 @@ function menu:get(index, var)
 	end
 end
 
-function menu:item_count()
-	return self.backend:item_count()
-end
-
 function menu:items(var)
+	if var == '#' then
+		return self.backend:item_count()
+	end
 	local t = {}
-	for i = 1, self:item_count() do
+	for i = 1, self:items'#' do
 		t[i] = self:get(i, var)
 	end
 	return t
@@ -1678,11 +1674,10 @@ function app:_free_notifyicons() --called on app:quit()
 	end
 end
 
-function app:notifyicon_count()
-	return #self._notifyicons
-end
-
-function app:notifyicons()
+function app:notifyicons(arg)
+	if arg == '#' then
+		return #self._notifyicons
+	end
 	return glue.extend({}, self._notifyicons) --take a snapshot
 end
 

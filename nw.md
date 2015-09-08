@@ -40,7 +40,6 @@ __timers__
 `app:sleep(seconds)`									sleep without blocking inside a function run with app:run()
 __window tracking__
 `app:windows() -> {win1, ...}`					all windows in creation order
-`app:window_count([filter]) -> n`				number of windows
 `app:window_created(win)`							event: a window was created
 `app:window_closed(win)`							event: a window was closed
 __window creation__
@@ -140,12 +139,9 @@ __client/screen conversion__
 `win:to_screen(x, y) -> x, y`						client space -> screen space conversion
 `win:to_client(x, y) -> x, y`						screen space -> client space conversion
 __frame/client conversion__
-`app:client_to_frame(frame, has_menu,`			client rect -> window frame rect conversion
-	`x, y, w, h) -> x, y, w, h`
-`app:frame_to_client(frame, has_menu,`			window frame rect -> client rect conversion
-	`x, y, w, h) -> x, y, w, h`
-`app:frame_extents(frame, has_menu)`			frame extents for a frame type
-	`-> left, top, right, bottom`
+`app:client_to_frame(...) -> ...`				client rect -> window frame rect conversion
+`app:frame_to_client(...) -> ...`				window frame rect -> client rect conversion
+`app:frame_extents(...) -> ...`					frame extents for a frame type
 __size and position__
 `win:frame_rect() -> x, y, w, h`					get frame rect in current state
 `win:frame_rect(x, y, w, h)`						set frame rect (and change state to normal)
@@ -177,7 +173,6 @@ __window title__
 `win:title(title)`									set title
 __displays__
 `app:displays() -> {disp1, ...}`					get displays (in no specific order)
-`app:display_count() -> n`							number of displays
 `app:main_display() -> disp	`					the display whose screen rect starts at (0,0)
 `app:active_display() -> disp`					the display which contains the active window
 `disp:screen_rect() -> x, y, w, h`				display's screen rectangle
@@ -209,7 +204,6 @@ __hi-dpi support__
 `win:scalingfactor_changed()`						a window's display scaling factor changed
 __views__
 `win:views() -> {view1, ...}`						list views
-`win:view_count() -> n`								number of views
 `win:view(t) -> view`								create a view (fields of _`t`_ below)
 &nbsp;&nbsp; *`x`, `y`, `w`, `h`*				view's position (in window's client space) and size
 &nbsp;&nbsp; *`visible`*							start visible (true)
@@ -259,7 +253,6 @@ __menus__
 `menu:remove(index)`
 `menu:get(index) -> item`							get the menu item at index
 `menu:get(index, prop) -> val`					get the value of a property of the menu item at index
-`menu:item_count() -> n`
 `menu:items([prop]) -> {item1, ...}`
 `menu:checked(index) -> t|f`
 `menu:checked(index, t|f)`
@@ -271,7 +264,6 @@ __icons (common API)__
 `icon:free_bitmap(bmp)`								event: bitmap needs freeing
 __notification icons__
 `app:notifyicon(t) -> icon`
-`app:notifyicon_count() -> n`
 `app:notifyicons() -> {icon1, ...}`				list notification icons
 `icon:tooltip() -> s`								get tooltip
 `icon:tooltip(s)`										set tooltip
@@ -472,15 +464,12 @@ Calling sleep() outside an app:run() function raises an error.
 
 ## Window tracking
 
-### `app:windows() -> {win1, ...}`
+### `app:windows() -> {win1, ...}` <br> `app:windows('#'[, filter]) -> n`
 
 Get all windows in creation order.
 
-### `app:window_count([filter]) -> n`
-
-Get the number of windows (dead or alive) without wasting a table.
-`filter` can be 'root' which returns the number of non-dead
-non-parented windows.
+If '#' is given, get the number of windows (dead or alive) instead.
+If `filter` is 'root' the return the number of non-dead non-parented windows.
 
 ### `app:window_created(win)`
 
@@ -1015,13 +1004,10 @@ Get/set the window's title.
 In non-mirrored multi-monitor setups, the displays are mapped
 on a virtual surface, with the main display's top-left corner at (0, 0).
 
-### `app:displays() -> {disp1, ...}`
+### `app:displays() -> {disp1, ...}` <br> `app:displays'#' -> n`
 
 Get displays (in no specific order). Mirror displays are not included.
-
-### `app:display_count() -> n`
-
-Get the display count without enumerating them.
+If '#' is given, get the display count instead.
 
 ### `app:main_display() -> disp`
 
@@ -1148,13 +1134,9 @@ on the textures of orto-projected quads.
 > __NOTE:__ the window doesn't receive mouse move events while
 the mouse is over a view.
 
-### `win:views() -> {view1, ...}`
+### `win:views() -> {view1, ...}` <br> `win:views'#' -> n`
 
-Get the window's views.
-
-### `win:view_count() -> n`
-
-Get the number of views without wasting a table.
+Get the window's views. If '#' is given, get the view count instead.
 
 ### `win:view(t) -> view`
 
@@ -1341,7 +1323,7 @@ Event: bitmap needs to be freed.
 ### `win/view:gl() -> gl`
 
 Get an OpenGL context/API to draw on the window or view. For this to work
-OpenGL must be enabled on teh window or view via the `opengl` options table,
+OpenGL must be enabled on the window or view via the `opengl` options table,
 which can have the fields:
 
   * `version` - OpenGL version to use: '1.0', '2.0', '3.0' ('1.0')
@@ -1388,13 +1370,10 @@ Remove menu item at index.
 
 Get a menu item, or the value of one of its properties.
 
-### `menu:item_count() -> n`
+### `menu:items([prop]) -> {item1, ...}` <br> `menu:items'#' -> n`
 
-Get the number of items in the menu.
-
-### `menu:items([prop]) -> {item1, ...}`
-
-Get the menu items.
+Get the menu items. If a property name is given, pluck the values of that
+property from the menu items instead. If '#' is given, get the item count instead.
 
 ### `menu:checked(index) -> t|f` <br> `menu:checked(index, t|f)`
 
@@ -1442,13 +1421,9 @@ Get the app's dock icon.
 
 Create a notification icon.
 
-### `app:notifyicon_count() -> n`
+### `app:notifyicons() -> {icon1, ...}` <br> `app:notifyicons'#' -> n`
 
-Get the number of notification icons.
-
-### `app:notifyicons() -> {icon1, ...}`
-
-Get all the notification icons.
+Get all the notification icons. If '#' is given, get the icon count instead.
 
 ### `icon:tooltip() -> s` <br> `icon:tooltip(s)`
 
@@ -1653,4 +1628,5 @@ github issues and milestones.
     * clamp values to universally supported ranges.
     * make stable iterators with specified order or better yet, return arrays.
   * seek orthogonality, but do add convenience methods where useful.
+
 
