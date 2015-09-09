@@ -17,9 +17,9 @@ notification icons, all text in utf8, and more.
 
 ## API
 
-NOTE: In the table below, `foo(t|f) /-> t|f` is a shortcut for saying that
-`foo(t|f)` sets the value of foo, and `foo() -> t|f` gets it.
-`t|f` means that foo is a boolean.
+__NOTE:__ In the table below, `foo(t|f) /-> t|f` is a shortcut for saying
+that `foo(t|f)` sets the value of foo, and `foo() -> t|f` gets it
+(`t|f` means that foo is a boolean).
 
 <div class=small>
 -- -------------------------------------------- -----------------------------------------------------------------------------
@@ -65,13 +65,13 @@ E  `win:was_activated()`								event: window was activated
 E  `win:was_deactivated()`								event: window was deactivated
 R  `win:activable() -> t|f`							activable flag (for 'toolbox' windows)
    __app visibility (OSX)__
-RM `app:hidden(t|f) /-> t|f`							get/set app visibility
+RW `app:hidden(t|f) /-> t|f`							get/set app visibility
 M  `app:hide()`											hide the app
 M  `app:unhide()`											unhide the app
 E  `app:was_hidden()`									event: app was hidden
 E  `app:was_unhidden()`									event: app was unhidden
    __window visibility__
-RM `win:visible(t|f) /-> t|f`							get/set window visibility
+RW `win:visible(t|f) /-> t|f`							get/set window visibility
 M  `win:show()`											show window (in its previous state)
 M  `win:hide()`											hide window
 E  `win:was_shown()`										event: window was shown
@@ -90,7 +90,7 @@ E  `win:was_maximized()`								event: window was maximized
 E  `win:was_unmaximized()`								event: window was unmaximized
    __fullscreen mode__
 R  `win:fullscreenable() -> t|f`						fullscreenable flag
-RM `win:fullscreen(t|f) /-> t|f`						get/enter/exit fullscreen mode
+RW `win:fullscreen(t|f) /-> t|f`						get/enter/exit fullscreen mode
 E  `win:entered_fullscreen()`							event: entered fullscreen mode
 E  `win:exited_fullscreen()`							event: exited fullscreen mode
    __restoring__
@@ -102,7 +102,7 @@ E  `win:changed(old_state, new_state)`				event: window state changed
 R  `app:state() -> state`								full app state string
 E  `app:changed(old_state, new_state)`				event: app state changed
    __enabled state__
-RM `win:enabled(t|f) /-> t|f`							get/set window enabled flag
+RW `win:enabled(t|f) /-> t|f`							get/set window enabled flag
    __client/screen conversion__
 M  `win:to_screen(x, y) -> x, y`						client space -> screen space conversion
 M  `win:to_client(x, y) -> x, y`						screen space -> client space conversion
@@ -111,22 +111,22 @@ R  `app:client_to_frame(...) -> ...`				client rect -> window frame rect convers
 R  `app:frame_to_client(...) -> ...`				window frame rect -> client rect conversion
 R  `app:frame_extents(...) -> ...`					frame extents for a frame type
    __size and position__
-RM `win:frame_rect(x,y,w,h) /-> x,y,w,h`			get/set frame rect in current state
-RM `win:normal_frame_rect(x,y,w,h) /-> x,y,w,h`	get/set frame rect in normal state
-RM `win:client_rect(x,y,w,h) -> x,y,w,h`			get client rect in current state
-RM `win:client_size(cw, ch) /-> cw, ch`			get/set client rect size
+RW `win:frame_rect(x,y,w,h) /-> x,y,w,h`			get/set frame rect in current state
+RW `win:normal_frame_rect(x,y,w,h) /-> x,y,w,h`	get/set frame rect in normal state
+RW `win:client_rect(x,y,w,h) -> x,y,w,h`			get client rect in current state
+RW `win:client_size(cw, ch) /-> cw, ch`			get/set client rect size
 E  `win:sizing(when, how, x, y, w, h)`				event: window size/position is about to change
 E  `win:was_moved(cx, cy)`								event: window was moved
 E  `win:was_resized(cw, ch)`							event: window was resized
    __size constraints__
 R  `win:resizeable() -> t|f`							resizeable flag
-RM `win:minsize(cw, ch) /-> cw, ch`					get/set min client rect size
-RM `win:maxsize(cw, ch) /-> cw, ch`					get/set max client rect size
+RW `win:minsize(cw, ch) /-> cw, ch`					get/set min client rect size
+RW `win:maxsize(cw, ch) /-> cw, ch`					get/set max client rect size
    __window edge snapping__
 RW `win:edgesnapping(mode) /-> mode`				get/set edge snapping mode
 E  `win:magnets(which) -> {r1, ...}`				event: get edge snapping rectangles
    __window z-order__
-RM `win:topmost(t|f) /-> t|f`							get/set the topmost flag
+RW `win:topmost(t|f) /-> t|f`							get/set the topmost flag
 M  `win:raise([rel_to_win])`							raise above all windows/specific window
 M  `win:lower([rel_to_win])`							lower below all windows/specific window
    __window title__
@@ -142,7 +142,7 @@ R  `disp:desktop_rect() -> cx, cy, cw, ch`		display's screen rectangle minus the
 E  `app:displays_changed()`							event: displays changed
 R  `win:display() -> disp|nil`						the display the window is on
    __cursors__
-RM `win:cursor(name|t|f) /-> name, t|f`			get/set the mouse cursor and visibility
+RW `win:cursor(name|t|f) /-> name, t|f`			get/set the mouse cursor and visibility
    __frame flags__
 R  `win:frame() -> frame`								window's frame: 'normal', 'none', 'toolbox'
 R  `win:transparent() -> t|f`							transparent flag
@@ -157,7 +157,7 @@ E  `win:keyup(key)`										event: a key was depressed
 E  `win:keypress(key)`									event: sent after each keydown, including repeats
 E  `win:keychar(s)`										event: input char pressed; _`s`_ is utf-8
    __hi-dpi support__
-RM `app:autoscaling(t|f) /-> t|f`					get/enable/disable autoscaling
+RW `app:autoscaling(t|f) /-> t|f`					get/enable/disable autoscaling
 R  `disp.scalingfactor`									display's scaling factor
 E  `win:scalingfactor_changed()`						a window's display scaling factor changed
    __views__
@@ -165,11 +165,11 @@ R  `win:views() -> {view1, ...}`						list views
 *  `win:view(t) -> view`								create a view
 -  `view:free()`											destroy the view
 R  `view:dead() -> t|f`									check if the view was freed
-RM `view:visible(t|f) /-> t|f`						get/set view's visibility
+RW `view:visible(t|f) /-> t|f`						get/set view's visibility
 M  `view:show()`											show the view
 M  `view:hide()`											hide the view
-RM `view:rect(x, y, w, h) /-> x, y, w, h`			get/set view's position (in window's client space) and size
-RM `view:size(w, h) /-> w, h`							get/set view's size
+RW `view:rect(x, y, w, h) /-> x, y, w, h`			get/set view's position (in window's client space) and size
+RW `view:size(w, h) /-> w, h`							get/set view's size
 RW `view:anchors(anchors) /-> anchors`				get/set anchors
 E  `view:rect_changed(x, y, w, h)`					event: view's size and/or position changed
 E  `view:was_moved(x, y)`								event: view was moved
@@ -196,7 +196,7 @@ R  `win/view:gl() -> gl`								get an OpenGL context to draw with
    __menus__
 *  `app:menu() -> menu`									create a menu (or menu bar)
 R  `app:menubar() -> menu`								get app's menu bar (OSX)
-RM `win:menubar(menu|nil) /-> menu|nil`			get/set/remove window's menu bar (Windows, Linux)
+RW `win:menubar(menu|nil) /-> menu|nil`			get/set/remove window's menu bar (Windows, Linux)
 M  `win/view:popup(menu, cx, cy)`					pop up a menu relative to a window or view
 M  `menu:popup(win/view, cx, cy)`					pop up a menu relative to a window or view
 M  `menu:add(...)`
@@ -246,8 +246,11 @@ R  `app:ver(query) -> t|f`								check OS _minimum_ version (eg. 'OSX 10.8')
 R  `nw.backends -> {os -> module_name}`			default backend modules for each OS
 M  `nw:init([backend_name])`							init with a specific backend (can be called only once)
 -- ----------------------------------------- -----------------------------------------------------------------------------
-</div>
 
+> __Legend:__ `R`: read-only property; `RW`: read-write property; `M`: method;
+`E`: event; <br> `*`: constructor; `-`: destructor.
+
+</div>
 
 ## Example
 
