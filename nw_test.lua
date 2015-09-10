@@ -97,94 +97,115 @@ end
 
 --helpers / rendering --------------------------------------------------------
 
-local r = 30
-local function cube(gl, w, h)
-
-	gl.glViewport(0, 0, w, h)
-	gl.glMatrixMode(gl.GL_PROJECTION)
-	gl.glLoadIdentity()
-	gl.glFrustum(-1, 1, -1, 1, 1, 100) --so fov is 90 deg
-	gl.glScaled(1, w/h, 1)
-
-	gl.glClearColor(0, 0, 0, 1)
-	gl.glClear(bit.bor(gl.GL_COLOR_BUFFER_BIT, gl.GL_DEPTH_BUFFER_BIT))
-	gl.glEnable(gl.GL_BLEND)
-	gl.glBlendFunc(gl.GL_SRC_ALPHA, gl.GL_SRC_ALPHA)
-	gl.glDisable(gl.GL_DEPTH_TEST)
-	gl.glDisable(gl.GL_CULL_FACE)
-	gl.glDisable(gl.GL_LIGHTING)
-	gl.glMatrixMode(gl.GL_MODELVIEW)
-	gl.glLoadIdentity()
-	gl.glTranslated(0,0,-1)
-
-	r = r + 1
-	gl.glPushMatrix()
-	gl.glTranslated(0,0,-3)
-	gl.glScaled(1, 1, 1)
-	gl.glRotated(r,1,r,r)
-	gl.glTranslated(0,0,2)
-
-	local function face(c)
-		gl.glBegin(gl.GL_QUADS)
-		gl.glColor4d(c,0,0,.5)
-		gl.glVertex3d(-1, -1, -1)
-		gl.glColor4d(0,c,0,.5)
-		gl.glVertex3d(1, -1, -1)
-		gl.glColor4d(0,0,c,.5)
-		gl.glVertex3d(1, 1, -1)
-		gl.glColor4d(c,0,c,.5)
-		gl.glVertex3d(-1, 1, -1)
-		gl.glEnd()
+function whiteband_animation()
+	local i = 0
+	return function(bmp)
+		local _, setpixel = bitmap.pixel_interface(bmp)
+		for y = 0, bmp.h-1 do
+			for x = 0, bmp.w-1 do
+				local i = (i % bmp.w)
+				local c = x >= i and x <= i + 50 and 255 or 100
+				if x <= 10 or x >= bmp.w - 10 or y <= 10 or y >= bmp.h - 10 then
+					c = 20
+				end
+				setpixel(x, y, c, c, c, 255)
+			end
+		end
+		i = i + 5
 	end
-	gl.glTranslated(0,0,-2)
-	face(1)
-	gl.glTranslated(0,0,2)
-	face(1)
-	gl.glTranslated(0,0,-2)
-	gl.glRotated(-90,0,1,0)
-	face(1)
-	gl.glTranslated(0,0,2)
-	face(1)
-	gl.glRotated(-90,1,0,0)
-	gl.glTranslated(0,2,0)
-	face(1)
-	gl.glTranslated(0,0,2)
-	face(1)
-	gl.glPopMatrix()
 end
 
-local r = 0
-function arrows(cr, w, h)
-	local cairo = require'cairo'
-	cr:set_source_rgba(0,0,0,1)
-	cr:paint()
+function arrows_animation()
+	local r = 0
+	return function(cr, w, h)
+		local cairo = require'cairo'
+		cr:set_source_rgba(0,0,0,1)
+		cr:paint()
 
-	cr:identity_matrix()
-	cr:translate(w/2, h/2)
-	cr:rotate_around(0, 0, r)
-	cr:translate(-128, -128)
-	r = r + 0.02
+		cr:identity_matrix()
+		cr:translate(w/2, h/2)
+		cr:rotate_around(0, 0, r)
+		cr:translate(-128, -128)
+		r = r + 0.02
 
-	cr:set_source_rgba(0,0.7,0,1)
+		cr:set_source_rgba(0,0.7,0,1)
 
-	cr:set_line_width (40.96)
-	cr:move_to(76.8, 84.48)
-	cr:rel_line_to(51.2, -51.2)
-	cr:rel_line_to(51.2, 51.2)
-	cr:set_line_join(cairo.CAIRO_LINE_JOIN_MITER)
-	cr:stroke()
+		cr:set_line_width (40.96)
+		cr:move_to(76.8, 84.48)
+		cr:rel_line_to(51.2, -51.2)
+		cr:rel_line_to(51.2, 51.2)
+		cr:set_line_join(cairo.CAIRO_LINE_JOIN_MITER)
+		cr:stroke()
 
-	cr:move_to(76.8, 161.28)
-	cr:rel_line_to(51.2, -51.2)
-	cr:rel_line_to(51.2, 51.2)
-	cr:set_line_join(cairo.CAIRO_LINE_JOIN_BEVEL)
-	cr:stroke()
+		cr:move_to(76.8, 161.28)
+		cr:rel_line_to(51.2, -51.2)
+		cr:rel_line_to(51.2, 51.2)
+		cr:set_line_join(cairo.CAIRO_LINE_JOIN_BEVEL)
+		cr:stroke()
 
-	cr:move_to(76.8, 238.08)
-	cr:rel_line_to(51.2, -51.2)
-	cr:rel_line_to(51.2, 51.2)
-	cr:set_line_join(cairo.CAIRO_LINE_JOIN_ROUND)
-	cr:stroke()
+		cr:move_to(76.8, 238.08)
+		cr:rel_line_to(51.2, -51.2)
+		cr:rel_line_to(51.2, 51.2)
+		cr:set_line_join(cairo.CAIRO_LINE_JOIN_ROUND)
+		cr:stroke()
+	end
+end
+
+local function cube_animation()
+	local r = 30
+	return function(gl, w, h)
+		gl.glViewport(0, 0, w, h)
+		gl.glMatrixMode(gl.GL_PROJECTION)
+		gl.glLoadIdentity()
+		gl.glFrustum(-1, 1, -1, 1, 1, 100) --so fov is 90 deg
+		gl.glScaled(1, w/h, 1)
+
+		gl.glClearColor(0, 0, 0, 1)
+		gl.glClear(bit.bor(gl.GL_COLOR_BUFFER_BIT, gl.GL_DEPTH_BUFFER_BIT))
+		gl.glEnable(gl.GL_BLEND)
+		gl.glBlendFunc(gl.GL_SRC_ALPHA, gl.GL_SRC_ALPHA)
+		gl.glDisable(gl.GL_DEPTH_TEST)
+		gl.glDisable(gl.GL_CULL_FACE)
+		gl.glDisable(gl.GL_LIGHTING)
+		gl.glMatrixMode(gl.GL_MODELVIEW)
+		gl.glLoadIdentity()
+		gl.glTranslated(0,0,-1)
+
+		r = r + 1
+		gl.glPushMatrix()
+		gl.glTranslated(0,0,-3)
+		gl.glScaled(1, 1, 1)
+		gl.glRotated(r,1,r,r)
+		gl.glTranslated(0,0,2)
+
+		local function face(c)
+			gl.glBegin(gl.GL_QUADS)
+			gl.glColor4d(c,0,0,.5)
+			gl.glVertex3d(-1, -1, -1)
+			gl.glColor4d(0,c,0,.5)
+			gl.glVertex3d(1, -1, -1)
+			gl.glColor4d(0,0,c,.5)
+			gl.glVertex3d(1, 1, -1)
+			gl.glColor4d(c,0,c,.5)
+			gl.glVertex3d(-1, 1, -1)
+			gl.glEnd()
+		end
+		gl.glTranslated(0,0,-2)
+		face(1)
+		gl.glTranslated(0,0,2)
+		face(1)
+		gl.glTranslated(0,0,-2)
+		gl.glRotated(-90,0,1,0)
+		face(1)
+		gl.glTranslated(0,0,2)
+		face(1)
+		gl.glRotated(-90,1,0,0)
+		gl.glTranslated(0,2,0)
+		face(1)
+		gl.glTranslated(0,0,2)
+		face(1)
+		gl.glPopMatrix()
+	end
 end
 
 --version checks -------------------------------------------------------------
@@ -214,22 +235,6 @@ add('ver', function()
 		print(app:ver'linux')
 	end
 	print'ok'
-end)
-
---time -----------------------------------------------------------------------
-
---time values are sane.
-add('time-time', function()
-	local t = app:time()
-	print('time    ', t)
-	assert(t > 0)
-end)
-
---timediff values are sane (less than 1ms between 2 calls but more than 0).
-add('time-timediff', function()
-	local d = app:timediff(app:time())
-	print('timediff', d)
-	assert(d > 0 and d < 1)
 end)
 
 --timers ---------------------------------------------------------------------
@@ -1025,11 +1030,6 @@ local function init_check(t, child)
 	Q        quit
 	0        app hide (OSX)
 	9        app hide and unhide after 1s (OSX)
-	F2       toggle rendering
-	F3       bitmap rendering
-	F4       cairo rendering
-	F5       opengl rendering
-	F6       views rendering
 	enter    print state
 			]]
 		end
@@ -1038,31 +1038,35 @@ local function init_check(t, child)
 
 		app:autoquit(true)
 
-		local win1, win
+		local cwin, win, win2
 
 		local function print_state(s, ...)
-			if win:dead() then return end
+			if not win or win:dead() then return end
 			print(string.format('%-16s', s), state_string(win), ...)
 		end
 
 		function app:quitting()              print_state'quitting'; return true end
-		--function app:window_created(win)     print(string.format('%-16s', 'window_created'), state_string(win)) end
-		--function app:window_closed(win)      print(string.format('%-16s', 'window_closed'), state_string(win)) end
+		function app:window_created(win)
+			print(string.format('%-16s', 'window_created'), state_string(win)) end
+		function app:window_closed(win)
+			print(string.format('%-16s', 'window_closed'), state_string(win))
+		end
 		function app:was_unhidden()          print_state'app was_unhidden' end
 		function app:was_hidden()            print_state'app was_hidden' end
 		function app:displays_changed()      print_state'displays_changed' end
-		--function app:was_deactivated()       print_state'    app was_deactivated' end
-		--function app:was_activated()         print_state'    app was_activated' end
-		--function app:changed(old, new)       print_state('app changed', old..' -> '..new) end
+		function app:was_deactivated()       print_state'    app was_deactivated' end
+		function app:was_activated()         print_state'    app was_activated' end
+		function app:changed(old, new)       print_state('app changed', old..' -> '..new) end
 
 		--make a control window that receive key presses when win gets hidden
-		win1 = app:window(winpos{w = 200, h = 50, title = 'win1'})
+		cwin = app:window(winpos{w = 200, h = 50, title = 'cwin'})
+		cwin.name = 'cwin'
 
-		t.parent = child and win1 or nil
+		t.parent = child and cwin or nil
 		t.min_cw = 100
 		t.min_ch = 100
-		t.x = 500
-		t.y = 300
+		t.cx = 500
+		t.cy = 300
 		t.cw = 700
 		t.ch = 300
 		--t.edgesnapping = false
@@ -1072,13 +1076,16 @@ local function init_check(t, child)
 		local function create()
 
 			win = app:window(t)
+			win.name = 'win'
 
 			local w, h = win:client_size()
 			local w, h = math.floor((w-60)/2), h-40
-			local view1 = win:view{x = 20,      y = 20, w = w, h = h, anchors = 'ltrb', visible = false}
-			local view2 = win:view{x = 20+w+20, y = 20, w = w, h = h, anchors = 'trb', visible = false}
+			local view1 = win:view{x = 20,      y = 20, w = w, h = h,
+				anchors = 'ltrb', visible = false}
+			local view2 = win:view{x = 20+w+20, y = 20, w = w, h = h,
+				anchors = 'trb', visible = false, opengl = true}
 
-			function win1:keypress(key)
+			function cwin:keypress(key)
 				win:keypress(key)
 			end
 
@@ -1087,7 +1094,7 @@ local function init_check(t, child)
 				maximized = 'M', fullscreen = 'F', active = 'A'}):gsub(' ', '')
 			end
 			function win:changed(old, new)    print_state('changed', short(old)..' -> '..short(new)) end
-			--[[
+
 			--synthetic changed events
 			function win:was_minimized()      print_state'  was_minimized' end
 			function win:was_maximized()      print_state'  was_maximized' end
@@ -1105,61 +1112,14 @@ local function init_check(t, child)
 			function win:was_closed()         print_state'was_closed' end
 			function win:sizing(...)          print_state('  sizing', ...) end
 
-			function view1:event(...) print('view1', ...) end
-			function view2:event(...) print('view2', ...) end
-			]]
-
+			--function view1:event(...) print('view1', ...) end
+			--function view2:event(...) print('view2', ...) end
 
 			local allow_close = true
 
 			local function next_cursor()
 				return cursors[i]
 			end
-
-			local allow_rendering = false
-			local i = 0
-			app:runevery(1/30, function()
-				i = i + 5
-				if not win:dead() then
-					if not allow_rendering then return end
-					win:invalidate()
-					view1:invalidate()
-					view2:invalidate()
-				end
-			end)
-
-			local rendering_type = 'bitmap'
-			function win:repaint()
-				if rendering_type == 'bitmap' then
-					local bmp = self:bitmap()
-					if not bmp then return end
-					local _, setpixel = bitmap.pixel_interface(bmp)
-					for y = 0, bmp.h-1 do
-						for x = 0, bmp.w-1 do
-							local i = (i % bmp.w)
-							local c = x >= i and x <= i + 50 and 255 or 100
-							if x <= 10 or x >= bmp.w - 10 or y <= 10 or y >= bmp.h - 10 then
-								c = 20
-							end
-							setpixel(x, y, c, c, c, 200)
-						end
-					end
-				elseif rendering_type == 'cairo' then
-					local cr = self:bitmap():cairo()
-					if not cr then return end
-					arrows(cr, self:client_size())
-				elseif rendering_type == 'gl' then
-					local gl = self:gl()
-					if not gl then return end
-					cube(gl, self:client_size())
-				end
-			end
-
-			view1.client_size = view1.size
-			view2.client_size = view2.size
-
-			view1.repaint = win.repaint
-			view2.repaint = win.repaint
 
 			function win:keypress(key)
 				if key == 'H' then
@@ -1186,7 +1146,7 @@ local function init_check(t, child)
 				elseif key == 'N' then
 					self:minimize()
 				elseif key == 'A' then
-					win1:activate()
+					cwin:activate()
 				elseif key == 'B' then
 					self:activate()
 				elseif key == 'F9' then
@@ -1237,9 +1197,9 @@ local function init_check(t, child)
 						win:maxsize(400, 400)
 					end
 				elseif key == ',' then
-					win:lower(win1)
+					win:lower(cwin)
 				elseif key == '.' then
-					win:raise(win1)
+					win:raise(cwin)
 				elseif key == '[' then
 					win:lower()
 				elseif key == ']' then
@@ -1259,20 +1219,10 @@ local function init_check(t, child)
 					end)
 				elseif key == 'F1' then
 					help()
-				elseif key == 'F2' then
-					allow_rendering = not allow_rendering
-				elseif key == 'F3' then
-					rendering_type = 'bitmap'
-				elseif key == 'F4' then
-					rendering_type = 'cairo'
-				elseif key == 'F5' then
-					rendering_type = 'gl'
 				elseif key == 'F6' then
 					view1:visible(not view1:visible())
 					view2:visible(not view2:visible())
 				elseif key == 'enter' then
-					win1.name = 'win1'
-					win.name = 'win'
 					print(('-'):rep(100))
 					print('state             ', state_string(win))
 					print''
@@ -2580,6 +2530,123 @@ add('check-input-view', function()
 	app:run()
 end)
 
+--views ----------------------------------------------------------------------
+
+add('check-view-mouse', function()
+	local win = app:window{cw = 700, ch = 500}
+	local view = win:view{x = 50, y = 50, w = 600, h = 400, anchors = 'ltrb', visible = false}
+	function view:repaint()
+		view:bitmap():clear()
+	end
+	view:show()
+	function view:event(...)
+		print(...)
+	end
+	app:run()
+end)
+
+add('check-view-anchors', function()
+	local win = app:window{cw = 340, ch = 340, min_cw = 250, min_ch = 250, max_cw = 450, max_ch = 450}
+	win:view{x = 10, y = 10, w = 100, h = 100,   anchors = 'tl'}
+	win:view{x = 120, y = 10, w = 100, h = 100,  anchors = 'tlr'}
+	win:view{x = 230, y = 10, w = 100, h = 100,  anchors = 'tr'}
+	win:view{x = 10, y = 120, w = 100, h = 100,  anchors = 'tlb'}
+	win:view{x = 120, y = 120, w = 100, h = 100, anchors = 'tlrb'}
+	win:view{x = 230, y = 120, w = 100, h = 100, anchors = 'trb'}
+	win:view{x = 10, y = 230, w = 100, h = 100,  anchors = 'lb'}
+	win:view{x = 120, y = 230, w = 100, h = 100, anchors = 'lrb'}
+	win:view{x = 230, y = 230, w = 100, h = 100, anchors = 'br'}
+	for i,v in ipairs(win:views()) do
+		function v:repaint() self:bitmap():clear() end
+	end
+	app:run()
+end)
+
+--rendering ------------------------------------------------------------------
+
+add('check-render-window-bitmap', function()
+	local whiteband = whiteband_animation()
+	local win = app:window{x = 200, y = 200, w = 600, h = 300}
+	function win:repaint() whiteband(self:bitmap()) end
+	app:runevery(1/30, function() win:invalidate() end)
+	app:run()
+end)
+
+add('check-render-window-cairo', function()
+	local arrows = arrows_animation()
+	local win = app:window{x = 200, y = 200, w = 600, h = 300}
+	function win:repaint() arrows(self:bitmap():cairo(), self:client_size()) end
+	app:runevery(1/30, function() win:invalidate() end)
+	app:run()
+end)
+
+add('check-render-window-gl', function()
+	local cube = cube_animation()
+	local win = app:window{x = 200, y = 200, w = 600, h = 300,
+		opengl = {antialiasing = 'multisample', samples = 16}}
+	function win:repaint() cube(self:gl(), self:client_size()) end
+	app:runevery(1/30, function() win:invalidate() end)
+	app:run()
+end)
+
+local function render_view_test(gen_view, opengl)
+	local cw, ch, q = 600, 600, 300
+	local win = app:window{cw = cw, ch = ch, opengl = opengl}
+	for y = 0,cw-1,q do
+		for x = 0,ch-1,q do
+			local r = x == cw-q and 'r' or ''
+			local b = y == ch-q and 'b' or ''
+			local repaint, opengl = gen_view()
+			local view = win:view{x = x, y = y, w = q, h = q, anchors = 'lt'..r..b, opengl = opengl}
+			view.repaint = repaint
+		end
+	end
+	app:runevery(1/30, function()
+		for i,view in ipairs(win:views()) do
+			view:invalidate()
+		end
+	end)
+	app:run()
+end
+
+add('check-render-view-bitmap', function()
+	render_view_test(function()
+		local whiteband = whiteband_animation()
+		return function(self) whiteband(self:bitmap()) end
+	end)
+end)
+
+add('check-render-view-cairo', function()
+	render_view_test(function()
+		local arrows = arrows_animation()
+		return function(self) arrows(self:bitmap():cairo(), self:size()) end
+	end)
+end)
+
+add('check-render-view-gl', function()
+	render_view_test(function()
+		local cube = cube_animation()
+		return function(self) cube(self:gl(), self:size()) end, true
+	end)
+end)
+
+add('check-render-view-mixed', function()
+	local i = 0
+	render_view_test(function()
+		i = i + 1
+		if i == 1 then
+			local whiteband = whiteband_animation()
+			return function(self) whiteband(self:bitmap()) end
+		elseif i == 2 then
+			local arrows = arrows_animation()
+			return function(self) arrows(self:bitmap():cairo(), self:size()) end
+		elseif i == 3 then
+			local cube = cube_animation()
+			return function(self) cube(self:gl(), self:size()) end, true
+		end
+	end)
+end)
+
 --bitmap helpers -------------------------------------------------------------
 
 --premultiply alpha for (r, g, b, a) in 0..1 range
@@ -2659,7 +2726,7 @@ end
 
 --window bitmap --------------------------------------------------------------
 
-add('bitmap', function()
+add('check-bitmap', function()
 	local win = app:window{w = 500, h = 300, frame = 'none', transparent = true}
 
 	function win:event(...)
@@ -2767,116 +2834,6 @@ add('bitmap', function()
 	end
 
 	win:invalidate()
-	app:run()
-end)
-
---views ----------------------------------------------------------------------
-
-add('check-view-mouse', function()
-	local win = app:window{cw = 700, ch = 500}
-	local view = win:view{x = 50, y = 50, w = 600, h = 400, anchors = 'ltrb', visible = false}
-	function view:repaint()
-		view:bitmap():clear()
-	end
-	view:show()
-	function view:event(...)
-		print(...)
-	end
-	app:run()
-end)
-
-add('check-view-gl', function()
-	local win = app:window{cw = 700, ch = 500}
-	local glv = win:view{x = 50, y = 50, w = 600, h = 400, anchors = 'ltrb'}
-	function glv:repaint()
-		cube(self:gl(), self:size())
-	end
-	app:runevery(1/60, function()
-		glv:invalidate()
-	end)
-	app:run()
-end)
-
-add('check-view-cairo', function()
-	local win = app:window{w = 500, h = 300}--, frame = 'none', transparent = true}
-	local fps = 60
-
-	local x, y = 150, 10
-	local w, h = 100, 250
-	local cx, cy = w / 2, h / 2
-	local step = 0.02 * 60 / fps
-	local alpha, angle = 0, 0
-
-	local view = win:view{x = x, y = y, w = w, h = h, anchors = 'ltrb'}
-	function view:repaint()
-
-		self:bitmap():clear()
-		local cr = self:bitmap():cairo()
-
-		cr:identity_matrix()
-
-		local w, h = self:size()
-		alpha = alpha + step; if alpha <= 0 or alpha >= 1 then step = -step end
-		angle = angle + math.abs(step)
-		cr:rectangle(0, 0, w, h)
-		cr:set_source_rgba(0, 0, 1, 1)
-		cr:stroke()
-		cr:translate(cx, cy)
-		cr:rotate(angle)
-		cr:translate(-cx, -cy)
-		cr:set_source_rgba(1, 0, 0, alpha)
-		cr:rectangle(cx - 50, cy - 50, 100, 100)
-		cr:fill()
-	end
-
-	local x, y = 230, 20
-	local w, h = 80, 230
-	local cx, cy = w / 2, h / 2
-	local step = 0.02 * 60 / fps
-	local alpha, angle = 0, 0
-
-	local view2 = win:view{x = x, y = y, w = w, h = h}
-	function view2:repaint()
-
-		self:bitmap():clear()
-		local cr = self:bitmap():cairo()
-
-		cr:identity_matrix()
-
-		local w, h = self:size()
-		alpha = alpha + step; if alpha <= 0 or alpha >= 1 then step = -step end
-		angle = angle - math.abs(step)
-		cr:rectangle(0, 0, w, h)
-		cr:set_source_rgba(0, 0, 1, 1)
-		cr:stroke()
-		cr:translate(cx, cy)
-		cr:rotate(angle)
-		cr:translate(-cx, -cy)
-		cr:set_source_rgba(0, r, 0, alpha)
-		cr:rectangle(cx - 50, cy - 50, 100, 100)
-		cr:fill()
-	end
-
-	local win2 = app:window{x = 500, y = 400, w = 500, h = 300}
-
-	local x, y = 100, 170
-	local w, h = 300, 80
-
-	local glview2 = win2:view{x = x, y = y, w = w, h = h}
-	function glview2:repaint()
-		cube(self:gl(), self:size())
-	end
-
-	app:runevery(1/fps, function()
-		if not win:dead() then
-			view:invalidate()
-			view2:invalidate()
-			win:invalidate()
-		end
-		if not win2:dead() then
-			glview2:invalidate()
-		end
-	end)
 	app:run()
 end)
 
@@ -3252,7 +3209,6 @@ end)
 --run tests ------------------------------------------------------------------
 
 local name = ...
---name = 'dragging'
 if not name then
 	print(string.format('Usage: %s name | prefix*', arg[0]))
 	print'Available tests:'

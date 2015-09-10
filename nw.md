@@ -247,7 +247,7 @@ R  `nw.backends -> {os -> module_name}`			default backend modules for each OS
 M  `nw:init([backend_name])`							init with a specific backend (can be called only once)
 -- ----------------------------------------- -----------------------------------------------------------------------------
 
-> __Legend:__ `R`: read-only property; `RW`: read-write property; `M`: method;
+> __Legend:__ `R`: read-only property; `RW`: read-write property; `M`: action;
 `E`: event; <br> `*`: constructor; `-`: destructor.
 
 </div>
@@ -1237,7 +1237,7 @@ the window's bitmap or OpenGL context and draw using that.
 
 ### `win/view:invalidate()`
 
-Request window redrawing.
+Request redrawing.
 
 ### `win/view:bitmap() -> bmp`
 
@@ -1270,9 +1270,10 @@ Get an OpenGL context/API to draw on the window or view. For this to work
 OpenGL must be enabled on the window or view via the `opengl` options table,
 which can have the fields:
 
-  * `version` - OpenGL version to use: '1.0', '2.0', '3.0' ('1.0')
-  * `fsaa`    - multisampling: 0, 2, 4, 8, 16, true, false (false)
-  * `vsync`   - vertical sync: true, false (true)
+  * `profile`       - OpenGL profile to use: '1.0', '3.2' ('1.0')
+  * `antialiasing`  - enable antialiasing: 'supersample', 'multisample', true, false (false)
+  * `samples`       - number of samples for 'multisample' antialiasting (4)
+  * `vsync`         - vertical sync: true, false, swap-interval (true)
 
 ## Menus
 

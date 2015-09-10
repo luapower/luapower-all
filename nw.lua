@@ -140,22 +140,20 @@ local app = glue.update({}, object)
 --load a default backend on the first call if no backend was set by the user.
 function nw:app()
 	if not self._app then
-		if not self.backend then
-			self:init()
-		end
-		self._app = app:_new(self, self.backend.app)
+		self:init()
+		self._app = app:_init(self, self.backend.app)
 	end
 	return self._app
 end
 
-function app:_new(nw, backend_class)
-	self = glue.inherit({nw = nw}, self)
+function app:_init(nw, backend_class)
+	self.nw = nw
 	self._running = false
 	self._windows = {} --{window1, ...}
 	self._notifyicons = {} --{icon = true}
 	self._autoquit = true --quit after the last window closes
 	self._ignore_numlock = false --ignore the state of the numlock key on keyboard events
-	self.backend = backend_class:new(self)
+	self.backend = backend_class:init(self)
 	self._state = self:state()
 	return self
 end
@@ -399,8 +397,19 @@ frame_defaults.normal = {}
 frame_defaults.none = {}
 frame_defaults.toolbox = defaults_child
 
-function app:window(t)
-	return window:_new(self, self.backend.window, t)
+local opengl_defaults = {
+	version = '1.0',
+	vsync = true,
+	fsaa = false,
+}
+
+local function opengl_options(t)
+	if not t then return end
+	local glopt = glue.update({}, opengl_defaults)
+	if t ~= true then
+		glue.update(glopt, t)
+	end
+	return glopt
 end
 
 local function checkframe(frame)
@@ -412,6 +421,10 @@ local function checkframe(frame)
 	return frame
 end
 
+function app:window(t)
+	return window:_new(self, self.backend.window, t)
+end
+
 function window:_new(app, backend_class, useropt)
 
 	--check/normalize args.
@@ -421,6 +434,7 @@ function window:_new(app, backend_class, useropt)
 		frame_defaults[frame],
 		useropt.parent and defaults_child or defaults_toplevel,
 		useropt)
+	opt.opengl = opengl_options(useropt.opengl)
 
 	if opt.parent then
 		--prevent creating child windows in parent's closed() event or after.
@@ -477,12 +491,11 @@ function window:_new(app, backend_class, useropt)
 	assert((not opt.x) == (not opt.y),
 		'both x (or cx) and y (or cy) or none expected')
 
-	self = glue.inherit({app = app}, self)
+	self = glue.update({app = app}, self)
 
 	self._mouse = {}
 	self._down = {}
 	self._views = {}
-
 	self._cursor_visible = true
 	self._cursor = 'arrow'
 
@@ -500,6 +513,7 @@ function window:_new(app, backend_class, useropt)
 	self._activable = opt.activable
 	self._autoquit = opt.autoquit
 	self._sticky = opt.sticky
+	self._opengl = opt.opengl
 	self:edgesnapping(opt.edgesnapping)
 
 	self._state = self:state()
@@ -1041,7 +1055,7 @@ window:_property'title'
 local display = {}
 
 function app:_display(backend)
-	return glue.inherit(backend, display)
+	return glue.update(backend, display)
 end
 
 function display:screen_rect()
@@ -1267,6 +1281,17 @@ end
 
 --rendering ------------------------------------------------------------------
 
+function window:invalidate(...)
+	self:_check()
+	return self.backend:invalidate(...)
+end
+
+function window:_backend_repaint(...)
+	self:_event('repaint', ...)
+end
+
+--bitmap
+
 local bitmap = {}
 
 function bitmap:clear()
@@ -1274,10 +1299,12 @@ function bitmap:clear()
 end
 
 function window:bitmap()
-	if self:dead() then return end
+	assert(not self:opengl(), 'bitmap not available on OpenGL window/view')
 	local self = self.backend:bitmap()
 	return self and glue.update(self, bitmap)
 end
+
+--cairo
 
 function bitmap:cairo()
 	local cairo = require'cairo'
@@ -1289,19 +1316,6 @@ function bitmap:cairo()
 	return self.cairo_context
 end
 
-function window:gl()
-	return self.backend:gl()
-end
-
-function window:invalidate(...)
-	self:_check()
-	return self.backend:invalidate(...)
-end
-
-function window:_backend_repaint(...)
-	self:_event('repaint', ...)
-end
-
 function window:_backend_free_bitmap(bitmap)
 	if bitmap.cairo_context then
 		self:_event('free_cairo', bitmap.cairo_context)
@@ -1309,6 +1323,24 @@ function window:_backend_free_bitmap(bitmap)
 		bitmap.cairo_surface:free()
 	end
 	self:_event('free_bitmap', bitmap)
+end
+
+--opengl
+
+function window:opengl(opt)
+	self:_check()
+	if not opt then
+		return self._opengl and true or false
+	end
+	assert(self._opengl, 'OpenGL not enabled')
+	local val = self._opengl[opt]
+	assert(val ~= nil, 'invalid option')
+	return val
+end
+
+function window:gl()
+	assert(self:opengl(), 'OpenGL not enabled')
+	return self.backend:gl()
 end
 
 --hi-dpi support -------------------------------------------------------------
@@ -1330,7 +1362,11 @@ end
 
 --views ----------------------------------------------------------------------
 
-local view = glue.update({_anchors = 'lt'}, object)
+local defaults = {
+	anchors = 'lt',
+}
+
+local view = glue.update({}, object)
 
 function window:views(arg)
 	if arg == '#' then
@@ -1340,25 +1376,32 @@ function window:views(arg)
 end
 
 function window:view(t)
+	assert(not self:opengl(),
+		'cannot create view over OpenGL-enabled window') --OSX limitation
 	return view:_new(self, self.backend.view, t)
 end
 
-function view:_new(window, backend_class, t)
-	local self = glue.inherit({
+function view:_new(window, backend_class, useropt)
+
+	local opt = glue.update({}, defaults, useropt)
+	opt.opengl = opengl_options(useropt.opengl)
+
+	local self = glue.update({
 		window = window,
 		app = window.app,
-		_anchors = t.anchors,
 	}, self)
 
 	self._mouse = {}
 	self._down = {}
+	self._anchors = opt.anchors
+	self._opengl = opt.opengl
 
-	self.backend = backend_class:new(window.backend, self, t)
+	self.backend = backend_class:new(window.backend, self, opt)
 	table.insert(window._views, self)
 
 	self:_init_anchors()
 
-	if t.visible ~= false then
+	if opt.visible ~= false then
 		self:show()
 	end
 
@@ -1505,6 +1548,7 @@ view._backend_mousehwheel = window._backend_mousehwheel
 
 view.bitmap = window.bitmap
 view.cairo = window.cairo
+view.opengl = window.opengl
 view.gl = window.gl
 view.invalidate = window.invalidate
 view._backend_repaint = window._backend_repaint
@@ -1518,7 +1562,7 @@ local function wrap_menu(backend, menutype)
 	if backend.frontend then
 		return backend.frontend --already wrapped
 	end
-	local self = glue.inherit({backend = backend, menutype = menutype}, menu)
+	local self = glue.update({backend = backend, menutype = menutype}, menu)
 	backend.frontend = self
 	return self
 end
@@ -1656,7 +1700,7 @@ function app:notifyicon(opt)
 end
 
 function notifyicon:_new(app, backend_class, opt)
-	self = glue.inherit({app = app}, self)
+	self = glue.update({app = app}, self)
 	self.backend = backend_class:new(app.backend, self, opt)
 	return self
 end
@@ -1723,7 +1767,7 @@ function window:icon(which)
 end
 
 function winicon:_new(window, which)
-	self = glue.inherit({}, winicon)
+	self = glue.update({}, winicon)
 	self.window = window
 	self.which = which
 	return self
@@ -1754,7 +1798,7 @@ function app:dockicon()
 end
 
 function dockicon:_new(app)
-	return glue.inherit({app = app}, self)
+	return glue.update({app = app}, self)
 end
 
 function dockicon:bitmap()

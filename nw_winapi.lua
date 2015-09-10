@@ -51,9 +51,9 @@ end
 local app = {}
 nw.app = app
 
-function app:new(frontend)
+function app:init(frontend)
 
-	self = glue.inherit({frontend = frontend}, self)
+	self.frontend = frontend
 
 	--enable WM_INPUT for keyboard events
 	local rid = winapi.types.RAWINPUTDEVICE()
@@ -109,7 +109,7 @@ local Window = winapi.subclass({}, winapi.Window)
 local winmap = {} --winapi_window->frontend_window
 
 function window:new(app, frontend, t)
-	self = glue.inherit({app = app, frontend = frontend}, self)
+	self = glue.update({app = app, frontend = frontend}, self)
 
 	local framed = t.frame == 'normal' or t.frame == 'toolbox'
 	self._layered = t.transparent
@@ -147,7 +147,7 @@ function window:new(app, frontend, t)
 		activable = t.activable,
 		receive_double_clicks = false, --we do our own double-clicking
 		remember_maximized_pos = true, --to emulate OSX behavior for maximized windows with minsize/maxsize constrains
-		own_dc = true, --for opengl
+		own_dc = t.opengl and true or nil,
 	}
 
 	--must set WS_CHILD **after** window is created for non-activable toolboxes!
@@ -173,14 +173,13 @@ function window:new(app, frontend, t)
 	self.win.backend = self
 	self.win.app = app
 
-	--init icon API
 	self:_init_icon_api()
-
-	--init drop target API
 	self:_init_drop_target()
 
 	--announce acceptance to drop files into the window.
 	winapi.DragAcceptFiles(self.win.hwnd, true)
+
+	self:_init_opengl(t.opengl)
 
 	--register window
 	winmap[self.win] = self.frontend
@@ -217,7 +216,7 @@ function Window:on_destroy()
 	if not self.nw_destroyed then
 		self.nw_destroyed = true
 		self.backend:_free_bitmap()
-		self.backend:_free_gl()
+		self.backend:_free_opengl()
 		self.backend:_free_icon()
 		self.backend:_free_drop_target()
 		winmap[self] = nil
@@ -1299,13 +1298,12 @@ function rendering:_invalidate(x, y, w, h)
 end
 
 function Rendering:on_paint(hdc)
-	self.frontend:_backend_repaint()
 	self.backend:_paint_bitmap(hdc)
 	self.backend:_paint_gl(hdc)
 end
 
 function Rendering:WM_ERASEBKGND()
-	if not (self.backend._bitmap or self.backend._gl) then return end
+	if not (self.backend._bitmap or self.backend._hrc) then return end
 	return false --skip drawing the background to prevent flicker.
 end
 
@@ -1322,7 +1320,6 @@ function rendering:_create_bitmap()
 end
 
 function rendering:bitmap()
-	self:_free_gl()
 	self:_create_bitmap()
 	return self._bitmap
 end
@@ -1335,105 +1332,103 @@ function rendering:_free_bitmap()
 end
 
 function rendering:_paint_bitmap(hdc)
+	self.frontend:_backend_repaint()
 	if not self._bitmap then return end
 	self._bitmap:paint(hdc)
 end
 
 --rendering/opengl -----------------------------------------------------------
 
-local function gl()
+local gl = glue.memoize(function()
 	require'winapi.gl11'
 	require'winapi.wglext'
 	return winapi.gl
-end
+end)
 
-function rendering:_paint_gl(hdc)
-	if not self._gl then return end
-	assert(self._hdc == hdc, 'WGL need CS_OWNDC')
-	if self._gl_swap then
-		winapi.SwapBuffers(hdc)
-		self._gl_swap = false
-	end
-end
-
-function rendering:_free_gl()
-	if not self._gl then return end
-	local gl = gl()
-	gl.wglDeleteContext(self._hrc)
-	gl.wglMakeCurrent(self._hdc, nil)
-	self._hrc = nil
-	self._gl = nil
-end
-
-function rendering:gl()
-
-	self:_free_bitmap()
+function rendering:_init_opengl(t)
+	if not t then return end
 
 	local gl = gl()
-
 	self._hdc = winapi.GetDC(self.win.hwnd)
-	if not self._hrc then
 
-		local pfd = winapi.PIXELFORMATDESCRIPTOR{
-			flags = 'PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER',
-			pixel_type = 'PFD_TYPE_RGBA',
-			cColorBits = 32,
-			cDepthBits = 24,
-			cStencilBits = 8,
-			layer_type = 'PFD_MAIN_PLANE',
-		}
-		winapi.SetPixelFormat(self._hdc, winapi.ChoosePixelFormat(self._hdc, pfd), pfd)
-		self._hrc = gl.wglCreateContext(self._hdc)
+	local pfd = winapi.PIXELFORMATDESCRIPTOR{
+		flags = 'PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER',
+		pixel_type = 'PFD_TYPE_RGBA',
+		cColorBits = 32,
+		cDepthBits = 24,
+		cStencilBits = 8,
+		layer_type = 'PFD_MAIN_PLANE',
+	}
+	winapi.SetPixelFormat(self._hdc, winapi.ChoosePixelFormat(self._hdc, pfd), pfd)
+	self._hrc = gl.wglCreateContext(self._hdc)
 
-		if gl.wglSwapIntervalEXT then --enable vsync
-			gl.wglSwapIntervalEXT(1)
+	if t.vsync then
+		if gl.wglSwapIntervalEXT then
+			gl.wglSwapIntervalEXT(t.vsync == true and 1 or t.vsync)
 		end
-
-		self._gl = true
 	end
 
 	gl.wglMakeCurrent(self._hdc, self._hrc)
 
-	if not self._pixel then
-		if gl.wglChoosePixelFormatARB then
-			local pixelFormat = ffi.new'int32_t[1]'
-			local numFormats = ffi.new'uint32_t[1]'
-			local fAttributes = ffi.new('float[?]', 2)
-			local opts = {
-				winapi.WGL_DRAW_TO_WINDOW_ARB, gl.GL_TRUE,
-				winapi.WGL_SUPPORT_OPENGL_ARB, gl.GL_TRUE,
-				winapi.WGL_ACCELERATION_ARB, winapi.WGL_FULL_ACCELERATION_ARB,
-				winapi.WGL_COLOR_BITS_ARB, 32,
-				winapi.WGL_DEPTH_BITS_ARB, 16,
-				winapi.WGL_ALPHA_BITS_ARB, 8,
-				winapi.WGL_STENCIL_BITS_ARB, 0,
-				winapi.WGL_DOUBLE_BUFFER_ARB, gl.GL_TRUE,
-				winapi.WGL_SAMPLE_BUFFERS_ARB, gl.GL_TRUE,
-				winapi.WGL_SAMPLES_ARB, 4, --4x FSAA
-				0, 0}
-			local iAttributes = ffi.new('int32_t[?]', #opts, opts)
+	if gl.wglChoosePixelFormatARB then
+		local pixelFormat = ffi.new'int32_t[1]'
+		local numFormats = ffi.new'uint32_t[1]'
+		local fAttributes = ffi.new('float[?]', 2)
+		local opts = {
+			winapi.WGL_DRAW_TO_WINDOW_ARB, gl.GL_TRUE,
+			winapi.WGL_SUPPORT_OPENGL_ARB, gl.GL_TRUE,
+			winapi.WGL_ACCELERATION_ARB, winapi.WGL_FULL_ACCELERATION_ARB,
+			winapi.WGL_COLOR_BITS_ARB, 32,
+			winapi.WGL_DEPTH_BITS_ARB, 16,
+			winapi.WGL_ALPHA_BITS_ARB, 8,
+			winapi.WGL_STENCIL_BITS_ARB, 0,
+			winapi.WGL_DOUBLE_BUFFER_ARB, gl.GL_TRUE,
+			winapi.WGL_SAMPLE_BUFFERS_ARB, gl.GL_TRUE,
+			winapi.WGL_SAMPLES_ARB, 4, --4x FSAA
+			0, 0}
+		local iAttributes = ffi.new('int32_t[?]', #opts, opts)
 
-			--First We Check To See If We Can Get A Pixel Format For 4 Samples
-			local valid = gl.wglChoosePixelFormatARB(self._hdc, iAttributes,
+		--First We Check To See If We Can Get A Pixel Format For 4 Samples
+		local valid = gl.wglChoosePixelFormatARB(self._hdc, iAttributes,
+			fAttributes, 1, pixelFormat, numFormats)
+
+		if valid == 0 or numFormats[0] == 0 then
+			-- Our Pixel Format With 4 Samples Failed, Test For 2 Samples
+			iAttributes[19] = 2
+			valid = gl.wglChoosePixelFormatARB(self._hdc, iAttributes,
 				fAttributes, 1, pixelFormat, numFormats)
-
-			if valid == 0 or numFormats[0] == 0 then
-				-- Our Pixel Format With 4 Samples Failed, Test For 2 Samples
-				iAttributes[19] = 2
-				valid = gl.wglChoosePixelFormatARB(self._hdc, iAttributes,
-					fAttributes, 1, pixelFormat, numFormats)
-			end
-
-			if not (valid == 0 or numFormats[0] == 0) then
-				--TODO: finish this
-				--winapi.SetPixelFormat(self._hdc, pixelFormat[0], pfd)
-			end
 		end
-		self._pixel = true
-	end
 
+		if not (valid == 0 or numFormats[0] == 0) then
+			--TODO: finish this
+			--winapi.SetPixelFormat(self._hdc, pixelFormat[0], pfd)
+		end
+	end
+end
+
+function rendering:_free_opengl()
+	if not self._hrc then return end
+	local gl = gl()
+	gl.wglDeleteContext(self._hrc)
+	gl.wglMakeCurrent(self._hdc, nil)
+	self._hrc = nil
+	self._hdc = nil
+end
+
+function rendering:_paint_gl(hdc)
+	if not self._hrc then return end
+	assert(self._hdc == hdc, 'WGL need CS_OWNDC')
+	local gl = gl()
+	gl.wglMakeCurrent(self._hdc, self._hrc)
+	self.frontend:_backend_repaint()
+	if not self._gl_swap then return end
+	winapi.SwapBuffers(hdc)
+	self._gl_swap = false
+end
+
+function rendering:gl()
 	self._gl_swap = true
-	return gl
+	return gl()
 end
 
 --rendering/window -----------------------------------------------------------
@@ -1474,7 +1469,7 @@ window.view = view
 local View = winapi.subclass({}, winapi.Panel)
 
 function view:new(window, frontend, t)
-	local self = glue.inherit({
+	local self = glue.update({
 		window = window,
 		app = window.app,
 		frontend = frontend,
@@ -1488,6 +1483,9 @@ function view:new(window, frontend, t)
 	}
 	self.win.backend = self
 	self.win.frontend = frontend
+
+	self:_init_opengl(t.opengl)
+
 	return self
 end
 
@@ -1520,7 +1518,7 @@ end
 
 function view:free()
 	self:_free_bitmap()
-	self:_free_gl()
+	self:_free_opengl()
 	self.win:free()
 	self.win = nil
 end
@@ -1594,7 +1592,7 @@ function app:menu()
 end
 
 function menu:_new(winmenu)
-	local self = glue.inherit({winmenu = winmenu}, menu)
+	local self = glue.update({winmenu = winmenu}, menu)
 	winmenu.nw_backend = self
 	return self
 end
@@ -1683,7 +1681,7 @@ function notifyicon:_notify_window()
 end
 
 function notifyicon:new(app, frontend, opt)
-	self = glue.inherit({app = app, frontend = frontend}, notifyicon)
+	self = glue.update({app = app, frontend = frontend}, notifyicon)
 
 	self.ni = NotifyIcon{window = self:_notify_window()}
 	self.ni.backend = self

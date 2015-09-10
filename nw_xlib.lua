@@ -20,6 +20,7 @@ local cast  = ffi.cast
 local free  = glue.free
 local xid   = xlib.xid
 local C     = xlib.C
+local glx --runtime dependency
 
 local nw = {name = 'xlib'}
 
@@ -28,14 +29,17 @@ local nw = {name = 'xlib'}
 local app = {}
 nw.app = app
 
-function app:new(frontend)
-	self   = glue.inherit({frontend = frontend}, self)
+function app:init(frontend)
+
+	self.frontend = frontend
+
 	xlib   = xlib.connect()
 	dbg    = dbg.connect(xlib)
 	--dbg.trace()
 	xlib.synchronize(true) --shave off one source of unpredictability
 	xlib.set_xsettings_change_notify() --setup to receive XSETTINGS changes
 	self:_resolve_evprop_names()
+
 	return self
 end
 
@@ -328,6 +332,8 @@ function window:new(app, frontend, t)
 	self._maximized = t.maximized or false
 	self._fullscreen = t.fullscreen or false
 	self._topmost = t.topmost or false
+
+	self:_init_opengl(t.opengl)
 
 	winmap[self.win] = self
 
@@ -1368,27 +1374,19 @@ ev[C.Expose] = function(e)
 	local self = win(e.window)
 	if not self then return end
 
-	--skip subregion rendering unless explicitly requested.
-	--TODO: if (e.count ~= 0) == (not self.frontend:subregion_rendering()) then return end
-
 	--can't paint the bitmap while the window is unmapped.
-	if self._hidden or self:minimized() then return end
+	if self._hidden or (self.minimized and self:minimized()) then return end
 
-	--let the user request the bitmap and draw on it.
-	self.frontend:_backend_repaint(e.x, e.y, e.width, e.height)
-
-	--if it did, paint the bitmap onto the window.
-	if self._dynbitmap then
-		--TODO: paint subregion
-		self._dynbitmap:paint()
-	end
+	--e.x, e.y, e.width, e.height
+	self:_repaint()
 end
 
 function window:bitmap()
 	if not self._dynbitmap then
 		self._dynbitmap = dynbitmap({
 			size = function()
-				return self.frontend:client_size()
+				local size = self.frontend.size or self.frontend.client_size
+				return size(self.frontend)
 			end,
 			freeing = function(_, bitmap)
 				self.frontend:_backend_free_bitmap(bitmap)
@@ -1396,12 +1394,12 @@ function window:bitmap()
 		}, self.win, self._depth)
 	end
 	--can't paint the bitmap while the window is unmapped.
-	if self._hidden or self:minimized() then return end
+	if self._hidden or (self.minimized and self:minimized()) then return end
 	return self._dynbitmap:get()
 end
 
 function window:invalidate(x, y, w, h)
-	if x and y and w and h then
+	if x then
 		xlib.clear_area(self.win, x, y, w, h)
 	else
 		xlib.clear_area(self.win, 0, 0, 2^24, 2^24)
@@ -1412,6 +1410,46 @@ function window:_free_bitmap()
 	 if not self._dynbitmap then return end
 	 self._dynbitmap:free()
 	 self._dynbitmap = nil
+end
+
+function window:_repaint()
+	--let the user request the bitmap and draw on it.
+	self.frontend:_backend_repaint()
+	--if it did, paint the bitmap onto the window.
+	if self._dynbitmap then
+		--TODO: paint subregion
+		self._dynbitmap:paint()
+	end
+end
+
+function window:_repaint_opengl()
+	self.frontend:_backend_repaint()
+	if not self._swap then return end
+	glx.swap_buffers(self.win)
+	self._swap = false
+end
+
+--rendering/opengl -----------------------------------------------------------
+
+function window:_init_opengl(t)
+	if not t then return end
+	if not glx then
+		require'gl11'
+		glx = require'glx'
+		glx = glx.connect(xlib)
+	end
+	for fbconfig in glx.choose_rgb_fbconfigs() do
+		self._glx = glx.create_context(fbconfig)
+		break
+	end
+	self._repaint = self._repaint_opengl
+	assert(self._glx)
+end
+
+function window:gl()
+	glx.make_current(self.win, self._glx)
+	self._swap = true
+	return glx.C
 end
 
 --views ----------------------------------------------------------------------
@@ -1426,24 +1464,68 @@ function view:new(window, frontend, t)
 		frontend = frontend,
 	}, self)
 
-	self:_init(t)
+	local attrs = {
+		depth = xlib.screen.root_depth,
+		x = t.x,
+		y = t.y,
+		width = t.w,
+		height = t.h,
+		parent = window.win,
+	}
+
+	--say that we don't want the server to keep a pixmap for the window.
+	attrs.background_pixmap = 0
+
+	--declare what events we want to receive.
+	attrs.event_mask = bit.bor(
+		C.ButtonPressMask,
+		C.ButtonReleaseMask,
+		C.EnterWindowMask,
+		C.LeaveWindowMask,
+		C.PointerMotionMask,
+		C.ExposureMask,
+		C.StructureNotifyMask,
+		C.SubstructureNotifyMask,
+		C.PropertyChangeMask,
+		C.OwnerGrabButtonMask,
+	0)
+
+	self.win = xlib.create_window(attrs)
+
+	self:_init_opengl(t)
+
+	winmap[self.win] = self
 
 	return self
 end
 
-glue.autoload(window, {
-	glview    = 'nw_winapi_glview',
-	cairoview = 'nw_winapi_cairoview',
-	cairoview2 = 'nw_winapi_cairoview2',
-})
-
-function window:getcairoview()
-	if self._layered then
-		return cairoview
-	else
-		return cairoview2
-	end
+function view:get_rect()
+	local x, y, w, h = xlib.get_geometry(self.win)
+	return x, y, w, h
 end
+
+function view:set_rect()
+	--
+end
+
+function view:show()
+	xlib.map(self.win)
+end
+
+function view:hide()
+	xlib.withdraw(self.win)
+end
+
+function view:free()
+	xlib.destroy_window(self.win)
+end
+
+view.bitmap = window.bitmap
+view._init_opengl = window._init_opengl
+view.gl = window.gl
+view._repaint = window._repaint
+view._repaint_opengl = window._repaint_opengl
+view.invalidate = window.invalidate
 
 --menus ----------------------------------------------------------------------
 

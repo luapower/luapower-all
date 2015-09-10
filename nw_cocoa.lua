@@ -47,9 +47,9 @@ nw.app = app
 
 local App = objc.class('App', 'NSApplication <NSApplicationDelegate>')
 
-function app:new(frontend)
+function app:init(frontend)
 
-	self = glue.inherit({frontend = frontend}, self)
+	self.frontend = frontend
 
 	--NOTE: we have to reference mainScreen() before using any of the
 	--display functions, or we will get NSRecursiveLock errors.
@@ -135,10 +135,11 @@ objc.addmethod('App', 'nw_timerEvent', function(self, timer)
 end, 'v@:@')
 
 function app:runevery(seconds, func)
-	local timer = objc.NSTimer:scheduledTimerWithTimeInterval_target_selector_userInfo_repeats(
+	local timer = objc.NSTimer:timerWithTimeInterval_target_selector_userInfo_repeats(
 		seconds, self.nsapp, 'nw_timerEvent', nil, true)
-	objc.NSRunLoop:currentRunLoop():addTimer_forMode(timer, objc.NSDefaultRunLoopMode)
 	timer.nw_func = func
+	ffi.gc(timer, nil) --this is already a weak ref (the runloop keeps a ref)
+	objc.NSRunLoop:currentRunLoop():addTimer_forMode(timer, objc.NSRunLoopCommonModes)
 end
 
 --windows --------------------------------------------------------------------
@@ -153,7 +154,7 @@ local Window = objc.class('Window', 'NSWindow <NSWindowDelegate, NSDraggingDesti
 local cascadePoint
 
 function window:new(app, frontend, t)
-	self = glue.inherit({app = app, frontend = frontend}, self)
+	self = glue.update({app = app, frontend = frontend}, self)
 
 	local toolbox = t.frame == 'toolbox'
 	local framed = t.frame == 'normal' or toolbox
@@ -1961,21 +1962,6 @@ end
 
 --GLView ---------------------------------------------------------------------
 
-function window:_create_gl_view(rect, t)
-
-	local pixelFormatAttributes = ffi.new('NSOpenGLPixelFormatAttribute[?]', 10,
-		objc.NSOpenGLPFAOpenGLProfile, objc.NSOpenGLProfileVersionLegacy, --objc.NSOpenGLProfileVersion3_2Core,
-		objc.NSOpenGLPFAColorSize, 24,
-		objc.NSOpenGLPFAAlphaSize, 8,
-		objc.NSOpenGLPFADoubleBuffer,
-		objc.NSOpenGLPFAAccelerated,
-		objc.NSOpenGLPFANoRecovery,
-		0)
-	local pixelFormat = objc.NSOpenGLPixelFormat:alloc():initWithAttributes(pixelFormatAttributes)
-
-	return objc.GLView:alloc():initWithFrame_pixelFormat(rect, pixelFormat)
-end
-
 ffi.cdef[[
 enum {
    NSOpenGLPFAAllRenderers       =   1,
@@ -2025,6 +2011,34 @@ enum {
 typedef uint32_t NSOpenGLPixelFormatAttribute;
 ]]
 
+function window:_create_gl_view(rect, t)
+	local pf = {
+		objc.NSOpenGLPFAAlphaSize, 8,
+		objc.NSOpenGLPFADoubleBuffer, --needed, otherwise it won't render
+		objc.NSOpenGLPFAOpenGLProfile,
+			t.version == '3.2' and
+				objc.NSOpenGLProfileVersion3_2Core or
+				objc.NSOpenGLProfileVersionLegacy,
+	}
+	if t.antialiasing then
+		glue.append(pf, objc.NSOpenGLPFAMultisample)
+		if t.antialiasing == 'multisample' or t.antialiasing == true then
+			glue.append(pf,
+				objc.NSOpenGLPFASampleBuffers, 1,
+				objc.NSOpenGLPFASamples, t.multisample or 4)
+		elseif t.antialiasing == 'supersample' then
+			glue.append(pf, objc.NSOpenGLPFASupersample)
+		else
+			error'invalid antialiasing option'
+		end
+	end
+	table.insert(pf, 0)
+	local pixelFormatAttributes = ffi.new('NSOpenGLPixelFormatAttribute[?]', #pf, pf)
+	local pixelFormat = objc.NSOpenGLPixelFormat:alloc():initWithAttributes(pixelFormatAttributes)
+
+	return objc.GLView:alloc():initWithFrame_pixelFormat(rect, pixelFormat)
+end
+
 local GLView = objc.class('GLView', 'NSOpenGLView')
 
 glue.update(GLView, View)
@@ -2038,7 +2052,7 @@ function GLView:nw_paint()
 	self:openGLContext():flushBuffer()
 end
 
-function BitmapView:nw_bitmap()
+function GLView:nw_bitmap()
 	error('cannot get the bitmap of an OpenGL view', 2)
 end
 
@@ -2062,14 +2076,14 @@ local view = {}
 window.view = view
 
 function view:new(window, frontend, t)
-	local self = glue.inherit({
+	local self = glue.update({
 		window = window,
 		app = window.app,
 		frontend = frontend,
 	}, self)
 
 	local rect = objc.NSMakeRect(t.x, t.y, t.w, t.h)
-	self.nsview = self.window:_create_view(rect, frontend, true)
+	self.nsview = self.window:_create_view(rect, frontend, true, t)
 	self.window.nswin:contentView():addSubview(self.nsview)
 	return self
 end
@@ -2146,7 +2160,7 @@ function app:menu()
 end
 
 function menu:_new(app, nsmenu)
-	local self = glue.inherit({app = app, nsmenu = nsmenu}, menu)
+	local self = glue.update({app = app, nsmenu = nsmenu}, menu)
 	nsmenu.nw_backend = self
 	return self
 end
@@ -2259,7 +2273,7 @@ local notifyicon = {}
 app.notifyicon = notifyicon
 
 function notifyicon:new(app, frontend, opt)
-	self = glue.inherit({app = app, frontend = frontend}, notifyicon)
+	self = glue.update({app = app, frontend = frontend}, notifyicon)
 
 	local length = opt and opt.length or self:_bitmap_size()
 	self.si = objc.NSStatusBar:systemStatusBar():statusItemWithLength(length)
