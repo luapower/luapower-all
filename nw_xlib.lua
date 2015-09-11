@@ -207,6 +207,9 @@ function window:new(app, frontend, t)
 	--say that we don't want the server to keep a pixmap for the window.
 	attrs.background_pixmap = 0
 
+	--set a white background for no reason.
+	attrs.background_pixel = xlib.white_pixel()
+
 	--declare what events we want to receive.
 	attrs.event_mask = bit.bor(
 		C.KeyPressMask,
@@ -813,7 +816,7 @@ ev[C.ConfigureNotify] = function(e)
 	--NOTE: we have to track this through resizes instead of just saving it
 	--before maximizing because by the time PropertyNotify for _NET_WM_STATE
 	--is triggered the frame is already maximized.
-	if not (self:maximized() or self:fullscreen()) then
+	if not (not self.maximized or self:maximized() or self:fullscreen()) then
 		self._normal_rect = {self:get_frame_rect()}
 	end
 
@@ -1465,7 +1468,7 @@ function view:new(window, frontend, t)
 	}, self)
 
 	local attrs = {
-		depth = xlib.screen.root_depth,
+		depth = window._depth,
 		x = t.x,
 		y = t.y,
 		width = t.w,
@@ -1492,7 +1495,9 @@ function view:new(window, frontend, t)
 
 	self.win = xlib.create_window(attrs)
 
-	self:_init_opengl(t)
+	self._depth = window._depth
+
+	self:_init_opengl(t.opengl)
 
 	winmap[self.win] = self
 
@@ -1504,8 +1509,10 @@ function view:get_rect()
 	return x, y, w, h
 end
 
-function view:set_rect()
-	--
+function view:set_rect(x, y, w, h)
+	w = math.max(w, 1) --prevent error
+	h = math.max(h, 1)
+	xlib.config(self.win, {x = x, y = y, width = w, height = h, border_width = 0})
 end
 
 function view:show()

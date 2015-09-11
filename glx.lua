@@ -4,7 +4,7 @@
 
 require'glx_h'
 local ffi = require'ffi'
-local C = ffi.abi'64bit' and ffi.load'/usr/lib/mesa/libGL.so.1' or ffi.load'libGL.so'
+local C = ffi.abi'64bit' and ffi.load'libGL.so.1' or ffi.load'libGL.so'
 local M = {C = C}
 
 function M.connect(xlib)

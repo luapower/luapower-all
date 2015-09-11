@@ -370,6 +370,9 @@ function M.connect(...)
 		C.XDestroyWindow(c, win)
 	end
 
+	function white_pixel(screen_num1) return C.XWhitePixel(c, screen_num1 or screen_num) end
+	function black_pixel(screen_num1) return C.XBlackPixel(c, screen_num1 or screen_num) end
+
 	function create_colormap(win, visual, alloc)
 		return assert(xid(C.XCreateColormap(c, win, visual, alloc and C.AllocAll or C.AllocNone)))
 	end
