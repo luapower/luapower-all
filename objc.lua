@@ -217,7 +217,7 @@ end
 
 local function check(ok, fmt, ...) --assert with formatted strings
 	if ok then return ok end
-	error(_(fmt or 'assertion failed!', ...))
+	error(_(fmt or 'assertion failed!', ...), 3)
 end
 
 --ffi declarations -------------------------------------------------------------------------------------------------------

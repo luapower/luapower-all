@@ -127,15 +127,12 @@ function ProcessMessage(msg)
 end
 
 --NOTE: you can call the message loop like this: os.exit(MessageLoop()).
-function MessageLoop(after_process)
+function MessageLoop()
 	local msg = types.MSG()
 	while true do
 		local ret = GetMessage(nil, 0, 0, msg)
-		if ret == 0 then break end
+		if ret == 0 then break end --WM_QUIT received
 		ProcessMessage(msg)
-		if after_process then
-			after_process(msg)
-		end
 	end
 	return tonumber(msg.signed_wParam) --WM_QUIT sends an int exit code in wParam
 end
@@ -143,17 +140,14 @@ end
 function ProcessNextMessage()
 	local ok, msg = PeekMessage(nil, 0, 0, PM_REMOVE)
 	if not ok then return false end
+	if msg.message == WM_QUIT then return false, true end
 	ProcessMessage(msg)
 	return true
 end
 
 --process all pending messages from the queue (if any) and return.
-function ProcessMessages(after_process)
-	while ProcessNextMessage() do
-		if after_process then
-			after_process(msg)
-		end
-	end
+function ProcessMessages()
+	while ProcessNextMessage() do end
 end
 
 --base window class ----------------------------------------------------------
