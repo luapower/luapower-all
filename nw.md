@@ -887,17 +887,13 @@ Set the minimum client rect size.
 
 The window is resized if it was smaller than this size.
 
-### `win:maxsize() -> cw, ch`
+### `win:maxsize() -> cw, ch` <br> `win:maxsize(cw, ch)`
 
-Get the maximum client rect size.
-
-### `win:maxsize(cw, ch)`
-
-Set the maximum client rect size.
+Get/set the maximum client rect size.
 
 The window is resized if it was larger than this size.
 
-This constraint applies to the maximized state too.
+This constraint applies to the maximized state too except in Linux.
 
 ## Edge snapping
 
@@ -907,7 +903,9 @@ Get/set edge snapping mode, which is a string containing any combination
 of the following words separated by spaces:
 
   * 'app' - snap to app's windows
-  * 'other' - snap to other windows
+  * 'other' - snap to other apps' windows
+  * 'parent' - snap to parent window
+  * 'siblings' - snap to sibling windows
   * 'screen' - snap to screen edges
   * 'all' - equivalent to 'app other screen'
 
@@ -1536,6 +1534,11 @@ which would make programming with them much more robust and intuitive.
 The real world is an unspecified mess. So __never, ever mix queries
 with commands__, i.e. never assume that after a state-changing function
 returns you can make any assumptions about the state of the objects involved.
+
+### Assuming that events fire in some specific order
+
+
+
 
 ### Creating windows in visible state
 

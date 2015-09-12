@@ -108,6 +108,8 @@ local Window = winapi.subclass({}, winapi.Window)
 
 local winmap = {} --winapi_window->frontend_window
 
+local last_active_window
+
 function window:new(app, frontend, t)
 	self = glue.update({app = app, frontend = frontend}, self)
 
@@ -186,8 +188,8 @@ function window:new(app, frontend, t)
 
 	--if this is the first window, register it as the last active window
 	--just in case the user calls app:activate() before this window activates.
-	if not self.app._last_active_window then
-		self.app._last_active_window = self
+	if not last_active_window then
+		last_active_window = self
 	end
 
 	return self
@@ -220,12 +222,13 @@ function Window:on_destroy()
 		self.backend:_free_icon()
 		self.backend:_free_drop_target()
 		winmap[self] = nil
+
 		--register another random window as the last active window so that
 		--app:activate() works even before the next window gets activated.
 		--in any case we want to release the reference to self.
-		if self.app._last_active_window == self then
+		if last_active_window == self then
 			local _, frontend = next(winmap)
-			self.app._last_active_window = frontend.backend
+			last_active_window = frontend.backend
 		end
 	end
 end
@@ -236,7 +239,7 @@ function app:activate()
 	--unlike OSX, in Windows you don't activate an app, you have to activate
 	--a specific window. Activating this app means activating the last window
 	--of this app that was active before the app got deactivated.
-	local win = self._last_active_window
+	local win = last_active_window
 	if win and not win.frontend:dead() then
 		win.win:setforeground()
 	end
@@ -256,8 +259,8 @@ function window:activate()
 	--for consistency with OSX, if the app is inactive, this function
 	--doesn't activate the window, instead it marks the window that must
 	--be activated on the next call to app:activate().
-	self.app._last_active_window = self
-	self.win:activate()
+	last_active_window = self
+	self.win:activate() --note: using activate() instead of setforeground()
 end
 
 function window:active()
@@ -266,10 +269,10 @@ function window:active()
 end
 
 --NOTE: this also triggers when the app is inactive and another window
---was closed, so we need to set _last_active_window here.
+--was closed, so we need to set last_active_window here.
 function Window:on_activate()
 	self.backend._inactive = nil --no need for this anymore
-	self.backend.app._last_active_window = self.backend --for the next app:activate()
+	last_active_window = self.backend --for the next app:activate()
 end
 
 --this event is received when the window's titlebar is activated.

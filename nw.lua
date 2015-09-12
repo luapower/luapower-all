@@ -586,8 +586,11 @@ end
 
 --activation -----------------------------------------------------------------
 
-function app:activate()
-	self.backend:activate()
+local modes = glue.index{'alert', 'force', 'info'}
+function app:activate(mode)
+	mode = mode or 'alert'
+	assert(modes[mode], 'invalid mode')
+	self.backend:activate(mode)
 end
 
 function app:active_window()

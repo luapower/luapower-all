@@ -693,128 +693,28 @@ end)
 
 --window & app activaton -----------------------------------------------------
 
---1. the OS activates the app when the first window is created.
---2. the app activation event comes before the win activation event.
---3. the OS deactivates the app when the last window is closed (Windows).
---4. the app deactivation event comes after the win deactivation event.
---5. a single app:activated() event is fired.
---6. app:active() is true at all times.
---7. only in Windows, after the last window is closed, the app is deactivated.
---8. app:active_window() works (gives the expected window).
-add('activation-events', function()
+--the app is activated if a window is shown.
+add('activation-app-activated', function()
 	local rec = recorder()
-	rec'before-run'
-	local win1 = app:window(winpos())
-	local win2 = app:window(winpos())
-	local win3 = app:window(winpos())
 	function app:was_activated() rec'app-activated' end
+	local win = app:window(winpos())
+	app:run(function()
+		app:sleep(0.1)
+	end)
+	rec{'app-activated'}
+end)
+
+--the app is dactivated after the last window is hidden.
+add('activation-app-deactivated', function()
+	local rec = recorder()
 	function app:was_deactivated() rec'app-deactivated' end
-	function win1:was_activated() rec'win1-activated' end
-	function win2:was_activated() rec'win2-activated' end
-	function win3:was_activated() rec'win3-activated' end
-	function win1:was_deactivated() rec'win1-deactivated' end
-	function win2:was_deactivated() rec'win2-deactivated' end
-	function win3:was_deactivated() rec'win3-deactivated' end
-	app:runafter(1, function()
-		rec'started'
-		assert(app:active())
-		win1:activate(); sleep(0.1); assert(app:active_window() == win1)
-		win2:activate(); sleep(0.1); assert(app:active_window() == win2)
-		win3:activate(); sleep(0.1); assert(app:active_window() == win3)
-		win3:close();    sleep(0.1); assert(app:active_window() == win2)
-		win2:close();    sleep(0.1); assert(app:active_window() == win1)
-		assert(app:active())
-		win1:close()
-		assert(not app:active_window())
-		if ffi.os == 'Windows' then
-			--on Windows, the app is deactivated after the last windows is closed.
-			assert(not app:active())
-		else
-			--on OSX, the app stays active (there's still the main menu and the dock icon).
-			rec'app-deactivated' --fake entry
-			assert(app:active())
-		end
-		rec'ended'
-		app:quit()
-	end)
-	app:run()
-	rec{
-		'before-run',
-		'app-activated',
-		'win1-activated',
-		'win1-deactivated',
-		'win2-activated',
-		'win2-deactivated',
-		'win3-activated',
-		'started',
-		'win3-deactivated', 'win1-activated',
-		'win1-deactivated', 'win2-activated',
-		'win2-deactivated', 'win3-activated',
-		'win3-deactivated', 'win2-activated',
-		'win2-deactivated', 'win1-activated',
-		'win1-deactivated',
-		'app-deactivated', --not on OSX
-		'ended',
-	}
-end)
-
---in Windows, app:activate() does not activate the window immediately.
---instead, it flashes the window on the taskbar waiting for the user
---to click on it (or alt-tab to it) and activate it.
---this is an interactive test: you must activate another app to see it.
-add('check-activation-app-activate-flashing', function()
 	local win = app:window(winpos())
-	function win:was_activated() print'win-activated' end
-	function app:was_activated() print'app-activated' end
-	function win:was_deactivated() print'win-deactivated' end
-	function app:was_deactivated()
-		print'app-deactivated'
-		app:runafter(1, function()
-			app:activate()
-			--check that the window is not considered active until the user
-			--clicks on the flashing taskbar button.
-			app:runevery(0.1, function()
-				print('window is active:', win:active(), 'active window:', app:active_window())
-				if win:active() then
-					--user clicked on the taskbar button
-					app:stop()
-					return false
-				end
-			end)
-		end)
-	end
-	app:run()
-end)
-
---app:activate() works, activating the app continuously.
---this is an interactive test: you must activate another app to see it.
---note: on OSX, the app is not activated immediately but on the next message loop.
-add('check-activation-app-activate', function()
-	function app:activated() print'app-activated' end
-	function app:deactivated() print'app-deactivated' end
-	local win = app:window(winpos())
-	function win:activated() print'win-activated' end
-	function win:deactivated() print'win-deactivated' end
-	app:runevery(0.1, function()
-		app:activate()
-		print('app:active() -> ', app:active(), 'app:active_window() -> ', app:active_window())
+	app:run(function()
+		app:sleep(0.2)
+		win:hide()
+		app:sleep(0.1)
 	end)
-	app:run()
-end)
-
---if there are no visible windows, in Windows, app:activate() is ignored
---(there's no concept of an app outside the concept of windows), while
---in OSX the app's main menu is activated.
---this is an interactive test: you must activate another app to see it.
-add('check-activation-app-activate-no-windows', function()
-	function app:was_activated() print'activated' end
-	function app:was_deactivated() print'deactivated' end
-	local win = app:window(winpos{visible = false})
-	app:runevery(0.1, function()
-		app:activate()
-		print('app:active() -> ', app:active(), 'app:active_window() -> ', app:active_window())
-	end)
-	app:run()
+	rec{'app-deactivated'}
 end)
 
 --app:active() works (returns true only if the app is active).
@@ -833,59 +733,70 @@ add('check-activation-app-active', function()
 	print'ok'
 end)
 
---when the app is inactive, window:activate() is deferred to when the app becomes active.
---this is an interactive test: you must activate a window and then activate another app
---to see the other window flashing.
-add('check-activation-window-activate-defer', function()
-	local win1 = app:window(winpos()); win1.name = 'w1'
-	local win2 = app:window(winpos()); win2.name = 'w2'
-	local last
-	function win1:was_activated() last = self; print'win1-activated' end
-	function win2:was_activated() last = self; print'win2-activated' end
-	function app:was_activated() print'app-activated' end
-	function app:was_deactivated()
-		print'app-deactivated'
-		if last == win1 then
-			win2:activate()
-		else
-			win1:activate()
+--in Windows, app:activate() does not activate the window immediately.
+--instead, it flashes the window on the taskbar waiting for the user
+--to click on it (or alt-tab to it) and activate it.
+--Likewise in OSX it flashes the dock icon.
+--In Linux it does nothing (only activate'force' works).
+--this is an interactive test: you must activate another app to see it.
+local function activation_test(mode)
+	return function()
+		local win = app:window(winpos())
+		function app:was_activated() print'app-activated' end
+		function app:was_deactivated()
+			print'app-deactivated'
+			app:runafter(1, function()
+				app:activate(mode)
+				--check that the window is not considered active until the user
+				--clicks on the flashing taskbar button.
+				app:runevery(0.1, function()
+					print('window is active:', win:active(), 'active window:', app:active_window())
+					if win:active() then
+						--user clicked on the taskbar button
+						app:stop()
+						return false
+					end
+				end)
+			end)
 		end
-		app:runafter(0.5, function()
-			app:activate()
-		end)
+		app:run()
 	end
-	local _activated
-	app:runevery(0.2, function()
-		if win1:dead() or win2:dead() then
-			app:quit()
-		else
-			print(
-				'app active?', app:active(),
-				'active window:', app:active_window() and app:active_window().name,
-				'win1 active?', win1:active(),
-				'win2 active?', win2:active()
-			)
-		end
+end
+add('check-activation-app-alert', activation_test())
+add('check-activation-app-info', activation_test'info')
+add('check-activation-app-force', activation_test'force')
+
+--In Windows and Linux an app is not activated until the first window is shown
+--while in OSX it is activated when app() is first called.
+--In Windows the app can be activated programatically even if there are no
+--visible windows, but there must be at least a hidden window.
+--In OSX the app can always be activated even without windows (the main
+--menu is always activated).
+--In Linux the app can't be activated if there isn't at least one visible window.
+--this is an interactive test: you must activate another app to see it.
+add('check-activation-app-activate-no-windows', function()
+	function app:was_activated() print'activated' end
+	function app:was_deactivated() print'deactivated' end
+	local win = app:window(winpos{visible = false})
+	app:runevery(1, function()
+		print('app:active() -> ', app:active(), 'app:active_window() -> ', app:active_window())
+		app:activate'force'
 	end)
 	app:run()
 end)
 
---window:activate() doesn't do anything for hidden windows.
---when the window is finally shown, the app doesn't activate.
+--when the first window is shown, it is not activated if another app
+--was activated in the meantime (Windows, OSX, not Linux).
 --this is an interactive test: you must activate another app to see it.
 add('check-activation-window-activate-hidden', function()
 	local rec = recorder()
-	local win1 = app:window(winpos{visible = false})
-	local win2 = app:window(winpos{visible = false})
-	function win1:was_activated() rec'win1-activated' end
-	function win2:was_activated() rec'win2-activated' end
+	local win = app:window(winpos{visible = false})
+	function win:was_activated() rec'win-activated' end
 	app:runafter(0, function()
+		win:activate() --ignored
 		print'Right-click on this terminal window NOW! You have 2 SECONDS!'
-		win1:activate()
-		win2:activate()
-		win1:activate()
 		app:runafter(2, function()
-			win2:show()
+			win:show()
 			app:runafter(1, function()
 				app:quit()
 			end)
@@ -2545,6 +2456,7 @@ add('check-view-mouse', function()
 	app:run()
 end)
 
+--NOTE: this indirectly checks get/set rect() too when resizing the window.
 add('check-view-anchors', function()
 	local win = app:window{cw = 340, ch = 340, min_cw = 250, min_ch = 250, max_cw = 450, max_ch = 450}
 	win:view{x = 10, y = 10, w = 100, h = 100,   anchors = 'tl'}
@@ -2645,196 +2557,6 @@ add('check-render-view-mixed', function()
 			return function(self) cube(self:gl(), self:size()) end, true
 		end
 	end)
-end)
-
---bitmap helpers -------------------------------------------------------------
-
---premultiply alpha for (r, g, b, a) in 0..1 range
-local function premul(r, g, b, a)
-	return r * a, g * a, b * a, a
-end
-
---premultiplied (r, g, b, a) -> bgra8
-local function bgra8(r, g, b, a)
-	a = bit.band(a * 255, 255)
-	r = bit.band(r * 255, 255)
-	g = bit.band(g * 255, 255)
-	b = bit.band(b * 255, 255)
-	return bit.bor(bit.lshift(a, 24), bit.lshift(r, 16), bit.lshift(g, 8), b)
-end
-
---fill a bitmap with a constant color.
-local function bmp_pixel(bmp, r, g, b, a)
-	local data = ffi.cast('int32_t*', bmp.data)
-	local c = bgra8(premul(r, g, b, a))
-	for y=0,bmp.h-1 do
-		for x=0,bmp.w-1 do
-			data[y * bmp.w + x] = c
-		end
-	end
-end
-
---fill a bitmap with a constant color.
-local function fill_bmp(bmp, r, g, b, a)
-	local data = ffi.cast('int32_t*', bmp.data)
-	local c = bgra8(premul(r, g, b, a))
-	for y=0,bmp.h-1 do
-		for x=0,bmp.w-1 do
-			data[y * bmp.w + x] = c
-		end
-	end
-end
-
-local function lerp(v0, v1, t)
-	return v0 + t*(v1-v0)
-end
-
---fill a bitmap with a gradient color.
-local function gradient_bmp(bmp, r1, g1, b1, a1, r2, g2, b2, a2)
-	local data = ffi.cast('int32_t*', bmp.data)
-	for y=0,bmp.h-1 do
-		local t = y/(bmp.h-1)
-		local r = lerp(r1, r2, t)
-		local g = lerp(g1, g2, t)
-		local b = lerp(b1, b2, t)
-		local a = lerp(a1, a2, t)
-		for x=0,bmp.w-1 do
-			data[y * bmp.w + x] = bgra8(premul(r, g, b, a))
-		end
-	end
-end
-
-local i = 1
-local function animate_bmp(bmp)
-	i = (i + 1/30) % 1
-	gradient_bmp(bmp, 1, 0, 0, i, 0, 0, 1, i)
-end
-
-local function checkerboard_bmp(bmp)
-	local d = 32
-	local h = d/2
-	local _, setpixel = bitmap.pixel_interface(bmp)
-	for y=0,bmp.h-1 do
-		for x=0,bmp.w-1 do
-			local dx = bit.band(x, d)
-			local dy = bit.band(y, d)
-			local r = ((dx > h and dy < h) or (dx < h and dy > h)) and 220 or 192
-			setpixel(x, y, r, r, r, 255)
-		end
-	end
-end
-
---window bitmap --------------------------------------------------------------
-
-add('check-bitmap', function()
-	local win = app:window{w = 500, h = 300, frame = 'none', transparent = true}
-
-	function win:event(...)
-		print(...)
-	end
-
-	function win:repaint()
-		local cairo = require'cairo'
-		local bmp = win:bitmap()
-		if not bmp then return end
-		if not bmp.cr then
-			bmp.surface = cairo.cairo_image_surface_create_for_data(bmp.data,
-									cairo.CAIRO_FORMAT_ARGB32, bmp.w, bmp.h, bmp.stride)
-			bmp.cr = bmp.surface:create_context()
-			function bmp:free()
-				self.cr:free()
-				self.surface:free()
-			end
-		end
-		local cr = bmp.cr
-
-		--background
-		cr:set_operator(cairo.CAIRO_OPERATOR_SOURCE)
-		cr:set_source_rgba(0, 0, 0.1, 0.5)
-		cr:paint()
-		cr:set_operator(cairo.CAIRO_OPERATOR_OVER)
-
-		--matrix
-		cr:identity_matrix()
-		cr:translate(.5, .5)
-
-		--border
-		cr:set_source_rgba(1, 0, 0, 1)
-		cr:set_line_width(1)
-		cr:rectangle(0, 0, bmp.w-1, bmp.h-1)
-		cr:stroke()
-	end
-
-	local action, dx, dy
-
-	function win:keypress(key)
-
-		if key == 'space' then
-			win:maximize()
-		elseif key == 'esc' then
-			win:restore()
-		elseif key == 'F' then
-			win:fullscreen(not win:fullscreen())
-		elseif app:key'command f4' or app:key'command w' then
-			win:close()
-		end
-	end
-
-	app:runevery(1/60, function()
-
-		local self = win
-		local d = 10
-
-		if app:key'left' then
-			local x, y = win:normal_frame_rect()
-			win:normal_frame_rect(x - d, y)
-		end
-		if app:key'right' then
-			local x, y = win:normal_frame_rect()
-			win:normal_frame_rect(x + d, y)
-		end
-		if app:key'up' then
-			local x, y = win:normal_frame_rect()
-			win:normal_frame_rect(x, y - d)
-		end
-		if app:key'down' then
-			local x, y = win:normal_frame_rect()
-			win:normal_frame_rect(x, y + d)
-		end
-	end)
-
-	function win:mousedown(button, x, y)
-		if self:fullscreen() then return end
-		if button == 'left' then
-			local _, _, w, h = win:normal_frame_rect()
-			if x >= w - 20 and x <= w and y >= h - 20 and y <= h then
-				action = 'resize'
-				dx = w - x
-				dy = h - y
-			else
-				action = 'move'
-				dx, dy = x, y
-			end
-		end
-	end
-
-	function win:mouseup(button)
-		if button == 'left' and action then
-			action = nil
-		end
-	end
-
-	function win:mousemove(x, y)
-		if action == 'move' then
-			local fx, fy = win:normal_frame_rect()
-			win:normal_frame_rect(fx + x - dx, fy + y - dy)
-		elseif action == 'resize' then
-			win:normal_frame_rect(nil, nil, x + dx, y + dy)
-		end
-	end
-
-	win:invalidate()
-	app:run()
 end)
 
 --menus ----------------------------------------------------------------------

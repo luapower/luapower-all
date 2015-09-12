@@ -70,8 +70,11 @@ function app:init(frontend)
 	--the menubar must be initialized _before_ the app is activated.
 	self:_init_menubar()
 
-	--activate the app before windows are created.
-	self:activate()
+	--activate the app before windows are created (see notes on app:activate() for why).
+	--activating the app now also gives the user the chance to activate
+	--another app if there's enough time to do that before the first window is shown.
+	--this is also how Windows behaves.
+	self:activate'force'
 
 	return self
 end
@@ -355,10 +358,15 @@ end
 --NOTE: windows created after calling activateIgnoringOtherApps(true) go in front of the active app.
 --NOTE: the first call to nsapp:activateIgnoringOtherApps() doesn't also activate the main menu.
 --but NSRunningApplication:currentApplication():activateWithOptions() does, so we use that instead!
-function app:activate()
-	objc.NSRunningApplication:currentApplication():activateWithOptions(bit.bor(
-			objc.NSApplicationActivateIgnoringOtherApps,
-			objc.NSApplicationActivateAllWindows))
+function app:activate(mode)
+	if mode == 'force' then
+		objc.NSRunningApplication:currentApplication():activateWithOptions(
+			bit.bor(
+				objc.NSApplicationActivateIgnoringOtherApps,
+				objc.NSApplicationActivateAllWindows))
+	else
+		self.nsapp:requestUserAttention(mode =='alert' and objc.NSCriticalRequest or objc.NSInformationalRequest)
+	end
 end
 
 --NOTE: keyWindow() only returns the active window if the app itself is active.

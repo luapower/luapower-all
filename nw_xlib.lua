@@ -199,6 +199,8 @@ local function find_bgra8_visual(screen)
 	end
 end
 
+local last_active_window
+
 function window:new(app, frontend, t)
 	self = glue.inherit({app = app, frontend = frontend}, self)
 
@@ -340,6 +342,12 @@ function window:new(app, frontend, t)
 
 	winmap[self.win] = self
 
+	--if this is the first window, register it as the last active window
+	--just in case the user calls app:activate() before this window activates.
+	if not last_active_window then
+		last_active_window = self
+	end
+
 	return self
 end
 
@@ -373,6 +381,14 @@ function window:forceclose()
 	xlib.destroy_window(self.win)
 	winmap[self.win] = nil --discard further messages
 	self.win = nil --prevent usage
+
+	--register another random window as the last active window so that
+	--app:activate() works even before the next window gets activated.
+	--in any case we want to release the reference to self.
+	if last_active_window == self then
+		local _, backend = next(winmap)
+		last_active_window = backend
+	end
 end
 
 --activation -----------------------------------------------------------------
@@ -382,7 +398,7 @@ end
 local focus_out_timeout = 0.1
 local last_focus_out
 local focus_timer_started
-local last_active_window
+local app_active = false
 
 --NOTE: FocusIn is also sent after ending a resizing operation.
 ev[C.FocusIn] = function(e)
@@ -393,9 +409,8 @@ ev[C.FocusIn] = function(e)
 
 	last_active_window = self
 	last_focus_out = nil --disable the app deactivate timer
+	app_active = true --window activation implies app activation.
 
-	--window activation implies app activation.
-	self.app._active = true
 	self.app.frontend:_backend_changed()
 	self.frontend:_backend_changed()
 end
@@ -410,9 +425,6 @@ ev[C.FocusOut] = function(e)
 	if not self then return end
 	if self._hiding or self._hidden then return end --ignore while hiding
 
-	if not last_active_window then return end --ignore duplicate events
-	last_active_window = nil
-
 	--start a delayed check for when the app is deactivated.
 	--if a timer is already started, just advance the delay.
 	last_focus_out = time.clock()
@@ -421,7 +433,7 @@ ev[C.FocusOut] = function(e)
 			if last_focus_out and time.clock() - last_focus_out > focus_out_timeout then
 				last_focus_out = nil
 
-				self.app._active = false
+				app_active = false
 				self.app.frontend:_backend_changed()
 			end
 			focus_timer_started = false
@@ -432,27 +444,35 @@ ev[C.FocusOut] = function(e)
 	self.frontend:_backend_changed()
 end
 
-function app:activate()
+function app:activate(mode)
+	if mode ~= 'force' then return end
 	--unlike OSX, in X you don't activate an app, you can only activate a window.
 	--activating this app means activating the last window that was active.
 	local win = last_active_window
 	if win and not win.frontend:dead() then
-		win:activate()
+		xlib.change_net_active_window(last_active_window.win)
 	end
 end
 
 function app:active_window()
 	--return the active window only if the app is active, consistent with OSX.
-	local win = self._active and win(xlib.get_input_focus())
+	local win = app_active and win(xlib.get_input_focus())
 	return win and win.frontend or nil
 end
 
 function app:active()
-	return self._active or false
+	return app_active
 end
 
 function window:activate()
-	xlib.change_net_active_window(self.win)
+	--for consistency with OSX, if the app is inactive, this function
+	--doesn't activate the window, instead it marks the window that must
+	--be activated on the next call to app:activate().
+	if not app_active then
+		last_active_window = self
+	else
+		xlib.change_net_active_window(self.win)
+	end
 end
 
 function window:active()
