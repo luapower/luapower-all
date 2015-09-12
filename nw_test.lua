@@ -769,9 +769,9 @@ add('check-activation-app-force', activation_test'force')
 --In Windows and Linux an app is not activated until the first window is shown
 --while in OSX it is activated when app() is first called.
 --In Windows the app can be activated programatically even if there are no
---visible windows, but there must be at least a hidden window.
+--visible windows, but there must be at least one hidden window.
 --In OSX the app can always be activated even without windows (the main
---menu is always activated).
+--menu is activated anyway).
 --In Linux the app can't be activated if there isn't at least one visible window.
 --this is an interactive test: you must activate another app to see it.
 add('check-activation-app-activate-no-windows', function()

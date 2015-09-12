@@ -46,18 +46,17 @@ __window tracking__
 `app:window_closed(win)`							event: a window was closed
 __window creation__
 `app:window(t) -> win`								create a window
-__closing__
+__window closing__
 `win:close([force])`									close the window and destroy it
 `win:dead() -> t|f`									check if the window was destroyed
 `win:closing()`										event: closing (return false to refuse)
 `win:was_closed()`									event: closed (but not dead yet)
 `win:closeable() -> t|f`							closeable flag
-__app activation__
+__window & app activation__
 `app:active() -> t|f`								check if the app is active
 `app:activate([mode])`								activate the app
 `app:was_activated()`								event: app was activated
 `app:was_deactivated()`								event: app was deactivated
-__window activation__
 `app:active_window() -> win`						the active window, if any
 `win:active() -> t|f`								check if window is active
 `win:activate()`										activate the window
@@ -70,38 +69,32 @@ __app visibility (OSX)__
 `app:unhide()`											unhide the app
 `app:was_hidden()`									event: app was hidden
 `app:was_unhidden()`									event: app was unhidden
-__window visibility__
+__window state__
 `win:visible(t|f) /-> t|f`							get/set window visibility
 `win:show()`											show window (in its previous state)
 `win:hide()`											hide window
 `win:was_shown()`										event: window was shown
 `win:was_hidden()`									event: window was hidden
-__minimization__
 `win:minimizable() -> t|f`							minimizable flag
 `win:minimized() -> t|f`							check if the window is minimized
 `win:minimize()`										minimize the window
 `win:was_minimized()`								event: window was minimized
 `win:was_unminimized()`								event: window was unminimized
-__maximization__
 `win:maximizable() -> t|f`							maximizable flag
 `win:maximized() -> t|f`							check if the window is maximized
 `win:maximize()`										maximize the window
 `win:was_maximized()`								event: window was maximized
 `win:was_unmaximized()`								event: window was unmaximized
-__fullscreen mode__
 `win:fullscreenable() -> t|f`						fullscreenable flag
 `win:fullscreen(t|f) /-> t|f`						get/enter/exit fullscreen mode
 `win:entered_fullscreen()`							event: entered fullscreen mode
 `win:exited_fullscreen()`							event: exited fullscreen mode
-__restoring__
 `win:restore()`										restore from minimized or maximized state
 `win:shownormal()`									show in normal state
-__state tracking__
 `win:state() -> state`								full window state string
 `win:changed(old_state, new_state)`				event: window state changed
 `app:state() -> state`								full app state string
 `app:changed(old_state, new_state)`				event: app state changed
-__enabled state__
 `win:enabled(t|f) /-> t|f`							get/set window enabled flag
 __client/screen conversion__
 `win:to_screen(x, y) -> x, y`						client space -> screen space conversion
@@ -581,7 +574,17 @@ is destroyed (`win:dead()` still returns false at this point).
 
 Get the closeable flag (read-only).
 
-## App activation
+## Window & app activation
+
+Activation is about app activation and window activation. Activating a
+window programatically has an immediate effect only while the app is active.
+If the app is inactive, the window is not activated until the app becomes
+active and the user is notified in some other less intrusive way.
+
+If the user activates a different app in the interval between app launch
+and first window being shown, the app won't be activated back (this is a good
+thing usability-wise). This doesn't work on Linux (new windows always pop
+in your face because there's no concept of an "app" really in X).
 
 ### `app:active() -> t|f`
 
@@ -599,8 +602,8 @@ The _mode_ arg can be:
   * 'info'  (OSX only; on Windows it's the same as 'alert'; on Linux it does nothing)
 
 The 'alert' mode: on Windows, this flashes the window on the taskbar until
-the user activates the window. On OSX it bounces the dock icon until the
-user activates the app. On Linux it does nothing.
+the user activates the window. On OSX it bounces the dock icon until the user
+activates the app. On Linux it does nothing.
 
 The 'force' mode: on Windows this is the same as the 'alert' mode.
 On OSX and Linux it pops up the window in the user's face
@@ -613,25 +616,19 @@ on OSX only once. On other platforms it's the same as the default 'alert' mode.
 
 Event: the app was activated/deactivated.
 
-## Window activation
+### `app:active_window() -> win|nil`
 
-### `app:active_window() -> win`
-
-Get the active window, if any.
-
-When the app is inactive, this always returns nil.
+Get the active window, if any (nil if the app is inactive).
 
 ### `win:active() -> t|f`
 
-Check if the window is active.
-
-When the app is inactive, this returns false for all windows.
+Check if the window is active (false for all windows if the app is inactive).
 
 ### `win:activate()`
 
-Activate the window. If the app is inactive, this does not activate the app.
+Activate the window. If the app is inactive, this does _not_ activate the window.
 Instead it only marks the window to be activated when the app becomes active.
-If you want to alert the user that it should pay attention to the window,
+If you want to alert the user that it should pay attention to the app/window,
 call `app:activate()` after calling this function.
 
 ### `win:was_activated()` <br> `win:was_deactivated()`
@@ -657,7 +654,7 @@ Get/set app visibility.
 
 Event: app was hidden/unhidden.
 
-## Window visibility
+## Window state
 
 ### `win:show()`
 
@@ -688,8 +685,6 @@ Call `show()` or `hide()` to change the window's visibility.
 
 Event: window was shown/hidden.
 
-## Minimization
-
 ### `win:minimizable() -> t|f`
 
 Get the minimizable flag (read-only).
@@ -706,8 +701,6 @@ it is shown in minimized state (and the taskbar button is not activated).
 ### `win:was_minimized()` <br> `win:was_unminimized()`
 
 Event: window was minimized/unminimized.
-
-## Maximization
 
 ### `win:maximizable() -> t|f`
 
@@ -728,8 +721,6 @@ If the window is already maximized it is not activated.
 ### `win:was_maximized()` <br> `win:was_unmaximized()`
 
 Event: window was maximized/unmaximized.
-
-## Fullscreen mode
 
 ### `win:fullscreenable() -> t|f`
 
@@ -752,8 +743,6 @@ If the window is already in the desired mode it is not activated.
 
 Event: entered/exited fullscreen mode.
 
-## Restoring
-
 ### `win:restore()`
 
 Restore from minimized, maximized or fullscreen state, i.e. unminimize
@@ -768,14 +757,13 @@ Show the window in normal state.
 
 The window is always activated even when it's already in normal mode.
 
-## State tracking
-
 State tracking is about getting and tracking the entire user-changeable
 state of a window (of or the app) as a whole.
 
 ### `win:state() -> state`
 
-Get the window's full state string, eg. 'visible maximized active'.
+Get the window's full state string which can contain the words
+'visible', 'active', 'minimized', 'maximized', 'fullscreen'.
 
 ### `win:changed(old_state, new_state)`
 
@@ -783,13 +771,12 @@ Event: window state has changed.
 
 ### `app:state() -> state`
 
-Get the app's full state string, eg. 'visible active'.
+Get the app's full state string which can contain the words
+'visible' and 'active'.
 
 ### `app:changed(old_state, new_state)`
 
 Event: app state has changed.
-
-## Enabled state
 
 ### `win:enabled() -> t|f` <br> `win:enabled(t|f)`
 
