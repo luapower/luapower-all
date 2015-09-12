@@ -3,7 +3,6 @@
 --Written by Cosmin Apreutesei. Public Domain.
 
 setfenv(1, require'winapi.namespace')
-require'winapi.debug'
 require'winapi.types'
 require'winapi.util'
 require'winapi.struct'
