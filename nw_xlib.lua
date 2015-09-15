@@ -9,12 +9,10 @@ local bit   = require'bit'
 local glue  = require'glue'
 local box2d = require'box2d'
 local xlib  = require'xlib'
-local dbg   = require'xlib_debug'
 require'xlib_keysym_h'
 require'xlib_xshm_h'
 local time  = require'time' --for timers
 local heap  = require'heap' --for timers
-local box2d = require'box2d' --for win:display()
 local pp    = require'pp'
 local cast  = ffi.cast
 local free  = glue.free
@@ -24,6 +22,25 @@ local glx --runtime dependency
 
 local nw = {name = 'xlib'}
 
+--xlib debugging -------------------------------------------------------------
+
+local dbg = false --turn on to debug on xlib
+if dbg then
+	dbg = require'xlib_debug'
+	function dbg_init()
+		dbg = dbg.connect(xlib)
+		--dbg.trace() --trace Xlib calls
+	end
+	local t0 = time.clock()
+	function dbg_event(e)
+		local dt = time.clock() - t0; t0 = t0 + dt
+		if dt > 0.5 then
+			print(('-'):rep(100))
+		end
+		print('EVENT', dbg.event_tostring(e))
+	end
+end
+
 --app object -----------------------------------------------------------------
 
 local app = {}
@@ -32,10 +49,8 @@ nw.app = app
 function app:init(frontend)
 
 	self.frontend = frontend
-
-	xlib   = xlib.connect()
-	dbg    = dbg.connect(xlib)
-	--dbg.trace()
+	xlib = xlib.connect()
+	if dbg then dbg_init() end
 	xlib.synchronize(true) --shave off one source of unpredictability
 	xlib.set_xsettings_change_notify() --setup to receive XSETTINGS changes
 	self:_resolve_evprop_names()
@@ -56,21 +71,12 @@ end
 
 local ev = {}     --{event_code = event_handler}
 
-local t0 = time.clock()
-local function evstr(e)
-	local dt = time.clock() - t0; t0 = t0 + dt
-	if dt > 0.5 then
-		print(('-'):rep(100))
-	end
-	print('EVENT', dbg.event_tostring(e))
-end
-
 function app:run()
 
 	local function poll(timeout)
 		local e = xlib.poll(timeout)
 		if not e then return end
-		--evstr(e)
+		if dbg then dbg_event(e) end
 		local f = ev[tonumber(e.type)]
 		if f then f(e) end
 		--NOTE: right here e is invalid because f() can cause re-entering!
@@ -479,6 +485,12 @@ function window:active()
 	return self.app:active_window() == self.frontend
 end
 
+--state/app visibility -------------------------------------------------------
+
+function app:hidden() return false end
+function app:hide() end
+function app:unhide() end
+
 --state/visibility -----------------------------------------------------------
 
 function window:visible()
@@ -509,7 +521,6 @@ end
 
 function window:hide()
 	if self._hidden then return end
-	if self:fullscreen() then return end --TODO: remove this after fixing OSX
 
 	--window state to report while hidden.
 	self._minimized = self:minimized()
@@ -787,13 +798,10 @@ function window:_apply_constraints()
 			hints.max_height = ch
 		end
 	else
-		hints.min_width  = self._min_cw
-		hints.min_height = self._min_ch
-		--NOTE: we can't set a constraint on one dimension alone hence 2^24.
-		if t.max_cw or t.max_ch then
-			hints.max_width  = self._max_cw or 2^24
-			hints.max_height = self._max_ch or 2^24
-		end
+		hints.min_width  = self._min_cw or 0
+		hints.min_height = self._min_ch or 0
+		hints.max_width  = self._max_cw or 2^24
+		hints.max_height = self._max_ch or 2^24
 	end
 	xlib.set_wm_size_hints(self.win, hints)
 

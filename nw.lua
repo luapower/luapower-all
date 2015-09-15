@@ -6,8 +6,15 @@ local ffi   = require'ffi'
 local glue  = require'glue'
 local box2d = require'box2d'
 local time  = require'time'
-
-local nw = {}
+local nw    = {}
+local backends = {
+	Windows = 'nw_winapi',
+	OSX     = 'nw_cocoa',
+	Linux   = 'nw_xlib',
+}
+local bkname = assert(backends[ffi.os], 'unsupported OS %s', ffi.os)
+nw.backend = require(bkname)
+nw.backend.frontend = nw
 
 --helpers --------------------------------------------------------------------
 
@@ -29,27 +36,6 @@ local function optarg(opt, true_arg, false_arg, nil_arg)
 			error('invalid argument', 2)
 		end
 	end
-end
-
---backends -------------------------------------------------------------------
-
---default backends for each OS
-nw.backends = {
-	Windows = 'nw_winapi',
-	OSX     = 'nw_cocoa',
-	Linux   = 'nw_xlib',
-}
-
-function nw:init(bkname)
-	if self.backend then
-		if bkname then
-			assert(self.backend.name == bkname, 'already initialized to %s', self.backend.name)
-		end
-		return
-	end
-	bkname = bkname or assert(self.backends[ffi.os], 'unsupported OS %s', ffi.os)
-	self.backend = require(bkname)
-	self.backend.frontend = self
 end
 
 --oo -------------------------------------------------------------------------
@@ -138,9 +124,9 @@ local app = glue.update({}, object)
 
 --return the singleton app object.
 --load a default backend on the first call if no backend was set by the user.
+
 function nw:app()
 	if not self._app then
-		self:init()
 		self._app = app:_init(self, self.backend.app)
 	end
 	return self._app
@@ -383,7 +369,7 @@ local defaults = {
 	sticky = false, --only for child windows
 }
 
-local defaults_toplevel = {}
+--default overrides for parented windows
 local defaults_child = {
 	minimizable = false,
 	maximizable = false,
@@ -391,11 +377,6 @@ local defaults_child = {
 	edgesnapping = 'parent siblings screen',
 	sticky = true,
 }
-
-local frame_defaults = {}
-frame_defaults.normal = {}
-frame_defaults.none = {}
-frame_defaults.toolbox = defaults_child
 
 local opengl_defaults = {
 	version = '1.0',
@@ -412,12 +393,13 @@ local function opengl_options(t)
 	return glopt
 end
 
+local frame_types = glue.index{'normal', 'none', 'toolbox'}
 local function checkframe(frame)
 	frame =
 		frame == true and 'normal' or
 		frame == false and 'none' or
 		frame or 'normal'
-	assert(frame_defaults[frame], 'invalid frame')
+	assert(frame_types[frame], 'invalid frame type')
 	return frame
 end
 
@@ -431,8 +413,7 @@ function window:_new(app, backend_class, useropt)
 	local frame = checkframe(useropt.frame)
 	local opt = glue.update({frame = frame},
 		defaults,
-		frame_defaults[frame],
-		useropt.parent and defaults_child or defaults_toplevel,
+		useropt.parent and defaults_child or nil,
 		useropt)
 	opt.opengl = opengl_options(useropt.opengl)
 
@@ -441,6 +422,7 @@ function window:_new(app, backend_class, useropt)
 		assert(not opt.parent._closed, 'parent is closed')
 		--child windows can't be minimizable because they don't show in taskbar.
 		assert(not opt.minimizable,    'child windows cannot be minimizable')
+		assert(not opt.minimized,      'child windows cannot be minimized')
 		--child windows can't be maximizable or fullscreenable (X11 limitation).
 		assert(not opt.maximizable,    'child windows cannot be maximizable')
 		assert(not opt.fullscreenable, 'child windows cannot be fullscreenable')
@@ -465,6 +447,14 @@ function window:_new(app, backend_class, useropt)
 	--transparent windows must be frameless (winapi limitation)
 	if opt.transparent then
 		assert(opt.frame == 'none', 'transparent windows must be frameless')
+	end
+
+	--maxsize constraints result in undefined behavior in maximized and fullscreen state.
+	--they work except in Unity which doesn't respect them when maximizing.
+	--also Windows doesn't center the window on screen in fullscreen mode.
+	if opt.max_cw or opt.max_ch or not opt.resizeable then
+		assert(not opt.maximizable, 'a maximizable window cannot have a maximum size')
+		assert(not opt.fullscreenable, 'a fullscreenable window cannot have a maximum size')
 	end
 
 	--if missing some frame coords but given some client coords, convert client
@@ -616,7 +606,6 @@ end
 --state/app visibility (OSX only) --------------------------------------------
 
 function app:hidden(hidden)
-	if not self:ver'OSX' then return false end
 	if hidden == nil then
 		return self.backend:hidden()
 	elseif hidden then
@@ -627,13 +616,11 @@ function app:hidden(hidden)
 end
 
 function app:unhide()
-	if not self:ver'OSX' then return end
-	return self.backend:unhide()
+	self.backend:unhide()
 end
 
 function app:hide()
-	if not self:ver'OSX' then return end
-	return self.backend:hide()
+	self.backend:hide()
 end
 
 --state/visibility -----------------------------------------------------------
@@ -656,6 +643,7 @@ end
 
 function window:hide()
 	self:_check()
+	if self:fullscreen() then return end
 	self.backend:hide()
 end
 
@@ -663,6 +651,7 @@ end
 
 function window:minimized()
 	self:_check()
+	assert(not self:parent(), 'child windows cannot be minimized')
 	return self.backend:minimized()
 end
 
@@ -925,6 +914,9 @@ function window:maxsize(w, h) --pass false to disable
 	if w == nil and h == nil then
 		return self.backend:get_maxsize()
 	else
+		assert(not self:maximizable(), 'a maximizable window cannot have maxsize')
+		assert(not self:fullscreenable(), 'a fullscreenable window cannot have maxsize')
+
 		--clamp to minsize to avoid undefined behavior in the backend
 		local minw, minh = self:minsize()
 		if w and minw then w = math.max(w, minw) end
@@ -1136,7 +1128,17 @@ function window:parent()
 	return self._parent
 end
 
-function window:children()
+function window:children(filter)
+	if filter then
+		assert(filter == '#', 'invalid argument')
+		local n = 0
+		for i,win in ipairs(self.app:windows()) do
+			if win:parent() == self then
+				n = n + 1
+			end
+		end
+		return n
+	end
 	local t = {}
 	for i,win in ipairs(self.app:windows()) do
 		if win:parent() == self then

@@ -1,6 +1,5 @@
 ---
 tagline:   native windows
-platforms: mingw32, mingw64, osx32, osx64
 ---
 
 <warn>NOTE: work-in-progress (to-be-released soon)</warn>
@@ -141,7 +140,7 @@ __frame flags__
 `win:transparent() -> t|f`							transparent flag
 __child windows__
 `win:parent() -> win|nil`							window's parent
-`win:children() -> {win1, ...}`					window's children
+`win:children() -> {win1, ...}`					child windows
 `win:sticky() -> t|f`								sticky flag
 __keyboard__
 `app:key(query) -> t|f`								get key pressed and toggle states
@@ -457,6 +456,10 @@ You can pass any combination of `x`, `y`, `w`, `h`, `cx`, `cy`, `cw`, `ch`
 as long as you pass the width and the height in one way or another.
 The position is optional and it defaults to OS-driven cascading.
 
+If the size is max-constrained by either `max_cw`, `max_ch`
+or `resizeable = false` then `maximizable = false` and
+`fullscreenable = false` must also be set.
+
 ### The window state
 
 The window state is the combination of multiple flags (`minimized`,
@@ -484,14 +487,15 @@ in the taskbar.
 
 The following defaults are different for child windows:
 
-  * `minimizable`: false
+  * `minimizable`: false (must be false)
   * `maximizable`: false
   * `fullscreenable`: false
   * `edgesnapping`: 'parent siblings screen'
   * `sticky`: true
 
 Child windows can't be minimizable because they don't appear in the taskbar
-(they minimize when their parent is minimized).
+(they minimize when their parent is minimized). Child windows remain
+visible if their parent is hidden (or is created hidden).
 
 ### `win:parent() -> win|nil`
 
@@ -864,23 +868,19 @@ Event: window was resized.
 
 Get the resizeable flag.
 
-### `win:minsize() -> cw, ch`
+### `win:minsize() -> cw, ch` <br> `win:minsize(cw, ch)` <br> `win:minsize(false)`
 
-Get the minimum client rect size.
-
-### `win:minsize(cw, ch)`
-
-Set the minimum client rect size.
+Get/set/clear the minimum client rect size.
 
 The window is resized if it was smaller than this size.
 
-### `win:maxsize() -> cw, ch` <br> `win:maxsize(cw, ch)`
+### `win:maxsize() -> cw, ch` <br> `win:maxsize(cw, ch)` <br> `win:maxsize(false)`
 
-Get/set the maximum client rect size.
+Get/set/clear the maximum client rect size.
 
 The window is resized if it was larger than this size.
 
-This constraint applies to the maximized state too except in Linux.
+Trying to set this on a maximizable or fullscreenable window raises an error.
 
 ## Edge snapping
 
@@ -950,6 +950,8 @@ Get the display's screen rectangle.
 ### `disp:desktop_rect() -> cx, cy, cw, ch` <br> `disp.cx, disp.cy, disp.cw, disp.ch`
 
 Get the display's desktop rectangle (screen minus any taskbars).
+
+__NOTE:__ This doesn't work in Linux for secondary monitors (it gives the screen rect).
 
 ### `app:displays_changed()`
 
@@ -1056,8 +1058,8 @@ In particular, you can use OpenGL on some views, while using bitmaps
 an antialiased 2D UI around a 3D scene as an alternative to drawing
 on the textures of orto-projected quads.
 
-> __NOTE:__ the window doesn't receive mouse move events while
-the mouse is over a view.
+__NOTE:__ The window doesn't receive mouse move events while the mouse
+is over a view.
 
 ### `win:views() -> {view1, ...}` <br> `win:views'#' -> n`
 
@@ -1497,17 +1499,6 @@ __NOTE:__ Apps not manifested for Windows 8.1 or Windows 10
 will report platforms greater than 6.2 as 6.2 (the [luajit] package
 comes with proper manifest files).
 
-## Extending
-
-### `nw.backends -> {os -> module_name}`
-
-Default backend modules for each OS.
-
-### `nw:init([backend_name])`
-
-Init the library with a specific backend. Calling this again
-with a different backend name raises an error.
-
 ## Common mistakes
 
 ### Assuming that calls are blocking
@@ -1522,10 +1513,12 @@ The real world is an unspecified mess. So __never, ever mix queries
 with commands__, i.e. never assume that after a state-changing function
 returns you can make any assumptions about the state of the objects involved.
 
-### Assuming that events fire in some specific order
+### Assuming that events fire in a specific order
 
-
-
+Do not assume that events fire in a specific order. Even if they appear to
+do so on one platform, that may not hold true on another platform.
+For instance, do not assume that app the activation event fires before
+the window activation event or that one should cause the other to fire.
 
 ### Creating windows in visible state
 
@@ -1561,5 +1554,4 @@ github issues and milestones.
     * clamp values to universally supported ranges.
     * make stable iterators with specified order or better yet, return arrays.
   * seek orthogonality, but do add convenience methods where useful.
-
 

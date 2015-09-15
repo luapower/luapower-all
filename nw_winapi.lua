@@ -148,7 +148,6 @@ function window:new(app, frontend, t)
 		resizeable = framed and t.resizeable, --must be off for frameless windows!
 		activable = t.activable,
 		receive_double_clicks = false, --we do our own double-clicking
-		remember_maximized_pos = true, --to emulate OSX behavior for maximized windows with minsize/maxsize constrains
 		own_dc = t.opengl and true or nil,
 	}
 
@@ -297,6 +296,12 @@ function Window:on_deactivate_app() --triggered after on_deactivate().
 	self.frontend.app:_backend_changed()
 end
 
+--state/app visibility -------------------------------------------------------
+
+function app:hidden() return false end
+function app:hide() end
+function app:unhide() end
+
 --state ----------------------------------------------------------------------
 
 function window:visible()
@@ -315,7 +320,6 @@ function window:show()
 end
 
 function window:hide()
-	if self:fullscreen() then return end --TODO: remove this after fixing OSX
 	self.win:hide() --sync call
 end
 
@@ -359,6 +363,7 @@ function window:shownormal()
 end
 
 function Window:on_pos_change(pos)
+	if not self.frontend then return end --early resize from setting constraints: ignore
 	self.frontend:_backend_changed()
 end
 
@@ -399,11 +404,6 @@ function window:enter_fullscreen()
 	local display = self:display() or self.app:active_display()
 	local dx, dy, dw, dh = display:screen_rect()
 	self.win.normal_rect = pack_rect(nil, dx, dy, dw, dh)
-
-	--center it if constrained and set it again, consistent with OSX.
-	local r = self.win.normal_rect
-	pack_rect(r, box2d.align(r.w, r.h, 'center', 'center', dx, dy, dw, dh))
-	self.win.normal_rect = r
 
 	--restore events, invalidate and show.
 	self._fullscreen = true
@@ -588,8 +588,11 @@ function Window:nw_frame_changing(how, rect)
 		--regardless of how the coordinates are adjusted by the user on each event.
 		--this is consistent with OSX and it feels better.
 		local m = winapi.Windows.cursor_pos
-		rect.x = m.x - self.nw_dx
-		rect.y = m.y - self.nw_dy
+		local w, h = rect.w, rect.h
+		rect.x1 = m.x - self.nw_dx
+		rect.y1 = m.y - self.nw_dy
+		rect.x2 = rect.x1 + w
+		rect.y2 = rect.y1 + h
 	end
 
 	pack_rect(rect, self.frontend:_backend_sizing('progress', how, unpack_rect(rect)))
@@ -636,6 +639,7 @@ function Window:on_moved()
 end
 
 function Window:on_resized(flag)
+	if not self.backend then return end --eary resize from setting constraints: ignore.
 	if flag == 'maximized' then
 		if self.nw_maximizing then return end
 		--frameless windows maximize to the entire screen, covering the taskbar. fix that.

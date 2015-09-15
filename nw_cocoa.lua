@@ -211,10 +211,6 @@ function window:new(app, frontend, t)
 		--self.nswin:setIgnoresMouseEvents(true) --make it click-through
 	end
 
-	if t.parent then
-		t.parent.backend.nswin:addChildWindow_ordered(self.nswin, objc.NSWindowAbove)
-	end
-
 	self._disabled = not t.enabled
 
 	--enable receiving events while moving and resizing.
@@ -330,8 +326,8 @@ function Window:windowWillClose()
 	end
 
 	--force-close child windows first to emulate Windows behavior.
-	if self:childWindows() then
-		for i,win in objc.ipairs(self:childWindows()) do
+	if self.frontend:children'#' > 0 then
+		for i,win in ipairs(self.frontend:children()) do
 			win:close(true)
 		end
 	end
@@ -468,6 +464,22 @@ end
 function window:show()
 	if self._visible then return end
 	if self:_fs_blocked() then return end
+
+	--hidden children are not added to the parent when the parent is shown,
+	--so they must be added when they are shown, but only if the parent is visible.
+	local parent = self.frontend:parent()
+	if parent and not parent:dead() and parent:visible() then
+		parent.backend.nswin:addChildWindow_ordered(self.nswin, objc.NSWindowAbove)
+	end
+
+	--add back visible child windows, removed on hide().
+	--not adding invisible children as that would make them visible automatically.
+	for i,win in ipairs(self.frontend:children()) do
+		if not win:dead() and win:visible() then
+			self.nswin:addChildWindow_ordered(win.backend.nswin, objc.NSWindowAbove)
+		end
+	end
+
 	if self._minimized then
 		--if it was minimized before hiding, minimize it back.
 		--orderBack() shows the window before minimizing it which sucks, but
@@ -486,11 +498,21 @@ end
 --NOTE: orderOut() is ignored on a minimized window (known bug from 2008).
 --NOTE: orderOut() is buggy: calling it before starting the message loop
 --results in a window that is not hidden and doesn't respond to mouse events.
+--NOTE: close() hides and removes all child windows.
 function window:hide()
 	if not self._visible then return end
 	if self:_fs_blocked() then return end
 	self._minimized = self.nswin:isMiniaturized()
 	self._hiding = true --disambiguating close() from hide() in windowWillClose() event.
+
+	--remove child windows manually to prevent them from being hidden
+	--along with the parent, consistent with Windows and Linux.
+	for i,win in ipairs(self.frontend:children()) do
+		if not win:dead() then
+			self.nswin:removeChildWindow(win.backend.nswin)
+		end
+	end
+
 	self.nswin:close() --NOTE: sync call? better be (all ops check the _visible flag)
 end
 
@@ -991,7 +1013,7 @@ function window:set_minsize(w, h)
 end
 
 local function clean(x)
-	return x ~= math.huge and x or nil
+	return x ~= 2^24 and x or nil
 end
 function window:get_maxsize()
 	local sz = self.nswin:contentMaxSize()
@@ -999,7 +1021,7 @@ function window:get_maxsize()
 end
 
 function window:set_maxsize(w, h)
-	self.nswin:setContentMaxSize(objc.NSMakeSize(w or math.huge, h or math.huge))
+	self.nswin:setContentMaxSize(objc.NSMakeSize(w or 2^24, h or 2^24))
 	self:_apply_constraints()
 end
 
@@ -1533,6 +1555,7 @@ function Window:keyDown(event)
 end
 
 function Window:insertText(s)
+	if not self.frontend or self.frontend:dead() then return end --this is NOT a delegate method!
 	local s = objc.tolua(s)
 	if s == '' then return end --dead key
 	--if s:byte(1) > 31 and s:byte(1) < 127 then --not a control key

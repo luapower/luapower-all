@@ -462,24 +462,6 @@ add('quit-quitting-before-closing', function()
 	rec{'quitting', 'closing1', 'closing2'}
 end)
 
---quit() fails if windows are created while quitting.
-add('quit-fails', function()
-	local rec = recorder()
-	local win = app:window(winpos())
-	function win:closed()
-		app:window(winpos())
-	end
-	app:autoquit(false)
-	app:runafter(0, function()
-		app:quit()
-		rec(app:window_count())
-		app:quit()
-		rec(app:window_count())
-	end)
-	app:run()
-	rec{1,0}
-end)
-
 --app:autoquit(true) works.
 add('quit-autoquit-app', function()
 	local rec = recorder()
@@ -515,6 +497,7 @@ add('quit-autoquit-window', function()
 end)
 
 --closing() and closed() are splitted out.
+--closed() happen in reverse creation order.
 add('quit-quitting-sequence', function()
 	local rec = recorder()
 	local win1 = app:window(winpos())
@@ -522,14 +505,14 @@ add('quit-quitting-sequence', function()
 	function app:quitting() rec'quitting' end
 	function win1:closing() rec'closing1' end
 	function win2:closing() rec'closing2' end
-	function win1:closed() rec'closed1' end
-	function win2:closed() rec'closed2' end
+	function win1:was_closed() rec'closed1' end
+	function win2:was_closed() rec'closed2' end
 	app:autoquit(false)
 	app:runafter(0, function()
 		app:quit()
 	end)
 	app:run()
-	rec{'quitting', 'closing1', 'closing2', 'closed1', 'closed2'}
+	rec{'quitting', 'closing1', 'closing2', 'closed2', 'closed1'}
 end)
 
 --quit() rejected because closing() rejected.
@@ -581,7 +564,7 @@ end)
 add('close-closed-not-dead', function()
 	local rec = recorder()
 	local win = app:window(winpos())
-	function win:closed()
+	function win:was_closed()
 		assert(not self:dead()) --not dead yet
 		rec'closed'
 	end
@@ -618,7 +601,7 @@ end)
 add('close-while-closed', function()
 	local rec = recorder()
 	local win = app:window(winpos())
-	function win:closed()
+	function win:was_closed()
 		self:close() --ignored because not dead yet
 		assert(not self:dead()) --still not dead
 		rec'closed'
@@ -649,10 +632,10 @@ add('close-parent-from-closed', function()
 	app:autoquit(false)
 	local win1 = app:window(winpos{title = 'win1'})
 	local win2 = app:window(winpos{title = 'win2', parent = win1})
-	function win1:closed()
+	function win1:was_closed()
 		print'win1 closed'
 	end
-	function win2:closed()
+	function win2:was_closed()
 		print'win2 closed'
 		win1:close()
 	end
@@ -667,8 +650,8 @@ add('close-children', function()
 	app:autoquit(false)
 	local win1 = app:window(winpos{title = 'win1'})
 	local win2 = app:window(winpos{title = 'win2', parent = win1})
-	function win1:closed() print'win1 closed' end
-	function win2:closed() print'win2 closed' end
+	function win1:was_closed() print'win1 closed' end
+	function win2:was_closed() print'win2 closed' end
 	win1:close()
 	app:runafter(0, function()
 		assert(win1:dead())
@@ -705,7 +688,8 @@ add('activation-app-activated', function()
 end)
 
 --the app is dactivated after the last window is hidden.
-add('activation-app-deactivated', function()
+--this is an interactive test because you have to start the app with it.
+add('check-activation-app-deactivated', function()
 	local rec = recorder()
 	function app:was_deactivated() rec'app-deactivated' end
 	local win = app:window(winpos())
@@ -766,13 +750,12 @@ add('check-activation-app-alert', activation_test())
 add('check-activation-app-info', activation_test'info')
 add('check-activation-app-force', activation_test'force')
 
---In Windows and Linux an app is not activated until the first window is shown
---while in OSX it is activated when app() is first called.
 --In Windows the app can be activated programatically even if there are no
---visible windows, but there must be at least one hidden window.
+--visible windows, but there must be at least one (hidden) window.
 --In OSX the app can always be activated even without windows (the main
 --menu is activated anyway).
---In Linux the app can't be activated if there isn't at least one visible window.
+--In Linux the app can't be activated if there isn't at least one visible
+--window (because there's no concept of apps in X really).
 --this is an interactive test: you must activate another app to see it.
 add('check-activation-app-activate-no-windows', function()
 	function app:was_activated() print'activated' end
@@ -824,20 +807,23 @@ end)
 
 add('app-hide', function()
 	local rec = recorder()
-	function app:did_hide() rec'hide' end
-	function app:did_unhide() rec'unhide' end
+	function app:was_hidden() rec'hide' end
+	function app:was_unhidden() rec'unhide' end
 	assert(not app:hidden())
-	app:hide()
-	sleep(0.1)
-	if nw:os'OSX' then
-		assert(app:hidden())
-	end
-	app:unhide()
-	sleep(0.1)
-	assert(not app:hidden())
-	if nw:os'OSX' then
-		rec{'hide', 'unhide'}
-	end
+	app:run(function()
+		app:sleep(0.2)
+		app:hide()
+		app:sleep(0.2)
+		if app:ver'OSX' then
+			assert(app:hidden())
+		end
+		app:unhide()
+		app:sleep(0.2)
+		assert(not app:hidden())
+		if app:ver'OSX' then
+			rec{'hide', 'unhide'}
+		end
+	end)
 end)
 
 --default initial properties -------------------------------------------------
@@ -897,7 +883,7 @@ local function state_string(win)
 		(win:maximized() and 'M' or ' ')..
 		(win:fullscreen() and 'F' or ' ')..
 		(win:active() and 'A' or ' ')..' | '..
-		(app:active() and 'A' or ' ')..' | '..
+		(app:active() and 'a' or ' ')..' | '..
 		(string.format('  (%4g x%4g)',w,h))..
 		(string.format('  (%4g, %4g :%4g x%4g)',fx,fy,fw,fh))..
 		(string.format('  (%4g, %4g :%4g x%4g)',nx,ny,nw,nh))
@@ -949,7 +935,7 @@ local function init_check(t, child)
 
 		app:autoquit(true)
 
-		local cwin, win, win2
+		local cwin, win
 
 		local function print_state(s, ...)
 			if not win or win:dead() then return end
@@ -974,8 +960,6 @@ local function init_check(t, child)
 		cwin.name = 'cwin'
 
 		t.parent = child and cwin or nil
-		t.min_cw = 100
-		t.min_ch = 100
 		t.cx = 500
 		t.cy = 300
 		t.cw = 700
@@ -988,13 +972,6 @@ local function init_check(t, child)
 
 			win = app:window(t)
 			win.name = 'win'
-
-			local w, h = win:client_size()
-			local w, h = math.floor((w-60)/2), h-40
-			local view1 = win:view{x = 20,      y = 20, w = w, h = h,
-				anchors = 'ltrb', visible = false}
-			local view2 = win:view{x = 20+w+20, y = 20, w = w, h = h,
-				anchors = 'trb', visible = false, opengl = true}
 
 			function cwin:keypress(key)
 				win:keypress(key)
@@ -1022,9 +999,6 @@ local function init_check(t, child)
 
 			function win:was_closed()         print_state'was_closed' end
 			function win:sizing(...)          print_state('  sizing', ...) end
-
-			--function view1:event(...) print('view1', ...) end
-			--function view2:event(...) print('view2', ...) end
 
 			local allow_close = true
 
@@ -1130,9 +1104,6 @@ local function init_check(t, child)
 					end)
 				elseif key == 'F1' then
 					help()
-				elseif key == 'F6' then
-					view1:visible(not view1:visible())
-					view2:visible(not view2:visible())
 				elseif key == 'enter' then
 					print(('-'):rep(100))
 					print('state             ', state_string(win))
@@ -1158,7 +1129,7 @@ local function init_check(t, child)
 					print('app autoquit      ', app:autoquit())
 					print''
 					print('display           ', pp.format(win:display()))
-					print('display_count     ', app:display_count())
+					print('displays"#"       ', app:displays'#')
 					print('main_display      ', pp.format(app:main_display()))
 					print('active_display    ', pp.format(app:active_display()))
 					print(('-'):rep(100))
@@ -1169,14 +1140,6 @@ local function init_check(t, child)
 				print_state('closing', ...)
 				return allow_close
 			end
-
-			--list all window methods
-			for k,v in pairs(getmetatable(win).__index) do
-				if type(k) == 'string' and not k:find'^_' then
-					--print(k)
-				end
-			end
-
 		end
 		create()
 		app:run()
@@ -1198,11 +1161,14 @@ add('check-disabled', init_check({enabled = false}))
 add('check-non-minimizable', init_check{minimizable = false})
 add('check-non-maximizable', init_check{maximizable = false})
 add('check-non-closeable', init_check{closeable = false})
-add('check-non-resizeable', init_check{resizeable = false}) --implies non-maximizable
+add('check-non-resizeable', init_check{resizeable = false}) --implies non-maximizable non-fullscreenable
 add('check-non-activable', init_check({activable = false, frame = 'toolbox'}, true))
---restriction combinations
+--this combination makes disabled buttons hidden rather than disabled
 add('check-non-minimizable-non-maximizable', init_check{minimizable = false, maximizable = false})
+--this combination shows no buttons
 add('check-non-minimizable-non-maximizable-non-closeable', init_check{minimizable = false, maximizable = false})
+--this combination allows maxsize()
+add('check-non-maximizable-non-fullscreenable', init_check{maximizable = false, fullscreenable = false})
 
 --other read-only properties
 add('check-topmost', init_check({topmost = true}))
@@ -1326,7 +1292,7 @@ local function state_test(t)
 						win[action](win)
 					end
 
-					if nw:os'Linux' then
+					if app:ver'Linux' then
 						--Linux backend does not have proper semantics for queued async operations
 						app:sleep(0.1)
 					end
@@ -1356,7 +1322,7 @@ local function state_test(t)
 						end
 						if events[event] > 1 then
 							--TODO: fix these problems in the Linux backend
-							if nw:os'Linux' then
+							if app:ver'Linux' then
 								print('\n\n\n\nWARNING multiple '..event..'\n\n\n\n')
 							else
 								error('multiple '..event)
@@ -1540,6 +1506,75 @@ for i,t in ipairs{
 
 	add('state-'..test_name, state_test(t))
 end
+
+--parent/child relationship --------------------------------------------------
+
+add('check-children', function()
+	local w1 = app:window(winpos{x = 100, y = 100, w = 500, h = 300})
+	local w2 = app:window(winpos{x = 200, y = 200, w = 500, h = 300, parent = w1})
+	function w2:closing()
+		print'w2 closing'
+	end
+	function w1:was_closed()
+		--w2:show()
+		--w2.backend.nswin:makeKeyAndOrderFront(nil)
+		print(w2:visible())
+	end
+	app:run()
+end)
+
+--hiding the parent ----------------------------------------------------------
+
+--check that a hidden parent results in a visible window that doesn't show on taskbar.
+--bonus: check that autoquit works on child windows.
+add('check-parent-hidden', function()
+	local win1 = app:window(winpos{visible = false})
+	local win2 = app:window(winpos{parent = win1, autoquit = true})
+	app:run()
+end)
+
+--check that hiding the parent results in a visible window that doesn't show on taskbar.
+add('check-parent-hide', function()
+	local win1 = app:window(winpos())
+	local win2 = app:window(winpos{parent = win1, autoquit = true})
+	app:run(function()
+		app:sleep(0.1) --for Linux
+		win1:hide()
+		app:sleep(true)
+	end)
+end)
+
+--check that showing back the parent preserves the parent-child relationship.
+add('check-parent-hide-show', function()
+	local win1 = app:window(winpos())
+	local x, y = win1:client_rect()
+	local win2 = app:window(winpos{x = x + 20, y = y + 20, parent = win1, autoquit = true})
+	app:run(function()
+		app:sleep(0.5)
+		win1:hide()
+		app:sleep(0.5)
+		win1:show()
+		app:sleep(true)
+	end)
+end)
+
+--sticky children ------------------------------------------------------------
+
+--children are sticky: they follow parent on move (but not on resize, maximize, etc).
+--interactive test: move the parent to see child moving too.
+add('check-children-sticky', function()
+	local win1 = app:window{x = 100, y = 100, w = 500, h = 200}
+	local win2 = app:window{x = 200, y = 130, w = 200, h = 300, parent = win1, sticky = true}
+	app:run()
+end)
+
+--children are not sticky: they don't follow parent on move or resize or maximize.
+--interactive test: move the parent to see child moving too.
+add('check-children-non-sticky', function()
+	local win1 = app:window{x = 100, y = 100, w = 500, h = 200}
+	local win2 = app:window{x = 200, y = 130, w = 200, h = 300, parent = win1, sticky = false}
+	app:run()
+end)
 
 --state/enabled --------------------------------------------------------------
 
@@ -1863,24 +1898,6 @@ add('pos-set-event', function()
 	app:run()
 end)
 
---stickiness -----------------------------------------------------------------
-
---children are sticky: they follow parent on move (but not on resize, maximize, etc).
---interactive test: move the parent to see child moving too.
-add('check-pos-children-sticky', function()
-	local win1 = app:window{x = 100, y = 100, w = 500, h = 200}
-	local win2 = app:window{x = 200, y = 130, w = 200, h = 300, parent = win1, sticky = true}
-	app:run()
-end)
-
---children are not sticky: they don't follow parent on move or resize or maximize.
---interactive test: move the parent to see child moving too.
-add('check-pos-children-nonsticky', function()
-	local win1 = app:window{x = 100, y = 100, w = 500, h = 200}
-	local win2 = app:window{x = 200, y = 130, w = 200, h = 300, parent = win1, sticky = false}
-	app:run()
-end)
-
 --edge snapping --------------------------------------------------------------
 
 --interactive test: move and resize windows around.
@@ -1901,9 +1918,13 @@ end)
 
 --resize the windows to see the constraints in effect.
 add('pos-minmax', function()
+app:run(function()
+
+	app:autoquit(false)
 
 	--check that initial constraints are set and the window size respects them.
-	local win = app:window{w = 800, h = 800, min_cw = 200, min_ch = 200, max_cw = 400, max_ch = 400}
+	local win = app:window{w = 800, h = 800, min_cw = 200, min_ch = 200, max_cw = 400, max_ch = 400,
+		maximizable = false, fullscreenable = false}
 
 	local minw, minh = win:minsize()
 	assert(minw == 200)
@@ -1927,6 +1948,7 @@ add('pos-minmax', function()
 	function win:was_resized() rec'resized' end
 
 	win:minsize(200, 200)
+	app:sleep(0.1)
 
 	rec{'resized'}
 
@@ -1941,13 +1963,14 @@ add('pos-minmax', function()
 	win:close()
 
 	--check that maxsize() is set and that it resizes the window.
-	local win = app:window{w = 800, h = 800}
+	local win = app:window{w = 800, h = 800, maximizable = false, fullscreenable = false}
 
 	local rec = recorder()
 	function win:sizing() rec'error' end
 	function win:was_resized() rec'resized' end
 
 	win:maxsize(400, 400)
+	app:sleep(0.1)
 
 	rec{'resized'}
 
@@ -1962,7 +1985,8 @@ add('pos-minmax', function()
 	win:close()
 
 	--check that initial partial constraints work too.
-	local win = app:window{w = 800, h = 100, max_cw = 400, min_ch = 200}
+	local win = app:window{w = 800, h = 100, max_cw = 400, min_ch = 200,
+		maximizable = false, fullscreenable = false}
 
 	local minw, minh = win:minsize()
 	assert(minw == nil)
@@ -1979,7 +2003,7 @@ add('pos-minmax', function()
 	win:close()
 
 	--check that runtime partial constraints work too.
-	local win = app:window{w = 100, h = 800}
+	local win = app:window{w = 100, h = 800, maximizable = false, fullscreenable = false}
 
 	win:minsize(200, nil)
 	local minw, minh = win:minsize()
@@ -1998,7 +2022,8 @@ add('pos-minmax', function()
 	win:close()
 
 	--frame_rect() is constrained too.
-	local win = app:window{w = 100, h = 100, min_cw = 200, max_cw = 500, min_ch = 200, max_ch = 500}
+	local win = app:window{w = 100, h = 100, min_cw = 200, max_cw = 500, min_ch = 200, max_ch = 500,
+		maximizable = false, fullscreenable = false}
 
 	win:frame_rect(nil, nil, 100, 100)
 	local w, h = win:client_size()
@@ -2013,7 +2038,8 @@ add('pos-minmax', function()
 	win:close()
 
 	--maximized state is constrained too (runtime).
-	local win = app:window{w = 100, h = 100, min_cw = 200, min_ch = 200, max_cw = 500, max_ch = 500}
+	local win = app:window{w = 100, h = 100, min_cw = 200, min_ch = 200, max_cw = 500, max_ch = 500,
+		maximizable = false, fullscreenable = false}
 	win:maximize()
 
 	local maxw, maxh = win:client_size()
@@ -2025,42 +2051,18 @@ add('pos-minmax', function()
 
 	win:close()
 
-	--maximized state is constrained too (init).
-	local win = app:window{w = 100, h = 100, min_cw = 200, min_ch = 200,
-		max_cw = 500, max_ch = 500, maximized = true}
-
-	local maxw, maxh = win:client_size()
-	assert(maxw == 500)
-	assert(maxh == 500)
-
-	--maximized() responds true even when constrained.
-	assert(win:maximized())
-
-	win:close()
-
-	--setting maxsize while maximized works: the window is resized.
-	--TODO: check that the position is preserved.
-	local win = app:window{x = 100, y = 100, w = 500, h = 500, maximized = true}
-	print(win:frame_rect())
-	win:maxsize(200, 200)
-	print(win:frame_rect())
-
-	local maxw, maxh = win:client_size()
-	assert(maxw == 200)
-	assert(maxh == 200)
-
-	local w, h = win:client_size()
-	assert(w == 200)
-	assert(h == 200)
-
 	--TODO: check that setting minsize/maxize inside sizing() event works.
 	--TODO: check that minsize is itself constrained to previously set maxsize and viceversa.
+
+	print'ok'
+end) --app:run()
 end)
 
 --setting maxsize > screen size constrains the window to screen size,
 --but the window can be resized to larger than screen size manually.
 add('pos-minmax-large-max', function()
-	local win = app:window{x = 100, y = 100, w = 10000, h = 10000, max_cw = 10000, max_ch = 10000}
+	local win = app:window{x = 100, y = 100, w = 10000, h = 10000, max_cw = 10000, max_ch = 10000,
+		maximizable = false, fullscreenable = false}
 	app:run()
 end)
 
@@ -2073,7 +2075,8 @@ end)
 
 --constraints apply to fullscreen mode too.
 add('pos-minmax-fullscreen', function()
-	local win = app:window(winpos{max_cw = 500, max_ch = 500})
+	local win = app:window(winpos{max_cw = 500, max_ch = 500,
+		maximizable = false, fullscreenable = false})
 	win:fullscreen(true)
 	app:run()
 end)
@@ -2169,7 +2172,7 @@ add('display-list', function()
 		end
 	end
 	assert(n > 0) --there must be at least 1 display
-	assert(n == app:display_count())
+	assert(n == app:displays'#')
 end)
 
 --main_display() returns a valid display.
@@ -2302,22 +2305,6 @@ add('transparent', function()
 	local win = app:window(winpos{frame = 'none', transparent = true})
 	assert(win:frame() == 'none')
 	assert(win:transparent())
-end)
-
---parent/child relationship --------------------------------------------------
-
-add('parent', function()
-	local w1 = app:window(winpos{x = 100, y = 100, w = 500, h = 300})
-	local w2 = app:window(winpos{x = 200, y = 200, w = 500, h = 300, parent = w1})
-	function w2:closing()
-		print'w2 closing'
-	end
-	function w1:closed()
-		--w2:show()
-		--w2.backend.nswin:makeKeyAndOrderFront(nil)
-		print(w2:visible())
-	end
-	app:run()
 end)
 
 --input events ---------------------------------------------------------------
@@ -2458,7 +2445,8 @@ end)
 
 --NOTE: this indirectly checks get/set rect() too when resizing the window.
 add('check-view-anchors', function()
-	local win = app:window{cw = 340, ch = 340, min_cw = 250, min_ch = 250, max_cw = 450, max_ch = 450}
+	local win = app:window{cw = 340, ch = 340, min_cw = 250, min_ch = 250, max_cw = 450, max_ch = 450,
+		maximizable = false, fullscreenable = false}
 	win:view{x = 10, y = 10, w = 100, h = 100,   anchors = 'tl'}
 	win:view{x = 120, y = 10, w = 100, h = 100,  anchors = 'tlr'}
 	win:view{x = 230, y = 10, w = 100, h = 100,  anchors = 'tr'}
@@ -2565,7 +2553,7 @@ add('menu', function()
 
 	local function setmenu()
 		local win = app:window(winpos{w = 500, h = 300})
-		local winmenu = nw:os'Windows' and win:menubar() or app:menubar()
+		local winmenu = app:ver'Windows' and win:menubar() or app:menubar()
 		local menu1 = app:menu()
 		menu1:add('Option1\tCtrl+G', function() print'Option1' end)
 		menu1:add('Option2', function() print'Option2' end)
@@ -2599,7 +2587,7 @@ add('menu', function()
 			end
 		end
 
-		assert(winmenu:item_count() == 3)
+		assert(winmenu:items'#' == 3)
 		assert(winmenu:get(1).action == menu1)
 		assert(winmenu:get(3, 'action') == menu2)
 		assert(#winmenu:items() == 3)
@@ -2763,8 +2751,8 @@ end)
 
 add('clipboard-files', function()
 	local files =
-		nw:os'OSX' and {'/home', '/na-file1', '/na-dir2/'} or
-		nw:os'Windows' and {'C:\\Windows', 'Q:\\na-file1', 'O:\\na-dir2\\'}
+		app:ver'OSX' and {'/home', '/na-file1', '/na-dir2/'} or
+		app:ver'Windows' and {'C:\\Windows', 'Q:\\na-file1', 'O:\\na-dir2\\'}
 	app:setclipboard(files, 'files')
 	assert(#app:clipboard() == 1)
 	assert(app:clipboard()[1] == 'files')
@@ -2835,98 +2823,6 @@ add('dragging', function()
 	end
 	app:run()
 end)
-
---xlib dev tests -------------------------------------------------------------
-
-add('xlib', function()
-
-	--app:autoquit(false)
-
-	local win1 = app:window{x = 12, y = 36, cw = 500, ch = 300,
-		title = 'Hello 1',
-		--resizeable = false,
-		--frame = 'none',
-		--transparent = true,
-		--min_cw = 200,
-		--min_ch = 200,
-		--max_cw = 600,
-		--max_ch = 400,
-		--resizeable = false,
-		--maximizable = false,
-		--minimizable = false,
-		--minimized = true,
-		--maximized = true,
-		--fullscreen = true,
-		visible = false,
-	}
-
-	function win1:repaint()
-		local bmp = self:bitmap()
-		pp(bmp)
-		local _, setpixel = require'bitmap'.pixel_interface(bmp)
-		for y=0,bmp.h-1 do
-			for x=0,bmp.w-1 do
-				setpixel(x, y, x + y, y, x, 150)
-			end
-		end
-		--ffi.fill(bmp.data, bmp.stride * 10, 0x80)
-	end
-	--win1:invalidate()
-	win1:show()
-
-	--[[
-	app:runevery(2, function()
-		local mw, mh = win1:maxsize()
-		mw = mw - 10
-		mh = mh - 10
-		win1:maxsize(mw, mh)
-		]]
-		--if win1:minimized() then win1:show() end
-
-		--win1:fullscreen(not win1:fullscreen())
-		--[[
-		if not win1:maximized() then
-			win1:maximize()
-		else
-			win1:restore()
-		end
-		--win1:fullscreen(not win1:fullscreen())
-	end)
-	]]
-	--local win2 = app:window{x = 20, y = 40, cw = 300, ch = 200, parent = win1}
-	--function app:event(...) print('app', ...) end
-	--function win1:event(...) print('win1', ...) end
-	--function win2:event(...) print('win2', ...) end
-
-	local win2 = app:window{cw = 500, ch = 300}
-
-	--[[
-	app:runevery(0, function()
-		if win1:minimized() then
-			win1:restore()
-			assert(not win1:minimized())
-			print'restored'
-		else
-			win1:minimize()
-			assert(win1:minimized())
-			print'minimized'
-		end
-
-		if win2:minimized() then
-			win2:restore()
-			assert(not win2:minimized())
-			print'restored'
-		else
-			win2:minimize()
-			assert(win2:minimized())
-			print'minimized'
-		end
-	end)
-	]]
-
-	app:run()
-end)
-
 
 --run tests ------------------------------------------------------------------
 
