@@ -2140,6 +2140,19 @@ function view:hide()
 	self.nsview:setHidden(true)
 end
 
+function view:to_screen(x, y) --OSX 10.7+
+	local p = self.nsview:convertPoint_toView(objc.NSMakePoint(x, y), nil)
+	x, y = flip_screen_rect(nil, unpack_nsrect(self.window.nswin:convertRectToScreen(objc.NSMakeRect(p.x, p.y, 0, 0))))
+	return x, y
+end
+
+function view:to_client(x, y) --OSX 10.7+
+	y = primary_screen_h() - y
+	x, y = unpack_nsrect(self.window.nswin:convertRectFromScreen(objc.NSMakeRect(x, y, 0, 0)))
+	local p = self.nsview:convertPoint_fromView(objc.NSMakePoint(x, y), nil)
+	return p.x, p.y
+end
+
 view.invalidate = window.invalidate
 view.bitmap = window.bitmap
 view.gl = window.gl

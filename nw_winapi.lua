@@ -1538,6 +1538,9 @@ function View:on_resized()
 	self.frontend:_backend_changed()
 end
 
+view.to_screen = window.to_screen
+view.to_client = window.to_client
+
 glue.update(view, mouse, rendering)
 glue.update(View, Mouse, Rendering)
 

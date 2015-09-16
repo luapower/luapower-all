@@ -798,15 +798,13 @@ window:_property'enabled'
 --convert point in client space to screen space.
 function window:to_screen(x, y)
 	self:_check()
-	x, y = self.backend:to_screen(x, y)
-	return x, y
+	return self.backend:to_screen(x, y)
 end
 
 --convert point in screen space to client space.
 function window:to_client(x, y)
 	self:_check()
-	x, y = self.backend:to_client(x, y)
-	return x, y
+	return self.backend:to_client(x, y)
 end
 
 --frame rect for a frame type and client rectangle in screen coordinates.
@@ -1528,6 +1526,11 @@ function view:_backend_changed()
 	end
 	self._rect = {x1, y1, w1, h1}
 end
+
+--positioning
+
+view.to_screen = window.to_screen
+view.to_client = window.to_client
 
 --mouse
 

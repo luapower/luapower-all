@@ -96,12 +96,12 @@ __window state__
 `app:changed(old_state, new_state)`				event: app state changed
 `win:enabled(t|f) /-> t|f`							get/set window enabled flag
 __client/screen conversion__
-`win:to_screen(x, y) -> x, y`						client space -> screen space conversion
-`win:to_client(x, y) -> x, y`						screen space -> client space conversion
+`win/view:to_screen(x, y) -> x, y`				client space -> screen space conversion
+`win/view:to_client(x, y) -> x, y`				screen space -> client space conversion
 __frame/client conversion__
+`app:frame_extents(...) -> ...`					frame extents for a frame type
 `app:client_to_frame(...) -> ...`				client rect -> window frame rect conversion
 `app:frame_to_client(...) -> ...`				window frame rect -> client rect conversion
-`app:frame_extents(...) -> ...`					frame extents for a frame type
 __size and position__
 `win:frame_rect(x,y,w,h) /-> x,y,w,h`			get/set frame rect in current state
 `win:normal_frame_rect(x,y,w,h) /-> x,y,w,h`	get/set frame rect in normal state
@@ -683,7 +683,7 @@ Check if a window is visible (note: that includes minimized).
 
 ### `win:visible(t|f)`
 
-Call `show()` or `hide()` to change the window's visibility.
+Calls `show()` or `hide()` to change the window's visibility.
 
 ### `win:was_shown()` <br> `win:was_hidden()`
 
@@ -793,15 +793,20 @@ __NOTE:__ This [doesn't work](https://github.com/luapower/nw/issues/25) on Linux
 
 ## Client/screen conversion
 
-### `win:to_screen(x, y) -> x, y`
+### `win/view:to_screen(x, y) -> x, y`
 
-Convert a point from the window's client space to screen space.
+Convert a point from the client space to screen space.
 
-### `win:to_client(x, y) -> x, y`
+### `win/view:to_client(x, y) -> x, y`
 
-Convert a point from screen space to the window's client space.
+Convert a point from screen space to client space.
 
 ## Frame/client conversion
+
+### `app:frame_extents(frame, has_menu) -> left, top, right, bottom`
+
+Get the frame extents for a certain frame type.
+If `has_menu` is true, then the window also has a menu.
 
 ### `app:client_to_frame(frame, has_menu, x, y, w, h) -> x, y, w, h`
 
@@ -812,10 +817,6 @@ frame type. If `has_menu` is true, then the window also has a menu.
 
 Given a frame rectangle, return the client rectangle for a certain
 frame type. If `has_menu` is true, then the window also has a menu.
-
-### `app:frame_extents(frame, has_menu) -> left, top, right, bottom`
-
-Get the frame extents for a certain frame type.
 
 ## Size and position
 
@@ -872,15 +873,18 @@ Get the resizeable flag.
 
 Get/set/clear the minimum client rect size.
 
-The window is resized if it was smaller than this size.
+The constraint can be applied to one dimension only by passing false or nil
+for the other dimension. The window is resized if it was smaller than this size.
+The size is clamped to maxsize if that is set.
 
 ### `win:maxsize() -> cw, ch` <br> `win:maxsize(cw, ch)` <br> `win:maxsize(false)`
 
 Get/set/clear the maximum client rect size.
 
-The window is resized if it was larger than this size.
-
-Trying to set this on a maximizable or fullscreenable window raises an error.
+The constraint can be applied to one dimension only by passing false or nil
+for the other dimension. The window is resized if it was larger than this size.
+The size is clamped to minsize if that is set. Trying to set this on a
+maximizable or fullscreenable window raises an error.
 
 ## Edge snapping
 
@@ -1527,6 +1531,15 @@ really create windows with `visible = false`, set up all the event handlers
 on them and then call `win:show()`, otherwise you will not catch any events
 that trigger before you set up the event handlers (sometimes that includes
 the `repaint()` event so you will be showing a non-painted window).
+
+### Hitting undefined behavior
+
+One of the goals of this library is to reduce undefined behavior, but there
+will always be corner cases that are not covered. If your app behaves
+differently when ported to another platform, please file up a bug report.
+Even for contradictory situations (like seetting a minimum size constraint
+that is larger than the maxium size constraint) there should be a single
+answer for all platforms, even if that answer is arbitrary.
 
 ## Getting Involved
 

@@ -1233,18 +1233,18 @@ local function state_test(t)
 				initial_state = glue.update(parse_initial_state_string(t[1][1] or ''), t[1])
 			end
 
+			--create a window
+			local win = app:window(winpos(initial_state))
+
 			--catch events
 			local events = {}
-			function initial_state:event(event_name)
+			function win:event(event_name)
 				local t1 = time.clock()
 				print(string.format('   %4dms | %-5s | EVENT: %s', (t1 - t0) * 1000, state_string(self), event_name))
 				t0 = t1
 				events[#events+1] = event_name
 				events[event_name] = (events[event_name] or 0) + 1
 			end
-
-			--create a window
-			local win = app:window(winpos(initial_state))
 
 			--wait for the window to get to its initial state
 			waitfor(function()
@@ -1656,22 +1656,27 @@ end)
 
 --positioning/screen-client conversions --------------------------------------
 
---to_screen() and to_client() conversions work.
-add('pos-conversions', function()
-	local win = app:window{x = 100, y = 100, w = 100, h = 100, visible = false}
-	local x, y, w, h = win:to_screen(100, 100, 100, 100)
-	print(x, y, w, h)
-	assert(x >= 200 and x <= 250)
-	assert(y >= 200 and y <= 250)
-	assert(w == 100)
-	assert(h == 100)
-	local x, y, w, h = win:to_client(x, y, w, h)
-	assert(x == 100)
-	assert(y == 100)
-	assert(w == 100)
-	assert(h == 100)
-	print'ok'
-end)
+--to_screen() and to_screen() conversions work.
+local function pos_conv_test(visible)
+	return function()
+		app:run(function()
+			local win = app:window{cx = 100, cy = 100, cw = 100, ch = 100, visible = visible}
+			app:sleep(0.1)
+			print(win:client_rect())
+			print(win:frame_rect())
+			app:sleep(0.1)
+			local x, y = win:to_screen(100, 100)
+			assert(x == 200)
+			assert(y == 200)
+			local x, y = win:to_client(x, y)
+			assert(x == 100)
+			assert(y == 100)
+			print'ok'
+		end)
+	end
+end
+add('pos-conversions', pos_conv_test(true))
+add('pos-conversions-hidden', pos_conv_test(false))
 
 --positioning ----------------------------------------------------------------
 
@@ -1683,7 +1688,7 @@ add('pos-init-default', function()
 	print('client_rect       ', win:client_rect())
 end)
 
---test that window has a set position before being shown.
+--test that window has the specified position before being shown.
 --note how the frame rect is wrong in Linux before the window is shown.
 --did I mention that X is a piece of garbage?
 add('pos-init-default-pos', function()
@@ -1964,6 +1969,7 @@ app:run(function()
 
 	--check that maxsize() is set and that it resizes the window.
 	local win = app:window{w = 800, h = 800, maximizable = false, fullscreenable = false}
+	app:sleep(0.1)
 
 	local rec = recorder()
 	function win:sizing() rec'error' end
@@ -1987,6 +1993,7 @@ app:run(function()
 	--check that initial partial constraints work too.
 	local win = app:window{w = 800, h = 100, max_cw = 400, min_ch = 200,
 		maximizable = false, fullscreenable = false}
+	app:sleep(0.1)
 
 	local minw, minh = win:minsize()
 	assert(minw == nil)
@@ -2006,11 +2013,13 @@ app:run(function()
 	local win = app:window{w = 100, h = 800, maximizable = false, fullscreenable = false}
 
 	win:minsize(200, nil)
+	app:sleep(0.1)
 	local minw, minh = win:minsize()
 	assert(minw == 200)
 	assert(minh == nil)
 
 	win:maxsize(nil, 400)
+	app:sleep(0.1)
 	local maxw, maxh = win:maxsize()
 	assert(maxw == nil)
 	assert(maxh == 400)
@@ -2026,41 +2035,26 @@ app:run(function()
 		maximizable = false, fullscreenable = false}
 
 	win:frame_rect(nil, nil, 100, 100)
+	app:sleep(0.1)
 	local w, h = win:client_size()
 	assert(w == 200)
 	assert(h == 200)
 
 	win:frame_rect(nil, nil, 600, 600)
+	app:sleep(0.1)
 	local w, h = win:client_size()
 	assert(w == 500)
 	assert(h == 500)
 
 	win:close()
-
-	--maximized state is constrained too (runtime).
-	local win = app:window{w = 100, h = 100, min_cw = 200, min_ch = 200, max_cw = 500, max_ch = 500,
-		maximizable = false, fullscreenable = false}
-	win:maximize()
-
-	local maxw, maxh = win:client_size()
-	assert(maxw == 500)
-	assert(maxh == 500)
-
-	--maximized() responds true even when constrained.
-	assert(win:maximized())
-
-	win:close()
-
 	--TODO: check that setting minsize/maxize inside sizing() event works.
 	--TODO: check that minsize is itself constrained to previously set maxsize and viceversa.
-
-	print'ok'
 end) --app:run()
 end)
 
 --setting maxsize > screen size constrains the window to screen size,
 --but the window can be resized to larger than screen size manually.
-add('pos-minmax-large-max', function()
+add('check-pos-minmax-large-max', function()
 	local win = app:window{x = 100, y = 100, w = 10000, h = 10000, max_cw = 10000, max_ch = 10000,
 		maximizable = false, fullscreenable = false}
 	app:run()
@@ -2068,16 +2062,8 @@ end)
 
 --setting minsize > screen size works.
 --it's buggy/slow on both Windows and OSX for very large sizes.
-add('pos-minmax-large-min', function()
+add('check-pos-minmax-large-min', function()
 	local win = app:window{x = 100, y = 100, w = 10000, h = 10000, min_cw = 10000, min_ch = 10000}
-	app:run()
-end)
-
---constraints apply to fullscreen mode too.
-add('pos-minmax-fullscreen', function()
-	local win = app:window(winpos{max_cw = 500, max_ch = 500,
-		maximizable = false, fullscreenable = false})
-	win:fullscreen(true)
 	app:run()
 end)
 
@@ -2461,6 +2447,26 @@ add('check-view-anchors', function()
 	end
 	app:run()
 end)
+
+--to_screen() and to_screen() conversions work.
+local function view_pos_conv_test(visible)
+	return function()
+		app:run(function()
+			local win = app:window{cx = 100, cy = 100, w = 300, h = 300, visible = visible}
+			app:sleep(0.1)
+			local view = win:view{x = 100, y = 100, w = 100, h = 100}
+			local x, y = view:to_screen(100, 100)
+			assert(x == 300)
+			assert(y == 300)
+			local x, y = view:to_client(x, y)
+			assert(x == 100)
+			assert(y == 100)
+			print'ok'
+		end)
+	end
+end
+add('view-pos-conversions', view_pos_conv_test(true))
+add('view-pos-conversions-hidden', view_pos_conv_test(false))
 
 --rendering ------------------------------------------------------------------
 

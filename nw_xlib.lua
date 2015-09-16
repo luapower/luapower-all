@@ -2,7 +2,7 @@
 --native windows - Xlib backend.
 --Written by Cosmin Apreutesei. Public domain.
 
---Thanks to X authors for making this a torturous coding experience.
+--A desktop made by Unix people is Satan's gift to us.
 
 local ffi   = require'ffi'
 local bit   = require'bit'
@@ -255,28 +255,27 @@ function window:new(app, frontend, t)
 	--store window's depth for put_image()
 	self._depth = attrs.depth or xlib.screen.root_depth
 
-	--get client size from frame size
-	local _, _, cw, ch = app:frame_to_client(t.frame, t.menu, 0, 0, t.w, t.h)
-
 	--store and apply constraints to client size
 	self._min_cw = t.min_cw
 	self._min_ch = t.min_ch
 	self._max_cw = t.max_cw
 	self._max_ch = t.max_ch
+
+	local cx, cy, cw, ch = app:frame_to_client(t.frame, t.menu, t.x or 0, t.y or 0, t.w, t.h)
 	cw, ch = self:__constrain(cw, ch)
 	attrs.width = cw
 	attrs.height = ch
 
 	--set position (optional: t.x and/or t.y can be missing)
-	attrs.x = t.x
-	attrs.y = t.y
+	attrs.x = t.x and cx
+	attrs.y = t.y and cy
 
 	self.win = xlib.create_window(attrs)
 	xlib.flush() --lame: XSynchronize() didn't do it's job here
 
 	--NOTE: WMs ignore the initial position unless we set WM_NORMAL_HINTS too
 	--(values don't matter, but we're using the same t.x and t.y just in case).
-	local hints = {x = t.x, y = t.y}
+	local hints = {x = t.x and cx, y = t.y and cy}
 
 	if not t.resizeable then
 		--this is how X knows that a window is non-resizeable (there's no flag).
@@ -337,6 +336,7 @@ function window:new(app, frontend, t)
 
 	--flag to mask off window's reported state while the window is unmapped.
 	self._hidden = true
+	self._init_pos = {x = t.x, y = t.y}
 
 	--state flags to be reported while the window is hidden.
 	self._minimized = t.minimized or false
@@ -506,6 +506,12 @@ function window:show()
 		self:set_frame_rect(unpack(self._normal_rect))
 	end
 
+	--gosh, this is more comments than code already... yes, we fix Unity again.
+	if self._init_pos then
+		xlib.config(self.win, self._init_pos)
+		self._init_pos = nil
+	end
+
 	--set the _NET_WM_STATE property before mapping the window.
 	--later on we have to use change_net_wm_state() to change these values.
 	xlib.set_net_wm_state(self.win, {
@@ -528,7 +534,10 @@ function window:hide()
 	self._fullscreen = self:fullscreen()
 	self._hiding = true --signal intent to hide in subsequent events
 
+	local x, y = self:to_screen(0, 0)
 	xlib.withdraw(self.win) --async operation
+	--move it back to position because Unity moves it at the outer coordinates!
+	xlib.config(self.win, {x = x, y = y})
 end
 
 function evprop.WM_STATE(e)
@@ -677,11 +686,13 @@ end
 --positioning/conversions ----------------------------------------------------
 
 function window:to_screen(x, y)
-	return xlib.translate_coords(self.win, xlib.screen.root, x, y)
+	local x, y = xlib.translate_coords(self.win, xlib.screen.root, x, y)
+	return x, y
 end
 
 function window:to_client(x, y)
-	return xlib.translate_coords(xlib.screen.root, self.win, x, y)
+	local x, y = xlib.translate_coords(xlib.screen.root, self.win, x, y)
+	return x, y
 end
 
 local function unmapped_frame_extents(win)
@@ -1554,6 +1565,9 @@ end
 function view:free()
 	xlib.destroy_window(self.win)
 end
+
+view.to_screen = window.to_screen
+view.to_client = window.to_client
 
 view.bitmap = window.bitmap
 view._init_opengl = window._init_opengl
