@@ -1085,6 +1085,7 @@ Create a view (fields of _`t`_ below):
 * `anchors`				- resizing anchors (default: 'lt'); can be 'ltrb'
 * `opengl`				- enable and [configure OpenGL](#winviewgl---gl) on the view.
 
+__NOTE:__ The width and height are clamped to minimum 1.
 
 ### `view:free()`
 

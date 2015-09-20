@@ -517,12 +517,6 @@ function window:set_frame_rect(x, y, w, h)
 	else
 		self.win.rect = pack_rect(nil, x, y, w, h)
 	end
-	--[[
-	if self:visible() and self:maximized() then
-		self:shownormal()
-	else
-	end
-	]]
 	self.frontend:_backend_changed()
 end
 

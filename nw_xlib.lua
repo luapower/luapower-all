@@ -1472,8 +1472,8 @@ function view:new(window, frontend, t)
 		depth = window._depth,
 		x = t.x,
 		y = t.y,
-		width = w,
-		height = h,
+		width = t.w,
+		height = t.h,
 		parent = window.win,
 		--say that we don't want the server to keep a pixmap for the window.
 		background_pixmap = 0,

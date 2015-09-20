@@ -203,7 +203,10 @@ function app:run(func)
 	--schedule to run a function asynchronously.
 	if func then
 		local proc = coroutine.wrap(function()
-			func()
+			local ok, err = xpcall(func, debug.traceback)
+			if not ok then
+				error(err, 2)
+			end
 			coroutine.yield(password) --proc finished
 		end)
 		local was_running = self._running
@@ -353,6 +356,9 @@ local defaults = {
 	minimized = false,
 	maximized = false,
 	enabled = true,
+	--positioning
+	min_cw = 1,
+	min_ch = 1,
 	--frame
 	title = '',
 	transparent = false,
@@ -480,6 +486,10 @@ function window:_new(app, backend_class, useropt)
 	--either cascading or fixating the position, there's no mix.
 	assert((not opt.x) == (not opt.y),
 		'both x (or cx) and y (or cy) or none expected')
+
+	--avoid zero client sizes
+	opt.min_cw = math.max(opt.min_cw, 1)
+	opt.min_ch = math.max(opt.min_ch, 1)
 
 	self = glue.update({app = app}, self)
 
@@ -807,8 +817,8 @@ end
 
 local function unframe_rect(x, y, w, h, w1, h1, w2, h2)
 	local x, y, w, h = frame_rect(x, y, w, h, -w1, -h1, -w2, -h2)
-	w = math.max(0, w) --avoid negative sizes
-	h = math.max(0, h)
+	w = math.max(1, w) --avoid zero client sizes
+	h = math.max(1, h)
 	return x, y, w, h
 end
 
@@ -908,11 +918,14 @@ function window:minsize(w, h) --pass false to disable
 	if w == nil and h == nil then
 		return self.backend:get_minsize()
 	else
-		--clamp to maxsize to avoid undefined behavior in the backend
+		--clamp to maxsize to avoid undefined behavior in the backend.
 		local maxw, maxh = self:maxsize()
 		if w and maxw then w = math.min(w, maxw) end
 		if h and maxh then h = math.min(h, maxh) end
-		self.backend:set_minsize(w or nil, h or nil)
+		--clamp to 1 to avoid zero client sizes.
+		w = math.max(1, w or 0)
+		h = math.max(1, h or 0)
+		self.backend:set_minsize(w, h)
 	end
 end
 
@@ -1398,8 +1411,8 @@ function view:_new(window, backend_class, useropt)
 	opt.opengl = opengl_options(useropt.opengl)
 
 	assert(opt.x and opt.y and opt.w and opt.h, 'x, y, w, h expected')
-	opt.w = math.max(0, opt.w)
-	opt.h = math.max(0, opt.h)
+	opt.w = math.max(1, opt.w) --avoid zero sizes
+	opt.h = math.max(1, opt.h)
 
 	local self = glue.update({
 		window = window,
@@ -1464,8 +1477,8 @@ function view:rect(x, y, w, h)
 		if not (x and y and w and h) then
 			x, y, w, h = override_rect(x, y, w, h, self.backend:get_rect())
 		end
-		w = math.max(0, w)
-		h = math.max(0, h)
+		w = math.max(1, w) --avoid zero sizes
+		h = math.max(1, h)
 		self.backend:set_rect(x, y, w, h)
 	else
 		return self.backend:get_rect()

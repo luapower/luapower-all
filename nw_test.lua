@@ -1621,17 +1621,17 @@ add('pos-frame-to-client', function()
 	assert(w >= cw)
 	assert(h >= ch)
 
-	--the minimum client rect for a zero-sized frame rect is zero-sized (not negative).
+	--the minimum client rect for a zero-sized frame rect is 1.
 	local cx, cy, cw, ch = app:frame_to_client('normal', false, 0, 0, 0, 0)
-	assert(cw == 0)
-	assert(ch == 0)
+	assert(cw == 1)
+	assert(ch == 1)
 
-	--if no frame, frame rect and client rect match, even at zero size.
+	--if no frame, frame rect and client rect match, even at size 1.
 	local cx, cy, cw, ch = app:frame_to_client('none', false, 0, 0, 0, 0)
 	assert(cx == 0)
 	assert(cy == 0)
-	assert(cw == 0)
-	assert(ch == 0)
+	assert(cw == 1)
+	assert(ch == 1)
 
 	print'ok'
 end)
@@ -1938,7 +1938,7 @@ app:run(function()
 	app:sleep(0.1)
 
 	local minw, minh = win:minsize()
-	assert(minw == nil)
+	assert(minw == 1)
 	assert(minh == 200)
 
 	local maxw, maxh = win:maxsize()
@@ -1958,7 +1958,7 @@ app:run(function()
 	app:sleep(0.1)
 	local minw, minh = win:minsize()
 	assert(minw == 200)
-	assert(minh == nil)
+	assert(minh == 1)
 
 	win:maxsize(nil, 400)
 	app:sleep(0.1)
@@ -2373,7 +2373,7 @@ end)
 
 --NOTE: this indirectly checks get/set rect() too when resizing the window.
 add('check-view-anchors', function()
-	local win = app:window{cw = 340, ch = 340, min_cw = 250, min_ch = 250, max_cw = 450, max_ch = 450,
+	local win = app:window{cw = 340, ch = 340, min_cw = 150, min_ch = 150, max_cw = 450, max_ch = 450,
 		maximizable = false, fullscreenable = false}
 	win:view{x = 10, y = 10, w = 100, h = 100,   anchors = 'tl'}
 	win:view{x = 120, y = 10, w = 100, h = 100,  anchors = 'tlr'}
