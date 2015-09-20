@@ -905,10 +905,10 @@ local function init_check(t, child)
 	shift+G  fullscreen off
 	esc      restore
 	D        shownormal
-	A        activate win1
+	A        activate cwin
 	B        activate win
-	Z        resize+
 	F9       activate app after 2s
+	Z        resize+
 	X        resize-
 	shift+Z  resize+ (normal rect)
 	shift+X  resize- (normal rect)
@@ -994,8 +994,10 @@ local function init_check(t, child)
 			function win:was_hidden()         print_state'  was_hidden' end
 			function win:was_activated()      print_state'    was_activated' end
 			function win:was_deactivated()    print_state'    was_deactivated' end
-			function win:was_resized(...)     print_state('      was_resized', ...) end
-			function win:was_moved(...)       print_state('      was_moved', ...) end
+			function win:frame_was_resized(...)      print_state('      frame_was_resized', ...) end
+			function win:frame_was_moved(...)        print_state('      frame_was_moved', ...) end
+			function win:client_was_resized(...)     print_state('      client_was_resized', ...) end
+			function win:client_was_moved(...)       print_state('      client_was_moved', ...) end
 
 			function win:was_closed()         print_state'was_closed' end
 			function win:sizing(...)          print_state('  sizing', ...) end
@@ -1041,7 +1043,7 @@ local function init_check(t, child)
 				elseif key == 'X' or key == 'Z' then
 					local ofs = key == 'Z' and 10 or -10
 					if self.app:key'shift' then
-						win:normal_frame_rect(box2d.offset(ofs, win:normal_frame_rect()))
+						win:client_rect(box2d.offset(ofs, win:frame_rect()))
 					else
 						win:frame_rect(box2d.offset(ofs, win:frame_rect()))
 					end
@@ -1595,33 +1597,19 @@ end)
 --positioning/app-level frame-client conversions -----------------------------
 
 add('pos-client-to-frame', function()
-	local cx, cy, cw, ch = 100, 200, 300, 400
-
-	local x, y, w, h = app:client_to_frame('normal', false, cx, cy, cw, ch)
-	assert(x <= cx)
-	assert(y <= cy)
-	assert(w >= cw)
-	assert(h >= ch)
-
-	local x, y, w, h = app:client_to_frame('none', false, cx, cy, cw, ch)
-	assert(x == cx)
-	assert(y == cy)
-	assert(w == cw)
-	assert(h == ch)
-
-	--the minimum frame rect for a zero-sized client rect is not entirely correct.
-	--in practice there's a minimum width on the titlebar but we don't get that.
-	local x, y, w, h = app:client_to_frame('normal', false, 0, 0, 0, 0)
-	print('min. frame rect:   ', x, y, w, h)
-
-	--if no frame, frame rect and client rect match, even at zero size.
-	local x, y, w, h = app:client_to_frame('none', false, 0, 0, 0, 0)
-	assert(x == 0)
-	assert(y == 0)
-	assert(w == 0)
-	assert(h == 0)
-
-	print'ok'
+	local function test_frame(frame, has_menu)
+		local cx, cy, cw, ch = 100, 200, 300, 400
+		local x, y, w, h = app:client_to_frame(frame, has_menu, cx, cy, cw, ch)
+		assert(x <= cx)
+		assert(y <= cy)
+		assert(w >= cw)
+		assert(h >= ch)
+		print(frame, has_menu, '', cx, cy, cw, ch, '->', x, y, w, h)
+	end
+	for _,frame in ipairs{'normal', 'toolbox', 'none'} do
+		test_frame(frame, false)
+		test_frame(frame, true)
+	end
 end)
 
 add('pos-frame-to-client', function()
@@ -1632,12 +1620,6 @@ add('pos-frame-to-client', function()
 	assert(y <= cy)
 	assert(w >= cw)
 	assert(h >= ch)
-
-	local cx, cy, cw, ch = app:frame_to_client('none', false, x, y, w, h)
-	assert(x == cx)
-	assert(y == cy)
-	assert(w == cw)
-	assert(h == ch)
 
 	--the minimum client rect for a zero-sized frame rect is zero-sized (not negative).
 	local cx, cy, cw, ch = app:frame_to_client('normal', false, 0, 0, 0, 0)
@@ -1654,83 +1636,11 @@ add('pos-frame-to-client', function()
 	print'ok'
 end)
 
---positioning/screen-client conversions --------------------------------------
+--positioning/init -----------------------------------------------------------
 
---to_screen() and to_screen() conversions work.
-local function pos_conv_test(visible)
-	return function()
-		app:run(function()
-			local win = app:window{cx = 100, cy = 100, cw = 100, ch = 100, visible = visible}
-			app:sleep(0.1)
-			print(win:client_rect())
-			print(win:frame_rect())
-			app:sleep(0.1)
-			local x, y = win:to_screen(100, 100)
-			assert(x == 200)
-			assert(y == 200)
-			local x, y = win:to_client(x, y)
-			assert(x == 100)
-			assert(y == 100)
-			print'ok'
-		end)
-	end
-end
-add('pos-conversions', pos_conv_test(true))
-add('pos-conversions-hidden', pos_conv_test(false))
-
---positioning ----------------------------------------------------------------
-
---test that window has a default position before being shown.
-add('pos-init-default', function()
-	local win = app:window{w = 300, h = 200, visible = false}
-	print('normal_frame_rect ', win:normal_frame_rect())
-	print('frame_rect        ', win:frame_rect())
-	print('client_rect       ', win:client_rect())
-end)
-
---test that window has the specified position before being shown.
---note how the frame rect is wrong in Linux before the window is shown.
---did I mention that X is a piece of garbage?
-add('pos-init-default-pos', function()
-	local win = app:window{x = 100, y = 100, w = 300, h = 200, visible = false}
-	print('normal_frame_rect ', win:normal_frame_rect())
-	print('frame_rect        ', win:frame_rect())
-	print('client_rect       ', win:client_rect())
-	app:run(function()
-		win:show()
-		app:sleep(0.1)
-		print('normal_frame_rect ', win:normal_frame_rect())
-		print('frame_rect        ', win:frame_rect())
-		print('client_rect       ', win:client_rect())
-	end)
-end)
-
---test that initial coordinates and size are set correctly after window is shown.
---test that frame_rect() works in normal state.
---test that size() works and gives sane values.
-add('pos-init', function()
-	local x0, y0, w0, h0 = 51, 52, 201, 202
-	local win = app:window{x = x0, y = y0, w = w0, h = h0, visible = false}
-	function win:was_shown()
-		local x, y, w, h = win:frame_rect()
-		print(x, y, w, h)
-		assert(x == x0)
-		assert(y == y0)
-		assert(w == w0)
-		assert(h == h0)
-		local w, h = win:client_size()
-		assert(w >= w0 - 50 and w <= w0)
-		assert(h >= h0 - 50 and h <= h0)
-		print'ok'
-		app:quit()
-	end
-	win:show()
-	app:run()
-end)
-
---check that a window spanning the entire workspace -2px on all sides.
+--check that a window is spanning the entire workspace -2px on all sides.
 add('check-pos-init-client', function()
-	local sx, sy, sw, sh = app:main_display():client_rect()
+	local sx, sy, sw, sh = app:main_display():desktop_rect()
 	local fw1, fh1, fw2, fh2 = app:frame_extents'normal'
 	local b = 2
 	local win = app:window{
@@ -1744,7 +1654,7 @@ end)
 
 --check that a window spanning the entire workspace -2px on all sides.
 add('check-pos-init-frame', function()
-	local sx, sy, sw, sh = app:main_display():client_rect()
+	local sx, sy, sw, sh = app:main_display():desktop_rect()
 	local b = 2
 	local win = app:window{
 		x = sx + b,
@@ -1784,64 +1694,64 @@ add('check-pos-init-cascade', function()
 	app:run()
 end)
 
---create a window off-screen. move a window off-screen.
---NOTE: Windows can create windows off-screen but can't move them off-screen.
---NOTE: OSX and X11 can create and move windows off-screen when hidden, but
---it repositions them on the next show().
---NOTE: X moves windows on-screen automatically.
---NOTE: OSX can always create/move frameless windows off-screen.
---These differences were not leveled out between platforms.
-add('pos-out', function()
-
-	local win = app:window(winpos{x = -5000, y = -5000})
-	print('visible off-screen          ', win:frame_rect())
-	win:close()
-
-	local win = app:window(winpos{visible = true})
-	win:frame_rect(-5000, -5000)
-	print('visible, moved off-screen   ', win:frame_rect())
-	win:close()
-
-	local win = app:window(winpos{visible = false})
-	win:frame_rect(-5000, -5000)
-	print('hidden, moved off-screen    ', win:frame_rect())
-	win:close()
-
-	--frame = 'none' and initial off-screen position is the only way to
-	--get cross-platform off-screen windows so that we can show that display()
-	--is nil for them.
-	local win = app:window(winpos{x = -5000, y = -5000, frame = 'none'})
-	local x, y = win:frame_rect()
-	--NOTE: in Linux this is > 5000 because, well, because X sucks.
-	assert(x >= -5000)
-	assert(y >= -5000)
-	print('no-frame visible off-screen ', win:frame_rect())
-	win:close()
-
-	local win = app:window(winpos{frame = 'none'})
-	win:frame_rect(-5000, -5000)
-	print('no-frame visible moved off  ', win:frame_rect())
-	win:close()
+--check that negative sizes are accepted (don't crash).
+add('pos-init-neg-size', function()
+	app:run(function()
+		local win = app:window({cw = -1, ch = -1})
+		app:sleep(0.1)
+		print(win:client_size())
+	end)
 end)
 
---normal_frame_rect() -> x, y, w, h works.
-add('pos-normal-frame-rect', function()
-	local x, y, w, h = 51, 52, 201, 202
-	local win = app:window{x = x, y = y, w = w, h = h}
-	local function check()
-		local x, y, w, h = win:normal_frame_rect()
-		assert(x == x0)
-		assert(y == y0)
-		assert(w == w0)
-		assert(h == h0)
+--positioning/screen-client conversions --------------------------------------
+
+--to_screen() and to_screen() conversions work.
+local function pos_conv_test(visible)
+	return function()
+		app:run(function()
+			local win = app:window{cx = 100, cy = 100, cw = 400, ch = 400, visible = visible}
+			app:sleep(0.1)
+			local x, y = win:to_screen(100, 100)
+			assert(x == 200)
+			assert(y == 200)
+			local x, y = win:to_client(x, y)
+			assert(x == 100)
+			assert(y == 100)
+			print'ok'
+		end)
 	end
-	win:normal_frame_rect(x0, y0, w0, h0); check()
-	x0 = x0 + 10; win:normal_frame_rect(x0); check()
-	y0 = y0 + 10; win:normal_frame_rect(nil, y0); check()
-	w0 = w0 + 10; win:normal_frame_rect(nil, nil, w0); check()
-	h0 = h0 + 10; win:normal_frame_rect(nil, nil, nil, h0); check()
-	print'ok'
-end)
+end
+add('pos-conversions', pos_conv_test(true))
+add('pos-conversions-hidden', pos_conv_test(false))
+
+--positioning/window states --------------------------------------------------
+
+--test that the window has the specified position before being shown.
+local function pos_test(t)
+	return function()
+		app:run(function()
+			local win = app:window(t)
+			app:sleep(0.1)
+			print('normal_frame_rect ', win:normal_frame_rect())
+			print('frame_rect        ', win:frame_rect())
+			print('client_rect       ', win:client_rect())
+			if not win:visible() then
+				win:show()
+				app:sleep(0.1)
+				print'# visible'
+				print('normal_frame_rect ', win:normal_frame_rect())
+				print('frame_rect        ', win:frame_rect())
+				print('client_rect       ', win:client_rect())
+			end
+		end)
+	end
+end
+add('pos-init-default', pos_test{w = 300, h = 200, visible = false})
+add('pos-init-frame', pos_test{x = 100, y = 100, w = 300, h = 200, visible = false})
+add('pos-init-client', pos_test{cx = 100, cy = 100, cw = 300, ch = 200, visible = false})
+add('pos-init-client-maximized', pos_test{cx = 100, cy = 100, cw = 300, ch = 200, visible = false, maximized = true})
+add('pos-init-client-minimized', pos_test{cx = 100, cy = 100, cw = 300, ch = 200, visible = false, minimized = true})
+add('pos-init-client-minimized-maximized', pos_test{cx = 100, cy = 100, cw = 300, ch = 200, visible = false, minimized = true, maximized = true})
 
 --setting frame_rect() when minimized and maximized works.
 add('pos-set-frame-rect', function()
@@ -1891,16 +1801,48 @@ add('pos-client-rect', function()
 	print'ok'
 end)
 
---normal_frame_rect(x, y, w, h) generates moved & resized events.
---TODO: this fails on OSX
-add('pos-set-event', function()
-	local rec = recorder()
-	local win = app:window{x = 0, y = 0, w = 100, h = 100}
-	function win:was_moved(x, y) rec('moved', x, y) end
-	function win:was_resized(w, h) rec('resized', w, h) end
-	win:normal_frame_rect(200, 200, 200, 200)
-	--rec{'moved', 200, 200}
+--test that initial coordinates and size are set correctly after window is shown.
+--test that frame_rect() works in normal state.
+--test that client_size() works and gives sane values.
+add('pos-init', function()
+	local x0, y0, w0, h0 = 51, 52, 201, 202
+	local win = app:window{x = x0, y = y0, w = w0, h = h0, visible = false}
+	function win:was_shown()
+		local x, y, w, h = win:frame_rect()
+		print(x, y, w, h)
+		assert(x == x0)
+		assert(y == y0)
+		assert(w == w0)
+		assert(h == h0)
+		local w, h = win:client_size()
+		assert(w >= w0 - 50 and w <= w0)
+		assert(h >= h0 - 50 and h <= h0)
+		print'ok'
+		app:quit()
+	end
+	win:show()
 	app:run()
+end)
+
+--positioning/normal_frame_rect ----------------------------------------------
+
+--normal_frame_rect() -> x, y, w, h works.
+add('pos-normal-frame-rect', function()
+	local x, y, w, h = 51, 52, 201, 202
+	local win = app:window{x = x, y = y, w = w, h = h}
+	local function check()
+		local x, y, w, h = win:normal_frame_rect()
+		assert(x == x0)
+		assert(y == y0)
+		assert(w == w0)
+		assert(h == h0)
+	end
+	win:normal_frame_rect(x0, y0, w0, h0); check()
+	x0 = x0 + 10; win:normal_frame_rect(x0); check()
+	y0 = y0 + 10; win:normal_frame_rect(nil, y0); check()
+	w0 = w0 + 10; win:normal_frame_rect(nil, nil, w0); check()
+	h0 = h0 + 10; win:normal_frame_rect(nil, nil, nil, h0); check()
+	print'ok'
 end)
 
 --edge snapping --------------------------------------------------------------
@@ -1950,7 +1892,7 @@ app:run(function()
 
 	local rec = recorder()
 	function win:sizing() rec'error' end
-	function win:was_resized() rec'resized' end
+	function win:frame_was_resized() rec'resized' end
 
 	win:minsize(200, 200)
 	app:sleep(0.1)
@@ -1973,7 +1915,7 @@ app:run(function()
 
 	local rec = recorder()
 	function win:sizing() rec'error' end
-	function win:was_resized() rec'resized' end
+	function win:frame_was_resized() rec'resized' end
 
 	win:maxsize(400, 400)
 	app:sleep(0.1)
@@ -2449,12 +2391,12 @@ add('check-view-anchors', function()
 end)
 
 --to_screen() and to_screen() conversions work.
-local function view_pos_conv_test(visible)
+local function pos_conv_test(visible)
 	return function()
 		app:run(function()
-			local win = app:window{cx = 100, cy = 100, w = 300, h = 300, visible = visible}
+			local win = app:window{cx = 100, cy = 100, cw = 400, ch = 400, visible = visible}
+			local view = win:view{x = 100, y = 100, w = 200, h = 200}
 			app:sleep(0.1)
-			local view = win:view{x = 100, y = 100, w = 100, h = 100}
 			local x, y = view:to_screen(100, 100)
 			assert(x == 300)
 			assert(y == 300)
@@ -2465,8 +2407,18 @@ local function view_pos_conv_test(visible)
 		end)
 	end
 end
-add('view-pos-conversions', view_pos_conv_test(true))
-add('view-pos-conversions-hidden', view_pos_conv_test(false))
+add('pos-view-conversions', pos_conv_test(true))
+add('pos-view-conversions-hidden', pos_conv_test(false))
+
+--check that negative sizes are accepted (don't crash)
+add('pos-view-init-neg-size', function()
+	app:run(function()
+		local win = app:window{w = 100, h = 100, visible = false}
+		local view = win:view{x = 0, y = 0, w = -1, h = -1}
+		app:sleep(0.1)
+		print(select(3, view:rect()))
+	end)
+end)
 
 --rendering ------------------------------------------------------------------
 

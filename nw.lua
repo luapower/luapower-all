@@ -508,6 +508,7 @@ function window:_new(app, backend_class, useropt)
 
 	self._state = self:state()
 	self._client_rect = {self:client_rect()}
+	self._frame_rect = {self:frame_rect()}
 
 	self.app:_window_created(self)
 
@@ -736,18 +737,32 @@ local function trigger(self, diff, event_up, event_down)
 	end
 end
 
+function window:_rect_changed(old_rect, new_rect, changed_event, moved_event, resized_event)
+	if self:dead() then return end
+	local x0, y0, w0, h0 = unpack(old_rect)
+	local x1, y1, w1, h1 = unpack(new_rect)
+	local moved = x1 ~= x0 or y1 ~= y0
+	local resized = w1 ~= w0 or h1 ~= h0
+	if moved or resized then
+		self:_event(changed_event, x1, y1, w1, h1)
+	end
+	if moved then
+		self:_event(moved_event, x1, y1)
+	end
+	if resized then
+		self:_event(resized_event, w1, h1)
+	end
+	return new_rect
+end
+
 function window:_backend_changed()
-
 	if self._events_disabled then return end
-
 	--check if the state has really changed and generate synthetic events
 	--for each state flag that has actually changed.
 	local old = self._state
 	local new = self:state()
 	self._state = new
-	local changed
 	if new ~= old then
-		changed = true
 		self:_event('changed', old, new)
 		trigger(self, diff('visible', old, new), 'was_shown', 'was_hidden')
 		trigger(self, diff('minimized', old, new), 'was_minimized', 'was_unminimized')
@@ -755,27 +770,10 @@ function window:_backend_changed()
 		trigger(self, diff('fullscreen', old, new), 'entered_fullscreen', 'exited_fullscreen')
 		trigger(self, diff('active', old, new), 'was_activated', 'was_deactivated')
 	end
-
-	--check if client rectangle changed and generate 'moved' and 'resized' events.
-	if self:dead() then return end
-	local cx0, cy0, cw0, ch0 = unpack(self._client_rect)
-	local cx, cy, cw, ch = self:client_rect()
-	local t = self._client_rect
-	t[1], t[2], t[3], t[4] = cx, cy, cw, ch
-	if cw ~= cw0 or ch ~= ch0 then
-		if not changed then
-			changed = true
-			self:_event('changed', old, new)
-		end
-		self:_event('was_resized', cw, ch)
-	end
-	if cx ~= cx0 or cy ~= cy0 then
-		if not changed then
-			changed = true
-			self:_event('changed', old, new)
-		end
-		self:_event('was_moved', cx, cy)
-	end
+	self._client_rect = self:_rect_changed(self._client_rect, {self:client_rect()},
+		'client_rect_changed', 'client_was_moved', 'client_was_resized')
+	self._frame_rect = self:_rect_changed(self._frame_rect, {self:frame_rect()},
+		'frame_rect_changed', 'frame_was_moved', 'frame_was_resized')
 end
 
 function app:_backend_changed()
@@ -793,47 +791,63 @@ end
 
 window:_property'enabled'
 
---positioning/conversions ----------------------------------------------------
+--positioning/frame extents --------------------------------------------------
+
+function app:frame_extents(frame, has_menu)
+	frame = checkframe(frame)
+	if frame == 'none' then
+		return 0, 0, 0, 0
+	end
+	return self.backend:frame_extents(frame, has_menu)
+end
+
+local function frame_rect(x, y, w, h, w1, h1, w2, h2)
+	return x - w1, y - h1, w + w1 + w2, h + h1 + h2
+end
+
+local function unframe_rect(x, y, w, h, w1, h1, w2, h2)
+	local x, y, w, h = frame_rect(x, y, w, h, -w1, -h1, -w2, -h2)
+	w = math.max(0, w) --avoid negative sizes
+	h = math.max(0, h)
+	return x, y, w, h
+end
+
+function app:client_to_frame(frame, has_menu, x, y, w, h)
+	return frame_rect(x, y, w, h, self:frame_extents(frame, has_menu))
+end
+
+function app:frame_to_client(frame, has_menu, x, y, w, h)
+	return unframe_rect(x, y, w, h, self:frame_extents(frame, has_menu))
+end
+
+--positioning/rectangles -----------------------------------------------------
+
+function window:_get_client_size()
+	--if self:minimized() then
+	--	return 0, 0
+	--end
+	return self.backend:get_client_size()
+end
+
+function window:_get_client_pos()
+	return self.backend:get_client_pos()
+end
 
 --convert point in client space to screen space.
 function window:to_screen(x, y)
 	self:_check()
-	return self.backend:to_screen(x, y)
+	local cx, cy = self:_get_client_pos()
+	return cx+x, cy+y
 end
 
 --convert point in screen space to client space.
 function window:to_client(x, y)
 	self:_check()
-	return self.backend:to_client(x, y)
+	local cx, cy = self:_get_client_pos()
+	return x-cx, y-cy
 end
 
---frame rect for a frame type and client rectangle in screen coordinates.
-function app:client_to_frame(frame, has_menu, x, y, w, h)
-	frame = checkframe(frame)
-	if frame == 'none' then
-		return x, y, w, h
-	end
-	return self.backend:client_to_frame(frame, has_menu, x, y, w, h)
-end
 
---client rect in screen coordinates for a frame type and frame rectangle.
-function app:frame_to_client(frame, has_menu, x, y, w, h)
-	frame = checkframe(frame)
-	local cx, cy, cw, ch = self.backend:frame_to_client(frame, has_menu, x, y, w, h)
-	cw = math.max(0, cw)
-	ch = math.max(0, ch)
-	return cx, cy, cw, ch
-end
-
-function app:frame_extents(frame, has_menu)
-	local cx, cy, cw, ch = 200, 200, 200, 200 --avoid possible re-adjustments
-	local x, y, w, h = self:client_to_frame(frame, has_menu, cx, cy, cw, ch)
-	local w0, h0 = w-cw, h-ch
-	local w1, h1 = cx-x, cy-y
-	return w1, h1, w0-w1, h0-h1
-end
-
---positioning/rectangles -----------------------------------------------------
 
 local function override_rect(x, y, w, h, x1, y1, w1, h1)
 	return x1 or x, y1 or y, w1 or w, h1 or h
@@ -842,14 +856,11 @@ end
 function window:frame_rect(x1, y1, w1, h1) --returns x, y, w, h
 	self:_check()
 	if x1 or y1 or w1 or h1 then
-		if self:minimized() then
-			self:normal_frame_rect(x1, y1, w1, h1)
-		end
 		if self:fullscreen() then return end --ignore because OSX can't do it
-		local x, y, w, h = self.backend:get_frame_rect()
+		local x, y, w, h = self:frame_rect()
 		self.backend:set_frame_rect(override_rect(x, y, w, h, x1, y1, w1, h1))
-	elseif self:minimized() then
-		return self:normal_frame_rect()
+	--elseif self:minimized() then
+	--	return self:normal_frame_rect()
 	else
 		return self.backend:get_frame_rect()
 	end
@@ -872,8 +883,8 @@ function window:client_rect(x1, y1, w1, h1)
 		local dw, dh = w - ccw, h - cch
 		self.backend:set_frame_rect(cx + dx, cy + dy, cw + dw, ch + dh)
 	else
-		local x, y = self:to_screen(0, 0)
-		return x, y, self:client_size()
+		local x, y = self:_get_client_pos()
+		return x, y, self:_get_client_size()
 	end
 end
 
@@ -887,10 +898,7 @@ function window:client_size(cw, ch) --sets or returns cw, ch
 		end
 		self:client_rect(nil, nil, cw, ch)
 	else
-		if self:minimized() then
-			return 0, 0
-		end
-		return self.backend:get_client_size()
+		return self:_get_client_size()
 	end
 end
 
@@ -1389,6 +1397,10 @@ function view:_new(window, backend_class, useropt)
 	local opt = glue.update({}, defaults, useropt)
 	opt.opengl = opengl_options(useropt.opengl)
 
+	assert(opt.x and opt.y and opt.w and opt.h, 'x, y, w, h expected')
+	opt.w = math.max(0, opt.w)
+	opt.h = math.max(0, opt.h)
+
 	local self = glue.update({
 		window = window,
 		app = window.app,
@@ -1445,11 +1457,15 @@ function view:hide()
 	self.backend:hide()
 end
 
+--positioning
+
 function view:rect(x, y, w, h)
 	if x or y or w or h then
 		if not (x and y and w and h) then
 			x, y, w, h = override_rect(x, y, w, h, self.backend:get_rect())
 		end
+		w = math.max(0, w)
+		h = math.max(0, h)
 		self.backend:set_rect(x, y, w, h)
 	else
 		return self.backend:get_rect()
@@ -1467,6 +1483,20 @@ function view:size(w, h)
 	else
 		return select(3, self.backend:get_rect())
 	end
+end
+
+function view:to_screen(x, y)
+	self:_check()
+	local x0, y0 = self.window:_get_client_pos()
+	local cx, cy = self.backend:get_rect()
+	return x0+cx+x, y0+cy+y
+end
+
+function view:to_client(x, y)
+	self:_check()
+	local x0, y0 = self.window:_get_client_pos()
+	local cx, cy = self.backend:get_rect()
+	return x-cx-x0, y-cy-y0
 end
 
 --anchors
@@ -1497,7 +1527,7 @@ function view:_init_anchors()
 		return x1, w, x1, x2
 	end
 
-	self.window:on('was_resized', function(window, pw, ph)
+	self.window:on('client_was_resized', function(window, pw, ph)
 		local a = self._anchors
 		local x, y, w, h
 		x, w, x1, x2 = anchor(a:find('l', 1, true), a:find('r', 1, true), x1, x2, w0, pw-pw0)
@@ -1510,27 +1540,12 @@ end
 
 --events
 
+view._rect_changed = window._rect_changed
+
 function view:_backend_changed()
-	local x1, y1, w1, h1 = self:rect()
-	local x0, y0, w0, h0 = unpack(self._rect)
-	local moved = x1 ~= x0 or y1 ~= y0
-	local resized = w1 ~= w0 or h1 ~= h0
-	if moved or resized then
-		self:_event('rect_changed', x1, y1, w1, h1)
-	end
-	if moved then
-		self:_event('was_moved', x1, y1)
-	end
-	if resized then
-		self:_event('was_resized', w1, h1)
-	end
-	self._rect = {x1, y1, w1, h1}
+	self._rect = self:_rect_changed(self._rect, {self:rect()},
+		'rect_changed', 'was_moved', 'was_resized')
 end
-
---positioning
-
-view.to_screen = window.to_screen
-view.to_client = window.to_client
 
 --mouse
 

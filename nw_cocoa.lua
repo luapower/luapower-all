@@ -896,45 +896,42 @@ function window:set_enabled(enabled)
 	self._disabled = not enabled
 end
 
---positioning/conversions ----------------------------------------------------
-
-function window:_flip_y(y)
-	return self.nswin:contentView():frame().size.height - y --flip y around contentView's height
-end
-
-function window:to_screen(x, y) --OSX 10.7+
-	y = self:_flip_y(y)
-	x, y = flip_screen_rect(nil, unpack_nsrect(self.nswin:convertRectToScreen(objc.NSMakeRect(x, y, 0, 0))))
-	return x, y
-end
-
-function window:to_client(x, y) --OSX 10.7+
-	y = primary_screen_h() - y
-	x, y = unpack_nsrect(self.nswin:convertRectFromScreen(objc.NSMakeRect(x, y, 0, 0)))
-	return x, self:_flip_y(y)
-end
+--positioning/frame extents --------------------------------------------------
 
 local function stylemask(frame)
 	return frame == 'none' and objc.NSBorderlessWindowMask or objc.NSTitledWindowMask
 end
 
-function app:client_to_frame(frame, has_menu, x, y, w, h)
+function app:frame_extents(frame, has_menu)
+	--NOTE: these computations are done in non-flipped space (y=0 at the bottom)
 	local style = stylemask(frame)
-	local psh = primary_screen_h()
-	local rect = objc.NSMakeRect(flip_screen_rect(psh, x, y, w, h))
+	local cx, cy, cw, ch = 200, 200, 400, 400
+	local rect = objc.NSMakeRect(cx, cy, cw, ch)
 	local rect = objc.NSWindow:frameRectForContentRect_styleMask(rect, style)
-	return flip_screen_rect(psh, unpack_nsrect(rect))
-end
-
-function app:frame_to_client(frame, has_menu, x, y, w, h)
-	local style = stylemask(frame)
-	local psh = primary_screen_h()
-	local rect = objc.NSMakeRect(flip_screen_rect(psh, x, y, w, h))
-	local rect = objc.NSWindow:contentRectForFrameRect_styleMask(rect, style)
-	return flip_screen_rect(psh, unpack_nsrect(rect))
+	local x, y, w, h = unpack_nsrect(rect)
+	local l = cx-x
+	local b = cy-y
+	local t = h-ch-b
+	local r = w-cw-l
+	return l, t, r, b
 end
 
 --positioning/rectangles -----------------------------------------------------
+
+function window:_flip_y(y)
+	return self.nswin:contentView():frame().size.height - y --flip y around contentView's height
+end
+
+function window:get_client_size()
+	local sz = self.nswin:contentView():bounds().size
+	return sz.width, sz.height
+end
+
+function window:get_client_pos() --OSX 10.7+
+	local y = self:_flip_y(0)
+	local x, y = flip_screen_rect(nil, unpack_nsrect(self.nswin:convertRectToScreen(objc.NSMakeRect(0, y, 0, 0))))
+	return x, y
+end
 
 --NOTE: framed windows are constrained to screen bounds but frameless windows are not.
 function window:get_normal_frame_rect()
@@ -952,14 +949,6 @@ end
 function window:set_frame_rect(x, y, w, h)
 	self:_set_frame_rect(x, y, w, h)
 	self:_apply_constraints()
-	if self:visible() and self:minimized() then
-		self:restore()
-	end
-end
-
-function window:get_client_size()
-	local sz = self.nswin:contentView():bounds().size
-	return sz.width, sz.height
 end
 
 --positioning/constraints ----------------------------------------------------
@@ -2130,6 +2119,7 @@ end
 
 function view:set_rect(x, y, w, h)
 	self.nsview:setFrame(objc.NSMakeRect(x, y, w, h))
+	self.frontend:_backend_changed()
 end
 
 function view:show()
@@ -2138,19 +2128,6 @@ end
 
 function view:hide()
 	self.nsview:setHidden(true)
-end
-
-function view:to_screen(x, y) --OSX 10.7+
-	local p = self.nsview:convertPoint_toView(objc.NSMakePoint(x, y), nil)
-	x, y = flip_screen_rect(nil, unpack_nsrect(self.window.nswin:convertRectToScreen(objc.NSMakeRect(p.x, p.y, 0, 0))))
-	return x, y
-end
-
-function view:to_client(x, y) --OSX 10.7+
-	y = primary_screen_h() - y
-	x, y = unpack_nsrect(self.window.nswin:convertRectFromScreen(objc.NSMakeRect(x, y, 0, 0)))
-	local p = self.nsview:convertPoint_fromView(objc.NSMakePoint(x, y), nil)
-	return p.x, p.y
 end
 
 view.invalidate = window.invalidate

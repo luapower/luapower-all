@@ -130,8 +130,8 @@ function M.connect(...)
 
 	local type, select, unpack, assert, error, ffi, bit, table, pairs, ipairs =
 	      type, select, unpack, assert, error, ffi, bit, table, pairs, ipairs
-	local require, pcall, tonumber, setmetatable, rawget, glue =
-	      require, pcall, tonumber, setmetatable, rawget, glue
+	local require, pcall, tonumber, setmetatable, rawget, glue, math =
+	      require, pcall, tonumber, setmetatable, rawget, glue, math
 	local cast = ffi.cast
 	local free = glue.free
 
@@ -358,8 +358,8 @@ function M.connect(...)
 			t.parent or screen.root,
 			t.x or 0,  --outer x (ignored)
 			t.y or 0,  --outer y (ignored)
-			t.width,   --inner width
-			t.height,  --inner height
+			math.max(1, t.width),   --inner width (prevent BadValue errors)
+			math.max(1, t.height),  --inner height (prevent BadValue errors)
 			t.border_width or 0, --ignored
 			t.depth or C.CopyFromParent,
 			t.class or C.CopyFromParent,
@@ -646,6 +646,8 @@ function M.connect(...)
 	function config(win, t)
 		local mask = maskedset(cbuf, t, masks)
 		if mask == 0 then return end --nothing to set
+		cbuf.width = math.max(1, cbuf.width) --prevent BadValue errors
+		cbuf.height = math.max(1, cbuf.height)
 		C.XConfigureWindow(c, win, mask, cbuf)
 	end
 

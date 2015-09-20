@@ -53,7 +53,6 @@ function app:init(frontend)
 	if dbg then dbg_init() end
 	xlib.synchronize(true) --shave off one source of unpredictability
 	xlib.set_xsettings_change_notify() --setup to receive XSETTINGS changes
-	self:_resolve_evprop_names()
 
 	return self
 end
@@ -69,20 +68,65 @@ end
 
 --message loop ---------------------------------------------------------------
 
-local ev = {}     --{event_code = event_handler}
+local winmap = {} --{XWindow (always a number) -> window_backend}
+
+local function win(id) --window_id -> window_backend
+	return winmap[xid(id)]
+end
+
+local evname = { --{event_code -> event_name}
+	[C.PropertyNotify] = 'PropertyNotify',
+	[C.ClientMessage] = 'ClientMessage',
+	[C.FocusIn] = 'FocusIn',
+	[C.FocusOut] = 'FocusOut',
+	[C.ConfigureNotify] = 'ConfigureNotify',
+	[C.KeyPress] = 'KeyPress',
+	[C.KeyRelease] = 'KeyRelease',
+	[C.ButtonPress] = 'ButtonPress',
+	[C.ButtonRelease] = 'ButtonRelease',
+	[C.MotionNotify] = 'MotionNotify',
+	[C.EnterNotify] = 'EnterNotify',
+	[C.LeaveNotify] = 'LeaveNotify',
+	[C.Expose] = 'Expose',
+}
+
+local evfield = { --{event_code -> XEvent_field}
+	[C.PropertyNotify] = 'xproperty',
+	[C.ClientMessage] = 'xclient',
+	[C.FocusIn] = 'xfocus',
+	[C.FocusOut] = 'xfocus',
+	[C.ConfigureNotify] = 'xconfigure',
+	[C.KeyPress] = 'xkey',
+	[C.KeyRelease] = 'xkey',
+	[C.ButtonPress] = 'xbutton',
+	[C.ButtonRelease] = 'xbutton',
+	[C.MotionNotify] = 'xmotion',
+	[C.EnterNotify] = 'xcrossing',
+	[C.LeaveNotify] = 'xcrossing',
+	[C.Expose] = 'xexpose',
+}
+
+local function poll(timeout)
+	local e = xlib.poll(timeout)
+	if not e then return end
+	if dbg then dbg_event(e) end
+	local etype = tonumber(e.type)
+	local field = evfield[etype]
+	if field then
+		local e = e[field]
+		local win = win(e.window)
+		if win then
+			local f = win[evname[etype]]
+			if f then f(win, e) end
+		else
+			local f = app[evname[etype]]
+			if f then f(app, e) end
+		end
+	end
+	return true
+end
 
 function app:run()
-
-	local function poll(timeout)
-		local e = xlib.poll(timeout)
-		if not e then return end
-		if dbg then dbg_event(e) end
-		local f = ev[tonumber(e.type)]
-		if f then f(e) end
-		--NOTE: right here e is invalid because f() can cause re-entering!
-		return true
-	end
-
 	while not self._stop do
 		local timeout = self:_pull_timers()
 		if self._stop then --stop() called from timer
@@ -96,25 +140,6 @@ end
 
 function app:stop()
 	self._stop = true
-end
-
---PropertyNotify dispatcher --------------------------------------------------
-
-local evprop = {} --{property_name -> PropertyNotify_handler}
-
-function app:_resolve_evprop_names()
-	for name, handler in pairs(evprop) do
-		local atom = xlib.atom(name)
-		if atom then
-			evprop[atom] = handler
-		end
-	end
-end
-
-ev[C.PropertyNotify] = function(e)
-	local e = e.xproperty
-	local handler = evprop[tonumber(e.atom)]
-	if handler then handler(e) end
 end
 
 --timers ---------------------------------------------------------------------
@@ -155,8 +180,11 @@ end
 
 local xsettings
 
-function evprop._XSETTINGS_SETTINGS(e)
-	xsettings = nil
+function app:PropertyNotify(e)
+	local prop = tonumber(e.atom)
+	if prop == xlib.atom'_XSETTINGS_SETTINGS' then
+		xsettings = nil
+	end
 end
 
 function app:_xsettings(key)
@@ -171,12 +199,6 @@ end
 
 local window = {}
 app.window = window
-
-local winmap = {} --{XWindow (always a number) -> window_backend}
-
-local function win(win) --window_id -> window_backend
-	return winmap[xid(win)]
-end
 
 --constrain the client size (cw, ch) based on current size constraints.
 local function clamp_opt(x, min, max)
@@ -261,21 +283,23 @@ function window:new(app, frontend, t)
 	self._max_cw = t.max_cw
 	self._max_ch = t.max_ch
 
-	local cx, cy, cw, ch = app:frame_to_client(t.frame, t.menu, t.x or 0, t.y or 0, t.w, t.h)
+	local cx, cy, cw, ch = app.frontend:frame_to_client(
+		t.frame, t.menu, t.x or 0, t.y or 0, t.w, t.h)
+	cx = t.x and cx
+	cy = t.y and cy
 	cw, ch = self:__constrain(cw, ch)
+
+	attrs.x = cx
+	attrs.y = cy
 	attrs.width = cw
 	attrs.height = ch
-
-	--set position (optional: t.x and/or t.y can be missing)
-	attrs.x = t.x and cx
-	attrs.y = t.y and cy
 
 	self.win = xlib.create_window(attrs)
 	xlib.flush() --lame: XSynchronize() didn't do it's job here
 
 	--NOTE: WMs ignore the initial position unless we set WM_NORMAL_HINTS too
-	--(values don't matter, but we're using the same t.x and t.y just in case).
-	local hints = {x = t.x and cx, y = t.y and cy}
+	--(values don't matter, but we're using the same coordinates just in case).
+	local hints = {x = cx, y = cy}
 
 	if not t.resizeable then
 		--this is how X knows that a window is non-resizeable (there's no flag).
@@ -336,7 +360,8 @@ function window:new(app, frontend, t)
 
 	--flag to mask off window's reported state while the window is unmapped.
 	self._hidden = true
-	self._init_pos = {x = t.x, y = t.y}
+	--if given, the initial _outer_ position that must be set again on show!
+	self._init_pos = (t.x or t.y) and {x = t.x, y = t.y}
 
 	--state flags to be reported while the window is hidden.
 	self._minimized = t.minimized or false
@@ -357,13 +382,18 @@ function window:new(app, frontend, t)
 	return self
 end
 
+function window:PropertyNotify(e)
+	local prop = tonumber(e.atom)
+	if prop == xlib.atom'WM_STATE' then
+		self:PropertyNotify_WM_STATE()
+	elseif prop == xlib.atom'_NET_WM_STATE' then
+		self:PropertyNotify__NET_WM_STATE()
+	end
+end
+
 --closing --------------------------------------------------------------------
 
-ev[C.ClientMessage] = function(e)
-	local e = e.xclient
-	local self = win(e.window)
-	if not self then return end --not for us
-
+function window:ClientMessage(e)
 	local v = e.data.l[0]
 	if e.message_type == xlib.atom'WM_PROTOCOLS' then
 		if v == xlib.atom'WM_DELETE_WINDOW' then
@@ -407,10 +437,7 @@ local focus_timer_started
 local app_active = false
 
 --NOTE: FocusIn is also sent after ending a resizing operation.
-ev[C.FocusIn] = function(e)
-	local e = e.xfocus
-	local self = win(e.window)
-	if not self then return end
+function window:FocusIn(e)
 	if self._hiding or self._hidden then return end --ignore while hiding
 
 	last_active_window = self
@@ -425,10 +452,7 @@ end
 --NOTE: when hiding, FocusOut is sent before PropertyNotify/WM_STATE.
 --NOTE: when minimizing, by the time FocusOut is sent, _NET_WM_STATE_HIDDEN
 --is also set, thus was_minimized event will happen here.
-ev[C.FocusOut] = function(e)
-	local e = e.xfocus
-	local self = win(e.window)
-	if not self then return end
+function window:FocusOut(e)
 	if self._hiding or self._hidden then return end --ignore while hiding
 
 	--start a delayed check for when the app is deactivated.
@@ -500,13 +524,16 @@ end
 function window:show()
 	if not self._hidden then return end --hiding or visible: ignore
 
-	--set the saved normal rect before mapping the window.
-	--this is because the normal rect is lost when hiding a maximized window.
 	if self._normal_rect then
+		--set the saved normal rect before mapping the window.
+		--this is because the normal rect is lost when hiding a maximized window.
 		self:set_frame_rect(unpack(self._normal_rect))
+	else
+		--store _normal_rect
+		self._normal_rect = {self:get_frame_rect()}
 	end
 
-	--gosh, this is more comments than code already... yes, we fix Unity again.
+	--the initial _frame_ position (if any) must be set again now.
 	if self._init_pos then
 		xlib.config(self.win, self._init_pos)
 		self._init_pos = nil
@@ -534,15 +561,13 @@ function window:hide()
 	self._fullscreen = self:fullscreen()
 	self._hiding = true --signal intent to hide in subsequent events
 
-	local x, y = self:to_screen(0, 0)
+	local x, y = self:get_client_pos()
 	xlib.withdraw(self.win) --async operation
-	--move it back to position because Unity moves it at the outer coordinates!
+	--move it back to position because Unity moves it at the frame coordinates!
 	xlib.config(self.win, {x = x, y = y})
 end
 
-function evprop.WM_STATE(e)
-	local self = win(e.window)
-	if not self then return end
+function window:PropertyNotify_WM_STATE()
 	if self._hiding and not xlib.get_wm_state_visible(self.win) then
 		self._hiding = false
 		self._hidden = true --switch to reporting stored state
@@ -607,9 +632,7 @@ function window:_unmaximize()
 	end
 end
 
-function evprop._NET_WM_STATE(e)
-	local self = win(e.window)
-	if not self then return end
+function window:PropertyNotify__NET_WM_STATE()
 	if self._hiding or self._hidden then return end --ignore events while hidden
 	self.frontend:_backend_changed() --maximization and fullscreen changes
 end
@@ -683,17 +706,7 @@ function window:set_enabled(enabled)
 	self._disabled = not enabled
 end
 
---positioning/conversions ----------------------------------------------------
-
-function window:to_screen(x, y)
-	local x, y = xlib.translate_coords(self.win, xlib.screen.root, x, y)
-	return x, y
-end
-
-function window:to_client(x, y)
-	local x, y = xlib.translate_coords(xlib.screen.root, self.win, x, y)
-	return x, y
-end
+--positioning/frame extents --------------------------------------------------
 
 local function unmapped_frame_extents(win)
 	local w1, h1, w2, h2
@@ -719,9 +732,6 @@ local function unmapped_frame_extents(win)
 end
 
 local frame_extents = glue.memoize(function(frame, has_menu)
-	if frame == 'none' then
-		return {0, 0, 0, 0}
-	end
 	--create a dummy window
 	local win = xlib.create_window{width = 200, height = 200}
 	--get its frame extents
@@ -732,8 +742,20 @@ local frame_extents = glue.memoize(function(frame, has_menu)
 	return {w1, h1, w2, h2}
 end)
 
-local frame_extents = function(frame, has_menu)
+function app:frame_extents(frame, has_menu)
 	return unpack(frame_extents(frame, has_menu))
+end
+
+--positioning/rectangles -----------------------------------------------------
+
+function window:get_client_size()
+	local _, _, w, h = xlib.get_geometry(self.win)
+	return w, h
+end
+
+function window:get_client_pos()
+	local x, y = xlib.translate_coords(self.win, xlib.screen.root, 0, 0)
+	return x, y
 end
 
 local function frame_rect(x, y, w, h, w1, h1, w2, h2)
@@ -744,23 +766,8 @@ local function unframe_rect(x, y, w, h, w1, h1, w2, h2)
 	return frame_rect(x, y, w, h, -w1, -h1, -w2, -h2)
 end
 
-function app:client_to_frame(frame, has_menu, x, y, w, h)
-	return frame_rect(x, y, w, h, frame_extents(frame, has_menu))
-end
-
-function app:frame_to_client(frame, has_menu, x, y, w, h)
-	local fx, fy, fw, fh = self:client_to_frame(frame, has_menu, 0, 0, 200, 200)
-	local cx = x - fx
-	local cy = y - fy
-	local cw = w - (fw - 200)
-	local ch = h - (fh - 200)
-	return cx, cy, cw, ch
-end
-
---positioning/rectangles -----------------------------------------------------
-
 function window:_frame_extents()
-	if self.frame == 'none' then
+	if self.frontend:frame() == 'none' then
 		return 0, 0, 0, 0
 	end
 	return unmapped_frame_extents(self.win)
@@ -774,21 +781,14 @@ function window:get_normal_frame_rect()
 end
 
 function window:get_frame_rect()
-	local x, y = self:to_screen(0, 0)
+	local x, y = self:get_client_pos()
 	local w, h = self:get_client_size()
 	return frame_rect(x, y, w, h, self:_frame_extents())
 end
 
 function window:set_frame_rect(x, y, w, h)
 	local _, _, cw, ch = unframe_rect(x, y, w, h, self:_frame_extents())
-	cw = math.max(cw, 1) --prevent error
-	ch = math.max(ch, 1)
 	xlib.config(self.win, {x = x, y = y, width = cw, height = ch, border_width = 0})
-end
-
-function window:get_client_size()
-	local _, _, w, h = xlib.get_geometry(self.win)
-	return w, h
 end
 
 --positioning/constraints ----------------------------------------------------
@@ -818,8 +818,6 @@ function window:_apply_constraints()
 
 	--resize the window if dimensions changed
 	if cw ~= cw0 or ch ~= ch0 then
-		cw = math.max(cw, 1) --prevent error
-		ch = math.max(ch, 1)
 		xlib.config(self.win, {width = cw, height = ch, border_width = 0})
 	end
 end
@@ -844,18 +842,14 @@ end
 
 --positioning/resizing -------------------------------------------------------
 
-ev[C.ConfigureNotify] = function(e)
-	local e = e.xconfigure
-	local self = win(e.window)
-	if not self then return end
-
+function window:ConfigureNotify(e)
 	if self._hiding or self._hidden then return end --reparenting, ignore
 
 	--track normal rect because there's no way to get it from X.
 	--NOTE: we have to track this through resizes instead of just saving it
 	--before maximizing because by the time PropertyNotify for _NET_WM_STATE
 	--is triggered the frame is already maximized.
-	if not (not self.maximized or self:maximized() or self:fullscreen()) then
+	if not (self:maximized() or self:fullscreen()) then
 		self._normal_rect = {self:get_frame_rect()}
 	end
 
@@ -1140,10 +1134,7 @@ local function keyname(keycode)
 	return keynames[sym]
 end
 
-ev[C.KeyPress] = function(e)
-	local e = e.xkey
-	local self = win(e.window)
-	if not self then return end
+function window:KeyPress(e)
 	if self._disabled then return end
 
 	if self._keypressed then
@@ -1158,10 +1149,7 @@ ev[C.KeyPress] = function(e)
 	self.frontend:_backend_keypress(key)
 end
 
-ev[C.KeyRelease] = function(e)
-	local e = e.xkey
-	local self = win(e.window)
-	if not self then return end
+function window:KeyRelease(e)
 	if self._disabled then return end
 
 	local key = keyname(e.keycode)
@@ -1208,10 +1196,7 @@ end
 
 local btns = {'left', 'middle', 'right'}
 
-ev[C.ButtonPress] = function(e)
-	local e = e.xbutton
-	local self = win(e.window)
-	if not self then return end
+function window:ButtonPress(e)
 	if self._disabled then return end
 
 	if e.button == C.Button4 then --wheel up
@@ -1228,42 +1213,25 @@ ev[C.ButtonPress] = function(e)
 	self.frontend:_backend_mousedown(btn, e.x, e.y)
 end
 
-ev[C.ButtonRelease] = function(e)
-	local e = e.xbutton
-	local self = win(e.window)
-	if not self then return end
+function window:ButtonRelease(e)
 	if self._disabled then return end
-
 	local btn = btns[e.button]
 	if not btn then return end
-
 	self.frontend:_backend_mouseup(btn, e.x, e.y)
 end
 
-ev[C.MotionNotify] = function(e)
-	local e = e.xmotion
-	local self = win(e.window)
-	if not self then return end
+function window:MotionNotify(e)
 	if self._disabled then return end
-
 	self.frontend:_backend_mousemove(e.x, e.y)
 end
 
-ev[C.EnterNotify] = function(e)
-	local e = e.xcrossing
-	local self = win(e.window)
-	if not self then return end
+function window:EnterNotify(e)
 	if self._disabled then return end
-
 	self.frontend:_backend_mouseenter()
 end
 
-ev[C.LeaveNotify] = function(e)
-	local e = e.xcrossing
-	local self = win(e.window)
-	if not self then return end
+function window:LeaveNotify(e)
 	if self._disabled then return end
-
 	self.frontend:_backend_mouseleave()
 end
 
@@ -1410,15 +1378,9 @@ end
 
 --rendering ------------------------------------------------------------------
 
-ev[C.Expose] = function(e)
-	local e = e.xexpose
-	if e.count ~= 0 then return end --subregion rendering, skip
-	local self = win(e.window)
-	if not self then return end
-
+function window:Expose(e)
 	--can't paint the bitmap while the window is unmapped.
 	if self._hidden or (self.minimized and self:minimized()) then return end
-
 	--e.x, e.y, e.width, e.height
 	self:_repaint()
 end
@@ -1510,13 +1472,12 @@ function view:new(window, frontend, t)
 		depth = window._depth,
 		x = t.x,
 		y = t.y,
-		width = t.w,
-		height = t.h,
+		width = w,
+		height = h,
 		parent = window.win,
+		--say that we don't want the server to keep a pixmap for the window.
+		background_pixmap = 0,
 	}
-
-	--say that we don't want the server to keep a pixmap for the window.
-	attrs.background_pixmap = 0
 
 	--declare what events we want to receive.
 	attrs.event_mask = bit.bor(
@@ -1533,6 +1494,7 @@ function view:new(window, frontend, t)
 	0)
 
 	self.win = xlib.create_window(attrs)
+	xlib.flush()
 
 	self._depth = window._depth
 
@@ -1549,8 +1511,6 @@ function view:get_rect()
 end
 
 function view:set_rect(x, y, w, h)
-	w = math.max(w, 1) --prevent error
-	h = math.max(h, 1)
 	xlib.config(self.win, {x = x, y = y, width = w, height = h, border_width = 0})
 end
 
@@ -1566,13 +1526,15 @@ function view:free()
 	xlib.destroy_window(self.win)
 end
 
-view.to_screen = window.to_screen
-view.to_client = window.to_client
+function view:ConfigureNotify(e)
+	self.frontend:_backend_changed()
+end
 
+view.Expose = window.Expose
+view._repaint = window._repaint
 view.bitmap = window.bitmap
 view._init_opengl = window._init_opengl
 view.gl = window.gl
-view._repaint = window._repaint
 view._repaint_opengl = window._repaint_opengl
 view.invalidate = window.invalidate
 

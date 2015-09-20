@@ -108,8 +108,12 @@ __size and position__
 `win:client_rect(x,y,w,h) -> x,y,w,h`			get client rect in current state
 `win:client_size(cw, ch) /-> cw, ch`			get/set client rect size
 `win:sizing(when, how, x, y, w, h)`				event: window size/position is about to change
-`win:was_moved(cx, cy)`								event: window was moved
-`win:was_resized(cw, ch)`							event: window was resized
+`win:frame_rect_changed(x, y, w, h)`			event: window frame was moved and/or resized
+`win:frame_was_moved(x, y)`						event: window frame was moved
+`win:frame_was_resized(w, h)`						event: window frame was resized
+`win:client_rect_changed(cx, cy, cw, ch)`		event: window client area was moved and/or resized
+`win:client_was_moved(cx, cy)`					event: window client area was moved
+`win:client_was_resized(cw, ch)`					event: window client area was resized
 __size constraints__
 `win:resizeable() -> t|f`							resizeable flag
 `win:minsize(cw, ch) /-> cw, ch`					get/set min client rect size
@@ -404,12 +408,10 @@ If `filter` is 'root' the return the number of non-dead non-parented windows.
 ### `app:window_created(win)`
 
 Event: a window was created.
-Fired right after `win:was_created()` event is fired.
 
 ### `app:window_closed(win)`
 
 Event: a window was closed.
-Fired right after `win:was_closed()` event is fired.
 
 ## Creating windows
 
@@ -459,6 +461,11 @@ The position is optional and it defaults to OS-driven cascading.
 If the size is max-constrained by either `max_cw`, `max_ch`
 or `resizeable = false` then `maximizable = false` and
 `fullscreenable = false` must also be set.
+
+Expect the OS to adjust the window size and/or position in unspecified
+ways for off-screen windows, windows too small to fit all titlebar buttons,
+windows with zero or negative client size or windows that are very large.
+Some adjustments are delayed to when the window is shown.
 
 ### The window state
 
@@ -1077,6 +1084,7 @@ Create a view (fields of _`t`_ below):
 * `visible`				- start visible (default: true)
 * `anchors`				- resizing anchors (default: 'lt'); can be 'ltrb'
 * `opengl`				- enable and [configure OpenGL](#winviewgl---gl) on the view.
+
 
 ### `view:free()`
 

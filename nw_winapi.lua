@@ -457,17 +457,7 @@ function window:set_enabled(enabled)
 	self.win.enabled = enabled
 end
 
---positioning/conversions ----------------------------------------------------
-
-function window:to_screen(x, y)
-	local p = self.win:map_point(nil, x, y)
-	return p.x, p.y
-end
-
-function window:to_client(x, y)
-	local p = winapi.Windows:map_point(self.win, x, y)
-	return p.x, p.y
-end
+--positioning/frame extents --------------------------------------------------
 
 local function frame_args(frame, has_menu)
 	local framed = frame == 'normal' or frame == 'toolbox'
@@ -476,21 +466,30 @@ local function frame_args(frame, has_menu)
 		frame = framed,
 		window_edge = framed,
 		resizeable = framed,
+		tool_window = frame == 'toolbox',
 		menu = has_menu or nil,
 	}
 end
 
-function app:client_to_frame(frame, has_menu, x, y, w, h)
-	return unpack_rect(winapi.Window:client_to_frame(frame_args(frame, has_menu),
-		pack_rect(nil, x, y, w, h)))
-end
-
-function app:frame_to_client(frame, has_menu, x, y, w, h)
-	return unpack_rect(winapi.Window:frame_to_client(frame_args(frame, has_menu),
-		pack_rect(nil, x, y, w, h)))
+function app:frame_extents(frame, has_menu)
+	local cx, cy, cw, ch = 200, 200, 400, 400
+	local rect = pack_rect(nil, cx, cy, cw, ch)
+	local rect = winapi.Window:client_to_frame(frame_args(frame, has_menu), rect)
+	local x, y, w, h = unpack_rect(rect)
+	return cx-x, cy-y, w-cw-(cx-x), h-ch-(cy-y)
 end
 
 --positioning/rectangles -----------------------------------------------------
+
+function window:get_client_size()
+	local r = self.win.client_rect
+	return r.w, r.h
+end
+
+function window:get_client_pos()
+	local p = self.win:map_point(nil, 0, 0)
+	return p.x, p.y
+end
 
 function window:get_normal_frame_rect()
 	if self._fullscreen then
@@ -500,29 +499,31 @@ function window:get_normal_frame_rect()
 	end
 end
 
-function window:get_frame_rect()
-	return unpack_rect(self.win.screen_rect)
-end
-
-function window:set_frame_rect(x, y, w, h)
-	if self:visible() and self:minimized() then
-		self:restore()
-	end
+function window:set_normal_frame_rect(x, y, w, h)
 	if self._fullscreen then
 		self._fs.normal_rect = pack_rect(nil, x, y, w, h)
 	else
 		self.win.normal_rect = pack_rect(nil, x, y, w, h)
 	end
+end
+
+function window:get_frame_rect()
+	return unpack_rect(self.win.screen_rect)
+end
+
+function window:set_frame_rect(x, y, w, h)
+	if self._fullscreen then
+		self._fs.normal_rect = pack_rect(nil, x, y, w, h)
+	else
+		self.win.rect = pack_rect(nil, x, y, w, h)
+	end
+	--[[
 	if self:visible() and self:maximized() then
 		self:shownormal()
 	else
-		self.frontend:_backend_changed()
 	end
-end
-
-function window:get_client_size()
-	local r = self.win.client_rect
-	return r.w, r.h
+	]]
+	self.frontend:_backend_changed()
 end
 
 --positioning/constraints ----------------------------------------------------
@@ -1537,9 +1538,6 @@ end
 function View:on_resized()
 	self.frontend:_backend_changed()
 end
-
-view.to_screen = window.to_screen
-view.to_client = window.to_client
 
 glue.update(view, mouse, rendering)
 glue.update(View, Mouse, Rendering)
