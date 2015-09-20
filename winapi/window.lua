@@ -432,7 +432,7 @@ LRESULT DefWindowProcW(
      LPARAM lParam);
 
 LRESULT CallWindowProcW(
-     LONG lpPrevWndFunc,
+     WNDPROC lpPrevWndFunc,
 	  HWND hWnd,
      UINT Msg,
      WPARAM wParam,

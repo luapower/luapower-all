@@ -48,7 +48,7 @@ end
 function Control:__init(info)
 	Control.__index.__init(self, info)
 	--subclass the control to intercept the messages sent to it.
-	self.__prev_proc = SetWindowLong(self.hwnd, GWL_WNDPROC, MessageRouter.proc)
+	self.__prev_proc = ffi.cast('WNDPROC', SetWindowLong(self.hwnd, GWL_WNDPROC, MessageRouter.proc))
 end
 
 function Control:__default_proc(WM, wParam, lParam)

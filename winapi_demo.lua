@@ -225,9 +225,6 @@ end
 function bmppanel:on_mouse_move(x, y)
 	self:invalidate()
 end
-win:settimer(1/30, function()
-	--bmppanel:invalidate()
-end)
 
 --create a cairo panel -------------------------------------------------------
 

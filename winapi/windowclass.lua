@@ -283,12 +283,13 @@ end
 
 function Window:WM_WINDOWPOSCHANGED(wp)
 	--NOTE: A maximized window becomes movable if its size is smaller than
-	--the entire screen. A window can have such smaller maximized size if
-	--constrained, for instance (try it!). But when such a window is maximized,
-	--in absence of a programmer-supplied maximized_pos, it always moves to
-	--the top-left corner of the screen, which is lame. A much better option
-	--IMHO is to remember the last maximized position and restore to that
-	--position instead, when maximized again. Which is what we do here.
+	--the entire screen (WinXP only, in Win7+ it is unmaximized when moved).
+	--A window can have such smaller maximized size if constrained.
+	--But when such a window is maximized, in absence of a programmer-supplied
+	--maximized_pos, it always moves to the top-left corner of the screen,
+	--which is lame. A much better option is to remember the last maximized
+	--position and restore to that position instead, when maximized again.
+	--Which is what we do here.
 	if self.remember_maximized_pos and not getbit(wp.flags, SWP_NOMOVE) then
 		if self.maximized and not self.minimized then
 			self.__maximized_pos = POINT(self.__maximized_pos)
