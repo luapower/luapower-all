@@ -212,7 +212,7 @@ end
 function Window:on_destroy()
 	if not self.nw_destroying then
 		self.nw_destroying = true
-		self.frontend:_backend_was_closed() --this may trigger on_destroy() again!
+		self.frontend:_backend_closed() --this may trigger on_destroy() again!
 	end
 	if not self.nw_destroyed then
 		self.nw_destroyed = true
@@ -298,7 +298,7 @@ end
 
 --state/app visibility -------------------------------------------------------
 
-function app:hidden() return false end
+function app:visible() return true end
 function app:hide() end
 function app:unhide() end
 

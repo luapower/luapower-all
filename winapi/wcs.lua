@@ -85,17 +85,15 @@ DEFAULT_WCS_BUFFER_SIZE = 2048
 --1. given a number, allocate a WCHAR buffer of size n + 1.
 --2. given a WCHAR[?], return it along with its size in WCHARs minus the null terminator.
 --3. given no args, make a default-size buffer.
-function WCS(x)
-	local n = tonumber(x)
-	if n then
+function WCS(n)
+	if type(n) == 'number' then
 		return WCS_ctype(n+1), n
-	elseif ffi.istype(WCS_ctype, x) then
-		return x, sizeof(x) / 2 - 1
-	elseif x == nil then
+	elseif ffi.istype(WCS_ctype, n) then
+		return n, sizeof(n) / 2 - 1
+	elseif n == nil then
 		return WCS_ctype(DEFAULT_WCS_BUFFER_SIZE+1), DEFAULT_WCS_BUFFER_SIZE
-	else
-		assert(false)
 	end
+	assert(false)
 end
 
 WC_COMPOSITECHECK         = 0x00000200  -- convert composite to precomposed

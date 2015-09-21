@@ -140,7 +140,7 @@ function app:_init(nw, backend_class)
 	self._autoquit = true --quit after the last window closes
 	self._ignore_numlock = false --ignore the state of the numlock key on keyboard events
 	self.backend = backend_class:init(self)
-	self._state = self:state()
+	self._state = self:_get_state()
 	return self
 end
 
@@ -516,7 +516,7 @@ function window:_new(app, backend_class, useropt)
 	self._opengl = opt.opengl
 	self:edgesnapping(opt.edgesnapping)
 
-	self._state = self:state()
+	self._state = self:_get_state()
 	self._client_rect = {self:client_rect()}
 	self._frame_rect = {self:frame_rect()}
 
@@ -570,11 +570,11 @@ function window:_backend_closing()
 	end
 end
 
-function window:_backend_was_closed()
+function window:_backend_closed()
 	if self._closed then return end --ignore if closed
 	self._closed = true --_backend_closing() and _backend_closed() barrier
 
-	self:_event'was_closed'
+	self:_event'closed'
 	self.app:_window_closed(self)
 
 	self:_free_views()
@@ -616,13 +616,13 @@ end
 
 --state/app visibility (OSX only) --------------------------------------------
 
-function app:hidden(hidden)
-	if hidden == nil then
-		return self.backend:hidden()
-	elseif hidden then
-		self:hide()
-	else
+function app:visible(visible)
+	if visible == nil then
+		return self.backend:visible()
+	elseif visible then
 		self:unhide()
+	else
+		self:hide()
 	end
 end
 
@@ -660,7 +660,7 @@ end
 
 --state/minimizing -----------------------------------------------------------
 
-function window:minimized()
+function window:isminimized()
 	self:_check()
 	assert(not self:parent(), 'child windows cannot be minimized')
 	return self.backend:minimized()
@@ -673,7 +673,7 @@ end
 
 --state/maximizing -----------------------------------------------------------
 
-function window:maximized()
+function window:ismaximized()
 	self:_check()
 	return self.backend:maximized()
 end
@@ -714,19 +714,19 @@ end
 
 --state/state string ---------------------------------------------------------
 
-function window:state()
+function window:_get_state()
 	local t = {}
 	table.insert(t, self:visible() and 'visible' or nil)
-	table.insert(t, self:minimized() and 'minimized' or nil)
-	table.insert(t, self:maximized() and 'maximized' or nil)
+	table.insert(t, self:isminimized() and 'minimized' or nil)
+	table.insert(t, self:ismaximized() and 'maximized' or nil)
 	table.insert(t, self:fullscreen() and 'fullscreen' or nil)
 	table.insert(t, self:active() and 'active' or nil)
 	return table.concat(t, ' ')
 end
 
-function app:state()
+function app:_get_state()
 	local t = {}
-	table.insert(t, self:hidden() and 'hidden' or nil)
+	table.insert(t, self:visible() and 'visible' or nil)
 	table.insert(t, self:active() and 'active' or nil)
 	return table.concat(t, ' ')
 end
@@ -770,30 +770,30 @@ function window:_backend_changed()
 	--check if the state has really changed and generate synthetic events
 	--for each state flag that has actually changed.
 	local old = self._state
-	local new = self:state()
+	local new = self:_get_state()
 	self._state = new
 	if new ~= old then
 		self:_event('changed', old, new)
-		trigger(self, diff('visible', old, new), 'was_shown', 'was_hidden')
-		trigger(self, diff('minimized', old, new), 'was_minimized', 'was_unminimized')
-		trigger(self, diff('maximized', old, new), 'was_maximized', 'was_unmaximized')
+		trigger(self, diff('visible', old, new), 'shown', 'hidden')
+		trigger(self, diff('minimized', old, new), 'minimized', 'unminimized')
+		trigger(self, diff('maximized', old, new), 'maximized', 'unmaximized')
 		trigger(self, diff('fullscreen', old, new), 'entered_fullscreen', 'exited_fullscreen')
-		trigger(self, diff('active', old, new), 'was_activated', 'was_deactivated')
+		trigger(self, diff('active', old, new), 'activated', 'deactivated')
 	end
 	self._client_rect = self:_rect_changed(self._client_rect, {self:client_rect()},
-		'client_rect_changed', 'client_was_moved', 'client_was_resized')
+		'client_rect_changed', 'client_moved', 'client_resized')
 	self._frame_rect = self:_rect_changed(self._frame_rect, {self:frame_rect()},
-		'frame_rect_changed', 'frame_was_moved', 'frame_was_resized')
+		'frame_rect_changed', 'frame_moved', 'frame_resized')
 end
 
 function app:_backend_changed()
 	local old = self._state
-	local new = self:state()
+	local new = self:_get_state()
 	self._state = new
 	if new ~= old then
 		self:_event('changed', old, new)
-		trigger(self, diff('hidden', old, new), 'was_hidden', 'was_unhidden')
-		trigger(self, diff('active', old, new), 'was_activated', 'was_deactivated')
+		trigger(self, diff('hidden', old, new), 'hidden', 'unhidden')
+		trigger(self, diff('active', old, new), 'activated', 'deactivated')
 	end
 end
 
@@ -1239,7 +1239,7 @@ end
 
 function window:mouse(var)
 	--hidden or minimized windows don't have a mouse state.
-	if not self:visible() or self:minimized() then return nil end
+	if not self:visible() or self:isminimized() then return nil end
 	if var then
 		return self._mouse[var]
 	else
@@ -1540,7 +1540,7 @@ function view:_init_anchors()
 		return x1, w, x1, x2
 	end
 
-	self.window:on('client_was_resized', function(window, pw, ph)
+	self.window:on('client_resized', function(window, pw, ph)
 		local a = self._anchors
 		local x, y, w, h
 		x, w, x1, x2 = anchor(a:find('l', 1, true), a:find('r', 1, true), x1, x2, w0, pw-pw0)
@@ -1557,14 +1557,14 @@ view._rect_changed = window._rect_changed
 
 function view:_backend_changed()
 	self._rect = self:_rect_changed(self._rect, {self:rect()},
-		'rect_changed', 'was_moved', 'was_resized')
+		'rect_changed', 'moved', 'resized')
 end
 
 --mouse
 
 function view:mouse(var)
 	--hidden or minimized windows don't have a mouse state.
-	if not self.window:visible() or self.window:minimized() then return nil end
+	if not self.window:visible() or self.window:isminimized() then return nil end
 	if var then
 		return self._mouse[var]
 	else

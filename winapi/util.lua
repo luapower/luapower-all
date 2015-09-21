@@ -173,22 +173,20 @@ end
 
 --index adjustment -----------------------------------------------------------
 
---adjust a number from counting from 1 to counting from 0 (and convert to number if necessary).
+--adjust a number from counting from 1 to counting from 0.
 --nil turns to -1. anything else passes through.
 --you should pass all Lua args that indicate an index into something through this function.
-function countfrom0(x)
-	if x == nil then return -1 end
-	local n = tonumber(x)
-	if not n then return x end
+function countfrom0(n)
+	if n == nil then return -1 end
+	if type(n) ~= 'number' then return n end
 	return n-1
 end
 
---adjust a number from counting from 0 to counting from 1 (and convert to number if necessary).
+--adjust a number from counting from 0 to counting from 1.
 --anything not a number passes through. negative numbers turn to nil.
 --you should pass all winapi return values that indicate an index into something through this function.
-function countfrom1(x)
-	local n = tonumber(x)
-	if not n then return x end
+function countfrom1(n)
+	if type(n) ~= 'number' then return n end
 	if n < 0 then return nil end
 	return n+1
 end

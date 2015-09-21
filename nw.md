@@ -49,50 +49,45 @@ __window closing__
 `win:close([force])`									close the window and destroy it
 `win:dead() -> t|f`									check if the window was destroyed
 `win:closing()`										event: closing (return false to refuse)
-`win:was_closed()`									event: closed (but not dead yet)
+`win:closed()`											event: closed (but not dead yet)
 `win:closeable() -> t|f`							closeable flag
 __window & app activation__
-`app:active() -> t|f`								check if the app is active
+`app/win:active() -> t|f`							check if app/window is active
 `app:activate([mode])`								activate the app
-`app:was_activated()`								event: app was activated
-`app:was_deactivated()`								event: app was deactivated
 `app:active_window() -> win`						the active window, if any
-`win:active() -> t|f`								check if window is active
 `win:activate()`										activate the window
-`win:was_activated()`								event: window was activated
-`win:was_deactivated()`								event: window was deactivated
 `win:activable() -> t|f`							activable flag (for 'toolbox' windows)
+`app/win:activated()`								event: app/window was activated
+`app/win:deactivated()`								event: app/window was deactivated
 __app visibility (OSX)__
-`app:hidden(t|f) /-> t|f`							get/set app visibility
+`app:visible(t|f) /-> t|f`							get/set app visibility
 `app:hide()`											hide the app
 `app:unhide()`											unhide the app
-`app:was_hidden()`									event: app was hidden
-`app:was_unhidden()`									event: app was unhidden
+`app:hidden()`											event: app was hidden
+`app:unhidden()`										event: app was unhidden
 __window state__
 `win:visible(t|f) /-> t|f`							get/set window visibility
 `win:show()`											show window (in its previous state)
 `win:hide()`											hide window
-`win:was_shown()`										event: window was shown
-`win:was_hidden()`									event: window was hidden
+`win:shown()`											event: window was shown
+`win:hidden()`											event: window was hidden
 `win:minimizable() -> t|f`							minimizable flag
-`win:minimized() -> t|f`							check if the window is minimized
+`win:isminimized() -> t|f`							check if the window is minimized
 `win:minimize()`										minimize the window
-`win:was_minimized()`								event: window was minimized
-`win:was_unminimized()`								event: window was unminimized
+`win:minimized()`										event: window was minimized
+`win:unminimized()`									event: window was unminimized
 `win:maximizable() -> t|f`							maximizable flag
-`win:maximized() -> t|f`							check if the window is maximized
+`win:ismaximized() -> t|f`							check if the window is maximized
 `win:maximize()`										maximize the window
-`win:was_maximized()`								event: window was maximized
-`win:was_unmaximized()`								event: window was unmaximized
+`win:maximized()`										event: window was maximized
+`win:unmaximized()`									event: window was unmaximized
 `win:fullscreenable() -> t|f`						fullscreenable flag
 `win:fullscreen(t|f) /-> t|f`						get/enter/exit fullscreen mode
 `win:entered_fullscreen()`							event: entered fullscreen mode
 `win:exited_fullscreen()`							event: exited fullscreen mode
 `win:restore()`										restore from minimized or maximized state
 `win:shownormal()`									show in normal state
-`win:state() -> state`								full window state string
 `win:changed(old_state, new_state)`				event: window state changed
-`app:state() -> state`								full app state string
 `app:changed(old_state, new_state)`				event: app state changed
 `win:enabled(t|f) /-> t|f`							get/set window enabled flag
 __client/screen conversion__
@@ -109,11 +104,11 @@ __size and position__
 `win:client_size(cw, ch) /-> cw, ch`			get/set client rect size
 `win:sizing(when, how, x, y, w, h)`				event: window size/position is about to change
 `win:frame_rect_changed(x, y, w, h)`			event: window frame was moved and/or resized
-`win:frame_was_moved(x, y)`						event: window frame was moved
-`win:frame_was_resized(w, h)`						event: window frame was resized
+`win:frame_moved(x, y)`								event: window frame was moved
+`win:frame_resized(w, h)`							event: window frame was resized
 `win:client_rect_changed(cx, cy, cw, ch)`		event: window client area was moved and/or resized
-`win:client_was_moved(cx, cy)`					event: window client area was moved
-`win:client_was_resized(cw, ch)`					event: window client area was resized
+`win:client_moved(cx, cy)`							event: window client area was moved
+`win:client_resized(cw, ch)`						event: window client area was resized
 __size constraints__
 `win:resizeable() -> t|f`							resizeable flag
 `win:minsize(cw, ch) /-> cw, ch`					get/set min client rect size
@@ -168,8 +163,8 @@ __views__
 `view:size(w, h) /-> w, h`							get/set view's size
 `view:anchors(anchors) /-> anchors`				get/set anchors
 `view:rect_changed(x, y, w, h)`					event: view's size and/or position changed
-`view:was_moved(x, y)`								event: view was moved
-`view:was_resized(w, h)`							event: view was resized
+`view:moved(x, y)`									event: view was moved
+`view:resized(w, h)`									event: view was resized
 __mouse__
 `win/view:mouse() -> t`								mouse state: _x, y, inside, left, right, middle, ex1, ex2_
 `win/view:mouseenter()`								event: mouse entered the client area of the window
@@ -424,7 +419,7 @@ Create a window (fields of _`t`_ below with default value in parenthesis):
 	* `w`, `h`						- frame size
 	* `cx`, `cy`					- client area position
 	* `cw`, `ch`					- client area size
-	* `min_cw`, `min_ch`			- min client rect size
+	* `min_cw`, `min_ch`			- min client rect size (1, 1)
 	* `max_cw`, `max_ch`			- max client rect size
 * __state__
 	* `visible`						- start visible (true)
@@ -575,7 +570,7 @@ Check if the window was destroyed.
 Event: The window is about to close.
 Return false from the event handler to refuse.
 
-### `win:was_closed()`
+### `win:closed()`
 
 Event: The window was closed.
 Fired after all children are closed, but before the window itself
@@ -623,7 +618,7 @@ On OSX and Linux it pops up the window in the user's face
 The 'info' mode: this special mode allows bouncing up the dock icon
 on OSX only once. On other platforms it's the same as the default 'alert' mode.
 
-### `app:was_activated()` <br> `app:was_deactivated()`
+### `app:activated()` <br> `app:deactivated()`
 
 Event: the app was activated/deactivated.
 
@@ -642,7 +637,7 @@ Instead it only marks the window to be activated when the app becomes active.
 If you want to alert the user that it should pay attention to the app/window,
 call `app:activate()` after calling this function.
 
-### `win:was_activated()` <br> `win:was_deactivated()`
+### `win:activated()` <br> `win:deactivated()`
 
 Event: window was activated/deactivated.
 
@@ -657,11 +652,11 @@ __NOTE:__ This [doesn't work](https://github.com/luapower/nw/issues/26) in Linux
 
 ## App visibility (OSX)
 
-### `app:hidden() -> t|f` <br> `app:hidden(t|f)` <br> `app:hide()` <br> `app:unhide()`
+### `app:visible() -> t|f` <br> `app:visible(t|f)` <br> `app:hide()` <br> `app:unhide()`
 
 Get/set app visibility.
 
-### `app:was_hidden()` <br> `app:was_unhidden()`
+### `app:hidden()` <br> `app:unhidden()`
 
 Event: app was hidden/unhidden.
 
@@ -692,7 +687,7 @@ Check if a window is visible (note: that includes minimized).
 
 Calls `show()` or `hide()` to change the window's visibility.
 
-### `win:was_shown()` <br> `win:was_hidden()`
+### `win:shown()` <br> `win:hidden()`
 
 Event: window was shown/hidden.
 
@@ -700,7 +695,7 @@ Event: window was shown/hidden.
 
 Get the minimizable flag (read-only).
 
-### `win:minimized() -> t|f`
+### `win:isminimized() -> t|f`
 
 Get the minimized state. This flag remains true when a minimized window is hidden.
 
@@ -709,7 +704,7 @@ Get the minimized state. This flag remains true when a minimized window is hidde
 Minimize the window and deactivate it. If the window is hidden,
 it is shown in minimized state (and the taskbar button is not activated).
 
-### `win:was_minimized()` <br> `win:was_unminimized()`
+### `win:minimized()` <br> `win:unminimized()`
 
 Event: window was minimized/unminimized.
 
@@ -717,7 +712,7 @@ Event: window was minimized/unminimized.
 
 Get the maximizable flag (read-only).
 
-### `win:maximized() -> t|f`
+### `win:ismaximized() -> t|f`
 
 Get the maximized state. This flag stays true if a maximized window
 is minimized, hidden or enters fullscreen mode.
@@ -729,7 +724,7 @@ it is shown in maximized state and activated.
 
 If the window is already maximized it is not activated.
 
-### `win:was_maximized()` <br> `win:was_unmaximized()`
+### `win:maximized()` <br> `win:unmaximized()`
 
 Event: window was maximized/unmaximized.
 
@@ -771,23 +766,15 @@ The window is always activated even when it's already in normal mode.
 State tracking is about getting and tracking the entire user-changeable
 state of a window (of or the app) as a whole.
 
-### `win:state() -> state`
-
-Get the window's full state string which can contain the words
-'visible', 'active', 'minimized', 'maximized', 'fullscreen'.
-
 ### `win:changed(old_state, new_state)`
 
-Event: window state has changed.
-
-### `app:state() -> state`
-
-Get the app's full state string which can contain the words
-'visible' and 'active'.
+Event: window user-changeable state (i.e. any of the `visible`, `minimized`,
+`maximized`, `fullscreen` or `active` flags) has changed.
 
 ### `app:changed(old_state, new_state)`
 
-Event: app state has changed.
+Event: app user-changeable state (i.e. the `visible` or `active` flag) has
+changed.
 
 ### `win:enabled() -> t|f` <br> `win:enabled(t|f)`
 
@@ -862,11 +849,11 @@ Return a new rectangle (x, y, w, h) to affect the window's final size and positi
 
 __NOTE:__ This does not fire in Linux.
 
-### `win:was_moved(cx, cy)`
+### `win:moved(cx, cy)`
 
 Event: window was moved.
 
-### `win:was_resized(cw, ch)`
+### `win:resized(cw, ch)`
 
 Event: window was resized.
 
@@ -882,7 +869,8 @@ Get/set/clear the minimum client rect size.
 
 The constraint can be applied to one dimension only by passing false or nil
 for the other dimension. The window is resized if it was smaller than this size.
-The size is clamped to maxsize if that is set.
+The size is clamped to maxsize if that is set. The size is finally clamped to
+the minimum (1, 1) which is also the default.
 
 ### `win:maxsize() -> cw, ch` <br> `win:maxsize(cw, ch)` <br> `win:maxsize(false)`
 
@@ -1124,7 +1112,7 @@ the view is on, so that when the window is moved/resized, the view
 is also moved/resized in order to preserve the initial distance
 to that side of the window.
 
-### `view:rect_changed(x, y, w, h)` <br> `view:was_moved(x, y)` <br> `view:was_resized(w, h)`
+### `view:rect_changed(x, y, w, h)` <br> `view:moved(x, y)` <br> `view:resized(w, h)`
 
 Event: view's size and/or position changed.
 

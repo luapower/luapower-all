@@ -332,7 +332,7 @@ function Window:windowWillClose()
 		end
 	end
 
-	self.frontend:_backend_was_closed()
+	self.frontend:_backend_closed()
 
 	winmap[objc.nptr(self)] = nil --unregister
 	self:setDelegate(nil) --ignore further events
@@ -428,8 +428,8 @@ end
 
 --state/app visibility -------------------------------------------------------
 
-function app:hidden()
-	return self.nsapp:isHidden()
+function app:visible()
+	return not self.nsapp:isHidden()
 end
 
 function app:unhide() --NOTE: async operation

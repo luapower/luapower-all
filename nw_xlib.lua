@@ -412,7 +412,7 @@ function window:forceclose()
 	end
 
 	--trigger closed event after children are closed but before destroying the window.
-	self.frontend:_backend_was_closed()
+	self.frontend:_backend_closed()
 
 	xlib.destroy_window(self.win)
 	winmap[self.win] = nil --discard further messages
@@ -511,7 +511,7 @@ end
 
 --state/app visibility -------------------------------------------------------
 
-function app:hidden() return false end
+function app:visible() return true end
 function app:hide() end
 function app:unhide() end
 
