@@ -712,15 +712,22 @@ function PostQuitMessage(exitcode)
 	C.PostQuitMessage(exitcode or 0)
 end
 
-function SendMessage(hwnd, WM, wParam, lParam)
+function SendMessagePtr(hwnd, WM, wParam, lParam)
 	if wParam == nil then wParam = 0 end
 	if type(lParam) == 'nil' then lParam = 0 end
 	return C.SendMessageW(hwnd, flags(WM),
 		ffi.cast('WPARAM', wParam),
 		ffi.cast('LPARAM', lParam))
 end
-
-SNDMSG = SendMessage --less typing on those tedious macros
+if ffi.abi'64bit' then
+	function SendMessage(...) --converts int64_t results on x64
+		return tonumber(SendMessagePtr(...))
+	end
+else
+	SendMessage = SendMessagePtr
+end
+SNDMSG = SendMessage
+SNDMSG_PTR = SendMessagePtr --use this when the return value is a pointer
 
 function PostMessage(hwnd, WM, wParam, lParam)
 	if wParam == nil then wParam = 0 end

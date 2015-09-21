@@ -9,17 +9,17 @@ require'winapi.listbox'
 
 LBItemList = class(ItemList)
 
-function LBItemList:add(i,s)
+function LBItemList:add(i,s) --returns index
 	if not s then i,s = nil,i end
 	if i then
-		ListBox_InsertString(self.hwnd, i, s)
+		return ListBox_InsertString(self.hwnd, i, s)
 	else
-		ListBox_AddString(self.hwnd, s)
+		return ListBox_AddString(self.hwnd, s)
 	end
 end
 
-function LBItemList:remove(i)
-	ListBox_DeleteString(self.hwnd, i)
+function LBItemList:remove(i) --returns count
+	return ListBox_DeleteString(self.hwnd, i)
 end
 
 local function setitem(hwnd, i, s)
