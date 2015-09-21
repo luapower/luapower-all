@@ -25,9 +25,6 @@ OpenGL and cairo.
 [Current status](https://github.com/luapower/winapi/issues/26)
 and [issues](https://github.com/luapower/winapi/issues).
 
-__NOTE:__ use luajit32 with winapi for now until
-[this bug](https://github.com/luapower/winapi/issues/24) is fixed.
-
 ## Hello World
 
 ~~~{.lua}
