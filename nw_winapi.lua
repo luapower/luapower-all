@@ -160,9 +160,6 @@ function window:new(app, frontend, t)
 	self.win.__wantallkeys = true --don't let IsDialogMessage() filter out our precious WM_CHARs
 	self:_reset_keystate()
 
-	--init mouse state
-	self:_update_mouse()
-
 	--start tracking mouse leave
 	winapi.TrackMouseEvent{hwnd = self.win.hwnd, flags = winapi.TME_LEAVE}
 
@@ -316,6 +313,9 @@ function window:show()
 		self:minimize()
 	else
 		self.win:show() --sync call
+		if self._layered then
+			self:invalidate()
+		end
 	end
 end
 
@@ -532,6 +532,39 @@ end
 
 --positioning/resizing -------------------------------------------------------
 
+function app:_resize_area_hit(mx, my, w, h)
+	local w1, h1, w2, h2 = app:frame_extents'normal'
+	local mw = (w1 + w2) / 2
+	local mh = (h1 + h2) / 2
+	local co = (mw + mh) / 2
+	return app.frontend:_resize_area_hit(mx, my, w, h, co, mw, mh)
+end
+
+local hts = {
+	bottomleft = winapi.HTBOTTOMLEFT,
+	bottomright = winapi.HTBOTTOMRIGHT,
+	topleft = winapi.HTTOPLEFT,
+	topright = winapi.HTTOPRIGHT,
+	bottom = winapi.HTBOTTOM,
+	top = winapi.HTTOP,
+	left = winapi.HTLEFT,
+	right = winapi.HTRIGHT,
+}
+
+--[[
+function Window:on_nc_hittest(x, y)
+	local x, y = self.frontend:to_client(x, y)
+	local w, h = self.backend:get_client_size()
+	local ht = app:_resize_area_hit(x, y, w, h)
+	print(x, y, w, h, ht, hts[ht] or winapi.HTCAPTION)
+	return hts[ht] or winapi.HTCAPTION
+end
+
+function Window:on_nc_calcsize()
+	return 0
+end
+]]
+
 function Window:on_begin_sizemove()
 	--when moving the window, we want its position relative to
 	--the mouse position to remain constant, and we're going to enforce that.
@@ -618,11 +651,12 @@ function Window:on_resizing(how, rect)
 end
 
 function Window:on_moved()
+	if not self.frontend then return end
 	self.frontend:_backend_changed()
 end
 
 function Window:on_resized(flag)
-	if not self.backend then return end --eary resize from setting constraints: ignore.
+	if not self.backend then return end --early resize from setting constraints: ignore.
 	if flag == 'maximized' then
 		if self.nw_maximizing then return end
 		--frameless windows maximize to the entire screen, covering the taskbar. fix that.
@@ -1123,21 +1157,7 @@ end
 local mouse = {}
 local Mouse = {}
 
-function mouse:_update_mouse()
-	local m = self.frontend._mouse
-	local pos = self.win.cursor_pos
-	m.x = pos.x
-	m.y = pos.y
-	m.left   = winapi.GetKeyState(winapi.VK_LBUTTON)
-	m.middle = winapi.GetKeyState(winapi.VK_MBUTTON)
-	m.right  = winapi.GetKeyState(winapi.VK_RBUTTON)
-	m.ex1    = winapi.GetKeyState(winapi.VK_XBUTTON1)
-	m.ex2    = winapi.GetKeyState(winapi.VK_XBUTTON2)
-	m.inside = box2d.hit(m.x, m.y, unpack_rect(self.win.client_rect))
-end
-
 function mouse:_setmouse(x, y, buttons)
-
 	--set mouse state
 	local m = self.frontend._mouse
 	m.x = x
@@ -1145,19 +1165,16 @@ function mouse:_setmouse(x, y, buttons)
 	m.left = buttons.lbutton
 	m.right = buttons.rbutton
 	m.middle = buttons.mbutton
-	m.ex1 = buttons.xbutton1
-	m.ex2 = buttons.xbutton2
-
-	--send hover
-	if not m.inside then
+	m.x1 = buttons.xbutton1
+	m.x2 = buttons.xbutton2
+	if not m.inside then --mouse entered
 		m.inside = true
 		winapi.TrackMouseEvent{hwnd = self.win.hwnd, flags = winapi.TME_LEAVE}
-		self.frontend:_backend_mouseenter()
+		self.frontend:_backend_mouseenter(x, y)
 	end
 end
 
 function Mouse:on_mouse_move(x, y, buttons)
-	local m = self.frontend._mouse
 	self.backend:_setmouse(x, y, buttons)
 	self.frontend:_backend_mousemove(x, y)
 end
@@ -1202,11 +1219,11 @@ function Mouse:on_xbutton_down(x, y, buttons)
 	self.backend:_setmouse(x, y, buttons)
 	if buttons.xbutton1 then
 		self:capture_mouse()
-		self.frontend:_backend_mousedown('ex1', x, y)
+		self.frontend:_backend_mousedown('x1', x, y)
 	end
 	if buttons.xbutton2 then
 		self:capture_mouse()
-		self.frontend:_backend_mousedown('ex2', x, y)
+		self.frontend:_backend_mousedown('x2', x, y)
 	end
 end
 
@@ -1232,11 +1249,11 @@ function Mouse:on_xbutton_up(x, y, buttons)
 	self.backend:_setmouse(x, y, buttons)
 	if buttons.xbutton1 then
 		self:uncapture_mouse()
-		self.frontend:_backend_mouseup('ex1', x, y)
+		self.frontend:_backend_mouseup('x1', x, y)
 	end
 	if buttons.xbutton2 then
 		self:uncapture_mouse()
-		self.frontend:_backend_mouseup('ex2', x, y)
+		self.frontend:_backend_mouseup('x2', x, y)
 	end
 end
 
@@ -2175,21 +2192,21 @@ end
 local function DragEnter(self, idataobject, key_state, x, y, peffect)
 	local backend = backend(self)
 	backend._drag_payload = drag_payload(idataobject)
-	x, y = backend:to_client(x, y)
+	x, y = backend.frontend:to_client(x, y)
 	return drag_result(backend.frontend:_backend_dragging('enter',
 		backend._drag_payload, x, y), peffect)
 end
 
 local function DragOver(self, key_state, x, y, peffect)
 	local backend = backend(self)
-	x, y = backend:to_client(x, y)
+	x, y = backend.frontend:to_client(x, y)
 	return drag_result(backend.frontend:_backend_dragging('hover',
 		backend._drag_payload, x, y), peffect)
 end
 
 local function Drop(self, idataobject, key_state, x, y, peffect)
 	local backend = backend(self)
-	x, y = backend:to_client(x, y)
+	x, y = backend.frontend:to_client(x, y)
 	drag_result(backend.frontend:_backend_dragging('drop',
 		backend._drag_payload, x, y), peffect)
 	backend._drag_payload = nil

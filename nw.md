@@ -102,12 +102,12 @@ __size and position__
 `win:frame_rect(x,y,w,h) /-> x,y,w,h`        get/set frame rect
 `win:normal_frame_rect(x,y,w,h)`             get frame rect in normal state
 `win:sizing(when, how, x, y, w, h)`          event: window size/position is about to change
-`win:frame_rect_changed(x, y, w, h)`         event: window frame was moved and/or resized
-`win:frame_moved(x, y)`                      event: window frame was moved
-`win:frame_resized(w, h)`                    event: window frame was resized
-`win:client_rect_changed(cx, cy, cw, ch)`    event: window client area was moved and/or resized
-`win:client_moved(cx, cy)`                   event: window client area was moved
-`win:client_resized(cw, ch)`                 event: window client area was resized
+`win:frame_rect_changed(x, y, w, h, ...)`    event: window frame was moved and/or resized
+`win:frame_moved(x, y, oldx, oldy)`          event: window frame was moved
+`win:frame_resized(w, h, oldw, oldh)`        event: window frame was resized
+`win:client_rect_changed(cx,cy,cw,ch,...)`   event: window client area was moved and/or resized
+`win:client_moved(cx, cy, oldcx, oldcy)`     event: window client area was moved
+`win:client_resized(cw, ch, oldcw, oldch)`   event: window client area was resized
 __size constraints__
 `win:resizeable() -> t|f`                    resizeable flag
 `win:minsize(cw, ch) /-> cw, ch`             get/set min client rect size
@@ -162,11 +162,11 @@ __views__
 `view:size(w, h) /-> w, h`                   get/set view's size
 `view:anchors(anchors) /-> anchors`          get/set anchors
 `view:rect_changed(x, y, w, h)`              event: view's size and/or position changed
-`view:moved(x, y)`                           event: view was moved
-`view:resized(w, h)`                         event: view was resized
+`view:moved(x, y, oldx, oldy)`               event: view was moved
+`view:resized(w, h, oldw, oldh)`             event: view was resized
 __mouse__
-`win/view:mouse(var) -> val`                 mouse state: _x, y, pos, inside, left, right, middle, ex1, ex2_
-`win/view:mouseenter()`                      event: mouse entered the client area of the window
+`win/view:mouse(var) -> val`                 mouse state: _x, y, pos, inside, left, right, middle, x1, x2_
+`win/view:mouseenter(x, y)`                  event: mouse entered the client area of the window
 `win/view:mouseleave()`                      event: mouse left the client area of the window
 `win/view:mousemove(x, y)`                   event: mouse was moved
 `win/view:mousedown(button, x, y)`           event: mouse button was pressed
@@ -850,13 +850,10 @@ value received as argument to the function.
 
 __NOTE:__ This event does not fire in Linux.
 
-### `win:moved(cx, cy)`
+### `win:client_rect_changed(cx, cy, cw, ch, oldcx, oldcy, oldcw, oldch)` <br> `win:client_moved(cx, cy, oldcx, oldcy)` <br>  `win:client_resized(cw, ch, oldcw, oldch)` <br> `win:frame_rect_changed(x, y, w, h, oldx, oldy, oldw, oldh)` <br> `win:frame_moved(x, y, oldx, oldy)` <br> `win:frame_resized(w, h, oldw, oldh)`
 
-Event: window was moved.
-
-### `win:resized(cw, ch)`
-
-Event: window was resized.
+Event: window was moved/resized. These events also fire when a window is
+hidden or minimized in which case all args are nil, so make sure to test for that.
 
 ## Size constraints
 
@@ -1058,8 +1055,11 @@ In particular, you can use OpenGL on some views, while using bitmaps
 an antialiased 2D UI around a 3D scene as an alternative to drawing
 on the textures of orto-projected quads.
 
-__NOTE:__ The window doesn't receive mouse move events while the mouse
-is over a view.
+__NOTE:__ If you use views, bind all mouse events to the views.
+Do not mix window and view mouse events since the behavior of window
+mouse events in the presence of views is
+[not consistent](https://github.com/luapower/nw/issues/54)
+between platforms.
 
 ### `win:views() -> {view1, ...}` <br> `win:views'#' -> n`
 
@@ -1122,7 +1122,7 @@ Event: view's size and/or position changed.
 ### `win/view:mouse(var) -> val`
 
 Get the mouse state. The `var` arg can be:
-'x', 'y', 'pos', 'inside', 'left', 'right', 'middle', 'ex1', 'ex2'.
+'x', 'y', 'pos', 'inside', 'left', 'right', 'middle', 'x1', 'x2'.
 
 The mouse state is not queried: it is the state at the time of the last
 mouse event. Returns nothing if the window is hidden or minimized.
@@ -1141,7 +1141,7 @@ Event: the mouse was moved.
 
 ### `win/view:mousedown(button, x, y)`
 
-Event: a mouse button was pressed; button can be 'left', 'right', 'middle', 'ex1', 'ex2'.
+Event: a mouse button was pressed; button can be 'left', 'right', 'middle', 'x1', 'x2'.
 
 While a mouse button is down, the mouse is _captured_ by the window/view
 which received the mousedown event, which means that the same window/view

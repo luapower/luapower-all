@@ -1003,7 +1003,7 @@ function window:set_minsize(w, h)
 end
 
 local function clean(x)
-	return x ~= 2^24 and x or nil
+	return x < 2^24 and x or nil
 end
 function window:get_maxsize()
 	local sz = self.nswin:contentMaxSize()
@@ -1016,6 +1016,11 @@ function window:set_maxsize(w, h)
 end
 
 --positioning/resizing -------------------------------------------------------
+
+function app:_resize_area_hit(mx, my, w, h)
+	--offsets were found empirically on OSX 10.9
+	return self.frontend:_resize_area_hit(mx, h-my, w, h, 15, 4, 4)
+end
 
 function Window:nw_clientarea_hit(event)
 	local mp = event:locationInWindow()
@@ -1046,33 +1051,10 @@ end
 --NOTE: there's no API to get the corner or side that a window is dragged by
 --when resized, so we have to detect that manually based on mouse position.
 --Getting that corner/side is needed for proper window snapping.
-
-local function resize_area_hit(mx, my, w, h)
-	local co = 15 --corner offset
-	local mo = 4 --margin offset
-	if box2d.hit(mx, my, box2d.offset(co, 0, 0, 0, 0)) then
-		return 'bottomleft'
-	elseif box2d.hit(mx, my, box2d.offset(co, w, 0, 0, 0)) then
-		return 'bottomright'
-	elseif box2d.hit(mx, my, box2d.offset(co, 0, h, 0, 0)) then
-		return 'topleft'
-	elseif box2d.hit(mx, my, box2d.offset(co, w, h, 0, 0)) then
-		return 'topright'
-	elseif box2d.hit(mx, my, box2d.offset(mo, 0, 0, w, 0)) then
-		return 'bottom'
-	elseif box2d.hit(mx, my, box2d.offset(mo, 0, h, w, 0)) then
-		return 'top'
-	elseif box2d.hit(mx, my, box2d.offset(mo, 0, 0, 0, h)) then
-		return 'left'
-	elseif box2d.hit(mx, my, box2d.offset(mo, w, 0, 0, h)) then
-		return 'right'
-	end
-end
-
 function Window:nw_resize_area_hit(event)
 	local mp = event:locationInWindow()
 	local _, _, w, h = unpack_nsrect(self:frame())
-	return resize_area_hit(mp.x, mp.y, w, h)
+	return app:_resize_area_hit(mp.x, mp.y, w, h)
 end
 
 --NOTE: No event is triggered while moving a window and frame_rect() is not
@@ -1134,7 +1116,7 @@ function Window:windowWillStartLiveResize(notification)
 	end
 	local mx, my = self.mousepos.x, self.mousepos.y
 	local _, _, w, h = unpack_nsrect(self:frame())
-	self.how = resize_area_hit(mx, my, w, h)
+	self.how = app:_resize_area_hit(mx, my, w, h)
 	self.frontend:_backend_sizing('start', self.how)
 end
 
@@ -1707,10 +1689,11 @@ local function make_bitmap(w, h)
 
 		--get the current graphics context and draw our image on it.
 		local context = objc.NSGraphicsContext:currentContext()
-		local graphicsport = context:graphicsPort()
+		local gport = context:graphicsPort()
 		context:setCompositingOperation(objc.NSCompositeCopy)
-		objc.CGContextDrawImage(graphicsport, bounds, image)
-
+		objc.CGContextTranslateCTM(gport, 0, h) --flip the CTM upside down
+		objc.CGContextScaleCTM(gport, 1.0, -1.0)
+		objc.CGContextDrawImage(gport, bounds, image)
 		objc.CGImageRelease(image)
 	end
 
@@ -1831,8 +1814,8 @@ function View:nw_setmouse(event)
 	m.left = bit.band(btns, 1) ~= 0
 	m.right = bit.band(btns, 2) ~= 0
 	m.middle = bit.band(btns, 4) ~= 0
-	m.ex1 = bit.band(btns, 8) ~= 0
-	m.ex2 = bit.band(btns, 16) ~= 0
+	m.x1 = bit.band(btns, 8) ~= 0
+	m.x2 = bit.band(btns, 16) ~= 0
 	return m
 end
 
@@ -1866,7 +1849,7 @@ function View:rightMouseUp(event)
 	self.frontend:_backend_mouseup('right', m.x, m.y)
 end
 
-local other_buttons = {'', 'middle', 'ex1', 'ex2'}
+local other_buttons = {'', 'middle', 'x1', 'x2'}
 
 function View:otherMouseDown(event)
 	local btn = other_buttons[tonumber(event:buttonNumber())]
@@ -1907,7 +1890,7 @@ function View:mouseEntered(event)
 	self:window():setAcceptsMouseMovedEvents(true)
 	--mute mousenter() if buttons are pressed to emulate Windows behavior.
 	if event:pressedMouseButtons() ~= 0 then return end
-	self.frontend:_backend_mouseenter()
+	self.frontend:_backend_mouseenter(m.x, m.y)
 end
 
 function View:mouseExited(event)

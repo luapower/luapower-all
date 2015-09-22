@@ -1014,7 +1014,7 @@ function M.connect(...)
 	end
 
 	local image = ffi.new'XImage'
-	function put_image(gc, data, size, w, h, depth, pix, dx, dy, left_pad)
+	function put_image(gc, data, size, w, h, depth, xid, dx, dy)
 		image.width = w
 		image.height = h
 		image.format = C.ZPixmap
@@ -1029,7 +1029,7 @@ function M.connect(...)
 		image.green_mask = 0xff
 		image.blue_mask  = 0xff
 		C.XInitImage(image)
-		C.XPutImage(c, pix, gc, image, 0, 0, dx or 0, dy or 0, w, h)
+		C.XPutImage(c, xid, gc, image, 0, 0, dx or 0, dy or 0, w, h)
 	end
 
 	function copy_area(gc, src, sx, sy, w, h, dst, dx, dy)
@@ -1039,13 +1039,13 @@ function M.connect(...)
 	--Xinerama extension ------------------------------------------------------
 	--lists virtual screens in multi-monitor setups.
 
-	local XC
+	local XRC
 	function xinerama_screens()
 		if not has_extension'XINERAMA' then return end
-		XC = XC or ffi.load'Xinerama'
-		if XC.XineramaIsActive(c) == 0 then return end
+		XRC = XRC or ffi.load'Xinerama'
+		if XRC.XineramaIsActive(c) == 0 then return end
 		local nbuf = ffi.new'int[1]'
-		local screens = ptr(XC.XineramaQueryScreens(c, nbuf), C.XFree)
+		local screens = ptr(XRC.XineramaQueryScreens(c, nbuf), C.XFree)
 		return screens, nbuf[0]
 	end
 
@@ -1075,6 +1075,19 @@ function M.connect(...)
 		return state
 	end
 
+	--mouse -------------------------------------------------------------------
+
+	--[[
+	function querypointer(win)
+		C.XQueryPointer(c,
+		Display *display;
+			Window w;
+			Window *root_return, *child_return;
+			int *root_x_return, *root_y_return;
+			int *win_x_return, *win_y_return;
+			unsigned int *mask_return;
+	]]
+
 	--cursors -----------------------------------------------------------------
 
 	local ctx
@@ -1101,6 +1114,52 @@ function M.connect(...)
 			C.xcb_free_pixmap(c, pix)
 		end
 		return bcur
+	end
+
+	--shm extension -----------------------------------------------------------
+
+	local shm
+
+	function xlib.shm()
+		if XC.XShmQueryExtension(c) == 0 then return end
+		shm = require'shm'
+		return true
+	end
+
+	function shm_create_image(visual, depth, w, h)
+		local format = XC.XShmPixmapFormat(c)
+		assert(format == C.ZPixmap)
+		local shminfo = ffi.new'XShmSegmentInfo'
+		local image = ptr(XC.XShmCreateImage(c, visual, depth, format, nil, shminfo, w, h))
+		assert(image, 'XShmCreateImage failed')
+		shminfo.shmid = shm.shmget(
+			shm.IPC_PRIVATE,
+			image.bytes_per_line * image.height,
+			bit.bor(shm.IPC_CREAT, 0x1ff)) --0777
+		if shminfo.shmid == 0 then
+			X.XDestroyImage(image)
+			error'shmget failed'
+		end
+		shminfo.shmaddr = shm.shmat(shminfo.shmid, nil, 0)
+		image.data = shminfo.shmaddr
+		if XC.XShmAttach(c, shminfo) == 0 then
+			X.XDestroyImage(image)
+			shm.shmdt(shminfo.shmaddr)
+			shm.shmctl(shminfo.shmid, shm.IPC_RMID, 0)
+			error'XShmAttach failed'
+		end
+		return image, shminfo
+	end
+
+	function shm_free_image(image, shminfo)
+		XC.XShmDetach(c, shminfo)
+		X.XDestroyImage(image)
+		shm.shmdt(shminfo.shmaddr)
+		shm.shmctl(shminfo.shmid, shm.IPC_RMID, nil)
+	end
+
+	function shm_put_image(gc, image, w, h, xid, dx, dy)
+		assert(XC.XShmPutImage(c, xid, gc, image, 0, 0, dx or 0, dy or 0, w, h, true) ~= 0)
 	end
 
 	--[[
@@ -1133,15 +1192,9 @@ function M.connect(...)
 		if not ic then return end
 		C.XSetICFocus(ic)
 	end
-
-	--shm extension -----------------------------------------------------------
-
-	function shm()
-		if XC.XShmQueryVersion(c) == 0 then return end
-		local ok = reply ~= nil and reply.shared_pixmaps ~= 0
-		return lib
-	end
 	]]
+
+	---------------------------------------------------------------------------
 
 	connect(...)
 

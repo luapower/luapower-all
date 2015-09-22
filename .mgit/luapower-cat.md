@@ -59,6 +59,7 @@ tagline: package categories
 	* [objc]
 	* [syscall]
 	* [xlib]
+	* [shm]
 * 2D Graphics
 	* [path2d]
 	* [affine2d]

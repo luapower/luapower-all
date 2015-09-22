@@ -493,7 +493,7 @@ function window:_new(app, backend_class, useropt)
 
 	self = glue.update({app = app}, self)
 
-	self._mouse = {}
+	self._mouse = {inside = false}
 	self._down = {}
 	self._views = {}
 	self._cursor_visible = true
@@ -754,13 +754,13 @@ function window:_rect_changed(old_rect, new_rect, changed_event, moved_event, re
 	local moved = x1 ~= x0 or y1 ~= y0
 	local resized = w1 ~= w0 or h1 ~= h0
 	if moved or resized then
-		self:_event(changed_event, x1, y1, w1, h1)
+		self:_event(changed_event, x1, y1, w1, h1, x0, y0, w0, h0)
 	end
 	if moved then
-		self:_event(moved_event, x1, y1)
+		self:_event(moved_event, x1, y1, x0, y0)
 	end
 	if resized then
-		self:_event(resized_event, w1, h1)
+		self:_event(resized_event, w1, h1, w0, h0)
 	end
 	return new_rect
 end
@@ -959,6 +959,28 @@ function window:maxsize(w, h) --pass false to disable
 end
 
 --positioning/moving/resizing ------------------------------------------------
+
+--this is a helper used in backends.
+--co = corner offset; mw = margin width; mh = margin height.
+function app:_resize_area_hit(mx, my, w, h, co, mw, mh)
+	if box2d.hit(mx, my, box2d.offset(co, 0, 0, 0, 0)) then
+		return 'topleft'
+	elseif box2d.hit(mx, my, box2d.offset(co, w, 0, 0, 0)) then
+		return 'topright'
+	elseif box2d.hit(mx, my, box2d.offset(co, 0, h, 0, 0)) then
+		return 'bottomleft'
+	elseif box2d.hit(mx, my, box2d.offset(co, w, h, 0, 0)) then
+		return 'bottomright'
+	elseif box2d.hit(mx, my, box2d.offset(mh, 0, 0, w, 0)) then
+		return 'top'
+	elseif box2d.hit(mx, my, box2d.offset(mh, 0, h, w, 0)) then
+		return 'bottom'
+	elseif box2d.hit(mx, my, box2d.offset(mw, 0, 0, 0, h)) then
+		return 'left'
+	elseif box2d.hit(mx, my, box2d.offset(mw, w, 0, 0, h)) then
+		return 'right'
+	end
+end
 
 function window:_backend_sizing(when, how, x, y, w, h)
 
@@ -1253,10 +1275,16 @@ end
 
 function window:mouse(var)
 	if not self:_can_get_rect() then return end
-	if var == 'pos' then
+	local inside = self._mouse.inside
+	if var == 'inside' then
+		return inside
+	elseif not inside then
+		return
+	elseif var == 'pos' then
 		return self._mouse.x, self._mouse.y
+	else
+		return self._mouse[var]
 	end
-	return self._mouse[var]
 end
 
 function window:_backend_mousedown(button, mx, my)
@@ -1295,8 +1323,8 @@ function window:_backend_mouseup(button, x, y)
 	self:_event('mouseup', button, x, y)
 end
 
-function window:_backend_mouseenter()
-	self:_event'mouseenter'
+function window:_backend_mouseenter(x, y)
+	self:_event('mouseenter', x, y)
 end
 
 function window:_backend_mouseleave()
@@ -1323,6 +1351,7 @@ function window:invalidate(...)
 end
 
 function window:_backend_repaint(...)
+	if not self:_can_get_rect() then return end
 	self:_event('repaint', ...)
 end
 
@@ -1431,7 +1460,7 @@ function view:_new(window, backend_class, useropt)
 		app = window.app,
 	}, self)
 
-	self._mouse = {}
+	self._mouse = {inside = false}
 	self._down = {}
 	self._anchors = opt.anchors
 	self._opengl = opt.opengl
@@ -1539,10 +1568,6 @@ end
 function view:_init_anchors()
 	self._rect = {self:rect()}
 
-	local pw0, ph0 = self.window:client_size()
-	local x1, y1, w0, h0 = self:rect()
-	local x2, y2 = pw0-w0, ph0-h0
-
 	local function anchor(left, right, x1, x2, w, dw)
 		if left then
 			if right then --resize
@@ -1554,7 +1579,16 @@ function view:_init_anchors()
 		return x1, w, x1, x2
 	end
 
-	self.window:on('client_resized', function(window, pw, ph)
+	local x1, y1, w0, h0 = self:rect()
+	local pw0, ph0
+	local x2, y2
+
+	self.window:on('client_resized', function(window, pw, ph, oldpw, oldph)
+		if not pw then return end
+		if not pw0 then
+			pw0, ph0 = self.window:client_size()
+			x2, y2 = pw0-w0, ph0-h0
+		end
 		local a = self._anchors
 		local x, y, w, h
 		x, w, x1, x2 = anchor(a:find('l', 1, true), a:find('r', 1, true), x1, x2, w0, pw-pw0)
@@ -1567,6 +1601,10 @@ end
 
 --events
 
+function view:_can_get_rect()
+	return self.window:_can_get_rect()
+end
+
 view._rect_changed = window._rect_changed
 
 function view:_backend_changed()
@@ -1576,14 +1614,7 @@ end
 
 --mouse
 
-function view:mouse(var)
-	if not self.window:_can_get_rect() then return end
-	if var == 'pos' then
-		return self._mouse.x, self._mouse.y
-	end
-	return self._mouse[var]
-end
-
+view.mouse = window.mouse
 view._backend_mousedown   = window._backend_mousedown
 view._backend_mouseup     = window._backend_mouseup
 view._backend_mouseenter  = window._backend_mouseenter

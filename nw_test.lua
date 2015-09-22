@@ -689,7 +689,7 @@ end)
 
 --the app is dactivated after the last window is hidden.
 --this is an interactive test because you have to start the app with it.
-add('check-activation-app-deactivated', function()
+add('demo-activation-app-deactivated', function()
 	local rec = recorder()
 	function app:deactivated() rec'app-deactivated' end
 	local win = app:window(winpos())
@@ -704,7 +704,7 @@ end)
 --app:active() works (returns true only if the app is active).
 --app:active_window() works (always returns nil if the app is not active).
 --this is an interactive test: you must activate another app to see it.
-add('check-activation-app-active', function()
+add('demo-activation-app-active', function()
 	local win = app:window(winpos())
 	app:runevery(0.1, function()
 		if app:active() then
@@ -746,9 +746,9 @@ local function activation_test(mode)
 		app:run()
 	end
 end
-add('check-activation-app-alert', activation_test())
-add('check-activation-app-info', activation_test'info')
-add('check-activation-app-force', activation_test'force')
+add('demo-activation-app-alert', activation_test())
+add('demo-activation-app-info', activation_test'info')
+add('demo-activation-app-force', activation_test'force')
 
 --In Windows the app can be activated programatically even if there are no
 --visible windows, but there must be at least one (hidden) window.
@@ -757,7 +757,7 @@ add('check-activation-app-force', activation_test'force')
 --In Linux the app can't be activated if there isn't at least one visible
 --window (because there's no concept of apps in X really).
 --this is an interactive test: you must activate another app to see it.
-add('check-activation-app-activate-no-windows', function()
+add('demo-activation-app-activate-no-windows', function()
 	function app:activated() print'activated' end
 	function app:deactivated() print'deactivated' end
 	local win = app:window(winpos{visible = false})
@@ -771,7 +771,7 @@ end)
 --when the first window is shown, it is not activated if another app
 --was activated in the meantime (Windows, OSX, not Linux).
 --this is an interactive test: you must activate another app to see it.
-add('check-activation-window-activate-hidden', function()
+add('demo-activation-window-activate-hidden', function()
 	local rec = recorder()
 	local win = app:window(winpos{visible = false})
 	function win:activated() rec'win-activated' end
@@ -791,7 +791,7 @@ end)
 
 --activable flag works for child toolbox windows.
 --this is an interactive test: move the child window and it doesn't activate.
-add('check-activation-window-non-activable', function()
+add('demo-activation-window-non-activable', function()
 	local win1 = app:window{x = 100, y = 100, w = 500, h = 200}
 	local win2 = app:window{x = 200, y = 130, w = 200, h = 300,
 		activable = false, frame = 'toolbox', parent = win1}
@@ -889,7 +889,7 @@ local function state_string(win)
 		(string.format('  (%4s, %4s :%4s x%4s)',nx,ny,nw,nh))
 end
 
-local function init_check(t, child)
+local function mkdemo(t, child)
 	return function()
 
 		local function help()
@@ -1153,37 +1153,37 @@ local function init_check(t, child)
 end
 
 --initial states
-add('check', init_check{})
-add('check-hidden', init_check{visible = false})
-add('check-minimized', init_check{visible = true, minimized = true})
-add('check-maximized', init_check{visible = true, maximized = true})
-add('check-minimized-maximized', init_check{visible = true, minimized = true, maximized = true})
-add('check-hidden-minimized', init_check{visible = false, minimized = true})
-add('check-hidden-maximized', init_check{visible = false, maximized = true})
-add('check-hidden-minimized-maximized', init_check{visible = false, minimized = true, maximized = true})
-add('check-disabled', init_check({enabled = false}))
+add('demo', mkdemo{})
+add('demo-hidden', mkdemo{visible = false})
+add('demo-minimized', mkdemo{visible = true, minimized = true})
+add('demo-maximized', mkdemo{visible = true, maximized = true})
+add('demo-minimized-maximized', mkdemo{visible = true, minimized = true, maximized = true})
+add('demo-hidden-minimized', mkdemo{visible = false, minimized = true})
+add('demo-hidden-maximized', mkdemo{visible = false, maximized = true})
+add('demo-hidden-minimized-maximized', mkdemo{visible = false, minimized = true, maximized = true})
+add('demo-disabled', mkdemo({enabled = false}))
 
 --restrictions
-add('check-non-minimizable', init_check{minimizable = false})
-add('check-non-maximizable', init_check{maximizable = false})
-add('check-non-closeable', init_check{closeable = false})
-add('check-non-resizeable', init_check{resizeable = false}) --implies non-maximizable non-fullscreenable
-add('check-non-activable', init_check({activable = false, frame = 'toolbox'}, true))
+add('demo-non-minimizable', mkdemo{minimizable = false})
+add('demo-non-maximizable', mkdemo{maximizable = false})
+add('demo-non-closeable', mkdemo{closeable = false})
+add('demo-non-resizeable', mkdemo{resizeable = false}) --implies non-maximizable non-fullscreenable
+add('demo-non-activable', mkdemo({activable = false, frame = 'toolbox'}, true))
 --this combination makes disabled buttons hidden rather than disabled
-add('check-non-minimizable-non-maximizable', init_check{minimizable = false, maximizable = false})
+add('demo-non-minimizable-non-maximizable', mkdemo{minimizable = false, maximizable = false})
 --this combination shows no buttons
-add('check-non-minimizable-non-maximizable-non-closeable', init_check{minimizable = false, maximizable = false})
+add('demo-non-minimizable-non-maximizable-non-closeable', mkdemo{minimizable = false, maximizable = false})
 --this combination allows maxsize()
-add('check-non-maximizable-non-fullscreenable', init_check{maximizable = false, fullscreenable = false})
+add('demo-non-maximizable-non-fullscreenable', mkdemo{maximizable = false, fullscreenable = false})
 
 --other read-only properties
-add('check-topmost', init_check({topmost = true}))
-add('check-parent', init_check({}, true))
-add('check-parent-non-sticky', init_check({sticky = false}, true))
-add('check-frame=none', init_check({frame = 'none'}))
-add('check-frame=toolbox', init_check({frame = 'toolbox'}, true))
-add('check-frame=toolbox-non-activable', init_check({frame = 'toolbox', activable = false}, true))
-add('check-frame=none-transparent', init_check({frame = 'none', transparent = true}, true))
+add('demo-topmost', mkdemo({topmost = true}))
+add('demo-parent', mkdemo({}, true))
+add('demo-parent-non-sticky', mkdemo({sticky = false}, true))
+add('demo-frame=none', mkdemo({frame = 'none'}))
+add('demo-frame=toolbox', mkdemo({frame = 'toolbox'}, true))
+add('demo-frame=toolbox-non-activable', mkdemo({frame = 'toolbox', activable = false}, true))
+add('demo-frame=none-transparent', mkdemo({frame = 'none', transparent = true}, true))
 
 --state automated tests ------------------------------------------------------
 
@@ -1515,7 +1515,7 @@ end
 
 --parent/child relationship --------------------------------------------------
 
-add('check-children', function()
+add('demo-children', function()
 	local w1 = app:window(winpos{x = 100, y = 100, w = 500, h = 300})
 	local w2 = app:window(winpos{x = 200, y = 200, w = 500, h = 300, parent = w1})
 	function w2:closing()
@@ -1533,14 +1533,14 @@ end)
 
 --check that a hidden parent results in a visible window that doesn't show on taskbar.
 --bonus: check that autoquit works on child windows.
-add('check-parent-hidden', function()
+add('demo-parent-hidden', function()
 	local win1 = app:window(winpos{visible = false})
 	local win2 = app:window(winpos{parent = win1, autoquit = true})
 	app:run()
 end)
 
 --check that hiding the parent results in a visible window that doesn't show on taskbar.
-add('check-parent-hide', function()
+add('demo-parent-hide', function()
 	local win1 = app:window(winpos())
 	local win2 = app:window(winpos{parent = win1, autoquit = true})
 	app:run(function()
@@ -1551,7 +1551,7 @@ add('check-parent-hide', function()
 end)
 
 --check that showing back the parent preserves the parent-child relationship.
-add('check-parent-hide-show', function()
+add('demo-parent-hide-show', function()
 	local win1 = app:window(winpos())
 	local x, y = win1:client_rect()
 	local win2 = app:window(winpos{x = x + 20, y = y + 20, parent = win1, autoquit = true})
@@ -1568,7 +1568,7 @@ end)
 
 --children are sticky: they follow parent on move (but not on resize, maximize, etc).
 --interactive test: move the parent to see child moving too.
-add('check-children-sticky', function()
+add('demo-children-sticky', function()
 	local win1 = app:window{x = 100, y = 100, w = 500, h = 200}
 	local win2 = app:window{x = 200, y = 130, w = 200, h = 300, parent = win1, sticky = true}
 	app:run()
@@ -1576,7 +1576,7 @@ end)
 
 --children are not sticky: they don't follow parent on move or resize or maximize.
 --interactive test: move the parent to see child moving too.
-add('check-children-non-sticky', function()
+add('demo-children-non-sticky', function()
 	local win1 = app:window{x = 100, y = 100, w = 500, h = 200}
 	local win2 = app:window{x = 200, y = 130, w = 200, h = 300, parent = win1, sticky = false}
 	app:run()
@@ -1585,7 +1585,7 @@ end)
 --state/enabled --------------------------------------------------------------
 
 --interactive test showing modal operation based on `enabled` and `parent` properties.
-add('check-enabled', function()
+add('demo-enabled', function()
 	local win1 = app:window(winpos{x = 100, y = 100, w = 500, h = 300, enabled = false})
 	local win2 = app:window(winpos{x = 200, y = 150, w = 300, h = 200, parent = win1,
 		minimizable = false, maximizable = false, resizeable = false})
@@ -1643,7 +1643,7 @@ end)
 --positioning/initial values -------------------------------------------------
 
 --check that a window is spanning the entire workspace -2px on all sides.
-add('check-pos-init-client', function()
+add('demo-pos-init-client', function()
 	local sx, sy, sw, sh = app:main_display():desktop_rect()
 	local fw1, fh1, fw2, fh2 = app:frame_extents'normal'
 	local b = 2
@@ -1657,7 +1657,7 @@ add('check-pos-init-client', function()
 end)
 
 --check that a window spanning the entire workspace -2px on all sides.
-add('check-pos-init-frame', function()
+add('demo-pos-init-frame', function()
 	local sx, sy, sw, sh = app:main_display():desktop_rect()
 	local b = 2
 	local win = app:window{
@@ -1671,7 +1671,7 @@ end)
 
 --test if x,y,w,h mixed with cx,cy,cw,ch works.
 --this is an eye-test for framed windows.
-add('check-pos-init-mixed', function()
+add('demo-pos-init-mixed', function()
 	app:window{cx = 200, cy = 200, cw = 200, ch = 200}
 	app:window{x = 200, cy = 200, w = 200, ch = 200}
 	app:window{cx = 200, y = 200, cw = 200, h = 200}
@@ -1691,7 +1691,7 @@ add('pos-init-client-noframe', function()
 end)
 
 --check that the default window position is cascaded.
-add('check-pos-init-cascade', function()
+add('demo-pos-init-cascade', function()
 	for i = 1,30 do
 		app:window{w = 500, h = 300}
 	end
@@ -1752,7 +1752,7 @@ add('pos-conversions-hidden', pos_conv_test(false))
 --edge snapping --------------------------------------------------------------
 
 --interactive test: move and resize windows around.
-add('check-pos-snap', function()
+add('demo-pos-snap', function()
 	app:window(winpos{w = 300, title = 'no snap', edgesnapping = false})
 	app:window(winpos{w = 300, title = 'snap to: default'})
 	app:window(winpos{w = 300, title = 'snap to: screen', edgesnapping = 'screen'})
@@ -1776,6 +1776,8 @@ app:run(function()
 	--check that initial constraints are set and the window size respects them.
 	local win = app:window{w = 800, h = 800, min_cw = 200, min_ch = 200, max_cw = 400, max_ch = 400,
 		maximizable = false, fullscreenable = false}
+
+	app:sleep(0.1)
 
 	local minw, minh = win:minsize()
 	assert(minw == 200)
@@ -1900,7 +1902,7 @@ end)
 
 --setting maxsize > screen size constrains the window to screen size,
 --but the window can be resized to larger than screen size manually.
-add('check-pos-minmax-large-max', function()
+add('demo-pos-minmax-large-max', function()
 	local win = app:window{x = 100, y = 100, w = 10000, h = 10000, max_cw = 10000, max_ch = 10000,
 		maximizable = false, fullscreenable = false}
 	app:run()
@@ -1908,7 +1910,7 @@ end)
 
 --setting minsize > screen size works.
 --it's buggy/slow on both Windows and OSX for very large sizes.
-add('check-pos-minmax-large-min', function()
+add('demo-pos-minmax-large-min', function()
 	local win = app:window{x = 100, y = 100, w = 10000, h = 10000, min_cw = 10000, min_ch = 10000}
 	app:run()
 end)
@@ -1926,7 +1928,7 @@ end)
 --z-order --------------------------------------------------------------------
 
 --interactive test showing topmost.
-add('check-topmost', function()
+add('demo-topmost', function()
 	local win = app:window(winpos{title = 'top1', x = 100, y = 100, topmost = true, autoquit = true})
 	assert(win:topmost())
 	win:topmost(false)
@@ -2084,7 +2086,7 @@ add('display-autoscaling-off', function() test_autoscaling(false) end)
 add('display-autoscaling-on', function() test_autoscaling(true) end)
 
 --move the window between screens with different scaling factors to see the event.
-add('check-display-scalingfactor-changed', function()
+add('demo-display-scalingfactor-changed', function()
 	app:autoscaling(false)
 	local win = app:window{cw = 300, ch = 200}
 	function win:scalingfactor_changed(factor)
@@ -2139,65 +2141,72 @@ add('transparent', function()
 	assert(win:transparent())
 end)
 
---input events ---------------------------------------------------------------
+--mouse ----------------------------------------------------------------------
 
 --double click time is sane
-add('input-click-time', function()
+add('mouse-click-time', function()
 	local t = app.backend:double_click_time()
 	print('double_click_time', t)
 	assert(t > 0 and t < 5)
 end)
 
 --target area is sane
-add('input-click-area', function()
+add('mouse-click-area', function()
 	local w, h = app.backend:double_click_target_area()
 	print('double_click_target_area', w, h)
 	assert(w > 0 and w < 100)
 	assert(h > 0 and h < 100)
 end)
 
---mousemove() event works inside the client area of the active window.
---mousemove() event continues outside the client area while at least one
---mouse button is held.
-add('input-mousemove', function()
-	local win1 = app:window{x = 100, y = 100, w = 300, h = 200}
-	local win2 = app:window{x = 150, y = 150, w = 300, h = 200}
-	function win1:mousemove(x, y)
-		print('win1 mousemove', x, y)
-	end
-	function win2:mousemove(x, y)
-		print('win2 mousemove', x, y)
-	end
-	app:run()
-end)
-
---mouseenter() and mouseleave() events work.
---mouseenter() and mouseleave() events are muted while buttons are pressed.
---the order of events between windows is undefined.
-add('input-mouseenter', function()
-	local win1 = app:window{x = 100, y = 100, w = 300, h = 200}
-	local win2 = app:window{x = 150, y = 150, w = 300, h = 200}
-	function win1:mouseenter() print('win1 mouseenter') end
-	function win1:mouseleave() print('win1 mouseleave') end
-	function win2:mouseenter() print('win2 mouseenter') end
-	function win2:mouseleave() print('win2 mouseleave') end
-	app:run()
-end)
-
 local function checkmouse_funcs(win, name)
-	function win:mouseenter() print('mouseenter '..name) end
-	function win:mouseleave() print('mouseleave '..name) end
-	function win:mousemove(x, y) print('mousemove '..name, x, y) end
-	function win:mousedown(button, x, y) print('mousedown '..name, button, x, y) end
-	function win:mouseup(button, x, y) print('mouseup '..name, button, x, y) end
+	function win:mouseenter(x, y)        print(string.format('mouseenter %-10s', name), x, y) end
+	function win:mouseleave()            print(string.format('mouseleave %-10s', name)) end
+	function win:mousemove(x, y)         print(string.format('mousemove  %-10s', name), x, y) end
+	function win:mousedown(button, x, y) print(string.format('mousedown  %-10s', name), button, x, y) end
+	function win:mouseup(button, x, y)   print(string.format('mouseup    %-10s', name), button, x, y) end
 	function win:click(button, click_count, x, y)
-		print('click '..name, button, click_count, x, y)
+		print(string.format('click      %-10s', name), button, click_count, x, y)
 		if click_count == 2 then return true end
 	end
 	function win:mousewheel(delta, x, y) print('wheel '..name, delta, x, y) end
 end
 
-add('check-input', function()
+--check that mousemove() event is triggered inside the client area of the active window.
+--check that mousemove() event continues outside the client area while at least one mouse button is held.
+--check that mouseenter() and mouseleave() events are muted while mouse buttons are pressed.
+--[the order of events when moving the mouse between windows is undefined.]
+--check that mouseenter() is triggered if the mouse was over the window when the window is shown.
+--check that mouseleave() is triggered if the mouse was over the window when the window is hidden.
+add('demo-mouse', function()
+	local win1 = app:window{x = 100, y = 100, w = 300, h = 200}
+	local win2 = app:window{x = 150, y = 150, w = 300, h = 200}
+	checkmouse_funcs(win1, 'win1')
+	checkmouse_funcs(win2, 'win2')
+	app:run()
+end)
+
+add('demo-mouse-view', function()
+	local function mkwin(name)
+		local cw, ch = 400, 200
+		local win = app:window{cw=cw, ch=ch}
+		local view = win:view{
+			x = 10, y = 10,
+			w = cw - 20,
+			h = ch - 20,
+		}
+		view:bitmap()
+		checkmouse_funcs(win, name)
+		checkmouse_funcs(view, name..'.view')
+	end
+	mkwin'win1'
+	mkwin'win2'
+	app:run()
+end)
+
+--keyboard -------------------------------------------------------------------
+
+
+add('demo-input', function()
 	local win1 = app:window(winpos())
 	local win2 = app:window(winpos())
 
@@ -2242,27 +2251,9 @@ add('check-input', function()
 	app:run()
 end)
 
-add('check-input-view', function()
-	local function mkwin(name)
-		local win = app:window(winpos())
-		local w, h = win:client_size()
-		local view = win:view{
-			x = 10, y = 10,
-			w = w - 20,
-			h = h - 20,
-		}
-		view:bitmap()
-		checkmouse_funcs(win, name)
-		checkmouse_funcs(view, name..'.view')
-	end
-	mkwin'win1'
-	mkwin'win2'
-	app:run()
-end)
-
 --views ----------------------------------------------------------------------
 
-add('check-view-mouse', function()
+add('demo-view-mouse', function()
 	local win = app:window{cw = 700, ch = 500}
 	local view = win:view{x = 50, y = 50, w = 600, h = 400, anchors = 'ltrb', visible = false}
 	function view:repaint()
@@ -2276,7 +2267,7 @@ add('check-view-mouse', function()
 end)
 
 --NOTE: this indirectly checks get/set rect() too when resizing the window.
-add('check-view-anchors', function()
+add('demo-view-anchors', function()
 	local win = app:window{cw = 340, ch = 340, min_cw = 150, min_ch = 150, max_cw = 450, max_ch = 450,
 		maximizable = false, fullscreenable = false}
 	win:view{x = 10, y = 10, w = 100, h = 100,   anchors = 'tl'}
@@ -2326,7 +2317,7 @@ end)
 
 --rendering ------------------------------------------------------------------
 
-add('check-render-window-bitmap', function()
+add('demo-render-window-bitmap', function()
 	local whiteband = whiteband_animation()
 	local win = app:window{x = 200, y = 200, w = 600, h = 300}
 	function win:repaint() whiteband(self:bitmap()) end
@@ -2334,7 +2325,7 @@ add('check-render-window-bitmap', function()
 	app:run()
 end)
 
-add('check-render-window-cairo', function()
+add('demo-render-window-cairo', function()
 	local arrows = arrows_animation()
 	local win = app:window{x = 200, y = 200, w = 600, h = 300}
 	function win:repaint() arrows(self:bitmap():cairo(), self:client_size()) end
@@ -2342,7 +2333,7 @@ add('check-render-window-cairo', function()
 	app:run()
 end)
 
-add('check-render-window-gl', function()
+add('demo-render-window-gl', function()
 	local cube = cube_animation()
 	local win = app:window{x = 200, y = 200, w = 600, h = 300,
 		opengl = {antialiasing = 'multisample', samples = 16}}
@@ -2371,28 +2362,28 @@ local function render_view_test(gen_view, opengl)
 	app:run()
 end
 
-add('check-render-view-bitmap', function()
+add('demo-render-view-bitmap', function()
 	render_view_test(function()
 		local whiteband = whiteband_animation()
 		return function(self) whiteband(self:bitmap()) end
 	end)
 end)
 
-add('check-render-view-cairo', function()
+add('demo-render-view-cairo', function()
 	render_view_test(function()
 		local arrows = arrows_animation()
 		return function(self) arrows(self:bitmap():cairo(), self:size()) end
 	end)
 end)
 
-add('check-render-view-gl', function()
+add('demo-render-view-gl', function()
 	render_view_test(function()
 		local cube = cube_animation()
 		return function(self) cube(self:gl(), self:size()) end, true
 	end)
 end)
 
-add('check-render-view-mixed', function()
+add('demo-render-view-mixed', function()
 	local i = 0
 	render_view_test(function()
 		i = i + 1
@@ -2688,7 +2679,7 @@ end)
 
 --run tests ------------------------------------------------------------------
 
-local name = ...
+local name = ... or 'demo-frameless'
 if not name then
 	print(string.format('Usage: %s name | prefix*', arg[0]))
 	print'Available tests:'

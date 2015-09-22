@@ -237,9 +237,6 @@ function window:new(app, frontend, t)
 	--say that we don't want the server to keep a pixmap for the window.
 	attrs.background_pixmap = 0
 
-	--set a white background for no reason.
-	attrs.background_pixel = xlib.white_pixel()
-
 	--declare what events we want to receive.
 	attrs.event_mask = bit.bor(
 		C.KeyPressMask,
@@ -276,6 +273,7 @@ function window:new(app, frontend, t)
 
 	--store window's depth for put_image()
 	self._depth = attrs.depth or xlib.screen.root_depth
+	self._visual = attrs.visual or xlib.screen.root_visual
 
 	--store and apply constraints to client size
 	self._min_cw = t.min_cw
@@ -887,12 +885,12 @@ function window:set_topmost(topmost)
 end
 
 function window:raise(relto)
-	assert(not relto, 'NYI')
+	--TODO: implement relto
 	xlib.raise(self.win)
 end
 
 function window:lower(relto)
-	assert(not relto, 'NYI')
+	--TODO: implement relto
 	xlib.lower(self.win)
 end
 
@@ -1197,42 +1195,59 @@ end
 
 local btns = {'left', 'middle', 'right'}
 
+function window:_setmouse(e)
+	local m = self.frontend._mouse
+	m.x = e.x
+	m.y = e.y
+	m.left = bit.band(e.state, C.Button1Mask) ~= 0
+	m.right = bit.band(e.state, C.Button2Mask) ~= 0
+	m.middle = bit.band(e.state, C.Button3Mask) ~= 0
+	m.x1 = false --TODO: get the state of these buttons
+	m.x2 = false
+	return m
+end
+
 function window:ButtonPress(e)
 	if self._disabled then return end
-
 	if e.button == C.Button4 then --wheel up
+		self:_setmouse(e)
 		self.frontend:_backend_mousewheel(3, e.x, e.y)
-		return
 	elseif e.button == C.Button5 then --wheel down
+		self:_setmouse(e)
 		self.frontend:_backend_mousewheel(-3, e.x, e.y)
-		return
+	else
+		local btn = btns[e.button]
+		if not btn then return end
+		self:_setmouse(e)
+		self.frontend:_backend_mousedown(btn, e.x, e.y)
 	end
-
-	local btn = btns[e.button]
-	if not btn then return end
-
-	self.frontend:_backend_mousedown(btn, e.x, e.y)
 end
 
 function window:ButtonRelease(e)
 	if self._disabled then return end
 	local btn = btns[e.button]
 	if not btn then return end
+	self:_setmouse(e)
 	self.frontend:_backend_mouseup(btn, e.x, e.y)
 end
 
 function window:MotionNotify(e)
 	if self._disabled then return end
+	self:_setmouse(e)
 	self.frontend:_backend_mousemove(e.x, e.y)
 end
 
 function window:EnterNotify(e)
 	if self._disabled then return end
-	self.frontend:_backend_mouseenter()
+	local m = self:_setmouse(e)
+	m.inside = true
+	self.frontend:_backend_mouseenter(e.x, e.y)
 end
 
 function window:LeaveNotify(e)
 	if self._disabled then return end
+	local m = self:_setmouse(e)
+	m.inside = false
 	self.frontend:_backend_mouseleave()
 end
 
@@ -1270,7 +1285,7 @@ local function slow_resize_buffer(ctype, shrink_factor, reserve_factor)
 	end
 end
 
-local function make_bitmap(w, h, win, win_depth, ssbuf)
+local function make_bitmap(w, h, win, win_depth, win_visual, ssbuf)
 
 	local stride = w * 4
 	local size = stride * h
@@ -1289,50 +1304,34 @@ local function make_bitmap(w, h, win, win_depth, ssbuf)
 	local st = xlib.get_wm_state(win)
 	if st and st == C.WithdrawnState then return end
 
-	if false and xcb_has_shm() then
+	if xlib.shm() then
 
-		local shmid = shm.shmget(shm.IPC_PRIVATE, size, bit.bor(shm.IPC_CREAT, 0x1ff))
-		local data  = shm.shmat(shmid, nil, 0)
-
-		local shmseg  = xlib.gen_id()
-		xcbshm.xcb_shm_attach(c, shmseg, shmid, 0)
-		shm.shmctl(shmid, shm.IPC_RMID, nil)
-
-		local pix = xlib.gen_id()
-
-		xcbshm.xcb_shm_create_pixmap(c, pix, win, w, h, depth_id, shmseg, 0)
-
-		bitmap.data = data
-
-		local gc = xlib.gen_id()
-		C.xcb_create_gc(c, gc, win, 0, nil)
+		local image, shminfo = xlib.shm_create_image(win_visual, win_depth, w, h)
+		local gc = xlib.create_gc(win)
+		bitmap.data = image.data
 
 		function paint()
-			xlib.copy_area(gc, pix, win, 0, 0, 0, 0, w, h)
+			xlib.shm_put_image(gc, image, w, h, win)
 		end
 
 		function free()
-			xcbshm.xcb_shm_detach(c, shmseg)
-			shm.shmdt(data)
-			C.xcb_free_pixmap(c, pix)
+			xlib.free_gc(gc)
+			xlib.shm_free_image(image, shminfo)
+			bitmap.data = nil
 		end
 
 	else
 
 		local data = ssbuf(size)
 		bitmap.data = data
-
-		local pix = xlib.create_pixmap(win, w, h, win_depth)
 		local gc = xlib.create_gc(win)
 
 		function paint()
-			xlib.put_image(gc, data, size, w, h, win_depth, pix)
-			xlib.copy_area(gc, pix, 0, 0, w, h, win)
+			xlib.put_image(gc, data, size, w, h, win_depth, win)
 		end
 
 		function free()
 			xlib.free_gc(gc)
-			xlib.free_pixmap(pix)
 			bitmap.data = nil
 		end
 
@@ -1344,7 +1343,7 @@ end
 --a dynamic bitmap is an API that creates a new bitmap everytime its size
 --changes. user supplies the :size() function, :get() gets the bitmap,
 --and :freeing(bitmap) is triggered before the bitmap is freed.
-local function dynbitmap(api, win, depth)
+local function dynbitmap(api, win, depth, visual)
 
 	api = api or {}
 
@@ -1357,7 +1356,7 @@ local function dynbitmap(api, win, depth)
 			if bitmap then
 				free()
 			end
-			bitmap, free, paint = make_bitmap(w1, h1, win, depth, ssbuf)
+			bitmap, free, paint = make_bitmap(w1, h1, win, depth, visual, ssbuf)
 			w, h = w1, h1
 		end
 		return bitmap
@@ -1396,7 +1395,7 @@ function window:bitmap()
 			freeing = function(_, bitmap)
 				self.frontend:_backend_free_bitmap(bitmap)
 			end,
-		}, self.win, self._depth)
+		}, self.win, self._depth, self._visual)
 	end
 	--can't paint the bitmap while the window is unmapped.
 	if self._hidden or (self.minimized and self:minimized()) then return end
@@ -1531,7 +1530,14 @@ function view:ConfigureNotify(e)
 	self.frontend:_backend_changed()
 end
 
+view._setmouse = window._setmouse
 view.Expose = window.Expose
+view.ButtonPress = window.ButtonPress
+view.ButtonRelease = window.ButtonRelease
+view.MotionNotify = window.MotionNotify
+view.EnterNotify = window.EnterNotify
+view.LeaveNotify = window.LeaveNotify
+
 view._repaint = window._repaint
 view.bitmap = window.bitmap
 view._init_opengl = window._init_opengl
