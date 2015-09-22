@@ -933,22 +933,23 @@ function window:get_client_pos() --OSX 10.7+
 	return x, y
 end
 
---NOTE: framed windows are constrained to screen bounds but frameless windows are not.
-function window:get_normal_frame_rect()
-	return flip_screen_rect(nil, unpack_nsrect(self.nswin:frame()))
-end
-
 function window:_set_frame_rect(x, y, w, h)
 	self.nswin:setFrame_display(objc.NSMakeRect(flip_screen_rect(nil, x, y, w, h)), true)
 end
 
 function window:get_frame_rect()
-	return self:get_normal_frame_rect()
+	return flip_screen_rect(nil, unpack_nsrect(self.nswin:frame()))
 end
 
 function window:set_frame_rect(x, y, w, h)
 	self:_set_frame_rect(x, y, w, h)
 	self:_apply_constraints()
+end
+
+--NOTE: framed windows are constrained to screen bounds but frameless windows are not.
+function window:get_normal_frame_rect()
+	--TODO: fix this
+	return flip_screen_rect(nil, unpack_nsrect(self.nswin:frame()))
 end
 
 --positioning/constraints ----------------------------------------------------

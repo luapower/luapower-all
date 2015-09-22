@@ -884,9 +884,9 @@ local function state_string(win)
 		(win:fullscreen() and 'F' or ' ')..
 		(win:active() and 'A' or ' ')..' | '..
 		(app:active() and 'a' or ' ')..' | '..
-		(string.format('  (%4g x%4g)',w,h))..
-		(string.format('  (%4g, %4g :%4g x%4g)',fx,fy,fw,fh))..
-		(string.format('  (%4g, %4g :%4g x%4g)',nx,ny,nw,nh))
+		(string.format('  (%4s x%4s)',w,h))..
+		(string.format('  (%4s, %4s :%4s x%4s)',fx,fy,fw,fh))..
+		(string.format('  (%4s, %4s :%4s x%4s)',nx,ny,nw,nh))
 end
 
 local function init_check(t, child)
@@ -1043,18 +1043,22 @@ local function init_check(t, child)
 				elseif key == 'X' or key == 'Z' then
 					local ofs = key == 'Z' and 10 or -10
 					if self.app:key'shift' then
-						win:client_rect(box2d.offset(ofs, win:frame_rect()))
+						if not win:client_rect() then return end
+						win:client_rect(box2d.offset(ofs, win:client_rect()))
 					else
+						if not win:frame_rect() then return end
 						win:frame_rect(box2d.offset(ofs, win:frame_rect()))
 					end
 				elseif key == 'left' or key == 'right' or key == 'up' or key == 'down' then
 					if app:key'shift' then
 						local x, y = win:client_rect()
+						if not x then return end
 						win:client_rect(
 							x + (key == 'left' and -10 or key == 'right' and 10 or 0),
 							y + (key == 'up'   and -10 or key == 'down'  and 10 or 0))
 					else
 						local x, y = win:frame_rect()
+						if not x then return end
 						win:frame_rect(
 							x + (key == 'left' and -10 or key == 'right' and 10 or 0),
 							y + (key == 'up'   and -10 or key == 'down'  and 10 or 0))
@@ -1636,7 +1640,7 @@ add('pos-frame-to-client', function()
 	print'ok'
 end)
 
---positioning/init -----------------------------------------------------------
+--positioning/initial values -------------------------------------------------
 
 --check that a window is spanning the entire workspace -2px on all sides.
 add('check-pos-init-client', function()
@@ -1694,12 +1698,14 @@ add('check-pos-init-cascade', function()
 	app:run()
 end)
 
---check that negative sizes are accepted (don't crash).
+--check that negative sizes are accepted (and are clamped to (1,1)).
 add('pos-init-neg-size', function()
 	app:run(function()
 		local win = app:window({cw = -1, ch = -1})
 		app:sleep(0.1)
-		print(win:client_size())
+		local cw, ch = win:client_size()
+		assert(cw >= 1)
+		assert(ch >= 1)
 	end)
 end)
 
@@ -1726,124 +1732,22 @@ add('pos-conversions-hidden', pos_conv_test(false))
 
 --positioning/window states --------------------------------------------------
 
---test that the window has the specified position before being shown.
-local function pos_test(t)
-	return function()
-		app:run(function()
-			local win = app:window(t)
-			app:sleep(0.1)
-			print('normal_frame_rect ', win:normal_frame_rect())
-			print('frame_rect        ', win:frame_rect())
-			print('client_rect       ', win:client_rect())
-			if not win:visible() then
-				win:show()
-				app:sleep(0.1)
-				print'# visible'
-				print('normal_frame_rect ', win:normal_frame_rect())
-				print('frame_rect        ', win:frame_rect())
-				print('client_rect       ', win:client_rect())
-			end
-		end)
-	end
-end
-add('pos-init-default', pos_test{w = 300, h = 200, visible = false})
-add('pos-init-frame', pos_test{x = 100, y = 100, w = 300, h = 200, visible = false})
-add('pos-init-client', pos_test{cx = 100, cy = 100, cw = 300, ch = 200, visible = false})
-add('pos-init-client-maximized', pos_test{cx = 100, cy = 100, cw = 300, ch = 200, visible = false, maximized = true})
-add('pos-init-client-minimized', pos_test{cx = 100, cy = 100, cw = 300, ch = 200, visible = false, minimized = true})
-add('pos-init-client-minimized-maximized', pos_test{cx = 100, cy = 100, cw = 300, ch = 200, visible = false, minimized = true, maximized = true})
+--TODO: check that frame_rect() and client_rect() return nil in hidden
+--and minimized states; check that setting them is ignored in all but
+--normal state.
 
---setting frame_rect() when minimized and maximized works.
-add('pos-set-frame-rect', function()
-	local win1 = app:window(winpos{minimized = true, maximized = true})
-	local win2 = app:window(winpos{minimized = false, maximized = true})
-	win1:frame_rect(800, 600, 500, 300)
-	win2:frame_rect(600, 200, 500, 300)
-	app:run()
-end)
+--TODO: check that {client|frame}_{changed|moved|resized} events are triggered,
+--including on state changes; check for nil args on `minimized` and `hidden` events.
 
---check frame_rect() and size() values in minimized state.
-add('pos-frame-rect-minimized', function()
-	local function test(visible, minimized, maximized)
-		local win = app:window{x = 100, y = 100, w = 500, h = 300,
-			maximized = maximized, minimized = minimized, visible = visible}
-		print((visible and 'v' or '')..(minimized and 'm' or '')..(maximized and 'M' or ''))
-		assert(win:frame_rect()) --returns normal frame rect
-		local w, h = win:client_size()
-		assert(w == 0)
-		assert(h == 0)
-	end
-	test(true, true, true)
-	test(true, true, false)
-	test(false, true, false)
-	test(false, true, true)
-	print'ok'
-end)
+--normal_frame_rect ----------------------------------------------------------
 
---setting client_rect() works (matches initial client coordinates).
-add('pos-client-rect', function()
-	local function test(init_flags)
-		local win1 = app:window(glue.update({cx = 100, cy = 100, cw = 500, ch = 500}, init_flags))
-		local win2 = app:window(winpos(glue.update({}, init_flags)))
-		win2:client_rect(100, 100, 500, 500)
-		local x1, y1, w1, h1 = win1:frame_rect()
-		local x2, y2, w2, h2 = win2:frame_rect()
-		print('win1', x1, y1, w1, h1)
-		print('win2', x2, y2, w2, h2)
-		assert(x1 == x2)
-		assert(y1 == y2)
-		assert(w1 == w2)
-		assert(h1 == h2)
-	end
-	test{}
-	test{frame = 'none'}
-	test{frame = 'none', transparent = true}
-	print'ok'
-end)
-
---test that initial coordinates and size are set correctly after window is shown.
---test that frame_rect() works in normal state.
---test that client_size() works and gives sane values.
-add('pos-init', function()
-	local x0, y0, w0, h0 = 51, 52, 201, 202
-	local win = app:window{x = x0, y = y0, w = w0, h = h0, visible = false}
-	function win:shown()
-		local x, y, w, h = win:frame_rect()
-		print(x, y, w, h)
-		assert(x == x0)
-		assert(y == y0)
-		assert(w == w0)
-		assert(h == h0)
-		local w, h = win:client_size()
-		assert(w >= w0 - 50 and w <= w0)
-		assert(h >= h0 - 50 and h <= h0)
-		print'ok'
-		app:quit()
-	end
-	win:show()
-	app:run()
-end)
-
---positioning/normal_frame_rect ----------------------------------------------
-
---normal_frame_rect() -> x, y, w, h works.
-add('pos-normal-frame-rect', function()
-	local x, y, w, h = 51, 52, 201, 202
-	local win = app:window{x = x, y = y, w = w, h = h}
-	local function check()
-		local x, y, w, h = win:normal_frame_rect()
-		assert(x == x0)
-		assert(y == y0)
-		assert(w == w0)
-		assert(h == h0)
-	end
-	win:normal_frame_rect(x0, y0, w0, h0); check()
-	x0 = x0 + 10; win:normal_frame_rect(x0); check()
-	y0 = y0 + 10; win:normal_frame_rect(nil, y0); check()
-	w0 = w0 + 10; win:normal_frame_rect(nil, nil, w0); check()
-	h0 = h0 + 10; win:normal_frame_rect(nil, nil, nil, h0); check()
-	print'ok'
-end)
+--TODO: check that normal_frame_rect() returns correct values in the following cases:
+--		initial normal state
+--		initial maximized state
+--		after maximized
+--		after fullscreen
+--		after minimized
+--		after maximized and minimized
 
 --edge snapping --------------------------------------------------------------
 

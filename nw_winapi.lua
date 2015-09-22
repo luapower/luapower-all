@@ -499,24 +499,12 @@ function window:get_normal_frame_rect()
 	end
 end
 
-function window:set_normal_frame_rect(x, y, w, h)
-	if self._fullscreen then
-		self._fs.normal_rect = pack_rect(nil, x, y, w, h)
-	else
-		self.win.normal_rect = pack_rect(nil, x, y, w, h)
-	end
-end
-
 function window:get_frame_rect()
 	return unpack_rect(self.win.screen_rect)
 end
 
 function window:set_frame_rect(x, y, w, h)
-	if self._fullscreen then
-		self._fs.normal_rect = pack_rect(nil, x, y, w, h)
-	else
-		self.win.rect = pack_rect(nil, x, y, w, h)
-	end
+	self.win.rect = pack_rect(nil, x, y, w, h)
 	self.frontend:_backend_changed()
 end
 

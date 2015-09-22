@@ -801,14 +801,14 @@ end
 
 window:_property'enabled'
 
---positioning/frame extents --------------------------------------------------
+--positioning/helpers --------------------------------------------------------
 
-function app:frame_extents(frame, has_menu)
-	frame = checkframe(frame)
-	if frame == 'none' then
-		return 0, 0, 0, 0
-	end
-	return self.backend:frame_extents(frame, has_menu)
+local function override_point(x, y, x1, y1)
+	return x1 or x, y1 or y
+end
+
+local function override_rect(x, y, w, h, x1, y1, w1, h1)
+	return x1 or x, y1 or y, w1 or w, h1 or h
 end
 
 local function frame_rect(x, y, w, h, w1, h1, w2, h2)
@@ -822,6 +822,16 @@ local function unframe_rect(x, y, w, h, w1, h1, w2, h2)
 	return x, y, w, h
 end
 
+--positioning/frame extents --------------------------------------------------
+
+function app:frame_extents(frame, has_menu)
+	frame = checkframe(frame)
+	if frame == 'none' then
+		return 0, 0, 0, 0
+	end
+	return self.backend:frame_extents(frame, has_menu)
+end
+
 function app:client_to_frame(frame, has_menu, x, y, w, h)
 	return frame_rect(x, y, w, h, self:frame_extents(frame, has_menu))
 end
@@ -830,76 +840,42 @@ function app:frame_to_client(frame, has_menu, x, y, w, h)
 	return unframe_rect(x, y, w, h, self:frame_extents(frame, has_menu))
 end
 
---positioning/rectangles -----------------------------------------------------
+--positioning/client rect ----------------------------------------------------
+
+function window:_can_get_rect()
+	return self:visible() and not self:isminimized()
+end
+
+function window:_can_set_rect()
+	return self:visible() and not (self:isminimized()
+		or self:ismaximized() or self:fullscreen())
+end
 
 function window:_get_client_size()
-	--if self:minimized() then
-	--	return 0, 0
-	--end
+	if not self:_can_get_rect() then return end
 	return self.backend:get_client_size()
 end
 
 function window:_get_client_pos()
+	if not self:_can_get_rect() then return end
 	return self.backend:get_client_pos()
 end
 
 --convert point in client space to screen space.
 function window:to_screen(x, y)
-	self:_check()
 	local cx, cy = self:_get_client_pos()
+	if not cx then return end
 	return cx+x, cy+y
 end
 
 --convert point in screen space to client space.
 function window:to_client(x, y)
-	self:_check()
 	local cx, cy = self:_get_client_pos()
+	if not cx then return end
 	return x-cx, y-cy
 end
 
-
-
-local function override_rect(x, y, w, h, x1, y1, w1, h1)
-	return x1 or x, y1 or y, w1 or w, h1 or h
-end
-
-function window:frame_rect(x1, y1, w1, h1) --returns x, y, w, h
-	self:_check()
-	if x1 or y1 or w1 or h1 then
-		if self:fullscreen() then return end --ignore because OSX can't do it
-		local x, y, w, h = self:frame_rect()
-		self.backend:set_frame_rect(override_rect(x, y, w, h, x1, y1, w1, h1))
-	--elseif self:minimized() then
-	--	return self:normal_frame_rect()
-	else
-		return self.backend:get_frame_rect()
-	end
-end
-
-function window:normal_frame_rect(x1, y1, w1, h1)
-	self:_check()
-	return self.backend:get_normal_frame_rect()
-end
-
-function window:client_rect(x1, y1, w1, h1)
-	self:_check()
-	if x1 or y1 or w1 or h1 then
-		if self:fullscreen() then return end --ignore because OSX can't do it
-		local cx, cy, cw, ch = self:client_rect()
-		local ccw, cch = cw, ch
-		local cx, cy, cw, ch = override_rect(cx, cy, cw, ch, x1, y1, w1, h1)
-		local x, y, w, h = self:frame_rect()
-		local dx, dy = self:to_client(x, y)
-		local dw, dh = w - ccw, h - cch
-		self.backend:set_frame_rect(cx + dx, cy + dy, cw + dw, ch + dh)
-	else
-		local x, y = self:_get_client_pos()
-		return x, y, self:_get_client_size()
-	end
-end
-
 function window:client_size(cw, ch) --sets or returns cw, ch
-	self:_check()
 	if cw or ch then
 		if not cw or not ch then
 			local cw0, ch0 = self:client_size()
@@ -910,6 +886,44 @@ function window:client_size(cw, ch) --sets or returns cw, ch
 	else
 		return self:_get_client_size()
 	end
+end
+
+function window:client_rect(x1, y1, w1, h1)
+	if x1 or y1 or w1 or h1 then
+		if not self:_can_set_rect() then return end
+		local cx, cy, cw, ch = self:client_rect()
+		local ccw, cch = cw, ch
+		local cx, cy, cw, ch = override_rect(cx, cy, cw, ch, x1, y1, w1, h1)
+		local x, y, w, h = self:frame_rect()
+		local dx, dy = self:to_client(x, y)
+		local dw, dh = w - ccw, h - cch
+		self.backend:set_frame_rect(cx + dx, cy + dy, cw + dw, ch + dh)
+	else
+		local x, y = self:_get_client_pos()
+		if not x then return end
+		return x, y, self:_get_client_size()
+	end
+end
+
+--positioning/frame rect -----------------------------------------------------
+
+function window:frame_rect(x, y, w, h) --returns x, y, w, h
+	if x or y or w or h then
+		if not self:_can_set_rect() then return end
+		if not (x and y and w and h) then
+			local x0, y0, w0, h0 = self:frame_rect()
+			x, y, w, h = override_rect(x0, y0, w0, h0, x, y, w, h)
+		end
+		self.backend:set_frame_rect(x, y, w, h)
+	else
+		if not self:_can_get_rect() then return end
+		return self.backend:get_frame_rect()
+	end
+end
+
+function window:normal_frame_rect()
+	self:_check()
+	return self.backend:get_normal_frame_rect()
 end
 
 --positioning/constraints ----------------------------------------------------
@@ -1238,13 +1252,11 @@ end
 --mouse ----------------------------------------------------------------------
 
 function window:mouse(var)
-	--hidden or minimized windows don't have a mouse state.
-	if not self:visible() or self:isminimized() then return nil end
-	if var then
-		return self._mouse[var]
-	else
-		return self._mouse
+	if not self:_can_get_rect() then return end
+	if var == 'pos' then
+		return self._mouse.x, self._mouse.y
 	end
+	return self._mouse[var]
 end
 
 function window:_backend_mousedown(button, mx, my)
@@ -1501,6 +1513,7 @@ end
 function view:to_screen(x, y)
 	self:_check()
 	local x0, y0 = self.window:_get_client_pos()
+	if not x0 then return end
 	local cx, cy = self.backend:get_rect()
 	return x0+cx+x, y0+cy+y
 end
@@ -1508,6 +1521,7 @@ end
 function view:to_client(x, y)
 	self:_check()
 	local x0, y0 = self.window:_get_client_pos()
+	if not x0 then return end
 	local cx, cy = self.backend:get_rect()
 	return x-cx-x0, y-cy-y0
 end
@@ -1563,13 +1577,11 @@ end
 --mouse
 
 function view:mouse(var)
-	--hidden or minimized windows don't have a mouse state.
-	if not self.window:visible() or self.window:isminimized() then return nil end
-	if var then
-		return self._mouse[var]
-	else
-		return self._mouse
+	if not self.window:_can_get_rect() then return end
+	if var == 'pos' then
+		return self._mouse.x, self._mouse.y
 	end
+	return self._mouse[var]
 end
 
 view._backend_mousedown   = window._backend_mousedown

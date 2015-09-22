@@ -776,8 +776,9 @@ end
 function window:get_normal_frame_rect()
 	if self._normal_rect then
 		return unpack(self._normal_rect)
+	else
+		return self:get_frame_rect()
 	end
-	return self:get_frame_rect()
 end
 
 function window:get_frame_rect()
