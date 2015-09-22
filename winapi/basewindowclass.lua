@@ -72,6 +72,19 @@ function MessageRouter:__init()
 		end
 		return DefWindowProc(hwnd, WM, wParam, lParam) --catch WM_CREATE etc.
 	end
+
+	--exceptions in WNDPROC are caught by Windows on x64, see:
+	--http://stackoverflow.com/questions/1487950/access-violation-in-wm-paint-not-caught
+	if ffi.abi'64bit' then
+		local dispatch0 = dispatch
+		function dispatch(...)
+			local ok, ret = xpcall(dispatch0, debug.traceback, ...)
+			if ok then return ret end
+			io.stderr:write(ret..'\n')
+			PostMessage(nil, WM_EXCEPTION)
+		end
+	end
+
 	self.proc = ffi.cast('WNDPROC', dispatch)
 end
 
@@ -202,6 +215,9 @@ BaseWindow = {
 		on_device_change = WM_INPUT_DEVICE_CHANGE,
 		--system events
 		on_dpi_change = WM_DPICHANGED,
+		--custom draw
+		on_nc_hittest = WM_NCHITTEST,
+		on_nc_calcsize = WM_NCCALCSIZE,
 	},
 	__wm_syscommand_handler_names = {}, --WM_SYSCOMMAND code -> handler name map
 	__wm_command_handler_names = {},    --WM_COMMAND code -> handler name map
@@ -817,16 +833,7 @@ end
 
 function BaseWindow:__WM_PAINT_pass(ok, err)
 	EndPaint(self.hwnd, self.__paintstruct)
-	if not ok then
-		if ffi.abi'64bit' then
-			--exceptions in WM_PAINT are caught by Windows on x64, see:
-			--http://stackoverflow.com/questions/1487950/access-violation-in-wm-paint-not-caught
-			io.stderr:write(err..'\n')
-			PostMessage(nil, WM_EXCEPTION)
-		else
-			error(err, 4)
-		end
-	end
+	if not ok then error(err, 4) end
 end
 
 function BaseWindow:WM_PAINT()

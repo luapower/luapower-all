@@ -1311,4 +1311,3 @@ CDRF_NOTIFYPOSTERASE    = 0x00000040
 function NM.NM_CUSTOMDRAW(hdr)
 	return ffi.cast('NMCUSTOMDRAW*', hdr)
 end
-
