@@ -17,8 +17,8 @@ notification icons, all text in utf8, and more.
 ## API
 
 __NOTE:__ In the table below, `foo(t|f) /-> t|f` is a shortcut for saying
-that `foo(t|f)` sets the value of foo, and `foo() -> t|f` gets it
-(`t|f` means that foo is a boolean).
+that `foo(t|f)` sets the value of foo and `foo() -> t|f` gets it.
+`t|f` means `true|false`.
 
 <div class=small>
 -------------------------------------------- -----------------------------------------------------------------------------
@@ -463,16 +463,17 @@ Some adjustments are delayed to when the window is shown.
 ### The window state
 
 The window state is the combination of multiple flags (`minimized`,
-`maximized`, `fullscreen`, `visible`, `active`) plus its position
-and size in normal state (the `normal_frame_rect`).
+`maximized`, `fullscreen`, `visible`, `active`) plus its position, size
+and frame in current state (`client_rect` and `frame_rect`), and in normal
+state (`normal_frame_rect`).
 
 State flags are independent of each other, so they can be in almost
 any combination at the same time. For example, a window which starts
 with `{visible = false, minimized = true, maximized = true}`
 is initially hidden. If later made visible with `win:show()`,
 it will show minimized. If the user then unminimizes it, it will restore
-to maximized state. If the user unmaximizes it, it will restore to its
-initial position and size.
+to maximized state. Throughout all these stages the `maximized` flag
+is `true`.
 
 ### Coordinate systems
 
@@ -481,9 +482,9 @@ initial position and size.
 
 ## Child windows
 
-Child windows (`parent = win`) are top-level windows that stay on top
-of their parent, minimize along with their parent, and don't appear
-in the taskbar.
+Child windows (`parent = win`) are top-level windows (so framed, not clipped)
+that stay on top of their parent, minimize along with their parent,
+and don't appear in the taskbar.
 
 The following defaults are different for child windows:
 
@@ -783,17 +784,7 @@ the child, and enable back the parent when closing the child.
 
 __NOTE:__ This [doesn't work](https://github.com/luapower/nw/issues/25) on Linux.
 
-## Client/screen conversion
-
-### `win/view:to_screen(x, y) -> x, y`
-
-Convert a point from the client space to screen space.
-
-### `win/view:to_client(x, y) -> x, y`
-
-Convert a point from screen space to client space.
-
-## Frame/client conversion
+## Frame extents
 
 ### `app:frame_extents(frame, has_menu) -> left, top, right, bottom`
 
@@ -812,34 +803,27 @@ frame type. If `has_menu` is true, then the window also has a menu.
 
 ## Size and position
 
-### `win:frame_rect() -> x, y, w, h`
+### `win:client_rect() -> cx, cy, cw, ch` <br> `win:frame_rect() -> x, y, w, h` <br> `win:client_size() -> cw, ch`
 
-Get the frame rect in current state (in screen coordinates).
+Get the client/frame rect/size in screen coordinates. Returns nothing
+if the window is hidden or minimized.
 
-### `win:frame_rect(x, y, w, h)`
+### `win/view:to_screen(x, y) -> x, y` <br> `win/view:to_client(x, y) -> x, y`
 
-Set the frame rect (and change state to normal).
+Convert a point from client space to screen space and viceversa
+based on client_rect().
+
+### `win:client_rect(cx, cy, cw, ch)` <br> `win:frame_rect(x, y, w, h)` <br> `win:client_size(cw, ch)`
+
+Move/resize the window to a specified client/frame rectangle.
+If any of the arguments is nil or false, it is replaced with the current value
+of that argument to allow for partial changes. Does nothing if the window is
+hidden, minimized, maximized, or in fullscreen mode.
 
 ### `win:normal_frame_rect() -> x, y, w, h`
 
 Get the frame rect in normal state (in screen coordinates).
-
-### `win:client_rect() -> cx, cy, cw, ch`
-
-Get the client rect in screen coordinates. Returns nothing if the window
-is hidden or minimized.
-
-### `win:client_rect(cx, cy, cw, ch)`
-
-Move/resize the window to accomodate a specified client area position and size.
-If any of the arguments is nil or false, it is replaced with the current value
-of that argument to allow for partial changes.
-
-Does nothing if the window is hidden, minimized, maximized, or in fullscreen mode.
-
-### `win:client_size() -> cw, ch` <br> `win:client_size(cw, ch)`
-
-Get/set the client rect size. Same client_rect().
+Unlinke client_rect() and frame_rect(), this always returns a rectangle.
 
 ### `win:sizing(when, how, x, y, w, h) -> x, y, w, h`
 

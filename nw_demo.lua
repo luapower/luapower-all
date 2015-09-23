@@ -5,7 +5,8 @@ local glue = require'glue'
 
 if not ... then
 	local app = nw:app()
-	local win = app:window{x = 100, y = 200, cw = 800, ch = 400,
+	local dsp = app:main_display()
+	local win = app:window{x = dsp.w - 900, y = 200, cw = 800, ch = 400,
 		frame = 'none', transparent = true, topmost = true, visible = false}
 	local function reload()
 		package.loaded.nw_demo = nil
@@ -58,20 +59,33 @@ function win:repaint()
 	local h = (bmp.h - scale) / scale
 	local border_width = 6
 	local border_radius = 4
-	local border_color = {73/255, 120/255, 206/255, 1}
 	local border_outer_color1 = {89/255, 89/255, 89/255, 1}
+	local inactive_border_outer_color1 = {96/255, 112/255, 135/255, 1}
 	local border_outer_color2 = {133/255, 172/255, 229/255, 1}
+	local inactive_border_outer_color2 = {194/255, 212/255, 237/255, 1}
 	local icon_color = {189/255, 208/255, 239/255, 1}
 	local hover_icon_color = {1, 1, 1, 1}
 	local icon_outline_color = {35/255, 54/255, 86/255, 1}
-	local titlebar_rect = {0, 0.5, w, 26}
+	local titlebar_rect = {-1, -.5, w+1, 26}
+	local border_color = {73/255, 120/255, 206/255, 1}
+	local inactive_border_color = {153/255, 178/255, 221/255, 1}
 	local titlebar_color1 = border_color
 	local titlebar_color2 = {97/255, 146/255, 221/255, 1}
+	local inactive_titlebar_color1 = inactive_border_color
+	local inactive_titlebar_color2 = {169/255, 195/255, 231/255, 1}
 	local buttons_w = 100
 	local buttons_h = 18
 	local buttons_rect = {w - buttons_w - border_width, 0, buttons_w, buttons_h}
 	local hover_color = border_outer_color2
 	local close_hover_color = {218/255, 77/255, 75/255, 1}
+
+	if not self:active() then
+		border_color = inactive_border_color
+		titlebar_color1 = inactive_titlebar_color1
+		titlebar_color2 = inactive_titlebar_color2
+		border_outer_color1 = inactive_border_outer_color1
+		border_outer_color2 = inactive_border_outer_color2
+	end
 
 	cr:reset_clip()
 	cr:identity_matrix()
@@ -81,24 +95,28 @@ function win:repaint()
 	cr:scale(scale, scale)
 	cr:translate(0.5, 0.5)
 
-	--outer border 1
-	local r = border_radius
-	round_rect(cr, r, r, r, r, box2d.offset(0, 0, 0, w, h))
-	cr:set_source_rgba(unpack(border_outer_color1))
-	cr:set_line_width(1)
-	cr:stroke()
+	if not self:ismaximized() then
 
-	--outer border 2
-	local r = border_radius-1
-	round_rect(cr, r, r, r, r, box2d.offset(-1, 0, 0, w, h))
-	cr:set_source_rgba(unpack(border_outer_color2))
-	cr:set_line_width(1)
-	cr:stroke()
+		--outer border 1
+		local r = border_radius
+		round_rect(cr, r, r, r, r, box2d.offset(0, 0, 0, w, h))
+		cr:set_source_rgba(unpack(border_outer_color1))
+		cr:set_line_width(1)
+		cr:stroke()
 
-	--clipping region
-	local r = border_radius-1.5
-	round_rect(cr, r, r, r, r, box2d.offset(-1.5, 0, 0, w, h))
-	cr:clip()
+		--outer border 2
+		local r = border_radius-1
+		round_rect(cr, r, r, r, r, box2d.offset(-1, 0, 0, w, h))
+		cr:set_source_rgba(unpack(border_outer_color2))
+		cr:set_line_width(1)
+		cr:stroke()
+
+		--clipping region
+		local r = border_radius-1.5
+		round_rect(cr, r, r, r, r, box2d.offset(-1.5, 0, 0, w, h))
+		cr:clip()
+
+	end
 
 	--background
 	cr:set_source_rgba(1, 1, 1, 1)
@@ -168,37 +186,37 @@ function win:repaint()
 	vline(56)
 
 	local function min_icon(x, y, w, h, r)
-		x, y, w, h = buttons_rect[1] + x + .5, buttons_rect[2] + y + .5, w, h
+		x, y, w, h = buttons_rect[1] + x, buttons_rect[2] + y, w, h
 		round_rect(cr, r, r, r, r, box2d.offset(1, x, y, w, h))
-		cr:set_source_rgba(unpack(icon_outline_color))
-		cr:fill()
-		cr:rectangle(x, y, w, h)
 		cr:set_source_rgba(unpack(self.min_hover and hover_icon_color or icon_color))
-		cr:fill()
+		cr:fill_preserve()
+		cr:set_source_rgba(unpack(icon_outline_color))
+		cr:stroke()
 	end
-	min_icon(8, buttons_h - 9, 11, 3, 2)
+	min_icon(8, buttons_h - 8, 11, 2, 1.5)
 
 	local function max_icon(x, y, w, h, r)
-		x, y, w, h = buttons_rect[1] + x + .5, buttons_rect[2] + y + .5, w, h
+		x, y, w, h = buttons_rect[1] + x, buttons_rect[2] + y, w, h
 		cr:set_fill_rule(cairo.CAIRO_FILL_RULE_EVEN_ODD)
-		round_rect_open(cr, r, r, r, r, box2d.offset(1, x, y, w, h))
+		round_rect(cr, r, r, r, r, box2d.offset(1, x, y, w, h))
 		cr:new_sub_path()
-		round_rect(cr, r, r, r, r, box2d.offset(-4, x, y, w, h))
-		cr:set_source_rgba(unpack(icon_outline_color))
-		cr:fill()
-		cr:rectangle(x, y, w, h)
+		round_rect(cr, r, r, r, r, box2d.offset(-2, x, y, w, h))
+		cr:close_path()
 		cr:set_source_rgba(unpack(self.max_hover and hover_icon_color or icon_color))
-		cr:fill()
+		cr:fill_preserve()
+		cr:set_source_rgba(unpack(icon_outline_color))
+		cr:stroke()
 	end
 
-	local function restore_icon(x, y, w, h, r)
-		--
+	local function restore_icon()
+		max_icon(28+12, buttons_h - 14, 9, 6, 0.5)
+		max_icon(28+9, buttons_h - 11, 9, 6, 0.5)
 	end
 
 	if self:ismaximized() then
-		restore_icon(28+8, buttons_h - 3, 11, 7, 2)
+		restore_icon()
 	else
-		max_icon(28+8, buttons_h - 13, 11, 7, 2)
+		max_icon(28+9, buttons_h - 12, 11, 7, 0.5)
 	end
 
 	local function close_icon(x, y)
@@ -233,6 +251,14 @@ end
 
 function win:mousedown(x, y)
 
+end
+
+function win:activated()
+	self:invalidate()
+end
+
+function win:deactivated()
+	self:invalidate()
 end
 
 function win:mouseup(x, y)
