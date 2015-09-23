@@ -431,7 +431,7 @@ Create a window (fields of _`t`_ below with default value in parenthesis):
 * __behavior__
 	* `parent`						- parent window
 	* `sticky`						- moves with parent (false)
-	* `topmost`						- stays on top of other windows (false)
+	* `topmost`						- stays on top of other non-topmost windows (false)
 	* `minimizable`				- allow minimization (true)
 	* `maximizable`				- allow maximization (true)
 	* `closeable`					- allow closing (true)
@@ -530,7 +530,6 @@ when drawing on them. They also come with serious limitations (mostly from Windo
   * they can't be framed so you must pass `frame = 'none'`.
   * they can't have views.
   * you can't draw on them using OpenGL.
-  * they don't show over Remote Desktop.
 
 Despite these limitations, transparent windows are the only way to create
 free-floating tooltips and custom-shaped notification windows.
@@ -803,22 +802,20 @@ frame type. If `has_menu` is true, then the window also has a menu.
 
 ## Size and position
 
-### `win:client_rect() -> cx, cy, cw, ch` <br> `win:frame_rect() -> x, y, w, h` <br> `win:client_size() -> cw, ch`
+### `win:client_rect() -> cx, cy, cw, ch` <br> `win:client_rect(cx, cy, cw, ch)` <br> `win:frame_rect() -> x, y, w, h` <br> `win:frame_rect(x, y, w, h)` <br> `win:client_size() -> cw, ch` <br> `win:client_size(cw, ch)`
 
-Get the client/frame rect/size in screen coordinates. Returns nothing
-if the window is hidden or minimized.
+Get/set the client/frame rect/size in screen coordinates.
+
+When getting: returns nothing if the window is hidden or minimized.
+
+When setting: if any of the arguments is nil or false, it is replaced with
+the current value of that argument to allow for partial changes. Does nothing
+if the window is hidden, minimized, maximized, or in fullscreen mode.
 
 ### `win/view:to_screen(x, y) -> x, y` <br> `win/view:to_client(x, y) -> x, y`
 
 Convert a point from client space to screen space and viceversa
 based on client_rect().
-
-### `win:client_rect(cx, cy, cw, ch)` <br> `win:frame_rect(x, y, w, h)` <br> `win:client_size(cw, ch)`
-
-Move/resize the window to a specified client/frame rectangle.
-If any of the arguments is nil or false, it is replaced with the current value
-of that argument to allow for partial changes. Does nothing if the window is
-hidden, minimized, maximized, or in fullscreen mode.
 
 ### `win:normal_frame_rect() -> x, y, w, h`
 
@@ -843,7 +840,7 @@ hidden or minimized in which case all args are nil, so make sure to test for tha
 
 ### `win:resizeable() -> t|f`
 
-Get the resizeable flag.
+Check if the window is resizeable.
 
 ### `win:minsize() -> cw, ch` <br> `win:minsize(cw, ch)` <br> `win:minsize(false)`
 
@@ -889,7 +886,8 @@ Event: get edge snapping rectangles (rectangles are tables with fields _x, y, w,
 
 ### `win:topmost() -> t|f` <br> `win:topmost(t|f)`
 
-Get/set the topmost flag. A topmost window stays on top of all other non-topmost windows.
+Get/set the topmost flag. A topmost window stays on top of all other
+non-topmost windows.
 
 ### `win:raise([rel_to_win])`
 

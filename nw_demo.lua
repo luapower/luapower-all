@@ -7,6 +7,7 @@ if not ... then
 	local app = nw:app()
 	local dsp = app:main_display()
 	local win = app:window{x = dsp.w - 900, y = 200, cw = 800, ch = 400,
+		min_cw = 200, min_ch = 28,
 		frame = 'none', transparent = true, topmost = true, visible = false}
 	local function reload()
 		package.loaded.nw_demo = nil
