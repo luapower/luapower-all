@@ -22,10 +22,14 @@ if not ... then
 		end
 	end
 	win:show()
+	--[[
 	app:runevery(0.2, function()
 		reload()
 		win:invalidate()
 	end)
+	]]
+	reload()
+	win:invalidate()
 	app:run()
 	return
 end
@@ -56,10 +60,16 @@ function win:repaint()
 	local scale = 1
 	mx = mx and mx / scale
 	my = my and my / scale
+
 	local w = (bmp.w - scale) / scale
 	local h = (bmp.h - scale) / scale
+
 	local border_width = 6
 	local border_radius = 4
+	local buttons_w = 100
+	local buttons_h = 18
+	local buttons_rect = {w - buttons_w - border_width, 0, buttons_w, buttons_h}
+
 	local border_outer_color1 = {89/255, 89/255, 89/255, 1}
 	local inactive_border_outer_color1 = {96/255, 112/255, 135/255, 1}
 	local border_outer_color2 = {133/255, 172/255, 229/255, 1}
@@ -74,9 +84,6 @@ function win:repaint()
 	local titlebar_color2 = {97/255, 146/255, 221/255, 1}
 	local inactive_titlebar_color1 = inactive_border_color
 	local inactive_titlebar_color2 = {169/255, 195/255, 231/255, 1}
-	local buttons_w = 100
-	local buttons_h = 18
-	local buttons_rect = {w - buttons_w - border_width, 0, buttons_w, buttons_h}
 	local hover_color = border_outer_color2
 	local close_hover_color = {218/255, 77/255, 75/255, 1}
 
@@ -260,6 +267,10 @@ end
 
 function win:deactivated()
 	self:invalidate()
+end
+
+function win:hittest(x, y)
+	--
 end
 
 function win:mouseup(x, y)

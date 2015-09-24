@@ -96,10 +96,10 @@ __frame extents__
 `app:frame_to_client(...) -> ...`            window frame rect -> client rect conversion
 __size and position__
 `win:client_rect(x,y,w,h) /-> x,y,w,h`       get/set client rect
+`win:frame_rect(x,y,w,h) /-> x,y,w,h`        get/set frame rect
 `win:client_size(cw, ch) /-> cw, ch`         get/set client rect size
 `win/view:to_screen(x, y) -> x, y`           client space -> screen space conversion
 `win/view:to_client(x, y) -> x, y`           screen space -> client space conversion
-`win:frame_rect(x,y,w,h) /-> x,y,w,h`        get/set frame rect
 `win:normal_frame_rect(x,y,w,h)`             get frame rect in normal state
 `win:sizing(when, how, x, y, w, h)`          event: window size/position is about to change
 `win:frame_rect_changed(x, y, w, h, ...)`    event: window frame was moved and/or resized
@@ -108,6 +108,7 @@ __size and position__
 `win:client_rect_changed(cx,cy,cw,ch,...)`   event: window client area was moved and/or resized
 `win:client_moved(cx, cy, oldcx, oldcy)`     event: window client area was moved
 `win:client_resized(cw, ch, oldcw, oldch)`   event: window client area was resized
+`win:hittest(x, y) -> where`                 event: hit test for frameless windows
 __size constraints__
 `win:resizeable() -> t|f`                    resizeable flag
 `win:minsize(cw, ch) /-> cw, ch`             get/set min client rect size
@@ -413,37 +414,38 @@ Event: a window was closed.
 Create a window (fields of _`t`_ below with default value in parenthesis):
 
 * __position__
-	* `x`, `y`		 				- frame position
-	* `w`, `h`						- frame size
-	* `cx`, `cy`					- client area position
-	* `cw`, `ch`					- client area size
-	* `min_cw`, `min_ch`			- min client rect size (1, 1)
-	* `max_cw`, `max_ch`			- max client rect size
+	* `x`, `y`                   - frame position
+	* `w`, `h`                   - frame size
+	* `cx`, `cy`                 - client area position
+	* `cw`, `ch`                 - client area size
+	* `min_cw`, `min_ch`         - min client rect size (1, 1)
+	* `max_cw`, `max_ch`         - max client rect size
 * __state__
-	* `visible`						- start visible (true)
-	* `minimized`					- start minimized (false)
-	* `maximized`					- start maximized (false)
-	* `enabled`						- start enabled (true)
+	* `visible`                  - start visible (true)
+	* `minimized`                - start minimized (false)
+	* `maximized`                - start maximized (false)
+	* `enabled`                  - start enabled (true)
 * __frame__
-   * `frame`                  - frame type: 'normal', 'none', 'toolbox' ('normal')
-	* `title` 						- title ('')
-	* `transparent`				- transparent window (false)
+	* `frame`                    - frame type: 'normal', 'none', 'toolbox' ('normal')
+	* `title`                    - title ('')
+	* `transparent`              - transparent window (false)
+	* `resize_grip`              - resize grip width for frame='none' windows (8)
 * __behavior__
-	* `parent`						- parent window
-	* `sticky`						- moves with parent (false)
-	* `topmost`						- stays on top of other non-topmost windows (false)
-	* `minimizable`				- allow minimization (true)
-	* `maximizable`				- allow maximization (true)
-	* `closeable`					- allow closing (true)
-	* `resizeable`					- allow resizing (true)
-	* `fullscreenable`			- allow fullscreen mode (true)
-	* `activable`					- allow activation (true); only for 'toolbox' frame
-	* `autoquit`					- quit the app on closing (false)
-	* `edgesnapping`				- magnetized edges ('screen')
+	* `parent`                   - parent window
+	* `sticky`                   - moves with parent (false)
+	* `topmost`                  - stays on top of other non-topmost windows (false)
+	* `minimizable`              - allow minimization (true)
+	* `maximizable`              - allow maximization (true)
+	* `closeable`                - allow closing (true)
+	* `resizeable`               - allow resizing (true)
+	* `fullscreenable`           - allow fullscreen mode (true)
+	* `activable`                - allow activation (true); only for 'toolbox' frame
+	* `autoquit`                 - quit the app on closing (false)
+	* `edgesnapping`             - magnetized edges ('screen')
 * __rendering__
-	* `opengl`						- enable and [configure OpenGL](#winviewgl---gl) on the window
+	* `opengl`                   - enable and [configure OpenGL](#winviewgl---gl) on the window
 * __menu__
-	* `menu`							- the menu bar
+	* `menu`                     - the menu bar
 
 ### Initial size and position
 
@@ -836,6 +838,15 @@ __NOTE:__ This event does not fire in Linux.
 Event: window was moved/resized. These events also fire when a window is
 hidden or minimized in which case all args are nil, so make sure to test for that.
 
+### `win:hittest(x, y) -> where`
+
+Hit test for moving and resizing frameless windows. Given a set of
+window-relative coordinates, return 'left', 'top', 'right', 'bottom',
+'topleft', 'bottomright', 'topright' or 'bottomleft' to specify that the
+window should be resized, 'move' which means the window should be moved,
+false which means the coordinates are over the client area, or nil
+which means that standard resizing based on `resize_grip` should take place.
+
 ## Size constraints
 
 ### `win:resizeable() -> t|f`
@@ -953,8 +964,8 @@ Get/set the mouse cursor and/or visibility. The name can be:
   * 'hand'
   * 'cross'
   * 'forbidden'
-  * 'size_diag1' (i.e. NE-SW)
-  * 'size_diag2' (i.e. NW-SE)
+  * 'size_diag1' (i.e. NE-SW, slash)
+  * 'size_diag2' (i.e. NW-SE, backslash)
   * 'size_h'
   * 'size_v'
   * 'move'

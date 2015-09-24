@@ -1092,6 +1092,7 @@ function M.connect(...)
 
 	local ctx
 	function load_cursor(name)
+		do return end
 		if not ctx then
 			local xcursor = require'xlib_xcursor'
 			ctx = xcursor.context(c, screen)
@@ -1106,6 +1107,7 @@ function M.connect(...)
 
 	local bcur
 	function blank_cursor()
+		do return end
 		if not bcur then
 			bcur = gen_id()
 			local pix = gen_id()

@@ -106,11 +106,26 @@ local evfield = { --{event_code -> XEvent_field}
 	[C.Expose] = 'xexpose',
 }
 
+--event types for which we discard consecutive events and keep the last one.
+local evrepeat = {
+	[C.Expose] = true,
+	[C.ConfigureNotify] = true,
+}
+
 local function poll(timeout)
 	local e = xlib.poll(timeout)
 	if not e then return end
 	if dbg then dbg_event(e) end
 	local etype = tonumber(e.type)
+	if evrepeat[etype] then
+		while true do
+			local e1 = xlib.peek()
+			if not e1 then break end
+			local etype1 = tonumber(e1.type)
+			if etype1 ~= etype then break end
+			e = xlib.poll(true)
+		end
+	end
 	local field = evfield[etype]
 	if field then
 		local e = e[field]
@@ -1379,6 +1394,7 @@ end
 --rendering ------------------------------------------------------------------
 
 function window:Expose(e)
+	if e.count ~= 0 then return end --partial expose, skip it.
 	--can't paint the bitmap while the window is unmapped.
 	if self._hidden or (self.minimized and self:minimized()) then return end
 	--e.x, e.y, e.width, e.height

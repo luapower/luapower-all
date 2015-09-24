@@ -362,6 +362,7 @@ local defaults = {
 	--frame
 	title = '',
 	transparent = false,
+	resize_grip = 8,
 	--behavior
 	topmost = false,
 	minimizable = true,
@@ -520,7 +521,9 @@ function window:_new(app, backend_class, useropt)
 	self._client_rect = {self:client_rect()}
 	self._frame_rect = {self:frame_rect()}
 
-	self.app:_window_created(self)
+	self:_init_manual_resize()
+
+	app:_window_created(self)
 
 	--windows are created hidden to allow proper setup before events start.
 	if opt.visible then
@@ -559,12 +562,12 @@ function window:_backend_closing()
 	if self._closing then return false end --reject while closing
 
 	if self:autoquit() or (
-		self.app:autoquit()
+		app:autoquit()
 		and not self:parent() --closing a root window
-		and self.app:windows('#', 'root') == 1 --the only one
+		and app:windows('#', 'root') == 1 --the only one
 	) then
 		self._quitting = true
-		return self.app:_canquit()
+		return app:_canquit()
 	else
 		return self:_canclose()
 	end
@@ -575,13 +578,13 @@ function window:_backend_closed()
 	self._closed = true --_backend_closing() and _backend_closed() barrier
 
 	self:_event'closed'
-	self.app:_window_closed(self)
+	app:_window_closed(self)
 
 	self:_free_views()
 	self._dead = true
 
 	if self._quitting then
-		self.app:_forcequit()
+		app:_forcequit()
 	end
 end
 
@@ -958,7 +961,7 @@ function window:maxsize(w, h) --pass false to disable
 	end
 end
 
---positioning/moving/resizing ------------------------------------------------
+--positioning/manual resizing of frameless windows ---------------------------
 
 --this is a helper used in backends.
 --co = corner offset; mw = margin width; mh = margin height.
@@ -981,6 +984,68 @@ function app:_resize_area_hit(mx, my, w, h, co, mw, mh)
 		return 'right'
 	end
 end
+
+local win_cursors = {
+	topleft = 'size_diag2',
+	topright = 'size_diag1',
+	bottomleft = 'size_diag1',
+	bottomright = 'size_diag2',
+	top = 'size_v',
+	bottom = 'size_v',
+	left = 'size_h',
+	right = 'size_h',
+}
+
+function window:_hittest(mx, my, cw, ch)
+	local where = self:_handle('hittest', mx, my)
+	if where == nil then
+		where = app:_resize_area_hit(mx, my, cw, ch, 8, 8, 8)
+	end
+	self:_fire('hittest', where)
+	return where
+end
+
+function window:_init_manual_resize()
+	if self:frame() ~= 'none' or app:ver'OSX' then return end --resized by OS
+	local resizing, where, sides, dx, dy
+	self:on('mousedown', function(self, button, mx, my)
+		if not where or button ~= 'left' then return end
+		resizing = true
+		sides = {}
+		for _,side in ipairs{'left', 'top', 'right', 'bottom'} do
+			sides[side] = where:find(side, 1, true) and true or false
+		end
+		local cw, ch = self:client_size()
+		dx = sides.left and -mx or cw - mx
+		dy = sides.top  and -my or ch - my
+	end)
+	self:on('mousemove', function(self, mx, my)
+		if not resizing then
+			local cw, ch = self:client_size()
+			if not cw then return end --not in normal state
+			local where0 = where
+			where = self:_hittest(mx, my, cw, ch)
+			if where then
+				self:cursor(app:ver'Windows' and win_cursors[where] or where)
+			elseif where0 then
+				self:cursor'arrow'
+			end
+		else
+			local mx, my = self:to_screen(mx, my)
+			local cx1, cy1, cx2, cy2 = box2d.corners(self:client_rect())
+			if sides.left   then cx1 = mx + dx end
+			if sides.right  then cx2 = mx + dx end
+			if sides.top    then cy1 = my + dy end
+			if sides.bottom then cy2 = my + dy end
+			self:frame_rect(box2d.rect(cx1, cy1, cx2, cy2))
+		end
+	end)
+	self:on('mouseup', function(self, button, x, y)
+		resizing = false
+	end)
+end
+
+--positioning/edge snapping --------------------------------------------------
 
 function window:_backend_sizing(when, how, x, y, w, h)
 
@@ -1027,8 +1092,6 @@ function window:edgesnapping(mode)
 	end
 end
 
---positioning/magnets --------------------------------------------------------
-
 local modes = glue.index{'app', 'other', 'screen', 'parent', 'siblings'}
 
 function window:_getmagnets()
@@ -1051,7 +1114,7 @@ function window:_getmagnets()
 		t = self.backend:magnets()
 	elseif (opt.app or opt.parent or opt.siblings) and not opt.other then
 		t = {}
-		for i,win in ipairs(self.app:windows()) do
+		for i,win in ipairs(app:windows()) do
 			if win ~= self then
 				local x, y, w, h = win:frame_rect()
 				if x then
@@ -1069,7 +1132,7 @@ function window:_getmagnets()
 	end
 	if opt.screen then
 		t = t or {}
-		for i,disp in ipairs(self.app:displays()) do
+		for i,disp in ipairs(app:displays()) do
 			local x, y, w, h = disp:desktop_rect()
 			t[#t+1] = {x = x, y = y, w = w, h = h}
 			local x, y, w, h = disp:screen_rect()
@@ -1187,7 +1250,7 @@ function window:children(filter)
 	if filter then
 		assert(filter == '#', 'invalid argument')
 		local n = 0
-		for i,win in ipairs(self.app:windows()) do
+		for i,win in ipairs(app:windows()) do
 			if win:parent() == self then
 				n = n + 1
 			end
@@ -1195,7 +1258,7 @@ function window:children(filter)
 		return n
 	end
 	local t = {}
-	for i,win in ipairs(self.app:windows()) do
+	for i,win in ipairs(app:windows()) do
 		if win:parent() == self then
 			t[#t+1] = win
 		end
@@ -1303,8 +1366,8 @@ function window:_backend_mousedown(button, mx, my)
 	else
 		t.count = 1
 		t.time = time.clock()
-		t.interval = self.app.backend:double_click_time()
-		t.w, t.h = self.app.backend:double_click_target_area()
+		t.interval = app.backend:double_click_time()
+		t.w, t.h = app.backend:double_click_target_area()
 		t.x = mx - t.w / 2
 		t.y = my - t.h / 2
 	end
@@ -1788,7 +1851,7 @@ function notifyicon:free()
 	if self._dead then return end
 	self.backend:free()
 	self._dead = true
-	table.remove(self.app._notifyicons, indexof(self, self.app._notifyicons))
+	table.remove(app._notifyicons, indexof(self, app._notifyicons))
 end
 
 function app:_free_notifyicons() --called on app:quit()
@@ -1881,11 +1944,11 @@ function dockicon:_new(app)
 end
 
 function dockicon:bitmap()
-	return self.app.backend:dockicon_bitmap()
+	return app.backend:dockicon_bitmap()
 end
 
 function dockicon:invalidate()
-	self.app.backend:dockicon_invalidate()
+	app.backend:dockicon_invalidate()
 end
 
 function app:_free_dockicon()

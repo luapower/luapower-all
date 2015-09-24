@@ -1567,7 +1567,8 @@ local function find_method(cls, selname)
 	local sel = selector(selname)
 	local meth = class_method(cls, sel)
 	if meth then return sel, meth end
-	if not selname:find'[_%:]$' then --method not found, try again with a trailing '_'
+	--method not found, try again with a trailing '_' or ':'
+	if not (selname:find('_', #selname, true) or selname:find(':', #selname, true)) then
 		return find_method(cls, selname..'_')
 	end
 end
@@ -2151,7 +2152,10 @@ local function convert_arg(ftype, i, arg)
 	end
 end
 
-local function convert_args(ftype, i, ...) --not a tailcall but at least it doesn't make any garbage
+--not a tailcall and not JITed but at least it doesn't make any garbage.
+--NOTE: this stumbles on "call unroll limit reached" and doing it with
+--an accumulator table triggers "NYI: return to lower frame".
+local function convert_args(ftype, i, ...)
 	if select('#', ...) == 0 then return end
 	return convert_arg(ftype, i, ...), convert_args(ftype, i + 1, select(2, ...))
 end
