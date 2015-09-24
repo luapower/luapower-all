@@ -13,8 +13,10 @@ local bit  = require'bit'
 local glue = require'glue'
 local X    = require'xlib_h'     --X is the macro namespace
 local _    = require'xlib_xkblib_h'
-local C    = ffi.load'X11.so.6'  --Xlib core
-local XC   = ffi.load'Xext.so.6' --Xlib core extensions
+--local _    = require'xlib_xcursor_h' --not yet needed
+local C    = ffi.load'X11.so.6'     --Xlib core
+local XC   = ffi.load'Xext.so.6'    --Xlib core extensions
+local CC   = ffi.load'Xcursor.so.1' --Xcursor helper library
 local M    = {C = C, XC = XC, X = X}
 
 local print = print
@@ -616,7 +618,9 @@ function M.connect(...)
 	function set_attrs(win, t)
 		local mask, attrs = attr_buf(t)
 		if mask == 0 then return end --nothing to set
-		assert(C.XChangeWindowAttributes(c, win, mask, attrs) == 0)
+		--assert(
+		C.XChangeWindowAttributes(c, win, mask, attrs)
+		--		== 0)
 	end
 
 	--window geometry ---------------------------------------------------------
@@ -1089,15 +1093,65 @@ function M.connect(...)
 
 	--cursors -----------------------------------------------------------------
 
-	local ctx
-	function load_cursor(name)
-		do return end
-		if not ctx then
-			local xcursor = require'xlib_xcursor'
-			ctx = xcursor.context(c, screen)
-			gc(function() ctx:free() end)
+	ffi.cdef'Cursor XcursorLibraryLoadCursor (Display *dpy, const char *file);'
+
+	local cursors  = {
+		--nw standard
+		arrow       = {'left_ptr', 'arrow', 'dnd-none', 'op_left_arrow'},
+		text        = {'ibeam', 'xterm', 'text'},
+		hand        = {'pointing_hand', 'hand2', 'hand', 'hand1', 'pointer', 'e29285e634086352946a0e7090d73106', '9d800788f1b08800ae810202380a0822'},
+		cross       = {'cross', 'diamond-cross', 'cross-reverse', 'crosshair'},
+		forbidden   = {'forbidden', 'circle', 'dnd-no-drop', 'not-allowed', '03b6e0fcb3499374a867c041f52298f0'},
+		size_diag1  = {'size_bdiag', 'fd_double_arrow', 'bottom_left_corner', 'top_right_corner', 'fcf1c3c7cd4491d801f1e1c78f100000'},
+		size_diag2  = {'size_fdiag', 'bd_double_arrow', 'bottom_right_corner', 'top_left_corner', 'c7088f0f3e6c8088236ef8e1e3e70000'},
+		size_v      = {'size_ver', 'sb_v_double_arrow', 'v_double_arrow', 'n-resize', 's-resize', 'col-resize', 'top_side', 'bottom_side', 'base_arrow_up', 'base_arrow_down', 'based_arrow_down', 'based_arrow_up', '00008160000006810000408080010102'},
+		size_h      = {'size_hor', 'sb_h_double_arrow', 'h_double_arrow', 'e-resize', 'w-resize', 'row-resize', 'right_side', 'left_side', '028006030e0e7ebffc7f7070c0600140'},
+		move        = {'fleur', 'size_all'},
+		busy_arrow  = {'left_ptr_watch', 'half-busy', '3ecb610c1bf2410f44200f48c40d3599', '00000000000000020006000e7e9ffc3f', '08e8e1c95fe2fc01f976f1e063a24ccd'},
+		--resizing sides and corners
+		top         = {'top_side'},
+		left        = {'left_side'},
+		bottom      = {'bottom_side'},
+		right       = {'right_side'},
+		topleft     = {'top_left_corner'},
+		bottomright = {'bottom_right_corner'},
+		bottomleft  = {'bottom_left_corner'},
+		topright    = {'top_right_corner'},
+		--extra
+		up_arrow    = {'sb_up_arrow', 'centre_ptr', 'up_arrow', 'center_ptr'},
+		wait        = {'wait', 'watch', 'progress'},
+		help_arrow  = {'whats_this', 'left_ptr_help', 'help', 'question_arrow', 'dnd-ask', 'd9ce0ab605698f320427677b458ad60b', '5c6cd98b3f3ebcb1f9c7f1c204630408'},
+		split_h     = {'split_h', '14fef782d02440884392942c11205230', 'size_hor'},
+		split_v     = {'split_v', '2870a09082c103050810ffdffffe0204', 'size_ver'},
+		hand_link   = {'dnd-link', 'link', 'alias', '3085a0e285430894940527032f8b26df', '640fb0e74195791501fd1ed57b41487f', 'a2a266d0498c3104214a47bd64ab0fc8'},
+		hand_copy   = {'dnd-copy', 'copy', '1081e37283d90000800003c07f3ef6bf', '6407b0e94181790501fd1e167b474872', 'b66166c04f8c3109214a4fbd64a50fc8'},
+		hand_move   = {'dnd-move', 'move'},
+	}
+
+	--resizing fallbacks
+	glue.extend(cursors.topleft,     cursors.size_diag2)
+	glue.extend(cursors.bottomright, cursors.size_diag2)
+	glue.extend(cursors.topright,    cursors.size_diag1)
+	glue.extend(cursors.bottomleft,  cursors.size_diag1)
+	glue.extend(cursors.top,         cursors.size_v)
+	glue.extend(cursors.bottom,      cursors.size_v)
+	glue.extend(cursors.left,        cursors.size_h)
+	glue.extend(cursors.right,       cursors.size_h)
+
+	function try_load_cursor(name)
+		local t = cursors[name]
+		if t then
+			for i,name in ipairs(t) do
+				local cur = load_cursor(name)
+				if cur then return cur end
+			end
+		else
+			return load_cursor(name)
 		end
-		return ctx:load(name)
+	end
+
+	function load_cursor(name)
+		return xid(CC.XcursorLibraryLoadCursor(c, name))
 	end
 
 	function set_cursor(win, cursor)
@@ -1117,7 +1171,7 @@ function M.connect(...)
 		return bcur
 	end
 
-	--shm extension -----------------------------------------------------------
+	--MIT-SHM extension -------------------------------------------------------
 
 	local shm
 

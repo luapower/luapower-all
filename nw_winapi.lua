@@ -807,6 +807,16 @@ local cursors = {
 	busy_arrow = winapi.IDC_APPSTARTING,
 }
 
+--resize sides and corners
+cursors.topleft     = cursors.size_diag2
+cursors.topright    = cursors.size_diag1
+cursors.bottomleft  = cursors.size_diag1
+cursors.bottomright = cursors.size_diag2
+cursors.top         = cursors.size_v
+cursors.bottom      = cursors.size_v
+cursors.left        = cursors.size_h
+cursors.right       = cursors.size_h
+
 function window:update_cursor()
 	--trigger WM_SETCURSOR without having to invalidate the whole window.
 	local p = winapi.GetCursorPos()

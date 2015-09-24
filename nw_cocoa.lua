@@ -1314,6 +1314,16 @@ local hi_cursors = {
 	move       = 'move',
 }
 
+--resize sides and corners
+cursors.topleft     = hi_cursors.size_diag2
+cursors.topright    = hi_cursors.size_diag1
+cursors.bottomleft  = hi_cursors.size_diag1
+cursors.bottomright = hi_cursors.size_diag2
+cursors.top         = hi_cursors.size_v
+cursors.bottom      = hi_cursors.size_v
+cursors.left        = hi_cursors.size_h
+cursors.right       = hi_cursors.size_h
+
 local load_hicursor = objc.memoize(function(name)
 	basepath = basepath or objc.findframework(
 		'ApplicationServices.HIServices/Versions/Current/Resources/cursors')

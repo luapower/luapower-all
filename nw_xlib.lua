@@ -107,7 +107,8 @@ local evfield = { --{event_code -> XEvent_field}
 }
 
 --event types for which we only keep the last one from any series
---of consecutive events of the same type.
+--of consecutive events of the same type (this is called event compression
+--and it's important for preventing lag when resizing frameless windows).
 local evrepeat = {
 	[C.Expose] = true,
 	[C.ConfigureNotify] = true,
@@ -1014,8 +1015,8 @@ end
 --cursors --------------------------------------------------------------------
 
 function window:update_cursor()
-	local visible, name = self.frontend:cursor()
-	local cursor = visible and xlib.load_cursor(name) or xlib.blank_cursor()
+	local name, visible = self.frontend:cursor()
+	local cursor = visible and xlib.try_load_cursor(name) or xlib.blank_cursor()
 	xlib.set_cursor(self.win, cursor)
 end
 

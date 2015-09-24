@@ -970,17 +970,6 @@ function app:_resize_area_hit(mx, my, w, h, co, mw, mh)
 	end
 end
 
-local win_cursors = {
-	topleft = 'size_diag2',
-	topright = 'size_diag1',
-	bottomleft = 'size_diag1',
-	bottomright = 'size_diag2',
-	top = 'size_v',
-	bottom = 'size_v',
-	left = 'size_h',
-	right = 'size_h',
-}
-
 function window:_hittest(mx, my, cw, ch)
 	local where = self:_event('hittest', mx, my)
 	if where == nil then
@@ -1010,7 +999,7 @@ function window:_init_manual_resize()
 			local where0 = where
 			where = self:_hittest(mx, my, cw, ch)
 			if where then
-				self:cursor(app:ver'Windows' and win_cursors[where] or where)
+				self:cursor(where)
 			elseif where0 then
 				self:cursor'arrow'
 			end
