@@ -114,31 +114,36 @@ local evrepeat = {
 	[C.ConfigureNotify] = true,
 }
 
-local function poll(timeout)
-	local e = xlib.poll(timeout)
+local function dispatch(e)
 	if not e then return end
 	if dbg then dbg_event(e) end
 	local etype = tonumber(e.type)
-	if evrepeat[etype] then
-		while true do --skip repeat events
-			local e1 = xlib.peek()
-			if not e1 then break end
-			local etype1 = tonumber(e1.type)
-			if etype1 ~= etype then break end
-			e = xlib.poll(true)
-		end
-	end
 	local field = evfield[etype]
-	if field then
-		local e = e[field]
-		local win = win(e.window)
-		if win then
-			local f = win[evname[etype]]
-			if f then f(win, e) end
-		else
-			local f = app[evname[etype]]
-			if f then f(app, e) end
+	if not field then return end
+	local e = e[field]
+	local win = win(e.window)
+	return e, etype, win
+end
+
+local function poll(timeout)
+	local e, etype, win = dispatch(xlib.poll(timeout))
+	if win then
+		if evrepeat[etype] then
+			while true do --compress events
+				local e1, etype1, win1 = dispatch(xlib.peek())
+				if etype1 == etype and win1 == win then
+					e, etype, win = e1, etype1, win1
+					xlib.poll(true) --remove it
+				else
+					break
+				end
+			end
 		end
+		local f = win[evname[etype]]
+		if f then f(win, e) end
+	else
+		local f = app[evname[etype]]
+		if f then f(app, e) end
 	end
 	return true
 end
