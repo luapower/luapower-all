@@ -229,6 +229,7 @@ __drag & drop__
 `win/view:dragging('leave')`                 event: mouse left with payload
 __events__
 `app/win/view:on(event, func)`               call _func_ when _event_ happens
+`app/win/view:off(event[, func])`            remove event handlers
 `app/win/view:events(enabled) -> prev_state` enable/disable events
 `app/win/view:event(name, args...)`          meta-event fired on every other event
 __version checks__
@@ -1451,6 +1452,10 @@ You can respond to the 'enter' and 'hover' stages by returning:
 
 Call `func` when `event_name` happens. Multiple functions can be attached
 to the same event.
+
+### `app/win/view:off(event[, func])`
+
+Remove all handlers of an event or a specific event handler for a specific event.
 
 ### `app/win/view:events(enabled) -> prev_state`
 

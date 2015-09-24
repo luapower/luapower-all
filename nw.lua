@@ -66,10 +66,29 @@ end
 
 --events ---------------------------------------------------------------------
 
---register a function to be called for a specific event
+--register a function to be called for a specific event type
 function object:on(event, func)
 	local t = glue.attr(glue.attr(self, '_observers'), event)
 	table.insert(t, func)
+end
+
+--remove an event handler or all handlers of an event type
+function object:off(event, func)
+	if not self._observers then return end
+	if not func then
+		self._observers[event] = nil
+	else
+		local t = self._observers[event]
+		if not t then return end
+		local i = 1
+		while i <= #t do
+			if t[i] == func then
+				table.remove(t, i)
+			else
+				i = i + 1
+			end
+		end
+	end
 end
 
 --fire an event, i.e. call its handler method and all observers.
@@ -989,13 +1008,17 @@ function window:_init_manual_resize()
 			sides[side] = where:find(side, 1, true) and true or false
 		end
 		local cw, ch = self:client_size()
-		dx = sides.left and -mx or cw - mx
-		dy = sides.top  and -my or ch - my
+		if where == 'move' then
+			dx, dy = -mx, -my
+		else
+			dx = sides.left and -mx or cw - mx
+			dy = sides.top  and -my or ch - my
+		end
 	end)
 	self:on('mousemove', function(self, mx, my)
 		if not resizing then
+			if not self:_can_set_rect() then return end
 			local cw, ch = self:client_size()
-			if not cw then return end --not in normal state
 			local where0 = where
 			where = self:_hittest(mx, my, cw, ch)
 			if where then
@@ -1009,12 +1032,17 @@ function window:_init_manual_resize()
 			else
 				mx, my = self:to_screen(mx, my)
 			end
-			local cx1, cy1, cx2, cy2 = box2d.corners(self:client_rect())
-			if sides.left   then cx1 = mx + dx end
-			if sides.right  then cx2 = mx + dx end
-			if sides.top    then cy1 = my + dy end
-			if sides.bottom then cy2 = my + dy end
-			self:frame_rect(box2d.rect(cx1, cy1, cx2, cy2))
+			if where == 'move' then
+				local cx1, cy1, cw1, ch1 = self:client_rect()
+				self:frame_rect(mx + dx, my + dy, cw1, ch1)
+			else
+				local cx1, cy1, cx2, cy2 = box2d.corners(self:frame_rect())
+				if sides.left   then cx1 = mx + dx end
+				if sides.right  then cx2 = mx + dx end
+				if sides.top    then cy1 = my + dy end
+				if sides.bottom then cy2 = my + dy end
+				self:frame_rect(box2d.rect(cx1, cy1, cx2, cy2))
+			end
 		end
 	end)
 	self:on('mouseup', function(self, button, x, y)

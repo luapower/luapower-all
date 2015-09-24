@@ -16,8 +16,9 @@ if not ... then
 		--wrap/add methods from the reloaded module
 		for k,v in pairs(methods) do
 			win[k] = function(self, ...)
-				local ok, err = xpcall(methods[k], debug.traceback, self)
-				if not ok then print(err) end
+				local ok, ret = xpcall(methods[k], debug.traceback, self, ...)
+				if not ok then print(ret) end
+				return ret
 			end
 		end
 	end
@@ -49,41 +50,54 @@ end
 
 local win = {} --hot-loaded pcalled window methods
 
+local border_outer_color1 = {89/255, 89/255, 89/255, 1}
+local inactive_border_outer_color1 = {96/255, 112/255, 135/255, 1}
+local border_outer_color2 = {133/255, 172/255, 229/255, 1}
+local inactive_border_outer_color2 = {194/255, 212/255, 237/255, 1}
+local icon_color = {189/255, 208/255, 239/255, 1}
+local hover_icon_color = {1, 1, 1, 1}
+local icon_outline_color = {35/255, 54/255, 86/255, 1}
+local border_color = {73/255, 120/255, 206/255, 1}
+local inactive_border_color = {153/255, 178/255, 221/255, 1}
+local titlebar_color1 = border_color
+local titlebar_color2 = {97/255, 146/255, 221/255, 1}
+local inactive_titlebar_color1 = inactive_border_color
+local inactive_titlebar_color2 = {169/255, 195/255, 231/255, 1}
+local hover_color = border_outer_color2
+local close_hover_color = {218/255, 77/255, 75/255, 1}
+
+local scale = 1
+local border_width = 6
+local border_radius = 4
+local buttons_w = 100
+local buttons_h = 18
+local titlebar_h = 24
+
+local buttons_rect
+local titlebar_x
+local min_rect
+local max_rect
+local close_rect
+local titlebar_rect
+
+local function set_dims(w, h)
+	buttons_rect = {w - buttons_w - border_width, 0, buttons_w, buttons_h}
+	titlebar_x = w - buttons_w - 60
+
+	min_rect = {buttons_rect[1], buttons_rect[2], 28, buttons_rect[4]}
+	max_rect = {buttons_rect[1] + 29, buttons_rect[2], 28, buttons_rect[4]}
+	close_rect = {buttons_rect[1] + 56, buttons_rect[2], buttons_w - 28*2, buttons_rect[4]}
+	titlebar_rect = {0, 0, w, titlebar_h}
+end
+
 function win:repaint()
 	local bmp = self:bitmap()
 	local cr = bmp:cairo()
 	local mx, my = self:mouse'pos'
 
-	local scale = 1
-	mx = mx and mx / scale
-	my = my and my / scale
-
 	local w = (bmp.w - scale) / scale
 	local h = (bmp.h - scale) / scale
-
-	local border_width = 6
-	local border_radius = 4
-	local buttons_w = 100
-	local buttons_h = 18
-	local buttons_rect = {w - buttons_w - border_width, 0, buttons_w, buttons_h}
-	local titlebar_h = 24
-	local titlebar_x = w - buttons_w - 60
-
-	local border_outer_color1 = {89/255, 89/255, 89/255, 1}
-	local inactive_border_outer_color1 = {96/255, 112/255, 135/255, 1}
-	local border_outer_color2 = {133/255, 172/255, 229/255, 1}
-	local inactive_border_outer_color2 = {194/255, 212/255, 237/255, 1}
-	local icon_color = {189/255, 208/255, 239/255, 1}
-	local hover_icon_color = {1, 1, 1, 1}
-	local icon_outline_color = {35/255, 54/255, 86/255, 1}
-	local border_color = {73/255, 120/255, 206/255, 1}
-	local inactive_border_color = {153/255, 178/255, 221/255, 1}
-	local titlebar_color1 = border_color
-	local titlebar_color2 = {97/255, 146/255, 221/255, 1}
-	local inactive_titlebar_color1 = inactive_border_color
-	local inactive_titlebar_color2 = {169/255, 195/255, 231/255, 1}
-	local hover_color = border_outer_color2
-	local close_hover_color = {218/255, 77/255, 75/255, 1}
+	set_dims(w, h)
 
 	if not self:active() then
 		border_color = inactive_border_color
@@ -156,33 +170,31 @@ function win:repaint()
 	end
 
 	--buttons hover backgrounds
+	mx = mx and mx / scale
+	my = my and my / scale
+
 	if mx then
-		local b1rect = {buttons_rect[1], buttons_rect[2], 28, buttons_rect[4]}
-		self.min_hover = box2d.hit(mx, my, unpack(b1rect))
 		if self.min_hover then
 			local r = border_radius
-			round_rect(cr, 0, 0, r, 0, unpack(b1rect))
+			round_rect(cr, 0, 0, r, 0, unpack(min_rect))
 			cr:set_source_rgba(unpack(hover_color))
 			cr:fill()
 		end
 
-		local b2rect = {buttons_rect[1] + 29, buttons_rect[2], 28, buttons_rect[4]}
-		self.max_hover = box2d.hit(mx, my, unpack(b2rect))
 		if self.max_hover then
 			local r = border_radius
-			round_rect(cr, 0, 0, 0, 0, unpack(b2rect))
+			round_rect(cr, 0, 0, 0, 0, unpack(max_rect))
 			cr:set_source_rgba(unpack(hover_color))
 			cr:fill()
 		end
 
-		local b3rect = {buttons_rect[1] + 56, buttons_rect[2], buttons_w - 28*2, buttons_rect[4]}
-		self.close_hover = box2d.hit(mx, my, unpack(b3rect))
 		if self.close_hover then
 			local r = border_radius
-			round_rect(cr, 0, r, 0, 0, unpack(b3rect))
+			round_rect(cr, 0, r, 0, 0, unpack(close_rect))
 			cr:set_source_rgba(unpack(close_hover_color))
 			cr:fill()
 		end
+
 	end
 
 	--buttons outline
@@ -269,7 +281,15 @@ function win:repaint()
 
 end
 
-function win:mousemove(x, y)
+function win:mousemove(mx, my)
+	local w, h = self:client_size()
+	set_dims(w, h)
+
+	self.min_hover = box2d.hit(mx, my, unpack(min_rect))
+	self.max_hover = box2d.hit(mx, my, unpack(max_rect))
+	self.close_hover = box2d.hit(mx, my, unpack(close_rect))
+	self.titlebar_hover = box2d.hit(mx, my, unpack(titlebar_rect))
+
 	self:invalidate()
 end
 
@@ -286,7 +306,10 @@ function win:deactivated()
 end
 
 function win:hittest(x, y)
-	--
+	if self.min_hover then return false end
+	if self.max_hover then return false end
+	if self.close_hover then return false end
+	if self.titlebar_hover then return 'move' end
 end
 
 function win:mouseup(x, y)
