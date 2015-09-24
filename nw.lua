@@ -92,7 +92,7 @@ function object:off(event, func)
 end
 
 --fire an event, i.e. call its handler method and all observers.
-function object:_event(event, ...)
+function object:fire(event, ...)
 	if self._dead then return end
 	if self._events_disabled then return end
 	if self[event] then
@@ -108,7 +108,7 @@ function object:_event(event, ...)
 		end
 	end
 	if event ~= 'event' then
-		return self:_event('event', event, ...)
+		return self:fire('event', event, ...)
 	end
 end
 
@@ -278,7 +278,7 @@ end
 function app:_canquit()
 	self._quitting = true --quit() barrier
 
-	local allow = self:_event'quitting' ~= false
+	local allow = self:fire'quitting' ~= false
 
 	for i,win in ipairs(self:windows()) do
 		if not win:dead() and not win:parent() then
@@ -342,11 +342,11 @@ end
 
 function app:_window_created(win)
 	table.insert(self._windows, win)
-	self:_event('window_created', win)
+	self:fire('window_created', win)
 end
 
 function app:_window_closed(win)
-	self:_event('window_closed', win)
+	self:fire('window_closed', win)
 	table.remove(self._windows, indexof(win, self._windows))
 end
 
@@ -544,7 +544,7 @@ function window:_canclose()
 
 	self._closing = true --_backend_closing() and _canclose() barrier
 
-	local allow = self:_event'closing' ~= false
+	local allow = self:fire'closing' ~= false
 
 	--children must agree too
 	for i,win in ipairs(self:children()) do
@@ -581,7 +581,7 @@ function window:_backend_closed()
 	if self._closed then return end --ignore if closed
 	self._closed = true --_backend_closing() and _backend_closed() barrier
 
-	self:_event'closed'
+	self:fire'closed'
 	app:_window_closed(self)
 
 	self:_free_views()
@@ -748,9 +748,9 @@ end
 
 local function trigger(self, diff, event_up, event_down)
 	if diff > 0 then
-		self:_event(event_up)
+		self:fire(event_up)
 	elseif diff < 0 then
-		self:_event(event_down)
+		self:fire(event_down)
 	end
 end
 
@@ -761,13 +761,13 @@ function window:_rect_changed(old_rect, new_rect, changed_event, moved_event, re
 	local moved = x1 ~= x0 or y1 ~= y0
 	local resized = w1 ~= w0 or h1 ~= h0
 	if moved or resized then
-		self:_event(changed_event, x1, y1, w1, h1, x0, y0, w0, h0)
+		self:fire(changed_event, x1, y1, w1, h1, x0, y0, w0, h0)
 	end
 	if moved then
-		self:_event(moved_event, x1, y1, x0, y0)
+		self:fire(moved_event, x1, y1, x0, y0)
 	end
 	if resized then
-		self:_event(resized_event, w1, h1, w0, h0)
+		self:fire(resized_event, w1, h1, w0, h0)
 	end
 	return new_rect
 end
@@ -780,7 +780,7 @@ function window:_backend_changed()
 	local new = self:_get_state()
 	self._state = new
 	if new ~= old then
-		self:_event('changed', old, new)
+		self:fire('changed', old, new)
 		trigger(self, diff('visible', old, new), 'shown', 'hidden')
 		trigger(self, diff('minimized', old, new), 'minimized', 'unminimized')
 		trigger(self, diff('maximized', old, new), 'maximized', 'unmaximized')
@@ -798,7 +798,7 @@ function app:_backend_changed()
 	local new = self:_get_state()
 	self._state = new
 	if new ~= old then
-		self:_event('changed', old, new)
+		self:fire('changed', old, new)
 		trigger(self, diff('hidden', old, new), 'hidden', 'unhidden')
 		trigger(self, diff('active', old, new), 'activated', 'deactivated')
 	end
@@ -990,7 +990,7 @@ function app:_resize_area_hit(mx, my, w, h, co, mw, mh)
 end
 
 function window:_hittest(mx, my, cw, ch)
-	local where = self:_event('hittest', mx, my)
+	local where = self:fire('hittest', mx, my)
 	if where == nil then
 		where = app:_resize_area_hit(mx, my, cw, ch, 8, 8, 8)
 	end
@@ -1056,7 +1056,7 @@ function window:_backend_sizing(when, how, x, y, w, h)
 
 	if when ~= 'progress' then
 		self._magnets = nil
-		self:_event('sizing', when, how)
+		self:fire('sizing', when, how)
 		return
 	end
 
@@ -1075,7 +1075,7 @@ function window:_backend_sizing(when, how, x, y, w, h)
 	end
 
 	local t = {x = x1, y = y1, w = w1, h = h1}
-	local ret = self:_event('sizing', when, how, t)
+	local ret = self:fire('sizing', when, how, t)
 	return override_rect(x1, y1, w1, h1, t.x, t.y, t.w, t.h)
 end
 
@@ -1110,7 +1110,7 @@ function window:_getmagnets()
 	end
 
 	--ask user for magnets
-	local t = self:_event('magnets', opt)
+	local t = self:fire('magnets', opt)
 	if t ~= nil then return t end
 
 	--ask backend for magnets
@@ -1199,7 +1199,7 @@ function app:active_display() --the display which has the keyboard focus
 end
 
 function app:_backend_displays_changed()
-	self:_event'displays_changed'
+	self:fire'displays_changed'
 end
 
 function window:display()
@@ -1305,19 +1305,19 @@ local function translate_key(vkey)
 end
 
 function window:_backend_keydown(key)
-	self:_event('keydown', translate_key(key))
+	self:fire('keydown', translate_key(key))
 end
 
 function window:_backend_keypress(key)
-	self:_event('keypress', translate_key(key))
+	self:fire('keypress', translate_key(key))
 end
 
 function window:_backend_keyup(key)
-	self:_event('keyup', translate_key(key))
+	self:fire('keyup', translate_key(key))
 end
 
 function window:_backend_keychar(s)
-	self:_event('keychar', s)
+	self:fire('keychar', s)
 end
 
 function app:key(keys)
@@ -1376,35 +1376,35 @@ function window:_backend_mousedown(button, mx, my)
 		t.y = my - t.h / 2
 	end
 
-	self:_event('mousedown', button, mx, my)
+	self:fire('mousedown', button, mx, my)
 
-	if self:_event('click', button, t.count, mx, my) then
+	if self:fire('click', button, t.count, mx, my) then
 		t.count = 0
 	end
 end
 
 function window:_backend_mouseup(button, x, y)
-	self:_event('mouseup', button, x, y)
+	self:fire('mouseup', button, x, y)
 end
 
 function window:_backend_mouseenter(x, y)
-	self:_event('mouseenter', x, y)
+	self:fire('mouseenter', x, y)
 end
 
 function window:_backend_mouseleave()
-	self:_event'mouseleave'
+	self:fire'mouseleave'
 end
 
 function window:_backend_mousemove(x, y)
-	self:_event('mousemove', x, y)
+	self:fire('mousemove', x, y)
 end
 
 function window:_backend_mousewheel(delta, x, y)
-	self:_event('mousewheel', delta, x, y)
+	self:fire('mousewheel', delta, x, y)
 end
 
 function window:_backend_mousehwheel(delta, x, y)
-	self:_event('mousehwheel', delta, x, y)
+	self:fire('mousehwheel', delta, x, y)
 end
 
 --rendering ------------------------------------------------------------------
@@ -1416,7 +1416,7 @@ end
 
 function window:_backend_repaint(...)
 	if not self:_can_get_rect() then return end
-	self:_event('repaint', ...)
+	self:fire('repaint', ...)
 end
 
 --bitmap
@@ -1447,11 +1447,11 @@ end
 
 function window:_backend_free_bitmap(bitmap)
 	if bitmap.cairo_context then
-		self:_event('free_cairo', bitmap.cairo_context)
+		self:fire('free_cairo', bitmap.cairo_context)
 		bitmap.cairo_context:free()
 		bitmap.cairo_surface:free()
 	end
-	self:_event('free_bitmap', bitmap)
+	self:fire('free_bitmap', bitmap)
 end
 
 --opengl
@@ -1486,7 +1486,7 @@ function app:autoscaling(enabled)
 end
 
 function window:_backend_scalingfactor_changed(scalingfactor)
-	self:_event('scalingfactor_changed', scalingfactor)
+	self:fire('scalingfactor_changed', scalingfactor)
 end
 
 --views ----------------------------------------------------------------------
@@ -1549,7 +1549,7 @@ end
 
 function view:free()
 	if self._dead then return end
-	self:_event'freeing'
+	self:fire'freeing'
 	self.backend:free()
 	self._dead = true
 	table.remove(self.window._views, indexof(self, self.window._views))
@@ -1878,11 +1878,11 @@ function notifyicon:invalidate()
 end
 
 function notifyicon:_backend_repaint()
-	self:_event'repaint'
+	self:fire'repaint'
 end
 
 function notifyicon:_backend_free_bitmap(bitmap)
-	self:_event('free_bitmap', bitmap)
+	self:fire('free_bitmap', bitmap)
 end
 
 notifyicon:_property'tooltip'
@@ -1926,7 +1926,7 @@ end
 
 function window:_backend_repaint_icon(which)
 	which = whicharg(which)
-	self._icons[which]:_event('repaint')
+	self._icons[which]:fire('repaint')
 end
 
 --dock icon ------------------------------------------------------------------
@@ -1958,11 +1958,11 @@ function app:_free_dockicon()
 end
 
 function app:_backend_dockicon_repaint()
-	self._dockicon:_event'repaint'
+	self._dockicon:fire'repaint'
 end
 
 function app:_backend_dockicon_free_bitmap(bitmap)
-	self._dockicon:_event('free_bitmap', bitmap)
+	self._dockicon:fire('free_bitmap', bitmap)
 end
 
 --file chooser ---------------------------------------------------------------
@@ -2028,13 +2028,13 @@ end
 --drag & drop ----------------------------------------------------------------
 
 function window:_backend_drop_files(x, y, files)
-	self:_event('dropfiles', x, y, files)
+	self:fire('dropfiles', x, y, files)
 end
 
 local effect_arg = optarg({'copy', 'link', 'none', 'abort'}, 'copy', 'abort', 'abort')
 
 function window:_backend_dragging(stage, data, x, y)
-	return effect_arg(self:_event('dragging', how, data, x, y))
+	return effect_arg(self:fire('dragging', how, data, x, y))
 end
 
 
