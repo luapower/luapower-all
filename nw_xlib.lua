@@ -1223,6 +1223,11 @@ function window:_setmouse(e)
 	return m
 end
 
+function app:_get_mouse_pos()
+	local x, y = xlib.query_pointer(xlib.screen.root)
+	return x, y
+end
+
 function window:ButtonPress(e)
 	if self._disabled then return end
 	if e.button == C.Button4 then --wheel up

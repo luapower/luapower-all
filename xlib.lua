@@ -1077,16 +1077,15 @@ function M.connect(...)
 
 	--mouse -------------------------------------------------------------------
 
-	--[[
-	function querypointer(win)
-		C.XQueryPointer(c,
-		Display *display;
-			Window w;
-			Window *root_return, *child_return;
-			int *root_x_return, *root_y_return;
-			int *win_x_return, *win_y_return;
-			unsigned int *mask_return;
-	]]
+	local rootbuf = ffi.new'Window[1]'
+	local childbuf = ffi.new'Window[1]'
+	local xbuf = ffi.new'int[4]'
+	local maskbuf = ffi.new'unsigned int[1]'
+	function query_pointer(win) --returns x, y, buttons, child_win, root_win
+		if C.XQueryPointer(c, win, rootbuf, childbuf, xbuf, xbuf+1, xbuf+2, xbuf+3, maskbuf) == 1 then
+			return xbuf[2], xbuf[3], maskbuf[0], childbuf[0], rootbuf[0]
+		end
+	end
 
 	--cursors -----------------------------------------------------------------
 

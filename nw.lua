@@ -1015,7 +1015,11 @@ function window:_init_manual_resize()
 				self:cursor'arrow'
 			end
 		else
-			local mx, my = self:to_screen(mx, my)
+			if app:ver'X' then
+				mx, my = app.backend:_get_mouse_pos()
+			else
+				mx, my = self:to_screen(mx, my)
+			end
 			local cx1, cy1, cx2, cy2 = box2d.corners(self:client_rect())
 			if sides.left   then cx1 = mx + dx end
 			if sides.right  then cx2 = mx + dx end
