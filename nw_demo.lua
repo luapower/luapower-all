@@ -66,6 +66,8 @@ function win:repaint()
 	local buttons_w = 100
 	local buttons_h = 18
 	local buttons_rect = {w - buttons_w - border_width, 0, buttons_w, buttons_h}
+	local titlebar_h = 24
+	local titlebar_x = w - buttons_w - 60
 
 	local border_outer_color1 = {89/255, 89/255, 89/255, 1}
 	local inactive_border_outer_color1 = {96/255, 112/255, 135/255, 1}
@@ -74,7 +76,6 @@ function win:repaint()
 	local icon_color = {189/255, 208/255, 239/255, 1}
 	local hover_icon_color = {1, 1, 1, 1}
 	local icon_outline_color = {35/255, 54/255, 86/255, 1}
-	local titlebar_rect = {-1, -.5, w+1, 26}
 	local border_color = {73/255, 120/255, 206/255, 1}
 	local inactive_border_color = {153/255, 178/255, 221/255, 1}
 	local titlebar_color1 = border_color
@@ -128,13 +129,31 @@ function win:repaint()
 	cr:paint()
 
 	--titlebar
-	cr:rectangle(unpack(titlebar_rect))
-	local pat = cairo.cairo_pattern_create_linear(0, 0, 0, titlebar_rect[4])
-	pat:add_color_stop_rgba(1, unpack(titlebar_color1))
-	pat:add_color_stop_rgba(0, unpack(titlebar_color2))
-	cr:set_source(pat)
-	cr:fill()
-	pat:destroy()
+	if true then
+		cr:move_to(0, 0)
+		cr:rel_line_to(0, titlebar_h)
+		cr:rel_line_to(titlebar_x, -.5)
+		cr:rel_line_to(10, 0)
+		cr:rel_line_to(w - titlebar_x, 0)
+		cr:rel_line_to(0, -titlebar_h - 0)
+		cr:close_path()
+		local pat = cairo.cairo_pattern_create_linear(0, 0, 0, titlebar_h)
+		pat:add_color_stop_rgba(1, unpack(titlebar_color1))
+		pat:add_color_stop_rgba(0, unpack(titlebar_color2))
+		cr:set_source(pat)
+		cr:fill()
+		pat:destroy()
+	else
+		--buttons background
+		local r = border_radius
+		round_rect(cr, 0, r, r, 0, unpack(buttons_rect))
+		local pat = cairo.cairo_pattern_create_linear(0, 0, 0, titlebar_h)
+		pat:add_color_stop_rgba(1, unpack(titlebar_color1))
+		pat:add_color_stop_rgba(0, unpack(titlebar_color2))
+		cr:set_source(pat)
+		cr:fill()
+		pat:destroy()
+	end
 
 	--buttons hover backgrounds
 	if mx then

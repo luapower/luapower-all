@@ -61,7 +61,7 @@ local function rgb_to_hsl(r, g, b)
 		if max == r and max ~= g then h = h + (g-b)/delta end
 		if max == g and max ~= b then h = h + 2 + (b-r)/delta end
 		if max == b and max ~= r then h = h + 4 + (r-g)/delta end
-		h = h / 6;
+		h = h / 6
 	end
 
 	if h < 0 then h = h + 1 end

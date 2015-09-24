@@ -31,7 +31,7 @@ Color computation in HSL space. Shamelessly ripped off and modified from [Sputni
 `col:hsl() -> h, s, L` <br> `col() -> h, s, L`       color fields unpacked
 `col:rgb() -> r, g, b`                               convert to RGB
 `col:tostring() -> '#rrggbb'`                        convert to RGB string
-`col:hue_offset(hue_delta) -> color`                 create a new color with a different hue
+`col:hue_offset(hue_delta) -> color`                 create a color with a different hue (in degrees)
 `col:complementary() -> color`                       create a complementary color
 `col:neighbors(angle) -> color1, color2`             create two neighboring colors (by hue), offset by "angle"
 `col:triadic() -> color1, color2`                    create two new colors to make a triadic color scheme
