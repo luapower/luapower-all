@@ -68,44 +68,29 @@ end
 
 --register a function to be called for a specific event
 function object:on(event, func)
-	glue.attr(glue.attr(self, '_observers'), event)[func] = true --{event = {func = true}}
+	local t = glue.attr(glue.attr(self, '_observers'), event)
+	table.insert(t, func)
 end
 
---handle a query event by calling its event handler
-function object:_handle(event, ...)
+--fire an event, i.e. call its handler method and all observers.
+function object:_event(event, ...)
 	if self._dead then return end
 	if self._events_disabled then return end
-	if not self[event] then return end
-	return self[event](self, ...)
-end
-
---fire an event, i.e. call observers and create a meta event 'event'
-function object:_fire(event, ...)
-	if self._dead then return end
-	if self._events_disabled then return end
-	--call any observers
-	if self._observers and self._observers[event] then
-		for obs in pairs(self._observers[event]) do
-			obs(self, ...)
+	if self[event] then
+		local ret = self[event](self, ...)
+		if ret ~= nil then return ret end
+	end
+	local t = self._observers and self._observers[event]
+	if t then
+		for i = 1, #t do
+			local handler = t[i]
+			local ret = handler(self, ...)
+			if ret ~= nil then return ret end
 		end
 	end
-	--fire the meta-event 'event'
 	if event ~= 'event' then
-		self:_event('event', event, ...)
+		return self:_event('event', event, ...)
 	end
-end
-
---handle and fire a non-query event.
-function object:_event(event, ...)
-	self:_handle(event, ...)
-	self:_fire(event, ...)
-end
-
---handle and fire a query event.
-function object:_query(event)
-	local allow = self:_handle(event) ~= false
-	self:_fire(event, allow)
-	return allow
 end
 
 --enable or disable events. returns the old state.
@@ -274,7 +259,7 @@ end
 function app:_canquit()
 	self._quitting = true --quit() barrier
 
-	local allow = self:_query'quitting' ~= false
+	local allow = self:_event'quitting' ~= false
 
 	for i,win in ipairs(self:windows()) do
 		if not win:dead() and not win:parent() then
@@ -540,7 +525,7 @@ function window:_canclose()
 
 	self._closing = true --_backend_closing() and _canclose() barrier
 
-	local allow = self:_query'closing' ~= false
+	local allow = self:_event'closing' ~= false
 
 	--children must agree too
 	for i,win in ipairs(self:children()) do
@@ -997,11 +982,10 @@ local win_cursors = {
 }
 
 function window:_hittest(mx, my, cw, ch)
-	local where = self:_handle('hittest', mx, my)
+	local where = self:_event('hittest', mx, my)
 	if where == nil then
 		where = app:_resize_area_hit(mx, my, cw, ch, 8, 8, 8)
 	end
-	self:_fire('hittest', where)
 	return where
 end
 
@@ -1069,9 +1053,9 @@ function window:_backend_sizing(when, how, x, y, w, h)
 		x1, y1, w1, h1 = x, y, w, h
 	end
 
-	x1, y1, w1, h1 = override_rect(x1, y1, w1, h1, self:_handle('sizing', when, how, x1, y1, w1, h1))
-	self:_fire('sizing', when, how, x, y, w, h, x1, y1, w1, h1)
-	return x1, y1, w1, h1
+	local t = {x = x1, y = y1, w = w1, h = h1}
+	local ret = self:_event('sizing', when, how, t)
+	return override_rect(x1, y1, w1, h1, t.x, t.y, t.w, t.h)
 end
 
 function window:edgesnapping(mode)
@@ -1105,9 +1089,8 @@ function window:_getmagnets()
 	end
 
 	--ask user for magnets
-	local t = self:_handle('magnets', opt)
-	self:_fire('magnets', opt, t)
-	if t then return t end
+	local t = self:_event('magnets', opt)
+	if t ~= nil then return t end
 
 	--ask backend for magnets
 	if opt.app and opt.other then
@@ -1374,10 +1357,7 @@ function window:_backend_mousedown(button, mx, my)
 
 	self:_event('mousedown', button, mx, my)
 
-	local reset = false
-	reset = self:_handle('click', button, t.count, mx, my)
-	self:_fire('click', button, t.count, mx, my, reset)
-	if reset then
+	if self:_event('click', button, t.count, mx, my) then
 		t.count = 0
 	end
 end
@@ -2033,9 +2013,7 @@ end
 local effect_arg = optarg({'copy', 'link', 'none', 'abort'}, 'copy', 'abort', 'abort')
 
 function window:_backend_dragging(stage, data, x, y)
-	local effect = effect_arg(self:_handle('dragging', how, data, x, y))
-	self:_fire('dragging', how, data, x, y, effect)
-	return effect
+	return effect_arg(self:_event('dragging', how, data, x, y))
 end
 
 

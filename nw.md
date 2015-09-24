@@ -101,7 +101,7 @@ __size and position__
 `win/view:to_screen(x, y) -> x, y`           client space -> screen space conversion
 `win/view:to_client(x, y) -> x, y`           screen space -> client space conversion
 `win:normal_frame_rect(x,y,w,h)`             get frame rect in normal state
-`win:sizing(when, how, x, y, w, h)`          event: window size/position is about to change
+`win:sizing(when, how, rect)`                event: window size/position is about to change
 `win:frame_rect_changed(x, y, w, h, ...)`    event: window frame was moved and/or resized
 `win:frame_moved(x, y, oldx, oldy)`          event: window frame was moved
 `win:frame_resized(w, h, oldw, oldh)`        event: window frame was resized
@@ -824,12 +824,12 @@ based on client_rect().
 Get the frame rect in normal state (in screen coordinates).
 Unlinke client_rect() and frame_rect(), this always returns a rectangle.
 
-### `win:sizing(when, how, x, y, w, h) -> x, y, w, h`
+### `win:sizing(when, how, rect) -> true|nil`
 
-Event: window size/position is about to change.
-Return a new rectangle (x, y, w, h) to affect the window's final size and position.
-If any of the return values is nil or false, it is replaced with the corresponding
-value received as argument to the function.
+Event: window size/position is about to change. The `rect` arg is a table
+with the fields _x, y, w, h_. Change these values in the table to affect
+the window's final size and position (and optionally return true to stop
+calling the following event handlers).
 
 __NOTE:__ This event does not fire in Linux.
 

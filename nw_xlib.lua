@@ -106,7 +106,8 @@ local evfield = { --{event_code -> XEvent_field}
 	[C.Expose] = 'xexpose',
 }
 
---event types for which we discard consecutive events and keep the last one.
+--event types for which we only keep the last one from any series
+--of consecutive events of the same type.
 local evrepeat = {
 	[C.Expose] = true,
 	[C.ConfigureNotify] = true,
@@ -118,7 +119,7 @@ local function poll(timeout)
 	if dbg then dbg_event(e) end
 	local etype = tonumber(e.type)
 	if evrepeat[etype] then
-		while true do
+		while true do --skip repeat events
 			local e1 = xlib.peek()
 			if not e1 then break end
 			local etype1 = tonumber(e1.type)

@@ -21,15 +21,12 @@ if not ... then
 			end
 		end
 	end
+	reload()
 	win:show()
-	--[[
 	app:runevery(0.2, function()
 		reload()
 		win:invalidate()
 	end)
-	]]
-	reload()
-	win:invalidate()
 	app:run()
 	return
 end
