@@ -1185,6 +1185,10 @@ add('demo-frame=toolbox', mkdemo({frame = 'toolbox'}, true))
 add('demo-frame=toolbox-non-activable', mkdemo({frame = 'toolbox', activable = false}, true))
 add('demo-frame=none-transparent', mkdemo({frame = 'none', transparent = true}, true))
 add('demo-round-corners', mkdemo({corner_radius = 20}))
+<<<<<<< HEAD
+=======
+add('demo-frame=none-round-corners', mkdemo({frame = 'none', resizeable = true, corner_radius = 20}))
+>>>>>>> 17729a996761cc278369a4bed1ad2692aecc89e2
 
 --state automated tests ------------------------------------------------------
 

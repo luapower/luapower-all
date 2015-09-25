@@ -8,7 +8,7 @@ if not ... then
 	local dsp = app:main_display()
 	local win = app:window{x = dsp.w - 900, y = 200, cw = 800, ch = 400,
 		min_cw = 200, min_ch = 28,
-		frame = 'none', transparent = true, topmost = true, visible = false}
+		frame = 'none', transparent = false, corner_radius = 4, topmost = true, visible = false}
 	local function reload()
 		package.loaded.nw_demo = nil
 		local ok, methods = pcall(require, 'nw_demo')

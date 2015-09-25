@@ -499,6 +499,7 @@ function window:_new(app, backend_class, useropt)
 
 	--avoid negative corner radius
 	opt.corner_radius = math.max(opt.corner_radius, 0)
+<<<<<<< HEAD
 
 	self = glue.update({app = app}, self)
 
@@ -507,8 +508,10 @@ function window:_new(app, backend_class, useropt)
 	self._views = {}
 	self._cursor_visible = true
 	self._cursor = 'arrow'
+=======
+>>>>>>> 17729a996761cc278369a4bed1ad2692aecc89e2
 
-	self.backend = backend_class:new(app.backend, self, opt)
+	self = glue.update({app = app}, self)
 
 	--stored properties
 	self._parent = opt.parent
@@ -526,6 +529,16 @@ function window:_new(app, backend_class, useropt)
 	self._opengl = opt.opengl
 	self:edgesnapping(opt.edgesnapping)
 
+	--internal state
+	self._mouse = {inside = false}
+	self._down = {}
+	self._views = {}
+	self._cursor_visible = true
+	self._cursor = 'arrow'
+
+	self.backend = backend_class:new(app.backend, self, opt)
+
+	--cached window state
 	self._state = self:_get_state()
 	self._client_rect = {self:client_rect()}
 	self._frame_rect = {self:frame_rect()}
@@ -1029,10 +1042,17 @@ function window:_init_manual_resize()
 			local cw, ch = self:client_size()
 			local where0 = where
 			where = self:_hittest(mx, my, cw, ch)
+<<<<<<< HEAD
 			if where and where ~= 'move' then
 				if app:ver'X' then
 					self:cursor(where)
 				end
+=======
+			if where == 'move' and app:ver'X' then
+				self:cursor(where)
+			elseif where then
+				self:cursor(where)
+>>>>>>> 17729a996761cc278369a4bed1ad2692aecc89e2
 			elseif where0 then
 				self:cursor'arrow'
 			end
