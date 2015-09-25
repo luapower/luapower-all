@@ -35,7 +35,7 @@ Window = subclass({
 		dialog_frame = WS_EX_DLGMODALFRAME, --double border and no system menu icon!
 		help_button = WS_EX_CONTEXTHELP, --only shown if both minimize and maximize buttons are hidden
 		tool_window = WS_EX_TOOLWINDOW,
-		transparent = WS_EX_TRANSPARENT, --not really, better use layered and UpdateLayeredWindow()
+		transparent = WS_EX_TRANSPARENT, --makes clicks go through where alpha == 255
 		layered = WS_EX_LAYERED, --setting this makes a completely frameless window regardless of other styles
 		control_parent = WS_EX_CONTROLPARENT, --recurse when looking for the next control with WS_TABSTOP
 		activable = negate(WS_EX_NOACTIVATE), --don't activate and don't show on taskbar (but see notes in window.lua!)
