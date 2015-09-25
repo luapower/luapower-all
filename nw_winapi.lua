@@ -151,6 +151,12 @@ function window:new(app, frontend, t)
 		own_dc = t.opengl and true or nil,
 	}
 
+	if t.corner_radius > 0 then
+		local hrgn = winapi.CreateRoundRectRgn(0, 0, t.w, t.h, t.corner_radius, t.corner_radius)
+		winapi.SetWindowRgn(self.win.hwnd, hrgn, false)
+		--NOTE: the hrgn is owned by the window now, and doesn't need releasing.
+	end
+
 	--must set WS_CHILD **after** window is created for non-activable toolboxes!
 	if t.frame == 'toolbox' and not t.activable then
 		self.win.child = true

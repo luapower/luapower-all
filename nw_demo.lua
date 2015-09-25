@@ -305,11 +305,9 @@ function win:deactivated()
 	self:invalidate()
 end
 
-function win:hittest(x, y)
-	if self.min_hover then return false end
-	if self.max_hover then return false end
-	if self.close_hover then return false end
-	if self.titlebar_hover then return 'move' end
+function win:hittest(x, y, where_resize)
+	if self.min_hover or self.max_hover or self.close_hover then return false end
+	if not where_resize and self.titlebar_hover then return 'move' end
 end
 
 function win:mouseup(x, y)

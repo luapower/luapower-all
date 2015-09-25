@@ -366,6 +366,7 @@ local defaults = {
 	--frame
 	title = '',
 	transparent = false,
+	corner_radius = 0,
 	resize_grip = 8,
 	--behavior
 	topmost = false,
@@ -492,9 +493,12 @@ function window:_new(app, backend_class, useropt)
 	assert((not opt.x) == (not opt.y),
 		'both x (or cx) and y (or cy) or none expected')
 
-	--avoid zero client sizes
+	--avoid zero client sizes (X limitation)
 	opt.min_cw = math.max(opt.min_cw, 1)
 	opt.min_ch = math.max(opt.min_ch, 1)
+
+	--avoid negative corner radius
+	opt.corner_radius = math.max(opt.corner_radius, 0)
 
 	self = glue.update({app = app}, self)
 
@@ -510,6 +514,7 @@ function window:_new(app, backend_class, useropt)
 	self._parent = opt.parent
 	self._frame = opt.frame
 	self._transparent = opt.transparent
+	self._corner_radius = opt.corner_radius
 	self._minimizable = opt.minimizable
 	self._maximizable = opt.maximizable
 	self._closeable = opt.closeable
@@ -990,11 +995,13 @@ function app:_resize_area_hit(mx, my, w, h, co, mw, mh)
 end
 
 function window:_hittest(mx, my, cw, ch)
-	local where = self:fire('hittest', mx, my)
-	if where == nil then
-		where = app:_resize_area_hit(mx, my, cw, ch, 8, 8, 8)
+	local where_resize = app:_resize_area_hit(mx, my, cw, ch, 8, 8, 8)
+	local where = self:fire('hittest', mx, my, where_resize)
+	if where == nil then --user doesn't care
+		return where_resize
+	else
+		return where
 	end
-	return where
 end
 
 function window:_init_manual_resize()
@@ -1010,6 +1017,7 @@ function window:_init_manual_resize()
 		local cw, ch = self:client_size()
 		if where == 'move' then
 			dx, dy = -mx, -my
+			self:cursor'move'
 		else
 			dx = sides.left and -mx or cw - mx
 			dy = sides.top  and -my or ch - my
@@ -1021,8 +1029,10 @@ function window:_init_manual_resize()
 			local cw, ch = self:client_size()
 			local where0 = where
 			where = self:_hittest(mx, my, cw, ch)
-			if where then
-				self:cursor(where)
+			if where and where ~= 'move' then
+				if app:ver'X' then
+					self:cursor(where)
+				end
 			elseif where0 then
 				self:cursor'arrow'
 			end
@@ -1226,6 +1236,7 @@ end
 
 function window:frame() self:_check(); return self._frame end
 function window:transparent() self:_check(); return self._transparent end
+function window:corner_radius() self:_check(); return self._corner_radius end
 function window:minimizable() self:_check(); return self._minimizable end
 function window:maximizable() self:_check(); return self._maximizable end
 function window:closeable() self:_check(); return self._closeable end

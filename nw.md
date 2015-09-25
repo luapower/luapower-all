@@ -137,6 +137,7 @@ __cursors__
 __frame flags__
 `win:frame() -> frame`                       window's frame: 'normal', 'none', 'toolbox'
 `win:transparent() -> t|f`                   transparent flag
+`win:corner_radius() -> n`                   rounded corners (0)
 __child windows__
 `win:parent() -> win|nil`                    window's parent
 `win:children() -> {win1, ...}`              child windows
@@ -431,6 +432,7 @@ Create a window (fields of _`t`_ below with default value in parenthesis):
 	* `frame`                    - frame type: 'normal', 'none', 'toolbox' ('normal')
 	* `title`                    - title ('')
 	* `transparent`              - transparent window (false)
+	* `corner_radius`            - rounded corners (0)
 	* `resize_grip`              - resize grip width for frame='none' windows (8)
 * __behavior__
 	* `parent`                   - parent window
@@ -825,6 +827,11 @@ based on client_rect().
 
 Get the frame rect in normal state (in screen coordinates).
 Unlinke client_rect() and frame_rect(), this always returns a rectangle.
+This is useful for recreating a window in its previous state which
+includes the normal frame rectangle, the maximized flag, and optionally
+the minimized flag. It doesn't include the fullscreen flag
+(you cannot create a window in fullscreen mode but you can enter fullscreen
+mode afterwards).
 
 ### `win:sizing(when, how, rect) -> true|nil`
 
@@ -972,6 +979,8 @@ Get/set the mouse cursor and/or visibility. The name can be:
   * 'size_v'
   * 'move'
   * 'busy_arrow'
+  * 'top', 'left', 'right', 'bottom', 'topleft', 'topright',
+  'bottomleft', 'bottomright' (only different in Linux)
 
 ## Keyboard
 
@@ -1048,7 +1057,8 @@ regions that can be rendered using different technologies.
 In particular, you can use OpenGL on some views, while using bitmaps
 (and thus cairo) on others. This gives a simple path for drawing
 an antialiased 2D UI around a 3D scene as an alternative to drawing
-on the textures of orto-projected quads.
+on the textures of orto-projected quads. Views also allow placing native
+widgets alongside custom-painted areas on the same window.
 
 __NOTE:__ If you use views, bind all mouse events to the views.
 Do not mix window and view mouse events since the behavior of window
