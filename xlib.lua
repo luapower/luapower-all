@@ -1158,6 +1158,10 @@ function M.connect(...)
 		set_attrs(win, {cursor = cursor})
 	end
 
+	function free_cursor(cursor)
+		C.XFreeCursor(c, cursor)
+	end
+
 	local bcur
 	function blank_cursor()
 		do return end
