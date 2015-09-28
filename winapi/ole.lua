@@ -42,7 +42,7 @@ typedef const OLECHAR *LPCOLESTR;
 typedef OLECHAR *BSTR;
 typedef BSTR *LPBSTR;
 
-typedef struct IUnknown IUnknown;
+typedef struct IUnknown IUnknown, *LPUNKNOWN;
 typedef struct IStream IStream;
 typedef struct IStorage IStorage;
 typedef struct IAdviseSink IAdviseSink;
