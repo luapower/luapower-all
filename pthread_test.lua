@@ -194,7 +194,6 @@ local function test_cond_var(times, timeout)
 		local cond = ptr('pthread_cond_t*', cond)
 		n = ptr('double*', n)
 
-		local function sign(x) return x >= 0 end
 		for i=1,times do
 			mutex:lock()
 			n[0] = math.sin(i/10)

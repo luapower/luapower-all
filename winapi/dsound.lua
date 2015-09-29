@@ -1,5 +1,5 @@
 
---proc/dsound: DirectSound API
+--proc/multimedia/dsound: DirectSound API
 --Written by Cosmin Apreutesei. Public Domain.
 
 local ffi = require'ffi'
@@ -1265,12 +1265,13 @@ end
 
 if not ... then
 	require'winapi.showcase'
-	local win = ShowcaseWindow()
+	local ringbuffer = require'ringbuffer'
+	local win = ShowcaseWindow{title = 'Human Music', w = 500, h = 200}
 
 	--create a direct sound object
 	local ds = DirectSoundCreate()
 
-	--we need this so we can call setFormat()...
+	--we need this so we can call setFormat() to set 16bit sample size...
 	checkz(ds:SetCooperativeLevel(win.hwnd, DSSCL_PRIORITY))
 
 	--create the primary sound buffer (zero-sized, just to set the format)
@@ -1281,33 +1282,139 @@ if not ... then
 	checkz(ds:CreateSoundBuffer(bd, psb, nil))
 	psb = psb[0]
 
-	local SAMPLES_PER_SEC = 48000
-	local SECONDS = 2
+	local SAMPLE_RATE = 48000
+	local BUFFER_SECONDS = 0.2
+	local CHANNELS = 2
+	local SAMPLE_TYPE = ffi.typeof'int16_t'
+	local SAMPLE_PTR_TYPE = ffi.typeof('$*', SAMPLE_TYPE)
+	local SAMPLE_SIZE = ffi.sizeof(SAMPLE_TYPE)
+	local BLOCK_SIZE = SAMPLE_SIZE * CHANNELS
+	local SECOND_SIZE = SAMPLE_RATE * SAMPLE_SIZE * CHANNELS
+	local BUFFER_SIZE = SECOND_SIZE * BUFFER_SECONDS
 
 	--set the format of the primary buffer
 	local wf = ffi.new'WAVEFORMATEX'
 	wf.wFormatTag = WAVE_FORMAT_PCM
-	wf.nChannels = 2
-	wf.nSamplesPerSec = SAMPLES_PER_SEC
-	wf.wBitsPerSample = 16
-	wf.nBlockAlign = (wf.nChannels * wf.wBitsPerSample) / 8
-	wf.nAvgBytesPerSec = wf.nSamplesPerSec * wf.nBlockAlign
+	wf.nChannels = CHANNELS
+	wf.nSamplesPerSec = SAMPLE_RATE
+	wf.nAvgBytesPerSec = SECOND_SIZE
+	wf.nBlockAlign = BLOCK_SIZE
+	wf.wBitsPerSample = SAMPLE_SIZE * 8
 	wf.cbSize = ffi.sizeof(wf)
-
 	checkz(psb:SetFormat(wf))
 
 	--create the secondary sound buffer into which we're going to write to
 	local bd = ffi.new'DSBUFFERDESC'
 	bd.dwSize = ffi.sizeof(bd)
-	bd.dwBufferBytes = SAMPLES_PER_SEC * 2 * SECONDS
+	bd.dwBufferBytes = BUFFER_SIZE
 	bd.lpwfxFormat = wf
+	bd.dwFlags = DSBCAPS_GLOBALFOCUS --don't stop playing while the window is inactive!
 	local ssb = ffi.new'LPDIRECTSOUNDBUFFER[1]'
 	checkz(ds:CreateSoundBuffer(bd, ssb, nil))
 	ssb = ssb[0]
 
-	--lock the buffer
-	--ssb:Lock()
+	--create a ring buffer to manage the sound buffer state
+	local rb = ringbuffer{size = BUFFER_SIZE, data = false}
 
+	local playcursor  = ffi.new'int[1]'
+	local writecursor = ffi.new'int[1]'
+	function rb:update()
+		--get the current start position of the ringbuffer
+		checkz(ssb:GetCurrentPosition(playcursor, writecursor))
+		--find out how much was consumed
+		local len0 = playcursor[0] - rb.start
+		local len = len0
+		if len <= 0 then --a zero len is empty (the buffer can never be completely full)
+			len = rb.size + len
+		end
+		print(string.format('pull %6d bytes.   start: %6d, filled: %3d%%',
+			len, rb.start, rb.length / rb.size * 100))
+		rb:pull(len)
+	end
+
+	local tone = 440
+	local function music_tone()
+		local octave = math.random(tone > 120 and -12 or 0, tone < 2000 and 12 or 0) / 12
+		local change_it = math.random() > 0.5 and 1 or 0
+		tone = tone * 2^(octave * change_it)
+		return tone
+	end
+
+	local PERIOD, VOLUME
+
+	local function set_tone(tone) --tone is in Hertz
+		PERIOD = math.floor(SAMPLE_RATE / tone)
+	end
+
+	local function set_volume(vol) --vol is in 0..1 range
+		local max_vol = 2^15-1
+		VOLUME = math.floor(vol^4 * max_vol)
+	end
+
+	set_tone(music_tone())
+	set_volume(.5)
+
+	local function square_wave(sample_index, channel)
+		return (sample_index % PERIOD > PERIOD/2 and 1 or -1) * VOLUME -- _|-
+	end
+
+	local function sine_wave(sample_index, channel)
+		return math.sin(sample_index * 2 * math.pi / PERIOD) * VOLUME -- _|-
+	end
+
+	local wave_sample = sine_wave
+	--local wave_sample = square_wave --go ahead, try the 1bit feel!
+
+	local p1 = ffi.new'void*[1]'
+	local p2 = ffi.new'void*[1]'
+	local z1 = ffi.new'int[1]'
+	local z2 = ffi.new'int[1]'
+	function rb:write(src, di, si, n)
+		checkz(ssb:Lock(di, n, p1, z1, p2, z2, 0))
+		assert(z2[0] == 0) --our ringbuffer takes care of segmenting...
+		local blocks = z1[0] / BLOCK_SIZE
+		local si = (src + si) / BLOCK_SIZE
+		assert(blocks == math.floor(blocks)) --check alignment
+		assert(si == math.floor(si))
+		local p = ffi.cast(SAMPLE_PTR_TYPE, p1[0])
+		for i = 0, blocks-1 do
+			for j = 0, CHANNELS-1 do
+				p[i * CHANNELS + j] = wave_sample(si + i, j)
+			end
+		end
+		checkz(ssb:Unlock(p1[0], z1[0], p2[0], z2[0]))
+	end
+
+	wave_offset = 0
+	function rb:fill()
+		rb:update()
+		--find out how much space is available, but keep 1 block free
+		--so that we can distinguish full from empty.
+		local len = rb.size - rb.length - BLOCK_SIZE
+		if len <= 0 then return end
+		print(string.format('push %6d bytes.   start: %6d, filled: %3d%%',
+			len, rb.start, rb.length / rb.size * 100))
+		rb:push(len, wave_offset)
+		wave_offset = wave_offset + len
+	end
+
+	--fill up the sound buffer (minus 1 block).
+	rb:push(rb.size - BLOCK_SIZE, wave_offset)
+	wave_offset = wave_offset + rb.size
+
+	--re-fill the sound buffer on a timer when it's approx. half empty.
+	win:settimer(BUFFER_SECONDS/2, function()
+		set_tone(music_tone())
+		rb:fill()
+	end)
+
+	--set the volume by hovering the mouse horizontally across the window.
+	function win:on_mouse_move(x, y)
+		set_volume(x / win.rect.w * 0.75)
+	end
+
+	--start playing
+	ssb:Play(0, 0, DSBPLAY_LOOPING)
 
 	MessageLoop()
 end

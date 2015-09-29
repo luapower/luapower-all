@@ -24,8 +24,8 @@ Unidirectional cdata array-based ring buffers with the following properties:
 `cb:pull(n[, data]) -> i1, n1, i2, n2`     remove data from head, invoking cb:write()
 `cb:checksize(n)`                          grow the buffer to fit at least `n` more elements
 `cb:alloc(n) -> cdata`                     allocator (defaults to ffi.new)
-`cb:read(n, dst, di, src, si)`             segment reader (defaults to ffi.copy)
-`cb:write(n, dst, di, src, si)`            segment writer (defaults to ffi.copy)
+`cb:read(dst, di, si, n)`                  segment reader (defaults to ffi.copy)
+`cb:write(src, di, si, n)`                 segment writer (defaults to ffi.copy)
 `cb.data -> cdata`                         the buffer itself
 `b.start -> i`                             start index
 `b.size -> n`                              capacity

@@ -2167,17 +2167,38 @@ local function toarg(cls, selname, argindex, arg)
 end
 
 --wrap a function for automatic type conversion of its args and return value.
+local function convert_ret(ftype, ret)
+	if ret == nil then
+		return nil --NULL -> nil
+	elseif ftype.retval == 'B' then
+		return ret == 1 --BOOL -> boolean
+	elseif ftype.retval == '*' or ftype.retval == 'r*' then
+		return ffi.string(ret)
+	else
+		return ret --pass through
+	end
+end
 function function_caller(ftype, func)
-	return function(...)
-		local ret = func(convert_args(ftype, 1, ...))
-		if ret == nil then
-			return nil --NULL -> nil
-		elseif ftype.retval == 'B' then
-			return ret == 1 --BOOL -> boolean
-		elseif ftype.retval == '*' or ftype.retval == 'r*' then
-			return ffi.string(ret)
-		else
-			return ret --pass through
+	if #ftype == 0 then
+		return function()
+			return convert_ret(ftype, func())
+		end
+	elseif #ftype == 1 then
+		return function(arg)
+			return convert_ret(ftype, func(convert_arg(ftype, 1, arg)))
+		end
+	elseif #ftype == 2 and ftype[1] == '@' and ftype[2] == ':' then --method, 0 args
+		return function(arg1, arg2)
+			return convert_ret(ftype, func(toobj(arg1), selector(arg2)))
+		end
+	elseif #ftype == 3 and ftype[1] == '@' and ftype[2] == ':' then --method, 1 arg
+		return function(arg1, arg2, arg3)
+			return convert_ret(ftype, func(toobj(arg1), selector(arg2),
+				convert_arg(ftype, 3, arg3)))
+		end
+	else
+		return function(...)
+			return convert_ret(ftype, func(convert_args(ftype, 1, ...)))
 		end
 	end
 end

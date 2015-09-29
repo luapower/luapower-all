@@ -47,7 +47,6 @@ function cbuf:push(len, data)
 	if data then
 		self:write(data, i1, 0, n1)
 		if n2 ~= 0 then
-			data = ffi.cast(self.bctype, data)
 			self:write(data, i2, n1, n2)
 		end
 	end
@@ -65,7 +64,6 @@ function cbuf:pull(len, data)
 	if data then
 		self:read(data, 0, i1, n1)
 		if n2 ~= 0 then
-			data = ffi.cast(self.bctype, data)
 			self:read(data, n1, i2, n2)
 		end
 	end
@@ -113,8 +111,10 @@ function cbuf.new(super, self)
 	self.__index = super
 	setmetatable(self, self)
 	if self.data then
-		self._data = self.data --pin it!
-		self.data = ffi.cast(self.bctype, self.data)
+		if self.data ~= true then
+			self._data = self.data --pin it!
+			self.data = ffi.cast(self.bctype, self.data)
+		end
 	else
 		self.data = self:alloc(self.size)
 	end
