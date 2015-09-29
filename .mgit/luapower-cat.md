@@ -44,6 +44,7 @@ tagline: package categories
 	* [libmysql]
 	* [fbclient]
 * Portable OS APIs
+	* [nw]
 	* [lfs]
 	* [socket]
 	* [bnet]
@@ -54,6 +55,7 @@ tagline: package categories
 	* [thread]
 	* [time]
 	* [stdc]
+	* [portaudio]
 * Native OS APIs
 	* [winapi]
 	* [objc]
@@ -63,6 +65,7 @@ tagline: package categories
 * 2D Graphics
 	* [path2d]
 	* [affine2d]
+	* [box2d]
 	* [clipper]
 	* [cairo]
 	* [freetype]
@@ -91,9 +94,7 @@ tagline: package categories
 	* [libexif]
 	* [blur]
 * GUIs
-	* [nw]
 	* [cplayer]
-	* [box2d]
 * Code Editing
 	* [codedit]
 	* [lexer]
