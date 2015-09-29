@@ -61,11 +61,14 @@ function M.hostapis(what)
 	end
 end
 
-function M.device(which)
-	local i =
+local function device_index(which)
+	return
 		which == '*i' and M.devices'*i' or
 		which == '*o' and M.devices'*o' or which
-	return ptr(C.Pa_GetDeviceInfo(i))
+end
+
+function M.device(which)
+	return ptr(C.Pa_GetDeviceInfo(device_index(which)))
 end
 
 function M.devices(what)
@@ -89,31 +92,47 @@ function M.checkformat(t)
 	return bool(C.Pa_IsFormatSupported(t.inparams, t.outparams, t.samplerate))
 end
 
+local function stream_params(t, default_device)
+	local p = ffi.new'PaStreamParameters'
+	p.device = device_index(t and t.device or default_device)
+	p.channelCount = t and t.channels or 2
+	p.suggestedLatency = t and t.latency or 0
+	return p
+end
+
+local function stream_callback(t)
+	local cb = ffi.new'PaStreamCallback'
+	cb.input = t.input
+	cb.output = t.output
+	cb.frameCount = t.frames
+	local ti = ffi.new'PaStreamCallbackTimeInfo'
+	ti.inputBufferAdcTime = t.adctime or 0
+	ti.outputBufferDacTime = t.dactime or 0
+	ti.currentTime = t.currenttime or 0
+	cb.timeInfo = ti
+	cb.statusFlags = 0
+	return cb, ti
+end
+
 function M.open(t)
 	local stream = ffi.new'PaStream*[1]'
+	local inparams = stream_params(t.input, '*i')
+	local outparams = stream_params(t.output, '*o')
+	local cb, ti = stream_callback(t)
 	local flags = 0
-
-	--[[
-	PaDeviceIndex device;
-	int channelCount;
-	PaSampleFormat sampleFormat;
-	PaTime suggestedLatency;
-	void *hostApiSpecificStreamInfo;
-	]]
-
-	PaStream** stream,
-	int numInputChannels,
-	int numOutputChannels,
-	PaSampleFormat sampleFormat,
-	double sampleRate,
-	unsigned long framesPerBuffer,
-	PaStreamCallback *streamCallback,
-	void *userData
-
-	check(C.Pa_OpenStream(stream, t.inparams, t.outparams, t.samplerate,
-		t.frames, flags, t.callback, nil))
-
-	return stream[0]
+	check(C.Pa_OpenStream(stream,
+		inparams,
+		outparams,
+		t.samplerate or 48000,
+		t.frames,
+		flags,
+		cb,
+		nil))
+	local stream = stream[0]
+	ffi.gc(stream, function(self)
+		inparams, outparams, cb, ti = nil --pin aux buffers
+		self:close()
+	end)
 end
 
 local stream = {}
@@ -123,7 +142,7 @@ function stream:set_finished_callback(callback)
 	Pa_SetStreamFinishedCallback(self, cb)
 end
 
-function stream:close() check(C.Pa_CloseStream(self)) end
+function stream:close() check(C.Pa_CloseStream(self)); ffi.gc(self, nil) end
 function stream:start() check(C.Pa_StartStream(self)) end
 function stream:stop() check(C.Pa_StopStream(self)) end
 function stream:abort() check(C.Pa_AbortStream(self)) end
@@ -182,9 +201,7 @@ if not ... then
 		print('', 'default sample rate ', dev.defaultSampleRate)
 	end
 
-	local stream = pa.open{
-		--
-	}
+	--local stream = pa.open{}
 
 	--[[
 		print('device', dev.device)
