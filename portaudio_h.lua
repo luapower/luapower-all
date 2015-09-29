@@ -1,3 +1,4 @@
+--portaudio.h from portaudio v19 (cleaned up manually)
 
 local ffi = require'ffi'
 
@@ -75,11 +76,11 @@ typedef enum PaHostApiTypeId
 typedef struct PaHostApiInfo
 {
     int structVersion;
-    PaHostApiTypeId type;
-    const char *name;
-    int deviceCount;
-    PaDeviceIndex defaultInputDevice;
-    PaDeviceIndex defaultOutputDevice;
+    PaHostApiTypeId type_id;
+    const char *name_ptr;
+    int devices;
+    PaDeviceIndex default_input_device;
+    PaDeviceIndex default_output_device;
 } PaHostApiInfo;
 
 const PaHostApiInfo * Pa_GetHostApiInfo( PaHostApiIndex hostApi );
@@ -114,15 +115,15 @@ enum {
 typedef struct PaDeviceInfo
 {
 	int structVersion;
-	const char *name;
-	PaHostApiIndex hostApi;
-	int maxInputChannels;
-	int maxOutputChannels;
-	PaTime defaultLowInputLatency;
-	PaTime defaultLowOutputLatency;
-	PaTime defaultHighInputLatency;
-	PaTime defaultHighOutputLatency;
-	double defaultSampleRate;
+	const char *name_ptr;
+	PaHostApiIndex host_api;
+	int max_input_channels;
+	int max_output_channels;
+	PaTime default_low_input_latency;
+	PaTime default_low_output_latency;
+	PaTime default_high_input_latency;
+	PaTime default_high_output_latency;
+	double default_sample_rate;
 } PaDeviceInfo;
 
 const PaDeviceInfo* Pa_GetDeviceInfo( PaDeviceIndex device );
@@ -159,9 +160,9 @@ enum {
 };
 
 typedef struct PaStreamCallbackTimeInfo{
-	PaTime inputBufferAdcTime;
-	PaTime currentTime;
-	PaTime outputBufferDacTime;
+	PaTime input_buffer_adc_time;
+	PaTime current_time;
+	PaTime output_buffer_dac_time;
 } PaStreamCallbackTimeInfo;
 
 typedef unsigned long PaStreamCallbackFlags;
@@ -220,9 +221,9 @@ PaError Pa_IsStreamActive( PaStream *stream );
 typedef struct PaStreamInfo
 {
 	int structVersion;
-	PaTime inputLatency;
-	PaTime outputLatency;
-	double sampleRate;
+	PaTime input_latency;
+	PaTime output_latency;
+	double sample_rate;
 } PaStreamInfo;
 
 const PaStreamInfo* Pa_GetStreamInfo( PaStream *stream );
@@ -239,4 +240,3 @@ signed long Pa_GetStreamWriteAvailable( PaStream* stream );
 PaError Pa_GetSampleSize( PaSampleFormat format );
 void Pa_Sleep( long msec );
 ]]
-
