@@ -56,6 +56,7 @@ tagline: package categories
 	* [time]
 	* [stdc]
 	* [portaudio]
+	* [videoinput]
 * Native OS APIs
 	* [winapi]
 	* [objc]
