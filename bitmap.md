@@ -90,7 +90,7 @@ rgbaf          r, g, b, a        float or double       0..1
 __format conversion__
 `bitmap.new(w, h, ...) -> dst`								create a bitmap
 `bitmap.copy(src[, format], ...) -> dst`					copy and convert a bitmap
-`bitmap.paint(src, dst, ...) -> dst`						paint a bitmap
+`bitmap.paint(src, dst, dstx, dsty, conv) -> dst`		paint a bitmap on another
 __cropping__
 `bitmap.sub(src, x, y, w, h) -> dst`						make a sub-bitmap
 __pixel access__
@@ -129,10 +129,10 @@ Copy a bitmap, optionally to a new format, orientation and stride. If `format`
 is not specified, stride and orientation default to those of source bitmap's,
 otherwise they default to top-down, minimum stride.
 
-### `bitmap.paint(source_bmp, dest_bmp[, convert_pixel]) -> dest_bmp`
+### `bitmap.paint(source_bmp, dest_bmp[, dstx, dsty][, convert_pixel]) -> dest_bmp`
 
-Paint a source bitmap into a destination bitmap of the same width and height,
-with all the necessary pixel and colortype conversions.
+Paint a source bitmap into a destination bitmap, with all the necessary
+clipping and pixel and colortype conversions.
 
 The optional `convert_pixel` is a pixel conversion function to be called for
 each pixel as `convert_pixel(a, b, c, ...) -> x, y, z, ...`. It receives
@@ -259,24 +259,6 @@ Sharpen a bitmap.
 Blend `source_bmp` into `dest_bmp` using a blending operator at `x,y`
 coordinates in the target bitmap (default is `0,0`).
 Operators are in the `bitmap.blend_op` table for inspection.
-
-#### Example:
-
-Painting a bitmap onto another at specific coordinates, based on bitmap.fit
-and sub-bitmaps:
-
-~~~{.lua}
-local box2d = require'box2d'
-
-function paint_at_xy(src, dst, x, y)
-	local x, y, w, h = box2d.clip(x, y, src.w, src.h, 0, 0, dst.w, dst.h)
-	local src = bitmap.sub(src, 0, 0, w, h)
-	local dst = bitmap.sub(dst, x, y, w, h)
-	if src and dst then
-		bitmap.paint(src, dst)
-	end
-end
-~~~
 
 
 ## Resizing

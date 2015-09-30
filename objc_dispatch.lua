@@ -1,3 +1,4 @@
+
 --Grand Central Dispatch binding by Fjölnir Ásgeirsson (c) 2012, MIT license.
 --modified for luapower/objc by Cosmin Apreutesei, public domain.
 --not used yet, thus not finished. the API will probably change in the future.
@@ -253,6 +254,8 @@ dispatch.semaphore_wait                  = C.dispatch_semaphore_wait
 dispatch.semaphore_signal                = C.dispatch_semaphore_signal
 
 dispatch.once                            = C.dispatch_once_f
+
+dispatch.DISPATCH_QUEUE_SERIAL = nil
 
 --note: do not use with queues that call back from a different thread!
 function dispatch.async(queue, block)

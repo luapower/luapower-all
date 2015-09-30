@@ -569,9 +569,24 @@ end
 
 --bitmap converter
 
-local function paint(src, dst, convert_pixel)
-	assert(src.h == dst.h, 'heights don\'t match')
-	assert(src.w == dst.w, 'widthds don\'t match')
+local function paint(src, dst, dstx, dsty, convert_pixel)
+
+	if not tonumber(dstx) then --dstx, dsty are optional inner args
+		convert_pixel, dstx, dsty = dstx
+	end
+
+	--find the clip rectangle and make sub-bitmaps
+	dstx = dstx or 0
+	dsty = dsty or 0
+	if dstx ~= 0 or dsty ~= 0 or src.w ~= dst.w or src.h ~= dst.h then
+		local x, y, w, h = box2d.clip(dstx, dsty, dst.w-dstx, dst.h-dsty, 0, 0, src.w, src.h)
+		if w == 0 or h == 0 then return end
+		local src = bitmap.sub(src, x, y, w, h)
+		local dst = bitmap.sub(dst, x, y, w, h)
+	end
+	assert(src.h == dst.h)
+	assert(src.w == dst.w)
+
 	local src_format, src_data, src_stride, src_pixelsize = data_interface(src)
 	local dst_format, dst_data, dst_stride, dst_pixelsize = data_interface(dst)
 
