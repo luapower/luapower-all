@@ -5,6 +5,7 @@ local thread = require'thread'
 local pthread = require'pthread'
 local luastate = require'luastate'
 local time = require'time'
+local glue = require'glue'
 
 local function test_events()
 	local event = thread.event()
@@ -42,11 +43,12 @@ local function test_pthread_creation()
 	state:openlibs()
 	state:push(function()
    	local ffi = require'ffi'
-	   local function worker() end
+	   local glue = require'glue'
+		local function worker() end
 	   local worker_cb = ffi.cast('void *(*)(void *)', worker)
-	   return tonumber(ffi.cast('intptr_t', worker_cb))
+	   return glue.addr(worker_cb)
 	end)
-	local worker_cb_ptr = ffi.cast('void*', state:call())
+	local worker_cb_ptr = glue.ptr(state:call())
 	local t0 = time.clock()
 	local n = 1000
 	for i=1,n do
@@ -138,13 +140,13 @@ local function test_pool()
 end
 
 --test_events()
---test_pthread_creation()
---test_luastate_creation()
---test_thread_creation()
---test_queue(1000, 10,  1000, 10,  1000)
---test_queue(1000,  1, 10000,  1, 10000)
---test_queue(1000,  1, 10000, 10,  1000)
---test_queue(1000, 10,  1000,  1, 10000)
---test_queue(1,     1, 10000, 10,  1000)
---test_queue(1,    10,  1000,  1, 10000)
-test_pool()
+test_pthread_creation() --TODO: this crashes on mingw64 !!!
+test_luastate_creation()
+test_thread_creation()
+test_queue(1000, 10,  1000, 10,  1000)
+test_queue(1000,  1, 10000,  1, 10000)
+test_queue(1000,  1, 10000, 10,  1000)
+test_queue(1000, 10,  1000,  1, 10000)
+test_queue(1,     1, 10000, 10,  1000)
+test_queue(1,    10,  1000,  1, 10000)
+--test_pool()

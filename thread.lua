@@ -214,11 +214,8 @@ end
 
 function queue:push(val, timeout)
 	self.mutex:lock()
-	print'push: locked'
 	while queue_isfull(self) do
-		print'push: full'
 		if not self.cond_not_full:wait(self.mutex, timeout) then
-			print'push: timeout'
 			self.mutex:unlock()
 			return false, 'timeout'
 		end
@@ -230,32 +227,25 @@ function queue:push(val, timeout)
 		self.cond_not_empty:broadcast()
 	end
 	self.mutex:unlock()
-	print'push: unlocked'
 	return true, len
 end
 
 local function queue_remove(self, index, timeout)
 	self.mutex:lock()
-	print'remove: locked'
 	while queue_isempty(self) do
-		print'remove: empty'
 		if not self.cond_not_empty:wait(self.mutex, timeout) then
-			print'remove: timeout'
 			self.mutex:unlock()
 			return false, 'timeout'
 		end
 	end
 	local was_full = queue_isfull(self)
-	print('remove: here', self.state:gettop(), index)
 	local val = self.state:get(index)
-	print'remove: here2'
 	self.state:remove(index)
 	local len = queue_length(self)
 	if was_full then
 		self.cond_not_full:broadcast()
 	end
 	self.mutex:unlock()
-	print'remove: unlocked'
 	return true, val, len
 end
 

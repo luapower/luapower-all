@@ -1359,7 +1359,7 @@ if not ... then
 	end
 
 	local function sine_wave(sample_index, channel)
-		return math.sin(sample_index * 2 * math.pi / PERIOD) * VOLUME -- _|-
+		return math.sin(sample_index * 2 * math.pi / PERIOD) * VOLUME
 	end
 
 	local wave_sample = sine_wave
