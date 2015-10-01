@@ -2,8 +2,6 @@
 --proc/multimedia/dsound: DirectSound API
 --Written by Cosmin Apreutesei. Public Domain.
 
-local ffi = require'ffi'
-
 setfenv(1, require'winapi')
 require'winapi.ole'
 
@@ -1332,11 +1330,13 @@ if not ... then
 		rb:pull(len)
 	end
 
-	local tone = 440
+	math.randomseed(os.time())
+
+	local tone = 440 --A4
 	local function music_tone()
-		local octave = math.random(tone > 120 and -12 or 0, tone < 2000 and 12 or 0) / 12
+		local note = math.random(tone > 120 and -12 or 0, tone < 2000 and 12 or 0) / 12
 		local change_it = math.random() > 0.5 and 1 or 0
-		tone = tone * 2^(octave * change_it)
+		tone = tone * 2^(note * change_it)
 		return tone
 	end
 

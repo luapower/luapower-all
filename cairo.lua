@@ -150,6 +150,18 @@ function M.cairo_image_surface_create_from_png_stream(...)
 	return ffi.gc(check_surface(C.cairo_image_surface_create_from_png_stream(...)), M.cairo_surface_destroy)
 end
 
+local formats = {
+	bgra8  = C.CAIRO_FORMAT_ARGB32,
+	bgrx8  = C.CAIRO_FORMAT_RGB24,
+	g8     = C.CAIRO_FORMAT_A8,
+	g1     = C.CAIRO_FORMAT_A1,
+	rgb565 = C.CAIRO_FORMAT_RGB16_565,
+}
+function M.cairo_image_surface_create_from_bitmap(bmp)
+	local format = assert(formats[bmp.format], 'unsupported format')
+	return M.cairo_image_surface_create_for_data(bmp.data, format, bmp.w, bmp.h, bmp.stride)
+end
+
 function M.cairo_recording_surface_create(...)
 	return ffi.gc(check_surface(C.cairo_recording_surface_create(...)), M.cairo_surface_destroy)
 end

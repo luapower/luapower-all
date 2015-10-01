@@ -16,10 +16,11 @@ and other devices in real-time as bgra8 [bitmap]s.
 `vi.devices'#' -> n`                    device count
 `vi.devices'*' -> dev|nil`              default device
 `vi.open([dev|id|'*'|t]) -> session `   open a capture session on a device
-`vi:start()`                            start the session (open the webcam)
-`vi:stop()`                             stop the session (close the webcam)
-`vi:close()`                            stop and) close the session
-`vi:newframe(bmp)`                      event: a new frame was captured
+`session:start()`                       start the session (switch on the camera)
+`session:stop()`                        stop the session (switch off the camera)
+`session:running([t|f]) /-> t|f`        get/set running status
+`session:close()`                       (stop and) close the session
+`session:newframe(bmp)`                 event: a new frame was captured
 --------------------------------------- --------------------------------------
 
 ### `vi.devices() -> {dev1, ...}`

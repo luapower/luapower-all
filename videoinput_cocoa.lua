@@ -1,9 +1,12 @@
-local nw = require'nw'
+
+--videoinput Cocoa backend.
+--Written by Cosmin Apreutesei. Public Domain.
 
 local objc = require'objc'
 local ffi = require'ffi'
 local dispatch = require'objc_dispatch'
 local glue = require'glue'
+local bitmap = require'bitmap'
 
 objc.load'AVFoundation'
 objc.load'CoreVideo'
@@ -82,11 +85,11 @@ function B.open(frontend, dev_id, t)
 
 	function output.captureOutput_didOutputSampleBuffer_fromConnection(output, _, cmsb, _)
 		local img = objc.CMSampleBufferGetImageBuffer(cmsb)
-		objc.CVPixelBufferLockBaseAddress(img, objc.kCVPixelBufferLock_ReadOnly)
+		objc.CVPixelBufferLockBaseAddress(img, 0)
 		local buf = objc.CVPixelBufferGetBaseAddress(img)
 		local sz = objc.CVImageBufferGetDisplaySize(img)
 		local w, h = sz.width, sz.height
-		local bitmap = {
+		local bmp = {
 			data = buf,
 			w = w,
 			h = h,
@@ -94,8 +97,10 @@ function B.open(frontend, dev_id, t)
 			size   = w * 4 * h,
 			format = 'bgra8',
 		}
-		self.frontend:_backend_newframe(bitmap)
-		objc.CVPixelBufferUnlockBaseAddress(img, objc.kCVPixelBufferLock_ReadOnly)
+		--NOTE: the connection object has a mirroring option but it doesn't work.
+		bitmap.mirror(bmp)
+		self.frontend:_backend_newframe(bmp)
+		objc.CVPixelBufferUnlockBaseAddress(img, 0)
 	end
 
 	local queue = dispatch.main_queue
@@ -115,27 +120,31 @@ function B.open(frontend, dev_id, t)
 	assert(conn.enabled)
 	assert(conn.active)
 
-	self._device = device
-	self._input = input
-	self._output = output
-	self._session = session
+	self.device = device
+	self.input = input
+	self.output = output
+	self.session = session
 
 	return self
 end
 
 function session:start()
-	self._session:startRunning()
+	self.session:startRunning()
 end
 
 function session:stop()
-	self._session:stopRunning()
+	self.session:stopRunning()
 end
 
 function session:get_running()
-	return self._session.running
+	return self.session.running
 end
 
 function session:close()
+	self.device = nil
+	self.input = nil
+	self.output = nil
+	self.session = nil
 end
 
 return B

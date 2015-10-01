@@ -88,31 +88,32 @@ rgbaf          r, g, b, a        float or double       0..1
 
 ----------------------------------------------------- --------------------------------------------
 __format conversion__
-`bitmap.new(w, h, ...) -> dst`								create a bitmap
-`bitmap.copy(src[, format], ...) -> dst`					copy and convert a bitmap
-`bitmap.paint(src, dst, dstx, dsty, conv) -> dst`		paint a bitmap on another
+`bitmap.new(w, h, ...) -> dst`                        create a bitmap
+`bitmap.copy(src[, format], ...) -> dst`              copy and convert a bitmap
+`bitmap.paint(src, dst, dstx, dsty, conv) -> dst`     paint a bitmap on another
 __cropping__
-`bitmap.sub(src, x, y, w, h) -> dst`						make a sub-bitmap
+`bitmap.sub(src, x, y, w, h) -> dst`                  make a sub-bitmap
 __pixel access__
-`bitmap.pixel_interface(src) -> getpixel, setpixel`	get a pixel interface
-`bitmap.channel_interface(bmp, n) -> getval, setval`	get a channel interface
+`bitmap.pixel_interface(src) -> getpixel, setpixel`   get a pixel interface
+`bitmap.channel_interface(bmp, n) -> getval, setval`  get a channel interface
 __dithering__
-`bitmap.dither.fs(bmp, rN, gN, bN, aN)`					apply dithering
-`bitmap.dither.ordered(bmp, rN, gN, bN, aN)`				apply dithering
+`bitmap.dither.fs(bmp, rN, gN, bN, aN)`               apply dithering
+`bitmap.dither.ordered(bmp, rN, gN, bN, aN)`          apply dithering
 __effects__
-`bitmap.invert(bmp)`												invert colors
-`bitmap.grayscale(bmp)`											desaturate
-`bitmap.convolve(src, kernel, [edge]) -> dst`			convolve
-`bitmap.sharpen(src[, threshold]) -> dst`					sharpen
+`bitmap.invert(bmp)`                                  invert colors (in place)
+`bitmap.grayscale(bmp)`                               desaturate (in place)
+`bitmap.convolve(src, kernel, [edge]) -> dst`         convolve
+`bitmap.sharpen(src[, threshold]) -> dst`             sharpen
+`bitmap.mirror(src)`                                  mirror horizontally (in place)
 __alpha blending__
-`bitmap.blend(src, dst, [operator], [x], [y])`			blend source into dest bitmap
+`bitmap.blend(src, dst, [operator], [x], [y])`        blend source into dest bitmap
 __resizing__
-`bitmap.resize.nearest|bilinear(src, w, h) -> dst`		resize to new
-`bitmap.resize.nearest|bilinear(src, dst) -> dst`		resize to dest
+`bitmap.resize.nearest|bilinear(src, w, h) -> dst`    resize to new
+`bitmap.resize.nearest|bilinear(src, dst) -> dst`     resize to dest
 __utilities__
-`bitmap.min_stride(format, width) -> min_stride`		minimum stride for width
-`bitmap.aligned_stride(stride) -> aligned_stride`		minimum stride that is aligned
-`bitmap.row_size(bmp) -> size`								row size in bytes
+`bitmap.min_stride(format, width) -> min_stride`      minimum stride for width
+`bitmap.aligned_stride(stride) -> aligned_stride`     minimum stride that is aligned
+`bitmap.row_size(bmp) -> size`                        row size in bytes
 ----------------------------------------------------- --------------------------------------------
 
 
@@ -204,7 +205,7 @@ bitmap.convert(bmp, bmp, darken)
 
 ### `bitmap.channel_interface(bitmap, channel) -> getvalue, setvalue`
 
-Return an API for getting and setting values from a single color channel:
+Return an API for getting and setting values for a single color channel:
 
   * `getvalue(x, y) -> v`
   * `setvalue(x, y, v)`

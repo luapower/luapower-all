@@ -486,10 +486,10 @@ local function data_interface(bmp)
 	local format = bitmap_format(bmp)
 	local data = ffi.cast(ffi.typeof('$*', ffi.typeof(format.ctype)), bmp.data)
 	local stride_bytes = valid_stride(bmp.format, bmp.w, bmp.stride)
-	local stride_ctype = stride_bytes / ffi.sizeof(format.ctype)
+	local stride_samples = stride_bytes / ffi.sizeof(format.ctype)
 	--NOTE: pixelsize is fractional for < 8bpp formats, that's ok.
 	local pixelsize = format.bpp / 8 / ffi.sizeof(format.ctype)
-	return format, data, stride_ctype, pixelsize
+	return format, data, stride_samples, pixelsize
 end
 
 --coordinate-based bitmap interface for random access to pixels
@@ -756,6 +756,7 @@ return glue.autoload({
 	grayscale = 'bitmap_effects',
 	convolve  = 'bitmap_effects',
 	sharpen   = 'bitmap_effects',
+	mirror    = 'bitmap_effects',
 	blend     = 'bitmap_blend',
 	blend_op  = 'bitmap_blend',
 	resize    = 'bitmap_resize',

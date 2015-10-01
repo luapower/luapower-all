@@ -1,4 +1,7 @@
 
+--videoinput: cross-platform video capturing library.
+--Written by Cosmin Apreutesei. Public Domain.
+
 local ffi = require'ffi'
 local glue = require'glue'
 

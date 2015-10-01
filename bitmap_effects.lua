@@ -114,13 +114,31 @@ function bitmap.convolve(bmp, kernel, edge)
 	return final
 end
 
-
 function bitmap.sharpen(bmp, amount)
 	local sharpen = {
 		{0,-1,0},
 		{-1,5,-1},
 		{0,-1,0}}
 	return bitmap.convolve(bmp, sharpen)
+end
+
+--mirroring
+
+function bitmap.mirror(bmp)
+	local getpixel, setpixel = bitmap.pixel_interface(bmp)
+	local function pass(x1, x2, y, ...)
+		setpixel(x2, y, getpixel(x1, y))
+		setpixel(x1, y, ...)
+	end
+	local function swappixel(x1, x2, y)
+		pass(x1, x2, y, getpixel(x2, y))
+	end
+	local maxx = math.floor(bmp.w / 2) - 1
+	for y = 0, bmp.h-1 do
+		for x = 0, maxx do
+			swappixel(x, bmp.w-1 - x, y)
+		end
+	end
 end
 
 
