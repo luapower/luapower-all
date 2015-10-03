@@ -15,7 +15,7 @@ and other devices in real-time as bgra8 [bitmap]s.
 `vi.devices() -> {dev1, ...}`           enumerate available devices
 `vi.devices'#' -> n`                    device count
 `vi.devices'*' -> dev|nil`              default device
-`vi.open([dev|id|'*'|t]) -> session `   open a capture session on a device
+`vi.open([dev|id|'*'|t]) -> session`    open a capture session on a device
 `session:start()`                       start the session (switch on the camera)
 `session:stop()`                        stop the session (switch off the camera)
 `session:running([t|f]) /-> t|f`        get/set running status

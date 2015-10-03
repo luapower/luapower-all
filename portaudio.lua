@@ -5,8 +5,8 @@
 if not ... then require'portaudio_demo'; return end
 
 local ffi = require'ffi'
-local M = {}
 local C = ffi.load'portaudio'
+local M = {C = C}
 require'portaudio_h'
 
 --helpers --------------------------------------------------------------------
@@ -186,24 +186,30 @@ function M.open(t)
 	assert(inparams or outparams, 'input and/or output fields expected')
 
 	local cb --ffi callback object
+	local function freecb() end
 	local usercallback = t.callback
 	if usercallback then
-		local callback
+		if type(usercallback) == 'function' then
+			local callback
 
-		if inparams and outparams then
-			function callback(input, output, frames, timeinfo, status, udata)
-				return cbret(usercallback(input, output, frames, timeinfo, status))
+			if inparams and outparams then
+				function callback(input, output, frames, timeinfo, status, udata)
+					return cbret(usercallback(input, output, frames, timeinfo, status))
+				end
+			elseif inparams then
+				function callback(input, output, frames, timeinfo, status, udata)
+					return cbret(usercallback(input, frames, timeinfo, status))
+				end
+			elseif outparams then
+				function callback(input, output, frames, timeinfo, status, udata)
+					return cbret(usercallback(output, frames, timeinfo, status))
+				end
 			end
-		elseif inparams then
-			function callback(input, output, frames, timeinfo, status, udata)
-				return cbret(usercallback(input, frames, timeinfo, status))
-			end
-		elseif outparams then
-			function callback(input, output, frames, timeinfo, status, udata)
-				return cbret(usercallback(output, frames, timeinfo, status))
-			end
+			cb = ffi.cast('PaStreamCallback*', callback)
+			freecb = function() cb:free() end
+		else
+			cb = usercallback
 		end
-		cb = ffi.cast('PaStreamCallback*', callback)
 	end
 
 	local flags = bit.bor(
@@ -220,7 +226,7 @@ function M.open(t)
 		flags, cb, nil)
 
 	if not ok(ret) then
-		if cb then cb:free() end
+		freecb()
 		err(ret)
 	end
 
@@ -235,7 +241,7 @@ function M.open(t)
 	ffi.gc(stream, function(self)
 		self:close()
 		if fincb then fincb:free() end
-		if cb then cb:free() end
+		freecb()
 		inparams, outparams = nil --pin aux buffers
 	end)
 
