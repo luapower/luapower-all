@@ -33,6 +33,7 @@ tagline: package categories
 	* [crc32]
 	* [zlib]
 	* [minizip]
+	* [libsodium]
 * Internet Formats
 	* [libb64]
 	* [expat]
@@ -55,6 +56,7 @@ tagline: package categories
 	* [thread]
 	* [time]
 	* [stdc]
+	* [libsoundio]
 	* [portaudio]
 	* [videoinput]
 * Native OS APIs
