@@ -6,10 +6,7 @@ A binding of [PortAudio](http://portaudio.com/), the audio I/O library
 which powers Audacity. The included binaries only support the 'directsound'
 host APIs.
 
-<warn>Work in progress. This whole thing might be a dead end
-since not all PortAudio backends support the blocking API and the
-callback is called from a different thread, which means we have to
-bring in [thread], which might be overkill...</warn>
+<warn>Work in progress.</warn>
 
 ## API
 
