@@ -3,9 +3,7 @@ tagline: networking library
 platforms: mingw32, mingw64
 ---
 
-<warn>Work in progress! To be released soon!</warn>
-
-## `local bnet = require'bnet'`
+## `local socket = require'bnet'`
 
 Networking library, API compatible with LuaSocket 2.0.2.
 
