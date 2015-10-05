@@ -176,7 +176,7 @@ enum {
 	SOUNDIO_MAX_CHANNELS = 24,
 };
 struct SoundIoChannelLayout {
-	const char *name;
+	const char *name_ptr;
 	int channel_count;
 	enum SoundIoChannelId channels[SOUNDIO_MAX_CHANNELS];
 };
@@ -218,7 +218,7 @@ struct SoundIoDevice {
 	double software_latency_current;
 	bool is_raw;
 	int ref_count;
-	int probe_error;
+	int probe_error_code;
 };
 typedef void (*SoundIoErrorCallback)(struct SoundIoOutStream *, int err);
 typedef void (*SoundIoWriteCallback)(struct SoundIoOutStream *,
@@ -267,10 +267,10 @@ const char *soundio_strerror(int error);
 int soundio_connect(struct SoundIo *soundio);
 int soundio_connect_backend(struct SoundIo *soundio, enum SoundIoBackend backend);
 void soundio_disconnect(struct SoundIo *soundio);
-const char *soundio_backend_name(enum SoundIoBackend backend);
 int soundio_backend_count(struct SoundIo *soundio);
 enum SoundIoBackend soundio_get_backend(struct SoundIo *soundio, int index);
 bool soundio_have_backend(enum SoundIoBackend backend);
+const char *soundio_backend_name(enum SoundIoBackend backend);
 
 void soundio_flush_events(struct SoundIo *soundio);
 void soundio_wait_events(struct SoundIo *soundio);
@@ -302,7 +302,6 @@ int soundio_device_nearest_sample_rate(struct SoundIoDevice *device,
 bool soundio_channel_layout_equal(
         const struct SoundIoChannelLayout *a,
         const struct SoundIoChannelLayout *b);
-const char *soundio_get_channel_name(enum SoundIoChannelId id);
 enum SoundIoChannelId soundio_parse_channel_id(const char *str, int str_len);
 int soundio_channel_layout_builtin_count(void);
 const struct SoundIoChannelLayout *soundio_channel_layout_get_builtin(int index);
@@ -314,6 +313,7 @@ const struct SoundIoChannelLayout *soundio_best_matching_channel_layout(
         const struct SoundIoChannelLayout *preferred_layouts, int preferred_layout_count,
         const struct SoundIoChannelLayout *available_layouts, int available_layout_count);
 void soundio_sort_channel_layouts(struct SoundIoChannelLayout *layouts, int layout_count);
+const char *soundio_get_channel_name(enum SoundIoChannelId id);
 
 int soundio_get_bytes_per_sample(enum SoundIoFormat format);
 const char * soundio_format_string(enum SoundIoFormat format);
@@ -350,15 +350,4 @@ void soundio_ring_buffer_advance_read_ptr(struct SoundIoRingBuffer *ring_buffer,
 int soundio_ring_buffer_fill_count(struct SoundIoRingBuffer *ring_buffer);
 int soundio_ring_buffer_free_count(struct SoundIoRingBuffer *ring_buffer);
 void soundio_ring_buffer_clear(struct SoundIoRingBuffer *ring_buffer);
-]]
-
---[[
-static inline int soundio_get_bytes_per_frame(enum SoundIoFormat format, int channel_count) {
-    return soundio_get_bytes_per_sample(format) * channel_count;
-}
-static inline int soundio_get_bytes_per_second(enum SoundIoFormat format,
-        int channel_count, int sample_rate)
-{
-	return soundio_get_bytes_per_frame(format, channel_count) * sample_rate;
-}
 ]]

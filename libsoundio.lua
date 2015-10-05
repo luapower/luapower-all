@@ -25,26 +25,23 @@ local function check(err)
 	error(ffi.string(C.soundio_strerror(err)), 3)
 end
 
-local function vprops(get, getprop)
+local function vprops(index_table, property_table)
 	return function(self, k)
-		local getprop = getprop[k]
-		if getprop then return getprop(self) end
-		return get[k]
+		local get = property_table[k]
+		if get then return get(self) end
+		local v = index_table[k]
+		if not v then error('invalid property '..k, 2) end
+		return v
 	end
 end
 
 --soundio --------------------------------------------------------------------
 
-local function soundio_free(self)
-	ffi.gc(self, nil)
-	C.soundio_destroy(self)
-end
-
 function M.new(t)
 	t = t or {}
 	local self = C.soundio_create()
 	assert(self ~= nil)
-	ffi.gc(self, soundio_free)
+	ffi.gc(self, self.free)
 	--local function callback(func) end --TODO: wrap in a Lua state + queue
 	--self.on_devices_change = callback(t.on_devices_change)
 	--self.on_backend_disconnect = callback(t.on_backend_disconnect)
@@ -57,6 +54,11 @@ end
 
 local sio = {}
 sio.__index = sio
+
+function sio:free()
+	ffi.gc(self, nil)
+	C.soundio_destroy(self)
+end
 
 --backends -------------------------------------------------------------------
 
@@ -73,7 +75,7 @@ for k,v in pairs(M.backends) do
 	backend_names[tonumber(v)] = k
 end
 local function tobackend(backend)
-	return assert(M.backends[backend:lower()], 'invalid backend')
+	return (assert(M.backends[backend:lower()], 'invalid backend'))
 end
 
 function sio:connect(backend)
@@ -212,21 +214,95 @@ local dev = {}
 function dev:ref() C.soundio_device_ref(self); return self; end
 function dev:unref() C.soundio_device_unref(self); return self; end
 
-dev.sort_channel_layouts = C.soundio_device_sort_channel_layouts
 dev.supports_format = C.soundio_device_supports_format
 dev.supports_layout = C.soundio_device_supports_layout
 dev.supports_sample_rate = C.soundio_device_supports_sample_rate
 dev.nearest_sample_rate = C.soundio_device_nearest_sample_rate
 
-local devget = {}
-function devget:id() return ffi.string(self.id_ptr) end
-function devget:name() return ffi.string(self.name_ptr) end
-function devget:aim() return
+local devprop = {}
+function devprop:id() return ffi.string(self.id_ptr) end
+function devprop:name() return ffi.string(self.name_ptr) end
+function devprop:aim() return
 	self.aim_enum == C.SoundIoDeviceAimInput and 'i' or 'o'
+end
+function devprop:probe_error()
+	return self.probe_error_code ~= 0 and self.probe_error_code or nil
 end
 
 dev.__eq = C.soundio_device_equal
-dev.__index = vprops(dev, devget)
+dev.__index = vprops(dev, devprop)
+
+--formats --------------------------------------------------------------------
+
+function M.format_string(format)
+	return ffi.string(C.soundio_format_string(format))
+end
+
+M.bytes_per_sample = C.soundio_get_bytes_per_sample
+
+function M.bytes_per_frame(format, channel_count)
+	return M.bytes_per_sample(format) * channel_count
+end
+
+function M.bytes_per_second(format, channel_count, sample_rate)
+	return M.bytes_per_frame(format, channel_count) * sample_rate
+end
+
+--channels -------------------------------------------------------------------
+
+function M.channel_id(name)
+	local chan = C.soundio_parse_channel_id(name, #name)
+	if chan == SoundIoChannelIdInvalid then return end
+	return chan
+end
+
+function M.channel_name(channel)
+	return ffi.string(C.soundio_get_channel_name(channel))
+end
+
+--channel layouts ------------------------------------------------------------
+
+local layout = {}
+local layoutprop = {}
+layout.__eq = C.soundio_channel_layout_equal
+layout.__index = vprops(layout, layoutprop)
+
+function M.layouts(which, channel_count)
+	if not which then --iterate
+		local i = -1
+		local n = C.soundio_channel_layout_builtin_count()
+		return function()
+			i = i + 1
+			if i >= n then return end
+			return C.soundio_channel_layout_get_builtin(i)
+		end
+	elseif which == '#' then --count
+		return C.soundio_channel_layout_builtin_count()
+	elseif which == '*' then --default layout per channel count
+		return C.soundio_channel_layout_get_default(channel_count)
+	end
+end
+
+function layout:find_channel(channel_id)
+	local i = C.soundio_channel_layout_find_channel(self, channel_id)
+	return i ~= -1 and i or nil
+end
+
+function layout:detect_builtin()
+	return C.soundio_channel_layout_detect_builtin(self)
+end
+
+function layoutprop:name()
+	return ffi.string(self.name_ptr)
+end
+
+function dev:sort_layouts()
+	C.soundio_sort_channel_layouts(self.layouts, self.layout_count)
+end
+
+function M.best_matching_channel_layout(preferred, available)
+	return C.soundio_best_matching_channel_layout(preferred, #preferred, available, #available)
+end
 
 --streams --------------------------------------------------------------------
 
@@ -235,8 +311,7 @@ function dev:stream(which)
 	local self = checkptr(out and
 		C.soundio_outstream_create(self) or
 		C.soundio_instream_create(self))
-	ffi.gc(self, self.free)
-	return self
+	return ffi.gc(self, self.free)
 end
 
 --streams/output -------------------------------------------------------------
@@ -321,13 +396,14 @@ end
 local rb = {}
 rb.__index = rb
 
+function M.ringbuffer(sio, capacity)
+	local self = checkptr(C.soundio_ring_buffer_create(sio, capacity))
+	return ffi.gc(self, self.free)
+end
+
 function rb:free()
 	ffi.gc(self, nil)
 	C.soundio_ring_buffer_destroy(self)
-end
-
-function M.ringbuffer(sio, capacity)
-	return ffi.gc(checkptr(C.soundio_ring_buffer_create(sio, capacity)), rb.free)
 end
 
 rb.capacity = C.soundio_ring_buffer_capacity
@@ -341,9 +417,15 @@ rb.clear = C.soundio_ring_buffer_clear
 
 --ringbuffer-based streaming API ---------------------------------------------
 
-function strout:setup(t)
+local async = {}
 
-	local function setup(ringbuffer_ptr, underflow_callback)
+function async:write(channel, frames)
+
+end
+
+function strout:setasync(t)
+
+	local function setup_state(ringbuffer_ptr)
 
 		local ffi = require'ffi'
 		local sio = require'libsoundio'
@@ -366,16 +448,10 @@ function strout:setup(t)
 
 		local function write_callback(outstream, frame_count_min, frame_count_max)
 
-			local float_sample_rate = outstream.sample_rate
-			local seconds_per_frame = 1 / float_sample_rate
-			local err
-
-			local fill_bytes, read_buf, frames_left
-
-			fill_bytes = ringbuffer:fill_count()
-			read_buf = ringbuffer:read_ptr()
-			fill_bytes = math.min(fill_bytes, frame_count_max * 4)
-			frames_left = math.floor(fill_bytes / 4)
+			local fill_bytes = ringbuffer:fill_count()
+			local read_buf = ringbuffer:read_ptr()
+			local fill_bytes = math.min(fill_bytes, frame_count_max * 4)
+			local frames_left = math.floor(fill_bytes / 4)
 
 			if frames_left <= 0 then return end
 
@@ -390,8 +466,6 @@ function strout:setup(t)
 				print(fill_bytes)
 				ffi.copy(areas[0].ptr, read_buf, fill_bytes)
 				ringbuffer:advance_read_ptr(fill_bytes)
-				areas[0].ptr = areas[0].ptr + fill_bytes
-				areas[1].ptr = areas[1].ptr + fill_bytes
 
 				if outstream:end_write() then return end
 
@@ -402,39 +476,25 @@ function strout:setup(t)
 			end
 
 		end
-		local write_cb =
-			ffi.cast('SoundIoWriteCallback', protect(write_callback))
 
-		local underflow_cb = underflow_callback
-			and ffi.cast('SoundIoUnderflowCallback', protect(underflow_callback))
-
-		return
-			tonumber(ffi.cast('intptr_t', write_cb)),
-			tonumber(ffi.cast('intptr_t', underflow_cb))
-
+		local write_cb = ffi.cast('SoundIoWriteCallback', protect(write_callback))
+		return tonumber(ffi.cast('intptr_t', write_cb))
 	end
 
-	local lua = require'luastate'
-
-	local state = lua.open()
-	state:openlibs()
-	state:push(setup)
-
+	local buffer_size = t.buffer_size or 2^16
 	local ringbuffer = M.ringbuffer(soundio, buffer_size)
-	local write_callback, underflow_callback =
-		state:call(
-			tonumber(ffi.cast('intptr_t', ringbuffer)),
-			t.underflow_callback
-		)
-	write_callback = ffi.cast('SoundIoWriteCallback', write_callback)
-	underflow_callback = ffi.cast('SoundIoUnderflowCallback', underflow_callback)
 
-	self.write_callback = write_callback
-	self.underflow_callback = underflow_callback
+	local state = require('luastate').open()
+	state:openlibs()
+	state:push(setup_state)
 
-	ffi.gc(self, function()
-		ringbuffer = nil --anchor it
-	end)
+	local write_callback = state:call(tonumber(ffi.cast('intptr_t', ringbuffer)))
+	self.write_callback = ffi.cast('SoundIoWriteCallback', write_callback)
+
+	async.ringbuffer = ringbuffer
+	async.state = state
+
+	return async
 end
 
 --metatype assignments -------------------------------------------------------
@@ -444,5 +504,6 @@ ffi.metatype('struct SoundIoDevice', dev)
 ffi.metatype('struct SoundIoRingBuffer', rb)
 ffi.metatype('struct SoundIoOutStream', strout)
 ffi.metatype('struct SoundIoInStream', strin)
+ffi.metatype('struct SoundIoChannelLayout', layout)
 
 return M
