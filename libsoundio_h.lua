@@ -234,11 +234,11 @@ struct SoundIoOutStream {
 	SoundIoWriteCallback write_callback;
 	SoundIoUnderflowCallback underflow_callback;
 	SoundIoErrorCallback error_callback;
-	const char *name;
+	const char *name_ptr;
 	bool non_terminal_hint;
 	int bytes_per_frame;
 	int bytes_per_sample;
-	int layout_error;
+	int layout_error_code;
 };
 typedef void (*SoundIoReadCallback)(struct SoundIoInStream *,
 	int frame_count_min, int frame_count_max);
@@ -253,11 +253,11 @@ struct SoundIoInStream {
 	SoundIoReadCallback read_callback;
 	SoundIoOverflowCallback overflow_callback;
 	SoundIoErrorCallback error_callback;
-	const char *name;
+	const char *name_ptr;
 	bool non_terminal_hint;
 	int bytes_per_frame;
 	int bytes_per_sample;
-	int layout_error;
+	int layout_error_code;
 };
 
 struct SoundIo *soundio_create(void);

@@ -270,6 +270,8 @@ local layoutprop = {}
 layout.__eq = C.soundio_channel_layout_equal
 layout.__index = vprops(layout, layoutprop)
 
+layoutprop.name = devprop.name
+
 function M.builtin_layouts(which, channel_count)
 	if not which then --iterate
 		local i = -1
@@ -298,10 +300,6 @@ function layout:detect_builtin()
 	return C.soundio_channel_layout_detect_builtin(self)
 end
 
-function layoutprop:name()
-	return ffi.string(self.name_ptr)
-end
-
 function dev:sort_layouts()
 	C.soundio_sort_channel_layouts(self.layouts, self.layout_count)
 end
@@ -319,7 +317,14 @@ end
 --streams/output -------------------------------------------------------------
 
 local strout = {}
-strout.__index = strout
+local stroutprop = {}
+strout.__index = vprops(strout, stroutprop)
+
+stroutprop.name = devprop.name
+
+function stroutprop:layout_error()
+	return self.layout_error_code ~= 0 and self.layout_error_code or nil
+end
 
 function strout:free()
 	ffi.gc(self, nil)
@@ -364,7 +369,11 @@ end
 --streams/input --------------------------------------------------------------
 
 local strin = {}
-strin.__index = strin
+local strinprop = {}
+strin.__index = vprops(strin, strinprop)
+
+strinprop.name         = stroutprop.name
+strinprop.layout_error = stroutprop.layout_error
 
 function strin:free()
 	ffi.gc(self, nil)
