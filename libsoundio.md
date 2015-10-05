@@ -57,8 +57,7 @@ __channel layouts__
 `soundio.builtin_layouts'#' -> n`                 number of built-in channel layouts
 `soundio.builtin_layouts('*', cc) -> layout`      default layout for a certain channel count
 __streams__
-`dev:stream'o' -> sout`                           create an output stream
-`dev:stream'i' -> sin`                            create an input stream
+`dev:stream() -> sin|sout`                        create an input|output stream
 `sin|sout:open()`                                 open the stream
 `sin|sout:start()`                                start the stream
 `sin|sout:pause(t|f|)`                            pause/unpause the stream
@@ -118,7 +117,27 @@ assigned to functions from those states.
 ## Example
 
 ~~~{.lua}
+local soundio = require'libsoundio'
+local time = require'time'
 
+local sio = soundio.new()
+assert(sio:backends'#' > 0, 'no backends')
+sio:connect()
+
+local dev = assert(sio:devices'*o', 'no output devices')
+
+local str = dev:stream()
+str:open()
+local rb = str:ringbuffer()
+str:start()
+
+while true do
+	local areas, n = rb:begin_write(44100)
+	for i = 0, n-1 do
+		--TODO
+	end
+	rb:end_write()
+end
 
 ~~~
 

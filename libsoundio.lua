@@ -306,9 +306,8 @@ end
 
 --streams --------------------------------------------------------------------
 
-function dev:stream(which)
-	local out = which ~= 'i'
-	local self = checkptr(out and
+function dev:stream()
+	local self = checkptr(dev.aim == 'o' and
 		C.soundio_outstream_create(self) or
 		C.soundio_instream_create(self))
 	return ffi.gc(self, self.free)
