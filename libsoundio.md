@@ -27,6 +27,7 @@ __devices__
 `dev.soundio -> sio`                              weak back-reference to the libsoundio state
 `dev.is_raw -> t|f`                               raw device
 `dev.probe_error -> error_code|nil`               device probe error code (C.SoundError enum)
+`dev:print([print])`                              print device info
 __sample rates__
 `dev.sample_rates -> ranges[]`                    0-based array of C.SoundIoSampleRateRange
 `dev.sample_rate_count -> n`                      number of sample rate ranges
@@ -36,19 +37,20 @@ __sample rates__
 __sample formats__
 `dev.formats -> format[]`                         0-based array of C.SoundIoFormat
 `dev.format_count -> n`                           number of formats
-`dev.current_format -> format`                    current format (as C.SoundIoFormat)
+`dev.current_format -> format`                    current format as C.SoundIoFormat
 `dev:supports_format(format) -> t|f`              check if device supports a format
 `soundio.format_string(format) -> s`              string representation of a format
 `soundio.bytes_per_sample(format) -> n`           format bytes per sample
 `soundio.bytes_per_frame(format, cc) -> n`        bytes per frame for a format and channel count
 `soundio.bytes_per_second(format, cc, sr) -> n`   bytes per second for a format, channel count and sample rate
+`soundio.sample_range(format) -> min, max`        min and max sample values
 __channels__
 `soundio.channel_id(name) -> channel`             "front-left" -> C.SoundIoChannelIdFrontLeft
 `soundio.channel_name(channel) -> name`           C.SoundIoChannelIdFrontLeft -> "Front Left"
 __channel layouts__
 `dev.layouts -> layout[]`                         0-based array of C.SoundIoChannelLayout
 `dev.layout_count -> n`                           number of channel layouts
-`dev.current_layout -> layout`                    current layout (as C.SoundIoChannelLayout)
+`dev.current_layout -> layout`                    current layout as C.SoundIoChannelLayout
 `layout:find_channel(channel) -> i|nil`           index of channel (by name or id) in layout
 `layout:detect_builtin() -> t|f`                  set layout.name if it matches a builtin one
 `dev:sort_layouts()`                              sort layouts by channel count, descending
@@ -62,14 +64,15 @@ __streams__
 `sin|sout:start()`                                start the stream
 `sin|sout:pause(t|f|)`                            pause/unpause the stream
 `sin|sout.device -> dev`                          weak back-reference to the device
-`sin|sout.format -> format`                       sample format
-`sin|sout.sample_rate -> rate`                    sample rate
-`sin|sout.layout -> layout`                       channel layout
-`sin|sout.software_latency -> seconds`            software latency
+`sin|sout.format -> format`                       sample format as C.SoundIoFormatS16NE
+`sin|sout.sample_rate -> n`                       sample rate in frames per second
+`sin|sout.layout -> layout`                       channel layout as C.SoundIoChannelLayout
+`sin|sout.software_latency -> seconds`            software latency in seconds
 `sin|sout.name`                                   stream/client/session name
 `sin|sout.non_terminal_hint -> t|f`               JACK hint for nonterminal output streams
 `sin|sout.bytes_per_frame -> n`                   bytes per frame
 `sin|sout.bytes_per_sample -> n`                  bytes per sample
+`sio|sout.bytes_per_second -> n`                  bytes per second
 `sin|sout.layout_error -> errcode|nil`            error setting the channel layout
 `sin.read_callback <- f(sin, minfc, maxfc)`       read callback (1)
 `sin.overflow_callback <- f(sin)`                 buffer full callback (1)
@@ -82,17 +85,29 @@ __streams__
 `sout:clear_buffer()`                             clear the buffer
 `sin:begin_read(n) -> areas, n`                   start reading `n` frames from the stream
 `sin:end_read()`                                  say that the frames were read
+__stream buffers__
+`sin|sout:buffer() -> buf`                        create & setup a stream buffer
+`buf:capacity() -> frames`                        buffer's capacity
+`buf:fill_count() -> frames`                      how many occupied frames
+`buf:free_count() -> frames`                      how many free frames
+`buf:write_ptr() -> fptr`                         the write pointer
+`buf:write_buf() -> fptr, frames`                 the write pointer and free frame count
+`buf:advance_write_ptr(frames)`                   advance the write pointer
+`buf:read_ptr() -> fptr`                          the read pointer
+`buf:read_buf() -> fptr, frames`                  the read pointer and filled frame count
+`buf:advance_read_ptr(frames)`                    advance the read pointer
+`fptr[frame_index][channel_index] <-> sample`     read/write samples from/into the buffer
 __ring buffers__
-`sio:ringbuffer() -> rb`                          create a thread-safe ring buffer
-`rb:capacity() -> bytes`                          the buffer's capacity
-`rb:write_ptr() -> ptr`                           the write pointer
-`rb:advance_write_ptr(bytes)`                     advance the write pointer
-`rb:read_ptr() -> ptr`                            the read pointer
-`rb:advance_read_ptr(bytes)`                      advance the read pointer
+`rb:capacity() -> bytes`                          buffer's capacity
 `rb:fill_count() -> bytes`                        how many occupied bytes
 `rb:free_count() -> bytes`                        how many free bytes
+`rb:write_ptr() -> ptr`                           the write pointer as `char*`
+`rb:write_buf() -> ptr, bytes`                    the write pointer and free bytes count
+`rb:advance_write_ptr(bytes)`                     advance the write pointer
+`rb:read_ptr() -> ptr`                            the read pointer as `char*`
+`rb:read_buf() -> ptr, bytes`                     the read pointer and filled bytes count
+`rb:advance_read_ptr(bytes)`                      advance the read pointer
 `rb:clear()`                                      clear the buffer
-`sin|sio:ringbuffer() -> rb`                      set up a ring buffer for async streaming
 __latencies__
 `dev.software_latency_min -> s`                   min. software latency
 `dev.software_latency_max -> s`                   max. software latency
@@ -125,18 +140,39 @@ assert(sio:backends'#' > 0, 'no backends')
 sio:connect()
 
 local dev = assert(sio:devices'*o', 'no output devices')
+dev:print()
 
 local str = dev:stream()
+str.format = soundio.C.SoundIoFormatS16NE --signed 16bit native endian
+str.sample_rate = 44100
 str:open()
-local rb = str:ringbuffer()
+
+local buf = str:buffer(0.1) --make a 0.1 seconds buffer
+
 str:start()
 
+local seconds_offset = 0
+local function sample(i)
+	local seconds_per_frame = 1 / str.sample_rate
+	local pitch = 440
+	local radians_per_second = pitch * 2 * math.pi
+	local n = 0
+	write_ptr[frame][channel] = 2000 *
+	math.sin((seconds_offset + frame * seconds_per_frame) *
+		(radians_per_second * (channel + 1)))
+	seconds_offset = seconds_offset + seconds_per_frame * frame_count
+end
+
 while true do
-	local areas, n = rb:begin_write(44100)
-	for i = 0, n-1 do
-		--TODO
+	local p = buf:write_ptr()
+	local n = buf:free_count()
+	for channel = 0, str.layout.channel_count-1 do
+		for i = 0, n-1 do
+			p[i][channel] = sample(i)
+		end
 	end
-	rb:end_write()
+	buf:advance_write_ptr()
+	time.sleep(0.1)
 end
 
 ~~~

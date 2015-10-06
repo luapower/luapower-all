@@ -41,15 +41,7 @@ function M.new(t)
 	t = t or {}
 	local self = C.soundio_create()
 	assert(self ~= nil)
-	ffi.gc(self, self.free)
-	--local function callback(func) end --TODO: wrap in a Lua state + queue
-	--self.on_devices_change = callback(t.on_devices_change)
-	--self.on_backend_disconnect = callback(t.on_backend_disconnect)
-	--self.on_events_signal = callback(t.on_events_signal)
-	--self.emit_rtprio_warning = callback(t.emit_rtprio_warning)
-	--self.jack_info_callback = callback(t.on_jack_info)
-	--self.jack_error_callback = callback(t.on_jack_error)
-	return self
+	return ffi.gc(self, self.free)
 end
 
 local sio = {}
@@ -251,6 +243,23 @@ function M.bytes_per_second(format, channel_count, sample_rate)
 	return M.bytes_per_frame(format, channel_count) * sample_rate
 end
 
+local sample_ranges = {
+	[C.SoundIoFormatS8]        = { -2^7,  2^7-1},
+	[C.SoundIoFormatU8]        = {    0,  2^8-1},
+	[C.SoundIoFormatS16NE]     = {-2^15, 2^15-1},
+	[C.SoundIoFormatU16NE]     = {    0, 2^16-1},
+	[C.SoundIoFormatS24LE]     = {-2^23, 2^23-1},
+	[C.SoundIoFormatU24LE]     = {    0, 2^24-1},
+	[C.SoundIoFormatS32LE]     = {-2^31, 2^31-1},
+	[C.SoundIoFormatU32LE]     = {    0, 2^32-1},
+	[C.SoundIoFormatFloat32LE] = {    0, 1},
+	[C.SoundIoFormatFloat64LE] = {    0, 1},
+}
+
+function M.sample_range(format)
+	return unpack(sample_ranges[tonumber(format)], 1, 2)
+end
+
 --channels -------------------------------------------------------------------
 
 function M.channel_id(name)
@@ -304,10 +313,48 @@ function dev:sort_layouts()
 	C.soundio_sort_channel_layouts(self.layouts, self.layout_count)
 end
 
+--device info dump -----------------------------------------------------------
+
+function dev:print(print_)
+	local print = print_ or print
+	print('Device Info')
+	print('  id     : '..self.id)
+	print('  name   : '..self.name)
+	print('  aim    : '..self.aim)
+	print('  layuts : ')
+	for i = 0, self.layout_count-1 do
+		local layout = self.layouts[i]
+		print('   '..i..': ')
+		print('     name     : '..layout.name..
+			(self.current_layout == layout and ' (current)' or ''))
+		print('     channels : ')
+		for i = 0, layout.channel_count-1 do
+			print('       '..i..' : '..M.channel_name(layout.channels[i]))
+		end
+	end
+	print('  formats : ')
+	for i = 0, self.format_count-1 do
+		local fmt = self.formats[i]
+		print('    '..i..' : '..M.format_string(fmt)..
+			(fmt == self.current_format and ' (current)' or ' '))
+	end
+	print('  sample_rates : ')
+	for i = 0, self.sample_rate_count-1 do
+		local sr = self.sample_rates[i]
+		print('    '..i..' : ' ..sr.min..' - '..sr.max)
+	end
+	print('  sample_rate_current : '..self.sample_rate_current)
+	print('  latency range       : '..self.software_latency_min..' - '..self.software_latency_max)
+	print('  current_latency     : '..self.software_latency_current)
+	print('  is_raw              : '..tostring(self.is_raw))
+	print('  ref_count           : '..self.ref_count)
+	print('  probe_error         : '..tostring(self.probe_error))
+end
+
 --streams --------------------------------------------------------------------
 
 function dev:stream()
-	local self = checkptr(dev.aim == 'o' and
+	local self = checkptr(self.aim == 'o' and
 		C.soundio_outstream_create(self) or
 		C.soundio_instream_create(self))
 	return ffi.gc(self, self.free)
@@ -365,6 +412,10 @@ function strout:latency()
 	return dbuf[0]
 end
 
+function stroutprop:bytes_per_second()
+	return self.bytes_per_frame * self.sample_rate
+end
+
 --streams/input --------------------------------------------------------------
 
 local strin = {}
@@ -401,13 +452,15 @@ function strin:latency()
 	return dbuf[0]
 end
 
+strinprop.bytes_per_second = stroutprop.bytes_per_second
+
 --ringbuffers ----------------------------------------------------------------
 
 local rb = {}
 rb.__index = rb
 
-function M.ringbuffer(sio, capacity)
-	local self = checkptr(C.soundio_ring_buffer_create(sio, capacity))
+function sio:ringbuffer(capacity)
+	local self = checkptr(C.soundio_ring_buffer_create(self, capacity))
 	return ffi.gc(self, self.free)
 end
 
@@ -424,88 +477,117 @@ rb.advance_read_ptr = C.soundio_ring_buffer_advance_read_ptr
 rb.fill_count = C.soundio_ring_buffer_fill_count
 rb.free_count = C.soundio_ring_buffer_free_count
 rb.clear = C.soundio_ring_buffer_clear
+function rb:write_buf() return self:write_ptr(), self:free_count() end
+function rb:read_buf() return self:read_ptr(), self:fill_count() end
 
---ringbuffer-based streaming API ---------------------------------------------
+--buffered streaming API -----------------------------------------------------
 
-local async = {}
+local buf = {}
+buf.__index = buf
 
-function async:write(channel, frames)
+local sample_types = {
+	[C.SoundIoFormatS8]        = 'int8_t',
+	[C.SoundIoFormatU8]        = 'uint8_t',
+	[C.SoundIoFormatS16NE]     = 'int16_t',
+	[C.SoundIoFormatU16NE]     = 'uint16_t',
+	[C.SoundIoFormatS32LE]     = 'int32_t',
+	[C.SoundIoFormatU32LE]     = 'uint32_t',
+	[C.SoundIoFormatFloat32LE] = 'float',
+	[C.SoundIoFormatFloat64LE] = 'double',
+}
 
-end
+function strout:buffer(buffer_size_seconds)
 
-function strout:setasync(t)
-
-	local function setup_state(ringbuffer_ptr)
+	local function setup_state(ringbuffer_ptr, bpf)
 
 		local ffi = require'ffi'
 		local sio = require'libsoundio'
-		local C = sio.C
-
-		local function protect(func)
-			local function pass(ok, ...)
-				if not ok then
-					io.stderr:write(string.format("error: %s\n", (...)))
-					os.exit(1)
-				end
-				return ...
-			end
-			return function(...)
-				return pass(xpcall(func, debug.traceback, ...))
-			end
-		end
 
 		local ringbuffer = ffi.cast('struct SoundIoRingBuffer*', ringbuffer_ptr)
 
 		local function write_callback(outstream, frame_count_min, frame_count_max)
-
-			local fill_bytes = ringbuffer:fill_count()
-			local read_buf = ringbuffer:read_ptr()
-			local fill_bytes = math.min(fill_bytes, frame_count_max * 4)
-			local frames_left = math.floor(fill_bytes / 4)
-
-			if frames_left <= 0 then return end
-
-			local areas, frame_count = nil, frames_left
-			while true do
-				areas, frame_count = outstream:begin_write(frame_count)
-
-				if frame_count == 0 then
-					break
-				end
-
-				print(fill_bytes)
-				ffi.copy(areas[0].ptr, read_buf, fill_bytes)
-				ringbuffer:advance_read_ptr(fill_bytes)
-
-				if outstream:end_write() then return end
-
-				frames_left = frames_left - frame_count
-				if frames_left <= 0 then
-					break
-				end
+			local avail_bytes = ringbuffer:fill_count()
+			local max_bytes = math.min(avail_bytes, frame_count_max * bpf)
+			local max_frames = math.floor(max_bytes / bpf)
+			local buf = ringbuffer:read_ptr()
+			local frames_left = max_frames
+			while frames_left > 0 do
+				local areas, write_frames = outstream:begin_write(frames_left)
+				if write_frames <= 0 then break end
+				local read_bytes = write_frames * bpf
+				ffi.copy(areas[0].ptr, buf, read_bytes)
+				ringbuffer:advance_read_ptr(read_bytes)
+				if outstream:end_write() then break end --underflow
+				frames_left = frames_left - write_frames
 			end
-
 		end
 
-		local write_cb = ffi.cast('SoundIoWriteCallback', protect(write_callback))
+		local write_cb = ffi.cast('SoundIoWriteCallback', write_callback)
 		return tonumber(ffi.cast('intptr_t', write_cb))
 	end
 
-	local buffer_size = t.buffer_size or 2^16
-	local ringbuffer = M.ringbuffer(soundio, buffer_size)
+	local sample_type = sample_types[tonumber(self.format)]
+	local ptr_type = sample_type
+		and ffi.typeof('$(*)[$]', ffi.typeof(sample_type), self.layout.channel_count)
+		or ffi.typeof'void*'
+	local bps = self.bytes_per_second
+	local buffer_size = math.ceil((buffer_size_seconds or 1) * bps)
+
+	local ringbuffer = self.device.soundio:ringbuffer(buffer_size)
 
 	local state = require('luastate').open()
 	state:openlibs()
 	state:push(setup_state)
 
-	local write_callback = state:call(tonumber(ffi.cast('intptr_t', ringbuffer)))
-	self.write_callback = ffi.cast('SoundIoWriteCallback', write_callback)
+	local ringbuffer_addr = tonumber(ffi.cast('intptr_t', ringbuffer))
+	local write_cb_addr = state:call(ringbuffer_addr, self.bytes_per_frame)
+	self.write_callback = ffi.cast('SoundIoWriteCallback', write_cb_addr)
 
-	async.ringbuffer = ringbuffer
-	async.state = state
-
-	return async
+	local buffer = setmetatable({
+		ringbuffer = ringbuffer,
+		state = state,
+		ptr_type = ptr_type,
+		stream = self,
+	}, buf)
+	return buffer
 end
+
+function buf:free()
+	self.stream.write_callback = nil
+	self.ringbuffer:free()
+	self.state:close()
+end
+
+function buf:write_ptr()
+	return ffi.cast(self.ptr_type, self.ringbuffer:write_ptr())
+end
+
+function buf:advance_write_ptr(n)
+	self.ringbuffer:advance_write_ptr(n * self.stream.bytes_per_frame)
+end
+
+function buf:read_ptr()
+	return ffi.cast(self.ptr_type, self.ringbuffer:read_ptr())
+end
+
+function buf:advance_read_ptr(n)
+	self.ringbuffer:advance_read_ptr(n * self.stream.bytes_per_frame)
+end
+
+function buf:fill_count()
+	return math.floor(self.ringbuffer:fill_count() / self.stream.bytes_per_frame)
+end
+
+function buf:free_count()
+	return math.floor(self.ringbuffer:free_count() / self.stream.bytes_per_frame)
+end
+
+function buf:capacity()
+	return math.floor(self.ringbuffer:capacity() / self.stream.bytes_per_frame)
+end
+
+buf.write_buf = rb.write_buf
+buf.read_buf = rb.read_buf
 
 --metatype assignments -------------------------------------------------------
 
