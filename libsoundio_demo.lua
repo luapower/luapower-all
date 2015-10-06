@@ -59,6 +59,7 @@ str.sample_rate = sample_rate
 str:open()
 assert(not str.layout_error)
 local buf = str:buffer(0.1)
+str:clear_buffer()
 str:start()
 
 local pitch = 440
@@ -96,3 +97,4 @@ end
 buf:free()
 str:free()
 sio:free()
+print'Done'
