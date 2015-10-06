@@ -10,7 +10,7 @@ audio input and output.
 ## API
 
 ------------------------------------------------- ----------------------------------------
-`soundio.new() -> sio`                            create a libsoundio state
+`soundio.new([backend]) -> sio`                   create a libsoundio state
 __backends__
 `sio:connect([backend])`                          connect to a/the default backend
 `sio:disconnect()`                                disconnect the backend
@@ -64,7 +64,7 @@ __streams__
 `sin|sout:start()`                                start the stream
 `sin|sout:pause(t|f|)`                            pause/unpause the stream
 `sin|sout.device -> dev`                          weak back-reference to the device
-`sin|sout.format -> format`                       sample format as C.SoundIoFormatS16NE
+`sin|sout.format -> format`                       sample format as C.SoundIoFormat
 `sin|sout.sample_rate -> n`                       sample rate in frames per second
 `sin|sout.layout -> layout`                       channel layout as C.SoundIoChannelLayout
 `sin|sout.software_latency -> seconds`            software latency in seconds

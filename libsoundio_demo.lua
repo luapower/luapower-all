@@ -3,26 +3,7 @@ local ffi = require'ffi'
 local lua = require'luastate'
 local time = require'time'
 
-local exit = os.exit
-local stderr = io.stderr
-local stdin = io.stdin
-
-local function soundio_strerror(err)
-	return ffi.string(soundio.C.soundio_strerror(err))
-end
-
-local function fprintf(f, ...)
-	f:write(string.format(...))
-end
-
-local function getc(f)
-	return f:read(1)
-end
-
-local PI = math.pi
-
 local sio = soundio.new()
-sio:connect()
 
 --reflection -----------------------------------------------------------------
 
@@ -46,16 +27,9 @@ odev:print()
 --buffered streaming ---------------------------------------------------------
 
 local dev = odev
-local sample_rate = 44100
-local format = soundio.C.SoundIoFormatFloat32NE
-
 assert(not dev.probe_error)
-assert(dev:supports_format(format))
-assert(dev:supports_sample_rate(sample_rate))
 
 local str = dev:stream()
-str.format = format
-str.sample_rate = sample_rate
 str:open()
 assert(not str.layout_error)
 local buf = str:buffer(0.1)

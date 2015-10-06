@@ -37,11 +37,14 @@ end
 
 --soundio --------------------------------------------------------------------
 
-function M.new(t)
-	t = t or {}
+function M.new(backend)
 	local self = C.soundio_create()
 	assert(self ~= nil)
-	return ffi.gc(self, self.free)
+	ffi.gc(self, self.free)
+	if backend ~= false then
+		self:connect(backend)
+	end
+	return self
 end
 
 local sio = {}
@@ -354,10 +357,18 @@ end
 --streams --------------------------------------------------------------------
 
 function dev:stream()
+	local dev = self
 	local self = checkptr(self.aim == 'o' and
 		C.soundio_outstream_create(self) or
 		C.soundio_instream_create(self))
-	return ffi.gc(self, self.free)
+	ffi.gc(self, self.free)
+	if not dev.probe_error then
+		assert(dev:supports_sample_rate(44100))
+		assert(dev:supports_format(C.SoundIoFormatFloat32NE))
+	end
+	self.sample_rate = 44100
+	self.format = C.SoundIoFormatFloat32NE
+	return self
 end
 
 --streams/output -------------------------------------------------------------
