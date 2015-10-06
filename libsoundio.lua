@@ -37,13 +37,10 @@ end
 
 --soundio --------------------------------------------------------------------
 
-function M.new(backend)
+function M.new()
 	local self = C.soundio_create()
 	assert(self ~= nil)
 	ffi.gc(self, self.free)
-	if backend ~= false then
-		self:connect(backend)
-	end
 	return self
 end
 

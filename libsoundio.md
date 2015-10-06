@@ -7,10 +7,20 @@ tagline: audio input and output
 A binding of [libsoundio](http://libsound.io/), a library for cross-platform
 audio input and output.
 
+## Backends
+
+------------ -----------------------------------------------------------------
+__name__     __platforms__
+alsa         Linux/ALSA 1.0.27+ (Ubuntu 14, Debian 8)
+coreaudio    OSX 10.9+
+wasapi       Windows 7+
+dummy        all
+------------ -----------------------------------------------------------------
+
 ## API
 
 ------------------------------------------------- ----------------------------------------
-`soundio.new([backend]) -> sio`                   create a libsoundio state
+`soundio.new() -> sio`                            create a libsoundio state
 __backends__
 `sio:connect([backend])`                          connect to a/the default backend
 `sio:disconnect()`                                disconnect the backend
@@ -140,52 +150,51 @@ assert(sio:backends'#' > 0, 'no backends')
 sio:connect()
 
 local dev = assert(sio:devices'*o', 'no output devices')
-dev:print()
+assert(not dev.probe_error, 'device probing error')
 
 local str = dev:stream()
-str.format = soundio.C.SoundIoFormatS16NE --signed 16bit native endian
-str.sample_rate = 44100
 str:open()
+assert(not str.layout_error, 'unable to set channel layout')
 
-local buf = str:buffer(0.1) --make a 0.1 seconds buffer
+local buf = str:buffer(0.1) --make a 0.1s buffer
+str:clear_buffer()
 
 str:start()
 
-local seconds_offset = 0
-local function sample(i)
-	local seconds_per_frame = 1 / str.sample_rate
-	local pitch = 440
-	local radians_per_second = pitch * 2 * math.pi
-	local n = 0
-	write_ptr[frame][channel] = 2000 *
-	math.sin((seconds_offset + frame * seconds_per_frame) *
-		(radians_per_second * (channel + 1)))
-	seconds_offset = seconds_offset + seconds_per_frame * frame_count
+local pitch = 440
+local volume = 0.1
+local sin_factor = 2 * math.pi / str.sample_rate * pitch
+local frame0 = 0
+local function sample(frame, channel)
+	local octave = channel + 1
+	return volume * math.sin((frame0 + frame) * sin_factor * octave)
 end
 
-while true do
-	local p = buf:write_ptr()
-	local n = buf:free_count()
-	for channel = 0, str.layout.channel_count-1 do
-		for i = 0, n-1 do
-			p[i][channel] = sample(i)
+local duration, interval = 1, 0.05
+print(string.format('Playing L=%dHz R=%dHz for %ds...', pitch, pitch * 2, duration))
+
+for i = 1, duration / interval do
+	local p, n = buf:write_buf()
+	if n > 0 then
+		print(string.format('latency: %-.2fs, empty: %3d%%',
+			str:latency(), n / buf:capacity() * 100))
+		for channel = 0, str.layout.channel_count-1 do
+			for i = 0, n-1 do
+				p[i][channel] = sample(i, channel)
+			end
 		end
+		buf:advance_write_ptr(n)
+		frame0 = frame0 + n
 	end
-	buf:advance_write_ptr()
-	time.sleep(0.1)
+	time.sleep(interval)
 end
 
+buf:free()
+str:free()
+sio:free()
 ~~~
 
-## Backends
+## API Notes
 
------------- ----------------------- ---------------
-__name__     __platforms__           __default on__
-jack         Linux, OSX, Windows
-pulseaudio   Linux, OSX, Windows
-alsa         Linux                   Linux
-coreaudio    OSX                     OSX
-wasapi       Windows                 Windows
-dummy        Linux, OSX, Windows
------------- ----------------------- ---------------
-
+By default, output streams are created with float32 format and 44100
+sample rate, the only portable settings.
