@@ -1046,7 +1046,7 @@ function M.connect(...)
 	local XRC
 	function xinerama_screens()
 		if not has_extension'XINERAMA' then return end
-		XRC = XRC or ffi.load'Xinerama'
+		XRC = XRC or ffi.load'Xinerama.so.1'
 		if XRC.XineramaIsActive(c) == 0 then return end
 		local nbuf = ffi.new'int[1]'
 		local screens = ptr(XRC.XineramaQueryScreens(c, nbuf), C.XFree)
