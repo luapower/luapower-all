@@ -318,10 +318,10 @@ end
 function dev:print(print_)
 	local print = print_ or print
 	print('Device Info')
-	print('  id     : '..self.id)
-	print('  name   : '..self.name)
-	print('  aim    : '..self.aim)
-	print('  layuts : ')
+	print('  id      : '..self.id)
+	print('  name    : '..self.name)
+	print('  aim     : '..self.aim)
+	print('  layouts : ')
 	for i = 0, self.layout_count-1 do
 		local layout = self.layouts[i]
 		print('   '..i..': ')
@@ -360,10 +360,10 @@ function dev:stream()
 		C.soundio_instream_create(self))
 	ffi.gc(self, self.free)
 	if not dev.probe_error then
-		assert(dev:supports_sample_rate(44100))
+		assert(dev:supports_sample_rate(48000))
 		assert(dev:supports_format(C.SoundIoFormatFloat32NE))
 	end
-	self.sample_rate = 44100
+	self.sample_rate = 48000
 	self.format = C.SoundIoFormatFloat32NE
 	return self
 end
