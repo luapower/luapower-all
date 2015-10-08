@@ -589,35 +589,35 @@ typedef struct _DSBCAPS
 	DWORD dwPlayCpuOverhead;
 } DSBCAPS, *LPDSBCAPS;
 typedef const DSBCAPS *LPCDSBCAPS;
-	typedef struct _DSEFFECTDESC
-	{
-	    DWORD dwSize;
-	    DWORD dwFlags;
-	    GUID guidDSFXClass;
-	    DWORD_PTR dwReserved1;
-	    DWORD_PTR dwReserved2;
-	} DSEFFECTDESC, *LPDSEFFECTDESC;
-	typedef const DSEFFECTDESC *LPCDSEFFECTDESC;
-	enum
-	{
-	    DSFXR_PRESENT,
-	    DSFXR_LOCHARDWARE,
-	    DSFXR_LOCSOFTWARE,
-	    DSFXR_UNALLOCATED,
-	    DSFXR_FAILED,
-	    DSFXR_UNKNOWN,
-	    DSFXR_SENDLOOP
-	};
-	typedef struct _DSCEFFECTDESC
-	{
-	    DWORD dwSize;
-	    DWORD dwFlags;
-	    GUID guidDSCFXClass;
-	    GUID guidDSCFXInstance;
-	    DWORD dwReserved1;
-	    DWORD dwReserved2;
-	} DSCEFFECTDESC, *LPDSCEFFECTDESC;
-	typedef const DSCEFFECTDESC *LPCDSCEFFECTDESC;
+typedef struct _DSEFFECTDESC
+{
+	 DWORD dwSize;
+	 DWORD dwFlags;
+	 GUID guidDSFXClass;
+	 DWORD_PTR dwReserved1;
+	 DWORD_PTR dwReserved2;
+} DSEFFECTDESC, *LPDSEFFECTDESC;
+typedef const DSEFFECTDESC *LPCDSEFFECTDESC;
+enum
+{
+	 DSFXR_PRESENT,
+	 DSFXR_LOCHARDWARE,
+	 DSFXR_LOCSOFTWARE,
+	 DSFXR_UNALLOCATED,
+	 DSFXR_FAILED,
+	 DSFXR_UNKNOWN,
+	 DSFXR_SENDLOOP
+};
+typedef struct _DSCEFFECTDESC
+{
+	 DWORD dwSize;
+	 DWORD dwFlags;
+	 GUID guidDSCFXClass;
+	 GUID guidDSCFXInstance;
+	 DWORD dwReserved1;
+	 DWORD dwReserved2;
+} DSCEFFECTDESC, *LPDSCEFFECTDESC;
+typedef const DSCEFFECTDESC *LPCDSCEFFECTDESC;
 typedef struct _DSBUFFERDESC
 {
 	DWORD dwSize;
@@ -1335,7 +1335,7 @@ if not ... then
 	local tone = 440 --A4
 	local function music_tone()
 		local note = math.random(tone > 120 and -12 or 0, tone < 2000 and 12 or 0) / 12
-		local change_it = math.random() > 0.5 and 1 or 0
+		local change_it = math.random() > 0.8 and 1 or 0
 		tone = tone * 2^(note * change_it)
 		return tone
 	end

@@ -1,6 +1,6 @@
 
 --X11/X.h, X11/Xfuncproto.h, X11/Xlib.h, X11/Xutil.h, X11/Xatom.h,
---Xm/MwmUtil.h, X11/extensions/Xinerama.h
+--Xm/MwmUtil.h, X11/extensions/Xinerama.h, X11/extensions/XShm.h.
 
 local ffi = require'ffi'
 
@@ -4238,6 +4238,89 @@ XineramaScreenInfo *
 XineramaQueryScreens(
 	Display *dpy,
 	int *number
+);
+
+// X11/extensions/XShm.h
+typedef unsigned long ShmSeg;
+typedef struct {
+    int type;
+    unsigned long serial;
+    Bool send_event;
+    Display *display;
+    Drawable drawable;
+    int major_code;
+    int minor_code;
+    ShmSeg shmseg;
+    unsigned long offset;
+} XShmCompletionEvent;
+typedef struct {
+    ShmSeg shmseg;
+    int shmid;
+    char *shmaddr;
+    Bool readOnly;
+} XShmSegmentInfo;
+Bool XShmQueryExtension(
+    Display*
+);
+int XShmGetEventBase(
+    Display*
+);
+Bool XShmQueryVersion(
+    Display* ,
+    int* ,
+    int* ,
+    Bool*
+);
+int XShmPixmapFormat(
+    Display*
+);
+Status XShmAttach(
+    Display* ,
+    XShmSegmentInfo*
+);
+Status XShmDetach(
+    Display* ,
+    XShmSegmentInfo*
+);
+Status XShmPutImage(
+    Display* ,
+    Drawable ,
+    GC ,
+    XImage* ,
+    int ,
+    int ,
+    int ,
+    int ,
+    unsigned int ,
+    unsigned int ,
+    Bool
+);
+Status XShmGetImage(
+    Display* ,
+    Drawable ,
+    XImage* ,
+    int ,
+    int ,
+    unsigned long
+);
+XImage *XShmCreateImage(
+    Display* ,
+    Visual* ,
+    unsigned int ,
+    int ,
+    char* ,
+    XShmSegmentInfo* ,
+    unsigned int ,
+    unsigned int
+);
+Pixmap XShmCreatePixmap(
+    Display* ,
+    Drawable ,
+    char* ,
+    XShmSegmentInfo* ,
+    unsigned int ,
+    unsigned int ,
+    unsigned int
 );
 ]]
 
