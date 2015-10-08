@@ -29,7 +29,8 @@ return function(...)
 	--but unlike the '!' symbol in package paths, it's portable.
 	local slash = package.config:sub(1,1)
 	package.path = string.format('%s/?.lua;%s/?/init.lua', dir, dir):gsub('/', slash)
-	package.cpath = string.format('%s/clib/?.dll', dir):gsub('/', slash)
+	local ext = ffi.os == 'Windows' and 'dll' or 'so'
+	package.cpath = string.format('%s/clib/?.%s', dir, ext):gsub('/', slash)
 
 	--check if we have a main module, as set by bundle.c:bundle_main().
 	local m = arg[-1]
