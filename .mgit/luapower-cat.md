@@ -44,21 +44,28 @@ tagline: package categories
 	* [libmariadb]
 	* [libmysql]
 	* [fbclient]
-* Portable OS APIs
-	* [nw]
-	* [lfs]
-	* [socket]
-	* [bnet]
-	* [socketloop]
+* Multi-threading
 	* [lanes]
 	* [luastate]
 	* [pthread]
 	* [thread]
-	* [time]
-	* [stdc]
+	* [lfrb]
+* Networking
+	* [socket]
+	* [bnet]
+	* [socketloop]
+* Windowing/GUIs
+	* [nw]
+	* [cplayer]
+* Audio/Video
 	* [libsoundio]
 	* [portaudio]
 	* [videoinput]
+* Portable OS APIs
+	* [lfs]
+	* [time]
+	* [mmap]
+	* [stdc]
 * Native OS APIs
 	* [winapi]
 	* [objc]
@@ -96,8 +103,9 @@ tagline: package categories
 	* [libpng]
 	* [libexif]
 	* [blur]
-* GUIs
-	* [cplayer]
+* Sound
+   * [libogg]
+	* [libvorbis]
 * Code Editing
 	* [codedit]
 	* [lexer]
