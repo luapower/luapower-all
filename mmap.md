@@ -2,6 +2,8 @@
 tagline: portable memory mapping
 ---
 
+<warn>Work in progress</warn>
+
 ## `local mmap = require'mmap'`
 
 Memory mapping API that can be used with Windows, Linux and OSX.

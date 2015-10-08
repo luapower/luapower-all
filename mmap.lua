@@ -185,8 +185,7 @@ if ffi.os == 'Windows' then
 			t.access:find'w' and PAGE_READWRITE or PAGE_READONLY,
 			t.access:find'x' and PAGE_EXECUTE or 0
 		) or PAGE_READWRITE
-		local size = assert(t.size, 'size missing')
-		local size = mmap.aligned_size(size)
+	 	local size = mmap.aligned_size(t.size or 0) --0 means whole file
 		local name = t.name
 		local h = CreateFileMapping(hfile, nil, access, size, name)
 		if not h then return end
@@ -203,7 +202,7 @@ if ffi.os == 'Windows' then
 			end
 			CloseHandle(h)
 		end
-		return {_h = h, addr = addr, size = size, free = free}
+		return {file = hfile, handle = h, addr = addr, size = size, free = free}
 	end
 
 	--mirroring ---------------------------------------------------------------
@@ -263,15 +262,17 @@ if ffi.os == 'Windows' then
 
 elseif ffi.os == 'Linux' or ffi.os == 'OSX' then
 
-	mmap.pagesize = C.getpagesize
-
 	if ffi.os == 'OSX' then
 		ffi.cdef'typedef int64_t off_t;'
 	else
 		ffi.cdef'typedef long int off_t;'
 	end
 
+	print(ffi.sizeof('off_t'))
+
 	ffi.cdef[[
+	int __getpagesize(void);
+
 	void* mmap(void *addr, size_t length, int prot, int flags, int fd, off_t offset);
 	int munmap(void *addr, size_t length);
 	int mprotect(void *addr, size_t len, int prot);
@@ -282,6 +283,8 @@ elseif ffi.os == 'Linux' or ffi.os == 'OSX' then
 	void unlink(char*);
 	void close(int fd);
 	]]
+
+	mmap.pagesize = C.__getpagesize
 
 	local PROT_READ  = 1
 	local PROT_WRITE = 2

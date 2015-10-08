@@ -2,6 +2,8 @@
 tagline: lock-free ring buffer
 ---
 
+<warn>Work in progress</warn>
+
 ## `local lfrb = require'lfrb'`
 
 Lock-free ring buffer. Maintains two indices which can be advanced

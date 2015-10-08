@@ -28,7 +28,7 @@ which can be read, `w` means property which can be set.
 ----------------------- -------- ----------------------------------------- -------------- ---------------------
 __field/property__		__irw__	__description__									__default__		__reference__
 anchors						irw		anchors												see below
-anc							ire		anchors (string form)							see below
+anc							irw		anchors (string form)							see below
 parent						irw		control's parent														Get/SetParent
 ----------------------- -------- ----------------------------------------- -------------- ---------------------
 </div>
