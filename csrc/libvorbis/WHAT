@@ -1,0 +1,2 @@
+libvorbis 1.3.5 from http://downloads.xiph.org/releases/vorbis/ (BSD License)
+requires: libogg
