@@ -62,14 +62,14 @@ end
 
 function ov:bitrate(i, instant)
 	local bitrate = instant and C.ov_bitrate_instant or C.ov_bitrate
-	return retpos(bitrate(self, i or 0))
+	return retpoz(bitrate(self, i or 0))
 end
 
 function ov:streams()
 	return retpoz(C.ov_streams(self))
 end
 
-function ov:seekable()
+function ov:isseekable()
 	return C.ov_seekable(self) ~= 0
 end
 
@@ -97,13 +97,48 @@ function ov:raw_tell(pos)  return retpoz(C.ov_raw_tell(self, pos)) end
 function ov:pcm_tell(pos)  return retpoz(C.ov_pcm_tell(self, pos)) end
 function ov:time_tell(pos) return retpoz(C.ov_time_tell(self, pos)) end
 function ov:info(link)     return ptr(C.ov_info(self, link or -1)) end
-function ov:comment()      return ptr(C.ov_comment(self, link or -1)) end
+function ov:comments(link)
+	local t = {}
+	local c = ptr(C.ov_comment(self, link or -1))
+	if c then
+		for i=1,c.comments do
+			t[i] = ffi.string(c.user_comments[i-1], c.comment_lengths[i-1])
+		end
+	end
+	t.vendor = c.vendor ~= nil and ffi.string(c.vendor) or nil
+	return t
+end
+
+function ov:print()
+	print('bitrate    : ' .. self:bitrate())
+	print('streams    : ' .. self:streams())
+	print('seekable   : ' .. tostring(self:isseekable()))
+	print('serial     : ' .. self:serialnumber())
+	print('raw_total  : ' .. self:raw_total())
+	print('pcm_total  : ' .. self:pcm_total())
+	print('time_total : ' .. self:time_total())
+	local t = self:info()
+	print('info       : ')
+	print('  version  : ' .. t.version)
+	print('  channels : ' .. t.channels)
+	print('  rate     : ' .. t.rate)
+	print('  bitrate_upper    : ' .. t.bitrate_upper)
+	print('  bitrate_nominal  : ' .. t.bitrate_nominal)
+	print('  bitrate_window   : ' .. t.bitrate_window)
+	print('  codec_setup      : ' .. (t.codec_setup ~= nil and ffi.string(t.codec_setup) or ''))
+	local t = self:comments()
+	print('comments   : ')
+	for i=1,#t do
+		print('  '..t[i])
+	end
+	print('  vendor   : '..t.vendor)
+end
 
 function ov:read_float(buf, maxsamples, bitstream)
 	return retpoz(C.ov_read_float(self, buf, maxsamples, bitstream))
 end
 
-function ov:read(buf, sz, wordsize, signed, bignendian, bitstream)
+function ov:read(buf, sz, wordsize, signed, bigendian, bitstream)
 	return retpoz(C.ov_read(self, buf, sz,
 		bigendian and 1 or 0,
 		wordsize or 2,

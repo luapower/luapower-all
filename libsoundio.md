@@ -74,8 +74,8 @@ __streams__
 `sin|sout:start()`                                start the stream
 `sin|sout:pause(t|f|)`                            pause/unpause the stream
 `sin|sout.device -> dev`                          weak back-reference to the device
-`sin|sout.format -> format`                       sample format as C.SoundIoFormat
-`sin|sout.sample_rate -> n`                       sample rate in frames per second
+`sin|sout.format <- format`                       sample format as C.SoundIoFormat (set before opening)
+`sin|sout.sample_rate <- n`                       sample rate in frames per second (set before opening)
 `sin|sout.layout -> layout`                       channel layout as C.SoundIoChannelLayout
 `sin|sout.software_latency -> seconds`            software latency in seconds
 `sin|sout.name`                                   stream/client/session name

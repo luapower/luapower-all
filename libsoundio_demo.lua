@@ -31,13 +31,12 @@ local dev = odev
 assert(not dev.probe_error, 'device probing error')
 
 local str = dev:stream()
+str.sample_rate = 44100
 str:open()
 assert(not str.layout_error, 'unable to set channel layout')
 
-local buf = str:buffer(0.1) --make a 0.1s buffer
+local buf = str:buffer() --make a 1s buffer
 str:clear_buffer()
-
-str:start()
 
 local pitch = 440
 local volume = 0.1
@@ -51,20 +50,71 @@ end
 local duration, interval = 1, 0.05
 print(string.format('Playing L=%dHz R=%dHz for %ds...', pitch, pitch * 2, duration))
 
-for i = 1, duration / interval do
-	local p, n = buf:write_buf()
-	if n > 0 then
-		print(string.format('latency: %-.2fs, empty: %3d%%',
-			str:latency(), n / buf:capacity() * 100))
-		for channel = 0, str.layout.channel_count-1 do
-			for i = 0, n-1 do
-				p[i][channel] = sample(i, channel)
+
+if false then
+
+	local vf = require'libvorbis_file'
+	local ffi = require'ffi'
+
+	local vf = vf.open{path = 'media/ogg/06 A Colloquial Dream.ogg'}
+
+	vf:print()
+
+	assert(str.layout.channel_count == 2)
+	assert(vf:info().channels == 2)
+	assert(vf:info().rate == str.sample_rate)
+
+	local sbuf = ffi.new'int16_t[4096]'
+
+	str:start()
+
+	while true do
+		local bn = vf:read(sbuf, ffi.sizeof(sbuf))
+		local fn = math.floor(bn/4)
+		if fn == 0 then break end
+		local j = 0
+		while fn > 0 do
+			local p, n = buf:write_buf()
+			if n > 0 then
+				local n = math.min(n, fn)
+				for channel = 0, 1 do
+					for i = 0, n-1 do
+						p[i][channel] = sbuf[(i+j) * 2 + channel] / (2^15-1)
+					end
+				end
+				fn = fn - n
+				j = j + n
+				buf:advance_write_ptr(n)
 			end
+			time.sleep(0.01)
 		end
-		buf:advance_write_ptr(n)
-		frame0 = frame0 + n
 	end
-	time.sleep(interval)
+
+	while buf:fill_count() > 0 or str:latency() > 0 do
+		print(str:latency())
+		time.sleep(0.1)
+	end
+
+else
+
+	str:start()
+
+	for i = 1, duration / interval do
+		local p, n = buf:write_buf()
+		if n > 0 then
+			print(string.format('latency: %-.2fs, empty: %3d%%',
+				str:latency(), n / buf:capacity() * 100))
+			for channel = 0, str.layout.channel_count-1 do
+				for i = 0, n-1 do
+					p[i][channel] = sample(i, channel)
+				end
+			end
+			buf:advance_write_ptr(n)
+			frame0 = frame0 + n
+		end
+		time.sleep(interval)
+	end
+
 end
 
 buf:free()

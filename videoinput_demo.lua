@@ -2,7 +2,6 @@
 local nw = require'nw'
 local vi = require'videoinput'
 local bitmap = require'bitmap'
-local box2d = require'box2d'
 
 local app = nw:app()
 local win = app:window{cw = 700, ch = 500, title = 'Press S to toggle session'}
