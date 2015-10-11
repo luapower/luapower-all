@@ -304,6 +304,8 @@ elseif ffi.os == 'Windows' then
 	function H.PTHREAD_COND_INITIALIZER(t)   t._ = GENERIC_INITIALIZER end
 	function H.PTHREAD_RWLOCK_INITIALIZER(t) t._ = GENERIC_INITIALIZER end
 
+else
+	error('platform not supported')
 end
 
 ffi.cdef[[

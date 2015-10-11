@@ -11,6 +11,9 @@ system otherwise).
 
 [winpthreads]: http://sourceforge.net/p/mingw-w64/mingw-w64/ci/master/tree/mingw-w64-libraries/winpthreads/
 
+__NOTE:__ pthread only works on a luajit binary that was compiled with
+`-pthread`. The [luajit] binary from luapower was compiled this way.
+
 ## API
 
 ----------------------------------------------- ----------------------------------
