@@ -17,7 +17,7 @@ __tables__
 `glue.keys(t[,sorted|cmp]) -> dt`                                  make a list of all the keys
 `glue.update(dt,t1,...) -> dt`                                     merge tables - overwrites keys
 `glue.merge(dt,t1,...) -> dt`                                      merge tables - no overwriting
-`glue.sortedpairs(t[,cmp]) -> iterator() -> k,v`                   like pairs() but in key order
+`glue.sortedpairs(t[,cmp]) -> iter() -> k,v`                       like pairs() but in key order
 `glue.attr(t,k1[,v])[k2] = v`                                      autofield pattern
 __lists__
 `glue.indexof(v, t) -> i`                                          scan array for value
@@ -26,7 +26,7 @@ __lists__
 `glue.shift(t,i,n) -> t`                                           shift list elements
 `glue.reverse(t) -> t`                                             reverse list in place
 __strings__
-`glue.gsplit(s,sep[,plain]) -> iterator() -> e[,captures...]`      split a string by a pattern
+`glue.gsplit(s,sep[,start[,plain]]) -> iter() -> e[,captures...]`  split a string by a pattern
 `glue.trim(s) -> s`                                                remove padding
 `glue.escape(s[,mode]) -> pat`                                     escape magic pattern characters
 `glue.tohex(s|n[,upper]) -> s`                                     string to hex
@@ -40,10 +40,10 @@ __metatables__
 `glue.inherit(t,parent) -> t`                                      set or clear inheritance
 `glue.autotable([t]) -> t`                                         autotable pattern
 __i/o__
-`glue.fileexists(file) -> true | false`                            check if a file exists and it's readable
-`glue.readfile(file[,format][,open]) -> s | nil, err`              read the contents of a file into a string
+`glue.canopen(filename[, mode]) -> filename | nil`                 check if a file exists and can be opened
+`glue.readfile(filename[,format][,open]) -> s | nil, err`          read the contents of a file into a string
 `glue.readpipe(cmd[,format][,open]) -> s | nil, err`               read the output of a command into a string
-`glue.writefile(file,s|t|read[,format])`                           write a string to a file
+`glue.writefile(filename,s|t|read[,format])`                       write a string to a file
 __errors__
 `glue.assert(v[,message[,format_args...]])`                        assert with error message formatting
 `glue.unprotect(ok,result,...) -> result,... | nil,result,...`     unprotect a protected call
@@ -210,7 +210,7 @@ glue.merge(t, defaults)
 
 ------------------------------------------------------------------------------
 
-### `glue.sortedpairs(t[,cmp]) -> iterator() -> k,v`
+### `glue.sortedpairs(t[,cmp]) -> iter() -> k,v`
 
 Like pairs() but in key order.
 
@@ -281,15 +281,17 @@ Reverse a list in-place and return the input arg.
 
 ## Strings
 
-### `glue.gsplit(s,sep[,plain]) -> iterator() -> e[,captures...]`
+### `glue.gsplit(s,sep[,start[,plain]]) -> iter() -> e[,captures...]`
 
-Split a string by a separator pattern (or plain string) and iterate over the elements.
+Split a string by a separator pattern (or plain string) and iterate over
+the elements.
 
   * if sep is "" return the entire string in one iteration
   * if s is "" return s in one iteration
-  * empty strings between separators are always returned, eg. `glue.gsplit(',', ',')` produces 2 empty strings
-  * captures are allowed in sep and they are returned after the element, except for the last element for
-    which they don't match (by definition).
+  * empty strings between separators are always returned,
+  eg. `glue.gsplit(',', ',')` produces 2 empty strings
+  * captures are allowed in sep and they are returned after the element,
+    except for the last element for which they don't match (by definition).
 
 #### Examples
 
@@ -472,13 +474,14 @@ t.a.b.c.d = 'hello'
 
 ## I/O
 
-### `glue.fileexists(file) -> true | false`
+### `glue.canopen(file[, mode]) -> filename | nil`
 
-Checks whether a file exists and it's available for reading.
+Checks whether a file exists and it's available for reading or writing.
+The `mode` arg is the same as for [io.open] and defaults to 'rb'.
 
 ------------------------------------------------------------------------------
 
-### `glue.readfile(file[,format][,open]) -> s | nil, err`
+### `glue.readfile(filename[,format][,open]) -> s | nil, err`
 
 Read the contents of a file into a string.
 
@@ -495,7 +498,7 @@ The options are the same as for `glue.readfile`.
 
 ------------------------------------------------------------------------------
 
-### `glue.writefile(file,s|t|read[,format])`
+### `glue.writefile(filename,s|t|read[,format])`
 
 Write the contents of a string, table or reader to a file.
 
@@ -770,7 +773,7 @@ glue.gsplit, glue.trim, glue.escape, glue.tohex, glue.fromhex,
 glue.collect,
 glue.pass, glue.memoize,
 glue.inherit, glue.autotable,
-glue.fileexists, glue.readfile, glue.readpipe, glue.writefile,
+glue.canopen, glue.readfile, glue.readpipe, glue.writefile,
 glue.assert, glue.unprotect, glue.pcall, glue.fpcall, glue.fcall,
 glue.autoload, glue.bin, glue.luapath, glue.cpath,
 glue.malloc, glue.free, glue.addr, glue.ptr

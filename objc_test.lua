@@ -132,19 +132,19 @@ function eyetest.bridgesupport(bsfile)
 		end
 		if loaded[name] then return end
 		loaded[name] = true
-		if glue.fileexists(path) then
+		if glue.canopen(path) then
 
 			if ffi.os == 'OSX' then
 
 				--load the dylib first (needed for function aliases)
 				local dpath = path:gsub('Resources/BridgeSupport/.*$', name)
-				if glue.fileexists(dpath) then
+				if glue.canopen(dpath) then
 					pcall(ffi.load, dpath, true)
 				end
 
 				--load the dylib with inlines first (needed for function aliases)
 				local dpath = path:gsub('bridgesupport$', 'dylib')
-				if glue.fileexists(dpath) then
+				if glue.canopen(dpath) then
 					pcall(ffi.load, dpath, true)
 				end
 			end

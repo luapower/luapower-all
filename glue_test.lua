@@ -118,7 +118,7 @@ local t = glue.autotable()
 t.a.b.c = 'x'
 assert(t.a.b.c == 'x')
 
-assert(glue.fileexists('glue.lua'))
+assert(glue.canopen('glue.lua'))
 assert(glue.readfile(glue.bin..'/glue.lua'):match'glue', 'glue')
 assert(glue.readfile(glue.bin..'/glue.lua'):match'glue', 'glue')
 

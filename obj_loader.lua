@@ -15,7 +15,7 @@ end
 
 local function load(file, use_file_cache)
 
-	if use_file_cache and glue.fileexists(file..'.vbo') then
+	if use_file_cache and glue.canopen(file..'.vbo') then
 		local buf, sz = stdio.readfile(file..'.vbo.tmp')
 		local vbo = {layout = 'vnt', data = buf, size = sz}
 		local buf, sz = read_binary_file(file..'.ibo.tmp')

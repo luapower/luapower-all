@@ -21,16 +21,17 @@ Can be used for:
 
 Create a memory map object. The `t` arg is a table with the fields:
 
-* `size`: minimum size of the segment (required); the actual size will
-be the next multiple of page size.
-* `file`: OS file handle or file descriptor (none); if not given,
-a temp file or the system's swap file will be used.
+* `path`: file name to open or create (none); if `path` (or `file`)
+is not given, the system's swap file will be mapped instead.
+* `file`: OS file handle to use instead of `path`.
+* `size`: the minimum size of the memory segment.
+	* the actual size will be the next multiple of system page size.
+	* must be > 0 or the call fails.
+	* if not given, the current file size is used.
 * `offset`: offset in the file (0)
-* `name`: name of the mempry map; using the same name in two processes
-gives access to the same memory.
-* `mirrors`: number of mirrors (0); mirrors map the same memory block
-in subsequent address spaces.
-* `addr`: address hint.
+* `name`: name of the mempry map
+	* using the same name in two processes gives access to the same memory.
+* `addr`: address to use (none).
 
 Returns an object (a table) with the fields:
 

@@ -30,7 +30,7 @@ player.active_tab = nil
 player.config = nil
 
 function player:load_config(filename)
-	if glue.fileexists(filename) then
+	if glue.canopen(filename) then
 		return assert(loadfile(filename))()
 	end
 end
@@ -60,7 +60,7 @@ function player:new_tab(filename, i)
 
 	local tabname = self:tabname(filename)
 
-	local text = filename and glue.fileexists(filename) and glue.readfile(filename) or ''
+	local text = filename and glue.canopen(filename) and glue.readfile(filename) or ''
 
 	local ext = filename:match'%.([^%.]+)$'
 	local config
@@ -173,10 +173,10 @@ end
 function player:load_state()
 	assert(#self.tabs == 0)
 	local filename = self.session_file
-	if glue.fileexists(filename) then
+	if glue.canopen(filename) then
 		local state = assert(loadfile(filename))()
 		for i,tab_state in ipairs(state.tabs) do
-			if glue.fileexists(tab_state.filename) then
+			if glue.canopen(tab_state.filename, 'w') then
 				local editor = self:new_tab(tab_state.filename)
 				editor:load_state(tab_state.editor)
 			end

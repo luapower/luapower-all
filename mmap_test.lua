@@ -1,2 +1,0 @@
-local mmap = require'mmap'
-

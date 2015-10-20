@@ -1,11 +1,11 @@
 
---memory mapping API for Windows, Linux and OSX
+--memory mapping API Windows, Linux and OSX
 --Written by Cosmin Apreutesei. Public Domain.
 
 local ffi = require'ffi'
 local bit = require'bit'
-
-local mmap = {}
+local C = ffi.C
+local mmap = {C = C}
 
 function mmap.aligned_size(size)
 	local pagesize = mmap.pagesize()
@@ -16,55 +16,62 @@ end
 
 if ffi.os == 'Windows' then
 
+	--winapi types
+
 	ffi.cdef('typedef '..(ffi.abi'64bit' and 'int64_t' or 'int32_t')..' ULONG_PTR;')
 
 	ffi.cdef[[
-	typedef void*     HANDLE;
-	typedef int16_t   WORD;
-	typedef int32_t   DWORD;
-	typedef int       BOOL;
-	typedef ULONG_PTR SIZE_T;
+	typedef void*          HANDLE;
+	typedef int16_t        WORD;
+	typedef int32_t        DWORD, *LPDWORD;
+	typedef uint32_t       UINT;
+	typedef int            BOOL;
+	typedef ULONG_PTR      SIZE_T;
+	typedef void           VOID, *LPVOID;
+	typedef const void*    LPCVOID;
+	typedef char*          LPSTR;
+	typedef const char*    LPCSTR;
+	typedef wchar_t*       LPWSTR;
+	typedef const wchar_t* LPCWSTR;
+	]]
 
-	typedef struct {
-		DWORD  nLength;
-		void*  lpSecurityDescriptor;
-		BOOL   bInheritHandle;
-	} *LPSECURITY_ATTRIBUTES;
+	--error reporting
 
-	HANDLE CreateFileMappingW(
-		HANDLE hFile,
-		LPSECURITY_ATTRIBUTES lpFileMappingAttributes,
-		DWORD flProtect,
-		DWORD dwMaximumSizeHigh,
-		DWORD dwMaximumSizeLow,
-		const wchar_t *lpName
+	ffi.cdef[[
+	DWORD GetLastError(void);
+
+	DWORD FormatMessageA(
+		DWORD dwFlags,
+		LPCVOID lpSource,
+		DWORD dwMessageId,
+		DWORD dwLanguageId,
+		LPSTR lpBuffer,
+		DWORD nSize,
+		va_list *Arguments
 	);
+	]]
 
-	char* MapViewOfFileEx(
-		HANDLE hFileMappingObject,
-		DWORD dwDesiredAccess,
-		DWORD dwFileOffsetHigh,
-		DWORD dwFileOffsetLow,
-		SIZE_T dwNumberOfBytesToMap,
-		void* lpBaseAddress
-	);
+	local FORMAT_MESSAGE_FROM_SYSTEM = 0x00001000
 
-	BOOL UnmapViewOfFile(const void* lpBaseAddress);
+	local function reterr(msgid)
+		local msgid = msgid or C.GetLastError()
+		local bufsize = 256
+		local buf = ffi.new('char[?]', bufsize)
+		local sz = C.FormatMessageA(FORMAT_MESSAGE_FROM_SYSTEM, nil, msgid, 0, buf, bufsize, nil)
+		if sz == 0 then return 'Unknown Error' end
+		return nil, ffi.string(buf, sz), msgid
+	end
 
-	BOOL FlushViewOfFile(
-		const void* lpBaseAddress,
-		SIZE_T dwNumberOfBytesToFlush
-	);
+	--pagesize
 
-	BOOL CloseHandle (HANDLE hObject);
-
+	ffi.cdef[[
 	typedef struct {
 		WORD wProcessorArchitecture;
 		WORD wReserved;
 		DWORD dwPageSize;
-		void* lpMinimumApplicationAddress;
-		void* lpMaximumApplicationAddress;
-		DWORD* dwActiveProcessorMask;
+		LPVOID lpMinimumApplicationAddress;
+		LPVOID lpMaximumApplicationAddress;
+		LPDWORD dwActiveProcessorMask;
 		DWORD dwNumberOfProcessors;
 		DWORD dwProcessorType;
 		DWORD dwAllocationGranularity;
@@ -72,11 +79,109 @@ if ffi.os == 'Windows' then
 		WORD wProcessorRevision;
 	} SYSTEM_INFO, *LPSYSTEM_INFO;
 
-	void GetSystemInfo(LPSYSTEM_INFO lpSystemInfo);
-	DWORD GetLastError(void);
+	VOID GetSystemInfo(LPSYSTEM_INFO lpSystemInfo);
+	]]
+
+	local pagesize
+	function mmap.pagesize()
+		if not pagesize then
+			local sysinfo = ffi.new'SYSTEM_INFO'
+			C.GetSystemInfo(sysinfo)
+			pagesize = sysinfo.dwAllocationGranularity
+		end
+		return pagesize
+	end
+
+	--utf8 to wide char conversion
+
+	ffi.cdef[[
+	int MultiByteToWideChar(
+		  UINT     CodePage,
+		  DWORD    dwFlags,
+		  LPCSTR   lpMultiByteStr,
+		  int      cbMultiByte,
+		  LPWSTR   lpWideCharStr,
+		  int      cchWideChar);
+	]]
+
+	local CP_UTF8 = 65001
+	local ERROR_INSUFFICIENT_BUFFER = 122
+
+	function wcs(s)
+		local sz = C.MultiByteToWideChar(CP_UTF8, 0, s, #s + 1, nil, 0)
+		local buf = ffi.new('wchar_t[?]', sz)
+		C.MultiByteToWideChar(CP_UTF8, 0, s, #s + 1, buf, sz)
+		return buf
+	end
+
+	--file opening and file mapping
+
+	ffi.cdef[[
+	HANDLE mmap_CreateFileW(
+		LPCWSTR lpFileName,
+		DWORD dwDesiredAccess,
+		DWORD dwShareMode,
+		LPVOID lpSecurityAttributes,
+		DWORD dwCreationDisposition,
+		DWORD dwFlagsAndAttributes,
+		HANDLE hTemplateFile
+	) asm("CreateFileW");
+
+	BOOL mmap_GetFileSizeEx(
+	  HANDLE         hFile,
+	  int64_t*       lpFileSize
+	) asm("GetFileSizeEx");
+
+	HANDLE mmap_CreateFileMappingW(
+		HANDLE hFile,
+		LPVOID lpFileMappingAttributes,
+		DWORD flProtect,
+		DWORD dwMaximumSizeHigh,
+		DWORD dwMaximumSizeLow,
+		const wchar_t *lpName
+	) asm("CreateFileMappingW");
+
+	void* MapViewOfFileEx(
+		HANDLE hFileMappingObject,
+		DWORD dwDesiredAccess,
+		DWORD dwFileOffsetHigh,
+		DWORD dwFileOffsetLow,
+		SIZE_T dwNumberOfBytesToMap,
+		LPVOID lpBaseAddress
+	);
+	BOOL UnmapViewOfFile(LPCVOID lpBaseAddress);
+	BOOL FlushViewOfFile(LPCVOID lpBaseAddress, SIZE_T dwNumberOfBytesToFlush);
+	BOOL FlushFileBuffers(HANDLE hFile);
+	BOOL CloseHandle(HANDLE hObject);
+
+	BOOL mmap_SetFilePointerEx(
+	  HANDLE         hFile,
+	  int64_t        liDistanceToMove,
+	  int64_t*       lpNewFilePointer,
+	  DWORD          dwMoveMethod
+	) asm("SetFilePointerEx");
+
+	BOOL SetEndOfFile(HANDLE hFile);
 	]]
 
 	local INVALID_HANDLE_VALUE = ffi.cast('HANDLE', -1)
+
+	--CreateFile dwDesiredAccess flags
+	local GENERIC_READ    = 0x80000000
+	local GENERIC_WRITE   = 0x40000000
+	local GENERIC_EXECUTE = 0x20000000
+
+	--CreateFile dwShareMode flags
+	local FILE_SHARE_READ        = 0x00000001
+	local FILE_SHARE_WRITE       = 0x00000002
+	local FILE_SHARE_DELETE      = 0x00000004
+
+	--CreateFile dwCreationDisposition flags
+	local CREATE_NEW        = 1
+	local CREATE_ALWAYS     = 2
+	local OPEN_EXISTING     = 3
+	local OPEN_ALWAYS       = 4
+	local TRUNCATE_EXISTING = 5
 
 	local STANDARD_RIGHTS_REQUIRED = 0x000F0000
 	local STANDARD_RIGHTS_ALL      = 0x001F0000
@@ -124,140 +229,88 @@ if ffi.os == 'Windows' then
 		return m.hi, m.lo
 	end
 
-	local function reth(h)
-		return h ~= nil and h or nil
-	end
-
-	local function retnz(ret)
-		return ret ~= 0
-	end
-
-	local function checknz(ret)
-		if ret ~= 0 then return end
-		error('error', 2)
-	end
-
-	local function wcs(s)
-		--TODO: utf-8 to wcs conversion
-		return s
-	end
-
-	local C = ffi.C
-
-	local pagesize
-	function mmap.pagesize()
-		if not pagesize then
-			local sysinfo = ffi.new'SYSTEM_INFO'
-			C.GetSystemInfo(sysinfo)
-			pagesize = sysinfo.dwAllocationGranularity
-		end
-		return pagesize
-	end
-
-	local function CreateFileMapping(hfile, secattrs, protect, maxsize, name)
-		hfile = hfile or INVALID_HANDLE_VALUE
-		local mhi, mlo = split_uint64(maxsize)
-		return reth(C.CreateFileMappingW(
-			hfile, secattrs, protect, mhi, mlo, wcs(name)))
-	end
-
-	local function MapViewOfFile(hfilemap, access, offset, sz, baseaddr)
-		local ohi, olo = split_uint64(offset)
-		return reth(C.MapViewOfFileEx(hfilemap, access, ohi, olo, sz, baseaddr))
-	end
-
-	local function UnmapViewOfFile(baseaddr)
-		checknz(C.UnmapViewOfFile(baseaddr))
-	end
-
-	local function FlushViewOfFile(baseaddr, sz)
-		return retnz(C.FlushViewOfFile(baseaddr, sz))
-	end
-
-	local function CloseHandle(h)
-		checknz(C.CloseHandle(h))
-	end
-
 	function mmap.map(t)
-		assert(t, 'options table expected')
-		local hfile = t.file or INVALID_HANDLE_VALUE
-		local access = t.access and bit.bor(
-			t.access:find'w' and PAGE_READWRITE or PAGE_READONLY,
-			t.access:find'x' and PAGE_EXECUTE or 0
-		) or PAGE_READWRITE
-	 	local size = mmap.aligned_size(t.size or 0) --0 means whole file
-		local name = t.name
-		local h = CreateFileMapping(hfile, nil, access, size, name)
-		if not h then return end
-		local access = FILE_MAP_ALL_ACCESS
+		assert(type(t) == 'table', 'options table expected')
+
+		local maxsize = mmap.aligned_size(t.size or 0) --0 means whole file
+		local access = t.access or ''
+		local allow_write = access:find'w'
+		local allow_exec = access:find'x'
+
+		local hfile, own_hfile
+		if t.file then
+			hfile = t.file
+		elseif t.path then
+			local access = bit.bor(
+				GENERIC_READ,
+				allow_write and GENERIC_WRITE or 0,
+				allow_exec and GENERIC_EXECUTE or 0)
+			local sharemode = bit.bor(FILE_SHARE_READ, FILE_SHARE_WRITE, FILE_SHARE_DELETE)
+			local creationdisp = OPEN_ALWAYS
+			local flagsandattrs = 0
+			local h = C.mmap_CreateFileW(wcs(t.path), access, sharemode, nil, creationdisp, flagsandattrs, nil)
+			if h == INVALID_HANDLE_VALUE then
+				return reterr()
+			end
+			hfile = h
+			own_hfile = true
+		else
+			hfile = INVALID_HANDLE_VALUE
+		end
+
+		local protect = bit.bor(
+			 allow_exec and (allow_write and PAGE_EXECUTE_READWRITE or PAGE_EXECUTE_READ)
+			 or (allow_write and PAGE_READWRITE or PAGE_READONLY))
+	 	local mhi, mlo = split_uint64(maxsize)
+		local name = t.name and wcs('Local\\'..t.name) or nil
+		local hfilemap = C.mmap_CreateFileMappingW(hfile, nil, protect, mhi, mlo, name)
+		if hfilemap == nil then
+			local err = C.GetLastError()
+			if own_hfile then
+				C.CloseHandle(hfile)
+			end
+			return reterr(err)
+		end
+
+		--[[
+		local size = t.size
+		if not size then
+			if hfile ~= INVALID_HANDLE_VALUE then
+				local psz = 'int64_t[1]'
+				assert(C.mmap_GetFileSizeEx(hfile, psz) == 0)
+				size = tonumber(psz[0])
+			end
+		end
+		]]
+
+		local access = bit.bor(
+			STANDARD_RIGHTS_REQUIRED,
+			SECTION_QUERY,
+			FILE_MAP_READ,
+			allow_write and FILE_MAP_WRITE or 0,
+			--allow_append and SECTION_EXTEND_SIZE  or 0,
+			allow_exec and SECTION_MAP_EXECUTE or 0)
 		local times = (t.mirrors or 0) + 1
-		local addr = MapViewOfFile(h, access, t.offset or 0, size, t.addr or 0)
-		if not addr then
-			CloseHandle(h)
-			return
+		local offset = t.offset or 0
+		local ohi, olo = split_uint64(offset)
+		local baseaddr = t.addr or nil
+		local addr = C.MapViewOfFileEx(hfilemap, access, ohi, olo, maxsize, baseaddr)
+		if addr == nil then
+			local err = C.GetLastError()
+			C.CloseHandle(hfilemap)
+			if own_hfile then
+				C.CloseHandle(hfile)
+			end
+			return reterr(err)
 		end
 		local function free()
-			for i = 0, times-1 do
-				UnmapViewOfFile(addr + (size * i))
+			C.UnmapViewOfFile(addr)
+			C.CloseHandle(hfilemap)
+			if own_hfile then
+				C.CloseHandle(hfile)
 			end
-			CloseHandle(h)
 		end
-		return {file = hfile, handle = h, addr = addr, size = size, free = free}
-	end
-
-	--mirroring ---------------------------------------------------------------
-
-	function mmap.mirrors(size, times)
-
-		local times = times or 2
-		local size = mmap.aligned_size(size)
-
-		local hMapFile = CreateFileMapping(INVALID_HANDLE_VALUE, nil, PAGE_READWRITE, size * times)
-		if not hMapFile then return end
-
-		local addr
-		while true do
-			::continue::
-			--find a big enough address space
-			addr = MapViewOfFile(hMapFile, FILE_MAP_ALL_ACCESS, 0, size * times)
-			if not addr then
-				CloseHandle(hMapFile)
-				return
-			end
-			--unmap it, then try to map it again in pieces
-			UnmapViewOfFile(addr)
-			--map it in pieces
-			for i = 0, times-1 do
-				local addr1 = addr + (size * i)
-				local addr2 = MapViewOfFile(hMapFile, FILE_MAP_ALL_ACCESS, 0, size, addr1)
-				if addr2 ~= addr1 then
-					if C.GetLastError() == ERROR_INVALID_ADDRESS then
-						--unmap current pieces and try again
-						if addr2 then
-							UnmapViewOfFile(addr2)
-						end
-						for i = 0, i-1 do
-							UnmapViewOfFile(addr + (size * i))
-						end
-						goto continue
-					end
-					CloseHandle(hMapFile)
-					return
-				end
-			end
-			break
-		end
-
-		local function free()
-			for i = 0, times-1 do
-				UnmapViewOfFile(addr + (size * i))
-			end
-			CloseHandle(hMapFile)
-		end
-
-		ffi.gc(addr, free)
-
-		return addr, size, free
+		return {file = hfile, handle = hfilemap, addr = addr, size = maxsize, free = free}
 	end
 
 elseif ffi.os == 'Linux' or ffi.os == 'OSX' then
@@ -267,8 +320,6 @@ elseif ffi.os == 'Linux' or ffi.os == 'OSX' then
 	else
 		ffi.cdef'typedef long int off_t;'
 	end
-
-	print(ffi.sizeof('off_t'))
 
 	ffi.cdef[[
 	int __getpagesize(void);
@@ -399,22 +450,125 @@ elseif ffi.os == 'Linux' or ffi.os == 'OSX' then
 
 end
 
+function mmap.mirrors(size, times)
+
+	local times = times or 2
+	local size = mmap.aligned_size(size)
+
+	local map, errcode, errmsg = mmap.map{size = size * times}
+	if not map then return nil, errcode, errmsg end
+
+	local addr
+	while true do
+		::continue::
+		--find a big enough address space
+		addr = MapViewOfFile(hMapFile, FILE_MAP_ALL_ACCESS, 0, size * times)
+		if not addr then
+			CloseHandle(hMapFile)
+			return
+		end
+		--unmap it, then try to map it again in pieces
+		UnmapViewOfFile(addr)
+		--map it in pieces
+		for i = 0, times-1 do
+			local addr1 = addr + (size * i)
+			local addr2 = MapViewOfFile(hMapFile, FILE_MAP_ALL_ACCESS, 0, size, addr1)
+			if addr2 ~= addr1 then
+				if C.GetLastError() == ERROR_INVALID_ADDRESS then
+					--unmap current pieces and try again
+					if addr2 then
+						UnmapViewOfFile(addr2)
+					end
+					for i = 0, i-1 do
+						UnmapViewOfFile(addr + (size * i))
+					end
+					goto continue
+				end
+				CloseHandle(hMapFile)
+				return
+			end
+		end
+		break
+	end
+
+	local function free()
+		for i = 0, times-1 do
+			UnmapViewOfFile(addr + (size * i))
+		end
+		CloseHandle(hMapFile)
+	end
+
+	ffi.gc(addr, free)
+
+	return addr, size, free
+end
+
+
 --demo
 
 if not ... then
-	for i = 1, 1000 do
-		local size = 2^16
-		local times = 50
-		local addr, n, free = mmap.mirrors(size, times)
-		print(i, addr, n)
-		assert(addr)
-		local p = ffi.cast('char*', addr)
-		p[0] = 123
-		for i = 1, times-1 do
-			assert(p[i*size] == 123)
+
+	local function map_swap()
+		local map = assert(mmap.map{access = 'w', size = 1000})
+		print(map.addr, map.size)
+		local p = ffi.cast('int32_t*', map.addr)
+		for i = 0, map.size/4-1 do
+			p[i] = i
 		end
-		free()
+		for i = 0, map.size/4-1 do
+			assert(p[i] == i)
+		end
+		map:free()
 	end
+
+	local function map_file_readonly()
+		local map = assert(mmap.map{path = 'mmap.lua'})
+		print(map.addr, map.size)
+		assert(ffi.string(map.addr, 20):find'--memory mapping')
+		map:free()
+	end
+
+	local function map_file_exec()
+		local map = assert(mmap.map{path = 'bin/mingw64/luajit.exe', access = 'x'})
+		print(map.addr, map.size)
+		assert(ffi.string(map.addr, 2) == 'MZ')
+		map:free()
+	end
+
+	local function map_file_write()
+		local map = assert(mmap.map{path = 'mmap.tmp', size = 1000})
+		print(map.addr, map.size)
+		local p = ffi.cast('int32_t*', map.addr)
+		for i = 0, map.size/4-1 do
+			p[i] = i
+		end
+		for i = 0, map.size/4-1 do
+			--assert(p[i] == i)
+		end
+		map:free()
+	end
+
+	local function mirror()
+		for i = 1, 1000 do
+			local size = 2^16
+			local times = 50
+			local addr, n, free = mmap.mirrors(size, times)
+			print(i, addr, n)
+			assert(addr)
+			local p = ffi.cast('char*', addr)
+			p[0] = 123
+			for i = 1, times-1 do
+				assert(p[i*size] == 123)
+			end
+			free()
+		end
+	end
+
+	map_swap()
+	map_file_readonly()
+	map_file_exec()
+	map_file_write()
+
 end
 
 return mmap

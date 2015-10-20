@@ -326,12 +326,14 @@ function autotable(t)
 end
 glue.autotable = autotable
 
---check if a file exists and it's available for reading in binary mode.
-function glue.fileexists(name)
-	local f = io.open(name, 'rb')
+--check if a file exists and can be opened for reading or writing.
+function glue.canopen(name, mode)
+	local f = io.open(name, mode or 'rb')
 	if f then f:close() end
 	return f ~= nil and name or nil
 end
+
+glue.fileexists = glue.canopen --for backwards compat.
 
 --read a file into a string (in binary mode by default).
 function glue.readfile(name, mode, open)

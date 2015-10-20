@@ -1036,7 +1036,7 @@ end)
 what_tags = memoize_package(function(package)
 	if not csrc_dir(package) then return end
 	local what_file = powerpath(csrc_dir(package) .. '/WHAT')
-	return glue.fileexists(what_file) and parse_what_file(what_file)
+	return glue.canopen(what_file) and parse_what_file(what_file)
 end)
 
 local has_luac_modules = memoize_package(function(package)
@@ -1202,7 +1202,7 @@ end
 function load_db()
 	if db then return end
 	local dbfile = dbfile()
-	db = glue.fileexists(dbfile) and assert(loadfile(dbfile))() or {}
+	db = glue.canopen(dbfile) and assert(loadfile(dbfile))() or {}
 end
 
 function unload_db()
