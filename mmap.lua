@@ -14,6 +14,27 @@ function mmap.aligned_size(size)
 	return (pagecount + (pagecount < fpagecount and 1 or 0)) * pagesize
 end
 
+local function parseopt(t)
+	assert(type(t) == 'table', 'options table expected')
+
+	local access = t.access or ''
+	local access_write = access:find'w'
+	local access_copy = access:find'c'
+	local access_exec = access:find'x'
+	local size = t.size
+	local offset = t.offset or 0
+
+	assert(not (access_write and access_copy),
+		'w and c access flags are mutually exclusive')
+	assert(t.fileno or t.path or t.name or t.size, 'size expected when mapping the pagefile')
+	assert(not (t.fileno and t.path), 'fileno and path are mutually exclusive')
+	assert(not size or size > 0, 'size must be > 0')
+	assert(offset >= 0, 'offset must be >= 0')
+	assert(offset == mmap.aligned_size(offset), 'offset not aligned to page boundaries')
+
+	return size, offset, access_write, access_copy, access_exec
+end
+
 if ffi.os == 'Windows' then
 
 	--winapi types
@@ -56,19 +77,21 @@ if ffi.os == 'Windows' then
 	local ERROR_FILE_NOT_FOUND     = 0x0002
 	local ERROR_NOT_ENOUGH_MEMORY  = 0x0008
 	local ERROR_INVALID_PARAMETER  = 0x0057
+	local ERROR_DISK_FULL          = 0x0070
 	local ERROR_INVALID_ADDRESS    = 0x01E7
 	local ERROR_FILE_INVALID       = 0x03ee
 	local ERROR_COMMITMENT_LIMIT   = 0x05af
-	local ERROR_DISK_FULL          = 0x0070
+	local ERROR_MAPPED_ALIGNMENT   = 0x046c
 
 	local errcodes = {
 		[ERROR_FILE_NOT_FOUND] = 'not_found',
 		[ERROR_NOT_ENOUGH_MEMORY] = 'file_too_short', --readonly file too short
 		[ERROR_INVALID_PARAMETER] = 'out_of_mem', --size too large for available memory
+		[ERROR_DISK_FULL] = 'disk_full',
 		[ERROR_COMMITMENT_LIMIT] = 'file_too_short', --swapfile too short
 		[ERROR_FILE_INVALID] = 'file_too_short', --file has zero size
 		[ERROR_INVALID_ADDRESS] = 'invalid_address',
-		[ERROR_DISK_FULL] = 'disk_full',
+		[ERROR_MAPPED_ALIGNMENT] = 'invalid_offset', --offset not aligned
 	}
 
 	local function reterr(msgid)
@@ -220,14 +243,14 @@ if ffi.os == 'Windows' then
 	local SECTION_MAP_WRITE            = 0x0002
 	local SECTION_MAP_READ             = 0x0004
 	local SECTION_MAP_EXECUTE          = 0x0008
-	local SECTION_EXTEND_SIZE          = 0x0010
-	local SECTION_MAP_EXECUTE_EXPLICIT = 0x0020
+	--local SECTION_EXTEND_SIZE          = 0x0010
+	--local SECTION_MAP_EXECUTE_EXPLICIT = 0x0020
 
 	local FILE_MAP_WRITE      = SECTION_MAP_WRITE
 	local FILE_MAP_READ       = SECTION_MAP_READ
 	local FILE_MAP_COPY       = 0x00000001
-	local FILE_MAP_RESERVE    = 0x80000000
-	local FILE_MAP_EXECUTE    = SECTION_MAP_EXECUTE_EXPLICIT --XP SP2+
+	--local FILE_MAP_RESERVE    = 0x80000000
+	--local FILE_MAP_EXECUTE    = SECTION_MAP_EXECUTE_EXPLICIT --XP SP2+
 
 	local m = ffi.new(ffi.typeof[[
 		union {
@@ -241,22 +264,7 @@ if ffi.os == 'Windows' then
 	end
 
 	function mmap.map(t)
-		assert(type(t) == 'table', 'options table expected')
-
-		local size = t.size
-		local access = t.access or ''
-		local access_write = access:find'w'
-		local access_copy = access:find'c'
-		local access_exec = access:find'x'
-
-		assert(not (access_write and access_copy),
-			'w and c access flags are mutually exclusive')
-		if not t.fileno and not t.path then
-			assert('size expected when mapping the pagefile')
-		end
-		if t.size then
-			assert(t.size > 0, 'size must be > 0 if given')
-		end
+		local size, offset, access_write, access_copy, access_exec = parseopt(t)
 
 		local hfile, own_hfile
 		if t.fileno then
@@ -277,8 +285,8 @@ if ffi.os == 'Windows' then
 			own_hfile = true
 		end
 
-		--we need to flush the buffers before mapping otherwise we won't see
-		--the current view of the file (Windows).
+		--flush the buffers before mapping otherwise we won't see the current
+		--view of the file (Windows).
 		if hfile and not own_hfile then
 			local ok = C.FlushFileBuffers(hfile) == 1
 			if not ok then return reterr() end
@@ -308,7 +316,6 @@ if ffi.os == 'Windows' then
 			access_copy and FILE_MAP_COPY or 0,
 			access_exec and SECTION_MAP_EXECUTE or 0)
 		local times = (t.mirrors or 0) + 1
-		local offset = t.offset or 0
 		local ohi, olo = split_uint64(offset)
 		local baseaddr = t.addr or nil
 		local addr = C.MapViewOfFileEx(hfilemap, access, ohi, olo, size or 0, baseaddr)
@@ -325,8 +332,8 @@ if ffi.os == 'Windows' then
 			close_file()
 		end
 
-		local function flush(addr, sz)
-			local ok = C.FlushViewOfFile(addr, sz) == 1
+		local function flush(self, addr, sz)
+			local ok = C.FlushViewOfFile(addr or self.addr, sz or 0) == 1
 			if not ok then reterr() end
 			return true
 		end
@@ -378,8 +385,9 @@ elseif ffi.os == 'Linux' or ffi.os == 'OSX' then
 	local MAP_ANON = ffi.os == 'Linux' and 0x20 or 0x1000
 
 	function mmap.map(t)
-		assert(t, 'options table expected')
-		local fd = t.file
+		local size, offset, access_write, access_copy, access_exec = parseopt(t)
+
+		local fd = t.fileno
 
 		if t.name then
 			local shm_path = '/dev/shm/XXXXXX'
@@ -508,7 +516,8 @@ function mmap.mirror(t)
 	local map, errmsg, errcode = mmap.map{
 		path = t.path, fileno = t.fileno,
 		size = size * times,
-		access = access}
+		access = access,
+		addr = t.addr}
 	if not map then return nil, errmsg, errcode end
 
 	--now free it so we can allocate it again in chunks all pointing at
@@ -639,9 +648,51 @@ if not ... then
 		assert(not map and errcode == 'disk_full')
 	end
 
+	local function map_file_write_same_name()
+		do return end
+		local map1 = assert(mmap.map{name = 'mmap_test', path = 'mmap.tmp', access = 'w', size = 1000})
+		local map2 = assert(mmap.map{name = 'mmap_test', path = 'mmap.tmp', access = 'w', size = 256})
+		assert(map1.addr ~= map2.addr)
+		for i = 0, 255 do
+			ffi.cast('char*', map1.addr)[0] = i
+		end
+		map1:flush()
+		map2:flush()
+		for i = 0, 255 do
+			assert(ffi.cast('char*', map2.addr)[0] == i)
+		end
+		map1:free()
+		map2:free()
+	end
+
+	local function map_file_write_offset()
+		local path = 'mmap-offset.tmp'
+		local offset = mmap.pagesize()
+		local map = assert(mmap.map{path = path, size = offset * 2, offset = 0, access = 'w'})
+		print(map.addr, map.size)
+		local p = ffi.cast('char*', map.addr)
+		p[offset + 0] = 123
+		p[offset + 1] = -123
+		map:free()
+		local map = assert(mmap.map{path = path, offset = offset, access = 'w'})
+		print(map.addr, map.size)
+		local p = ffi.cast('char*', map.addr)
+		assert(p[0] == 123)
+		assert(p[1] == -123)
+		map:free()
+	end
+
+	local function map_file_invalid_offset()
+		--TODO
+		do return end
+		local offset = mmap.pagesize()
+		local map = assert(mmap.map{path = 'mmap-invalid-offset.tmp', size = offset * 2, offset = offset, access = 'w'})
+		map:free()
+	end
+
 	local function map_file_mirror()
 		local times = 50
-		local map = assert(mmap.mirror{path = 'mmap.tmp', times = times})
+		local map = assert(mmap.mirror{path = 'mmap-mirror.tmp', times = times})
 		print(map.addr, map.size)
 		local addr = map.addr
 		local p = ffi.cast('char*', addr)
@@ -664,6 +715,9 @@ if not ... then
 	map_file_write()
 	map_file_copy_on_write()
 	map_file_write_disk_full()
+	map_file_write_same_name()
+	map_file_write_offset()
+	map_file_invalid_offset()
 	map_file_mirror()
 
 end
