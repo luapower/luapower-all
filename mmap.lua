@@ -14,23 +14,31 @@ function mmap.aligned_size(size)
 	return (pagecount + (pagecount < fpagecount and 1 or 0)) * pagesize
 end
 
+local function getfiletype(file)
+	if type(file) == 'string' then
+		return 'path'
+	elseif io.type(file) == 'file' then
+		return 'file'
+	elseif file then
+		return 'fileno'
+	else
+		error('file missing', 2)
+	end
+end
+
 local function parseargs(t,...)
-	local path, fileno, access, size, offset, addr, name
+	local file, filetype, access, size, offset, addr, name
 
 	--dispatch
 	if type(t) == 'table' then
-		path, fileno, access, size, offset, addr, name =
-			t.path, t.fileno, t.access, t.size, t.offset, t.addr, t.name
+		file, access, size, offset, addr, name =
+			t.file, t.access, t.size, t.offset, t.addr, t.name
 	else
-		if type(t) == 'string' then
-			path = t
-		else
-			fileno = t
-		end
-		access, size, offset, addr, name = ...
+		file, access, size, offset, addr, name = t, ...
 	end
 
 	--apply defaults/convert
+	filetype = file and getfiletype(file)
 	access = access or ''
 	offset = offset or 0
 	addr = addr and ffi.cast('void*', addr)
@@ -43,17 +51,15 @@ local function parseargs(t,...)
 	--check
 	assert(not (access_write and access_copy),
 		'w and c access flags are mutually exclusive')
-	assert(fileno or path or name or size,
+	assert(file or name or size,
 		'size expected when mapping the pagefile')
-	assert(not (fileno and path),
-		'fileno and path are mutually exclusive')
 	assert(not size or size > 0, 'size must be > 0')
 	assert(offset >= 0, 'offset must be >= 0')
 	assert(offset == mmap.aligned_size(offset),
 		'offset not aligned to page boundaries')
 	assert(not addr or addr ~= nil, 'addr can\'t be zero')
 
-	return path, fileno, access_write, access_copy, access_exec, size, offset, addr, name
+	return file, filetype, access_write, access_copy, access_exec, size, offset, addr, name
 end
 
 if ffi.os == 'Windows' then
@@ -161,12 +167,12 @@ if ffi.os == 'Windows' then
 
 	ffi.cdef[[
 	int MultiByteToWideChar(
-		  UINT     CodePage,
-		  DWORD    dwFlags,
-		  LPCSTR   lpMultiByteStr,
-		  int      cbMultiByte,
-		  LPWSTR   lpWideCharStr,
-		  int      cchWideChar);
+		UINT CodePage,
+		DWORD dwFlags,
+		LPCSTR lpMultiByteStr,
+		int cbMultiByte,
+		LPWSTR lpWideCharStr,
+		int cchWideChar);
 	]]
 
 	local CP_UTF8 = 65001
@@ -181,19 +187,23 @@ if ffi.os == 'Windows' then
 	--file opening and file mapping
 
 	ffi.cdef[[
+	typedef struct FILE FILE;
+	int _fileno(FILE*);
+	HANDLE _get_osfhandle(int fd);
+
 	HANDLE mmap_CreateFileW(
 		LPCWSTR lpFileName,
-		DWORD dwDesiredAccess,
-		DWORD dwShareMode,
-		LPVOID lpSecurityAttributes,
-		DWORD dwCreationDisposition,
-		DWORD dwFlagsAndAttributes,
-		HANDLE hTemplateFile
+		DWORD   dwDesiredAccess,
+		DWORD   dwShareMode,
+		LPVOID  lpSecurityAttributes,
+		DWORD   dwCreationDisposition,
+		DWORD   dwFlagsAndAttributes,
+		HANDLE  hTemplateFile
 	) asm("CreateFileW");
 
 	BOOL mmap_GetFileSizeEx(
-	  HANDLE         hFile,
-	  int64_t*       lpFileSize
+	  HANDLE hFile,
+	  int64_t* lpFileSize
 	) asm("GetFileSizeEx");
 
 	HANDLE mmap_CreateFileMappingW(
@@ -217,7 +227,12 @@ if ffi.os == 'Windows' then
 	BOOL FlushViewOfFile(LPCVOID lpBaseAddress, SIZE_T dwNumberOfBytesToFlush);
 	BOOL FlushFileBuffers(HANDLE hFile);
 	BOOL CloseHandle(HANDLE hObject);
+	]]
 
+
+	--file truncation
+
+	ffi.cdef[[
 	BOOL mmap_SetFilePointerEx(
 	  HANDLE         hFile,
 	  int64_t        liDistanceToMove,
@@ -287,13 +302,18 @@ if ffi.os == 'Windows' then
 	end
 
 	function mmap.map(...)
-		local path, fileno, access_write, access_copy, access_exec,
+		local file, filetype, access_write, access_copy, access_exec,
 			size, offset, addr, name = parseargs(...)
 
+		if filetype == 'file' then
+			filetype = 'fileno'
+			file = C._get_osfhandle(C._fileno(file))
+		end
+
 		local hfile, own_hfile
-		if fileno then
+		if filetype == 'fileno' then
 			hfile = fileno
-		elseif path then
+		elseif filetype == 'path' then
 			local access = bit.bor(
 				GENERIC_READ,
 				access_write and GENERIC_WRITE or 0,
@@ -305,7 +325,7 @@ if ffi.os == 'Windows' then
 			local creationdisp = access_write and OPEN_ALWAYS or OPEN_EXISTING
 			local flagsandattrs = 0
 			local h = C.mmap_CreateFileW(
-				wcs(path), access, sharemode, nil,
+				wcs(file), access, sharemode, nil,
 				creationdisp, flagsandattrs, nil)
 			if h == INVALID_HANDLE_VALUE then
 				return reterr()
@@ -377,18 +397,41 @@ if ffi.os == 'Windows' then
 
 		--if size wasn't given, get the file size so that the user always knows
 		--the actual size of the mapped memory.
-		if not size then
-			local psz = ffi.new'int64_t[1]'
-			if C.mmap_GetFileSizeEx(hfile, psz) ~= 1 then
-				local err = C.GetLastError()
-				free()
-				return reterr(err)
-			end
-			size = tonumber(psz[0])
-		end
+		size = size or mmap.filesize(hfile)
 
 		return {fileno = hfile, close_file = own_hfile, handle = hfilemap,
 			addr = addr, size = size, free = free, flush = flush}
+	end
+
+	function mmap.filesize(file, size)
+		local filetype = getfiletype(file)
+		if filetype == 'path' then
+			local f, errmsg, errcode = io.open(file, size and 'wb' or 'rb')
+			if not f then return reterr(errcode) end
+			local function pass(...)
+				f:close()
+				return ...
+			end
+			return pass(mmap.filesize(f, size))
+		elseif filetype == 'file' then
+			local fileno = C._get_osfhandle(C._fileno(file))
+			return mmap.filesize(fileno, size)
+		elseif filetype == 'fileno' then
+			if size then --set the size
+				local ok = C.mmap_SetFilePointerEx(file, size, nil, 0) ~= 0
+				if not ok then reterr() end
+				local ok = C.SetEndOfFile(file)
+				if not ok then reterr() end
+				return size
+			else --get size
+				local psz = ffi.new'int64_t[1]'
+				if C.mmap_GetFileSizeEx(file, psz) ~= 1 then
+					local err = C.GetLastError()
+					return reterr(err)
+				end
+				return tonumber(psz[0])
+			end
+		end
 	end
 
 elseif ffi.os == 'Linux' or ffi.os == 'OSX' then
@@ -411,7 +454,18 @@ elseif ffi.os == 'Linux' or ffi.os == 'OSX' then
 
 	void unlink(char*);
 	void close(int fd);
+
+	int fileno(FILE *stream);
 	]]
+
+	local errcodes = {
+		--TODO
+	}
+
+	local function reterr(errno)
+		local errno = errno or ffi.errno()
+		return nil, 'OS error', errcodes[errno] or errno
+	end
 
 	mmap.pagesize = C.__getpagesize
 
@@ -422,32 +476,27 @@ elseif ffi.os == 'Linux' or ffi.os == 'OSX' then
 	local MAP_ANON = ffi.os == 'Linux' and 0x20 or 0x1000
 
 	function mmap.map(...)
-		local path, fileno, access_write, access_copy, access_exec,
+		local file, filetype, access_write, access_copy, access_exec,
 			size, offset, addr, name = parseargs(...)
 
-		local fd = fileno
-
+		--[[
 		if name then
-			local shm_path = '/dev/shm/XXXXXX'
-			local tmp_path = '/tmp/XXXXXX'
+			local shm_file = '/dev/shm/XXXXXX'
+			local tmp_file = '/tmp/XXXXXX'
 			fd = mkstemp(shm_path) or mkstemp(tmp_path)
 			if unlink(chosen_path) ~= 0 then
 				close(fd)
 				return
 			end
 		end
+		]]
 
-		local size = assert(size, 'size missing')
 		local access = bit.bor(
 			PROT_READ,
-			t.access and bit.bor(
-				t.access:find'w' and PROT_WRITE or 0,
-				t.access:find'x' and PROT_EXEC or 0
-			)
-		)
-		local file = t.file or -1
-		local offset = t.offset or 0
-		local ret = C.mmap(t.addr, size, access, bit.bor(MAP_PRIVATE, MAP_ANON), file, offset)
+			bit.bor(
+				access_write and PROT_WRITE or 0,
+				access_exec and PROT_EXEC or 0))
+		local ret = C.mmap(addr, size, access, bit.bor(MAP_PRIVATE, MAP_ANON), file or -1, offset)
 		if ffi.cast('intptr_t', ret) == ffi.cast('intptr_t', -1) then
 			error(string.format('mmap errno: %d', ffi.errno()))
 		end
@@ -463,35 +512,7 @@ elseif ffi.os == 'Linux' or ffi.os == 'OSX' then
 	end
 
 	--[[
-	function mmap.mirrors(size, times)
-
-		local times = times or 2
-		local size = mmap.aligned_size(size)
-
-		local chosen_path
-		local function mkstemp(path)
-			local fd = C.mkstemp(path)
-			if fd < 0 then return end
-			chosen_path = path
-			return fd
-		end
-
-		local shm_path = '/dev/shm/soundio-XXXXXX'
-		local tmp_path = '/tmp/soundio-XXXXXX'
-
-		local fd = mkstemp(shm_path) or mkstemp(tmp_path)
-
-		if unlink(chosen_path) ~= 0 then
-			close(fd)
-			return
-		end
-
-		if ftruncate(fd, actual_size) ~= 0 then
-			close(fd)
-			return
-		end
-
-		local addr = mmap(nil, actual_size * 2, PROT_NONE,
+	local addr = mmap(nil, actual_size * 2, PROT_NONE,
 			bit.bor(MAP_ANONYMOUS, MAP_PRIVATE), -1, 0)
 
 		if addr == MAP_FAILED then
@@ -530,17 +551,43 @@ elseif ffi.os == 'Linux' or ffi.os == 'OSX' then
 	end
 	]]
 
+	function mmap.filesize(file, size)
+		local filetype = getfiletype(file)
+		if filetype == 'path' then
+			local f, err = io.open(filename, 'r+b')
+			if not f then return nil, err end
+			local function pass(...)
+				f:close()
+				return ...
+			end
+			return pass(mmap.filesize(f, size))
+		elseif filetype == 'file' then
+			local fileno = C.fileno(file)
+			return mmap.filesize(fileno, size)
+		elseif filetype == 'fileno' then
+			if size then --set size
+				if C.ftruncate(fileno, size) ~= 0 then
+					return reterr(err)
+				end
+				return size
+			else --get size
+				--TODO
+			end
+		end
+	end
+
 else
 	error'platform not supported'
 end
 
 function mmap.mirror(t)
 	local t = t or {}
+	local file = t.file
+	local filetype = getfiletype(file)
 	local size = t.size or mmap.pagesize()
 	local times = t.times or 2
 	local size = mmap.aligned_size(size)
 	local access = 'w'
-	assert(t.path or t.fileno, 'path or fileno missing')
 	assert(times > 0, 'times must be > 0')
 
 	local retries = -1
@@ -553,7 +600,7 @@ function mmap.mirror(t)
 
 	--try to allocate a contiguous block
 	local map, errmsg, errcode = mmap.map{
-		path = t.path, fileno = t.fileno,
+		file = file,
 		size = size * times,
 		access = access,
 		addr = t.addr}
@@ -576,7 +623,7 @@ function mmap.mirror(t)
 
 	for i = 1, times do
 		local map1, errmsg, errcode = mmap.map{
-			path = t.path, fileno = t.fileno,
+			file = file,
 			size = size,
 			addr = addr + (i - 1) * size,
 			access = access}
@@ -624,12 +671,12 @@ if not ... then
 	end
 
 	local function map_invalid_size()
-		local ok, err = pcall(mmap.map, {path = 'mmap.lua', size = 0})
+		local ok, err = pcall(mmap.map, {file = 'mmap.lua', size = 0})
 		assert(not ok and err:find'size')
 	end
 
 	local function map_invalid_offset()
-		local ok, err = pcall(mmap.map, {path = 'mmap.lua', offset = 1})
+		local ok, err = pcall(mmap.map, {file = 'mmap.lua', offset = 1})
 		assert(not ok and err:find'aligned')
 	end
 
@@ -659,41 +706,41 @@ if not ... then
 	end
 
 	local function map_file_readonly()
-		local map = assert(mmap.map{path = 'mmap.lua'})
+		local map = assert(mmap.map{file = 'mmap.lua'})
 		print(map.addr, map.size)
 		assert(ffi.string(map.addr, 20):find'--memory mapping')
 		map:free()
 	end
 
 	local function map_file_readonly_not_found()
-		local map, errmsg, errcode = mmap.map{path = 'askdfask8920349zjk'}
+		local map, errmsg, errcode = mmap.map{file = 'askdfask8920349zjk'}
 		assert(not map and errcode == 'not_found')
 	end
 
 	local function map_file_readonly_too_short()
-		local map, errmsg, errcode = mmap.map{path = 'mmap.lua', size = 1024*100}
+		local map, errmsg, errcode = mmap.map{file = 'mmap.lua', size = 1024*100}
 		assert(not map and errcode == 'file_too_short')
 	end
 
 	local function map_file_readonly_too_short_zero()
-		local map, errmsg, errcode = mmap.map{path = zerosize_file()}
+		local map, errmsg, errcode = mmap.map{file = zerosize_file()}
 		assert(not map and errcode == 'file_too_short')
 	end
 
 	local function map_file_write_too_short_zero()
-		local map, errmsg, errcode = mmap.map{path = zerosize_file(), access = 'w'}
+		local map, errmsg, errcode = mmap.map{file = zerosize_file(), access = 'w'}
 		assert(not map and errcode == 'file_too_short')
 	end
 
 	local function map_file_exec()
-		local map = assert(mmap.map{path = 'bin/mingw64/luajit.exe', access = 'x'})
+		local map = assert(mmap.map{file = 'bin/mingw64/luajit.exe', access = 'x'})
 		print(map.addr, map.size)
 		assert(ffi.string(map.addr, 2) == 'MZ')
 		map:free()
 	end
 
 	local function map_file_write()
-		local map = assert(mmap.map{path = 'mmap.tmp', size = 1000, access = 'w'})
+		local map = assert(mmap.map{file = 'mmap.tmp', size = 1000, access = 'w'})
 		print(map.addr, map.size)
 		test_write(map)
 		map:free()
@@ -701,23 +748,23 @@ if not ... then
 	end
 
 	local function map_file_copy_on_write()
-		local map = assert(mmap.map{path = 'mmap.tmp', size = 1000, access = 'w'})
+		local map = assert(mmap.map{file = 'mmap.tmp', size = 1000, access = 'w'})
 		test_write(map)
 		map:free()
-		local map = assert(mmap.map{path = 'mmap.tmp', size = 1000, access = 'c'})
+		local map = assert(mmap.map{file = 'mmap.tmp', size = 1000, access = 'c'})
 		print(map.addr, map.size)
 		ffi.fill(map.addr, map.size, 123)
 		map:flush(true)
 		map:free()
 		--check that the file wasn't altered by fill()
-		local map = assert(mmap.map{path = 'mmap.tmp', size = 1000})
+		local map = assert(mmap.map{file = 'mmap.tmp', size = 1000})
 		test_written(map)
 		map:free()
 		os.remove('mmap.tmp')
 	end
 
 	local function map_file_write_disk_full()
-		local map, errmsg, errcode = mmap.map{path = 'mmap.tmp', size = 1024^4, access = 'w'}
+		local map, errmsg, errcode = mmap.map{file = 'mmap.tmp', size = 1024^4, access = 'w'}
 		assert(not map and errcode == 'disk_full')
 	end
 
@@ -736,26 +783,26 @@ if not ... then
 	end
 
 	local function map_file_write_offset()
-		local path = 'mmap.tmp'
+		local file = 'mmap.tmp'
 		local offset = mmap.pagesize()
-		local map = assert(mmap.map{path = path, size = offset + 2, offset = 0, access = 'w'})
+		local map = assert(mmap.map{file = file, size = offset + 2, offset = 0, access = 'w'})
 		print(map.addr, map.size)
 		local p = ffi.cast('char*', map.addr)
 		p[offset + 0] = 123
 		p[offset + 1] = -123
 		map:free()
-		local map = assert(mmap.map{path = path, offset = offset, access = 'w'})
+		local map = assert(mmap.map{file = file, offset = offset, access = 'w'})
 		print(map.addr, map.size)
 		local p = ffi.cast('char*', map.addr)
 		assert(p[0] == 123)
 		assert(p[1] == -123)
 		map:free()
-		os.remove(path)
+		os.remove(file)
 	end
 
 	local function map_file_mirror()
 		local times = 50
-		local map = assert(mmap.mirror{path = 'mmap.tmp', times = times})
+		local map = assert(mmap.mirror{file = 'mmap.tmp', times = times})
 		print(map.addr, map.size)
 		local addr = map.addr
 		local p = ffi.cast('char*', addr)
@@ -767,6 +814,17 @@ if not ... then
 		os.remove('mmap.tmp')
 	end
 
+	local function test_truncate()
+		io.open('mmap.tmp', 'w'):close()
+		assert(mmap.filesize('mmap.tmp', 123) == 123)
+		assert(mmap.filesize'mmap.tmp' == 123)
+		os.remove('mmap.tmp')
+		local size, errmsg, errcode = mmap.filesize'mmap.tmp'
+		assert(not size and errcode == 'not_found')
+		local size, errmsg, errcode = mmap.filesize('mmap.tmp', 1024^4)
+		print(size, errmsg, errcode)
+		assert(not size and errcode == 'disk_full')
+	end
 
 	test_pagesize()
 	map_invalid_size()
@@ -787,6 +845,7 @@ if not ... then
 	map_file_write_same_name()
 	map_file_write_offset()
 	map_file_mirror()
+	test_truncate()
 
 end
 

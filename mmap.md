@@ -4,9 +4,11 @@ tagline: portable memory mapping
 
 <warn>Work in progress</warn>
 
-TODO: offset & size -> access denied
-TODO: resize(newsize) <- files are extended automatically so only for shortening.
-
+* TODO: offset + size -> invalid arg
+* TODO: change access flags after opening (eg. replace 'w' with 'x')
+* `mmap.mirror(file,...)` version
+* `filesize(file, size)` error tests
+*
 
 ## `local mmap = require'mmap'`
 
@@ -25,7 +27,7 @@ Can be used for:
 ------------------------------------------------- --------------------------------------------
 `mmap.map(t) -> map | nil,errmsg,errcode`         create a mapping
 
-`mmap.map(path|fileno, access, size, offset,` \   create a mapping
+`mmap.map(file, access, size, offset,` \          create a mapping
 `addr, name) -> map | nil,errmsg,errcode`
 
 `map:flush([wait, ][addr, size])` \               flush (parts of) the mapping to disk
@@ -44,16 +46,23 @@ Can be used for:
 `mmap.aligned_size(bytes) -> bytes`               next page-aligned size
 
 `mmap.pagesize() -> bytes`                        allocation granularity
+
+`mmap.filesize(file)`                             get file size
+`-> size | nil,errmsg,errcode`
+
+`mmap.filesize(file, size)`                       (create file and) set file size
+`-> size | nil,errmsg,errcode`
 ------------------------------------------------- --------------------------------------------
 
-### `mmap.map(t) -> map | nil, errmsg, errcode` <br> `mmap.map(path|fileno, access, size, offset, addr, name)` <br> `-> map | nil, errmsg, errcode`
+### `mmap.map(t) -> map | nil, errmsg, errcode` <br> `mmap.map(file, access, size, offset, addr, name)` <br> `-> map | nil, errmsg, errcode`
 
 Create a memory map object. The `t` arg is a table with the fields:
 
-* `path`: file name to open or create.
-* `fileno`: OS file handle to use instead of `path` (the file must be opened
-	with compatibile access permissions).
-* if neither `path` nor `fileno` is given, the system's swap file is mapped.
+* `file`: the file to map: optional; if not given, a portion of the system
+page file is mapped instead; it can be:
+	* a string representing a filename to open.
+	* a `FILE*` object opened in a compatible mode.
+	* an OS file handle opened in a compatible mode.
 * `access`: can be either:
 	* '' (read-only, default)
 	* 'w' (read + write)
@@ -71,7 +80,7 @@ Create a memory map object. The `t` arg is a table with the fields:
 	* if the file is shorter than the required offset + size:
 		* if write access is not given (or the file is the pagefile which
 		can't be resized), the mapping fails with `'file_too_short'` error.
-		* if write access is given, the file is extended to size.
+		* if write access is given, the file is extended.
 			* if the disk is full, the mapping fails with `'disk_full'` error.
 * `offset`: offset in the file (optional, defaults to 0).
 	* if given, the offset must be >= 0 or an error is raised.
@@ -122,7 +131,7 @@ If `wait` is true, wait until the data has been written to disk.
 Make a mirrored memory mapping to use with a [ring buffer][lfrb].
 The `t` arg is a table with the fields:
 
-* `path` or `fileno`: the file to map: required (the access is 'w').
+* `file`: the file to map: required (the access is 'w').
 * `size`: the size of the memory segment: required, automatically aligned
 to page size.
 * `times`: how many times to mirror the segment (optional, default: 2)
@@ -145,3 +154,16 @@ It can be used to align offsets and to specify sizes.
 
 Get the current page size. Memory will always be allocated in multiples
 of this size and file offsets must be aligned to this size too.
+
+
+### `mmap.filesize(file) -> size | nil,errmsg,errcode`
+
+Get file size. Can fail with `'not_found'` or an OS specific error code.
+
+
+### `mmap.filesize(file, size) -> size | nil,errmsg,errcode`
+
+Enlarge or truncate a file to a specific size. If the file does not exist
+it is created. Can fail with `'disk_full'` or an OS specific error code.
+When enlarging, the appended data is undefined. When truncating, the data
+up to the specified size is preserved.
