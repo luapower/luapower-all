@@ -14,29 +14,46 @@ function mmap.aligned_size(size)
 	return (pagecount + (pagecount < fpagecount and 1 or 0)) * pagesize
 end
 
-local function parseopt(t)
-	assert(type(t) == 'table', 'options table expected')
+local function parseargs(t,...)
+	local path, fileno, access, size, offset, addr, name
 
-	local access = t.access or ''
+	--dispatch
+	if type(t) == 'table' then
+		path, fileno, access, size, offset, addr, name =
+			t.path, t.fileno, t.access, t.size, t.offset, t.addr, t.name
+	else
+		if type(t) == 'string' then
+			path = t
+		else
+			fileno = t
+		end
+		access, size, offset, addr, name = ...
+	end
+
+	--apply defaults/convert
+	access = access or ''
+	offset = offset or 0
+	addr = addr and ffi.cast('void*', addr)
+
+	--parse access field
 	local access_write = access:find'w'
 	local access_copy = access:find'c'
 	local access_exec = access:find'x'
-	local size = t.size
-	local offset = t.offset or 0
 
+	--check
 	assert(not (access_write and access_copy),
 		'w and c access flags are mutually exclusive')
-	assert(t.fileno or t.path or t.name or t.size,
+	assert(fileno or path or name or size,
 		'size expected when mapping the pagefile')
-	assert(not (t.fileno and t.path),
+	assert(not (fileno and path),
 		'fileno and path are mutually exclusive')
 	assert(not size or size > 0, 'size must be > 0')
 	assert(offset >= 0, 'offset must be >= 0')
 	assert(offset == mmap.aligned_size(offset),
 		'offset not aligned to page boundaries')
-	assert(not t.addr or t.addr ~= 0, 'addr can\'t be zero')
+	assert(not addr or addr ~= nil, 'addr can\'t be zero')
 
-	return size, offset, access_write, access_copy, access_exec
+	return path, fileno, access_write, access_copy, access_exec, size, offset, addr, name
 end
 
 if ffi.os == 'Windows' then
@@ -269,13 +286,14 @@ if ffi.os == 'Windows' then
 		return m.hi, m.lo
 	end
 
-	function mmap.map(t)
-		local size, offset, access_write, access_copy, access_exec = parseopt(t)
+	function mmap.map(...)
+		local path, fileno, access_write, access_copy, access_exec,
+			size, offset, addr, name = parseargs(...)
 
 		local hfile, own_hfile
-		if t.fileno then
-			hfile = t.fileno
-		elseif t.path then
+		if fileno then
+			hfile = fileno
+		elseif path then
 			local access = bit.bor(
 				GENERIC_READ,
 				access_write and GENERIC_WRITE or 0,
@@ -287,7 +305,7 @@ if ffi.os == 'Windows' then
 			local creationdisp = access_write and OPEN_ALWAYS or OPEN_EXISTING
 			local flagsandattrs = 0
 			local h = C.mmap_CreateFileW(
-				wcs(t.path), access, sharemode, nil,
+				wcs(path), access, sharemode, nil,
 				creationdisp, flagsandattrs, nil)
 			if h == INVALID_HANDLE_VALUE then
 				return reterr()
@@ -313,7 +331,7 @@ if ffi.os == 'Windows' then
 				(access_write and PAGE_EXECUTE_READWRITE or PAGE_EXECUTE_READ) or
 				(access_write and PAGE_READWRITE or PAGE_READONLY))
 		local mhi, mlo = split_uint64(size or 0) --0 means whole file
-		local name = t.name and wcs('Local\\'..t.name) or nil
+		local name = name and wcs('Local\\'..name) or nil
 		local hfilemap = C.mmap_CreateFileMappingW(
 			hfile or INVALID_HANDLE_VALUE, nil, protect, mhi, mlo, name)
 		if hfilemap == nil then
@@ -327,9 +345,8 @@ if ffi.os == 'Windows' then
 			access_write and FILE_MAP_WRITE or 0,
 			access_copy and FILE_MAP_COPY or 0,
 			access_exec and SECTION_MAP_EXECUTE or 0)
-		local times = (t.mirrors or 0) + 1
 		local ohi, olo = split_uint64(offset)
-		local baseaddr = t.addr and ffi.cast('void*', t.addr) or nil
+		local baseaddr = addr
 		local addr = C.MapViewOfFileEx(
 			hfilemap, access, ohi, olo, size or 0, baseaddr)
 		if addr == nil then
@@ -404,12 +421,13 @@ elseif ffi.os == 'Linux' or ffi.os == 'OSX' then
 	local MAP_PRIVATE = 2
 	local MAP_ANON = ffi.os == 'Linux' and 0x20 or 0x1000
 
-	function mmap.map(t)
-		local size, offset, access_write, access_copy, access_exec = parseopt(t)
+	function mmap.map(...)
+		local path, fileno, access_write, access_copy, access_exec,
+			size, offset, addr, name = parseargs(...)
 
-		local fd = t.fileno
+		local fd = fileno
 
-		if t.name then
+		if name then
 			local shm_path = '/dev/shm/XXXXXX'
 			local tmp_path = '/tmp/XXXXXX'
 			fd = mkstemp(shm_path) or mkstemp(tmp_path)
@@ -419,7 +437,7 @@ elseif ffi.os == 'Linux' or ffi.os == 'OSX' then
 			end
 		end
 
-		local size = assert(t.size, 'size missing')
+		local size = assert(size, 'size missing')
 		local access = bit.bor(
 			PROT_READ,
 			t.access and bit.bor(
@@ -576,6 +594,11 @@ end
 --test
 
 if not ... then
+
+	local function test_pagesize()
+		assert(mmap.pagesize() > 0)
+		assert(mmap.pagesize() % 4096 == 0)
+	end
 
 	local function zerosize_file()
 		local file = 'mmap.tmp'
@@ -744,6 +767,8 @@ if not ... then
 		os.remove('mmap.tmp')
 	end
 
+
+	test_pagesize()
 	map_invalid_size()
 	map_invalid_offset()
 	map_invalid_address()
