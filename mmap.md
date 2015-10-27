@@ -4,6 +4,15 @@ tagline: portable memory mapping
 
 <warn>Work in progress</warn>
 
+
+TODO: offset & size -> access denied
+TODO: invalid address test
+TODO: same name test
+TODO: resize(newsize) <- files are extended automatically so only for shortening.
+TODO: create_temp_file() (can we use io.tmpfile() ?)
+TODO: remove_file() (can we use os.remove() ?)
+
+
 ## `local mmap = require'mmap'`
 
 Memory mapping API that can be used with Windows, Linux and OSX.
@@ -24,7 +33,8 @@ Can be used for:
 `map.addr`                                      a `void*` pointer to the mapped address
 `map.size`                                      the size of the mapped block
 `map.fileno`                                    the OS file handle
-`map.close_file`                                true if closing the file on `map:free()`
+`map.autoclose`                                 true means close the file on `map:free()`
+`map.autoremove`                                true means remove the file on `map:free()`
 `map:free()`                                    release the memory and associated resources
 `mmap.mirror(t) -> map | nil,errmsg,errcode`    create a mirrored memory mapping
 `mmap.aligned_size(size) -> size`               align a size to page boundary
@@ -36,9 +46,9 @@ Can be used for:
 Create a memory map object. The `t` arg is a table with the fields:
 
 * `path`: file name to open or create.
-* `fileno`: OS file handle to use instead of `path`.
-	* if neither `path` nor `fileno` is given, the system's swap file will be
-	mapped instead.
+* `fileno`: OS file handle to use instead of `path` (the file must be opened
+	with compatibile access permissions).
+	* if neither `path` nor `fileno` is given, the system's swap file is mapped.
 * `access`: can be either:
 	* '' (read-only, default)
 	* 'w' (read + write)
@@ -64,6 +74,8 @@ Create a memory map object. The `t` arg is a table with the fields:
 * `name`: name of the memory map: using the same name in two processes gives
 access to the same memory.
 * `addr`: address to use (optional).
+* `close_file` - optional, default: true if `path` given, false if `fileno` given.
+* `remove_file` - optional, default: false.
 
 Returns an object (a table) with the fields:
 
@@ -72,7 +84,8 @@ Returns an object (a table) with the fields:
 * `map:free()` - method to free the memory and associated resources
 * `map:flush([addr, size])` - flush (a part of) the mapping to disk
 * `map.fileno` - OS file handle
-* `map.close_file` - close the file on `map:free()`
+* `map.close_file` - true means close the file on `map:free()`
+* `map.remove_file` - true means remove the file on `map:free()`
 
 If the mapping fails for know causes, then `nil, error_message, error_code`
 is returned, where error_code can be:
@@ -86,8 +99,9 @@ is returned, where error_code can be:
 
 For other error conditions an OS-specific error code is returned instead.
 
-Attempting to modify a mapped memory not created with write or copy-on-write
-access results in a crash.
+Attempting to write to a memory block that wasn't mapped with write or
+copy-on-write access results in access violation (which means a crash
+since access violations are not caught by default).
 
 If an opened file is given (`fileno` arg) then write buffers are flushed
 before mapping the file.

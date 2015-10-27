@@ -293,8 +293,13 @@ if ffi.os == 'Windows' then
 		end
 
 		local function close_file()
-			if not own_hfile then return end
+			local close_file = t.close_file
+			if close_file == nil then close_file = own_hfile end
+			if not close_file then return end
 			C.CloseHandle(hfile)
+			if t.remove_file then
+				C.remove_file()
+			end
 		end
 
 		local protect = bit.bor(
@@ -492,6 +497,8 @@ elseif ffi.os == 'Linux' or ffi.os == 'OSX' then
 	end
 	]]
 
+else
+	error'platform not supported'
 end
 
 function mmap.mirror(t)
@@ -505,7 +512,6 @@ function mmap.mirror(t)
 
 	local retries = -1
 	local max_retries = t.max_retries or 100
-
 	::try_again::
 	retries = retries + 1
 	if retries > max_retries then
