@@ -577,6 +577,16 @@ if not ... then
 		test_written(map)
 	end
 
+	local function map_invalid_size()
+		local ok, err = pcall(mmap.map, {path = 'mmap.lua', size = 0})
+		assert(not ok and err:find'size')
+	end
+
+	local function map_invalid_offset()
+		local ok, err = pcall(mmap.map, {path = 'mmap.lua', offset = 1})
+		assert(not ok and err:find'aligned')
+	end
+
 	local function map_swap()
 		local map = assert(mmap.map{access = 'w', size = 1000})
 		print(map.addr, map.size)
@@ -688,14 +698,6 @@ if not ... then
 		map:free()
 	end
 
-	local function map_file_invalid_offset()
-		--TODO
-		do return end
-		local offset = mmap.pagesize()
-		local map = assert(mmap.map{path = 'mmap-invalid-offset.tmp', size = offset * 2, offset = offset, access = 'w'})
-		map:free()
-	end
-
 	local function map_file_mirror()
 		local times = 50
 		local map = assert(mmap.mirror{path = 'mmap-mirror.tmp', times = times})
@@ -708,6 +710,9 @@ if not ... then
 		end
 		map:free()
 	end
+
+	map_invalid_size()
+	map_invalid_offset()
 
 	map_swap()
 	map_swap_too_short()
@@ -723,7 +728,6 @@ if not ... then
 	map_file_write_disk_full()
 	map_file_write_same_name()
 	map_file_write_offset()
-	map_file_invalid_offset()
 	map_file_mirror()
 
 end

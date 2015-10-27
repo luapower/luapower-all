@@ -109,13 +109,19 @@ before mapping the file.
 
 ### `mmap.mirror(t) -> map | nil, errmsg, errcode`
 
-Make a mirrored memory mapping for use with a [ring buffer][lfrb].
+Make a mirrored memory mapping to use with a [ring buffer][lfrb].
 The `t` arg is a table with the fields:
 
 * `path` or `fileno`: the file to map: required (the access is 'w').
 * `size`: the size of the memory segment: required, automatically aligned to page size.
+* `times`: how many times to mirror the segment (optional, default: 2)
 * `addr`: address to use (optional).
 
+The result is a table with `addr` and `size` fields and all the mirror map
+objects in its array part (freeing the mirror will free all the maps).
+The memory block at `addr` is mirrored such that
+`(char*)addr[o1*i] == (char*)addr[o2*i]` for any `o1` and `o2` in
+`0..times-1` and for any `i` in `0..size-1`.
 
 ### `mmap.pagesize() -> bytes`
 
