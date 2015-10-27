@@ -4,13 +4,8 @@ tagline: portable memory mapping
 
 <warn>Work in progress</warn>
 
-
 TODO: offset & size -> access denied
-TODO: invalid address test
-TODO: same name test
 TODO: resize(newsize) <- files are extended automatically so only for shortening.
-TODO: create_temp_file() (can we use io.tmpfile() ?)
-TODO: remove_file() (can we use os.remove() ?)
 
 
 ## `local mmap = require'mmap'`
@@ -18,7 +13,7 @@ TODO: remove_file() (can we use os.remove() ?)
 Memory mapping API that can be used with Windows, Linux and OSX.
 Can be used for:
 
-  * mapping large files to memory
+  * loading large files in memory without consuming memory
   * allocating large memory blocks backed by the swap file
   * sharing memory between processes
   * creating executable memory segments
@@ -27,19 +22,17 @@ Can be used for:
 
 ## API
 
------------------------------------------------ ------------------------------
-`mmap.map(t) -> map | nil,errmsg,errcode`       create a memory mapping
-`map:flush([addr, size])`                       flush (parts of) the mapping to disk
-`map.addr`                                      a `void*` pointer to the mapped address
-`map.size`                                      the size of the mapped block
-`map.fileno`                                    the OS file handle
-`map.autoclose`                                 true means close the file on `map:free()`
-`map.autoremove`                                true means remove the file on `map:free()`
-`map:free()`                                    release the memory and associated resources
-`mmap.mirror(t) -> map | nil,errmsg,errcode`    create a mirrored memory mapping
-`mmap.aligned_size(size) -> size`               align a size to page boundary
-`mmap.pagesize() -> size`                       current allocation granularity
------------------------------------------------ ------------------------------
+----------------------------------------------------------------- --------------------------------------------
+`mmap.map(t) -> map | nil,errmsg,errcode`                         create a memory mapping
+`map:flush([wait, ][addr, size]) -> true | nil,errmsg,errcode`    flush (parts of) the mapping to disk
+`map.addr`                                                        a `void*` pointer to the mapped address
+`map.size`                                                        the byte size of the mapped block
+`map.fileno`                                                      the OS file handle
+`map:free()`                                                      release the memory and associated resources
+`mmap.mirror(t) -> map | nil,errmsg,errcode`                      create a mirrored memory mapping
+`mmap.aligned_size(size) -> size`                                 align a size to page boundary
+`mmap.pagesize() -> size`                                         allocation granularity
+----------------------------------------------------------------- --------------------------------------------
 
 ### `mmap.map(t) -> map | nil, errmsg, errcode`
 
@@ -73,31 +66,23 @@ Create a memory map object. The `t` arg is a table with the fields:
 	* the offset must be aligned to a page boundary or an error is raised.
 * `name`: name of the memory map: using the same name in two processes gives
 access to the same memory.
-* `addr`: address to use (optional).
-* `close_file` - optional, default: true if `path` given, false if `fileno` given.
-* `remove_file` - optional, default: false.
+* `addr`: address to use (optional; an error is raised if zero).
 
 Returns an object (a table) with the fields:
 
 * `map.addr` - `void*` pointer to the mapped memory
 * `map.size` - actual size of the memory block
-* `map:free()` - method to free the memory and associated resources
-* `map:flush([addr, size])` - flush (a part of) the mapping to disk
 * `map.fileno` - OS file handle
-* `map.close_file` - true means close the file on `map:free()`
-* `map.remove_file` - true means remove the file on `map:free()`
+* `map.close_file` - if true the file will be closed on `map:free()` (read-only)
 
-If the mapping fails for know causes, then `nil, error_message, error_code`
-is returned, where error_code can be:
+If the mapping fails, returns `nil,errmsg,errcode` where `errcode` can be:
 
 * 'no_file' - file not found.
 * 'file_too_short' - the file is shorter than the required size.
 * 'disk_full' - the file cannot be extended because the disk is full.
-* 'out_of_mem' - size too large
-* 'invalid_address' - cannot map the file at the given address.
-* 'invalid_offset' - offset not aligned to page boundary.
-
-For other error conditions an OS-specific error code is returned instead.
+* 'out_of_mem' - size or address too large.
+* 'invalid_address' - specified address in use.
+* an OS-specific numeric error code.
 
 Attempting to write to a memory block that wasn't mapped with write or
 copy-on-write access results in access violation (which means a crash
@@ -105,6 +90,18 @@ since access violations are not caught by default).
 
 If an opened file is given (`fileno` arg) then write buffers are flushed
 before mapping the file.
+
+
+### `map:free()`
+
+Free the memory and all associated resources and close the file
+if the file was opened by `mmap.map()`.
+
+
+### `map:flush([wait, ][addr, size]) -> true | nil,errmsg,errcode`
+
+Flush (part of) the memory to disk.
+If `wait` is true, wait until the data has been written to disk.
 
 
 ### `mmap.mirror(t) -> map | nil, errmsg, errcode`
@@ -122,6 +119,7 @@ objects in its array part (freeing the mirror will free all the maps).
 The memory block at `addr` is mirrored such that
 `(char*)addr[o1*i] == (char*)addr[o2*i]` for any `o1` and `o2` in
 `0..times-1` and for any `i` in `0..size-1`.
+
 
 ### `mmap.pagesize() -> bytes`
 

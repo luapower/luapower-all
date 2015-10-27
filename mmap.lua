@@ -26,11 +26,15 @@ local function parseopt(t)
 
 	assert(not (access_write and access_copy),
 		'w and c access flags are mutually exclusive')
-	assert(t.fileno or t.path or t.name or t.size, 'size expected when mapping the pagefile')
-	assert(not (t.fileno and t.path), 'fileno and path are mutually exclusive')
+	assert(t.fileno or t.path or t.name or t.size,
+		'size expected when mapping the pagefile')
+	assert(not (t.fileno and t.path),
+		'fileno and path are mutually exclusive')
 	assert(not size or size > 0, 'size must be > 0')
 	assert(offset >= 0, 'offset must be >= 0')
-	assert(offset == mmap.aligned_size(offset), 'offset not aligned to page boundaries')
+	assert(offset == mmap.aligned_size(offset),
+		'offset not aligned to page boundaries')
+	assert(not t.addr or t.addr ~= 0, 'addr can\'t be zero')
 
 	return size, offset, access_write, access_copy, access_exec
 end
@@ -39,7 +43,11 @@ if ffi.os == 'Windows' then
 
 	--winapi types
 
-	ffi.cdef('typedef '..(ffi.abi'64bit' and 'int64_t' or 'int32_t')..' ULONG_PTR;')
+	if ffi.abi'64bit' then
+		ffi.cdef'typedef int64_t ULONG_PTR;'
+	else
+		ffi.cdef'typedef int32_t ULONG_PTR;'
+	end
 
 	ffi.cdef[[
 	typedef void*          HANDLE;
@@ -81,29 +89,28 @@ if ffi.os == 'Windows' then
 	local ERROR_INVALID_ADDRESS    = 0x01E7
 	local ERROR_FILE_INVALID       = 0x03ee
 	local ERROR_COMMITMENT_LIMIT   = 0x05af
-	local ERROR_MAPPED_ALIGNMENT   = 0x046c
 
 	local errcodes = {
 		[ERROR_FILE_NOT_FOUND] = 'not_found',
 		[ERROR_NOT_ENOUGH_MEMORY] = 'file_too_short', --readonly file too short
-		[ERROR_INVALID_PARAMETER] = 'out_of_mem', --size too large for available memory
+		[ERROR_INVALID_PARAMETER] = 'out_of_mem', --size or address too large
 		[ERROR_DISK_FULL] = 'disk_full',
 		[ERROR_COMMITMENT_LIMIT] = 'file_too_short', --swapfile too short
 		[ERROR_FILE_INVALID] = 'file_too_short', --file has zero size
-		[ERROR_INVALID_ADDRESS] = 'invalid_address',
-		[ERROR_MAPPED_ALIGNMENT] = 'invalid_offset', --offset not aligned
+		[ERROR_INVALID_ADDRESS] = 'invalid_address', --address in use
 	}
 
 	local function reterr(msgid)
 		local msgid = msgid or C.GetLastError()
 		local bufsize = 256
 		local buf = ffi.new('char[?]', bufsize)
-		local sz = C.FormatMessageA(FORMAT_MESSAGE_FROM_SYSTEM, nil, msgid, 0, buf, bufsize, nil)
+		local sz = C.FormatMessageA(
+			FORMAT_MESSAGE_FROM_SYSTEM, nil, msgid, 0, buf, bufsize, nil)
 		if sz == 0 then return 'Unknown Error' end
 		return nil, ffi.string(buf, sz), errcodes[msgid] or msgid
 	end
 
-	--pagesize
+	--getting pagesize
 
 	ffi.cdef[[
 	typedef struct {
@@ -146,7 +153,6 @@ if ffi.os == 'Windows' then
 	]]
 
 	local CP_UTF8 = 65001
-	local ERROR_INSUFFICIENT_BUFFER = 122
 
 	function wcs(s)
 		local sz = C.MultiByteToWideChar(CP_UTF8, 0, s, #s + 1, nil, 0)
@@ -274,10 +280,15 @@ if ffi.os == 'Windows' then
 				GENERIC_READ,
 				access_write and GENERIC_WRITE or 0,
 				access_exec and GENERIC_EXECUTE or 0)
-			local sharemode = bit.bor(FILE_SHARE_READ, FILE_SHARE_WRITE, FILE_SHARE_DELETE)
+			local sharemode = bit.bor(
+				FILE_SHARE_READ,
+				FILE_SHARE_WRITE,
+				FILE_SHARE_DELETE)
 			local creationdisp = access_write and OPEN_ALWAYS or OPEN_EXISTING
 			local flagsandattrs = 0
-			local h = C.mmap_CreateFileW(wcs(t.path), access, sharemode, nil, creationdisp, flagsandattrs, nil)
+			local h = C.mmap_CreateFileW(
+				wcs(t.path), access, sharemode, nil,
+				creationdisp, flagsandattrs, nil)
 			if h == INVALID_HANDLE_VALUE then
 				return reterr()
 			end
@@ -288,18 +299,13 @@ if ffi.os == 'Windows' then
 		--flush the buffers before mapping otherwise we won't see the current
 		--view of the file (Windows).
 		if hfile and not own_hfile then
-			local ok = C.FlushFileBuffers(hfile) == 1
+			local ok = C.FlushFileBuffers(hfile) ~= 0
 			if not ok then return reterr() end
 		end
 
 		local function close_file()
-			local close_file = t.close_file
-			if close_file == nil then close_file = own_hfile end
-			if not close_file then return end
+			if not own_hfile then return end
 			C.CloseHandle(hfile)
-			if t.remove_file then
-				C.remove_file()
-			end
 		end
 
 		local protect = bit.bor(
@@ -308,7 +314,8 @@ if ffi.os == 'Windows' then
 				(access_write and PAGE_READWRITE or PAGE_READONLY))
 		local mhi, mlo = split_uint64(size or 0) --0 means whole file
 		local name = t.name and wcs('Local\\'..t.name) or nil
-		local hfilemap = C.mmap_CreateFileMappingW(hfile or INVALID_HANDLE_VALUE, nil, protect, mhi, mlo, name)
+		local hfilemap = C.mmap_CreateFileMappingW(
+			hfile or INVALID_HANDLE_VALUE, nil, protect, mhi, mlo, name)
 		if hfilemap == nil then
 			local err = C.GetLastError()
 			close_file()
@@ -322,8 +329,9 @@ if ffi.os == 'Windows' then
 			access_exec and SECTION_MAP_EXECUTE or 0)
 		local times = (t.mirrors or 0) + 1
 		local ohi, olo = split_uint64(offset)
-		local baseaddr = t.addr or nil
-		local addr = C.MapViewOfFileEx(hfilemap, access, ohi, olo, size or 0, baseaddr)
+		local baseaddr = t.addr and ffi.cast('void*', t.addr) or nil
+		local addr = C.MapViewOfFileEx(
+			hfilemap, access, ohi, olo, size or 0, baseaddr)
 		if addr == nil then
 			local err = C.GetLastError()
 			C.CloseHandle(hfilemap)
@@ -337,9 +345,16 @@ if ffi.os == 'Windows' then
 			close_file()
 		end
 
-		local function flush(self, addr, sz)
-			local ok = C.FlushViewOfFile(addr or self.addr, sz or 0) == 1
+		local function flush(self, wait, addr, sz)
+			if type(wait) ~= 'boolean' then --wait arg is optional
+				wait, addr, sz = false, wait, addr
+			end
+			local ok = C.FlushViewOfFile(addr or self.addr, sz or 0) ~= 0
 			if not ok then reterr() end
+			if wait then
+				local ok = C.FlushFileBuffers(hfile) ~= 0
+				if not ok then return reterr() end
+			end
 			return true
 		end
 
@@ -558,9 +573,17 @@ function mmap.mirror(t)
 end
 
 
---demo
+--test
 
 if not ... then
+
+	local function zerosize_file()
+		local file = 'mmap.tmp'
+		os.remove(file)
+		local f = assert(io.open(file, 'w'))
+		f:close()
+		return file
+	end
 
 	local function test_written(map)
 		local p = ffi.cast('int32_t*', map.addr)
@@ -585,6 +608,12 @@ if not ... then
 	local function map_invalid_offset()
 		local ok, err = pcall(mmap.map, {path = 'mmap.lua', offset = 1})
 		assert(not ok and err:find'aligned')
+	end
+
+	local function map_invalid_address()
+		local map, errmsg, errcode = mmap.map{size = mmap.pagesize() * 1,
+			addr = mmap.pagesize()} --TODO: are low addresses always used?
+		assert(not map and errcode == 'invalid_address')
 	end
 
 	local function map_swap()
@@ -624,12 +653,12 @@ if not ... then
 	end
 
 	local function map_file_readonly_too_short_zero()
-		local map, errmsg, errcode = mmap.map{path = 'media/zerosize'}
+		local map, errmsg, errcode = mmap.map{path = zerosize_file()}
 		assert(not map and errcode == 'file_too_short')
 	end
 
 	local function map_file_write_too_short_zero()
-		local map, errmsg, errcode = mmap.map{path = 'media/zerosize', access = 'w'}
+		local map, errmsg, errcode = mmap.map{path = zerosize_file(), access = 'w'}
 		assert(not map and errcode == 'file_too_short')
 	end
 
@@ -645,18 +674,23 @@ if not ... then
 		print(map.addr, map.size)
 		test_write(map)
 		map:free()
+		os.remove('mmap.tmp')
 	end
 
 	local function map_file_copy_on_write()
-		map_file_write()
+		local map = assert(mmap.map{path = 'mmap.tmp', size = 1000, access = 'w'})
+		test_write(map)
+		map:free()
 		local map = assert(mmap.map{path = 'mmap.tmp', size = 1000, access = 'c'})
 		print(map.addr, map.size)
 		ffi.fill(map.addr, map.size, 123)
+		map:flush(true)
 		map:free()
 		--check that the file wasn't altered by fill()
 		local map = assert(mmap.map{path = 'mmap.tmp', size = 1000})
 		test_written(map)
 		map:free()
+		os.remove('mmap.tmp')
 	end
 
 	local function map_file_write_disk_full()
@@ -665,26 +699,23 @@ if not ... then
 	end
 
 	local function map_file_write_same_name()
-		do return end
-		local map1 = assert(mmap.map{name = 'mmap_test', path = 'mmap.tmp', access = 'w', size = 1000})
-		local map2 = assert(mmap.map{name = 'mmap_test', path = 'mmap.tmp', access = 'w', size = 256})
+		local map1 = assert(mmap.map{name = 'mmap_test', access = 'w', size = 2*65536})
+		local map2 = assert(mmap.map{name = 'mmap_test', access = 'w', size = 2*65536})
 		assert(map1.addr ~= map2.addr)
-		for i = 0, 255 do
-			ffi.cast('char*', map1.addr)[0] = i
+		for i = 0,65535 do
+			ffi.cast('uint16_t*', map1.addr)[i] = i
 		end
-		map1:flush()
-		map2:flush()
-		for i = 0, 255 do
-			assert(ffi.cast('char*', map2.addr)[0] == i)
+		for i = 0,65535 do
+			assert(ffi.cast('uint16_t*', map2.addr)[i] == i)
 		end
 		map1:free()
 		map2:free()
 	end
 
 	local function map_file_write_offset()
-		local path = 'mmap-offset.tmp'
+		local path = 'mmap.tmp'
 		local offset = mmap.pagesize()
-		local map = assert(mmap.map{path = path, size = offset * 2, offset = 0, access = 'w'})
+		local map = assert(mmap.map{path = path, size = offset + 2, offset = 0, access = 'w'})
 		print(map.addr, map.size)
 		local p = ffi.cast('char*', map.addr)
 		p[offset + 0] = 123
@@ -696,11 +727,12 @@ if not ... then
 		assert(p[0] == 123)
 		assert(p[1] == -123)
 		map:free()
+		os.remove(path)
 	end
 
 	local function map_file_mirror()
 		local times = 50
-		local map = assert(mmap.mirror{path = 'mmap-mirror.tmp', times = times})
+		local map = assert(mmap.mirror{path = 'mmap.tmp', times = times})
 		print(map.addr, map.size)
 		local addr = map.addr
 		local p = ffi.cast('char*', addr)
@@ -709,11 +741,12 @@ if not ... then
 			assert(p[i*map.size] == 123)
 		end
 		map:free()
+		os.remove('mmap.tmp')
 	end
 
 	map_invalid_size()
 	map_invalid_offset()
-
+	map_invalid_address()
 	map_swap()
 	map_swap_too_short()
 	map_swap_out_of_mem()
