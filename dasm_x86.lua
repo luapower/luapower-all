@@ -1158,8 +1158,8 @@ local map_op = {
   fldenv_1 =	"x.:D94m",
   fnstenv_1 =	"x.:D96m",
 
-  shld_3 = "mriqdw:0FA4RmU|mrCqdw:0FA5Rm",
-  shrd_3 = "mriqdw:0FACRmU|mrCqdw:0FADRm",
+  shld_3 =	"mriqdw:0FA4RmU|mrC/qq:0FA5Rm|mrC/dd:|mrC/ww:",
+  shrd_3 =	"mriqdw:0FACRmU|mrC/qq:0FADRm|mrC/dd:|mrC/ww:",
 
   fst_1 =	"ff:DDD0r|xd:D92m|xq:nDD2m",
   fstp_1 =	"ff:DDD8r|xd:D93m|xq:nDD3m|xt:DB7m",
@@ -1262,7 +1262,7 @@ local map_op = {
   cvtsi2sd_2 =	"rm/od:F20F2ArM|rm/oq:F20F2ArXM",
   cvtsi2ss_2 =	"rm/od:F30F2ArM|rm/oq:F30F2ArXM",
   cvtss2sd_2 =	"rro:F30F5ArM|rx/od:",
-  cvtss2si_2 =	"rr/do:F20F2CrM|rr/qo:|rxd:|rx/qd:",
+  cvtss2si_2 =	"rr/do:F30F2DrM|rr/qo:|rxd:|rx/qd:",
   cvttpd2dq_2 =	"rmo:660FE6rM",
   cvttps2dq_2 =	"rmo:F30F5BrM",
   cvttsd2si_2 =	"rr/do:F20F2CrM|rr/qo:|rx/dq:|rxq:",
@@ -1317,7 +1317,7 @@ local map_op = {
   pcmpgtb_2 =	"rmo:660F64rM",
   pcmpgtd_2 =	"rmo:660F66rM",
   pcmpgtw_2 =	"rmo:660F65rM",
-  pextrw_3 =	"rri/do:660FC5rMU|xri/wo:660F3A15nrMU", -- Mem op: SSE4.1 only.
+  pextrw_3 =	"rri/do:660FC5rMU|xri/wo:660F3A15nRmU", -- Mem op: SSE4.1 only.
   pinsrw_3 =	"rri/od:660FC4rMU|rxi/ow:",
   pmaddwd_2 =	"rmo:660FF5rM",
   pmaxsw_2 =	"rmo:660FEErM",
@@ -1422,7 +1422,7 @@ local map_op = {
   dpps_3 =	"rmio:660F3A40rMU",
   extractps_3 =	"mri/do:660F3A17RmU|rri/qo:660F3A17RXmU",
   insertps_3 =	"rrio:660F3A41rMU|rxi/od:",
-  movntdqa_2 =	"rmo:660F382ArM",
+  movntdqa_2 =	"rxo:660F382ArM",
   mpsadbw_3 =	"rmio:660F3A42rMU",
   packusdw_2 =	"rmo:660F382BrM",
   pblendvb_3 =	"rmRo:660F3810rM",
@@ -1482,6 +1482,15 @@ local map_op = {
   movntsd_2 =	"xr/qo:nF20F2BRm",
   movntss_2 =	"xr/do:F30F2BRm",
   -- popcnt is also in SSE4.2
+
+  -- AES-NI
+  aesdec_2 =	"rmo:660F38DErM",
+  aesdeclast_2 = "rmo:660F38DFrM",
+  aesenc_2 =	"rmo:660F38DCrM",
+  aesenclast_2 = "rmo:660F38DDrM",
+  aesimc_2 =	"rmo:660F38DBrM",
+  aeskeygenassist_3 = "rmio:660F3ADFrMU",
+  pclmulqdq_3 =	"rmio:660F3A44rMU",
 }
 
 ------------------------------------------------------------------------------
