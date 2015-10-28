@@ -5,64 +5,112 @@ tagline: portable memory mapping
 <warn>Work in progress</warn>
 
 * TODO: offset + size -> invalid arg
-* TODO: change access flags after opening (eg. replace 'w' with 'x')
-* `mmap.mirror(file,...)` version
-* `filesize(file, size)` error tests
-*
+* TODO: map:access(newaccess) to change access flags after mapping.
+* TODO: test flush() with invalid address and/or size (clamp them?)
+* TODO: test exec flag
+* TODO: allow file descriptors on Windows too (why not?)
+* TODO: `mmap.mirror(file,size,times,addr)` version
+* TODO: huge page support? is this portable? does it require root?
 
 ## `local mmap = require'mmap'`
 
 Memory mapping API that can be used with Windows, Linux and OSX.
-Can be used for:
 
-  * loading large files in memory without consuming memory
-  * allocating large memory blocks backed by the swap file
-  * sharing memory between processes
-  * creating executable memory segments
-  * creating mirrored segments (ring buffers)
+Features:
+
+  * file-backed and pagefile-backed (anonymous) memory maps
+  * read-only, read/write and copy-on-write access modes plus executable flag
+  * name-tagged memory maps for sharing memory between processes
+  * mirrored memory maps for using with [lock-free ring buffers][lfrb]
+  * synchronous and asynchronous flushing
+  * works with filenames, file objects, file descriptors and OS file handles.
 
 
 ## API
 
+----------------------------------------------------------------------------------------------
+`mmap.map(args_t) -> map | nil,errmsg,errcode` \
+`mmap.map(file, access, size, offset, addr, name) -> map | nil, errmsg, errcode` \
+create a memory mapping
+
+`map.addr` \
+a `void*` pointer to the mapped address
+
+`map.size` \
+the byte size of the mapped block
+
+`map:flush([wait, ][addr, size]) -> true | nil, errmsg, errcode` \
+flush (parts of) the mapping to disk
+
+`map:free()` \
+release the memory and associated resources
+
+`mmap.mirror(args_t) -> map | nil, errmsg, errcode` \
+`mmap.mirror(file, size[, times[, addr]]) -> map | nil, errmsg, errcode` \
+create a mirrored memory mapping
+
+`mmap.pagesize() -> bytes` \
+allocation granularity
+
+`mmap.aligned_size(bytes[, dir]) -> bytes` \
+next/prev page-aligned size
+
+`mmap.aligned_addr(ptr[, dir]) -> ptr` \
+next/prev page-aligned address
+
+`mmap.filesize(file) -> size | nil, errmsg, errcode` \
+get file size
+
+`mmap.filesize(file, size) -> size | nil,errmsg,errcode` \
+(create file and) set file size
+----------------------------------------------------------------------------------------------
+
+
 ------------------------------------------------- --------------------------------------------
-`mmap.map(t) -> map | nil,errmsg,errcode`         create a mapping
+`mmap.map(args_t) -> map | nil,errmsg,errcode`    create a mapping
 
 `mmap.map(file, access, size, offset,` \          create a mapping
 `addr, name) -> map | nil,errmsg,errcode`
-
-`map:flush([wait, ][addr, size])` \               flush (parts of) the mapping to disk
-`-> true | nil,errmsg,errcode`
 
 `map.addr`                                        a `void*` pointer to the mapped address
 
 `map.size`                                        the byte size of the mapped block
 
-`map.fileno`                                      the OS file handle
+`map:flush([wait, ][addr, size])` \               flush (parts of) the mapping to disk
+`-> true | nil,errmsg,errcode`
 
 `map:free()`                                      release the memory and associated resources
 
-`mmap.mirror(t) -> map | nil,errmsg,errcode`      create a mirrored memory mapping
+`mmap.mirror(args_t)` \                           create a mirrored memory mapping
+`-> map | nil,errmsg,errcode`
 
-`mmap.aligned_size(bytes) -> bytes`               next page-aligned size
+`mmap.mirror(file, size[, times[, addr]])` \      create a mirrored memory mapping
+`-> map | nil,errmsg,errcode`
 
 `mmap.pagesize() -> bytes`                        allocation granularity
 
-`mmap.filesize(file)`                             get file size
+`mmap.aligned_size(bytes[, dir]) -> bytes`        next/prev page-aligned size
+
+`mmap.aligned_addr(ptr[, dir]) -> ptr`            next/prev page-aligned address
+
+`mmap.filesize(file)` \                           get file size
 `-> size | nil,errmsg,errcode`
 
-`mmap.filesize(file, size)`                       (create file and) set file size
+`mmap.filesize(file, size)` \                     (create file and) set file size
 `-> size | nil,errmsg,errcode`
 ------------------------------------------------- --------------------------------------------
 
-### `mmap.map(t) -> map | nil, errmsg, errcode` <br> `mmap.map(file, access, size, offset, addr, name)` <br> `-> map | nil, errmsg, errcode`
+### `mmap.map(args_t) -> map | nil, errmsg, errcode` <br> `mmap.map(file, access, size, offset, addr, name)` <br> `-> map | nil, errmsg, errcode`
 
-Create a memory map object. The `t` arg is a table with the fields:
+Create a memory map object. Args:
 
-* `file`: the file to map: optional; if not given, a portion of the system
-page file is mapped instead; it can be:
-	* a string representing a filename to open.
+* `file`: the file to map: optional; if nil, a portion of the system pagefile
+will be mapped instead; it can be:
+	* a utf8 string representing a filename to open.
 	* a `FILE*` object opened in a compatible mode.
-	* an OS file handle opened in a compatible mode.
+		* NOTE: `io.open()` files are `FILE*` objects.
+	* a Unix file descriptor opened in a compatible mode.
+	* a Windows HANDLE opened in a compatible mode.
 * `access`: can be either:
 	* '' (read-only, default)
 	* 'w' (read + write)
@@ -71,8 +119,8 @@ page file is mapped instead; it can be:
 	* 'wx' (read + write + execute)
 	* 'cx' (read + copy-on-write + execute)
 * `size`: the size of the memory segment (optional, defaults to file size).
-	* if size is given it must be > 0 or an error is raised.
-	* if size is not given, the file size is assumed.
+	* if given it must be > 0 or an error is raised.
+	* if not given, the file size is assumed.
 		* if the file is empty the mapping fails with `'file_too_short'` error.
 	* if the file doesn't exist:
 		* if write access is given, the file is created.
@@ -83,19 +131,17 @@ page file is mapped instead; it can be:
 		* if write access is given, the file is extended.
 			* if the disk is full, the mapping fails with `'disk_full'` error.
 * `offset`: offset in the file (optional, defaults to 0).
-	* if given, the offset must be >= 0 or an error is raised.
-	* the offset must be aligned to a page boundary or an error is raised.
-* `name`: name of the memory map: using the same name in two processes gives
-access to the same memory.
+	* if given, must be >= 0 or an error is raised.
+	* must be aligned to a page boundary or an error is raised.
+	* ignored when mapping the pagefile.
+* `name`: name of the memory map (optional): using the same name in two
+different processes (or in the same process) gives access to the same memory.
 * `addr`: address to use (optional; an error is raised if zero).
 
 Returns an object (a table) with the fields:
 
-* `map.addr` - a `void*` pointer to the mapped memory
-* `map.size` - the actual size of the memory block
-* `map.fileno` - the OS file handle
-* `map.close_file` - a read-only flag which if true, the file will be closed
-on `map:free()`.
+	* `map.addr` - a `void*` pointer to the mapped memory
+	* `map.size` - the actual size of the memory block
 
 If the mapping fails, returns `nil,errmsg,errcode` where `errcode` can be:
 
@@ -106,12 +152,14 @@ If the mapping fails, returns `nil,errmsg,errcode` where `errcode` can be:
 * `'invalid_address'` - specified address in use.
 * an OS-specific numeric error code.
 
-Attempting to write to a memory block that wasn't mapped with write or
-copy-on-write access results in access violation (which means a crash
-since access violations are not caught by default).
+#### NOTE
 
-If an opened file is given (`fileno` arg) then the write buffers are flushed
-before mapping the file.
+* write buffers are flushed before mapping an already-opened file.
+* attempting to write to a memory block that wasn't mapped with write
+or copy-on-write access results in a crash.
+* changes done externally to a mapped file may not be visible immediately
+(or at all) to the mapped memory.
+* access to shared memory from multiple processes must be synchronized.
 
 
 ### `map:free()`
@@ -122,18 +170,19 @@ if it was opened by `mmap.map()`.
 
 ### `map:flush([wait, ][addr, size]) -> true | nil,errmsg,errcode`
 
-Flush (part of) the memory to disk.
-If `wait` is true, wait until the data has been written to disk.
+Flush (part of) the memory to disk. If the address is not aligned,
+it will be automatically aligned to the left. If `wait` is true,
+wait until the data has been written to disk.
 
 
-### `mmap.mirror(t) -> map | nil, errmsg, errcode`
+### `mmap.mirror(args_t) -> map | nil, errmsg, errcode` <br> `mmap.mirror(file, size[, times[, addr]]) -> map | nil, errmsg, errcode`
 
-Make a mirrored memory mapping to use with a [ring buffer][lfrb].
-The `t` arg is a table with the fields:
+Create a mirrored memory mapping to use with a [lock-free ring buffer][lfrb].
+Args:
 
 * `file`: the file to map: required (the access is 'w').
 * `size`: the size of the memory segment: required, automatically aligned
-to page size.
+to the next page size.
 * `times`: how many times to mirror the segment (optional, default: 2)
 * `addr`: address to use (optional).
 
@@ -144,10 +193,16 @@ The memory block at `addr` is mirrored such that
 `0..times-1` and for any `i` in `0..size-1`.
 
 
-### `mmap.aligned_size(bytes) -> bytes`
+### `mmap.aligned_size(bytes[, dir]) -> bytes`
 
-Get the next larger size that is aligned to a page boundary.
-It can be used to align offsets and to specify sizes.
+Get the next (dir = 'right', default) or previous (dir = 'left') size that is
+aligned to a page boundary. It can be used to align offsets and sizes.
+
+
+### `mmap.aligned_addr(ptr[, dir]) -> ptr`
+
+Get the next (dir = 'right', default) or previous (dir = 'left') address that
+is aligned to a page boundary. It can be used to align pointers.
 
 
 ### `mmap.pagesize() -> bytes`
@@ -167,3 +222,6 @@ Enlarge or truncate a file to a specific size. If the file does not exist
 it is created. Can fail with `'disk_full'` or an OS specific error code.
 When enlarging, the appended data is undefined. When truncating, the data
 up to the specified size is preserved.
+
+__NOTE:__ Do not try to set the file size while the file is mapped.
+Unmap it first, set the size, then map it back.
