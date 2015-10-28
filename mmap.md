@@ -28,79 +28,33 @@ Features:
 
 ## API
 
-----------------------------------------------------------------------------------------------
-`mmap.map(args_t) -> map | nil,errmsg,errcode` \
-`mmap.map(file, access, size, offset, addr, name) -> map | nil, errmsg, errcode` \
-create a memory mapping
+--------------------------------------------------------------------------------- ---------------------------------------------------------------------------------
+`mmap.map(args_t) -> map | nil, errmsg, errcode` \                                create a memory mapping
+`mmap.map(file, access, size, offset, addr, name) -> map | nil, errmsg, errcode`
 
-`map.addr` \
-a `void*` pointer to the mapped address
+`map.addr`                                                                        a `void*` pointer to the mapped memory
 
-`map.size` \
-the byte size of the mapped block
+`map.size`                                                                        the byte size of the mapped memory
 
-`map:flush([wait, ][addr, size]) -> true | nil, errmsg, errcode` \
-flush (parts of) the mapping to disk
+`map:flush([wait, ][addr, size]) -> true | nil, errmsg, errcode`                  flush (parts of) the mapping to disk
 
-`map:free()` \
-release the memory and associated resources
+`map:free()`                                                                      release the memory and associated resources
 
-`mmap.mirror(args_t) -> map | nil, errmsg, errcode` \
-`mmap.mirror(file, size[, times[, addr]]) -> map | nil, errmsg, errcode` \
-create a mirrored memory mapping
+`mmap.mirror(args_t) -> map | nil, errmsg, errcode` \                             create a mirrored memory mapping
+`mmap.mirror(file, size[, times[, addr]]) -> map | nil, errmsg, errcode`
 
-`mmap.pagesize() -> bytes` \
-allocation granularity
+`mmap.pagesize() -> bytes`                                                        allocation granularity
 
-`mmap.aligned_size(bytes[, dir]) -> bytes` \
-next/prev page-aligned size
+`mmap.aligned_size(bytes[, dir]) -> bytes`                                        next/prev page-aligned size
 
-`mmap.aligned_addr(ptr[, dir]) -> ptr` \
-next/prev page-aligned address
+`mmap.aligned_addr(ptr[, dir]) -> ptr`                                            next/prev page-aligned address
 
-`mmap.filesize(file) -> size | nil, errmsg, errcode` \
-get file size
+`mmap.filesize(file) -> size | nil, errmsg, errcode`                              get file size
 
-`mmap.filesize(file, size) -> size | nil,errmsg,errcode` \
-(create file and) set file size
-----------------------------------------------------------------------------------------------
+`mmap.filesize(file, size) -> size | nil, errmsg, errcode`                        (create file and) set file size
+--------------------------------------------------------------------------------- ---------------------------------------------------------------------------------
 
-
-------------------------------------------------- --------------------------------------------
-`mmap.map(args_t) -> map | nil,errmsg,errcode`    create a mapping
-
-`mmap.map(file, access, size, offset,` \          create a mapping
-`addr, name) -> map | nil,errmsg,errcode`
-
-`map.addr`                                        a `void*` pointer to the mapped address
-
-`map.size`                                        the byte size of the mapped block
-
-`map:flush([wait, ][addr, size])` \               flush (parts of) the mapping to disk
-`-> true | nil,errmsg,errcode`
-
-`map:free()`                                      release the memory and associated resources
-
-`mmap.mirror(args_t)` \                           create a mirrored memory mapping
-`-> map | nil,errmsg,errcode`
-
-`mmap.mirror(file, size[, times[, addr]])` \      create a mirrored memory mapping
-`-> map | nil,errmsg,errcode`
-
-`mmap.pagesize() -> bytes`                        allocation granularity
-
-`mmap.aligned_size(bytes[, dir]) -> bytes`        next/prev page-aligned size
-
-`mmap.aligned_addr(ptr[, dir]) -> ptr`            next/prev page-aligned address
-
-`mmap.filesize(file)` \                           get file size
-`-> size | nil,errmsg,errcode`
-
-`mmap.filesize(file, size)` \                     (create file and) set file size
-`-> size | nil,errmsg,errcode`
-------------------------------------------------- --------------------------------------------
-
-### `mmap.map(args_t) -> map | nil, errmsg, errcode` <br> `mmap.map(file, access, size, offset, addr, name)` <br> `-> map | nil, errmsg, errcode`
+### `mmap.map(args_t) -> map | nil, errmsg, errcode` <br> `mmap.map(file, access, size, offset, addr, name) -> map | nil, errmsg, errcode`
 
 Create a memory map object. Args:
 
@@ -138,12 +92,12 @@ will be mapped instead; it can be:
 different processes (or in the same process) gives access to the same memory.
 * `addr`: address to use (optional; an error is raised if zero).
 
-Returns an object (a table) with the fields:
+Returns an object with the fields:
 
-	* `map.addr` - a `void*` pointer to the mapped memory
-	* `map.size` - the actual size of the memory block
+* `addr` - a `void*` pointer to the mapped memory
+* `size` - the actual size of the memory block
 
-If the mapping fails, returns `nil,errmsg,errcode` where `errcode` can be:
+If the mapping fails, returns `nil, errmsg, errcode` where `errcode` can be:
 
 * `'no_file'` - file not found.
 * `'file_too_short'` - the file is shorter than the required size.
@@ -168,7 +122,7 @@ Free the memory and all associated resources and close the file
 if it was opened by `mmap.map()`.
 
 
-### `map:flush([wait, ][addr, size]) -> true | nil,errmsg,errcode`
+### `map:flush([wait, ][addr, size]) -> true | nil, errmsg, errcode`
 
 Flush (part of) the memory to disk. If the address is not aligned,
 it will be automatically aligned to the left. If `wait` is true,
@@ -211,12 +165,12 @@ Get the current page size. Memory will always be allocated in multiples
 of this size and file offsets must be aligned to this size too.
 
 
-### `mmap.filesize(file) -> size | nil,errmsg,errcode`
+### `mmap.filesize(file) -> size | nil, errmsg, errcode`
 
 Get file size. Can fail with `'not_found'` or an OS specific error code.
 
 
-### `mmap.filesize(file, size) -> size | nil,errmsg,errcode`
+### `mmap.filesize(file, size) -> size | nil, errmsg, errcode`
 
 Enlarge or truncate a file to a specific size. If the file does not exist
 it is created. Can fail with `'disk_full'` or an OS specific error code.
