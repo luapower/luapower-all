@@ -381,6 +381,7 @@ typedef struct jit_State {
   GCRef *trace;		/* Array of traces. */
   TraceNo freetrace;	/* Start of scan for next free trace. */
   MSize sizetrace;	/* Size of trace array. */
+  TValue *ktracep;	/* Pointer to K64Array slot with GCtrace pointer. */
 
   IRRef1 chain[IR__MAX];  /* IR instruction skip-list chain anchors. */
   TRef slot[LJ_MAX_JSLOTS+LJ_STACK_EXTRA];  /* Stack slot map. */
@@ -393,7 +394,9 @@ typedef struct jit_State {
   uint32_t penaltyslot;	/* Round-robin index into penalty slots. */
   uint32_t prngstate;	/* PRNG state. */
 
+#ifdef LUAJIT_ENABLE_TABLE_BUMP
   RBCHashEntry rbchash[RBCHASH_SLOTS];  /* Reverse bytecode map. */
+#endif
 
   BPropEntry bpropcache[BPROP_SLOTS];  /* Backpropagation cache slots. */
   uint32_t bpropslot;	/* Round-robin index into bpropcache slots. */

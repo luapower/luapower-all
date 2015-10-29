@@ -80,7 +80,7 @@ assert((function()return reflect.typeof("int[2]").vla == nil end)())
 assert((function()return reflect.typeof("int[]").vla == nil end)())
 assert((function()return reflect.typeof("struct{int num; int data[?];}").vla == true end)())
 assert((function()return reflect.typeof("struct{int num; int data[];}").vla == nil end)())
-assert((function()local pieces = {} local function print(s) pieces[#pieces + 1] = tostring(s) end 
+assert((function()local pieces = {} local function print(s) pieces[#pieces + 1] = tostring(s) end
 for refct in reflect.typeof [[
   struct {
     int a;
@@ -103,7 +103,7 @@ assert((function()
 ffi.cdef "int printf(const char*, ...);"
 return reflect.typeof(ffi.C.printf).vararg == true end)())
 assert((function()return reflect.typeof("int(__stdcall *)(int)").element_type.convention == "stdcall" end)())
-assert((function()local pieces = {} local function print(s) pieces[#pieces + 1] = tostring(s) end 
+assert((function()local pieces = {} local function print(s) pieces[#pieces + 1] = tostring(s) end
 if not ffi.abi "win" then return "Windows-only example" end
 ffi.cdef "void* LoadLibraryA(const char*)"
 print(reflect.typeof(ffi.C.LoadLibraryA).convention) --> cdecl
@@ -112,7 +112,7 @@ print(reflect.typeof(ffi.C.LoadLibraryA).convention) --> stdcall
 return table.concat(pieces, ", ") == "cdecl, stdcall" end)())
 assert((function()local pieces = {} local function print(s) pieces[#pieces + 1] = tostring(s) end for refct in reflect.typeof("struct{int x; int y;}"):members() do print(refct.name) end --> x, y
 return table.concat(pieces, ", ") == "x, y" end)())
-assert((function()local pieces = {} local function print(s) pieces[#pieces + 1] = tostring(s) end 
+assert((function()local pieces = {} local function print(s) pieces[#pieces + 1] = tostring(s) end
 for refct in reflect.typeof[[
   struct {
     int a;
@@ -128,14 +128,14 @@ for refct in reflect.typeof[[
   }
 ]]:members() do print(refct.what) end --> field, union, bitfield, struct
 return table.concat(pieces, ", ") == "field, union, bitfield, struct" end)())
-assert((function()local pieces = {} local function print(s) pieces[#pieces + 1] = tostring(s) end 
+assert((function()local pieces = {} local function print(s) pieces[#pieces + 1] = tostring(s) end
 ffi.cdef "int strcmp(const char*, const char*);"
 for refct in reflect.typeof(ffi.C.strcmp):arguments() do print(refct.type.what) end --> ptr, ptr
 return table.concat(pieces, ", ") == "ptr, ptr" end)())
-assert((function()local pieces = {} local function print(s) pieces[#pieces + 1] = tostring(s) end 
+assert((function()local pieces = {} local function print(s) pieces[#pieces + 1] = tostring(s) end
 for refct in reflect.typeof"int(*)(int x, int y)".element_type:arguments() do print(refct.name) end --> x, y
 return table.concat(pieces, ", ") == "x, y" end)())
-assert((function()local pieces = {} local function print(s) pieces[#pieces + 1] = tostring(s) end 
+assert((function()local pieces = {} local function print(s) pieces[#pieces + 1] = tostring(s) end
 ffi.cdef "enum EV{EV_A = 1, EV_B = 10, EV_C = 100};"
 for refct in reflect.typeof("enum EV"):values() do print(refct.name) end --> EV_A, EV_B, EV_C
 return table.concat(pieces, ", ") == "EV_A, EV_B, EV_C" end)())
