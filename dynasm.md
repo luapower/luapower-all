@@ -302,7 +302,7 @@ As for the user-facing changes, the list is again small:
   * `extern foo` resolves to `ffi.C.foo` by default; if foo has no cdef,
   `ffi.cdef'void foo()'` is called (i.e. a dummy cdef is made for it - caveat emptor).
 
-[source code changes]: https://github.com/luapower/dynasm/compare/7d7e130...master
+[source code changes]: https://github.com/luapower/dynasm/compare/93805cb...master
 
 ## Assembler tutorials & ref docs
 
