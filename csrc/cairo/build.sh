@@ -251,7 +251,7 @@ L="$L -lz"
 COMMENT
 
 rm -f *.o
-gcc -c -O2 $C
-gcc *.o -shared -o ../../../bin/$P/$D -L../../../bin/$P $L
-ar rcs ../../../bin/$P/$A *.o
+${X}gcc -c -O2 $C
+${X}gcc *.o -shared -o ../../../bin/$P/$D -L../../../bin/$P $L
+${X}ar rcs ../../../bin/$P/$A *.o
 rm *.o

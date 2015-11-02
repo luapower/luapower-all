@@ -35,9 +35,9 @@ hb-ft.cc
 "
 
 # TODO: remove the __MINGW32__ hack
-gcc -c -O2 $C -DHAVE_INTEL_ATOMIC_PRIMITIVES -D__MINGW32__ \
+${X}gcc -c -O2 $C -DHAVE_INTEL_ATOMIC_PRIMITIVES -D__MINGW32__ \
 	-I. -I../../freetype/include -I../../ucdn \
 	-fno-exceptions -fno-rtti
-gcc *.o -shared -o ../../../bin/$P/$D -L../../../bin/$P -lfreetype -lucdn $L
-ar rcs ../../../bin/$P/$A *.o
+${X}gcc *.o -shared -o ../../../bin/$P/$D -L../../../bin/$P -lfreetype -lucdn $L
+${X}ar rcs ../../../bin/$P/$A *.o
 rm *.o
