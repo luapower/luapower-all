@@ -25,9 +25,9 @@ libvorbisenc_files="vorbisenc.c"
 
 build() {
 	(cd lib
-	gcc -c -O2 $C -I../include -I. -I../../libogg
-	gcc *.o -shared -o ../../../bin/$P/$D $L -L../../../bin/$P -logg
-	ar rcs ../../../bin/$P/$A *.o
+	${X}gcc -c -O2 $C -I../include -I. -I../../libogg
+	${X}gcc *.o -shared -o ../../../bin/$P/$D $L -L../../../bin/$P -logg
+	${X}ar rcs ../../../bin/$P/$A *.o
 	rm *.o
 	)
 }
