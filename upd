@@ -1,0 +1,5 @@
+[ $1 ] || exit
+mgit $1 add -u csrc
+mgit $1 checkout bin
+mgit $1 status -s
+mgit $1 up "building with osxcross"

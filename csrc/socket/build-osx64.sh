@@ -1,3 +1,4 @@
+[ `uname` = Linux ] && export X=x86_64-apple-darwin11-
 files="$(ls -1 src/*.c | grep -v "wsocket\|serial\|mime")" \
 	P=osx64 C="-arch x86_64 -DLUASOCKET_API=extern" \
 	L="-arch x86_64 -undefined dynamic_lookup" \

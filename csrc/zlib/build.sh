@@ -1,4 +1,4 @@
-gcc -c -O2 $C *.c -I.
-gcc *.o -shared -o ../../bin/$P/$D $L
-ar rcs ../../bin/$P/$A *.o
+${X}gcc -c -O2 $C *.c -I.
+${X}gcc *.o -shared -o ../../bin/$P/$D $L
+${X}ar rcs ../../bin/$P/$A *.o
 rm *.o
