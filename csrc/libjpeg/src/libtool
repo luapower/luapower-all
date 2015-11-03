@@ -65,21 +65,21 @@ allow_libtool_libs_with_static_runtimes=no
 fast_install=needless
 
 # The host system.
-host_alias=x86_64-apple-darwin11
-host=x86_64-apple-darwin11
+host_alias=i386-apple-darwin11
+host=i386-apple-darwin11
 
 # An echo program that does not interpret backslashes.
 echo="echo"
 
 # The archiver.
-AR="x86_64-apple-darwin11-ar"
+AR="i386-apple-darwin11-ar"
 AR_FLAGS="cru"
 
 # A C compiler.
-LTCC="x86_64-apple-darwin11-gcc"
+LTCC="i386-apple-darwin11-gcc"
 
 # A language-specific compiler.
-CC="x86_64-apple-darwin11-gcc"
+CC="i386-apple-darwin11-gcc"
 
 # Is the compiler the GNU C compiler?
 with_gcc=yes
@@ -94,10 +94,10 @@ LD="/home/cosmin/osxcross/target/bin/x86_64-apple-darwin11-ld"
 LN_S="ln -s"
 
 # A BSD-compatible nm program.
-NM="/home/cosmin/osxcross/target/bin/x86_64-apple-darwin11-nm"
+NM="/home/cosmin/osxcross/target/bin/i386-apple-darwin11-nm"
 
 # A symbol stripping program
-STRIP="x86_64-apple-darwin11-strip"
+STRIP="i386-apple-darwin11-strip"
 
 # Used to examine libraries when file_magic_cmd begins "file"
 MAGIC_CMD=file
@@ -190,7 +190,7 @@ library_names_spec="\${libname}\${release}\${versuffix}\$shared_ext \${libname}\
 soname_spec="\${libname}\${release}\${major}\$shared_ext"
 
 # Commands used to build and install an old-style archive.
-RANLIB="x86_64-apple-darwin11-ranlib"
+RANLIB="i386-apple-darwin11-ranlib"
 old_archive_cmds="\$AR \$AR_FLAGS \$oldlib\$oldobjs\$old_deplibs~\$RANLIB \$oldlib"
 old_postinstall_cmds="\$RANLIB \$oldlib~chmod 644 \$oldlib"
 old_postuninstall_cmds=""
@@ -213,7 +213,7 @@ module_expsym_cmds="sed -e \\\"s,#.*,,\\\" -e \\\"s,^[    ]*,,\\\" -e \\\"s,^\\\
 
 # Commands to strip libraries.
 old_striplib=""
-striplib="x86_64-apple-darwin11-strip -x"
+striplib="i386-apple-darwin11-strip -x"
 
 # Dependencies to place before the objects being linked to create a
 # shared library.
@@ -313,7 +313,7 @@ variables_saved_for_relink="PATH   GCC_EXEC_PREFIX COMPILER_PATH LIBRARY_PATH"
 link_all_deplibs=yes
 
 # Compile-time system search path for libraries
-sys_lib_search_path_spec=" /home/cosmin/osxcross/target/bin/../lib/gcc/x86_64-apple-darwin11/5.2.0/ /home/cosmin/osxcross/target/bin/../lib/gcc/ /home/cosmin/osxcross/target/bin/../lib/gcc/x86_64-apple-darwin11/5.2.0/../../../../x86_64-apple-darwin11/lib/x86_64-apple-darwin11/5.2.0/ /home/cosmin/osxcross/target/bin/../lib/gcc/x86_64-apple-darwin11/5.2.0/../../../../x86_64-apple-darwin11/lib/ /home/cosmin/osxcross/target/bin/../SDK/MacOSX10.7.sdk/lib/x86_64-apple-darwin11/5.2.0/ /home/cosmin/osxcross/target/bin/../SDK/MacOSX10.7.sdk/lib/ /home/cosmin/osxcross/target/bin/../SDK/MacOSX10.7.sdk/usr/lib/x86_64-apple-darwin11/5.2.0/ /home/cosmin/osxcross/target/bin/../SDK/MacOSX10.7.sdk/usr/lib/  /lib /usr/lib /usr/local/lib"
+sys_lib_search_path_spec=" /home/cosmin/osxcross/target/bin/../lib/gcc/x86_64-apple-darwin11/5.2.0/i386/ /home/cosmin/osxcross/target/bin/../lib/gcc/i386/ /home/cosmin/osxcross/target/bin/../lib/gcc/x86_64-apple-darwin11/5.2.0/../../../../x86_64-apple-darwin11/lib/x86_64-apple-darwin11/5.2.0/i386/ /home/cosmin/osxcross/target/bin/../lib/gcc/x86_64-apple-darwin11/5.2.0/../../../../x86_64-apple-darwin11/lib/i386/ /home/cosmin/osxcross/target/bin/../SDK/MacOSX10.7.sdk/lib/x86_64-apple-darwin11/5.2.0/i386/ /home/cosmin/osxcross/target/bin/../SDK/MacOSX10.7.sdk/lib/i386/ /home/cosmin/osxcross/target/bin/../SDK/MacOSX10.7.sdk/usr/lib/x86_64-apple-darwin11/5.2.0/i386/ /home/cosmin/osxcross/target/bin/../SDK/MacOSX10.7.sdk/usr/lib/i386/ /home/cosmin/osxcross/target/bin/../lib/gcc/x86_64-apple-darwin11/5.2.0/ /home/cosmin/osxcross/target/bin/../lib/gcc/ /home/cosmin/osxcross/target/bin/../lib/gcc/x86_64-apple-darwin11/5.2.0/../../../../x86_64-apple-darwin11/lib/x86_64-apple-darwin11/5.2.0/ /home/cosmin/osxcross/target/bin/../lib/gcc/x86_64-apple-darwin11/5.2.0/../../../../x86_64-apple-darwin11/lib/ /home/cosmin/osxcross/target/bin/../SDK/MacOSX10.7.sdk/lib/x86_64-apple-darwin11/5.2.0/ /home/cosmin/osxcross/target/bin/../SDK/MacOSX10.7.sdk/lib/ /home/cosmin/osxcross/target/bin/../SDK/MacOSX10.7.sdk/usr/lib/x86_64-apple-darwin11/5.2.0/ /home/cosmin/osxcross/target/bin/../SDK/MacOSX10.7.sdk/usr/lib/  /lib /usr/lib /usr/local/lib"
 
 # Run-time system search path for libraries
 sys_lib_dlsearch_path_spec="/usr/local/lib /lib /usr/lib"
@@ -6787,21 +6787,21 @@ allow_libtool_libs_with_static_runtimes=no
 fast_install=needless
 
 # The host system.
-host_alias=x86_64-apple-darwin11
-host=x86_64-apple-darwin11
+host_alias=i386-apple-darwin11
+host=i386-apple-darwin11
 
 # An echo program that does not interpret backslashes.
 echo="echo"
 
 # The archiver.
-AR="x86_64-apple-darwin11-ar"
+AR="i386-apple-darwin11-ar"
 AR_FLAGS="cru"
 
 # A C compiler.
-LTCC="x86_64-apple-darwin11-gcc"
+LTCC="i386-apple-darwin11-gcc"
 
 # A language-specific compiler.
-CC="x86_64-apple-darwin11-g++"
+CC="i386-apple-darwin11-g++"
 
 # Is the compiler the GNU C compiler?
 with_gcc=yes
@@ -6816,10 +6816,10 @@ LD="/home/cosmin/osxcross/target/bin/x86_64-apple-darwin11-ld"
 LN_S="ln -s"
 
 # A BSD-compatible nm program.
-NM="/home/cosmin/osxcross/target/bin/x86_64-apple-darwin11-nm"
+NM="/home/cosmin/osxcross/target/bin/i386-apple-darwin11-nm"
 
 # A symbol stripping program
-STRIP="x86_64-apple-darwin11-strip"
+STRIP="i386-apple-darwin11-strip"
 
 # Used to examine libraries when file_magic_cmd begins "file"
 MAGIC_CMD=file
@@ -6912,7 +6912,7 @@ library_names_spec="\${libname}\${release}\${versuffix}\$shared_ext \${libname}\
 soname_spec="\${libname}\${release}\${major}\$shared_ext"
 
 # Commands used to build and install an old-style archive.
-RANLIB="x86_64-apple-darwin11-ranlib"
+RANLIB="i386-apple-darwin11-ranlib"
 old_archive_cmds="\$AR \$AR_FLAGS \$oldlib\$oldobjs\$old_deplibs~\$RANLIB \$oldlib"
 old_postinstall_cmds="\$RANLIB \$oldlib~chmod 644 \$oldlib"
 old_postuninstall_cmds=""
@@ -6935,7 +6935,7 @@ module_expsym_cmds="sed -e \\\"s,#.*,,\\\" -e \\\"s,^[    ]*,,\\\" -e \\\"s,^\\\
 
 # Commands to strip libraries.
 old_striplib=""
-striplib="x86_64-apple-darwin11-strip -x"
+striplib="i386-apple-darwin11-strip -x"
 
 # Dependencies to place before the objects being linked to create a
 # shared library.
@@ -7035,7 +7035,7 @@ variables_saved_for_relink="PATH DYLD_LIBRARY_PATH  GCC_EXEC_PREFIX COMPILER_PAT
 link_all_deplibs=yes
 
 # Compile-time system search path for libraries
-sys_lib_search_path_spec=" /home/cosmin/osxcross/target/bin/../lib/gcc/x86_64-apple-darwin11/5.2.0/ /home/cosmin/osxcross/target/bin/../lib/gcc/ /home/cosmin/osxcross/target/bin/../lib/gcc/x86_64-apple-darwin11/5.2.0/../../../../x86_64-apple-darwin11/lib/x86_64-apple-darwin11/5.2.0/ /home/cosmin/osxcross/target/bin/../lib/gcc/x86_64-apple-darwin11/5.2.0/../../../../x86_64-apple-darwin11/lib/ /home/cosmin/osxcross/target/bin/../SDK/MacOSX10.7.sdk/lib/x86_64-apple-darwin11/5.2.0/ /home/cosmin/osxcross/target/bin/../SDK/MacOSX10.7.sdk/lib/ /home/cosmin/osxcross/target/bin/../SDK/MacOSX10.7.sdk/usr/lib/x86_64-apple-darwin11/5.2.0/ /home/cosmin/osxcross/target/bin/../SDK/MacOSX10.7.sdk/usr/lib/  /lib /usr/lib /usr/local/lib"
+sys_lib_search_path_spec=" /home/cosmin/osxcross/target/bin/../lib/gcc/x86_64-apple-darwin11/5.2.0/i386/ /home/cosmin/osxcross/target/bin/../lib/gcc/i386/ /home/cosmin/osxcross/target/bin/../lib/gcc/x86_64-apple-darwin11/5.2.0/../../../../x86_64-apple-darwin11/lib/x86_64-apple-darwin11/5.2.0/i386/ /home/cosmin/osxcross/target/bin/../lib/gcc/x86_64-apple-darwin11/5.2.0/../../../../x86_64-apple-darwin11/lib/i386/ /home/cosmin/osxcross/target/bin/../SDK/MacOSX10.7.sdk/lib/x86_64-apple-darwin11/5.2.0/i386/ /home/cosmin/osxcross/target/bin/../SDK/MacOSX10.7.sdk/lib/i386/ /home/cosmin/osxcross/target/bin/../SDK/MacOSX10.7.sdk/usr/lib/x86_64-apple-darwin11/5.2.0/i386/ /home/cosmin/osxcross/target/bin/../SDK/MacOSX10.7.sdk/usr/lib/i386/ /home/cosmin/osxcross/target/bin/../lib/gcc/x86_64-apple-darwin11/5.2.0/ /home/cosmin/osxcross/target/bin/../lib/gcc/ /home/cosmin/osxcross/target/bin/../lib/gcc/x86_64-apple-darwin11/5.2.0/../../../../x86_64-apple-darwin11/lib/x86_64-apple-darwin11/5.2.0/ /home/cosmin/osxcross/target/bin/../lib/gcc/x86_64-apple-darwin11/5.2.0/../../../../x86_64-apple-darwin11/lib/ /home/cosmin/osxcross/target/bin/../SDK/MacOSX10.7.sdk/lib/x86_64-apple-darwin11/5.2.0/ /home/cosmin/osxcross/target/bin/../SDK/MacOSX10.7.sdk/lib/ /home/cosmin/osxcross/target/bin/../SDK/MacOSX10.7.sdk/usr/lib/x86_64-apple-darwin11/5.2.0/ /home/cosmin/osxcross/target/bin/../SDK/MacOSX10.7.sdk/usr/lib/  /lib /usr/lib /usr/local/lib"
 
 # Run-time system search path for libraries
 sys_lib_dlsearch_path_spec="/usr/local/lib /lib /usr/lib"

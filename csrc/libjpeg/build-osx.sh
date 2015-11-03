@@ -2,9 +2,10 @@
 cd src
 FLAGS=""
 make clean
+[ $X ] && NASM= || NASM=/opt/local/bin/nasm
 [ $X ] && X="--host $X" || X="--host $A-apple-darwin"
 ./configure $X \
-	NASM=/opt/local/bin/nasm \
+	NASM="$NASM" \
 	CFLAGS="-O3 $M -mmacosx-version-min=10.6" \
 	LDFLAGS="$M -mmacosx-version-min=10.6"
 make

@@ -1,0 +1,55 @@
+jcstest.o: jcstest.c \
+ /home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/stdio.h \
+ /home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/sys/cdefs.h \
+ /home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/sys/_symbol_aliasing.h \
+ /home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/sys/_posix_availability.h \
+ /home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/Availability.h \
+ /home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/AvailabilityInternal.h \
+ /home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/_types.h \
+ /home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/sys/_types.h \
+ /home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/machine/_types.h \
+ /home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/i386/_types.h \
+ /home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/secure/_stdio.h \
+ /home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/secure/_common.h \
+ jpeglib.h jconfig.h jmorecfg.h jerror.h \
+ /home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/setjmp.h \
+ /home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/machine/setjmp.h \
+ /home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/i386/setjmp.h
+
+/home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/stdio.h:
+
+/home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/sys/cdefs.h:
+
+/home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/sys/_symbol_aliasing.h:
+
+/home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/sys/_posix_availability.h:
+
+/home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/Availability.h:
+
+/home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/AvailabilityInternal.h:
+
+/home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/_types.h:
+
+/home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/sys/_types.h:
+
+/home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/machine/_types.h:
+
+/home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/i386/_types.h:
+
+/home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/secure/_stdio.h:
+
+/home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/secure/_common.h:
+
+jpeglib.h:
+
+jconfig.h:
+
+jmorecfg.h:
+
+jerror.h:
+
+/home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/setjmp.h:
+
+/home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/machine/setjmp.h:
+
+/home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/i386/setjmp.h:

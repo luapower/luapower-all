@@ -1,0 +1,79 @@
+md5cmp-md5cmp.o: md5cmp.c \
+ /home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/stdio.h \
+ /home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/sys/cdefs.h \
+ /home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/sys/_symbol_aliasing.h \
+ /home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/sys/_posix_availability.h \
+ /home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/Availability.h \
+ /home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/AvailabilityInternal.h \
+ /home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/_types.h \
+ /home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/sys/_types.h \
+ /home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/machine/_types.h \
+ /home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/i386/_types.h \
+ /home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/secure/_stdio.h \
+ /home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/secure/_common.h \
+ /home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/string.h \
+ /home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/strings.h \
+ /home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/secure/_string.h \
+ /home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/sys/types.h \
+ /home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/sys/appleapiopts.h \
+ /home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/machine/types.h \
+ /home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/i386/types.h \
+ /home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/machine/endian.h \
+ /home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/i386/endian.h \
+ /home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/sys/_endian.h \
+ /home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/libkern/_OSByteOrder.h \
+ /home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/libkern/i386/_OSByteOrder.h \
+ /home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/sys/_structs.h \
+ md5.h
+
+/home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/stdio.h:
+
+/home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/sys/cdefs.h:
+
+/home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/sys/_symbol_aliasing.h:
+
+/home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/sys/_posix_availability.h:
+
+/home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/Availability.h:
+
+/home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/AvailabilityInternal.h:
+
+/home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/_types.h:
+
+/home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/sys/_types.h:
+
+/home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/machine/_types.h:
+
+/home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/i386/_types.h:
+
+/home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/secure/_stdio.h:
+
+/home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/secure/_common.h:
+
+/home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/string.h:
+
+/home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/strings.h:
+
+/home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/secure/_string.h:
+
+/home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/sys/types.h:
+
+/home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/sys/appleapiopts.h:
+
+/home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/machine/types.h:
+
+/home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/i386/types.h:
+
+/home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/machine/endian.h:
+
+/home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/i386/endian.h:
+
+/home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/sys/_endian.h:
+
+/home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/libkern/_OSByteOrder.h:
+
+/home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/libkern/i386/_OSByteOrder.h:
+
+/home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/sys/_structs.h:
+
+md5.h:

@@ -1,0 +1,124 @@
+jcmarker.lo: jcmarker.c jinclude.h jconfig.h \
+ /home/cosmin/osxcross/target/lib/gcc/x86_64-apple-darwin11/5.2.0/include/stddef.h \
+ /home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/stdlib.h \
+ /home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/Availability.h \
+ /home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/AvailabilityInternal.h \
+ /home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/_types.h \
+ /home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/sys/_types.h \
+ /home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/sys/cdefs.h \
+ /home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/sys/_symbol_aliasing.h \
+ /home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/sys/_posix_availability.h \
+ /home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/machine/_types.h \
+ /home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/i386/_types.h \
+ /home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/sys/wait.h \
+ /home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/sys/signal.h \
+ /home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/sys/appleapiopts.h \
+ /home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/machine/signal.h \
+ /home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/i386/signal.h \
+ /home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/i386/_structs.h \
+ /home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/sys/_structs.h \
+ /home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/machine/_structs.h \
+ /home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/mach/i386/_structs.h \
+ /home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/sys/resource.h \
+ /home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/machine/endian.h \
+ /home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/i386/endian.h \
+ /home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/sys/_endian.h \
+ /home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/libkern/_OSByteOrder.h \
+ /home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/libkern/i386/_OSByteOrder.h \
+ /home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/alloca.h \
+ /home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/machine/types.h \
+ /home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/i386/types.h \
+ /home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/sys/types.h \
+ /home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/stdio.h \
+ /home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/secure/_stdio.h \
+ /home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/secure/_common.h \
+ /home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/string.h \
+ /home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/strings.h \
+ /home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/secure/_string.h \
+ jpeglib.h jmorecfg.h jpegint.h jerror.h jpegcomp.h
+
+jinclude.h:
+
+jconfig.h:
+
+/home/cosmin/osxcross/target/lib/gcc/x86_64-apple-darwin11/5.2.0/include/stddef.h:
+
+/home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/stdlib.h:
+
+/home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/Availability.h:
+
+/home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/AvailabilityInternal.h:
+
+/home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/_types.h:
+
+/home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/sys/_types.h:
+
+/home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/sys/cdefs.h:
+
+/home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/sys/_symbol_aliasing.h:
+
+/home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/sys/_posix_availability.h:
+
+/home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/machine/_types.h:
+
+/home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/i386/_types.h:
+
+/home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/sys/wait.h:
+
+/home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/sys/signal.h:
+
+/home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/sys/appleapiopts.h:
+
+/home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/machine/signal.h:
+
+/home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/i386/signal.h:
+
+/home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/i386/_structs.h:
+
+/home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/sys/_structs.h:
+
+/home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/machine/_structs.h:
+
+/home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/mach/i386/_structs.h:
+
+/home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/sys/resource.h:
+
+/home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/machine/endian.h:
+
+/home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/i386/endian.h:
+
+/home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/sys/_endian.h:
+
+/home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/libkern/_OSByteOrder.h:
+
+/home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/libkern/i386/_OSByteOrder.h:
+
+/home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/alloca.h:
+
+/home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/machine/types.h:
+
+/home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/i386/types.h:
+
+/home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/sys/types.h:
+
+/home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/stdio.h:
+
+/home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/secure/_stdio.h:
+
+/home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/secure/_common.h:
+
+/home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/string.h:
+
+/home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/strings.h:
+
+/home/cosmin/osxcross/target/SDK/MacOSX10.7.sdk/usr/include/secure/_string.h:
+
+jpeglib.h:
+
+jmorecfg.h:
+
+jpegint.h:
+
+jerror.h:
+
+jpegcomp.h:
