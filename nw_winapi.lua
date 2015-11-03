@@ -151,15 +151,7 @@ function window:new(app, frontend, t)
 		own_dc = t.opengl and true or nil,
 	}
 
-<<<<<<< HEAD
-	if t.corner_radius > 0 then
-		local hrgn = winapi.CreateRoundRectRgn(0, 0, t.w, t.h, t.corner_radius, t.corner_radius)
-		winapi.SetWindowRgn(self.win.hwnd, hrgn, false)
-		--NOTE: the hrgn is owned by the window now, and doesn't need releasing.
-	end
-=======
 	self:_set_region()
->>>>>>> 17729a996761cc278369a4bed1ad2692aecc89e2
 
 	--must set WS_CHILD **after** window is created for non-activable toolboxes!
 	if t.frame == 'toolbox' and not t.activable then
@@ -550,39 +542,6 @@ function window:set_maxsize(w, h)
 end
 
 --positioning/resizing -------------------------------------------------------
-
-function app:_resize_area_hit(mx, my, w, h)
-	local w1, h1, w2, h2 = app:frame_extents'normal'
-	local mw = (w1 + w2) / 2
-	local mh = (h1 + h2) / 2
-	local co = (mw + mh) / 2
-	return app.frontend:_resize_area_hit(mx, my, w, h, co, mw, mh)
-end
-
-local hts = {
-	bottomleft = winapi.HTBOTTOMLEFT,
-	bottomright = winapi.HTBOTTOMRIGHT,
-	topleft = winapi.HTTOPLEFT,
-	topright = winapi.HTTOPRIGHT,
-	bottom = winapi.HTBOTTOM,
-	top = winapi.HTTOP,
-	left = winapi.HTLEFT,
-	right = winapi.HTRIGHT,
-}
-
---[[
-function Window:on_nc_hittest(x, y)
-	local x, y = self.frontend:to_client(x, y)
-	local w, h = self.backend:get_client_size()
-	local ht = app:_resize_area_hit(x, y, w, h)
-	print(x, y, w, h, ht, hts[ht] or winapi.HTCAPTION)
-	return hts[ht] or winapi.HTCAPTION
-end
-
-function Window:on_nc_calcsize()
-	return 0
-end
-]]
 
 function Window:on_begin_sizemove()
 	--when moving the window, we want its position relative to
@@ -1176,6 +1135,15 @@ function app:double_click_target_area()
 	local w = winapi.GetSystemMetrics'SM_CXDOUBLECLK'
 	local h = winapi.GetSystemMetrics'SM_CYDOUBLECLK'
 	return w, h
+end
+
+function app:get_mouse_pos()
+	local p = winapi.GetCursorPos()
+	return p.x, p.y
+end
+
+function app:set_mouse_pos(x, y)
+	winapi.SetCursorPos(x, y)
 end
 
 --TODO: get lost mouse events http://blogs.msdn.com/b/oldnewthing/archive/2012/03/14/10282406.aspx

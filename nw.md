@@ -167,7 +167,7 @@ __views__
 `view:moved(x, y, oldx, oldy)`               event: view was moved
 `view:resized(w, h, oldw, oldh)`             event: view was resized
 __mouse__
-`win/view:mouse(var) -> val`                 mouse state: _x, y, pos, inside, left, right, middle, x1, x2_
+`app/win/view:mouse(var) -> val`             mouse state: _x, y, pos, inside, left, right, middle, x1, x2_
 `win/view:mouseenter(x, y)`                  event: mouse entered the client area of the window
 `win/view:mouseleave()`                      event: mouse left the client area of the window
 `win/view:mousemove(x, y)`                   event: mouse was moved
@@ -433,7 +433,6 @@ Create a window (fields of _`t`_ below with default value in parenthesis):
 	* `title`                    - title ('')
 	* `transparent`              - transparent window (false)
 	* `corner_radius`            - rounded corners (0)
-	* `resize_grip`              - resize grip width for frame='none' windows (8)
 * __behavior__
 	* `parent`                   - parent window
 	* `sticky`                   - moves with parent (false)
@@ -847,14 +846,14 @@ __NOTE:__ This event does not fire in Linux.
 Event: window was moved/resized. These events also fire when a window is
 hidden or minimized in which case all args are nil, so make sure to test for that.
 
-### `win:hittest(x, y) -> where`
+### `win:hittest(x, y, where) -> where`
 
-Hit test for moving and resizing frameless windows. Given a set of
-window-relative coordinates, return 'left', 'top', 'right', 'bottom',
-'topleft', 'bottomright', 'topright' or 'bottomleft' to specify that the
-window should be resized, 'move' which means the window should be moved,
-false which means the coordinates are over the client area, or nil
-which means that standard resizing based on `resize_grip` should take place.
+Hit test for moving and resizing frameless windows. Return 'left', 'top',
+'right', 'bottom', 'topleft', 'bottomright', 'topright' or 'bottomleft'
+to specify that the window should be resized, 'move' which means the window
+should be moved, false which means the coordinates are over the client area,
+or nil which means that standard resizing should take place. The `where`
+arg is the default response for the given coordinates.
 
 ## Size constraints
 

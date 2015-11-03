@@ -10,7 +10,6 @@ local glue  = require'glue'
 local box2d = require'box2d'
 local xlib  = require'xlib'
 require'xlib_keysym_h'
-require'xlib_xshm_h'
 local time  = require'time' --for timers
 local heap  = require'heap' --for timers
 local pp    = require'pp'
@@ -1021,8 +1020,21 @@ end
 
 function window:update_cursor()
 	local name, visible = self.frontend:cursor()
-	local cursor = visible and xlib.try_load_cursor(name) or xlib.blank_cursor()
+	name = visible and name or '_blank'
+	self._cursors = self._cursors or {}
+	local cursor = self._cursors[name]
+	if not cursor then
+		if visible then
+			cursor = xlib.try_load_cursor(name)
+				or self._cursors.arrow
+				or xlib.try_load_cursor'arrow'
+		else
+			cursor = xlib.blank_cursor()
+		end
+	end
+	if not cursor then return end
 	xlib.set_cursor(self.win, cursor)
+	self._cursors[name] = cursor
 end
 
 --keyboard -------------------------------------------------------------------
@@ -1229,9 +1241,13 @@ function window:_setmouse(e)
 	return m
 end
 
-function app:_get_mouse_pos()
+function app:get_mouse_pos()
 	local x, y = xlib.query_pointer(xlib.screen.root)
 	return x, y
+end
+
+function app:set_mouse_pos(x, y)
+	--TODO
 end
 
 function window:ButtonPress(e)

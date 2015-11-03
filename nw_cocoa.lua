@@ -171,9 +171,7 @@ function window:new(app, frontend, t)
 			not toolbox and t.minimizable and objc.NSMiniaturizableWindowMask or 0,
 			t.resizeable and objc.NSResizableWindowMask or 0)
 	else
-		style = bit.bor(
-			objc.NSBorderlessWindowMask,
-			t.resizeable and objc.NSResizableWindowMask or 0)
+		style = objc.NSBorderlessWindowMask
 		--for frameless windows we have to handle maximization manually.
 		self._frameless = true
 	end
@@ -1019,7 +1017,7 @@ end
 
 function app:_resize_area_hit(mx, my, w, h)
 	--offsets were found empirically on OSX 10.9
-	return self.frontend:_resize_area_hit(mx, h-my, w, h, 15, 4, 4)
+	return self.frontend:_resize_area_hit(mx, h-my, w, h, 4, 4, 15)
 end
 
 function Window:nw_clientarea_hit(event)
@@ -1315,18 +1313,24 @@ local hi_cursors = {
 }
 
 --resize sides and corners
-cursors.topleft     = hi_cursors.size_diag2
-cursors.topright    = hi_cursors.size_diag1
-cursors.bottomleft  = hi_cursors.size_diag1
-cursors.bottomright = hi_cursors.size_diag2
-cursors.top         = hi_cursors.size_v
-cursors.bottom      = hi_cursors.size_v
-cursors.left        = hi_cursors.size_h
-cursors.right       = hi_cursors.size_h
+hi_cursors.topleft     = hi_cursors.size_diag2
+hi_cursors.topright    = hi_cursors.size_diag1
+hi_cursors.bottomleft  = hi_cursors.size_diag1
+hi_cursors.bottomright = hi_cursors.size_diag2
+hi_cursors.top         = hi_cursors.size_v
+hi_cursors.bottom      = hi_cursors.size_v
+hi_cursors.left        = hi_cursors.size_h
+hi_cursors.right       = hi_cursors.size_h
+
+local cursors_basepath = glue.memoize(function()
+	local basepath = objc.findframework'ApplicationServices.HIServices'
+	if not basepath then return end
+	return basepath..'/Versions/Current/Resources/cursors'
+end)
 
 local load_hicursor = objc.memoize(function(name)
-	basepath = basepath or objc.findframework(
-		'ApplicationServices.HIServices/Versions/Current/Resources/cursors')
+	local basepath = cursors_basepath()
+	if not basepath then return end
 	local curpath = string.format('%s/%s/cursor.pdf', basepath, name)
 	local infopath = string.format('%s/%s/info.plist', basepath, name)
 	local image = objc.NSImage:alloc():initByReferencingFile(curpath)
@@ -1354,7 +1358,8 @@ function Window:cursorUpdate(event)
 	if self:nw_clientarea_hit(event) then
 		local cursor, visible = self.frontend:cursor()
 		if visible then
-			load_cursor(cursor):set()
+			local cursor = load_cursor(cursor) or load_cursor'arrow'
+			cursor:set()
 			objc.NSCursor:unhide()
 		else
 			objc.NSCursor:hide()
@@ -1640,7 +1645,7 @@ function app:key(name)
 	end
 end
 
---mouse/settings -------------------------------------------------------------
+--mouse/app ------------------------------------------------------------------
 
 function app:double_click_time()
 	return objc.NSEvent:doubleClickInterval() --seconds
@@ -1648,6 +1653,18 @@ end
 
 function app:double_click_target_area()
 	return 4, 4 --like in Windows
+end
+
+function app:get_mouse_pos()
+	local e = self.nsapp:currentEvent()
+	local win = e:window()
+	local p = e:locationInWindow()
+	local x, y = flip_screen_rect(nil, unpack_nsrect(win:convertRectToScreen(objc.NSMakeRect(p.x, p.y, 0, 0))))
+	return x, y
+end
+
+function app:set_mouse_pos()
+	--TODO
 end
 
 --rendering/bitmap -----------------------------------------------------------

@@ -367,7 +367,6 @@ local defaults = {
 	title = '',
 	transparent = false,
 	corner_radius = 0,
-	resize_grip = 8,
 	--behavior
 	topmost = false,
 	minimizable = true,
@@ -499,17 +498,6 @@ function window:_new(app, backend_class, useropt)
 
 	--avoid negative corner radius
 	opt.corner_radius = math.max(opt.corner_radius, 0)
-<<<<<<< HEAD
-
-	self = glue.update({app = app}, self)
-
-	self._mouse = {inside = false}
-	self._down = {}
-	self._views = {}
-	self._cursor_visible = true
-	self._cursor = 'arrow'
-=======
->>>>>>> 17729a996761cc278369a4bed1ad2692aecc89e2
 
 	self = glue.update({app = app}, self)
 
@@ -985,9 +973,8 @@ end
 
 --positioning/manual resizing of frameless windows ---------------------------
 
---this is a helper used in backends.
---co = corner offset; mw = margin width; mh = margin height.
-function app:_resize_area_hit(mx, my, w, h, co, mw, mh)
+--this is a helper also used in backends.
+function app:_resize_area_hit(mx, my, w, h, ho, vo, co)
 	if box2d.hit(mx, my, box2d.offset(co, 0, 0, 0, 0)) then
 		return 'topleft'
 	elseif box2d.hit(mx, my, box2d.offset(co, w, 0, 0, 0)) then
@@ -996,32 +983,37 @@ function app:_resize_area_hit(mx, my, w, h, co, mw, mh)
 		return 'bottomleft'
 	elseif box2d.hit(mx, my, box2d.offset(co, w, h, 0, 0)) then
 		return 'bottomright'
-	elseif box2d.hit(mx, my, box2d.offset(mh, 0, 0, w, 0)) then
+	elseif box2d.hit(mx, my, box2d.offset(ho, 0, 0, w, 0)) then
 		return 'top'
-	elseif box2d.hit(mx, my, box2d.offset(mh, 0, h, w, 0)) then
+	elseif box2d.hit(mx, my, box2d.offset(ho, 0, h, w, 0)) then
 		return 'bottom'
-	elseif box2d.hit(mx, my, box2d.offset(mw, 0, 0, 0, h)) then
+	elseif box2d.hit(mx, my, box2d.offset(vo, 0, 0, 0, h)) then
 		return 'left'
-	elseif box2d.hit(mx, my, box2d.offset(mw, w, 0, 0, h)) then
+	elseif box2d.hit(mx, my, box2d.offset(vo, w, 0, 0, h)) then
 		return 'right'
 	end
 end
 
-function window:_hittest(mx, my, cw, ch)
-	local where_resize = app:_resize_area_hit(mx, my, cw, ch, 8, 8, 8)
-	local where = self:fire('hittest', mx, my, where_resize)
-	if where == nil then --user doesn't care
-		return where_resize
-	else
-		return where
+function window:_hittest(mx, my)
+	local where
+	if self:_can_set_rect() and self:resizeable() then
+		local ho, vo = 8, 8 --TODO: expose these?
+		local co = vo + ho  --...and this (corner radius)
+		local w, h = self:client_size()
+		where = app:_resize_area_hit(mx, my, w, h, ho, vo, co)
 	end
+	local where1 = self:fire('hittest', mx, my, where)
+	if where1 ~= nil then where = where1 end
+	return where
 end
 
 function window:_init_manual_resize()
-	if self:frame() ~= 'none' or app:ver'OSX' then return end --resized by OS
+	if self:frame() ~= 'none' then return end
+
 	local resizing, where, sides, dx, dy
+
 	self:on('mousedown', function(self, button, mx, my)
-		if not where or button ~= 'left' then return end
+		if not (where and button == 'left') then return end
 		resizing = true
 		sides = {}
 		for _,side in ipairs{'left', 'top', 'right', 'bottom'} do
@@ -1030,53 +1022,50 @@ function window:_init_manual_resize()
 		local cw, ch = self:client_size()
 		if where == 'move' then
 			dx, dy = -mx, -my
-			self:cursor'move'
+			if app:ver'X' then
+				self:cursor'move'
+			end
 		else
 			dx = sides.left and -mx or cw - mx
 			dy = sides.top  and -my or ch - my
 		end
+		self:_backend_sizing('start', where)
 	end)
+
 	self:on('mousemove', function(self, mx, my)
 		if not resizing then
-			if not self:_can_set_rect() then return end
-			local cw, ch = self:client_size()
 			local where0 = where
-			where = self:_hittest(mx, my, cw, ch)
-<<<<<<< HEAD
+			where = self:_hittest(mx, my)
 			if where and where ~= 'move' then
-				if app:ver'X' then
-					self:cursor(where)
-				end
-=======
-			if where == 'move' and app:ver'X' then
 				self:cursor(where)
-			elseif where then
-				self:cursor(where)
->>>>>>> 17729a996761cc278369a4bed1ad2692aecc89e2
 			elseif where0 then
 				self:cursor'arrow'
 			end
 		else
-			if app:ver'X' then
-				mx, my = app.backend:_get_mouse_pos()
-			else
-				mx, my = self:to_screen(mx, my)
-			end
+			mx, my = app:mouse'pos' --need absolute pos because X is async
 			if where == 'move' then
-				local cx1, cy1, cw1, ch1 = self:client_rect()
-				self:frame_rect(mx + dx, my + dy, cw1, ch1)
+				local w, h = self:client_size()
+				local x, y, w, h = self:_backend_sizing(
+					'progress', where, mx + dx, my + dy, w, h)
+				self:frame_rect(x, y, w, h)
 			else
-				local cx1, cy1, cx2, cy2 = box2d.corners(self:frame_rect())
-				if sides.left   then cx1 = mx + dx end
-				if sides.right  then cx2 = mx + dx end
-				if sides.top    then cy1 = my + dy end
-				if sides.bottom then cy2 = my + dy end
-				self:frame_rect(box2d.rect(cx1, cy1, cx2, cy2))
+				local x1, y1, x2, y2 = box2d.corners(self:frame_rect())
+				if sides.left   then x1 = mx + dx end
+				if sides.right  then x2 = mx + dx end
+				if sides.top    then y1 = my + dy end
+				if sides.bottom then y2 = my + dy end
+				local x, y, w, h = self:_backend_sizing(
+					'progress', where, box2d.rect(x1, y1, x2, y2))
+				self:frame_rect(x, y, w, h)
 			end
 		end
 	end)
+
 	self:on('mouseup', function(self, button, x, y)
+		if not resizing then return end
+		self:cursor'arrow'
 		resizing = false
+		self:_backend_sizing('end', where)
 	end)
 end
 
@@ -1242,8 +1231,10 @@ end
 function window:cursor(name)
 	if name ~= nil then
 		if type(name) == 'boolean' then
+			if self._cursor_visible == name then return end
 			self._cursor_visible = name
 		else
+			if self._cursor == name then return end
 			self._cursor = name
 		end
 		self.backend:update_cursor()
@@ -1370,6 +1361,18 @@ function app:key(keys)
 end
 
 --mouse ----------------------------------------------------------------------
+
+function app:mouse(var)
+	if var == 'inside' then
+		return true
+	elseif var == 'pos' then
+		return self.backend:get_mouse_pos()
+	elseif var == 'x' then
+		return (self.backend:get_mouse_pos())
+	elseif var == 'y' then
+		return select(2, self.backend:get_mouse_pos())
+	end
+end
 
 function window:mouse(var)
 	if not self:_can_get_rect() then return end

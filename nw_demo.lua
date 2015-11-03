@@ -8,7 +8,12 @@ if not ... then
 	local dsp = app:main_display()
 	local win = app:window{x = dsp.w - 900, y = 200, cw = 800, ch = 400,
 		min_cw = 200, min_ch = 28,
-		frame = 'none', transparent = false, corner_radius = 4, topmost = true, visible = false}
+		frame = 'none',
+		transparent = false,
+		corner_radius = 6,
+		topmost = false,
+		visible = false}
+
 	local function reload()
 		package.loaded.nw_demo = nil
 		local ok, methods = pcall(require, 'nw_demo')
@@ -282,14 +287,10 @@ function win:repaint()
 end
 
 function win:mousemove(mx, my)
-	local w, h = self:client_size()
-	set_dims(w, h)
+	self:invalidate()
+end
 
-	self.min_hover = box2d.hit(mx, my, unpack(min_rect))
-	self.max_hover = box2d.hit(mx, my, unpack(max_rect))
-	self.close_hover = box2d.hit(mx, my, unpack(close_rect))
-	self.titlebar_hover = box2d.hit(mx, my, unpack(titlebar_rect))
-
+function win:mouseleave()
 	self:invalidate()
 end
 
@@ -305,9 +306,35 @@ function win:deactivated()
 	self:invalidate()
 end
 
-function win:hittest(x, y, where_resize)
-	if self.min_hover or self.max_hover or self.close_hover then return false end
-	if not where_resize and self.titlebar_hover then return 'move' end
+function win:hittest(mx, my, where)
+
+	local w, h = self:client_size()
+	set_dims(w, h)
+
+	self.min_hover = box2d.hit(mx, my, unpack(min_rect))
+	self.max_hover = box2d.hit(mx, my, unpack(max_rect))
+	self.close_hover = box2d.hit(mx, my, unpack(close_rect))
+	self.titlebar_hover =
+		not where --the titlebar is below the invisible resize grip
+		and box2d.hit(mx, my, unpack(titlebar_rect))
+
+	if self.min_hover or self.max_hover or self.close_hover then
+		return false --titlebar buttons are above the invisible resize grip
+	elseif self.titlebar_hover then
+		if self:ismaximized() or self:fullscreen() then return end
+		return 'move'
+	end
+end
+
+function win:click(button, count)
+	if count == 2 and self.titlebar_hover then
+		if self:ismaximized() then
+			self:restore()
+		else
+			self:maximize()
+		end
+		return true
+	end
 end
 
 function win:mouseup(x, y)
