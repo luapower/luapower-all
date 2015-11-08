@@ -500,9 +500,12 @@ if ffi.os == 'Windows' then
 
 elseif ffi.os == 'Linux' or ffi.os == 'OSX' then
 
+	local linux = ffi.os == 'Linux'
+	local osx = ffi.os == 'OSX'
+
 	--POSIX types -------------------------------------------------------------
 
-	if ffi.os == 'OSX' then
+	if osx then
 		ffi.cdef'typedef int64_t off_t;'
 	else
 		ffi.cdef'typedef long int off_t;'
@@ -517,7 +520,7 @@ elseif ffi.os == 'Linux' or ffi.os == 'OSX' then
 	local ENOMEM = 12
 	local EINVAL = 22
 	local EFBIG  = 27
-	local EDQUOT = 122
+	local EDQUOT = osx and 69 or 122
 
 	local errcodes = {
 		[ENOENT] = 'not_found',
@@ -536,8 +539,13 @@ elseif ffi.os == 'Linux' or ffi.os == 'OSX' then
 
 	--get pagesize ------------------------------------------------------------
 
-	ffi.cdef'int __getpagesize();'
-	mmap.pagesize = C.__getpagesize
+	if linux then
+		ffi.cdef'int __getpagesize();'
+		mmap.pagesize = C.__getpagesize
+	else
+		ffi.cdef'int getpagesize();'
+		mmap.pagesize = C.getpagesize
+	end
 
 	--FILE* to fileno conversion ----------------------------------------------
 
@@ -561,18 +569,18 @@ elseif ffi.os == 'Linux' or ffi.os == 'OSX' then
 	local O_RDONLY    = 0
 	--local O_WRONLY    = 1
 	local O_RDWR      = 2
-	local O_CREAT     = oct'0100'
-	--local O_EXCL      = oct'0200'
-	--local O_NOCTTY    = oct'0400'
-	--local O_TRUNC     = oct'01000'
-	--local O_APPEND    = oct'02000'
-	--local O_NONBLOCK  = oct'04000'
+	local O_CREAT     = osx and 0x00200 or oct'00100'
+	--local O_EXCL      = osx and 0x00800 or oct'00200'
+	--local O_NOCTTY    = osx and 0x20000 or oct'00400'
+	--local O_TRUNC     = osx and 0x00400 or oct'01000'
+	--local O_APPEND    = osx and 0x00008 or oct'02000'
+	--local O_NONBLOCK  = osx and 0x00004 or oct'04000'
 	--local O_NDELAY    = O_NONBLOCK
-	--local O_SYNC      = oct'4010000'
+	--local O_SYNC      = osx and 0x00080 or oct'4010000'
 	--local O_FSYNC     = O_SYNC
-	--local O_ASYNC     = oct'020000'
+	--local O_ASYNC     = osx and 0x00040 or oct'020000'
 
-	local librt = ffi.load'rt'
+	local librt = linux and ffi.load'rt' or C
 
 	local function open(path, access_write, access_exec, shm)
 		local oflags = access_write and bit.bor(O_RDWR, O_CREAT) or O_RDONLY
@@ -646,13 +654,13 @@ elseif ffi.os == 'Linux' or ffi.os == 'OSX' then
 	--mmap() flags
 	local MAP_SHARED  = 1
 	local MAP_PRIVATE = 2 --copy-on-write
-	local MAP_ANON = ffi.os == 'Linux' and 0x20 or 0x1000
-	local MAP_FIXED = 0x10
+	local MAP_FIXED   = 0x0010
+	local MAP_ANON    = osx and 0x1000 or 0x0020
 
 	--msync() flags
 	local MS_ASYNC      = 1
-	local MS_SYNC       = 4
 	local MS_INVALIDATE = 2
+	local MS_SYNC       = osx and 0x0010 or 4
 
 	function mmap.map(...)
 
