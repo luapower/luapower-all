@@ -1,5 +1,5 @@
 
---memory mapping API Windows, Linux and OSX
+--memory mapping API for Windows, Linux and OSX.
 --Written by Cosmin Apreutesei. Public Domain.
 
 if not ... then require'mmap_test'; return end
@@ -9,12 +9,12 @@ local bit = require'bit'
 local C = ffi.C
 local mmap = {C = C}
 
-local m = ffi.new(ffi.typeof[[
+local m = ffi.new[[
 	union {
 		struct { uint32_t lo; uint32_t hi; };
 		uint64_t x;
 	}
-]])
+]]
 local function split_uint64(x)
 	m.x = x
 	return m.hi, m.lo
@@ -43,31 +43,24 @@ function mmap.aligned_addr(addr, dir)
 	return ffi.cast('void*', mmap.aligned_size(ffi.cast('uintptr_t', addr), dir))
 end
 
-local function filetype(file)
-	if type(file) == 'string' then
-		return 'path'
-	elseif io.type(file) == 'file' then
-		return 'file'
-	elseif file then --assume OS file handle
-		return 'handle'
-	else
-		error('file missing', 2)
-	end
+local function check_tagname(tagname)
+	assert(tagname, 'no tagname given')
+	assert(not tagname:find'[/\\]', 'invalid tagname')
+	return tagname
 end
 
 local function parseargs(t,...)
 
 	--dispatch
-	local file, access, size, offset, addr, name
+	local file, access, size, offset, addr, tagname
 	if type(t) == 'table' then
-		file, access, size, offset, addr, name =
-			t.file, t.access, t.size, t.offset, t.addr, t.name
+		file, access, size, offset, addr, tagname =
+			t.file, t.access, t.size, t.offset, t.addr, t.tagname
 	else
-		file, access, size, offset, addr, name = t, ...
+		file, access, size, offset, addr, tagname = t, ...
 	end
 
 	--apply defaults/convert
-	local filetype = file and filetype(file)
 	local access = access or ''
 	local offset = file and offset or 0
 	local addr = addr and ffi.cast('void*', addr)
@@ -78,19 +71,19 @@ local function parseargs(t,...)
 	local access_exec = access:find'x'
 
 	--check
-	assert(not (access_write and access_copy),
-		'w and c access flags are mutually exclusive')
-	assert(file or size, 'size expected when mapping the pagefile')
+	assert(file or size, 'file and/or size expected')
+	assert(not access:find'[^rwcx]', 'invalid access flags')
+	assert(not (access_write and access_copy), 'invalid access flags')
+	assert(not (file and tagname), 'cannot have both file and tagname')
 	assert(not size or size > 0, 'size must be > 0')
 	assert(offset >= 0, 'offset must be >= 0')
-	assert(offset == mmap.aligned_size(offset), 'offset not aligned')
+	assert(offset == mmap.aligned_size(offset), 'offset not page-aligned')
 	assert(not addr or addr ~= nil, 'addr can\'t be zero')
-	assert(not addr or addr == mmap.aligned_addr(addr), 'addr not aligned')
+	assert(not addr or addr == mmap.aligned_addr(addr), 'addr not page-aligned')
+	if tagname then check_tagname(tagname) end
 
-	return
-		file, filetype,
-		access_write, access_copy, access_exec,
-		size, offset, addr, name
+	return file, access_write, access_copy, access_exec,
+		size, offset, addr, tagname
 end
 
 if ffi.os == 'Windows' then
@@ -151,7 +144,7 @@ if ffi.os == 'Windows' then
 		[ERROR_DISK_FULL] = 'disk_full',
 		[ERROR_COMMITMENT_LIMIT] = 'file_too_short', --swapfile too short
 		[ERROR_FILE_INVALID] = 'file_too_short', --file has zero size
-		[ERROR_INVALID_ADDRESS] = 'invalid_address', --address in use
+		[ERROR_INVALID_ADDRESS] = 'out_of_mem', --address in use
 	}
 
 	local function reterr(msgid)
@@ -223,9 +216,8 @@ if ffi.os == 'Windows' then
 	HANDLE _get_osfhandle(int fd);
 	]]
 
-	local function filehandle(file)
-		return C._get_osfhandle(C._fileno(file))
-	end
+	local fileno = C._fileno          -- FILE* -> fd
+	local fdhandle = C._get_osfhandle -- fd -> HANDLE
 
 	--open/close file ---------------------------------------------------------
 
@@ -302,9 +294,12 @@ if ffi.os == 'Windows' then
 	BOOL SetEndOfFile(HANDLE hFile);
 	]]
 
+	local FILE_BEGIN   = 0
+	local FILE_CURRENT = 1
+	local FILE_END     = 2
+
 	function mmap.filesize(file, size)
-		local filetype = filetype(file)
-		if filetype == 'path' then
+		if type(file) == 'string' then
 			local h, errmsg, errcode = open(file, size and true)
 			if not h then return nil, errmsg, errcode end
 			local function pass(...)
@@ -312,13 +307,26 @@ if ffi.os == 'Windows' then
 				return ...
 			end
 			return pass(mmap.filesize(h, size))
-		elseif filetype == 'handle' then
+		elseif io.type(file) == 'file' then
+			return mmap.filesize(fileno(file), size)
+		elseif type(file) == 'number' then
+			return mmap.filesize(fdhandle(file), size)
+		elseif ffi.istype('HANDLE', file) then
 			if size then --set the size
-				--TODO: put the file pointer back where it was!!!
-				local ok = C.mmap_SetFilePointerEx(file, size, nil, 0) ~= 0
+				--get current position
+				local curpos = ffi.new'int64_t[1]'
+				local ok = C.mmap_SetFilePointerEx(file, 0, curpos, FILE_CURRENT) ~= 0
 				if not ok then reterr() end
+				--set current position to new file size
+				local ok = C.mmap_SetFilePointerEx(file, size, nil, FILE_BEGIN) ~= 0
+				if not ok then reterr() end
+				--truncate the file to current position
 				local ok = C.SetEndOfFile(file)
 				if not ok then reterr() end
+				--set current position back to where it was
+				local ok = C.mmap_SetFilePointerEx(file, curpos[0], nil, FILE_BEGIN) ~= 0
+				if not ok then reterr() end
+				--return file new file size
 				return size
 			else --get size
 				local psz = ffi.new'int64_t[1]'
@@ -328,8 +336,8 @@ if ffi.os == 'Windows' then
 				end
 				return tonumber(psz[0])
 			end
-		elseif filetype == 'file' then
-			return mmap.filesize(filehandle(file), size)
+		else
+			error'file expected'
 		end
 	end
 
@@ -389,17 +397,19 @@ if ffi.os == 'Windows' then
 
 	function mmap.map(...)
 
-		local file, filetype, access_write, access_copy, access_exec,
-			size, offset, addr, name = parseargs(...)
+		local file, access_write, access_copy, access_exec,
+			size, offset, addr, tagname = parseargs(...)
 
 		local own_file
-		if filetype == 'path' then
+		if type(file) == 'string' then
 			local h, errmsg, errcode = open(file, access_write, access_exec)
 			if not h then return nil, errmsg, errcode end
 			file = h
 			own_file = true
-		elseif filetype == 'file' then
-			file = filehandle(file)
+		elseif type(file) == 'number' then
+			file = fdhandle(file)
+		elseif io.type(file) == 'file' then
+			file = fdhandle(fileno(file))
 		end
 
 		--flush the buffers before mapping to see the current view of the file.
@@ -418,10 +428,11 @@ if ffi.os == 'Windows' then
 				(access_write and PAGE_EXECUTE_READWRITE or PAGE_EXECUTE_READ) or
 				(access_write and PAGE_READWRITE or PAGE_READONLY))
 		local mhi, mlo = split_uint64(size or 0) --0 means whole file
-		local name = name and wcs('Local\\'..name) or nil
+
+		local tagname = tagname and wcs('Local\\'..tagname)
 
 		local filemap = C.mmap_CreateFileMappingW(
-			file or INVALID_HANDLE_VALUE, nil, protect, mhi, mlo, name)
+			file or INVALID_HANDLE_VALUE, nil, protect, mhi, mlo, tagname)
 
 		if filemap == nil then
 			local err = C.GetLastError()
@@ -453,14 +464,14 @@ if ffi.os == 'Windows' then
 			closefile()
 		end
 
-		local function flush(self, wait, addr, sz)
-			if type(wait) ~= 'boolean' then --wait arg is optional
-				wait, addr, sz = false, wait, addr
+		local function flush(self, async, addr, sz)
+			if type(async) ~= 'boolean' then --async arg is optional
+				async, addr, sz = false, async, addr
 			end
 			local addr = mmap.aligned_addr(addr or self.addr, 'left')
 			local ok = C.FlushViewOfFile(addr, sz or 0) ~= 0
 			if not ok then reterr() end
-			if wait then
+			if not async then
 				local ok = C.FlushFileBuffers(file) ~= 0
 				if not ok then return reterr() end
 			end
@@ -475,7 +486,16 @@ if ffi.os == 'Windows' then
 			size = filesize - offset
 		end
 
-		return {addr = addr, size = size, free = free, flush = flush}
+		local function unlink() --no-op
+			assert(tagname, 'no tagname given')
+		end
+
+		return {addr = addr, size = size, free = free, flush = flush,
+			unlink = unlink}
+	end
+
+	function mmap.unlink(tagname) --no-op
+		check_tagname(tagname)
 	end
 
 elseif ffi.os == 'Linux' or ffi.os == 'OSX' then
@@ -491,14 +511,27 @@ elseif ffi.os == 'Linux' or ffi.os == 'OSX' then
 
 	--error reporting ---------------------------------------------------------
 
+	ffi.cdef'char *strerror(int errnum);'
+
+	local ENOENT = 2
+	local ENOMEM = 12
+	local EINVAL = 22
+	local EFBIG  = 27
+	local EDQUOT = 122
+
 	local errcodes = {
-		--TODO
+		[ENOENT] = 'not_found',
+		[ENOMEM] = 'out_of_mem',
+		[EINVAL] = 'file_too_short',
+		[EFBIG] = 'disk_full',
+		[EDQUOT] = 'disk_full',
 	}
 
 	local function reterr(errno)
 		local errno = errno or ffi.errno()
 		local errcode = errcodes[errno] or errno
-		return nil, 'OS error '..errcode, errcode
+		local errmsg = ffi.string(C.strerror(errno))
+		return nil, errmsg, errcode
 	end
 
 	--get pagesize ------------------------------------------------------------
@@ -517,13 +550,16 @@ elseif ffi.os == 'Linux' or ffi.os == 'OSX' then
 	--open/close file ---------------------------------------------------------
 
 	ffi.cdef[[
-	int open(const char *path, int oflag, ...);
+	int open(const char *path, int oflag, mode_t mode);
 	void close(int fd);
+	int fsync(int fd);
+	int shm_open(const char *name, int oflag, mode_t mode);
+	int shm_unlink(const char *name);
 	]]
 
 	local function oct(s) return tonumber(s, 8) end
 	local O_RDONLY    = 0
-	local O_WRONLY    = 1
+	--local O_WRONLY    = 1
 	local O_RDWR      = 2
 	local O_CREAT     = oct'0100'
 	--local O_EXCL      = oct'0200'
@@ -536,9 +572,15 @@ elseif ffi.os == 'Linux' or ffi.os == 'OSX' then
 	--local O_FSYNC     = O_SYNC
 	--local O_ASYNC     = oct'020000'
 
-	local function open(path, access_write)
-		local oflags = bit.bor(access_write and O_RDWR or O_RDONLY, O_CREAT)
-		local fd = C.open(path, oflags)
+	local librt = ffi.load'rt'
+
+	local function open(path, access_write, access_exec, shm)
+		local oflags = access_write and bit.bor(O_RDWR, O_CREAT) or O_RDONLY
+		local perms = oct'444' +
+			(access_write and oct'222' or 0) +
+			(access_exec and oct'111' or 0)
+		local open = shm and librt.shm_open or C.open
+		local fd = open(path, oflags, perms)
 		if fd == -1 then return reterr() end
 		return fd
 	end
@@ -547,30 +589,31 @@ elseif ffi.os == 'Linux' or ffi.os == 'OSX' then
 
 	--get/set file size -------------------------------------------------------
 
-	local SEEK_SET = 0
-	local SEEK_CUR = 1
-	local SEEK_END = 2
-
 	ffi.cdef[[
 	int ftruncate(int fd, off_t length);
 	off_t lseek(int fd, off_t offset, int whence);
 	]]
 
+	local SEEK_SET = 0
+	local SEEK_CUR = 1
+	local SEEK_END = 2
+
 	function mmap.filesize(file, size)
-		local filetype = filetype(file)
-		if filetype == 'path' then
-			local fd, errmsg, errcode = open(file, size and true)
+		if type(file) == 'string' then
+			local access_write = size and true
+			local fd, errmsg, errcode = open(file, access_write)
 			if not fd then return nil, errmsg, errcode end
 			local function pass(...)
 				close(fd)
 				return ...
 			end
 			return pass(mmap.filesize(fd, size))
-		elseif filetype == 'handle' then
+		elseif io.type(file) == 'file' then
+			return mmap.filesize(fileno(file), size)
+		elseif type(file) == 'number' then
 			if size then --set size
-				if C.ftruncate(file, size) ~= 0 then
-					return reterr()
-				end
+				local ok = C.ftruncate(file, size) == 0
+				if not ok then return reterr() end
 				return size
 			else --get size
 				local ofs = C.lseek(file, 0, SEEK_CUR)
@@ -581,8 +624,8 @@ elseif ffi.os == 'Linux' or ffi.os == 'OSX' then
 				if ofs == -1 then return reterr() end
 				return size
 			end
-		elseif filetype == 'file' then
-			return mmap.filesize(fileno(file), size)
+		else
+			error'file expected'
 		end
 	end
 
@@ -593,8 +636,6 @@ elseif ffi.os == 'Linux' or ffi.os == 'OSX' then
 	int munmap(void *addr, size_t length);
 	int msync(void *addr, size_t length, int flags);
 	int mprotect(void *addr, size_t len, int prot);
-	int shm_open(const char *name, int oflag, mode_t mode);
-	int shm_unlink(const char *name);
 	]]
 
 	--mmap() access flags
@@ -606,6 +647,7 @@ elseif ffi.os == 'Linux' or ffi.os == 'OSX' then
 	local MAP_SHARED  = 1
 	local MAP_PRIVATE = 2 --copy-on-write
 	local MAP_ANON = ffi.os == 'Linux' and 0x20 or 0x1000
+	local MAP_FIXED = 0x10
 
 	--msync() flags
 	local MS_ASYNC      = 1
@@ -614,94 +656,144 @@ elseif ffi.os == 'Linux' or ffi.os == 'OSX' then
 
 	function mmap.map(...)
 
-		local file, filetype, access_write, access_copy, access_exec,
-			size, offset, addr, name = parseargs(...)
+		local file, access_write, access_copy, access_exec,
+			size, offset, addr, tagname = parseargs(...)
 
-		local own_file
-		if filetype == 'path' then
-			local fd, errmsg, errcode = open(file, access_write)
+		local fd, close
+		if type(file) == 'string' then
+			local errmsg, errcode
+			fd, errmsg, errcode = open(file, access_write, access_exec)
 			if not fd then return nil, errmsg, errcode end
-			file = fd
-			own_file = true
-		elseif filetype == 'file' then
-			file = fileno(file)
+			function close()
+				C.close(fd)
+			end
+		elseif io.type(file) == 'file' then
+			fd = fileno(file)
+		elseif tagname then
+			local errmsg, errcode
+			tagname = '/'..tagname
+			fd, errmsg, errcode = open(tagname, access_write, access_exec, true)
+			if not fd then return reterr() end
+		end
+
+		--emulate Windows behavior for missing size and size mismatches.
+		if file then
+			if not size then --if size not given, assume entire file
+				local filesize, errmsg, errcode = mmap.filesize(fd)
+				if not filesize then
+					if close then close() end
+					return nil, errmsg, errcode
+				end
+				size = filesize - offset
+			elseif access_write then --if writable file too short, extend it
+				local filesize = mmap.filesize(fd)
+				if filesize < offset + size then
+					local ok, errmsg, errcode = mmap.filesize(fd, offset + size)
+					if not ok then
+						if close then close() end
+						return nil, errmsg, errcode
+					end
+				end
+			else --if read/only file too short
+				local filesize, errmsg, errcode = mmap.filesize(fd)
+				if not filesize then
+					if close then close() end
+					return nil, errmsg, errcode
+				end
+				if filesize < offset + size then
+					return nil, 'File too short', 'file_too_short'
+				end
+			end
+		elseif tagname and access_write then
+			local ok = C.ftruncate(fd, size) == 0
+			if not ok then return reterr() end
+		end
+
+		--flush the buffers before mapping to see the current view of the file.
+		if file then
+			local ret = C.fsync(fd)
+			if ret == -1 then
+				local err = ffi.errno()
+				if close then close() end
+				return reterr(err)
+			end
 		end
 
 		local access = bit.bor(
 			PROT_READ,
 			bit.bor(
-				access_write and PROT_WRITE or 0,
+				(access_write or access_copy) and PROT_WRITE or 0,
 				access_exec and PROT_EXEC or 0))
+
 		local flags = bit.bor(
 			access_copy and MAP_PRIVATE or MAP_SHARED,
-			file and 0 or MAP_ANON,
+			fd and 0 or MAP_ANON,
 			addr and MAP_FIXED or 0)
 
-		if file then
-			if not size then --if size not given, assume entire file
-				local filesize, errmsg, errcode = mmap.filesize(file)
-				if not filesize then return nil, errmsg, errcode end
-				size = filesize - offset
-			elseif access_write then --if file too short, extend it
-				local filesize = mmap.filesize(file)
-				if filesize < offset + size then
-					local ok, errmsg, errcode = mmap.filesize(file, offset + size)
-					if not ok then return nil, errmsg, errcode end
-				end
-			end
+		local addr = C.mmap(addr, size, access, flags, fd or -1, offset)
+
+		local ok = ffi.cast('intptr_t', addr) ~= -1
+		if not ok then
+			local err = ffi.errno()
+			if close then close() end
+			return reterr(err)
 		end
 
-		--flush the buffers before mapping to see the current view of the file.
-		if file and not own_file then
-			--TODO:
-		end
-
-		--print(addr, size, access, flags, file or -1, offset)
-		local addr = C.mmap(addr, size, access, flags, file or -1, offset)
-		if ffi.cast('intptr_t', addr) == -1 then
-			return reterr()
-		end
-
-		local function flush(self, wait, addr, sz)
-			if type(wait) ~= 'boolean' then --wait arg is optional
-				wait, addr, sz = false, wait, addr
+		local function flush(self, async, addr, sz)
+			if type(async) ~= 'boolean' then --async arg is optional
+				async, addr, sz = false, async, addr
 			end
 			local addr = mmap.aligned_addr(addr or self.addr, 'left')
-			local flags = bit.bor(wait and MS_SYNC or MS_ASYNC, MS_INVALIDATE)
+			local flags = bit.bor(async and MS_ASYNC or MS_SYNC, MS_INVALIDATE)
 			local ok = C.msync(addr, sz or self.size, flags) ~= 0
 			if not ok then return reterr() end
 			return true
 		end
 
 		local function free()
-			local ret = C.munmap(addr, size)
-			if ret == 0 then return true end
-			return reterr()
+			C.munmap(addr, size)
+			if close then close() end
 		end
 
-		return {addr = addr, size = size, free = free, flush = flush}
+		local function unlink()
+			assert(tagname, 'no tagname given')
+			librt.shm_unlink(tagname)
+		end
+
+		return {addr = addr, size = size, free = free, flush = flush,
+			unlink = unlink}
 	end
 
 	function protect(addr, size)
 		checkz(C.mprotect(addr, size, bit.bor(PROT_READ, PROT_EXEC)))
 	end
 
+	function mmap.unlink(tagname)
+		librt.shm_unlink('/'..check_tagname(tagname))
+	end
+
 else
 	error'platform not supported'
 end
 
-function mmap.mirror(t)
-	local t = t or {}
-	local file = t.file
-	local filetype = filetype(file)
-	local size = t.size or mmap.pagesize()
-	local times = t.times or 2
-	local size = mmap.aligned_size(size)
+function mmap.mirror(t,...)
+
+	--dispatch
+	local file, size, times, addr
+	if type(t) == 'table' then
+		file, size, times, addr = t.file, t.size, t.times, t.addr
+	else
+		file, size, times, addr = t, ...
+	end
+
+	--apply defaults/convert/check
+	local size = mmap.aligned_size(size or mmap.pagesize())
+	local times = times or 2
 	local access = 'w'
 	assert(times > 0, 'times must be > 0')
 
 	local retries = -1
-	local max_retries = t.max_retries or 100
+	local max_retries = 100
 	::try_again::
 	retries = retries + 1
 	if retries > max_retries then
@@ -713,14 +805,14 @@ function mmap.mirror(t)
 		file = file,
 		size = size * times,
 		access = access,
-		addr = t.addr}
-	if not map then return nil, errmsg, errcode end
+		addr = addr}
+	if not map then
+		return nil, errmsg, errcode
+	end
 
 	--now free it so we can allocate it again in chunks all pointing at
 	--the same offset 0 in the file, thus mirroring the same data.
-	local maps = {}
-	maps.addr = map.addr
-	maps.size = size
+	local maps = {addr = map.addr, size = size}
 	map:free()
 
 	local addr = ffi.cast('char*', maps.addr)

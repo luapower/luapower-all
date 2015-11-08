@@ -4,14 +4,6 @@ tagline: portable memory mapping
 
 <warn>Work in progress</warn>
 
-* TODO: offset + size -> invalid arg
-* TODO: map:access(newaccess) to change access flags after mapping.
-* TODO: test flush() with invalid address and/or size (clamp them?)
-* TODO: test exec flag
-* TODO: allow file descriptors on Windows too (why not?)
-* TODO: `mmap.mirror(file,size,times,addr)` version
-* TODO: huge page support? is this portable? does it require root?
-
 ## `local mmap = require'mmap'`
 
 Memory mapping API that can be used with Windows, Linux and OSX.
@@ -25,46 +17,53 @@ Features:
   * synchronous and asynchronous flushing
   * works with filenames, file objects, file descriptors and OS file handles.
 
+Limitations:
+
+  * I/O errors from accessing mmapped memory cause a crash.
+
 
 ## API
 
---------------------------------------------------------------------------------- ---------------------------------------------------------------------------------
-`mmap.map(args_t) -> map | nil, errmsg, errcode` \                                create a memory mapping
-`mmap.map(file, access, size, offset, addr, name) -> map | nil, errmsg, errcode`
+----------------------------------------------------------------------------------- ---------------------------------------------------------------------------------
+`mmap.map(args_t) -> map | nil, errmsg, errcode` \                                  create a memory mapping
+`mmap.map(file, access, size, offset, addr, tagname) -> map | nil, errmsg, errcode`
 
-`map.addr`                                                                        a `void*` pointer to the mapped memory
+`map.addr`                                                                          a `void*` pointer to the mapped memory
 
-`map.size`                                                                        the byte size of the mapped memory
+`map.size`                                                                          the byte size of the mapped memory
 
-`map:flush([wait, ][addr, size]) -> true | nil, errmsg, errcode`                  flush (parts of) the mapping to disk
+`map:flush([async, ][addr, size]) -> true | nil, errmsg, errcode`                   flush (parts of) the mapping to disk
 
-`map:free()`                                                                      release the memory and associated resources
+`map:free()`                                                                        release the memory and associated resources
 
-`mmap.mirror(args_t) -> map | nil, errmsg, errcode` \                             create a mirrored memory mapping
+`mmap.unlink(file)` \                                                               remove the shared memory file from disk (Linux, OSX)
+`map:unlink()`
+
+`mmap.mirror(args_t) -> map | nil, errmsg, errcode` \                               create a mirrored memory mapping
 `mmap.mirror(file, size[, times[, addr]]) -> map | nil, errmsg, errcode`
 
-`mmap.pagesize() -> bytes`                                                        allocation granularity
+`mmap.pagesize() -> bytes`                                                          allocation granularity
 
-`mmap.aligned_size(bytes[, dir]) -> bytes`                                        next/prev page-aligned size
+`mmap.aligned_size(bytes[, dir]) -> bytes`                                          next/prev page-aligned size
 
-`mmap.aligned_addr(ptr[, dir]) -> ptr`                                            next/prev page-aligned address
+`mmap.aligned_addr(ptr[, dir]) -> ptr`                                              next/prev page-aligned address
 
-`mmap.filesize(file) -> size | nil, errmsg, errcode`                              get file size
+`mmap.filesize(file) -> size | nil, errmsg, errcode`                                get file size
 
-`mmap.filesize(file, size) -> size | nil, errmsg, errcode`                        (create file and) set file size
---------------------------------------------------------------------------------- ---------------------------------------------------------------------------------
+`mmap.filesize(file, size) -> size | nil, errmsg, errcode`                          (create file and) set file size
+----------------------------------------------------------------------------------- ---------------------------------------------------------------------------------
 
-### `mmap.map(args_t) -> map | nil, errmsg, errcode` <br> `mmap.map(file, access, size, offset, addr, name) -> map | nil, errmsg, errcode`
+### `mmap.map(args_t) -> map | nil, errmsg, errcode` <br> `mmap.map(file, access, size, offset, addr, tagname) -> map | nil, errmsg, errcode`
 
 Create a memory map object. Args:
 
 * `file`: the file to map: optional; if nil, a portion of the system pagefile
 will be mapped instead; it can be:
-	* a utf8 string representing a filename to open.
+	* a string representing the utf8 filename to open.
+	* a number representing a file descriptor opened in a compatible mode.
 	* a `FILE*` object opened in a compatible mode.
-		* NOTE: `io.open()` files are `FILE*` objects.
-	* a Unix file descriptor opened in a compatible mode.
-	* a Windows HANDLE opened in a compatible mode.
+		* NOTE: `io.open()` returns a `FILE*` object in LuaJIT.
+	* a `void*` representing a Windows HANDLE opened in a compatible mode.
 * `access`: can be either:
 	* '' (read-only, default)
 	* 'w' (read + write)
@@ -88,9 +87,10 @@ will be mapped instead; it can be:
 	* if given, must be >= 0 or an error is raised.
 	* must be aligned to a page boundary or an error is raised.
 	* ignored when mapping the pagefile.
-* `name`: name of the memory map (optional): using the same name in two
-different processes (or in the same process) gives access to the same memory.
 * `addr`: address to use (optional; an error is raised if zero).
+* `tagname`: name of the memory map (optional; cannot be used with `file`;
+must not contain slashes or backslashes): using the same name in two
+different processes (or in the same process) gives access to the same memory.
 
 Returns an object with the fields:
 
@@ -102,8 +102,7 @@ If the mapping fails, returns `nil, errmsg, errcode` where `errcode` can be:
 * `'no_file'` - file not found.
 * `'file_too_short'` - the file is shorter than the required size.
 * `'disk_full'` - the file cannot be extended because the disk is full.
-* `'out_of_mem'` - size or address too large.
-* `'invalid_address'` - specified address in use.
+* `'out_of_mem'` - size or address too large or specified address in use.
 * an OS-specific numeric error code.
 
 #### NOTE
@@ -122,11 +121,20 @@ Free the memory and all associated resources and close the file
 if it was opened by `mmap.map()`.
 
 
-### `map:flush([wait, ][addr, size]) -> true | nil, errmsg, errcode`
+### `map:flush([async, ][addr, size]) -> true | nil, errmsg, errcode`
 
 Flush (part of) the memory to disk. If the address is not aligned,
-it will be automatically aligned to the left. If `wait` is true,
-wait until the data has been written to disk.
+it will be automatically aligned to the left. If `async` is true,
+perform the operation asynchronously and return immediately.
+
+
+### `mmap.unlink(filename)` <br> `map:unlink()`
+
+Remove a (the) shared memory file from disk. When creating a shared memory
+mapping using tagname, a file is created on the filesystem on Linux
+and OS X (not so on Windows). That file must be removed manually when it is
+no longer needed. If there's any consolation, this can be done anytime,
+even while mappings are open and will not affect said mappings.
 
 
 ### `mmap.mirror(args_t) -> map | nil, errmsg, errcode` <br> `mmap.mirror(file, size[, times[, addr]]) -> map | nil, errmsg, errcode`
@@ -138,7 +146,7 @@ Args:
 * `size`: the size of the memory segment: required, automatically aligned
 to the next page size.
 * `times`: how many times to mirror the segment (optional, default: 2)
-* `addr`: address to use (optional).
+* `addr`: address to use (optional; can be anything convertible to `void*`).
 
 The result is a table with `addr` and `size` fields and all the mirror map
 objects in its array part (freeing the mirror will free all the maps).
@@ -149,8 +157,8 @@ The memory block at `addr` is mirrored such that
 
 ### `mmap.aligned_size(bytes[, dir]) -> bytes`
 
-Get the next (dir = 'right', default) or previous (dir = 'left') size that is
-aligned to a page boundary. It can be used to align offsets and sizes.
+Get the next larger (dir = 'right', default) or smaller (dir = 'left') size
+that is aligned to a page boundary. It can be used to align offsets and sizes.
 
 
 ### `mmap.aligned_addr(ptr[, dir]) -> ptr`
