@@ -1,4 +1,4 @@
-luajit 2.1-oct29 from https://github.com/LuaJIT/LuaJIT (MIT license)
+luajit 2.1-jun11 from https://github.com/LuaJIT/LuaJIT (MIT license)
 
 
 For the Windows platform, LUA_PATH and LUA_CPATH were changed from the default

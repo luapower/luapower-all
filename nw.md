@@ -1054,10 +1054,10 @@ and receiving mouse events.
 Views allow partitioning a window's client area into multiple non-overlapping
 regions that can be rendered using different technologies.
 In particular, you can use OpenGL on some views, while using bitmaps
-(and thus cairo) on others. This gives a simple path for drawing
-an antialiased 2D UI around a 3D scene as an alternative to drawing
-on the textures of orto-projected quads. Views also allow placing native
-widgets alongside custom-painted areas on the same window.
+(and thus cairo) on others. This presents a simple solution to the problem
+of drawing an antialiased 2D UI around a 3D scene as an alternative to
+drawing on the textures of orto-projected quads. Views also allow placing
+native widgets alongside custom-painted areas on the same window.
 
 __NOTE:__ If you use views, bind all mouse events to the views.
 Do not mix window and view mouse events since the behavior of window
@@ -1078,7 +1078,7 @@ Create a view (fields of _`t`_ below):
 * `anchors`				- resizing anchors (default: 'lt'); can be 'ltrb'
 * `opengl`				- enable and [configure OpenGL](#winviewgl---gl) on the view.
 
-__NOTE:__ The width and height are clamped to minimum 1.
+__NOTE:__ The width and height are clamped to the minimum (1, 1).
 
 ### `view:free()`
 
@@ -1109,7 +1109,7 @@ Get/set the view's size.
 Get/set the anchors: they can be any combination of 'ltrb' characters
 representing left, top, right and bottom anchors respectively.
 
-Anchors are a simple but very effective way of doing stitched layouting.
+Anchors are a simple but effective way of doing stitched layouting.
 This is how they work: there's four possible anchors which you can set,
 one for each side of the view. Setting an anchor on one side fixates
 the distance between that side and the same side of the window
