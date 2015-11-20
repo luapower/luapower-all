@@ -381,14 +381,24 @@ end
 
 --call the function at the top of the stack,
 --wrapping the passing of args and the returning of return values.
-function M.pcall_opt(L, opt, ...)
+--errfunc is an optional index where a debug.stacktrace-like function is.
+function M.xpcall_opt(L, opt, errfunc, ...)
+	local errfunc = errfunc and errfunc ~= 0 and M.abs_index(L, errfunc) or 0
 	local top = M.gettop(L)
 	local argc = M.pushvalues_opt(L, opt, ...)
-	local ok, err = check(L, C.lua_pcall(L, argc, C.LUA_MULTRET, 0))
+	local ok, err = check(L, C.lua_pcall(L, argc, C.LUA_MULTRET, errfunc))
 	if not ok then
 		return false, err
 	end
 	return true, M.popvalues_opt(L, opt, top)
+end
+
+function M.xpcall(L, errfunc, ...)
+	return M.xpcall_opt(L, nil, errfunc, ...)
+end
+
+function M.pcall_opt(L, opt, ...)
+	return M.xpcall_opt(L, opt, nil, ...)
 end
 
 function M.pcall(L, ...)
@@ -502,6 +512,14 @@ ffi.metatype('lua_State', {__index = {
 	type = M.type,
 	objlen = M.objlen,
 	strlen = M.strlen,
+	isfunction = M.isfunction,
+	istable = M.istable,
+	islightuserdata = M.islightuserdata,
+	isnil = M.isnil,
+	isboolean = M.isboolean,
+	isthread = M.isthread,
+	isnone = M.isnone,
+	isnoneornil = M.isnoneornil,
 	toboolean = M.toboolean,
 	tonumber = M.tonumber,
 	tolstring = M.tolstring,
@@ -544,8 +562,10 @@ ffi.metatype('lua_State', {__index = {
 	popvalues_opt = M.popvalues_opt,
 	pushvalues = M.pushvalues,
 	popvalues = M.popvalues,
+	xpcall_opt = M.xpcall_opt,
 	pcall_opt = M.pcall_opt,
 	call_opt = M.call_opt,
+	xpcall = M.xpcall,
 	pcall = M.pcall,
 	call = M.call,
 	--gc

@@ -286,6 +286,7 @@ local function d_command(cmd, ...)
 	assert_arg(not pkg or lp.installed_packages()[pkg], 'invalid package '..tostring(pkg))
 
 	return lp.exec(function(func_name, of, pkg, mod, platform)
+		local lp = require'luapower'
 		local func = lp[func_name]
 		local t
 		if pkg then

@@ -102,6 +102,13 @@ function rpc.server(ip, port)
 				os.execute(cmd)
 				os.exit()
 			elseif msg.cmd == 'exec' then
+
+				local top = state:gettop()
+
+				state:getglobal'debug'
+				state:getfield(-1, 'traceback')
+				assert(state:type(-1) == 'function')
+
 				local args = msg.args
 				local func = args[1]
 				if type(func) == 'function' then
@@ -109,7 +116,12 @@ function rpc.server(ip, port)
 				elseif type(func) == 'string' then
 					state:getglobal(func)
 				end
-				local retvals = pass(state:pcall(select(2, unpackt(args))))
+
+				local retvals = pass(state:xpcall(-2, select(2, unpackt(args))))
+				state:pop(2) --'debug', debug.traceback
+
+				assert(state:gettop() == top)
+
 				if not send(skt, retvals) then return end
 				log('rpc server: '..msg.cmd..'('..enum(args)..')')
 				return true

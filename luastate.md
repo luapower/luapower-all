@@ -39,6 +39,14 @@ __stack / read__
 `state:type(i) -> type`                   type at index (same as type())
 `state:objlen(i) -> n`                    string/table/userdata length
 `state:strlen(i) -> n`                    string length
+`state:isfunction(i) -> true | false`     check if function
+`state:istable(i) -> true | false`        check if table
+`state:islightuserdata(i) -> true|false`  check if lightuserdata
+`state:isnil(i) -> true | false`          check if boolean
+`state:isboolean(i) -> true | false`      check if thread
+`state:isthread(i) -> true | false`       check if index invalid
+`state:isnone(i) -> true | false`         check if index invalid or nil
+`state:isnoneornil(i) -> true | false`    check if boolean
 `state:toboolean(i) -> true | false`      get as boolean
 `state:tonumber(i) -> n`                  get as number
 `state:tolstring(i) -> buf, sz`           get as C string
@@ -56,7 +64,7 @@ __stack / read / tables__
 __stack / get / any value__
 `state:get([i], [opt]) -> v`              get the value at i (default i = -1)
 __stack / write__
-`state:pushnil()                         push nil
+`state:pushnil()`                         push nil
 `state:pushboolean(bool)`                 push a boolean
 `state:pushinteger(n)`                    push an integer
 `state:pushcclosure(cfunc, nupvalues)`    push a lua_CFunction with upvalues
@@ -81,8 +89,10 @@ __interpreter__
 `state:pushvalues_opt(opt, ...)`          push values with options
 `state:popvalues(i) -> ...`               pop all values down to i
 `state:popvalues_opt(opt, i) -> ...`      pop values with options
+`state:xpcall(i,...) -> ok, ...`          pop func and args and xpcall it
 `state:pcall(...) -> ok, ...`             pop func and args and pcall it
 `state:call(...) -> ...`                  pop func and args and call it
+`state:xpcall_opt(opt,i,...) -> ok, ...`  xpcall with options
 `state:pcall_opt(opt, ...) -> ok, ...`    pcall with options
 `state:call_opt(opt, ...) -> ...`         call with options
 __gc__
