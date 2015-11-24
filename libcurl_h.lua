@@ -26,7 +26,7 @@ local CURL_SOCKET_TIMEOUT = CURL_SOCKET_BAD
 
 ffi.cdef[[
 // curl.h --------------------------------------------------------------------
-typedef struct CURL CURL;
+typedef void CURL;
 typedef void curl_fd_set;
 typedef long long curl_off_t;
 typedef long time_t;
