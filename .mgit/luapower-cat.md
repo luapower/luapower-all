@@ -54,6 +54,8 @@ tagline: package categories
 	* [socket]
 	* [bnet]
 	* [socketloop]
+	* [libcurl]
+	* [c-ares]
 * Windowing/GUIs
 	* [nw]
 	* [cplayer]
