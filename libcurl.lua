@@ -177,7 +177,7 @@ local options = {
 	UNRESTRICTED_AUTH = longbool,
 
 	SERVER_RESPONSE_TIMEOUT = long,
-	IPRESOLVE = long,
+	IPRESOLVE = flag'CURL_IPRESOLVE_',
 	MAXFILESIZE = long,
 	INFILESIZE_LARGE = off_t,
 	RESUME_FROM_LARGE = off_t,
