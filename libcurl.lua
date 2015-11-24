@@ -9,8 +9,6 @@ local M = {C = C}
 
 --easy interface -------------------------------------------------------------
 
-local easy = {}
-
 local function strerror(code)
 	return ffi.string(C.curl_easy_strerror(code))
 end
@@ -30,10 +28,21 @@ local function longbool(b) return 'long', b and 1 or 0 end
 local function long(i) return 'long', i end
 local function str(s) return 'char*', ffi.cast('const char*', s) end
 local function flag(prefix)
-	return function(flag) return 'long', C[prefix..flag:upper()] end
+	return function(flag)
+		return 'long', C[prefix..flag:upper()]
+	end
 end
 local function flags(prefix, ctype)
-	return function(val) return ctype, val end --TODO
+	local ctype = ctype or 'long'
+	return function(t)
+		local val = 0
+		for flag, truthy in pairs(t) do
+			if truthy then
+				val = bit.bor(val, C[prefix..flag:upper()])
+			end
+		end
+		return ctype, val
+	end
 end
 local function strlist(t)
 	local buf = ffi.new('const char*[?]', #t)
@@ -48,19 +57,26 @@ end
 local slist = ctype'struct curl_slist *'
 local off_t = ctype'curl_off_t'
 local voidp = ctype'void*'
+local function cb(ctype)
+	return function(func, self)
+		local function wrapper(...)
+			return func(self, ...)
+		end
+		local cb = ffi.cast(ctype, wrapper)
+		table.insert(self._callbacks, cb)
+		return ctype, cb
+	end
+end
 
 local options = {
 	TIMEOUT = long,
 	VERBOSE = longbool,
-
 	STDERR = voidp, --FILE*
 	ERRORBUFFER = ctype'char*', --output buffer
 	FAILONERROR = longbool,
-
 	NOPROGRESS = longbool,
-	PROGRESSFUNCTION = ctype'curl_progress_callback',
+	PROGRESSFUNCTION = cb'curl_progress_callback',
 	PROGRESSDATA = voidp,
-
 	URL = str,
 	PORT = long,
 	PROTOCOLS = flags'CURLPROTO_',
@@ -78,7 +94,6 @@ local options = {
 	HEADERDATA = voidp,
 	NOBODY = longbool,
 	FOLLOWLOCATION = longbool,
-
 	PROXY = str,
 	PROXYTYPE = flag'CURLPROXY_',
 	PROXYPORT = long,
@@ -90,20 +105,15 @@ local options = {
 	PROXYPASSWORD = str,
 	PROXYHEADER = slist,
 	NOPROXY = str, --proxy exception list
-
-	WRITEFUNCTION = ctype'curl_write_callback',
+	WRITEFUNCTION = cb'curl_write_callback',
 	WRITEDATA = voidp, --FILE* or callback arg
-
-	READFUNCTION = ctype'curl_read_callback',
+	READFUNCTION = cb'curl_read_callback',
 	READDATA = voidp,
-
 	INFILESIZE = long,
-
 	LOW_SPEED_LIMIT = long,
 	LOW_SPEED_TIME = long,
 	MAX_SEND_SPEED_LARGE = off_t,
 	MAX_RECV_SPEED_LARGE = off_t,
-
 	RESUME_FROM = long,
 	KEYPASSWD = str,
 	CRLF = longbool,
@@ -118,7 +128,6 @@ local options = {
 	TRANSFERTEXT = longbool,
 	AUTOREFERER = longbool,
 	POSTFIELDSIZE = long,
-
 	HTTPHEADER = slist,
 	HTTPPOST = ctype'struct curl_httppost *',
 	HTTPPROXYTUNNEL = longbool,
@@ -128,7 +137,6 @@ local options = {
 	HTTPAUTH = flags('CURLAUTH_', 'unsigned long'),
 	HTTP_TRANSFER_DECODING = longbool,
 	HTTP_CONTENT_DECODING = longbool,
-
 	INTERFACE = str,
 	KRBLEVEL = longbool,
 	CAINFO = str,
@@ -141,9 +149,8 @@ local options = {
 	RANDOM_FILE = str,
 	EGDSOCKET = str,
 	CONNECTTIMEOUT = long,
-	HEADERFUNCTION = ctype'curl_write_callback',
+	HEADERFUNCTION = cb'curl_write_callback',
 	COOKIEJAR = str,
-
 	USE_SSL = flag'CURLUSESSL_',
 	SSLCERT = str,
 	SSLVERSION = long,
@@ -156,16 +163,15 @@ local options = {
 	SSL_CIPHER_LIST = strlist,
 	SSL_VERIFYHOST = function(b) return 'long', b and 2 or 0 end,
 	SSL_VERIFYPEER = longbool,
-	SSL_CTX_FUNCTION = ctype'curl_ssl_ctx_callback',
+	SSL_CTX_FUNCTION = cb'curl_ssl_ctx_callback',
 	SSL_CTX_DATA = voidp,
 	SSL_SESSIONID_CACHE = longbool,
 	SSL_ENABLE_NPN = longbool,
 	SSL_ENABLE_ALPN = longbool,
 	SSL_VERIFYSTATUS = longbool,
 	SSL_FALSESTART = longbool,
-
 	PREQUOTE = slist,
-	DEBUGFUNCTION = ctype'curl_debug_callback',
+	DEBUGFUNCTION = cb'curl_debug_callback',
 	DEBUGDATA = voidp,
 	COOKIESESSION = longbool,
 	CAPATH = str,
@@ -175,7 +181,6 @@ local options = {
 	ACCEPT_ENCODING = str,
 	PRIVATE = voidp,
 	UNRESTRICTED_AUTH = longbool,
-
 	SERVER_RESPONSE_TIMEOUT = long,
 	IPRESOLVE = flag'CURL_IPRESOLVE_',
 	MAXFILESIZE = long,
@@ -185,11 +190,10 @@ local options = {
 	POSTFIELDSIZE_LARGE = long,
 	TCP_NODELAY = longbool,
 	FTPSSLAUTH = flag'CURLFTPAUTH_',
-	IOCTLFUNCTION = ctype'curl_ioctl_callback',
+	IOCTLFUNCTION = cb'curl_ioctl_callback',
 	IOCTLDATA = voidp,
 	COOKIELIST = str,
 	IGNORE_CONTENT_LENGTH = longbool,
-
 	FTPPORT = str, --IP:PORT
 	FTP_USE_EPRT = longbool,
 	FTP_CREATE_MISSING_DIRS = flag'CURLFTP_CREATE_DIR_',
@@ -201,33 +205,30 @@ local options = {
 	FTP_USE_PRET = longbool,
 	FTP_SSL_CCC = flag'CURLFTPSSL_CCC_',
 	FTP_ALTERNATIVE_TO_USER = str,
-
 	LOCALPORT = long,
 	LOCALPORTRANGE = long,
 	CONNECT_ONLY = longbool,
-	CONV_FROM_NETWORK_FUNCTION = ctype'curl_conv_callback',
-	CONV_TO_NETWORK_FUNCTION = ctype'curl_conv_callback',
-	CONV_FROM_UTF8_FUNCTION = ctype'curl_conv_callback',
-	SOCKOPTFUNCTION = ctype'curl_sockopt_callback',
+	CONV_FROM_NETWORK_FUNCTION = cb'curl_conv_callback',
+	CONV_TO_NETWORK_FUNCTION = cb'curl_conv_callback',
+	CONV_FROM_UTF8_FUNCTION = cb'curl_conv_callback',
+	SOCKOPTFUNCTION = cb'curl_sockopt_callback',
 	SOCKOPTDATA = voidp,
-
 	SSH_AUTH_TYPES = flags'CURLSSH_AUTH_',
 	SSH_PUBLIC_KEYFILE = str,
 	SSH_PRIVATE_KEYFILE = str,
 	SSH_KNOWNHOSTS = str,
-	SSH_KEYFUNCTION = ctype'curl_sshkeycallback',
+	SSH_KEYFUNCTION = cb'curl_sshkeycallback',
 	SSH_KEYDATA = voidp,
 	SSH_HOST_PUBLIC_KEY_MD5 = str,
-
 	TIMEOUT_MS = long,
 	CONNECTTIMEOUT_MS = long,
 	NEW_FILE_PERMS = long,
 	NEW_DIRECTORY_PERMS = long,
 	POSTREDIR = flag'CURL_REDIR_',
-	OPENSOCKETFUNCTION = ctype'curl_opensocket_callback',
+	OPENSOCKETFUNCTION = cb'curl_opensocket_callback',
 	OPENSOCKETDATA = voidp,
 	COPYPOSTFIELDS = str,
-	SEEKFUNCTION = ctype'curl_seek_callback',
+	SEEKFUNCTION = cb'curl_seek_callback',
 	SEEKDATA = voidp,
 	CRLFILE = str,
 	ISSUERCERT = str,
@@ -235,68 +236,51 @@ local options = {
 	CERTINFO = longbool,
 	USERNAME = str,
 	PASSWORD = str,
-
 	SOCKS5_GSSAPI_SERVICE = str,
 	SOCKS5_GSSAPI_NEC = longbool,
-
 	REDIR_PROTOCOLS = flags'CURLPROTO_',
-
 	MAIL_FROM = str,
 	MAIL_RCPT = str,
 	MAIL_AUTH = str,
-
 	RTSP_REQUEST = flag'CURL_RTSPREQ_',
 	RTSP_SESSION_ID = str,
 	RTSP_STREAM_URI = str,
 	RTSP_TRANSPORT = str,
 	RTSP_CLIENT_CSEQ = long,
 	RTSP_SERVER_CSEQ = long,
-
 	TFTP_BLKSIZE = long,
-
 	INTERLEAVEDATA = voidp,
-	INTERLEAVEFUNCTION = ctype'curl_write_callback',
-
-	CHUNK_BGN_FUNCTION = ctype'curl_chunk_bgn_callback',
-	CHUNK_END_FUNCTION = ctype'curl_chunk_end_callback',
+	INTERLEAVEFUNCTION = cb'curl_write_callback',
+	CHUNK_BGN_FUNCTION = cb'curl_chunk_bgn_callback',
+	CHUNK_END_FUNCTION = cb'curl_chunk_end_callback',
 	CHUNK_DATA = voidp,
-
-	FNMATCH_FUNCTION = ctype'curl_fnmatch_callback',
+	FNMATCH_FUNCTION = cb'curl_fnmatch_callback',
 	FNMATCH_DATA = voidp,
-
 	RESOLVE = slist,
 	WILDCARDMATCH = longbool,
-
 	TLSAUTH_USERNAME = str,
 	TLSAUTH_PASSWORD = str,
 	TLSAUTH_TYPE = str,
-
 	TRANSFER_ENCODING = longbool,
-	CLOSESOCKETFUNCTION = ctype'curl_closesocket_callback',
+	CLOSESOCKETFUNCTION = cb'curl_closesocket_callback',
 	CLOSESOCKETDATA = voidp,
 	GSSAPI_DELEGATION = long,
 	ACCEPTTIMEOUT_MS = long,
-
 	TCP_KEEPALIVE = longbool,
 	TCP_KEEPIDLE = long,
 	TCP_KEEPINTVL = long,
-
 	SASL_IR = longbool,
 	XOAUTH2_BEARER = str,
-
-	XFERINFOFUNCTION = ctype'curl_xferinfo_callback',
+	XFERINFOFUNCTION = cb'curl_xferinfo_callback',
 	XFERINFODATA = voidp,
-
 	NETRC = flag'CURL_NETRC_',
 	NETRC_FILE = str,
-
 	DNS_SERVERS = str,
 	DNS_INTERFACE = str,
 	DNS_LOCAL_IP4 = str,
 	DNS_LOCAL_IP6 = str,
 	DNS_USE_GLOBAL_CACHE = longbool,
 	DNS_CACHE_TIMEOUT = long,
-
 	LOGIN_OPTIONS = str,
 	EXPECT_100_TIMEOUT_MS = long,
 	HEADEROPT = flag'CURLHEADER_',
@@ -307,58 +291,112 @@ local options = {
 	PIPEWAIT = longbool,
 }
 
+local easy = {}
+easy.__index = easy
+
 function M.easy(opt)
-	local self = C.curl_easy_init()
-	assert(self ~= nil)
-	ffi.gc(self, self.free)
+	local curl = C.curl_easy_init()
+	assert(curl ~= nil)
+	local self = setmetatable({_curl = curl, _callbacks = {}}, easy)
+	ffi.gc(curl, function() self:free() end)
 	if opt then
 		for k,v in pairs(opt) do
-			local k = k:upper()
-			local check = options[k]
-			if not check then
-				error('invalid option '..k)
-			end
-			local ctype, cval = check(v) --keep v from being gc'ed
-			local optnum = C['CURLOPT_'..k]
-			check(C.curl_easy_setopt(self, optnum, ffi.cast(ctype, cval)))
+			self:set(k, v)
 		end
 	end
 	return self
 end
 
-easy.strerror = strerror
-
-function easy:perform()
-	return check(C.curl_easy_perform(self))
-end
-
-function easy:free()
-	ffi.gc(self, nil)
-	C.curl_easy_cleanup(self)
-end
-
-function easy:getinfo(...)
-	local info = ffi.new'CURLINFO'
-	C.curl_easy_getinfo(self, info, ...)
-end
-
-function easy:duphandle()
-	return C.curl_easy_duphandle(self)
+function easy:set(k, v)
+	local k = k:upper()
+	local optnum = C['CURLOPT_'..k]
+	local convert = assert(options[k])
+	local ctype, cval = convert(v, self) --keep v from being gc'ed
+	check(C.curl_easy_setopt(self._curl, optnum, ffi.cast(ctype, cval)))
 end
 
 function easy:reset()
-	C.curl_easy_reset(self)
+	C.curl_easy_reset(self._curl)
 end
 
-function easy:recv()
-	return check(C.curl_easy_recv(self, buf, buflen, n))
+function easy:perform()
+	return ret(C.curl_easy_perform(self._curl))
 end
 
-function easy:send()
-	return check(C.curl_easy_send(self, buf, buflen, n))
+function easy:free()
+	if not self._curl then return end
+	ffi.gc(self._curl, nil)
+	C.curl_easy_cleanup(self._curl)
+	for i,cb in ipairs(self._callbacks) do
+		cb:free()
+	end
+	self._curl = nil
 end
 
-ffi.metatype('CURL', {__index = easy})
+--[[
+local info = {
+	CURLINFO_EFFECTIVE_URL = 0x100000 + 1,
+	CURLINFO_RESPONSE_CODE = 0x200000 + 2,
+	CURLINFO_TOTAL_TIME = 0x300000 + 3,
+	CURLINFO_NAMELOOKUP_TIME = 0x300000 + 4,
+	CURLINFO_CONNECT_TIME = 0x300000 + 5,
+	CURLINFO_PRETRANSFER_TIME = 0x300000 + 6,
+	CURLINFO_SIZE_UPLOAD = 0x300000 + 7,
+	CURLINFO_SIZE_DOWNLOAD = 0x300000 + 8,
+	CURLINFO_SPEED_DOWNLOAD = 0x300000 + 9,
+	CURLINFO_SPEED_UPLOAD = 0x300000 + 10,
+	CURLINFO_HEADER_SIZE = 0x200000 + 11,
+	CURLINFO_REQUEST_SIZE = 0x200000 + 12,
+	CURLINFO_SSL_VERIFYRESULT = 0x200000 + 13,
+	CURLINFO_FILETIME = 0x200000 + 14,
+	CURLINFO_CONTENT_LENGTH_DOWNLOAD = 0x300000 + 15,
+	CURLINFO_CONTENT_LENGTH_UPLOAD = 0x300000 + 16,
+	CURLINFO_STARTTRANSFER_TIME = 0x300000 + 17,
+	CURLINFO_CONTENT_TYPE = 0x100000 + 18,
+	CURLINFO_REDIRECT_TIME = 0x300000 + 19,
+	CURLINFO_REDIRECT_COUNT = 0x200000 + 20,
+	CURLINFO_PRIVATE = 0x100000 + 21,
+	CURLINFO_HTTP_CONNECTCODE = 0x200000 + 22,
+	CURLINFO_HTTPAUTH_AVAIL = 0x200000 + 23,
+	CURLINFO_PROXYAUTH_AVAIL = 0x200000 + 24,
+	CURLINFO_OS_ERRNO = 0x200000 + 25,
+	CURLINFO_NUM_CONNECTS = 0x200000 + 26,
+	CURLINFO_SSL_ENGINES = 0x400000 + 27,
+	CURLINFO_COOKIELIST = 0x400000 + 28,
+	CURLINFO_LASTSOCKET = 0x200000 + 29,
+	CURLINFO_FTP_ENTRY_PATH = 0x100000 + 30,
+	CURLINFO_REDIRECT_URL = 0x100000 + 31,
+	CURLINFO_PRIMARY_IP = 0x100000 + 32,
+	CURLINFO_APPCONNECT_TIME = 0x300000 + 33,
+	CURLINFO_CERTINFO = 0x400000 + 34,
+	CURLINFO_CONDITION_UNMET = 0x200000 + 35,
+	CURLINFO_RTSP_SESSION_ID = 0x100000 + 36,
+	CURLINFO_RTSP_CLIENT_CSEQ = 0x200000 + 37,
+	CURLINFO_RTSP_SERVER_CSEQ = 0x200000 + 38,
+	CURLINFO_RTSP_CSEQ_RECV = 0x200000 + 39,
+	CURLINFO_PRIMARY_PORT = 0x200000 + 40,
+	CURLINFO_LOCAL_IP = 0x100000 + 41,
+	CURLINFO_LOCAL_PORT = 0x200000 + 42,
+	CURLINFO_TLS_SESSION = 0x400000 + 43,
+	CURLINFO_ACTIVESOCKET = 0x500000 + 44,
+	CURLINFO_LASTONE = 44,
+}
+]]
+
+function easy:getinfo(k, ...)
+	local info = C['CURLINFO_'..k:upper()]
+	C.curl_easy_getinfo(self._curl, info, ...)
+end
+
+function easy:recv(buf, buflen, n)
+	return ret(C.curl_easy_recv(self._curl, buf, buflen, n))
+end
+
+function easy:send(buf, buflen, n)
+	return ret(C.curl_easy_send(self._curl, buf, buflen, n))
+end
+
+easy.strerror = strerror
 
 
 if not ... then
