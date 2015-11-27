@@ -44,6 +44,12 @@ __misc.__
 [curlopt_global_init]:    http://curl.haxx.se/libcurl/c/curl_global_init.html
 [curlopt_global_cleanup]: http://curl.haxx.se/libcurl/c/curl_global_cleanup.html
 
+## Easy vs multi interface
+
+The easy interface is synchronous while the [multi interface] is asynchronous
+and it offers multiple transfers using a single thread and more. A multi
+transfer is set up as a list of easy transfers.
+
 ## Easy interface
 
 ### `curl.easy{options...} -> tr`
@@ -520,9 +526,11 @@ __Debugging__
 
 ### `curl.multi{options...} -> tr`
 
-Create a transfer using the multi interface. The details are the same
+Create a transfer using the [multi interface]. The details are the same
 as with the easy interface except that the list of options is different
 and specific to the multi interface.
+
+[multi interface]: http://curl.haxx.se/libcurl/c/libcurl-multi.html
 
 <div class=small>
 ----------------------------- --------------------------------------------------------------------
