@@ -21,15 +21,15 @@ __easy interface__
 `tr:recv(buf, bufsize, len) -> true|nil,err,errcode`    [receive raw data][curlopt_easy_recv]
 `tr:send(buf, bufsize, len) -> true|nil,err,errcode`    [send raw data][curlopt_easy_send]
 `tr.strerror(errcode) -> errmsg`                        look-up an error code
+`tr:escape(s) -> s|nil`                                 escape URL
+`tr:unescape(s) -> s|nil`                               unescape URL
 __multi interface__
 `curl.multi{options...} -> tr`                          create a multi transfer
 `tr:perform() -> true|nil,err,ecode`                    perform the transfer
 `tr:free()`                                             free the transfer (double frees are ignored)
-`tr:getinfo(opt) -> val`                                get info
+`tr:info(opt) -> val`                                   get info about the transfer
 `tr:set(opt, val)`                                      set an option
 `tr:reset()`                                            reset all options to their default values
-`tr:recv(buf, bufsize, len) -> true|nil,err,errcode`    [receive raw data][curlopt_easy_recv]
-`tr:send(buf, bufsize, len) -> true|nil,err,errcode`    [send raw data][curlopt_easy_send]
 `tr.strerror(errcode) -> errmsg`                        look-up an error code
 __misc.__
 `curl.C`                                                the ffi clib object/namespace
@@ -66,11 +66,11 @@ __Main options__              __default__
 `default_protocol`            guess        [Default protocol.][curlopt_default_protocol]
 `port`                                     [Port number to connect to.][curlopt_port]
 `range`                                    [Request range: "X-Y,N-M,...".][curlopt_range]
-`resume_from_large`           false        [Resume transfer from offset.][curlopt_resume_from_large]
+`resume_from`                 false        [Resume transfer from offset.][curlopt_resume_from_large]
 `header`                      false        [Include the header in the body output.][curlopt_header]
-`maxfilesize_large`                        [Max. file size to get.][curlopt_maxfilesize_large]
+`maxfilesize`                              [Max. file size to get.][curlopt_maxfilesize_large]
 `upload`                      false        [Enable data upload.][curlopt_upload]
-`infilesize_large`                         [Size of file to send.][curlopt_infilesize_large]
+`infilesize`                               [Size of file to send.][curlopt_infilesize_large]
 `timecondition`               'none'       [Make a time-conditional request.][curlopt_timecondition]
 `timevalue`                                [Timestamp for conditional request.][curlopt_timevalue]
 __Progress Tracking__
@@ -103,8 +103,8 @@ __I/O Callbacks__
 __Speed Limits__
 `low_speed_limit`                          [Low speed limit to abort transfer.][curlopt_low_speed_limit]
 `low_speed_time`                           [Time to be below the speed to trigger low speed abort.][curlopt_low_speed_time]
-`max_send_speed_large`                     [Cap the upload speed.][curlopt_max_send_speed_large]
-`max_recv_speed_large`                     [Cap the download speed.][curlopt_max_recv_speed_large]
+`max_send_speed`                           [Cap the upload speed.][curlopt_max_send_speed_large]
+`max_recv_speed`                           [Cap the download speed.][curlopt_max_recv_speed_large]
 __Authentication__
 `netrc`                                    [Enable .netrc parsing.][curlopt_netrc]
 `netrc_file`                               [.netrc file name.][curlopt_netrc_file]
@@ -134,7 +134,7 @@ __HTTP Protocol__
 `post`                                     [Issue a HTTP POST request.][curlopt_post]
 `httpget`                                  [Do a HTTP GET request.][curlopt_httpget]
 `postfields`                               [Send a POST with this data.][curlopt_postfields]
-`postfieldsize_large`                      [The POST data is this big.][curlopt_postfieldsize_large]
+`postfieldsize`                            [The POST data is this big.][curlopt_postfieldsize_large]
 `copypostfields`                           [Send a POST with this data - and copy it.][curlopt_copypostfields]
 `httppost`                                 [Multipart formpost HTTP POST.][curlopt_httppost]
 `referer`                                  [Referer: header.][curlopt_referer]

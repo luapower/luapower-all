@@ -2,6 +2,8 @@
 --libcurl ffi binding.
 --Written by Cosmin Apreutesei. Public Domain.
 
+if not ... then require'libcurl_test'; return end
+
 local ffi = require'ffi'
 require'libcurl_h'
 local C = ffi.load'curl'
@@ -16,7 +18,7 @@ local function check(code)
 end
 
 function M.init(flags)
-	check(C.curl_global_init(flags))
+	check(C.curl_global_init(X('CURL_GLOBAL_', flags or 'all')))
 end
 
 function M.init_mem(flags, malloc, free, realloc, strdup, calloc)
@@ -30,15 +32,42 @@ function M.version()
 end
 
 function M.version_info(ver)
-	return C.curl_version_info(X(ver or 'now'))
+	local info = C.curl_version_info(X('CURLVERSION_', ver or 'now'))
+	assert(info ~= nil)
+	local function str(s) return s ~= nil and ffi.string(s) or nil end
+	local protocols = {}
+	local p = info.protocols
+	while p ~= nil and p[0] ~= nil do
+		table.insert(protocols, ffi.string(p[0]))
+		p = p + 1
+	end
+	return {
+		age = info.age,
+		version = str(info.version),
+		version_num = info.version_num,
+		host = str(info.host),
+		features = info.features,
+		ssl_version = str(info.ssl_version),
+		ssl_version_num = info.ssl_version_num,
+		libz_version = str(info.libz_version),
+		protocols = protocols,
+		ares = str(info.ares),
+		ares_num = info.ares_num,
+		libidn = str(info.libidn),
+		iconv_ver_num = info.iconv_ver_num,
+		libssh_version = str(info.libssh_version),
+	}
+end
+
+function M.getdate(s)
+	local t = C.curl_getdate(s, nil)
+	return t ~= -1 and t or nil
 end
 
 --[[
-curl_getdate()  converts a date string to time_t
-curl_formadd()  helps building an HTTP form POST
-curl_formfree() free a list built with curl_formadd
-curl_slist_append()   builds a linked list
-curl_slist_free_all() frees a whole curl_slist
+--TODO
+C.curl_formadd()
+C.curl_formfree()
 ]]
 
 --option encoders ------------------------------------------------------------
@@ -63,17 +92,22 @@ local function flags(prefix, ctype)
 		return ctype, val
 	end
 end
-local function strlist(t)
-	local buf = ffi.new('const char*[?]', #t)
-	for i=1,#t do
-		buf[i] = t[i]
+local function slist(t, self)
+	local slist = ffi.new('struct curl_slist[?]', #t)
+	self._pins[slist] = true
+	local dt = {slist}
+	for i=0,#t-1 do
+		local s = t[i+1]
+		slist[i].data = s
+		slist[i].next = slist[i+1]
+		self._pins[s] = true
 	end
-	return 'char*', buf
+	return 'struct curl_slist*', slist
 end
+
 local function ctype(ctype)
 	return function(val) return ctype, val end
 end
-local slist = ctype'struct curl_slist *'
 local off_t = ctype'curl_off_t'
 local voidp = ctype'void*'
 local function cb(ctype)
@@ -130,12 +164,12 @@ local options = {
 	[C.CURLOPT_WRITEDATA] = voidp, --FILE* or callback arg
 	[C.CURLOPT_READFUNCTION] = cb'curl_read_callback',
 	[C.CURLOPT_READDATA] = voidp,
-	[C.CURLOPT_INFILESIZE] = long,
+	--[C.CURLOPT_INFILESIZE] = long,
 	[C.CURLOPT_LOW_SPEED_LIMIT] = long,
 	[C.CURLOPT_LOW_SPEED_TIME] = long,
-	[C.CURLOPT_MAX_SEND_SPEED_LARGE] = off_t,
-	[C.CURLOPT_MAX_RECV_SPEED_LARGE] = off_t,
-	[C.CURLOPT_RESUME_FROM] = long,
+	[C.CURLOPT_MAX_SEND_SPEED] = off_t,
+	[C.CURLOPT_MAX_RECV_SPEED] = off_t,
+	--[C.CURLOPT_RESUME_FROM] = long,
 	[C.CURLOPT_KEYPASSWD] = str,
 	[C.CURLOPT_CRLF] = longbool,
 	[C.CURLOPT_QUOTE] = str,
@@ -148,7 +182,7 @@ local options = {
 	[C.CURLOPT_APPEND] = longbool,
 	[C.CURLOPT_TRANSFERTEXT] = longbool,
 	[C.CURLOPT_AUTOREFERER] = longbool,
-	[C.CURLOPT_POSTFIELDSIZE] = long,
+	--[C.CURLOPT_POSTFIELDSIZE] = long,
 	[C.CURLOPT_HTTPHEADER] = slist,
 	[C.CURLOPT_HTTPPOST] = ctype'struct curl_httppost *',
 	[C.CURLOPT_HTTPPROXYTUNNEL] = longbool,
@@ -181,7 +215,7 @@ local options = {
 	[C.CURLOPT_SSLENGINE] = str,
 	[C.CURLOPT_SSLENGINE_DEFAULT] = longbool,
 	[C.CURLOPT_SSL_OPTIONS] = flags'CURLSSLOPT_',
-	[C.CURLOPT_SSL_CIPHER_LIST] = strlist,
+	[C.CURLOPT_SSL_CIPHER_LIST] = str,
 	[C.CURLOPT_SSL_VERIFYHOST] = function(b) return 'long', b and 2 or 0 end,
 	[C.CURLOPT_SSL_VERIFYPEER] = longbool,
 	[C.CURLOPT_SSL_CTX_FUNCTION] = cb'curl_ssl_ctx_callback',
@@ -204,11 +238,11 @@ local options = {
 	[C.CURLOPT_UNRESTRICTED_AUTH] = longbool,
 	[C.CURLOPT_SERVER_RESPONSE_TIMEOUT] = long,
 	[C.CURLOPT_IPRESOLVE] = flag'CURL_IPRESOLVE_',
-	[C.CURLOPT_MAXFILESIZE] = long,
-	[C.CURLOPT_INFILESIZE_LARGE] = off_t,
-	[C.CURLOPT_RESUME_FROM_LARGE] = off_t,
-	[C.CURLOPT_MAXFILESIZE_LARGE] = off_t,
-	[C.CURLOPT_POSTFIELDSIZE_LARGE] = long,
+	--[C.CURLOPT_MAXFILESIZE] = long,
+	[C.CURLOPT_INFILESIZE] = off_t,
+	[C.CURLOPT_RESUME_FROM] = off_t,
+	[C.CURLOPT_MAXFILESIZE] = off_t,
+	[C.CURLOPT_POSTFIELDSIZE] = off_t,
 	[C.CURLOPT_TCP_NODELAY] = longbool,
 	[C.CURLOPT_FTPSSLAUTH] = flag'CURLFTPAUTH_',
 	[C.CURLOPT_IOCTLFUNCTION] = cb'curl_ioctl_callback',
@@ -333,7 +367,7 @@ easy.__index = easy
 function M.easy(opt)
 	local curl = C.curl_easy_init()
 	assert(curl ~= nil)
-	local self = setmetatable({_curl = curl, _callbacks = {}}, easy)
+	local self = setmetatable({_curl = curl, _callbacks = {}, _pins = {}}, easy)
 	ffi.gc(curl, function() self:free() end)
 	if opt then
 		for k,v in pairs(opt) do
@@ -368,59 +402,113 @@ function easy:perform()
 	return ret(C.curl_easy_perform(self._curl))
 end
 
---[[
-local info = {
-	CURLINFO_EFFECTIVE_URL = 0x100000 + 1,
-	CURLINFO_RESPONSE_CODE = 0x200000 + 2,
-	CURLINFO_TOTAL_TIME = 0x300000 + 3,
-	CURLINFO_NAMELOOKUP_TIME = 0x300000 + 4,
-	CURLINFO_CONNECT_TIME = 0x300000 + 5,
-	CURLINFO_PRETRANSFER_TIME = 0x300000 + 6,
-	CURLINFO_SIZE_UPLOAD = 0x300000 + 7,
-	CURLINFO_SIZE_DOWNLOAD = 0x300000 + 8,
-	CURLINFO_SPEED_DOWNLOAD = 0x300000 + 9,
-	CURLINFO_SPEED_UPLOAD = 0x300000 + 10,
-	CURLINFO_HEADER_SIZE = 0x200000 + 11,
-	CURLINFO_REQUEST_SIZE = 0x200000 + 12,
-	CURLINFO_SSL_VERIFYRESULT = 0x200000 + 13,
-	CURLINFO_FILETIME = 0x200000 + 14,
-	CURLINFO_CONTENT_LENGTH_DOWNLOAD = 0x300000 + 15,
-	CURLINFO_CONTENT_LENGTH_UPLOAD = 0x300000 + 16,
-	CURLINFO_STARTTRANSFER_TIME = 0x300000 + 17,
-	CURLINFO_CONTENT_TYPE = 0x100000 + 18,
-	CURLINFO_REDIRECT_TIME = 0x300000 + 19,
-	CURLINFO_REDIRECT_COUNT = 0x200000 + 20,
-	CURLINFO_PRIVATE = 0x100000 + 21,
-	CURLINFO_HTTP_CONNECTCODE = 0x200000 + 22,
-	CURLINFO_HTTPAUTH_AVAIL = 0x200000 + 23,
-	CURLINFO_PROXYAUTH_AVAIL = 0x200000 + 24,
-	CURLINFO_OS_ERRNO = 0x200000 + 25,
-	CURLINFO_NUM_CONNECTS = 0x200000 + 26,
-	CURLINFO_SSL_ENGINES = 0x400000 + 27,
-	CURLINFO_COOKIELIST = 0x400000 + 28,
-	CURLINFO_LASTSOCKET = 0x200000 + 29,
-	CURLINFO_FTP_ENTRY_PATH = 0x100000 + 30,
-	CURLINFO_REDIRECT_URL = 0x100000 + 31,
-	CURLINFO_PRIMARY_IP = 0x100000 + 32,
-	CURLINFO_APPCONNECT_TIME = 0x300000 + 33,
-	CURLINFO_CERTINFO = 0x400000 + 34,
-	CURLINFO_CONDITION_UNMET = 0x200000 + 35,
-	CURLINFO_RTSP_SESSION_ID = 0x100000 + 36,
-	CURLINFO_RTSP_CLIENT_CSEQ = 0x200000 + 37,
-	CURLINFO_RTSP_SERVER_CSEQ = 0x200000 + 38,
-	CURLINFO_RTSP_CSEQ_RECV = 0x200000 + 39,
-	CURLINFO_PRIMARY_PORT = 0x200000 + 40,
-	CURLINFO_LOCAL_IP = 0x100000 + 41,
-	CURLINFO_LOCAL_PORT = 0x200000 + 42,
-	CURLINFO_TLS_SESSION = 0x400000 + 43,
-	CURLINFO_ACTIVESOCKET = 0x500000 + 44,
-	CURLINFO_LASTONE = 44,
-}
-]]
+--info
 
-function easy:info(k, ...)
-	local info = X('CURLINFO_', k)
-	C.curl_easy_getinfo(self._curl, info, ...)
+local function strbuf(buf)
+	return ffi.new'char*[1]', function(buf)
+		return buf[0] ~= nil and ffi.string(buf[0]) or nil
+	end
+end
+local function longbuf(buf)
+	return ffi.new'long[1]', function(buf)
+		local n = tonumber(buf[0])
+		return n ~= -1 and n or nil
+	end
+end
+local function longboolbuf(buf)
+	return ffi.new'long[1]', function(buf)
+		return buf[0] ~= 0
+	end
+end
+local function doublebuf(buf)
+	return ffi.new'double[1]', function(buf)
+		return buf[0] ~= -1 and buf[0] or nil
+	end
+end
+local function decode_slist(buf)
+		local slist0 = buf[0]
+		local t = {}
+		local slist = slist0
+		while slist ~= nil do
+			t[#t+1] = ffi.string(slist.data)
+			slist = slist.next
+		end
+		if slist0 ~= nil then
+			C.curl_slist_free_all(slist0)
+		end
+		return t
+	end
+local function slistbuf(buf)
+	return ffi.new'struct curl_slist*[1]', decode_slist
+end
+local function certinfobuf(buf)
+	return ffi.new'struct curl_certinfo*[1]', function(buf)
+		return buf[0].certinfo ~= nil and decode_slist(buf[0].certinfo) or {}
+	end
+end
+local function tlssessioninfobuf(buf)
+	return ffi.new'struct curl_tlssessioninfo*[1]', function(buf)
+		return buf[0]
+	end
+end
+local function socketbuf(buf)
+	return ffi.new'curl_socket_t[1]', function(buf)
+		return buf[0]
+	end
+end
+
+local info_buffers = {
+	[C.CURLINFO_EFFECTIVE_URL] = strbuf,
+	[C.CURLINFO_RESPONSE_CODE] = longbuf,
+	[C.CURLINFO_TOTAL_TIME] = doublebuf,
+	[C.CURLINFO_NAMELOOKUP_TIME] = doublebuf,
+	[C.CURLINFO_CONNECT_TIME] = doublebuf,
+	[C.CURLINFO_PRETRANSFER_TIME] = doublebuf,
+	[C.CURLINFO_SIZE_UPLOAD] = doublebuf,
+	[C.CURLINFO_SIZE_DOWNLOAD] = doublebuf,
+	[C.CURLINFO_SPEED_DOWNLOAD] = doublebuf,
+	[C.CURLINFO_SPEED_UPLOAD] = doublebuf,
+	[C.CURLINFO_HEADER_SIZE] = longbuf,
+	[C.CURLINFO_REQUEST_SIZE] = longbuf,
+	[C.CURLINFO_SSL_VERIFYRESULT] = longboolbuf,
+	[C.CURLINFO_FILETIME] = longbuf,
+	[C.CURLINFO_CONTENT_LENGTH_DOWNLOAD] = doublebuf,
+	[C.CURLINFO_CONTENT_LENGTH_UPLOAD] = doublebuf,
+	[C.CURLINFO_STARTTRANSFER_TIME] = doublebuf,
+	[C.CURLINFO_CONTENT_TYPE] = strbuf,
+	[C.CURLINFO_REDIRECT_TIME] = doublebuf,
+	[C.CURLINFO_REDIRECT_COUNT] = longbuf,
+	[C.CURLINFO_PRIVATE] = strbuf,
+	[C.CURLINFO_HTTP_CONNECTCODE] = longbuf,
+	[C.CURLINFO_HTTPAUTH_AVAIL] = longbuf,
+	[C.CURLINFO_PROXYAUTH_AVAIL] = longbuf,
+	[C.CURLINFO_OS_ERRNO] = longbuf,
+	[C.CURLINFO_NUM_CONNECTS] = longbuf,
+	[C.CURLINFO_SSL_ENGINES] = slistbuf,
+	[C.CURLINFO_COOKIELIST] = slistbuf,
+	[C.CURLINFO_LASTSOCKET] = longbuf,
+	[C.CURLINFO_FTP_ENTRY_PATH] = strbuf,
+	[C.CURLINFO_REDIRECT_URL] = strbuf,
+	[C.CURLINFO_PRIMARY_IP] = strbuf,
+	[C.CURLINFO_APPCONNECT_TIME] = doublebuf,
+	[C.CURLINFO_CERTINFO] = certinfobuf,
+	[C.CURLINFO_CONDITION_UNMET] = longboolbuf,
+	[C.CURLINFO_RTSP_SESSION_ID] = strbuf,
+	[C.CURLINFO_RTSP_CLIENT_CSEQ] = longbuf,
+	[C.CURLINFO_RTSP_SERVER_CSEQ] = longbuf,
+	[C.CURLINFO_RTSP_CSEQ_RECV] = longbuf,
+	[C.CURLINFO_PRIMARY_PORT] = longbuf,
+	[C.CURLINFO_LOCAL_IP] = strbuf,
+	[C.CURLINFO_LOCAL_PORT] = longbuf,
+	[C.CURLINFO_TLS_SESSION] = tlssessioninfobuf,
+	[C.CURLINFO_ACTIVESOCKET] = socketbuf,
+}
+
+function easy:info(k)
+	local infonum = X('CURLINFO_', k)
+	local buf, decode = assert(info_buffers[infonum])()
+	check(C.curl_easy_getinfo(self._curl, infonum, buf))
+	return decode(buf)
 end
 
 function easy:recv(buf, buflen, n)
@@ -432,6 +520,23 @@ function easy:send(buf, buflen, n)
 end
 
 easy.strerror = strerror
+
+function easy:escape(s)
+	local p = C.curl_easy_escape(self._curl, s, #s)
+	if p == nil then return end
+	local s = ffi.string(p)
+	C.curl_free(p)
+	return s
+end
+
+local szbuf = ffi.new'int[1]'
+function easy:unescape(s)
+	local p = C.curl_easy_unescape(self._curl, s, #s, szbuf)
+	if p == nil then return end
+	local s = ffi.string(p, szbuf[0])
+	C.curl_free(p)
+	return s
+end
 
 --multi interface ------------------------------------------------------------
 
@@ -456,7 +561,7 @@ multi.__index = multi
 function M.multi(opt)
 	local curl = C.curl_multi_init()
 	assert(curl ~= nil)
-	local self = setmetatable({_curl = curl, _callbacks = {}}, easy)
+	local self = setmetatable({_curl = curl, _callbacks = {}, _pins = {}}, easy)
 	ffi.gc(curl, function() self:free() end)
 	if opt then
 		for k,v in pairs(opt) do
@@ -476,24 +581,31 @@ function multi:free()
 	self._curl = nil
 end
 
+local function strlist(t, self)
+	local buf = ffi.new('char*[?]', #t)
+	for i,s in ipairs(t) do
+		buf[i-1] = s
+		self._pins[s] = true
+	end
+	return buf
+end
+
 local options = {
-	--[[
-	[C.CURLMOPT_SOCKETFUNCTION] = longbool,
-	[C.CURLMOPT_SOCKETDATA] = longbool,
-	[C.CURLMOPT_PIPELINING] = longbool,
-	[C.CURLMOPT_TIMERFUNCTION] = longbool,
-	[C.CURLMOPT_TIMERDATA] = longbool,
+	[C.CURLMOPT_SOCKETFUNCTION] = cb'curl_socket_callback',
+	[C.CURLMOPT_SOCKETDATA] = voidp,
+	[C.CURLMOPT_PIPELINING] = flags'CURLPIPE_',
+	[C.CURLMOPT_TIMERFUNCTION] = cb'curl_multi_timer_callback',
+	[C.CURLMOPT_TIMERDATA] = voidp,
 	[C.CURLMOPT_MAXCONNECTS] = longbool,
 	[C.CURLMOPT_MAX_HOST_CONNECTIONS] = longbool,
 	[C.CURLMOPT_MAX_PIPELINE_LENGTH] = longbool,
 	[C.CURLMOPT_CONTENT_LENGTH_PENALTY_SIZE] = longbool,
 	[C.CURLMOPT_CHUNK_LENGTH_PENALTY_SIZE] = longbool,
-	[C.CURLMOPT_PIPELINING_SITE_BL] = longbool,
-	[C.CURLMOPT_PIPELINING_SERVER_BL] = longbool,
-	[C.CURLMOPT_MAX_TOTAL_CONNECTIONS] = longbool,
-	[C.CURLMOPT_PUSHFUNCTION] = longbool,
-	[C.CURLMOPT_PUSHDATA] = longbool,
-	]]
+	[C.CURLMOPT_PIPELINING_SITE_BL] = strlist,
+	[C.CURLMOPT_PIPELINING_SERVER_BL] = strlist,
+	[C.CURLMOPT_MAX_TOTAL_CONNECTIONS] = long,
+	[C.CURLMOPT_PUSHFUNCTION] = cb'curl_push_callback',
+	[C.CURLMOPT_PUSHDATA] = voidp,
 }
 
 function multi:set(k, v)
@@ -563,22 +675,5 @@ end
 
 multi.strerror = strerror
 ]]
-
-if not ... then
-
-local curl = M
-local easy = curl.easy{
-	url = 'http://google.com/',
-	verbose = true,
-	noprogress = false,
-	xferinfofunction = function(self, _, ...)
-		print(...)
-		return 0
-	end,
-}
-easy:perform()
-easy:free()
-
-end
 
 return M
