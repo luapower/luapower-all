@@ -26,7 +26,7 @@ local CURL_SOCKET_TIMEOUT = CURL_SOCKET_BAD
 
 ffi.cdef[[
 // curl.h --------------------------------------------------------------------
-typedef void CURL;
+typedef struct CURL CURL;
 typedef void curl_fd_set;
 typedef long long curl_off_t;
 typedef long time_t;
@@ -995,7 +995,7 @@ typedef void (*curl_lock_function)(CURL *handle,
 typedef void (*curl_unlock_function)(CURL *handle,
                                      curl_lock_data data,
                                      void *userptr);
-typedef void CURLSH;
+typedef struct CURLSH CURLSH;
 typedef enum {
 	CURLSHE_OK,
 	CURLSHE_BAD_OPTION,
@@ -1092,7 +1092,7 @@ CURLcode curl_easy_send(CURL *curl, const void *buffer,
                                     size_t buflen, size_t *n);
 
 // multi.h -------------------------------------------------------------------
-typedef void CURLM;
+typedef struct CURLM CURLM;
 typedef enum {
 	CURLM_CALL_MULTI_PERFORM = -1,
 	CURLM_OK,

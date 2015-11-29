@@ -9,20 +9,48 @@ require'libcurl_h'
 local C = ffi.load'curl'
 local M = {C = C}
 
-local function X(prefix, x) --lookup a name in C (case-insensitive, no prefix)
+--global buffers for C "out" variables
+local intbuf = ffi.new'int[1]'
+local longbuf = ffi.new'long[1]'
+local sizetbuf = ffi.new'size_t[1]'
+
+local function ptr(p) --convert NULL -> nil
+	return p ~= nil and p or nil
+end
+
+local function X(prefix, x) --convert flag -> C[prefix..flag:upper()]
 	return type(x) == 'string' and C[prefix..x:upper()] or x
+end
+
+--convert {flag1 = true, ...} -> bit.bor(C[prefix..flag1:upper()], ...)
+local function MX(prefix, t)
+	local val = 0
+	for flag, truthy in pairs(t) do
+		if truthy then
+			val = bit.bor(val, X(prefix, flag))
+		end
+	end
 end
 
 local function check(code)
 	assert(code == C.CURLE_OK)
 end
 
-function M.init(flags)
-	check(C.curl_global_init(X('CURL_GLOBAL_', flags or 'all')))
-end
-
-function M.init_mem(flags, malloc, free, realloc, strdup, calloc)
-	check(C.curl_global_init_mem(flags, malloc, free, realloc, strdup, calloc))
+function M.init(opt)
+	if type(opt) == 'table' then
+		local function validate(cb) --must set all callbacks or none
+			return assert(ptr(cb))
+		end
+		check(C.curl_global_init_mem(MX('CURL_GLOBAL_', opt.flags or 'all'),
+			validate(opt.malloc),
+			validate(opt.free),
+			validate(opt.realloc),
+			validate(opt.strdup),
+			validate(opt.calloc)))
+	else
+		check(C.curl_global_init(MX('CURL_GLOBAL_', opt or 'all')))
+	end
+	return M
 end
 
 M.free = C.curl_global_cleanup
@@ -32,14 +60,15 @@ function M.version()
 end
 
 function M.version_info(ver)
-	local info = C.curl_version_info(X('CURLVERSION_', ver or 'now'))
-	assert(info ~= nil)
-	local function str(s) return s ~= nil and ffi.string(s) or nil end
+	local info = assert(ptr(C.curl_version_info(X('CURLVERSION_', ver or 'now'))))
 	local protocols = {}
 	local p = info.protocols
 	while p ~= nil and p[0] ~= nil do
 		table.insert(protocols, ffi.string(p[0]))
 		p = p + 1
+	end
+	local function str(s)
+		return s ~= nil and ffi.string(s) or nil
 	end
 	return {
 		age = info.age,
@@ -72,58 +101,136 @@ C.curl_formfree()
 
 --option encoders ------------------------------------------------------------
 
-local function longbool(b) return 'long', b and 1 or 0 end
-local function long(i) return 'long', i end
-local function str(s) return 'char*', ffi.cast('const char*', s) end
-local function flag(prefix)
-	return function(flag)
-		return 'long', X(prefix, flag)
-	end
-end
-local function flags(prefix, ctype)
-	local ctype = ctype or 'long'
-	return function(t)
-		local val = 0
-		for flag, truthy in pairs(t) do
-			if truthy then
-				val = bit.bor(val, X(prefix, flag))
-			end
-		end
-		return ctype, val
-	end
-end
-local function slist(t, self)
-	local slist = ffi.new('struct curl_slist[?]', #t)
-	self._pins[slist] = true
-	local dt = {slist}
-	for i=0,#t-1 do
-		local s = t[i+1]
-		slist[i].data = s
-		slist[i].next = slist[i+1]
-		self._pins[s] = true
-	end
-	return 'struct curl_slist*', slist
-end
+--each encoder takes a Lua value and returns the converted, C-typed value
+--and optionally a value to keep while the transfer is alive,
+--and then `true` if the value to keep is a callback.
 
 local function ctype(ctype)
-	return function(val) return ctype, val end
+	return function(val)
+		return ffi.cast(ctype, val)
+	end
 end
+
+local long  = ctype'long'
 local off_t = ctype'curl_off_t'
 local voidp = ctype'void*'
-local function cb(ctype)
-	return function(func, self)
-		local function wrapper(...)
-			return func(self, ...)
+
+local function longbool(b)
+	return ffi.cast('long', b and 1 or 0)
+end
+
+local function str(s)
+	return ffi.cast('const char*', s), s
+end
+
+local function flag(prefix)
+	return function(flag)
+		return ffi.cast('long', X(prefix, flag))
+	end
+end
+
+local function flags(prefix, ctype)
+	return function(t)
+		return ffi.cast(ctype or 'long', MX(prefix, t))
+	end
+end
+
+local function slist(t)
+	local slist, dt = t
+	if type(t) == 'table' then
+		slist = ffi.new('struct curl_slist[?]', #t)
+		dt = {slist}
+		for i=0,#t-1 do
+			local s = t[i+1]
+			slist[i].data = s
+			slist[i].next = slist[i+1]
+			table.insert(dt, s)
 		end
-		local cb = ffi.cast(ctype, wrapper)
-		table.insert(self._callbacks, cb)
-		return ctype, cb
+	end
+	return ffi.cast('struct curl_slist*', slist), dt
+end
+
+local function pchararray(t, self)
+	local buf, dt = t
+	if type(t) == 'table' then
+		buf = ffi.new('char*[?]', #t)
+		dt = {buf}
+		for i,s in ipairs(t) do
+			buf[i-1] = s
+			table.insert(dt, s)
+		end
+	end
+	return ffi.cast('char**', buf), dt
+end
+
+local function cb(ctype) --callback
+	return function(func, self)
+		local cb = ffi.cast(ctype, func)
+		if type(func) ~= 'function' then return cb end
+		return cb, {cb = cb, func = func, refcount = 1}, true
 	end
 end
 
 --easy interface -------------------------------------------------------------
 
-local options = {
+local easy = {}
+setmetatable(easy, easy) --for __call
+M.easy = easy
+local easy_mt = {__index = easy}
+
+function easy:__call(opt)
+	local self = assert(ptr(C.curl_easy_init()))
+	if opt then
+		if type(opt) == 'string' then
+			self:set('url', opt)
+		else
+			self:set(opt)
+		end
+	end
+	return self
+end
+
+function easy:clone(opt)
+	local oldself = self
+	local self = assert(ptr(C.curl_easy_duphandle(self)))
+	self:_copy_pinned_vals(oldself)
+	if opt then
+		if type(opt) == 'string' then
+			self:set('url', opt)
+		else
+			self:set(opt)
+		end
+	end
+	return self
+end
+
+easy._strerror = C.curl_easy_strerror
+function easy.strerror(code)
+	return ffi.string(self._strerror(code))
+end
+
+function easy:_ret(code, retval)
+	if code == C.CURLE_OK then return retval or self end
+	return nil, self.strerror(code), code
+end
+
+function easy:_check(code, retval)
+	if code == C.CURLE_OK then return retval or self end
+	error('libcurl error: '..self.strerror(code), 2)
+end
+
+function easy:_cleanup()
+	C.curl_easy_cleanup(self)
+end
+function easy:close()
+	self:_cleanup()
+	self:_free_pinned_vals()
+end
+easy_mt.__gc = easy.close
+
+--options --------------------------------------------------------------------
+
+easy._setopt_options = {
 	[C.CURLOPT_TIMEOUT] = long,
 	[C.CURLOPT_VERBOSE] = longbool,
 	[C.CURLOPT_STDERR] = voidp, --FILE*
@@ -346,63 +453,87 @@ local options = {
 	[C.CURLOPT_PIPEWAIT] = longbool,
 }
 
-local function strerror(code)
-	return ffi.string(C.curl_easy_strerror(code))
-end
+easy._setopt = C.curl_easy_setopt
+easy._setopt_prefix = 'CURLOPT_'
 
-function ret(code)
-	if code == C.CURLE_OK then return true end
-	return nil, strerror(code), code
-end
-
-local function check(code)
-	local ok, err, errcode = ret(code)
-	if ok then return true end
-	error('libcurl error: '..err, 2)
-end
-
-local easy = {}
-easy.__index = easy
-
-function M.easy(opt)
-	local curl = C.curl_easy_init()
-	assert(curl ~= nil)
-	local self = setmetatable({_curl = curl, _callbacks = {}, _pins = {}}, easy)
-	ffi.gc(curl, function() self:free() end)
-	if opt then
-		for k,v in pairs(opt) do
+function easy:set(k, v)
+	if type(k) == 'table' then
+		for k,v in pairs(k) do
 			self:set(k, v)
 		end
+		return
+	end
+	local optnum = X(self._setopt_prefix, k)
+	local convert = assert(self._setopt_options[optnum])
+	local cval, pinval, iscallback = convert(v)
+	local ok, err, errcode = self:_check(self._setopt(self, optnum, cval), true)
+	if not ok then
+		return nil, err, errcode
+	end
+	if pinval then
+		self:_update_pinned_val(optnum, pinval, iscallback)
 	end
 	return self
 end
 
-function easy:free()
-	if not self._curl then return end
-	C.curl_easy_cleanup(self._curl)
-	ffi.gc(self._curl, nil)
-	for i,cb in ipairs(self._callbacks) do
-		cb:free()
-	end
-	self._curl = nil
-end
-
-function easy:set(k, v)
-	local optnum = X('CURLOPT_', k)
-	local convert = assert(options[optnum])
-	local ctype, cval = convert(v, self) --keep v from being gc'ed
-	check(C.curl_easy_setopt(self._curl, optnum, ffi.cast(ctype, cval)))
-end
-
 function easy:reset()
-	C.curl_easy_reset(self._curl)
+	self:_free_pinned_vals()
+	C.curl_easy_reset(self)
+	return self
 end
 
 function easy:perform()
-	return ret(C.curl_easy_perform(self._curl))
+	return self:_ret(C.curl_easy_perform(self))
 end
 
---info
+--pinned values --------------------------------------------------------------
+
+local pins = {} --{CURL*|CURLM*|CURLSH* = {optnum = value}}
+local cbs  = {} --{CURL*|CURLM*|CURLSH* = {optnum = value}}
+
+function easy:_update_pinned_val(optnum, pinval, iscallback)
+	if not iscallback then
+		pins[self] = pins[self] or {}
+		pins[self][optnum] = pinval
+	else
+		cbs[self] = cbs[self] or {}
+		local t = cbs[self][optnum]
+		if t then t.cb:free() end
+		cbs[self][optnum] = pinval
+	end
+end
+
+function easy:_copy_pinned_vals(oldself)
+	if pins[oldself] then
+		pins[self] = {}
+		for k,v in pairs(pins[oldself]) do
+			pins[self][k] = v
+		end
+	end
+	if cbs[oldself] then
+		cbs[self] = {}
+		for optnum, t in pairs(cbs[oldself]) do
+			t.refcount = t.refcount + 1
+			cbs[self][optnum] = t
+		end
+	end
+end
+
+function easy:_free_pinned_vals()
+	if cbs[self] then
+		for optnum, t in pairs(cbs[self]) do
+			t.refcount = t.refcount - 1
+			if t.refcount == 0 then
+				t.cb:free()
+				t.cb = nil
+			end
+		end
+		cbs[self] = nil
+	end
+	pins[self] = nil
+end
+
+--info -----------------------------------------------------------------------
 
 local function strbuf(buf)
 	return ffi.new'char*[1]', function(buf)
@@ -507,90 +638,67 @@ local info_buffers = {
 function easy:info(k)
 	local infonum = X('CURLINFO_', k)
 	local buf, decode = assert(info_buffers[infonum])()
-	check(C.curl_easy_getinfo(self._curl, infonum, buf))
+	self:_check(C.curl_easy_getinfo(self, infonum, buf))
 	return decode(buf)
 end
 
-function easy:recv(buf, buflen, n)
-	return ret(C.curl_easy_recv(self._curl, buf, buflen, n))
+--misc -----------------------------------------------------------------------
+
+function easy:recv(buf, buflen)
+	local code = C.curl_easy_recv(self, buf, buflen, sizetbuf)
+	return self:_ret(code, sizetbuf[0])
 end
 
 function easy:send(buf, buflen, n)
-	return ret(C.curl_easy_send(self._curl, buf, buflen, n))
+	local code = C.curl_easy_send(self, buf, buflen, sizetbuf)
+	return self:_ret(code, sizetbuf[0])
 end
 
-easy.strerror = strerror
-
 function easy:escape(s)
-	local p = C.curl_easy_escape(self._curl, s, #s)
+	local p = C.curl_easy_escape(self, s, #s)
 	if p == nil then return end
 	local s = ffi.string(p)
 	C.curl_free(p)
 	return s
 end
 
-local szbuf = ffi.new'int[1]'
 function easy:unescape(s)
-	local p = C.curl_easy_unescape(self._curl, s, #s, szbuf)
+	local p = C.curl_easy_unescape(self, s, #s, intbuf)
 	if p == nil then return end
-	local s = ffi.string(p, szbuf[0])
+	local s = ffi.string(p, intbuf[0])
 	C.curl_free(p)
 	return s
 end
 
+ffi.metatype('CURL', easy_mt)
+
 --multi interface ------------------------------------------------------------
 
-local function strerror(code)
-	return ffi.string(C.curl_multi_strerror(code))
-end
-
-function ret(code)
-	if code == C.CURLE_OK then return true end
-	return nil, strerror(code), code
-end
-
-local function check(code)
-	local ok, err, errcode = ret(code)
-	if ok then return true end
-	error('libcurl error: '..err, 2)
-end
-
 local multi = {}
-multi.__index = multi
+setmetatable(multi, multi) --for __call
+M.multi = multi
+local multi_mt = {__index = multi}
 
-function M.multi(opt)
-	local curl = C.curl_multi_init()
-	assert(curl ~= nil)
-	local self = setmetatable({_curl = curl, _callbacks = {}, _pins = {}}, easy)
-	ffi.gc(curl, function() self:free() end)
+function multi:__call(opt)
+	local self = assert(ptr(C.curl_multi_init()))
 	if opt then
-		for k,v in pairs(opt) do
-			self:set(k, v)
-		end
+		self:set(opt)
 	end
 	return self
 end
 
-function multi:free()
-	if not self._curl then return end
-	check(C.curl_multi_cleanup(self._curl))
-	ffi.gc(self._curl, nil)
-	for i,cb in ipairs(self._callbacks) do
-		cb:free()
-	end
-	self._curl = nil
-end
+multi._strerror = C.curl_multi_strerror
+multi.strerror = easy.strerror
+multi._ret = easy._ret
+multi._check = easy._check
 
-local function strlist(t, self)
-	local buf = ffi.new('char*[?]', #t)
-	for i,s in ipairs(t) do
-		buf[i-1] = s
-		self._pins[s] = true
-	end
-	return buf
+function multi:_cleanup()
+	self:_check(C.curl_multi_cleanup(self))
 end
+multi.close = easy.close
+multi_mt.__gc = multi.close
 
-local options = {
+multi._setopt_options = {
 	[C.CURLMOPT_SOCKETFUNCTION] = cb'curl_socket_callback',
 	[C.CURLMOPT_SOCKETDATA] = voidp,
 	[C.CURLMOPT_PIPELINING] = flags'CURLPIPE_',
@@ -601,79 +709,109 @@ local options = {
 	[C.CURLMOPT_MAX_PIPELINE_LENGTH] = longbool,
 	[C.CURLMOPT_CONTENT_LENGTH_PENALTY_SIZE] = longbool,
 	[C.CURLMOPT_CHUNK_LENGTH_PENALTY_SIZE] = longbool,
-	[C.CURLMOPT_PIPELINING_SITE_BL] = strlist,
-	[C.CURLMOPT_PIPELINING_SERVER_BL] = strlist,
+	[C.CURLMOPT_PIPELINING_SITE_BL] = pcharlist,
+	[C.CURLMOPT_PIPELINING_SERVER_BL] = pchararray,
 	[C.CURLMOPT_MAX_TOTAL_CONNECTIONS] = long,
 	[C.CURLMOPT_PUSHFUNCTION] = cb'curl_push_callback',
 	[C.CURLMOPT_PUSHDATA] = voidp,
 }
+multi._setopt = C.curl_multi_setopt
+multi._setopt_prefix = 'CURLMOPT_'
+multi.set = easy.set
 
-function multi:set(k, v)
-	local optnum = X('CURLMOPT_', k)
-	local convert = assert(options[optnum])
-	local ctype, cval = convert(v, self) --keep v from being gc'ed
-	check(C.curl_multi_setopt(self._curl, optnum, ffi.cast(ctype, cval)))
-end
+multi._update_pinned_val = easy._update_pinned_val
+multi._copy_pinned_vals = easy._copy_pinned_vals
+multi._free_pinned_vals = easy._free_pinned_vals
 
-function multi:reset()
-	C.curl_easy_reset(self._curl)
-end
-
-local running_handles = ffi.new'int[1]'
 function multi:perform()
-	local ok, err, errcode = ret(C.curl_multi_perform(self._curl, running_handles))
-	if not ok then return nil, err, errcode end
-	return running_handles[0]
+	local code = C.curl_multi_perform(self, intbuf)
+	return self:_ret(code, intbuf[0])
 end
 
---[[
-function multi:add_easy(easy)
-	local curl = getmetatable(easy) == easy and easy._curl or easy
-	check(C.curl_multi_add_handle(self._curl, curl))
+function multi:add(curl)
+	return self:_check(C.curl_multi_add_handle(self, curl))
 end
 
-function multi:remove_easy(easy)
-	local curl = getmetatable(easy) == easy and easy._curl or easy
-	check(C.curl_multi_remove_handle(self._curl, curl))
+function multi:remove(curl)
+	return self:_check(C.curl_multi_remove_handle(self, curl))
 end
 
-function multi:fdset()
-	return ret(C.curl_multi_fdset(self._curl, read_fd_set, write_fd_set, exc_fd_set, max_fd))
+function multi:fdset(read_fd_set, write_fd_set, exc_fd_set)
+	local code = C.curl_multi_fdset(self,
+		read_fd_set, write_fd_set, exc_fd_set, intbuf)
+	return self:_ret(code, intbuf[0])
 end
 
-function multi:wait()
-	return ret(C.curl_multi_wait(self._curl, extra_fds, extra_nfds, timeout, ret))
-end
-
-local msgs_in_queue = ffi.new'int[1]'
-function multi:info_read()
-	local msg = C.curl_multi_info_read(self._curl, msgs_in_queue)
-end
-
-function multi:socket()
-	return ret(C.curl_multi_socket(self._curl, curl_socket_t s, int *running_handles))
-end
-
-function multi:socket_action()
-	return ret(C.curl_multi_socket_action(self._curl,
-																  curl_socket_t s,
-																  int ev_bitmask,
-																  int *running_handles))
-end
-
-function multi:socket_all()
-	return ret(C.curl_multi_socket_all(self._curl, int *running_handles))
+function multi:wait(timeout, extra_fds, extra_nfds)
+	local code = C.curl_multi_wait(self,
+		extra_fds, extra_nfds or 0, (timeout or 0) * 1000, intbuf)
+	return self:_ret(code, intbuf[0])
 end
 
 function multi:timeout()
-	return ret(C.curl_multi_timeout(self._curl, long *milliseconds))
+	self:_check(C.curl_multi_timeout(self, longbuf))
+	return longbuf[0] ~= -1 and longbuf[0] / 1000 or nil
 end
 
-function multi:assign()
-	return ret(C.curl_multi_assign(self._curl, curl_socket_t sockfd, void *sockp))
+function multi:info_read()
+	local msg = ptr(C.curl_multi_info_read(self, intbuf))
+	return msg, intbuf[0]
 end
 
-multi.strerror = strerror
-]]
+function multi:socket_action(sock, bits)
+	local bits = MX('CURL_CSELECT_', bits)
+	local code = C.curl_multi_socket_action(self, sock, bits, intbuf)
+	return self:_ret(code, intbuf[0])
+end
+
+function multi:assign(sockfd, pd)
+	return self:_check(C.curl_multi_assign(self, sockfd, p))
+end
+
+ffi.metatype('CURLM', multi_mt)
+
+--share interface ------------------------------------------------------------
+
+local share = {}
+setmetatable(share, share) --for __call
+M.share = share
+local share_mt = {__index = share}
+
+function share:__call(opt)
+	local self = assert(ptr(C.curl_share_init()))
+	if opt then
+		self:set(opt)
+	end
+	return self
+end
+
+share._strerror = C.curl_share_strerror
+share.strerror = easy.strerror
+share._ret = easy._ret
+share._check = easy._check
+
+function share:_cleanup()
+	self:_check(C.curl_share_cleanup(self))
+end
+share.free = easy.close
+share_mt.__gc = share.free
+
+share._setopt_options = {
+	[C.CURLSHOPT_SHARE]   = flag('CURL_LOCK_DATA_', 'int'),
+	[C.CURLSHOPT_UNSHARE] = flag('CURL_LOCK_DATA_', 'int'),
+	[C.CURLSHOPT_LOCKFUNC]   = cb'curl_lock_function',
+	[C.CURLSHOPT_UNLOCKFUNC] = cb'curl_unlock_function',
+	[C.CURLSHOPT_USERDATA] = voidp,
+}
+share._setopt = C.curl_share_setopt
+share._setopt_prefix = 'CURLSHOPT_'
+share.set = easy.set
+
+share._update_pinned_val = easy._update_pinned_val
+share._copy_pinned_vals = easy._copy_pinned_vals
+share._free_pinned_vals = easy._free_pinned_vals
+
+ffi.metatype('CURLSH', share_mt)
+
 
 return M
