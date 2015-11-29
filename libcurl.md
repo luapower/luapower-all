@@ -45,10 +45,10 @@ __multi interface__
 `mtr:socket_action()`                                   [read/write available data given an action][curl_multi_socket_action]
 `mtr:assign(sockfd, p) -> mtr`                          [set data to associate with an internal socket][curl_multi_assign]
 __share interface__
-`curl.share([{opt = val, ...}]) -> shr`                 [create][curl_share_init] a [shared object][libcurl-share]
-`shr:set(opt, val) -> shr`                              [set ab option][curl_share_setopt]
+`curl.share([{opt = val, ...}]) -> shr`                 [create][curl_share_init] a [share object][libcurl-share]
+`shr:set(opt, val) -> shr`                              [set an option][curl_share_setopt]
 `shr:set{opt = val, ...} -> shr`                        [set multiple options][curl_share_setopt]
-`shr:free()`                                            [free the shared object][curl_share_cleanup]
+`shr:free()`                                            [free the share object][curl_share_cleanup]
 __misc.__
 `curl.C`                                                the libcurl ffi clib object/namespace
 `curl.init(flags) -> curl`                              [global init][curl_global_init]
@@ -106,24 +106,23 @@ __misc.__
 
 ## Easy vs multi interface
 
-The [easy interface] is synchronous while the [multi interface] can
-do multiple transfers asynchronously. A multi transfer is set up as a list
-of easy transfers.
+The [easy interface][libcurl-easy] is synchronous while the
+[multi interface][libcurl-multi] can do multiple transfers asynchronously.
+A multi transfer is set up as a list of easy transfers.
 
 ## Easy interface
 
 ### `curl.easy(url) -> etr` <br> `curl.easy{option = value, ...} -> etr`
 
-Create a transfer using the [easy interface]. Options are below
+Create a transfer using the [easy interface][libcurl-easy]. Options are below
 (they also go for `etr:set()`). All options are assumed immutable.
 Enum options can be given as strings (case-insensitive, no prefix).
 Bitmask options can be given as tables of form `{mask_name = true|false}`
-(again, the mask name follows the C name but case-insensitive and without the prefix).
+(again, the mask name follows the C name but case-insensitive and without
+the prefix).
 `curl_slist` options can be given as lists of strings.
 Callbacks can be given as Lua functions.
 The ffi callback objects are ref-counted and freed on `etr:free()`.
-
-[easy interface]: http://curl.haxx.se/libcurl/c/libcurl-easy.html
 
 <div class=small>
 ----------------------------- --------------------------------------------------------------------
@@ -588,17 +587,15 @@ __Debugging__
 
 ### `curl.multi([{option = value, ...}]) -> mtr`
 
-Create a transfer using the [multi interface]. The details are the same
-as with the easy interface except that the list of options is different
-and specific to the multi interface. There's a section on the [tutorial]
-on how to use the multi interface.
+Create a transfer using the [multi interface][libcurl-multi].
+The details are the same as with the easy interface except that the list
+of options is different and specific to the multi interface.
+There's a section on the [libcurl tutorial] on how to use the multi interface.
 
-[multi interface]: http://curl.haxx.se/libcurl/c/libcurl-multi.html
-[tutorial]:        http://curl.haxx.se/libcurl/c/libcurl-tutorial.html
+[libcurl tutorial]: http://curl.haxx.se/libcurl/c/libcurl-tutorial.html
 
 <div class=small>
 ----------------------------- --------------------------------------------------------------------
-__Main options__
 `socketfunction`              [Callback about what to wait for][curlmopt_socketfunction]
 `socketdata`                  [Custom pointer passed to the socket callback][curlmopt_socketdata]
 `pipelining`                  [enable/disable HTTP pipelining][curlmopt_pipelining]
@@ -633,11 +630,21 @@ __Main options__
 [curlmopt_pushfunction]:                 http://curl.haxx.se/libcurl/c/CURLMOPT_PUSHFUNCTION.html
 [curlmopt_pushdata]:                     http://curl.haxx.se/libcurl/c/CURLMOPT_PUSHDATA.html
 
-## Shared interface
+## Share interface
 
-### `curl.shared([{option = value, ...}]) -> mtr`
+### `curl.share([{option = value, ...}]) -> shr`
 
-Create a [shared object][curl_share].
+Create a [share object][libcurl-share]. Options below (also for `shr:set()`):
+
+<div class=small>
+----------------------------- --------------------------------------------------------------------
+`lockfunc`                    [lock data callback][curl_share_setopt]
+`unlockfunc`                  [unlock data callback][curl_share_setopt]
+`share`                       [what tyoe of data to share][curl_share_setopt]
+`unshare`                     [what type of data _not_ to share][curl_share_setopt]
+`userdata`                    [pointer to pass to lock and unlock functions][curl_share_setopt]
+----------------------------- --------------------------------------------------------------------
+</div>
 
 ## Binaries
 
