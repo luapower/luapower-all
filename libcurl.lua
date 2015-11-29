@@ -173,6 +173,7 @@ end
 
 local function cb(ctype) --callback
 	return function(func, self)
+		if not func then return nil, nil, true end
 		local cb = ffi.cast(ctype, func)
 		if type(func) ~= 'function' then return cb end
 		return cb, {cb = cb, func = func, refcount = 1}, true
@@ -478,9 +479,7 @@ function easy:set(k, v)
 	if not ok then
 		return nil, err, errcode
 	end
-	if pinval then
-		self:_update_pinned_val(optnum, pinval, iscallback)
-	end
+	self:_update_pinned_val(optnum, pinval, iscallback)
 	return self
 end
 
@@ -502,14 +501,21 @@ end
 local pins = {} --{CURL*|CURLM*|CURLSH* = {optnum = value}}
 local cbs  = {} --{CURL*|CURLM*|CURLSH* = {optnum = value}}
 
+local function free_cb(t)
+	if not t then return end
+	t.refcount = t.refcount - 1
+	if t.refcount > 0 then return end
+	t.cb:free()
+	t.cb = nil
+end
+
 function easy:_update_pinned_val(optnum, pinval, iscallback)
 	if not iscallback then
 		pins[self] = pins[self] or {}
 		pins[self][optnum] = pinval
 	else
 		cbs[self] = cbs[self] or {}
-		local t = cbs[self][optnum]
-		if t then t.cb:free() end
+		free_cb(cbs[self][optnum])
 		cbs[self][optnum] = pinval
 	end
 end
@@ -533,11 +539,7 @@ end
 function easy:_free_pinned_vals()
 	if cbs[self] then
 		for optnum, t in pairs(cbs[self]) do
-			t.refcount = t.refcount - 1
-			if t.refcount == 0 then
-				t.cb:free()
-				t.cb = nil
-			end
+			free_cb(t)
 		end
 		cbs[self] = nil
 	end

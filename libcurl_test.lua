@@ -108,8 +108,9 @@ function test.escape()
 end
 
 function test.clone()
-	local easy = make_easy()
-	easy:clone():perform():close()
+	local e = make_easy()
+	e:clone():perform():close()
+	e:close()
 end
 
 function test.multi()
@@ -121,6 +122,7 @@ function test.multi()
 		t[i] = e
 		m:add(e)
 	end
+	e0:close()
 	local n0
 	while true do
 		local n = m:perform()
@@ -140,6 +142,12 @@ function test.share()
 	local sh = curl.share{unshare = 'cookie', userdata = 123}
 	sh:set('share', 'dns')
 	sh:free()
+end
+
+function test.remove_cb()
+	local e = make_easy()
+	e:set('xferinfofunction', nil)
+	e:close()
 end
 
 --run all tests in order
