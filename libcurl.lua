@@ -7,7 +7,7 @@ if not ... then require'libcurl_test'; return end
 local ffi = require'ffi'
 require'libcurl_h'
 local C = ffi.load'curl'
-local M = {C = C}
+local curl = {C = C}
 
 --global buffers for C "out" variables
 local intbuf = ffi.new'int[1]'
@@ -36,7 +36,7 @@ local function check(code)
 	assert(code == C.CURLE_OK)
 end
 
-function M.init(opt)
+function curl.init(opt)
 	if type(opt) == 'table' then
 		local function validate(cb) --must set all callbacks or none
 			return assert(ptr(cb))
@@ -53,13 +53,13 @@ function M.init(opt)
 	return M
 end
 
-M.free = C.curl_global_cleanup
+curl.free = C.curl_global_cleanup
 
-function M.version()
+function curl.version()
 	return ffi.string(C.curl_version())
 end
 
-function M.version_info(ver)
+function curl.version_info(ver)
 	local info = assert(ptr(C.curl_version_info(X('CURLVERSION_', ver or 'now'))))
 	local protocols = {}
 	local p = info.protocols
@@ -88,9 +88,17 @@ function M.version_info(ver)
 	}
 end
 
-function M.getdate(s)
+function curl.getdate(s)
 	local t = C.curl_getdate(s, nil)
 	return t ~= -1 and t or nil
+end
+
+function curl.type(x)
+	return
+		ffi.istype('CURL*',   x) and 'easy' or
+		ffi.istype('CURLM*',  x) and 'multi' or
+		ffi.istype('CURLSH*', x) and 'share' or
+		nil
 end
 
 --[[
@@ -175,7 +183,7 @@ end
 
 local easy = {}
 setmetatable(easy, easy) --for __call
-M.easy = easy
+curl.easy = easy
 local easy_mt = {__index = easy}
 
 function easy:__call(opt)
@@ -476,9 +484,12 @@ function easy:set(k, v)
 	return self
 end
 
-function easy:reset()
+function easy:reset(opt)
 	self:_free_pinned_vals()
 	C.curl_easy_reset(self)
+	if opt then
+		self:set(opt)
+	end
 	return self
 end
 
@@ -670,19 +681,26 @@ function easy:unescape(s)
 	return s
 end
 
+function easy:pause(flags)
+	self:_check(C.curl_easy_pause(MX('CURLPAUSE_', flags)))
+end
+
 ffi.metatype('CURL', easy_mt)
 
 --multi interface ------------------------------------------------------------
 
 local multi = {}
 setmetatable(multi, multi) --for __call
-M.multi = multi
+curl.multi = multi
 local multi_mt = {__index = multi}
 
 function multi:__call(opt)
 	local self = assert(ptr(C.curl_multi_init()))
 	if opt then
 		self:set(opt)
+		for i,etr in ipairs(opt) do
+			self:add(etr)
+		end
 	end
 	return self
 end
@@ -728,12 +746,15 @@ function multi:perform()
 	return self:_ret(code, intbuf[0])
 end
 
-function multi:add(curl)
-	return self:_check(C.curl_multi_add_handle(self, curl))
+function multi:add(etr)
+	if curl.type(etr) ~= 'easy' then
+		etr = curl.easy(etr)
+	end
+	return self:_check(C.curl_multi_add_handle(self, etr))
 end
 
-function multi:remove(curl)
-	return self:_check(C.curl_multi_remove_handle(self, curl))
+function multi:remove(etr)
+	return self:_check(C.curl_multi_remove_handle(self, etr))
 end
 
 function multi:fdset(read_fd_set, write_fd_set, exc_fd_set)
@@ -774,7 +795,7 @@ ffi.metatype('CURLM', multi_mt)
 
 local share = {}
 setmetatable(share, share) --for __call
-M.share = share
+curl.share = share
 local share_mt = {__index = share}
 
 function share:__call(opt)
@@ -814,4 +835,4 @@ share._free_pinned_vals = easy._free_pinned_vals
 ffi.metatype('CURLSH', share_mt)
 
 
-return M
+return curl

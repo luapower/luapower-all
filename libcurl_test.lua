@@ -1,11 +1,13 @@
 local curl = require'libcurl'
 local ffi = require'ffi'
 
+--add tests to the test table in order
 local function add(test, name, func)
 	rawset(test, #test + 1, name)
 	rawset(test, name, func)
 end
 local test = setmetatable({}, {__newindex = add})
+
 
 function test.version()
 	print(curl.version())
@@ -139,6 +141,8 @@ function test.share()
 	sh:set('share', 'dns')
 	sh:free()
 end
+
+--run all tests in order
 
 for i,name in ipairs(test) do
 	print(name .. ' ' .. ('-'):rep(78 - #name))

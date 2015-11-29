@@ -14,53 +14,93 @@ file transfer resume, http proxy tunneling and more!
 
 ## API
 
-------------------------------------------------------- -------------------------------------------------------
+-------------------------------------------------------- --------------------------------------------------------
 __easy interface__
-`curl.easy(url|{opt = val, ...}) -> etr`                [create][curl_easy_init] an [easy transfer][libcurl-easy]
-`etr:set(opt, val) -> etr`                              [set an option][curl_easy_setopt]
-`etr:set{opt = val, ...} -> etr`                        [set multiple options][curl_easy_setopt]
-`etr:perform() -> etr | nil,err,ecode`                  [perform the transfer][curl_easy_perform]
-`etr:close()`                                           [close the transfer][curl_easy_cleanup]
-`etr:clone([{opt = val, ...}]) -> etr`                  [clone a transfer][curl_easy_duphandle]
-`etr:reset() -> etr`                                    [reset all options to their default values][curl_easy_reset]
-`etr:info(opt) -> val`                                  [get info about the transfer][curl_easy_getinfo]
-`etr:recv(buf, bufsize) -> n | nil,err,errcode`         [receive raw data][curl_easy_recv]
-`etr:send(buf, bufsize) -> n | nil,err,errcode`         [send raw data][curl_easy_send]
-`etr:escape(s) -> s|nil`                                [escape URL][curl_easy_escape]
-`etr:unescape(s) -> s|nil`                              [unescape URL][curl_easy_unescape]
+
+`curl.easy(url | {opt=val}) -> etr`                      [create][curl_easy_init] an [easy transfer][libcurl-easy]
+
+`etr:set(opt,val | {opt=val}) -> etr`                    [set option(s)][curl_easy_setopt]
+
+`etr:perform() -> etr | nil,err,ecode`                   [perform the transfer][curl_easy_perform]
+
+`etr:close()`                                            [close the transfer][curl_easy_cleanup]
+
+`etr:clone([url | {opt=val}]) -> etr`                    [clone a transfer][curl_easy_duphandle]
+
+`etr:reset([{opt=val}]) -> etr`                          [reset all options to their default values][curl_easy_reset]
+
+`etr:info(opt) -> val`                                   [get info about the transfer][curl_easy_getinfo]
+
+`etr:recv(buf, bufsize) -> n | nil,err,errcode`          [receive raw data][curl_easy_recv]
+
+`etr:send(buf, bufsize) -> n | nil,err,errcode`          [send raw data][curl_easy_send]
+
+`etr:escape(s) -> s|nil`                                 [escape URL][curl_easy_escape]
+
+`etr:unescape(s) -> s|nil`                               [unescape URL][curl_easy_unescape]
+
+`etr:pause([flags])`                                     [pause transfer][curl_easy_pause]
+
 __multi interface__
-`curl.multi([{opt = val, ...}]) -> mtr`                 [create][curl_multi_init] a [multi transfer][libcurl-multi]
-`mtr:set(opt, val) -> mtr`                              [set an option][curl_multi_setopt]
-`mtr:set{opt = val, ...} -> mtr`                        [set multiple options][curl_multi_setopt]
-`mtr:add(etr) -> mtr`                                   [add an easy transfer to the queue][curl_multi_add_handle]
-`mtr:remove(etr) -> mtr`                                [remove an easy transfer to the queue][curl_multi_remove_handle]
-`mtr:perform() -> transfers_left | nil,err,ecode`       [start/keep transfering][curl_multi_perform]
-`mtr:close()`                                           [close the transfer][curl_multi_cleanup]
-`mtr:wait([timeout_seconds], [extra_fds, extra_nfds])`  [poll on all handles][curl_multi_wait]
-`-> numfds | nil,err,errcode`
-`mtr:fdset(read_fd_set, write_fd_set, exc_fd_set)`      [get file descriptors][curl_multi_fdset]
-`-> max_fd | nil,err,errcode`
-`mtr:timeout() -> seconds | nil`                        [how long to wait for socket actions][curl_multi_timeout]
-`mtr:info_read() -> CURLMsg*|nil, msgs_in_queue`        [read multi stack info][curl_multi_info_read]
-`mtr:socket_action()`                                   [read/write available data given an action][curl_multi_socket_action]
-`mtr:assign(sockfd, p) -> mtr`                          [set data to associate with an internal socket][curl_multi_assign]
+
+`curl.multi([{etr1,..., opt=val}]) -> mtr`               [create][curl_multi_init] a [multi transfer][libcurl-multi]
+
+`mtr:set(opt,val | {opt=val}) -> mtr`                    [set option(s)][curl_multi_setopt]
+
+`mtr:add(etr | url | {opt=val}) -> mtr`                  [add an easy transfer to the queue][curl_multi_add_handle]
+
+`mtr:remove(etr) -> mtr`                                 [remove an easy transfer to the queue][curl_multi_remove_handle]
+
+`mtr:perform() -> transfers_left | nil,err,ecode`        [start/keep transfering][curl_multi_perform]
+
+`mtr:close()`                                            [close the transfer][curl_multi_cleanup]
+
+`mtr:wait([timeout_seconds], [extra_fds, extra_nfds])    [poll on all handles][curl_multi_wait]
+-> numfds | nil,err,errcode`
+
+`mtr:fdset(read_fd_set, write_fd_set, exc_fd_set)        [get file descriptors][curl_multi_fdset]
+-> max_fd | nil,err,errcode`
+
+`mtr:timeout() -> seconds | nil`                         [how long to wait for socket actions][curl_multi_timeout]
+
+`mtr:info_read() -> CURLMsg*|nil, msgs_in_queue`         [read multi stack info][curl_multi_info_read]
+
+`mtr:socket_action()`                                    [read/write available data given an action][curl_multi_socket_action]
+
+`mtr:assign(sockfd, p) -> mtr`                           [set data to associate with an internal socket][curl_multi_assign]
+
 __share interface__
-`curl.share([{opt = val, ...}]) -> shr`                 [create][curl_share_init] a [share object][libcurl-share]
-`shr:set(opt, val) -> shr`                              [set an option][curl_share_setopt]
-`shr:set{opt = val, ...} -> shr`                        [set multiple options][curl_share_setopt]
-`shr:free()`                                            [free the share object][curl_share_cleanup]
+
+`curl.share([{opt=val}]) -> shr`                         [create][curl_share_init] a [share object][libcurl-share]
+
+`shr:set(opt,val | {opt=val}) -> shr`                    [set option(s)][curl_share_setopt]
+
+`shr:free()`                                             [free the share object][curl_share_cleanup]
+
 __misc.__
-`curl.C`                                                the libcurl ffi clib object/namespace
-`curl.init(flags) -> curl`                              [global init][curl_global_init]
-`curl.init{opt = val} -> curl`                          [global init with custom allocators][curl_global_init_mem]
-`curl.free()`                                           [global cleanup][curl_global_cleanup]
-`curl.version() -> s`                                   [get version info as a string][curl_version]
-`curl.version_info([ver]) -> t`                         [get detailed version info as a table][curl_version_info]
-`curl.getdate(s) -> timestamp`                          [parse a date/time to a Unix timestamp][curl_getdate]
-`curl.easy.strerror(errcode) -> errmsg`                 [look-up an easy interface error code][curl_easy_strerror]
-`curl.multi.strerror(errcode) -> errmsg`                [look-up a multi interface error code][curl_multi_strerror]
-`curl.share.strerror(errcode) -> errmsg`                [look-up a share interface error code][curl_share_strerror]
-------------------------------------------------------- -------------------------------------------------------
+
+`curl.C`                                                 the libcurl ffi clib object/namespace
+
+`curl.init(flags) -> curl`                               [global init][curl_global_init]
+
+`curl.init{opt=val} -> curl`                             [global init with custom allocators][curl_global_init_mem]
+
+`curl.free()`                                            [global cleanup][curl_global_cleanup]
+
+`curl.version() -> s`                                    [get version info as a string][curl_version]
+
+`curl.version_info([ver]) -> t`                          [get detailed version info as a table][curl_version_info]
+
+`curl.getdate(s) -> timestamp`                           [parse a date/time to a Unix timestamp][curl_getdate]
+
+`curl.easy.strerror(errcode) -> errmsg`                  [look-up an easy interface error code][curl_easy_strerror]
+
+`curl.multi.strerror(errcode) -> errmsg`                 [look-up a multi interface error code][curl_multi_strerror]
+
+`curl.share.strerror(errcode) -> errmsg`                 [look-up a share interface error code][curl_share_strerror]
+
+`curl.type(x) -> 'easy'|'multi'|'share'|nil`             get curl object type
+-------------------------------------------------------- --------------------------------------------------------
 
 [libcurl-easy]:             http://curl.haxx.se/libcurl/c/libcurl-easy.html
 [curl_easy_init]:           http://curl.haxx.se/libcurl/c/curl_easy_init.html
@@ -72,6 +112,9 @@ __misc.__
 [curl_easy_getinfo]:        http://curl.haxx.se/libcurl/c/curl_easy_getinfo.html
 [curl_easy_recv]:           http://curl.haxx.se/libcurl/c/curl_easy_recv.html
 [curl_easy_send]:           http://curl.haxx.se/libcurl/c/curl_easy_send.html
+[curl_easy_escape]:         http://curl.haxx.se/libcurl/c/curl_easy_escape.html
+[curl_easy_unescape]:       http://curl.haxx.se/libcurl/c/curl_easy_unescape.html
+[curl_easy_pause]:          http://curl.haxx.se/libcurl/c/curl_easy_pause.html
 
 [libcurl-multi]:            http://curl.haxx.se/libcurl/c/libcurl-multi.html
 [curl_multi_init]:          http://curl.haxx.se/libcurl/c/curl_multi_init.html
@@ -91,18 +134,16 @@ __misc.__
 [curl_share_init]:          http://curl.haxx.se/libcurl/c/curl_share_init.html
 [curl_share_cleanup]:       http://curl.haxx.se/libcurl/c/curl_share_cleanup.html
 [curl_share_setopt]:        http://curl.haxx.se/libcurl/c/curl_share_setopt.html
-[curl_share_strerror]:      http://curl.haxx.se/libcurl/c/curl_share_strerror.html
 
 [curl_global_init]:         http://curl.haxx.se/libcurl/c/curl_global_init.html
 [curl_global_init_mem]:     http://curl.haxx.se/libcurl/c/curl_global_init_mem.html
 [curl_global_cleanup]:      http://curl.haxx.se/libcurl/c/curl_global_cleanup.html
 [curl_version]:             http://curl.haxx.se/libcurl/c/curl_version.html
 [curl_version_info]:        http://curl.haxx.se/libcurl/c/curl_version_info.html
-[curl_easy_escape]:         http://curl.haxx.se/libcurl/c/curl_easy_escape.html
-[curl_easy_unescape]:       http://curl.haxx.se/libcurl/c/curl_easy_unescape.html
 [curl_getdate]:             http://curl.haxx.se/libcurl/c/curl_getdate.html
 [curl_easy_strerror]:       http://curl.haxx.se/libcurl/c/curl_easy_strerror.html
 [curl_multi_strerror]:      http://curl.haxx.se/libcurl/c/curl_multi_strerror.html
+[curl_share_strerror]:      http://curl.haxx.se/libcurl/c/curl_share_strerror.html
 
 ## Easy vs multi interface
 
@@ -112,7 +153,7 @@ A multi transfer is set up as a list of easy transfers.
 
 ## Easy interface
 
-### `curl.easy(url) -> etr` <br> `curl.easy{option = value, ...} -> etr`
+### `curl.easy(url | {opt=val}) -> etr`
 
 Create a transfer using the [easy interface][libcurl-easy]. Options are below
 (they also go for `etr:set()`). All options are assumed immutable.
@@ -585,11 +626,13 @@ __Debugging__
 
 ## Multi interface
 
-### `curl.multi([{option = value, ...}]) -> mtr`
+### `curl.multi([{etr1,..., opt=val}]) -> mtr`
 
 Create a transfer using the [multi interface][libcurl-multi].
 The details are the same as with the easy interface except that the list
-of options is different and specific to the multi interface.
+of options is different (see below). Also, if the options table has any
+elements in the array part, `mtr:add()` is called for/with each element.
+
 There's a section on the [libcurl tutorial] on how to use the multi interface.
 
 [libcurl tutorial]: http://curl.haxx.se/libcurl/c/libcurl-tutorial.html
@@ -632,7 +675,7 @@ There's a section on the [libcurl tutorial] on how to use the multi interface.
 
 ## Share interface
 
-### `curl.share([{option = value, ...}]) -> shr`
+### `curl.share([{opt=val}]) -> shr`
 
 Create a [share object][libcurl-share]. Options below (also for `shr:set()`):
 

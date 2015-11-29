@@ -26,6 +26,7 @@ local CURL_SOCKET_TIMEOUT = CURL_SOCKET_BAD
 
 ffi.cdef[[
 // curl.h --------------------------------------------------------------------
+
 typedef struct CURL CURL;
 typedef void curl_fd_set;
 typedef long long curl_off_t;
@@ -269,7 +270,6 @@ enum {
 	CURL_IPRESOLVE_V6    = 2,
 	CURLOPT_RTSPHEADER   = CURLOPT_HTTPHEADER,
 };
-
 enum {
 	HTTPPOST_FILENAME    = (1<<0),
 	HTTPPOST_READFILE    = (1<<1),
@@ -279,7 +279,6 @@ enum {
 	HTTPPOST_PTRBUFFER   = (1<<5),
 	HTTPPOST_CALLBACK    = (1<<6),
 };
-
 struct curl_httppost {
   struct curl_httppost *next;
   char *name;
@@ -837,27 +836,15 @@ typedef enum {
 	CURL_FORMADD_DISABLED,
 	CURL_FORMADD_LAST
 } CURLFORMcode;
-CURLFORMcode curl_formadd(struct curl_httppost **httppost,
-                                      struct curl_httppost **last_post,
-                                      ...);
-typedef size_t (*curl_formget_callback)(void *arg, const char *buf,
-                                        size_t len);
-int curl_formget(struct curl_httppost *form, void *arg,
-                             curl_formget_callback append);
+CURLFORMcode curl_formadd(struct curl_httppost **httppost, struct curl_httppost **last_post, ...);
+typedef size_t (*curl_formget_callback)(void *arg, const char *buf, size_t len);
+int curl_formget(struct curl_httppost *form, void *arg, curl_formget_callback append);
 void curl_formfree(struct curl_httppost *form);
-char *curl_getenv(const char *variable);
 char *curl_version(void);
-char *curl_easy_escape(CURL *handle,
-                                   const char *string,
-                                   int length);
-char *curl_escape(const char *string,
-                              int length);
-char *curl_easy_unescape(CURL *handle,
-                                     const char *string,
-                                     int length,
-                                     int *outlength);
-char *curl_unescape(const char *string,
-                                int length);
+char *curl_easy_escape(CURL *handle, const char *string, int length);
+char *curl_escape(const char *string, int length);
+char *curl_easy_unescape(CURL *handle, const char *string, int length, int *outlength);
+char *curl_unescape(const char *string, int length);
 void curl_free(void *p);
 CURLcode curl_global_init(long flags);
 CURLcode curl_global_init_mem(long flags,
@@ -871,8 +858,7 @@ struct curl_slist {
   char *data;
   struct curl_slist *next;
 };
-struct curl_slist *curl_slist_append(struct curl_slist *,
-                                                 const char *);
+struct curl_slist *curl_slist_append(struct curl_slist *, const char *);
 void curl_slist_free_all(struct curl_slist *);
 time_t curl_getdate(const char *p, const time_t *unused);
 struct curl_certinfo {
@@ -1066,6 +1052,9 @@ enum {
 	CURL_VERSION_UNIX_SOCKETS = (1<<19),
 };
 curl_version_info_data *curl_version_info(CURLversion);
+
+// easy.h --------------------------------------------------------------------
+
 const char *curl_easy_strerror(CURLcode);
 const char *curl_share_strerror(CURLSHcode);
 CURLcode curl_easy_pause(CURL *handle, int bitmask);
@@ -1078,7 +1067,6 @@ enum {
 	CURLPAUSE_CONT       = (CURLPAUSE_RECV_CONT|CURLPAUSE_SEND_CONT),
 };
 
-// easy.h --------------------------------------------------------------------
 CURL *curl_easy_init(void);
 CURLcode curl_easy_setopt(CURL *curl, CURLoption option, ...);
 CURLcode curl_easy_perform(CURL *curl);
@@ -1092,6 +1080,7 @@ CURLcode curl_easy_send(CURL *curl, const void *buffer,
                                     size_t buflen, size_t *n);
 
 // multi.h -------------------------------------------------------------------
+
 typedef struct CURLM CURLM;
 typedef enum {
 	CURLM_CALL_MULTI_PERFORM = -1,
@@ -1136,10 +1125,8 @@ struct curl_waitfd {
   short revents;
 };
 CURLM *curl_multi_init(void);
-CURLMcode curl_multi_add_handle(CURLM *multi_handle,
-                                            CURL *curl_handle);
-CURLMcode curl_multi_remove_handle(CURLM *multi_handle,
-                                               CURL *curl_handle);
+CURLMcode curl_multi_add_handle(CURLM *multi_handle, CURL *curl_handle);
+CURLMcode curl_multi_remove_handle(CURLM *multi_handle, CURL *curl_handle);
 CURLMcode curl_multi_fdset(CURLM *multi_handle,
                                        curl_fd_set *read_fd_set,
                                        curl_fd_set *write_fd_set,
@@ -1150,11 +1137,9 @@ CURLMcode curl_multi_wait(CURLM *multi_handle,
                                       unsigned int extra_nfds,
                                       int timeout_ms,
                                       int *ret);
-CURLMcode curl_multi_perform(CURLM *multi_handle,
-                                         int *running_handles);
+CURLMcode curl_multi_perform(CURLM *multi_handle, int *running_handles);
 CURLMcode curl_multi_cleanup(CURLM *multi_handle);
-CURLMsg *curl_multi_info_read(CURLM *multi_handle,
-                                          int *msgs_in_queue);
+CURLMsg *curl_multi_info_read(CURLM *multi_handle, int *msgs_in_queue);
 const char *curl_multi_strerror(CURLMcode);
 enum {
 	CURL_POLL_NONE       = 0,
@@ -1166,24 +1151,12 @@ enum {
 	CURL_CSELECT_OUT     = 0x02,
 	CURL_CSELECT_ERR     = 0x04,
 };
-typedef int (*curl_socket_callback)(CURL *easy,
-                                    curl_socket_t s,
-                                    int what,
-                                    void *userp,
-                                    void *socketp);
-typedef int (*curl_multi_timer_callback)(CURLM *multi,
-                                         long timeout_ms,
-                                         void *userp);
-CURLMcode curl_multi_socket(CURLM *multi_handle, curl_socket_t s,
-                                        int *running_handles);
-CURLMcode curl_multi_socket_action(CURLM *multi_handle,
-                                               curl_socket_t s,
-                                               int ev_bitmask,
-                                               int *running_handles);
-CURLMcode curl_multi_socket_all(CURLM *multi_handle,
-                                            int *running_handles);
-CURLMcode curl_multi_timeout(CURLM *multi_handle,
-                                         long *milliseconds);
+typedef int (*curl_socket_callback)(CURL *easy, curl_socket_t s, int what, void *userp, void *socketp);
+typedef int (*curl_multi_timer_callback)(CURLM *multi, long timeout_ms, void *userp);
+CURLMcode curl_multi_socket(CURLM *multi_handle, curl_socket_t s, int *running_handles);
+CURLMcode curl_multi_socket_action(CURLM *multi_handle, curl_socket_t s, int ev_bitmask, int *running_handles);
+CURLMcode curl_multi_socket_all(CURLM *multi_handle, int *running_handles);
+CURLMcode curl_multi_timeout(CURLM *multi_handle, long *milliseconds);
 typedef enum {
 	CURLMOPT_SOCKETFUNCTION = 20000 + 1,
 	CURLMOPT_SOCKETDATA = 10000 + 2,
@@ -1202,19 +1175,15 @@ typedef enum {
 	CURLMOPT_PUSHDATA = 10000 + 15,
 	CURLMOPT_LASTENTRY
 } CURLMoption;
-CURLMcode curl_multi_setopt(CURLM *multi_handle,
-                                        CURLMoption option, ...);
-CURLMcode curl_multi_assign(CURLM *multi_handle,
-                                        curl_socket_t sockfd, void *sockp);
+CURLMcode curl_multi_setopt(CURLM *multi_handle, CURLMoption option, ...);
+CURLMcode curl_multi_assign(CURLM *multi_handle, curl_socket_t sockfd, void *sockp);
 enum {
 	CURL_PUSH_OK         = 0,
 	CURL_PUSH_DENY       = 1,
 };
 struct curl_pushheaders;
-char *curl_pushheader_bynum(struct curl_pushheaders *h,
-                                        size_t num);
-char *curl_pushheader_byname(struct curl_pushheaders *h,
-                                         const char *name);
+char *curl_pushheader_bynum(struct curl_pushheaders *h, size_t num);
+char *curl_pushheader_byname(struct curl_pushheaders *h, const char *name);
 typedef int (*curl_push_callback)(CURL *parent,
                                   CURL *easy,
                                   size_t num_headers,
