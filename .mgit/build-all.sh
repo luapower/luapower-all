@@ -27,7 +27,7 @@ echo "Will build: ${packages//$'\n'/, }."
 echo "Press any key to continue, Ctrl+C to quit."
 read
 
-for pkg in $packages do
+for pkg in $packages; do
     echo
     echo "-----------------------------------------------------------"
     echo
