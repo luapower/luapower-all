@@ -1,5 +1,5 @@
 ---
-tagline:   native windows
+tagline: native windows
 ---
 
 <warn>NOTE: work-in-progress (to-be-released soon)</warn>

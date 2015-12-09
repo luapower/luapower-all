@@ -30,6 +30,7 @@ APREFIX_osx=lib
 
 ALIBS="luajit"
 MODULES="bundle_loader"
+BIN_MODULES=
 ICON_mingw=csrc/bundle/luapower.ico
 ICON_osx=csrc/bundle/luapower-icon.png
 OSX_ICON_SIZES="16 32 128" # you can add 256 and 512 but the icns will be 0.5M
@@ -131,7 +132,7 @@ compile_bin_module() {
 
 sayt() { [ "$VERBOSE" ] && printf "  %-15s %s\n" "$1" "$2"; }
 
-# usage: osuffix=suffix $0 file[.lua]|.c|.dasl|.* CFLAGS... -> file.o
+# usage: mtype=type osuffix=suffix $0 file[.lua]|.c|.dasl|.* CFLAGS... -> file.o
 compile_module() {
 	local f=$1; shift
 
@@ -146,6 +147,7 @@ compile_module() {
 	# infer file type from file extension
 	local x=${f##*.}             # a.ext -> ext
 	[ $x = c -o $x = lua -o $x = dasl ] || x=bin
+	[ "$mtype" ] && x=$mtype
 
 	local o=$ODIR/$f$osuffix.o   # a.ext -> $ODIR/a.ext.o
 
@@ -215,6 +217,9 @@ compile_all() {
 	# compile all the modules
 	for m in $MODULES; do
 		compile_module $m
+	done
+	for m in $BIN_MODULES; do
+		mtype=bin compile_module $m
 	done
 
 	# compile bundle.c which implements bundle_add_loaders() and bundle_main().
@@ -387,6 +392,7 @@ usage() {
 	echo "  -a  --alibs \"LIB1 ...\"|--all|--    Static libs to bundle            [2]"
 	echo "  -d  --dlibs \"LIB1 ...\"|--          Dynamic libs to link against     [3]"
 	echo "  -f  --frameworks \"FRM1 ...\"        Frameworks to link against (OSX) [4]"
+	echo "  -b  --bin-modules \"FILE1 ...\"      Files to force-bundle as binary blobs"
 	echo
 	echo "  -M  --main MODULE                  Module to run on start-up"
 	echo
@@ -446,6 +452,8 @@ parse_opts() {
 					MODULES="$MODULES $1"
 				shift
 				;;
+			-b | --bin-modules)
+				BIN_MODULES="$BIN_MODULES $1"; shift;;
 			-M  | --main)
 				MAIN="$1"; shift;;
 			-a  | --alibs)

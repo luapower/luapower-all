@@ -20,6 +20,7 @@ and it works on Windows, Linux and OSX, x86 and x64.
 	  -a  --alibs "LIB1 ..."|--all|--    Static libs to bundle            [2]
 	  -d  --dlibs "LIB1 ..."|--          Dynamic libs to link against     [3]
 	  -f  --frameworks "FRM1 ..."        Frameworks to link against (OSX) [4]
+	  -b  --bin-modules "FILE1 ..."      Files to force bundling as blobs
 
 	  -M  --main MODULE                  Module to run on start-up
 
