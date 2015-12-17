@@ -115,8 +115,8 @@ CURLcode Curl_fillreadbuffer(struct connectdata *conn, int bytes, int *nreadp)
 
   /* this function returns a size_t, so we typecast to int to prevent warnings
      with picky compilers */
-  nread = (int)data->set.fread_func(data->req.upload_fromhere, 1,
-                                    buffersize, data->set.in);
+  nread = (int)data->state.fread_func(data->req.upload_fromhere, 1,
+                                      buffersize, data->state.in);
 
   if(nread == CURL_READFUNC_ABORT) {
     failf(data, "operation aborted by callback");
@@ -289,8 +289,8 @@ CURLcode Curl_readrewind(struct connectdata *conn)
       /* If no CURLOPT_READFUNCTION is used, we know that we operate on a
          given FILE * stream and we can actually attempt to rewind that
          ourselves with fseek() */
-      if(data->set.fread_func == (curl_read_callback)fread) {
-        if(-1 != fseek(data->set.in, 0, SEEK_SET))
+      if(data->state.fread_func == (curl_read_callback)fread) {
+        if(-1 != fseek(data->state.in, 0, SEEK_SET))
           /* successful rewind */
           return CURLE_OK;
       }
@@ -1286,8 +1286,18 @@ long Curl_sleep_time(curl_off_t rate_bps, curl_off_t cur_rate_bps,
   return (long)rv;
 }
 
+/* Curl_init_CONNECT() gets called each time the handle switches to CONNECT
+   which means this gets called once for each subsequent redirect etc */
+void Curl_init_CONNECT(struct SessionHandle *data)
+{
+  data->state.fread_func = data->set.fread_func_set;
+  data->state.in = data->set.in_set;
+}
+
 /*
- * Curl_pretransfer() is called immediately before a transfer starts.
+ * Curl_pretransfer() is called immediately before a transfer starts, and only
+ * once for one transfer no matter if it has redirects or do multi-pass
+ * authentication etc.
  */
 CURLcode Curl_pretransfer(struct SessionHandle *data)
 {
@@ -1386,16 +1396,18 @@ CURLcode Curl_posttransfer(struct SessionHandle *data)
  */
 static size_t strlen_url(const char *url)
 {
-  const char *ptr;
+  const unsigned char *ptr;
   size_t newlen=0;
   bool left=TRUE; /* left side of the ? */
 
-  for(ptr=url; *ptr; ptr++) {
+  for(ptr=(unsigned char *)url; *ptr; ptr++) {
     switch(*ptr) {
     case '?':
       left=FALSE;
       /* fall through */
     default:
+      if(*ptr >= 0x80)
+        newlen += 2;
       newlen++;
       break;
     case ' ':
@@ -1416,9 +1428,9 @@ static void strcpy_url(char *output, const char *url)
 {
   /* we must add this with whitespace-replacing */
   bool left=TRUE;
-  const char *iptr;
+  const unsigned char *iptr;
   char *optr = output;
-  for(iptr = url;    /* read from here */
+  for(iptr = (unsigned char *)url;    /* read from here */
       *iptr;         /* until zero byte */
       iptr++) {
     switch(*iptr) {
@@ -1426,7 +1438,12 @@ static void strcpy_url(char *output, const char *url)
       left=FALSE;
       /* fall through */
     default:
-      *optr++=*iptr;
+      if(*iptr >= 0x80) {
+        snprintf(optr, 4, "%%%02x", *iptr);
+        optr += 3;
+      }
+      else
+        *optr++=*iptr;
       break;
     case ' ':
       if(left) {
@@ -1674,23 +1691,21 @@ CURLcode Curl_follow(struct SessionHandle *data,
     newurl = absolute;
   }
   else {
+    /* The new URL MAY contain space or high byte values, that means a mighty
+       stupid redirect URL but we still make an effort to do "right". */
+    char *newest;
+    size_t newlen = strlen_url(newurl);
+
     /* This is an absolute URL, don't allow the custom port number */
     disallowport = TRUE;
 
-    if(strchr(newurl, ' ')) {
-      /* This new URL contains at least one space, this is a mighty stupid
-         redirect but we still make an effort to do "right". */
-      char *newest;
-      size_t newlen = strlen_url(newurl);
+    newest = malloc(newlen+1); /* get memory for this */
+    if(!newest)
+      return CURLE_OUT_OF_MEMORY;
+    strcpy_url(newest, newurl); /* create a space-free URL */
 
-      newest = malloc(newlen+1); /* get memory for this */
-      if(!newest)
-        return CURLE_OUT_OF_MEMORY;
-      strcpy_url(newest, newurl); /* create a space-free URL */
-
-      free(newurl); /* that was no good */
-      newurl = newest; /* use this instead now */
-    }
+    free(newurl); /* that was no good */
+    newurl = newest; /* use this instead now */
 
   }
 

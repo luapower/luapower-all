@@ -111,6 +111,7 @@ int curl_win32_idn_to_ascii(const char *in, char **out);
 #include "telnet.h"
 #include "tftp.h"
 #include "http.h"
+#include "http2.h"
 #include "file.h"
 #include "curl_ldap.h"
 #include "ssh.h"
@@ -496,14 +497,14 @@ CURLcode Curl_init_userdefined(struct UserDefined *set)
   CURLcode result = CURLE_OK;
 
   set->out = stdout; /* default output to stdout */
-  set->in  = stdin;  /* default input from stdin */
+  set->in_set = stdin;  /* default input from stdin */
   set->err  = stderr;  /* default stderr to stderr */
 
   /* use fwrite as default function to store output */
   set->fwrite_func = (curl_write_callback)fwrite;
 
   /* use fread as default function to read input */
-  set->fread_func = (curl_read_callback)fread;
+  set->fread_func_set = (curl_read_callback)fread;
   set->is_fread_set = 0;
   set->is_fwrite_set = 0;
 
@@ -616,6 +617,8 @@ CURLcode Curl_init_userdefined(struct UserDefined *set)
 
   set->expect_100_timeout = 1000L; /* Wait for a second by default. */
   set->sep_headers = TRUE; /* separated header lists by default */
+
+  Curl_http2_init_userset(set);
   return result;
 }
 
@@ -673,6 +676,8 @@ CURLcode Curl_open(struct SessionHandle **curl)
     data->wildcard.filelist = NULL;
     data->set.fnmatch = ZERO_NULL;
     data->set.maxconnects = DEFAULT_CONNCACHE_SIZE; /* for easy handles */
+
+    Curl_http2_init_state(&data->state);
   }
 
   if(result) {
@@ -1567,7 +1572,7 @@ CURLcode Curl_setopt(struct SessionHandle *data, CURLoption option,
      * FILE pointer to read the file to be uploaded from. Or possibly
      * used as argument to the read callback.
      */
-    data->set.in = va_arg(param, void *);
+    data->set.in_set = va_arg(param, void *);
     break;
   case CURLOPT_INFILESIZE:
     /*
@@ -1695,7 +1700,7 @@ CURLcode Curl_setopt(struct SessionHandle *data, CURLoption option,
 
   case CURLOPT_XOAUTH2_BEARER:
     /*
-     * XOAUTH2 bearer token to use in the operation
+     * OAuth 2.0 bearer token to use in the operation
      */
     result = setstropt(&data->set.str[STRING_BEARER],
                        va_arg(param, char *));
@@ -1862,11 +1867,11 @@ CURLcode Curl_setopt(struct SessionHandle *data, CURLoption option,
     /*
      * Read data callback
      */
-    data->set.fread_func = va_arg(param, curl_read_callback);
-    if(!data->set.fread_func) {
+    data->set.fread_func_set = va_arg(param, curl_read_callback);
+    if(!data->set.fread_func_set) {
       data->set.is_fread_set = 0;
       /* When set to NULL, reset to our internal default function */
-      data->set.fread_func = (curl_read_callback)fread;
+      data->set.fread_func_set = (curl_read_callback)fread;
     }
     else
       data->set.is_fread_set = 1;
@@ -2658,6 +2663,29 @@ CURLcode Curl_setopt(struct SessionHandle *data, CURLoption option,
   case CURLOPT_PIPEWAIT:
     data->set.pipewait = (0 != va_arg(param, long))?TRUE:FALSE;
     break;
+  case CURLOPT_STREAM_WEIGHT:
+#ifndef USE_NGHTTP2
+    return CURLE_NOT_BUILT_IN;
+#else
+    arg = va_arg(param, long);
+    if((arg>=1) && (arg <= 256))
+      data->set.stream_weight = (int)arg;
+    break;
+#endif
+  case CURLOPT_STREAM_DEPENDS:
+  case CURLOPT_STREAM_DEPENDS_E:
+  {
+#ifndef USE_NGHTTP2
+    return CURLE_NOT_BUILT_IN;
+#else
+    struct SessionHandle *dep = va_arg(param, struct SessionHandle *);
+    if(dep && GOOD_EASY_HANDLE(dep)) {
+      data->set.stream_depends_on = dep;
+      data->set.stream_depends_e = (option == CURLOPT_STREAM_DEPENDS_E);
+    }
+    break;
+#endif
+  }
   default:
     /* unknown tag and its companion, just ignore: */
     result = CURLE_UNKNOWN_OPTION;
@@ -2697,7 +2725,7 @@ static void conn_free(struct connectdata *conn)
 
   Curl_safefree(conn->user);
   Curl_safefree(conn->passwd);
-  Curl_safefree(conn->xoauth2_bearer);
+  Curl_safefree(conn->oauth_bearer);
   Curl_safefree(conn->options);
   Curl_safefree(conn->proxyuser);
   Curl_safefree(conn->proxypasswd);
@@ -5507,8 +5535,8 @@ static CURLcode create_conn(struct SessionHandle *data,
   }
 
   if(data->set.str[STRING_BEARER]) {
-    conn->xoauth2_bearer = strdup(data->set.str[STRING_BEARER]);
-    if(!conn->xoauth2_bearer) {
+    conn->oauth_bearer = strdup(data->set.str[STRING_BEARER]);
+    if(!conn->oauth_bearer) {
       result = CURLE_OUT_OF_MEMORY;
       goto out;
     }
@@ -6060,8 +6088,13 @@ CURLcode Curl_done(struct connectdata **connp,
   else
     result = status;
 
-  if(!result && Curl_pgrsDone(conn))
-    result = CURLE_ABORTED_BY_CALLBACK;
+  if(CURLE_ABORTED_BY_CALLBACK != result) {
+    /* avoid this if we already aborted by callback to avoid this calling
+       another callback */
+    CURLcode rc = Curl_pgrsDone(conn);
+    if(!result && rc)
+      result = CURLE_ABORTED_BY_CALLBACK;
+  }
 
   if((conn->send_pipe->size + conn->recv_pipe->size != 0 &&
       !data->set.reuse_forbid &&

@@ -1,7 +1,8 @@
-libcurl 7.45.0 from http://curl.haxx.se/download.html (MIT License)
+libcurl 7.46.0 from http://curl.haxx.se/download.html (MIT License)
 requires: c-ares
 
 
 NOTES:
 - on Windows it uses WinSSL (no dependency on OpenSSL, no CA and CLR crap to worry about)
 - no LDAP support
+- no SCP support (yet)

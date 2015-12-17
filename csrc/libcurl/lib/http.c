@@ -1001,8 +1001,8 @@ static size_t readmoredata(char *buffer,
       /* move backup data into focus and continue on that */
       http->postdata = http->backup.postdata;
       http->postsize = http->backup.postsize;
-      conn->data->set.fread_func = http->backup.fread_func;
-      conn->data->set.in = http->backup.fread_in;
+      conn->data->state.fread_func = http->backup.fread_func;
+      conn->data->state.in = http->backup.fread_in;
 
       http->sending++; /* move one step up */
 
@@ -1157,14 +1157,14 @@ CURLcode Curl_add_buffer_send(Curl_send_buffer *in,
         ptr = in->buffer + amount;
 
         /* backup the currently set pointers */
-        http->backup.fread_func = conn->data->set.fread_func;
-        http->backup.fread_in = conn->data->set.in;
+        http->backup.fread_func = conn->data->state.fread_func;
+        http->backup.fread_in = conn->data->state.in;
         http->backup.postdata = http->postdata;
         http->backup.postsize = http->postsize;
 
         /* set the new pointers for the request-sending */
-        conn->data->set.fread_func = (curl_read_callback)readmoredata;
-        conn->data->set.in = (void *)conn;
+        conn->data->state.fread_func = (curl_read_callback)readmoredata;
+        conn->data->state.in = (void *)conn;
         http->postdata = ptr;
         http->postsize = (curl_off_t)size;
 
@@ -1394,7 +1394,8 @@ static CURLcode https_connecting(struct connectdata *conn, bool *done)
 #endif
 
 #if defined(USE_OPENSSL) || defined(USE_GNUTLS) || defined(USE_SCHANNEL) || \
-    defined(USE_DARWINSSL) || defined(USE_POLARSSL) || defined(USE_NSS)
+    defined(USE_DARWINSSL) || defined(USE_POLARSSL) || defined(USE_NSS) || \
+    defined(USE_MBEDTLS)
 /* This function is for OpenSSL, GnuTLS, darwinssl, schannel and polarssl only.
    It should be made to query the generic SSL layer instead. */
 static int https_getsock(struct connectdata *conn,
@@ -1479,11 +1480,14 @@ CURLcode Curl_http_done(struct connectdata *conn,
     DEBUGF(infof(data, "free header_recvbuf!!\n"));
     Curl_add_buffer_free(http->header_recvbuf);
     http->header_recvbuf = NULL; /* clear the pointer */
-    for(; http->push_headers_used > 0; --http->push_headers_used) {
-      free(http->push_headers[http->push_headers_used - 1]);
+    if(http->push_headers) {
+      /* if they weren't used and then freed before */
+      for(; http->push_headers_used > 0; --http->push_headers_used) {
+        free(http->push_headers[http->push_headers_used - 1]);
+      }
+      free(http->push_headers);
+      http->push_headers = NULL;
     }
-    free(http->push_headers);
-    http->push_headers = NULL;
   }
   if(http->stream_id) {
     nghttp2_session_set_stream_user_data(httpc->h2, http->stream_id, 0);
@@ -1697,7 +1701,13 @@ CURLcode Curl_add_timecondition(struct SessionHandle *data,
   const struct tm *tm;
   char *buf = data->state.buffer;
   struct tm keeptime;
-  CURLcode result = Curl_gmtime(data->set.timevalue, &keeptime);
+  CURLcode result;
+
+  if(data->set.timecondition == CURL_TIMECOND_NONE)
+    /* no condition was asked for */
+    return CURLE_OK;
+
+  result = Curl_gmtime(data->set.timevalue, &keeptime);
   if(result) {
     failf(data, "Invalid TIMEVALUE");
     return result;
@@ -1723,8 +1733,9 @@ CURLcode Curl_add_timecondition(struct SessionHandle *data,
            tm->tm_sec);
 
   switch(data->set.timecondition) {
-  case CURL_TIMECOND_IFMODSINCE:
   default:
+    break;
+  case CURL_TIMECOND_IFMODSINCE:
     result = Curl_add_bufferf(req_buffer,
                               "If-Modified-Since: %s\r\n", buf);
     break;
@@ -2162,8 +2173,8 @@ CURLcode Curl_http(struct connectdata *conn, bool *done)
               BUFSIZE : curlx_sotouz(data->state.resume_from - passed);
 
             size_t actuallyread =
-              data->set.fread_func(data->state.buffer, 1, readthisamountnow,
-                                   data->set.in);
+              data->state.fread_func(data->state.buffer, 1, readthisamountnow,
+                                     data->state.in);
 
             passed += actuallyread;
             if((actuallyread == 0) || (actuallyread > readthisamountnow)) {
@@ -2390,11 +2401,9 @@ CURLcode Curl_http(struct connectdata *conn, bool *done)
   }
 #endif
 
-  if(data->set.timecondition) {
-    result = Curl_add_timecondition(data, req_buffer);
-    if(result)
-      return result;
-  }
+  result = Curl_add_timecondition(data, req_buffer);
+  if(result)
+    return result;
 
   result = Curl_add_custom_headers(conn, FALSE, req_buffer);
   if(result)
@@ -2437,11 +2446,11 @@ CURLcode Curl_http(struct connectdata *conn, bool *done)
        on. The data->set.fread_func pointer itself will be changed for the
        multipart case to the function that returns a multipart formatted
        stream. */
-    http->form.fread_func = data->set.fread_func;
+    http->form.fread_func = data->state.fread_func;
 
     /* Set the read function to read from the generated form data */
-    data->set.fread_func = (curl_read_callback)Curl_FormReader;
-    data->set.in = &http->form;
+    data->state.fread_func = (curl_read_callback)Curl_FormReader;
+    data->state.in = &http->form;
 
     http->sending = HTTPSEND_BODY;
 
@@ -2659,8 +2668,8 @@ CURLcode Curl_http(struct connectdata *conn, bool *done)
 
         http->sending = HTTPSEND_BODY;
 
-        data->set.fread_func = (curl_read_callback)readmoredata;
-        data->set.in = (void *)conn;
+        data->state.fread_func = (curl_read_callback)readmoredata;
+        data->state.in = (void *)conn;
 
         /* set the upload size to the progress meter */
         Curl_pgrsSetUploadSize(data, http->postsize);

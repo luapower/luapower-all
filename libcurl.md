@@ -47,7 +47,7 @@ __multi interface__
 
 `mtr:set(opt,val | {opt=val}) -> mtr`                    [set option(s)][curl_multi_setopt]
 
-`mtr:add(etr | url | {opt=val}) -> mtr`                  [add an easy transfer to the queue][curl_multi_add_handle]
+`mtr:add(etr) -> mtr`                                    [add an easy transfer to the queue][curl_multi_add_handle]
 
 `mtr:remove(etr) -> mtr`                                 [remove an easy transfer to the queue][curl_multi_remove_handle]
 
@@ -77,6 +77,18 @@ __share interface__
 
 `shr:free()`                                             [free the share object][curl_share_cleanup]
 
+__multipart forms__
+
+`curl.form([{part1_t, ...}]) -> frm`                     [create a multipart form][curl_formadd]
+
+`frm:add(part_t) -> frm`                                 [add a section to a multipart form][curl_formadd]
+
+`frm:get() -> s`                                         [get a multipart form as string][curl_formget]
+
+`frm:get(out_t) -> out_t`                                [get a multipart form as an array of strings][curl_formget]
+
+`frm:get(function(buf, len) end)`                        [get a multipart form to a callback][curl_formget]
+
 __misc.__
 
 `curl.C`                                                 the libcurl ffi clib object/namespace
@@ -90,6 +102,8 @@ __misc.__
 `curl.version() -> s`                                    [get version info as a string][curl_version]
 
 `curl.version_info([ver]) -> t`                          [get detailed version info as a table][curl_version_info]
+
+`curl.checkver(maj[, min[, patch]]) -> true|false`       check if CURL version is >= maj.min.patch
 
 `curl.getdate(s) -> timestamp`                           [parse a date/time to a Unix timestamp][curl_getdate]
 
@@ -135,6 +149,9 @@ __misc.__
 [curl_share_cleanup]:       http://curl.haxx.se/libcurl/c/curl_share_cleanup.html
 [curl_share_setopt]:        http://curl.haxx.se/libcurl/c/curl_share_setopt.html
 
+[curl_formadd]:             http://curl.haxx.se/libcurl/c/curl_formadd.html
+[curl_formget]:             http://curl.haxx.se/libcurl/c/curl_formget.html
+
 [curl_global_init]:         http://curl.haxx.se/libcurl/c/curl_global_init.html
 [curl_global_init_mem]:     http://curl.haxx.se/libcurl/c/curl_global_init_mem.html
 [curl_global_cleanup]:      http://curl.haxx.se/libcurl/c/curl_global_cleanup.html
@@ -163,7 +180,11 @@ Bitmask options can be given as tables of form `{mask_name = true|false}`
 the prefix).
 `curl_slist` options can be given as lists of strings.
 Callbacks can be given as Lua functions.
-The ffi callback objects are ref-counted and freed on `etr:free()`.
+The ffi callback objects are freed on `etr:free()` (*).
+
+> (*) Callback objects are ref-counted which means that replacing them on
+cloned transfers does not result in double-frees, and freeing them is
+deterministic, which is important since their number is hard-limited.
 
 <div class=small>
 ----------------------------- --------------------------------------------------------------------
@@ -689,11 +710,41 @@ Create a [share object][libcurl-share]. Options below (also for `shr:set()`):
 ----------------------------- --------------------------------------------------------------------
 </div>
 
+## Multipart forms
+
+### `curl.form([{part1_t, ...}]) -> frm`
+
+Create a [multipart form][curl_formadd]. If an array of parts is given,
+it calls `frm:add(part_t)` for each element of the array. A part is a table
+with the fields:
+
+<div class=small>
+-------------------------------- --------------------------------------------------------------------
+`name: s`                        section name
+`headers: {h1, ...}`             array of strings
+`filename: s`                    filename
+`content_type`                   content-type
+`contents_file`                  read contents from file
+`contents: s`                    contents as string
+`contents: cdata`                contents as cdata (requires `content_length`)
+`contents_length`                length of contents
+`upload: s`                      upload file from file
+`upload: {file: s}`              upload file from file
+`upload: {string: s}`            upload file from string
+`upload: {buffer: p, length: n}` upload file from buffer
+`upload: {upload1_t, ...}`       upload multiple files
+`upload: {stream = p}`           upload via readfunction callback
+-------------------------------- --------------------------------------------------------------------
+</div>
+
 ## Binaries
 
 The included libcurl binaries are compiled to use the SSL/TLS APIs
 provided by the OS and do not include binaries for OpenSSL or other
 SSL library.
 
-SFTP and SCP protocols are not available (they need linking to libssh2
-which is not yet included in luapower and cannot be a _runtime_ option).
+DNS resolving is asynchronous courtesy of [c-ares] which is currently
+the only binary dependency.
+
+SFTP and SCP protocols are not available: they need linking to libssh2
+which is not yet included in luapower.

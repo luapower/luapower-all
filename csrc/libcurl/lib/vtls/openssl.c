@@ -83,7 +83,7 @@
 #error "OPENSSL_VERSION_NUMBER not defined"
 #endif
 
-#if OPENSSL_VERSION_NUMBER >= 0x00907001L && !defined(OPENSSL_IS_BORINGSSL)
+#if !defined(OPENSSL_IS_BORINGSSL)
 /* ENGINE_load_private_key() takes four arguments */
 #define HAVE_ENGINE_LOAD_FOUR_ARGS
 #include <openssl/ui.h>
@@ -92,9 +92,7 @@
 #undef HAVE_ENGINE_LOAD_FOUR_ARGS
 #endif
 
-#if (OPENSSL_VERSION_NUMBER >= 0x00903001L) && \
-    defined(HAVE_OPENSSL_PKCS12_H) && \
-    !defined(OPENSSL_IS_BORINGSSL)
+#if defined(HAVE_OPENSSL_PKCS12_H) && !defined(OPENSSL_IS_BORINGSSL)
 /* OpenSSL has PKCS 12 support, BoringSSL does not */
 #define HAVE_PKCS12_SUPPORT
 #else
@@ -106,13 +104,6 @@
 #define SSL_METHOD_QUAL const
 #else
 #define SSL_METHOD_QUAL
-#endif
-
-#if OPENSSL_VERSION_NUMBER >= 0x00907000L
-/* 0.9.6 didn't have X509_STORE_set_flags() */
-#define HAVE_X509_STORE_SET_FLAGS 1
-#else
-#define X509_STORE_set_flags(x,y) Curl_nop_stmt
 #endif
 
 #ifdef OPENSSL_IS_BORINGSSL
@@ -450,7 +441,6 @@ int cert_stuff(struct connectdata *conn,
       PKCS12 *p12;
       EVP_PKEY *pri;
       STACK_OF(X509) *ca = NULL;
-      int i;
 
       f = fopen(cert_file, "rb");
       if(!f) {
@@ -497,8 +487,8 @@ int cert_stuff(struct connectdata *conn,
         goto fail;
       }
       /* Set Certificate Verification chain */
-      if(ca && sk_X509_num(ca)) {
-        for(i = 0; i < sk_X509_num(ca); i++) {
+      if(ca) {
+        while(sk_X509_num(ca)) {
           /*
            * Note that sk_X509_pop() is used below to make sure the cert is
            * removed from the stack properly before getting passed to
@@ -508,6 +498,7 @@ int cert_stuff(struct connectdata *conn,
            */
           X509 *x = sk_X509_pop(ca);
           if(!SSL_CTX_add_extra_chain_cert(ctx, x)) {
+            X509_free(x);
             failf(data, "cannot add certificate to certificate chain");
             goto fail;
           }
@@ -755,6 +746,9 @@ void Curl_ossl_cleanup(void)
 #else
   ERR_remove_state(0);
 #endif
+
+  /* Free all memory allocated by all configuration modules */
+  CONF_modules_free();
 }
 
 /*
@@ -2517,12 +2511,12 @@ static CURLcode servercert(struct connectdata *conn,
   infof(data, "\t subject: %s\n", rc?"[NONE]":buffer);
 
   ASN1_TIME_print(mem, X509_get_notBefore(connssl->server_cert));
-  len = BIO_get_mem_data(mem, &ptr);
+  len = BIO_get_mem_data(mem, (char **) &ptr);
   infof(data, "\t start date: %.*s\n", len, ptr);
   BIO_reset(mem);
 
   ASN1_TIME_print(mem, X509_get_notAfter(connssl->server_cert));
-  len = BIO_get_mem_data(mem, &ptr);
+  len = BIO_get_mem_data(mem, (char **) &ptr);
   infof(data, "\t expire date: %.*s\n", len, ptr);
   BIO_reset(mem);
 
@@ -2947,82 +2941,45 @@ static ssize_t ossl_recv(struct connectdata *conn, /* connection data */
 
 size_t Curl_ossl_version(char *buffer, size_t size)
 {
-#ifdef YASSL_VERSION
-  /* yassl provides an OpenSSL API compatibility layer so it looks identical
-     to OpenSSL in all other aspects */
-  return snprintf(buffer, size, "yassl/%s", YASSL_VERSION);
-#else /* YASSL_VERSION */
 #ifdef OPENSSL_IS_BORINGSSL
   return snprintf(buffer, size, "BoringSSL");
 #else /* OPENSSL_IS_BORINGSSL */
-
-#if(OPENSSL_VERSION_NUMBER >= 0x905000)
-  {
-    char sub[3];
-    unsigned long ssleay_value;
-    sub[2]='\0';
-    sub[1]='\0';
-    ssleay_value=SSLeay();
-    if(ssleay_value < 0x906000) {
-      ssleay_value=SSLEAY_VERSION_NUMBER;
-      sub[0]='\0';
-    }
-    else {
-      if(ssleay_value&0xff0) {
-        int minor_ver = (ssleay_value >> 4) & 0xff;
-        if(minor_ver > 26) {
-          /* handle extended version introduced for 0.9.8za */
-          sub[1] = (char) ((minor_ver - 1) % 26 + 'a' + 1);
-          sub[0] = 'z';
-        }
-        else {
-          sub[0]=(char)(((ssleay_value>>4)&0xff) + 'a' -1);
-        }
-      }
-      else
-        sub[0]='\0';
-    }
-
-    return snprintf(buffer, size, "%s/%lx.%lx.%lx%s",
-#ifdef LIBRESSL_VERSION_NUMBER
-                    "LibreSSL"
-#else
-                    "OpenSSL"
-#endif
-                    , (ssleay_value>>28)&0xf,
-                    (ssleay_value>>20)&0xff,
-                    (ssleay_value>>12)&0xff,
-                    sub);
+  char sub[3];
+  unsigned long ssleay_value;
+  sub[2]='\0';
+  sub[1]='\0';
+  ssleay_value=SSLeay();
+  if(ssleay_value < 0x906000) {
+    ssleay_value=SSLEAY_VERSION_NUMBER;
+    sub[0]='\0';
   }
-
-#else /* OPENSSL_VERSION_NUMBER is less than 0.9.5 */
-
-#if(OPENSSL_VERSION_NUMBER >= 0x900000)
-  return snprintf(buffer, size, "OpenSSL/%lx.%lx.%lx",
-                  (OPENSSL_VERSION_NUMBER>>28)&0xff,
-                  (OPENSSL_VERSION_NUMBER>>20)&0xff,
-                  (OPENSSL_VERSION_NUMBER>>12)&0xf);
-
-#else /* (OPENSSL_VERSION_NUMBER >= 0x900000) */
-  {
-    char sub[2];
-    sub[1]='\0';
-    if(OPENSSL_VERSION_NUMBER&0x0f) {
-      sub[0]=(OPENSSL_VERSION_NUMBER&0x0f) + 'a' -1;
+  else {
+    if(ssleay_value&0xff0) {
+      int minor_ver = (ssleay_value >> 4) & 0xff;
+      if(minor_ver > 26) {
+        /* handle extended version introduced for 0.9.8za */
+        sub[1] = (char) ((minor_ver - 1) % 26 + 'a' + 1);
+        sub[0] = 'z';
+      }
+      else {
+        sub[0]=(char)(((ssleay_value>>4)&0xff) + 'a' -1);
+      }
     }
     else
       sub[0]='\0';
-
-    return snprintf(buffer, size, "SSL/%x.%x.%x%s",
-                    (OPENSSL_VERSION_NUMBER>>12)&0xff,
-                    (OPENSSL_VERSION_NUMBER>>8)&0xf,
-                    (OPENSSL_VERSION_NUMBER>>4)&0xf, sub);
   }
-#endif /* (OPENSSL_VERSION_NUMBER >= 0x900000) */
-#endif /* OPENSSL_VERSION_NUMBER is less than 0.9.5 */
 
+  return snprintf(buffer, size, "%s/%lx.%lx.%lx%s",
+#ifdef LIBRESSL_VERSION_NUMBER
+                  "LibreSSL"
+#else
+                  "OpenSSL"
+#endif
+                  , (ssleay_value>>28)&0xf,
+                  (ssleay_value>>20)&0xff,
+                  (ssleay_value>>12)&0xff,
+                  sub);
 #endif /* OPENSSL_IS_BORINGSSL */
-#endif /* YASSL_VERSION */
 }
 
 /* can be called with data == NULL */

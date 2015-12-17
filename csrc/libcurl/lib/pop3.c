@@ -214,7 +214,7 @@ static const struct Curl_handler Curl_handler_pop3s_proxy = {
 /* SASL parameters for the pop3 protocol */
 static const struct SASLproto saslpop3 = {
   "pop",                      /* The service name */
-  '+',                        /* Code received when continuation is expected */
+  '*',                        /* Code received when continuation is expected */
   '+',                        /* Code to receive upon authentication success */
   255 - 8,                    /* Maximum initial response length (no max) */
   pop3_perform_auth,          /* Send authentication command */
@@ -256,17 +256,25 @@ static bool pop3_endofresp(struct connectdata *conn, char *line, size_t len,
   if(pop3c->state == POP3_CAPA) {
     /* Do we have the terminating line? */
     if(len >= 1 && !memcmp(line, ".", 1))
+      /* Treat the response as a success */
       *resp = '+';
     else
+      /* Treat the response as an untagged continuation */
       *resp = '*';
 
     return TRUE;
   }
 
-  /* Do we have a command or continuation response? */
-  if((len >= 3 && !memcmp("+OK", line, 3)) ||
-     (len >= 1 && !memcmp("+", line, 1))) {
+  /* Do we have a success response? */
+  if(len >= 3 && !memcmp("+OK", line, 3)) {
     *resp = '+';
+
+    return TRUE;
+  }
+
+  /* Do we have a continuation response? */
+  if(len >= 1 && !memcmp("+", line, 1)) {
+    *resp = '*';
 
     return TRUE;
   }
@@ -700,7 +708,7 @@ static CURLcode pop3_state_capa_resp(struct connectdata *conn, int pop3code,
 
   (void)instate; /* no use for this yet */
 
-  /* Do we have a untagged response? */
+  /* Do we have a untagged continuation response? */
   if(pop3code == '*') {
     /* Does the server support the STLS capability? */
     if(len >= 4 && !memcmp(line, "STLS", 4))

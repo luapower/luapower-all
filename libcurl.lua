@@ -5,6 +5,7 @@
 if not ... then require'libcurl_test'; return end
 
 local ffi = require'ffi'
+local bit = require'bit'
 require'libcurl_h'
 local C = ffi.load'curl'
 local curl = {C = C}
@@ -74,6 +75,9 @@ function curl.version_info(ver)
 		age = info.age,
 		version = str(info.version),
 		version_num = info.version_num,
+		version_maj = bit.band(bit.rshift(info.version_num, 16), 0xff),
+		version_min = bit.band(bit.rshift(info.version_num,  8), 0xff),
+		version_patch = bit.band(info.version_num, 0xff),
 		host = str(info.host),
 		features = info.features,
 		ssl_version = str(info.ssl_version),
@@ -86,6 +90,17 @@ function curl.version_info(ver)
 		iconv_ver_num = info.iconv_ver_num,
 		libssh_version = str(info.libssh_version),
 	}
+end
+
+local info
+function curl.checkver(maj, min, patch)
+	info = info or curl.version_info()
+	min = min or 0
+	patch = patch or 0
+	if info.version_maj ~= maj then return info.version_maj > maj end
+	if info.version_min ~= min then return info.version_min > min end
+	if info.version_patch ~= patch then return info.version_patch > patch end
+	return true
 end
 
 function curl.getdate(s)
@@ -101,16 +116,10 @@ function curl.type(x)
 		nil
 end
 
---[[
---TODO
-C.curl_formadd()
-C.curl_formfree()
-]]
-
 --option encoders ------------------------------------------------------------
 
 --each encoder takes a Lua value and returns the converted, C-typed value
---and optionally a value to keep while the transfer is alive,
+--and optionally a value to keep a reference to while the transfer is alive,
 --and then `true` if the value to keep is a callback.
 
 local function ctype(ctype)
@@ -148,10 +157,10 @@ local function slist(t)
 	if type(t) == 'table' then
 		slist = ffi.new('struct curl_slist[?]', #t)
 		dt = {slist}
-		for i=0,#t-1 do
-			local s = t[i+1]
-			slist[i].data = s
-			slist[i].next = slist[i+1]
+		for i=1,#t do
+			local s = t[i]
+			slist[i-1].data = ffi.cast('char*', s)
+			slist[i-1].next = i < #t and slist[i] or nil
 			table.insert(dt, s)
 		end
 	end
@@ -176,8 +185,12 @@ local function cb(ctype) --callback
 		if not func then return nil, nil, true end
 		local cb = ffi.cast(ctype, func)
 		if type(func) ~= 'function' then return cb end
-		return cb, {cb = cb, func = func, refcount = 1}, true
+		return cb, {cb = cb, refcount = 1}, true
 	end
+end
+
+local function httppost(post)
+	return ffi.cast('struct curl_httppost*', post), post
 end
 
 --easy interface -------------------------------------------------------------
@@ -213,9 +226,8 @@ function easy:clone(opt)
 	return self
 end
 
-easy._strerror = C.curl_easy_strerror
 function easy.strerror(code)
-	return ffi.string(self._strerror(code))
+	return ffi.string(C.curl_easy_strerror(code))
 end
 
 function easy:_ret(code, retval)
@@ -300,7 +312,7 @@ easy._setopt_options = {
 	[C.CURLOPT_AUTOREFERER] = longbool,
 	--[C.CURLOPT_POSTFIELDSIZE] = long,
 	[C.CURLOPT_HTTPHEADER] = slist,
-	[C.CURLOPT_HTTPPOST] = ctype'struct curl_httppost *',
+	[C.CURLOPT_HTTPPOST] = httppost,
 	[C.CURLOPT_HTTPPROXYTUNNEL] = longbool,
 	[C.CURLOPT_HTTPGET] = longbool,
 	[C.CURLOPT_HTTP_VERSION] = flag'CURL_HTTP_VERSION_',
@@ -348,7 +360,7 @@ easy._setopt_options = {
 	[C.CURLOPT_CAPATH] = str,
 	[C.CURLOPT_BUFFERSIZE] = long,
 	[C.CURLOPT_NOSIGNAL] = longbool,
-	[C.CURLOPT_SHARE] = ctype'struct Curl_share *',
+	[C.CURLOPT_SHARE] = ctype'CURLSH*',
 	[C.CURLOPT_ACCEPT_ENCODING] = str,
 	[C.CURLOPT_PRIVATE] = voidp,
 	[C.CURLOPT_UNRESTRICTED_AUTH] = longbool,
@@ -474,6 +486,8 @@ function easy:set(k, v)
 	end
 	local optnum = X(self._setopt_prefix, k)
 	local convert = assert(self._setopt_options[optnum])
+	--pinval is for anchoring the value for the lifetime of the request.
+	--v itself must also be kept but only until _setopt() returns.
 	local cval, pinval, iscallback = convert(v)
 	local ok, err, errcode = self:_check(self._setopt(self, optnum, cval), true)
 	if not ok then
@@ -707,8 +721,9 @@ function multi:__call(opt)
 	return self
 end
 
-multi._strerror = C.curl_multi_strerror
-multi.strerror = easy.strerror
+function multi.strerror(code)
+	return ffi.string(C.curl_multi_strerror(code))
+end
 multi._ret = easy._ret
 multi._check = easy._check
 
@@ -740,7 +755,6 @@ multi._setopt_prefix = 'CURLMOPT_'
 multi.set = easy.set
 
 multi._update_pinned_val = easy._update_pinned_val
-multi._copy_pinned_vals = easy._copy_pinned_vals
 multi._free_pinned_vals = easy._free_pinned_vals
 
 function multi:perform()
@@ -749,9 +763,6 @@ function multi:perform()
 end
 
 function multi:add(etr)
-	if curl.type(etr) ~= 'easy' then
-		etr = curl.easy(etr)
-	end
 	return self:_check(C.curl_multi_add_handle(self, etr))
 end
 
@@ -808,8 +819,9 @@ function share:__call(opt)
 	return self
 end
 
-share._strerror = C.curl_share_strerror
-share.strerror = easy.strerror
+function share.strerror(code)
+	return ffi.string(C.curl_share_strerror(code))
+end
 share._ret = easy._ret
 share._check = easy._check
 
@@ -831,10 +843,192 @@ share._setopt_prefix = 'CURLSHOPT_'
 share.set = easy.set
 
 share._update_pinned_val = easy._update_pinned_val
-share._copy_pinned_vals = easy._copy_pinned_vals
 share._free_pinned_vals = easy._free_pinned_vals
 
 ffi.metatype('CURLSH', share_mt)
 
+--HTTP multipart/formdata POST -----------------------------------------------
+--TODO: remove this C API from hell when we add a multipart lib written in Lua.
+
+local form = {}
+setmetatable(form, form) --for __call
+curl.form = form
+local form_mt = {__index = form}
+
+local strerr = {
+	[C.CURL_FORMADD_MEMORY] = 'Out of memory',
+	[C.CURL_FORMADD_OPTION_TWICE] = 'Duplicate option',
+	[C.CURL_FORMADD_NULL] = 'Null value',
+	[C.CURL_FORMADD_UNKNOWN_OPTION] = 'Unknown option',
+	[C.CURL_FORMADD_INCOMPLETE] = 'Missing options',
+	[C.CURL_FORMADD_ILLEGAL_ARRAY] = 'Illegal array',
+	[C.CURL_FORMADD_DISABLED] = 'Form module disabled',
+}
+
+function form_strerror(code)
+	return strerr[tonumber(code)] or 'Unknown error '..code
+end
+
+local formopt_options = {
+	[C.CURLFORM_PTRNAME] = str,
+	[C.CURLFORM_CONTENTHEADER] = slist,
+	--contents
+	[C.CURLFORM_PTRCONTENTS] = str,
+	[C.CURLFORM_CONTENTSLENGTH] = long,
+	[C.CURLFORM_CONTENTLEN] = off_t, --new in 7.46.0
+	[C.CURLFORM_FILECONTENT] = str,
+	[C.CURLFORM_CONTENTTYPE] = str,
+	--file uploads
+	[C.CURLFORM_FILE] = str,
+	[C.CURLFORM_FILENAME] = str,
+	[C.CURLFORM_BUFFER] = str, --filename
+	[C.CURLFORM_BUFFERPTR] = str,
+	[C.CURLFORM_BUFFERLENGTH] = long,
+	[C.CURLFORM_STREAM] = voidp, --use readfunction to get data (contentlen required)
+}
+
+function curl.form(parts)
+	local first_item_buf = ffi.new'struct curl_httppost*[1]'
+	local last_item_buf  = ffi.new'struct curl_httppost*[1]'
+
+	local pins = {}
+	local form = {}
+
+	ffi.gc(first_item_buf, function()
+		if first_item_buf[0] == nil then return end
+		C.curl_formfree(first_item_buf[0])
+	end)
+
+	function form:add(t) --add a section
+
+		local adds = {}
+		local newpins = {}
+		local function add(name, v) --add an option (deferred)
+			local optnum = X('CURLFORM_', name)
+			local convert = assert(formopt_options[optnum])
+			--pinval is for anchoring the value for the lifetime of the form.
+			local cval, pinval = convert(v)
+			table.insert(adds, function(buf, i)
+				buf[i].option = optnum
+				buf[i].value = ffi.cast('const char*', cval)
+			end)
+			table.insert(newpins, pinval)
+		end
+
+		if t.name then add('ptrname', t.name) end
+		if t.headers then add('contentheader', t.headers) end
+		if t.filename then add('filename', t.filename) end
+		if t.content_type then add('contenttype', t.content_type) end
+
+		local contentlen = curl.checkver(7, 46) and 'contentlen' or 'contentslength'
+
+		if t.contents_file then
+			if t.contents_length then
+				assert(len > 0, 'contents length must be > 0')
+				add(contentlen, t.contents_length)
+			end
+			add('filecontent', t.contents_file)
+		elseif type(t.contents) == 'string' then
+			local len = t.contents_length or #t.contents
+			assert(len > 0, 'contents length must be > 0')
+			add(contentlen, len)
+			add('ptrcontents', t.contents)
+		elseif type(t.contents) == 'cdata' then
+			local len = assert(t.contents_length, 'contents_length required')
+			assert(len > 0, 'contents length must be > 0')
+			add(contentlen, len)
+			add('ptrcontents', t.contents)
+		end
+
+		local uploads = t.upload
+		if type(uploads) == 'string' then --single file name
+			uploads = {{file = uploads}}
+		elseif type(uploads) == 'table' and #uploads == 0 then --single upload
+			uploads = {uploads}
+		end
+		if uploads then
+			for i,upload in pairs(uploads) do
+				if upload.file then
+					add('file', upload.file)
+					if upload.filename then
+						add('filename', upload.filename)
+					end
+				elseif upload.buffer then
+					add('bufferlength', assert(upload.length, 'length missing'))
+					add('bufferptr', upload.buffer)
+					if upload.filename then
+						add('buffer', upload.filename)
+					end
+				elseif upload.string then
+					add('bufferlength', #upload.string)
+					add('bufferptr', upload.string)
+					if upload.filename then
+						add('buffer', upload.filename)
+					end
+				elseif upload.stream then
+					add('stream', upload.stream)
+					if upload.filename then
+						add('filename', upload.filename)
+					end
+				end
+			end
+		end
+
+		local args = ffi.new('struct curl_forms[?]', #adds + 1)
+		for i,add in ipairs(adds) do
+			add(args, i-1)
+		end
+		args[#adds].option = C.CURLFORM_END
+
+		local ret = C.curl_formadd(first_item_buf, last_item_buf,
+			ffi.cast('long', C.CURLFORM_ARRAY), args,
+			ffi.cast('long', C.CURLFORM_END))
+		if ret ~= 0 then error(form_strerror(ret)) end
+
+		--adding the new pins only if the add was successful.
+		table.insert(pins, newpins)
+
+		return self
+	end
+
+	local function get(callback)
+		local function append(_, buf, len)
+			if callback(buf, tonumber(len)) ~= false then
+				return len
+			else
+				return 0
+			end
+		end
+		local append_cb = ffi.cast('curl_formget_callback', append)
+		local ret = C.curl_formget(first_item_buf[0], nil, append_cb)
+		append_cb:free()
+		assert(ret == 0, 'curl_formget failed')
+	end
+
+	function form:get(arg)
+		assert(first_item_buf[0] ~= nil, 'form empty')
+		arg = arg or ''
+		if type(arg) == 'string' then
+			local t = {}
+			get(function(buf, len) table.insert(t, ffi.string(buf, len)) end)
+			return table.concat(t)
+		elseif type(arg) == 'table' then
+			get(function(buf, len) table.insert(arg, ffi.string(buf, len)) end)
+			return arg
+		elseif type(arg) == 'function' then
+			get(arg)
+		else
+			error('invalid arg')
+		end
+	end
+
+	if parts then
+		for i,part in ipairs(parts) do
+			form:add(part)
+		end
+	end
+
+	return form
+end
 
 return curl

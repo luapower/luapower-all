@@ -150,6 +150,66 @@ function test.remove_cb()
 	e:close()
 end
 
+function test.download()
+	local time = require'time'
+	local sh = curl.share()
+	for i = 1, 1 do
+		local t0 = time.time()
+		local t = {sz = 0}
+		local url = 'https://github.com/luapower/glue/archive/master.zip'
+		local total_size = 17954
+		local e = assert(curl.easy{
+			url = url,
+			share = sh,
+			accept_encoding = '',
+			--verbose = true,
+			dns_use_global_cache = true,
+			dns_cache_timeout = 999999,
+			followlocation = true,
+			writefunction = function(data, size, n)
+				local size = tonumber(size * n)
+				if size == 0 then return end
+				table.insert(t, ffi.string(data, size))
+				t.sz = t.sz + size
+				local time_sofar = time.time() - t0
+				print(string.format('%2d%% %3dKB from %3dKB (%.2f KB/s)',
+					t.sz / total_size * 100,
+					t.sz / 1024,
+					total_size / 1024,
+					t.sz / 1024 / time_sofar))
+				return size
+			end,
+		})
+		assert(e:perform())
+		local s = table.concat(t)
+		local dt = time.time() - t0
+		print('DONE: ', #s, 'bytes')
+		e:close()
+	end
+	sh:free()
+end
+
+function test.form()
+	local form = curl.form()
+	form
+		:add{name = 'name1', contents = 'yy'}
+		:add{name = 'name2', upload = {file = 'luajit'}}
+		:add{name = 'name3', upload = {string = '@@@@@@@@@@@@@'}}
+		:add{name = 'name4', contents = 'aa', headers = {'H1: V1', 'H2: V2'}}
+
+	print('>>> form get as string')
+	local s = form:get()
+	print(s)
+	print('>>> form get as chunks')
+	for i,s in ipairs(form:get{}) do
+		print(i, s)
+	end
+	print('>>> form get to callback')
+	form:get(function(buf, len)
+		print(len, ffi.string(buf, len))
+	end)
+end
+
 --run all tests in order
 
 for i,name in ipairs(test) do

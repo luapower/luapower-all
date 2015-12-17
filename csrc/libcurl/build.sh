@@ -2,6 +2,7 @@ LIB_VTLS_CFILES="
 vtls/openssl.c vtls/gtls.c vtls/vtls.c vtls/nss.c
 vtls/polarssl.c vtls/polarssl_threadlock.c vtls/axtls.c
 vtls/cyassl.c vtls/schannel.c vtls/darwinssl.c vtls/gskit.c
+vtls/mbedtls.c
 "
 LIB_CFILES="
 file.c timeval.c base64.c hostip.c progress.c formdata.c

@@ -1,14 +1,11 @@
---curl.h from libcurl 7.45.0
+--curl.h from libcurl 7.46.0
 local ffi = require'ffi'
 
-local CURL_SOCKET_BAD
 if ffi.abi'win' then
 	if ffi.abi'64bit' then
 		ffi.cdef'typedef uint64_t UINT_PTR;'
-		CURL_SOCKET_BAD = 0xffffffffffffffffULL
 	else
 		ffi.cdef'typedef uint32_t UINT_PTR;'
-		CURL_SOCKET_BAD = 0xffffffff
 	end
 	ffi.cdef[[
 		typedef UINT_PTR SOCKET;
@@ -20,9 +17,7 @@ if ffi.abi'win' then
 	]]
 else
 	ffi.cdef'typedef int curl_socket_t;'
-	CURL_SOCKET_BAD = -1
 end
-local CURL_SOCKET_TIMEOUT = CURL_SOCKET_BAD
 
 ffi.cdef[[
 // curl.h --------------------------------------------------------------------
@@ -271,48 +266,50 @@ enum {
 	CURLOPT_RTSPHEADER   = CURLOPT_HTTPHEADER,
 };
 enum {
-	HTTPPOST_FILENAME    = (1<<0),
-	HTTPPOST_READFILE    = (1<<1),
-	HTTPPOST_PTRNAME     = (1<<2),
-	HTTPPOST_PTRCONTENTS = (1<<3),
-	HTTPPOST_BUFFER      = (1<<4),
-	HTTPPOST_PTRBUFFER   = (1<<5),
-	HTTPPOST_CALLBACK    = (1<<6),
+	CURL_HTTPPOST_FILENAME    = (1<<0),
+	CURL_HTTPPOST_READFILE    = (1<<1),
+	CURL_HTTPPOST_PTRNAME     = (1<<2),
+	CURL_HTTPPOST_PTRCONTENTS = (1<<3),
+	CURL_HTTPPOST_BUFFER      = (1<<4),
+	CURL_HTTPPOST_PTRBUFFER   = (1<<5),
+	CURL_HTTPPOST_CALLBACK    = (1<<6),
+	CURL_HTTPPOST_LARGE       = (1<<7),
 };
 struct curl_httppost {
-  struct curl_httppost *next;
-  char *name;
-  long namelength;
-  char *contents;
-  long contentslength;
-  char *buffer;
-  long bufferlength;
-  char *contenttype;
-  struct curl_slist* contentheader;
-  struct curl_httppost *more;
-  long flags;
-  char *showfilename;
-  void *userp;
+	struct curl_httppost *next;
+	char *name;
+	long namelength;
+	char *contents;
+	long contentslength;
+	char *buffer;
+	long bufferlength;
+	char *contenttype;
+	struct curl_slist* contentheader;
+	struct curl_httppost *more;
+	long flags;
+	char *showfilename;
+	void *userp;
+	curl_off_t contentlen;
 };
 typedef int (*curl_progress_callback)(void *clientp,
-                                      double dltotal,
-                                      double dlnow,
-                                      double ultotal,
-                                      double ulnow);
+												  double dltotal,
+												  double dlnow,
+												  double ultotal,
+												  double ulnow);
 typedef int (*curl_xferinfo_callback)(void *clientp,
-                                      curl_off_t dltotal,
-                                      curl_off_t dlnow,
-                                      curl_off_t ultotal,
-                                      curl_off_t ulnow);
+												  curl_off_t dltotal,
+												  curl_off_t dlnow,
+												  curl_off_t ultotal,
+												  curl_off_t ulnow);
 enum {
 	CURL_MAX_WRITE_SIZE  = 16384,
 	CURL_MAX_HTTP_HEADER = (100*1024),
 	CURL_WRITEFUNC_PAUSE = 0x10000001,
 };
 typedef size_t (*curl_write_callback)(char *buffer,
-                                      size_t size,
-                                      size_t nitems,
-                                      void *outstream);
+												  size_t size,
+												  size_t nitems,
+												  void *outstream);
 typedef enum {
 	CURLFILETYPE_FILE = 0,
 	CURLFILETYPE_DIRECTORY,
@@ -344,11 +341,11 @@ struct curl_fileinfo {
   curl_off_t size;
   long int hardlinks;
   struct {
-    char *time;
-    char *perm;
-    char *user;
-    char *group;
-    char *target;
+	 char *time;
+	 char *perm;
+	 char *user;
+	 char *group;
+	 char *target;
   } strings;
   unsigned int flags;
   char * b_data;
@@ -361,8 +358,8 @@ enum {
 	CURL_CHUNK_BGN_FUNC_SKIP = 2,
 };
 typedef long (*curl_chunk_bgn_callback)(const void *transfer_info,
-                                        void *ptr,
-                                        int remains);
+													 void *ptr,
+													 int remains);
 enum {
 	CURL_CHUNK_END_FUNC_OK = 0,
 	CURL_CHUNK_END_FUNC_FAIL = 1,
@@ -374,24 +371,24 @@ enum {
 	CURL_FNMATCHFUNC_FAIL = 2,
 };
 typedef int (*curl_fnmatch_callback)(void *ptr,
-                                     const char *pattern,
-                                     const char *string);
+												 const char *pattern,
+												 const char *string);
 enum {
 	CURL_SEEKFUNC_OK     = 0,
 	CURL_SEEKFUNC_FAIL   = 1,
 	CURL_SEEKFUNC_CANTSEEK = 2,
 };
 typedef int (*curl_seek_callback)(void *instream,
-                                  curl_off_t offset,
-                                  int origin);
+											 curl_off_t offset,
+											 int origin);
 enum {
 	CURL_READFUNC_ABORT  = 0x10000000,
 	CURL_READFUNC_PAUSE  = 0x10000001,
 };
 typedef size_t (*curl_read_callback)(char *buffer,
-                                      size_t size,
-                                      size_t nitems,
-                                      void *instream);
+												  size_t size,
+												  size_t nitems,
+												  void *instream);
 typedef enum {
   CURLSOCKTYPE_IPCXN,
   CURLSOCKTYPE_ACCEPT,
@@ -403,8 +400,8 @@ enum {
 	CURL_SOCKOPT_ALREADY_CONNECTED = 2,
 };
 typedef int (*curl_sockopt_callback)(void *clientp,
-                                     curl_socket_t curlfd,
-                                     curlsocktype purpose);
+												 curl_socket_t curlfd,
+												 curlsocktype purpose);
 struct curl_sockaddr {
   int family;
   int socktype;
@@ -414,8 +411,8 @@ struct curl_sockaddr {
 };
 typedef curl_socket_t
 (*curl_opensocket_callback)(void *clientp,
-                            curlsocktype purpose,
-                            struct curl_sockaddr *address);
+									 curlsocktype purpose,
+									 struct curl_sockaddr *address);
 typedef int
 (*curl_closesocket_callback)(void *clientp, curl_socket_t item);
 typedef enum {
@@ -430,8 +427,8 @@ typedef enum {
 	CURLIOCMD_LAST
 } curliocmd;
 typedef curlioerr (*curl_ioctl_callback)(CURL *handle,
-                                         int cmd,
-                                         void *clientp);
+													  int cmd,
+													  void *clientp);
 typedef void *(*curl_malloc_callback)(size_t size);
 typedef void (*curl_free_callback)(void *ptr);
 typedef void *(*curl_realloc_callback)(void *ptr, size_t size);
@@ -448,11 +445,11 @@ typedef enum {
 	CURLINFO_END
 } curl_infotype;
 typedef int (*curl_debug_callback)
-       (CURL *handle,
-        curl_infotype type,
-        char *data,
-        size_t size,
-        void *userptr);
+		 (CURL *handle,
+		  curl_infotype type,
+		  char *data,
+		  size_t size,
+		  void *userptr);
 typedef enum {
 	CURLE_OK = 0,
 	CURLE_UNSUPPORTED_PROTOCOL,
@@ -590,8 +587,8 @@ enum {
 };
 typedef CURLcode (*curl_conv_callback)(char *buffer, size_t length);
 typedef CURLcode (*curl_ssl_ctx_callback)(CURL *curl,
-                                          void *ssl_ctx,
-                                          void *userptr);
+														void *ssl_ctx,
+														void *userptr);
 typedef enum {
 	CURLPROXY_HTTP = 0,
 	CURLPROXY_HTTP_1_0 = 1,
@@ -655,10 +652,10 @@ enum curl_khmatch {
 };
 typedef int
   (*curl_sshkeycallback) (CURL *easy,
-                          const struct curl_khkey *knownkey,
-                          const struct curl_khkey *foundkey,
-                          enum curl_khmatch,
-                          void *clientp);
+								  const struct curl_khkey *knownkey,
+								  const struct curl_khkey *foundkey,
+								  enum curl_khmatch,
+								  void *clientp);
 typedef enum {
 	CURLUSESSL_NONE,
 	CURLUSESSL_TRY,
@@ -735,9 +732,10 @@ enum {
 	CURLPROTO_SMBS       = (1<<27),
 	CURLPROTO_ALL        = (~0),
 	CURLOPTTYPE_LONG     = 0,
-	CURLOPTTYPE_OBJECTPOINT = 10000,
+	CURLOPTTYPE_OBJECTPOINT   = 10000,
+	CURLOPTTYPE_STRINGPOINT   = 10000,
 	CURLOPTTYPE_FUNCTIONPOINT = 20000,
-	CURLOPTTYPE_OFF_T    = 30000,
+	CURLOPTTYPE_OFF_T         = 30000,
 };
 enum {
 	CURL_HTTP_VERSION_NONE,
@@ -819,6 +817,7 @@ typedef enum {
 	CURLFORM_END,
 	CURLFORM_OBSOLETE2,
 	CURLFORM_STREAM,
+	CURLFORM_CONTENTLEN,
 	CURLFORM_LASTENTRY
 } CURLformoption;
 struct curl_forms {
@@ -876,7 +875,8 @@ typedef enum {
 	CURLSSLBACKEND_CYASSL = 7,
 	CURLSSLBACKEND_SCHANNEL = 8,
 	CURLSSLBACKEND_DARWINSSL = 9,
-	CURLSSLBACKEND_AXTLS = 10
+	CURLSSLBACKEND_AXTLS = 10,
+	CURLSSLBACKEND_MBEDTLS = 11
 } curl_sslbackend;
 struct curl_tlssessioninfo {
   curl_sslbackend backend;
@@ -975,12 +975,12 @@ typedef enum {
 	CURL_LOCK_ACCESS_LAST
 } curl_lock_access;
 typedef void (*curl_lock_function)(CURL *handle,
-                                   curl_lock_data data,
-                                   curl_lock_access locktype,
-                                   void *userptr);
+											  curl_lock_data data,
+											  curl_lock_access locktype,
+											  void *userptr);
 typedef void (*curl_unlock_function)(CURL *handle,
-                                     curl_lock_data data,
-                                     void *userptr);
+												 curl_lock_data data,
+												 void *userptr);
 typedef struct CURLSH CURLSH;
 typedef enum {
 	CURLSHE_OK,
@@ -1075,9 +1075,9 @@ CURLcode curl_easy_getinfo(CURL *curl, CURLINFO info, ...);
 CURL* curl_easy_duphandle(CURL *curl);
 void curl_easy_reset(CURL *curl);
 CURLcode curl_easy_recv(CURL *curl, void *buffer, size_t buflen,
-                                    size_t *n);
+												size_t *n);
 CURLcode curl_easy_send(CURL *curl, const void *buffer,
-                                    size_t buflen, size_t *n);
+												size_t buflen, size_t *n);
 
 // multi.h -------------------------------------------------------------------
 
@@ -1109,8 +1109,8 @@ struct CURLMsg {
   CURLMSG msg;
   CURL *easy_handle;
   union {
-    void *whatever;
-    CURLcode result;
+	 void *whatever;
+	 CURLcode result;
   } data;
 };
 typedef struct CURLMsg CURLMsg;
@@ -1128,15 +1128,15 @@ CURLM *curl_multi_init(void);
 CURLMcode curl_multi_add_handle(CURLM *multi_handle, CURL *curl_handle);
 CURLMcode curl_multi_remove_handle(CURLM *multi_handle, CURL *curl_handle);
 CURLMcode curl_multi_fdset(CURLM *multi_handle,
-                                       curl_fd_set *read_fd_set,
-                                       curl_fd_set *write_fd_set,
-                                       curl_fd_set *exc_fd_set,
-                                       int *max_fd);
+													curl_fd_set *read_fd_set,
+													curl_fd_set *write_fd_set,
+													curl_fd_set *exc_fd_set,
+													int *max_fd);
 CURLMcode curl_multi_wait(CURLM *multi_handle,
-                                      struct curl_waitfd extra_fds[],
-                                      unsigned int extra_nfds,
-                                      int timeout_ms,
-                                      int *ret);
+												  struct curl_waitfd extra_fds[],
+												  unsigned int extra_nfds,
+												  int timeout_ms,
+												  int *ret);
 CURLMcode curl_multi_perform(CURLM *multi_handle, int *running_handles);
 CURLMcode curl_multi_cleanup(CURLM *multi_handle);
 CURLMsg *curl_multi_info_read(CURLM *multi_handle, int *msgs_in_queue);
@@ -1185,8 +1185,8 @@ struct curl_pushheaders;
 char *curl_pushheader_bynum(struct curl_pushheaders *h, size_t num);
 char *curl_pushheader_byname(struct curl_pushheaders *h, const char *name);
 typedef int (*curl_push_callback)(CURL *parent,
-                                  CURL *easy,
-                                  size_t num_headers,
-                                  struct curl_pushheaders *headers,
-                                  void *userp);
+											 CURL *easy,
+											 size_t num_headers,
+											 struct curl_pushheaders *headers,
+											 void *userp);
 ]]
