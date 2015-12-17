@@ -79,9 +79,9 @@ __share interface__
 
 __multipart forms__
 
-`curl.form([{part1_t, ...}]) -> frm`                     [create a multipart form][curl_formadd]
+`curl.form() -> frm`                                     [create a multipart form][curl_formadd]
 
-`frm:add(part_t) -> frm`                                 [add a section to a multipart form][curl_formadd]
+`frm:add(opt1, val1, ...) -> frm`                        [add a section to a multipart form][curl_formadd]
 
 `frm:get() -> s`                                         [get a multipart form as string][curl_formget]
 
@@ -173,14 +173,21 @@ A multi transfer is set up as a list of easy transfers.
 ### `curl.easy(url | {opt=val}) -> etr`
 
 Create a transfer using the [easy interface][libcurl-easy]. Options are below
-(they also go for `etr:set()`). All options are assumed immutable.
-Enum options can be given as strings (case-insensitive, no prefix).
-Bitmask options can be given as tables of form `{mask_name = true|false}`
+(they also go for `etr:set()`). All options are assumed immutable and the
+option values are anchored internally for the lifetime of the transfer object.
+
+How option values are converted:
+
+* `long` options can be given as Lua numbers.
+* `char*` options can be given as Lua strings (anchored).
+* `off_t` options can be given as Lua numbers (no need for the `_long` suffix).
+* Enum options can be given as strings (case-insensitive, no prefix).
+* Bitmask options can be given as tables of form `{mask_name = true|false}`
 (again, the mask name follows the C name but case-insensitive and without
 the prefix).
-`curl_slist` options can be given as lists of strings.
-Callbacks can be given as Lua functions.
-The ffi callback objects are freed on `etr:free()` (*).
+* `curl_slist` options can be given as lists of strings (anchored).
+* Callbacks can be given as Lua functions (anchored). The ffi callback objects
+are freed on `etr:free()` (*).
 
 > (*) Callback objects are ref-counted which means that replacing them on
 cloned transfers does not result in double-frees, and freeing them is
@@ -712,30 +719,28 @@ Create a [share object][libcurl-share]. Options below (also for `shr:set()`):
 
 ## Multipart forms
 
-### `curl.form([{part1_t, ...}]) -> frm`
+### `frm:add(opt1, val1, ...) -> frm`
 
-Create a [multipart form][curl_formadd]. If an array of parts is given,
-it calls `frm:add(part_t)` for each element of the array. A part is a table
-with the fields:
+Add a section to a [multipart form][curl_formadd]. Options can be given
+as strings (case-insensitive, no prefix). The value for the 'array' option
+is a Lua array of options. The 'end' option is appended automatically
+to the arg list and to arrays. All values are anchored for the lifetime
+of the form, so strings and cdata arrays can be passed in freely.
 
-<div class=small>
--------------------------------- --------------------------------------------------------------------
-`name: s`                        section name
-`headers: {h1, ...}`             array of strings
-`filename: s`                    filename
-`content_type`                   content-type
-`contents_file`                  read contents from file
-`contents: s`                    contents as string
-`contents: cdata`                contents as cdata (requires `content_length`)
-`contents_length`                length of contents
-`upload: s`                      upload file from file
-`upload: {file: s}`              upload file from file
-`upload: {string: s}`            upload file from string
-`upload: {buffer: p, length: n}` upload file from buffer
-`upload: {upload1_t, ...}`       upload multiple files
-`upload: {stream = p}`           upload via readfunction callback
--------------------------------- --------------------------------------------------------------------
-</div>
+Examples:
+
+~~~{.lua}
+form:add(
+	'ptrname', 'main-section',
+	'file', 'file1.txt',
+	'file', 'file2.txt'
+)
+form:add('array', {
+	'ptrname', 'main-section',
+	'ptrcontents', 'hello',
+	'contentheader', {'Header1: Value1', 'Header2: Value2'},
+})
+~~~
 
 ## Binaries
 

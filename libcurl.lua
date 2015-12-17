@@ -130,7 +130,10 @@ end
 
 local long  = ctype'long'
 local off_t = ctype'curl_off_t'
-local voidp = ctype'void*'
+
+local function voidp(p)
+	return ffi.cast('void*', p), p
+end
 
 local function longbool(b)
 	return ffi.cast('long', b and 1 or 0)
@@ -864,130 +867,83 @@ local strerr = {
 	[C.CURL_FORMADD_ILLEGAL_ARRAY] = 'Illegal array',
 	[C.CURL_FORMADD_DISABLED] = 'Form module disabled',
 }
-
 function form_strerror(code)
 	return strerr[tonumber(code)] or 'Unknown error '..code
 end
 
+local convert_option --fw. decl.
+
+local function formarray(t)
+	assert(#t % 2 == 0)
+	local array = ffi.new('struct curl_forms[?]', #t+1)
+	local pins = {array}
+	local j = 0
+	for i=1,#t,2 do
+		local option, value = convert_option(t[i], t[i+1], pins)
+		array[j].option = option
+		array[j].value = ffi.cast('char*', value)
+		j = j + 1
+	end
+	array[j].option = ffi.cast('long', C.CURLFORM_END)
+	return array, pins
+end
+
 local formopt_options = {
+	[C.CURLFORM_COPYNAME] = str,
 	[C.CURLFORM_PTRNAME] = str,
-	[C.CURLFORM_CONTENTHEADER] = slist,
-	--contents
+	[C.CURLFORM_NAMELENGTH] = long,
+	[C.CURLFORM_COPYCONTENTS] = str,
 	[C.CURLFORM_PTRCONTENTS] = str,
 	[C.CURLFORM_CONTENTSLENGTH] = long,
-	[C.CURLFORM_CONTENTLEN] = off_t, --new in 7.46.0
 	[C.CURLFORM_FILECONTENT] = str,
-	[C.CURLFORM_CONTENTTYPE] = str,
-	--file uploads
+	[C.CURLFORM_ARRAY] = formarray,
 	[C.CURLFORM_FILE] = str,
-	[C.CURLFORM_FILENAME] = str,
-	[C.CURLFORM_BUFFER] = str, --filename
-	[C.CURLFORM_BUFFERPTR] = str,
+	[C.CURLFORM_BUFFER] = str,
+	[C.CURLFORM_BUFFERPTR] = voidp,
 	[C.CURLFORM_BUFFERLENGTH] = long,
-	[C.CURLFORM_STREAM] = voidp, --use readfunction to get data (contentlen required)
+	[C.CURLFORM_CONTENTTYPE] = str,
+	[C.CURLFORM_CONTENTHEADER] = slist,
+	[C.CURLFORM_FILENAME] = str,
+	[C.CURLFORM_STREAM] = voidp,
+	[C.CURLFORM_CONTENTLEN] = off_t, --new in 7.46.0
 }
+function convert_option(option, value, pins)
+	local optnum = X('CURLFORM_', option)
+	local convert = assert(formopt_options[optnum])
+	local cval, pinval = convert(value)
+	table.insert(pins, pinval)
+	return ffi.cast('long', optnum), cval
+end
 
-function curl.form(parts)
+function curl.form()
 	local first_item_buf = ffi.new'struct curl_httppost*[1]'
 	local last_item_buf  = ffi.new'struct curl_httppost*[1]'
+
+	ffi.gc(first_item_buf, function()
+		if first_item_buf[0] == nil then return end --nothing was yet added
+		C.curl_formfree(first_item_buf[0])
+	end)
 
 	local pins = {}
 	local form = {}
 
-	ffi.gc(first_item_buf, function()
-		if first_item_buf[0] == nil then return end
-		C.curl_formfree(first_item_buf[0])
-	end)
-
-	function form:add(t) --add a section
-
-		local adds = {}
+	function form:add(...) --add a section
+		local n = select('#', ...)
+		assert(n % 2 == 0)
 		local newpins = {}
-		local function add(name, v) --add an option (deferred)
-			local optnum = X('CURLFORM_', name)
-			local convert = assert(formopt_options[optnum])
-			--pinval is for anchoring the value for the lifetime of the form.
-			local cval, pinval = convert(v)
-			table.insert(adds, function(buf, i)
-				buf[i].option = optnum
-				buf[i].value = ffi.cast('const char*', cval)
-			end)
-			table.insert(newpins, pinval)
+		local args = {}
+		for i=1,n,2 do
+			local option = select(i, ...)
+			local value = select(i+1, ...)
+			local option, value = convert_option(option, value, newpins)
+			table.insert(args, option)
+			table.insert(args, value)
 		end
-
-		if t.name then add('ptrname', t.name) end
-		if t.headers then add('contentheader', t.headers) end
-		if t.filename then add('filename', t.filename) end
-		if t.content_type then add('contenttype', t.content_type) end
-
-		local contentlen = curl.checkver(7, 46) and 'contentlen' or 'contentslength'
-
-		if t.contents_file then
-			if t.contents_length then
-				assert(len > 0, 'contents length must be > 0')
-				add(contentlen, t.contents_length)
-			end
-			add('filecontent', t.contents_file)
-		elseif type(t.contents) == 'string' then
-			local len = t.contents_length or #t.contents
-			assert(len > 0, 'contents length must be > 0')
-			add(contentlen, len)
-			add('ptrcontents', t.contents)
-		elseif type(t.contents) == 'cdata' then
-			local len = assert(t.contents_length, 'contents_length required')
-			assert(len > 0, 'contents length must be > 0')
-			add(contentlen, len)
-			add('ptrcontents', t.contents)
-		end
-
-		local uploads = t.upload
-		if type(uploads) == 'string' then --single file name
-			uploads = {{file = uploads}}
-		elseif type(uploads) == 'table' and #uploads == 0 then --single upload
-			uploads = {uploads}
-		end
-		if uploads then
-			for i,upload in pairs(uploads) do
-				if upload.file then
-					add('file', upload.file)
-					if upload.filename then
-						add('filename', upload.filename)
-					end
-				elseif upload.buffer then
-					add('bufferlength', assert(upload.length, 'length missing'))
-					add('bufferptr', upload.buffer)
-					if upload.filename then
-						add('buffer', upload.filename)
-					end
-				elseif upload.string then
-					add('bufferlength', #upload.string)
-					add('bufferptr', upload.string)
-					if upload.filename then
-						add('buffer', upload.filename)
-					end
-				elseif upload.stream then
-					add('stream', upload.stream)
-					if upload.filename then
-						add('filename', upload.filename)
-					end
-				end
-			end
-		end
-
-		local args = ffi.new('struct curl_forms[?]', #adds + 1)
-		for i,add in ipairs(adds) do
-			add(args, i-1)
-		end
-		args[#adds].option = C.CURLFORM_END
-
-		local ret = C.curl_formadd(first_item_buf, last_item_buf,
-			ffi.cast('long', C.CURLFORM_ARRAY), args,
-			ffi.cast('long', C.CURLFORM_END))
+		table.insert(args, ffi.cast('long', C.CURLFORM_END))
+		local ret = C.curl_formadd(first_item_buf, last_item_buf, unpack(args))
 		if ret ~= 0 then error(form_strerror(ret)) end
-
-		--adding the new pins only if the add was successful.
+		--adding new pins only if the add was successful.
 		table.insert(pins, newpins)
-
 		return self
 	end
 
@@ -1004,11 +960,9 @@ function curl.form(parts)
 		append_cb:free()
 		assert(ret == 0, 'curl_formget failed')
 	end
-
 	function form:get(arg)
 		assert(first_item_buf[0] ~= nil, 'form empty')
-		arg = arg or ''
-		if type(arg) == 'string' then
+		if not arg then
 			local t = {}
 			get(function(buf, len) table.insert(t, ffi.string(buf, len)) end)
 			return table.concat(t)
@@ -1019,12 +973,6 @@ function curl.form(parts)
 			get(arg)
 		else
 			error('invalid arg')
-		end
-	end
-
-	if parts then
-		for i,part in ipairs(parts) do
-			form:add(part)
 		end
 	end
 

@@ -191,11 +191,10 @@ end
 
 function test.form()
 	local form = curl.form()
-	form
-		:add{name = 'name1', contents = 'yy'}
-		:add{name = 'name2', upload = {file = 'luajit'}}
-		:add{name = 'name3', upload = {string = '@@@@@@@@@@@@@'}}
-		:add{name = 'name4', contents = 'aa', headers = {'H1: V1', 'H2: V2'}}
+	form:add('ptrname', 'name1', 'ptrcontents', 'yy')
+	form:add('ptrname', 'name2', 'file', 'luajit', 'file', 'luajit.cmd')
+	form:add('ptrname', 'name3', 'bufferptr', '@@@@@@@@@@@@@', 'contenttype', 'text/plain')
+	form:add('array', {'ptrname', 'name4', 'bufferptr', 'aa', 'contentheader', {'H1: V1', 'H2: V2'}})
 
 	print('>>> form get as string')
 	local s = form:get()
