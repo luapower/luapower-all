@@ -748,8 +748,13 @@ The included libcurl binaries are compiled to use the SSL/TLS APIs
 provided by the OS and do not include binaries for OpenSSL or other
 SSL library.
 
-DNS resolving is asynchronous courtesy of [c-ares] which is currently
-the only binary dependency.
+DNS resolving is asynchronous using the multi-threaded resolver.
 
-SFTP and SCP protocols are not available: they need linking to libssh2
-which is not yet included in luapower.
+Missing features:
+
+* SFTP and SCP (requires libssh2).
+* HTTP2 (requires ng-http2).
+* IDN (requires libidn).
+* RTMP (requires librtmp).
+* PSL (requires libpsl).
+* LDAP.

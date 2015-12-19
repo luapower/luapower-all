@@ -16,7 +16,14 @@ if ffi.abi'win' then
 		};
 	]]
 else
+	-- TODO: check these on OSX and Linux, 32 and 64 bit
 	ffi.cdef'typedef int curl_socket_t;'
+	ffi.cdef[[
+		struct sockaddr {
+			uint16_t sa_family;
+			char     sa_data[14];
+		};
+	]]
 end
 
 ffi.cdef[[
@@ -1096,9 +1103,9 @@ typedef enum {
 } CURLMcode;
 enum {
 	CURLM_CALL_MULTI_SOCKET = CURLM_CALL_MULTI_PERFORM,
-	CURLPIPE_NOTHING     = 0L,
-	CURLPIPE_HTTP1       = 1L,
-	CURLPIPE_MULTIPLEX   = 2L,
+	CURLPIPE_NOTHING     = 0,
+	CURLPIPE_HTTP1       = 1,
+	CURLPIPE_MULTIPLEX   = 2,
 };
 typedef enum {
 	CURLMSG_NONE,

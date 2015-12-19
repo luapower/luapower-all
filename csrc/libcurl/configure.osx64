@@ -1,0 +1,3 @@
+cd curl || exit 1 # assuming source code was unzipped in ./curl
+CFLAGS="-arch x86_64" ./configure --with-darwinssl --enable-threaded-resolver --without-libssh2
+cp -f include/curl/curlbuild.h ../curlbuild.h.osx64
