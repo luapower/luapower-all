@@ -10,20 +10,9 @@ if ffi.abi'win' then
 	ffi.cdef[[
 		typedef UINT_PTR SOCKET;
 		typedef SOCKET curl_socket_t;
-		struct sockaddr {
-			uint16_t sa_family;
-			char     sa_data[14];
-		};
 	]]
 else
-	-- TODO: check these on OSX and Linux, 32 and 64 bit
 	ffi.cdef'typedef int curl_socket_t;'
-	ffi.cdef[[
-		struct sockaddr {
-			uint16_t sa_family;
-			char     sa_data[14];
-		};
-	]]
 end
 
 ffi.cdef[[
@@ -414,7 +403,6 @@ struct curl_sockaddr {
   int socktype;
   int protocol;
   unsigned int addrlen;
-  struct sockaddr addr;
 };
 typedef curl_socket_t
 (*curl_opensocket_callback)(void *clientp,
