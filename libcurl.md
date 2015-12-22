@@ -754,7 +754,7 @@ ship multiple versions of it (sigh, Linux).
 
 DNS resolving is asynchronous using the multi-threaded resolver.
 
-Missing features:
+Features that were _not_ compiled in:
 
 * SFTP and SCP (requires libssh2).
 * HTTP2 (requires ng-http2).

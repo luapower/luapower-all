@@ -1,5 +1,5 @@
 libcurl 7.46.0 from http://curl.haxx.se/download.html (MIT License)
-requires: c-ares
+requires: openssl (linux32 linux64)
 
 
 NOTES:
