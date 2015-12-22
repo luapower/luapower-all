@@ -746,7 +746,11 @@ form:add('array', {
 
 The included libcurl binaries are compiled to use the SSL/TLS APIs
 provided by the OS and do not include binaries for OpenSSL or other
-SSL library.
+SSL library, except for Linux, where [openssl] is used (*).
+
+> (*) The decision to ship OpenSSL on Linux is because OpenSSL
+is not ABI-compatible between versions and distros don't usually
+ship multiple versions of it (sigh, Linux).
 
 DNS resolving is asynchronous using the multi-threaded resolver.
 

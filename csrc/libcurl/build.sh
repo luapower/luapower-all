@@ -29,6 +29,6 @@ ${X}gcc -c -O2 -Wall -fno-strict-aliasing -DBUILDING_LIBCURL $C \
 	-DENABLE_IPV6 \
 	-DCURL_DISABLE_LDAP
 ${X}gcc *.o -shared -o ../../../bin/$P/$D $L \
-	-L../../../bin/$P -lcares -lz
+	-L../../../bin/$P -lz
 ${X}ar rcs ../../../bin/$P/$A *.o
 rm *.o

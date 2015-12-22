@@ -55,7 +55,6 @@ tagline: package categories
 	* [bnet]
 	* [socketloop]
 	* [libcurl]
-	* [c-ares]
 	* [libssh2]
 * Windowing/GUIs
 	* [nw]
@@ -124,6 +123,7 @@ tagline: package categories
 	* [libstdcxx]
 	* [pixman]
 	* [llvm]
+	* [openssl]
 * Dev Tools
 	* [bundle]
 	* [wluajit]

@@ -19,6 +19,7 @@ function test.version_info()
 		if type(v) == 'table' then v = '{'..table.concat(v, ', ')..'}' end
 		print(string.format('%-20s %s', k, v))
 	end
+	print('async?', bit.band(info.features, curl.C.CURL_VERSION_ASYNCHDNS) ~= 0)
 end
 
 function make_easy()
