@@ -134,6 +134,8 @@ else
 	end
 end
 
+local NULL = ffi.new("void *")
+
 local closesocket_
 if ffi.os == "Windows" then
 	function closesocket_(s)
@@ -162,16 +164,18 @@ end
 
 local function gethostbyaddr_(addr, addr_len, addr_type)
 	local e = sock.gethostbyaddr(addr, addr_len, addr_type)
-	if e ~= nil then
-		return e.h_name
+	if e == NULL then
+		return nil
 	end
+	return e.h_name
 end
 
 local function gethostbyname_(name)
 	local e = sock.gethostbyname(name)
-	if e ~= nil then
-		return e.h_addr_list, e.h_addrtype, e.h_length
+	if e == NULL then
+		return nil
 	end
+	return e.h_addr_list, e.h_addrtype, e.h_length
 end
 
 local function connect_(socket, addr, addr_type, addr_len, port)
@@ -481,14 +485,14 @@ end
 function socket.CountHostIPs(Host)
 	assert(Host)
 	local Addresses, AdressType, AddressLength = gethostbyname_(Host)
-	if Addresses == nil or AddressType ~= AF_INET or AddressLength ~= 4 then
+	if Addresses == NULL or AddressType ~= AF_INET or AddressLength ~= 4 then
 		return 0
 	end
 
 	local Count = 0
-	while Addresses[Count] ~= nil do
+	repeat
 		Count = Count + 1
-	end
+	until Address[Count] == NULL
 	return Count
 end
 
@@ -496,11 +500,11 @@ function socket.IntIP(IP)
 	local ServerIP = sock.inet_addr(IP)
 	if ServerIP == INADDR_NONE then
 		local Addresses, AddressType, AddressLength = gethostbyname_(IP)
-		if Addresses == nil or AddressType ~= AF_INET or AddressLength ~= 4 then
+		if Addresses == NULL or AddressType ~= AF_INET or AddressLength ~= 4 then
 			return 0
 		end
 		local PAddress = Addresses[0]
-		if PAddress == nil then
+		if PAddress == NULL then
 			return 0
 		end
 		return sock.htonl(bit.bor(bit.lshift(PAddress[3], 24), bit.lshift(PAddress[2], 16), bit.lshift(PAddress[1], 8), PAddress[0]))
@@ -1018,11 +1022,11 @@ function socket.OpenTCPStream(Server, ServerPort, LocalPort)
 	if ServerIP == INADDR_NONE then
 		local Addresses, AddressType, AddressLength = gethostbyname_(Server)
 		local Errno = errno()
-		if Addresses == nil or AddressType ~= AF_INET or AddressLength ~= 4 then
+		if Addresses == NULL or AddressType ~= AF_INET or AddressLength ~= 4 then
 			return nil, socket_strerror(Errno)
 		end
 		local PAddress = Addresses[0]
-		if PAddress == nil then
+		if PAddress == NULL then
 			return nil, socket_strerror(Errno)
 		end
 		ServerIP = bit.bor(bit.lshift(PAddress[3], 24), bit.lshift(PAddress[2], 16), bit.lshift(PAddress[1], 8), PAddress[0])
