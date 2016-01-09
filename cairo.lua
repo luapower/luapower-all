@@ -312,19 +312,19 @@ function M.cairo_pattern_get_matrix(pat, mt)
 	return mt
 end
 
-function M.cairo_get_current_point(cr, dx, dy)
-	dx = dx or ffi.new'double[1]'
-	dy = dy or ffi.new'double[1]'
+local dx = ffi.new'double[1]'
+local dy = ffi.new'double[1]'
+function M.cairo_get_current_point(cr)
 	C.cairo_get_current_point(cr, dx, dy)
 	return dx[0], dy[0]
 end
 
+local dx1 = ffi.new'double[1]'
+local dy1 = ffi.new'double[1]'
+local dx2 = ffi.new'double[1]'
+local dy2 = ffi.new'double[1]'
 local function extents_function(f)
-	return function(cr, dx1, dy1, dx2, dy2)
-		dx1 = dx1 or ffi.new'double[1]'
-		dy1 = dy1 or ffi.new'double[1]'
-		dx2 = dx2 or ffi.new'double[1]'
-		dy2 = dy2 or ffi.new'double[1]'
+	return function(cr)
 		f(cr, dx1, dy1, dx2, dy2)
 		return dx1[0], dy1[0], dx2[0], dy2[0]
 	end
@@ -335,16 +335,17 @@ M.cairo_fill_extents = extents_function(C.cairo_fill_extents)
 M.cairo_stroke_extents = extents_function(C.cairo_stroke_extents)
 M.cairo_path_extents = extents_function(C.cairo_path_extents)
 
+local surface = ffi.new'cairo_surface_t*[1]'
 function M.cairo_pattern_get_surface(self, surface)
-	surface = surface or ffi.new'cairo_surface_t*[1]'
 	C.cairo_pattern_get_surface(self, surface)
 	return surface[0]
 end
 
+local dx = ffi.new'double[1]'
+local dy = ffi.new'double[1]'
 local function point_transform_function(f)
-	return function(cr, x, y, dx, dy)
-		dx = dx or ffi.new('double[1]', x)
-		dy = dy or ffi.new('double[1]', y)
+	return function(cr, x, y)
+		dx[0], dy[0] = x, y
 		f(cr, dx, dy)
 		return dx[0], dy[0]
 	end
@@ -595,6 +596,44 @@ function M.cairo_image_surface_set_pixel_function(surface)
 		error'unsupported image format'
 	end
 	return setpixel
+end
+
+-- luaization overrides
+
+local function X(prefix, value)
+	return type(value) == 'string' and C[prefix..value:upper()] or value
+end
+
+function M.cairo_push_group_with_content(cr, content)
+	C.cairo_push_group_with_content(cr, X('CAIRO_CONTENT_', content))
+end
+
+function M.cairo_set_operator(cr, operator)
+	C.cairo_set_operator(cr, X('CAIRO_OPERATOR_', operator)
+end
+
+function M.cairo_set_antialias(cr, antialias)
+	C.cairo_set_antialias(cr, X('CAIRO_ANTIALIAS_', antialias))
+end
+
+function M.cairo_set_fill_rule(cr, fill_rule)
+	C.cairo_set_fill_rule(cr, X('CAIRO_FILL_RULE_', fill_rule))
+end
+
+function M.cairo_set_line_cap(cr, line_cap)
+	C.cairo_set_line_cap(cr, X('CAIRO_LINE_CAP_', line_cap))
+end
+
+function M.cairo_set_line_join(cr, line_join)
+	C.cairo_set_line_join(cr, X('CAIRO_LINE_JOIN_', line_join))
+end
+
+function M.cairo_set_dash(cr, dashes, num_dashes, offset)
+	if type(dashes) == 'table' then
+		offset = num_dashes
+		dashes = ffi.new('double[?]', #dashes, dashes)
+	end
+	C.cairo_set_dash(cr, dashes, num_dashes, offset)
 end
 
 -- metamethods

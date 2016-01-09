@@ -59,58 +59,63 @@ of the supported formats: 'bgra8', 'bgrx8', 'g8', 'g1', 'rgb565'.
 
 ------------------------------------------- -----------------------------------------------------
 __drawing contexts__
+`sr:create_context()`                       [create a context on a surface][cairo_create]
 `cr:save()`                                 [save state (push to stack)][cairo_save]
 `cr:restore()`                              [restore state (pop from stack)][cairo_restore]
-`cr:push_group()`                           [ref][cairo_push_group]
-`cr:push_group_with_content()`              [ref][cairo_push_group_with_content]
-`cr:pop_group()`                            [ref][cairo_pop_group]
-`cr:pop_group_to_source()`                  [ref][cairo_pop_group_to_source]
-`cr:set_operator()`                         [ref][cairo_set_operator]
-`cr:set_source()`                           [ref][cairo_set_source]
-`cr:set_source_rgb()`                       [ref][cairo_set_source_rgb]
-`cr:set_source_rgba()`                      [ref][cairo_set_source_rgba]
-`cr:set_source_surface()`                   [ref][cairo_set_source_surface]
-`cr:set_tolerance()`                        [ref][cairo_set_tolerance]
-`cr:set_antialias()`                        [ref][cairo_set_antialias]
-`cr:set_fill_rule()`                        [ref][cairo_set_fill_rule]
-`cr:set_line_width()`                       [ref][cairo_set_line_width]
-`cr:set_line_cap()`                         [ref][cairo_set_line_cap]
-`cr:set_line_join()`                        [ref][cairo_set_line_join]
-`cr:set_dash()`                             [ref][cairo_set_dash]
-`cr:set_miter_limit()`                      [ref][cairo_set_miter_limit]
-`cr:translate()`                            [ref][cairo_translate]
-`cr:scale()`                                [ref][cairo_scale]
-`cr:rotate()`                               [ref][cairo_rotate]
-`cr:rotate_around()`                        [ref][cairo_rotate_around]
-`cr:scale_around()`                         [ref][cairo_scale_around]
-`cr:transform()`                            [ref][cairo_transform]
-`cr:safe_transform()`                       [ref][cairo_safe_transform]
-`cr:set_matrix()`                           [ref][cairo_set_matrix]
-`cr:identity_matrix()`                      [ref][cairo_identity_matrix]
-`cr:skew()`                                 [ref][cairo_skew]
-`cr:user_to_device()`                       [ref][cairo_user_to_device]
-`cr:user_to_device_distance()`              [ref][cairo_user_to_device_distance]
-`cr:device_to_user()`                       [ref][cairo_device_to_user]
-`cr:device_to_user_distance()`              [ref][cairo_device_to_user_distance]
-`cr:new_path()`                             [ref][cairo_new_path]
-`cr:move_to()`                              [ref][cairo_move_to]
-`cr:new_sub_path()`                         [ref][cairo_new_sub_path]
-`cr:line_to()`                              [ref][cairo_line_to]
-`cr:curve_to()`                             [ref][cairo_curve_to]
-`cr:quad_curve_to()`                        [ref][cairo_quad_curve_to]
-`cr:arc()`                                  [ref][cairo_arc]
-`cr:arc_negative()`                         [ref][cairo_arc_negative]
-`cr:circle()`                               [ref][cairo_circle]
-`cr:ellipse()`                              [ref][cairo_ellipse]
-`cr:rel_move_to()`                          [ref][cairo_rel_move_to]
-`cr:rel_line_to()`                          [ref][cairo_rel_line_to]
-`cr:rel_curve_to()`                         [ref][cairo_rel_curve_to]
-`cr:rel_quad_curve_to()`                    [ref][cairo_rel_quad_curve_to]
-`cr:rectangle()`                            [ref][cairo_rectangle]
-`cr:close_path()`                           [ref][cairo_close_path]
-`cr:path_extents()`                         [ref][cairo_path_extents]
+`cr:push_group()`                           [redirect drawing to an intermediate surface][cairo_push_group]
+`cr:push_group_with_content(content)`       [redirect drawing to an intermediate surface][cairo_push_group_with_content]
+`cr:pop_group() -> patt`                    [terminate the redirection and return it as pattern][cairo_pop_group]
+`cr:pop_group_to_source()`                  [terminate the redirection and install it as pattern][cairo_pop_group_to_source]
+`cr:set_operator(operator)`                 [set operator][cairo_set_operator]
+`cr:set_source(patt)`                       [set pattern as source][cairo_set_source]
+`cr:set_source_rgb(r, g, b)`                [set color as source][cairo_set_source_rgb]
+`cr:set_source_rgba(r, g, b, a)`            [set color as source][cairo_set_source_rgba]
+`cr:set_source_surface(sr, x, y)`           [set surface as source][cairo_set_source_surface]
+`cr:set_tolerance(n)`                       [set the tolerance for converting paths into trapezoids][cairo_set_tolerance]
+`cr:set_antialias(antialias)`               [set the antialiasing mode][cairo_set_antialias]
+`cr:set_fill_rule(fill_rule)`               [set the fill rule][cairo_set_fill_rule]
+`cr:set_line_width(width)`                  [set the current line width][cairo_set_line_width]
+`cr:set_line_cap(line_cap)`                 [set the current line cap][cairo_set_line_cap]
+`cr:set_line_join(line_join)`               [set the current line join][cairo_set_line_join]
+`cr:set_dash(dashes, offset)`               [set the dash pattern for cairo_stroke()][cairo_set_dash]
+`cr:set_miter_limit(limit)`                 [set the current miter limit][cairo_set_miter_limit]
+__transformations__
+`cr:translate(x, y)`                        [translate the user-space origin][cairo_translate]
+`cr:scale(sx, sy)`                          [scale the user-space][cairo_scale]
+`cr:rotate(angle)`                          [rotate the user-space][cairo_rotate]
+`cr:rotate_around(cx, cy, angle)`           rotate the user-space around a point
+`cr:scale_around(cx, cy, sx, sy)`           scale the user-space arount a point
+`cr:transform(mat)`                         [transform the user-space][cairo_transform]
+`cr:safe_transform(mat)`                    transform the user-space if the matrix is invertible
+`cr:set_matrix(mat)`                        [set the CTM][cairo_set_matrix]
+`cr:identity_matrix()`                      [reset the CTM][cairo_identity_matrix]
+`cr:skew(ax, ay)`                           skew the user-space
+__device-space__
+`cr:user_to_device(x, y) -> x, y`           [user to device (point)][cairo_user_to_device]
+`cr:user_to_device_distance(x, y) -> x, y`  [user to device (distance)][cairo_user_to_device_distance]
+`cr:device_to_user(x, y) -> x, y`           [device to user (point)][cairo_device_to_user]
+`cr:device_to_user_distance(x, y) -> x, y`  [device to user (distance)][cairo_device_to_user_distance]
+__paths__
+`cr:new_path()`                             [create path][cairo_new_path]
+`cr:new_sub_path()`                         [create sub-path][cairo_new_sub_path]
+`cr:move_to(x, y)`                          [move the current point][cairo_move_to]
+`cr:line_to(x, y)`                          [add a line to the current path][cairo_line_to]
+`cr:curve_to(x1, y1, x2, y2, x3, y3)`       [add a cubic bezier to the current path][cairo_curve_to]
+`cr:quad_curve_to(x1,y1,x2,y2,x3,y3,x4,y4)` [add a quad bezier to the current path][cairo_quad_curve_to]
+`cr:arc(cx, cy, radius, a1, a2)`            [add an arc to the current path][cairo_arc]
+`cr:arc_negative(cx, cy, r, a1, a2)`        [add a negative arc to the current path][cairo_arc_negative]
+`cr:circle(cx, cy, r)`                      [add a circle to the current path][cairo_circle]
+`cr:ellipse(cx, cy, rx, ry, rotation)`      [add an ellipse to the current path][cairo_ellipse]
+`cr:rel_move_to(x, y)`                      [move the current point][cairo_rel_move_to]
+`cr:rel_line_to(x, y)`                      [add a line to the current path][cairo_rel_line_to]
+`cr:rel_curve_to(x1, y1, x2, y2, x3, y3)`   [add a cubic bezier to the current path][cairo_rel_curve_to]
+`cr:rel_quad_curve_to(x1,y1,x2,y2,x3,y3,x4,y4)`  [add a quad bezier to the current path][cairo_rel_quad_curve_to]
+`cr:rectangle(x, y, w, h)`                  [add a rectangle to the current path][cairo_rectangle]
+`cr:close_path()`                           [close current path][cairo_close_path]
+`cr:path_extents() -> x1, y1, x2, y2`       [path bouding box][cairo_path_extents]
+__filling and stroking__
 `cr:paint()`                                [ref][cairo_paint]
-`cr:paint_with_alpha()`                     [ref][cairo_paint_with_alpha]
+`cr:paint_with_alpha(alpha)`                [ref][cairo_paint_with_alpha]
 `cr:mask()`                                 [ref][cairo_mask]
 `cr:mask_surface()`                         [ref][cairo_mask_surface]
 `cr:stroke()`                               [ref][cairo_stroke]
@@ -175,46 +180,45 @@ __drawing contexts__
 `cr:destroy()`                              [ref][cairo_destroy]
 `cr:free()`                                 free (error if ref count > 0)
 __surfaces__
-`sr:create_context()`                       [ref][cairo_create_context]
-`sr:create_similar()`                       [ref][cairo_create_similar]
-`sr:create_for_rectangle()`                 [ref][cairo_create_for_rectangle]
-`sr:finish()`                               [ref][cairo_finish]
-`sr:get_device()`                           [ref][cairo_get_device]
-`sr:status()`                               [ref][cairo_status]
-`sr:status_string()`                        [ref][cairo_status_string]
-`sr:get_type()`                             [ref][cairo_get_type]
-`sr:get_content()`                          [ref][cairo_get_content]
-`sr:write_to_png()`                         [ref][cairo_write_to_png]
-`sr:write_to_png_stream()`                  [ref][cairo_write_to_png_stream]
-`sr:get_user_data()`                        [ref][cairo_get_user_data]
-`sr:set_user_data()`                        [ref][cairo_set_user_data]
-`sr:get_mime_data()`                        [ref][cairo_get_mime_data]
-`sr:set_mime_data()`                        [ref][cairo_set_mime_data]
-`sr:get_font_options()`                     [ref][cairo_get_font_options]
-`sr:flush()`                                [ref][cairo_flush]
-`sr:mark_dirty()`                           [ref][cairo_mark_dirty]
-`sr:mark_dirty_rectangle()`                 [ref][cairo_mark_dirty_rectangle]
-`sr:set_device_offset()`                    [ref][cairo_set_device_offset]
-`sr:get_device_offset()`                    [ref][cairo_get_device_offset]
-`sr:set_fallback_resolution()`              [ref][cairo_set_fallback_resolution]
-`sr:get_fallback_resolution()`              [ref][cairo_get_fallback_resolution]
-`sr:copy_page()`                            [ref][cairo_copy_page]
-`sr:show_page()`                            [ref][cairo_show_page]
-`sr:has_show_text_glyphs()`                 [ref][cairo_has_show_text_glyphs]
-`sr:create_pattern()`                       [ref][cairo_create_pattern]
-`sr:apply_alpha()`                          [ref][cairo_apply_alpha]
-`sr:reference()`                            [ref][cairo_reference]
-`sr:get_reference_count()`                  [ref][cairo_get_reference_count]
-`sr:destroy()`                              [ref][cairo_destroy]
+`sr:create_similar()`                       [ref][cairo_surface_create_similar]
+`sr:create_for_rectangle()`                 [ref][cairo_surface_create_for_rectangle]
+`sr:finish()`                               [ref][cairo_surface_finish]
+`sr:get_device()`                           [ref][cairo_surface_get_device]
+`sr:status()`                               [ref][cairo_surface_status]
+`sr:status_string()`                        [ref][cairo_surface_status_string]
+`sr:get_type()`                             [ref][cairo_surface_get_type]
+`sr:get_content()`                          [ref][cairo_surface_get_content]
+`sr:write_to_png()`                         [ref][cairo_surface_write_to_png]
+`sr:write_to_png_stream()`                  [ref][cairo_surface_write_to_png_stream]
+`sr:get_user_data()`                        [ref][cairo_surface_get_user_data]
+`sr:set_user_data()`                        [ref][cairo_surface_set_user_data]
+`sr:get_mime_data()`                        [ref][cairo_surface_get_mime_data]
+`sr:set_mime_data()`                        [ref][cairo_surface_set_mime_data]
+`sr:get_font_options()`                     [ref][cairo_surface_get_font_options]
+`sr:flush()`                                [ref][cairo_surface_flush]
+`sr:mark_dirty()`                           [ref][cairo_surface_mark_dirty]
+`sr:mark_dirty_rectangle()`                 [ref][cairo_surface_mark_dirty_rectangle]
+`sr:set_device_offset()`                    [ref][cairo_surface_set_device_offset]
+`sr:get_device_offset()`                    [ref][cairo_surface_get_device_offset]
+`sr:set_fallback_resolution()`              [ref][cairo_surface_set_fallback_resolution]
+`sr:get_fallback_resolution()`              [ref][cairo_surface_get_fallback_resolution]
+`sr:copy_page()`                            [ref][cairo_surface_copy_page]
+`sr:show_page()`                            [ref][cairo_surface_show_page]
+`sr:has_show_text_glyphs()`                 [ref][cairo_surface_has_show_text_glyphs]
+`sr:create_pattern()`                       [ref][cairo_surface_create_pattern]
+`sr:apply_alpha()`                          [ref][cairo_surface_apply_alpha]
+`sr:get_image_data()`                       [ref][cairo_surface_get_image_data]
+`sr:get_image_format()`                     [ref][cairo_surface_get_image_format]
+`sr:get_image_width()`                      [ref][cairo_surface_get_image_width]
+`sr:get_image_height()`                     [ref][cairo_surface_get_image_height]
+`sr:get_image_stride()`                     [ref][cairo_surface_get_image_stride]
+`sr:get_image_bpp()`                        [ref][cairo_surface_get_image_bpp]
+`sr:get_image_pixel_function()`             [ref][cairo_surface_get_image_pixel_function]
+`sr:set_image_pixel_function()`             [ref][cairo_surface_set_image_pixel_function]
+`sr:reference()`                            [ref][cairo_surface_reference]
+`sr:get_reference_count()`                  [ref][cairo_surface_get_reference_count]
+`sr:destroy()`                              [ref][cairo_surface_destroy]
 `sr:free()`                                 free (error if ref count > 0)
-`sr:get_image_data()`                       [ref][cairo_get_image_data]
-`sr:get_image_format()`                     [ref][cairo_get_image_format]
-`sr:get_image_width()`                      [ref][cairo_get_image_width]
-`sr:get_image_height()`                     [ref][cairo_get_image_height]
-`sr:get_image_stride()`                     [ref][cairo_get_image_stride]
-`sr:get_image_bpp()`                        [ref][cairo_get_image_bpp]
-`sr:get_image_pixel_function()`             [ref][cairo_get_image_pixel_function]
-`sr:set_image_pixel_function()`             [ref][cairo_set_image_pixel_function]
 __devices__
 `dev:get_type()`                            [ref][cairo_get_type]
 `dev:status()`                              [ref][cairo_status]
@@ -372,7 +376,7 @@ __integer rectangles__
 ------------------------------------------- ---------------------------------------
 </div>
 
-
+[cairo_create]:                            http://cairographics.org/manual/cairo-t.html#cairo-create
 [cairo_save]:                              http://cairographics.org/manual/cairo-cairo-t.html#cairo-save
 [cairo_restore]:                           http://cairographics.org/manual/cairo-cairo-t.html#cairo-restore
 [cairo_push_group]:                        http://cairographics.org/manual/cairo-cairo-t.html#cairo-push-group
@@ -392,16 +396,16 @@ __integer rectangles__
 [cairo_set_line_join]:                     http://cairographics.org/manual/cairo-cairo-t.html#cairo-set-line-join
 [cairo_set_dash]:                          http://cairographics.org/manual/cairo-cairo-t.html#cairo-set-dash
 [cairo_set_miter_limit]:                   http://cairographics.org/manual/cairo-cairo-t.html#cairo-set-miter-limit
-[cairo_translate]:                         http://cairographics.org/manual/cairo-cairo-t.html#cairo-translate
-[cairo_scale]:                             http://cairographics.org/manual/cairo-cairo-t.html#cairo-scale
-[cairo_rotate]:                            http://cairographics.org/manual/cairo-cairo-t.html#cairo-rotate
-[cairo_rotate_around]:                     http://cairographics.org/manual/cairo-cairo-t.html#cairo-rotate-around
-[cairo_scale_around]:                      http://cairographics.org/manual/cairo-cairo-t.html#cairo-scale-around
-[cairo_transform]:                         http://cairographics.org/manual/cairo-cairo-t.html#cairo-transform
-[cairo_safe_transform]:                    http://cairographics.org/manual/cairo-cairo-t.html#cairo-safe-transform
-[cairo_set_matrix]:                        http://cairographics.org/manual/cairo-cairo-t.html#cairo-set-matrix
-[cairo_identity_matrix]:                   http://cairographics.org/manual/cairo-cairo-t.html#cairo-identity-matrix
-[cairo_skew]:                              http://cairographics.org/manual/cairo-cairo-t.html#cairo-skew
+[cairo_translate]:                         http://cairographics.org/manual/cairo-Transformations.html#cairo-translate
+[cairo_scale]:                             http://cairographics.org/manual/cairo-Transformations.html#cairo-scale
+[cairo_rotate]:                            http://cairographics.org/manual/cairo-Transformations.html#cairo-rotate
+[cairo_rotate_around]:                     http://cairographics.org/manual/cairo-Transformations.html#cairo-rotate-around
+[cairo_scale_around]:                      http://cairographics.org/manual/cairo-Transformations.html#cairo-scale-around
+[cairo_transform]:                         http://cairographics.org/manual/cairo-Transformations.html#cairo-transform
+[cairo_safe_transform]:                    http://cairographics.org/manual/cairo-Transformations.html#cairo-safe-transform
+[cairo_set_matrix]:                        http://cairographics.org/manual/cairo-Transformations.html#cairo-set-matrix
+[cairo_identity_matrix]:                   http://cairographics.org/manual/cairo-Transformations.html#cairo-identity-matrix
+[cairo_skew]:                              http://cairographics.org/manual/cairo-Transformations.html#cairo-skew
 [cairo_user_to_device]:                    http://cairographics.org/manual/cairo-cairo-t.html#cairo-user-to-device
 [cairo_user_to_device_distance]:           http://cairographics.org/manual/cairo-cairo-t.html#cairo-user-to-device-distance
 [cairo_device_to_user]:                    http://cairographics.org/manual/cairo-cairo-t.html#cairo-device-to-user
@@ -489,46 +493,45 @@ __integer rectangles__
 [cairo_destroy]:                           http://cairographics.org/manual/cairo-cairo-t.html#cairo-destroy
 [cairo_free]:                              http://cairographics.org/manual/cairo-cairo-t.html#cairo-free
 
-[cairo_surface_create_context]:                    http://cairographics.org/manual/cairo-surface-t.html#cairo-surface-create-context
-[cairo_surface_create_similar]:                    http://cairographics.org/manual/cairo-surface-t.html#cairo-surface-create-similar
-[cairo_surface_create_for_rectangle]:              http://cairographics.org/manual/cairo-surface-t.html#cairo-surface-create-for-rectangle
-[cairo_surface_finish]:                            http://cairographics.org/manual/cairo-surface-t.html#cairo-surface-finish
-[cairo_surface_get_device]:                        http://cairographics.org/manual/cairo-surface-t.html#cairo-surface-get-device
-[cairo_surface_status]:                            http://cairographics.org/manual/cairo-surface-t.html#cairo-surface-status
-[cairo_surface_status_string]:                     http://cairographics.org/manual/cairo-surface-t.html#cairo-surface-status-string
-[cairo_surface_get_type]:                          http://cairographics.org/manual/cairo-surface-t.html#cairo-surface-get-type
-[cairo_surface_get_content]:                       http://cairographics.org/manual/cairo-surface-t.html#cairo-surface-get-content
-[cairo_surface_write_to_png]:                      http://cairographics.org/manual/cairo-surface-t.html#cairo-surface-write-to-png
-[cairo_surface_write_to_png_stream]:               http://cairographics.org/manual/cairo-surface-t.html#cairo-surface-write-to-png-stream
-[cairo_surface_get_user_data]:                     http://cairographics.org/manual/cairo-surface-t.html#cairo-surface-get-user-data
-[cairo_surface_set_user_data]:                     http://cairographics.org/manual/cairo-surface-t.html#cairo-surface-set-user-data
-[cairo_surface_get_mime_data]:                     http://cairographics.org/manual/cairo-surface-t.html#cairo-surface-get-mime-data
-[cairo_surface_set_mime_data]:                     http://cairographics.org/manual/cairo-surface-t.html#cairo-surface-set-mime-data
-[cairo_surface_get_font_options]:                  http://cairographics.org/manual/cairo-surface-t.html#cairo-surface-get-font-options
-[cairo_surface_flush]:                             http://cairographics.org/manual/cairo-surface-t.html#cairo-surface-flush
-[cairo_surface_mark_dirty]:                        http://cairographics.org/manual/cairo-surface-t.html#cairo-surface-mark-dirty
-[cairo_surface_mark_dirty_rectangle]:              http://cairographics.org/manual/cairo-surface-t.html#cairo-surface-mark-dirty-rectangle
-[cairo_surface_set_device_offset]:                 http://cairographics.org/manual/cairo-surface-t.html#cairo-surface-set-device-offset
-[cairo_surface_get_device_offset]:                 http://cairographics.org/manual/cairo-surface-t.html#cairo-surface-get-device-offset
-[cairo_surface_set_fallback_resolution]:           http://cairographics.org/manual/cairo-surface-t.html#cairo-surface-set-fallback-resolution
-[cairo_surface_get_fallback_resolution]:           http://cairographics.org/manual/cairo-surface-t.html#cairo-surface-get-fallback-resolution
-[cairo_surface_copy_page]:                         http://cairographics.org/manual/cairo-surface-t.html#cairo-surface-copy-page
-[cairo_surface_show_page]:                         http://cairographics.org/manual/cairo-surface-t.html#cairo-surface-show-page
-[cairo_surface_has_show_text_glyphs]:              http://cairographics.org/manual/cairo-surface-t.html#cairo-surface-has-show-text-glyphs
-[cairo_surface_create_pattern]:                    http://cairographics.org/manual/cairo-surface-t.html#cairo-surface-create-pattern
-[cairo_surface_apply_alpha]:                       http://cairographics.org/manual/cairo-surface-t.html#cairo-surface-apply-alpha
-[cairo_surface_reference]:                         http://cairographics.org/manual/cairo-surface-t.html#cairo-surface-reference
-[cairo_surface_get_reference_count]:               http://cairographics.org/manual/cairo-surface-t.html#cairo-surface-get-reference-count
-[cairo_surface_destroy]:                           http://cairographics.org/manual/cairo-surface-t.html#cairo-surface-destroy
-[cairo_surface_free]:                              http://cairographics.org/manual/cairo-surface-t.html#cairo-surface-free
-[cairo_surface_get_image_data]:                    http://cairographics.org/manual/cairo-surface-t.html#cairo-surface-get-image-data
-[cairo_surface_get_image_format]:                  http://cairographics.org/manual/cairo-surface-t.html#cairo-surface-get-image-format
-[cairo_surface_get_image_width]:                   http://cairographics.org/manual/cairo-surface-t.html#cairo-surface-get-image-width
-[cairo_surface_get_image_height]:                  http://cairographics.org/manual/cairo-surface-t.html#cairo-surface-get-image-height
-[cairo_surface_get_image_stride]:                  http://cairographics.org/manual/cairo-surface-t.html#cairo-surface-get-image-stride
-[cairo_surface_get_image_bpp]:                     http://cairographics.org/manual/cairo-surface-t.html#cairo-surface-get-image-bpp
-[cairo_surface_get_image_pixel_function]:          http://cairographics.org/manual/cairo-surface-t.html#cairo-surface-get-image-pixel-function
-[cairo_surface_set_image_pixel_function]:          http://cairographics.org/manual/cairo-surface-t.html#cairo-surface-set-image-pixel-function
+[cairo_surface_create_similar]:            http://cairographics.org/manual/cairo-cairo-surface-t.html#cairo-surface-create-similar
+[cairo_surface_create_for_rectangle]:      http://cairographics.org/manual/cairo-cairo-surface-t.html#cairo-surface-create-for-rectangle
+[cairo_surface_finish]:                    http://cairographics.org/manual/cairo-cairo-surface-t.html#cairo-surface-finish
+[cairo_surface_get_device]:                http://cairographics.org/manual/cairo-cairo-surface-t.html#cairo-surface-get-device
+[cairo_surface_status]:                    http://cairographics.org/manual/cairo-cairo-surface-t.html#cairo-surface-status
+[cairo_surface_status_string]:             http://cairographics.org/manual/cairo-cairo-surface-t.html#cairo-surface-status-string
+[cairo_surface_get_type]:                  http://cairographics.org/manual/cairo-cairo-surface-t.html#cairo-surface-get-type
+[cairo_surface_get_content]:               http://cairographics.org/manual/cairo-cairo-surface-t.html#cairo-surface-get-content
+[cairo_surface_write_to_png]:              http://cairographics.org/manual/cairo-cairo-surface-t.html#cairo-surface-write-to-png
+[cairo_surface_write_to_png_stream]:       http://cairographics.org/manual/cairo-cairo-surface-t.html#cairo-surface-write-to-png-stream
+[cairo_surface_get_user_data]:             http://cairographics.org/manual/cairo-cairo-surface-t.html#cairo-surface-get-user-data
+[cairo_surface_set_user_data]:             http://cairographics.org/manual/cairo-cairo-surface-t.html#cairo-surface-set-user-data
+[cairo_surface_get_mime_data]:             http://cairographics.org/manual/cairo-cairo-surface-t.html#cairo-surface-get-mime-data
+[cairo_surface_set_mime_data]:             http://cairographics.org/manual/cairo-cairo-surface-t.html#cairo-surface-set-mime-data
+[cairo_surface_get_font_options]:          http://cairographics.org/manual/cairo-cairo-surface-t.html#cairo-surface-get-font-options
+[cairo_surface_flush]:                     http://cairographics.org/manual/cairo-cairo-surface-t.html#cairo-surface-flush
+[cairo_surface_mark_dirty]:                http://cairographics.org/manual/cairo-cairo-surface-t.html#cairo-surface-mark-dirty
+[cairo_surface_mark_dirty_rectangle]:      http://cairographics.org/manual/cairo-cairo-surface-t.html#cairo-surface-mark-dirty-rectangle
+[cairo_surface_set_device_offset]:         http://cairographics.org/manual/cairo-cairo-surface-t.html#cairo-surface-set-device-offset
+[cairo_surface_get_device_offset]:         http://cairographics.org/manual/cairo-cairo-surface-t.html#cairo-surface-get-device-offset
+[cairo_surface_set_fallback_resolution]:   http://cairographics.org/manual/cairo-cairo-surface-t.html#cairo-surface-set-fallback-resolution
+[cairo_surface_get_fallback_resolution]:   http://cairographics.org/manual/cairo-cairo-surface-t.html#cairo-surface-get-fallback-resolution
+[cairo_surface_copy_page]:                 http://cairographics.org/manual/cairo-cairo-surface-t.html#cairo-surface-copy-page
+[cairo_surface_show_page]:                 http://cairographics.org/manual/cairo-cairo-surface-t.html#cairo-surface-show-page
+[cairo_surface_has_show_text_glyphs]:      http://cairographics.org/manual/cairo-cairo-surface-t.html#cairo-surface-has-show-text-glyphs
+[cairo_surface_create_pattern]:            http://cairographics.org/manual/cairo-cairo-surface-t.html#cairo-surface-create-pattern
+[cairo_surface_apply_alpha]:               http://cairographics.org/manual/cairo-cairo-surface-t.html#cairo-surface-apply-alpha
+[cairo_surface_reference]:                 http://cairographics.org/manual/cairo-cairo-surface-t.html#cairo-surface-reference
+[cairo_surface_get_reference_count]:       http://cairographics.org/manual/cairo-cairo-surface-t.html#cairo-surface-get-reference-count
+[cairo_surface_destroy]:                   http://cairographics.org/manual/cairo-cairo-surface-t.html#cairo-surface-destroy
+[cairo_surface_free]:                      http://cairographics.org/manual/cairo-cairo-surface-t.html#cairo-surface-free
+[cairo_surface_get_image_data]:            http://cairographics.org/manual/cairo-cairo-surface-t.html#cairo-surface-get-image-data
+[cairo_surface_get_image_format]:          http://cairographics.org/manual/cairo-cairo-surface-t.html#cairo-surface-get-image-format
+[cairo_surface_get_image_width]:           http://cairographics.org/manual/cairo-cairo-surface-t.html#cairo-surface-get-image-width
+[cairo_surface_get_image_height]:          http://cairographics.org/manual/cairo-cairo-surface-t.html#cairo-surface-get-image-height
+[cairo_surface_get_image_stride]:          http://cairographics.org/manual/cairo-cairo-surface-t.html#cairo-surface-get-image-stride
+[cairo_surface_get_image_bpp]:             http://cairographics.org/manual/cairo-cairo-surface-t.html#cairo-surface-get-image-bpp
+[cairo_surface_get_image_pixel_function]:  http://cairographics.org/manual/cairo-cairo-surface-t.html#cairo-surface-get-image-pixel-function
+[cairo_surface_set_image_pixel_function]:  http://cairographics.org/manual/cairo-cairo-surface-t.html#cairo-surface-set-image-pixel-function
 
 [cairo_get_type]:                          http://cairographics.org/manual/cairo-cairo-t.html#cairo-get-type
 [cairo_status]:                            http://cairographics.org/manual/cairo-cairo-t.html#cairo-status
