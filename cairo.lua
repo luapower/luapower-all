@@ -761,6 +761,7 @@ ffi.metatype('cairo_t', {__index = {
 ffi.metatype('cairo_surface_t', {__index = {
 	create_context = M.cairo_create,
 	create_similar = M.cairo_surface_create_similar,
+	create_similar_image = M.cairo_surface_create_similar_image,
 	create_for_rectangle = M.cairo_surface_create_for_rectangle,
 	reference = M.cairo_surface_reference,
 	finish = M.cairo_surface_finish,
