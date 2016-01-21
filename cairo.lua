@@ -917,6 +917,7 @@ local cairo_formats = {
 	g8     = 'a8',
 	g1     = 'a1',
 	rgb565 = 'rgb16_565',
+	bgr10  = 'rgb30',
 }
 function M.cairo_format(format)
 	return cairo_formats[format]
@@ -1440,7 +1441,8 @@ end
 face.synthesize_bold = synthesize_flag(C.CAIRO_FT_SYNTHESIZE_BOLD)
 face.synthesize_oblique = synthesize_flag(C.CAIRO_FT_SYNTHESIZE_OBLIQUE)
 
-sfont.lock_face = ref_func(_C.cairo_ft_scaled_font_lock_face, _C.cairo_ft_scaled_font_unlock_face)
+sfont.lock_face = _C.cairo_ft_scaled_font_lock_face
+sfont.unlock_face = _C.cairo_ft_scaled_font_unlock_face
 
 --metatype must come last
 

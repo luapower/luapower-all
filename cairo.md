@@ -153,16 +153,23 @@ __patterns__
 `patt:matrix([mt]) /-> mt`                                          [get/set the matrix][cairo_pattern_set_matrix]
 `patt:extend([extend]) /-> extend`                                  [get/set the extend][cairo_pattern_set_extend]
 `patt:filter([filter]) /-> filter`                                  [get/set the filter][cairo_pattern_set_filter]
-__fonts and text__
+__toy text API__
 `cr:select_font_face(family, slant, weight)`                        [select a font face][cairo_select_font_face]
+`cr:show_text(s)`                                                   [show text][cairo_show_text]
+`cr:text_path(s)`                                                   [add closed paths for text to the current path][cairo_text_path]
+`cr:text_extents(s) -> cairo_text_extents_t`                        [get text extents][cairo_text_extents]
+__freetype fonts__
+`cairo.ft_font_face(ft_face, load_flags) -> face`                   [create a font face from a freetype handle][cairo_ft_font_face_create_for_ft_face]
+`face:synthesize_bold([t|f]) /-> t|f`                               [get/set synthethize bold flag][cairo_ft_font_face_set_synthesize]
+`face:synthesize_oblique([t|f]) /-> t|f`                            [get/set synthethize oblique flag][cairo_ft_font_face_set_synthesize]
+`sfont:lock_face() -> FT_Face`                                      [lock font face][cairo_ft_scaled_font_lock_face]
+`sfont:unlock_face()`                                               [unlock font face][cairo_ft_scaled_font_unlock_face]
+__fonts and text__
 `cr:font_size(size)`                                                [set font size][cairo_set_font_size]
 `cr:font_matrix([mt]) /-> mt`                                       [get/set font matrix][cairo_set_font_matrix]
-`cr:show_text(s)`                                                   [show text][cairo_show_text]
 `cr:show_glyphs(glyphs, #glyphs)`                                   [show glyphs][cairo_show_glyphs]
-`cr:show_text_glyphs(s, #s, gs, #gs, cs, #cs, f)`                   [show text glyphs][cairo_show_text_glyphs]
-`cr:text_path(s)`                                                   [ref][cairo_text_path]
+`cr:show_text_glyphs(s, [#s], gs, #gs, cs, #cs, f)`                 [show text glyphs][cairo_show_text_glyphs]
 `cr:glyph_path(glyphs, #glyphs)`                                    [ref][cairo_glyph_path]
-`cr:text_extents(s) -> cairo_text_extents_t`                        [get text extents][cairo_text_extents]
 `cr:glyph_extents(glyphs, #glyphs) -> cairo_text_extents_t`         [ref][cairo_glyph_extents]
 `cr:font_extents() -> cairo_font_extents_t`                         [ref][cairo_font_extents]
 __font faces__
@@ -297,7 +304,7 @@ __misc.__
 ------------------------------------------------------------------- -------------------------------------------------------------------
 </div>
 
-(+) supported formats: 'bgra8', 'bgrx8', 'g8', 'g1', 'rgb565'.
+(+) supported formats: 'bgra8', 'bgrx8', 'g8', 'g1', 'rgb565', 'bgr10'.
 
 (*) for ref-counted objects only: `cr`, `sr`, `dev`, `patt`, `sfont`, `font` and `rgn`.
 
@@ -445,3 +452,24 @@ The binding won't break if extensions are missing in the binary.
 [cairo_mesh_pattern_get_control_point]:      http://cairographics.org/manual/cairo-cairo-pattern-t.html#cairo-mesh-pattern-get-control-point
 [cairo_mesh_pattern_set_corner_color_rgb]:   http://cairographics.org/manual/cairo-cairo-pattern-t.html#cairo-mesh-pattern-set-corner-color-rgb
 [cairo_mesh_pattern_get_corner_color_rgba]:  http://cairographics.org/manual/cairo-cairo-pattern-t.html#cairo-mesh-pattern-get-corner-color-rgba
+
+[cairo_select_font_face]:                  http://cairographics.org/manual/cairo-text.html#cairo-select-font-face
+[cairo_show_text]:                         http://cairographics.org/manual/cairo-text.html#cairo-show-text
+[cairo_text_path]:                         http://cairographics.org/manual/cairo-Paths.html#cairo-text-path
+[cairo_text_extents]:                      http://cairographics.org/manual/cairo-text.html#cairo-text-extents
+
+[cairo_ft_font_face_create_for_ft_face]:   http://cairographics.org/manual/cairo-FreeType-Fonts.html#cairo-ft-font-face-create-for-ft-face
+[cairo_ft_font_face_set_synthesize]:       http://cairographics.org/manual/cairo-FreeType-Fonts.html#cairo-ft-font-face-set-synthesize
+
+[cairo_ft_scaled_font_lock_face]:          http://cairographics.org/manual/cairo-FreeType-Fonts.html#cairo-ft-scaled-font-lock-face
+[cairo_ft_scaled_font_unlock_face]:        http://cairographics.org/manual/cairo-FreeType-Fonts.html#cairo-ft-scaled-font-unlock-face
+
+[cairo_set_font_size]:                     http://cairographics.org/manual/cairo-text.html#cairo-set-font-size
+[cairo_set_font_matrix]:                   http://cairographics.org/manual/cairo-text.html#cairo-set-font-matrix
+[cairo_show_glyphs]:                       http://cairographics.org/manual/cairo-text.html#cairo-show-glyphs
+[cairo_show_text_glyphs]:                  http://cairographics.org/manual/cairo-text.html#cairo-show-text-glyphs
+[cairo_glyph_path]:                        http://cairographics.org/manual/cairo-text.html#cairo-glyph-path
+[cairo_glyph_extents]:                     http://cairographics.org/manual/cairo-text.html#cairo-glyph-extents
+[cairo_font_extents]:                      http://cairographics.org/manual/cairo-text.html#cairo-font-extents
+
+[cairo_set_font_face]:                     http://cairographics.org/manual/cairo-text.html#cairo-set-font-face
