@@ -20,7 +20,7 @@ pass 'argb32' for `C.CAIRO_FORMAT_ARGB32` in `cairo.image_surface()`.
 ------------------------------------------------------------------- -------------------------------------------------------------------
 __pixman surfaces__
 `cairo.image_surface(fmt, w, h) -> sr`                              [create a pixman surface][cairo_image_surface_create]
-`cairo.image_surface(bmp) -> sr`                                    [create a pixman surface given a][cairo_image_surface_create_for_data] [bitmap] (1)
+`cairo.image_surface(bmp) -> sr`                                    [create a pixman surface given a][cairo_image_surface_create_for_data] [bitmap] (+)
 `sr:bitmap() -> bmp`                                                get the image surface as a [bitmap]
 `sr:data() -> data`                                                 [get the image surface pixel buffer][cairo_image_surface_get_data]
 `sr:format() -> fmt`                                                [get the image surface format][cairo_image_surface_get_format]
@@ -49,11 +49,6 @@ __recording surfaces__
 `cairo.recording_surface(content[, x, y, w, h])`                    [create a recording surface][cairo_recording_surface_create]
 `sr:ink_extents() -> x, y, w, h`                                    [get recording surface ink extents][cairo_recording_surface_ink_extents]
 `sr:recording_extents() -> x, y, w, h | nil`                        [get recording surface extents][cairo_recording_surface_get_extents]
-__png support__
-`cairo.image_surface_from_png(filename) -> sr`                      [create a pixman surface from a png file][cairo_image_surface_create_from_png]
-`cairo.image_surface_from_png_stream(read_func, arg) -> sr`         [create a pixman surface from a png stream][cairo_image_surface_create_from_png_stream]
-`sr:write_to_png(filename) -> true | nil,err,status`                [write surface to png file][cairo_surface_write_to_png]
-`sr:write_to_png_stream(write_func, arg) -> true | nil,err,status`  [write surface to png stream][cairo_surface_write_to_png_stream]
 __drawing contexts__
 `sr:context() -> cr`                                                [create a drawing context on a surface][cairo_create]
 `cr:save()`                                                         [save state (push to stack)][cairo_save]
@@ -62,6 +57,7 @@ __sources__
 `cr:rgb(r, g, b)`                                                   [set a RGB color as source][cairo_set_source_rgb]
 `cr:rgba(r, g, b, a)`                                               [set a RGBA color as source][cairo_set_source_rgba]
 `cr:source([patt | sr, [x, y]]) /-> patt`                           [get/set a pattern or surface as source][cairo_set_source]
+__compositing__
 `cr:operator([operator]) /-> operator`                              [get/set the compositing operator][cairo_set_operator]
 `cr:mask(patt | sr[, x, y])`                                        [draw using a pattern's (or surface's) alpha channel as a mask][cairo_mask]
 __groups__
@@ -120,15 +116,9 @@ __clipping__
 `cr:reset_clip()`                                                   [remove all clipping][cairo_reset_clip]
 `cr:clip_extents() -> x1, y1, x2, y2`                               [get the clip extents][cairo_clip_extents]
 `cr:clip_rectangles() -> rlist`                                     [get the clipping rectangles][cairo_copy_clip_rectangle_list]
-__patterns__
-`patt:type() -> type`                                               [get the pattern type][cairo_pattern_get_type]
-`patt:matrix([mt]) /-> mt`                                          [get/set the matrix][cairo_pattern_set_matrix]
-`patt:extend([extend]) /-> extend`                                  [get/set the extend][cairo_pattern_set_extend]
-`patt:filter([filter]) /-> filter`                                  [get/set the filter][cairo_pattern_set_filter]
-`patt:surface() -> sr | nil`                                        [get the pattern's surface][cairo_pattern_get_surface]
 __solid-color patterns__
 `cairo.color_pattern(r, g, b[, a]) -> patt`                         [create a solid color pattern][cairo_pattern_create_rgb]
-`patt:rgba() -> r, g, b, a`                                         [get the color of a solid color pattern][cairo_pattern_get_rgba]
+`patt:color() -> r, g, b, a`                                        [get the color of a solid color pattern][cairo_pattern_get_rgba]
 __gradient patterns__
 `cairo.linear_gradient(x0, y0, x1, y1) -> patt`                     [create a linear gradient][cairo_pattern_create_linear]
 `cairo.radial_gradient(cx0, cy0, r0, cx1, cy1, r1) -> patt`         [create a radial gradient][cairo_pattern_create_radial]
@@ -139,6 +129,7 @@ __gradient patterns__
 `patt:color_stop(i) -> offset, r, g, b, a`                          [get a color stop][cairo_pattern_get_color_stop_rgba]
 __surface patterns__
 `cairo.surface_pattern(sr) -> patt`                                 [create a surface-type pattern][cairo_pattern_create_for_surface]
+`patt:surface() -> sr | nil`                                        [get the pattern's surface][cairo_pattern_get_surface]
 __raster-source patterns__
 `cairo.raster_source_pattern(data, content, w, h) -> patt`          [create a raster source-type pattern][cairo_pattern_create_raster_source]
 `patt:callback_data([data]) /-> data`                               [get/set callback data][cairo_raster_source_pattern_set_callback_data]
@@ -148,8 +139,20 @@ __raster-source patterns__
 `patt:finish_function([func]) /-> func`                             [get/set the finish function][cairo_raster_source_pattern_set_finish]
 __mesh patterns__
 `cairo.mesh_pattern() -> patt`                                      [create a mesh pattern][cairo_pattern_create_mesh]
-`patt:begin_patch()`                                                [start a patch][cairo_mesh_pattern_begin_patch]
-`patt:end_patch()`                                                  [end a patch][cairo_mesh_pattern_end_patch]
+`patt:begin_patch()`                                                [start a new patch][cairo_mesh_pattern_begin_patch]
+`patt:end_patch()`                                                  [end current patch][cairo_mesh_pattern_end_patch]
+`patt:move_to(x, y)`                                                [move the current point][cairo_mesh_pattern_move_to]
+`patt:line_to(x, y)`                                                [add a line][cairo_mesh_pattern_line_to]
+`patt:curve_to(x1, y1, x2, y2, x3, y3)`                             [add a cubic bezier][cairo_mesh_pattern_curve_to]
+`patt:control_point(point_num, x, y)`                               [set a control point of the current patch][cairo_mesh_pattern_set_control_point]
+`patt:control_point(patch_num, point_num) -> x, y`                  [get a control point][cairo_mesh_pattern_get_control_point]
+`patt:corner_color(corner_num, r, g, b[, a])`                       [set a corner color of the current patch][cairo_mesh_pattern_set_corner_color_rgb]
+`patt:corner_color(patch_num, corner_num) -> r, g, b, a`            [get a corner color][cairo_mesh_pattern_get_corner_color_rgba]
+__patterns__
+`patt:type() -> type`                                               [get the pattern type][cairo_pattern_get_type]
+`patt:matrix([mt]) /-> mt`                                          [get/set the matrix][cairo_pattern_set_matrix]
+`patt:extend([extend]) /-> extend`                                  [get/set the extend][cairo_pattern_set_extend]
+`patt:filter([filter]) /-> filter`                                  [get/set the filter][cairo_pattern_set_filter]
 __fonts and text__
 `cr:select_font_face(family, slant, weight)`                        [select a font face][cairo_select_font_face]
 `cr:font_size(size)`                                                [set font size][cairo_set_font_size]
@@ -198,15 +201,6 @@ __rasterization options__
 `cr:dash([dashes[, offset]]) /-> dashes, dash_count`                [set the dash pattern for cairo_stroke()][cairo_set_dash]
 `cr:dash_count() -> n`                                              [ref][cairo_get_dash_count]
 `cr:miter_limit([limit]) /-> limit`                                 [set the current miter limit][cairo_set_miter_limit]
-__device-space__
-`cr:user_to_device(x, y) -> x, y`                                   [user to device (point)][cairo_user_to_device]
-`cr:user_to_device_distance(x, y) -> x, y`                          [user to device (distance)][cairo_user_to_device_distance]
-`cr:device_to_user(x, y) -> x, y`                                   [device to user (point)][cairo_device_to_user]
-`cr:device_to_user_distance(x, y) -> x, y`                          [device to user (distance)][cairo_device_to_user_distance]
-__glyphs__
-`cairo.allocate_glyphs(num_glyphs) -> glyphs`                       [allocate an array of glyphs][cairo_glyph_allocate]
-__text clusters__
-`cairo.allocate_text_clusters(num_clusters) -> clusters`            [allocate an array of text clusters][cairo_text_cluster_allocate]
 __font options__
 `cairo.font_options() -> fopt`                                      [create a font options object][cairo_font_options_create]
 `fopt:copy() -> fopt`                                               [copy font options][cairo_font_options_copy]
@@ -221,6 +215,15 @@ __font options__
 `fopt:round_glyph_positions([pos]) /-> pos`                         [get/set round glyph positions][cairo_font_options_set_round_glyph_positions]
 `sr:font_options([fopt]) /-> fopt`                                  [get/set surface font options][cairo_surface_get_font_options]
 `cr:font_options([fopt]) /-> fopt`                                  [get/set font options][cairo_set_font_options]
+__device-space vs user-space__
+`cr:user_to_device(x, y) -> x, y`                                   [user to device (point)][cairo_user_to_device]
+`cr:user_to_device_distance(x, y) -> x, y`                          [user to device (distance)][cairo_user_to_device_distance]
+`cr:device_to_user(x, y) -> x, y`                                   [device to user (point)][cairo_device_to_user]
+`cr:device_to_user_distance(x, y) -> x, y`                          [device to user (distance)][cairo_device_to_user_distance]
+__glyphs__
+`cairo.allocate_glyphs(num_glyphs) -> glyphs`                       [allocate an array of glyphs][cairo_glyph_allocate]
+__text clusters__
+`cairo.allocate_text_clusters(num_clusters) -> clusters`            [allocate an array of text clusters][cairo_text_cluster_allocate]
 __multi-page backends__
 `sr:copy_page()`                                                    [emit the current page and retain surface contents][cairo_surface_copy_page]
 `sr:show_page()`                                                    [emit the current page and clear surface contents][cairo_surface_show_page]
@@ -271,12 +274,17 @@ __regions__
 `rgn:intersect(rgn | x, y, w, h)`                                   [intersect with region or rectangle][cairo_region_intersect]
 `rgn:union(rgn | x, y, w, h)`                                       [union with region or rectangle][cairo_region_union]
 `rgn:xor(rgn | x, y, w, h)`                                         [xor with region or rectangle][cairo_region_xor]
+__PNG support__
+`cairo.image_surface_from_png(filename) -> sr`                      [create a pixman surface from a png file][cairo_image_surface_create_from_png]
+`cairo.image_surface_from_png_stream(read_func, arg) -> sr`         [create a pixman surface from a png stream][cairo_image_surface_create_from_png_stream]
+`sr:write_to_png(filename) -> true | nil,err,status`                [write surface to png file][cairo_surface_write_to_png]
+`sr:write_to_png_stream(write_func, arg) -> true | nil,err,status`  [write surface to png stream][cairo_surface_write_to_png_stream]
 __memory management__
 `obj:free()`                                                        [free object][cairo_destroy]
 `obj:refcount() -> refcount`                                        [get ref count (*)][cairo_get_reference_count]
 `obj:ref()`                                                         [increase ref count (*)][cairo_reference]
 `obj:unref()`                                                       [decrease ref count and free when 0 (*)][cairo_destroy]
-__object status__
+__status__
 `obj:status() -> status`                                            [get status][cairo_status_t]
 `obj:status_message() -> s`                                         [get status message][cairo_status_to_string]
 `obj:check()`                                                       raise an error if the object has an error status
@@ -289,15 +297,19 @@ __misc.__
 ------------------------------------------------------------------- -------------------------------------------------------------------
 </div>
 
-> (1) supported formats: 'bgra8', 'bgrx8', 'g8', 'g1', 'rgb565'.
-> (*) for ref-counted objects only: `cr`, `sr`, `dev`, `patt`, `sfont`, `font` and `rgn`.
+(+) supported formats: 'bgra8', 'bgrx8', 'g8', 'g1', 'rgb565'.
+
+(*) for ref-counted objects only: `cr`, `sr`, `dev`, `patt`, `sfont`, `font` and `rgn`.
 
 
 ## Binaries
 
 The included binaries are built with support for in-memory (pixman) surfaces,
-recording surfaces, ps surfaces, pdf surfaces, svg surfaces, win32 surfaces,
-win32 fonts and freetype fonts.
+recording surfaces, ps surfaces, pdf surfaces, svg surfaces, win32 surfaces and fonts,
+quartz surfaces and fonts, freetype fonts and png support.
+The build is configurable so you can add/remove these extensions as needed.
+The binding won't break if extensions are missing in the binary.
+
 
 
 [cairo_image_surface_create]:              http://cairographics.org/manual/cairo-Image-Surfaces.html#cairo-image-surface-create
@@ -404,7 +416,6 @@ win32 fonts and freetype fonts.
 [cairo_pattern_get_surface]:               http://cairographics.org/manual/cairo-cairo-pattern-t.html#cairo-pattern-get-surface
 
 [cairo_pattern_create_rgb]:                http://cairographics.org/manual/cairo-cairo-pattern-t.html#cairo-pattern-create-rgb
-[cairo_pattern_create_rgba]:               http://cairographics.org/manual/cairo-cairo-pattern-t.html#cairo-pattern-create-rgba
 [cairo_pattern_get_rgba]:                  http://cairographics.org/manual/cairo-cairo-pattern-t.html#cairo-pattern-get-rgba
 
 [cairo_pattern_create_linear]:             http://cairographics.org/manual/cairo-cairo-pattern-t.html#cairo-pattern-create-linear
@@ -424,4 +435,13 @@ win32 fonts and freetype fonts.
 [cairo_raster_source_pattern_set_copy]:           http://cairographics.org/manual/cairo-Raster-Sources.html#cairo-raster-source-pattern-set-copy
 [cairo_raster_source_pattern_set_finish]:         http://cairographics.org/manual/cairo-Raster-Sources.html#cairo-raster-source-pattern-set-finish
 
-[cairo_pattern_create_mesh]:
+[cairo_pattern_create_mesh]:                 http://cairographics.org/manual/cairo-cairo-pattern-t.html#cairo-pattern-create-mesh
+[cairo_mesh_pattern_begin_patch]:            http://cairographics.org/manual/cairo-cairo-pattern-t.html#cairo-mesh-pattern-begin-patch
+[cairo_mesh_pattern_end_patch]:              http://cairographics.org/manual/cairo-cairo-pattern-t.html#cairo-mesh-pattern-end-patch
+[cairo_mesh_pattern_move_to]:                http://cairographics.org/manual/cairo-cairo-pattern-t.html#cairo-mesh-pattern-move-to
+[cairo_mesh_pattern_line_to]:                http://cairographics.org/manual/cairo-cairo-pattern-t.html#cairo-mesh-pattern-line-to
+[cairo_mesh_pattern_curve_to]:               http://cairographics.org/manual/cairo-cairo-pattern-t.html#cairo-mesh-pattern-curve-to
+[cairo_mesh_pattern_set_control_point]:      http://cairographics.org/manual/cairo-cairo-pattern-t.html#cairo-mesh-pattern-set-control-point
+[cairo_mesh_pattern_get_control_point]:      http://cairographics.org/manual/cairo-cairo-pattern-t.html#cairo-mesh-pattern-get-control-point
+[cairo_mesh_pattern_set_corner_color_rgb]:   http://cairographics.org/manual/cairo-cairo-pattern-t.html#cairo-mesh-pattern-set-corner-color-rgb
+[cairo_mesh_pattern_get_corner_color_rgba]:  http://cairographics.org/manual/cairo-cairo-pattern-t.html#cairo-mesh-pattern-get-corner-color-rgba

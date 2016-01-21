@@ -1019,11 +1019,7 @@ patt.finish_function = getset_func(
 	C.cairo_raster_source_pattern_set_finish)
 
 M.color_pattern = ref_func(function(r, g, b, a)
-	if a then
-		return C.cairo_pattern_create_rgba(r, g, b, a)
-	else
-		return C.cairo_pattern_create_rgb(r, g, b)
-	end
+	return C.cairo_pattern_create_rgba(r, g, b, a or 1)
 end, C.cairo_pattern_destroy)
 M.surface_pattern = ref_func(C.cairo_pattern_create_for_surface, C.cairo_pattern_destroy)
 M.linear_gradient = ref_func(C.cairo_pattern_create_linear, C.cairo_pattern_destroy)
@@ -1050,11 +1046,7 @@ map('CAIRO_PATTERN_TYPE_', {
 patt.type = getflag_func(C.cairo_pattern_get_type, 'CAIRO_PATTERN_TYPE_')
 
 patt.add_color_stop = function(patt, offset, r, g, b, a)
-	if a then
-		C.cairo_pattern_add_color_stop_rgba(patt, offset, r, g, b, a)
-	else
-		C.cairo_pattern_add_color_stop_rgb(patt, offset, r, g, b)
-	end
+	C.cairo_pattern_add_color_stop_rgba(patt, offset, r, g, b, a or 1)
 end
 
 patt.begin_patch = C.cairo_mesh_pattern_begin_patch
@@ -1073,21 +1065,12 @@ patt.control_point = function(patt, patch_num, point_num, x, y)
 	end
 end
 
-patt.corner_color_rgba = function(patt, patch_num, corner_num, r, g, b, a)
+patt.corner_color = function(patt, patch_num, corner_num, r, g, b, a)
 	if r then
-		C.cairo_mesh_pattern_set_corner_color_rgba(patt, patch_num, corner_num, r, g, b) --in fact: patt, corner_num, r, g, b, a
+		C.cairo_mesh_pattern_set_corner_color_rgba(patt, patch_num, corner_num, r, g, b or 1) --in fact: patt, corner_num, r, g, b, a
 	else
 		check_status(C.cairo_mesh_pattern_get_corner_color_rgba(patt, patch_num, corner_num, d1, d2, d3, d4))
 		return d1[0], d2[0], d3[0], d4[0]
-	end
-end
-
-patt.corner_color_rgb = function(patt, patch_num, corner_num, r, g, b)
-	if r then
-		C.cairo_mesh_pattern_set_corner_color_rgb(patt, patch_num, corner_num, r, g) --in fact: patt, corner_num, r, g, b
-	else
-		check_status(C.cairo_mesh_pattern_get_corner_color_rgba(patt, patch_num, corner_num, d1, d2, d3, d4))
-		return d1[0], d2[0], d3[0]
 	end
 end
 
@@ -1113,7 +1096,7 @@ map('CAIRO_FILTER_', {
 
 patt.filter = getset_func(C.cairo_pattern_get_filter, C.cairo_pattern_set_filter, 'CAIRO_FILTER_')
 
-patt.rgba = d4out_func(function(...)
+patt.color = d4out_func(function(...)
 	check_status(C.cairo_pattern_get_rgba(...))
 end)
 
