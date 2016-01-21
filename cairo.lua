@@ -1018,11 +1018,16 @@ patt.finish_function = getset_func(
 	C.cairo_raster_source_pattern_get_finish,
 	C.cairo_raster_source_pattern_set_finish)
 
-M.rgb_pattern = ref_func(C.cairo_pattern_create_rgb, C.cairo_pattern_destroy)
-M.rgba_pattern = ref_func(C.cairo_pattern_create_rgba, C.cairo_pattern_destroy)
+M.color_pattern = ref_func(function(r, g, b, a)
+	if a then
+		return C.cairo_pattern_create_rgba(r, g, b, a)
+	else
+		return C.cairo_pattern_create_rgb(r, g, b)
+	end
+end, C.cairo_pattern_destroy)
 M.surface_pattern = ref_func(C.cairo_pattern_create_for_surface, C.cairo_pattern_destroy)
-M.linear_pattern = ref_func(C.cairo_pattern_create_linear, C.cairo_pattern_destroy)
-M.radial_pattern = ref_func(C.cairo_pattern_create_radial, C.cairo_pattern_destroy)
+M.linear_gradient = ref_func(C.cairo_pattern_create_linear, C.cairo_pattern_destroy)
+M.radial_gradient = ref_func(C.cairo_pattern_create_radial, C.cairo_pattern_destroy)
 M.mesh_pattern = ref_func(C.cairo_pattern_create_mesh, C.cairo_pattern_destroy)
 
 patt.ref = ref_func(C.cairo_pattern_reference, C.cairo_pattern_destroy)
@@ -1044,8 +1049,13 @@ map('CAIRO_PATTERN_TYPE_', {
 
 patt.type = getflag_func(C.cairo_pattern_get_type, 'CAIRO_PATTERN_TYPE_')
 
-patt.add_color_stop_rgb = C.cairo_pattern_add_color_stop_rgb
-patt.add_color_stop_rgba = C.cairo_pattern_add_color_stop_rgba
+patt.add_color_stop = function(patt, offset, r, g, b, a)
+	if a then
+		C.cairo_pattern_add_color_stop_rgba(patt, offset, r, g, b, a)
+	else
+		C.cairo_pattern_add_color_stop_rgb(patt, offset, r, g, b)
+	end
+end
 
 patt.begin_patch = C.cairo_mesh_pattern_begin_patch
 patt.end_patch = C.cairo_mesh_pattern_end_patch
@@ -1113,15 +1123,15 @@ patt.surface = function(patt)
 	return ptr(sr_buf[0])
 end
 
-patt.color_stop_rgba = function(patt, i)
-	check_status(C.cairo_pattern_get_color_stop_rgba(patt, i, d1, d2, d3, d4, d5))
-	return d1[0], d2[0], d3[0], d4[0], d5[0] --offset, r, g, b, a
-end
-
 local c = ffi.new'int[1]'
-patt.color_stop_count = function(patt)
-	check_status(C.cairo_pattern_get_color_stop_count(patt, c))
-	return c[0]
+patt.color_stop = function(patt, i)
+	if i == '#' then
+		check_status(C.cairo_pattern_get_color_stop_count(patt, c))
+		return c[0]
+	else
+		check_status(C.cairo_pattern_get_color_stop_rgba(patt, i, d1, d2, d3, d4, d5))
+		return d1[0], d2[0], d3[0], d4[0], d5[0] --offset, r, g, b, a
+	end
 end
 
 patt.linear_points = function(patt)
