@@ -12,10 +12,9 @@ A lightweight ffi binding of the [cairo graphics] library.
 
 __NOTE:__ In the table below, `foo([val]) /-> val` is a shortcut for saying
 that `foo(val)` sets the value of foo and `foo() -> val` gets it.
-`t|f` means `true|false`.
 
-__NOTE:__ flags can be passed as lowercase strings without prefix
-eg. 'argb32' can be passed for `C.CAIRO_FORMAT_ARGB32`.
+__NOTE:__ flags can be passed as lowercase strings without prefix eg.
+pass 'argb32' for `C.CAIRO_FORMAT_ARGB32` in `cairo.image_surface()`.
 
 <div class="small">
 ------------------------------------------------------------------- -------------------------------------------------------------------
@@ -60,13 +59,13 @@ __drawing contexts__
 `cr:save()`                                                         [save state (push to stack)][cairo_save]
 `cr:restore()`                                                      [restore state (pop from stack)][cairo_restore]
 __sources__
-`cr:rgb(r, g, b)`                                                   [set RGB color as source][cairo_set_source_rgb]
-`cr:rgba(r, g, b, a)`                                               [set RGBA color as source][cairo_set_source_rgba]
-`cr:source([patt | sr, [x, y]]) /-> patt`                           [get/set pattern or surface as source][cairo_set_source]
-`cr:operator([operator]) /-> operator`                              [get/set operator][cairo_set_operator]
-`cr:mask(patt | sr[, x, y])`                                        [draw using pattern's (or surface's) alpha as a mask][cairo_mask]
+`cr:rgb(r, g, b)`                                                   [set a RGB color as source][cairo_set_source_rgb]
+`cr:rgba(r, g, b, a)`                                               [set a RGBA color as source][cairo_set_source_rgba]
+`cr:source([patt | sr, [x, y]]) /-> patt`                           [get/set a pattern or surface as source][cairo_set_source]
+`cr:operator([operator]) /-> operator`                              [get/set the compositing operator][cairo_set_operator]
+`cr:mask(patt | sr[, x, y])`                                        [draw using a pattern's (or surface's) alpha channel as a mask][cairo_mask]
 __groups__
-`cr:push_group([content])`                                          [redirect drawing to an intermediate surface][cairo_push_group_with_content]
+`cr:push_group([content])`                                          [redirect drawing to an intermediate surface][cairo_push_group]
 `cr:pop_group() -> patt`                                            [terminate the redirection and return it as pattern][cairo_pop_group]
 `cr:pop_group_to_source()`                                          [terminate the redirection and install it as pattern][cairo_pop_group_to_source]
 __transformations__
@@ -86,64 +85,69 @@ __paths__
 `cr:move_to(x, y)`                                                  [move the current point][cairo_move_to]
 `cr:line_to(x, y)`                                                  [add a line to the current path][cairo_line_to]
 `cr:curve_to(x1, y1, x2, y2, x3, y3)`                               [add a cubic bezier to the current path][cairo_curve_to]
-`cr:quad_curve_to(x1, y1, x2, y2)`                                  [add a quad bezier to the current path][cairo_quad_curve_to]
-`cr:arc(cx, cy, radius, a1, a2)`                                    [add an arc to the current path][cairo_arc]
+`cr:quad_curve_to(x1, y1, x2, y2)`                                  add a quad bezier to the current path
+`cr:arc(cx, cy, r, a1, a2)`                                         [add an arc to the current path][cairo_arc]
 `cr:arc_negative(cx, cy, r, a1, a2)`                                [add a negative arc to the current path][cairo_arc_negative]
-`cr:circle(cx, cy, r)`                                              [add a circle to the current path][cairo_circle]
-`cr:ellipse(cx, cy, rx, ry, rotation)`                              [add an ellipse to the current path][cairo_ellipse]
+`cr:circle(cx, cy, r)`                                              add a circle to the current path
+`cr:ellipse(cx, cy, rx, ry, rotation)`                              add an ellipse to the current path
 `cr:rel_move_to(x, y)`                                              [move the current point][cairo_rel_move_to]
 `cr:rel_line_to(x, y)`                                              [add a line to the current path][cairo_rel_line_to]
 `cr:rel_curve_to(x1, y1, x2, y2, x3, y3)`                           [add a cubic bezier to the current path][cairo_rel_curve_to]
-`cr:rel_quad_curve_to(x1, y1, x2, y2)`                              [add a quad bezier to the current path][cairo_rel_quad_curve_to]
+`cr:rel_quad_curve_to(x1, y1, x2, y2)`                              add a quad bezier to the current path
 `cr:rectangle(x, y, w, h)`                                          [add a rectangle to the current path][cairo_rectangle]
 `cr:close_path()`                                                   [close current path][cairo_close_path]
 `cr:copy_path() -> path`                                            [copy current path to a path object][cairo_copy_path]
 `cr:copy_path_flat() -> path`                                       [copy current path flattened][cairo_copy_path_flat]
 `cr:append_path(path)`                                              [append a path to current path][cairo_append_path]
-`cr:path_extents() -> x1, y1, x2, y2`                               [bouding box of current path][cairo_path_extents]
-`cr:current_point() -> x, y`                                        [return the current point][cairo_get_current_point]
+`cr:path_extents() -> x1, y1, x2, y2`                               [get the bouding box of the current path][cairo_path_extents]
+`cr:current_point() -> x, y`                                        [get the current point][cairo_get_current_point]
 `cr:has_current_point() -> t|f`                                     [check if there's a current point][cairo_has_current_point]
 __filling and stroking__
-`cr:paint()`                                                        [paint the source over surface][cairo_paint]
-`cr:paint_with_alpha(alpha)`                                        [paint the source with transparency][cairo_paint_with_alpha]
-`cr:stroke()`                                                       [stroke and discard the current path][cairo_stroke]
+`cr:paint()`                                                        [paint the current source within the current clipping region][cairo_paint]
+`cr:paint_with_alpha(alpha)`                                        [paint the current source with transparency][cairo_paint_with_alpha]
+`cr:stroke()`                                                       [stroke the current path and discard it][cairo_stroke]
 `cr:stroke_preserve()`                                              [stroke and keep the path][cairo_stroke_preserve]
-`cr:fill()`                                                         [fill and discard the current path][cairo_fill]
+`cr:fill()`                                                         [fill the current path and discard it][cairo_fill]
 `cr:fill_preserve()`                                                [fill and keep the path][cairo_fill_preserve]
 `cr:in_stroke(x, y) -> t|f`                                         [hit-test the stroke area][cairo_in_stroke]
 `cr:in_fill(x, y) -> t|f`                                           [hit-test the fill area][cairo_in_fill]
 `cr:in_clip(x, y) -> t|f`                                           [hit-test the clip area][cairo_in_clip]
-`cr:stroke_extents() -> x1, y1, x2, y2`                             [get the stroke extents][cairo_stroke_extents]
-`cr:fill_extents() -> x1, y1, x2, y2`                               [get the fill extents][cairo_fill_extents]
+`cr:stroke_extents() -> x1, y1, x2, y2`                             [get the bounding box of stroking the current path][cairo_stroke_extents]
+`cr:fill_extents() -> x1, y1, x2, y2`                               [get the bounding box of filling the current path][cairo_fill_extents]
 __clipping__
-`cr:reset_clip()`                                                   [remove all clipping][cairo_reset_clip]
-`cr:clip()`                                                         [clip and discard the current path][cairo_clip]
+`cr:clip()`                                                         [intersect the current path to the current clipping region and discard the path][cairo_clip]
 `cr:clip_preserve()`                                                [clip and keep the current path][cairo_clip_preserve]
+`cr:reset_clip()`                                                   [remove all clipping][cairo_reset_clip]
 `cr:clip_extents() -> x1, y1, x2, y2`                               [get the clip extents][cairo_clip_extents]
-`cr:copy_clip_rectangles() -> rlist`                                [get the clipping rectangles][cairo_copy_clip_rectangle_list]
+`cr:clip_rectangles() -> rlist`                                     [get the clipping rectangles][cairo_copy_clip_rectangle_list]
 __patterns__
-`patt:type() -> type`                                               [get the pattern type][cairo_get_type]
-`patt:matrix([mt]) /-> mt`                                          [get/set the matrix][cairo_set_matrix]
-`patt:extend([extend]) /-> extend`                                  [get/set the extend][cairo_set_extend]
-`patt:filter([filter]) /-> filter`                                  [get/set the filter][cairo_set_filter]
-`patt:surface() -> sr | nil`                                        [get the pattern's surface][cairo_get_surface]
-__color-filled patterns__
+`patt:type() -> type`                                               [get the pattern type][cairo_pattern_get_type]
+`patt:matrix([mt]) /-> mt`                                          [get/set the matrix][cairo_pattern_set_matrix]
+`patt:extend([extend]) /-> extend`                                  [get/set the extend][cairo_pattern_set_extend]
+`patt:filter([filter]) /-> filter`                                  [get/set the filter][cairo_pattern_set_filter]
+`patt:surface() -> sr | nil`                                        [get the pattern's surface][cairo_pattern_get_surface]
+__solid-color patterns__
 `cairo.rgb_pattern(r, g, b) -> patt`                                [create a matte color pattern][cairo_pattern_create_rgb]
 `cairo.rgba_pattern(r, g, b, a) -> patt`                            [create a transparent color pattern][cairo_pattern_create_rgba]
-`patt:rgba() -> r, g, b, a`                                         [get RGBA color][cairo_get_rgba]
-__linear gradient patterns__
+`patt:rgba() -> r, g, b, a`                                         [get the color of a solid color pattern][cairo_pattern_get_rgba]
+__gradient patterns__
 `cairo.linear_pattern(x0, y0, x1, y1) -> patt`                      [create a linear gradient][cairo_pattern_create_linear]
-`patt:add_color_stop_rgb(offset, r, g, b)`                          [add a RGB color stop][cairo_add_color_stop_rgb]
-`patt:add_color_stop_rgba(offset, r, g, b, a)`                      [add a RGBA color stop][cairo_add_color_stop_rgba]
-`patt:linear_points() -> x0, y0, x1, y1`                            [get points of linear gradient][cairo_get_linear_points]
-`patt:color_stop_count() -> n`                                      [get the number of color stops][cairo_get_color_stop_count]
-`patt:color_stop_rgba(i) -> offset, r, g, b, a`                     [get a color stop][cairo_get_color_stop_rgba]
-__radial gradient patterns__
 `cairo.radial_pattern(cx0, cy0, r0, cx1, cy1, r1) -> patt`          [create a radial gradient][cairo_pattern_create_radial]
-`patt:radial_circles() -> cx0, cy0, r0, cx1, cy1, r1`               [get circles of radial gradient][cairo_get_radial_circles]
-__raster patterns__
-`cairo.raster_source(data, content, w, h) -> patt`                  [create a pattern from a raster image][cairo_pattern_create_raster_source]
-`sr:pattern() -> patt`                                              [create a pattern from a surface][cairo_pattern_create_for_surface]
+`patt:linear_points() -> x0, y0, x1, y1`                            [get the endpoints of a linear gradient][cairo_pattern_get_linear_points]
+`patt:radial_circles() -> cx0, cy0, r0, cx1, cy1, r1`               [get the circles of radial gradient][cairo_pattern_get_radial_circles]
+`patt:add_color_stop_rgb(offset, r, g, b)`                          [add a RGB color stop][cairo_pattern_add_color_stop_rgb]
+`patt:add_color_stop_rgba(offset, r, g, b, a)`                      [add a RGBA color stop][cairo_pattern_add_color_stop_rgba]
+`patt:color_stop_count() -> n`                                      [get the number of color stops][cairo_pattern_get_color_stop_count]
+`patt:color_stop_rgba(i) -> offset, r, g, b, a`                     [get a color stop][cairo_pattern_get_color_stop_rgba]
+__surface patterns__
+`cairo.surface_pattern(sr) -> patt`                                 [create a surface-type pattern][cairo_pattern_create_for_surface]
+__raster-source patterns__
+`cairo.raster_source_pattern(data, content, w, h) -> patt`          [create a raster source-type pattern][cairo_pattern_create_raster_source]
+`patt:callback_data([data]) /-> data`                               [get/set callback data][cairo_raster_source_pattern_set_callback_data]
+`patt:acquire_function([func]) /-> func`                            [get/set the acquire function][cairo_raster_source_pattern_set_acquire]
+`patt:snapshot_function([func]) /-> func`                           [get/set the snapshot function][cairo_raster_source_pattern_set_snapshot]
+`patt:copy_function([func]) /-> func`                               [get/set the copy function][cairo_raster_source_pattern_set_copy]
+`patt:finish_function([func]) /-> func`                             [get/set the finish function][cairo_raster_source_pattern_set_finish]
 __mesh patterns__
 `cairo.mesh_pattern() -> patt`                                      [create a mesh pattern][cairo_pattern_create_mesh]
 `patt:begin_patch()`                                                [start a patch][cairo_mesh_pattern_begin_patch]
@@ -340,7 +344,7 @@ win32 fonts and freetype fonts.
 [cairo_set_operator]:                      http://cairographics.org/manual/cairo-cairo-t.html#cairo-set-operator
 [cairo_mask]:                              http://cairographics.org/manual/cairo-cairo-t.html#cairo-mask
 
-[cairo_push_group_with_content]:           http://cairographics.org/manual/cairo-cairo-t.html#cairo-push-group-with-content
+[cairo_push_group]:                        http://cairographics.org/manual/cairo-cairo-t.html#cairo-push-group
 [cairo_pop_group]:                         http://cairographics.org/manual/cairo-cairo-t.html#cairo-pop-group
 [cairo_pop_group_to_source]:               http://cairographics.org/manual/cairo-cairo-t.html#cairo-pop-group-to-source
 
@@ -374,8 +378,8 @@ win32 fonts and freetype fonts.
 [cairo_copy_path_flat]:                    http://cairographics.org/manual/cairo-Paths.html#cairo-copy-path-flat
 [cairo_append_path]:                       http://cairographics.org/manual/cairo-Paths.html#cairo-append-path
 [cairo_path_extents]:                      http://cairographics.org/manual/cairo-Paths.html#cairo-path-extents
-[cairo_has_current_point]:                 http://cairographics.org/manual/cairo-cairo-t.html#cairo-has-current-point
-[cairo_get_current_point]:                 http://cairographics.org/manual/cairo-cairo-t.html#cairo-get-current-point
+[cairo_has_current_point]:                 http://cairographics.org/manual/cairo-Paths.html#cairo-has-current-point
+[cairo_get_current_point]:                 http://cairographics.org/manual/cairo-Paths.html#cairo-get-current-point
 
 [cairo_paint]:                             http://cairographics.org/manual/cairo-cairo-t.html#cairo-paint
 [cairo_paint_with_alpha]:                  http://cairographics.org/manual/cairo-cairo-t.html#cairo-paint-with-alpha
@@ -389,8 +393,39 @@ win32 fonts and freetype fonts.
 [cairo_stroke_extents]:                    http://cairographics.org/manual/cairo-cairo-t.html#cairo-stroke-extents
 [cairo_fill_extents]:                      http://cairographics.org/manual/cairo-cairo-t.html#cairo-fill-extents
 
-[cairo_reset_clip]:                        http://cairographics.org/manual/cairo-cairo-t.html#cairo-reset-clip
 [cairo_clip]:                              http://cairographics.org/manual/cairo-cairo-t.html#cairo-clip
 [cairo_clip_preserve]:                     http://cairographics.org/manual/cairo-cairo-t.html#cairo-clip-preserve
+[cairo_reset_clip]:                        http://cairographics.org/manual/cairo-cairo-t.html#cairo-reset-clip
 [cairo_clip_extents]:                      http://cairographics.org/manual/cairo-cairo-t.html#cairo-clip-extents
 [cairo_copy_clip_rectangle_list]:          http://cairographics.org/manual/cairo-cairo-t.html#cairo-copy-clip-rectangle-list
+
+[cairo_pattern_get_type]:                  http://cairographics.org/manual/cairo-cairo-pattern-t.html#cairo-pattern-get-type
+[cairo_pattern_set_matrix]:                http://cairographics.org/manual/cairo-cairo-pattern-t.html#cairo-pattern-set-matrix
+[cairo_pattern_set_extend]:                http://cairographics.org/manual/cairo-cairo-pattern-t.html#cairo-pattern-set-extend
+[cairo_pattern_set_filter]:                http://cairographics.org/manual/cairo-cairo-pattern-t.html#cairo-pattern-set-filter
+[cairo_pattern_get_surface]:               http://cairographics.org/manual/cairo-cairo-pattern-t.html#cairo-pattern-get-surface
+
+[cairo_pattern_create_rgb]:                http://cairographics.org/manual/cairo-cairo-pattern-t.html#cairo-pattern-create-rgb
+[cairo_pattern_create_rgba]:               http://cairographics.org/manual/cairo-cairo-pattern-t.html#cairo-pattern-create-rgba
+[cairo_pattern_get_rgba]:                  http://cairographics.org/manual/cairo-cairo-pattern-t.html#cairo-pattern-get-rgba
+
+[cairo_pattern_create_linear]:             http://cairographics.org/manual/cairo-cairo-pattern-t.html#cairo-pattern-create-linear
+[cairo_pattern_add_color_stop_rgb]:        http://cairographics.org/manual/cairo-cairo-pattern-t.html#cairo-pattern-add-color-stop-rgb
+[cairo_pattern_add_color_stop_rgba]:       http://cairographics.org/manual/cairo-cairo-pattern-t.html#cairo-pattern-add-color-stop-rgba
+[cairo_pattern_get_linear_points]:         http://cairographics.org/manual/cairo-cairo-pattern-t.html#cairo-pattern-get-linear-points
+[cairo_pattern_get_color_stop_count]:      http://cairographics.org/manual/cairo-cairo-pattern-t.html#cairo-pattern-get-color-stop-count
+[cairo_pattern_get_color_stop_rgba]:       http://cairographics.org/manual/cairo-cairo-pattern-t.html#cairo-pattern-get-color-stop-rgba
+
+[cairo_pattern_create_radial]:             http://cairographics.org/manual/cairo-cairo-pattern-t.html#cairo-pattern-create-radial
+[cairo_pattern_get_radial_circles]:        http://cairographics.org/manual/cairo-cairo-pattern-t.html#cairo-pattern-get-radial-circles
+
+[cairo_pattern_create_for_surface]:        http://cairographics.org/manual/cairo-cairo-pattern-t.html#cairo-pattern-create-for-surface
+
+[cairo_pattern_create_raster_source]:             http://cairographics.org/manual/cairo-Raster-Sources.html#cairo-raster-source-pattern-create-raster-source
+[cairo_raster_source_pattern_set_callback_data]:  http://cairographics.org/manual/cairo-Raster-Sources.html#cairo-raster-source-pattern-set-callback-data
+[cairo_raster_source_pattern_set_acquire]:        http://cairographics.org/manual/cairo-Raster-Sources.html#cairo-raster-source-pattern-set-acquire
+[cairo_raster_source_pattern_set_snapshot]:       http://cairographics.org/manual/cairo-Raster-Sources.html#cairo-raster-source-pattern-set-snapshot
+[cairo_raster_source_pattern_set_copy]:           http://cairographics.org/manual/cairo-Raster-Sources.html#cairo-raster-source-pattern-set-copy
+[cairo_raster_source_pattern_set_finish]:         http://cairographics.org/manual/cairo-Raster-Sources.html#cairo-raster-source-pattern-set-finish
+
+[cairo_pattern_create_mesh]:

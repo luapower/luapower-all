@@ -522,7 +522,7 @@ cr.reset_clip = C.cairo_reset_clip
 cr.clip = C.cairo_clip
 cr.clip_preserve = C.cairo_clip_preserve
 cr.clip_extents = d4out_func(C.cairo_clip_extents)
-cr.copy_clip_rectangles = ref_func(C.cairo_copy_clip_rectangle_list, C.cairo_rectangle_list_destroy)
+cr.clip_rectangles = ref_func(C.cairo_copy_clip_rectangle_list, C.cairo_rectangle_list_destroy)
 
 local rl = {}
 
@@ -997,7 +997,7 @@ patt.callback_data = getset_func(
 
 local acquire_buf = ffi.new'cairo_raster_source_acquire_func_t[1]'
 local release_buf = ffi.new'cairo_raster_source_release_func_t[1]'
-patt.acquire = function(patt, acquire, release)
+patt.acquire_function = function(patt, acquire, release)
 	if acquire then
 		C.cairo_raster_source_pattern_set_acquire(patt, acquire, release)
 	else
@@ -1006,15 +1006,15 @@ patt.acquire = function(patt, acquire, release)
 	end
 end
 
-patt.snapshot = getset_func(
+patt.snapshot_function = getset_func(
 	C.cairo_raster_source_pattern_get_snapshot,
 	C.cairo_raster_source_pattern_set_snapshot)
 
-patt.copy = getset_func(
+patt.copy_function = getset_func(
 	C.cairo_raster_source_pattern_get_copy,
 	C.cairo_raster_source_pattern_set_copy)
 
-patt.finish = getset_func(
+patt.finish_function = getset_func(
 	C.cairo_raster_source_pattern_get_finish,
 	C.cairo_raster_source_pattern_set_finish)
 
