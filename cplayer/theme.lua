@@ -82,7 +82,7 @@ function player:parse_color(c)
 end
 
 function player:setcolor(color)
-	self.cr:set_source_rgba(parse_color(self.theme[color] or color))
+	self.cr:rgba(parse_color(self.theme[color] or color))
 end
 
 --theme api / fonts
@@ -119,8 +119,8 @@ end
 
 function player:setfont(font)
 	font = self:parse_font(self.theme[font] or font or self.theme.default_font)
-	self.cr:select_font_face(font.face, 0, 0)
-	self.cr:set_font_size(font.size)
+	self.cr:select_font_face(font.face)
+	self.cr:font_size(font.size)
 	font.extents = font.extents or self.cr:font_extents()
 	return font
 end
@@ -134,7 +134,7 @@ end
 
 function player:stroke(color, line_width)
 	self:setcolor(color or 'normal_fg')
-	self.cr:set_line_width(line_width or 1)
+	self.cr:line_width(line_width or 1)
 	self.cr:stroke()
 end
 

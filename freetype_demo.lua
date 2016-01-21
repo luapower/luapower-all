@@ -29,18 +29,18 @@ function player:render_glyph(face, glyph_index, glyph_size, x, y, t, i)
 		bitmap = glyph.library:new_bitmap()
 		glyph.library:convert_bitmap(glyph.bitmap, bitmap, 4)
 	end
-	local cairo_format = cairo.CAIRO_FORMAT_A8
-	local cairo_stride = cairo.cairo_format_stride_for_width(cairo_format, bitmap.width)
+	local cairo_format = 'a8'
+	local cairo_stride = cairo.stride('a8', bitmap.width)
 
 	assert(bitmap.pixel_mode == ft.FT_PIXEL_MODE_GRAY)
 	assert(bitmap.pitch == cairo_stride)
 
-	local image = cairo.cairo_image_surface_create_for_data(
-		bitmap.buffer,
-		cairo_format,
-		bitmap.width,
-		bitmap.rows,
-		cairo_stride)
+	local image = cairo.image_surface{
+		data = bitmap.buffer,
+		format = 'g8',
+		w = bitmap.width,
+		h = bitmap.rows,
+		stride = cairo_stride}
 
 	x = x + glyph.bitmap_left
 	y = y - glyph.bitmap_top
@@ -50,7 +50,7 @@ function player:render_glyph(face, glyph_index, glyph_size, x, y, t, i)
 	end
 
 	self:setcolor'normal_fg'
-	self.cr:mask_surface(image, x, y)
+	self.cr:mask(image, x, y)
 
 	image:free()
 	if glyph.bitmap ~= bitmap then
@@ -266,14 +266,14 @@ function player:on_render(cr)
 
 	--draw a gradient over the top of the charmap for kicks
 	do
-		local gradient = cairo.cairo_pattern_create_linear(0, fade_y, 0, fade_y + fade_h)
+		local gradient = cairo.linear_pattern(0, fade_y, 0, fade_y + fade_h)
 		local r,g,b = self:parse_color(self.theme.window_bg)
 		gradient:add_color_stop_rgba(0.5, r,g,b,1)
 		gradient:add_color_stop_rgba(1.0, r,g,b,0)
-		self.cr:set_source(gradient)
+		self.cr:source(gradient)
 		self.cr:rectangle(0, fade_y, self.w - scroll_w, fade_h)
 		self.cr:fill()
-		gradient:destroy()
+		gradient:unref()
 	end
 
 	face:free()

@@ -9,7 +9,7 @@ function player:checkerboard(sz)
 	for y=0,h/sz do
 		for x=0,w/sz do
 			cr:rectangle(x * sz, y * sz, sz, sz)
-			cr:set_source_rgba(.5, .5, .5, 0.2 * ((x + y % 2) % 2))
+			cr:rgba(.5, .5, .5, 0.2 * ((x + y % 2) % 2))
 			cr:fill()
 		end
 	end

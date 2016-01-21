@@ -3,7 +3,6 @@ local hb = require'harfbuzz'
 local ft = require'freetype'
 local cairo = require'cairo'
 local stdio = require'stdio'
-require'cairo_ft'
 
 local player = require'cplayer'
 
@@ -47,15 +46,15 @@ end
 function player:draw_glyphs(x, y, cairo_glyphs, glyph_count, cairo_face, size, use_show_glyphs)
 	local cr = self.cr
 	cr:translate(x, y)
-	cr:set_font_face(cairo_face)
-	cr:set_font_size(size)
+	cr:font_face(cairo_face)
+	cr:font_size(size)
 	self:setcolor'normal_fg'
 	if use_show_glyphs then
 		cr:show_glyphs(cairo_glyphs, glyph_count); --NOTE: does not support subpixel positioning
 	else
 		cr:glyph_path(cairo_glyphs, glyph_count); cr:fill() --NOTE: extremely slow but supports subpixel positioning
 	end
-	cr:set_font_face(nil)
+	cr:font_face(cairo.NULL)
 	cr:translate(-x, -y)
 end
 
@@ -69,7 +68,7 @@ ffi.gc(ft_lib, nil)
 
 local function font(filename, load_flags)
 	local ft_face = ft_lib:new_face(filename)
-	local cairo_face = cairo.cairo_ft_font_face_create_for_ft_face(ft_face, load_flags or 0)
+	local cairo_face = cairo.ft_font_face(ft_face, load_flags or 0)
 	local hb_font = hb.hb_ft_font_create(ft_face, nil)
 	ffi.gc(ft_face, nil)
 	ffi.gc(cairo_face, nil)
@@ -84,11 +83,11 @@ local dejavu_autohint = font('media/fonts/DejaVuSerif.ttf', ft.FT_LOAD_FORCE_AUT
 
 local dark = true
 local selected_font = dejavu_hinted
-local antialias = cairo.CAIRO_ANTIALIAS_DEFAULT
+local antialias = 'default'
 local sub = 0
-local font_options = cairo.cairo_font_options_create()
-local lcd_filter = cairo.CAIRO_LCD_FILTER_DEFAULT
-local round_glyph_pos = cairo.CAIRO_ROUND_GLYPH_POS_OFF
+local font_options = cairo.font_options()
+local lcd_filter = 'default'
+local round_glyph_pos = 'off'
 local use_show_glyphs = true
 
 function player:on_render(cr)
@@ -100,52 +99,30 @@ function player:on_render(cr)
 	antialias = self:mbutton{id = 'antialias',
 		x = 100, y = 40, w = 600, h = 24,
 		values = {
-			cairo.CAIRO_ANTIALIAS_DEFAULT,
-			cairo.CAIRO_ANTIALIAS_NONE,
-			cairo.CAIRO_ANTIALIAS_GRAY,
-			cairo.CAIRO_ANTIALIAS_SUBPIXEL,
-			cairo.CAIRO_ANTIALIAS_FAST,
-			cairo.CAIRO_ANTIALIAS_GOOD,
-			cairo.CAIRO_ANTIALIAS_BEST
-		},
-		texts = {
-			[cairo.CAIRO_ANTIALIAS_DEFAULT] = 'default',
-			[cairo.CAIRO_ANTIALIAS_NONE] = 'none',
-			[cairo.CAIRO_ANTIALIAS_GRAY] = 'gray',
-			[cairo.CAIRO_ANTIALIAS_SUBPIXEL] = 'subpixel',
-			[cairo.CAIRO_ANTIALIAS_FAST] = 'fast',
-			[cairo.CAIRO_ANTIALIAS_GOOD] = 'good',
-			[cairo.CAIRO_ANTIALIAS_BEST] = 'best',
+			'default',
+			'none',
+			'gray',
+			'subpixel',
+			'fast',
+			'good',
+			'best',
 		},
 		selected = antialias}
 
 	round_glyph_pos = self:mbutton{id = 'round_glyph_pos',
 		x = 410, y = 10, w = 200, h = 24,
-		values = {
-			cairo.CAIRO_ROUND_GLYPH_POS_ON,
-			cairo.CAIRO_ROUND_GLYPH_POS_OFF
-		},
-		texts = {
-			[cairo.CAIRO_ROUND_GLYPH_POS_ON] = 'round glyph pos',
-			[cairo.CAIRO_ROUND_GLYPH_POS_OFF] = 'exact glyph pos',
-		},
+		values = {'on', 'off'},
+		texts = {on = 'round glyph pos', off = 'exact glyph pos'},
 		selected = round_glyph_pos}
 
 	lcd_filter = self:mbutton{id = 'lcd_filter',
 		x = 620, y = 10, w = 400, h = 24,
 		values = {
-			cairo.CAIRO_LCD_FILTER_DEFAULT,
-			cairo.CAIRO_LCD_FILTER_NONE,
-			cairo.CAIRO_LCD_FILTER_INTRA_PIXEL,
-			cairo.CAIRO_LCD_FILTER_FIR3,
-			cairo.CAIRO_LCD_FILTER_FIR5,
-		},
-		texts = {
-			[cairo.CAIRO_LCD_FILTER_DEFAULT] = 'default',
-			[cairo.CAIRO_LCD_FILTER_NONE] = 'none',
-			[cairo.CAIRO_LCD_FILTER_INTRA_PIXEL] = 'intra-pixel',
-			[cairo.CAIRO_LCD_FILTER_FIR3] = 'fir3',
-			[cairo.CAIRO_LCD_FILTER_FIR5] = 'fir5',
+			'default',
+			'none',
+			'intra_pixel',
+			'fir3',
+			'fir5',
 		},
 		selected = lcd_filter}
 
@@ -154,11 +131,11 @@ function player:on_render(cr)
 											texts = {[true] = 'cairo_show_glyphs', [false] = 'cairo_glyph_path'},
 											selected = use_show_glyphs}
 
-	cr:set_antialias(antialias)
-	font_options:set_lcd_filter(lcd_filter)
-	font_options:set_antialias(antialias)
-	font_options:set_round_glyph_positions(round_glyph_pos)
-	cr:set_font_options(font_options)
+	cr:antialias(antialias)
+	font_options:lcd_filter(lcd_filter)
+	font_options:antialias(antialias)
+	font_options:round_glyph_positions(round_glyph_pos)
+	cr:font_options(font_options)
 
 	selected_font = self:mbutton{id = 'font',
 		x = 100, y = 10, w = 300, h = 24,

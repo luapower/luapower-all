@@ -77,10 +77,8 @@ function player:on_render(cr)
 
 	math.randomseed(seed)
 
-	cr:set_fill_rule(even_odd and
-		cairo.C.CAIRO_FILL_RULE_EVEN_ODD or
-		cairo.C.CAIRO_FILL_RULE_WINDING)
-	cr:set_line_width(1)
+	cr:fill_rule(even_odd and 'even_odd' or 'winding')
+	cr:line_width(1)
 
 	local scale = 1000000
 
@@ -94,12 +92,12 @@ function player:on_render(cr)
 		cr:close_path()
 		if fr then
 			fr, fg, fb, fa = fr or 1, fg or 1, fb or 1, fa or 1
-			cr:set_source_rgba(fr, fg, fb, fa)
+			cr:rgba(fr, fg, fb, fa)
 			cr:fill_preserve()
 		end
 		if sr then
 			sr, sg, sb, sa = sr or 1, sg or 1, sb or 1, sa or 1
-			cr:set_source_rgba(sr, sg, sb, sa)
+			cr:rgba(sr, sg, sb, sa)
 			cr:stroke()
 		end
 	end

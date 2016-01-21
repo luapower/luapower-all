@@ -126,8 +126,8 @@ function player:on_render(cr)
 	if true then
 		local x,y,w,h = path.bounding_box(p, mt)
 		draw{'rect',x,y,w,h}
-		cr:set_source_rgba(1,1,1,.5)
-		cr:set_line_width(1)
+		cr:rgba(1,1,1,.5)
+		cr:line_width(1)
 		cr:stroke()
 	end
 
@@ -139,8 +139,8 @@ function player:on_render(cr)
 			local subp = path.extract_subpath(p, i, j)
 			local x,y,w,h = path.bounding_box(subp, mt)
 			draw{'rect',x,y,w,h}
-			cr:set_source_rgba(1,1,1,.5)
-			cr:set_line_width(1)
+			cr:rgba(1,1,1,.5)
+			cr:line_width(1)
 			cr:stroke()
 		end
 	end
@@ -148,7 +148,7 @@ function player:on_render(cr)
 	--draw as is
 	if true then
 		draw(p, mt)
-		cr:set_source_rgba(1,1,0,1)
+		cr:rgba(1,1,0,1)
 		cr:fill()
 	end
 
@@ -156,8 +156,8 @@ function player:on_render(cr)
 	if true then
 		local ap = path.to_abs(p)
 		draw(ap, mt)
-		cr:set_source_rgba(1,1,0,1)
-		cr:set_line_width(7)
+		cr:rgba(1,1,0,1)
+		cr:line_width(7)
 		cr:stroke()
 	end
 
@@ -165,17 +165,17 @@ function player:on_render(cr)
 	if true then
 		local rp = path.to_rel(p)
 		draw(rp, mt)
-		cr:set_source_rgba(0,.2,1,1)
-		cr:set_line_width(4)
+		cr:rgba(0,.2,1,1)
+		cr:line_width(4)
 		cr:stroke()
 	end
 
 	--print total length
 	if true then
 		local len = path.length(p, mt)
-		cr:set_source_rgb(1,1,1)
+		cr:rgb(1,1,1)
 		cr:move_to(self.window.client_w - 260, 20)
-		cr:set_font_size(18)
+		cr:font_size(18)
 		cr:text_path(string.format('length: %4.20f', len))
 		cr:fill()
 	end
@@ -186,15 +186,15 @@ function player:on_render(cr)
 		if x0 then
 			local d,x,y,i,t = path.hit(x0, y0, p, mt)
 			cr:circle(x,y,5)
-			cr:set_source_rgb(1,1,0)
+			cr:rgb(1,1,0)
 			cr:fill()
 
 			cr:move_to(x,y+16)
 			cr:text_path(string.format(t and '(%d) %s: %g' or '[%d] %s', i, p[i], t))
-			cr:set_line_width(1)
-			cr:set_source_rgb(0,0,0)
+			cr:line_width(1)
+			cr:rgb(0,0,0)
 			cr:stroke_preserve()
-			cr:set_source_rgb(1,1,0)
+			cr:rgb(1,1,0)
 			cr:fill()
 
 			--if self.mouse_last.x ==

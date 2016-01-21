@@ -190,7 +190,7 @@ function player:on_render(cr)
 			cx = cx + w + 10
 		end
 
-		local ok, err = pcall(function()
+		local ok, err = xpcall(function()
 
 			local t0 = glue.merge({
 				header_only = true,
@@ -200,7 +200,7 @@ function player:on_render(cr)
 			if not allow_image(image) then return end
 
 			libpng.load(t)
-		end)
+		end, debug.traceback)
 		if not ok then
 			t.render_scan(nil, true, 1, err)
 		end

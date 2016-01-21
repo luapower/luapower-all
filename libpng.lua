@@ -1,4 +1,7 @@
+
 --libpng binding for libpng 1.5.6+
+--Written by Cosmin Apreutesei. Public Domain.
+
 local ffi = require'ffi'
 local bit = require'bit'
 local glue = require'glue' --fcall
@@ -238,7 +241,7 @@ local function load(t)
 		img.format = info.format
 
 		--compute the stride
-		img.stride = C.png_get_rowbytes(png_ptr, info_ptr)
+		img.stride = tonumber(C.png_get_rowbytes(png_ptr, info_ptr))
 		if t.accept and t.accept.stride_aligned then
 			img.stride = pad_stride(img.stride)
 		end

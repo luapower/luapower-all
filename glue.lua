@@ -291,7 +291,7 @@ function glue.inherit(t, parent)
 end
 
 --get the value of a table field, and if the field is not present in the
---table, create it as an empty table, and return nil.
+--table, create it as an empty table, and return it.
 function glue.attr(t, k, v0)
 	local v = t[k]
 	if v == nil then

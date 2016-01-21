@@ -15,8 +15,8 @@ function player:label(t)
 	local color = t.color or 'normal_fg'
 
 	local cr = self.cr
-	cr:select_font_face(font_face, 0, 0)
-	cr:set_font_size(font_size)
+	cr:select_font_face(font_face)
+	cr:font_size(font_size)
 	self:setcolor(color)
 
 	local extents = cr:text_extents(text)

@@ -17,18 +17,17 @@ function player:image(t)
 		img = bitmap.new(src.w, src.h, 'bgra8', false, true)
 		bitmap.paint(src, img)
 	end
-	local surface = cairo.cairo_image_surface_create_for_data(img.data, cairo.CAIRO_FORMAT_ARGB32,
-																					img.w, img.h, img.stride)
+	local surface = cairo.image_surface(img)
 
-	local mt = self.cr:get_matrix()
+	local mt = self.cr:matrix()
 	self.cr:translate(x, y)
 	if t.scale then
 		self.cr:scale(t.scale, t.scale)
 	end
-	self.cr:set_source_surface(surface, 0, 0)
+	self.cr:source(surface)
 	self.cr:paint()
-	self.cr:set_source_rgb(0,0,0)
-	self.cr:set_matrix(mt)
+	self.cr:rgb(0,0,0)
+	self.cr:matrix(mt)
 
 	surface:free()
 end

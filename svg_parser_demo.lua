@@ -8,7 +8,7 @@ local CairoSGPanel = require'winapi.cairosgpanel'
 local main = winapi.Window{
 	autoquit = true,
 	visible = false,
-	title = cairo.cairo_version_string(),
+	title = cairo.version_string(),
 }
 
 local panel = CairoSGPanel{

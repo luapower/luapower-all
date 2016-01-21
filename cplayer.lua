@@ -179,7 +179,7 @@ function player:window(t)
 		self.cr = context
 
 		--set the window title
-		local title = self.title or string.format('Cairo %s', cairo.cairo_version_string())
+		local title = self.title or string.format('Cairo %s', cairo.version_string())
 		if self.continuous_rendering then
 			title = string.format('%s - %d fps', title, fps())
 		end

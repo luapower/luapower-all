@@ -26,7 +26,7 @@ function player:on_render(cr)
 
 	cr:rectangle(rx, ry, rw, rh)
 	cr:clip()
-	cr:set_source_rgba(1,1,1,0.1)
+	cr:rgba(1,1,1,0.1)
 	cr:paint()
 
 	if self:button{id = 'apples_btn', x = rx - t.vx, y = ry - t.vy, w = 100, h = 24, text = 'go apples!'} then

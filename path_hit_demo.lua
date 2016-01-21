@@ -12,12 +12,12 @@ local i = 0
 function player:on_render(cr)
 	i=i+1
 	cr:identity_matrix()
-	cr:set_source_rgb(0,0,0)
+	cr:rgb(0,0,0)
 	cr:paint()
-	cr:set_line_width(1)
-	cr:set_fill_rule(cairo.CAIRO_FILL_RULE_EVEN_ODD)
-	cr:select_font_face('Fixedsys', 0, 0)
-	cr:set_font_size(12)
+	cr:line_width(1)
+	cr:fill_rule'even_odd'
+	cr:select_font_face('Fixedsys')
+	cr:font_size(12)
 
 	local function hex_color(s)
 		local r,g,b,a = tonumber(s:sub(2,3), 16), tonumber(s:sub(4,5), 16),
@@ -25,12 +25,12 @@ function player:on_render(cr)
 		return r/255, g/255, b/255, a/255
 	end
 	local function stroke(color, width)
-		cr:set_source_rgba(hex_color(color or '#ffffff'))
-		cr:set_line_width(width or 1)
+		cr:rgba(hex_color(color or '#ffffff'))
+		cr:line_width(width or 1)
 		cr:stroke()
 	end
 	local function fill(color)
-		cr:set_source_rgba(hex_color(color or '#ffffff'))
+		cr:rgba(hex_color(color or '#ffffff'))
 		cr:fill()
 	end
 

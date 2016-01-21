@@ -20,7 +20,7 @@ function player:on_render(cr)
 	local cpx, cpy = arc.endpoints(cx, cy, rx, ry, start_angle, sweep_angle, rotation)
 	cr:move_to(cpx, cpy)
 	local function write(_, x2, y2, x3, y3, x4, y4)
-		cpx, cpy = cr:get_current_point()
+		cpx, cpy = cr:current_point()
 		cr:circle(cpx, cpy, 2)
 		cr:circle(x4, y4, 2)
 		cr:move_to(cpx, cpy)
@@ -28,7 +28,7 @@ function player:on_render(cr)
 	end
 	arc.to_bezier3(write, cx, cy, rx, ry, start_angle, sweep_angle, rotation)
 
-	cr:set_source_rgb(1,1,1)
+	cr:rgb(1,1,1)
 	cr:stroke()
 
 	local px, py, tx, ty = arc.tangent_vector(1, cx, cy, rx, ry, start_angle, sweep_angle, rotation)

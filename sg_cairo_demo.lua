@@ -217,7 +217,7 @@ end
 
 local highlight_stroke = {type = 'color', 1,0,0,1}
 
-local player = require'sg_cplayer'
+local player = require'cplayer'
 
 function player:on_render()
 	measuring_box.path = {'rect', box2rect(self:measure(measuring_subject))}
