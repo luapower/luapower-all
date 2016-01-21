@@ -1472,9 +1472,8 @@ end
 function bitmap:cairo()
 	local cairo = require'cairo'
 	if not self.cairo_surface then
-		self.cairo_surface = cairo.cairo_image_surface_create_for_data(
-			self.data, cairo.CAIRO_FORMAT_ARGB32, self.w, self.h, self.stride)
-		self.cairo_context = self.cairo_surface:create_context()
+		self.cairo_surface = cairo.image_surface(self)
+		self.cairo_context = self.cairo_surface:context()
 	end
 	return self.cairo_context
 end

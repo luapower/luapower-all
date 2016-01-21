@@ -5,9 +5,8 @@ local cairo = require'cairo'
 
 local function bitmap_cairo(w, h)
 	local bmp = bitmap.new(w, h, 'bgra8', false, true)
-	local surface = cairo.cairo_image_surface_create_for_data(
-		bmp.data, cairo.CAIRO_FORMAT_ARGB32, bmp.w, bmp.h, bmp.stride)
-	local context = surface:create_context()
+	local surface = cairo.image_surface(bmp)
+	local context = surface:context()
 	return {surface = surface, context = context, bitmap = bmp}
 end
 
@@ -24,15 +23,15 @@ function player:on_render(cr)
 		scr:move_to(25, 25)
 		scr:line_to(75, 50)
 		scr:line_to(50, 75)
-		scr:set_source_rgba(1, 0.4, 0, 1)
+		scr:rgba(1, 0.4, 0, 1)
 		scr:fill()
 
 		--dest: the "&" character
 		local dcr = dst.context
 		dcr:move_to(30, 70)
-		dcr:set_font_size(60)
+		dcr:font_size(60)
 		dcr:text_path('&')
-		dcr:set_source_rgba(0, 0.4, 1, 1)
+		dcr:rgba(0, 0.4, 1, 1)
 		dcr:fill()
 
 		bitmap.blend(src.bitmap, dst.bitmap, op)

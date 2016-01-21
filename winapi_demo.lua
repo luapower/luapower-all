@@ -235,7 +235,7 @@ local cairopanel = CairoPanel{w = 100, h = 100, x = 140, y = 70, parent = win}
 
 local r = 0
 function cairopanel:on_cairo_paint(cr)
-	cr:set_source_rgba(0,0,0,1)
+	cr:rgba(0,0,0,1)
 	cr:paint()
 
 	cr:identity_matrix()
@@ -245,25 +245,25 @@ function cairopanel:on_cairo_paint(cr)
 	cr:translate(-self.w/2, -self.h/2)
 	cr:scale(0.4, 0.4)
 
-	cr:set_source_rgba(0,0.7,0,1)
+	cr:rgba(0,0.7,0,1)
 
-	cr:set_line_width (40.96)
+	cr:line_width(40.96)
 	cr:move_to(76.8, 84.48)
 	cr:rel_line_to(51.2, -51.2)
 	cr:rel_line_to(51.2, 51.2)
-	cr:set_line_join(cairo.CAIRO_LINE_JOIN_MITER)
+	cr:line_join'miter'
 	cr:stroke()
 
 	cr:move_to(76.8, 161.28)
 	cr:rel_line_to(51.2, -51.2)
 	cr:rel_line_to(51.2, 51.2)
-	cr:set_line_join(cairo.CAIRO_LINE_JOIN_BEVEL)
+	cr:line_join'bevel'
 	cr:stroke()
 
 	cr:move_to(76.8, 238.08)
 	cr:rel_line_to(51.2, -51.2)
 	cr:rel_line_to(51.2, 51.2)
-	cr:set_line_join(cairo.CAIRO_LINE_JOIN_ROUND)
+	cr:line_join'round'
 	cr:stroke()
 end
 

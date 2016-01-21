@@ -14,10 +14,9 @@ require'winapi.bitmappanel'
 CairoPanel = class(BitmapPanel)
 
 function CairoPanel:on_bitmap_create(bitmap)
-	self.__cairo_surface = cairo.cairo_image_surface_create_for_data(
-		bitmap.data, cairo.CAIRO_FORMAT_ARGB32, bitmap.w, bitmap.h, bitmap.stride)
+	self.__cairo_surface = cairo.image_surface(bitmap)
 	self:on_cairo_create_surface(self.__cairo_surface)
-	self.__cairo_context = self.__cairo_surface:create_context()
+	self.__cairo_context = self.__cairo_surface:context()
 end
 
 function CairoPanel:on_bitmap_free(bitmap)
@@ -50,30 +49,30 @@ if not ... then
 		anchors = {left = true, top = true, right = true, bottom = true},
 	}
 	function bp:on_cairo_paint(cr)
-		cr:set_source_rgba(0,0,0,1)
+		cr:rgba(0,0,0,1)
 		cr:paint()
 
 		cr:identity_matrix()
 		cr:translate((bp.w - 250) / 2, (bp.h - 250) / 2)
-		cr:set_source_rgba(0,0.7,0,1)
+		cr:rgba(0,0.7,0,1)
 
-		cr:set_line_width (40.96)
+		cr:line_width(40.96)
 		cr:move_to(76.8, 84.48)
 		cr:rel_line_to(51.2, -51.2)
 		cr:rel_line_to(51.2, 51.2)
-		cr:set_line_join(cairo.CAIRO_LINE_JOIN_MITER)
+		cr:line_join'miter'
 		cr:stroke()
 
 		cr:move_to(76.8, 161.28)
 		cr:rel_line_to(51.2, -51.2)
 		cr:rel_line_to(51.2, 51.2)
-		cr:set_line_join(cairo.CAIRO_LINE_JOIN_BEVEL)
+		cr:line_join'bevel'
 		cr:stroke()
 
 		cr:move_to(76.8, 238.08)
 		cr:rel_line_to(51.2, -51.2)
 		cr:rel_line_to(51.2, 51.2)
-		cr:set_line_join(cairo.CAIRO_LINE_JOIN_ROUND)
+		cr:line_join'round'
 		cr:stroke()
 	end
 	win:invalidate()

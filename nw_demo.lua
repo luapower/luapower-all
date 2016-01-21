@@ -114,8 +114,8 @@ function win:repaint()
 
 	cr:reset_clip()
 	cr:identity_matrix()
-	cr:set_operator(cairo.CAIRO_OPERATOR_SOURCE)
-	cr:set_source_rgba(0, 0, 0, 0)
+	cr:operator'source'
+	cr:rgba(0, 0, 0, 0)
 	cr:paint()
 	cr:scale(scale, scale)
 	cr:translate(0.5, 0.5)
@@ -125,15 +125,15 @@ function win:repaint()
 		--outer border 1
 		local r = border_radius
 		round_rect(cr, r, r, r, r, box2d.offset(0, 0, 0, w, h))
-		cr:set_source_rgba(unpack(border_outer_color1))
-		cr:set_line_width(1)
+		cr:rgba(unpack(border_outer_color1))
+		cr:line_width(1)
 		cr:stroke()
 
 		--outer border 2
 		local r = border_radius-1
 		round_rect(cr, r, r, r, r, box2d.offset(-1, 0, 0, w, h))
-		cr:set_source_rgba(unpack(border_outer_color2))
-		cr:set_line_width(1)
+		cr:rgba(unpack(border_outer_color2))
+		cr:line_width(1)
 		cr:stroke()
 
 		--clipping region
@@ -144,7 +144,7 @@ function win:repaint()
 	end
 
 	--background
-	cr:set_source_rgba(1, 1, 1, 1)
+	cr:rgba(1, 1, 1, 1)
 	cr:paint()
 
 	--titlebar
@@ -156,22 +156,22 @@ function win:repaint()
 		cr:rel_line_to(w - titlebar_x, 0)
 		cr:rel_line_to(0, -titlebar_h - 0)
 		cr:close_path()
-		local pat = cairo.cairo_pattern_create_linear(0, 0, 0, titlebar_h)
+		local pat = cairo.linear_pattern(0, 0, 0, titlebar_h)
 		pat:add_color_stop_rgba(1, unpack(titlebar_color1))
 		pat:add_color_stop_rgba(0, unpack(titlebar_color2))
-		cr:set_source(pat)
+		cr:source(pat)
 		cr:fill()
-		pat:destroy()
+		pat:unref()
 	else
 		--buttons background
 		local r = border_radius
 		round_rect(cr, 0, r, r, 0, unpack(buttons_rect))
-		local pat = cairo.cairo_pattern_create_linear(0, 0, 0, titlebar_h)
+		local pat = cairo.linear_pattern(0, 0, 0, titlebar_h)
 		pat:add_color_stop_rgba(1, unpack(titlebar_color1))
 		pat:add_color_stop_rgba(0, unpack(titlebar_color2))
-		cr:set_source(pat)
+		cr:source(pat)
 		cr:fill()
-		pat:destroy()
+		pat:unref()
 	end
 
 	--buttons hover backgrounds
@@ -182,45 +182,45 @@ function win:repaint()
 		if self.min_hover then
 			local r = border_radius
 			round_rect(cr, 0, 0, r, 0, unpack(min_rect))
-			cr:set_source_rgba(unpack(hover_color))
+			cr:rgba(unpack(hover_color))
 			cr:fill()
 		end
 
 		if self.max_hover then
 			local r = border_radius
 			round_rect(cr, 0, 0, 0, 0, unpack(max_rect))
-			cr:set_source_rgba(unpack(hover_color))
+			cr:rgba(unpack(hover_color))
 			cr:fill()
 		end
 
 		if self.close_hover then
 			local r = border_radius
 			round_rect(cr, 0, r, 0, 0, unpack(close_rect))
-			cr:set_source_rgba(unpack(close_hover_color))
+			cr:rgba(unpack(close_hover_color))
 			cr:fill()
 		end
 
 	end
 
 	--buttons outline
-	cr:set_line_width(1)
+	cr:line_width(1)
 	local r = border_radius
 	round_rect(cr, 0, r, r, 0, unpack(buttons_rect))
-	cr:set_source_rgba(unpack(border_outer_color2))
+	cr:rgba(unpack(border_outer_color2))
 	cr:stroke()
 	local r = border_radius-.5
 	round_rect(cr, 0, r, r, 0, box2d.translate(-1, -1, unpack(buttons_rect)))
-	cr:set_source_rgba(unpack(border_outer_color1))
+	cr:rgba(unpack(border_outer_color1))
 	cr:stroke()
 
 	local function vline(xofs)
 		cr:move_to(buttons_rect[1] + xofs, buttons_rect[2])
 		cr:rel_line_to(0, buttons_rect[4] - 1.5)
-		cr:set_source_rgba(unpack(border_outer_color1))
+		cr:rgba(unpack(border_outer_color1))
 		cr:stroke()
 		cr:move_to(buttons_rect[1] + xofs + 1, buttons_rect[2])
 		cr:rel_line_to(0, buttons_rect[4] - 1.5)
-		cr:set_source_rgba(unpack(border_outer_color2))
+		cr:rgba(unpack(border_outer_color2))
 		cr:stroke()
 	end
 	vline(28)
@@ -229,23 +229,23 @@ function win:repaint()
 	local function min_icon(x, y, w, h, r)
 		x, y, w, h = buttons_rect[1] + x, buttons_rect[2] + y, w, h
 		round_rect(cr, r, r, r, r, box2d.offset(1, x, y, w, h))
-		cr:set_source_rgba(unpack(self.min_hover and hover_icon_color or icon_color))
+		cr:rgba(unpack(self.min_hover and hover_icon_color or icon_color))
 		cr:fill_preserve()
-		cr:set_source_rgba(unpack(icon_outline_color))
+		cr:rgba(unpack(icon_outline_color))
 		cr:stroke()
 	end
 	min_icon(8, buttons_h - 8, 11, 2, 1.5)
 
 	local function max_icon(x, y, w, h, r)
 		x, y, w, h = buttons_rect[1] + x, buttons_rect[2] + y, w, h
-		cr:set_fill_rule(cairo.CAIRO_FILL_RULE_EVEN_ODD)
+		cr:fill_rule'even_odd'
 		round_rect(cr, r, r, r, r, box2d.offset(1, x, y, w, h))
 		cr:new_sub_path()
 		round_rect(cr, r, r, r, r, box2d.offset(-2, x, y, w, h))
 		cr:close_path()
-		cr:set_source_rgba(unpack(self.max_hover and hover_icon_color or icon_color))
+		cr:rgba(unpack(self.max_hover and hover_icon_color or icon_color))
 		cr:fill_preserve()
-		cr:set_source_rgba(unpack(icon_outline_color))
+		cr:rgba(unpack(icon_outline_color))
 		cr:stroke()
 	end
 
@@ -277,9 +277,9 @@ function win:repaint()
 		cr:rel_line_to(-w, 0)
 		cr:rel_line_to(k, -k)
 		cr:close_path()
-		cr:set_source_rgba(unpack(self.close_hover and hover_icon_color or icon_color))
+		cr:rgba(unpack(self.close_hover and hover_icon_color or icon_color))
 		cr:fill_preserve()
-		cr:set_source_rgba(unpack(icon_outline_color))
+		cr:rgba(unpack(icon_outline_color))
 		cr:stroke()
 	end
 	close_icon(56+15, buttons_h - 13)
