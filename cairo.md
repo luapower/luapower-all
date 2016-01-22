@@ -153,39 +153,39 @@ __patterns__
 `patt:matrix([mt]) /-> mt`                                          [get/set the matrix][cairo_pattern_set_matrix]
 `patt:extend([extend]) /-> extend`                                  [get/set the extend][cairo_pattern_set_extend]
 `patt:filter([filter]) /-> filter`                                  [get/set the filter][cairo_pattern_set_filter]
-__toy text API__
-`cr:select_font_face(family, slant, weight)`                        [select a font face][cairo_select_font_face]
+__drawing text (toy API)__
+`cr:font_face(family[, slant[, weight]])`                           [select a font face][cairo_select_font_face]
 `cr:show_text(s)`                                                   [show text][cairo_show_text]
 `cr:text_path(s)`                                                   [add closed paths for text to the current path][cairo_text_path]
 `cr:text_extents(s) -> cairo_text_extents_t`                        [get text extents][cairo_text_extents]
+__drawing glyphs__
+`cr:font_face([face]) /-> face`                                     [get/set the font face][cairo_set_font_face]
+`cr:font_size(size)`                                                [set the font size][cairo_set_font_size]
+`cr:font_matrix([mt]) /-> mt`                                       [get/set the font matrix][cairo_set_font_matrix]
+`cr:show_glyphs(glyphs, #glyphs)`                                   [draw glyphs][cairo_show_glyphs]
+`cr:show_text_glyphs(s, [#s], g, #g, c, #c, f)`                     [draw glyphs with native cluster mapping][cairo_show_text_glyphs]
+`cr:glyph_path(glyphs, #glyphs)`                                    [add paths for the glyphs to the current path][cairo_glyph_path]
+`cr:glyph_extents(glyphs, #glyphs) -> cairo_text_extents_t`         [get the text extents of an array of glyphs][cairo_glyph_extents]
+`cr:font_extents() -> cairo_font_extents_t`                         [get the font extents of the current font][cairo_font_extents]
 __freetype fonts__
-`cairo.ft_font_face(ft_face, load_flags) -> face`                   [create a font face from a freetype handle][cairo_ft_font_face_create_for_ft_face]
+`cairo.ft_font_face(ft_face[, ft_flags]) -> face`                   [create a font face from a freetype handle][cairo_ft_font_face_create_for_ft_face]
 `face:synthesize_bold([t|f]) /-> t|f`                               [get/set synthethize bold flag][cairo_ft_font_face_set_synthesize]
 `face:synthesize_oblique([t|f]) /-> t|f`                            [get/set synthethize oblique flag][cairo_ft_font_face_set_synthesize]
 `sfont:lock_face() -> FT_Face`                                      [lock font face][cairo_ft_scaled_font_lock_face]
 `sfont:unlock_face()`                                               [unlock font face][cairo_ft_scaled_font_unlock_face]
-__fonts and text__
-`cr:font_size(size)`                                                [set font size][cairo_set_font_size]
-`cr:font_matrix([mt]) /-> mt`                                       [get/set font matrix][cairo_set_font_matrix]
-`cr:show_glyphs(glyphs, #glyphs)`                                   [show glyphs][cairo_show_glyphs]
-`cr:show_text_glyphs(s, [#s], gs, #gs, cs, #cs, f)`                 [show text glyphs][cairo_show_text_glyphs]
-`cr:glyph_path(glyphs, #glyphs)`                                    [ref][cairo_glyph_path]
-`cr:glyph_extents(glyphs, #glyphs) -> cairo_text_extents_t`         [ref][cairo_glyph_extents]
-`cr:font_extents() -> cairo_font_extents_t`                         [ref][cairo_font_extents]
-__font faces__
-`cr:font_face([face]) /-> face`                                     [get/set font face][cairo_set_font_face]
-`face:type() -> type`                                               [ref][cairo_font_face_get_type]
-`face:family() -> s`                                                [ref][cairo_font_face_toy_get_family]
-`face:slant() -> cairo_font_slant_t`                                [ref][cairo_font_face_toy_get_slant]
-`face:weight() -> cairo_font_weight_t`                              [ref][cairo_font_face_toy_get_weight]
+__toy fonts__
+`cairo.toy_font_face(family[, slant[, weight]]) -> face`            [select a font with the toy text API][cairo_toy_font_face_create]
+`face:family() -> family`                                           [get font family][cairo_font_face_toy_get_family]
+`face:slant() -> slant`                                             [get font slant][cairo_font_face_toy_get_slant]
+`face:weight() -> weight`                                           [get font weight][cairo_font_face_toy_get_weight]
 __callback-based fonts__
-`cairo.user_font_face() -> face`                                    [ref][cairo_user_font_face_create]
-`face:init_func(func)`                                              [ref][cairo_font_face_user_set_init_func]
-`face:render_glyph_func(func)`                                      [ref][cairo_font_face_user_set_render_glyph_func]
-`face:text_to_glyphs_func(func)`                                    [ref][cairo_font_face_user_set_text_to_glyphs_func]
-`face:unicode_to_glyph_func(func)`                                  [ref][cairo_font_face_user_set_unicode_to_glyph_func]
-`cairo.toy_font_face(family, slant, weight) -> face`                [ref][cairo_toy_font_face_create]
-`sfont:font_face() -> face`                                         [ref][cairo_scaled_font_get_font_face]
+`cairo.user_font_face() -> face`                                    [create a user font][cairo_user_font_face_create]
+`face:init_func([func]) /-> func`                                   [get/set the scaled-font init function][cairo_user_font_face_set_init_func]
+`face:render_glyph_func([func]) /-> func`                           [get/set the glyph rendering function][cairo_user_font_face_set_render_glyph_func]
+`face:text_to_glyphs_func([func]) /-> func`                         [get/set the text-to-glyphs function][cairo_user_font_face_set_text_to_glyphs_func]
+`face:unicode_to_glyph_func([func]) /-> func`                       [get/set the text-to-glyphs easy function][cairo_user_font_face_set_unicode_to_glyph_func]
+__fonts__
+`face:type() -> type`                                               [get font type][cairo_font_face_get_type]
 __scaled fonts__
 `face:scaled_font(mt, ctm, fopt) -> sfont`                          [create scaled font][cairo_font_face_create_scaled_font]
 `cr:scaled_font([sfont]) /-> sfont`                                 [get/set scaled font][cairo_set_scaled_font]
@@ -193,11 +193,12 @@ __scaled fonts__
 `sfont:extents() -> cairo_text_extents_t`                           [ref][cairo_scaled_font_extents]
 `sfont:text_extents(s) -> cairo_text_extents_t`                     [ref][cairo_scaled_font_text_extents]
 `sfont:glyph_extents(glyphs, #glyphs) -> cairo_text_extents_t`      [ref][cairo_scaled_font_glyph_extents]
-`sfont:text_to_glyphs(x, y, s, #s, gs, #gs, cs, #cs, cf) -> status` [ref][cairo_scaled_font_text_to_glyphs]
+`sfont:text_to_glyphs(x, y, s, #s, g, #g, c, #c, cf) -> t|nil,err`  [ref][cairo_scaled_font_text_to_glyphs]
 `sfont:font_matrix() -> mt`                                         [ref][cairo_scaled_font_get_font_matrix]
 `sfont:ctm()`                                                       [ref][cairo_scaled_font_get_ctm]
 `sfont:scale_matrix()`                                              [ref][cairo_scaled_font_get_scale_matrix]
 `sfont:font_options([fopt]) /-> fopt`                               [get scaled font options][cairo_scaled_font_get_font_options]
+`sfont:font_face() -> face`                                         [ref][cairo_scaled_font_get_font_face]
 __rasterization options__
 `cr:tolerance([tolerance]) /-> tolerance`                           [get/set tolerance][cairo_get_tolerance]
 `cr:antialias([antialias]) /-> antialias`                           [set the antialiasing mode][cairo_set_antialias]
@@ -458,18 +459,30 @@ The binding won't break if extensions are missing in the binary.
 [cairo_text_path]:                         http://cairographics.org/manual/cairo-Paths.html#cairo-text-path
 [cairo_text_extents]:                      http://cairographics.org/manual/cairo-text.html#cairo-text-extents
 
+[cairo_set_font_face]:                     http://cairographics.org/manual/cairo-text.html#cairo-set-font-face
+[cairo_set_font_size]:                     http://cairographics.org/manual/cairo-text.html#cairo-set-font-size
+[cairo_set_font_matrix]:                   http://cairographics.org/manual/cairo-text.html#cairo-set-font-matrix
+[cairo_show_glyphs]:                       http://cairographics.org/manual/cairo-text.html#cairo-show-glyphs
+[cairo_show_text_glyphs]:                  http://cairographics.org/manual/cairo-text.html#cairo-show-text-glyphs
+[cairo_glyph_path]:                        http://cairographics.org/manual/cairo-Paths.html#cairo-glyph-path
+[cairo_glyph_extents]:                     http://cairographics.org/manual/cairo-text.html#cairo-glyph-extents
+[cairo_font_extents]:                      http://cairographics.org/manual/cairo-text.html#cairo-font-extents
+
 [cairo_ft_font_face_create_for_ft_face]:   http://cairographics.org/manual/cairo-FreeType-Fonts.html#cairo-ft-font-face-create-for-ft-face
 [cairo_ft_font_face_set_synthesize]:       http://cairographics.org/manual/cairo-FreeType-Fonts.html#cairo-ft-font-face-set-synthesize
 
 [cairo_ft_scaled_font_lock_face]:          http://cairographics.org/manual/cairo-FreeType-Fonts.html#cairo-ft-scaled-font-lock-face
 [cairo_ft_scaled_font_unlock_face]:        http://cairographics.org/manual/cairo-FreeType-Fonts.html#cairo-ft-scaled-font-unlock-face
 
-[cairo_set_font_size]:                     http://cairographics.org/manual/cairo-text.html#cairo-set-font-size
-[cairo_set_font_matrix]:                   http://cairographics.org/manual/cairo-text.html#cairo-set-font-matrix
-[cairo_show_glyphs]:                       http://cairographics.org/manual/cairo-text.html#cairo-show-glyphs
-[cairo_show_text_glyphs]:                  http://cairographics.org/manual/cairo-text.html#cairo-show-text-glyphs
-[cairo_glyph_path]:                        http://cairographics.org/manual/cairo-text.html#cairo-glyph-path
-[cairo_glyph_extents]:                     http://cairographics.org/manual/cairo-text.html#cairo-glyph-extents
-[cairo_font_extents]:                      http://cairographics.org/manual/cairo-text.html#cairo-font-extents
+[cairo_toy_font_face_create]:              http://cairographics.org/manual/cairo-text.html#cairo-toy-font-face-create
+[cairo_font_face_toy_get_family]:          http://cairographics.org/manual/cairo-text.html#cairo-toy-font-face-get-family
+[cairo_font_face_toy_get_slant]:           http://cairographics.org/manual/cairo-text.html#cairo-toy-font-face-get-slant
+[cairo_font_face_toy_get_weight]:          http://cairographics.org/manual/cairo-text.html#cairo-toy-font-face-get-weight
 
-[cairo_set_font_face]:                     http://cairographics.org/manual/cairo-text.html#cairo-set-font-face
+[cairo_user_font_face_create]:                     http://cairographics.org/manual/cairo-User-Fonts.html#cairo-user-font-face-create
+[cairo_user_font_face_set_init_func]:              http://cairographics.org/manual/cairo-User-Fonts.html#cairo-user-font-face-set-init-func
+[cairo_user_font_face_set_render_glyph_func]:      http://cairographics.org/manual/cairo-User-Fonts.html#cairo-user-font-face-set-render-glyph-func
+[cairo_user_font_face_set_text_to_glyphs_func]:    http://cairographics.org/manual/cairo-User-Fonts.html#cairo-user-font-face-set-text-to-glyphs-func
+[cairo_user_font_face_set_unicode_to_glyph_func]:  http://cairographics.org/manual/cairo-User-Fonts.html#cairo-user-font-face-set-unicode-to-glyph-func
+
+[cairo_font_face_get_type]:                http://cairographics.org/manual/cairo-cairo-font-face-t.html#cairo-font-face-get-type

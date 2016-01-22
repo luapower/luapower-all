@@ -186,7 +186,7 @@ assert(fopt:hint_metrics() == 'on')
 
 fopt:free()
 
-cr:select_font_face('Arial', 'italic', 'bold')
+cr:font_face('Arial', 'italic', 'bold')
 cr:font_size(10)
 
 cr:font_matrix(cairo.matrix(1, 2, 3, 4, 5, 6))

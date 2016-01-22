@@ -602,16 +602,18 @@ fopt.hint_metrics = getset_func(
 	C.cairo_font_options_get_hint_metrics,
 	C.cairo_font_options_set_hint_metrics, 'CAIRO_HINT_METRICS_')
 
-function cr.select_font_face(cr, family, slant, weight)
-	C.cairo_select_font_face(cr, family,
-		X('CAIRO_FONT_SLANT_', slant or 'normal'),
-		X('CAIRO_FONT_WEIGHT_', weight or 'normal'))
-end
-
 cr.font_size = C.cairo_set_font_size
 cr.font_matrix = getset_func(mtout_getfunc(C.cairo_get_font_matrix), C.cairo_set_font_matrix)
 cr.font_options = getset_func(foptout_getfunc(C.cairo_get_font_options), C.cairo_set_font_options)
-cr.font_face = getset_func(C.cairo_get_font_face, C.cairo_set_font_face) --weak ref
+cr.font_face = getset_func(C.cairo_get_font_face, function(cr, family, slant, weight)
+	if type(family) == 'string' then
+		C.cairo_select_font_face(cr, family,
+			X('CAIRO_FONT_SLANT_', slant or 'normal'),
+			X('CAIRO_FONT_WEIGHT_', weight or 'normal'))
+	else
+		C.cairo_set_font_face(family) --in fact: cairo_font_face_t
+	end
+end)
 cr.scaled_font = getset_func(C.cairo_get_scaled_font, C.cairo_set_scaled_font) --weak ref
 cr.show_text = C.cairo_show_text
 cr.show_glyphs = C.cairo_show_glyphs
