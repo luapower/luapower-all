@@ -230,9 +230,9 @@ __font options__
 `fopt:lcd_filter(filter) /-> filter`                                [get/set the lcd filter][cairo_font_options_set_lcd_filter]
 `fopt:round_glyph_positions(pos) /-> pos`                           [get/set the round glyph positions][cairo_font_options_set_round_glyph_positions]
 __glyphs__
-`cairo.allocate_glyphs(num_glyphs) -> glyphs`                       [allocate an array of glyphs][cairo_glyph_allocate]
+`cairo.allocate_glyphs(count) -> cairo_glyph_t*`                    [allocate an array of glyphs][cairo_glyph_allocate]
 __text clusters__
-`cairo.allocate_text_clusters(num_clusters) -> clusters`            [allocate an array of text clusters][cairo_text_cluster_allocate]
+`cairo.allocate_text_clusters(count) -> cairo_text_cluster_t*`      [allocate an array of text clusters][cairo_text_cluster_allocate]
 __multi-page backends__
 `sr:copy_page()`                                                    [emit the current page and retain surface contents][cairo_surface_copy_page]
 `sr:show_page()`                                                    [emit the current page and clear surface contents][cairo_surface_show_page]
@@ -242,34 +242,35 @@ __targets__
 __devices__
 `sr:device() -> cairo_device_t`                                     [get the device of the surface][cairo_surface_get_device]
 `sr:device_offset([x, y]) /-> x, y`                                 [set device offset][cairo_surface_set_device_offset]
-`dev:type() -> type`                                                [ref][cairo_get_type]
-`dev:acquire() -> status`                                           [ref][cairo_acquire]
-`dev:release()`                                                     [ref][cairo_release]
-`dev:flush()`                                                       [ref][cairo_flush]
-`dev:finish()`                                                      [ref][cairo_finish]
+`dev:type() -> type`                                                [get device type][cairo_device_get_type]
+`dev:acquire() -> true | nil,err,status`                            [acquire device][cairo_device_acquire]
+`dev:release()`                                                     [release acquired device][cairo_device_release]
+`dev:flush()`                                                       [flush pending drawing operations][cairo_device_flush]
+`dev:finish()`                                                      [finish device][cairo_device_finish]
 __matrices__
-`mat:init()`                                                        [ref][cairo_matrix_init]
-`mat:init_identity()`                                               [ref][cairo_matrix_init_identity]
-`mat:init_translate()`                                              [ref][cairo_matrix_init_translate]
-`mat:init_scale()`                                                  [ref][cairo_matrix_init_scale]
-`mat:init_rotate()`                                                 [ref][cairo_matrix_init_rotate]
-`mat:translate(x, y)`                                               [ref][cairo_matrix_translate]
-`mat:scale(sx, sy)`                                                 [ref][cairo_matrix_scale]
-`mat:rotate(angle)`                                                 [ref][cairo_matrix_rotate]
-`mat:rotate_around(cx, cy, angle)`                                  [ref][cairo_matrix_rotate_around]
-`mat:scale_around(cx, cy, sx, sy)`                                  [ref][cairo_matrix_scale_around]
-`mat:invert()`                                                      [ref][cairo_matrix_invert]
-`mat:multiply()`                                                    [ref][cairo_matrix_multiply]
-`mat:transform_point(x, y) -> x, y`                                 [ref][cairo_matrix_transform_point]
-`mat:transform_distance(x, y) -> x, y`                              [ref][cairo_matrix_transform_distance]
-`mat:transform(mat)`
-`mat:invertible() -> t|f`
-`mat:safe_transform(mat)`
-`mat:skew(ay, ay)`
-`mat:copy() -> mat`                                                 copy matrix
-`mat:init_matrix(mat)`                                              init with a matrix
+`cairo.matrix([xx, yx, xy, yy, x0, y0]) -> mt`                      create a matrix
+`mt:init(xx, yx, xy, yy, x0, y0)`                                   [set the matrix fields][cairo_matrix_init]
+`mt:init_matrix(mt)`                                                init with a matrix
+`mt:init_identity()`                                                [init with the identity matrix][cairo_matrix_init_identity]
+`mt:init_translate(x, y)`                                           [init with translation][cairo_matrix_init_translate]
+`mt:init_scale(sx, sy)`                                             [init with scale][cairo_matrix_init_scale]
+`mt:init_rotate(angle)`                                             [init with rotation][cairo_matrix_init_rotate]
+`mt:translate(x, y)`                                                [translate][cairo_matrix_translate]
+`mt:scale(sx, sy)`                                                  [scale][cairo_matrix_scale]
+`mt:scale_around(cx, cy, sx, sy)`                                   scale around a point
+`mt:rotate(angle)`                                                  [rotate][cairo_matrix_rotate]
+`mt:rotate_around(cx, cy, angle)`                                   rotate arount a point
+`mt:invert()`                                                       [invert][cairo_matrix_invert]
+`mt:multiply(mt1, mt2)`                                             [multiply two matrices and store the result in mt][cairo_matrix_multiply]
+`mt:transform_point(x, y) -> x, y`                                  [transform point][cairo_matrix_transform_point]
+`mt:transform_distance(x, y) -> x, y`                               [transform distance][cairo_matrix_transform_distance]
+`mt:transform(mt)`                                                  transform by other matrix
+`mt:invertible() -> t|f`                                            check if the matrix is invertible
+`mt:safe_transform(mt)`                                             transform by matrix only if it's invertible
+`mt:skew(ax, ay)`                                                   skew
+`mt:copy() -> mt`                                                   copy matrix
 __regions__
-`cairo.region([[x, y, w, h] | rlist]) -> rgn`                       [ref][cairo_region_create]
+`cairo.region([[x, y, w, h] | rlist]) -> rgn`                       [create a region][cairo_region_create]
 `rgn:copy() -> rgn`                                                 [copy region][cairo_region_copy]
 `rgn:equal(rgn) -> t|f`                                             [compare regions][cairo_region_equal]
 `rgn:extents() -> x, y, w, h`                                       [region extents][cairo_region_get_extents]
@@ -289,18 +290,18 @@ __PNG support__
 `sr:write_to_png(filename) -> true | nil,err,status`                [write surface to png file][cairo_surface_write_to_png]
 `sr:write_to_png_stream(write_func, arg) -> true | nil,err,status`  [write surface to png stream][cairo_surface_write_to_png_stream]
 __memory management__
-`obj:free()`                                                        [free object][cairo_destroy]
-`obj:refcount() -> refcount`                                        [get ref count (*)][cairo_get_reference_count]
-`obj:ref()`                                                         [increase ref count (*)][cairo_reference]
-`obj:unref()`                                                       [decrease ref count and free when 0 (*)][cairo_destroy]
+`obj:free()`                                                        free object
+`obj:refcount() -> refcount`                                        get ref count (*)
+`obj:ref()`                                                         increase ref count (*)
+`obj:unref()`                                                       decrease ref count and free when 0 (*)
 __status__
 `obj:status() -> status`                                            [get status][cairo_status_t]
 `obj:status_message() -> s`                                         [get status message][cairo_status_to_string]
 `obj:check()`                                                       raise an error if the object has an error status
 __misc.__
 `cairo.stride(fmt, w) -> stride`                                    [get stride for a format and width][cairo_format_stride_for_width]
-`cairo.bitmap_format(cairo_fmt) -> bmp_fmt`                         get the [bitmap] format corresponding to a cairo format
-`cairo.cairo_format(bmp_fmt) -> cairo_fmt`                          get the cairo format corresponding to a bitmap format
+`cairo.bitmap_format(cairo_fmt) -> bmp_fmt`                         get the [bitmap] format matching a cairo format
+`cairo.cairo_format(bmp_fmt) -> cairo_fmt`                          get the cairo format matching a bitmap format
 `cairo.version() -> n`                                              [get lib version][cairo_version]
 `cairo.version_string() -> s`                                       [get lib version as "X.Y.Z"][cairo_version_string]
 ------------------------------------------------------------------- -------------------------------------------------------------------
@@ -532,3 +533,58 @@ The binding won't break if extensions are missing in the binary.
 [cairo_font_options_set_lcd_filter]:       http://cairographics.org/manual/cairo-cairo-font-options-t.html#cairo-font-options-set-lcd-filter
 [cairo_font_options_set_round_glyph_positions]:  http://cairographics.org/manual/cairo-cairo-font-options-t.html#cairo-font-options-set-round-glyph-positions
 
+[cairo_glyph_allocate]:                    http://cairographics.org/manual/cairo-text.html#cairo-glyph-allocate
+[cairo_text_cluster_allocate]:             http://cairographics.org/manual/cairo-text.html#cairo-text-cluster-allocate
+
+[cairo_surface_copy_page]:                 http://cairographics.org/manual/cairo-cairo-surface-t.html#cairo-surface-copy-page
+[cairo_surface_show_page]:                 http://cairographics.org/manual/cairo-cairo-surface-t.html#cairo-surface-show-page
+
+[cairo_get_target]:                        http://www.cairographics.org/manual/cairo-cairo-t.html#cairo-get-target
+[cairo_get_group_target]:                  http://www.cairographics.org/manual/cairo-cairo-t.html#cairo-get-group-target
+[cairo_surface_get_device]:                http://cairographics.org/manual/cairo-cairo-surface-t.html#cairo-surface-get-device
+[cairo_surface_set_device_offset]:         http://cairographics.org/manual/cairo-cairo-surface-t.html#cairo-surface-set-device-offset
+[cairo_device_get_type]:                   http://cairographics.org/manual/cairo-cairo-device-t.html#cairo-device-get-type
+[cairo_device_acquire]:                    http://cairographics.org/manual/cairo-cairo-device-t.html#cairo-device-acquire
+[cairo_device_release]:                    http://cairographics.org/manual/cairo-cairo-device-t.html#cairo-device-release
+[cairo_device_flush]:                      http://cairographics.org/manual/cairo-cairo-device-t.html#cairo-device-flush
+[cairo_device_finish]:                     http://cairographics.org/manual/cairo-cairo-device-t.html#cairo-device-finish
+
+[cairo_matrix_init]:                       http://cairographics.org/manual/cairo-cairo-matrix-t.html#cairo-matrix-init
+[cairo_matrix_init_identity]:              http://cairographics.org/manual/cairo-cairo-matrix-t.html#cairo-matrix-init-identity
+[cairo_matrix_init_translate]:             http://cairographics.org/manual/cairo-cairo-matrix-t.html#cairo-matrix-init-translate
+[cairo_matrix_init_scale]:                 http://cairographics.org/manual/cairo-cairo-matrix-t.html#cairo-matrix-init-scale
+[cairo_matrix_init_rotate]:                http://cairographics.org/manual/cairo-cairo-matrix-t.html#cairo-matrix-init-rotate
+[cairo_matrix_translate]:                  http://cairographics.org/manual/cairo-cairo-matrix-t.html#cairo-matrix-translate
+[cairo_matrix_scale]:                      http://cairographics.org/manual/cairo-cairo-matrix-t.html#cairo-matrix-scale
+[cairo_matrix_rotate]:                     http://cairographics.org/manual/cairo-cairo-matrix-t.html#cairo-matrix-rotate
+[cairo_matrix_invert]:                     http://cairographics.org/manual/cairo-cairo-matrix-t.html#cairo-matrix-invert
+[cairo_matrix_multiply]:                   http://cairographics.org/manual/cairo-cairo-matrix-t.html#cairo-matrix-multiply
+[cairo_matrix_transform_point]:            http://cairographics.org/manual/cairo-cairo-matrix-t.html#cairo-matrix-transform-point
+[cairo_matrix_transform_distance]:         http://cairographics.org/manual/cairo-cairo-matrix-t.html#cairo-matrix-transform-distance
+
+[cairo_region_create]:                     http://cairographics.org/manual/cairo-Regions.html#cairo-region-create
+[cairo_region_copy]:                       http://cairographics.org/manual/cairo-Regions.html#cairo-region-copy
+[cairo_region_equal]:                      http://cairographics.org/manual/cairo-Regions.html#cairo-region-equal
+[cairo_region_get_extents]:                http://cairographics.org/manual/cairo-Regions.html#cairo-region-get-extents
+[cairo_region_num_rectangles]:             http://cairographics.org/manual/cairo-Regions.html#cairo-region-num-rectangles
+[cairo_region_get_rectangle]:              http://cairographics.org/manual/cairo-Regions.html#cairo-region-get-rectangle
+[cairo_region_is_empty]:                   http://cairographics.org/manual/cairo-Regions.html#cairo-region-is-empty
+[cairo_region_contains_rectangle]:         http://cairographics.org/manual/cairo-Regions.html#cairo-region-contains-rectangle
+[cairo_region_contains_point]:             http://cairographics.org/manual/cairo-Regions.html#cairo-region-contains-point
+[cairo_region_translate]:                  http://cairographics.org/manual/cairo-Regions.html#cairo-region-translate
+[cairo_region_subtract]:                   http://cairographics.org/manual/cairo-Regions.html#cairo-region-substract
+[cairo_region_intersect]:                  http://cairographics.org/manual/cairo-Regions.html#cairo-region-intersect
+[cairo_region_union]:                      http://cairographics.org/manual/cairo-Regions.html#cairo-region-union
+[cairo_region_xor]:                        http://cairographics.org/manual/cairo-Regions.html#cairo-region-xor
+
+[cairo_image_surface_create_from_png]:         http://cairographics.org/manual/cairo-PNG-Support.html#cairo-image-surface-create-from-png
+[cairo_image_surface_create_from_png_stream]:  http://cairographics.org/manual/cairo-PNG-Support.html#cairo-image-surface-create-from-png-stream
+[cairo_surface_write_to_png]:                  http://cairographics.org/manual/cairo-PNG-Support.html#cairo-surface-write-to-png
+[cairo_surface_write_to_png_stream]:           http://cairographics.org/manual/cairo-PNG-Support.html#cairo-surface-write-to-png-stream
+
+[cairo_status_t]:                          http://cairographics.org/manual/cairo-Error-handling.html#cairo-status-t
+[cairo_status_to_string]:                  http://cairographics.org/manual/cairo-Error-handling.html#cairo-status-to-string
+[cairo_format_stride_for_width]:           http://cairographics.org/manual/cairo-Image-Surfaces.html#cairo-format-stride-for-width
+
+[cairo_version]:                           http://cairographics.org/manual/cairo-Version-Information.html#cairo-version
+[cairo_version_string]:                    http://cairographics.org/manual/cairo-Version-Information.html#cairo-version-string

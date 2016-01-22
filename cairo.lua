@@ -1371,11 +1371,10 @@ end
 
 function mt:transform(mt)
 	self:multiply(mt, self)
-	return self
 end
 
-function mt:invertible(tmt)
-	tmt = tmt or M.matrix()
+local tmt = M.matrix()
+function mt:invertible()
 	ffi.copy(tmt, self, ffi.sizeof(self))
 	return tmt:invert() == 0
 end
