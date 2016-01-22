@@ -98,9 +98,9 @@ SG:state_value('font', function(self, font)
 	if font.file then
 		self:set_font_file(font.file)
 	else
-		self.cr:select_font_face(font.family or self.defaults.font.family,
-										font_slants[font.slant or self.defaults.font.slant],
-										font_weights[font.weight or self.defaults.font.weight])
+		self.cr:font_face(font.family or self.defaults.font.family,
+								font_slants[font.slant or self.defaults.font.slant],
+								font_weights[font.weight or self.defaults.font.weight])
 	end
 	self:set_font_options(font.options)
 	self:set_font_size(font.size)
@@ -244,7 +244,7 @@ end
 local unbounded_operators = glue.index{'in', 'out', 'dest_in', 'dest_atop'}
 
 function SG:set_color_source(e, alpha)
-	self.cr:set_source_rgba(e[1], e[2], e[3], (e[4] or 1) * alpha)
+	self.cr:rgba(e[1], e[2], e[3], (e[4] or 1) * alpha)
 end
 
 function SG:register_hit(e)
@@ -302,7 +302,7 @@ function SG:set_gradient_source(e, alpha)
 		end
 		for i=1,#e,2 do
 			local offset, c = e[i], e[i+1]
-			pat:add_color_stop_rgba(offset, c[1], c[2], c[3], (c[4] or 1) * alpha)
+			pat:add_color_stop(offset, c[1], c[2], c[3], (c[4] or 1) * alpha)
 		end
 		pat:set_filter(self.pattern_filters[e.filter or self.defaults.gradient_filter])
 		pat:set_extend(self.pattern_extends[e.extend or self.defaults.gradient_extend])

@@ -16,7 +16,7 @@ function player:on_render(cr)
 	cr:paint()
 	cr:line_width(1)
 	cr:fill_rule'even_odd'
-	cr:select_font_face('Fixedsys')
+	cr:font_face('Fixedsys')
 	cr:font_size(12)
 
 	local function hex_color(s)

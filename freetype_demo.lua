@@ -266,10 +266,10 @@ function player:on_render(cr)
 
 	--draw a gradient over the top of the charmap for kicks
 	do
-		local gradient = cairo.linear_pattern(0, fade_y, 0, fade_y + fade_h)
+		local gradient = cairo.linear_gradient(0, fade_y, 0, fade_y + fade_h)
 		local r,g,b = self:parse_color(self.theme.window_bg)
-		gradient:add_color_stop_rgba(0.5, r,g,b,1)
-		gradient:add_color_stop_rgba(1.0, r,g,b,0)
+		gradient:add_color_stop(0.5, r,g,b,1)
+		gradient:add_color_stop(1.0, r,g,b,0)
 		self.cr:source(gradient)
 		self.cr:rectangle(0, fade_y, self.w - scroll_w, fade_h)
 		self.cr:fill()

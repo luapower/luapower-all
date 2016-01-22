@@ -23,8 +23,8 @@ local function draw_function(cr)
 			cpx, cpy = select(3, ...)
 		elseif s == 'text' then
 			local x1, y1, font, text = ...
-			cr:select_font_face(font.family or 'Arial', 0, 0)
-			cr:set_font_size(font.size or 12)
+			cr:font_face(font.family or 'Arial')
+			cr:font_size(font.size or 12)
 			cr:move_to(x1, y1)
 			cr:text_path(tostring(text))
 			cpx, cpy = nil

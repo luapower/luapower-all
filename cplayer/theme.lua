@@ -119,7 +119,7 @@ end
 
 function player:setfont(font)
 	font = self:parse_font(self.theme[font] or font or self.theme.default_font)
-	self.cr:select_font_face(font.face)
+	self.cr:font_face(font.face)
 	self.cr:font_size(font.size)
 	font.extents = font.extents or self.cr:font_extents()
 	return font
