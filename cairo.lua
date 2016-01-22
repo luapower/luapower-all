@@ -470,8 +470,15 @@ local function get_dash(cr, _, dashes) -- _ is for disambiguation with set_dash(
 	end
 end
 
-cr.dash = getset_func(get_dash, set_dash)
-cr.dash_count = C.cairo_get_dash_count
+local getset_dash = getset_func(get_dash, set_dash)
+
+cr.dash = function(cr, ...)
+	if (...) == '#' then
+		return C.cairo_get_dash_count(cr)
+	else
+		return getset_dash(cr, ...)
+	end
+end
 
 cr.miter_limit = getset_func(C.cairo_get_miter_limit, C.cairo_set_miter_limit)
 

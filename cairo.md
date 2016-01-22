@@ -10,7 +10,7 @@ A lightweight ffi binding of the [cairo graphics] library.
 
 ## API
 
-__NOTE:__ In the table below, `foo([val]) /-> val` is a shortcut for saying
+__NOTE:__ In the table below, `foo(val) /-> val` is a shortcut for saying
 that `foo(val)` sets the value of foo and `foo() -> val` gets it.
 
 __NOTE:__ flags can be passed as lowercase strings without prefix eg.
@@ -37,9 +37,10 @@ __surfaces__
 `sr:content() -> content`                                           [get surface content type][cairo_surface_get_content]
 `sr:flush()`                                                        [perform any pending drawing commands][cairo_surface_flush]
 `sr:mark_dirty([x, y, w, h])`                                       [re-read any cached areas of (parts of) the surface][cairo_surface_mark_dirty]
-`sr:fallback_resolution([xppi, yppi]) /-> xppi, yppi`               [get/set fallback resolution][cairo_surface_set_fallback_resolution]
+`sr:fallback_resolution(xppi, yppi) /-> xppi, yppi`                 [get/set fallback resolution][cairo_surface_set_fallback_resolution]
 `sr:has_show_text_glyphs() -> t|f`                                  [check if surface supports cairo_show_text_glyphs() for realz][cairo_surface_has_show_text_glyphs]
-`sr:mime_data(type[, data, len[, destroy[, arg]]]) /-> data, len`   [get/set mime data][cairo_surface_set_mime_data]
+`sr:mime_data(type, data, len[, destroy[, arg]])`                   [set mime data][cairo_surface_set_mime_data]
+`sr:mime_data(type) -> data, len`                                   [get mime data][cairo_surface_get_mime_data]
 `sr:supports_mime_type(type) -> t|f`                                [check if the surface supports a mime type][cairo_surface_supports_mime_type]
 `sr:map_to_image([x, y, w, h]) -> image_sr`                         [get an image surface for modifying the backing store][cairo_surface_map_to_image]
 `sr:unmap_image(image_sr)`                                          [upload image to backing store and unmap][cairo_surface_unmap_image]
@@ -56,9 +57,9 @@ __drawing contexts__
 __sources__
 `cr:rgb(r, g, b)`                                                   [set a RGB color as source][cairo_set_source_rgb]
 `cr:rgba(r, g, b, a)`                                               [set a RGBA color as source][cairo_set_source_rgba]
-`cr:source([patt | sr, [x, y]]) /-> patt`                           [get/set a pattern or surface as source][cairo_set_source]
+`cr:source(patt | sr, [x, y]) /-> patt`                             [get/set a pattern or surface as source][cairo_set_source]
 __compositing__
-`cr:operator([operator]) /-> operator`                              [get/set the compositing operator][cairo_set_operator]
+`cr:operator(operator) /-> operator`                                [get/set the compositing operator][cairo_set_operator]
 `cr:mask(patt | sr[, x, y])`                                        [draw using a pattern's (or surface's) alpha channel as a mask][cairo_mask]
 __groups__
 `cr:push_group([content])`                                          [redirect drawing to an intermediate surface][cairo_push_group]
@@ -73,8 +74,12 @@ __transformations__
 `cr:skew(ax, ay)`                                                   skew the user-space
 `cr:transform(mt)`                                                  [transform the user-space][cairo_transform]
 `cr:safe_transform(mt)`                                             transform the user-space if the matrix is invertible
-`cr:matrix([mt]) /-> mt`                                            [get/set the CTM][cairo_set_matrix]
+`cr:matrix(mt) /-> mt`                                              [get/set the CTM][cairo_set_matrix]
 `cr:identity_matrix()`                                              [reset the CTM][cairo_identity_matrix]
+`cr:user_to_device(x, y) -> x, y`                                   [user to device (point)][cairo_user_to_device]
+`cr:user_to_device_distance(x, y) -> x, y`                          [user to device (distance)][cairo_user_to_device_distance]
+`cr:device_to_user(x, y) -> x, y`                                   [device to user (point)][cairo_device_to_user]
+`cr:device_to_user_distance(x, y) -> x, y`                          [device to user (distance)][cairo_device_to_user_distance]
 __paths__
 `cr:new_path()`                                                     [create path][cairo_new_path]
 `cr:new_sub_path()`                                                 [create sub-path][cairo_new_sub_path]
@@ -132,11 +137,11 @@ __surface patterns__
 `patt:surface() -> sr | nil`                                        [get the pattern's surface][cairo_pattern_get_surface]
 __raster-source patterns__
 `cairo.raster_source_pattern(data, content, w, h) -> patt`          [create a raster source-type pattern][cairo_pattern_create_raster_source]
-`patt:callback_data([data]) /-> data`                               [get/set callback data][cairo_raster_source_pattern_set_callback_data]
-`patt:acquire_function([func]) /-> func`                            [get/set the acquire function][cairo_raster_source_pattern_set_acquire]
-`patt:snapshot_function([func]) /-> func`                           [get/set the snapshot function][cairo_raster_source_pattern_set_snapshot]
-`patt:copy_function([func]) /-> func`                               [get/set the copy function][cairo_raster_source_pattern_set_copy]
-`patt:finish_function([func]) /-> func`                             [get/set the finish function][cairo_raster_source_pattern_set_finish]
+`patt:callback_data(data) /-> data`                                 [get/set callback data][cairo_raster_source_pattern_set_callback_data]
+`patt:acquire_function(func) /-> func`                              [get/set the acquire function][cairo_raster_source_pattern_set_acquire]
+`patt:snapshot_function(func) /-> func`                             [get/set the snapshot function][cairo_raster_source_pattern_set_snapshot]
+`patt:copy_function(func) /-> func`                                 [get/set the copy function][cairo_raster_source_pattern_set_copy]
+`patt:finish_function(func) /-> func`                               [get/set the finish function][cairo_raster_source_pattern_set_finish]
 __mesh patterns__
 `cairo.mesh_pattern() -> patt`                                      [create a mesh pattern][cairo_pattern_create_mesh]
 `patt:begin_patch()`                                                [start a new patch][cairo_mesh_pattern_begin_patch]
@@ -150,18 +155,19 @@ __mesh patterns__
 `patt:corner_color(patch_num, corner_num) -> r, g, b, a`            [get a corner color][cairo_mesh_pattern_get_corner_color_rgba]
 __patterns__
 `patt:type() -> type`                                               [get the pattern type][cairo_pattern_get_type]
-`patt:matrix([mt]) /-> mt`                                          [get/set the matrix][cairo_pattern_set_matrix]
-`patt:extend([extend]) /-> extend`                                  [get/set the extend][cairo_pattern_set_extend]
-`patt:filter([filter]) /-> filter`                                  [get/set the filter][cairo_pattern_set_filter]
+`patt:matrix(mt) /-> mt`                                            [get/set the matrix][cairo_pattern_set_matrix]
+`patt:extend(extend) /-> extend`                                    [get/set the extend][cairo_pattern_set_extend]
+`patt:filter(filter) /-> filter`                                    [get/set the filter][cairo_pattern_set_filter]
 __drawing text (toy API)__
 `cr:font_face(family[, slant[, weight]])`                           [select a font face][cairo_select_font_face]
 `cr:show_text(s)`                                                   [show text][cairo_show_text]
 `cr:text_path(s)`                                                   [add closed paths for text to the current path][cairo_text_path]
 `cr:text_extents(s) -> cairo_text_extents_t`                        [get text extents][cairo_text_extents]
 __drawing glyphs__
-`cr:font_face([face]) /-> face`                                     [get/set the font face][cairo_set_font_face]
+`cr:font_face(face) /-> face`                                       [get/set the font face][cairo_set_font_face]
+`cr:scaled_font(sfont) /-> sfont`                                   [get/set the scaled font][cairo_set_scaled_font]
 `cr:font_size(size)`                                                [set the font size][cairo_set_font_size]
-`cr:font_matrix([mt]) /-> mt`                                       [get/set the font matrix][cairo_set_font_matrix]
+`cr:font_matrix(mt) /-> mt`                                         [get/set the font matrix][cairo_set_font_matrix]
 `cr:show_glyphs(glyphs, #glyphs)`                                   [draw glyphs][cairo_show_glyphs]
 `cr:show_text_glyphs(s, [#s], g, #g, c, #c, f)`                     [draw glyphs with native cluster mapping][cairo_show_text_glyphs]
 `cr:glyph_path(glyphs, #glyphs)`                                    [add paths for the glyphs to the current path][cairo_glyph_path]
@@ -169,8 +175,8 @@ __drawing glyphs__
 `cr:font_extents() -> cairo_font_extents_t`                         [get the font extents of the current font][cairo_font_extents]
 __freetype fonts__
 `cairo.ft_font_face(ft_face[, ft_flags]) -> face`                   [create a font face from a freetype handle][cairo_ft_font_face_create_for_ft_face]
-`face:synthesize_bold([t|f]) /-> t|f`                               [get/set synthethize bold flag][cairo_ft_font_face_set_synthesize]
-`face:synthesize_oblique([t|f]) /-> t|f`                            [get/set synthethize oblique flag][cairo_ft_font_face_set_synthesize]
+`face:synthesize_bold(t|f) /-> t|f`                                 [get/set synthethize bold flag][cairo_ft_font_face_set_synthesize]
+`face:synthesize_oblique(t|f) /-> t|f`                              [get/set synthethize oblique flag][cairo_ft_font_face_set_synthesize]
 `sfont:lock_face() -> FT_Face`                                      [lock font face][cairo_ft_scaled_font_lock_face]
 `sfont:unlock_face()`                                               [unlock font face][cairo_ft_scaled_font_unlock_face]
 __toy fonts__
@@ -180,54 +186,49 @@ __toy fonts__
 `face:weight() -> weight`                                           [get font weight][cairo_font_face_toy_get_weight]
 __callback-based fonts__
 `cairo.user_font_face() -> face`                                    [create a user font][cairo_user_font_face_create]
-`face:init_func([func]) /-> func`                                   [get/set the scaled-font init function][cairo_user_font_face_set_init_func]
-`face:render_glyph_func([func]) /-> func`                           [get/set the glyph rendering function][cairo_user_font_face_set_render_glyph_func]
-`face:text_to_glyphs_func([func]) /-> func`                         [get/set the text-to-glyphs function][cairo_user_font_face_set_text_to_glyphs_func]
-`face:unicode_to_glyph_func([func]) /-> func`                       [get/set the text-to-glyphs easy function][cairo_user_font_face_set_unicode_to_glyph_func]
+`face:init_func(func) /-> func`                                     [get/set the scaled-font init function][cairo_user_font_face_set_init_func]
+`face:render_glyph_func(func) /-> func`                             [get/set the glyph rendering function][cairo_user_font_face_set_render_glyph_func]
+`face:text_to_glyphs_func(func) /-> func`                           [get/set the text-to-glyphs function][cairo_user_font_face_set_text_to_glyphs_func]
+`face:unicode_to_glyph_func(func) /-> func`                         [get/set the text-to-glyphs easy function][cairo_user_font_face_set_unicode_to_glyph_func]
 __fonts__
 `face:type() -> type`                                               [get font type][cairo_font_face_get_type]
 __scaled fonts__
-`face:scaled_font(mt, ctm, fopt) -> sfont`                          [create scaled font][cairo_font_face_create_scaled_font]
-`cr:scaled_font([sfont]) /-> sfont`                                 [get/set scaled font][cairo_set_scaled_font]
-`sfont:type() -> cairo_font_type_t`                                 [ref][cairo_scaled_font_get_type]
-`sfont:extents() -> cairo_text_extents_t`                           [ref][cairo_scaled_font_extents]
-`sfont:text_extents(s) -> cairo_text_extents_t`                     [ref][cairo_scaled_font_text_extents]
-`sfont:glyph_extents(glyphs, #glyphs) -> cairo_text_extents_t`      [ref][cairo_scaled_font_glyph_extents]
-`sfont:text_to_glyphs(x, y, s, #s, g, #g, c, #c, cf) -> t|nil,err`  [ref][cairo_scaled_font_text_to_glyphs]
-`sfont:font_matrix() -> mt`                                         [ref][cairo_scaled_font_get_font_matrix]
-`sfont:ctm()`                                                       [ref][cairo_scaled_font_get_ctm]
-`sfont:scale_matrix()`                                              [ref][cairo_scaled_font_get_scale_matrix]
-`sfont:font_options([fopt]) /-> fopt`                               [get scaled font options][cairo_scaled_font_get_font_options]
-`sfont:font_face() -> face`                                         [ref][cairo_scaled_font_get_font_face]
+`face:scaled_font(mt, ctm, fopt) -> sfont`                          [create scaled font][cairo_scaled_font_create]
+`sfont:type() -> cairo_font_type_t`                                 [get scaled font type][cairo_scaled_font_get_type]
+`sfont:extents() -> cairo_font_extents_t`                           [get font extents][cairo_scaled_font_extents]
+`sfont:text_extents(s) -> cairo_text_extents_t`                     [get text extents][cairo_scaled_font_text_extents]
+`sfont:glyph_extents(glyphs, #glyphs) -> cairo_text_extents_t`      [get the extents of an array of glyphs][cairo_scaled_font_glyph_extents]
+`sfont:text_to_glyphs(x,y, s,#s, [g,#g, [c,#c]]) -> t|nil,err`      [convert text to glyphs][cairo_scaled_font_text_to_glyphs]
+`sfont:font_matrix() -> mt`                                         [get the font matrix][cairo_scaled_font_get_font_matrix]
+`sfont:ctm() -> mt`                                                 [get the CTM][cairo_scaled_font_get_ctm]
+`sfont:scale_matrix() -> mt`                                        [get the scale matrix][cairo_scaled_font_get_scale_matrix]
+`sfont:font_options(fopt) /-> fopt`                                 [get/set the font options][cairo_scaled_font_get_font_options]
+`sfont:font_face() -> face`                                         [get the font face][cairo_scaled_font_get_font_face]
 __rasterization options__
-`cr:tolerance([tolerance]) /-> tolerance`                           [get/set tolerance][cairo_get_tolerance]
-`cr:antialias([antialias]) /-> antialias`                           [set the antialiasing mode][cairo_set_antialias]
-`cr:fill_rule([rule]) /-> rule`                                     [set the fill rule][cairo_set_fill_rule]
-`cr:line_width([width]) /-> width`                                  [set the current line width][cairo_set_line_width]
-`cr:line_cap([cap]) /-> cap`                                        [set the current line cap][cairo_set_line_cap]
-`cr:line_join([join]) /-> join`                                     [set the current line join][cairo_set_line_join]
-`cr:dash([dashes[, offset]]) /-> dashes, dash_count`                [set the dash pattern for cairo_stroke()][cairo_set_dash]
-`cr:dash_count() -> n`                                              [ref][cairo_get_dash_count]
-`cr:miter_limit([limit]) /-> limit`                                 [set the current miter limit][cairo_set_miter_limit]
+`cr:tolerance(tolerance]) /-> tolerance`                            [get/set tolerance][cairo_set_tolerance]
+`cr:antialias(antialias]) /-> antialias`                            [get/set the antialiasing mode][cairo_set_antialias]
+`cr:fill_rule(rule]) /-> rule`                                      [get/set the fill rule][cairo_set_fill_rule]
+`cr:line_width(width]) /-> width`                                   [get/set the line width][cairo_set_line_width]
+`cr:line_cap(cap) /-> cap`                                          [get/set the line cap][cairo_set_line_cap]
+`cr:line_join(join) /-> join`                                       [get/set the line join][cairo_set_line_join]
+`cr:miter_limit(limit) /-> limit`                                   [get/set the miter limit][cairo_set_miter_limit]
+`cr:dash(dashes[, offset])`                                         [set the dash pattern for stroking][cairo_set_dash]
+`cr:dash() -> dashes, dash_count`                                   [get the dash pattern for stroking][cairo_get_dash]
+`cr:dash'#' -> n`                                                   [get the dash count][cairo_get_dash_count]
+`sr:font_options() -> fopt`                                         [get the default font options][cairo_surface_get_font_options]
+`cr:font_options(fopt) /-> fopt`                                    [get/set custom font options][cairo_set_font_options]
 __font options__
 `cairo.font_options() -> fopt`                                      [create a font options object][cairo_font_options_create]
 `fopt:copy() -> fopt`                                               [copy font options][cairo_font_options_copy]
 `fopt:merge(fopt)`                                                  [merge options][cairo_font_options_merge]
-`fopt:equal(fopt) -> t|f`                                           [compare options (also with `==`)][cairo_font_options_equal]
+`fopt:equal(fopt) -> t|f`                                           [compare options][cairo_font_options_equal]
 `fopt:hash() -> n`                                                  [get options hash][cairo_font_options_hash]
-`fopt:antialias([antialias]) /-> antialias`                                     [set antialias][cairo_font_options_set_antialias]
-`fopt:subpixel_order([order]) /-> order`                            [get/set subpixel order][cairo_font_options_set_subpixel_order]
-`fopt:hint_style([style]) /-> style`                                [get/set hint style][cairo_font_options_set_hint_style]
-`fopt:hint_metrics([metrics]) /-> metrics`                          [get/set hint metrics][cairo_font_options_set_hint_metrics]
-`fopt:lcd_filter([filter]) /-> filter`                              [get/set lcd filter][cairo_font_options_set_lcd_filter]
-`fopt:round_glyph_positions([pos]) /-> pos`                         [get/set round glyph positions][cairo_font_options_set_round_glyph_positions]
-`sr:font_options([fopt]) /-> fopt`                                  [get/set surface font options][cairo_surface_get_font_options]
-`cr:font_options([fopt]) /-> fopt`                                  [get/set font options][cairo_set_font_options]
-__device-space vs user-space__
-`cr:user_to_device(x, y) -> x, y`                                   [user to device (point)][cairo_user_to_device]
-`cr:user_to_device_distance(x, y) -> x, y`                          [user to device (distance)][cairo_user_to_device_distance]
-`cr:device_to_user(x, y) -> x, y`                                   [device to user (point)][cairo_device_to_user]
-`cr:device_to_user_distance(x, y) -> x, y`                          [device to user (distance)][cairo_device_to_user_distance]
+`fopt:antialias(antialias) /-> antialias`                           [get/set the antialiasing mode][cairo_font_options_set_antialias]
+`fopt:subpixel_order(order) /-> order`                              [get/set the subpixel order][cairo_font_options_set_subpixel_order]
+`fopt:hint_style(style) /-> style`                                  [get/set the hint style][cairo_font_options_set_hint_style]
+`fopt:hint_metrics(metrics) /-> metrics`                            [get/set the hint metrics][cairo_font_options_set_hint_metrics]
+`fopt:lcd_filter(filter) /-> filter`                                [get/set the lcd filter][cairo_font_options_set_lcd_filter]
+`fopt:round_glyph_positions(pos) /-> pos`                           [get/set the round glyph positions][cairo_font_options_set_round_glyph_positions]
 __glyphs__
 `cairo.allocate_glyphs(num_glyphs) -> glyphs`                       [allocate an array of glyphs][cairo_glyph_allocate]
 __text clusters__
@@ -338,6 +339,7 @@ The binding won't break if extensions are missing in the binary.
 [cairo_surface_set_fallback_resolution]:   http://cairographics.org/manual/cairo-cairo-surface-t.html#cairo-surface-set-fallback-resolution
 [cairo_surface_has_show_text_glyphs]:      http://cairographics.org/manual/cairo-cairo-surface-t.html#cairo-surface-has-show-text-glyphs
 [cairo_surface_set_mime_data]:             http://cairographics.org/manual/cairo-cairo-surface-t.html#cairo-surface-set-mime-data
+[cairo_surface_get_mime_data]:             http://cairographics.org/manual/cairo-cairo-surface-t.html#cairo-surface-get-mime-data
 [cairo_surface_supports_mime_type]:        http://cairographics.org/manual/cairo-cairo-surface-t.html#cairo-surface-supports-mime-type
 [cairo_surface_map_to_image]:              http://cairographics.org/manual/cairo-cairo-surface-t.html#cairo-surface-map-to-image
 [cairo_surface_unmap_image]:               http://cairographics.org/manual/cairo-cairo-surface-t.html#cairo-surface-unmap-image
@@ -375,6 +377,10 @@ The binding won't break if extensions are missing in the binary.
 [cairo_transform]:                         http://cairographics.org/manual/cairo-Transformations.html#cairo-transform
 [cairo_set_matrix]:                        http://cairographics.org/manual/cairo-Transformations.html#cairo-set-matrix
 [cairo_identity_matrix]:                   http://cairographics.org/manual/cairo-Transformations.html#cairo-identity-matrix
+[cairo_user_to_device]:                    http://cairographics.org/manual/cairo-Transformations.html#cairo-user-to-device
+[cairo_user_to_device_distance]:           http://cairographics.org/manual/cairo-Transformations.html#cairo-user-to-device-distance
+[cairo_device_to_user]:                    http://cairographics.org/manual/cairo-Transformations.html#cairo-device-to-user
+[cairo_device_to_user_distance]:           http://cairographics.org/manual/cairo-Transformations.html#cairo-device-to-user-distance
 
 [cairo_new_path]:                          http://cairographics.org/manual/cairo-Paths.html#cairo-new-path
 [cairo_new_sub_path]:                      http://cairographics.org/manual/cairo-Paths.html#cairo-new-sub-path
@@ -460,6 +466,7 @@ The binding won't break if extensions are missing in the binary.
 [cairo_text_extents]:                      http://cairographics.org/manual/cairo-text.html#cairo-text-extents
 
 [cairo_set_font_face]:                     http://cairographics.org/manual/cairo-text.html#cairo-set-font-face
+[cairo_set_scaled_font]:                   http://cairographics.org/manual/cairo-text.html#cairo-set-scaled-font
 [cairo_set_font_size]:                     http://cairographics.org/manual/cairo-text.html#cairo-set-font-size
 [cairo_set_font_matrix]:                   http://cairographics.org/manual/cairo-text.html#cairo-set-font-matrix
 [cairo_show_glyphs]:                       http://cairographics.org/manual/cairo-text.html#cairo-show-glyphs
@@ -486,3 +493,42 @@ The binding won't break if extensions are missing in the binary.
 [cairo_user_font_face_set_unicode_to_glyph_func]:  http://cairographics.org/manual/cairo-User-Fonts.html#cairo-user-font-face-set-unicode-to-glyph-func
 
 [cairo_font_face_get_type]:                http://cairographics.org/manual/cairo-cairo-font-face-t.html#cairo-font-face-get-type
+
+[cairo_scaled_font_create]:                http://cairographics.org/manual/cairo-cairo-scaled-font-t.html#cairo-scaled-font-create
+[cairo_scaled_font_get_type]:              http://cairographics.org/manual/cairo-cairo-scaled-font-t.html#cairo-scaled-font-get-type
+[cairo_scaled_font_extents]:               http://cairographics.org/manual/cairo-cairo-scaled-font-t.html#cairo-scaled-font-extents
+[cairo_scaled_font_text_extents]:          http://cairographics.org/manual/cairo-cairo-scaled-font-t.html#cairo-scaled-font-text-extents
+[cairo_scaled_font_glyph_extents]:         http://cairographics.org/manual/cairo-cairo-scaled-font-t.html#cairo-scaled-font-glyph-extents
+[cairo_scaled_font_text_to_glyphs]:        http://cairographics.org/manual/cairo-cairo-scaled-font-t.html#cairo-scaled-font-text-to-glyphs
+[cairo_scaled_font_get_font_matrix]:       http://cairographics.org/manual/cairo-cairo-scaled-font-t.html#cairo-scaled-font-get-font-matrix
+[cairo_scaled_font_get_ctm]:               http://cairographics.org/manual/cairo-cairo-scaled-font-t.html#cairo-scaled-font-get-ctm
+[cairo_scaled_font_get_scale_matrix]:      http://cairographics.org/manual/cairo-cairo-scaled-font-t.html#cairo-scaled-font-get-scale-matrix
+[cairo_scaled_font_get_font_options]:      http://cairographics.org/manual/cairo-cairo-scaled-font-t.html#cairo-scaled-font-get-font-options
+[cairo_scaled_font_get_font_face]:         http://cairographics.org/manual/cairo-cairo-scaled-font-t.html#cairo-scaled-font-get-font-face
+
+[cairo_set_tolerance]:                     http://www.cairographics.org/manual/cairo-cairo-t.html#cairo-set-tolerance
+[cairo_set_antialias]:                     http://www.cairographics.org/manual/cairo-cairo-t.html#cairo-set-antialias
+[cairo_set_fill_rule]:                     http://www.cairographics.org/manual/cairo-cairo-t.html#cairo-set-fill-rule
+[cairo_set_line_width]:                    http://www.cairographics.org/manual/cairo-cairo-t.html#cairo-set-line-width
+[cairo_set_line_cap]:                      http://www.cairographics.org/manual/cairo-cairo-t.html#cairo-set-line-cap
+[cairo_set_line_join]:                     http://www.cairographics.org/manual/cairo-cairo-t.html#cairo-set-line-join
+[cairo_set_miter_limit]:                   http://www.cairographics.org/manual/cairo-cairo-t.html#cairo-set-miter-limit
+[cairo_set_dash]:                          http://www.cairographics.org/manual/cairo-cairo-t.html#cairo-set-dash
+[cairo_get_dash]:                          http://www.cairographics.org/manual/cairo-cairo-t.html#cairo-get-dash
+[cairo_get_dash_count]:                    http://www.cairographics.org/manual/cairo-cairo-t.html#cairo-get-dash-count
+
+[cairo_surface_get_font_options]:          http://cairographics.org/manual/cairo-cairo-surface-t.html#cairo-surface-get-font-options
+[cairo_set_font_options]:                  http://cairographics.org/manual/cairo-text.html#cairo-set-font-options
+
+[cairo_font_options_create]:               http://cairographics.org/manual/cairo-cairo-font-options-t.html#cairo-font-options-create
+[cairo_font_options_copy]:                 http://cairographics.org/manual/cairo-cairo-font-options-t.html#cairo-font-options-copy
+[cairo_font_options_merge]:                http://cairographics.org/manual/cairo-cairo-font-options-t.html#cairo-font-options-merge
+[cairo_font_options_equal]:                http://cairographics.org/manual/cairo-cairo-font-options-t.html#cairo-font-options-equal
+[cairo_font_options_hash]:                 http://cairographics.org/manual/cairo-cairo-font-options-t.html#cairo-font-options-hash
+[cairo_font_options_set_antialias]:        http://cairographics.org/manual/cairo-cairo-font-options-t.html#cairo-font-options-set-antialias
+[cairo_font_options_set_subpixel_order]:   http://cairographics.org/manual/cairo-cairo-font-options-t.html#cairo-font-options-set-subpixel-order
+[cairo_font_options_set_hint_style]:       http://cairographics.org/manual/cairo-cairo-font-options-t.html#cairo-font-options-set-hint-style
+[cairo_font_options_set_hint_metrics]:     http://cairographics.org/manual/cairo-cairo-font-options-t.html#cairo-font-options-set-hint-metrics
+[cairo_font_options_set_lcd_filter]:       http://cairographics.org/manual/cairo-cairo-font-options-t.html#cairo-font-options-set-lcd-filter
+[cairo_font_options_set_round_glyph_positions]:  http://cairographics.org/manual/cairo-cairo-font-options-t.html#cairo-font-options-set-round-glyph-positions
+
