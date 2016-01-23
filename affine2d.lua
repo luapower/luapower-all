@@ -157,6 +157,10 @@ local function new(xx, yx, xy, yy, x0, y0)
 		return mt:translate(cx, cy):rotate(a):translate(-cx, -cy)
 	end
 
+	function mt:scale_around(cx, cy, sx, sxy)
+		return mt:translate(cx, cy):scale(sx, sy):translate(-cx, -cy)
+	end
+
 	--check that the matrix is the identity matrix, thus having no effect.
 	function mt:is_identity()
 		return xx == 1 and yy == 1 and yx == 0 and xy == 0 and x0 == 0 and y0 == 0
