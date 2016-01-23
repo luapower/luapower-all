@@ -4,11 +4,11 @@ tagline: color computation
 
 ## `local color = require'color'`
 
-Color computation in HSL space. Shamelessly ripped off and modified from [Sputnik's colors lib][colors lib], by Yuri Takhteyev.
+Color computation in HSL space.
+Original code from Sputnik's [colors lib], by Yuri Takhteyev.
 
   * `r, g, b, s, L` are in 0..1 range.
   * `h` is in 0..360 range.
-
 
 ## Direct conversions
 
@@ -20,7 +20,6 @@ Color computation in HSL space. Shamelessly ripped off and modified from [Sputni
 `color.rgba_to_string(r, g, b, a) -> s`              generate a '#rrggbbaa' hex color
 `color.string_to_rgba(s) -> r, g, b, a | nil`        parse a '#rrggbbaa' hex color (the 'aa' part is optional)
 ---------------------------------------------------- ------------------------------------------------
-
 
 ## Color objects
 
@@ -48,4 +47,4 @@ Color computation in HSL space. Shamelessly ripped off and modified from [Sputni
 ---------------------------------------------------- ------------------------------------------------
 
 
-[colors lib]:    http://sputnik.freewisdom.org/lib/colors/
+[colors lib]: http://sputnik.freewisdom.org/lib/colors/

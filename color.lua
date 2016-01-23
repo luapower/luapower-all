@@ -1,4 +1,7 @@
---color conversions by Cosmin Apreutesei (public domain), originated from Sputnik (MIT/X License)
+
+--Color conversions.
+--Written by Cosmin Apreutesei. Public Domain.
+--Originated from Sputnik by Yuri Takhteyev (MIT/X License).
 
 local function clamp(x)
 	return math.min(math.max(x, 0), 1)
@@ -14,7 +17,7 @@ end
 
 --HSL <-> RGB
 
-local function _h2rgb(m1, m2, h)
+local function h2rgb(m1, m2, h)
 	if h<0 then h = h+1 end
 	if h>1 then h = h-1 end
 	if h*6<1 then
@@ -40,9 +43,9 @@ local function hsl_to_rgb(h, s, L)
 	end
 	m1 = L*2-m2
 	return
-		_h2rgb(m1, m2, h+1/3),
-		_h2rgb(m1, m2, h),
-		_h2rgb(m1, m2, h-1/3)
+		h2rgb(m1, m2, h+1/3),
+		h2rgb(m1, m2, h),
+		h2rgb(m1, m2, h-1/3)
 end
 
 --rgb is clamped to (0..1, 0..1, 0..1); hsl is (0..360, 0..1, 0..1)
@@ -223,9 +226,5 @@ local color_module = {
 }
 
 setmetatable(color_module, {__call = function(self, ...) return new(...) end})
-
-
-if not ... then require'color_demo' end
-
 
 return color_module
