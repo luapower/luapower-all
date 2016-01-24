@@ -13,7 +13,7 @@ function player:hue_wheel(cx, cy, r1, r2, step, hue)
 
 	for i = 0, 360, step do
 		local r, g, b = color.hsl_to_rgb(i, 1, .5)
-		self.cr:set_source_rgba(r, g, b, 1)
+		self.cr:rgba(r, g, b, 1)
 		self.cr:new_path()
 		self.cr:arc(cx, cy, r1, math.rad(i), math.rad(i + step + 1))
 		self.cr:arc_negative(cx, cy, r2, math.rad(i + step + 1), math.rad(i))

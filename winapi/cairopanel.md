@@ -23,9 +23,9 @@ on the panel's surface using [cairo].
 
 <div class=small>
 -------------------------------------------- -------------------------------------- -------------------------
-__painting__											__description__								__reference__
-on_cairo_create_surface(surface)					cairo surface was created
-on_cairo_free_surface(surface)					cairo surface will be freed
-on_cairo_paint(context)								panel needs repainting						WM_PAINT
+__painting__                                 __description__                        __reference__
+on_cairo_create_surface(surface)             cairo surface was created
+on_cairo_free_surface(surface)               cairo surface will be freed
+on_cairo_paint(context)                      panel needs repainting                 WM_PAINT
 -------------------------------------------- -------------------------------------- -------------------------
 </div>

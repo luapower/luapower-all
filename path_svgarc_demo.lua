@@ -31,7 +31,7 @@ function player:on_render(cr)
 
 	local cpx, cpy
 	local function write(_, x2, y2, x3, y3, x4, y4)
-		cpx, cpy = cr:get_current_point()
+		cpx, cpy = cr:current_point()
 		cr:circle(cpx, cpy, 2)
 		cr:circle(x4, y4, 2)
 		cr:move_to(cpx, cpy)
@@ -46,11 +46,11 @@ function player:on_render(cr)
 
 		cr:move_to(mt(x1, y1))
 		arc.to_bezier3(write, svgarc.to_arc(x1, y1, rx, ry, rotation, large, sweep, x2, y2, mt))
-		cr:set_source_rgba(r, g, b, a)
+		cr:rgba(r, g, b, a)
 		cr:stroke()
 	end
 
-	cr:set_line_width(2)
+	cr:line_width(2)
 
 	local mind, minx, miny, mint
 	local function hit(x1, y1, rx, ry, rotation, large, sweep, x2, y2)
@@ -76,14 +76,14 @@ function player:on_render(cr)
 		local x1, y1, rx, ry, x2, y2 = tx+125, ty+75, 100, 50, tx+125+100, ty+75+50
 		local cx, cy, crx, cry = svgarc.to_arc(x1, y1, rx, ry, rotation, large, sweep, x2, y2, mt)
 
-		local cmt = cr:get_matrix()
+		local cmt = cr:matrix()
 		cr:rotate_around(world_center_x, world_center_y, math.rad(world_rotation))
 		cr:translate(cx, cy)
 		cr:rotate(math.rad(rotation))
 		cr:translate(-125, -125)
 		cr:ellipse(125, 125, crx, cry)
-		cr:set_matrix(cmt)
-		cr:set_source_rgba(0,1,0,0.3)
+		cr:matrix(cmt)
+		cr:rgba(0,1,0,0.3)
 		cr:stroke()
 
 		hit(x1, y1, rx, ry, rotation, large, sweep, x2, y2)
@@ -98,8 +98,8 @@ function player:on_render(cr)
 	hit(800, 100, 100, 100, 0, 0, 0, 800, 100) --conincident endpoints
 
 	--closest hit point
-	cr:set_line_width(1)
-	cr:set_source_rgb(1,1,1)
+	cr:line_width(1)
+	cr:rgb(1,1,1)
 	cr:circle(minx, miny, 5)
 	cr:stroke()
 

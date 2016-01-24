@@ -21,7 +21,7 @@ local function pargs(func)
 	end
 end
 
---binding automation ---------------------------------------------------------
+--binding vocabulary ---------------------------------------------------------
 
 --C namespace that returns nil for missing symbols instead of raising an error.
 local function sym(name) return C[name] end
@@ -41,10 +41,15 @@ local function map(prefix, t)
 	end
 	enums[prefix] = dt
 end
+M.enums = enums
 
 --'foo' -> C.CAIRO_<PREFIX>_FOO and C.CAIRO_<PREFIX>_FOO -> 'foo' conversions
 local function X(prefix, val)
-	return (assert(enums[prefix][val], 'invalid enum value'))
+	local val = enums[prefix][val]
+	if not val then
+		error('invalid enum value for '..prefix, 2)
+	end
+	return val
 end
 
 --create a gc-tying constructor
@@ -283,6 +288,17 @@ local function patt_or_surface_func(patt_func, surface_func)
 	end
 end
 
+local function unpack_rect(r)
+	return r.x, r.y, r.width, r.height
+end
+
+local function ret_self(func)
+	return function(self, ...)
+		func(self, ...)
+		return self
+	end
+end
+
 --binding --------------------------------------------------------------------
 
 M.NULL = ffi.cast('void*', 0)
@@ -482,13 +498,13 @@ end
 
 cr.miter_limit = getset_func(C.cairo_get_miter_limit, C.cairo_set_miter_limit)
 
-cr.translate = C.cairo_translate
-cr.scale = C.cairo_scale
-cr.rotate = C.cairo_rotate
-cr.transform = C.cairo_transform
+cr.translate = ret_self(C.cairo_translate)
+cr.scale = function(cr, sx, sy) C.cairo_scale(cr, sx, sy or sx); return cr end
+cr.rotate = ret_self(C.cairo_rotate)
+cr.transform = ret_self(C.cairo_transform)
 
 cr.matrix = getset_func(mtout_getfunc(C.cairo_get_matrix), C.cairo_set_matrix)
-cr.identity_matrix = C.cairo_identity_matrix
+cr.identity_matrix = ret_self(C.cairo_identity_matrix)
 
 cr.user_to_device          = d2inout_func(C.cairo_user_to_device)
 cr.user_to_device_distance = d2inout_func(C.cairo_user_to_device_distance)
@@ -618,7 +634,7 @@ cr.font_face = getset_func(C.cairo_get_font_face, function(cr, family, slant, we
 			X('CAIRO_FONT_SLANT_', slant or 'normal'),
 			X('CAIRO_FONT_WEIGHT_', weight or 'normal'))
 	else
-		C.cairo_set_font_face(family) --in fact: cairo_font_face_t
+		C.cairo_set_font_face(cr, family) --in fact: cairo_font_face_t
 	end
 end)
 cr.scaled_font = getset_func(C.cairo_get_scaled_font, C.cairo_set_scaled_font) --weak ref
@@ -653,7 +669,13 @@ map('CAIRO_FONT_TYPE_', {
 })
 
 face.type = getflag_func(C.cairo_font_face_get_type, 'CAIRO_FONT_TYPE_')
-face.scaled_font = ref_func(C.cairo_scaled_font_create, C.cairo_scaled_font_destroy)
+face.scaled_font = ref_func(function(face, mt, ctm, fopt)
+	--cairo crashes if any of these is null
+	assert(mt ~= nil)
+	assert(ctm ~= nil)
+	assert(fopt ~= nil)
+	return C.cairo_scaled_font_create(face, mt, ctm, fopt)
+end, C.cairo_scaled_font_destroy)
 
 local sfont = {}
 
@@ -795,7 +817,7 @@ sr.similar_surface = ref_func(function(sr, content, w, h)
 end, C.cairo_surface_destroy)
 
 sr.similar_image_surface = ref_func(function(sr, format, w, h)
-	return C.cairo_surface_create_similar(sr, X('CAIRO_FORMAT_', format), w, h)
+	return C.cairo_surface_create_similar_image(sr, X('CAIRO_FORMAT_', format), w, h)
 end, C.cairo_surface_destroy)
 
 sr.map_to_image = function(sr, x, y, w, h)
@@ -882,8 +904,13 @@ map('CAIRO_SURFACE_TYPE_', {
 sr.type = getflag_func(C.cairo_surface_get_type, 'CAIRO_SURFACE_TYPE_')
 sr.content = getflag_func(C.cairo_surface_get_content, 'CAIRO_CONTENT_')
 
-sr.write_to_png = status_func(_C.cairo_surface_write_to_png)
-sr.write_to_png_stream = status_func(C.cairo_surface_write_to_png_stream)
+sr.save_png = status_func(function(self, arg1, ...)
+	if type(arg1) == 'string' then
+		return C.cairo_surface_write_to_png(self, arg1, ...)
+	else
+		return C.cairo_surface_write_to_png_stream(self, arg1, ...)
+	end
+end)
 
 local data_buf = ffi.new'void*[1]'
 local len_buf = ffi.new'unsigned long[1]'
@@ -969,8 +996,13 @@ sr.width = C.cairo_image_surface_get_width
 sr.height = C.cairo_image_surface_get_height
 sr.stride = C.cairo_image_surface_get_stride
 
-M.image_surface_from_png = ref_func(_C.cairo_image_surface_create_from_png, C.cairo_surface_destroy)
-M.image_surface_from_png_stream = ref_func(_C.cairo_image_surface_create_from_png_stream, C.cairo_surface_destroy)
+M.load_png = ref_func(function(arg1, ...)
+	if type(arg1) == 'string' then
+		return C.cairo_image_surface_create_from_png(arg1, ...)
+	else
+		return C.cairo_image_surface_create_from_png_stream(arg1, ...)
+	end
+end, C.cairo_surface_destroy)
 
 local r = ffi.new'cairo_rectangle_t'
 function M.recording_surface(content, x, y, w, h)
@@ -989,8 +1021,8 @@ end
 
 sr.ink_extents = d4out_func(C.cairo_recording_surface_ink_extents)
 sr.recording_extents = function(sr)
-	if C.cairo_recording_surface_get_extents(sr, d1, d2, d3, d4) == 1 then
-		return d1[0], d2[0], d3[0], d4[0]
+	if C.cairo_recording_surface_get_extents(sr, r) == 1 then
+		return unpack_rect(r)
 	end
 end
 
@@ -1128,7 +1160,7 @@ patt.color_stop = function(patt, i)
 end
 
 patt.linear_points = function(patt)
-	check_status(C.cairo_pattern_get_linear_points(d1, d1, d2, d2))
+	check_status(C.cairo_pattern_get_linear_points(patt, d1, d1, d2, d2))
 	return d1[0], d2[0], d3[0], d4[0]
 end
 
@@ -1145,22 +1177,34 @@ end
 
 patt.path = ptr_func(C.cairo_mesh_pattern_get_path) --weak ref? doc doesn't say
 
-M.matrix = ffi.typeof'cairo_matrix_t'
+local mat_cons = ffi.typeof'cairo_matrix_t'
+M.matrix = function(arg1, ...)
+	if not arg1 then --default constructor
+		return mat_cons(1, 0, 0, 1, 0, 0)
+	end
+	return mat_cons(arg1, ...) --copy and value constructors from ffi
+end
 
 local mt = {}
 
-mt.init = C.cairo_matrix_init
-mt.init_identity = C.cairo_matrix_init_identity
-mt.init_translate = C.cairo_matrix_init_translate
-mt.init_scale = C.cairo_matrix_init_scale
-mt.init_rotate = C.cairo_matrix_init_rotate
-mt.translate = C.cairo_matrix_translate
-mt.scale = C.cairo_matrix_scale
-mt.rotate = C.cairo_matrix_rotate
+mt.reset = function(mt, arg1, ...)
+	if not arg1 then --default constructor
+		return mt:reset(1, 0, 0, 1, 0, 0)
+	elseif type(arg1) == 'number' then --value constructor
+		C.cairo_matrix_init(mt, arg1, ...)
+		return mt
+	else --copy constructor
+		ffi.copy(mt, arg1, ffi.sizeof(mt))
+		return mt
+	end
+end
+mt.translate = ret_self(C.cairo_matrix_translate)
+mt.scale = function(mt, sx, sy) C.cairo_matrix_scale(mt, sx, sy or sx); return mt; end
+mt.rotate = ret_self(C.cairo_matrix_rotate)
 mt.invert = function(mt)
 	return C.cairo_matrix_invert(mt) == 0
 end
-mt.multiply = C.cairo_matrix_multiply
+mt.multiply = ret_self(C.cairo_matrix_multiply)
 mt.transform_distance = d2inout_func(C.cairo_matrix_transform_distance)
 mt.transform_point = d2inout_func(C.cairo_matrix_transform_point)
 
@@ -1191,20 +1235,16 @@ rgn.status = C.cairo_region_status
 rgn.status_message = status_message
 rgn.check = check
 
-local function unpack_int_rect(r)
-	return r.x, r.y, r.width, r.height
-end
-
 rgn.extents = function(rgn)
 	C.cairo_region_get_extents(rgn, ir)
-	return unpack_int_rect(ir)
+	return unpack_rect(ir)
 end
 
 rgn.num_rectangles = C.cairo_region_num_rectangles
 
 rgn.rectangle = function(rgn, i)
 	C.cairo_region_get_rectangle(rgn, i, ir)
-	return unpack_int_rect(ir)
+	return unpack_rect(ir)
 end
 
 rgn.is_empty = bool_func(C.cairo_region_is_empty)
@@ -1275,26 +1315,30 @@ function cr:safe_transform(mt)
 	if mt:invertible() then
 		self:transform(mt)
 	end
+	return self
 end
 
 function cr:rotate_around(cx, cy, angle)
 	self:translate(cx, cy)
 	self:rotate(angle)
 	self:translate(-cx, -cy)
+	return self
 end
 
 function cr:scale_around(cx, cy, ...)
 	self:translate(cx, cy)
 	self:scale(...)
 	self:translate(-cx, -cy)
+	return self
 end
 
 local sm = M.matrix()
 function cr:skew(ax, ay)
-	sm:init_identity()
+	sm:identity()
 	sm.xy = math.tan(ax)
 	sm.yx = math.tan(ay)
 	cr:transform(sm)
+	return self
 end
 
 --additions to surfaces
@@ -1370,49 +1414,53 @@ end
 --additions to matrices
 
 function mt:transform(mt)
-	self:multiply(mt, self)
+	return self:multiply(mt, self)
 end
 
-local tmt = M.matrix()
+function mt:determinant()
+	return xx * yy - yx * xy
+end
+
 function mt:invertible()
-	ffi.copy(tmt, self, ffi.sizeof(self))
-	return tmt:invert() == 0
+	local det = self:determinant()
+	return det ~= 0 and det ~= 1/0 and det ~= -1/0
 end
 
 function mt:safe_transform(self, mt)
 	if mt:invertible() then
 		self:transform(mt)
 	end
+	return self
 end
 
 function mt:skew(ax, ay)
 	local sm = M.matrix()
-	sm:init_identity()
 	sm.xy = math.tan(ax)
 	sm.yx = math.tan(ay)
-	self:transform(sm)
+	return self:transform(sm)
 end
 
 function mt:rotate_around(cx, cy, angle)
 	self:translate(cx, cy)
 	self:rotate(angle)
 	self:translate(-cx, -cy)
+	return self
 end
 
 function mt:scale_around(cx, cy, ...)
 	self:translate(cx, cy)
 	self:scale(...)
 	self:translate(-cx, -cy)
+	return self
 end
 
 function mt:copy()
-	local dmt = M.matrix()
-	ffi.copy(dmt, self, ffi.sizeof(self))
-	return dmt
+	return M.matrix(self)
 end
 
-function mt:init_matrix(mt)
+function mt:set(mt)
 	ffi.copy(self, mt, ffi.sizeof(mt))
+	return self
 end
 
 function mt.tostring(mt)

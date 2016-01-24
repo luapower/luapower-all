@@ -45,7 +45,7 @@ SG:state_value('font_options', function(self, e)
 		fopt:set_hint_metrics(hint_metrics[e.hint_metrics or self.defaults.font_options.hint_metrics])
 		self.cache:set(e, fopt)
 	end
-	self.cr:set_font_options(fopt)
+	self.cr:font_options(fopt)
 end)
 
 local font_slants = cairo_enum'CAIRO_FONT_SLANT_'
@@ -87,11 +87,11 @@ function SG:load_font_file(e) --for preloading
 end
 
 SG:state_value('font_file', function(self, e)
-	self.cr:set_font_face(self:load_font_file(e))
+	self.cr:font_face(self:load_font_file(e))
 end)
 
 SG:state_value('font_size', function(self, size)
-	self.cr:set_font_size(size)
+	self.cr:font_size(size)
 end)
 
 SG:state_value('font', function(self, font)
@@ -113,11 +113,11 @@ SG:state_value('line_dashes', function(self, e)
 		d = {a = a, n = #e, offset = e.offset}
 		self.cache:set(d)
 	end
-	self.cr:set_dash(d.a, d.n, d.offset or 0)
+	self.cr:dash(d.a, d.n, d.offset or 0)
 end)
 
 SG:state_value('line_width', function(self, width)
-	self.cr:set_line_width(width)
+	self.cr:line_width(width)
 end)
 
 --like state_value but use a lookup table; for invalid values, set the default value and record the error.
@@ -128,15 +128,15 @@ function SG:state_enum(k, enum, set) --too much abstraction?
 end
 
 SG:state_enum('line_cap', cairo_enum'CAIRO_LINE_CAP_', function(self, cap)
-	self.cr:set_line_cap(cap)
+	self.cr:line_cap(cap)
 end)
 
 SG:state_enum('line_join', cairo_enum'CAIRO_LINE_JOIN_', function(self, join)
-	self.cr:set_line_join(join)
+	self.cr:line_join(join)
 end)
 
 SG:state_value('miter_limit', function(self, limit)
-	self.cr:set_miter_limit(limit)
+	self.cr:miter_limit(limit)
 end)
 
 local fill_rules = {
@@ -145,11 +145,11 @@ local fill_rules = {
 }
 
 SG:state_enum('fill_rule', fill_rules, function(self, rule)
-	self.cr:set_fill_rule(rule)
+	self.cr:fill_rule(rule)
 end)
 
 SG:state_enum('operator', cairo_enum'CAIRO_OPERATOR_', function(self, op)
-	self.cr:set_operator(op)
+	self.cr:operator(op)
 end)
 
 local function new_matrix(...)
@@ -323,7 +323,7 @@ function SG:set_gradient_source(e, alpha)
 		local x, y, w, h = bx1, by1, bx2-bx1, by2-by1
 		pat:set_matrix(new_matrix(1/w, 0, 0, 1/h, -x/w, -y/h))
 	end
-	self.cr:set_source(pat)
+	self.cr:source(pat)
 end
 
 function SG:paint_gradient(e, alpha, operator)
@@ -410,7 +410,7 @@ end
 function SG:set_image_source(e, alpha)
 	local source = self:load_image_file(e.file, alpha)
 	if not source then return end
-	self.cr:set_source_surface(source.surface, 0, 0)
+	self.cr:source(source.surface, 0, 0)
 	local pat = self.cr:get_source()
 	pat:set_filter(self.pattern_filters[e.filter or self.defaults.image_filter])
 	pat:set_extend(self.pattern_extends[e.extend or self.defaults.image_extend])
@@ -557,10 +557,10 @@ function SG:paint_composite(e)
 		local state = self:push_group()
 		self:draw_composite(e)
 		local source = self:pop_group(state)
-		self.cr:set_source(source)
+		self.cr:source(source)
 		self:set_operator(e.operator)
 		self.cr:paint_with_alpha(alpha)
-		self.cr:set_source_rgb(0,0,0) --release source from cr so we can free it
+		self.cr:rgb(0,0,0) --release source from cr so we can free it
 		source:free()
 	end
 end
@@ -581,10 +581,10 @@ function SG:stroke_composite(e)
 	self:draw_composite(e)
 	local source = self:pop_group(state)
 	source:get_surface():apply_alpha(alpha)
-	self.cr:set_source(source)
+	self.cr:source(source)
 	self:set_operator(e.operator)
 	self.cr:stroke_preserve()
-	self.cr:set_source_rgb(0,0,0) --release source from cr so we can free it
+	self.cr:rgb(0,0,0) --release source from cr so we can free it
 	source:free()
 end
 
@@ -610,7 +610,7 @@ function SG:draw_group(e)
 	local mt = self.cr:get_matrix()
 	for i=1,#e do
 		self:paint(e[i])
-		self.cr:set_matrix(mt)
+		self.cr:matrix(mt)
 		self.current_path = nil
 	end
 end
@@ -626,7 +626,7 @@ function SG:draw_shape(e)
 			self:set_stroke_options(e)
 			self:stroke(e.stroke)
 			if e.fill then
-				self.cr:set_matrix(mt)
+				self.cr:matrix(mt)
 				self.current_path = nil
 				self:set_path(e.path)
 			end
@@ -640,7 +640,7 @@ function SG:draw_shape(e)
 			self:set_fill_rule(e.fill_rule)
 			self:fill(e.fill)
 			if e.stroke then
-				self.cr:set_matrix(mt)
+				self.cr:matrix(mt)
 				self.current_path = nil
 				self:set_path(e.path)
 			end
@@ -680,7 +680,7 @@ end
 function SG:render(e)
 	self.cr:identity_matrix()
 	self:paint(e)
-	self.cr:set_source_rgb(0,0,0) --release source, if any
+	self.cr:rgb(0,0,0) --release source, if any
 	self:set_font_file(nil) --release font, if any
 	if self.cr:status() ~= 0 then --see if cairo didn't shutdown
 		self:error(self.cr:status_string())
@@ -751,7 +751,7 @@ function SG:measure_group(e)
 			dx1, dy1 = math.min(dx1,x1), math.min(dy1,y1)
 			dx2, dy2 = math.max(dx2,x2), math.max(dy2,y2)
 		end
-		self.cr:set_matrix(mt)
+		self.cr:matrix(mt)
 	end
 	if dx1 == math.huge then return end
 	return dx1,dy1,dx2,dy2
@@ -804,7 +804,7 @@ function SG:hit_test(x, y, e)
 			for i=#e,1,-1 do
 				hit = test(e[i])
 				if hit then break end --don't look below the topmost element that was hit
-				self.cr:set_matrix(mt)
+				self.cr:matrix(mt)
 				self.current_path = nil
 			end
 		elseif e.type == 'shape' then

@@ -163,18 +163,18 @@ local drag_i
 local i = 0
 function player:on_render(cr)
 	local draw = path_cairo(cr)
-	cr:set_source_rgb(0,0,0)
+	cr:rgb(0,0,0)
 	cr:paint()
 
 	draw(path, mt)
-	cr:set_source_rgb(1,1,1)
+	cr:rgb(1,1,1)
 	cr:stroke()
 
 	for i=1,#points,2 do
 		local x,y = points[i], points[i+1]
 		x,y = mt(x,y)
 		cr:rectangle(x-3,y-3,6,6)
-		cr:set_source_rgb(1,1,0)
+		cr:rgb(1,1,0)
 		cr:fill()
 	end
 

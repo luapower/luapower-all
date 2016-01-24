@@ -1,4 +1,7 @@
 --cairo player: procedural graphics player with immediate mode gui toolkit
+
+if not ... then require'cplayer.widgets_demo'; return end
+
 local CairoPanel = require'winapi.cairopanel'
 local winapi = require'winapi'
 require'winapi.windowclass'
@@ -535,7 +538,5 @@ function player:play(...)
 	self.main = self:window{on_render = self.on_render}
 	return winapi.MessageLoop()
 end
-
-if not ... then require'cplayer.widgets_demo' end
 
 return player

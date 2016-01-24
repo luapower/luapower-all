@@ -21,7 +21,7 @@ function player:on_render(cr)
 		elseif s == 'close' then cr:close_path(); x1,y1=nil
 		end
 	end
-	cr:set_source_rgb(1,1,1)
+	cr:rgb(1,1,1)
 
 	--[[
 	shapes.ellipse_to_bezier3(write, 100, 100, 50, 20)

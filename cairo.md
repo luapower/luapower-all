@@ -29,7 +29,11 @@ __pixman surfaces__
 `sr:height() -> h`                                                  [get the image surface height][cairo_image_surface_get_height]
 `sr:stride() -> stride`                                             [get the image surface stride][cairo_image_surface_get_stride]
 `sr:bpp() -> bpp`                                                   get the image surface bits-per-pixel
-__surfaces__
+__recording surfaces__
+`cairo.recording_surface(content[, x, y, w, h])`                    [create a recording surface][cairo_recording_surface_create]
+`sr:ink_extents() -> x, y, w, h`                                    [get recording surface ink extents][cairo_recording_surface_ink_extents]
+`sr:recording_extents() -> x, y, w, h | nil`                        [get recording surface extents][cairo_recording_surface_get_extents]
+__all surfaces__
 `sr:sub(x, y, w, h) -> sr`                                          [create a sub-surface][cairo_surface_create_for_rectangle]
 `sr:similar_surface(content, w, h) -> sr`                           [create a similar surface][cairo_surface_create_similar]
 `sr:similar_image_surface(fmt, w, h) -> sr`                         [create a similar image surface][cairo_surface_create_similar_image]
@@ -38,7 +42,6 @@ __surfaces__
 `sr:flush()`                                                        [perform any pending drawing commands][cairo_surface_flush]
 `sr:mark_dirty([x, y, w, h])`                                       [re-read any cached areas of (parts of) the surface][cairo_surface_mark_dirty]
 `sr:fallback_resolution(xppi, yppi) /-> xppi, yppi`                 [get/set fallback resolution][cairo_surface_set_fallback_resolution]
-`sr:has_show_text_glyphs() -> t|f`                                  [check if surface supports cairo_show_text_glyphs() for realz][cairo_surface_has_show_text_glyphs]
 `sr:mime_data(type, data, len[, destroy[, arg]])`                   [set mime data][cairo_surface_set_mime_data]
 `sr:mime_data(type) -> data, len`                                   [get mime data][cairo_surface_get_mime_data]
 `sr:supports_mime_type(type) -> t|f`                                [check if the surface supports a mime type][cairo_surface_supports_mime_type]
@@ -46,14 +49,10 @@ __surfaces__
 `sr:unmap_image(image_sr)`                                          [upload image to backing store and unmap][cairo_surface_unmap_image]
 `sr:finish()`                                                       [finish the surface][cairo_surface_finish]
 `sr:apply_alpha(a)`                                                 make the surface transparent
-__recording surfaces__
-`cairo.recording_surface(content[, x, y, w, h])`                    [create a recording surface][cairo_recording_surface_create]
-`sr:ink_extents() -> x, y, w, h`                                    [get recording surface ink extents][cairo_recording_surface_ink_extents]
-`sr:recording_extents() -> x, y, w, h | nil`                        [get recording surface extents][cairo_recording_surface_get_extents]
 __drawing contexts__
 `sr:context() -> cr`                                                [create a drawing context on a surface][cairo_create]
-`cr:save()`                                                         [save state (push to stack)][cairo_save]
-`cr:restore()`                                                      [restore state (pop from stack)][cairo_restore]
+`cr:save()`                                                         [push context state to stack][cairo_save]
+`cr:restore()`                                                      [pop context state from stack][cairo_restore]
 __sources__
 `cr:rgb(r, g, b)`                                                   [set a RGB color as source][cairo_set_source_rgb]
 `cr:rgba(r, g, b, a)`                                               [set a RGBA color as source][cairo_set_source_rgba]
@@ -61,28 +60,32 @@ __sources__
 __compositing__
 `cr:operator(operator) /-> operator`                                [get/set the compositing operator][cairo_set_operator]
 `cr:mask(patt | sr[, x, y])`                                        [draw using a pattern's (or surface's) alpha channel as a mask][cairo_mask]
+`cr:paint()`                                                        [paint the current source within the current clipping region][cairo_paint]
+`cr:paint_with_alpha(alpha)`                                        [paint the current source with transparency][cairo_paint_with_alpha]
 __groups__
 `cr:push_group([content])`                                          [redirect drawing to an intermediate surface][cairo_push_group]
 `cr:pop_group() -> patt`                                            [terminate the redirection and return it as pattern][cairo_pop_group]
 `cr:pop_group_to_source()`                                          [terminate the redirection and install it as pattern][cairo_pop_group_to_source]
+`cr:target() -> sr`                                                 [get the ultimate destination surface][cairo_get_target]
+`cr:group_target() -> sr`                                           [get the current destination surface][cairo_get_group_target]
 __transformations__
-`cr:translate(x, y)`                                                [translate the user-space origin][cairo_translate]
-`cr:scale(sx, sy)`                                                  [scale the user-space][cairo_scale]
-`cr:scale_around(cx, cy, sx, sy)`                                   scale the user-space arount a point
-`cr:rotate(angle)`                                                  [rotate the user-space][cairo_rotate]
-`cr:rotate_around(cx, cy, angle)`                                   rotate the user-space around a point
-`cr:skew(ax, ay)`                                                   skew the user-space
-`cr:transform(mt)`                                                  [transform the user-space][cairo_transform]
-`cr:safe_transform(mt)`                                             transform the user-space if the matrix is invertible
+`cr:translate(x, y) -> cr`                                          [translate the user-space origin][cairo_translate]
+`cr:scale(sx[, sy]) -> cr`                                          [scale the user-space][cairo_scale]
+`cr:scale_around(cx, cy, sx[, sy]) -> cr`                           scale the user-space arount a point
+`cr:rotate(angle) -> cr`                                            [rotate the user-space][cairo_rotate]
+`cr:rotate_around(cx, cy, angle) -> cr`                             rotate the user-space around a point
+`cr:skew(ax, ay) -> cr`                                             skew the user-space
+`cr:transform(mt) -> cr`                                            [transform the user-space][cairo_transform]
+`cr:safe_transform(mt) -> cr`                                       transform the user-space if the matrix is invertible
 `cr:matrix(mt) /-> mt`                                              [get/set the CTM][cairo_set_matrix]
-`cr:identity_matrix()`                                              [reset the CTM][cairo_identity_matrix]
+`cr:identity_matrix() -> cr`                                        [reset the CTM][cairo_identity_matrix]
 `cr:user_to_device(x, y) -> x, y`                                   [user to device (point)][cairo_user_to_device]
 `cr:user_to_device_distance(x, y) -> x, y`                          [user to device (distance)][cairo_user_to_device_distance]
 `cr:device_to_user(x, y) -> x, y`                                   [device to user (point)][cairo_device_to_user]
 `cr:device_to_user_distance(x, y) -> x, y`                          [device to user (distance)][cairo_device_to_user_distance]
 __paths__
-`cr:new_path()`                                                     [create path][cairo_new_path]
-`cr:new_sub_path()`                                                 [create sub-path][cairo_new_sub_path]
+`cr:new_path()`                                                     [clear the current path][cairo_new_path]
+`cr:new_sub_path()`                                                 [create a sub-path][cairo_new_sub_path]
 `cr:move_to(x, y)`                                                  [move the current point][cairo_move_to]
 `cr:line_to(x, y)`                                                  [add a line to the current path][cairo_line_to]
 `cr:curve_to(x1, y1, x2, y2, x3, y3)`                               [add a cubic bezier to the current path][cairo_curve_to]
@@ -103,23 +106,33 @@ __paths__
 `cr:path_extents() -> x1, y1, x2, y2`                               [get the bouding box of the current path][cairo_path_extents]
 `cr:current_point() -> x, y`                                        [get the current point][cairo_get_current_point]
 `cr:has_current_point() -> t|f`                                     [check if there's a current point][cairo_has_current_point]
-__filling and stroking__
-`cr:paint()`                                                        [paint the current source within the current clipping region][cairo_paint]
-`cr:paint_with_alpha(alpha)`                                        [paint the current source with transparency][cairo_paint_with_alpha]
-`cr:stroke()`                                                       [stroke the current path and discard it][cairo_stroke]
-`cr:stroke_preserve()`                                              [stroke and keep the path][cairo_stroke_preserve]
+__filling__
 `cr:fill()`                                                         [fill the current path and discard it][cairo_fill]
 `cr:fill_preserve()`                                                [fill and keep the path][cairo_fill_preserve]
-`cr:in_stroke(x, y) -> t|f`                                         [hit-test the stroke area][cairo_in_stroke]
-`cr:in_fill(x, y) -> t|f`                                           [hit-test the fill area][cairo_in_fill]
-`cr:in_clip(x, y) -> t|f`                                           [hit-test the clip area][cairo_in_clip]
-`cr:stroke_extents() -> x1, y1, x2, y2`                             [get the bounding box of stroking the current path][cairo_stroke_extents]
 `cr:fill_extents() -> x1, y1, x2, y2`                               [get the bounding box of filling the current path][cairo_fill_extents]
+`cr:in_fill(x, y) -> t|f`                                           [hit-test the fill area][cairo_in_fill]
+`cr:fill_rule(rule]) /-> rule`                                      [get/set the fill rule][cairo_set_fill_rule]
+__stroking__
+`cr:stroke()`                                                       [stroke the current path and discard it][cairo_stroke]
+`cr:stroke_preserve()`                                              [stroke and keep the path][cairo_stroke_preserve]
+`cr:stroke_extents() -> x1, y1, x2, y2`                             [get the bounding box of stroking the current path][cairo_stroke_extents]
+`cr:in_stroke(x, y) -> t|f`                                         [hit-test the stroke area][cairo_in_stroke]
+`cr:line_width(width]) /-> width`                                   [get/set the line width][cairo_set_line_width]
+`cr:line_cap(cap) /-> cap`                                          [get/set the line cap][cairo_set_line_cap]
+`cr:line_join(join) /-> join`                                       [get/set the line join][cairo_set_line_join]
+`cr:miter_limit(limit) /-> limit`                                   [get/set the miter limit][cairo_set_miter_limit]
+`cr:dash(dashes[, offset])`                                         [set the dash pattern for stroking][cairo_set_dash]
+`cr:dash() -> dashes, dash_count`                                   [get the dash pattern for stroking][cairo_get_dash]
+`cr:dash'#' -> n`                                                   [get the dash count][cairo_get_dash_count]
+__rasterization options__
+`cr:tolerance(tolerance]) /-> tolerance`                            [get/set tolerance][cairo_set_tolerance]
+`cr:antialias(antialias]) /-> antialias`                            [get/set the antialiasing mode][cairo_set_antialias]
 __clipping__
 `cr:clip()`                                                         [intersect the current path to the current clipping region and discard the path][cairo_clip]
 `cr:clip_preserve()`                                                [clip and keep the current path][cairo_clip_preserve]
 `cr:reset_clip()`                                                   [remove all clipping][cairo_reset_clip]
 `cr:clip_extents() -> x1, y1, x2, y2`                               [get the clip extents][cairo_clip_extents]
+`cr:in_clip(x, y) -> t|f`                                           [hit-test the clip area][cairo_in_clip]
 `cr:clip_rectangles() -> rlist`                                     [get the clipping rectangles][cairo_copy_clip_rectangle_list]
 __solid-color patterns__
 `cairo.color_pattern(r, g, b[, a]) -> patt`                         [create a solid color pattern][cairo_pattern_create_rgb]
@@ -153,26 +166,34 @@ __mesh patterns__
 `patt:control_point(patch_num, point_num) -> x, y`                  [get a control point][cairo_mesh_pattern_get_control_point]
 `patt:corner_color(corner_num, r, g, b[, a])`                       [set a corner color of the current patch][cairo_mesh_pattern_set_corner_color_rgb]
 `patt:corner_color(patch_num, corner_num) -> r, g, b, a`            [get a corner color][cairo_mesh_pattern_get_corner_color_rgba]
-__patterns__
+__all patterns__
 `patt:type() -> type`                                               [get the pattern type][cairo_pattern_get_type]
 `patt:matrix(mt) /-> mt`                                            [get/set the matrix][cairo_pattern_set_matrix]
 `patt:extend(extend) /-> extend`                                    [get/set the extend][cairo_pattern_set_extend]
 `patt:filter(filter) /-> filter`                                    [get/set the filter][cairo_pattern_set_filter]
+__drawing text__
+`cr:font_face(face) /-> face`                                       [get/set the font face][cairo_set_font_face]
+`cr:font_size(size)`                                                [set the font size][cairo_set_font_size]
+`cr:font_matrix(mt) /-> mt`                                         [get/set the font matrix][cairo_set_font_matrix]
+`cr:scaled_font(sfont) /-> sfont`                                   [get/set the scaled font][cairo_set_scaled_font]
+`cr:font_extents() -> cairo_font_extents_t`                         [get the font extents of the current font][cairo_font_extents]
+`sr:font_options() -> fopt`                                         [get the default font options][cairo_surface_get_font_options]
+`cr:font_options(fopt) /-> fopt`                                    [get/set custom font options][cairo_set_font_options]
 __drawing text (toy API)__
 `cr:font_face(family[, slant[, weight]])`                           [select a font face][cairo_select_font_face]
 `cr:show_text(s)`                                                   [show text][cairo_show_text]
 `cr:text_path(s)`                                                   [add closed paths for text to the current path][cairo_text_path]
 `cr:text_extents(s) -> cairo_text_extents_t`                        [get text extents][cairo_text_extents]
 __drawing glyphs__
-`cr:font_face(face) /-> face`                                       [get/set the font face][cairo_set_font_face]
-`cr:scaled_font(sfont) /-> sfont`                                   [get/set the scaled font][cairo_set_scaled_font]
-`cr:font_size(size)`                                                [set the font size][cairo_set_font_size]
-`cr:font_matrix(mt) /-> mt`                                         [get/set the font matrix][cairo_set_font_matrix]
+`cairo.allocate_glyphs(count) -> cairo_glyph_t*`                    [allocate an array of glyphs][cairo_glyph_allocate]
 `cr:show_glyphs(glyphs, #glyphs)`                                   [draw glyphs][cairo_show_glyphs]
-`cr:show_text_glyphs(s, [#s], g, #g, c, #c, f)`                     [draw glyphs with native cluster mapping][cairo_show_text_glyphs]
 `cr:glyph_path(glyphs, #glyphs)`                                    [add paths for the glyphs to the current path][cairo_glyph_path]
 `cr:glyph_extents(glyphs, #glyphs) -> cairo_text_extents_t`         [get the text extents of an array of glyphs][cairo_glyph_extents]
-`cr:font_extents() -> cairo_font_extents_t`                         [get the font extents of the current font][cairo_font_extents]
+__text cluster mapping__
+`cairo.allocate_text_clusters(count) -> cairo_text_cluster_t*`      [allocate an array of text clusters][cairo_text_cluster_allocate]
+`sfont:text_to_glyphs(x,y, s,[#s]) -> g,#g, c,#c, cf | nil,err`     [convert text to glyphs][cairo_scaled_font_text_to_glyphs]
+`cr:show_text_glyphs(s, [#s], g, #g, c, #c, f)`                     [draw glyphs with native cluster mapping][cairo_show_text_glyphs]
+`sr:has_show_text_glyphs() -> t|f`                                  [check if surface has support for cluster mapping][cairo_surface_has_show_text_glyphs]
 __freetype fonts__
 `cairo.ft_font_face(ft_face[, ft_flags]) -> face`                   [create a font face from a freetype handle][cairo_ft_font_face_create_for_ft_face]
 `face:synthesize_bold(t|f) /-> t|f`                                 [get/set synthethize bold flag][cairo_ft_font_face_set_synthesize]
@@ -190,7 +211,7 @@ __callback-based fonts__
 `face:render_glyph_func(func) /-> func`                             [get/set the glyph rendering function][cairo_user_font_face_set_render_glyph_func]
 `face:text_to_glyphs_func(func) /-> func`                           [get/set the text-to-glyphs function][cairo_user_font_face_set_text_to_glyphs_func]
 `face:unicode_to_glyph_func(func) /-> func`                         [get/set the text-to-glyphs easy function][cairo_user_font_face_set_unicode_to_glyph_func]
-__fonts__
+__all fonts__
 `face:type() -> type`                                               [get font type][cairo_font_face_get_type]
 __scaled fonts__
 `face:scaled_font(mt, ctm, fopt) -> sfont`                          [create scaled font][cairo_scaled_font_create]
@@ -198,25 +219,11 @@ __scaled fonts__
 `sfont:extents() -> cairo_font_extents_t`                           [get font extents][cairo_scaled_font_extents]
 `sfont:text_extents(s) -> cairo_text_extents_t`                     [get text extents][cairo_scaled_font_text_extents]
 `sfont:glyph_extents(glyphs, #glyphs) -> cairo_text_extents_t`      [get the extents of an array of glyphs][cairo_scaled_font_glyph_extents]
-`sfont:text_to_glyphs(x,y, s,#s, [g,#g, [c,#c]]) -> t|nil,err`      [convert text to glyphs][cairo_scaled_font_text_to_glyphs]
 `sfont:font_matrix() -> mt`                                         [get the font matrix][cairo_scaled_font_get_font_matrix]
 `sfont:ctm() -> mt`                                                 [get the CTM][cairo_scaled_font_get_ctm]
 `sfont:scale_matrix() -> mt`                                        [get the scale matrix][cairo_scaled_font_get_scale_matrix]
 `sfont:font_options(fopt) /-> fopt`                                 [get/set the font options][cairo_scaled_font_get_font_options]
 `sfont:font_face() -> face`                                         [get the font face][cairo_scaled_font_get_font_face]
-__rasterization options__
-`cr:tolerance(tolerance]) /-> tolerance`                            [get/set tolerance][cairo_set_tolerance]
-`cr:antialias(antialias]) /-> antialias`                            [get/set the antialiasing mode][cairo_set_antialias]
-`cr:fill_rule(rule]) /-> rule`                                      [get/set the fill rule][cairo_set_fill_rule]
-`cr:line_width(width]) /-> width`                                   [get/set the line width][cairo_set_line_width]
-`cr:line_cap(cap) /-> cap`                                          [get/set the line cap][cairo_set_line_cap]
-`cr:line_join(join) /-> join`                                       [get/set the line join][cairo_set_line_join]
-`cr:miter_limit(limit) /-> limit`                                   [get/set the miter limit][cairo_set_miter_limit]
-`cr:dash(dashes[, offset])`                                         [set the dash pattern for stroking][cairo_set_dash]
-`cr:dash() -> dashes, dash_count`                                   [get the dash pattern for stroking][cairo_get_dash]
-`cr:dash'#' -> n`                                                   [get the dash count][cairo_get_dash_count]
-`sr:font_options() -> fopt`                                         [get the default font options][cairo_surface_get_font_options]
-`cr:font_options(fopt) /-> fopt`                                    [get/set custom font options][cairo_set_font_options]
 __font options__
 `cairo.font_options() -> fopt`                                      [create a font options object][cairo_font_options_create]
 `fopt:copy() -> fopt`                                               [copy font options][cairo_font_options_copy]
@@ -229,16 +236,9 @@ __font options__
 `fopt:hint_metrics(metrics) /-> metrics`                            [get/set the hint metrics][cairo_font_options_set_hint_metrics]
 `fopt:lcd_filter(filter) /-> filter`                                [get/set the lcd filter][cairo_font_options_set_lcd_filter]
 `fopt:round_glyph_positions(pos) /-> pos`                           [get/set the round glyph positions][cairo_font_options_set_round_glyph_positions]
-__glyphs__
-`cairo.allocate_glyphs(count) -> cairo_glyph_t*`                    [allocate an array of glyphs][cairo_glyph_allocate]
-__text clusters__
-`cairo.allocate_text_clusters(count) -> cairo_text_cluster_t*`      [allocate an array of text clusters][cairo_text_cluster_allocate]
 __multi-page backends__
 `sr:copy_page()`                                                    [emit the current page and retain surface contents][cairo_surface_copy_page]
 `sr:show_page()`                                                    [emit the current page and clear surface contents][cairo_surface_show_page]
-__targets__
-`cr:target() -> sr`                                                 [get the ultimate destination surface][cairo_get_target]
-`cr:group_target() -> sr`                                           [get the current destination surface][cairo_get_group_target]
 __devices__
 `sr:device() -> cairo_device_t`                                     [get the device of the surface][cairo_surface_get_device]
 `sr:device_offset([x, y]) /-> x, y`                                 [set device offset][cairo_surface_set_device_offset]
@@ -248,26 +248,21 @@ __devices__
 `dev:flush()`                                                       [flush pending drawing operations][cairo_device_flush]
 `dev:finish()`                                                      [finish device][cairo_device_finish]
 __matrices__
-`cairo.matrix([xx, yx, xy, yy, x0, y0]) -> mt`                      create a matrix
-`mt:init(xx, yx, xy, yy, x0, y0)`                                   [set the matrix fields][cairo_matrix_init]
-`mt:init_matrix(mt)`                                                init with a matrix
-`mt:init_identity()`                                                [init with the identity matrix][cairo_matrix_init_identity]
-`mt:init_translate(x, y)`                                           [init with translation][cairo_matrix_init_translate]
-`mt:init_scale(sx, sy)`                                             [init with scale][cairo_matrix_init_scale]
-`mt:init_rotate(angle)`                                             [init with rotation][cairo_matrix_init_rotate]
-`mt:translate(x, y)`                                                [translate][cairo_matrix_translate]
-`mt:scale(sx, sy)`                                                  [scale][cairo_matrix_scale]
-`mt:scale_around(cx, cy, sx, sy)`                                   scale around a point
-`mt:rotate(angle)`                                                  [rotate][cairo_matrix_rotate]
-`mt:rotate_around(cx, cy, angle)`                                   rotate arount a point
-`mt:invert()`                                                       [invert][cairo_matrix_invert]
-`mt:multiply(mt1, mt2)`                                             [multiply two matrices and store the result in mt][cairo_matrix_multiply]
+`cairo.matrix([mt | xx, yx, xy, yy, x0, y0]) -> mt`                 create a matrix (init as identity by default)
+`mt:reset([mt | xx, yx, xy, yy, x0, y0]) -> mt`                     reinitialize the matrix
+`mt:translate(x, y) -> mt`                                          [translate][cairo_matrix_translate]
+`mt:scale(sx[, sy]) -> mt`                                          [scale][cairo_matrix_scale]
+`mt:scale_around(cx, cy, sx[, sy]) -> mt`                           scale around a point
+`mt:rotate(angle) -> mt`                                            [rotate][cairo_matrix_rotate]
+`mt:rotate_around(cx, cy, angle) -> mt`                             rotate arount a point
+`mt:invert() -> t|f`                                                [invert if possible][cairo_matrix_invert]
+`mt:multiply(mt1, mt2) -> mt`                                       [multiply two matrices and store the result in mt][cairo_matrix_multiply]
 `mt:transform_point(x, y) -> x, y`                                  [transform point][cairo_matrix_transform_point]
 `mt:transform_distance(x, y) -> x, y`                               [transform distance][cairo_matrix_transform_distance]
-`mt:transform(mt)`                                                  transform by other matrix
+`mt:transform(mt) -> mt`                                            transform by other matrix
 `mt:invertible() -> t|f`                                            check if the matrix is invertible
-`mt:safe_transform(mt)`                                             transform by matrix only if it's invertible
-`mt:skew(ax, ay)`                                                   skew
+`mt:safe_transform(mt) -> mt`                                       transform by matrix only if it's invertible
+`mt:skew(ax, ay) -> mt`                                             skew
 `mt:copy() -> mt`                                                   copy matrix
 __regions__
 `cairo.region([[x, y, w, h] | rlist]) -> rgn`                       [create a region][cairo_region_create]
@@ -285,10 +280,10 @@ __regions__
 `rgn:union(rgn | x, y, w, h)`                                       [union with region or rectangle][cairo_region_union]
 `rgn:xor(rgn | x, y, w, h)`                                         [xor with region or rectangle][cairo_region_xor]
 __PNG support__
-`cairo.image_surface_from_png(filename) -> sr`                      [create a pixman surface from a png file][cairo_image_surface_create_from_png]
-`cairo.image_surface_from_png_stream(read_func, arg) -> sr`         [create a pixman surface from a png stream][cairo_image_surface_create_from_png_stream]
-`sr:write_to_png(filename) -> true | nil,err,status`                [write surface to png file][cairo_surface_write_to_png]
-`sr:write_to_png_stream(write_func, arg) -> true | nil,err,status`  [write surface to png stream][cairo_surface_write_to_png_stream]
+`cairo.load_png(filename) -> sr`                      [create a pixman surface from a png file][cairo_image_surface_create_from_png]
+`cairo.load_png(read_func, arg) -> sr`         [create a pixman surface from a png stream][cairo_image_surface_create_from_png_stream]
+`sr:save_png(filename) -> true | nil,err,status`                [write surface to png file][cairo_surface_write_to_png]
+`sr:save_png(write_func, arg) -> true | nil,err,status`  [write surface to png stream][cairo_surface_write_to_png_stream]
 __memory management__
 `obj:free()`                                                        free object
 `obj:refcount() -> refcount`                                        get ref count (*)
@@ -304,10 +299,12 @@ __misc.__
 `cairo.cairo_format(bmp_fmt) -> cairo_fmt`                          get the cairo format matching a bitmap format
 `cairo.version() -> n`                                              [get lib version][cairo_version]
 `cairo.version_string() -> s`                                       [get lib version as "X.Y.Z"][cairo_version_string]
+`cairo.NULL`                                                        a `void*` NULL pointer to disambiguate from `nil` when needed
+`cairo.enums -> {prefix -> {name -> value}}`                        access to enum tables
 ------------------------------------------------------------------- -------------------------------------------------------------------
 </div>
 
-(+) supported formats: 'bgra8', 'bgrx8', 'g8', 'g1', 'rgb565', 'bgr10'.
+(+) supported formats: 'bgra8', 'bgrx8', 'g8', 'g1', 'rgb565', 'bgr10'; the `bmp.data` field is anchored!
 
 (*) for ref-counted objects only: `cr`, `sr`, `dev`, `patt`, `sfont`, `font` and `rgn`.
 
@@ -350,12 +347,7 @@ The binding won't break if extensions are missing in the binary.
 [cairo_recording_surface_ink_extents]:     http://cairographics.org/manual/cairo-Recording-Surfaces.html#cairo-recording-surface-ink-extents
 [cairo_recording_surface_get_extents]:     http://cairographics.org/manual/cairo-Recording-Surfaces.html#cairo-recording-surface-get-extents
 
-[cairo_image_surface_create_from_png]:           http://cairographics.org/manual/cairo-PNG-Support.html#cairo-image-surface-create-from-png
-[cairo_image_surface_create_from_png_stream]:    http://cairographics.org/manual/cairo-PNG-Support.html#cairo-image-surface-create-from-png-stream
-[cairo_surface_write_to_png]:                    http://cairographics.org/manual/cairo-PNG-Support.html#cairo-surface-write-to-png
-[cairo_surface_write_to_png_stream]:             http://cairographics.org/manual/cairo-PNG-Support.html#cairo-surface-write-to-png-stream
-
-[cairo_create]:                            http://cairographics.org/manual/cairo-t.html#cairo-create
+[cairo_create]:                            http://cairographics.org/manual/cairo-cairo-t.html#cairo-create
 [cairo_save]:                              http://cairographics.org/manual/cairo-cairo-t.html#cairo-save
 [cairo_restore]:                           http://cairographics.org/manual/cairo-cairo-t.html#cairo-restore
 
@@ -368,6 +360,8 @@ The binding won't break if extensions are missing in the binary.
 [cairo_push_group]:                        http://cairographics.org/manual/cairo-cairo-t.html#cairo-push-group
 [cairo_pop_group]:                         http://cairographics.org/manual/cairo-cairo-t.html#cairo-pop-group
 [cairo_pop_group_to_source]:               http://cairographics.org/manual/cairo-cairo-t.html#cairo-pop-group-to-source
+[cairo_get_target]:                        http://cairographics.org/manual/cairo-cairo-t.html#cairo-get-target
+[cairo_get_group_target]:                  http://cairographics.org/manual/cairo-cairo-t.html#cairo-get-group-target
 
 [cairo_translate]:                         http://cairographics.org/manual/cairo-Transformations.html#cairo-translate
 [cairo_scale]:                             http://cairographics.org/manual/cairo-Transformations.html#cairo-scale
@@ -417,6 +411,17 @@ The binding won't break if extensions are missing in the binary.
 [cairo_in_clip]:                           http://cairographics.org/manual/cairo-cairo-t.html#cairo-in-clip
 [cairo_stroke_extents]:                    http://cairographics.org/manual/cairo-cairo-t.html#cairo-stroke-extents
 [cairo_fill_extents]:                      http://cairographics.org/manual/cairo-cairo-t.html#cairo-fill-extents
+
+[cairo_set_tolerance]:                     http://cairographics.org/manual/cairo-cairo-t.html#cairo-set-tolerance
+[cairo_set_antialias]:                     http://cairographics.org/manual/cairo-cairo-t.html#cairo-set-antialias
+[cairo_set_fill_rule]:                     http://cairographics.org/manual/cairo-cairo-t.html#cairo-set-fill-rule
+[cairo_set_line_width]:                    http://cairographics.org/manual/cairo-cairo-t.html#cairo-set-line-width
+[cairo_set_line_cap]:                      http://cairographics.org/manual/cairo-cairo-t.html#cairo-set-line-cap
+[cairo_set_line_join]:                     http://cairographics.org/manual/cairo-cairo-t.html#cairo-set-line-join
+[cairo_set_miter_limit]:                   http://cairographics.org/manual/cairo-cairo-t.html#cairo-set-miter-limit
+[cairo_set_dash]:                          http://cairographics.org/manual/cairo-cairo-t.html#cairo-set-dash
+[cairo_get_dash]:                          http://cairographics.org/manual/cairo-cairo-t.html#cairo-get-dash
+[cairo_get_dash_count]:                    http://cairographics.org/manual/cairo-cairo-t.html#cairo-get-dash-count
 
 [cairo_clip]:                              http://cairographics.org/manual/cairo-cairo-t.html#cairo-clip
 [cairo_clip_preserve]:                     http://cairographics.org/manual/cairo-cairo-t.html#cairo-clip-preserve
@@ -507,17 +512,6 @@ The binding won't break if extensions are missing in the binary.
 [cairo_scaled_font_get_font_options]:      http://cairographics.org/manual/cairo-cairo-scaled-font-t.html#cairo-scaled-font-get-font-options
 [cairo_scaled_font_get_font_face]:         http://cairographics.org/manual/cairo-cairo-scaled-font-t.html#cairo-scaled-font-get-font-face
 
-[cairo_set_tolerance]:                     http://www.cairographics.org/manual/cairo-cairo-t.html#cairo-set-tolerance
-[cairo_set_antialias]:                     http://www.cairographics.org/manual/cairo-cairo-t.html#cairo-set-antialias
-[cairo_set_fill_rule]:                     http://www.cairographics.org/manual/cairo-cairo-t.html#cairo-set-fill-rule
-[cairo_set_line_width]:                    http://www.cairographics.org/manual/cairo-cairo-t.html#cairo-set-line-width
-[cairo_set_line_cap]:                      http://www.cairographics.org/manual/cairo-cairo-t.html#cairo-set-line-cap
-[cairo_set_line_join]:                     http://www.cairographics.org/manual/cairo-cairo-t.html#cairo-set-line-join
-[cairo_set_miter_limit]:                   http://www.cairographics.org/manual/cairo-cairo-t.html#cairo-set-miter-limit
-[cairo_set_dash]:                          http://www.cairographics.org/manual/cairo-cairo-t.html#cairo-set-dash
-[cairo_get_dash]:                          http://www.cairographics.org/manual/cairo-cairo-t.html#cairo-get-dash
-[cairo_get_dash_count]:                    http://www.cairographics.org/manual/cairo-cairo-t.html#cairo-get-dash-count
-
 [cairo_surface_get_font_options]:          http://cairographics.org/manual/cairo-cairo-surface-t.html#cairo-surface-get-font-options
 [cairo_set_font_options]:                  http://cairographics.org/manual/cairo-text.html#cairo-set-font-options
 
@@ -539,8 +533,6 @@ The binding won't break if extensions are missing in the binary.
 [cairo_surface_copy_page]:                 http://cairographics.org/manual/cairo-cairo-surface-t.html#cairo-surface-copy-page
 [cairo_surface_show_page]:                 http://cairographics.org/manual/cairo-cairo-surface-t.html#cairo-surface-show-page
 
-[cairo_get_target]:                        http://www.cairographics.org/manual/cairo-cairo-t.html#cairo-get-target
-[cairo_get_group_target]:                  http://www.cairographics.org/manual/cairo-cairo-t.html#cairo-get-group-target
 [cairo_surface_get_device]:                http://cairographics.org/manual/cairo-cairo-surface-t.html#cairo-surface-get-device
 [cairo_surface_set_device_offset]:         http://cairographics.org/manual/cairo-cairo-surface-t.html#cairo-surface-set-device-offset
 [cairo_device_get_type]:                   http://cairographics.org/manual/cairo-cairo-device-t.html#cairo-device-get-type

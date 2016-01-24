@@ -119,7 +119,7 @@ function arrows_animation()
 	local r = 0
 	return function(cr, w, h)
 		local cairo = require'cairo'
-		cr:set_source_rgba(0,0,0,1)
+		cr:rgba(0,0,0,1)
 		cr:paint()
 
 		cr:identity_matrix()
@@ -128,25 +128,25 @@ function arrows_animation()
 		cr:translate(-128, -128)
 		r = r + 0.02
 
-		cr:set_source_rgba(0,0.7,0,1)
+		cr:rgba(0,0.7,0,1)
 
-		cr:set_line_width (40.96)
+		cr:line_width(40.96)
 		cr:move_to(76.8, 84.48)
 		cr:rel_line_to(51.2, -51.2)
 		cr:rel_line_to(51.2, 51.2)
-		cr:set_line_join(cairo.CAIRO_LINE_JOIN_MITER)
+		cr:line_join'miter'
 		cr:stroke()
 
 		cr:move_to(76.8, 161.28)
 		cr:rel_line_to(51.2, -51.2)
 		cr:rel_line_to(51.2, 51.2)
-		cr:set_line_join(cairo.CAIRO_LINE_JOIN_BEVEL)
+		cr:line_join'bevel'
 		cr:stroke()
 
 		cr:move_to(76.8, 238.08)
 		cr:rel_line_to(51.2, -51.2)
 		cr:rel_line_to(51.2, 51.2)
-		cr:set_line_join(cairo.CAIRO_LINE_JOIN_ROUND)
+		cr:line_join'round'
 		cr:stroke()
 	end
 end

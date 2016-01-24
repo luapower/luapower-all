@@ -1,8 +1,12 @@
 --saturation/Luminance square and picker
+
+if not ... then require'color_demo'; return end
+
 local player = require'cplayer'
 local color = require'color'
 local cairo = require'cairo'
 local box = require'box2d'
+local bitmap = require'bitmap'
 
 function player:sat_lum_square(sx, sy, sw, sh, hue, s, L)
 	sw = math.min(self.w, sx + sw) - sx
@@ -10,12 +14,11 @@ function player:sat_lum_square(sx, sy, sw, sh, hue, s, L)
 
 	local mx, my = self:mousepos()
 
-	local setpixel = self.surface:set_image_pixel_function()
-	assert(self.surface:get_image_format() == cairo.C.CAIRO_FORMAT_RGB24)
+	local _, setpixel = bitmap.pixel_interface(self.cr:group_target():bitmap())
 	for y = 0, sh-1 do
 		for x = 0, sw-1 do
 			local r, g, b = color.hsl_to_rgb(hue, x / (sw-1), y / (sh-1))
-			setpixel(sx + x, sy + y, r * 255, g * 255, b * 255)
+			setpixel(sx + x, sy + y, r * 255, g * 255, b * 255, 255)
 		end
 	end
 
@@ -48,5 +51,3 @@ function player:sat_lum_square(sx, sy, sw, sh, hue, s, L)
 
 	return s, L
 end
-
-if not ... then require'color_demo' end
