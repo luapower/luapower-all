@@ -35,7 +35,8 @@ local enums = {} --{prefix -> {enumval -> name; name -> enumval}}
 local function map(prefix, t)
 	local dt = {}
 	for i,v in ipairs(t) do
-		local k, v = C[prefix..v], v:lower()
+		local k = C[prefix..tostring(v)]
+		local v = type(v) == 'string' and v:lower() or v
 		dt[k] = v
 		dt[v] = k
 	end
@@ -1527,18 +1528,60 @@ end, C.cairo_surface_destroy)
 
 sr.pdf_version = setflag_func(_C.cairo_pdf_surface_restrict_to_version, 'CAIRO_PDF_VERSION_')
 
-M.pdf_versions = function()
-	local ibuf = ffi.new'int[1]'
-	local vbuf = ffi.new'const cairo_pdf_version_t*[1]'
-	C.cairo_pdf_get_versions(vbuf, ibuf)
-	local t = {}
-	for i=0,ibuf[0]-1 do
-		t[#t+1] = X('CAIRO_PDF_VERSION_', tonumber(vbuf[0][i]))
+local function listout_func(func, ct, prefix)
+	return func and function()
+		local ibuf = ffi.new'int[1]'
+		local vbuf = ffi.new(ffi.typeof('const $*[1]', ffi.typeof(ct)))
+		func(vbuf, ibuf)
+		local t = {}
+		for i=0,ibuf[0]-1 do
+			t[#t+1] = X(prefix, tonumber(vbuf[0][i]))
+		end
+		return t
 	end
-	return t
 end
 
-sr.pdf_set_size = _C.cairo_pdf_surface_set_size
+M.pdf_versions = listout_func(_C.cairo_pdf_get_versions, 'cairo_pdf_version_t', 'CAIRO_PDF_VERSION_')
+sr.pdf_size = _C.cairo_pdf_surface_set_size
+
+--ps surfaces
+
+map('CAIRO_PS_LEVEL_', {2, 3})
+
+M.ps_surface = ref_func(function(arg1, ...)
+	if type(arg1) == 'string' then
+		return C.cairo_ps_surface_create(arg1, ...)
+	else
+		return C.cairo_ps_surface_create_for_stream(arg1, ...)
+	end
+end, C.cairo_surface_destroy)
+
+sr.ps_level = setflag_func(_C.cairo_ps_surface_restrict_to_level, 'CAIRO_PS_LEVEL_')
+M.ps_levels = listout_func(_C.cairo_ps_get_levels, 'cairo_ps_level_t', 'CAIRO_PS_LEVEL_')
+sr.ps_eps = getset_func(bool_func(_C.cairo_ps_surface_get_eps), _C.cairo_ps_surface_set_eps)
+sr.ps_size = _C.cairo_ps_surface_set_size
+sr.ps_dsc_comment = _C.cairo_ps_surface_dsc_comment
+sr.ps_dsc_begin_setup = _C.cairo_ps_surface_dsc_begin_setup
+sr.ps_dsc_begin_page_setup = _C.cairo_ps_surface_dsc_begin_page_setup
+
+--svg surfaces
+
+enums['CAIRO_SVG_VERSION_'] = {
+	[C.CAIRO_SVG_VERSION_1_1] = '1.1',
+	[C.CAIRO_SVG_VERSION_1_2] = '1.2',
+	['1.1'] = C.CAIRO_SVG_VERSION_1_1,
+	['1.2'] = C.CAIRO_SVG_VERSION_1_2,
+}
+M.svg_surface = ref_func(function(arg1, ...)
+	if type(arg1) == 'string' then
+		return C.cairo_svg_surface_create(arg1, ...)
+	else
+		return C.cairo_svg_surface_create_for_stream(arg1, ...)
+	end
+end, C.cairo_surface_destroy)
+
+sr.svg_version = setflag_func(_C.cairo_svg_surface_restrict_to_version, 'CAIRO_SVG_VERSION_')
+M.svg_versions = listout_func(_C.cairo_svg_get_versions, 'cairo_svg_version_t', 'CAIRO_SVG_VERSION_')
 
 --metatype must come last
 

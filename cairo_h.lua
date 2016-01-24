@@ -1,4 +1,4 @@
---result of `cpp cairo.h` from cairo 1.12.3 (extensions in separate files)
+--result of `cpp cairo.h` from cairo 1.12.3 (native extensions in separate files)
 
 require'ffi'.cdef[[
 int cairo_version (void);
@@ -1316,5 +1316,87 @@ void
 cairo_pdf_surface_set_size (cairo_surface_t	*surface,
 			    double		 width_in_points,
 			    double		 height_in_points);
+
+
+// cairo-ps.h
+
+typedef enum _cairo_ps_level {
+    CAIRO_PS_LEVEL_2,
+    CAIRO_PS_LEVEL_3
+} cairo_ps_level_t;
+
+cairo_surface_t *
+cairo_ps_surface_create (const char		*filename,
+			 double			 width_in_points,
+			 double			 height_in_points);
+
+cairo_surface_t *
+cairo_ps_surface_create_for_stream (cairo_write_func_t	write_func,
+				    void	       *closure,
+				    double		width_in_points,
+				    double		height_in_points);
+
+void
+cairo_ps_surface_restrict_to_level (cairo_surface_t    *surface,
+                                    cairo_ps_level_t    level);
+
+void
+cairo_ps_get_levels (cairo_ps_level_t const  **levels,
+                     int                      *num_levels);
+
+const char *
+cairo_ps_level_to_string (cairo_ps_level_t level);
+
+void
+cairo_ps_surface_set_eps (cairo_surface_t	*surface,
+			  cairo_bool_t           eps);
+
+cairo_bool_t
+cairo_ps_surface_get_eps (cairo_surface_t	*surface);
+
+void
+cairo_ps_surface_set_size (cairo_surface_t	*surface,
+			   double		 width_in_points,
+			   double		 height_in_points);
+
+void
+cairo_ps_surface_dsc_comment (cairo_surface_t	*surface,
+			      const char	*comment);
+
+void
+cairo_ps_surface_dsc_begin_setup (cairo_surface_t *surface);
+
+void
+cairo_ps_surface_dsc_begin_page_setup (cairo_surface_t *surface);
+
+// cairo-svg.h
+
+typedef enum _cairo_svg_version {
+    CAIRO_SVG_VERSION_1_1,
+    CAIRO_SVG_VERSION_1_2
+} cairo_svg_version_t;
+
+cairo_surface_t *
+cairo_svg_surface_create (const char   *filename,
+			  double	width_in_points,
+			  double	height_in_points);
+
+cairo_surface_t *
+cairo_svg_surface_create_for_stream (cairo_write_func_t	write_func,
+				     void	       *closure,
+				     double		width_in_points,
+				     double		height_in_points);
+
+void
+cairo_svg_surface_restrict_to_version (cairo_surface_t 		*surface,
+				       cairo_svg_version_t  	 version);
+
+void
+cairo_svg_get_versions (cairo_svg_version_t const	**versions,
+                        int                      	 *num_versions);
+
+const char *
+cairo_svg_version_to_string (cairo_svg_version_t version);
+
 
 ]]
