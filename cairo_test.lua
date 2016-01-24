@@ -447,19 +447,40 @@ end)
 
 
 with_png('matrices', function(cr, sr)
-	--[[ TODO
-	local w, h = sr:width(), sr:height()
-	--draw a 40% square in the center of the image rotated 45 degrees
-	cr:scale(w, h)
-	cr:translate(0.4, 0.4)
-	cr:scale_around(0.1, 0.1, 0.5)
-	cr:rotate_around(0.1, 0.1, math.pi/4)
-	cr:scale_around(0.1, 0.1, 4)
-	cr:rotate_around(0.1, 0.1, math.pi/2)
-	cr:rectangle(0, 0, .2, .2)
-	cr:rgb(1, 0, 0)
-	cr:fill()
-	]]
+	local mt = cairo.matrix()
+	assert(mt == cairo.matrix(1, 0, 0, 1, 0, 0))
+	assert(mt == cairo.matrix(mt))
+	assert(mt == mt:copy())
+	assert(mt:copy():scale(2) == mt:copy():reset(mt:copy():scale(2)))
+	assert(mt:copy():translate(3, 5):scale(2) == mt:copy():reset(2, 0, 0, 2, 3, 5))
+	assert(mt == cairo.matrix():translate(2, 3):scale(5, 7):rotate(2):reset())
+
+	mt:scale(10):rotate(math.pi):translate(5, 0):skew(0, 0)
+	local x, y = mt(1, 0)
+	assert(x == -60 and math.abs(y) <= 1e-10)
+	local x, y = mt:distance(1, 0)
+	assert(x == -10 and math.abs(y) <= 1e-10)
+
+	assert(mt:invert())
+	local x, y = mt(0, 0)
+	assert(x == -5 and y == 0)
+
+	local mt0 = mt:copy()
+	local mt1 = mt * cairo.matrix():scale(-2)
+	assert(mt0 == mt)
+	assert(mt1 ~= mt)
+	local x, y = mt1(0, 0)
+	assert(x == 10 and y == 0)
+
+	assert(mt:copy():rotate_around(2, 5, 3) == mt:copy():translate(2, 5):rotate(3):translate(-2, -5))
+	assert(mt:copy():scale_around(2, 5, 3, 4) == mt:copy():translate(2, 5):scale(3, 4):translate(-2, -5))
+
+	local mt = cairo.matrix(0, 0, 0, 0, 0, 0)
+	assert(mt:determinant() == 0)
+	assert(not mt:invertible())
+	local mt1 = mt:copy()
+	assert(not mt:invert())
+	assert(mt1 == mt)
 end)
 
 

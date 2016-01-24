@@ -1204,9 +1204,16 @@ mt.rotate = ret_self(C.cairo_matrix_rotate)
 mt.invert = function(mt)
 	return C.cairo_matrix_invert(mt) == 0
 end
-mt.multiply = ret_self(C.cairo_matrix_multiply)
-mt.transform_distance = d2inout_func(C.cairo_matrix_transform_distance)
-mt.transform_point = d2inout_func(C.cairo_matrix_transform_point)
+mt.multiply = function(mt, mt1, mt2)
+	if mt2 then
+		C.cairo_matrix_multiply(mt, mt1, mt2)
+	else
+		C.cairo_matrix_multiply(mt, mt, mt1)
+	end
+	return mt
+end
+mt.distance = d2inout_func(C.cairo_matrix_transform_distance)
+mt.point = d2inout_func(C.cairo_matrix_transform_point)
 
 map('CAIRO_REGION_OVERLAP_', {
 	'IN',
@@ -1418,7 +1425,7 @@ function mt:transform(mt)
 end
 
 function mt:determinant()
-	return xx * yy - yx * xy
+	return self.xx * self.yy - self.yx * self.xy
 end
 
 function mt:invertible()
@@ -1458,14 +1465,16 @@ function mt:copy()
 	return M.matrix(self)
 end
 
-function mt:set(mt)
-	ffi.copy(self, mt, ffi.sizeof(mt))
-	return self
-end
-
 function mt.tostring(mt)
 	return string.format('[%12f%12f]\n[%12f%12f]\n[%12f%12f]',
 		mt.xx, mt.yx, mt.xy, mt.yy, mt.x0, mt.y0)
+end
+
+function mt.equal(m1, m2)
+	return type(m2) == 'cdata' and
+		m1.xx == m2.xx and m1.yy == m2.yy and
+		m1.xy == m2.xy and m1.yx == m2.yx and
+		m1.x0 == m2.x0 and m1.y0 == m2.y0
 end
 
 --freetype extension
@@ -1513,7 +1522,12 @@ ffi.metatype('cairo_path_t', {__index = path})
 ffi.metatype('cairo_device_t', {__index = dev})
 ffi.metatype('cairo_surface_t', {__index = sr})
 ffi.metatype('cairo_pattern_t', {__index = patt})
-ffi.metatype('cairo_matrix_t', {__index = mt, __tostring = mt.tostring})
+ffi.metatype('cairo_matrix_t', {__index = mt,
+	__tostring = mt.tostring,
+	__eq = mt.equal,
+	__call = mt.point,
+	__mul = function(mt1, mt2) return mt1:copy():multiply(mt2) end,
+})
 ffi.metatype('cairo_region_t', {__index = rgn})
 
 ffi.metatype('cairo_text_extents_t', {__tostring = function(t)

@@ -249,17 +249,18 @@ __devices__
 `dev:finish()`                                                      [finish device][cairo_device_finish]
 __matrices__
 `cairo.matrix([mt | xx, yx, xy, yy, x0, y0]) -> mt`                 create a matrix (init as identity by default)
-`mt:reset([mt | xx, yx, xy, yy, x0, y0]) -> mt`                     reinitialize the matrix
+`mt:reset([mt | xx, yx, xy, yy, x0, y0]) -> mt`                     reinitialize the matrix (as identity if no args given)
 `mt:translate(x, y) -> mt`                                          [translate][cairo_matrix_translate]
 `mt:scale(sx[, sy]) -> mt`                                          [scale][cairo_matrix_scale]
 `mt:scale_around(cx, cy, sx[, sy]) -> mt`                           scale around a point
 `mt:rotate(angle) -> mt`                                            [rotate][cairo_matrix_rotate]
 `mt:rotate_around(cx, cy, angle) -> mt`                             rotate arount a point
 `mt:invert() -> t|f`                                                [invert if possible][cairo_matrix_invert]
-`mt:multiply(mt1, mt2) -> mt`                                       [multiply two matrices and store the result in mt][cairo_matrix_multiply]
-`mt:transform_point(x, y) -> x, y`                                  [transform point][cairo_matrix_transform_point]
-`mt:transform_distance(x, y) -> x, y`                               [transform distance][cairo_matrix_transform_distance]
+`mt:multiply(mt1[, mt2]) -> mt`                                     [multiply two matrices and store the result in mt][cairo_matrix_multiply]
+`mt(x, y) -> x, y`                                                  [transform point][cairo_matrix_transform_point]
+`mt:distance(x, y) -> x, y`                                         [transform distance][cairo_matrix_transform_distance]
 `mt:transform(mt) -> mt`                                            transform by other matrix
+`mt:determinant() -> d`                                             compute the determinant
 `mt:invertible() -> t|f`                                            check if the matrix is invertible
 `mt:safe_transform(mt) -> mt`                                       transform by matrix only if it's invertible
 `mt:skew(ax, ay) -> mt`                                             skew
@@ -280,10 +281,10 @@ __regions__
 `rgn:union(rgn | x, y, w, h)`                                       [union with region or rectangle][cairo_region_union]
 `rgn:xor(rgn | x, y, w, h)`                                         [xor with region or rectangle][cairo_region_xor]
 __PNG support__
-`cairo.load_png(filename) -> sr`                      [create a pixman surface from a png file][cairo_image_surface_create_from_png]
-`cairo.load_png(read_func, arg) -> sr`         [create a pixman surface from a png stream][cairo_image_surface_create_from_png_stream]
-`sr:save_png(filename) -> true | nil,err,status`                [write surface to png file][cairo_surface_write_to_png]
-`sr:save_png(write_func, arg) -> true | nil,err,status`  [write surface to png stream][cairo_surface_write_to_png_stream]
+`cairo.load_png(filename) -> sr`                                    [create a pixman surface from a png file][cairo_image_surface_create_from_png]
+`cairo.load_png(read_func, arg) -> sr`                              [create a pixman surface from a png stream][cairo_image_surface_create_from_png_stream]
+`sr:save_png(filename) -> true | nil,err,status`                    [write surface to png file][cairo_surface_write_to_png]
+`sr:save_png(write_func, arg) -> true | nil,err,status`             [write surface to png stream][cairo_surface_write_to_png_stream]
 __memory management__
 `obj:free()`                                                        free object
 `obj:refcount() -> refcount`                                        get ref count (*)
