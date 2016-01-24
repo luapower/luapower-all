@@ -990,11 +990,11 @@ M.stride = function(fmt, width)
 	return C.cairo_format_stride_for_width(X('CAIRO_FORMAT_', fmt), width)
 end
 
-sr.data = C.cairo_image_surface_get_data
-sr.format = getflag_func(C.cairo_image_surface_get_format, 'CAIRO_FORMAT_')
-sr.width = C.cairo_image_surface_get_width
-sr.height = C.cairo_image_surface_get_height
-sr.stride = C.cairo_image_surface_get_stride
+sr.data = _C.cairo_image_surface_get_data
+sr.format = getflag_func(_C.cairo_image_surface_get_format, 'CAIRO_FORMAT_')
+sr.width = _C.cairo_image_surface_get_width
+sr.height = _C.cairo_image_surface_get_height
+sr.stride = _C.cairo_image_surface_get_stride
 
 M.load_png = ref_func(function(arg1, ...)
 	if type(arg1) == 'string' then
@@ -1508,6 +1508,37 @@ face.synthesize_oblique = synthesize_flag(C.CAIRO_FT_SYNTHESIZE_OBLIQUE)
 
 sfont.lock_face = _C.cairo_ft_scaled_font_lock_face
 sfont.unlock_face = _C.cairo_ft_scaled_font_unlock_face
+
+--pdf surfaces
+
+enums['CAIRO_PDF_VERSION_'] = {
+	[C.CAIRO_PDF_VERSION_1_4] = '1.4',
+	[C.CAIRO_PDF_VERSION_1_5] = '1.5',
+	['1.4'] = C.CAIRO_PDF_VERSION_1_4,
+	['1.5'] = C.CAIRO_PDF_VERSION_1_5,
+}
+M.pdf_surface = ref_func(function(arg1, ...)
+	if type(arg1) == 'string' then
+		return C.cairo_pdf_surface_create(arg1, ...)
+	else
+		return C.cairo_pdf_surface_create_for_stream(arg1, ...)
+	end
+end, C.cairo_surface_destroy)
+
+sr.pdf_version = setflag_func(_C.cairo_pdf_surface_restrict_to_version, 'CAIRO_PDF_VERSION_')
+
+M.pdf_versions = function()
+	local ibuf = ffi.new'int[1]'
+	local vbuf = ffi.new'const cairo_pdf_version_t*[1]'
+	C.cairo_pdf_get_versions(vbuf, ibuf)
+	local t = {}
+	for i=0,ibuf[0]-1 do
+		t[#t+1] = X('CAIRO_PDF_VERSION_', tonumber(vbuf[0][i]))
+	end
+	return t
+end
+
+sr.pdf_set_size = _C.cairo_pdf_surface_set_size
 
 --metatype must come last
 

@@ -1282,4 +1282,39 @@ void cairo_ft_font_face_unset_synthesize (cairo_font_face_t *font_face, unsigned
 unsigned int cairo_ft_font_face_get_synthesize (cairo_font_face_t *font_face);
 FT_Face cairo_ft_scaled_font_lock_face (cairo_scaled_font_t *scaled_font);
 void cairo_ft_scaled_font_unlock_face (cairo_scaled_font_t *scaled_font);
+
+// cairo-pdf.h
+
+typedef enum _cairo_pdf_version {
+	CAIRO_PDF_VERSION_1_4,
+	CAIRO_PDF_VERSION_1_5
+} cairo_pdf_version_t;
+
+cairo_surface_t *
+cairo_pdf_surface_create (const char		*filename,
+			  double		 width_in_points,
+			  double		 height_in_points);
+
+cairo_surface_t *
+cairo_pdf_surface_create_for_stream (cairo_write_func_t	write_func,
+				     void	       *closure,
+				     double		width_in_points,
+				     double		height_in_points);
+
+void
+cairo_pdf_surface_restrict_to_version (cairo_surface_t 		*surface,
+				       cairo_pdf_version_t  	 version);
+
+void
+cairo_pdf_get_versions (cairo_pdf_version_t const	**versions,
+                        int                      	 *num_versions);
+
+const char *
+cairo_pdf_version_to_string (cairo_pdf_version_t version);
+
+void
+cairo_pdf_surface_set_size (cairo_surface_t	*surface,
+			    double		 width_in_points,
+			    double		 height_in_points);
+
 ]]

@@ -483,6 +483,23 @@ with_png('matrices', function(cr, sr)
 	assert(mt1 == mt)
 end)
 
+local function pdf_test()
+	print('pdf versions', table.concat(cairo.pdf_versions(), ', '))
+	local sr = cairo.pdf_surface('cairo_test.pdf', 500, 500)
+	sr:pdf_version'1.5'
+	sr:pdf_set_size(1000, 1000)
+	local cr = sr:context()
+	cr:rgb(1, 0, 0)
+	cr:rectangle(400, 400, 200, 200)
+	cr:fill_preserve()
+	cr:rgb(0, 1, 0)
+	cr:line_width(10)
+	cr:stroke()
+	cr:free()
+	sr:free()
+end
+pdf_test()
+
 
 --misc.
 print('cairo version: ', cairo.version())
