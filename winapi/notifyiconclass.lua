@@ -121,7 +121,7 @@ if not ... then
 
 		--alternate the icon on a timer.
 		local alt = true
-		self:settimer(200, function()
+		self:settimer(0.2, function()
 			nicon.icon = LoadIconFromInstance(alt == true and IDI_WARNING or IDI_INFORMATION)
 			alt = not alt
 		end)

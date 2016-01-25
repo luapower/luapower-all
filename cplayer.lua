@@ -396,7 +396,7 @@ function player:window(t)
 	window.on_dead_syskey_down_char = window.on_key_down_char
 
 	--set panel to render continuously
-	panel:settimer(1,
+	panel:settimer(0,
 		function()
 			if self.continuous_rendering or next(self.stopwatches) then
 				panel:invalidate()
