@@ -4,7 +4,7 @@ local ffi = require'ffi'
 local cairo = require'cairo'
 local glue = require'glue'
 local BaseSG = require'sg_base'
-local path_cairo = require'path_cairo'
+local path_cairo = require'path2d_cairo'
 
 local SG = glue.update({}, BaseSG)
 

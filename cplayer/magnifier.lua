@@ -1,6 +1,7 @@
 local player = require'cplayer'
 local cairo = require'cairo'
 local ffi = require'ffi'
+local bitmap = require'bitmap'
 
 function player:magnifier(t)
 	local id = assert(t.id, 'id missing')
@@ -15,14 +16,16 @@ function player:magnifier(t)
 	w = cw * zoom_level
 	h = ch * zoom_level
 
-	local sw = self.surface:get_image_width()
-	local sh = self.surface:get_image_height()
+	local sr = self.cr:group_target()
+
+	local sw = sr:width()
+	local sh = sr:height()
 
 	--store the pixels to be magnified in case they overlap with the magnifier itself
-	assert(self.surface:get_image_format() == cairo.C.CAIRO_FORMAT_RGB24)
-	self.surface:flush()
-	local getpixel = self.surface:get_image_pixel_function()
-	local bmp = ffi.new('uint8_t[?]', cw * ch * 3)
+	assert(sr:format() == 'argb32')
+	sr:flush()
+	local getpixel, setpixel = bitmap.pixel_interface(sr:bitmap())
+	local bmp = ffi.new('uint8_t[?]', cw * ch * 4)
 	local ofs = 0
 	for j = cy, cy + ch-1 do
 		for i = cx, cx + cw-1 do
@@ -31,13 +34,13 @@ function player:magnifier(t)
 				bmp[ofs+0] = r
 				bmp[ofs+1] = g
 				bmp[ofs+2] = b
+				bmp[ofs+3] = 1
 			end
-			ofs = ofs + 3
+			ofs = ofs + 4
 		end
 	end
 
 	--draw the stored pixels as tiny filled rectangles
-	local setpixel = self.surface:set_image_pixel_function()
 	local ofs = 0
 	for j = 0, ch-1 do
 		for i = 0, cw-1 do
@@ -49,11 +52,11 @@ function player:magnifier(t)
 					local x1 = x + i * zoom_level + ii
 					local y1 = y + j * zoom_level + jj
 					if x1 >= 0 and x1 < sw and y1 >= 0 and y1 < sh then
-						setpixel(x1, y1, r, g, b)
+						setpixel(x1, y1, r, g, b, 1)
 					end
 				end
 			end
-			ofs = ofs + 3
+			ofs = ofs + 4
 		end
 	end
 	self:rect(x, y, w, h, nil, 'selected_bg', 1)

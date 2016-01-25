@@ -1,7 +1,7 @@
 --hue wheel and picker
 local player = require'cplayer'
 local color = require'color'
-local point = require'path_point'
+local point = require'path2d_point'
 
 function player:hue_wheel(cx, cy, r1, r2, step, hue)
 
