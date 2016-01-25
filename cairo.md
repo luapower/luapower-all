@@ -282,7 +282,8 @@ __matrices__
 `mt:rotate(angle) -> mt`                                            [rotate][cairo_matrix_rotate]
 `mt:rotate_around(cx, cy, angle) -> mt`                             rotate arount a point
 `mt:invert() -> t|f`                                                [invert if possible][cairo_matrix_invert]
-`mt:multiply(mt1[, mt2]) -> mt`                                     [multiply two matrices and store the result in mt][cairo_matrix_multiply]
+`mt1 * mt2 -> mt3`                                                  [multiply matrices][cairo_matrix_multiply]
+`mt:multiply(mt1[, mt2]) -> mt`                                     perform `mt * mt1 -> mt` or `mt1 * mt2 -> mt`
 `mt(x, y) -> x, y`                                                  [transform point][cairo_matrix_transform_point]
 `mt:distance(x, y) -> x, y`                                         [transform distance][cairo_matrix_transform_distance]
 `mt:transform(mt) -> mt`                                            transform by other matrix
@@ -290,7 +291,8 @@ __matrices__
 `mt:invertible() -> t|f`                                            check if the matrix is invertible
 `mt:safe_transform(mt) -> mt`                                       transform by matrix only if it's invertible
 `mt:skew(ax, ay) -> mt`                                             skew
-`mt:copy() -> mt`                                                   copy matrix
+`mt:copy() -> mt`                                                   copy the matrix
+`mt:equal(mt2) -> t|f` <br> `mt == mt2`                             test matrices for equality
 __regions__
 `cairo.region([[x, y, w, h] | rlist]) -> rgn`                       [create a region][cairo_region_create]
 `rgn:copy() -> rgn`                                                 [copy region][cairo_region_copy]
