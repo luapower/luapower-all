@@ -1,4 +1,0 @@
-xcb/util-cursor 0.1.2 from http://cgit.freedesktop.org/xcb/util-cursor/ (MIT License)
-
-
-NOTE: depends on: libxcb-render, libxcb-render-util, libxcb-image.
