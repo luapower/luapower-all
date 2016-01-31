@@ -2,7 +2,6 @@ local ffi = require'ffi'
 local hb = require'harfbuzz'
 local ft = require'freetype'
 local cairo = require'cairo'
-local stdio = require'stdio'
 
 local player = require'cplayer'
 

@@ -1,8 +1,9 @@
 --result of cpp genx.h from genx beta5
 local ffi = require'ffi'
-require'stdio_h'
 
 ffi.cdef[[
+typedef struct FILE FILE;
+
 typedef enum
 {
   GENX_SUCCESS = 0,

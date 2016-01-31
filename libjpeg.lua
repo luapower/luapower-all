@@ -2,10 +2,15 @@
 --libjpeg ffi binding.
 --Written by Cosmin Apreutesei. Public domain.
 
+if not ... then
+	require'libjpeg_test'
+	require'libjpeg_demo'
+	return
+end
+
 local ffi = require'ffi'
 local bit = require'bit'
 local glue = require'glue'
-local stdio = require'stdio'
 local jit = require'jit'
 require'libjpeg_h'
 local C = ffi.load'jpeg'
@@ -188,7 +193,7 @@ local function load(t)
 
 		elseif t.path then
 
-			local file = stdio.fopen(t.path, 'rb')
+			local file = io.open(t.path, 'rb')
 			finally(function()
 				C.jpeg_stdio_src(cinfo, nil)
 				file:close()
@@ -392,7 +397,7 @@ local function save(t)
 
 		elseif t.path then
 
-			local file = stdio.fopen(t.path, 'wb')
+			local file = io.open(t.path, 'wb')
 			finally(function()
 				C.jpeg_stdio_dest(cinfo, nil)
 				file:close()
@@ -510,11 +515,6 @@ local function save(t)
 end
 
 jit.off(save, true) --can't call error() from callbacks called from C
-
-if not ... then
-	require'libjpeg_test'
-	require'libjpeg_demo'
-end
 
 return {
 	load = load,

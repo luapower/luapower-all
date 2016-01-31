@@ -1,8 +1,10 @@
 --result of cpp png.h from libpng 1.5.12 (and no longjmp stuff)
 local ffi = require'ffi'
-require'stdio_h'
 
 ffi.cdef[[
+typedef struct FILE FILE;
+typedef int32_t __time32_t;
+
 enum {
 	PNG_TEXT_COMPRESSION_NONE_WR = -3,
 	PNG_TEXT_COMPRESSION_zTXt_WR = -2,

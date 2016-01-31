@@ -2,7 +2,6 @@ local player = require'cplayer'
 local libpng = require'libpng'
 local glue = require'glue'
 local ffi = require'ffi'
-local stdio = require'stdio'
 require'unit' --dir
 
 local good_files = dir'media/png/good/*.png'
@@ -115,7 +114,7 @@ function player:on_render(cr)
 		if source_type == 'path' then
 			t.path = filename
 		elseif source_type == 'stream' then
-			t.stream = stdio.fopen(filename, 'rb')
+			t.stream = io.open(filename, 'rb')
 		else
 			local s = glue.readfile(filename)
 			s = s:sub(1, cut_size)

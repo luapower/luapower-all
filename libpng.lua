@@ -2,10 +2,11 @@
 --libpng binding for libpng 1.5.6+
 --Written by Cosmin Apreutesei. Public Domain.
 
+if not ... then require'libpng_demo'; return end
+
 local ffi = require'ffi'
 local bit = require'bit'
 local glue = require'glue' --fcall
-local stdio = require'stdio' --fopen
 local jit = require'jit' --off
 require'libpng_h'
 local C = ffi.load'png'
@@ -132,7 +133,7 @@ local function load(t)
 
 		elseif t.path then
 
-			local file = stdio.fopen(t.path, 'rb')
+			local file = io.open(t.path, 'rb')
 			finally(function()
 				C.png_init_io(png_ptr, nil)
 				file:close()
@@ -279,8 +280,6 @@ local function load(t)
 end
 
 jit.off(load, true) --can't call error() from callbacks called from C
-
-if not ... then require'libpng_demo' end
 
 return {
 	load = load,

@@ -1,7 +1,6 @@
 --result of `cpp jpeglib.h` from libjpeg-turbo 1.2.1 with JPEG_LIB_VERSION = 62.
 --added a few new typedefs for useful structs and callbacks.
 local ffi = require'ffi'
-require'stdio_h'
 
 if ffi.os == 'Windows' then
 	ffi.cdef'typedef unsigned char boolean;' --can you believe it?
@@ -10,6 +9,8 @@ else
 end
 
 ffi.cdef[[
+typedef struct FILE FILE;
+
 enum {
 	JPEG_SUSPENDED,     /* Suspended due to lack of input data */
 	JPEG_REACHED_SOS,   /* Reached start of new scan */

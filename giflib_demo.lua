@@ -3,7 +3,6 @@ local giflib = require'giflib'
 local cairo = require'cairo'
 local glue = require'glue'
 local ffi = require'ffi'
-local stdio = require'stdio'
 
 require'unit'
 

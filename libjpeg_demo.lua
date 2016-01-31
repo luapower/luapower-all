@@ -3,7 +3,6 @@ local libjpeg = require'libjpeg'
 local cairo = require'cairo'
 local glue = require'glue'
 local ffi = require'ffi'
-local stdio = require'stdio'
 
 require'unit'
 local files = {}
@@ -109,7 +108,7 @@ function player:on_render(cr)
 		if source_type == 'path' then
 			t.path = filename
 		elseif source_type == 'stream' then
-			local stream = stdio.fopen(filename)
+			local stream = io.open(filename)
 			t.stream = stream
 		else
 			local s = glue.readfile(filename)
