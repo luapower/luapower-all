@@ -96,7 +96,7 @@ end
 function M.read(f, buf, sz)
 	assert(sz >= 1, 'invalid size')
 	local szread = tonumber(C.fread(buf, 1, sz, f))
-	return ret((szread == sz or C.eof(f) ~= 0) and szread)
+	return ret((szread == sz or C.feof(f) ~= 0) and szread)
 end
 
 function M.write(f, buf, sz)
