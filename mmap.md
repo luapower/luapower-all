@@ -25,22 +25,22 @@ Limitations:
 ## API
 
 ----------------------------------------------------------------------------------- ---------------------------------------------------------------------------------
-`mmap.map(args_t) -> map | nil, errmsg, errcode` \                                  create a memory mapping
-`mmap.map(file, access, size, offset, addr, tagname) -> map | nil, errmsg, errcode`
+`mmap.map(args_t) -> map | nil,err,errcode` \                                       create a memory mapping
+`mmap.map(file, access, size, offset, addr, tagname) -> map | nil,err,errcode`
 
 `map.addr`                                                                          a `void*` pointer to the mapped memory
 
 `map.size`                                                                          the byte size of the mapped memory
 
-`map:flush([async, ][addr, size]) -> true | nil, errmsg, errcode`                   flush (parts of) the mapping to disk
+`map:flush([async, ][addr, size]) -> true | nil,err,errcode`                        flush (parts of) the mapping to disk
 
 `map:free()`                                                                        release the memory and associated resources
 
 `mmap.unlink(file)` \                                                               remove the shared memory file from disk (Linux, OSX)
 `map:unlink()`
 
-`mmap.mirror(args_t) -> map | nil, errmsg, errcode` \                               create a mirrored memory mapping
-`mmap.mirror(file, size[, times[, addr]]) -> map | nil, errmsg, errcode`
+`mmap.mirror(args_t) -> map | nil,err,errcode` \                                    create a mirrored memory mapping
+`mmap.mirror(file, size[, times[, addr]]) -> map | nil,err,errcode`
 
 `mmap.pagesize() -> bytes`                                                          allocation granularity
 
@@ -48,12 +48,12 @@ Limitations:
 
 `mmap.aligned_addr(ptr[, dir]) -> ptr`                                              next/prev page-aligned address
 
-`mmap.filesize(file) -> size | nil, errmsg, errcode`                                get file size
+`mmap.filesize(file) -> size | nil,err,errcode`                                     get file size
 
-`mmap.filesize(file, size) -> size | nil, errmsg, errcode`                          (create file and) set file size
+`mmap.filesize(file, size) -> size | nil,err,errcode`                               (create file and) set file size
 ----------------------------------------------------------------------------------- ---------------------------------------------------------------------------------
 
-### `mmap.map(args_t) -> map | nil, errmsg, errcode` <br> `mmap.map(file, access, size, offset, addr, tagname) -> map | nil, errmsg, errcode`
+### `mmap.map(args_t) -> map | nil,err,errcode` <br> `mmap.map(file, access, size, offset, addr, tagname) -> map | nil,err,errcode`
 
 Create a memory map object. Args:
 
@@ -97,7 +97,7 @@ Returns an object with the fields:
 * `addr` - a `void*` pointer to the mapped memory
 * `size` - the actual size of the memory block
 
-If the mapping fails, returns `nil, errmsg, errcode` where `errcode` can be:
+If the mapping fails, returns `nil,err,errcode` where `errcode` can be:
 
 * `'no_file'` - file not found.
 * `'file_too_short'` - the file is shorter than the required size.
@@ -121,7 +121,7 @@ Free the memory and all associated resources and close the file
 if it was opened by `mmap.map()`.
 
 
-### `map:flush([async, ][addr, size]) -> true | nil, errmsg, errcode`
+### `map:flush([async, ][addr, size]) -> true | nil,err,errcode`
 
 Flush (part of) the memory to disk. If the address is not aligned,
 it will be automatically aligned to the left. If `async` is true,
@@ -137,7 +137,7 @@ no longer needed. If there's any consolation, this can be done anytime,
 even while mappings are open and will not affect said mappings.
 
 
-### `mmap.mirror(args_t) -> map | nil, errmsg, errcode` <br> `mmap.mirror(file, size[, times[, addr]]) -> map | nil, errmsg, errcode`
+### `mmap.mirror(args_t) -> map | nil,err,errcode` <br> `mmap.mirror(file, size[, times[, addr]]) -> map | nil,err,errcode`
 
 Create a mirrored memory mapping to use with a [lock-free ring buffer][lfrb].
 Args:
@@ -173,12 +173,12 @@ Get the current page size. Memory will always be allocated in multiples
 of this size and file offsets must be aligned to this size too.
 
 
-### `mmap.filesize(file) -> size | nil, errmsg, errcode`
+### `mmap.filesize(file) -> size | nil,err,errcode`
 
 Get file size. Can fail with `'not_found'` or an OS specific error code.
 
 
-### `mmap.filesize(file, size) -> size | nil, errmsg, errcode`
+### `mmap.filesize(file, size) -> size | nil,err,errcode`
 
 Enlarge or truncate a file to a specific size. If the file does not exist
 it is created. Can fail with `'disk_full'` or an OS specific error code.

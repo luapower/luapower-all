@@ -1,6 +1,8 @@
 --finding the nearest-point on a quad bezier curve using closed form (3rd degree equation) solution.
 --solution from http://blog.gludion.com/2009/08/distance-to-quadratic-bezier-curve.html adapted by Cosmin Apreutesei.
 
+if not ... then require'path2d_hit_demo'; return end
+
 local bezier2 = require'path2d_bezier2'
 local solve_equation3 = require'eq'.solve3
 local distance2 = require'path2d_point'.distance2
@@ -48,6 +50,4 @@ function bezier2.hit(x0, y0, x1, y1, x2, y2, x3, y3)
 
 	return mind, minx, miny, mint
 end
-
-if not ... then require'path2d_hit_demo' end
 

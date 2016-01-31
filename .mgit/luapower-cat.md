@@ -69,7 +69,7 @@ tagline: package categories
 	* [lfs]
 	* [time]
 	* [mmap]
-	* [stdc]
+	* [stdio]
 * Native OS APIs
 	* [winapi]
 	* [objc]

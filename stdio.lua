@@ -1,89 +1,149 @@
 
---stdio binding (incomplete).
+--stdio binding (purposefully incomplete).
 --Written by Cosmin Apreutesei. Public domain.
 
 --Rationale: although the io.* library exposes FILE* handles, there's
 --no API extension to work with buffers and avoid creating Lua strings.
+--NOTE: files > 4 Petabytes are not supported.
 
 local ffi = require'ffi'
-require'stdio_h'
-local M = setmetatable({C = ffi.C}, {__index = ffi.C})
+local C = ffi.C
+local M = {C = C}
 
-local function checkh(h)
-	if h ~= nil then return h end
-	error(string.format('errno: %d', ffi.errno()))
-end
+ffi.cdef[[
+typedef struct FILE FILE;
+
+// functions we bind
+
+int    ferror   (FILE*);
+void   clearerr (FILE*);
+char*  strerror (int errnum);
+int    feof     (FILE*);
+FILE*  freopen  (const char*, const char*, FILE*);
+FILE*  fdopen   (int, const char*);
+FILE*  _fdopen  (int, const char*);
+int    fileno   (FILE*);
+int    _fileno  (FILE*);
+size_t fread    (void*, size_t, size_t, FILE*);
+size_t fwrite   (const void*, size_t, size_t, FILE*);
+
+/*
+// functions already bound by the standard io library
+
+enum {
+	STDIN_FILENO  = 0,
+	STDOUT_FILENO = 1,
+	STDERR_FILENO = 2,
+	EOF           = -1,
+};
+
+enum {
+	SEEK_SET = 0,
+	SEEK_CUR = 1,
+	SEEK_END = 2
+};
+
+typedef int64_t off64_t;
+
+FILE*   fopen    (const char*, const char*);
+FILE*   fopen64  (const char* filename, const char* mode);
+FILE*   popen    (const char*, const char*);
+FILE*   _popen   (const char*, const char*);
+int     pclose   (FILE*);
+int     _pclose  (FILE*);
+FILE*   tmpfile  (void);
+char*   tmpnam   (char*);
+char*   tempnam  (const char*, const char*);
+char*   _tempnam (const char*, const char*);
+int     fclose   (FILE*);
+int     fflush   (FILE*);
+int     remove   (const char*);
+int     rename   (const char*, const char*);
+int     unlink   (const char*);
+int     _unlink  (const char*);
+int     fseek    (FILE*, long, int);
+int     fseeko64 (FILE*, off64_t, int);
+off64_t ftello64 (FILE * stream);
+long    ftell    (FILE*);
+int     setvbuf  (FILE*, char*, int, size_t);
+void    setbuf   (FILE*, char*);
+*/
+]]
 
 local function str(s)
-	return ffi.string(checkh(s))
+	return s ~= nil and ffi.string(s) or nil
 end
 
-local function checkz(ret)
-	if ret == 0 then return end
-	error(string.format('errno: %d', ffi.errno()))
+M.error = C.ferror
+M.clearerr = C.clearerr
+M.strerror = function(errno)
+	return str(C.strerror(errno))
 end
 
-local function zcaller(f)
-	return function(...)
-		checkz(f(...))
+local function ret(ret, ...)
+	if ret then
+		return ret, ...
 	end
+	local errno = ffi.errno()
+	return nil, M.strerror(errno) or 'OS error '..errno, errno
 end
 
-function M.fopen(path, mode)
-	return ffi.gc(checkh(ffi.C.fopen(path, mode or 'rb')), M.fclose)
+function M.reopen(f, path, mode)
+	local h = C.freopen(path, mode or 'r', f)
+	return ret(h ~= nil and h)
 end
 
-function M.freopen(file, path, mode)
-	return checkh(ffi.C.freopen(path, mode or 'rb', file))
+function M.read(f, buf, sz)
+	assert(sz >= 1, 'invalid size')
+	local szread = tonumber(C.fread(buf, 1, sz, f))
+	return ret((szread == sz or C.eof(f) ~= 0) and szread)
 end
 
-function M.tmpfile()
-	return ffi.gc(checkh(ffi.C.tmpfile()), M.fclose)
+function M.write(f, buf, sz)
+	assert(sz >= 1, 'invalid size')
+	local szwr = tonumber(C.fwrite(buf, 1, sz, f))
+	return ret(szwr == sz)
 end
 
-function M.tmpnam(prefix)
-	return str(ffi.C.tmpnam(prefix))
+local fdopen = ffi.abi'win' and C._fdopen or C.fdopen
+function M.dopen(fileno, path, mode)
+	local h = fdopen(fileno, mode or 'r', f)
+	return ret(h ~= nil and ffi.gc(h, f.close))
 end
 
-function M.fclose(file)
-	checkz(ffi.C.fclose(file))
-	ffi.gc(file, nil)
+local fileno = ffi.abi'win' and C._fileno or C.fileno
+function M.fileno(f)
+	local n = fileno(f)
+	return ret(n ~= -1 and n)
 end
-
-local fileno = ffi.abi'win' and ffi.C._fileno or ffi.C.fileno
-function M.fileno(file)
-	local n = fileno(file)
-	assert(n >= 0, 'fileno error')
-	return n
-end
-
-M.fflush = zcaller(ffi.C.fflush)
-
---methods
-
-ffi.metatype('FILE', {__index = {
-	close = M.fclose,
-	reopen = M.freopen,
-	flush = M.fflush,
-	no = M.fileno,
-}})
 
 --hi-level API
 
+function M.avail(f)
+	local cur, err, errno = f:seek()
+	if not cur then return nil, err, errno end
+	local sz, err, errno = f:seek'end'
+	if not sz then return nil, err, errno end
+	local cur, err, errno = f:seek('set', cur)
+	if not cur then return nil, err, errno end
+	return sz
+end
+
 function M.readfile(file, format)
-	local f = M.fopen(file, format=='t' and 'r' or 'rb')
-	ffi.C.fseek(f, 0, ffi.C.SEEK_END)
-	local sz = ffi.C.ftell(f)
-	ffi.C.fseek(f, 0, ffi.C.SEEK_SET)
+	local f, err = io.open(file, format=='t' and 'r' or 'rb')
+	if not f then return nil, err, 'open' end
+	local sz, err, errno = M.avail(f)
+	if not sz then return nil, err, errno end
 	local buf = ffi.new('uint8_t[?]', sz)
-	ffi.C.fread(buf, 1, sz, f)
+	local szread, err, errno = M.read(f, buf, sz)
+	if not szread then return nil, err, errno end
 	f:close()
 	return buf, sz
 end
 
 function M.writefile(file, data, sz, format)
 	local f = M.fopen(file, format=='t' and 'w' or 'wb')
-	ffi.C.fwrite(data, 1, sz, f)
+	M.write(f, data, sz)
 	f:close()
 end
 
