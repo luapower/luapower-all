@@ -25,12 +25,13 @@ tagline: package categories
 * Parsing
 	* [lpeg]
 * Hashing & Compression
-	* [md5]
 	* [md4]
+	* [md5]
 	* [sha2]
 	* [hmac]
 	* [pmurhash]
 	* [murmurhash3]
+	* [xxhash]
 	* [crc32]
 	* [zlib]
 	* [minizip]
