@@ -15,17 +15,18 @@ typedef struct FILE FILE;
 
 // functions we bind
 
-int    ferror   (FILE*);
-void   clearerr (FILE*);
-char*  strerror (int errnum);
-int    feof     (FILE*);
-FILE*  freopen  (const char*, const char*, FILE*);
-FILE*  fdopen   (int, const char*);
-FILE*  _fdopen  (int, const char*);
-int    fileno   (FILE*);
-int    _fileno  (FILE*);
-size_t fread    (void*, size_t, size_t, FILE*);
-size_t fwrite   (const void*, size_t, size_t, FILE*);
+int     ferror   (FILE*);
+void    clearerr (FILE*);
+char*   strerror (int errnum);
+int     feof     (FILE*);
+FILE*   freopen  (const char*, const char*, FILE*);
+FILE*   fdopen   (int, const char*);
+FILE*   _fdopen  (int, const char*);
+int     fileno   (FILE*);
+int     _fileno  (FILE*);
+size_t  fread    (void*, size_t, size_t, FILE*);
+size_t  fwrite   (const void*, size_t, size_t, FILE*);
+int     fclose   (FILE*);
 
 /*
 // functions already bound by the standard io library
@@ -55,7 +56,6 @@ FILE*   tmpfile  (void);
 char*   tmpnam   (char*);
 char*   tempnam  (const char*, const char*);
 char*   _tempnam (const char*, const char*);
-int     fclose   (FILE*);
 int     fflush   (FILE*);
 int     remove   (const char*);
 int     rename   (const char*, const char*);
@@ -88,9 +88,9 @@ local function ret(ret, ...)
 	return nil, M.strerror(errno) or 'OS error '..errno, errno
 end
 
-function M.reopen(f, path, mode)
-	local h = C.freopen(path, mode or 'r', f)
-	return ret(h ~= nil and h)
+function M.reopen(f0, path, mode)
+	local f = C.freopen(path, mode or 'r', f0)
+	return ret(f ~= nil and f == f0)
 end
 
 function M.read(f, buf, sz)
@@ -107,8 +107,8 @@ end
 
 local fdopen = ffi.abi'win' and C._fdopen or C.fdopen
 function M.dopen(fileno, path, mode)
-	local h = fdopen(fileno, mode or 'r', f)
-	return ret(h ~= nil and ffi.gc(h, f.close))
+	local f = fdopen(fileno, mode or 'r')
+	return ret(f ~= nil and ffi.gc(f, C.fclose))
 end
 
 local fileno = ffi.abi'win' and C._fileno or C.fileno
@@ -144,6 +144,25 @@ end
 function M.writefile(file, data, sz, format)
 	local f = M.fopen(file, format=='t' and 'w' or 'wb')
 	M.write(f, data, sz)
+	f:close()
+end
+
+function M.close(file)
+	return ret(C.fclose(file) == 0 and ffi.gc(file, nil) and true)
+end
+
+ffi.metatype('struct FILE', {__index = {
+	reopen = M.reopen,
+	close = M.close,
+	fileno = M.fileno,
+}})
+
+if not ... then
+	local stdio = M
+	local outfd = stdio.fileno(io.stdout)
+	assert(outfd == 1)
+	local f = assert(stdio.dopen(outfd))
+	print(f)
 	f:close()
 end
 

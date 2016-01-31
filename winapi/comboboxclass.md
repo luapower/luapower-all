@@ -19,8 +19,6 @@ and drop-down lists.
 
 ### Initial fields and properties
 
-<div class=small>
-
 __NOTE:__ in the table below `i` means initial field, `r` means property
 which can be read, `w` means property which can be set.
 
@@ -41,12 +39,9 @@ path_word_break			irw		TODO																		CBES_EX_PATHWORDBREAKPROC
 no_size_limit				irw		TODO																		CBES_EX_NOSIZELIMIT
 case_sensitive				irw		TODO																		CBES_EX_CASESENSITIVE
 ----------------------- -------- ----------------------------------------- -------------- ---------------------
-</div>
-
 
 ### Events
 
-<div class=small>
 -------------------------------- -------------------------------------------- ----------------------
 __event__								__description__										__reference__
 on_memory_error()						TODO														CBN_ERRSPACE
@@ -61,4 +56,3 @@ on_closeup()							TODO														CBN_CLOSEUP
 on_select()								TODO														CBN_SELENDOK
 on_cancel()								TODO														CBN_SELENDCANCEL
 --------------------------------	-------------------------------------------- ---------------------
-</div>

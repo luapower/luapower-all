@@ -18,8 +18,6 @@ This module implements the `ListBox` class for creating list boxes.
 
 ### Initial fields and properties
 
-<div class=small>
-
 __NOTE:__ in the table below `i` means initial field, `r` means property
 which can be read, `w` means property which can be set.
 
@@ -39,12 +37,9 @@ hextent						irw		horizontal extent									0					LB_GET/SETHORIZONTALEXTENT
 allow_select				irw		allow select										true				LBS_NOSEL
 client_edge					irw		bordered												true				WS_EX_CLIENTEDGE
 ----------------------- -------- ----------------------------------------- -------------- ---------------------
-</div>
-
 
 ### Events
 
-<div class=small>
 -------------------------------- -------------------------------------------- ----------------------
 __event__								__description__										__reference__
 on_memory_error()						TODO														LBN_ERRSPACE
@@ -54,5 +49,3 @@ on_cancel()								TODO														LBN_SELCANCEL
 on_focus()								TODO														LBN_SETFOCUS
 on_blur()								TODO														LBN_KILLFOCUS
 --------------------------------	-------------------------------------------- ---------------------
-</div>
-

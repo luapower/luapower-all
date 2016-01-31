@@ -17,8 +17,6 @@ This module implements the `Window` class for creating top-level windows.
 
 ### Initial fields and properties
 
-<div class=small>
-
 __NOTE:__ in the table below `i` means initial field, `r` means property
 which can be read, `w` means property which can be set.
 
@@ -71,12 +69,9 @@ tool_window					irw		tool window frame									false				WS_EX_TOOLWINDOW
 dialog_frame				irw		double border and no sysmenu icon			false				WS_EX_DLGMODALFRAME
 transparent					irw		(use layered instead)		 					false				WS_EX_TRANSPARENT
 ----------------------- -------- ----------------------------------------- -------------- ---------------------
-</div>
-
 
 ### Methods
 
-<div class=small>
 -------------------------------- -------------------------------------------- ----------------------------
 __state__								__description__										__reference__
 close()									destroy the window									CloseWindow
@@ -91,12 +86,9 @@ __z-order__								__description__										__reference__
 send_to_back([rel_to_win])			move below other windows/specific window		SetWindowPos
 bring_to_front([rel_to_win])		move above other windows/specific window		SetWindowPos
 -------------------------------- -------------------------------------------- ----------------------------
-</div>
-
 
 ### Events
 
-<div class=small>
 -------------------------------- -------------------------------------------- ----------------------
 __state__								__description__										__reference__
 on_close()								was closed												WM_CLOSE
@@ -125,4 +117,3 @@ on_input_language_change()			input language changed								WM_INPUTLANGCHANGE
 on_user_change()						used has logged off									WM_USERCHANGED
 on_display_change()					display resolution changed							WM_DISPLAYCHANGE
 ----------------------- --------	-------------------------------------------- ---------------------
-</div>

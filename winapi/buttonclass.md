@@ -19,8 +19,6 @@ This module implements the `Button` class for creating buttons.
 
 ### Initial fields and properties
 
-<div class=small>
-
 __NOTE:__ in the table below `i` means initial field, `r` means property
 which can be read, `w` means property which can be set.
 
@@ -33,4 +31,3 @@ autosize						irw		set size based on text							false
 pushed						irw		pushed state															BM_GET/SETSTATE
 ideal_size					r			get ideal size for text (`{w=, h=}`)							BCM_GETIDEALSIZE
 ----------------------- -------- ----------------------------------------- -------------- ---------------------
-</div>

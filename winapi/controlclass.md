@@ -20,8 +20,6 @@ which are documented here.
 
 ### Initial fields and properties
 
-<div class=small>
-
 __NOTE:__ in the table below `i` means initial field, `r` means property
 which can be read, `w` means property which can be set.
 
@@ -31,7 +29,6 @@ anchors						irw		anchors												see below
 anc							irw		anchors (string form)							see below
 parent						irw		control's parent														Get/SetParent
 ----------------------- -------- ----------------------------------------- -------------- ---------------------
-</div>
 
 ### Anchors
 

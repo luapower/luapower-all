@@ -193,7 +193,6 @@ are freed on `etr:free()` (*).
 cloned transfers does not result in double-frees, and freeing them is
 deterministic, which is important since their number is hard-limited.
 
-<div class=small>
 ----------------------------- --------------------------------------------------------------------
 __Main options__
 `url`                         [URL to work on.][curlopt_url]
@@ -429,7 +428,6 @@ __Debugging__
 `debugfunction`               [Callback for debug information.][curlopt_debugfunction]
 `debugdata`                   [Data pointer to pass to the debug callback.][curlopt_debugdata]
 ----------------------------- --------------------------------------------------------------------
-</div>
 
 [curlopt_url]:                         http://curl.haxx.se/libcurl/c/CURLOPT_URL.html
 [curlopt_protocols]:                   http://curl.haxx.se/libcurl/c/CURLOPT_PROTOCOLS.html
@@ -665,7 +663,6 @@ There's a section on the [libcurl tutorial] on how to use the multi interface.
 
 [libcurl tutorial]: http://curl.haxx.se/libcurl/c/libcurl-tutorial.html
 
-<div class=small>
 ----------------------------- --------------------------------------------------------------------
 `socketfunction`              [Callback about what to wait for][curlmopt_socketfunction]
 `socketdata`                  [Custom pointer passed to the socket callback][curlmopt_socketdata]
@@ -683,7 +680,6 @@ There's a section on the [libcurl tutorial] on how to use the multi interface.
 `pushfunction`                [Callback that approves or denies server pushes][curlmopt_pushfunction]
 `pushdata`                    [Pointer to pass to push callback][curlmopt_pushdata]
 ----------------------------- --------------------------------------------------------------------
-</div>
 
 [curlmopt_socketfunction]:               http://curl.haxx.se/libcurl/c/CURLMOPT_SOCKETFUNCTION.html
 [curlmopt_socketdata]:                   http://curl.haxx.se/libcurl/c/CURLMOPT_SOCKETDATA.html
@@ -707,7 +703,6 @@ There's a section on the [libcurl tutorial] on how to use the multi interface.
 
 Create a [share object][libcurl-share]. Options below (also for `shr:set()`):
 
-<div class=small>
 ----------------------------- --------------------------------------------------------------------
 `lockfunc`                    [lock data callback][curl_share_setopt]
 `unlockfunc`                  [unlock data callback][curl_share_setopt]
@@ -715,7 +710,6 @@ Create a [share object][libcurl-share]. Options below (also for `shr:set()`):
 `unshare`                     [what type of data _not_ to share][curl_share_setopt]
 `userdata`                    [pointer to pass to lock and unlock functions][curl_share_setopt]
 ----------------------------- --------------------------------------------------------------------
-</div>
 
 ## Multipart forms
 

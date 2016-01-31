@@ -222,7 +222,6 @@ and probably the simplest JIT compiler you could write. It too works on Windows,
 
 ## DynASM API
 
-<div class=small>
 -------------------------------------------------------- --------------------------------------------------
 __hi-level__
 `dynasm.loadfile(infile[, opt]) -> chunk`						load a dasl file and return it as a Lua chunk
@@ -235,11 +234,9 @@ __low-level__
 `dynasm.translate_tostring(infile[, opt]) -> s`				translate to a string
 `dynasm.translate_toiter(infile[, opt]) -> iter() -> s`	translate to an iterator of string pieces
 -------------------------------------------------------- --------------------------------------------------
-</div>
 
 ## DASM API
 
-<div class=small>
 ----------------------------------------------------- --------------------------------------------------
 __hi-level__
 
@@ -283,7 +280,6 @@ __low-level__
 
 `state:setupextern(externnames, getter)`					set up a new `extern` handler
 ----------------------------------------------------- --------------------------------------------------
-</div>
 
 ## Changes to DynASM
 

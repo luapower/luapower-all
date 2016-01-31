@@ -21,11 +21,9 @@ pre-multiplied alpha.
 
 ### Events
 
-<div class=small>
 -------------------------------------------- -------------------------------------- -------------------------
 __painting__											__description__								__reference__
 on_bitmap_create(bitmap)							bitmap was created
 on_bitmap_free(bitmap)								bitmap will be freed
 on_bitmap_paint(bitmap)								panel needs repainting						WM_PAINT
 -------------------------------------------- -------------------------------------- -------------------------
-</div>

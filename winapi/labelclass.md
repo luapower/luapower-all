@@ -18,8 +18,6 @@ This module implements the `Label` class for creating text labels.
 
 ### Initial fields and properties
 
-<div class=small>
-
 __NOTE:__ in the table below `i` means initial field, `r` means property
 which can be read, `w` means property which can be set.
 
@@ -47,11 +45,9 @@ text							irw		the text to display								'Text'			Get/SetWindowText
 
 w, h							irw		size													100, 21
 ----------------------- -------- ----------------------------------------- -------------- ---------------------
-</div>
 
 ### Events
 
-<div class=small>
 -------------------------------- -------------------------------------------- ----------------------
 __event__								__description__										__reference__
 on_click()								clicked													STN_CLICKED
@@ -59,4 +55,3 @@ on_double_click()						double-clicked											STN_DBLCLK
 on_enable()								was enabled												STN_ENABLE
 on_disable()							was disabled											STN_DISABLE
 --------------------------------	-------------------------------------------- ---------------------
-</div>

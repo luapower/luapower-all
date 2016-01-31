@@ -18,8 +18,6 @@ This module implements the `Edit` class for creating edit boxes.
 
 ### Initial fields and properties
 
-<div class=small>
-
 __NOTE:__ in the table below `i` means initial field, `r` means property
 which can be read, `w` means property which can be set.
 
@@ -46,12 +44,9 @@ tabstops									TODO
 margins									TODO
 cue										TODO
 ----------------------- -------- ----------------------------------------- -------------- ---------------------
-</div>
-
 
 ### Events
 
-<div class=small>
 -------------------------------- -------------------------------------------- ----------------------
 __event__								__description__										__reference__
 on_setfocus()							TODO														EN_SETFOCUS
@@ -65,5 +60,3 @@ on_vscroll()							TODO														EN_VSCROLL
 on_align_ltr_ec()						TODO														EN_ALIGN_LTR_EC
 on_align_rtl_ec()						TODO														EN_ALIGN_RTL_EC
 --------------------------------	-------------------------------------------- ---------------------
-</div>
-

@@ -16,7 +16,6 @@ that `foo(val)` sets the value of foo and `foo() -> val` gets it.
 __NOTE:__ flags can be passed as lowercase strings without prefix eg.
 pass 'argb32' for `C.CAIRO_FORMAT_ARGB32` in `cairo.image_surface()`.
 
-<div class="small">
 ------------------------------------------------------------------- -------------------------------------------------------------------
 __pixman surfaces__
 `cairo.image_surface(fmt, w, h) -> sr`                              [create a pixman surface][cairo_image_surface_create]
@@ -326,7 +325,6 @@ __misc.__
 `cairo.NULL`                                                        a `void*` NULL pointer to disambiguate from `nil` when needed
 `cairo.enums -> {prefix -> {name -> value}}`                        access to enum tables
 ------------------------------------------------------------------- -------------------------------------------------------------------
-</div>
 
 (+) supported formats: 'bgra8', 'bgrx8', 'g8', 'g1', 'rgb565', 'bgr10'; the `bmp.data` field is anchored!
 

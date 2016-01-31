@@ -22,8 +22,6 @@ documented here.
 
 ### Initial fields and properties
 
-<div class=small>
-
 __NOTE:__ in the table below `i` means initial field, `r` means property
 which can be read, `w` means property which can be set.
 
@@ -46,11 +44,9 @@ bitmap						irw		bitmap																	BM_SETIMAGE
 	* `align`: 'left', 'right', 'top', 'bottom', 'center'
 	* `margin`: the margin around the image
 
-</div>
 
 ### Events
 
-<div class=small>
 -------------------------------- -------------------------------------------- ----------------------
 __event__								__description__										__reference__
 on_click()								clicked													BN_CLICKED
@@ -58,4 +54,3 @@ on_double_click()						double clicked											BN_DOUBLECLICKED
 on_focus()								focused													BN_SETFOCUS
 on_blur()								unfocused												BN_KILLFOCUS
 --------------------------------	-------------------------------------------- ---------------------
-</div>

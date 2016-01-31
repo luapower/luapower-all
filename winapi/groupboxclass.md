@@ -19,8 +19,6 @@ This module implements the `GroupBox` class for creating group boxes.
 
 ### Initial fields and properties
 
-<div class=small>
-
 __NOTE:__ in the table below `i` means initial field, `r` means property
 which can be read, `w` means property which can be set.
 
@@ -32,4 +30,3 @@ tabstop						irw		focus on tab										false							WS_TABSTOP
 align							irw		'left', 'right', 'center'						'left'						BS_LEFT/RIGHT/CENTER
 flat							irw		flat appearance									false							BS_FLAT
 ----------------------- -------- ----------------------------------------- ----------------------- ---------------------
-</div>

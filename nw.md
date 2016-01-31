@@ -20,7 +20,6 @@ __NOTE:__ In the table below, `foo(t|f) /-> t|f` is a shortcut for saying
 that `foo(t|f)` sets the value of foo and `foo() -> t|f` gets it.
 `t|f` means `true|false`.
 
-<div class=small>
 -------------------------------------------- -----------------------------------------------------------------------------
 __the app object__
 `nw:app() -> app`                            the global application object
@@ -240,7 +239,6 @@ __extending__
 `nw.backends -> {os -> module_name}`         default backend modules for each OS
 `nw:init([backend_name])`                    init with a specific backend (can be called only once)
 -------------------------------------------- -----------------------------------------------------------------------------
-</div>
 
 ## Example
 

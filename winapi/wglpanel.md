@@ -20,13 +20,11 @@ on a panel using [OpenGL][opengl].
 
 ### Events
 
-<div class=small>
 -------------------------------------------- -------------------------------------- -------------------------
 __painting__											__description__								__reference__
 on_render()												panel needs repainting						WM_PAINT
 on_set_viewport()										window was resized
 -------------------------------------------- -------------------------------------- -------------------------
-</div>
 
 ### Usage
 

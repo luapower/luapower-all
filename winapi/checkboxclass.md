@@ -19,8 +19,6 @@ This module implements the `CheckBox` class for creating checkboxes.
 
 ### Initial fields and properties
 
-<div class=small>
-
 __NOTE:__ in the table below `i` means initial field, `r` means property
 which can be read, `w` means property which can be set.
 
@@ -44,4 +42,3 @@ type							irw		'twostate', 'threestate',						'twostate_autocheck'		BS_CHECKBOX
 											'threestate_autocheck'															BS_AUTOCHECKBOX,
 																																	BS_AUTO3STATE
 ----------------------- -------- ----------------------------------------- ----------------------- ---------------------
-</div>

@@ -23,8 +23,6 @@ and controls which are documented here.
 
 ### Initial fields and properties
 
-<div class=small>
-
 __NOTE:__ in the table below `i` means initial field, `r` means property
 which can be read, `w` means property which can be set.
 
@@ -52,11 +50,9 @@ font							irw		default font					DEFAULT_GUI_FONT	Get/SetWindowFont
 text							 rw		depends on control									Get/SetWindowText
 cursor_pos					 r			mouse position (POINT)								GetCursorPos
 ----------------------- -------- -------------------------- ----------------- ---------------------
-</div>
 
 ### Methods
 
-<div class=small>
 -------------------------------------- -------------------------------------------- ----------------------
 __state__										__description__										__reference__
 enable()											enable													EnableWindow
@@ -88,11 +84,9 @@ __timers__										__description__										__reference__
 settimer(seconds, handler, id)			set/reset a timer										SetTimer
 stoptimer(id)									cancel a timer											KillTimer
 -------------------------------------- -------------------------------------------- ----------------------
-</div>
 
 ### Events
 
-<div class=small>
 -------------------------------------------- -------------------------------------- -------------------------
 __lifetime__											__description__								__reference__
 on_destroy()											before destroying								WM_DESTROY
@@ -151,8 +145,6 @@ on_paint(hdc)											window needs repainting						WM_PAINT
 
 (*) call `TrackMouseEvent()` to receive these messages.
 
-</div>
-
 ## Windows
 
 ### Hierarchy
@@ -164,7 +156,6 @@ on_paint(hdc)											window needs repainting						WM_PAINT
 
 ### Properties and methods
 
-<div class=small>
 -------------------------------------------- -------------------------------------------- ----------------
 __field/method__										__description__										__reference__
 Windows.items -> {HWND -> win}					the HWND->window map
@@ -183,11 +174,8 @@ will not be activated (because the app is inactive). OTOH, the foreground
 window is always nil while the app is inactive, even after calling
 activate() on a window.
 
-</div>
-
 ## The message loop
 
-<div class=small>
 -------------------------------------- -----------------------------------------------------------------------
 `MessageLoop()`								start the message loop
 `ProcessNextMessage() -> true|false`	process the next pending message (return true if there even was one)
@@ -198,4 +186,3 @@ activate() on a window.
 > __NOTE:__ The message loop returns an exit code, so you can call it
 like this: `os.exit(MessageLoop())`.
 
-</div>
