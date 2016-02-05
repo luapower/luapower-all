@@ -39,7 +39,7 @@ function player:on_render(cr)
 	end
 
 	local world_center_x, world_center_y = 600, 300
-	local mt = matrix():rotate_around(world_center_x, world_center_y, world_rotation)
+	local mt = matrix():rotate_around(world_center_x, world_center_y, math.rad(world_rotation))
 
 	local function draw(x1, y1, rx, ry, rotation, large, sweep, x2, y2, r, g, b, a)
 		if not svgarc.valid(x1, y1, x2, y2, rx, ry) then return end

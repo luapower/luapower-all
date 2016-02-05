@@ -1,8 +1,11 @@
---2D affine transforms, transcribed from cairo by Cosmin Apreutesei (public domain).
---angles are expressed in degrees, not radians.
 
-local min, max, abs, sin, cos, radians, tan, floor =
-			math.min, math.max, math.abs, math.sin, math.cos, math.rad, math.tan, math.floor
+--2D affine transforms.
+--Transcribed from cairo by Cosmin Apreutesei. Public Domain.
+
+if not ... then require'affine2d_test'; return end
+
+local min, max, abs, sin, cos, tan, floor =
+	math.min, math.max, math.abs, math.sin, math.cos, math.tan, math.floor
 
 local epsilon = 1e-15
 local function snap(x)
@@ -133,7 +136,7 @@ local function new(xx, yx, xy, yy, x0, y0)
 	end
 
 	function mt:skew(ax, ay)
-		ax, ay = tan(radians(ax)), tan(radians(ay))
+		ax, ay = tan(ax), tan(ay)
 		xx, yx, xy, yy =
 			xx + ay * xy,
 			yx + ay * yy,
@@ -143,7 +146,6 @@ local function new(xx, yx, xy, yy, x0, y0)
 	end
 
 	function mt:rotate(a)
-		a = radians(a)
 		local s, c = snap(sin(a)), snap(cos(a))
 		xx, yx, xy, yy =
 			 c * xx + s * xy,
@@ -214,8 +216,6 @@ local function new(xx, yx, xy, yy, x0, y0)
 
 	return mt
 end
-
-if not ... then require'affine2d_test' end
 
 return new
 

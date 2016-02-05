@@ -155,7 +155,7 @@ local path = {
 	'rel_text', 0, 0, {size=70}, 'mittens',
 }
 
-local mt = affine2d()--:translate(100, 0):rotate(10):scale(1, .7)
+local mt = affine2d()--:translate(100, 0):rotate(math.rad(10)):scale(1, .7)
 local invmt = mt:inverse()
 local points, update = path_editor.control_points(path, mt)
 

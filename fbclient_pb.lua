@@ -8,21 +8,19 @@ local pb = {}
 
 -- encode_*() functions used for encoding individual PB options in encoders table passed to encode().
 
-local INT_SIZE	   = 4
-local SHORT_SIZE	= 2
-local LONG_SIZE	= 4
+local INT_SIZE    = 4
+local SHORT_SIZE  = 2
+local LONG_SIZE   = 4
 local POINTER_SIZE= 4
-local MIN_INT		= -2^(8*INT_SIZE-1)
-local MAX_INT		=  2^(8*INT_SIZE-1)-1
-local MAX_UINT	=  2^(8*INT_SIZE)-1
-local MIN_SHORT	= -2^(8*SHORT_SIZE-1)
-local MAX_SHORT	=  2^(8*SHORT_SIZE-1)-1
-local MAX_USHORT	=  2^(8*SHORT_SIZE)-1
-local MAX_BYTE	=  2^8-1
-local MIN_SCHAR	= -2^7
+local MIN_INT     = -2^(8*INT_SIZE-1)
+local MAX_INT     =  2^(8*INT_SIZE-1)-1
+local MAX_UINT	   =  2^(8*INT_SIZE)-1
+local MIN_SHORT   = -2^(8*SHORT_SIZE-1)
+local MAX_SHORT   =  2^(8*SHORT_SIZE-1)-1
+local MAX_USHORT  =  2^(8*SHORT_SIZE)-1
+local MAX_BYTE    =  2^8-1
+local MIN_SCHAR   = -2^7
 local MAX_SCHAR   =  2^7-1
-local MIN_LUAINT  = -2^52
-local MAX_LUAINT  =  2^52-1
 
 local function isint(v) return v%1 == 0 and v >= MIN_INT and v <= MAX_INT end
 local function isuint(v) return v%1 == 0 and v >= 0 and v <= MAX_UINT end

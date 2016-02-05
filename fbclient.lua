@@ -1,5 +1,7 @@
---ffi binding for Firebird's client library. supports Firebird 2.5.
---based on firebird's latest ibase.h with the help of the Interbase 6 API Guide.
+
+--ffi binding for Firebird's client library. Supports Firebird 2.5.
+
+--Based on firebird's latest ibase.h with the help of the Interbase 6 API Guide.
 --NOTE: all connections involved in a multi-database transaction should run on the same OS thread.
 --NOTE: avoid sharing a connection between two threads, although fbclient itself is thread-safe from v2.5 on.
 --TODO: tie attachments to gc? how about transactions, statements, blobs handles? (make ref. tables weak then?)
