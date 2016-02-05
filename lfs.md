@@ -27,9 +27,9 @@ __directory iteration__
 
 `lfs.dir(path) -> iter, dir_obj`                              get a directory iterator (to use with `for`)
 
-`iter(dir_obj) -> dirname | nil`                              explicit iteration
+`iter(dir_obj) -> filename | nil`                             explicit iteration
 
-`dir_obj:next() -> dirname | nil`                             explicit iteration
+`dir_obj:next() -> filename | nil`                            explicit iteration
 
 `dir_obj:close()`                                             close the iterator
 

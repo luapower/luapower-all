@@ -31,7 +31,7 @@ local player = require'cplayer'
 
 function player:on_render(cr)
     --draw a red square
-    cr:set_source_rgb(1, 0, 0)
+    cr:rgb(1, 0, 0)
     cr:rectangle(100, 100, 100, 100)
     cr:fill()
 end
