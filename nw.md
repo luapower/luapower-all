@@ -270,7 +270,7 @@ end)
 function win:repaint()        --called when window needs repainting
 	local bmp = win:bitmap()   --get the window's bitmap
 	local cr = bitmap:cairo()  --get a cairo drawing context
-	cr:set_source_rgb(0, 1, 0) --make it green
+	cr:rgb(0, 1, 0)            --make it green
 	cr:paint()
 end
 
