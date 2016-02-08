@@ -261,7 +261,7 @@ end
 
 --this is another way to bind events which allows setting multiple
 --handlers for the same event type.
-win:on('keydown', function(key)
+win:on('keydown', function(self, key)
 	if key == 'F11' then
 		self:fullscreen(not self:fullscreen()) --toggle fullscreen state
 	end
