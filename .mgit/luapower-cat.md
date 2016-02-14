@@ -25,13 +25,14 @@ tagline: package categories
 * Parsing
 	* [lpeg]
 * Hashing & Compression
+	* [blake2]
+	* [sha2]
 	* [md4]
 	* [md5]
-	* [sha2]
 	* [hmac]
+	* [xxhash]
 	* [pmurhash]
 	* [murmurhash3]
-	* [xxhash]
 	* [crc32]
 	* [zlib]
 	* [minizip]
@@ -132,3 +133,4 @@ tagline: package categories
 	* [luapower]
 	* [unit]
 	* [lua-headers]
+	* [hash_benchmark]
