@@ -50,7 +50,8 @@ local function new(xx, yx, xy, yy, x0, y0)
 				 yx * x + yy * y
 	end
 
-	function mt:multiply(bxx, byx, bxy, byy, bx0, by0) --multiply mt * b and store result in mt
+	--multiply mt * b and store result in mt
+	function mt:multiply(bxx, byx, bxy, byy, bx0, by0)
 		xx, yx, xy, yy, x0, y0 =
 			xx * bxx + yx * bxy,
 			xx * byx + yx * byy,
@@ -61,7 +62,8 @@ local function new(xx, yx, xy, yy, x0, y0)
 		return mt
 	end
 
-	function mt:transform(bxx, byx, bxy, byy, bx0, by0) --multiply b * mt and store result in mt
+	--multiply b * mt and store result in mt
+	function mt:transform(bxx, byx, bxy, byy, bx0, by0)
 		xx, yx, xy, yy, x0, y0 =
 			bxx * xx + byx * xy,
 			bxx * yx + byx * yy,
@@ -168,7 +170,8 @@ local function new(xx, yx, xy, yy, x0, y0)
 		return xx == 1 and yy == 1 and yx == 0 and xy == 0 and x0 == 0 and y0 == 0
 	end
 
-	--check that no scaling is done with this transform, only flipping and multiple-of-90deg rotation.
+	--check that no scaling is done with this transform, only flipping and
+	--multiple-of-90deg rotation.
 	function mt:has_unity_scale()
 		return
 			((xy == 0 and yx == 0) and (xx == 1 or xx == -1) and (yy == 1 or yy == -1)) or
@@ -180,20 +183,23 @@ local function new(xx, yx, xy, yy, x0, y0)
 		return abs(xx) == abs(yy) and xy == yx
 	end
 
-	--the scale factor is the largest dimension of the bounding box of the transformed unit square.
+	--the scale factor is the largest dimension of the bounding box of the
+	--transformed unit square.
 	function mt:scale_factor()
 		local w = max(0, xx, xy, xx + xy) - min(0, xx, xy, xx + xy)
 		local h = max(0, yx, yy, yx + yy) - min(0, yx, yy, yx + yy)
 		return max(w,h)
 	end
 
-	--check that pixels map 1:1 with this transform so that no filtering is necessary
+	--check that pixels map 1:1 with this transform so that no filtering
+	--is necessary.
 	local has_unity_scale = mt.has_unity_scale
 	function mt:is_pixel_exact()
 		return has_unity_scale() and floor(x0) == x0 and floor(y0) == y0
 	end
 
-	---check that there's no skew and that there's no rotation other than multiple-of-90-deg. rotation.
+	--check that there's no skew and that there's no rotation other than
+	--multiple-of-90-deg. rotation.
 	function mt:is_straight()
 		return (xy == 0 and yx == 0) or (xx == 0 and yy == 0)
 	end
@@ -205,7 +211,12 @@ local function new(xx, yx, xy, yy, x0, y0)
 	local function __eq(a, b)
 		local a1, b1, c1, d1, e1, f1 = a:unpack()
 		local a2, b2, c2, d2, e2, f2 = b:unpack()
-		return a1 == a2 and b1 == b2 and c1 == c2 and d1 == d2 and e1 == e2 and f1 == f2
+		return a1 == a2
+			and b1 == b2
+			and c1 == c2
+			and d1 == d2
+			and e1 == e2
+			and f1 == f2
 	end
 
 	setmetatable(mt, {
