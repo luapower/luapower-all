@@ -154,7 +154,7 @@ local outbuf = ffi.new('uint8_t[?]', C.BLAKE2B_BLOCKBYTES)
 
 local function copystr(buf, s, maxsz)
 	ffi.fill(buf, maxsz)
-	if s then
+	if s and #s > 0 then
 		ffi.copy(buf, s, math.min(#s, maxsz))
 	end
 end
@@ -176,21 +176,30 @@ local function mkdigest(V)
 		local outlen = outlen or max_outlen
 		local S = ffi.new(state_ct)
 		if type(key) == 'table' then
+			if not P then
+				error(_('options table not supported with blake2%s', V))
+			end
 			local t = key
 			param.digest_length = t.hash_length or outlen
 			param.key_length = t.key and #t.key or 0
 			param.fanout = t.fanout or 1
 			param.depth = t.depth or 1
-			param.leaf_length = t.leaf_length or 0 --??
-			param.node_offset = t.node_offset or 0 --TODO: 's' version is 48-bit
+			param.leaf_length = t.leaf_length or 0
+			if ffi.istype('uint64_t', param.node_offset) then
+				param.node_offset = t.node_offset or 0
+			else --48-bit uint
+				ffi.cast('uint64_t*', outbuf)[0] = t.node_offset or 0
+				ffi.copy(param.node_offset, outbuf, 6) --assuming little endian
+			end
 			param.node_depth = t.node_depth or 0
 			param.inner_length = t.inner_length or 0
 			copystr(param.salt, t.salt, ffi.sizeof(param.salt))
 			copystr(param.personal, t.personal, ffi.sizeof(param.personal))
-			check(init_param(S, outlen, param))
+			check(init_param(S, param))
 			if t.key then
-				strcopy(outbuf, t.key, blocklen)
-				ffi.fill(outbuf, blocklen)
+				copystr(outbuf, t.key, blocklen)
+				update(S, outbuf, blocklen)
+				copystr(outbuf, nil, blocklen)
 			end
 		elseif key then
 			check(init_key(S, outlen, key, #key))
@@ -244,9 +253,15 @@ if not ... then
 				--test simple API
 				assert(blake2['blake2'..V](d, nil, k) == h)
 
-				--test streaming API
+				--test streaming API / blake2x_init_key() branch
 				local digest = blake2['blake2'..V..'_digest'](k); digest(d)
 				assert(digest() == h)
+
+				--test streaming API / blake2x_init_param() branch
+				if not V:find'p' then
+					local digest = blake2['blake2'..V..'_digest']({key = k}); digest(d)
+					assert(digest() == h)
+				end
 
 				n = n + 1
 			end
