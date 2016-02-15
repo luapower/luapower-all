@@ -19,7 +19,7 @@ of the BLAKE2 algorithm.
                                                                  data chunks until called with no arguments to
 `digest(s, [size])` \                                            return the final hash.
 `digest(cdata, size)` \
-`digest() -> hash`
+`digest() -> s`
 ---------------------------------------------------------------- -----------------------------------------------
 
 The hash is returned raw in a Lua string. To get it as hex use [glue].tohex().
