@@ -169,18 +169,19 @@ local function mkdigest(V)
 	local update     = C[_('blake2%s_update', V)]
 	local final      = C[_('blake2%s_final', V)]
 	local param      = P and parambufs[V]
-	local max_outlen = outlens[V]
+	local outlen     = outlens[V]
 	local blocklen   = blocklens[V]
 
-	return function(key, outlen)
-		local outlen = outlen or max_outlen
-		local S = ffi.new(state_ct)
+	local state = {}
+	state.__index = state
+
+	function state.reset(S, key)
 		if type(key) == 'table' then
 			if not P then
 				error(_('options table not supported with blake2%s', V))
 			end
 			local t = key
-			param.digest_length = t.hash_length or outlen
+			param.digest_length = outlen
 			param.key_length = t.key and #t.key or 0
 			param.fanout = t.fanout or 1
 			param.depth = t.depth or 1
@@ -206,22 +207,38 @@ local function mkdigest(V)
 		else
 			check(init(S, outlen))
 		end
-		return function(data, size)
-			if data then
-				check(update(S, data, size or #data))
-			else
-				check(final(S, outbuf, outlen))
-				return ffi.string(outbuf, outlen)
-			end
+	end
+
+	function state.update(S, data, size)
+		check(update(S, data, size or #data))
+	end
+
+	function state.final(S)
+		check(final(S, outbuf, outlen))
+		return ffi.string(outbuf, outlen)
+	end
+
+	function state:__call(data, size)
+		if data then
+			self:update(data, size)
+		else
+			return self:final()
 		end
+	end
+
+	ffi.metatype(state_ct, state)
+
+	return function(key)
+		local S = state_ct()
+		S:reset(key)
+		return S
 	end
 end
 
 local function mksum(V)
 	local sum = C[_('blake2%s', V)]
-	local max_outlen = outlens[V]
-	return function(data, size, key, outlen)
-		local outlen = outlen or max_outlen
+	local outlen = outlens[V]
+	return function(data, size, key)
 		check(sum(outbuf, data, key, outlen, size or #data, key and #key or 0))
 		return ffi.string(outbuf, outlen)
 	end
