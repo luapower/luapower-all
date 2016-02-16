@@ -185,15 +185,15 @@ update(WM_NOTIFY_NAMES, constants{
 The easiest way to create a new class is to use the code of an existing
 class as a template. There are base classes for almost everything, so:
 
-   * subclass from `Control` if you are creating a new kind of control.
-	* subclass from `WindowClass` if you are creating a new kind of top-level window.
-	* subclass from `VObject` if it's a non-visual class.
-	* subclass from `ItemList` if your class represents a list of objects.
+* subclass from `Control` if you are creating a new kind of control.
+* subclass from `Window` if you are creating a new kind of top-level window.
+* subclass from `VObject` if it's a non-visual class.
+* subclass from `ItemList` if your class represents a list of objects.
 
 ### Initialization
 
 Initialization is done by overriding the `__init` constructor.
-`BaseWindowClass` also provides pre- and post-window-creation hooks
+`BaseWindow` also provides pre- and post-window-creation hooks
 which you can override:
 
 	__before_create(self, info, args)
@@ -201,7 +201,7 @@ which you can override:
 
 ### Auto-generation of properties and events
 
-`BaseWindowClass` contains extensive automation to help with binding
+`BaseWindow` contains extensive automation to help with binding
 of HWND-based classes, so that binding a new window or control is mainly
 an issue of filling up the following tables:
 
