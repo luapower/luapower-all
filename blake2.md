@@ -48,7 +48,7 @@ in place of the `key` arg in which more options can be specified:
 * `key`=nil: key string for keyed hashing (up to 64 bytes for BLAKE2b, up to 32 bytes for BLAKE2s).
 * `hash_length`: optional, for reducing the length of the output hash.
 
-__NOTE:__ the `salt` and `personal` args are zero-padded so `'foo'` is
+__NOTE:__ the `salt` and `personal` options are zero-padded so `'foo'` is
 the same value as `'foo\0'` or `'foo\0\0'` with them (not so with `key`).
 
 See section 2.10 in [BLAKE2 specification](https://blake2.net/blake2_20130129.pdf)
