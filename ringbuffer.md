@@ -17,7 +17,7 @@ Unidirectional cdata array-based ring buffers with the following properties:
 ------------------------------------------ -----------------------------------------------------
 `ringbuffer{size=, ctype=, ...} -> cb`     create a cdata ring buffer
 `cb:head(i) -> i`                          normalized offset from head
-`cb:tail(i) -> i`                          normalized offset from tail
+`cb:tail(i) -> i`                          normalized offset from tail (tail is last index + 1)
 `cb:segments() -> i1, n1, i2, n2`          offsets and sizes of buffer's occupied segments
 `cb:free_segments() -> i1, n1, i2, n2`     offsets and sizes of buffer's free segments
 `cb:push(n[, data]) -> i1, n1, i2, n2`     add data to tail, invoking cb:read()
