@@ -90,7 +90,7 @@ rgbaf          r, g, b, a        float or double       0..1
 __format conversion__
 `bitmap.new(w, h, ...) -> dst`                        create a bitmap
 `bitmap.copy(src[, format], ...) -> dst`              copy and convert a bitmap
-`bitmap.paint(src, dst, dstx, dsty, conv) -> dst`     paint a bitmap on another
+`bitmap.paint(src, dst, dstx, dsty, ...) -> dst`      paint a bitmap on another
 __cropping__
 `bitmap.sub(src, x, y, w, h) -> dst`                  make a sub-bitmap
 __pixel access__
@@ -130,16 +130,17 @@ Copy a bitmap, optionally to a new format, orientation and stride. If `format`
 is not specified, stride and orientation default to those of source bitmap's,
 otherwise they default to top-down, minimum stride.
 
-### `bitmap.paint(source_bmp, dest_bmp[, dstx, dsty][, convert_pixel]) -> dest_bmp`
+### `bitmap.paint(source_bmp, dest_bmp[, dstx, dsty][, convert_pixel, [src_colortype], [dst_colortype]]) -> dest_bmp`
 
 Paint a source bitmap into a destination bitmap, with all the necessary
 clipping and pixel and colortype conversions.
 
 The optional `convert_pixel` is a pixel conversion function to be called for
 each pixel as `convert_pixel(a, b, c, ...) -> x, y, z, ...`. It receives
-the channel values of the source bitmap according to its colortype and
-must return the converted channel values for the destination bitmap
-according to its colortype.
+the channel values of the source bitmap in its original colortype
+(or in `src_colortype`, if given) and must return the converted channel
+values for the destination bitmap in its colortype (or in `dst_colortype`,
+if that is given).
 
 In some cases, the destination bitmap is allowed to have the same data buffer
 as the source bitmap. Specifically, it must have the same orientation,

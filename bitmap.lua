@@ -569,7 +569,21 @@ end
 
 --bitmap converter
 
-local function paint(src, dst, dstx, dsty, convert_pixel)
+local function colortype_pixel_converter(src_colortype, dst_colortype)
+	if src_colortype == dst_colortype then return end
+	return assert(conv[src_colortype][dst_colortype], 'invalid conversion')
+end
+
+local function chain(f, g)
+	if f and g then
+		return function(...)
+			return f(g(...))
+		end
+	end
+	return f or g
+end
+
+local function paint(src, dst, dstx, dsty, convert_pixel, src_colortype, dst_colortype)
 
 	if not tonumber(dstx) then --dstx, dsty are optional inner args
 		convert_pixel, dstx, dsty = dstx
@@ -620,8 +634,7 @@ local function paint(src, dst, dstx, dsty, convert_pixel)
 	end
 
 	--try to copy the bitmap row-by-row
-	if
-		src_format == dst_format
+	if src_format == dst_format
 		and not convert_pixel
 		and src_stride == floor(src_stride) --can't copy from fractional offsets
 		and dst_stride == floor(dst_stride) --can't copy from fractional offsets
@@ -637,11 +650,13 @@ local function paint(src, dst, dstx, dsty, convert_pixel)
 	end
 
 	--convert the bitmap pixel-by-pixel
-	if not convert_pixel and src_format.colortype ~= dst_format.colortype then
-		convert_pixel = assert(
-			conv[src_format.colortype][dst_format.colortype],
-			'invalid conversion')
-	end
+
+	src_colortype = convert_pixel and src_colortype or src_format.colortype
+	dst_colortype = convert_pixel and dst_colortype or dst_format.colortype
+	local sconv = colortype_pixel_converter(src_format.colortype, src_colortype)
+	local dconv = colortype_pixel_converter(dst_colortype, dst_format.colortype)
+	local convert_pixel = chain(chain(sconv, convert_pixel), dconv)
+
 	for sj = 0, (src.h - 1) * src_stride, src_stride do
 		for i = 0, src.w-1 do
 			if convert_pixel then
@@ -655,6 +670,7 @@ local function paint(src, dst, dstx, dsty, convert_pixel)
 		end
 		dj = dj + dst_stride
 	end
+
 	return dst
 end
 
