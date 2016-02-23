@@ -414,6 +414,16 @@ function conv.ycck8.ga8(y, cb, cr, k) return
 	conv.ga16.ga8(conv.rgba16.ga16(conv.cmyk8.rgba16(conv.ycck8.cmyk8(y, cb, cr, k))))
 end
 
+--raw colortypes and formats
+
+for i=3,6 do
+	local n = 2^i --8..64
+	local name = 'raw'..n
+	colortypes[name] = {channels = 'x', bpc = n, max = 2^n}
+	formats[name] = format(n, 'uint'..n..'_t', name, r0, w0, r0, w0)
+	conv[name] = {}
+end
+
 --bitmap objects
 
 local function valid_colortype(colortype)

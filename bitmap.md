@@ -68,6 +68,10 @@ ycc8                              ycc8                JPEG YCbCr 8       8      
 ycck8                             ycck8               JPEG YCbCrK 8      8                  32
 rgbaf                             rgbaf               RGB+alpha          32                 128
 rgbad                             rgbaf               RGB+alpha          64                 256
+raw8                              raw8                X                  8                  8
+raw16                             raw16               X                  16                 16
+raw32                             raw32               X                  32                 32
+raw64                             raw64               X                  64                 64
 
 
 ### Predefined colortypes
@@ -82,6 +86,10 @@ cmyk8          c, m, y, k        integer               0..0xff
 ycc8           y, c, c           integer               0..0xff
 ycck8          y, c, c, k        integer               0..0xff
 rgbaf          r, g, b, a        float or double       0..1
+raw8           x                 integer               0..0xff
+raw16          x                 integer               0..0xffff
+raw32          x                 integer               0..0xffffffff
+raw64          x                 integer               0..0xffffffffffffffffUL
 
 
 ## Quick API Reference
