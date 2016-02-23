@@ -651,11 +651,15 @@ local function paint(src, dst, dstx, dsty, convert_pixel, src_colortype, dst_col
 
 	--convert the bitmap pixel-by-pixel
 
-	src_colortype = convert_pixel and src_colortype or src_format.colortype
-	dst_colortype = convert_pixel and dst_colortype or dst_format.colortype
-	local sconv = colortype_pixel_converter(src_format.colortype, src_colortype)
-	local dconv = colortype_pixel_converter(dst_colortype, dst_format.colortype)
-	local convert_pixel = chain(chain(sconv, convert_pixel), dconv)
+	if convert_pixel then
+		local src_colortype = src_colortype or src_format.colortype
+		local dst_colortype = dst_colortype or dst_format.colortype
+		local sconv = colortype_pixel_converter(src_format.colortype, src_colortype)
+		local dconv = colortype_pixel_converter(dst_colortype, dst_format.colortype)
+		convert_pixel = convert_pixel and chain(chain(sconv, convert_pixel), dconv)
+	else
+		convert_pixel = colortype_pixel_converter(src_format.colortype, dst_format.colortype)
+	end
 
 	for sj = 0, (src.h - 1) * src_stride, src_stride do
 		for i = 0, src.w-1 do
