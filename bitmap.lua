@@ -219,7 +219,7 @@ end
 formats.rgba4444 = format(16, 'uint16_t', 'rgba8',
 	rrgba, wrgba, rr, rg, rb, ra, wr, wg, wb, wa)
 
---16bpp RGB555 and RGBA5551
+--16bpp RGB5550 and RGBA5551
 local function rr(s,i) return      shr(s[i], 11)      * (255 / 31) end
 local function rg(s,i) return band(shr(s[i],  6), 31) * (255 / 31) end
 local function rb(s,i) return band(shr(s[i],  1), 31) * (255 / 31) end
@@ -236,7 +236,7 @@ function wrgba(d,i,r,g,b,a)
 	           shl(shr(g, 3),  6),
 	           shl(shr(b, 3),  1))
 end
-formats.rgb555 = format(16, 'uint16_t', 'rgba8',
+formats.rgb5550 = format(16, 'uint16_t', 'rgba8',
 	rrgba, wrgba, rr, rg, rb, rff, wr, wg, wb)
 
 local function rrgba(s,i)
@@ -249,6 +249,38 @@ function wrgba(d,i,r,g,b,a)
 	               shr(a, 7))
 end
 formats.rgba5551 = format(16, 'uint16_t', 'rgba8',
+	rrgba, wrgba, rr, rg, rb, ra, wr, wg, wb, wa)
+
+--16bpp RGB0555 and ARGB1555
+local function rr(s,i) return band(shr(s[i], 10), 31) * (255 / 31) end
+local function rg(s,i) return band(shr(s[i],  5), 31) * (255 / 31) end
+local function rb(s,i) return band(    s[i],      31) * (255 / 31) end
+local function ra(s,i) return      shr(s[i], 15)      *  255       end
+local function wr(d,i,v) d[i] = bor(band(d[i], 0x83ff), shl(shr(r, 3), 10)) end
+local function wg(d,i,v) d[i] = bor(band(d[i], 0xfc1f), shl(shr(g, 3),  5)) end
+local function wb(d,i,v) d[i] = bor(band(d[i], 0xffe0),     shr(b, 3)     ) end
+local function wa(d,i,v) d[i] = bor(band(d[i], 0x7fff), shl(shr(a, 7), 15)) end
+local function rrgba(s,i)
+	return rr(s,i), rg(s,i), rb(s,i), 0xff
+end
+function wrgba(d,i,r,g,b,a)
+	d[i] = bor(shl(shr(r, 3), 10),
+				  shl(shr(g, 3),  5),
+				      shr(b, 3))
+end
+formats.rgb0555 = format(16, 'uint16_t', 'rgba8',
+	rrgba, wrgba, rr, rg, rb, rff, wr, wg, wb)
+
+local function rrgba(s,i)
+	return rr(s,i), rg(s,i), rb(s,i), ra(s,i)
+end
+function wrgba(d,i,r,g,b,a)
+	d[i] = bor(shl(shr(r, 3), 10),
+	           shl(shr(g, 3),  5),
+	               shr(b, 3),
+				  shl(shr(a, 7), 15))
+end
+formats.rgba1555 = format(16, 'uint16_t', 'rgba8',
 	rrgba, wrgba, rr, rg, rb, ra, wr, wg, wb, wa)
 
 --sub-byte (< 8bpp) formats

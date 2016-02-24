@@ -64,7 +64,7 @@ function player:on_render(cr)
 		id = 'format1'}
 
 	local v2 = {
-		'rgb565', 'rgb555', 'rgb444', 'rgba4444', 'rgba5551',
+		'rgb565', 'rgb0555', 'rgb5550', 'rgb444', 'rgba4444', 'rgba5551', 'rgba1555',
 		'g1', 'g2', 'g4', 'g8', 'g16',
 		'ga8', 'ag8', 'ga16', 'ag16',
 		'cmyk8',

@@ -52,10 +52,12 @@ rgbx16, bgrx16, xrgb16, xbgr16    rgba16              RGB                16     
 rgba8, bgra8, argb8, abgr8        rgba8               RGB+alpha          8                  32
 rgba16, bgra16, argb16, abgr16    rgba16              RGB+alpha          16                 64
 rgb565                            rgba8               RGB                5/6/5              16
-rgb555                            rgba8               RGB                5                  16
+rgb0555                           rgba8               RGB                5                  16
+rgb5550                           rgba8               RGB                5                  16
 rgb444                            rgba8               RGB                4                  16
 rgba4444                          rgba8               RGB+alpha          4                  16
 rgba5551                          rgba8               RGB+alpha          5/5/5/1            16
+rgba1555                          rgba8               RGB+alpha          1/5/5/5            16
 ga8, ag8                          ga8                 GRAY+alpha         8                  16
 ga16, ag16                        ga16                GRAY+alpha         16                 32
 g1                                ga8                 GRAY               1                  1
