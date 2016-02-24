@@ -603,9 +603,9 @@ local function paint(src, dst, dstx, dsty, convert_pixel, src_colortype, dst_col
 	dstx = dstx or 0
 	dsty = dsty or 0
 	if dstx ~= 0 or dsty ~= 0 or src.w ~= dst.w or src.h ~= dst.h then
-		local x, y, w, h = box2d.clip(dstx, dsty, dst.w-dstx, dst.h-dsty, 0, 0, src.w, src.h)
+		local x, y, w, h = box2d.clip(dstx, dsty, dst.w-dstx, dst.h-dsty, dstx, dsty, src.w, src.h)
 		if w == 0 or h == 0 then return end
-		src = sub(src, x, y, w, h)
+		src = sub(src, 0, 0, w, h)
 		dst = sub(dst, x, y, w, h)
 	end
 	assert(src.h == dst.h)
