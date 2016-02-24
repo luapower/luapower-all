@@ -106,6 +106,7 @@ tagline: package categories
 	* [libjpeg]
 	* [nanojpeg]
 	* [libpng]
+	* [bmp]
 	* [libexif]
 	* [blur]
 * Sound
