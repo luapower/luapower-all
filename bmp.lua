@@ -2,15 +2,14 @@
 --BMP file load/save.
 --Written by Cosmin Apreutesei. Public Domain.
 
---TODO: RLE4
---TODO: docs
-
 if not ... then require'bmp_demo'; return end
 
 local ffi = require'ffi'
 local bit = require'bit'
 local bitmap = require'bitmap'
 local glue = require'glue'
+local shr, shl, bor, band, bnot =
+	bit.rshift, bit.lshift, bit.bor, bit.band, bit.bnot
 
 local M = {}
 
@@ -104,13 +103,13 @@ local valid_bpps = {
 	png = glue.index{0},
 }
 
-function M.open(read_bytes)
+M.open = glue.protect(function(read_bytes)
 
 	--wrap the reader so we can count the bytes read
 	local bytes_read = 0
 	local function read(buf, sz)
 		local sz = sz or ffi.sizeof(buf)
-		read_bytes(buf, sz)
+		assert(read_bytes(buf, sz) == sz, 'short read')
 		bytes_read = bytes_read + sz
 		return buf
 	end
@@ -211,7 +210,7 @@ function M.open(read_bytes)
 	end
 
 	--make a progressive row-by-row pixel loader
-	local function load(dst_bmp, dst_x, dst_y)
+	local function load_rows(dst_bmp, dst_x, dst_y)
 
 		if comp == 'jpeg' then
 			error'jpeg not supported'
@@ -228,17 +227,17 @@ function M.open(read_bytes)
 				if mask == 0 then
 					return 0, 0
 				end
-				local shr = 0
-				while bit.band(mask, 1) == 0 do --lowest bit not reached yet
-					mask = bit.rshift(mask, 1)
-					shr = shr + 1
+				local shift = 0
+				while band(mask, 1) == 0 do --lowest bit not reached yet
+					mask = shr(mask, 1)
+					shift = shift + 1
 				end
 				local bits = 0
 				while mask > 0 do --highest bit not cleared yet
-					mask = bit.rshift(mask, 1)
+					mask = shr(mask, 1)
 					bits = bits + 1
 				end
-				return shr, bits
+				return shift, bits
 			end
 
 			--build a standard format name based on the bitfield masks
@@ -267,7 +266,6 @@ function M.open(read_bytes)
 			if not bitmap.formats[format] then
 				format = 'raw'..bpp
 				dst_colorspace = 'rgba8'
-				local band, shr = bit.band, bit.rshift
 				local r_and = bitmasks[0]
 				local r_shr = mask_shr_bits(r_and)
 				local g_and = bitmasks[1]
@@ -289,7 +287,6 @@ function M.open(read_bytes)
 
 			format = 'g'..bpp --using gray<1,2,4,8> as the base format
 			dst_colorspace = 'rgba8'
-			local shr = bit.rshift
 			if bpp == 1 then
 				function convert_pixel(g8)
 					return pal_entry(shr(g8, 7))
@@ -330,8 +327,61 @@ function M.open(read_bytes)
 		--row reader: either straight read or RLE decode
 		local read_row
 		if rle then
-			assert(bpp == 8, 'RLE4 not supported') --TODO
+
+			local read_pixels, fill_pixels
+
 			local rle_buf = ffi.new'uint8_t[2]'
+			local p = ffi.cast('uint8_t*', row_bmp.data)
+
+			if bpp == 8 then --RLE8
+
+				function read_pixels(i, n)
+					read(p + i, n)
+					--read the word-align padding
+					local n2 = band(n + 1, bnot(1)) - n
+					if n2 > 0 then
+						read(nil, n2)
+					end
+				end
+
+				function fill_pixels(i, n, v)
+					ffi.fill(p + i, n, v)
+				end
+
+			elseif bpp == 4 then --RLE4
+
+				local function shift_back(i, n) --shift data back one nibble
+					local i0 = math.floor(i)
+					if i0 == i then return end --no need for shifting
+					p[i0] = bor(band(p[i0], 0xf0), shr(p[i0+1], 4)) --stitch the first nibble
+					for i = math.ceil(i), i0 + n do
+						p[i] = bor(shl(p[i], 4), shr(p[i+1], 4))
+					end
+				end
+
+				function read_pixels(i, n)
+					local i = i * 0.5
+					local n = math.ceil(n * 0.5)
+					read(p + math.ceil(i), n)
+					shift_back(i, n)
+					--read the word-align padding
+					local n2 = band(n + 1, bnot(1)) - n
+					if n2 > 0 then
+						read(nil, n2)
+					end
+				end
+
+				function fill_pixels(i, n, v)
+					local i = i * 0.5
+					local n = math.ceil(n * 0.5)
+					ffi.fill(p + math.ceil(i), n, v)
+					shift_back(i, n)
+				end
+
+			else
+				assert(false)
+			end
+
 			local j = 0
 			function read_row()
 				local i = 0
@@ -355,21 +405,17 @@ function M.open(read_bytes)
 							error'RLE delta not supported'
 						else --absolute mode: k = number of pixels to read
 							assert(i + k <= width, 'RLE overflow')
-							read(row_bmp.data + i, k)
-							--read the word-align padding
-							local k2 = bit.band(k + 1, bit.bnot(1)) - k
-							if k2 > 0 then
-								read(nil, k2)
-							end
+							read_pixels(i, k)
 							i = i + k
 						end
 					else --repeat: n = number of pixels to repeat, k = color
 						assert(i + n <= width, 'RLE overflow')
-						ffi.fill(row_bmp.data + i, n, k)
+						fill_pixels(i, n, k)
 						i = i + n
 					end
 				end
 			end
+
 		else
 			function read_row()
 				read(row_bmp.data, row_bmp.stride)
@@ -421,21 +467,27 @@ function M.open(read_bytes)
 	--palette
 	bmp.pal_count = pal_count
 	function bmp:load_pal()
-		load_pal()
-		self.pal = pal
+		local ok, err = pcall(load_pal)
+		if ok then
+			self.pal = pal
+			return true
+		else
+			return nil, err
+		end
 	end
 	function bmp:pal_entry(i)
 		return pal_entry(i)
 	end
 	--loading
+	local load_rows = glue.protect(load_rows)
 	function bmp:load(...)
-		load(...)
+		return load_rows(...)
 	end
 
 	return bmp
-end
+end)
 
-function M.save(bmp, write)
+M.save = glue.protect(function(bmp, write)
 	local fh = file_header()
 	local h = info_header()
 	local image_size = h.w * h.h * 4
@@ -462,10 +514,9 @@ function M.save(bmp, write)
 	for j=bmp.h-1,0,-1 do
 		local src_row_bmp = bitmap.sub(bmp, 0, j, bmp.w, 1)
 		bitmap.paint(src_row_bmp, row_bmp)
-		--ffi.fill(row_bmp.data, row_bmp.stride, j)
 		write(row_bmp.data, row_bmp.stride)
 	end
-end
+end)
 
 
 return M

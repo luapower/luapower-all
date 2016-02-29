@@ -19,6 +19,7 @@ local function open(f)
 			ffi.copy(buf, s1, size)
 		end
 		s = s:sub(size + 1)
+		return size
 	end
 	return bmp_format.open(read)
 end
@@ -29,15 +30,15 @@ function win:repaint()
 	local maxh = 0
 
 	local function show(f)
-		local ok, bmp = pcall(open, f)
-		if not ok then
-			print(f, bmp)
+		local bmp, err = open(f)
+		if not bmp then
+			print(f, err)
 		else
 			if x + bmp.w + 10 > wbmp.w then
 				x = 10
 				y = y + maxh + 10
 			end
-			local ok, err = pcall(bmp.load, bmp, wbmp, x, y)
+			local ok, err = bmp:load(wbmp, x, y)
 			if not ok then
 				print(f, err)
 			else

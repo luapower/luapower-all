@@ -126,7 +126,7 @@ test(select(2,pcall(glue.assert,false,'bad %s','dog')), 'bad dog')
 test(select(2,pcall(glue.assert,false,'bad dog %s')), 'bad dog %s')
 test({pcall(glue.assert,1,2,3)}, {true,1,2,3})
 
---TODO: assert, unprotect, pcall, fpcall, fcall
+--TODO: assert, protect, pcall, fpcall, fcall
 
 local n = 0
 local f = glue.memoize(function() n = n + 1; return 6; end)

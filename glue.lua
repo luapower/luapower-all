@@ -391,20 +391,26 @@ function glue.assert(v, err, ...)
 	error(err, 2)
 end
 
---transform the result of a pcall() to the Lua convention for functions that
---can return an error, i.e. return nil,err for failure, and true if no result.
-function glue.unprotect(ok, result, ...)
-	if not ok then return nil, result, ... end
-	if result == nil then result = true end --to distinguish from error.
-	return result, ...
-end
-
 --pcall with traceback. LuaJIT and Lua 5.2 only.
 local function pcall_error(e)
 	return tostring(e) .. '\n' .. debug.traceback()
 end
 function glue.pcall(f, ...)
 	return xpcall(f, pcall_error, ...)
+end
+
+local function unprotect(ok, result, ...)
+	if not ok then return nil, result, ... end
+	if result == nil then result = true end --to distinguish from error.
+	return result, ...
+end
+
+--wrap a function that raises errors on failure into a function that follows
+--the Lua convention of returning nil,err on failure.
+function glue.protect(func)
+	return function(...)
+		return unprotect(pcall(func, ...))
+	end
 end
 
 --pcall with finally and except "clauses":
@@ -432,7 +438,6 @@ local function fpcall(f,...)
 	return pass(xpcall(f, err, finally, onerror, ...))
 end
 
-local unprotect = glue.unprotect
 function glue.fpcall(...)
 	return unprotect(fpcall(...))
 end

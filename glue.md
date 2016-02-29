@@ -46,7 +46,7 @@ __i/o__
 `glue.writefile(filename,s|t|read[,format])`                       write a string to a file
 __errors__
 `glue.assert(v[,message[,format_args...]])`                        assert with error message formatting
-`glue.unprotect(ok,result,...) -> result,... | nil,result,...`     unprotect a protected call
+`glue.protect(func) -> protected_func`                             wrap an error-raising function
 `glue.pcall(f,...) -> true,... | false,traceback`                  pcall with traceback
 `glue.fpcall(f,...) -> result | nil,traceback`                     coding with finally and except
 `glue.fcall(f,...) -> result`
@@ -526,26 +526,26 @@ glue.assert(depth <= maxdepth, 'maximum depth %d exceeded', maxdepth)
 
 ------------------------------------------------------------------------------
 
-### `glue.unprotect(ok,result,...) -> result,... | nil,result,...`
+### `glue.protect(func) -> protected_func`
 
 In Lua, API functions conventionally signal errors by returning nil and
-an error message instead of raising exceptions.
+an error message instead of raising errors.
 In the implementation however, using assert() and error() is preferred
 to coding explicit conditional flows to cover exceptional cases.
 Use this function to convert error-raising functions to nil,err-returning
 functions:
 
 ~~~{.lua}
-function my_API_function()
-  return glue.unprotect(pcall(function()
-    ...
-    assert(...)
-    ...
-    error(...)
-    ...
-    return result_value
-  end))
-end
+protected_function = glue.protect(function()
+	...
+	assert(...)
+	...
+	error(...)
+	...
+	return result_value
+end)
+
+local ret, err = protected_function()
 ~~~
 
 ------------------------------------------------------------------------------
@@ -694,7 +694,7 @@ Allocate a `ctype[size]` array with system's malloc. Useful for allocating
 larger chunks of memory without hitting the default allocator's 2 GB limit.
 
   * the returned cdata has the type `ctype(&)[size]` so ffi.sizeof(cdata)
-  returns the correct size.
+  returns the correct size (the downside is that size cannot exceed 2 GB).
   * `ctype` defaults to `char`.
   * failure to allocate results in error.
   * the memory is freed when the cdata gets collected or with `glue.free()`.
