@@ -21,10 +21,13 @@ automatically choose the right method.
 `stdio.reopen(f, path[, mode]) -> true | nil,err,errno`          close file/open a different file
 __i/o__
 `stdio.read(f, buf, sz) -> szread | nil,err,errno`               read more data from the file
-`stdio.write(f, buf, sz) -> true | nil,err,errno`                write more data to the file
+`stdio.write(f, s[, sz]) -> true | nil,err,errno`                write more data to the file
 `stdio.avail(f) -> sz | nil,err`                                 how many bytes to EOF
 `stdio.readfile(f[, 't']) -> data, sz`                           read entire file to a buffer
-`stdio.writefile(f, data, sz[, 't']) -> true |nil,err,errno`     write a buffer to a file
+`stdio.writefile(f, s[, sz[, 't']]) -> true |nil,err,errno`      write a string or cdata to a file
+__i/o streams__
+`stdio.reader(f) -> read(buf, sz)`                               make a reader function
+`stdio.writer(f) -> write(s[, sz])`                              make a writer function
 __file descriptors__
 `stdio.fileno(f) -> n | nil,err,errno`                           get fileno of file
 `stdio.dopen(fileno) -> f | nil,err,errno`                       open file based on fileno

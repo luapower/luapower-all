@@ -109,7 +109,7 @@ M.open = glue.protect(function(read_bytes)
 	local bytes_read = 0
 	local function read(buf, sz)
 		local sz = sz or ffi.sizeof(buf)
-		assert(read_bytes(buf, sz) == sz, 'short read')
+		read_bytes(buf, sz)
 		bytes_read = bytes_read + sz
 		return buf
 	end
@@ -210,7 +210,9 @@ M.open = glue.protect(function(read_bytes)
 	end
 
 	--make a progressive row-by-row pixel loader
+	local rows_loaded
 	local function load_rows(dst_bmp, dst_x, dst_y)
+		assert(not rows_loaded, 'already loaded')
 
 		if comp == 'jpeg' then
 			error'jpeg not supported'
@@ -442,6 +444,7 @@ M.open = glue.protect(function(read_bytes)
 			end
 		end
 
+		rows_loaded = true
 	end
 
 	local function bool(x)
