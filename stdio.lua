@@ -44,8 +44,6 @@ enum {
 	SEEK_END = 2
 };
 
-typedef int64_t off64_t;
-
 FILE*   fopen    (const char*, const char*);
 FILE*   fopen64  (const char* filename, const char* mode);
 FILE*   popen    (const char*, const char*);
@@ -62,9 +60,11 @@ int     rename   (const char*, const char*);
 int     unlink   (const char*);
 int     _unlink  (const char*);
 int     fseek    (FILE*, long, int);
-int     fseeko64 (FILE*, off64_t, int);
-off64_t ftello64 (FILE * stream);
+int     fseeko64 (FILE*, int64_t, int);
+int     _fseeki64(FILE*, int64_t, int);
 long    ftell    (FILE*);
+int64_t ftello64 (FILE * stream);
+int64_t _ftelli64(FILE * stream);
 int     setvbuf  (FILE*, char*, int, size_t);
 void    setbuf   (FILE*, char*);
 */
@@ -94,14 +94,25 @@ function M.reopen(f0, path, mode)
 end
 
 function M.read(f, buf, sz)
+	if sz == 0 then return 0 end
 	assert(sz >= 1, 'invalid size')
-	local szread = tonumber(C.fread(buf, 1, sz, f))
-	return ret((szread == sz or C.feof(f) ~= 0) and szread)
+	if not buf then --null-read
+		local cur0, err, errno = f:seek()
+		if not cur0 then return nil, err, errno end
+		local cur, err, errno = f:seek('cur', sz)
+		if not cur then return nil, err, errno end
+		return cur - cur0
+	else
+		local szread = tonumber(C.fread(buf, 1, sz, f))
+		return ret((szread == sz or C.feof(f) ~= 0) and szread)
+	end
 end
 
 function M.write(f, buf, sz)
+	sz = sz or #buf
+	if sz == 0 then return true end
 	assert(sz >= 1, 'invalid size')
-	local szwr = tonumber(C.fwrite(buf, 1, sz or #buf, f))
+	local szwr = tonumber(C.fwrite(buf, 1, sz, f))
 	return ret(szwr == sz)
 end
 
@@ -122,7 +133,8 @@ end
 function M.reader(f)
 	return function(buf, sz)
 		local readsz, err = M.read(f, buf, sz)
-		assert(readsz == sz, err)
+		assert(readsz, err)
+		assert(readsz == sz, 'eof')
 	end
 end
 
