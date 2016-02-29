@@ -9,9 +9,8 @@ handles, there's no API to work with cdata buffers on those handles
 and avoid creating Lua strings. This module fixes that.
 
 > __NOTE__: `io`-opened file objects are _compatible_ with cdata `FILE*`
-objects but they're not fully equivalent. For this reason, use `f:close()`
-on all files instead of `io.close()` or `stdio.close()` which will
-automatically choose the right method.
+objects but they're not fully equivalent. To be safe, use `f:close()`
+instead of `io.close()` or `stdio.close()`.
 
 > __NOTE:__ files larger than 4 Petabytes are not supported.
 
