@@ -482,10 +482,10 @@ M.open = glue.protect(function(read_bytes)
 		return pal_entry(i)
 	end
 	--loading
-	local load_rows = glue.protect(load_rows)
-	function bmp:load(...)
-		return load_rows(...)
-	end
+	bmp.load = glue.protect(function(self, ...)
+		load_rows(...)
+		return self
+	end)
 
 	return bmp
 end)

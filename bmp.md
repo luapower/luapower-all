@@ -7,7 +7,8 @@ tagline: BMP file loading and saving
 BMP file loading and saving module. Supports all file header versions,
 color depths and pixel formats and encodings except very rare ones
 (embedded JPEGs, embedded PNGs, OS/2 headers, RLE deltas). Supports
-progressive loading, coroutine-based readers, and saving in bgra8 format.
+progressive loading, yielding from the reader and writer functions
+and saving in bgra8 format.
 
 ## API
 
@@ -16,18 +17,21 @@ progressive loading, coroutine-based readers, and saving in bgra8 format.
 `b.w`                                   width
 `b.h`                                   height
 `b.bpp`                                 bits per pixel
-`b:load(dst_bmp[, x, y]) -> ok|nil,err` load the pixels into a [bitmap]
+`b:load(dst_bmp[, x, y]) -> b|nil,err`  load the pixels into a [bitmap]
 `bmp.save(bmp, write) -> ok|nil,err`    save a [bitmap] using a write function
 --------------------------------------- ---------------------------------------
 
 ### `bmp.open(read) -> b|nil,err`
 
-Open a bmp file using a `read(buf, bufsize) -> readsize` function
-to get the bytes.
+Open a bmp file using a `read(buf, size)` function to get the bytes.
+The read function should accept any size >= 0 and it should raise an error
+if it can't read all the bytes.
 
 ### `bmp.save(bmp, write) -> true | nil, err`
 
 Save bmp file using a `write(buf, size)` function to write the bytes.
+The write function should accept any size >= 0 and it should raise an error
+if it can't write all the bytes.
 
 
 ## Low-level API
