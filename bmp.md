@@ -33,12 +33,12 @@ Save bmp file using a `write(buf, size)` function to write the bytes.
 ## Low-level API
 
 --------------------------------------- ---------------------------------------
-`b.bottom_up`                           bottom up?
+`b.bottom_up`                           are the rows stored bottom up?
 `b.compression`                         encoding type
-`b.transparent`                         uses alpha?
-`b.palettized`                          uses palette?
+`b.transparent`                         does it use the alpha channel?
+`b.palettized`                          does it use a palette?
 `b.bitmasks`                            RGBA bitmasks (BITFIELDS encoding)
-`b.rle -> t|f`                          uses RLE encoding
+`b.rle`                                 is it RLE-encoded?
 `b:load_pal() -> ok|nil,err`            load the palette
 `b:pal_entry(index) -> r, g, b, a`      palette lookup (loads the palette)
 `b.pal_count -> n`                      palette color count
