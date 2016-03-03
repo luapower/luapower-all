@@ -77,6 +77,8 @@ ircall = {
 "softfp_cmp",
 "softfp_i2d",
 "softfp_d2i",
+"lj_vm_sfmin",
+"lj_vm_sfmax",
 "softfp_ui2d",
 "softfp_f2d",
 "softfp_d2ui",
