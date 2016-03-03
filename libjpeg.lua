@@ -3,7 +3,7 @@
 --Written by Cosmin Apreutesei. Public domain.
 
 if not ... then
-	require'libjpeg_test'
+	--require'libjpeg_test'
 	require'libjpeg_demo'
 	return
 end
@@ -14,6 +14,8 @@ local glue = require'glue'
 local jit = require'jit'
 require'libjpeg_h'
 local C = ffi.load'jpeg'
+
+ffi.cdef'void *memmove(void *dest, const void *src, size_t n);'
 
 local LIBJPEG_VERSION = 62
 
@@ -76,17 +78,6 @@ local function pad_stride(stride)
 	return bit.band(stride + 3, bit.bnot(3))
 end
 
---given a string or cdata/size pair, return a reader function that returns
---the entire data on the first call.
-local function one_shot_reader(buf, sz)
-	local done
-	return function()
-		if done then return end
-		done = true
-		return buf, sz
-	end
-end
-
 --create a callback manager object and its destructor.
 local function callback_manager(mgr_ctype, callbacks)
 	local mgr = ffi.new(mgr_ctype)
@@ -99,15 +90,13 @@ local function callback_manager(mgr_ctype, callbacks)
 			mgr[k] = f
 		end
 	end
-	local function free_mgr()
-		ffi.gc(mgr, nil)
+	local function free()
 		for k,cb in pairs(cbt) do
-			mgr[k] = nil
+			mgr[k] = nil --anchor mgr
 			cb:free()
 		end
 	end
-	ffi.gc(mgr, free_mgr)
-	return mgr, free_mgr
+	return mgr, free
 end
 
 --end-of-image marker, inserted on EOF for partial display of broken images.
@@ -122,7 +111,7 @@ local dct_methods = {
 local ccptr_ct = ffi.typeof'const uint8_t*' --const prevents copying
 
 --create and setup a error handling object.
-local function jpeg_err(t, finally)
+local function jpeg_err(t)
 	local jerr = ffi.new'jpeg_error_mgr'
 	C.jpeg_std_error(jerr)
 	local err_cb = ffi.cast('jpeg_error_exit_callback', function(cinfo)
@@ -138,14 +127,14 @@ local function jpeg_err(t, finally)
 			t.warning(ffi.string(warnbuf), level)
 		end
 	end)
-	finally(function() --anchor jerr, err_cb, emit_cb
+	local function free() --anchor jerr, err_cb, emit_cb
 		C.jpeg_std_error(jerr) --reset jerr fields
 		err_cb:free()
 		emit_cb:free()
-	end)
+	end
 	jerr.error_exit = err_cb
 	jerr.emit_message = emit_cb
-	return jerr
+	return jerr, free
 end
 
 --create a top-down or bottom-up array of rows pointing to a bitmap buffer.
@@ -163,107 +152,138 @@ local function rows_buffer(h, bottom_up, data, stride)
 	return rows
 end
 
-local function load(t)
-	return glue.fcall(function(finally)
+local function open(t)
 
-		--normalize args
-		if type(t) == 'string' then
-			t = {path = t}
-		elseif type(t) == 'function' then
-			t = {read = t}
+	--normalize args
+	if type(t) == 'function' then
+		t = {read = t}
+	end
+
+	--create a global free function and finalizer accumulator
+	local free_t = {} --{free1, ...}
+	local function free()
+		if not free_t then return end
+		for i = #free_t, 1, -1 do
+			free_t[i]()
 		end
+		free_t = nil
+	end
+	local function finally(func)
+		table.insert(free_t, func)
+	end
 
-		--create the state object and output image
-		local cinfo = ffi.new'jpeg_decompress_struct'
-		local img = {}
+	--create the state object and output image
+	local cinfo = ffi.new'jpeg_decompress_struct'
+	local img = {}
 
-		--setup error handling
-		cinfo.err = jpeg_err(t, finally)
+	img.free = free
 
-		--init state
-		C.jpeg_CreateDecompress(cinfo,
-			t.lib_version or LIBJPEG_VERSION,
-			ffi.sizeof(cinfo))
-		finally(function() C.jpeg_destroy_decompress(cinfo) end)
+	--setup error handling
+	local jerr, jerr_free = jpeg_err(t)
+	cinfo.err = jerr
+	finally(jerr_free)
 
-		--setup source
-		if t.stream then
+	--init state
+	C.jpeg_CreateDecompress(cinfo,
+		t.lib_version or LIBJPEG_VERSION,
+		ffi.sizeof(cinfo))
 
-			C.jpeg_stdio_src(cinfo, t.stream)
+	finally(function()
+		C.jpeg_destroy_decompress(cinfo)
+		cinfo = nil
+	end)
 
-		elseif t.path then
+	ffi.gc(cinfo, free)
 
-			local file = io.open(t.path, 'rb')
-			finally(function()
-				C.jpeg_stdio_src(cinfo, nil)
-				file:close()
-			end)
-			C.jpeg_stdio_src(cinfo, file)
+	--create the buffer filling function for suspended I/O
+	local partial_loading = t.partial_loading ~= false
+	local read = t.read
+	local sz = t.read_buffer_size or 4096
+	local buf = t.read_buffer or ffi.new('char[?]', sz)
+	local bytes_to_skip = 0
 
-		elseif t.string or t.cdata or t.read then
+	local function fill_input_buffer()
+		if bytes_to_skip > 0 then
+			read(nil, bytes_to_skip)
+			bytes_to_skip = 0
+		end
+		local ofs = tonumber(cinfo.src.bytes_in_buffer)
+		--move the data after the restart point to the start of the buffer
+		ffi.C.memmove(buf, cinfo.src.next_input_byte, ofs)
+		--move the restart point to the start of the buffer
+		cinfo.src.next_input_byte = buf
+		--fill the rest of the buffer
+		local sz = sz - ofs
+		assert(sz > 0, 'buffer too small')
+		local readsz = read(buf + ofs, sz)
+		if readsz == 0 then --eof
+			assert(partial_loading, 'eof')
+			readsz = #JPEG_EOI
+			assert(readsz <= sz, 'buffer too small')
+			ffi.copy(buf + ofs, JPEG_EOI)
+			img.partial = true
+		end
+		cinfo.src.bytes_in_buffer = ofs + readsz
+	end
 
-			--wrap cdata and string into a one-shot stream reader.
-			local read = t.read
-				or t.string and one_shot_reader(t.string)
-				or t.cdata  and one_shot_reader(t.cdata, t.size)
+	--create source callbacks
+	local cb = {}
+	cb.init_source = glue.pass
+	cb.term_source = glue.pass
+	cb.resync_to_restart = C.jpeg_resync_to_restart
 
-			--create source callbacks
-			local cb = {}
-			cb.init_source = glue.pass
-			cb.term_source = t.finish or glue.pass
-			cb.resync_to_restart = C.jpeg_resync_to_restart
-
-			local partial_loading = t.partial_loading ~= false
-
-			local buf, sz, s --upvalues to prevent collecting between calls
-			function cb.fill_input_buffer(cinfo)
-				s = nil --release the string from the last call if any
-				buf, sz = read() --replace the buffer from the last call
-				if not buf then
-					if partial_loading then
-						buf = JPEG_EOI
-						img.partial = true
-					else
-						error'eof'
-					end
-				end
-				if type(buf) == 'string' then
-					s = buf --anchor buf in upvalue to prevent collecting
-					buf = ffi.cast(ccptr_ct, s) --const prevents string copy
-					sz = #s
-				end
-				assert(sz > 0, 'eof')
-				cinfo.src.bytes_in_buffer = sz
-				cinfo.src.next_input_byte = buf
-				return true
+	if t.suspended_io == false then
+		function cb.fill_input_buffer(cinfo)
+			local readsz = read(buf, sz)
+			if readsz == 0 then --eof
+				assert(partial_loading, 'eof')
+				readsz = #JPEG_EOI
+				assert(readsz <= sz, 'buffer too small')
+				ffi.copy(buf, JPEG_EOI)
+				img.partial = true
 			end
-
-			function cb.skip_input_data(cinfo, sz)
-				if sz <= 0 then return end
-				while sz > cinfo.src.bytes_in_buffer do
-					sz = sz - cinfo.src.bytes_in_buffer
-					cb.fill_input_buffer(cinfo)
-				end
-				cinfo.src.next_input_byte = cinfo.src.next_input_byte + sz
+			cinfo.src.bytes_in_buffer = readsz
+			cinfo.src.next_input_byte = buf
+			return true
+		end
+		function cb.skip_input_data(cinfo, sz)
+			if sz <= 0 then return end
+			while sz > cinfo.src.bytes_in_buffer do
+				sz = sz - cinfo.src.bytes_in_buffer
+				cb.fill_input_buffer(cinfo)
+			end
+			cinfo.src.next_input_byte = cinfo.src.next_input_byte + sz
+			cinfo.src.bytes_in_buffer = cinfo.src.bytes_in_buffer - sz
+		end
+	else
+		function cb.fill_input_buffer(cinfo)
+			return false --suspended I/O mode
+		end
+		function cb.skip_input_data(cinfo, sz)
+			if sz <= 0 then return end
+			if sz >= cinfo.src.bytes_in_buffer then
+				bytes_to_skip = tonumber(sz - cinfo.src.bytes_in_buffer)
+				cinfo.src.bytes_in_buffer = 0
+			else
+				bytes_to_skip = 0
 				cinfo.src.bytes_in_buffer = cinfo.src.bytes_in_buffer - sz
+				cinfo.src.next_input_byte = cinfo.src.next_input_byte + sz
 			end
-
-			--create a source manager and set it up
-			local mgr, free_mgr = callback_manager('jpeg_source_mgr', cb)
-			cinfo.src = mgr
-			finally(function() --the finalizer anchors mgr through free_mgr!
-				cinfo.src = nil
-				free_mgr()
-			end)
-
-			cinfo.src.bytes_in_buffer = 0
-			cinfo.src.next_input_byte = nil
-		else
-			error'source missing'
 		end
+	end
 
-		--read header
-		assert(C.jpeg_read_header(cinfo, 1) ~= 0, 'eof')
+	--create a source manager and set it up
+	local mgr, free_mgr = callback_manager('jpeg_source_mgr', cb)
+	cinfo.src = mgr
+	finally(free_mgr)
+	cinfo.src.bytes_in_buffer = 0
+	cinfo.src.next_input_byte = nil
+
+	local function load_header()
+
+		while C.jpeg_read_header(cinfo, 1) == C.JPEG_SUSPENDED do
+			fill_input_buffer()
+		end
 
 		img.file = {}
 		img.file.w = cinfo.image_width
@@ -282,10 +302,15 @@ local function load(t)
 		img.file.adobe = cinfo.saw_Adobe_marker == 1 and {
 			transform = cinfo.Adobe_transform,
 		} or nil
+	end
 
-		if t.header_only then
-			return img
-		end
+	local ok, err = pcall(load_header)
+	if not ok then
+		free()
+		return nil, err
+	end
+
+	local function load_image(img, render_scan)
 
 		--find the best accepted output pixel format
 		assert(img.file.format, 'invalid pixel format')
@@ -301,10 +326,12 @@ local function load(t)
 			assert(dct_methods[t.dct_method or 'accurate'], 'invalid dct_method')
 		cinfo.do_fancy_upsampling = t.fancy_upsampling or false
 		cinfo.do_block_smoothing = t.block_smoothing or false
-		cinfo.buffered_image = img.file.progressive and t.render_scan and 1 or 0
+		cinfo.buffered_image = 1 --multi-scan reading
 
 		--start decompression, which fills the info about the output image
-		C.jpeg_start_decompress(cinfo)
+		while C.jpeg_start_decompress(cinfo) == 0 do
+			fill_input_buffer()
+		end
 
 		--get info about the output image
 		img.w = cinfo.output_width
@@ -323,8 +350,21 @@ local function load(t)
 
 		local rows = rows_buffer(img.h, img.bottom_up, img.data, img.stride)
 
-		--finally, decompress the image
-		local function render_scan(last_scan, scan_number, multiple_scans)
+		--decompress the image
+		while C.jpeg_input_complete(cinfo) == 0 do
+
+			--read all the scanlines of the current scan
+			local ret
+			repeat
+				ret = C.jpeg_consume_input(cinfo)
+				if ret == C.JPEG_SUSPENDED then
+					fill_input_buffer()
+				end
+			until ret == C.JPEG_REACHED_EOI or ret == C.JPEG_SCAN_COMPLETED
+			local last_scan = ret == C.JPEG_REACHED_EOI
+
+			--render the scan
+			C.jpeg_start_output(cinfo, cinfo.input_scan_number)
 
 			--read all the scanlines into the row buffers
 			while cinfo.output_scanline < img.h do
@@ -332,139 +372,89 @@ local function load(t)
 				--read several scanlines at once, depending on the size of the output buffer
 				local i = cinfo.output_scanline
 				local n = math.min(img.h - i, cinfo.rec_outbuf_height)
-				local actual = C.jpeg_read_scanlines(cinfo, rows + i, n)
-				assert(actual == n)
-				assert(cinfo.output_scanline == i + actual)
+				while C.jpeg_read_scanlines(cinfo, rows + i, n) < n do
+					fill_input_buffer()
+				end
+				--assert(cinfo.output_scanline == i + actual)
 			end
 
 			--call the rendering callback on the converted image
-			if t.render_scan then
-				t.render_scan(img, last_scan, scan_number)
+			render_scan(img, last_scan, cinfo.output_scan_number)
+
+			while C.jpeg_finish_output(cinfo) == 0 do
+				fill_input_buffer()
 			end
+
 		end
 
-		if cinfo.buffered_image == 1 then --multiscan reading
-			while true do
-				--read all the scanlines of the current scan
-				local ret
-				repeat
-					ret = C.jpeg_consume_input(cinfo)
-					assert(ret ~= C.JPEG_SUSPENDED, 'eof')
-				until ret == C.JPEG_REACHED_EOI or ret == C.JPEG_SCAN_COMPLETED
-				local last_scan = ret == C.JPEG_REACHED_EOI
-
-				--render the scan
-				C.jpeg_start_output(cinfo, cinfo.input_scan_number)
-				render_scan(last_scan, cinfo.output_scan_number, true)
-				C.jpeg_finish_output(cinfo)
-
-				if C.jpeg_input_complete(cinfo) ~= 0 then return end
-			end
-		else
-			render_scan(true, 1, false)
+		while C.jpeg_finish_decompress(cinfo) == 0 do
+			fill_input_buffer()
 		end
-
-		C.jpeg_finish_decompress(cinfo)
 
 		return img
-	end)
+	end
+
+	jit.off(load_image) --can't call error() from callbacks called from C
+	img.load = glue.protect(load_image)
+
+	return img
 end
 
-jit.off(load, true) --can't call error() from callbacks called from C
+jit.off(open, true) --can't call error() from callbacks called from C
 
-local function save(t)
+local save = glue.protect(function(t)
 
 	return glue.fcall(function(finally)
 
-		--create the state object.
+		--create the state object
 		local cinfo = ffi.new'jpeg_compress_struct'
 
-		--setup error handling.
-		cinfo.err = jpeg_err(t, finally)
+		--setup error handling
+		local jerr, jerr_free = jpeg_err(t)
+		cinfo.err = jerr
+		finally(jerr_free)
 
-		--init state.
+		--init state
 		C.jpeg_CreateCompress(cinfo,
 			t.lib_version or LIBJPEG_VERSION,
 			ffi.sizeof(cinfo))
-		finally(function() C.jpeg_destroy_compress(cinfo) end)
 
-		--setup destination.
-		local ret
+		finally(function()
+			C.jpeg_destroy_compress(cinfo)
+		end)
 
-		if t.stream then
+		local write = t.write
+		local finish = t.finish or glue.pass
 
-			C.jpeg_stdio_dest(cinfo, t.stream)
+		--create the dest. buffer
+		local sz = t.write_buffer_size or 4096
+		local buf = t.write_buffer or ffi.new('char[?]', sz)
 
-		elseif t.path then
+		--create destination callbacks
+		local cb = {}
 
-			local file = io.open(t.path, 'wb')
-			finally(function()
-				C.jpeg_stdio_dest(cinfo, nil)
-				file:close()
-			end)
-			C.jpeg_stdio_dest(cinfo, file)
-
-		else
-
-			--create the write and finish functions.
-			local write, finish
-			local user_finish = t.finish or glue.pass
-			if t.write then --sink output
-				write = t.write
-				finish = user_finish
-			elseif t.chunks then --table output
-				function write(buf, sz)
-					table.insert(t.chunks, ffi.string(buf, sz))
-				end
-				function finish()
-					ret = t.chunks
-					user_finish()
-				end
-			else --string output
-				local chunks = {}
-				function write(buf, sz)
-					table.insert(chunks, ffi.string(buf, sz))
-				end
-				function finish()
-					ret = table.concat(chunks)
-					user_finish()
-				end
-			end
-
-			--create the dest. buffer.
-			local sz = t.bufsize or 4096
-			local buf = ffi.new('char[?]', sz)
-
-			--create destination callbacks.
-			local cb = {}
-
-			function cb.init_destination(cinfo)
-				cinfo.dest.next_output_byte = buf
-				cinfo.dest.free_in_buffer = sz
-			end
-
-			function cb.term_destination(cinfo)
-				write(buf, sz - cinfo.dest.free_in_buffer)
-				finish()
-			end
-
-			function cb.empty_output_buffer(cinfo)
-				write(buf, sz)
-				cb.init_destination(cinfo)
-				return true
-			end
-
-			--create a destination manager and set it up.
-			local mgr, free_mgr = callback_manager('jpeg_destination_mgr', cb)
-			cinfo.dest = mgr
-			finally(function() --the finalizer anchors mgr through free_mgr!
-				cinfo.dest = nil
-				free_mgr()
-			end)
-
+		function cb.init_destination(cinfo)
+			cinfo.dest.next_output_byte = buf
+			cinfo.dest.free_in_buffer = sz
 		end
 
-		--set source format.
+		function cb.term_destination(cinfo)
+			write(buf, sz - cinfo.dest.free_in_buffer)
+			finish()
+		end
+
+		function cb.empty_output_buffer(cinfo)
+			write(buf, sz)
+			cb.init_destination(cinfo)
+			return true
+		end
+
+		--create a destination manager and set it up
+		local mgr, free_mgr = callback_manager('jpeg_destination_mgr', cb)
+		cinfo.dest = mgr
+		finally(free_mgr) --the finalizer anchors mgr through free_mgr!
+
+		--set the source format
 		cinfo.image_width = t.bitmap.w
 		cinfo.image_height = t.bitmap.h
 		cinfo.in_color_space =
@@ -472,10 +462,10 @@ local function save(t)
 		cinfo.input_components =
 			assert(channel_count[t.bitmap.format], 'invalid source format')
 
-		--set the default compression options based on in_color_space.
+		--set the default compression options based on in_color_space
 		C.jpeg_set_defaults(cinfo)
 
-		--set compression options.
+		--set compression options
 		if t.format then
 			C.jpeg_set_colorspace(cinfo,
 				assert(color_spaces[t.format], 'invalid destination format'))
@@ -497,28 +487,25 @@ local function save(t)
 			cinfo.smoothing_factor = t.smoothing
 		end
 
-		--start the compression cycle.
+		--start the compression cycle
 		C.jpeg_start_compress(cinfo, true)
 
-		--make row pointers from the bitmap buffer.
+		--make row pointers from the bitmap buffer
 		local bmp = t.bitmap
 		local rows = rows_buffer(bmp.h, bmp.bottom_up, bmp.data, bmp.stride)
 
-		--compress rows.
+		--compress rows
 		C.jpeg_write_scanlines(cinfo, rows, bmp.h)
 
-		--finish the compression, optionally adding additional scans.
+		--finish the compression, optionally adding additional scans
 		C.jpeg_finish_compress(cinfo)
-
-		return ret
 	end)
-end
+end)
 
 jit.off(save, true) --can't call error() from callbacks called from C
 
 return {
-	load = load,
+	open = open,
 	save = save,
 	C = C,
 }
-
