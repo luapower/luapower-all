@@ -109,7 +109,7 @@ M.open = glue.protect(function(read_bytes)
 	local bytes_read = 0
 	local function read(buf, sz)
 		local sz = sz or ffi.sizeof(buf)
-		read_bytes(buf, sz)
+		assert(read_bytes(buf, sz) == sz, 'eof')
 		bytes_read = bytes_read + sz
 		return buf
 	end
@@ -178,10 +178,10 @@ M.open = glue.protect(function(read_bytes)
 		has_alpha = bitmasks[3] > 0
 	end
 
-	--make a palette loader and indexer
+	--make a one-time palette loader and indexer
+	local load_pal
 	local pal_size = fh.image_offset - bytes_read
 	assert(pal_size >= 0, 'invalid image offset')
-	local load_pal
 	local function noop() end
 	local function skip_pal()
 		read(nil, pal_size) --null-read to pixel data
@@ -209,10 +209,11 @@ M.open = glue.protect(function(read_bytes)
 		return pal[i].r, pal[i].g, pal[i].b, 0xff
 	end
 
-	--make a progressive row-by-row pixel loader
-	local rows_loaded
-	local function load_rows(dst_bmp, dst_x, dst_y)
-		assert(not rows_loaded, 'already loaded')
+	--make a row loader iterator and a bitmap loader
+	local row_iterator, load_rows
+	local function init_load()
+
+		assert(not row_iterator, 'already loaded')
 
 		if comp == 'jpeg' then
 			error'jpeg not supported'
@@ -319,132 +320,181 @@ M.open = glue.protect(function(read_bytes)
 
 		end
 
-		--allocate a single-row bitmap in the original format.
-		local row_bmp = bitmap.new(width, 1, format, bottom_up, true)
+		--make a row reader: either a RLE decoder or a straight buffer reader
+		local function row_reader(row_bmp)
+			if rle then
 
-		--check bitmap stride against the known stride formula.
-		local src_stride = math.floor((bpp * width + 31) / 32) * 4
-		assert(row_bmp.stride == src_stride)
+				local read_pixels, fill_pixels
 
-		--row reader: either straight read or RLE decode
-		local read_row
-		if rle then
+				local rle_buf = ffi.new'uint8_t[2]'
+				local p = ffi.cast('uint8_t*', row_bmp.data)
 
-			local read_pixels, fill_pixels
+				if bpp == 8 then --RLE8
 
-			local rle_buf = ffi.new'uint8_t[2]'
-			local p = ffi.cast('uint8_t*', row_bmp.data)
-
-			if bpp == 8 then --RLE8
-
-				function read_pixels(i, n)
-					read(p + i, n)
-					--read the word-align padding
-					local n2 = band(n + 1, bnot(1)) - n
-					if n2 > 0 then
-						read(nil, n2)
+					function read_pixels(i, n)
+						read(p + i, n)
+						--read the word-align padding
+						local n2 = band(n + 1, bnot(1)) - n
+						if n2 > 0 then
+							read(nil, n2)
+						end
 					end
-				end
 
-				function fill_pixels(i, n, v)
-					ffi.fill(p + i, n, v)
-				end
-
-			elseif bpp == 4 then --RLE4
-
-				local function shift_back(i, n) --shift data back one nibble
-					local i0 = math.floor(i)
-					if i0 == i then return end --no need for shifting
-					p[i0] = bor(band(p[i0], 0xf0), shr(p[i0+1], 4)) --stitch the first nibble
-					for i = math.ceil(i), i0 + n do
-						p[i] = bor(shl(p[i], 4), shr(p[i+1], 4))
+					function fill_pixels(i, n, v)
+						ffi.fill(p + i, n, v)
 					end
-				end
 
-				function read_pixels(i, n)
-					local i = i * 0.5
-					local n = math.ceil(n * 0.5)
-					read(p + math.ceil(i), n)
-					shift_back(i, n)
-					--read the word-align padding
-					local n2 = band(n + 1, bnot(1)) - n
-					if n2 > 0 then
-						read(nil, n2)
+				elseif bpp == 4 then --RLE4
+
+					local function shift_back(i, n) --shift data back one nibble
+						local i0 = math.floor(i)
+						if i0 == i then return end --no need for shifting
+						p[i0] = bor(band(p[i0], 0xf0), shr(p[i0+1], 4)) --stitch the first nibble
+						for i = math.ceil(i), i0 + n do
+							p[i] = bor(shl(p[i], 4), shr(p[i+1], 4))
+						end
 					end
+
+					function read_pixels(i, n)
+						local i = i * 0.5
+						local n = math.ceil(n * 0.5)
+						read(p + math.ceil(i), n)
+						shift_back(i, n)
+						--read the word-align padding
+						local n2 = band(n + 1, bnot(1)) - n
+						if n2 > 0 then
+							read(nil, n2)
+						end
+					end
+
+					function fill_pixels(i, n, v)
+						local i = i * 0.5
+						local n = math.ceil(n * 0.5)
+						ffi.fill(p + math.ceil(i), n, v)
+						shift_back(i, n)
+					end
+
+				else
+					assert(false)
 				end
 
-				function fill_pixels(i, n, v)
-					local i = i * 0.5
-					local n = math.ceil(n * 0.5)
-					ffi.fill(p + math.ceil(i), n, v)
-					shift_back(i, n)
+				local j = 0
+				return function()
+					local i = 0
+					while true do
+						read(rle_buf, 2)
+						local n = rle_buf[0]
+						local k = rle_buf[1]
+						if n == 0 then --escape
+							if k == 0 then --eol
+								assert(i == width, 'RLE EOL too soon')
+								j = j + 1
+								break
+							elseif k == 1 then --eof
+								assert(j == height-1, 'RLE EOF too soon')
+								break
+							elseif k == 2 then --delta
+								read(rle_buf, 2)
+								local x = rle_buf[0]
+								local y = rle_buf[1]
+								--we can't use a row-by-row loader with this code
+								error'RLE delta not supported'
+							else --absolute mode: k = number of pixels to read
+								assert(i + k <= width, 'RLE overflow')
+								read_pixels(i, k)
+								i = i + k
+							end
+						else --repeat: n = number of pixels to repeat, k = color
+							assert(i + n <= width, 'RLE overflow')
+							fill_pixels(i, n, k)
+							i = i + n
+						end
+					end
 				end
 
 			else
-				assert(false)
-			end
-
-			local j = 0
-			function read_row()
-				local i = 0
-				while true do
-					read(rle_buf, 2)
-					local n = rle_buf[0]
-					local k = rle_buf[1]
-					if n == 0 then --escape
-						if k == 0 then --eol
-							assert(i == width, 'RLE EOL too soon')
-							j = j + 1
-							break
-						elseif k == 1 then --eof
-							assert(j == height-1, 'RLE EOF too soon')
-							break
-						elseif k == 2 then --delta
-							read(rle_buf, 2)
-							local x = rle_buf[0]
-							local y = rle_buf[1]
-							--we can't use a row-by-row loader with this code
-							error'RLE delta not supported'
-						else --absolute mode: k = number of pixels to read
-							assert(i + k <= width, 'RLE overflow')
-							read_pixels(i, k)
-							i = i + k
-						end
-					else --repeat: n = number of pixels to repeat, k = color
-						assert(i + n <= width, 'RLE overflow')
-						fill_pixels(i, n, k)
-						i = i + n
-					end
+				return function()
+					read(row_bmp.data, row_bmp.stride)
 				end
 			end
+		end
 
-		else
-			function read_row()
-				read(row_bmp.data, row_bmp.stride)
+		function row_iterator(arg, alloc)
+
+			local dst_bmp
+			if type(arg) == 'table' and arg.data then --arg is a bitmap
+				dst_bmp = arg
+			else --arg is a format name or specifier
+				dst_bmp = bitmap.new(width, 1, arg, false, true, nil, alloc)
+			end
+
+			--load row function: convert or direct copy
+			local load_row
+			local stride = bitmap.aligned_stride(bitmap.min_stride(format, width))
+			if convert_pixel                 --needs pixel conversion
+				or dst_bmp.format ~= format   --needs pixel conversion
+				or dst_bmp.w < width          --needs clipping
+				or dst_bmp.stride < stride    --can't copy whole stride
+			then
+				local row_bmp = bitmap.new(width, 1, format, false, true)
+				local read_row = row_reader(row_bmp)
+				function load_row()
+					read_row()
+					bitmap.paint(row_bmp, dst_bmp, 0, 0,
+						convert_pixel, nil, dst_colorspace)
+				end
+			else --load row into dst_bmp directly
+				load_row = row_reader(dst_bmp)
+			end
+
+			load_pal()
+
+			--unprotected row iterator
+			local j = bottom_up and height or -1
+			local s = bottom_up and -1 or 1
+			local k = bottom_up and -1 or height
+			return function()
+				j = j + s
+				if j == k then return end
+				load_row()
+				return j, dst_bmp
 			end
 		end
 
-		local dst_x = dst_x or 0
-		local dst_y = dst_y or 0
-		local function load_row(j)
-			read_row()
-			bitmap.paint(row_bmp, dst_bmp, dst_x, dst_y + j,
-				convert_pixel, nil, dst_colorspace)
+		function load_rows(arg, ...)
+
+			local dst_bmp, dst_x, dst_y
+			if type(arg) == 'table' and arg.data then
+				dst_bmp, dst_x, dst_y = arg, ...
+			else
+				local dst_format, alloc = arg, ...
+				dst_bmp = bitmap.new(width, height, dst_format, false, true, nil, alloc)
+			end
+			local dst_x = dst_x or 0
+			local dst_y = dst_y or 0
+
+			local row_bmp = bitmap.new(width, 1, format, false, true)
+			local read_row = row_reader(row_bmp)
+
+			local function load_row(j)
+				read_row()
+				bitmap.paint(row_bmp, dst_bmp, dst_x, dst_y + j,
+					convert_pixel, nil, dst_colorspace)
+			end
+
+			load_pal()
+
+			if bottom_up then
+				for j = height-1, 0, -1 do
+					load_row(j)
+				end
+			else
+				for j = 0, height-1 do
+					load_row(j)
+				end
+			end
 		end
 
-		load_pal()
-
-		if bottom_up then
-			for j = height-1, 0, -1 do
-				load_row(j)
-			end
-		else
-			for j = 0, height-1 do
-				load_row(j)
-			end
-		end
-
-		rows_loaded = true
 	end
 
 	local function bool(x)
@@ -482,9 +532,13 @@ M.open = glue.protect(function(read_bytes)
 		return pal_entry(i)
 	end
 	--loading
+	bmp.rows = function(self, ...)
+		init_load()
+		return row_iterator(...)
+	end
 	bmp.load = glue.protect(function(self, ...)
-		load_rows(...)
-		return self
+		init_load()
+		return load_rows(...)
 	end)
 
 	return bmp

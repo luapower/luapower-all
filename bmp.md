@@ -12,20 +12,23 @@ and saving in bgra8 format.
 
 ## API
 
---------------------------------------- ---------------------------------------
-`bmp.open(read) -> b|nil,err`           open a BMP file and read it's header
-`b.w`                                   width
-`b.h`                                   height
-`b.bpp`                                 bits per pixel
-`b:load(dst_bmp[, x, y]) -> b|nil,err`  load the pixels into a [bitmap]
-`bmp.save(bmp, write) -> ok|nil,err`    save a [bitmap] using a write function
---------------------------------------- ---------------------------------------
+---------------------------------------------------- ----------------------------------------------------
+`bmp.open(read) -> b|nil,err`                        open a BMP file and read it's header
+`b.w`                                                width
+`b.h`                                                height
+`b.bpp`                                              bits per pixel
+`b:load(bmp[, x, y]) -> bmp | nil,err`               load/paint the pixels into a given [bitmap]
+`b:load(format[, alloc]) -> bmp | nil,err`           load the pixels into a new bitmap
+`b:rows(bmp | format[, alloc]) -> iter() -> i, bmp`  iterate the rows over a 1-row bitmap
+`bmp.save(bmp, write) -> ok | nil,err`               save a bitmap using a write function
+---------------------------------------------------- ----------------------------------------------------
 
 ### `bmp.open(read) -> b|nil,err`
 
-Open a bmp file using a `read(buf, size)` function to get the bytes.
-The read function should accept any size >= 0 and it should raise an error
-if it can't read all the bytes.
+Open a BMP file using a `read(buf, size) -> readsize` function to get
+the bytes. The read function should accept any size >= 0 and it should
+raise an error if it can't read all the bytes, except on EOF when it
+should return 0.
 
 ### `bmp.save(bmp, write) -> true | nil, err`
 

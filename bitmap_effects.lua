@@ -110,7 +110,6 @@ function bitmap.convolve(bmp, kernel, edge)
 			math.min(math.max(b / sum, 0), 0xff),
 			math.min(math.max(a / sum, 0), 0xff)
 	end)
-	bitmap.free(dst)
 	return final
 end
 

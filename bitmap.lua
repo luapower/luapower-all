@@ -505,21 +505,14 @@ local function bitmap_colortype(bmp)
 	return valid_colortype(valid_format(bmp.format).colortype)
 end
 
-local function new(w, h, format, bottom_up, stride_aligned, stride, malloc)
+local function new(w, h, format, bottom_up, stride_aligned, stride, alloc)
 	stride = valid_stride(format, w, stride, stride_aligned)
 	local size = ceil(stride * h)
 	assert(size > 0, 'invalid size')
-	local data = malloc and glue.malloc(size) or ffi.new(ffi.typeof('char[$]', size))
+	local data = alloc and alloc(size) or ffi.new(ffi.typeof('char[$]', size))
 	return {w = w, h = h, format = format, bottom_up = bottom_up or nil,
 		stride = stride, data = data, size = size,
-		malloc = malloc and true or nil}
-end
-
-local function free(bmp)
-	if bmp.malloc then
-		glue.free(bmp.data)
-	end
-	bmp.data = nil
+		alloc = alloc and true or nil}
 end
 
 --low-level bitmap interface for random access to pixels
@@ -796,7 +789,6 @@ return glue.autoload({
 	colortype = bitmap_colortype,
 	--bitmap operations
 	new = new,
-	free = free,
 	paint = paint,
 	copy = copy,
 	sub = sub,

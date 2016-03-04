@@ -129,10 +129,11 @@ __utilities__
 
 ## Bitmap operations
 
-### `bitmap.new(w, h, format, [bottom_up], [stride_aligned], [stride]) -> new_bmp`
+### `bitmap.new(w, h, format, [bottom_up], [stride_aligned], [stride], [alloc]) -> new_bmp`
 
 Create a bitmap object. If `stride_aligned` is `true` and no specific `stride`
-is given, the stride will be a multiple of 4 bytes.
+is given, the stride will be a multiple of 4 bytes. The optional `alloc`
+is an `alloc(bytes) -> data` function (eg. [glue].malloc).
 
 ### `bitmap.copy(bmp, [format], [bottom_up], [stride_aligned], [stride]) -> new_bmp`
 
