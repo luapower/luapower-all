@@ -43,7 +43,7 @@ __easy interface__
 
 __multi interface__
 
-`curl.multi([{etr1,..., opt=val}]) -> mtr`               [create][curl_multi_init] a [multi transfer][libcurl-multi]
+`curl.multi([{opt=val}]) -> mtr`                         [create][curl_multi_init] a [multi transfer][libcurl-multi]
 
 `mtr:set(opt,val | {opt=val}) -> mtr`                    [set option(s)][curl_multi_setopt]
 

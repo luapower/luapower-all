@@ -717,9 +717,6 @@ function multi:__call(opt)
 	local self = assert(ptr(C.curl_multi_init()))
 	if opt then
 		self:set(opt)
-		for i,etr in ipairs(opt) do
-			self:add(etr)
-		end
 	end
 	return self
 end
