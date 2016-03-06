@@ -18,8 +18,8 @@ and saving in bgra8 format.
 `b.h`                                                height
 `b.bpp`                                              bits per pixel
 `b:load(bmp[, x, y]) -> bmp | nil,err`               load/paint the pixels into a given [bitmap]
-`b:load(format[, alloc]) -> bmp | nil,err`           load the pixels into a new bitmap
-`b:rows(bmp | format[, alloc]) -> iter() -> i, bmp`  iterate the rows over a 1-row bitmap
+`b:load(format, ...) -> bmp | nil,err`               load the pixels into a new bitmap
+`b:rows(bmp | format,...) -> iter() -> i, bmp`       iterate the rows over a 1-row bitmap
 `bmp.save(bmp, write) -> ok | nil,err`               save a bitmap using a write function
 ---------------------------------------------------- ----------------------------------------------------
 
@@ -29,6 +29,23 @@ Open a BMP file using a `read(buf, size) -> readsize` function to get
 the bytes. The read function should accept any size >= 0 and it should
 raise an error if it can't read all the bytes, except on EOF when it
 should return 0.
+
+### `b:load(bmp[, x, y]) -> bmp | nil,err`
+
+Load and paint the bmp's pixels into a given [bitmap], optionally at a specified
+position within the bitmap. All necessary format conversions and clipping
+are done via the [bitmap] module.
+
+### `b:load(format, ...) -> bmp | nil,err`
+
+Load the bmp's pixels into a new bitmap of a specified format.
+Extra arguments are passed to `bitmap.new()`.
+
+### `b:rows(bmp | format,...) -> iter() -> i, bmp`
+
+Iterate the bmp's rows over a new or provided 1-row bitmap. The row index
+is decreasing if the bitmap is bottom-up. Unlike `b:load()`, this method
+and the returned iterator are not protected (they raise errors).
 
 ### `bmp.save(bmp, write) -> true | nil, err`
 

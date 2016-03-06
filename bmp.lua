@@ -419,13 +419,13 @@ M.open = glue.protect(function(read_bytes)
 			end
 		end
 
-		function row_iterator(arg, alloc)
+		function row_iterator(arg, ...)
 
 			local dst_bmp
 			if type(arg) == 'table' and arg.data then --arg is a bitmap
 				dst_bmp = arg
 			else --arg is a format name or specifier
-				dst_bmp = bitmap.new(width, 1, arg, false, true, nil, alloc)
+				dst_bmp = bitmap.new(width, 1, arg, ...)
 			end
 
 			--load row function: convert or direct copy
@@ -451,11 +451,11 @@ M.open = glue.protect(function(read_bytes)
 
 			--unprotected row iterator
 			local j = bottom_up and height or -1
-			local s = bottom_up and -1 or 1
-			local k = bottom_up and -1 or height
+			local j1 = bottom_up and -1 or height
+			local step = bottom_up and -1 or 1
 			return function()
-				j = j + s
-				if j == k then return end
+				j = j + step
+				if j == j1 then return end
 				load_row()
 				return j, dst_bmp
 			end
@@ -467,8 +467,7 @@ M.open = glue.protect(function(read_bytes)
 			if type(arg) == 'table' and arg.data then
 				dst_bmp, dst_x, dst_y = arg, ...
 			else
-				local dst_format, alloc = arg, ...
-				dst_bmp = bitmap.new(width, height, dst_format, false, true, nil, alloc)
+				dst_bmp = bitmap.new(width, height, arg, ...)
 			end
 			local dst_x = dst_x or 0
 			local dst_y = dst_y or 0
@@ -484,14 +483,11 @@ M.open = glue.protect(function(read_bytes)
 
 			load_pal()
 
-			if bottom_up then
-				for j = height-1, 0, -1 do
-					load_row(j)
-				end
-			else
-				for j = 0, height-1 do
-					load_row(j)
-				end
+			local j0 = bottom_up and height-1 or 0
+			local j1 = bottom_up and 0 or height-1
+			local step = bottom_up and -1 or 1
+			for j = j0, j1, step do
+				load_row(j)
 			end
 		end
 

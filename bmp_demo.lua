@@ -53,7 +53,7 @@ function win:repaint()
 				y = y + maxh + 10
 			end
 			local ok, err = pcall(function()
-				for j, row_bmp in bmp:rows'bgr8' do
+				for j, row_bmp in bmp:rows('bgr8', nil, true) do
 					bitmap.paint(row_bmp, wbmp, x, y + j)
 				end
 			end)
