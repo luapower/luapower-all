@@ -15,7 +15,7 @@ th:join() -> retvals...                 wait on a thread to finish
 __queues__
 thread.queue([maxlength]) -> q          create a synchronized queue
 q:length() -> n                         queue length
-q:maxsize() -> n                        queue max. size
+q:maxlength() -> n                      queue max. length
 q:push(val[, timeout]) -> true, len     add value to the top (*)
 q:shift([timeout]) -> true, val, len    remove bottom value (*)
 q:pop([timeout]) -> true, val, len      remove top value (*)
