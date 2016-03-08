@@ -84,6 +84,8 @@ lock/unlock it, `q.state` to access the elements (they occupy the Lua stack
 starting at index 1), and `q.cond_not_empty`, `q.cond_not_full` to
 wait/broadcast on the not-empty and not-full events.
 
+Vales are transferred between states according to the rules of [luastate].
+
 ## Events
 
 ### `thread.event([initially_set]) -> e`
