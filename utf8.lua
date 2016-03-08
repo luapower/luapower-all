@@ -120,14 +120,16 @@ function utf8.sub(s, start_ci, end_ci)
 	assert(start_ci >= 1)
 	assert(not end_ci or end_ci >= 0)
 	local ci = 0
-	local start_i, end_i
+	local start_i = 1
+	local end_i = s:len()
 	for i in utf8.byte_indices(s) do
 		ci = ci + 1
 		if ci == start_ci then
 			start_i = i
 		end
-		if ci == end_ci then
-			end_i = i
+		if ci == end_ci + 1 then
+			end_i = i - 1
+			break
 		end
 	end
 	if not start_i then
