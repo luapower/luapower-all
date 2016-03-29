@@ -1,7 +1,7 @@
 
 --wrappers around mmap to support dynamic code exection.
 --Written by Cosmin Apreutesei. Public Domain.
---Tested with Windows, Linux and OSX, x86 and x86-64.
+--Tested with Windows, Linux, BSD and OSX, x86 and x86-64.
 
 local ffi = require'ffi'
 local C = ffi.C
@@ -73,7 +73,7 @@ if ffi.os == 'Windows' then
 
 	end
 
-elseif ffi.os == 'Linux' or ffi.os == 'OSX' then
+elseif ffi.os == 'Linux' or ffi.os == 'BSD' or ffi.os == 'OSX' then
 
 	if ffi.os == 'OSX' then
 		ffi.cdef'typedef int64_t off_t;'

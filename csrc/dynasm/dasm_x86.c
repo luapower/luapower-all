@@ -3,7 +3,7 @@
 
   Compile with:
 
-    gcc dasm_x86.c -DDASM_CHECKS -shared -s -o dasm_x86.so
+    gcc dasm_x86.c -O -fPIC -DDASM_CHECKS -shared -s -o libdasm_x86.so
 */
 
 #include "dasm_extern.h"
