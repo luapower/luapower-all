@@ -152,7 +152,7 @@ local function load(t)
 
 			--wrap the buffered reader so that errors go through png_error().
 			local function png_read(png_ptr, dbuf, dsz)
-				local ok, err = pcall(buffered_read, dbuf, dsz)
+				local ok, err = pcall(buffered_read, dbuf, tonumber(dsz))
 				if not ok then C.png_error(png_ptr, err) end
 			end
 
