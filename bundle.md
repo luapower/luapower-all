@@ -7,8 +7,10 @@ tagline: single-executable app deployment
 Bundle is a small framework for bundling together LuaJIT, Lua modules,
 Lua/C modules, DynASM/Lua modules, C libraries, and other static assets
 into a single fat executable. In its default configuration, it assumes
-luapower's [toolchain][building] and [directory layout][get-involved]
+luapower's [toolchain][building] and [directory layout][get-involved]\*
 and it works on Windows, Linux and OSX, x86 and x64.
+
+_\*you have to place your own code in the luapower directory._
 
 ## Usage
 
