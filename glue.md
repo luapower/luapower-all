@@ -705,12 +705,12 @@ of the memory, use `ffi.gc(original, nil); ffi.gc(pointer, glue.free)`.
 
 > __NOTE__: LuaJIT only.
 
-> __CAVEAT__: For primitive types, you must specify a size,
-or glue.free() will not work!
-
 ### `glue.malloc(ctype) -> cdata` {#malloc-ctype}
 
 Allocate a `ctype` with system's malloc. The result has the type `ctype&`.
+
+> __CAVEAT__: For primitive types, you must specify a size,
+or glue.free() will not work!
 
 ### `glue.free(cdata)`
 
@@ -728,7 +728,6 @@ assert(ffi.sizeof(data) == 100 * ffi.sizeof'int')
 glue.free(data)
 
 local data = glue.malloc('struct S')
-assert(ffi.typeof(data) ==
 assert(ffi.sizeof(data) == ffi.sizeof'struct S')
 glue.free(data)
 
