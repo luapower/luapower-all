@@ -31,6 +31,7 @@ local function MX(prefix, t)
 			val = bit.bor(val, X(prefix, flag))
 		end
 	end
+	return val
 end
 
 local function check(code)
