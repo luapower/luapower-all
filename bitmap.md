@@ -209,7 +209,7 @@ for y = 0, bmp.h-1 do
 end
 
 --the above has the same effect as:
-bitmap.convert(bmp, bmp, darken)
+bitmap.paint(bmp, bmp, darken)
 ~~~
 
 
