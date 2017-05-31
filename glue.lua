@@ -187,7 +187,7 @@ function glue.string.gsplit(s, sep, start, plain)
 	start = start or 1
 	plain = plain or false
 	if not s:find(sep, start, plain) then
-		return iterate_once, s
+		return iterate_once, s:sub(start)
 	end
 	local done = false
 	local function pass(i, j, ...)
@@ -202,7 +202,7 @@ function glue.string.gsplit(s, sep, start, plain)
 	end
 	return function()
 		if done then return end
-		if sep == '' then done = true return s end
+		if sep == '' then done = true; return s:sub(start) end
 		return pass(s:find(sep, start, plain))
 	end
 end
