@@ -773,7 +773,7 @@ glue.collect,
 glue.pass, glue.memoize,
 glue.inherit, glue.autotable,
 glue.canopen, glue.readfile, glue.readpipe, glue.writefile,
-glue.assert, glue.unprotect, glue.pcall, glue.fpcall, glue.fcall,
+glue.assert, glue.protect, glue.pcall, glue.fpcall, glue.fcall,
 glue.autoload, glue.bin, glue.luapath, glue.cpath,
 glue.malloc, glue.free, glue.addr, glue.ptr
 

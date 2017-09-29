@@ -139,11 +139,20 @@ function ov:read_float(buf, maxsamples, bitstream)
 end
 
 function ov:read(buf, sz, wordsize, signed, bigendian, bitstream)
-	return retpoz(C.ov_read(self, buf, sz,
-		bigendian and 1 or 0,
-		wordsize or 2,
-		signed == false and 0 or 1,
-		bitstream))
+	local i = 0
+	while sz > 0 do
+		print(sz)
+		local n, err = retpoz(C.ov_read(self, buf + i, sz,
+			bigendian and 1 or 0,
+			wordsize or 2,
+			signed == false and 0 or 1,
+			bitstream))
+		if not n then return nil, err end
+		if n == 0 then break end
+		sz = sz - n
+		i = i + n
+	end
+	return i
 end
 
 --[[

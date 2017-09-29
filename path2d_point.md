@@ -22,7 +22,7 @@ Point at a specified angle on a circle.
 Eotate point (x,y) around origin (cx,cy) by angle.
 
 ### `point.point_angle(x, y, cx, cy) -> angle`
-Angle between two points in -360..360 degree range.
+Angle between two points in -180..180 degree range.
 
 ### `point.reflect_point(x, y, cx, cy) -> x, y`
 Reflect point through origin (i.e. rotate point 180deg around another point).

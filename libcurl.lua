@@ -184,9 +184,12 @@ local function pchararray(t, self)
 	return ffi.cast('char**', buf), dt
 end
 
-local function cb(ctype) --callback
+local function cb(ctype, wrap) --callback
 	return function(func, self)
 		if not func then return nil, nil, true end
+		if wrap and type(func) == 'function' then
+			func = wrap(func)
+		end
 		local cb = ffi.cast(ctype, func)
 		if type(func) ~= 'function' then return cb end
 		return cb, {cb = cb, refcount = 1}, true
@@ -255,6 +258,12 @@ easy_mt.__gc = easy.close
 
 --options --------------------------------------------------------------------
 
+cb_curl_write_callback = cb('curl_write_callback', function(func)
+	return function(buf, sz, n, userdata)
+		return func(buf, tonumber(sz * n), userdata)
+	end
+end)
+
 easy._setopt_options = {
 	[C.CURLOPT_TIMEOUT] = long,
 	[C.CURLOPT_VERBOSE] = longbool,
@@ -292,7 +301,7 @@ easy._setopt_options = {
 	[C.CURLOPT_PROXYPASSWORD] = str,
 	[C.CURLOPT_PROXYHEADER] = slist,
 	[C.CURLOPT_NOPROXY] = str, --proxy exception list
-	[C.CURLOPT_WRITEFUNCTION] = cb'curl_write_callback',
+	[C.CURLOPT_WRITEFUNCTION] = cb_curl_write_callback,
 	[C.CURLOPT_WRITEDATA] = voidp, --FILE* or callback arg
 	[C.CURLOPT_READFUNCTION] = cb'curl_read_callback',
 	[C.CURLOPT_READDATA] = voidp,
@@ -336,7 +345,7 @@ easy._setopt_options = {
 	[C.CURLOPT_RANDOM_FILE] = str,
 	[C.CURLOPT_EGDSOCKET] = str,
 	[C.CURLOPT_CONNECTTIMEOUT] = long,
-	[C.CURLOPT_HEADERFUNCTION] = cb'curl_write_callback',
+	[C.CURLOPT_HEADERFUNCTION] = cb_curl_write_callback,
 	[C.CURLOPT_COOKIEJAR] = str,
 	[C.CURLOPT_USE_SSL] = flag'CURLUSESSL_',
 	[C.CURLOPT_SSLCERT] = str,
@@ -437,7 +446,7 @@ easy._setopt_options = {
 	[C.CURLOPT_RTSP_SERVER_CSEQ] = long,
 	[C.CURLOPT_TFTP_BLKSIZE] = long,
 	[C.CURLOPT_INTERLEAVEDATA] = voidp,
-	[C.CURLOPT_INTERLEAVEFUNCTION] = cb'curl_write_callback',
+	[C.CURLOPT_INTERLEAVEFUNCTION] = cb_curl_write_callback,
 	[C.CURLOPT_CHUNK_BGN_FUNCTION] = cb'curl_chunk_bgn_callback',
 	[C.CURLOPT_CHUNK_END_FUNCTION] = cb'curl_chunk_end_callback',
 	[C.CURLOPT_CHUNK_DATA] = voidp,
@@ -513,6 +522,7 @@ end
 function easy:perform()
 	return self:_ret(C.curl_easy_perform(self))
 end
+jit.off(easy.perform) --because of callbacks
 
 --pinned values --------------------------------------------------------------
 
@@ -762,6 +772,7 @@ function multi:perform()
 	local code = C.curl_multi_perform(self, intbuf)
 	return self:_ret(code, intbuf[0])
 end
+jit.off(multi.perform) --because of callbacks
 
 function multi:add(etr)
 	return self:_check(C.curl_multi_add_handle(self, etr))

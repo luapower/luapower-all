@@ -48,7 +48,7 @@ function player:slider(t)
 	self:rect(x, y, w1, h, 'selected_bg')
 
 	self.cr:save()
-	self.cr:operator(cairo.CAIRO_OPERATOR_DIFFERENCE)
+	self.cr:operator'difference'
 	self:textbox(x, y, w, h, text, t.font, '#ffffff', 'center', 'center')
 	self.cr:restore()
 

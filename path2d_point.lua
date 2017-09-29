@@ -39,7 +39,7 @@ local function rotate_point(x, y, cx, cy, angle)
 	return cx + x*c - y*s, cy + y*c + x*s
 end
 
---angle between two points in -360..360 degree range.
+--angle between two points in -180..180 degree range.
 local function point_angle(x, y, cx, cy)
 	return degrees(atan2(y - cy, x - cx))
 end

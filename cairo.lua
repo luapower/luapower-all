@@ -4,12 +4,10 @@
 
 -- Supports garbage collection, metatype methods, accepting and returning
 -- strings, returning multiple values instead of passing output buffers,
--- and API additions for completeness (drawing quad curves, getting and
--- setting pixel values, etc.).
+-- and many API additions for completeness.
 
 local ffi = require'ffi'
 local bit = require'bit'
-local reflect = require'ffi_reflect'
 require'cairo_h'
 local C = ffi.load'cairo'
 local M = {C = C}
@@ -101,7 +99,7 @@ local function getset_func(get, set, prefix)
 		set = setflag_func(set, prefix)
 	end
 	return function(self, ...)
-		if type((...)) == 'nil' then --get val
+		if ... == nil then --get val
 			return get(self, ...)
 		else --set val
 			set(self, ...)
@@ -366,6 +364,10 @@ map('CAIRO_FORMAT_', {
 })
 
 local cr = {}
+
+cr.status = C.cairo_status
+cr.status_message = status_message
+cr.check = check
 
 cr.ref = ref_func(C.cairo_reference, C.cairo_destroy)
 cr.unref = destroy_func(C.cairo_destroy)
@@ -637,6 +639,7 @@ cr.font_face = getset_func(C.cairo_get_font_face, function(cr, family, slant, we
 	else
 		C.cairo_set_font_face(cr, family) --in fact: cairo_font_face_t
 	end
+	cr:check()
 end)
 cr.scaled_font = getset_func(C.cairo_get_scaled_font, C.cairo_set_scaled_font) --weak ref
 cr.show_text = C.cairo_show_text
@@ -644,6 +647,7 @@ cr.show_glyphs = C.cairo_show_glyphs
 cr.show_text_glyphs = function(cr, s, slen, glyphs, num_glyphs, clusters, num_clusters, cluster_flags)
 	C.cairo_show_text_glyphs(cr, s, slen or #s, glyphs, num_glyphs, clusters, num_clusters,
 		cluster_flags and X('CAIRO_TEXT_CLUSTER_FLAG_', cluster_flags) or 0)
+	cr:check()
 end
 cr.text_path = C.cairo_text_path
 cr.glyph_path = C.cairo_glyph_path
@@ -775,9 +779,6 @@ cr.append_path = C.cairo_append_path
 local path = {}
 
 path.free = destroy_func(C.cairo_path_destroy)
-path.status = C.cairo_status
-path.status_message = status_message
-path.check = check
 
 M.status_message = str_func(C.cairo_status_to_string)
 
@@ -1203,7 +1204,8 @@ mt.translate = ret_self(C.cairo_matrix_translate)
 mt.scale = function(mt, sx, sy) C.cairo_matrix_scale(mt, sx, sy or sx); return mt; end
 mt.rotate = ret_self(C.cairo_matrix_rotate)
 mt.invert = function(mt)
-	return C.cairo_matrix_invert(mt) == 0
+	check_status(C.cairo_matrix_invert(mt))
+	return mt
 end
 mt.multiply = function(mt, mt1, mt2)
 	if mt2 then

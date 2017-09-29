@@ -28,12 +28,12 @@ function CairoPanel:on_bitmap_free(bitmap)
 end
 
 function CairoPanel:on_bitmap_paint(bitmap)
-	self:on_cairo_paint(self.__cairo_context)
+	self:on_cairo_paint(self.__cairo_context, self.__cairo_surface)
 end
 
 function CairoPanel:on_cairo_create_surface(surface) end
 function CairoPanel:on_cairo_free_surface(surface) end
-function CairoPanel:on_cairo_paint(context) end
+function CairoPanel:on_cairo_paint(context, surface) end
 
 --showcase
 

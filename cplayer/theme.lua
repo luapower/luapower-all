@@ -92,16 +92,23 @@ local fonts = setmetatable({}, {__mode = 'kv'})
 local default_font_face = default_font:match'^(.-),'
 local default_font_size = default_font:match',(.*)$'
 
+local function str(s)
+	if not s then return end
+	s = glue.trim(s)
+	return s ~= '' and s or nil
+end
+
 function player:parse_font(font)
 	if fonts[font] then
 		return fonts[font]
 	end
 	if type(font) == 'string' then
-		local face, size, slant = font:match'([^,]*),?([^,]*),?([^,]*)'
+		local face, size, weight, slant = font:match'([^,]*),?([^,]*),?([^,]*),?([^,]*)'
 		local font_t = {
-			face = face or default_font_face,
-			size = tonumber(size) or default_font_size,
-			slant = slant or 'normal',
+			face = str(face) or default_font_face,
+			size = tonumber(str(size)) or default_font_size,
+			weight = str(weight) or 'normal',
+			slant = str(slant) or 'normal',
 		}
 		fonts[font] = font_t --memoize for speed
 		font = font_t
@@ -109,7 +116,8 @@ function player:parse_font(font)
 		local font_t = {
 			face = default_font_face,
 			size = font,
-			slant = 'normal'
+			weight = 'normal',
+			slant = 'normal',
 		}
 		fonts[font] = font_t --memoize for speed
 		font = font_t
@@ -119,7 +127,7 @@ end
 
 function player:setfont(font)
 	font = self:parse_font(self.theme[font] or font or self.theme.default_font)
-	self.cr:font_face(font.face)
+	self.cr:font_face(font.face, font.slant, font.weight)
 	self.cr:font_size(font.size)
 	font.extents = font.extents or self.cr:font_extents()
 	return font

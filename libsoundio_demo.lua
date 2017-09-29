@@ -38,23 +38,9 @@ assert(not str.layout_error, 'unable to set channel layout')
 local buf = str:buffer() --make a 1s buffer
 str:clear_buffer()
 
-local pitch = 440
-local volume = 0.1
-local sin_factor = 2 * math.pi / str.sample_rate * pitch
-local frame0 = 0
-local function sample(frame, channel)
-	local octave = channel + 1
-	return volume * math.sin((frame0 + frame) * sin_factor * octave)
-end
-
-local duration, interval = 1, 0.05
-print(string.format('Playing L=%dHz R=%dHz for %ds...', pitch, pitch * 2, duration))
-
-
-if false then
+local function play_vorbis_file()
 
 	local vf = require'libvorbis_file'
-	local ffi = require'ffi'
 
 	local vf = vf.open{path = 'media/ogg/06 A Colloquial Dream.ogg'}
 
@@ -69,25 +55,23 @@ if false then
 	str:start()
 
 	while true do
-		local bn = vf:read(sbuf, ffi.sizeof(sbuf))
-		local fn = math.floor(bn/4)
-		if fn == 0 then break end
-		local j = 0
-		while fn > 0 do
-			local p, n = buf:write_buf()
-			if n > 0 then
-				local n = math.min(n, fn)
-				for channel = 0, 1 do
-					for i = 0, n-1 do
-						p[i][channel] = sbuf[(i+j) * 2 + channel] / (2^15-1)
-					end
+		local p, n = buf:write_buf()
+		print(p, n)
+		if n > 0 then
+
+			--fill up the buffer
+			local bn = vf:read(sbuf, n * 4)
+			local fn = math.floor(bn/4)
+			if fn == 0 then break end
+
+			for channel = 0, 1 do
+				for i = 0, n-1 do
+					p[i][channel] = sbuf[i * 2 + channel] / (2^15-1)
 				end
-				fn = fn - n
-				j = j + n
-				buf:advance_write_ptr(n)
 			end
-			time.sleep(0.01)
+			buf:advance_write_ptr(n)
 		end
+		time.sleep(0.01)
 	end
 
 	while buf:fill_count() > 0 or str:latency() > 0 do
@@ -95,7 +79,21 @@ if false then
 		time.sleep(0.1)
 	end
 
-else
+end
+
+local function play_tone()
+
+	local pitch = 440
+	local volume = 0.1
+	local sin_factor = 2 * math.pi / str.sample_rate * pitch
+	local frame0 = 0
+	local function sample(frame, channel)
+		local octave = channel + 1
+		return volume * math.sin((frame0 + frame) * sin_factor * octave)
+	end
+
+	local duration, interval = 1, 0.05
+	print(string.format('Playing L=%dHz R=%dHz for %ds...', pitch, pitch * 2, duration))
 
 	str:start()
 
@@ -116,6 +114,9 @@ else
 	end
 
 end
+
+--play_vorbis_file()
+play_tone()
 
 buf:free()
 str:free()

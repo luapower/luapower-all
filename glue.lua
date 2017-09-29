@@ -499,9 +499,9 @@ local function memoize2(func, cache) --for strict two-arg functions
 		return v
 	end
 end
-local function memoize_vararg(func, narg, ...) --for vararg functions
-	local tuple = require'tuple'.space(true, ...)
-	local cache = {}
+local function memoize_vararg(func, narg, cache) --for vararg functions
+	local tuple = require'tuple'.space(true)
+	cache = cache or {}
 	return function(...)
 		local n = max(narg, select('#', ...))
 		local k = tuple.narg(n, ...)
@@ -514,13 +514,13 @@ local function memoize_vararg(func, narg, ...) --for vararg functions
 	end
 end
 local memoize_narg = {[0] = memoize0, memoize1, memoize2}
-function glue.memoize(func, ...)
+function glue.memoize(func, cache)
 	local info = debug.getinfo(func)
 	local memoize_narg = memoize_narg[info.nparams]
 	if info.isvararg or not memoize_narg then
-		return memoize_vararg(func, info.nparams, ...)
+		return memoize_vararg(func, info.nparams, cache)
 	else
-		return memoize_narg(func, ...)
+		return memoize_narg(func, cache)
 	end
 end
 

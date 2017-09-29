@@ -19,7 +19,7 @@ __i/o__
 `stdio.readfile(f[, 't']) -> data, sz`                           read entire file to a buffer
 `stdio.writefile(f, s[, sz[, 't']]) -> true | nil,err,errno`     write a string or cdata to a file
 __i/o streams__
-`stdio.reader(f) -> read(buf, sz)`                               make a reader function
+`stdio.reader(f) -> read(buf, sz) -> readsz`                     make a reader function
 `stdio.writer(f) -> write(s[, sz])`                              make a writer function
 __file descriptors__
 `stdio.fileno(f) -> n | nil,err,errno`                           get fileno of file
@@ -43,9 +43,8 @@ Reading and writing zero bytes is allowed (negative sizes raise an error).
 
 Reading into a nil buffer is allowed (it just seeks).
 
-The "i/o stream" functions are unprotected (i.e. they raise errors
-including for partial reads/writes) and can thus be used with codecs
-like [bmp] directly.
+The "i/o stream" functions are unprotected (i.e. they raise errors)
+and can thus be used with codecs like [bmp] directly.
 
 Files larger than 4 Petabytes are not supported.
 
