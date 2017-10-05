@@ -351,15 +351,61 @@ function glue.readpipe(cmd, mode, open)
 	return glue.readfile(cmd, mode, open or io.popen)
 end
 
+--like os.rename() but behaves like POSIX on Windows too.
+if jit then
+
+	local ffi = require'ffi'
+
+	if ffi.os == 'Windows' then
+
+		ffi.cdef[[
+			int MoveFileExA(
+				const char *lpExistingFileName,
+				const char *lpNewFileName,
+				unsigned long dwFlags
+			);
+			int GetLastError(void);
+		]]
+
+		local MOVEFILE_REPLACE_EXISTING = 1
+
+		function glue.replace(oldfile, newfile)
+			local ret = ffi.C.MoveFileExA(oldfile, newfile,
+				MOVEFILE_REPLACE_EXISTING)
+			if ret == 0 then
+				local err = GetLastError()
+				error('WinAPI error '..err)
+			end
+		end
+
+	else
+
+		function glue.replace(oldfile, newfile)
+			assert(os.rename(oldfile, newfile))
+		end
+
+	end
+
+end
+
 --write a string, number, or table to a file (in binary mode by default).
---if the write fails, the file is removed and an error is raised.
-function glue.writefile(filename, s, mode)
+function glue.writefile(filename, s, mode, tmpfile)
+	if tmpfile then
+		glue.writefile(tmpfile, s, mode)
+		local ok, err = xpcall(glue.replace, debug.traceback, tmpfile, filename)
+		if ok then
+			return
+		else
+			os.remove(tmpfile)
+			error(err)
+		end
+	end
 	local f, err = io.open(filename, mode=='t' and 'w' or 'wb')
 	if not f then
 		error(err)
 	end
 	local function check(ret, err)
-		if ret ~= nil then return ret, err end
+		if ret then return ret, err end
 		f:close()
 		local ret, err2 = os.remove(filename)
 		if ret == nil then
@@ -377,7 +423,7 @@ function glue.writefile(filename, s, mode)
 			if not s1 then break end
 			check(f:write(s1))
 		end
-	else
+	else --string or number
 		check(f:write(s))
 	end
 	f:close()

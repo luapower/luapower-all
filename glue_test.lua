@@ -200,6 +200,12 @@ assert(package.cpath:match('^'..glue.escape(norm'bar/?.'..so..';')))
 assert(package.path:match(glue.escape(norm'baz/?.lua;baz/?/init.lua')..'$'))
 assert(package.cpath:match(glue.escape(norm'zab/?.'..so)..'$'))
 
+glue.writefile('glue_test.tmp', 'abc', nil, 'glue_test.tmp.tmp')
+assert(glue.readfile('glue_test.tmp') == 'abc')
+glue.writefile('glue_test.tmp', 'def', nil, 'glue_test.tmp.tmp')
+assert(glue.readfile('glue_test.tmp') == 'def')
+os.remove('glue_test.tmp')
+
 if jit then
 	local ffi = require'ffi'
 

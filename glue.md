@@ -43,7 +43,7 @@ __i/o__
 `glue.canopen(filename[, mode]) -> filename | nil`                 check if a file exists and can be opened
 `glue.readfile(filename[,format][,open]) -> s | nil, err`          read the contents of a file into a string
 `glue.readpipe(cmd[,format][,open]) -> s | nil, err`               read the output of a command into a string
-`glue.writefile(filename,s|t|read[,format])`                       write a string to a file
+`glue.writefile(filename,s|t|read,[format],[tmpfile])`             write data to file safely
 __errors__
 `glue.assert(v[,message[,format_args...]])`                        assert with error message formatting
 `glue.protect(func) -> protected_func`                             wrap an error-raising function
@@ -498,14 +498,31 @@ The options are the same as for `glue.readfile`.
 
 ------------------------------------------------------------------------------
 
-### `glue.writefile(filename,s|t|read[,format])`
+### `glue.replace(oldpath, newpath)`
+
+Move or rename a file. If `newpath` exists and it's a file, it is replaced
+by the old file atomically. The operation can still fail under many
+circumstances like if `newpath` is a directory or if the files are
+in different filesystems or if `oldpath` is missing or locked, etc.
+
+For consistent behavior across OSes, both paths should be absolute paths
+or just filenames.
+
+> __NOTE__: LuaJIT only.
+
+------------------------------------------------------------------------------
+
+### `glue.writefile(filename,s|t|read,[format],[tmpfile])`
 
 Write the contents of a string, table or reader to a file.
 
   * `format` can be `"t"` in which case the file will be written in text mode
    (default is binary mode).
   * `read` can be a function to draw strings or numbers from.
-  * if writing fails, the file is removed and an error is raised.
+  * if writing fails and `tmpfile` is not given, the file is removed and an
+  error is raised; if `tmpfile` is given then the data is written that file
+  first which is then renamed to `filename` and if writing or renaming fails
+  the temp file is removed and `filename` is not touched.
 
 ------------------------------------------------------------------------------
 
