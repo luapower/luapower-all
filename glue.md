@@ -27,6 +27,7 @@ __lists__
 `glue.reverse(t) -> t`                                             reverse list in place
 __strings__
 `glue.gsplit(s,sep[,start[,plain]]) -> iter() -> e[,captures...]`  split a string by a pattern
+`glue.lines(s) -> iter() -> s`                                     iterate the lines of a string
 `glue.trim(s) -> s`                                                remove padding
 `glue.escape(s[,mode]) -> pat`                                     escape magic pattern characters
 `glue.tohex(s|n[,upper]) -> s`                                     string to hex
@@ -44,6 +45,7 @@ __i/o__
 `glue.readfile(filename[,format][,open]) -> s | nil, err`          read the contents of a file into a string
 `glue.readpipe(cmd[,format][,open]) -> s | nil, err`               read the output of a command into a string
 `glue.writefile(filename,s|t|read,[format],[tmpfile])`             write data to file safely
+`glue.printer(out[, format]) -> f`                                 virtualize the print() function
 __errors__
 `glue.assert(v[,message[,format_args...]])`                        assert with error message formatting
 `glue.protect(func) -> protected_func`                             wrap an error-raising function
@@ -307,6 +309,19 @@ end
 
 ------------------------------------------------------------------------------
 
+### `glue.lines(s) -> iter() -> s`
+
+Iterate the lines of a string.
+
+  * the lines are split at `\r\n`, `\r` and `\n` markers.
+  * the line ending markers are included in the iterated strings.
+  * if the string is empty or doesn't contain a line ending marker, it is
+  is iterated once.
+  * if the string ends with a line ending marker, one more empty string is
+  iterated.
+
+------------------------------------------------------------------------------
+
 ### `glue.trim(s) -> s`
 
 Remove whitespace (defined as Lua pattern `"%s"`) from the beginning and end of a string.
@@ -315,16 +330,21 @@ Remove whitespace (defined as Lua pattern `"%s"`) from the beginning and end of 
 
 ### `glue.escape(s[,mode]) -> pat`
 
-Escape magic characters of the string `s` so that it can be used as a pattern to string matching functions.
+Escape magic characters of the string `s` so that it can be used as a pattern
+to string matching functions.
 
-  * the optional argument `mode` can have the value `"*i"` (for case insensitive), in which case each alphabetical
-    character in `s` will also be escaped as `"[aA]"` so that it matches both its lowercase and uppercase variants.
+  * the optional argument `mode` can have the value `"*i"` (for case
+  insensitive), in which case each alphabetical character in `s` will also be
+  escaped as `"[aA]"` so that it matches both its lowercase and uppercase
+  variants.
   * escapes embedded zeroes as the `%z` pattern.
 
 #### Uses
 
-  * workaround for lack of pattern syntax for "this part of a match is an arbitrary string"
-  * workaround for lack of a case-insensitive flag in pattern matching functions
+  * workaround for lack of pattern syntax for "this part of a match is an
+  arbitrary string"
+  * workaround for lack of a case-insensitive flag in pattern matching
+  functions
 
 ------------------------------------------------------------------------------
 
@@ -404,8 +424,8 @@ Supports nil and NaN args and retvals.
 Guarantees to only call the original function _once_ for the same combination
 of arguments, with special attention to the vararg part of the function,
 if any. For instance, for a function `f(x, y, ...)`, calling `f(1)` is
-considered equal to calling `f(1, nil)`, but calling `f(1, nil)` is not
-equal to calling `f(1, nil, nil)`.
+considered the same as calling `f(1, nil)`, but calling `f(1, nil)` is not
+the same as calling `f(1, nil, nil)`.
 
 
 > __NOTE__: Memoization of vararg functions or functions with more than two
@@ -526,14 +546,24 @@ Write the contents of a string, table or reader to a file.
 
 ------------------------------------------------------------------------------
 
+### `glue.printer(out[, format]) -> f`
+
+Create a `print()`-like function which uses the function `out` to output
+its values and `format` to format each value. For instance
+`glue.printer(io.write, tostring)` returns a function which behaves like
+the standard `print()` function.
+
+------------------------------------------------------------------------------
+
 ## Errors
 
 ### `glue.assert(v[,message[,format_args...]])`
 
-Like `assert` but supports formatting of the error message using string.format.
+Like `assert` but supports formatting of the error message using
+`string.format()`.
 
-This is better than `assert(string.format(message, format_args...))` because it avoids creating
-the message string when the assertion is true.
+This is better than `assert(v, string.format(message, format_args...))`
+because it avoids creating the message string when the assertion is true.
 
 #### Example
 
@@ -785,11 +815,11 @@ glue.clamp,
 glue.pack, glue.unpack,
 glue.count, glue.index, glue.keys, glue.update, glue.merge, glue.sortedpairs, glue.attr,
 glue.indexof, glue.extend, glue.append, glue.shift, glue.reverse,
-glue.gsplit, glue.trim, glue.escape, glue.tohex, glue.fromhex,
+glue.gsplit, glue.lines, glue.trim, glue.escape, glue.tohex, glue.fromhex,
 glue.collect,
 glue.pass, glue.memoize,
 glue.inherit, glue.autotable,
-glue.canopen, glue.readfile, glue.readpipe, glue.writefile,
+glue.canopen, glue.readfile, glue.readpipe, glue.writefile, glue.printer,
 glue.assert, glue.protect, glue.pcall, glue.fpcall, glue.fcall,
 glue.autoload, glue.bin, glue.luapath, glue.cpath,
 glue.malloc, glue.free, glue.addr, glue.ptr

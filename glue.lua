@@ -207,6 +207,19 @@ function glue.string.gsplit(s, sep, start, plain)
 	end
 end
 
+function glue.lines(s)
+	local next_match = s:gmatch'([^\r\n]*()\r?\n?())'
+	local empty = s == ''
+	local ended --string ended with no line ending
+	return function()
+		local s, i1, i2 = next_match()
+		if s == nil then return end
+		if s == '' and not empty and ended then s = nil end
+		ended = i1 == i2
+		return s
+	end
+end
+
 --string trim12 from lua wiki.
 function glue.string.trim(s)
 	local from = s:match('^%s*()')
@@ -224,7 +237,7 @@ function glue.string.escape(s, mode)
 	return s
 end
 
---string to hex.
+--string or number to hex.
 function glue.string.tohex(s, upper)
 	if type(s) == 'number' then
 		return format(upper and '%08.8X' or '%08.8x', s)
@@ -242,6 +255,9 @@ end
 
 --hex to string.
 function glue.string.fromhex(s)
+	if #s % 2 == 1 then
+		return glue.string.fromhex('0'..s)
+	end
 	return (s:gsub('..', function(cc)
 	  return char(tonumber(cc, 16))
 	end))
@@ -429,9 +445,23 @@ function glue.writefile(filename, s, mode, tmpfile)
 	f:close()
 end
 
+function glue.printer(out, format)
+	format = format or glue.pass
+	return function(...)
+		local n = select('#', ...)
+		for i=1,n do
+			out(format((select(i, ...))))
+			if i < n then
+				out'\t'
+			end
+		end
+		out'\n'
+	end
+end
+
 --assert() with string formatting (this should be a Lua built-in).
 function glue.assert(v, err, ...)
-	if v then return v,err,... end
+	if v then return v end
 	err = err or 'assertion failed!'
 	if select('#',...) > 0 then err = format(err,...) end
 	error(err, 2)

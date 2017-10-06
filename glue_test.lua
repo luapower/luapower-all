@@ -80,6 +80,35 @@ t = {} for s,n in glue.gsplit('a 12,b 15x,c 20', '%s*(%d*),') do t[#t+1]={s,n} e
 test(t, {{'a','12'},{'b 15x',''},{'c 20',nil}})
 --TODO: use case with () capture
 
+local i = 0
+local function assert_lines(s, t)
+	i = i + 1
+	local dt = {}
+	for s in glue.lines(s) do
+		table.insert(dt, s)
+	end
+	if #t ~= #dt then goto err end
+	for i=1,#t do
+		if t[i] ~= dt[i] then goto err end
+	end
+	do return end
+	::err::
+	require'pp'('actual  ', #dt, dt)
+	require'pp'('expected', #t, t)
+	error('test '..i..' failed')
+end
+assert_lines('', {''})
+assert_lines(' ', {' '})
+assert_lines('x\ny', {'x\n', 'y'})
+assert_lines('x\ny\n', {'x\n', 'y\n', ''})
+assert_lines('x\n\ny', {'x\n', '\n', 'y'})
+assert_lines('\n', {'\n', ''})
+assert_lines('\n\r\n', {'\n','\r\n',''})
+assert_lines('\r\n\n', {'\r\n','\n',''})
+assert_lines('\n\r', {'\n','\r',''})
+assert_lines('\n\r\n\r', {'\n','\r\n','\r',''})
+assert_lines('\n\n\r', {'\n','\n','\r',''})
+
 test(glue.trim('  a  d '), 'a  d')
 
 test(glue.escape'^{(.-)}$', '%^{%(%.%-%)}%$')
@@ -91,6 +120,8 @@ test(glue.tohex'\xde\xad\xbe\xef\x01', 'deadbeef01')
 test(glue.tohex('\xde\xad\xbe\xef\x02', true), 'DEADBEEF02')
 test(glue.fromhex'deadbeef01', '\xde\xad\xbe\xef\x01')
 test(glue.fromhex'DEADBEEF02', '\xde\xad\xbe\xef\x02')
+test(glue.fromhex'5', '\5')
+test(glue.fromhex'5ff', '\5\xff')
 
 test(glue.collect(('abc'):gmatch('.')), {'a','b','c'})
 test(glue.collect(2,ipairs{5,7,2}), {5,7,2})
