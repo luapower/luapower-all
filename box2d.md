@@ -73,6 +73,11 @@ Math for 2D rectangles defined as `(x, y, w, h)` where w > 0 and h > 0.
 
 `box.clip(x, y, w, h, x0, y0, w0, h0) -> x1, y1, w1, h1`					intersect two normalized boxes
 
+**bounding box**
+
+`box.bounding_box(x1, y1, w1, h1, x2, y2, w2, h2)` \                 join two normalized boxes
+`-> x, y, w, h`
+
 -------------------------------------------------------------------- -----------------------------------------------------
 
 
@@ -98,4 +103,5 @@ Operations never mutate the object, instead they return a new one.
 `box:snap_pos(d, boxes) -> box`                                      snap the position
 `box:overlapping(box) -> true | false`											overlapping test
 `box:clip(box) -> box`																clip box to fit inside another box
+`box:join(box)`                                                      make box the bounding box of itself and another box
 -------------------------------------------------------------------- -----------------------------------------------------

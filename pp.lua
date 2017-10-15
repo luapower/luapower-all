@@ -76,10 +76,16 @@ end
 
 local function pp(...)
 	local t = {}
-	for i=1,select('#',...) do
-		t[i] = to_string(select(i,...), '   ', {})
+	local n = select('#',...)
+	for i=1,n do
+		local v = select(i,...)
+		if type(v) == 'table' then
+			t[i] = to_string(v, '   ', {})
+		else
+			t[i] = v
+		end
 	end
-	print(unpack(t))
+	print(unpack(t, 1, n))
 	return ...
 end
 

@@ -25,7 +25,8 @@ SG.defaults = require'sg_2d'.defaults
 local function cairo_sym(k) return cairo[k] end --raises an exception for invalid k's
 local function cairo_enum(prefix) --eg. cairo_enum('CAIRO_OPERATOR_') -> t; t.over -> cairo.CAIRO_OPERATOR_OVER
 	return setmetatable({}, {__index = function(t,k)
-		t[k] = glue.unprotect(pcall(cairo_sym, prefix..k:upper()))
+		local ok, sym = pcall(cairo_sym, prefix..k:upper())
+		t[k] = ok and sym or nil
 		return rawget(t,k)
 	end})
 end
@@ -377,7 +378,7 @@ function SG:load_image_file(e, alpha)
 	if not source then
 		--load image
 		local imagefile = require'imagefile'
-		local img = self:assert(glue.unprotect(glue.pcall(imagefile.load, e, imagefile_load_options)))
+		local img = self:assert(glue.protect(imagefile.load)(e, imagefile_load_options))
 		if not img then return end
 		--link image bits to a surface
 		local surface = cairo.cairo_image_surface_create_for_data(img.data,

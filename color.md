@@ -16,15 +16,16 @@ Original code from Sputnik's [colors lib], by Yuri Takhteyev.
 `color.hsl_to_rgb(h, s, L) -> r, g, b`               HSL -> RGB; h is modulo 360; s, L are clamped to range
 `color.rgb_to_hsl(r, g, b) -> h, s, L`               RGB -> HSL; r, g, b are clamped to range
 `color.rgb_to_string(r, g, b) -> s`                  generate '#rrggbb' hex color
-`color.string_to_rgb(s) -> r, g, b | nil`            parse a '#rrggbb' hex color
+`color.string_to_rgb(s) -> r, g, b | nil`            parse a '#rrggbb' or '#rgb' hex color
 `color.rgba_to_string(r, g, b, a) -> s`              generate a '#rrggbbaa' hex color
-`color.string_to_rgba(s) -> r, g, b, a | nil`        parse a '#rrggbbaa' hex color (the 'aa' part is optional)
+`color.string_to_rgba(s) -> r, g, b, a | nil`        parse a '#rrggbbaa' or '#rgba' hex color
+                                                       (the 'aa' part is optional)
 ---------------------------------------------------- ------------------------------------------------
 
 ## Color objects
 
 ---------------------------------------------------- ------------------------------------------------
-`color('#rrggbb') -> col`                            create a new HSL color object from a RGB string
+`color('#rrggbb'|'#rgb') -> col`                     create a new HSL color object from a RGB string
 `color(h, s, L) -> col`                              create a new HSL color object from HSL values
 `col.h, col.s, col.L`                                color fields (for reading and writing)
 `col:hsl() -> h, s, L` <br> `col() -> h, s, L`       color fields unpacked

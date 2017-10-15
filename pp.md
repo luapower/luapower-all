@@ -23,7 +23,8 @@ Fast, compact serialization producing portable Lua source code.
   * **portable** between Windows, Linux, Mac: quoting of `\n` and `\r`
   protects binary integrity when opening in text mode.
   * **embeddable**: can be copy-pasted into Lua source code: quoting
-  of `\0` and `\t` protects binary integrity with code editors.
+  of `\0` and `\t` and all other control characters protects binary integrity
+  with code editors.
   * **human readable**: indentation (optional, configurable); array part
   printed separately with implicit keys.
   * **stream-based**: the string bits are written with a writer function
@@ -41,17 +42,17 @@ Fast, compact serialization producing portable Lua source code.
   * strings need escaping which could become noticeable with large strings
   featuring many newlines, tabs, zero bytes, apostrophes, backslashes
   or control characters.
-  * loading back the output with the Lua interpreter is not safe (no code is).
+  * loading back the output with the Lua interpreter is not safe.
 
 ## API
 
 ### `pp.print(v1,...)`
 ### `pp(v1, ...)`
 
-Pretty-print the arguments to standard output.
+Print the arguments to standard output.
+Only tables are pretty-printed, everything else goes unfiltered.
 Cycle detection and indentation are enabled.
 Unserializable values get a comment in place.
-
 
 ### `pp.write(write, v, [indent], [parents], [quote], [onerror])`
 

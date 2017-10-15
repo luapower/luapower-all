@@ -108,5 +108,8 @@ end
 
 if not ... then require'sg_gl_demo' end
 
-return parse
+return {
+	parse = parse,
+}
+
 

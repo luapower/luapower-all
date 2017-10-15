@@ -1,6 +1,6 @@
 --wavefront obj loader to the gl scene graph mesh format.
 --supports groups with triangle and quad faces and textures with uv texcoords.
-local parse = require'obj_parser'
+local parse = require'obj_parser'.parse
 local glue = require'glue'
 local tuple = require'tuple'
 

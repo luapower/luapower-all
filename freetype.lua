@@ -261,7 +261,7 @@ function M.FT_Get_SubGlyph_Info(glyph, sub_index, p_index, p_flags, p_arg1, p_ar
 	p_arg1  = p_arg1  or ffi.new'FT_Int[1]'
 	p_arg2  = p_arg2  or ffi.new'FT_Int[1]'
 	p_transform = p_transform or ffi.new'FT_Matrix'
-	checknz(M.FT_Get_SubGlyph_Info(glyph, sub_index, p_index, p_flags, p_arg1, p_arg2, p_transform))
+	checknz(C.FT_Get_SubGlyph_Info(glyph, sub_index, p_index, p_flags, p_arg1, p_arg2, p_transform))
 	return
 		p_index[0], p_flags[0], p_arg1[0], p_arg2[0], p_transform
 end
@@ -363,11 +363,11 @@ function M.FT_Outline_Done(library, outline)
 end
 
 function M.FT_Outline_Decompose(outline, func_interface, userdata)
-	checknz(M.FT_Outline_Decompose(outline, func_interface, userdata))
+	checknz(C.FT_Outline_Decompose(outline, func_interface, userdata))
 end
 
 function M.FT_Outline_Check(outline)
-	checknz(M.FT_Outline_Check(outline))
+	checknz(C.FT_Outline_Check(outline))
 end
 
 function M.FT_Outline_Get_CBox(outline, cbox)

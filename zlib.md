@@ -12,8 +12,11 @@ Returns the zlib version.
 
 ### `zlib.deflate(read, write[, bufsize][, format][, level][, windowBits][, memLevel][, strategy])`
 
-  * `read` is a reader function `read() -> s[,size] | cdata,size | nil`
-  * `write` is a writer function `write(cdata, size)`
+  * `read` is a reader function `read() -> s[,size] | cdata,size | nil`,
+  but it can also be a string or a table of strings.
+  * `write` is a writer function `write(cdata, size)`, but it can also be an
+  empty string (in which case a string with the output is returned) or
+  an output table (in which case a table with output chunks is returned).
   * `bufsize` determines the frequency and size of the writes
   * `format` can be:
     * 'zlib' - wrap the deflate stream with a zlib header and trailer (default)

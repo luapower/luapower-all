@@ -309,6 +309,21 @@ local function clip(x1, y1, w1, h1, x2, y2, w2, h2)
 	return x1, y1, w, h
 end
 
+--box bounding box
+
+local function bounding_box(x1, y1, w1, h1, x3, y3, w2, h2)
+	local x2 = x1 + w1
+	local y2 = y1 + h1
+	local x4 = x3 + w2
+	local y4 = y3 + h2
+	return rect(
+		min(x1, x2, x3, x4),
+		min(y1, y2, y3, y4),
+		max(x1, x2, x3, x4),
+		max(y1, y2, y3, y4))
+end
+
+
 --box class ------------------------------------------------------------------
 
 local box = {}
@@ -325,7 +340,7 @@ end
 box_mt.__call = box.rect
 
 function box:corners()
-	return corners(r())
+	return corners(self())
 end
 
 function box:align(halign, valign, parent_box)
@@ -333,23 +348,23 @@ function box:align(halign, valign, parent_box)
 end
 
 function box:vsplit(i, sh)
-	return new(vsplit(i, sh, r()))
+	return new(vsplit(i, sh, self()))
 end
 
 function box:hsplit(i, sw)
-	return new(hsplit(i, sw, r()))
+	return new(hsplit(i, sw, self()))
 end
 
 function box:nsplit(i, n, direction)
-	return new(nsplit(i, n, direction, r()))
+	return new(nsplit(i, n, direction, self()))
 end
 
 function box:translate(x0, y0)
-	return new(translate(x0, y0, r()))
+	return new(translate(x0, y0, self()))
 end
 
 function box:offset(d) --offset a rectangle by d (outward if d is positive)
-	return new(offset(d, r()))
+	return new(offset(d, self()))
 end
 
 function box:fit(parent_box, halign, valign)
@@ -359,25 +374,25 @@ function box:fit(parent_box, halign, valign)
 end
 
 function box:hit(x0, y0)
-	return hit(x0, y0, r())
+	return hit(x0, y0, self())
 end
 
 function box:hit_edges(x0, y0, d)
-	return hit_edges(x0, y0, d, r())
+	return hit_edges(x0, y0, d, self())
 end
 
 function box:snap_edges(d, rectangles)
-	local x, y, w, h = r()
+	local x, y, w, h = self()
 	return new(snap_edges(d, x, y, w, h, rectangles))
 end
 
 function box:snap_pos(d, rectangles)
-	local x, y, w, h = r()
+	local x, y, w, h = self()
 	return new(snap_pos(d, x, y, w, h, rectangles))
 end
 
 function box:snapped_edges(d)
-	return snapped_edges(d, r())
+	return snapped_edges(d, self())
 end
 
 function box:overlapping(box)
@@ -386,6 +401,11 @@ end
 
 function box:clip(box)
 	return new(clip(self.x, self.y, self.w, self.h, box:rect()))
+end
+
+function box:join(box)
+	self.x, self.y, self.w, self.h =
+		bounding_box(self.x, self.y, self.w, self.h, box:rect())
 end
 
 local box_module = {
@@ -413,6 +433,8 @@ local box_module = {
 	overlapping = overlapping,
 	--clipping
 	clip = clip,
+	--bounding box
+	bounding_box = bounding_box,
 }
 
 setmetatable(box_module, {__call = function(r, ...) return new(...) end})

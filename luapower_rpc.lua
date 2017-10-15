@@ -34,7 +34,7 @@ end
 local function parse(s)
 	local f, err = loadstring('return '..s)
 	if not f then return nil, err end
-	return glue.unprotect(pcall(f))
+	return glue.protect(f)()
 end
 
 local function format(t)
