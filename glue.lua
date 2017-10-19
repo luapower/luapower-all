@@ -389,7 +389,7 @@ if jit then
 			local ret = ffi.C.MoveFileExA(oldfile, newfile,
 				MOVEFILE_REPLACE_EXISTING)
 			if ret == 0 then
-				local err = GetLastError()
+				local err = ffi.C.GetLastError()
 				error('WinAPI error '..err)
 			end
 		end
