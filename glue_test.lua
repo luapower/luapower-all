@@ -155,7 +155,10 @@ assert(glue.readfile(glue.bin..'/glue.lua'):match'glue', 'glue')
 
 test(select(2,pcall(glue.assert,false,'bad %s','dog')), 'bad dog')
 test(select(2,pcall(glue.assert,false,'bad dog %s')), 'bad dog %s')
-test({pcall(glue.assert,1,2,3)}, {true,1,2,3})
+test({pcall(glue.assert,1,2,3)}, {true, 1})
+test({pcall(glue.assert,false)}, {false, 'assertion failed!'})
+test({pcall(glue.assert,false,123)}, {false, '123'})
+test({pcall(glue.assert,false,123,456)}, {false, '123'})
 
 --TODO: assert, protect, pcall, fpcall, fcall
 
