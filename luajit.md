@@ -11,7 +11,7 @@ shell scripts that find and load the appropriate luajit executable for
 your platform/arch, so that typing `./luajit` or `./luajit32`
 (that's `luajit` and `luajit32` on Windows) always works.
 
-LuaJIT was compiled using its own makefile.
+LuaJIT was compiled using its original makefile.
 
 __NEW!__ You can now browse the [LuaJIT source code](/files/htags/luajit)
 and the [DynASM source code](/files/htags/dynasm) online.
@@ -21,9 +21,10 @@ which is updated hourly.
 
 ## Making portable apps
 
-To make portable apps that run from any directory, every subsystem that
-ultimately opens a file must look for that file in a location relative
-to the app's directory. This means at least three things:
+To make a portable app that can run from any directory without needing
+Installing, every subsystem of the app that needs to open a file must
+look for that file in a location relative to the app's directory. This
+means at least three things:
 
  * Lua's require() must look in exe-relative dirs first,
  * the OS's shared library loader must look in exe-relative dirs first,
@@ -56,7 +57,7 @@ system libraries.
 
 #### The current directory
 
-Lua modules (including Lua/C modules) searched for in the current directory
+Lua modules (including Lua/C modules) are searched for in the current directory
 ___first___ (on any platform), so the isolation from the host system
 is not absolute.
 
