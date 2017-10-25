@@ -10,6 +10,8 @@
 !/.mgit/luapower-cat.md
 /.mgit/luapower-repos.origin
 /.mgit/bundle*.sh
+/.mgit/ci*.sh
+/.mgit/luapower-ci.*
 /.mgit/egr.*
 /.mgit/bf.*
 /.mgit/xsizero.*
