@@ -132,6 +132,7 @@ tagline: package categories
 	* [bundle]
 	* [wluajit]
 	* [luapower]
+	* [luapower_db]
 	* [unit]
 	* [lua-headers]
 	* [hash_benchmark]
