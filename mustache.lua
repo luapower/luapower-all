@@ -79,10 +79,10 @@ local function tokenize(s, parse)
 			if modifier then
 				i = i + 1
 				if modifier == '{' then
-					d2_now = '}'..d2 --expect }}}
+					d2_now = '}'..d2 --expect }}} instead of }}
 					modifier = '&' --merge { and & cases
 				elseif modifier == '=' then --set delimiter
-					d1, d2 = s:match('^([^%s]+)%s+([^=]+)=', i)
+					d1, d2 = s:match('^%s*([^%s]+)%s+([^%s=]+)%s*=', i)
 					if not d1 or trim(d1) == '' or trim(d2) == '' then
 						raise(s, i, 'invalid set delimiter')
 					end
@@ -283,10 +283,15 @@ local function render(prog, context, getpartial, write)
 			val = ctx
 		elseif type(var) == 'table' then --'a.b.c' parsed as {'a', 'b', 'c'}
 			val = lookup(var[1], #ctx_stack)
-			for i=1,#var-1 do
+			for i=2,#var do
 				if type(val) ~= 'table' then
-					raise(nil, nil, 'table expected for %s, got %s',
-						var[i], type(val))
+					if not istrue(val) then --falsey values resolve to ''
+						val = nil
+						break
+					else
+						raise(nil, nil, 'table expected for %s, got %s',
+							var[i], type(val))
+					end
 				end
 				val = val[var[i]]
 			end
@@ -326,9 +331,11 @@ local function render(prog, context, getpartial, write)
 		local iter = iter_stack[#iter_stack]
 		if iter.n then --list
 			iter.n = iter.n + 1
-			if iter.n <= #iter.list then
+			if iter.n <= #iter.list then --loop
 				ctx_stack[#ctx_stack] = iter.list[iter.n]
-				pc = iter.pc --loop
+				pc = iter.pc
+			else --end loop
+				pop(iter_stack)
 			end
 		else --hashmap or conditional
 			pop(iter_stack)
@@ -380,6 +387,7 @@ local function test(template, view, partials)
 	print(render(prog, view, partials))
 end
 
+--[[
 test('{{var}} world!', {var = 'hello (a & b)'})
 test('{{{var}}} world!', {var = 'hello'})
 test('{{& var }} world!', {var = 'hello'})
@@ -396,6 +404,9 @@ test('{{#a}}{{undefined}}{{/a}}', {a = {b = 1}})
 
 --test('{{#a}}{{b}}{{/a}}', {b=1, a = {b = 2}})
 --test('{{#a}}{{b}}{{/a}}', {b=1, a = {{b = 2}, {c = 5}}})
+]]
+
+--test('Hello, {{lambda}}!', {lambda = function() return 'world' end})
 
 end
 

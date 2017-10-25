@@ -6,10 +6,12 @@ local lfs = require'lfs'
 local pp = require'pp'
 
 local function test_spec(t)
+	if not t.desc:lower():find'standalone' then return true end
+	--or t.desc:lower():find'partial' then return true end
 	print(t.name)
 	print(t.desc)
-	local s = mustache.render(t.template, t.data)
-	local success = s == t.expected
+	local ok, s = pcall(mustache.render, t.template, t.data)
+	local success = ok and s == t.expected
 	if not success then
 		print()
 		print('TEMPLATE:')
@@ -35,8 +37,14 @@ local failed = 0
 local total = 0
 local dir = 'media/mustache'
 for file in lfs.dir(dir) do
+	local path = dir..'/'..file
+	local doc
 	if file:find'%.json$' then
-		local doc = cjson.decode(glue.readfile(dir..'/'..file))
+		doc = cjson.decode(glue.readfile(path))
+	elseif file:find'%.lua$' then
+		doc = loadfile(path)()
+	end
+	if doc then
 		print('SPEC FILE: '..file)
 		print(('-'):rep(78))
 		for i, test in ipairs(doc.tests) do

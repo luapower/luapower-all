@@ -130,9 +130,10 @@ tagline: package categories
 	* [openssl]
 * Dev Tools
 	* [bundle]
-	* [wluajit]
-	* [luapower]
-	* [luapower_db]
 	* [unit]
 	* [lua-headers]
 	* [hash_benchmark]
+* Packaging
+	* [luapower]
+	* [luapower_db]
+	* [luapower-repos]
