@@ -1,61 +1,60 @@
 ---
-tagline: mustache renderer
+tagline: logic-less templates
 ---
-
-__NOTE:__ Work-in-progress! Don't touch yet.
 
 ## `local mustache = require'mustache'`
 
-A mustache parser and renderer written in Lua which strives to achieve the
-exact same output as mustache.js would on the same template + cjson-encoded
-view.
+A mustache parser and renderer written in Lua with the aim of producing the
+exact same output as mustache.js on the same template + cjson-encoded view.
+For full syntax of mustache see the
+[mustache manual](https://mustache.github.io/mustache.5.html).
 
 Features:
 
-* syntax:
-  * html-escaped variables: `{{var}}`
-  * unescaped variables: `{{{var}}}` or `{{& var}}`
-  * sections: `{{#var}} ... {{/var}}`
-  * inverted sections: `{{^var}} ... {{/var}}`
-  * comments: `{{! ... }}`
-  * partials: `{{>name}}`
-  * set delimiters: `{{=<% %>=}}`
-  * scoped vars: `a.b.c` wherever `var` is expected
-* view:
-  * compatible with mustache.js as to what constitutes a non-false value,
-  in particular '', 0 and '0' are considered false.
-  * compatibile with [cjson] as to what constitutes a list vs hashmap,
-  in particular empty tables are considered lists.
-  * lambdas: any value in the view can be a function.
-* rendering:
-  * bytecode-based.
-  * compatible with mustache.js:
-    * passes all mustache.js tests.
-    * preserves the indentation of standalone sections and partials.
-    * removes substitutions that result in empty lines.
-  * good error reporting with line and column number information.
+	* syntax:
+		* html-escaped values: `{{var}}`
+		* unescaped values: `{{{var}}}` or `{{& var}}`
+		* sections: `{{#var}} ... {{/var}}`
+		* inverted sections: `{{^var}} ... {{/var}}`
+		* comments: `{{! ... }}`
+		* partials: `{{>name}}`
+		* set delimiters: `{{=<% %>=}}`
+		* scoped vars: `a.b.c` wherever `var` is expected.
+	* semantics:
+		* compatible with mustache.js as to what constitutes a non-false value,
+		in particular `''`, `0` and `'0'` are considered false.
+		* compatibile with [cjson] as to what constitutes a list vs hashmap,
+		in particular empty tables are considered lists.
+		* section lambdas and value lambdas.
+	* rendering:
+		* passes all mustache.js tests.
+		* preserves the indentation of standalone partials.
+		* escapes `&><"'/`=` like mustache.js.
+		* good error reporting with line and column number information.
 
 
 ## API
 
--------------------------------------------------------------- --------------------------------------------------------------
-`mustache.render(template, [view], [partials], [write]) -> s`  render a template
-`mustache.compile(template) -> template`                       compile a template to bytecode
-`mustache.dump(program)`                                       dump bytecode (for debugging)
--------------------------------------------------------------- --------------------------------------------------------------
+-------------------------------------------------- --------------------------------------------------------------
+`mustache.render(template, [view], `               render a template
+`[partials], [write][, d1, d2]) -> s`
+`mustache.compile(template[, d1, d2]) -> template` compile a template to bytecode
+`mustache.dump(program)`                           dump bytecode (for debugging)
+-------------------------------------------------- --------------------------------------------------------------
 
 ## API
 
-### `mustache.render(template, [data], [partials], [write]) -> s`
+### `mustache.render(template, [data], [partials], [write][, d1, d2]) -> s`
 
 Render a template. Args:
 
   * `template` - the template, in compiled or in string form.
   * `view` - the template view.
   * `partials` - either `{name -> template}` or `function(name) -> template`
-  * `write` - an optional `function(s)` to output the rendered pieces to.
+  * `write` - a `function(s)` to output the rendered pieces to.
+  * `d1, d2` - initial set delimiters.
 
-### `mustache.compile(template) -> template`
+### `mustache.compile(template[, d1, d2]) -> template`
 
 Parse and compile a template to bytecode.
 

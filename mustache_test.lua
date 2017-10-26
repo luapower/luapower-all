@@ -7,7 +7,7 @@ local pp = require'pp'
 
 local function test_spec(t)
 	print(t.desc)
-	local ok, s = pcall(mustache.render, t.template, t.data)
+	local ok, s = pcall(mustache.render, t.template, t.data, t.partials)
 	local success = ok and s == t.expected
 	if not success then
 		print()
@@ -18,6 +18,12 @@ local function test_spec(t)
 		print()
 		pp(t.data)
 		print()
+		if t.partials then
+			print('PARTIALS:')
+			print()
+			pp(t.partials)
+			print()
+		end
 		print('EXPECTED:')
 		print()
 		print(pp.format(t.expected))

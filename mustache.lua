@@ -6,8 +6,8 @@ local push = table.insert
 local pop = table.remove
 local _ = string.format
 
---for a string, return a function that given a char position in the
---string returns the line and column numbers corresponding to that position.
+--for a string, return a function that given a byte index in the string
+--returns the line and column numbers corresponding to that index.
 local function textpos(s)
 	--collect char indices of all the lines in s, incl. the index at #s + 1
 	local t = {}
@@ -34,6 +34,9 @@ local function textpos(s)
 	end
 end
 
+--raise an error for something that is wrong at s[i], so that (line, column)
+--info can be deduced. if i is nil, eof is assumed. if s is nil, no position
+--info is printed with the error.
 local function raise(s, i, err, ...)
 	err = _(err, ...)
 	local where
@@ -63,13 +66,16 @@ local function escape(s) --from glue
 		:gsub('([%^%$%(%)%.%[%]%*%+%-%?])', '%%%1')
 end
 
---calls parse(char_index, token_type, token) for each token in the string.
---tokens can be: ('var', name, modifier, indent) or ('text', s).
---for 'var' tokens, modifiers can be: '&', '#', '^', '>', '/'.
---set delimiters and comments are dealt with in the tokenizer.
-local function tokenize(s, parse)
-	local d1 = '{{' --start delimiter
-	local d2 = '}}' --end delimiter
+--calls parse(i, j, token_type, ...) for each token in s. i and j are such
+--that s:sub(i, j) gives the unparsed token. tokens can be 'text' and 'var'.
+--var tokens get more args: (name, modifier, d1, d2, i1). name is unparsed.
+--modifiers can be '&' ,'#', '^', '>', '/'. d1 and d2 are the current set
+--delimiters (needed for lambdas). i1 is such that s:sub(i, i1) gives the
+--indent of a standalone section (for partials). set delimiters and comments
+--are dealt with in the tokenizer.
+local function tokenize(s, parse, d1, d2)
+	local d1 = d1 or '{{' --start delimiter
+	local d2 = d2 or '}}' --end delimiter
 	local patt, patt2
 	local function setpatt()
 		patt = '()\r?\n?()[ \t]*()'..
@@ -97,10 +103,10 @@ local function tokenize(s, parse)
 				p2 = j2 --first char of the next line
 			else
 				p1 = i3 --where `{{` starts
-				p2 = j  --where `}}` ends (1st char after)
+				p2 = j  --1st char after `}}`
 			end
 			if p1 > i then --there's text before `{{`
-				parse(i, 'text', s:sub(i, p1-1))
+				parse(i, p1-1, 'text')
 			end
 			if mod ~= '!' then --not a comment (we skip those)
 				local var = trim(s:sub(k1, k2-1))
@@ -114,13 +120,13 @@ local function tokenize(s, parse)
 					end
 					setpatt()
 				else
-					parse(p1, 'var', var, mod)
+					parse(p1, p2-1, 'var', var, mod, d1, d2, i3-1)
 				end
 			end
 			i = p2 --advance beyond the var
 			starts_on_newline = j1 < j2
 		else --not matched, so it's text till the end then
-			parse(i, 'text', s:sub(i))
+			parse(i, #s, 'text')
 			i = #s + 1
 		end
 	end
@@ -138,53 +144,61 @@ local function parse_var(var) --parse 'a.b.c' to {'a', 'b', 'c'}
 end
 
 --compile a template to a program that can be interpreted with render().
---the program is a list of commands with 0, 1, or 2 args as follows:
---  'text', s            : constant text, render it as is
---  'html', var          : substitute var and render it as html, escaped
---  'string', var        : substitute var and render it as is, unescaped
---  'iter', var, nextpc  : section; nexpc is the cmd index after the section
---  'ifnot', var, nextpc : inverted section
---  'end'                : end of section or inverted section
---  'render', partial    : render partial
-local function compile(template)
+--the program is a list of commands with varargs.
+--  'text',   i, j          : constant text, render it as is
+--  'html',   i, j, var     : substitute var and render it as html, escaped
+--  'string', i, j, var     : substitute var and render it as is, unescaped
+--  'iter',   i, j, var, nextpc, ti, tj, d1, d2 : section (*)
+--  'ifnot',  i, j, var, nextpc, ti, tj, d1, d2 : inverted section (*)
+--  'end'     i, j          : end of section or inverted section
+--  'render', i, j, partial, i1 : render partial (**)
+--(*) for sections, nexpc is the index in the program where the next command
+--after the section is (for jumping to it); ti and tj are such that
+--template:(ti, tj) gives the unparsed text inside the section (for lambdas),
+--and d1 and d2 are the current set delimiters (for lambdas).
+--(**) for partials, i1 is such that template:sub(i, i1) gives the
+--indent of the partial which must be applied to the lines of the result.
+local function compile(template, d1, d2)
 
 	local prog = {template = template}
-	local function cmd(cmd, arg1, arg2)
-		prog[#prog+1] = cmd
-		if arg1 then prog[#prog+1] = arg1 end
-		if arg2 then prog[#prog+1] = arg2 end
+	local function cmd(...)
+		for i=1,select('#',...) do
+			prog[#prog+1] = select(i,...)
+		end
 	end
 
-	local section_stack = {} --stack of unparsed section names
-	local nextpc_stack = {} --stack of indices where nextpc needs to be set
+	local section_stack = {} --stack of (section_name, pi_nexpc, pi_j)
 
-	tokenize(template, function(i, what, s, mod)
+	tokenize(template, function(i, j, what, var, mod, d1, d2, i1)
 		if what == 'text' then
-			cmd('text', s)
+			cmd('text', i, j)
 		elseif what == 'var' then
 			if mod == '' then
-				cmd('html', parse_var(s))
+				cmd('html', i, j, parse_var(var))
 			elseif mod == '&' then --no escaping
-				cmd('string', parse_var(s))
+				cmd('string', i, j, parse_var(var))
 			elseif mod == '#' or mod == '^' then --section
 				local c = mod == '#' and 'iter' or 'ifnot'
-			 	cmd(c, parse_var(s), 0) --we don't know nextpc yet so we set 0
-				push(section_stack, s)
-				push(nextpc_stack, #prog) --position of the above 0
+			 	cmd(c, i, j, parse_var(var), 0, j+1, 0, d1, d2)
+				push(section_stack, var)     --unparsed section name
+				push(section_stack, #prog-4) --index in prog of yet-unknown nexpc
+				push(section_stack, #prog-2) --index in prog of yet-unknown tj
 			elseif mod == '/' then --close section
-				local expected = pop(section_stack)
-				if expected ~= s then
+				local pi_tj        = pop(section_stack)
+				local pi_nextpc    = pop(section_stack)
+				local section_name = pop(section_stack)
+				if section_name ~= var then
 					raise(template, i,
-						'expected {{/%s}} but {{/%s}} found', expected, s)
+						'expected {{/%s}} but {{/%s}} found', section_name, var)
 				end
-				cmd('end')
-				local nextpc_index = pop(nextpc_stack)
-				prog[nextpc_index] = #prog + 1 --set nextpc on the last iter cmd
+				cmd('end', i, j)
+				prog[pi_nextpc] = #prog + 1 --set nextpc on the iter cmd
+				prog[pi_tj] = i-1 --set the end position of the inner text
 			elseif mod == '>' then --partial
-				cmd('render', s)
+				cmd('render', i, j, var, i1)
 			end
 		end
-	end)
+	end, d1, d2)
 
 	if #section_stack > 0 then
 		local sections = table.concat(section_stack, ', ')
@@ -196,43 +210,57 @@ end
 
 local function dump(prog) --dump bytecode (only for debugging)
 	local pp = require'pp'
-	local function str(var)
+	local function var(var)
 		return type(var) == 'table' and table.concat(var, '.') or var
 	end
+	local function text(i, j)
+		local s = pp.format(prog.template:sub(i, j))
+		if #s > 50 then
+			s = s:sub(1, 50-3)..'...'
+		end
+		return s
+	end
+	local pos = textpos(prog.template)
 	local pc = 1
+	print' LN:COL  PC  CMD    ARGS'
 	while pc <= #prog do
 		local cmd = prog[pc]
+		local i = prog[pc+1]
+		local j = prog[pc+2]
+		local line, col = pos(i)
 		if cmd == 'text' then
-			local s = pp.format(prog[pc+1])
-			if #s > 50 then
-				s = s:sub(1, 50-3)..'...'
-			end
-			print(_('%-4d %-6s %s', pc, cmd, s))
-			pc = pc + 2
+			print(_('%3d:%3d %3d  %-6s %s', line, col, pc, cmd, text(i, j)))
 		elseif cmd == 'html' or cmd == 'string' or cmd == 'render' then
-			print(_('%-4d %-6s %-12s', pc, cmd, str(prog[pc+1])))
-			pc = pc + 2
+			local name = prog[pc+3]
+			--TODO: print i1 too for 'render'
+			print(_('%3d:%3d %3d  %-6s %-12s', line, col, pc, cmd, var(name)))
+			pc = pc + 1 + (cmd == 'render' and 1 or 0)
 		elseif cmd == 'iter' or cmd == 'ifnot' then
-			print(_('%-4d %-6s %-12s nextpc: %d', pc, cmd, str(prog[pc+1]), prog[pc+2]))
-			pc = pc + 3
+			local name, nextpc, ti, tj, d1, d2 = unpack(prog, pc+3, pc+8)
+			print(_('%3d:%3d %3d  %-6s %-12s nextpc: %d  delims: %s %s   inner: %s',
+				line, col, pc, cmd, var(name), nextpc, d1, d2, text(ti, tj)))
+			pc = pc + 6
 		elseif cmd == 'end' then
-			print(_('%-4d %-6s', pc, 'end'))
-			pc = pc + 1
+			print(_('%3d:%3d %3d  %-6s', line, col, pc, 'end'))
 		else
 			assert(false)
 		end
+		pc = pc + 3
 	end
 end
 
-local escapes = {
+local escapes = { --from mustache.js
 	['&']  = '&amp;',
-	['\\'] = '&#92;',
-	['"']  = '&quot;',
 	['<']  = '&lt;',
 	['>']  = '&gt;',
+	['"']  = '&quot;',
+	["'"]  = '&#39;',
+	['/']  = '&#x2F;',
+	['`']  = '&#x60;', --attr. delimiter in IE
+	['=']  = '&#x3D;',
 }
 local function escape_html(v)
-	return v:gsub('[&\\"<>]', escapes) or v
+	return v:gsub('[&<>"\'/`=]', escapes) or v
 end
 
 --check if a value is considered valid, compatible with mustache.js.
@@ -249,10 +277,10 @@ local function islist(t)
 	return type(t) == 'table' and #t > 0
 end
 
-local function render(prog, context, getpartial, write)
+local function render(prog, context, getpartial, write, d1, d2)
 
 	if type(prog) == 'string' then --template not compiled, compile it
-		prog = compile(prog)
+		prog = compile(prog, d1, d2)
 	end
 
 	if type(getpartial) == 'table' then --partials table given, build getter
@@ -285,16 +313,17 @@ local function render(prog, context, getpartial, write)
 		if i == 1 then --top context
 			return nil
 		end
-		return lookup(var, i-1) --check parent
+		return lookup(var, i-1) --check parent (tail call)
 	end
 
-	local function resolve(var) --get the value of a var from the view
+	--get the value of a var from the view
+	local function resolve(var)
 		if #ctx_stack == 0 then
 			return nil --no view
 		end
 		local val
 		local ctx = ctx_stack[#ctx_stack]
-		if var == '.' then
+		if var == '.' then --"this" var
 			val = ctx
 		elseif type(var) == 'table' then --'a.b.c' parsed as {'a', 'b', 'c'}
 			val = lookup(var[1], #ctx_stack)
@@ -313,10 +342,36 @@ local function render(prog, context, getpartial, write)
 		else --simple var
 			val = lookup(var, #ctx_stack)
 		end
-		if type(val) == 'function' then --callback
-			val = val()
+		return val
+	end
+
+	local function run_section_lambda(lambda, ti, tj, d1, d2)
+		local text = prog.template:sub(ti, tj)
+		local view = ctx_stack[#ctx_stack]
+		local function render_lambda(text)
+			return render(text, view, getpartial, nil, d1, d2)
+		end
+		return lambda(text, render_lambda)
+	end
+
+	local function parse_lambda_result(val, d1, d2)
+		if type(val) == 'string' and val:find('{{', 1, true) then
+			local view = ctx_stack[#ctx_stack]
+			val = render(val, view, getpartial, nil, d1, d2)
 		end
 		return val
+	end
+
+	local function check_value_lambda(val)
+		if type(val) == 'function' then
+			val = val()
+			val = parse_lambda_result(val)
+		end
+		return val
+	end
+
+	local function indent(s, indent)
+		return s:gsub('([^\r\n]+\r?\n?)', indent..'%1')
 	end
 
 	local pc = 1 --program counter
@@ -328,17 +383,15 @@ local function render(prog, context, getpartial, write)
 
 	local iter_stack = {}
 	local HASH, COND = {}, {} --hashmap and conditional-type iterator markers
-	local function iter(val, nextpc)
+	local function iter(val, nextpc, ti, tj, d1, d2)
 		if islist(val) then --list value, iterate it
 			push(iter_stack, {list = val, n = 1, pc = pc})
 			push(ctx_stack, val[1])
-		else
-			if type(val) == 'table' then --hash map, set as context
-				push(iter_stack, HASH)
-				push(ctx_stack, val)
-			else --conditional value, preserve context
-				push(iter_stack, COND)
-			end
+		elseif type(val) == 'table' then --hash map, set as context
+			push(iter_stack, HASH)
+			push(ctx_stack, val)
+		else --conditional value, preserve context
+			push(iter_stack, COND)
 		end
 	end
 
@@ -362,30 +415,62 @@ local function render(prog, context, getpartial, write)
 
 	push(ctx_stack, context)
 
+	local s = prog.template
 	while pc <= #prog do
 		local cmd = pull()
+		local i = pull()
+		local j = pull()
 		if cmd == 'text' then
-			out(pull())
+			out(s:sub(i, j))
 		elseif cmd == 'html' then
-			local val = resolve(pull())
+			local val = check_value_lambda(resolve(pull()))
 			if val ~= nil then
 				out(escape_html(tostring(val)))
 			end
 		elseif cmd == 'string' then
-			out(resolve(pull()))
+			out(check_value_lambda(resolve(pull())))
 		elseif cmd == 'iter' or cmd == 'ifnot' then
-			local val = resolve(pull())
+			local var = pull()
 			local nextpc = pull()
-			if cmd == 'ifnot' then
-				val = not istrue(val)
-			end
-			if istrue(val) then --valid section value, iterate it
-				iter(val, nextpc)
+			local ti = pull()
+			local tj = pull()
+			local d1 = pull()
+			local d2 = pull()
+			local val = resolve(var)
+			if type(val) == 'function' then
+				val = run_section_lambda(val, ti, tj, d1, d2)
+				if cmd == 'ifnot' then --lambdas on inv. sections must be truthy
+					val = nil
+				end
+				val = parse_lambda_result(val, d1, d2)
+				if istrue(val) then
+					out(val)
+				end
+				pc = nextpc --section is done
 			else
-				pc = nextpc --skip section entirely
+				if cmd == 'ifnot' then
+					val = not istrue(val)
+				end
+				if istrue(val) then --valid section value, iterate it
+					iter(val, nextpc)
+				else
+					pc = nextpc --skip section entirely
+				end
 			end
 		elseif cmd == 'end' then
 			enditer() --loop back or pop iteration
+		elseif cmd == 'render' then
+			local partial = getpartial(pull())
+			local i1 = pull()
+			if partial then
+				local view = ctx_stack[#ctx_stack]
+				local val = render(partial, view, getpartial)
+				if i1 > i then
+					local spaces = prog.template:sub(i, i1)
+					val = indent(val, spaces)
+				end
+				out(val)
+			end
 		end
 	end
 
@@ -402,31 +487,16 @@ local function test(template, view, partials)
 	print(pp.format(render(prog, view, partials)))
 end
 
---[[
-test('{{var}} world!', {var = 'hello (a & b)'})
-test('{{{var}}} world!', {var = 'hello'})
-test('{{& var }} world!', {var = 'hello'})
-test('{{=$$  $$=}}$$ var $$ world!$$={{  }}=$$ and {{var}} again!', {var = 'hello'})
-test('{{#a}}invisible{{/a}}{{#b}}visible{{/b}}', {a = false, b=true})
-test('{{^a}}invisible{{/a}}{{^b}}visible{{/b}}', {a = true, b=false})
-test('{{#a}}<{{b}}> {{/a}}', {a = {{b = 1}, {b = 2}, {b = 3}}})
-test('{{#a}}<{{.}}> {{/a}}', {a = {1, 2, 3}})
-test('{{undefined}}')
-test('{{{undefined}}}')
-test('{{&undefined}}')
-test('{{&undefined}}')
-test('{{#a}}{{undefined}}{{/a}}', {a = {b = 1}})
+test('\\\n {{>partial}}\n/\n',
+{
+   content='<\n->'
+},
+{
+   partial='|\n{{{content}}}\n|\n'
+}
+)
 
---test('{{#a}}{{b}}{{/a}}', {b=1, a = {b = 2}})
---test('{{#a}}{{b}}{{/a}}', {b=1, a = {{b = 2}, {c = 5}}})
-]]
-
---test('Hello, {{lambda}}!', {lambda = function() return 'world' end})
-
-test(' | {{^boolean}} {{! Important Whitespace }}\n {{/boolean}} | \n',
-{boolean=false})
-
-print(pp.format' |  \n  | \n')
+print(pp.format('\\\n |\n <\n->\n |\n/\n'))
 
 end
 
