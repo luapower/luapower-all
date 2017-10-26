@@ -6,8 +6,7 @@ local lfs = require'lfs'
 local pp = require'pp'
 
 local function test_spec(t)
-	if not t.desc:lower():find'standalone' then return true end
-	--or t.desc:lower():find'partial' then return true end
+	if t.desc:lower():find'partial' then return true end
 	print(t.name)
 	print(t.desc)
 	local ok, s = pcall(mustache.render, t.template, t.data)
@@ -15,7 +14,7 @@ local function test_spec(t)
 	if not success then
 		print()
 		print('TEMPLATE:')
-		print(t.template)
+		print(pp.format(t.template))
 		print()
 		print('DATA:')
 		print()
@@ -23,11 +22,11 @@ local function test_spec(t)
 		print()
 		print('EXPECTED:')
 		print()
-		print(t.expected)
+		print(pp.format(t.expected))
 		print()
 		print('RENDERED:')
 		print()
-		print(s)
+		print(pp.format(s))
 		print()
 	end
 	return success

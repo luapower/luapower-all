@@ -57,58 +57,71 @@ local function trim(s) --from glue
 	return from > #s and '' or s:match('.*%S', from)
 end
 
+--escape a string so that it can be matched literally inside a pattern.
+local function escape(s) --from glue
+	return s:gsub('%%','%%%%'):gsub('%z','%%z')
+		:gsub('([%^%$%(%)%.%[%]%*%+%-%?])', '%%%1')
+end
+
 --calls parse(char_index, token_type, token) for each token in the string.
---tokens can be: ('var', name, [modifier]) or ('text', s).
+--tokens can be: ('var', name, modifier, indent) or ('text', s).
 --for 'var' tokens, modifiers can be: '&', '#', '^', '>', '/'.
 --set delimiters and comments are dealt with in the tokenizer.
 local function tokenize(s, parse)
 	local d1 = '{{' --start delimiter
 	local d2 = '}}' --end delimiter
+	local patt, patt2
+	local function setpatt()
+		patt = '()\r?\n?()[ \t]*()'..
+			escape(d1)..'([!&#%^/>=]?)().-()'..
+			escape(d2)..'()[ \t]*()\r?\n?()'
+		--secondary pattern for matching the special case `{{{...}}}`
+		patt2 = d1 == '{{' and d2 == '}}' and
+			'()\r?\n?()[ \t]*(){{({)().-()}}}()[ \t]*()\r?\n?()'
+	end
+	setpatt()
 	local i = 1
 	while i <= #s do
-		local j = s:find(d1, i, true) -- {{
-		if j then
-			if j > i then --there's text before {{
-				parse(i, 'text', s:sub(i, j - 1))
-				i = j
-			end
-			local i0 = i --position of {{
-			i = i + #d1
-			local modifier = s:match('^[!{&#%^/>=]', i)
-			local d2_now = d2
-			if modifier then
-				i = i + 1
-				if modifier == '{' then
-					d2_now = '}'..d2 --expect }}} instead of }}
-					modifier = '&' --merge { and & cases
-				elseif modifier == '=' then --set delimiter
-					d1, d2 = s:match('^%s*([^%s]+)%s+([^%s=]+)%s*=', i)
-					if not d1 or trim(d1) == '' or trim(d2) == '' then
-						raise(s, i, 'invalid set delimiter')
-					end
-				end
-			end
-			local j = s:find(d2_now, i, true) -- }} or }}}
-			if not j then
-				raise(s, nil, d2_now..' expected')
-			end
-			if modifier == '=' or modifier == '!' then
-				i = j + #d2_now
+		local patt = patt2 and s:match('{{{?', i) == '{{{' and patt2 or patt
+		local i1, i2, i3, mod, k1, k2, j, j1, j2 = s:match(patt, i)
+		if i1 then
+			if mod == '{' then mod = '&' end --merge `{` and `&` cases
+			local starts_alone = i1 < i2 or i1 == 1
+			local ends_alone = j1 < j2 or j2 == #s + 1
+			local standalone = starts_alone and ends_alone
+				and mod ~= '' and mod ~= '&' --simple values are not standalone
+			local p1, p2 --the char positions delimiting the `{{...}}` token
+			if standalone then
+				p1 = i2 --first char of the line
+				p2 = j2 --first char of the next line
 			else
-				local var = s:sub(i, j - 1) --text before }}, could be empty
-				i = j + #d2_now
-				var = trim(var)
-				if var == '' or var:find'%s' then
-					raise(s, i0, 'invalid name %s', var)
-				end
-				parse(i0, 'var', var, modifier)
+				p1 = i3 --where `{{` starts
+				p2 = j  --where `}}` ends (1st char after)
 			end
-		else --leftover text
+			if p1 > i then --there's text before `{{`
+				parse(i, 'text', s:sub(i, p1-1))
+			end
+			if mod ~= '!' then --not a comment (we skip those)
+				local var = trim(s:sub(k1, k2-1))
+				if var == '' then
+					raise(s, k1, 'empty var')
+				end
+				if mod == '=' then --set delimiter
+					d1, d2 = var:match'^%s*([^%s]+)%s+([^%s=]+)%s*='
+					if not d1 or trim(d1) == '' or trim(d2) == '' then
+						raise(s, k1, 'invalid set delimiter')
+					end
+					setpatt()
+				else
+					parse(p1, 'var', var, mod)
+				end
+			end
+			i = p2 --advance beyond the var
+		else --not matched, so it's text till the end then
 			parse(i, 'text', s:sub(i))
 			i = #s + 1
 		end
 	end
-
 end
 
 local function parse_var(var) --parse 'a.b.c' to {'a', 'b', 'c'}
@@ -143,20 +156,20 @@ local function compile(template)
 	local section_stack = {} --stack of unparsed section names
 	local nextpc_stack = {} --stack of indices where nextpc needs to be set
 
-	tokenize(template, function(i, what, s, modifier)
+	tokenize(template, function(i, what, s, mod)
 		if what == 'text' then
 			cmd('text', s)
 		elseif what == 'var' then
-			if not modifier then
+			if mod == '' then
 				cmd('html', parse_var(s))
-			elseif modifier == '&' then --no escaping
+			elseif mod == '&' then --no escaping
 				cmd('string', parse_var(s))
-			elseif modifier == '#' or modifier == '^' then --section
-				local c = modifier == '#' and 'iter' or 'ifnot'
+			elseif mod == '#' or mod == '^' then --section
+				local c = mod == '#' and 'iter' or 'ifnot'
 			 	cmd(c, parse_var(s), 0) --we don't know nextpc yet so we set 0
 				push(section_stack, s)
 				push(nextpc_stack, #prog) --position of the above 0
-			elseif modifier == '/' then --close section
+			elseif mod == '/' then --close section
 				local expected = pop(section_stack)
 				if expected ~= s then
 					raise(template, i,
@@ -165,7 +178,7 @@ local function compile(template)
 				cmd('end')
 				local nextpc_index = pop(nextpc_stack)
 				prog[nextpc_index] = #prog + 1 --set nextpc on the last iter cmd
-			elseif modifier == '>' then --partial
+			elseif mod == '>' then --partial
 				cmd('render', s)
 			end
 		end
@@ -407,6 +420,15 @@ test('{{#a}}{{undefined}}{{/a}}', {a = {b = 1}})
 ]]
 
 --test('Hello, {{lambda}}!', {lambda = function() return 'world' end})
+test(
+'[\n{{#section}}\n  {{data}}\n  |data|\n{{/section}}\n\n{{= | | =}}\n|#section|\n  {{data}}\n  |data|\n|/section|\n]\n',
+{section=true, data='I got interpolated.'})
+
+print'[\n  I got interpolated.\n  |data|\n\n  {{data}}\n  I got interpolated.\n]\n'
+
+print('---------')
+
+print'[\n{{#section}}\n  {{data}}\n  |data|\n{{/section}}\n\n{{= | | =}}\n|#section|\n  {{data}}\n  |data|\n|/section|\n]\n'
 
 end
 
