@@ -6,8 +6,6 @@ local lfs = require'lfs'
 local pp = require'pp'
 
 local function test_spec(t)
-	if t.desc:lower():find'partial' then return true end
-	print(t.name)
 	print(t.desc)
 	local ok, s = pcall(mustache.render, t.template, t.data)
 	local success = ok and s == t.expected
@@ -53,6 +51,7 @@ for file in lfs.dir(dir) do
 			end
 			total = total + 1
 		end
+		print()
 	end
 end
 print('FAILED: '..failed..'/'..total)

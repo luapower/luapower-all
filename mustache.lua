@@ -81,12 +81,13 @@ local function tokenize(s, parse)
 	end
 	setpatt()
 	local i = 1
+	local starts_on_newline = true
 	while i <= #s do
 		local patt = patt2 and s:match('{{{?', i) == '{{{' and patt2 or patt
 		local i1, i2, i3, mod, k1, k2, j, j1, j2 = s:match(patt, i)
 		if i1 then
 			if mod == '{' then mod = '&' end --merge `{` and `&` cases
-			local starts_alone = i1 < i2 or i1 == 1
+			local starts_alone = i1 < i2 or (i1 == i and starts_on_newline)
 			local ends_alone = j1 < j2 or j2 == #s + 1
 			local standalone = starts_alone and ends_alone
 				and mod ~= '' and mod ~= '&' --simple values are not standalone
@@ -117,6 +118,7 @@ local function tokenize(s, parse)
 				end
 			end
 			i = p2 --advance beyond the var
+			starts_on_newline = j1 < j2
 		else --not matched, so it's text till the end then
 			parse(i, 'text', s:sub(i))
 			i = #s + 1
@@ -397,7 +399,7 @@ if not ... then
 local function test(template, view, partials)
 	local prog = compile(template)
 	dump(prog)
-	print(render(prog, view, partials))
+	print(pp.format(render(prog, view, partials)))
 end
 
 --[[
@@ -420,15 +422,11 @@ test('{{#a}}{{undefined}}{{/a}}', {a = {b = 1}})
 ]]
 
 --test('Hello, {{lambda}}!', {lambda = function() return 'world' end})
-test(
-'[\n{{#section}}\n  {{data}}\n  |data|\n{{/section}}\n\n{{= | | =}}\n|#section|\n  {{data}}\n  |data|\n|/section|\n]\n',
-{section=true, data='I got interpolated.'})
 
-print'[\n  I got interpolated.\n  |data|\n\n  {{data}}\n  I got interpolated.\n]\n'
+test(' | {{^boolean}} {{! Important Whitespace }}\n {{/boolean}} | \n',
+{boolean=false})
 
-print('---------')
-
-print'[\n{{#section}}\n  {{data}}\n  |data|\n{{/section}}\n\n{{= | | =}}\n|#section|\n  {{data}}\n  |data|\n|/section|\n]\n'
+print(pp.format' |  \n  | \n')
 
 end
 
