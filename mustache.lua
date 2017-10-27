@@ -399,28 +399,25 @@ local function render(prog, ctx_stack, getpartial, write, d1, d2, escape)
 
 	local pc = 1 --program counter
 	local iter_stack = {} --stack of iteration states
-	local LIST, HASH, COND = {}, {}, {} --listtype identities
 
 	local function iter(val, nextpc, ti, tj, d1, d2)
 		local nextvalue = listvalues(val)
 		if nextvalue then --it's a list, iterate it
 			push(iter_stack, nextvalue)
 			push(iter_stack, pc)
-			push(iter_stack, LIST)
+			push(iter_stack, 'list')
 			push(ctx_stack, nextvalue()) --always non-nil
-		else
-			if type(val) == 'table' then --hashmap, set as context
-				push(iter_stack, HASH)
-				push(ctx_stack, val)
-			else --conditional section, don't push a context
-				push(iter_stack, COND)
-			end
+		elseif type(val) == 'table' then --hashmap, set as context
+			push(iter_stack, 'hash')
+			push(ctx_stack, val)
+		else --conditional section, don't push a context
+			push(iter_stack, 'cond')
 		end
 	end
 
 	local function enditer()
 		local itertype = iter_stack[#iter_stack]
-		if itertype == LIST then
+		if itertype == 'list' then
 			local nextvalue = iter_stack[#iter_stack-2]
 			local startpc   = iter_stack[#iter_stack-1]
 			local val = nextvalue()
@@ -431,10 +428,11 @@ local function render(prog, ctx_stack, getpartial, write, d1, d2, escape)
 				pop(iter_stack)
 				pop(iter_stack)
 				pop(iter_stack)
+				pop(ctx_stack)
 			end
 		else
 			pop(iter_stack)
-			if itertype == HASH then
+			if itertype == 'hash' then
 				pop(ctx_stack)
 			end
 		end

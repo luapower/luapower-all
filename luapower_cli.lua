@@ -425,7 +425,7 @@ local function init_actions()
 	add_action('ls-uncloned', '', 'list not yet installed packages', keys_lister(lp.not_installed_packages))
 
 	add_section'PACKAGE INFO'
-	add_action('describe',   'PACKAGE [PLATFORM]', 'describe a package', package_arg(describe_package, true))
+	add_action('describe',  ' PACKAGE  [PLATFORM]', 'describe a package', package_arg(describe_package, true))
 	add_action('type',      '[PACKAGE]', 'package type', package_arg(package_lister(lp.package_type)))
 	add_action('version',   '[PACKAGE]', 'current git version', package_arg(package_lister(lp.git_version)))
 	add_action('tags',      '[PACKAGE]', 'git tags', package_arg(package_lister(lp.git_tags, list_values, enum_values)))
@@ -455,7 +455,7 @@ local function init_actions()
 
 	add_section'CHECKS'
 	add_action('check',        '[PACKAGE]', 'run all consistency checks', package_arg(consistency_checks))
-	add_action('load-errors',  '[PACKAGE] [PLATFORM]', 'list module load errors', kv_lister(lp.load_errors))
+	add_action('load-errors',  '[PACKAGE] [PLATFORM]', 'list module load errors', kv_lister(package_arg(lp.load_errors)))
 
 	add_section'DEPENDENCIES'
 	add_action('d-tree', '             MODULE [PLATFORM]', 'load-time require tree',
@@ -497,6 +497,9 @@ local function init_actions()
 				print(platform, t.os or '', t.arch or '', t.err or '')
 			end
 		end)
+
+	add_action('listen', '[-v] [IP [PORT]]', 'start a luapower server')
+	add_action('connect', '[-v] [IP [PORT]]', 'connect to a luapower server')
 
 	add_section'DEPENDENCY DB'
 	add_action('update-db', '[package] [platform]', 'update the dependency database',

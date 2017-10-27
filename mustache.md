@@ -30,9 +30,9 @@ For full syntax of mustache see the
 	seen as lists and their non-nil elements are iterated.
 	* section lambdas `f(text, render)` and value lambdas `f()` are supported.
 * rendering:
-	* passes all mustache.js tests.
+	* __passes all mustache.js tests.__
 	* preserves the indentation of standalone partials.
-	* escapes `&><"'/`=\` like mustache.js.
+	* escapes `&`, `>`, `<`, `"`, `'`, `/`, ` ` `, `=` like mustache.js.
 * other:
 	* error reporting with line and column number information.
 	* dump tool for debugging compiled templates.
@@ -41,16 +41,17 @@ For full syntax of mustache see the
 
 ## API
 
------------------------------------ ------------------------------------------
-`mustache.render(template, [view],  render a template
-    [partials], [write], [d1, d2],
-    [escape_func]) -> s`
+-------------------------------------- ---------------------------------------
+`mustache.render(template,             (compile and) render a template
+    [view], [partials], [write],
+	 [d1, d2], [escape_func]) -> s`
 
-`mustache.compile(template,         compile a template to bytecode
+`mustache.compile(template,            compile a template to bytecode
     [d1, d2]) -> template`
 
-`mustache.dump(program, [d1, d2],   dump bytecode (for debugging)
-    [print])`
+`mustache.dump(template,               dump bytecode (for debugging)
+    [d1, d2], [print])`
+
 ------------------------------------------------------------------------------
 
 

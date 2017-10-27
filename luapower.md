@@ -9,9 +9,9 @@ aggregate metadata about packages, modules and documentation and perform
 various consistency checks. It gives accurate information about dependencies
 between modules and packages because it actually loads the Lua modules and
 tracks all `require` and `ffi.load` calls, and then it integrates that
-information with the package information that it gets from git and multigit.
-The entire API is memoized so it can be abused without worrying about
-caching the results of the function calls.
+information with the package information that it gets from git and
+[multigit][luapower-git]. The entire API is memoized so it can be abused
+without worrying about caching the results of the function calls.
 
 Accompanying the library there's a command-line interface and an RPC server
 which can be used to track module dependencies across multiple platforms,
@@ -19,10 +19,13 @@ run automated tests, etc.
 
 ## Module usage
 
-The module assumes that the luapower tree is at the current directory.
+The module assumes that the luapower tree is the current directory.
 If that's not the case, you have say where it is:
 
 	lp.config('luapower_dir', '/path/to/luapower')
+
+It also assumes that the luapower tree was cloned (see [luapower-git])
+rather than just downloaded.
 
 The API can be categorized based on the different types of things it does:
 
