@@ -149,7 +149,7 @@ local cache = setmetatable({}, {__mode = 'kv'}) --{template -> prog} cache
 
 --compile a template to a program that can be interpreted with render().
 --the program is a list of commands with varargs.
---  'text',   i, j          : constant text, render it as is
+--  'text',   i, j, s       : constant text, render it as is
 --  'html',   i, j, var     : substitute var and render it as html, escaped
 --  'string', i, j, var     : substitute var and render it as is, unescaped
 --  'iter',   i, j, var, nextpc, ti, tj, d1, d2 : section (*)
@@ -186,7 +186,7 @@ local function compile(template, d1, d2)
 
 	tokenize(template, function(i, j, what, var, mod, d1, d2, i1)
 		if what == 'text' then
-			cmd('text', i, j)
+			cmd('text', i, j, template:sub(i, j))
 		elseif what == 'var' then
 			if mod == '' then
 				cmd('html', i, j, parse_var(var))
@@ -231,8 +231,8 @@ local function dump(prog, d1, d2, print) --dump bytecode
 	local function var(var)
 		return type(var) == 'table' and table.concat(var, '.') or var
 	end
-	local function text(i, j)
-		local s = pp.format(prog.template:sub(i, j))
+	local function text(s)
+		local s = pp.format(s)
 		if #s > 50 then
 			s = s:sub(1, 50-3)..'...'
 		end
@@ -248,7 +248,8 @@ local function dump(prog, d1, d2, print) --dump bytecode
 		local line, col = pos(i)
 		local s
 		if cmd == 'text' then
-			s = text(i, j)
+			s = text(prog[pc+3])
+			pc = pc + 1
 		elseif cmd == 'html' or cmd == 'string' then
 			s = _('%-12s', var(prog[pc+3]))
 			pc = pc + 1
@@ -257,8 +258,9 @@ local function dump(prog, d1, d2, print) --dump bytecode
 			pc = pc + 2
 		elseif cmd == 'iter' or cmd == 'ifnot' then
 			local name, nextpc, ti, tj, d1, d2 = unpack(prog, pc+3, pc+8)
+			local inner = prog.template:sub(ti, tj)
 			s = _('%-12s nextpc: %d, delim: %s %s, text: %s',
-					var(name), nextpc, d1, d2, text(ti, tj))
+					var(name), nextpc, d1, d2, text(inner))
 			pc = pc + 6
 		elseif cmd == 'end' then
 			s = ''
@@ -293,21 +295,73 @@ local function istrue(v)
 	end
 end
 
---check if a value is considered a valid list.
-local function islist(t)
-	return type(t) == 'table' and #t > 0
+--check if a value is an array using cjson semantics (tip: it works with
+--sparse arrays) and return an iterator giving the next non-nil value.
+local function listvalues(t)
+	if type(t) ~= 'table' then return end
+	local n = 0
+	local i0, i1 = 1/0, 0
+	for k in pairs(t) do
+		if type(k) ~= 'number' then return end
+		if k <= 0 then return end
+		if math.floor(k) ~= k then return end
+		n = n + 1
+		i0 = math.min(i0, k)
+		i1 = math.max(i1, k)
+	end
+	if n == 0 then return end
+	local i = i0-1
+	local val
+	return function()
+		repeat
+			i = i + 1
+			val = t[i]
+		until i >= i1 or val ~= nil
+		return val
+	end
 end
 
-local function render(prog, view, getpartial, write, d1, d2, escape_func)
+local function indent(s, indent)
+	return s:gsub('([^\r\n]+\r?\n?)', indent..'%1')
+end
+
+local function lookup(ctx_stack, var, i) --search up a context stack
+	local val = ctx_stack[i][var]
+	if val ~= nil then --var found
+		return val
+	end
+	if i == 1 then --top context
+		return nil
+	end
+	return lookup(ctx_stack, var, i-1) --check parent (tail call)
+end
+
+local function resolve(ctx_stack, var) --find a value in a context stack
+	if #ctx_stack == 0 then
+		return --no view
+	end
+	if var == '.' then --"this" var
+		return ctx_stack[#ctx_stack]
+	elseif type(var) == 'table' then --'a.b.c' parsed as {'a', 'b', 'c'}
+		local val = lookup(ctx_stack, var[1], #ctx_stack)
+		for i=2,#var do
+			if not istrue(val) then --falsey values resolve to ''
+				return
+			elseif type(val) ~= 'table' then
+				raise(nil, nil, 'table expected for field "%s" but got %s',
+					var[i], type(val))
+			end
+			val = val[var[i]]
+		end
+		return val
+	else --simple var
+		return lookup(ctx_stack, var, #ctx_stack)
+	end
+end
+
+local function render(prog, ctx_stack, getpartial, write, d1, d2, escape)
 
 	prog = compile(prog, d1, d2)
-
-	if type(getpartial) == 'table' then --partials table given, build getter
-		local partials = getpartial
-		getpartial = function(name)
-			return partials[name]
-		end
-	end
 
 	local outbuf
 	if not write then --writer not given, do buffered output
@@ -316,68 +370,22 @@ local function render(prog, view, getpartial, write, d1, d2, escape_func)
 			outbuf[#outbuf+1] = s
 		end
 	end
-
 	local function out(s)
 		if s == nil then return end
 		write(tostring(s))
 	end
 
-	local escape = escape_func or escape_html
-
-	local ctx_stack = {}
-
-	local function lookup(var, i) --lookup a var in the context hierarchy
-		local val = ctx_stack[i][var]
-		if val ~= nil then --var found
-			return val
-		end
-		if i == 1 then --top context
-			return nil
-		end
-		return lookup(var, i-1) --check parent (tail call)
-	end
-
-	--get the value of a var from the view
-	local function resolve(var)
-		if #ctx_stack == 0 then
-			return nil --no view
-		end
-		local val
-		local ctx = ctx_stack[#ctx_stack]
-		if var == '.' then --"this" var
-			val = ctx
-		elseif type(var) == 'table' then --'a.b.c' parsed as {'a', 'b', 'c'}
-			val = lookup(var[1], #ctx_stack)
-			for i=2,#var do
-				if not istrue(val) then --falsey values resolve to ''
-					val = nil
-					break
-				end
-				if type(val) ~= 'table' then
-					raise(nil, nil, 'table expected for field "%s" but got %s',
-						var[i], type(val))
-				end
-				val = val[var[i]]
-			end
-		else --simple var
-			val = lookup(var, #ctx_stack)
-		end
-		return val
-	end
-
 	local function run_section_lambda(lambda, ti, tj, d1, d2)
 		local text = prog.template:sub(ti, tj)
-		local view = ctx_stack[#ctx_stack]
 		local function render_lambda(text)
-			return render(text, view, getpartial, nil, d1, d2)
+			return render(text, ctx_stack, getpartial, nil, d1, d2, escape)
 		end
 		return lambda(text, render_lambda)
 	end
 
 	local function render_lambda_result(val, d1, d2)
 		if type(val) == 'string' and val:find('{{', 1, true) then
-			local view = ctx_stack[#ctx_stack]
-			val = render(val, view, getpartial, nil, d1, d2)
+			val = render(val, ctx_stack, getpartial, nil, d1, d2, escape)
 		end
 		return val
 	end
@@ -389,24 +397,17 @@ local function render(prog, view, getpartial, write, d1, d2, escape_func)
 		return val
 	end
 
-	local function indent(s, indent)
-		return s:gsub('([^\r\n]+\r?\n?)', indent..'%1')
-	end
-
 	local pc = 1 --program counter
-	local function pull()
-		local val = prog[pc]
-		pc = pc + 1
-		return val
-	end
-
-	local iter_stack = {}
-	local HASH, COND = {}, {} --dummy iter objects for comparison
+	local iter_stack = {} --stack of iteration states
+	local LIST, HASH, COND = {}, {}, {} --listtype identities
 
 	local function iter(val, nextpc, ti, tj, d1, d2)
-		if islist(val) then --list value, iterate it
-			push(iter_stack, {list = val, n = 1, pc = pc})
-			push(ctx_stack, val[1]) --non-empty list so val[1] is never nil
+		local nextvalue = listvalues(val)
+		if nextvalue then --it's a list, iterate it
+			push(iter_stack, nextvalue)
+			push(iter_stack, pc)
+			push(iter_stack, LIST)
+			push(ctx_stack, nextvalue()) --always non-nil
 		else
 			if type(val) == 'table' then --hashmap, set as context
 				push(iter_stack, HASH)
@@ -418,44 +419,50 @@ local function render(prog, view, getpartial, write, d1, d2, escape_func)
 	end
 
 	local function enditer()
-		local iter = iter_stack[#iter_stack]
-		if iter.n then --list
-			iter.n = iter.n + 1
-			if iter.n <= #iter.list then --loop
-				ctx_stack[#ctx_stack] = iter.list[iter.n]
-				pc = iter.pc
-				return
+		local itertype = iter_stack[#iter_stack]
+		if itertype == LIST then
+			local nextvalue = iter_stack[#iter_stack-2]
+			local startpc   = iter_stack[#iter_stack-1]
+			local val = nextvalue()
+			if val ~= nil then --loop back with the next value as context
+				ctx_stack[#ctx_stack] = val
+				pc = startpc
+			else
+				pop(iter_stack)
+				pop(iter_stack)
+				pop(iter_stack)
 			end
-		end
-		pop(iter_stack)
-		if iter ~= COND then
-			pop(ctx_stack)
+		else
+			pop(iter_stack)
+			if itertype == HASH then
+				pop(ctx_stack)
+			end
 		end
 	end
 
-	push(ctx_stack, view)
-
 	while pc <= #prog do
-		local cmd = pull()
-		local i = pull()
-		local j = pull()
+		local cmd = prog[pc]
 		if cmd == 'text' then
-			out(prog.template:sub(i, j))
+			local s = prog[pc+3]
+			pc = pc + 4
+			out(s)
 		elseif cmd == 'html' then
-			local val = check_value_lambda(resolve(pull()))
+			local var = prog[pc+3]
+			pc = pc + 4
+			local val = check_value_lambda(resolve(ctx_stack, var))
 			if val ~= nil then
 				out(escape(tostring(val)))
 			end
 		elseif cmd == 'string' then
-			out(check_value_lambda(resolve(pull())))
+			local var = prog[pc+3]
+			pc = pc + 4
+			out(check_value_lambda(resolve(ctx_stack, var)))
 		elseif cmd == 'iter' or cmd == 'ifnot' then
-			local var = pull()
-			local nextpc = pull()
-			local ti = pull()
-			local tj = pull()
-			local d1 = pull()
-			local d2 = pull()
-			local val = resolve(var)
+			local var, nextpc, ti, tj, d1, d2 =
+				prog[pc+3], prog[pc+4], prog[pc+5],
+				prog[pc+6], prog[pc+7], prog[pc+8]
+				pc = pc + 9
+			local val = resolve(ctx_stack, var)
 			if type(val) == 'function' then
 				val = run_section_lambda(val, ti, tj, d1, d2)
 				if cmd == 'ifnot' then --lambdas on inv. sections must be truthy
@@ -477,17 +484,18 @@ local function render(prog, view, getpartial, write, d1, d2, escape_func)
 				end
 			end
 		elseif cmd == 'end' then
-			enditer() --loop back or pop iteration
+			pc = pc + 3
+			enditer() --loop back or end iteration
 		elseif cmd == 'render' then
-			local partial = getpartial(pull())
-			local i1 = pull()
+			local i, partial, i1 = prog[pc+1], prog[pc+3], prog[pc+4]
+			pc = pc + 5
+			local partial = getpartial(partial)
 			if partial then
-				local view = ctx_stack[#ctx_stack]
-				if i1 >= i then
+				if i1 >= i then --indented
 					local spaces = prog.template:sub(i, i1)
 					partial = indent(partial, spaces)
 				end
-				render(partial, view, getpartial, write)
+				render(partial, ctx_stack, getpartial, write, nil, nil, escape)
 			end
 		end
 	end
@@ -497,7 +505,23 @@ local function render(prog, view, getpartial, write, d1, d2, escape_func)
 	end
 end
 
-if not ... then require'mustache_test' end
+local internal_render = render
+local function render(prog, view, getpartial, write, d1, d2, escape)
+	if type(getpartial) == 'table' then --partials table given, build getter
+		local partials = getpartial
+		getpartial = function(name)
+			return partials[name]
+		end
+	end
+	local ctx_stack = {view}
+	escape = escape or escape_html
+	return internal_render(prog, ctx_stack, getpartial, write, d1, d2, escape)
+end
+
+
+if not ... then
+	require'mustache_test'
+end
 
 return {
 	compile = compile,

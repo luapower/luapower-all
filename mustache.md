@@ -2,6 +2,8 @@
 tagline: logic-less templates
 ---
 
+{{=<%% %%>=}}
+
 ## `local mustache = require'mustache'`
 
 A mustache parser and renderer written in Lua with the aim of producing the
@@ -23,14 +25,18 @@ For full syntax of mustache see the
 * semantics:
 	* compatible with mustache.js as to what constitutes a non-false value,
 	in particular `''`, `0` and `'0'` are considered false.
-	* compatibile with [cjson] as to what constitutes a list vs hashmap,
-	in particular empty tables are considered lists.
-	* section lambdas and value lambdas.
+	* compatibile with [cjson] as to what is considered an array and what is
+	a hashmap, in particular sparse arrays that contain no other keys are
+	seen as lists and their non-nil elements are iterated.
+	* section lambdas `f(text, render)` and value lambdas `f()` are supported.
 * rendering:
 	* passes all mustache.js tests.
 	* preserves the indentation of standalone partials.
-	* escapes `&><"'/`=` like mustache.js.
-	* good error reporting with line and column number information.
+	* escapes `&><"'/`=\` like mustache.js.
+* other:
+	* error reporting with line and column number information.
+	* dump tool for debugging compiled templates.
+	* text position info for all tokens (can be used for syntax highlighting).
 
 
 ## API

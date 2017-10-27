@@ -76,9 +76,20 @@ local function test_dump()
 	print()
 end
 
-local function test_marginal_cases()
-	assert(mustache.render('') == '')
-	assert(mustache.render('{{x}}', {x=false}) == 'false')
+local function test_basic()
+	local function test(template, view, expected)
+		local result = mustache.render(template, view)
+		if result == expected then return end
+		local pp = require'pp'
+		error(string.format('%s ~= %s', pp.format(result), pp.format(expected)))
+	end
+	test('', nil, '') --empty string, no view
+	test('{{#.}}{{.}}{{/.}}', {}, '') --empty list
+	test('{{#.}}{{.}}{{/.}}', {5, 7, 9}, '579') --non-empty list
+	test('{{#.}}{{.}}{{/.}}',
+		{[5] = 'x', [6] = 'y'}, 'xy') --non-empty sparse list
+	test('{{x}}', {x=false}, 'false') --non-string values
+	test('{{#a}}{{#b}}{{c}}{{/b}}{{/a}}', {c=5,a={b={d=1}}}, '5') --inheritance
 end
 
 local function test_errors()
@@ -98,7 +109,7 @@ local function test_errors()
 	print()
 end
 
+test_basic()
 test_specs()
 test_dump()
-test_marginal_cases()
 test_errors()
