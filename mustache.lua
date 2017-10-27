@@ -34,9 +34,9 @@ local function textpos(s)
 	end
 end
 
---raise an error for something that is wrong at s[i], so that (line, column)
---info can be deduced. if i is nil, eof is assumed. if s is nil, no position
---info is printed with the error.
+--raise an error for something that happened at s[i], so that position in
+--file (line, column) can be printed. if i is nil, eof is assumed.
+--if s is nil, no position info is printed with the error.
 local function raise(s, i, err, ...)
 	err = _(err, ...)
 	local where
@@ -48,15 +48,15 @@ local function raise(s, i, err, ...)
 		else
 			where = 'eof'
 		end
-		err = _('error at %s: %s', where, err)
+		err = _('error at %s: %s.', where, err)
 	else
-		err = _('error: %s', err)
+		err = _('error: %s.', err)
 	end
-	error(err)
+	error(err, 2)
 end
 
-local function trim(s) --from glue
-	local from = s:match('^%s*()')
+local function trim(s) --fast trim from glue
+	local from = s:match'^%s*()'
 	return from > #s and '' or s:match('.*%S', from)
 end
 
@@ -87,16 +87,16 @@ local function tokenize(s, parse, d1, d2)
 	end
 	setpatt()
 	local i = 1
-	local starts_on_newline = true
+	local was_newline = true
 	while i <= #s do
 		local patt = patt2 and s:match('{{{?', i) == '{{{' and patt2 or patt
 		local i1, i2, i3, mod, k1, k2, j, j1, j2 = s:match(patt, i)
 		if i1 then
 			if mod == '{' then mod = '&' end --merge `{` and `&` cases
-			local starts_alone = i1 < i2 or (i1 == i and starts_on_newline)
+			local starts_alone = i1 < i2 or (i1 == i and was_newline)
 			local ends_alone = j1 < j2 or j2 == #s + 1
-			local standalone = starts_alone and ends_alone
-				and mod ~= '' and mod ~= '&' --simple values are not standalone
+			local can_be_standalone = mod ~= '' and mod ~= '&'
+			local standalone = can_be_standalone and starts_alone and ends_alone
 			local p1, p2 --the char positions delimiting the `{{...}}` token
 			if standalone then
 				p1 = i2 --first char of the line
@@ -115,8 +115,10 @@ local function tokenize(s, parse, d1, d2)
 				end
 				if mod == '=' then --set delimiter
 					d1, d2 = var:match'^%s*([^%s]+)%s+([^%s=]+)%s*='
-					if not d1 or trim(d1) == '' or trim(d2) == '' then
-						raise(s, k1, 'invalid set delimiter')
+					d1 = d1 and trim(d1)
+					d2 = d2 and trim(d2)
+					if not d1 or d1 == '' or d2 == '' then
+						raise(s, k1, 'invalid set delimiters')
 					end
 					setpatt()
 				else
@@ -124,7 +126,7 @@ local function tokenize(s, parse, d1, d2)
 				end
 			end
 			i = p2 --advance beyond the var
-			starts_on_newline = j1 < j2
+			was_newline = j1 < j2
 		else --not matched, so it's text till the end then
 			parse(i, #s, 'text')
 			i = #s + 1
@@ -143,6 +145,8 @@ local function parse_var(var) --parse 'a.b.c' to {'a', 'b', 'c'}
 	return path
 end
 
+local cache = setmetatable({}, {__mode = 'kv'}) --{template -> prog} cache
+
 --compile a template to a program that can be interpreted with render().
 --the program is a list of commands with varargs.
 --  'text',   i, j          : constant text, render it as is
@@ -159,15 +163,26 @@ end
 --(**) for partials, i1 is such that template:sub(i, i1) gives the
 --indent of the partial which must be applied to the lines of the result.
 local function compile(template, d1, d2)
+	if type(template) == 'table' then --already compiled
+		return template
+	end
+	assert(not d1 == not d2, 'error: only one delimiter specified')
+	local key = (d1 or '')..'\0'..(d2 or '')..'\0'..template
+	local prog = cache[key]
+	if prog then
+		return prog
+	end
+	prog = {template = template}
+	cache[key] = prog
 
-	local prog = {template = template}
 	local function cmd(...)
 		for i=1,select('#',...) do
 			prog[#prog+1] = select(i,...)
 		end
 	end
 
-	local section_stack = {} --stack of (section_name, pi_nexpc, pi_j)
+	local sec_stack = {} --stack of section names
+	local arg_stack = {} --stack of (pi_nexpc, pi_j)
 
 	tokenize(template, function(i, j, what, var, mod, d1, d2, i1)
 		if what == 'text' then
@@ -180,16 +195,17 @@ local function compile(template, d1, d2)
 			elseif mod == '#' or mod == '^' then --section
 				local c = mod == '#' and 'iter' or 'ifnot'
 			 	cmd(c, i, j, parse_var(var), 0, j+1, 0, d1, d2)
-				push(section_stack, var)     --unparsed section name
-				push(section_stack, #prog-4) --index in prog of yet-unknown nexpc
-				push(section_stack, #prog-2) --index in prog of yet-unknown tj
+				push(sec_stack, var)     --unparsed section name
+				push(arg_stack, #prog-4) --index in prog of yet-unknown nexpc
+				push(arg_stack, #prog-2) --index in prog of yet-unknown tj
 			elseif mod == '/' then --close section
-				local pi_tj        = pop(section_stack)
-				local pi_nextpc    = pop(section_stack)
-				local section_name = pop(section_stack)
-				if section_name ~= var then
-					raise(template, i,
-						'expected {{/%s}} but {{/%s}} found', section_name, var)
+				local pi_tj     = pop(arg_stack)
+				local pi_nextpc = pop(arg_stack)
+				local section   = pop(sec_stack)
+				if section ~= var then
+					local expected = section and _('{{/%s}}', section)
+						or 'no section open'
+					raise(template, i, '%s but found {{/%s}}', expected, var)
 				end
 				cmd('end', i, j)
 				prog[pi_nextpc] = #prog + 1 --set nextpc on the iter cmd
@@ -200,15 +216,17 @@ local function compile(template, d1, d2)
 		end
 	end, d1, d2)
 
-	if #section_stack > 0 then
-		local sections = table.concat(section_stack, ', ')
+	if #sec_stack > 0 then
+		local sections = table.concat(sec_stack, ', ')
 		raise(template, nil, 'unclosed sections: %s', sections)
 	end
 
 	return prog
 end
 
-local function dump(prog) --dump bytecode (only for debugging)
+local function dump(prog, d1, d2, print) --dump bytecode
+	print = print or _G.print
+	prog = compile(prog, d1, d2)
 	local pp = require'pp'
 	local function var(var)
 		return type(var) == 'table' and table.concat(var, '.') or var
@@ -222,29 +240,32 @@ local function dump(prog) --dump bytecode (only for debugging)
 	end
 	local pos = textpos(prog.template)
 	local pc = 1
-	print' LN:COL  PC  CMD    ARGS'
+	print'  IDX  #  LN:COL  PC  CMD    ARGS'
 	while pc <= #prog do
 		local cmd = prog[pc]
 		local i = prog[pc+1]
 		local j = prog[pc+2]
 		local line, col = pos(i)
+		local s
 		if cmd == 'text' then
-			print(_('%3d:%3d %3d  %-6s %s', line, col, pc, cmd, text(i, j)))
-		elseif cmd == 'html' or cmd == 'string' or cmd == 'render' then
-			local name = prog[pc+3]
-			--TODO: print i1 too for 'render'
-			print(_('%3d:%3d %3d  %-6s %-12s', line, col, pc, cmd, var(name)))
-			pc = pc + 1 + (cmd == 'render' and 1 or 0)
+			s = text(i, j)
+		elseif cmd == 'html' or cmd == 'string' then
+			s = _('%-12s', var(prog[pc+3]))
+			pc = pc + 1
+		elseif cmd == 'render' then
+			s = _('%-12s i1: %d', var(prog[pc+3]), prog[pc+4])
+			pc = pc + 2
 		elseif cmd == 'iter' or cmd == 'ifnot' then
 			local name, nextpc, ti, tj, d1, d2 = unpack(prog, pc+3, pc+8)
-			print(_('%3d:%3d %3d  %-6s %-12s nextpc: %d  delims: %s %s   inner: %s',
-				line, col, pc, cmd, var(name), nextpc, d1, d2, text(ti, tj)))
+			s = _('%-12s nextpc: %d, delim: %s %s, text: %s',
+					var(name), nextpc, d1, d2, text(ti, tj))
 			pc = pc + 6
 		elseif cmd == 'end' then
-			print(_('%3d:%3d %3d  %-6s', line, col, pc, 'end'))
+			s = ''
 		else
 			assert(false)
 		end
+		print(_('%5d %2d %3d:%3d %3d  %-6s %s', i, j-i+1, line, col, pc, cmd, s))
 		pc = pc + 3
 	end
 end
@@ -263,7 +284,7 @@ local function escape_html(v)
 	return v:gsub('[&<>"\'/`=]', escapes) or v
 end
 
---check if a value is considered valid, compatible with mustache.js.
+--check if a value is considered valid in a way compatible with mustache.js.
 local function istrue(v)
 	if type(v) == 'table' then
 		return next(v) ~= nil
@@ -277,11 +298,9 @@ local function islist(t)
 	return type(t) == 'table' and #t > 0
 end
 
-local function render(prog, context, getpartial, write, d1, d2)
+local function render(prog, view, getpartial, write, d1, d2, escape_func)
 
-	if type(prog) == 'string' then --template not compiled, compile it
-		prog = compile(prog, d1, d2)
-	end
+	prog = compile(prog, d1, d2)
 
 	if type(getpartial) == 'table' then --partials table given, build getter
 		local partials = getpartial
@@ -302,6 +321,8 @@ local function render(prog, context, getpartial, write, d1, d2)
 		if s == nil then return end
 		write(tostring(s))
 	end
+
+	local escape = escape_func or escape_html
 
 	local ctx_stack = {}
 
@@ -328,14 +349,13 @@ local function render(prog, context, getpartial, write, d1, d2)
 		elseif type(var) == 'table' then --'a.b.c' parsed as {'a', 'b', 'c'}
 			val = lookup(var[1], #ctx_stack)
 			for i=2,#var do
+				if not istrue(val) then --falsey values resolve to ''
+					val = nil
+					break
+				end
 				if type(val) ~= 'table' then
-					if not istrue(val) then --falsey values resolve to ''
-						val = nil
-						break
-					else
-						raise(nil, nil, 'table expected for %s, got %s',
-							var[i], type(val))
-					end
+					raise(nil, nil, 'table expected for field "%s" but got %s',
+						var[i], type(val))
 				end
 				val = val[var[i]]
 			end
@@ -354,7 +374,7 @@ local function render(prog, context, getpartial, write, d1, d2)
 		return lambda(text, render_lambda)
 	end
 
-	local function parse_lambda_result(val, d1, d2)
+	local function render_lambda_result(val, d1, d2)
 		if type(val) == 'string' and val:find('{{', 1, true) then
 			local view = ctx_stack[#ctx_stack]
 			val = render(val, view, getpartial, nil, d1, d2)
@@ -364,8 +384,7 @@ local function render(prog, context, getpartial, write, d1, d2)
 
 	local function check_value_lambda(val)
 		if type(val) == 'function' then
-			val = val()
-			val = parse_lambda_result(val)
+			val = render_lambda_result((val()))
 		end
 		return val
 	end
@@ -382,16 +401,19 @@ local function render(prog, context, getpartial, write, d1, d2)
 	end
 
 	local iter_stack = {}
-	local HASH, COND = {}, {} --hashmap and conditional-type iterator markers
+	local HASH, COND = {}, {} --dummy iter objects for comparison
+
 	local function iter(val, nextpc, ti, tj, d1, d2)
 		if islist(val) then --list value, iterate it
 			push(iter_stack, {list = val, n = 1, pc = pc})
-			push(ctx_stack, val[1])
-		elseif type(val) == 'table' then --hash map, set as context
-			push(iter_stack, HASH)
-			push(ctx_stack, val)
-		else --conditional value, preserve context
-			push(iter_stack, COND)
+			push(ctx_stack, val[1]) --non-empty list so val[1] is never nil
+		else
+			if type(val) == 'table' then --hashmap, set as context
+				push(iter_stack, HASH)
+				push(ctx_stack, val)
+			else --conditional section, don't push a context
+				push(iter_stack, COND)
+			end
 		end
 	end
 
@@ -402,30 +424,27 @@ local function render(prog, context, getpartial, write, d1, d2)
 			if iter.n <= #iter.list then --loop
 				ctx_stack[#ctx_stack] = iter.list[iter.n]
 				pc = iter.pc
-			else --end loop
-				pop(iter_stack)
+				return
 			end
-		else --hashmap or conditional
-			pop(iter_stack)
-			if iter == HASH then --hashmap
-				pop(ctx_stack)
-			end
+		end
+		pop(iter_stack)
+		if iter ~= COND then
+			pop(ctx_stack)
 		end
 	end
 
-	push(ctx_stack, context)
+	push(ctx_stack, view)
 
-	local s = prog.template
 	while pc <= #prog do
 		local cmd = pull()
 		local i = pull()
 		local j = pull()
 		if cmd == 'text' then
-			out(s:sub(i, j))
+			out(prog.template:sub(i, j))
 		elseif cmd == 'html' then
 			local val = check_value_lambda(resolve(pull()))
 			if val ~= nil then
-				out(escape_html(tostring(val)))
+				out(escape(tostring(val)))
 			end
 		elseif cmd == 'string' then
 			out(check_value_lambda(resolve(pull())))
@@ -442,7 +461,7 @@ local function render(prog, context, getpartial, write, d1, d2)
 				if cmd == 'ifnot' then --lambdas on inv. sections must be truthy
 					val = nil
 				end
-				val = parse_lambda_result(val, d1, d2)
+				val = render_lambda_result(val, d1, d2)
 				if istrue(val) then
 					out(val)
 				end
@@ -464,12 +483,11 @@ local function render(prog, context, getpartial, write, d1, d2)
 			local i1 = pull()
 			if partial then
 				local view = ctx_stack[#ctx_stack]
-				local val = render(partial, view, getpartial)
-				if i1 > i then
+				if i1 >= i then
 					local spaces = prog.template:sub(i, i1)
-					val = indent(val, spaces)
+					partial = indent(partial, spaces)
 				end
-				out(val)
+				render(partial, view, getpartial, write)
 			end
 		end
 	end
@@ -479,30 +497,10 @@ local function render(prog, context, getpartial, write, d1, d2)
 	end
 end
 
-if not ... then
-
-local function test(template, view, partials)
-	local prog = compile(template)
-	dump(prog)
-	print(pp.format(render(prog, view, partials)))
-end
-
-test('\\\n {{>partial}}\n/\n',
-{
-   content='<\n->'
-},
-{
-   partial='|\n{{{content}}}\n|\n'
-}
-)
-
-print(pp.format('\\\n |\n <\n->\n |\n/\n'))
-
-end
+if not ... then require'mustache_test' end
 
 return {
 	compile = compile,
 	render = render,
 	dump = dump,
 }
-
