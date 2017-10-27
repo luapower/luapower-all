@@ -1511,7 +1511,7 @@ function track_module_platform(mod, package, platform)
 				db[platform]
 				and db[platform][package]
 				and db[platform][package][mod]
-			))
+			)
 		then
 			update_db(package, platform, mod)
 		end
@@ -2011,35 +2011,5 @@ end
 function restart() error'not connected' end
 function stop() error'not connected' end
 
-
---luapower CI server
---============================================================================
-
-local function parse(s)
-	local f, err = loadstring('return '..s)
-	if not f then return nil, err end
-	return glue.protect(f)()
-end
-
-local function format(t)
-	return pp.format(t)
-end
-
-local function send(skt, t)
-	local s = format(t)
-	return skt:send(#s..'\n'..s)
-end
-
-local function receive(skt)
-	local s, err = skt:receive'*l'
-	local sz = tonumber(s)
-	if not sz then
-		return nil,
-			'message size expected, got '..tostring(s)..', '..tostring(err)
-		end
-	local s = skt:receive(sz)
-	if not s then return nil, sz..' bytes message expected' end
-	return parse(s)
-end
 
 return luapower
