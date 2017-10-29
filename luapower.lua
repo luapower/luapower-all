@@ -272,7 +272,7 @@ end
 
 --generic memoize that can only have its entire cache cleared.
 local rememoizers = {}
-local function memoize(func)
+function memoize(func)
 	local memfunc
 	local function rememoize()
 		memfunc = glue.memoize(func)
