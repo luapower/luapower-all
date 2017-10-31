@@ -43,9 +43,21 @@ for i,k in ipairs{
 	keywords[k] = true
 end
 
+local function is_stringable(v)
+	if type(v) == 'table' then
+		return getmetatable(v) and getmetatable(v).__tostring and true or false
+	else
+		return type(v) == 'string'
+	end
+end
+
 local function is_identifier(v)
-	return type(v) == 'string' and not keywords[v]
-				and v:find('^[a-zA-Z_][a-zA-Z_0-9]*$') ~= nil
+	if is_stringable(v) then
+		v = tostring(v)
+		return not keywords[v] and v:find('^[a-zA-Z_][a-zA-Z_0-9]*$') ~= nil
+	else
+		return false
+	end
 end
 
 local hasinf = math_huge == math_huge - 1
@@ -104,8 +116,8 @@ local function format(v, quote)
 		return tostring(v)
 	elseif type(v) == 'number' then
 		return format_number(v)
-	elseif type(v) == 'string' then
-		return format_string(v, quote)
+	elseif is_stringable(v) then
+		return format_string(tostring(v), quote)
 	elseif is_dumpable(v) then
 		return format_function(v)
 	elseif is_int64(v) then
@@ -116,8 +128,8 @@ local function format(v, quote)
 end
 
 local function is_serializable(v)
-	return type(v) == 'nil' or type(v) == 'boolean' or type(v) == 'string'
-				or type(v) == 'number' or is_dumpable(v) or is_int64(v)
+	return type(v) == 'nil' or type(v) == 'boolean' or type(v) == 'number'
+		or is_stringable(v) or is_dumpable(v) or is_int64(v)
 end
 
 local function write(v, write, quote)
@@ -126,8 +138,8 @@ local function write(v, write, quote)
 		write(tostring(v))
 	elseif type(v) == 'number' then
 		write_number(v, write)
-	elseif type(v) == 'string' then
-		write_string(v, write, quote)
+	elseif is_stringable(v) then
+		write_string(tostring(v), write, quote)
 	elseif is_dumpable(v) then
 		write_function(v, write, quote)
 	elseif is_int64(v) then
@@ -141,6 +153,7 @@ return {
 	is_identifier = is_identifier,
 	is_dumpable = is_dumpable,
 	is_serializable = is_serializable,
+	is_stringable = is_stringable,
 
 	format_string = format_string,
 	format_number = format_number,

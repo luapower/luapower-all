@@ -10,7 +10,7 @@ Fast, compact serialization producing portable Lua source code.
 
   * all Lua types except coroutines, userdata, cdata and C functions.
   * the ffi `int64_t` and `uint64_t` types.
-  * values featuring the `__pwrite` metamethod.
+  * values featuring `__tostring` or `__pwrite` metamethods (eg. [tuple]s).
 
 
 ## Output
@@ -29,8 +29,8 @@ Fast, compact serialization producing portable Lua source code.
   printed separately with implicit keys.
   * **stream-based**: the string bits are written with a writer function
   to minimize the amount of string concatenation and memory footprint.
-  * **non-deterministic**: table keys are not sorted, so not friendly to
-  diff or checksum.
+  * **deterministic**: table keys can be optionally sorted, so that the
+  output is usable with diff and checksum.
   * **non-identical**: object identity is not tracked and is not
   preserved (table references are dereferenced).
 
@@ -43,28 +43,31 @@ Fast, compact serialization producing portable Lua source code.
   featuring many newlines, tabs, zero bytes, apostrophes, backslashes
   or control characters.
   * loading back the output with the Lua interpreter is not safe.
+  * object identity is not preserved.
 
 ## API
 
-### `pp.print(v1,...)`
+### `pp.print(v1, ...)`
 ### `pp(v1, ...)`
 
 Print the arguments to standard output.
 Only tables are pretty-printed, everything else goes unfiltered.
-Cycle detection and indentation are enabled.
+Cycle detection, indentation and sorting of keys are enabled in this mode.
 Unserializable values get a comment in place.
 
-### `pp.write(write, v, [indent], [parents], [quote], [onerror])`
+### `pp.write(write, v, options...)`
 
 Pretty-print a value using a supplied write function that takes a string.
-The other arguments are:
+The options can be given in a table or as separate args:
 
   * `indent` - enable indentation eg. `'\t'` indents by one tab
   (default is compact output with no whitespace)
   * `parents` - enable cycle detection eg. `{}`
-  * `quote` - change string quoting eg. `'"'` (default is "'")
+  * `quote` - string quoting to use eg. `'"'` (default is "'")
+  * `line_term` - line terminator to use (default is `'\n'`)
   * `onerror` - enable error handling eg. `function(err_type, v, depth)
   error(err_type..': '..tostring(v)) end`
+  * `sort_keys` - sort keys to get deterministic output.
 
 __Example:__
 
@@ -80,11 +83,11 @@ for s in chunks(t) do
 end
 ~~~
 
-### `pp.save(file, v, [indent], [parents], [quote], [onerror])`
+### `pp.save(file, v, options...)`
 
 Pretty-print a value to a file.
 
 
-### `pp.format(v, [indent], [parents], [quote], [onerror]) -> s`
+### `pp.format(v, options...) -> s`
 
 Pretty-print a value to a string.
