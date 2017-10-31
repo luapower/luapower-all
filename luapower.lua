@@ -1153,6 +1153,8 @@ local path_match = {
 	'^csrc/([^/]+).-/$', 'C source files for <b>{1}</b>',
 	'^media/$', 'All input data for tests and demos for all packages',
 	'^media/([^/]+)/$', 'Data files for package <b>{1}</b>',
+	'^media/([^/]+)/.-/$', 'Data files for package <b>{1}</b>',
+	'^media/([^/]+)/.-$', 'Data file for package <b>{1}</b>',
 	'^([^%.]+)/$', 'Submodules of <b>{1}</b>',
 	'(.-)_h%.lua$', 'FFI cdefs for <b>{1}</b>',
 	'(.-)_test%.lua$', 'Test script for <b>{1}</b>',
