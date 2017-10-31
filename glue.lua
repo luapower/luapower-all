@@ -226,7 +226,7 @@ function glue.string.trim(s)
 	return from > #s and '' or s:match('.*%S', from)
 end
 
---escape a string so that it can be taken literally inside a pattern.
+--escape a string so that it can be matched literally inside a pattern.
 local function format_ci_pat(c)
 	return format('[%s%s]', c:lower(), c:upper())
 end

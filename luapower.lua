@@ -109,30 +109,41 @@ SOURCES OF INFORMATION:
 
 INFORMATION COLLECTED:
 
+	powerpath([subpath]) -> s             path in luapower dir
+	mgitpath([subpath]) -> s              path in .mgit dir
+
 	current_platform() -> s               mingw|linux|osx..32|64
+
 	module_requires_parsed(module) -> t   {module=}
-	module_name(path) -> s                module name given a path
-	parent_module_name(mod) -> s          parent module name
+
 	cats() -> t                           {name=, packages={pkg1,...}}
+
 	known_packages() -> t                 {name=true}
 	installed_packages() -> t             {name=true}
 	not_installed_packages() -> t         {name=true}
+
 	tracked_files(package) -> t           {path=package}
+
 	docs(package) -> t                    {name=path}
 	modules(package) -> t                 {name=path}
 	scripts(package) -> t                 {name=path}
 	file_types(package) -> t              {path='module'|'script'|'doc'|
 	                                        'unknown'}
+
 	module_tree(package) ->               {name=true, children=
 	                                        {name=, children=...}}
+
 	doc_tags([package, ]doc) -> t         {tag=val}
+
 	module_header([package, ]mod) -> t    {name=, descr=, author=, license=}
 
 	module_package(mod) -> s              module package
 	doc_package(doc) -> s                 doc package
 	ffi_module_package(mod, pkg, plt)->s  ffi module package
+
 	what_tags(package) -> t               {realname=, version=, url=, license=,
 	                                        dependencies={platform={dep=true}}}
+
 	bin_deps(package, platform) -> t      {platform={package=}}
 
 	build_platforms(package) -> t         {platform=true}
@@ -151,12 +162,16 @@ INFORMATION COLLECTED:
 	module_loader(mod, package) -> s      find a module's loader
 	track_module(mod[, package]) -> t     {TODO}
 
+DEPENDENCY DB:
+
 	load_db()
 	unload_db()
 	save_db()
 	update_db_on_current_platform(package)
 	update_db(package, [platform], [mod])
 	track_module_platform(mod, [package], [platform])
+
+DEPENDENCY INFO:
 
 	module_requires_loadtime(mod, package, platform)
 	module_load_error(mod, package, platform)
@@ -182,6 +197,8 @@ INFORMATION COLLECTED:
 
 	rev_bin_deps(package, platform)
 	rev_bin_deps_all(package, platform)
+
+SYNTHESIZED INFO:
 
 	module_tags() -> t              {lang=,demo_module=t|f, test_module=t|f}
 	package_type(package) -> type   'Lua+ffi'|'Lua/C'|'Lua'|'C'|'other'
@@ -708,7 +725,7 @@ end
 
 --path/*.lua -> Lua module name
 local function lua_module_name(path)
-	if path:find'^bin/[^/]+/lua/' then --platform-dependent module
+	if path:find'^bin/[^/]+/lua/' then --platform-specific module
 		path = path:gsub('^bin/[^/]+/lua/', '')
 	end
 	return path:gsub('/', '.'):match('(.-)%.lua$')
@@ -728,10 +745,11 @@ end
 
 --check if a file is a module and if it is, return the module name
 local function module_name(path)
+	path = tostring(path)
 	return
-		lua_module_name(path) or
-		dasl_module_name(path) or
-		c_module_name(path)
+		lua_module_name(path)
+		or dasl_module_name(path)
+		or c_module_name(path)
 end
 
 --'module_submodule' -> 'module'
@@ -989,17 +1007,22 @@ end)
 --tracked files breakdown: modules, scripts, docs
 ------------------------------------------------------------------------------
 
---check if a path is valid for containing modules.
-local function is_module_path(p, platform)
-	platform = platform and check_platform(platform) or '[^/]+'
+--check if a path is valid for containing (non-platform-specific) modules.
+local function is_module_path(p)
 	return not p or not (
-		(p:find'^bin/' --can't have modules in bin, except...
-			and not p:find('^bin/'..platform..'/clib/') --Lua/C modules
-			and not p:find('^bin/'..platform..'/lua/')) --platform Lua modules
+		p:find'^bin/'     --can't have modules in bin
 		or p:find'^csrc/'  --can't have modules in csrc
 		or p:find'^media/' --can't have modules in media
 		or p:find'^.mgit/' --can't have modules in .mgit
 	)
+end
+
+--check if a path is valid for containing platform-specific modules
+--(optionally test for a specific platform) and return that platform.
+local function module_platform_path(p, platform)
+	platform = platform and check_platform(platform) or '[^/]+'
+	local plat = p:match('^bin/('..platform..')/clib/') --Lua/C modules
+	return plat or p:match('^bin/('..platform..')/lua/') --platform Lua modules
 end
 
 --check if a path is valid for containing docs.
@@ -1039,14 +1062,25 @@ docs = opt_package(memoize_package(function(package)
 	return t
 end))
 
---TODO: current platform is assumed for platform-Lua and Lua/C module paths.
-local function modules_(package, should_be_module)
+local function modules_(package, platform, should_be_module)
 	local t = {}
 	for path in pairs(tracked_files(package)) do
-		if is_module_path(path, current_platform()) then
+		local found = is_module_path(path)
+		local plat = not found and module_platform_path(path, platform)
+		if found or plat then
 			local mod = module_name(path)
 			if mod and is_module(mod) == should_be_module then
-				t[mod] = path
+				if plat and not platform then
+					if not t[mod] then
+						local pt = {}
+						t[mod] = pt
+						--sometimes we don't care about which path it is...
+						setmetatable(pt, {__tostring = function() return path end})
+					end
+					t[mod][plat] = path
+				else
+					t[mod] = path
+				end
 			end
 		end
 	end
@@ -1057,14 +1091,16 @@ local function modules_(package, should_be_module)
 	return t
 end
 
---tracked <module>.lua -> {module = path}
-modules = memoize_opt_package(function(package)
-	return modules_(package, true)
+--tracked <mod>.lua | bin/<platform>/clib|lua/<mod>.so|.lua -> {mod=path}
+--note: platform is optional: if not given, for the platform-specific modules
+--all the paths are returned in a table {platform = path}.
+modules = memoize_opt_package(function(package, platform)
+	return modules_(package, platform, true)
 end)
 
 --tracked <script>.lua -> {script = path}
 scripts = memoize_opt_package(function(package)
-	return modules_(package, false)
+	return modules_(package, nil, false)
 end)
 
 --tracked file -> {path = 'module'|'script'|'doc'|'unknown'}
@@ -1085,6 +1121,65 @@ file_types = memoize_opt_package(function(package)
 	return t
 end)
 
+--tracked file -> {path = description}
+local path_match = {
+	'^%.mgit/$', 'Multigit directory (contains all .git directories)',
+	'^%.mgit/([^/]+)/$', 'Contains the .git directory for package <b>{1}</b>',
+	'^%.mgit/([^/]+)/%.git/$', '.git directory for package <b>{1}</b>',
+	'^%.mgit/([^/]+)/([^/]+).exclude$', '.gitignore file for package <b>{1}</b>',
+	'^bin/$', 'All binaries for all packages & all platforms',
+	'^bin/([^/]+)/$', 'All binaries compiled for <b>{1}</b>',
+	'^bin/([^/]+)/clib/$', 'All Lua/C modules compiled for <b>{1}</b>',
+	'^bin/([^/]+)/clib/(.-)%.a$', 'Lua/C module <b>{2}</b> compiled statically for <b>{1}</b>',
+	'^bin/([^/]+)/clib/(.-)%.so$', 'Lua/C module <b>{2}</b> compiled dynamically for <b>{1}</b>',
+	'^bin/([^/]+)/lua/$', 'All pure-Lua modules that are <b>{1}</b>-specific',
+	'^bin/([^/]+)/lib(.-)%.a$', 'C library <b>{2}</b> compiled statically for <b>{1}</b>',
+	'^bin/([^/]+)/(.-)%.a$', 'C library <b>{2}</b> compiled statically for <b>{1}</b>',
+	'^bin/([^/]+)/lib(.-)%.so$', 'C library <b>{2}</b> compiled dynamically for <b>{1}</b>',
+	'^bin/([^/]+)/lib(.-)%.dylib$', 'C library <b>{2}</b> compiled dynamically for <b>{1}</b>',
+	'^bin/([^/]+)/(.-)%.dll$', 'C library <b>{2}</b> compiled dynamically for <b>{1}</b>',
+	'^bin/([^/]+)/luajit', 'LuaJIT wrapper for <b>{1}</b>',
+	'^bin/([^/]+)/luajit-bin', 'LuaJIT executable for <b>{1}</b>',
+	'^bin/([^/]+)/luajit.exe', 'LuaJIT executable for <b>{1}</b>',
+	'^bin/(osx..)/luajit', 'LuaJIT wrapper for <b>{1}</b>',
+	'^csrc/$', 'All C source files and build scripts for all packages',
+	'^csrc/([^/]+)/$', 'C sources & build scripts for <b>{1}</b>',
+	'^csrc/([^/]+)/WHAT$', 'WHAT file for <b>{1}</b>',
+	'^csrc/([^/]+)/LICENSE$', 'License file for <b>{1}</b>',
+	'^csrc/([^/]+)/COPYING', 'License file for <b>{1}</b>',
+	'^csrc/([^/]+)/build%-(.-)%.sh$', 'Build script for compiling <b>{1}</b> on <b>{2}</b>',
+	'^csrc/([^/]+)/build.sh$', 'Build script for compiling <b>{1}</b> on all platforms',
+	'^csrc/([^/]+)/.-%.[ch]$', 'C source file for <b>{1}</b>',
+	'^csrc/([^/]+).-/$', 'C source files for <b>{1}</b>',
+	'^media/$', 'All input data for tests and demos for all packages',
+	'^media/([^/]+)/$', 'Data files for package <b>{1}</b>',
+	'^([^%.]+)/$', 'Submodules of <b>{1}</b>',
+	'(.-)_h%.lua$', 'FFI cdefs for <b>{1}</b>',
+	'(.-)_test%.lua$', 'Test script for <b>{1}</b>',
+	'(.-)_demo%.lua$', 'Demo app for <b>{1}</b>',
+	'(.-)_app%.lua$', 'Lua app called <b>{1}</b>',
+	'(.-)%.lua$', 'Lua module <b>{1}</b>',
+	'(.-)%.dasl$', 'Lua/DynASM module <b>{1}</b>',
+	'(.-)%.md$', 'Documentation for <b>{1}</b>',
+	'^luajit$', '<b class=important>LuaJIT loader for Linux and OSX<b>',
+	'^luajit32$', '<b class=important>LuaJIT 32bit mode loader for Linux and OSX<b>',
+	'^luajit.cmd$', '<b class=important>LuaJIT loader for Windows<b>',
+	'^luajit32.cmd$', '<b class=important>LuaJIT 32bit loader for Windows<b>',
+}
+local function pass(format, ...)
+	if not ... then return end
+	local t = glue.pack(...)
+	return format:gsub('{(%d)}', function(n)
+		return t[tonumber(n)]:gsub('/', '.')
+	end)
+end
+path_description = memoize(function(path)
+	for i=1,#path_match,2 do
+		local patt, format = path_match[i], path_match[i+1]
+		local s = pass(format, path:match(patt))
+		if s then return s end
+	end
+end)
 
 --module logical (name-wise) tree
 ------------------------------------------------------------------------------
@@ -1102,8 +1197,8 @@ end
 local module_parent = memoize_package(module_parent_)
 
 --build a module tree for a package (or for all packages)
-module_tree = memoize_package(function(package)
-	local function get_names() return pairs(modules(package)) end
+module_tree = memoize_package(function(package, platform)
+	local function get_names() return pairs(modules(package, platform)) end
 	local function get_parent(mod) return module_parent(package, mod) end
 	return build_tree(get_names, get_parent)
 end)
@@ -1128,7 +1223,7 @@ modulefile_header = memoize(parse_module_header)
 
 module_header = memoize_package(function(package, mod)
 	local path = modules(package)[mod]
-	return path and modulefile_header(powerpath(path))
+	return type(path) == 'string' and modulefile_header(powerpath(path))
 end)
 
 module_headers = memoize_package(function(package)
@@ -1169,7 +1264,7 @@ module_package = memoize(function(mod)
 	--the slow way: look in all packages for the module
 	--print('going slow for '..mod..'...')
 	local path = modules()[mod]
-	return path and tracked_files()[path]
+	return path and tracked_files()[tostring(path)]
 end)
 
 --memoize for functions of type f(mod, package) where package is optional.
@@ -1248,7 +1343,7 @@ end)
 
 local has_luac_modules = memoize_package(function(package)
 	for mod, path in pairs(modules(package)) do
-		if type(path) == 'string' and c_module_name(path) then
+		if c_module_name(tostring(path)) then
 			return true
 		end
 	end
@@ -1384,6 +1479,9 @@ function module_loader(mod, package)
 	package = package or module_package(mod)
 	local path = modules(package)[mod]
 	if not path or path == true then return end
+	if type(path) == 'table' then
+		path = path[current_platform()]
+	end
 	local ext = path:match'%.(.*)$'
 	if not ext then return end
 	return loader_modules[ext]
@@ -1770,15 +1868,15 @@ rev_bin_deps_all = package_required_for(bin_deps_all)
 --analytic info for a module
 module_tags = memoize(function(package, mod)
 	local mod_path = modules(package)[mod]
-	return {
-		lang =
-			mod_path == true and 'built-in'
-			or lua_module_name(mod_path) and 'Lua'
-			or dasl_module_name(mod_path) and 'Lua/ASM'
-			or c_module_name(mod_path) and 'C',
-		demo_module = scripts(package)[mod..'_demo'] and mod..'_demo',
-		test_module = scripts(package)[mod..'_test'] and mod..'_test',
-	}
+	local t = {}
+	t.lang =
+		mod_path == true and 'built-in'
+		or lua_module_name(tostring(mod_path)) and 'Lua'
+		or dasl_module_name(tostring(mod_path)) and 'Lua/ASM'
+		or c_module_name(tostring(mod_path)) and 'C'
+	t.demo_module = scripts(package)[mod..'_demo'] and mod..'_demo'
+	t.test_module = scripts(package)[mod..'_test'] and mod..'_test'
+	return t
 end)
 
 --analytic info for a package
