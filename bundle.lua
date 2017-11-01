@@ -2,8 +2,6 @@
 -- Bundle Lua API, currently containing only the blob loader.
 -- Written by Cosmin Apreutesei. Public Domain.
 
-assert(... ~= 'bundle', 'not a module')
-
 local ffi = require'ffi'
 local BBIN_PREFIX = 'Bbin_'
 
