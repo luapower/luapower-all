@@ -22,7 +22,7 @@ run automated tests, etc.
 The module assumes that the luapower tree is the current directory.
 If that's not the case, you have say where it is:
 
-	lp.config('luapower_dir', '/path/to/luapower')
+	lp.luapower_dir = '/path/to/luapower
 
 It also assumes that the luapower tree was cloned (see [luapower-git])
 rather than just downloaded.
@@ -43,9 +43,9 @@ So the bulk of the API contains stuff like, eg.:
 	lp.installed_packages() -> {package = true}      get installed packages
 	lp.modules(package) -> {module = path}           get a package's modules
 
-The API is too large for me to describe it all in here, but the functions
-are well documented in the code, so check that out. A quick way to explore
-the capabilities of the library is to try out the command-line interface.
+The API well documented in luapower.lua, so check that out. A quick way to
+explore the capabilities of the library is to try out the command-line
+interface.
 
 ## Using dependency info from other platforms
 
@@ -73,10 +73,10 @@ remote cache is lost when the connection is closed.
 
 #### Configuring luapower to use RPC servers:
 
-	lp.config('servers', {linux32 = '10.1.1.1', ...})
+	lp.servers = {linux32 = '10.1.1.1', ...}
 
-To use the luapower command line with RPC servers, change the config
-table in luapower.lua directly.
+To use the luapower command line with RPC servers, change the servers table
+in luapower.lua directly.
 
 #### Updating the dependency database:
 

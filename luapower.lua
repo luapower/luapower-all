@@ -13,9 +13,9 @@ CONVENTIONS:
 	* the git directory of a package is at `.mgit/<package>/.git`.
 
 	* the git work-dir is shared between all packages and it's the current
-	directory by default and can be changed with config('luapower_dir', dir).
+	directory by default and is configured in luapower.luapower_dir.
 
-	* the currently supported platforms are listed in cfg.platforms.
+	* the currently supported platforms are in the luapower.platforms table.
 
 	* a module can signal that it doesn't support a platform by raising
 	an error containing the string 'platform not ' or 'arch not ' when it's
@@ -84,18 +84,27 @@ CONVENTIONS:
 	for dependency like Lua modules (the `dynasm` module is loaded first).
 
 
+STATIC INFO:
+
+	* luapower_dir -> s                     luapower dir
+	* mgit_dir -> s                         .mgit dir relative to luapower dir
+	* supported_os_platforms -> t           {os = {platform = true}}
+	* supported_platforms -> t              {platform = true}
+	* builtin_modules -> t                  {module = true}
+	* luajit_builtin_modules -> t           {module = true}
+	* loader_modules -> t                   {file_ext = module}
+	* default_license -> s                  default license
+
 SOURCES OF INFORMATION:
 
-	* config'luapower_dir', config'mgit_dir', config'platforms'
-	* builtin_modules, luajit_builtin_modules
 	* ffi.os, ffi.abi
-	* the tree of a module's ffi.load() calls
-	* the tree of a module's require() calls
+	* a module's ffi.load() call tree
+	* a module's require() call tree
 	* parsing a module for `require(<string_constant>)` calls
-	* the parsing of a module's top comment
+	* parsing a module's top comment for name, tagline, author and license
 	* the list of `.mgit/<package>.origin` files
 	* the list of `.mgit/<package>` directories
-	* the parsing of `csrc/<package>/WHAT`
+	* the parsing of `csrc/<package>/WHAT` file
 	* tags parsed from *.md files
 	* package category associations parsed from `.mgit/luapower-cat.md`
 	* the output of `git ls-files` (tracked files)
@@ -107,110 +116,164 @@ SOURCES OF INFORMATION:
 	* the output of `git log -1 --format=%at --follow <file>` (mtime of file)
 	* the output of `git log -1 --format=%at <tag>` (mtime of tag)
 
-INFORMATION COLLECTED:
+UTILS:
 
-	powerpath([subpath]) -> s             path in luapower dir
-	mgitpath([subpath]) -> s              path in .mgit dir
+	powerpath([subpath]) -> s             (path in) luapower dir
+	mgitpath([subpath]) -> s              (path in) mgit dir
+	git(package, cmd) -> s                get the output of a git command
+	gitlines(package, cmd)->iter()->s     iterate the output of a git command
+	module_name_cmp(m1, m2) -> t|f        comp func for sorting module names
+	walk_tree(t, f)                       tree walker
 
+CACHING:
+
+	memoize_package(f) -> f               memoize a f(pkg[, arg2]) func
+	memoize(f) -> f                       memoize any func
+	clear_cache([pkg])                    clear memoize cache for a pkg or all
+
+PLATFORM:
+
+	check_platform([platform]) -> s       check platform/get current platform
 	current_platform() -> s               mingw|linux|osx..32|64
 
-	module_requires_parsed(module) -> t   {module=}
-
-	cats() -> t                           {name=, packages={pkg1,...}}
+MGIT DIRECTORY INFO:
 
 	known_packages() -> t                 {name=true}
 	installed_packages() -> t             {name=true}
 	not_installed_packages() -> t         {name=true}
 
-	tracked_files(package) -> t           {path=package}
+PARSING luapower-cat.md:
 
-	docs(package) -> t                    {name=path}
-	modules(package) -> t                 {name=path}
-	scripts(package) -> t                 {name=path}
-	file_types(package) -> t              {path='module'|'script'|'doc'|
-	                                        'unknown'}
+	cats() -> t                           {name=, packages={pkg1,...}}
+	packages_cats() -> t                  {pkg=cat}
+	package_cat(pkg) -> s                 package's category
 
-	module_tree(package) ->               {name=true, children=
-	                                        {name=, children=...}}
 
-	doc_tags([package, ]doc) -> t         {tag=val}
+TRACKED FILES BREAKDOWN:
 
-	module_header([package, ]mod) -> t    {name=, descr=, author=, license=}
+	tracked_files([package]) -> t         {path=package}
+	docs([package]) -> t                  {name=path}
+	modules([package]) ->                 {name=path}
+	scripts([package]) -> t               {name=path}
+	file_types([package]) -> t            {path='module'|'script'|...}
+	module_tree(package) ->               {name=, children=}
 
-	module_package(mod) -> s              module package
-	doc_package(doc) -> s                 doc package
-	ffi_module_package(mod, pkg, plt)->s  ffi module package
+PARSING MD FILES:
 
-	what_tags(package) -> t               {realname=, version=, url=, license=,
-	                                        dependencies={platform={dep=true}}}
+	docfile_tags(path) -> t               {tag=val}
+	doc_tags([package], doc) -> t         {tag=val}
 
+PARSING LUA FILES:
+
+	module_requires_parsed(module) -> t   {module=}
+
+	modulefile_header(file) -> t          {name=, descr=, author=, license=}
+	module_header([package], mod) -> t    {name=, descr=, author=, license=}
+	module_headers(package) -> t          {module = header_table}
+
+PACKAGE REVERSE LOOKUP:
+
+	module_package(mod) -> s              module's package
+	doc_package(doc) -> s                 doc's package
+	ffi_module_package(mod, pkg, plt)->s  ffi module's package
+
+CSRC DIRECTORY:
+
+	csrc_dir(package]) -> s               package dir in csrc dir if any
+	what_tags(package) -> t               {realname=,version=,url=,license=,
+	                                        dependencies={platf={dep=true}}}
 	bin_deps(package, platform) -> t      {platform={package=}}
-
 	build_platforms(package) -> t         {platform=true}
 	bin_platforms(package) -> t           {platform=true}
 	declared_platforms(package) -> t      {platform=true}
 	platforms(package) -> t               {platform=true}
 
-	git_version(package) -> s
+GIT INFO:
+
+	git_version(package) -> s             current git version
 	git_tags(package) -> t                {tag1, ...}
-	git_tag(package) -> s                 tag
-	git_origin_url(package) -> s
-	git_master_time(package) -> ts
-	git_file_time(package, file) -> ts
-	git_tag_time(package, tag) -> ts
+	git_tag(package) -> s                 current tag
+	git_origin_url(package) -> s          origin url
+	git_master_time(package) -> ts        timestamp of last commit
+	git_file_time(package, file) -> ts    timestamp of last modification
+	git_tag_time(package, tag) -> ts      timestamp of tag
 
-	module_loader(mod, package) -> s      find a module's loader
-	track_module(mod[, package]) -> t     {TODO}
+MODULE DEPENDENCY TRACKING:
 
-DEPENDENCY DB:
+	module_loader(mod[, package]) -> s    find a module's loader module if any
+	track_module(mod[, package]) -> t     {loaderr=s | mdeps={mod=true},
+	                                        ffi_deps={mod=true}}
+UPDATING THE DEPENDENCY DB:
 
-	load_db()
-	unload_db()
-	save_db()
-	update_db_on_current_platform(package)
-	update_db(package, [platform], [mod])
+	load_db()                             load luapower_db.lua
+	unload_db()                           unload it
+	save_db()                             save it
+	update_db_on_current_platform([pkg])  update db with local trackings
+	update_db(package, [platform], [mod]) update db with local or rpc trackings
 	track_module_platform(mod, [package], [platform])
+	server_status([platform]) -> t        {platform = {os=, arch=}}
 
-DEPENDENCY INFO:
+DEPENDENCY INFO BREAKDOWN:
 
-	module_requires_loadtime(mod, package, platform)
 	module_load_error(mod, package, platform)
 	module_platforms(mod, package)
-	module_requires_loadtime_ffi(mod, package, platform)
 	module_autoloads(mod, package, platform)
-	module_requires_runtime(mod, package, platform)
 	module_autoloaded(mod, package, platform)
+	module_requires_loadtime(mod, package, platform)
+	module_requires_loadtime_ffi(mod, package, platform)
+	module_requires_runtime(mod, package, platform)
 	module_requires_alltime(mod, package, platform)
+
+MODULE INDIRECT DEPENDENCIES:
 
 	module_requires_loadtime_tree(mod, package, platform)
 	module_requires_loadtime_all(mod, package, platform)
 	module_requires_alltime_all(mod, package, platform)
-
 	module_requires_loadtime_int(mod, package, platform)
 	module_requires_loadtime_ext(mod, package, platform)
+
+PACKAGE INDIRECT DEPENDENCIES:
+
 	bin_deps_all(package, platform)
+
+REVERSE MODULE DEPENDENCIES:
 
 	module_required_loadtime(mod, package, platform)
 	module_required_alltime(mod, package, platform)
 	module_required_loadtime_all(mod, package, platform)
 	module_required_alltime_all(mod, package, platform)
 
+REVERSE PACKAGE DEPENDENCIES:
+
 	rev_bin_deps(package, platform)
 	rev_bin_deps_all(package, platform)
 
-SYNTHESIZED INFO:
+ANALYTIC INFO:
 
-	module_tags() -> t              {lang=,demo_module=t|f, test_module=t|f}
-	package_type(package) -> type   'Lua+ffi'|'Lua/C'|'Lua'|'C'|'other'
-	license(package) -> s           license
-	module_tagline(package, mod) -> s
-	packages_cats() -> t            {pkg=cat}
-	package_cat(pkg) -> s
-	build_order(packages, platform) -> t
+	module_tags() -> t                    {lang=, demo_module=, test_module=}
+	package_type(package) -> type         'Lua+ffi'|'Lua/C'|'Lua'|'C'|'other'
+	license(package) -> s                 license
+	module_tagline(package, mod) -> s     tagline
+	build_order(packages, platform) -> t  {pkg1,...}
+	path_description(path) -> s           describe any file or dir
+
+CONSISTENCY CHECKS:
 
 	duplicate_docs()
 	undocumented_package(package)
-	load_errors(package, platform)
+	load_errors([package], [platform])->t {mod=err}
+
+GENERATING MGIT DEPS FILES:
+
+	update_mgit_deps([package])     (re)create .deps file(s)
+
+RPC API:
+
+	connect(ip, port[, connect])->lp   connect to a RPC server
+	lp.osarch() -> os, arch
+	lp.exec(func, ...) -> ...
+	lp.restart()
+	lp.stop()
 
 ]==]
 
@@ -225,37 +288,29 @@ local ffi = require'ffi'
 --config
 ------------------------------------------------------------------------------
 
-local cfg = {
-	--locations
-	luapower_dir = '.',    --the location of the luapower tree to inspect on
-	mgit_dir = '.mgit',    --relative to luapower_dir
-	--platforms
-	os_platforms = {
-		mingw = {mingw32 = true, mingw64 = true},
-		linux = {linux32 = true, linux64 = true},
-		osx   = {osx32 = true, osx64 = true},
-	},
-	platforms = {          --supported platforms
-		mingw32 = true, mingw64 = true,
-		linux32 = true, linux64 = true,
-		osx32 = true, osx64 = true,
-	},
-	servers = {},          --{platform = {'ip|host', port}}
-	--behavior
-	auto_update_db = true, --update the db automatically when info is missing
-	allow_update_db_locally = true, --allow in-process dependency tracking
-	default_license = 'PD', --public domain
+--locations
+luapower_dir = '.'     --the location of the luapower tree to inspect on
+mgit_dir = '.mgit'     --relative to luapower_dir
+
+--platforms
+supported_os_platforms = {
+	mingw = {mingw32 = true, mingw64 = true},
+	linux = {linux32 = true, linux64 = true},
+	osx   = {osx32 = true, osx64 = true},
+}
+supported_platforms = {
+	mingw32 = true, mingw64 = true,
+	linux32 = true, linux64 = true,
+	osx32 = true, osx64 = true,
 }
 
---get or set a config value
-function config(var, val)
-	if val ~= nil then
-		glue.assert(cfg[var] ~= nil, 'unknown config var: %s', var)
-		cfg[var] = val
-	else
-		return cfg[var]
-	end
-end
+servers = {}           --{platform = {'ip|host', port}}
+
+--behavior
+auto_update_db = true  --update the db automatically when info is missing
+allow_update_db_locally = true --allow dependency tracking on this machine
+
+default_license = 'PD' --public domain
 
 local function plusfile(file)
 	return file and '/'..file or ''
@@ -263,12 +318,12 @@ end
 
 --make a path given a luapower_dir-relative path
 function powerpath(file)
-	return config'luapower_dir'..plusfile(file)
+	return luapower_dir..plusfile(file)
 end
 
 --make an abs path given a mgit-dir relative path
 function mgitpath(file)
-	return config'mgit_dir'..plusfile(file)
+	return mgit_dir..plusfile(file)
 end
 
 
@@ -351,7 +406,7 @@ function check_platform(platform)
 	if not platform then
 		return current_platform()
 	end
-	glue.assert(config('platforms')[platform],
+	glue.assert(supported_platforms[platform],
 		'unknown platform "%s"', platform)
 	return platform
 end
@@ -549,7 +604,7 @@ end)
 --module header parsing
 ------------------------------------------------------------------------------
 
-function parse_module_header(file)
+local function parse_module_header(file)
 	local t = {}
 	local f = io.open(file, 'r')
 	--TODO: check if the module is a .lua file first (what else can it be?).
@@ -637,7 +692,7 @@ local function split_path(path)
 end
 
 --open a file and return a gimme-the-next-line function and a close function.
-function more(filename)
+local function more(filename)
 	local f, err = io.open(filename, 'r')
 	if not f then return nil, err end
 	local function more()
@@ -843,7 +898,7 @@ local function parse_what_file(what_file)
 						glue.attr(t.dependencies, platform)[s] = true
 					end
 				else
-					for platform in pairs(config'platforms') do
+					for platform in pairs(supported_platforms) do
 						glue.attr(t.dependencies, platform)[s] = true
 					end
 				end
@@ -1049,7 +1104,7 @@ local function is_module(mod)
 end
 
 --tracked <doc>.md -> {doc = path}
-docs = opt_package(memoize_package(function(package)
+docs = memoize_opt_package(function(package)
 	local t = {}
 	for path in pairs(tracked_files(package)) do
 		if is_doc_path(path) then
@@ -1060,7 +1115,7 @@ docs = opt_package(memoize_package(function(package)
 		end
 	end
 	return t
-end))
+end)
 
 local function modules_(package, platform, should_be_module)
 	local t = {}
@@ -1121,67 +1176,6 @@ file_types = memoize_opt_package(function(package)
 	return t
 end)
 
---tracked file -> {path = description}
-local path_match = {
-	'^%.mgit/$', 'Multigit directory (contains all .git directories)',
-	'^%.mgit/([^/]+)/$', 'Contains the .git directory for package <b>{1}</b>',
-	'^%.mgit/([^/]+)/%.git/$', '.git directory for package <b>{1}</b>',
-	'^%.mgit/([^/]+)/([^/]+).exclude$', '.gitignore file for package <b>{1}</b>',
-	'^bin/$', 'All binaries for all packages & all platforms',
-	'^bin/([^/]+)/$', 'All binaries compiled for <b>{1}</b>',
-	'^bin/([^/]+)/clib/$', 'All Lua/C modules compiled for <b>{1}</b>',
-	'^bin/([^/]+)/clib/(.-)%.a$', 'Lua/C module <b>{2}</b> compiled statically for <b>{1}</b>',
-	'^bin/([^/]+)/clib/(.-)%.so$', 'Lua/C module <b>{2}</b> compiled dynamically for <b>{1}</b>',
-	'^bin/([^/]+)/lua/$', 'All pure-Lua modules that are <b>{1}</b>-specific',
-	'^bin/([^/]+)/lib(.-)%.a$', 'C library <b>{2}</b> compiled statically for <b>{1}</b>',
-	'^bin/([^/]+)/(.-)%.a$', 'C library <b>{2}</b> compiled statically for <b>{1}</b>',
-	'^bin/([^/]+)/lib(.-)%.so$', 'C library <b>{2}</b> compiled dynamically for <b>{1}</b>',
-	'^bin/([^/]+)/lib(.-)%.dylib$', 'C library <b>{2}</b> compiled dynamically for <b>{1}</b>',
-	'^bin/([^/]+)/(.-)%.dll$', 'C library <b>{2}</b> compiled dynamically for <b>{1}</b>',
-	'^bin/([^/]+)/luajit', 'LuaJIT wrapper for <b>{1}</b>',
-	'^bin/([^/]+)/luajit-bin', 'LuaJIT executable for <b>{1}</b>',
-	'^bin/([^/]+)/luajit.exe', 'LuaJIT executable for <b>{1}</b>',
-	'^bin/(osx..)/luajit', 'LuaJIT wrapper for <b>{1}</b>',
-	'^csrc/$', 'All C source files and build scripts for all packages',
-	'^csrc/([^/]+)/$', 'C sources & build scripts for <b>{1}</b>',
-	'^csrc/([^/]+)/WHAT$', 'WHAT file for <b>{1}</b>',
-	'^csrc/([^/]+)/LICENSE$', 'License file for <b>{1}</b>',
-	'^csrc/([^/]+)/COPYING', 'License file for <b>{1}</b>',
-	'^csrc/([^/]+)/build%-(.-)%.sh$', 'Build script for compiling <b>{1}</b> on <b>{2}</b>',
-	'^csrc/([^/]+)/build.sh$', 'Build script for compiling <b>{1}</b> on all platforms',
-	'^csrc/([^/]+)/.-%.[ch]$', 'C source file for <b>{1}</b>',
-	'^csrc/([^/]+).-/$', 'C source files for <b>{1}</b>',
-	'^media/$', 'All input data for tests and demos for all packages',
-	'^media/([^/]+)/$', 'Data files for package <b>{1}</b>',
-	'^media/([^/]+)/.-/$', 'Data files for package <b>{1}</b>',
-	'^media/([^/]+)/.-$', 'Data file for package <b>{1}</b>',
-	'^([^%.]+)/$', 'Submodules of <b>{1}</b>',
-	'(.-)_h%.lua$', 'FFI cdefs for <b>{1}</b>',
-	'(.-)_test%.lua$', 'Test script for <b>{1}</b>',
-	'(.-)_demo%.lua$', 'Demo app for <b>{1}</b>',
-	'(.-)_app%.lua$', 'Lua app called <b>{1}</b>',
-	'(.-)%.lua$', 'Lua module <b>{1}</b>',
-	'(.-)%.dasl$', 'Lua/DynASM module <b>{1}</b>',
-	'(.-)%.md$', 'Documentation for <b>{1}</b>',
-	'^luajit$', '<b class=important>LuaJIT loader for Linux and OSX<b>',
-	'^luajit32$', '<b class=important>LuaJIT 32bit mode loader for Linux and OSX<b>',
-	'^luajit.cmd$', '<b class=important>LuaJIT loader for Windows<b>',
-	'^luajit32.cmd$', '<b class=important>LuaJIT 32bit loader for Windows<b>',
-}
-local function pass(format, ...)
-	if not ... then return end
-	local t = glue.pack(...)
-	return format:gsub('{(%d)}', function(n)
-		return t[tonumber(n)]:gsub('/', '.')
-	end)
-end
-path_description = memoize(function(path)
-	for i=1,#path_match,2 do
-		local patt, format = path_match[i], path_match[i+1]
-		local s = pass(format, path:match(patt))
-		if s then return s end
-	end
-end)
 
 --module logical (name-wise) tree
 ------------------------------------------------------------------------------
@@ -1204,7 +1198,6 @@ module_tree = memoize_package(function(package, platform)
 	local function get_parent(mod) return module_parent(package, mod) end
 	return build_tree(get_names, get_parent)
 end)
-
 
 --doc tags
 ------------------------------------------------------------------------------
@@ -1243,8 +1236,29 @@ module_headers = memoize_package(function(package)
 	return t
 end)
 
+
 --reverse lookups
 ------------------------------------------------------------------------------
+
+--known modules that don't subscribe to luapower naming rules
+local known_module_packages = {
+	jit = 'luajit',
+	strict = 'luajit',
+	mime = 'socket',
+	ltn12 = 'socket',
+	lua_h = 'lua-headers',
+	luajit_h = 'lua-headers',
+	dasm = 'dynasm',
+	terralib = 'terra',
+	--TODO: fix these names and remove them from here!
+	im_boxblur = 'blur',
+	im_stackblur = 'blur',
+	obj_loader = 'obj_parser',
+	gl11 = 'opengl',
+	gl = 'opengl',
+	glu = 'opengl',
+	glx = 'xlib',
+}
 
 --find the pacakge which contains a specific module.
 module_package = memoize(function(mod)
@@ -1260,6 +1274,8 @@ module_package = memoize(function(mod)
 			if modules(mod1)[mod1] then --the module is indeed in the package
 				return mod1
 			end
+		elseif known_module_packages[mod1] then
+			return known_module_packages[mod1]
 		end
 		mod1 = parent_module_name(mod1)
 	end
@@ -1374,7 +1390,7 @@ build_platforms = memoize_opt_package(function(package)
 			local platform =
 				path:match('^'..s..'(.-)%.sh$') or
 				path:match('^'..s..'(.-)%.cmd$')
-			if platform and config('platforms')[platform] then
+			if platform and supported_platforms[platform] then
 				t[platform] = true
 			end
 		end
@@ -1403,7 +1419,7 @@ declared_platforms = memoize_opt_package(function(package)
 		for platform in glue.gsplit(tags.platforms, ',') do
 			platform = glue.trim(platform)
 			if platform ~= '' then
-				local pt = config('os_platforms')[platform]
+				local pt = supported_os_platforms[platform]
 				if pt then
 					glue.update(t, pt)
 				else
@@ -1475,7 +1491,7 @@ end)
 
 --modules with extensions other than Lua need a require() loader to be
 --installed first. that loader is usually installed by loading another module.
-local loader_modules = {dasl = 'dynasm'}
+loader_modules = {dasl = 'dynasm'}
 
 function module_loader(mod, package)
 	package = package or module_package(mod)
@@ -1503,7 +1519,7 @@ end)
 ------------------------------------------------------------------------------
 
 --NOTE: initializing with false instead of nil for compat. with strict.lua.
-db = false --{platform = {package = {module = tracking_table}}}
+local db = false --{platform = {package = {module = tracking_table}}}
 
 local function dbfile()
 	return powerpath'luapower_db.lua'
@@ -1523,9 +1539,10 @@ function save_db()
 	assert(db, 'db not loaded')
 	local pp = require'pp'
 	local dbfile = dbfile()
+	local opt = {indent = '\t', sort_keys = true}
 	local write = coroutine.wrap(function()
 		 coroutine.yield'return '
-		 pp.write(coroutine.yield, db)
+		 pp.write(coroutine.yield, db, opt)
 	end)
 	glue.writefile(dbfile, write, nil, dbfile..'.tmp')
 end
@@ -1573,14 +1590,14 @@ end
 function update_db(package, platform0, mod)
 	load_db()
 	local threads_started
-	for platform in pairs(config'platforms') do
+	for platform in pairs(supported_platforms) do
 		if not platform0 or platform == platform0 then --apply platform0 filter
 			if platform == current_platform()
-				and not config('servers')[platforms] --servers are preferred
-				and config'allow_update_db_locally' --allowed updating natively
+				and not servers[platforms] --servers are preferred
+				and allow_update_db_locally --allowed updating natively
 			then
 				update_db_on_current_platform(package)
-			elseif config('servers')[platform] then
+			elseif servers[platform] then
 				local loop = require'socketloop'
 				loop.newthread(function()
 					local lp, err = connect(platform)
@@ -1607,7 +1624,7 @@ function track_module_platform(mod, package, platform)
 	package = package or module_package(mod)
 	load_db()
 	if package then
-		if config'auto_update_db' and not (
+		if auto_update_db and not (
 				db[platform]
 				and db[platform][package]
 				and db[platform][package][mod]
@@ -1624,7 +1641,7 @@ end
 function server_status(platform0)
 	local loop = require'socketloop'
 	local t = {}
-	for platform in glue.sortedpairs(config'servers') do
+	for platform in glue.sortedpairs(servers) do
 		if not platform0 or platform == platform0 then
 			loop.newthread(function()
 				local lp, err = connect(platform)
@@ -1641,7 +1658,6 @@ function server_status(platform0)
 	loop.start(1)
 	return t
 end
-
 
 --module tracking breakdown
 ------------------------------------------------------------------------------
@@ -1667,7 +1683,7 @@ module_platforms = memoize_mod_package(function(mod, package)
 	local t = {}
 	local platforms = platforms(package)
 	if not next(platforms) then --package doesn't specify, so check all.
-		platforms = config'platforms'
+		platforms = supported_platforms
 	end
 	for platform in pairs(platforms) do
 		local err = module_load_error(mod, package, platform)
@@ -1766,8 +1782,8 @@ module_requires_loadtime_all  =
 module_requires_alltime_all   =
 	module_requires_recursive_keys_for(module_requires_alltime)
 
---direct and indirect internal (i.e. same package) module dependencies of a
---module
+--direct and indirect internal (i.e. same package) module dependencies
+--of a module
 module_requires_loadtime_int = memoize(function(mod, package, platform)
 	package = package or module_package(mod)
 	local internal = modules(package)
@@ -1810,7 +1826,7 @@ bin_deps_all = memoize_opt_package(function(package, platform)
 end)
 
 
---reverse dependencies
+--reverse module dependencies
 ------------------------------------------------------------------------------
 
 --get the modules and packages that depend on a module,
@@ -1859,9 +1875,59 @@ local function package_required_for(deps_func)
 	end)
 end
 
+
+--reverse package dependencies
+------------------------------------------------------------------------------
+
 --which packages is a package a binary dependency of.
 rev_bin_deps     = package_required_for(bin_deps)
 rev_bin_deps_all = package_required_for(bin_deps_all)
+
+
+--package dependencies of module dependencies
+------------------------------------------------------------------------------
+
+--[[
+local function packages_of_deps(dep_func, mod, pkg, platform)
+	mod = mod or modules(pkg, platform)
+	if type(mod) == 'table' then
+		local t = {}
+		for mod in pairs(mod) do
+			glue.update(t, packages_of(dep_func, mod, pkg, platform))
+		end
+		return t
+	end
+	local t = {}
+	for mod in pairs(dep_func(mod, pkg, platform)) do
+		local dpkg = module_package(mod)
+		if dpkg and dpkg ~= pkg then --exclude self
+			t[dpkg] = true
+		end
+	end
+	return t
+end
+
+local function packages_of_for(dep_func)
+	return memoize(function(mod, pkg, platform)
+		return packages_of_deps(dep_func, mod, pkg, platform)
+	end)
+end
+
+requires_loadtime_packages = packages_of_for(module_requires_loadtime)
+requires_loadtime_ffi_packages = packages_of_for(
+autoloads_packages
+requires_runtime_packages
+autoloaded_packages
+requires_alltime_packages
+requires_loadtime_all_packages
+requires_alltime_all_packages
+requires_loadtime_int_packages
+requires_loadtime_ext_packages
+required_loadtime_packages
+required_alltime_packages
+required_loadtime_all_packages
+required_alltime_all_packages
+]]
 
 
 --analytic info
@@ -1928,7 +1994,7 @@ license = memoize_package(function(package)
 		key('license', doc_tags(package, package)) or
 		key('license', module_header(package, package)) or
 		key('license', what_tags(package)) or
-		config'default_license'
+		default_license
 end)
 
 --a module's tagline can be specified in the header of the module file
@@ -2016,6 +2082,74 @@ build_order = memoize(function(packages, platform)
 	return dt
 end)
 
+------------------------------------------------------------------------------
+------------------------------------------------------------------------------
+
+--general path breakdown
+------------------------------------------------------------------------------
+
+--tracked file -> {path = description}
+local path_match = {
+	'^%.mgit/$', 'Multigit directory (contains all .git directories)',
+	'^%.mgit/([^/]+)/$', 'Contains the .git directory for package <b>{1}</b>',
+	'^%.mgit/([^/]+)/%.git/$', '.git directory for package <b>{1}</b>',
+	'^%.mgit/([^/]+)/([^/]+).exclude$', '.gitignore file for package <b>{1}</b>',
+	'^bin/$', 'All binaries for all packages & all platforms',
+	'^bin/([^/]+)/$', 'All binaries compiled for <b>{1}</b>',
+	'^bin/([^/]+)/clib/$', 'All Lua/C modules compiled for <b>{1}</b>',
+	'^bin/([^/]+)/clib/(.-)%.a$', 'Lua/C module <b>{2}</b> compiled statically for <b>{1}</b>',
+	'^bin/([^/]+)/clib/(.-)%.so$', 'Lua/C module <b>{2}</b> compiled dynamically for <b>{1}</b>',
+	'^bin/([^/]+)/lua/$', 'All pure-Lua modules that are <b>{1}</b>-specific',
+	'^bin/([^/]+)/lib(.-)%.a$', 'C library <b>{2}</b> compiled statically for <b>{1}</b>',
+	'^bin/([^/]+)/(.-)%.a$', 'C library <b>{2}</b> compiled statically for <b>{1}</b>',
+	'^bin/([^/]+)/lib(.-)%.so$', 'C library <b>{2}</b> compiled dynamically for <b>{1}</b>',
+	'^bin/([^/]+)/lib(.-)%.dylib$', 'C library <b>{2}</b> compiled dynamically for <b>{1}</b>',
+	'^bin/([^/]+)/(.-)%.dll$', 'C library <b>{2}</b> compiled dynamically for <b>{1}</b>',
+	'^bin/([^/]+)/luajit', 'LuaJIT wrapper for <b>{1}</b>',
+	'^bin/([^/]+)/luajit-bin', 'LuaJIT executable for <b>{1}</b>',
+	'^bin/([^/]+)/luajit.exe', 'LuaJIT executable for <b>{1}</b>',
+	'^bin/(osx..)/luajit', 'LuaJIT wrapper for <b>{1}</b>',
+	'^csrc/$', 'All C source files and build scripts for all packages',
+	'^csrc/([^/]+)/$', 'C sources & build scripts for <b>{1}</b>',
+	'^csrc/([^/]+)/WHAT$', 'WHAT file for <b>{1}</b>',
+	'^csrc/([^/]+)/LICENSE$', 'License file for <b>{1}</b>',
+	'^csrc/([^/]+)/COPYING', 'License file for <b>{1}</b>',
+	'^csrc/([^/]+)/build%-(.-)%.sh$', 'Build script for compiling <b>{1}</b> on <b>{2}</b>',
+	'^csrc/([^/]+)/build.sh$', 'Build script for compiling <b>{1}</b> on all platforms',
+	'^csrc/([^/]+)/.-%.[ch]$', 'C source file for <b>{1}</b>',
+	'^csrc/([^/]+).-/$', 'C source files for <b>{1}</b>',
+	'^media/$', 'All input data for tests and demos for all packages',
+	'^media/([^/]+)/$', 'Data files for package <b>{1}</b>',
+	'^media/([^/]+)/.-/$', 'Data files for package <b>{1}</b>',
+	'^media/([^/]+)/.-$', 'Data file for package <b>{1}</b>',
+	'^([^%.]+)/$', 'Submodules of <b>{1}</b>',
+	'(.-)_h%.lua$', 'FFI cdefs for <b>{1}</b>',
+	'(.-)_test%.lua$', 'Test script for <b>{1}</b>',
+	'(.-)_demo%.lua$', 'Demo app for <b>{1}</b>',
+	'(.-)_app%.lua$', 'Lua app called <b>{1}</b>',
+	'(.-)%.lua$', 'Lua module <b>{1}</b>',
+	'(.-)%.dasl$', 'Lua/DynASM module <b>{1}</b>',
+	'(.-)%.md$', 'Documentation for <b>{1}</b>',
+	'^luajit$', '<b class=important>LuaJIT loader for Linux and OSX<b>',
+	'^luajit32$', '<b class=important>LuaJIT 32bit mode loader for Linux and OSX<b>',
+	'^luajit.cmd$', '<b class=important>LuaJIT loader for Windows<b>',
+	'^luajit32.cmd$', '<b class=important>LuaJIT 32bit loader for Windows<b>',
+}
+local function pass(format, ...)
+	if not ... then return end
+	local t = glue.pack(...)
+	return format:gsub('{(%d)}', function(n)
+		return t[tonumber(n)]:gsub('/', '.')
+	end)
+end
+path_description = memoize(function(path)
+	for i=1,#path_match,2 do
+		local patt, format = path_match[i], path_match[i+1]
+		local s = pass(format, path:match(patt))
+		if s then return s end
+	end
+end)
+
 
 --consistency checks
 --============================================================================
@@ -2058,13 +2192,31 @@ load_errors = memoize_opt_package(function(package, platform)
 end)
 
 
+--updating the mgit deps files
+--============================================================================
+
+function update_mgit_deps(pkg)
+	if not pkg then
+		for pkg in pairs(installed_packages()) do
+			update_mgit_deps(pkg)
+		end
+	else
+		for platform in glue.sortedpairs(supported_platforms) do
+			local pext = packages_of_all(
+				module_requires_loadtime_ext, pkg, platform)
+
+		end
+	end
+end
+
+
 --use luapower remotely via a RPC server
 --============================================================================
 
 local rpc = require'luapower_rpc'
 
 function connect(ip, port, connect)
-	local srv = config('servers')[ip] --ip is platform here
+	local srv = servers[ip] --ip is platform here
 	if srv then
 		ip, port = unpack(srv)
 	end
