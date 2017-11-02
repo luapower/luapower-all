@@ -149,8 +149,7 @@ return {
 				mdeps={
 					cbframe=true,
 					ffi=true,
-					ffi_reflect=true,
-					pp=true
+					ffi_reflect=true
 				}
 			},
 			cbframe_dump={
@@ -2317,8 +2316,7 @@ return {
 				mdeps={
 					cbframe=true,
 					ffi=true,
-					ffi_reflect=true,
-					pp=true
+					ffi_reflect=true
 				}
 			},
 			cbframe_dump={
@@ -3205,7 +3203,6 @@ return {
 		},
 		luapower_db={
 			luapower_db={
-				loaderr='module \'luapower_db\' not found'
 			}
 		},
 		luastate={
@@ -4522,8 +4519,7 @@ return {
 				mdeps={
 					cbframe=true,
 					ffi=true,
-					ffi_reflect=true,
-					pp=true
+					ffi_reflect=true
 				}
 			},
 			cbframe_dump={
@@ -7379,8 +7375,7 @@ return {
 				mdeps={
 					cbframe=true,
 					ffi=true,
-					ffi_reflect=true,
-					pp=true
+					ffi_reflect=true
 				}
 			},
 			cbframe_dump={
@@ -10251,8 +10246,7 @@ return {
 				mdeps={
 					cbframe=true,
 					ffi=true,
-					ffi_reflect=true,
-					pp=true
+					ffi_reflect=true
 				}
 			},
 			cbframe_dump={
@@ -12413,8 +12407,7 @@ return {
 				mdeps={
 					cbframe=true,
 					ffi=true,
-					ffi_reflect=true,
-					pp=true
+					ffi_reflect=true
 				}
 			},
 			cbframe_dump={

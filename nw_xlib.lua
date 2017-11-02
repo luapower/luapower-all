@@ -12,7 +12,6 @@ local xlib  = require'xlib'
 require'xlib_keysym_h'
 local time  = require'time' --for timers
 local heap  = require'heap' --for timers
-local pp    = require'pp'
 local cast  = ffi.cast
 local free  = glue.free
 local xid   = xlib.xid

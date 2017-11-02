@@ -2,7 +2,6 @@
 local cbframe = require'cbframe'
 local reflect = require'ffi_reflect'
 local ffi = require'ffi'
-local pp = require'pp'
 
 local function isstruct(rct)
 	return rct.type and (rct.type.what == 'struct' or rct.type.what == 'union')
@@ -40,7 +39,7 @@ local function wrap_cdecl_win(rct, func)
 	local i = 1
 	local argi = 1
 	for rct in rct.element_type:arguments() do
-		pp(rct)
+		--pp(rct)
 		local s, h
 		if rct.type.bool then
 			s = _('cpu.ESP.dp[%d].i ~= 0', i)
