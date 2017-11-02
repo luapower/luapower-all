@@ -1168,7 +1168,6 @@ return {
 					ffi=true,
 					glue=true,
 					heap=true,
-					pp=true,
 					time=true,
 					xlib=true,
 					xlib_keysym_h=true
@@ -3341,7 +3340,6 @@ return {
 					ffi=true,
 					glue=true,
 					heap=true,
-					pp=true,
 					time=true,
 					xlib=true,
 					xlib_keysym_h=true
@@ -11262,6 +11260,8 @@ return {
 					['/System/Library/Frameworks/ApplicationServices.framework/Versions/Current/Frameworks/CoreGraphics.framework/CoreGraphics']=true,
 					['/System/Library/Frameworks/ApplicationServices.framework/Versions/Current/Frameworks/CoreGraphics.framework/Resources/BridgeSupport/CoreGraphics.dylib']=true,
 					['/System/Library/Frameworks/Carbon.framework/Versions/Current/Frameworks/HIToolbox.framework/HIToolbox']=true,
+					['/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation']=true,
+					['/System/Library/Frameworks/CoreFoundation.framework/Resources/BridgeSupport/CoreFoundation.dylib']=true,
 					['/System/Library/Frameworks/Foundation.framework/Foundation']=true,
 					['/System/Library/Frameworks/Foundation.framework/Resources/BridgeSupport/Foundation.dylib']=true
 				},
@@ -13423,6 +13423,8 @@ return {
 					['/System/Library/Frameworks/ApplicationServices.framework/Versions/Current/Frameworks/CoreGraphics.framework/CoreGraphics']=true,
 					['/System/Library/Frameworks/ApplicationServices.framework/Versions/Current/Frameworks/CoreGraphics.framework/Resources/BridgeSupport/CoreGraphics.dylib']=true,
 					['/System/Library/Frameworks/Carbon.framework/Versions/Current/Frameworks/HIToolbox.framework/HIToolbox']=true,
+					['/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation']=true,
+					['/System/Library/Frameworks/CoreFoundation.framework/Resources/BridgeSupport/CoreFoundation.dylib']=true,
 					['/System/Library/Frameworks/Foundation.framework/Foundation']=true,
 					['/System/Library/Frameworks/Foundation.framework/Resources/BridgeSupport/Foundation.dylib']=true
 				},

@@ -25,7 +25,7 @@ function glue.unpack(t, i, j)
 	return unpack(t, i or 1, j or t.n or #t)
 end
 
---count the number of keys in table.
+--count the keys in a table.
 function glue.count(t, maxn)
 	local n = 0
 	if maxn then
