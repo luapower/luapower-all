@@ -290,6 +290,7 @@ luapower_dir = '.'     --the location of the luapower tree to inspect on
 mgit_dir = '.mgit'     --relative to luapower_dir
 
 --platforms
+supported_os_list = {'mingw', 'linux', 'osx'}
 supported_os_platforms = {
 	mingw = {mingw32 = true, mingw64 = true},
 	linux = {linux32 = true, linux64 = true},
@@ -1783,8 +1784,7 @@ module_requires_loadtime_all  =
 module_requires_alltime_all   =
 	module_requires_recursive_keys_for(module_requires_alltime)
 
---direct and indirect internal (i.e. same package) module dependencies
---of a module
+--direct and indirect internal (i.e. same package) module deps of a module
 module_requires_loadtime_int = memoize(function(mod, package, platform)
 	package = package or module_package(mod)
 	local internal = modules(package)
@@ -1792,7 +1792,7 @@ module_requires_loadtime_int = memoize(function(mod, package, platform)
 			function(m) return internal[m] end)
 end)
 
---direct external module dependencies of a module and its internal dependencies
+--direct external module deps of a module and its internal deps
 module_requires_loadtime_ext = memoize(function(mod, package, platform)
 	local t = {}
 	package = package or module_package(mod)
@@ -1883,52 +1883,6 @@ end
 --which packages is a package a binary dependency of.
 rev_bin_deps     = package_required_for(bin_deps)
 rev_bin_deps_all = package_required_for(bin_deps_all)
-
-
---package dependencies of module dependencies
-------------------------------------------------------------------------------
-
---[[
-local function packages_of_deps(dep_func, mod, pkg, platform)
-	mod = mod or modules(pkg, platform)
-	if type(mod) == 'table' then
-		local t = {}
-		for mod in pairs(mod) do
-			glue.update(t, packages_of(dep_func, mod, pkg, platform))
-		end
-		return t
-	end
-	local t = {}
-	for mod in pairs(dep_func(mod, pkg, platform)) do
-		local dpkg = module_package(mod)
-		if dpkg and dpkg ~= pkg then --exclude self
-			t[dpkg] = true
-		end
-	end
-	return t
-end
-
-local function packages_of_for(dep_func)
-	return memoize(function(mod, pkg, platform)
-		return packages_of_deps(dep_func, mod, pkg, platform)
-	end)
-end
-
-requires_loadtime_packages = packages_of_for(module_requires_loadtime)
-requires_loadtime_ffi_packages = packages_of_for(
-autoloads_packages
-requires_runtime_packages
-autoloaded_packages
-requires_alltime_packages
-requires_loadtime_all_packages
-requires_alltime_all_packages
-requires_loadtime_int_packages
-requires_loadtime_ext_packages
-required_loadtime_packages
-required_alltime_packages
-required_loadtime_all_packages
-required_alltime_all_packages
-]]
 
 
 --analytic info
@@ -2128,17 +2082,155 @@ end)
 --updating the mgit deps files
 --============================================================================
 
-function update_mgit_deps(pkg)
-	if not pkg then
-		for pkg in pairs(installed_packages()) do
-			update_mgit_deps(pkg)
+--given {place1 = {item1 = val1, ...}, ...}, extract items that are
+--found in all places into the place indicated by all_key.
+local function extract_common_keys(maps, all_key)
+	--count occurences for each item
+	local maxn = glue.count(maps)
+	--if less than two places to group, don't group
+	if maxn < 2 then return maps end
+	local nt = {} --{item = n}
+	local tt = {} --{item = val}
+	for place, items in pairs(maps) do
+		for item, val in pairs(items) do
+			nt[item] = (nt[item] or 0) + 1
+			--val of 'all' is the val of the first item.
+			tt[item] = tt[item] or val
 		end
-	else
-		for platform in glue.sortedpairs(supported_platforms) do
-			local pext = packages_of_all(
-				module_requires_loadtime_ext, pkg, platform)
+	end
+	--extract items found in all places
+	local all = {}
+	for item, n in pairs(nt) do
+		if n == maxn then
+			all[item] = tt[item]
+		end
+	end
+	--add items not found in all places, to their original places
+	local t = {[all_key] = next(all) and all}
+	for place, items in pairs(maps) do
+		for item, val in pairs(items) do
+			if all[item] == nil then
+				glue.attr(t, place)[item] = val
+			end
+		end
+	end
+	return t
+end
 
+--same as above, but use an "all-or-nothing strategy" of extraction
+local function extract_common_keys_aot(maps, all_key)
+	--count occurences for each item
+	local maxn = glue.count(maps)
+	--if less than two places to group, don't group
+	if maxn < 2 then return maps end
+	local nt = {} --{item = n}
+	local tt = {} --{item = val}
+	for place, items in pairs(maps) do
+		for item, val in pairs(items) do
+			nt[item] = (nt[item] or 0) + 1
+			--val of 'all' is the val of the first item.
+			tt[item] = tt[item] or val
 		end
+	end
+	--check to see if all items were extracted
+	local all_extracted = true
+	for item, n in pairs(nt) do
+		if n < maxn then
+			all_extracted = false
+		end
+	end
+	return all_extracted and {[all_key] = tt} or maps
+end
+
+--given {platform1 = {item1 = val1, ...}, ...}, group items that are
+--common to the same OS into OS keys, and all-around common items
+--into the all_key key, if given.
+local function platform_maps(maps, all_key, aot)
+	local extract = aot and extract_common_keys_aot or extract_common_keys
+	--extract common items across all places, if all_key given
+	maps = all_key and extract(maps, all_key) or glue.update({}, maps)
+	--combine platforms per OS
+	for _,os in ipairs(supported_os_list) do
+		local t = {}
+		for platform in pairs(supported_os_platforms[os]) do
+			t[platform] = maps[platform]
+			maps[platform] = nil
+		end
+		glue.update(maps, extract(t, os))
+	end
+	return maps
+end
+
+local function packages_of(dep_func, mod, pkg, platform)
+	mod = mod or modules(pkg)
+	--many modules
+	if type(mod) == 'table' then
+		local t = {}
+		for mod in pairs(mod) do
+			glue.update(t, packages_of(dep_func, mod, pkg, platform))
+		end
+		return t
+	end
+	--single module
+	local t = {}
+	for mod in pairs(dep_func(mod, pkg, platform)) do
+		local dpkg = module_package(mod)
+		if dpkg and dpkg ~= pkg then --exclude self
+			t[dpkg] = true
+		end
+	end
+	return t
+end
+
+function update_mgit_deps(package)
+	if not package then
+		for package in pairs(installed_packages()) do
+			update_mgit_deps(package)
+		end
+		return
+	else
+		--collect packages of direct external module deps
+		local pkgs = {}
+		local has_deps
+		for platform in pairs(supported_platforms) do
+			local pext = packages_of(
+				module_requires_loadtime_ext,
+				nil, package, platform)
+			glue.update(pext, bin_deps(package, platform))
+			has_deps = has_deps or next(pext)
+			pkgs[platform] = pext
+		end
+		if not has_deps then
+			return
+		end
+		local pkgs = platform_maps(pkgs, '_all')
+
+		--generate the .dep file
+		local t = {}
+		local function out(s)
+			t[#t+1] = s
+		end
+		for platform, pkgs in glue.sortedpairs(pkgs) do
+			if next(pkgs) then
+				if platform ~= '_all' then
+					out(platform)
+					out': '
+				end
+				local first = true
+				for pkg in glue.sortedpairs(pkgs) do
+					if first then
+						first = false
+					else
+						out' '
+					end
+					out(pkg)
+				end
+				out'\n'
+			end
+		end
+		local depfile = powerpath(mgitpath(package)..'.deps')
+		local s = table.concat(t)
+		glue.writefile(depfile, s, nil, depfile..'.tmp')
 	end
 end
 
