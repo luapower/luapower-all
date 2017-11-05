@@ -13,7 +13,7 @@ tagline:   Obj-C & Cocoa bridge
 	 * creating classes and overriding methods
 	 * exploring and searching the Objective-C runtime
   * Platforms
-    * tested with __OSX 10.9__ (__32bit__ and __64bit__)
+    * tested with __OSX 10.7 to 10.12__ (__32bit__ and __64bit__)
   * Dependencies
     * none for Cocoa (XML parser included), [expat] for non-standard bridgesupport files
   * Type Bridging
@@ -503,11 +503,6 @@ __loading frameworks__
 __gc bridging__
 `objc.debug.noretain.foo = true`										declare that method `foo` already retains the object it returns
 ----------------------------------------------------------- --------------------------------------------------------------
-
-## Credits
-
-  * Cosmin Apreutesei, May 2014, public domain.
-  * Ideas and code from [TLC](https://github.com/fjolnir/TLC) by Fjölnir Ásgeirsson (c) 2012, MIT license.
 
 ## Future developments
 

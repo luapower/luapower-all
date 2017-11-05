@@ -2,8 +2,7 @@
 --Objecive-C runtime and bridgesupport binding.
 --Written by Cosmin Apreutesei. Public domain.
 
---Ideas and code from TLC by Fjölnir Ásgeirsson (c) 2012, MIT license.
---Tested with with LuaJIT 2.0.3, 32bit and 64bit on OSX 10.9 and 10.7.
+--Tested with with LuaJIT 2.1.0, 32bit and 64bit on OSX 10.9 and 10.12.
 
 local ffi = require'ffi'
 local cast = ffi.cast
@@ -415,6 +414,7 @@ end
 
 --decode a method type encoding (mtype), and return its table representation (ftype).
 --note: other type annotations like `variadic` and `isblock` come from bridgesupport attributes.
+--note: offsets are meaningless on current architectures.
 local function mtype_ftype(mtype) --eg. 'v12@0:4c8' (retval offset arg1 offset arg2 offset ...)
 	local ftype = {}
 	local retval
@@ -653,7 +653,7 @@ local function add_function(name, ftype, lazy) --cdef and call-wrap a global C f
 
 	if lazy then
 		--delay cdef'ing the function until the first call, to avoid polluting the C namespace with unused declarations.
-		--this is because in luajit2 can only hold as many as 64k ctypes total.
+		--this is because in luajit2 can only hold 64k ctypes total.
 		rawset(objc, name, function(...)
 			local func = addfunc()
 			if not func then return end
@@ -761,6 +761,7 @@ function tag.class(attrs, getwhile)
 					class_methods[methodname] = meth
 				end
 			end
+
 		end
 	end
 
@@ -1439,16 +1440,13 @@ end
 
 local callback_caller -- fw. decl.
 
-cbframe = false --use cbframe for struct-by-val callbacks
-local cbframe_stack = {}
-
-local function use_cbframe()
-	table.insert(cbframe_stack, cbframe)
-	cbframe = true
-end
-
-local function stop_using_cbframe()
-	cbframe = table.remove(cbframe_stack)
+local cbframe = false --use cbframe for struct-by-val callbacks
+local function use_cbframe(use)
+	local old_cbframe = cbframe
+	if use ~= nil then
+		cbframe = use
+	end
+	return old_cbframe
 end
 
 local function add_class_method(cls, sel, func, ftype)
@@ -1602,7 +1600,7 @@ local function annotate_ftype(ftype, mta)
 end
 
 local function method_ftype(cls, sel, method)
-	method = method or class_method(cls, sel)
+	method = assert(method or class_method(cls, sel), 'method not found')
 	local mta = get_mta(cls, sel)
 	if mta then
 		return annotate_ftype(method_raw_ftype(method), mta)
@@ -1657,7 +1655,6 @@ local method_caller = memoize2(function(cls, selname)
 
 	local ftype = method_ftype(cls, sel, method)
 	local ct = ftype_ct(ftype)
-
 	local func = method_imp(method)
 	local func = cast(ct, func)
 	local func = function_caller(ftype, func)
@@ -1765,6 +1762,40 @@ local function swizzle(cls, selname1, selname2, func)
 	method1:exchange_imp(method2)
 end
 
+--OSX 10.10+ "modernized" Cocoa by making properties out of what before were
+--getter methods with the same name. This does not break compatibility in
+--Obj-C because getter invocation is still available for compiling old code
+--or for writing backwards-compatible code, but it is a problem in Lua which
+--can't distinguish between method invocation and table access at runtime.
+--So if we care about writing code that works on OSX older than 10.10 we have
+--to disable property access via dot notation and access properties through
+--their getters.
+local _use_properties = false
+
+local function use_properties(use) --should be inlinable
+	local old_use = _use_properties
+	if use ~= nil then
+		_use_properties = use
+	end
+	return old_use
+end
+
+local function with_properties_wrapper(with) --should be inlinable
+	return function(func)
+		local props
+		local function pass(...)
+			use_properties(props)
+			return ...
+		end
+		return function(...) --keep upvalues to a minimum in this func
+			props = use_properties(with)
+			return pass(func(...))
+		end
+	end
+end
+local with_properties = with_properties_wrapper(true)
+local without_properties = with_properties_wrapper(false)
+
 --class fields
 
 --try to get, in order:
@@ -1784,7 +1815,11 @@ local function get_class_field(cls, field)
 	if prop then
 		local caller = method_caller(metaclass(cls), property_getter(prop))
 		if caller then --the getter is a class method so this is a "class property"
-			return caller(cls)
+			if _use_properties then
+				return caller(cls)
+			else
+				return caller
+			end
 		end
 	end
 	--look for a class method
@@ -1878,7 +1913,11 @@ local function get_instance_field(obj, field)
 	if prop then
 		local caller = method_caller(cls, property_getter(prop))
 		if caller then --the getter is an instance method so this is an "instance property"
-			return caller(obj)
+			if _use_properties then
+				return caller(obj)
+			else
+				return caller
+			end
 		end
 	end
 	--look for an ivar
@@ -2071,11 +2110,14 @@ end
 
 --Lua type conversions ---------------------------------------------------------------------------------------------------
 
-local function toobj(v) --convert a lua value to an objc object representing that value
+--convert a Lua value to an objc object representing that value
+local toobj
+local t = {}
+toobj = without_properties(function(v)
 	if type(v) == 'number' then
 		return objc.NSNumber:numberWithDouble(v)
 	elseif type(v) == 'string' then
-	  return objc.NSString:stringWithUTF8String(v)
+		return objc.NSString:stringWithUTF8String(v)
 	elseif type(v) == 'table' then
 		if #v == 0 then
 			 local dic = objc.NSMutableDictionary:dictionary()
@@ -2095,9 +2137,11 @@ local function toobj(v) --convert a lua value to an objc object representing tha
 	else
 		return v --pass through
 	end
-end
+end)
 
-local function tolua(obj) --convert an objc object that converts naturally to a lua value
+--convert an objc object that converts naturally to a Lua value
+local tolua
+tolua = without_properties(function(obj)
 	if isa(obj, objc.NSNumber) then
 		return obj:doubleValue()
 	elseif isa(obj, objc.NSString) then
@@ -2121,7 +2165,7 @@ local function tolua(obj) --convert an objc object that converts naturally to a 
 	else
 		return obj --pass through
 	end
-end
+end)
 
 --convert arguments and retvals for functions and methods
 
@@ -2179,27 +2223,8 @@ local function convert_ret(ftype, ret)
 	end
 end
 function function_caller(ftype, func)
-	if #ftype == 0 then
-		return function()
-			return convert_ret(ftype, func())
-		end
-	elseif #ftype == 1 then
-		return function(arg)
-			return convert_ret(ftype, func(convert_arg(ftype, 1, arg)))
-		end
-	elseif #ftype == 2 and ftype[1] == '@' and ftype[2] == ':' then --method, 0 args
-		return function(arg1, arg2)
-			return convert_ret(ftype, func(toobj(arg1), selector(arg2)))
-		end
-	elseif #ftype == 3 and ftype[1] == '@' and ftype[2] == ':' then --method, 1 arg
-		return function(arg1, arg2, arg3)
-			return convert_ret(ftype, func(toobj(arg1), selector(arg2),
-				convert_arg(ftype, 3, arg3)))
-		end
-	else
-		return function(...)
-			return convert_ret(ftype, func(convert_args(ftype, 1, ...)))
-		end
+	return function(...)
+		return convert_ret(ftype, func(convert_args(ftype, 1, ...)))
 	end
 end
 
@@ -2249,10 +2274,10 @@ end
 
 --iterators --------------------------------------------------------------------------------------------------------------
 
-local function array_next(arr, i)
+local array_next = without_properties(function(arr, i)
 	if i >= arr:count() then return end
 	return i + 1, arr:objectAtIndex(i)
-end
+end)
 
 local function array_ipairs(arr)
 	return array_next, arr, 0
@@ -2272,7 +2297,9 @@ end
 objc.C = C
 objc.debug = P
 objc.use_cbframe = use_cbframe
-objc.stop_using_cbframe = stop_using_cbframe
+objc.use_properties = use_properties
+objc.with_properties = with_properties
+objc.without_properties = without_properties
 
 --manual declarations
 objc.addfunction = add_function

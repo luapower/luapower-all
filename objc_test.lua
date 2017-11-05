@@ -374,7 +374,7 @@ function test.ivars()
 	assert(obj.flags.isDir == 1) --1 bit was set (so this is not a luavar or anything)
 end
 
-function test.properties()
+test.properties = objc.with_properties(function()
 	--TODO: find another class with r/w properties. NSProgress is not public on 10.7.
 	local pr = NSProgress:progressWithTotalUnitCount(123)
 	assert(pr.totalUnitCount == 123) --as initialized
@@ -382,7 +382,7 @@ function test.properties()
 	assert(pr.totalUnitCount == 321)
 	assert(not pcall(function() pr.indeterminate = true end)) --attempt to set read-only property
 	assert(pr.indeterminate == false)
-end
+end)
 
 local timebase, last_time
 function timediff()
@@ -565,9 +565,7 @@ function demo.http() --what a dense word soup just to make a http request
 						toobj'Dude', toobj'Edud', toobj'x@y.com', toobj'message')
 	local postData = post:dataUsingEncoding(NSUTF8StringEncoding)
 	local postLength = NSString:stringWithFormat('%ld', postData:length())
-
 	NSLog('Post data: %@', post)
-
 	local request = NSMutableURLRequest:new()
 	request:setURL(NSURL:URLWithString'http://posttestserver.com/post.php')
 	request:setHTTPMethod'POST'
