@@ -173,8 +173,8 @@ __mouse__
 `win/view:mousedown(button, x, y)`           event: mouse button was pressed
 `win/view:mouseup(button, x, y)`             event: mouse button was depressed
 `win/view:click(button, count, x, y)`        event: mouse button was clicked
-`win/view:wheel(delta, x, y)`                event: mouse wheel was moved
-`win/view:hwheel(delta, x, y)`               event: mouse horizontal wheel was moved
+`win/view:mousewheel(delta, x, y)`           event: mouse wheel was moved
+`win/view:hmousewheel(delta, x, y)`          event: mouse horizontal wheel was moved
 __rendering__
 `win/view:repaint()`                         event: window needs redrawing
 `win/view:invalidate()`                      request window redrawing
