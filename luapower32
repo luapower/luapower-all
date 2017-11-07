@@ -1,0 +1,2 @@
+#!/bin/sh
+cd "${0%luapower32}" && exec ./luajit32 luapower_cli.lua "$@"
