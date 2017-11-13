@@ -59,6 +59,7 @@ tagline: package categories
 	* [socketloop]
 	* [libcurl]
 	* [libssh2]
+	* [rsync]
 * Windowing/GUIs
 	* [nw]
 	* [cplayer]
