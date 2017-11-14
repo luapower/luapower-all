@@ -3,6 +3,8 @@ require'winapi.windowclass'
 local SGPanel = require'winapi.cairosgpanel'
 local cairo = require'cairo'
 
+assert(... ~= 'sg_cairo_player', 'not a module')
+
 local main = winapi.Window{
 	autoquit = true,
 	visible = false,
