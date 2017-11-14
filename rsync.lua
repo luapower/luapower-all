@@ -449,6 +449,58 @@ function rsync:cmd_reader(read)
 	end)
 end
 
+--[[
+
+--alternate cmd_reader() implementation without coroutines,
+--as an explicit state machine. posted just for the record.
+
+function rsync:cmd_reader(read)
+	local u8 = ffi.new'uint8_t[1]'
+	local u32 = ffi.new'uint32_t[1]'
+	local buf, buf_len = self:block_buffer(1)
+	local read = buffer_filler(read)
+	local state, len, block_num, block_count
+	local function go(newstate)
+		state = newstate
+		if not state then
+			if read(u8, 1) == 0 then
+				return
+			end
+			if u8[0] == 1 then --data
+				assert(read(u32, 4) == 4)
+				len = tonumber(u32[0])
+				return go'data'
+			elseif u8[0] == 2 then --copy
+				assert(read(u32, 4) == 4)
+				block_num = tonumber(u32[0])
+				assert(read(u8, 1) == 1)
+				block_count = tonumber(u8[0])
+				return go'copy'
+			end
+		elseif state == 'data' then
+			if len == 0 then
+				return go()
+			end
+			local toread = math.min(len, buf_len)
+			assert(read(buf, toread) == toread)
+			len = len - toread
+			return 'data', buf, toread
+		elseif state == 'copy' then
+			if block_count == 0 then
+				return go()
+			end
+			block_count = block_count - 1
+			block_num = block_num + 1
+			return 'copy', block_num - 1
+		end
+	end
+	return function()
+		return go(state)
+	end
+end
+
+]]
+
 function rsync:gen_deltas_file(read, sigs, write, block_len)
 	local write_cmd = self:cmd_writer(write)
 	return self:gen_deltas(read, sigs, write_cmd, block_len)
