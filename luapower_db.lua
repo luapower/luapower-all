@@ -1440,8 +1440,7 @@ return {
 			rsync={
 				mdeps={
 					bit=true,
-					ffi=true,
-					ringbuffer=true
+					ffi=true
 				}
 			}
 		},
@@ -3612,8 +3611,7 @@ return {
 			rsync={
 				mdeps={
 					bit=true,
-					ffi=true,
-					ringbuffer=true
+					ffi=true
 				}
 			}
 		},
@@ -6125,8 +6123,7 @@ return {
 			rsync={
 				mdeps={
 					bit=true,
-					ffi=true,
-					ringbuffer=true
+					ffi=true
 				}
 			}
 		},
@@ -9008,8 +9005,7 @@ return {
 			rsync={
 				mdeps={
 					bit=true,
-					ffi=true,
-					ringbuffer=true
+					ffi=true
 				}
 			}
 		},
@@ -11570,8 +11566,7 @@ return {
 			rsync={
 				mdeps={
 					bit=true,
-					ffi=true,
-					ringbuffer=true
+					ffi=true
 				}
 			}
 		},
@@ -13733,8 +13728,7 @@ return {
 			rsync={
 				mdeps={
 					bit=true,
-					ffi=true,
-					ringbuffer=true
+					ffi=true
 				}
 			}
 		},

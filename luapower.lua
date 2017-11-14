@@ -575,8 +575,8 @@ module_requires_parsed = memoize(function(m) --direct dependencies
 	s = s:gsub('%-%-%[%[.*%]%]', '')
 	--delete short comments
 	s = s:gsub('%-%-[^\n\r]*', '')
-	--delete the demo section
-	s = s:gsub('[\r\n]if not %.%.%. then.*', '')
+	--delete the demo section (horrible parsing)
+	s = s:gsub('[\r\n]if not %.%.%. then%s+.-%s+end', '')
 	--require'xxx'
 	for m in s:gmatch'require%s*(%b\'\')' do
 		t[m:sub(2,-2)] = true

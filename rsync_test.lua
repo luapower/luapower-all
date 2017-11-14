@@ -156,6 +156,7 @@ local function test_files(file1, file2, block_len)
 	local write, fsig, fsig_len = file_writer(sigs_file)
 	local sig_count = rsync:gen_sigs_file(read, write, block_len)
 	f1:close()
+	fsig:flush()
 	fsig:close()
 	log_mbs(f1_len(), 'gen_sigs_file:  %d sigs = %5.1fMB', sig_count,
 		mb(fsig_len()))
@@ -185,6 +186,7 @@ local function test_files(file1, file2, block_len)
 		rsync:gen_deltas(read, sigs, write_cmd, block_len)
 	log_cmd()
 	f2:close()
+	fd:flush()
 	fd:close()
 	log_mbs(fd_len(), 'gen_deltas_file: %5.1fM, false alarms: %5.2f%%',
 		mb(fd_len()),
@@ -204,6 +206,7 @@ local function test_files(file1, file2, block_len)
 	rsync:patch(read_cmd, seek, read, write_fout, block_len)
 	f1:close()
 	fd:close()
+	fout:flush()
 	fout:close()
 	log_mbs(out_len(), 'patched %dM to %s', mb(out_len()), out_file)
 
@@ -228,6 +231,7 @@ local function test_copy(file1, block_len)
 		total_len = total_len + len
 		total_blocks = total_blocks + 1
 	end
+	f2:flush()
 	f1:close()
 	f2:close()
 	log_mbs(total_len, 'plain copy: %5dM, %5d blocks of %d bytes each',

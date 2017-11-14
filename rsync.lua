@@ -2,14 +2,15 @@
 --rsync algorithm in Lua.
 --Written by Cosmin Apreutesei. Public Domain.
 
-if not ... then require'rsync_test' end
+if not ... then require'rsync_test'; return end
 
 local ffi = require'ffi'
 local bit = require'bit'
 
 --rolling sum algorithm
 
-local R = 31 --keep this a prime number
+local R = ffi.cast('uint32_t', 31) --keep this a prime number
+local Z = ffi.cast('uint32_t', 0)  --to force a cast (faster than ffi.cast)
 
 local rollsum = ffi.typeof[[
 struct {
@@ -27,20 +28,12 @@ function rs.reset(sum)
 end
 
 function rs.rotate(sum, outc, inc)
-	sum.s1 = sum.s1 + (inc - outc)
-	sum.s2 = sum.s2 + sum.s1 - sum.count * (outc + R)
-end
-
-function rs.rollin(sum, c)
-	sum.s1 = sum.s1 + (c + R)
-	sum.s2 = sum.s2 + sum.count * (c + R)
-	sum.count = sum.count + 1
-end
-
-function rs.rollout(sum, c)
-	sum.s1 = sum.s1 - (c + R)
-	sum.s2 = sum.s2 - sum.count * (c + R)
-	sum.count = sum.count - 1
+	local s1 = sum.s1 + Z
+	local s2 = sum.s2 + Z
+	s1 = s1 + (inc - outc)
+	s2 = s2 + s1 - sum.count * (outc + R)
+	sum.s1 = s1
+	sum.s2 = s2
 end
 
 local shl, bor, band = bit.lshift, bit.bor, bit.band
@@ -49,8 +42,8 @@ function rs.final(sum)
 end
 
 function rs.update(sum, buf, len)
-	local s1 = sum.s1
-	local s2 = sum.s2
+	local s1 = sum.s1 + Z
+	local s2 = sum.s2 + Z
 	sum.count = sum.count + len
 	for i = 0, len-1 do
 		s1 = s1 + buf[i] + R
