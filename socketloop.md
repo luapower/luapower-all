@@ -6,7 +6,7 @@ tagline: TCP sockets with coroutines
 
 A socket loop enables coroutine-based asynchronous I/O programming model for
 [TCP sockets][TCP socket]. The concept is similar to [Copas], the API and the
-implementation are different. Supports both symmetric and asymmetric
+implementation are different. Supports both [symmetric][coro] and asymmetric
 coroutines.
 
 [Copas]: http://keplerproject.github.com/copas/

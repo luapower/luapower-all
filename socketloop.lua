@@ -2,6 +2,8 @@
 --luasocket-based scheduler for Lua coroutines.
 --Written by Cosmin Apreutesei. Public domain.
 
+if not ... then require'socketloop_test'; return end
+
 local socket = require'socket'
 local glue = require'glue'
 
@@ -33,19 +35,15 @@ local function new(coro)
 			loop.resume(thread, args)
 			return thread
 		end
-		function current()
-			return coro.current
-		end
+		current = coro.running
 		function suspend()
 			return coro.transfer(loop.thread)
 		end
-		function resume(thread, args)
-			coro.transfer(thread, args)
-		end
+		resume = coro.transfer
 		function loop.resume(thread, args)
 			local loop_thread = loop.thread
 			--change loop.thread temporarily so that we get back here.
-			loop.thread = coro.current
+			loop.thread = current()
 			resume(thread, args)
 			loop.thread = loop_thread
 		end
@@ -212,11 +210,11 @@ end
 
 local loop = new()
 
-glue.autoload(loop, {coro = function()
-	local coro = require'coro'
-	loop.coro = new(coro)
-end})
-
-if not ... then require'socketloop_test' end
+glue.autoload(loop, {
+	coro = function()
+		local coro = require'coro'
+		loop.coro = new(coro)
+	end,
+})
 
 return loop

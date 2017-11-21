@@ -8,15 +8,11 @@ if not ... then require'coro_test'; return end
 local coroutine = coroutine
 
 local coro = {}
-local coro_mt = {}
+local callers = setmetatable({}, {__mode = 'k'}) --{thread -> caller_thread}
 local current --nil means main thread
 
-function coro_mt.__tostring(thread)
-	return thread.name or tostring(thread.co)
-end
-
 local function assert_thread(thread, level)
-	if getmetatable(thread) == coro_mt then
+	if type(thread) == 'thread' then
 		return thread
 	end
 	local err = string.format('coroutine expected but %s given', type(thread))
@@ -25,7 +21,7 @@ end
 
 --the caller is the thread that called resume() on this thread, if any.
 local function caller_thread(thread)
-	local caller = thread.caller
+	local caller = callers[thread]
 	return caller ~= true and caller or nil --true means main thread
 end
 
@@ -39,14 +35,14 @@ end
 --the coroutine ends by transferring control to the caller thread. coroutines
 --that are transfer()ed into must give up control explicitly before ending.
 local function finish(thread, ...)
-	if not thread.caller then
+	if not callers[thread] then
 		error('coroutine ended without transferring control', 3)
 	end
 	return caller_thread(thread), true, ...
 end
 function coro.create(f)
-	local thread = setmetatable({}, coro_mt)
-	thread.co = coroutine.create(function(ok, ...)
+	local thread
+	thread = coroutine.create(function(ok, ...)
 		return finish(thread, f(...))
 	end)
 	return thread
@@ -58,7 +54,7 @@ end
 
 function coro.status(thread)
 	assert_thread(thread, 2)
-	return coroutine.status(thread.co)
+	return coroutine.status(thread)
 end
 
 local go --fwd. decl.
@@ -77,7 +73,7 @@ function go(thread, ok, ...)
 		return ok, ...
 	end
 	--transfer to a coroutine: resume it and check the result.
-	return check(thread, coroutine.resume(thread.co, ok, ...)) --tail call
+	return check(thread, coroutine.resume(thread, ok, ...)) --tail call
 end
 
 local function transfer(thread, ...)
@@ -98,25 +94,24 @@ function coro.transfer(thread, ...)
 end
 
 local function remove_caller(thread, ...)
-	thread.caller = nil
+	callers[thread] = nil
 	return ...
 end
 function coro.resume(thread, ...)
 	assert(thread ~= current, 'trying to resume the running thread')
 	assert(thread, 'trying to resume the main thread')
-	thread.caller = current or true
+	callers[thread] = current or true
 	return remove_caller(thread, transfer(thread, ...))
 end
 
 function coro.yield(...)
 	assert(current, 'yielding from the main thread')
-	assert(current.caller, 'yielding from a non-resumed thread')
+	assert(callers[current], 'yielding from a non-resumed thread')
 	return coro.transfer(caller_thread(current), ...)
 end
 
-function coro.wrap(f, name)
+function coro.wrap(f)
 	local thread = coro.create(f)
-	thread.name = name
 	return function(...)
 		return unprotect(coro.resume(thread, ...))
 	end

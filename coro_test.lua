@@ -226,7 +226,7 @@ test('nested wrap()-based iterators', function()
 	assert(t[3] == 'k3v3')
 end)
 
-test('transfer() inside resume()/yield()-based iterator', function()
+test('transfer() inside wrap()/yield()-based iterator', function()
 	local i = 0
 	local function nextval()
 		if i == 10 then
@@ -284,13 +284,34 @@ test('transfer() inside resume()/yield()-based iterator', function()
 	assert(r2 == 'ret2')
 end)
 
-test('??', function()
+test('transfer() is not stack bound', function()
+	local i = 0
+	local max = 100000
+	local function more() i = i + 1; return i < max end
+	local t1, t2, t3
+	t1 = coroutine.create(function()
+		while more() do coroutine.transfer(t2) end
+		coroutine.transfer()
+	end)
+	t2 = coroutine.create(function()
+		while more() do coroutine.transfer(t3) end
+		coroutine.transfer()
+	end)
+	t3 = coroutine.create(function()
+		while more() do coroutine.transfer(t1) end
+		coroutine.transfer()
+	end)
+	coroutine.transfer(t1)
+	assert(i == max)
+end)
+
+test('transfer() chains and coroutine.running()', function()
 	local t = {}
 	coroutine.transfer(coroutine.create(function()
 		local parent = coroutine.running()
 		local thread = coroutine.create(function()
 			table.insert(t, 'sub')
-			coroutine.transfer()
+			coroutine.transfer(parent)
 		end)
 		coroutine.transfer(thread)
 		table.insert(t, 'back')
@@ -305,7 +326,7 @@ test('??', function()
 	coroutine.transfer(coroutine.create(function()
 		local parent = coroutine.running()
 		local thread = coroutine.wrap(function()
-			for i=1,10 do
+			for i=1,1000 do
 				coroutine.transfer(parent, i * i)
 			end
 		end)
@@ -315,6 +336,7 @@ test('??', function()
 		coroutine.transfer()
 	end))
 	assert(not coroutine.running())
-	assert(#t == 10)
-	for i=1,10 do assert(t[i] == i * i) end
+	assert(#t == 1000)
+	for i=1,1000 do assert(t[i] == i * i) end
 end)
+
