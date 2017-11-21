@@ -22,6 +22,8 @@ of the BLAKE2 algorithm.
 `digest[:update](cdata, size)`
 
 `digest[:final]() -> s`                                          finalize and get the hash
+`digest:final_to_buffer(buf)`                                    finalize and write the hash to a buffer
+`digest:length() -> n`                                           hash byte length
 
 `digest:reset()`                                                 prepare for another digestion
 ---------------------------------------------------------------- -----------------------------------------------

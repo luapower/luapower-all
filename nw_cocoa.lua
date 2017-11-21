@@ -16,7 +16,8 @@ objc.load'ApplicationServices.CoreGraphics'
 --objc.load'CoreGraphics' --for CGWindow*
 objc.load'CoreFoundation' --for CFArray
 
-objc.use_cbframe()
+local was_using_cbframe = objc.use_cbframe(true)
+local was_using_properties = objc.use_properties(false)
 
 local nw = {name = 'cocoa'}
 
@@ -2716,6 +2717,7 @@ function Window:performDragOperation(sender)
 	return true
 end
 
-objc.stop_using_cbframe()
+objc.use_cbframe(was_using_cbframe)
+objc.use_properties(was_using_properties)
 
 return nw

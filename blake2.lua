@@ -213,6 +213,14 @@ local function mkdigest(V)
 		check(update(S, data, size or #data))
 	end
 
+	function state.length(S)
+		return S.outlen
+	end
+
+	function state.final_to_buffer(S, outbuf)
+		check(final(S, outbuf, S.outlen))
+	end
+
 	function state.final(S)
 		check(final(S, outbuf, S.outlen))
 		return ffi.string(outbuf, S.outlen)
@@ -277,7 +285,8 @@ if not ... then
 
 				--test streaming API / blake2x_init_param() branch
 				if not V:find'p' then
-					local digest = blake2['blake2'..V..'_digest']({key = k}); digest(d)
+					local digest = blake2['blake2'..V..'_digest']({key = k})
+					digest(d)
 					assert(digest() == h)
 				end
 

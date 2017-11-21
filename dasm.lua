@@ -255,7 +255,8 @@ ffi.metatype('dasm_State_Ref', {__index = {
 
 if not ... then --demo
 	local dasm = M
-	local actions = ffi.new('const uint8_t[19]', {254,0,102,184,5,0,254,1,102,187,3,0,254,2,102,187,3,0,255})
+	local actions = ffi.new('const uint8_t[19]',
+		{254,0,102,184,5,0,254,1,102,187,3,0,254,2,102,187,3,0,255})
 	local Dst, globals = dasm.new(actions, nil, 3)
 	--|.code
 	dasm.put(Dst, 0)
