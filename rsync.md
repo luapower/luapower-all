@@ -46,7 +46,7 @@ The file functions operate on abstract read and write functions:
   * `write(buf, len)` assumed to always write exactly `len` bytes from `buf`.
   should raise an error otherwise.
 
-Both callbacks can yield.
+Callbacks are not allowed to yield but they can use [coro] for control inversion.
 
 ## HOWTO
 
