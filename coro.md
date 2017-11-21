@@ -4,58 +4,74 @@ tagline: symmetric coroutines
 
 ## `local coro = require'coro'`
 
-Symmetric coroutines are coroutines that allow you to transfer control to a
-specific coroutine, unlike Lua's standard coroutines which only allow you to
-suspend execution to the calling coroutine.
+Symmetric coroutines are coroutines that can transfer control to any specific
+coroutine, unlike Lua's standard coroutines which can only yield back to the
+thread which resumed them (also called asymmetric coroutines or generators).
 
-This is the implementation from the paper
-[Coroutines in Lua](http://www.inf.puc-rio.br/~roberto/docs/corosblp.pdf).
+Rationale: writing coroutine-based generators over scheduled async callbacks
+(like the `read()` and `write()` methods of [socketloop] sockets) in Lua is
+by default not possible because the callbacks would yield to the generator
+coroutine instead of yielding to their scheduler. This can be solved using
+a coroutine scheduler that allows transferring control both to the parent
+coroutine as well as transferring control to a specific coroutine.
 
-Changes from the paper:
+This implementation is loosely based on the one from the paper
+[Coroutines in Lua](http://www.inf.puc-rio.br/~roberto/docs/corosblp.pdf)
+with some important modifications:
 
- * can yield multiple values.
- * threads created with `coro.create()` finish into the creator thread not
- main thread, unless otherwise specified.
- * added `coro.wrap()` similar to `coroutine.wrap()`.
+ * `coro.transfer()` can transfer multiple values between coroutines
+ (without pressuring the gc).
+ * the coro module reimplements all the methods of the built-in coroutine
+ module such that it can replace it entirely, which is what enables arbitrary
+ transfering of control from inside standard-behaving coroutines.
+
 
 ## API
 
-### `coro.create(f[, return_thread]) -> coro_thread`
+### `coro.create(f) -> thread`
 
-Create a symmetric coroutine, optionally specifying the thread which the
-coroutine should transfer control to when it finishes execution (defaults to
-`coro.current`.
+Create a coroutine which can be started with either `coro.resume()` or
+with `coro.transfer()`.
 
-### `coro.transfer(coro_thread[, ...]) -> ...`
+### `coro.transfer(thread|nil[, ...]) -> ...`
 
-Transfer control to a symmetric coroutine, suspending execution. The target
-coroutine either hasn't started yet, or it is itself suspended in a call to
-`coro.transfer()`, in which case it resumes and receives the values as the
-return values of the call. Likewise, the coroutine which transfers execution
-will stay suspended until `coro.transfer()` is called again with it as target.
+Transfer control (and optionally any values) to a coroutine (or to the main
+thread if nil is passed for thread), suspending execution. The target
+coroutine either hasn't started yet, in which case it is started and it
+receives the values as the arguments of its main function, or it's suspended
+in a call to `coro.transfer()`, in which case it is resumed and receives the
+values as the return values of that call. Likewise, the coroutine which
+transfers execution will stay suspended until `coro.transfer()` is called
+again with it as target.
 
-### `coro.current -> coro_thread`
+Errors raised inside a coroutine which was transferrred into are re-raised
+into the main thread.
 
-Currently running symmetric coroutine. Defaults to `coro.main`.
+A coroutine which was transferred into (as opposed to one which was
+resumed into) must finish by transferring control to another coroutine
+(or to the main thread), otherwise an error is raised.
 
-### `coro.main -> coro_thread`
+### `coro.install() -> old_coroutine_module`
 
-The coroutine representing the main thread (the thread that calls
-`coro.transfer` for the first time).
+Replace `_G.coroutine` with `coro` and return the old coroutine module.
+This enables coroutine-based-generators-over-abstract-I/O-callbacks
+from external modules to work with scheduled I/O functions which call
+`coro.transfer()` inside.
 
-### `coro.wrap(f) -> f`
+### `coro.yield(...) -> ...`
 
-Similar to `coroutine.wrap` for symmetric coroutines. Useful for creating
-iterators in an environment of symmetric coroutines in which simply calling
-`coroutine.yield` is not an option:
+Behaves like standard `coroutine.yield()`. A coroutine that was transferred
+into via `coro.transfer()` cannot yield (an error is raised if attempted).
 
-~~~{.lua}
-local parent = coro.current
-local iter = coro.wrap(function(...)
-	local function yield(...)
-		coro.transfer(parent, ...)
-	end
-	...
-	yield(...)
-end)
-~~~
+### `coro.resume(...) -> ok, ...`
+
+Behaves like standard `coroutine.resume()`.
+
+### `coro.current() -> thread | nil`
+
+Behaves like standard `coroutine.current()`.
+
+### `coro.status(thread) -> status`
+
+Behaves like standard `coroutine.status()`.
+
