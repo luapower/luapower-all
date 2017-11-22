@@ -40,7 +40,8 @@ function mmap.aligned_size(size, dir) --dir can be 'l' or 'r' (default: 'r')
 end
 
 function mmap.aligned_addr(addr, dir)
-	return ffi.cast('void*', mmap.aligned_size(ffi.cast('uintptr_t', addr), dir))
+	return ffi.cast('void*',
+		mmap.aligned_size(ffi.cast('uintptr_t', addr), dir))
 end
 
 local function check_tagname(tagname)
@@ -79,7 +80,8 @@ local function parseargs(t,...)
 	assert(offset >= 0, 'offset must be >= 0')
 	assert(offset == mmap.aligned_size(offset), 'offset not page-aligned')
 	assert(not addr or addr ~= nil, 'addr can\'t be zero')
-	assert(not addr or addr == mmap.aligned_addr(addr), 'addr not page-aligned')
+	assert(not addr or addr == mmap.aligned_addr(addr),
+		'addr not page-aligned')
 	if tagname then check_tagname(tagname) end
 
 	return file, access_write, access_copy, access_exec,
@@ -142,7 +144,7 @@ if ffi.os == 'Windows' then
 		[ERROR_NOT_ENOUGH_MEMORY] = 'file_too_short', --readonly file too short
 		[ERROR_INVALID_PARAMETER] = 'out_of_mem', --size or address too large
 		[ERROR_DISK_FULL] = 'disk_full',
-		[ERROR_COMMITMENT_LIMIT] = 'file_too_short', --swapfile too short
+		[ERROR_COMMITMENT_LIMIT] = 'out_of_mem', --swapfile too short
 		[ERROR_FILE_INVALID] = 'file_too_short', --file has zero size
 		[ERROR_INVALID_ADDRESS] = 'out_of_mem', --address in use
 	}
@@ -315,16 +317,19 @@ if ffi.os == 'Windows' then
 			if size then --set the size
 				--get current position
 				local curpos = ffi.new'int64_t[1]'
-				local ok = C.mmap_SetFilePointerEx(file, 0, curpos, FILE_CURRENT) ~= 0
+				local ok =
+					C.mmap_SetFilePointerEx(file, 0, curpos, FILE_CURRENT) ~= 0
 				if not ok then reterr() end
 				--set current position to new file size
-				local ok = C.mmap_SetFilePointerEx(file, size, nil, FILE_BEGIN) ~= 0
+				local ok =
+					C.mmap_SetFilePointerEx(file, size, nil, FILE_BEGIN) ~= 0
 				if not ok then reterr() end
 				--truncate the file to current position
 				local ok = C.SetEndOfFile(file)
 				if not ok then reterr() end
 				--set current position back to where it was
-				local ok = C.mmap_SetFilePointerEx(file, curpos[0], nil, FILE_BEGIN) ~= 0
+				local ok =
+					C.mmap_SetFilePointerEx(file, curpos[0], nil, FILE_BEGIN) ~= 0
 				if not ok then reterr() end
 				--return file new file size
 				return size
@@ -437,6 +442,11 @@ if ffi.os == 'Windows' then
 		if filemap == nil then
 			local err = C.GetLastError()
 			closefile()
+			--convert `file_too_short` error into `out_of_mem` error when
+			--opening the swap file.
+			if not file and err == ERROR_NOT_ENOUGH_MEMORY then
+				err = ERROR_COMMITMENT_LIMIT
+			end
 			return reterr(err)
 		end
 
@@ -505,12 +515,10 @@ elseif ffi.os == 'Linux' or ffi.os == 'OSX' then
 
 	--POSIX types -------------------------------------------------------------
 
-	if osx then
-		ffi.cdef'typedef int64_t off_t;'
-	else
-		ffi.cdef'typedef long int off_t;'
-	end
-	ffi.cdef'typedef unsigned short mode_t;'
+	ffi.cdef[[
+	typedef int64_t off64_t;
+	typedef unsigned short mode_t;
+	]]
 
 	--error reporting ---------------------------------------------------------
 
@@ -520,6 +528,7 @@ elseif ffi.os == 'Linux' or ffi.os == 'OSX' then
 	local ENOMEM = 12
 	local EINVAL = 22
 	local EFBIG  = 27
+	local ENOSPC = osx and 28 or nil
 	local EDQUOT = osx and 69 or 122
 
 	local errcodes = {
@@ -527,6 +536,7 @@ elseif ffi.os == 'Linux' or ffi.os == 'OSX' then
 		[ENOMEM] = 'out_of_mem',
 		[EINVAL] = 'file_too_short',
 		[EFBIG] = 'disk_full',
+		[ENOSPC] = 'disk_full',
 		[EDQUOT] = 'disk_full',
 	}
 
@@ -539,13 +549,9 @@ elseif ffi.os == 'Linux' or ffi.os == 'OSX' then
 
 	--get pagesize ------------------------------------------------------------
 
-	if linux then
-		ffi.cdef'int __getpagesize();'
-		mmap.pagesize = C.__getpagesize
-	else
-		ffi.cdef'int getpagesize();'
-		mmap.pagesize = C.getpagesize
-	end
+	ffi.cdef(string.format('int mmap_getpagesize() asm("%s");',
+		linux and '__getpagesize' or 'getpagesize'))
+	mmap.pagesize = C.mmap_getpagesize
 
 	--FILE* to fileno conversion ----------------------------------------------
 
@@ -597,10 +603,12 @@ elseif ffi.os == 'Linux' or ffi.os == 'OSX' then
 
 	--get/set file size -------------------------------------------------------
 
-	ffi.cdef[[
-	int ftruncate(int fd, off_t length);
-	off_t lseek(int fd, off_t offset, int whence);
-	]]
+	ffi.cdef(string.format([[
+			off64_t mmap_lseek(int fd, off64_t offset, int whence) asm("%s");
+			int     mmap_ftruncate(int fildes, off64_t length) asm("%s");
+		]],
+		osx and 'lseek' or 'lseek64',
+		osx and 'ftruncate' or 'ftruncate64'))
 
 	local SEEK_SET = 0
 	local SEEK_CUR = 1
@@ -620,15 +628,15 @@ elseif ffi.os == 'Linux' or ffi.os == 'OSX' then
 			return mmap.filesize(fileno(file), size)
 		elseif type(file) == 'number' then
 			if size then --set size
-				local ok = C.ftruncate(file, size) == 0
+				local ok = C.mmap_ftruncate(file, size) == 0
 				if not ok then return reterr() end
 				return size
 			else --get size
-				local ofs = C.lseek(file, 0, SEEK_CUR)
+				local ofs = C.mmap_lseek(file, 0, SEEK_CUR)
 				if ofs == -1 then return reterr() end
-				local size = tonumber(C.lseek(file, 0, SEEK_END))
+				local size = tonumber(C.mmap_lseek(file, 0, SEEK_END))
 				if size == -1 then return reterr() end
-				local ofs = C.lseek(file, ofs, SEEK_SET)
+				local ofs = C.mmap_lseek(file, ofs, SEEK_SET)
 				if ofs == -1 then return reterr() end
 				return size
 			end
@@ -639,12 +647,14 @@ elseif ffi.os == 'Linux' or ffi.os == 'OSX' then
 
 	--file mapping ------------------------------------------------------------
 
-	ffi.cdef[[
-	void* mmap(void *addr, size_t length, int prot, int flags, int fd, off_t offset);
-	int munmap(void *addr, size_t length);
-	int msync(void *addr, size_t length, int flags);
-	int mprotect(void *addr, size_t len, int prot);
-	]]
+	ffi.cdef(string.format([[
+			void* mmap_mmap(void *addr, size_t length, int prot, int flags,
+				int fd, off64_t offset) asm("%s");
+			int munmap(void *addr, size_t length);
+			int msync(void *addr, size_t length, int flags);
+			int mprotect(void *addr, size_t len, int prot);
+		]],
+		osx and 'mmap' or 'mmap64'))
 
 	--mmap() access flags
 	local PROT_READ  = 1
@@ -692,6 +702,10 @@ elseif ffi.os == 'Linux' or ffi.os == 'OSX' then
 					if close then close() end
 					return nil, errmsg, errcode
 				end
+				--32bit OSX allows mapping on 0-sized files, dunno why
+				if filesize == 0 then
+					return nil, 'File too short', 'file_too_short'
+				end
 				size = filesize - offset
 			elseif access_write then --if writable file too short, extend it
 				local filesize = mmap.filesize(fd)
@@ -713,7 +727,7 @@ elseif ffi.os == 'Linux' or ffi.os == 'OSX' then
 				end
 			end
 		elseif tagname and access_write then
-			local ok = C.ftruncate(fd, size) == 0
+			local ok = C.mmap_ftruncate(fd, size) == 0
 			if not ok then return reterr() end
 		end
 
@@ -738,7 +752,7 @@ elseif ffi.os == 'Linux' or ffi.os == 'OSX' then
 			fd and 0 or MAP_ANON,
 			addr and MAP_FIXED or 0)
 
-		local addr = C.mmap(addr, size, access, flags, fd or -1, offset)
+		local addr = C.mmap_mmap(addr, size, access, flags, fd or -1, offset)
 
 		local ok = ffi.cast('intptr_t', addr) ~= -1
 		if not ok then
@@ -784,9 +798,9 @@ else
 	error'platform not supported'
 end
 
-function mmap.mirror(t,...)
+function mmap.mirror(t, ...)
 
-	--dispatch
+	--dispatch args
 	local file, size, times, addr
 	if type(t) == 'table' then
 		file, size, times, addr = t.file, t.size, t.times, t.addr
@@ -813,7 +827,8 @@ function mmap.mirror(t,...)
 		file = file,
 		size = size * times,
 		access = access,
-		addr = addr}
+		addr = addr,
+	}
 	if not map then
 		return nil, errmsg, errcode
 	end

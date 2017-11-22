@@ -30,7 +30,7 @@ Limitations:
 
 `map.addr`                                                                          a `void*` pointer to the mapped memory
 
-`map.size`                                                                          the byte size of the mapped memory
+`map.size`                                                                          size of the mapped memory in bytes
 
 `map:flush([async, ][addr, size]) -> true | nil,err,errcode`                        flush (parts of) the mapping to disk
 
@@ -73,7 +73,7 @@ will be mapped instead; it can be:
 	* 'cx' (read + copy-on-write + execute)
 * `size`: the size of the memory segment (optional, defaults to file size).
 	* if given it must be > 0 or an error is raised.
-	* if not given, the file size is assumed.
+	* if not given, file size is assumed.
 		* if the file is empty the mapping fails with `'file_too_short'` error.
 	* if the file doesn't exist:
 		* if write access is given, the file is created.

@@ -2,6 +2,8 @@
 --TODO: offset + size -> invalid arg
 --TODO: test flush() with invalid address and/or size (clamp them?)
 --TODO: test exec flag by trying to execute code in it
+--TODO: OSX: COW on opened file doesn't work
+--TODO: how to test for disk full on 32bit?
 
 local ffi = require'ffi'
 local mmap = require'mmap'
@@ -83,7 +85,7 @@ end
 
 function test.file_read()
 	local map = assert(mmap.map{file = 'mmap.lua'})
-	assert(ffi.string(map.addr, 20):find'--memory mapping')
+	assert(ffi.string(map.addr, 20):find'memory mapping')
 	map:free()
 end
 
@@ -130,6 +132,7 @@ function test.file_copy_on_write()
 end
 
 function test.file_copy_on_write_live()
+	--TODO: COW on opened file doesn't work
 	if ffi.os == 'OSX' then return end
 	os.remove(file)
 	local size = mediumsize
@@ -157,8 +160,10 @@ end
 
 function test.shared_via_tagname()
 	local size = mediumsize
-	local map1 = assert(mmap.map{tagname = 'mmap_test', access = 'w', size = size})
-	local map2 = assert(mmap.map{tagname = 'mmap_test', access = 'r', size = size})
+	local map1 = assert(mmap.map{tagname = 'mmap_test',
+		access = 'w', size = size})
+	local map2 = assert(mmap.map{tagname = 'mmap_test',
+		access = 'r', size = size})
 	map1:unlink() --can be called while mappings are alive.
 	map2:unlink() --no-op if file not found.
 	assert(map1.addr ~= map2.addr)
@@ -237,17 +242,9 @@ function test.invalid_address()
 	assert(not map and errcode == 'out_of_mem')
 end
 
-function test.swap_too_short()
-	--TODO: OSX
-	if ffi.os == 'OSX' then return end
-	local map, errmsg, errcode = mmap.map{access = 'w', size = 1024^4}
-	assert(not map and errcode == 'file_too_short')
-end
-
---TODO: this test only works on 32bit and if the swapfile is > 3G.
-function test.swap_out_of_mem()
-	if not ffi.abi'32bit' then return end
-	local map, errmsg, errcode = mmap.map{access = 'w', size = 2^30*3}
+function test.size_too_large()
+	local size = 1024^3 * (ffi.abi'32bit' and 3 or 1024^3)
+	local map, errmsg, errcode = mmap.map{access = 'w', size = size}
 	assert(not map and errcode == 'out_of_mem')
 end
 
@@ -271,42 +268,21 @@ function test.write_too_short_zero()
 	assert(not map and errcode == 'file_too_short')
 end
 
-function test.disk_full_windows()
-	if ffi.os ~= 'Windows' then return end
-	local map, errmsg, errcode = mmap.map{file = file,
-		size = 1024^4 * 16 - 1,
-		access = 'w'}
+function test.disk_full()
+	--TODO: how to test for disk full on 32bit? need a < 3G partition
+	if ffi.abi'32bit' then return end
+	local size
+	if ffi.os == 'Windows' then
+		size = 1024^4 * 16 - 1 --16 TB
+	else
+		size = 1024^5 --1024 TB
+	end
+	local map, errmsg, errcode = mmap.map{
+		file = file,
+		size = size,
+		access = 'w',
+	}
 	assert(not map and errcode == 'disk_full')
-end
-
-function test.out_of_mem_windows()
-	if ffi.os ~= 'Windows' then return end
-	local map, errmsg, errcode = mmap.map{file = file,
-		size = 1024^4 * 16,
-		access = 'w'}
-	assert(not map and errcode == 'out_of_mem')
-end
-
-function test.disk_full_linux()
-	if ffi.os ~= 'Linux' then return end
-	if ffi.abi'32bit' then return end --TODO: how to test for disk full on 32bit?
-	local map, errmsg, errcode = mmap.map{file = file,
-		size = 1024^5, --1024 TB
-		access = 'w'}
-	assert(not map and errcode == 'disk_full')
-end
-
-function test.out_of_mem_linux()
-	if ffi.os ~= 'Linux' then return end
-	--TODO
-end
-
-function test.disk_full_osx()
-	--TODO
-end
-
-function test.out_of_mem_osx()
-	--TODO
 end
 
 
@@ -314,7 +290,10 @@ if not ... or ... == 'mmap_test' then
 	--run all tests in the order in which they appear in the code.
 	for i,k in ipairs(test) do
 		print('test '..k)
-		test[k]()
+		local ok, err = xpcall(test[k], debug.traceback)
+		if not ok then
+			print(err)
+		end
 	end
 else
 	test[...]()
