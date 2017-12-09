@@ -12,23 +12,24 @@ and UNC paths.
 
 ------------------------------------------------ ------------------------------------------------
 `path.platform -> s`                             get the current platform
-`path.sep([pl]) -> s`                            get the default separator for a platform
+`path.default_sep([pl]) -> s`                    get the default separator for a platform
 `path.dev_alias(s) -> s`                         check if a path is a Windows device alias
 `path.type(s, [pl]) -> type`                     get the path type
 `path.parse(s, [pl]) -> type, path[, drv|srv]`   break down a path to its basic parts
 `path.format(type, path, [drv|srv], pl) -> s`    put together a path from parsed parts
 `path.isabs(s, [pl]) -> is_abs, is_empty`        check if path is absolute and if it's empty
 `path.endsep(s, [pl], [sep]) -> s, success`      get/add/remove the ending separator
-`path.separator(s, [pl], [sep], ...) -> s`       detect/set the path separator
-`path.basename(s, [pl]) -> s`                    get the last component from a path
-`path.splitext(s, [pl]) -> name, ext`            split path's basename into name and extension
-`path.ext(s, [pl]) -> s`                         return only the extension from `path.splitext()`
-`path.dirname(s, [pl]) -> s`                     get the path without basename
+`path.sep(s, [pl], [sep], ...) -> s`             detect/set the path separator
+`path.file(s, [pl]) -> s`                        get the last component of a path
+`path.nameext(s, [pl]) -> name, ext`             split `path.file()` into name and extension
+`path.ext(s, [pl]) -> s`                         return only the extension from `path.nameext()`
+`path.dir(s, [pl]) -> s|nil`                     get the path without the last component
 `path.gsplit(s, [pl], [full]) ->iter() ->s,sep`  iterate over path's components
 `path.normalize(s, [pl], [opt]) -> s`            normalize a path in various ways
-`path.commonpath(p1, p2, [pl]) -> s`             get the common base path between two paths
-`path.rel(s, pwd, [pl]) -> s`                    convert absolute path to relative
+`path.diff(p1, p2, [pl]) -> i|nil`               get the index where two paths start to differ
+`path.depth(s, [pl]) -> n`                       get the number of non-empty path components
 `path.combine(p1, p2, [pl]) -> s`                combine two paths if possible
+`path.rel(s, pwd, [pl]) -> s`                    convert absolute path to relative
 `path.abs(s, pwd, [pl]) -> s`                    convert relative path to absolute
 `path.filename(s, [pl], [repl]) -> s|nil`        validate/make-valid filename
 ------------------------------------------------ ------------------------------------------------
@@ -40,7 +41,7 @@ defaults to the current platform.
 
 Get the current platform which can be `'win'` or `'unix'`.
 
-### `path.sep([pl]) -> s`
+### `path.default_sep([pl]) -> s`
 
 Get the default separator for a platform which can be `\\` or `/`.
 
@@ -102,7 +103,7 @@ not allowed.
 Multiple consecutive separators are treated as one in that they
 are returned together and are replaced together.
 
-### `path.separator(s, [pl], [sep], [default_sep], [empty_names]) -> s`
+### `path.sep(s, [pl], [sep], [default_sep], [empty_names]) -> s`
 
 Detect or set the a path's separator (for Windows paths only).
 
@@ -116,29 +117,30 @@ collapsed into the first one.
 __NOTE:__ Setting the separator as `\` on a UNIX path may result in an
 invalid path because `\` is a valid character in UNIX filenames.
 
-### `path.basename(s, [pl]) -> s`
+### `path.file(s, [pl]) -> s`
 
-Get the last component from a path.
+Get the last component of a path.
 If the path ends with a separator then the empty string is returned.
 
-### `path.splitext(s, [pl]) -> name, ext`
+### `path.nameext(s, [pl]) -> name, ext`
 
-Split a path's basename into the name and extension parts like so:
+Split a path's last component into the name and extension parts like so:
 
   * `a.txt'` -> `'a', 'txt'`
   * `'.bashrc'` -> `'.bashrc', nil`
   * `a'` -> `'a', nil`
   * `'a.'` -> `'a', ''`
 
-### `path.ext(s, [pl]) -> s`
+### `path.ext(s, [pl]) -> s|nil`
 
-Return only the extension from `path.splitext()`.
+Return only the extension from `path.nameext()`.
 
-### `path.dirname(s, [pl]) -> s`
+### `path.dir(s, [pl]) -> s`
 
-Get the path without basename and last separator. If the path ends with a
-separator then the whole path without the separator is returned. Multiple
-consecutive separators are treated as one.
+Get the path without the last component and separator. If the path ends with
+a separator then the whole path without the separator is returned. Multiple
+consecutive separators are treated as one. Returns nil for `''`, `'.'`, `'C:'
+`'/'`, `'C:\\'`, `'C:\\.'`.
 
 ### `path.gsplit(s, [pl], [full]) -> iter() -> s, sep`
 
@@ -152,17 +154,18 @@ components and separators always results in the exact original path.
 ### `path.normalize(s, [pl], [opt]) -> s`
 
 Normalize a path by removing `.` dirs, removing unnecessary `..` dirs
-(careful: this doesn't work if there are symlinks on the path!), collapsing,
-normalizing or changing the separator (for Windows paths), converting
-between Windows long (`\\?\`, `\\?\UNC\`) and normal paths.
+(careful: this changes where the path points to if there are symlinks on
+the path!), collapsing, normalizing or changing the separator
+(for Windows paths), converting between Windows long (`\\?\`, `\\?\UNC\`)
+and normal paths.
 
 The `opt` arg controls the normalization:
 
   * `dot_dirs` - `true` to keep `.` dirs.
   * `dot_dot_dirs` - `true` to keep the `..` dirs.
-  * `separator`, `default_separator`, `empty_names` - args to pass to
-  `path.separator()` (`separator` defaults to `false`, use `'leave'`
-  to avoid normalizing the separators)
+  * `sep`, `default_sep`, `empty_names` - args to pass to `path.sep()`
+  (`sep` defaults to `false`, use `'leave'` to avoid normalizing the
+  separators)
   * `endsep` - `sep` arg to pass to `path.endsep()` (`endsep` defaults
   to `false`, use `'leave'` to avoid removing the end separator)
   * `long` - `'auto'` (default) convert `'abs'` paths to `'abs_long'` when
@@ -171,9 +174,12 @@ The `opt` arg controls the normalization:
   automatically normalized to `\` when converting to a long path. Make sure
   to have dot dirs removed too when using long paths.
 
-### `path.commonpath(p1, p2, [pl]) -> s`
+__NOTE:__ The result may be the empty relative path `''`.
 
-Get the common base path (including the end separator) between two paths.
+### `path.diff(p1, p2, [pl]) -> i|nil`
+
+Get the index where two paths start to differ, including the end separator
+if both paths share it, or `nil` if the paths don't have anything in common.
 
 __BUG:__ The case-insensitive comparison for Windows doesn't work with
 paths with non-ASCII characters because it's made with `string.lower()`.
@@ -181,9 +187,10 @@ Proper lowercase your paths before using this function, or patch
 `string.lower()` to support utf8 lowercasing. This is not an issue if both
 paths come from the same API.
 
-### `path.rel(s, pwd) -> s`
+### `path.depth(s, [pl]) -> n`
 
-Convert an absolute path into a relative path which is relative to `pwd`.
+Get the number of non-empty path components, excluding prefixes like
+`C:\`, `\\server\`, etc.
 
 ### `path.combine(s1, s2, pl) -> s`
 
@@ -193,13 +200,22 @@ between `abs_nodrive` and `rel_drive`, and between `rel_drive` and `abs`
 or `abs_long`. Arguments can be given in any order when the paths can only
 be combined in one way.
 
+### `path.rel(s, pwd) -> s|nil`
+
+Convert an absolute path into a relative path which is relative to `pwd`.
+Returns `nil` if the paths are of different types or don't have a base path
+in common.
+
 ### `path.abs(s, pwd) -> s`
 
 Convert a relative path to an absolute path given a base dir
 (this is currently an alias of `path.combine()`).
 
-### `path.filename(s, [pl], [repl]) -> s|nil`
+### `path.filename(s, [pl], [repl]) -> s|nil,err,errcode`
 
-Validate a filename or apply a replacement function/table/string on it in
-order to make it valid.
-
+Validate a filename or apply a replacement function on it in order to make it
+valid. The `repl` function receives the problematic match and an error code
+indicating the problem which can be one of '', '.', '..', 'dev_alias',
+'char', 'length', 'evil' and it should return a replacement string or
+`false/nil` if it cannot do the replacement (`'evil'` errors should generally
+be replaced with `''`).

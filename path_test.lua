@@ -1,9 +1,9 @@
 local path = require'path'
 
 assert(path.platform == 'win' or path.platform == 'unix')
-assert(path.sep'win' == '\\')
-assert(path.sep'unix' == '/')
-assert(path.sep() == path.sep(path.platform))
+assert(path.default_sep'win' == '\\')
+assert(path.default_sep'unix' == '/')
+assert(path.default_sep() == path.default_sep(path.platform))
 
 assert(path.dev_alias'NUL' == 'NUL')
 assert(path.dev_alias'c:/a/b/con.txt' == 'CON')
@@ -60,8 +60,6 @@ test('', 'unix', false, true)
 
 --endsep ---------------------------------------------------------------------
 
---TODO: `path.endsep(s, [pl], [sep]) -> s, success`
-
 local function test(s, s2, success2, pl, sep)
 	local s1, success1 = path.endsep(s, pl, sep)
 	print('endsep', s, pl, sep, '->', s1, success1)
@@ -88,7 +86,7 @@ test('C:/', 'C:/', false, 'win', '') --refuse to remove
 --separator ------------------------------------------------------------------
 
 local function test(s, s2, pl, sep, default_sep, empty_names)
-	local s1 = path.separator(s, pl, sep, default_sep, empty_names)
+	local s1 = path.sep(s, pl, sep, default_sep, empty_names)
 	print('sep', s, pl, sep, default_sep, empty_names, '->', s1)
 	assert(s1 == s2)
 end
@@ -121,11 +119,11 @@ test('a//b\\\\\\c', 'a\\\\b\\\\\\c', 'win', false, nil, true)
 --don't collapse, default if mixed, specific default
 test('a//b\\\\\\c', 'a//b///c', 'win', false, '/', true)
 
---basename -------------------------------------------------------------------
+--file -----------------------------------------------------------------------
 
 local function test(s, pl, s2)
-	local s1 = path.basename(s, pl)
-	print('basenam', s, pl, '->', s1)
+	local s1 = path.file(s, pl)
+	print('file', s, pl, '->', s1)
 	assert(s1 == s2)
 end
 test(''    , 'win', '')
@@ -140,11 +138,11 @@ test('a\\b\\', 'unix', 'a\\b\\')
 test('a/b', 'unix', 'b')
 test('a/b/', 'unix', '')
 
---splitext -------------------------------------------------------------------
+--nameext --------------------------------------------------------------------
 
 local function test(s, pl, name2, ext2)
-	local name1, ext1 = path.splitext(s, pl)
-	print('ext', s, pl, '->', name1, ext1)
+	local name1, ext1 = path.nameext(s, pl)
+	print('nameext', s, pl, '->', name1, ext1)
 	assert(name1 == name2)
 	assert(ext1 == ext2)
 end
@@ -157,28 +155,41 @@ test('/a/b/a.',      'win', 'a', '') --invalid filename on Windows
 test('/a/b/a.txt',   'win', 'a', 'txt')
 test('/a/b/.bashrc', 'win', '.bashrc', nil)
 
---dirname --------------------------------------------------------------------
+--dir ------------------------------------------------------------------------
 
 local function test(s, pl, s2)
-	local s1 = path.dirname(s, pl)
-	print('dirname', s, pl, '->', s1)
+	local s1 = path.dir(s, pl)
+	print('dir', s, pl, '->', s1)
 	assert(s1 == s2)
 end
 
-test('', 'win', '')
-test('a', 'win', '')
-test('aa', 'win', '')
+--current dir has no dir
+test('', 'win', nil)
+test('.', 'win', nil)
+test('C:', 'win', nil)
+
+--root dir has no dir
+test('C:/', 'win', nil)
+test('/', 'win', nil)
+test('\\', 'win', nil)
+
+--these paths's dir is the current dir
+test('a', 'win', '.')
+test('aa', 'win', '.')
+test('\\aa', 'unix', '.')
+
+--dir of empty filename
+test('a/', 'win', 'a')
+test('./', 'win', '.')
+
+--dir of non-empty filename
 test('a/b', 'win', 'a')
 test('aa/bb', 'win', 'aa')
 test('C:/aa/bb', 'win', 'C:/aa')
 test('C:a', 'win', 'C:')
-test('C:/', 'win', 'C:/')
 test('C:/a', 'win', 'C:/')
-test('\\aa', 'unix', '')
 test('a/b', 'unix', 'a')
 test('/b', 'unix', '/')
-test('/', 'win', '/')
-test('\\', 'win', '\\')
 test('/aa', 'win', '/')
 
 --gsplit ---------------------------------------------------------------------
@@ -212,12 +223,14 @@ local function test(s, pl, opt, s2)
 end
 
 --remove `.`
-local opt = {dot_dot_dirs = true, endsep = 'leave', separator = 'leave'}
+local opt = {dot_dot_dirs = true, endsep = 'leave', sep = 'leave'}
 test('.', 'win', opt, '.')
 test('./', 'win', opt, './')
-test('.\\', 'win', opt, '.\\') --original endsep is used
+test('C:.', 'win', opt, 'C:')
+test('C:./', 'win', opt, 'C:')
+test('.\\', 'win', opt, '.\\')
 test('./.', 'win', opt, '.')
-test('./.\\', 'win', opt, '.\\') --original endsep is used
+test('./.\\', 'win', opt, '.\\')
 test('/.', 'win', opt, '/')
 test('\\./', 'win', opt, '\\') --root slash kept
 test('/.\\.', 'win', opt, '/') --root slash kept
@@ -232,7 +245,7 @@ test('a\\././b///', 'win', opt, 'a\\b///')
 test('a/.\\.\\b\\\\', 'win', opt, 'a/b\\\\')
 
 --remove `..`
-local opt = {dot_dirs = true, endsep = 'leave', separator = 'leave'}
+local opt = {dot_dirs = true, endsep = 'leave', sep = 'leave'}
 test('a/b/..', 'win', opt, 'a') --remove endsep from leftover
 test('a/b/c/..', 'win', opt, 'a/b') --remove endsep from leftover
 test('a/..', 'win', opt, '.') --no leftover to remove endsep from
@@ -271,9 +284,13 @@ test('/./././..', 'win', opt, '/./././..')
 test('C:///a/././b/x/../c\\d', 'win', nil, 'C:\\a\\b\\c\\d')
 --default options: even when not mixed, separators are collapsed.
 test('C:///a/././b/x/../c/d', 'win', nil, 'C:/a/b/c/d')
+--default options: remove endsep
+test('.\\', 'win', nil, '.')
+test('.\\././.\\', 'win', nil, '.')
+test('C:./', 'win', nil, 'C:')
 
 --long paths
-local long = {long = 'auto', separator = 'leave', endsep = 'leave'}
+local long = {long = 'auto', sep = 'leave', endsep = 'leave'}
 test('C:'..('/a/b'):rep(65), 'win', long, '\\\\?\\C:'..('\\a\\b'):rep(65))
 
 --commonpath -----------------------------------------------------------------
@@ -287,13 +304,21 @@ end
 test('',         '',           'win', '')
 test('/',        '/',          'win', '/')
 test('C:',       'C:',         'win', 'C:')
+test('C:a',      'C:a',        'win', 'C:a')
+test('C:\\a/b',  'C:/a\\b',    'win', 'C:\\a/b')
+
+--diff type and/or drive
+test('C:/',      'C:',         'win', nil) --diff. type
+test('C:a',      'C:/',        'win', nil) --diff. type
+test('C:/CON',   'C:/',        'win', nil) --diff. type
+test('C:',       'X:',         'win', nil) --diff. drive
+
 test('c:/',      'C:/',        'win', 'c:/') --first when equal
 test('C:/',      'C:\\',       'win', 'C:/') --first when equal
+
 test('C:////////', 'c://',     'win', 'c://') --smallest
 test('c://',     'C:////////', 'win', 'c://') --smallest
-test('C:/',      'C:',         'win', 'C:')
-test('C:',       'C:/',        'win', 'C:')
-test('C:a',      'C:/',        'win', 'C:')
+
 test('C:/a',     'C:/b',       'win', 'C:/')
 test('C:a',      'C:b',        'win', 'C:')
 test('C:/a/b',   'C:/a/c',     'win', 'C:/a/')
@@ -310,25 +335,49 @@ test('C:a/B/c', 'C:a/b/c/d', 'win',  'C:a/B/c') --pick smallest
 
 --rel ------------------------------------------------------------------------
 
-local function test(s, pwd, pl, r2)
-	local r1 = path.rel(s, pwd, pl)
-	print('rel', s, pwd, pl, '->', r1)
-	assert(r1 == r2)
+assert(path.depth(''), 'win' == 0)
+assert(path.depth('/'), 'win' == 0)
+assert(path.depth('/\\///'), 'win' == 0)
+assert(path.depth('a/'), 'win' == 1)
+assert(path.depth('/a'), 'win' == 1)
+assert(path.depth('/a/'), 'win' == 1)
+assert(path.depth('a/b'), 'win' == 2)
+assert(path.depth('/a/b'), 'win' == 2)
+assert(path.depth('a/b/'), 'win' == 2)
+assert(path.depth('/a/b/'), 'win' == 2)
+assert(path.depth('a/b/c'), 'win' == 3)
+assert(path.depth('C:/a/b/c'), 'win' == 3)
+assert(path.depth('\\\\server\\share\\path'), 'win' == 2)
+
+local function test(s, pwd, pl, s2)
+	local s1 = path.rel(s, pwd, pl)
+	print('rel', s, pwd, pl, '->', s1)
+	assert(s1 == s2)
 end
 
---TODO
+test('/a/c', '/a/b', 'win', '../c')
+test('/a/b/c', '/a/b', 'win', 'c')
+
+test('', '', 'win', '')
+test('', 'a', 'win', 'a')
 
 --combine (& implicitly abs) -------------------------------------------------
 
-local function test(s, pwd, pl, r2)
-	local r1 = path.abs(s, pwd, pl)
-	print('abs', s, pwd, pl, '->', r1)
-	assert(r1 == r2)
+local function test(s, pwd, pl, s2)
+	local s1 = path.abs(s, pwd, pl)
+	print('abs', s, pwd, pl, '->', s1)
+	assert(s1 == s2)
 end
 
 --TODO
 
 --filename -------------------------------------------------------------------
 
---TODO `path.filename(s, [pl], [repl]) -> s`
+local function test(s, pl, repl, s2)
+	local s1 = path.filename(s, pl, repl)
+	print('filenam', s, pl, repl, '->', s1)
+	assert(s1 == s2)
+end
+
+--TODO
 
