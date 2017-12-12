@@ -34,54 +34,71 @@ assert(path.type('c:/nul', 'win') == 'dev_alias')
 
 --isabs ----------------------------------------------------------------------
 
-local function test(s, pl, isabs2, isempty2)
-	local isabs1, isempty1 = path.isabs(s, pl)
-	print('isabs', s, pl, '->', isabs1, isempty1)
+local function test(s, pl, isabs2, isempty2, isvalid2)
+	local isabs1, isempty1, isvalid1 = path.isabs(s, pl)
+	print('isabs', s, pl, '->', isabs1, isempty1, isvalid1)
 	assert(isabs1 == isabs2)
 	assert(isempty1 == isempty2)
+	assert(isvalid1 == isvalid2)
 end
 
-test('',     'win', false, true)
-test('/',    'win', true,  true)
-test('\\//', 'win', true,  true)
-test('C:',   'win', false, true)
-test('C:/',  'win', true,  true)
-test('C:/a', 'win', true,  false)
-test('a',    'win', false, false)
-test('C:/path/con.txt', 'win', false, false) --device alias but appears abs
+test('',     'win', false, true, true)
+test('/',    'win', true,  true, true)
+test('\\//', 'win', true,  true, true)
+test('C:',   'win', false, true, true)
+test('C:/',  'win', true,  true, true)
+test('C:/a', 'win', true,  false, true)
+test('a',    'win', false, false, true)
 
-test('\\\\', 'win', true, nil) --invalid
-test('\\\\server', 'win', true, nil) --invalid
-test('\\\\server\\', 'win', true, true) --still invalid but better :)
-test('\\\\server\\share', 'win', true, false) --valid
+--device alias but appears abs
+test('C:/path/con.txt', 'win', false, false, true)
 
-test('/', 'unix', true, true)
-test('', 'unix', false, true)
+test('\\\\', 'win', true, true, false) --invalid
+test('\\\\server', 'win', true, true, false) --invalid
+test('\\\\server\\', 'win', true, true, true) --still invalid but better :)
+test('\\\\server\\share', 'win', true, false, true) --valid
+
+test('/', 'unix', true, true, true)
+test('', 'unix', false, true, true)
 
 --endsep ---------------------------------------------------------------------
 
-local function test(s, s2, success2, pl, sep)
-	local s1, success1 = path.endsep(s, pl, sep)
+local function test(s, s2, success2, pl, sep, default_sep)
+	local s1, success1 = path.endsep(s, pl, sep, default_sep)
 	print('endsep', s, pl, sep, '->', s1, success1)
 	assert(s1 == s2)
 	assert(success1 == success2)
 end
 
-test('', nil, nil, 'win', nil)
-test('/', '/', nil, 'win', nil)
-test('/', '/', nil, 'unix', nil)
+--empty rel has no end sep
+test('',   nil, nil, 'win', nil)
 test('C:', nil, nil, 'win', nil)
+
+--abs root has end sep
+test('/',    '/', nil, 'win', nil)
+test('/',    '/', nil, 'unix', nil)
 test('C:\\', '\\', nil, 'win', nil)
 
-test('a', 'a/', true, 'win', '/') --add specific
-test('a', 'a\\', true, 'unix', '\\') --add specific (invalid but allowed)
-test('a', 'a\\', true, 'win', true) --add default
-test('a/b', 'a/b/', true, 'win', true) --add detected
-test('a/', 'a', true, 'win', '') --remove
-test('a/', 'a', true, 'win', false) --remove
-test('a/', 'a/', true, 'win', '\\') --already there, not changing
-test('C:', 'C:', false, 'win', '/') --refuse to add
-test('C:/', 'C:/', false, 'win', '') --refuse to remove
+--add
+test('a',   'a/',   true, 'win',  '/') --add specific
+test('a',   'a\\',  true, 'unix', '\\') --add specific (invalid but allowed)
+test('a',   'a\\',  true, 'win',  true) --add default
+test('a/b', 'a/b/', true, 'win',  true) --add detected
+
+--remove
+test('a/', 'a',  true, 'win', '') --remove
+test('a/', 'a',  true, 'win', false) --remove
+
+--already there, not adding
+test('a/', 'a/', true, 'win', '\\')
+
+--refuse to remove from the empty abs path
+test('/',   '/',   false, 'win', '')
+test('C:/', 'C:/', false, 'win', '')
+
+--refuse to add to the empty rel path
+test('',   '',   false, 'win', '/')
+test('C:', 'C:', false, 'win', '/')
 
 --separator ------------------------------------------------------------------
 
@@ -163,17 +180,24 @@ local function test(s, pl, s2)
 	assert(s1 == s2)
 end
 
---current dir has no dir
+--empty rel path has no dir
 test('', 'win', nil)
-test('.', 'win', nil)
 test('C:', 'win', nil)
 
---root dir has no dir
+--current dir has no dir
+test('.', 'win', nil)
+
+--root has no dir
 test('C:/', 'win', nil)
 test('/', 'win', nil)
 test('\\', 'win', nil)
 
---these paths's dir is the current dir
+--dir is root
+test('/b', 'unix', '/')
+test('/aa', 'win', '/')
+test('C:/a', 'win', 'C:/')
+
+--dir is the current dir
 test('a', 'win', '.')
 test('aa', 'win', '.')
 test('\\aa', 'unix', '.')
@@ -187,10 +211,7 @@ test('a/b', 'win', 'a')
 test('aa/bb', 'win', 'aa')
 test('C:/aa/bb', 'win', 'C:/aa')
 test('C:a', 'win', 'C:')
-test('C:/a', 'win', 'C:/')
 test('a/b', 'unix', 'a')
-test('/b', 'unix', '/')
-test('/aa', 'win', '/')
 
 --gsplit ---------------------------------------------------------------------
 
@@ -301,39 +322,43 @@ local function test(a, b, pl, c2)
 	assert(c1 == c2)
 end
 
+--same path
 test('',         '',           'win', '')
 test('/',        '/',          'win', '/')
 test('C:',       'C:',         'win', 'C:')
 test('C:a',      'C:a',        'win', 'C:a')
-test('C:\\a/b',  'C:/a\\b',    'win', 'C:\\a/b')
 
 --diff type and/or drive
 test('C:/',      'C:',         'win', nil) --diff. type
 test('C:a',      'C:/',        'win', nil) --diff. type
 test('C:/CON',   'C:/',        'win', nil) --diff. type
 test('C:',       'X:',         'win', nil) --diff. drive
+test('\\\\a\\',  '\\\\b\\',    'win', nil) --diff. server
 
-test('c:/',      'C:/',        'win', 'c:/') --first when equal
-test('C:/',      'C:\\',       'win', 'C:/') --first when equal
+--same path diff. syntax, choose the first path
+test('c:/',      'C:/',        'win', 'c:/')
+test('C:/',      'C:\\',       'win', 'C:/')
+test('C:\\a/b',  'C:/a\\b',    'win', 'C:\\a/b')
 
-test('C:////////', 'c://',     'win', 'c://') --smallest
-test('c://',     'C:////////', 'win', 'c://') --smallest
+--same path diff. syntax, choose the smallest path
+test('C:////////', 'c://',       'win', 'c://')
+test('c://',       'C:////////', 'win', 'c://')
 
 test('C:/a',     'C:/b',       'win', 'C:/')
 test('C:a',      'C:b',        'win', 'C:')
 test('C:/a/b',   'C:/a/c',     'win', 'C:/a/')
-test('C:/a/b',   'C:/a/b/',    'win', 'C:/a/b')
-test('C:/a/b/',  'C:/a/b/c',   'win', 'C:/a/b/')
-test('C:/a/b',   'C:/a/bc',    'win', 'C:/a/')
-test('C:/a//',   'C:/a//',     'win', 'C:/a//')
-test('C:/a/c/d', 'C:/a/b/f',   'win', 'C:/a/')
+test('C:/a/b',   'C:/a/b/',    'win', 'C:/a/b') --endsep not common
+test('C:/a/b/',  'C:/a/b/c',   'win', 'C:/a/b/') --endsep common and end
+test('C:/a/c/d', 'C:/a/b/f',   'win', 'C:/a/') --endsep common
+test('C:/a/b',   'C:/a/bc',    'win', 'C:/a/') --last sep, not last char
+test('C:/a//',   'C:/a//',     'win', 'C:/a//') --multiple endsep common
 
 --case-sensitivity
 test('a/B',     'a/b',       'unix', 'a/')
 test('C:a/B',   'C:a/b',     'win',  'C:a/B') --pick first
 test('C:a/B/c', 'C:a/b/c/d', 'win',  'C:a/B/c') --pick smallest
 
---rel ------------------------------------------------------------------------
+--depth ----------------------------------------------------------------------
 
 assert(path.depth(''), 'win' == 0)
 assert(path.depth('/'), 'win' == 0)
@@ -349,27 +374,40 @@ assert(path.depth('a/b/c'), 'win' == 3)
 assert(path.depth('C:/a/b/c'), 'win' == 3)
 assert(path.depth('\\\\server\\share\\path'), 'win' == 2)
 
-local function test(s, pwd, pl, s2)
-	local s1 = path.rel(s, pwd, pl)
+--combine (& implicitly abs) -------------------------------------------------
+
+local function test(s1, s2, pl, p2)
+	local p1 = path.combine(s1, s2, pl)
+	print('combine', s1, s2, pl, '->', p1)
+	assert(p1 == p2)
+end
+
+--TODO
+
+--rel ------------------------------------------------------------------------
+
+local function test(s, pwd, pl, default_sep, s2)
+	local s1 = path.rel(s, pwd, pl, default_sep)
 	print('rel', s, pwd, pl, '->', s1)
 	assert(s1 == s2)
 end
 
-test('/a/c', '/a/b', 'win', '../c')
-test('/a/b/c', '/a/b', 'win', 'c')
+test('/a/c', '/a/b', 'win', nil, '../c')
+test('/a/b/c', '/a/b', 'win', nil, 'c')
 
-test('', '', 'win', '')
-test('', 'a', 'win', 'a')
+test('',  '',    'win', nil, '')
+test('',  'a',   'win', nil, '..')
+test('a',  '',   'win', nil, 'a')
+test('a/', '',   'win', nil, 'a/')
+test('a',  'b',  'win', '/', '../a')
+test('a/', 'b',  'win', nil, '../a/')
+test('a',  'b/', 'win', nil, '../a')
 
---combine (& implicitly abs) -------------------------------------------------
+test('a/b', 'a/c', 'win', nil, '../b')
 
-local function test(s, pwd, pl, s2)
-	local s1 = path.abs(s, pwd, pl)
-	print('abs', s, pwd, pl, '->', s1)
-	assert(s1 == s2)
-end
+test('a/b', 'a/b/c', 'win', nil, '..')
 
---TODO
+test('a/b/c', 'a/b', 'win', nil, 'c')
 
 --filename -------------------------------------------------------------------
 

@@ -10,29 +10,30 @@ and UNC paths.
 
 ## API
 
------------------------------------------------- ------------------------------------------------
-`path.platform -> s`                             get the current platform
-`path.default_sep([pl]) -> s`                    get the default separator for a platform
-`path.dev_alias(s) -> s`                         check if a path is a Windows device alias
-`path.type(s, [pl]) -> type`                     get the path type
-`path.parse(s, [pl]) -> type, path[, drv|srv]`   break down a path to its basic parts
-`path.format(type, path, [drv|srv], pl) -> s`    put together a path from parsed parts
-`path.isabs(s, [pl]) -> is_abs, is_empty`        check if path is absolute and if it's empty
-`path.endsep(s, [pl], [sep]) -> s, success`      get/add/remove the ending separator
-`path.sep(s, [pl], [sep], ...) -> s`             detect/set the path separator
-`path.file(s, [pl]) -> s`                        get the last component of a path
-`path.nameext(s, [pl]) -> name, ext`             split `path.file()` into name and extension
-`path.ext(s, [pl]) -> s`                         return only the extension from `path.nameext()`
-`path.dir(s, [pl]) -> s|nil`                     get the path without the last component
-`path.gsplit(s, [pl], [full]) ->iter() ->s,sep`  iterate over path's components
-`path.normalize(s, [pl], [opt]) -> s`            normalize a path in various ways
-`path.diff(p1, p2, [pl]) -> i|nil`               get the index where two paths start to differ
-`path.depth(s, [pl]) -> n`                       get the number of non-empty path components
-`path.combine(p1, p2, [pl]) -> s`                combine two paths if possible
-`path.rel(s, pwd, [pl]) -> s`                    convert absolute path to relative
-`path.abs(s, pwd, [pl]) -> s`                    convert relative path to absolute
-`path.filename(s, [pl], [repl]) -> s|nil`        validate/make-valid filename
------------------------------------------------- ------------------------------------------------
+---------------------------------------------------- ------------------------------------------------
+`path.platform -> s`                                 get the current platform
+`path.default_sep([pl]) -> s`                        get the default separator for a platform
+`path.dev_alias(s) -> s|nil`                         check if a path is a Windows device alias
+`path.type(s, [pl]) -> type`                         get the path type
+`path.parse(s, [pl]) -> type, path[, drv|srv]`       break down a path to its basic parts
+`path.format(type, path, [drv|srv], pl) -> s`        put together a path from parsed parts
+`path.isabs(s, [pl]) -> is_abs, is_empty`            check if path is absolute, empty and valid
+`path.endsep(s, [pl], [sep], [dsep]) -> s, ok`       get/add/remove the ending separator
+`path.sep(s, [pl], [sep], ...) -> s`                 detect/set the path separator
+`path.long(s, [pl], [long]) -> s|nil`                get/set a Windows long absolute path
+`path.file(s, [pl]) -> s`                            get the last component of a path
+`path.nameext(s, [pl]) -> name, ext`                 split `path.file()` into name and extension
+`path.ext(s, [pl]) -> s`                             return only the extension from `path.nameext()`
+`path.dir(s, [pl]) -> s|nil`                         get the path without the last component
+`path.gsplit(s, [pl], [full]) ->iter() -> s, sep`    iterate over path's components
+`path.normalize(s, [pl], [opt]) -> s`                normalize a path in various ways
+`path.commonpath(s1, s2, [pl]) -> s|nil`             get the common prefix of two paths
+`path.depth(s, [pl]) -> n`                           get the number of non-empty path components
+`path.combine(p1, p2, [pl], [dsep]) -> s|nil,err`    combine two paths if possible
+`path.abs(s, pwd, [pl]) -> s|nil,err`                convert relative path to absolute
+`path.rel(s, pwd, [pl]) -> s|nil`                    convert absolute path to relative
+`path.filename(s, [pl], [repl]) -> s|nil,err,code'   validate/make-valid filename
+---------------------------------------------------- ------------------------------------------------
 
 In the table above, `pl` is for platform and can be `'win'` or `'unix'` and
 defaults to the current platform.
@@ -45,7 +46,7 @@ Get the current platform which can be `'win'` or `'unix'`.
 
 Get the default separator for a platform which can be `\\` or `/`.
 
-### `path.dev_alias(s) -> s`
+### `path.dev_alias(s) -> s|nil`
 
 Check if a path is a Windows device alias and if it is, return that alias.
 
@@ -73,32 +74,34 @@ are no longer than 259 bytes and which don't contain any control characters
 
 ### `path.parse(s, [pl]) -> type, path[, drive|server]`
 
-Split a path into its local path component and, depending on the path type,
-the drive letter or server name.
+Split a path into its _local path_ component (i.e. the part containing only
+directories and files, eg. `\path` for `C:\path` or for `\\server\path`)
+and, depending on the path type, the drive letter or server name.
 
-UNC paths are not validated and can have an empty server or path.
+UNC paths are not validated and can have an empty server or share path.
 
 ### `path.format(type, path, [drive|server], [pl]) -> s`
 
 Put together a path from its broken-down components. No validation is done.
 
-### `path.isabs(s, [pl]) -> is_abs, is_empty`
+### `path.isabs(s, [pl]) -> is_abs, is_empty, is_valid`
 
-Check if a path is an absolute path or not, and if it's empty or not.
+Check if a path is an absolute path or not, if it's empty (i.e. root)
+or not, and if it's valid or not.
 
-__NOTE:__ Absolute paths for which their local path is `''` are actually
-invalid (currently only incomplete UNC paths like `\\server` or `\\?` can be
-like that). For those paths `is_empty` is `nil`.
+Absolute paths for which their _local path_ is `''` are actually invalid
+(currently only incomplete UNC paths like `\\server` or `\\?` can be
+like that). For those paths `is_valid` is `false`.
 
-### `path.endsep(s, [pl], [sep]) -> s, success`
+### `path.endsep(s, [pl], [sep], [dsep]) -> s, success`
 
 Get/add/remove an ending separator. The arg `sep` can be `nil`, `true`,
 `false`, `'\\'`, `'/'`, `''`: if `sep` is `nil` or missing, the ending
 separator is returned (`nil` if missing), otherwise it is added or removed
-(`true` means use path's separator or the default separator, `false` means
-`''`). `success` is `false` if trying to add an ending separator to an empty
-relative path or trying to remove it from an empty absolute path, which are
-not allowed.
+(`true` means use path's separator or `dsep` or the default separator,
+`false` means `''`). `success` is `false` if trying to add or remove endsep
+from an empty path (note that even in those cases, the path can still be
+concatenated directly to a relative path and result in a valid path).
 
 Multiple consecutive separators are treated as one in that they
 are returned together and are replaced together.
@@ -108,19 +111,28 @@ are returned together and are replaced together.
 Detect or set the a path's separator (for Windows paths only).
 
 The arg `sep` can be `nil` (detect), `true` (set to `default_sep`), `false`
-(set to `default_sep` but only if both `\\` and `/` are found in the path),
-`'\\'` or `'/'` (set specifically), or `nil` when `empty_names` is `false`
-(collapse duplicate separators only). `default_sep` defaults to the platform
-separator. Unless `empty_names` is `true`, consecutive separators are
-collapsed into the first one.
+(set to `default_sep` but only if both `\\` and `/` are found in the path,
+i.e. unify), `'\\'` or `'/'` (set specifically), or `nil` when `empty_names`
+is explicitly `false` (collapse duplicate separators only). `default_sep`
+defaults to the platform separator. Unless `empty_names` is `true`,
+consecutive separators are collapsed into the first one.
 
 __NOTE:__ Setting the separator as `\` on a UNIX path may result in an
 invalid path because `\` is a valid character in UNIX filenames.
 
+### `path.long(s, [pl], [long]) -> s|nil`
+
+Get/set a Windows long absolute path (one starting with `\\?\C:\`). If
+`long` is `nil`, returns whether the path is a long or short Windows absolute
+path (returns `nil` for all other kinds of paths). Otherwise it converts the
+path, in which case `long` can be `true` (convert to long path), `false`
+(convert to short path)`, or `'auto'` (convert to long style if too long,
+or to short style if short enough).
+
 ### `path.file(s, [pl]) -> s`
 
-Get the last component of a path.
-If the path ends with a separator then the empty string is returned.
+Get the last component of a path. Returns `''` if the path is empty or ends
+with a separator.
 
 ### `path.nameext(s, [pl]) -> name, ext`
 
@@ -139,12 +151,12 @@ Return only the extension from `path.nameext()`.
 
 Get the path without the last component and separator. If the path ends with
 a separator then the whole path without the separator is returned. Multiple
-consecutive separators are treated as one. Returns nil for `''`, `'.'`, `'C:'
-`'/'`, `'C:\\'`, `'C:\\.'`.
+consecutive separators are treated as one. Returns `nil` for `''`, `'.'`,
+`'C:', `'/'`, `'C:\\'` and `\\server\`. Returns `'.'` for simple filenames.
 
 ### `path.gsplit(s, [pl], [full]) -> iter() -> s, sep`
 
-Iterate over a path's local components (that is excluding prefixes like
+Iterate over a path's _local components_ (that is excluding prefixes like
 `\\server` or `C:`). Pass `true` to the `full` arg to iterate over the
 whole unparsed path. For absolute paths, the first iteration is
 `'', <root_separator>`. Empty names are not iterated. Instead, consecutive
@@ -167,49 +179,54 @@ The `opt` arg controls the normalization:
   (`sep` defaults to `false`, use `'leave'` to avoid normalizing the
   separators)
   * `endsep` - `sep` arg to pass to `path.endsep()` (`endsep` defaults
-  to `false`, use `'leave'` to avoid removing the end separator)
+  to `false`, use `'leave'` to avoid removing any end separator)
   * `long` - `'auto'` (default) convert `'abs'` paths to `'abs_long'` when
   they are too long and viceversa when they are short enough (pass `true` or
   `false` to this option to force a conversion instead). Separators are
   automatically normalized to `\` when converting to a long path. Make sure
   to have dot dirs removed too when using long paths.
 
-__NOTE:__ The result may be the empty relative path `''`.
+__NOTE:__ If normalization results in the empty relative path `''`, then
+`'.'` is returned instead.
 
-### `path.diff(p1, p2, [pl]) -> i|nil`
+### `path.commonpath(s1, s2, [pl]) -> s|nil`
 
-Get the index where two paths start to differ, including the end separator
-if both paths share it, or `nil` if the paths don't have anything in common.
+Get the common path prefix of two paths, including the end separator if both
+paths share it, or `nil` if the paths don't have anything in common.
+
+Note that `path.commonpath('C:', 'C:\\', 'win') == nil` because the paths are
+of different type even if they look like they share a common prefix.
 
 __BUG:__ The case-insensitive comparison for Windows doesn't work with
 paths with non-ASCII characters because it's made with `string.lower()`.
 Proper lowercase your paths before using this function, or patch
 `string.lower()` to support utf8 lowercasing. This is not an issue if both
-paths come from the same API.
+paths are in the original letter case (eg. they come from the same API).
 
 ### `path.depth(s, [pl]) -> n`
 
 Get the number of non-empty path components, excluding prefixes like
 `C:\`, `\\server\`, etc.
 
-### `path.combine(s1, s2, pl) -> s`
+### `path.combine(s1, s2, [pl], [dsep]) -> s|nil,err`
 
 Combine two paths if possible (return `nil, err` if not). Supported
 combinations are between types `rel` and anything except `dev_alias`,
 between `abs_nodrive` and `rel_drive`, and between `rel_drive` and `abs`
-or `abs_long`. Arguments can be given in any order when the paths can only
-be combined in one way.
+or `abs_long`. When the paths can only be combined in one way, paths can be
+given in any order. The separator with which paths are combined is first
+detected and if that fails, `dsep` or the default separator is used.
+
+### `path.abs(s, pwd) -> s|nil,err`
+
+Convert a relative path to an absolute path given a base dir
+(this is currently an alias of `path.combine()`).
 
 ### `path.rel(s, pwd) -> s|nil`
 
 Convert an absolute path into a relative path which is relative to `pwd`.
 Returns `nil` if the paths are of different types or don't have a base path
 in common.
-
-### `path.abs(s, pwd) -> s`
-
-Convert a relative path to an absolute path given a base dir
-(this is currently an alias of `path.combine()`).
 
 ### `path.filename(s, [pl], [repl]) -> s|nil,err,errcode`
 

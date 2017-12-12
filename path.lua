@@ -114,17 +114,18 @@ function path.format(type, path, drive, pl)
 	end
 end
 
---check if a path is an absolute path or not, and if it's empty or not.
---NOTE: absolute paths for which their local path is '' are actually invalid
---(currently only UNC paths can be invalid and still parse); for those paths
---the second return value will be nil.
+--check if a path is an absolute path or not, if it's empty or not,
+--and if it's valid or not. NOTE: absolute paths for which their local path
+--is '' are actually invalid (currently only UNC paths can be invalid and
+--still parse); for those paths the third return value will be false.
 local function isabs(type, p, win)
 	if type == 'rel' or type == 'rel_drive' or type == 'dev_alias' then
-		return false, p == ''
+		return false, p == '', true
 	elseif p == '' then
-		return true, nil --invalid absolute path
+		return true, true, false --invalid absolute path
 	else
-		return true, p:find(win and '^[\\/]+$' or '^/+$') and true or false
+		local isroot = p:find(win and '^[\\/]+$' or '^/+$') and true or false
+		return true, isroot, true
 	end
 end
 function path.isabs(s, pl)
@@ -147,9 +148,9 @@ local function detect_sep(p, win)
 end
 
 --get/add/remove ending separator.
-local function set_endsep(type, p, win, sep)
+local function set_endsep(type, p, win, sep, default_sep)
 	local _, isempty = isabs(type, p, win)
-	if isempty then --refuse to change the ending slash on empty paths
+	if isempty then --refuse to change empty paths
 		return
 	elseif sep == false or sep == '' then --remove it
 		return p:gsub(win and '[\\/]+$' or '/+$', '')
@@ -157,19 +158,19 @@ local function set_endsep(type, p, win, sep)
 		return p
 	else
 		if sep == true then
-			sep = detect_sep(p, win) or (win and '\\' or '/')
+			sep = detect_sep(p, win) or default_sep or (win and '\\' or '/')
 		end
 		assert(sep == '\\' or sep == '/', 'invalid separator')
 		return p .. sep
 	end
 end
-function path.endsep(s, pl, sep)
+function path.endsep(s, pl, sep, default_sep)
 	local win = win(pl)
 	local type, p, drive = path.parse(s, pl)
 	if sep == nil then
 		return p:match(win and '[\\/]+$' or '/+$')
 	else
-		local p = set_endsep(type, p, win, sep)
+		local p = set_endsep(type, p, win, sep, default_sep)
 		return p and path.format(type, p, drive, pl) or s, p and true or false
 	end
 end
@@ -203,6 +204,34 @@ function path.sep(s, pl, sep, default_sep, empty_names)
 		p = set_sep(p, win, sep, default_sep, empty_names)
 		return path.format(type, p, drive, pl)
 	end
+end
+
+function path.long(s, pl, long)
+	local type, p, drive = path.parse(s, pl)
+	local is_long = type == 'abs_long' or type == 'unc_long'
+	local is_short = (win(pl) and type == 'abs') or type == 'unc'
+	if long == nil then
+		if is_long then
+			return true
+		elseif is_short then
+			return false
+		else
+			return nil --does not apply
+		end
+	end
+	if
+		is_short and ((long == 'auto' and #s > 259) or long == true)
+	then
+		p = p:gsub('/+', '\\') --NOTE: this might create a smaller path
+		local long_type = type == 'abs' and 'abs_long' or 'unc_long'
+		s = path.format(long_type, p, drive, pl)
+	elseif
+		is_long and ((long == 'auto' and #s <= 259 + 4) or long == false)
+	then
+		local short_type = type == 'abs_long' and 'abs' or 'unc'
+		s = path.format(short_type, p, drive, pl)
+	end
+	return s
 end
 
 --get the last path component of a path.
@@ -298,7 +327,7 @@ function path.normalize(s, pl, opt)
 				table.remove(t, i)
 				lastsep = sep
 			elseif #t == 2 and t[1] == '' then
-				--skip `..` after the root slash
+				--skip any `..` after the root slash
 				lastsep = sep
 			else
 				table.insert(t, s)
@@ -333,17 +362,7 @@ function path.normalize(s, pl, opt)
 	s = path.format(type, p, drive, pl)
 
 	if win and opt.long ~= 'leave' then
-		local long = iif(opt.long, nil, 'auto')
-		if type == 'abs'
-			and ((long == 'auto' and #s > 259) or long == true)
-		then
-			p = p:gsub('/+', '\\') --NOTE: this might create a smaller path
-			s = path.format('abs_long', p, drive, pl)
-		elseif type == 'abs_long'
-			and ((long == 'auto' and #s <= 259 + 4) or long == false)
-		then
-			s = path.format('abs', p, drive, pl)
-		end
+		s = path.long(s, pl, iif(opt.long, nil, 'auto'))
 	end
 
 	return s
@@ -411,26 +430,30 @@ local function combinable(type1, type2)
 		return type1 == 'abs' or type1 == 'abs_long'
 	end
 end
-function path.combine(s1, s2, pl)
-	local type1 = path.type(s1, pl)
-	local type2 = path.type(s2, pl)
+function path.combine(s1, s2, pl, default_sep)
+	local type1, p1, drive1 = path.parse(s1, pl)
+	local type2, p2, drive2 = path.parse(s2, pl)
 	if not combinable(type1, type2) then
 		if combinable(type2, type1) then
-			type1, type2, s1, s2 = type2, type1, s2, s1
+			type1, type2, s1, s2, p1, p2, drive1, drive2 =
+			type2, type1, s2, s1, p2, p1, drive2, drive1
 		else
 			return nil, ('cannot combine %s and %s paths'):format(type1, type2)
 		end
 	end
 	if s2 == '' then --any + '' -> any
 		return s1
-	elseif type2 == 'rel' then --any + c/d -> any/c/d
-		return path.endsep(s1, pl, true) .. s2
-	elseif type2 == 'abs_nodrive' then -- C:a/b + /d/e -> C:/d/e/a/b
-		local type1, p1, drive1 = path.parse(s1)
-		return path.format(type1, path.endsep(s2, pl, true) .. p1, drive1, pl)
+	elseif type2 == 'rel' or type2 == 'abs_nodrive' then
+		local win = win(pl)
+		local sep = detect_sep(p1, win) or detect_sep(p2, win) or true
+		if type2 == 'rel' then --any + c/d -> any/c/d
+			p1 = set_endsep(type1, p1, win, sep, default_sep) or p1
+			return path.format(type1, p1 .. s2, drive1, pl)
+		elseif type2 == 'abs_nodrive' then -- C:a/b + /d/e -> C:/d/e/a/b
+			p2 = set_endsep(type2, p2, win, sep, default_sep) or p2
+			return path.format(type1, p2 .. p1, drive1, pl)
+		end
 	elseif type2 == 'rel_drive' then -- C:/a/b + C:d/e -> C:/a/b/d/e
-		local type1, p1, drive1 = path.parse(s1)
-		local type2, p2, drive2 = path.parse(s2)
 		if drive1 ~= drive2 then
 			return nil, 'path drives are different'
 		end
@@ -438,23 +461,29 @@ function path.combine(s1, s2, pl)
 	end
 end
 
---transform an absolute path into a relative path which is relative to `pwd`.
-function path.rel(s, pwd, pl)
-	local type, p, drive = path.parse(s, pl)
-	local win = win(pl)
-	local prefix = path.commonpath(p, pwd, pl)
-	if not prefix then return nil end
-	--count the dir depth in pwd after the prefix.
-	local pwd_suffix = pwd:sub(#prefix + 1)
-	local n = depth(pwd_suffix, win)
-	p = p:sub(#prefix + 1)
-	p = p:gsub(win and '^[\\/]+' or '^/+', '')
-	p = ('../'):rep(n) .. p
-	return path.format(type, p, drive, pl)
-end
-
 --transform a relative path into an absolute path given a base dir.
 path.abs = path.combine
+
+--transform an absolute path into a relative path which is relative to `pwd`.
+--the ending separator is preserved where possible.
+function path.rel(s, pwd, pl, default_sep)
+	local prefix = path.commonpath(s, pwd, pl)
+	if not prefix then return nil end
+	local type, p, drive = path.parse(s, pl)
+	local win = win(pl)
+	local pwd_suffix = pwd:sub(#prefix + 1)
+	local n = depth(pwd_suffix, win)
+	local sep =
+		detect_sep(pwd, win)
+		or detect_sep(p, win)
+		or default_sep
+		or (win and '\\' or '/')
+	local p1 = ('..' .. sep):rep(n - 1) .. (n > 0 and '..' or '')
+	local p2 = p:sub(#prefix + 1)
+	local p2 = p2:gsub(win and '^[\\/]+' or '^/+', '') --remove common sep
+	local p = path.combine(p1, p2, pl, sep)
+	return path.format(type, p, drive, pl)
+end
 
 --validate/make-valid a filename
 --NOTE: repl can be a function(match, err) -> repl_str.
