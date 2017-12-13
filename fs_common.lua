@@ -175,15 +175,15 @@ end
 --directory listing ----------------------------------------------------------
 
 function fs.dir(dir, dot_dirs)
-	dir = dir or fs.pwd()
+	dir = dir or '.'
 	if dot_dirs then
 		return dir_iter(dir)
-	else --wrap iterator to skip `.` and `..` dirs
+	else --wrap iterator to skip `.` and `..` entries
 		local next, dir = dir_iter(dir)
 		local function wrapped_next(dir, last)
 			repeat
 				last = next(dir, last)
-			until not (last and (last == '.' or last == '..') and dir:is'dir')
+			until not last or (last ~= '.' and last ~= '..')
 			return last, dir
 		end
 		return wrapped_next, dir
@@ -250,29 +250,6 @@ function fs.pwd(path)
 	else
 		return getcwd()
 	end
-end
-
---symlinks -------------------------------------------------------------------
-
-function fs.symlink(link_path, target_path)
-	if not target then
-		return get_symlink_target(link_path)
-	else
-		return set_symlink_target(link_path, target_path)
-	end
-end
-
-function fs.hardlink(link_path, target_path)
-	if not target then
-		return get_link_target(link_path)
-	else
-		return set_link_target(link_path, target_path)
-	end
-end
-
-function fs.link(link_path, target_path, symlink)
-	local f = symlink and fs.symlink or fs.hardlink
-	return f(link_path, target_path)
 end
 
 --[[

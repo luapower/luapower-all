@@ -24,7 +24,7 @@ function test.open_close()
 	assert(not f:closed())
 	assert(f:close())
 	assert(f:closed())
-	os.remove(testfile)
+	assert(fs.remove(testfile))
 end
 
 function test.open_not_found()
@@ -42,7 +42,7 @@ function test.open_already_exists_file()
 		{access = 'write', creation = 'create_new'})
 	assert(not f)
 	assert(errcode == 'already_exists')
-	assert(os.remove(testfile))
+	assert(fs.remove(testfile))
 end
 
 function test.open_already_exists_dir()
@@ -88,7 +88,7 @@ function test.read_write()
 		assert(s:byte(i) == (i-1) % 256)
 	end
 
-	assert(os.remove(test_file))
+	assert(fs.remove(test_file))
 end
 
 function test.open_modes()
@@ -96,7 +96,7 @@ function test.open_modes()
 	--TODO:
 	local f = assert(fs.open(test_file, 'w'))
 	f:close()
-	assert(os.remove(test_file))
+	assert(fs.remove(test_file))
 end
 
 function test.seek_size()
@@ -126,7 +126,7 @@ function test.seek_size()
 	assert(f:size() == newpos + 1)
 	assert(f:close())
 
-	assert(os.remove(test_file))
+	assert(fs.remove(test_file))
 end
 
 function test.truncate_seek()
@@ -155,7 +155,7 @@ function test.truncate_seek()
 	assert(pos == newpos - 100)
 	assert(f:close())
 
-	assert(os.remove(test_file))
+	assert(fs.remove(test_file))
 end
 
 --streams --------------------------------------------------------------------
@@ -166,7 +166,7 @@ function test.stream()
 	f:close()
 	local f = assert(assert(fs.open(test_file, 'r')):stream('r'))
 	f:close()
-	assert(os.remove(test_file))
+	assert(fs.remove(test_file))
 end
 
 --directory listing ----------------------------------------------------------
@@ -246,7 +246,7 @@ function test.mkdir_already_exists_file()
 	local ok, err, errcode = fs.mkdir(testfile)
 	assert(not ok)
 	assert(errcode == 'already_exists')
-	assert(os.remove(testfile))
+	assert(fs.remove(testfile))
 end
 
 function test.mkdir_not_found()
@@ -308,8 +308,8 @@ function test.move()
 	local f = assert(fs.open(f1, 'w'))
 	assert(f:close())
 	assert(fs.move(f1, f2))
-	assert(os.remove(f2))
-	assert(not os.remove(f1))
+	assert(fs.remove(f2))
+	assert(not fs.remove(f1))
 end
 
 function test.move_not_found()
@@ -340,7 +340,72 @@ function test.move_replace()
 	assert(buf[0] == ('1'):byte(1))
 	assert(f:close())
 
-	assert(os.remove(f2))
+	assert(fs.remove(f2))
+end
+
+function test.remove_not_found()
+	local ok, err, errcode = fs.remove'fs_non_existent'
+	assert(not ok)
+	assert(errcode == 'not_found')
+end
+
+function test.mksymlink_file()
+	local f1 = 'fs_test_symlink_file'
+	local f2 = 'fs_test_symlink_file_target'
+	local buf = ffi.new'char[1]'
+
+	local f = assert(fs.open(f2, 'w'))
+	buf[0] = ('X'):byte(1)
+	f:write(buf, 1)
+	assert(f:close())
+
+	assert(fs.mksymlink(f1, f2))
+
+	local f = assert(fs.open(f1))
+	assert(f:read(buf, 1))
+	assert(buf[0] == ('X'):byte(1))
+	assert(f:close())
+
+	assert(fs.remove(f1))
+	assert(fs.remove(f2))
+end
+
+function test.mksymlink_dir()
+	local d1 = 'fs_test_symlink_dir'
+	local d2 = 'fs_test_symlink_dir_target'
+	assert(fs.mkdir(d2..'/test_dir', true))
+	assert(fs.mksymlink(d1, d2, true))
+	local t = {}
+	for d in fs.dir(d1) do
+		t[#t+1] = d
+	end
+	assert(#t == 1)
+	assert(t[1] == 'test_dir')
+	assert(fs.rmdir(d1..'/test_dir'))
+	assert(fs.rmdir(d1))
+	assert(fs.rmdir(d2))
+end
+
+
+function test.mkhardlink() --hardlinks only work for files in NTFS
+	local f1 = 'fs_test_hardlink'
+	local f2 = 'fs_test_hardlink_target'
+	local buf = ffi.new'char[1]'
+
+	local f = assert(fs.open(f2, 'w'))
+	buf[0] = ('X'):byte(1)
+	f:write(buf, 1)
+	assert(f:close())
+
+	assert(fs.mkhardlink(f1, f2))
+
+	local f = assert(fs.open(f1))
+	assert(f:read(buf, 1))
+	assert(buf[0] == ('X'):byte(1))
+	assert(f:close())
+
+	assert(fs.remove(f1))
+	assert(fs.remove(f2))
 end
 
 --[=[
@@ -466,7 +531,7 @@ end
 		end)
 
 		after_each(function()
-			os.remove(touched)
+			fs.remove(touched)
 		end)
 
 		it('touch failed', function()
@@ -544,7 +609,7 @@ end
 		end)
 
 		teardown(function()
-			os.remove('temp.txt')
+			fs.remove('temp.txt')
 		end)
 	end)
 
@@ -609,7 +674,7 @@ local tmpfile = tmpdir..sep.."tmp_file"
 -- that may have resulted from an interrupted test execution and remove it
 if lfs.chdir (tmpdir) then
     assert (lfs.chdir (upper), "could not change to upper directory")
-    assert (os.remove (tmpfile), "could not remove file from previous test")
+    assert (fs.remove (tmpfile), "could not remove file from previous test")
     assert (lfs.rmdir (tmpdir), "could not remove directory from previous test")
 end
 
@@ -658,8 +723,8 @@ if lfs.link (tmpfile, "_a_link_for_test_", true) then
   assert (lfs.symlinkattributes("_a_link_for_test_", "target") == tmpfile)
   assert (lfs.link (tmpfile, "_a_hard_link_for_test_"))
   assert (lfs.attributes (tmpfile, "nlink") == 2)
-  assert (os.remove"_a_link_for_test_")
-  assert (os.remove"_a_hard_link_for_test_")
+  assert (fs.remove"_a_link_for_test_")
+  assert (fs.remove"_a_hard_link_for_test_")
 end
 
 io.write(".")
@@ -707,7 +772,7 @@ end
 lfs.attributes(tmpfile, attr2, nil)
 
 -- Remove new file and directory
-assert (os.remove (tmpfile), "could not remove new file")
+assert (fs.remove (tmpfile), "could not remove new file")
 assert (lfs.rmdir (tmpdir), "could not remove new directory")
 assert (lfs.mkdir (tmpdir..sep.."lfs_tmp_dir") == nil, "could create a directory inside a non-existent one")
 

@@ -142,7 +142,7 @@ function file.flush(f)
 	return check(C.fsync(f.fd) == 0)
 end
 
-local whences = {set = 0, cur = 1, ['end'] = 2, data = ?, hole = ?}
+local whences = {set = 0, cur = 1, ['end'] = 2} --TODO: , data = ?, hole = ?}
 function seek(f, whence, offset)
 	whence = assert(whences[whence], 'invalid whence %s', whence)
 	local offs = C.lseek(f.fd, offset, whence)
@@ -250,6 +250,7 @@ function dir.type(dir)
 	local t = dir._dentry.d_type
 	if t == DT_UNKNOWN then
 		--TODO: call lstat here
+		dir._dentry.d_type = t
 	end
 	return
 			t == DT_DIR  and 'dir'
@@ -268,7 +269,6 @@ dir_ct = ffi.typeof[[
 ]]
 
 function dir_iter(path)
-	path = path or fs.pwd()
 	local dentry = C.opendir(path)
 	assert_check(dentry ~= nil)
 	local dir = dir_ct()
@@ -321,6 +321,21 @@ end
 
 function fs.move(oldpath, newpath)
 	return check(C.rename(oldpath, newpath) == 0)
+end
+
+--hardlinks & symlinks -------------------------------------------------------
+
+cdef[[
+int link(const char *oldpath, const char *newpath);
+int symlink(const char *oldpath, const char *newpath);
+]]
+
+function fs.mksymlink(link_path, target_path)
+	return check(C.symlink(target_path, link_path) == 0)
+end
+
+function fs.mkhardlink(link_path, target_path)
+	return check(C.link(target_path, link_path) == 0)
 end
 
 --file attributes ------------------------------------------------------------
@@ -446,34 +461,6 @@ function fs.touch(path, atime, mtime)
 	end
 	return check(C.utime(path, buf) == 0)
 end
-
-
---hardlinks & symlinks -------------------------------------------------------
-
-cdef[[
-int link(const char *oldpath, const char *newpath);
-int symlink(const char *oldpath, const char *newpath);
-]]
-
-function set_symlink_target(link_path, target_path)
-	return check(C.symlink(target_path, link_path) == 0)
-end
-
-function set_link_target(link_path, target_path)
-	return check(C.link(target_path, link_path) == 0)
-end
-
-function get_link_target(link_path)
-
-end
-
-function get_symlink_target(link_path)
-
-end
-
---path manipulation ----------------------------------------------------------
-
-fs.dir_sep = '/'
 
 --common paths ---------------------------------------------------------------
 

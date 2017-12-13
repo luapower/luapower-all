@@ -58,9 +58,8 @@ __file attributes__
 `fs.blksize(path) -> size`                   get block size for file's filesystem
 `fs.touch(path[, atime[, mtime]])`           (create a file and) update modification time
 __symlinks & hardlinks__
-`fs.hardlink(target, [path]) -> path`        create a hard link
-`fs.symlink(target, [path]) -> path`         create a symbolic link
-`fs.link(target, path[, symbolic]) -> path`  create a hard or symbolic link
+`fs.mksymlink(symlink, path, is_dir)`        create a symbolic link for a file or dir
+`fs.mkhardlink(hardlink, path)`              create a hard link for a file
 __paths__
 `fs.realpath(path) -> path`                  dereference symlinks
 __common paths__
