@@ -44,7 +44,7 @@ Get the current platform which can be `'win'` or `'unix'`.
 
 ### `path.default_sep([pl]) -> s`
 
-Get the default separator for a platform which can be `\\` or `/`.
+Get the default separator for a platform which can be `\` or `/`.
 
 ### `path.dev_alias(s) -> s|nil`
 
@@ -95,13 +95,15 @@ like that). For those paths `is_valid` is `false`.
 
 ### `path.endsep(s, [pl], [sep], [dsep]) -> s, success`
 
-Get/add/remove an ending separator. The arg `sep` can be `nil`, `true`,
-`false`, `'\\'`, `'/'`, `''`: if `sep` is `nil` or missing, the ending
-separator is returned (`nil` if missing), otherwise it is added or removed
-(`true` means use path's separator or `dsep` or the default separator,
-`false` means `''`). `success` is `false` if trying to add or remove endsep
-from an empty path (note that even in those cases, the path can still be
-concatenated directly to a relative path and result in a valid path).
+Get/add/remove an ending separator of a path. If `sep` is `nil` or missing,
+the ending separator is returned (`nil` is returned if the path has no ending
+separator). If `sep` is `true`, `'\\'`, `'/'`, the path is returned with an
+ending separator added (`true` means use path's own separator if it has one
+and failing that, use `dsep` or the default platform separator). If `sep` is
+`false` or `''` the path without its ending separator is returned. `success`
+is `false` if trying to add or remove the ending separator from an empty path
+(note that even when that happens, the path can still be concatenated
+directly to a relative path and result in a valid path).
 
 Multiple consecutive separators are treated as one in that they
 are returned together and are replaced together.
@@ -111,7 +113,7 @@ are returned together and are replaced together.
 Detect or set the a path's separator (for Windows paths only).
 
 The arg `sep` can be `nil` (detect), `true` (set to `default_sep`), `false`
-(set to `default_sep` but only if both `\\` and `/` are found in the path,
+(set to `default_sep` but only if both `\` and `/` are found in the path,
 i.e. unify), `'\\'` or `'/'` (set specifically), or `nil` when `empty_names`
 is explicitly `false` (collapse duplicate separators only). `default_sep`
 defaults to the platform separator. Unless `empty_names` is `true`,
@@ -126,7 +128,7 @@ Get/set a Windows long absolute path (one starting with `\\?\C:\`). If
 `long` is `nil`, returns whether the path is a long or short Windows absolute
 path (returns `nil` for all other kinds of paths). Otherwise it converts the
 path, in which case `long` can be `true` (convert to long path), `false`
-(convert to short path)`, or `'auto'` (convert to long style if too long,
+(convert to short path) or `'auto'` (convert to long style if too long,
 or to short style if short enough).
 
 ### `path.file(s, [pl]) -> s`
@@ -152,7 +154,7 @@ Return only the extension from `path.nameext()`.
 Get the path without the last component and separator. If the path ends with
 a separator then the whole path without the separator is returned. Multiple
 consecutive separators are treated as one. Returns `nil` for `''`, `'.'`,
-`'C:', `'/'`, `'C:\\'` and `\\server\`. Returns `'.'` for simple filenames.
+`'C:'`, `'/'`, `'C:\\'` and `\\server\`. Returns `'.'` for simple filenames.
 
 ### `path.gsplit(s, [pl], [full]) -> iter() -> s, sep`
 
@@ -173,18 +175,15 @@ and normal paths.
 
 The `opt` arg controls the normalization:
 
-  * `dot_dirs` - `true` to keep `.` dirs.
-  * `dot_dot_dirs` - `true` to keep the `..` dirs.
+  * `dot_dirs` - use `true` to keep `.` dirs.
+  * `dot_dot_dirs` - use `true` to keep the `..` dirs.
   * `sep`, `default_sep`, `empty_names` - args to pass to `path.sep()`
   (`sep` defaults to `false`, use `'leave'` to avoid normalizing the
   separators)
-  * `endsep` - `sep` arg to pass to `path.endsep()` (`endsep` defaults
-  to `false`, use `'leave'` to avoid removing any end separator)
-  * `long` - `'auto'` (default) convert `'abs'` paths to `'abs_long'` when
-  they are too long and viceversa when they are short enough (pass `true` or
-  `false` to this option to force a conversion instead). Separators are
-  automatically normalized to `\` when converting to a long path. Make sure
-  to have dot dirs removed too when using long paths.
+  * `endsep` - `sep` arg to pass to `path.endsep()` (defaults to `false`,
+  use `'leave'` to avoid removing any end separator)
+  * `long` - `long` arg to pass to `path.long()` (defaults to `'auto'`,
+  use `'leave'` to avoid converting between short and long paths)
 
 __NOTE:__ If normalization results in the empty relative path `''`, then
 `'.'` is returned instead.
