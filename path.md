@@ -32,7 +32,7 @@ and UNC paths.
 `path.combine(p1, p2, [pl], [sep], [dsep]) -> s|nil` combine two paths if possible
 `path.abs(s, pwd, [pl], [sep], [dsep]) -> s|nil,err` convert relative path to absolute
 `path.rel(s, pwd, [pl], [sep], [dsep]) -> s|nil`     convert absolute path to relative
-`path.filename(s, [pl], [repl]) -> s|nil,err,code'   validate/make-valid filename
+`path.filename(s, [pl], [repl]) -> s|nil,err,code`   validate/make-valid filename
 ---------------------------------------------------- ------------------------------------------------
 
 In the table above, `pl` is for platform and can be `'win'` or `'unix'` and

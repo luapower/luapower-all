@@ -13,7 +13,6 @@ local backends = {
 	Linux   = 'fs_posix',
 }
 require(assert(backends[ffi.os], 'unsupported platform'))
-require'fs_path'
 
 ffi.metatype(file_ct, {__index = file})
 ffi.metatype(stream_ct, {__index = stream})

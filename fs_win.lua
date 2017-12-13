@@ -275,10 +275,6 @@ function file.close(f)
 	return true
 end
 
-function fs.isfile(f)
-	return ffi.istype(file_ct, f)
-end
-
 --i/o ------------------------------------------------------------------------
 
 cdef[[

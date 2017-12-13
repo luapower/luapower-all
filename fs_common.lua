@@ -147,6 +147,10 @@ function file.seek(f, whence, offset)
 	return backend.seek(f, whence or 'cur', offset or 0)
 end
 
+function fs.isfile(f)
+	return ffi.istype(file_ct, f)
+end
+
 --filesystem operations
 
 function fs.mkdir(path, recursive, ...)

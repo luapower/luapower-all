@@ -17,62 +17,55 @@ Filesystem API for Windows, Linux and OSX. Features:
 
 -------------------------------------------- -----------------------------------------------
 __file objects__
-`fs.open(path[, mode|opt]) -> f`
-`f:close()`
-`f:closed() -> true|false`
-`fs.isfile(f) -> true|false`
+`fs.open(path[, mode|opt]) -> f`             open file
+`f:close()`                                  close file
+`f:closed() -> true|false`                   check if file is closed
+`fs.isfile(f) -> true|false`                 check if `f` is a file object
 __file i/o__
-`f:read(buf, len) -> readlen`
-`f:write(buf, len) -> writelen`
-`f:flush()`
-`f:seek([whence] [, offset]) -> pos`
-`f:truncate()`
-`f:size() -> size`
-`f:stream() -> fs`
-`fs:close()`
+`f:read(buf, len) -> readlen`                read data from file
+`f:write(buf, len) -> writelen`              write data to file
+`f:flush()`                                  flush buffers
+`f:seek([whence] [, offset]) -> pos`         get/set file pointer
+`f:truncate()`                               truncate file to current file pointer
+`f:size() -> size`                           get file size
+`f:stream() -> fs`                           open a `FILE*` object
+`fs:close()`                                 close the `FILE*` object
 __filesystem operations__
-`fs.dir() -> dir, next
-`dir:next() -> name`
-`dir:close()`
-`dir:closed() -> true|false`
-`fs.mkdir(path, [recursive][, perms])`
-`fs.rmdir(path, [recursive])`
-`fs.pwd([newpwd]) -> path`
-`fs.remove(path)`
-`fs.move(path, newpath[, opt])`
+`fs.dir() -> dir, next`                      directory contents iterator
+`dir:next() -> name`                         call the iterator
+`dir:close()`                                close iterator
+`dir:closed() -> true|false`                 check if iterator is closed
+`fs.mkdir(path, [recursive][, perms])`       make directory
+`fs.rmdir(path, [recursive])`                remove empty directory
+`fs.pwd([newpwd]) -> path`                   get current directory
+`fs.remove(path)`                            remove file
+`fs.move(path, newpath[, opt])`              rename/move file on the same filesystem
 __file attributes__
-`fs.filetype(path) -> type`
-`fs.drive(path) -> drive_letter`
-`fs.dev(path) -> device_path`
-`fs.inode(path) -> inode`
-`fs.linknum(path) -> n`
-`fs.uid(path[, newuid]) -> uid`
-`fs.gid(path[, newgid]) -> gid`
-`fs.devtype(path) -> ?`
-`fs.atime(path[, newatime]) -> atime`
-`fs.mtime(path[, newmtime]) -> mtime`
-`fs.ctime(path[, newctime]) -> ctime`
-`fs.size(path[, newsize]) -> size`
-`fs.perms(path[, newperms]) -> perms`
-`fs.blocks(path) -> n`
-`fs.blksize(path) -> size`
-`fs.touch(path[, atime[, mtime]])`
+`fs.filetype(path) -> type`                  get file type
+`fs.drive(path) -> drive_letter`             get drive letter
+`fs.dev(path) -> device_path`                get device path
+`fs.inode(path) -> inode`                    get inode
+`fs.linknum(path) -> n`                      get number of hard links
+`fs.uid(path[, newuid]) -> uid`              get/set UID
+`fs.gid(path[, newgid]) -> gid`              get/set GID
+`fs.devtype(path) -> ?`                      get device type
+`fs.atime(path[, newatime]) -> atime`        get/set access time
+`fs.mtime(path[, newmtime]) -> mtime`        get/set modification time
+`fs.ctime(path[, newctime]) -> ctime`        get/set creation time
+`fs.size(path[, newsize]) -> size`           get/set file size
+`fs.perms(path[, newperms]) -> perms`        get/set file permissions
+`fs.blocks(path) -> n`                       get number of blocks in file
+`fs.blksize(path) -> size`                   get block size for file's filesystem
+`fs.touch(path[, atime[, mtime]])`           (create a file and) update modification time
 __symlinks & hardlinks__
-`fs.hardlink(target, path)`
-`fs.symlink(target, path)`
-`fs.link(target, patn[, symbolic])`
+`fs.hardlink(target, [path]) -> path`        create a hard link
+`fs.symlink(target, [path]) -> path`         create a symbolic link
+`fs.link(target, path[, symbolic]) -> path`  create a hard or symbolic link
 __paths__
-`fs.path(path|t[, dirsep]) -> path`
-`fs.basename(path) -> name`
-`fs.dirname(path) -> path`
-`fs.extname(path) -> ext`
-`fs.dirsep() -> s`
-`fs.abspath(path[, pwd]) -> path`
-`fs.relpath(path[, pwd]) -> path`
-`fs.realpath(path) -> path`
-`fs.readlink(path) -> path`
+`fs.realpath(path) -> path`                  dereference symlinks
 __common paths__
-`fs.homedir() -> path`
-`fs.tmpdir() -> path`
-`fs.exedir() -> path`
+`fs.homedir() -> path`                       get current user's home directory
+`fs.tmpdir() -> path`                        get temporary directory
+`fs.exedir() -> path`                        get the directory of the running executable
 -------------------------------------------- -----------------------------------------------
+
