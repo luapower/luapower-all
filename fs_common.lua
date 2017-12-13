@@ -6,6 +6,7 @@ if not ... then require'fs_test'; return end
 
 local ffi = require'ffi'
 local bit = require'bit'
+local path = require'path'
 
 local C = ffi.C
 local cdef = ffi.cdef
@@ -13,9 +14,13 @@ local cdef = ffi.cdef
 local backend = setmetatable({}, {__index = _G})
 setfenv(1, backend)
 
-fs = {} --fs namespace: backends can add functions in it directly.
-file = {} --file object methods: backends can add methods in it directly.
-stream = {} --FILE methods: backends can add methods in it directly.
+--namespaces in which backends can add methods directly.
+fs = {} --fs module namespace
+file = {} --file object methods
+stream = {} --FILE methods
+dir = {} --dir listing object methods
+
+--binding tools --------------------------------------------------------------
 
 --assert() with string formatting (this should be a Lua built-in).
 function assert(v, err, ...)
@@ -47,7 +52,7 @@ function mkbuf(ctype, min_sz)
 	end
 end
 
---error reporting
+--error reporting ------------------------------------------------------------
 
 cdef[[
 char *strerror(int errnum);
@@ -64,7 +69,7 @@ function assert_checker(check)
 		if ret then return ret end
 		local _, err, errcode = check(errcode)
 		if errcode then
-			error(string.format('OS Error %d: %s', errcode, err), 2)
+			error(string.format('OS Error %s: %s', tostring(errcode), err), 2)
 		else
 			error(err, 2)
 		end
@@ -73,7 +78,7 @@ end
 
 assert_check_errno = assert_checker(check_errno)
 
---flags
+--flags arg parsing ----------------------------------------------------------
 
 local function memoize2(func)
 	cache = {}
@@ -138,7 +143,7 @@ function flags(arg, masks)
 	end
 end
 
---i/o
+--i/o ------------------------------------------------------------------------
 
 function file.seek(f, whence, offset)
 	if tonumber(whence) and not offset then
@@ -151,52 +156,7 @@ function fs.isfile(f)
 	return ffi.istype(file_ct, f)
 end
 
---filesystem operations
-
-function fs.mkdir(path, recursive, ...)
-	if recursive then
-		local dir = path
-		local t = {}
-		while true do
-			local ok, err, errcode = mkdir(dir, ...)
-			if ok then break end
-			table.insert(t, fs.basename(dir))
-			dir = fs.dirname(dir)
-			if not dir then return ok, err, errcode end
-		end
-		local basedir = dir
-		while #t > 0 do
-			local dir = table.remove(t)
-			local ok, err, errcode = mkdir(fs.path(basedir, dir), ...)
-			if not ok then return ok, err, errcode end
-		end
-		return true
-	else
-		return mkdir(path, ...)
-	end
-end
-
-function fs.rmdir(path, recursive, ...)
-	if recursive then
-		local ok, err, errcode = fs.rmdir(path, ...)
-		if not ok then return ok, err, errcode end
-		path = fs.dirname(path)
-		if not path then return true end
-		return fs.rmdir(path, true, ...)
-	else
-		return rmdir(path, ...)
-	end
-end
-
-function fs.pwd(path)
-	if path then
-		return chdir(path)
-	else
-		return getcwd()
-	end
-end
-
---stdio streams
+--stdio streams --------------------------------------------------------------
 
 cdef[[
 typedef struct FILE FILE;
@@ -212,7 +172,87 @@ function stream.close(fs)
 	return true
 end
 
---symlinks
+--directory listing ----------------------------------------------------------
+
+function fs.dir(dir, dot_dirs)
+	dir = dir or fs.pwd()
+	if dot_dirs then
+		return dir_iter(dir)
+	else --wrap iterator to skip `.` and `..` dirs
+		local next, dir = dir_iter(dir)
+		local function wrapped_next(dir, last)
+			repeat
+				last = next(dir, last)
+			until not (last and (last == '.' or last == '..') and dir:is'dir')
+			return last, dir
+		end
+		return wrapped_next, dir
+	end
+end
+
+function dir.is(dir, type)
+	return dir:type() == type
+end
+
+--filesystem operations ------------------------------------------------------
+
+function fs.mkdir(dir, recursive, ...)
+	if recursive then
+		dir = path.normalize(dir) --avoid creating `dir` in `dir/..` sequences
+		local t = {}
+		while true do
+			local ok, err, errcode = mkdir(dir, ...)
+			if ok then break end
+			if errcode ~= 'not_found' then --other problem
+				return ok, err, errcode
+			end
+			table.insert(t, dir)
+			dir = path.dir(dir)
+			if not dir then --reached root
+				return ok, err, errcode
+			end
+		end
+		while #t > 0 do
+			local dir = table.remove(t)
+			local ok, err, errcode = mkdir(dir, ...)
+			if not ok then return ok, err, errcode end
+		end
+		return true
+	else
+		return mkdir(dir, ...)
+	end
+end
+
+function fs.rmdir(dir, recursive)
+	if recursive then
+		for file, dirobj in fs.dir(dir) do
+			local filepath = path.combine(dir, file)
+			local ok, err, errcode
+			if dirobj:is'dir' then
+				ok, err, errcode = fs.rmdir(filepath, true)
+			else
+				ok, err, errcode = fs.remove(filepath)
+			end
+			if not ok then
+				dirobj:close()
+				return ok, err, errcode
+			end
+		end
+		return fs.rmdir(dir)
+	else
+		return rmdir(dir)
+	end
+end
+
+function fs.pwd(path)
+	if path then
+		return chdir(path)
+	else
+		return getcwd()
+	end
+end
+
+--symlinks -------------------------------------------------------------------
 
 function fs.symlink(link_path, target_path)
 	if not target then
@@ -334,5 +374,54 @@ function fs.blksize(path)
 
 end
 ]]
+
+--paths ----------------------------------------------------------------------
+
+local win = ffi.abi'win'
+
+-- follow symlinks relative to pwd
+--encode path given as table:
+function fs.path(path, pwd)
+		--
+end
+
+function fs.splitpath(path, reverse)
+	local t = {}
+	return
+end
+
+
+function fs.dirname(path)
+	return path:gsub('[/\\]?[^/\\]+$', '')
+end
+
+function fs.basename(path, suffix)
+	--TODO: verify this code
+	if suffix and path:sub(-#suffix) == suffix then
+		path = path:sub(1, -#suffix)
+	end
+	return path:match'[^/\\]+$' or ''
+end
+
+function fs.extname(path)
+	return fs.basename(path):match'.%.([^%.]+)$' or nil
+end
+
+function fs.abspath(path, pwd)
+	pwd = pwd or fs.pwd()
+end
+
+function fs.relpath(path, pwd)
+	pwd = pwd or fs.pwd()
+end
+
+function fs.realpath(path)
+	-- we should check if the path exists on windows
+end
+
+function fs.readlink(path)
+
+end
+
 
 return backend

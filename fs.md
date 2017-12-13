@@ -31,8 +31,8 @@ __file i/o__
 `f:stream() -> fs`                           open a `FILE*` object
 `fs:close()`                                 close the `FILE*` object
 __filesystem operations__
-`fs.dir() -> dir, next`                      directory contents iterator
-`dir:next() -> name`                         call the iterator
+`fs.dir(dir, [dot_dirs]) -> dirobj, next`    directory contents iterator
+`dir:next(dirobj, last) -> name, dirobj`     call the iterator
 `dir:close()`                                close iterator
 `dir:closed() -> true|false`                 check if iterator is closed
 `fs.mkdir(path, [recursive][, perms])`       make directory

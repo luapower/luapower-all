@@ -16,5 +16,6 @@ require(assert(backends[ffi.os], 'unsupported platform'))
 
 ffi.metatype(file_ct, {__index = file})
 ffi.metatype(stream_ct, {__index = stream})
+ffi.metatype(dir_ct, {__index = dir, __gc = dir.close})
 
 return fs

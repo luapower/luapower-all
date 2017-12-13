@@ -124,7 +124,6 @@ int fsync(int fd);
 int64_t lseek(int fd, off_t offset, int whence) asm("lseek%s");
 int ftruncate(int fd, off_t length);
 int fstat(int fd, struct stat *buf);
-FILE *fdopen(int fd, const char *mode);
 ]], linux and '64' or ''))
 
 function file.read(f, buf, sz)
@@ -166,6 +165,10 @@ function file.size(f)
 	if not offset1 then return offset1, err1, errcode1 end
 	return offset1 + 1
 end
+
+--stdio streams --------------------------------------------------------------
+
+cdef'FILE *fdopen(int fd, const char *mode);'
 
 function file.stream(f, mode)
 	local fs = C.fdopen(f, mode)
@@ -225,8 +228,7 @@ function dir.next(dir)
 	assert(not dir:closed(), 'directory closed')
 	local entry = C.readdir(dir._dentry)
 	if entry ~= nil then
-		--TODO: also read file type to distinguish dirs from files
-		return str(entry.d_name)
+		return str(entry.d_name), dir
 	else
 		local errno = ffi.errno()
 		dir:close()
@@ -234,17 +236,42 @@ function dir.next(dir)
 	end
 end
 
-local dir_obj = ffi.metatype([[
+--dirent.d_type consts
+local DT_UNKNOWN = 0
+local DT_FIFO    = 1
+local DT_CHR     = 2
+local DT_DIR     = 4
+local DT_BLK     = 6
+local DT_REG     = 8
+local DT_LNK     = 10
+local DT_SOCK    = 12
+
+function dir.type(dir)
+	local t = dir._dentry.d_type
+	if t == DT_UNKNOWN then
+		--TODO: call lstat here
+	end
+	return
+			t == DT_DIR  and 'dir'
+		or t == DT_REG  and 'file'
+		or t == DT_BLK  and 'dev_block'
+		or t == DT_CHR  and 'dev_char'
+		or t == DT_FIFO and 'pipe'
+		or t == DT_SOCK and 'socket'
+		or t == DT_LNK  and 'symlink'
+end
+
+dir_ct = ffi.typeof[[
 	struct {
 		DIR *_dentry;
 	}
-	]], {__index = dir, __gc = dir.close})
+]]
 
-function fs.dir(path)
+function dir_iter(path)
 	path = path or fs.pwd()
 	local dentry = C.opendir(path)
 	assert_check(dentry ~= nil)
-	local dir = dir_obj()
+	local dir = dir_ct()
 	dir._dentry = dentry
 	return dir.next, dir
 end

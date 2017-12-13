@@ -70,6 +70,15 @@ local FORMAT_MESSAGE_FROM_SYSTEM = 0x00001000
 
 local errbuf = mkbuf'char'
 
+local errcodes = {
+	[0x02] = 'not_found', --ERROR_FILE_NOT_FOUND, CreateFileW
+	[0x03] = 'not_found', --ERROR_PATH_NOT_FOUND, CreateDirectoryW
+	[0x05] = 'access_denied', --ERROR_ACCESS_DENIED, CreateFileW
+	[0x50] = 'already_exists', --ERROR_FILE_EXISTS, CreateFileW
+	[0x91] = 'not_empty', --ERROR_DIR_NOT_EMPTY, RemoveDirectoryW
+	[0xB7] = 'already_exists', --ERROR_ALREADY_EXISTS, CreateDirectoryW
+}
+
 local function check(ret, errcode)
 	if ret then return ret end
 	errcode = errcode or C.GetLastError()
@@ -79,7 +88,7 @@ local function check(ret, errcode)
 		nil, errcode, 0, buf, bufsz, nil
 	)
 	if sz == 0 then return nil, 'Unknown Error' end
-	return nil, str(buf, sz), errcode
+	return nil, str(buf, sz), errcodes[errcode] or errcode
 end
 
 local assert_check = assert_checker(check)
@@ -254,8 +263,7 @@ function fs.open(path, opt)
 	local creation = flags(opt.creation or 'open_existing', creation_flags)
 	local attrs    = bit.bor(
 		flags(opt.flags, flag_flags),
-		flags(opt.attrs, attr_flags)
-	)
+		flags(opt.attrs, attr_flags))
 	local h = C.CreateFileW(
 		wcs(path), access, sharing, nil, creation, attrs, nil)
 	if h == INVALID_HANDLE_VALUE then return check() end
@@ -329,9 +337,6 @@ BOOL GetFileSizeEx(
   HANDLE         hFile,
   PLARGE_INTEGER lpFileSize
 );
-
-FILE *_fdopen(int fd, const char *mode);
-int _open_osfhandle (HANDLE osfhandle, int flags);
 ]]
 
 local dwbuf = ffi.new'DWORD[1]'
@@ -370,6 +375,13 @@ function file.size(f)
 	if not ok then return check() end
 	return tonumber(u64buf[0])
 end
+
+--stdio streams --------------------------------------------------------------
+
+cdef[[
+FILE *_fdopen(int fd, const char *mode);
+int _open_osfhandle (HANDLE osfhandle, int flags);
+]]
 
 function file.stream(f, mode)
 	local flags = 0
@@ -412,8 +424,6 @@ BOOL FindNextFileW(HANDLE, LPWIN32_FIND_DATAW);
 BOOL FindClose(HANDLE);
 ]]
 
-local dir = {}
-
 function dir.closed(dir)
 	return dir._handle == 0
 end
@@ -430,13 +440,11 @@ local ERROR_NO_MORE_FILES = 18
 function dir.next(dir, last)
 	assert(not dir:closed(), 'directory closed')
 	if not last then
-		--TODO: also read file type to distinguish dirs from files
-		return mbs(dir._fdata.cFileName)
+		return mbs(dir._fdata.cFileName), dir
 	else
 		local ret = C.FindNextFileW(dir._handle, dir._fdata)
 		if ret ~= 0 then
-			--TODO: also read file type to distinguish dirs from files
-			return mbs(dir._fdata.cFileName)
+			return mbs(dir._fdata.cFileName), dir
 		else
 			local errcode = C.GetLastError()
 			dir:close()
@@ -448,18 +456,30 @@ function dir.next(dir, last)
 	end
 end
 
-local dir_obj = ffi.metatype([[
+local FILE_ATTRIBUTE_DIRECTORY     = 0x00000010
+local FILE_ATTRIBUTE_DEVICE        = 0x00000040
+local FILE_ATTRIBUTE_REPARSE_POINT = 0x00000400
+
+function dir.type(dir)
+	local attr = dir._fdata.dwFileAttributes
+	return
+		   bit.band(attr, FILE_ATTRIBUTE_DIRECTORY) ~= 0     and 'dir'
+		or bit.band(attr, FILE_ATTRIBUTE_DEVICE) ~= 0        and 'dev'
+		or bit.band(attr, FILE_ATTRIBUTE_REPARSE_POINT) ~= 0 and 'symlink'
+		or 'file'
+end
+
+dir_ct = ffi.typeof[[
 	struct {
 		HANDLE _handle;
 		WIN32_FIND_DATAW _fdata;
 	}
-]], {__index = dir, __gc = dir.close})
+]]
 
-function fs.dir(path)
-	path = path or fs.pwd()
+function dir_iter(path)
 	assert(not path:find'[%*%?]') --no globbing allowed
 	path = path .. '\\*'
-	local dir = dir_obj()
+	local dir = dir_ct()
 	local h = C.FindFirstFileW(wcs(path), dir._fdata)
 	assert_check(h ~= INVALID_HANDLE_VALUE)
 	dir._handle = h
@@ -529,7 +549,7 @@ end
 
 --path manipulation ----------------------------------------------------------
 
-fs.dir_sep = '\\'
+--
 
 --common paths ---------------------------------------------------------------
 

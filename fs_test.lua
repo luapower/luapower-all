@@ -3,24 +3,62 @@ local fs = require'fs'
 local win = ffi.abi'win'
 local posix = not win
 
-local test_file = 'fs_test.tmp'
-
 local test = setmetatable({}, {__newindex = function(t, k, v)
 	rawset(t, k, v)
 	rawset(t, #t+1, k)
 end})
 
-local testfile = 'media/fs/testfile'
+local function assert(ret, err, errcode, ...)
+	if not ret then
+		error(errcode and '['..errcode..'] '..err or err or 'assertion failed', 2)
+	end
+	return ret
+end
+
+--open/close -----------------------------------------------------------------
 
 function test.open_close()
-	local f = assert(fs.open'fs_test.lua')
+	local testfile = 'fs_test_file'
+	local f = assert(fs.open(testfile, 'w'))
 	assert(fs.isfile(f))
 	assert(not f:closed())
 	assert(f:close())
 	assert(f:closed())
+	os.remove(testfile)
 end
 
+function test.open_not_found()
+	local nonexistent = 'this_file_should_not_exist'
+	local f, err, errcode = fs.open(nonexistent)
+	assert(not f)
+	assert(errcode == 'not_found')
+end
+
+function test.open_already_exists_file()
+	local testfile = 'fs_test_file'
+	local f = assert(fs.open(testfile, 'w'))
+	assert(f:close())
+	local f, err, errcode = fs.open(testfile,
+		{access = 'write', creation = 'create_new'})
+	assert(not f)
+	assert(errcode == 'already_exists')
+	assert(os.remove(testfile))
+end
+
+function test.open_already_exists_dir()
+	local testfile = 'fs_test_file_access_denied'
+	fs.rmdir(testfile)
+	assert(fs.mkdir(testfile))
+	local f, err, errcode = fs.open(testfile)
+	assert(not f)
+	assert(errcode == 'access_denied')
+	assert(fs.rmdir(testfile))
+end
+
+--i/o ------------------------------------------------------------------------
+
 function test.read_write()
+	local test_file = 'fs_test'
 	local sz = 4096
 	local buf = ffi.new('uint8_t[?]', sz)
 
@@ -54,19 +92,15 @@ function test.read_write()
 end
 
 function test.open_modes()
+	local test_file = 'fs_test'
 	--TODO:
 	local f = assert(fs.open(test_file, 'w'))
 	f:close()
+	assert(os.remove(test_file))
 end
 
-function test.stream()
-	local f = assert(assert(fs.open(test_file, 'w')):stream('w'))
-	f:close()
-	local f = assert(assert(fs.open(test_file, 'r')):stream('r'))
-	f:close()
-end
-
-function test.seek()
+function test.seek_size()
+	local test_file = 'fs_test'
 	local f = assert(fs.open(test_file, 'w'))
 
 	--test large file support by seeking out-of-bounds
@@ -89,12 +123,14 @@ function test.seek()
 	assert(pos == newpos + 1) --cur advanced
 	local pos = assert(f:seek('end'))
 	assert(pos == newpos + 1) --end updated
+	assert(f:size() == newpos + 1)
 	assert(f:close())
 
 	assert(os.remove(test_file))
 end
 
 function test.truncate_seek()
+	local test_file = 'fs_test'
 	--truncate/grow
 	local f = assert(fs.open(test_file, 'w'))
 	local newpos = 1024^2
@@ -104,8 +140,7 @@ function test.truncate_seek()
 	local pos = assert(f:seek())
 	assert(pos == newpos)
 	assert(f:close())
-
-	--now check size
+	--check size
 	local f = assert(fs.open(test_file, 'r+'))
 	local pos = assert(f:seek'end')
 	assert(pos == newpos)
@@ -114,8 +149,7 @@ function test.truncate_seek()
 	assert(f:truncate())
 	assert(pos == newpos - 100)
 	assert(f:close())
-
-	--now check size
+	--check size
 	local f = assert(fs.open(test_file, 'r'))
 	local pos = assert(f:seek'end')
 	assert(pos == newpos - 100)
@@ -124,59 +158,189 @@ function test.truncate_seek()
 	assert(os.remove(test_file))
 end
 
+--streams --------------------------------------------------------------------
 
-
---[[
---stdio opening/closing
-
-function test.stdio_open_close_type_fileno_handle()
-	local f = assert(fs.open'fs_test.lua')
-	assert(fs.isfile(f))
-	assert(f:fileno() > 2)
-	if win then
-		assert(f:handle())
-	end
+function test.stream()
+	local test_file = 'fs_test'
+	local f = assert(assert(fs.open(test_file, 'w')):stream('w'))
 	f:close()
+	local f = assert(assert(fs.open(test_file, 'r')):stream('r'))
+	f:close()
+	assert(os.remove(test_file))
 end
 
-function test.open_fd()
-
-end
-
-function test.open_handle()
-
-end
-]]
-
-function test.pwd_mkdir_rmdir()
-	local pwd = assert(fs.pwd())
-	assert(fs.mkdir'fs_test_dir') --relative paths should work
-	assert(fs.pwd'fs_test_dir')   --relative paths should work
-	assert(fs.pwd(pwd))
-	assert(fs.pwd() == pwd)
-	assert(fs.rmdir'fs_test_dir') --relative paths should work
-end
+--directory listing ----------------------------------------------------------
 
 function test.dir()
 	local found
 	local n = 0
-	for file in fs.dir() do
+	local files = {}
+	for file, dirobj in fs.dir(nil, true) do
 		found = found or file == 'fs_test.lua'
 		n = n + 1
-		--print(file)
+		files[file] = dirobj:type()
+		--print('', dirobj:type(), file)
 	end
-	assert(n >= 3) -- at least '.', '..' and 'fs_test.lua'
-	print(string.format('found %d dir/file entries in pwd', n))
+	assert(files['.'] == 'dir')
+	assert(files['..'] == 'dir')
+	assert(files['fs_test.lua'] == 'file')
+	print(string.format('  found %d dir/file entries in pwd', n))
 	assert(found, 'fs_test.lua not found in pwd')
 end
 
-function test.pwd()
-	local pwd = fs.pwd()
-	local dir = posix and '/home' or 'C:\\Windows'
-	assert(fs.pwd(dir))
-	assert(fs.pwd() == dir)
-	fs.pwd(pwd)
+--filesystem operations ------------------------------------------------------
+
+function test.pwd_mkdir_rmdir()
+	local testdir = 'fs_test_dir'
+	local pwd = assert(fs.pwd())
+	assert(fs.mkdir(testdir)) --relative paths should work
+	assert(fs.pwd(testdir))   --relative paths should work
+	assert(fs.pwd(pwd))
 	assert(fs.pwd() == pwd)
+	assert(fs.rmdir(testdir)) --relative paths should work
+end
+
+function test.mkdir_recursive()
+	assert(fs.mkdir('fs_test_dir/a/b/c', true))
+	assert(fs.rmdir'fs_test_dir/a/b/c')
+	assert(fs.rmdir'fs_test_dir/a/b')
+	assert(fs.rmdir'fs_test_dir/a')
+	assert(fs.rmdir'fs_test_dir')
+end
+
+function test.rmdir_recursive()
+	local rootdir = 'fs_test_rmdir_rec/'
+	local function mkdir(dir)
+		assert(fs.mkdir(rootdir..dir, true))
+	end
+	local function mkfile(file)
+		local f = assert(fs.open(rootdir..file, 'w'))
+		assert(f:close())
+	end
+	mkdir'a/b/c'
+	mkfile'a/b/c/f1'
+	mkfile'a/b/c/f2'
+	mkdir'a/b/c/d1'
+	mkdir'a/b/c/d2'
+	mkfile'a/b/f1'
+	mkfile'a/b/f2'
+	mkdir'a/b/d1'
+	mkdir'a/b/d2'
+	assert(fs.rmdir(rootdir, true))
+end
+
+function test.mkdir_already_exists_dir()
+	assert(fs.mkdir'fs_test_dir')
+	local ok, err, errcode = fs.mkdir'fs_test_dir'
+	assert(not ok)
+	assert(errcode == 'already_exists')
+	assert(fs.rmdir'fs_test_dir')
+end
+
+--NOTE: mkdir with the name of an existing file fails with already_exists, but
+--creating a file with the same name as a directory fails with access_denied.
+function test.mkdir_already_exists_file()
+	local testfile = 'fs_test_dir_access_denied'
+	local f = assert(fs.open(testfile, 'w'))
+	assert(f:close())
+	local ok, err, errcode = fs.mkdir(testfile)
+	assert(not ok)
+	assert(errcode == 'already_exists')
+	assert(os.remove(testfile))
+end
+
+function test.mkdir_not_found()
+	local ok, err, errcode = fs.mkdir'fs_test_nonexistent/nonexistent'
+	assert(not ok)
+	assert(errcode == 'not_found')
+end
+
+function test.rmdir_not_found()
+	local testfile = 'fs_test_rmdir'
+	local ok, err, errcode = fs.rmdir(testfile)
+	assert(not ok)
+	assert(errcode == 'not_found')
+end
+
+function test.rmdir_not_empty()
+	local dir1 = 'fs_test_rmdir'
+	local dir2 = 'fs_test_rmdir/subdir'
+	assert(fs.mkdir(dir1))
+	assert(fs.mkdir(dir2))
+	local ok, err, errcode = fs.rmdir(dir1)
+	assert(not ok)
+	assert(errcode == 'not_empty')
+	assert(fs.rmdir(dir2))
+	assert(fs.rmdir(dir1))
+end
+
+function test.pwd_not_found()
+	local ok, err, errcode = fs.pwd'fs_test_nonexistent/nonexistent'
+	assert(not ok)
+	assert(errcode == 'not_found')
+end
+
+function test.remove()
+	local testfile = 'fs_test_remove'
+	local f = assert(fs.open(testfile, 'w'))
+	assert(f:close())
+	assert(fs.remove(testfile))
+	assert(not fs.open(testfile))
+end
+
+function test.remove_not_found()
+	local testfile = 'fs_test_remove'
+	local ok, err, errcode = fs.remove(testfile)
+	assert(not ok)
+	assert(errcode == 'not_found')
+end
+
+function test.remove_not_found()
+	local testfile = 'fs_test_remove'
+	local ok, err, errcode = fs.remove(testfile)
+	assert(not ok)
+	assert(errcode == 'not_found')
+end
+
+function test.move()
+	local f1 = 'fs_test_move1'
+	local f2 = 'fs_test_move2'
+	local f = assert(fs.open(f1, 'w'))
+	assert(f:close())
+	assert(fs.move(f1, f2))
+	assert(os.remove(f2))
+	assert(not os.remove(f1))
+end
+
+function test.move_not_found()
+	local ok, err, errcode = fs.move('fs_nonexistent_file', 'fs_nonexistent2')
+	assert(not ok)
+	assert(errcode == 'not_found')
+end
+
+function test.move_replace()
+	local f1 = 'fs_test_move1'
+	local f2 = 'fs_test_move2'
+	local buf = ffi.new'char[1]'
+
+	local f = assert(fs.open(f1, 'w'))
+	buf[0] = ('1'):byte(1)
+	f:write(buf, 1)
+	assert(f:close())
+
+	local f = assert(fs.open(f2, 'w'))
+	buf[0] = ('2'):byte(1)
+	assert(f:write(buf, 1))
+	assert(f:close())
+
+	assert(fs.move(f1, f2))
+
+	local f = assert(fs.open(f2))
+	assert(f:read(buf, 1))
+	assert(buf[0] == ('1'):byte(1))
+	assert(f:close())
+
+	assert(os.remove(f2))
 end
 
 --[=[
