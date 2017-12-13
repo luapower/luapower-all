@@ -29,9 +29,9 @@ and UNC paths.
 `path.normalize(s, [pl], [opt]) -> s`                normalize a path in various ways
 `path.commonpath(s1, s2, [pl]) -> s|nil`             get the common prefix of two paths
 `path.depth(s, [pl]) -> n`                           get the number of non-empty path components
-`path.combine(p1, p2, [pl], [dsep]) -> s|nil,err`    combine two paths if possible
-`path.abs(s, pwd, [pl]) -> s|nil,err`                convert relative path to absolute
-`path.rel(s, pwd, [pl]) -> s|nil`                    convert absolute path to relative
+`path.combine(p1, p2, [pl], [sep], [dsep]) -> s|nil` combine two paths if possible
+`path.abs(s, pwd, [pl], [sep], [dsep]) -> s|nil,err` convert relative path to absolute
+`path.rel(s, pwd, [pl], [sep], [dsep]) -> s|nil`     convert absolute path to relative
 `path.filename(s, [pl], [repl]) -> s|nil,err,code'   validate/make-valid filename
 ---------------------------------------------------- ------------------------------------------------
 
@@ -208,25 +208,26 @@ paths are in the original letter case (eg. they come from the same API).
 Get the number of non-empty path components, excluding prefixes like
 `C:\`, `\\server\`, etc.
 
-### `path.combine(s1, s2, [pl], [dsep]) -> s|nil,err`
+### `path.combine(s1, s2, [pl], [sep], [dsep]) -> s|nil,err`
 
 Combine two paths if possible (return `nil, err` if not). Supported
-combinations are between types `rel` and anything except `dev_alias`,
+combinations are between anything except `dev_alias` and `rel` paths,
 between `abs_nodrive` and `rel_drive`, and between `rel_drive` and `abs`
 or `abs_long`. When the paths can only be combined in one way, paths can be
-given in any order. The separator with which paths are combined is first
-detected and if that fails, `dsep` or the default separator is used.
+given in any order. The separator with which paths are combined is either
+`sep` or it's detected and if that fails `dsep` or the default separator
+is used.
 
-### `path.abs(s, pwd) -> s|nil,err`
+### `path.abs(s, pwd, [pl], [sep], [dsep]) -> s|nil,err`
 
 Convert a relative path to an absolute path given a base dir
 (this is currently an alias of `path.combine()`).
 
-### `path.rel(s, pwd) -> s|nil`
+### `path.rel(s, pwd, [pl], [sep], [dsep]) -> s|nil`
 
 Convert an absolute path into a relative path which is relative to `pwd`.
 Returns `nil` if the paths are of different types or don't have a base path
-in common.
+in common. The ending (back)slash is preserved if present.
 
 ### `path.filename(s, [pl], [repl]) -> s|nil,err,errcode`
 

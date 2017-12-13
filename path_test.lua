@@ -329,7 +329,7 @@ test('C:',       'C:',         'win', 'C:')
 test('C:a',      'C:a',        'win', 'C:a')
 
 --diff type and/or drive
-test('C:/',      'C:',         'win', nil) --diff. type
+test('C:/',      'C:',         'win', nil) --diff. type (common lexic prefix)
 test('C:a',      'C:/',        'win', nil) --diff. type
 test('C:/CON',   'C:/',        'win', nil) --diff. type
 test('C:',       'X:',         'win', nil) --diff. drive
@@ -376,38 +376,61 @@ assert(path.depth('\\\\server\\share\\path'), 'win' == 2)
 
 --combine (& implicitly abs) -------------------------------------------------
 
-local function test(s1, s2, pl, p2)
-	local p1 = path.combine(s1, s2, pl)
-	print('combine', s1, s2, pl, '->', p1)
+local function test(s1, s2, pl, p2, err2)
+	local p1, err1 = path.combine(s1, s2, pl)
+	print('combine', s1, s2, pl, '->', p1, err1, err1)
 	assert(p1 == p2)
+	if err2 then
+		assert(err1:find(err2, 1, true))
+	end
 end
 
---TODO
+-- any + '' -> any
+test('C:a/b', '', 'win', 'C:a/b')
+
+-- any + c/d -> any/c/d
+test('C:\\', 'c/d', 'win', 'C:\\c/d')
+
+-- C:a/b + /d/e -> C:/d/e/a/b
+test('C:a/b', '\\d\\e', 'win', 'C:\\d\\e/a/b')
+
+-- C:/a/b + C:d/e -> C:/a/b/d/e
+test('C:/a/b', 'C:d\\e', 'win', 'C:/a/b/d\\e')
+
+-- errors
+test('/a', '/b', 'win', nil, 'cannot combine') --types
+test('C:', 'D:', 'win', nil, 'cannot combine') --drives
+
 
 --rel ------------------------------------------------------------------------
 
-local function test(s, pwd, pl, default_sep, s2)
-	local s1 = path.rel(s, pwd, pl, default_sep)
+local function test(s, pwd, s2, pl, sep, default_sep)
+	local s1 = path.rel(s, pwd, pl, sep, default_sep)
 	print('rel', s, pwd, pl, '->', s1)
 	assert(s1 == s2)
 end
 
-test('/a/c', '/a/b', 'win', nil, '../c')
-test('/a/b/c', '/a/b', 'win', nil, 'c')
+test('/a/c',   '/a/b', '../c', 'win')
+test('/a/b/c', '/a/b', 'c',    'win')
 
-test('',  '',    'win', nil, '')
-test('',  'a',   'win', nil, '..')
-test('a',  '',   'win', nil, 'a')
-test('a/', '',   'win', nil, 'a/')
-test('a',  'b',  'win', '/', '../a')
-test('a/', 'b',  'win', nil, '../a/')
-test('a',  'b/', 'win', nil, '../a')
+test('',  '',    '.',      'win')
+test('',  'a',   '..',     'win')
+test('a',  '',   'a',      'win')
+test('a/', '',   'a/',     'win')
+test('a',  'b',  '../a',   'win', '/')
+test('a/', 'b',  '../a/',  'win')
+test('a',  'b/', '../a',   'win')
 
-test('a/b', 'a/c', 'win', nil, '../b')
-
-test('a/b', 'a/b/c', 'win', nil, '..')
-
-test('a/b/c', 'a/b', 'win', nil, 'c')
+test('a/b',    'a/c',   '../b',     'win') --1 updir + non-empty
+test('a/b/',   'a/c',   '../b/',    'win') --1 updir + non-empty + endsep
+test('a/b',    'a/b/c', '..',       'win') --1 updir + empty
+test('a/b/',   'a/b/c', '../',      'win') --1 updir + empty + endsep
+test('a/b/c',  'a/b',   'c',        'win') --0 updirs + non-empty
+test('a/b',    'a/b',   '.',        'win') --0 updirs + empty
+test('a/b/',   'a/b',   './',       'win') --0 updirs + empty + endsep
+test('C:a/b/', 'C:a/b', 'C:./',     'win') --0 updirs + empty + endsep
+test('a/b',    'a/c/d', '../../b',  'win') --2 updirs + non-empty
+test('a/b/',   'a/c/d', '../../b/', 'win') --2 updirs + non-empty + endsep
 
 --filename -------------------------------------------------------------------
 

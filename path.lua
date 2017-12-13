@@ -220,13 +220,13 @@ function path.long(s, pl, long)
 		end
 	end
 	if
-		is_short and ((long == 'auto' and #s > 259) or long == true)
+		is_short and (long == true or (long == 'auto' and #s > 259))
 	then
 		p = p:gsub('/+', '\\') --NOTE: this might create a smaller path
 		local long_type = type == 'abs' and 'abs_long' or 'unc_long'
 		s = path.format(long_type, p, drive, pl)
 	elseif
-		is_long and ((long == 'auto' and #s <= 259 + 4) or long == false)
+		is_long and (long == false or (long == 'auto' and #s <= 259 + 4))
 	then
 		local short_type = type == 'abs_long' and 'abs' or 'unc'
 		s = path.format(short_type, p, drive, pl)
@@ -339,7 +339,7 @@ function path.normalize(s, pl, opt)
 			lastsep = nil
 		end
 	end
-	if not opt.empty_path and type == 'rel' and #t == 0 then
+	if type == 'rel' and #t == 0 then
 		--rel path '' is invalid. fix that.
 		table.insert(t, '.')
 		table.insert(t, lastsep)
@@ -368,7 +368,8 @@ function path.normalize(s, pl, opt)
 	return s
 end
 
---get the common base path (including the end separator) between two paths.
+--get the common base path (including the end separator if it's common)
+--between two paths.
 --BUG: the case-insensitive comparison doesn't work with utf8 paths!
 function path.commonpath(s1, s2, pl)
 	local win = win(pl)
@@ -430,7 +431,7 @@ local function combinable(type1, type2)
 		return type1 == 'abs' or type1 == 'abs_long'
 	end
 end
-function path.combine(s1, s2, pl, default_sep)
+function path.combine(s1, s2, pl, sep, default_sep)
 	local type1, p1, drive1 = path.parse(s1, pl)
 	local type2, p2, drive2 = path.parse(s2, pl)
 	if not combinable(type1, type2) then
@@ -441,16 +442,17 @@ function path.combine(s1, s2, pl, default_sep)
 			return nil, ('cannot combine %s and %s paths'):format(type1, type2)
 		end
 	end
-	if s2 == '' then --any + '' -> any
+	if s2 == '' then -- any + '' -> any
 		return s1
 	elseif type2 == 'rel' or type2 == 'abs_nodrive' then
 		local win = win(pl)
-		local sep = detect_sep(p1, win) or detect_sep(p2, win) or true
-		if type2 == 'rel' then --any + c/d -> any/c/d
-			p1 = set_endsep(type1, p1, win, sep, default_sep) or p1
+		local sep = sep or detect_sep(p1, win) or detect_sep(p2, win)
+			or default_sep or (win and '\\' or '/')
+		if type2 == 'rel' then -- any + c/d -> any/c/d
+			p1 = set_endsep(type1, p1, win, sep) or p1
 			return path.format(type1, p1 .. s2, drive1, pl)
 		elseif type2 == 'abs_nodrive' then -- C:a/b + /d/e -> C:/d/e/a/b
-			p2 = set_endsep(type2, p2, win, sep, default_sep) or p2
+			p2 = set_endsep(type2, p2, win, sep) or p2
 			return path.format(type1, p2 .. p1, drive1, pl)
 		end
 	elseif type2 == 'rel_drive' then -- C:/a/b + C:d/e -> C:/a/b/d/e
@@ -465,24 +467,24 @@ end
 path.abs = path.combine
 
 --transform an absolute path into a relative path which is relative to `pwd`.
---the ending separator is preserved where possible.
-function path.rel(s, pwd, pl, default_sep)
+--the ending separator is preserved.
+function path.rel(s, pwd, pl, sep, default_sep)
 	local prefix = path.commonpath(s, pwd, pl)
 	if not prefix then return nil end
 	local type, p, drive = path.parse(s, pl)
 	local win = win(pl)
+	local sep = sep or detect_sep(pwd, win) or detect_sep(p, win)
+		or default_sep or (win and '\\' or '/')
+	local endsep = p:match(win and '[\\/]*$' or '/*$')
 	local pwd_suffix = pwd:sub(#prefix + 1)
 	local n = depth(pwd_suffix, win)
-	local sep =
-		detect_sep(pwd, win)
-		or detect_sep(p, win)
-		or default_sep
-		or (win and '\\' or '/')
 	local p1 = ('..' .. sep):rep(n - 1) .. (n > 0 and '..' or '')
 	local p2 = p:sub(#prefix + 1)
-	local p2 = p2:gsub(win and '^[\\/]+' or '^/+', '') --remove common sep
-	local p = path.combine(p1, p2, pl, sep)
-	return path.format(type, p, drive, pl)
+	local p2 = p2:gsub(win and '^[\\/]+' or '^/+', '')
+	local p2 = p2:gsub(win and '[\\/]+$' or '/+$', '')
+	local p2 = p1 == '' and p2 == '' and '.' or p2
+	local p3 = p1 .. (p1 ~= '' and p2 ~= '' and sep or '') .. p2 .. endsep
+	return path.format(type, p3, drive, pl)
 end
 
 --validate/make-valid a filename
