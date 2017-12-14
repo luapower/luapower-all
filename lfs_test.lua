@@ -88,20 +88,19 @@ io.write(".")
 io.flush()
 
 -- Checking link (does not work on Windows)
-local ffi = require'ffi'
-if ffi.os ~= 'Windows' then
-	if lfs.link (tmpfile, "_a_link_for_test_", true) then
-	  assert (lfs.attributes"_a_link_for_test_".mode == "file")
-	  assert (lfs.symlinkattributes"_a_link_for_test_".mode == "link")
-	  assert (lfs.link (tmpfile, "_a_hard_link_for_test_"))
-	  assert (lfs.attributes (tmpfile, "nlink") == 2)
-	  assert (os.remove"_a_link_for_test_")
-	  assert (os.remove"_a_hard_link_for_test_")
-	end
-
-	io.write(".")
-	io.flush()
+if lfs.link (tmpfile, "_a_link_for_test_", true) then
+  assert (lfs.attributes"_a_link_for_test_".mode == "file")
+  assert (lfs.symlinkattributes"_a_link_for_test_".mode == "link")
+  assert (lfs.symlinkattributes"_a_link_for_test_".target == tmpfile)
+  assert (lfs.symlinkattributes("_a_link_for_test_", "target") == tmpfile)
+  assert (lfs.link (tmpfile, "_a_hard_link_for_test_"))
+  assert (lfs.attributes (tmpfile, "nlink") == 2)
+  assert (os.remove"_a_link_for_test_")
+  assert (os.remove"_a_hard_link_for_test_")
 end
+
+io.write(".")
+io.flush()
 
 -- Checking text/binary modes (only has an effect in Windows)
 local f = io.open(tmpfile, "w")
@@ -110,6 +109,9 @@ assert(result) -- on non-Windows platforms, mode is always returned as "binary"
 result, mode = lfs.setmode(f, "text")
 assert(result and mode == "binary")
 f:close()
+local ok, err = pcall(lfs.setmode, f, "binary")
+assert(not ok, "could setmode on closed file")
+assert(err:find("closed file"), "bad error message for setmode on closed file")
 
 io.write(".")
 io.flush()
@@ -123,6 +125,24 @@ assert (new_att.modification == attrib.modification)
 io.write(".")
 io.flush()
 
+-- Check consistency of lfs.attributes values
+local attr = lfs.attributes (tmpfile)
+for key, value in pairs(attr) do
+  assert (value == lfs.attributes (tmpfile, key),
+          "lfs.attributes values not consistent")
+end
+
+-- Check that lfs.attributes accepts a table as second argument
+local attr2 = {}
+lfs.attributes(tmpfile, attr2)
+for key, value in pairs(attr2) do
+  assert (value == lfs.attributes (tmpfile, key),
+          "lfs.attributes values with table argument not consistent")
+end
+
+-- Check that extra arguments are ignored
+lfs.attributes(tmpfile, attr2, nil)
+
 -- Remove new file and directory
 assert (os.remove (tmpfile), "could not remove new file")
 assert (lfs.rmdir (tmpdir), "could not remove new directory")
@@ -132,7 +152,10 @@ io.write(".")
 io.flush()
 
 -- Trying to get attributes of a non-existent file
-assert (lfs.attributes ("this couldn't be an actual file") == nil, "could get attributes of a non-existent file")
+local attr_ok, err, errno = lfs.attributes("this couldn't be an actual file")
+assert(attr_ok == nil, "could get attributes of a non-existent file")
+assert(type(err) == "string", "failed lfs.attributes did not return an error message")
+assert(type(errno) == "number", "failed lfs.attributes did not return error code")
 assert (type(lfs.attributes (upper)) == "table", "couldn't get attributes of upper directory")
 
 io.write(".")

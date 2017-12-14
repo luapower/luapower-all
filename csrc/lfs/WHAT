@@ -1,3 +1,2 @@
-LuaFileSystem 1.6.2 from https://github.com/keplerproject/luafilesystem.git (MIT License)
+LuaFileSystem e5f06c2 from https://github.com/keplerproject/luafilesystem (MIT License)
 
-NOTE: lfs.link crashes on Windows (commented the test)
