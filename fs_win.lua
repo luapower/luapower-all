@@ -50,6 +50,22 @@ local INVALID_HANDLE_VALUE = ffi.cast('HANDLE', -1)
 
 local wbuf = mkbuf'WCHAR'
 
+local uint64_union = ffi.typeof[[
+	union {
+		struct {
+			uint32_t lo;
+			uint32_t hi;
+		};
+		uint64_t n;
+	}
+]]
+local u = uint64_union()
+local function num64(lo, hi)
+	u.lo = lo
+	u.hi = hi
+	return tonumber(u.n)
+end
+
 --error reporting ------------------------------------------------------------
 
 cdef[[
@@ -420,6 +436,11 @@ BOOL FindNextFileW(HANDLE, LPWIN32_FIND_DATAW);
 BOOL FindClose(HANDLE);
 ]]
 
+local function timestamp(filetime) --convert FILETIME -> timestamps
+	local ns = num64(filetime.dwLowDateTime, filetime.dwHighDateTime)
+	return math.floor(ns / 1000000 - 11644473600)
+end
+
 function dir.closed(dir)
 	return dir._handle == 0
 end
@@ -452,17 +473,16 @@ function dir.next(dir, last)
 	end
 end
 
-local FILE_ATTRIBUTE_DIRECTORY     = 0x00000010
-local FILE_ATTRIBUTE_DEVICE        = 0x00000040
-local FILE_ATTRIBUTE_REPARSE_POINT = 0x00000400
+local function filetype(attr)
+	return
+		   bit.band(attr, attr_flags.directory) ~= 0     and 'dir'
+		or bit.band(attr, attr_flags.device) ~= 0        and 'dev'
+		or bit.band(attr, attr_flags.reparse_point) ~= 0 and 'symlink'
+		or 'file'
+end
 
 function dir.type(dir)
-	local attr = dir._fdata.dwFileAttributes
-	return
-		   bit.band(attr, FILE_ATTRIBUTE_DIRECTORY) ~= 0     and 'dir'
-		or bit.band(attr, FILE_ATTRIBUTE_DEVICE) ~= 0        and 'dev'
-		or bit.band(attr, FILE_ATTRIBUTE_REPARSE_POINT) ~= 0 and 'symlink'
-		or 'file'
+	return filetype(dir._fdata.dwFileAttributes)
 end
 
 dir_ct = ffi.typeof[[
@@ -574,6 +594,68 @@ end
 
 --file attributes ------------------------------------------------------------
 
+cdef[[
+typedef enum {
+    GetFileExInfoStandard
+} GET_FILEEX_INFO_LEVELS;
+
+typedef struct {
+    DWORD dwFileAttributes;
+    FILETIME ftCreationTime;
+    FILETIME ftLastAccessTime;
+    FILETIME ftLastWriteTime;
+    DWORD nFileSizeHigh;
+    DWORD nFileSizeLow;
+} WIN32_FILE_ATTRIBUTE_DATA;
+
+DWORD GetFileAttributesExW(
+	LPCWSTR lpFileName,
+	GET_FILEEX_INFO_LEVELS fInfoLevelId,
+	WIN32_FILE_ATTRIBUTE_DATA* lpFileInformation
+);
+]]
+
+local data = ffi.new'WIN32_FILE_ATTRIBUTE_DATA'
+local function getk(k)
+	if attr_flags[k] then
+		return bit.band(attr_flags[k], data.dwFileAttributes) ~= 0
+	elseif k == 'type' then
+		return filetype(data.dwFileAttributes)
+	elseif k == 'ctime' then
+		return timestamp(data.ftCreationTime)
+	elseif k == 'mtime' then
+		return timestamp(data.ftLastWriteTime)
+	elseif k == 'atime' then
+		return timestamp(data.ftLastAccessTime)
+	elseif k == 'size' then
+		return num64(data.nFileSizeLow, data.nFileSizeHigh)
+	else
+		error('invalid dataibute', 3)
+	end
+end
+function fs.attr(path, k)
+	local ok = C.GetFileAttributesExW(
+		wcs(path),
+		C.GetFileExInfoStandard,
+		data) ~= 0
+	if not ok then
+		return check(false)
+	end
+	if k then
+		return getk(k)
+	else
+		local t = {}
+		for flag, mask in pairs(attr_flags) do
+			t[flag] = getk(flag) or nil
+		end
+		t.type  = getk'type'
+		t.ctime = getk'ctime'
+		t.mtime = getk'mtime'
+		t.atime = getk'atime'
+		t.size  = getk'size'
+		return t
+	end
+end
 
 --common paths ---------------------------------------------------------------
 

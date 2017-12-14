@@ -408,6 +408,12 @@ function test.mkhardlink() --hardlinks only work for files in NTFS
 	assert(fs.remove(f2))
 end
 
+function test.attr()
+	local testfile = 'fs_test.lua'
+	local attr = assert(fs.attr(testfile))
+	require'pp'(attr)
+end
+
 --[=[
 	describe('#setmode', function()
 		local fh
