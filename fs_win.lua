@@ -36,6 +36,9 @@ typedef BOOL           *LPBOOL;
 typedef int64_t        LONGLONG;
 typedef LONGLONG       LARGE_INTEGER, *PLARGE_INTEGER;
 typedef void*          HMODULE;
+typedef unsigned char  UCHAR;
+typedef unsigned short USHORT;
+typedef unsigned long  ULONG;
 
 typedef struct {
 	DWORD  nLength;
@@ -277,11 +280,11 @@ function fs.open(path, opt)
 	local access   = flags(opt.access or 'read', access_flags)
 	local sharing  = flags(opt.sharing or 'read write', sharing_flags)
 	local creation = flags(opt.creation or 'open_existing', creation_flags)
-	local attrs    = bit.bor(
+	local attflags = bit.bor(
 		flags(opt.flags, flag_flags),
 		flags(opt.attrs, attr_flags))
 	local h = C.CreateFileW(
-		wcs(path), access, sharing, nil, creation, attrs, nil)
+		wcs(path), access, sharing, nil, creation, attflags, nil)
 	if h == INVALID_HANDLE_VALUE then return check() end
 	return ffi.gc(file_ct(h), file.close)
 end
@@ -406,14 +409,71 @@ function file.stream(f, mode)
 	return fs
 end
 
---directory listing ----------------------------------------------------------
+--file attributes decoding ---------------------------------------------------
 
 cdef[[
 typedef struct {
 	DWORD dwLowDateTime;
 	DWORD dwHighDateTime;
 } FILETIME;
+]]
 
+--FILETIME stores time in hundred-nanoseconds from `1601-01-01 00:00:00`.
+--timestamp stores the time in seconds from `1970-01-01 00:00:00`.
+local function timestamp(filetime) --convert FILETIME -> timestamp
+	local ns = num64(filetime.dwLowDateTime, filetime.dwHighDateTime)
+	return ns * 1e-7 - 11644473600
+end
+
+local IO_REPARSE_TAG_SYMLINK = 0xA000000C
+
+local function is_symlink(data, reserved0)
+	return bit.band(data.dwFileAttributes, attr_flags.reparse_point) ~= 0
+		and (not reserved0 or reserved0 == IO_REPARSE_TAG_SYMLINK)
+end
+
+--NOTE: this should not return nil so we can tell ret vals from errors!
+local function _get_attr(data, k, reserved0)
+	if not k then
+		local t = {}
+		t.type  = _get_attr(data, 'type' , reserved0)
+		t.ctime = _get_attr(data, 'ctime', reserved0)
+		t.mtime = _get_attr(data, 'mtime', reserved0)
+		t.atime = _get_attr(data, 'atime', reserved0)
+		t.size  = _get_attr(data, 'size' , reserved0)
+		for flag, mask in pairs(attr_flags) do
+			t[flag] = _get_attr(data, flag) or nil
+		end
+		return t
+	elseif k == 'type' then
+		local bits = data.dwFileAttributes
+		return
+			is_symlink(data, reserved0) and 'symlink'
+			or bit.band(bits, attr_flags.directory) ~= 0 and 'dir'
+			or bit.band(bits, attr_flags.device) ~= 0    and 'dev'
+			or 'file'
+	elseif k == 'ctime' then
+		return timestamp(data.ftCreationTime)
+	elseif k == 'mtime' then
+		return timestamp(data.ftLastWriteTime)
+	elseif k == 'atime' then
+		return timestamp(data.ftLastAccessTime)
+	elseif k == 'size' then
+		return num64(data.nFileSizeLow, data.nFileSizeHigh)
+	elseif attr_flags[k] then
+		return bit.band(attr_flags[k], data.dwFileAttributes) ~= 0
+	else
+		return false
+	end
+end
+
+local function get_attr(data, k, reserved0)
+	return is_symlink(data, reserved0), _get_attr(data, k, reserved0)
+end
+
+--directory listing ----------------------------------------------------------
+
+cdef[[
 enum {
 	MAX_PATH = 260
 };
@@ -436,11 +496,6 @@ BOOL FindNextFileW(HANDLE, LPWIN32_FIND_DATAW);
 BOOL FindClose(HANDLE);
 ]]
 
-local function timestamp(filetime) --convert FILETIME -> timestamps
-	local ns = num64(filetime.dwLowDateTime, filetime.dwHighDateTime)
-	return math.floor(ns / 1000000 - 11644473600)
-end
-
 function dir.closed(dir)
 	return dir._handle == 0
 end
@@ -454,14 +509,24 @@ end
 
 local ERROR_NO_MORE_FILES = 18
 
+function dir.name(dir)
+	if dir:closed() then return nil end
+	return mbs(dir._fdata.cFileName)
+end
+
+function dir.dir(dir)
+	return str(dir._dir, dir._dirlen)
+end
+
+--TODO: remove last arg so that next can be called directly without arg!
 function dir.next(dir, last)
 	assert(not dir:closed(), 'directory closed')
 	if not last then
-		return mbs(dir._fdata.cFileName), dir
+		return dir:name(), dir
 	else
 		local ret = C.FindNextFileW(dir._handle, dir._fdata)
 		if ret ~= 0 then
-			return mbs(dir._fdata.cFileName), dir
+			return dir:name(), dir
 		else
 			local errcode = C.GetLastError()
 			dir:close()
@@ -473,33 +538,64 @@ function dir.next(dir, last)
 	end
 end
 
-local function filetype(attr)
-	return
-		   bit.band(attr, attr_flags.directory) ~= 0     and 'dir'
-		or bit.band(attr, attr_flags.device) ~= 0        and 'dev'
-		or bit.band(attr, attr_flags.reparse_point) ~= 0 and 'symlink'
-		or 'file'
-end
-
-function dir.type(dir)
-	return filetype(dir._fdata.dwFileAttributes)
+function dir_attr(dir, attr)
+	return get_attr(dir._fdata, attr, dir._fdata.dwReserved0)
 end
 
 dir_ct = ffi.typeof[[
 	struct {
 		HANDLE _handle;
 		WIN32_FIND_DATAW _fdata;
+		int  _dirlen;
+		char _dir[?];
 	}
 ]]
 
 function dir_iter(path)
 	assert(not path:find'[%*%?]') --no globbing allowed
-	path = path .. '\\*'
-	local dir = dir_ct()
-	local h = C.FindFirstFileW(wcs(path), dir._fdata)
+	local dir = dir_ct(#path)
+	dir._dirlen = #path
+	ffi.copy(dir._dir, path)
+	local h = C.FindFirstFileW(wcs(path .. '\\*'), dir._fdata)
 	assert_check(h ~= INVALID_HANDLE_VALUE)
 	dir._handle = h
 	return dir.next, dir
+end
+
+
+--file attributes ------------------------------------------------------------
+
+cdef[[
+typedef enum {
+    GetFileExInfoStandard
+} GET_FILEEX_INFO_LEVELS;
+
+typedef struct {
+    DWORD dwFileAttributes;
+    FILETIME ftCreationTime;
+    FILETIME ftLastAccessTime;
+    FILETIME ftLastWriteTime;
+    DWORD nFileSizeHigh;
+    DWORD nFileSizeLow;
+} WIN32_FILE_ATTRIBUTE_DATA;
+
+DWORD GetFileAttributesExW(
+	LPCWSTR lpFileName,
+	GET_FILEEX_INFO_LEVELS fInfoLevelId,
+	WIN32_FILE_ATTRIBUTE_DATA* lpFileInformation
+);
+]]
+
+local data = ffi.new'WIN32_FILE_ATTRIBUTE_DATA'
+function fs_attr(path, attr, deref_symlinks)
+	local ok = C.GetFileAttributesExW(
+		wcs(path),
+		C.GetFileExInfoStandard,
+		data) ~= 0
+	if not ok then
+		return check(false)
+	end
+	return get_attr(data, attr)
 end
 
 --filesystem operations ------------------------------------------------------
@@ -538,7 +634,7 @@ function getcwd()
 	return mbs(buf, sz)
 end
 
-function fs.remove(path)
+function remove(path)
 	return check(C.DeleteFileW(wcs(path)) ~= 0)
 end
 
@@ -573,6 +669,17 @@ BOOL CreateHardLinkW(
 	LPCWSTR lpExistingFileName,
 	LPSECURITY_ATTRIBUTES lpSecurityAttributes
 );
+
+BOOL DeviceIoControl(
+	HANDLE       hDevice,
+	DWORD        dwIoControlCode,
+	LPVOID       lpInBuffer,
+	DWORD        nInBufferSize,
+	LPVOID       lpOutBuffer,
+	DWORD        nOutBufferSize,
+	LPDWORD      lpBytesReturned,
+	LPOVERLAPPED lpOverlapped
+);
 ]]
 
 local SYMBOLIC_LINK_FLAG_DIRECTORY = 0x1
@@ -592,68 +699,69 @@ function fs.mkhardlink(link_path, target_path)
 		nil) ~= 0)
 end
 
---file attributes ------------------------------------------------------------
-
-cdef[[
-typedef enum {
-    GetFileExInfoStandard
-} GET_FILEEX_INFO_LEVELS;
-
-typedef struct {
-    DWORD dwFileAttributes;
-    FILETIME ftCreationTime;
-    FILETIME ftLastAccessTime;
-    FILETIME ftLastWriteTime;
-    DWORD nFileSizeHigh;
-    DWORD nFileSizeLow;
-} WIN32_FILE_ATTRIBUTE_DATA;
-
-DWORD GetFileAttributesExW(
-	LPCWSTR lpFileName,
-	GET_FILEEX_INFO_LEVELS fInfoLevelId,
-	WIN32_FILE_ATTRIBUTE_DATA* lpFileInformation
-);
-]]
-
-local data = ffi.new'WIN32_FILE_ATTRIBUTE_DATA'
-local function getk(k)
-	if attr_flags[k] then
-		return bit.band(attr_flags[k], data.dwFileAttributes) ~= 0
-	elseif k == 'type' then
-		return filetype(data.dwFileAttributes)
-	elseif k == 'ctime' then
-		return timestamp(data.ftCreationTime)
-	elseif k == 'mtime' then
-		return timestamp(data.ftLastWriteTime)
-	elseif k == 'atime' then
-		return timestamp(data.ftLastAccessTime)
-	elseif k == 'size' then
-		return num64(data.nFileSizeLow, data.nFileSizeHigh)
-	else
-		error('invalid dataibute', 3)
+do
+	local function CTL_CODE(DeviceType, Function, Method, Access)
+		return bit.bor(
+			bit.lshift(DeviceType, 16),
+			bit.lshift(Access, 14),
+			bit.lshift(Function, 2),
+			Method)
 	end
-end
-function fs.attr(path, k)
-	local ok = C.GetFileAttributesExW(
-		wcs(path),
-		C.GetFileExInfoStandard,
-		data) ~= 0
-	if not ok then
-		return check(false)
-	end
-	if k then
-		return getk(k)
-	else
-		local t = {}
-		for flag, mask in pairs(attr_flags) do
-			t[flag] = getk(flag) or nil
+	local FILE_DEVICE_FILE_SYSTEM = 0x00000009
+	local METHOD_BUFFERED         = 0
+	local FILE_ANY_ACCESS         = 0
+	local FSCTL_GET_REPARSE_POINT = CTL_CODE(
+		FILE_DEVICE_FILE_SYSTEM, 42, METHOD_BUFFERED, FILE_ANY_ACCESS)
+
+	local readlink_opt = {
+		access = 'read',
+		share = 'read write delete',
+		creation = 'open_existing',
+		flags = 'backup_semantics open_reparse_point',
+		attrs = 'reparse_point',
+	}
+
+	local REPARSE_DATA_BUFFER = ffi.typeof[[
+		struct {
+			ULONG  ReparseTag;
+			USHORT ReparseDataLength;
+			USHORT Reserved;
+			USHORT SubstituteNameOffset;
+			USHORT SubstituteNameLength;
+			USHORT PrintNameOffset;
+			USHORT PrintNameLength;
+			ULONG  Flags;
+			WCHAR  PathBuffer[?];
+		}
+	]]
+
+	local szbuf = ffi.new'DWORD[1]'
+	local buf, sz = nil, 256
+
+	local ERROR_INSUFFICIENT_BUFFER = 122
+	local ERROR_MORE_DATA = 234
+
+	function readlink(path)
+		local f, err, errcode = fs.open(path, readlink_opt)
+		if not f then return nil, err, errcode end
+		::again::
+		local buf = buf or REPARSE_DATA_BUFFER(sz)
+		local ok = C.DeviceIoControl(
+			f.handle, FSCTL_GET_REPARSE_POINT, nil, 0,
+			buf, ffi.sizeof(buf), szbuf, nil) ~= 0
+		if not ok then
+			local err = C.GetLastError()
+			if err == ERROR_INSUFFICIENT_BUFFER or err == ERROR_MORE_DATA then
+				buf, sz = nil, sz * 2
+				goto again
+			end
+			f:close()
+			return check(false)
 		end
-		t.type  = getk'type'
-		t.ctime = getk'ctime'
-		t.mtime = getk'mtime'
-		t.atime = getk'atime'
-		t.size  = getk'size'
-		return t
+		f:close()
+		return mbs(
+			buf.PathBuffer + buf.SubstituteNameOffset / 2,
+			buf.SubstituteNameLength / 2)
 	end
 end
 

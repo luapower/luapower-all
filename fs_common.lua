@@ -190,8 +190,117 @@ function fs.dir(dir, dot_dirs)
 	end
 end
 
-function dir.is(dir, type)
-	return dir:type() == type
+function dir.path(dir)
+	return path.combine(dir:dir(), dir:name())
+end
+
+function dir.attr(dir, attr, deref_symlinks)
+	if deref_symlinks == nil then
+		deref_symlinks = true --deref by default
+	end
+	local is_symlink, val, err, errcode = dir_attr(dir, attr)
+	if is_symlink == nil then return nil, err, errcode end
+	if is_symlink and deref_symlinks then
+		local path, err, errcode = fs.readlink(dir:path())
+		if not path then return nil, err, errcode end
+		return fs.attr(path, attr, false)
+	else
+		return val
+	end
+end
+
+function dir.type(dir, deref_symlinks)
+	return dir:attr('type', deref_symlinks)
+end
+
+function dir.is(dir, type, deref_symlinks)
+	if type == 'symlink' then
+		deref_symlinks = false
+	end
+	return dir:type(deref_symlinks) == type
+end
+
+function dir.ctime(dir, deref_symlinks)
+	return dir:attr('ctime', deref_symlinks)
+end
+
+function dir.mtime(dir, deref_symlinks)
+	return dir:attr('mtime', deref_symlinks)
+end
+
+function dir.atime(dir, deref_symlinks)
+	return dir:attr('atime', deref_symlinks)
+end
+
+function dir.size(dir, deref_symlinks)
+	return dir:attr('size', deref_symlinks)
+end
+
+function dir.inode(dir, deref_symlinks)
+	return dir:attr('inode', deref_symlinks)
+end
+
+--file attributes ------------------------------------------------------------
+
+function fs.attr(path, attr, deref_symlinks)
+	if deref_symlinks == nil then
+		deref_symlinks = true --deref by default
+	end
+	local is_symlink, val, err, errcode = fs_attr(path, attr)
+	if is_symlink == nil then return nil, err, errcode end
+	if is_symlink and deref_symlinks then
+		local path, err, errcode = fs.readlink(path)
+		if not path then return nil, err, errcode end
+		return fs.attr(path, attr, false)
+	end
+	return val
+end
+
+function fs.type(path, deref_symlinks)
+	return fs.attr(path, 'type', deref_symlinks)
+end
+
+function fs.is(path, type, deref_symlinks)
+	if type == 'symlink' then
+		deref_symlinks = false
+	end
+	return fs.type(path, deref_symlinks) == type
+end
+
+function fs.ctime(path, time, deref_symlinks)
+	if time then
+		--TODO: set ctime
+	else
+		return fs.attr(path, 'ctime', deref_symlinks)
+	end
+end
+
+function fs.mtime(path, time, deref_symlinks)
+	if time then
+		--TODO: set mtime
+	else
+		return fs.attr(path, 'mtime', deref_symlinks)
+	end
+end
+
+function fs.atime(path, time, deref_symlinks)
+	if time then
+		--TODO: set atime
+	else
+		return fs.attr(path, 'atime', deref_symlinks)
+	end
+end
+
+function fs.size(path, size, deref_symlinks)
+	if size then
+		--TODO: set size
+	else
+		return fs.attr(path, 'size', deref_symlinks)
+	end
+end
+
+function fs.inode(path, deref_symlinks)
+	return fs.attr(path, 'inode', deref_symlinks)
 end
 
 --filesystem operations ------------------------------------------------------
@@ -252,72 +361,43 @@ function fs.pwd(path)
 	end
 end
 
---[[
-function fs.drive(path)
-
-end
-
-function fs.dev(path)
-
-end
-
-function fs.inode(path)
-
-end
-
-function fs.type(path)
-	--file, dir, link, socket, pipe, char device, block device, other
-end
-
-function fs.linknum(path)
-
-end
-
-function fs.uid(path, newuid)
-
-end
-
-function fs.gid(path, newgid)
-
-end
-
-function fs.devtype(path)
-
-end
-
-function fs.atime(path, newatime)
-
-end
-
-function fs.mtime(path, newmtime)
-
-end
-
-function fs.ctime(path, newctime)
-
-end
-
-local function getsize(path)
-
-end
-
-local function setsize(path, newsize)
-
-end
-
-function fs.grow(path, newsize)
-
-end
-
-function fs.shrink(path, newsize)
-
-end
-
-function fs.size(path, newsize)
-	if newsize then
-		return setsize(path, newsize)
+function fs.remove(path, recursive)
+	if recursive and fs.is(path, 'dir') then
+		return fs.rmdir(path, true)
 	else
-		return getsize(path)
+		return remove(path)
+	end
+end
+
+--symlinks -------------------------------------------------------------------
+
+function fs.readlink(link, recursive, maxdepth)
+	if recursive == nil then
+		recursive = true --make true the default
+	end
+	if not fs.is(link, 'symlink', false) then
+		return link
+	elseif not recursive then
+		return readlink(link)
+	else
+		maxdepth = maxdepth or 32
+		if maxdepth == 0 then
+			return nil, 'Maximum recursion reached', 'max_recursion'
+		end
+		local target, err, errcode = readlink(link)
+		if not target then return nil, err, errcode end
+		if path.isabs(target) then
+			link = target
+		else --relative symlinks are relative to their own dir
+			local link_dir = path.dir(link)
+			if not link_dir then
+				return nil, 'invalid symlink target', 'not_found'
+			elseif link_dir == '.' then
+				link_dir = ''
+			end
+			link = path.combine(link_dir, target)
+		end
+		return fs.readlink(link, true, maxdepth - 1)
 	end
 end
 
@@ -342,63 +422,5 @@ function fs.perms(path, newperms)
 		--
 	end
 end
-
-function fs.blocks(path)
-
-end
-
-function fs.blksize(path)
-
-end
-]]
-
---paths ----------------------------------------------------------------------
-
-local win = ffi.abi'win'
-
--- follow symlinks relative to pwd
---encode path given as table:
-function fs.path(path, pwd)
-		--
-end
-
-function fs.splitpath(path, reverse)
-	local t = {}
-	return
-end
-
-
-function fs.dirname(path)
-	return path:gsub('[/\\]?[^/\\]+$', '')
-end
-
-function fs.basename(path, suffix)
-	--TODO: verify this code
-	if suffix and path:sub(-#suffix) == suffix then
-		path = path:sub(1, -#suffix)
-	end
-	return path:match'[^/\\]+$' or ''
-end
-
-function fs.extname(path)
-	return fs.basename(path):match'.%.([^%.]+)$' or nil
-end
-
-function fs.abspath(path, pwd)
-	pwd = pwd or fs.pwd()
-end
-
-function fs.relpath(path, pwd)
-	pwd = pwd or fs.pwd()
-end
-
-function fs.realpath(path)
-	-- we should check if the path exists on windows
-end
-
-function fs.readlink(path)
-
-end
-
 
 return backend

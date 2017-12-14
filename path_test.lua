@@ -201,6 +201,7 @@ test('C:/a', 'win', 'C:/')
 test('a', 'win', '.')
 test('aa', 'win', '.')
 test('\\aa', 'unix', '.')
+test('C:a', 'win', 'C:')
 
 --dir of empty filename
 test('a/', 'win', 'a')

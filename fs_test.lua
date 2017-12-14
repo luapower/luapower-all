@@ -1,7 +1,7 @@
 local ffi = require'ffi'
 local fs = require'fs'
-local win = ffi.abi'win'
-local posix = not win
+local pp = require'pp'
+local time = require'time'
 
 local test = setmetatable({}, {__newindex = function(t, k, v)
 	rawset(t, k, v)
@@ -175,17 +175,64 @@ function test.dir()
 	local found
 	local n = 0
 	local files = {}
-	for file, dirobj in fs.dir(nil, true) do
+	for file, d in fs.dir(nil, true) do
 		found = found or file == 'fs_test.lua'
 		n = n + 1
-		files[file] = dirobj:type()
-		--print('', dirobj:type(), file)
+		files[file] = {
+			type = d:type(),
+			ctime = d:ctime(),
+			mtime = d:mtime(),
+			atime = d:atime(),
+			size = d:size(),
+			inode = d:inode(),
+		}
+		--print('', d:type(), file)
 	end
-	assert(files['.'] == 'dir')
-	assert(files['..'] == 'dir')
-	assert(files['fs_test.lua'] == 'file')
+	assert(files['.'].type == 'dir')
+	assert(files['..'].type == 'dir')
+	assert(files['fs_test.lua'].type == 'file')
 	print(string.format('  found %d dir/file entries in pwd', n))
 	assert(found, 'fs_test.lua not found in pwd')
+end
+
+--file attributes ------------------------------------------------------------
+
+function test.attr()
+	local testfile = 'fs_test.lua'
+	local attr = assert(fs.attr(testfile))
+	pp(attr)
+	assert(attr.size > 10000)
+	assert(attr.type == 'file')
+end
+
+function test.ctime()
+	local testfile = 'fs_test_ctime'
+	fs.remove(testfile)
+	local f = assert(fs.open(testfile, 'w'))
+	assert(f:close())
+	local ctime = assert(fs.ctime(testfile))
+	assert(math.abs(os.time() - ctime) < 100)
+	assert(fs.remove(testfile))
+end
+
+function test.mtime()
+	local testfile = 'fs_test_mtime'
+	fs.remove(testfile)
+	local f = assert(fs.open(testfile, 'w'))
+	assert(f:close())
+	local mtime1 = assert(fs.mtime(testfile))
+	local atime1 = assert(fs.atime(testfile))
+	local f = assert(fs.open(testfile, 'w'))
+	local buf = ffi.new'char[1]'
+	time.sleep(0.1)
+	f:write(buf, 1)
+	assert(f:close())
+	local mtime2 = assert(fs.mtime(testfile))
+	local atime2 = assert(fs.atime(testfile))
+	assert(mtime2 - mtime1 > 0 and mtime2 - mtime1 <= 1)
+	assert(atime1 <= mtime1) --atime is updated with delay
+	assert(atime2 <= mtime2) --atime is updated with delay
+	assert(fs.remove(testfile))
 end
 
 --filesystem operations ------------------------------------------------------
@@ -349,32 +396,47 @@ function test.remove_not_found()
 	assert(errcode == 'not_found')
 end
 
-function test.mksymlink_file()
-	local f1 = 'fs_test_symlink_file'
-	local f2 = 'fs_test_symlink_file_target'
+--symlinks -------------------------------------------------------------------
+
+local function mksymlink_file(f1, f2)
 	local buf = ffi.new'char[1]'
+
+	fs.remove(f1)
+	fs.remove(f2)
 
 	local f = assert(fs.open(f2, 'w'))
 	buf[0] = ('X'):byte(1)
 	f:write(buf, 1)
 	assert(f:close())
 
+	time.sleep(0.1)
+
 	assert(fs.mksymlink(f1, f2))
+	assert(fs.attr(f1, 'type', false) == 'symlink')
 
 	local f = assert(fs.open(f1))
 	assert(f:read(buf, 1))
 	assert(buf[0] == ('X'):byte(1))
 	assert(f:close())
+end
 
+function test.mksymlink_file()
+	local f1 = 'fs_test_symlink_file'
+	local f2 = 'fs_test_symlink_file_target'
+	mksymlink_file(f1, f2)
+	assert(fs.is(f1, 'symlink'))
 	assert(fs.remove(f1))
 	assert(fs.remove(f2))
 end
 
-function test.mksymlink_dir()
-	local d1 = 'fs_test_symlink_dir'
-	local d2 = 'fs_test_symlink_dir_target'
+local function mksymlink_dir(d1, d2)
+	fs.rmdir(d1)
+	fs.rmdir(d2..'/test_dir')
+	fs.rmdir(d2)
+
 	assert(fs.mkdir(d2..'/test_dir', true))
 	assert(fs.mksymlink(d1, d2, true))
+	assert(fs.is(d1, 'symlink'))
 	local t = {}
 	for d in fs.dir(d1) do
 		t[#t+1] = d
@@ -382,10 +444,47 @@ function test.mksymlink_dir()
 	assert(#t == 1)
 	assert(t[1] == 'test_dir')
 	assert(fs.rmdir(d1..'/test_dir'))
+end
+
+function test.mksymlink_dir()
+	local d1 = 'fs_test_symlink_dir'
+	local d2 = 'fs_test_symlink_dir_target'
+	mksymlink_dir(d1, d2)
 	assert(fs.rmdir(d1))
 	assert(fs.rmdir(d2))
 end
 
+function test.readlink_file()
+	local f1 = 'fs_test_readlink_file'
+	local f2 = 'fs_test_readlink_file_target'
+	mksymlink_file(f1, f2)
+	assert(fs.readlink(f1) == f2)
+	assert(fs.remove(f1))
+	assert(fs.remove(f2))
+end
+
+function test.readlink_dir()
+	local d1 = 'fs_test_readlink_dir'
+	local d2 = 'fs_test_readlink_dir_target'
+	mksymlink_dir(d1, d2)
+	assert(fs.readlink(d1) == d2)
+	assert(fs.rmdir(d1))
+	assert(fs.rmdir(d2))
+end
+
+function test.symlink_attr_deref()
+	local f1 = 'fs_test_readlink_file'
+	local f2 = 'fs_test_readlink_file_target'
+	mksymlink_file(f1, f2)
+	local pp = require'pp'
+	pp(fs.attr(f1, nil, false))
+	pp(fs.attr(f1, nil, true))
+	pp(fs.attr(f2))
+	assert(fs.remove(f1))
+	assert(fs.remove(f2))
+end
+
+--symlinks -------------------------------------------------------------------
 
 function test.mkhardlink() --hardlinks only work for files in NTFS
 	local f1 = 'fs_test_hardlink'
@@ -406,12 +505,6 @@ function test.mkhardlink() --hardlinks only work for files in NTFS
 
 	assert(fs.remove(f1))
 	assert(fs.remove(f2))
-end
-
-function test.attr()
-	local testfile = 'fs_test.lua'
-	local attr = assert(fs.attr(testfile))
-	require'pp'(attr)
 end
 
 --[=[

@@ -214,8 +214,8 @@ combinations are between anything except `dev_alias` and `rel` paths,
 between `abs_nodrive` and `rel_drive`, and between `rel_drive` and `abs`
 or `abs_long`. When the paths can only be combined in one way, paths can be
 given in any order. The separator with which paths are combined is either
-`sep` or it's detected and if that fails `dsep` or the default separator
-is used.
+`sep` or if `sep` is nil it's detected and if that fails `dsep` or the
+default separator is used.
 
 ### `path.abs(s, pwd, [pl], [sep], [dsep]) -> s|nil,err`
 

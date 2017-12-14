@@ -68,8 +68,10 @@ tagline: package categories
 	* [portaudio]
 	* [videoinput]
 * Portable OS APIs
-	* [lfs]
+	* [fs]
+	* [path]
 	* [time]
+	* [lfs]
 	* [mmap]
 	* [stdio]
 * Native OS APIs

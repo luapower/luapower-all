@@ -180,9 +180,8 @@ end
 
 --directory listing ----------------------------------------------------------
 
-local dirent_def
 if osx then
-	dirent_def = [[
+	cdef[[
 		/* _DARWIN_FEATURE_64_BIT_INODE is NOT defined here? */
 		struct dirent {
 			uint32_t d_ino;
@@ -193,7 +192,7 @@ if osx then
 		};
 	]]
 else
-	dirent_def = cdef[[
+	cdef[[
 		struct dirent {
 			int64_t  d_ino;
 			size_t   d_off;
@@ -205,30 +204,52 @@ else
 end
 
 cdef[[
-typedef struct  __dirstream DIR;
+typedef struct DIR DIR;
 DIR *opendir(const char *name);
 struct dirent *readdir(DIR *dirp);
 int closedir(DIR *dirp);
+]]
+
+dir_ct = ffi.typeof[[
+	struct {
+		DIR *_dir;
+		struct dirent* _dirent;
+		int  _dirlen;
+		char _dir[?];
+	}
 ]]
 
 local dir = {}
 
 function dir.close(dir)
 	if dir:closed() then return end
-	local ret = C.closedir(dir._dentry)
-	dir._dentry = nil
+	local ret = C.closedir(dir._dir)
+	dir._dir = nil
 	return check(ret == 0)
 end
 
 function dir.closed(dir)
-	return dir._dentry == nil
+	return dir._dir == nil
+end
+
+function dir.name(dir)
+	if dir:closed() then return nil end
+	return str(dir._dentry.d_name)
+end
+
+function dir.dir(dir)
+	return str(dir._dir, dir._dirlen)
+end
+
+function dir.dir(dir)
+	error'NYI'
 end
 
 function dir.next(dir)
 	assert(not dir:closed(), 'directory closed')
-	local entry = C.readdir(dir._dentry)
-	if entry ~= nil then
-		return str(entry.d_name), dir
+	dir._dentry = C.readdir(dir._dir)
+	if dir._dentry ~= nil then
+		return dir:name(), dir
 	else
 		local errno = ffi.errno()
 		dir:close()
@@ -246,159 +267,53 @@ local DT_REG     = 8
 local DT_LNK     = 10
 local DT_SOCK    = 12
 
-function dir.type(dir)
-	local t = dir._dentry.d_type
-	if t == DT_UNKNOWN then
-		--TODO: call lstat here
-		dir._dentry.d_type = t
-	end
-	return
-			t == DT_DIR  and 'dir'
-		or t == DT_REG  and 'file'
-		or t == DT_BLK  and 'dev_block'
-		or t == DT_CHR  and 'dev_char'
-		or t == DT_FIFO and 'pipe'
-		or t == DT_SOCK and 'socket'
-		or t == DT_LNK  and 'symlink'
+local function readonly(val)
+	assert(val == nil, 'attribute is read/only')
 end
 
-dir_ct = ffi.typeof[[
-	struct {
-		DIR *_dentry;
-	}
-]]
+local function _dir_attr(dir, attr)
+	if attr == 'type' then
+		local t = dir._dentry.d_type
+		if t == DT_UNKNOWN then
+			--TODO: call lstat here
+			dir._dentry.d_type = t --cache it
+		end
+		return
+				t == DT_DIR  and 'dir' --portable
+			or t == DT_REG  and 'file' --portable
+			or t == DT_LNK  and 'symlink' --portable
+			or t == DT_BLK  and 'dev_block'
+			or t == DT_CHR  and 'dev_char'
+			or t == DT_FIFO and 'pipe'
+			or t == DT_SOCK and 'socket'
+	elseif attr == 'ctime' then
+		--TODO: emulate
+	elseif attr == 'mtime' then
+		--TODO: emulate
+	elseif attr == 'atime' then
+		--TODO: emulate
+	elseif attr == 'size' then
+		--TODO: emulate
+	elseif attr == 'inode' then
+		return tonumber(dir._dentry.d_ino)
+	end
+end
+
+function dir_attr(dir, attr)
+	local is_symlink = _dir_attr(dir, 'type') == 'symlink'
+	return is_symlink, _dir_attr(dir, attr)
+end
 
 function dir_iter(path)
-	local dentry = C.opendir(path)
-	assert_check(dentry ~= nil)
-	local dir = dir_ct()
-	dir._dentry = dentry
+	local dir = dir_ct(#path)
+	dir._dirlen = #path
+	ffi.copy(dir._dir, path)
+	dir._dir = C.opendir(path)
+	assert_check(dir._dir ~= nil)
 	return dir.next, dir
 end
 
---filesystem operations ------------------------------------------------------
-
-cdef[[
-int mkdir(const char *pathname, mode_t mode);
-int rmdir(const char *pathname);
-int chdir(const char *path);
-char *getcwd(char *buf, size_t size);
-int unlink(const char *pathname);
-int rename(const char *oldpath, const char *newpath);
-]]
-
-function mkdir(path, perms)
-	return check(C.mkdir(path, perms or 0x1ff) == 0)
-end
-
-function rmdir(path)
-	return check(C.rmdir(path) == 0)
-end
-
-function chdir(path)
-	return check(C.chdir(path) == 0)
-end
-
-local ERANGE = 34
-
-function getcwd()
-	while true do
-		local buf, sz = cbuf()
-		if getcwd(buf, sz) == nil then
-			if ffi.errno() ~= ERANGE then
-				return check()
-			else
-				buf, sz = cbuf(sz * 2)
-			end
-		end
-		return str(buf, sz)
-	end
-end
-
-function fs.remove(path)
-	return check(C.unlink(path) == 0)
-end
-
-function fs.move(oldpath, newpath)
-	return check(C.rename(oldpath, newpath) == 0)
-end
-
---hardlinks & symlinks -------------------------------------------------------
-
-cdef[[
-int link(const char *oldpath, const char *newpath);
-int symlink(const char *oldpath, const char *newpath);
-]]
-
-function fs.mksymlink(link_path, target_path)
-	return check(C.symlink(target_path, link_path) == 0)
-end
-
-function fs.mkhardlink(link_path, target_path)
-	return check(C.link(target_path, link_path) == 0)
-end
-
 --file attributes ------------------------------------------------------------
-
-function drive(path)
-
-end
-
-function dev(path)
-
-end
-
-function inode(path)
-
-end
-
-function filetype(path)
-	--file, dir, link, socket, pipe, char device, block device, other
-end
-
-function linknum(path)
-
-end
-
-function uid(path, newuid)
-
-end
-
-function gid(path, newgid)
-
-end
-
-function devtype(path)
-
-end
-
-function atime(path, newatime)
-
-end
-
-function mtime(path, newmtime)
-
-end
-
-function ctime(path, newctime)
-
-end
-
-local function getsize(path)
-
-end
-
-local function setsize(path, newsize)
-
-end
-
-function grow(path, newsize)
-
-end
-
-function shrink(path, newsize)
-
-end
 
 function size(path, newsize)
 	if newsize then
@@ -460,6 +375,72 @@ function fs.touch(path, atime, mtime)
 		buf.modtime = mtime
 	end
 	return check(C.utime(path, buf) == 0)
+end
+
+--filesystem operations ------------------------------------------------------
+
+cdef[[
+int mkdir(const char *pathname, mode_t mode);
+int rmdir(const char *pathname);
+int chdir(const char *path);
+char *getcwd(char *buf, size_t size);
+int unlink(const char *pathname);
+int rename(const char *oldpath, const char *newpath);
+]]
+
+function mkdir(path, perms)
+	return check(C.mkdir(path, perms or 0x1ff) == 0)
+end
+
+function rmdir(path)
+	return check(C.rmdir(path) == 0)
+end
+
+function chdir(path)
+	return check(C.chdir(path) == 0)
+end
+
+local ERANGE = 34
+
+function getcwd()
+	while true do
+		local buf, sz = cbuf()
+		if getcwd(buf, sz) == nil then
+			if ffi.errno() ~= ERANGE then
+				return check()
+			else
+				buf, sz = cbuf(sz * 2)
+			end
+		end
+		return str(buf, sz)
+	end
+end
+
+function remove(path)
+	return check(C.unlink(path) == 0)
+end
+
+function fs.move(oldpath, newpath)
+	return check(C.rename(oldpath, newpath) == 0)
+end
+
+--hardlinks & symlinks -------------------------------------------------------
+
+cdef[[
+int link(const char *oldpath, const char *newpath);
+int symlink(const char *oldpath, const char *newpath);
+]]
+
+function fs.mksymlink(link_path, target_path)
+	return check(C.symlink(target_path, link_path) == 0)
+end
+
+function fs.mkhardlink(link_path, target_path)
+	return check(C.link(target_path, link_path) == 0)
+end
+
+function readlink(link_path)
+	--TODO: get target
 end
 
 --common paths ---------------------------------------------------------------
