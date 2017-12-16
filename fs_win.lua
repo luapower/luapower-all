@@ -94,7 +94,7 @@ local errcodes = {
 	[0x03] = 'not_found', --ERROR_PATH_NOT_FOUND, CreateDirectoryW
 	[0x05] = 'access_denied', --ERROR_ACCESS_DENIED, CreateFileW
 	[0x50] = 'already_exists', --ERROR_FILE_EXISTS, CreateFileW
-	[0x91] = 'not_empty', --ERROR_DIR_NOT_EMPTY, RemoveDirectoryW
+	[0x91] = 'not_empty', --ERROR_D.IR_NOT_EMPTY, RemoveDirectoryW
 	[0xB7] = 'already_exists', --ERROR_ALREADY_EXISTS, CreateDirectoryW
 }
 
@@ -259,10 +259,10 @@ local flag_flags = {
 }
 
 local str_opt = {
-	r = {access = 'read', creation = 'open_existing'},
-	w = {access = 'write', creation = 'create_always'},
-	['r+'] = {access = 'read write', creation = 'open_existing'},
-	['w+'] = {access = 'read write', creation = 'create_always'},
+	r = {access = 'read', creation = 'open_existing', flags = 'backup_semantics'},
+	w = {access = 'write', creation = 'create_always', flags = 'backup_semantics'},
+	['r+'] = {access = 'read write', creation = 'open_existing', flags = 'backup_semantics'},
+	['w+'] = {access = 'read write', creation = 'create_always', flags = 'backup_semantics'},
 }
 
 --expose this because the frontend will set its metatype at the end.
@@ -736,7 +736,7 @@ do
 	]]
 
 	local szbuf = ffi.new'DWORD[1]'
-	local buf, sz = nil, 256
+	local buf, sz = nil, 128
 
 	local ERROR_INSUFFICIENT_BUFFER = 122
 	local ERROR_MORE_DATA = 234

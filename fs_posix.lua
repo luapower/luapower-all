@@ -39,40 +39,69 @@ int open(const char *pathname, int flags, mode_t mode);
 int close(int fd);
 ]]
 
---TODO: sort out differences between Linux and OSX here
-local o_flags = {
-	accmode   = 00000003,
-	rdonly    = 00000000,
-	wronly    = 00000001,
-	rdwr      = 00000002,
-	creat     = 00000100, -- not fcntl
-	excl      = 00000200, -- not fcntl
-	noctty    = 00000400, -- not fcntl
-	trunc     = 00001000, -- not fcntl
-	append    = 00002000,
-	nonblock  = 00004000,
-	dsync     = 00010000, -- used to be o_sync, see below
-	direct    = 00040000, -- direct disk access hint
-	largefile = 00100000,
-	directory = 00200000, -- must be a directory
-	nofollow  = 00400000, -- don't follow links
-	noatime   = 01000000,
-	cloexec   = 02000000, -- set close_on_exec
-	sync      = 04000000,
+local o_flags = linux and {
+	--Linux & OSX (Linux bitmasks)
+	rdonly    = 0x00000000, --access: read only
+	wronly    = 0x00000001, --access: write only
+	rdwr      = 0x00000002, --access: read + write
+	accmode   = 0x00000003, --access: no read, no write, only ioctl()
+	append    = 0x00000400, --append mode (seek to eof before each write())
+	trunc     = 0x00000200, --truncate the file on opening
+	creat     = 0x00000040, --create if file does not exist
+	excl      = 0x00000080, --create or fail (needs 'creat')
+	nofollow  = 0x00020000, --fail if file is a symlink
+	directory = 0x00010000, --open only if the file is a directory or fail
+	nonblock  = 0x00000800, --non-blocking (no effect on regular files)
+	async     = 0x00002000, --enable signal-driven I/O (not for regular files)
+	sync      = 0x00101000, --enable synchronized _file_ integrity completion
+	fsync     = 0x00101000, --'sync'
+	dsync     = 0x00001000, --enable synchronized _data_ integrity completion
+	noctty    = 0x00000100, --for tty files: prevent becoming ctty
+	cloexec   = 0x00080000, --set close-on-exec
+	--Linux only
+	direct    = 0x00004000, --direct disk access hint (user does caching)
+	noatime   = 0x00040000, --don't update atime
+	rsync     = 0x00101000, --'sync'
+	path      = 0x00200000, --open only for fs-level operation
+   tmpfile   = 0x00410000, --create an unnamed temp file (Linux 3.11+)
+} or {
+	--Linux & OSX (OSX bitmasks)
+	rdonly    = 0x00000000, --access: read only
+	wronly    = 0x00000001, --access: write only
+	rdwr      = 0x00000002, --access: read + write
+	accmode   = 0x00000003, --access: no read, no write, only ioctl()
+	append    = 0x00000008, --append mode (seek to eof before each write())
+	trunc     = 0x00000400, --truncate the file on opening
+	creat     = 0x00000200, --create if file does not exist
+	excl      = 0x00000800, --create or fail (needs 'creat')
+	nofollow  = 0x00000100, --fail if file is a symlink
+	directory = 0x00100000, --open only if the file is a directory or fail
+	nonblock  = 0x00000004, --non-blocking (no effect on regular files)
+	async     = 0x00000040, --enable signal-driven I/O (not for regular files)
+	sync      = 0x00000080, --enable synchronized _file_ integrity completion
+	fsync     = 0x00000080, --'sync'
+	dsync     = 0x00400000, --enable synchronized _data_ integrity completion
+	noctty    = 0x00020000, --for tty files: prevent becoming ctty
+	cloexec   = 0x01000000, --set close-on-exec
+	--OSX only
+	shlock    = 0x00000010, --get a shared lock
+	exlock    = 0x00000020, --get an exclusive lock
+	evtonly   = 0x00008000, --open for events only as to not prevent unmount
+	symlink   = 0x00200000, --open the symlink itself
 }
 
 local str_opt = {
 	r = {flags = 'rdonly'},
-	w = {flags = 'wronly'},
+	w = {flags = 'creat wronly trunc'},
 	['r+'] = {flags = 'rdwr'},
-	['w+'] = {flags = 'rdwr'},
+	['w+'] = {flags = 'creat rdwr'},
 }
 
 --expose this because the frontend will set its metatype on it at the end.
 file_ct = ffi.typeof[[
 	struct {
 		int fd;
-	};
+	}
 ]]
 
 function fs.open(path, opt)
@@ -88,7 +117,7 @@ function fs.open(path, opt)
 end
 
 function file.closed(f)
-	return f.fd ~= -1
+	return f.fd == -1
 end
 
 function file.close(f)
@@ -102,29 +131,87 @@ end
 
 --i/o ------------------------------------------------------------------------
 
-cdef(string.format([[
+if linux and x64 then cdef[[
 struct stat {
-	dev_t     st_dev;     /* ID of device containing file */
-	ino_t     st_ino;     /* inode number */
-	mode_t    st_mode;    /* protection */
-	nlink_t   st_nlink;   /* number of hard links */
-	uid_t     st_uid;     /* user ID of owner */
-	gid_t     st_gid;     /* group ID of owner */
-	dev_t     st_rdev;    /* device ID (if special file) */
-	off_t     st_size;    /* total size, in bytes */
-	blksize_t st_blksize; /* blocksize for file system I/O */
-	blkcnt_t  st_blocks;  /* number of 512B blocks allocated */
-	time_t    st_atime;   /* time of last access */
-	time_t    st_mtime;   /* time of last modification */
-	time_t    st_ctime;   /* time of last status change */
+	unsigned long   st_dev;
+	unsigned long   st_ino;
+	unsigned long   st_nlink;
+	unsigned int    st_mode;
+	unsigned int    st_uid;
+	unsigned int    st_gid;
+	unsigned int    __pad0;
+	unsigned long   st_rdev;
+	long            st_size;
+	long            st_blksize;
+	long            st_blocks;
+	unsigned long   st_atime;
+	unsigned long   st_atime_nsec;
+	unsigned long   st_mtime;
+	unsigned long   st_mtime_nsec;
+	unsigned long   st_ctime;
+	unsigned long   st_ctime_nsec;
+	long            __unused[3];
 };
+]] elseif linux then cdef[[
+struct stat {
+	unsigned long long      st_dev;
+	unsigned char   __pad0[4];
+	unsigned long   __st_ino;
+	unsigned int    st_mode;
+	unsigned int    st_nlink;
+	unsigned long   st_uid;
+	unsigned long   st_gid;
+	unsigned long long      st_rdev;
+	unsigned char   __pad3[4];
+	long long       st_size;
+	unsigned long   st_blksize;
+	unsigned long long      st_blocks;
+	unsigned long   st_atime;
+	unsigned long   st_atime_nsec;
+	unsigned long   st_mtime;
+	unsigned int    st_mtime_nsec;
+	unsigned long   st_ctime;
+	unsigned long   st_ctime_nsec;
+	unsigned long long      st_ino;
+};
+]] else cdef[[
+struct timespec {
+	time_t tv_sec;
+	long   tv_nsec;
+};
+struct stat {
+	uint32_t        st_dev;
+	uint16_t        st_mode;
+	uint16_t        st_nlink;
+	uint64_t        st_ino;
+	uint32_t        st_uid;
+	uint32_t        st_gid;
+	uint32_t        st_rdev;
+	struct timespec st_atimespec;
+	struct timespec st_mtimespec;
+	struct timespec st_ctimespec;
+	struct timespec st_birthtimespec;
+	int64_t         st_size;
+	int64_t         st_blocks;
+	int32_t         st_blksize;
+	uint32_t        st_flags;
+	uint32_t        st_gen;
+	int32_t         st_lspare;
+	int64_t         st_qspare[2];
+};
+]] end
+
+cdef(string.format([[
 ssize_t read(int fd, void *buf, size_t count);
 ssize_t write(int fd, const void *buf, size_t count);
 int fsync(int fd);
-int64_t lseek(int fd, off_t offset, int whence) asm("lseek%s");
-int ftruncate(int fd, off_t length);
-int fstat(int fd, struct stat *buf);
-]], linux and '64' or ''))
+int64_t lseek(int fd, int64_t offset, int whence) asm("lseek%s");
+int fstat(int fd, struct stat *buf) asm("fstat%s");
+int ftruncate(int fd, int64_t length);
+]],
+	linux and '64' or '',
+	linux and '64' or ''
+))
 
 function file.read(f, buf, sz)
 	local szread = C.read(f.fd, buf, sz)
@@ -156,7 +243,10 @@ function file.truncate(f)
 	return check(C.ftruncate(f.fd, offset) == 0)
 end
 
+local stat_ct = ffi.typeof'struct stat'
+local statbuf
 function file.size(f)
+	--[[
 	local offset, err, errcode  = seek(f, 'cur', 0)
 	if not offset then return offset, err, errcode end
 	local offset1, err1, errcode1 = seek(f, 'end', 0)
@@ -164,6 +254,12 @@ function file.size(f)
 	if not offset then return offset, err, errcode end
 	if not offset1 then return offset1, err1, errcode1 end
 	return offset1 + 1
+	]]
+	statbuf = statbuf or stat_ct()
+	local ok, err, errcode = check(C.fstat(f.fd, statbuf) == 0)
+	print(ok, err, errcode, statbuf.st_size)
+	if not ok then return nil, err, errcode end
+	return tonumber(statbuf.st_size)
 end
 
 --stdio streams --------------------------------------------------------------
@@ -356,10 +452,10 @@ end
 --atime and mtime ------------------------------------------------------------
 
 local utimebuf = ffi.typeof[[
-struct {
-	time_t actime;
-	time_t modtime;
-};
+	struct {
+		time_t actime;
+		time_t modtime;
+	}
 ]]
 
 cdef[[
@@ -460,9 +556,9 @@ end
 
 if osx then
 
-	cdef'_NSGetExecutablePath(char* buf, uint32_t* bufsize);'
+	--cdef'_NSGetExecutablePath(char* buf, uint32_t* bufsize);'
 	cdef[[
-	pid_t getpid(void);
+	int32_t getpid(void);
 	int proc_pidpath(int pid, void* buffer, uint32_t buffersize);
 	]]
 

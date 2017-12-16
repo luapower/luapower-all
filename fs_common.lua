@@ -58,10 +58,15 @@ cdef[[
 char *strerror(int errnum);
 ]]
 
+local errcodes = {
+	[2] = 'not_found',
+	[17] = 'already_exists',
+}
+
 function check_errno(ret, errno)
 	if ret then return ret end
 	errno = errno or ffi.errno()
-	return ret, str(C.strerror(errno)), errno
+	return ret, str(C.strerror(errno)), errcodes[errno] or errno
 end
 
 function assert_checker(check)

@@ -2,6 +2,7 @@ local ffi = require'ffi'
 local fs = require'fs'
 local pp = require'pp'
 local time = require'time'
+local win = ffi.abi'win'
 
 local test = setmetatable({}, {__newindex = function(t, k, v)
 	rawset(t, k, v)
@@ -39,26 +40,57 @@ function test.open_already_exists_file()
 	local f = assert(fs.open(testfile, 'w'))
 	assert(f:close())
 	local f, err, errcode = fs.open(testfile,
-		{access = 'write', creation = 'create_new'})
+		win and {
+			access = 'write',
+			creation = 'create_new',
+			flags = 'backup_semantics'
+		} or {
+			flags = 'creat excl'
+		})
 	assert(not f)
 	assert(errcode == 'already_exists')
 	assert(fs.remove(testfile))
 end
 
 function test.open_already_exists_dir()
-	local testfile = 'fs_test_file_access_denied'
+	local testfile = 'fs_test_dir_already_exists'
+	fs.rmdir(testfile)
+	assert(fs.mkdir(testfile))
+	local f, err, errcode = fs.open(testfile,
+		win and {
+			access = 'write',
+			creation = 'create_new',
+			flags = 'backup_semantics'
+		} or {
+			flags = 'creat excl'
+		})
+	assert(not f)
+	assert(errcode == 'already_exists')
+	assert(fs.rmdir(testfile))
+end
+
+function test.open_dir()
+	local testfile = 'fs_test_dir'
 	fs.rmdir(testfile)
 	assert(fs.mkdir(testfile))
 	local f, err, errcode = fs.open(testfile)
-	assert(not f)
-	assert(errcode == 'access_denied')
+	if false and win then
+		--using `backup_semantics` flag on CreateFile allows us to upen
+		--directories like in Linux, otherwise we'd get an access_denied error.
+		--Need more testing to see if this flag does not create other problems.
+		assert(not f)
+		assert(errcode == 'access_denied')
+	else
+		assert(f)
+		assert(f:close())
+	end
 	assert(fs.rmdir(testfile))
 end
 
 --i/o ------------------------------------------------------------------------
 
 function test.read_write()
-	local test_file = 'fs_test'
+	local test_file = 'fs_test_read_write'
 	local sz = 4096
 	local buf = ffi.new('uint8_t[?]', sz)
 
@@ -342,11 +374,13 @@ function test.remove_not_found()
 	assert(errcode == 'not_found')
 end
 
-function test.remove_not_found()
-	local testfile = 'fs_test_remove'
+function test.remove_dir_access_denied()
+	local testfile = 'fs_test_remove_dir'
+	assert(fs.mkdir(testfile))
 	local ok, err, errcode = fs.remove(testfile)
 	assert(not ok)
-	assert(errcode == 'not_found')
+	assert(errcode == 'access_denied')
+	assert(fs.rmdir(testfile))
 end
 
 function test.move()
@@ -930,6 +964,8 @@ if not ... or ... == 'fs_test' then
 			print(err)
 		end
 	end
-else
+elseif test[...] then
 	test[...]()
+else
+	print('Unknown test "'..(...)..'".')
 end
