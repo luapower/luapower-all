@@ -28,7 +28,8 @@ __file i/o__
 `f:flush()`                                       flush buffers
 `f:seek([whence] [, offset]) -> pos`              get/set file pointer
 `f:truncate()`                                    truncate file to current file pointer
-`f:size() -> n`                                   byte size of file
+`f:size([newsize]) -> size`                       get/set byte size of file
+`f:time([t]) -> t`                                get mtime, atime, ctime, btime; set mtime, atime
 `f:stream() -> fs`                                open a `FILE*` object
 `fs:close()`                                      close the `FILE*` object
 __directory listing__
@@ -43,28 +44,10 @@ __directory entry attributes__
 `d:attr([attr], [deref]) -> t|val`                dir entry attribute(s)
 `d:type([deref]) -> s`                            dir entry type: 'dir', 'file', 'symlink', ...
 `d:is(type, [deref]) -> true|false`               check if dir entry is of type
-`d:atime([deref]) -> atime`                       dir entry access time
-`d:mtime([deref]) -> mtime`                       dir entry modification time
-`d:ctime([deref]) -> ctime`                       dir entry creation time
-`d:size ([deref]) -> size`                        dir entry size
-`d:inode([deref]) -> inode|false`                 dir entry inode (false on Windows)
 __file attributes__
 `fs.attr(path, [attr], [deref]) -> t|val`         file attribute(s)
 `fs.type(path, [deref]) -> s`                     file type: 'dir', 'file', 'symlink', ...
 `fs.is(path, type, [deref]) -> true|false`        check if file is of type
-`fs.atime(path, [newtime], [deref]) -> atime`     get/set access time
-`fs.mtime(path, [newtime], [deref]) -> mtime`     get/set modification time
-`fs.ctime(path, [newtime], [deref]) -> ctime`     get/set creation time
-`fs.size (path, [newsize], [deref]) -> size`      get/set file size
-`fs.inode(path, [deref]) -> inode|false`          get file inode (false on Windows)
-__todo__
-`fs.dev(path) -> device_path`                     get device path
-`fs.linknum(path) -> n`                           get number of hard links
-`fs.uid(path[, newuid]) -> uid`                   get/set UID
-`fs.gid(path[, newgid]) -> gid`                   get/set GID
-`fs.perms(path[, newperms]) -> perms`             get/set file permissions
-`fs.blocks(path) -> n`                            get number of blocks in file
-`fs.blksize(path) -> size`                        get block size for file's filesystem
 __filesystem operations__
 `fs.mkdir(path, [recursive], [perms])`            make directory
 `fs.rmdir(path, [recursive])`                     remove empty directory
@@ -75,7 +58,7 @@ __filesystem operations__
 __symlinks & hardlinks__
 `fs.mksymlink(symlink, path, is_dir)`             create a symbolic link for a file or dir
 `fs.mkhardlink(hardlink, path)`                   create a hard link for a file
-`fs.readlink(path, [recursive=true])`             dereference a symlink
+`fs.readlink(path)`                               dereference a symlink recursively
 `fs.realpath(path) -> path`                       dereference all symlinks
 __common paths__
 `fs.homedir() -> path`                            get current user's home directory
