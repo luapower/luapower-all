@@ -63,12 +63,14 @@ __common paths__
 `fs.exedir() -> path`                             get the directory of the running executable
 ------------------------------------------------- -------------------------------------------------
 
-__NOTE:__ The `deref` arg is `true` by default, meaning that by default, symlinks are followed
-recursively and transparently when listing directories and when getting or setting file attributes.
+__NOTE:__ The `deref` arg is `true` by default, meaning that by default,
+symlinks are followed recursively and transparently when listing directories
+and when getting or setting file attributes.
 
-__NOTE:__ All functions can fail, in which case they return `nil, error_message, error_code`.
-Functions which are listed as having no return value actually return `true` for indicating success.
-Some error messages are normalized, eg. `not_found` (see full list below).
+__NOTE:__ All functions can fail, in which case they return
+`nil, error_message, error_code`. Functions which are listed as having no
+return value actually return `true` for indicating success. Some error
+messages are normalized, eg. `not_found` (see full list below).
 
 ## File attributes
 
@@ -78,7 +80,7 @@ __name__         __win__ __osx__ __linux__ __description__
 `size         `  rw      rw      rw        file size
 `atime        `  rw      rw      rw        last access time (seldom correct)
 `mtime        `  rw      rw      rw        last contents-change time
-`btime        `  rw      rw                creation ("birth") time
+`btime        `  rw      rw                creation (aka "birth") time
 `ctime        `          r       r         last metadata-or-contents-change time
 `target       `  r       r       r         symlink's target (nil if not symlink)
 `archive      `  rw                        archive bit (for backup programs)
@@ -101,9 +103,12 @@ __name__         __win__ __osx__ __linux__ __description__
 `blksize      `          r       r         block size for I/O
 `blocks       `          r       r         number of 512B blocks allocated
 
+On the table above, `r` means that the attribute is read/only and `rw` means
+that the attribute can be changed. Attributes can be queried and changed
+from different contexts via `f:attr()`, `fs.attr()` and `d:attr()`.
+
 
 ## File types
-
 
 __name__       __win__ __osx__ __linux__ __description__
 -------------- ------- ------- --------- ---------------------------------------
@@ -126,6 +131,8 @@ __message__          __description__
 `access_denied`      access denied
 `already_exists`     file/dir already exists
 `not_empty`          dir not empty (eg. for rmdir())
+`io_error`           I/O error
+`disk_full`          no space left on device
 -------------------- -----------------------------------------------------------
 
 ## File Objects
@@ -201,10 +208,15 @@ i.e. `whence` defaults to `'cur'` and `offset` defaults to `0`.
 
 ### `f:truncate([opt])`
 
-Truncate file to current file pointer. `opt` is an optional string which can
-contain any combination of the words `fallocate`, `emulate`, and `fail`
-(default is `'fallocate emulate'` which means using `posix_fallocate()`
-followed by `ftruncate()`).
+Truncate file to current file pointer.
+
+`opt` is an optional string for Linux which can contain any combination of
+the words `fallocate` (call `fallocate()`), `emulate` (fill the file with
+zeroes if the filesystem doesn't support `fallocate()`), and `fail` (do not
+call `ftruncate()` if `fallocate()` fails: return the error `'not_supported'`
+instead). The problem with calling `ftruncate()` if `fallocate()` fails is
+that on most filesystems that creates a sparse file, hence the `fail` option.
+The default is `'fallocate emulate'` which should never create a sparse file.
 
 ## Open file attributes
 
@@ -215,6 +227,8 @@ Get/set attribute(s) of open file. `attr` can be:
   * nothing/nil: get the values of all attributes in a table.
   * string: get the value of a single attribute.
   * table: set some attributes.
+
+__Tip__: to set the file size, use `f:attr{size =, size_opt=}`.
 
 ## Directory listing
 
