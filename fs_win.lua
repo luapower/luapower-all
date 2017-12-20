@@ -1,5 +1,5 @@
 
---portable filesystem API for LuaJIT / Windows API
+--portable filesystem API for LuaJIT / Windows backend
 --Written by Cosmin Apreutesei. Public Domain.
 
 if not ... then require'fs_test'; return end
@@ -12,7 +12,7 @@ local C = ffi.C
 
 assert(win, 'platform not Windows')
 
---common types and consts ----------------------------------------------------
+--types, consts, utils -------------------------------------------------------
 
 cdef(string.format('typedef %s ULONG_PTR;', x64 and 'int64_t' or 'int32_t'))
 
@@ -47,9 +47,8 @@ typedef struct {
 
 local INVALID_HANDLE_VALUE = ffi.cast('HANDLE', -1)
 
---ffi tools ------------------------------------------------------------------
-
 local wbuf = mkbuf'WCHAR'
+local u64buf = ffi.new'uint64_t[1]'
 
 --error reporting ------------------------------------------------------------
 
@@ -95,8 +94,6 @@ local function check(ret, errcode)
 	return ret, err, errcode
 end
 
-local assert_check = assert_checker(check)
-
 --utf16/utf8 conversion ------------------------------------------------------
 
 cdef[[
@@ -128,10 +125,10 @@ local function wcs(s, msz, wbuf) --string -> WCHAR[?]
 	msz = msz and msz + 1 or #s + 1
 	wbuf = wbuf or wcsbuf
 	local wsz = C.MultiByteToWideChar(CP_UTF8, 0, s, msz, nil, 0)
-	assert_check(wsz ~= 0)
+	assert(wsz > 0) --should never happen otherwise
 	local buf = wbuf(wsz)
 	local sz = C.MultiByteToWideChar(CP_UTF8, 0, s, msz, buf, wsz)
-	assert_check(sz == wsz)
+	assert(sz == wsz) --should never happen otherwise
 	return buf
 end
 
@@ -142,48 +139,12 @@ local function mbs(ws, wsz, mbuf) --WCHAR* -> string
 	mbuf = mbuf or mbsbuf
 	local msz = C.WideCharToMultiByte(
 		CP_UTF8, 0, ws, wsz, nil, 0, nil, nil)
-	assert_check(msz ~= 0)
+	assert(msz > 0) --should never happen otherwise
 	local buf = mbuf(msz)
 	local sz = C.WideCharToMultiByte(
 		CP_UTF8, 0, ws, wsz, buf, msz, nil, nil)
-	assert_check(sz == msz)
+	assert(sz == msz) --should never happen otherwise
 	return ffi.string(buf, sz-1)
-end
-
---filetime/timestamp conversion ----------------------------------------------
-
-cdef[[
-typedef struct {
-	DWORD dwLowDateTime;
-	DWORD dwHighDateTime;
-} FILETIME;
-]]
-
---FILETIME stores time in hundred-nanoseconds from `1601-01-01 00:00:00`.
---timestamp stores the time in seconds from `1970-01-01 00:00:00`.
-
-local TS_FT_DIFF = 11644473600 --seconds
-
-local function timestamp(filetime) --convert FILETIME -> timestamp
-	local ns = filetime.dwHighDateTime * 2^32 + filetime.dwLowDateTime
-	return ns * 1e-7 - TS_FT_DIFF
-end
-
-local function filetime(ts, ft) --convert timestamp -> FILETIME
-	if ts == false then
-		--set to prevent subsequent file operations from modifying this time.
-		--NOTE: Windows-only (non-portable) behavior.
-		ft.dwHighDateTime = 0xffffffff
-		ft.dwLowDateTime  = 0xffffffff
-		return ft
-	elseif ts then
-		local ns = (ts + TS_FT_DIFF) * 1e7
-		ft.dwHighDateTime = math.floor(ns / 2^32)
-		ft.dwLowDateTime = ns
-		return ft
-	else
-		return nil --omit setting
-	end
 end
 
 --open/close -----------------------------------------------------------------
@@ -202,7 +163,7 @@ BOOL CloseHandle(HANDLE hObject);
 ]]
 
 --CreateFile access rights flags
-local access_flags = {
+local access_bits = {
 	--FILE_*
 	list_directory              = 1, --dirs:  allow listing
 	read_data                   = 1, --files: allow reading data
@@ -214,8 +175,8 @@ local access_flags = {
 	delete_child             = 0x40, --dirs:  allow deleting dir contents
 	traverse                 = 0x20, --dirs:  allow traversing (not effective)
 	execute                  = 0x20, --exes:  allow exec'ing
-	read_attributes          = 0x80, --allow using file.time() for getting
-	write_attributes        = 0x100, --allow using file.time() for setting
+	read_attributes          = 0x80, --allow using file.times() for getting
+	write_attributes        = 0x100, --allow using file.times() for setting
 	read_ea                     = 8, --allow reading extended attrs
 	write_ea                 = 0x10, --allow writting extended attrs
 	read_control          = 0x20000, --allow reading the security descriptor
@@ -229,7 +190,7 @@ local access_flags = {
 }
 
 --CreateFile sharing flags
-local sharing_flags = {
+local sharing_bits = {
 	--FILE_SHARE_*
 	read   = 0x00000001, --allow us/others to read
 	write  = 0x00000002, --allow us/others to write
@@ -237,7 +198,7 @@ local sharing_flags = {
 }
 
 --CreateFile creation disposition flags
-local creation_flags = {
+local creation_bits = {
 	create_new        = 1, --create or fail
 	create_always     = 2, --open or create + truncate
 	open_existing     = 3, --open or fail
@@ -245,27 +206,28 @@ local creation_flags = {
 	truncate_existing = 5, --open + truncate or fail
 }
 
+local FILE_ATTRIBUTE_NORMAL = 0x00000080
+
 --CreateFile flags & attributes
-local attr_flags = {
+local attr_bits = {
 	--FILE_ATTRIBUTE_*
-	readonly             = 0x00000001,
-	hidden               = 0x00000002,
-	system               = 0x00000004,
-	directory            = 0x00000010,
-	archive              = 0x00000020,
-	device               = 0x00000040,
-	normal               = 0x00000080,
-	temporary            = 0x00000100,
-	sparse_file          = 0x00000200,
-	reparse_point        = 0x00000400,
-	compressed           = 0x00000800,
-	offline              = 0x00001000,
-	not_content_indexed  = 0x00002000,
-	encrypted            = 0x00004000,
-	virtual              = 0x00010000,
+	readonly      = 0x00000001,
+	hidden        = 0x00000002,
+	system        = 0x00000004,
+	directory     = 0x00000010,
+	archive       = 0x00000020,
+	device        = 0x00000040,
+	temporary     = 0x00000100,
+	sparse_file   = 0x00000200,
+	reparse_point = 0x00000400,
+	compressed    = 0x00000800,
+	--offline     = 0x00001000, --reserved (used by Remote Storage)
+	not_indexed   = 0x00002000, --FILE_ATTRIBUTE_NOT_CONTENT_INDEXED
+	encrypted     = 0x00004000,
+	--virtual     = 0x00010000, --reserved
 }
 
-local flag_flags = {
+local flag_bits = {
 	--FILE_FLAG_*
 	write_through        = 0x80000000,
 	overlapped           = 0x40000000,
@@ -307,12 +269,13 @@ function fs.open(path, opt)
 	if type(opt) == 'string' then
 		opt = assert(str_opt[opt], 'invalid option %s', opt)
 	end
-	local access   = flags(opt.access or 'read', access_flags)
-	local sharing  = flags(opt.sharing or 'read', sharing_flags)
-	local creation = flags(opt.creation or 'open_existing', creation_flags)
-	local attflags = bit.bor(
-		flags(opt.flags, flag_flags),
-		flags(opt.attrs, attr_flags))
+	local access   = flags(opt.access or 'read', access_bits)
+	local sharing  = flags(opt.sharing or 'read', sharing_bits)
+	local creation = flags(opt.creation or 'open_existing', creation_bits)
+	local attrbits = flags(opt.attrs, attr_bits)
+	attrbits = attrbits == 0 and FILE_ATTRIBUTE_NORMAL or attrbits
+	local flagbits = flags(opt.flags, flag_bits)
+	local attflags = bit.bor(attrbits, flagbits)
 	local h = C.CreateFileW(
 		wcs(path), access, sharing, nil, creation, attflags, nil)
 	if h == INVALID_HANDLE_VALUE then return check() end
@@ -330,6 +293,24 @@ function file.close(f)
 	f.handle = INVALID_HANDLE_VALUE
 	ffi.gc(f, nil)
 	return true
+end
+
+--stdio streams --------------------------------------------------------------
+
+cdef[[
+FILE *_fdopen(int fd, const char *mode);
+int _open_osfhandle (HANDLE osfhandle, int flags);
+]]
+
+function file.stream(f, mode)
+	local flags = 0
+	local fd = C._open_osfhandle(f.handle, flags)
+	if fd == -1 then return check_errno() end
+	local fs = C._fdopen(fd, mode)
+	if fs == nil then return check_errno() end
+	ffi.gc(f, nil) --fclose() will close the handle
+	ffi.gc(fs, stream.close)
+	return fs
 end
 
 --i/o ------------------------------------------------------------------------
@@ -399,339 +380,33 @@ function file.flush(f)
 	return check(C.FlushFileBuffers(f.handle) ~= 0)
 end
 
-local u64buf = ffi.new'uint64_t[1]'
-
-local whences = {set = 0, cur = 1, ['end'] = 2} --FILE_*
-function seek(f, whence, offset)
-	whence = assert(whences[whence], 'invalid whence %s', whence)
+function file_seek(f, whence, offset)
 	local ok = C.SetFilePointerEx(f.handle, offset, u64buf, whence) ~= 0
 	if not ok then return check() end
 	return tonumber(u64buf[0])
 end
 
---truncation -----------------------------------------------------------------
+--truncate/getsize/setsize ---------------------------------------------------
 
 cdef[[
 BOOL SetEndOfFile(HANDLE hFile);
 BOOL GetFileSizeEx(HANDLE hFile, PLARGE_INTEGER lpFileSize);
 ]]
 
-function file.truncate(f)
+--NOTE: seeking beyond file size and then truncating the file incurs no delay
+--on NTFS, but that's not because the file becomes sparse (it doesn't, and
+--disk space _is_ reserved), but because the extra zero bytes are not written
+--until the first write call _that requires it_. This is a good optimization
+--since usually the file will be written sequentially after the truncation
+--in which case those extra zero bytes will never get a chance to be written.
+function file.truncate(f, opt)
 	return check(C.SetEndOfFile(f.handle) ~= 0)
 end
 
-function file.size(f, newsize)
-	if newsize then
-		local p,e,c = f:seek();               if not p then return nil,e,c end
-		local _,e,c = f:seek('set', newsize); if not _ then return nil,e,c end
-		local _,e,c = f:truncate();           if not _ then return nil,e,c end
-		local _,e,c = f:seek('set', p);       if not _ then return nil,e,c end
-		return newsize
-	else
-		local ok = C.GetFileSizeEx(f.handle, u64buf) ~= 0
-		if not ok then return check() end
-		return tonumber(u64buf[0])
-	end
-end
-
---stdio streams --------------------------------------------------------------
-
-cdef[[
-FILE *_fdopen(int fd, const char *mode);
-int _open_osfhandle (HANDLE osfhandle, int flags);
-]]
-
-function file.stream(f, mode)
-	local flags = 0
-	local fd = C._open_osfhandle(f.handle, flags)
-	if fd == -1 then return check_errno() end
-	local fs = C._fdopen(fd, mode)
-	if fs == nil then return check_errno() end
-	ffi.gc(f, nil) --fclose() will close the handle
-	ffi.gc(fs, stream.close)
-	return fs
-end
-
---file attributes decoding ---------------------------------------------------
-
-local IO_REPARSE_TAG_SYMLINK = 0xA000000C
-
-local function is_symlink(data, reserved0)
-	return bit.band(data.dwFileAttributes, attr_flags.reparse_point) ~= 0
-		and (not reserved0 or reserved0 == IO_REPARSE_TAG_SYMLINK)
-end
-
-local function _get_attr(data, k, reserved0)
-	if not k then
-		local t = {}
-		t.type  = _get_attr(data, 'type' , reserved0)
-		t.btime = _get_attr(data, 'btime', reserved0) --creation time
-		t.mtime = _get_attr(data, 'mtime', reserved0)
-		t.atime = _get_attr(data, 'atime', reserved0)
-		t.size  = _get_attr(data, 'size' , reserved0)
-		for flag, mask in pairs(attr_flags) do
-			t[flag] = _get_attr(data, flag, reserved0) or nil
-		end
-		return t
-	elseif k == 'type' then
-		local bits = data.dwFileAttributes
-		return
-			is_symlink(data, reserved0) and 'symlink'
-			or bit.band(bits, attr_flags.directory) ~= 0 and 'dir'
-			or bit.band(bits, attr_flags.device) ~= 0    and 'dev'
-			or 'file'
-	elseif k == 'btime' then
-		return timestamp(data.ftCreationTime)
-	elseif k == 'mtime' then
-		return timestamp(data.ftLastWriteTime)
-	elseif k == 'atime' then
-		return timestamp(data.ftLastAccessTime)
-	elseif k == 'size' then
-		return data.nFileSizeHigh * 2^32 + data.nFileSizeLow
-	elseif attr_flags[k] then
-		return bit.band(attr_flags[k], data.dwFileAttributes) ~= 0
-	end
-end
-
-local function get_attr(data, attr, reserved0, deref)
-	if deref and is_symlink(data, reserved0) then
-		return true --let the frontend deal with it
-	end
-	return false, _get_attr(data, attr, reserved0)
-end
-
---directory listing ----------------------------------------------------------
-
-cdef[[
-enum {
-	MAX_PATH = 260
-};
-
-typedef struct {
-	DWORD dwFileAttributes;
-	FILETIME ftCreationTime;
-	FILETIME ftLastAccessTime;
-	FILETIME ftLastWriteTime;
-	DWORD nFileSizeHigh;
-	DWORD nFileSizeLow;
-	DWORD dwReserved0;
-	DWORD dwReserved1;
-	WCHAR cFileName[MAX_PATH];
-	WCHAR cAlternateFileName[14];
-} WIN32_FIND_DATAW, *LPWIN32_FIND_DATAW;
-
-HANDLE FindFirstFileW(LPCWSTR, LPWIN32_FIND_DATAW);
-BOOL FindNextFileW(HANDLE, LPWIN32_FIND_DATAW);
-BOOL FindClose(HANDLE);
-]]
-
-function dir.closed(dir)
-	return dir._handle == INVALID_HANDLE_VALUE
-end
-
-function dir.close(dir)
-	if dir:closed() then return end
-	local ok = C.FindClose(dir._handle) ~= 0
-	dir._handle = INVALID_HANDLE_VALUE --ignore failure
-	return check(ok)
-end
-
-local ERROR_NO_MORE_FILES = 18
-
-function dir.name(dir)
-	if dir:closed() then return nil end
-	return mbs(dir._fdata.cFileName)
-end
-
-function dir.dir(dir)
-	return ffi.string(dir._dir, dir._dirlen)
-end
-
-function dir.next(dir)
-	if dir:closed() then
-		if dir._errcode ~= 0 then
-			local errcode = dir._errcode
-			dir._errcode = 0
-			return check(false, errcode)
-		end
-		return nil
-	end
-	if dir._loaded == 1 then
-		dir._loaded = 0
-		return dir:name(), dir
-	else
-		local ret = C.FindNextFileW(dir._handle, dir._fdata)
-		if ret ~= 0 then
-			return dir:name(), dir
-		else
-			local errcode = C.GetLastError()
-			dir:close()
-			if errcode == ERROR_NO_MORE_FILES then
-				return nil
-			end
-			return check(false, errcode)
-		end
-	end
-end
-
-function dir_attr(dir, attr, deref)
-	if type(attr) == 'table' then --let the frontend deal with it
-		return false, fs.attr(dir:path(), attr, deref)
-	end
-	return get_attr(dir._fdata, attr, dir._fdata.dwReserved0, deref)
-end
-
-dir_ct = ffi.typeof[[
-	struct {
-		HANDLE _handle;
-		WIN32_FIND_DATAW _fdata;
-		DWORD _errcode; // return `false, err, errcode` on the next iteration
-		int  _loaded;   // _fdata is loaded for the next iteration
-		int  _dirlen;
-		char _dir[?];
-	}
-]]
-
-function dir_iter(path)
-	assert(not path:find'[%*%?]') --no globbing allowed
-	local dir = dir_ct(#path)
-	dir._dirlen = #path
-	ffi.copy(dir._dir, path)
-	dir._handle = C.FindFirstFileW(wcs(path .. '\\*'), dir._fdata)
-	if dir._handle == INVALID_HANDLE_VALUE then
-		dir._errcode = C.GetLastError()
-	else
-		dir._loaded = 1
-	end
-	return dir.next, dir
-end
-
---file attributes ------------------------------------------------------------
-
-cdef[[
-typedef enum {
-    GetFileExInfoStandard
-} GET_FILEEX_INFO_LEVELS;
-typedef struct {
-    DWORD dwFileAttributes;
-    FILETIME ftCreationTime;
-    FILETIME ftLastAccessTime;
-    FILETIME ftLastWriteTime;
-    DWORD nFileSizeHigh;
-    DWORD nFileSizeLow;
-} WIN32_FILE_ATTRIBUTE_DATA;
-
-DWORD GetFileAttributesExW(
-	LPCWSTR lpFileName,
-	GET_FILEEX_INFO_LEVELS fInfoLevelId,
-	WIN32_FILE_ATTRIBUTE_DATA* lpFileInformation
-);
-BOOL SetFileAttributesW(LPCWSTR lpFileName, DWORD dwFileAttributes);
-]]
-
-local attr_data_ct = ffi.typeof'WIN32_FILE_ATTRIBUTE_DATA'
-local attr_data
-local function get_file_attrs(path)
-	attr_data = attr_data or attr_data_ct()
-	return C.GetFileAttributesExW(wcs(path), 0, attr_data) ~= 0
-end
-
---FILE_ATTRIBUTE_* flags which can be set via SetFileAttributes
-local set_file_attrs_flags = {
-	archive              = 0x00000020,
-	hidden               = 0x00000002,
-	normal               = 0x00000080,
-	not_content_indexed  = 0x00002000,
-	offline              = 0x00001000,
-	readonly             = 0x00000001,
-	system               = 0x00000004,
-	temporary            = 0x00000100,
-}
-local function set_file_attrs(path, t)
-	local ok = get_file_attrs(path)
+function file_getsize(f)
+	local ok = C.GetFileSizeEx(f.handle, u64buf) ~= 0
 	if not ok then return check() end
-	--TODO:
-	local current_bits = attr_data.dwFileAttributes
-	local bits = flags(attr, attr_flags)
-	return check(C.SetFileAttributes(wcs(path), bits) ~= 0)
-end
-
-local fs_attr_open_opt = {
-	access = 'write_attributes',
-	sharing = 'read write delete',
-	creation = 'open_existing',
-	flags = 'backup_semantics open_reparse_point',
-	attrs = 'reparse_point',
-}
-function fs_attr(path, attr, deref)
-	if type(attr) == 'table' then --set attrs
-		if deref then
-			return true --tell the frontend to deref the symlink and retry
-		elseif attr.size or attr.mtime or attr.atime or attr.btime then
-			local f,e,c = fs.open(path, fs_attr_open_opt)
-			if not f then return false, nil,e,c end
-			if attr.size then
-				local _,e,c = f:size(size)
-				if not _ then f:close(); return false, nil,e,c end
-			end
-			if attr.mtime or attr.atime or attr.btime then
-				local _,e,c = f:time(t)
-				if not _ then f:close(); return false, nil,e,c end
-			end
-			local _,e,c = f:close()
-			if not _ then return false, nil,e,c end
-		else
-			local _,e,c = set_file_attrs(path, attr)
-			if not _ then return false, nil,e,c end
-		end
-		return false, true --we return true for unknown attrs too
-	else
-		local ok = get_file_attrs(path)
-		if not ok then return check() end
-		return get_attr(attr_data, attr, deref)
-	end
-end
-
---file times -----------------------------------------------------------------
-
-cdef[[
-BOOL GetFileTime(
-	HANDLE   hFile,
-	FILETIME *lpCreationTime,
-	FILETIME *lpLastAccessTime,
-	FILETIME *lpLastWriteTime
-);
-BOOL SetFileTime(
-	HANDLE   hFile,
-	FILETIME *lpCreationTime,
-	FILETIME *lpLastAccessTime,
-	FILETIME *lpLastWriteTime
-);
-]]
-
-do
-	local filetime_ct = ffi.typeof'FILETIME'
-	local mt, at, bt
-
-	function file.time(f, t)
-		mt = mt or filetime_ct()
-		at = at or filetime_ct()
-		bt = bt or filetime_ct()
-		if t then
-			return check(C.SetFileTime(f.handle,
-				filetime(t.btime, bt),
-				filetime(t.atime, at),
-				filetime(t.mtime, mt)) ~= 0)
-		else
-			local ok = C.GetFileTime(f.handle, bt, at, mt) ~= 0
-			if not ok then return check() end
-			return {
-				mtime = timestamp(mt),
-				atime = timestamp(at),
-				btime = timestamp(bt),
-			}
-		end
-	end
+	return tonumber(u64buf[0])
 end
 
 --filesystem operations ------------------------------------------------------
@@ -774,7 +449,7 @@ function remove(path)
 	return check(C.DeleteFileW(wcs(path)) ~= 0)
 end
 
-local move_flags = {
+local move_bits = {
 	--MOVEFILE_*
 	replace_existing      =  0x1,
 	copy_allowed          =  0x2,
@@ -783,12 +458,12 @@ local move_flags = {
 	write_through         =  0x8,
 }
 
-local default_move_opt = {'replace_existing', 'write_through'} --posix
+local default_move_opt = 'replace_existing write_through' --posix
 function fs.move(oldpath, newpath, opt)
 	return check(C.MoveFileExW(
 		wcs(oldpath),
 		wcs(newpath, nil, wbuf),
-		flags(opt or default_move_opt, move_flags)
+		flags(opt or default_move_opt, move_bits)
 	) ~= 0)
 end
 
@@ -934,3 +609,449 @@ function fs.exedir()
 	--C.GetModuleFileNameW(nil, ...)
 end
 
+--file attributes ------------------------------------------------------------
+
+cdef[[
+typedef struct {
+	DWORD dwLowDateTime;
+	DWORD dwHighDateTime;
+} FILETIME;
+
+typedef struct {
+  DWORD    dwFileAttributes;
+  FILETIME ftCreationTime;
+  FILETIME ftLastAccessTime;
+  FILETIME ftLastWriteTime;
+  DWORD    dwVolumeSerialNumber;
+  DWORD    nFileSizeHigh;
+  DWORD    nFileSizeLow;
+  DWORD    nNumberOfLinks;
+  DWORD    nFileIndexHigh;
+  DWORD    nFileIndexLow;
+} BY_HANDLE_FILE_INFORMATION, *LPBY_HANDLE_FILE_INFORMATION;
+
+BOOL GetFileInformationByHandle(
+	HANDLE                       hFile,
+	LPBY_HANDLE_FILE_INFORMATION lpFileInformation
+);
+
+typedef enum {
+  FileBasicInfo                   = 0,
+  FileStandardInfo                = 1,
+  FileNameInfo                    = 2,
+  FileRenameInfo                  = 3,
+  FileDispositionInfo             = 4,
+  FileAllocationInfo              = 5,
+  FileEndOfFileInfo               = 6,
+  FileStreamInfo                  = 7,
+  FileCompressionInfo             = 8,
+  FileAttributeTagInfo            = 9,
+  FileIdBothDirectoryInfo         = 10,
+  FileIdBothDirectoryRestartInfo  = 11,
+  FileIoPriorityHintInfo          = 12,
+  FileRemoteProtocolInfo          = 13,
+  FileFullDirectoryInfo           = 14,
+  FileFullDirectoryRestartInfo    = 15,
+  FileStorageInfo                 = 16,
+  FileAlignmentInfo               = 17,
+  FileIdInfo                      = 18,
+  FileIdExtdDirectoryInfo         = 19,
+  FileIdExtdDirectoryRestartInfo  = 20,
+} FILE_INFO_BY_HANDLE_CLASS;
+
+BOOL GetFileInformationByHandleEx(
+	HANDLE                    hFile,
+	FILE_INFO_BY_HANDLE_CLASS FileInformationClass,
+	LPVOID                    lpFileInformation,
+	DWORD                     dwBufferSize
+);
+
+BOOL SetFileInformationByHandle(
+	HANDLE                    hFile,
+	FILE_INFO_BY_HANDLE_CLASS FileInformationClass,
+	LPVOID                    lpFileInformation,
+	DWORD                     dwBufferSize
+);
+
+typedef enum {
+    GetFileExInfoStandard
+} GET_FILEEX_INFO_LEVELS;
+
+typedef struct {
+    DWORD dwFileAttributes;
+    FILETIME ftCreationTime;
+    FILETIME ftLastAccessTime;
+    FILETIME ftLastWriteTime;
+    DWORD nFileSizeHigh;
+    DWORD nFileSizeLow;
+} WIN32_FILE_ATTRIBUTE_DATA;
+
+DWORD GetFileAttributesExW(
+	LPCWSTR lpFileName,
+	GET_FILEEX_INFO_LEVELS fInfoLevelId,
+	WIN32_FILE_ATTRIBUTE_DATA* lpFileInformation
+);
+
+BOOL SetFileAttributesW(
+	LPCWSTR lpFileName,
+	DWORD dwFileAttributes
+);
+
+BOOL GetFileTime(
+	HANDLE   hFile,
+	FILETIME *lpCreationTime,
+	FILETIME *lpLastAccessTime,
+	FILETIME *lpLastWriteTime
+);
+
+BOOL SetFileTime(
+	HANDLE   hFile,
+	FILETIME *lpCreationTime,
+	FILETIME *lpLastAccessTime,
+	FILETIME *lpLastWriteTime
+);
+
+DWORD GetFinalPathNameByHandleW(
+	HANDLE hFile,
+	LPWSTR lpszFilePath,
+	DWORD  cchFilePath,
+	DWORD  dwFlags
+);
+]]
+
+--FILETIME stores time in hundred-nanoseconds from `1601-01-01 00:00:00`.
+--timestamp stores the time in seconds from `1970-01-01 00:00:00`.
+
+local TS_FT_DIFF = 11644473600 --seconds
+
+local function timestamp(filetime) --convert FILETIME -> timestamp
+	local ns = filetime.dwHighDateTime * 2^32 + filetime.dwLowDateTime
+	return ns * 1e-7 - TS_FT_DIFF
+end
+
+local function filetime(ts) --convert timestamp -> FILETIME
+	return (ts + TS_FT_DIFF) * 1e7
+end
+
+local filetime_ct = ffi.typeof'FILETIME'
+local at, mt, bt
+
+local function set_ft(ts, ft)
+	if ts == false then
+		--set to prevent subsequent file operations from modifying this time.
+		--NOTE: Windows-only (non-portable) behavior.
+		ft.dwHighDateTime = 0xffffffff
+		ft.dwLowDateTime  = 0xffffffff
+		return ft
+	elseif ts then
+		local ns = filetime(ts)
+		ft.dwHighDateTime = math.floor(ns / 2^32)
+		ft.dwLowDateTime = ns
+		return ft
+	else
+		return nil --omit setting
+	end
+end
+
+local function fsettimes(f, atime, mtime, btime)
+	at = at or filetime_ct()
+	mt = mt or filetime_ct()
+	bt = bt or filetime_ct()
+	return check(C.SetFileTime(f.handle,
+		set_ft(btime, bt),
+		set_ft(atime, at),
+		set_ft(mtime, mt)) ~= 0)
+end
+
+local function fgettimes(f)
+	at = at or filetime_ct()
+	mt = mt or filetime_ct()
+	bt = bt or filetime_ct()
+	local ok = C.GetFileTime(f.handle, bt, at, mt) ~= 0
+	if not ok then return check() end
+	return
+		timestamp(at),
+		timestamp(mt),
+		timestamp(bt)
+end
+
+function file.path(f)
+	local buf, sz = wbuf()
+	::again::
+	local sz1 = C.GetFinalPathNameByHandleW(f.handle, buf, sz, 0)
+	if sz1 == 0 then return check() end
+	if sz1 < sz then
+		buf, sz = wbuf(math.max(sz * 2, sz1))
+		goto again
+	end
+	return mbs(wbuf, sz1)
+end
+
+local IO_REPARSE_TAG_SYMLINK = 0xA000000C
+
+local function is_symlink(data, reparse_tag)
+	return bit.band(data.dwFileAttributes, attr_bits.reparse_point) ~= 0
+		and (not reparse_tag or reparse_tag == IO_REPARSE_TAG_SYMLINK)
+end
+
+local function _data_attr(data, k, reparse_tag)
+	if not k then
+		local t = {}
+		t.type  = _data_attr(data, 'type' , reparse_tag)
+		t.btime = _data_attr(data, 'btime', reparse_tag) --creation time
+		t.mtime = _data_attr(data, 'mtime', reparse_tag)
+		t.atime = _data_attr(data, 'atime', reparse_tag)
+		t.size  = _data_attr(data, 'size' , reparse_tag)
+		for flag, mask in pairs(attr_bits) do
+			if flag ~= 'directory' and flag ~= 'device' then --type() has them
+				t[flag] = _data_attr(data, flag, reparse_tag) or nil
+			end
+		end
+		return t
+	elseif k == 'type' then
+		local bits = data.dwFileAttributes
+		return
+			is_symlink(data, reparse_tag) and 'symlink'
+			or bit.band(bits, attr_bits.directory) ~= 0 and 'dir'
+			or bit.band(bits, attr_bits.device) ~= 0    and 'dev'
+			or 'file'
+	elseif k == 'btime' then
+		return timestamp(data.ftCreationTime)
+	elseif k == 'mtime' then
+		return timestamp(data.ftLastWriteTime)
+	elseif k == 'atime' then
+		return timestamp(data.ftLastAccessTime)
+	elseif k == 'size' then
+		return data.nFileSizeHigh * 2^32 + data.nFileSizeLow
+	elseif attr_bits[k] then
+		return bit.band(attr_bits[k], data.dwFileAttributes) ~= 0
+	end
+end
+
+function data_attr(data, attr, reparse_tag, deref)
+	if deref and is_symlink(data, reparse_tag) then
+		return true --let the frontend deal with it
+	end
+	return false, _data_attr(data, attr, reparse_tag)
+end
+
+local function setattr_bits(path, t)
+	local ok, data = getattr_data(path)
+	if not ok then return check() end
+	local cur_bits = data.dwFileAttributes
+	cur_bits = cur_bits == FILE_ATTRIBUTE_NORMAL and 0 or cur_bits
+	local bits = flags(t, attr_bits, cur_bits, false)
+	bits = bits == 0 and FILE_ATTRIBUTE_NORMAL or bits
+	return check(C.SetFileAttributes(wcs(path), bits) ~= 0)
+end
+
+local changeable_attr_bits = {
+	--FILE_ATTRIBUTE_* flags which can be set via SetFileAttributes
+	archive     = true,
+	hidden      = true,
+	not_indexed = true,
+	--offline   = true, --reserved (used by Remote Storage)
+	readonly    = true,
+	system      = true,
+	temporary   = true,
+}
+local function setattr_args(t)
+	--validate attrs and categorize them
+	local found_size, found_times, found_bits
+	for k in pairs(t) do
+		local size = k == 'size'
+		local time = k == 'atime' or k == 'mtime' or k == 'btime'
+		local abit = changeable_attr_bits[k] or false
+		assert(size or time or abit, 'invalid attr %s', tostring(k))
+		found_size = found_size or size
+		found_times = found_times or time
+		found_bits = found_bits or abit
+	end
+	return found_size, found_times, found_bits
+end
+
+function fsetattr(f, t)
+	local size, times, bits = setattr_args(t)
+	if bits then
+		local _,e,c = setattr_bits(f:path(), t)
+		if not _ then return nil,e,c end
+	end
+	if size then
+		local _,e,c = fsetsize(f, t.size)
+		if not _ then return nil,e,c end
+	end
+	if times then --set times last to avoid messing atime
+		local _,e,c = fsettimes(f, t.atime, t.mtime, t.btime)
+		if not _ then return nil,e,c end
+	end
+	return true
+end
+
+local fs_attr_open_opt = {
+	access = 'write_attributes',
+	sharing = 'read write delete',
+	creation = 'open_existing',
+	flags = 'backup_semantics open_reparse_point',
+	attrs = 'reparse_point',
+}
+function fs_setattr(path, t)
+	local size, times, bits = setattr_args(t)
+	if bits then
+		local _,e,c = setattr_bits(path, attr)
+		if not _ then return nil,e,c end
+	end
+	if size or times then
+		local f,e,c = fs.open(path, fs_attr_open_opt)
+		if not f then return nil,e,c end
+		if size then
+			local _,e,c = fsetsize(f, t.size)
+			if not _ then f:close(); return nil,e,c end
+		end
+		if times then --set times last to avoid messing atime
+			local _,e,c = fsettimes(f, t.atime, t.mtime, t.btime)
+			if not _ then f:close(); return nil,e,c end
+		end
+		local _,e,c = f:close()
+		if not _ then return nil,e,c end
+	end
+	return true
+end
+
+local data_ct = ffi.typeof'WIN32_FILE_ATTRIBUTE_DATA'
+local data
+local function getattr_data(path)
+	data = data or data_ct()
+	return C.GetFileAttributesExW(wcs(path), 0, data) ~= 0, data
+end
+function fs_attr(path, attr, deref)
+	if type(attr) == 'table' then --set attrs
+		if deref then
+			return true --tell the frontend to deref the symlink and retry
+		end
+		local ok,e,c = set_attrs(path, attr)
+		if not ok then return false, nil,e,c end
+		return false, true
+	else
+		local ok, data = getattr_data(path)
+		if not ok then return check() end
+		return data_attr(data, attr, deref)
+	end
+end
+
+function file_attr(f, attr)
+	if not attr then
+		return
+	elseif attr == 'size' then
+		return file_getsize(f)
+	end
+end
+
+--directory listing ----------------------------------------------------------
+
+cdef[[
+enum {
+	MAX_PATH = 260
+};
+
+typedef struct {
+	DWORD dwFileAttributes;
+	FILETIME ftCreationTime;
+	FILETIME ftLastAccessTime;
+	FILETIME ftLastWriteTime;
+	DWORD nFileSizeHigh;
+	DWORD nFileSizeLow;
+	DWORD dwReserved0; // reparse tag
+	DWORD dwReserved1;
+	WCHAR cFileName[MAX_PATH];
+	WCHAR cAlternateFileName[14];
+} WIN32_FIND_DATAW, *LPWIN32_FIND_DATAW;
+
+HANDLE FindFirstFileW(LPCWSTR, LPWIN32_FIND_DATAW);
+BOOL FindNextFileW(HANDLE, LPWIN32_FIND_DATAW);
+BOOL FindClose(HANDLE);
+]]
+
+function dir.closed(dir)
+	return dir._handle == INVALID_HANDLE_VALUE
+end
+
+function dir.close(dir)
+	if dir:closed() then return end
+	local ok = C.FindClose(dir._handle) ~= 0
+	dir._handle = INVALID_HANDLE_VALUE --ignore failure
+	return check(ok)
+end
+
+local ERROR_NO_MORE_FILES = 18
+
+function dir.name(dir)
+	if dir:closed() then return nil end
+	return mbs(dir._fdata.cFileName)
+end
+
+function dir.dir(dir)
+	return ffi.string(dir._dir, dir._dirlen)
+end
+
+function dir.next(dir)
+	if dir:closed() then
+		if dir._errcode ~= 0 then
+			local errcode = dir._errcode
+			dir._errcode = 0
+			return check(false, errcode)
+		end
+		return nil
+	end
+	if dir._loaded == 1 then
+		dir._loaded = 0
+		return dir:name(), dir
+	else
+		local ret = C.FindNextFileW(dir._handle, dir._fdata)
+		if ret ~= 0 then
+			return dir:name(), dir
+		else
+			local errcode = C.GetLastError()
+			dir:close()
+			if errcode == ERROR_NO_MORE_FILES then
+				return nil
+			end
+			return check(false, errcode)
+		end
+	end
+end
+
+dir_ct = ffi.typeof[[
+	struct {
+		HANDLE _handle;
+		WIN32_FIND_DATAW _fdata;
+		DWORD _errcode; // return `false, err, errcode` on the next iteration
+		int  _loaded;   // _fdata is loaded for the next iteration
+		int  _dirlen;
+		char _dir[?];
+	}
+]]
+
+function dir_iter(path)
+	assert(not path:find'[%*%?]') --no globbing allowed
+	local dir = dir_ct(#path)
+	dir._dirlen = #path
+	ffi.copy(dir._dir, path)
+	dir._handle = C.FindFirstFileW(wcs(path .. '\\*'), dir._fdata)
+	if dir._handle == INVALID_HANDLE_VALUE then
+		dir._errcode = C.GetLastError()
+	else
+		dir._loaded = 1
+	end
+	return dir.next, dir
+end
+
+function fdata_attr(fdata, attr, deref)
+	return data_attr(fdata, attr, fdata.dwReserved0, deref)
+end
+
+function dir_attr(dir, attr, deref)
+	if type(attr) == 'table' then --setting attrs: use the frontend
+		return false, fs.attr(dir:path(), attr, deref)
+	end
+	return fdata_attr(dir._fdata, attr, deref)
+end

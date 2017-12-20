@@ -64,14 +64,17 @@ local error_classes = {
 	[17] = 'already_exists', --EEXIST, open(), mkdir()
 	[20] = 'not_found', --ENOTDIR, opendir()
 	[21] = 'access_denied', --EISDIR, unlink()
-	[linux and 39 or osx and 66 or win and 41] = 'not_empty',
+	[linux and 39 or osx and 66 or ''] = 'not_empty',
 		--ENOTEMPTY, rmdir()
+	[28] = 'disk_full', --ENOSPC: fallocate()
+	[linux and 95 or ''] = 'not_supported', --EOPNOTSUPP: fallocate()
 
+	--[[
 	[12] = 'out_of_mem', --TODO: ENOMEM: mmap
 	[22] = 'file_too_short', --TODO: EINVAL: mmap
 	[27] = 'disk_full', --TODO: EFBIG
-	[28] = 'disk_full', --TODO: ENOSP
 	[osx and 69 or 122] = 'disk_full', --TODO: EDQUOT
+	]]
 }
 
 function check_errno(ret, errno)
@@ -85,70 +88,72 @@ function check_errno(ret, errno)
 	return ret, err, errno
 end
 
-function assert_checker(check)
-	return function(...)
-		return _G.assert(...)
-	end
-end
-
-assert_check_errno = assert_checker(check_errno)
-
 --flags arg parsing ----------------------------------------------------------
 
-local function memoize2(func)
-	cache = {}
-	return function(k1, k2)
-		local cache2 = cache[k1]
-		if cache2 == nil then
-			cache2 = {}
-			cache[k1] = cache2
-		end
-		local v = cache2[k2]
-		if v == nil then
-			v = func(k1, k2)
-			cache2[k2] = v
-		end
-		return v
-	end
-end
-
-local function table_flags(t, masks, cur_bits)
+--turn a table of boolean options into a bit mask.
+local function table_flags(t, masks, strict)
+	local bits = 0
 	local mask = 0
 	for k,v in pairs(t) do
 		local flag
 		if type(k) == 'string' and v then --flags as table keys: {flag->true}
 			flag = k
-		elseif
-			type(k) == 'number'
+		elseif type(k) == 'number'
 			and math.floor(k) == k
 			and type(v) == 'string'
 		then --flags as array: {flag1,...}
 			flag = v
 		end
+		local bitmask = masks[flag]
+		if strict then
+			assert(bitmask, 'invalid flag %s', tostring(flag))
+		end
+		mask = bit.bor(mask, bitmask)
 		if flag then
-			local m = assert(masks[flag], 'invalid flag %s', flag)
-			mask = bit.bor(mask, m)
+			bits = bit.bor(bits, bitmask)
 		end
 	end
-	return mask
+	return bits, mask
 end
 
-local string_flags = memoize2(function(s, masks)
-	if not s:find'[ ,]' then
-		return assert(masks[s], 'invalid flag %s', s)
-	end
+--turn 'opt1 +opt2 -opt3' -> {opt1=true, opt2=true, opt3=false}
+local function string_flags(s, masks, strict)
 	local t = {}
 	for s in s:gmatch'[^ ,]+' do
-		t[#t+1] = s
+		local m,s = s:match'^([%+%-]?)(.*)$'
+		t[s] = m ~= '-'
 	end
-	return table_flags(t, masks)
-end)
+	return table_flags(t, masks, strict)
+end
 
-function flags(arg, masks)
+--set one or more bits of a value without affecting other bits.
+function setbits(bits, mask, over)
+	return over and bit.bor(bits, bit.band(over, bit.bnot(mask))) or bits
+end
+
+--cache tuple(options_string, masks_table) -> bits, mask
+local cache = {}
+local function getcache(s, masks)
+	cache[masks] = cache[masks] or {}
+	local t = cache[masks][s]
+	if not t then return end
+	return t[1], t[2]
+end
+local function setcache(s, masks, bits, mask)
+	cache[masks][s] = {bits, mask}
+end
+
+function flags(arg, masks, cur_bits, strict)
 	if type(arg) == 'string' then
-		return string_flags(arg, masks)
+		local bits, mask = getcache(arg, masks)
+		if not bits then
+			bits, mask = string_flags(arg, masks, strict)
+			setcache(arg, masks, bits, mask)
+		end
+		return setbits(bits, mask, cur_bits)
 	elseif type(arg) == 'table' then
-		return table_flags(arg, masks)
+		local bits, mask = table_flags(arg, masks, strict)
+		return setbits(bits, mask, cur_bits)
 	elseif type(arg) == 'number' then
 		return arg
 	elseif arg == nil then
@@ -158,14 +163,7 @@ function flags(arg, masks)
 	end
 end
 
---i/o ------------------------------------------------------------------------
-
-function file.seek(f, whence, offset)
-	if tonumber(whence) and not offset then
-		whence, offset = 'cur', tonumber(whence)
-	end
-	return seek(f, whence or 'cur', offset or 0)
-end
+--file objects ---------------------------------------------------------------
 
 function fs.isfile(f)
 	return ffi.istype(file_ct, f)
@@ -187,103 +185,46 @@ function stream.close(fs)
 	return true
 end
 
---directory listing ----------------------------------------------------------
+--i/o ------------------------------------------------------------------------
 
-function fs.dir(dir, dot_dirs)
-	dir = dir or '.'
-	if dot_dirs then
-		return dir_iter(dir)
-	else --wrap iterator to skip `.` and `..` entries
-		local next, dir = dir_iter(dir)
-		local function wrapped_next(dir, last)
-			local ret2, ret3
-			repeat
-				last, ret2, ret3 = next(dir, last)
-			until not last or (last ~= '.' and last ~= '..')
-			return last, ret2, ret3
-		end
-		return wrapped_next, dir
+local whences = {set = 0, cur = 1, ['end'] = 2} --FILE_*
+function file.seek(f, whence, offset)
+	if tonumber(whence) and not offset then --middle arg missing
+		whence, offset = 'cur', tonumber(whence)
 	end
+	whence = whence or 'cur'
+	offset = tonumber(offset or 0)
+	whence = assert(whences[whence], 'invalid whence %s', whence)
+	return file_seek(f, whence, offset)
 end
 
-function dir.path(dir)
-	return path.combine(dir:dir(), dir:name())
+--truncate -------------------------------------------------------------------
+
+--get/set file size implementations in terms of f:seek() and f:truncate().
+--to be overwritten by backends if they have better ones.
+
+function file_getsize(f)
+	local curpos, err, errcode = f:seek()
+	if not curpos then return nil, err, errcode end
+	local size, err, errcode = f:seek'end'
+	if not size then return nil, err, errcode end
+	if curpos ~= size then
+		local _, err, errcode = f:seek('set', curpos)
+		if not _ then return nil, err, errcode end
+	end
+	return size
 end
 
-function dir.attr(dir, attr, deref)
-	if deref == nil then
-		deref = true --deref by default
-	end
-	if attr == 'target' then
-		if dir_attr(dir, 'type', false) == 'symlink' then
-			return readlink(dir:path())
-		else
-			return nil --no error for non-symlink files
-		end
-	end
-	local deref, val, err, errcode = dir_attr(dir, attr, deref)
-	if val == nil and err then return nil, err, errcode end
-	if deref then
-		return fs.attr(dir:path(), attr, true)
-	else
-		return val
-	end
-end
-
-function dir.type(dir, deref)
-	return dir:attr('type', deref)
-end
-
-function dir.is(dir, type, deref)
-	if type == 'symlink' then
-		deref = false
-	end
-	return dir:type(deref) == type
-end
-
---file attributes ------------------------------------------------------------
-
-function fs.attr(path, attr, deref)
-	if deref == nil then
-		deref = true --deref by default
-	end
-	if attr == 'target' then
-		--NOTE: posix doesn't need a type check here, but Windows does
-		if not win or fs.is(path, 'symlink') then
-			return readlink(path)
-		else
-			return nil --no error for non-symlink files
-		end
-	end
-	local deref, val, err, errcode = fs_attr(path, attr, deref)
-	if val == nil and err then return nil, err, errcode end
-	if deref then --backend doesn't support symlink dereferencing
-		local path, err, errcode = fs.readlink(path)
-		if not path then return nil, err, errcode end
-		return fs.attr(path, attr, false)
-	else
-		return val
-	end
-end
-
-function fs.type(path, deref)
-	return fs.attr(path, 'type', deref)
-end
-
-function fs.is(path, type, deref)
-	if type == 'symlink' then
-		deref = false
-	end
-	local ftype, err, errcode = fs.type(path, deref)
-	if not type and not ftype and err == 'not_found' then
-		return false
-	elseif not type and ftype then
-		return true
-	elseif not ftype then
-		return nil, err, errcode
-	else
-		return ftype == type
-	end
+function file_setsize(f, newsize, opt)
+	local curpos, err, errcode = f:seek()
+	if not curpos then return nil, err, errcode end
+	local _, err, errcode = f:seek('set', newsize)
+	if not _ then return nil, err, errcode end
+	local _, err, errcode = f:truncate(opt)
+	if not _ then return nil, err, errcode end
+	local _, err, errcode = f:seek('set', curpos)
+	if not _ then return nil, err, errcode end
+	return newsize
 end
 
 --filesystem operations ------------------------------------------------------
@@ -339,7 +280,7 @@ function fs.rmdir(dir, recursive)
 	end
 end
 
-function fs.pwd(path)
+function fs.cd(path)
 	if path then
 		return chdir(path)
 	else
@@ -382,6 +323,107 @@ end
 
 function fs.readlink(link)
 	return _readlink(link, 32)
+end
+
+--file attributes ------------------------------------------------------------
+
+function file.attr(f, attr)
+	return file_attr(f, attr)
+end
+
+local function attr_args(attr, deref)
+	if type(attr) == 'boolean' then --middle arg missing
+		attr, deref = nil, attr
+	end
+	if deref == nil then
+		deref = true --deref by default
+	end
+	return attr, deref
+end
+
+function fs.attr(path, ...)
+	local attr, deref = attr_args(...)
+	if attr == 'target' then
+		--NOTE: posix doesn't need a type check here, but Windows does
+		if not win or fs.is(path, 'symlink') then
+			return readlink(path)
+		else
+			return nil --no error for non-symlink files
+		end
+	end
+	local deref, val, err, errcode = fs_attr(path, attr, deref)
+	if val == nil and err then return nil, err, errcode end
+	if deref then --backend doesn't support symlink dereferencing
+		local path, err, errcode = fs.readlink(path)
+		if not path then return nil, err, errcode end
+		return fs.attr(path, attr, false)
+	else
+		return val
+	end
+end
+
+function fs.is(path, type, deref)
+	if type == 'symlink' then
+		deref = false
+	end
+	local ftype, err, errcode = fs.attr(path, 'type', deref)
+	if not type and not ftype and err == 'not_found' then
+		return false
+	elseif not type and ftype then
+		return true
+	elseif not ftype then
+		return nil, err, errcode
+	else
+		return ftype == type
+	end
+end
+
+--directory listing ----------------------------------------------------------
+
+function fs.dir(dir, dot_dirs)
+	dir = dir or '.'
+	if dot_dirs then
+		return dir_iter(dir)
+	else --wrap iterator to skip `.` and `..` entries
+		local next, dir = dir_iter(dir)
+		local function wrapped_next(dir)
+			local s, ret2, ret3
+			repeat
+				s, ret2, ret3 = next(dir)
+			until not s or (s ~= '.' and s ~= '..')
+			return s, ret2, ret3
+		end
+		return wrapped_next, dir
+	end
+end
+
+function dir.path(dir)
+	return path.combine(dir:dir(), dir:name())
+end
+
+function dir.attr(dir, ...)
+	local attr, deref = attr_args(...)
+	if attr == 'target' then
+		if dir_attr(dir, 'type', false) == 'symlink' then
+			return readlink(dir:path())
+		else
+			return nil --no error for non-symlink files
+		end
+	end
+	local deref, val, err, errcode = dir_attr(dir, attr, deref)
+	if val == nil and err then return nil, err, errcode end
+	if deref then --backend doesn't support dereferencing
+		return fs.attr(dir:path(), attr, true)
+	else
+		return val
+	end
+end
+
+function dir.is(dir, type, deref)
+	if type == 'symlink' then
+		deref = false
+	end
+	return dir:attr('type', deref) == type
 end
 
 

@@ -4,6 +4,7 @@ local pp = require'pp'
 local time = require'time'
 local win = ffi.abi'win'
 local linux = ffi.os == 'Linux'
+local osx = ffi.os == 'OSX'
 
 local test = setmetatable({}, {__newindex = function(t, k, v)
 	rawset(t, k, v)
@@ -150,11 +151,24 @@ function test.seek_size()
 	assert(pos == newpos + 1) --cur advanced
 	local pos = assert(f:seek('end'))
 	assert(pos == newpos + 1) --end updated
-	assert(f:size() == newpos + 1)
+	assert(f:attr'size' == newpos + 1)
 	assert(f:close())
 
 	assert(fs.remove(test_file))
 end
+
+--streams --------------------------------------------------------------------
+
+function test.stream()
+	local test_file = 'fs_test'
+	local f = assert(assert(fs.open(test_file, 'w')):stream('w'))
+	f:close()
+	local f = assert(assert(fs.open(test_file, 'r')):stream('r'))
+	f:close()
+	assert(fs.remove(test_file))
+end
+
+--truncate -------------------------------------------------------------------
 
 function test.truncate_seek()
 	local test_file = 'fs_test_truncate_seek'
@@ -185,181 +199,19 @@ function test.truncate_seek()
 	assert(fs.remove(test_file))
 end
 
-function test.file_time()
-	--TODO: get/set/prevent
-	local test_file = 'fs_test_time'
-	local f = assert(fs.open(test_file, 'w'))
-	pp(f:time())
-	assert(f:close())
-end
-
-function test.file_time_change()
-	local test_file = 'fs_test_time'
-	local f = assert(fs.open(test_file, 'w'))
-	local mtime = os.time() - 3600
-	local atime = os.time() - 1800
-	local btime = os.time() - 7200
-	assert(f:time{mtime = mtime, atime = atime, btime = btime})
-	local mtime1 = f:time().mtime
-	local atime1 = f:time().atime
-	local btime1 = f:time().btime
-	assert(mtime == mtime1)
-	assert(atime == atime1)
-	if win then
-		assert(btime == btime1)
-	end
-	assert(f:close())
-end
-
 function test.file_size_set()
-	--TODO: test f:size(sz) and also fs.attr(path, {size = sz})
-end
-
---streams --------------------------------------------------------------------
-
-function test.stream()
-	local test_file = 'fs_test'
-	local f = assert(assert(fs.open(test_file, 'w')):stream('w'))
-	f:close()
-	local f = assert(assert(fs.open(test_file, 'r')):stream('r'))
-	f:close()
-	assert(fs.remove(test_file))
-end
-
---directory listing ----------------------------------------------------------
-
-function test.dir()
-	local found
-	local n = 0
-	local files = {}
-	for file, d in fs.dir(nil, true) do
-		if not file then break end
-		found = found or file == 'fs_test.lua'
-		n = n + 1
-		local t = {}
-		files[file] = t
-		--these are fast to get on all platforms
-		t.type = d:type()
-		t.inode = d:attr'inode' --missing on Windows, so nil
-		--these are free to get on Windows but need a stat() call on POSIX
-		if win then
-			t.ctime = d:attr'ctime'
-			t.mtime = d:attr'mtime'
-			t.atime = d:attr'atime'
-			t.size = d:attr'size'
-		end
-		--getting all attrs is free on Windows but needs a stat() call on POSIX
-		t._all_attrs = d:attr()
-		local noval, err = d:attr'non_existent_attr'
-		assert(noval == nil) --non-existent attributes are free to get
-		assert(not err) --and they are not an error
-		--print('', d:type(), file)
-	end
-	assert(files['.'].type == 'dir')
-	assert(files['..'].type == 'dir')
-	assert(files['fs_test.lua'].type == 'file')
-	pp(files['fs_test.lua'])
-	print(string.format('  found %d dir/file entries in pwd', n))
-	assert(found, 'fs_test.lua not found in pwd')
-end
-
-function test.dir_not_found()
-	local n = 0
-	local err
-	for file, err1 in fs.dir'nonexistent_dir' do
-		if not file then
-			err = err1
-			break
-		else
-			n = n + 1
-		end
-	end
-	assert(n == 0)
-	assert(#err > 0)
-	assert(err == 'not_found')
-end
-
-function test.dir_is_file()
-	local n = 0
-	local err
-	for file, err1 in fs.dir'fs_test.lua' do
-		if not file then
-			err = err1
-			break
-		else
-			n = n + 1
-		end
-	end
-	assert(n == 0)
-	assert(#err > 0)
-	assert(err == 'not_found')
-end
-
---file attributes ------------------------------------------------------------
-
-function test.attr()
-	local testfile = 'fs_test.lua'
-	local attr = assert(fs.attr(testfile))
-	pp(attr)
-	assert(attr.type == 'file')
-	assert(attr.size > 10000)
-	assert(attr.atime)
-	assert(attr.mtime)
-	assert(linux and attr.ctime or attr.btime)
-	if not win then
-		assert(attr.inode)
-		assert(attr.uid >= 0)
-		assert(attr.gid >= 0)
-		assert(attr.perms >= 0)
-		assert(attr.nlink >= 1)
-		assert(attr.perms > 0)
-		assert(attr.blksize > 0)
-		assert(attr.blocks > 0)
-		assert(attr.dev >= 0)
-	end
-end
-
-function test.mtime() --portable
-	local testfile = 'fs_test_mtime'
-	fs.remove(testfile)
-	local f = assert(fs.open(testfile, 'w'))
-	assert(f:close())
-	local mtime1 = assert(fs.attr(testfile, 'mtime'))
-	local atime1 = assert(fs.attr(testfile, 'atime'))
-	local f = assert(fs.open(testfile, 'w'))
-	local buf = ffi.new'char[1]'
-	time.sleep(0.1)
-	f:write(buf, 1)
-	assert(f:close())
-	local mtime2 = assert(fs.attr(testfile, 'mtime'))
-	local atime2 = assert(fs.attr(testfile, 'atime'))
-	assert(mtime2 - mtime1 > 0 and mtime2 - mtime1 <= 1)
-	assert(atime1 <= mtime1) --atime is updated with delay
-	assert(atime2 <= mtime2) --atime is updated with delay
-	assert(fs.remove(testfile))
-end
-
-function test.atime() --portable but mostly disabled
-	--TODO
-end
-
-function test.btime() --Windows, OSX
-	--TODO
-end
-
-function test.ctime() --Linux only
-	--TODO
+	--TODO: test f:size(sz) and also fs.attr(path, {size=, sparse=})
 end
 
 --filesystem operations ------------------------------------------------------
 
-function test.pwd_mkdir_rmdir()
+function test.cd_mkdir_rmdir()
 	local testdir = 'fs_test_dir'
-	local pwd = assert(fs.pwd())
+	local cd = assert(fs.cd())
 	assert(fs.mkdir(testdir)) --relative paths should work
-	assert(fs.pwd(testdir))   --relative paths should work
-	assert(fs.pwd(pwd))
-	assert(fs.pwd() == pwd)
+	assert(fs.cd(testdir))   --relative paths should work
+	assert(fs.cd(cd))
+	assert(fs.cd() == cd)
 	assert(fs.rmdir(testdir)) --relative paths should work
 end
 
@@ -438,8 +290,8 @@ function test.rmdir_not_empty()
 	assert(fs.rmdir(dir1))
 end
 
-function test.pwd_not_found()
-	local ok, err = fs.pwd'fs_test_nonexistent/nonexistent'
+function test.cd_not_found()
+	local ok, err = fs.cd'fs_test_nonexistent/nonexistent'
 	assert(not ok)
 	assert(err == 'not_found')
 end
@@ -637,6 +489,159 @@ function test.mkhardlink() --hardlinks only work for files in NTFS
 	assert(fs.remove(f1))
 	assert(fs.remove(f2))
 end
+
+--[==[
+
+--file times -----------------------------------------------------------------
+
+function test.times()
+	local test_file = 'fs_test_time'
+	fs.remove'fs_test_time'
+	local f = assert(fs.open(test_file, 'w'))
+	local t = f:times()
+	assert(t.atime >= 0)
+	assert(t.mtime >= 0)
+	assert(win or t.ctime >= 0)
+	assert(linux or t.btime >= 0)
+	assert(f:close())
+end
+
+function test.times_set()
+	local test_file = 'fs_test_time'
+	local f = assert(fs.open(test_file, 'w'))
+
+	--TODO: futimes() on OSX doesn't use tv_usec
+	local frac = osx and 0 or 1/2
+	local mtime = os.time() - 3600 - frac
+	local atime = os.time() - 1800 - frac
+	local btime = os.time() - 7200 - frac
+
+	assert(f:times{mtime = mtime, atime = atime, btime = btime})
+	local mtime1 = f:times'mtime'
+	local atime1 = f:times'atime'
+	local btime1 = f:times'btime' --OSX has it but can't be changed currently
+	assert(mtime == mtime1)
+	assert(atime == atime1)
+	if win then assert(btime == btime1) end
+
+	--change only mtime, should not affect atime
+	mtime = mtime + 100
+	assert(f:times('mtime', mtime))
+	local mtime1 = f:times().mtime
+	local atime1 = f:times().atime
+	assert(mtime == mtime1)
+	assert(atime == atime1)
+
+	--change only atime, should not affect mtime
+	atime = atime + 100
+	assert(f:times{atime = atime})
+	local mtime1 = f:times'mtime'
+	local atime1 = f:times'atime'
+	assert(mtime == mtime1)
+	assert(atime == atime1)
+
+	assert(f:close())
+end
+
+--directory listing ----------------------------------------------------------
+
+function test.dir()
+	local found
+	local n = 0
+	local files = {}
+	for file, d in fs.dir() do
+		if not file then break end
+		found = found or file == 'fs_test.lua'
+		n = n + 1
+		local t = {}
+		files[file] = t
+		--these are fast to get on all platforms
+		t.type = d:attr('type', false)
+		t.inode = d:attr('inode', false) --missing on Windows, so nil
+		--these are free to get on Windows but need a stat() call on POSIX
+		if win then
+			t.btime = assert(d:attr('btime', false))
+			t.mtime = assert(d:attr('mtime', false))
+			t.atime = assert(d:attr('atime', false))
+			t.size  = assert(d:attr('size' , false))
+		end
+		--getting all attrs is free on Windows but needs a stat() call on POSIX
+		t._all_attrs = assert(d:attr(false))
+		local noval, err = d:attr('non_existent_attr', false)
+		assert(noval == nil) --non-existent attributes are free to get
+		assert(not err) --and they are not an error
+		--print('', d:attr('type', false), file)
+	end
+	assert(not files['.'])  --skipping this by default
+	assert(not files['..']) --skipping this by default
+	assert(files['fs_test.lua'].type == 'file')
+	local t = files['fs_test.lua']
+	print(string.format('  found %d dir/file entries in pwd', n))
+	assert(found, 'fs_test.lua not found in pwd')
+end
+
+function test.dir_not_found()
+	local n = 0
+	local err
+	for file, err1 in fs.dir'nonexistent_dir' do
+		if not file then
+			err = err1
+			break
+		else
+			n = n + 1
+		end
+	end
+	assert(n == 0)
+	assert(#err > 0)
+	assert(err == 'not_found')
+end
+
+function test.dir_is_file()
+	local n = 0
+	local err
+	for file, err1 in fs.dir'fs_test.lua' do
+		if not file then
+			err = err1
+			break
+		else
+			n = n + 1
+		end
+	end
+	assert(n == 0)
+	assert(#err > 0)
+	assert(err == 'not_found')
+end
+
+--file attributes ------------------------------------------------------------
+
+function test.attr()
+	local testfile = 'fs_test.lua'
+	local attr = assert(fs.attr(testfile, false))
+	pp(attr)
+	assert(attr.type == 'file')
+	assert(attr.size > 10000)
+	assert(attr.atime)
+	assert(attr.mtime)
+	assert(linux and attr.ctime or attr.btime)
+	assert(not win or attr.archive)
+	if not win then
+		assert(attr.inode)
+		assert(attr.uid >= 0)
+		assert(attr.gid >= 0)
+		assert(attr.perms >= 0)
+		assert(attr.nlink >= 1)
+		assert(attr.perms > 0)
+		assert(attr.blksize > 0)
+		assert(attr.blocks > 0)
+		assert(attr.dev >= 0)
+	end
+end
+
+function test.attr_set()
+	--TODO
+end
+
+]==]
 
 --test cmdline ---------------------------------------------------------------
 
