@@ -621,6 +621,8 @@ elseif osx then
 		int32_t tv_usec; // ignored by futimes()
 	};
 	int futimes(int fd, const struct timeval times[2]);
+	int utimes(const char *path, const struct timeval times[2]);
+	int lutimes(const char *path, const struct timeval times[2]);
 	]]
 
 	local function set_timeval(ts, t)
@@ -632,16 +634,23 @@ elseif osx then
 	--means many more LOC and more BS for setting one more integer).
 	local tv_ct = ffi.typeof'struct timeval[2]'
 	local tv
-	function futimes(f, atime, mtime)
-		tv = tv or tv_ct()
-		if not atime or not mtime then
-			atime = atime or f:attr'atime'
-			mtime = mtime or f:attr'mtime'
+	local function wrap(utimes_func, stat_func)
+		return function(arg, atime, mtime)
+			tv = tv or tv_ct()
+			if not atime or not mtime then
+				local t, err, errno = stat_func(arg)
+				if not t then return nil, err, errno end
+				atime = atime or t.atime
+				mtime = mtime or t.mtime
+			end
+			set_timeval(atime, tv[0])
+			set_timeval(mtime, tv[1])
+			return check(utimes_func(arg, tv) == 0)
 		end
-		set_timeval(atime, tv[0])
-		set_timeval(mtime, tv[1])
-		return check(C.futimes(f.fd, tv) == 0)
 	end
+	futimes = wrap(function(f, tv) return C.futimes(f.fd, tv) end, fstat)
+	utimes = wrap(C.utimes, stat)
+	lutimes = wrap(C.lutimes, lstat)
 
 end
 

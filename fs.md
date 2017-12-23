@@ -40,7 +40,6 @@ __directory listing__
 `d:close()`                                       close iterator
 `d:closed() -> true|false`                        check if iterator is closed
 `d:name() -> s`                                   dir entry's name
-`d:dosname() -> s | nil`                          dir entry's 8.3 filename (Windows)
 `d:dir() -> s`                                    dir that was passed to `fs.dir()`
 `d:path() -> s`                                   full path of the dir entry
 `d:attr([attr, ][deref]) -> t|val`                get/set dir entry attribute(s)
@@ -81,9 +80,10 @@ __name__         __win__ __osx__ __linux__ __description__
 `size         `  r       r       r         file size
 `atime        `  rw      rw      rw        last access time (seldom correct)
 `mtime        `  rw      rw      rw        last contents-change time
-`btime        `  rw      rw                creation (aka "birth") time
+`btime        `  rw      r                 creation (aka "birth") time
 `ctime        `  rw      r       r         last metadata-or-contents-change time
 `target       `  r       r       r         symlink's target (nil if not symlink)
+`dosname      `  r                         8.3 filename (Windows)
 `archive      `  rw                        archive bit (for backup programs)
 `hidden       `  rw                        hidden bit (don't show in Explorer)
 `readonly     `  rw                        read-only bit (can't open in write mode)
