@@ -40,6 +40,7 @@ __directory listing__
 `d:close()`                                       close iterator
 `d:closed() -> true|false`                        check if iterator is closed
 `d:name() -> s`                                   dir entry's name
+`d:dosname() -> s | nil`                          dir entry's 8.3 filename (Windows)
 `d:dir() -> s`                                    dir that was passed to `fs.dir()`
 `d:path() -> s`                                   full path of the dir entry
 `d:attr([attr, ][deref]) -> t|val`                get/set dir entry attribute(s)
@@ -64,8 +65,8 @@ __common paths__
 ------------------------------------------------- -------------------------------------------------
 
 __NOTE:__ The `deref` arg is `true` by default, meaning that by default,
-symlinks are followed recursively and transparently when listing directories
-and when getting or setting file attributes.
+symlinks are followed recursively and transparently where this option is
+available.
 
 __NOTE:__ All functions can fail, in which case they return
 `nil, error_message, error_code`. Functions which are listed as having no
@@ -77,11 +78,11 @@ messages are normalized, eg. `not_found` (see full list below).
 __name__         __win__ __osx__ __linux__ __description__
 ---------------- ------- ------- --------- ---------------------------------------
 `type         `  r       r       r         file type (see below)
-`size         `  rw      rw      rw        file size
+`size         `  r       r       r         file size
 `atime        `  rw      rw      rw        last access time (seldom correct)
 `mtime        `  rw      rw      rw        last contents-change time
 `btime        `  rw      rw                creation (aka "birth") time
-`ctime        `          r       r         last metadata-or-contents-change time
+`ctime        `  rw      r       r         last metadata-or-contents-change time
 `target       `  r       r       r         symlink's target (nil if not symlink)
 `archive      `  rw                        archive bit (for backup programs)
 `hidden       `  rw                        hidden bit (don't show in Explorer)
@@ -98,7 +99,9 @@ __name__         __win__ __osx__ __linux__ __description__
 `gid          `          rw      rw        group id
 `dev          `          r       r         device id containing the file
 `inode        `          r       r         inode number (int64_t)
-`nlink        `          r       r         number of hard links
+`volume       `  r                         volume serial number
+`id           `  r                         file id (int64_t)
+`nlink        `  r       r       r         number of hard links
 `rdev         `          r       r         device id (if special file)
 `blksize      `          r       r         block size for I/O
 `blocks       `          r       r         number of 512B blocks allocated
@@ -107,6 +110,8 @@ On the table above, `r` means that the attribute is read/only and `rw` means
 that the attribute can be changed. Attributes can be queried and changed
 from different contexts via `f:attr()`, `fs.attr()` and `d:attr()`.
 
+__NOTE__: File sizes and offsets are Lua numbers not 64bit ints, so they can
+hold at most 8KTB. This will change when that becomes a problem.
 
 ## File types
 
@@ -227,8 +232,6 @@ Get/set attribute(s) of open file. `attr` can be:
   * nothing/nil: get the values of all attributes in a table.
   * string: get the value of a single attribute.
   * table: set some attributes.
-
-__Tip__: to set the file size, use `f:attr{size =, size_opt=}`.
 
 ## Directory listing
 
@@ -359,4 +362,15 @@ Get temporary directory.
 ### `fs.exedir() -> path`
 
 Get the directory of the running executable.
+
+## Usage Notes
+
+Most filesystem operations are non-atomic and thus prone to race conditions
+on all platforms. This library makes no attempt at fixing that and in fact
+it ignores the issue entirely in order to provide a better API. For instance,
+in order to change only the "archive" bit of a file on Windows, the file
+attribute bits need to be read first (because the native API doesn't take a
+mask there). That's a TOCTTOU situation and there's little that can be done
+about it without sacrificing performace a great deal. Resolving a symlink or
+removing a directory recursively in userspace has similar issues.
 

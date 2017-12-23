@@ -107,10 +107,11 @@ local function table_flags(t, masks, strict)
 		local bitmask = masks[flag]
 		if strict then
 			assert(bitmask, 'invalid flag %s', tostring(flag))
-		end
-		mask = bit.bor(mask, bitmask)
-		if flag then
-			bits = bit.bor(bits, bitmask)
+		elseif bitmask then
+			mask = bit.bor(mask, bitmask)
+			if flag then
+				bits = bit.bor(bits, bitmask)
+			end
 		end
 	end
 	return bits, mask
@@ -198,7 +199,7 @@ function file.seek(f, whence, offset)
 	return file_seek(f, whence, offset)
 end
 
---truncate -------------------------------------------------------------------
+--truncate/getsize/setsize ---------------------------------------------------
 
 --get/set file size implementations in terms of f:seek() and f:truncate().
 --to be overwritten by backends if they have better ones.
@@ -256,6 +257,8 @@ function fs.mkdir(dir, recursive, ...)
 	end
 end
 
+--TODO: for Windows, this simple algorithm is not correct. On NTFS we
+--should be Moving all files to a temp folder and deleting them from there.
 function fs.rmdir(dir, recursive)
 	if recursive then
 		for file, dirobj, errcode in fs.dir(dir) do
@@ -298,7 +301,7 @@ end
 
 --symlinks -------------------------------------------------------------------
 
-local function _readlink(link, maxdepth)
+local function readlink_recursive(link, maxdepth)
 	if not fs.is(link, 'symlink') then
 		return link
 	end
@@ -318,17 +321,32 @@ local function _readlink(link, maxdepth)
 		end
 		link = path.combine(link_dir, target)
 	end
-	return _readlink(link, maxdepth - 1)
+	return readlink_recursive(link, maxdepth - 1)
 end
 
 function fs.readlink(link)
-	return _readlink(link, 32)
+	return readlink_recursive(link, 32)
 end
 
 --file attributes ------------------------------------------------------------
 
+--helper for when getting or setting some attributes requires opening a file.
+function with_open_file(path, open_opt, func, ...)
+	local f, err, errcode = fs.open(path, open_opt)
+	if not f then return nil, err, errcode end
+	local ret, err, errcode = func(f, ...)
+	if ret == nil and err then return nil, err, errcode end
+	local ok, err, errcode = f:close()
+	if not ok then return nil, err, errcode end
+	return ret
+end
+
 function file.attr(f, attr)
-	return file_attr(f, attr)
+	if type(attr) == 'table' then
+		return file_attr_set(f, attr)
+	else
+		return file_attr_get(f, attr)
+	end
 end
 
 local function attr_args(attr, deref)
@@ -351,14 +369,10 @@ function fs.attr(path, ...)
 			return nil --no error for non-symlink files
 		end
 	end
-	local deref, val, err, errcode = fs_attr(path, attr, deref)
-	if val == nil and err then return nil, err, errcode end
-	if deref then --backend doesn't support symlink dereferencing
-		local path, err, errcode = fs.readlink(path)
-		if not path then return nil, err, errcode end
-		return fs.attr(path, attr, false)
+	if type(attr) == 'table' then
+		return fs_attr_set(path, attr, deref)
 	else
-		return val
+		return fs_attr_get(path, attr, deref)
 	end
 end
 
@@ -401,15 +415,36 @@ function dir.path(dir)
 	return path.combine(dir:dir(), dir:name())
 end
 
+function dir.dosname(dir)
+	return nil
+end
+
+local function dir_is_symlink(dir)
+	return dir_attr_get(dir, 'type', false) == 'symlink'
+end
+
 function dir.attr(dir, ...)
 	local attr, deref = attr_args(...)
 	if attr == 'target' then
-		if dir_attr(dir, 'type', false) == 'symlink' then
+		if dir_is_symlink(dir) then
 			return readlink(dir:path())
 		else
 			return nil --no error for non-symlink files
 		end
 	end
+	if type(attr) == 'table' then
+		return fs_attr_set(dir:path(), attr, deref)
+	elseif not attr or (deref and dir_is_symlink(dir)) then
+		return fs_attr_get(dir:path(), attr, deref)
+	else
+		local val, found = dir_attr_get(dir, dir:path(), attr)
+		if found == false then --attr not found in state
+			return fs_attr_get(dir:path(), attr)
+		else
+			return val
+		end
+	end
+	--[[
 	local deref, val, err, errcode = dir_attr(dir, attr, deref)
 	if val == nil and err then return nil, err, errcode end
 	if deref then --backend doesn't support dereferencing
@@ -417,6 +452,7 @@ function dir.attr(dir, ...)
 	else
 		return val
 	end
+	]]
 end
 
 function dir.is(dir, type, deref)

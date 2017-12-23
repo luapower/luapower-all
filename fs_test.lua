@@ -127,7 +127,7 @@ function test.open_modes()
 	assert(fs.remove(test_file))
 end
 
-function test.seek_size()
+function test.seek()
 	local test_file = 'fs_test'
 	local f = assert(fs.open(test_file, 'w'))
 
@@ -151,7 +151,7 @@ function test.seek_size()
 	assert(pos == newpos + 1) --cur advanced
 	local pos = assert(f:seek('end'))
 	assert(pos == newpos + 1) --end updated
-	assert(f:attr'size' == newpos + 1)
+	assert(f:seek'end' == newpos + 1)
 	assert(f:close())
 
 	assert(fs.remove(test_file))
@@ -490,15 +490,13 @@ function test.mkhardlink() --hardlinks only work for files in NTFS
 	assert(fs.remove(f2))
 end
 
---[==[
-
 --file times -----------------------------------------------------------------
 
 function test.times()
 	local test_file = 'fs_test_time'
 	fs.remove'fs_test_time'
 	local f = assert(fs.open(test_file, 'w'))
-	local t = f:times()
+	local t = f:attr()
 	assert(t.atime >= 0)
 	assert(t.mtime >= 0)
 	assert(win or t.ctime >= 0)
@@ -512,31 +510,36 @@ function test.times_set()
 
 	--TODO: futimes() on OSX doesn't use tv_usec
 	local frac = osx and 0 or 1/2
-	local mtime = os.time() - 3600 - frac
-	local atime = os.time() - 1800 - frac
 	local btime = os.time() - 7200 - frac
+	local mtime = os.time() - 3600 - frac
+	local ctime = os.time() - 2800 - frac
+	local atime = os.time() - 1800 - frac
 
-	assert(f:times{mtime = mtime, atime = atime, btime = btime})
-	local mtime1 = f:times'mtime'
-	local atime1 = f:times'atime'
-	local btime1 = f:times'btime' --OSX has it but can't be changed currently
+	assert(f:attr{btime = btime, mtime = mtime, ctime = ctime, atime = atime})
+	local btime1 = f:attr'btime' --OSX has it but can't be changed currently
+	local mtime1 = f:attr'mtime'
+	local ctime1 = f:attr'ctime'
+	local atime1 = f:attr'atime'
 	assert(mtime == mtime1)
 	assert(atime == atime1)
-	if win then assert(btime == btime1) end
+	if win then
+		assert(btime == btime1)
+		assert(ctime == ctime1)
+	end
 
 	--change only mtime, should not affect atime
 	mtime = mtime + 100
-	assert(f:times('mtime', mtime))
-	local mtime1 = f:times().mtime
-	local atime1 = f:times().atime
+	assert(f:attr{mtime = mtime})
+	local mtime1 = f:attr().mtime
+	local atime1 = f:attr().atime
 	assert(mtime == mtime1)
 	assert(atime == atime1)
 
 	--change only atime, should not affect mtime
 	atime = atime + 100
-	assert(f:times{atime = atime})
-	local mtime1 = f:times'mtime'
-	local atime1 = f:times'atime'
+	assert(f:attr{atime = atime})
+	local mtime1 = f:attr'mtime'
+	local atime1 = f:attr'atime'
 	assert(mtime == mtime1)
 	assert(atime == atime1)
 
@@ -640,8 +643,6 @@ end
 function test.attr_set()
 	--TODO
 end
-
-]==]
 
 --test cmdline ---------------------------------------------------------------
 

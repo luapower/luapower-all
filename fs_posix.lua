@@ -1,3 +1,4 @@
+--@go x:\tools\putty.exe -load cosmin@ubuntu14_64 -m 'cd luapower & ./luajit fs_test.lua'
 
 --portable filesystem API for LuaJIT / Linux & OSX backend
 --Written by Cosmin Apreutesei. Public Domain.
@@ -34,6 +35,19 @@ end
 check = check_errno
 
 local cbuf = mkbuf'char'
+
+local function filemode(perms, cur_perms)
+	if type(perms) == 'string' then
+		if perms:find'^[0-7]+$' then
+			return tonumber(perms, 8)
+		else
+			assert(not perms:find'[^%+%-ugorwx]', 'invalid permissions')
+			--TODO: parse perms
+			assert(false)
+		end
+	end
+	return perms
+end
 
 --open/close -----------------------------------------------------------------
 
@@ -171,7 +185,7 @@ end
 function file_seek(f, whence, offset)
 	local offs = C.lseek(f.fd, offset, whence)
 	if offs == -1 then return check() end
-	return offs
+	return tonumber(offs)
 end
 
 
@@ -227,9 +241,9 @@ else
 
 	function fallocate(fd, size, emulate)
 		if emulate then
-			return check(C.posix_fallocate64(f.fd, 0, size) == 0)
+			return check(C.posix_fallocate64(fd, 0, size) == 0)
 		else
-			return check(C.fallocate64(f.fd, 0, 0, size) == 0)
+			return check(C.fallocate64(fd, 0, 0, size) == 0)
 		end
 	end
 
@@ -383,7 +397,7 @@ if osx then
 else
 
 	function fs.exedir()
-
+		--
 	end
 
 end
@@ -466,96 +480,90 @@ int lstat64(const char *path, struct stat *buf);
 ]]
 end
 
-local stat, lstat, fstat
-do
-	local file_types = {
-		[0xc000] = 'socket',
-		[0xa000] = 'symlink',
-		[0x8000] = 'file',
-		[0x6000] = 'blockdev',
-		[0x2000] = 'chardev',
-		[0x4000] = 'dir',
-		[0x1000] = 'pipe',
-	}
-	local function st_type(mode)
-		local type = bit.band(mode, 0xf000)
-		return file_types[type]
-	end
+local fstat, stat, lstat
 
-	local function st_perms(mode)
-		return bit.band(mode, bit.bnot(0xf000))
-	end
+local file_types = {
+	[0xc000] = 'socket',
+	[0xa000] = 'symlink',
+	[0x8000] = 'file',
+	[0x6000] = 'blockdev',
+	[0x2000] = 'chardev',
+	[0x4000] = 'dir',
+	[0x1000] = 'pipe',
+}
+local function st_type(mode)
+	local type = bit.band(mode, 0xf000)
+	return file_types[type]
+end
 
-	local function st_time(s, ns)
-		return tonumber(s) + tonumber(ns) * 1e-9
-	end
+local function st_perms(mode)
+	return bit.band(mode, bit.bnot(0xf000))
+end
 
-	local stat_decoders = {
-		type    = function(st) return st_type(st.st_mode) end,
-		dev     = function(st) return tonumber(st.st_dev) end,
-		inode   = function(st) return st.st_ino end, --unfortunately, 64bit inode
-		nlink   = function(st) return tonumber(st.st_nlink) end,
-		perms   = function(st) return st_perms(st.st_mode) end,
-		uid     = function(st) return st.st_uid end,
-		gid     = function(st) return st.st_gid end,
-		rdev    = function(st) return tonumber(st.st_rdev) end,
-		size    = function(st) return tonumber(st.st_size) end,
-		blksize = function(st) return tonumber(st.st_blksize) end,
-		blocks  = function(st) return tonumber(st.st_blocks) end,
-		atime   = function(st) return st_time(st.st_atime, st.st_atime_nsec) end,
-		mtime   = function(st) return st_time(st.st_mtime, st.st_mtime_nsec) end,
-		ctime   = function(st) return st_time(st.st_ctime, st.st_ctime_nsec) end,
-		btime   = osx and
-					 function(st) return st_time(st.st_btime, st.st_btime_nsec) end,
-	}
+local function st_time(s, ns)
+	return tonumber(s) + tonumber(ns) * 1e-9
+end
 
-	local function stat_attr(st, attr)
+local stat_getters = {
+	type    = function(st) return st_type(st.st_mode) end,
+	dev     = function(st) return tonumber(st.st_dev) end,
+	inode   = function(st) return st.st_ino end, --unfortunately, 64bit inode
+	nlink   = function(st) return tonumber(st.st_nlink) end,
+	perms   = function(st) return st_perms(st.st_mode) end,
+	uid     = function(st) return st.st_uid end,
+	gid     = function(st) return st.st_gid end,
+	rdev    = function(st) return tonumber(st.st_rdev) end,
+	size    = function(st) return tonumber(st.st_size) end,
+	blksize = function(st) return tonumber(st.st_blksize) end,
+	blocks  = function(st) return tonumber(st.st_blocks) end,
+	atime   = function(st) return st_time(st.st_atime, st.st_atime_nsec) end,
+	mtime   = function(st) return st_time(st.st_mtime, st.st_mtime_nsec) end,
+	ctime   = function(st) return st_time(st.st_ctime, st.st_ctime_nsec) end,
+	btime   = osx and
+				 function(st) return st_time(st.st_btime, st.st_btime_nsec) end,
+}
+
+local stat_ct = ffi.typeof'struct stat'
+local st
+local function wrap(stat_func)
+	return function(arg, attr)
+		st = st or stat_ct()
+		local ok = stat_func(arg, st) == 0
+		if not ok then return check() end
 		if attr then
-			local decode = stat_decoders[attr]
-			return decode and decode(st)
+			local get = stat_getters[attr]
+			return get and get(st)
 		else
 			local t = {}
-			for k, decode in pairs(stat_decoders) do
-				t[k] = decode(st)
+			for k, get in pairs(stat_getters) do
+				t[k] = get(st)
 			end
 			return t
 		end
 	end
-
-	local stat_ct = ffi.typeof'struct stat'
-	local st
-
-	local function wrap(stat_func)
-		return function(arg, attr)
-			stat_buf = stat_buf or stat_ct()
-			local ok = stat_func(arg, stat_buf) == 0
-			if not ok then return check() end
-			return stat_attr(stat_buf, attr)
-		end
-	end
-	if linux then
-		local void = ffi.typeof'void*'
-		local int = ffi.typeof'int'
-		stat = wrap(function(path, buf)
-			return C.syscall(x64 and 4 or 195,
-				ffi.cast(void, path), ffi.cast(void, buf))
-		end)
-		lstat = wrap(function(path, buf)
-			return C.syscall(x64 and 6 or 196,
-				ffi.cast(void, path), ffi.cast(void, buf))
-		end)
-		fstat = wrap(function(fd, buf)
-			return C.syscall(x64 and 5 or 197,
-				ffi.cast(int, fd), ffi.cast(void, buf))
-		end)
-	elseif osx then
-		stat = wrap(C.stat64)
-		lstat = wrap(C.lstat64)
-		fstat = wrap(C.fstat64)
-	end
+end
+if linux then
+	local void = ffi.typeof'void*'
+	local int = ffi.typeof'int'
+	fstat = wrap(function(f, st)
+		return C.syscall(x64 and 5 or 197,
+			ffi.cast(int, f.fd), ffi.cast(void, st))
+	end)
+	stat = wrap(function(path, st)
+		return C.syscall(x64 and 4 or 195,
+			ffi.cast(void, path), ffi.cast(void, st))
+	end)
+	lstat = wrap(function(path, st)
+		return C.syscall(x64 and 6 or 196,
+			ffi.cast(void, path), ffi.cast(void, st))
+	end)
+elseif osx then
+	fstat = wrap(function(f, st) return C.fstat64(f.fd, st) end)
+	stat = wrap(C.stat64)
+	lstat = wrap(C.lstat64)
 end
 
-local fsettimes
+local utimes, futimes, lutimes
 
 if linux then
 
@@ -565,6 +573,7 @@ if linux then
 		long   tv_nsec;
 	};
 	int futimens(int fd, const struct timespec times[2]);
+	int utimensat(const char *path, const struct timespec times[2], int flags);
 	]]
 
 	local UTIME_OMIT = bit.lshift(1,30)-2
@@ -579,14 +588,29 @@ if linux then
 		end
 	end
 
-	local times_ct = ffi.typeof'struct timespec[2]'
-	local times
+	local ts_ct = ffi.typeof'struct timespec[2]'
+	local ts
+	function futimes(f, atime, mtime)
+		ts = ts or ts_ct()
+		set_timespec(atime, ts[0])
+		set_timespec(mtime, ts[1])
+		return check(C.futimens(f.fd, ts) == 0)
+	end
 
-	function fsettimes(f, atime, mtime)
-		times = times or times_ct()
-		set_timespec(atime, times[0])
-		set_timespec(mtime, times[1])
-		return C.futimens(f.fd, times) == 0
+	function utimes(path, atime, mtime)
+		ts = ts or ts_ct()
+		set_timespec(atime, ts[0])
+		set_timespec(mtime, ts[1])
+		return check(C.utimensat(path, ts, 0) == 0)
+	end
+
+	local AT_SYMLINK_NOFOLLOW = 0x100
+
+	function lutimes(path, atime, mtime)
+		ts = ts or ts_ct()
+		set_timespec(atime, ts[0])
+		set_timespec(mtime, ts[1])
+		return check(C.utimensat(path, ts, AT_SYMLINK_NOFOLLOW) == 0)
 	end
 
 elseif osx then
@@ -604,20 +628,19 @@ elseif osx then
 		t.tv_usec = (ts - math.floor(ts)) * 1e7 --apparently ignored
 	end
 
-	local times_ct = ffi.typeof'struct timeval[2]'
-	local times
-
 	--TODO: find a way to change btime too (probably with CF or Cocoa, which
 	--means many more LOC and more BS for setting one more integer).
-	function fsettimes(f, atime, mtime)
-		times = times or times_ct()
+	local tv_ct = ffi.typeof'struct timeval[2]'
+	local tv
+	function futimes(f, atime, mtime)
+		tv = tv or tv_ct()
 		if not atime or not mtime then
 			atime = atime or f:attr'atime'
 			mtime = mtime or f:attr'mtime'
 		end
-		set_timeval(atime, times[0])
-		set_timeval(mtime, times[1])
-		return C.futimes(f.fd, times) == 0
+		set_timeval(atime, tv[0])
+		set_timeval(mtime, tv[1])
+		return check(C.futimes(f.fd, tv) == 0)
 	end
 
 end
@@ -632,28 +655,20 @@ function relperms(perms) --check if a perms string is relative
 	return type(perms) == 'string' and perms:find'[%+%-]'
 end
 
-function filemode(perms, cur_perms)
-	if type(perms) == 'string' then
-		if perms:find'^[0-7]+$' then
-			perms = tonumber(perms, 8)
-		else
-			assert(not perms:find'[^%+%-ugorwx]', 'invalid permissions')
-			--TODO: parse perms
+local function wrap(chmod_func, stat_func)
+	return function(arg, perms)
+		local cur_perms = 0
+		if relperms(perms) then
+			local perms, err, errno = stat_func(arg, 'perms')
+			if not perms then return nil, err, errno end
+			cur_perms = perms
 		end
-	else
-		return perms
+		return chmod_func(f.fd, filemode(perms, cur_perms)) == 0
 	end
 end
-
-local function fchmod(f, perms)
-	local cur_perms = 0
-	if relperms(perms) then
-		local ok, st = fstat(f.fd)
-		if not ok then return false end
-		cur_perms = stat_attr(st, 'perms')
-	end
-	return C.fchmod(f.fd, filemode(perms, cur_perms)) == 0
-end
+local fchmod = wrap(function(f, mode) return C.fchmod(f.fd, mode) end, fstat)
+local chmod = wrap(C.chmod, stat)
+local lchmod = wrap(C.lchmod, lstat)
 
 cdef[[
 int fchown(int fd,           uid_t owner, gid_t group);
@@ -661,101 +676,48 @@ int  chown(const char *path, uid_t owner, gid_t group);
 int lchown(const char *path, uid_t owner, gid_t group);
 ]]
 
-local function fchown(f, uid, gid)
-	return C.fchown(f.fd, uid or -1, gid or -1) == 0
+local function wrap(chown_func)
+	return function(arg, uid, gid)
+		return chown_func(arg, uid or -1, gid or -1) == 0
+	end
+end
+local fchown = wrap(function(f, uid, gid) return C.fchown(f.fd, uid, gid) end)
+local chown = wrap(C.chown)
+local lchown = wrap(C.lchown)
+
+file_attr_get = fstat
+
+function fs_attr_get(path, attr, deref)
+	local stat = deref and stat or lstat
+	return stat(path, attr)
 end
 
-local changeable_attrs = {
-	size = true,
-	sparse = true, --option for setting size
-	uid = true,
-	gid = true,
-	perms = true,
-	atime = true,
-	mtime = true,
-}
-function file.attr(f, t)
-	if type(attr) == 'table' then
-		for k in pairs(t) do
-			assert(changeable_attrs[k], 'invalid attr %s', tostring(k))
-		end
-		if t.size then
-			local ok, err, errno = fsetsize(f, t.size, t.sparse)
-		end
+local function wrap(chmod_func, chown_func, utimes_func)
+	return function(arg, t)
+		local ok, err, errno
 		if t.perms then
-			local ok = fchmod(f, perms)
+			ok, err, errno = chmod_func(arg, t.perms)
+			if not ok then return nil, err, errno end
 		end
 		if t.uid or t.gid then
-			local ok = fchown(f, t.uid, t.gid)
+			ok, err, errno = chown_func(arg, t.uid, t.gid)
+			if not ok then return nil, err, errno end
 		end
 		if t.atime or t.mtime then
-			local ok = fsettimes(f, t.atime, t.mtime)
+			ok, err, errno = utimes_func(arg, t.atime, t.mtime)
 		end
-	else
-		local ok, st = fstat(f.fd)
-		if not ok then return check() end
-		return stat_attr(st, t)
+		return ok --returns nil without err if no attr was set
 	end
 end
 
-local set_attrs --fwd. decl.
+file_attr_set = wrap(fchmod, fchown, futimes)
 
-function fs_attr(path, attr, deref)
-	if type(attr) == 'table' then --set attrs
-		return set_attrs(path, attr, deref)
-	end
+fs_attr_set_deref = wrap(chmod, chown, utimes)
+fs_attr_set_symlink = wrap(lchmod, lchown, lutimes)
 
-	local decode
-	if attr then
-		decode = stat_decoders[attr]
-		if not decode then return nil end
-	end
-
-	local stat = deref and stat or lstat
-	local ok, st = stat(path)
-	if not ok then return check() end
-
-	if not attr then
-		local t = {}
-		for k, decode in pairs(stat_decoders) do
-			t[k] = decode(st)
-		end
-		return false, t
-	else
-		return false, decode(st)
-	end
-end
-
-function set_attrs(path, t, deref)
-	for k in pairs(t) do
-		assert(changeable_attrs[k], 'invalid attr %s', tostring(k))
-	end
-	if t.size then
-		--NOTE: we don't bind/use truncate64() because we want to fallocate().
-		local f,e,c = fs.open(path, 'r+')
-		if not f then return nil,e,c end
-		local _,e,c = f:size(t.size, t.sparse)
-		if not _ then f:close(); return nil,e,c end
-		local _,e,c = f:close()
-		if not _ then return nil,e,c end
-	end
-	local stat = deref and stat or lstat
-	if t.uid or t.gid then
-		--
-	end
-	if t.perms then
-		local cur_perms = 0
-		if relperms(t.perms) then
-			local ok, st = stat(path)
-			if not ok then return check() end
-			cur_perms = stat_attr(st, 'perms')
-		end
-		local chmod = deref and C.chmod or C.lchmod
-		local ok = chmod(path, filemode(t.perms, cur_perms))
-	end
-	if t.atime or t.mtime then --set times last to avoid messing atime
-
-	end
+function fs_attr_set(path, t, deref)
+	local set = deref and fs_attr_set_deref or fs_attr_set_symlink
+	return set(path, t)
 end
 
 --directory listing ----------------------------------------------------------
@@ -882,22 +844,21 @@ local dt_names = {
 	[DT_UNKNOWN] = 'unknown',
 }
 
-function dir_attr(dir, attr, deref)
-	deref = deref and dir_attr(dir, 'type', false) == 'symlink'
+function dir_attr_get(dir, attr)
 	if attr == 'type' and dir._dentry.d_type == DT_UNKNOWN then
 		--some filesystems (eg. VFAT) require this extra call to get the type.
-		local type, err, errcode = fs.attr(dir:path(), 'type', false)
+		local type, err, errcode = lstat(dir:path(), 'type')
 		if not type then
 			return false, nil, err, errcode
 		end
 		local dt = dt_types[type]
 		dir._dentry.d_type = dt --cache it
 	end
-	if not deref and attr == 'type' then
-		return false, dt_names[dir._dentry.d_type]
-	elseif not deref and attr == 'inode' then
-		return false, dir._dentry.d_ino
-	else --deref is true, or attr that is not in dirent, or get/set attr table
-		return false, fs.attr(dir:path(), attr, deref)
+	if attr == 'type' then
+		return dt_names[dir._dentry.d_type]
+	elseif attr == 'inode' then
+		return dir._dentry.d_ino
+	else
+		return nil, false
 	end
 end
