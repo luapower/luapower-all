@@ -1,4 +1,3 @@
---@go x:\tools\putty.exe -load cosmin@ubuntu14_64 -m 'cd luapower & ./luajit fs_test.lua'
 
 --portable filesystem API for LuaJIT / Linux & OSX backend
 --Written by Cosmin Apreutesei. Public Domain.
@@ -318,7 +317,7 @@ function getcwd()
 	end
 end
 
-function remove(path)
+function rmfile(path)
 	return check(C.unlink(path) == 0)
 end
 
@@ -757,19 +756,33 @@ struct dirent *readdir(DIR *dirp) asm("readdir%s");
 int closedir(DIR *dirp);
 ]], linux and '64' or osx and '$INODE64'))
 
+dir_ct = ffi.typeof[[
+	struct {
+		DIR *_dirp;
+		struct dirent* _dentry;
+		int  _errno;
+		int  _dirlen;
+		char _dir[?];
+	}
+]]
+
 function dir.close(dir)
 	if dir:closed() then return end
 	local ok = C.closedir(dir._dirp) == 0
-	if ok then dir._dirp = nil end
+	dir._dirp = nil --ignore failure, prevent double-close
+	ffi.gc(dir, nil)
 	return check(ok)
+end
+
+function dir_ready(dir)
+	return dir._dentry ~= nil
 end
 
 function dir.closed(dir)
 	return dir._dirp == nil
 end
 
-function dir.name(dir)
-	if dir:closed() then return nil end
+function dir_name(dir)
 	return ffi.string(dir._dentry.d_name)
 end
 
@@ -800,20 +813,10 @@ function dir.next(dir)
 	end
 end
 
-dir_ct = ffi.typeof[[
-	struct {
-		DIR *_dirp;
-		struct dirent* _dentry;
-		int  _errno;
-		int  _dirlen;
-		char _dir[?];
-	}
-]]
-
 function dir_iter(path)
 	local dir = dir_ct(#path)
 	dir._dirlen = #path
-	ffi.copy(dir._dir, path)
+	ffi.copy(dir._dir, path, #path)
 	dir._dirp = C.opendir(path)
 	if dir._dirp == nil then
 		dir._errno = ffi.errno()

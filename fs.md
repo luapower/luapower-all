@@ -49,9 +49,8 @@ __file attributes__
 `fs.is(path, [type], [deref]) -> true|false`      check if file exists or is of a certain type
 __filesystem operations__
 `fs.mkdir(path, [recursive], [perms])`            make directory
-`fs.rmdir(path, [recursive])`                     remove directory
 `fs.cd([path]) -> path`                           get/set current directory
-`fs.remove(path, [recursive])`                    remove file (or directory recursively)
+`fs.remove(path, [recursive])`                    remove file or directory (recursively)
 `fs.move(path, newpath, [opt])`                   rename/move file on the same filesystem
 __symlinks & hardlinks__
 `fs.mksymlink(symlink, path, is_dir)`             create a symbolic link for a file or dir
@@ -135,7 +134,7 @@ __message__          __description__
 `not_found`          file/dir/path not found
 `access_denied`      access denied
 `already_exists`     file/dir already exists
-`not_empty`          dir not empty (eg. for rmdir())
+`not_empty`          dir not empty (eg. for remove())
 `io_error`           I/O error
 `disk_full`          no space left on device
 -------------------- -----------------------------------------------------------
@@ -153,10 +152,12 @@ Open/create a file for reading and/or writing. The second arg can be a string:
 `w+`    open and trucate or create; allow reading and writing
 ------- ------------------------------------------------------------------------
 
-... or an options table with platform-specific fields which represent
-OR-ed flags must be given either as `'foo bar ...'`, `{foo=true, bar=true}`
-or `{'foo', 'bar'}`, eg. `{sharing = 'read write'}` sets sharing to
-`FILE_SHARE_READ | FILE_SHARE_WRITE`. All flags are documented in the code.
+... or an options table with platform-specific options which represent
+OR-ed bitmask flags which must be given either as `'foo bar ...'`,
+`{foo=true, bar=true}` or `{'foo', 'bar'}`, eg. `{sharing = 'read write'}`
+sets the `dwShareMode` argument of `CreateFile()` to
+`FILE_SHARE_READ | FILE_SHARE_WRITE` on Windows.
+All fields and flags are documented in the code.
 
 __field__      __OS__     __reference__                __default__
 -------------- ---------- ---------------------------- ------------------
@@ -293,7 +294,7 @@ attribute is the type of the target, so it will never be `'symlink'`.
 Some attributes for directory entries are free to get (but not for symlinks
 when `deref=true`) meaning that they don't require a system call for each
 file, notably `type` on all platforms, `atime`, `mtime`, `btime`, `size`
-on Windows and `inode` on Linux and OSX.
+and `dosname` on Windows and `inode` on Linux and OSX.
 
 ### `d:is(type, [deref]) -> true|false`
 
@@ -315,17 +316,13 @@ Check if file exists or if it is of a certain type.
 
 Make directory.
 
-### `fs.rmdir(path, [recursive])`
-
-Remove directory, which must be empty, unless `recursive=true`.
-
 ### `fs.cd([path]) -> path`
 
 Get/set current directory.
 
 ### `fs.remove(path, [recursive])`
 
-Remove a file (or directory recursively if `recursive=true`).
+Remove a file or directory (recursively if `recursive=true`).
 
 ### `fs.move(path, newpath, [opt])`
 
@@ -367,7 +364,7 @@ Get the directory of the running executable.
 
 Most filesystem operations are non-atomic and thus prone to race conditions
 on all platforms. This library makes no attempt at fixing that and in fact
-it ignores the issue entirely in order to provide a better API. For instance,
+it ignores the issue entirely in order to provide a simpler API. For instance,
 in order to change only the "archive" bit of a file on Windows, the file
 attribute bits need to be read first (because the native API doesn't take a
 mask there). That's a TOCTTOU situation and there's little that can be done

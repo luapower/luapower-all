@@ -63,7 +63,7 @@ local error_classes = {
 	[5] = 'io_error', --EIO, readlink()
 	[17] = 'already_exists', --EEXIST, open(), mkdir()
 	[20] = 'not_found', --ENOTDIR, opendir()
-	[21] = 'access_denied', --EISDIR, unlink()
+	--[21] = 'access_denied', --EISDIR, unlink()
 	[linux and 39 or osx and 66 or ''] = 'not_empty',
 		--ENOTEMPTY, rmdir()
 	[28] = 'disk_full', --ENOSPC: fallocate()
@@ -257,29 +257,57 @@ function fs.mkdir(dir, recursive, ...)
 	end
 end
 
+local function remove(path)
+	local type = fs.attr(path, 'type', false)
+	if type == 'dir' or (win and type == 'symlink'
+		and fs.is(path, 'dir'))
+	then
+		return rmdir(path)
+	end
+	return rmfile(path)
+end
+
 --TODO: for Windows, this simple algorithm is not correct. On NTFS we
---should be Moving all files to a temp folder and deleting them from there.
-function fs.rmdir(dir, recursive)
+--should be moving all files to a temp folder and deleting them from there.
+local function rmdir_recursive(dir)
+	for file, d, errcode in fs.dir(dir) do
+		if not file then
+			return file, d, errcode
+		end
+		local filepath = path.combine(dir, file)
+		local ok, err, errcode
+		local realtype = d:attr('type', false)
+		if realtype == 'dir' then
+			ok, err, errcode = rmdir_recursive(filepath)
+		elseif win and realtype == 'symlink' and fs.is(filepath, 'dir') then
+			ok, err, errcode = rmdir(filepath)
+		else
+			ok, err, errcode = rmfile(filepath)
+		end
+		if not ok then
+			d:close()
+			return ok, err, errcode
+		end
+	end
+	return rmdir(dir)
+end
+
+function fs.remove(dirfile, recursive)
 	if recursive then
-		for file, dirobj, errcode in fs.dir(dir) do
-			if not file then
-				return file, dirobj, errcode
-			end
-			local filepath = path.combine(dir, file)
-			local ok, err, errcode
-			if dirobj:is'dir' then
-				ok, err, errcode = fs.rmdir(filepath, true)
-			else
-				ok, err, errcode = fs.remove(filepath)
-			end
-			if not ok then
-				dirobj:close()
-				return ok, err, errcode
+		--not recursing if the dir is a symlink, unless it has an endsep!
+		if not path.endsep(dirfile) then
+			local type, err, errcode = fs.attr(dirfile, 'type', false)
+			if not type then return nil, err, errcode end
+			if type == 'symlink' then
+				if win and fs.is(dirfile, 'dir') then
+					return rmdir(dirfile)
+				end
+				return rmfile(dirfile)
 			end
 		end
-		return fs.rmdir(dir)
+		return rmdir_recursive(dirfile)
 	else
-		return rmdir(dir)
+		return remove(dirfile)
 	end
 end
 
@@ -288,14 +316,6 @@ function fs.cd(path)
 		return chdir(path)
 	else
 		return getcwd()
-	end
-end
-
-function fs.remove(path, recursive)
-	if recursive and fs.is(path, 'dir') then
-		return fs.rmdir(path, true)
-	else
-		return remove(path)
 	end
 end
 
@@ -329,17 +349,6 @@ function fs.readlink(link)
 end
 
 --file attributes ------------------------------------------------------------
-
---helper for when getting or setting some attributes requires opening a file.
-function with_open_file(path, open_opt, func, ...)
-	local f, err, errcode = fs.open(path, open_opt)
-	if not f then return nil, err, errcode end
-	local ret, err, errcode = func(f, ...)
-	if ret == nil and err then return nil, err, errcode end
-	local ok, err, errcode = f:close()
-	if not ok then return nil, err, errcode end
-	return ret
-end
 
 function file.attr(f, attr)
 	if type(attr) == 'table' then
@@ -394,6 +403,11 @@ end
 
 --directory listing ----------------------------------------------------------
 
+local function dir_check(dir)
+	assert(not dir:closed(), 'dir closed')
+	assert(dir_ready(dir), 'dir not ready')
+end
+
 function fs.dir(dir, dot_dirs)
 	dir = dir or '.'
 	if dot_dirs then
@@ -401,11 +415,16 @@ function fs.dir(dir, dot_dirs)
 	else --wrap iterator to skip `.` and `..` entries
 		local next, dir = dir_iter(dir)
 		local function wrapped_next(dir)
-			local s, ret2, ret3
-			repeat
-				s, ret2, ret3 = next(dir)
-			until not s or (s ~= '.' and s ~= '..')
-			return s, ret2, ret3
+			while true do
+				local file, err, errcode = next(dir)
+				if file == nil then
+					return nil
+				elseif not file then
+					return false, err, errcode
+				elseif file ~= '.' and file ~= '..' then
+					return file, dir
+				end
+			end
 		end
 		return wrapped_next, dir
 	end
@@ -415,8 +434,9 @@ function dir.path(dir)
 	return path.combine(dir:dir(), dir:name())
 end
 
-function dir.dosname(dir)
-	return nil
+function dir.name(dir)
+	dir_check(dir)
+	return dir_name(dir)
 end
 
 local function dir_is_symlink(dir)
@@ -424,6 +444,7 @@ local function dir_is_symlink(dir)
 end
 
 function dir.attr(dir, ...)
+	dir_check(dir)
 	local attr, deref = attr_args(...)
 	if attr == 'target' then
 		if dir_is_symlink(dir) then
@@ -437,22 +458,13 @@ function dir.attr(dir, ...)
 	elseif not attr or (deref and dir_is_symlink(dir)) then
 		return fs_attr_get(dir:path(), attr, deref)
 	else
-		local val, found = dir_attr_get(dir, dir:path(), attr)
+		local val, found = dir_attr_get(dir, attr)
 		if found == false then --attr not found in state
 			return fs_attr_get(dir:path(), attr)
 		else
 			return val
 		end
 	end
-	--[[
-	local deref, val, err, errcode = dir_attr(dir, attr, deref)
-	if val == nil and err then return nil, err, errcode end
-	if deref then --backend doesn't support dereferencing
-		return fs.attr(dir:path(), attr, true)
-	else
-		return val
-	end
-	]]
 end
 
 function dir.is(dir, type, deref)

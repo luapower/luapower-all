@@ -577,6 +577,35 @@ return {
 				}
 			}
 		},
+		fs={
+			fs={
+				mdeps={
+					ffi=true,
+					fs_common=true,
+					fs_posix=true
+				}
+			},
+			fs_common={
+				mdeps={
+					bit=true,
+					ffi=true,
+					path=true
+				}
+			},
+			fs_posix={
+				mdeps={
+					bit=true,
+					ffi=true,
+					fs_common=true
+				}
+			},
+			fs_stdio={
+				loaderr='./fs_stdio.lua:7: attempt to call global \'cdef\' (a nil value)'
+			},
+			fs_win={
+				loaderr='platform not Windows'
+			}
+		},
 		genx={
 			genx={
 				ffi_deps={
@@ -2740,6 +2769,35 @@ return {
 				mdeps={
 					ffi=true
 				}
+			}
+		},
+		fs={
+			fs={
+				mdeps={
+					ffi=true,
+					fs_common=true,
+					fs_posix=true
+				}
+			},
+			fs_common={
+				mdeps={
+					bit=true,
+					ffi=true,
+					path=true
+				}
+			},
+			fs_posix={
+				mdeps={
+					bit=true,
+					ffi=true,
+					fs_common=true
+				}
+			},
+			fs_stdio={
+				loaderr='./fs_stdio.lua:7: attempt to call global \'cdef\' (a nil value)'
+			},
+			fs_win={
+				loaderr='platform not Windows'
 			}
 		},
 		genx={
@@ -5209,6 +5267,35 @@ return {
 			fribidi_h={
 				mdeps={
 					ffi=true
+				}
+			}
+		},
+		fs={
+			fs={
+				mdeps={
+					ffi=true,
+					fs_common=true,
+					fs_win=true
+				}
+			},
+			fs_common={
+				mdeps={
+					bit=true,
+					ffi=true,
+					path=true
+				}
+			},
+			fs_posix={
+				loaderr='platform not Linux or OSX'
+			},
+			fs_stdio={
+				loaderr='.\\fs_stdio.lua:7: attempt to call global \'cdef\' (a nil value)'
+			},
+			fs_win={
+				mdeps={
+					bit=true,
+					ffi=true,
+					fs_common=true
 				}
 			}
 		},
@@ -8067,6 +8154,35 @@ return {
 				}
 			}
 		},
+		fs={
+			fs={
+				mdeps={
+					ffi=true,
+					fs_common=true,
+					fs_win=true
+				}
+			},
+			fs_common={
+				mdeps={
+					bit=true,
+					ffi=true,
+					path=true
+				}
+			},
+			fs_posix={
+				loaderr='platform not Linux or OSX'
+			},
+			fs_stdio={
+				loaderr='.\\fs_stdio.lua:7: attempt to call global \'cdef\' (a nil value)'
+			},
+			fs_win={
+				mdeps={
+					bit=true,
+					ffi=true,
+					fs_common=true
+				}
+			}
+		},
 		genx={
 			genx={
 				ffi_deps={
@@ -10668,6 +10784,35 @@ return {
 				}
 			}
 		},
+		fs={
+			fs={
+				mdeps={
+					ffi=true,
+					fs_common=true,
+					fs_posix=true
+				}
+			},
+			fs_common={
+				mdeps={
+					bit=true,
+					ffi=true,
+					path=true
+				}
+			},
+			fs_posix={
+				mdeps={
+					bit=true,
+					ffi=true,
+					fs_common=true
+				}
+			},
+			fs_stdio={
+				loaderr='./fs_stdio.lua:7: attempt to call global \'cdef\' (a nil value)'
+			},
+			fs_win={
+				loaderr='platform not Windows'
+			}
+		},
 		genx={
 			genx={
 				ffi_deps={
@@ -12828,6 +12973,35 @@ return {
 				mdeps={
 					ffi=true
 				}
+			}
+		},
+		fs={
+			fs={
+				mdeps={
+					ffi=true,
+					fs_common=true,
+					fs_posix=true
+				}
+			},
+			fs_common={
+				mdeps={
+					bit=true,
+					ffi=true,
+					path=true
+				}
+			},
+			fs_posix={
+				mdeps={
+					bit=true,
+					ffi=true,
+					fs_common=true
+				}
+			},
+			fs_stdio={
+				loaderr='./fs_stdio.lua:7: attempt to call global \'cdef\' (a nil value)'
+			},
+			fs_win={
+				loaderr='platform not Windows'
 			}
 		},
 		genx={

@@ -445,7 +445,7 @@ function getcwd()
 	return mbs(buf, sz)
 end
 
-function remove(path)
+function rmfile(path)
 	return check(C.DeleteFileW(wcs(path)) ~= 0)
 end
 
@@ -876,10 +876,21 @@ function file_attr_set(f, t)
 	return file_set_basic_info(f, binfo)
 end
 
+function with_open_file(path, open_opt, func, ...)
+	local f, err, errcode = fs.open(path, open_opt)
+	if not f then return nil, err, errcode end
+	local ret, err, errcode = func(f, ...)
+	if ret == nil and err then return nil, err, errcode end
+	local ok, err, errcode = f:close()
+	if not ok then return nil, err, errcode end
+	return ret
+end
+
 local open_opt = {
 	access = 'read_attributes',
 	sharing = 'read write delete',
 	creation = 'open_existing',
+	flags = 'backup_semantics', --for opening directories
 }
 local open_opt_symlink = {
 	access = 'read_attributes',
@@ -952,28 +963,37 @@ BOOL FindNextFileW(HANDLE, LPWIN32_FIND_DATAW);
 BOOL FindClose(HANDLE);
 ]]
 
-function dir.closed(dir)
-	return dir._handle == INVALID_HANDLE_VALUE
-end
+dir_ct = ffi.typeof[[
+	struct {
+		HANDLE _handle;
+		WIN32_FIND_DATAW _fdata;
+		DWORD _errcode; // return `false, err, errcode` on the next iteration
+		int  _loaded;   // _fdata is loaded for the next iteration
+		int  _dirlen;
+		char _dir[?];
+	}
+]]
 
 function dir.close(dir)
 	if dir:closed() then return end
 	local ok = C.FindClose(dir._handle) ~= 0
-	dir._handle = INVALID_HANDLE_VALUE --ignore failure
+	dir._handle = INVALID_HANDLE_VALUE --ignore failure, prevent double-close
+	ffi.gc(dir, nil)
 	return check(ok)
+end
+
+function dir.closed(dir)
+	return dir._handle == INVALID_HANDLE_VALUE
+end
+
+function dir_ready(dir)
+	return not (dir._loaded == 1 or dir._errcode ~= 0)
 end
 
 local ERROR_NO_MORE_FILES = 18
 
-function dir.name(dir)
-	if dir:closed() then return nil end
+function dir_name(dir)
 	return mbs(dir._fdata.cFileName)
-end
-
-function dir.dosname(dir)
-	if dir:closed() then return nil end
-	local s = mbs(dir._fdata.cAlternateFileName)
-	return s ~= '' and s or nil
 end
 
 function dir.dir(dir)
@@ -1007,22 +1027,11 @@ function dir.next(dir)
 	end
 end
 
-dir_ct = ffi.typeof[[
-	struct {
-		HANDLE _handle;
-		WIN32_FIND_DATAW _fdata;
-		DWORD _errcode; // return `false, err, errcode` on the next iteration
-		int  _loaded;   // _fdata is loaded for the next iteration
-		int  _dirlen;
-		char _dir[?];
-	}
-]]
-
 function dir_iter(path)
 	assert(not path:find'[%*%?]') --no globbing allowed
 	local dir = dir_ct(#path)
 	dir._dirlen = #path
-	ffi.copy(dir._dir, path)
+	ffi.copy(dir._dir, path, #path)
 	dir._handle = C.FindFirstFileW(wcs(path .. '\\*'), dir._fdata)
 	if dir._handle == INVALID_HANDLE_VALUE then
 		dir._errcode = C.GetLastError()
@@ -1043,6 +1052,9 @@ function dir_attr_get(dir, attr)
 		return ft_timestamp(dir._fdata.ftCreationTime)
 	elseif attr == 'size' then
 		return filesize(dir._fdata.nFileSizeHigh, dir._fdata.nFileSizeLow)
+	elseif attr == 'dosname' then
+		local s = mbs(dir._fdata.cAlternateFileName)
+		return s ~= '' and s or nil
 	else
 		local val = attrbit(dir._fdata.dwFileAttributes, attr)
 		if val ~= nil then return val end
