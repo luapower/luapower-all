@@ -2072,6 +2072,13 @@ return {
 				}
 			}
 		},
+		unixperms={
+			unixperms={
+				mdeps={
+					bit=true
+				}
+			}
+		},
 		utf8={
 			utf8={
 				autoloads={
@@ -4272,6 +4279,13 @@ return {
 				}
 			}
 		},
+		unixperms={
+			unixperms={
+				mdeps={
+					bit=true
+				}
+			}
+		},
 		utf8={
 			utf8={
 				autoloads={
@@ -6468,6 +6482,13 @@ return {
 				mdeps={
 					glue=true,
 					pp=true
+				}
+			}
+		},
+		unixperms={
+			unixperms={
+				mdeps={
+					bit=true
 				}
 			}
 		},
@@ -9379,6 +9400,13 @@ return {
 				mdeps={
 					glue=true,
 					pp=true
+				}
+			}
+		},
+		unixperms={
+			unixperms={
+				mdeps={
+					bit=true
 				}
 			}
 		},
@@ -12309,6 +12337,13 @@ return {
 				}
 			}
 		},
+		unixperms={
+			unixperms={
+				mdeps={
+					bit=true
+				}
+			}
+		},
 		utf8={
 			utf8={
 				autoloads={
@@ -14497,6 +14532,13 @@ return {
 				mdeps={
 					glue=true,
 					pp=true
+				}
+			}
+		},
+		unixperms={
+			unixperms={
+				mdeps={
+					bit=true
 				}
 			}
 		},
