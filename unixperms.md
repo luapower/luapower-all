@@ -8,11 +8,12 @@ tagline: UNIX permissions strings
 
 Parse a unix permissions string and return its binary value. The string
 can be an octal number beginning with a `'0'`, or a specification of form
-`'[ugo]*[-+=]?[rwx]+ ...'`. `is_relative` is `true` if the permissions do not
-modify the entire mask of the `base`, eg. `'+x'` (i.e. `'ugo+x'`) says
+`'[ugo]*[-+=]?[rwxsStT]+ ...'`. `is_relative` is `true` if the permissions
+do not modify the entire mask of the `base`, eg. `'+x'` (i.e. `'ugo+x'`) says
 "add the execute bit for all" and it's thus a relative spec, while `'rx'`
 (i.e. `'ugo=rx'`) says "set the read and execute bits for all" and it's thus
-an absolute spec. `base` defaults to `0`.
+an absolute spec. `base` defaults to `0`. If `s` is not a string, `s, false`
+is returned.
 
 ### `unixperms.format(mode[, opt]) -> s`
 

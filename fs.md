@@ -60,6 +60,11 @@ __common paths__
 `fs.homedir() -> path`                            get current user's home directory
 `fs.tmpdir() -> path`                             get temporary directory
 `fs.exedir() -> path`                             get the directory of the running executable
+__low level__
+`fs.wrap_handle(HANDLE) -> f`                     wrap opened HANDLE (Windows)
+`fs.wrap_fd(fd) -> f`                             wrap opened file descriptor
+`fs.wrap_file(FILE*) -> f`                        wrap opened `FILE*` object
+`fs.fileno(FILE*) -> fd`                          get stream's file descriptor
 ------------------------------------------------- -------------------------------------------------
 
 __NOTE:__ The `deref` arg is `true` by default, meaning that by default,
@@ -139,6 +144,7 @@ __message__          __description__
 `disk_full`          no space left on device
 -------------------- -----------------------------------------------------------
 
+
 ## File Objects
 
 ### `fs.open(path[, mode|opt]) -> f`
@@ -167,8 +173,11 @@ __field__      __OS__     __reference__                __default__
 `attrs       ` Windows    `FILE_ATTRIBUTE_*`           ''
 `flags       ` Windows    `FILE_FLAG_*`                ''
 `flags       ` Linux,OSX  `O_*`                        'rdonly'
-`mode        ` Linux,OSX  octal or symbolic perms      '0666' i.e. 'rwx'
+`mode        ` Linux,OSX  octal or symbolic perms (1)  '0666' or 'rwx'
 -------------- ---------- ---------------------------- ------------------
+
+(1) If the `mode` arg is a string it is passed to
+[unixperms.parse()][unixperms].
 
 ### `f:close()`
 
@@ -182,6 +191,7 @@ Check if file is closed.
 
 Check if `f` is a file object.
 
+
 ## Stdio Streams
 
 ### `f:stream(mode) -> fs`
@@ -192,6 +202,7 @@ and `fs:close()` should be called to close the file.
 ### `fs:close()`
 
 Close the `FILE*` object and the underlying file object.
+
 
 ## File I/O
 
@@ -224,6 +235,7 @@ instead). The problem with calling `ftruncate()` if `fallocate()` fails is
 that on most filesystems that creates a sparse file, hence the `fail` option.
 The default is `'fallocate emulate'` which should never create a sparse file.
 
+
 ## Open file attributes
 
 ### `f:attr([attr]) -> val|t`
@@ -233,6 +245,7 @@ Get/set attribute(s) of open file. `attr` can be:
   * nothing/nil: get the values of all attributes in a table.
   * string: get the value of a single attribute.
   * table: set some attributes.
+
 
 ## Directory listing
 
@@ -300,6 +313,7 @@ and `dosname` on Windows and `inode` on Linux and OSX.
 
 Check if dir entry is of type.
 
+
 ## File attributes
 
 ### `fs.attr(path, [attr, ][deref]) -> t|val`
@@ -310,11 +324,13 @@ Get/set a file's attribute(s) given its path in utf8.
 
 Check if file exists or if it is of a certain type.
 
+
 ## Filesystem operations
 
 ### `fs.mkdir(path, [recursive], [perms])`
 
-Make directory.
+Make directory. `perms` can be a number or a string passed to
+[unixperms.parse()][unixperms].
 
 ### `fs.cd([path]) -> path`
 
@@ -328,6 +344,7 @@ Remove a file or directory (recursively if `recursive=true`).
 
 Rename/move a file on the same filesystem. On Windows, `opt` represents
 the `MOVEFILE_*` flags and defaults to `'replace_existing write_through'`.
+
 
 ## Symlinks & hardlinks
 
@@ -346,6 +363,7 @@ Create a hard link for a file.
 Dereference a symlink recursively. The result can be an absolute or
 relative path which can be valid or not.
 
+
 ## Common paths
 
 ### `fs.homedir() -> path`
@@ -359,6 +377,25 @@ Get temporary directory.
 ### `fs.exedir() -> path`
 
 Get the directory of the running executable.
+
+
+## Low level
+
+### `fs.wrap_handle(HANDLE) -> f`
+
+Wrap opened HANDLE (Windows) (not tied to gc).
+
+### `fs.wrap_fd(fd) -> f`
+
+Wrap opened file descriptor (not tied to gc).
+
+### `fs.wrap_file(FILE*) -> f`
+
+Wrap opened `FILE*` object (not tied to gc).
+
+### `fs.fileno(FILE*) -> fd`
+
+Get a stdio stream's file descriptor.
 
 ## Usage Notes
 

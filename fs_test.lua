@@ -86,6 +86,15 @@ function test.open_dir()
 	assert(fs.remove(testfile))
 end
 
+function test.wrap_file() --indirectly tests wrap_fd() and wrap_handle()
+	local F = io.open('fs_test_wrap_file', 'w')
+	F:write'hello'
+	F:flush()
+	local f = fs.wrap_file(F)
+	assert(f:attr'size' == 5)
+	F:close()
+end
+
 --i/o ------------------------------------------------------------------------
 
 function test.read_write()

@@ -35,17 +35,13 @@ check = check_errno
 
 local cbuf = mkbuf'char'
 
-local function filemode(perms, cur_perms)
-	if type(perms) == 'string' then
-		if perms:find'^[0-7]+$' then
-			return tonumber(perms, 8)
-		else
-			assert(not perms:find'[^%+%-ugorwx]', 'invalid permissions')
-			--TODO: parse perms
-			assert(false)
-		end
+local function parse_perms(s)
+	if type(s) == 'string' then
+		local unixperms = require'unixperms'
+		return unixperms.parse(s)
+	else --pass-through
+		return s, false
 	end
-	return perms
 end
 
 --open/close -----------------------------------------------------------------
@@ -126,7 +122,7 @@ function fs.open(path, opt)
 		opt = assert(str_opt[opt], 'invalid option %s', opt)
 	end
 	local flags = flags(opt.flags or 'rdonly', o_bits)
-	local mode = filemode(opt.perms or '0666')
+	local mode = parse_perms(opt.perms or '0666')
 	local fd = C.open(path, flags, mode)
 	if fd == -1 then return check() end
 	return ffi.gc(file_ct(fd), file.close)
@@ -142,6 +138,25 @@ function file.close(f)
 	f.fd = -1 --ignore failure
 	ffi.gc(f, nil)
 	return check(ok)
+end
+
+function fs.wrap_fd(fd)
+	return file_ct(fd)
+end
+
+cdef[[
+int fileno(struct FILE *stream);
+]]
+
+function fs.fileno(file)
+	local fd = C.fileno(file)
+	return check(fd ~= -1 and fd or nil)
+end
+
+function fs.wrap_file(file)
+	local fd = C.fileno(file)
+	if fd == -1 then return check() end
+	return fs.wrap_fd(fd)
 end
 
 --stdio streams --------------------------------------------------------------
@@ -186,7 +201,6 @@ function file_seek(f, whence, offset)
 	if offs == -1 then return check() end
 	return tonumber(offs)
 end
-
 
 --truncate/getsize/setsize ---------------------------------------------------
 
@@ -659,19 +673,16 @@ int  chmod(const char *path, mode_t mode);
 int lchmod(const char *path, mode_t mode);
 ]]
 
-function relperms(perms) --check if a perms string is relative
-	return type(perms) == 'string' and perms:find'[%+%-]'
-end
-
 local function wrap(chmod_func, stat_func)
 	return function(arg, perms)
-		local cur_perms = 0
-		if relperms(perms) then
-			local perms, err, errno = stat_func(arg, 'perms')
-			if not perms then return nil, err, errno end
-			cur_perms = perms
+		local cur_perms
+		local _, is_rel = parse_perms(perms)
+		if is_rel then
+			local cur_perms, err, errno = stat_func(arg, 'perms')
+			if not cur_perms then return nil, err, errno end
 		end
-		return chmod_func(f.fd, filemode(perms, cur_perms)) == 0
+		local mode = parse_perms(perms, cur_perms)
+		return chmod_func(f.fd, mode) == 0
 	end
 end
 local fchmod = wrap(function(f, mode) return C.fchmod(f.fd, mode) end, fstat)

@@ -295,6 +295,32 @@ function file.close(f)
 	return true
 end
 
+function fs.wrap_handle(h)
+	return file_ct(h)
+end
+
+cdef[[
+int _fileno(struct FILE *stream);
+HANDLE _get_osfhandle(int fd);
+]]
+
+function fs.wrap_fd(fd)
+	local h = C._get_osfhandle(fd)
+	if h == nil then return check_errno() end
+	return fs.wrap_handle(h)
+end
+
+function fs.fileno(file)
+	local fd = C._fileno(file)
+	return check_errno(fd ~= -1 and fd or nil)
+end
+
+function fs.wrap_file(file)
+	local fd, err, errno = fs.fileno(file)
+	if not fd then return nil, err, errno end
+	return fs.wrap_fd(fd)
+end
+
 --stdio streams --------------------------------------------------------------
 
 cdef[[
