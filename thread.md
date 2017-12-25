@@ -10,24 +10,24 @@ Threads and threaded primitives based on [pthread] and [luastate].
 
 --------------------------------------- --------------------------------------
 __threads__
-thread.new(func, args...) -> th         create and start a thread
-th:join() -> retvals...                 wait on a thread to finish
+`thread.new(func, args...) -> th      ` create and start a thread
+`th:join() -> retvals...              ` wait on a thread to finish
 __queues__
-thread.queue([maxlength]) -> q          create a synchronized queue
-q:length() -> n                         queue length
-q:maxlength() -> n                      queue max. length
-q:push(val[, timeout]) -> true, len     add value to the top (*)
-q:shift([timeout]) -> true, val, len    remove bottom value (*)
-q:pop([timeout]) -> true, val, len      remove top value (*)
-q:peek(\[index\]) -> true, val | false  peek into the list without removing (**)
-q:free()                                free queue and its resources
+`thread.queue([maxlength]) -> q       ` create a synchronized queue
+`q:length() -> n                      ` queue length
+`q:maxlength() -> n                   ` queue max. length
+`q:push(val[, timeout]) -> true, len  ` add value to the top (*)
+`q:shift([timeout]) -> true, val, len ` remove bottom value (*)
+`q:pop([timeout]) -> true, val, len   ` remove top value (*)
+`q:peek([index]) -> true, val | false ` peek into the list without removing (**)
+`q:free()                             ` free queue and its resources
 __events__
-thread.event([initially_set]) -> e      create an event
-e:set()                                 set the flag
-e:clear()                               reset the flag
-e:isset() -> true | false               check if the flag is set
-e:wait([timeout]) -> true | false       wait until the flag is set
-e:free()                                free event
+`thread.event([initially_set]) -> e   ` create an event
+`e:set()                              ` set the flag
+`e:clear()                            ` reset the flag
+`e:isset() -> true | false            ` check if the flag is set
+`e:wait([timeout]) -> true | false    ` wait until the flag is set
+`e:free()                             ` free event
 --------------------------------------- --------------------------------------
 
 (*) the `timeout` arg is an os.time() or [time].time() timestamp,
