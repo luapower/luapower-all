@@ -145,13 +145,6 @@ return {
 					dynasm=true
 				}
 			},
-			cbframe_abi={
-				mdeps={
-					cbframe=true,
-					ffi=true,
-					ffi_reflect=true
-				}
-			},
 			cbframe_dump={
 				mdeps={
 					cbframe=true,
@@ -2344,13 +2337,6 @@ return {
 				mdeps={
 					cbframe_x86=true,
 					dynasm=true
-				}
-			},
-			cbframe_abi={
-				mdeps={
-					cbframe=true,
-					ffi=true,
-					ffi_reflect=true
 				}
 			},
 			cbframe_dump={
@@ -4581,13 +4567,6 @@ return {
 				mdeps={
 					cbframe_x86=true,
 					dynasm=true
-				}
-			},
-			cbframe_abi={
-				mdeps={
-					cbframe=true,
-					ffi=true,
-					ffi_reflect=true
 				}
 			},
 			cbframe_dump={
@@ -7472,13 +7451,6 @@ return {
 				mdeps={
 					cbframe_x86=true,
 					dynasm=true
-				}
-			},
-			cbframe_abi={
-				mdeps={
-					cbframe=true,
-					ffi=true,
-					ffi_reflect=true
 				}
 			},
 			cbframe_dump={
@@ -10380,13 +10352,6 @@ return {
 					dynasm=true
 				}
 			},
-			cbframe_abi={
-				mdeps={
-					cbframe=true,
-					ffi=true,
-					ffi_reflect=true
-				}
-			},
 			cbframe_dump={
 				mdeps={
 					cbframe=true,
@@ -12576,13 +12541,6 @@ return {
 				mdeps={
 					cbframe_x86=true,
 					dynasm=true
-				}
-			},
-			cbframe_abi={
-				mdeps={
-					cbframe=true,
-					ffi=true,
-					ffi_reflect=true
 				}
 			},
 			cbframe_dump={

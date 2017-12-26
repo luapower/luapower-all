@@ -1,3 +1,6 @@
---cbframe: callback frame for luajit 2 (Cosmin Apreutesei, public domain).
+
+--callback frames for luajit 2.
+--Written by Cosmin Apreutesei. Public Domain.
+
 require'dynasm'
 return require'cbframe_x86'

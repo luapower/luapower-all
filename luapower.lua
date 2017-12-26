@@ -967,6 +967,7 @@ cats = memoize_package(function(package)
 			s:match'^%s*%*%s*%[([^%]]+)%]%s*(.-)%s*$' -- " * [name]"
 		if pkg then
 			if pkgs[pkg] then
+				note = note ~= '' and note or nil
 				table.insert(lastcat.packages, {name = pkg, note = note})
 				uncat[pkg] = nil
 			end
