@@ -102,7 +102,4 @@ every time for each thread. For best results, use a thread pool.
 
 ### Environment
 
-On Windows, the current directory is per thread, believe it!
-On every other platform on earth is per process of course.
-Same goes for env vars.
-
+On Windows, the current directory is per thread! Same goes for env vars.

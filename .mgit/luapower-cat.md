@@ -2,141 +2,140 @@
 tagline: package categories
 ---
 
-* Runtimes
+* LuaJIT Runtime
 	* [luajit]
-* Native Code Generation
-	* [terra]
-	* [dynasm]
-* Basic Tools
+* Deployment
+	* [bundle]
+* Standard Libraries
 	* [glue]
-	* [coro]
-	* [pp]
-	* [oo]
-	* [vararg]
-* Data Structures
 	* [tuple]
-	* [ringbuffer]
-	* [heap]
-	* [dlist]
-* FFI Tools
-	* [cbframe]
-	* [ffi_reflect]
-	* [struct]
-* Parsing
+	* [pp]
 	* [lpeg]
-* Hashing & Compression
-	* [blake2]
-	* [sha2]
-	* [md4]
-	* [md5]
-	* [hmac]
-	* [xxhash]
-	* [pmurhash]
-	* [murmurhash3]
-	* [crc32]
-	* [zlib]
-	* [minizip]
-	* [libsodium]
-* Internet Formats
-	* [libb64]
-	* [expat]
-	* [genx]
-	* [cjson]
-* Databases
-	* [mysql]
-	* [libmariadb]
-	* [libmysql]
-	* [fbclient]
-* Multi-threading
-	* [lanes]
-	* [luastate]
-	* [pthread]
-	* [thread]
-	* [lfrb]
-* Networking
-	* [socket]
-	* [bnet]
-	* [socketloop]
-	* [libcurl]
-	* [libssh2]
-	* [rsync]
-* Windowing/GUIs
-	* [nw]
-	* [cplayer]
-* Audio/Video
-	* [libsoundio]
-	* [portaudio]
-	* [videoinput]
+	* [coro]
 * Portable OS APIs
 	* [fs]
-	* [path]
+	* [nw]
+	* [libsoundio]
+	* [videoinput]
+	* [socket]
+	* [socketloop]
+	* [thread]
+	* [pthread]
 	* [time]
-	* [lfs]
-	* [mmap]
-	* [stdio]
 * Native OS APIs
 	* [winapi]
 	* [objc]
-	* [syscall]
 	* [xlib]
-	* [shm]
+* Databases
+	* [mysql]
 * 2D Graphics
+	* [cairo]
+	* [freetype]
+	* [bitmap]
+	* [color]
+* 2D Geometry
 	* [path2d]
 	* [affine2d]
 	* [box2d]
 	* [clipper]
-	* [cairo]
-	* [freetype]
+* GUI
+	* [cplayer]
+	* [sg]
+	* [codedit]
+* File Formats
+	* [giflib]
+	* [libjpeg]
+	* [libpng]
+	* [bmp]
+	* [libexif]
+	* [libvorbis]
+* Hashing
+	* [xxhash]
+   * [blake2]
+	* [sha2]
+	* [md5]
+	* [hmac]
+* Compression
+	* [zlib]
+	* [lz4]
+* Encryption
+	* [libsodium]
+* Serialization
+	* [cjson]
+	* [expat]
+	* [genx]
+	* [libb64]
+* Networking
+	* [libcurl]
+	* [rsync]
+* Spell Checking
+	* [hunspell]
+* Templating
+   * [mustache]
+* Motion
+	* [easing]
+* Support APIs
+	* [opengl]
+	* [luastate]
+	* [lfrb]
+	* [eq]
+	* [cbframe]
+	* [heap]
+	* [path]
+	* [unixperms]
+	* [lexer]
+	* [dynasm]
+* Support Libs
+	* [libstdcxx]
+	* [pixman]
+	* [libmariadb]
+	* [libmysql]
+	* [openssl]
+   * [libogg]
+	* [lua-headers]
+	* [shm]
+Development Tools
+	* [hash_benchmark]
+   * [unit]
+* Package Management
+	* [luapower]
+	* [luapower_db]
+	* [luapower-repos]
+	* [luapower-ci]
+* Unsupported
+	* [syscall]
+	* [bnet]
+	* [lfs]
+	* [lanes]
+	* [mmap]
+	* [stdio]
+	* [vararg]
+	* [nanojpeg]
+	* [blur]
 	* [openvg]
-	* [svg_parser]
 	* [hpdf]
-* Unicode
+	* [svg_parser]
+	* [ffi_reflect]
+	* [struct]
+	* [pmurhash]
+	* [murmurhash3]
+	* [md4]
+	* [crc32]
+	* [oo]
+	* [ringbuffer]
+	* [dlist]
+	* [obj_parser]
+	* [glut]
+	* [fbclient]
+	* [portaudio]
+	* [libssh2]
+	* [minizip]
+	* [terra]
+	* [llvm]
 	* [utf8]
 	* [ucdn]
 	* [libunibreak]
 	* [harfbuzz]
 	* [fribidi]
-* Spell Checking
-	* [hunspell]
-* 3D Graphics
-	* [opengl]
-	* [sg]
-	* [obj_parser]
-	* [glut]
-* Images
-	* [bitmap]
-	* [giflib]
-	* [libjpeg]
-	* [nanojpeg]
-	* [libpng]
-	* [bmp]
-	* [libexif]
-	* [blur]
-* Sound
-   * [libogg]
-	* [libvorbis]
-* Code Editing
-	* [codedit]
-	* [lexer]
-* Colors
-	* [color]
-* Motion
-	* [easing]
 	* [chipmunk]
 	* [libvlc]
-* Math
-	* [eq]
-* Support Libs
-	* [libstdcxx]
-	* [pixman]
-	* [llvm]
-	* [openssl]
-* Dev Tools
-	* [bundle]
-	* [unit]
-	* [lua-headers]
-	* [hash_benchmark]
-* Packaging
-	* [luapower]
-	* [luapower_db]
-	* [luapower-repos]
