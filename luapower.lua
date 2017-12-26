@@ -144,7 +144,7 @@ MGIT DIRECTORY INFO:
 
 PARSING luapower-cat.md:
 
-	cats() -> t                           {name=, packages={pkg1,...}}
+	cats() -> t                           {name=, packages={{name=,note=},...}}
 	packages_cats() -> t                  {pkg=cat}
 	package_cat(pkg) -> s                 package's category
 
@@ -963,10 +963,11 @@ cats = memoize_package(function(package)
 		function(pkg) return known_packages()[pkg] end)
 	local uncat = glue.update({}, pkgs)
 	for s in more do
-		local pkg = s:match'^%s*%*%s*%[([^%]]+)%]%s*$' -- " * [name]"
+		local pkg, note =
+			s:match'^%s*%*%s*%[([^%]]+)%]%s*(.-)%s*$' -- " * [name]"
 		if pkg then
 			if pkgs[pkg] then
-				table.insert(lastcat.packages, pkg)
+				table.insert(lastcat.packages, {name = pkg, note = note})
 				uncat[pkg] = nil
 			end
 		else
@@ -981,7 +982,11 @@ cats = memoize_package(function(package)
 		end
 	end
 	if not misc and next(uncat) then
-		table.insert(cats, {name = 'Misc', packages = glue.keys(uncat, true)})
+		local misc = {}
+		for i, pkg in ipairs(glue.keys(uncat, true)) do
+			table.insert(misc, {name = pkg})
+		end
+		table.insert(cats, {name = 'Misc', packages = misc})
 	end
 	close()
 	return cats
@@ -1909,6 +1914,7 @@ package_type = memoize_package(function(package)
 	local has_mod_lua = false
 	local has_mod_c = false
 	local has_ffi = false
+	local has_bit = false
 	for mod in pairs(modules(package)) do
 		local lang = module_tags(package, mod).lang
 		if lang == 'C' then
@@ -1917,9 +1923,12 @@ package_type = memoize_package(function(package)
 			has_mod_lua = mod
 		end
 		for platform in pairs(module_platforms(mod, package)) do
-			if module_requires_loadtime_all(mod, package, platform).ffi then
+			local t = module_requires_loadtime_all(mod, package, platform)
+			if t.ffi then
 				has_ffi = mod
-				break
+			end
+			if t.has_bit then
+				has_bit = mod
 			end
 		end
 	end
@@ -1965,7 +1974,7 @@ packages_cats = memoize(function()
 	local t = {}
 	for i,cat in ipairs(cats()) do
 		for i,pkg in ipairs(cat.packages) do
-			t[pkg] = cat.name
+			t[pkg.name] = cat.name
 		end
 	end
 	return t
