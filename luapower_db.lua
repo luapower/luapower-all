@@ -138,6 +138,11 @@ return {
 				loaderr='platform not Windows'
 			}
 		},
+		cairopanel={
+			['winapi.cairopanel']={
+				loaderr='module \'winapi.cairopanel\' not found'
+			}
+		},
 		cbframe={
 			cbframe={
 				mdeps={
@@ -2330,6 +2335,11 @@ return {
 			},
 			cairo_win32_h={
 				loaderr='platform not Windows'
+			}
+		},
+		cairopanel={
+			['winapi.cairopanel']={
+				loaderr='module \'winapi.cairopanel\' not found'
 			}
 		},
 		cbframe={
@@ -4562,6 +4572,11 @@ return {
 				}
 			}
 		},
+		cairopanel={
+			['winapi.cairopanel']={
+				loaderr='module \'winapi.cairopanel\' not found'
+			}
+		},
 		cbframe={
 			cbframe={
 				mdeps={
@@ -6566,23 +6581,6 @@ return {
 					['winapi.basebuttonclass']=true
 				}
 			},
-			['winapi.cairopanel']={
-				mdeps={
-					bit=true,
-					cairo=true,
-					ffi=true,
-					winapi=true,
-					['winapi.bitmappanel']=true
-				}
-			},
-			['winapi.cairosgpanel']={
-				mdeps={
-					sg_cache=true,
-					sg_cairo=true,
-					winapi=true,
-					['winapi.cairopanel']=true
-				}
-			},
 			['winapi.checkboxclass']={
 				mdeps={
 					winapi=true,
@@ -7444,6 +7442,11 @@ return {
 					['winapi.logfonttype']=true,
 					['winapi.types']=true
 				}
+			}
+		},
+		cairopanel={
+			['winapi.cairopanel']={
+				loaderr='module \'winapi.cairopanel\' not found'
 			}
 		},
 		cbframe={
@@ -9477,23 +9480,6 @@ return {
 					['winapi.basebuttonclass']=true
 				}
 			},
-			['winapi.cairopanel']={
-				mdeps={
-					bit=true,
-					cairo=true,
-					ffi=true,
-					winapi=true,
-					['winapi.bitmappanel']=true
-				}
-			},
-			['winapi.cairosgpanel']={
-				mdeps={
-					sg_cache=true,
-					sg_cairo=true,
-					winapi=true,
-					['winapi.cairopanel']=true
-				}
-			},
 			['winapi.checkboxclass']={
 				mdeps={
 					winapi=true,
@@ -10343,6 +10329,11 @@ return {
 			},
 			cairo_win32_h={
 				loaderr='platform not Windows'
+			}
+		},
+		cairopanel={
+			['winapi.cairopanel']={
+				loaderr='module \'winapi.cairopanel\' not found'
 			}
 		},
 		cbframe={
@@ -12534,6 +12525,11 @@ return {
 			},
 			cairo_win32_h={
 				loaderr='platform not Windows'
+			}
+		},
+		cairopanel={
+			['winapi.cairopanel']={
+				loaderr='module \'winapi.cairopanel\' not found'
 			}
 		},
 		cbframe={
