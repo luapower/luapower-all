@@ -1,6 +1,8 @@
---Robert Penner's equations for easing by Emmanuel Oga (BSD license), modified by Cosmin Apreutesei (public domain)
---the functions map input d to output r, where d is in 0 .. t and r is in b + 0 .. c.
---usage: easing[formula_name](current_time - start_time, 0, 1, fixed_duration) -> value in 0..1
+
+--Robert Penner's equations for easing by Emmanuel Oga (BSD license).
+--Modified by Cosmin Apreutesei. Public Domain.
+
+if not ... then require'easing_demo'; return end
 
 local easing = {}
 
@@ -355,9 +357,5 @@ function easing.out_in_bounce(t, b, c, d)
 		return easing.in_bounce((t * 2) - d, b + c / 2, c / 2, d)
 	end
 end
-
-
-if not ... then require'easing_demo' end
-
 
 return easing
