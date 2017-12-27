@@ -146,9 +146,11 @@ __stroking__
 `cr:line_cap(cap) /-> cap`                                          [get/set the line cap][cairo_set_line_cap]
 `cr:line_join(join) /-> join`                                       [get/set the line join][cairo_set_line_join]
 `cr:miter_limit(limit) /-> limit`                                   [get/set the miter limit][cairo_set_miter_limit]
-`cr:dash(dashes[, offset])`                                         [set the dash pattern for stroking][cairo_set_dash]
+`cr:dash(dashes:table, [offset])`                                   [set the dash pattern for stroking][cairo_set_dash]
+`cr:dash(dashes:double*, dash_count, [offset])`                     [set the dash pattern for stroking][cairo_set_dash]
 `cr:dash() -> dashes, dash_count`                                   [get the dash pattern for stroking][cairo_get_dash]
 `cr:dash'#' -> n`                                                   [get the dash count][cairo_get_dash_count]
+`cr:dash(nil, dashes:double*) -> dash_count`                        [get the dash pattern for stroking][cairo_get_dash]
 __rasterization options__
 `cr:tolerance(tolerance]) /-> tolerance`                            [get/set tolerance][cairo_set_tolerance]
 `cr:antialias(antialias]) /-> antialias`                            [get/set the antialiasing mode][cairo_set_antialias]

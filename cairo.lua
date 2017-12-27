@@ -463,39 +463,34 @@ map('CAIRO_LINE_JOIN_', {
 
 cr.line_join = getset_func(C.cairo_get_line_join, C.cairo_set_line_join, 'CAIRO_LINE_JOIN_')
 
-local function set_dash(cr, dashes, num_dashes, offset)
-	if type(dashes) == 'table' then
-		offset = num_dashes
-		num_dashes = #dashes
-		dashes = ffi.new('double[?]', num_dashes, dashes)
-	end
-	C.cairo_set_dash(cr, dashes, num_dashes, offset or 0)
-end
-
-local function get_dash(cr, _, dashes) -- _ is for disambiguation with set_dash()
-	local obuf = d1
-	if dashes then
-		C.cairo_get_dash(cr, dashes, obuf)
-		return dashes, obuf[0]
-	else
-		local n = C.cairo_get_dash_count(cr)
-		dashes = ffi.new('double[?]', n)
-		C.cairo_get_dash(cr, dashes, obuf)
-		local t = {}
-		for i=1,n do
-			t[i] = dashes[i-1]
-		end
-		return t, obuf[0]
-	end
-end
-
-local getset_dash = getset_func(get_dash, set_dash)
-
-cr.dash = function(cr, ...)
-	if (...) == '#' then
+cr.dash = function(cr, dashes, num_dashes, offset)
+	if dashes == '#' then --dash(cr, '#') -> get count
 		return C.cairo_get_dash_count(cr)
-	else
-		return getset_dash(cr, ...)
+	elseif dashes == nil then
+		if num_dashes then --dash(cr, nil, double*) -> get into array
+			dashes = num_dashes
+			C.cairo_get_dash(cr, dashes, d1)
+			return dashes, d1[0]
+		else --dash(cr) -> get into table
+			local n = C.cairo_get_dash_count(cr)
+			dashes = ffi.new('double[?]', n)
+			C.cairo_get_dash(cr, dashes, d1)
+			local t = {}
+			for i=1,n do
+				t[i] = dashes[i-1]
+			end
+			return t, d1[0]
+		end
+	elseif type(dashes) == 'table' then --dash(cr, t) -> set from table
+		num_dashes, offset = #dashes, num_dashes
+		dashes = ffi.new('double[?]', num_dashes, dashes)
+		C.cairo_set_dash(cr, dashes, num_dashes, offset or 0)
+	else --dash(cr, double*, number) -> set from array
+		if dashes == false then --for when num_dashes == 0
+			dashes = nil
+			assert(num_dashes == 0)
+		end
+		C.cairo_set_dash(cr, dashes, num_dashes, offset or 0)
 	end
 end
 
@@ -1331,24 +1326,21 @@ end
 function cr:rotate_around(cx, cy, angle)
 	self:translate(cx, cy)
 	self:rotate(angle)
-	self:translate(-cx, -cy)
-	return self
+	return self:translate(-cx, -cy)
 end
 
 function cr:scale_around(cx, cy, ...)
 	self:translate(cx, cy)
 	self:scale(...)
-	self:translate(-cx, -cy)
-	return self
+	return self:translate(-cx, -cy)
 end
 
 local sm = M.matrix()
 function cr:skew(ax, ay)
-	sm:identity()
+	sm:reset()
 	sm.xy = math.tan(ax)
 	sm.yx = math.tan(ay)
-	cr:transform(sm)
-	return self
+	return self:transform(sm)
 end
 
 --additions to surfaces
