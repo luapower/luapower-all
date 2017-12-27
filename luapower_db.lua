@@ -1395,8 +1395,7 @@ return {
 			},
 			path2d_polyline={
 				mdeps={
-					path2d_line=true,
-					vararg=true
+					path2d_line=true
 				}
 			},
 			path2d_shapes={
@@ -3645,8 +3644,7 @@ return {
 			},
 			path2d_polyline={
 				mdeps={
-					path2d_line=true,
-					vararg=true
+					path2d_line=true
 				}
 			},
 			path2d_shapes={
@@ -6236,8 +6234,7 @@ return {
 			},
 			path2d_polyline={
 				mdeps={
-					path2d_line=true,
-					vararg=true
+					path2d_line=true
 				}
 			},
 			path2d_shapes={
@@ -9208,8 +9205,7 @@ return {
 			},
 			path2d_polyline={
 				mdeps={
-					path2d_line=true,
-					vararg=true
+					path2d_line=true
 				}
 			},
 			path2d_shapes={
@@ -11859,8 +11855,7 @@ return {
 			},
 			path2d_polyline={
 				mdeps={
-					path2d_line=true,
-					vararg=true
+					path2d_line=true
 				}
 			},
 			path2d_shapes={
@@ -14100,8 +14095,7 @@ return {
 			},
 			path2d_polyline={
 				mdeps={
-					path2d_line=true,
-					vararg=true
+					path2d_line=true
 				}
 			},
 			path2d_shapes={
