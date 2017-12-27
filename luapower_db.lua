@@ -140,7 +140,7 @@ return {
 		},
 		cairopanel={
 			['winapi.cairopanel']={
-				loaderr='module \'winapi.cairopanel\' not found'
+				loaderr='platform not Windows'
 			}
 		},
 		cbframe={
@@ -2105,7 +2105,52 @@ return {
 				loaderr='./videoinput_cocoa.lua:7: ./objc_dispatch.lua:144: /home/cosmin/luapower/bin/linux32/luajit-bin: undefined symbol: _dispatch_data_empty'
 			}
 		},
+		wglpanel={
+			['winapi.gl']={
+				loaderr='platform not Windows'
+			},
+			['winapi.gl11']={
+				loaderr='platform not Windows'
+			},
+			['winapi.gl21']={
+				loaderr='platform not Windows'
+			},
+			['winapi.wgl']={
+				loaderr='platform not Windows'
+			},
+			['winapi.wglext']={
+				loaderr='platform not Windows'
+			},
+			['winapi.wglpanel']={
+				loaderr='platform not Windows'
+			}
+		},
 		winapi={
+		},
+		['winapi.cairopanel']={
+			['winapi.cairopanel']={
+				loaderr='platform not Windows'
+			}
+		},
+		['winapi.wglpanel']={
+			['winapi.gl']={
+				loaderr='platform not Windows'
+			},
+			['winapi.gl11']={
+				loaderr='platform not Windows'
+			},
+			['winapi.gl21']={
+				loaderr='platform not Windows'
+			},
+			['winapi.wgl']={
+				loaderr='platform not Windows'
+			},
+			['winapi.wglext']={
+				loaderr='platform not Windows'
+			},
+			['winapi.wglpanel']={
+				loaderr='platform not Windows'
+			}
 		},
 		xlib={
 			glx={
@@ -2339,7 +2384,7 @@ return {
 		},
 		cairopanel={
 			['winapi.cairopanel']={
-				loaderr='module \'winapi.cairopanel\' not found'
+				loaderr='platform not Windows'
 			}
 		},
 		cbframe={
@@ -4310,7 +4355,52 @@ return {
 				loaderr='./videoinput_cocoa.lua:7: ./objc_dispatch.lua:144: /home/cosmin/luapower/bin/linux64/luajit-bin: undefined symbol: _dispatch_data_empty'
 			}
 		},
+		wglpanel={
+			['winapi.gl']={
+				loaderr='platform not Windows'
+			},
+			['winapi.gl11']={
+				loaderr='platform not Windows'
+			},
+			['winapi.gl21']={
+				loaderr='platform not Windows'
+			},
+			['winapi.wgl']={
+				loaderr='platform not Windows'
+			},
+			['winapi.wglext']={
+				loaderr='platform not Windows'
+			},
+			['winapi.wglpanel']={
+				loaderr='platform not Windows'
+			}
+		},
 		winapi={
+		},
+		['winapi.cairopanel']={
+			['winapi.cairopanel']={
+				loaderr='platform not Windows'
+			}
+		},
+		['winapi.wglpanel']={
+			['winapi.gl']={
+				loaderr='platform not Windows'
+			},
+			['winapi.gl11']={
+				loaderr='platform not Windows'
+			},
+			['winapi.gl21']={
+				loaderr='platform not Windows'
+			},
+			['winapi.wgl']={
+				loaderr='platform not Windows'
+			},
+			['winapi.wglext']={
+				loaderr='platform not Windows'
+			},
+			['winapi.wglpanel']={
+				loaderr='platform not Windows'
+			}
 		},
 		xlib={
 			glx={
@@ -4574,7 +4664,13 @@ return {
 		},
 		cairopanel={
 			['winapi.cairopanel']={
-				loaderr='module \'winapi.cairopanel\' not found'
+				mdeps={
+					bit=true,
+					cairo=true,
+					ffi=true,
+					winapi=true,
+					['winapi.bitmappanel']=true
+				}
 			}
 		},
 		cbframe={
@@ -6514,6 +6610,54 @@ return {
 				loaderr='.\\videoinput_cocoa.lua:7: .\\objc_dispatch.lua:144: cannot resolve symbol \'_dispatch_data_empty\': The specified procedure could not be found.'
 			}
 		},
+		wglpanel={
+			['winapi.gl']={
+				mdeps={
+					winapi=true,
+					['winapi.wgl']=true
+				}
+			},
+			['winapi.gl11']={
+				mdeps={
+					gl_consts11=true,
+					gl_funcs11=true,
+					winapi=true,
+					['winapi.gl']=true
+				}
+			},
+			['winapi.gl21']={
+				mdeps={
+					gl_consts21=true,
+					gl_funcs21=true,
+					winapi=true,
+					['winapi.gl']=true
+				}
+			},
+			['winapi.wgl']={
+				ffi_deps={
+					opengl32=true
+				},
+				mdeps={
+					winapi=true,
+					['winapi.winuser']=true
+				}
+			},
+			['winapi.wglext']={
+				mdeps={
+					gl_types=true,
+					winapi=true,
+					['winapi.winuser']=true
+				}
+			},
+			['winapi.wglpanel']={
+				mdeps={
+					winapi=true,
+					['winapi.gl11']=true,
+					['winapi.panelclass']=true,
+					['winapi.wglext']=true
+				}
+			}
+		},
 		winapi={
 			winapi={
 				mdeps={
@@ -6696,7 +6840,13 @@ return {
 				}
 			},
 			['winapi.dsound']={
-				loaderr='.\\winapi\\dsound.lua:373: Undefined winapi global FLT_MIN'
+				ffi_deps={
+					dsound=true
+				},
+				mdeps={
+					winapi=true,
+					['winapi.ole']=true
+				}
 			},
 			['winapi.edit']={
 				mdeps={
@@ -6751,28 +6901,6 @@ return {
 				mdeps={
 					winapi=true,
 					['winapi.winuser']=true
-				}
-			},
-			['winapi.gl']={
-				mdeps={
-					winapi=true,
-					['winapi.wgl']=true
-				}
-			},
-			['winapi.gl11']={
-				mdeps={
-					gl_consts11=true,
-					gl_funcs11=true,
-					winapi=true,
-					['winapi.gl']=true
-				}
-			},
-			['winapi.gl21']={
-				mdeps={
-					gl_consts21=true,
-					gl_funcs21=true,
-					winapi=true,
-					['winapi.gl']=true
 				}
 			},
 			['winapi.groupboxclass']={
@@ -7182,30 +7310,6 @@ return {
 					['winapi.util']=true
 				}
 			},
-			['winapi.wgl']={
-				ffi_deps={
-					opengl32=true
-				},
-				mdeps={
-					winapi=true,
-					['winapi.winuser']=true
-				}
-			},
-			['winapi.wglext']={
-				mdeps={
-					gl_types=true,
-					winapi=true,
-					['winapi.winuser']=true
-				}
-			},
-			['winapi.wglpanel']={
-				mdeps={
-					winapi=true,
-					['winapi.gl11']=true,
-					['winapi.panelclass']=true,
-					['winapi.wglext']=true
-				}
-			},
 			['winapi.winbase']={
 				mdeps={
 					winapi=true
@@ -7249,6 +7353,65 @@ return {
 			['winapi.wmapp']={
 				mdeps={
 					winapi=true
+				}
+			}
+		},
+		['winapi.cairopanel']={
+			['winapi.cairopanel']={
+				mdeps={
+					bit=true,
+					cairo=true,
+					ffi=true,
+					winapi=true,
+					['winapi.bitmappanel']=true
+				}
+			}
+		},
+		['winapi.wglpanel']={
+			['winapi.gl']={
+				mdeps={
+					winapi=true,
+					['winapi.wgl']=true
+				}
+			},
+			['winapi.gl11']={
+				mdeps={
+					gl_consts11=true,
+					gl_funcs11=true,
+					winapi=true,
+					['winapi.gl']=true
+				}
+			},
+			['winapi.gl21']={
+				mdeps={
+					gl_consts21=true,
+					gl_funcs21=true,
+					winapi=true,
+					['winapi.gl']=true
+				}
+			},
+			['winapi.wgl']={
+				ffi_deps={
+					opengl32=true
+				},
+				mdeps={
+					winapi=true,
+					['winapi.winuser']=true
+				}
+			},
+			['winapi.wglext']={
+				mdeps={
+					gl_types=true,
+					winapi=true,
+					['winapi.winuser']=true
+				}
+			},
+			['winapi.wglpanel']={
+				mdeps={
+					winapi=true,
+					['winapi.gl11']=true,
+					['winapi.panelclass']=true,
+					['winapi.wglext']=true
 				}
 			}
 		},
@@ -7446,7 +7609,13 @@ return {
 		},
 		cairopanel={
 			['winapi.cairopanel']={
-				loaderr='module \'winapi.cairopanel\' not found'
+				mdeps={
+					bit=true,
+					cairo=true,
+					ffi=true,
+					winapi=true,
+					['winapi.bitmappanel']=true
+				}
 			}
 		},
 		cbframe={
@@ -9413,6 +9582,54 @@ return {
 				loaderr='.\\videoinput_cocoa.lua:7: .\\objc_dispatch.lua:144: cannot resolve symbol \'_dispatch_data_empty\': The specified procedure could not be found.'
 			}
 		},
+		wglpanel={
+			['winapi.gl']={
+				mdeps={
+					winapi=true,
+					['winapi.wgl']=true
+				}
+			},
+			['winapi.gl11']={
+				mdeps={
+					gl_consts11=true,
+					gl_funcs11=true,
+					winapi=true,
+					['winapi.gl']=true
+				}
+			},
+			['winapi.gl21']={
+				mdeps={
+					gl_consts21=true,
+					gl_funcs21=true,
+					winapi=true,
+					['winapi.gl']=true
+				}
+			},
+			['winapi.wgl']={
+				ffi_deps={
+					opengl32=true
+				},
+				mdeps={
+					winapi=true,
+					['winapi.winuser']=true
+				}
+			},
+			['winapi.wglext']={
+				mdeps={
+					gl_types=true,
+					winapi=true,
+					['winapi.winuser']=true
+				}
+			},
+			['winapi.wglpanel']={
+				mdeps={
+					winapi=true,
+					['winapi.gl11']=true,
+					['winapi.panelclass']=true,
+					['winapi.wglext']=true
+				}
+			}
+		},
 		winapi={
 			winapi={
 				mdeps={
@@ -9595,7 +9812,13 @@ return {
 				}
 			},
 			['winapi.dsound']={
-				loaderr='.\\winapi\\dsound.lua:373: Undefined winapi global FLT_MIN'
+				ffi_deps={
+					dsound=true
+				},
+				mdeps={
+					winapi=true,
+					['winapi.ole']=true
+				}
 			},
 			['winapi.edit']={
 				mdeps={
@@ -9650,28 +9873,6 @@ return {
 				mdeps={
 					winapi=true,
 					['winapi.winuser']=true
-				}
-			},
-			['winapi.gl']={
-				mdeps={
-					winapi=true,
-					['winapi.wgl']=true
-				}
-			},
-			['winapi.gl11']={
-				mdeps={
-					gl_consts11=true,
-					gl_funcs11=true,
-					winapi=true,
-					['winapi.gl']=true
-				}
-			},
-			['winapi.gl21']={
-				mdeps={
-					gl_consts21=true,
-					gl_funcs21=true,
-					winapi=true,
-					['winapi.gl']=true
 				}
 			},
 			['winapi.groupboxclass']={
@@ -10081,30 +10282,6 @@ return {
 					['winapi.util']=true
 				}
 			},
-			['winapi.wgl']={
-				ffi_deps={
-					opengl32=true
-				},
-				mdeps={
-					winapi=true,
-					['winapi.winuser']=true
-				}
-			},
-			['winapi.wglext']={
-				mdeps={
-					gl_types=true,
-					winapi=true,
-					['winapi.winuser']=true
-				}
-			},
-			['winapi.wglpanel']={
-				mdeps={
-					winapi=true,
-					['winapi.gl11']=true,
-					['winapi.panelclass']=true,
-					['winapi.wglext']=true
-				}
-			},
 			['winapi.winbase']={
 				mdeps={
 					winapi=true
@@ -10148,6 +10325,65 @@ return {
 			['winapi.wmapp']={
 				mdeps={
 					winapi=true
+				}
+			}
+		},
+		['winapi.cairopanel']={
+			['winapi.cairopanel']={
+				mdeps={
+					bit=true,
+					cairo=true,
+					ffi=true,
+					winapi=true,
+					['winapi.bitmappanel']=true
+				}
+			}
+		},
+		['winapi.wglpanel']={
+			['winapi.gl']={
+				mdeps={
+					winapi=true,
+					['winapi.wgl']=true
+				}
+			},
+			['winapi.gl11']={
+				mdeps={
+					gl_consts11=true,
+					gl_funcs11=true,
+					winapi=true,
+					['winapi.gl']=true
+				}
+			},
+			['winapi.gl21']={
+				mdeps={
+					gl_consts21=true,
+					gl_funcs21=true,
+					winapi=true,
+					['winapi.gl']=true
+				}
+			},
+			['winapi.wgl']={
+				ffi_deps={
+					opengl32=true
+				},
+				mdeps={
+					winapi=true,
+					['winapi.winuser']=true
+				}
+			},
+			['winapi.wglext']={
+				mdeps={
+					gl_types=true,
+					winapi=true,
+					['winapi.winuser']=true
+				}
+			},
+			['winapi.wglpanel']={
+				mdeps={
+					winapi=true,
+					['winapi.gl11']=true,
+					['winapi.panelclass']=true,
+					['winapi.wglext']=true
 				}
 			}
 		},
@@ -10333,7 +10569,7 @@ return {
 		},
 		cairopanel={
 			['winapi.cairopanel']={
-				loaderr='module \'winapi.cairopanel\' not found'
+				loaderr='platform not Windows'
 			}
 		},
 		cbframe={
@@ -12345,7 +12581,52 @@ return {
 				}
 			}
 		},
+		wglpanel={
+			['winapi.gl']={
+				loaderr='platform not Windows'
+			},
+			['winapi.gl11']={
+				loaderr='platform not Windows'
+			},
+			['winapi.gl21']={
+				loaderr='platform not Windows'
+			},
+			['winapi.wgl']={
+				loaderr='platform not Windows'
+			},
+			['winapi.wglext']={
+				loaderr='platform not Windows'
+			},
+			['winapi.wglpanel']={
+				loaderr='platform not Windows'
+			}
+		},
 		winapi={
+		},
+		['winapi.cairopanel']={
+			['winapi.cairopanel']={
+				loaderr='platform not Windows'
+			}
+		},
+		['winapi.wglpanel']={
+			['winapi.gl']={
+				loaderr='platform not Windows'
+			},
+			['winapi.gl11']={
+				loaderr='platform not Windows'
+			},
+			['winapi.gl21']={
+				loaderr='platform not Windows'
+			},
+			['winapi.wgl']={
+				loaderr='platform not Windows'
+			},
+			['winapi.wglext']={
+				loaderr='platform not Windows'
+			},
+			['winapi.wglpanel']={
+				loaderr='platform not Windows'
+			}
 		},
 		xlib={
 		},
@@ -12529,7 +12810,7 @@ return {
 		},
 		cairopanel={
 			['winapi.cairopanel']={
-				loaderr='module \'winapi.cairopanel\' not found'
+				loaderr='platform not Windows'
 			}
 		},
 		cbframe={
@@ -14541,7 +14822,52 @@ return {
 				}
 			}
 		},
+		wglpanel={
+			['winapi.gl']={
+				loaderr='platform not Windows'
+			},
+			['winapi.gl11']={
+				loaderr='platform not Windows'
+			},
+			['winapi.gl21']={
+				loaderr='platform not Windows'
+			},
+			['winapi.wgl']={
+				loaderr='platform not Windows'
+			},
+			['winapi.wglext']={
+				loaderr='platform not Windows'
+			},
+			['winapi.wglpanel']={
+				loaderr='platform not Windows'
+			}
+		},
 		winapi={
+		},
+		['winapi.cairopanel']={
+			['winapi.cairopanel']={
+				loaderr='platform not Windows'
+			}
+		},
+		['winapi.wglpanel']={
+			['winapi.gl']={
+				loaderr='platform not Windows'
+			},
+			['winapi.gl11']={
+				loaderr='platform not Windows'
+			},
+			['winapi.gl21']={
+				loaderr='platform not Windows'
+			},
+			['winapi.wgl']={
+				loaderr='platform not Windows'
+			},
+			['winapi.wglext']={
+				loaderr='platform not Windows'
+			},
+			['winapi.wglpanel']={
+				loaderr='platform not Windows'
+			}
 		},
 		xlib={
 		},

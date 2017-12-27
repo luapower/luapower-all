@@ -930,7 +930,9 @@ local function parse_md_file(md_file)
 	local more, close = more(md_file)
 	if not more or not more():find '^---' then
 		t.title = docname
-		close()
+		if more then
+			close()
+		end
 		return t
 	end
 	for s in more do

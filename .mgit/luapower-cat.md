@@ -24,6 +24,8 @@ tagline: package categories
 	* [time]
 * Native OS APIs
 	* [winapi]
+	* [winapi.wglpanel]
+	* [winapi.cairopanel]
 	* [objc]
 	* [xlib]
 * Databases

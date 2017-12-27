@@ -5,13 +5,13 @@ platforms: mingw32, mingw64
 
 ## Scope
 
-Windows, common controls and dialogs, message loop, system APIs,
-OpenGL and cairo.
+Windows, common controls and dialogs, message loop and system APIs.
 
 ## Features
 
   * UTF8 Lua strings everywhere (also works with wide char buffers)
-  * OpenGL, cairo and bitmap widgets
+  * bitmap widget for custom painting
+  * OpenGL and cairo custom-painting widgets (in separate packages)
   * anchor-based layout model for all controls
   * object system with virtual properties (`win.title = 'hello'` sets the title)
   * binding helpers for easy binding of new and future APIs
