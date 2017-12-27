@@ -196,9 +196,6 @@ local tablabel = Label{
 	w = 50, h = 50,
 	anc = 'ltr',
 }
-tablabel.name = 'label'
-tabs.name = 'tabs'
-win.name = '!win'
 
 function tabs:on_tab_change()
 	tablabel.text = 'Selected tab: '..tostring(self.selected_index)

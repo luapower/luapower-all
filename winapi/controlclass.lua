@@ -142,8 +142,8 @@ function Control:__parent_resizing(wp)
 		pr.y1 + wp.h - pr.y2, r.y1, r.h, self.__anchor_h)
 
 	--override rect with the changed sides.
-	if x then r.x1 = x end
-	if y then r.y1 = y end
+	if x then local w = r.w; r.x1 = x; r.x2 = r.x1 + w end
+	if y then local h = r.h; r.y1 = y; r.y2 = r.y1 + h end
 	if w then r.x2 = r.x1 + w end
 	if h then r.y2 = r.y1 + h end
 

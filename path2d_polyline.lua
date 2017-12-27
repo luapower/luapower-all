@@ -1,6 +1,5 @@
 
 local line = require'path2d_line'
-local vararg = require'vararg'
 
 local function map_proc(filter, read, write)
 	local function pass(...)
