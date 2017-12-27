@@ -69,6 +69,24 @@ local error_classes = {
 	[28] = 'disk_full', --ENOSPC: fallocate()
 	[linux and 95 or ''] = 'not_supported', --EOPNOTSUPP: fallocate()
 
+	--[[ --TODO: mmap
+	local ENOENT = 2
+	local ENOMEM = 12
+	local EINVAL = 22
+	local EFBIG  = 27
+	local ENOSPC = 28
+	local EDQUOT = osx and 69 or 122
+
+	local errcodes = {
+		[ENOENT] = 'not_found',
+		[ENOMEM] = 'out_of_mem',
+		[EINVAL] = 'file_too_short',
+		[EFBIG] = 'disk_full',
+		[ENOSPC] = 'disk_full',
+		[EDQUOT] = 'disk_full',
+	}
+	]]
+
 	--[[
 	[12] = 'out_of_mem', --TODO: ENOMEM: mmap
 	[22] = 'file_too_short', --TODO: EINVAL: mmap
@@ -411,9 +429,9 @@ end
 function fs.dir(dir, dot_dirs)
 	dir = dir or '.'
 	if dot_dirs then
-		return dir_iter(dir)
+		return fs_dir(dir)
 	else --wrap iterator to skip `.` and `..` entries
-		local next, dir = dir_iter(dir)
+		local next, dir = fs_dir(dir)
 		local function wrapped_next(dir)
 			while true do
 				local file, err, errcode = next(dir)
@@ -472,6 +490,165 @@ function dir.is(dir, type, deref)
 		deref = false
 	end
 	return dir:attr('type', deref) == type
+end
+
+--memory mapping -------------------------------------------------------------
+
+function fs.aligned_size(size, dir) --dir can be 'l' or 'r' (default: 'r')
+	if ffi.istype('uint64_t', size) then --an uintptr_t on x64
+		local pagesize = fs.pagesize()
+		local hi, lo = split_uint64(size)
+		local lo = fs.aligned_size(lo, dir)
+		return join_uint64(hi, lo)
+	else
+		local pagesize = fs.pagesize()
+		if not (dir and dir:find'^l') then --align to the right
+			size = size + pagesize - 1
+		end
+		return bit.band(size, bit.bnot(pagesize - 1))
+	end
+end
+
+function fs.aligned_addr(addr, dir)
+	return ffi.cast('void*',
+		fs.aligned_size(ffi.cast('uintptr_t', addr), dir))
+end
+
+function map_check_tagname(tagname)
+	assert(tagname, 'no tagname given')
+	assert(not tagname:find'[/\\]', 'invalid tagname')
+	return tagname
+end
+
+--[[
+function protect(map, offset, size)
+	local offset = offset or 0
+	assert(offset >= 0 and offset < map.size, 'offset out of bounds')
+	local size = math.min(size or map.size, map.size - offset)
+	assert(size >= 0, 'negative size')
+	local addr = ffi.cast('const char*', map.addr) + offset
+	fs.protect(addr, size)
+end
+]]
+
+function map_access_args(access)
+	assert(not access:find'[^rwcx]', 'invalid access flags')
+	local write = access:find'w' and true or false
+	local copy = access:find'c' and true or false
+	local exec = access:find'x' and true or false
+	assert(not (write and copy), 'invalid access flags')
+	return write, exec, copy
+end
+
+local function map_args(t,...)
+
+	--dispatch args
+	local file, access, size, offset, addr, tagname
+	if type(t) == 'table' then
+		file, access, size, offset, addr, tagname =
+			t.file, t.access, t.size, t.offset, t.addr, t.tagname
+	else
+		file, access, size, offset, addr, tagname = t, ...
+	end
+
+	--apply defaults/convert
+	local access = access or ''
+	local offset = file and offset or 0
+	local addr = addr and ffi.cast('void*', addr)
+	local access_write, access_exec, access_copy = map_access_args(access)
+
+	--check
+	assert(file or size, 'file and/or size expected')
+	assert(not (file and tagname), 'cannot have both file and tagname')
+	assert(not size or size > 0, 'size must be > 0')
+	assert(offset >= 0, 'offset must be >= 0')
+	assert(offset == fs.aligned_size(offset), 'offset not page-aligned')
+	assert(not addr or addr ~= nil, 'addr can\'t be zero')
+	assert(not addr or addr == fs.aligned_addr(addr),
+		'addr not page-aligned')
+	if tagname then check_tagname(tagname) end
+
+	return file, access_write, access_exec, access_copy,
+		size, offset, addr, tagname
+end
+
+function fs.map(...)
+	return fs_map(map_args(...))
+end
+
+function file.mirror_map(f, t, ...)
+	local size, times, addr
+	if type(t) == 'table' then
+		size, times, addr = t.size, t.times, t.addr
+	else
+		size, times, addr = t, ...
+	end
+	return fs.mirror_map(f, size, times, addr)
+end
+
+function fs.mirror_map(f, ...)
+
+	--dispatch args
+	local file, size, times, addr
+	if type(t) == 'table' then
+		file, size, times, addr = t.file, t.size, t.times, t.addr
+	else
+		file, size, times, addr = t, ...
+	end
+
+	--apply defaults/convert/check
+	local size = fs.aligned_size(size or fs.pagesize())
+	local times = times or 2
+	local access = 'w'
+	assert(times > 0, 'times must be > 0')
+
+	local retries = -1
+	local max_retries = 100
+	::try_again::
+	retries = retries + 1
+	if retries > max_retries then
+		return nil, 'maximum retries reached', 'max_retries'
+	end
+
+	--try to allocate a contiguous block
+	local map, err, errcode = fs.map{
+		file = file,
+		size = size * times,
+		access = access,
+		addr = addr,
+	}
+	if not map then
+		return nil, err, errcode
+	end
+
+	--now free it so we can allocate it again in chunks all pointing at
+	--the same offset 0 in the file, thus mirroring the same data.
+	local maps = {addr = map.addr, size = size}
+	map:free()
+
+	local addr = ffi.cast('char*', maps.addr)
+
+	function maps:free()
+		for _,map in ipairs(self) do
+			map:free()
+		end
+	end
+
+	for i = 1, times do
+		local map, err, errcode = fs.map{
+			file = file,
+			size = size,
+			addr = addr + (i - 1) * size,
+			access = access,
+		}
+		if not map then
+			maps:free()
+			goto try_again
+		end
+		maps[i] = map
+	end
+
+	return maps
 end
 
 

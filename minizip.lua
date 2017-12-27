@@ -1,4 +1,7 @@
---minizip binding. zip standard here: http://www.pkware.com/documents/casestudies/APPNOTE.TXT
+
+--minizip binding.
+--Written by Cosmin Apreutesei. Public Domain.
+
 local ffi = require'ffi'
 local bit = require'bit'
 local glue = require'glue'

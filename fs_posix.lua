@@ -51,55 +51,36 @@ int open(const char *pathname, int flags, mode_t mode);
 int close(int fd);
 ]]
 
-local o_bits = linux and {
-	--Linux & OSX (Linux bitmasks)
-	rdonly    = 0x00000000, --access: read only
-	wronly    = 0x00000001, --access: write only
-	rdwr      = 0x00000002, --access: read + write
-	accmode   = 0x00000003, --access: no read, no write, only ioctl()
-	append    = 0x00000400, --append mode (seek to eof before each write())
-	trunc     = 0x00000200, --truncate the file on opening
-	creat     = 0x00000040, --create if file does not exist
-	excl      = 0x00000080, --create or fail (needs 'creat')
-	nofollow  = 0x00020000, --fail if file is a symlink
-	directory = 0x00010000, --open only if the file is a directory or fail
-	nonblock  = 0x00000800, --non-blocking (no effect on regular files)
-	async     = 0x00002000, --enable signal-driven I/O (not for regular files)
-	sync      = 0x00101000, --enable synchronized _file_ integrity completion
-	fsync     = 0x00101000, --'sync'
-	dsync     = 0x00001000, --enable synchronized _data_ integrity completion
-	noctty    = 0x00000100, --for tty files: prevent becoming ctty
-	cloexec   = 0x00080000, --set close-on-exec
+local o_bits = {
+	--Linux & OSX
+	rdonly    = osx and 0x000000 or 0x000000, --access: read only
+	wronly    = osx and 0x000001 or 0x000001, --access: write only
+	rdwr      = osx and 0x000002 or 0x000002, --access: read + write
+	accmode   = osx and 0x000003 or 0x000003, --access: ioctl() only
+	append    = osx and 0x000008 or 0x000400, --append mode: write() at eof
+	trunc     = osx and 0x000400 or 0x000200, --truncate the file on opening
+	creat     = osx and 0x000200 or 0x000040, --create if not exist
+	excl      = osx and 0x000800 or 0x000080, --create or fail (needs 'creat')
+	nofollow  = osx and 0x000100 or 0x020000, --fail if file is a symlink
+	directory = osx and 0x100000 or 0x010000, --open if directory or fail
+	nonblock  = osx and 0x000004 or 0x000800, --non-blocking (not for files)
+	async     = osx and 0x000040 or 0x002000, --enable signal-driven I/O
+	sync      = osx and 0x000080 or 0x101000, --enable _file_ sync
+	fsync     = osx and 0x000080 or 0x101000, --'sync'
+	dsync     = osx and 0x400000 or 0x001000, --enable _data_ sync
+	noctty    = osx and 0x020000 or 0x000100, --prevent becoming ctty
+	cloexec   = osx and     2^24 or 0x080000, --set close-on-exec
 	--Linux only
-	direct    = 0x00004000, --direct disk access hint (user does caching)
-	noatime   = 0x00040000, --don't update atime
-	rsync     = 0x00101000, --'sync'
-	path      = 0x00200000, --open only for fs-level operation
-   tmpfile   = 0x00410000, --create an unnamed temp file (Linux 3.11+)
-} or {
-	--Linux & OSX (OSX bitmasks)
-	rdonly    = 0x00000000, --access: read only
-	wronly    = 0x00000001, --access: write only
-	rdwr      = 0x00000002, --access: read + write
-	accmode   = 0x00000003, --access: no read, no write, only ioctl()
-	append    = 0x00000008, --append mode (seek to eof before each write())
-	trunc     = 0x00000400, --truncate the file on opening
-	creat     = 0x00000200, --create if file does not exist
-	excl      = 0x00000800, --create or fail (needs 'creat')
-	nofollow  = 0x00000100, --fail if file is a symlink
-	directory = 0x00100000, --open only if the file is a directory or fail
-	nonblock  = 0x00000004, --non-blocking (no effect on regular files)
-	async     = 0x00000040, --enable signal-driven I/O (not for regular files)
-	sync      = 0x00000080, --enable synchronized _file_ integrity completion
-	fsync     = 0x00000080, --'sync'
-	dsync     = 0x00400000, --enable synchronized _data_ integrity completion
-	noctty    = 0x00020000, --for tty files: prevent becoming ctty
-	cloexec   = 0x01000000, --set close-on-exec
+	direct    = linux and 0x004000, --don't cache writes
+	noatime   = linux and 0x040000, --don't update atime
+	rsync     = linux and 0x101000, --'sync'
+	path      = linux and 0x200000, --open only for fd-level ops
+   tmpfile   = linux and 0x410000, --create anon temp file (Linux 3.11+)
 	--OSX only
-	shlock    = 0x00000010, --get a shared lock
-	exlock    = 0x00000020, --get an exclusive lock
-	evtonly   = 0x00008000, --open for events only as to not prevent unmount
-	symlink   = 0x00200000, --open the symlink itself
+	shlock    = osx and 0x000010, --get a shared lock
+	exlock    = osx and 0x000020, --get an exclusive lock
+	evtonly   = osx and 0x008000, --open for events only (allows unmount)
+	symlink   = osx and 0x200000, --open the symlink itself
 }
 
 local str_opt = {
@@ -763,9 +744,9 @@ struct dirent { // NOTE: 64bit version
 cdef(string.format([[
 typedef struct DIR DIR;
 DIR *opendir(const char *name);
-struct dirent *readdir(DIR *dirp) asm("readdir%s");
+struct dirent *readdir(DIR *dirp) asm("%s");
 int closedir(DIR *dirp);
-]], linux and '64' or osx and '$INODE64'))
+]], linux and 'readdir64' or osx and 'readdir$INODE64'))
 
 dir_ct = ffi.typeof[[
 	struct {
@@ -824,7 +805,7 @@ function dir.next(dir)
 	end
 end
 
-function dir_iter(path)
+function fs_dir(path)
 	local dir = dir_ct(#path)
 	dir._dirlen = #path
 	ffi.copy(dir._dir, path, #path)
@@ -885,3 +866,183 @@ function dir_attr_get(dir, attr)
 		return nil, false
 	end
 end
+
+--memory mapping -------------------------------------------------------------
+
+if linux then
+	cdef'int __getpagesize();'
+elseif osx then
+	cdef'int getpagesize();'
+end
+fs.pagesize = linux and C.__getpagesize or C.getpagesize
+
+cdef[[
+int shm_open(const char *name, int oflag, mode_t mode);
+int shm_unlink(const char *name);
+]]
+
+local librt = linux and ffi.load'rt' or C
+
+local function open(path, write, exec, shm)
+	local oflags = write and bit.bor(O_RDWR, O_CREAT) or O_RDONLY
+	local perms = oct'444' +
+		(write and oct'222' or 0) +
+		(exec and oct'111' or 0)
+	local open = shm and librt.shm_open or C.open
+	local fd = open(path, oflags, perms)
+	if fd == -1 then return reterr() end
+	return fd
+end
+
+cdef(string.format([[
+void* mmap(void *addr, size_t length, int prot, int flags,
+	int fd, off64_t offset) asm("%s");
+int munmap(void *addr, size_t length);
+int msync(void *addr, size_t length, int flags);
+int mprotect(void *addr, size_t len, int prot);
+]], osx and 'mmap' or 'mmap64'))
+
+--mmap() access flags
+local PROT_READ  = 1
+local PROT_WRITE = 2
+local PROT_EXEC  = 4
+
+--mmap() flags
+local MAP_SHARED  = 1
+local MAP_PRIVATE = 2 --copy-on-write
+local MAP_FIXED   = 0x0010
+local MAP_ANON    = osx and 0x1000 or 0x0020
+
+--msync() flags
+local MS_ASYNC      = 1
+local MS_INVALIDATE = 2
+local MS_SYNC       = osx and 0x0010 or 4
+
+local function protect_bits(write, exec, copy)
+	return bit.bor(
+		PROT_READ,
+		bit.bor(
+			(write or copy) and PROT_WRITE or 0,
+			exec and PROT_EXEC or 0))
+end
+
+function fs_map(file, write, exec, copy, size, offset, addr, tagname)
+
+	local fd, close
+	if type(file) == 'string' then
+		local errmsg, errcode
+		fd, errmsg, errcode = open(file, write, exec)
+		if not fd then return nil, errmsg, errcode end
+	elseif tagname then
+		tagname = '/'..tagname
+		local errmsg, errcode
+		fd, errmsg, errcode = open(tagname, write, exec, true)
+		if not fd then return nil, errmsg, errcode end
+	end
+	local f = fs.wrap_fd(fd)
+
+	--emulate Windows behavior for missing size and size mismatches.
+	if file then
+		if not size then --if size not given, assume entire file
+			local filesize, errmsg, errcode = f:attr'size'
+			if not filesize then
+				if close then close() end
+				return nil, errmsg, errcode
+			end
+			--32bit OSX allows mapping on 0-sized files, dunno why
+			if filesize == 0 then
+				if close then close() end
+				return nil, 'file_too_short'
+			end
+			size = filesize - offset
+		elseif write then --if writable file too short, extend it
+			local filesize = f:attr'size'
+			if filesize < offset + size then
+				local ok, err, errcode = f:seek(offset + size)
+				if not ok then
+					if close then close() end
+					return nil, errmsg, errcode
+				end
+				local ok, errmsg, errcode = f:truncate()
+				if not ok then
+					if close then close() end
+					return nil, errmsg, errcode
+				end
+			end
+		else --if read/only file too short
+			local filesize, errmsg, errcode = mmap.filesize(fd)
+			if not filesize then
+				if close then close() end
+				return nil, errmsg, errcode
+			end
+			if filesize < offset + size then
+				return nil, 'file_too_short'
+			end
+		end
+	elseif write then
+		--NOTE: lseek() is not defined for shm_open()'ed fds
+		local ok = C.ftruncate(fd, size) == 0
+		if not ok then return check() end
+	end
+
+	--flush the buffers before mapping to see the current view of the file.
+	if file then
+		local ret = C.fsync(fd)
+		if ret == -1 then
+			local err = ffi.errno()
+			if close then close() end
+			return reterr(err)
+		end
+	end
+
+	local protect = protect_bits(write, exec, copy)
+
+	local flags = bit.bor(
+		copy and MAP_PRIVATE or MAP_SHARED,
+		fd and 0 or MAP_ANON,
+		addr and MAP_FIXED or 0)
+
+	local addr = C.mmap(addr, size, protect, flags, fd or -1, offset)
+
+	local ok = ffi.cast('intptr_t', addr) ~= -1
+	if not ok then
+		local err = ffi.errno()
+		if close then close() end
+		return reterr(err)
+	end
+
+	local function flush(self, async, addr, sz)
+		if type(async) ~= 'boolean' then --async arg is optional
+			async, addr, sz = false, async, addr
+		end
+		local addr = fs.aligned_addr(addr or self.addr, 'left')
+		local flags = bit.bor(async and MS_ASYNC or MS_SYNC, MS_INVALIDATE)
+		local ok = C.msync(addr, sz or self.size, flags) ~= 0
+		if not ok then return reterr() end
+		return true
+	end
+
+	local function free()
+		C.munmap(addr, size)
+		if close then close() end
+	end
+
+	local function unlink()
+		assert(tagname, 'no tagname given')
+		librt.shm_unlink(tagname)
+	end
+
+	return {addr = addr, size = size, free = free, flush = flush,
+		unlink = unlink, protect = protect}
+end
+
+function fs.protect(addr, size, access)
+	local write, exec = parse_access(access or 'x')
+	local protect = protect_bits(write, exec)
+	checkz(C.mprotect(addr, size, protect))
+end
+
+function fs.unlink_mapfile(tagname)
+	librt.shm_unlink('/'..check_tagname(tagname))
+end
+

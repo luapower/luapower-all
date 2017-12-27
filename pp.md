@@ -62,7 +62,7 @@ The options can be given in a table or as separate args:
 
   * `indent` - enable indentation eg. `'\t'` indents by one tab
   (default is compact output with no whitespace)
-  * `parents` - enable cycle detection eg. `{}`
+  * `parents` - enable cycle detection by passing `{}` or true
   * `quote` - string quoting to use eg. `'"'` (default is "'")
   * `line_term` - line terminator to use (default is `'\n'`)
   * `onerror` - enable error handling eg. `function(err_type, v, depth)

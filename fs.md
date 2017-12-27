@@ -65,6 +65,18 @@ __low level__
 `fs.wrap_fd(fd) -> f`                             wrap opened file descriptor
 `fs.wrap_file(FILE*) -> f`                        wrap opened `FILE*` object
 `fs.fileno(FILE*) -> fd`                          get stream's file descriptor
+__memory mapping__
+`fs.map(...) -> map`                              create a memory mapping
+`map.addr`                                        a `void*` pointer to the mapped memory
+`map.size`                                        size of the mapped memory in bytes
+`map:flush([async, ][addr, size])`                flush (parts of) the mapping to disk
+`map:free()`                                      release the memory and associated resources
+`fs.unlink_mapfile(tagname)` \                    remove the shared memory file from disk (Linux, OSX)
+`map:unlink()`
+`fs.mirror_map(...) -> map`                       create a mirrored memory mapping
+`fs.pagesize() -> bytes`                          get allocation granularity
+`fs.aligned_size(bytes[, dir]) -> bytes`          next/prev page-aligned size
+`fs.aligned_addr(ptr[, dir]) -> ptr`              next/prev page-aligned address
 ------------------------------------------------- -------------------------------------------------
 
 __NOTE:__ The `deref` arg is `true` by default, meaning that by default,
@@ -165,19 +177,18 @@ sets the `dwShareMode` argument of `CreateFile()` to
 `FILE_SHARE_READ | FILE_SHARE_WRITE` on Windows.
 All fields and flags are documented in the code.
 
-__field__      __OS__     __reference__                __default__
--------------- ---------- ---------------------------- ------------------
-`access      ` Windows    `FILE_*` and `GENERIC_*`     'read'
-`sharing     ` Windows    `FILE_SHARE_*`               'read'
-`creation    ` Windows    `dwCreationDisposition`      'open_existing'
-`attrs       ` Windows    `FILE_ATTRIBUTE_*`           ''
-`flags       ` Windows    `FILE_FLAG_*`                ''
-`flags       ` Linux,OSX  `O_*`                        'rdonly'
-`mode        ` Linux,OSX  octal or symbolic perms (1)  '0666' or 'rwx'
--------------- ---------- ---------------------------- ------------------
+__field__      __OS__     __reference__                              __default__
+-------------- ---------- ------------------------------------------ ------------------
+`access      ` Windows    `CreateFile() / dwDesiredAccess`           `'file_read'`
+`sharing     ` Windows    `CreateFile() / dwShareMode`               `'file_read'`
+`creation    ` Windows    `CreateFile() / dwCreationDisposition`     `'open_existing'`
+`attrs       ` Windows    `CreateFile() / dwFlagsAndAttributes`      `''`
+`flags       ` Windows    `CreateFile() / dwFlagsAndAttributes`      `''`
+`flags       ` Linux, OSX `open() / flags`                           `'rdonly'`
+`mode        ` Linux, OSX `octal or symbolic perms`                  `'0666'` / `'rwx'`
+-------------- ---------- ------------------------------------------ ------------------
 
-(1) If the `mode` arg is a string it is passed to
-[unixperms.parse()][unixperms].
+The `mode` arg is passed to [unixperms.parse()][unixperms].
 
 ### `f:close()`
 
@@ -345,6 +356,7 @@ Remove a file or directory (recursively if `recursive=true`).
 Rename/move a file on the same filesystem. On Windows, `opt` represents
 the `MOVEFILE_*` flags and defaults to `'replace_existing write_through'`.
 
+This operation is atomic on all platforms.
 
 ## Symlinks & hardlinks
 
@@ -397,14 +409,156 @@ Wrap opened `FILE*` object (not tied to gc).
 
 Get a stdio stream's file descriptor.
 
-## Usage Notes
 
-Most filesystem operations are non-atomic and thus prone to race conditions
-on all platforms. This library makes no attempt at fixing that and in fact
-it ignores the issue entirely in order to provide a simpler API. For instance,
-in order to change only the "archive" bit of a file on Windows, the file
-attribute bits need to be read first (because the native API doesn't take a
-mask there). That's a TOCTTOU situation and there's little that can be done
-about it without sacrificing performace a great deal. Resolving a symlink or
-removing a directory recursively in userspace has similar issues.
+## Memory Mapping
 
+Features:
+
+  * file-backed and pagefile-backed (anonymous) memory maps
+  * read-only, read/write and copy-on-write access modes plus executable flag
+  * name-tagged memory maps for sharing memory between processes
+  * mirrored memory maps for using with [lock-free ring buffers][lfrb]
+  * synchronous and asynchronous flushing
+
+Limitations:
+
+  * I/O errors from accessing mmapped memory cause a crash.
+
+### `fs.map(args_t) -> map` <br> `fs.map(path, [access], [size], [offset], [addr], [tagname]) -> map` <br> `f:map([access], [size], [offset], [addr])`
+
+Create a memory map object. Args:
+
+* `path`: the file to map: optional; if nil, a portion of the system pagefile
+will be mapped instead.
+* `access`: can be either:
+	* '' (read-only, default)
+	* 'w' (read + write)
+	* 'c' (read + copy-on-write)
+	* 'x' (read + execute)
+	* 'wx' (read + write + execute)
+	* 'cx' (read + copy-on-write + execute)
+* `size`: the size of the memory segment (optional, defaults to file size).
+	* if given it must be > 0 or an error is raised.
+	* if not given, file size is assumed.
+		* if the file size is zero the mapping fails with `'file_too_short'`.
+	* if the file doesn't exist:
+		* if write access is given, the file is created.
+		* if write access is not given, the mapping fails with `'no_file'` error.
+	* if the file is shorter than the required offset + size:
+		* if write access is not given (or the file is the pagefile which
+		can't be resized), the mapping fails with `'file_too_short'` error.
+		* if write access is given, the file is extended.
+			* if the disk is full, the mapping fails with `'disk_full'` error.
+* `offset`: offset in the file (optional, defaults to 0).
+	* if given, must be >= 0 or an error is raised.
+	* must be aligned to a page boundary or an error is raised.
+	* ignored when mapping the pagefile.
+* `addr`: address to use (optional; an error is raised if zero).
+* `tagname`: name of the memory map (optional; cannot be used with `file`;
+must not contain slashes or backslashes): using the same name in two
+different processes (or in the same process) gives access to the same memory.
+
+Returns an object with the fields:
+
+* `addr` - a `void*` pointer to the mapped memory
+* `size` - the actual size of the memory block
+
+If the mapping fails, returns `nil,err,errcode` where `errcode` can be:
+
+* `'no_file'` - file not found.
+* `'file_too_short'` - the file is shorter than the required size.
+* `'disk_full'` - the file cannot be extended because the disk is full.
+* `'out_of_mem'` - size or address too large or specified address in use.
+* an OS-specific numeric error code.
+
+#### NOTE:
+
+* when mapping or resizing a `FILE` that was written to, the write buffers
+should be flushed first.
+* after mapping an opened file handle of any kind, that file handle should
+not be used anymore except to close it after the mapping is freed.
+* attempting to write to a memory block that wasn't mapped with write
+or copy-on-write access results in a crash.
+* changes done externally to a mapped file may not be visible immediately
+(or at all) to the mapped memory.
+* access to shared memory from multiple processes must be synchronized.
+
+### `map:free()`
+
+Free the memory and all associated resources and close the file
+if it was opened by `fs.map()`.
+
+### `map:flush([async, ][addr, size]) -> true | nil,err,errcode`
+
+Flush (part of) the memory to disk. If the address is not aligned,
+it will be automatically aligned to the left. If `async` is true,
+perform the operation asynchronously and return immediately.
+
+### `fs.unlink_mapfile(tagname)` <br> `map:unlink()`
+
+Remove a (the) shared memory file from disk. When creating a shared memory
+mapping using a tagname, a file is created on the filesystem on Linux
+and OS X (not so on Windows). That file must be removed manually when it is
+no longer needed. This can be done anytime, even while mappings are open and
+will not affect said mappings.
+
+### `fs.mirror_map(args_t) -> map` <br> `fs.mirror_map(file, size[, times[, addr]]) -> map`
+
+Create a mirrored memory mapping to use with a [lock-free ring buffer][lfrb].
+
+Args:
+
+  * `file`: the file to map: required (the access is 'w').
+  * `size`: the size of the memory segment: required, automatically aligned
+  to the next page size.
+  * `times`: how many times to mirror the segment (optional, default: 2)
+  * `addr`: address to use (optional; can be anything convertible to `void*`).
+
+The result is a table with `addr` and `size` fields and all the mirror map
+objects in its array part (freeing the mirror will free all the maps).
+The memory block at `addr` is mirrored such that
+`(char*)addr[o1*i] == (char*)addr[o2*i]` for any `o1` and `o2` in
+`0..times-1` and for any `i` in `0..size-1`.
+
+### `fs.aligned_size(bytes[, dir]) -> bytes`
+
+Get the next larger (dir = 'right', default) or smaller (dir = 'left') size
+that is aligned to a page boundary. It can be used to align offsets and sizes.
+
+### `fs.aligned_addr(ptr[, dir]) -> ptr`
+
+Get the next (dir = 'right', default) or previous (dir = 'left') address that
+is aligned to a page boundary. It can be used to align pointers.
+
+### `fs.pagesize() -> bytes`
+
+Get the current page size. Memory will always be allocated in multiples
+of this size and file offsets must be aligned to this size too.
+
+
+## Programming Notes
+
+### Filesystem operations are non-atomic
+
+Most filesystem operations are non-atomic (unless otherwise specified) and
+thus prone to race conditions. This library makes no attempt at fixing that
+and in fact it ignores the issue entirely in order to provide a simpler API.
+For instance, in order to change _only_ the "archive" bit of a file on
+Windows, the file attribute bits need to be read first (because WinAPI doesn't
+take a mask there). That's a TOCTTOU. Resolving a symlink or removing a
+directory recursively in userspace has similar issues. So never work on the
+(same part of the) filesystem from multiple processes without proper locking
+(watch Niall Douglas's "Racing The File System" presentation for more info).
+
+### Flushing does not protect against power loss
+
+Flushing does not protect against power loss on consumer hard drives because
+they usually don't have non-volatile write caches (and disabling the write
+cache is generally not possible nor feasible). Also, most Linux distros do
+not mount ext3 filesystems with the "barrier=1" option by default which means
+no power loss protection there either, even when the hardware works right.
+
+### File locking doesn't always work
+
+File locking APIs only work right on disk mounts and are buggy or non-existent
+on network mounts (NFS, Samba).

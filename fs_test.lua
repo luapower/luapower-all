@@ -7,6 +7,9 @@ local linux = ffi.os == 'Linux'
 local osx = ffi.os == 'OSX'
 local x64 = ffi.arch == 'x64'
 
+--if luapower sits on a VirtualBox shared folder on a Windows host
+--we can't mmap files, create symlinks or use locking on that, so we'll use
+--$HOME, which is usually a disk mount.
 local prefix = win and '' or os.getenv'HOME'..'/'
 
 local test = setmetatable({}, {__newindex = function(t, k, v)
@@ -39,7 +42,7 @@ function test.open_already_exists_file()
 	assert(f:close())
 	local f, err = fs.open(testfile,
 		win and {
-			access = 'write',
+			access = 'file_write',
 			creation = 'create_new',
 			flags = 'backup_semantics'
 		} or {
@@ -56,7 +59,7 @@ function test.open_already_exists_dir()
 	assert(fs.mkdir(testfile))
 	local f, err = fs.open(testfile,
 		win and {
-			access = 'write',
+			access = 'file_write',
 			creation = 'create_new',
 			flags = 'backup_semantics'
 		} or {
@@ -681,6 +684,273 @@ function test.dir_is_file()
 	assert(#err > 0)
 	assert(err == 'not_found')
 end
+
+--memory mapping -------------------------------------------------------------
+
+--TODO: how to test for disk full on 32bit?
+--TODO: offset + size -> invalid arg
+--TODO: test flush() with invalid address and/or size (clamp them?)
+--TODO: test exec flag by trying to execute code in it
+--TODO: COW on opened file doesn't work on OSX
+--TODO: test protect
+
+local mediumsize = 1024^2 * 10 + 1 -- 10 MB + 1 byte to make it non-aligned
+
+function test.pagesize()
+	assert(fs.pagesize() > 0)
+	assert(fs.pagesize() % 4096 == 0)
+end
+
+--[[
+
+local function zerosize_file(filename)
+	local file = filename or file
+	os.remove(file)
+	local f = assert(io.open(file, 'w'))
+	f:close()
+	return file
+end
+
+function test.filesize()
+	local file = zerosize_file()
+	assert(mmap.filesize(file) == 0)
+	assert(mmap.filesize(file, 123) == 123) --grow
+	assert(mmap.filesize(file) == 123)
+	assert(mmap.filesize(file, 63) == 63) --shrink
+	assert(mmap.filesize(file) == 63)
+	os.remove(file)
+end
+
+local function fill(map)
+	assert(map.size/4 <= 2^32)
+	local p = ffi.cast('int32_t*', map.addr)
+	for i = 0, map.size/4-1 do
+		p[i] = i
+	end
+end
+
+local function check_filled(map, offset)
+	local offset = (offset or 0) / 4
+	local p = ffi.cast('int32_t*', map.addr)
+	for i = 0, map.size/4-1 do
+		assert(p[i] == i + offset)
+	end
+end
+
+local function check_empty(map)
+	local p = ffi.cast('int32_t*', map.addr)
+	for i = 0, map.size/4-1 do
+		assert(p[i] == 0)
+	end
+end
+
+function test.anonymous_write(size)
+	local map = assert(mmap.map{access = 'w', size = size or mediumsize})
+	check_empty(map)
+	fill(map)
+	check_filled(map)
+	map:free()
+end
+
+--NOTE: there's no point in making an unshareable read-only mapping.
+function test.anonymous_readonly_empty()
+	local map = assert(mmap.map{access = 'r', size = mediumsize})
+	check_empty(map)
+	map:free()
+end
+
+function test.file_read()
+	local map = assert(mmap.map{file = 'mmap.lua'})
+	assert(ffi.string(map.addr, 20):find'memory mapping')
+	map:free()
+end
+
+function test.file_write()
+	os.remove(file)
+	local map1 = assert(mmap.map{file = file, size = mediumsize, access = 'w'})
+	fill(map1)
+	map1:free()
+	local map2 = assert(mmap.map{file = file, access = 'r'})
+	check_filled(map2)
+	map2:free()
+	os.remove(file)
+end
+
+function test.file_write_live()
+	os.remove(file)
+	local map1 = assert(mmap.map{file = file, size = mediumsize, access = 'w'})
+	local map2 = assert(mmap.map{file = file, access = 'r'})
+	fill(map1)
+	map1:flush()
+	check_filled(map2)
+	map1:free()
+	map2:free()
+	os.remove(file)
+end
+
+function test.file_copy_on_write()
+	os.remove(file)
+	local size = mediumsize
+	local map = assert(mmap.map{file = file, access = 'w', size = size})
+	fill(map)
+	map:free()
+	local map = assert(mmap.map{file = file, access = 'c'})
+	assert(map.size == size)
+	ffi.fill(map.addr, map.size, 123)
+	map:flush()
+	map:free()
+	--check that the file wasn't altered by fill()
+	local map = assert(mmap.map{file = file})
+	assert(map.size == size)
+	check_filled(map)
+	map:free()
+	os.remove(file)
+end
+
+function test.file_copy_on_write_live()
+	--TODO: COW on opened file doesn't work on OSX
+	if ffi.os == 'OSX' then return end
+	os.remove(file)
+	local size = mediumsize
+	local mapw = assert(mmap.map{file = file, access = 'w', size = size})
+	local mapc = assert(mmap.map{file = file, access = 'c'})
+	local mapr = assert(mmap.map{file = file, access = 'r'})
+	assert(mapw.size == size)
+	assert(mapc.size == size)
+	assert(mapr.size == size)
+	fill(mapw)
+	mapw:flush()
+	check_filled(mapc) --COW mapping sees writes from W mapping.
+	ffi.fill(mapc.addr, mapc.size, 123)
+	mapc:flush()
+	for i=0,size-1 do
+		assert(ffi.cast('char*', mapc.addr)[i] == 123)
+	end
+	check_filled(mapw) --W mapping doesn't see writes from COW mapping.
+	check_filled(mapr) --R mapping doesn't see writes from COW mapping.
+	mapw:free()
+	mapc:free()
+	mapr:free()
+	os.remove(file)
+end
+
+function test.shared_via_tagname()
+	local size = mediumsize
+	local map1 = assert(mmap.map{tagname = 'mmap_test',
+		access = 'w', size = size})
+	local map2 = assert(mmap.map{tagname = 'mmap_test',
+		access = 'r', size = size})
+	map1:unlink() --can be called while mappings are alive.
+	map2:unlink() --no-op if file not found.
+	assert(map1.addr ~= map2.addr)
+	assert(map1.size == map2.size)
+	fill(map1)
+	map1:flush()
+	check_filled(map2)
+	map1:free()
+	map2:free()
+end
+
+function test.file_exec()
+	--TODO: test by exec'ing some code in the memory
+	local map = assert(mmap.map{file = 'bin/mingw64/luajit.exe', access = 'x'})
+	assert(ffi.string(map.addr, 2) == 'MZ')
+	map:free()
+end
+
+function test.offset_live()
+	os.remove(file)
+	local offset = mmap.pagesize()
+	local size = offset * 2
+	local map1 = assert(mmap.map{file = file, size = size, access = 'w'})
+	local map2 = assert(mmap.map{file = file, offset = offset})
+	fill(map1)
+	map1:flush()
+	check_filled(map2, offset)
+	map1:free()
+	map2:free()
+	os.remove(file)
+end
+
+function test.mirror()
+	os.remove(file)
+	local times = 50
+	local map = assert(mmap.mirror{file = file, times = times})
+	local addr = map.addr
+	local p = ffi.cast('char*', addr)
+	p[0] = 123
+	for i = 1, times-1 do
+		assert(p[i*map.size] == 123)
+	end
+	map:free()
+	os.remove(file)
+end
+
+--mmap failure modes
+
+function test.filesize_disk_full()
+	local file = zerosize_file()
+	local size, errmsg, errcode = mmap.filesize(file, 1024^4)
+	assert(not size and errcode == 'disk_full')
+	local actual_size = mmap.filesize(file)
+	assert(actual_size == 0) --file has the same size on error
+end
+
+function test.invalid_size()
+	local ok, err = pcall(mmap.map, {file = 'mmap.lua', size = 0})
+	assert(not ok and err:find'size')
+end
+
+function test.invalid_offset()
+	local ok, err = pcall(mmap.map, {file = 'mmap.lua', offset = 1})
+	assert(not ok and err:find'aligned')
+end
+
+function test.invalid_address()
+	local map, errmsg, errcode = mmap.map{size = mmap.pagesize() * 1,
+		addr = ffi.os == 'Windows' and mmap.pagesize()  --TODO: not robust
+			or ffi.cast('uintptr_t', -mmap.pagesize()),  --TODO: not robust
+	}
+	assert(not map and errcode == 'out_of_mem')
+end
+
+function test.size_too_large()
+	local size = 1024^3 * (ffi.abi'32bit' and 3 or 1024^3)
+	local map, errmsg, errcode = mmap.map{access = 'w', size = size}
+	assert(not map and errcode == 'out_of_mem')
+end
+
+function test.readonly_not_found()
+	local map, errmsg, errcode = mmap.map{file = 'askdfask8920349zjk'}
+	assert(not map and errcode == 'not_found')
+end
+
+function test.readonly_too_short()
+	local map, errmsg, errcode = mmap.map{file = 'mmap.lua', size = 1024*1000}
+	assert(not map and errcode == 'file_too_short')
+end
+
+function test.readonly_too_short_zero()
+	local map, errmsg, errcode = mmap.map{file = zerosize_file()}
+	assert(not map and errcode == 'file_too_short')
+end
+
+function test.write_too_short_zero()
+	local map, errmsg, errcode = mmap.map{file = zerosize_file(), access = 'w'}
+	assert(not map and errcode == 'file_too_short')
+end
+
+function test.map_disk_full()
+	--TODO: how to test for disk full on 32bit? need a < 3G partition
+	if ffi.abi'32bit' then return end
+	local map, errmsg, errcode = mmap.map{
+		file = file,
+		size = 1024^4,
+		access = 'w',
+	}
+	assert(not map and errcode == 'disk_full')
+end
+]]
 
 --test cmdline ---------------------------------------------------------------
 

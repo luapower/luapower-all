@@ -93,15 +93,19 @@ function M.reopen(f0, path, mode)
 	return ret(f ~= nil and f == f0)
 end
 
+function nullread(f, sz)
+	local cur0, err, errno = f:seek()
+	if not cur0 then return nil, err, errno end
+	local cur, err, errno = f:seek('cur', sz)
+	if not cur then return nil, err, errno end
+	return cur - cur0
+end
+
 function M.read(f, buf, sz)
 	if sz == 0 then return 0 end
 	assert(sz >= 1, 'invalid size')
 	if not buf then --null-read
-		local cur0, err, errno = f:seek()
-		if not cur0 then return nil, err, errno end
-		local cur, err, errno = f:seek('cur', sz)
-		if not cur then return nil, err, errno end
-		return cur - cur0
+		return nullread(f, sz)
 	else
 		local szread = tonumber(C.fread(buf, 1, sz, f))
 		return ret((szread == sz or C.feof(f) ~= 0) and szread)
@@ -117,7 +121,7 @@ function M.write(f, buf, sz)
 end
 
 local fdopen = ffi.abi'win' and C._fdopen or C.fdopen
-function M.dopen(fileno, path, mode)
+function M.fdopen(fileno, path, mode)
 	local f = fdopen(fileno, mode or 'r')
 	return ret(f ~= nil and ffi.gc(f, C.fclose))
 end
@@ -178,7 +182,14 @@ function M.close(file)
 	return ret(C.fclose(file) == 0 and ffi.gc(file, nil) and true)
 end
 
+--cast a standard LuaJIT FILE* to a stdio FILE* so we can use stdio methods
+function M.file(file)
+	return ffi.cast('FILE*', file)
+end
+
 ffi.metatype('struct FILE', {__index = {
+	read = M.read,
+	write = M.write,
 	reopen = M.reopen,
 	close = M.close,
 	fileno = M.fileno,
@@ -188,7 +199,7 @@ if not ... then
 	local stdio = M
 	local outfd = stdio.fileno(io.stdout)
 	assert(outfd == 1)
-	local f = assert(stdio.dopen(outfd))
+	local f = assert(stdio.fdopen(outfd))
 	print(f)
 	f:close()
 end

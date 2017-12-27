@@ -23,17 +23,18 @@ __i/o streams__
 `stdio.writer(f) -> write(s[, sz])`                              make a writer function
 __file descriptors__
 `stdio.fileno(f) -> n | nil,err,errno`                           get fileno of file
-`stdio.dopen(fileno) -> f | nil,err,errno`                       open file based on fileno
+`stdio.fdopen(fileno) -> f | nil,err,errno`                      open file based on fileno
 `stdio.close(f) -> true | nil,err,errno`                         close file
 __error reporting__
 `stdio.error(f) -> errno`                                        errno of last operation on file
 `stdio.clearerr(f)`                                              clear last errno
 `stdio.strerror(errno) -> s | nil`                               errno to string
+`stdio.file(f) -> f`                                             cast a standard LuaJIT `FILE*` to a stdio `FILE*`
 ---------------------------------------------------------------- ----------------------------------------------------------------
 
 ## Notes
 
-`io`-opened file objects are _compatible_ with cdata `FILE*`
+[io]-opened file objects are _compatible_ with cdata `FILE*`
 objects but they're not fully equivalent. To be safe, always use `f:close()`
 instead of `io.close()` or `stdio.close()`.
 
@@ -48,3 +49,5 @@ and can thus be used with codecs like [bmp] directly.
 
 Files larger than 4 Petabytes are not supported.
 
+This module is codepage-dependent regarding filenames on Windows just
+like the standard [io] module and [lfs].

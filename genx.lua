@@ -1,4 +1,6 @@
---genx xml generator binding.
+
+--Genx ffi binding.
+--Written by Cosmin Apreutesei. Public Domain.
 
 if not ... then require'genx_demo' end
 

@@ -463,7 +463,9 @@ end
 function glue.assert(v, err, ...)
 	if v then return v end
 	err = err or 'assertion failed!'
-	if select('#',...) > 0 then err = format(err,...) end
+	if select('#',...) > 0 then
+		err = format(err,...)
+	end
 	error(err, 2)
 end
 
@@ -633,11 +635,13 @@ end
 --portable way to get script's directory, based on arg[0].
 --NOTE: the path is not absolute, but relative to the current directory!
 --NOTE: for bundled executables, this returns the executable's directory.
-local dir = rawget(_G, 'arg') and arg[0] and arg[0]:gsub('[/\\]?[^/\\]+$', '') or '' --remove file name
+local dir = rawget(_G, 'arg') and arg[0]
+	and arg[0]:gsub('[/\\]?[^/\\]+$', '') or '' --remove file name
 glue.bin = dir == '' and '.' or dir
 
 --portable way to add more paths to package.path, at any place in the list.
---negative indices count from the end of the list like string.sub(). index 'after' means 0.
+--negative indices count from the end of the list like string.sub().
+--index 'after' means 0.
 function glue.luapath(path, index, ext)
 	ext = ext or 'lua'
 	index = index or 1
@@ -654,7 +658,8 @@ function glue.luapath(path, index, ext)
 end
 
 --portable way to add more paths to package.cpath, at any place in the list.
---negative indices count from the end of the list like string.sub(). index 'after' means 0.
+--negative indices count from the end of the list like string.sub().
+--index 'after' means 0.
 function glue.cpath(path, index)
 	index = index or 1
 	local psep = package.config:sub(1,1) --'/'
@@ -683,7 +688,9 @@ function glue.malloc(ctype, size)
 		ctype, size = 'char', ctype
 	end
 	local ctype = ffi.typeof(ctype or 'char')
-	local ctype = size and ffi.typeof('$(&)[$]', ctype, size) or ffi.typeof('$&', ctype)
+	local ctype = size
+		and ffi.typeof('$(&)[$]', ctype, size)
+		or ffi.typeof('$&', ctype)
 	local bytes = ffi.sizeof(ctype)
 	local data  = ffi.cast(ctype, ffi.C.malloc(bytes))
 	assert(data ~= nil, 'out of memory')

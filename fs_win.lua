@@ -14,7 +14,11 @@ assert(win, 'platform not Windows')
 
 --types, consts, utils -------------------------------------------------------
 
-cdef(string.format('typedef %s ULONG_PTR;', x64 and 'int64_t' or 'int32_t'))
+if x64 then
+	cdef'typedef int64_t ULONG_PTR;'
+else
+	cdef'typedef int32_t ULONG_PTR;'
+end
 
 cdef[[
 typedef void           VOID, *PVOID, *LPVOID;
@@ -50,6 +54,21 @@ local INVALID_HANDLE_VALUE = ffi.cast('HANDLE', -1)
 local wbuf = mkbuf'WCHAR'
 local u64buf = ffi.new'uint64_t[1]'
 
+local m = ffi.new[[
+	union {
+		struct { uint32_t lo; uint32_t hi; };
+		uint64_t x;
+	}
+]]
+local function split_uint64(x)
+	m.x = x
+	return m.hi, m.lo
+end
+local function join_uint64(hi, lo)
+	m.hi, m.lo = hi, lo
+	return m.x
+end
+
 --error reporting ------------------------------------------------------------
 
 cdef[[
@@ -78,6 +97,15 @@ local error_classes = {
 	[0x091] = 'not_empty', --ERROR_DIR_NOT_EMPTY, RemoveDirectoryW
 	[0x0b7] = 'already_exists', --ERROR_ALREADY_EXISTS, CreateDirectoryW
 	[0x10B] = 'not_found', --ERROR_DIRECTORY, FindFirstFileW
+
+	--TODO: mmap
+	[0x0008] = 'file_too_short', --readonly file too short
+	[0x0057] = 'out_of_mem', --size or address too large
+	[0x0070] = 'disk_full',
+	[0x01E7] = 'out_of_mem', --address in use
+	[0x03ee] = 'file_too_short', --file has zero size
+	[0x05af] = 'out_of_mem', --swapfile too short
+
 }
 
 local function check(ret, errcode)
@@ -163,31 +191,65 @@ BOOL CloseHandle(HANDLE hObject);
 ]]
 
 --CreateFile access rights flags
-local access_bits = {
-	--FILE_*
-	list_directory              = 1, --dirs:  allow listing
-	read_data                   = 1, --files: allow reading data
-	add_file                    = 2, --dirs:  allow creating files
-	write_data                  = 2, --files: allow writting data
-	add_subdirectory            = 4, --dirs:  allow creating subdirs
-	append_data                 = 4, --files: allow appending data
-	create_pipe_instance        = 4, --pipes: allow creating a pipe
-	delete_child             = 0x40, --dirs:  allow deleting dir contents
-	traverse                 = 0x20, --dirs:  allow traversing (not effective)
-	execute                  = 0x20, --exes:  allow exec'ing
-	read_attributes          = 0x80, --allow using file.times() for getting
-	write_attributes        = 0x100, --allow using file.times() for setting
-	read_ea                     = 8, --allow reading extended attrs
-	write_ea                 = 0x10, --allow writting extended attrs
-	read_control          = 0x20000, --allow reading the security descriptor
-	standard_rights_read  = 0x20000,
-	standard_rights_write = 0x20000,
+local t = {
+	--FILE_* (specific access rights)
+	list_directory           = 1, --dirs:  allow listing
+	read_data                = 1, --files: allow reading data
+	add_file                 = 2, --dirs:  allow creating files
+	write_data               = 2, --files: allow writting data
+	add_subdirectory         = 4, --dirs:  allow creating subdirs
+	append_data              = 4, --files: allow appending data
+	create_pipe_instance     = 4, --pipes: allow creating a pipe
+	delete_child          = 0x40, --dirs:  allow deleting dir contents
+	traverse              = 0x20, --dirs:  allow traversing (not effective)
+	execute               = 0x20, --exes:  allow exec'ing
+	read_attributes       = 0x80, --allow reading attrs
+	write_attributes     = 0x100, --allow setting attrs
+	read_ea                  = 8, --allow reading extended attrs
+	write_ea              = 0x10, --allow writting extended attrs
+	--object's standard access rights
+	delete       = 0x00010000,
+	read_control = 0x00020000, --allow r/w the security descriptor
+	write_dac    = 0x00040000,
+	write_owner  = 0x00080000,
+	synchronize  = 0x00100000,
+	--STANDARD_RIGHTS_*
+	standard_rights_required = 0x000F0000,
+	standard_rights_read     = 0x00020000, --read_control
+	standard_rights_write    = 0x00020000, --read_control
+	standard_rights_execute  = 0x00020000, --read_control
+	standard_rights_all      = 0x001F0000,
 	--GENERIC_*
-	read               = 0x80000000,
-	write              = 0x40000000,
-	execute            = 0x20000000,
-	all                = 0x10000000,
+	generic_read    = 0x80000000,
+	generic_write   = 0x40000000,
+	generic_execute = 0x20000000,
+	generic_all     = 0x10000000,
 }
+--FILE_ALL_ACCESS
+t.all_access = bit.bor(
+	t.standard_rights_required,
+	t.synchronize,
+	0x1ff)
+--FILE_GENERIC_*
+t.read = bit.bor(
+	t.standard_rights_read,
+	t.read_data,
+   t.read_attributes,
+	t.read_ea,
+	t.synchronize)
+t.write = bit.bor(
+	t.standard_rights_write,
+	t.write_data,
+   t.write_attributes,
+	t.write_ea,
+	t.append_data,
+	t.synchronize)
+t.execute = bit.bor(
+	t.standard_rights_execute,
+	t.read_attributes,
+	t.execute,
+	t.synchronize)
+local access_bits = t
 
 --CreateFile sharing flags
 local sharing_bits = {
@@ -243,16 +305,20 @@ local flag_bits = {
 }
 
 local str_opt = {
-	r = {access = 'read read_attributes',
+	r = {
+		access = 'read',
 		creation = 'open_existing',
 		flags = 'backup_semantics'},
-	w = {access = 'write read_attributes write_attributes',
+	w = {
+		access = 'write file_read_attributes',
 		creation = 'create_always',
 		flags = 'backup_semantics'},
-	['r+'] = {access = 'read write read_attributes write_attributes',
+	['r+'] = {
+		access = 'read write',
 		creation = 'open_existing',
 		flags = 'backup_semantics'},
-	['w+'] = {access = 'read write read_attributes write_attributes',
+	['w+'] = {
+		access = 'read write',
 		creation = 'create_always',
 		flags = 'backup_semantics'},
 }
@@ -743,23 +809,6 @@ local function filesize(high, low)
 	return high * 2^32 + low
 end
 
-local uint64_split_ct = ffi.typeof[[
-	union {
-		uint64_t n;
-		struct {
-			uint32_t low;
-			uint32_t high;
-		};
-	}
-]]
-local idbuf
-local function fileid(high, low)
-	local idbuf = idbuf or uint64_split_ct()
-	idbuf.low = low
-	idbuf.high = high
-	return idbuf.n
-end
-
 local function attrbit(bits, k)
 	if k ~= 'directory' and k ~= 'device' and attr_bits[k] then
 		return bit.band(attr_bits[k], bits) ~= 0
@@ -844,7 +893,7 @@ local info_getters = {
 	end,
 	nlink = function(info) return info.nNumberOfLinks end,
 	id = function(info)
-		return fileid(info.nFileIndexHigh, info.nFileIndexLow)
+		return join_uint64(info.nFileIndexHigh, info.nFileIndexLow)
 	end,
 }
 
@@ -947,23 +996,6 @@ function fs_attr_set(path, t, deref)
 	return with_open_file(path, opt, file_attr_set, t)
 end
 
---[[
-function fs_attr_get(path, attr, deref)
-	if type(attr) == 'table' then --set attrs
-		if deref then
-			return true --tell the frontend to deref the symlink and retry
-		end
-		local ok,e,c = set_attrs(path, attr)
-		if not ok then return false, nil,e,c end
-		return false, true
-	else
-		local ok, data = getattr_data(path)
-		if not ok then return check() end
-		return data_attr(data, attr, deref)
-	end
-end
-]]
-
 --directory listing ----------------------------------------------------------
 
 cdef[[
@@ -1053,7 +1085,7 @@ function dir.next(dir)
 	end
 end
 
-function dir_iter(path)
+function fs_dir(path)
 	assert(not path:find'[%*%?]') --no globbing allowed
 	local dir = dir_ct(#path)
 	dir._dirlen = #path
@@ -1086,4 +1118,214 @@ function dir_attr_get(dir, attr)
 		if val ~= nil then return val end
 		return nil, false --not found
 	end
+end
+
+--memory mapping -------------------------------------------------------------
+
+ffi.cdef[[
+typedef struct {
+	WORD wProcessorArchitecture;
+	WORD wReserved;
+	DWORD dwPageSize;
+	LPVOID lpMinimumApplicationAddress;
+	LPVOID lpMaximumApplicationAddress;
+	LPDWORD dwActiveProcessorMask;
+	DWORD dwNumberOfProcessors;
+	DWORD dwProcessorType;
+	DWORD dwAllocationGranularity;
+	WORD wProcessorLevel;
+	WORD wProcessorRevision;
+} SYSTEM_INFO, *LPSYSTEM_INFO;
+
+VOID GetSystemInfo(LPSYSTEM_INFO lpSystemInfo);
+]]
+
+local pagesize
+function fs.pagesize()
+	if not pagesize then
+		local sysinfo = ffi.new'SYSTEM_INFO'
+		C.GetSystemInfo(sysinfo)
+		pagesize = sysinfo.dwAllocationGranularity
+	end
+	return pagesize
+end
+
+ffi.cdef[[
+HANDLE CreateFileMappingW(
+	HANDLE hFile,
+	LPSECURITY_ATTRIBUTES lpFileMappingAttributes,
+	DWORD flProtect,
+	DWORD dwMaximumSizeHigh,
+	DWORD dwMaximumSizeLow,
+	LPCWSTR *lpName
+);
+
+HANDLE OpenFileMappingW(
+  DWORD   dwDesiredAccess,
+  BOOL    bInheritHandle,
+  LPCWSTR lpName
+);
+
+void* MapViewOfFileEx(
+	HANDLE hFileMappingObject,
+	DWORD dwDesiredAccess,
+	DWORD dwFileOffsetHigh,
+	DWORD dwFileOffsetLow,
+	SIZE_T dwNumberOfBytesToMap,
+	LPVOID lpBaseAddress
+);
+
+BOOL UnmapViewOfFile(LPCVOID lpBaseAddress);
+
+BOOL FlushViewOfFile(
+	LPCVOID lpBaseAddress,
+	SIZE_T dwNumberOfBytesToFlush
+);
+
+BOOL VirtualProtect(
+	LPVOID lpAddress,
+	SIZE_T dwSize,
+	DWORD  flNewProtect,
+	PDWORD lpflOldProtect);
+]]
+
+local A = {
+	page_noaccess                = 0x0001,
+	page_readonly                = 0x0002,
+	page_readwrite               = 0x0004,
+	page_writecopy               = 0x0008, --no file auto-grow with this!
+	page_execute                 = 0x0010,
+	page_execute_read            = 0x0020, --xp sp2+
+	page_execute_readwrite       = 0x0040, --xp sp2+
+	page_execute_writecopy       = 0x0080, --vista sp1+
+	page_guard                   = 0x0100,
+	page_nocache                 = 0x0200,
+	page_writecombine            = 0x0400,
+	section_query                = 0x0001,
+	section_map_write            = 0x0002,
+	section_map_read             = 0x0004,
+	section_map_execute          = 0x0008,
+	section_extend_size          = 0x0010,
+	section_map_execute_explicit = 0x0020, --xp sp2+
+	file_map_write               = 0x0002, --section_map_write
+	file_map_read                = 0x0004, --section_map_read
+	file_map_copy                = 0x00000001,
+	file_map_reserve             = 0x80000000,
+	file_map_execute             = 0x0020, --execute_explicit, xp sp2+
+}
+
+local function protect_bits(access_write, access_exec, access_copy)
+	return bit.bor(
+		access_exec
+			and (access_write
+				and A.page_execute_readwrite
+				or A.page_execute_read)
+			or (access_write
+				and A.page_readwrite
+				or A.page_readonly))
+end
+
+function fs_map(file, write, exec, copy, size, offset, addr, tagname)
+
+	if type(file) == 'string' then
+		local open_opt = {
+			access = 'read execute ' ..
+				(write and 'write' or ''),
+			sharing = 'read write delete',
+			creation = write and 'open_always' or 'open_existing',
+		}
+		local f, err, errno = fs.open(file, open_opt)
+		if not f then return nil, err, errno end
+	else
+		assert(fs.isfile(file), 'invalid file argument')
+	end
+
+	local protect = protect_bits(write, exec)
+	local mhi, mlo = split_uint64(size or 0) --0 means whole file
+	local tagname = tagname and wcs('Local\\'..tagname)
+	local filemap
+	if false then
+		--TODO: test shared memory (see if OpenFileMappingW is needed)
+		--filemap = C.OpenFileMappingW(tagname)
+	else
+		filemap = C.CreateFileMappingW(
+			file and file.handle or INVALID_HANDLE_VALUE,
+			nil, protect, mhi, mlo, tagname)
+	end
+
+	if filemap == nil then
+		--convert `file_too_short` error into `out_of_mem` error when
+		--opening the swap file.
+		if not file and err == ERROR_NOT_ENOUGH_MEMORY then
+			err = ERROR_COMMITMENT_LIMIT
+		end
+		return check(err)
+	end
+
+	local access = bit.bor(
+		not write and not copy and A.file_map_read or 0,
+		write and A.file_map_write or 0,
+		copy and A.file_map_copy or 0,
+		exec and A.section_map_execute or 0)
+	local ohi, olo = split_uint64(offset)
+	local baseaddr = addr
+
+	local addr = C.MapViewOfFileEx(
+		filemap, access, ohi, olo, size or 0, baseaddr)
+
+	if addr == nil then
+		local err = C.GetLastError()
+		close(filemap)
+		closefile()
+		return reterr(err)
+	end
+
+	local function free()
+		C.UnmapViewOfFile(addr)
+		close(filemap)
+		closefile()
+	end
+
+	local function flush(self, async, addr, sz)
+		if type(async) ~= 'boolean' then --async arg is optional
+			async, addr, sz = false, async, addr
+		end
+		local addr = mmap.aligned_addr(addr or self.addr, 'left')
+		local ok = C.FlushViewOfFile(addr, sz or 0) ~= 0
+		if not ok then return reterr() end
+		if not async then
+			local ok = C.FlushFileBuffers(file) ~= 0
+			if not ok then return reterr() end
+		end
+		return true
+	end
+
+	--if size wasn't given, get the file size so that the user always knows
+	--the actual size of the mapped memory.
+	if not size then
+		local filesize, errmsg, errcode = mmap.filesize(file)
+		if not filesize then return nil, errmsg, errcode end
+		size = filesize - offset
+	end
+
+	local function unlink() --no-op
+		assert(tagname, 'no tagname given')
+	end
+
+	return {addr = addr, size = size, free = free, flush = flush,
+		unlink = unlink, protect = protect}
+
+end
+
+function fs.unlink_mapfile(tagname) --no-op
+	map_check_tagname(tagname)
+end
+
+function fs.protect(addr, size, access)
+	local write, exec = map_access_args(access or 'x')
+	local protect = protect_bits(write, exec)
+	local old = ffi.new'DWORD[1]'
+	local ok = C.VirtualProtect(addr, size, prot, old) ~= 0
+	if not ok then return reterr() end
+	return true
 end

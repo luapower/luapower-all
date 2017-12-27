@@ -4,7 +4,8 @@ tagline: XML writer
 
 ## `local genx = require'genx'`
 
-A ffi binding of [genx][genx lib], a library for generating well-formed canonical XML documents, written by Tim Bray.
+A ffi binding of [genx][genx lib], a library for generating well-formed
+canonical XML documents, written by Tim Bray.
 
 ## Features
 

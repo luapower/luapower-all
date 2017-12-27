@@ -1,3 +1,7 @@
+
+--Expat ffi binding.
+--Written by Cosmin Apreutesei. Public Domain.
+
 --parse xml from a string, cdata, file, or reader function.
 --  parse(spec_t, callbacks)
 --  treeparse(spec_t, [known_tags=]) -> root_node
