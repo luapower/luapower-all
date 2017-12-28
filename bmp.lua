@@ -108,6 +108,7 @@ M.open = glue.protect(function(read_bytes)
 	--wrap the reader so we can count the bytes read
 	local bytes_read = 0
 	local function read(buf, sz)
+		if sz == 0 then return buf end
 		local sz = sz or ffi.sizeof(buf)
 		assert(read_bytes(buf, sz) == sz, 'eof')
 		bytes_read = bytes_read + sz

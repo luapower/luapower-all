@@ -26,7 +26,7 @@ and saving in bgra8 format.
 ### `bmp.open(read) -> b|nil,err`
 
 Open a BMP file using a `read(buf, size) -> readsize` function to get
-the bytes. The read function should accept any size >= 0 and it should
+the bytes. The read function should accept any size > 0 and it should
 raise an error if it can't read all the bytes, except on EOF when it
 should return 0.
 
