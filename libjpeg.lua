@@ -10,8 +10,8 @@ end
 
 local ffi = require'ffi'
 local bit = require'bit'
-local glue = require'glue'
 local jit = require'jit'
+local glue = require'glue'
 require'libjpeg_h'
 local C = ffi.load'jpeg'
 
@@ -285,13 +285,12 @@ local function open(t)
 			fill_input_buffer()
 		end
 
-		img.file = {}
-		img.file.w = cinfo.image_width
-		img.file.h = cinfo.image_height
-		img.file.format = formats[tonumber(cinfo.jpeg_color_space)]
-		img.file.progressive = C.jpeg_has_multiple_scans(cinfo) ~= 0
+		img.w = cinfo.image_width
+		img.h = cinfo.image_height
+		img.format = formats[tonumber(cinfo.jpeg_color_space)]
+		img.progressive = C.jpeg_has_multiple_scans(cinfo) ~= 0
 
-		img.file.jfif = cinfo.saw_JFIF_marker == 1 and {
+		img.jfif = cinfo.saw_JFIF_marker == 1 and {
 			maj_ver = cinfo.JFIF_major_version,
 			min_ver = cinfo.JFIF_minor_version,
 			density_unit = cinfo.density_unit,
@@ -299,7 +298,7 @@ local function open(t)
 			y_density = cinfo.Y_density,
 		} or nil
 
-		img.file.adobe = cinfo.saw_Adobe_marker == 1 and {
+		img.adobe = cinfo.saw_Adobe_marker == 1 and {
 			transform = cinfo.Adobe_transform,
 		} or nil
 	end
@@ -310,22 +309,22 @@ local function open(t)
 		return nil, err
 	end
 
-	local function load_image(img, render_scan)
+	local function load_image(img, t)
 
 		--find the best accepted output pixel format
-		assert(img.file.format, 'invalid pixel format')
-		assert(cinfo.num_components == channel_count[img.file.format])
-		img.format = best_format(img.file.format, t.accept)
+		assert(img.format, 'invalid pixel format')
+		assert(cinfo.num_components == channel_count[img.format])
+		img.format = best_format(img.format, t and t.accept)
 
 		--set decompression options
 		cinfo.out_color_space = assert(color_spaces[img.format])
 		cinfo.output_components = channel_count[img.format]
-		cinfo.scale_num = t.scale_num or 1
-		cinfo.scale_denom = t.scale_denom or 1
-		cinfo.dct_method =
-			assert(dct_methods[t.dct_method or 'accurate'], 'invalid dct_method')
-		cinfo.do_fancy_upsampling = t.fancy_upsampling or false
-		cinfo.do_block_smoothing = t.block_smoothing or false
+		cinfo.scale_num = t and t.scale_num or 1
+		cinfo.scale_denom = t and t.scale_denom or 1
+		local dct_method = dct_methods[t and t.dct_method or 'accurate']
+		cinfo.dct_method = assert(dct_method, 'invalid dct_method')
+		cinfo.do_fancy_upsampling = t and t.fancy_upsampling or false
+		cinfo.do_block_smoothing = t and t.block_smoothing or false
 		cinfo.buffered_image = 1 --multi-scan reading
 
 		--start decompression, which fills the info about the output image
@@ -339,14 +338,14 @@ local function open(t)
 
 		--compute the stride
 		img.stride = cinfo.output_width * cinfo.output_components
-		if t.accept and t.accept.stride_aligned then
+		if t and t.accept and t.accept.stride_aligned then
 			img.stride = pad_stride(img.stride)
 		end
 
 		--allocate image and row buffers
 		img.size = img.h * img.stride
 		img.data = ffi.new('uint8_t[?]', img.size)
-		img.bottom_up = t.accept and t.accept.bottom_up
+		img.bottom_up = t and t.accept and t.accept.bottom_up
 
 		local rows = rows_buffer(img.h, img.bottom_up, img.data, img.stride)
 
@@ -375,11 +374,12 @@ local function open(t)
 				while C.jpeg_read_scanlines(cinfo, rows + i, n) < n do
 					fill_input_buffer()
 				end
-				--assert(cinfo.output_scanline == i + actual)
 			end
 
 			--call the rendering callback on the converted image
-			render_scan(img, last_scan, cinfo.output_scan_number)
+			if t and t.render_scan then
+				t.render_scan(img, last_scan, cinfo.output_scan_number)
+			end
 
 			while C.jpeg_finish_output(cinfo) == 0 do
 				fill_input_buffer()

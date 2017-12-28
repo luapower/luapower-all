@@ -2,7 +2,7 @@ local player = require'cplayer'
 local libjpeg = require'libjpeg'
 local cairo = require'cairo'
 local glue = require'glue'
-local stdio = require'stdio'
+local fs = require'fs'
 local ffi = require'ffi'
 
 require'unit'
@@ -11,8 +11,8 @@ glue.extend(files, dir'media/jpeg/test*')
 table.insert(files, 'media/jpeg/progressive.jpg')
 table.insert(files, 'media/jpeg/cmyk.jpg') --test skip bytes with this one
 table.insert(files, 'media/jpeg/birds.jpg')
---table.insert(files, 'media/jpeg/autumn-wallpaper.jpg')
---table.insert(files, 'media/jpeg/testimgari.jpg') --no i/o suspension with this one :(
+table.insert(files, 'media/jpeg/autumn-wallpaper.jpg')
+table.insert(files, 'media/jpeg/testimgari.jpg') --no i/o suspension with this one :(
 
 --gui options
 local formats = {ycc8 = true}
@@ -150,13 +150,19 @@ function player:on_render(cr)
 			maxh = math.max(maxh or 0, h)
 		end
 
-		local f = assert(io.open(filename, 'rb'))
-		local stdio_read = stdio.reader(f)
+		local f = assert(fs.open(filename))
 		local left = cut_size
 		local function read(buf, sz)
 			if left == 0 then return 0 end
 			local sz = math.min(left, sz)
-			local readsz = stdio_read(buf, sz)
+			local readsz
+			if buf then
+				readsz = assert(f:read(buf, sz))
+			else
+				local pos0 = assert(f:seek())
+				local pos1 = assert(f:seek(sz))
+				readsz = pos1 - pos0
+			end
 			left = left - readsz
 			return readsz
 		end
@@ -175,7 +181,7 @@ function player:on_render(cr)
 		if not img then err = 'open '..err end
 		local ok
 		if img then
-			ok, err = img:load(render_scan)
+			ok, err = img:load({render_scan = render_scan})
 		end
 		if not ok then
 			render_scan(nil, true, 1, err)

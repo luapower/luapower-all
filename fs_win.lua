@@ -35,12 +35,24 @@ typedef wchar_t        WCHAR;
 typedef WCHAR*         LPWSTR;
 typedef const WCHAR*   LPCWSTR;
 typedef BOOL           *LPBOOL;
-typedef int64_t        LONGLONG;
-typedef LONGLONG       LARGE_INTEGER, *PLARGE_INTEGER;
 typedef void*          HMODULE;
 typedef unsigned char  UCHAR;
 typedef unsigned short USHORT;
+typedef long           LONG;
 typedef unsigned long  ULONG;
+typedef long long      LONGLONG;
+
+typedef union {
+	struct {
+		DWORD LowPart;
+		LONG HighPart;
+	};
+	struct {
+		DWORD LowPart;
+		LONG HighPart;
+	} u;
+	LONGLONG QuadPart;
+} LARGE_INTEGER, *PLARGE_INTEGER;
 
 typedef struct {
 	DWORD  nLength;
@@ -52,7 +64,7 @@ typedef struct {
 local INVALID_HANDLE_VALUE = ffi.cast('HANDLE', -1)
 
 local wbuf = mkbuf'WCHAR'
-local u64buf = ffi.new'uint64_t[1]'
+local libuf = ffi.new'LARGE_INTEGER[1]'
 
 local m = ffi.new[[
 	union {
@@ -458,6 +470,7 @@ local dwbuf = ffi.new'DWORD[1]'
 
 function file.read(f, buf, sz)
 	local ok = C.ReadFile(f.handle, buf, sz, dwbuf, nil) ~= 0
+	--print(sz, ok, file_seek(f, 1, 0), file_getsize(f))
 	if not ok then return check() end
 	return dwbuf[0]
 end
@@ -472,10 +485,12 @@ function file.flush(f)
 	return check(C.FlushFileBuffers(f.handle) ~= 0)
 end
 
+local ofsbuf = ffi.new'LARGE_INTEGER[1]'
 function file_seek(f, whence, offset)
-	local ok = C.SetFilePointerEx(f.handle, offset, u64buf, whence) ~= 0
+	ofsbuf[0].QuadPart = offset
+	local ok = C.SetFilePointerEx(f.handle, ofsbuf[0], libuf, whence) ~= 0
 	if not ok then return check() end
-	return tonumber(u64buf[0])
+	return tonumber(libuf[0].QuadPart)
 end
 
 --truncate/getsize/setsize ---------------------------------------------------
@@ -496,9 +511,9 @@ function file.truncate(f, opt)
 end
 
 function file_getsize(f)
-	local ok = C.GetFileSizeEx(f.handle, u64buf) ~= 0
+	local ok = C.GetFileSizeEx(f.handle, libuf) ~= 0
 	if not ok then return check() end
-	return tonumber(u64buf[0])
+	return tonumber(libuf[0].QuadPart)
 end
 
 --filesystem operations ------------------------------------------------------
@@ -878,10 +893,17 @@ end
 
 local binfo_getters = {
 	type = function(binfo) return filetype(binfo.FileAttributes) end,
-	btime = function(binfo) return timestamp(binfo.CreationTime) end,
-	atime = function(binfo) return timestamp(binfo.LastAccessTime) end,
-	mtime = function(binfo) return timestamp(binfo.LastWriteTime) end,
-	ctime = function(binfo) return timestamp(binfo.ChangeTime) end,
+	btime = function(binfo)
+		return timestamp(binfo.CreationTime.QuadPart)
+	end,
+	atime = function(binfo)
+		return timestamp(binfo.LastAccessTime.QuadPart)
+	end,
+	mtime = function(binfo)
+		return timestamp(binfo.LastWriteTime.QuadPart) end,
+	ctime = function(binfo)
+		return timestamp(binfo.ChangeTime.QuadPart)
+	end,
 }
 
 local info_getters = {
@@ -944,10 +966,14 @@ function file_attr_set(f, t)
 	local binfo, err, errcode = file_get_basic_info(f)
 	if not binfo then return nil, err, errcode end
 	binfo.FileAttributes = set_attrbits(binfo.FileAttributes, t)
-	binfo.CreationTime   = set_filetime(binfo.CreationTime, t.btime)
-	binfo.LastAccessTime = set_filetime(binfo.LastAccessTime, t.atime)
-	binfo.LastWriteTime  = set_filetime(binfo.LastWriteTime, t.mtime)
-	binfo.ChangeTime     = set_filetime(binfo.ChangeTime, t.ctime)
+	binfo.CreationTime.QuadPart   =
+		set_filetime(binfo.CreationTime.QuadPart, t.btime)
+	binfo.LastAccessTime.QuadPart =
+		set_filetime(binfo.LastAccessTime.QuadPart, t.atime)
+	binfo.LastWriteTime.QuadPart  =
+		set_filetime(binfo.LastWriteTime.QuadPart, t.mtime)
+	binfo.ChangeTime.QuadPart     =
+		set_filetime(binfo.ChangeTime.QuadPart, t.ctime)
 	return file_set_basic_info(f, binfo)
 end
 
