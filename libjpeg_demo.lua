@@ -132,7 +132,7 @@ function player:on_render(cr)
 					14, 'normal_fg', 'left', 'top')
 
 				self:textbox(cx, cy, w, h,
-					image.file.format .. (image.format ~= image.file.format and
+					image.format .. (image.format ~= image.format and
 						' -> ' .. image.format or ''),
 					14, 'normal_fg', 'center', 'center')
 

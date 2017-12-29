@@ -2,6 +2,8 @@
 --zlib binding.
 --Written by Cosmin Apreutesei. Public Domain.
 
+if not ... then require'zlib_test'; return end
+
 local ffi = require'ffi'
 require'zlib_h'
 local C = ffi.load'z'
@@ -267,8 +269,6 @@ local function crc32(data, sz, crc)
 	crc = crc or C.crc32(0, nil, 0)
 	return tonumber(C.crc32(crc, data, sz or #data))
 end
-
-if not ... then require'zlib_test' end
 
 return {
 	C = C,
