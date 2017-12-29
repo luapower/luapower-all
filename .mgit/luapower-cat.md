@@ -47,10 +47,8 @@ tagline: package categories
 * File Formats
 	* [giflib]
 	* [libjpeg]
-	* [libpng]
 	* [bmp]
 	* [libexif]
-	* [libvorbis]
 * Hashing
 	* [xxhash]
    * [blake2]
@@ -141,3 +139,5 @@ Development Tools
 	* [fribidi]
 	* [chipmunk]
 	* [libvlc]
+	* [libvorbis]
+	* [libpng]
