@@ -164,13 +164,13 @@ int64_t lseek(int fd, int64_t offset, int whence) asm("lseek%s");
 function file.read(f, buf, sz)
 	local szread = C.read(f.fd, buf, sz)
 	if szread == -1 then return check() end
-	return szread
+	return tonumber(szread)
 end
 
 function file.write(f, buf, sz)
 	local szwr = C.write(f.fd, buf, sz)
 	if szwr == -1 then return check() end
-	return szwr
+	return tonumber(szwr)
 end
 
 function file.flush(f)

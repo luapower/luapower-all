@@ -1,4 +1,9 @@
---freetype lightweight ffi binding (no garbage collection due to freetype's object ownership model)
+
+--freetype ffi binding.
+--Written by Cosmin Apreutesei. Public Domain.
+
+if not ... then require'freetype_test'; return end
+
 local ffi = require'ffi'
 require'freetype_h'
 local C = ffi.load'freetype'
@@ -503,7 +508,5 @@ ffi.metatype('FT_Outline', {__index = {
 	render = function(self, library, ...) return M.FT_Outline_Render(library, self, ...) end,
 	orientation = M.FT_Outline_Get_Orientation,
 }})
-
-if not ... then require'freetype_test' end
 
 return M
