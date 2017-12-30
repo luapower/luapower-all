@@ -2,8 +2,12 @@
 local player = require'cplayer'
 local glue = require'glue'
 local color = require'color'
+local ffi = require'ffi'
 
-local default_font = 'MS Sans Serif,8'
+local default_font =
+	ffi.os == 'Windows' and 'MS Sans Serif,8'
+	or ffi.os == 'OSX' and 'Droid Sans,12'
+	or ffi.os == 'Linux' and 'Droid Sans,14'
 
 --theme api / state
 

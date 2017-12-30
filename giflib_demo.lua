@@ -83,7 +83,7 @@ function player:on_render(cr)
 					state.frame = 1
 				end
 				image = gif.frames[state.frame]
-				state.time = self.clock + (image.delay_ms or 0)
+				state.time = self.clock + (image.delay_ms or 0) / 1000
 			else
 				image = gif.frames[state.frame]
 			end

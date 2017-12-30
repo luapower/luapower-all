@@ -2,7 +2,7 @@ local ffi = require'ffi'
 local hb = require'harfbuzz'
 local ft = require'freetype'
 local cairo = require'cairo'
-
+local time = require'time'
 local player = require'cplayer'
 
 local function shape_text(s, ft_face, hb_font, size, direction, script, language, features)
@@ -83,11 +83,12 @@ local dejavu_autohint = font('media/fonts/DejaVuSerif.ttf', ft.FT_LOAD_FORCE_AUT
 local dark = true
 local selected_font = dejavu_hinted
 local antialias = 'default'
-local sub = 0
+local sub = 1
 local font_options = cairo.font_options()
 local lcd_filter = 'default'
 local round_glyph_pos = 'off'
 local use_show_glyphs = true
+local frameclock = time.clock()
 
 function player:on_render(cr)
 
@@ -130,6 +131,16 @@ function player:on_render(cr)
 											texts = {[true] = 'cairo_show_glyphs', [false] = 'cairo_glyph_path'},
 											selected = use_show_glyphs}
 
+	local sub1 = self:slider{id = 'sub', x = 100, y = 70, w = 920, h = 26,
+		i0 = 0, i1 = 1, step = 1/256, i = sub,
+		pos_text = function(i)
+			return 'subpixel: 1/' .. (i*256)
+		end,
+	}
+	if self.active == 'sub' then
+		sub = sub1
+	end
+
 	cr:antialias(antialias)
 	font_options:lcd_filter(lcd_filter)
 	font_options:antialias(antialias)
@@ -143,7 +154,7 @@ function player:on_render(cr)
 		texts = {[dejavu_hinted] = 'hinted', [dejavu_nohint] = 'unhinted', [dejavu_autohint] = 'autohinted'},
 		selected = selected_font}
 
-	self:draw_text(100, 150, "هذه هي بعض النصوص العربي", amiri, 40,
+	self:draw_text(100 + sub, 150, "هذه هي بعض النصوص العربي", amiri, 40,
 							hb.HB_DIRECTION_RTL, hb.HB_SCRIPT_ARABIC, 'ar', nil, use_show_glyphs)
 
 	local y = 0
@@ -152,8 +163,12 @@ function player:on_render(cr)
 							hb.HB_DIRECTION_LTR, hb.HB_SCRIPT_LATIN, 'en', nil, use_show_glyphs)
 		y = y + i
 	end
-	sub = sub + 1/256
+
+	if self.active ~= 'sub' then
+		sub = sub + 1/256 * (time.clock() - frameclock) * 60
+	end
+
+	frameclock = time.clock()
 end
 
 player:play()
-

@@ -27,7 +27,7 @@ function player:on_render(cr)
 	if manual then
 		t = progress * duration
 	else
-		t = (self.clock - start_time) / 1000
+		t = self.clock - start_time
 		if t > duration then
 			start_time = self.clock
 			t = 0

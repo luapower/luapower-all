@@ -1,6 +1,7 @@
 local player = require'cplayer'
 local glue = require'glue'
 local boxlayer = require'cplayer.boxlayer'
+local ffi = require'ffi'
 
 local t = {
 	tab = 1,
@@ -66,7 +67,9 @@ function player:on_render(cr)
 	self.theme = self.themes[t.theme]
 	cpy = cpy + 24 + 10
 
-	t.filename = self:filebox{id = 'filebox', x = 10, y = cpy, w = 200, h = 24, filename = t.filename}
+	if ffi.abi'win' then
+		t.filename = self:filebox{id = 'filebox', x = 10, y = cpy, w = 200, h = 24, filename = t.filename}
+	end
 	cpy = cpy + 24 + 10
 
 	local menu = self:combobox{id = 'combo', x = 10, y = cpy, w = 100, h = 24, items = {'item1', 'item2', 'item3'},

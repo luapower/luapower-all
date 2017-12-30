@@ -54,12 +54,12 @@ end
 function object:_property(name)
 	local getter = 'get_'..name
 	local setter = 'set_'..name
-	self[name] = function(self, on)
+	self[name] = function(self, val)
 		self:_check()
-		if on == nil then
+		if val == nil then
 			return self.backend[getter](self.backend)
 		else
-			self.backend[setter](self.backend, on)
+			self.backend[setter](self.backend, val)
 		end
 	end
 end
@@ -1379,7 +1379,14 @@ function window:mouse(var)
 	local inside = self._mouse.inside
 	if var == 'inside' then
 		return inside
-	elseif not inside then
+	elseif not (
+		inside
+		or self._mouse.left
+		or self._mouse.right
+		or self._mouse.middle
+		or self._mouse.x1
+		or self._mouse.x2
+	) then
 		return
 	elseif var == 'pos' then
 		return self._mouse.x, self._mouse.y

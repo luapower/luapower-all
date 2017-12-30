@@ -289,13 +289,16 @@ while true do
 
 	end
 
-	print('##### '..
-		(wm_states[xlib.get_wm_state(win)] or tostring(xlib.get_wm_state(win)))..' '..
-		(xlib.get_net_wm_state_hidden(win) and 'H' or '')..
-		(xlib.get_net_wm_state_maximized(win) and 'M' or '')..
-		(xlib.get_net_wm_state_fullscreen(win) and 'F' or '')..
-		(xlib.get_net_active_window() == win and 'A' or '')
-	)
+	if xlib.get_wm_state(win) then
+		print('##### '..
+			(wm_states[xlib.get_wm_state(win)]
+				or tostring(xlib.get_wm_state(win)))..' '..
+			(xlib.get_net_wm_state_hidden(win) and 'H' or '')..
+			(xlib.get_net_wm_state_maximized(win) and 'M' or '')..
+			(xlib.get_net_wm_state_fullscreen(win) and 'F' or '')..
+			(xlib.get_net_active_window() == win and 'A' or '')
+		)
+	end
 
 end
 

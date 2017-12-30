@@ -12,13 +12,6 @@ require'cairo_h'
 local C = ffi.load'cairo'
 local M = {C = C}
 
-local function pargs(func)
-	return function(...)
-		print(func, ...)
-		return func(...)
-	end
-end
-
 --binding vocabulary ---------------------------------------------------------
 
 --C namespace that returns nil for missing symbols instead of raising an error.
@@ -99,7 +92,7 @@ local function getset_func(get, set, prefix)
 		set = setflag_func(set, prefix)
 	end
 	return function(self, ...)
-		if ... == nil then --get val
+		if type((...)) == 'nil' then --get val
 			return get(self, ...)
 		else --set val
 			set(self, ...)

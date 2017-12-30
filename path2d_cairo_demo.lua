@@ -174,7 +174,7 @@ function player:on_render(cr)
 	if true then
 		local len = path.length(p, mt)
 		cr:rgb(1,1,1)
-		cr:move_to(self.window.client_w - 260, 20)
+		cr:move_to(self.w - 260, 20)
 		cr:font_size(18)
 		cr:text_path(string.format('length: %4.20f', len))
 		cr:fill()

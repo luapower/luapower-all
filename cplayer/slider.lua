@@ -41,7 +41,9 @@ function player:slider(t)
 	i = clamp(i, i0, i1)
 
 	local w1 = lerp(i, i0, i1, 0, w)
-	text = (text and (text .. ': ') or '') .. tostring(i)
+	text =
+		t.pos_text and t.pos_text(i)
+		or (text and (text .. ': ') or '') .. tostring(i)
 
 	--drawing
 	self:rect(x + 0.5, y + 0.5, w - 1, h - 1, 'faint_bg', 'normal_border')

@@ -28,7 +28,7 @@ function player:filebox(t)
 		local ok, info = winapi.GetOpenFileName{
 			filter = {'All Files','*.*'},
 			flags = 'OFN_FILEMUSTEXIST',
-			hwndOwner = self.window.hwnd,
+			hwndOwner = self.window.backend.win.hwnd,
 		}
 		if ok then
 			filename = info.filepath

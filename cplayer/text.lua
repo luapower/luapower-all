@@ -1,5 +1,6 @@
 --cplayer text api
 local player = require'cplayer'
+local ffi = require'ffi'
 
 --TODO: move string functions in a general-purpose string module and remove dependency on codedit_str
 local str = require'codedit_str'
@@ -20,6 +21,9 @@ local function text_args(self, s, font, color, line_spacing)
 end
 
 local function draw_text(cr, x, y, s, align, line_h) --multi-line text
+	if ffi.os == 'OSX' then --TOOD: remove this hack
+		y = y + 1
+	end
 	for _, s in lines(s) do
 		if align == 'right' then
 			local extents = cr:text_extents(s)
