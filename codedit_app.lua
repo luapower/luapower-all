@@ -62,7 +62,7 @@ function player:new_tab(filename, i)
 
 	local text = filename and glue.canopen(filename) and glue.readfile(filename) or ''
 
-	local ext = filename:match'%.([^%.]+)$'
+	local ext = filename and filename:match'%.([^%.]+)$'
 	local config
 	if ext and self.config.filetypes[ext] then
 		config = glue.update({}, self.config, self.config.filetypes[ext])
