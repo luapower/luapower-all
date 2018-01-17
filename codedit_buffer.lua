@@ -238,7 +238,7 @@ function buffer:select(line1, i1, line2, i2)
 		return self.lines[line1]:sub(i1, i2 - 1)
 	else
 		local lines = {}
-		table.insert(lines, self.lines[line1]:sub(line1, i1))
+		table.insert(lines, self.lines[line1]:sub(i1))
 		for line = line1 + 1, line2 - 1 do
 			table.insert(lines, self.lines[line])
 		end
@@ -368,7 +368,7 @@ end
 
 --return the indent of the line, optionally up to some char.
 function buffer:select_indent(line, i)
-	local nsi = self:_next_nonspace_char(line) or self:eol()
+	local nsi = self:_next_nonspace_char(line) or self:eol(line)
 	local indent_i = math.min(i or 1/0, nsi)
 	return self.lines[line] and self.lines[line]:sub(1, indent_i - 1)
 end

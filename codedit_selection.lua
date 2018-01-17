@@ -100,12 +100,8 @@ function selection:line_range()
 	end
 end
 
-function selection:select()
-	return self.buffer:select(self:endpoints())
-end
-
 function selection:contents()
-	return self.buffer:contents(self:select())
+	return self.buffer:select(self:endpoints())
 end
 
 --changing the selection
@@ -168,7 +164,7 @@ end
 function selection:remove()
 	if self:isempty() then return end
 	local line1, i1, line2, i2 = self:endpoints()
-	self.buffer:remove_string(line1, i1, line2, i2)
+	self.buffer:remove(line1, i1, line2, i2)
 	self:reset(line1, i1)
 end
 

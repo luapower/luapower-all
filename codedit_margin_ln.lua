@@ -1,4 +1,7 @@
 --codedit line numbers margin
+
+if not ... then require'codedit_demo'; return end
+
 local margin = require'codedit_margin'
 local glue = require'glue'
 
@@ -13,6 +16,7 @@ function ln_margin:get_width()
 end
 
 function ln_margin:draw_line(line, cx, cy, cw, ch, highlighted)
+
 	if highlighted then
 		local color = self.highlighted_background_color or 'line_number_highlighted_background'
 		self.view:draw_rect(cx, cy, cw, ch, color)
@@ -26,7 +30,9 @@ function ln_margin:draw_line(line, cx, cy, cw, ch, highlighted)
 	local color = highlighted and
 							(self.highlighted_text_color or 'line_number_highlighted_text') or
 							(self.text_color or 'line_number_text')
+
 	self.view:draw_text(cx, cy, s, color)
+
 end
 
 if not ... then require'codedit_demo' end

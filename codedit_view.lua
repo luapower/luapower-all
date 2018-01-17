@@ -64,13 +64,13 @@ function view:new(buffer)
 	self.cursors = {} --{cursor = true, ...}
 	self.margins = {} --{margin1, ...}
 	--state
-	self._coords = {}
+	self._xes = {}
 	self.scroll_x = 0 --client rect position relative to the clip rect
 	self.scroll_y = 0
 	self.last_valid_line = 0 --for incremental lexing
 
 	buffer:on('line_changed', function(line)
-		local t = self._coords[line]
+		local t = self._xes[line]
 		if t then
 			t.invalid = true
 		end
@@ -148,7 +148,7 @@ function view:prev_tabstop_x(x0)
 	return math.floor((x0 - self.tabstop_margin) / w) * w
 end
 
---char positioning -----------------------------------------------------------
+--text positioning -----------------------------------------------------------
 
 --x-advance of the grapheme cluster at s[i]
 function view:char_advance_x(s, i)
@@ -169,10 +169,10 @@ function view:_char_xes(line)
 	if line > #self.buffer.lines then
 		return
 	end
-	local t = self._coords[line]
+	local t = self._xes[line]
 	if not t then
 		t = {invalid = true}
-		self._coords[line] = t
+		self._xes[line] = t
 	end
 	if t.invalid then
 		local x = 0
@@ -216,7 +216,7 @@ function view:char_coords(line, i)
 	return x, y
 end
 
---char hit testing -----------------------------------------------------------
+--text hit testing -----------------------------------------------------------
 
 function view:line_at(y)
 	return math.max(1, math.floor(y / self.line_h) + 1)
@@ -306,24 +306,28 @@ function view:_space_chars(x)
 	return math.floor(x / self:space_width(1)) + 1
 end
 
-function view:cursor_char_at_line(line, x)
+function view:cursor_char_at_line(line, x, restrict_eof)
 	if line > #self.buffer.lines then --outside buffer
-		return self:_space_chars(x)
+		if not restrict_eof then
+			return self:_space_chars(x)
+		else
+			line = #self.buffer.lines
+		end
 	end
 	local i = self:char_at_line(line, x)
 	if i == self.buffer:eol(line) then --possibly outside line
 		local w = x - self:char_x(line, i) --outside width
-		i = i + self:_space_chars(w)
+		i = i + self:_space_chars(w) - 1
 	end
 	return i
 end
 
-function view:cursor_char_at(x, y)
+function view:cursor_char_at(x, y, restrict_eof)
 	local line = self:line_at(y)
-	return line, self:cursor_char_at_line(line, x)
+	return line, self:cursor_char_at_line(line, x, restrict_eof)
 end
 
---pixel measuring for layouting, scrolling, clipping and hit testing ---------
+--text size ------------------------------------------------------------------
 
 function view:line_width(line)
 	local t = self:_char_xes(line)
@@ -338,8 +342,8 @@ function view:max_line_width()
 	return w
 end
 
---size of the text space (also called client rectangle in the context of layouting)
---as limited by the available text and any out-of-text cursors.
+--size of the text space (i.e. client rectangle) as limited by the available
+--text and any outside-of-text cursors.
 function view:client_size()
 	local maxline = #self.buffer.lines
 	local maxw = self:max_line_width()
@@ -398,9 +402,14 @@ end
 --clipping in visual char space
 
 --which lines are partially or entirely visibile
-function view:visible_lines()
+function view:visible_lines_all()
 	local line1 = math.floor(-self.scroll_y / self.line_h) + 1
 	local line2 = math.ceil((-self.scroll_y + self.clip_h) / self.line_h)
+	return line1, line2
+end
+
+function view:visible_lines()
+	local line1, line2 = self:visible_lines_all()
 	line1 = clamp(line1, 1, #self.buffer.lines)
 	line2 = clamp(line2, 1, #self.buffer.lines)
 	return line1, line2
@@ -415,6 +424,11 @@ end
 
 function view:line_is_visible(line)
 	local line1, line2 = self:visible_lines()
+	return line >= line1 and line <= line2
+end
+
+function view:line_is_visible_all(line)
+	local line1, line2 = self:visible_lines_all()
 	return line >= line1 and line <= line2
 end
 
@@ -518,11 +532,9 @@ function view:clip(x, y, w, h) error'stub' end
 --rendering
 
 function view:draw_text(cx, cy, s, color, i, j)
-	i = i or 1
-	j = j or #s
 	cy = cy + self.char_baseline
 	for i in str.chars(s, i) do
-		if i == j then
+		if j and i >= j then
 			break
 		end
 		self:draw_char(cx, cy, s, i, color)
@@ -676,7 +688,7 @@ function view:draw_margin(margin)
 end
 
 function view:draw_line_highlight(line, color)
-	if not self:line_is_visible(line) then return end
+	if not self:line_is_visible_all(line) then return end
 	local x, y, w, h = self:line_clip_rect(line)
 	color = color or self.buffer.line_highlight_color or 'line_highlight'
 	self:draw_rect(x, y, w, h, color)

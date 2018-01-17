@@ -136,22 +136,25 @@ end
 
 --search forwards for:
 	--1) 1..n spaces followed by a non-space char
-	--2) 1..n word chars or non-word chars follwed by case 1
+	--2) 1..n non-space chars follwed by case 1
 	--3) 1..n word chars followed by a non-word char
 	--4) 1..n non-word chars followed by a word char
 --if the next break should be on a different line, return nil.
 function str.next_word_break_char(s, i, word_chars)
-	if i < 1 then return 1 end
+	i = i or 0
+	assert(i >= 0)
+	if i == 0 then return 1 end
+	if i >= #s then return end
 	local expect =
-		str.isspace(s, i) and 'space'
+		str.iswhitespace(s, i) and 'space'
 		or str.isword(s, i, word_chars) and 'word'
 		or 'nonword'
 	for i in str.chars(s, i) do
 		if expect == 'space' then --case 1
-			if not str.isspace(s, i) then --case 1 exit
+			if not str.iswhitespace(s, i) then --case 1 exit
 				return i
 			end
-		elseif str.isspace(s, i) then --case 2 -> case 1
+		elseif str.iswhitespace(s, i) then --case 2 -> case 1
 			expect = 'space'
 		elseif
 			expect ~= (str.isword(s, i, word_chars) and 'word' or 'nonword')
@@ -162,42 +165,15 @@ function str.next_word_break_char(s, i, word_chars)
 	return str.next_char(s, i)
 end
 
---search backwards for:
-	--1) 1..n spaces followed by 1..n words or non-words
-	--2) 1 words or non-words followed by case 1
-	--3) 2..n words or non-words follwed by a char of a differnt class
---in other words: look back until the char type changes from the type at
---first_ci or of the prev. char, and skip spaces. if the prev. break should
---be on a different line, return nil.
+--NOTE: this is O(#s) so use it only on short strings (single lines of text).
 function str.prev_word_break_char(s, firsti, word_chars)
-	if firsti <= 1 then return end
-	local expect =
-		not firsti and 'prev'
-		or (str.isspace(s, firsti) and 'space'
-			or str.isword(s, firsti, word_chars) and 'word'
-			or 'nonword')
-	local lasti = firsti
-	for i in str.chars_reverse(s, firsti) do
-		if expect == 'space' then
-			if not str.isspace(s, i) then
-				expect = str.isword(s, i, word_chars) and 'word' or 'nonword'
-			end
-		elseif expect ~=
-				(str.isspace(s, i) and 'space'
-				or str.isword(s, i, word_chars) and 'word'
-				or 'nonword')
-		then
-			if lasti == firsti then
-				expect =
-					str.isspace(s, i) and 'space' or
-					str.isword(s, i, word_chars) and 'word' or 'nonword'
-			else
-				return str.next_char(s, i)
-			end
-		end
+	local lasti
+	while true do
+		local i = str.next_word_break_char(s, lasti, word_chars)
+		if not i then return end
+		if i >= firsti then return lasti end
 		lasti = i
 	end
-	return 1
 end
 
 --line boundaries ------------------------------------------------------------

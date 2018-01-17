@@ -238,20 +238,22 @@ function cursor:move_down_page()
 end
 
 function cursor:move_prev_word_break()
-	local wb_i = self:_prev_word_break_char(self.line, self.i, self.word_chars)
+	local s = self.buffer.lines[self.line]
+	local wb_i = s and str.prev_word_break_char(s, self.i, self.word_chars)
 	if wb_i then
 		self:move(self.line, wb_i)
 	else
-		self:move_prev_char()
+		self:move_prev_pos()
 	end
 end
 
 function cursor:move_next_word_break()
-	local wb_i = self:_next_word_break_char(self.line, self.i, self.word_chars)
+	local s = self.buffer.lines[self.line]
+	local wb_i = s and str.next_word_break_char(s, self.i, self.word_chars)
 	if wb_i then
 		self:move(self.line, wb_i)
 	else
-		self:move_next_char()
+		self:move_next_pos()
 	end
 end
 
@@ -261,7 +263,7 @@ end
 
 function cursor:move_to_coords(x, y)
 	x, y = self.view:screen_to_client(x, y)
-	local line, i = self.view:cursor_char_at(x, y)
+	local line, i = self.view:cursor_char_at(x, y, self.restrict_eof)
 	self:move(line, i)
 end
 
