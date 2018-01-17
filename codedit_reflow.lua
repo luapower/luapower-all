@@ -34,7 +34,7 @@ function str.line_words(line, words)
 			starti = nil
 		--[[
 		--TODO: break at hypenation.
-		elseif starti and str.isascii(line, i, '-') then --end the word
+		elseif starti and str.ischar(line, i, '-') then --end the word
 			table.insert(words, line:sub(starti, i))
 			starti = nil
 		]]

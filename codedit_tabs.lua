@@ -1,6 +1,7 @@
 --tab expansion module for codedit (Cosmin Apreutesei, public domain).
---translates between visual columns and real columns based on a fixed tabsize.
---real columns map 1:1 to char indices, while visual columns represent screen columns after tab expansion.
+--translates between visual columns and char columns based on a fixed tabsize.
+--char columns map 1:1 to chars occupying a single fixed char width, while
+--visual columns represent char columns after tab expansion.
 local str = require'codedit_str'
 
 --the first tabstop after a visual column
@@ -39,7 +40,7 @@ end
 local function visual_col(s, col, tabsize)
 	local col1 = 0
 	local vcol = 1
-	for i in str.byte_indices(s) do
+	for i in str.chars(s) do
 		col1 = col1 + 1
 		if col1 >= col then
 			return vcol
@@ -55,7 +56,7 @@ end
 local function real_col(s, vcol, tabsize)
 	local vcol1 = 1
 	local col = 0
-	for i in str.byte_indices(s) do
+	for i in str.chars(s) do
 		col = col + 1
 		local vcol2 = vcol1 + (str.istab(s, i) and tab_width(vcol1, tabsize) or 1)
 		if vcol >= vcol1 and vcol <= vcol2 then --vcol is between the current and the next vcol

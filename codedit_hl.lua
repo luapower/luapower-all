@@ -1,13 +1,12 @@
 --codedit incremental highlighter: integrating scintillua with a line buffer object.
 local glue = require'glue'
-local str = require'codedit_str'
 local lexer = require'lexer'
 lexer.LEXERPATH = 'media/lexers/?.lua'
 
 --select text from buffer between (line1, p1) up to the end of line2 excluding line terminator.
 local function select_text(buffer, line1, p1, line2)
-	line2 = line2 or buffer:last_line()
-	local s = buffer:getline(line1):sub(p1)
+	line2 = line2 or #buffer.lines
+	local s = buffer:line(line1):sub(p1)
 	if line2 > line1 then
 		s = s .. buffer.line_terminator ..
 				table.concat(buffer.lines, buffer.line_terminator, line1 + 1, line2)
@@ -56,7 +55,7 @@ local function tokens(t)
 end
 
 local function linesize(line, buffer)
-	return #buffer:getline(line) + #buffer.line_terminator
+	return #buffer:line(line) + #buffer.line_terminator
 end
 
 --project token positions originated from text at (line1, p1) back into the text,
@@ -188,7 +187,7 @@ end
 local function relex(maxline, t, last_line, buffer, lang0, start_tokens)
 
 	local line1 = last_line + 1
-	local line2 = math.min(maxline, buffer:last_line())
+	local line2 = math.min(maxline, #buffer.lines)
 
 	if line1 > line2 then
 		return t, line2, start_tokens --nothing to do

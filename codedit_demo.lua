@@ -1,4 +1,5 @@
 local codedit = require'codedit'
+local cursor = require'codedit_cursor'
 local player = require'cplayer'
 local glue = require'glue'
 
@@ -11,6 +12,8 @@ filename = 'x:/work/luapower/codedt_demo.lua'
 
 player.show_magnifier = false
 
+player.y = 300
+
 function player:on_render(cr)
 
 	if self.window.w ~= 800 then
@@ -19,29 +22,77 @@ function player:on_render(cr)
 	end
 
 	local editor_y = 40
+
 	for i = 1, 1 do
 		local w = math.floor(self.w / 1)
 		local h = self.h - editor_y - 20
 		local x = (i - 1) * w + 20
 
+		local created = editors[i] and true or false
 		local editor = editors[i] or {
-								id = 'code_editor_' .. i,
-								filename = filename,
-								view = {
-									x = x, y = editor_y, w = w, h = h,
-									eol_markers = false, minimap = false, line_numbers = false,
-									font_file = 'media/fonts/FSEX300.ttf'
-								}}
+			id = 'code_editor_' .. i,
+			filename = filename,
+			view = {
+				x = x, y = editor_y, w = w, h = h,
+				eol_markers = false, minimap = false, line_numbers = false,
+				font_file = 'media/fonts/FSEX300.ttf'
+			},
+			--text = '\tx\ty\tz\n\ta\tb',
+			text = '   x  y  z\n   a  b',
+		}
+
+		local nav_w = 120
 
 		editor = self:code_editor(editor)
-		editor.view.x = x
+		editor.view.x = nav_w + 10 + x
 		editor.view.y = editor_y
 		editor.view.w = w
 		editor.view.h = h
-		codedit.cursor.restrict_eof = true
-		codedit.cursor.restrict_eol = true
-		codedit.cursor.land_bof = false
-		codedit.cursor.land_eof = false
+
+		if not created then
+			editor.cursor.restrict_eol = false
+			editor.cursor.restrict_eof = false
+			editor.cursor.land_bof = false
+			editor.cursor.land_eof = false
+		end
+
+		cursor.restrict_eol = self:togglebutton{
+			id = 'restrict_eol' .. i, x = x, y = 40, w = nav_w, h = 26,
+			text = 'restrict_eol', selected = cursor.restrict_eol,
+		}
+
+		editor.cursor.restrict_eof = self:togglebutton{
+			id = 'restrict_eof' .. i, x = x, y = 70, w = nav_w, h = 26,
+			text = 'restrict_eof', selected = editor.cursor.restrict_eof,
+		}
+
+		editor.cursor.land_bof = self:togglebutton{
+			id = 'land_bof' .. i, x = x, y = 100, w = nav_w, h = 26,
+			text = 'land_bof', selected = editor.cursor.land_bof,
+		}
+
+		editor.cursor.land_eof = self:togglebutton{
+			id = 'land_eof' .. i, x = x, y = 130, w = nav_w, h = 26,
+			text = 'land_eof', selected = editor.cursor.land_eof,
+		}
+
+		self:label{x = x, y = 165, text = 'jump_tabstops'}
+		editor.cursor.jump_tabstops = self:mbutton{
+			id = 'jump_tabstops' .. i, x = x, y = 180, w = nav_w, h = 26,
+			values = {'always', 'indent', 'never'}, selected = editor.cursor.jump_tabstops,
+		}
+
+		self:label{x = x, y = 215, text = 'delete_tabstops'}
+		editor.cursor.delete_tabstops = self:mbutton{
+			id = 'delete_tabstops' .. i, x = x, y = 230, w = nav_w, h = 26,
+			values = {'always', 'indent', 'never'}, selected = editor.cursor.delete_tabstops,
+		}
+
+		self:label{x = x, y = 265, text = 'insert_tabs'}
+		editor.cursor.insert_tabs = self:mbutton{
+			id = 'insert_tabs' .. i, x = x, y = 280, w = nav_w, h = 26,
+			values = {'always', 'indent', 'never'}, selected = editor.cursor.insert_tabs,
+		}
 
 		editor.view.lang = self:mbutton{
 			id = 'lexer_' .. i,

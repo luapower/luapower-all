@@ -1,5 +1,5 @@
---codedit selection object: selecting contiguous text between two line,col pairs.
---line1,col1 is the first selected char and line2,col2 is the char immediately after the last selected char.
+--codedit selection object: selecting contiguous text between two line,i pairs.
+--line1,i1 is the first selected char and line2,i2 is the char immediately after the last selected char.
 local glue = require'glue'
 
 local selection = {
@@ -17,8 +17,8 @@ function selection:new(buffer, view, visible)
 		view = view,
 	}, self)
 	self.visible = visible
-	self.line1, self.col1 = 1, 1
-	self.line2, self.col2 = 1, 1
+	self.line1, self.i1 = 1, 1
+	self.line2, self.i2 = 1, 1
 	self.changed = {}
 	if self.view then
 		self.view:add_selection(self)
@@ -37,8 +37,8 @@ end
 local function update_state(dst, src)
 	dst.line1 = src.line1
 	dst.line2 = src.line2
-	dst.col1 = src.col1
-	dst.col2 = src.col2
+	dst.i1 = src.i1
+	dst.i2 = src.i2
 end
 
 function selection:save_state(state)
@@ -53,29 +53,29 @@ end
 --boundaries
 
 function selection:isempty()
-	return self.line2 == self.line1 and self.col2 == self.col1
+	return self.line2 == self.line1 and self.i2 == self.i1
 end
 
 --goes top-down and left-to-rigth
 function selection:isforward()
-	return self.line1 < self.line2 or (self.line1 == self.line2 and self.col1 <= self.col2)
+	return self.line1 < self.line2 or (self.line1 == self.line2 and self.i1 <= self.i2)
 end
 
 --endpoints, ordered
 function selection:endpoints()
 	if self:isforward() then
-		return self.line1, self.col1, self.line2, self.col2
+		return self.line1, self.i1, self.line2, self.i2
 	else
-		return self.line2, self.col2, self.line1, self.col1
+		return self.line2, self.i2, self.line1, self.i1
 	end
 end
 
---column range of one selection line
-function selection:cols(line)
-	local line1, col1, line2, col2 = self:endpoints()
-	local col1 = line == line1 and col1 or 1
-	local col2 = line == line2 and col2 or self.buffer:last_col(line) + 1
-	return col1, col2
+--char index range of one selection line
+function selection:chars(line)
+	local line1, i1, line2, i2 = self:endpoints()
+	local i1 = line == line1 and i1 or 1
+	local i2 = line == line2 and i2 or self.buffer:eol(line)
+	return i1, i2
 end
 
 function selection:next_line(line)
@@ -83,7 +83,7 @@ function selection:next_line(line)
 	if line > math.max(self.line1, self.line2) then
 		return
 	end
-	return line, self:cols(line)
+	return line, self:chars(line)
 end
 
 function selection:lines()
@@ -92,8 +92,8 @@ end
 
 --the range of lines that the selection covers fully or partially
 function selection:line_range()
-	local line1, col1, line2, col2 = self:endpoints()
-	if not self:isempty() and col2 == 1 then
+	local line1, i1, line2, i2 = self:endpoints()
+	if not self:isempty() and i2 == 1 then
 		return line1, line2 - 1
 	else
 		return line1, line2
@@ -101,7 +101,7 @@ function selection:line_range()
 end
 
 function selection:select()
-	return self.buffer:select_string(self:endpoints())
+	return self.buffer:select(self:endpoints())
 end
 
 function selection:contents()
@@ -111,32 +111,32 @@ end
 --changing the selection
 
 --empty and re-anchor the selection
-function selection:reset(line, col)
-	self.line1, self.col1 = self.buffer:clamp_pos(line, col)
-	self.line2, self.col2 = self.line1, self.col1
+function selection:reset(line, i)
+	self.line1, self.i1 = self.buffer:clamp_pos(line, i)
+	self.line2, self.i2 = self.line1, self.i1
 	self:invalidate()
 end
 
 --move selection's free endpoint
-function selection:extend(line, col)
-	self.line2, self.col2 = self.buffer:clamp_pos(line, col)
+function selection:extend(line, i)
+	self.line2, self.i2 = self.buffer:clamp_pos(line, i)
 	self:invalidate()
 end
 
 --reverse selection's direction
 function selection:reverse()
-	self.line1, self.col1, self.line2, self.col2 =
-		self.line2, self.col2, self.line1, self.col1
+	self.line1, self.i1, self.line2, self.i2 =
+		self.line2, self.i2, self.line1, self.i1
 	self:invalidate()
 end
 
 --set selection endpoints, preserving or setting its direction
-function selection:set(line1, col1, line2, col2, forward)
+function selection:set(line1, i1, line2, i2, forward)
 	if forward == nil then
 		forward = self:isforward()
 	end
-	self:reset(line1, col1)
-	self:extend(line2, col2)
+	self:reset(line1, i1)
+	self:extend(line2, i2)
 	if forward ~= self:isforward() then
 		self:reverse()
 	end
@@ -147,15 +147,15 @@ function selection:select_all()
 end
 
 function selection:reset_to_cursor(cur)
-	self:reset(cur.line, cur.col)
+	self:reset(cur.line, cur.i)
 end
 
 function selection:extend_to_cursor(cur)
-	self:extend(cur.line, cur.col)
+	self:extend(cur.line, cur.i)
 end
 
 function selection:set_to_selection(sel)
-	self:set(sel.line1, sel.col1, sel.line2, sel.col2, sel:isforward())
+	self:set(sel.line1, sel.i1, sel.line2, sel.i2, sel:isforward())
 end
 
 function selection:set_to_line_range()
@@ -167,9 +167,9 @@ end
 
 function selection:remove()
 	if self:isempty() then return end
-	local line1, col1, line2, col2 = self:endpoints()
-	self.buffer:remove_string(line1, col1, line2, col2)
-	self:reset(line1, col1)
+	local line1, i1, line2, i2 = self:endpoints()
+	self.buffer:remove_string(line1, i1, line2, i2)
+	self:reset(line1, i1)
 end
 
 function selection:indent(use_tab)
@@ -201,7 +201,7 @@ end
 
 function selection:move_down()
 	local line1, line2 = self:line_range()
-	if line2 == self.buffer:last_line() then
+	if line2 == #self.buffer.lines then
 		return
 	end
 	for line = line2, line1, -1 do
@@ -212,8 +212,8 @@ end
 
 function selection:reflow(line_width, tabsize, align, wrap)
 	local line1, line2 = self:line_range()
-	local line2, col2 = self.buffer:reflow_lines(line1, line2, line_width, tabsize, align, wrap)
-	self:set(line1, 1, line2, col2)
+	local line2, i2 = self.buffer:reflow_lines(line1, line2, line_width, tabsize, align, wrap)
+	self:set(line1, 1, line2, i2)
 end
 
 --hit testing

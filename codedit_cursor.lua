@@ -1,30 +1,39 @@
---codedit cursor object: caret-based navigation and editing.
+
+--caret-based navigation and editing
+--Written by Cosmin Apreutesei. Public Domain.
+
+if not ... then require'codedit_demo'; return end
+
 local glue = require'glue'
 local str = require'codedit_str'
 local tabs = require'codedit_tabs'
+
+--instantiation --------------------------------------------------------------
 
 local cursor = {
 	--navigation options
 	restrict_eol = true, --don't allow caret past end-of-line
 	restrict_eof = true, --don't allow caret past end-of-file
 	land_bof = true, --go at bof if cursor goes up past it
-	land_eof = true, --go at eof if cursor goes down past it
+	land_eof = true, --go at eof if cursor goes down past it (needs restrict_eof)
 	word_chars = '^[a-zA-Z]', --for jumping between words
-	move_tabfuls = 'indent', --'indent', 'never'; where to move the cursor between tabfuls instead of individual spaces.
+	jump_tabstops = 'always', --'always', 'indent', 'never'
+		--where to move the cursor between tabstops instead of individual spaces.
+	delete_tabstops = 'always', --'always', 'indent', 'never'
 	--editing state
 	insert_mode = true, --insert or overwrite when typing characters
 	--editing options
-	auto_indent = true, --pressing enter copies the indentation of the current line over to the following line
-	insert_tabs = 'indent', --never, indent, always: where to insert a tab instead of enough spaces that make up a tab.
-	insert_align_list = true, --insert whitespace up to the next word on the above line
-	insert_align_args = true, --insert whitespace up to after '(' on the above line
+	auto_indent = true,
+		--pressing enter copies the indentation of the current line over to the following line
+	insert_tabs = 'indent', --'never', 'indent', 'always'
+		--where to insert a tab instead of enough spaces that make up a tab.
+	insert_align_list = false, --TODO: insert whitespace up to the next word on the above line
+	insert_align_args = false, --TODO: insert whitespace up to after '(' on the above line
 	--view overrides
 	thickness = nil,
 	color = nil,
 	line_highlight_color = nil,
 }
-
---lifetime
 
 function cursor:new(buffer, view, visible)
 	self = glue.inherit({
@@ -33,8 +42,8 @@ function cursor:new(buffer, view, visible)
 	}, self)
 	self.visible = visible
 	self.line = 1
-	self.col = 1 --current real col
-	self.vcol = 1 --wanted visual col, when navigating up/down
+	self.i = 1 --current byte index in current line
+	self.x = 0 --wanted x offset when navigating up/down
 	self.changed = {}
 	if self.view then
 		self.view:add_cursor(self)
@@ -42,7 +51,7 @@ function cursor:new(buffer, view, visible)
 	return self
 end
 
---state management
+--state management -----------------------------------------------------------
 
 function cursor:invalidate()
 	for k in pairs(self.changed) do
@@ -52,8 +61,8 @@ end
 
 local function update_state(dst, src)
 	dst.line = src.line
-	dst.col = src.col
-	dst.vcol = src.vcol
+	dst.i = src.i
+	dst.x = src.x
 end
 
 function cursor:save_state(state)
@@ -65,87 +74,143 @@ function cursor:load_state(state)
 	self:invalidate()
 end
 
---navigation
+--navigation -----------------------------------------------------------------
 
---move to a specific position, restricting the final position according to navigation policies
-function cursor:move(line, col, keep_vcol)
-	col = math.max(1, col)
+--move to a specific position in the text, restricting the final position
+--according to buffer boundaries and navigation policies.
+function cursor:move(line, i, keep_x)
+	if i < 1 then
+		i = 1
+	end
 	if line < 1 then
 		line = 1
 		if self.land_bof then
-			col = 1
+			i = 1
+			keep_x = false
 		end
-	elseif self.restrict_eof and line > self.buffer:last_line() then
-		line = self.buffer:last_line()
+	elseif self.restrict_eof and line > #self.buffer.lines then
+		line = #self.buffer.lines
 		if self.land_eof then
-			col = self.buffer:last_col(line) + 1
+			i = self.buffer:eol(line)
+			keep_x = false
 		end
 	end
 	if self.restrict_eol then
-		if self.buffer:getline(line) then
-			col = math.min(col, self.buffer:last_col(line) + 1)
+		if line <= #self.buffer.lines then
+			i = math.min(i, self.buffer:eol(line))
 		else
-			col = 1
+			i = 1
 		end
 	end
-	self.line, self.col = line, col
-	if not keep_vcol then
-		--store the visual col of the cursor to be used as the wanted landing col by move_vert()
-		self.vcol = self.buffer:visual_col(self.line, self.col)
+	self.line, self.i = line, i
+	if not keep_x then
+		--store the cursor x to be used as the wanted landing x by move_vert()
+		self.x = self.view:cursor_coords(self)
 	end
 	self:invalidate()
 end
 
-function cursor:prev_pos()
-	if self.move_tabfuls == 'always' or
-		(self.move_tabfuls == 'indent' and
-		 self.buffer:indenting(self.line, self.col))
-	then
-		local tf_col = self.buffer:prev_tabful_col(self.line, self.col)
-		if tf_col then
-			return self.line, tf_col
-		end
-	end
-	return self.buffer:prev_char_pos(self.line, self.col)
+local function prev_tabstop(s, i)
+	return not str.iswhitespace(s, i) and i or str.prev_nonspace_char(s, i)
 end
 
+function cursor:prev_pos(jump_tabstops)
+
+	if self.i == 1 then --move to the end of the prev. line
+		if self.line == 1 then
+			return 1, 1
+		elseif self.line - 1 > #self.buffer.lines then --outside buffer
+			return self.line - 1, 1
+		else
+			return self.line - 1, self.buffer:eol(self.line - 1)
+		end
+	elseif self.line > #self.buffer.lines then --outside buffer
+		return self.line, self.i - 1
+	elseif self.i > self.buffer:eol(self.line) then --outside line
+		return self.line, self.i - 1
+	end
+
+	local jump_tabstops =
+		jump_tabstops == 'always'
+		or (jump_tabstops == 'indent'
+			and self.buffer:indenting(self.line, self.i))
+
+	local s = self.buffer.lines[self.line]
+
+	if jump_tabstops then
+		local x0 = self.view:char_x(self.line, self.i)
+		local ts_x = self.view:prev_tabstop_x(x0)
+		local ts_i = self.view:char_at_line(self.line, ts_x)
+		local ns_i = str.prev_nonspace_char(s, self.i)
+		local ps_i = ns_i and str.next_char(s, ns_i) --after prev. nonspace
+		ps_i = math.max(ps_i or 1, ts_i) --closest
+		if ps_i < self.i then
+			return self.line, ps_i
+		end
+	end
+
+	return self.line, str.prev_char(s, self.i)
+end
+
+--move to the previous position in the text.
 function cursor:move_prev_pos()
-	local line, col = self:prev_pos()
-	self:move(line, col)
+	self:move(self:prev_pos(self.jump_tabstops))
 end
 
-function cursor:next_pos(restrict_eol)
-	if restrict_eol == nil then
-		restrict_eol = self.restrict_eol
-	end
-	if self.move_tabfuls == 'always' or
-		(self.move_tabfuls == 'indent' and
-		 self.buffer:indenting(self.line, self.col + 1))
-	then
-		local tf_col = self.buffer:next_tabful_col(self.line, self.col, restrict_eol)
-		if tf_col then
-			return self.line, tf_col
+function cursor:next_pos(restrict_eol, jump_tabstops)
+
+	local lastline = #self.buffer.lines
+	if self.line > lastline then --outside buffer
+		if self.restrict_eof then
+			return self.buffer:end_pos()
+		elseif self.restrict_eol then
+			return self.line + 1, 1
+		else
+			return self.line, self.i + 1
+		end
+	elseif self.i >= self.buffer:eol(self.line) then
+		if self.restrict_eol then
+			if self.restrict_eof and self.line >= lastline then
+				return self.buffer:end_pos()
+			else
+				return self.line + 1, 1
+			end
+		else
+			return self.line, self.i + 1
 		end
 	end
-	local line, col = self.buffer:next_char_pos(self.line, self.col, restrict_eol)
-	--the following combination of options and state would move the cursor to col 1 on the last line,
-	--which makes sense for vertical movement, but not for linear movement.
-	if self.restrict_eof and not self.land_eof and line > self.buffer:last_line() then
-		return self.line, self.col
+
+	local s = self.buffer.lines[self.line]
+
+	local jump_tabstops =
+		jump_tabstops == 'always'
+		or (jump_tabstops == 'indent'
+			and self.buffer:indenting(self.line, str.next_char(s, self.i)))
+
+	if jump_tabstops and str.iswhitespace(s, self.i) then
+		local x0 = self.view:char_x(self.line, self.i)
+		local ts_x = self.view:next_tabstop_x(x0)
+		local ts_i = self.view:char_at_line(self.line, ts_x)
+		local ns_i =
+			str.next_nonspace_char(s, self.i)
+			or self.buffer:eol(self.line)
+		ns_i = math.min(ts_i, ns_i)
+		return self.line, ns_i
 	end
-	return line, col
+
+	return self.line, str.next_char(s, self.i) or #s + 1
 end
 
+--move to the next position in the text.
 function cursor:move_next_pos()
-	local line, col = self:next_pos()
-	self:move(line, col)
+	self:move(self:next_pos(self.restrict_eol, self.jump_tabstops))
 end
 
---navigate vertically, using the stored visual column as target column
+--navigate vertically, using the stored x offset as target offset
 function cursor:move_vert(lines)
 	local line = self.line + lines
-	local col = self.buffer:real_col(line, self.vcol)
-	self:move(line, col, true)
+	local i = self.view:cursor_char_at_line(math.max(1, line), self.x)
+	self:move(line, i, true)
 end
 
 function cursor:move_up()    self:move_vert(-1) end
@@ -155,13 +220,13 @@ function cursor:move_home()  self:move(1, 1) end
 function cursor:move_bol()   self:move(self.line, 1) end
 
 function cursor:move_end()
-	local line, col = self.buffer:clamp_pos(1/0, 1/0)
-	self:move(line, col)
+	local line, i = self.buffer:end_pos()
+	self:move(line, i)
 end
 
 function cursor:move_eol()
-	local line, col = self.buffer:clamp_pos(self.line, 1/0)
-	self:move(line, col)
+	local line, i = self.buffer:clamp_pos(self.line, 1/0)
+	self:move(line, i)
 end
 
 function cursor:move_up_page()
@@ -173,46 +238,45 @@ function cursor:move_down_page()
 end
 
 function cursor:move_prev_word_break()
-	local wb_col = self.buffer:prev_word_break_col(self.line, self.col, self.word_chars)
-	if wb_col then
-		self:move(self.line, wb_col)
+	local wb_i = self:_prev_word_break_char(self.line, self.i, self.word_chars)
+	if wb_i then
+		self:move(self.line, wb_i)
 	else
-		self:move_prev_pos()
+		self:move_prev_char()
 	end
 end
 
 function cursor:move_next_word_break()
-	local wb_col = self.buffer:next_word_break_col(self.line, self.col, self.word_chars)
-	if wb_col then
-		self:move(self.line, wb_col)
+	local wb_i = self:_next_word_break_char(self.line, self.i, self.word_chars)
+	if wb_i then
+		self:move(self.line, wb_i)
 	else
-		self:move_next_pos()
+		self:move_next_char()
 	end
 end
 
 function cursor:move_to_selection(sel)
-	self:move(sel.line2, sel.col2)
+	self:move(sel.line2, sel.i2)
 end
 
 function cursor:move_to_coords(x, y)
 	x, y = self.view:screen_to_client(x, y)
-	local line, vcol = self.view:char_at(x, y)
-	local col = self.buffer:real_col(line, vcol)
-	self:move(line, col)
+	local line, i = self.view:cursor_char_at(x, y)
+	self:move(line, i)
 end
 
---editing
+--editing --------------------------------------------------------------------
 
 --insert a string at cursor and move the cursor to after the string
-function cursor:insert_string(s)
-	local line, col = self.buffer:insert_string(self.line, self.col, s)
-	self:move(line, col)
+function cursor:insert(s)
+	local line, i = self.buffer:insert(self.line, self.i, s)
+	self:move(line, i)
 end
 
 --insert a string block at cursor.
 --does not move the cursor, but returns the position after the text.
 function cursor:insert_block(s)
-	return self.buffer:insert_block(self.line, self.col, s)
+	return self.buffer:insert_block(self.line, self.i, s)
 end
 
 --insert or overwrite a char at cursor, depending on insert mode
@@ -220,23 +284,29 @@ function cursor:insert_char(c)
 	if not self.insert_mode then
 		self:delete_pos(false)
 	end
-	self:insert_string(c)
+	self:insert(c)
 end
 
 --delete the text up to the next cursor position
 function cursor:delete_pos(restrict_eol)
-	local line2, col2 = self:next_pos(restrict_eol)
-	self.buffer:remove_string(self.line, self.col, line2, col2)
+	local line2, i2 = self:next_pos(restrict_eol, self.delete_tabstops)
+	self.buffer:remove(self.line, self.i, line2, i2)
+end
+
+--delete the char before the cursor position.
+function cursor:delete_prev_pos()
+	self:move(self:prev_pos(self.delete_tabstops))
+	self:delete_pos(true)
 end
 
 --add a new line, optionally copying the indent of the current line, and carry the cursor over
 function cursor:insert_newline()
 	if self.auto_indent then
-		self.buffer:extend(self.line, self.col)
-		local indent = self.buffer:select_indent(self.line, self.col)
-		self:insert_string('\n' .. indent)
+		self.buffer:extend(self.line, self.i)
+		local indent = self.buffer:select_indent(self.line, self.i)
+		self:insert('\n' .. indent)
 	else
-		self:insert_string'\n'
+		self:insert'\n'
 	end
 end
 
@@ -244,26 +314,26 @@ end
 function cursor:insert_tab()
 
 	if self.insert_align_list then
-		local ls_vcol = self.buffer:next_list_aligned_vcol(self.line, self.col, self.restrict_eol)
-		if ls_vcol then
-			local line, col = self.buffer:insert_whitespace(self.line, self.col, ls_vcol, self.insert_tabs == 'always')
-			self:move(line, col)
+		local ls_x = self.buffer:next_list_aligned_vcol(self.line, self.i, self.restrict_eol)
+		if ls_x then
+			local line, i = self.buffer:insert_whitespace(self.line, self.i, ls_x, self.insert_tabs == 'always')
+			self:move(line, i)
 			return
 		end
 	end
 
 	if false and self.insert_align_args then
-		local arg_vcol = self.buffer:next_args_aligned_vcol(self.line, self.col, self.restrict_eol)
-		if arg_vcol then
-			if self.buffer:indenting(self.line, self.col) then
+		local arg_x = self.buffer:next_args_aligned_vcol(self.line, self.i, self.restrict_eol)
+		if arg_x then
+			if self.buffer:indenting(self.line, self.i) then
 				local indent = self.buffer:select_indent(self.line - 1)
-				local indent_vcol = tabs.visual_col(indent, str.len(indent) + 1, self.tabsize)
-				local whitespace = self.buffer:gen_whitespace(indent_vcol, arg_vcol, self.insert_tabs == 'always')
-				local line, col = self.buffer:insert_string(self.line, 1, indent .. whitespace)
-				self:move(line, col)
+				local indent_x = tabs.visual_col(indent, str.len(indent) + 1, self.tabsize)
+				local whitespace = self.buffer:gen_whitespace(indent_x, arg_x, self.insert_tabs == 'always')
+				local line, i = self.buffer:insert(self.line, 1, indent .. whitespace)
+				self:move(line, i)
 			else
-				local line, col = self.buffer:insert_whitespace(self.line, self.col, arg_vcol, self.insert_tabs == 'always')
-				self:move(line, col)
+				local line, i = self.buffer:insert_whitespace(self.line, self.i, arg_x, self.insert_tabs == 'always')
+				self:move(line, i)
 			end
 			return
 		end
@@ -272,22 +342,32 @@ function cursor:insert_tab()
 	local use_tabs =
 		self.insert_tabs == 'always' or
 			(self.insert_tabs == 'indent' and
-			 self.buffer:indenting(self.line, self.col))
+			 self.buffer:indenting(self.line, self.i))
 
-	local line, col = self.buffer:indent(self.line, self.col, use_tabs)
-	self:move(line, col)
+	local line, i
+	if use_tabs then
+		line, i = self.buffer:insert(self.line, self.i, '\t')
+	else
+		--compute the number of spaces until the next tabstop
+		local x = self.view:char_x(self.line, self.i)
+		local tsx = self.view:next_tabstop_x(x)
+		local w = tsx - x
+		local n = math.floor(w / self.view:space_width(1) + 0.5)
+		line, i = self.buffer:insert(self.line, self.i, (' '):rep(n))
+	end
+	self:move(line, i)
 end
 
 function cursor:outdent_line()
-	if not self.buffer:getline(self.line) then
-		self:move(self.line, self.col - 1)
+	if not self.buffer.lines[self.line] then
+		self:move(self.line, self.i - 1)
 		return
 	end
-	local old_sz = #self.buffer:getline(self.line)
+	local old_sz = #self.buffer.lines[self.line]
 	self.buffer:outdent_line(self.line)
-	local new_sz = #self.buffer:getline(self.line)
-	local col = self.col + new_sz - old_sz
-	self:move(self.line, col)
+	local new_sz = #self.buffer.lines[self.line]
+	local i = self.i + new_sz - old_sz
+	self:move(self.line, i)
 end
 
 function cursor:move_line_up()
@@ -300,14 +380,57 @@ function cursor:move_line_down()
 	self:move_down()
 end
 
---scrolling
+--[==[
+
+--editing based on tab expansion
+
+--find the max number of tabs and minimum number of spaces that fit between two visual columns
+function view:tabs_and_spaces(vcol1, vcol2)
+	return tabs.tabs_and_spaces(vcol1, vcol2, self.tabsize)
+end
+
+--generate whitespace (tabs and spaces or just spaces, depending on the use_tabs flag) between two vcols.
+function view:gen_whitespace(vcol1, vcol2, use_tabs)
+	if vcol2 <= vcol1 then
+		return '' --target before cursor: ignore
+	end
+	local tabs, spaces
+	if use_tabs then
+		tabs, spaces = self:tabs_and_spaces(vcol1, vcol2)
+	else
+		tabs, spaces = 0, vcol2 - vcol1
+	end
+	return string.rep('\t', tabs) .. string.rep(' ', spaces)
+end
+
+--insert whitespace on a line, from a position up to (but excluding) a visual col on the same line.
+function view:insert_whitespace(line, col, vcol2, use_tabs)
+	local vcol1 = self:visual_col(line, col)
+	local whitespace = self:gen_whitespace(vcol1, vcol2, use_tabs)
+	return self.buffer:insert(line, col, whitespace)
+end
+
+--editing based on tabfuls
+
+--remove the space up to the next tabstop or non-space char, in other words, remove a tabful.
+function view:outdent(line, col)
+	local tf_col = self:next_tabful_col(line, col, true)
+	if tf_col then
+		self.buffer:remove_string(line, col, line, tf_col)
+	end
+end
+
+function view:outdent_line(line)
+	self.buffer:outdent(line, 1)
+end
+
+]==]
+
+--scrolling ------------------------------------------------------------------
 
 function cursor:make_visible()
 	if not self.visible then return end
 	self.view:cursor_make_visible(self)
 end
-
-
-if not ... then require'codedit_demo' end
 
 return cursor

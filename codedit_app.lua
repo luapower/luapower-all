@@ -97,10 +97,10 @@ function player:new_tab(filename, i)
 		end
 	end
 
-	if #self.tabs == 1 and
-		not self.tabs[1].filename and
-		self.tabs[1].editor.buffer:last_line() == 1 and
-		#self.tabs[1].editor.buffer:getline(1) == 0
+	if #self.tabs == 1
+		and not self.tabs[1].filename
+		and #self.tabs[1].editor.buffer.lines == 1
+		and #self.tabs[1].editor.buffer.lines[1] == 0
 		and not self.tabs[1].editor.buffer.changed.file
 	then
 		self:destroy_tab(1)

@@ -57,8 +57,8 @@ end
 function editor:visible_lines()
 	local line1 = math.floor(-self.scroll_y / self.linesize) + 1
 	local line2 = math.ceil((-self.scroll_y + self.clip_h) / self.linesize)
-	line1 = clamp(line1, 1, self.buffer:last_line())
-	line2 = clamp(line2, 1, self.buffer:last_line())
+	line1 = clamp(line1, 1, #self.buffer.lines)
+	line2 = clamp(line2, 1, #self.buffer.lines)
 	return line1, line2
 end
 

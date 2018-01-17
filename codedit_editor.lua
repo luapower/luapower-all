@@ -1,8 +1,11 @@
---codedit controller: putting it all together
+
+--codedit controller: putting it all together.
+
+if not ... then require'codedit_demo'; return end
+
 local glue = require'glue'
 local buffer = require'codedit_buffer'
 require'codedit_blocks'
-require'codedit_undo'
 require'codedit_normal'
 local line_selection = require'codedit_selection'
 local block_selection = require'codedit_blocksel'
@@ -32,8 +35,11 @@ function editor:new(options)
 	self = glue.inherit(options or {}, self)
 
 	--core objects
-	self.view = self.view:new()
-	self.buffer = self.buffer:new(self, self.view, self.text)
+	self.buffer = self.buffer:new()
+	self.view = self.view:new(self.buffer)
+	if self.text then
+		self.buffer:load(self.text)
+	end
 	self.view.buffer = self.buffer
 
 	--main cursor & selection objects
@@ -134,7 +140,7 @@ function editor:_before_move_cursor(mode)
 		self.cursor.restrict_eol = nil
 		self.cursor.restrict_eol = self.cursor.restrict_eol and not self.selection.block and mode ~= 'unrestricted'
 		if not old_restrict_eol and self.cursor.restrict_eol then
-			self.cursor:move(self.cursor.line, self.cursor.col)
+			self.cursor:move(self.cursor.line, self.cursor.i)
 		end
 	end
 end
@@ -208,7 +214,7 @@ function editor:select_all()
 end
 
 function editor:select_word_at_cursor()
-	local col1, col2 = self.buffer:word_cols(self.cursor.line, self.cursor.col, self.cursor.word_chars)
+	local col1, col2 = self.buffer:word_cols(self.cursor.line, self.cursor.i, self.cursor.word_chars)
 	if not col1 then return end
 	self.selection:set(self.cursor.line, col1, self.cursor.line, col2)
 	self.cursor:move_to_selection(self.selection)
@@ -244,9 +250,8 @@ function editor:delete_pos(prev)
 	if self.selection:isempty() then
 		self.buffer:start_undo_group'delete_position'
 		if prev then
-			if not (self.cursor.line == 1 and self.cursor.col == 1) then
-				self.cursor:move_prev_pos()
-				self.cursor:delete_pos(true)
+			if not (self.cursor.line == 1 and self.cursor.i == 1) then
+				self.cursor:delete_prev_pos()
 			end
 		else
 			self.cursor:delete_pos(true)
@@ -373,7 +378,7 @@ function editor:paste(mode)
 	if mode == 'block' then
 		self.cursor:insert_block(s)
 	else
-		self.cursor:insert_string(s)
+		self.cursor:insert(s)
 	end
 	self.selection:reset_to_cursor(self.cursor)
 end
@@ -397,7 +402,7 @@ end
 function editor:save(filename)
 	self.buffer:start_undo_group'normalize'
 	self.buffer:normalize()
-	self.cursor:move(self.cursor.line, self.cursor.col) --cursor could get invalid after normalization
+	self.cursor:move(self.cursor.line, self.cursor.i) --cursor could get invalid after normalization
 	self.buffer:save_to_file(filename)
 end
 

@@ -34,7 +34,7 @@ function buffer:insert_block(line1, col1, s)
 	local line2, col2
 	local vcol = self:visual_col(line1, col1)
 	for _,s in str.lines(s) do
-		line2, col2 = self:insert_string(line, self:real_col(line, vcol), s)
+		line2, col2 = self:insert(line, self:real_col(line, vcol), s)
 		line = line + 1
 	end
 	return line2, col2

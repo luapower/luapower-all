@@ -1,4 +1,7 @@
---codedit normalization (extension module for codedit_buffer)
+
+--codedit normalization (extension module for codedit_buffer).
+--Written by Cosmin Apreutesei. Public Domain.
+
 local buffer = require'codedit_buffer'
 local str = require'codedit_str'
 
@@ -6,9 +9,24 @@ buffer.eol_spaces = 'remove' --leave, remove.
 buffer.eof_lines = 'leave' --leave, remove, ensure, or a number.
 buffer.convert_indent = 'tabs' --tabs, spaces, leave: convert indentation to tabs or spaces based on current tabsize
 
+function buffer:detect_line_terminator(s)
+	return str.line_terminator(s)
+end
+
+--detect indent type and tab size of current buffer
+function buffer:detect_indent()
+	local tabs, spaces = 0, 0
+	for line = 1, self:last_line() do
+		local tabs1, spaces1 = str.indent_counts(self:line(line))
+		tabs = tabs + tabs1
+		spaces = spaces + spaces1
+	end
+	--TODO: finish this
+end
+
 function buffer:remove_eol_spaces() --remove any spaces past eol
 	for line = 1, self:last_line() do
-		self:setline(line, str.rtrim(self:getline(line)))
+		self:setline(line, str.rtrim(self:line(line)))
 	end
 end
 

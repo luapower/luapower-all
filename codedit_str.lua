@@ -1,101 +1,122 @@
---string module for codedit (Cosmin Apreutesei, public domain).
---deals specifically with tabs, spaces, lines and words.
-local glue = require'glue'
-local utf8 = require'utf8'
 
-local str = glue.update({}, utf8)
+--plain text boundaries
+--Written by Cosmin Apreutesei. Public Domain.
 
---tabs and whitespace --------------------------------------------------------
+--features: char, tab, whitespace, line and word boundaries.
+--can be monkey-patched to work with utf8 grapheme clusters.
 
---check for an ascii char at a byte index without string creation
-function str.isascii(s, i, c)
-	assert(i >= 1 and i <= #s, 'out of range')
+local str = {}
+
+--char (i.e. grapheme cluster) boundaries ------------------------------------
+
+--next_char() and prev_char() are the only functions that need to be
+--overwritten with utf8 variants in order to fully support unicode.
+
+function str.next_char(s, i)
+	i = i or 0
+	assert(i >= 0)
+	if i >= #s then return end
+	return i + 1
+end
+
+function str.prev_char(s, i)
+	i = i or #s + 1
+	assert(i <= #s + 1)
+	if i <= 1 then return end
+	return i - 1
+end
+
+function str.chars(s, i)
+	return str.next_char, s, i
+end
+
+function str.chars_reverse(s, i)
+	return str.prev_char, s, i
+end
+
+--tabs and whitespace boundaries ---------------------------------------------
+
+function str.isascii(s, i)
+	assert(i >= 1 and i <= #s)
+	return s:byte(i) >= 0 and s:byte(i) <= 127
+end
+
+--check an ascii char at a byte index without string creation
+function str.ischar(s, i, c)
+	assert(i >= 1 and i <= #s)
 	return s:byte(i) == c:byte(1)
 end
 
---check if the char at byte index i is a tab
-function str.istab(s, i)
-	return str.isascii(s, i, '\t')
-end
-
---check if the char at byte index i is a space char
-function str.isspacechar(s, i)
-	return str.isascii(s, i, ' ')
-end
-
---check if the char at byte index i is a whitespace char
 function str.isspace(s, i)
-	return str.isspacechar(s, i) or str.istab(s, i)
+	return str.ischar(s, i, ' ')
 end
 
---char index of the next non-space char after some char (nil if none).
---if after_ci is ommited, the first non-space char in the string is returned.
-function str.next_nonspace(s, after_ci)
-	after_ci = after_ci or 0
-	local ci = 0
-	for i in str.byte_indices(s) do
-		ci = ci + 1
-		if ci > after_ci and not str.isspace(s, i) then
-			return ci
+function str.istab(s, i)
+	return str.ischar(s, i, '\t')
+end
+
+function str.isterm(s, i)
+	return str.ischar(s, i, '\r') or str.ischar(s, i, '\n')
+end
+
+function str.iswhitespace(s, i)
+	return str.isspace(s, i) or str.istab(s, i) or str.isterm(s, i)
+end
+
+function str.isnonspace(s, i)
+	return not str.iswhitespace(s, i)
+end
+
+function str.next_char_which(s, i, is)
+	for i in str.chars(s, i) do
+		if is(s, i) then
+			return i
 		end
 	end
 end
 
---char index of the next double-space char after some char (nil if none).
---if after_ci is ommited, the first double-space char in the string is returned.
-function str.next_double_space(s, after_ci)
-	after_ci = after_ci or 0
-	local ci = 0
-	local was_space
-	for i in str.byte_indices(s) do
-		ci = ci + 1
-		if ci > after_ci and str.isspace(s, i) then
-			if was_space then
-				return ci
-			else
-				was_space = true
+function str.prev_char_which(s, i, is)
+	for i in str.chars_reverse(s, i) do
+		if is(s, i) then
+			return i
+		end
+	end
+end
+
+--byte index of the last non-space char before some char (nil if none).
+function str.prev_nonspace_char(s, i)
+	return str.prev_char_which(s, i, str.isnonspace)
+end
+
+--byte index of the next non-space char after some char (nil if none).
+function str.next_nonspace_char(s, i)
+	return str.next_char_which(s, i, str.isnonspace)
+end
+
+--byte index of the next double-space char after some char (nil if none).
+function str.next_double_space_char(s, i)
+	repeat
+		i = str.next_char(s, i)
+		if i and str.iswhitespace(s, i) then
+			local i0 = i
+			i = str.next_char(s, i)
+			if i and str.iswhitespace(s, i) then
+				return i0
 			end
-		else
-			was_space = false
 		end
-	end
-end
-
---char index of the last non-space char before some char (nil if none).
---if before_ci is ommited, the last non-space char in the string is returned.
-function str.prev_nonspace(s, before_ci)
-	before_ci = before_ci or 1/0
-	local ci = 0
-	local ns_ci
-	for i in str.byte_indices(s) do
-		ci = ci + 1
-		if ci >= before_ci then
-			return ns_ci
-		end
-		if not str.isspace(s, i) then
-			ns_ci = ci
-		end
-	end
-	return ns_ci
-end
-
---left trim of space and tab characters
-function str.ltrim(s)
-	local ns_ci = str.next_nonspace(s)
-	return ns_ci and str.sub(s, ns_ci) or ''
+	until not i
 end
 
 --right trim of space and tab characters
 function str.rtrim(s)
-	local ns_ci = str.prev_nonspace(s)
-	return ns_ci and str.sub(s, 1, ns_ci) or ''
+	local i = str.prev_nonspace_char(s)
+	return i and s:sub(1, i) or ''
 end
 
---number of tabs and of spaces in indentation
---TODO: use this
+--number of tabs and number of spaces in indentation
 function str.indent_counts(s)
 	local tabs, spaces = 0, 0
-	for i in str.byte_indices(s) do
+	for i in str.chars(s) do
 		if str.istab(s, i) then
 			tabs = tabs + 1
 		elseif str.isspace(s, i) then
@@ -107,116 +128,71 @@ function str.indent_counts(s)
 	return tabs, spaces
 end
 
---lines ----------------------------------------------------------------------
-
---return the index where the next line starts (unimportant) and the indices
---of the line starting at a given index. the last line is the substring after
---the last line terminator to the end of the string (see tests).
-function str.next_line_indices(s, i)
-	i = i or 1
-	if i == #s + 1 then
-		--string ended with newline, or string is empty:
-		--iterate one more empty line
-		return 1/0, i, i-1
-	elseif i > #s then
-		return
-	end
-	local j, nexti = s:match('^[^\r\n]*()\r?\n?()', i)
-	if nexti > #s and j == nexti then
-		--string ends without a newline, mark that by setting nexti to inf
-		nexti = 1/0
-	end
-	return nexti, i, j-1
-end
-
---iterate lines, returning the index where the next line starts (unimportant)
---and the indices of each line
-function str.line_indices(s)
-	return str.next_line_indices, s
-end
-
---return the index where the next line starts (unimportant) and the contents
---of the line starting at a given index. the last line is the substring after
---the last line terminator to the end of the string (see tests).
-function str.next_line(s, i)
-	local _, i, j = str.next_line_indices(s, i)
-	if not _ then return end
-	return _, s:sub(i, j)
-end
-
---iterate lines, returning the index where the next line starts (unimportant)
---and the contents of each line.
-function str.lines(s)
-	return str.next_line, s
-end
-
-function str.line_count(s)
-	local n = 0
-	for _ in str.line_indices(s) do
-		n = n + 1
-	end
-	return n
-end
-
---words ----------------------------------------------------------------------
+--word boundaries ------------------------------------------------------------
 
 function str.isword(s, i, word_chars)
 	return s:find(word_chars, i) ~= nil
 end
 
---from a char index, search forwards for:
+--search forwards for:
 	--1) 1..n spaces followed by a non-space char
 	--2) 1..n word chars or non-word chars follwed by case 1
 	--3) 1..n word chars followed by a non-word char
 	--4) 1..n non-word chars followed by a word char
 --if the next break should be on a different line, return nil.
-function str.next_word_break(s, first_ci, word_chars)
-	if first_ci < 1 then return 1 end
-	local firsti = str.byte_index(s, first_ci)
-	if not firsti then return end
-	local expect = str.isspace(s, firsti) and 'space' or str.isword(s, firsti, word_chars) and 'word' or 'nonword'
-	local ci = first_ci
-	for i in str.byte_indices(s, firsti) do
-		ci = ci + 1
+function str.next_word_break_char(s, i, word_chars)
+	if i < 1 then return 1 end
+	local expect =
+		str.isspace(s, i) and 'space'
+		or str.isword(s, i, word_chars) and 'word'
+		or 'nonword'
+	for i in str.chars(s, i) do
 		if expect == 'space' then --case 1
 			if not str.isspace(s, i) then --case 1 exit
-				return ci
+				return i
 			end
 		elseif str.isspace(s, i) then --case 2 -> case 1
 			expect = 'space'
-		elseif expect ~= (str.isword(s, i, word_chars) and 'word' or 'nonword') then --case 3 and 4 exit
-			return ci
+		elseif
+			expect ~= (str.isword(s, i, word_chars) and 'word' or 'nonword')
+		then --case 3 and 4 exit
+			return i
 		end
 	end
-	return ci + 1
+	return str.next_char(s, i)
 end
 
---from a char index, search backwards for:
+--search backwards for:
 	--1) 1..n spaces followed by 1..n words or non-words
 	--2) 1 words or non-words followed by case 1
 	--3) 2..n words or non-words follwed by a char of a differnt class
---in other words: look back until the char type changes from the type at firsti or of the prev. char, and skip spaces.
---if the prev. break should be on a different line, return nil.
-function str.prev_word_break(s, first_ci, word_chars)
-	if first_ci <= 1 then return end
-	local firsti = str.byte_index(s, first_ci)
-	local expect = not firsti and 'prev' or
-			(str.isspace(s, firsti) and 'space' or str.isword(s, firsti, word_chars) and 'word' or 'nonword')
+--in other words: look back until the char type changes from the type at
+--first_ci or of the prev. char, and skip spaces. if the prev. break should
+--be on a different line, return nil.
+function str.prev_word_break_char(s, firsti, word_chars)
+	if firsti <= 1 then return end
+	local expect =
+		not firsti and 'prev'
+		or (str.isspace(s, firsti) and 'space'
+			or str.isword(s, firsti, word_chars) and 'word'
+			or 'nonword')
 	local lasti = firsti
-	local ci = first_ci
-	for i in str.byte_indices_reverse(s, firsti) do
-		ci = ci - 1
+	for i in str.chars_reverse(s, firsti) do
 		if expect == 'space' then
 			if not str.isspace(s, i) then
 				expect = str.isword(s, i, word_chars) and 'word' or 'nonword'
 			end
-		elseif expect ~= (str.isspace(s, i) and 'space' or str.isword(s, i, word_chars) and 'word' or 'nonword') then
+		elseif expect ~=
+				(str.isspace(s, i) and 'space'
+				or str.isword(s, i, word_chars) and 'word'
+				or 'nonword')
+		then
 			if lasti == firsti then
 				expect =
 					str.isspace(s, i) and 'space' or
 					str.isword(s, i, word_chars) and 'word' or 'nonword'
 			else
-				return ci + 1
+				return str.next_char(s, i)
 			end
 		end
 		lasti = i
@@ -224,22 +200,98 @@ function str.prev_word_break(s, first_ci, word_chars)
 	return 1
 end
 
+--line boundaries ------------------------------------------------------------
+
+--check if a string ends with a line terminator
+function str.hasterm(s)
+	return #s > 0 and str.isterm(s, #s)
+end
+
+--remove a possible line terminator at the end of the string
+function str.remove_term(s)
+	return str.hasterm(s) and s:gsub('[\r\n]+$', '') or s
+end
+
+--append a line terminator if the string doesn't have one
+function str.add_term(s, term)
+	return str.hasterm(s, #s) and s or s .. term
+end
+
+--position of the (first) line terminator char, or #s + 1
+function str.term_char(s, i)
+	return s:match'()[\r\n]*$'
+end
+
+--return the end and start byte indices (so in reverse order!) of the line
+--starting at i. the last line is the one after the last line terminator.
+--if the last line is empty it's iterated at two bytes beyond #s.
+function str.next_line(s, i)
+	i = i or 1
+	if i > #s + 1 then
+		return nil --empty line was iterated
+	elseif i == #s + 1 then
+		if #s == 0 or str.hasterm(s) then --iterate one more empty line
+			return i+1, i+1
+		else
+			return nil
+		end
+	end
+	local j = s:match('^[^\r\n]*\r?\n?()', i)
+	return j, i
+end
+
+--iterate lines, returning the end and start indices for each line.
+function str.lines(s)
+	return str.next_line, s
+end
+
+function str.line_count(s)
+	local n = 0
+	for _ in str.lines(s) do
+		n = n + 1
+	end
+	return n
+end
+
+--returns the most common line terminator in a string, if any, and whether
+--the string contains mixed line terminators or not.
+function str.detect_term(s)
+	local n, r, rn = 0, 0, 0
+	for i in str.chars(s) do
+		if str.ischar(s, i, '\r') then
+			if i < #s and str.ischar(s, i + 1, '\n') then
+				rn = rn + 1
+			else
+				r = r + 1
+			end
+		elseif str.is(s, i, '\n') then
+			n = n + 1
+		end
+	end
+	local mixed = rn ~= n or rn ~= r or r ~= n
+	local term =
+		rn > n and rn > r and '\r\n'
+		or r > n and '\r'
+		or n > 0 and '\n'
+		or nil
+	return term, mixed
+end
 
 --tests ----------------------------------------------------------------------
 
 if not ... then
 
-assert(str.next_nonspace('') == nil)
-assert(str.next_nonspace(' ') == nil)
-assert(str.next_nonspace(' x') == 2)
-assert(str.next_nonspace(' x ') == 2)
-assert(str.next_nonspace('x ') == 1)
+assert(str.next_nonspace_char('') == nil)
+assert(str.next_nonspace_char(' ') == nil)
+assert(str.next_nonspace_char(' x') == 2)
+assert(str.next_nonspace_char(' x ') == 2)
+assert(str.next_nonspace_char('x ') == 1)
 
-assert(str.prev_nonspace('') == nil)
-assert(str.prev_nonspace(' ') == nil)
-assert(str.prev_nonspace('x') == 1)
-assert(str.prev_nonspace('x ') == 1)
-assert(str.prev_nonspace(' x ') == 2)
+assert(str.prev_nonspace_char('') == nil)
+assert(str.prev_nonspace_char(' ') == nil)
+assert(str.prev_nonspace_char('x') == 1)
+assert(str.prev_nonspace_char('x ') == 1)
+assert(str.prev_nonspace_char(' x ') == 2)
 
 assert(str.rtrim('abc \t ') == 'abc')
 assert(str.rtrim(' \t abc  x \t ') == ' \t abc  x')
@@ -250,7 +302,8 @@ assert(str.rtrim('') == '')
 local function assert_lines(s, t)
 	local i = 0
 	local dt = {}
-	for _,s in str.lines(s) do
+	for j1, i1 in str.lines(s) do
+		local s = s:sub(i1, j1-1)
 		i = i + 1
 		assert(t[i] == s, i .. ': "' .. s .. '" ~= "' .. tostring(t[i]) .. '"')
 		dt[i] = s
@@ -259,22 +312,18 @@ local function assert_lines(s, t)
 end
 assert_lines('', {''})
 assert_lines(' ', {' '})
-assert_lines('x\ny', {'x', 'y'})
-assert_lines('x\ny\n', {'x', 'y', ''})
-assert_lines('x\n\ny', {'x', '', 'y'})
-assert_lines('\n', {'', ''})
-assert_lines('\n\r\n', {'','',''})
-assert_lines('\r\n\n', {'','',''})
-assert_lines('\n\r', {'','',''})
-assert_lines('\n\r\n\r', {'','','',''})
-assert_lines('\n\n\r', {'','','',''})
+assert_lines('x\ny', {'x\n', 'y'})
+assert_lines('x\ny\n', {'x\n', 'y\n', ''})
+assert_lines('x\n\ny', {'x\n', '\n', 'y'})
+assert_lines('\n', {'\n', ''})
+assert_lines('\n\r\n', {'\n','\r\n',''})
+assert_lines('\r\n\n', {'\r\n','\n',''})
+assert_lines('\n\r', {'\n','\r',''})
+assert_lines('\n\r\n\r', {'\n','\r\n','\r',''})
+assert_lines('\n\n\r', {'\n','\n','\r',''})
 
 --TODO: next_word_break, prev_word_break
 
 end
 
-
-if not ... then require'codedit_demo' end
-
 return str
-

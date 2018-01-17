@@ -1,223 +1,328 @@
---codedit buffer object: text navigation and manipulation.
-local glue = require'glue'
+
+--multi-line text navigation and editing
+--Written by Cosmin Apreutesei. Public Domain.
+
+--features: save/load, undo/redo, mixed line terminators.
+
+if not ... then require'codedit_demo'; return end
+
 local str = require'codedit_str'
 require'codedit_reflow'
 local tabs = require'codedit_tabs'
 
+--instantiation --------------------------------------------------------------
+
 local buffer = {
-	line_terminator = nil, --line terminator to use when retrieving lines as a string. nil means autodetect.
-	default_line_terminator = '\n', --line terminator to use when autodetection fails.
-	--view overrides
-	background_color = nil,
-	text_color = nil,
-	line_highlight_color = nil,
+	line_terminator = '\n', --line terminator to use when inserting text
 }
 
-function buffer:new(editor, view, text)
-	self = glue.inherit({
-		editor = editor,  --for save_state & load_state (see codedit_undo)
-		view = view,      --for tabsize
-	}, self)
-
-	text = text or ''
-
-	self.line_terminator =
-		self.line_terminator or
-		self:detect_line_terminator(text) or
-		self.default_line_terminator
-
-	self.lines = {''} --can't have zero lines
-	self.changed = {} --{<flag> = true/false}; you can add any flags, they will all be set when the buffer changes.
-	self:insert_string(1, 1, text) --insert text without undo stack
-	self.changed.file = false --"file" is the default changed flag to decide when to save.
-
-	self.undo_stack = {}
-	self.redo_stack = {}
-	self.undo_group = nil
-
+function buffer:new()
+	self = setmetatable({}, {__index = self})
+	self:_init()
 	return self
 end
 
---message passing
+--the convention for storing lines is that each line preserves its own line
+--terminator at its end, except the last line which doesn't have one, never.
+--the empty string is thus stored as a single line containing itself.
+
+function buffer:_init(lines)
+	self.lines = lines or {}
+	if #self.lines == 0 then
+		self.lines[1] = '' --can't have zero lines
+	end
+	self:_init_undo()
+	self:_init_changed()
+end
+
+--invalidation & events ------------------------------------------------------
+
+function buffer:_init_changed()
+	--you can add any flags, they will all be set when the buffer changes.
+	self.changed = {} --{<flag> = true/false}
+	--"file" is the default changed flag to decide when to save.
+	self.changed.file = false
+	self.changed_handlers = self.changed_handlers or {}
+end
 
 function buffer:invalidate(line)
+	--set changed flags
 	for k in pairs(self.changed) do
 		self.changed[k] = true
 	end
-	self.view:invalidate(line)
-end
-
---text analysis
-
---class method that returns the most common line terminator in a string, or nil for failure
-function buffer:detect_line_terminator(s)
-	local rn = str.count(s, '\r\n') --win lines
-	local r  = str.count(s, '\r') --mac lines
-	local n  = str.count(s, '\n') --unix lines (default)
-	if rn > n and rn > r then
-		return '\r\n'
-	elseif r > n then
-		return '\r'
+	--call changed event handlers
+	local t = self.changed_handlers
+	if t.line_changed then
+		for i,f in ipairs(t.line_changed) do
+			f(line)
+		end
 	end
 end
 
---detect indent type and tab size of current buffer
-function buffer:detect_indent()
-	local tabs, spaces = 0, 0
-	for line = 1, self:last_line() do
-		local tabs1, spaces1 = str.indent_counts(self:getline(line))
-		tabs = tabs + tabs1
-		spaces = spaces + spaces1
+function buffer:on(event, handler)
+	local t = self.changed_handlers
+	t[event] = t[event] or {}
+	table.insert(t[event], handler)
+end
+
+--serialization --------------------------------------------------------------
+
+function buffer:save(write)
+	for i,s in ipairs(self.lines) do
+		if #s > 0 then
+			write(s, #s)
+		end
 	end
-	--TODO: finish this
 end
 
---finding buffer boundaries
-
-function buffer:last_line()
-	return #self.lines
+function buffer:_load_stream(read)
+	local lines = {}
+	while true do
+		local s = read()
+		if not s then break end
+		local s0 = lines[#lines]
+		for j,i in str.lines(s) do
+			local s = s:sub(i,j-1)
+			if s0 and #s0 > 0 then
+				s = s0 .. s --stitch to last line
+				s0 = nil
+				lubes[#lines] = s
+			else
+				lines[#lines+1] = s
+			end
+		end
+	end
+	self:_init(lines)
 end
 
---selecting text at the line level
-
-function buffer:getline(line)
-	return self.lines[line]
+function buffer:_load_string(s)
+	local lines = {}
+	for j,i in str.lines(s) do
+		lines[#lines+1] = s:sub(i,j-1)
+	end
+	self:_init(lines)
 end
 
-function buffer:contents(lines)
-	return table.concat(lines or self.lines, self.line_terminator)
+function buffer:load(arg)
+	if type(arg) == 'string' then
+		self:_load_string(arg)
+	else
+		self:_load_stream(arg)
+	end
 end
 
---editing text at the line level (low level interface; valid lines only)
+--undo/redo ------------------------------------------------------------------
+
+--the undo stack is a stack of undo groups. an undo group is a list of buffer
+--methods to be executed in reverse order in order to perform a single undo
+--operation. consecutive undo groups of the same type are merged together.
+--the undo commands in the group can be any editor method with any arguments.
+
+function buffer:_init_undo()
+	self.undo_stack = {}
+	self.redo_stack = {}
+	self.undo_group = nil
+end
+
+function buffer:start_undo_group(group_type)
+	if self.undo_group then
+		if self.undo_group.type == group_type then
+			--same type of group, continue using the current group
+			return
+		end
+		self:end_undo_group() --auto-close current group to start a new one
+	end
+	self.undo_group = {type = group_type}
+	--TODO: self.editor:save_state(self.undo_group)
+end
+
+function buffer:end_undo_group()
+	if not self.undo_group then return end
+	if #self.undo_group > 0 then --push group if not empty
+		table.insert(self.undo_stack, self.undo_group)
+	end
+	self.undo_group = nil
+end
+
+--add an undo command to the current undo group, if any.
+function buffer:undo_command(...)
+	if not self.undo_group then return end
+	table.insert(self.undo_group, {...})
+end
+
+local function undo_from(self, group_stack)
+	self:end_undo_group()
+	local group = table.remove(group_stack)
+	if not group then return end
+	self:start_undo_group(group.type)
+	for i = #group, 1, -1 do
+		local cmd = group[i]
+		self[cmd[1]](self, unpack(cmd, 2))
+	end
+	self:end_undo_group()
+	--TODO: self.editor:load_state(group)
+end
+
+function buffer:undo()
+	undo_from(self, self.undo_stack)
+	if #self.undo_stack == 0 then return end
+	table.insert(self.redo_stack, table.remove(self.undo_stack))
+end
+
+function buffer:redo()
+	undo_from(self, self.redo_stack)
+end
+
+function buffer:last_undo_command()
+	if not self.undo_group then return end
+	local last_cmd = self.undo_group[#self.undo_group]
+	if not last_cmd then return end
+	return unpack(last_cmd)
+end
+
+--low-level undo-able commands -----------------------------------------------
+
+function buffer:_ins(line, s)
+	assert(line >= 1 and line <= #self.lines + 1)
+	table.insert(self.lines, line, s)
+	self:undo_command('_rem', line)
+end
+
+function buffer:_rem(line)
+	assert(line >= 2 and line <= #self.lines)
+	local s = table.remove(self.lines, line)
+	self:undo_command('_ins', line, s)
+end
+
+function buffer:_upd(line, s)
+	assert(line >= 1 and line <= #self.lines)
+	local s0 = self.lines[line]
+	if s0 == s then return end
+	local cmd, arg = self:last_undo_command()
+	if not (cmd == '_upd' and arg == line) then --optimization
+		self:undo_command('_upd', line, s0)
+	end
+	self.lines[line] = s
+end
+
+--buffer boundaries ----------------------------------------------------------
+
+--byte index at line terminator (or at #s + 1 if there's no terminator)
+function buffer:eol(line)
+	local s = self.lines[line]
+	return s and str.term_char(s)
+end
+
+--the position after the last char in the text
+function buffer:end_pos()
+	return #self.lines, self:eol(#self.lines)
+end
+
+--clamp a position to the available text
+function buffer:clamp_pos(line, i)
+	if line < 1 then
+		return 1, 1
+	elseif line > #self.lines then
+		return self:end_pos()
+	else
+		return line, math.min(math.max(i, 1), self:eol(line))
+	end
+end
+
+--select the string between two subsequent positions in the text.
+--select(line) selects the contents of a line without the line terminator.
+function buffer:select(line1, i1, line2, i2)
+	line1, i1 = self:clamp_pos(line1 or 1, i1 or 1)
+	line2, i2 = self:clamp_pos(line2 or line1, i2 or 1/0)
+	if line1 == line2 then
+		return self.lines[line1]:sub(i1, i2 - 1)
+	else
+		local lines = {}
+		table.insert(lines, self.lines[line1]:sub(line1, i1))
+		for line = line1 + 1, line2 - 1 do
+			table.insert(lines, self.lines[line])
+		end
+		table.insert(lines, self.lines[line2]:sub(1, i2 - 1))
+		return table.concat(lines)
+	end
+end
+
+--line-level editing ---------------------------------------------------------
 
 function buffer:insert_line(line, s)
-	table.insert(self.lines, line, s)
-	self:undo_command('remove_line', line)
+	if line <= #self.lines then
+		s = str.add_term(s, self.line_terminator)
+	else
+		s = str.remove_term(s)
+		--appending a line: add a line terminator on the prev. line
+		if line > 1 then
+			self:_upd(line-1, self.lines[line-1] .. self.line_terminator)
+		end
+	end
+	self:_ins(line, s)
 	self:invalidate(line)
 end
 
 function buffer:remove_line(line)
-	local s = table.remove(self.lines, line)
-	self:undo_command('insert_line', line, s)
+	self:_rem(line)
+	if #self.lines == line-1 then
+		--removed the last line: remove the line term from the prev. line
+		self:_upd(line-1, self:select(line-1))
+	end
 	self:invalidate(line)
-	return s
 end
 
 function buffer:setline(line, s)
-	self:undo_command('setline', line, self:getline(line))
-	self.lines[line] = s
+	if line == #self.lines then
+		s = str.remove_term(s)
+	else
+		s = str.add_term(s, self.line_terminator)
+	end
+	self:_upd(line, s)
 	self:invalidate(line)
 end
 
 --switch two lines with one another
 function buffer:move_line(line1, line2)
-	local s1 = self:getline(line1)
-	local s2 = self:getline(line2)
+	local s1 = self.lines[line1]
+	local s2 = self.lines[line2]
 	if not s1 or not s2 then return end
 	self:setline(line1, s2)
 	self:setline(line2, s1)
 end
 
---finding line boundaries
+--char-level editing ---------------------------------------------------------
 
---last column on a valid line
-function buffer:last_col(line)
-	return str.len(self:getline(line))
-end
-
---the position after the last char in the text
-function buffer:end_pos()
-	return self:last_line(), self:last_col(self:last_line()) + 1
-end
-
---char-by-char linear navigation based on line boundaries
-
---position after some char, unclamped
-function buffer:next_char_pos(line, col, restrict_eol)
-	if not restrict_eol or (self:getline(line) and col < self:last_col(line) + 1) then
-		return line, col + 1
-	else
-		return line + 1, 1
-	end
-end
-
---position before some char, unclamped
-function buffer:prev_char_pos(line, col)
-	if col > 1 then
-		return line, col - 1
-	elseif self:getline(line - 1) then
-		return line - 1, self:last_col(line - 1) + 1
-	else
-		return line - 1, 1
-	end
-end
-
---position that is a number of chars after or before some char, unclamped
-function buffer:near_char_pos(line, col, chars, restrict_eol)
-	local advance = chars > 0 and self.next_char_pos or self.prev_char_pos
-	chars = math.abs(chars)
-	while chars > 0 do
-		line, col = advance(self, line, col, restrict_eol)
-		chars = chars - 1
-	end
-	return line, col
-end
-
---clamp a position to the available text
-function buffer:clamp_pos(line, col)
+--extend the buffer up to (line,i-1) with whitespace so we can edit there.
+function buffer:extend(line, i)
 	if line < 1 then
-		return 1, 1
-	elseif line > self:last_line() then
-		return self:end_pos()
-	else
-		return line, math.min(math.max(col, 1), self:last_col(line) + 1)
+		line = 1
+	end
+	while line > #self.lines do
+		self:insert_line(#self.lines + 1, '')
+	end
+	local eol = self:eol(line)
+	if i < 1 then
+		i = 1
+	end
+	if i > eol then
+		local padding = (' '):rep(i - eol - 1)
+		self:setline(line, self.lines[line] .. padding)
 	end
 end
 
---selecting text at linear char positions
-
---line slice between two columns on a valid line
-function buffer:sub(line, col1, col2)
-	return str.sub(self:getline(line), col1, col2)
-end
-
---select the string between two valid, subsequent positions in the text
-function buffer:select_string(line1, col1, line2, col2)
-	local lines = {}
-	if line1 == line2 then
-		table.insert(lines, self:sub(line1, col1, col2 - 1))
-	else
-		table.insert(lines, self:sub(line1, col1))
-		for line = line1 + 1, line2 - 1 do
-			table.insert(lines, self:getline(line))
-		end
-		table.insert(lines, self:sub(line2, 1, col2 - 1))
-	end
-	return lines
-end
-
---editing at linear char positions
-
---extend the buffer up to (line,col-1) with newlines and spaces so we can edit there.
-function buffer:extend(line, col)
-	while line > self:last_line() do
-		self:insert_line(self:last_line() + 1, '')
-	end
-	local last_col = self:last_col(line)
-	if col > last_col + 1 then
-		self:setline(line, self:getline(line) .. string.rep(' ', col - last_col - 1))
-	end
-end
-
---insert a multiline string at a specific position in the text, returning the position after the last character.
---if the position is outside the text, the buffer is extended.
-function buffer:insert_string(line, col, s)
-	self:extend(line, col)
-	local s1 = self:sub(line, 1, col - 1)
-	local s2 = self:sub(line, col)
+--insert a multi-line string at a specific position in the text, returning the
+--position after the last character. if the position is outside the text,
+--the buffer is extended.
+function buffer:insert(line, i, s)
+	self:extend(line, i)
+	local s0 = self:select(line)
+	local s1 = s0:sub(1, i - 1)
+	local s2 = s0:sub(i)
 	s = s1 .. s .. s2
 	local first_line = true
-	for _,s in str.lines(s) do
+	for j, i in str.lines(s) do
+		local s = s:sub(i, j-1)
 		if first_line then
 			self:setline(line, s)
 			first_line = false
@@ -226,356 +331,46 @@ function buffer:insert_string(line, col, s)
 			self:insert_line(line, s)
 		end
 	end
-	return line, self:last_col(line) - #s2 + 1
+	return line, self:eol(line) - #s2
 end
 
 --remove the string between two arbitrary, subsequent positions in the text.
---line2,col2 is the position after the last character to be removed.
-function buffer:remove_string(line1, col1, line2, col2)
-	line1, col1 = self:clamp_pos(line1, col1)
-	line2, col2 = self:clamp_pos(line2, col2)
-	local s1 = self:sub(line1, 1, col1 - 1)
-	local s2 = self:sub(line2, col2)
+--line2,i2 is the position after the last character to be removed.
+function buffer:remove(line1, i1, line2, i2)
+	line1, i1 = self:clamp_pos(line1, i1)
+	line2, i2 = self:clamp_pos(line2, i2)
+	local s1 = self.lines[line1]:sub(1, i1 - 1)
+	local s2 = self.lines[line2]:sub(i2)
 	for line = line2, line1 + 1, -1 do
 		self:remove_line(line)
 	end
 	self:setline(line1, s1 .. s2)
 end
 
---tab expansion: finding boundaries in visual space
+--indentation ----------------------------------------------------------------
 
-function buffer:tab_width(vcol)    return tabs.tab_width(vcol, self.view.tabsize) end
-function buffer:next_tabstop(vcol) return tabs.next_tabstop(vcol, self.view.tabsize) end
-function buffer:prev_tabstop(vcol) return tabs.prev_tabstop(vcol, self.view.tabsize) end
-
---translating between the char space and the visual (tabs-expanded) space
-
---real col -> visual col. outside eof visual columns have the same width as real columns.
-function buffer:visual_col(line, col)
-	local s = self:getline(line)
-	if s then
-		return tabs.visual_col(s, col, self.view.tabsize)
-	else
-		return col
-	end
-end
-
---visual col -> char col. outside eof visual columns have the same width as real columns.
-function buffer:real_col(line, vcol)
-	local s = self:getline(line)
-	if s then
-		return tabs.real_col(s, vcol, self.view.tabsize)
-	else
-		return vcol
-	end
-end
-
---the real col on a line that is vertically aligned (in the visual space) to the same col on a different line.
-function buffer:aligned_col(target_line, line, col)
-	return self:real_col(target_line, self:visual_col(line, col))
-end
-
---number of columns needed to fit the entire text (for computing the client area for horizontal scrolling)
-function buffer:max_visual_col()
-	if self.changed.max_visual_col ~= false then
-		local vcol = 0
-		for line = 1, self:last_line() do
-			local vcol1 = self:visual_col(line, self:last_col(line))
-			if vcol1 > vcol then
-				vcol = vcol1
-			end
-		end
-		self.cached_max_visual_col = vcol
-		self.changed.max_visual_col = false
-	end
-	return self.cached_max_visual_col
-end
-
---finding tabstop boundaries in unclamped char space
-
-function buffer:istab(line, col)
-	local s = self:getline(line)
-	if not s then return end
-	local i = str.byte_index(s, col)
-	if not i then return end
-	return str.istab(s, i)
-end
-
-function buffer:next_tabstop_col(line, col)
-	local vcol = self:visual_col(line, col)
-	local ts_vcol = self:next_tabstop(vcol)
-	return self:real_col(line, ts_vcol)
-end
-
-function buffer:prev_tabstop_col(line, col)
-	local vcol = self:visual_col(line, col)
-	local ts_vcol = self:prev_tabstop(vcol)
-	return self:real_col(line, ts_vcol)
-end
-
---selecting text based on tab expansion
-
---the indent of the line, optionally up to some column
-function buffer:select_indent(line, col)
-	local ns_col = self:next_nonspace_col(line)
-	local indent_col = math.min(col or 1/0, ns_col or 1/0)
-	return self:getline(line) and self:sub(line, 1, indent_col - 1)
-end
-
---editing based on tab expansion
-
---insert a tab or spaces from a position up to the next tabstop.
---return the cursor at the tabstop, where the indented text is.
-function buffer:indent(line, col, use_tab)
-	if use_tab then
-		return self:insert_string(line, col, '\t')
-	else
-		local vcol = self:visual_col(line, col)
-		return self:insert_string(line, col, string.rep(' ', self:tab_width(vcol)))
-	end
-end
-
-function buffer:indent_line(line, use_tab)
-	return self:indent(line, 1, use_tab)
-end
-
---find the max number of tabs and minimum number of spaces that fit between two visual columns
-function buffer:tabs_and_spaces(vcol1, vcol2)
-	return tabs.tabs_and_spaces(vcol1, vcol2, self.view.tabsize)
-end
-
---generate whitespace (tabs and spaces or just spaces, depending on the use_tabs flag) between two vcols.
-function buffer:gen_whitespace(vcol1, vcol2, use_tabs)
-	if vcol2 <= vcol1 then
-		return '' --target before cursor: ignore
-	end
-	local tabs, spaces
-	if use_tabs then
-		tabs, spaces = self:tabs_and_spaces(vcol1, vcol2)
-	else
-		tabs, spaces = 0, vcol2 - vcol1
-	end
-	return string.rep('\t', tabs) .. string.rep(' ', spaces)
-end
-
---insert whitespace on a line, from a position up to (but excluding) a visual col on the same line.
-function buffer:insert_whitespace(line, col, vcol2, use_tabs)
-	local vcol1 = self:visual_col(line, col)
-	local whitespace = self:gen_whitespace(vcol1, vcol2, use_tabs)
-	return self:insert_string(line, col, whitespace)
-end
-
---finding non-space boundaries (jumping whitespace)
-
-function buffer:next_nonspace_col(line, col)
-	local s = self:getline(line)
-	return s and str.next_nonspace(s, col)
-end
-
-function buffer:prev_nonspace_col(line, col)
-	local s = self:getline(line)
-	return s and str.prev_nonspace(s, col)
+function buffer:_next_nonspace_char(line, i)
+	local s = self.lines[line]
+	return s and str.next_nonspace_char(s, i)
 end
 
 --check if a line is either invalid, empty or made entirely of whitespace
 function buffer:isempty(line)
-	return not self:next_nonspace_col(line)
+	return not self:_next_nonspace_char(line)
 end
 
---check if a position is before the first non-space char, that is, in the indentation area.
-function buffer:indenting(line, col)
-	local ns_col = self:next_nonspace_col(line)
-	return not ns_col or col <= ns_col
+--check if a position is before the first non-space char, that is, check if
+--it's in the indentation area.
+function buffer:indenting(line, i)
+	local nsi = self:_next_nonspace_char(line)
+	return not nsi or i <= nsi
 end
 
---finding tabful boundaries. a tabful is the whitespace between two tabstops.
-
---the tabful column after of some char, which is either the next tabstop or the first non-space char
---after the prev. char or the char after the last col, whichever comes first, and if after the given char.
-function buffer:next_tabful_col(line, col, restrict_eol)
-	if restrict_eol then
-		if not self:getline(line) then return end
-		if col > self:last_col(line) then return end
-	end
-	local ts_col = self:next_tabstop_col(line, col)
-	local ns_col = self:next_nonspace_col(line, col - 1)
-	if not ns_col then
-		if restrict_eol then
-			ns_col = self:last_col(line) + 1
-		else
-			ns_col = 1/0
-		end
-	end
-	local tf_col = math.min(ts_col, ns_col)
-	if restrict_eol then
-		tf_col = math.min(tf_col, self:last_col(line) + 1)
-	end
-	if not (tf_col > col) then
-		return
-	end
-	return tf_col
+--return the indent of the line, optionally up to some char.
+function buffer:select_indent(line, i)
+	local nsi = self:_next_nonspace_char(line) or self:eol()
+	local indent_i = math.min(i or 1/0, nsi)
+	return self.lines[line] and self.lines[line]:sub(1, indent_i - 1)
 end
-
---the tabful column before some char, which is either the prev. tabstop or the char
---after the prev. non-space char, whichever comes last, and if before the given char.
-function buffer:prev_tabful_col(line, col)
-	if col <= 1 then return end
-	local ts_col = self:prev_tabstop_col(line, col)
-	local ns_col = self:prev_nonspace_col(line, col)
-	if not ns_col then
-		return ts_col
-	end
-	local tf_col = math.max(ts_col, ns_col + 1)
-	if not (tf_col < col) then
-		return
-	end
-	return tf_col
-end
-
---editing based on tabfuls
-
---remove the space up to the next tabstop or non-space char, in other words, remove a tabful.
-function buffer:outdent(line, col)
-	local tf_col = self:next_tabful_col(line, col, true)
-	if tf_col then
-		self:remove_string(line, col, line, tf_col)
-	end
-end
-
-function buffer:outdent_line(line)
-	self:outdent(line, 1)
-end
-
---finding word boundaries (word breaking semantics from str module)
-
-function buffer:next_word_break_col(line, col, word_chars)
-	local s = self:getline(line)
-	return s and str.next_word_break(s, col, word_chars)
-end
-
-function buffer:prev_word_break_col(line, col, word_chars)
-	local s = self:getline(line)
-	return s and str.prev_word_break(s, col, word_chars)
-end
-
---word boundaries surrounding a char position
-function buffer:word_cols(line, col, word_chars)
-	if not self:getline(line) then return end
-	line, col = self:clamp_pos(line, col)
-	local col1 = self:prev_word_break_col(line, col, word_chars) or 1
-	local col2 = self:next_word_break_col(line, col, word_chars)
-	col2 = (col2 and self:prev_nonspace_col(line, col2) or self:last_col(line)) + 1
-	return col1, col2
-end
-
---finding list-aligned boundaries
-
-function buffer:next_double_space_col(line, col)
-	local s = self:getline(line)
-	return s and str.next_double_space(s, col)
-end
-
---the idea is to align the cursor with the text on the above line, like this:
---	 more text        even more text
---  from here     -->_ to here, underneath the next word after a double space
---the conditions are: not indenting and there's a line above, and that line
---has a word after at least two visual spaces starting at vcol.
-function buffer:next_list_aligned_vcol(line, col, restrict_eol)
-	if line <= 1 or self:indenting(line, col) then return end
-	local above_col = self:aligned_col(line - 1, line, col)
-	local sp_col = self:next_double_space_col(line - 1, above_col - 1)
-	if not sp_col then return end
-	local ns_col = self:next_nonspace_col(line - 1, sp_col)
-	if not ns_col then return end
-	local ns_vcol = self:visual_col(line - 1, ns_col)
-	if ns_vcol <= col then return end
-	return ns_vcol
-end
-
---finding args-aligned boundaries
-
---the idea is to align the cursor with the text on the above line, like this:
---	 some_function (some_args, ...)
---  from here   -->_ to here, one char after the parens
---the conditions are: not indenting and there's a line above, and that line
---has a word after at least two visual spaces starting at vcol.
-
---[[
--- enable if
-	-- indenting
-	-- indenting to > 1 the above indent
-	-- line > 1
-	-- above line has '(' after current vcol
--- add spaces up to and including the col of the found '('
--- replace the indent tab surplus of the above indent if using tabs
--- jump through autoalign_args virtual tabs
-
-TODO: finish this
-function buffer:next_args_aligned_vcol(line, col, restrict_eol)
-	if line <= 1 then return end
-	local above_col = self:aligned_col(line - 1, line, col)
-	local sp_col = self:next_double_space_col(line - 1, above_col - 1)
-	if not sp_col then return end
-	local ns_col = self:next_nonspace_col(line - 1, sp_col)
-	if not ns_col then return end
-	local ns_vcol = self:visual_col(line - 1, ns_col)
-	if ns_vcol <= col then return end
-	return ns_vcol
-end
-]]
-
---finding paragraph boundaries
-
---
-
---paragraph-level editing
-
---reflowing the text between two lines. return the position after the last inserted character.
-function buffer:reflow_lines(line1, line2, line_width, tabsize, align, wrap)
-	local line1, col1 = self:clamp_pos(line1, 1)
-	local line2, col2 = self:clamp_pos(line2, 1/0)
-	local lines = self:select_string(line1, col1, line2, col2)
-	local lines = str.reflow(lines, line_width, tabsize, align, wrap)
-	self:remove_string(line1, col1, line2, col2)
-	return self:insert_string(line1, col1, self:contents(lines))
-end
-
---saving to disk safely
-
-function buffer:save_to_file(filename)
-	--write the file contents to a temp file and replace the original with it.
-	--the way to prevent data loss 24-century style.
-	glue.fcall(function(finally)
-
-		local filename1 = assert(os.tmpname())
-		finally(function() os.remove(filename1) end)
-
-		local file1 = assert(io.open(filename1, 'wb'))
-		finally(function()
-			if io.type(file1) ~= 'file' then return end
-			file1:close()
-		end)
-
-		for line = 1, self:last_line() - 1 do
-			file1:write(self:getline(line))
-			file1:write(self.line_terminator)
-		end
-		file1:write(self:getline(self:last_line()))
-		file1:close()
-
-		local filename2 = assert(os.tmpname())
-		finally(function() os.remove(filename2) end)
-
-		os.rename(filename, filename2)
-		local ok,err = os.rename(filename1, filename)
-		if not ok then
-			os.rename(filename2, filename)
-		end
-		assert(ok, err)
-	end)
-end
-
-
-if not ... then require'codedit_demo' end
 
 return buffer

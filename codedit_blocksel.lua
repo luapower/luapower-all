@@ -42,14 +42,14 @@ block_selection.contents = selection.contents
 block_selection.invalidate = selection.invalidate
 
 function block_selection:reset(line, col)
-	line = math.min(math.max(line, 1), self.buffer:last_line())
+	line = math.min(math.max(line, 1), #self.buffer.lines)
 	self.line1, self.col1 = line, col
 	self.line2, self.col2 = self.line1, self.col1
 	self:invalidate()
 end
 
 function block_selection:extend(line, col)
-	line = math.min(math.max(line, 1), self.buffer:last_line())
+	line = math.min(math.max(line, 1), #self.buffer.lines)
 	self.line2, self.col2 = line, col
 	self:invalidate()
 end

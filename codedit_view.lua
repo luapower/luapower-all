@@ -1,6 +1,10 @@
+
+--measuring, layouting, rendering and hit testing
+--Written By Cosmin Apreutesei. Public Domain.
+
+--features: proportional fonts, auto-wrapping, line margins, scrolling.
+
 --[[
---codedit view object: measuring, layouting, rendering and hit testing codedit objects.
---implementation for monospace fonts and fixed line height.
 
 ...................................
 :client :m1 :m2 :                 :  view rect (*):     x, y, w, h (contains the clipped margins and the scrollbox)
@@ -20,6 +24,9 @@
 ...................................
 
 ]]
+
+if not ... then require'codedit_demo'; return end
+
 local glue = require'glue'
 local str = require'codedit_str'
 local tabs = require'codedit_tabs'
@@ -28,6 +35,7 @@ local hl = require'codedit_hl'
 local view = {
 	--tab expansion
 	tabsize = 3,
+	tabstop_margin = 1, --min. space in pixels between tab-separated chunks
 	--font metrics
 	line_h = 16,
 	char_w = 8,
@@ -40,7 +48,7 @@ local view = {
 	cursor_margins = {top = 16, left = 0, right = 0, bottom = 16},
 	--rendering
 	highlight_cursor_lines = true,
-	lang = nil, --lexer to use for syntax highlighting. nil means no highlighting.
+	lang = nil, --optional lexer to use for syntax highlighting
 	--reflowing
 	line_width = 72,
 }
@@ -56,9 +64,18 @@ function view:new(buffer)
 	self.cursors = {} --{cursor = true, ...}
 	self.margins = {} --{margin1, ...}
 	--state
+	self._coords = {}
 	self.scroll_x = 0 --client rect position relative to the clip rect
 	self.scroll_y = 0
 	self.last_valid_line = 0 --for incremental lexing
+
+	buffer:on('line_changed', function(line)
+		local t = self._coords[line]
+		if t then
+			t.invalid = true
+		end
+	end)
+
 	return self
 end
 
@@ -102,58 +119,174 @@ local function point_in_rect(x, y, x1, y1, w1, h1)
 	return x >= x1 and x <= x1 + w1 and y >= y1 and y <= y1 + h1
 end
 
---measurements in text space, which is is a matrix of char glyphs
+--tabstop metrics ------------------------------------------------------------
 
---visual char position in text space
-function view:char_coords(line, vcol)
-	local x = self.char_w * (vcol - 1)
-	local y = self.line_h * (line - 1)
+--pixel width of n space characters
+function view:space_width(n)
+	local w = self._space_w
+	if not w then
+		w = self:char_advance_x(' ', 1)
+		self._space_w = w
+	end
+	return w * n
+end
+
+--pixel width of a full tabstop
+function view:tabstop_width()
+	return self:space_width(self.tabsize)
+end
+
+--x coord of the first tabstop to the right of x0
+function view:next_tabstop_x(x0)
+	local w = self:tabstop_width()
+	return math.ceil((x0 + self.tabstop_margin) / w) * w
+end
+
+--x coord of the first tabstop to the left of x0
+function view:prev_tabstop_x(x0)
+	local w = self:tabstop_width()
+	return math.floor((x0 - self.tabstop_margin) / w) * w
+end
+
+--char positioning -----------------------------------------------------------
+
+--x-advance of the grapheme cluster at s[i]
+function view:char_advance_x(s, i)
+	return self.char_w
+end
+
+local function bin_search(t, x)
+	--TODO:
+	for i = 1, #t do
+		if t[i] >= x then
+			return i
+		end
+	end
+end
+
+function view:_char_xes(line)
+	assert(line >= 1)
+	if line > #self.buffer.lines then
+		return
+	end
+	local t = self._coords[line]
+	if not t then
+		t = {invalid = true}
+		self._coords[line] = t
+	end
+	if t.invalid then
+		local x = 0
+		local s = self.buffer.lines[line]
+		local eol = self.buffer:eol(line)
+		for i = 1, eol-1 do --prevent sparse array
+			t[i] = 0
+		end
+		for i in str.chars(s) do
+			if i >= eol then
+				break
+			end
+			t[i] = x
+			if str.istab(s, i) then
+				x = self:next_tabstop_x(x)
+			else
+				x = x + self:char_advance_x(s, i)
+			end
+		end
+		t[eol] = x
+		t.invalid = false
+	end
+	return t
+end
+
+function view:char_x(line, i)
+	assert(i >= 1)
+	assert(line >= 1)
+	local t = self:_char_xes(line)
+	return t and (t[i] or t[#t]) or 0
+end
+
+function view:line_y(line)
+	assert(line >= 1)
+	return self.line_h * (line - 1)
+end
+
+function view:char_coords(line, i)
+	local x = self:char_x(line, i)
+	local y = self:line_y(line)
 	return x, y
 end
 
---visual char at text space coordinates
-function view:char_at(x, y)
-	local line = math.floor(y / self.line_h) + 1
-	local vcol = math.floor((x + self.char_w / 2) / self.char_w) + 1
-	return line, vcol
+--char hit testing -----------------------------------------------------------
+
+function view:line_at(y)
+	return math.max(1, math.floor(y / self.line_h) + 1)
 end
+
+function view:char_at_line(line, x)
+	local t = self:_char_xes(line)
+	if not t then return 1 end
+	return bin_search(t, x) or self.buffer:eol(line)
+end
+
+function view:char_at(x, y)
+	local line = self:line_at(y)
+	return line, self:char_at_line(line, x)
+end
+
+--selection shape ------------------------------------------------------------
 
 --rectangle surrounding a block of text
-function view:char_rect(line1, vcol1, line2, vcol2)
-	local x1, y1 = self:char_coords(line1, vcol1)
-	local x2, y2 = self:char_coords(line2 + 1, vcol2)
-	return x1, y1, x2 - x1, y2 - y1
+function view:char_rect(line, i1, i2)
+	local x1, y = self:char_coords(line, i1)
+	local x2, y = self:char_coords(line, i2)
+	return x1, y, x2 - x1, self.line_h
 end
-
---selection shape in text space
 
 function view:selection_line_rect(sel, line)
-	local col1, col2 = sel:cols(line)
-	local vcol1 = self.buffer:visual_col(line, col1)
-	local vcol2 = self.buffer:visual_col(line, col2)
-	local x, y, w, h = self:char_rect(line, vcol1, line, vcol2)
+	local i1, i2 = sel:chars(line)
+	local x, y, w, h = self:char_rect(line, i1, i2)
 	if not sel.block and line < (sel:isforward() and sel.line2 or sel.line1) then
-		w = w + 0.5 * self.char_w --show eol as half space
+		w = w + self:space_width(0.5) --show eol as half space
 	end
-	return x, y, w, h, vcol1, vcol2
+	return x, y, w, h, i1, i2
 end
 
---cursor shape in text space
+--cursor shape ---------------------------------------------------------------
 
-function view:cursor_rect_insert_mode(cursor)
-	local vcol = self.buffer:visual_col(cursor.line, cursor.col)
-	local x, y = self:char_coords(cursor.line, vcol)
+function view:cursor_coords(cursor)
+	if cursor.line > #self.buffer.lines then
+		local y = self:line_y(cursor.line)
+		local x = self:space_width(cursor.i - 1)
+		local w = self:space_width(1)
+		return x, y, w
+	end
+	local x, y = self:char_coords(cursor.line, cursor.i)
+	local eol = self.buffer:eol(cursor.line)
+	local extra_spaces = cursor.i - eol
+	if extra_spaces > 0 then
+		x = x + self:space_width(extra_spaces)
+	end
+	local w
+	if extra_spaces >= 0 then
+		w = self:space_width(1)
+	else
+		local _, i2 = cursor:next_pos(false, cursor.jump_tabstops)
+		local x2 = self:char_coords(cursor.line, i2)
+		w = x2 - x
+	end
+	return x, y, w
+end
+
+function view:_cursor_rect_insert_mode(cursor)
+	local x, y = self:cursor_coords(cursor)
 	local w = cursor.thickness or self.cursor_thickness
 	local h = self.line_h
-	x = x + (vcol == 1 and self.cursor_xoffset_col1 or self.cursor_xoffset)
+	x = x + (cursor.i == 1 and self.cursor_xoffset_col1 or self.cursor_xoffset)
 	return x, y, w, h
 end
 
-function view:cursor_rect_over_mode(cursor)
-	local vcol = self.buffer:visual_col(cursor.line, cursor.col)
-	local x, y = self:char_coords(cursor.line, vcol)
-	local w = self.buffer:istab(cursor.line, cursor.col) and self.buffer:tab_width(vcol) or 1
-	w = w * self.char_w
+function view:_cursor_rect_overwrite_mode(cursor)
+	local x, y, w = self:cursor_coords(cursor)
 	local h = cursor.thickness or self.cursor_thickness
 	y = y + self.char_baseline + 1 --1 pixel under the baseline
 	return x, y, w, h
@@ -161,27 +294,64 @@ end
 
 function view:cursor_rect(cursor)
 	if cursor.insert_mode then
-		return self:cursor_rect_insert_mode(cursor)
+		return self:_cursor_rect_insert_mode(cursor)
 	else
-		return self:cursor_rect_over_mode(cursor)
+		return self:_cursor_rect_overwrite_mode(cursor)
 	end
 end
 
---measurements in screen space for layouting, scrolling, clipping and hit testing
+--cursor hit testing ---------------------------------------------------------
+
+function view:_space_chars(x)
+	return math.floor(x / self:space_width(1)) + 1
+end
+
+function view:cursor_char_at_line(line, x)
+	if line > #self.buffer.lines then --outside buffer
+		return self:_space_chars(x)
+	end
+	local i = self:char_at_line(line, x)
+	if i == self.buffer:eol(line) then --possibly outside line
+		local w = x - self:char_x(line, i) --outside width
+		i = i + self:_space_chars(w)
+	end
+	return i
+end
+
+function view:cursor_char_at(x, y)
+	local line = self:line_at(y)
+	return line, self:cursor_char_at_line(line, x)
+end
+
+--pixel measuring for layouting, scrolling, clipping and hit testing ---------
+
+function view:line_width(line)
+	local t = self:_char_xes(line)
+	return t[#t] or 0
+end
+
+function view:max_line_width()
+	local w = 0
+	for line = 1, #self.buffer.lines do
+		w = math.max(w, self:line_width(line))
+	end
+	return w
+end
 
 --size of the text space (also called client rectangle in the context of layouting)
 --as limited by the available text and any out-of-text cursors.
 function view:client_size()
-	local maxvcol = self.buffer:max_visual_col() + 1
-	local maxline = self.buffer:last_line()
+	local maxline = #self.buffer.lines
+	local maxw = self:max_line_width()
 	--unrestricted cursors can enlarge the client area
 	for cur in pairs(self.cursors) do
 		maxline = math.max(maxline, cur.line)
 		if not cur.restrict_eol then
-			maxvcol = math.max(maxvcol, self.buffer:visual_col(cur.line, cur.col))
+			local x, _, w = self:cursor_rect(cur)
+			maxw = math.max(maxw, x + w)
 		end
 	end
-	return self:char_coords(maxline + 1, maxvcol + 1)
+	return self:char_coords(maxline + 1, 1), maxw
 end
 
 --width of all margins combined
@@ -231,8 +401,8 @@ end
 function view:visible_lines()
 	local line1 = math.floor(-self.scroll_y / self.line_h) + 1
 	local line2 = math.ceil((-self.scroll_y + self.clip_h) / self.line_h)
-	line1 = clamp(line1, 1, self.buffer:last_line())
-	line2 = clamp(line2, 1, self.buffer:last_line())
+	line1 = clamp(line1, 1, #self.buffer.lines)
+	line2 = clamp(line2, 1, #self.buffer.lines)
 	return line1, line2
 end
 
@@ -330,8 +500,7 @@ end
 
 --scroll to make the char under cursor visible
 function view:cursor_make_visible(cur)
-	local line, vcol = cur.line, self.buffer:visual_col(cur.line, cur.col)
-	local x, y, w, h = self:char_rect(line, vcol, line, vcol + 1)
+	local x, y, w, h = self:char_rect(cur.line, cur.i, cur.i)
 	--enlarge the char rectangle with the cursor margins
 	x = x - self.cursor_margins.left
 	y = y - self.cursor_margins.top
@@ -350,9 +519,12 @@ function view:clip(x, y, w, h) error'stub' end
 
 function view:draw_text(cx, cy, s, color, i, j)
 	i = i or 1
-	j = j or str.len(s)
+	j = j or #s
 	cy = cy + self.char_baseline
-	for i = i, j do
+	for i in str.chars(s, i) do
+		if i == j then
+			break
+		end
 		self:draw_char(cx, cy, s, i, color)
 		cx = cx + self.char_w
 	end
@@ -372,19 +544,11 @@ function view:draw_buffer(cx, cy, line1, vcol1, line2, vcol2, color)
 	end
 
 	for line = line1, line2 do
-		local s = self.buffer:getline(line)
-		local vcol = 1
-		for i in str.byte_indices(s) do
-			if str.istab(s, i) then
-				vcol = vcol + self.buffer:tab_width(vcol)
-			else
-				if vcol > vcol2 then
-					break
-				elseif vcol >= vcol1 then
-					local x, y = self:char_coords(line, vcol)
-					self:draw_char(cx + x, cy + y + self.char_baseline, s, i, color)
-				end
-				vcol = vcol + 1
+		local s = self.buffer:select(line)
+		for i in str.chars(s) do
+			local x, y = self:char_coords(line, i)
+			if not str.istab(s, i) then
+				self:draw_char(cx + x, cy + y + self.char_baseline, s, i, color)
 			end
 		end
 	end
@@ -392,9 +556,9 @@ end
 
 function view:draw_buffer_text(x, y, color, line1, i1, line2, i2)
 	for line = line1, line2 do
-		local s = self.buffer:getline(line)
+		local s = self.buffer:select(line)
 		local vcol = 1
-		for i in str.byte_indices(s) do
+		for i in str.chars(s) do
 			if str.istab(s, i) then
 				vcol = vcol + self.buffer:tab_width(vcol)
 			else
@@ -413,7 +577,7 @@ end
 --byte index -> visual column: same as tabs.visual_col but based on byte index instead of char index.
 local function visual_col_bi(s, targeti, tabsize, previ, prevvcol)
 	local vcol = prevvcol and prevvcol + 1 or 1
-	for i in str.byte_indices(s, previ) do
+	for i in str.chars(s, previ) do
 		if i >= targeti then
 			return vcol
 		end
@@ -444,7 +608,7 @@ function view:draw_buffer_highlighted(cx, cy)
 					last_p1, last_vcol = nil
 				end
 
-				local s = self.buffer:getline(line)
+				local s = self.buffer:select(line)
 				local vcol = visual_col_bi(s, p1, self.tabsize, last_p1, last_vcol)
 				local x, y = self:char_coords(line, vcol)
 				self:draw_text(cx + x, cy + y, s, style, p1, p2)
@@ -471,9 +635,9 @@ function view:draw_selection(sel, cx, cy)
 	local text_color = sel.text_color or 'selection_text'
 	local line1, line2 = sel:line_range()
 	for line = line1, line2 do
-		local x, y, w, h, vcol1, vcol2 = self:selection_line_rect(sel, line)
+		local x, y, w, h, i1, i2 = self:selection_line_rect(sel, line)
 		self:draw_rect(cx + x, cy + y, w, h, bg_color)
-		self:draw_buffer(cx, cy, line, vcol1, line, vcol2 - 1, text_color)
+		self:draw_buffer(cx, cy, line, i1, line, i2 - 1, text_color)
 	end
 end
 
@@ -527,12 +691,20 @@ function view:draw_client()
 	for cur in pairs(self.cursors) do
 		self:draw_line_highlight(cur.line, cur.line_highlight_color)
 	end
-	--text, selections, cursors
+	--text
 	local cx, cy = self:client_to_screen(0, 0)
 	self:draw_visible_text(cx, cy)
+	--selections
 	for sel in pairs(self.selections) do
 		self:draw_selection(sel, cx, cy)
 	end
+	--tabstops
+	local x0 = 0
+	while x0 < self.clip_w do
+		x0 = self:next_tabstop_x(x0)
+		self:draw_rect(self.clip_x + x0, 0, 1, 1000, 'tabstop')
+	end
+	--cursors
 	for cur in pairs(self.cursors) do
 		self:draw_cursor(cur, cx, cy)
 	end
@@ -565,8 +737,5 @@ function view:render()
 	end
 	self:draw_client()
 end
-
-
-if not ... then require'codedit_demo' end
 
 return view

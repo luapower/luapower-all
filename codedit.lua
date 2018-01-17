@@ -1,4 +1,7 @@
---codedit: code editor engine (Cosmin Apreutesei, public domain).
+
+--code editor engine.
+--Written by Cosmin Apreutesei. Public Domain.
+
 local editor = require'codedit_editor'
 --require'codedit_metrics'
 --require'codedit_scroll'

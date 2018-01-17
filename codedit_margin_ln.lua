@@ -9,7 +9,7 @@ local function digits(n) --number of base-10 digits of a number
 end
 
 function ln_margin:get_width()
-	return (digits(self.buffer:last_line()) + 2) * self.view.char_w
+	return (digits(#self.buffer.lines) + 2) * self.view.char_w
 end
 
 function ln_margin:draw_line(line, cx, cy, cw, ch, highlighted)
