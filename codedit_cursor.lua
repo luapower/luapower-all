@@ -110,10 +110,6 @@ function cursor:move(line, i, keep_x)
 	self:invalidate()
 end
 
-local function prev_tabstop(s, i)
-	return not str.iswhitespace(s, i) and i or str.prev_nonspace_char(s, i)
-end
-
 function cursor:prev_pos(jump_tabstops)
 
 	if self.i == 1 then --move to the end of the prev. line

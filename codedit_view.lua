@@ -164,7 +164,7 @@ local function bin_search(t, x)
 	end
 end
 
-function view:_char_xes(line)
+function view:char_xes(line)
 	assert(line >= 1)
 	if line > #self.buffer.lines then
 		return
@@ -201,7 +201,7 @@ end
 function view:char_x(line, i)
 	assert(i >= 1)
 	assert(line >= 1)
-	local t = self:_char_xes(line)
+	local t = self:char_xes(line)
 	return t and (t[i] or t[#t]) or 0
 end
 
@@ -223,7 +223,7 @@ function view:line_at(y)
 end
 
 function view:char_at_line(line, x)
-	local t = self:_char_xes(line)
+	local t = self:char_xes(line)
 	if not t then return 1 end
 	return bin_search(t, x) or self.buffer:eol(line)
 end
@@ -330,7 +330,7 @@ end
 --text size ------------------------------------------------------------------
 
 function view:line_width(line)
-	local t = self:_char_xes(line)
+	local t = self:char_xes(line)
 	return t[#t] or 0
 end
 
@@ -358,6 +358,8 @@ function view:client_size()
 	return self:char_coords(maxline + 1, 1), maxw
 end
 
+--margin metrics -------------------------------------------------------------
+
 --width of all margins combined
 function view:margins_width()
 	local w = 0
@@ -378,9 +380,21 @@ function view:margin_x(target_margin)
 	end
 end
 
---clipping rectangles
+--clipping and scrolling -----------------------------------------------------
 
---clip rect of the client area in screen space, as obtained from drawing the scrollbox.
+function view:screen_to_client(x, y)
+	x = x - self.clip_x - self.scroll_x
+	y = y - self.clip_y - self.scroll_y
+	return x, y
+end
+
+function view:client_to_screen(x, y)
+	x = x + self.clip_x + self.scroll_x
+	y = y + self.clip_y + self.scroll_y
+	return x, y
+end
+
+--clip rect of the client area in screen space, obtained from drawing the scrollbox.
 function view:clip_rect()
 	return self.clip_x, self.clip_y, self.clip_w, self.clip_h
 end
@@ -399,7 +413,7 @@ function view:line_clip_rect(line)
 	return self.clip_x, y, self.clip_w, self.line_h
 end
 
---clipping in visual char space
+--clipping in text space
 
 --which lines are partially or entirely visibile
 function view:visible_lines_all()
@@ -433,18 +447,6 @@ function view:line_is_visible_all(line)
 end
 
 --point translation from screen space to client (text) space and back
-
-function view:screen_to_client(x, y)
-	x = x - self.clip_x - self.scroll_x
-	y = y - self.clip_y - self.scroll_y
-	return x, y
-end
-
-function view:client_to_screen(x, y)
-	x = x + self.clip_x + self.scroll_x
-	y = y + self.clip_y + self.scroll_y
-	return x, y
-end
 
 function view:screen_to_margin_client(margin, x, y)
 	x = x - self:margin_x(margin)
@@ -523,13 +525,13 @@ function view:cursor_make_visible(cur)
 	self:make_rect_visible(x, y, w, h)
 end
 
+--rendering ------------------------------------------------------------------
+
 --rendering stubs: all rendering is based on these functions
 
 function view:draw_char(x, y, s, i, color) error'stub' end
 function view:draw_rect(x, y, w, h, color) error'stub' end
 function view:clip(x, y, w, h) error'stub' end
-
---rendering
 
 function view:draw_text(cx, cy, s, color, i, j)
 	cy = cy + self.char_baseline
@@ -542,49 +544,34 @@ function view:draw_text(cx, cy, s, color, i, j)
 	end
 end
 
-function view:draw_buffer(cx, cy, line1, vcol1, line2, vcol2, color)
+function view:draw_buffer(cx, cy, line1, i1, line2, i2, color)
 
 	--clamp the text rectangle to the visible rectangle
 	local minline, maxline = self:visible_lines()
-	local minvcol, maxvcol = self:visible_cols()
 	line1 = clamp(line1, minline, maxline+1)
 	line2 = clamp(line2, minline-1, maxline)
-	vcol1 = clamp(vcol1, minvcol, maxvcol+1)
-	vcol2 = clamp(vcol2, minvcol-1, maxvcol)
-	if vcol1 > vcol2 then
-		return
-	end
 
+	local _i1, _i2 = i1, i2
 	for line = line1, line2 do
-		local s = self.buffer:select(line)
-		for i in str.chars(s) do
-			local x, y = self:char_coords(line, i)
-			if not str.istab(s, i) then
-				self:draw_char(cx + x, cy + y + self.char_baseline, s, i, color)
-			end
+		i1, i2 = _i1, _i2
+		if line ~= line1 and line ~= line2 then
+			i1, i2 = 1, 1/0
 		end
-	end
-end
-
-function view:draw_buffer_text(x, y, color, line1, i1, line2, i2)
-	for line = line1, line2 do
-		local s = self.buffer:select(line)
-		local vcol = 1
+		local y = self:line_y(line)
+		local t = self:char_xes(line)
+		local s = self.buffer.lines[line]
 		for i in str.chars(s) do
-			if str.istab(s, i) then
-				vcol = vcol + self.buffer:tab_width(vcol)
-			else
-				if vcol > vcol2 then
-					break
-				elseif vcol >= vcol1 then
-					local x, y = self:char_coords(line, vcol)
+			if i >= i1 and i <= i2 then
+				local x = t[i]
+				if not str.iswhitespace(s, i) then
 					self:draw_char(cx + x, cy + y + self.char_baseline, s, i, color)
 				end
-				vcol = vcol + 1
 			end
 		end
 	end
 end
+
+--[=[
 
 --byte index -> visual column: same as tabs.visual_col but based on byte index instead of char index.
 local function visual_col_bi(s, targeti, tabsize, previ, prevvcol)
@@ -630,6 +617,8 @@ function view:draw_buffer_highlighted(cx, cy)
 		end
 	end
 end
+
+]=]
 
 function view:draw_visible_text(cx, cy)
 	if self.lang then
@@ -722,11 +711,13 @@ function view:draw_client()
 	end
 end
 
---draw a scrollbox widget with (x, y, w, h) outside rect and (cx, cy, cw, ch) client rect.
---return the new cx, cy, adjusted from user input and other scrollbox constraints, followed by the clipping rect.
---the client rect is relative to the clipping rect of the scrollbox (which can be different than it's outside rect).
---this stub implementation is equivalent to a scrollbox that takes no user input, has no margins,
---and has invisible scrollbars.
+--draw a scrollbox widget with the outside rect (x, y, w, h) and the client
+--rect (cx, cy, cw, ch). return the new cx, cy, adjusted from user input
+--and other scrollbox constraints, followed by the clipping rect.
+--the client rect is relative to the clipping rect of the scrollbox (which
+--can be different than it's outside rect). this stub implementation is
+--equivalent to a scrollbox that takes no user input, has no margins, and has
+--invisible scrollbars.
 function view:draw_scrollbox(x, y, w, h, cx, cy, cw, ch)
 	return cx, cy, x, y, w, h
 end
