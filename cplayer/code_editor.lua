@@ -1,4 +1,7 @@
 --code editor based on codedit engine.
+
+if not ... then require'codedit_demo'; return end
+
 local codedit = require'codedit'
 local view = require'codedit_view'
 local str = require'codedit_str'
@@ -6,9 +9,8 @@ local glue = require'glue'
 local player = require'cplayer'
 local cairo = require'cairo'
 local ft = require'freetype'
+local nw = require'nw'
 local lib = ft:new()
-local winapi = require'winapi'
-require'winapi.clipboard'
 
 local view = glue.inherit({
 	--font metrics
@@ -26,6 +28,7 @@ local view = glue.inherit({
 		selection_text = '#333333',
 		cursor = '#ffffff',
 		text = '#ffffff',
+		tabstop = '#111',
 		margin_background = '#000000',
 		line_number_text = '#66ffff',
 		line_number_background = '#111111',
@@ -62,7 +65,7 @@ local view = glue.inherit({
 
 function view:draw_scrollbox(x, y, w, h, cx, cy, cw, ch)
 	local scroll_x, scroll_y, clip_x, clip_y, clip_w, clip_h = self.player:scrollbox{
-		id = self.buffer.editor.id..'_scrollbox',
+		id = self.editor.id..'_scrollbox',
 		x = x,
 		y = y,
 		w = w,
@@ -114,28 +117,28 @@ function player:clear_glpyh_cache()
 	cache = {}
 end
 
-function player:render_glyph(face, s, i, glyph_size, x, y)
-
-	--local j = (str.next(s, i) or #s + 1) - 1
+function player:load_glyph(s, i, face, glyph_size)
+	--local j = (str.next_char(s, i) or #s + 1) - 1
 	local charcode = s:byte(i,i) --TODO: utf8 -> utf32
-
 	if charcode == nil then return end
 
-	local image, bitmap_left, bitmap_top
-	local ci = cache[charcode]
-	if ci then
-		image, bitmap_left, bitmap_top = ci.image, ci.bitmap_left, ci.bitmap_top
-		if not image then return end
-	else
+	local t = cache[charcode]
+	if not t then
+
 		face:select_charmap(ft.FT_ENCODING_UNICODE)
 		local glyph_index = face:char_index(charcode)
 
-		local load_mode = bit.bor(ft.FT_LOAD_IGNORE_GLOBAL_ADVANCE_WIDTH, --ft.FT_LOAD_NO_BITMAP,
-											ft.FT_LOAD_NO_HINTING, ft.FT_LOAD_NO_AUTOHINT)
+		local load_mode = bit.bor(
+			ft.FT_LOAD_IGNORE_GLOBAL_ADVANCE_WIDTH,
+			--ft.FT_LOAD_NO_BITMAP,
+			ft.FT_LOAD_NO_HINTING,
+			ft.FT_LOAD_NO_AUTOHINT)
+
 		local render_mode = ft.FT_RENDER_MODE_LIGHT
 
 		face:set_char_size(glyph_size * 64)
 		face:load_glyph(glyph_index, load_mode)
+
 		local glyph = face.glyph
 
 		if glyph.format ~= ft.FT_GLYPH_FORMAT_BITMAP then
@@ -143,44 +146,61 @@ function player:render_glyph(face, s, i, glyph_size, x, y)
 		end
 		assert(glyph.format == ft.FT_GLYPH_FORMAT_BITMAP)
 
-		if glyph.bitmap.width == 0 or glyph.bitmap.rows == 0 then
-			cache[charcode] = {}
-			return
+		t = {}
+		t.advance_x = glyph.advance.x
+
+		if glyph.bitmap.width > 0 and glyph.bitmap.rows > 0 then
+
+			local bitmap = glyph.library:new_bitmap()
+			glyph.library:convert_bitmap(glyph.bitmap, bitmap, 4)
+
+			local cairo_stride = cairo.stride('a8', bitmap.width)
+
+			assert(bitmap.pixel_mode == ft.FT_PIXEL_MODE_GRAY)
+			assert(bitmap.pitch == cairo_stride)
+
+			local image = cairo.image_surface{
+				data = bitmap.buffer,
+				format = 'g8',
+				w = bitmap.width,
+				h = bitmap.rows,
+				stride = cairo_stride,
+			}
+			t.image = image
+			t.bitmap = bitmap
+			t.library = glyph.library
+			t.bitmap_left = glyph.bitmap_left
+			t.bitmap_top = glyph.bitmap_top
 		end
-
-		local bitmap = glyph.library:new_bitmap()
-		glyph.library:convert_bitmap(glyph.bitmap, bitmap, 4)
-
-		local cairo_format = cairo.CAIRO_FORMAT_A8
-		local cairo_stride = cairo.cairo_format_stride_for_width(cairo_format, bitmap.width)
-
-		assert(bitmap.pixel_mode == ft.FT_PIXEL_MODE_GRAY)
-		assert(bitmap.pitch == cairo_stride)
-
-		image = cairo.cairo_image_surface_create_for_data(
-			bitmap.buffer,
-			cairo_format,
-			bitmap.width,
-			bitmap.rows,
-			cairo_stride)
-		bitmap_left = glyph.bitmap_left
-		bitmap_top = glyph.bitmap_top
-
-		cache[charcode] = {
-			image = image,
-			bitmap = bitmap,
-			library = glyph.library,
-			bitmap_left = bitmap_left,
-			bitmap_top = bitmap_top,
-		}
 	end
-	self.cr:mask_surface(image, x + bitmap_left, y - bitmap_top)
+	cache[charcode] = t
+	if not t.advance_x then return end
+	return t
+end
+
+function player:render_glyph(glyph, x, y)
+	if not glyph.image then return end
+	self.cr:mask(glyph.image, x + glyph.bitmap_left, y - glyph.bitmap_top)
+end
+
+function view:load_glyph(s, i)
+	return self.player:load_glyph(s, i, self.ft_face, self.line_h)
+end
+
+function view:render_glyph(s, i, x, y)
+	local glyph = self:load_glyph(s, i)
+	if not glyph then return end
+	self.player:render_glyph(glyph, x, y)
+end
+
+function view:char_advance_x(s, i)
+	local glyph = self:load_glyph(s, i)
+	return glyph and (glyph.advance_x / 64) or 0
 end
 
 function view:draw_char(x, y, s, i, color)
-	local cr = self.player.cr
 	self.player:setcolor(self.colors[color] or self.colors.text)
-	self.player:render_glyph(self.ft_face, s, i, self.line_h, x, y)
+	self:render_glyph(s, i, x, y)
 end
 
 --draw a reverse pilcrow at eol
@@ -251,8 +271,8 @@ function editor:render()
 			self.view.ft_face = lib:new_face(self.view.font_file)
 			self.view.ft_face_file = self.view.font_file
 		end
-
-		--self.player:clear_glpyh_cache()
+		self.player:clear_glpyh_cache()
+		self.view:font_changed()
 
 		self.view:render()
 		self.view:render_eol_markers()
@@ -268,11 +288,11 @@ function editor:setactive(active)
 end
 
 function editor:set_clipboard(s)
-	winapi.SetClipboardText(s)
+	nw:app():setclipboard(s, 'text')
 end
 
 function editor:get_clipboard()
-	return winapi.GetClipboardText() or ''
+	return nw:app():getclipboard'text' or ''
 end
 
 function player:code_editor(t)
@@ -285,6 +305,7 @@ function player:code_editor(t)
 	end
 	ed.player = self
 	ed.view.player = self
+	ed.view.editor = ed
 	ed:input(
 		true, --self.focused == ed.id,
 		self.active,
@@ -306,5 +327,3 @@ function player:code_editor(t)
 
 	return ed
 end
-
-if not ... then require'codedit_demo' end

@@ -141,6 +141,8 @@ function player:window(t)
 		--render the frame
 		self:on_render(self.cr)
 
+		window:cursor(self.cursor or 'arrow')
+
 		--render any user-added layers and clear the list
 		self.cr:identity_matrix()
 		self.cr:reset_clip()
@@ -426,7 +428,13 @@ function player:play(...)
 	if ... then --player loaded as module, return it instead of running it
 		return player
 	end
-	self.main = self:window{on_render = self.on_render}
+	self.main = self:window{
+		on_render = self.on_render,
+		x = self.x,
+		y = self.y,
+		w = self.w,
+		h = self.h,
+	}
 	return nw:app():run()
 end
 

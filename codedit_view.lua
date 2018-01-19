@@ -71,9 +71,18 @@ function view:new(buffer)
 
 	buffer:on('line_changed', function(line)
 		local t = self._xes[line]
-		if t then
-			t.invalid = true
-		end
+		if not t then return end
+		t.invalid = true
+	end)
+	buffer:on('line_removed', function(line)
+		local t = self._xes[line]
+		if not t then return end
+		table.remove(self._xes, line)
+	end)
+	buffer:on('line_inserted', function(line)
+		local t = self._xes[line]
+		if not t then return end
+		table.insert(self._xes, line, {invalid = true})
 	end)
 
 	return self
@@ -120,6 +129,11 @@ local function point_in_rect(x, y, x1, y1, w1, h1)
 end
 
 --tabstop metrics ------------------------------------------------------------
+
+function view:font_changed()
+	self._space_w = nil
+	self._xes = {}
+end
 
 --pixel width of n space characters
 function view:space_width(n)

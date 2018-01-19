@@ -32,7 +32,7 @@ function player:hue_wheel(cx, cy, r1, r2, step, hue)
 	end
 
 	if hot or self.active then
-		self.cursor = 'link'
+		self.cursor = 'hand'
 	end
 
 	local x, y = point.point_around(cx, cy, (r1 + r2) / 2, hue)

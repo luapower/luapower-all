@@ -42,27 +42,29 @@ function buffer:_init_changed()
 	self.changed = {} --{<flag> = true/false}
 	--"file" is the default changed flag to decide when to save.
 	self.changed.file = false
-	self.changed_handlers = self.changed_handlers or {}
+	self.event_handlers = self.event_handlers or {}
 end
 
-function buffer:invalidate(line)
+function buffer:invalidate()
 	--set changed flags
 	for k in pairs(self.changed) do
 		self.changed[k] = true
 	end
-	--call changed event handlers
-	local t = self.changed_handlers
-	if t.line_changed then
-		for i,f in ipairs(t.line_changed) do
-			f(line)
-		end
-	end
 end
 
 function buffer:on(event, handler)
-	local t = self.changed_handlers
+	local t = self.event_handlers
 	t[event] = t[event] or {}
 	table.insert(t[event], handler)
+end
+
+function buffer:trigger(event, ...)
+	local t = self.event_handlers
+	t = t and t[event]
+	if not t then return end
+	for i,f in ipairs(t) do
+		f(...)
+	end
 end
 
 --serialization --------------------------------------------------------------
@@ -260,7 +262,8 @@ function buffer:insert_line(line, s)
 		end
 	end
 	self:_ins(line, s)
-	self:invalidate(line)
+	self:invalidate()
+	self:trigger('line_inserted', line)
 end
 
 function buffer:remove_line(line)
@@ -269,7 +272,8 @@ function buffer:remove_line(line)
 		--removed the last line: remove the line term from the prev. line
 		self:_upd(line-1, self:select(line-1))
 	end
-	self:invalidate(line)
+	self:invalidate()
+	self:trigger('line_removed', line)
 end
 
 function buffer:setline(line, s)
@@ -279,7 +283,8 @@ function buffer:setline(line, s)
 		s = str.add_term(s, self.line_terminator)
 	end
 	self:_upd(line, s)
-	self:invalidate(line)
+	self:invalidate()
+	self:trigger('line_changed', line)
 end
 
 --switch two lines with one another
@@ -306,8 +311,8 @@ function buffer:extend(line, i)
 		i = 1
 	end
 	if i > eol then
-		local padding = (' '):rep(i - eol - 1)
-		self:setline(line, self.lines[line] .. padding)
+		local padding = (' '):rep(i - eol)
+		self:setline(line, self:select(line) .. padding)
 	end
 end
 

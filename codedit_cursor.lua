@@ -159,13 +159,13 @@ function cursor:next_pos(restrict_eol, jump_tabstops)
 	if self.line > lastline then --outside buffer
 		if self.restrict_eof then
 			return self.buffer:end_pos()
-		elseif self.restrict_eol then
+		elseif restrict_eol then
 			return self.line + 1, 1
 		else
 			return self.line, self.i + 1
 		end
 	elseif self.i >= self.buffer:eol(self.line) then
-		if self.restrict_eol then
+		if restrict_eol then
 			if self.restrict_eof and self.line >= lastline then
 				return self.buffer:end_pos()
 			else
@@ -178,12 +178,19 @@ function cursor:next_pos(restrict_eol, jump_tabstops)
 
 	local s = self.buffer.lines[self.line]
 
-	local jump_tabstops =
-		jump_tabstops == 'always'
-		or (jump_tabstops == 'indent'
-			and self.buffer:indenting(self.line, str.next_char(s, self.i)))
+	local jts = str.iswhitespace(s, self.i)
+	if jts then
+		if jump_tabstops == 'always' then
+			jts = true
+		elseif jump_tabstops == 'indent' then
+			local i = str.next_char(s, self.i)
+			if i and self.buffer:indenting(self.line, i) then
+				jts = true
+			end
+		end
+	end
 
-	if jump_tabstops and str.iswhitespace(s, self.i) then
+	if jts then
 		local x0 = self.view:char_x(self.line, self.i)
 		local ts_x = self.view:next_tabstop_x(x0)
 		local ts_i = self.view:char_at_line(self.line, ts_x)
@@ -197,9 +204,38 @@ function cursor:next_pos(restrict_eol, jump_tabstops)
 	return self.line, str.next_char(s, self.i) or #s + 1
 end
 
---move to the next position in the text.
 function cursor:move_next_pos()
 	self:move(self:next_pos(self.restrict_eol, self.jump_tabstops))
+end
+
+function cursor:move_prev_word_break()
+	local s = self.buffer.lines[self.line]
+	local wb_i = s and str.prev_word_break_char(s, self.i, self.word_chars)
+	if wb_i then
+		self:move(self.line, wb_i)
+	elseif self.line > #self.buffer.lines then
+		if self.i == 1 then
+			self:move(self.line - 1, self.buffer:eol(self.line - 1) or 1)
+		else
+			self:move(self.line, 1)
+		end
+	elseif self.line > #self.buffer.lines then
+		self:move(self.line, self.buffer:eol(self.line))
+	elseif self.i > self.buffer:eol(self.line) then
+		self:move(self.line, self.buffer:eol(self.line))
+	else
+		self:move_prev_pos()
+	end
+end
+
+function cursor:move_next_word_break()
+	local s = self.buffer.lines[self.line]
+	local wb_i = s and str.next_word_break_char(s, self.i, self.word_chars)
+	if wb_i then
+		self:move(self.line, wb_i)
+	else
+		self:move(self:next_pos(true, self.jump_tabstops))
+	end
 end
 
 --navigate vertically, using the stored x offset as target offset
@@ -231,26 +267,6 @@ end
 
 function cursor:move_down_page()
 	self:move_vert(self.view:pagesize())
-end
-
-function cursor:move_prev_word_break()
-	local s = self.buffer.lines[self.line]
-	local wb_i = s and str.prev_word_break_char(s, self.i, self.word_chars)
-	if wb_i then
-		self:move(self.line, wb_i)
-	else
-		self:move_prev_pos()
-	end
-end
-
-function cursor:move_next_word_break()
-	local s = self.buffer.lines[self.line]
-	local wb_i = s and str.next_word_break_char(s, self.i, self.word_chars)
-	if wb_i then
-		self:move(self.line, wb_i)
-	else
-		self:move_next_pos()
-	end
 end
 
 function cursor:move_to_selection(sel)

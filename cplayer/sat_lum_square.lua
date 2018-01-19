@@ -38,7 +38,7 @@ function player:sat_lum_square(sx, sy, sw, sh, hue, s, L)
 	end
 
 	if shot or self.active then
-		self.cursor = 'link'
+		self.cursor = 'hand'
 	end
 
 	local x0 = sx + s * sw

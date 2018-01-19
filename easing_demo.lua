@@ -42,7 +42,7 @@ function player:on_render(cr)
 
 		local hot = box.hit(mx, my, x, y, 300, 15)
 		if hot then
-			self.cursor = 'link'
+			self.cursor = 'hand'
 		end
 		if hot and self.clicked then
 			selected_func = k

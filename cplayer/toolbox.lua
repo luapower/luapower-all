@@ -252,13 +252,13 @@ function toolbox:render()
 			if hit then
 
 				if (top and left) or (bottom and right) then
-					self.app.cursor = 'resize_nwse'
+					self.app.cursor = 'size_diag2'
 				elseif (bottom and left) or (top and right) then
-					self.app.cursor = 'resize_nesw'
+					self.app.cursor = 'size_diag1'
 				elseif top or bottom then
-					self.app.cursor = 'resize_vertical'
+					self.app.cursor = 'size_v'
 				elseif left or right then
-					self.app.cursor = 'resize_horizontal'
+					self.app.cursor = 'size_h'
 				end
 
 				if self.app.lpressed then

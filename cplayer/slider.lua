@@ -24,7 +24,7 @@ function player:slider(t)
 	local hot = self:hotbox(x, y, w, h)
 
 	if hot and (not self.active or self.active == id) then
-		self.cursor = 'resize_horizontal'
+		self.cursor = 'size_h'
 	end
 
 	if not self.active and self.lbutton and hot then

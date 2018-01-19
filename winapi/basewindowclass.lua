@@ -509,7 +509,7 @@ end
 
 function BaseWindow:WM_NOTIFY(hwnd, code, ...)
 
-	--find the target windotw.
+	--find the target window.
 	local window = Windows:find(hwnd)
 	if window == nil then return end
 

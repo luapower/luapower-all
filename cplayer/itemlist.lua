@@ -146,7 +146,7 @@ function player:itemlist(items)
 	else
 		local item = hit_test(mx, my, items)
 		if item then
-			self.cursor = 'link'
+			self.cursor = 'hand'
 			if not self.active and self.lbutton then
 				self.active = id
 				self.ui.dx = mx - item._x

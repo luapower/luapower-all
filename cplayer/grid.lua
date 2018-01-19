@@ -119,7 +119,7 @@ function player:grid(t)
 		local col_align = field and field.align or 'left'
 
 		if self:hotbox(field_x + col_w - 5, 0, 10, row_h) then
-			self.cursor = 'resize_horizontal'
+			self.cursor = 'size_h'
 			if not self.active then
 				self.active = id
 				self.ui.resize_col = name

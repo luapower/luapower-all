@@ -5,7 +5,6 @@ local ffi = require'ffi'
 --TODO: move string functions in a general-purpose string module and remove dependency on codedit_str
 local str = require'codedit_str'
 local line_count = str.line_count
-local lines = str.lines
 local next_line = str.next_line
 
 local function half(x)
@@ -24,7 +23,8 @@ local function draw_text(cr, x, y, s, align, line_h) --multi-line text
 	if ffi.os == 'OSX' then --TOOD: remove this hack
 		y = y + 1
 	end
-	for _, s in lines(s) do
+	for j, i in str.lines(s) do
+		local s = s:sub(i, j-1)
 		if align == 'right' then
 			local extents = cr:text_extents(s)
 			cr:move_to(x - extents.width, y)
@@ -61,7 +61,7 @@ function player:textbox(x, y, w, h, s, font, color, halign, valign, line_spacing
 		y = y + font.extents.ascent
 	else
 		local lines_h = 0
-		for _, s1 in lines(s) do
+		for j, i in str.lines(s) do
 			lines_h = lines_h + line_h
 		end
 		lines_h = lines_h - line_h

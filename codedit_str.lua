@@ -145,11 +145,13 @@ function str.next_word_break_char(s, i, word_chars)
 	assert(i >= 0)
 	if i == 0 then return 1 end
 	if i >= #s then return end
+	if str.isterm(s, i) then return end
 	local expect =
 		str.iswhitespace(s, i) and 'space'
 		or str.isword(s, i, word_chars) and 'word'
 		or 'nonword'
 	for i in str.chars(s, i) do
+		if str.isterm(s, i) then return end
 		if expect == 'space' then --case 1
 			if not str.iswhitespace(s, i) then --case 1 exit
 				return i

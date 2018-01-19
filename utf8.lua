@@ -119,28 +119,26 @@ function utf8.sub(s, start_ci, end_ci)
 	--assert for positive indices because we might implement negative indices in the future.
 	assert(start_ci >= 1)
 	assert(not end_ci or end_ci >= 0)
+	if end_ci and start_ci > end_ci then
+		return ''
+	end
 	local ci = 0
-	local start_i = 1
-	local end_i = s:len()
+	local start_i, end_i
 	for i in utf8.byte_indices(s) do
 		ci = ci + 1
 		if ci == start_ci then
 			start_i = i
+			if end_i then
+				break
+			end
 		end
-		if ci == end_ci + 1 then
+		if end_ci and ci == end_ci + 1 then
 			end_i = i - 1
 			break
 		end
 	end
 	if not start_i then
-		assert(start_ci > ci, 'invalid index')
 		return ''
-	end
-	if end_ci and not end_i then
-		if end_ci < start_ci then
-			return ''
-		end
-		assert(end_ci > ci, 'invalid index')
 	end
 	return s:sub(start_i, end_i)
 end
