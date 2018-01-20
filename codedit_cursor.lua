@@ -139,9 +139,9 @@ function cursor:prev_pos(jump_tabstops)
 		local ts_i = self.view:char_at_line(self.line, ts_x)
 		local ns_i = str.prev_nonspace_char(s, self.i)
 		local ps_i = ns_i and str.next_char(s, ns_i) --after prev. nonspace
-		ps_i = math.max(ps_i or 1, ts_i) --closest
-		if ps_i < self.i then
-			return self.line, ps_i
+		local prev_i = math.max(ps_i or 1, ts_i) --whichever is closest
+		if prev_i < self.i then
+			return self.line, prev_i
 		end
 	end
 
@@ -178,27 +178,27 @@ function cursor:next_pos(restrict_eol, jump_tabstops)
 
 	local s = self.buffer.lines[self.line]
 
-	local jts = str.iswhitespace(s, self.i)
-	if jts then
-		if jump_tabstops == 'always' then
-			jts = true
-		elseif jump_tabstops == 'indent' then
-			local i = str.next_char(s, self.i)
-			if i and self.buffer:indenting(self.line, i) then
-				jts = true
-			end
-		end
+	if jump_tabstops == 'always' then
+		jump_tabstops = true
+	elseif jump_tabstops == 'indent' then
+		local i = str.next_char(s, self.i)
+		jump_tabstops = i and self.buffer:indenting(self.line, i)
+	else
+		jump_tabstops = false
 	end
+	jump_tabstops = jump_tabstops and str.iswhitespace(s, self.i)
 
-	if jts then
+	if jump_tabstops then
 		local x0 = self.view:char_x(self.line, self.i)
 		local ts_x = self.view:next_tabstop_x(x0)
 		local ts_i = self.view:char_at_line(self.line, ts_x)
 		local ns_i =
 			str.next_nonspace_char(s, self.i)
 			or self.buffer:eol(self.line)
-		ns_i = math.min(ts_i, ns_i)
-		return self.line, ns_i
+		local next_i = math.min(ts_i, ns_i) --whichever is closer
+		if next_i > self.i then
+			return self.line, next_i
+		end
 	end
 
 	return self.line, str.next_char(s, self.i) or #s + 1

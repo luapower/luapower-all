@@ -41,7 +41,7 @@ function player:on_render(cr)
 				font_file = 'media/fonts/DejaVuSerif.ttf',
 			},
 			--text = '\tx\ty\tz\n\ta\tb',
-			text = '   x  y  z\r\n   a   b\n\tc\td',
+			text = '    x   y   z\r\n    a   b\n\tc\td',
 		}
 
 		local nav_w = 120
@@ -53,6 +53,7 @@ function player:on_render(cr)
 		editor.view.h = h
 
 		if not created then
+			editor.view.tabsize = 4
 			editor.cursor.restrict_eol = false
 			editor.cursor.restrict_eof = false
 			editor.cursor.land_bof = false
@@ -73,6 +74,8 @@ function player:on_render(cr)
 		local s = s:sub(i1, i2 - 1)
 		local s = pp.format(s):sub(2, -2)
 		self:label{x = x + 100, y = 10, text = s}
+
+		self:label{x = x, y = 24, text = editor.cursor.x}
 
 		cursor.restrict_eol = self:togglebutton{
 			id = 'restrict_eol' .. i, x = x, y = 40, w = nav_w, h = 26,
@@ -139,9 +142,13 @@ function player:on_render(cr)
 		}
 		editor.view.lang = editor.view.lang ~= 'none' and editor.view.lang or nil
 
+		editor.eol_markers = self:togglebutton{id = 'eol_markers',
+			x = 10, y = 500, w = 80, h = 26, selected = editor.eol_markers}
+
 		editors[i] = editor
 
-		local s = editor.buffer.undo_group and (editor.buffer.undo_group.type .. '\n\n') or ''
+		local s = editor.buffer.undo_group
+			and (editor.buffer.undo_group.type .. '\n\n') or ''
 		for i,g in ipairs(editor.buffer.undo_stack) do
 			s = s .. g.type .. '\n'
 		end
@@ -153,7 +160,6 @@ function player:on_render(cr)
 	b.line_terminator = self:mbutton{id = 'term', x = 10, y = 70, w = 80, h = 24,
 		values = {'\r\n', '\r', '\n'}, texts = {['\r\n'] = 'CRLF', ['\n'] = 'LF', ['\r'] = 'CR'},
 		selected = b.line_terminator}
-	v.eol_markers = self:togglebutton{id = 'eol markers', x = 10, y = 100, w = 80, h = 24, selected = v.eol_markers}
 	]]
 
 end

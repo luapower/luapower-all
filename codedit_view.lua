@@ -169,11 +169,23 @@ function view:char_advance_x(s, i)
 	return self.char_w
 end
 
+--for a sorted array find the index holding the value closest to x.
 local function bin_search(t, x)
-	--TODO:
-	for i = 1, #t do
-		if t[i] >= x then
-			return i
+	assert(#t > 0)
+	if #t == 1 then return 1 end
+	if x <= t[1] then return 1 end
+	if x >= t[#t] then return #t end
+	local min, max = 1, #t
+	while true do
+		local i = math.floor(min + (max - min) / 2)
+		if x >= t[i] then
+			if x <= t[i+1] then --found it
+				return x - t[i] < t[i+1] - x and i or i+1
+			else --look in the second half
+				min = i+2
+			end
+		else --look in the first half
+			max = i-1
 		end
 	end
 end
