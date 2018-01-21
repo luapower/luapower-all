@@ -19,6 +19,7 @@ function player:label(t)
 	cr:font_size(font_size)
 	self:setcolor(color)
 
+	text = tostring(text)
 	local extents = cr:text_extents(text)
 	x =
 		halign == 'center' and (2 * x + w - extents.width) / 2 or

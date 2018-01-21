@@ -669,7 +669,7 @@ function view:draw_selection(sel, cx, cy)
 end
 
 function view:draw_cursor(cursor, cx, cy)
-	if not cursor.visible then return end
+	if not (cursor.visible and cursor.on) then return end
 	local x, y, w, h = self:cursor_rect(cursor)
 	local color = cursor.color or 'cursor'
 	self:draw_rect(cx + x, cy + y, w, h, color)

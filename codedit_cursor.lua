@@ -137,10 +137,14 @@ function cursor:prev_pos(jump_tabstops)
 		local x0 = self.view:char_x(self.line, self.i)
 		local ts_x = self.view:prev_tabstop_x(x0)
 		local ts_i = self.view:char_at_line(self.line, ts_x)
+		if ts_i == self.i then --tabstop too close, get the prev. one
+			ts_x = self.view:prev_tabstop_x(ts_x)
+			ts_i = self.view:char_at_line(self.line, ts_x)
+		end
 		local ns_i = str.prev_nonspace_char(s, self.i)
-		local ps_i = ns_i and str.next_char(s, ns_i)
-		local prev_i = ps_i and math.max(ps_i, ts_i) --whichever is closest
-		if prev_i and prev_i < self.i then
+		local ps_i = str.next_char(s, ns_i) or #s + 1
+		local prev_i = math.max(ps_i, ts_i) --whichever is closest
+		if prev_i < self.i then
 			return self.line, prev_i
 		end
 	end
@@ -192,6 +196,10 @@ function cursor:next_pos(restrict_eol, jump_tabstops)
 		local x0 = self.view:char_x(self.line, self.i)
 		local ts_x = self.view:next_tabstop_x(x0)
 		local ts_i = self.view:char_at_line(self.line, ts_x)
+		if ts_i == self.i then --tabstop too close, get the next one
+			ts_x = self.view:next_tabstop_x(ts_x)
+			ts_i = self.view:char_at_line(self.line, ts_x)
+		end
 		local ns_i =
 			str.next_nonspace_char(s, self.i)
 			or self.buffer:eol(self.line)

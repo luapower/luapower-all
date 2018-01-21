@@ -302,10 +302,19 @@ function player:code_editor(t)
 		t.view = t.view and glue.inherit(t.view, view) or view
 		t.cursor = t.cursor and glue.inherit(t.cursor, editor.cursor) or editor.cursor
 		ed = editor:new(t)
+		ed.cursor.changed.blinking = true
 	end
 	ed.player = self
 	ed.view.player = self
 	ed.view.editor = ed
+
+	--make the cursor blink
+	if ed.cursor.changed.blinking then
+		ed.cursor.start_clock = self.clock
+		ed.cursor.changed.blinking = false
+	end
+	ed.cursor.on = (self.clock - ed.cursor.start_clock) % 1 < 0.5
+
 	ed:input(
 		true, --self.focused == ed.id,
 		self.active,
