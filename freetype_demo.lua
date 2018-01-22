@@ -40,7 +40,8 @@ function player:render_glyph(face, glyph_index, glyph_size, x, y, t, i)
 		format = 'g8',
 		w = bitmap.width,
 		h = bitmap.rows,
-		stride = cairo_stride}
+		stride = cairo_stride,
+	}
 
 	x = x + glyph.bitmap_left
 	y = y - glyph.bitmap_top
@@ -54,7 +55,7 @@ function player:render_glyph(face, glyph_index, glyph_size, x, y, t, i)
 
 	image:free()
 	if glyph.bitmap ~= bitmap then
-		glyph.library:free_bitmap(bitmap)
+		bitmap:free(glyph.library)
 	end
 end
 
@@ -74,17 +75,17 @@ function player:render_glyph2(face, glyph_index, glyph_size, x, y, t, i)
 		face.glyph.library:convert_bitmap(old_bitmap, bitmap, 4)
 	end
 
-	local cairo_format = cairo.CAIRO_FORMAT_A8
-	local cairo_stride = cairo.cairo_format_stride_for_width(cairo_format, bitmap.width)
+	local cairo_stride = cairo.stride('a8', bitmap.width)
 	assert(bitmap.pixel_mode == ft.FT_PIXEL_MODE_GRAY)
 	assert(bitmap.pitch == cairo_stride)
 
-	local image = cairo.cairo_image_surface_create_for_data(
-		bitmap.buffer,
-		cairo_format,
-		bitmap.width,
-		bitmap.rows,
-		cairo_stride)
+	local image = cairo.image_surface{
+		data = bitmap.buffer,
+		format = 'g8',
+		w = bitmap.width,
+		h = bitmap.rows,
+		stride = cairo_stride,
+	}
 
 	x = x + ft_glyph:as_bitmap().left
 	y = y - ft_glyph:as_bitmap().top
@@ -94,11 +95,11 @@ function player:render_glyph2(face, glyph_index, glyph_size, x, y, t, i)
 	end
 
 	self:setcolor'normal_fg'
-	self.cr:mask_surface(image, x, y)
+	self.cr:mask(image, x, y)
 
 	image:free()
 	if old_bitmap ~= bitmap then
-		face.glyph.library:free_bitmap(bitmap)
+		bitmap:free(face.glyph.library)
 	end
 	ft_glyph:free()
 end
@@ -126,12 +127,27 @@ function player:charmap(face, glyph_size, cell_size, x0, y0, bx1, by1, bx2, by2,
 		local y = y0 + row * cell_size
 		if boxes_intersect(x, y, x + glyph_size, y + glyph_size, bx1, by1, bx2, by2) then
 			self:rect(x, y, cell_size, cell_size, nil, 'normal_fg', 0.1)
-			self:render_glyph(face, glyph_index, glyph_size, x, y + cell_size, t, i)
-			self:rect(x + face.glyph.advance.x / 64, y + cell_size - face.glyph.advance.y / 64, 2, 2, 'error_bg')
-			self:rect(x + face.glyph.linearHoriAdvance / 0xffff, y + cell_size - face.glyph.linearVertAdvance / 0xffff, 4, 4, 'error_bg')
-			self:rect(x + face.glyph.metrics.horiAdvance / 64, y + cell_size - face.glyph.metrics.vertAdvance / 64, 4, 4, 'error_bg')
-			self:rect(x + face.glyph.metrics.horiBearingX / 64, y + cell_size - face.glyph.metrics.horiBearingY / 64, 4, 4, 'error_bg')
-			--self:rect(x + face.glyph.metrics.vertBearingX / 64, y + cell_size - face.glyph.metrics.vertBearingY / 64, 4, 4, 'error_bg')
+			self:render_glyph2(face, glyph_index, glyph_size, x, y + cell_size, t, i)
+			self:rect(
+				x + face.glyph.advance.x / 64,
+				y + cell_size - face.glyph.advance.y / 64,
+				2, 2, 'error_bg')
+			self:rect(
+				x + face.glyph.linearHoriAdvance / 0xffff,
+				y + cell_size - face.glyph.linearVertAdvance / 0xffff,
+				4, 4, 'error_bg')
+			self:rect(
+				x + face.glyph.metrics.horiAdvance / 64,
+				y + cell_size - face.glyph.metrics.vertAdvance / 64,
+				4, 4, 'error_bg')
+			self:rect(
+				x + face.glyph.metrics.horiBearingX / 64,
+				y + cell_size - face.glyph.metrics.horiBearingY / 64,
+				4, 4, 'error_bg')
+			--self:rect(
+				--x + face.glyph.metrics.vertBearingX / 64,
+				--y + cell_size - face.glyph.metrics.vertBearingY / 64,
+				--4, 4, 'error_bg')
 		end
 		col = col + 1
 		if col >= cols then

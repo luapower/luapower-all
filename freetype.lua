@@ -302,9 +302,9 @@ end
 --ftbitmap.h
 
 function M.FT_Bitmap_New(library)
-	local bitmap = ffi.new'FT_Bitmap[1]'
+	local bitmap = ffi.new'FT_Bitmap'
 	C.FT_Bitmap_New(bitmap)
-	return bitmap[0]
+	return bitmap
 end
 
 function M.FT_Bitmap_Copy(library, source, target)
