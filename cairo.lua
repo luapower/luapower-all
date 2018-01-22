@@ -966,13 +966,16 @@ M.image_surface = function(fmt, w, h)
 	if type(fmt) == 'table' then
 		local bmp = fmt
 		local fmt = M.cairo_format(bmp.format)
-		local sr = C.cairo_image_surface_create_for_data(bmp.data, X('CAIRO_FORMAT_', fmt), bmp.w, bmp.h, bmp.stride)
+		local sr = C.cairo_image_surface_create_for_data(
+			bmp.data, X('CAIRO_FORMAT_', fmt), bmp.w, bmp.h, bmp.stride)
 		return ffi.gc(sr, function(sr)
 			local _ = bmp.data --pin it
 			C.cairo_surface_destroy(sr)
 		end)
 	else
-		return ffi.gc(C.cairo_image_surface_create(X('CAIRO_FORMAT_', fmt), w, h), C.cairo_surface_destroy)
+		return ffi.gc(
+			C.cairo_image_surface_create(X('CAIRO_FORMAT_', fmt), w, h),
+			C.cairo_surface_destroy)
 	end
 end
 
@@ -1470,8 +1473,11 @@ end
 function M.ft_font_face(ft_face, load_flags)
 	local ft = require'freetype'
 	local key = ffi.new'cairo_user_data_key_t[1]'
-	local face = ffi.gc(C.cairo_ft_font_face_create_for_ft_face(ft_face, load_flags or 0), M.cairo_font_face_destroy)
-	local status = C.cairo_font_face_set_user_data(face, key, ft_face, ffi.cast('cairo_destroy_func_t', ft.FT_Done_Face))
+	local face = ffi.gc(
+		C.cairo_ft_font_face_create_for_ft_face(ft_face, load_flags or 0),
+		C.cairo_font_face_destroy)
+	local status = C.cairo_font_face_set_user_data(
+		face, key, ft_face, ffi.cast('cairo_destroy_func_t', ft.FT_Done_Face))
 	if status ~= 0 then
 		C.cairo_font_face_destroy(face)
 		ft.FT_Done_Face(ft_face)
