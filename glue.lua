@@ -207,8 +207,10 @@ function glue.string.gsplit(s, sep, start, plain)
 	end
 end
 
-function glue.lines(s)
-	local next_match = s:gmatch'([^\r\n]*()\r?\n?())'
+function glue.lines(s, opt)
+	local term = opt == '*L'
+	local patt = term and '([^\r\n]*()\r?\n?())' or '([^\r\n]*)()\r?\n?()'
+	local next_match = s:gmatch(patt)
 	local empty = s == ''
 	local ended --string ended with no line ending
 	return function()

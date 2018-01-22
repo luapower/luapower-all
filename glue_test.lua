@@ -84,7 +84,7 @@ local i = 0
 local function assert_lines(s, t)
 	i = i + 1
 	local dt = {}
-	for s in glue.lines(s) do
+	for s in glue.lines(s, '*L') do
 		table.insert(dt, s)
 	end
 	if #t ~= #dt then goto err end

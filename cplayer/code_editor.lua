@@ -3,18 +3,20 @@
 if not ... then require'codedit_demo'; return end
 
 local codedit = require'codedit'
-local view = require'codedit_view'
-local str = require'codedit_str'
 local glue = require'glue'
 local player = require'cplayer'
-local cairo = require'cairo'
 local ft = require'freetype'
 local nw = require'nw'
 local lib = ft:new()
+local cairo = require'cairo'
+--[[
+local view = require'codedit_view'
+]]
 
 local view = glue.inherit({
 	--font metrics
 	font_file = 'Fixedsys',
+	glyph_size = 16,
 	--scrollbox options
 	vscroll = 'always',
 	hscroll = 'auto',
@@ -61,7 +63,7 @@ local view = glue.inherit({
 	minimap = true,
 	smooth_vscroll = false,
 	smooth_hscroll = false,
-}, view)
+}, codedit.view)
 
 function view:draw_scrollbox(x, y, w, h, cx, cy, cw, ch)
 	local scroll_x, scroll_y, clip_x, clip_y, clip_w, clip_h = self.player:scrollbox{
@@ -78,7 +80,7 @@ function view:draw_scrollbox(x, y, w, h, cx, cy, cw, ch)
 		hscroll = self.hscroll,
 		vscroll_w = self.vscroll_w,
 		hscroll_h = self.hscroll_h,
-		page_size = self.scroll_page_size,
+		page_size = self.scroll_page_size or ch,
 		--vscroll_step = self.smooth_vscroll and 1 or self.linesize,
 		--hscroll_step = self.smooth_hscroll and 1 or self.charsize,
 	}
@@ -184,7 +186,7 @@ function player:render_glyph(glyph, x, y)
 end
 
 function view:load_glyph(s, i)
-	return self.player:load_glyph(s, i, self.ft_face, self.line_h)
+	return self.player:load_glyph(s, i, self.ft_face, self.glyph_size)
 end
 
 function view:render_glyph(s, i, x, y)
@@ -258,7 +260,7 @@ function view:render()
 	self.player.cr:reset_clip()
 end
 
-local editor = glue.inherit({view = view}, codedit)
+local editor = glue.inherit({view = view}, codedit.editor)
 
 function editor:render()
 	local cr = self.player.cr
@@ -272,6 +274,10 @@ function editor:render()
 			self.view.ft_face_file = self.view.font_file
 		end
 		self.player:clear_glpyh_cache()
+		local line_h = self.view.ft_face.size.metrics.height / 64
+		if line_h > 0 then
+			self.view.line_h = line_h
+		end
 		self.view:font_changed()
 
 		self.view:render()

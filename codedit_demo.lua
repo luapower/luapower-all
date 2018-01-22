@@ -1,16 +1,19 @@
-local codedit = require'codedit'
-local cursor = require'codedit_cursor'
 local player = require'cplayer'
 local glue = require'glue'
-local str = require'codedit_str'
 local pp = require'pp'
+local str = require'codedit'.str
 
 local editors = {}
 local loaded
 
-filename = 'x:/work/luapower/codedt_demo.lua'
+local root_dir = 'x:/luapower/'
+
+filename = root_dir .. '/codedt_demo.lua'
+--text = '\tx\ty\tz\n\ta\tb',
+--text = '    x   y   z\r\n    a   b\n\tc\td',
 --text = glue.readfile'c:/temp.c'
 --text = glue.readfile'c:/temp2.c'
+text = glue.readfile(root_dir .. 'codedit.lua')
 
 player.show_magnifier = false
 
@@ -37,11 +40,10 @@ function player:on_render(cr)
 			view = {
 				x = x, y = editor_y, w = w, h = h,
 				eol_markers = false, minimap = false, line_numbers = false,
-				--font_file = 'media/fonts/FSEX300.ttf',
-				font_file = 'media/fonts/DejaVuSerif.ttf',
+				--font_file = root_dir .. '/media/fonts/FSEX300.ttf',
+				font_file =  root_dir .. '/media/fonts/DejaVuSerif.ttf',
 			},
-			--text = '\tx\ty\tz\n\ta\tb',
-			text = '    x   y   z\r\n    a   b\n\tc\td',
+			text = text
 		}
 
 		local nav_w = 120
@@ -77,9 +79,9 @@ function player:on_render(cr)
 
 		self:label{x = x, y = 24, text = editor.cursor.x}
 
-		cursor.restrict_eol = self:togglebutton{
+		editor.cursor.restrict_eol = self:togglebutton{
 			id = 'restrict_eol' .. i, x = x, y = 40, w = nav_w, h = 26,
-			text = 'restrict_eol', selected = cursor.restrict_eol,
+			text = 'restrict_eol', selected = editor.cursor.restrict_eol,
 		}
 
 		editor.cursor.restrict_eof = self:togglebutton{
@@ -118,8 +120,8 @@ function player:on_render(cr)
 		editor.view.font_file = self:mbutton{
 			id = 'font' .. i, x = x, y = 320, w = nav_w, h = 26,
 			values = {
-				'media/fonts/FSEX300.ttf',
-				'media/fonts/DejaVuSerif.ttf',
+				root_dir .. '/media/fonts/FSEX300.ttf',
+				root_dir .. '/media/fonts/DejaVuSerif.ttf',
 			},
 			texts = {'Fixedsys', 'DejaVuSerif'},
 			selected = editor.view.font_file,

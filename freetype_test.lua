@@ -78,9 +78,9 @@ local function inspect_face(lib, facename)
 	local charmap_fields = {'encoding','platform_id','encoding_id'}
 	local charmap_decoders = {encoding = s4}
 	local bbox_fields = {'xMin','yMin','xMax','yMax'}
-  local bbox_decoders = {xMin = tonumber, yMin = tonumber, xMax = tonumber, yMax = tonumber}
+	local bbox_decoders = {xMin = tonumber, yMin = tonumber, xMax = tonumber, yMax = tonumber}
 	local metrics_fields = {'x_ppem','y_ppem','x_scale','y_scale','ascender','descender','height','max_advance'}
-	local metrics_fields = { x_ppem = tonumber, y_ppem = tonumber, x_scale = tonumber, y_scale = tonumber, ascender = tonumber, descender = tonumber, height = tonumber, max_advance = tonumber}
+	local metrics_decoders = { x_ppem = tonumber, y_ppem = tonumber, x_scale = tonumber, y_scale = tonumber, ascender = tonumber, descender = tonumber, height = tonumber, max_advance = tonumber}
 	local size_fields = {'metrics'}
 	local size_decoders = {metrics = function(m) return struct(m, metrics_fields, metrics_decoders, '   ') end}
 	print('num_faces:           ', face.num_faces)

@@ -1,11 +1,7 @@
 --cplayer text api
 local player = require'cplayer'
 local ffi = require'ffi'
-
---TODO: move string functions in a general-purpose string module and remove dependency on codedit_str
-local str = require'codedit_str'
-local line_count = str.line_count
-local next_line = str.next_line
+local lines = require'glue'.lines
 
 local function half(x)
 	return math.floor(x / 2 + 0.5)
@@ -23,8 +19,7 @@ local function draw_text(cr, x, y, s, align, line_h) --multi-line text
 	if ffi.os == 'OSX' then --TOOD: remove this hack
 		y = y + 1
 	end
-	for j, i in str.lines(s) do
-		local s = s:sub(i, j-1)
+	for s in lines(s) do
 		if align == 'right' then
 			local extents = cr:text_extents(s)
 			cr:move_to(x - extents.width, y)
@@ -61,7 +56,7 @@ function player:textbox(x, y, w, h, s, font, color, halign, valign, line_spacing
 		y = y + font.extents.ascent
 	else
 		local lines_h = 0
-		for j, i in str.lines(s) do
+		for _ in lines(s) do
 			lines_h = lines_h + line_h
 		end
 		lines_h = lines_h - line_h
