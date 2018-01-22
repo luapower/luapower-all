@@ -4,7 +4,7 @@ local pp = require'pp'
 local ft = require'freetype'
 
 local function inspect_face(lib, facename)
-	local face = lib:new_face(facename)
+	local face = lib:face(facename)
 
 	print(facename)
 	print(('-'):rep(78))

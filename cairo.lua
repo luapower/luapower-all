@@ -1477,10 +1477,10 @@ function M.ft_font_face(ft_face, load_flags)
 		C.cairo_ft_font_face_create_for_ft_face(ft_face, load_flags or 0),
 		C.cairo_font_face_destroy)
 	local status = C.cairo_font_face_set_user_data(
-		face, key, ft_face, ffi.cast('cairo_destroy_func_t', ft.FT_Done_Face))
+		face, key, ft_face, ffi.cast('cairo_destroy_func_t', ft.C.FT_Done_Face))
 	if status ~= 0 then
 		C.cairo_font_face_destroy(face)
-		ft.FT_Done_Face(ft_face)
+		ft.C.FT_Done_Face(ft_face)
 		return nil, M.status_message(status), status
 	end
 	return face

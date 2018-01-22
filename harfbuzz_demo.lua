@@ -62,11 +62,11 @@ function player:draw_text(x, y, s, font, size, direction, script, language, feat
 	self:draw_glyphs(x, y, glyphs, glyph_count, font.cairo_face, size, use_show_glyphs)
 end
 
-local ft_lib = ft.FT_Init_FreeType()
+local ft_lib = ft.new()
 ffi.gc(ft_lib, nil)
 
 local function font(filename, load_flags)
-	local ft_face = ft_lib:new_face(filename)
+	local ft_face = ft_lib:face(filename)
 	local cairo_face = cairo.ft_font_face(ft_face, load_flags or 0)
 	local hb_font = hb.hb_ft_font_create(ft_face, nil)
 	ffi.gc(ft_face, nil)

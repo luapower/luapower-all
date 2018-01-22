@@ -26,7 +26,7 @@ function player:render_glyph(face, glyph_index, glyph_size, x, y, t, i)
 	end
 
 	if bitmap.pitch % 4 ~= 0 or bitmap.pixel_mode ~= ft.FT_PIXEL_MODE_GRAY then
-		bitmap = glyph.library:new_bitmap()
+		bitmap = glyph.library:bitmap()
 		glyph.library:convert_bitmap(glyph.bitmap, bitmap, 4)
 	end
 	local cairo_format = 'a8'
@@ -55,7 +55,7 @@ function player:render_glyph(face, glyph_index, glyph_size, x, y, t, i)
 
 	image:free()
 	if glyph.bitmap ~= bitmap then
-		bitmap:free(glyph.library)
+		glyph.library:free_bitmap(bitmap)
 	end
 end
 
@@ -64,14 +64,14 @@ function player:render_glyph2(face, glyph_index, glyph_size, x, y, t, i)
 
 	face:set_char_size(glyph_size * 64)
 	face:load_glyph(glyph_index, load_mode)
-	local ft_glyph = face.glyph:get_glyph():to_bitmap(render_mode, nil, true)
+	local ft_glyph = face.glyph:glyph():to_bitmap(render_mode, nil, true)
 	local bitmap = ft_glyph:as_bitmap().bitmap
 	if bitmap.width == 0 or bitmap.rows == 0 then
 		return
 	end
 	local old_bitmap = bitmap
 	if bitmap.pitch % 4 ~= 0 or bitmap.pixel_mode ~= ft.FT_PIXEL_MODE_GRAY then
-		bitmap = face.glyph.library:new_bitmap()
+		bitmap = face.glyph.library:bitmap()
 		face.glyph.library:convert_bitmap(old_bitmap, bitmap, 4)
 	end
 
@@ -99,7 +99,7 @@ function player:render_glyph2(face, glyph_index, glyph_size, x, y, t, i)
 
 	image:free()
 	if old_bitmap ~= bitmap then
-		bitmap:free(face.glyph.library)
+		face.glyph.library:free_bitmap(bitmap)
 	end
 	ft_glyph:free()
 end
@@ -229,7 +229,7 @@ function player:on_render(cr)
 	if old_facefile ~= facefile then
 		charmap = 0
 	end
-	local face = lib:new_face(facefile)
+	local face = lib:face(facefile)
 
 	local values, texts = {}, {}
 	for i=1,face.num_charmaps do
