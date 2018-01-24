@@ -146,7 +146,7 @@ local function structout_func(ctype)
 	ctype = ffi.typeof(ctype)
 	return function(func)
 		return func and function(self, out)
-			out = out or ffi.new(ctype)
+			out = out or ctype()
 			func(self, out)
 			return out
 		end
@@ -170,7 +170,7 @@ local foptout_func = consout_func(ref_func(C.cairo_font_options_create, C.cairo_
 local function texout2_func(func)
 	local ctype = ffi.typeof'cairo_text_extents_t'
 	return func and function(self, arg1, out)
-		out = out or ffi.new(ctype)
+		out = out or ctype()
 		func(self, arg1, out)
 		return out
 	end
@@ -180,7 +180,7 @@ end
 local function texout3_func(func)
 	local ctype = ffi.typeof'cairo_text_extents_t'
 	return func and function(self, arg1, arg2, out)
-		out = out or ffi.new(ctype)
+		out = out or ctype()
 		func(self, arg1, arg2, out)
 		return out
 	end
@@ -190,7 +190,7 @@ end
 local function fexout_func(func)
 	local ctype = ffi.typeof'cairo_font_extents_t'
 	return func and function(self, out)
-		out = out or ffi.new(ctype)
+		out = out or ctype()
 		func(self, out)
 		return out
 	end
