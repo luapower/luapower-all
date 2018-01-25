@@ -89,7 +89,7 @@ end
 --remove all handlers of an event type and/or namespace
 local function remove_all(t, v)
 	while true do
-		local i = indexof(t, v)
+		local i = indexof(v, t)
 		if not i then return end
 		table.remove(t, i)
 	end
@@ -110,8 +110,8 @@ function object:off(event)
 	elseif ev then
 		self._observers[ev] = nil
 	elseif ns then
-		for _,ev_t in pairs(self._observers) do
-			remove_all_ns(ev_t, ns)
+		for _,t_ev in pairs(self._observers) do
+			remove_all_ns(t_ev, ns)
 		end
 	end
 end

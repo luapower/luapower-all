@@ -2,6 +2,8 @@
 --object system with virtual properties and method overriding hooks.
 --Written by Cosmin Apreutesei. Public Domain.
 
+if not ... then require'oo_test'; return end
+
 local Object = {classname = 'Object'}
 
 local function class(super,...)
@@ -167,6 +169,85 @@ function Object:gen_properties(names, getter, setter)
 	end
 end
 
+--events
+
+local function event_namespace(event) --parse 'event', 'event.ns' or '.ns'
+	local ev, ns = event:match'^([^%.]*)%.([^%.]+)$'
+	ev = ev or event
+	if ev == '' then ev = nil end
+	return ev, ns
+end
+
+function Object:on(event, func)
+	local ev, ns = event_namespace(event)
+	assert(ev, 'event name missing')
+	self.observers = self.observers or {}
+	self.observers[ev] = self.observers[ev] or {}
+	table.insert(self.observers[ev], func)
+	if ns then
+		self.observers[ev][ns] = self.observers[ev][ns] or {}
+		table.insert(self.observers[ev][ns], func)
+	end
+end
+
+--remove a handler or all handlers of an event and/or namespace
+local function indexof(v, t)
+	for i=1,#t do
+		if t[i] == v then
+			return i
+		end
+	end
+end
+local function remove_all(t, v)
+	while true do
+		local i = indexof(v, t)
+		if not i then return end
+		table.remove(t, i)
+	end
+end
+local function remove_all_ns(t_ev, ns)
+	local t_ns = t_ev and t_ev[ns]
+	if not t_ns then return end
+	for _,f in ipairs(t_ns) do
+		remove_all(t_ev, f)
+	end
+	t_ev[ns] = nil
+end
+function Object:off(event)
+	if not self.observers then return end
+	local ev, ns = event_namespace(event)
+	if ev and ns then
+		remove_all_ns(self.observers[ev], ns)
+	elseif ev then
+		self.observers[ev] = nil
+	elseif ns then
+		for _,t_ev in pairs(self.observers) do
+			remove_all_ns(t_ev, ns)
+		end
+	end
+end
+
+--fire an event, i.e. call its handler method and all observers.
+function Object:fire(event, ...)
+	if self[event] then
+		local ret = self[event](self, ...)
+		if ret ~= nil then return ret end
+	end
+	local t = self.observers and self.observers[event]
+	if t then
+		for i = 1, #t do
+			local handler = t[i]
+			local ret = handler(self, ...)
+			if ret ~= nil then return ret end
+		end
+	end
+	if event ~= 'event' then
+		return self:fire('event', event, ...)
+	end
+end
+
+--debugging
+
 local function pad(s, n) return s..(' '):rep(n - #s) end
 
 local props_conv = {g = 'r', s = 'w', gs = 'rw', sg = 'rw'}
@@ -216,8 +297,6 @@ function Object:inspect()
 end
 
 setmetatable(Object, meta)
-
-if not ... then require'oo_test' end
 
 return setmetatable({
 	class = class,
