@@ -66,27 +66,52 @@ end
 
 --events ---------------------------------------------------------------------
 
---register a function to be called for a specific event type
-function object:on(event, func)
-	local t = glue.attr(glue.attr(self, '_observers'), event)
-	table.insert(t, func)
+local function event_namespace(event) --parse 'event', 'event.ns' or '.ns'
+	local ev, ns = event:match'^([^%.]*)%.([^%.]+)$'
+	ev = ev or event
+	if ev == '' then ev = nil end
+	return ev, ns
 end
 
---remove an event handler or all handlers of an event type
-function object:off(event, func)
+--register a function to be called for a specific event type
+function object:on(event, func)
+	local ev, ns = event_namespace(event)
+	assert(ev, 'event name missing')
+	self._observers = self._observers or {}
+	self._observers[ev] = self._observers[ev] or {}
+	table.insert(self._observers[ev], func)
+	if ns then
+		self._observers[ev][ns] = self._observers[ev][ns] or {}
+		table.insert(self._observers[ev][ns], func)
+	end
+end
+
+--remove all handlers of an event type and/or namespace
+local function remove_all(t, v)
+	while true do
+		local i = indexof(t, v)
+		if not i then return end
+		table.remove(t, i)
+	end
+end
+local function remove_all_ns(t_ev, ns)
+	local t_ns = t_ev and t_ev[ns]
+	if not t_ns then return end
+	for _,f in ipairs(t_ns) do
+		remove_all(t_ev, f)
+	end
+	t_ev[ns] = nil
+end
+function object:off(event)
 	if not self._observers then return end
-	if not func then
-		self._observers[event] = nil
-	else
-		local t = self._observers[event]
-		if not t then return end
-		local i = 1
-		while i <= #t do
-			if t[i] == func then
-				table.remove(t, i)
-			else
-				i = i + 1
-			end
+	local ev, ns = event_namespace(event)
+	if ev and ns then
+		remove_all_ns(self._observers[ev], ns)
+	elseif ev then
+		self._observers[ev] = nil
+	elseif ns then
+		for _,ev_t in pairs(self._observers) do
+			remove_all_ns(ev_t, ns)
 		end
 	end
 end

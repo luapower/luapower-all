@@ -229,7 +229,7 @@ __drag & drop__
 `win/view:dragging('leave')`                 event: mouse left with payload
 __events__
 `app/win/view:on(event, func)`               call _func_ when _event_ happens
-`app/win/view:off(event[, func])`            remove event handlers
+`app/win/view:off(event)`                    remove event handlers
 `app/win/view:fire(event, args...) -> ret`   fire an event
 `app/win/view:events(enabled) -> prev_state` enable/disable events
 `app/win/view:event(name, args...)`          meta-event fired on every other event
@@ -1460,26 +1460,31 @@ Events are a way to associate an action with one or more functions
 to be called on that action. To fire an event call
 `fire(event_name, args...)`. To add one or more functions to be called when
 an event is fired use `on(event_name, handler)`. Those functions will be
-called in the order in which they were added. You can also add methods
-in the target object named after the event. Those will be called first.
+called in the order in which they were added. If there's a method on the
+target object with the same name as the event, that method will also be
+called when the event fires, before any other handlers.
 
-Any extra args passed to `fire()` will be passed on to the handlers.
+Extra args passed to `fire()` will be passed on to the handlers.
 The first handler to return a non-nil value stops the call chain and that
 value is returned to the caller who fired the event.
 
 ### `function app/win/view:`_`event_name`_`() ... end`
 
-Call `func` when `event_name` is fired, always before calling any handlers
-added with `on()`.
+Method that will be fired when `event_name` is fired, before other handlers.
 
 ### `app/win/view:on(event, func)`
 
-Call `func` when `event_name` is fired. Multiple functions can be attached
+Call `func` when `event` is fired. Multiple functions can be attached
 to the same event: they are called in the order in which they were added.
 
-### `app/win/view:off(event[, func])`
+`event` can be `'event_name'` or `'event_name.namespace'`, which tags the
+handler with a namespace (which is just a convenience to aid in bulk removal
+of events).
 
-Remove a specific handler or all handlers associated with an event.
+### `app/win/view:off(event)`
+
+Remove all handlers associated with an event name and/or namespace.
+`event` can be `'event_name'`, `'.namespace'` or `'event_name.namespace'`.
 
 ### `app/win/view:fire(event, ...) -> ret`
 
