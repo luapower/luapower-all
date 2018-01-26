@@ -462,6 +462,8 @@ function glue.printer(out, format)
 end
 
 --assert() with string formatting (this should be a Lua built-in).
+--NOTE: unlike standard assert(), this only returns the first argument
+--to avoid returning the error message and it's args along with it.
 function glue.assert(v, err, ...)
 	if v then return v end
 	err = err or 'assertion failed!'

@@ -27,7 +27,7 @@ dir = {} --dir listing object methods
 
 --binding tools --------------------------------------------------------------
 
---assert() with string formatting (this should be a Lua built-in).
+--assert() with string formatting.
 function assert(v, err, ...)
 	if v then return v end
 	err = err or 'assertion failed!'

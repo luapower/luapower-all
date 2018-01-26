@@ -565,6 +565,9 @@ Like `assert` but supports formatting of the error message using
 This is better than `assert(v, string.format(message, format_args...))`
 because it avoids creating the message string when the assertion is true.
 
+__NOTE__:  Unlike standard `assert()`, this only returns the first argument
+to avoid returning the error message and it's args along with it.
+
 #### Example
 
 ~~~{.lua}
