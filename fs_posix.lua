@@ -18,7 +18,7 @@ assert(x64 or ffi.arch == 'x86', 'arch not x86 or x64')
 --types, consts, utils -------------------------------------------------------
 
 cdef[[
-typedef ssize_t size_t; // for older luajit
+typedef size_t ssize_t; // for older luajit
 typedef unsigned int mode_t;
 typedef unsigned int uid_t;
 typedef unsigned int gid_t;
