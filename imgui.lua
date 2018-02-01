@@ -15,9 +15,10 @@
 
 if not ... then require'imgui_demo'; return end
 
+local glue = require'glue'
 local box2d = require'box2d'
 local color = require'color'
-local glue = require'glue'
+local easing = require'easing'
 
 local function str(s)
 	if not s then return end
@@ -43,14 +44,15 @@ local function top(t, i)
 end
 
 local function push(t, v)
-	local n = t.n or 0
-	t[n + 1] = v or false
-	t.n = n + 1
-	t.capacity = math.max(t.capacity or 0, t.n)
+	local n = topindex(t, 1)
+	t[n] = v or false
+	t.n = n
+	t.capacity = math.max(t.capacity or 0, n)
+	return n
 end
 
 local function pop(t)
-	local n = t.n or 0
+	local n = topindex(t)
 	if n == 0 then return end
 	local v = t[n]
 	t[n] = false
@@ -61,10 +63,12 @@ end
 --same thing for multi-value elements
 
 local function pushn(t, n, ...)
+	local i = topindex(t, 1)
 	for i = 1,n do
 		local v = select(i, ...)
 		push(t, v)
 	end
+	return i
 end
 
 local function popn(t, n)
@@ -166,6 +170,7 @@ end
 
 local function pushvar(t, ...)
 	local n = select('#', ...)
+	--TODO: push(t, n) and make fwd and reverse iterators
 	for i=1,n do
 		local v = select(i, ...)
 		push(t, v)
@@ -225,6 +230,8 @@ function imgui:new()
 	end})
 
 	self.init = true --one-shot init trigger, kept until the first frame ends
+	self.clock = false --updated on events and on backend-triggered repaints
+
 	self:_init_cr()
 	self:_init_theme()
 	self:_init_layout()
@@ -297,19 +304,24 @@ function imgui:_render_frame(cr)
 end
 
 function imgui:_consume_event(clock, event, ...)
-	if not clock then return end
 	self.clock = clock
 	self._on[event](self, ...)
 end
 
 function imgui:_backend_repaint(cr)
+	if not top(self.events) then
+		self.clock = self:_backend_clock()
+	end
 	repeat
-		self:_consume_event(popvar(self.events))
+		if top(self.events) then
+			self:_consume_event(popvar(self.events))
+		end
 		repeat
 			self._frame_valid = true
 			self:_render_frame(cr)
 		until self._frame_valid
 	until not top(self.events)
+	self.clock = false
 end
 
 function imgui:invalidate()
@@ -331,7 +343,7 @@ function imgui:_done_frame_cr()
 	self.cr = false
 end
 
---mouse & keyboard input API -------------------------------------------------
+--mouse & keyboard API -------------------------------------------------------
 
 function imgui:_reset_input_state()
 	--mouse one-shot state, set when mouse state changed between frames
@@ -451,8 +463,6 @@ function imgui:_backend_event(...)
 	self:_backend_invalidate()
 end
 
---mouse & keyboard API -------------------------------------------------------
-
 function imgui:mousepos()
 	if not self.mousex then return end
 	return self.cr:device_to_user(self.mousex, self.mousey)
@@ -477,44 +487,59 @@ end
 
 function imgui:_init_animation()
 	self.stopwatches = {}
+	self.stopwatches.freelist = {}
+	self.stopwatches.next_expire_time = 1/0
 end
 
-function imgui:_init_frame_animation()
-	--remove any finished stopwatches
-	for t in pairs(self.stopwatches) do
-		if t:finished() then
-			self.stopwatches[t] = nil
-		end
-	end
+function imgui:_init_frame_animation() end
+
+local function expire_time(time, duration)
+	--this formula tells how long before a stopwatch index can get reused.
+	--currently it's twice the stopwatch's period and at least 1 second.
+	return time + math.max(1, duration * 2)
 end
 
 function imgui:_done_frame_animation()
-	--nothing yet
-end
-
-local stopwatch = {}
-
-function imgui:stopwatch(duration, formula)
-	local t = glue.inherit({imgui = self, start = self.clock,
-		duration = duration, formula = formula}, stopwatch)
-	self.stopwatches[t] = true
-	return t
-end
-
-function stopwatch:finished()
-	return self.imgui.clock - self.start > self.duration
-end
-
-function stopwatch:progress()
-	if self.formula then
-		if type(self.formula) == 'string' then
-			local easing = require'easing'
-			formula = easing[formula]
+	--free any expired stopwatches and update the next time we need to check.
+	if topindex(self.stopwatches) then
+		if self.clock >= self.stopwatches.next_expire_time then
+			local next_time = 1/0
+			for i = 1, #self.stopwatches, 5 do
+				local time, duration = unpack(self.stopwatches, i, i + 1)
+				if self.clock >= expire_time(time, duration) then
+					setn(self.stopwatches, i, 5) --clear slot
+					push(self.stopwatches.freelist, i)
+				else
+					next_time = math.min(next_time, expire_time(time, duration))
+				end
+			end
+			self.stopwatches.next_expire_time = next_time
 		end
-		return math.min(formula((self.imgui.clock - self.start), 0, 1, self.duration), 1)
-	else
-		return math.min((self.imgui.clock - self.start) / self.duration, 1)
 	end
+end
+
+function imgui:stopwatch(duration, formula, i1, i2)
+	formula = assert(easing[formula or 'linear'] or formula, 'invalid formula')
+	i1 = i1 or 0
+	i2 = i2 or 1
+
+	self.stopwatches.next_expire_time =
+		math.min(self.stopwatches.next_expire_time,
+			expire_time(self.clock, duration))
+
+	if topindex(self.stopwatches.freelist) > 0 then
+		local i = pop(self.stopwatches.freelist)
+		setn(self.stopwatches, i, 5, self.clock, duration, formula, i1, i2)
+		return i
+	else
+		return pushn(self.stopwatches, 5, self.clock, duration, formula, i1, i2)
+	end
+end
+
+function imgui:progress(i)
+	local time, duration, formula, i1, i2 = unpack(self.stopwatches, i, i + 4)
+	if not time or self.clock >= time + duration then return end
+	return formula((self.clock - time), i1, i2, duration)
 end
 
 --themed graphics API --------------------------------------------------------

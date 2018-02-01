@@ -114,9 +114,8 @@ function imgui_nw_cairo:bind(win, imgui_class)
 		win:invalidate()
 	end
 
-	function imgui:_backend_layer_context()
-		local sr = cairo.recording_surface'color_alpha'
-		return sr:context()
+	function imgui:_backend_layer_surface()
+		return cairo.recording_surface'color_alpha'
 	end
 
 	local function bind_event(name)

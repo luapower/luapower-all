@@ -73,6 +73,13 @@ return function(self)
 	self:spacer(nil, 100)
 	self:box()
 
+	self.sw = self.sw or self:stopwatch(2)
+	if self:progress(self.sw) then
+		self:rect(10 + self:progress(self.sw) * 100, 500, 100, 100)
+	else
+		self.sw = self:stopwatch(2, 'in_out_cubic')
+	end
+
 	--[[
 	self.flow = 'h'
 	self.halign = 'l'
