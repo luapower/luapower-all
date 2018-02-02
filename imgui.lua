@@ -506,11 +506,13 @@ function imgui:_done_frame_animation()
 			local next_time = 1/0
 			for i = 1, #self.stopwatches, 5 do
 				local time, duration = unpack(self.stopwatches, i, i + 1)
-				if self.clock >= expire_time(time, duration) then
-					setn(self.stopwatches, i, 5) --clear slot
-					push(self.stopwatches.freelist, i)
-				else
-					next_time = math.min(next_time, expire_time(time, duration))
+				if time then
+					if self.clock >= expire_time(time, duration) then
+						setn(self.stopwatches, i, 5) --clear slot
+						push(self.stopwatches.freelist, i)
+					else
+						next_time = math.min(next_time, expire_time(time, duration))
+					end
 				end
 			end
 			self.stopwatches.next_expire_time = next_time
@@ -1004,11 +1006,14 @@ function imgui:_init_layers()
 	self.layer_stack = {}
 	self.hot_layer = false
 	self.current_layer = false
-	self.current_z_order = 0
+	self._z_scope = {}
 end
 
 function imgui:_init_frame_layers()
-	self.current_z_order = 0
+	self._z_scope.begin = false
+	self._z_scope.level = 0
+	self._z_scope.num = 0
+	self._z_scope.factor = 100
 end
 function imgui:_done_frame_layers() end
 
@@ -1067,7 +1072,15 @@ function imgui:begin_layer(id, z_order, hit_test_func)
 	self:_init_frame_cr(cr)
 	self:_init_frame_layout()
 
-	z_order = z_order or self.current_z_order * 100 + 1
+	if not z_order then
+		z_order = self._z_scope.num
+		if self._z_scope.begin then
+			z_order = z_order * self._z_scope.factor
+		end
+		z_order = z_order + 1
+	end
+	self._z_scope.num = z_order
+	self._z_scope.begin = true
 
 	--insert record into the layers stack at the right index based on z-order
 	local insert_index = topindex(self.layers, 1)
@@ -1081,19 +1094,19 @@ function imgui:begin_layer(id, z_order, hit_test_func)
 	insertn(self.layers, insert_index, 4, sr, id, hit_test_func, z_order)
 
 	push(self.layer_stack, self.current_layer)
-	push(self.layer_stack, self.current_z_order)
 	self.current_layer = id
-	self.current_z_order = z_order
 end
 
 function imgui:end_layer()
 	assert(self.current_layer, 'end_layer() without begin_layer()')
-	self.current_z_order = pop(self.layer_stack)
-	self.current_layer   = pop(self.layer_stack)
-	self.current_z_order = self.current_z_order + 1
+	self.current_layer = pop(self.layer_stack)
 	self:setfont(nil)
 	self.cr:free()
 	self:_restore_cr()
+	if not self._z_scope.begin then
+		self._z_scope.num = math.floor(self._z_scope.num / self._z_scope.factor)
+	end
+	self._z_scope.begin = false
 end
 
 --label widget ---------------------------------------------------------------
