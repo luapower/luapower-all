@@ -1010,10 +1010,9 @@ function imgui:_init_layers()
 end
 
 function imgui:_init_frame_layers()
-	self._z_scope.begin = false
-	self._z_scope.level = 0
-	self._z_scope.num = 0
-	self._z_scope.factor = 100
+	self._z_scope.begin = false --a scope has begun
+	self._z_scope.num = 0       --current z_order in current scope
+	self._z_scope.factor = 100  --how many layers per scope
 end
 function imgui:_done_frame_layers() end
 
