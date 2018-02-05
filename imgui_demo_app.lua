@@ -30,6 +30,8 @@ return function(self)
 	self:end_content_box()
 	]]
 
+	self.continuous_rendering = false
+
 	self:setflow'h'
 	self:box'20%'
 	self:box'300'
@@ -73,11 +75,16 @@ return function(self)
 	self:spacer(nil, 100)
 	self:box()
 
-	self.sw = self.sw or self:stopwatch(2)
-	if self:progress(self.sw) then
-		self:rect(10 + self:progress(self.sw) * 100, 500, 100, 100)
-	else
-		self.sw = self:stopwatch(2, 'in_out_cubic')
+	if self.sw == nil then
+		self.sw = self.clock
+	end
+	if self.sw then
+		local x = self:animate(self.sw, 2, 'in_out_cubic', 10, 100)
+		if x then
+			self:rect(x, 500, 100, 100)
+		else
+			self.sw = false
+		end
 	end
 
 	--[[

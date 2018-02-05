@@ -103,63 +103,6 @@ local function insertn(t, ti, n, ...)
 	setn(t, ti, n, ...)
 end
 
---[[
---record stack (i.e. stack of fixed-length arrays)
-
-local function reclen(t, n)
-	t.reclen = n
-	t.recnum = 0
-	return t
-end
-
-local function recnum(t)
-	return t.recnum
-end
-
-local function reci(t, ri, i)
-	return (ri - 1) * t.reclen + i
-end
-
-local function rec(t, ri)
-	return unpack(t,  reci(t, ri, 1), reci(t, ri + 1, 0))
-end
-
-local function setrec(t, ri, ...)
-	assert(ri >= 1)
-	assert(ri <= t.reclen)
-	for i=1,t.reclen do
-		local v = select(i, ...)
-		t[reci(t, ri, i)] = v or false
-	end
-end
-
-local function pushrec(t, ...)
-	t.recnum = t.recnum + 1
-	t.capacity = math.max(t.capacity or 0, t.recnum)
-	setrec(t, t.recnum, ...)
-end
-
-local function poprec(t)
-	for i=1,t.reclen do
-		t[reci(t, t.recnum, i)] = false
-	end
-	t.recnum = t.recnum - 1
-end
-
-local function nextrec(t, ri)
-	ri = (ri or 0) + 1
-	return ri, rec(t, ri)
-end
-
-local function recs(t)
-	return nextrec, t
-end
-
-local function toprec(t, ri)
-	return rec(
-end
-]]
-
 --vararg stack (i.e. stack of variable-length arrays)
 
 local function topvar(t)
@@ -230,13 +173,11 @@ function imgui:new()
 	end})
 
 	self.init = true --one-shot init trigger, kept until the first frame ends
-	self.clock = false --updated on events and on backend-triggered repaints
 
 	self:_init_cr()
 	self:_init_theme()
 	self:_init_layout()
 	self:_init_layers()
-	self:_init_animation()
 	self:_init_input()
 
 	--widget state
@@ -245,7 +186,7 @@ function imgui:new()
 	self.ui = {}          --state to be used by the active control
 
 	--event stream
-	self.events = {}
+	self._events = {}
 
 	self._fps = self:_fps_function()
 
@@ -258,7 +199,6 @@ function imgui:_render_frame(cr)
 	self:_init_frame_theme()
 	self:_init_frame_layout()
 	self:_init_frame_input()
-	self:_init_frame_animation()
 	self:_init_frame_layers()
 
 	self:_backend_render_frame() --user code
@@ -286,15 +226,14 @@ function imgui:_render_frame(cr)
 	end
 
 	--set/reset the window title
-	self:_backend_set_title(self.title)
+	self:_backend_set_title(self.title or '')
 	self.title = false
 
 	--set/reset the mouse cursor
-	self:_backend_set_cursor(self.cursor)
+	self:_backend_set_cursor(self.cursor or 'arrow')
 	self.cursor = false
 
 	self:_done_frame_layers()
-	self:_done_frame_animation()
 	self:_done_frame_input()
 	self:_done_frame_layout()
 	self:_done_frame_theme()
@@ -309,26 +248,27 @@ function imgui:_consume_event(clock, event, ...)
 end
 
 function imgui:_backend_repaint(cr)
-	if not top(self.events) then
+	if not top(self._events) then
 		self.clock = self:_backend_clock()
 	end
+	self:_init_repaint_layout()
 	repeat
-		if top(self.events) then
-			self:_consume_event(popvar(self.events))
+		if top(self._events) then
+			self:_consume_event(popvar(self._events))
 		end
 		repeat
 			self._frame_valid = true
 			self:_render_frame(cr)
 		until self._frame_valid
-	until not top(self.events)
+	until not top(self._events)
 	self.clock = false
 end
 
-function imgui:invalidate()
+function imgui:invalidate_frame()
 	self._frame_valid = false
 end
 
---graphics context -----------------------------------------------------------
+--low-level graphics API -----------------------------------------------------
 
 function imgui:_init_cr() end
 
@@ -347,8 +287,8 @@ end
 
 function imgui:_reset_input_state()
 	--mouse one-shot state, set when mouse state changed between frames
-	self.lpressed = false
-	self.rpressed = false
+	self.lpressed = false      --left mouse button was pressed (one-shot)
+	self.rpressed = false      --right mouse button was pressed (one-shot)
 	self.clicked = false       --left mouse button clicked (one-shot)
 	self.rightclick = false    --right mouse button clicked (one-shot)
 	self.doubleclicked = false --left mouse button double-clicked (one-shot)
@@ -368,6 +308,7 @@ end
 
 function imgui:_init_frame_input()
 	if self.init then
+		--we only set these once, mouse events will update them afterwards.
 		imgui.mousex,
 		imgui.mousey,
 		imgui.lbutton,
@@ -434,7 +375,7 @@ function imgui._on:tripleclick(button, x, y)
 end
 
 function imgui._on:mousewheel(delta, x, y)
-	self.wheel_delta = self.wheel_delta + (delta / 120 or 0)
+	self.wheel_delta = self.wheel_delta + delta
 end
 
 function imgui._on:keydown(key)
@@ -459,7 +400,7 @@ end
 
 function imgui:_backend_event(...)
 	local clock = self:_backend_clock()
-	pushvar(self.events, clock, ...)
+	pushvar(self._events, clock, ...)
 	self:_backend_invalidate()
 end
 
@@ -485,66 +426,24 @@ end
 
 --animation API --------------------------------------------------------------
 
-function imgui:_init_animation()
-	self.stopwatches = {}
-	self.stopwatches.freelist = {}
-	self.stopwatches.next_expire_time = 1/0
-end
+imgui.easing = {}
 
-function imgui:_init_frame_animation() end
-
-local function expire_time(time, duration)
-	--this formula tells how long before a stopwatch index can get reused.
-	--currently it's twice the stopwatch's period and at least 1 second.
-	return time + math.max(1, duration * 2)
-end
-
-function imgui:_done_frame_animation()
-	--free any expired stopwatches and update the next time we need to check.
-	if topindex(self.stopwatches) then
-		if self.clock >= self.stopwatches.next_expire_time then
-			local next_time = 1/0
-			for i = 1, #self.stopwatches, 5 do
-				local time, duration = unpack(self.stopwatches, i, i + 1)
-				if time then
-					if self.clock >= expire_time(time, duration) then
-						setn(self.stopwatches, i, 5) --clear slot
-						push(self.stopwatches.freelist, i)
-					else
-						next_time = math.min(next_time, expire_time(time, duration))
-					end
-				end
-			end
-			self.stopwatches.next_expire_time = next_time
+function imgui:animate(start_time, duration, formula, i1, i2)
+	if type(formula) == 'number' then
+		formula, i1, i2 = 'linear', formula, i1
+	else
+		formula = formula or 'linear'
+		if type(formula) == 'string' then
+			formula = easing[formula] or self.easing[formula]
 		end
 	end
+	assert(formula, 'invalid formula')
+	if self.clock >= start_time + duration then return end
+	self:_backend_invalidate()
+	return formula((self.clock - start_time), i1 or 0, i2 or 1, duration)
 end
 
-function imgui:stopwatch(duration, formula, i1, i2)
-	formula = assert(easing[formula or 'linear'] or formula, 'invalid formula')
-	i1 = i1 or 0
-	i2 = i2 or 1
-
-	self.stopwatches.next_expire_time =
-		math.min(self.stopwatches.next_expire_time,
-			expire_time(self.clock, duration))
-
-	if topindex(self.stopwatches.freelist) > 0 then
-		local i = pop(self.stopwatches.freelist)
-		setn(self.stopwatches, i, 5, self.clock, duration, formula, i1, i2)
-		return i
-	else
-		return pushn(self.stopwatches, 5, self.clock, duration, formula, i1, i2)
-	end
-end
-
-function imgui:progress(i)
-	local time, duration, formula, i1, i2 = unpack(self.stopwatches, i, i + 4)
-	if not time or self.clock >= time + duration then return end
-	return formula((self.clock - time), i1, i2, duration)
-end
-
---themed graphics API --------------------------------------------------------
+--themed stateless graphics API ----------------------------------------------
 
 imgui.themes = {}
 imgui.default = {} --theme defaults, declared inline
@@ -593,7 +492,7 @@ function imgui:_init_frame_theme()
 	self.theme = self.default_theme
 
 	--clear the background
-	self:setcolor'window_bg'
+	self:_setcolor'window_bg'
 	self.cr:paint()
 end
 
@@ -601,7 +500,7 @@ function imgui:_done_frame_theme()
 	self.theme = false
 end
 
---themed color setting
+--themed color setting (stateful, so private API)
 
 local function parse_color(c, g, b, a)
 	if type(c) == 'string' then
@@ -614,11 +513,11 @@ local function parse_color(c, g, b, a)
 	end
 end
 
-function imgui:setcolor(color, g, b, a)
+function imgui:_setcolor(color, g, b, a)
 	self.cr:rgba(parse_color(self.theme[color] or color, g, b, a))
 end
 
---themed font setting
+--themed font setting (stateful, so private API)
 
 local function parse_font(font, default_font)
 	local name, size, weight, slant =
@@ -650,7 +549,7 @@ end
 
 imgui.default.default_font = 'Open Sans,14'
 
-function imgui:setfont(font)
+function imgui:_setfont(font)
 	font = load_font(self.theme[font] or font, self.theme.default_font)
 	self:_backend_load_font(font.name, font.weight, font.slant)
 	self.cr:font_size(font.size)
@@ -658,22 +557,22 @@ function imgui:setfont(font)
 	return font
 end
 
---themed fill & stroke
+--themed stateless fill & stroke
 
 function imgui:fill(color)
-	self:setcolor(color or 'normal_bg')
+	self:_setcolor(color or 'normal_bg')
 	self.cr:fill()
 end
 
 function imgui:stroke(color, line_width)
-	self:setcolor(color or 'normal_fg')
+	self:_setcolor(color or 'normal_fg')
 	self.cr:line_width(line_width or 1)
 	self.cr:stroke()
 end
 
 function imgui:fillstroke(fill_color, stroke_color, line_width)
 	if fill_color and stroke_color then
-		self:setcolor(fill_color)
+		self:_setcolor(fill_color)
 		self.cr:fill_preserve()
 		self:stroke(stroke_color, line_width)
 	elseif fill_color then
@@ -685,7 +584,7 @@ function imgui:fillstroke(fill_color, stroke_color, line_width)
 	end
 end
 
---themed basic shapes
+--themed stateless basic shapes
 
 function imgui:rect(x, y, w, h, ...)
 	self.cr:rectangle(x, y, w, h)
@@ -713,7 +612,7 @@ function imgui:curve(x1, y1, x2, y2, x3, y3, x4, y4, ...)
 	self:stroke(...)
 end
 
---themed multi-line self-aligned text
+--themed multi-line self-aligned and box-aligned text
 
 local function round(x)
 	return math.floor(x + 0.5)
@@ -721,42 +620,43 @@ end
 
 local function text_args(self, s, font, color, line_spacing)
 	s = tostring(s)
-	font = self:setfont(font)
-	self:setcolor(color or 'normal_fg')
+	font = self:_setfont(font)
+	self:_setcolor(color or 'normal_fg')
 	local line_h = font.extents.height * (line_spacing or 1)
 	return s, font, line_h
 end
 
 function imgui:text_extents(s, font, line_h)
-	font = self:setfont(font)
+	font = self:_setfont(font)
 	local w, h = 0, 0
 	for s in glue.lines(s) do
-		local ext = cr:text_extents(s)
-		w = math.max(w, ext.width)
-		h = h + ext.y_bearing
+		local tw, th, ty = self:_backend_text_extents(s)
+		w = math.max(w, tw)
+		h = h + ty
 	end
 	return w, h
 end
 
-local function draw_text(cr, x, y, s, align, line_h) --multi-line text
+function imgui:_draw_text(x, y, s, align, line_h) --multi-line text
+	local cr = self.cr
 	for s in glue.lines(s) do
 		if align == 'right' then
-			local extents = cr:text_extents(s)
-			cr:move_to(x - extents.width, y)
+			local tw = self:_backend_text_extents(s)
+			cr:move_to(x - tw, y)
 		elseif align == 'center' then
-			local extents = cr:text_extents(s)
-			cr:move_to(x - round(extents.width / 2), y)
+			local tw = self:_backend_text_extents(s)
+			cr:move_to(x - round(tw / 2), y)
 		else
 			cr:move_to(x, y)
 		end
-		cr:show_text(s)
+		self:_backend_show_text(s)
 		y = y + line_h
 	end
 end
 
 function imgui:text(x, y, s, font, color, align, line_spacing)
 	local s, font, line_h = text_args(self, s, font, color, line_spacing)
-	draw_text(self.cr, x, y, s, align, line_h)
+	self:_draw_text(x, y, s, align, line_h)
 end
 
 function imgui:textbox(x, y, w, h, s, font, color, halign, valign, line_spacing)
@@ -790,19 +690,20 @@ function imgui:textbox(x, y, w, h, s, font, color, halign, valign, line_spacing)
 		y = y - lines_h
 	end
 
-	draw_text(self.cr, x, y, s, halign, line_h)
+	self:_draw_text(x, y, s, halign, line_h)
 
 	self.cr:restore()
 end
 
 --layout API -----------------------------------------------------------------
 
-function imgui:_init_frame_layout()
-	--init layout state consts
+function imgui:_init_repaint_layout()
 	local cw, ch = self:_backend_client_size()
 	self.window_cw = cw
 	self.window_ch = ch
-	--init layout state vars
+end
+
+function imgui:_init_frame_layout()
 	self.flow = false --no default: force app to start specific
 	self.halign = 'l'
 	self.valign = 't'
@@ -876,6 +777,8 @@ function imgui:setflow(opt, margin_w, margin_h)
 		flow = 'v'
 	elseif self.flow == 'v' then --switch flow
 		flow = 'h'
+	else
+		error'flow not set'
 	end
 	if flow then self.flow = flow end
 	if halign then self.halign = halign end
@@ -1060,7 +963,7 @@ function imgui:_render_layers()
 	--to invalidate the whole frame, because it's like if mouse moved.
 	if new_hot_layer ~= self.hot_layer then
 		self.hot_layer = new_hot_layer
-		self:invalidate()
+		self:invalidate_frame()
 	end
 end
 
@@ -1099,7 +1002,7 @@ end
 function imgui:end_layer()
 	assert(self.current_layer, 'end_layer() without begin_layer()')
 	self.current_layer = pop(self.layer_stack)
-	self:setfont(nil)
+	self:_setfont(nil)
 	self.cr:free()
 	self:_restore_cr()
 	if not self._z_scope.begin then
@@ -1111,13 +1014,12 @@ end
 --label widget ---------------------------------------------------------------
 
 function imgui:label(s)
-	self:setfont'default_font'
-	self:setcolor'normal_fg'
-	local ext = self.cr:text_extents(s)
-	local w, h, yb = ext.width, ext.height, ext.y_bearing
+	self:_setfont'default_font'
+	self:_setcolor'normal_fg'
+	local w, h, yb = self:_backend_text_extents(s)
 	local x, y, w, h = self:flowbox(w, h)
 	self.cr:move_to(x, y - yb)
-	self.cr:show_text(s)
+	self:_backend_show_text(s)
 	self:add_flowbox(x, y, w, h)
 end
 
