@@ -46,8 +46,8 @@ assert(x == (2 * 10 * 4 + 3 * 10 * 4) / 2 * 50)
 assert(y == (2 * 10 * 4 * 3 * 10 * 4) / 2 * 50)
 
 --virtual properties
-function o:get_x() assert(self.__x == 42) return self.__x end
-function o:set_x(x) assert(x == 42) self.__x = x end
+function o:get_x() assert(self.__x == 42); return self.__x end
+function o:set_x(x) assert(x == 42); self.__x = x end
 o.x = 42
 assert(o.x == 42)
 
@@ -56,6 +56,13 @@ function o:set_s(s) print('set_s', s) assert(s == 13) end
 o.s = 13
 assert(o.s == 13)
 assert(o.state.s == 13)
+
+--virtual properties and inheritance
+function c1:get_c1x() return self.__c1x end
+function c1:set_c1x(x) self.__c1x = x end
+o.c1x = 43
+assert(o.c1x == 43)
+assert(o.__c1x == 43)
 
 --registering
 local MyClass = oo.MyClass()

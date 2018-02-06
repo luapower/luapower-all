@@ -29,8 +29,11 @@ function meta.__call(o,...)
 end
 
 function meta.__index(o,k)
-	if k == 'getproperty' then --'getproperty' is not virtualizable to avoid infinite recursion
-		return rawget(o, 'super').getproperty --...but it is inheritable
+	--some keys are not virtualizable to avoid infinite recursion,
+	--but they are dynamically inheritable nonetheless.
+	if k == 'getproperty' or type(k) == 'string' and k:find'^[gs]et_' then
+		local super = rawget(o, 'super')
+		return super and super[k]
 	end
 	return o:getproperty(k)
 end
@@ -64,40 +67,56 @@ function Object:override(method_name, hook)
 end
 
 function Object:getproperty(k)
-	if type(k) == 'string' and rawget(self, 'get_'..k) then --virtual property
-		return rawget(self, 'get_'..k)(self, k)
-	elseif rawget(self, 'set_'..k) then --stored property
-		if rawget(self, 'state') then
-			return self.state[k]
+	if type(k) == 'string' then
+		local get = self['get_'..k]
+		if get then --virtual property
+			return get(self, k)
+		else
+			local set = self['set_'..k]
+			if set then --stored property
+				local state = rawget(self, 'state')
+				if state then
+					return state[k]
+				end
+			end
 		end
-	elseif rawget(self, 'super') then --inherited property
-		return rawget(self, 'super')[k]
+	end
+	local super = rawget(self, 'super')
+	if super then --inherited property
+		return super[k]
 	end
 end
 
 function Object:setproperty(k,v)
 	if type(k) == 'string' then
-		if rawget(self, 'get_'..k) then --virtual property
-			if rawget(self, 'set_'..k) then --r/w property
-				rawget(self, 'set_'..k)(self, v)
+		local get = self['get_'..k]
+		if get then --virtual property
+			local set = self['set_'..k]
+			if set then --r/w property
+				set(self, v)
 			else --r/o property
 				error(string.format('trying to set read only property "%s"', k))
 			end
-		elseif rawget(self, 'set_'..k) then --stored property
-			if not rawget(self, 'state') then rawset(self, 'state', {}) end
-			rawget(self, 'set_'..k)(self, v) --if the setter breaks, the property is not updated
-			self.state[k] = v
-		elseif k:find'^before_' then --install before hook
-			local method_name = k:match'^before_(.*)'
-			self:before(method_name, v)
-		elseif k:find'^after_' then --install after hook
-			local method_name = k:match'^after_(.*)'
-			self:after(method_name, v)
-		elseif k:find'^override_' then --install override hook
-			local method_name = k:match'^override_(.*)'
-			self:override(method_name, v)
 		else
-			rawset(self, k, v)
+			local set = self['set_'..k]
+			if set then --stored property
+				if not rawget(self, 'state') then
+					rawset(self, 'state', {})
+				end
+				set(self, v) --if the setter breaks, the property is not updated
+				self.state[k] = v
+			elseif k:find'^before_' then --install before hook
+				local method_name = k:match'^before_(.*)'
+				self:before(method_name, v)
+			elseif k:find'^after_' then --install after hook
+				local method_name = k:match'^after_(.*)'
+				self:after(method_name, v)
+			elseif k:find'^override_' then --install override hook
+				local method_name = k:match'^override_(.*)'
+				self:override(method_name, v)
+			else
+				rawset(self, k, v)
+			end
 		end
 	else
 		rawset(self, k, v)
@@ -134,8 +153,8 @@ function Object:inherit(other, override)
 	local properties = other:properties()
 	for k,v in pairs(properties) do
 		if (override or rawget(self, k) == nil)
-			and k ~= 'classname' --we keep our classname (we don't change our identity)
-			and k ~= 'super' --we keep our super (we don't change the dynamic inheritance)
+			and k ~= 'classname' --keep the classname (preserve identity)
+			and k ~= 'super' --keep super (preserve dynamic inheritance)
 		then
 			rawset(self, k, v)
 		end
@@ -154,7 +173,7 @@ end
 
 function Object:detach()
 	self:inherit(self.super)
-	self.classname = self.classname --if we're an instance, we would have no classname
+	self.classname = self.classname --store the classname
 	self.super = nil
 end
 
@@ -282,11 +301,15 @@ function Object:inspect()
 	--print values
 	for i,super in ipairs(supers) do
 		print('from '..(
-					super == self and ('self'..(super.classname ~= '' and ' ('..super.classname..')' or ''))
-					or 'super #'..tostring(i-1)..(super.classname ~= '' and ' ('..super.classname..')' or '')
+			super == self and
+				('self'..(super.classname ~= ''
+					and ' ('..super.classname..')' or ''))
+				or 'super #'..tostring(i-1)..(super.classname ~= ''
+					and ' ('..super.classname..')' or '')
 				)..':')
 		for k,v in glue.sortedpairs(props[super]) do
-			print('   '..pad(k..' ('..props_conv[v]..')', 16), tostring(super[k]))
+			print('   '..pad(k..' ('..props_conv[v]..')', 16),
+				tostring(super[k]))
 		end
 		for k in glue.sortedpairs(keys[super]) do
 			if k ~= 'super' and k ~= 'state' and k ~= 'classname' then

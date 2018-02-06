@@ -118,6 +118,8 @@ class or instance, effectively *monkey-patching* `self`, optionally
 overriding properties with the same name. The fields `self.classname` and
 `self.super` are always preserved though, even with the `override` flag.
 
+__TIP:__ Use this on object instances to greatly speed-up field look-up.
+
 ~~~{.lua}
 local other_cls = oo.class()
 other_cls.the_answer = 13
@@ -184,6 +186,9 @@ methods of form:
 
   * `self:getter(k) -> v`
   * `self:setter(k, v)`
+
+> __NOTE:__ The fields `getproperty` and the fields starting with `get_` and
+`set_` are not themselves virtualizable in order to avoid infinite recursion.
 
 ## Overriding hooks
 
