@@ -282,8 +282,9 @@ end
 local function pad(s, n) return s..(' '):rep(n - #s) end
 
 local props_conv = {g = 'r', s = 'w', gs = 'rw', sg = 'rw'}
+local oo_state_fields = {state=1, super=1, observers=1}
 
-function Object:inspect()
+function Object:inspect(show_oo)
 	local glue = require'glue'
 	--collect data
 	local supers = {} --{super1,...}
@@ -312,20 +313,24 @@ function Object:inspect()
 	end
 	--print values
 	for i,super in ipairs(supers) do
-		print('from '..(
-			super == self and
-				('self'..(super.classname ~= ''
-					and ' ('..super.classname..')' or ''))
-				or 'super #'..tostring(i-1)..(super.classname ~= ''
-					and ' ('..super.classname..')' or '')
-				)..':')
-		for k,v in glue.sortedpairs(props[super]) do
-			print('   '..pad(k..' ('..props_conv[v]..')', 16),
-				tostring(super[k]))
-		end
-		for k in glue.sortedpairs(keys[super]) do
-			if k ~= 'super' and k ~= 'state' and k ~= 'classname' then
-				print('   '..pad(k, 16), tostring(super[k]))
+		if show_oo or super ~= Object then
+			print('from '..(
+				super == self and
+					('self'..(super.classname ~= ''
+						and ' ('..super.classname..')' or ''))
+					or 'super #'..tostring(i-1)..(super.classname ~= ''
+						and ' ('..super.classname..')' or '')
+					)..':')
+			for k,v in glue.sortedpairs(props[super]) do
+				print('    '..pad(k..' ('..props_conv[v]..')', 16),
+					tostring(super[k]))
+			end
+			for k in glue.sortedpairs(keys[super]) do
+				local oo = oo_state_fields[k] or Object[k] ~= nil
+				if show_oo or not oo then
+					print('  '..(oo and '* ' or '  ')..pad(k, 16),
+						tostring(super[k]))
+				end
 			end
 		end
 	end

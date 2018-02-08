@@ -147,3 +147,14 @@ assert(o.c == 3)
 print'--------------- (after collapsing) -----------------'
 o:inspect()
 
+do
+	print()
+	print()
+	print'-------------- (all reserved fields) ---------------'
+	print()
+	local c = oo.TestClass()
+	local o = c()
+	function o:set_x() end; o.x = nil; o.set_x = nil --to create `state`
+	o:on('x', function() end) --to create `observers`
+	o:inspect(true)
+end

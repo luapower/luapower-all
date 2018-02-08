@@ -50,8 +50,8 @@ Object system with virtual properties and method overriding hooks.
 	  properties, including inherited _and overriden_ ones.
    * `self:properties()` -> get a table of all current properties and values,
 	  including inherited ones.
-   * `self:inspect()` - inspect the class/instance structure and contents in
-	  detail (requires [glue]).
+   * `self:inspect([show_oo_fields])` - inspect the class/instance structure
+	  and contents in detail (requires [glue]).
  * overridable subclassing and instantiation mechanisms:
    * `Fruit = oo.Fruit()` is sugar for `Fruit = oo.Object:subclass()`
    * `Apple = oo.Apple(Fruit)` is sugar for `Apple = Fruit:subclass()`
