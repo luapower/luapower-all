@@ -45,6 +45,7 @@ Object system with virtual properties and method overriding hooks.
 	* `Apple:off'falling'` - remove all `falling` event handlers
 	* `Apple:off'.ns1'` - remove all event handlers on the `ns1` namespace
  * introspection:
+   * `self:is(class|classname) -> true|false` - check instance/class ancestry
    * `self:allpairs() -> iterator() -> name, value, source` - iterate all
 	  properties, including inherited _and overriden_ ones.
    * `self:properties()` -> get a table of all current properties and values,
@@ -100,8 +101,8 @@ assert(obj.the_answer == 42)
 ~~~
 
 You can detach the class/instance from its parent class by calling
-`self:detach()`. This copies all inherited fields to the class/instance and
-removes `self.super`.
+`self:detach() -> self`. This copies all inherited fields to the
+class/instance and removes `self.super`.
 
 ~~~{.lua}
 cls:detach()
@@ -113,8 +114,8 @@ assert(obj.the_answer == 42)
 ~~~
 
 **Static inheritance** can be achieved by calling
-`self:inherit(other[,override])` which copies over the properties of another
-class or instance, effectively *monkey-patching* `self`, optionally
+`self:inherit(other[,override]) -> self` which copies over the properties of
+another class or instance, effectively *monkey-patching* `self`, optionally
 overriding properties with the same name. The fields `self.classname` and
 `self.super` are always preserved though, even with the `override` flag.
 

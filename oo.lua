@@ -123,6 +123,16 @@ function Object:setproperty(k,v)
 	end
 end
 
+function Object:is(class)
+	if self.super == class or self.classname == class then
+		return true
+	elseif self.super then
+		return self.super:is(class)
+	else
+		return false
+	end
+end
+
 --returns iterator<k,v,source>; iterates bottom-up in the inheritance chain
 function Object:allpairs()
 	local source = self
@@ -169,12 +179,14 @@ function Object:inherit(other, override)
 			end
 		end
 	end
+	return self
 end
 
 function Object:detach()
 	self:inherit(self.super)
 	self.classname = self.classname --store the classname
 	self.super = nil
+	return self
 end
 
 function Object:gen_properties(names, getter, setter)

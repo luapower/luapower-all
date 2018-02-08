@@ -17,7 +17,12 @@ assert(c2.c == 2)
 assert(c2.init == c1.init)
 
 --polymorphism
-function c1:before_init(...) print('c1 before_init',...); self.b = ...; assert(self.b == 'o'); return self.b end
+function c1:before_init(...)
+	print('c1 before_init',...)
+	self.b = ...
+	assert(self.b == 'o')
+	return self.b
+end
 function c1:after_init() print('c1 after_init') end
 function c2:before_init(...) print('c2 before_init',...); return ... end
 function c2:after_init() print('c2 after_init') end
@@ -32,6 +37,10 @@ assert(o.b == 'o')
 assert(o.c == 2)
 assert(o.super == c2)
 assert(o.unknown == nil)
+
+assert(o:is'c1')
+assert(o:is'c2')
+assert(o:is'o' == false)
 
 --arg passing through hooks
 function c1:test_args(x, y) return x + y, x * y end
