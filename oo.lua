@@ -14,7 +14,7 @@ function Object:subclass()
 	return setmetatable({super = self, classname = ''}, getmetatable(self))
 end
 
-function Object:init(...) end
+function Object:init(...) return ... end
 
 function Object:create(...)
 	local o = setmetatable({super = self}, getmetatable(self))
@@ -31,9 +31,11 @@ end
 function meta.__index(o,k)
 	--some keys are not virtualizable to avoid infinite recursion,
 	--but they are dynamically inheritable nonetheless.
-	if k == 'getproperty' or type(k) == 'string' and k:find'^[gs]et_' then
+	if k == 'getproperty' or k == '__getters' or k == '__setters' then
 		local super = rawget(o, 'super')
 		return super and super[k]
+	elseif k == 'super' then --'super' is not even inheritable
+		return nil
 	end
 	return o:getproperty(k)
 end
@@ -43,19 +45,21 @@ function meta.__newindex(o,k,v)
 end
 
 local function noop() end
-local function pass(...) return ... end
+local function pass(...) return end
 
 function Object:before(method_name, hook)
 	local method = self[method_name] or pass
 	rawset(self, method_name, function(self, ...)
-		return method(self, hook(self, ...))
+		hook(self, ...)
+		return method(self, ...)
 	end)
 end
 
 function Object:after(method_name, hook)
 	local method = self[method_name] or pass
 	rawset(self, method_name, function(self, ...)
-		return hook(self, method(self, ...))
+		method(self, ...)
+		return hook(self, ...)
 	end)
 end
 
@@ -68,13 +72,15 @@ end
 
 function Object:getproperty(k)
 	if type(k) == 'string' then
-		local get = self['get_'..k]
+		local getters = self.__getters
+		local get = getters and getters[k]
 		if get then --virtual property
 			return get(self, k)
 		else
-			local set = self['set_'..k]
+			local setters = self.__setters
+			local set = setters and setters[k]
 			if set then --stored property
-				local state = rawget(self, 'state')
+				local state = rawget(self, '__state')
 				if state then
 					return state[k]
 				end
@@ -87,47 +93,75 @@ function Object:getproperty(k)
 	end
 end
 
+local function create_table(t, k)
+	local v = rawget(t, k)
+	if v ~= nil then
+		return v
+	end
+	v = {}
+	rawset(t, k, v)
+	setmetatable(v, v)
+	local super = rawget(t, 'super')
+	if super then
+		v.__index = create_table(super, k)
+	end
+	return v
+end
+
 function Object:setproperty(k,v)
-	if type(k) == 'string' then
-		local get = self['get_'..k]
-		if get then --virtual property
-			local set = self['set_'..k]
-			if set then --r/w property
-				set(self, v)
-			else --r/o property
-				error(string.format('trying to set read only property "%s"', k))
-			end
-		else
-			local set = self['set_'..k]
-			if set then --stored property
-				if not rawget(self, 'state') then
-					rawset(self, 'state', {})
-				end
-				set(self, v) --if the setter breaks, the property is not updated
-				self.state[k] = v
-			elseif k:find'^before_' then --install before hook
-				local method_name = k:match'^before_(.*)'
-				self:before(method_name, v)
-			elseif k:find'^after_' then --install after hook
-				local method_name = k:match'^after_(.*)'
-				self:after(method_name, v)
-			elseif k:find'^override_' then --install override hook
-				local method_name = k:match'^override_(.*)'
-				self:override(method_name, v)
-			else
-				rawset(self, k, v)
-			end
+	if type(k) ~= 'string' then
+		rawset(self, k, v)
+	end
+	local getters = self.__getters
+	local setters = self.__setters
+	local get = getters and getters[k]
+	local set = setters and setters[k]
+	if get and set then --r/w property
+		set(self, v)
+	elseif set then --stored property
+		local state = rawget(self, '__state')
+		if not state then
+			state = {}
+			rawset(self, '__state', state)
 		end
+		set(self, v) --if the setter breaks, the property is not updated
+		state[k] = v
+	elseif get then --r/o property
+		error(string.format('trying to set read only property "%s"', k))
+	elseif k:find'^get_' then --install getter
+		local getters = create_table(self, '__getters')
+		self.__getters[k:sub(5)] = v
+	elseif k:find'^set_' then --install setter
+		local setters = create_table(self, '__setters')
+		self.__setters[k:sub(5)] = v
+	elseif k:find'^before_' then --install before hook
+		local method_name = k:match'^before_(.*)'
+		self:before(method_name, v)
+	elseif k:find'^after_' then --install after hook
+		local method_name = k:match'^after_(.*)'
+		self:after(method_name, v)
+	elseif k:find'^override_' then --install override hook
+		local method_name = k:match'^override_(.*)'
+		self:override(method_name, v)
 	else
 		rawset(self, k, v)
 	end
 end
 
 function Object:is(class)
-	if self.super == class or self.classname == class then
+	local super = rawget(self, 'super')
+	if super == class or self.classname == class then
 		return true
-	elseif self.super then
-		return self.super:is(class)
+	elseif super then
+		return super:is(class)
+	else
+		return false
+	end
+end
+
+local function is(class, obj)
+	if type(obj) == 'table' and type(obj.is) == 'function' then
+		return obj:is(class)
 	else
 		return false
 	end
@@ -140,7 +174,7 @@ function Object:allpairs()
 	return function()
 		k,v = next(source,k)
 		if k == nil then
-			source = source.super
+			source = rawget(source, 'super')
 			if source == nil then return nil end
 			k,v = next(source)
 		end
@@ -159,16 +193,44 @@ function Object:properties()
 	return values
 end
 
+local function copy_table(dst, src, k, override)
+	local st = rawget(src, k)
+	if st then
+		local dt = rawget(dst, k)
+		if dt == nil then
+			dt = {}
+			rawset(dst, k, dt)
+		end
+		for k,v in pairs(st) do
+			if override or rawget(dt, k) == nil then
+				rawset(dt, k, v)
+			end
+		end
+	else
+		local super = rawget(src, 'super')
+		if super then
+			return copy_table(dst, super, k)
+		end
+	end
+end
+
 function Object:inherit(other, override)
+	other = other or rawget(self, 'super')
 	local properties = other:properties()
 	for k,v in pairs(properties) do
 		if (override or rawget(self, k) == nil)
 			and k ~= 'classname' --keep the classname (preserve identity)
 			and k ~= 'super' --keep super (preserve dynamic inheritance)
+			and k ~= '__getters' --getters are deep-copied
+			and k ~= '__setters' --getters are deep-copied
 		then
 			rawset(self, k, v)
 		end
 	end
+	--copy getters and setters
+	copy_table(self, other, '__getters', override)
+	copy_table(self, other, '__setters', override)
+
 	--copy metafields if metatables are different
 	local src_meta = getmetatable(other)
 	local dst_meta = getmetatable(self)
@@ -183,9 +245,9 @@ function Object:inherit(other, override)
 end
 
 function Object:detach()
-	self:inherit(self.super)
+	self:inherit(rawget(self, 'super'))
 	self.classname = self.classname --store the classname
-	self.super = nil
+	rawset(self, 'super', nil)
 	return self
 end
 
@@ -212,12 +274,12 @@ end
 function Object:on(event, func)
 	local ev, ns = event_namespace(event)
 	assert(ev, 'event name missing')
-	self.observers = self.observers or {}
-	self.observers[ev] = self.observers[ev] or {}
-	table.insert(self.observers[ev], func)
+	self.__observers = self.__observers or {}
+	self.__observers[ev] = self.__observers[ev] or {}
+	table.insert(self.__observers[ev], func)
 	if ns then
-		self.observers[ev][ns] = self.observers[ev][ns] or {}
-		table.insert(self.observers[ev][ns], func)
+		self.__observers[ev][ns] = self.__observers[ev][ns] or {}
+		table.insert(self.__observers[ev][ns], func)
 	end
 end
 
@@ -245,14 +307,14 @@ local function remove_all_ns(t_ev, ns)
 	t_ev[ns] = nil
 end
 function Object:off(event)
-	if not self.observers then return end
+	if not self.__observers then return end
 	local ev, ns = event_namespace(event)
 	if ev and ns then
-		remove_all_ns(self.observers[ev], ns)
+		remove_all_ns(self.__observers[ev], ns)
 	elseif ev then
-		self.observers[ev] = nil
+		self.__observers[ev] = nil
 	elseif ns then
-		for _,t_ev in pairs(self.observers) do
+		for _,t_ev in pairs(self.__observers) do
 			remove_all_ns(t_ev, ns)
 		end
 	end
@@ -264,7 +326,7 @@ function Object:fire(event, ...)
 		local ret = self[event](self, ...)
 		if ret ~= nil then return ret end
 	end
-	local t = self.observers and self.observers[event]
+	local t = self.__observers and self.__observers[event]
 	if t then
 		for i = 1, #t do
 			local handler = t[i]
@@ -282,7 +344,8 @@ end
 local function pad(s, n) return s..(' '):rep(n - #s) end
 
 local props_conv = {g = 'r', s = 'w', gs = 'rw', sg = 'rw'}
-local oo_state_fields = {state=1, super=1, observers=1}
+local oo_state_fields = {super=1, __getters=1, __setters=1, __state=1,
+	__observers=1}
 
 function Object:inspect(show_oo)
 	local glue = require'glue'
@@ -340,6 +403,7 @@ setmetatable(Object, meta)
 
 return setmetatable({
 	class = class,
+	is = is,
 	Object = Object,
 }, {
 	__index = function(t,k)

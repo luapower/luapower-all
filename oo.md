@@ -31,10 +31,10 @@ Object system with virtual properties and method overriding hooks.
 	  `Apple.state.foo`.
    * reading `Apple.foo` reads back `Apple.state.foo`.
  * method overriding hooks:
-   * `function Apple:before_pick(args...) return newargs... end` makes
-	  `Apple:pick()` call your method first.
-   * `function Apple:after_pick(ret...) return newret... end` makes
-	  `Apple:pick()` call your method last.
+   * `function Apple:before_pick(args...) end` makes `Apple:pick()` call your
+	method first.
+   * `function Apple:after_pick(args...) end` makes `Apple:pick()` call your
+	method last.
    * `function Apple:override_pick(inherited, ...)` lets you override
 	  `Apple:pick()` and call `inherited(self, ...)`.
  * events with optional namespace tags:
@@ -224,31 +224,29 @@ function Apple:before_pick(arg)
 	print('picking', arg)
 end
 
-function Apple:after_pick(ret)
-	print('picked', ret)
+function Apple:after_pick(arg)
+	print('picked', arg)
 	return ret
 end
 
 ~~~
 
 By defining `self:before_<method>(...)` a new implementation for
-`self.<method>` is created which calls the before hook (which receives all
-method's arguments) and then calls the existing (inherited) implementation
-with whatever the hook returns as arguments.
+`self.<method>` is created which calls the before hook and then calls the
+existing (inherited) implementation. Both calls receive all arguments.
 
 By defining `self:after_<method>(...)` a new implementation for
 `self.<method>` is created which calls the existing (inherited)
-implementation, after which it calls the hook with whatever the method
-returns as arguments, and returns whatever the hook returns.
+implementation, after which it calls the hook and returns whatever the hook
+returns. Both calls receive all arguments.
 
 By defining `self:override_<method>(inherited, ...)` you can access
 `self.super.<method>` as `inherited`.
 
 ~~~{.lua}
 function cls:before_init(foo, bar)
-  foo = foo or default_foo
-  bar = bar or default_bar
-  return foo, bar
+  self.foo = foo or default_foo
+  self.bar = bar or default_bar
 end
 
 function cls:after_init()
