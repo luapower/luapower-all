@@ -10,60 +10,61 @@ __math__
 `glue.clamp(x, min, max)`                                          clamp x in range
 __varargs__
 `glue.pack(...) -> t`                                              pack varargs
-`glue.unpack(t,[i][,j]) -> ...`                                    unpack varargs
+`glue.unpack(t, [i] [,j]) -> ...`                                  unpack varargs
 __tables__
 `glue.count(t) -> n`                                               number of keys in table
 `glue.index(t) -> dt`                                              switch keys with values
 `glue.keys(t[,sorted|cmp]) -> dt`                                  make a list of all the keys
-`glue.update(dt,t1,...) -> dt`                                     merge tables - overwrites keys
-`glue.merge(dt,t1,...) -> dt`                                      merge tables - no overwriting
-`glue.sortedpairs(t[,cmp]) -> iter() -> k,v`                       like pairs() but in key order
-`glue.attr(t,k1[,v])[k2] = v`                                      autofield pattern
+`glue.update(dt, t1, ...) -> dt`                                   merge tables - overwrites keys
+`glue.merge(dt, t1, ...) -> dt`                                    merge tables - no overwriting
+`glue.sortedpairs(t [,cmp]) -> iter() -> k, v`                     like pairs() but in key order
+`glue.attr(t, k1 [,v])[k2] = v`                                    autofield pattern
 __lists__
 `glue.indexof(v, t) -> i`                                          scan array for value
-`glue.extend(dt,t1,...) -> dt`                                     extend a list
-`glue.append(dt,v1,...) -> dt`                                     append non-nil values to a list
-`glue.shift(t,i,n) -> t`                                           shift list elements
+`glue.extend(dt, t1, ...) -> dt`                                   extend a list
+`glue.append(dt, v1, ...) -> dt`                                   append non-nil values to a list
+`glue.shift(t, i, n) -> t`                                         shift list elements
 `glue.reverse(t) -> t`                                             reverse list in place
 __strings__
 `glue.gsplit(s,sep[,start[,plain]]) -> iter() -> e[,captures...]`  split a string by a pattern
 `glue.lines(s) -> iter() -> s`                                     iterate the lines of a string
 `glue.trim(s) -> s`                                                remove padding
-`glue.escape(s[,mode]) -> pat`                                     escape magic pattern characters
-`glue.tohex(s|n[,upper]) -> s`                                     string to hex
+`glue.escape(s [,mode]) -> pat`                                    escape magic pattern characters
+`glue.tohex(s|n [,upper]) -> s`                                    string to hex
 `glue.fromhex(s) -> s`                                             hex to string
 __iterators__
-`glue.collect([i,]iterator) -> t`                                  collect iterated values into a list
+`glue.collect([i,] iterator) -> t`                                 collect iterated values into a list
 __closures__
 `glue.pass(...) -> ...`                                            does nothing, returns back all arguments
-`glue.memoize(f[,cache]) -> f`                                     memoize pattern
+`glue.memoize(f [,cache]) -> f`                                    memoize pattern
 __metatables__
-`glue.inherit(t,parent) -> t`                                      set or clear inheritance
+`glue.inherit(t, parent) -> t`                                     set or clear inheritance
+`glue.object(t, super) -> t`                                       create a class or object (see description)
 `glue.autotable([t]) -> t`                                         autotable pattern
 __i/o__
 `glue.canopen(filename[, mode]) -> filename | nil`                 check if a file exists and can be opened
-`glue.readfile(filename[,format][,open]) -> s | nil, err`          read the contents of a file into a string
-`glue.readpipe(cmd[,format][,open]) -> s | nil, err`               read the output of a command into a string
-`glue.writefile(filename,s|t|read,[format],[tmpfile])`             write data to file safely
+`glue.readfile(filename[, format][, open]) -> s | nil, err`        read the contents of a file into a string
+`glue.readpipe(cmd[,format][, open]) -> s | nil, err`              read the output of a command into a string
+`glue.writefile(filename, s|t|read, [format], [tmpfile])`          write data to file safely
 `glue.printer(out[, format]) -> f`                                 virtualize the print() function
 __errors__
-`glue.assert(v[,message[,format_args...]])`                        assert with error message formatting
+`glue.assert(v [,message [,format_args...]]) -> v`                 assert with error message formatting
 `glue.protect(func) -> protected_func`                             wrap an error-raising function
-`glue.pcall(f,...) -> true,... | false,traceback`                  pcall with traceback
-`glue.fpcall(f,...) -> result | nil,traceback`                     coding with finally and except
-`glue.fcall(f,...) -> result`
+`glue.pcall(f, ...) -> true, ... | false, traceback`               pcall with traceback
+`glue.fpcall(f, ...) -> result | nil, traceback`                   coding with finally and except
+`glue.fcall(f, ...) -> result`
 __modules__
 `glue.autoload(t, submodules) -> t`                                autoload table keys from submodules
 `glue.autoload(t, key, module|loader) -> t`                        autoload table keys from submodules
 `glue.bin`                                                         get the script's directory
-`glue.luapath(path[,index[,ext]])`                                 insert a path in package.path
-`glue.cpath(path[,index])`                                         insert a path in package.cpath
+`glue.luapath(path [,index [,ext]])`                               insert a path in package.path
+`glue.cpath(path [,index])`                                        insert a path in package.cpath
 __ffi__
-`glue.malloc([ctype,]size) -> cdata`                               allocate an array using system's malloc
+`glue.malloc([ctype, ]size) -> cdata`                              allocate an array using system's malloc
 `glue.malloc(ctype) -> cdata`                                      allocate a C type using system's malloc
 `glue.free(cdata)`                                                 free malloc'ed memory
 `glue.addr(ptr) -> number | string`                                store pointer address in Lua value
-`glue.ptr([ctype,]number|string) -> ptr`                           convert address to pointer
+`glue.ptr([ctype, ]number|string) -> ptr`                          convert address to pointer
 ------------------------------------------------------------------ ---------------------------------------------------------
 
 ## Math
@@ -191,7 +192,7 @@ t = glue.update({}, t)
 Static multiple inheritance:
 
 ~~~{.lua}
-C = glue.update({}, A, B) --#TODO: find real-world example of multiple inheritance
+C = glue.update({}, A, B)
 ~~~
 
 ------------------------------------------------------------------------------
@@ -435,7 +436,7 @@ arguments require the [tuple] module.
 
 ## Metatables
 
-### `glue.inherit(t,parent) -> t` <br> `glue.inherit(t,nil) -> t`
+### `glue.inherit(t, parent) -> t` <br> `glue.inherit(t, nil) -> t`
 
 Set a table to inherit attributes from a parent table, or clear inheritance.
 
@@ -474,7 +475,37 @@ _ENV = glue.inherit({},_G)
 Hints:
 
   * to get the effect of static (single or multiple) inheritance, use `glue.update`.
-  * when setting inheritance, you can pass in a function.
+
+* when setting inheritance, you can pass in a function.
+
+------------------------------------------------------------------------------
+
+### `glue.object([t][, super]) -> t`
+
+Create a class or object from `t` (which defaults to `{}`) by setting `t`
+as its own metatable, setting `t.__index` to `super` and `t.__call` to
+`super.__call`. This simple object model has the following qualities:
+
+  * the implementation is only 4 LOC (not a typo) and can thus be copy-pasted
+  into your module to avoid a dependency on the glue library.
+  * procedural instantiation with `t(...)` which calls `t:__call(...)`.
+  * small memory footprint (3 table slots and no additional tables).
+  * subclassing from instances is allowed (prototype-based inheritance).
+  * a stub class/instance constructor looks like this:
+    * `function t:__call(o) return glue.object(o, self) end`.
+  * a separate constructor to be used only for subclassing can be made with
+  the same pattern:
+    * `function t:subclass(c) return glue.object(c, self) end`.
+  * when overriding, super's methods can be called easily with:
+    * `self.__index.<method>(self, ...)`
+  * composite objects which need to instantiate other objects can be made
+  extendable easily by exposing those objects' classes as fields of the
+  container class with `container_class.other_class = other_class` and
+  instantiating with `self.other_object = self.other_class(...)` so that
+  replacing `other_class` in a sub-class of `container_class` is possible.
+  Moreso, instantiating with `self.other_object = self:other_class(...)`
+  (so with a colon) passes the container _object_ to `other_class`'s
+  constructor automatically which is usually what is desired.
 
 ------------------------------------------------------------------------------
 
@@ -821,7 +852,7 @@ glue.indexof, glue.extend, glue.append, glue.shift, glue.reverse,
 glue.gsplit, glue.lines, glue.trim, glue.escape, glue.tohex, glue.fromhex,
 glue.collect,
 glue.pass, glue.memoize,
-glue.inherit, glue.autotable,
+glue.inherit, glue.object, glue.autotable,
 glue.canopen, glue.readfile, glue.readpipe, glue.writefile, glue.printer,
 glue.assert, glue.protect, glue.pcall, glue.fpcall, glue.fcall,
 glue.autoload, glue.bin, glue.luapath, glue.cpath,

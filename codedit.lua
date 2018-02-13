@@ -4,8 +4,12 @@
 
 if not ... then require'codedit_demo'; return end
 
-local function inherit(t, super)
-	return setmetatable(t, {__index = super})
+--prototype-based dynamic inheritance with __call constructor.
+local function object(o, super)
+	o = o or {}
+	o.__index = super
+	o.__call = super and super.__call
+	return setmetatable(o, o)
 end
 
 --str module: plain text boundaries ------------------------------------------
@@ -350,12 +354,12 @@ local tabs = {
 
 --buffer object: multi-line text navigation and editing ----------------------
 
-local buffer = {
-	line_terminator = '\n', --line terminator to use when inserting text
-}
+local buffer = object()
 
-function buffer:new()
-	self = setmetatable({}, {__index = self})
+buffer.line_terminator = '\n' --line terminator to use when inserting text
+
+function buffer:__call()
+	self = object({}, self)
 	self:_init()
 	return self
 end
@@ -811,36 +815,41 @@ end
 
 --cursor object: caret-based navigation and editing --------------------------
 
-local cursor = {
-	--navigation options
-	restrict_eol = true, --don't allow caret past end-of-line
-	restrict_eof = true, --don't allow caret past end-of-file
-	land_bof = true, --go at bof if cursor goes up past it
-	land_eof = true, --go at eof if cursor goes down past it (needs restrict_eof)
-	word_chars = '^[a-zA-Z_]', --for jumping between words
-	jump_tabstops = 'always', --'always', 'indent', 'never'
-		--where to move the cursor between tabstops instead of individual spaces.
-	delete_tabstops = 'always', --'always', 'indent', 'never'
-	--editing state
-	insert_mode = true, --insert or overwrite when typing characters
-	--editing options
-	auto_indent = true,
-		--pressing enter copies the indentation of the current line over to the following line
-	insert_tabs = 'indent', --'never', 'indent', 'always'
-		--where to insert a tab instead of enough spaces that make up a tab.
-	insert_align_list = false, --TODO: insert whitespace up to the next word on the above line
-	insert_align_args = false, --TODO: insert whitespace up to after '(' on the above line
-	--view overrides
-	thickness = nil,
-	color = nil,
-	line_highlight_color = nil,
-}
+local cursor = object()
 
-function cursor:new(buffer, view, visible)
-	self = inherit({
-		buffer = buffer,
-		view = view,
-	}, self)
+--navigation options
+cursor.restrict_eol = true --don't allow caret past end-of-line
+cursor.restrict_eof = true --don't allow caret past end-of-file
+cursor.land_bof = true --go at bof if cursor goes up past it
+cursor.land_eof = true --go at eof if cursor goes down past it (needs restrict_eof)
+cursor.word_chars = '^[a-zA-Z_]' --for jumping between words
+cursor.jump_tabstops = 'always' --'always', 'indent', 'never'
+
+--where to move the cursor between tabstops instead of individual spaces.
+cursor.delete_tabstops = 'always' --'always', 'indent', 'never'
+
+--editing state
+cursor.insert_mode = true --insert or overwrite when typing characters
+
+--editing options
+cursor.auto_indent = true
+
+--pressing enter copies the indentation of the current line over to the following line
+cursor.insert_tabs = 'indent' --'never', 'indent', 'always'
+
+--where to insert a tab instead of enough spaces that make up a tab.
+cursor.insert_align_list = false --TODO: insert whitespace up to the next word on the above line
+cursor.insert_align_args = false --TODO: insert whitespace up to after '(' on the above line
+
+--view overrides
+cursor.thickness = nil
+cursor.color = nil
+cursor.line_highlight_color = nil
+
+function cursor:__call(buffer, view, visible)
+	self = object({}, self)
+	self.buffer = buffer
+	self.view = view
 	self.visible = visible
 	self.line = 1
 	self.i = 1 --current byte index in current line
@@ -1285,20 +1294,19 @@ end
 --line1,i1 is the first selected char and line2,i2 is the char immediately
 --after the last selected char.
 
-local selection = {
-	--view overrides
-	background_color = nil,
-	text_color = nil,
-	line_rect = nil, --line_rect(line) -> x, y, w, h
-}
+local selection = object()
+
+--view overrides
+selection.background_color = nil
+selection.text_color = nil
+selection.line_rect = nil --line_rect(line) -> x, y, w, h
 
 --lifetime
 
-function selection:new(buffer, view, visible)
-	self = setmetatable({
-		buffer = buffer,
-		view = view,
-	}, {__index = self})
+function selection:__call(buffer, view, visible)
+	self = object({}, self)
+	self.buffer = buffer
+	self.view = view
 	self.visible = visible
 	self.line1, self.i1 = 1, 1
 	self.line2, self.i2 = 1, 1
@@ -1506,11 +1514,11 @@ end
 --line1,line2 are the horizontal boundaries and col1,col2 are the vertical
 --boundaries of the rectangle.
 
-local block_selection = {block = true}
+local block_selection = object{block = true}
 
 --inherited
 
-block_selection.new = selection.new
+block_selection.__call = selection.__call
 block_selection.free = selection.free
 block_selection.save_state = selection.save_state
 block_selection.load_state = selection.load_state
@@ -1827,8 +1835,12 @@ end
 
 local hl = {}
 
-function hl:new(buffer, lang)
-	return glue.inherit({buffer = buffer, lang = lang, last_line = 0}, self)
+function hl:__call(buffer, lang)
+	self = object({}, self)
+	self.buffer = buffer
+	self.lang = lang
+	self.last_line = 0
+	return self
 end
 
 function hl:invalidate(line)
@@ -1841,43 +1853,6 @@ end
 
 function hl:lines()
 	return project_lines(self.tokens, 1, 1, self.buffer)
-end
-
-
-if not ... then
-
-	if false then
-
-		local text = [==[
---[[
-]]
-A
-]==]
-
-		local buffer = require'codedit_buffer'; require'codedit_undo'
-		local view = {tabsize = 3, invalidate = function() end}
-		local editor = {getstate = function() end, setstate = function() end}
-		local buf = buffer:new(editor, view, text)
-
-		local s = select_text(buf, 1, 1)
-		local t = lex_text(s, 'lua')
-
-		for i, p1, p2, style in tokens(t) do
-			pp(i, style, p1, p2, s:sub(p1, p2 - 1))
-		end
-
-		print('ti', 'i', 'j', 'line1', 'p1', 'line2', 'p2', 'style')
-		for ti, line1, p1, line2, p2 in project_tokens(t, 1, 1, buf) do
-			local ti, i, j, style = unpack_token(t, ti)
-			pp(ti, i, j, line1, p1, line2, p2, style)
-		end
-
-	else
-
-		---if not ... then require'codedit_demo' end
-
-	end
-
 end
 
 local hl = {
@@ -1910,35 +1885,41 @@ local hl = {
 
 ]]
 
-if not ... then require'codedit_demo'; return end
+local view = object()
 
-local view = {
-	--tab expansion
-	tabsize = 3,
-	tabstop_margin = 1, --min. space in pixels between tab-separated chunks
-	--font metrics
-	line_h = 16,
-	char_w = 8,
-	char_baseline = 13,
-	--cursor metrics
-	cursor_xoffset = -1,     --cursor x offset from a char's left corner
-	cursor_xoffset_col1 = 0, --cursor x offset for the first column
-	cursor_thickness = 2,
-	--scrolling
-	cursor_margins = {top = 16, left = 0, right = 0, bottom = 16},
-	--rendering
-	highlight_cursor_lines = true,
-	lang = nil, --optional lexer to use for syntax highlighting
-	--reflowing
-	line_width = 72,
-}
+--tab expansion
+view.tabsize = 3
+view.tabstop_margin = 1 --min. space in pixels between tab-separated chunks
+
+--font metrics
+view.line_h = nil   --to be set when setting the font
+view.ascender = nil --to be set when setting the font
+
+--cursor metrics
+view.cursor_xoffset = -1     --cursor x offset from a char's left corner
+view.cursor_xoffset_col1 = 0 --cursor x offset for the first column
+view.cursor_thickness = 2
+
+--scrolling
+view.cursor_margins = {top = 16, left = 0, right = 0, bottom = 16}
+
+--rendering
+view.highlight_cursor_lines = true
+view.lang = nil --optional lexer to use for syntax highlighting
+
+--reflowing
+view.line_width = 72
 
 --lifetime
 
-function view:new(buffer)
-	self = inherit({
-		buffer = buffer,
-	}, self)
+function view:__call(buffer)
+	self = object({}, self)
+	self:init(buffer)
+	return self
+end
+
+function view:init(buffer)
+	self.buffer = buffer
 	--objects to render
 	self.selections = {} --{selections = true, ...}
 	self.cursors = {} --{cursor = true, ...}
@@ -1947,7 +1928,6 @@ function view:new(buffer)
 	self.scroll_x = 0 --client rect position relative to the clip rect
 	self.scroll_y = 0
 	self.last_valid_line = 0 --for incremental lexing
-	return self
 end
 
 --adding objects to render
@@ -1992,10 +1972,6 @@ end
 
 --tabstop metrics ------------------------------------------------------------
 
-function view:font_changed()
-	--stub
-end
-
 --pixel width of n space characters
 function view:space_width(n)
 	return self:char_advance_x(' ', 1) * n
@@ -2021,9 +1997,7 @@ end
 --text positioning -----------------------------------------------------------
 
 --x-advance of the grapheme cluster at s[i]
-function view:char_advance_x(s, i)
-	return self.char_w
-end
+function view:char_advance_x(s, i) error'stub' end
 
 --x coord of the grapheme cluster following the one at s[i] which is at x
 function view:next_x(x, s, i)
@@ -2042,6 +2016,15 @@ function view:char_x(line, i)
 	for i1, s in self.buffer:chars(line) do
 		if i == i1 then break end
 		x = self:next_x(x, s, i1)
+	end
+	return x
+end
+
+function view:string_width(s, i, j)
+	local x = 0
+	for i in str.chars(s, i) do
+		if j and i > j then break end
+		x = self:next_x(x, s, i)
 	end
 	return x
 end
@@ -2148,7 +2131,7 @@ end
 function view:_cursor_rect_overwrite_mode(cursor)
 	local x, y, w = self:cursor_coords(cursor)
 	local h = cursor.thickness or self.cursor_thickness
-	y = y + self.char_baseline + 1 --1 pixel under the baseline
+	y = y + self.ascender + 1
 	return x, y, w, h
 end
 
@@ -2394,7 +2377,7 @@ function view:draw_rect(x, y, w, h, color) error'stub' end
 function view:clip(x, y, w, h) error'stub' end
 
 function view:draw_string(cx, cy, s, color, i, j)
-	cy = cy + self.char_baseline
+	cy = cy + self.ascender
 	local x = 0
 	for i in str.chars(s, i) do
 		if j and i >= j then
@@ -2403,7 +2386,16 @@ function view:draw_string(cx, cy, s, color, i, j)
 		if not str.iswhitespace(s, i) then
 			self:draw_char(cx + x, cy, s, i, color)
 		end
-		x = x + self:next_x(x, s, i)
+		x = self:next_x(x, s, i)
+	end
+end
+
+function view:draw_string_aligned(cx, cy, s, color, i, j, align, cw)
+	if align == 'right' then
+		local w = self:string_width(s, i, j)
+		self:draw_string(cx + cw - w, cy, s, color, i, j)
+	else
+		self:draw_string(cx, cy, s, color, i, j)
 	end
 end
 
@@ -2414,6 +2406,7 @@ function view:draw_buffer(cx, cy, line1, i1, line2, i2, color)
 	line1 = clamp(line1, minline, maxline+1)
 	line2 = clamp(line2, minline-1, maxline)
 
+	cy = cy + self.ascender
 	local _i1, _i2 = i1, i2
 	for line = line1, line2 do
 		i1, i2 = _i1, _i2
@@ -2425,7 +2418,7 @@ function view:draw_buffer(cx, cy, line1, i1, line2, i2, color)
 		for i, s in self.buffer:chars(line) do
 			if i >= i1 and i <= i2 then
 				if not str.iswhitespace(s, i) then
-					self:draw_char(cx + x, cy + y + self.char_baseline, s, i, color)
+					self:draw_char(cx + x, cy + y, s, i, color)
 				end
 			end
 			x = self:next_x(x, s, i)
@@ -2575,11 +2568,10 @@ function view:render()
 
 	self.scroll_x, self.scroll_y, self.clip_x, self.clip_y, self.clip_w, self.clip_h =
 		self:draw_scrollbox(
-			self.x + margins_w,
-			self.y,
-			self.w - margins_w,
-			self.h,
-			self.scroll_x, self.scroll_y, client_w, client_h)
+			self.x + margins_w, self.y,
+			self.w - margins_w, self.h,
+			self.scroll_x, self.scroll_y,
+			client_w, client_h)
 
 	for i,margin in ipairs(self.margins) do
 		self:draw_margin(margin)
@@ -2589,20 +2581,23 @@ end
 
 --margin base object ---------------------------------------------------------
 
-local margin = {
-	w = 50,
-	--view overrides
-	text_color = nil,
-	background_color = nil,
-	highlighted_text_color = nil,
-	highlighted_background_color = nil,
-}
+local margin = object()
 
-function margin:new(buffer, view, t, pos)
-	self = inherit(t or {
-		buffer = buffer,
-		view = view,
-	}, self)
+margin.w = 50
+margin.margin_left = 4
+margin.margin_right = 4
+margin.min_digits = 4
+
+--view overrides
+margin.text_color = nil
+margin.background_color = nil
+margin.highlighted_text_color = nil
+margin.highlighted_background_color = nil
+
+function margin:__call(buffer, view)
+	self = object({}, self)
+	self.buffer = buffer
+	self.view = view
 	self.view:add_margin(self)
 	return self
 end
@@ -2617,36 +2612,40 @@ function margin:hit_test(x, y)
 	return self.view:margin_hit_test(self, x, y)
 end
 
-local ln_margin = inherit({}, margin)
+--line numbers margin --------------------------------------------------------
+
+local ln_margin = object({}, margin)
 
 local function digits(n) --number of base-10 digits of a number
 	return math.floor(math.log10(n) + 1)
 end
 
---line numbers margin --------------------------------------------------------
-
 function ln_margin:get_width()
-	return (digits(#self.buffer.lines) + 2) * self.view.char_w
+	return math.max(self.min_digits, digits(#self.buffer.lines))
+		* self.view:char_advance_x('0', 1)
+		+ self.margin_left
+		+ self.margin_right
 end
 
 function ln_margin:draw_line(line, cx, cy, cw, ch, highlighted)
 
 	if highlighted then
-		local color = self.highlighted_background_color or 'line_number_highlighted_background'
+		local color =
+			self.highlighted_background_color
+			or 'line_number_highlighted_background'
 		self.view:draw_rect(cx, cy, cw, ch, color)
 	end
 
 	local color = self.line_number_separator_color or 'line_number_separator'
 	self.view:draw_rect(cx + cw - 1, cy, 1, ch, color)
 
+	local color = highlighted
+		and (self.highlighted_text_color or 'line_number_highlighted_text')
+		or (self.text_color or 'line_number_text')
+
 	local s = tostring(line)
-	cx = cx + cw - (#s + 1) * self.view.char_w
-	local color = highlighted and
-							(self.highlighted_text_color or 'line_number_highlighted_text') or
-							(self.text_color or 'line_number_text')
-
-	self.view:draw_string(cx, cy, s, color)
-
+	self.view:draw_string_aligned(cx + self.margin_left, cy, s, color,
+		nil, nil, 'right', cw - self.margin_right - self.margin_left)
 end
 
 --blame margin ---------------------------------------------------------------
@@ -2654,9 +2653,9 @@ end
 --TODO: synchronize the blame list with buffer:insert_line() / buffer:remove_line() / buffer:setline() operations
 --TODO: request blame info again after each file save
 
-local blame_margin = inherit({
-	blame_command = 'hg blame -u "%s"',
-}, margin)
+local blame_margin = object({}, margin)
+
+blame_margin.blame_command = 'hg blame -u "%s"'
 
 function blame_margin:get_blame_info(filename)
 	self.blame_info = {}
@@ -2667,11 +2666,10 @@ function blame_margin:get_blame_info(filename)
 	local s = f:read('*a')
 	for _,line in str.lines(s) do
 		local user = line:match('([^%:]+)%:') or ''
-		self.w = math.max(self.w, str.len(user))
+		self.w = math.max(self.w, self.view:string_width(user))
 		table.insert(self.blame_info, user)
 	end
 	f:close()
-	self.w = self.w * self.view.char_w
 end
 
 function blame_margin:draw_line(line, cx, cy, cw, ch, highlighted)
@@ -2690,29 +2688,28 @@ end
 
 --editor object: putting it all together (aka the controller) ----------------
 
-local editor = {
-	--subclasses
-	buffer = buffer,
-	line_selection = selection,
-	block_selection = block_selection,
-	cursor = cursor,
-	line_numbers_margin = ln_margin,
-	blame_margin = blame_margin,
-	view = view,
-	--margins
-	line_numbers = true,
-	blame = false,
-	--keyboard state
-	next_reflow_mode = {left = 'justify', justify = 'left'},
-	default_reflow_mode = 'left',
-}
+local editor = object()
+--subclasses
+editor.buffer = buffer
+editor.line_selection = selection
+editor.block_selection = block_selection
+editor.cursor = cursor
+editor.line_numbers_margin = ln_margin
+editor.blame_margin = blame_margin
+editor.view = view
+--margins
+editor.line_numbers = true
+editor.blame = false
+--keyboard state
+editor.next_reflow_mode = {left = 'justify', justify = 'left'}
+editor.default_reflow_mode = 'left'
 
-function editor:new(options)
-	self = inherit(options or {}, self)
+function editor:__call(options)
+	self = setmetatable(options or {}, {__index = self})
 
 	--core objects
-	self.buffer = self.buffer:new()
-	self.view = self.view:new(self.buffer)
+	self.buffer = self.buffer()
+	self.view = self.view(self.buffer)
 	if self.text then
 		self.buffer:load(self.text)
 	end
@@ -2742,23 +2739,23 @@ end
 --object constructors
 
 function editor:create_cursor(visible)
-	return self.cursor:new(self.buffer, self.view, visible)
+	return self.cursor(self.buffer, self.view, visible)
 end
 
 function editor:create_line_selection(visible)
-	return self.line_selection:new(self.buffer, self.view, visible)
+	return self.line_selection(self.buffer, self.view, visible)
 end
 
 function editor:create_block_selection(visible)
-	return self.block_selection:new(self.buffer, self.view, visible)
+	return self.block_selection(self.buffer, self.view, visible)
 end
 
 function editor:create_line_numbers_margin()
-	return self.line_numbers_margin:new(self.buffer, self.view)
+	return self.line_numbers_margin(self.buffer, self.view)
 end
 
 function editor:create_blame_margin()
-	return self.blame_margin:new(self.buffer, self.view)
+	return self.blame_margin(self.buffer, self.view)
 end
 
 --undo/redo integration
@@ -3258,6 +3255,7 @@ end
 
 return {
 	str = str,
+	object = object,
 	buffer = buffer,
 	line_selection = selection,
 	block_selection = block_selection,

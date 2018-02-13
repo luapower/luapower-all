@@ -131,7 +131,7 @@ local tinsert, tremove = table.insert, table.remove
 --to the right.
 local function insert(t, i, n)
 	if n == 1 then --shift 1
-		tinsert(t, i, t[i])
+		tinsert(t, i, false)
 		return
 	end
 	for p = #t,i,-1 do --shift n
@@ -306,6 +306,14 @@ function glue.inherit(t, parent)
 		setmetatable(t, {__index = parent})
 	end
 	return t
+end
+
+--prototype-based dynamic inheritance with __call constructor.
+function glue.object(o, super)
+	o = o or {}
+	o.__index = super
+	o.__call = super and super.__call
+	return setmetatable(o, o)
 end
 
 --get the value of a table field, and if the field is not present in the
