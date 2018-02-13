@@ -366,14 +366,24 @@ function Object:inspect(show_oo)
 			supers[#supers+1] = source
 		end
 		if sources[k] == src then
-			if type(k) == 'string' and k:find'^[gs]et_' then
-				local what, prop = k:match'^([gs])et_(.*)'
-				props_t[prop] = (props_t[prop] or '')..what
-			else
-				keys_t[k] = true
+			keys_t[k] = true
+		end
+	end
+	if self.__getters then
+		for prop in pairs(self.__getters) do
+			if prop ~= '__index' then
+				props_t[prop] = 'g'
 			end
 		end
 	end
+	if self.__setters then
+		for prop in pairs(self.__setters) do
+			if prop ~= '__index' then
+				props_t[prop] = (props_t[prop] or '')..'s'
+			end
+		end
+	end
+
 	--print values
 	for i,super in ipairs(supers) do
 		if show_oo or super ~= Object then
