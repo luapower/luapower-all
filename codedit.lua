@@ -5,7 +5,7 @@
 if not ... then require'codedit_demo'; return end
 
 --prototype-based dynamic inheritance with __call constructor.
-local function object(o, super)
+local function object(super, o)
 	o = o or {}
 	o.__index = super
 	o.__call = super and super.__call
@@ -359,7 +359,7 @@ local buffer = object()
 buffer.line_terminator = '\n' --line terminator to use when inserting text
 
 function buffer:__call()
-	self = object({}, self)
+	self = object(self)
 	self:_init()
 	return self
 end
@@ -847,7 +847,7 @@ cursor.color = nil
 cursor.line_highlight_color = nil
 
 function cursor:__call(buffer, view, visible)
-	self = object({}, self)
+	self = object(self)
 	self.buffer = buffer
 	self.view = view
 	self.visible = visible
@@ -1304,7 +1304,7 @@ selection.line_rect = nil --line_rect(line) -> x, y, w, h
 --lifetime
 
 function selection:__call(buffer, view, visible)
-	self = object({}, self)
+	self = object(self)
 	self.buffer = buffer
 	self.view = view
 	self.visible = visible
@@ -1836,7 +1836,7 @@ end
 local hl = {}
 
 function hl:__call(buffer, lang)
-	self = object({}, self)
+	self = object(self)
 	self.buffer = buffer
 	self.lang = lang
 	self.last_line = 0
@@ -1913,7 +1913,7 @@ view.line_width = 72
 --lifetime
 
 function view:__call(buffer)
-	self = object({}, self)
+	self = object(self)
 	self:init(buffer)
 	return self
 end
@@ -2595,7 +2595,7 @@ margin.highlighted_text_color = nil
 margin.highlighted_background_color = nil
 
 function margin:__call(buffer, view)
-	self = object({}, self)
+	self = object(self)
 	self.buffer = buffer
 	self.view = view
 	self.view:add_margin(self)
@@ -2614,7 +2614,7 @@ end
 
 --line numbers margin --------------------------------------------------------
 
-local ln_margin = object({}, margin)
+local ln_margin = object(margin)
 
 local function digits(n) --number of base-10 digits of a number
 	return math.floor(math.log10(n) + 1)
@@ -2653,7 +2653,7 @@ end
 --TODO: synchronize the blame list with buffer:insert_line() / buffer:remove_line() / buffer:setline() operations
 --TODO: request blame info again after each file save
 
-local blame_margin = object({}, margin)
+local blame_margin = object(margin)
 
 blame_margin.blame_command = 'hg blame -u "%s"'
 

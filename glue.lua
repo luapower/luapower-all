@@ -309,7 +309,7 @@ function glue.inherit(t, parent)
 end
 
 --prototype-based dynamic inheritance with __call constructor.
-function glue.object(o, super)
+function glue.object(super, o)
 	o = o or {}
 	o.__index = super
 	o.__call = super and super.__call

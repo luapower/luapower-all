@@ -5,18 +5,12 @@ if not ... then require'codedit_demo'; return end
 local codedit = require'codedit'
 local glue = require'glue'
 local player = require'cplayer'
-local ft = require'freetype'
 local nw = require'nw'
-local lib = ft:new()
 local cairo = require'cairo'
---[[
-local view = require'codedit_view'
-]]
+local ft = require'freetype'
+local ft_lib = ft:new()
 
-local view = glue.inherit({
-	--font metrics
-	font_file = 'Fixedsys',
-	glyph_size = 16,
+local view = codedit.object(codedit.view, {
 	--scrollbox options
 	vscroll = 'always',
 	hscroll = 'auto',
@@ -63,7 +57,16 @@ local view = glue.inherit({
 	minimap = true,
 	smooth_vscroll = false,
 	smooth_hscroll = false,
-}, codedit.view)
+})
+
+view._init = view.init
+
+function view:init()
+	self:_init()
+	self._glyph_cache = {}
+	self:font_file(self._font_file)
+	self:font_size(self._font_size)
+end
 
 function view:draw_scrollbox(x, y, w, h, cx, cy, cw, ch)
 	local scroll_x, scroll_y, clip_x, clip_y, clip_w, clip_h = self.player:scrollbox{
@@ -81,8 +84,8 @@ function view:draw_scrollbox(x, y, w, h, cx, cy, cw, ch)
 		vscroll_w = self.vscroll_w,
 		hscroll_h = self.hscroll_h,
 		page_size = self.scroll_page_size or ch,
-		--vscroll_step = self.smooth_vscroll and 1 or self.linesize,
-		--hscroll_step = self.smooth_hscroll and 1 or self.charsize,
+		--vscroll_step = self.smooth_vscroll and 1 or self.line_h,
+		--hscroll_step = self.smooth_hscroll and 1 or self:char_width' ',
 	}
 
 	--local cr = self.player.cr
@@ -107,75 +110,77 @@ function view:draw_rect(x, y, w, h, color)
 	self.player:rect(x, y, w, h, self.colors[color])
 end
 
-local cache = {}
-
-function player:clear_glpyh_cache()
-	for _,t in pairs(cache) do
+function view:clear_glpyh_cache()
+	for _,t in pairs(self._glyph_cache) do
 		if t.image then
 			t.image:free()
-			t.bitmap:free(t.library)
+			t.library:free_bitmap(t.bitmap)
 		end
 	end
-	cache = {}
+	self._glyph_cache = {}
 end
 
-function player:load_glyph(s, i, face, glyph_size)
+function view:load_glyph(glyph_index)
+
+	local face = self.ft_face
+
+	local load_mode = ft.FT_LOAD_IGNORE_GLOBAL_ADVANCE_WIDTH
+	local render_mode = ft.FT_RENDER_MODE_LIGHT
+
+	face:set_char_size(self:font_size() * 64)
+	face:load_glyph(glyph_index, load_mode)
+
+	local glyph = face.glyph
+
+	if glyph.format ~= ft.FT_GLYPH_FORMAT_BITMAP then
+		glyph:render(render_mode)
+	end
+	assert(glyph.format == ft.FT_GLYPH_FORMAT_BITMAP)
+
+	local t = {}
+	t.advance_x = glyph.advance.x
+
+	if glyph.bitmap.width == 0 or glyph.bitmap.rows == 0 then
+		return t
+	end
+
+	local bitmap = glyph.library:bitmap()
+	glyph.library:convert_bitmap(glyph.bitmap, bitmap, 4)
+
+	local stride = cairo.stride('a8', bitmap.width)
+
+	assert(bitmap.pixel_mode == ft.FT_PIXEL_MODE_GRAY)
+	assert(bitmap.pitch == stride)
+
+	local image = cairo.image_surface{
+		data = bitmap.buffer,
+		format = 'g8',
+		w = bitmap.width,
+		h = bitmap.rows,
+		stride = stride,
+	}
+
+	t.image = image
+	t.bitmap = bitmap
+	t.library = glyph.library
+	t.bitmap_left = glyph.bitmap_left
+	t.bitmap_top = glyph.bitmap_top
+
+	return t
+end
+
+function view:get_glyph(s, i)
 	--local j = (str.next_char(s, i) or #s + 1) - 1
 	local charcode = s:byte(i,i) --TODO: utf8 -> utf32
 	if charcode == nil then return end
 
-	local t = cache[charcode]
+	local t = self._glyph_cache[charcode]
 	if not t then
-
-		face:select_charmap(ft.FT_ENCODING_UNICODE)
-		local glyph_index = face:char_index(charcode)
-
-		local load_mode = bit.bor(
-			ft.FT_LOAD_IGNORE_GLOBAL_ADVANCE_WIDTH,
-			--ft.FT_LOAD_NO_BITMAP,
-			ft.FT_LOAD_NO_HINTING,
-			ft.FT_LOAD_NO_AUTOHINT)
-
-		local render_mode = ft.FT_RENDER_MODE_LIGHT
-
-		face:set_char_size(glyph_size * 64)
-		face:load_glyph(glyph_index, load_mode)
-
-		local glyph = face.glyph
-
-		if glyph.format ~= ft.FT_GLYPH_FORMAT_BITMAP then
-			glyph:render(render_mode)
-		end
-		assert(glyph.format == ft.FT_GLYPH_FORMAT_BITMAP)
-
-		t = {}
-		t.advance_x = glyph.advance.x
-
-		if glyph.bitmap.width > 0 and glyph.bitmap.rows > 0 then
-
-			local bitmap = glyph.library:new_bitmap()
-			glyph.library:convert_bitmap(glyph.bitmap, bitmap, 4)
-
-			local cairo_stride = cairo.stride('a8', bitmap.width)
-
-			assert(bitmap.pixel_mode == ft.FT_PIXEL_MODE_GRAY)
-			assert(bitmap.pitch == cairo_stride)
-
-			local image = cairo.image_surface{
-				data = bitmap.buffer,
-				format = 'g8',
-				w = bitmap.width,
-				h = bitmap.rows,
-				stride = cairo_stride,
-			}
-			t.image = image
-			t.bitmap = bitmap
-			t.library = glyph.library
-			t.bitmap_left = glyph.bitmap_left
-			t.bitmap_top = glyph.bitmap_top
-		end
+		self.ft_face:select_charmap(ft.FT_ENCODING_UNICODE)
+		local glyph_index = self.ft_face:char_index(charcode)
+		t = self:load_glyph(glyph_index)
 	end
-	cache[charcode] = t
+	self._glyph_cache[charcode] = t
 	if not t.advance_x then return end
 	return t
 end
@@ -185,18 +190,14 @@ function player:render_glyph(glyph, x, y)
 	self.cr:mask(glyph.image, x + glyph.bitmap_left, y - glyph.bitmap_top)
 end
 
-function view:load_glyph(s, i)
-	return self.player:load_glyph(s, i, self.ft_face, self.glyph_size)
-end
-
 function view:render_glyph(s, i, x, y)
-	local glyph = self:load_glyph(s, i)
+	local glyph = self:get_glyph(s, i)
 	if not glyph then return end
 	self.player:render_glyph(glyph, x, y)
 end
 
 function view:char_advance_x(s, i)
-	local glyph = self:load_glyph(s, i)
+	local glyph = self:get_glyph(s, i)
 	return glyph and (glyph.advance_x / 64) or 0
 end
 
@@ -260,26 +261,35 @@ function view:render()
 	self.player.cr:reset_clip()
 end
 
-local editor = glue.inherit({view = view}, codedit.editor)
+local editor = codedit.object(codedit.editor, {view = view})
+
+function view:font_file(font_file)
+	if not font_file then
+		return self._font_file
+	end
+	self:clear_glpyh_cache()
+	if self.ft_face then
+		self.ft_face:free()
+	end
+	self._font_file = font_file
+	self.ft_face = ft_lib:face(font_file)
+	self:font_size(self._font_size)
+end
+
+function view:font_size(font_size)
+	if not font_size then
+		return self._font_size
+	end
+	self:clear_glpyh_cache()
+	self._font_size = font_size
+	self.ft_face:set_pixel_sizes(self._font_size)
+	self.line_h = self.ft_face.size.metrics.height / 64
+	self.ascender = self.ft_face.size.metrics.ascender / 64
+end
 
 function editor:render()
 	local cr = self.player.cr
 	for i = 1,1 do
-
-		if self.view.ft_face_file ~= self.view.font_file then
-			if self.view.ft_face then
-				self.view.ft_face:free()
-			end
-			self.view.ft_face = lib:new_face(self.view.font_file)
-			self.view.ft_face_file = self.view.font_file
-		end
-		self.player:clear_glpyh_cache()
-		local line_h = self.view.ft_face.size.metrics.height / 64
-		if line_h > 0 then
-			self.view.line_h = line_h
-		end
-		self.view:font_changed()
-
 		self.view:render()
 		self.view:render_eol_markers()
 		--cr:restore()
@@ -305,9 +315,10 @@ function player:code_editor(t)
 	local id = assert(t.id, 'id missing')
 	local ed = t
 	if not t.buffer or not t.buffer.lines then
-		t.view = t.view and glue.inherit(t.view, view) or view
-		t.cursor = t.cursor and glue.inherit(t.cursor, editor.cursor) or editor.cursor
-		ed = editor:new(t)
+		t.view = t.view and codedit.object(view, t.view) or view
+		t.cursor = t.cursor and
+			coededit.object(editor.cursor, t.cursor) or editor.cursor
+		ed = editor(t)
 		ed.cursor.changed.blinking = true
 	end
 	ed.player = self

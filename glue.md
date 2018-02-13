@@ -39,7 +39,7 @@ __closures__
 `glue.memoize(f [,cache]) -> f`                                    memoize pattern
 __metatables__
 `glue.inherit(t, parent) -> t`                                     set or clear inheritance
-`glue.object(t, super) -> t`                                       create a class or object (see description)
+`glue.object([super][, t]) -> t`                                   create a class or object (see description)
 `glue.autotable([t]) -> t`                                         autotable pattern
 __i/o__
 `glue.canopen(filename[, mode]) -> filename | nil`                 check if a file exists and can be opened
@@ -480,7 +480,7 @@ Hints:
 
 ------------------------------------------------------------------------------
 
-### `glue.object([t][, super]) -> t`
+### `glue.object([super][, t]) -> t`
 
 Create a class or object from `t` (which defaults to `{}`) by setting `t`
 as its own metatable, setting `t.__index` to `super` and `t.__call` to
