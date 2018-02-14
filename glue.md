@@ -487,15 +487,15 @@ as its own metatable, setting `t.__index` to `super` and `t.__call` to
 `super.__call`. This simple object model has the following qualities:
 
   * the implementation is only 4 LOC (not a typo) and can thus be copy-pasted
-  into your module to avoid a dependency on the glue library.
+  into any module to avoid a dependency on the glue library.
   * procedural instantiation with `t(...)` which calls `t:__call(...)`.
   * small memory footprint (3 table slots and no additional tables).
   * subclassing from instances is allowed (prototype-based inheritance).
   * a stub class/instance constructor looks like this:
-    * `function t:__call(o) return glue.object(o, self) end`.
+    * `function t:__call(o) return glue.object(self, o) end`.
   * a separate constructor to be used only for subclassing can be made with
   the same pattern:
-    * `function t:subclass(c) return glue.object(c, self) end`.
+    * `function t:subclass(c) return glue.object(self, c) end`.
   * when overriding, super's methods can be called easily with:
     * `self.__index.<method>(self, ...)`
   * composite objects which need to instantiate other objects can be made
@@ -675,10 +675,11 @@ the key - submodule associations one by one.
 
 #### Motivation
 
-Module autoloading allows you to split the implementation of a module in many submodules containing optional,
-self-contained functionality, without having to make this visible in the user API. This effectively separates
-how you split your APIs from how you split the implementation, allowing you to change the way the implementation
-is split at a later time while keeping the API intact.
+Module autoloading allows splitting the implementation of a module in many
+submodules containing optional, self-contained functionality, without having
+to make this visible in the user API. This effectively disconnects how an API
+is modularized from how its implementation is modularized, allowing the
+implementation to be refactored at a later time without changing the API.
 
 #### Example
 
