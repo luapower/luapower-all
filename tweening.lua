@@ -1,11 +1,17 @@
 
---tween-based animation for UI toolkits
+--tweening module for vector-based animation
 --Written by Cosmin Apreutesei. Public Domain.
 
 --prototype-based dynamic inheritance with __call constructor.
-local function object(super)
-	local o = {__index = super, __call = super and super.__call}
+local function object(super, o)
+	o = o or {}
+	o.__index = super
+	o.__call = super and super.__call
 	return setmetatable(o, o)
+end
+
+local function opt_object(super, o)
+	return o and object(super, o) or super
 end
 
 --module ---------------------------------------------------------------------
@@ -13,8 +19,8 @@ end
 local tw = object()
 
 tw.interpolate = {} --{type -> interpolate(t, x1, x2) -> x}
-tw.type = {} --{attr -> type}
-tw.type_patt = {} --{patt -> type}
+tw.types = {} --{attr -> type}
+tw.type_patterns = {} --{patt|func -> type}
 
 function tw:easing(name)
 	return require'easing'[name]
@@ -27,13 +33,46 @@ end
 function tw.__call(super, ...)
 	local self = object(super)
 	self.interpolate = object(super.interpolate)
-	self.type = object(super.type)
-	self.type_patt = object(super.type_patt)
+	self.types = object(super.types)
+	self.type_patterns = object(super.type_patterns)
 	return self
 end
 
-function tw.interpolate.number(t, x1, x2)
+--interpolators --------------------------------------------------------------
+
+function lerp(t, x1, x2)
 	return x1 + t * (x2 - x1)
+end
+
+function tw.interpolate.number(t, x1, x2)
+	return lerp(t, tonumber(x1), tonumber(x2))
+end
+
+function tw.interpolate.integer(t, i1, i2)
+	return math.floor(lerp(t, tonumber(i1), tonumber(i2)) + 0.5)
+end
+
+function tw.interpolate.color(t, c1, c2, c)
+	local r1, g1, b1, a1 = unpack(c1)
+	local r2, g2, b2, a2 = unpack(c2)
+	c = c or {}
+	c[1] = lerp(t, r1, r2)
+	c[2] = lerp(t, g1, g2)
+	c[3] = lerp(t, b1, b2)
+	if a1 then
+		c[4] = lerp(t, a1, a2)
+	end
+	return c
+end
+
+function tw.interpolate.point(t, p1, p2, p)
+	p = p or {}
+	p.x = lerp(t, p1.x, p2.x)
+	p.y = lerp(t, p1.y, p2.y)
+	if p1.z then
+		p.z = lerp(t, p1.z, p2.z)
+	end
+	return p
 end
 
 --tween ----------------------------------------------------------------------
@@ -57,18 +96,32 @@ function tween:__call(tw, opt)
 	self.target = opt.target
 	self.clamp = opt.clamp
 	self.speed = opt.speed
+	self.loop = opt.loop
 	self.running = opt.running
 	if not self.start_values then
 		self.start_values = {}
 		self._start_values_auto = true
 		self:get_start_values()
 	end
+	self.interpolate = opt_object(self.tw.interpolate, opt.interpolate)
+	self.types = opt_object(self.tw.types, opt.types)
+	self.type_patterns = opt_object(self.tw.type_patterns, opt.type_patterns)
 	return self
 end
 
-function tw:to(target, duration, easing, values, start)
+function tween:clone(start)
+	local o = object(self)
+	o.start = start or self.tw:clock()
+	if self._start_values_auto then
+		self.start_values = {}
+		self:get_start_values()
+	end
+	return o
+end
+
+function tw:to(target, duration, easing, values, start, loop)
 	return self:tween{target = target, duration = duration, easing = easing,
-		values = values, start = start}
+		values = values, start = start, loop = loop}
 end
 
 function tween:get_start_values()
@@ -78,6 +131,7 @@ function tween:get_start_values()
 end
 
 function tween:_distance(time)
+	time = time or self.tw:clock()
 	if self.clamp then
 		time = math.max(time, self.start)
 		time = math.min(time, self.start + self.duration)
@@ -85,36 +139,43 @@ function tween:_distance(time)
 	return self.easing_func(time - self.start, 0, 1, self.duration)
 end
 
-function tween:_interpolate(attr, distance, v1, v2)
-	local attr_type = self.tw.type[attr]
+function tween:_interpolate(attr, distance, v1, v2, vout)
+	local attr_type = self.types[attr]
 	if not attr_type then
-		for patt, atype in pairs(self.tw.type_patt) do
-			if attr:find(patt) then
+		for patt, atype in pairs(self.type_patterns) do
+			local found
+			if (type(patt) == 'string' and attr:find(patt))
+				or (not type(patt) == 'string' and patt(attr))
+			then
 				attr_type = atype
-				self.tw.type[attr] = atype --cache it
+				self.types[attr] = atype --cache it
 			end
 		end
 	end
-	local interpolate = self.tw.interpolate[attr_type or 'number']
-	return interpolate(distance, v1, v2)
+	local interpolate = self.interpolate[attr_type or 'number']
+	return interpolate(distance, v1, v2, vout)
 end
 
 function tween:_value(attr, distance)
 	local v1 = self.start_values[attr]
 	local v2 = self.end_values[attr]
-	return self:_interpolate(attr, distance, v1, v2)
+	local vout = self.target[attr]
+	return self:_interpolate(attr, distance, v1, v2, vout)
 end
 
-function tween:update(time)
-	if not self.running then return end
-	local distance = self:_distance(time)
-	for attr in pairs(self.end_values) do
-		self.target[attr] = self:_value(attr, distance)
+function tween:progress(distance)
+	if not self.running then
+		return self.current_distance
 	end
+	self.current_distance = distance or self:_distance()
+	for attr in pairs(self.end_values) do
+		self.target[attr] = self:_value(attr, self.current_distance)
+	end
+	return self.current_distance
 end
 
-function tween:seek(time)
-	return self:update(self.start + time)
+function tween:seek(rel_time)
+	return self:progress(self:_distance(self.start + rel_time))
 end
 
 function tween:pause()
@@ -155,22 +216,27 @@ function timeline:__call(tw, opt)
 	return self
 end
 
-function timeline:add(tween, start)
+function timeline:add(tween, rel_start)
 	table.insert(self.tweens, tween)
-	tween.rel_start = start or self.duration
+	tween.rel_start = rel_start or self.duration
 	self:_tween_changed(tween)
 	return self
 end
 
-function timeline:to(...)
-	return self:add(self.tw:to(...))
+function timeline:to(target, duration, easing, values, rel_start)
+	local tween = self.tw:to(target, duration, easing, values, 0)
+	return self:add(tween, rel_start)
 end
 
-function timeline:update(dt)
+function timeline:progress(time)
 	if not self.running then return end
+	if not time then
+		return self.current_time
+	end
 	for _,tween in ipairs(self.tweens) do
 		--if tween:running(dt)
 	end
+	self.current_time = time
 end
 
 function timeline:_tween_changed(tween)
@@ -187,23 +253,19 @@ function timeline:_update_duration()
 	end
 end
 
-function tween:seek(time)
-	return self:update(self.start + time)
-end
-
-function tween:pause()
+function timeline:pause()
 	self.running = false
 end
 
-function tween:resume()
+function timeline:resume()
 	self.running = true
 end
 
-function tween:reverse()
+function timeline:reverse()
 	self.speed = -self.speed
 end
 
-function tween:restart(time)
+function timeline:restart(time)
 	self.start = time or self.tw:clock()
 	for _,tween in ipairs(self.tweens) do
 		--
@@ -217,25 +279,15 @@ if not ... then
 
 local tw = tw()
 
-tw.type.color = 'color'
-tw.type_patt['_color$'] = 'color'
+tw.type_patterns['_color$'] = 'color'
 
-function tw.interpolate.color(t, c1, c2)
-	local r1, g1, b1, a1 = unpack(c1)
-	local r2, g2, b2, a2 = unpack(c2)
-	local r = tw.interpolate.number(t, r1, r2)
-	local g = tw.interpolate.number(t, g1, g2)
-	local b = tw.interpolate.number(t, b1, b2)
-	local a = tw.interpolate.number(t, a1, a2)
-	return {r, g, b, a}
-end
-
-local o = {x = 0, y = 0, x_color = {1, 0, 0, 0}}
+local o = {x = 0, y = 1000, x_color = {1, 0, 0, 0}, i = 0}
 local t1 = tw:tween{
-	values = {x = 100, y = 500, x_color = {0, 0.5, 1, 1}},
-	target = o, duration = 1
+	values = {x = 100, y = 0, x_color = {0, 0.5, 1, 1}, i = 100},
+	target = o, duration = 1,
+	types = {i = 'integer'},
 }
-t1:update(tw:clock() + 0.25)
+t1:seek(0.26)
 pp(o)
 
 end
