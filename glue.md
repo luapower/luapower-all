@@ -496,8 +496,6 @@ as its own metatable, setting `t.__index` to `super` and `t.__call` to
   * a separate constructor to be used only for subclassing can be made with
   the same pattern:
     * `function t:subclass(c) return glue.object(self, c) end`.
-  * when overriding, super's methods can be called easily with:
-    * `self.__index.<method>(self, ...)`
   * composite objects which need to instantiate other objects can be made
   extendable easily by exposing those objects' classes as fields of the
   container class with `container_class.other_class = other_class` and
@@ -506,6 +504,11 @@ as its own metatable, setting `t.__index` to `super` and `t.__call` to
   Moreso, instantiating with `self.other_object = self:other_class(...)`
   (so with a colon) passes the container _object_ to `other_class`'s
   constructor automatically which is usually what is desired.
+
+There are also some limitations:
+
+  * when overriding, super's methods must be called with:
+    * `<super_class>.<method>(self, ...)`.
 
 ------------------------------------------------------------------------------
 
