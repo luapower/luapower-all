@@ -38,16 +38,16 @@ The optional `#out` arg is for reducing the length of the output hash.
 The constructors `blake2s_digest` and `blake2b_digest` can take a table
 in place of the `key` arg in which more options can be specified:
 
-* `salt`='': salt for randomized hashing (up to 16 bytes for BLAKE2b, up to 8 bytes for BLAKE2s).
-* `personal`='': personalization string (up to 16 bytes for BLAKE2b, up to 8 bytes for BLAKE2s).
-* `fanout`=1: fanout (0 to 255, 0 if unlimited, 1 in sequential mode).
-* `depth`=1: maximal depth of tree (1 to 255, 255 if unlimited, 1 in sequential mode).
-* `leaf_length`=0: maximal byte length of leaf (0 to 2^32-1, 0 if unlimited or in sequential mode).
-* `node_offset`=0: node offset (0 to 2^64-1 for BLAKE2b, 0 to 2^48-1 for BLAKE2s,
+* `salt` (''): salt for randomized hashing (up to 16 bytes for BLAKE2b, up to 8 bytes for BLAKE2s).
+* `personal` (''): personalization string (up to 16 bytes for BLAKE2b, up to 8 bytes for BLAKE2s).
+* `fanout` (1): fanout (0 to 255, 0 if unlimited, 1 in sequential mode).
+* `depth` (1): maximal depth of tree (1 to 255, 255 if unlimited, 1 in sequential mode).
+* `leaf_length` (0): maximal byte length of leaf (0 to 2^32-1, 0 if unlimited or in sequential mode).
+* `node_offset` (0): node offset (0 to 2^64-1 for BLAKE2b, 0 to 2^48-1 for BLAKE2s,
    0 for the first, leftmost, leaf, or in sequential mode).
-* `node_depth`=0: node depth (0 to 255, 0 for leaves, or in sequential mode).
-* `inner_length`=0: inner digest length (0 to 64 for BLAKE2b, 0 to 32 for BLAKE2s, 0 in sequential mode).
-* `key`=nil: key string for keyed hashing (up to 64 bytes for BLAKE2b, up to 32 bytes for BLAKE2s).
+* `node_depth` (0): node depth (0 to 255, 0 for leaves, or in sequential mode).
+* `inner_length` (0): inner digest length (0 to 64 for BLAKE2b, 0 to 32 for BLAKE2s, 0 in sequential mode).
+* `key`: key string for keyed hashing (up to 64 bytes for BLAKE2b, up to 32 bytes for BLAKE2s).
 * `hash_length`: optional, for reducing the length of the output hash.
 
 __NOTE:__ the `salt` and `personal` options are zero-padded so `'foo'` is
