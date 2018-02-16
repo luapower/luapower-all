@@ -1,5 +1,5 @@
 
---tweening module for vector-based animation
+--tweening for animation
 --Written by Cosmin Apreutesei. Public Domain.
 
 --prototype-based dynamic inheritance with __call constructor from glue.
