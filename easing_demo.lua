@@ -38,7 +38,8 @@ function player:on_render(cr)
 	local y = 45
 	local mx, my = self:mousepos()
 
-	for k,f in pairs(easing) do
+	for _,k in ipairs(easing.names) do
+		local f = easing[k]
 
 		local hot = box.hit(mx, my, x, y, 300, 15)
 		if hot then
@@ -55,7 +56,7 @@ function player:on_render(cr)
 		self:rect(x, y, 100, 15, bg_color)
 		self:textbox(x, y, 100, 15, k, 12, fg_color, 'left', 'center')
 
-		local i = f(t, 0, 1, duration)
+		local i = f(t / duration, 0, 1, 1)
 		self:dot(x + 200 + i * 100, math.floor(y + 15 / 2), 5, bg_color)
 
 		if selected then
@@ -84,5 +85,3 @@ function player:on_render(cr)
 end
 
 player:play()
-
-
