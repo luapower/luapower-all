@@ -2,7 +2,7 @@
 tagline: tweening for animation
 ---
 
-## `local tweening = require'tweening'`
+## `local tw = require'tweening'`
 
 A library for the management of gradual value changes for the purposes of
 animation.
@@ -21,12 +21,6 @@ Features:
   * no allocations while tweening.
 
 ## Tweens
-
-### `tweening() -> tw`
-
-Create a new `tweening` module. Useful for extending the `tweening` module
-with new attribute types and interpolators without affecting the original
-module table.
 
 ### `tw:tween(t) -> tween`
 
@@ -90,7 +84,7 @@ __field__          __default__         __description__
 `attr`             (required)          attribute in the target object to tween
 `start_value`      `target[attr]`      start value
 `end_value`        `target[attr]`      end value
-`type`             'number'            attribute type
+`type`             `'number'`          attribute type
 `interpolate`      default for `type`  `f(t, x1, x2[, xout]) -> x`
 `value_semantics`  default for `type`  (see below)
 `get_value() -> v` `target[attr] -> v` value getter
@@ -116,6 +110,14 @@ __NOTE:__ `t` itself is turned into a timeline (no new table is created).
 Add a new tween to the timeline and set its `start` field and its `timeline`
 field. Once part of a timeline, a tween's `start` becomes relative to the
 timeline's start clock.
+
+## The tweening module
+
+### `tw() -> tw`
+
+Create a new `tweening` module. Useful for extending the `tweening` module
+with new attribute types and interpolators without affecting the original
+module table.
 
 ## Attribute types
 
