@@ -10,11 +10,7 @@ local function object(super, o)
 	return setmetatable(o, o)
 end
 
-local function opt_object(super, o)
-	return o and object(super, o) or super
-end
-
-local function clamp(x, min, max)
+local function clamp(x, min, max) --from glue
 	return math.min(math.max(x, min), max)
 end
 
@@ -46,17 +42,18 @@ local tw = object()
 
 tw.interpolate = {} --{type -> interpolate_function}
 tw.value_semantics = {} --{type -> true|false}
-tw.attr_types = {} --{attr -> type}
-tw.attr_type_patterns = {} --{patt|func(attr) -> type}
+tw._type = {} --{attr -> type}
+tw.type = {} --{patt|func(attr) -> type}
 
-function tw:ease_function(name)
-	return require'easing'[name]
+function tw:ease(ease, way, t)
+	local easing = require'easing'
+	return easing.ease(ease, way, t)
 end
 
 function tw:_attr_type(attr_type, attr)
-	local attr_type = attr_type or self.attr_types[attr]
+	local attr_type = attr_type or self._type[attr]
 	if not attr_type then
-		for patt, atype in pairs(self.attr_type_patterns) do
+		for patt, atype in pairs(self.type) do
 			if (type(patt) == 'string' and attr:find(patt))
 				or (type(patt) ~= 'string' and patt(attr))
 			then
@@ -65,15 +62,15 @@ function tw:_attr_type(attr_type, attr)
 			end
 		end
 		attr_type = attr_type or 'number'
-		self.attr_types[attr] = attr_type --cache it
+		self._type[attr] = attr_type --cache it
 	end
 	return attr_type
 end
 
 function tw:interpolation_function(attr_type, attr)
-	local atype = self:_attr_type(attr_type, attr)
-	local interpolate = self.interpolate[atype]
-	local value_semantics = self.value_semantics[atype]
+	local attr_type = self:_attr_type(attr_type, attr)
+	local interpolate = self.interpolate[attr_type]
+	local value_semantics = self.value_semantics[attr_type]
 	if value_semantics == nil then
 		value_semantics = true
 	end
@@ -105,8 +102,8 @@ function tw.__call(super, ...)
 	self._clock = false --avoid inheriting it
 	self.interpolate = object(super.interpolate)
 	self.value_semantics = object(super.value_semantics)
-	self.attr_types = object(super.attr_types)
-	self.attr_type_patterns = object(super.attr_type_patterns)
+	self._type = object(super._type)
+	self.type = object(super.type)
 	return self
 end
 
@@ -124,23 +121,14 @@ function tw.interpolate.integer(d, i1, i2)
 	return math.floor(lerp(d, tonumber(i1), tonumber(i2)) + 0.5)
 end
 
-function tw.interpolate.number_list(d, t1, t2, t)
+function tw.interpolate.list(d, t1, t2, t) --colors, unpacked coord lists...
 	t = t or {}
 	for i=1,math.min(#t1, #t2) do
 		t[i] = lerp(d, t1[i], t2[i])
 	end
 	return t
 end
-tw.value_semantics.number_list = false
-
-function tw.interpolate.number_table(d, t1, t2, t)
-	t = t or {}
-	for k,v in pairs(t1) do
-		t[k] = lerp(d, v, t2[k])
-	end
-	return t
-end
-tw.value_semantics.point = false
+tw.value_semantics.list = false
 
 --tweens ---------------------------------------------------------------------
 --A tween updates a single attribute value on a single target object.
@@ -152,11 +140,12 @@ tw.tween = tween
 tween.start = 0
 tween.timeline = nil --if set, start is relative to timeline.start
 tween.duration = 1 --loop duration; can't be negative
-tween.ease = 'in_out_quad'
-tween.ease_function = nil --set to tw:ease_function(ease)
+tween.ease = 'quad' --function `f(t) -> d` or name from easing module
+tween.way = 'in' --easing way: 'in', 'out', 'inout', 'outin'
 tween.delay = 0 --start delay; can be negative
 tween.speed = 1 --speed factor; can't be 0, can't be < 0
-tween.direction = 'alternate' --'normal', 'reverse', 'alternate-reverse'
+tween.reverse = false --first iteration is backwards
+tween.yoyo = true --alternate between forward and reverse on each iteration
 tween.loop = 1 --repeat count; use 1/0 for infinite; can be fractional
 tween.loop_start = 0 --aka progress_start; can be fractional, negative, > 1
 tween.running = true --set to false to start paused
@@ -167,9 +156,9 @@ tween.target = nil --used as v = target[attr] and target[attr] = v
 tween.attr = nil
 tween.start_value = nil --value at progress 0
 tween.end_value = nil --value at progress 1
-tween.attr_type = nil
+tween.type = nil
 tween.interpolate = nil --custom interpolation function
-tween.value_semantics = nil --the interpolator has value semantics
+tween.value_semantics = nil --false for avoiding allocations on update
 
 --constructor
 
@@ -191,11 +180,6 @@ function tween:_init_timing_model()
 	if self.running and not self.timeline then
 		self.start = self:clock()
 	end
-	if type(self.ease) == 'string' then
-		self.ease_function = self.tw:ease_function(self.ease)
-	else
-		self.ease_function = self.ease
-	end
 end
 
 function tween:clock()
@@ -206,17 +190,8 @@ function tween:start_clock()
 	return self.start + (self.timeline and self.timeline:start_clock() or 0)
 end
 
---minimum duration needed for fitting into a timeline.
-function tween:loop_duration()
-	local min_loop_count =
-		(self.direction == 'alternate'
-		or self.direction == 'alternate-reverse') and 2 or 1
-	return self.delay / self.speed
-		+ self.duration / self.speed * math.min(self.loop, min_loop_count)
-end
-
 function tween:total_duration()
-	return self.delay / self.speed + self.duration / self.speed * self.loop
+	return (self.delay + self.duration * self.loop) * (1 / self.speed)
 end
 
 function tween:end_clock()
@@ -250,15 +225,11 @@ function tween:clock_at(total_progress)
 end
 
 --check if the progress on the current iteration should increase or decrease.
-function tween:is_forward(i)
-	if self.direction == 'normal' then
-		return true
-	elseif self.direction == 'reverse' then
-		return false
-	elseif self.direction == 'alternate' then
-		return i % 2 == 0
-	elseif self.direction == 'alternate-reverse' then
-		return i % 2 == 1
+function tween:is_reverse(i)
+	if self.yoyo then
+		return i % 2 == (self.reverse and 1 or 0)
+	else
+		return not self.reverse
 	end
 end
 
@@ -271,7 +242,7 @@ function tween:progress(clock)
 	local p = self.loop_start + clamp(p, 0, self.loop)
 	local i = math.floor(p)
 	local p = p - i
-	if not self:is_forward(i) then
+	if self:is_reverse(i) then
 		p = 1 - p
 	end
 	return p, i
@@ -279,14 +250,13 @@ end
 
 --non-linear (eased) progress within current iteration (can exceed 0..1).
 function tween:distance(progress, loop_index)
-	return self.ease_function(progress, 0, 1, 1)
+	return self.tw:ease(self.ease, self.way, progress)
 end
 
 function tween:pause()
 	if not self.running then return end
 	self.running = false
 	self.paused_clock = self:clock()
-	return self
 end
 
 function tween:resume()
@@ -294,15 +264,22 @@ function tween:resume()
 	self.start = self.start + (self:clock() - self.paused_clock)
 	self.paused_clock = false
 	self.running = true
-	return self
 end
+
+function tween:stop()
+	self.running = false
+	if self.timeline then
+		self.timeline:remove(self)
+		self.timeline = nil
+	end
+end
+
 
 function tween:restart()
 	--TODO
 	self.start = self.start + (self:clock() - self.paused_clock)
 	self.paused_clock = false
 	self.running = true
-	return self
 end
 
 --animation model
@@ -310,38 +287,41 @@ end
 function tween:_init_animation_model()
 	if not self.interpolate or self.auto_interpolate then
 		self.interpolate, self.value_semantics =
-			self.tw:interpolation_function(self.attr_type, self.attr)
+			self.tw:interpolation_function(self.type, self.attr)
 		self.auto_interpolate = true
 	end
 	if not self.start_value
 		or not self.end_value
-		or self.auto_start_value
-		or self.auto_end_value
 	then
-		local v = self.target[self.attr]
+		local v = self:get_value()
 		if not self.value_semantics then
 			v = self.interpolate(1, v, v)
 		end
-		if not self.start_value or self.auto_start_value then
+		if not self.start_value then
 			self.start_value = v
-			self.auto_start_value = true
 		end
-		if not self.end_value or self.auto_end_value then
+		if not self.end_value then
 			self.end_value = v
-			self.auto_end_value = true
 		end
 	end
+end
+
+function tween:get_value()
+	return self.target[self.attr]
+end
+
+function tween:set_value(v)
+	self.target[self.attr] = v
 end
 
 function tween:update(clock)
 	if not self.running then return end
 	local d = self:distance(self:progress(clock))
 	if self.value_semantics then
-		self.target[self.attr] =
-			self.interpolate(d, self.start_value, self.end_value)
+		local v = self.interpolate(d, self.start_value, self.end_value)
+		self:set_value(v)
 	else
-		self.interpolate(d, self.start_value, self.end_value,
-			self.target[self.attr])
+		self.interpolate(d, self.start_value, self.end_value, self:get_value())
 	end
 end
 
@@ -393,29 +373,12 @@ function timeline:reset()
 	end
 end
 
-function timeline:tweens_total_duration(exclude_infinite_tweens)
-	local start_clock = self:start_clock()
-	local end_clock = start_clock
-	for i,tween in ipairs(self.tweens) do
-		if not (exclude_infinite_tweens and tween:is_infinite()) then
-			end_clock = math.max(end_clock, tween:end_clock())
-			if end_clock == 1/0 then
-				break
-			end
-		end
-	end
-	return end_clock - start_clock
-end
-
 function timeline:_adjust(new_tween)
 	if self.auto_duration then
 		local tween_end_clock =
-			new_tween:start_clock() + new_tween:loop_duration()
+			new_tween:start_clock() + new_tween:total_duration()
 		local duration = tween_end_clock - self:start_clock()
 		self.duration = math.max(self.duration, duration)
-	end
-	if self.auto_loop and new_tween:is_infinite() then
-		self.loop = 1/0
 	end
 end
 
@@ -461,12 +424,16 @@ end
 
 --animation model
 
+timeline.get_value = nil --not supported
+timeline.set_value = nil --not supported
+
 function timeline:update(clock)
 	if not self.running then return end
 	if #self.tweens == 0 then return end
 	local d = self:distance(self:progress(clock))
 	local found
 	for i,tween in ipairs(self.tweens) do
+		local start = tween.start
 		tween:update(clock)
 		if self.auto_remove and tween:status(clock) == 'finished' then
 			self.tweens[i] = false
@@ -496,23 +463,22 @@ if not ... then
 
 local tw = tw()
 
-tw.attr_type_patterns['_color$'] = 'number_list'
+tw.type['_color$'] = 'list'
 
 local o = {x = 0, y = 200, x_color = {1, 0, 0, .5}, i = 0}
 
 tw:freeze()
-local tx = tw:tween{target = o, attr = 'x', end_value = 100, loop = 2, ease = 'out_elastic'}
-local ty = tw:tween{target = o, attr = 'y', end_value = 0, loop = 2, ease = 'out_elastic'}
+local tx = tw:tween{target = o, attr = 'x', end_value = 100, loop = 2, ease = 'elastic', way = 'out'}
+local ty = tw:tween{target = o, attr = 'y', end_value = 0, loop = 2, ease = 'elastic', way = 'out'}
 local tc = tw:tween{target = o, attr = 'x_color', end_value = {0, 0, 1, 1},
 	loop = 2, duration = 1, ease = 'linear'}
-local ti = tw:tween{target = o, attr = 'i', end_value = 100,
-	attr_type = 'integer'}
+local ti = tw:tween{target = o, attr = 'i', end_value = 100, type = 'integer'}
 
 local tl = tw:timeline()
 tw:unfreeze()
 
 tl.auto_remove = false
-tl:add(tx, 0.1):add(ty, 0.2):add(tc, 0) --:add(ti)
+tl:add(tx, 0.1):add(ty, 0.2)--:add(tc, 0) --:add(ti)
 
 local nw = require'nw'
 
