@@ -79,7 +79,7 @@ return function(self)
 		self.sw = self.clock
 	end
 	if self.sw then
-		local x = self:animate(self.sw, 2, 'in_out_cubic', 10, 100)
+		local x = self:animate(self.sw, 2, 'cubic', 'inout', 10, 100)
 		if x then
 			self:rect(x, 500, 100, 100)
 		else

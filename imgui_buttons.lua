@@ -42,9 +42,6 @@ local function button_path(cr, x1, y1, w, h, cut)
 	cr:close_path()
 end
 
-imgui.default.button_margin_h = 20
-imgui.default.button_margin_v = 10
-
 function imgui:button(t)
 	--[[
 	if type(text) == 'table' then
@@ -53,8 +50,7 @@ function imgui:button(t)
 	end
 	]]
 	local id = t.id or t.text
-	self.id = id
-	local x, y, w, h = self:flowbox(t.w, t.h)
+	local x, y, w, h = self:getbox(t)
 	local text = t.text or id
 	local cut = t.cut
 	local selected = t.selected
@@ -64,8 +60,9 @@ function imgui:button(t)
 	local down = self.lbutton
 	local pressed = self.lpressed
 	local hot = enabled and self:hotbox(x, y, w, h)
+	local hover = hot and (not self.active or self.active == id)
 
-	if hot and (not self.active or self.active == id)  then
+	if hover then
 		self.cursor = 'hand'
 	end
 
@@ -74,8 +71,8 @@ function imgui:button(t)
 		self.active = id
 	elseif self.active == id then
 		if hot then
-			clicked = not down
-			selected = clicked
+			clicked = self.clicked
+			selected = selected ~= nil and clicked
 		end
 		if not down then
 			self.active = nil
@@ -84,19 +81,33 @@ function imgui:button(t)
 
 	local color_state =
 		(selected or self.active == id and hot and down) and 'selected'
-		or ((not self.active or self.active == id) and hot and 'hot')
+		or hover and 'hot'
 		or enabled and (t.default and 'default' or 'normal')
 		or 'disabled'
 	local bg_color = color_state..'_bg'
 	local fg_color = color_state..'_fg'
 
+	local state = self:state(id)
+	if hover and not self.active then
+		if state.activate == nil then
+			state.activate = self.clock
+		end
+		if state.activate then
+			local bg_color1 = bg_color
+			bg_color = self:fade(state.activate, 0.2, nil, nil, 'normal_bg', 'hot_bg')
+			if not bg_color then
+				state.activate = false
+				bg_color = bg_color1
+			end
+		end
+	elseif not hover and state.activate ~= nil then
+		state.activate = nil
+	end
+
 	--drawing
-	button_path(self.cr, x + 0.5, y + 0.5, w - 1, h - 1, cut)
+	button_path(self.cr, x - 0.5, y - 0.5, w, h, cut)
 	self:fillstroke(bg_color, 'normal_border', 1)
 	self:textbox(x + 2, y, w - 4, h, text, font, fg_color, 'center', 'center')
-
-	self:add_flowbox(x, y, w, h)
-	self.id = false
 
 	return (t.immediate and self.active == id and hot and down) or clicked
 end
@@ -128,7 +139,6 @@ function imgui:mbutton(t)
 			enabled = enabled and enabled[v],
 			default = t.default == v,
 		}
-		self.layout:push()
 		if multisel then
 			t.selected = selected[v]
 			selected[v] = self:togglebutton(t)
@@ -138,9 +148,21 @@ function imgui:mbutton(t)
 				selected = v
 			end
 		end
-		self.layout:pop()
 		x = x + bw - 1
 		left_w = left_w - (bw - 1)
 	end
 	return selected
+end
+
+if not ... then
+
+	local player = require'cplayer2'
+
+	function player:render()
+		self:button{h = 26, w = 100, text = 'OK1'}
+		self:button{h = 26, w = 100, text = 'OK2'}
+	end
+
+	player:run()
+
 end

@@ -179,14 +179,7 @@ function imgui:new()
 	self:_init_layout()
 	self:_init_layers()
 	self:_init_input()
-
-	--widget state
-	self.active = false   --has mouse focus
-	self.focused = false  --has keyboard focus
-	self.ui = {}          --state to be used by the active control
-
-	--event stream
-	self._events = {}
+	self:_init_state()
 
 	self._fps = self:_fps_function()
 
@@ -200,6 +193,7 @@ function imgui:_render_frame(cr)
 	self:_init_frame_layout()
 	self:_init_frame_input()
 	self:_init_frame_layers()
+	self:_init_frame_state()
 
 	self:_backend_render_frame() --user code
 	self:_render_layers()
@@ -233,6 +227,7 @@ function imgui:_render_frame(cr)
 	self:_backend_set_cursor(self.cursor or 'arrow')
 	self.cursor = false
 
+	self:_done_frame_state()
 	self:_done_frame_layers()
 	self:_done_frame_input()
 	self:_done_frame_layout()
@@ -240,11 +235,6 @@ function imgui:_render_frame(cr)
 	self:_done_frame_cr()
 
 	self.init = false
-end
-
-function imgui:_consume_event(clock, event, ...)
-	self.clock = clock
-	self._on[event](self, ...)
 end
 
 function imgui:_backend_repaint(cr)
@@ -303,6 +293,7 @@ function imgui:_reset_input_state()
 end
 
 function imgui:_init_input()
+	self._events = {}
 	self:_reset_input_state()
 end
 
@@ -319,6 +310,17 @@ end
 
 function imgui:_done_frame_input()
 	self:_reset_input_state()
+end
+
+function imgui:_backend_event(...)
+	local clock = self:_backend_clock()
+	pushvar(self._events, clock, ...)
+	self:_backend_invalidate()
+end
+
+function imgui:_consume_event(clock, event, ...)
+	self.clock = clock
+	self._on[event](self, ...)
 end
 
 imgui._on = {} --{event->handler}
@@ -398,12 +400,6 @@ function imgui._on:keychar(char)
 	self.char = char
 end
 
-function imgui:_backend_event(...)
-	local clock = self:_backend_clock()
-	pushvar(self._events, clock, ...)
-	self:_backend_invalidate()
-end
-
 function imgui:mousepos()
 	if not self.mousex then return end
 	return self.cr:device_to_user(self.mousex, self.mousey)
@@ -428,9 +424,9 @@ end
 
 imgui.easing = {}
 
-function imgui:animate(start_time, duration, formula, i1, i2)
+function imgui:animate(start_time, duration, formula, dir, i1, i2)
 	if type(formula) == 'number' then
-		formula, i1, i2 = 'linear', formula, i1
+		formula, dir, i1, i2 = 'linear', formula, dir, i1
 	else
 		formula = formula or 'linear'
 		if type(formula) == 'string' then
@@ -440,7 +436,31 @@ function imgui:animate(start_time, duration, formula, i1, i2)
 	assert(formula, 'invalid formula')
 	if self.clock >= start_time + duration then return end
 	self:_backend_invalidate()
-	return formula((self.clock - start_time), i1 or 0, i2 or 1, duration)
+	return easing.ease(formula, dir, self.clock - start_time, duration)
+		* (i2 or 1) + (i1 or 0)
+end
+
+local function sign(x)
+	return x >= 0 and 1 or -1
+end
+function imgui:fade(start_time, duration, formula, dir, color1, color2)
+	if not color2 then
+		formula, dir, color1, color2 = 'linear', formula, dir, color1
+	end
+	color1 = self.theme[color1] or color1
+	color2 = self.theme[color2] or color2
+	local r1, g1, b1, a1 = assert(color.string_to_rgba(color1))
+	local r2, g2, b2, a2 = assert(color.string_to_rgba(color2))
+	local dr = self:animate(start_time, duration, formula, dir, 0, math.abs(r1 - r2))
+	local dg = self:animate(start_time, duration, formula, dir, 0, math.abs(g1 - g2))
+	local db = self:animate(start_time, duration, formula, dir, 0, math.abs(b1 - b2))
+	local da = self:animate(start_time, duration, formula, dir, 0, math.abs(a1 - a2))
+	if not dr then return end
+	local r = r1 + dr * sign(r2 - r1)
+	local g = g1 + dg * sign(g2 - g1)
+	local b = b1 + db * sign(b2 - b1)
+	local a = a1 + da * sign(a2 - a1)
+	return {r, g, b, a}
 end
 
 --themed stateless graphics API ----------------------------------------------
@@ -643,11 +663,13 @@ function imgui:_draw_text(x, y, s, align, line_h) --multi-line text
 		if align == 'right' then
 			local tw = self:_backend_text_extents(s)
 			cr:move_to(x - tw, y)
-		elseif align == 'center' then
+		elseif not align or align == 'center' then
 			local tw = self:_backend_text_extents(s)
 			cr:move_to(x - round(tw / 2), y)
-		else
+		elseif align == 'left' then
 			cr:move_to(x, y)
+		else
+			asser(false, 'invalid align')
 		end
 		self:_backend_show_text(s)
 		y = y + line_h
@@ -668,7 +690,7 @@ function imgui:textbox(x, y, w, h, s, font, color, halign, valign, line_spacing)
 
 	if halign == 'right' then
 		x = x + w
-	elseif halign == 'center' then
+	elseif not halign or halign == 'center' then
 		x = x + round(w / 2)
 	end
 
@@ -683,9 +705,11 @@ function imgui:textbox(x, y, w, h, s, font, color, halign, valign, line_spacing)
 
 		if valign == 'bottom' then
 			y = y + h - font.extents.descent
-		elseif valign == 'center' then
+		elseif not valign or valign == 'center' then
 			local h1 = h + font.extents.ascent - font.extents.descent + lines_h
 			y = y + round(h1 / 2)
+		else
+			assert('invalid valign')
 		end
 		y = y - lines_h
 	end
@@ -693,6 +717,16 @@ function imgui:textbox(x, y, w, h, s, font, color, halign, valign, line_spacing)
 	self:_draw_text(x, y, s, halign, line_h)
 
 	self.cr:restore()
+end
+
+--themed GUI shapes
+
+imgui.default.border_width = 1
+
+function imgui:border(x, y, w, h, ...)
+	local b = self.theme.border_width
+	self.cr:rectangle(x-b, y-b, w+2*b, h+2*b)
+	self:stroke(...)
 end
 
 --layout API -----------------------------------------------------------------
@@ -704,7 +738,7 @@ function imgui:_init_repaint_layout()
 end
 
 function imgui:_init_frame_layout()
-	self.flow = false --no default: force app to start specific
+	self.flow = 'v'
 	self.halign = 'l'
 	self.valign = 't'
 	self.cx = 0
@@ -771,7 +805,7 @@ end
 function imgui:setflow(opt, margin_w, margin_h)
 	local flow, halign, valign
 	if opt then
-		flow, halign, valign  = opt:match'^([hv]?)([lrc]?)([tbc]?)'
+		flow, halign, valign  = opt:match'^([hv]?)([lrtbc]?)([lrtbc]?)'
 		flow, halign, valign = str(flow), str(halign), str(valign)
 	elseif self.flow == 'h' then --switch flow
 		flow = 'v'
@@ -779,6 +813,9 @@ function imgui:setflow(opt, margin_w, margin_h)
 		flow = 'h'
 	else
 		error'flow not set'
+	end
+	if halign and halign:find'[tb]' or valign and valign:find'[lr]' then
+		halign, valign = valign, halign
 	end
 	if flow then self.flow = flow end
 	if halign then self.halign = halign end
@@ -835,13 +872,13 @@ function imgui:add_flowbox(x, y, w, h)
 	if self.flow == 'v' then
 		local bh = h + self.margin_h
 		self.ch = math.max(0, self.ch - bh)
-		if self.valign ~= 'b' then
+		if self.valign == 't' then
 			self.cy = self.cy + h + self.margin_h
 		end
 	elseif self.flow == 'h' then
 		local bw = w + self.margin_w
 		self.cw = math.max(0, self.cw - bw)
-		if self.halign ~= 'r' then
+		if self.halign == 'l' then
 			self.cx = self.cx + w + self.margin_w
 		end
 	end
@@ -855,7 +892,7 @@ function imgui:begin_flowbox(flow, margin_w, margin_h)
 end
 
 function imgui:end_flowbox()
-	local bx, by, bw, bh = pop(self.bbox_stack)
+	local bx, by, bw, bh = popvar(self.bbox_stack)
 	assert(bx, 'end_flowbox() without begin_flowbox()')
 	self:_restore_cr()
 	self:add_flowbox(bx, by, bw, bh)
@@ -900,6 +937,16 @@ function imgui:end_box()
 	assert(x, 'end_box() without begin_box()')
 	self:_restore_cr()
 	self:add_flowbox(x, y, w, h)
+end
+
+function imgui:getbox(t)
+	if t.x then
+		return t.x, t.y, t.w, t.h
+	else
+		local x, y, w, h = self:flowbox(t.w, t.h)
+		self:add_flowbox(x, y, w, h)
+		return x, y, w, h
+	end
 end
 
 --layers API -----------------------------------------------------------------
@@ -1009,6 +1056,36 @@ function imgui:end_layer()
 		self._z_scope.num = math.floor(self._z_scope.num / self._z_scope.factor)
 	end
 	self._z_scope.begin = false
+end
+
+--widget state API -----------------------------------------------------------
+
+function imgui:_init_state()
+	self.active = false   --has mouse focus
+	self.focused = false  --has keyboard focus
+	self.ui = {}          --state to be used by the active control
+	self._state = {}      --state to be used by all controls
+end
+
+function imgui:_init_frame_state() end
+
+function imgui:_done_frame_state()
+	--free all untouched state
+	for id,t in pairs(self._state) do
+		if not t._touched then
+			self._state[id] = nil
+		end
+	end
+end
+
+function imgui:state(id)
+	local t = self._state[id]
+	if not t then
+		t = {}
+		self._state[id] = t
+	end
+	t._touched = true
+	return t
 end
 
 --label widget ---------------------------------------------------------------
