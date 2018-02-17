@@ -7,7 +7,7 @@ tagline: tweening for animation
 A library for the management of gradual value changes for the purposes of
 animation.
 
-Features:
+## Features
 
   * control variables: `duration`, `delay`, `speed`, `loop`, `reverse`,
   `yoyo`, `ease`, `way`, `loop_start`.
@@ -32,8 +32,8 @@ other timing parameters.
 
 #### Timing model: fields
 
--------------- ----------- ---------------------------------------------------
 __field__      __default__ __description__
+-------------- ----------- ---------------------------------------------------
 `start`        `clock()`   start clock (becomes relative when added to timeline)
 `duration`     `1`         duration of one iteration (can't be negative)
 `delay`        `0`         delay before the first iteration starts
@@ -46,12 +46,12 @@ __field__      __default__ __description__
 `loop_start`   `0`         progress at start (can be fractional)
 `paused`       `false`     start paused
 `clock() -> t` `tw.clock`  clock source
--------------- ----------- ---------------------------------------------------
+
 
 #### Timing model: methods
 
----------------------------------- -------------------------------------------
 __method__                         __description__
+---------------------------------- -------------------------------------------
 `tween:start_clock() -> t`         absolute start clock
 `tween:total_duration() -> dt`     total duration incl. repeats (can be infinite)
 `tween:end_clock() -> t`           end clock (can be infinite)
@@ -70,7 +70,7 @@ __method__                         __description__
 `tween:update([t])`                update value at clock
 `tween:seek(P)`                    update value at total progress
 `tween:totarget() -> obj`          convert to tweenable object
----------------------------------- -------------------------------------------
+
 
 __NOTE:__ The tween doesn't store the current time or the current value.
 Whenever the optional `t` argument indicating a time value is not given,
@@ -78,8 +78,8 @@ the current clock is used instead.
 
 #### Animation model: fields
 
------------------- ------------------- ---------------------------------------
 __field__          __default__         __description__
+------------------ ------------------- ---------------------------------------
 `target`           (required)          target object
 `attr`             (required)          attribute in the target object to tween
 `start_value`      `target[attr]`      start value
@@ -89,7 +89,7 @@ __field__          __default__         __description__
 `value_semantics`  default for `type`  (see below)
 `get_value() -> v` `target[attr] -> v` value getter
 `set_value(v)`     `target[attr] = v`  value setter
------------------- ------------------- ---------------------------------------
+
 
 ## Timelines
 
@@ -126,7 +126,7 @@ module table.
 Tell tweening about the type of an attribute, eg.
 `tw.type['_color$'] = 'list'`
 
-### `tw.interpolate.<attr_type>(d, x1, x2[, xout]) -> x`
+### `tw.interpolate.<attr_type> = function(d, x1, x2[, xout]) -> x`
 
 Add a new interpolation function for an attribute type.
 
@@ -136,20 +136,19 @@ Declare an interpolation function as having reference semantics. By default
 interpolation functions have value semantics, i.e. they are called as
 `x = f(d, x1, x2)`. If declared as having reference semantics, they are
 instead called as `f(d, x1, x2, x)` and are expected to update `x` in-place
-thus avoiding an allocation on every frame if `x` is a heap value.
+thus avoiding an allocation on every frame if `x` is a non-scalar type.
 
 ## The wall clock
 
 ### `tw:current_clock() -> t`
 
-Returns the current monotonic performance counter, in seconds.
-Implemented as [time].clock(). Overridable.
+Current monotonic performance counter, in seconds.
 
 ### `tw:freeze()`
 
-Freeze the clock. Useful for creating multiple tweens starting at the exact
-same time.
+Freeze the wall clock. Useful for creating multiple tweens which start at the
+exact same time.
 
 ### `tw:unfreeze()`
 
-Unfreeze the clock.
+Unfreeze the wall clock.
