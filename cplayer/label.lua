@@ -2,10 +2,7 @@ local player = require'cplayer'
 local glue = require'glue'
 
 function player:label(t)
-	local x = assert(t.x, 'x missing')
-	local y = assert(t.y, 'y missing')
-	local w = t.w or 1000
-	local h = t.h or 1000
+	local x, y, w, h = self:getbox(t)
 	local text = assert(t.text, 'text missing')
 	local font_size = t.font_size or 12
 	local font_face = t.font_face or 'Arial'

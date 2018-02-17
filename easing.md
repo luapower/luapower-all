@@ -8,46 +8,42 @@ Robert Penner's easing functions.
 
 ## Animation API
 
-### `easing.ease(name|func, dir, t1 - t0, T, ...) -> d`
+### `easing.ease(name|func, way, (t1 - t0) / dt, ...) -> d`
 
   * `name|func` is (the name of) an ease function (see below)
-  * `dir` can be 'in' (default), 'out', 'inout' or 'outin'
+  * `way` can be 'in' (default), 'out', 'inout' or 'outin'
   * `t1` is the animation's current time
   * `t0` is the animation's start time
-  * `T` is the total animation duration
+  * `dt` is the total animation duration
   * `d` is the value in `0..1` corresponding to the current time
 
 ## Easing functions
 
-### `easing.<name> -> f(t, ...) -> v`
+### `easing.<name> -> f(t, ...) -> d`
 
 These functions map a number in `0..1` into a number in `0..1`.
 
 Currently implemented functions: `linear`, `quad`, `cubic`, `quart`, `quint`,
 `expo`, `sine`, `circ`, `back`, `elastic`, `bounce`.
 
-__NOTE:__ Some easing functions take additional parameters (see code).
+__NOTE:__ `elastic` takes additional parameters `amplitude` and `period`.
 
-### `easing.reverse(f) -> g`
+### `easing.reverse(f, t, ...) -> d`
 
 Turn an `in` function into an `out` function or viceversa.
 
-### `easing.in_out(f) -> g`
+### `easing.inout(f, t, ...) -> d`
 
-Turn an `in` function into an `in_out` function, or an `out` function into
-an `out_in` function.
+Turn an `in` function into an `inout` function, or an `out` function into
+an `outin` function.
 
-### `easing.out_in(f) -> g`
+### `easing.outin(f, t, ...) -> d`
 
-Turn an `in` function into an `out_in` function, or an `out` function into
-an `in_out` function. Same as `easing.in_out(easing.reverse(f))`.
-
-### `easing.expr.name = 'Lua expression'`
-
-Extend the module with an expression-based formula. This will result in
-generating a new easing function called `easing.<name>`.
+Turn an `in` function into an `outin` function, or an `out` function into
+an `inout` function.
+Same as `easing.inout(function(t) return easing.reverse(f, t) end, t)`.
 
 ### `easing.names -> {name1, ...}`
 
-An auto-updated list of easing function names, for listing purposes.
-
+The list of easing function names in insert order. Extending the module
+namespace automatically adds the names to this list.

@@ -6,95 +6,62 @@ if not ... then require'easing_demo'; return end
 
 local easing = {}
 
-local function in_out(f, p, ...)
-	if p < .5 then
-		return .5 * f(p * 2, ...)
+function easing.reverse(f, t, ...)
+	return 1 - f(1 - t, ...)
+end
+
+function easing.inout(f, t, ...)
+	if t < .5 then
+		return .5 * f(t * 2, ...)
 	else
-		p = 1 - p
-		return .5 * (1 - f(p * 2, ...)) + .5
+		t = 1 - t
+		return .5 * (1 - f(t * 2, ...)) + .5
 	end
 end
 
-local function out_in(f, p, ...)
-	if p < .5 then
-		return .5 * (1 - f(1 - p * 2, ...))
+function easing.outin(f, t, ...)
+	if t < .5 then
+		return .5 * (1 - f(1 - t * 2, ...))
 	else
-		p = 1 - p
-		return .5 * (1 - (1 - f(1 - p * 2, ...))) + .5
-	end
-end
-
---turn an `in` function into an `out` function or viceversa
-function easing.reverse(f)
-	return function(p, ...)
-		return 1 - f(1 - p, ...)
-	end
-end
-
---turn an `in` function into `in_out` or an `out` function into `out_in`
-function easing.in_out(f)
-	return function(p, ...)
-		return in_out(f, p, ...)
-	end
-end
-
---turn an `in` function into `out_in` or an `out` into an `in_out`.
-function easing.out_in(f)
-	return function(p, ...)
-		return out_in(f, p, ...)
+		t = 1 - t
+		return .5 * (1 - (1 - f(1 - t * 2, ...))) + .5
 	end
 end
 
 --ease any interpolation function
-function easing.ease(f, dir, t, d, ...)
+function easing.ease(f, way, t, ...)
 	f = easing[f] or f
-	local p = t / d
-	if dir == 'out' then
-		return 1 - f(1 - p, ...)
-	elseif dir == 'inout' then
-		return in_out(f, p, ...)
-	elseif dir == 'outin' then
-		return out_in(f, p, ...)
+	if way == 'out' then
+		return easing.reverse(f, t, ...)
+	elseif way == 'inout' then
+		return easing.inout(f, t, ...)
+	elseif way == 'outin' then
+		return easing.outin(f, t, ...)
 	else
-		return f(p, ...)
+		return f(t, ...)
 	end
-end
-
---expression-based easing functions
-
-easing.expr = {}
-setmetatable(easing.expr, easing.expr)
-
-function easing.expr:__newindex(name, expr)
-	local load = loadstring or load
-	local func = load('return function(p) return ' .. expr .. ' end')()
-	easing[name] = func
 end
 
 --auto-updating names table sorted in insert order (for listing)
 
 easing.names = {}
-
 function easing:__newindex(name, func)
 	table.insert(self.names, name)
 	rawset(self, name, func)
 end
-
 setmetatable(easing, easing)
 
---some actual easing functions and expressions
+--actual easing functions
 
-function easing.linear(p) return p end
-
-local e = easing.expr
-e.quad  = 'p^2'
-e.cubic = 'p^3'
-e.quart = 'p^4'
-e.quint = 'p^5'
-e.expo  = '2^(10 * (p - 1))'
-e.sine  = '-math.cos(p * (math.pi * .5)) + 1'
-e.circ  = '-(math.sqrt(1 - p^2) - 1)'
-e.back  = 'p^2 * (2.7 * p - 1.7)'
+function easing.linear(t) return t end
+function easing.quad  (t) return t^2 end
+function easing.cubic (t) return t^3 end
+function easing.quart (t) return t^4 end
+function easing.quint (t) return t^5 end
+function easing.expo  (t) return 2^(10 * (t - 1)) end
+function easing.sine  (t) return -math.cos(t * (math.pi * .5)) + 1 end
+function easing.circ  (t) return -(math.sqrt(1 - t^2) - 1) end
+function easing.back  (t) return t^2 * (2.7 * t - 1.7) end
 
 -- a: amplitude, p: period
 function easing.elastic(t, a, p)

@@ -58,7 +58,7 @@ function imgui_nw_cairo:bind(win, imgui_class)
 	end
 
 	function imgui:_backend_set_cursor(cursor)
-		win:cursor(cursor or 'arrow')
+		win:cursor(cursor)
 	end
 
 	function imgui:_backend_render_frame()
@@ -110,6 +110,15 @@ function imgui_nw_cairo:bind(win, imgui_class)
 		end
 	end
 
+	function imgui:_backend_text_extents(s)
+		local ext = self.cr:text_extents(s)
+		return ext.width, ext.height, ext.y_bearing
+	end
+
+	function imgui:_backend_show_text(s)
+		self.cr:show_text(s)
+	end
+
 	function imgui:_backend_invalidate()
 		win:invalidate()
 	end
@@ -147,7 +156,7 @@ function imgui_nw_cairo:bind(win, imgui_class)
 	end)
 
 	app:runevery(0, function()
-		if imgui.continuous_rendering or next(imgui.stopwatches) then
+		if imgui.continuous_rendering then
 			win:invalidate()
 		end
 	end)

@@ -107,8 +107,15 @@ function player:mbutton(t)
 	for i,v in ipairs(values) do
 		local bw = i < #values and bw or left_w
 		local cut = #values > 1 and (i==#values and 'left' or i==1 and 'right' or 'both')
-		local t = {id = id..'_'..i, x = x, y = y, w = bw, h = h, text = texts and (texts[v] or texts[i]) or tostring(v),
-						cut = cut, enabled = enabled and enabled[v], default = t.default == v}
+		local t = {
+			id = id..'_'..i,
+			x = x, y = y, w = bw, h = h,
+			text = texts and (texts[v] or texts[i]) or tostring(v),
+			cut = cut,
+			enabled = enabled and enabled[v],
+			default = t.default == v,
+		}
+		self.layout:push()
 		if multisel then
 			t.selected = selected[v]
 			selected[v] = self:togglebutton(t)
@@ -118,6 +125,7 @@ function player:mbutton(t)
 				selected = v
 			end
 		end
+		self.layout:pop()
 		x = x + bw - 1
 		left_w = left_w - (bw - 1)
 	end

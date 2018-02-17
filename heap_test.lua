@@ -86,6 +86,22 @@ local function benchmark()
 	bench('vector3', heap.cdataheap{ctype = v3t, size = size+1, cmp = vcmp}, size, vgen)
 end
 
+local h = heap.valueheap()
+
+h:push(5)
+h:push(12)
+h:push(3)
+h:push(2)
+h:push(1)
+h:push(10)
+h:push(11)
+h:push(7)
+
+pp(h)
+
+
+do return end
+
 test_example1()
 test_example2()
 test_remove()

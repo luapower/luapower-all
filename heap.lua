@@ -36,8 +36,8 @@ local function heap(add, remove, swap, length, cmp)
 		return parent
 	end
 
-	local function push(val)
-		add(val)
+	local function push(...)
+		add(...)
 		return moveup(length())
 	end
 

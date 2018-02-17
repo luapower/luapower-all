@@ -424,37 +424,37 @@ end
 
 imgui.easing = {}
 
-function imgui:animate(start_time, duration, formula, dir, i1, i2)
-	if type(formula) == 'number' then
-		formula, dir, i1, i2 = 'linear', formula, dir, i1
+function imgui:animate(start_time, duration, ease, way, i1, i2)
+	if type(ease) == 'number' then
+		ease, way, i1, i2 = 'linear', ease, way, i1
 	else
-		formula = formula or 'linear'
-		if type(formula) == 'string' then
-			formula = easing[formula] or self.easing[formula]
+		ease = ease or 'linear'
+		if type(ease) == 'string' then
+			ease = easing[ease] or self.easing[ease]
 		end
 	end
-	assert(formula, 'invalid formula')
+	assert(ease, 'invalid ease')
 	if self.clock >= start_time + duration then return end
 	self:_backend_invalidate()
-	return easing.ease(formula, dir, self.clock - start_time, duration)
+	return easing.ease(ease, way, self.clock - start_time, duration)
 		* (i2 or 1) + (i1 or 0)
 end
 
 local function sign(x)
 	return x >= 0 and 1 or -1
 end
-function imgui:fade(start_time, duration, formula, dir, color1, color2)
+function imgui:fade(start_time, duration, ease, way, color1, color2)
 	if not color2 then
-		formula, dir, color1, color2 = 'linear', formula, dir, color1
+		ease, way, color1, color2 = 'linear', ease, way, color1
 	end
 	color1 = self.theme[color1] or color1
 	color2 = self.theme[color2] or color2
 	local r1, g1, b1, a1 = assert(color.string_to_rgba(color1))
 	local r2, g2, b2, a2 = assert(color.string_to_rgba(color2))
-	local dr = self:animate(start_time, duration, formula, dir, 0, math.abs(r1 - r2))
-	local dg = self:animate(start_time, duration, formula, dir, 0, math.abs(g1 - g2))
-	local db = self:animate(start_time, duration, formula, dir, 0, math.abs(b1 - b2))
-	local da = self:animate(start_time, duration, formula, dir, 0, math.abs(a1 - a2))
+	local dr = self:animate(start_time, duration, ease, way, 0, math.abs(r1 - r2))
+	local dg = self:animate(start_time, duration, ease, way, 0, math.abs(g1 - g2))
+	local db = self:animate(start_time, duration, ease, way, 0, math.abs(b1 - b2))
+	local da = self:animate(start_time, duration, ease, way, 0, math.abs(a1 - a2))
 	if not dr then return end
 	local r = r1 + dr * sign(r2 - r1)
 	local g = g1 + dg * sign(g2 - g1)

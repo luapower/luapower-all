@@ -33,13 +33,13 @@ __API Notes__:
 
 Create a heap API:
 
-	push(v) -> i         drop a value into the heap and return its index
+	push(...) -> i       drop a value into the heap and return its index
 	pop(i)               remove the value at index i (root is at index 1)
 	rebalance(i)         rebalance the heap after the value at i has been changed
 
 from a stack API:
 
-	push(v)              add a value to the top of the stack
+	push(...)            add a value to the top of the stack
 	pop()                remove the value at the top of the stack
 	swap(i, j)           swap two values (indices start at 1)
 	len() -> n           number of elements in stack
@@ -47,6 +47,7 @@ from a stack API:
 
 The heap can be a min-heap or max-heap depending on the comparison
 function. If cmp(i, j) returns a[i] < a[j] then it's a min-heap.
+Stack indices are assumed to be consecutive.
 
 ### `heap.cdataheap(h) -> h`
 

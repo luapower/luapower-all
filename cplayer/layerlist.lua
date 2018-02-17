@@ -1,6 +1,7 @@
 --layer list for decoupling paint order from call order in IMGUIs.
---any widget that implements hit() and render() is a layer, and can be added to a layer list
---so it can be painted it in z-order, as opposed to the normal call-order.
+--any widget that implements hit() and render() is a layer, and can be added
+--to a layer list so it can be painted in z-order, as opposed to the normal
+--call-order.
 
 local list = {}
 

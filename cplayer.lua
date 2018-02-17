@@ -76,9 +76,6 @@ function player:window(t)
 	--theme state
 	self.theme = referer.theme or self.themes.dark
 
-	--layout state
-	self.layout = self.null_layout
-
 	--widget state
 	self.active = nil   --has mouse focus
 	self.focused = nil  --has keyboard focus
@@ -137,6 +134,9 @@ function player:window(t)
 				self.stopwatches[t] = nil
 			end
 		end
+
+		--reset the layout
+		self.layout = self.group_layout:new()
 
 		--render the frame
 		self:on_render(self.cr)
@@ -315,14 +315,83 @@ end
 
 --a null layout is a stateless layout that requires all box coordinates
 --to be specified.
-player.null_layout = {}
+local null = {}
+player.null_layout = null
 
-function player.null_layout:getbox(t)
+function null:new()
+	return self
+end
+
+function null:getbox(t)
 	return
 		assert(t.x, 'x missing'),
 		assert(t.y, 'y missing'),
 		assert(t.w, 'w missing'),
 		assert(t.h, 'h missing')
+end
+
+function null:push() end
+function null:pop() end
+
+--basic auto-advancing layout
+
+local gr = {}
+player.group_layout = gr
+
+function gr:new()
+	self = setmetatable({}, {__index = self})
+	self.x = 0
+	self.y = 0
+	self.spacing_w = 5
+	self.spacing_h = 5
+	self.advance = nil
+	self.stack = {}
+	return self
+end
+
+function gr:move(x, y, advance, default_w, default_h)
+	self.x = self.x + (x or 0)
+	self.y = self.y + (y or 0)
+	self.advance = advance or self.advance
+	self.default_w = default_w or self.default_w
+	self.default_h = default_h or self.default_h
+end
+
+function gr:dir(advance)
+	self.advance = advance
+end
+
+function gr:getbox(t)
+	local x = t.x or self.x
+	local y = t.y or self.y
+	local w = assert(t.w or self.default_w, 'w missing')
+	local h = assert(t.h or self.default_h, 'h missing')
+	if self.advance then
+		if self.advance:find'^v' then
+			self.y = self.y + h + self.spacing_h
+		elseif self.advance:find'^h' then
+			self.x = self.x + w + self.spacing_w
+		end
+	end
+	return x, y, w, h
+end
+
+function gr:push(x, y, advance, default_w, default_h)
+	table.insert(self.stack, {
+		x = self.x, y = self.y, advance = self.advance,
+		default_w = self.default_w,
+		default_h = self.default_h,
+	})
+	self:move(x, y, advance, default_w, default_h)
+end
+
+function gr:pop()
+	local t = table.remove(self.stack)
+	self.x = t.x
+	self.y = t.y
+	self.advance = t.advance
+	self.default_w = t.default_w
+	self.default_h = t.default_h
 end
 
 --mouse helpers
@@ -363,7 +432,8 @@ end
 function stopwatch:progress()
 	if self.formula then
 		local easing = require'easing'
-		return math.min(easing[formula]((self.player.clock - self.start), 0, 1, self.duration), 1)
+		local t = (self.player.clock - self.start) / self.duration
+		return math.min(easing.ease(formula, nil, t), 1)
 	else
 		return math.min((self.player.clock - self.start) / self.duration, 1)
 	end

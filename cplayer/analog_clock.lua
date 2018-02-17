@@ -64,7 +64,7 @@ function player:analog_clock(t)
 	--seconds tongue
 	local ms1 = 400
 	if ms < ms1 then
-		s = s - 1 + easing.ease('elastic', ms / ms1, 0, 1, 1, 'out')
+		s = s - 1 + easing.ease('elastic', 'out', ms / ms1)
 	end
 	local x1, y1 = point(s, r * -.15, 60)
 	local x2, y2 = point(s, r * 0.73, 60)

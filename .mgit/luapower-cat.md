@@ -73,6 +73,7 @@ tagline: package categories
 * Templating
    * [mustache]
 * Motion
+	* [tweening]
 	* [easing]
 * Support APIs
 	* [opengl]

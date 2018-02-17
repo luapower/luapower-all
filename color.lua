@@ -81,7 +81,7 @@ local function string_to_rgba(s)
 	if rgba_colors[s] then
 		return unpack(rgba_colors[s])
 	end
-	if s:sub(1,1) ~= '#' then return end
+	if s:sub(1,1) ~= '#' then return nil end
 	local r, g, b, a
 	if #s == 4 or #s == 5 then -- '#rgb' or '#rgba'
 		r = tonumber(s:sub(2, 2), 16)
@@ -98,7 +98,7 @@ local function string_to_rgba(s)
 		g = tonumber(s:sub(4, 5), 16)
 		b = tonumber(s:sub(6, 7), 16)
 		a = tonumber(s:sub(8, 9), 16) or 255
-		if not r or not g or not b then return end
+		if not r or not g or not b then return nil end
 	end
 	r = r / 255
 	g = g / 255
@@ -110,7 +110,7 @@ end
 
 local function string_to_rgb(s)
 	local r, g, b = string_to_rgba(s)
-	if not r then return end
+	if not r then return nil end
 	return r, g, b
 end
 

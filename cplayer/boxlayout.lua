@@ -80,6 +80,11 @@ function box:align(w, h, halign, valign)
 		w, h
 end
 
+function box:getbox(t)
+
+end
+
+--[[
 function player:subbox(t)
 	--
 end
@@ -96,4 +101,4 @@ function player:move(x, y)
 	self.cpx = x or self.cpx
 	self.cpy = y or self.cpy
 end
-
+]]

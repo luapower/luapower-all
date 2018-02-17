@@ -56,7 +56,7 @@ function player:tablist(t)
 					local t = self.ui.stopwatch:progress()
 					x1 = x1 + dw * t
 				else
-					self.ui.stopwatch = self:stopwatch(100)
+					self.ui.stopwatch = self:stopwatch(0.1)
 					self.ui.drop_index = drop_index
 				end
 			end
@@ -69,9 +69,7 @@ function player:tablist(t)
 			selected = i
 		end
 
-		if i ~= drag_index then
-			x = x + w1
-		end
+		x = x + w1
 	end
 	drop_index = drag_index and (drop_index or #values)
 

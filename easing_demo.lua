@@ -8,7 +8,7 @@ local progress
 local duration = 2
 local start_time
 local selected_func = 'linear'
-local direction = 'in'
+local way = 'in'
 
 function player:on_render(cr)
 
@@ -22,8 +22,8 @@ function player:on_render(cr)
 		end
 	end
 
-	direction = self:mbutton{id = 'direction', x = 200, y = 10, w = 200, h = 26,
-		values = {'in', 'out', 'inout', 'outin'}, selected = direction}
+	way = self:mbutton{id = 'way', x = 200, y = 10, w = 200, h = 26,
+		values = {'in', 'out', 'inout', 'outin'}, selected = way}
 
 	start_time = start_time or self.clock
 
@@ -59,7 +59,7 @@ function player:on_render(cr)
 		self:rect(x, y, 100, 15, bg_color)
 		self:textbox(x, y, 100, 15, k, 12, fg_color, 'left', 'center')
 
-		local i = easing.ease(k, t, 0, 1, duration, direction)
+		local i = easing.ease(k, way, t / duration)
 		self:dot(x + 200 + i * 100, math.floor(y + 15 / 2), 5, bg_color)
 
 		if selected then

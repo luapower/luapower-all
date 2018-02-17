@@ -1009,7 +1009,7 @@ function M.recording_surface(content, x, y, w, h)
 		C.cairo_recording_surface_create(
 			X('CAIRO_CONTENT_', content),
 			x and r or nil
-		), M.surface_destroy)
+		), C.cairo_surface_destroy)
 end
 
 sr.ink_extents = d4out_func(C.cairo_recording_surface_ink_extents)
