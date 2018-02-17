@@ -16,6 +16,7 @@ Robert Penner's easing functions.
   * `t0` is the animation's start time
   * `dt` is the total animation duration
   * `d` is the value in `0..1` corresponding to the current time
+  * `...` are extra args to be passed to the ease function.
 
 ## Easing functions
 
