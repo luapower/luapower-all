@@ -2,6 +2,8 @@
 --tweening for animation
 --Written by Cosmin Apreutesei. Public Domain.
 
+if not ... then require'tweening_demo' end
+
 --prototype-based dynamic inheritance with __call constructor from glue.
 local function object(super, o)
 	o = o or {}
@@ -162,9 +164,9 @@ tween.value_semantics = nil --false for avoiding allocations on update
 
 --constructor
 
-function tween:__call(tw, o)
+function tween:__call(tweening, o)
 	local self = object(self, o)
-	self.tw = tw
+	self.tweening = tweening
 	self:reset()
 	return self
 end
@@ -183,7 +185,7 @@ function tween:_init_timing_model()
 end
 
 function tween:clock()
-	return self.tw:clock()
+	return self.tweening:clock()
 end
 
 function tween:start_clock()
@@ -250,7 +252,7 @@ end
 
 --non-linear (eased) progress within current iteration (can exceed 0..1).
 function tween:distance(progress, loop_index)
-	return self.tw:ease(self.ease, self.way, progress)
+	return self.tweening:ease(self.ease, self.way, progress)
 end
 
 function tween:pause()
@@ -287,7 +289,7 @@ end
 function tween:_init_animation_model()
 	if not self.interpolate or self.auto_interpolate then
 		self.interpolate, self.value_semantics =
-			self.tw:interpolation_function(self.type, self.attr)
+			self.tweening:interpolation_function(self.type, self.attr)
 		self.auto_interpolate = true
 	end
 	if not self.start_value
@@ -330,8 +332,8 @@ function tween:seek(total_progress)
 	self:update(self:clock_at(total_progress))
 end
 
---turn a tween into a tweenable object with the attribute `total_progress`
---tweenable in 0..1.
+--turn a finite tween into a tweenable object with the attribute
+--`total_progress` tweenable in 0..1.
 function tween:totarget()
 	assert(not self:is_infinite())
 	local t = {}
@@ -362,55 +364,67 @@ end
 timeline.duration = 0
 timeline.ease = 'linear'
 timeline.auto_duration = true --auto-increase duration to include all tweens
-timeline.auto_loop = true --set loop to infinite when adding infinite tweens
 timeline.auto_remove = true --remove tweens automatically when finished
 
 function timeline:reset()
 	self:_init_timing_model()
 	self.tweens = self.tweens or {}
+	if self.auto_duration then
+		self.duration = 0
+	end
 	for i,tween in ipairs(self.tweens) do
 		tween:reset()
+		self:_adjust(tween)
 	end
 end
 
 function timeline:_adjust(new_tween)
-	if self.auto_duration then
-		local tween_end_clock =
-			new_tween:start_clock() + new_tween:total_duration()
-		local duration = tween_end_clock - self:start_clock()
-		self.duration = math.max(self.duration, duration)
-	end
+	if not self.auto_duration then return end
+	local tween_end_clock =
+		new_tween:start_clock() + new_tween:total_duration()
+	local duration = tween_end_clock - self:start_clock()
+	self.duration = math.max(self.duration, duration)
 end
 
 function timeline:add(tween, start)
 	table.insert(self.tweens, tween)
-	tween.start = start or self.duration
+	if tween.start then
+		tween.start = start
+	elseif self:is_infinite() then
+		tween.start = 0
+	else
+		tween.start = self:total_duration()
+	end
 	tween.timeline = self
 	self:_adjust(tween)
 	return self
 end
 
-function timeline:remove(what)
+function timeline:_remove(what, recursive)
 	local found
 	for i,tween in ipairs(self.tweens) do
-		if what == tween.attr
-			or what == tween.target
+		if what == true
 			or what == tween
+			or what == tween.attr
+			or what == tween.target
 		then
-			if tween.remove then --recurse
-				tween:remove(what)
-			end
 			self.tweens[i] = false
+			self.tweens[i].timeline = nil
 			found = true
+		elseif recursive and tween.remove then
+			found = tween:_remove(what) or found
 		end
 	end
 	if found then
 		cleanup(self.tweens)
 	end
+	return found
 end
-
+function timeline:remove(what)
+	return self:_remove(what, true)
+end
 function timeline:clear()
-	self.tweens = {}
+	return self:_remove(true, false)
 end
 
 --timing model
@@ -427,13 +441,9 @@ end
 timeline.get_value = nil --not supported
 timeline.set_value = nil --not supported
 
-function timeline:update(clock)
-	if not self.running then return end
-	if #self.tweens == 0 then return end
-	local d = self:distance(self:progress(clock))
+function timeline:_update(clock)
 	local found
 	for i,tween in ipairs(self.tweens) do
-		local start = tween.start
 		tween:update(clock)
 		if self.auto_remove and tween:status(clock) == 'finished' then
 			self.tweens[i] = false
@@ -442,6 +452,21 @@ function timeline:update(clock)
 	end
 	if found then
 		cleanup(self.tweens)
+	end
+end
+function timeline:update(clock)
+	if not self.running then return end
+	if #self.tweens == 0 then return end
+	if self.duration == 1/0 then
+		--infinite duration: timing variables that logically require a finite
+		--duration don't work, leaving only speed and delay to have an effect.
+		local start = tween.start + self.delay
+		local clock = clock * self.speed
+		self:_update(clock)
+	else
+		--tweening the tweens means finding and applying an eased clock on them.
+		local clock = self:clock_at(self:distance(self:progress(clock)))
+		self:_update(clock)
 	end
 end
 
@@ -455,59 +480,6 @@ end
 function tw:from(target, duration, easing, start_values, start, loop)
 	return self:tween{target = target, duration = duration, easing = easing,
 		start_values = start_values, start = start, loop = loop}
-end
-
---tests ----------------------------------------------------------------------
-
-if not ... then
-
-local tw = tw()
-
-tw.type['_color$'] = 'list'
-
-local o = {x = 0, y = 200, x_color = {1, 0, 0, .5}, i = 0}
-
-tw:freeze()
-local tx = tw:tween{target = o, attr = 'x', end_value = 100, loop = 2, ease = 'elastic', way = 'out'}
-local ty = tw:tween{target = o, attr = 'y', end_value = 0, loop = 2, ease = 'elastic', way = 'out'}
-local tc = tw:tween{target = o, attr = 'x_color', end_value = {0, 0, 1, 1},
-	loop = 2, duration = 1, ease = 'linear'}
-local ti = tw:tween{target = o, attr = 'i', end_value = 100, type = 'integer'}
-
-local tl = tw:timeline()
-tw:unfreeze()
-
-tl.auto_remove = false
-tl:add(tx, 0.1):add(ty, 0.2)--:add(tc, 0) --:add(ti)
-
-local nw = require'nw'
-
-local win = nw:app():window{x = 600, y = 400, w = 800, h = 500}
-
-function win:repaint()
-	local cr = self:bitmap():cairo()
-	cr:rgb(0, 0, 0)
-	cr:paint()
-
-	tl:update()
-
-	cr:rectangle(o.x + 100, o.y + 100, 100, 100)
-	cr:rgba(unpack(o.x_color))
-	cr:fill_preserve()
-	cr:rgba(1, 1, 1, 1)
-	cr:stroke()
-
-	if tl:status() == 'running' then
-		self:invalidate()
-	else
-		print'done'
-		tl:reset()
-		self:invalidate()
-	end
-end
-
-nw:app():run()
-
 end
 
 return tw
