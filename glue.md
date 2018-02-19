@@ -8,6 +8,7 @@ tagline: everyday Lua functions
 ------------------------------------------------------------------ ---------------------------------------------------------
 __math__
 `glue.clamp(x, min, max)`                                          clamp x in range
+`glue.lerp(x, x0, x1, y0, y1)`                                     linear interpolation
 __varargs__
 `glue.pack(...) -> t`                                              pack varargs
 `glue.unpack(t, [i] [,j]) -> ...`                                  unpack varargs

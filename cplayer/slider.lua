@@ -33,14 +33,14 @@ function player:slider(t)
 		if self.lbutton then
 			local w1 = clamp(self.mousex - x, 0, w)
 			i = lerp(w1, 0, w, i0, i1)
+			i = snap(i, step)
+			i = clamp(i, i0, i1)
 		else
 			self.active = nil
 		end
 	end
-	i = snap(i, step)
-	i = clamp(i, i0, i1)
 
-	local w1 = lerp(i, i0, i1, 0, w)
+	local w1 = lerp(clamp(i, i0, i1), i0, i1, 0, w)
 	text =
 		t.pos_text and t.pos_text(i)
 		or (text and (text .. ': ') or '') .. tostring(i)
