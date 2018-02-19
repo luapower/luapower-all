@@ -29,7 +29,8 @@ function player:slider(t)
 
 	if not self.active and self.lbutton and hot then
 		self.active = id
-	elseif self.active == id then
+	end
+	if self.active == id then
 		if self.lbutton then
 			local w1 = clamp(self.mousex - x, 0, w)
 			i = lerp(w1, 0, w, i0, i1)
