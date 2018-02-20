@@ -9,7 +9,7 @@ animation.
 
 ## Features
 
-  * timing parameters: `duration`, `delay`, `speed`, `loop`, `reverse`,
+  * timing parameters: `duration`, `delay`, `speed`, `loop`, `backwards`,
   `yoyo`, `ease`, `way`, `loop_start`.
   * independent timing parameters for each target object and/or attribute.
   * nested, overlapping timelines with relative start times.
@@ -31,45 +31,45 @@ parameters.
 
 #### Timing model
 
-__field__      __default__  __description__
--------------- ------------ --------------------------------------------------
-`start`        `clock()`    start clock (becomes relative when added to timeline)
-`duration`     `1`          duration of one iteration (can't be negative)
-`delay`        `0`          delay before the first iteration starts
-`speed`        `1`          speed of the entire tween; must be > 0
-`loop`         `1`          # of iterations (can be fractional; use `1/0` for infinite)
-`reverse`      `false`      start backwards
-`yoyo`         `true`       alternate between forwards and backwards on each iteration
-`ease`         `'quad'`     ease function `f(t) -> d` or name from [easing]
-`way`          `'in'`       easing way: `'in'`, `'out'`, `'inout'` or `'outin'`
-`loop_start`   `0`          1.25 means start at 25% on the _second_ iteration
-`paused`       `false`      start paused
-`clock() -> t` `tw:clock()` clock source
+__field__      __default__   __description__
+-------------- ------------- -------------------------------------------------
+`start`        current clock start clock (relative when in a timeline)
+`clock`        `nil`         current clock, set by `update()` and `seek()`
+`duration`     `1`           duration of one iteration (can't be negative)
+`delay`        `0`           delay before the first iteration starts
+`speed`        `1`           speed of the entire tween; must be > 0
+`loop`         `1`           # of iterations (can be fractional; use `1/0` for infinite)
+`backwards`    `false`       start backwards
+`yoyo`         `true`        alternate between forwards and backwards on each iteration
+`ease`         `'quad'`      ease function `f(t) -> d` or name from [easing]
+`way`          `'in'`        easing way: `'in'`, `'out'`, `'inout'` or `'outin'`
+`loop_start`   `0`           1.25 means start at 25% on the _second_ iteration
+`running`      `true`        start running or paused
 
-__method__                  __description__
---------------------------- --------------------------------------------------
-`start_clock() -> t`        absolute start clock
-`total_duration() -> dt`    total tween duration incl. repeats (can be infinite)
-`end_clock() -> t`          absolute end clock (can be infinite)
-`is_infinite() -> bool`     true if `loop` and/or `duration` are infinite
-`status([t]) -> status`     status at clock: 'before_start', 'running', 'paused', 'finished'
-`total_progress([t]) -> P`  linear progress in `0..1` at clock incl. repeats (can be infinite)
-`clock_at(P) -> t`          absolute clock at total linear progress
-`is_reverse(i) -> bool`     true if iteration `i` goes backwards
-`progress([t]) -> p, i`     linear progress in `0..1` in current iteration and iteration index
-`distance(p, i) -> d`       eased progress in `0..1` in current iteration and iteration index
-`pause()`                   pause (sets `paused` field to `true`)
-`resume()`                  resume (sets `paused` field to `false` and advances `start`)
-`stop()`                    stop and remove from timeline
-`restart()`                 restart (advances `start`)
-`reset()`                   reset
-`update([t])`               update value at clock
-`seek(P)`                   update value at total progress
-`totarget() -> obj`         convert to tweenable object
+__method__                   __description__
+---------------------------- --------------------------------------------------
+`total_duration() -> dt`     total tween duration incl. repeats (can be `inf`)
+`end_clock() -> t`           end clock (can be `inf`)
+`is_infinite() -> bool`      true if `loop` and/or `duration` are `inf`
+`clock_at(P) -> t`           clock at total linear progress
+`is_backwards(i) -> bool`    true if iteration `i` goes backwards
+`total_progress() -> P`      linear progress in `0..1` incl. repeats (can be `inf`)
+`status() -> status`         status: 'before_start', 'running', 'paused', 'finished'
+`progress() -> p, i`         progress in `0..1` in current iteration, and iteration index
+`distance() -> d`            eased progress in `0..1` in current iteration/iteration index
+`pause()`                    pause (changes `running`)
+`resume()`                   resume (changes `running` and `start`)
+`stop()`                     stop and remove from timeline
+`restart()`                  restart (changes `start`)
+`reverse()`                  reverse (changes `start` and `reverse`; finite duration only)
+`update()`                   update target value
+`seek(P)`                    move current clock based on total progress
+`totarget() -> obj`          convert to tweenable object
 
-__NOTE:__ The tween doesn't store the current time or the current value.
-Whenever the optional `t` argument indicating a time value is not given,
-the current clock is used instead.
+__NOTE:__ For all the methods above which take an optional `t` argument,
+when that argument is not given, the current clock from calling
+`tweening:clock()` (or the clock of the last `pause()` call if the tween was
+paused) is used instead.
 
 #### Animation model
 
@@ -130,7 +130,7 @@ __method__                         __description__
 Add a new tween to the timeline, set its `start` field and its `timeline`
 field, and, if `auto_duration` is `true`, increase timeline's `duration`
 to include the entire tween. When part of a timeline, a tween's `start`
-becomes relative to the timeline's start time. If `start` is not given, the
+is relative to the timeline's start time. If `start` is not given, the
 tween is added to the end of the timeline (when the timeline's duration is
 infinite then the tween's start is set to `0` instead).
 
@@ -148,10 +148,10 @@ Remove all tweens from the timeline. Returns true if any were removed.
 ### `tw() -> tw`
 
 Create a new `tweening` module. Useful for extending the `tweening` module
-with new attribute types and interpolators without affecting the original
-module table.
+with new attribute types, new interpolators or different ways of getting the
+wall clock without affecting the original module table.
 
-### Attribute types
+### Attribute types and interpolators
 
 ### `tw.type.<name|pattern|match_func> = attr_type`
 
@@ -172,15 +172,24 @@ thus avoiding an allocation on every frame if `x` is a non-scalar type.
 
 ### The wall clock
 
+### `tw:clock([t|false]) -> t`
+
+Get/freeze/unfreeze the wall clock. With `t` it freezes the wall clock such
+that subsequent `tw:clock()` calls will return `t`. With `false` it unfreezes
+it such that subsequent `tw:clock()` calls will return `tw:current_clock()`.
+
+Freezing is useful for creating multiple tweens which start at the exact same
+time without having to specify the time.
+
 ### `tw:current_clock() -> t`
 
-Current monotonic performance counter, in seconds.
+Current monotonic performance counter, in seconds. Implemented in terms of
+[time.clock()][time]. Override this in order to remove the dependency on the
+[time] module.
 
-### `tw:freeze()`
+### Easing
 
-Freeze the wall clock. Useful for creating multiple tweens which start at the
-exact same time.
+### `tw:ease(ease, way, p, i) -> d`
 
-### `tw:unfreeze()`
-
-Unfreeze the wall clock.
+Implemented in terms of [easing.ease()][easing]. Override this in order to
+remove the dependency on the [easing] module.
