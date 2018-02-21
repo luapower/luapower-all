@@ -2,11 +2,22 @@
 --luapower command-line interface.
 --Written by Cosmin Apreutesei. Public Domain.
 
+if ... == 'luapower_cli' then return end --loaded as module: nothing to show
+
 local lp = require'luapower'
 local glue = require'glue'
 local _ = string.format
 
-if ... == 'luapower_cli' then return end --loaded as module: nothing to show
+--hack: set stdout to binary mode to avoid writing out CR's which breaks bash.
+local ffi = require 'ffi'
+if ffi.os == 'Windows' then
+	ffi.cdef[[
+		int _setmode(int, int);
+		int _fileno(void *);
+	]]
+	local _O_BINARY = 0x8000
+	assert(ffi.C._setmode(ffi.C._fileno(io.stdout), _O_BINARY) ~= -1)
+end
 
 --listing helpers
 ------------------------------------------------------------------------------
