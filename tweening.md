@@ -10,7 +10,7 @@ animation.
 ## Features
 
   * timing parameters: `duration`, `delay`, `speed`, `loop`, `backwards`,
-  `yoyo`, `ease`, `way`, `loop_start`.
+  `yoyo`, `ease`, `way`, `offset`.
   * independent timing parameters for each target object and/or attribute.
   * nested, overlapping timelines with relative start times.
   * timelines can be tweened as a unit using all timing parameters (see below).
@@ -27,28 +27,37 @@ Create a new tween. A tween is an object which repeatedly updates a value on
 a target object _in time_ based on an interpolation function and timing
 parameters.
 
-> __NOTE:__ `t` itself is turned into a tween (no new table is created).
+__NOTE:__ `t` itself is turned into a tween (no new table is created). This
+allows any method to be overriden by specifying it directly as a field of `t`.
 
-#### Timing model
+### Timing model
 
 __field__      __default__   __description__
 -------------- ------------- -------------------------------------------------
 `start`        current clock start clock (relative when in a timeline)
-`clock`        `nil`         current clock, set by `update()` and `seek()`
 `duration`     `1`           duration of one iteration (can't be negative)
-`delay`        `0`           delay before the first iteration starts
-`speed`        `1`           speed of the entire tween; must be > 0
-`loop`         `1`           # of iterations (can be fractional; use `1/0` for infinite)
+`ease`         `'quad'`      ease function `f(p) -> d` or name from [easing] module
+`way`          `'in'`        easing way: `'in'`, `'out'`, `'inout'` or `'outin'`
+`ease_args`    none          optional args to pass to the ease function
 `backwards`    `false`       start backwards
 `yoyo`         `true`        alternate between forwards and backwards on each iteration
-`ease`         `'quad'`      ease function `f(t) -> d` or name from [easing]
-`way`          `'in'`        easing way: `'in'`, `'out'`, `'inout'` or `'outin'`
-`loop_start`   `0`           1.25 means start at 25% on the _second_ iteration
-`running`      `true`        start running or paused
+`loop`         `1`           number of iterations (can be fractional; use `1/0` for infinite)
+`delay`        `0`           start delay (on the first iteration; can be negative)
+`speed`        `1`           speed factor; must be > 0
+`offset`       `0`           progress at start
+`running`      `true`        running or paused
+`clock`        `start`       current clock when running, set by `update()`
+`resume_clock` `clock`       current clock when paused, set by `update()`
+
+__NOTE__: The difference between `start` and `delay` is that when in the
+`delay` poriton, the tween is considered to be running, and the target value
+is updated as such.
+
+__NOTE__: Timing model fields can be changed anytime (there's no internal state).
 
 __method__                   __description__
 ---------------------------- --------------------------------------------------
-`total_duration() -> dt`     total tween duration incl. repeats (can be `inf`)
+`total_duration() -> dt`     total duration incl. repeats (can be `inf`)
 `end_clock() -> t`           end clock (can be `inf`)
 `is_infinite() -> bool`      true if `loop` and/or `duration` are `inf`
 `clock_at(P) -> t`           clock at total linear progress
@@ -56,17 +65,27 @@ __method__                   __description__
 `total_progress([t]) -> P`   linear progress in `0..1` incl. repeats (can be `inf`)
 `status([t]) -> status`      status: 'before_start', 'running', 'paused', 'finished'
 `progress([t]) -> p, i`      progress in `0..1` in current iteration, and iteration index
-`distance([t]) -> d`         eased progress in `0..1` in current iteration/iteration index
+`distance([t]) -> d`         eased progress in `0..1` in current iteration
 `update([t])`                update internal clock and target value
-`pause()`                    pause (changes `running`)
-`resume()`                   resume (changes `running` and `start`)
-`seek(P)`                    move current clock based on total progress
-`stop()`                     stop and remove from timeline
-`restart()`                  restart (changes `start`)
-`reverse()`                  reverse (changes `start` and `reverse`; finite duration only)
-`totarget() -> obj`          convert to tweenable object
 
-#### Animation model
+#### Changing the state of the tween
+
+__method__           __description__
+-------------------- ---------------------------------------------------------
+`pause()`            pause (changes `running`, prevents updating `clock`)
+`resume()`           resume (changes `running` and `start`)
+`seek(P)`            update target value based on total progress (changes `start`).
+`stop()`             pause and remove from timeline
+`restart()`          restart (changes `start`)
+`reverse()`          reverse (changes `start` and `backwards`; `duration` must be finite)
+
+__NOTE:__ The methods above change the timing model of the tween, which is
+normally supposed to be immutable in order to make the tween stateless. This
+is done to allow a tween that is part of a timeline to be paused and resumed
+independently of other tweens and of the timeline. Use `clone()` to preseve
+the initial definition of the tween.
+
+### Animation model
 
 __field__          __default__         __description__
 ------------------ ------------------- ---------------------------------------
@@ -74,17 +93,51 @@ __field__          __default__         __description__
 `attr`             (required)          attribute in the target object to tween
 `start_value`      `target[attr]`      start value (defaults to target's value)
 `end_value`        `target[attr]`      end value (defaults to target's value)
-`type`             `'number'`          attribute type
+`type`             per `attr`          force attribute type
 `interpolate`      default for `type`  `f(t, x1, x2[, xout]) -> x`
 `value_semantics`  default for `type`  (see below)
 `get_value() -> v` `target[attr] -> v` value getter
 `set_value(v)`     `target[attr] = v`  value setter
 
+__NOTE:__ Animation model fields are read/only.
+
+### Relative values
+
+`start_value` and `end_value` can be given in the format `'<number>'`,
+`'<number><unit>`, `'<operator>=<number>'` or `'<operator>=<number><unit>'`,
+where operator can be `+`, `-` or `*` and units can be one of:
+
+__unit__     __description__
+------------ -----------------------------------------------------------------
+`%`          percent
+`cw`         clockwise
+`ccw`        counter-clockwise
+`deg`        degrees
+------------ -----------------------------------------------------------------
+
+Examples: `+=10deg`, `25%`.
+
+### Misc.
+
+__method__                   __description__
+---------------------------- --------------------------------------------------
+`tween:clone() -> tween`     clone a tween
+`tween:totarget() -> obj`    convert to tweenable object
+
+### `tween:clone() -> tween`
+
+Clone a tween in its current state.
+
+### `tween:totarget() -> obj`
+
+Create a proxy object for the tween with the additional tweenable field
+`total_progress`. Other tweenable properties like `speed` remain accessible.
+
 ## Timelines
 
 ### `tw:timeline(t) -> tl`
 
-Create a new timeline. A timeline is a list of tweens which are tweened in
+Create a new timeline. A timeline is a list of tweens which are updated in
 parallel (or one after another, depending on their `start` time). The list
 can also contain other timelines, resulting in a hierarchy of timelines.
 
@@ -93,35 +146,42 @@ __NOTE:__ `t` itself is turned into a timeline (no new table is created).
 ### Timelines are tweens
 
 A timeline is itself a tween, containing all the fields and methods of the
-timing model of a tween but none of the fields and methods of the animation
-model because it's not animating a target object but it's driving other
-tweens. A timeline can also be used to tween the _progress_ of its child
-tweens by setting `tween_progress = true` .
+timing model of a tween (but none of the fields and methods of the animation
+model since it's not animating a target object, it's updating other tweens).
+This means that a timeline can be used to _tween_ the _total progress_ of its
+child tweens instead of just updating them on the same clock, since it has a
+`distance` resulting from its timing model. It also means that the timeline
+can be itself tweened on its _total progress_ (which only works if the
+timeline is _not_ infinite).
 
-### Tweening the progress of other tweens
+### Tweening other tweens
 
 Setting `tween_progress = true` on a timeline switches the timeline into
-tweening the progress of its child tweens (so a temporal value) instead
-of just updating them on the same clock. In this mode, the child's `start`
-value is ignored, and the timeline's `distance` is interpolated over the
-child's total progress.
+tweening its child tweens on their _total progress_ (so tweening a temporal
+value) instead of just updating them on the same clock. In this mode, the
+child's `start` and `duration` are ignored: instead, the timeline's `distance`
+is interpolated over the child's total progress.
 
 ### Timeline-specific fields and methods
 
 __field__        __default__ __description__
 ---------------- ----------- -------------------------------------------------
-`ease`           `'linear'`
+`tweens`         `{}`        the list of tweens in the timeline
+`ease`           `'linear'`  (a better default for the `tween_progress` mode)
 `duration`       `0`         auto-adjusted when adding tweens
 `auto_duration`  `true`      auto-increase duration to include all tweens
 `auto_remove`    `true`      remove tweens automatically when finished
-`tween_progress` `false`
+`tween_progress` `false`     progress-tweening mode
 
-__method__                         __description__
+__method__                  __description__
 --------------------------- --------------------------------------------------
-`add:
-`status()`                  `'empty'`
+`add(tween[, start])`       add a tween
+`replace(tween[, start])`   replace/add a tween
+`remove(tween|attr|target)` remove matching tweens recursively
+`clear() -> true|false`     remove all tweens (non-recursively)
+`status()`                  adds `'empty'`
 
-### `tl:add(tween[, start]) -> timeline`
+### `tl:add(tween[, start]) -> tl`
 
 Add a new tween to the timeline, set its `start` field and its `timeline`
 field, and, if `auto_duration` is `true`, increase timeline's `duration`
@@ -130,12 +190,16 @@ is relative to the timeline's start time. If `start` is not given, the
 tween is added to the end of the timeline (when the timeline's duration is
 infinite then the tween's start is set to `0` instead).
 
+### `tl:replace(tween[, start]) -> tl`
+
+Add a tween or replace an existing tween with the same target and attr.
+
 ### `tl:remove(tween|attr|target) -> true|false`
 
 Remove a tween or all tweens with a specific attribute or target object
 recursively. Returns true if any were removed.
 
-### `tl:clear() ->  true|false`
+### `tl:clear() -> true|false`
 
 Remove all tweens from the timeline. Returns true if any were removed.
 
