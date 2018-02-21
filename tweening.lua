@@ -16,11 +16,7 @@ local function clamp(x, min, max) --from glue
 	return math.min(math.max(x, min), max)
 end
 
-local function lerp(x, x0, x1, y0, y1)
-	return y0 + (x-x0) * ((y1-y0) / (x1 - x0))
-end
-
-local function lerp01(d, x1, x2)
+local function lerp(d, x1, x2)
 	return x1 + d * (x2 - x1)
 end
 
@@ -112,7 +108,7 @@ end
 --interpolators --------------------------------------------------------------
 
 function tw.interpolate.number(d, x1, x2)
-	return lerp01(d, tonumber(x1), tonumber(x2))
+	return lerp(d, tonumber(x1), tonumber(x2))
 end
 
 function tw.interpolate.integer(d, i1, i2)
@@ -143,7 +139,7 @@ tween.way = 'in' --easing way: 'in', 'out', 'inout', 'outin'
 tween.delay = 0 --start delay; can be negative
 tween.speed = 1 --speed factor; can't be 0, can't be < 0
 tween.backwards = false --first iteration is backwards
-tween.yoyo = false --alternate between forward and backwards on each iteration
+tween.yoyo = true --alternate between forward and backwards on each iteration
 tween.loop = 1 --repeat count; use 1/0 for infinite; can be fractional
 tween.loop_start = 0 --aka progress_start; can be fractional, negative, > 1
 --timing model / state
@@ -184,16 +180,9 @@ function tween:_init_timing_model()
 	end
 end
 
---returns true if the tween is the identity tween,
---i.e. that the distance simplifies to (clock - start) / duration.
-function tween:is_identity()
-	return self.delay == 0 and self.speed == 1 and self.ease == 'linear'
-		and not self.backwards and not self.yoyo and self.loop == 1
-		and self.loop_start == 0
-end
-
 function tween:total_duration()
-	return (self.delay + self.duration * self.loop) * (1 / self.speed)
+	return math.max(self.delay + self.duration * self.loop, 0)
+		* (1 / self.speed)
 end
 
 function tween:end_clock()
@@ -222,17 +211,17 @@ end
 
 --returns where the entire animation is in the 0..1 interval.
 --returns 0 for infinite tweens on any clock.
-function tween:_total_progress()
-	return (self.clock - self.start) / self:total_duration()
+function tween:_total_progress(clock)
+	return ((clock or self.clock) - self.start) / self:total_duration()
 end
 
-function tween:total_progress()
-	return clamp(self:_total_progress(), 0, 1)
+function tween:total_progress(clock)
+	return clamp(self:_total_progress(clock), 0, 1)
 end
 
-function tween:status()
-	local p = self:_total_progress()
-	return p < 0 and 'not_started' or p > 1 and 'finished'
+function tween:status(clock)
+	local p = self:_total_progress(clock)
+	return p < 0 and 'not_started' or p >= 1 and 'finished'
 		or self.running and 'running' or 'paused'
 end
 
@@ -303,6 +292,7 @@ function tween:restart()
 end
 
 function tween:reverse()
+	--TODO:
 	if self.duration == 1/0 then return end
 	clock = clock or self:clock()
 	self:resume(clock)
@@ -312,6 +302,24 @@ function tween:reverse()
 	self.start = clock
 	self.backwards = not self.backwards
 	self:update_value()
+end
+
+--turn a finite tween into a tweenable object with the attribute
+--`total_progress` tweenable in 0..1.
+function tween:totarget()
+	local t = {}
+	setmetatable(t, t)
+	function t.__index(t, k)
+		if k == 'total_progress' then
+			return self:total_progress() --only queried on tween creation
+		end
+	end
+	function t.__newindex(t, k, v)
+		if k == 'total_progress' then
+			self:seek(v)
+		end
+	end
+	return t
 end
 
 --animation model
@@ -354,22 +362,8 @@ function tween:update_value()
 	end
 end
 
---turn a finite tween into a tweenable object with the attribute
---`total_progress` tweenable in 0..1.
-function tween:totarget()
-	local t = {}
-	setmetatable(t, t)
-	function t.__index(t, k)
-		if k == 'total_progress' then
-			return self:total_progress() --only queried on tween creation
-		end
-	end
-	function t.__newindex(t, k, v)
-		if k == 'total_progress' then
-			self:seek(v)
-		end
-	end
-	return t
+function tween:can_be_replaced_by(tween)
+	return self.target == tween.target and self.attr == tween.attr
 end
 
 --timeline -------------------------------------------------------------------
@@ -384,10 +378,11 @@ for k,v in pairs(tween) do
 end
 
 --timing model
-timeline.duration = 0
+timeline.duration = 0 --auto-increased when adding tweens
 timeline.ease = 'linear'
 timeline.auto_duration = true --auto-increase duration to include all tweens
 timeline.auto_remove = true --remove tweens automatically when finished
+timeline.tween_progress = false --interpolate the child tweens' progress
 
 function timeline:reset()
 	self:_init_timing_model()
@@ -406,6 +401,10 @@ function timeline:_adjust(new_tween)
 	self.duration = math.max(self.duration, new_tween:end_clock())
 end
 
+function timeline:can_be_replaced_by(tween)
+	return false
+end
+
 function timeline:add(tween, start)
 	table.insert(self.tweens, tween)
 	if start then
@@ -417,6 +416,22 @@ function timeline:add(tween, start)
 	end
 	tween.timeline = self
 	self:_adjust(tween)
+	return self
+end
+
+function timeline:replace(tween, start)
+	local replaced
+	if self.auto_replace then
+		for i,twn in ipairs(self.tweens) do
+			if twn:can_be_replaced_by(tween) then
+				self.tweens[i] = tween
+				replaced = true
+			end
+		end
+	end
+	if not replaced then
+		self:add(tween, start)
+	end
 	return self
 end
 
@@ -461,29 +476,24 @@ end
 timeline.get_value = nil --not supported
 timeline.set_value = nil --not supported
 
+--note: auto_remove not enabled in this mode.
 function timeline:_interpolate_tweens()
-	local distance = self:distance()
-	local found
+	local d = self:distance()
 	for i,tween in ipairs(self.tweens) do
-		local t0 = tween.start
-		local t1 = tween:end_clock()
-		local d  = self:distance()
-		local d0 = self:distance(self.start + t0)
-		local d1 = self:distance(self.start + t1)
-		local t = lerp(d, d0, d1, t0, t1)
-		--print(t, t0, t1, d, d0, d1)
-		tween:update(t)
-		if self.auto_remove and tween:status(clock) == 'finished' then
-			self.tweens[i] = false
-			found = true
-		end
-	end
-	if found then
-		cleanup(self.tweens)
+		local clock = lerp(d, tween.start, tween:end_clock())
+		tween:update(clock)
 	end
 end
-function timeline:_update_tweens(clock)
-	local clock = clock - self.start
+
+function timeline:_update_tweens()
+	local clock = self.clock
+	local status = self:status()
+	if status == 'finished' then
+		clock = self:end_clock()
+	elseif status == 'not_started' then
+		clock = self.start
+	end
+	local clock = (clock - self.start) * self.speed - self.delay
 	local found
 	for i,tween in ipairs(self.tweens) do
 		tween:update(clock)
@@ -496,33 +506,36 @@ function timeline:_update_tweens(clock)
 		cleanup(self.tweens)
 	end
 end
+
 function timeline:update_value()
 	if #self.tweens == 0 then return end
-	if self.duration == 1/0 then
-		--infinite duration: timing variables that logically require a finite
-		--duration don't work, leaving only speed and delay to have an effect.
-		local start = tween.start + self.delay
-		local clock = self.clock + (self.clock - self.start) * self.speed
-		self:_update_tweens(clock)
-	elseif false and self:is_identity() then
-		--identity tweening (default): tweens' clocks align to timeline's clock.
-		self:_update_tweens(self.clock)
-	else
-		--worst case: tweening the tweens
+	if self.tween_progress then
 		self:_interpolate_tweens()
+	else
+		self:_update_tweens()
 	end
 end
 
 --sugar APIs -----------------------------------------------------------------
 
-function tw:to(target, duration, easing, end_values, start, loop)
-	return self:tween{target = target, duration = duration, easing = easing,
-		end_values = end_values, start = start, loop = loop}
+function tw:to(target, duration, easing, way, end_values, start, loop, loop_start, delay)
+	local tl = self:timeline{}
+	for attr, val in pairs(end_values) do
+		local tween = self:tween{target = target, duration = duration,
+			easing = easing, end_values = end_values, start = start, loop = loop}
+		tl:add(tween)
+	end
+	return tl
 end
 
-function tw:from(target, duration, easing, start_values, start, loop)
+function tw:from(target, duration, easing, way, start_values, start, loop)
 	return self:tween{target = target, duration = duration, easing = easing,
 		start_values = start_values, start = start, loop = loop}
+end
+
+
+function tw:stagger_to(targets, duration, easing, way, end_values, start, loop, loop_start, delay)
+
 end
 
 return tw

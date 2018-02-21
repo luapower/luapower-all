@@ -53,23 +53,18 @@ __method__                   __description__
 `is_infinite() -> bool`      true if `loop` and/or `duration` are `inf`
 `clock_at(P) -> t`           clock at total linear progress
 `is_backwards(i) -> bool`    true if iteration `i` goes backwards
-`total_progress() -> P`      linear progress in `0..1` incl. repeats (can be `inf`)
-`status() -> status`         status: 'before_start', 'running', 'paused', 'finished'
-`progress() -> p, i`         progress in `0..1` in current iteration, and iteration index
-`distance() -> d`            eased progress in `0..1` in current iteration/iteration index
+`total_progress([t]) -> P`   linear progress in `0..1` incl. repeats (can be `inf`)
+`status([t]) -> status`      status: 'before_start', 'running', 'paused', 'finished'
+`progress([t]) -> p, i`      progress in `0..1` in current iteration, and iteration index
+`distance([t]) -> d`         eased progress in `0..1` in current iteration/iteration index
+`update([t])`                update internal clock and target value
 `pause()`                    pause (changes `running`)
 `resume()`                   resume (changes `running` and `start`)
+`seek(P)`                    move current clock based on total progress
 `stop()`                     stop and remove from timeline
 `restart()`                  restart (changes `start`)
 `reverse()`                  reverse (changes `start` and `reverse`; finite duration only)
-`update()`                   update target value
-`seek(P)`                    move current clock based on total progress
 `totarget() -> obj`          convert to tweenable object
-
-__NOTE:__ For all the methods above which take an optional `t` argument,
-when that argument is not given, the current clock from calling
-`tweening:clock()` (or the clock of the last `pause()` call if the tween was
-paused) is used instead.
 
 #### Animation model
 
@@ -99,26 +94,27 @@ __NOTE:__ `t` itself is turned into a timeline (no new table is created).
 
 A timeline is itself a tween, containing all the fields and methods of the
 timing model of a tween but none of the fields and methods of the animation
-model because it's not animating a target object but it's tweening other
-tweens. "Tweening other tweens" means that the value that is being tweened
-is the _progress_ of the timeline itself (so a temporal value). So for
-instance, by specifying `reverse = true` on the timeline, the whole animation
-will be played back in reverse, which is very different than setting
-`reverse = true` individually on the child tweens. Likewise, setting a
-non-linear `ease` function will make the playback of the whole animation
-non-linear, etc. There's a catch with infinite tweens: if the timeline
-contains infinite (`loop = 1/0`) tweens, its duration is automatically
-adjusted to infinite (unless otherwise specified), in which case only the
-`speed` and `delay` parameters will be used.
+model because it's not animating a target object but it's driving other
+tweens. A timeline can also be used to tween the _progress_ of its child
+tweens by setting `tween_progress = true` .
+
+### Tweening the progress of other tweens
+
+Setting `tween_progress = true` on a timeline switches the timeline into
+tweening the progress of its child tweens (so a temporal value) instead
+of just updating them on the same clock. In this mode, the child's `start`
+value is ignored, and the timeline's `distance` is interpolated over the
+child's total progress.
 
 ### Timeline-specific fields and methods
 
-__field__       __default__ __description__
---------------- ----------- --------------------------------------------------
-`ease`          `'linear'`
-`duration`      `0`
-`auto_duration` `true`      auto-increase duration to include all tweens
-`auto_remove`   `true`      remove tweens automatically when finished
+__field__        __default__ __description__
+---------------- ----------- -------------------------------------------------
+`ease`           `'linear'`
+`duration`       `0`         auto-adjusted when adding tweens
+`auto_duration`  `true`      auto-increase duration to include all tweens
+`auto_remove`    `true`      remove tweens automatically when finished
+`tween_progress` `false`
 
 __method__                         __description__
 --------------------------- --------------------------------------------------
