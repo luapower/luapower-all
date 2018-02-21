@@ -27,7 +27,10 @@ These functions map a number in `0..1` into a number in `0..1`.
 Currently implemented functions: `linear`, `quad`, `cubic`, `quart`, `quint`,
 `expo`, `sine`, `circ`, `back`, `elastic`, `bounce`.
 
-__NOTE:__ `elastic` takes additional parameters `amplitude` and `period`.
+__Note:__
+
+ * `elastic` takes additional args `amplitude`, `period`.
+ * `slowmo` takes additional args `power`, `ratio`, `yoyo`.
 
 ### `easing.reverse(f, t, ...) -> d`
 

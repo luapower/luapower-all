@@ -94,4 +94,23 @@ function easing.bounce(t)
 	end
 end
 
+function easing.slowmo(t, power, ratio, yoyo)
+	power = power or .8
+	ratio = math.min(ratio or .7, 1)
+	local p = ratio ~= 1 and power or 0
+	local p1 = (1 - ratio) / 2
+	local p2 = ratio
+	local p3 = p1 + p2
+	local r = t + (.5 - t) * p
+	if t < p1 then
+		local pt = 1 - (t / p1)
+		return yoyo and 1 - pt^2 or r - pt^4 * r
+	elseif t > p3 then
+		local pt = (t - p3) / p1
+		return yoyo and (t == 1 and 0 or 1 - pt^2) or r + ((t - r) * pt^4)
+	else
+		return yoyo and 1 or r
+	end
+end
+
 return easing
