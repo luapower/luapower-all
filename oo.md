@@ -28,15 +28,17 @@ Object system with virtual properties and method overriding hooks.
 	  assignment fails.
  * stored properties (no getter):
    * assignment to `Apple.foo` calls `Apple:set_foo(value)` and sets
-	  `Apple.state.foo`.
-   * reading `Apple.foo` reads back `Apple.state.foo`.
+	  `Apple.__state.foo`.
+   * reading `Apple.foo` reads back `Apple.__state.foo`.
  * method overriding hooks:
-   * `function Apple:before_pick(args...) end` makes `Apple:pick()` call your
-	method first.
-   * `function Apple:after_pick(args...) end` makes `Apple:pick()` call your
-	method last.
+   * `function Apple:before_pick(args...) end` makes `Apple:pick()` call the
+	code inside `before_pick()` first.
+   * `function Apple:after_pick(args...) end` makes `Apple:pick()` call the
+	code inside `after_pick()` last.
    * `function Apple:override_pick(inherited, ...)` lets you override
 	  `Apple:pick()` and call `inherited(self, ...)`.
+ * virtual classes: nested inner classes which can overriden in subclasses
+ of the outer class (see below).
  * events with optional namespace tags:
    * `Apple:on('falling.ns1', function(self, args...) ... end)` - register
 	  an event handler
@@ -57,11 +59,6 @@ Object system with virtual properties and method overriding hooks.
    * `Apple = oo.Apple(Fruit)` is sugar for `Apple = Fruit:subclass()`
    * `apple = Apple(...)` is sugar for `apple = Apple:create(...)`
       * `Apple:create()` calls `apple:init(...)`
- * virtual classes (nested inner classes whose fields and methods can be
- overridden by subclasses of the outer class): just make the class a field
- of the outer class and instantiate it inside the outer's constructor with
- `self:inner_class()`, which passes the outer object as the second arg to
- the constructor of the inner class (the first arg is the inner object).
 
 ## Inheritance and instantiation
 
@@ -168,7 +165,7 @@ assert(obj.answer_to_life == 42) --assuming deep_thought can store a number
 ## Virtual properties
 
 **Stored properties** are virtual properties with a setter but no getter.
-The values of those properties are stored in the table `self.state` upon
+The values of those properties are stored in the table `self.__state` upon
 assignment of the property and read back upon indexing the property.
 If the setter breaks, the value is not stored.
 
@@ -177,7 +174,7 @@ function cls:set_answer_to_life(v) deep_thought:set_answer(v) end
 obj = cls()
 obj.answer_to_life = 42
 assert(obj.answer_to_life == 42) --we return the stored the number
-assert(obj.state.answer_to_life == 42) --which we stored here
+assert(obj.__state.answer_to_life == 42) --which we stored here
 ~~~
 
 Virtual and inherited properties are all read by calling
@@ -267,6 +264,27 @@ If you don't know the name of the method you want to override until runtime,
 use `cls:before(name, func)`, `cls:after(name, func)` and
 `cls:override(name, func)` instead.
 
+## Virtual classes
+
+Virtual classes are a powerful mechanism for extending composite objects
+which need to instantiate other objects and need a way to allow the
+programmer to extend or replace the classes of those other objects. Virtual
+classes come for free in languages where classes are first-class entitites:
+just make the inner class a field of the outer class and instantiate it
+inside the outer's constructor or method with `self:inner_class()`. this is
+cool because:
+
+  * it allows subclassing the inner class in subclasses of the outer class
+    by just overriding the `inner_class` field.
+  * using `self:inner_class()` instead of `self.inner_class()` passes the
+    outer object as the second arg to the constructor of the inner object
+    (the first arg is the inner object) so that you can reference the outer
+    object from inside the inner object.
+  * the`inner_class` field is seen as a method of the outer class so it can
+    be made part of its public API without any additional wrapping, and it
+    can also be overriden with a normal method in subclasses of outer.
+
+
 ## Events
 
 Events are for associating actions with functions. Events facts:
@@ -277,9 +295,9 @@ Events are for associating actions with functions. Events facts:
 * returning a non-nil value from a handler interrupts the event handling
   call chain and the value is returned back by `fire()`.
 * all uninterrupted events fire the `event` meta-event which inserts the
-  event name on arg#1.
+  event name as arg#1.
 * events can be namespace-tagged with `'event.ns'`: namespsaces are useful
   for easy bulk event removal with `obj:off'.ns'`.
 * multiple handlers can be added for the same event and/or namespace.
-* handlers are stored as `self.observers[event] = {handler1, ...}`.
+* handlers are stored as `self.__observers[event] = {handler1, ...}`.
 

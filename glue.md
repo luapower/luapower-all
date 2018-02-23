@@ -502,15 +502,15 @@ as its own metatable, setting `t.__index` to `super` and `t.__call` to
   need to instantiate other objects can be made extendable easily by exposing
   those objects' classes as fields of the container class with
   `container_class.inner_class = inner_class` and instantiating with
-  `self.inner_object = self.inner_class(...)` so that replacing `inner_class`
-  in a sub-class of `container_class` is possible. Moreso, instantiating with
-  `self.inner_object = self:inner_class(...)` (so with a colon) passes the
-  container _object_ to `inner_class`'s constructor automatically which is
-  usually desired in order to link the created object to its container.
+  `self.inner_class(...)` so that replacing `inner_class` in a sub-class of
+  `container_class` is possible. Moreso, instantiation with
+  `self:inner_class(...)` (so with a colon) passes the container object to
+  `inner_class`'s constructor automatically which allows referencing the
+  container object from the inner object.
 
 There are also some limitations:
 
-  * when overriding, super's methods must be called with:
+  * when overriding, the super class must be referenced explicitly:
     * `<super_class>.<method>(self, ...)`.
 
 ------------------------------------------------------------------------------
