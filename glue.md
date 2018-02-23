@@ -497,14 +497,16 @@ as its own metatable, setting `t.__index` to `super` and `t.__call` to
   * a separate constructor to be used only for subclassing can be made with
   the same pattern:
     * `function t:subclass(c) return glue.object(self, c) end`.
-  * composite objects which need to instantiate other objects can be made
-  extendable easily by exposing those objects' classes as fields of the
-  container class with `container_class.other_class = other_class` and
-  instantiating with `self.other_object = self.other_class(...)` so that
-  replacing `other_class` in a sub-class of `container_class` is possible.
-  Moreso, instantiating with `self.other_object = self:other_class(...)`
-  (so with a colon) passes the container _object_ to `other_class`'s
-  constructor automatically which is usually what is desired.
+  * virtual classes (i.e. nested inner classes whose fields and methods can
+  be overridden by subclasses of the outer class): composite objects which
+  need to instantiate other objects can be made extendable easily by exposing
+  those objects' classes as fields of the container class with
+  `container_class.inner_class = inner_class` and instantiating with
+  `self.inner_object = self.inner_class(...)` so that replacing `inner_class`
+  in a sub-class of `container_class` is possible. Moreso, instantiating with
+  `self.inner_object = self:inner_class(...)` (so with a colon) passes the
+  container _object_ to `inner_class`'s constructor automatically which is
+  usually desired in order to link the created object to its container.
 
 There are also some limitations:
 
