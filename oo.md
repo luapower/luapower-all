@@ -57,6 +57,11 @@ Object system with virtual properties and method overriding hooks.
    * `Apple = oo.Apple(Fruit)` is sugar for `Apple = Fruit:subclass()`
    * `apple = Apple(...)` is sugar for `apple = Apple:create(...)`
       * `Apple:create()` calls `apple:init(...)`
+ * virtual classes (nested inner classes whose fields and methods can be
+ overridden by subclasses of the outer class): just make the class a field
+ of the outer class and instantiate it inside the outer's constructor with
+ `self:inner_class()`, which passes the outer object as the second arg to
+ the constructor of the inner class (the first arg is the inner object).
 
 ## Inheritance and instantiation
 
