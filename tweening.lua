@@ -57,7 +57,7 @@ local tw = object()
 tw.interpolate = {} --{type -> interpolate_function}
 tw.value_semantics = {} --{type -> true|false}
 tw._type = {} --{attr -> type}
-tw.type = {} --{patt|func(attr) -> type}
+tw.type = {} --{patt|f(attr) -> type}
 
 function tw.__call(super)
 	local self = object(super)
@@ -69,7 +69,54 @@ function tw.__call(super)
 	return self
 end
 
---note: loop_index is not used here but overrides of ease() could use it.
+--relative values operations
+local op = {}
+op['+'] = function(b, a) return a + b end
+op['-'] = function(b, a) return a - b end
+op['*'] = function(b, a) return a * b end
+
+--directional rotations
+local rot = {}
+function rot.ccw(b, a) return a < b and b - 2 * math.pi or b end
+function rot.cw(b, a) return a > b and b + 2 * math.pi or b end
+function rot.short(b, a)
+	local bcw = rot.cw(b, a)
+	local bccw = rot.ccw(b, a)
+	return math.abs(a - bcw) < math.abs(a - bccw) and bcw or bccw
+end
+
+--unit conversions
+local unit = {}
+unit['%'] = function(b) return b / 100 end
+unit.deg = math.rad
+
+--note: attr_type and attr are not used here but overrides could use it.
+function tw:parse_value(b, a, attr_type, attr)
+	if b == nil then
+		return a
+	elseif type(b) == 'string' then
+		local op_, unit_, rot_
+		b = b:gsub('^([-+*])=', function(s)
+			op_ = op[s]
+			if op_ then return '' end
+		end)
+		b = b:gsub('_?([%a]+)$', function(s)
+			rot_ = rot[s]
+			if rot_ then return '' end
+		end)
+		b = b:gsub('[%a%%]+$', function(s)
+			unit_ = unit[s]
+			if unit_ then return '' end
+		end)
+		b = assert(tonumber(b), 'invalid value')
+		if unit_ then b = unit_(b) end
+		if op_ then b = op_(b, a) end
+		if rot_ then b = rot_(b, a) end
+	end
+	return b
+end
+
+--note: loop_index is not used here but overrides could use it.
 function tw:ease(ease, way, progress, loop_index, ...)
 	local easing = require'easing'
 	return easing.ease(ease, way, progress, ...)
@@ -159,8 +206,8 @@ tween.resume_clock = nil --current clock when paused
 --animation model / definition
 tween.target = nil       --used as v = target[attr] and target[attr] = v
 tween.attr = nil
-tween.start_value = nil  --value at progress 0
-tween.end_value = nil    --value at progress 1
+tween.from = nil         --rel/abs value at progress 0
+tween.to = nil           --rel/abs value at progress 1
 tween.type = nil         --force attr type
 tween.interpolate = nil  --custom interpolation function
 tween.value_semantics = nil --false for avoiding allocations on update
@@ -175,7 +222,7 @@ function tween:__call(tweening, o)
 end
 
 function tween:clone()
-	return tween(copy(self))
+	return self:__call(self.tweening, copy(self))
 end
 
 function tween:reset()
@@ -303,6 +350,7 @@ function tween:stop()
 end
 
 function tween:restart()
+	self:_init_animation_model()
 	self:seek(0)
 end
 
@@ -343,50 +391,22 @@ end
 
 --animation model
 
-function tween:parse_value(s, v)
-	if not s then
-		return v
-	elseif type(s) == 'string' then
-		local op, n, unit
-		op, n = s:match'^([-+*])=(.*)'
-		n, unit = (n or s):match'([-+%d%.eE]+)(.*)'
-		n = assert(tonumber(n), 'invalid value')
-		if unit == '%' then
-			n = n / 100
-		elseif unit == 'deg' then
-			n = n * math.pi / 180
-		elseif unit == 'cw' then
-			--TODO
-		elseif unit == 'ccw' then
-			--TODO
-		elseif unit ~= '' then
-			error('invalid unit '..unit)
-		end
-		if op == '+' then
-			n = v + n
-		elseif op == '-' then
-			n = v - n
-		elseif op == '*' then
-			n = v * n
-		end
-		return n
-	else
-		return s
-	end
+function tween:parse_value(v, relative_to)
+	return self.tweening:parse_value(v, relative_to, self.type, self.attr)
 end
 
 function tween:_init_animation_model()
-	if not self.interpolate or self.auto_interpolate then
+	if not self.interpolate or self._auto_interpolate then
 		self.interpolate, self.value_semantics =
 			self.tweening:interpolation_function(self.type, self.attr)
-		self.auto_interpolate = true
+		self._auto_interpolate = true
 	end
 	local v = self:get_value()
 	if not self.value_semantics then
 		v = self.interpolate(1, v, v)
 	end
-	self.start_value = self:parse_value(self.start_value, v)
-	self.end_value = self:parse_value(self.end_value, v)
+	self._v0 = self:parse_value(self.from, v)
+	self._v1 = self:parse_value(self.to, v)
 end
 
 function tween:get_value()
@@ -400,10 +420,10 @@ end
 function tween:update_value()
 	local d = self:distance()
 	if self.value_semantics then
-		local v = self.interpolate(d, self.start_value, self.end_value)
+		local v = self.interpolate(d, self._v0, self._v1)
 		self:set_value(v)
 	else
-		self.interpolate(d, self.start_value, self.end_value, self:get_value())
+		self.interpolate(d, self._v0, self._v1, self:get_value())
 	end
 end
 
@@ -412,7 +432,7 @@ function tween:can_be_replaced_by(tween)
 end
 
 --timeline -------------------------------------------------------------------
---A timeline is a tween which tweens a list of tweens.
+--A timeline is a tween which plays a list of tweens.
 
 local timeline = object()
 tw.timeline = timeline
@@ -431,6 +451,15 @@ function timeline:clone()
 	local t = timeline(copy(self))
 	t.tweens = copy(self.tweens)
 	return t
+end
+
+function timeline:_init_animation_model() end
+
+function timeline:restart()
+	for i,tween in ipairs(self.tweens) do
+		tween:_init_animation_model()
+	end
+	tween.restart(self)
 end
 
 function timeline:reset()
@@ -470,13 +499,11 @@ end
 
 function timeline:replace(tween, start)
 	local replaced
-	if self.auto_replace then
-		for i,twn in ipairs(self.tweens) do
-			if twn:can_be_replaced_by(tween) then
-				self.tweens[i] = tween
-				replaced = true
-				break
-			end
+	for i,twn in ipairs(self.tweens) do
+		if twn:can_be_replaced_by(tween) then
+			self.tweens[i] = tween
+			replaced = true
+			break
 		end
 	end
 	if not replaced then

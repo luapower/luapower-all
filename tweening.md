@@ -12,11 +12,10 @@ animation.
   * timing parameters: `duration`, `delay`, `speed`, `loop`, `backwards`,
   `yoyo`, `ease`, `way`, `offset`.
   * independent timing parameters for each target object and/or attribute.
-  * nested, overlapping timelines with relative start times.
-  * timelines can be tweened as a unit using all timing parameters (see below).
+  * timelines that can be nested, overlapping, and tweened.
   * stagger tweens: alternate end-values over a list of targets.
-  * extendable attribute types and interpolation functions.
-  * relative values incl. directional rotation.
+  * extensible attribute types, value converters and interpolation functions.
+  * relative values including directional rotation.
   * no allocations while tweening.
 
 ## Tweens
@@ -91,15 +90,16 @@ __field__          __default__         __description__
 ------------------ ------------------- ---------------------------------------
 `target`           (required)          target object
 `attr`             (required)          attribute in the target object to tween
-`start_value`      `target[attr]`      start value (defaults to target's value)
-`end_value`        `target[attr]`      end value (defaults to target's value)
+`from`             `target[attr]`      start value (defaults to target's value)
+`to`               `target[attr]`      end value (defaults to target's value)
 `type`             per `attr`          force attribute type
 `interpolate`      default for `type`  `f(t, x1, x2[, xout]) -> x`
 `value_semantics`  default for `type`  (see below)
 `get_value() -> v` `target[attr] -> v` value getter
 `set_value(v)`     `target[attr] = v`  value setter
 
-__NOTE:__ Animation model fields are read/only.
+__NOTE:__ Animation model fields are read/only. See below for how to add
+attribute type matching rules and interpolators.
 
 ### Relative values
 
@@ -109,13 +109,26 @@ where operator can be `+`, `-` or `*` and units can be one of:
 
 __unit__     __description__
 ------------ -----------------------------------------------------------------
-`%`          percent
-`cw`         clockwise
-`ccw`        counter-clockwise
-`deg`        degrees
+`%`          percent, converted to `0..1`
+`deg`        degrees, converted to radians
+`cw`         rotation: clockwise
+`ccw`        rotation: counter-clockwise
+`short`      rotation: shortest direction
+`deg_cw`     rotation: clockwise in degrees, converted to radians
+`deg_ccw`    rotation: counter-clockwise in degrees, converted to radians
+`deg_short`  rotation: shortest direction in degrees, converted to radians
 ------------ -----------------------------------------------------------------
 
-Examples: `+=10deg`, `25%`.
+Examples: `+=10deg`, `25%`. Unit converters are extensible (see below).
+
+__NOTE:__ `cw` and `ccw` assume that increasing angles rotate the target
+clockwise (like cairo and other systems where the y-coord grows from top
+to bottom).
+
+__NOTE:__ Don't combine relative rotations wuth `cw` and `ccw`, it's
+confusing. `+=90deg` means "rotate the target another 90 degrees clockwise",
+while `90deg_cw` means "rotate the target to the 90 degrees mark going
+clockwise".
 
 ### Misc.
 
@@ -229,6 +242,12 @@ interpolation functions have value semantics, i.e. they are called as
 `x = f(d, x1, x2)`. If declared as having reference semantics, they are
 instead called as `f(d, x1, x2, x)` and are expected to update `x` in-place
 thus avoiding an allocation on every frame if `x` is a non-scalar type.
+
+### Value parsers
+
+### `tw:parse_value(s, relative_to, attr_type, attr) -> v`
+
+Parse a value.
 
 ### The wall clock
 
