@@ -355,14 +355,8 @@ function tween:restart()
 end
 
 function tween:reverse()
-	--TODO:
 	if self.duration == 1/0 then return end
-	clock = clock or self:clock()
-	self:resume(clock)
-	local p = self:total_progress(clock)
-	local clock = self:clock_at(1 - p)
-	print(1 - p, clock)
-	self.start = clock
+	self:seek(1 - self:total_progress())
 	self.backwards = not self.backwards
 	self:update_value()
 end
