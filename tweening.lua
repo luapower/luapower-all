@@ -16,14 +16,14 @@ local function clamp(x, min, max) --from glue
 	return math.min(math.max(x, min), max)
 end
 
-local function lerp(d, x1, x2)
+local function lerp(d, x1, x2) --lerp from 0..1 to x1..x2
 	return x1 + d * (x2 - x1)
 end
 
---remove all false entries from an array efficiently.
+--remove entries marked `false` from an array efficiently.
 local function cleanup(t)
 	local j
-	--move false entries to the end
+	--move marked entries to the end
 	for i=1,#t do
 		if not t[i] then
 			j = j or i
@@ -33,7 +33,7 @@ local function cleanup(t)
 			j = j + 1
 		end
 	end
-	--remove false entries without creating gaps
+	--remove marked entries without creating gaps
 	if j then
 		for i=#t,j,-1 do
 			t[i] = nil
@@ -54,10 +54,10 @@ end
 
 local tw = object()
 
-tw.interpolate = {} --{type -> interpolate_function}
+tw.interpolate = {}     --{type -> interpolate_function}
 tw.value_semantics = {} --{type -> true|false}
-tw._type = {} --{attr -> type}
-tw.type = {} --{patt|f(attr) -> type}
+tw._type = {}           --{attr -> type}
+tw.type = {}            --{patt|f(attr) -> type}
 
 function tw.__call(super)
 	local self = object(super)
@@ -77,18 +77,19 @@ op['*'] = function(b, a) return a * b end
 
 --directional rotations
 local rot = {}
-function rot.ccw(b, a) return a < b and b - 2 * math.pi or b end
 function rot.cw(b, a) return a > b and b + 2 * math.pi or b end
-function rot.short(b, a)
-	local bcw = rot.cw(b, a)
-	local bccw = rot.ccw(b, a)
-	return math.abs(a - bcw) < math.abs(a - bccw) and bcw or bccw
+function rot.ccw(b, a) return a < b and b - 2 * math.pi or b end
+function rot.short(b, a) --shortest sweep
+	local b_cw = rot.cw(b, a)
+	local b_ccw = rot.ccw(b, a)
+	return math.abs(a - b_cw) < math.abs(a - b_ccw) and b_cw or b_ccw
 end
 
 --unit conversions
 local unit = {}
-unit['%'] = function(b) return b / 100 end
-unit.deg = math.rad
+unit['%'] = function(b, a) return b / 100 * a end
+unit.ms = function(b, a) return b / 1000 end
+unit.deg = function(b, a) return math.rad(b) end
 
 --note: attr_type and attr are not used here but overrides could use it.
 function tw:parse_value(b, a, attr_type, attr)
@@ -109,7 +110,7 @@ function tw:parse_value(b, a, attr_type, attr)
 			if unit_ then return '' end
 		end)
 		b = assert(tonumber(b), 'invalid value')
-		if unit_ then b = unit_(b) end
+		if unit_ then b = unit_(b, a) end
 		if op_ then b = op_(b, a) end
 		if rot_ then b = rot_(b, a) end
 	end
@@ -194,9 +195,7 @@ tween.way = 'in'         --easing way: 'in', 'out', 'inout', 'outin'
 tween.backwards = false  --first iteration is backwards
 tween.yoyo = true        --alternate between forwards/backwards on each loop
 tween.loop = 1           --repeat count; 1/0 for infinite; can be fractional
---timing model / definition / less used
-tween.delay = 0          --start delay; can be negative
-tween.speed = 1          --speed factor; can't be 0, can't be < 0
+tween.speed = 1          --speed factor; can be <= 0 with caveats
 tween.offset = 0         --can be fractional, negative, > 1
 --timing model / state
 tween.running = true     --set to false to start paused
@@ -241,8 +240,7 @@ function tween:_init_timing_model()
 end
 
 function tween:total_duration()
-	return math.max(self.delay + self.duration * self.loop, 0)
-		* (1 / self.speed)
+	return math.max(self.duration * self.loop, 0) / self.speed
 end
 
 function tween:end_clock()
@@ -250,12 +248,12 @@ function tween:end_clock()
 end
 
 function tween:is_infinite()
-	return self:total_duration() == 1/0
+	return math.abs(self:total_duration()) == 1/0
 end
 
 --always returns the start clock for infinite tweens.
-function tween:clock_at(total_progress)
-	return self.start + self:total_duration() * total_progress
+function tween:clock_at(progress)
+	return self.start + self:total_duration() * progress
 end
 
 --check if the progress on a certain iteration should increase or decrease.
@@ -271,52 +269,61 @@ end
 
 --returns where the entire animation is in the 0..1 interval.
 --returns 0 for infinite tweens on any clock.
-function tween:_total_progress(clock)
+function tween:_progress(clock)
 	return ((clock or self.clock) - self.start) / self:total_duration()
 end
 
-function tween:total_progress(clock)
-	return clamp(self:_total_progress(clock), 0, 1)
+function tween:progress(clock)
+	return clamp(self:_progress(clock), 0, 1)
 end
 
 function tween:status(clock)
-	local p = self:_total_progress(clock)
+	local p = self:_progress(clock)
 	return p < 0 and 'not_started' or p >= 1 and 'finished'
 		or self.running and 'running' or 'paused'
 end
 
---linear progress within current iteration in 0..1 (so excluding repeats)
---and the iteration number counting from math.floor(offset).
-function tween:progress(clock)
+--linear progress in 0..loop
+function tween:_loop_progress(clock)
 	local clock = clock or self.clock
-	local inv_speed = 1 / self.speed
-	local time_in = clock - (self.start + self.delay * inv_speed)
-	local p = time_in / (self.duration * inv_speed)
-	local p = self.offset + clamp(p, 0, self.loop)
-	local i = math.floor(p)
-	local p = p - i
-	if self:is_backwards(i) then
-		p = 1 - p
-	end
-	return p, i
+	local time_in = clock - self.start
+	return time_in / (self.duration / self.speed)
+end
+
+function tween:loop_progress(clock)
+	return clamp(self:_loop_progress(clock), 0, self.loop)
+end
+
+function tween:loop_clock_at(loop_progress)
+	return self.start + loop_progress * (self.duration / self.speed)
 end
 
 --non-linear (eased) progress within current iteration (can exceed 0..1).
 local empty = {}
 function tween:distance(clock)
-	return self.tweening:ease(self.ease, self.way, self:progress(clock),
+	local p = self.offset + self:loop_progress(clock)
+	local i = math.floor(p)
+	local p = p - i
+	if self:is_backwards(i) then
+		p = 1 - p
+	end
+	return self.tweening:ease(self.ease, self.way, p, i,
 		unpack(self.ease_args or empty))
 end
 
 --timing model / state-changing
 
-function tween:update(clock)
+function tween:update_clock(clock)
 	clock = clock or self.tweening:clock()
 	if self.running then
 		self.clock = clock
 	else
 		self.resume_clock = clock
 	end
+end
+
+function tween:update(clock)
+	self:update_clock(clock)
 	self:update_value()
 end
 
@@ -332,12 +339,23 @@ function tween:resume()
 	self:update_value()
 end
 
---note: always seeks at the beginning for infinite tweens.
-function tween:seek(total_progress)
+function tween:seek(progress)
+	if self:is_infinite() then return end
 	if self.running then
-		self.start = self.start + (self.clock - self:clock_at(total_progress))
+		self.start = self.start
+			+ (self.clock - self:clock_at(progress))
 	else
-		self.clock = self:clock_at(total_progress)
+		self.clock = self:clock_at(progress)
+	end
+	self:update_value()
+end
+
+function tween:loop_seek(loop_progress)
+	if self:is_infinite() then return end
+	if self.running then
+		self.start = self.start + (self.clock - self:loop_clock_at(loop_progress))
+	else
+		self.clock = self:loop_clock_at(loop_progress)
 	end
 	self:update_value()
 end
@@ -350,32 +368,41 @@ function tween:stop()
 end
 
 function tween:restart()
-	self:_init_animation_model()
-	self:seek(0)
+	self:loop_seek(0)
 end
 
 function tween:reverse()
-	if self.duration == 1/0 then return end
-	self:seek(1 - self:total_progress())
-	self.backwards = not self.backwards
-	self:update_value()
+	local p = self:_loop_progress()
+	local loop = self.loop
+	if loop == 1/0 then
+		loop = math.ceil(p)
+	end
+	self.offset = (1 - self.offset) - (loop - math.floor(loop))
+	self.start = self.start - (self:loop_clock_at(loop - p) - self.clock)
+	if not self.yoyo or math.floor(loop) % 2 == 0 then
+		self.backwards = not self.backwards
+	end
 end
 
 --turn a finite tween into a tweenable object with the attribute
---`total_progress` tweenable in 0..1.
+--`progress` tweenable in 0..1 and `loop_progress` tweenable in `0..loop`.
 function tween:totarget()
 	local t = {}
 	setmetatable(t, t)
 	function t.__index(t, k)
-		if k == 'total_progress' then
-			return self:total_progress()
+		if k == 'progress' then
+			return self:progress()
+		elseif k == 'loop_progress' then
+			return self:loop_progress()
 		else
 			return rawget(self, k)
 		end
 	end
 	function t.__newindex(t, k, v)
-		if k == 'total_progress' then
+		if k == 'progress' then
 			self:update(self:clock_at(v))
+		elseif k == 'loop_progress' then
+			self:update(self:loop_clock_at(v))
 		else
 			rawset(self, k, v)
 		end
@@ -449,13 +476,6 @@ end
 
 function timeline:_init_animation_model() end
 
-function timeline:restart()
-	for i,tween in ipairs(self.tweens) do
-		tween:_init_animation_model()
-	end
-	tween.restart(self)
-end
-
 function timeline:reset()
 	self:_init_timing_model()
 	self.tweens = self.tweens or {}
@@ -480,7 +500,7 @@ end
 function timeline:add(tween, start)
 	table.insert(self.tweens, tween)
 	if start then
-		tween.start = start
+		tween.start = self:parse_value(start, self:total_duration())
 	elseif self:is_infinite() then
 		tween.start = 0
 	else
@@ -563,7 +583,7 @@ function timeline:_update_tweens()
 	elseif status == 'not_started' then
 		clock = self.start
 	end
-	local clock = (clock - self.start) * self.speed - self.delay
+	local clock = (clock - self.start) * self.speed
 	local found
 	for i,tween in ipairs(self.tweens) do
 		tween:update(clock)
@@ -588,7 +608,7 @@ end
 
 --sugar APIs -----------------------------------------------------------------
 
-function tw:to(target, duration, easing, way, end_values, start, loop, offset, delay)
+function tw:to(target, duration, easing, way, end_values, start, loop, offset)
 	local tl = self:timeline{}
 	for attr, val in pairs(end_values) do
 		local tween = self:tween{target = target, duration = duration,
@@ -603,7 +623,7 @@ function tw:from(target, duration, easing, way, start_values, start, loop)
 		start_values = start_values, start = start, loop = loop}
 end
 
-function tw:stagger_to(targets, duration, easing, way, end_values, start, loop, offset, delay)
+function tw:stagger_to(targets, duration, easing, way, end_values, start, loop, offset)
 
 end
 

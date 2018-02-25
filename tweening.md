@@ -9,8 +9,8 @@ animation.
 
 ## Features
 
-  * timing parameters: `duration`, `delay`, `speed`, `loop`, `backwards`,
-  `yoyo`, `ease`, `way`, `offset`.
+  * timing parameters: `duration`, `speed`, `loop`, `backwards`, `yoyo`,
+    `ease`, `way`, `offset`.
   * independent timing parameters for each target object and/or attribute.
   * timelines that can be nested, overlapping, and tweened.
   * stagger tweens: alternate end-values over a list of targets.
@@ -41,31 +41,32 @@ __field__      __default__   __description__
 `backwards`    `false`       start backwards
 `yoyo`         `true`        alternate between forwards and backwards on each iteration
 `loop`         `1`           number of iterations (can be fractional; use `1/0` for infinite)
-`delay`        `0`           start delay (on the first iteration; can be negative)
-`speed`        `1`           speed factor; must be > 0
+`speed`        `1`           speed factor (must be > 1)
 `offset`       `0`           progress at start
 `running`      `true`        running or paused
 `clock`        `start`       current clock when running, set by `update()`
 `resume_clock` `clock`       current clock when paused, set by `update()`
 
-__NOTE__: The difference between `start` and `delay` is that when in the
-`delay` poriton, the tween is considered to be running, and the target value
-is updated as such.
+__NOTE__: Timing model fields can be changed anytime (there's no internal
+state that must be kept in sync).
 
-__NOTE__: Timing model fields can be changed anytime (there's no internal state).
+__method__                        __description__
+--------------------------------- --------------------------------------------
+`total_duration() -> dt`          total duration incl. repeats (can be `+/-inf`)
+`end_clock() -> t`                end clock (can be `+/-inf`)
+`is_infinite() -> bool`           true if `loop` and/or `duration` are `inf`
+`is_backwards(i) -> bool`         true if iteration `i` goes backwards
+`progress([t]) -> P`              linear progress in `0..1` incl. repeats (can be `inf`)
+`clock_at(P) -> t`                clock at total linear progress (which is in `0..1`)
+`status([t]) -> status`           status: 'before_start', 'running', 'paused', 'finished'
+`loop_progress([t]) -> p`         linear progress in `0..loop`
+`loop_clock_at(p) -> t`           clock at loop progress
+`distance([t]) -> d`              eased progress in current iteration (in `0..1`)
+`update([t])`                     update internal clock and target value
 
-__method__                   __description__
----------------------------- --------------------------------------------------
-`total_duration() -> dt`     total duration incl. repeats (can be `inf`)
-`end_clock() -> t`           end clock (can be `inf`)
-`is_infinite() -> bool`      true if `loop` and/or `duration` are `inf`
-`clock_at(P) -> t`           clock at total linear progress
-`is_backwards(i) -> bool`    true if iteration `i` goes backwards
-`total_progress([t]) -> P`   linear progress in `0..1` incl. repeats (can be `inf`)
-`status([t]) -> status`      status: 'before_start', 'running', 'paused', 'finished'
-`progress([t]) -> p, i`      progress in `0..1` in current iteration, and iteration index
-`distance([t]) -> d`         eased progress in `0..1` in current iteration
-`update([t])`                update internal clock and target value
+__NOTE__: `progress()/clock_at()/seek()` map time to `0..1` while
+`loop_progress()/loop_clock_at()/loop_seek()` map time to `0..loop`. The
+first set is more convenient but doesn't work when `loop` is `inf`.
 
 #### Changing the state of the tween
 
@@ -73,10 +74,11 @@ __method__           __description__
 -------------------- ---------------------------------------------------------
 `pause()`            pause (changes `running`, prevents updating `clock`)
 `resume()`           resume (changes `running` and `start`)
-`seek(P)`            update target value based on total progress (changes `start`).
+`seek(P)`            update target value based on progress (changes `start`).
+`loop_seek(p)`       update target value based on loop progress (changes `start`).
 `stop()`             pause and remove from timeline
 `restart()`          restart (changes `start`)
-`reverse()`          reverse (changes `start` and `backwards`; `duration` must be finite)
+`reverse()`          reverse (changes `start`, `offset`, `backwards`)
 
 __NOTE:__ The methods above change the timing model of the tween, which is
 normally supposed to be immutable in order to make the tween stateless. This
@@ -105,11 +107,12 @@ attribute type matching rules and interpolators.
 
 `start_value` and `end_value` can be given in the format `'<number>'`,
 `'<number><unit>`, `'<operator>=<number>'` or `'<operator>=<number><unit>'`,
-where operator can be `+`, `-` or `*` and units can be one of:
+where `operator` can be `+`, `-` or `*` and `unit` can be:
 
 __unit__     __description__
 ------------ -----------------------------------------------------------------
 `%`          percent, converted to `0..1`
+`ms`         milliseconds, converted to seconds
 `deg`        degrees, converted to radians
 `cw`         rotation: clockwise
 `ccw`        rotation: counter-clockwise
@@ -119,16 +122,18 @@ __unit__     __description__
 `deg_short`  rotation: shortest direction in degrees, converted to radians
 ------------ -----------------------------------------------------------------
 
-Examples: `+=10deg`, `25%`. Unit converters are extensible (see below).
+Examples: `+=10deg`, `25%`.
+
+__NOTE:__ `25%` means 25% the initial value, while `+=25%` means 125% the
+initial value.
 
 __NOTE:__ `cw` and `ccw` assume that increasing angles rotate the target
 clockwise (like cairo and other systems where the y-coord grows from top
 to bottom).
 
-__NOTE:__ Don't combine relative rotations wuth `cw` and `ccw`, it's
-confusing. `+=90deg` means "rotate the target another 90 degrees clockwise",
-while `90deg_cw` means "rotate the target to the 90 degrees mark going
-clockwise".
+__NOTE:__ `+=90deg` means "rotate the target another 90 degrees clockwise",
+while `90deg_cw` means "rotate the target to the 90 degrees mark by moving
+clockwise". Don't combine relative rotations with `cw` and `ccw`.
 
 ### Misc.
 
@@ -143,8 +148,9 @@ Clone a tween in its current state.
 
 ### `tween:totarget() -> obj`
 
-Create a proxy object for the tween with the additional tweenable field
-`total_progress`. Other tweenable properties like `speed` remain accessible.
+Create a proxy object for the tween with the additional tweenable fields
+`progress` and `loop_progress`. Other tweenable properties like `speed`
+remain accessible.
 
 ## Timelines
 
@@ -202,6 +208,10 @@ to include the entire tween. When part of a timeline, a tween's `start`
 is relative to the timeline's start time. If `start` is not given, the
 tween is added to the end of the timeline (when the timeline's duration is
 infinite then the tween's start is set to `0` instead).
+
+__NOTE:__ `start` can be a relative value relative to the current total
+duration, eg. `+=500ms` means half a second after the last tween, while
+`500ms` means half a second from the start of the timeline.
 
 ### `tl:replace(tween[, start]) -> tl`
 
