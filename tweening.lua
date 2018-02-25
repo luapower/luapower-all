@@ -93,8 +93,8 @@ unit['%'] = function(b, a) return b / 100 * a end
 unit.ms = function(b, a) return b / 1000 end
 unit.deg = function(b, a) return math.rad(b) end
 
---note: attr_type and attr are not used here but overrides could use it.
-function tw:parse_value(b, a, attr_type, attr)
+--note: tween is not used here but overrides could use it.
+function tw:parse_value(b, a, tween)
 	if b == nil then
 		return a
 	elseif type(b) == 'string' then
@@ -115,6 +115,8 @@ function tw:parse_value(b, a, attr_type, attr)
 		if unit_ then b = unit_(b, a) end
 		if op_ then b = op_(b, a) end
 		if rot_ then b = rot_(b, a) end
+	elseif type(b) == 'function' then
+		b = b(a, tween)
 	end
 	return b
 end
@@ -416,7 +418,7 @@ end
 --animation model
 
 function tween:parse_value(v, relative_to)
-	return self.tweening:parse_value(v, relative_to, self.type, self.attr)
+	return self.tweening:parse_value(v, relative_to, self)
 end
 
 function tween:_init_animation_model()
@@ -521,6 +523,7 @@ function timeline:_add_tweens(t, start)
 	copy(t.cycle_from, attrs)
 	copy(t.cycle_to, attrs)
 	copy(t.cycle, attrs)
+	start = start or t.start
 	for attr in pairs(attrs) do
 		local targets = t.targets or {t.target}
 		local from = t.from and t.from[attr]
@@ -550,7 +553,7 @@ end
 function timeline:add(t, start)
 	if t.__index then
 		return self:_add_tween(t, start)
-	elseif t.from or t.to then
+	elseif t.from or t.to or t.cycle_from or t.cycle_to or t.cycle then
 		return self:_add_tweens(t, start)
 	else
 		error'invalid arguments'
@@ -572,20 +575,32 @@ function timeline:replace(tween, start)
 	return self
 end
 
+function timeline:find(what, recursive)
+	if recursive == nil then
+		recursive = true
+	end
+	return coroutine.wrap(function()
+		for i,tween in ipairs(self.tweens) do
+			if what == true
+				or what == tween
+				or what == tween.attr
+				or what == tween.target
+			then
+				coroutine.yield(tween, i)
+				if tween.tweens then
+					tween:find(what)
+				end
+			end
+		end
+	end)
+end
+
 function timeline:_remove(what, recursive)
 	local found
-	for i,tween in ipairs(self.tweens) do
-		if what == true
-			or what == tween
-			or what == tween.attr
-			or what == tween.target
-		then
-			self.tweens[i] = false
-			tween.timeline = false
-			found = true
-		elseif recursive and tween.remove then
-			found = tween:_remove(what) or found
-		end
+	for tween, i in self:find(what, recursive) do
+		tween.timeline[i] = false
+		tween.timeline = false
+		found = true
 	end
 	if found then
 		cleanup(self.tweens)

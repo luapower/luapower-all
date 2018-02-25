@@ -217,7 +217,8 @@ added to the timeline as follows: `targets` specifies a list of targets,
 otherwise `target` specifies a single target, `from` and `to` specifies a
 table of from/to attribute -> value pairs. `cycle_from`, `cycle_to`, `cycle`
 specifies a table of from/to attribute -> list-of-values pairs such that
-values will be distributed to each target in a round-robin fashion.
+values will be distributed to each target in a round-robin fashion. The
+values can also be functions.
 
 __NOTE:__ `start` can be a relative value relative to the timeline's current
 total duration, eg. `'+=500ms'` means half a second after the last tween,
