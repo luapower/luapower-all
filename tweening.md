@@ -16,6 +16,7 @@ animation.
   * stagger tweens: alternate end-values over a list of targets.
   * extensible attribute types, value converters and interpolation functions.
   * relative values including directional rotation.
+  * pause/resume/restart/reverse individual tweens even when in a timeline.
   * no allocations while tweening.
 
 ## Tweens
@@ -64,9 +65,9 @@ __method__                        __description__
 `distance([t]) -> d`              eased progress in current iteration (in `0..1`)
 `update([t])`                     update internal clock and target value
 
-__NOTE__: `progress()/clock_at()/seek()` map time to `0..1` while
-`loop_progress()/loop_clock_at()/loop_seek()` map time to `0..loop`. The
-first set is more convenient but doesn't work when `loop` is `inf`.
+__NOTE__: `progress()`, `clock_at()` and `seek()` map time to `0..1` while
+`loop_progress()`, `loop_clock_at()` and `loop_seek()` map time to `0..loop`.
+The first set is more convenient but doesn't work when `loop` is `inf`.
 
 #### Changing the state of the tween
 
@@ -100,14 +101,16 @@ __field__          __default__         __description__
 `get_value() -> v` `target[attr] -> v` value getter
 `set_value(v)`     `target[attr] = v`  value setter
 
-__NOTE:__ Animation model fields are read/only. See below for how to add
-attribute type matching rules and interpolators.
+See below for how to add attribute type matching rules and interpolators.
+
+__NOTE:__ Animation model fields are read/only. Changing them requires a call
+to `reset()`.
 
 ### Relative values
 
-`start_value` and `end_value` can be given in the format `'<number>'`,
-`'<number><unit>`, `'<operator>=<number>'` or `'<operator>=<number><unit>'`,
-where `operator` can be `+`, `-` or `*` and `unit` can be:
+`from` and `to` can be given in the format `'<number>'`, `'<number><unit>`,
+`'<operator>=<number>'` or `'<operator>=<number><unit>'`, where `operator`
+can be `+`, `-` or `*` and `unit` can be:
 
 __unit__     __description__
 ------------ -----------------------------------------------------------------
@@ -122,17 +125,17 @@ __unit__     __description__
 `deg_short`  rotation: shortest direction in degrees, converted to radians
 ------------ -----------------------------------------------------------------
 
-Examples: `+=10deg`, `25%`.
+Examples: `'+=10deg'`, `'25%'`.
 
-__NOTE:__ `25%` means 25% the initial value, while `+=25%` means 125% the
+__NOTE:__ `'25%'` means 25% the initial value, while `'+=25%'` means 125% the
 initial value.
 
 __NOTE:__ `cw` and `ccw` assume that increasing angles rotate the target
 clockwise (like cairo and other systems where the y-coord grows from top
 to bottom).
 
-__NOTE:__ `+=90deg` means "rotate the target another 90 degrees clockwise",
-while `90deg_cw` means "rotate the target to the 90 degrees mark by moving
+__NOTE:__ `'+=90deg'` means "rotate the target another 90 degrees clockwise",
+while `'90deg_cw'` means "rotate the target to the 90 degrees mark by moving
 clockwise". Don't combine relative rotations with `cw` and `ccw`.
 
 ### Misc.
@@ -167,19 +170,19 @@ __NOTE:__ `t` itself is turned into a timeline (no new table is created).
 A timeline is itself a tween, containing all the fields and methods of the
 timing model of a tween (but none of the fields and methods of the animation
 model since it's not animating a target object, it's updating other tweens).
-This means that a timeline can be used to _tween_ the _total progress_ of its
+This means that a timeline can be used to _tween_ the _progress_ of its
 child tweens instead of just updating them on the same clock, since it has a
 `distance` resulting from its timing model. It also means that the timeline
-can be itself tweened on its _total progress_ (which only works if the
-timeline is _not_ infinite).
+can be itself tweened on its _progress_ (which only works if the timeline is
+_not_ infinite).
 
 ### Tweening other tweens
 
 Setting `tween_progress = true` on a timeline switches the timeline into
-tweening its child tweens on their _total progress_ (so tweening a temporal
-value) instead of just updating them on the same clock. In this mode, the
+tweening its child tweens on their _progress_ (so tweening a temporal value)
+instead of just updating them on the same clock. In this mode, the
 child's `start` and `duration` are ignored: instead, the timeline's `distance`
-is interpolated over the child's total progress.
+is interpolated over the child's progress.
 
 ### Timeline-specific fields and methods
 
@@ -194,13 +197,13 @@ __field__        __default__ __description__
 
 __method__                  __description__
 --------------------------- --------------------------------------------------
-`add(tween[, start])`       add a tween
+`add(tween|opt[, start])`   add a tween
 `replace(tween[, start])`   replace/add a tween
 `remove(tween|attr|target)` remove matching tweens recursively
 `clear() -> true|false`     remove all tweens (non-recursively)
 `status()`                  adds `'empty'`
 
-### `tl:add(tween[, start]) -> tl`
+### `tl:add(tween|opt[, start]) -> tl`
 
 Add a new tween to the timeline, set its `start` field and its `timeline`
 field, and, if `auto_duration` is `true`, increase timeline's `duration`
@@ -209,9 +212,16 @@ is relative to the timeline's start time. If `start` is not given, the
 tween is added to the end of the timeline (when the timeline's duration is
 infinite then the tween's start is set to `0` instead).
 
-__NOTE:__ `start` can be a relative value relative to the current total
-duration, eg. `+=500ms` means half a second after the last tween, while
-`500ms` means half a second from the start of the timeline.
+If an options table is given instead, multiple tweens are created and
+added to the timeline as follows: `targets` specifies a list of targets,
+otherwise `target` specifies a single target, `from` and `to` specifies a
+table of from/to attribute -> value pairs. `cycle_from`, `cycle_to`, `cycle`
+specifies a table of from/to attribute -> list-of-values pairs such that
+values will be distributed to each target in a round-robin fashion.
+
+__NOTE:__ `start` can be a relative value relative to the timeline's current
+total duration, eg. `'+=500ms'` means half a second after the last tween,
+while `'500ms'` means half a second from the start of the timeline.
 
 ### `tl:replace(tween[, start]) -> tl`
 
