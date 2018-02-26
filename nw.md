@@ -2,17 +2,66 @@
 tagline: native windows
 ---
 
-<warn>NOTE: work-in-progress (to-be-released soon)</warn>
-
 ## `local nw = require'nw'`
 
-Cross-platform library for accessing windows, graphics and input
-in a consistent manner across Windows, Linux and OS X.
+Cross-platform library for accessing windows, graphics and input in a
+consistent manner across Windows, Linux and OS X. Supports transparent
+windows, bgra8 bitmaps everywhere, drawing via [cairo] and [opengl], edge
+snapping, fullscreen mode, multiple displays, hi-dpi, key mappings,
+triple-click events, timers, cursors, native menus, notification icons, all
+text in utf8, and more.
 
-Supports transparent windows, bgra8 bitmaps everywhere, drawing via [cairo]
-and [opengl], edge snapping, fullscreen mode, multiple displays, hi-dpi,
-key mappings, triple-click events, timers, cursors, native menus,
-notification icons, all text in utf8, and more.
+## Status
+
+See [issues](https://github.com/luapower/nw/issues)
+and [milestones](https://github.com/luapower/nw/milestones).
+
+## Backends
+
+API        Library     Supported Platforms     Developed On
+---------- ----------- ----------------------- ------------------------
+WinAPI     [winapi]    Windows XP/2000+        Windows 7 x64
+Cocoa      [objc]      OSX 10.7+               OSX 10.9
+Xlib       [xlib]      Ubuntu/Unity 10.04+     Ubuntu/Unity 10.04 x64
+
+## Example
+
+~~~{.lua}
+local nw = require'nw'
+
+local app = nw:app()        --get the app singleton
+
+local win = app:window{     --create a new window
+	w = 400, h = 200,        --specify window's frame size
+	title = 'hello',         --specify window's title
+	visible = false,         --don't show it yet
+}
+
+function win:click(button, count) --this is one way to bind events
+	if button == 'left' and count == 3 then --triple click
+		app:quit()
+	end
+end
+
+--this is another way to bind events which allows setting multiple
+--handlers for the same event type.
+win:on('keydown', function(self, key)
+	if key == 'F11' then
+		self:fullscreen(not self:fullscreen()) --toggle fullscreen state
+	end
+end)
+
+function win:repaint()        --called when window needs repainting
+	local bmp = win:bitmap()   --get the window's bitmap
+	local cr = bmp:cairo()     --get a cairo drawing context
+	cr:rgb(0, 1, 0)            --make it green
+	cr:paint()
+end
+
+win:show() --show it now that it was properly set up
+
+app:run()  --start the event loop
+~~~
 
 ## API
 
@@ -239,58 +288,6 @@ __extending__
 `nw.backends -> {os -> module_name}`         default backend modules for each OS
 `nw:init([backend_name])`                    init with a specific backend (can be called only once)
 -------------------------------------------- -----------------------------------------------------------------------------
-
-## Example
-
-~~~{.lua}
-local nw = require'nw'
-
-local app = nw:app()        --get the app singleton
-
-local win = app:window{     --create a new window
-	w = 400, h = 200,        --specify window's frame size
-	title = 'hello',         --specify window's title
-	visible = false,         --don't show it yet
-}
-
-function win:click(button, count) --this is one way to bind events
-	if button == 'left' and count == 3 then --triple click
-		app:quit()
-	end
-end
-
---this is another way to bind events which allows setting multiple
---handlers for the same event type.
-win:on('keydown', function(self, key)
-	if key == 'F11' then
-		self:fullscreen(not self:fullscreen()) --toggle fullscreen state
-	end
-end)
-
-function win:repaint()        --called when window needs repainting
-	local bmp = win:bitmap()   --get the window's bitmap
-	local cr = bmp:cairo()     --get a cairo drawing context
-	cr:rgb(0, 1, 0)            --make it green
-	cr:paint()
-end
-
-win:show() --show it now that it was properly set up
-
-app:run()  --start the event loop
-~~~
-
-## Status
-
-See [issues](https://github.com/luapower/nw/issues)
-and [milestones](https://github.com/luapower/nw/milestones).
-
-## Backends
-
-API        Library     Supported Platforms     Developed On
----------- ----------- ----------------------- ------------------------
-WinAPI     [winapi]    Windows XP/2000+        Windows 7 x64
-Cocoa      [objc]      OSX 10.7+               OSX 10.9
-Xlib       [xlib]      Ubuntu/Unity 10.04+     Ubuntu/Unity 10.04 x64
 
 ## The app object
 

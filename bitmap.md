@@ -198,7 +198,7 @@ colortype, etc.).
 
 ~~~{.lua}
 local function darken(r, g, b, a)
-	return r / 2, g / 2, b / 2, a / 2) --make 2x darker
+	return r / 2, g / 2, b / 2, a --make 2x darker
 end
 
 local getpixel, setpixel = bitmap.pixel_interface(bmp)
