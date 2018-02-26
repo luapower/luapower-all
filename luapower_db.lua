@@ -171,6 +171,15 @@ return {
 				}
 			}
 		},
+		cbframe_abi={
+			cbframe_abi={
+				mdeps={
+					cbframe=true,
+					ffi=true,
+					ffi_reflect=true
+				}
+			}
+		},
 		chipmunk={
 			chipmunk={
 				ffi_deps={
@@ -203,134 +212,6 @@ return {
 		},
 		codedit={
 			codedit={
-				mdeps={
-					codedit_editor=true,
-					codedit_keys=true,
-					codedit_ui=true
-				}
-			},
-			codedit_blocks={
-				mdeps={
-					codedit_buffer=true,
-					codedit_str=true
-				}
-			},
-			codedit_blocksel={
-				mdeps={
-					codedit_selection=true
-				}
-			},
-			codedit_buffer={
-				mdeps={
-					codedit_reflow=true,
-					codedit_str=true,
-					codedit_tabs=true,
-					glue=true
-				}
-			},
-			codedit_cursor={
-				mdeps={
-					codedit_str=true,
-					codedit_tabs=true,
-					glue=true
-				}
-			},
-			codedit_editor={
-				mdeps={
-					codedit_blocks=true,
-					codedit_blocksel=true,
-					codedit_buffer=true,
-					codedit_cursor=true,
-					codedit_margin_blame=true,
-					codedit_margin_ln=true,
-					codedit_normal=true,
-					codedit_selection=true,
-					codedit_undo=true,
-					codedit_view=true,
-					glue=true
-				}
-			},
-			codedit_hl={
-				mdeps={
-					codedit_str=true,
-					glue=true,
-					lexer=true
-				}
-			},
-			codedit_keys={
-				mdeps={
-					codedit_editor=true
-				}
-			},
-			codedit_margin={
-				mdeps={
-					glue=true
-				}
-			},
-			codedit_margin_blame={
-				mdeps={
-					codedit_margin=true,
-					codedit_str=true,
-					glue=true
-				}
-			},
-			codedit_margin_ln={
-				mdeps={
-					codedit_margin=true,
-					glue=true
-				}
-			},
-			codedit_normal={
-				mdeps={
-					codedit_buffer=true,
-					codedit_str=true
-				}
-			},
-			codedit_reflow={
-				mdeps={
-					codedit_str=true,
-					codedit_tabs=true,
-					glue=true
-				}
-			},
-			codedit_scroll={
-				mdeps={
-					codedit_editor=true
-				}
-			},
-			codedit_selection={
-				mdeps={
-					glue=true
-				}
-			},
-			codedit_str={
-				mdeps={
-					glue=true,
-					utf8=true
-				}
-			},
-			codedit_tabs={
-				mdeps={
-					codedit_str=true
-				}
-			},
-			codedit_ui={
-				mdeps={
-					codedit_editor=true
-				}
-			},
-			codedit_undo={
-				mdeps={
-					codedit_buffer=true
-				}
-			},
-			codedit_view={
-				mdeps={
-					codedit_hl=true,
-					codedit_str=true,
-					codedit_tabs=true,
-					glue=true
-				}
 			}
 		},
 		color={
@@ -348,6 +229,19 @@ return {
 				mdeps={
 					bit=true,
 					ffi=true
+				}
+			}
+		},
+		dataset={
+			dataset={
+				mdeps={
+					glue=true
+				}
+			},
+			dataset_cursor={
+				mdeps={
+					dataset=true,
+					glue=true
 				}
 			}
 		},
@@ -591,14 +485,14 @@ return {
 				}
 			},
 			fs_posix={
+				ffi_deps={
+					rt=true
+				},
 				mdeps={
 					bit=true,
 					ffi=true,
 					fs_common=true
 				}
-			},
-			fs_stdio={
-				loaderr='./fs_stdio.lua:7: attempt to call global \'cdef\' (a nil value)'
 			},
 			fs_win={
 				loaderr='platform not Windows'
@@ -617,6 +511,15 @@ return {
 			genx_h={
 				mdeps={
 					ffi=true
+				}
+			}
+		},
+		gfonts={
+			gfonts={
+				mdeps={
+					fs=true,
+					glue=true,
+					pp=true
 				}
 			}
 		},
@@ -645,6 +548,30 @@ return {
 			}
 		},
 		glut={
+		},
+		grid={
+			grid_band={
+				mdeps={
+					glue=true,
+					grid_band_layout=true
+				}
+			},
+			grid_band_layout={
+			},
+			grid_group_band={
+				loaderr='error loading module \'grid_group_band\' from file \'./grid_group_band.lua\''
+			},
+			grid_view={
+				mdeps={
+					glue=true
+				}
+			},
+			grid_widget={
+				mdeps={
+					glue=true,
+					grid_view=true
+				}
+			}
 		},
 		harfbuzz={
 			harfbuzz={
@@ -734,6 +661,61 @@ return {
 				mdeps={
 					ffi=true
 				}
+			}
+		},
+		imgui={
+			imgui={
+				autoloads={
+					analog_clock='imgui_analog_clock',
+					button='imgui_buttons',
+					checkerboard='imgui_checkerboard',
+					code_editor='imgui_code_editor',
+					combobox='imgui_combobox',
+					dragpoint='imgui_dragpoint',
+					dragpoints='imgui_dragpoint',
+					editbox='imgui_editbox',
+					filebox='imgui_filebox',
+					grid='imgui_grid',
+					hscrollbar='imgui_scrollbars',
+					hsplitter='imgui_splitter',
+					hue_wheel='imgui_hue_wheel',
+					magnifier='imgui_magnifier',
+					mbutton='imgui_buttons',
+					menu='imgui_menu',
+					sat_lum_square='imgui_sat_lum_square',
+					screen='imgui_screen',
+					scrollbox='imgui_scrollbars',
+					slider='imgui_slider',
+					tablist='imgui_tablist',
+					togglebutton='imgui_buttons',
+					toolbox='imgui_toolbox',
+					treeview='imgui_treeview',
+					vscrollbar='imgui_scrollbars',
+					vsplitter='imgui_splitter'
+				},
+				mdeps={
+					box2d=true,
+					color=true,
+					easing=true,
+					glue=true
+				}
+			},
+			imgui_buttons={
+				mdeps={
+					imgui=true
+				}
+			},
+			imgui_magnifier={
+				mdeps={
+					bitmap=true,
+					ffi=true,
+					imgui=true
+				}
+			}
+		},
+		imgui_nw_cairo={
+			imgui_nw_cairo={
+				loaderr='./xlib.lua:161: assertion failed!'
 			}
 		},
 		lanes={
@@ -845,6 +827,16 @@ return {
 				}
 			},
 			libpng_h={
+				mdeps={
+					ffi=true
+				}
+			}
+		},
+		librsync={
+			librsync={
+				ffi_deps={
+					rsync=true
+				},
 				mdeps={
 					ffi=true
 				}
@@ -1038,10 +1030,6 @@ return {
 				}
 			},
 			luapower_cli={
-				mdeps={
-					glue=true,
-					luapower=true
-				}
 			},
 			luapower_rpc={
 				mdeps={
@@ -1123,13 +1111,7 @@ return {
 		},
 		mmap={
 			mmap={
-				ffi_deps={
-					rt=true
-				},
-				mdeps={
-					bit=true,
-					ffi=true
-				}
+				loaderr='./mmap.lua:7: ./mmap_common.lua:13: ./fs.lua:19: cannot change a protected metatable'
 			}
 		},
 		murmurhash3={
@@ -1277,6 +1259,10 @@ return {
 				mdeps={
 					ffi=true
 				}
+			}
+		},
+		path={
+			path={
 			}
 		},
 		path2d={
@@ -1643,7 +1629,7 @@ return {
 		},
 		syscall={
 			syscall={
-				loaderr='./syscall.lua:18: ./syscall/netbsd/ffifunctions.lua:10: ./syscall/bsd/ffi.lua:187: declaration specifier expected near \'uid_t\' at line 11'
+				loaderr='./syscall.lua:18: ./syscall/netbsd/ffifunctions.lua:10: ./syscall/bsd/ffi.lua:187: declaration specifier expected near \'dev_t\' at line 20'
 			},
 			['syscall.abi']={
 				mdeps={
@@ -1658,7 +1644,7 @@ return {
 				}
 			},
 			['syscall.bsd.ffi']={
-				loaderr='./syscall/bsd/ffi.lua:187: declaration specifier expected near \'uid_t\' at line 11'
+				loaderr='./syscall/bsd/ffi.lua:187: declaration specifier expected near \'dev_t\' at line 20'
 			},
 			['syscall.bsd.syscalls']={
 				mdeps={
@@ -1676,7 +1662,7 @@ return {
 				}
 			},
 			['syscall.freebsd.c']={
-				loaderr='./syscall/freebsd/c.lua:14: ./syscall/freebsd/ffi.lua:310: attempt to redefine \'fd_set\' at line 36'
+				loaderr='./syscall/freebsd/c.lua:14: ./syscall/freebsd/ffi.lua:310: attempt to redefine \'timespec\' at line 57'
 			},
 			['syscall.freebsd.constants']={
 				mdeps={
@@ -1696,7 +1682,7 @@ return {
 			['syscall.freebsd.fcntl']={
 			},
 			['syscall.freebsd.ffi']={
-				loaderr='./syscall/freebsd/ffi.lua:310: attempt to redefine \'fd_set\' at line 36'
+				loaderr='./syscall/freebsd/ffi.lua:310: attempt to redefine \'timespec\' at line 57'
 			},
 			['syscall.freebsd.ioctl']={
 			},
@@ -1727,7 +1713,7 @@ return {
 				}
 			},
 			['syscall.lfs']={
-				loaderr='./syscall/lfs.lua:14: ./syscall.lua:18: ./syscall/netbsd/ffifunctions.lua:10: ./syscall/bsd/ffi.lua:187: declaration specifier expected near \'uid_t\' at line 11'
+				loaderr='./syscall/lfs.lua:14: ./syscall.lua:18: ./syscall/netbsd/ffifunctions.lua:10: ./syscall/bsd/ffi.lua:187: declaration specifier expected near \'dev_t\' at line 20'
 			},
 			['syscall.libc']={
 			},
@@ -1790,7 +1776,7 @@ return {
 				loaderr='./syscall/linux/mips/nr.lua:13: FIXME: syscalls only defined for o32 MIPS ABI'
 			},
 			['syscall.linux.netfilter']={
-				loaderr='./syscall/linux/netfilter.lua:16: ./syscall.lua:18: ./syscall/netbsd/ffifunctions.lua:10: ./syscall/bsd/ffi.lua:187: declaration specifier expected near \'uid_t\' at line 11'
+				loaderr='./syscall/linux/netfilter.lua:16: ./syscall.lua:18: ./syscall/netbsd/ffifunctions.lua:10: ./syscall/bsd/ffi.lua:187: declaration specifier expected near \'dev_t\' at line 20'
 			},
 			['syscall.linux.nl']={
 			},
@@ -1861,7 +1847,7 @@ return {
 			['syscall.netbsd.fcntl']={
 			},
 			['syscall.netbsd.ffifunctions']={
-				loaderr='./syscall/netbsd/ffifunctions.lua:10: ./syscall/bsd/ffi.lua:187: declaration specifier expected near \'uid_t\' at line 11'
+				loaderr='./syscall/netbsd/ffifunctions.lua:10: ./syscall/bsd/ffi.lua:187: declaration specifier expected near \'dev_t\' at line 20'
 			},
 			['syscall.netbsd.ffitypes']={
 				mdeps={
@@ -1924,7 +1910,7 @@ return {
 			['syscall.openbsd.fcntl']={
 			},
 			['syscall.openbsd.ffi']={
-				loaderr='./syscall/openbsd/ffi.lua:313: attempt to redefine \'fd_set\' at line 33'
+				loaderr='./syscall/openbsd/ffi.lua:313: attempt to redefine \'timespec\' at line 55'
 			},
 			['syscall.openbsd.ioctl']={
 			},
@@ -1964,7 +1950,7 @@ return {
 			['syscall.osx.fcntl']={
 			},
 			['syscall.osx.ffi']={
-				loaderr='./syscall/osx/ffi.lua:314: ./syscall/bsd/ffi.lua:187: declaration specifier expected near \'uid_t\' at line 11'
+				loaderr='./syscall/osx/ffi.lua:312: attempt to redefine \'timespec\' at line 83'
 			},
 			['syscall.osx.ioctl']={
 			},
@@ -2051,6 +2037,10 @@ return {
 			tuple={
 			}
 		},
+		tweening={
+			tweening={
+			}
+		},
 		ucdn={
 			ucdn={
 				ffi_deps={
@@ -2058,6 +2048,24 @@ return {
 				},
 				mdeps={
 					ffi=true
+				}
+			}
+		},
+		ui={
+			ui={
+				mdeps={
+					box2d=true,
+					glue=true,
+					oo=true,
+					time=true,
+					tweening=true,
+					ui_draw=true
+				}
+			},
+			ui_draw={
+				mdeps={
+					color=true,
+					glue=true
 				}
 			}
 		},
@@ -2414,6 +2422,15 @@ return {
 				}
 			}
 		},
+		cbframe_abi={
+			cbframe_abi={
+				mdeps={
+					cbframe=true,
+					ffi=true,
+					ffi_reflect=true
+				}
+			}
+		},
 		chipmunk={
 			chipmunk={
 				ffi_deps={
@@ -2446,134 +2463,6 @@ return {
 		},
 		codedit={
 			codedit={
-				mdeps={
-					codedit_editor=true,
-					codedit_keys=true,
-					codedit_ui=true
-				}
-			},
-			codedit_blocks={
-				mdeps={
-					codedit_buffer=true,
-					codedit_str=true
-				}
-			},
-			codedit_blocksel={
-				mdeps={
-					codedit_selection=true
-				}
-			},
-			codedit_buffer={
-				mdeps={
-					codedit_reflow=true,
-					codedit_str=true,
-					codedit_tabs=true,
-					glue=true
-				}
-			},
-			codedit_cursor={
-				mdeps={
-					codedit_str=true,
-					codedit_tabs=true,
-					glue=true
-				}
-			},
-			codedit_editor={
-				mdeps={
-					codedit_blocks=true,
-					codedit_blocksel=true,
-					codedit_buffer=true,
-					codedit_cursor=true,
-					codedit_margin_blame=true,
-					codedit_margin_ln=true,
-					codedit_normal=true,
-					codedit_selection=true,
-					codedit_undo=true,
-					codedit_view=true,
-					glue=true
-				}
-			},
-			codedit_hl={
-				mdeps={
-					codedit_str=true,
-					glue=true,
-					lexer=true
-				}
-			},
-			codedit_keys={
-				mdeps={
-					codedit_editor=true
-				}
-			},
-			codedit_margin={
-				mdeps={
-					glue=true
-				}
-			},
-			codedit_margin_blame={
-				mdeps={
-					codedit_margin=true,
-					codedit_str=true,
-					glue=true
-				}
-			},
-			codedit_margin_ln={
-				mdeps={
-					codedit_margin=true,
-					glue=true
-				}
-			},
-			codedit_normal={
-				mdeps={
-					codedit_buffer=true,
-					codedit_str=true
-				}
-			},
-			codedit_reflow={
-				mdeps={
-					codedit_str=true,
-					codedit_tabs=true,
-					glue=true
-				}
-			},
-			codedit_scroll={
-				mdeps={
-					codedit_editor=true
-				}
-			},
-			codedit_selection={
-				mdeps={
-					glue=true
-				}
-			},
-			codedit_str={
-				mdeps={
-					glue=true,
-					utf8=true
-				}
-			},
-			codedit_tabs={
-				mdeps={
-					codedit_str=true
-				}
-			},
-			codedit_ui={
-				mdeps={
-					codedit_editor=true
-				}
-			},
-			codedit_undo={
-				mdeps={
-					codedit_buffer=true
-				}
-			},
-			codedit_view={
-				mdeps={
-					codedit_hl=true,
-					codedit_str=true,
-					codedit_tabs=true,
-					glue=true
-				}
 			}
 		},
 		color={
@@ -2591,6 +2480,19 @@ return {
 				mdeps={
 					bit=true,
 					ffi=true
+				}
+			}
+		},
+		dataset={
+			dataset={
+				mdeps={
+					glue=true
+				}
+			},
+			dataset_cursor={
+				mdeps={
+					dataset=true,
+					glue=true
 				}
 			}
 		},
@@ -2834,14 +2736,14 @@ return {
 				}
 			},
 			fs_posix={
+				ffi_deps={
+					rt=true
+				},
 				mdeps={
 					bit=true,
 					ffi=true,
 					fs_common=true
 				}
-			},
-			fs_stdio={
-				loaderr='./fs_stdio.lua:7: attempt to call global \'cdef\' (a nil value)'
 			},
 			fs_win={
 				loaderr='platform not Windows'
@@ -2860,6 +2762,15 @@ return {
 			genx_h={
 				mdeps={
 					ffi=true
+				}
+			}
+		},
+		gfonts={
+			gfonts={
+				mdeps={
+					fs=true,
+					glue=true,
+					pp=true
 				}
 			}
 		},
@@ -2888,6 +2799,30 @@ return {
 			}
 		},
 		glut={
+		},
+		grid={
+			grid_band={
+				mdeps={
+					glue=true,
+					grid_band_layout=true
+				}
+			},
+			grid_band_layout={
+			},
+			grid_group_band={
+				loaderr='error loading module \'grid_group_band\' from file \'./grid_group_band.lua\''
+			},
+			grid_view={
+				mdeps={
+					glue=true
+				}
+			},
+			grid_widget={
+				mdeps={
+					glue=true,
+					grid_view=true
+				}
+			}
 		},
 		harfbuzz={
 			harfbuzz={
@@ -2977,6 +2912,61 @@ return {
 				mdeps={
 					ffi=true
 				}
+			}
+		},
+		imgui={
+			imgui={
+				autoloads={
+					analog_clock='imgui_analog_clock',
+					button='imgui_buttons',
+					checkerboard='imgui_checkerboard',
+					code_editor='imgui_code_editor',
+					combobox='imgui_combobox',
+					dragpoint='imgui_dragpoint',
+					dragpoints='imgui_dragpoint',
+					editbox='imgui_editbox',
+					filebox='imgui_filebox',
+					grid='imgui_grid',
+					hscrollbar='imgui_scrollbars',
+					hsplitter='imgui_splitter',
+					hue_wheel='imgui_hue_wheel',
+					magnifier='imgui_magnifier',
+					mbutton='imgui_buttons',
+					menu='imgui_menu',
+					sat_lum_square='imgui_sat_lum_square',
+					screen='imgui_screen',
+					scrollbox='imgui_scrollbars',
+					slider='imgui_slider',
+					tablist='imgui_tablist',
+					togglebutton='imgui_buttons',
+					toolbox='imgui_toolbox',
+					treeview='imgui_treeview',
+					vscrollbar='imgui_scrollbars',
+					vsplitter='imgui_splitter'
+				},
+				mdeps={
+					box2d=true,
+					color=true,
+					easing=true,
+					glue=true
+				}
+			},
+			imgui_buttons={
+				mdeps={
+					imgui=true
+				}
+			},
+			imgui_magnifier={
+				mdeps={
+					bitmap=true,
+					ffi=true,
+					imgui=true
+				}
+			}
+		},
+		imgui_nw_cairo={
+			imgui_nw_cairo={
+				loaderr='./xlib.lua:161: assertion failed!'
 			}
 		},
 		lanes={
@@ -3093,17 +3083,21 @@ return {
 				}
 			}
 		},
+		librsync={
+			librsync={
+				ffi_deps={
+					rsync=true
+				},
+				mdeps={
+					ffi=true
+				}
+			}
+		},
 		libsodium={
 		},
 		libsoundio={
 			libsoundio={
-				ffi_deps={
-					soundio=true
-				},
-				mdeps={
-					ffi=true,
-					libsoundio_h=true
-				}
+				loaderr='./libsoundio.lua:10: libsoundio.so: cannot open shared object file: No such file or directory'
 			},
 			libsoundio_h={
 				mdeps={
@@ -3287,10 +3281,6 @@ return {
 				}
 			},
 			luapower_cli={
-				mdeps={
-					glue=true,
-					luapower=true
-				}
 			},
 			luapower_rpc={
 				mdeps={
@@ -3372,13 +3362,7 @@ return {
 		},
 		mmap={
 			mmap={
-				ffi_deps={
-					rt=true
-				},
-				mdeps={
-					bit=true,
-					ffi=true
-				}
+				loaderr='./mmap.lua:7: ./mmap_common.lua:13: ./fs.lua:19: cannot change a protected metatable'
 			}
 		},
 		murmurhash3={
@@ -3526,6 +3510,10 @@ return {
 				mdeps={
 					ffi=true
 				}
+			}
+		},
+		path={
+			path={
 			}
 		},
 		path2d={
@@ -3892,7 +3880,7 @@ return {
 		},
 		syscall={
 			syscall={
-				loaderr='./syscall.lua:18: ./syscall/netbsd/ffifunctions.lua:10: ./syscall/bsd/ffi.lua:187: declaration specifier expected near \'uid_t\' at line 11'
+				loaderr='./syscall.lua:18: ./syscall/netbsd/ffifunctions.lua:10: ./syscall/bsd/ffi.lua:187: declaration specifier expected near \'dev_t\' at line 20'
 			},
 			['syscall.abi']={
 				mdeps={
@@ -3907,7 +3895,7 @@ return {
 				}
 			},
 			['syscall.bsd.ffi']={
-				loaderr='./syscall/bsd/ffi.lua:187: declaration specifier expected near \'uid_t\' at line 11'
+				loaderr='./syscall/bsd/ffi.lua:187: declaration specifier expected near \'dev_t\' at line 20'
 			},
 			['syscall.bsd.syscalls']={
 				mdeps={
@@ -3925,7 +3913,7 @@ return {
 				}
 			},
 			['syscall.freebsd.c']={
-				loaderr='./syscall/freebsd/c.lua:14: ./syscall/freebsd/ffi.lua:310: attempt to redefine \'fd_set\' at line 36'
+				loaderr='./syscall/freebsd/c.lua:14: ./syscall/freebsd/ffi.lua:310: attempt to redefine \'timespec\' at line 57'
 			},
 			['syscall.freebsd.constants']={
 				mdeps={
@@ -3945,7 +3933,7 @@ return {
 			['syscall.freebsd.fcntl']={
 			},
 			['syscall.freebsd.ffi']={
-				loaderr='./syscall/freebsd/ffi.lua:310: attempt to redefine \'fd_set\' at line 36'
+				loaderr='./syscall/freebsd/ffi.lua:310: attempt to redefine \'timespec\' at line 57'
 			},
 			['syscall.freebsd.ioctl']={
 			},
@@ -3976,7 +3964,7 @@ return {
 				}
 			},
 			['syscall.lfs']={
-				loaderr='./syscall/lfs.lua:14: ./syscall.lua:18: ./syscall/netbsd/ffifunctions.lua:10: ./syscall/bsd/ffi.lua:187: declaration specifier expected near \'uid_t\' at line 11'
+				loaderr='./syscall/lfs.lua:14: ./syscall.lua:18: ./syscall/netbsd/ffifunctions.lua:10: ./syscall/bsd/ffi.lua:187: declaration specifier expected near \'dev_t\' at line 20'
 			},
 			['syscall.libc']={
 			},
@@ -4039,7 +4027,7 @@ return {
 				loaderr='./syscall/linux/mips/nr.lua:13: FIXME: syscalls only defined for o32 MIPS ABI'
 			},
 			['syscall.linux.netfilter']={
-				loaderr='./syscall/linux/netfilter.lua:16: ./syscall.lua:18: ./syscall/netbsd/ffifunctions.lua:10: ./syscall/bsd/ffi.lua:187: declaration specifier expected near \'uid_t\' at line 11'
+				loaderr='./syscall/linux/netfilter.lua:16: ./syscall.lua:18: ./syscall/netbsd/ffifunctions.lua:10: ./syscall/bsd/ffi.lua:187: declaration specifier expected near \'dev_t\' at line 20'
 			},
 			['syscall.linux.nl']={
 			},
@@ -4110,7 +4098,7 @@ return {
 			['syscall.netbsd.fcntl']={
 			},
 			['syscall.netbsd.ffifunctions']={
-				loaderr='./syscall/netbsd/ffifunctions.lua:10: ./syscall/bsd/ffi.lua:187: declaration specifier expected near \'uid_t\' at line 11'
+				loaderr='./syscall/netbsd/ffifunctions.lua:10: ./syscall/bsd/ffi.lua:187: declaration specifier expected near \'dev_t\' at line 20'
 			},
 			['syscall.netbsd.ffitypes']={
 				mdeps={
@@ -4173,7 +4161,7 @@ return {
 			['syscall.openbsd.fcntl']={
 			},
 			['syscall.openbsd.ffi']={
-				loaderr='./syscall/openbsd/ffi.lua:313: attempt to redefine \'fd_set\' at line 33'
+				loaderr='./syscall/openbsd/ffi.lua:313: attempt to redefine \'timespec\' at line 55'
 			},
 			['syscall.openbsd.ioctl']={
 			},
@@ -4213,7 +4201,7 @@ return {
 			['syscall.osx.fcntl']={
 			},
 			['syscall.osx.ffi']={
-				loaderr='./syscall/osx/ffi.lua:314: ./syscall/bsd/ffi.lua:187: declaration specifier expected near \'uid_t\' at line 11'
+				loaderr='./syscall/osx/ffi.lua:312: attempt to redefine \'timespec\' at line 83'
 			},
 			['syscall.osx.ioctl']={
 			},
@@ -4300,6 +4288,10 @@ return {
 			tuple={
 			}
 		},
+		tweening={
+			tweening={
+			}
+		},
 		ucdn={
 			ucdn={
 				ffi_deps={
@@ -4307,6 +4299,24 @@ return {
 				},
 				mdeps={
 					ffi=true
+				}
+			}
+		},
+		ui={
+			ui={
+				mdeps={
+					box2d=true,
+					glue=true,
+					oo=true,
+					time=true,
+					tweening=true,
+					ui_draw=true
+				}
+			},
+			ui_draw={
+				mdeps={
+					color=true,
+					glue=true
 				}
 			}
 		},
@@ -4699,6 +4709,15 @@ return {
 				}
 			}
 		},
+		cbframe_abi={
+			cbframe_abi={
+				mdeps={
+					cbframe=true,
+					ffi=true,
+					ffi_reflect=true
+				}
+			}
+		},
 		chipmunk={
 			chipmunk={
 				ffi_deps={
@@ -4731,134 +4750,6 @@ return {
 		},
 		codedit={
 			codedit={
-				mdeps={
-					codedit_editor=true,
-					codedit_keys=true,
-					codedit_ui=true
-				}
-			},
-			codedit_blocks={
-				mdeps={
-					codedit_buffer=true,
-					codedit_str=true
-				}
-			},
-			codedit_blocksel={
-				mdeps={
-					codedit_selection=true
-				}
-			},
-			codedit_buffer={
-				mdeps={
-					codedit_reflow=true,
-					codedit_str=true,
-					codedit_tabs=true,
-					glue=true
-				}
-			},
-			codedit_cursor={
-				mdeps={
-					codedit_str=true,
-					codedit_tabs=true,
-					glue=true
-				}
-			},
-			codedit_editor={
-				mdeps={
-					codedit_blocks=true,
-					codedit_blocksel=true,
-					codedit_buffer=true,
-					codedit_cursor=true,
-					codedit_margin_blame=true,
-					codedit_margin_ln=true,
-					codedit_normal=true,
-					codedit_selection=true,
-					codedit_undo=true,
-					codedit_view=true,
-					glue=true
-				}
-			},
-			codedit_hl={
-				mdeps={
-					codedit_str=true,
-					glue=true,
-					lexer=true
-				}
-			},
-			codedit_keys={
-				mdeps={
-					codedit_editor=true
-				}
-			},
-			codedit_margin={
-				mdeps={
-					glue=true
-				}
-			},
-			codedit_margin_blame={
-				mdeps={
-					codedit_margin=true,
-					codedit_str=true,
-					glue=true
-				}
-			},
-			codedit_margin_ln={
-				mdeps={
-					codedit_margin=true,
-					glue=true
-				}
-			},
-			codedit_normal={
-				mdeps={
-					codedit_buffer=true,
-					codedit_str=true
-				}
-			},
-			codedit_reflow={
-				mdeps={
-					codedit_str=true,
-					codedit_tabs=true,
-					glue=true
-				}
-			},
-			codedit_scroll={
-				mdeps={
-					codedit_editor=true
-				}
-			},
-			codedit_selection={
-				mdeps={
-					glue=true
-				}
-			},
-			codedit_str={
-				mdeps={
-					glue=true,
-					utf8=true
-				}
-			},
-			codedit_tabs={
-				mdeps={
-					codedit_str=true
-				}
-			},
-			codedit_ui={
-				mdeps={
-					codedit_editor=true
-				}
-			},
-			codedit_undo={
-				mdeps={
-					codedit_buffer=true
-				}
-			},
-			codedit_view={
-				mdeps={
-					codedit_hl=true,
-					codedit_str=true,
-					codedit_tabs=true,
-					glue=true
-				}
 			}
 		},
 		color={
@@ -4922,14 +4813,9 @@ return {
 					cairo=true,
 					['cplayer.layerlist']=true,
 					['cplayer.rmgui']=true,
-					ffi=true,
 					glue=true,
-					winapi=true,
-					['winapi.cairopanel']=true,
-					['winapi.keyboard']=true,
-					['winapi.mouse']=true,
-					['winapi.time']=true,
-					['winapi.windowclass']=true
+					nw=true,
+					time=true
 				}
 			},
 			['cplayer.analog_clock']={
@@ -4964,13 +4850,10 @@ return {
 				mdeps={
 					cairo=true,
 					codedit=true,
-					codedit_str=true,
-					codedit_view=true,
 					cplayer=true,
 					freetype=true,
 					glue=true,
-					winapi=true,
-					['winapi.clipboard']=true
+					nw=true
 				}
 			},
 			['cplayer.combobox']={
@@ -5116,14 +4999,16 @@ return {
 			},
 			['cplayer.text']={
 				mdeps={
-					codedit_str=true,
-					cplayer=true
+					cplayer=true,
+					ffi=true,
+					glue=true
 				}
 			},
 			['cplayer.theme']={
 				mdeps={
 					color=true,
 					cplayer=true,
+					ffi=true,
 					glue=true
 				}
 			},
@@ -5145,6 +5030,19 @@ return {
 				mdeps={
 					bit=true,
 					ffi=true
+				}
+			}
+		},
+		dataset={
+			dataset={
+				mdeps={
+					glue=true
+				}
+			},
+			dataset_cursor={
+				mdeps={
+					dataset=true,
+					glue=true
 				}
 			}
 		},
@@ -5183,9 +5081,7 @@ return {
 		},
 		egr={
 			['egr.filelist']={
-				mdeps={
-					['egr.ns']=true
-				}
+				loaderr='.\\egr\\filelist.lua:3: attempt to call global \'class\' (a nil value)'
 			},
 			['egr.freezer']={
 				loaderr='.\\egr\\freezer.lua:3: attempt to call global \'class\' (a nil value)'
@@ -5194,12 +5090,10 @@ return {
 				loaderr='.\\egr\\fs.lua:5: attempt to index global \'lfs\' (a nil value)'
 			},
 			['egr.init']={
-				loaderr='.\\egr\\init.lua:42: .\\egr\\registry.lua:3: attempt to call global \'class\' (a nil value)'
+				loaderr='.\\egr\\init.lua:24: .\\stdio.lua:190: cannot change a protected metatable'
 			},
 			['egr.map']={
-				mdeps={
-					['egr.ns']=true
-				}
+				loaderr='.\\egr\\map.lua:3: attempt to call global \'class\' (a nil value)'
 			},
 			['egr.ns']={
 			},
@@ -5390,9 +5284,6 @@ return {
 			fs_posix={
 				loaderr='platform not Linux or OSX'
 			},
-			fs_stdio={
-				loaderr='.\\fs_stdio.lua:7: attempt to call global \'cdef\' (a nil value)'
-			},
 			fs_win={
 				mdeps={
 					bit=true,
@@ -5414,6 +5305,15 @@ return {
 			genx_h={
 				mdeps={
 					ffi=true
+				}
+			}
+		},
+		gfonts={
+			gfonts={
+				mdeps={
+					fs=true,
+					glue=true,
+					pp=true
 				}
 			}
 		},
@@ -5449,6 +5349,30 @@ return {
 				mdeps={
 					ffi=true,
 					gl_types=true
+				}
+			}
+		},
+		grid={
+			grid_band={
+				mdeps={
+					glue=true,
+					grid_band_layout=true
+				}
+			},
+			grid_band_layout={
+			},
+			grid_group_band={
+				loaderr='error loading module \'grid_group_band\' from file \'.\\grid_group_band.lua\''
+			},
+			grid_view={
+				mdeps={
+					glue=true
+				}
+			},
+			grid_widget={
+				mdeps={
+					glue=true,
+					grid_view=true
 				}
 			}
 		},
@@ -5539,6 +5463,68 @@ return {
 				},
 				mdeps={
 					ffi=true
+				}
+			}
+		},
+		imgui={
+			imgui={
+				autoloads={
+					analog_clock='imgui_analog_clock',
+					button='imgui_buttons',
+					checkerboard='imgui_checkerboard',
+					code_editor='imgui_code_editor',
+					combobox='imgui_combobox',
+					dragpoint='imgui_dragpoint',
+					dragpoints='imgui_dragpoint',
+					editbox='imgui_editbox',
+					filebox='imgui_filebox',
+					grid='imgui_grid',
+					hscrollbar='imgui_scrollbars',
+					hsplitter='imgui_splitter',
+					hue_wheel='imgui_hue_wheel',
+					magnifier='imgui_magnifier',
+					mbutton='imgui_buttons',
+					menu='imgui_menu',
+					sat_lum_square='imgui_sat_lum_square',
+					screen='imgui_screen',
+					scrollbox='imgui_scrollbars',
+					slider='imgui_slider',
+					tablist='imgui_tablist',
+					togglebutton='imgui_buttons',
+					toolbox='imgui_toolbox',
+					treeview='imgui_treeview',
+					vscrollbar='imgui_scrollbars',
+					vsplitter='imgui_splitter'
+				},
+				mdeps={
+					box2d=true,
+					color=true,
+					easing=true,
+					glue=true
+				}
+			},
+			imgui_buttons={
+				mdeps={
+					imgui=true
+				}
+			},
+			imgui_magnifier={
+				mdeps={
+					bitmap=true,
+					ffi=true,
+					imgui=true
+				}
+			}
+		},
+		imgui_nw_cairo={
+			imgui_nw_cairo={
+				mdeps={
+					cairo=true,
+					freetype=true,
+					gfonts=true,
+					imgui=true,
+					nw=true,
+					time=true
 				}
 			}
 		},
@@ -5651,6 +5637,16 @@ return {
 				}
 			},
 			libpng_h={
+				mdeps={
+					ffi=true
+				}
+			}
+		},
+		librsync={
+			librsync={
+				ffi_deps={
+					rsync=true
+				},
 				mdeps={
 					ffi=true
 				}
@@ -5850,10 +5846,6 @@ return {
 				}
 			},
 			luapower_cli={
-				mdeps={
-					glue=true,
-					luapower=true
-				}
 			},
 			luapower_rpc={
 				mdeps={
@@ -5935,10 +5927,7 @@ return {
 		},
 		mmap={
 			mmap={
-				mdeps={
-					bit=true,
-					ffi=true
-				}
+				loaderr='.\\mmap.lua:7: .\\mmap_common.lua:18: attempt to index local \'fsbk\' (a nil value)'
 			}
 		},
 		murmurhash3={
@@ -6033,13 +6022,7 @@ return {
 		},
 		obj_parser={
 			obj_loader={
-				mdeps={
-					ffi=true,
-					glue=true,
-					obj_parser=true,
-					stdio=true,
-					tuple=true
-				}
+				loaderr='.\\obj_loader.lua:8: .\\stdio.lua:190: cannot change a protected metatable'
 			},
 			obj_parser={
 				mdeps={
@@ -6116,6 +6099,10 @@ return {
 				mdeps={
 					ffi=true
 				}
+			}
+		},
+		path={
+			path={
 			}
 		},
 		path2d={
@@ -6342,7 +6329,7 @@ return {
 			sg_cairo_draw={
 			},
 			sg_cairo_player={
-				loaderr='.\\sg_cairo_player.lua:6: not a module'
+				loaderr='.\\sg_cairo_player.lua:3: module \'winapi.cairosgpanel\' not found'
 			},
 			sg_cairo_trace={
 				mdeps={
@@ -6378,22 +6365,10 @@ return {
 				}
 			},
 			sg_gl_obj={
-				mdeps={
-					obj_loader=true,
-					sg_gl=true,
-					sg_gl_mesh=true
-				}
+				loaderr='.\\sg_gl_obj.lua:3: .\\obj_loader.lua:8: .\\stdio.lua:190: cannot change a protected metatable'
 			},
 			sg_gl_player={
-				mdeps={
-					glue=true,
-					sg_gl=true,
-					sg_gl_mesh=true,
-					sg_gl_obj=true,
-					winapi=true,
-					['winapi.wglpanel']=true,
-					['winapi.windowclass']=true
-				}
+				loaderr='.\\sg_gl_player.lua:8: .\\sg_gl_obj.lua:3: .\\obj_loader.lua:8: .\\stdio.lua:190: cannot change a protected metatable'
 			},
 			sg_gl_shape={
 				mdeps={
@@ -6554,6 +6529,10 @@ return {
 			tuple={
 			}
 		},
+		tweening={
+			tweening={
+			}
+		},
 		ucdn={
 			ucdn={
 				ffi_deps={
@@ -6561,6 +6540,24 @@ return {
 				},
 				mdeps={
 					ffi=true
+				}
+			}
+		},
+		ui={
+			ui={
+				mdeps={
+					box2d=true,
+					glue=true,
+					oo=true,
+					time=true,
+					tweening=true,
+					ui_draw=true
+				}
+			},
+			ui_draw={
+				mdeps={
+					color=true,
+					glue=true
 				}
 			}
 		},
@@ -6858,13 +6855,6 @@ return {
 					['winapi.controlclass']=true,
 					['winapi.edit']=true,
 					['winapi.gdi']=true
-				}
-			},
-			['winapi.file']={
-				mdeps={
-					winapi=true,
-					['winapi.winbase']=true,
-					['winapi.winnt']=true
 				}
 			},
 			['winapi.filedialogs']={
@@ -7643,6 +7633,15 @@ return {
 				}
 			}
 		},
+		cbframe_abi={
+			cbframe_abi={
+				mdeps={
+					cbframe=true,
+					ffi=true,
+					ffi_reflect=true
+				}
+			}
+		},
 		chipmunk={
 			chipmunk={
 				ffi_deps={
@@ -7675,134 +7674,6 @@ return {
 		},
 		codedit={
 			codedit={
-				mdeps={
-					codedit_editor=true,
-					codedit_keys=true,
-					codedit_ui=true
-				}
-			},
-			codedit_blocks={
-				mdeps={
-					codedit_buffer=true,
-					codedit_str=true
-				}
-			},
-			codedit_blocksel={
-				mdeps={
-					codedit_selection=true
-				}
-			},
-			codedit_buffer={
-				mdeps={
-					codedit_reflow=true,
-					codedit_str=true,
-					codedit_tabs=true,
-					glue=true
-				}
-			},
-			codedit_cursor={
-				mdeps={
-					codedit_str=true,
-					codedit_tabs=true,
-					glue=true
-				}
-			},
-			codedit_editor={
-				mdeps={
-					codedit_blocks=true,
-					codedit_blocksel=true,
-					codedit_buffer=true,
-					codedit_cursor=true,
-					codedit_margin_blame=true,
-					codedit_margin_ln=true,
-					codedit_normal=true,
-					codedit_selection=true,
-					codedit_undo=true,
-					codedit_view=true,
-					glue=true
-				}
-			},
-			codedit_hl={
-				mdeps={
-					codedit_str=true,
-					glue=true,
-					lexer=true
-				}
-			},
-			codedit_keys={
-				mdeps={
-					codedit_editor=true
-				}
-			},
-			codedit_margin={
-				mdeps={
-					glue=true
-				}
-			},
-			codedit_margin_blame={
-				mdeps={
-					codedit_margin=true,
-					codedit_str=true,
-					glue=true
-				}
-			},
-			codedit_margin_ln={
-				mdeps={
-					codedit_margin=true,
-					glue=true
-				}
-			},
-			codedit_normal={
-				mdeps={
-					codedit_buffer=true,
-					codedit_str=true
-				}
-			},
-			codedit_reflow={
-				mdeps={
-					codedit_str=true,
-					codedit_tabs=true,
-					glue=true
-				}
-			},
-			codedit_scroll={
-				mdeps={
-					codedit_editor=true
-				}
-			},
-			codedit_selection={
-				mdeps={
-					glue=true
-				}
-			},
-			codedit_str={
-				mdeps={
-					glue=true,
-					utf8=true
-				}
-			},
-			codedit_tabs={
-				mdeps={
-					codedit_str=true
-				}
-			},
-			codedit_ui={
-				mdeps={
-					codedit_editor=true
-				}
-			},
-			codedit_undo={
-				mdeps={
-					codedit_buffer=true
-				}
-			},
-			codedit_view={
-				mdeps={
-					codedit_hl=true,
-					codedit_str=true,
-					codedit_tabs=true,
-					glue=true
-				}
 			}
 		},
 		color={
@@ -7866,14 +7737,9 @@ return {
 					cairo=true,
 					['cplayer.layerlist']=true,
 					['cplayer.rmgui']=true,
-					ffi=true,
 					glue=true,
-					winapi=true,
-					['winapi.cairopanel']=true,
-					['winapi.keyboard']=true,
-					['winapi.mouse']=true,
-					['winapi.time']=true,
-					['winapi.windowclass']=true
+					nw=true,
+					time=true
 				}
 			},
 			['cplayer.analog_clock']={
@@ -7908,13 +7774,10 @@ return {
 				mdeps={
 					cairo=true,
 					codedit=true,
-					codedit_str=true,
-					codedit_view=true,
 					cplayer=true,
 					freetype=true,
 					glue=true,
-					winapi=true,
-					['winapi.clipboard']=true
+					nw=true
 				}
 			},
 			['cplayer.combobox']={
@@ -8060,14 +7923,16 @@ return {
 			},
 			['cplayer.text']={
 				mdeps={
-					codedit_str=true,
-					cplayer=true
+					cplayer=true,
+					ffi=true,
+					glue=true
 				}
 			},
 			['cplayer.theme']={
 				mdeps={
 					color=true,
 					cplayer=true,
+					ffi=true,
 					glue=true
 				}
 			},
@@ -8089,6 +7954,19 @@ return {
 				mdeps={
 					bit=true,
 					ffi=true
+				}
+			}
+		},
+		dataset={
+			dataset={
+				mdeps={
+					glue=true
+				}
+			},
+			dataset_cursor={
+				mdeps={
+					dataset=true,
+					glue=true
 				}
 			}
 		},
@@ -8127,9 +8005,7 @@ return {
 		},
 		egr={
 			['egr.filelist']={
-				mdeps={
-					['egr.ns']=true
-				}
+				loaderr='.\\egr\\filelist.lua:3: attempt to call global \'class\' (a nil value)'
 			},
 			['egr.freezer']={
 				loaderr='.\\egr\\freezer.lua:3: attempt to call global \'class\' (a nil value)'
@@ -8138,12 +8014,10 @@ return {
 				loaderr='.\\egr\\fs.lua:5: attempt to index global \'lfs\' (a nil value)'
 			},
 			['egr.init']={
-				loaderr='.\\egr\\init.lua:42: .\\egr\\registry.lua:3: attempt to call global \'class\' (a nil value)'
+				loaderr='.\\egr\\init.lua:24: .\\stdio.lua:190: cannot change a protected metatable'
 			},
 			['egr.map']={
-				mdeps={
-					['egr.ns']=true
-				}
+				loaderr='.\\egr\\map.lua:3: attempt to call global \'class\' (a nil value)'
 			},
 			['egr.ns']={
 			},
@@ -8334,9 +8208,6 @@ return {
 			fs_posix={
 				loaderr='platform not Linux or OSX'
 			},
-			fs_stdio={
-				loaderr='.\\fs_stdio.lua:7: attempt to call global \'cdef\' (a nil value)'
-			},
 			fs_win={
 				mdeps={
 					bit=true,
@@ -8358,6 +8229,15 @@ return {
 			genx_h={
 				mdeps={
 					ffi=true
+				}
+			}
+		},
+		gfonts={
+			gfonts={
+				mdeps={
+					fs=true,
+					glue=true,
+					pp=true
 				}
 			}
 		},
@@ -8393,6 +8273,30 @@ return {
 				mdeps={
 					ffi=true,
 					gl_types=true
+				}
+			}
+		},
+		grid={
+			grid_band={
+				mdeps={
+					glue=true,
+					grid_band_layout=true
+				}
+			},
+			grid_band_layout={
+			},
+			grid_group_band={
+				loaderr='error loading module \'grid_group_band\' from file \'.\\grid_group_band.lua\''
+			},
+			grid_view={
+				mdeps={
+					glue=true
+				}
+			},
+			grid_widget={
+				mdeps={
+					glue=true,
+					grid_view=true
 				}
 			}
 		},
@@ -8483,6 +8387,68 @@ return {
 				},
 				mdeps={
 					ffi=true
+				}
+			}
+		},
+		imgui={
+			imgui={
+				autoloads={
+					analog_clock='imgui_analog_clock',
+					button='imgui_buttons',
+					checkerboard='imgui_checkerboard',
+					code_editor='imgui_code_editor',
+					combobox='imgui_combobox',
+					dragpoint='imgui_dragpoint',
+					dragpoints='imgui_dragpoint',
+					editbox='imgui_editbox',
+					filebox='imgui_filebox',
+					grid='imgui_grid',
+					hscrollbar='imgui_scrollbars',
+					hsplitter='imgui_splitter',
+					hue_wheel='imgui_hue_wheel',
+					magnifier='imgui_magnifier',
+					mbutton='imgui_buttons',
+					menu='imgui_menu',
+					sat_lum_square='imgui_sat_lum_square',
+					screen='imgui_screen',
+					scrollbox='imgui_scrollbars',
+					slider='imgui_slider',
+					tablist='imgui_tablist',
+					togglebutton='imgui_buttons',
+					toolbox='imgui_toolbox',
+					treeview='imgui_treeview',
+					vscrollbar='imgui_scrollbars',
+					vsplitter='imgui_splitter'
+				},
+				mdeps={
+					box2d=true,
+					color=true,
+					easing=true,
+					glue=true
+				}
+			},
+			imgui_buttons={
+				mdeps={
+					imgui=true
+				}
+			},
+			imgui_magnifier={
+				mdeps={
+					bitmap=true,
+					ffi=true,
+					imgui=true
+				}
+			}
+		},
+		imgui_nw_cairo={
+			imgui_nw_cairo={
+				mdeps={
+					cairo=true,
+					freetype=true,
+					gfonts=true,
+					imgui=true,
+					nw=true,
+					time=true
 				}
 			}
 		},
@@ -8606,6 +8572,11 @@ return {
 				mdeps={
 					ffi=true
 				}
+			}
+		},
+		librsync={
+			librsync={
+				loaderr='.\\librsync.lua:8: cannot load module \'rsync\': The specified module could not be found.'
 			}
 		},
 		libsodium={
@@ -8816,10 +8787,6 @@ return {
 				}
 			},
 			luapower_cli={
-				mdeps={
-					glue=true,
-					luapower=true
-				}
 			},
 			luapower_rpc={
 				mdeps={
@@ -8906,10 +8873,7 @@ return {
 		},
 		mmap={
 			mmap={
-				mdeps={
-					bit=true,
-					ffi=true
-				}
+				loaderr='.\\mmap.lua:7: .\\mmap_common.lua:18: attempt to index local \'fsbk\' (a nil value)'
 			}
 		},
 		murmurhash3={
@@ -9004,13 +8968,7 @@ return {
 		},
 		obj_parser={
 			obj_loader={
-				mdeps={
-					ffi=true,
-					glue=true,
-					obj_parser=true,
-					stdio=true,
-					tuple=true
-				}
+				loaderr='.\\obj_loader.lua:8: .\\stdio.lua:190: cannot change a protected metatable'
 			},
 			obj_parser={
 				mdeps={
@@ -9087,6 +9045,10 @@ return {
 				mdeps={
 					ffi=true
 				}
+			}
+		},
+		path={
+			path={
 			}
 		},
 		path2d={
@@ -9313,7 +9275,7 @@ return {
 			sg_cairo_draw={
 			},
 			sg_cairo_player={
-				loaderr='.\\sg_cairo_player.lua:6: not a module'
+				loaderr='.\\sg_cairo_player.lua:3: module \'winapi.cairosgpanel\' not found'
 			},
 			sg_cairo_trace={
 				mdeps={
@@ -9349,22 +9311,10 @@ return {
 				}
 			},
 			sg_gl_obj={
-				mdeps={
-					obj_loader=true,
-					sg_gl=true,
-					sg_gl_mesh=true
-				}
+				loaderr='.\\sg_gl_obj.lua:3: .\\obj_loader.lua:8: .\\stdio.lua:190: cannot change a protected metatable'
 			},
 			sg_gl_player={
-				mdeps={
-					glue=true,
-					sg_gl=true,
-					sg_gl_mesh=true,
-					sg_gl_obj=true,
-					winapi=true,
-					['winapi.wglpanel']=true,
-					['winapi.windowclass']=true
-				}
+				loaderr='.\\sg_gl_player.lua:8: .\\sg_gl_obj.lua:3: .\\obj_loader.lua:8: .\\stdio.lua:190: cannot change a protected metatable'
 			},
 			sg_gl_shape={
 				mdeps={
@@ -9525,6 +9475,10 @@ return {
 			tuple={
 			}
 		},
+		tweening={
+			tweening={
+			}
+		},
 		ucdn={
 			ucdn={
 				ffi_deps={
@@ -9532,6 +9486,24 @@ return {
 				},
 				mdeps={
 					ffi=true
+				}
+			}
+		},
+		ui={
+			ui={
+				mdeps={
+					box2d=true,
+					glue=true,
+					oo=true,
+					time=true,
+					tweening=true,
+					ui_draw=true
+				}
+			},
+			ui_draw={
+				mdeps={
+					color=true,
+					glue=true
 				}
 			}
 		},
@@ -9829,13 +9801,6 @@ return {
 					['winapi.controlclass']=true,
 					['winapi.edit']=true,
 					['winapi.gdi']=true
-				}
-			},
-			['winapi.file']={
-				mdeps={
-					winapi=true,
-					['winapi.winbase']=true,
-					['winapi.winnt']=true
 				}
 			},
 			['winapi.filedialogs']={
@@ -10596,6 +10561,15 @@ return {
 				}
 			}
 		},
+		cbframe_abi={
+			cbframe_abi={
+				mdeps={
+					cbframe=true,
+					ffi=true,
+					ffi_reflect=true
+				}
+			}
+		},
 		chipmunk={
 			chipmunk={
 				ffi_deps={
@@ -10628,134 +10602,6 @@ return {
 		},
 		codedit={
 			codedit={
-				mdeps={
-					codedit_editor=true,
-					codedit_keys=true,
-					codedit_ui=true
-				}
-			},
-			codedit_blocks={
-				mdeps={
-					codedit_buffer=true,
-					codedit_str=true
-				}
-			},
-			codedit_blocksel={
-				mdeps={
-					codedit_selection=true
-				}
-			},
-			codedit_buffer={
-				mdeps={
-					codedit_reflow=true,
-					codedit_str=true,
-					codedit_tabs=true,
-					glue=true
-				}
-			},
-			codedit_cursor={
-				mdeps={
-					codedit_str=true,
-					codedit_tabs=true,
-					glue=true
-				}
-			},
-			codedit_editor={
-				mdeps={
-					codedit_blocks=true,
-					codedit_blocksel=true,
-					codedit_buffer=true,
-					codedit_cursor=true,
-					codedit_margin_blame=true,
-					codedit_margin_ln=true,
-					codedit_normal=true,
-					codedit_selection=true,
-					codedit_undo=true,
-					codedit_view=true,
-					glue=true
-				}
-			},
-			codedit_hl={
-				mdeps={
-					codedit_str=true,
-					glue=true,
-					lexer=true
-				}
-			},
-			codedit_keys={
-				mdeps={
-					codedit_editor=true
-				}
-			},
-			codedit_margin={
-				mdeps={
-					glue=true
-				}
-			},
-			codedit_margin_blame={
-				mdeps={
-					codedit_margin=true,
-					codedit_str=true,
-					glue=true
-				}
-			},
-			codedit_margin_ln={
-				mdeps={
-					codedit_margin=true,
-					glue=true
-				}
-			},
-			codedit_normal={
-				mdeps={
-					codedit_buffer=true,
-					codedit_str=true
-				}
-			},
-			codedit_reflow={
-				mdeps={
-					codedit_str=true,
-					codedit_tabs=true,
-					glue=true
-				}
-			},
-			codedit_scroll={
-				mdeps={
-					codedit_editor=true
-				}
-			},
-			codedit_selection={
-				mdeps={
-					glue=true
-				}
-			},
-			codedit_str={
-				mdeps={
-					glue=true,
-					utf8=true
-				}
-			},
-			codedit_tabs={
-				mdeps={
-					codedit_str=true
-				}
-			},
-			codedit_ui={
-				mdeps={
-					codedit_editor=true
-				}
-			},
-			codedit_undo={
-				mdeps={
-					codedit_buffer=true
-				}
-			},
-			codedit_view={
-				mdeps={
-					codedit_hl=true,
-					codedit_str=true,
-					codedit_tabs=true,
-					glue=true
-				}
 			}
 		},
 		color={
@@ -10773,6 +10619,19 @@ return {
 				mdeps={
 					bit=true,
 					ffi=true
+				}
+			}
+		},
+		dataset={
+			dataset={
+				mdeps={
+					glue=true
+				}
+			},
+			dataset_cursor={
+				mdeps={
+					dataset=true,
+					glue=true
 				}
 			}
 		},
@@ -10811,9 +10670,7 @@ return {
 		},
 		egr={
 			['egr.filelist']={
-				mdeps={
-					['egr.ns']=true
-				}
+				loaderr='./egr/filelist.lua:3: attempt to call global \'class\' (a nil value)'
 			},
 			['egr.freezer']={
 				loaderr='./egr/freezer.lua:3: attempt to call global \'class\' (a nil value)'
@@ -10822,12 +10679,10 @@ return {
 				loaderr='./egr/fs.lua:5: attempt to index global \'lfs\' (a nil value)'
 			},
 			['egr.init']={
-				loaderr='./egr/init.lua:42: ./egr/registry.lua:3: attempt to call global \'class\' (a nil value)'
+				loaderr='./egr/init.lua:24: ./stdio.lua:190: cannot change a protected metatable'
 			},
 			['egr.map']={
-				mdeps={
-					['egr.ns']=true
-				}
+				loaderr='./egr/map.lua:3: attempt to call global \'class\' (a nil value)'
 			},
 			['egr.ns']={
 			},
@@ -11022,9 +10877,6 @@ return {
 					fs_common=true
 				}
 			},
-			fs_stdio={
-				loaderr='./fs_stdio.lua:7: attempt to call global \'cdef\' (a nil value)'
-			},
 			fs_win={
 				loaderr='platform not Windows'
 			}
@@ -11042,6 +10894,15 @@ return {
 			genx_h={
 				mdeps={
 					ffi=true
+				}
+			}
+		},
+		gfonts={
+			gfonts={
+				mdeps={
+					fs=true,
+					glue=true,
+					pp=true
 				}
 			}
 		},
@@ -11070,6 +10931,30 @@ return {
 			}
 		},
 		glut={
+		},
+		grid={
+			grid_band={
+				mdeps={
+					glue=true,
+					grid_band_layout=true
+				}
+			},
+			grid_band_layout={
+			},
+			grid_group_band={
+				loaderr='error loading module \'grid_group_band\' from file \'./grid_group_band.lua\''
+			},
+			grid_view={
+				mdeps={
+					glue=true
+				}
+			},
+			grid_widget={
+				mdeps={
+					glue=true,
+					grid_view=true
+				}
+			}
 		},
 		harfbuzz={
 			harfbuzz={
@@ -11158,6 +11043,68 @@ return {
 				},
 				mdeps={
 					ffi=true
+				}
+			}
+		},
+		imgui={
+			imgui={
+				autoloads={
+					analog_clock='imgui_analog_clock',
+					button='imgui_buttons',
+					checkerboard='imgui_checkerboard',
+					code_editor='imgui_code_editor',
+					combobox='imgui_combobox',
+					dragpoint='imgui_dragpoint',
+					dragpoints='imgui_dragpoint',
+					editbox='imgui_editbox',
+					filebox='imgui_filebox',
+					grid='imgui_grid',
+					hscrollbar='imgui_scrollbars',
+					hsplitter='imgui_splitter',
+					hue_wheel='imgui_hue_wheel',
+					magnifier='imgui_magnifier',
+					mbutton='imgui_buttons',
+					menu='imgui_menu',
+					sat_lum_square='imgui_sat_lum_square',
+					screen='imgui_screen',
+					scrollbox='imgui_scrollbars',
+					slider='imgui_slider',
+					tablist='imgui_tablist',
+					togglebutton='imgui_buttons',
+					toolbox='imgui_toolbox',
+					treeview='imgui_treeview',
+					vscrollbar='imgui_scrollbars',
+					vsplitter='imgui_splitter'
+				},
+				mdeps={
+					box2d=true,
+					color=true,
+					easing=true,
+					glue=true
+				}
+			},
+			imgui_buttons={
+				mdeps={
+					imgui=true
+				}
+			},
+			imgui_magnifier={
+				mdeps={
+					bitmap=true,
+					ffi=true,
+					imgui=true
+				}
+			}
+		},
+		imgui_nw_cairo={
+			imgui_nw_cairo={
+				mdeps={
+					cairo=true,
+					freetype=true,
+					gfonts=true,
+					imgui=true,
+					nw=true,
+					time=true
 				}
 			}
 		},
@@ -11270,6 +11217,16 @@ return {
 				}
 			},
 			libpng_h={
+				mdeps={
+					ffi=true
+				}
+			}
+		},
+		librsync={
+			librsync={
+				ffi_deps={
+					rsync=true
+				},
 				mdeps={
 					ffi=true
 				}
@@ -11469,10 +11426,6 @@ return {
 				}
 			},
 			luapower_cli={
-				mdeps={
-					glue=true,
-					luapower=true
-				}
 			},
 			luapower_rpc={
 				mdeps={
@@ -11554,10 +11507,7 @@ return {
 		},
 		mmap={
 			mmap={
-				mdeps={
-					bit=true,
-					ffi=true
-				}
+				loaderr='./mmap.lua:7: ./mmap_common.lua:18: attempt to index local \'fsbk\' (a nil value)'
 			}
 		},
 		murmurhash3={
@@ -11617,8 +11567,6 @@ return {
 					['/System/Library/Frameworks/ApplicationServices.framework/Versions/Current/Frameworks/CoreGraphics.framework/CoreGraphics']=true,
 					['/System/Library/Frameworks/ApplicationServices.framework/Versions/Current/Frameworks/CoreGraphics.framework/Resources/BridgeSupport/CoreGraphics.dylib']=true,
 					['/System/Library/Frameworks/Carbon.framework/Versions/Current/Frameworks/HIToolbox.framework/HIToolbox']=true,
-					['/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation']=true,
-					['/System/Library/Frameworks/CoreFoundation.framework/Resources/BridgeSupport/CoreFoundation.dylib']=true,
 					['/System/Library/Frameworks/Foundation.framework/Foundation']=true,
 					['/System/Library/Frameworks/Foundation.framework/Resources/BridgeSupport/Foundation.dylib']=true
 				},
@@ -11640,13 +11588,7 @@ return {
 		},
 		obj_parser={
 			obj_loader={
-				mdeps={
-					ffi=true,
-					glue=true,
-					obj_parser=true,
-					stdio=true,
-					tuple=true
-				}
+				loaderr='./obj_loader.lua:8: ./stdio.lua:190: cannot change a protected metatable'
 			},
 			obj_parser={
 				mdeps={
@@ -11737,6 +11679,10 @@ return {
 				mdeps={
 					ffi=true
 				}
+			}
+		},
+		path={
+			path={
 			}
 		},
 		path2d={
@@ -12101,7 +12047,7 @@ return {
 		},
 		syscall={
 			syscall={
-				loaderr='./syscall.lua:18: ./syscall/netbsd/ffifunctions.lua:10: ./syscall/bsd/ffi.lua:187: declaration specifier expected near \'uid_t\' at line 11'
+				loaderr='./syscall.lua:18: ./syscall/netbsd/ffifunctions.lua:10: ./syscall/bsd/ffi.lua:187: declaration specifier expected near \'dev_t\' at line 20'
 			},
 			['syscall.abi']={
 				mdeps={
@@ -12116,7 +12062,7 @@ return {
 				}
 			},
 			['syscall.bsd.ffi']={
-				loaderr='./syscall/bsd/ffi.lua:187: declaration specifier expected near \'uid_t\' at line 11'
+				loaderr='./syscall/bsd/ffi.lua:187: declaration specifier expected near \'dev_t\' at line 20'
 			},
 			['syscall.bsd.syscalls']={
 				mdeps={
@@ -12134,7 +12080,7 @@ return {
 				}
 			},
 			['syscall.freebsd.c']={
-				loaderr='./syscall/freebsd/c.lua:14: ./syscall/freebsd/ffi.lua:310: attempt to redefine \'fd_set\' at line 36'
+				loaderr='./syscall/freebsd/c.lua:14: ./syscall/freebsd/ffi.lua:310: attempt to redefine \'timespec\' at line 57'
 			},
 			['syscall.freebsd.constants']={
 				mdeps={
@@ -12154,7 +12100,7 @@ return {
 			['syscall.freebsd.fcntl']={
 			},
 			['syscall.freebsd.ffi']={
-				loaderr='./syscall/freebsd/ffi.lua:310: attempt to redefine \'fd_set\' at line 36'
+				loaderr='./syscall/freebsd/ffi.lua:310: attempt to redefine \'timespec\' at line 57'
 			},
 			['syscall.freebsd.ioctl']={
 			},
@@ -12185,7 +12131,7 @@ return {
 				}
 			},
 			['syscall.lfs']={
-				loaderr='./syscall/lfs.lua:14: ./syscall.lua:18: ./syscall/netbsd/ffifunctions.lua:10: ./syscall/bsd/ffi.lua:187: declaration specifier expected near \'uid_t\' at line 11'
+				loaderr='./syscall/lfs.lua:14: ./syscall.lua:18: ./syscall/netbsd/ffifunctions.lua:10: ./syscall/bsd/ffi.lua:187: declaration specifier expected near \'dev_t\' at line 20'
 			},
 			['syscall.libc']={
 			},
@@ -12248,7 +12194,7 @@ return {
 				loaderr='./syscall/linux/mips/nr.lua:13: FIXME: syscalls only defined for o32 MIPS ABI'
 			},
 			['syscall.linux.netfilter']={
-				loaderr='./syscall/linux/netfilter.lua:16: ./syscall.lua:18: ./syscall/netbsd/ffifunctions.lua:10: ./syscall/bsd/ffi.lua:187: declaration specifier expected near \'uid_t\' at line 11'
+				loaderr='./syscall/linux/netfilter.lua:16: ./syscall.lua:18: ./syscall/netbsd/ffifunctions.lua:10: ./syscall/bsd/ffi.lua:187: declaration specifier expected near \'dev_t\' at line 20'
 			},
 			['syscall.linux.nl']={
 			},
@@ -12319,7 +12265,7 @@ return {
 			['syscall.netbsd.fcntl']={
 			},
 			['syscall.netbsd.ffifunctions']={
-				loaderr='./syscall/netbsd/ffifunctions.lua:10: ./syscall/bsd/ffi.lua:187: declaration specifier expected near \'uid_t\' at line 11'
+				loaderr='./syscall/netbsd/ffifunctions.lua:10: ./syscall/bsd/ffi.lua:187: declaration specifier expected near \'dev_t\' at line 20'
 			},
 			['syscall.netbsd.ffitypes']={
 				mdeps={
@@ -12382,7 +12328,7 @@ return {
 			['syscall.openbsd.fcntl']={
 			},
 			['syscall.openbsd.ffi']={
-				loaderr='./syscall/openbsd/ffi.lua:313: attempt to redefine \'fd_set\' at line 33'
+				loaderr='./syscall/openbsd/ffi.lua:313: attempt to redefine \'timespec\' at line 55'
 			},
 			['syscall.openbsd.ioctl']={
 			},
@@ -12422,7 +12368,7 @@ return {
 			['syscall.osx.fcntl']={
 			},
 			['syscall.osx.ffi']={
-				loaderr='./syscall/osx/ffi.lua:314: ./syscall/bsd/ffi.lua:187: declaration specifier expected near \'uid_t\' at line 11'
+				loaderr='./syscall/osx/ffi.lua:312: attempt to redefine \'timeval\' at line 87'
 			},
 			['syscall.osx.ioctl']={
 			},
@@ -12506,6 +12452,10 @@ return {
 			tuple={
 			}
 		},
+		tweening={
+			tweening={
+			}
+		},
 		ucdn={
 			ucdn={
 				ffi_deps={
@@ -12513,6 +12463,24 @@ return {
 				},
 				mdeps={
 					ffi=true
+				}
+			}
+		},
+		ui={
+			ui={
+				mdeps={
+					box2d=true,
+					glue=true,
+					oo=true,
+					time=true,
+					tweening=true,
+					ui_draw=true
+				}
+			},
+			ui_draw={
+				mdeps={
+					color=true,
+					glue=true
 				}
 			}
 		},
@@ -12836,6 +12804,15 @@ return {
 				}
 			}
 		},
+		cbframe_abi={
+			cbframe_abi={
+				mdeps={
+					cbframe=true,
+					ffi=true,
+					ffi_reflect=true
+				}
+			}
+		},
 		chipmunk={
 			chipmunk={
 				ffi_deps={
@@ -12868,134 +12845,6 @@ return {
 		},
 		codedit={
 			codedit={
-				mdeps={
-					codedit_editor=true,
-					codedit_keys=true,
-					codedit_ui=true
-				}
-			},
-			codedit_blocks={
-				mdeps={
-					codedit_buffer=true,
-					codedit_str=true
-				}
-			},
-			codedit_blocksel={
-				mdeps={
-					codedit_selection=true
-				}
-			},
-			codedit_buffer={
-				mdeps={
-					codedit_reflow=true,
-					codedit_str=true,
-					codedit_tabs=true,
-					glue=true
-				}
-			},
-			codedit_cursor={
-				mdeps={
-					codedit_str=true,
-					codedit_tabs=true,
-					glue=true
-				}
-			},
-			codedit_editor={
-				mdeps={
-					codedit_blocks=true,
-					codedit_blocksel=true,
-					codedit_buffer=true,
-					codedit_cursor=true,
-					codedit_margin_blame=true,
-					codedit_margin_ln=true,
-					codedit_normal=true,
-					codedit_selection=true,
-					codedit_undo=true,
-					codedit_view=true,
-					glue=true
-				}
-			},
-			codedit_hl={
-				mdeps={
-					codedit_str=true,
-					glue=true,
-					lexer=true
-				}
-			},
-			codedit_keys={
-				mdeps={
-					codedit_editor=true
-				}
-			},
-			codedit_margin={
-				mdeps={
-					glue=true
-				}
-			},
-			codedit_margin_blame={
-				mdeps={
-					codedit_margin=true,
-					codedit_str=true,
-					glue=true
-				}
-			},
-			codedit_margin_ln={
-				mdeps={
-					codedit_margin=true,
-					glue=true
-				}
-			},
-			codedit_normal={
-				mdeps={
-					codedit_buffer=true,
-					codedit_str=true
-				}
-			},
-			codedit_reflow={
-				mdeps={
-					codedit_str=true,
-					codedit_tabs=true,
-					glue=true
-				}
-			},
-			codedit_scroll={
-				mdeps={
-					codedit_editor=true
-				}
-			},
-			codedit_selection={
-				mdeps={
-					glue=true
-				}
-			},
-			codedit_str={
-				mdeps={
-					glue=true,
-					utf8=true
-				}
-			},
-			codedit_tabs={
-				mdeps={
-					codedit_str=true
-				}
-			},
-			codedit_ui={
-				mdeps={
-					codedit_editor=true
-				}
-			},
-			codedit_undo={
-				mdeps={
-					codedit_buffer=true
-				}
-			},
-			codedit_view={
-				mdeps={
-					codedit_hl=true,
-					codedit_str=true,
-					codedit_tabs=true,
-					glue=true
-				}
 			}
 		},
 		color={
@@ -13013,6 +12862,19 @@ return {
 				mdeps={
 					bit=true,
 					ffi=true
+				}
+			}
+		},
+		dataset={
+			dataset={
+				mdeps={
+					glue=true
+				}
+			},
+			dataset_cursor={
+				mdeps={
+					dataset=true,
+					glue=true
 				}
 			}
 		},
@@ -13051,9 +12913,7 @@ return {
 		},
 		egr={
 			['egr.filelist']={
-				mdeps={
-					['egr.ns']=true
-				}
+				loaderr='./egr/filelist.lua:3: attempt to call global \'class\' (a nil value)'
 			},
 			['egr.freezer']={
 				loaderr='./egr/freezer.lua:3: attempt to call global \'class\' (a nil value)'
@@ -13062,12 +12922,10 @@ return {
 				loaderr='./egr/fs.lua:5: attempt to index global \'lfs\' (a nil value)'
 			},
 			['egr.init']={
-				loaderr='./egr/init.lua:42: ./egr/registry.lua:3: attempt to call global \'class\' (a nil value)'
+				loaderr='./egr/init.lua:24: ./stdio.lua:190: cannot change a protected metatable'
 			},
 			['egr.map']={
-				mdeps={
-					['egr.ns']=true
-				}
+				loaderr='./egr/map.lua:3: attempt to call global \'class\' (a nil value)'
 			},
 			['egr.ns']={
 			},
@@ -13262,9 +13120,6 @@ return {
 					fs_common=true
 				}
 			},
-			fs_stdio={
-				loaderr='./fs_stdio.lua:7: attempt to call global \'cdef\' (a nil value)'
-			},
 			fs_win={
 				loaderr='platform not Windows'
 			}
@@ -13282,6 +13137,15 @@ return {
 			genx_h={
 				mdeps={
 					ffi=true
+				}
+			}
+		},
+		gfonts={
+			gfonts={
+				mdeps={
+					fs=true,
+					glue=true,
+					pp=true
 				}
 			}
 		},
@@ -13310,6 +13174,30 @@ return {
 			}
 		},
 		glut={
+		},
+		grid={
+			grid_band={
+				mdeps={
+					glue=true,
+					grid_band_layout=true
+				}
+			},
+			grid_band_layout={
+			},
+			grid_group_band={
+				loaderr='error loading module \'grid_group_band\' from file \'./grid_group_band.lua\''
+			},
+			grid_view={
+				mdeps={
+					glue=true
+				}
+			},
+			grid_widget={
+				mdeps={
+					glue=true,
+					grid_view=true
+				}
+			}
 		},
 		harfbuzz={
 			harfbuzz={
@@ -13398,6 +13286,68 @@ return {
 				},
 				mdeps={
 					ffi=true
+				}
+			}
+		},
+		imgui={
+			imgui={
+				autoloads={
+					analog_clock='imgui_analog_clock',
+					button='imgui_buttons',
+					checkerboard='imgui_checkerboard',
+					code_editor='imgui_code_editor',
+					combobox='imgui_combobox',
+					dragpoint='imgui_dragpoint',
+					dragpoints='imgui_dragpoint',
+					editbox='imgui_editbox',
+					filebox='imgui_filebox',
+					grid='imgui_grid',
+					hscrollbar='imgui_scrollbars',
+					hsplitter='imgui_splitter',
+					hue_wheel='imgui_hue_wheel',
+					magnifier='imgui_magnifier',
+					mbutton='imgui_buttons',
+					menu='imgui_menu',
+					sat_lum_square='imgui_sat_lum_square',
+					screen='imgui_screen',
+					scrollbox='imgui_scrollbars',
+					slider='imgui_slider',
+					tablist='imgui_tablist',
+					togglebutton='imgui_buttons',
+					toolbox='imgui_toolbox',
+					treeview='imgui_treeview',
+					vscrollbar='imgui_scrollbars',
+					vsplitter='imgui_splitter'
+				},
+				mdeps={
+					box2d=true,
+					color=true,
+					easing=true,
+					glue=true
+				}
+			},
+			imgui_buttons={
+				mdeps={
+					imgui=true
+				}
+			},
+			imgui_magnifier={
+				mdeps={
+					bitmap=true,
+					ffi=true,
+					imgui=true
+				}
+			}
+		},
+		imgui_nw_cairo={
+			imgui_nw_cairo={
+				mdeps={
+					cairo=true,
+					freetype=true,
+					gfonts=true,
+					imgui=true,
+					nw=true,
+					time=true
 				}
 			}
 		},
@@ -13510,6 +13460,16 @@ return {
 				}
 			},
 			libpng_h={
+				mdeps={
+					ffi=true
+				}
+			}
+		},
+		librsync={
+			librsync={
+				ffi_deps={
+					rsync=true
+				},
 				mdeps={
 					ffi=true
 				}
@@ -13709,10 +13669,6 @@ return {
 				}
 			},
 			luapower_cli={
-				mdeps={
-					glue=true,
-					luapower=true
-				}
 			},
 			luapower_rpc={
 				mdeps={
@@ -13794,10 +13750,7 @@ return {
 		},
 		mmap={
 			mmap={
-				mdeps={
-					bit=true,
-					ffi=true
-				}
+				loaderr='./mmap.lua:7: ./mmap_common.lua:18: attempt to index local \'fsbk\' (a nil value)'
 			}
 		},
 		murmurhash3={
@@ -13857,8 +13810,6 @@ return {
 					['/System/Library/Frameworks/ApplicationServices.framework/Versions/Current/Frameworks/CoreGraphics.framework/CoreGraphics']=true,
 					['/System/Library/Frameworks/ApplicationServices.framework/Versions/Current/Frameworks/CoreGraphics.framework/Resources/BridgeSupport/CoreGraphics.dylib']=true,
 					['/System/Library/Frameworks/Carbon.framework/Versions/Current/Frameworks/HIToolbox.framework/HIToolbox']=true,
-					['/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation']=true,
-					['/System/Library/Frameworks/CoreFoundation.framework/Resources/BridgeSupport/CoreFoundation.dylib']=true,
 					['/System/Library/Frameworks/Foundation.framework/Foundation']=true,
 					['/System/Library/Frameworks/Foundation.framework/Resources/BridgeSupport/Foundation.dylib']=true
 				},
@@ -13880,13 +13831,7 @@ return {
 		},
 		obj_parser={
 			obj_loader={
-				mdeps={
-					ffi=true,
-					glue=true,
-					obj_parser=true,
-					stdio=true,
-					tuple=true
-				}
+				loaderr='./obj_loader.lua:8: ./stdio.lua:190: cannot change a protected metatable'
 			},
 			obj_parser={
 				mdeps={
@@ -13977,6 +13922,10 @@ return {
 				mdeps={
 					ffi=true
 				}
+			}
+		},
+		path={
+			path={
 			}
 		},
 		path2d={
@@ -14341,7 +14290,7 @@ return {
 		},
 		syscall={
 			syscall={
-				loaderr='./syscall.lua:18: ./syscall/netbsd/ffifunctions.lua:10: ./syscall/bsd/ffi.lua:187: declaration specifier expected near \'uid_t\' at line 11'
+				loaderr='./syscall.lua:18: ./syscall/netbsd/ffifunctions.lua:10: ./syscall/bsd/ffi.lua:187: declaration specifier expected near \'dev_t\' at line 20'
 			},
 			['syscall.abi']={
 				mdeps={
@@ -14356,7 +14305,7 @@ return {
 				}
 			},
 			['syscall.bsd.ffi']={
-				loaderr='./syscall/bsd/ffi.lua:187: declaration specifier expected near \'uid_t\' at line 11'
+				loaderr='./syscall/bsd/ffi.lua:187: declaration specifier expected near \'dev_t\' at line 20'
 			},
 			['syscall.bsd.syscalls']={
 				mdeps={
@@ -14374,7 +14323,7 @@ return {
 				}
 			},
 			['syscall.freebsd.c']={
-				loaderr='./syscall/freebsd/c.lua:14: ./syscall/freebsd/ffi.lua:310: attempt to redefine \'fd_set\' at line 36'
+				loaderr='./syscall/freebsd/c.lua:14: ./syscall/freebsd/ffi.lua:310: attempt to redefine \'timespec\' at line 57'
 			},
 			['syscall.freebsd.constants']={
 				mdeps={
@@ -14394,7 +14343,7 @@ return {
 			['syscall.freebsd.fcntl']={
 			},
 			['syscall.freebsd.ffi']={
-				loaderr='./syscall/freebsd/ffi.lua:310: attempt to redefine \'fd_set\' at line 36'
+				loaderr='./syscall/freebsd/ffi.lua:310: attempt to redefine \'timespec\' at line 57'
 			},
 			['syscall.freebsd.ioctl']={
 			},
@@ -14425,7 +14374,7 @@ return {
 				}
 			},
 			['syscall.lfs']={
-				loaderr='./syscall/lfs.lua:14: ./syscall.lua:18: ./syscall/netbsd/ffifunctions.lua:10: ./syscall/bsd/ffi.lua:187: declaration specifier expected near \'uid_t\' at line 11'
+				loaderr='./syscall/lfs.lua:14: ./syscall.lua:18: ./syscall/netbsd/ffifunctions.lua:10: ./syscall/bsd/ffi.lua:187: declaration specifier expected near \'dev_t\' at line 20'
 			},
 			['syscall.libc']={
 			},
@@ -14488,7 +14437,7 @@ return {
 				loaderr='./syscall/linux/mips/nr.lua:13: FIXME: syscalls only defined for o32 MIPS ABI'
 			},
 			['syscall.linux.netfilter']={
-				loaderr='./syscall/linux/netfilter.lua:16: ./syscall.lua:18: ./syscall/netbsd/ffifunctions.lua:10: ./syscall/bsd/ffi.lua:187: declaration specifier expected near \'uid_t\' at line 11'
+				loaderr='./syscall/linux/netfilter.lua:16: ./syscall.lua:18: ./syscall/netbsd/ffifunctions.lua:10: ./syscall/bsd/ffi.lua:187: declaration specifier expected near \'dev_t\' at line 20'
 			},
 			['syscall.linux.nl']={
 			},
@@ -14559,7 +14508,7 @@ return {
 			['syscall.netbsd.fcntl']={
 			},
 			['syscall.netbsd.ffifunctions']={
-				loaderr='./syscall/netbsd/ffifunctions.lua:10: ./syscall/bsd/ffi.lua:187: declaration specifier expected near \'uid_t\' at line 11'
+				loaderr='./syscall/netbsd/ffifunctions.lua:10: ./syscall/bsd/ffi.lua:187: declaration specifier expected near \'dev_t\' at line 20'
 			},
 			['syscall.netbsd.ffitypes']={
 				mdeps={
@@ -14622,7 +14571,7 @@ return {
 			['syscall.openbsd.fcntl']={
 			},
 			['syscall.openbsd.ffi']={
-				loaderr='./syscall/openbsd/ffi.lua:313: attempt to redefine \'fd_set\' at line 33'
+				loaderr='./syscall/openbsd/ffi.lua:313: attempt to redefine \'timespec\' at line 55'
 			},
 			['syscall.openbsd.ioctl']={
 			},
@@ -14662,7 +14611,7 @@ return {
 			['syscall.osx.fcntl']={
 			},
 			['syscall.osx.ffi']={
-				loaderr='./syscall/osx/ffi.lua:314: ./syscall/bsd/ffi.lua:187: declaration specifier expected near \'uid_t\' at line 11'
+				loaderr='./syscall/osx/ffi.lua:312: attempt to redefine \'timeval\' at line 87'
 			},
 			['syscall.osx.ioctl']={
 			},
@@ -14746,6 +14695,10 @@ return {
 			tuple={
 			}
 		},
+		tweening={
+			tweening={
+			}
+		},
 		ucdn={
 			ucdn={
 				ffi_deps={
@@ -14753,6 +14706,24 @@ return {
 				},
 				mdeps={
 					ffi=true
+				}
+			}
+		},
+		ui={
+			ui={
+				mdeps={
+					box2d=true,
+					glue=true,
+					oo=true,
+					time=true,
+					tweening=true,
+					ui_draw=true
+				}
+			},
+			ui_draw={
+				mdeps={
+					color=true,
+					glue=true
 				}
 			}
 		},
