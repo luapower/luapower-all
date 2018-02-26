@@ -115,6 +115,16 @@ assert(cls.the_answer == 42)
 assert(obj.the_answer == 42)
 ~~~
 
+__NOTE:__ Detaching the instance _or the final class_ helps preventing LuaJIT
+from bailing out to the interpreter which can result in 100-1000x performance
+drop. You can do this easily with:
+
+~~~{.lua}
+function myclass:before_init()
+	self:detach()
+end
+~~~
+
 **Static inheritance** can be achieved by calling
 `self:inherit(other[,override]) -> self` which copies over the properties of
 another class or instance, effectively *monkey-patching* `self`, optionally

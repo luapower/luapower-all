@@ -266,7 +266,7 @@ thus avoiding an allocation on every frame if `x` is a non-scalar type.
 
 ### Value parsers
 
-### `tw:parse_value(s, relative_to, attr_type, attr) -> v`
+### `tw:parse_value(v, relative_to, tween) -> v`
 
 Parse a value.
 

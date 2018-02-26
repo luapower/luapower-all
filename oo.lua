@@ -4,6 +4,14 @@
 
 if not ... then require'oo_test'; return end
 
+local function indexof(v, t) --index of element in array (from glue)
+	for i=1,#t do
+		if t[i] == v then
+			return i
+		end
+	end
+end
+
 local Object = {classname = 'Object'}
 
 local function class(super,...)
@@ -271,6 +279,7 @@ local function event_namespace(event) --parse 'event', 'event.ns' or '.ns'
 	return ev, ns
 end
 
+--register a function to be called for a specific event type
 function Object:on(event, func)
 	local ev, ns = event_namespace(event)
 	assert(ev, 'event name missing')
@@ -284,13 +293,6 @@ function Object:on(event, func)
 end
 
 --remove a handler or all handlers of an event and/or namespace
-local function indexof(v, t)
-	for i=1,#t do
-		if t[i] == v then
-			return i
-		end
-	end
-end
 local function remove_all(t, v)
 	while true do
 		local i = indexof(v, t)
