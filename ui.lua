@@ -1,24 +1,29 @@
 
---UI toolkit in Lua
+--extensible UI toolkit with layouts, styles and animations.
 --Written by Cosmin Apreutesei. Public Domain.
 
 local oo = require'oo'
 local glue = require'glue'
 local box2d = require'box2d'
-local easing = require'easing'
+local tweening = require'tweening'
 local time = require'time'
 local draw = require'ui_draw'
 local push = table.insert
 local pop = table.remove
 local indexof = glue.indexof
 
-local ui = {}
+local object = oo.object()
+
+function object:before_init()
+	self:detach() --100-1000x speed increase
+end
 
 --controller -----------------------------------------------------------------
 
-ui = oo.ui()
+local ui = oo.ui(object)
+ui.object = object
 
-function ui:init(win)
+function ui:after_init(win)
 	self.window = win
 	self.dr = draw:new()
 	win:on('mousemove.ui', function(win, x, y)
@@ -40,6 +45,8 @@ function ui:init(win)
 	end)
 	self._layers = {}
 	self._elements = {}
+	self._animations = {}
+	self._element_index = self:element_index()
 	self.stylesheet = self:stylesheet()
 end
 
@@ -139,7 +146,7 @@ end
 
 --selectors ------------------------------------------------------------------
 
-ui.selector = oo.selector()
+ui.selector = oo.selector(ui.object)
 
 local function parse_tags(s, t)
 	t = t or {}
@@ -149,24 +156,21 @@ local function parse_tags(s, t)
 	return t
 end
 
-local function selects_all()
-	return true
-end
-
-function ui.selector:init(ui, sel, filter)
-	if sel:find'>' then --parent filter
+function ui.selector:after_init(ui, sel, filter)
+	if sel:find'>' then --parents filter
 		self.parent_tags = {}
-		sel = sel:gsub('%s*([^>%s]+)%s*>', function(s)
+		sel = sel:gsub('%s*([^>%s]+)%s*>', function(s) -- tag > ...
 			local tags = parse_tags(s)
 			push(self.parent_tags, tags)
 			return ''
 		end)
 	end
-	self.tags = parse_tags(sel)
+	self.tags = parse_tags(sel) --tags filter
 	assert(#self.tags > 0)
-	self.filter = filter
+	self.filter = filter --custom filter
 end
 
+--check that all needed_tags are found in tags table as keys
 local function has_all_tags(needed_tags, tags)
 	for i,tag in ipairs(needed_tags) do
 		if not tags[tag] then
@@ -177,6 +181,9 @@ local function has_all_tags(needed_tags, tags)
 end
 
 function ui.selector:selects(elem)
+	if not elem.tags then
+		pp(elem.id, elem.classname, elem.name)
+	end
 	if #self.tags > #elem.tags then
 		return false --selector too specific
 	end
@@ -199,14 +206,17 @@ function ui.selector:selects(elem)
 		end
 		return false
 	end
+	if self.filter and not self.filter(elem) then
+		return false
+	end
 	return true
 end
 
 --stylesheets ----------------------------------------------------------------
 
-ui.stylesheet = oo.stylesheet()
+ui.stylesheet = oo.stylesheet(ui.object)
 
-function ui.stylesheet:init(ui)
+function ui.stylesheet:after_init(ui)
 	self.ui = ui
 	self.tags = {} --{tag -> {sel1, ...}}
 end
@@ -263,12 +273,31 @@ function ui:style(sel, attrs)
 	end
 end
 
---jquery-like selectors ------------------------------------------------------
+--element lists --------------------------------------------------------------
 
-ui.find_result = oo.find_result()
+ui.element_index = oo.element_index(ui.object)
 
-function ui:_find(sel, elems)
-	local res = self.find_result()
+function ui.element_index:after_init(ui)
+	self.ui = ui
+end
+
+function ui.element_index:add_element(elem)
+	--TODO
+end
+
+function ui.element_index:remove_element(elem)
+	--TODO
+end
+
+function ui.element_index:find_elements(sel)
+	--TODO
+	return self.ui:_find_elements(sel, self._elements)
+end
+
+ui.element_list = oo.element_list(ui.object)
+
+function ui:_find_elements(sel, elems)
+	local res = self.element_list()
 	for i,elem in ipairs(elems) do
 		if sel:selects(elem) then
 			push(res, elem)
@@ -277,108 +306,149 @@ function ui:_find(sel, elems)
 	return res
 end
 
-function ui.find_result:each(f)
+function ui.element_list:each(f)
 	for i,elem in ipairs(self) do
 		local v = f(elem)
 		if v ~= nil then return v end
 	end
 end
 
-function ui.find_result:find(sel)
-	return self:_find(sel, self)
+function ui.element_list:find(sel)
+	return self:_find_elements(sel, self)
 end
 
 function ui:find(sel)
-	return self:_find(sel, self._elements)
+	if type(sel) == 'string' then
+		sel = self:selector(sel)
+	end
+	return self._element_index:find_elements(sel)
 end
 
 function ui:each(sel, f)
 	return self:find(sel):each(f)
 end
 
---animation ------------------------------------------------------------------
+--animations -----------------------------------------------------------------
 
-ui.stopwatch = oo.stopwatch()
+ui.animation = oo.animation(ui.object)
 
-function ui.stopwatch:clock()
-	return time.clock()
-end
+--TODO: use tweening
 
-function ui.stopwatch:_init(duration, formula, start)
-	self.start = start or self:clock()
-	self.duration = duration
-	self.formula = easing[formula or 'linear'] or formula
-end
+--elements -------------------------------------------------------------------
 
-function ui.stopwatch:init(ui, duration, formula, i1, i2, start)
-	self:_init(duration, formula, start)
-	self.i1 = i1 or 0
-	self.i2 = i2 or 1
-end
+ui.element = oo.element(ui.object)
 
-function ui.stopwatch:finished()
-	return self:clock() - self.start > self.duration
-end
-
-function ui.stopwatch:_progress()
-	local dt = self:clock() - self.start
-	return self.formula(dt, 0, 1, self.duration)
-end
-
-function ui.stopwatch:progress()
-	return self.i1 + (self.i2 - self.i1) * self:_progress()
-end
-
-ui.colorfade = oo.colorfade(ui.stopwatch)
-
-function ui.colorfade:init(ui, duration, formula, color1, color2, start)
-	self:_init(duration, formula, start)
-	local r1, g1, b1, a1 = ui.dr:color(color1)
-	local r2, g2, b2, a2 = ui.dr:color(color2)
-	self.dr = r2 - r1
-	self.dg = g2 - g1
-	self.db = b2 - b1
-	self.da = a2 - a1
-	self.r = r1
-	self.g = g1
-	self.b = b1
-	self.a = a1
-end
-
-function ui.colorfade:progress()
-	local d = self:_progress()
-	local r = self.r + self.dr * d
-	local g = self.g + self.dg * d
-	local b = self.b + self.db * d
-	local a = self.a + self.da * d
-	return r, g, b, a
-end
-
---elements--------------------------------------------------------------------
-
-ui.element = oo.element()
-
-function ui.element:init(ui, t)
+function ui.element:after_init(ui, t)
 	self.ui = ui
-	self.tags = {'*', self.classname}
+	self.id = t.id
 	self.parent = t.parent
+	self:_init_tags(t)
+	self:_init_animation()
+end
+
+--tags & styles
+
+function ui.element:_init_tags(t)
+	self.tags = {}
+	self:settag'*'
+	self:settag(self.classname)
+	self:settag(self.id)
 	parse_tags(t.tags or '', self.tags)
 	for i,tag in ipairs(self.tags) do
-		self.tags[tag] = true
+		if not self.tags[tag] then --no dupes
+			self.tags[tag] = true
+		end
 	end
+	self:update_styles()
+end
+
+function ui.element:settag(tag, i, toggle)
+	if not tag then return end
+	if i == true or i == nil then --add tag
+		assert(toggle == nil)
+		i, toggle = #self.tags + 1, true
+	elseif i == false then --remove tag
+		assert(toggle == nil)
+		i, toggle = indexof(tag, self.tags), false
+	elseif toggle == nil then
+		toggle = true
+	end
+	if not toggle == not self.tags[tag] then
+		return
+	end
+	if toggle then
+		table.insert(self.tags, i, tag)
+		self.tags[tag] = true
+	else
+		table.remove(self.tags, i)
+		self.tags[tag] = nil
+	end
+end
+
+function ui.element:update_styles()
 	self.ui.stylesheet:update_element(self)
-	return t
+end
+
+--animation queues
+
+function ui.element:animate(id, attrs, duration, ease, start_time)
+	if type(id) == 'table' then
+		id, attrs, duration, ease_function, start =
+			nil, id, attrs, duration, ease_function
+	end
+	start = start or time.clock()
+	self._animations = self._animations or {named = {}}
+	local a = {attrs_end = attrs, duration = duration,
+		ease = ease, start_time = start_time}
+	if id then
+		self._animations.named[id] = a
+	else
+		push(self._animations, a)
+	end
+end
+
+function ui.element:_check_animations()
+	if not self._animations then return end
+	local time = time.clock()
+	for i, a in pairs(self._animations) do
+		if time >= a.start_time and time <= a.start_time + a.duration then
+			if not a.attrs_start then
+				a.attrs_start = {}
+				for attr in pairs(a.attrs_end) do
+					a.attrs_start[attr] = self[attr]
+				end
+			end
+			local t = (time - a.start_time) / a.duration
+			local d = a.ease_function(t, 0, 1, 1)
+		else
+			--self._animations[
+		end
+	end
+end
+
+function ui.element:_init_animation()
+	if not self.animation_name then return end
+	local animation = self.ui._animations[self.animation_name]
+	if not animation then return end
+	self._animation = animation:subclass()
+	local a = self._animation
+	a.delay           = self.animation_delay
+	a.direction       = self.animation_direction
+	a.duration        = self.animation_duration
+	a.fill_mode       = self.animation_fill_mode
+	a.iteration_count = self.animation_iteration_count
+	a.play_state      = self.animation_play_state
+	a.ease            = self.animation_ease
+	--
 end
 
 --layers
 
-ui.layer = oo.layer()
-ui.layer:inherit(ui.element)
+ui.layer = oo.layer(ui.element)
 
-function ui.layer:after_init(t)
+function ui.layer:after_init(ui, t)
 	self._z_order = t.z_order or 0
 	self.ui:add_layer(self)
-	return t
 end
 
 function ui.layer:get_z_order()
@@ -395,15 +465,13 @@ function ui.layer:draw() end
 
 --box-like widgets
 
-ui.box = oo.box()
-ui.box:inherit(ui.layer)
+ui.box = oo.box(ui.layer)
 
-function ui.box:after_init(t)
+function ui.box:after_init(ui, t)
 	self.x = t.x
 	self.y = t.y
 	self.w = t.w
 	self.h = t.h
-	return t
 end
 
 function ui.box:rect()
@@ -416,11 +484,10 @@ end
 
 --buttons --------------------------------------------------------------------
 
-ui.button = oo.button()
-ui.button:inherit(ui.box)
+ui.button = oo.button(ui.box)
 
-function ui.button:after_init(t)
-	return t
+function ui.button:after_init(ui, t)
+
 end
 
 function ui.button:draw()
@@ -541,7 +608,7 @@ end
 
 ui.scrollbar = oo.scrollbar(ui.box)
 
-function ui.scrollbar:after_init(t)
+function ui.scrollbar:after_init(ui, t)
 	local vertical = self.vertical
 	self.size = assert(t.size, 'size missing')
 	self.step = t.step or 1
@@ -594,7 +661,7 @@ ui.vscrollbar.vertical = true
 
 ui.scrollbox = oo.scrollbox(ui.box)
 
-function ui.scrollbox:after_init(t)
+function ui.scrollbox:after_init(ui, t)
 	local id = assert(t.id, 'id missing')
 	local x, y, w, h = self:getbox(t)
 	local cx = t.cx or 0
