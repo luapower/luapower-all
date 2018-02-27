@@ -140,11 +140,12 @@ function ui.stylesheet:add_stylesheet(stylesheet)
 	end
 end
 
-function ui.stylesheet:find_selectors(elem)
-	--find all selectors affecting all tags of elem. later tags take precedence
-	--over earlier tags, and later selectors affecting a tag take precedence
-	--over earlier ones affecting that tag (so no specificity order like css).
-	local t = {}
+function ui.stylesheet:_gather_attrs(elem)
+	--gather all attribute values from all selectors affecting all tags of
+	--elem. later tags take precedence over earlier tags, and later selectors
+	--affecting a tag take precedence over earlier ones affecting that tag.
+	--so no specificity order rules like in css.
+	local t = {} --{attr -> val}
 	local checked = {}
 	local tags = elem.tags
 	for i=#tags,1,-1 do
@@ -155,7 +156,11 @@ function ui.stylesheet:find_selectors(elem)
 				local sel = selectors[i]
 				if not checked[sel] then
 					if sel:selects(elem) then
-						push(t, sel)
+						for attr, val in pairs(sel.attrs) do
+							if t[attr] == nil then
+								t[attr] = val
+							end
+						end
 					end
 					checked[sel] = true
 				end
@@ -166,10 +171,13 @@ function ui.stylesheet:find_selectors(elem)
 end
 
 function ui.stylesheet:update_element(elem)
-	local t = self:find_selectors(elem)
-	for i=#t,1,-1 do
-		local sel = t[i]
-		elem:transition(sel.attrs)
+	local attrs = self:_gather_attrs(elem)
+	local duration = attrs.transition_duration or 0
+	local ease = attrs.transition_ease
+	for attr, val in pairs(attrs) do
+		if not attr:find'^transition_' then
+			elem:transition(attr, val, duration, ease)
+		end
 	end
 end
 
@@ -186,15 +194,15 @@ end
 
 ui._stylesheet = ui:stylesheet()
 
---animations -----------------------------------------------------------------
+--transition animations ------------------------------------------------------
 
-ui.animation = oo.animation(ui.object)
+ui.transition = oo.transition(ui.object)
 
-ui.animation._type = {} --{attr -> type}
-ui.animation.type = {}  --{patt|f(attr) -> type}
-ui.animation.interpolate = {} --func(d, x1, x2, xout) -> xout
+ui.transition._type = {} --{attr -> type}
+ui.transition.type = {}  --{patt|f(attr) -> type}
+ui.transition.interpolate = {} --func(d, x1, x2, xout) -> xout
 
-function ui.animation:after_init(ui, elem, attr, to, duration, ease)
+function ui.transition:after_init(ui, elem, attr, to, duration, ease)
 	--timing model
 	local start = time.clock()
 	local ease, way = (ease or 'linear'):match'^([^%s_]+)[%s_]?(.*)'
@@ -208,16 +216,15 @@ function ui.animation:after_init(ui, elem, attr, to, duration, ease)
 
 	function self:update(clock)
 		local t = (clock - start) / duration
+		if t > 1 then return end
 		local d = easing.ease(ease, way, t)
-		if d <= 1 then
-			elem[attr] = interpolate(d, from, to, elem[attr])
-			return true
-		end
+		elem[attr] = interpolate(d, from, to, elem[attr])
+		return true
 	end
 end
 
 --find an attribute type based on its name
-function ui.animation:_attr_type(attr)
+function ui.transition:_attr_type(attr)
 	local atype = self._type[attr]
 	if not atype then
 		for patt, atype1 in pairs(self.type) do
@@ -236,7 +243,7 @@ end
 
 --interpolators
 
-function ui.animation.interpolate.number(d, x1, x2)
+function ui.transition.interpolate.number(d, x1, x2)
 	return lerp(d, 0, 1, tonumber(x1), tonumber(x2))
 end
 
@@ -248,7 +255,7 @@ local function rgba(s)
 	end
 end
 
-function ui.animation.interpolate.color(d, c1, c2, c)
+function ui.transition.interpolate.color(d, c1, c2, c)
 	local r1, g1, b1, a1 = rgba(c1)
 	local r2, g2, b2, a2 = rgba(c2)
 	local r = lerp(d, 0, 1, r1, r2)
@@ -265,7 +272,7 @@ end
 
 --attr. type matching
 
-ui.animation.type['_color$'] = 'color'
+ui.transition.type['_color$'] = 'color'
 
 --element lists --------------------------------------------------------------
 
@@ -387,37 +394,31 @@ function ui.element:update_styles()
 	self.ui._stylesheet:update_element(self)
 end
 
---animations
+--animated attribute transitions
 
-function ui.element:transition(attrs)
-	local duration = attrs.transition_duration
-	if not duration or duration <= 0 then
-		update(self, attrs)
-	else
-		local ease = attrs.transition_ease
-		for attr, val in pairs(attrs) do
-			if not attr:find'^transition_' then
-				self:animate(attr, val, duration, ease)
-			end
+function ui.element:transition(attr, val, duration, ease)
+	if duration <= 0 or self[attr] == nil then
+		if self._transitions then
+			self._transitions[attr] = nil --remove transition on attr if any
 		end
+		self[attr] = val --set attr directly
+	else --set attr with transition
+		self._transitions = self._transitions or {}
+		self._transitions[attr] =
+			self.ui:transition(self, attr, val, duration, ease)
 	end
 end
 
-function ui.element:animate(attr, ...)
-	self._animations = self._animations or {}
-	self._animations[attr] = self:animation(self, attr, ...)
-end
-
 function ui.element:draw()
-	local a = self._animations
+	local a = self._transitions
 	if not a or not next(a) then return end
 	local clock = self:frame_clock()
 	local invalidate
-	for attr, animation in pairs(a) do
-		if animation:update(clock) then
+	for attr, transition in pairs(a) do
+		if transition:update(clock) then
 			invalidate = true
 		else
-			a[attr] = nil
+			a[attr] = nil --finished, remove it
 		end
 	end
 	if invalidate then
@@ -427,10 +428,6 @@ end
 
 function ui.element:frame_clock()
 	return self.window:frame_clock()
-end
-
-function ui.element:animation(...)
-	return self.ui:animation(...)
 end
 
 function ui.element:invalidate()
@@ -580,37 +577,6 @@ function ui.window:frame_clock()
 	return self._frame_clock
 end
 
---[[
-function ui.window:animate(elem, attr, val, duration, ease)
-	local a = self._animations
-	local t = glue.attr(a, elem)
-	local ease, way = ease:match'^([^%s_])[%s_]?(.*)'
-	if way == '' then way = 'in' end
-	t[attr] = {ease = ease, way = way, duration = duration,
-		start = time.clock(),
-		from = elem[attr], to = val,
-	}
-end
-
-function ui.window:_check_frame()
-	local a = self._animations
-	local clock = time.clock()
-	for elem, t in pairs(a) do
-		for attr, t in pairs(t) do
-			local d = (clock - t.start) / t.duration
-			local d = easing.ease(t.ease, t.way, d)
-			interpolate(d, t.from, t.to, elem[attr])
-			elem[attr] = val
-		end
-	end
-	self:invalidate()
-end
-
-function ui.window:animate()
-	--
-end
-]]
-
 --layers ---------------------------------------------------------------------
 
 ui.layer = oo.layer(ui.element)
@@ -670,6 +636,8 @@ ui.button = oo.button(ui.box)
 ui:style('button', {
 	background_color = '#ffffff4c',
 	border_color = '#888',
+	transition_duration = 0.5,
+	transition_ease = 'expo out',
 })
 
 ui:style('button hot', {
