@@ -1,10 +1,10 @@
 
---tweening for animation
+--tweening & timelines for animation.
 --Written by Cosmin Apreutesei. Public Domain.
 
 if not ... then require'tweening_demo' end
 
---prototype-based dynamic inheritance with __call constructor from glue.
+--prototype-based dynamic inheritance with __call constructor (from glue).
 local function object(super, o)
 	o = o or {}
 	o.__index = super
@@ -57,7 +57,6 @@ end
 local tw = object()
 
 tw.interpolate = {}     --{type -> interpolate_function}
-tw.value_semantics = {} --{type -> true|false}
 tw._type = {}           --{attr -> type}
 tw.type = {}            --{patt|f(attr) -> type}
 
@@ -65,7 +64,6 @@ function tw.__call(super)
 	local self = object(super)
 	self._clock = false --avoid inheriting it
 	self.interpolate = object(super.interpolate)
-	self.value_semantics = object(super.value_semantics)
 	self._type = object(super._type)
 	self.type = object(super.type)
 	return self
@@ -148,11 +146,7 @@ end
 function tw:interpolation_function(attr_type, attr)
 	local attr_type = self:_attr_type(attr_type, attr)
 	local interpolate = self.interpolate[attr_type]
-	local value_semantics = self.value_semantics[attr_type]
-	if value_semantics == nil then
-		value_semantics = true
-	end
-	return interpolate, value_semantics
+	return interpolate
 end
 
 function tw:current_clock()
@@ -183,7 +177,6 @@ function tw.interpolate.list(d, t1, t2, t) --colors, unpacked coord lists...
 	end
 	return t
 end
-tw.value_semantics.list = false
 
 --tweens ---------------------------------------------------------------------
 --A tween updates a single attribute value on a single target object.
@@ -192,7 +185,7 @@ local tween = object()
 tw.tween = tween
 
 --timing model / definition
-tween.start = nil        --start clock
+tween.start = nil        --start clock (defaults to clock at init time)
 tween.timeline = nil     --if set, start is relative to timeline.start
 tween.duration = 1       --loop duration; can't be negative
 tween.ease = 'quad'      --function `f(t) -> d` or name from easing module
@@ -204,8 +197,8 @@ tween.speed = 1          --speed factor; can be <= 0 with caveats
 tween.offset = 0         --can be fractional, negative, > 1
 --timing model / state
 tween.running = true     --set to false to start paused
-tween.clock = nil        --current clock
-tween.resume_clock = nil --current clock when paused
+tween.clock = nil        --current clock (set on init and on update_clock())
+tween.resume_clock = nil --current clock when paused (same)
 
 --animation model / definition
 tween.target = nil       --used as v = target[attr] and target[attr] = v
@@ -214,7 +207,6 @@ tween.from = nil         --rel/abs value at progress 0
 tween.to = nil           --rel/abs value at progress 1
 tween.type = nil         --force attr type
 tween.interpolate = nil  --custom interpolation function
-tween.value_semantics = nil --false for avoiding allocations on update
 
 --constructors
 
@@ -430,14 +422,12 @@ end
 
 function tween:_init_animation_model()
 	if not self.interpolate or self._auto_interpolate then
-		self.interpolate, self.value_semantics =
+		self.interpolate =
 			self.tweening:interpolation_function(self.type, self.attr)
 		self._auto_interpolate = true
 	end
 	local v = self:get_value()
-	if not self.value_semantics then
-		v = self.interpolate(1, v, v)
-	end
+	local v = self.interpolate(1, v, v)
 	self._v0 = self:parse_value(self.from, v)
 	self._v1 = self:parse_value(self.to, v)
 end
@@ -452,16 +442,8 @@ end
 
 function tween:update_value()
 	local d = self:distance()
-	if self.value_semantics then
-		local v = self.interpolate(d, self._v0, self._v1)
-		self:set_value(v)
-	else
-		self.interpolate(d, self._v0, self._v1, self:get_value())
-	end
-end
-
-function tween:can_be_replaced_by(tween)
-	return self.target == tween.target and self.attr == tween.attr
+	local v = self.interpolate(d, self._v0, self._v1, self:get_value())
+	self:set_value(v)
 end
 
 --timeline -------------------------------------------------------------------
@@ -503,10 +485,6 @@ end
 function timeline:_adjust(new_tween)
 	if not self.auto_duration then return end
 	self.duration = math.max(self.duration, new_tween:end_clock())
-end
-
-function timeline:can_be_replaced_by(tween)
-	return false
 end
 
 function timeline:_add_tween(tween, start)
@@ -567,58 +545,50 @@ function timeline:add(t, start)
 	end
 end
 
-function timeline:replace(tween, start)
-	local replaced
-	for i,twn in ipairs(self.tweens) do
-		if twn:can_be_replaced_by(tween) then
-			self.tweens[i] = tween
-			replaced = true
-			break
+function timeline:each(func, ...)
+	local removed
+	for i,tween in ipairs(self.tweens) do
+		local ret, brk = func(tween, ...)
+		if ret == false then break end
+		if ret == 'remove' then --remove tween
+			self.tweens[i] = false
+			tween.timeline = false
+			removed = true
+		elseif ret then --replace tween
+			self.tweens[i] = ret
+			ret.timeline = self
+		end
+		if brk then break end
+		if tween.tweens then
+			tween:each(func, ...)
 		end
 	end
-	if not replaced then
-		self:add(tween, start)
+	if removed then
+		cleanup(self.tweens)
 	end
-	return self
 end
 
-function timeline:find(what, recursive)
-	if recursive == nil then
-		recursive = true
-	end
-	return coroutine.wrap(function()
-		for i,tween in ipairs(self.tweens) do
-			if what == true
-				or what == tween
-				or what == tween.attr
-				or what == tween.target
-			then
-				coroutine.yield(tween, i)
-				if tween.tweens then
-					tween:find(what)
-				end
-			end
+function timeline:remove(what)
+	self:each(function(tween)
+		if (type(what) == 'function' and what(tween))
+			or tween == what
+			or tween.id == what
+			or tween.attr == what
+			or tween.target == what
+		then
+			return 'remove'
 		end
 	end)
 end
 
-function timeline:_remove(what, recursive)
-	local found
-	for tween, i in self:find(what, recursive) do
-		tween.timeline[i] = false
-		tween.timeline = false
-		found = true
-	end
-	if found then
-		cleanup(self.tweens)
-	end
-	return found
-end
-function timeline:remove(what)
-	return self:_remove(what, true)
-end
 function timeline:clear()
-	return self:_remove(true, false)
+	self:each(function(tween, timeline)
+		if tween.timeline == timeline then
+			return 'remove'
+		else
+			return false
+		end
+	end, self)
 end
 
 --timing model
@@ -652,15 +622,16 @@ function timeline:_update_tweens()
 		clock = self.start
 	end
 	local clock = (clock - self.start) * self.speed
-	local found
+	local removed
 	for i,tween in ipairs(self.tweens) do
 		tween:update(clock)
 		if self.auto_remove and tween:status(clock) == 'finished' then
 			self.tweens[i] = false
-			found = true
+			tween.timeline = false
+			removed = true
 		end
 	end
-	if found then
+	if removed then
 		cleanup(self.tweens)
 	end
 end

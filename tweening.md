@@ -1,5 +1,5 @@
 ---
-tagline: tweening for animation
+tagline: tweening & timelines for animation
 ---
 
 ## `local tw = require'tweening'`
@@ -97,7 +97,6 @@ __field__          __default__         __description__
 `to`               `target[attr]`      end value (defaults to target's value)
 `type`             per `attr`          force attribute type
 `interpolate`      default for `type`  `f(t, x1, x2[, xout]) -> x`
-`value_semantics`  default for `type`  (see below)
 `get_value() -> v` `target[attr] -> v` value getter
 `set_value(v)`     `target[attr] = v`  value setter
 
@@ -197,10 +196,10 @@ __field__        __default__ __description__
 
 __method__                  __description__
 --------------------------- --------------------------------------------------
-`add(tween|opt[, start])`   add a tween
-`replace(tween[, start])`   replace/add a tween
+`add(tween|opt[, start])`   add a tween or create multiple tweens
+`each(func, ...)`           iterate tweens recursively
 `remove(tween|attr|target)` remove matching tweens recursively
-`clear() -> true|false`     remove all tweens (non-recursively)
+`clear()`                   remove all tweens (non-recursively)
 `status()`                  adds `'empty'`
 
 ### `tl:add(tween|opt[, start]) -> tl`
@@ -224,18 +223,20 @@ __NOTE:__ `start` can be a relative value relative to the timeline's current
 total duration, eg. `'+=500ms'` means half a second after the last tween,
 while `'500ms'` means half a second from the start of the timeline.
 
-### `tl:replace(tween[, start]) -> tl`
+### `tl:each(func, ...)`
 
-Add a tween or replace an existing tween with the same target and attr.
+Run `func(tween)` for each tween of a timeline, recursively. Returning `false`
+from `func` breaks the iteration. Returning `'remove'` removes the tween.
+Returning another tween replaces the tween.
 
-### `tl:remove(tween|attr|target) -> true|false`
+### `tl:remove(tween|attr|target|id|func)`
 
-Remove a tween or all tweens with a specific attribute or target object
-recursively. Returns true if any were removed.
+Remove a tween or all tweens with a specific attribute, target object or id
+recursively.
 
-### `tl:clear() -> true|false`
+### `tl:clear()`
 
-Remove all tweens from the timeline. Returns true if any were removed.
+Remove all tweens from the timeline (non-recursively).
 
 ## The tweening module
 
@@ -254,14 +255,8 @@ Tell tweening about the type of an attribute, eg.
 
 ### `tw.interpolate.<attr_type> = function(d, x1, x2[, xout]) -> x`
 
-Add a new interpolation function for an attribute type.
-
-### `tw.value_semantics.<attr_type> = false`
-
-Declare an interpolation function as having reference semantics. By default
-interpolation functions have value semantics, i.e. they are called as
-`x = f(d, x1, x2)`. If declared as having reference semantics, they are
-instead called as `f(d, x1, x2, x)` and are expected to update `x` in-place
+Add a new interpolation function for an attribute type. Interpolators are
+called as `x = f(d, x1, x2, x)` and can update `x` in-place and return it
 thus avoiding an allocation on every frame if `x` is a non-scalar type.
 
 ### Value parsers
