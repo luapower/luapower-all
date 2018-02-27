@@ -102,7 +102,7 @@ cls.the_answer = 42
 assert(obj.the_answer == 42)
 ~~~
 
-You can detach the class/instance from its parent class by calling
+**You can detach** the class/instance from its parent class by calling
 `self:detach() -> self`. This copies all inherited fields to the
 class/instance and removes `self.super`.
 
@@ -115,23 +115,11 @@ assert(cls.the_answer == 42)
 assert(obj.the_answer == 42)
 ~~~
 
-__NOTE:__ Detaching the instance _or the final class_ helps preventing LuaJIT
-from bailing out to the interpreter which can result in 100-1000x performance
-drop. You can do this easily with:
-
-~~~{.lua}
-function myclass:before_init()
-	self:detach()
-end
-~~~
-
 **Static inheritance** can be achieved by calling
 `self:inherit(other[,override]) -> self` which copies over the properties of
 another class or instance, effectively *monkey-patching* `self`, optionally
 overriding properties with the same name. The fields `self.classname` and
 `self.super` are always preserved though, even with the `override` flag.
-
-__TIP:__ Use this on object instances to greatly speed-up field look-up.
 
 ~~~{.lua}
 local other_cls = oo.class()
@@ -158,6 +146,23 @@ minor detail of setting `self.classname = self.classname` and removing
 To further customize how the values are copied over for static inheritance,
 override `self:properties()`.
 
+__NOTE:__ Detaching the instance _or the final class_ helps preventing LuaJIT
+from bailing out to the interpreter which can result in 100-1000x performance
+drop. You can do this easily with:
+
+~~~{.lua}
+function myclass:before_init()
+	self:detach()
+end
+~~~
+
+__NOTE:__ Static inheritance changes field lookup semantics in a subtle way:
+because field values no longer dynamically overshadow the values set in the
+superclasses, setting a statically inherited field to `nil` doesn't expose
+back the value from the super class, instead the field remains `nil`.
+
+## Virtual properties
+
 **Virtual properties** are created by defining a getter and a setter. Once
 you have defined `self:get_foo()` and `self:set_foo(value)` you can read and
 write to `self.foo` and the getter and setter will be called to fulfill
@@ -171,8 +176,6 @@ obj = cls()
 obj.answer_to_life = 42
 assert(obj.answer_to_life == 42) --assuming deep_thought can store a number
 ~~~
-
-## Virtual properties
 
 **Stored properties** are virtual properties with a setter but no getter.
 The values of those properties are stored in the table `self.__state` upon
