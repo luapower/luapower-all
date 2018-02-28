@@ -72,9 +72,10 @@ typedef signed long    FT_Pos;
 
 typedef struct FT_LibraryRec_ FT_LibraryRec, *FT_Library;
 
-FT_Error FT_Init_FreeType   ( FT_Library *alibrary );
-FT_Error FT_Done_FreeType   ( FT_Library library );
-void     FT_Library_Version ( FT_Library library, FT_Int *amajor, FT_Int *aminor, FT_Int *apatch );
+FT_Error FT_Init_FreeType     ( FT_Library *alibrary );
+FT_Error FT_Done_FreeType     ( FT_Library library );
+void     FT_Library_Version   ( FT_Library library, FT_Int *amajor, FT_Int *aminor, FT_Int *apatch );
+FT_Error FT_Reference_Library ( FT_Library library );
 
 typedef struct FT_MemoryRec_* FT_Memory;
 

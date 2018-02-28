@@ -154,13 +154,17 @@ function lib.open_face(library, args, face_index)
 	return face[0]
 end
 
+function lib.ref(lib)
+	checknz(C.FT_Reference_Library(lib))
+end
+
 local face = {} --FT_Face methods
 
 face.set_transform = C.FT_Set_Transform
 face.char_index = C.FT_Get_Char_Index
 --face.fstype_flags = C.FT_Get_FSType_Flags --fstype stripped (needs type1)
 
-function face.reference(face)
+function face.ref(face)
 	checknz(C.FT_Reference_Face(face))
 end
 

@@ -1,10 +1,10 @@
 
--- cairo graphics library ffi binding.
--- Written by Cosmin Apreutesei. Public Domain.
+--cairo graphics library ffi binding.
+--Written by Cosmin Apreutesei. Public Domain.
 
--- Supports garbage collection, metatype methods, accepting and returning
--- strings, returning multiple values instead of passing output buffers,
--- and many API additions for completeness.
+--Supports garbage collection, metatype methods, accepting and returning
+--strings, returning multiple values instead of passing output buffers,
+--and many API additions for completeness.
 
 local ffi = require'ffi'
 local bit = require'bit'
@@ -1477,12 +1477,16 @@ function M.ft_font_face(ft_face, load_flags)
 		C.cairo_ft_font_face_create_for_ft_face(ft_face, load_flags or 0),
 		C.cairo_font_face_destroy)
 	local status = C.cairo_font_face_set_user_data(
-		face, key, ft_face, ffi.cast('cairo_destroy_func_t', ft.C.FT_Done_Face))
+		face, key, ft_face, ffi.cast('cairo_destroy_func_t', function(ft_face)
+			ft_face:free()
+			ft_face.glyph.library:free()
+		end))
 	if status ~= 0 then
 		C.cairo_font_face_destroy(face)
-		ft.C.FT_Done_Face(ft_face)
+		ft_face:free()
 		return nil, M.status_message(status), status
 	end
+	ft_face.glyph.library:ref()
 	return face
 end
 
