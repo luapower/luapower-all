@@ -7,29 +7,39 @@ tagline: color computation
 Color computation in HSL space.
 Original code from Sputnik's [colors lib], by Yuri Takhteyev.
 
-  * `r, g, b, s, L` are in 0..1 range.
-  * `h` is in 0..360 range.
+  * `r, g, b, s, L` are in `0..1` range.
+  * `h` is in `0..360` range.
+  * supported color formats: `'#rrggbbaa'`, `'#rgba'`, `'rgba(r, g, b, a)'`,
+    `rgb(r, g, b)`, `hsla(h, s%, l%, a), `hsl(h, s%, l%)`, `hsla(h, s, l, a),
+	 `hsl(h, s, l)`.
 
 ## Direct conversions
 
 ---------------------------------------------------- ------------------------------------------------
 `color.hsl_to_rgb(h, s, L) -> r, g, b`               HSL -> RGB; h is modulo 360; s, L are clamped to range
 `color.rgb_to_hsl(r, g, b) -> h, s, L`               RGB -> HSL; r, g, b are clamped to range
-`color.rgb_to_string(r, g, b) -> s`                  generate '#rrggbb' hex color
-`color.string_to_rgb(s) -> r, g, b | nil`            parse a '#rrggbb' or '#rgb' hex color
-`color.rgba_to_string(r, g, b, a) -> s`              generate a '#rrggbbaa' hex color
-`color.string_to_rgba(s) -> r, g, b, a | nil`        parse a '#rrggbbaa' or '#rgba' hex color
-                                                       (the 'aa' part is optional)
+`color.rgba_to_string(r, g, b, a[, fmt]) -> s`       format a color from RGBA
+`color.rgb_to_string (r, g, b   [, fmt]) -> s`       format a color from RGB
+`color.hsla_to_string(h, s, L, a[, fmt]) -> s`       format a color from HSLA
+`color.hsl_to_string (h, s, L   [, fmt]) -> s`       format a color from HSL
+`color.string_to_rgba(s) -> r, g, b, a | nil`        parse a color as RGBA
+`color.string_to_rgb (s) -> r, g, b    | nil`        parse a color as RGB
+`color.string_to_hsla(s) -> h, s, L, a | nil`        parse a color as HSLA
+`color.string_to_hsl (s) -> h, s, L    | nil`        parse a color as HSL
 ---------------------------------------------------- ------------------------------------------------
+
+`fmt` can be `hexa` (default for `rgba_to_string`), `hexa1`, `hex`, `hex1`,
+`rgba`, `rgb`, `hsla%` (default for `hsla_to_string`), `hsl%`, `hsla`, `hsl`.
 
 ## Color objects
 
 ---------------------------------------------------- ------------------------------------------------
-`color('#rrggbb'|'#rgb') -> col`                     create a new HSL color object from a RGB string
+`color(str) -> col`                                  create a new HSL color object from a string
 `color(h, s, L) -> col`                              create a new HSL color object from HSL values
 `col.h, col.s, col.L`                                color fields (for reading and writing)
 `col:hsl() -> h, s, L` <br> `col() -> h, s, L`       color fields unpacked
 `col:rgb() -> r, g, b`                               convert to RGB
+`col:rgba() -> r, g, b, 1`                           convert to RGBA
 `col:tostring() -> '#rrggbb'`                        convert to RGB string
 `col:hue_offset(hue_delta) -> color`                 create a color with a different hue (in degrees)
 `col:complementary() -> color`                       create a complementary color
