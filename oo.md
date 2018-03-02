@@ -143,16 +143,27 @@ In fact, `self:detach()` is written as `self:inherit(self.super)` with the
 minor detail of setting `self.classname = self.classname` and removing
 `self.super`.
 
-To further customize how the values are copied over for static inheritance,
-override `self:properties()`.
+__NOTE:__ Detaching instances _or final classes_ helps preventing LuaJIT from
+bailing out to the interpreter which can result in 100-1000x performance drop.
+In interpreter mode, detaching instances increases performance for method
+lookup by 10x (see benchmarks).
 
-__NOTE:__ Detaching the instance _or the final class_ helps preventing LuaJIT
-from bailing out to the interpreter which can result in 100-1000x performance
-drop. You can do this easily with:
+You can do this easily with:
 
 ~~~{.lua}
+--detach instances of (subclasses of) myclass from their class.
+--patching myclass or its subclasses afterwards will not affect
+--existing instances but it will affect new instnaces.
 function myclass:before_init()
 	self:detach()
+end
+
+--detach all new subclasses of myclass. patching myclass or its
+--supers afterwards will have no effect on existing subclasses
+--of myclass or its instances. patching final classes though
+--will affect both new and existing instances.
+function myclass:override_subclass(inherited, ...)
+	return inherited(self, ...):detach()
 end
 ~~~
 
@@ -160,6 +171,9 @@ __NOTE:__ Static inheritance changes field lookup semantics in a subtle way:
 because field values no longer dynamically overshadow the values set in the
 superclasses, setting a statically inherited field to `nil` doesn't expose
 back the value from the super class, instead the field remains `nil`.
+
+To further customize how the values are copied over for static inheritance,
+override `self:properties()`.
 
 ## Virtual properties
 

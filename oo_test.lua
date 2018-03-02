@@ -171,9 +171,12 @@ end
 --performance
 print'------------------ (performance) -------------------'
 
-local function perf_tests(inherit_depth, iter_count, detach)
+local chapter
+local results_t = {}
 
-	local function perf_test(title, test_func)
+local function perf_tests(title, inherit_depth, iter_count, detach)
+
+	local function perf_test(sub_title, test_func)
 		local root = oo.class()
 		local super = root
 		for i=1,inherit_depth do --inheritance depth
@@ -193,7 +196,10 @@ local function perf_tests(inherit_depth, iter_count, detach)
 		o.own = 'own'
 		o.wo = 'wo'
 
-		if detach then
+		if detach == 'copy_gp' then
+			o.getproperty = o.getproperty
+			o.setproperty = o.setproperty
+		elseif detach then
 			o:detach()
 		end
 
@@ -202,7 +208,12 @@ local function perf_tests(inherit_depth, iter_count, detach)
 		local t1 = clock()
 
 		local speed = iter_count / (t1 - t0) / 10^6
-		print(string.format('%-20s: %10.3f million iterations', title, speed))
+
+		local title = chapter..title
+		results_t[sub_title] = results_t[sub_title] or {}
+		results_t[sub_title][title] = speed
+		local title = title..sub_title
+		print(string.format('%-20s: %10.1f mil iter', title, speed))
 	end
 
 	perf_test('method', function(o, n)
@@ -227,7 +238,7 @@ local function perf_tests(inherit_depth, iter_count, detach)
 		end
 	end)
 
-	do return end
+	do return end --instance fields are fast in all cases
 
 	perf_test('own/r', function(o, n)
 		for i=1,n do
@@ -247,11 +258,55 @@ local function perf_tests(inherit_depth, iter_count, detach)
 	end)
 end
 
-print('inheritance depth: 0 (detached)')
-perf_tests(0, 10^6, true)
-print('inheritance depth: 0+1')
-perf_tests(0, 10^6, false)
-print('inheritance depth: 2+1')
-perf_tests(2, 10^5, false)
-print('inheritance depth: 6+1')
-perf_tests(6, 10^5, false)
+local function run_tests(mag)
+	perf_tests('0_d',   0, 10^6 * mag, true)
+	perf_tests('0+1_p', 0, 10^6 * mag, 'copy_gp')
+	perf_tests('0+1',   0, 10^6 * mag, false)
+	perf_tests('2+1',   2, 10^5 * mag, false)
+	perf_tests('6+1',   6, 10^5 * mag, false)
+	perf_tests('6+1_p', 6, 10^5 * mag, 'copy_gp')
+end
+
+chapter = 'J_'
+run_tests(1)
+
+chapter = 'I_'
+jit.off(true, true)
+run_tests(1)
+
+local function sortedpairs(t, cmp)
+	local kt={}
+	for k in pairs(t) do
+		kt[#kt+1]=k
+	end
+	table.sort(kt)
+	local i = 0
+	return function()
+		i = i + 1
+		return kt[i], t[kt[i]]
+	end
+end
+
+print()
+for chapter, speeds in sortedpairs(results_t) do
+	local t = {}
+	for title, speed in sortedpairs(speeds) do
+		t[#t+1] = string.format('%8s', title)
+	end
+	print(string.format('%-7s: %s', chapter, table.concat(t)))
+end
+for chapter, speeds in sortedpairs(results_t) do
+	local t = {}
+	for title, speed in sortedpairs(speeds) do
+		t[#t+1] = string.format('%8.1f', speed)
+	end
+	print(string.format('%-7s: %s', chapter, table.concat(t)))
+end
+
+print()
+print'LEGEND:'
+print'I      : interpreter mode'
+print'J      : JIT mode'
+print'0_d    : called detach() on instance'
+print'N+1    : N+1-level deep dynamic inheritance'
+print'_p     : copied getproperty and setproperty on instance'
