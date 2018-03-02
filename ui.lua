@@ -4,11 +4,14 @@
 
 local oo = require'oo'
 local glue = require'glue'
+local tuple = require'tuple'
 local box2d = require'box2d'
 local easing = require'easing'
 local color = require'color'
-local draw = require'ui_draw'
 local time = require'time'
+local gfonts = require'gfonts'
+local freetype = require'freetype'
+local cairo = require'cairo'
 
 local push = table.insert
 local pop = table.remove
@@ -16,35 +19,295 @@ local indexof = glue.indexof
 local update = glue.update
 local attr = glue.attr
 local lerp = glue.lerp
+local clamp = glue.clamp
+local assert = glue.assert
+
+local function str(s)
+	return type(s) == 'string' and glue.trim(s) or nil
+end
+
+local function round(x)
+	return math.floor(x + 0.5)
+end
+
+local function default(x, default)
+	if x == nil then
+		return default
+	else
+		return x
+	end
+end
 
 --object system --------------------------------------------------------------
 
 local object = oo.object()
 
+--speed up class field lookup by converting subclassing to static
+--inheritance. note: this breaks runtime patching of non-final classes.
 function object:override_subclass(inherited, ...)
-	--speed up class field lookup by converting subclassing to static
-	--inheritance. note: this breaks runtime patching of non-final classes.
 	return inherited(self, ...):detach()
 end
 
+--speed up virtual property lookup without detaching instances completely
+--which would make instances too fat.
 function object:before_init()
-	--speed up virtual property lookup without detaching instances completely,
-	--which would copy over too many fields.
 	self.getproperty = self.getproperty
 	self.setproperty = self.setproperty
 end
 
---module ---------------------------------------------------------------------
+--module object --------------------------------------------------------------
 
 local ui = oo.ui(object)
 ui.object = object
 
+--drawing contexts -----------------------------------------------------------
+
+ui.draw = oo.draw(ui.object)
+local dr = ui.draw
+
+function dr:init(ui)
+	self.ui = ui
+end
+
+--fill & stroke
+
 function ui:after_init()
-	local class_stylesheet = self._stylesheet
-	self._stylesheet = self:stylesheet()
-	self._stylesheet:add_stylesheet(class_stylesheet)
-	self._elements = {}
-	self._element_index = self:element_index()
+	self._colors = {} --{'#rgba' -> {r, g, b, a}}
+end
+
+function ui:color(c)
+	if type(c) == 'string' then
+		local t = self._colors[c]
+		if not t then
+			t = {color.string_to_rgba(c)}
+			self._colors[c] = t
+		end
+		return unpack(t)
+	else
+		return unpack(c)
+	end
+end
+
+function dr:_setcolor(color)
+	self.cr:rgba(self.ui:color(color))
+end
+
+function dr:_fill(color)
+	self:_setcolor(color)
+	self.cr:fill()
+end
+
+function dr:_stroke(color, line_width)
+	self:_setcolor(color)
+	self.cr:line_width(line_width)
+	self.cr:stroke()
+end
+
+function dr:_fillstroke(fill_color, stroke_color, line_width)
+	if fill_color and stroke_color then
+		self:_setcolor(fill_color)
+		self.cr:fill_preserve()
+		self:_stroke(stroke_color, line_width)
+	elseif fill_color then
+		self:_fill(fill_color)
+	elseif stroke_color then
+		self:_stroke(stroke_color, line_width)
+	else
+		self:_fill()
+	end
+end
+
+function dr:_paint(color)
+	self:_setcolor(color)
+	self.cr:paint()
+end
+
+--curent matrix
+
+function dr:translate(x, y)
+	self.cr:translate(x, y)
+end
+
+function dr:push_translate(x, y)
+	self.cr:save()
+	self.cr:translate(x, y)
+end
+
+function dr:pop_translate()
+	self.cr:restore()
+end
+
+--clipping
+
+function dr:push_cliprect(x, y, w, h)
+	local cr = self.cr
+	cr:save()
+	cr:translate(x, y)
+	cr:rectangle(0, 0, w, h)
+	cr:clip()
+end
+
+function dr:pop_cliprect()
+	self.cr:restore()
+end
+
+--shapes
+
+function dr:rect(x, y, w, h, ...)
+	self.cr:rectangle(x, y, w, h)
+	self:_fillstroke(...)
+end
+
+function dr:border(x, y, w, h, color, b)
+	self.cr:rectangle(x-b/2, y-b/2, w+b, h+b)
+	self:_stroke(color, b)
+end
+
+function dr:dot(x, y, r, ...)
+	self:rect(x-r, y-r, 2*r, 2*r, ...)
+end
+
+function dr:circle(x, y, r, ...)
+	self.cr:circle(x, y, r)
+	self:_fillstroke(...)
+end
+
+function dr:line(x1, y1, x2, y2, ...)
+	self.cr:move_to(x1, y1)
+	self.cr:line_to(x2, y2)
+	self:_stroke(...)
+end
+
+function dr:curve(x1, y1, x2, y2, x3, y3, x4, y4, ...)
+	self.cr:move_to(x1, y1)
+	self.cr:curve_to(x2, y2, x3, y3, x4, y4)
+	self:_stroke(...)
+end
+
+--text
+
+function ui:after_init()
+	self._freetype = freetype:new()
+	self._font_files = {} --{(family, weight, slant) -> file}
+	self._font_faces = {} --{file -> {ft_face=, cr_face=}}
+end
+
+function ui:before_free()
+	for _,face in pairs(self._font_faces) do
+		--can't free() it because cairo's cache is lazy.
+		--cairo will free the freetype face object on its own.
+		face.cr_face:unref()
+	end
+	self._font_faces = nil
+	--safe to free() the freetype object here because cr_face holds a reference
+	--to the FT_Library and will call FT_Done_Library() on its destructor.
+	self._freetype:free()
+end
+
+function dr:before_free()
+	self.cr:font_face(cairo.NULL)
+end
+
+--override this for different ways of finding font files
+function ui:_font_file(family, weight, slant)
+	return gfonts.font_file(family, weight, slant)
+end
+
+--override this for different ways of loading fonts
+function ui:_font_face(family, weight, slant)
+	local id = tuple(family, weight, slant)
+	local file = self._font_files[id]
+	if not file then
+		file = assert(self:_font_file(family, weight, slant),
+			'could not find a font for "%s, %s, %s"', family, weight, slant)
+		self._font_files[id] = file
+	end
+	local face = self._font_faces[file]
+	if not face then
+		face = {}
+		face.ft_face = self._freetype:face(file)
+		face.cr_face = assert(cairo.ft_font_face(face.ft_face))
+		self._font_faces[file] = face
+	end
+	return face
+end
+
+--override this for different ways of setting a loaded font
+function dr:_setfont(family, weight, slant, size)
+	local face = self.ui:_font_face(family, weight, slant)
+	self.cr:font_face(face.cr_face)
+	self.cr:font_size(size)
+	local ext = self.cr:font_extents()
+	self._font_height = ext.height
+	self._font_descent = ext.descent
+	self._font_ascent = ext.ascent
+end
+
+--multi-line self-aligned and box-aligned text
+
+function dr:_line_extents(s)
+	local ext = self.cr:text_extents(s)
+	return ext.width, ext.height, ext.y_bearing
+end
+
+function dr:textbox(x, y, w, h, s,
+	font_family, font_weight, font_slant, text_size, line_spacing, text_color,
+	halign, valign)
+
+	self:_setfont(font_family, font_weight, font_slant, text_size)
+	self:_setcolor(text_color)
+
+	self:push_cliprect(x, y, w, h)
+
+	local cr = self.cr
+
+	local line_h = self._font_height * line_spacing
+
+	if halign == 'right' then
+		x = w
+	elseif not halign or halign == 'center' then
+		x = round(w / 2)
+	else
+		x = 0
+	end
+
+	if valign == 'top' then
+		y = self._font_ascent
+	else
+		local lines_h = 0
+		for _ in glue.lines(s) do
+			lines_h = lines_h + line_h
+		end
+		lines_h = lines_h - line_h
+
+		if valign == 'bottom' then
+			y = h - self._font_descent
+		elseif not valign or valign == 'center' then
+			local h1 = h + self._font_ascent - self._font_descent + lines_h
+			y = round(h1 / 2)
+		else
+			assert(false, 'invalid valign "%s"', valign)
+		end
+		y = y - lines_h
+	end
+
+	for s in glue.lines(s) do
+		if halign == 'right' then
+			local tw = self:_line_extents(s)
+			cr:move_to(x - tw, y)
+		elseif not halign or halign == 'center' then
+			local tw = self:_line_extents(s)
+			cr:move_to(x - round(tw / 2), y)
+		elseif halign == 'left' then
+			cr:move_to(x, y)
+		else
+			assert(false, 'invalid halign "%s"', halign)
+		end
+		cr:show_text(s)
+		y = y + line_h
+	end
+
+	self:pop_cliprect()
 end
 
 --selectors ------------------------------------------------------------------
@@ -53,8 +316,10 @@ ui.selector = oo.selector(ui.object)
 
 local function parse_tags(s, t)
 	t = t or {}
-	for tag in s:gmatch'[^%s]+' do
-		push(t, tag)
+	if s then
+		for tag in s:gmatch'[^%s]+' do
+			push(t, tag)
+		end
 	end
 	return t
 end
@@ -116,16 +381,26 @@ end
 
 ui.stylesheet = oo.stylesheet(ui.object)
 
+function ui:after_init()
+	local class_stylesheet = self._stylesheet
+	self._stylesheet = self:stylesheet()
+	self._stylesheet:add_stylesheet(class_stylesheet)
+end
+
 function ui.stylesheet:after_init(ui)
 	self.ui = ui
 	self.tags = {} --{tag -> {sel1, ...}}
+	self.selectors = {} --{selector1, ...}
 end
 
 function ui.stylesheet:add_style(sel, attrs)
-	for i, tag in ipairs(sel.tags) do
-		push(attr(self.tags, tag), sel)
-	end
 	sel.attrs = attrs
+	push(self.selectors, sel)
+	sel.priority = #self.selectors
+	for _,tag in ipairs(sel.tags) do
+		local t = attr(self.tags, tag)
+		push(t, sel)
+	end
 end
 
 function ui.stylesheet:add_stylesheet(stylesheet)
@@ -140,45 +415,106 @@ function ui.stylesheet:add_stylesheet(stylesheet)
 	end
 end
 
+local function cmp_sel(sel1, sel2)
+	return sel1.priority < sel2.priority
+end
+
+--gather all attribute values from all selectors affecting all tags of elem.
+--later selectors affecting a tag take precedence over earlier ones affecting
+--that tag. tags are like css classes while elem.tags is like the html class
+--attribute which specifies a list of css classes (i.e. tags) to apply.
 function ui.stylesheet:_gather_attrs(elem)
-	--gather all attribute values from all selectors affecting all tags of
-	--elem. later tags take precedence over earlier tags, and later selectors
-	--affecting a tag take precedence over earlier ones affecting that tag.
-	--so no specificity order rules like in css.
-	local t = {} --{attr -> val}
-	local checked = {}
-	local tags = elem.tags
-	for i=#tags,1,-1 do
-		local tag = tags[i]
+	local st = {} --{sel1, ...}
+	local checked = {} --{sel -> true}
+	for _,tag in ipairs(elem.tags) do
 		local selectors = self.tags[tag]
 		if selectors then
-			for i=#selectors,1,-1 do
-				local sel = selectors[i]
+			for _,sel in ipairs(selectors) do
 				if not checked[sel] then
 					if sel:selects(elem) then
-						for attr, val in pairs(sel.attrs) do
-							if t[attr] == nil then
-								t[attr] = val
-							end
-						end
+						push(st, sel)
 					end
 					checked[sel] = true
 				end
 			end
 		end
 	end
+	table.sort(st, cmp_sel)
+	local t = {} --{attr -> val}
+	for _,sel in ipairs(st) do
+		update(t, sel.attrs)
+	end
 	return t
 end
 
+local transition_fields = {delay=1, duration=1, ease=1}
+
+local null = {}
+local function encode_nil(x) return x == nil and null or x end
+local function decode_nil(x) if x == null then return nil end; return x; end
+
 function ui.stylesheet:update_element(elem)
 	local attrs = self:_gather_attrs(elem)
+
+	--gather global transition values
 	local duration = attrs.transition_duration or 0
 	local ease = attrs.transition_ease
+	local delay = attrs.transition_delay or 0
+
+	--gather transition-enabled attrs
+	local tr
 	for attr, val in pairs(attrs) do
-		if not attr:find'^transition_' then
-			elem:transition(attr, val, duration, ease)
+		if val == true then
+			local tr_attr = attr:match'^transition_(.*)'
+			if tr_attr and not transition_fields[tr_attr] then
+				tr = tr or {}
+				tr[tr_attr] = true
+			end
 		end
 	end
+
+	--add the saved initial values of attributes that were overwritten by this
+	--function in the past but are missing from the computed styles this time.
+	local rt = elem._revert_attrs
+	if rt then
+		for attr, val in pairs(rt) do
+			if attrs[attr] == nil then
+				attrs[attr] = decode_nil(val)
+			end
+		end
+	end
+
+	--save the initial value for an attribute we're about to change for the
+	--first time so that later on we can set it back.
+	local function save(elem, attr, rt)
+		if not rt then
+			rt = {}
+			elem._revert_attrs = rt
+		elseif rt[attr] == nil then --new initial value to save
+			local val = elem[attr]
+			rt[attr] = encode_nil(val)
+		end
+		return rt
+	end
+
+	--set all attribute values into elem via transition().
+	local changed = false
+	for attr, val in pairs(attrs) do
+		if tr and tr[attr] then
+			rt = save(elem, attr, rt)
+			local duration = attrs['transition_duration_'..attr] or duration
+			local ease = attrs['transition_ease_'..attr] or ease
+			local delay = attrs['transition_delay_'..attr] or delay
+			elem:transition(attr, val, duration, ease, delay)
+			changed = true
+		elseif not attr:find'^transition_' then
+			rt = save(elem, attr, rt)
+			elem:transition(attr, val, 0)
+			changed = true
+		end
+	end
+
+	return changed
 end
 
 function ui:style(sel, attrs)
@@ -194,37 +530,13 @@ end
 
 ui._stylesheet = ui:stylesheet()
 
---transition animations ------------------------------------------------------
+--attribute types ------------------------------------------------------------
 
-ui.transition = oo.transition(ui.object)
-
-ui.transition._type = {} --{attr -> type}
-ui.transition.type = {}  --{patt|f(attr) -> type}
-ui.transition.interpolate = {} --func(d, x1, x2, xout) -> xout
-
-function ui.transition:after_init(ui, elem, attr, to, duration, ease)
-	--timing model
-	local start = time.clock()
-	local ease, way = (ease or 'linear'):match'^([^%s_]+)[%s_]?(.*)'
-	if way == '' then way = 'in' end
-	local duration = duration or 0
-	--animation model
-	local atype = self:_attr_type(attr)
-	local interpolate = self.interpolate[atype]
-	local from = elem[attr]
-	local from = interpolate(1, from, from) --copy `from` for by-ref semantics
-
-	function self:update(clock)
-		local t = (clock - start) / duration
-		if t > 1 then return end
-		local d = easing.ease(ease, way, t)
-		elem[attr] = interpolate(d, from, to, elem[attr])
-		return true
-	end
-end
+ui._type = {} --{attr -> type}
+ui.type = {}  --{patt|f(attr) -> type}
 
 --find an attribute type based on its name
-function ui.transition:_attr_type(attr)
+function ui:_attr_type(attr)
 	local atype = self._type[attr]
 	if not atype then
 		for patt, atype1 in pairs(self.type) do
@@ -235,10 +547,54 @@ function ui.transition:_attr_type(attr)
 				break
 			end
 		end
-		atype = atype or 'number'
+		assert(atype, 'missing attribute type for "%s"', attr)
 		self._type[attr] = atype --cache it
 	end
 	return atype
+end
+
+ui.type['_color$'] = 'color'
+ui.type['_width$'] = 'number'
+ui.type['_height$'] = 'number'
+ui.type['^x$'] = 'number'
+ui.type['^y$'] = 'number'
+ui.type['^w$'] = 'number'
+ui.type['^h$'] = 'number'
+
+--transition animations ------------------------------------------------------
+
+ui.transition = oo.transition(ui.object)
+
+ui.transition.interpolate = {} --func(d, x1, x2, xout) -> xout
+
+function ui.transition:after_init(ui, elem, attr, to, duration, ease, delay)
+
+	--timing model
+	local start = time.clock() + (delay or 0)
+	local ease, way = (ease or 'linear'):match'^([^%s_]+)[%s_]?(.*)'
+	if way == '' then way = 'in' end
+	local duration = duration or 0
+
+	--animation model
+	local atype = ui:_attr_type(attr)
+	local interpolate = self.interpolate[atype]
+	local from = elem[attr]
+	assert(from ~= nil, 'no value for attribute "%s"', attr)
+	local v1 = interpolate(1, from, from) --copy for by-ref semantics
+	local v2 = interpolate(1, to, to)     --copy for by-ref semantics
+
+	function self:update(clock)
+		local t = (clock - start) / duration
+		if t < 0 then --not started
+			--nothing
+		elseif t >= 1 then --finished
+			elem[attr] = to
+		else --running
+			local d = easing.ease(ease, way, t)
+			elem[attr] = interpolate(d, v1, v2, elem[attr])
+		end
+		return t <= 1
+	end
 end
 
 --interpolators
@@ -262,21 +618,22 @@ function ui.transition.interpolate.color(d, c1, c2, c)
 	local g = lerp(d, 0, 1, g1, g2)
 	local b = lerp(d, 0, 1, b1, b2)
 	local a = lerp(d, 0, 1, a1, a2)
-	if type(c) == 'table' then
+	if type(c) == 'table' then --by-reference semantics
 		c[1], c[2], c[3], c[4] = r, g, b, a
 		return c
-	else
+	else --by-value semantics
 		return {r, g, b, a}
 	end
 end
 
---attr. type matching
-
-ui.transition.type['_color$'] = 'color'
-
 --element lists --------------------------------------------------------------
 
 ui.element_index = oo.element_index(ui.object)
+
+function ui:after_init()
+	self._elements = {}
+	self._element_index = self:element_index()
+end
 
 function ui.element_index:after_init(ui)
 	self.ui = ui
@@ -333,71 +690,73 @@ end
 
 ui.element = oo.element(ui.object)
 
-function ui.element:after_init(ui, t)
-	self.ui = ui
-	self.id = t.id
-	self.window = t.window
-	self.parent = t.parent
-	self.visible = t.visible == nil or t.visible
-	self:_init_tags(t)
-end
+ui.element.visible = true
+
+ui.element.font_family = 'Open Sans'
+ui.element.font_weight = 'normal'
+ui.element.font_slant = 'normal'
+ui.element.text_size = 14
+ui.element.text_color = '#fff'
+ui.element.line_spacing = 1
 
 --tags & styles
 
-function ui.element:_init_tags(t)
-	self.tags = {'*'}
-	push(self.tags, self.classname)
-	push(self.tags, self.id)
-	parse_tags(t.tags or '', self.tags)
-	for i,tag in ipairs(self.tags) do
-		self.tags[tag] = true
+function ui.element:after_init(ui, t)
+	self.ui = ui
+
+	local class_tags = self.tags
+	local tags = {'*'}
+	parse_tags(class_tags, tags)
+	push(tags, self.classname)
+	push(tags, self.id)
+	parse_tags(t.tags, tags)
+	for i,tag in ipairs(tags) do
+		tags[tag] = true
 	end
+	self.tags = tags
+	self._instance_attrs = t
 	self:update_styles()
+	update(self, t)
+	self.tags = tags
 end
 
-function ui.element:_settag(tag, set, i)
-	if not tag then return end
-	if set then --insert/add/move
-		i = i or #self.tags + 1
-		assert(i <= #self.tags + 1)
-		if self.tags[tag] then --remove existing
-			local i0 = indexof(tag, self.tags)
-			pop(self.tags, i0)
-			if i > i0 then
-				i = i - 1
-			end
-		end
-		table.insert(self.tags, i, tag)
-		self.tags[tag] = true
-	elseif self.tags[tag] then --remove
-		i = i or indexof(tag, self.tags)
-		assert(self.tags[i] == tag)
-		pop(self.tags, i)
-		self.tags[tag] = nil
+function ui.element:_addtags(s)
+	self.tags = self.tags and self.tags .. ' ' .. s or s
+end
+
+function ui.element:_settag(tag, set)
+	if not set == not self.tags[tag] then return end
+	self.tags[tag] = set or nil
+	if set then
+		push(self.tags, tag)
+	else
+		pop(self.tags, assert(indexof(tag, self.tags)))
 	end
 end
 
-function ui.element:settags(s, i)
+function ui.element:settags(s)
 	for op, tag in s:gmatch'([-+~]?)([^%s]+)' do
 		if op == '' or op == '+' then
-			self:_settag(tag, true, i)
+			self:_settag(tag, true)
 		elseif op == '-' then
-			self:_settag(tag, false, i)
+			self:_settag(tag, false)
 		elseif op == '~' then
-			self:_settag(tag, not self.tags[tag], i)
+			self:_settag(tag, not self.tags[tag])
 		end
 	end
-	self:update_styles()
+	if self:update_styles() then
+		self:invalidate()
+	end
 end
 
 function ui.element:update_styles()
-	self.ui._stylesheet:update_element(self)
+	return self.ui._stylesheet:update_element(self)
 end
 
 --animated attribute transitions
 
-function ui.element:transition(attr, val, duration, ease)
-	if duration <= 0 or self[attr] == nil then
+function ui.element:transition(attr, val, duration, ease, delay)
+	if duration <= 0 then
 		if self._transitions then
 			self._transitions[attr] = nil --remove transition on attr if any
 		end
@@ -405,11 +764,12 @@ function ui.element:transition(attr, val, duration, ease)
 	else --set attr with transition
 		self._transitions = self._transitions or {}
 		self._transitions[attr] =
-			self.ui:transition(self, attr, val, duration, ease)
+			self.ui:transition(self, attr, val, duration, ease, delay)
 	end
 end
 
 function ui.element:draw()
+	--update transitioning attributes
 	local a = self._transitions
 	if not a or not next(a) then return end
 	local clock = self:frame_clock()
@@ -422,66 +782,61 @@ function ui.element:draw()
 		end
 	end
 	if invalidate then
-		self:invalidate()
+		self:invalidate(true)
 	end
-end
-
-function ui.element:frame_clock()
-	return self.window:frame_clock()
-end
-
-function ui.element:invalidate()
-	if not self.visible then return end
-	self.window:invalidate()
 end
 
 --windows --------------------------------------------------------------------
 
 ui.window = oo.window(ui.element)
 
-ui:style('window', {
-	background_color = '#000',
-})
+ui.window.background_color = '#000'
 
 function ui.window:after_init(ui, t)
-	self.dr = draw:new()
+	self.dr = ui:draw()
 	local win = self.window
+
 	self.x, self.y = 0, 0
 	self.w, self.h = win:client_size()
+
 	win:on('mousemove.ui', function(win, x, y)
-		self:mousemove(x, y)
+		self:_mousemove(x, y)
+	end)
+	win:on('mouseenter.ui', function(win, x, y)
+		self:_mouseenter(x, y)
 	end)
 	win:on('mouseleave.ui', function(win)
-		self:mouseleave()
+		self:_mouseleave()
 	end)
 	win:on('mousedown.ui', function(win, button, x, y)
-		self:mousedown(button, x, y)
+		self:_mousedown(button, x, y)
 	end)
 	win:on('mouseup.ui', function(win, button, x, y)
-		self:mouseup(button, x, y)
+		self:_mouseup(button, x, y)
 	end)
 	win:on('repaint.ui', function(win)
 		self._frame_clock = time.clock()
-
-		local cr = win:bitmap():cairo()
-		self.dr.cr = cr
+		self.dr.cr = win:bitmap():cairo()
 		self:draw()
 	end)
 	win:on('client_resized.ui', function(win, cw, ch)
 		self.w = cw
 		self.h = ch
 	end)
+	win:on('closed.ui', function()
+		self:free()
+	end)
 
 	self._layers = {}
+
+	self.hot_widget = false
+	self.active_widget = false
 end
 
 function ui.window:free()
-	win:off'.ui'
+	self.dr:free()
+	self.window:off'.ui'
 	self.window = nil
-end
-
-function ui.window:rect()
-	return self.x, self.y, self.w, self.h
 end
 
 --layer management
@@ -502,61 +857,109 @@ function ui.window:remove_layer(layer)
 	if i then pop(self._layers, i) end
 end
 
+--mouse events routing to layers. hit-testing is based on layer's `z_order`.
+--mouseenter/mouseleave events are based on `hot_widget` and `active_widget`.
+--mouse events are given relative to widget's (x, y).
+
 function ui.window:hit_test_layer(x, y)
 	for i = #self._layers, 1, -1 do
 		local layer = self._layers[i]
 		if layer:hit_test(x, y) then
-			return layer, x - layer.x, y - layer.y
+			return layer
 		end
 	end
 end
 
---mouse events routing to layers and to the active widget
-
-function ui.window:set_hot_layer(hot_layer) --virtual property!
-	if self.hot_layer and self.hot_layer ~= hot_layer then
-		self.hot_layer:fire('mouseleave')
+function ui.window:_set_hot_widget(widget, mx, my)
+	if self.hot_widget == widget then
+		return
 	end
+	if self.hot_widget then
+		self.hot_widget:fire'mouseleave'
+	end
+	if widget then
+		--the hot widget is still the old widget when entering the new widget
+		widget:fire('mouseenter', mx - widget.x, my - widget.y)
+	end
+	self.hot_widget = widget
 end
 
-function ui.window:mousemove(x, y)
-	local layer, wx, wy = self:hit_test_layer(x, y)
-	local enter = self.hot_layer ~= layer
-	self.hot_layer = layer
-	if layer then
-		layer:fire(enter and 'mouseenter' or 'mousemove', wx, wy)
+function ui.window:_set_hot_window(hot)
+	self.hot = hot
+	self:settags(hot and 'hot' or '-hot')
+end
+
+function ui.window:_mousemove(mx, my)
+	if self.mouse_x == mx and self.mouse_y == my then
+		return
 	end
+	self.mouse_x = mx
+	self.mouse_y = my
+	self:fire('mousemove', mx, my)
 	local widget = self.active_widget
 	if widget then
-		widget:fire('mousemove', x - widget.x, y - widget.y)
+		widget:fire('mousemove', mx - widget.x, my - widget.y)
+	end
+	if not self.active_widget then
+		local widget = self:hit_test_layer(mx, my)
+		self:_set_hot_widget(widget, mx, my)
+		self:_set_hot_window(not widget)
+		if widget then
+			widget:fire('mousemove', mx - widget.x, my - widget.y)
+		end
 	end
 end
 
-function ui.window:mouseenter(x, y)
-	self:mousemove(x, y)
+function ui.window:_mouseenter(mx, my)
+	self:fire('mouseenter', mx, my)
+	self:_mousemove(mx, my)
 end
 
-function ui.window:mouseleave()
-	self.hot_layer = false
-end
-
-function ui.window:mousedown(button, x, y)
-	local layer, wx, wy = self:hit_test_layer(x, y)
-	self.hot_layer = layer
-	if layer then
-		layer:fire('mousedown', button, wx, wy)
-	end
-end
-
-function ui.window:mouseup(button, x, y)
-	local layer, wx, wy = self:hit_test_layer(x, y)
-	self.hot_layer = layer
-	if layer then
-		layer:fire('mouseup', button, wx, wy)
-	end
+function ui.window:_mouseleave()
+	self.mouse_x = false
+	self.mouse_y = false
+	self:fire'mouseleave'
 	local widget = self.active_widget
 	if widget then
-		widget:fire('mouseup', button, x - widget.x, y - widget.y)
+		widget:fire'mouseleave'
+	end
+	self:_set_hot_widget(false)
+	self:_set_hot_window(false)
+end
+
+function ui.window:_mousedown(button, mx, my)
+	self.mouse_x = mx
+	self.mouse_y = my
+	self:fire('mousedown', button, mx, my)
+	local widget = self.active_widget
+	if widget then
+		widget:fire('mousedown', button, mx - widget.x, my - widget.y)
+	end
+	if not self.active_widget then
+		local widget = self:hit_test_layer(mx, my)
+		self:_set_hot_widget(widget, mx, my)
+		self:_set_hot_window(not widget)
+		if widget then
+			widget:fire('mousedown', button, mx - widget.x, my - widget.y)
+		end
+	end
+end
+
+function ui.window:_mouseup(button, mx, my)
+	self.mouse_x = mx
+	self.mouse_y = my
+	self:fire('mouseup', button, mx, my)
+	local widget = self.active_widget
+	if widget then
+		widget:fire('mouseup', button, mx - widget.x, my - widget.y)
+	end
+	if not self.active_widget then
+		local widget = self:hit_test_layer(mx, my)
+		self:_set_hot_widget(widget, mx, my)
+		self:_set_hot_window(not widget)
+		if widget then
+			widget:fire('mouseup', button, mx - widget.x, my - widget.y)
+		end
 	end
 end
 
@@ -564,14 +967,31 @@ end
 
 function ui.window:after_draw()
 	if not self.visible then return end
-	self.dr:paint(self.background_color) --clear the background
+	self.dr:rect(self.x, self.y, self.w, self.h, self.background_color)
 	for i = 1, #self._layers do
 		local layer = self._layers[i]
 		layer:draw()
 	end
 end
 
---animations management
+--widget-like
+
+function ui.window:invalidate(for_animation)
+	if not self.visible then return end
+	self.window:invalidate()
+end
+
+function ui.window:rect()
+	return self.x, self.y, self.w, self.h
+end
+
+function ui.window:pos()
+	return self.x, self.y
+end
+
+function ui.window:size()
+	return self.w, self.h
+end
 
 function ui.window:frame_clock()
 	return self._frame_clock
@@ -581,10 +1001,13 @@ end
 
 ui.layer = oo.layer(ui.element)
 
+ui.layer._z_order = 0
+ui.layer.clipping = true
+
 function ui.layer:after_init(ui, t)
 	if self.parent then return end
-	self._z_order = t.z_order or 0
 	self.window:add_layer(self)
+	self._added = true
 end
 
 function ui.layer:get_z_order()
@@ -594,61 +1017,143 @@ end
 function ui.layer:set_z_order(z_order)
 	if self.parent then return end
 	self._z_order = z_order
-	self.window:sort_layers()
+	if self._added then
+		self.window:sort_layers()
+	end
 end
 
-function ui.layer:hit_test(x, y) end
-
---box-like widgets -----------------------------------------------------------
-
-ui.box = oo.box(ui.layer)
-
-function ui.box:after_init(ui, t)
-	self.x = t.x
-	self.y = t.y
-	self.w = t.w
-	self.h = t.h
+function ui.layer:pos()
+	return self.x, self.y
 end
 
-function ui.box:rect()
+function ui.layer:size()
+	return self.w, self.h
+end
+
+function ui.layer:rect()
 	return self.x, self.y, self.w, self.h
 end
 
-function ui.box:hit_test(x, y)
+function ui.layer:get_mouse_x()
+	local mx = self.window.mouse_x
+	return mx and mx - self.x
+end
+
+function ui.layer:get_mouse_y()
+	local my = self.window.mouse_y
+	return my and my - self.y
+end
+
+function ui.layer:hit(x, y, w, h)
+	return box2d.hit(self.mouse_x, self.mouse_y, x, y, w, h)
+end
+
+function ui.layer:hit_test(x, y)
 	return box2d.hit(x, y, self:rect())
 end
 
-function ui.box:after_draw()
+function ui.layer:draw_inside() end --stub
+
+function ui.layer:after_draw()
 	if not self.visible then return end
 	local dr = self.window.dr
+
 	if self.background_color then
 		dr:rect(self.x, self.y, self.w, self.h, self.background_color)
 	end
-	if self.border_color then
-		dr:border(self.x, self.y, self.w, self.h, self.border_color)
+
+	if self.border_color and self.border_width then
+		dr:border(self.x, self.y, self.w, self.h,
+			self.border_color, self.border_width)
 	end
+
+	if self.clipping then
+		dr:push_cliprect(self.x, self.y, self.w, self.h)
+	else
+		dr:push_translate(self.x, self.y)
+	end
+
+	self:draw_inside()
+
+	if self.clipping then
+		dr:pop_cliprect()
+	else
+		dr:pop_translate()
+	end
+end
+
+--the `hot` property and tag which is automatically set
+
+function ui.layer:get_hot()
+	return self.window.hot_widget == self
+end
+
+function ui.layer:mouseenter()
+	if not self.window.active_widget then
+		self:settags'hot'
+	end
+end
+
+function ui.layer:mouseleave()
+	self:settags'-hot'
+end
+
+--the `active` property and tag which the widget must set manually
+
+function ui.layer:get_active()
+	return self.window.active_widget == self
+end
+
+function ui.layer:set_active(active)
+	if self.active == active then return end
+	local active_widget = self.window.active_widget
+	if active_widget then
+		active_widget:settags'-active'
+		self.window.active_widget = false
+	end
+	if active then
+		self.window.active_widget = self
+		self:settags'active'
+	end
+end
+
+--animations management
+
+function ui.layer:frame_clock()
+	return self.window:frame_clock()
+end
+
+function ui.layer:invalidate(for_animation)
+	if not self.visible then return end
+	self.window:invalidate(for_animation)
 end
 
 --buttons --------------------------------------------------------------------
 
-ui.button = oo.button(ui.box)
+ui.button = oo.button(ui.layer)
+
+ui.button.background_color = '#444'
+ui.button.border_color = '#888'
+ui.button.border_width = 1
 
 ui:style('button', {
-	background_color = '#ffffff4c',
-	border_color = '#888',
+	transition_background_color = true,
+	transition_border_color = true,
 	transition_duration = 0.5,
 	transition_ease = 'expo out',
 })
 
 ui:style('button hot', {
-	background_color = '#ffffff99',
+	background_color = '#ccc',
 	border_color = '#ccc',
-	transition_duration = 0.5,
+	text_color = '#000',
 })
 
 ui:style('button active', {
 	background_color = '#fff',
 	border_color = '#fff',
+	text_color = '#000',
+	transition_duration = 0.2,
 })
 
 function ui.window:button(t)
@@ -656,160 +1161,187 @@ function ui.window:button(t)
 	return self.ui:button(t)
 end
 
-function ui.button:after_init(ui, t)
-	self.text = t.text
-end
-
-function ui.button:mouseenter(x, y)
-	self.hot = true
-	self:settags('hot', indexof('active', self.tags))
-	self:invalidate()
-end
-
-function ui.button:mouseleave(x, y)
-	self.hot = false
-	self:settags'-hot'
-	self:invalidate()
-end
-
 function ui.button:mousedown(button, x, y)
 	if button == 'left' then
 		self.active = true
-		self.window.active_widget = self
-		self:settags'active'
-		self:invalidate()
 	end
 end
 
 function ui.button:mouseup(button, x, y)
 	if button == 'left' then
 		self.active = false
-		self.window.active_widget = false
-		self:settags'-active'
-		self:invalidate()
 	end
 end
 
-function ui.button:after_draw()
-	if not self.visible then return end
+function ui.button:draw_inside()
 	local dr = self.window.dr
+	if self.text then
+		dr:textbox(0, 0, self.w, self.h, self.text,
+			self.font_family, self.font_weight, self.font_slant, self.text_size,
+			self.line_spacing, self.text_color, 'center', 'center')
+	end
 end
 
 --scrollbars -----------------------------------------------------------------
 
-local function bar_size(w, size, minw)
-	return math.min(math.max(w^2 / size, minw), w)
-end
+ui.scrollbar = oo.scrollbar(ui.layer)
 
-local function bar_offset(x, w, size, i, bw)
-	return x + i * (w - bw) / (size - w)
-end
+ui.scrollbar:_addtags'scrollbar'
 
-local function bar_offset_clamp(bx, x, w, bw)
-	return math.min(math.max(bx, x), x + w - bw)
-end
+ui.scrollbar.step = 1
+ui.scrollbar.thickness = 20
+ui.scrollbar.min_width = 0
+ui.scrollbar.autohide = false
+ui.scrollbar.background_color = '#222'
+ui.scrollbar.grabber_background_color = '#444'
 
-local function bar_segment(x, w, size, i, minw)
-	local bw = bar_size(w, size, minw)
-	local bx = bar_offset(x, w, size, i, bw)
-	bx = bar_offset_clamp(bx, x, w, bw)
-	return bx, bw
+ui:style('scrollbar', {
+	transition_background_color = true,
+	transition_duration = 0.5,
+	transition_ease = 'expo out',
+})
+
+ui:style('scrollbar hot', {
+	grabber_background_color = '#ccc',
+})
+
+ui:style('scrollbar active', {
+	grabber_background_color = '#fff',
+	transition_duration = 0.2,
+})
+
+function ui.scrollbar:set_thickness(thickness)
+	if self.vertical then
+		self.w = self.w or thickness
+	else
+		self.h = self.h or thickness
+	end
 end
 
 local function client_offset_round(i, step)
 	return i - i % step
 end
 
-local function client_offset(bx, x, w, bw, size, step)
-	return client_offset_round((bx - x) / (w - bw) * (size - w), step)
+local function client_offset(bx, w, bw, size, step)
+	return client_offset_round(bx / (w - bw) * (size - w), step)
 end
 
 local function client_offset_clamp(i, size, w, step)
-	return client_offset_round(math.min(math.max(i, 0),
-		math.max(size - w, 0)), step)
+	return client_offset_round(clamp(i, 0, math.max(size - w, 0)), step)
 end
 
-local function bar_box(x, y, w, h, size, i, vertical, min_width)
+local function bar_size(w, size, minw)
+	return clamp(w^2 / size, minw, w)
+end
+
+local function bar_offset(w, size, i, bw)
+	return i * (w - bw) / (size - w)
+end
+
+local function bar_offset_clamp(bx, w, bw)
+	return clamp(bx, 0, w - bw)
+end
+
+local function bar_segment(w, size, i, minw)
+	local bw = bar_size(w, size, minw)
+	local bx = bar_offset(w, size, i, bw)
+	local bx = bar_offset_clamp(bx, w, bw)
+	return bx, bw
+end
+
+function ui.scrollbar:after_init(ui, t)
+	self.offset = client_offset_clamp(self.offset or 0, self.size,
+		self.vertical and self.h or self.w, self.step)
+end
+
+function ui.scrollbar:grabbar_rect()
 	local bx, by, bw, bh
-	if vertical then
-		by, bh = bar_segment(y, h, size, i, min_width)
-		bx, bw = x, w
+	if self.vertical then
+		by, bh = bar_segment(self.h, self.size, self.offset, self.min_width)
+		bx, bw = 0, self.w
 	else
-		bx, bw = bar_segment(x, w, size, i, min_width)
-		by, bh = y, h
+		bx, bw = bar_segment(self.w, self.size, self.offset, self.min_width)
+		by, bh = 0, self.h
 	end
 	return bx, by, bw, bh
 end
 
-ui.scrollbar = oo.scrollbar(ui.box)
-
-function ui.scrollbar:after_init(ui, t)
-	local vertical = self.vertical
-	self.size = assert(t.size, 'size missing')
-	self.step = t.step or 1
-	self.i = client_offset_clamp(t.i or 0, self.size,
-		vertical and self.h or self.w, self.step)
-	self.min_width = t.min_width or min_width
-	self.autohide = t.autohide
-end
-
-function ui.scrollbar:after_draw()
-	if self.autohide and self.active ~= id and not self:hotbox(x, y, w, h) then
-		return i
-	end
-
-	local bx, by, bw, bh = bar_box(x, y, w, h, size, i, vertical, min_width)
-	local hot = self:hotbox(bx, by, bw, bh)
-
-	if not self.active and self.lbutton and hot then
-		self.active = id
-		self.ui.grab = vertical and self.mousey - by or self.mousex - bx
-	elseif self.active == id then
-		if self.lbutton then
-			if vertical then
-				by = bar_offset_clamp(self.mousey - self.ui.grab, y, h, bh)
-				i = client_offset(by, y, h, bh, size, step)
-			else
-				bx = bar_offset_clamp(self.mousex - self.ui.grab, x, w, bw)
-				i = client_offset(bx, x, w, bw, size, step)
-			end
-		else
-			self.active = nil
+function ui.scrollbar:mousedown(button, mx, my)
+	if button == 'left' and not self._grab then
+		local bx, by, bw, bh = self:grabbar_rect()
+		if self:hit(bx, by, bw, bh) then
+			self._grab = self.vertical and my - by or mx - bx
+			self.active = true
 		end
 	end
-
-	--drawing
-	self:rect(x, y, w, h, 'faint_bg')
-	if bw < w or bh < h then
-		self:rect(bx, by, bw, bh,
-			self.active == id and 'selected_bg' or hot and 'hot_bg' or 'normal_bg')
-	end
-
-	return i
 end
 
-ui.hscrollbar = oo.hscrollbar(oo.scrollbar)
+function ui.scrollbar:mouseup(button, mx, my)
+	if button == 'left' and self._grab then
+		self._grab = false
+		self.active = false
+	end
+end
+
+function ui.scrollbar:mousemove(mx, my)
+	if not self._grab then return end
+	local offset = self.offset
+	local bx, by, bw, bh = self:grabbar_rect()
+	if self.vertical then
+		local by = bar_offset_clamp(my - self._grab, self.h, bh)
+		self.offset = client_offset(by, self.h, bh, self.size, self.step)
+	else
+		local bx = bar_offset_clamp(mx - self._grab, self.w, bw)
+		self.offset = client_offset(bx, self.w, bw, self.size, self.step)
+	end
+	if self.offset ~= offset then
+		self:invalidate()
+	end
+end
+
+function ui.scrollbar:draw_inside()
+	local dr = self.window.dr
+	if self.autohide and not self._grab and not self.hot then
+		return
+	end
+	dr:rect(0, 0, self.w, self.h, self.background_color)
+	local bx, by, bw, bh = self:grabbar_rect()
+	--	if bw < w or bh < h then
+	dr:rect(bx, by, bw, bh, self.grabber_background_color)
+end
+
+ui.hscrollbar = ui.scrollbar
 ui.vscrollbar = oo.vscrollbar(oo.scrollbar)
 ui.vscrollbar.vertical = true
 
+function ui.window:hscrollbar(t)
+	t.window = self
+	return self.ui:hscrollbar(t)
+end
+
+function ui.window:vscrollbar(t)
+	t.window = self
+	return self.ui:vscrollbar(t)
+end
+
 --scrollbox ------------------------------------------------------------------
 
-ui.scrollbox = oo.scrollbox(ui.box)
+ui.scrollbox = oo.scrollbox(ui.layer)
+
+ui:style('scrollbox', {
+	vscroll = 'always',
+	hscroll = 'always',
+	scroll_width = 20,
+	page_size = 120,
+})
 
 function ui.scrollbox:after_init(ui, t)
-	local id = assert(t.id, 'id missing')
-	local x, y, w, h = self:getbox(t)
-	local cx = t.cx or 0
-	local cy = t.cy or 0
-	local cw = assert(t.cw, 'cw missing')
-	local ch = assert(t.ch, 'ch missing')
-	local vscroll = t.vscroll or 'always' --auto, always, never
-	local hscroll = t.hscroll or 'always'
-	local vscroll_w = t.vscroll_w or scroll_width
-	local hscroll_h = t.hscroll_h or scroll_width
-	local vscroll_step = t.vscroll_step
-	local hscroll_step = t.hscroll_step
-	local page_size = t.page_size or 120
+	self.scroll_width = t.scroll_width or self.scroll_width
+	self.vscroll_width = t.vscroll_width or self.vscroll_width or self.scroll_width
+	self.hscroll_width = t.hscroll_width or self.hscroll_width or self.scroll_width
+	self.vscroll_step = t.vscroll_step or self.vscroll_step
+	self.hscroll_step = t.hscroll_step or self.hscroll_step
+	self.page_size = t.page_size or self.page_size
 
 	local need_vscroll = vscroll == 'always'
 		or (vscroll == 'auto' and ch > h -
@@ -887,11 +1419,20 @@ print('b1.custom_and', b1.custom_and)
 print('b2.custom_and', b2.custom_and)
 --print('b2.custom_and', b2.custom_and)
 
-local b1 = win:button{name = 'b1', tags = 'b1', ctl = ctl, x = 10, y = 10, w = 100, h = 26}
-local b2 = win:button{name = 'b2', tags = 'b2', ctl = ctl, x = 20, y = 20, w = 100, h = 26}
+--ui:style('button', {h = 26})
+
+local b1 = win:button{name = 'b1', tags = 'b1', text = 'B1', ctl = ctl, x = 10, y = 10, w = 100, h = 26}
+local b2 = win:button{name = 'b2', tags = 'b2', text = 'B2', ctl = ctl, x = 20, y = 50, w = 100, h = 26}
 b1.z_order = 2
 
+local s1 = win:hscrollbar{x = 10, y = 100, w = 200, h = 20, size = 300}
+local s2 = win:vscrollbar{x = 250, y = 10, w = 20, h = 200, size = 300}
+
+ui:style('window hot', {background_color = '#080808'})
+
 app:run()
+
+ui:free()
 
 end
 
