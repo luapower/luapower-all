@@ -560,6 +560,9 @@ ui.type['^x$'] = 'number'
 ui.type['^y$'] = 'number'
 ui.type['^w$'] = 'number'
 ui.type['^h$'] = 'number'
+ui.type['^rotation$'] = 'number'
+ui.type['^rotation_cx$'] = 'number'
+ui.type['^rotation_cy$'] = 'number'
 
 --transition animations ------------------------------------------------------
 
@@ -705,7 +708,7 @@ function ui.element:after_init(ui, t)
 	self.ui = ui
 
 	local class_tags = self.tags
-	local tags = {'*'}
+	local tags = {'*'} --TODO: array part now superfluous
 	parse_tags(class_tags, tags)
 	push(tags, self.classname)
 	push(tags, self.id)
@@ -714,7 +717,7 @@ function ui.element:after_init(ui, t)
 		tags[tag] = true
 	end
 	self.tags = tags
-	self._instance_attrs = t
+	self._instance_attrs = t --TODO: how to integrate this with css?
 	self:update_styles()
 	update(self, t)
 	self.tags = tags
@@ -879,7 +882,7 @@ function ui.window:_set_hot_widget(widget, mx, my)
 	end
 	if widget then
 		--the hot widget is still the old widget when entering the new widget
-		widget:fire('mouseenter', mx - widget.x, my - widget.y)
+		widget:_mouseenter(mx, my)
 	end
 	self.hot_widget = widget
 end
@@ -898,14 +901,14 @@ function ui.window:_mousemove(mx, my)
 	self:fire('mousemove', mx, my)
 	local widget = self.active_widget
 	if widget then
-		widget:fire('mousemove', mx - widget.x, my - widget.y)
+		widget:_mousemove(mx, my)
 	end
 	if not self.active_widget then
 		local widget = self:hit_test_layer(mx, my)
 		self:_set_hot_widget(widget, mx, my)
 		self:_set_hot_window(not widget)
 		if widget then
-			widget:fire('mousemove', mx - widget.x, my - widget.y)
+			widget:_mousemove(mx, my)
 		end
 	end
 end
@@ -921,11 +924,12 @@ function ui.window:_mouseleave()
 	self:fire'mouseleave'
 	local widget = self.active_widget
 	if widget then
-		widget:fire'mouseleave'
+		widget:_mouseleave()
 	end
 	self:_set_hot_widget(false)
 	self:_set_hot_window(false)
 end
+
 
 function ui.window:_mousedown(button, mx, my)
 	self.mouse_x = mx
@@ -933,14 +937,14 @@ function ui.window:_mousedown(button, mx, my)
 	self:fire('mousedown', button, mx, my)
 	local widget = self.active_widget
 	if widget then
-		widget:fire('mousedown', button, mx - widget.x, my - widget.y)
+		widget:_mousedown(button, mx, my)
 	end
 	if not self.active_widget then
 		local widget = self:hit_test_layer(mx, my)
 		self:_set_hot_widget(widget, mx, my)
 		self:_set_hot_window(not widget)
 		if widget then
-			widget:fire('mousedown', button, mx - widget.x, my - widget.y)
+			widget:_mousedown(button, mx, my)
 		end
 	end
 end
@@ -951,14 +955,14 @@ function ui.window:_mouseup(button, mx, my)
 	self:fire('mouseup', button, mx, my)
 	local widget = self.active_widget
 	if widget then
-		widget:fire('mouseup', button, mx - widget.x, my - widget.y)
+		widget:_mouseup(button, mx, my)
 	end
 	if not self.active_widget then
 		local widget = self:hit_test_layer(mx, my)
 		self:_set_hot_widget(widget, mx, my)
 		self:_set_hot_window(not widget)
 		if widget then
-			widget:fire('mouseup', button, mx - widget.x, my - widget.y)
+			widget:_mouseup(button, mx, my)
 		end
 	end
 end
@@ -1003,11 +1007,25 @@ ui.layer = oo.layer(ui.element)
 
 ui.layer._z_order = 0
 ui.layer.clipping = true
+ui.layer.rotation = 0
+ui.layer.rotation_cx = 0
+ui.layer.rotation_cy = 0
+ui.layer.x = 0
+ui.layer.y = 0
+ui.layer.border_width = 0
 
 function ui.layer:after_init(ui, t)
 	if self.parent then return end
 	self.window:add_layer(self)
 	self._added = true
+	self.matrix = cairo.matrix()
+	self.inv_matrix = cairo.matrix()
+	self:_set_matrix()
+end
+
+function ui.layer:set_rotation(rotation)
+	self.__state.rotation = rotation
+	self:_set_matrix()
 end
 
 function ui.layer:get_z_order()
@@ -1022,6 +1040,14 @@ function ui.layer:set_z_order(z_order)
 	end
 end
 
+function ui.layer:_set_matrix()
+	local m, im = self.matrix, self.inv_matrix
+	m:reset():translate(self.x, self.y)
+	m:rotate_around(self.rotation_cx, self.rotation_cy,
+		math.rad(self.rotation))
+	im:reset(m):invert()
+end
+
 function ui.layer:pos()
 	return self.x, self.y
 end
@@ -1034,22 +1060,63 @@ function ui.layer:rect()
 	return self.x, self.y, self.w, self.h
 end
 
+function ui.layer:to_screen(x, y)
+	return self.matrix:point(x, y)
+end
+
+function ui.layer:from_screen(x, y)
+	return self.inv_matrix:point(x, y)
+end
+
+function ui.layer:mouse_pos()
+	if not self.window.mouse_x then
+		return false, false
+	end
+	return self:from_screen(self.window.mouse_x, self.window.mouse_y)
+end
+
 function ui.layer:get_mouse_x()
-	local mx = self.window.mouse_x
-	return mx and mx - self.x
+	local x, y = self:mouse_pos()
+	return x
 end
 
 function ui.layer:get_mouse_y()
-	local my = self.window.mouse_y
-	return my and my - self.y
-end
-
-function ui.layer:hit(x, y, w, h)
-	return box2d.hit(self.mouse_x, self.mouse_y, x, y, w, h)
+	local x, y = self:mouse_pos()
+	return y
 end
 
 function ui.layer:hit_test(x, y)
-	return box2d.hit(x, y, self:rect())
+	local x, y = self:from_screen(x, y)
+	return box2d.hit(x, y, 0, 0, self.w, self.h)
+end
+
+function ui.layer:hit(x, y, w, h)
+	local mx, my = self:mouse_pos()
+	return box2d.hit(mx, my, x, y, w, h)
+end
+
+function ui.layer:_mouseenter(mx, my)
+	local mx, my = self:from_screen(mx, my)
+	self:fire('mouseenter', mx, my)
+end
+
+function ui.layer:_mouseleave()
+	self:fire'mouseleave'
+end
+
+function ui.layer:_mousemove(mx, my)
+	local mx, my = self:from_screen(mx, my)
+	self:fire('mousemove', mx, my)
+end
+
+function ui.layer:_mousedown(button, mx, my)
+	local mx, my = self:from_screen(mx, my)
+	self:fire('mousedown', button, mx, my)
+end
+
+function ui.layer:_mouseup(button, mx, my)
+	local mx, my = self:from_screen(mx, my)
+	self:fire('mouseup', button, mx, my)
 end
 
 function ui.layer:draw_inside() end --stub
@@ -1058,28 +1125,40 @@ function ui.layer:after_draw()
 	if not self.visible then return end
 	local dr = self.window.dr
 
+	dr.cr:save()
+	dr.cr:matrix(self.matrix)
+	if self.clipping then
+		dr.cr:rectangle(box2d.offset(self.border_width, 0, 0, self.w, self.h))
+		dr.cr:clip()
+	end
+
 	if self.background_color then
-		dr:rect(self.x, self.y, self.w, self.h, self.background_color)
+		dr:rect(0, 0, self.w, self.h, self.background_color)
 	end
 
-	if self.border_color and self.border_width then
-		dr:border(self.x, self.y, self.w, self.h,
-			self.border_color, self.border_width)
+	if self.border_color then
+		dr:border(0, 0, self.w, self.h, self.border_color, self.border_width)
 	end
 
+	--[[
+	dr.cr:rotate(math.rad(self.rotation))
 	if self.clipping then
 		dr:push_cliprect(self.x, self.y, self.w, self.h)
 	else
 		dr:push_translate(self.x, self.y)
 	end
+	]]
 
 	self:draw_inside()
 
+	--[[
 	if self.clipping then
 		dr:pop_cliprect()
 	else
 		dr:pop_translate()
 	end
+	]]
+	dr.cr:restore()
 end
 
 --the `hot` property and tag which is automatically set
@@ -1304,7 +1383,6 @@ function ui.scrollbar:draw_inside()
 	if self.autohide and not self._grab and not self.hot then
 		return
 	end
-	dr:rect(0, 0, self.w, self.h, self.background_color)
 	local bx, by, bw, bh = self:grabbar_rect()
 	--	if bw < w or bh < h then
 	dr:rect(bx, by, bw, bh, self.grabber_background_color)
@@ -1424,6 +1502,14 @@ print('b2.custom_and', b2.custom_and)
 local b1 = win:button{name = 'b1', tags = 'b1', text = 'B1', ctl = ctl, x = 10, y = 10, w = 100, h = 26}
 local b2 = win:button{name = 'b2', tags = 'b2', text = 'B2', ctl = ctl, x = 20, y = 50, w = 100, h = 26}
 b1.z_order = 2
+
+ui:style('vscrollbar', {
+	rotation = 180 + 30,
+	rotation_cx = 10,
+	rotation_cy = 100,
+	transition_rotation = true,
+	transition_duration = 1,
+})
 
 local s1 = win:hscrollbar{x = 10, y = 100, w = 200, h = 20, size = 300}
 local s2 = win:vscrollbar{x = 250, y = 10, w = 20, h = 200, size = 300}
