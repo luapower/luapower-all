@@ -21,6 +21,7 @@ local attr = glue.attr
 local lerp = glue.lerp
 local clamp = glue.clamp
 local assert = glue.assert
+local collect = glue.collect
 
 local function str(s)
 	return type(s) == 'string' and glue.trim(s) or nil
@@ -43,16 +44,16 @@ end
 local object = oo.object()
 
 --speed up class field lookup by converting subclassing to static
---inheritance. note: this breaks runtime patching of non-final classes.
+--inheritance. note: runtime patching of non-final classes still works.
 function object:override_subclass(inherited, ...)
-	return inherited(self, ...):detach()
+	return inherited(self, ...):inherit(self)
 end
 
 --speed up virtual property lookup without detaching instances completely
 --which would make instances too fat.
 function object:before_init()
-	self.getproperty = self.getproperty
-	self.setproperty = self.setproperty
+	self.__setters = self.__setters
+	self.__getters = self.__getters
 end
 
 --module object --------------------------------------------------------------
@@ -314,27 +315,22 @@ end
 
 ui.selector = oo.selector(ui.object)
 
-local function parse_tags(s, t)
-	t = t or {}
-	if s then
-		for tag in s:gmatch'[^%s]+' do
-			push(t, tag)
-		end
-	end
-	return t
+local function noop() end
+local function gmatch_tags(s)
+	return s and s:gmatch'[^%s]+' or noop
 end
 
 function ui.selector:after_init(ui, sel, filter)
 	if sel:find'>' then --parents filter
 		self.parent_tags = {} --{{tag,...}, ...}
 		sel = sel:gsub('%s*([^>%s]+)%s*>', function(s) -- tag > ...
-			local tags = parse_tags(s)
+			local tags = collect(gmatch_tags(s))
 			push(self.parent_tags, tags)
 			return ''
 		end)
 	end
-	self.tags = parse_tags(sel) --tags filter
-	assert(#self.tags > 0)
+	self.tags = collect(gmatch_tags(sel)) --tags filter
+	assert(next(self.tags))
 	self.filter = filter --custom filter
 end
 
@@ -349,9 +345,6 @@ local function has_all_tags(needed_tags, tags)
 end
 
 function ui.selector:selects(elem)
-	if #self.tags > #elem.tags then
-		return false --selector too specific
-	end
 	if not has_all_tags(self.tags, elem.tags) then
 		return false
 	end
@@ -426,7 +419,7 @@ end
 function ui.stylesheet:_gather_attrs(elem)
 	local st = {} --{sel1, ...}
 	local checked = {} --{sel -> true}
-	for _,tag in ipairs(elem.tags) do
+	for tag in pairs(elem.tags) do
 		local selectors = self.tags[tag]
 		if selectors then
 			for _,sel in ipairs(selectors) do
@@ -561,8 +554,9 @@ ui.type['^y$'] = 'number'
 ui.type['^w$'] = 'number'
 ui.type['^h$'] = 'number'
 ui.type['^rotation$'] = 'number'
-ui.type['^rotation_cx$'] = 'number'
-ui.type['^rotation_cy$'] = 'number'
+ui.type['^_cx$'] = 'number'
+ui.type['^_cy$'] = 'number'
+ui.type['^opacity$'] = 'number'
 
 --transition animations ------------------------------------------------------
 
@@ -704,21 +698,27 @@ ui.element.line_spacing = 1
 
 --tags & styles
 
+local function add_tags(tags, t)
+	for tag in gmatch_tags(tags) do
+		t[tag] = true
+	end
+end
+
 function ui.element:after_init(ui, t)
 	self.ui = ui
 
 	local class_tags = self.tags
-	local tags = {'*'} --TODO: array part now superfluous
-	parse_tags(class_tags, tags)
-	push(tags, self.classname)
-	push(tags, self.id)
-	parse_tags(t.tags, tags)
-	for i,tag in ipairs(tags) do
-		tags[tag] = true
+	local tags = {['*'] = true}
+	add_tags(class_tags, tags)
+	tags[self.classname] = true
+	if self.id then
+		tags[self.id] = true
 	end
+	add_tags(t.tags, tags)
 	self.tags = tags
 	self._instance_attrs = t --TODO: how to integrate this with css?
 	self:update_styles()
+
 	update(self, t)
 	self.tags = tags
 end
@@ -727,24 +727,14 @@ function ui.element:_addtags(s)
 	self.tags = self.tags and self.tags .. ' ' .. s or s
 end
 
-function ui.element:_settag(tag, set)
-	if not set == not self.tags[tag] then return end
-	self.tags[tag] = set or nil
-	if set then
-		push(self.tags, tag)
-	else
-		pop(self.tags, assert(indexof(tag, self.tags)))
-	end
-end
-
 function ui.element:settags(s)
 	for op, tag in s:gmatch'([-+~]?)([^%s]+)' do
 		if op == '' or op == '+' then
-			self:_settag(tag, true)
+			self.tags[tag] = true
 		elseif op == '-' then
-			self:_settag(tag, false)
+			self.tags[tag] = false
 		elseif op == '~' then
-			self:_settag(tag, not self.tags[tag])
+			self.tags[tag] = not self.tags[tag]
 		end
 	end
 	if self:update_styles() then
@@ -1005,28 +995,44 @@ end
 
 ui.layer = oo.layer(ui.element)
 
-ui.layer._z_order = 0
 ui.layer.clipping = true
-ui.layer.rotation = 0
-ui.layer.rotation_cx = 0
-ui.layer.rotation_cy = 0
-ui.layer.x = 0
-ui.layer.y = 0
 ui.layer.border_width = 0
+ui.layer.opacity = 1
+ui.layer._z_order = 0
+ui.layer._rotation = 0
+ui.layer._rotation_cx = 0
+ui.layer._rotation_cy = 0
+ui.layer._x = 0
+ui.layer._y = 0
 
 function ui.layer:after_init(ui, t)
 	if self.parent then return end
 	self.window:add_layer(self)
 	self._added = true
-	self.matrix = cairo.matrix()
-	self.inv_matrix = cairo.matrix()
-	self:_set_matrix()
+	self._matrix = cairo.matrix()
+	self._inv_matrix = cairo.matrix()
+	self._matrix_valid = false
 end
 
-function ui.layer:set_rotation(rotation)
-	self.__state.rotation = rotation
-	self:_set_matrix()
+local function getset(attr)
+	local uattr = '_'..attr
+	ui.layer['get'..uattr] = function(self)
+		return self[uattr]
+	end
+	ui.layer['set'..uattr] = function(self, val)
+		self[uattr] = val
+		self._matrix_valid = false
+		--self:invalidate() --TODO: call invalidate on basically all field changes
+	end
+	assert(ui.layer.__getters[attr])
 end
+getset'x'
+getset'y'
+getset'w'
+getset'h'
+getset'rotation_cx'
+getset'rotation_cy'
+getset'rotation'
 
 function ui.layer:get_z_order()
 	return self._z_order
@@ -1040,12 +1046,21 @@ function ui.layer:set_z_order(z_order)
 	end
 end
 
-function ui.layer:_set_matrix()
-	local m, im = self.matrix, self.inv_matrix
-	m:reset():translate(self.x, self.y)
-	m:rotate_around(self.rotation_cx, self.rotation_cy,
-		math.rad(self.rotation))
-	im:reset(m):invert()
+function ui.layer:_get_matrix()
+	if not self._matrix_valid then
+		local m, im = self._matrix, self._inv_matrix
+		m:reset():translate(self.x, self.y)
+		m:rotate_around(self.rotation_cx, self.rotation_cy,
+			math.rad(self.rotation))
+		im:reset(m):invert()
+		self._matrix_valid = true
+	end
+	return self._matrix
+end
+
+function ui.layer:_get_inv_matrix()
+	self:_get_matrix()
+	return self._inv_matrix
 end
 
 function ui.layer:pos()
@@ -1061,11 +1076,11 @@ function ui.layer:rect()
 end
 
 function ui.layer:to_screen(x, y)
-	return self.matrix:point(x, y)
+	return self:_get_matrix():point(x, y)
 end
 
 function ui.layer:from_screen(x, y)
-	return self.inv_matrix:point(x, y)
+	return self:_get_inv_matrix():point(x, y)
 end
 
 function ui.layer:mouse_pos()
@@ -1123,13 +1138,21 @@ function ui.layer:draw_inside() end --stub
 
 function ui.layer:after_draw()
 	if not self.visible then return end
+	if self.opacity <= 0 then return end
 	local dr = self.window.dr
 
-	dr.cr:save()
-	dr.cr:matrix(self.matrix)
+	local cr = dr.cr
+	cr:save()
+	cr:matrix(self:_get_matrix())
 	if self.clipping then
-		dr.cr:rectangle(box2d.offset(self.border_width, 0, 0, self.w, self.h))
-		dr.cr:clip()
+		cr:rectangle(box2d.offset(self.border_width, 0, 0, self.w, self.h))
+		cr:clip()
+	end
+
+	local opacity = self.opacity
+	local compose = opacity < 1
+	if compose then
+		cr:push_group()
 	end
 
 	if self.background_color then
@@ -1140,25 +1163,14 @@ function ui.layer:after_draw()
 		dr:border(0, 0, self.w, self.h, self.border_color, self.border_width)
 	end
 
-	--[[
-	dr.cr:rotate(math.rad(self.rotation))
-	if self.clipping then
-		dr:push_cliprect(self.x, self.y, self.w, self.h)
-	else
-		dr:push_translate(self.x, self.y)
-	end
-	]]
-
 	self:draw_inside()
 
-	--[[
-	if self.clipping then
-		dr:pop_cliprect()
-	else
-		dr:pop_translate()
+	if compose then
+		cr:pop_group_to_source()
+		cr:paint_with_alpha(opacity)
 	end
-	]]
-	dr.cr:restore()
+
+	cr:restore()
 end
 
 --the `hot` property and tag which is automatically set
@@ -1270,14 +1282,26 @@ ui.scrollbar:_addtags'scrollbar'
 ui.scrollbar.step = 1
 ui.scrollbar.thickness = 20
 ui.scrollbar.min_width = 0
-ui.scrollbar.autohide = false
+ui.scrollbar.autohide = true
 ui.scrollbar.background_color = '#222'
 ui.scrollbar.grabber_background_color = '#444'
+ui.scrollbar.opacity = 0
 
 ui:style('scrollbar', {
 	transition_background_color = true,
 	transition_duration = 0.5,
 	transition_ease = 'expo out',
+
+	transition_opacity = true,
+	transition_delay_opacity = 0.5,
+	transition_duration_opacity = 1,
+})
+
+ui:style('scrollbar near', {
+	opacity = 1,
+	transition_opacity = true,
+	transition_duration_opacity = 0.5,
+	transition_delay_opacity = 0,
 })
 
 ui:style('scrollbar hot', {
@@ -1328,9 +1352,40 @@ local function bar_segment(w, size, i, minw)
 	return bx, bw
 end
 
+function ui.scrollbar:hit_test_near(mx, my)
+	return 1 - clamp(math.abs(self.vertical and mx or my), 0, 100) / 100 > 0
+end
+
 function ui.scrollbar:after_init(ui, t)
 	self.offset = client_offset_clamp(self.offset or 0, self.size,
 		self.vertical and self.h or self.w, self.step)
+
+	self.window:on('mousemove.'..tostring(self), function(win, mx, my)
+		local mx, my = self:from_screen(mx, my)
+		local near = self:hit_test_near(mx, my)
+		if near and not self._to1 then
+			self._to1 = true
+			self._to0 = false
+			self:settags'near'
+		elseif not near and not self._to0 then
+			self._to0 = true
+			self._to1 = false
+			self:settags'-near'
+		end
+		self:invalidate()
+	end)
+
+	self.window:on('mouseleave.'..tostring(self), function(win, mx, my)
+		if not self._to0 then
+			self._to0 = true
+			self._to1 = false
+			self:settags'-near'
+		end
+	end)
+end
+
+function ui.scrollbar:before_free()
+	self.window:off('.'..tostring(self))
 end
 
 function ui.scrollbar:grabbar_rect()
@@ -1345,7 +1400,7 @@ function ui.scrollbar:grabbar_rect()
 	return bx, by, bw, bh
 end
 
-function ui.scrollbar:mousedown(button, mx, my)
+function ui.scrollbar:after_mousedown(button, mx, my)
 	if button == 'left' and not self._grab then
 		local bx, by, bw, bh = self:grabbar_rect()
 		if self:hit(bx, by, bw, bh) then
@@ -1355,34 +1410,33 @@ function ui.scrollbar:mousedown(button, mx, my)
 	end
 end
 
-function ui.scrollbar:mouseup(button, mx, my)
+function ui.scrollbar:after_mouseup(button, mx, my)
 	if button == 'left' and self._grab then
 		self._grab = false
 		self.active = false
 	end
 end
 
-function ui.scrollbar:mousemove(mx, my)
-	if not self._grab then return end
-	local offset = self.offset
-	local bx, by, bw, bh = self:grabbar_rect()
-	if self.vertical then
-		local by = bar_offset_clamp(my - self._grab, self.h, bh)
-		self.offset = client_offset(by, self.h, bh, self.size, self.step)
-	else
-		local bx = bar_offset_clamp(mx - self._grab, self.w, bw)
-		self.offset = client_offset(bx, self.w, bw, self.size, self.step)
-	end
-	if self.offset ~= offset then
-		self:invalidate()
+function ui.scrollbar:after_mousemove(mx, my)
+	if self._grab then
+		local offset = self.offset
+		local bx, by, bw, bh = self:grabbar_rect()
+		if self.vertical then
+			local by = bar_offset_clamp(my - self._grab, self.h, bh)
+			self.offset = client_offset(by, self.h, bh, self.size, self.step)
+		else
+			local bx = bar_offset_clamp(mx - self._grab, self.w, bw)
+			self.offset = client_offset(bx, self.w, bw, self.size, self.step)
+		end
+		if self.offset ~= offset then
+			self:fire('changed', self.offset, offset)
+			self:invalidate()
+		end
 	end
 end
 
 function ui.scrollbar:draw_inside()
 	local dr = self.window.dr
-	if self.autohide and not self._grab and not self.hot then
-		return
-	end
 	local bx, by, bw, bh = self:grabbar_rect()
 	--	if bw < w or bh < h then
 	dr:rect(bx, by, bw, bh, self.grabber_background_color)
@@ -1453,6 +1507,8 @@ end
 
 if not ... then
 
+jit.off(true, true)
+
 local nw = require'nw'
 local app = nw:app()
 local win = app:window{x = 940, y = 400, w = 800, h = 400}
@@ -1511,10 +1567,16 @@ ui:style('vscrollbar', {
 	transition_duration = 1,
 })
 
-local s1 = win:hscrollbar{x = 10, y = 100, w = 200, h = 20, size = 300}
-local s2 = win:vscrollbar{x = 250, y = 10, w = 20, h = 200, size = 300}
+local s1 = win:hscrollbar{id = 's1', x = 10, y = 100, w = 200, h = 20, size = 1000}
+local s2 = win:vscrollbar{id = 's2', x = 250, y = 10, w = 20, h = 200, size = 500}
 
 ui:style('window hot', {background_color = '#080808'})
+
+function s1:changed(i)
+	--s2.rotation = i
+	--s2.opacity = lerp(i, 0, 1000, 0, 1)
+	s2:invalidate()
+end
 
 app:run()
 
