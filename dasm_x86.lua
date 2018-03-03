@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 -- DynASM x86/x64 module.
 --
--- Copyright (C) 2005-2015 Mike Pall. All rights reserved.
+-- Copyright (C) 2005-2017 Mike Pall. All rights reserved.
 -- See dynasm.lua for full copyright notice.
 ------------------------------------------------------------------------------
 
@@ -1023,6 +1023,7 @@ end
 --   "u"       Use VEX encoding, vvvv unused.
 --   "v"/"V"   Use VEX encoding, vvvv from 1st/2nd operand (the operand is
 --             removed from the list used by future characters).
+--   "w"       Use VEX encoding, vvvv from 3rd operand.
 --   "L"       Force VEX.L
 --
 -- All of the following characters force a flush of the opcode:
@@ -1316,8 +1317,6 @@ local map_op = {
   andnps_2 =	"rmo:0F55rM",
   andpd_2 =	"rmo:660F54rM",
   andps_2 =	"rmo:0F54rM",
-  fxsave_1 =	"x.:0FAE0m",
-  fxrstor_1 =	"x.:0FAE1m",
   clflush_1 =	"x.:0FAE7m",
   cmppd_3 =	"rmio:660FC2rMU",
   cmpps_3 =	"rmio:0FC2rMU",
@@ -1743,6 +1742,28 @@ local map_op = {
   vpsravd_3 =	"rrmoy:660F38V46rM",
   vpsrlvd_3 =	"rrmoy:660F38V45rM",
   vpsrlvq_3 =	"rrmoy:660F38VX45rM",
+
+  -- Intel ADX
+  adcx_2 =	"rmqd:660F38F6rM",
+  adox_2 =	"rmqd:F30F38F6rM",
+
+  -- BMI1
+  andn_3 =	"rrmqd:0F38VF2rM",
+  bextr_3 =	"rmrqd:0F38wF7rM",
+  blsi_2 =	"rmqd:0F38vF33m",
+  blsmsk_2 =	"rmqd:0F38vF32m",
+  blsr_2 =	"rmqd:0F38vF31m",
+  tzcnt_2 =	"rmqdw:F30FBCrM",
+
+  -- BMI2
+  bzhi_3 =	"rmrqd:0F38wF5rM",
+  mulx_3 =	"rrmqd:F20F38VF6rM",
+  pdep_3 =	"rrmqd:F20F38VF5rM",
+  pext_3 =	"rrmqd:F30F38VF5rM",
+  rorx_3 =	"rmSqd:F20F3AuF0rMS",
+  sarx_3 =	"rmrqd:F30F38wF7rM",
+  shrx_3 =	"rmrqd:F20F38wF7rM",
+  shlx_3 =	"rmrqd:660F38wF7rM",
 }
 
 ------------------------------------------------------------------------------
