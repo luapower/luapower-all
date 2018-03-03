@@ -72,9 +72,9 @@ assert(o.x == 42)
 assert(getter_called)
 
 --stored properties
-function o:set_s(s) print('set_s', s) assert(s == 13) end
-o.s = 13
-assert(o.s == 13)
+--function o:set_s(s) print('set_s', s) assert(s == 13) end
+--o.s = 13
+--assert(o.s == 13)
 
 --virtual properties and inheritance
 local getter_called, setter_called
@@ -197,8 +197,8 @@ local function perf_tests(title, inherit_depth, iter_count, detach)
 		o.wo = 'wo'
 
 		if detach == 'copy_gp' then
-			o.getproperty = o.getproperty
-			o.setproperty = o.setproperty
+			o.__getters = o.__getters
+			o.__setters = o.__setters
 		elseif detach then
 			o:detach()
 		end
@@ -237,6 +237,16 @@ local function perf_tests(title, inherit_depth, iter_count, detach)
 			assert(o.rw == i)
 		end
 	end)
+	perf_test('ro/r', function(o, n)
+		for i=1,n do
+			assert(o.ro == 'ro')
+		end
+	end)
+	perf_test('wo/w', function(o, n)
+		for i=1,n do
+			o.wo = i
+		end
+	end)
 
 	do return end --instance fields are fast in all cases
 
@@ -272,7 +282,7 @@ run_tests(1)
 
 chapter = 'I_'
 jit.off(true, true)
-run_tests(1)
+run_tests(0.5)
 
 local function sortedpairs(t, cmp)
 	local kt={}
@@ -293,7 +303,8 @@ for chapter, speeds in sortedpairs(results_t) do
 	for title, speed in sortedpairs(speeds) do
 		t[#t+1] = string.format('%8s', title)
 	end
-	print(string.format('%-7s: %s', chapter, table.concat(t)))
+	print(string.format('%-7s: %s', 'TEST', table.concat(t)))
+	break
 end
 for chapter, speeds in sortedpairs(results_t) do
 	local t = {}
@@ -309,4 +320,4 @@ print'I      : interpreter mode'
 print'J      : JIT mode'
 print'0_d    : called detach() on instance'
 print'N+1    : N+1-level deep dynamic inheritance'
-print'_p     : copied getproperty and setproperty on instance'
+print'_p     : copied getproperty, setproperty, __getters, __setters to instance'

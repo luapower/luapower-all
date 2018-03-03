@@ -36,69 +36,24 @@ function meta.__call(o,...)
 	return o:create(...)
 end
 
-function meta.__index(o,k)
-	--some keys are not virtualizable to avoid infinite recursion,
-	--but they are dynamically inheritable nonetheless.
-	if k == 'getproperty' or k == '__getters' or k == '__setters' then
-		local super = rawget(o, 'super')
-		return super and super[k]
-	elseif k == 'super' then --'super' is not even inheritable
-		return nil
-	end
-	return o:getproperty(k)
-end
-
-function meta.__newindex(o,k,v)
-	o:setproperty(k,v)
-end
-
-local function noop() end
-local function pass(...) return end
-
-function Object:before(method_name, hook)
-	local method = self[method_name] or pass
-	rawset(self, method_name, function(self, ...)
-		hook(self, ...)
-		return method(self, ...)
-	end)
-end
-
-function Object:after(method_name, hook)
-	local method = self[method_name] or pass
-	rawset(self, method_name, function(self, ...)
-		method(self, ...)
-		return hook(self, ...)
-	end)
-end
-
-function Object:override(method_name, hook)
-	local method = self[method_name] or noop
-	rawset(self, method_name, function(self, ...)
-		return hook(self, method, ...)
-	end)
-end
-
-function Object:getproperty(k)
+--note: this is the perf. bottleneck of the entire module.
+function meta:__index(k)
 	if type(k) == 'string' then
-		local getters = self.__getters
-		local get = getters and getters[k]
-		if get then --virtual property
-			return get(self, k)
-		else
-			local setters = self.__setters
-			local set = setters and setters[k]
-			if set then --stored property
-				local state = rawget(self, '__state')
-				if state then
-					return state[k]
-				end
+		--some keys are not virtualizable to avoid infinite recursion,
+		--but they are dynamically inheritable nonetheless.
+		if k ~= '__getters' and k ~= '__setters' then
+			if k == 'super' then --'super' is not even inheritable
+				return nil
+			end
+			local getters = self.__getters
+			local get = getters and getters[k]
+			if get then --virtual property
+				return get(self, k)
 			end
 		end
 	end
 	local super = rawget(self, 'super')
-	if super then --inherited property
-		return super[k]
-	end
+	return super and super[k] --inherited property
 end
 
 local function create_table(t, k)
@@ -116,25 +71,20 @@ local function create_table(t, k)
 	return v
 end
 
-function Object:setproperty(k,v)
+function meta:__newindex(k,v)
 	if type(k) ~= 'string' then
 		rawset(self, k, v)
+		return
+	end
+	local setters = self.__setters
+	local set = setters and setters[k]
+	if set then --r/w property
+		set(self, v)
+		return
 	end
 	local getters = self.__getters
-	local setters = self.__setters
 	local get = getters and getters[k]
-	local set = setters and setters[k]
-	if get and set then --r/w property
-		set(self, v)
-	elseif set then --stored property
-		local state = rawget(self, '__state')
-		if not state then
-			state = {}
-			rawset(self, '__state', state)
-		end
-		set(self, v) --if the setter breaks, the property is not updated
-		state[k] = v
-	elseif get then --r/o property
+	if get then --r/o property
 		error(string.format('trying to set read only property "%s"', k))
 	elseif k:find'^get_' then --install getter
 		local getters = create_table(self, '__getters')
@@ -154,6 +104,59 @@ function Object:setproperty(k,v)
 	else
 		rawset(self, k, v)
 	end
+end
+
+local function install(self, combine, method_name, hook)
+	if method_name:find'^get_' then
+		local prop = method_name:sub(5)
+		local method = combine(self.__getters and self.__getters[prop], hook)
+		self[method_name] = method
+	elseif method_name:find'^set_' then
+		local prop = method_name:sub(5)
+		local method = combine(self.__setters and self.__setters[prop], hook)
+		self[method_name] = method
+	else
+		rawset(self, method_name, combine(self[method_name], hook))
+	end
+end
+
+local function before(method, hook)
+	if method then
+		return function(self, ...)
+			hook(self, ...)
+			return method(self, ...)
+		end
+	else
+		return hook
+	end
+end
+function Object:before(method_name, hook)
+	install(self, before, method_name, hook)
+end
+
+local function after(method, hook)
+	if method then
+		return function(self, ...)
+			method(self, ...)
+			return hook(self, ...)
+		end
+	else
+		return hook
+	end
+end
+function Object:after(method_name, hook)
+	install(self, after, method_name, hook)
+end
+
+local function noop() return end
+local function override(method, hook)
+	local method = method or noop
+	return function(self, ...)
+		return hook(self, method, ...)
+	end
+end
+function Object:override(method_name, hook)
+	install(self, override, method_name, hook)
 end
 
 function Object:is(class)
@@ -346,8 +349,7 @@ end
 local function pad(s, n) return s..(' '):rep(n - #s) end
 
 local props_conv = {g = 'r', s = 'w', gs = 'rw', sg = 'rw'}
-local oo_state_fields = {super=1, __getters=1, __setters=1, __state=1,
-	__observers=1}
+local oo_state_fields = {super=1, __getters=1, __setters=1, __observers=1}
 
 function Object:inspect(show_oo)
 	local glue = require'glue'

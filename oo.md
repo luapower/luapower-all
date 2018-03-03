@@ -26,10 +26,6 @@ Object system with virtual properties and method overriding hooks.
 	  `Apple.set_foo` is defined.
    * missing the setter, the property is considered read-only and the
 	  assignment fails.
- * stored properties (no getter):
-   * assignment to `Apple.foo` calls `Apple:set_foo(value)` and sets
-	  `Apple.__state.foo`.
-   * reading `Apple.foo` reads back `Apple.__state.foo`.
  * method overriding hooks:
    * `function Apple:before_pick(args...) end` makes `Apple:pick()` call the
 	code inside `before_pick()` first.
@@ -144,9 +140,9 @@ minor detail of setting `self.classname = self.classname` and removing
 `self.super`.
 
 __NOTE:__ Detaching instances _or final classes_ helps preventing LuaJIT from
-bailing out to the interpreter which can result in 100-1000x performance drop.
-In interpreter mode, detaching instances increases performance for method
-lookup by 10x (see benchmarks).
+bailing out to the interpreter which can result in 100x performance drop.
+Even in interpreter mode, detaching instances can increase performance for
+method lookup by 10x (see benchmarks).
 
 You can do this easily with:
 
@@ -191,34 +187,13 @@ obj.answer_to_life = 42
 assert(obj.answer_to_life == 42) --assuming deep_thought can store a number
 ~~~
 
-**Stored properties** are virtual properties with a setter but no getter.
-The values of those properties are stored in the table `self.__state` upon
-assignment of the property and read back upon indexing the property.
-If the setter breaks, the value is not stored.
-
-~~~{.lua}
-function cls:set_answer_to_life(v) deep_thought:set_answer(v) end
-obj = cls()
-obj.answer_to_life = 42
-assert(obj.answer_to_life == 42) --we return the stored the number
-assert(obj.__state.answer_to_life == 42) --which we stored here
-~~~
-
-Virtual and inherited properties are all read by calling
-`self:getproperty(name)`. Virtual and real properties are written to with
-`self:setproperty(name, value)`. You can override these methods for
-*finer control* over the behavior of virtual and inherited properties.
-
 Virtual properties can be *generated in bulk* given a _multikey_ getter and
 a _multikey_ setter and a list of property names, by calling
 `self:gen_properties(names, getter, setter)`. The setter and getter must be
 methods of form:
 
-  * `self:getter(k) -> v`
-  * `self:setter(k, v)`
-
-> __NOTE:__ The fields `getproperty` and the fields starting with `get_` and
-`set_` are not themselves virtualizable in order to avoid infinite recursion.
+  * `getter(self, k) -> v`
+  * `setter(self, k, v)`
 
 ## Overriding hooks
 
