@@ -1474,14 +1474,15 @@ Method that will be fired when `event_name` is fired, before other handlers.
 Call `func` when `event` is fired. Multiple functions can be attached
 to the same event: they are called in the order in which they were added.
 
-`event` can be `'event_name'` or `'event_name.namespace'`, which tags the
-handler with a namespace (which is just a convenience to aid in bulk removal
-of events).
+`event` can be `'event_name'`, `'event_name.namespace'` or
+`{event_name, namespace}`, which tags the handler with a namespace (which is
+just a convenience to aid in bulk removal of events).
 
 ### `app/win/view:off(event)`
 
 Remove all handlers associated with an event name and/or namespace.
-`event` can be `'event_name'`, `'.namespace'` or `'event_name.namespace'`.
+`event` can be `'event_name'`, `'.namespace'`, `'event_name.namespace'`,
+`{event_name, namespace}` or `nil/false` which removes all events.
 
 ### `app/win/view:fire(event, ...) -> ret`
 

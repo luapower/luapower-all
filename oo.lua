@@ -276,7 +276,10 @@ end
 --events
 
 local function event_namespace(event) --parse 'event', 'event.ns' or '.ns'
-	local ev, ns = event:match'^([^%.]*)%.([^%.]+)$'
+	if type(event) == 'table' then
+		return unpack(event)
+	end
+	local ev, ns = event:match'^([^%.]*)%.(.*)$'
 	ev = ev or event
 	if ev == '' then ev = nil end
 	return ev, ns
@@ -322,6 +325,8 @@ function Object:off(event)
 		for _,t_ev in pairs(self.__observers) do
 			remove_all_ns(t_ev, ns)
 		end
+	else
+		self.__observers = nil
 	end
 end
 

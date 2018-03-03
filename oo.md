@@ -20,28 +20,29 @@ Object system with virtual properties and method overriding hooks.
    * `Apple:detach()` - detach from the parent class, in other words
 	  statically inherit `self.super`.
  * virtual properties with getter and setter:
-   * reading `Apple.foo` calls `Apple:get_foo()` to get the value, if
-	  `Apple.get_foo` is defined.
-   * assignment to `Apple.foo` calls `Apple:set_foo(value)` if
+   * reading `apple.foo` calls `Apple:get_foo()` to get the value, if
+	  `apple.get_foo` is defined.
+   * assignment to `apple.foo` calls `Apple:set_foo(value)` if
 	  `Apple.set_foo` is defined.
    * missing the setter, the property is considered read-only and the
 	  assignment fails.
  * method overriding hooks:
-   * `function Apple:before_pick(args...) end` makes `Apple:pick()` call the
+   * `function Apple:before_pick(args...) end` makes `apple:pick()` call the
 	code inside `before_pick()` first.
-   * `function Apple:after_pick(args...) end` makes `Apple:pick()` call the
+   * `function Apple:after_pick(args...) end` makes `apple:pick()` call the
 	code inside `after_pick()` last.
    * `function Apple:override_pick(inherited, ...)` lets you override
 	  `Apple:pick()` and call `inherited(self, ...)`.
  * virtual classes: nested inner classes which can overriden in subclasses
- of the outer class (see below).
+ of the outer class (more below).
  * events with optional namespace tags:
-   * `Apple:on('falling.ns1', function(self, args...) ... end)` - register
+   * `apple:on('falling.ns1', function(self, args...) ... end)` - register
 	  an event handler
 	* `Apple:falling(args...)` - default event handler for the `falling` event
-	* `Apple:fire('falling', args...)` - call all `falling` event handlers
-	* `Apple:off'falling'` - remove all `falling` event handlers
-	* `Apple:off'.ns1'` - remove all event handlers on the `ns1` namespace
+	* `apple:fire('falling', args...)` - call all `falling` event handlers
+	* `apple:off'falling'` - remove all `falling` event handlers
+	* `apple:off'.ns1'` - remove all event handlers on the `ns1` namespace
+	* `apple:off() - remove all event handlers registered on `apple`
  * introspection:
    * `self:is(class|classname) -> true|false` - check instance/class ancestry
    * `self:allpairs() -> iterator() -> name, value, source` - iterate all
@@ -298,8 +299,9 @@ Events are for associating actions with functions. Events facts:
   call chain and the value is returned back by `fire()`.
 * all uninterrupted events fire the `event` meta-event which inserts the
   event name as arg#1.
-* events can be namespace-tagged with `'event.ns'`: namespsaces are useful
-  for easy bulk event removal with `obj:off'.ns'`.
+* events can be namespace-tagged with `'event.ns'` or `{event, ns}`:
+  namespsaces are useful for easy bulk event removal with `obj:off'.ns'`
+  or `obj:off({nil, ns})`.
 * multiple handlers can be added for the same event and/or namespace.
 * handlers are stored as `self.__observers[event] = {handler1, ...}`.
 
