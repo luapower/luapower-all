@@ -37,7 +37,7 @@ __iterators__
 `glue.collect([i,] iterator) -> t`                                 collect iterated values into a list
 __closures__
 `glue.pass(...) -> ...`                                            does nothing, returns back all arguments
-`glue.memoize(f [,cache]) -> f`                                    memoize pattern
+`glue.memoize(f) -> f`                                             memoize pattern
 __metatables__
 `glue.inherit(t, parent) -> t`                                     set or clear inheritance
 `glue.object([super][, t]) -> t`                                   create a class or object (see description)
@@ -418,9 +418,9 @@ end
 
 ------------------------------------------------------------------------------
 
-### `glue.memoize(f[,cache]) -> f`
+### `glue.memoize(f) -> f`
 
-Memoization for functions with any number of arguments and one return value.
+Memoization for functions with any number of arguments and _one return value_.
 Supports nil and NaN args and retvals.
 
 Guarantees to only call the original function _once_ for the same combination
@@ -428,10 +428,6 @@ of arguments, with special attention to the vararg part of the function,
 if any. For instance, for a function `f(x, y, ...)`, calling `f(1)` is
 considered the same as calling `f(1, nil)`, but calling `f(1, nil)` is not
 the same as calling `f(1, nil, nil)`.
-
-
-> __NOTE__: Memoization of vararg functions or functions with more than two
-arguments require the [tuple] module.
 
 ------------------------------------------------------------------------------
 

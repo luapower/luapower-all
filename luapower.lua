@@ -331,13 +331,24 @@ end
 --memoize function that cannot have its cache cleared.
 local memoize_permanent = glue.memoize
 
---memoize of 1 and 2 arg functions, where the first arg is always a package
---name. cache on those functions can be cleared for individual packages.
-local pkg_caches = {} --{func = {pkg = val}}
+--memoize for functions where the first arg is an optional package name.
+--cache on those functions can be cleared for individual packages.
+local pkg_caches = {} --{func -> {pkg -> val}}
+local nilkey = {}
 function memoize_package(func)
-	local info = debug.getinfo(func)
-	assert(not info.isvararg and info.nparams >= 1 and info.nparams <= 2)
-	return glue.memoize(func, glue.attr(pkg_caches, func))
+	local cache = {}
+	pkg_caches[func] = cache
+	return function(pkg, ...)
+		local k = pkg == nil and nilkey or pkg
+		local fn = cache[k]
+		if not fn then
+			fn = glue.memoize(function(...)
+				return func(pkg, ...)
+			end)
+			cache[k] = fn
+		end
+		return fn(...)
+	end
 end
 
 --generic memoize that can only have its entire cache cleared.

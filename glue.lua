@@ -547,74 +547,81 @@ end
 
 --memoize for 1 and 2-arg and vararg and 1 retval functions.
 --NOTE: cache layouts differ for each type of memoization.
---NOTE: vararg functions require the tuple module.
-local function memoize0(func) --for strict no-arg functions
-	local v, hasv
+local function memoize0(fn) --for strict no-arg functions
+	local v, stored
 	return function()
-		if not hasv then
-			v, hasv = func(), true
+		if not stored then
+			v = fn(); stored = true
 		end
 		return v
 	end
 end
-local NIL = {}
-local NAN = {}
-local function memoize1(func, cache) --for strict single-arg functions
-	cache = cache or {}
-	return function(k)
-		local sk = k ~= k and NAN or k == nil and NIL or k
-		local v = cache[sk]
+local nilkey = {}
+local nankey = {}
+local function memoize1(fn) --for strict single-arg functions
+	local cache = {}
+	return function(arg)
+		local k = arg == nil and nilkey or arg ~= arg and nankey or arg
+		local v = cache[k]
 		if v == nil then
-			v = func(k)
-			cache[sk] = v == nil and NIL or v
+			v = fn(arg); cache[k] = v == nil and nilkey or v
 		else
-			if v == NIL then v = nil end
+			if v == nilkey then v = nil end
 		end
 		return v
 	end
 end
-local function memoize2(func, cache) --for strict two-arg functions
-	cache = cache or {}
-	return function(k1, k2)
-		local sk1 = k1 ~= k1 and NAN or k1 == nil and NIL or k1
-		local cache2 = cache[sk1]
+local function memoize2(fn) --for strict two-arg functions
+	local cache = {}
+	return function(a1, a2)
+		local k1 = a1 ~= a1 and nankey or a1 == nil and nilkey or a1
+		local cache2 = cache[k1]
 		if cache2 == nil then
 			cache2 = {}
-			cache[sk1] = cache2
+			cache[k1] = cache2
 		end
-		local sk2 = k2 ~= k2 and NAN or k2 == nil and NIL or k2
-		local v = cache2[sk2]
+		local k2 = a2 ~= a2 and nankey or a2 == nil and nilkey or a2
+		local v = cache2[k2]
 		if v == nil then
-			v = func(k1, k2)
-			cache2[sk2] = v == nil and NIL or v
+			v = fn(a1, a2)
+			cache2[k2] = v == nil and nilkey or v
 		else
-			if v == NIL then v = nil end
+			if v == nilkey then v = nil end
 		end
 		return v
 	end
 end
-local function memoize_vararg(func, narg, cache) --for vararg functions
-	local tuple = require'tuple'.space(true)
-	cache = cache or {}
+local function memoize_vararg(fn, nparams)
+	local cache = {}
+	local values = {}
 	return function(...)
-		local n = max(narg, select('#', ...))
-		local k = tuple.narg(n, ...)
-		local v = cache[k]
-		if not v then
-			v = func(k())
-			cache[k] = v
+		local key = cache
+		local nparams = max(nparams, select('#',...))
+		for i = 1, nparams do
+			local a = select(i,...)
+			local k = a ~= a and nankey or a == nil and nilkey or a
+			local t = key[k]
+			if not t then
+				t = {}; key[k] = t
+			end
+			key = t
 		end
+		local v = values[key]
+		if v == nil then
+			v = fn(...); values[key] = v == nil and nilkey or v
+		end
+		if v == nilkey then v = nil end
 		return v
 	end
 end
 local memoize_narg = {[0] = memoize0, memoize1, memoize2}
-function glue.memoize(func, cache)
-	local info = debug.getinfo(func)
+function glue.memoize(func)
+	local info = debug.getinfo(func, 'u')
 	local memoize_narg = memoize_narg[info.nparams]
 	if info.isvararg or not memoize_narg then
-		return memoize_vararg(func, info.nparams, cache)
+		return memoize_vararg(func, info.nparams)
 	else
-		return memoize_narg(func, cache)
+		return memoize_narg(func)
 	end
 end
 
