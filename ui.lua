@@ -2,6 +2,8 @@
 --extensible UI toolkit with layouts, styles and animations.
 --Written by Cosmin Apreutesei. Public Domain.
 
+if not ... then require'ui_demo'; return end
+
 local oo = require'oo'
 local glue = require'glue'
 local tuple = require'tuple'
@@ -22,6 +24,11 @@ local lerp = glue.lerp
 local clamp = glue.clamp
 local assert = glue.assert
 local collect = glue.collect
+
+local function popval(t, v)
+	local i = indexof(v, t)
+	return i and pop(t, i)
+end
 
 local function str(s)
 	return type(s) == 'string' and glue.trim(s) or nil
@@ -440,7 +447,7 @@ function ui.stylesheet:_gather_attrs(elem)
 	return t
 end
 
-local transition_fields = {delay=1, duration=1, ease=1}
+local transition_fields = {delay=1, duration=1, ease=1, speed=1}
 
 local null = {}
 local function encode_nil(x) return x == nil and null or x end
@@ -448,11 +455,6 @@ local function decode_nil(x) if x == null then return nil end; return x; end
 
 function ui.stylesheet:update_element(elem)
 	local attrs = self:_gather_attrs(elem)
-
-	--gather global transition values
-	local duration = attrs.transition_duration or 0
-	local ease = attrs.transition_ease
-	local delay = attrs.transition_delay or 0
 
 	--gather transition-enabled attrs
 	local tr
@@ -490,6 +492,12 @@ function ui.stylesheet:update_element(elem)
 		return rt
 	end
 
+	--gather global transition values
+	local duration = attrs.transition_duration or 0
+	local ease = attrs.transition_ease
+	local delay = attrs.transition_delay or 0
+	local speed = attrs.transition_speed or 1
+
 	--set all attribute values into elem via transition().
 	local changed = false
 	for attr, val in pairs(attrs) do
@@ -498,7 +506,8 @@ function ui.stylesheet:update_element(elem)
 			local duration = attrs['transition_duration_'..attr] or duration
 			local ease = attrs['transition_ease_'..attr] or ease
 			local delay = attrs['transition_delay_'..attr] or delay
-			elem:transition(attr, val, duration, ease, delay)
+			local speed = attrs['transition_speed_'..attr] or speed
+			elem:transition(attr, val, duration / speed, ease, delay)
 			changed = true
 		elseif not attr:find'^transition_' then
 			rt = save(elem, attr, rt)
@@ -508,6 +517,12 @@ function ui.stylesheet:update_element(elem)
 	end
 
 	return changed
+end
+
+function ui.stylesheet:update_style(style)
+	for _,elem in ipairs(self._elements) do
+		--TODO:
+	end
 end
 
 function ui:style(sel, attrs)
@@ -632,6 +647,27 @@ function ui:after_init()
 	self._element_index = self:element_index()
 end
 
+function ui:_add_element(elem)
+	push(self._elements, elem)
+	self._element_index:add_element(elem)
+end
+
+function ui:_remove_element(elem)
+	popval(self._elements, elem)
+	self._element_index:remove_element(elem)
+end
+
+function ui:_find_elements(sel, elems)
+	local elems = elems or self._elements
+	local res = self.element_list()
+	for i,elem in ipairs(elems) do
+		if sel:selects(elem) then
+			push(res, elem)
+		end
+	end
+	return res
+end
+
 function ui.element_index:after_init(ui)
 	self.ui = ui
 end
@@ -646,20 +682,10 @@ end
 
 function ui.element_index:find_elements(sel)
 	--TODO
-	return self.ui:_find_elements(sel, self._elements)
+	return self.ui:_find_elements(sel)
 end
 
 ui.element_list = oo.element_list(ui.object)
-
-function ui:_find_elements(sel, elems)
-	local res = self.element_list()
-	for i,elem in ipairs(elems) do
-		if sel:selects(elem) then
-			push(res, elem)
-		end
-	end
-	return res
-end
 
 function ui.element_list:each(f)
 	for i,elem in ipairs(self) do
@@ -707,6 +733,8 @@ end
 function ui.element:after_init(ui, t)
 	self.ui = ui
 
+	self.ui:_add_element(self)
+
 	local class_tags = self.tags
 	local tags = {['*'] = true}
 	add_tags(class_tags, tags)
@@ -721,6 +749,11 @@ function ui.element:after_init(ui, t)
 
 	update(self, t)
 	self.tags = tags
+end
+
+function ui.element:after_free()
+	self.ui:_remove_element(self)
+	self.ui = nil
 end
 
 function ui.element:_addtags(s)
@@ -749,9 +782,9 @@ end
 --animated attribute transitions
 
 function ui.element:transition(attr, val, duration, ease, delay)
-	if duration <= 0 then
+	if not duration or duration <= 0 then
 		if self._transitions then
-			self._transitions[attr] = nil --remove transition on attr if any
+			self._transitions[attr] = nil --remove existing transition on attr
 		end
 		self[attr] = val --set attr directly
 	else --set attr with transition
@@ -777,6 +810,174 @@ function ui.element:draw()
 	if invalidate then
 		self:invalidate(true)
 	end
+end
+
+--layer lists ----------------------------------------------------------------
+
+ui.layer_list = oo.layer_list(ui.element)
+
+--layer management
+
+function ui.layer_list:_sort_layers()
+	table.sort(self._layers, function(a, b)
+		return a.z_order < b.z_order
+	end)
+end
+
+function ui.layer_list:add_layer(layer)
+	push(self._layers, layer)
+	self:_sort_layers()
+end
+
+function ui.layer_list:remove_layer(layer)
+	popval(self._layers, layer)
+end
+
+function ui.layer_list:_free_layers()
+	for _,layer in ipairs(self._layers) do
+		layer:free()
+	end
+end
+
+--mouse events routing to layers. hit-testing is based on layer's `z_order`.
+--mouseenter/mouseleave events are based on `hot_widget` and `active_widget`.
+--mouse events are given relative to widget's (x, y).
+
+function ui.layer_list:hit_test_layer(x, y)
+	for i = #self._layers, 1, -1 do
+		local layer = self._layers[i]
+		if layer:hit_test(x, y) then
+			return layer
+		end
+	end
+end
+
+function ui.layer_list:_set_hot_widget(widget, mx, my)
+	if self.hot_widget == widget then
+		return
+	end
+	if self.hot_widget then
+		self.hot_widget:fire'mouseleave'
+	end
+	if widget then
+		--the hot widget is still the old widget when entering the new widget
+		widget:_mouseenter(mx, my)
+	end
+	self.hot_widget = widget
+end
+
+function ui.layer_list:_set_hot_window(hot)
+	self.hot = hot
+	self:settags(hot and 'hot' or '-hot')
+end
+
+function ui.layer_list:_mousemove(mx, my)
+	if self.mouse_x == mx and self.mouse_y == my then
+		return
+	end
+	self.mouse_x = mx
+	self.mouse_y = my
+	self:fire('mousemove', mx, my)
+	local widget = self.active_widget
+	if widget then
+		widget:_mousemove(mx, my)
+	end
+	if not self.active_widget then
+		local widget = self:hit_test_layer(mx, my)
+		self:_set_hot_widget(widget, mx, my)
+		self:_set_hot_window(not widget)
+		if widget then
+			widget:_mousemove(mx, my)
+		end
+	end
+end
+
+function ui.layer_list:_mouseenter(mx, my)
+	self:fire('mouseenter', mx, my)
+	self:_mousemove(mx, my)
+end
+
+function ui.layer_list:_mouseleave()
+	self.mouse_x = false
+	self.mouse_y = false
+	self:fire'mouseleave'
+	local widget = self.active_widget
+	if widget then
+		widget:_mouseleave()
+	end
+	self:_set_hot_widget(false)
+	self:_set_hot_window(false)
+end
+
+
+function ui.layer_list:_mousedown(button, mx, my)
+	self.mouse_x = mx
+	self.mouse_y = my
+	self:fire('mousedown', button, mx, my)
+	local widget = self.active_widget
+	if widget then
+		widget:_mousedown(button, mx, my)
+	end
+	if not self.active_widget then
+		local widget = self:hit_test_layer(mx, my)
+		self:_set_hot_widget(widget, mx, my)
+		self:_set_hot_window(not widget)
+		if widget then
+			widget:_mousedown(button, mx, my)
+		end
+	end
+end
+
+function ui.layer_list:_mouseup(button, mx, my)
+	self.mouse_x = mx
+	self.mouse_y = my
+	self:fire('mouseup', button, mx, my)
+	local widget = self.active_widget
+	if widget then
+		widget:_mouseup(button, mx, my)
+	end
+	if not self.active_widget then
+		local widget = self:hit_test_layer(mx, my)
+		self:_set_hot_widget(widget, mx, my)
+		self:_set_hot_window(not widget)
+		if widget then
+			widget:_mouseup(button, mx, my)
+		end
+	end
+end
+
+--rendering layers
+
+function ui.layer_list:after_draw()
+	if not self.visible then return end
+	self.dr:rect(self.x, self.y, self.w, self.h, self.background_color)
+	for i = 1, #self._layers do
+		local layer = self._layers[i]
+		layer:draw()
+	end
+end
+
+--widget-like
+
+function ui.layer_list:invalidate(for_animation)
+	if not self.visible then return end
+	self.window:invalidate()
+end
+
+function ui.layer_list:rect()
+	return self.x, self.y, self.w, self.h
+end
+
+function ui.layer_list:pos()
+	return self.x, self.y
+end
+
+function ui.layer_list:size()
+	return self.w, self.h
+end
+
+function ui.layer_list:frame_clock()
+	return self._frame_clock
 end
 
 --windows --------------------------------------------------------------------
@@ -827,14 +1028,17 @@ function ui.window:after_init(ui, t)
 end
 
 function ui.window:free()
+	self:_free_layers()
+	self.hot_widget = false
+	self.active_widget = false
 	self.dr:free()
 	self.window:off'.ui'
-	self.window = nil
+	self.window = false
 end
 
 --layer management
 
-function ui.window:sort_layers()
+function ui.window:_sort_layers()
 	table.sort(self._layers, function(a, b)
 		return a.z_order < b.z_order
 	end)
@@ -842,12 +1046,17 @@ end
 
 function ui.window:add_layer(layer)
 	push(self._layers, layer)
-	self:sort_layers()
+	self:_sort_layers()
 end
 
 function ui.window:remove_layer(layer)
-	local i = indexof(layer, self._layers)
-	if i then pop(self._layers, i) end
+	popval(self._layers, layer)
+end
+
+function ui.window:_free_layers()
+	for _,layer in ipairs(self._layers) do
+		layer:free()
+	end
 end
 
 --mouse events routing to layers. hit-testing is based on layer's `z_order`.
@@ -1008,10 +1217,16 @@ ui.layer._y = 0
 function ui.layer:after_init(ui, t)
 	if self.parent then return end
 	self.window:add_layer(self)
-	self._added = true
+	self._added = true --TODO: remove this
 	self._matrix = cairo.matrix()
 	self._inv_matrix = cairo.matrix()
 	self._matrix_valid = false
+end
+
+function ui.layer:free()
+	self.window:remove_layer(self)
+	self.window = false
+	self._added = false
 end
 
 local function getset(attr)
@@ -1041,8 +1256,8 @@ end
 function ui.layer:set_z_order(z_order)
 	if self.parent then return end
 	self._z_order = z_order
-	if self._added then
-		self.window:sort_layers()
+	if self._added then --TODO: remove this hack
+		self.window:_sort_layers()
 	end
 end
 
@@ -1306,10 +1521,12 @@ ui:style('scrollbar near', {
 
 ui:style('scrollbar hot', {
 	grabber_background_color = '#ccc',
+	transition_grabber_background_color = true,
 })
 
 ui:style('scrollbar active', {
 	grabber_background_color = '#fff',
+	transition_grabber_background_color = true,
 	transition_duration = 0.2,
 })
 
@@ -1353,39 +1570,28 @@ local function bar_segment(w, size, i, minw)
 end
 
 function ui.scrollbar:hit_test_near(mx, my)
-	return 1 - clamp(math.abs(self.vertical and mx or my), 0, 100) / 100 > 0
+	return true --stub
 end
 
 function ui.scrollbar:after_init(ui, t)
 	self.offset = client_offset_clamp(self.offset or 0, self.size,
 		self.vertical and self.h or self.w, self.step)
 
-	self.window:on('mousemove.'..tostring(self), function(win, mx, my)
+	self.window:on({'mousemove', self}, function(win, mx, my)
 		local mx, my = self:from_screen(mx, my)
-		local near = self:hit_test_near(mx, my)
-		if near and not self._to1 then
-			self._to1 = true
-			self._to0 = false
-			self:settags'near'
-		elseif not near and not self._to0 then
-			self._to0 = true
-			self._to1 = false
-			self:settags'-near'
-		end
-		self:invalidate()
+		self:_autohide_mousemove(mx, my)
 	end)
 
-	self.window:on('mouseleave.'..tostring(self), function(win, mx, my)
-		if not self._to0 then
-			self._to0 = true
-			self._to1 = false
-			self:settags'-near'
-		end
+	self.window:on({'mouseleave', self}, function(win, mx, my)
+		self:_autohide_mouseleave()
 	end)
+	if not self.autohide then
+		self:_autohide_mousemove()
+	end
 end
 
 function ui.scrollbar:before_free()
-	self.window:off('.'..tostring(self))
+	self.window:off{nil, self}
 end
 
 function ui.scrollbar:grabbar_rect()
@@ -1398,6 +1604,27 @@ function ui.scrollbar:grabbar_rect()
 		by, bh = 0, self.h
 	end
 	return bx, by, bw, bh
+end
+
+function ui.scrollbar:_autohide_mousemove(mx, my)
+	local near = not self.autohide or self:hit_test_near(mx, my)
+	if near and not self._to1 then
+		self._to1 = true
+		self._to0 = false
+		self:settags'near'
+	elseif not near and not self._to0 then
+		self._to0 = true
+		self._to1 = false
+		self:settags'-near'
+	end
+end
+
+function ui.scrollbar:_autohide_mouseleave()
+	if self.autohide and not self._to0 then
+		self._to0 = true
+		self._to1 = false
+		self:settags'-near'
+	end
 end
 
 function ui.scrollbar:after_mousedown(button, mx, my)
@@ -1438,8 +1665,9 @@ end
 function ui.scrollbar:draw_inside()
 	local dr = self.window.dr
 	local bx, by, bw, bh = self:grabbar_rect()
-	--	if bw < w or bh < h then
-	dr:rect(bx, by, bw, bh, self.grabber_background_color)
+	if bw < self.w or bh < self.h then
+		dr:rect(bx, by, bw, bh, self.grabber_background_color)
+	end
 end
 
 ui.hscrollbar = ui.scrollbar
@@ -1460,20 +1688,24 @@ end
 
 ui.scrollbox = oo.scrollbox(ui.layer)
 
-ui:style('scrollbox', {
-	vscroll = 'always',
-	hscroll = 'always',
-	scroll_width = 20,
-	page_size = 120,
-})
+ui.scrollbox.vscroll = 'always'
+ui.scrollbox.hscroll = 'always'
+ui.scrollbox.scroll_width = 20
+ui.scrollbox.page_size = 120
+
+function ui.window:scrollbox(t)
+	t.window = self
+	return self.ui:scrollbox(t)
+end
 
 function ui.scrollbox:after_init(ui, t)
-	self.scroll_width = t.scroll_width or self.scroll_width
-	self.vscroll_width = t.vscroll_width or self.vscroll_width or self.scroll_width
-	self.hscroll_width = t.hscroll_width or self.hscroll_width or self.scroll_width
-	self.vscroll_step = t.vscroll_step or self.vscroll_step
-	self.hscroll_step = t.hscroll_step or self.hscroll_step
-	self.page_size = t.page_size or self.page_size
+
+end
+
+function ui.scrollbox:draw_inside()
+
+	--local cx, cy, cw, ch = self.child:
+	do return end
 
 	local need_vscroll = vscroll == 'always'
 		or (vscroll == 'auto' and ch > h -
@@ -1501,87 +1733,6 @@ function ui.scrollbox:after_init(ui, t)
 	return
 		cx, cy,     --client area coordinates, relative to the clipping rectangle
 		x, y, w, h  --clipping rectangle, in absolute coordinates
-end
-
-
-
-if not ... then
-
-jit.off(true, true)
-
-local nw = require'nw'
-local app = nw:app()
-local win = app:window{x = 940, y = 400, w = 800, h = 400}
-local ui = ui()
-
-ui:style('*', {
-	custom_all = 11,
-})
-
-ui:style('button', {
-	custom_field = 42,
-})
-
-ui:style('button b1', {
-	custom_and = 13,
-})
-
-ui:style('b1', {
-	custom_and = 16, --comes later: overwrite (no specificity)
-})
-
-ui:style('button', {
-	custom_and = 22, --comes later: overwrite (no specificity)
-})
-
-ui:style('p1 > p2 > b1', {
-	custom_parent = 54, --comes later: overwrite (no specificity)
-})
-
-local win = ui:window{window = win}
-
-local p1 = ui:element{name = 'p1', tags = 'p1'}
-local p2 = ui:element{name = 'p2', tags = 'p2', parent = p1}
-local b1 = win:button{parent = p2, name = 'b1', tags = 'b1', ctl = ctl, x = 10, y = 10, w = 100, h = 26}
-local b2 = win:button{parent = p2, name = 'b2', tags = 'b2', ctl = ctl, x = 20, y = 20, w = 100, h = 26}
-local sel = ui:selector('p1 > p2 > b1')
-assert(sel:selects(b1) == true)
-print('b1.custom_all', b1.custom_all)
-print('b2.custom_all', b2.custom_all)
-print('b1.custom_field', b1.custom_field)
-print('b1.custom_and', b1.custom_and)
-print('b2.custom_and', b2.custom_and)
---print('b2.custom_and', b2.custom_and)
-
---ui:style('button', {h = 26})
-
-local b1 = win:button{name = 'b1', tags = 'b1', text = 'B1', ctl = ctl, x = 10, y = 10, w = 100, h = 26}
-local b2 = win:button{name = 'b2', tags = 'b2', text = 'B2', ctl = ctl, x = 20, y = 50, w = 100, h = 26}
-b1.z_order = 2
-
-ui:style('vscrollbar', {
-	rotation = 180 + 30,
-	rotation_cx = 10,
-	rotation_cy = 100,
-	transition_rotation = true,
-	transition_duration = 1,
-})
-
-local s1 = win:hscrollbar{id = 's1', x = 10, y = 100, w = 200, h = 20, size = 1000}
-local s2 = win:vscrollbar{id = 's2', x = 250, y = 10, w = 20, h = 200, size = 500}
-
-ui:style('window hot', {background_color = '#080808'})
-
-function s1:changed(i)
-	--s2.rotation = i
-	--s2.opacity = lerp(i, 0, 1000, 0, 1)
-	s2:invalidate()
-end
-
-app:run()
-
-ui:free()
-
 end
 
 return ui
