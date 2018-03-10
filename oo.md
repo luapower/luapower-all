@@ -44,6 +44,7 @@ Object system with virtual properties and method overriding hooks.
 	* `apple:off'.ns1'` - remove all event handlers on the `ns1` namespace
 	* `apple:off() - remove all event handlers registered on `apple`
  * introspection:
+   * `oo.is(obj, class|classname) -> true|false` - check instance/class ancestry
    * `self:is(class|classname) -> true|false` - check instance/class ancestry
    * `self:allpairs() -> iterator() -> name, value, source` - iterate all
 	  properties, including inherited _and overriden_ ones.
@@ -117,6 +118,8 @@ assert(obj.the_answer == 42)
 another class or instance, effectively *monkey-patching* `self`, optionally
 overriding properties with the same name. The fields `self.classname` and
 `self.super` are always preserved though, even with the `override` flag.
+
+`other` can also be a plain table, in which case it is shallow-copied.
 
 ~~~{.lua}
 local other_cls = oo.class()

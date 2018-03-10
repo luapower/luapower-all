@@ -18,6 +18,14 @@ local function class(super,...)
 	return (super or Object):subclass(...)
 end
 
+local function is(obj, class)
+	if type(obj) == 'table' and type(obj.is) == 'function' then
+		return obj:is(class)
+	else
+		return false
+	end
+end
+
 function Object:subclass()
 	return setmetatable({super = self, classname = ''}, getmetatable(self))
 end
@@ -170,14 +178,6 @@ function Object:is(class)
 	end
 end
 
-local function is(class, obj)
-	if type(obj) == 'table' and type(obj.is) == 'function' then
-		return obj:is(class)
-	else
-		return false
-	end
-end
-
 --returns iterator<k,v,source>; iterates bottom-up in the inheritance chain
 function Object:allpairs()
 	local source = self
@@ -226,6 +226,14 @@ local function copy_table(dst, src, k, override)
 end
 
 function Object:inherit(other, override)
+	if not is(other, Object) then --plain table, treat is as mixin
+		for k,v in pairs(other) do
+			if override or self[k] == nil then
+				self[k] = v --not rawsetting so that meta-methods apply
+			end
+		end
+		return
+	end
 	other = other or rawget(self, 'super')
 	local properties = other:properties()
 	for k,v in pairs(properties) do
