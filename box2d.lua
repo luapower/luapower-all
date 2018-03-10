@@ -312,6 +312,11 @@ end
 --box bounding box
 
 local function bounding_box(x1, y1, w1, h1, x3, y3, w2, h2)
+	if w1 == 0 or h1 == 0 then
+		return x3, y3, w2, h2
+	elseif w2 == 0 or h2 == 0 then
+		return x1, y1, w1, h1
+	end
 	local x2 = x1 + w1
 	local y2 = y1 + h1
 	local x4 = x3 + w2
