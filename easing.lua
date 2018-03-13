@@ -63,6 +63,11 @@ function easing.sine  (t) return -math.cos(t * (math.pi * .5)) + 1 end
 function easing.circ  (t) return -(math.sqrt(1 - t^2) - 1) end
 function easing.back  (t) return t^2 * (2.7 * t - 1.7) end
 
+function easing.steps (t, steps)
+	steps = steps or 10
+	return math.floor(t * steps) / (steps - 1)
+end
+
 -- a: amplitude, p: period
 function easing.elastic(t, a, p)
 	if t == 0 then return 0 end

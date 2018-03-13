@@ -470,7 +470,6 @@ local dwbuf = ffi.new'DWORD[1]'
 
 function file.read(f, buf, sz)
 	local ok = C.ReadFile(f.handle, buf, sz, dwbuf, nil) ~= 0
-	--print(sz, ok, file_seek(f, 1, 0), file_getsize(f))
 	if not ok then return check() end
 	return dwbuf[0]
 end

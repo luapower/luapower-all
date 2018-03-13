@@ -188,6 +188,43 @@ function fs.isfile(f)
 	return ffi.istype(file_ct, f)
 end
 
+--returns a read(buf, sz) -> sz function which reads ahead from file
+function file.buffered_read(f, ctype, bufsize)
+	local elem_ct = ffi.typeof(ctype or 'char')
+	local ptr_ct = ffi.typeof('$*', elem_ct)
+	assert(ffi.sizeof(elem_ct) == 1)
+	local buf_ct = ffi.typeof('$[?]', elem_ct)
+	local bufsize = bufsize or 4096
+	local buf = buf_ct(bufsize)
+	local ofs, len = 0, 0
+	local eof = false
+	return function(dst, sz)
+		local rsz = 0
+		while sz > 0 do
+			if len == 0 then
+				if eof then
+					return 0
+				end
+				ofs = 0
+				local len1, err, errcode = f:read(buf, bufsize)
+				if not len1 then return nil, err, errcode end
+				len = len1
+				if len == 0 then
+					eof = true
+					return rsz
+				end
+			end
+			local n = math.min(sz, len)
+			ffi.copy(ffi.cast(ptr_ct, dst) + rsz, buf + ofs, n)
+			ofs = ofs + n
+			len = len - n
+			rsz = rsz + n
+			sz = sz - n
+		end
+		return rsz
+	end
+end
+
 --stdio streams --------------------------------------------------------------
 
 cdef[[

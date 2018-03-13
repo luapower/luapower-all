@@ -164,7 +164,7 @@ __message__          __description__
 Open/create a file for reading and/or writing. The second arg can be a string:
 
 ------- ------------------------------------------------------------------------
-`r`     open; allow reading only
+`r`     open; allow reading only (default)
 `w`     open and truncate or create; allow writing only
 `r+`    open or create; allow reading and writing
 `w+`    open and trucate or create; allow reading and writing
