@@ -102,7 +102,7 @@ __transformations__
 `cr:skew(ax, ay) -> cr`                                             skew the user-space
 `cr:transform(mt) -> cr`                                            [transform the user-space][cairo_transform]
 `cr:safe_transform(mt) -> cr`                                       transform the user-space if the matrix is invertible
-`cr:matrix(mt) /-> mt`                                              [get/set the CTM][cairo_set_matrix]
+`cr:matrix(mt[, out_mt]) /-> mt`                                    [get/set the CTM][cairo_set_matrix]
 `cr:identity_matrix() -> cr`                                        [reset the CTM][cairo_identity_matrix]
 `cr:user_to_device(x, y) -> x, y`                                   [user to device (point)][cairo_user_to_device]
 `cr:user_to_device_distance(x, y) -> x, y`                          [user to device (distance)][cairo_user_to_device_distance]

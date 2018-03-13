@@ -1386,13 +1386,14 @@ function cr:circle(cx, cy, r)
 	self:close_path()
 end
 
+local mt0
 function cr:ellipse(cx, cy, rx, ry, rotation)
-	local mt = self:matrix()
+	mt0 = self:matrix(nil, mt0)
 	self:translate(cx, cy)
 	if rotation then self:rotate(rotation) end
 	self:scale(1, ry/rx)
 	self:circle(0, 0, rx)
-	self:matrix(mt)
+	self:matrix(mt0)
 end
 
 function cr:quad_curve_to(x1, y1, x2, y2)
