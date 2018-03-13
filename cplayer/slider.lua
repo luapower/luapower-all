@@ -34,8 +34,11 @@ function player:slider(t)
 		if self.lbutton then
 			local w1 = clamp(self.mousex - x, 0, w)
 			i = lerp(w1, 0, w, i0, i1)
-			i = snap(i, step)
 			i = clamp(i, i0, i1)
+			i = snap(i, step)
+			if i < i0 then
+				i = snap(i + step, step)
+			end
 		else
 			self.active = nil
 		end
