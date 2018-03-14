@@ -207,13 +207,16 @@ end
 --all we're doing is shifting the out arg from arg#1 to arg#2 after self so that
 --disambiguation between get and set actions can continue to work yet we can still
 --be able to give an output buffer in arg#2 for the get action.
-local function getter(outfunc)
-	return function(self, _, out)
-		return outfunc(self, out)
+local function getter_func(out_func)
+	return function(func)
+		local func = out_func(func)
+		return function(self, _, out)
+			return func(self, out)
+		end
 	end
 end
-mtout_getfunc = getter(mtout_func)
-foptout_getfunc = getter(foptout_func)
+local mtout_getfunc = getter_func(mtout_func)
+local foptout_getfunc = getter_func(foptout_func)
 
 local function check_status(status)
 	if status ~= 0 then
@@ -1616,8 +1619,6 @@ ffi.metatype('cairo_device_t', {__index = dev})
 ffi.metatype('cairo_surface_t', {__index = sr})
 ffi.metatype('cairo_pattern_t', {__index = patt})
 ffi.metatype('cairo_matrix_t', {__index = mt,
-	__tostring = mt.tostring,
-	__eq = mt.equal,
 	__call = mt.point,
 	__mul = function(mt1, mt2) return mt1:copy():multiply(mt2) end,
 })
