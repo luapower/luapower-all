@@ -1405,7 +1405,7 @@ local function elliptic_arc_func(arc)
 			if self:has_current_point() then
 				self:line_to(cx, cy)
 			end
-		elseif rx ~= ry or rotation ~= 0 then
+		elseif rx ~= ry or (rotation and rotation ~= 0) then
 			self:save()
 			self:translate(cx, cy)
 			self:rotate(rotation)
