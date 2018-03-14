@@ -1396,6 +1396,27 @@ function cr:ellipse(cx, cy, rx, ry, rotation)
 	self:matrix(mt0)
 end
 
+local function elliptic_arc_func(arc)
+	return function(self, cx, cy, rx, ry, rotation, a1, a2)
+		if rx == 0 or ry == 0 then
+			if self:has_current_point() then
+				self:line_to(cx, cy)
+			end
+		elseif rx ~= ry or rotation ~= 0 then
+			self:save()
+			self:translate(cx, cy)
+			self:rotate(rotation)
+			self:scale(rx / ry, 1)
+			arc(self, 0, 0, ry, a1, a2)
+			self:restore()
+		else
+			arc(self, cx, cy, ry, a1, a2)
+		end
+	end
+end
+cr.elliptic_arc = elliptic_arc_func(cr.arc)
+cr.elliptic_arc_negative = elliptic_arc_func(cr.arc_negative)
+
 function cr:quad_curve_to(x1, y1, x2, y2)
 	local x0, y0 = self:current_point()
 	self:curve_to((x0 + 2 * x1) / 3,

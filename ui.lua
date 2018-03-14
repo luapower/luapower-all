@@ -17,6 +17,7 @@ local cairo = require'cairo'
 
 local push = table.insert
 local pop = table.remove
+
 local indexof = glue.indexof
 local update = glue.update
 local attr = glue.attr
@@ -102,65 +103,15 @@ function dr:_setcolor(color)
 	self.cr:rgba(self.ui:color(color))
 end
 
-function dr:fillstroke(fill_color, stroke_color, line_width)
-	local cr = self.cr
-	if fill_color then
-		self:_setcolor(fill_color)
-		if stroke_color then
-			cr:fill_preserve()
-		else
-			cr:fill()
-		end
-	end
-	if stroke_color then
-		self:_setcolor(stroke_color)
-		cr:line_width(line_width)
-		cr:stroke()
-	end
+function dr:fill(fill_color)
+	self:_setcolor(fill_color)
+	self.cr:fill_preserve()
 end
 
---paths
-
-local kappa = 4 / 3 * (math.sqrt(2) - 1)
-local qrad = math.pi / 2
-
---draw a 90deg-arc. q=1 is top-left quarter going clockwise.
-local function qarc(cr, cx, cy, rx, ry, q, k)
-	if k == 1 then
-		if rx ~= ry then
-			cr:save()
-			cr:scale(rx / ry, 1)
-		end
-		cr:arc(cx, cy, ry, (q - 3) * qrad, (q - 2) * qrad)
-		if rx ~= ry then
-			cr:restore()
-		end
-	else
-		--draw a better-looking arc that is not really circular.
-		cr:save()
-		cr:translate(cx, cy)
-		cr:rotate((q - 2) * qrad)
-		local k = r * kappa * k
-		--TODO: rx, ry
-		cr:curve_to(k, -r, r, -k, r, 0)
-		cr:restore()
-	end
-end
-
-function dr:round_rect_path(x, y, w, h,
-	r1x, r1y, r2x, r2y, r3x, r3y, r4x, r4y,
-	k
-)
-	local cr = self.cr
-	local x1, y1, x2, y2 = x, y, x + w, y + h
-	if x1 > x2 then x2, x1 = x1, x2 end
-	if y1 > y2 then y2, y1 = y1, y2 end
-	cr:move_to(x1, y1+r1y)
-	qarc(cr, x1+r1x, y1+r1y, r1x, r1y, 1, k); cr:line_to(x2-r2x, y1)
-	qarc(cr, x2-r2x, y1+r2y, r2x, r2y, 2, k); cr:line_to(x2, y2-r3y)
-	qarc(cr, x2-r3x, y2-r3y, r3x, r3y, 3, k); cr:line_to(x1+r4x, y2)
-	qarc(cr, x1+r4x, y2-r4y, r4x, r4y, 4, k)
-	cr:close_path()
+function dr:stroke(stroke_color, line_width)
+	self:_setcolor(stroke_color)
+	self.cr:line_width(line_width)
+	self.cr:stroke_preserve()
 end
 
 --text
@@ -1011,7 +962,7 @@ function ui.window:rect() return 0, 0, self.w, self.h end
 function ui.window:size() return self.w, self.h end
 
 function ui.window:bounding_box()
-	return box2d.bound_box(0, 0, self.w, self.h, self.layer:bounding_box())
+	return box2d.bounding_box(0, 0, self.w, self.h, self.layer:bounding_box())
 end
 
 --layers ---------------------------------------------------------------------
@@ -1201,7 +1152,7 @@ getset'scale_cy'
 function ui.layer:_check_matrix()
 	if self._matrix_valid then return end
 	local m, im = self._matrix, self._inverse_matrix
-	local ox, oy = self:to_origin(0, 0)
+	local ox, oy = self:from_origin(0, 0)
 	m:reset()
 		:translate(self.x, self.y)
 		:rotate_around(self.rotation_cx, self.rotation_cy,
@@ -1222,53 +1173,57 @@ function ui.layer:get_inverse_matrix()
 	return self._inverse_matrix
 end
 
+--convert point from self content space to parent content space.
 function ui.layer:to_parent(x, y)
 	return self.matrix:point(x, y)
 end
 
+--convert point from parent content space to self content space.
 function ui.layer:from_parent(x, y)
 	return self.inverse_matrix:point(x, y)
 end
 
---box model geometry (borders, background, padding, clipping)
+--geometry in rect() space (borders, background, padding, clipping)
 
---border edge offsets relative to rect() at a particular stroke width offset.
---offset is in -1..1 in stroke's width, -1=inner edge, 0=center, 1=outer edge.
-function ui.layer:_border_edge_offsets_top_left(offset)
+--border edge widths relative to rect() at %-offset in border width.
+--offset is in -1..1 where -1=inner edge, 0=center, 1=outer edge.
+--returned widths are positive when inside and negative when outside rect().
+function ui.layer:_border_edge_widths_top_left(offset)
 	local o = self.border_offset + offset + 1
 	return
 		lerp(o, -1, 1, self.border_width_left, 0),
 		lerp(o, -1, 1, self.border_width_top, 0)
 end
 
-function ui.layer:_border_edge_offsets_bottom_right(offset)
+function ui.layer:_border_edge_widths_bottom_right(offset)
 	local o = self.border_offset + offset + 1
 	return
 		lerp(o, -1, 1, self.border_width_right, 0),
 		lerp(o, -1, 1, self.border_width_bottom, 0)
 end
 
-function ui.layer:border_pos(offset) --relative to rect()
-	return self:_border_edge_offsets_top_left(offset)
+function ui.layer:border_pos(offset)
+	return self:_border_edge_widths_top_left(offset)
 end
 
-function ui.layer:border_rect(offset) --relative to rect()
-	local w1, h1 = self:_border_edge_offsets_top_left(offset)
-	local w2, h2 = self:_border_edge_offsets_bottom_right(offset)
+--border rect at %-offset in border width.
+function ui.layer:border_rect(offset)
+	local w1, h1 = self:_border_edge_widths_top_left(offset)
+	local w2, h2 = self:_border_edge_widths_bottom_right(offset)
 	local w = self.w - w2 - w1
 	local h = self.h - h2 - h1
 	return w1, h1, w, h
 end
 
-function ui.layer:padding_pos() --relative to rect()
-	local x, y = self:border_pos(-1) --inner widths
+function ui.layer:padding_pos()
+	local x, y = self:border_pos(-1) --inner edge
 	return
 		x + self.padding_left,
 		y + self.padding_top
 end
 
-function ui.layer:padding_rect() --relative to rect()
-	local x, y, w, h = self:border_rect(-1) --inner widths
+function ui.layer:padding_rect()
+	local x, y, w, h = self:border_rect(-1) --inner edge
 	return
 		x + self.padding_left,
 		y + self.padding_top,
@@ -1276,7 +1231,181 @@ function ui.layer:padding_rect() --relative to rect()
 		h - self.padding_top - self.padding_bottom
 end
 
-function ui.layer:to_origin(x, y) --in content space
+--corner radius at pixel offset from the stroke's center on one dimension.
+local function offset_radius(r, o)
+	return r > 0 and math.max(0, r + o) or 0
+end
+
+--border rect at %-offset in border width, plus radii of rounded corners.
+function ui.layer:border_round_rect(offset)
+	local k = self.border_radius_kappa
+
+	local r1 = self.border_radius_top_left
+	local r2 = self.border_radius_top_right
+	local r3 = self.border_radius_bottom_right
+	local r4 = self.border_radius_bottom_left
+
+	local x1, y1, w, h = self:border_rect(0) --border at stroke center
+	local X1, Y1, W, H = self:border_rect(offset) --border at given offset
+
+	local x2, y2 = x1 + w, y1 + h
+	local X2, Y2 = X1 + W, Y1 + H
+
+	--offset radii to preserve curvature.
+	local r1x = offset_radius(r1, x1-X1)
+	local r1y = offset_radius(r1, y1-Y1)
+	local r2x = offset_radius(r2, X2-x2)
+	local r2y = offset_radius(r2, y1-Y1)
+	local r3x = offset_radius(r3, X2-x2)
+	local r3y = offset_radius(r3, Y2-y2)
+	local r4x = offset_radius(r4, x1-X1)
+	local r4y = offset_radius(r4, Y2-y2)
+
+	--remove degenerate radii.
+	if r1x == 0 or r1y == 0 then r1x = 0; r1y = 0 end
+	if r2x == 0 or r2y == 0 then r2x = 0; r2y = 0 end
+	if r3x == 0 or r3y == 0 then r3x = 0; r3y = 0 end
+	if r4x == 0 or r4y == 0 then r4x = 0; r4y = 0 end
+
+	--adjust overlapping radii by scaling them down.
+	local maxx = math.max(r1x + r2x, r3x + r4x)
+	local maxy = math.max(r1y + r4y, r2y + r3y)
+	if maxx > W or maxy > H then
+		local wr = W / maxx
+		local hr = H / maxy
+		local scale = wr < hr and wr or hr
+		r1x = r1x * scale
+		r1y = r1y * scale
+		r2x = r2x * scale
+		r2y = r2y * scale
+		r3x = r3x * scale
+		r3y = r3y * scale
+		r4x = r4x * scale
+		r4y = r4y * scale
+	end
+
+	return
+		X1, Y1, W, H,
+		r1x, r1y, r2x, r2y, r3x, r3y, r4x, r4y,
+		k
+end
+
+local kappa = 4 / 3 * (math.sqrt(2) - 1)
+local qrad = math.pi / 2
+
+--draw an eliptic arc: q1,q2=1,2 is the entire top-left quadrant.
+local function qarc(cr, cx, cy, rx, ry, q1, q2, k)
+	local a1 = (q1 - 3) * qrad
+	local a2 = (q2 - 3) * qrad
+	if k == 1 then --geometrically-correct circle arc
+		local arc = a1 < a2 and cr.elliptic_arc or cr.elliptic_arc_negative
+		return arc(cr, cx, cy, rx, ry, 0, a1, a2)
+	elseif rx == 0 then --null arcs still need a line to the first endpoint
+		assert(ry == 0)
+		cr:line_to(cx, cy)
+	else 	--more-aesthetically-pleasing circle arc
+		local d = q1 < q2 and 1 or -1
+		local z = math.abs(q2 - q1)
+		cr:save()
+		cr:translate(cx, cy)
+		cr:rotate((q1 - 2) * qrad * d + qrad * (1 - z))
+		cr:scale(rx / ry, 1)
+		local r = ry
+		local k = r * kappa * k
+		cr:move_to(0, -r)
+		cr:curve_to(k, -r, r, -k, r, 0)
+		cr:restore()
+	end
+end
+
+function ui.layer:qarc(cx, cy, rx, ry, q1, q2, k)
+	qarc(self.window.dr.cr, cx, cy, rx, ry, q1, q2, k)
+end
+
+function ui.layer:border_path(offset)
+	local cr = self.window.dr.cr
+	local x1, y1, w, h, r1x, r1y, r2x, r2y, r3x, r3y, r4x, r4y, k =
+		self:border_round_rect(offset)
+	local x1, y1, x2, y2 = x, y, x + w, y + h
+	if x1 > x2 then x2, x1 = x1, x2 end
+	if y1 > y2 then y2, y1 = y1, y2 end
+	cr:move_to(x1, y1+r1y)
+	qarc(cr, x1+r1x, y1+r1y, r1x, r1y, 1, 2, k); cr:line_to(x2-r2x, y1) --tl
+	qarc(cr, x2-r2x, y1+r2y, r2x, r2y, 2, 3, k); cr:line_to(x2, y2-r3y) --tr
+	qarc(cr, x2-r3x, y2-r3y, r3x, r3y, 3, 4, k); cr:line_to(x1+r4x, y2) --br
+	qarc(cr, x1+r4x, y2-r4y, r4x, r4y, 4, 5, k)                         --bl
+	cr:close_path()
+end
+
+function ui.layer:draw_border() --assume content space
+	local dr = self.window.dr
+	local cr = dr.cr
+
+	local ox, oy = self:from_origin(0, 0)
+	cr:translate(ox, oy)
+
+	local x1, y1, w, h, r1x, r1y, r2x, r2y, r3x, r3y, r4x, r4y, k =
+		self:border_round_rect(-1)
+	local X1, Y1, W, H, R1X, R1Y, R2X, R2Y, R3X, R3Y, R4X, R4Y =
+		self:border_round_rect(1)
+
+	local x2, y2 = x1 + w, y1 + h
+	local X2, Y2 = X1 + W, Y1 + H
+
+	if self.border_color_left then
+		cr:new_path()
+		cr:move_to(x1, y1+r1y)
+		qarc(cr, x1+r1x, y1+r1y, r1x, r1y, 1, 1.5, k)
+		qarc(cr, X1+R1X, Y1+R1Y, R1X, R1Y, 1.5, 1, k)
+		cr:line_to(X1, Y2-R4Y)
+		qarc(cr, X1+R4X, Y2-R4Y, R4X, R4Y, 5, 4.5, k)
+		qarc(cr, x1+r4x, y2-r4y, r4x, r4y, 4.5, 5, k)
+		cr:close_path()
+		dr:fill(self.border_color_left)
+	end
+
+	if self.border_color_top then
+		cr:new_path()
+		cr:move_to(x2-r2x, y1)
+		qarc(cr, x2-r2x, y1+r2y, r2x, r2y, 2, 2.5, k)
+		qarc(cr, X2-R2X, Y1+R2Y, R2X, R2Y, 2.5, 2, k)
+		cr:line_to(X1+R1X, Y1)
+		qarc(cr, X1+R1X, Y1+R1Y, R1X, R1Y, 2, 1.5, k)
+		qarc(cr, x1+r1x, y1+r1y, r1x, r1y, 1.5, 2, k)
+		cr:close_path()
+		dr:fill(self.border_color_top)
+	end
+
+	if self.border_color_right then
+		cr:new_path()
+		cr:move_to(x2, y2-r3y)
+		qarc(cr, x2-r3x, y2-r3y, r3x, r3y, 3, 3.5, k)
+		qarc(cr, X2-R3X, Y2-R3Y, R3X, R3Y, 3.5, 3, k)
+		cr:line_to(X2, Y1+R2Y)
+		qarc(cr, X2-R2X, Y1+R2Y, R2X, R2Y, 3, 2.5, k)
+		qarc(cr, x2-r2x, y1+r2y, r2x, r2y, 2.5, 3, k)
+		cr:close_path()
+		dr:fill(self.border_color_right)
+	end
+
+	if self.border_color_bottom then
+		cr:new_path()
+		cr:move_to(x1+r4x, y2)
+		qarc(cr, x1+r4x, y2-r4y, r4x, r4y, 4, 4.5, k)
+		qarc(cr, X1+R4X, Y2-R4Y, R4X, R4Y, 4.5, 4, k)
+		cr:line_to(X2-R3X, Y2)
+		qarc(cr, X2-R3X, Y2-R3Y, R3X, R3Y, 4, 3.5, k)
+		qarc(cr, x2-r3x, y2-r3y, r3x, r3y, 3.5, 4, k)
+		cr:close_path()
+		dr:fill(self.border_color_bottom)
+	end
+
+	cr:new_path()
+end
+
+--geometry in content space (can be used inside drawing or hit-test functions)
+
+function ui.layer:from_origin(x, y)
 	local px, py = self:padding_pos()
 	return x-px, y-py
 end
@@ -1286,44 +1415,13 @@ function ui.layer:content_size()
 	return w, h
 end
 
-function ui.layer:content_rect() --in content space
+function ui.layer:content_rect()
 	local _, _, w, h = self:padding_rect()
 	return 0, 0, w, h
 end
 
 function ui.layer:get_cw() return (select(3, self:padding_rect())) end
 function ui.layer:get_ch() return (select(4, self:padding_rect())) end
-
---compute corner radius at offset in pixels from the stroke's center.
-local function offset_radius(offset, k, r)
-	if r <= 0 then return 0 end
-	local r = math.max(0, r + offset)
-	if k > 1 then
-		--NOTE: this is only an approximate empirical formula. It is needed
-		--when offsetting rectangles with rounded corners which are not perfect
-		--circle arcs (k > 1), in order to clip on the inside of the stroke.
-		r = r * lerp(offset, 0, 100, 1, 1.5)
-	end
-	return r
-end
-
---offset is in -1..1 in stroke's width, -1=inner edge, 0=center, 1=outer edge.
-function ui.layer:border_round_rect(offset)
-	local bow = -lerp(offset, -1, 1, 0, self.border_width)
-	local offset = -(self:border_inner_width() + bow)
-	local x, y = self:to_origin(0, 0)
-	local x, y, w, h = box2d.offset(offset, x, y, self.w, self.h)
-	--find the offset from the border's stroke center to compute corner radius.
-	local offset = -(self.border_width / 2 + bow)
-	local k = self.border_radius_kappa
-	return
-		x, y, w, h,
-		offset_radius(offset, k, self.border_radius_top_left),
-		offset_radius(offset, k, self.border_radius_top_right),
-		offset_radius(offset, k, self.border_radius_bottom_right),
-		offset_radius(offset, k, self.border_radius_bottom_left),
-		k
-end
 
 --child interface
 
@@ -1371,6 +1469,7 @@ function ui.layer:after_draw()
 
 	cr:matrix(cr:matrix():multiply(self.matrix)) --TOOD: sinked?
 
+	--[[
 	if self.content_clip or self.background_color then
 
 		if self.border_radius_top_left == 0
@@ -1387,7 +1486,7 @@ function ui.layer:after_draw()
 			cr:save()
 			cr:clip_preserve()
 			if self.background_clip == 'padding' then
-				cr:clear_path()
+				cr:new_path()
 				cr:rectangle(self:content_rect())
 				self:clip()
 			end
@@ -1396,30 +1495,23 @@ function ui.layer:after_draw()
 			end
 		end
 		if self.background_color then
-			dr:fillstroke(self.background_color)
+			dr:fill(self.background_color)
+			dr.cr:new_path()
 		end
 	end
+	]]
 
+	cr:save()
 	self:draw_content()
+	cr:restore()
 
+	self:draw_border()
+
+	--[[
 	if self.content_clip then
 		cr:restore()
 	end
-
-	if self.border_color and self.border_width ~= 0 then
-		local ox, oy = self:to_origin(0, 0)
-		cr:translate(ox, oy)
-		local offset = self.border_width * self.border_offset / 2
-		local x, y, w, h = box2d.offset(offset, 0, 0, self.w, self.h)
-		dr:rect_path(x, y, w, h,
-			self.border_radius_top_left,
-			self.border_radius_top_right,
-			self.border_radius_bottom_right,
-			self.border_radius_bottom_left,
-			self.border_radius_kappa
-		)
-		dr:fillstroke(nil, self.border_color, math.abs(self.border_width))
-	end
+	]]
 
 	if compose then
 		cr:pop_group_to_source()

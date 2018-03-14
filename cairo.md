@@ -119,6 +119,8 @@ __paths__
 `cr:arc_negative(cx, cy, r, a1, a2)`                                [add a negative arc to the current path][cairo_arc_negative]
 `cr:circle(cx, cy, r)`                                              add a circle to the current path
 `cr:ellipse(cx, cy, rx, ry, rotation)`                              add an ellipse to the current path
+`cr:elliptic_arc(cx, cy, rx, ry, rotation, a1, a2)`                 add an elliptic arc to the current path
+`cr:elliptic_arc_negative(cx, cy, rx, ry, rotation, a1, a2)`        add a negative elliptic arc to the current path
 `cr:rel_move_to(x, y)`                                              [move the current point][cairo_rel_move_to]
 `cr:rel_line_to(x, y)`                                              [add a line to the current path][cairo_rel_line_to]
 `cr:rel_curve_to(x1, y1, x2, y2, x3, y3)`                           [add a cubic bezier to the current path][cairo_rel_curve_to]
