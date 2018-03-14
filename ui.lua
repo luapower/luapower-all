@@ -25,25 +25,29 @@ local lerp = glue.lerp
 local clamp = glue.clamp
 local assert = glue.assert
 local collect = glue.collect
+local sortedpairs = glue.sortedpairs
 
 local function popval(t, v)
 	local i = indexof(v, t)
 	return i and pop(t, i)
 end
 
-local function str(s)
-	return type(s) == 'string' and glue.trim(s) or nil
-end
-
 local function round(x)
 	return math.floor(x + 0.5)
 end
 
-local function default(x, default)
-	if x == nil then
-		return default
+local function args4(s, convert) --parse a string of 4 non-space args
+	local a1, a2, a3, a4
+	if type(s) == 'string' then
+		a1, a2, a3, a4 = s:match'([^%s]+)%s+([^%s]+)([^%s]+)%s+([^%s]+)'
+	end
+	if not a1 then
+		a1, a2, a3, a4 = s, s, s, s
+	end
+	if convert then
+		return convert(a1), convert(a2), convert(a3), convert(a4)
 	else
-		return x
+		return a1, a2, a3, a4
 	end
 end
 
@@ -70,177 +74,6 @@ end
 
 local ui = oo.ui(object)
 ui.object = object
-
---drawing contexts -----------------------------------------------------------
-
-ui.draw = oo.draw(ui.object)
-local dr = ui.draw
-
-function dr:init(ui)
-	self.ui = ui
-end
-
---fill & stroke
-
-function ui:after_init()
-	self._colors = {} --{'#rgba' -> {r, g, b, a}}
-end
-
-function ui:color(c)
-	if type(c) == 'string' then
-		local t = self._colors[c]
-		if not t then
-			t = {color.string_to_rgba(c)}
-			self._colors[c] = t
-		end
-		return unpack(t)
-	else
-		return unpack(c)
-	end
-end
-
-function dr:_setcolor(color)
-	self.cr:rgba(self.ui:color(color))
-end
-
-function dr:fill(fill_color)
-	self:_setcolor(fill_color)
-	self.cr:fill_preserve()
-end
-
-function dr:stroke(stroke_color, line_width)
-	self:_setcolor(stroke_color)
-	self.cr:line_width(line_width)
-	self.cr:stroke_preserve()
-end
-
---text
-
-function ui:after_init()
-	self._freetype = freetype:new()
-	self._font_files = {} --{(family, weight, slant) -> file}
-	self._font_faces = {} --{file -> {ft_face=, cr_face=}}
-end
-
-function ui:before_free()
-	for _,face in pairs(self._font_faces) do
-		--can't free() it because cairo's cache is lazy.
-		--cairo will free the freetype face object on its own.
-		face.cr_face:unref()
-	end
-	self._font_faces = nil
-	--safe to free() the freetype object here because cr_face holds a reference
-	--to the FT_Library and will call FT_Done_Library() on its destructor.
-	self._freetype:free()
-end
-
-function dr:before_free()
-	self.cr:font_face(cairo.NULL)
-end
-
---override this for different ways of finding font files
-function ui:_font_file(family, weight, slant)
-	return gfonts.font_file(family, weight, slant)
-end
-
---override this for different ways of loading fonts
-function ui:_font_face(family, weight, slant)
-	local id = tuple(family, weight, slant)
-	local file = self._font_files[id]
-	if not file then
-		file = assert(self:_font_file(family, weight, slant),
-			'could not find a font for "%s, %s, %s"', family, weight, slant)
-		self._font_files[id] = file
-	end
-	local face = self._font_faces[file]
-	if not face then
-		face = {}
-		face.ft_face = self._freetype:face(file)
-		face.cr_face = assert(cairo.ft_font_face(face.ft_face))
-		self._font_faces[file] = face
-	end
-	return face
-end
-
---override this for different ways of setting a loaded font
-function dr:_setfont(family, weight, slant, size)
-	local face = self.ui:_font_face(family, weight, slant)
-	self.cr:font_face(face.cr_face)
-	self.cr:font_size(size)
-	local ext = self.cr:font_extents()
-	self._font_height = ext.height
-	self._font_descent = ext.descent
-	self._font_ascent = ext.ascent
-end
-
---multi-line self-aligned and box-aligned text
-
-function dr:_line_extents(s)
-	local ext = self.cr:text_extents(s)
-	return ext.width, ext.height, ext.y_bearing
-end
-
-function dr:textbox(x, y, w, h, s,
-	font_family, font_weight, font_slant, text_size, line_spacing, text_color,
-	halign, valign)
-
-	self:_setfont(font_family, font_weight, font_slant, text_size)
-	self:_setcolor(text_color)
-
-	self.cr:save()
-	self.cr:rectangle(x, y, w, h)
-	self.cr:clip()
-
-	local cr = self.cr
-
-	local line_h = self._font_height * line_spacing
-
-	if halign == 'right' then
-		x = w
-	elseif not halign or halign == 'center' then
-		x = round(w / 2)
-	else
-		x = 0
-	end
-
-	if valign == 'top' then
-		y = self._font_ascent
-	else
-		local lines_h = 0
-		for _ in glue.lines(s) do
-			lines_h = lines_h + line_h
-		end
-		lines_h = lines_h - line_h
-
-		if valign == 'bottom' then
-			y = h - self._font_descent
-		elseif not valign or valign == 'center' then
-			local h1 = h + self._font_ascent - self._font_descent + lines_h
-			y = round(h1 / 2)
-		else
-			assert(false, 'invalid valign "%s"', valign)
-		end
-		y = y - lines_h
-	end
-
-	for s in glue.lines(s) do
-		if halign == 'right' then
-			local tw = self:_line_extents(s)
-			cr:move_to(x - tw, y)
-		elseif not halign or halign == 'center' then
-			local tw = self:_line_extents(s)
-			cr:move_to(x - round(tw / 2), y)
-		elseif halign == 'left' then
-			cr:move_to(x, y)
-		else
-			assert(false, 'invalid halign "%s"', halign)
-		end
-		cr:show_text(s)
-		y = y + line_h
-	end
-
-	self.cr:restore()
-end
 
 --selectors ------------------------------------------------------------------
 
@@ -672,7 +505,11 @@ function ui.element:after_init(ui, t)
 	tags[self.classname] = true
 	add_tags(t.tags, tags)
 	self.tags = tags
-	update(self, t)
+	--update elements in lexicographic order so that eg. `border_width` comes
+	--before `border_width_left`.
+	for k,v in sortedpairs(t) do
+		self[k] = v
+	end
 	self.tags = tags
 	if self.id then
 		tags[self.id] = true
@@ -758,7 +595,6 @@ ui:style('window_layer', {
 
 function ui.window:after_init(ui, t)
 
-	self.dr = ui:draw()
 	local win = self.native_window
 
 	self.x, self.y, self.w, self.h = self.native_window:client_rect()
@@ -766,31 +602,33 @@ function ui.window:after_init(ui, t)
 	self.mouse_x = win:mouse'x' or false
 	self.mouse_y = win:mouse'y' or false
 
-	--TODO: find a better way...
-	local function prepare()
-		self._frame_clock = self._frame_clock or time.clock()
-		self.dr.cr = self.dr.cr or win:bitmap():cairo()
+	local function setcontext()
+		self._frame_clock = time.clock()
+		self.cr = win:bitmap():cairo()
 	end
 
 	win:on('mousemove.ui', function(win, x, y)
+		setcontext()
 		self:_mousemove(x, y)
 	end)
 	win:on('mouseenter.ui', function(win, x, y)
-		prepare()
+		setcontext()
 		self:_mouseenter(x, y)
 	end)
 	win:on('mouseleave.ui', function(win)
+		setcontext()
 		self:_mouseleave()
 	end)
 	win:on('mousedown.ui', function(win, button, x, y)
+		setcontext()
 		self:_mousedown(button, x, y)
 	end)
 	win:on('mouseup.ui', function(win, button, x, y)
+		setcontext()
 		self:_mouseup(button, x, y)
 	end)
 	win:on('repaint.ui', function(win)
-		self._frame_clock = time.clock()
-		self.dr.cr = win:bitmap():cairo()
+		setcontext()
 		self:draw()
 	end)
 	win:on('client_rect_changed.ui', function(win, cx, cy, cw, ch)
@@ -820,7 +658,6 @@ function ui.window:before_free()
 	self.hot_widget = false
 	self.active_widget = false
 	self.layer:free()
-	self.dr:free()
 	self.native_window = false
 end
 
@@ -924,13 +761,11 @@ end
 --rendering
 
 function ui.window:after_draw()
-	if not self.visible then return end
-	local dr = self.dr
-	local cr = dr.cr
-	cr:save()
-	cr:new_path()
+	if not self.visible or self.opacity == 0 then return end
+	self.cr:save()
+	self.cr:new_path()
 	self.layer:draw()
-	cr:restore()
+	self.cr:restore()
 end
 
 --parent interface
@@ -973,9 +808,194 @@ function ui.window:bounding_box()
 	return box2d.bounding_box(0, 0, self.w, self.h, self.layer:bounding_box())
 end
 
+--drawing helpers split between ui and window objects
+
+--fill & stroke
+
+function ui:after_init()
+	self._colors = {} --{'#rgba' -> {r, g, b, a}}
+end
+
+function ui:color(c)
+	if type(c) == 'string' then
+		local t = self._colors[c]
+		if not t then
+			t = {color.string_to_rgba(c)}
+			self._colors[c] = t
+		end
+		return unpack(t)
+	else
+		return unpack(c)
+	end
+end
+
+function ui.window:_setcolor(color)
+	self.cr:rgba(self.ui:color(color))
+end
+
+function ui.window:fill(fill_color)
+	self:_setcolor(fill_color)
+	self.cr:fill_preserve()
+end
+
+function ui.window:stroke(stroke_color, line_width)
+	self:_setcolor(stroke_color)
+	self.cr:line_width(line_width)
+	self.cr:stroke_preserve()
+end
+
+--fonts and text
+
+function ui:after_init()
+	self._freetype = freetype:new()
+	self._font_files = {} --{(family, weight, slant) -> file}
+	self._font_faces = {} --{file -> {ft_face=, cr_face=}}
+end
+
+function ui:before_free()
+	for _,face in pairs(self._font_faces) do
+		--can't free() it because cairo's cache is lazy.
+		--cairo will free the freetype face object on its own.
+		face.cr_face:unref()
+	end
+	self._font_faces = nil
+	--safe to free() the freetype object here because cr_face holds a reference
+	--to the FT_Library and will call FT_Done_Library() on its destructor.
+	self._freetype:free()
+end
+
+function ui.window:before_free()
+	self.cr:font_face(cairo.NULL)
+end
+
+--override this for different ways of finding font files
+function ui:_font_file(family, weight, slant)
+	return gfonts.font_file(family, weight, slant)
+end
+
+--override this for different ways of loading fonts
+function ui:_font_face(family, weight, slant)
+	local id = tuple(family, weight, slant)
+	local file = self._font_files[id]
+	if not file then
+		file = assert(self:_font_file(family, weight, slant),
+			'could not find a font for "%s, %s, %s"', family, weight, slant)
+		self._font_files[id] = file
+	end
+	local face = self._font_faces[file]
+	if not face then
+		face = {}
+		face.ft_face = self._freetype:face(file)
+		face.cr_face = assert(cairo.ft_font_face(face.ft_face))
+		self._font_faces[file] = face
+	end
+	return face
+end
+
+--override this for different ways of setting a loaded font
+function ui.window:_setfont(family, weight, slant, size)
+	local face = self.ui:_font_face(family, weight, slant)
+	self.cr:font_face(face.cr_face)
+	self.cr:font_size(size)
+	local ext = self.cr:font_extents()
+	self._font_height = ext.height
+	self._font_descent = ext.descent
+	self._font_ascent = ext.ascent
+end
+
+--multi-line self-aligned and box-aligned text
+
+function ui.window:_line_extents(s)
+	local ext = self.cr:text_extents(s)
+	return ext.width, ext.height, ext.y_bearing
+end
+
+function ui.window:textbox(x, y, w, h, s,
+	font_family, font_weight, font_slant, text_size, line_spacing, text_color,
+	halign, valign)
+
+	self:_setfont(font_family, font_weight, font_slant, text_size)
+	self:_setcolor(text_color)
+
+	self.cr:save()
+	self.cr:rectangle(x, y, w, h)
+	self.cr:clip()
+
+	local cr = self.cr
+
+	local line_h = self._font_height * line_spacing
+
+	if halign == 'right' then
+		x = w
+	elseif not halign or halign == 'center' then
+		x = round(w / 2)
+	else
+		x = 0
+	end
+
+	if valign == 'top' then
+		y = self._font_ascent
+	else
+		local lines_h = 0
+		for _ in glue.lines(s) do
+			lines_h = lines_h + line_h
+		end
+		lines_h = lines_h - line_h
+
+		if valign == 'bottom' then
+			y = h - self._font_descent
+		elseif not valign or valign == 'center' then
+			local h1 = h + self._font_ascent - self._font_descent + lines_h
+			y = round(h1 / 2)
+		else
+			assert(false, 'invalid valign "%s"', valign)
+		end
+		y = y - lines_h
+	end
+
+	for s in glue.lines(s) do
+		if halign == 'right' then
+			local tw = self:_line_extents(s)
+			cr:move_to(x - tw, y)
+		elseif not halign or halign == 'center' then
+			local tw = self:_line_extents(s)
+			cr:move_to(x - round(tw / 2), y)
+		elseif halign == 'left' then
+			cr:move_to(x, y)
+		else
+			assert(false, 'invalid halign "%s"', halign)
+		end
+		cr:show_text(s)
+		y = y + line_h
+	end
+
+	self.cr:restore()
+end
+
 --layers ---------------------------------------------------------------------
 
 ui.layer = oo.layer(ui.element)
+
+function ui.layer:set_padding(s)
+	self.padding_left, self.padding_top, self.padding_right,
+		self.padding_bottom = args4(s, tonumber)
+end
+
+function ui.layer:set_border_color(s)
+	self.border_color_left, self.border_color_right,
+		self.border_color_top, self.border_color_bottom = args4(s)
+end
+
+function ui.layer:set_border_width(s)
+	self.border_width_left, self.border_width_right,
+		self.border_width_top, self.border_width_bottom = args4(s, tonumber)
+end
+
+function ui.layer:set_border_radius(s)
+	self.border_radius_top_left, self.border_radius_top_right,
+		self.border_radius_bottom_right, self.border_radius_bottom_left =
+			args4(s, tonumber)
+end
 
 ui.layer._x = 0
 ui.layer._y = 0
@@ -992,10 +1012,7 @@ ui.layer.opacity = 1
 
 ui.layer.content_clip = 'padding' --'padding', 'background', false
 
-ui.layer.padding_left = 0
-ui.layer.padding_top = 0
-ui.layer.padding_right = 0
-ui.layer.padding_bottom = 0
+ui.layer.padding = 0
 
 ui.layer.background_color = nil --transparent
 ui.layer.background_origin = '' --TODO
@@ -1004,21 +1021,10 @@ ui.layer.background_clip = 'border' --'padding', 'border'
 -- -1..1 goes from inside to outside of border edge
 ui.layer.background_clip_border_offset = -1
 
+ui.layer.border_color = '#fff'
+ui.layer.border_width = 0
+ui.layer.border_radius = 0
 ui.layer.border_offset = -1 -- -1..1 goes from inside to outside of rect() edge
---ui.layer.border_color = '#fff'
---ui.layer.border_width = 0
-ui.layer.border_color_left = '#fff'
-ui.layer.border_color_top = '#fff'
-ui.layer.border_color_right = '#fff'
-ui.layer.border_color_bottom = '#fff'
-ui.layer.border_width_left = 0
-ui.layer.border_width_top = 0
-ui.layer.border_width_right = 0
-ui.layer.border_width_bottom = 0
-ui.layer.border_radius_top_left = 0
-ui.layer.border_radius_top_right = 0
-ui.layer.border_radius_bottom_right = 0
-ui.layer.border_radius_bottom_left = 0
 ui.layer.border_radius_kappa = 1.2 --smoother line-to-arc transition
 
 function ui.layer:after_init(ui, t)
@@ -1031,107 +1037,6 @@ end
 function ui.layer:before_free()
 	self:_free_layers()
 	self.parent = false
-end
-
---parent/child relationship
-
-function ui.layer:get_parent() --child interface
-	return self._parent
-end
-
-function ui.layer:set_parent(parent)
-	if self._parent then
-		self._parent:_remove_layer(self)
-		self._parent = false
-	end
-	if parent then
-		parent:_add_layer(self)
-	end
-	self._parent = parent
-	self.window = parent and parent.window or parent
-end
-
-function ui.layer:get_z_order() --child interface
-	return self._z_order
-end
-
-function ui.layer:set_z_order(z_order)
-	self._z_order = z_order
-	if self.parent then
-		self.parent:_sort_layers()
-	end
-end
-
-function ui.layer:_add_layer(layer) --parent interface
-	self.layers = self.layers or {}
-	push(self.layers, layer)
-	self:_sort_layers()
-	self:fire('layer_added', layer)
-end
-
-function ui.layer:_remove_layer(layer) --parent interface
-	popval(self.layers, layer)
-	self:fire('layer_removed', layer)
-end
-
-function ui.layer:_free_layers()
-	if not self.layers then return end
-	while #self.layers > 0 do
-		self.layers[#self.layers]:free()
-	end
-end
-
-function ui.layer:_sort_layers() --parent interface
-	if not self.layers then return end
-	table.sort(self.layers, function(a, b)
-		return a.z_order < b.z_order
-	end)
-end
-
-function ui.layer:hit_test_layers(x, y) --(x, y) are in content space
-	if not self.layers then return end
-	for i = #self.layers, 1, -1 do
-		local layer = self.layers[i]
-		local x, y = layer:from_parent(x, y)
-		local widget = layer:hit_test(x, y)
-		if widget then
-			return widget
-		end
-	end
-end
-
-function ui.layer:layers_bounding_box()
-	local x, y, w, h = 0, 0, 0, 0
-	if self.layers then
-		for _,layer in ipairs(self.layers) do
-			x, y, w, h = box2d.bounding_box(x, y, w, h, layer:bounding_box())
-		end
-	end
-	return x, y, w, h
-end
-
-function ui.layer:draw_layers()
-	if not self.layers then return end
-	for i = 1, #self.layers do
-		local layer = self.layers[i]
-		layer:draw()
-	end
-end
-
-function ui.layer:to_window(x, y) --parent & child interface
-	return self.parent:to_window(self:to_parent(x, y))
-end
-
-function ui.layer:from_window(x, y) --parent & child interface
-	return self:from_parent(self.parent:from_window(x, y))
-end
-
-function ui.layer:mouse_pos() --parent interface
-	local mx, my = self.parent:mouse_pos()
-	if not mx then
-		return false, false
-	end
-	return self:from_parent(mx, my)
 end
 
 --matrix-affecting fields
@@ -1192,7 +1097,110 @@ function ui.layer:from_parent(x, y)
 	return self.inverse_matrix:point(x, y)
 end
 
---geometry in rect() space (borders, background, padding, clipping)
+--parent/child relationship
+
+function ui.layer:get_parent() --child interface
+	return self._parent
+end
+
+function ui.layer:set_parent(parent)
+	if self._parent then
+		self._parent:_remove_layer(self)
+		self._parent = false
+	end
+	if parent then
+		parent:_add_layer(self)
+	end
+	self._parent = parent
+	self.window = parent and parent.window or parent
+end
+
+function ui.layer:get_z_order() --child interface
+	return self._z_order
+end
+
+function ui.layer:set_z_order(z_order)
+	self._z_order = z_order
+	if self.parent then
+		self.parent:_sort_layers()
+	end
+end
+
+function ui.layer:_add_layer(layer) --parent interface
+	self.layers = self.layers or {}
+	push(self.layers, layer)
+	self:_sort_layers()
+	self:fire('layer_added', layer)
+end
+
+function ui.layer:_remove_layer(layer) --parent interface
+	popval(self.layers, layer)
+	self:fire('layer_removed', layer)
+end
+
+function ui.layer:_free_layers()
+	if not self.layers then return end
+	while #self.layers > 0 do
+		self.layers[#self.layers]:free()
+	end
+end
+
+function ui.layer:_sort_layers() --parent interface
+	if not self.layers then return end
+	table.sort(self.layers, function(a, b)
+		return a.z_order < b.z_order
+	end)
+end
+
+function ui.layer:to_window(x, y) --parent & child interface
+	return self.parent:to_window(self:to_parent(x, y))
+end
+
+function ui.layer:from_window(x, y) --parent & child interface
+	return self:from_parent(self.parent:from_window(x, y))
+end
+
+function ui.layer:mouse_pos() --parent interface
+	local mx, my = self.parent:mouse_pos()
+	if not mx then
+		return false, false
+	end
+	return self:from_parent(mx, my)
+end
+
+--layers geometry, drawing and hit testing
+
+function ui.layer:layers_bounding_box()
+	local x, y, w, h = 0, 0, 0, 0
+	if self.layers then
+		for _,layer in ipairs(self.layers) do
+			x, y, w, h = box2d.bounding_box(x, y, w, h, layer:bounding_box())
+		end
+	end
+	return x, y, w, h
+end
+
+function ui.layer:draw_layers()
+	if not self.layers then return end
+	for i = 1, #self.layers do
+		local layer = self.layers[i]
+		layer:draw()
+	end
+end
+
+function ui.layer:hit_test_layers(x, y) --(x, y) are in content space
+	if not self.layers then return end
+	for i = #self.layers, 1, -1 do
+		local layer = self.layers[i]
+		local x, y = layer:from_parent(x, y)
+		local widget = layer:hit_test(x, y)
+		if widget then
+			return widget
+		end
+	end
+end
+
+--border geometry, drawing and hit testing
 
 --border edge widths relative to rect() at %-offset in border width.
 --offset is in -1..1 where -1=inner edge, 0=center, 1=outer edge.
@@ -1211,33 +1219,17 @@ function ui.layer:_border_edge_widths_bottom_right(offset)
 		lerp(o, -1, 1, self.border_width_bottom, 0)
 end
 
-function ui.layer:border_pos(offset)
+function ui.layer:border_pos(offset) --in rect() space
 	return self:_border_edge_widths_top_left(offset)
 end
 
 --border rect at %-offset in border width.
-function ui.layer:border_rect(offset)
+function ui.layer:border_rect(offset) --in rect() space
 	local w1, h1 = self:_border_edge_widths_top_left(offset)
 	local w2, h2 = self:_border_edge_widths_bottom_right(offset)
 	local w = self.w - w2 - w1
 	local h = self.h - h2 - h1
 	return w1, h1, w, h
-end
-
-function ui.layer:padding_pos()
-	local x, y = self:border_pos(-1) --inner edge
-	return
-		x + self.padding_left,
-		y + self.padding_top
-end
-
-function ui.layer:padding_rect()
-	local x, y, w, h = self:border_rect(-1) --inner edge
-	return
-		x + self.padding_left,
-		y + self.padding_top,
-		w - self.padding_left - self.padding_right,
-		h - self.padding_top - self.padding_bottom
 end
 
 --corner radius at pixel offset from the stroke's center on one dimension.
@@ -1246,7 +1238,7 @@ local function offset_radius(r, o)
 end
 
 --border rect at %-offset in border width, plus radii of rounded corners.
-function ui.layer:border_round_rect(offset)
+function ui.layer:border_round_rect(offset) --in rect() space
 	local k = self.border_radius_kappa
 
 	local r1 = self.border_radius_top_left
@@ -1362,14 +1354,10 @@ local function qarc(cr, cx, cy, rx, ry, q1, qlen, k)
 	end
 end
 
-function ui.layer:qarc(...)
-	return qarc(self.window.dr.cr, ...)
-end
-
---trace the border contour path at offset in current space.
+--trace the border contour path at offset.
 --offset is in -1..1 where -1=inner edge, 0=center, 1=outer edge.
-function ui.layer:border_path(offset)
-	local cr = self.window.dr.cr
+function ui.layer:border_path(offset) --in rect() space.
+	local cr = self.window.cr
 	local x1, y1, w, h, r1x, r1y, r2x, r2y, r3x, r3y, r4x, r4y, k =
 		self:border_round_rect(offset)
 	local x2, y2 = x1 + w, y1 + h
@@ -1388,13 +1376,12 @@ function ui.layer:border_visible()
 		or self.border_width_bottom ~= 0
 end
 
-function ui.layer:draw_border()
+function ui.layer:draw_border() --in content space
 	if not self:border_visible() then return end
 
-	local dr = self.window.dr
+	local dr = self.window
 	local cr = dr.cr
 
-	--drawing is always from content space so move to rect() space.
 	local ox, oy = self:from_origin(0, 0)
 	cr:translate(ox, oy)
 
@@ -1460,9 +1447,9 @@ end
 
 function ui.layer:hit_test_border(x, y) --(x, y) are in content space
 	if not self:border_visible() then return end
-	local dr = self.window.dr
+	local dr = self.window
 	local cr = dr.cr
-	local ox, oy = self:from_origin(0, 0) --move to rect() space
+	local ox, oy = self:from_origin(0, 0)
 	cr:translate(ox, oy)
 	cr:new_path()
 	self:border_path(-1)
@@ -1476,9 +1463,46 @@ function ui.layer:hit_test_border(x, y) --(x, y) are in content space
 	return hit and self
 end
 
+--content geometry, drawing and hit testing
+
+function ui.layer:padding_pos() --in rect() space
+	local x, y = self:border_pos(-1) --inner edge
+	return
+		x + self.padding_left,
+		y + self.padding_top
+end
+
+function ui.layer:padding_rect() --in rect() space
+	local x, y, w, h = self:border_rect(-1) --inner edge
+	return
+		x + self.padding_left,
+		y + self.padding_top,
+		w - self.padding_left - self.padding_right,
+		h - self.padding_top - self.padding_bottom
+end
+
+function ui.layer:content_clip_path()
+	--
+end
+
+function ui.layer:hit_test_content_clip(x, y)
+	if not self.content_clip then
+		return self
+	end
+	return self
+end
+
+function ui.layer:hit_test_content(x, y)
+	return self:hit_test_content_clip(x, y) and self:hit_test_layers(x, y)
+end
+
+function ui.layer:draw_content()
+	self:draw_layers()
+end
+
 --geometry in content space (can be used inside drawing or hit-test functions)
 
-function ui.layer:from_origin(x, y)
+function ui.layer:from_origin(x, y) --from rect() space to content space
 	local px, py = self:padding_pos()
 	return x-px, y-py
 end
@@ -1499,8 +1523,8 @@ function ui.layer:get_ch() return (select(4, self:padding_rect())) end
 --child interface
 
 function ui.layer:hit_test(x, y) --(x, y) are in content space
-	if not self.visible then return end
-	return self:hit_test_layers(x, y) or self:hit_test_border(x, y)
+	if not self.visible or self.opacity == 0 then return end
+	return self:hit_test_content(x, y) or self:hit_test_border(x, y)
 end
 
 function ui.layer:bounding_box()
@@ -1513,19 +1537,11 @@ function ui.layer:bounding_box()
 	end
 end
 
-function ui.layer:content_clip_path()
-	--
-end
-
-function ui.layer:draw_content()
-	self:draw_layers()
-end
-
 function ui.layer:after_draw()
-	if not self.visible then return end
+	if not self.visible or self.opacity == 0 then return end
 	if self.opacity <= 0 then return end
 
-	local dr = self.window.dr
+	local dr = self.window
 	local cr = dr.cr
 
 	local opacity = self.opacity
@@ -1692,7 +1708,7 @@ function ui.button:mouseup(button, x, y)
 end
 
 function ui.button:before_draw_content()
-	local dr = self.window.dr
+	local dr = self.window
 	if self.text then
 		dr:textbox(0, 0, self.w, self.h, self.text,
 			self.font_family, self.font_weight, self.font_slant, self.text_size,
@@ -1888,7 +1904,7 @@ function ui.scrollbar:after_mousemove(mx, my)
 end
 
 function ui.scrollbar:before_draw_content()
-	local dr = self.window.dr
+	local dr = self.window
 	local bx, by, bw, bh = self:grabbar_rect()
 	if bw < self.w or bh < self.h then
 		--dr:rect(bx, by, bw, bh, self.grabbar_background_color)
@@ -1959,7 +1975,7 @@ function ui.scrollbox:after_init(ui, t)
 end
 
 function ui.scrollbox:before_draw_content()
-	local cr = self.window.dr.cr
+	local cr = self.window.cr
 end
 
 --tab ------------------------------------------------------------------------
