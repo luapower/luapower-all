@@ -766,10 +766,17 @@ function ui.window:after_init(ui, t)
 	self.mouse_x = win:mouse'x' or false
 	self.mouse_y = win:mouse'y' or false
 
+	--TODO: find a better way...
+	local function prepare()
+		self._frame_clock = self._frame_clock or time.clock()
+		self.dr.cr = self.dr.cr or win:bitmap():cairo()
+	end
+
 	win:on('mousemove.ui', function(win, x, y)
 		self:_mousemove(x, y)
 	end)
 	win:on('mouseenter.ui', function(win, x, y)
+		prepare()
 		self:_mouseenter(x, y)
 	end)
 	win:on('mouseleave.ui', function(win)
@@ -921,6 +928,7 @@ function ui.window:after_draw()
 	local dr = self.dr
 	local cr = dr.cr
 	cr:save()
+	cr:new_path()
 	self.layer:draw()
 	cr:restore()
 end
@@ -1016,6 +1024,7 @@ ui.layer.border_radius_kappa = 1.2 --smoother line-to-arc transition
 function ui.layer:after_init(ui, t)
 	self._matrix = cairo.matrix()
 	self._inverse_matrix = cairo.matrix()
+	self._temp_matrix = cairo.matrix()
 	self._matrix_valid = false
 end
 
@@ -1079,7 +1088,7 @@ function ui.layer:_sort_layers() --parent interface
 	end)
 end
 
-function ui.layer:_hit_test_layers(x, y) --(x, y) are in content space
+function ui.layer:hit_test_layers(x, y) --(x, y) are in content space
 	if not self.layers then return end
 	for i = #self.layers, 1, -1 do
 		local layer = self.layers[i]
@@ -1091,7 +1100,7 @@ function ui.layer:_hit_test_layers(x, y) --(x, y) are in content space
 	end
 end
 
-function ui.layer:_layers_bounding_box()
+function ui.layer:layers_bounding_box()
 	local x, y, w, h = 0, 0, 0, 0
 	if self.layers then
 		for _,layer in ipairs(self.layers) do
@@ -1101,7 +1110,7 @@ function ui.layer:_layers_bounding_box()
 	return x, y, w, h
 end
 
-function ui.layer:_draw_layers()
+function ui.layer:draw_layers()
 	if not self.layers then return end
 	for i = 1, #self.layers do
 		local layer = self.layers[i]
@@ -1261,7 +1270,7 @@ function ui.layer:border_round_rect(offset)
 	local r4x = offset_radius(r4, x1-X1)
 	local r4y = offset_radius(r4, Y2-y2)
 
-	--remove degenerate radii.
+	--remove degenerate arcs.
 	if r1x == 0 or r1y == 0 then r1x = 0; r1y = 0 end
 	if r2x == 0 or r2y == 0 then r2x = 0; r2y = 0 end
 	if r3x == 0 or r3y == 0 then r3x = 0; r3y = 0 end
@@ -1271,9 +1280,7 @@ function ui.layer:border_round_rect(offset)
 	local maxx = math.max(r1x + r2x, r3x + r4x)
 	local maxy = math.max(r1y + r4y, r2y + r3y)
 	if maxx > W or maxy > H then
-		local wr = W / maxx
-		local hr = H / maxy
-		local scale = wr < hr and wr or hr
+		local scale = math.min(W / maxx, H / maxy)
 		r1x = r1x * scale
 		r1y = r1y * scale
 		r2x = r2x * scale
@@ -1290,63 +1297,110 @@ function ui.layer:border_round_rect(offset)
 		k
 end
 
-local kappa = 4 / 3 * (math.sqrt(2) - 1)
-local qrad = math.pi / 2
-
---draw an eliptic arc: q1,q2=1,2 is the entire top-left quadrant.
-local function qarc(cr, cx, cy, rx, ry, q1, q2, k)
-	local a1 = (q1 - 3) * qrad
-	local a2 = (q2 - 3) * qrad
-	if k == 1 then --geometrically-correct circle arc
-		local arc = a1 < a2 and cr.elliptic_arc or cr.elliptic_arc_negative
-		return arc(cr, cx, cy, rx, ry, 0, a1, a2)
-	elseif rx == 0 then --null arcs still need a line to the first endpoint
-		assert(ry == 0)
-		cr:line_to(cx, cy)
-	else 	--more-aesthetically-pleasing circle arc
-		local d = q1 < q2 and 1 or -1
-		local z = math.abs(q2 - q1)
-		cr:save()
-		cr:translate(cx, cy)
-		cr:rotate((q1 - 2) * qrad * d + qrad * (1 - z))
-		cr:scale(rx / ry, 1)
-		local r = ry
-		local k = r * kappa * k
-		cr:move_to(0, -r)
-		cr:curve_to(k, -r, r, -k, r, 0)
-		cr:restore()
+--De Casteljau split of a cubic bezier at time t (from path2d).
+local function bezier_split(first, t, x1, y1, x2, y2, x3, y3, x4, y4)
+	local mt = 1-t
+	local x12 = x1 * mt + x2 * t
+	local y12 = y1 * mt + y2 * t
+	local x23 = x2 * mt + x3 * t
+	local y23 = y2 * mt + y3 * t
+	local x34 = x3 * mt + x4 * t
+	local y34 = y3 * mt + y4 * t
+	local x123 = x12 * mt + x23 * t
+	local y123 = y12 * mt + y23 * t
+	local x234 = x23 * mt + x34 * t
+	local y234 = y23 * mt + y34 * t
+	local x1234 = x123 * mt + x234 * t
+	local y1234 = y123 * mt + y234 * t
+	if first then
+		return x1, y1, x12, y12, x123, y123, x1234, y1234 --first curve
+	else
+		return x1234, y1234, x234, y234, x34, y34, x4, y4 --second curve
 	end
 end
 
-function ui.layer:qarc(cx, cy, rx, ry, q1, q2, k)
-	qarc(self.window.dr.cr, cx, cy, rx, ry, q1, q2, k)
+local kappa = 4 / 3 * (math.sqrt(2) - 1)
+
+--more-aesthetically-pleasing elliptic arc. only for 45deg and 90deg sweeps!
+local function bezier_qarc(cr, cx, cy, rx, ry, q1, qlen, k)
+	cr:save()
+	cr:translate(cx, cy)
+	cr:scale(rx / ry, 1)
+	cr:rotate(math.floor(math.min(q1, q1 + qlen) - 2) * math.pi / 2)
+	local r = ry
+	local k = r * kappa * k
+	local x1, y1, x2, y2, x3, y3, x4, y4 = 0, -r, k, -r, r, -k, r, 0
+	if qlen < 0 then --reverse curve
+		x1, y1, x2, y2, x3, y3, x4, y4 = x4, y4, x3, y3, x2, y2, x1, y1
+		qlen = math.abs(qlen)
+	end
+	if qlen ~= 1 then
+		assert(qlen == 0.5)
+		local first = q1 == math.floor(q1)
+		x1, y1, x2, y2, x3, y3, x4, y4 =
+			bezier_split(first, qlen, x1, y1, x2, y2, x3, y3, x4, y4)
+	end
+	cr:line_to(x1, y1)
+	cr:curve_to(x2, y2, x3, y3, x4, y4)
+	cr:restore()
 end
 
+--draw an eliptic arc: q1 is the quadrant starting top-left going clockwise.
+--qlen is in 90deg units and can only be +/- 0.5 or 1 if k ~= 1.
+local function qarc(cr, cx, cy, rx, ry, q1, qlen, k)
+	if rx == 0 or ry == 0 then --null arcs need a line to the first endpoint
+		assert(rx == 0 and ry == 0)
+		cr:line_to(cx, cy)
+	elseif k == 1 then --geometrically-correct elliptic arc
+		local q2 = q1 + qlen
+		local a1 = (q1 - 3) * math.pi / 2
+		local a2 = (q2 - 3) * math.pi / 2
+		local arc = a1 < a2 and cr.elliptic_arc or cr.elliptic_arc_negative
+		arc(cr, cx, cy, rx, ry, 0, a1, a2)
+	else
+		bezier_qarc(cr, cx, cy, rx, ry, q1, qlen, k)
+	end
+end
+
+function ui.layer:qarc(...)
+	return qarc(self.window.dr.cr, ...)
+end
+
+--trace the border contour path at offset in current space.
+--offset is in -1..1 where -1=inner edge, 0=center, 1=outer edge.
 function ui.layer:border_path(offset)
 	local cr = self.window.dr.cr
 	local x1, y1, w, h, r1x, r1y, r2x, r2y, r3x, r3y, r4x, r4y, k =
 		self:border_round_rect(offset)
-	local x1, y1, x2, y2 = x, y, x + w, y + h
-	if x1 > x2 then x2, x1 = x1, x2 end
-	if y1 > y2 then y2, y1 = y1, y2 end
+	local x2, y2 = x1 + w, y1 + h
 	cr:move_to(x1, y1+r1y)
-	qarc(cr, x1+r1x, y1+r1y, r1x, r1y, 1, 2, k); cr:line_to(x2-r2x, y1) --tl
-	qarc(cr, x2-r2x, y1+r2y, r2x, r2y, 2, 3, k); cr:line_to(x2, y2-r3y) --tr
-	qarc(cr, x2-r3x, y2-r3y, r3x, r3y, 3, 4, k); cr:line_to(x1+r4x, y2) --br
-	qarc(cr, x1+r4x, y2-r4y, r4x, r4y, 4, 5, k)                         --bl
+	qarc(cr, x1+r1x, y1+r1y, r1x, r1y, 1, 1, k) --tl
+	qarc(cr, x2-r2x, y1+r2y, r2x, r2y, 2, 1, k) --tr
+	qarc(cr, x2-r3x, y2-r3y, r3x, r3y, 3, 1, k) --br
+	qarc(cr, x1+r4x, y2-r4y, r4x, r4y, 4, 1, k) --bl
 	cr:close_path()
 end
 
-function ui.layer:draw_border() --assume content space
+function ui.layer:border_visible()
+	return self.border_width_left ~= 0
+		or self.border_width_top ~= 0
+		or self.border_width_right ~= 0
+		or self.border_width_bottom ~= 0
+end
+
+function ui.layer:draw_border()
+	if not self:border_visible() then return end
+
 	local dr = self.window.dr
 	local cr = dr.cr
 
+	--drawing is always from content space so move to rect() space.
 	local ox, oy = self:from_origin(0, 0)
 	cr:translate(ox, oy)
 
 	local x1, y1, w, h, r1x, r1y, r2x, r2y, r3x, r3y, r4x, r4y, k =
 		self:border_round_rect(-1)
-	local X1, Y1, W, H, R1X, R1Y, R2X, R2Y, R3X, R3Y, R4X, R4Y =
+	local X1, Y1, W, H, R1X, R1Y, R2X, R2Y, R3X, R3Y, R4X, R4Y, K =
 		self:border_round_rect(1)
 
 	local x2, y2 = x1 + w, y1 + h
@@ -1355,11 +1409,11 @@ function ui.layer:draw_border() --assume content space
 	if self.border_color_left then
 		cr:new_path()
 		cr:move_to(x1, y1+r1y)
-		qarc(cr, x1+r1x, y1+r1y, r1x, r1y, 1, 1.5, k)
-		qarc(cr, X1+R1X, Y1+R1Y, R1X, R1Y, 1.5, 1, k)
+		qarc(cr, x1+r1x, y1+r1y, r1x, r1y, 1, .5, k)
+		qarc(cr, X1+R1X, Y1+R1Y, R1X, R1Y, 1.5, -.5, K)
 		cr:line_to(X1, Y2-R4Y)
-		qarc(cr, X1+R4X, Y2-R4Y, R4X, R4Y, 5, 4.5, k)
-		qarc(cr, x1+r4x, y2-r4y, r4x, r4y, 4.5, 5, k)
+		qarc(cr, X1+R4X, Y2-R4Y, R4X, R4Y, 5, -.5, K)
+		qarc(cr, x1+r4x, y2-r4y, r4x, r4y, 4.5, .5, k)
 		cr:close_path()
 		dr:fill(self.border_color_left)
 	end
@@ -1367,11 +1421,11 @@ function ui.layer:draw_border() --assume content space
 	if self.border_color_top then
 		cr:new_path()
 		cr:move_to(x2-r2x, y1)
-		qarc(cr, x2-r2x, y1+r2y, r2x, r2y, 2, 2.5, k)
-		qarc(cr, X2-R2X, Y1+R2Y, R2X, R2Y, 2.5, 2, k)
+		qarc(cr, x2-r2x, y1+r2y, r2x, r2y, 2, .5, k)
+		qarc(cr, X2-R2X, Y1+R2Y, R2X, R2Y, 2.5, -.5, K)
 		cr:line_to(X1+R1X, Y1)
-		qarc(cr, X1+R1X, Y1+R1Y, R1X, R1Y, 2, 1.5, k)
-		qarc(cr, x1+r1x, y1+r1y, r1x, r1y, 1.5, 2, k)
+		qarc(cr, X1+R1X, Y1+R1Y, R1X, R1Y, 2, -.5, K)
+		qarc(cr, x1+r1x, y1+r1y, r1x, r1y, 1.5, .5, k)
 		cr:close_path()
 		dr:fill(self.border_color_top)
 	end
@@ -1379,11 +1433,11 @@ function ui.layer:draw_border() --assume content space
 	if self.border_color_right then
 		cr:new_path()
 		cr:move_to(x2, y2-r3y)
-		qarc(cr, x2-r3x, y2-r3y, r3x, r3y, 3, 3.5, k)
-		qarc(cr, X2-R3X, Y2-R3Y, R3X, R3Y, 3.5, 3, k)
+		qarc(cr, x2-r3x, y2-r3y, r3x, r3y, 3, .5, k)
+		qarc(cr, X2-R3X, Y2-R3Y, R3X, R3Y, 3.5, -.5, K)
 		cr:line_to(X2, Y1+R2Y)
-		qarc(cr, X2-R2X, Y1+R2Y, R2X, R2Y, 3, 2.5, k)
-		qarc(cr, x2-r2x, y1+r2y, r2x, r2y, 2.5, 3, k)
+		qarc(cr, X2-R2X, Y1+R2Y, R2X, R2Y, 3, -.5, K)
+		qarc(cr, x2-r2x, y1+r2y, r2x, r2y, 2.5, .5, k)
 		cr:close_path()
 		dr:fill(self.border_color_right)
 	end
@@ -1391,16 +1445,35 @@ function ui.layer:draw_border() --assume content space
 	if self.border_color_bottom then
 		cr:new_path()
 		cr:move_to(x1+r4x, y2)
-		qarc(cr, x1+r4x, y2-r4y, r4x, r4y, 4, 4.5, k)
-		qarc(cr, X1+R4X, Y2-R4Y, R4X, R4Y, 4.5, 4, k)
+		qarc(cr, x1+r4x, y2-r4y, r4x, r4y, 4, .5, k)
+		qarc(cr, X1+R4X, Y2-R4Y, R4X, R4Y, 4.5, -.5, K)
 		cr:line_to(X2-R3X, Y2)
-		qarc(cr, X2-R3X, Y2-R3Y, R3X, R3Y, 4, 3.5, k)
-		qarc(cr, x2-r3x, y2-r3y, r3x, r3y, 3.5, 4, k)
+		qarc(cr, X2-R3X, Y2-R3Y, R3X, R3Y, 4, -.5, K)
+		qarc(cr, x2-r3x, y2-r3y, r3x, r3y, 3.5, .5, k)
 		cr:close_path()
 		dr:fill(self.border_color_bottom)
 	end
 
+	cr:new_path() --clear path
+	cr:translate(-ox, -oy) --back to content space
+end
+
+function ui.layer:hit_test_border(x, y) --(x, y) are in content space
+	if not self:border_visible() then return end
+	local dr = self.window.dr
+	local cr = dr.cr
+	local ox, oy = self:from_origin(0, 0) --move to rect() space
+	cr:translate(ox, oy)
 	cr:new_path()
+	self:border_path(-1)
+	self:border_path(1)
+	cr:translate(-ox, -oy)
+	local rule = cr:fill_rule()
+	cr:fill_rule'even_odd'
+	local hit = cr:in_fill(x, y)
+	cr:new_path()
+	cr:fill_rule(rule)
+	return hit and self
 end
 
 --geometry in content space (can be used inside drawing or hit-test functions)
@@ -1426,17 +1499,17 @@ function ui.layer:get_ch() return (select(4, self:padding_rect())) end
 --child interface
 
 function ui.layer:hit_test(x, y) --(x, y) are in content space
-	return self:_hit_test_layers(x, y) --TODO: hit diff. rects
-		or (box2d.hit(x, y, self:content_rect()) and self)
+	if not self.visible then return end
+	return self:hit_test_layers(x, y) or self:hit_test_border(x, y)
 end
 
 function ui.layer:bounding_box()
 	if self.content_clip then
 		--TODO: it's more complicated than this with rounded corners and border
 		return box2d.bounding_box(self.x, self.y, self.w, self.h,
-			self:_layers_bounding_box())
+			self:layers_bounding_box())
 	else
-		return self:_layers_bounding_box()
+		return self:layers_bounding_box()
 	end
 end
 
@@ -1444,12 +1517,8 @@ function ui.layer:content_clip_path()
 	--
 end
 
-function ui.layer:border_path()
-	--
-end
-
 function ui.layer:draw_content()
-	self:_draw_layers()
+	self:draw_layers()
 end
 
 function ui.layer:after_draw()
@@ -1467,7 +1536,8 @@ function ui.layer:after_draw()
 		cr:save()
 	end
 
-	cr:matrix(cr:matrix():multiply(self.matrix)) --TOOD: sinked?
+	--draw() is called from parent's content space. move to own content space.
+	cr:matrix(cr:matrix(nil, self._temp_matrix):multiply(self.matrix))
 
 	--[[
 	if self.content_clip or self.background_color then
@@ -1501,10 +1571,9 @@ function ui.layer:after_draw()
 	end
 	]]
 
-	cr:save()
 	self:draw_content()
-	cr:restore()
 
+	cr:matrix(self._temp_matrix)
 	self:draw_border()
 
 	--[[
