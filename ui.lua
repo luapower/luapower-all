@@ -663,17 +663,16 @@ end
 
 --`hot` and `active` widget logic and mouse events routing
 
-function ui.window:_set_hot_widget(widget, mx, my)
+function ui.window:_set_hot_widget(widget, mx, my, area)
 	if self.hot_widget == widget then
 		return
 	end
 	if self.hot_widget then
-		self.hot_widget:fire'mouseleave'
+		self.hot_widget:_mouseleave()
 	end
 	if widget then
 		--the hot widget is still the old widget when entering the new widget
-		local mx, my = widget:from_window(mx, my)
-		widget:fire('mouseenter', mx, my)
+		widget:_mouseenter(mx, my, area)
 	end
 	self.hot_widget = widget
 end
@@ -687,15 +686,13 @@ function ui.window:_mousemove(mx, my, force)
 	self:fire('mousemove', mx, my)
 	local widget = self.active_widget
 	if widget then
-		local mx, my = widget:from_window(mx, my)
-		widget:fire('mousemove', mx, my)
+		widget:_mousemove(mx, my)
 	end
 	if not self.active_widget then
-		local widget = self:hit_test(mx, my)
-		self:_set_hot_widget(widget, mx, my)
+		local widget, area = self:hit_test(mx, my)
+		self:_set_hot_widget(widget, mx, my, area)
 		if widget then
-			local mx, my = widget:from_window(mx, my)
-			widget:fire('mousemove', mx, my)
+			widget:_mousemove(mx, my, area)
 		end
 	end
 end
@@ -711,7 +708,7 @@ function ui.window:_mouseleave()
 	self:fire'mouseleave'
 	local widget = self.active_widget
 	if widget then
-		widget:fire'mouseleave'
+		widget:_mouseleave()
 	end
 	self:_set_hot_widget(false)
 end
@@ -722,15 +719,13 @@ function ui.window:_mousedown(button, mx, my)
 	self:fire('mousedown', button, mx, my)
 	local widget = self.active_widget
 	if widget then
-		local mx, my = widget:from_window(mx, my)
-		widget:fire('mousedown', button, mx, my)
+		widget:_mousedown(button, mx, my)
 	end
 	if not self.active_widget then
-		local widget = self:hit_test(mx, my)
-		self:_set_hot_widget(widget, mx, my)
+		local widget, area = self:hit_test(mx, my)
+		self:_set_hot_widget(widget, mx, my, area)
 		if widget then
-			local mx, my = widget:from_window(mx, my)
-			widget:fire('mousedown', button, mx, my)
+			widget:_mousedown(button, mx, my, area)
 		end
 	end
 end
@@ -741,15 +736,13 @@ function ui.window:_mouseup(button, mx, my)
 	self:fire('mouseup', button, mx, my)
 	local widget = self.active_widget
 	if widget then
-		local mx, my = widget:from_window(mx, my)
-		widget:fire('mouseup', button, mx, my)
+		widget:_mouseup(button, mx, my)
 	end
 	if not self.active_widget then
-		local widget = self:hit_test(mx, my)
-		self:_set_hot_widget(widget, mx, my)
+		local widget, area = self:hit_test(mx, my)
+		self:_set_hot_widget(widget, mx, my, area)
 		if widget then
-			local mx, my = widget:from_window(mx, my)
-			widget:fire('mouseup', button, mx, my)
+			widget:_mouseup(button, mx, my, area)
 		end
 	end
 end
@@ -804,13 +797,7 @@ end
 function ui.window:rect() return 0, 0, self.w, self.h end
 function ui.window:size() return self.w, self.h end
 
-function ui.window:bounding_box()
-	return box2d.bounding_box(0, 0, self.w, self.h, self.layer:bounding_box())
-end
-
---drawing helpers split between ui and window objects
-
---fill & stroke
+--drawing helpers ------------------------------------------------------------
 
 function ui:after_init()
 	self._colors = {} --{'#rgba' -> {r, g, b, a}}
@@ -827,21 +814,6 @@ function ui:color(c)
 	else
 		return unpack(c)
 	end
-end
-
-function ui.window:_setcolor(color)
-	self.cr:rgba(self.ui:color(color))
-end
-
-function ui.window:fill(fill_color)
-	self:_setcolor(fill_color)
-	self.cr:fill_preserve()
-end
-
-function ui.window:stroke(stroke_color, line_width)
-	self:_setcolor(stroke_color)
-	self.cr:line_width(line_width)
-	self.cr:stroke_preserve()
 end
 
 --fonts and text
@@ -893,7 +865,7 @@ function ui:_font_face(family, weight, slant)
 end
 
 --override this for different ways of setting a loaded font
-function ui.window:_setfont(family, weight, slant, size)
+function ui.window:setfont(family, weight, slant, size)
 	local face = self.ui:_font_face(family, weight, slant)
 	self.cr:font_face(face.cr_face)
 	self.cr:font_size(size)
@@ -905,7 +877,7 @@ end
 
 --multi-line self-aligned and box-aligned text
 
-function ui.window:_line_extents(s)
+function ui.window:line_extents(s)
 	local ext = self.cr:text_extents(s)
 	return ext.width, ext.height, ext.y_bearing
 end
@@ -914,8 +886,8 @@ function ui.window:textbox(x, y, w, h, s,
 	font_family, font_weight, font_slant, text_size, line_spacing, text_color,
 	halign, valign)
 
-	self:_setfont(font_family, font_weight, font_slant, text_size)
-	self:_setcolor(text_color)
+	self:setfont(font_family, font_weight, font_slant, text_size)
+	self.cr:rgba(self.ui:color(text_color))
 
 	self.cr:save()
 	self.cr:rectangle(x, y, w, h)
@@ -955,10 +927,10 @@ function ui.window:textbox(x, y, w, h, s,
 
 	for s in glue.lines(s) do
 		if halign == 'right' then
-			local tw = self:_line_extents(s)
+			local tw = self:line_extents(s)
 			cr:move_to(x - tw, y)
 		elseif not halign or halign == 'center' then
-			local tw = self:_line_extents(s)
+			local tw = self:line_extents(s)
 			cr:move_to(x - round(tw / 2), y)
 		elseif halign == 'left' then
 			cr:move_to(x, y)
@@ -1010,26 +982,28 @@ ui.layer._z_order = 0
 
 ui.layer.opacity = 1
 
-ui.layer.content_clip = 'padding' --'padding', 'background', false
+ui.layer.content_clip = true --'padding'/true, 'background', false
 
 ui.layer.padding = 0
 
-ui.layer.background_color = nil --transparent
-ui.layer.background_origin = '' --TODO
-ui.layer.background_clip = 'border' --'padding', 'border'
--- border overlapping offset when clipping the background
--- -1..1 goes from inside to outside of border edge
+ui.layer.background_color = nil --no background
+-- overlapping between background clipping edge and border stroke.
+-- -1..1 goes from inside to outside of border edge.
 ui.layer.background_clip_border_offset = -1
 
 ui.layer.border_color = '#fff'
-ui.layer.border_width = 0
-ui.layer.border_radius = 0
-ui.layer.border_offset = -1 -- -1..1 goes from inside to outside of rect() edge
-ui.layer.border_radius_kappa = 1.2 --smoother line-to-arc transition
+ui.layer.border_width = 0 --no border
+ui.layer.border_radius = 0 --square
+-- border stroke positioning relative to box edge.
+-- -1..1 goes from inside to outside of box edge.
+ui.layer.border_offset = -1
+--draw rounded corners with a modified bezier for smoother line-to-arc
+--transitions. kappa=1 uses circle arcs instead.
+ui.layer.border_radius_kappa = 1.2
 
 function ui.layer:after_init(ui, t)
-	self._matrix = cairo.matrix()
-	self._inverse_matrix = cairo.matrix()
+	self._rel_matrix = cairo.matrix() --relative to parent space
+	self._rel_inverse_matrix = cairo.matrix() --relative to parent space
 	self._temp_matrix = cairo.matrix()
 	self._matrix_valid = false
 end
@@ -1065,36 +1039,34 @@ getset'scale_cy'
 
 function ui.layer:_check_matrix()
 	if self._matrix_valid then return end
-	local m, im = self._matrix, self._inverse_matrix
-	local ox, oy = self:from_origin(0, 0)
+	local m, im = self._rel_matrix, self._rel_inverse_matrix
 	m:reset()
 		:translate(self.x, self.y)
 		:rotate_around(self.rotation_cx, self.rotation_cy,
 			math.rad(self.rotation))
 		:scale_around(self.scale_cx, self.scale_cy, self.scale)
-		:translate(-ox, -oy)
 	im:reset(m):invert()
 	self._matrix_valid = true
 end
 
-function ui.layer:get_matrix() --matrix is in content space
+function ui.layer:get_rel_matrix()
 	self:_check_matrix()
-	return self._matrix
+	return self._rel_matrix
 end
 
-function ui.layer:get_inverse_matrix()
+function ui.layer:get_rel_inverse_matrix()
 	self:_check_matrix()
-	return self._inverse_matrix
+	return self._rel_inverse_matrix
 end
 
---convert point from self content space to parent content space.
+--convert point from own space to parent space
 function ui.layer:to_parent(x, y)
-	return self.matrix:point(x, y)
+	return self.rel_matrix:point(x, y)
 end
 
---convert point from parent content space to self content space.
+--convert point from parent space to own space
 function ui.layer:from_parent(x, y)
-	return self.inverse_matrix:point(x, y)
+	return self.rel_inverse_matrix:point(x, y)
 end
 
 --parent/child relationship
@@ -1160,13 +1132,41 @@ function ui.layer:from_window(x, y) --parent & child interface
 	return self:from_parent(self.parent:from_window(x, y))
 end
 
-function ui.layer:mouse_pos() --parent interface
-	local mx, my = self.parent:mouse_pos()
-	if not mx then
+--mouse event handling
+
+function ui.layer:_mousemove(mx, my, area)
+	local mx, my = self:to_content(self:from_window(mx, my))
+	self:fire('mousemove', mx, my, area)
+end
+
+function ui.layer:_mouseenter(mx, my, area)
+	local mx, my = self:to_content(self:from_window(mx, my))
+	self:fire('mouseenter', mx, my, area)
+end
+
+function ui.layer:_mouseleave()
+	self:fire'mouseleave'
+end
+
+function ui.layer:_mousedown(button, mx, my, area)
+	local mx, my = self:to_content(self:from_window(mx, my))
+	self:fire('mousedown', button, mx, my, area)
+end
+
+function ui.layer:_mouseup(button, mx, my, area)
+	local mx, my = self:to_content(self:from_window(mx, my))
+	self:fire('mouseup', button, mx, my, area)
+end
+
+function ui.layer:mouse_pos()
+	if not self.window.mouse_x then
 		return false, false
 	end
-	return self:from_parent(mx, my)
+	return self:to_content(self:from_window(self.window:mouse_pos()))
 end
+
+function ui.layer:get_mouse_x() return (select(1, self:mouse_pos())) end
+function ui.layer:get_mouse_y() return (select(2, self:mouse_pos())) end
 
 --layers geometry, drawing and hit testing
 
@@ -1180,53 +1180,53 @@ function ui.layer:layers_bounding_box()
 	return x, y, w, h
 end
 
-function ui.layer:draw_layers()
+function ui.layer:draw_layers() --called in content space
 	if not self.layers then return end
 	for i = 1, #self.layers do
-		local layer = self.layers[i]
-		layer:draw()
+		self.layers[i]:draw()
 	end
 end
 
-function ui.layer:hit_test_layers(x, y) --(x, y) are in content space
+function ui.layer:hit_test_layers(x, y) --called in content space
 	if not self.layers then return end
 	for i = #self.layers, 1, -1 do
-		local layer = self.layers[i]
-		local x, y = layer:from_parent(x, y)
-		local widget = layer:hit_test(x, y)
+		local widget, area = self.layers[i]:hit_test(x, y)
 		if widget then
-			return widget
+			return widget, area
 		end
 	end
 end
 
---border geometry, drawing and hit testing
+--border geometry and drawing
 
---border edge widths relative to rect() at %-offset in border width.
+--border edge widths relative to box rect at %-offset in border width.
 --offset is in -1..1 where -1=inner edge, 0=center, 1=outer edge.
---returned widths are positive when inside and negative when outside rect().
-function ui.layer:_border_edge_widths_top_left(offset)
+--returned widths are positive when inside and negative when outside box rect.
+function ui.layer:_border_edge_widths(offset)
 	local o = self.border_offset + offset + 1
-	return
-		lerp(o, -1, 1, self.border_width_left, 0),
-		lerp(o, -1, 1, self.border_width_top, 0)
+	local w1 = lerp(o, -1, 1, self.border_width_left, 0)
+	local h1 = lerp(o, -1, 1, self.border_width_top, 0)
+	local w2 = lerp(o, -1, 1, self.border_width_right, 0)
+	local h2 = lerp(o, -1, 1, self.border_width_bottom, 0)
+	--adjust overlapping widths by scaling them down proportionally.
+	if w1 + w2 > self.w or h1 + h2 > self.h then
+		local scale = math.min(self.w / (w1 + w2), self.h / (h1 + h2))
+		w1 = w1 * scale
+		h1 = h1 * scale
+		w2 = w2 * scale
+		h2 = h2 * scale
+	end
+	return w1, h1, w2, h2
 end
 
-function ui.layer:_border_edge_widths_bottom_right(offset)
-	local o = self.border_offset + offset + 1
-	return
-		lerp(o, -1, 1, self.border_width_right, 0),
-		lerp(o, -1, 1, self.border_width_bottom, 0)
-end
-
-function ui.layer:border_pos(offset) --in rect() space
-	return self:_border_edge_widths_top_left(offset)
+function ui.layer:border_pos(offset)
+	local w, h = self:_border_edge_widths(offset)
+	return w, h
 end
 
 --border rect at %-offset in border width.
-function ui.layer:border_rect(offset) --in rect() space
-	local w1, h1 = self:_border_edge_widths_top_left(offset)
-	local w2, h2 = self:_border_edge_widths_bottom_right(offset)
+function ui.layer:border_rect(offset)
+	local w1, h1, w2, h2 = self:_border_edge_widths(offset)
 	local w = self.w - w2 - w1
 	local h = self.h - h2 - h1
 	return w1, h1, w, h
@@ -1238,13 +1238,8 @@ local function offset_radius(r, o)
 end
 
 --border rect at %-offset in border width, plus radii of rounded corners.
-function ui.layer:border_round_rect(offset) --in rect() space
+function ui.layer:border_round_rect(offset)
 	local k = self.border_radius_kappa
-
-	local r1 = self.border_radius_top_left
-	local r2 = self.border_radius_top_right
-	local r3 = self.border_radius_bottom_right
-	local r4 = self.border_radius_bottom_left
 
 	local x1, y1, w, h = self:border_rect(0) --border at stroke center
 	local X1, Y1, W, H = self:border_rect(offset) --border at given offset
@@ -1252,7 +1247,12 @@ function ui.layer:border_round_rect(offset) --in rect() space
 	local x2, y2 = x1 + w, y1 + h
 	local X2, Y2 = X1 + W, Y1 + H
 
-	--offset radii to preserve curvature.
+	local r1 = self.border_radius_top_left
+	local r2 = self.border_radius_top_right
+	local r3 = self.border_radius_bottom_right
+	local r4 = self.border_radius_bottom_left
+
+	--offset the radii to preserve curvature at offset.
 	local r1x = offset_radius(r1, x1-X1)
 	local r1y = offset_radius(r1, y1-Y1)
 	local r2x = offset_radius(r2, X2-x2)
@@ -1268,7 +1268,7 @@ function ui.layer:border_round_rect(offset) --in rect() space
 	if r3x == 0 or r3y == 0 then r3x = 0; r3y = 0 end
 	if r4x == 0 or r4y == 0 then r4x = 0; r4y = 0 end
 
-	--adjust overlapping radii by scaling them down.
+	--adjust overlapping radii by scaling them down proportionally.
 	local maxx = math.max(r1x + r2x, r3x + r4x)
 	local maxy = math.max(r1y + r4y, r2y + r3y)
 	if maxx > W or maxy > H then
@@ -1356,7 +1356,7 @@ end
 
 --trace the border contour path at offset.
 --offset is in -1..1 where -1=inner edge, 0=center, 1=outer edge.
-function ui.layer:border_path(offset) --in rect() space.
+function ui.layer:border_path(offset)
 	local cr = self.window.cr
 	local x1, y1, w, h, r1x, r1y, r2x, r2y, r3x, r3y, r4x, r4y, k =
 		self:border_round_rect(offset)
@@ -1376,15 +1376,26 @@ function ui.layer:border_visible()
 		or self.border_width_bottom ~= 0
 end
 
-function ui.layer:draw_border() --in content space
+function ui.layer:draw_border()
 	if not self:border_visible() then return end
+	local cr = self.window.cr
 
-	local dr = self.window
-	local cr = dr.cr
+	--seamless drawing when all side colors are the same.
+	if self.border_color_left == self.border_color_top
+		and self.border_color_left == self.border_color_right
+		and self.border_color_left == self.border_color_bottom
+	then
+		cr:new_path()
+		cr:fill_rule'even_odd'
+		self:border_path(-1)
+		self:border_path(1)
+		cr:rgba(self.ui:color(self.border_color_bottom))
+		cr:fill()
+		return
+	end
 
-	local ox, oy = self:from_origin(0, 0)
-	cr:translate(ox, oy)
-
+	--complicated drawing of each side separately.
+	--still shows seams on adjacent sides of the same color.
 	local x1, y1, w, h, r1x, r1y, r2x, r2y, r3x, r3y, r4x, r4y, k =
 		self:border_round_rect(-1)
 	local X1, Y1, W, H, R1X, R1Y, R2X, R2Y, R3X, R3Y, R4X, R4Y, K =
@@ -1402,7 +1413,8 @@ function ui.layer:draw_border() --in content space
 		qarc(cr, X1+R4X, Y2-R4Y, R4X, R4Y, 5, -.5, K)
 		qarc(cr, x1+r4x, y2-r4y, r4x, r4y, 4.5, .5, k)
 		cr:close_path()
-		dr:fill(self.border_color_left)
+		cr:rgba(self.ui:color(self.border_color_left))
+		cr:fill()
 	end
 
 	if self.border_color_top then
@@ -1414,7 +1426,8 @@ function ui.layer:draw_border() --in content space
 		qarc(cr, X1+R1X, Y1+R1Y, R1X, R1Y, 2, -.5, K)
 		qarc(cr, x1+r1x, y1+r1y, r1x, r1y, 1.5, .5, k)
 		cr:close_path()
-		dr:fill(self.border_color_top)
+		cr:rgba(self.ui:color(self.border_color_top))
+		cr:fill()
 	end
 
 	if self.border_color_right then
@@ -1426,7 +1439,8 @@ function ui.layer:draw_border() --in content space
 		qarc(cr, X2-R2X, Y1+R2Y, R2X, R2Y, 3, -.5, K)
 		qarc(cr, x2-r2x, y1+r2y, r2x, r2y, 2.5, .5, k)
 		cr:close_path()
-		dr:fill(self.border_color_right)
+		cr:rgba(self.ui:color(self.border_color_right))
+		cr:fill()
 	end
 
 	if self.border_color_bottom then
@@ -1438,41 +1452,41 @@ function ui.layer:draw_border() --in content space
 		qarc(cr, X2-R3X, Y2-R3Y, R3X, R3Y, 4, -.5, K)
 		qarc(cr, x2-r3x, y2-r3y, r3x, r3y, 3.5, .5, k)
 		cr:close_path()
-		dr:fill(self.border_color_bottom)
+		cr:rgba(self.ui:color(self.border_color_bottom))
+		cr:fill()
 	end
-
-	cr:new_path() --clear path
-	cr:translate(-ox, -oy) --back to content space
 end
 
-function ui.layer:hit_test_border(x, y) --(x, y) are in content space
-	if not self:border_visible() then return end
-	local dr = self.window
-	local cr = dr.cr
-	local ox, oy = self:from_origin(0, 0)
-	cr:translate(ox, oy)
-	cr:new_path()
-	self:border_path(-1)
-	self:border_path(1)
-	cr:translate(-ox, -oy)
-	local rule = cr:fill_rule()
-	cr:fill_rule'even_odd'
-	local hit = cr:in_fill(x, y)
-	cr:new_path()
-	cr:fill_rule(rule)
-	return hit and self
+--background geometry and drawing
+
+function ui.layer:background_visible()
+	return self.background_color and true or false
 end
 
---content geometry, drawing and hit testing
+function ui.layer:background_rect()
+	self:border_rect(self.background_clip_border_offset)
+end
 
-function ui.layer:padding_pos() --in rect() space
+function ui.layer:background_path()
+	self:border_path(self.background_clip_border_offset)
+end
+
+function ui.layer:paint_background()
+	local cr = self.window.cr
+	cr:rgba(self.ui:color(self.background_color))
+	cr:paint()
+end
+
+--content-box geometry, drawing and hit testing
+
+function ui.layer:padding_pos()
 	local x, y = self:border_pos(-1) --inner edge
 	return
 		x + self.padding_left,
 		y + self.padding_top
 end
 
-function ui.layer:padding_rect() --in rect() space
+function ui.layer:padding_rect()
 	local x, y, w, h = self:border_rect(-1) --inner edge
 	return
 		x + self.padding_left,
@@ -1481,68 +1495,30 @@ function ui.layer:padding_rect() --in rect() space
 		h - self.padding_top - self.padding_bottom
 end
 
-function ui.layer:content_clip_path()
-	--
+function ui.layer:to_content(x, y) --box space coord in content space
+	local px, py = self:padding_pos()
+	return x - px, y - py
 end
 
-function ui.layer:hit_test_content_clip(x, y)
-	if not self.content_clip then
-		return self
-	end
-	return self
+function ui.layer:from_content(x, y) --content space coord in box space
+	local px, py = self:padding_pos()
+	return px + x, py + y
 end
 
-function ui.layer:hit_test_content(x, y)
-	return self:hit_test_content_clip(x, y) and self:hit_test_layers(x, y)
-end
-
-function ui.layer:draw_content()
+function ui.layer:draw_content() --called in content space
 	self:draw_layers()
 end
 
---geometry in content space (can be used inside drawing or hit-test functions)
-
-function ui.layer:from_origin(x, y) --from rect() space to content space
-	local px, py = self:padding_pos()
-	return x-px, y-py
+function ui.layer:hit_test_content(x, y) --called in content space
+	return self:hit_test_layers(x, y)
 end
-
-function ui.layer:content_size()
-	local _, _, w, h = self:padding_rect()
-	return w, h
-end
-
-function ui.layer:content_rect()
-	local _, _, w, h = self:padding_rect()
-	return 0, 0, w, h
-end
-
-function ui.layer:get_cw() return (select(3, self:padding_rect())) end
-function ui.layer:get_ch() return (select(4, self:padding_rect())) end
 
 --child interface
 
-function ui.layer:hit_test(x, y) --(x, y) are in content space
-	if not self.visible or self.opacity == 0 then return end
-	return self:hit_test_content(x, y) or self:hit_test_border(x, y)
-end
-
-function ui.layer:bounding_box()
-	if self.content_clip then
-		--TODO: it's more complicated than this with rounded corners and border
-		return box2d.bounding_box(self.x, self.y, self.w, self.h,
-			self:layers_bounding_box())
-	else
-		return self:layers_bounding_box()
-	end
-end
-
-function ui.layer:after_draw()
+function ui.layer:after_draw() --called in parent's space
 	if not self.visible or self.opacity == 0 then return end
 	if self.opacity <= 0 then return end
-
-	local dr = self.window
-	local cr = dr.cr
+	local cr = self.window.cr
 
 	local opacity = self.opacity
 	local compose = opacity < 1
@@ -1552,51 +1528,42 @@ function ui.layer:after_draw()
 		cr:save()
 	end
 
-	--draw() is called from parent's content space. move to own content space.
-	cr:matrix(cr:matrix(nil, self._temp_matrix):multiply(self.matrix))
+	cr:matrix(cr:matrix(nil, self._temp_matrix):multiply(self.rel_matrix))
 
-	--[[
-	if self.content_clip or self.background_color then
+	local cc = self.content_clip
+	local bg = self:background_visible()
 
-		if self.border_radius_top_left == 0
-			and self.border_radius_top_right == 0
-			and self.border_radius_bottom_right == 0
-			and self.border_radius_bottom_left == 0
-		then
-			cr:rectangle(self:content_rect())
-		else
-			dr:round_rect_path(self:border_round_rect(self.background_clip_border_offset))
+	local clip = bg or cc
+	if clip then
+		cr:save()
+		cr:new_path()
+		self:background_path() --'background' clipping is implicit in 'padding'
+		cr:clip()
+		if bg then
+			self:paint_background()
 		end
-
-		if self.content_clip then
-			cr:save()
-			cr:clip_preserve()
-			if self.background_clip == 'padding' then
-				cr:new_path()
-				cr:rectangle(self:content_rect())
-				self:clip()
-			end
-			if self.content_clip == 'padding' then
-				--clip some more
-			end
-		end
-		if self.background_color then
-			dr:fill(self.background_color)
-			dr.cr:new_path()
+		if cc == 'padding' or cc == true then
+			cr:new_path()
+			cr:rectangle(self:padding_rect())
+			cr:clip()
+		elseif not cc then --clip was only needed to draw the bg
+			cr:restore()
+			clip = false
 		end
 	end
-	]]
-
+	if not cc then
+		self:draw_border()
+	end
+	local cx, cy = self:padding_pos()
+	cr:translate(cx, cy)
 	self:draw_content()
-
-	cr:matrix(self._temp_matrix)
-	self:draw_border()
-
-	--[[
-	if self.content_clip then
+	cr:translate(-cx, -cy)
+	if clip then
 		cr:restore()
 	end
-	]]
+	if cc then
+		self:draw_border()
+	end
 
 	if compose then
 		cr:pop_group_to_source()
@@ -1605,6 +1572,101 @@ function ui.layer:after_draw()
 	else
 		cr:restore()
 	end
+end
+
+function ui.layer:hit_test(x, y) --called in parent's space
+	if not self.visible or self.opacity == 0 then return end
+	local cr = self.window.cr
+	local x, y = self:from_parent(x, y)
+	cr:save()
+	cr:identity_matrix()
+
+	local border = self:border_visible()
+	local bg = self:background_visible()
+	local cc = self.content_clip
+
+	--hit the content first if it's not clipped
+	if not cc then
+		local cx, cy = self:to_content(x, y)
+		local widget, area = self:hit_test_content(cx, cy)
+		if widget then
+			cr:restore()
+			return widget, area
+		end
+	end
+
+	--border is drawn last so hit it first
+	if border then
+		cr:new_path()
+		self:border_path(1)
+		if cr:in_fill(x, y) then --inside border outer edge
+			cr:new_path()
+			self:border_path(-1)
+			if not cr:in_fill(x, y) then --outside border inner edge
+				cr:restore()
+				return self, 'border'
+			end
+		elseif cc then --outside border outer edge when clipped
+			cr:restore()
+			return
+		end
+	end
+
+	--hit background's clip area
+	local in_bg
+	if cc or bg then
+		cr:new_path()
+		self:background_path()
+		in_bg = cr:in_fill(x, y)
+	end
+
+	--hit content's clip area
+	local in_cc
+	if cc and in_bg then --'background' clipping is implicit in 'padding'
+		if cc == 'padding' or cc == true then
+			cr:new_path()
+			cr:rectangle(self:padding_rect())
+			if cr:in_fill(x, y) then
+				in_cc = true
+			end
+		else
+			in_cc = true
+		end
+	end
+
+	--hit the content
+	if in_cc then
+		local cx, cy = self:to_content(x, y)
+		local widget, area = self:hit_test_content(cx, cy)
+		if widget then
+			cr:restore()
+			return widget, area
+		end
+	end
+
+	--hit the background if any
+	if in_bg then
+		return self, 'background'
+	end
+end
+
+function ui.layer:bounding_box()
+	x, y, w, h = self:layers_bounding_box()
+	local cc = self.content_clip
+	if cc then
+		x, y, w, h = box.clip(x, y, w, h, self:background_rect())
+		if cc == 'padding' or cc == true then
+			x, y, w, h = box.clip(x, y, w, h, self:padding_rect())
+		end
+	else
+		if self:background_visible() then
+			x, y, w, h = box2d.bounding_box(x, y, w, h, self:background_rect())
+		end
+		if self:border_visible() then
+			x, y, w, h = box2d.bounding_box(x, y, w, h, self:border_rect(1))
+		end
+	end
+	return x, y, w, h
 end
 
 --element interface
@@ -1654,17 +1716,40 @@ function ui.layer:set_active(active)
 	end
 end
 
---sugar & utils
+--utils in content space to use from draw_content() and hit_test_content()
 
-function ui.layer:rect() return 0, 0, self.w, self.h end
+function ui.layer:rect() return 0, 0, self.w, self.h end --the box itself
 function ui.layer:size() return self.w, self.h end
-
-function ui.layer:get_mouse_x() return (select(1, self:mouse_pos())) end
-function ui.layer:get_mouse_y() return (select(2, self:mouse_pos())) end
 
 function ui.layer:hit(x, y, w, h)
 	local mx, my = self:mouse_pos()
 	return box2d.hit(mx, my, x, y, w, h)
+end
+
+function ui.layer:from_origin(x, y) --from box space to content space
+	local px, py = self:padding_pos()
+	return x-px, y-py
+end
+
+function ui.layer:content_size()
+	return select(3, self:padding_rect())
+end
+
+function ui.layer:content_rect() --in content space
+	return 0, 0, select(3, self:padding_rect())
+end
+
+function ui.layer:get_cw() return (select(3, self:padding_rect())) end
+function ui.layer:get_ch() return (select(4, self:padding_rect())) end
+
+
+function ui.layer:setfont(family, weight, slant, size, color)
+	self.window:setfont(
+		family or self.font_family,
+		weight or self.font_weight,
+		slant or self.font_slant,
+		size or self.text_size)
+	self.window.cr:rgba(self.ui:color(color or self.text_color))
 end
 
 --buttons --------------------------------------------------------------------
@@ -1708,9 +1793,8 @@ function ui.button:mouseup(button, x, y)
 end
 
 function ui.button:before_draw_content()
-	local dr = self.window
 	if self.text then
-		dr:textbox(0, 0, self.w, self.h, self.text,
+		self.window:textbox(0, 0, self.w, self.h, self.text,
 			self.font_family, self.font_weight, self.font_slant, self.text_size,
 			self.line_spacing, self.text_color, 'center', 'center')
 	end
@@ -1818,11 +1902,11 @@ function ui.scrollbar:after_init(ui, t)
 	})
 
 	self.window:on({'mousemove', self}, function(win, mx, my)
-		local mx, my = self:from_parent(mx, my)
+		local mx, my = self:from_window(mx, my)
 		self:_autohide_mousemove(mx, my)
 	end)
 
-	self.window:on({'mouseleave', self}, function(win, mx, my)
+	self.window:on({'mouseleave', self}, function(win)
 		self:_autohide_mouseleave()
 	end)
 
@@ -1904,10 +1988,10 @@ function ui.scrollbar:after_mousemove(mx, my)
 end
 
 function ui.scrollbar:before_draw_content()
-	local dr = self.window
 	local bx, by, bw, bh = self:grabbar_rect()
 	if bw < self.w or bh < self.h then
-		--dr:rect(bx, by, bw, bh, self.grabbar_background_color)
+		--self.grabbar_background_color
+		--self.window.cr:rectacngle(bx, by, bw, bh, )
 	end
 end
 
