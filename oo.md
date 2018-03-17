@@ -57,6 +57,10 @@ Object system with virtual properties and method overriding hooks.
    * `Apple = oo.Apple(Fruit)` is sugar for `Apple = Fruit:subclass()`
    * `apple = Apple(...)` is sugar for `apple = Apple:create(...)`
       * `Apple:create()` calls `apple:init(...)`
+	* `Fruit.__install['^prefix_(.*)'] = function(self, k, v) ... end` -
+	add a new meta-method installer. Getters, setters and overriding hooks
+	are implemented this way (the matches being `^get_(.*)`, `^set_(.*)`,
+	`^before_(.*)`, `^after_(.*)` and `^override_(.*)`).
 
 ## Inheritance and instantiation
 
