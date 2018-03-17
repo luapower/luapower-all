@@ -20,12 +20,14 @@ local pop = table.remove
 
 local indexof = glue.indexof
 local update = glue.update
+local merge = glue.merge
 local attr = glue.attr
 local lerp = glue.lerp
 local clamp = glue.clamp
 local assert = glue.assert
 local collect = glue.collect
 local sortedpairs = glue.sortedpairs
+local memoize = glue.memoize
 
 local function popval(t, v)
 	local i = indexof(v, t)
@@ -68,6 +70,19 @@ end
 function object:before_init()
 	self.__setters = self.__setters
 	self.__getters = self.__getters
+end
+
+--generic method memoizer
+function object:memoize(method_name)
+	function self:after_init()
+		local method = self[method_name]
+		local memfunc = memoize(function(...)
+			return method(self, ...)
+		end)
+		self[method_name] = function(self, ...)
+			return memfunc(...)
+		end
+	end
 end
 
 --module object --------------------------------------------------------------
@@ -303,33 +318,19 @@ ui.type = {}  --{patt|f(attr) -> type}
 
 --find an attribute type based on its name
 function ui:_attr_type(attr)
-	local atype = self._type[attr]
-	if not atype then
-		for patt, atype1 in pairs(self.type) do
-			if (type(patt) == 'string' and attr:find(patt))
-				or (type(patt) ~= 'string' and patt(attr))
-			then
-				atype = atype1
-				break
-			end
+	for patt, atype in pairs(self.type) do
+		if (type(patt) == 'string' and attr:find(patt))
+			or (type(patt) ~= 'string' and patt(attr))
+		then
+			return atype
 		end
-		assert(atype, 'missing attribute type for "%s"', attr)
-		self._type[attr] = atype --cache it
 	end
-	return atype
+	return 'number'
 end
+ui:memoize'_attr_type'
 
 ui.type['_color$'] = 'color'
-ui.type['_width$'] = 'number'
-ui.type['_height$'] = 'number'
-ui.type['^x$'] = 'number'
-ui.type['^y$'] = 'number'
-ui.type['^w$'] = 'number'
-ui.type['^h$'] = 'number'
-ui.type['^rotation$'] = 'number'
-ui.type['^_cx$'] = 'number'
-ui.type['^_cy$'] = 'number'
-ui.type['^opacity$'] = 'number'
+ui.type['_color_'] = 'color'
 
 --transition animations ------------------------------------------------------
 
@@ -587,10 +588,10 @@ end
 
 ui.window = oo.window(ui.element)
 
-ui.window.opacity = 1 --TODO: set native_window's opacity
-
 ui:style('window_layer', {
-	background_color = '#000',
+	--screen-wiping options that work with transparent windows
+	background_color = '#0000',
+	background_operator = 'source',
 })
 
 function ui.window:after_init(ui, t)
@@ -647,10 +648,10 @@ function ui.window:after_init(ui, t)
 	self.hot_widget = false
 	self.active_widget = false
 
-	self.layer = self.ui:layer{
+	self.layer = self.layer_class(self.ui, merge({
 		id = self:_subtag'layer', x = 0, y = 0, w = self.w, h = self.h,
 		parent = self, content_clip = false,
-	}
+	}, self.layer))
 end
 
 function ui.window:before_free()
@@ -799,21 +800,13 @@ function ui.window:size() return self.w, self.h end
 
 --drawing helpers ------------------------------------------------------------
 
-function ui:after_init()
-	self._colors = {} --{'#rgba' -> {r, g, b, a}}
+function ui:_color(s)
+	return {color.string_to_rgba(s)}
 end
+ui:memoize'_color'
 
 function ui:color(c)
-	if type(c) == 'string' then
-		local t = self._colors[c]
-		if not t then
-			t = {color.string_to_rgba(c)}
-			self._colors[c] = t
-		end
-		return unpack(t)
-	else
-		return unpack(c)
-	end
+	return unpack(type(c) == 'string' and self:_color(c) or c)
 end
 
 --fonts and text
@@ -837,7 +830,9 @@ function ui:before_free()
 end
 
 function ui.window:before_free()
-	self.cr:font_face(cairo.NULL)
+	if self.cr then
+		self.cr:font_face(cairo.NULL)
+	end
 end
 
 --override this for different ways of finding font files
@@ -947,6 +942,7 @@ end
 --layers ---------------------------------------------------------------------
 
 ui.layer = oo.layer(ui.element)
+ui.window.layer_class = ui.layer
 
 function ui.layer:set_padding(s)
 	self.padding_left, self.padding_top, self.padding_right,
@@ -986,7 +982,30 @@ ui.layer.content_clip = true --'padding'/true, 'background', false
 
 ui.layer.padding = 0
 
-ui.layer.background_color = nil --no background
+ui.layer.background_type = 'color'
+ui.layer.background_color = false --no background
+--all gradients
+ui.layer.background_colors = {} --{[offset1], color1, ...}
+ui.layer.background_rotation = 0
+ui.layer.background_rotation_cx = 0
+ui.layer.background_rotation_cy = 0
+ui.layer.background_scale = 1
+ui.layer.background_scale_cx = 0
+ui.layer.background_scale_cy = 0
+--linear gradient backgrounds
+ui.layer.background_x1 = 0.5
+ui.layer.background_y1 = 0
+ui.layer.background_x2 = 0.5
+ui.layer.background_y2 = 1
+--radial gradient backgrounds
+ui.layer.background_cx1 = 0.5
+ui.layer.background_cy1 = 0.5
+ui.layer.background_r1 = 0
+ui.layer.background_cx2 = 0.5
+ui.layer.background_cy2 = 0.5
+ui.layer.background_r2 = 1
+
+ui.layer.background_operator = 'over'
 -- overlapping between background clipping edge and border stroke.
 -- -1..1 goes from inside to outside of border edge.
 ui.layer.background_clip_border_offset = -1
@@ -1460,21 +1479,86 @@ end
 --background geometry and drawing
 
 function ui.layer:background_visible()
-	return self.background_color and true or false
+	return (self.background_type == 'color' and self.background_color)
+		or ((self.background_type == 'gradient'
+			or self.background_type == 'radial_gradient')
+			and self.background_colors and #self.background_colors > 0)
+		and true or false
 end
 
 function ui.layer:background_rect()
-	self:border_rect(self.background_clip_border_offset)
+	return self:border_rect(self.background_clip_border_offset)
 end
 
 function ui.layer:background_path()
 	self:border_path(self.background_clip_border_offset)
 end
 
+function ui:_add_color_stops(g, ...)
+	local offset = 0
+	for i=1,select('#', ...) do
+		local arg = select(i, ...)
+		if type(arg) == 'number' then
+			offset = arg
+		else
+			g:add_color_stop(offset, self:color(arg))
+		end
+	end
+end
+
+function ui:linear_gradient(x1, y1, x2, y2, extend, ...)
+	local g = cairo.linear_gradient(x1, y1, x2, y2)
+	g:extend(extend)
+	self:_add_color_stops(g, ...)
+	return g
+end
+ui:memoize'linear_gradient'
+
+function ui:radial_gradient(cx1, cy1, r1, cx2, cy2, r2, extend, ...)
+	local g = cairo.radial_gradient(cx1, cy1, r1, cx2, cy2, r2)
+	g:extend(extend)
+	self:_add_color_stops(g, ...)
+	return g
+end
+ui:memoize'radial_gradient'
+
 function ui.layer:paint_background()
 	local cr = self.window.cr
-	cr:rgba(self.ui:color(self.background_color))
+	cr:operator(self.background_operator)
+	local bg_type = self.background_type
+	if bg_type == 'color' then
+		cr:rgba(self.ui:color(self.background_color))
+	elseif bg_type == 'gradient' or bg_type == 'radial_gradient' then
+		local patt
+		if bg_type == 'gradient' then
+			patt = self.ui:linear_gradient(
+				self.background_x1,
+				self.background_y1,
+				self.background_x2,
+				self.background_y2,
+				self.background_extend,
+				unpack(self.background_colors))
+		else
+			patt = self.ui:radial_gradient(
+				self.background_cx1,
+				self.background_cy1,
+				self.background_r1,
+				self.background_cx2,
+				self.background_cy2,
+				self.background_r2,
+				self.background_extend,
+				unpack(self.background_colors))
+		end
+		local x, y, w, h = self:background_rect()
+		local m = self._temp_matrix
+		m:scale(1 / w, 1 / h)
+		patt:matrix(m)
+		cr:source(patt)
+	else
+		assert(false, 'invalid background type %s', tostring(bg_type))
+	end
 	cr:paint()
+	cr:rgb(0, 0, 0) --release source
 end
 
 --content-box geometry, drawing and hit testing

@@ -1126,6 +1126,8 @@ Get the mouse state. The `var` arg can be:
 The mouse state is not queried: it is the state at the time of the last
 mouse event. Returns nothing if the window is hidden or minimized.
 
+Mouse coordinates are relative to the window's client-area.
+
 ### `win/view:mouseenter()` <br> `win/view:mouseleave()`
 
 Event: mouse entered/left the client area of the window.

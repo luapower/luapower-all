@@ -1447,11 +1447,24 @@ function window:_update_layered()
 	self._bitmap:update_layered(self.win.hwnd, r.x, r.y)
 end
 
+function window:_invalidate_layered()
+	if self._layered_invalid then
+		self._layered_invalid = false
+		self.frontend:_backend_repaint()
+		self:_update_layered()
+	end
+end
+
 function window:invalidate(...)
 	if self._norepaint then return end
 	if self._layered then
-		self.frontend:_backend_repaint()
-		self:_update_layered()
+		self._layered_invalid = true
+		if not self._layered_timer then
+			self._layered_timer = true
+			self.app:runevery(0, function()
+				self:_invalidate_layered()
+			end)
+		end
 	else
 		self:_invalidate(...)
 	end
