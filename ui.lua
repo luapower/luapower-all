@@ -14,6 +14,8 @@ local time = require'time'
 local gfonts = require'gfonts'
 local freetype = require'freetype'
 local cairo = require'cairo'
+local libjpeg = require'libjpeg'
+local fs = require'fs'
 
 local push = table.insert
 local pop = table.remove
@@ -35,7 +37,7 @@ local function popval(t, v)
 end
 
 local function round(x)
-	return math.floor(x + 0.5)
+	return math.floor(x + .5)
 end
 
 local function args4(s, convert) --parse a string of 4 non-space args
@@ -89,6 +91,17 @@ end
 
 local ui = oo.ui(object)
 ui.object = object
+
+function ui:error(msg, ...)
+	msg = string.format(msg, ...)
+	io.stderr:write(msg)
+	io.stderr:write'\n'
+end
+
+function ui:check(ret, ...)
+	if ret then return ret end
+	self:error(...)
+end
 
 --selectors ------------------------------------------------------------------
 
@@ -331,6 +344,7 @@ ui:memoize'_attr_type'
 
 ui.type['_color$'] = 'color'
 ui.type['_color_'] = 'color'
+ui.type['_colors$'] = 'gradient_colors'
 
 --transition animations ------------------------------------------------------
 
@@ -395,6 +409,17 @@ function ui.transition.interpolate.color(d, c1, c2, c)
 	else --by-value semantics
 		return {r, g, b, a}
 	end
+end
+
+function ui.transition.interpolate.gradient_colors(d, t1, t2, t)
+	t = t or {}
+	local offset1, offset2 = 0, 0
+	for i,arg1 in ipairs(t1) do
+		local arg2 = t2[i]
+		local atype = type(arg1) == 'number' and 'number' or 'color'
+		t[i] = ui.transition.interpolate[atype](d, arg1, arg2, t[i])
+	end
+	return t
 end
 
 --element lists --------------------------------------------------------------
@@ -809,6 +834,56 @@ function ui:color(c)
 	return unpack(type(c) == 'string' and self:_color(c) or c)
 end
 
+function ui:_add_color_stops(g, ...)
+	local offset = 0
+	for i=1,select('#', ...) do
+		local arg = select(i, ...)
+		if type(arg) == 'number' then
+			offset = arg
+		else
+			g:add_color_stop(offset, self:color(arg))
+		end
+	end
+end
+
+function ui:linear_gradient(x1, y1, x2, y2, ...)
+	local g = cairo.linear_gradient(x1, y1, x2, y2)
+	self:_add_color_stops(g, ...)
+	return g
+end
+ui:memoize'linear_gradient'
+
+function ui:radial_gradient(cx1, cy1, r1, cx2, cy2, r2, ...)
+	local g = cairo.radial_gradient(cx1, cy1, r1, cx2, cy2, r2)
+	self:_add_color_stops(g, ...)
+	return g
+end
+ui:memoize'radial_gradient'
+
+function ui:image(file)
+	local ext = file:match'%.([^%.]+)$'
+	if ext == 'jpg' or ext == 'jpeg' then
+		local f, err = fs.open(file)
+		if not f then
+			self:error('error loading "%s": %s', file, err)
+			return
+		end
+		local bread = f:buffered_read()
+		local function read(buf, sz)
+			return self:check(bread(buf, sz))
+		end
+		local img = self:check(libjpeg.open({read = read}))
+		if not img then return end
+		local bmp = self:check(img:load{accept = {bgra8 = true}})
+		if not bmp then return end
+		img:free()
+		local sr = cairo.image_surface(bmp) --bmp is Lua-pinned to sr
+		local patt = cairo.surface_pattern(sr) --sr is cairo-pinned to patt
+		return {patt = patt, sr = sr}
+	end
+end
+ui:memoize'image'
+
 --fonts and text
 
 function ui:after_init()
@@ -970,7 +1045,8 @@ ui.layer._y = 0
 ui.layer._rotation = 0
 ui.layer._rotation_cx = 0
 ui.layer._rotation_cy = 0
-ui.layer._scale = 1
+ui.layer._scale_x = 1
+ui.layer._scale_y = 1
 ui.layer._scale_cx = 0
 ui.layer._scale_cy = 0
 
@@ -983,36 +1059,47 @@ ui.layer.content_clip = true --'padding'/true, 'background', false
 ui.layer.padding = 0
 
 ui.layer.background_type = 'color'
-ui.layer.background_color = false --no background
---all gradients
-ui.layer.background_colors = {} --{[offset1], color1, ...}
+--all backgrounds
+ui.layer.background_x = 0
+ui.layer.background_y = 0
 ui.layer.background_rotation = 0
 ui.layer.background_rotation_cx = 0
 ui.layer.background_rotation_cy = 0
-ui.layer.background_scale = 1
+ui.layer.background_scale_x = 1
+ui.layer.background_scale_y = 1
 ui.layer.background_scale_cx = 0
 ui.layer.background_scale_cy = 0
+--soldi color backgrounds
+ui.layer.background_color = nil --no background
+--gradient backgrounds
+ui.layer.background_colors = {} --{[offset1], color1, ...}
 --linear gradient backgrounds
-ui.layer.background_x1 = 0.5
+ui.layer.background_x1 = 0
 ui.layer.background_y1 = 0
-ui.layer.background_x2 = 0.5
-ui.layer.background_y2 = 1
+ui.layer.background_x2 = 0
+ui.layer.background_y2 = 0
 --radial gradient backgrounds
-ui.layer.background_cx1 = 0.5
-ui.layer.background_cy1 = 0.5
+ui.layer.background_cx1 = 0
+ui.layer.background_cy1 = 0
 ui.layer.background_r1 = 0
-ui.layer.background_cx2 = 0.5
-ui.layer.background_cy2 = 0.5
-ui.layer.background_r2 = 1
+ui.layer.background_cx2 = 0
+ui.layer.background_cy2 = 0
+ui.layer.background_r2 = 0
+--image backgrounds
+ui.layer.background_image = nil
 
 ui.layer.background_operator = 'over'
 -- overlapping between background clipping edge and border stroke.
 -- -1..1 goes from inside to outside of border edge.
 ui.layer.background_clip_border_offset = -1
 
-ui.layer.border_color = '#fff'
 ui.layer.border_width = 0 --no border
 ui.layer.border_radius = 0 --square
+ui.layer.border_color = '#0000'
+ui.layer.border_color_left = nil
+ui.layer.border_color_right = nil
+ui.layer.border_color_top = nil
+ui.layer.border_color_bottom = nil
 -- border stroke positioning relative to box edge.
 -- -1..1 goes from inside to outside of box edge.
 ui.layer.border_offset = -1
@@ -1052,9 +1139,15 @@ getset'h'
 getset'rotation_cx'
 getset'rotation_cy'
 getset'rotation'
-getset'scale'
+getset'scale_x'
+getset'scale_y'
 getset'scale_cx'
 getset'scale_cy'
+
+function ui.layer:set_scale(scale)
+	self.scale_x = scale
+	self.scale_y = scale
+end
 
 function ui.layer:_check_matrix()
 	if self._matrix_valid then return end
@@ -1063,7 +1156,7 @@ function ui.layer:_check_matrix()
 		:translate(self.x, self.y)
 		:rotate_around(self.rotation_cx, self.rotation_cy,
 			math.rad(self.rotation))
-		:scale_around(self.scale_cx, self.scale_cy, self.scale)
+		:scale_around(self.scale_cx, self.scale_cy, self.scale_x, self.scale_y)
 	im:reset(m):invert()
 	self._matrix_valid = true
 end
@@ -1346,7 +1439,7 @@ local function bezier_qarc(cr, cx, cy, rx, ry, q1, qlen, k)
 		qlen = math.abs(qlen)
 	end
 	if qlen ~= 1 then
-		assert(qlen == 0.5)
+		assert(qlen == .5)
 		local first = q1 == math.floor(q1)
 		x1, y1, x2, y2, x3, y3, x4, y4 =
 			bezier_split(first, qlen, x1, y1, x2, y2, x3, y3, x4, y4)
@@ -1357,7 +1450,7 @@ local function bezier_qarc(cr, cx, cy, rx, ry, q1, qlen, k)
 end
 
 --draw an eliptic arc: q1 is the quadrant starting top-left going clockwise.
---qlen is in 90deg units and can only be +/- 0.5 or 1 if k ~= 1.
+--qlen is in 90deg units and can only be +/- .5 or 1 if k ~= 1.
 local function qarc(cr, cx, cy, rx, ry, q1, qlen, k)
 	if rx == 0 or ry == 0 then --null arcs need a line to the first endpoint
 		assert(rx == 0 and ry == 0)
@@ -1389,7 +1482,8 @@ function ui.layer:border_path(offset)
 end
 
 function ui.layer:border_visible()
-	return self.border_width_left ~= 0
+	return
+		self.border_width_left ~= 0
 		or self.border_width_top ~= 0
 		or self.border_width_right ~= 0
 		or self.border_width_bottom ~= 0
@@ -1483,6 +1577,7 @@ function ui.layer:background_visible()
 		or ((self.background_type == 'gradient'
 			or self.background_type == 'radial_gradient')
 			and self.background_colors and #self.background_colors > 0)
+		or (self.background_type == 'image' and self.background_image)
 		and true or false
 end
 
@@ -1494,33 +1589,10 @@ function ui.layer:background_path()
 	self:border_path(self.background_clip_border_offset)
 end
 
-function ui:_add_color_stops(g, ...)
-	local offset = 0
-	for i=1,select('#', ...) do
-		local arg = select(i, ...)
-		if type(arg) == 'number' then
-			offset = arg
-		else
-			g:add_color_stop(offset, self:color(arg))
-		end
-	end
+function ui.layer:set_background_scale(scale)
+	self.background_scale_x = scale
+	self.background_scale_y = scale
 end
-
-function ui:linear_gradient(x1, y1, x2, y2, extend, ...)
-	local g = cairo.linear_gradient(x1, y1, x2, y2)
-	g:extend(extend)
-	self:_add_color_stops(g, ...)
-	return g
-end
-ui:memoize'linear_gradient'
-
-function ui:radial_gradient(cx1, cy1, r1, cx2, cy2, r2, extend, ...)
-	local g = cairo.radial_gradient(cx1, cy1, r1, cx2, cy2, r2)
-	g:extend(extend)
-	self:_add_color_stops(g, ...)
-	return g
-end
-ui:memoize'radial_gradient'
 
 function ui.layer:paint_background()
 	local cr = self.window.cr
@@ -1528,17 +1600,20 @@ function ui.layer:paint_background()
 	local bg_type = self.background_type
 	if bg_type == 'color' then
 		cr:rgba(self.ui:color(self.background_color))
-	elseif bg_type == 'gradient' or bg_type == 'radial_gradient' then
-		local patt
+		cr:paint()
+		return
+	end
+	local patt
+	local m = self._temp_matrix:reset()
+	if bg_type == 'gradient' or bg_type == 'radial_gradient' then
 		if bg_type == 'gradient' then
 			patt = self.ui:linear_gradient(
 				self.background_x1,
 				self.background_y1,
 				self.background_x2,
 				self.background_y2,
-				self.background_extend,
 				unpack(self.background_colors))
-		else
+		elseif bg_type == 'radial_gradient' then
 			patt = self.ui:radial_gradient(
 				self.background_cx1,
 				self.background_cy1,
@@ -1546,17 +1621,31 @@ function ui.layer:paint_background()
 				self.background_cx2,
 				self.background_cy2,
 				self.background_r2,
-				self.background_extend,
 				unpack(self.background_colors))
 		end
-		local x, y, w, h = self:background_rect()
-		local m = self._temp_matrix
-		m:scale(1 / w, 1 / h)
-		patt:matrix(m)
-		cr:source(patt)
+	elseif bg_type == 'image' then
+		local img = self.ui:image(self.background_image)
+		if not img then return end
+		patt = img.patt
 	else
 		assert(false, 'invalid background type %s', tostring(bg_type))
 	end
+	m:translate(
+		self.background_x,
+		self.background_y)
+	m:rotate_around(
+		self.background_rotation_cx,
+		self.background_rotation_cy,
+		math.rad(self.background_rotation))
+	m:scale_around(
+		self.background_scale_cx,
+		self.background_scale_cy,
+		self.background_scale_x,
+		self.background_scale_y)
+	m:invert()
+	patt:matrix(m)
+	patt:extend(self.background_extend)
+	cr:source(patt)
 	cr:paint()
 	cr:rgb(0, 0, 0) --release source
 end
@@ -1847,7 +1936,7 @@ ui.button.border_width = 1
 ui:style('button', {
 	transition_background_color = true,
 	transition_border_color = true,
-	transition_duration = 0.5,
+	transition_duration = .5,
 	transition_ease = 'expo out',
 })
 
@@ -1903,17 +1992,17 @@ ui.scrollbar.grabbar = ui.layer --class for the grabbar
 
 ui:style('scrollbar', {
 	transition_background_color = true,
-	transition_duration = 0.5,
+	transition_duration = .5,
 	transition_ease = 'expo out',
 	transition_opacity = true,
-	transition_delay_opacity = 0.5,
+	transition_delay_opacity = .5,
 	transition_duration_opacity = 1,
 })
 
 ui:style('scrollbar near', {
 	opacity = 1,
 	transition_opacity = true,
-	transition_duration_opacity = 0.5,
+	transition_duration_opacity = .5,
 	transition_delay_opacity = 0,
 })
 

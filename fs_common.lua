@@ -199,6 +199,13 @@ function file.buffered_read(f, ctype, bufsize)
 	local ofs, len = 0, 0
 	local eof = false
 	return function(dst, sz)
+		if not dst then --skip bytes (libjpeg semantics)
+			local pos0, err, errcode = f:seek'cur'
+			if not pos0 then return nil, err, errcode end
+			local pos, err, errcode = f:seek('cur', sz)
+			if not pos then return nil, err, errcode end
+			return pos - pos0
+		end
 		local rsz = 0
 		while sz > 0 do
 			if len == 0 then
