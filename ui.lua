@@ -609,6 +609,11 @@ function ui.element:draw()
 	end
 end
 
+--direct manipulation interface
+
+--TODO: function ui.element
+
+
 --windows --------------------------------------------------------------------
 
 ui.window = oo.window(ui.element)
@@ -1040,15 +1045,24 @@ function ui.layer:set_border_radius(s)
 			args4(s, tonumber)
 end
 
-ui.layer._x = 0
-ui.layer._y = 0
-ui.layer._rotation = 0
-ui.layer._rotation_cx = 0
-ui.layer._rotation_cy = 0
-ui.layer._scale_x = 1
-ui.layer._scale_y = 1
-ui.layer._scale_cx = 0
-ui.layer._scale_cy = 0
+function ui.layer:set_scale(scale)
+	self.scale_x = scale
+	self.scale_y = scale
+end
+
+function ui.layer:set_background_scale(scale)
+	self.background_scale_x = scale
+	self.background_scale_y = scale
+end
+
+ui.layer.x = 0
+ui.layer.y = 0
+ui.layer.rotation = 0
+ui.layer.rotation_cx = 0
+ui.layer.rotation_cy = 0
+ui.layer.scale = 1
+ui.layer.scale_cx = 0
+ui.layer.scale_cy = 0
 
 ui.layer._z_order = 0
 
@@ -1065,8 +1079,7 @@ ui.layer.background_y = 0
 ui.layer.background_rotation = 0
 ui.layer.background_rotation_cx = 0
 ui.layer.background_rotation_cy = 0
-ui.layer.background_scale_x = 1
-ui.layer.background_scale_y = 1
+ui.layer.background_scale = 1
 ui.layer.background_scale_cx = 0
 ui.layer.background_scale_cy = 0
 --soldi color backgrounds
@@ -1096,10 +1109,6 @@ ui.layer.background_clip_border_offset = -1
 ui.layer.border_width = 0 --no border
 ui.layer.border_radius = 0 --square
 ui.layer.border_color = '#0000'
-ui.layer.border_color_left = nil
-ui.layer.border_color_right = nil
-ui.layer.border_color_top = nil
-ui.layer.border_color_bottom = nil
 -- border stroke positioning relative to box edge.
 -- -1..1 goes from inside to outside of box edge.
 ui.layer.border_offset = -1
@@ -1108,10 +1117,8 @@ ui.layer.border_offset = -1
 ui.layer.border_radius_kappa = 1.2
 
 function ui.layer:after_init(ui, t)
-	self._rel_matrix = cairo.matrix() --relative to parent space
-	self._rel_inverse_matrix = cairo.matrix() --relative to parent space
-	self._temp_matrix = cairo.matrix()
-	self._matrix_valid = false
+	self._matrix = cairo.matrix()
+	self._matrix2 = cairo.matrix()
 end
 
 function ui.layer:before_free()
@@ -1121,54 +1128,17 @@ end
 
 --matrix-affecting fields
 
-local function getset(attr)
-	local uattr = '_'..attr
-	ui.layer['get'..uattr] = function(self)
-		return self[uattr]
-	end
-	ui.layer['set'..uattr] = function(self, val)
-		self[uattr] = val
-		self._matrix_valid = false
-		--self:invalidate() --TODO: call invalidate on basically all field changes
-	end
-end
-getset'x'
-getset'y'
-getset'w'
-getset'h'
-getset'rotation_cx'
-getset'rotation_cy'
-getset'rotation'
-getset'scale_x'
-getset'scale_y'
-getset'scale_cx'
-getset'scale_cy'
-
-function ui.layer:set_scale(scale)
-	self.scale_x = scale
-	self.scale_y = scale
-end
-
-function ui.layer:_check_matrix()
-	if self._matrix_valid then return end
-	local m, im = self._rel_matrix, self._rel_inverse_matrix
-	m:reset()
+function ui.layer:get_rel_matrix()
+	return self._matrix
+		:reset()
 		:translate(self.x, self.y)
 		:rotate_around(self.rotation_cx, self.rotation_cy,
 			math.rad(self.rotation))
 		:scale_around(self.scale_cx, self.scale_cy, self.scale_x, self.scale_y)
-	im:reset(m):invert()
-	self._matrix_valid = true
-end
-
-function ui.layer:get_rel_matrix()
-	self:_check_matrix()
-	return self._rel_matrix
 end
 
 function ui.layer:get_rel_inverse_matrix()
-	self:_check_matrix()
-	return self._rel_inverse_matrix
+	return self.rel_matrix:invert()
 end
 
 --convert point from own space to parent space
@@ -1604,7 +1574,6 @@ function ui.layer:paint_background()
 		return
 	end
 	local patt
-	local m = self._temp_matrix:reset()
 	if bg_type == 'gradient' or bg_type == 'radial_gradient' then
 		if bg_type == 'gradient' then
 			patt = self.ui:linear_gradient(
@@ -1630,20 +1599,21 @@ function ui.layer:paint_background()
 	else
 		assert(false, 'invalid background type %s', tostring(bg_type))
 	end
-	m:translate(
-		self.background_x,
-		self.background_y)
-	m:rotate_around(
-		self.background_rotation_cx,
-		self.background_rotation_cy,
-		math.rad(self.background_rotation))
-	m:scale_around(
-		self.background_scale_cx,
-		self.background_scale_cy,
-		self.background_scale_x,
-		self.background_scale_y)
-	m:invert()
-	patt:matrix(m)
+	patt:matrix(
+		self._matrix:reset()
+			:translate(
+				self.background_x,
+				self.background_y)
+			:rotate_around(
+				self.background_rotation_cx,
+				self.background_rotation_cy,
+				math.rad(self.background_rotation))
+			:scale_around(
+				self.background_scale_cx,
+				self.background_scale_cy,
+				self.background_scale_x,
+				self.background_scale_y)
+			:invert())
 	patt:extend(self.background_extend)
 	cr:source(patt)
 	cr:paint()
@@ -1701,7 +1671,7 @@ function ui.layer:after_draw() --called in parent's space
 		cr:save()
 	end
 
-	cr:matrix(cr:matrix(nil, self._temp_matrix):multiply(self.rel_matrix))
+	cr:matrix(cr:matrix(nil, self._matrix2):multiply(self.rel_matrix))
 
 	local cc = self.content_clip
 	local bg = self:background_visible()

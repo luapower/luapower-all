@@ -2,6 +2,8 @@
 tagline: extensible UI toolkit
 ---
 
+<warn>Work in Progress</warn>
+
 ## `local ui = require'ui'`
 
 Extensible UI toolkit written in Lua with layouts, styles and animations.

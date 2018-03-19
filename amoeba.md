@@ -14,6 +14,7 @@ on [kiwi](https://github.com/nucleic/kiwi) and the original
 ----------------------------------------------------------- -----------------------------------------
 `amoeba.new() -> S`                                         create a solver
 `S:var(name) -> var`                                        create a variable
+`var.value -> n`                                            variable's value
 `expr + expr -> expr`                                       build expression (add an addition)
 `expr - expr -> expr`                                       build expression (add an addition)
 `expr * expr -> expr`                                       build expression (add a multiplication)
@@ -24,8 +25,11 @@ on [kiwi](https://github.com/nucleic/kiwi) and the original
 `S:constraint([op, [expr1], [expr2], [strength]]) -> cons`  create a constraint
 `cons:relation(op) -> cons`                                 set operator (`'>='`, `'<='`, `'=='`)
 `cons:add(op|expr|expr_args...) -> cons`                    add expression or set operator
-`cons(...) -> cons`                                         `cons:add(...)`
-`cons:strength(strength) -> cons`                           set strength
+`cons(...) -> cons`                                         sugar for `cons:add(...) -> cons`
+`cons:strength(strength) -> cons`                           set constraint strength
+`cons.weight -> n`                                          get constraint strength
+`cons.op -> op`                                             get constraint operator
+`cons.expression -> expr`                                   get constraint expression
 `S:addconstraint(cons|cons_args...) -> cons`                create/add a constraint
 `S:delconstraint(cons) -> cons`                             remove a constraint
 `S:addedit(var[, strength]) -> S`                           make variable editable
@@ -33,15 +37,15 @@ on [kiwi](https://github.com/nucleic/kiwi) and the original
 `S:suggest(var, value)`                                     (make var editable and) set its value
 `S:setstrength(cons, strength) -> S`                        set constraint strength
 `S:set_constant(cons, constant)`                            set constant
-`self.vars -> {var -> true}`                                solver's variables
-`self.constraints -> {cons -> true}`                        solver's constraints
-`self.edits -> {edit -> true}`                              solver's edits
+`S.vars -> {var -> true}`                                   solver's variables
+`S.constraints -> {cons -> true}`                           solver's constraints
+`S.edits -> {edit -> true}`                                 solver's edits
 ----------------------------------------------------------- -----------------------------------------
 
 __Notes:__
 
   * `op` can be `'>='` `'<='`, `'=='`, `'ge'`, `'le'` or `'eq'`.
-  * `expr` can be a number (treated as constant), a `var` or an `expr`.
-  * `strength` can be a number or `'WEAK'` (1), `'MEDIUM'` (1e3),
+  * `expr` can be a number (treated as constant), a `var` or an `expr` object.
+  * `strength` can be a number or `'WEAK'` (1), `'MEDIUM'` (1e3; default),
   `'STRONG'` (1e6) or `'REQUIRED'` (1e9).
   * all objects have a `__tostring` metamethod for inspection.
