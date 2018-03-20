@@ -367,14 +367,15 @@ function ui.transition:after_init(ui, elem, attr, to, duration, ease, delay)
 	assert(from ~= nil, 'no value for attribute "%s"', attr)
 	local v1 = interpolate(1, from, from) --copy for by-ref semantics
 	local v2 = interpolate(1, to, to)     --copy for by-ref semantics
+	elem[attr] = v1 --set to its copy to avoid overwriting the original
 
 	function self:update(clock)
 		local t = (clock - start) / duration
 		if t < 0 then --not started
 			--nothing
-		elseif t >= 1 then --finished
+		elseif t >= 1 then --finished, set to actual final value
 			elem[attr] = to
-		else --running
+		else --running, set to interpolated value
 			local d = easing.ease(ease, way, t)
 			elem[attr] = interpolate(d, v1, v2, elem[attr])
 		end
@@ -849,21 +850,18 @@ function ui:_add_color_stops(g, ...)
 			g:add_color_stop(offset, self:color(arg))
 		end
 	end
+	return g
 end
 
 function ui:linear_gradient(x1, y1, x2, y2, ...)
 	local g = cairo.linear_gradient(x1, y1, x2, y2)
-	self:_add_color_stops(g, ...)
-	return g
+	return self:_add_color_stops(g, ...)
 end
-ui:memoize'linear_gradient'
 
 function ui:radial_gradient(cx1, cy1, r1, cx2, cy2, r2, ...)
 	local g = cairo.radial_gradient(cx1, cy1, r1, cx2, cy2, r2)
-	self:_add_color_stops(g, ...)
-	return g
+	return self:_add_color_stops(g, ...)
 end
-ui:memoize'radial_gradient'
 
 function ui:image(file)
 	local ext = file:match'%.([^%.]+)$'
