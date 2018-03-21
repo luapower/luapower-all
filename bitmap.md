@@ -96,46 +96,47 @@ raw64          x                 integer               0..0xffffffffffffffffUL
 
 ## Quick API Reference
 
------------------------------------------------------ --------------------------------------------
+--------------------------------------------------------- --------------------------------------------
 __format conversion__
-`bitmap.new(w, h, ...) -> dst`                        create a bitmap
-`bitmap.copy(src[, format], ...) -> dst`              copy and convert a bitmap
-`bitmap.paint(src, dst, dstx, dsty, ...) -> dst`      paint a bitmap on another
+`bitmap.new(w, h, ...) -> dst`                            create a bitmap
+`bitmap.copy(src[, format], ...) -> dst`                  copy and convert a bitmap
+`bitmap.paint(src, dst, dstx, dsty, ...) -> dst`          paint a bitmap on another
 __cropping__
-`bitmap.sub(src, x, y, w, h) -> dst`                  make a sub-bitmap
+`bitmap.sub(src, x, y, w, h) -> dst`                      make a sub-bitmap
 __pixel access__
-`bitmap.pixel_interface(src) -> getpixel, setpixel`   get a pixel interface
-`bitmap.channel_interface(bmp, n) -> getval, setval`  get a channel interface
+`bitmap.pixel_interface(src) -> getpixel, setpixel`       get a pixel interface
+`bitmap.channel_interface(bmp, n) -> getval, setval`      get a channel interface
 __dithering__
-`bitmap.dither.fs(bmp, rN, gN, bN, aN)`               apply dithering
-`bitmap.dither.ordered(bmp, rN, gN, bN, aN)`          apply dithering
+`bitmap.dither.fs(bmp, rN, gN, bN, aN)`                   apply dithering
+`bitmap.dither.ordered(bmp, rN, gN, bN, aN)`              apply dithering
 __effects__
-`bitmap.invert(bmp)`                                  invert colors (in place)
-`bitmap.grayscale(bmp)`                               desaturate (in place)
-`bitmap.convolve(src, kernel, [edge]) -> dst`         convolve
-`bitmap.sharpen(src[, threshold]) -> dst`             sharpen
-`bitmap.mirror(src)`                                  mirror horizontally (in place)
+`bitmap.invert(bmp)`                                      invert colors (in place)
+`bitmap.grayscale(bmp)`                                   desaturate (in place)
+`bitmap.convolve(src, kernel, [edge]) -> dst`             convolve
+`bitmap.sharpen(src[, threshold]) -> dst`                 sharpen
+`bitmap.mirror(src)`                                      mirror horizontally (in place)
 __alpha blending__
-`bitmap.blend(src, dst, [operator], [x], [y])`        blend source into dest bitmap
+`bitmap.blend(src, dst, [operator], [x], [y])`            blend source into dest bitmap
 __resizing__
-`bitmap.resize.nearest|bilinear(src, w, h) -> dst`    resize to new
-`bitmap.resize.nearest|bilinear(src, dst) -> dst`     resize to dest
+`bitmap.resize.nearest|bilinear(src, w, h) -> dst`        resize to new
+`bitmap.resize.nearest|bilinear(src, dst) -> dst`         resize to dest
 __utilities__
-`bitmap.min_stride(format, width) -> min_stride`      minimum stride for width
-`bitmap.aligned_stride(stride) -> aligned_stride`     minimum stride that is aligned
-`bitmap.row_size(bmp) -> size`                        row size in bytes
------------------------------------------------------ --------------------------------------------
+`bitmap.min_stride(format, width) -> min_stride`          minimum stride for width
+`bitmap.aligned_stride(stride[, align]) -> stride, align` next aligned stride
+`bitmap.aligned_pointer(ptr[, align]) -> ptr, align`      next aligned pointer
+`bitmap.row_size(bmp) -> size`                            row size in bytes
+--------------------------------------------------------- --------------------------------------------
 
 
 ## Bitmap operations
 
-### `bitmap.new(w, h, format, [bottom_up], [stride_aligned], [stride], [alloc]) -> new_bmp`
+### `bitmap.new(w, h, format, [bottom_up], [align], [stride], [alloc]) -> new_bmp`
 
-Create a bitmap object. If `stride_aligned` is `true` and no specific `stride`
-is given, the stride will be a multiple of 4 bytes. The optional `alloc`
+Create a bitmap object. The optional `align` (which defaults to 1) specifies
+the data pointer and stride alignment (`true` means 4). The optional `alloc`
 is an `alloc(bytes) -> data` function (eg. [glue].malloc).
 
-### `bitmap.copy(bmp, [format], [bottom_up], [stride_aligned], [stride]) -> new_bmp`
+### `bitmap.copy(bmp, [format], [bottom_up], [align], [stride]) -> new_bmp`
 
 Copy a bitmap, optionally to a new format, orientation and stride. If `format`
 is not specified, stride and orientation default to those of source bitmap's,
@@ -288,9 +289,16 @@ Resize a bitmap.
 Return the minimum stride in bytes given a format and width.
 A bitmap data buffer should never be smaller than `min_stride * height`.
 
-### `bitmap.aligned_stride(stride) -> aligned_stride`
+### `bitmap.aligned_stride(stride[, align]) -> stride, align`
 
-Given a stride, return the smallest stride that is a multiple of 4 bytes.
+Given a stride (which can also be fractional) and a power-of-two alignment,
+return the next smallest stride that is a multiple of the alignment
+(`align` defaults to 1 and `true` means 4).
+
+### `bitmap.aligned_pointer(ptr[, align]) -> ptr, align`
+
+Same as `aligned_stride()` but for pointers. The returned pointer is of type
+`void*`.
 
 ### `bitmap.row_size(bmp) -> size`
 

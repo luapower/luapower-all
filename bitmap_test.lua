@@ -15,7 +15,7 @@ for src_format in glue.sortedpairs(bitmap.formats) do
 	jit.flush()
 	for dst_format in bitmap.conversions(src_format) do
 		local src = bitmap.new(1921, 1081, src_format)
-		local dst = bitmap.new(1921, 1081, dst_format, 'flipped', 'aligned')
+		local dst = bitmap.new(1921, 1081, dst_format, 'flipped', true)
 
 		timediff()
 		bitmap.paint(src, dst)

@@ -470,9 +470,27 @@ local function valid_format(format)
 				or assert(format, 'format missing') --custom format
 end
 
---smallest stride that is a multiple of 4 bytes
-local function aligned_stride(stride)
-	return band(ceil(stride) + 3, bnot(3))
+--next address that is multiple of `align` bytes
+local function aligned_address(addr, align)
+	if not align or align == 1 then
+		return addr, 1
+	elseif align == true then
+		align = 4 --default for cairo (sse2 needs 16)
+	end
+	assert(align >= 2)
+	assert(band(align, align - 1) == 0) --must be power-of-two
+	return band(addr + align - 1, bnot(align - 1)), align
+end
+
+local voidp_ct = ffi.typeof'void*'
+local function aligned_pointer(ptr, align)
+	local addr = ffi.cast('uintptr_t', ptr)
+	return ffi.cast(voidp_ct, aligned_address(addr, align))
+end
+
+--next stride that is a multiple of `align` bytes
+local function aligned_stride(stride, align)
+	return aligned_address(ceil(stride), align)
 end
 
 --minimum stride for a specific format
@@ -481,12 +499,12 @@ local function min_stride(format, w)
 end
 
 --validate stride against min. stride
-local function valid_stride(format, w, stride, aligned)
+local function valid_stride(format, w, stride, align)
 	local min_stride = min_stride(format, w)
-	stride = stride or min_stride
-	stride = aligned and aligned_stride(stride) or stride
+	local stride = stride or min_stride
+	local stride, align = aligned_stride(stride, align)
 	assert(stride >= min_stride, 'invalid stride')
-	return stride
+	return stride, align
 end
 
 local function bitmap_stride(bmp)
@@ -505,13 +523,14 @@ local function bitmap_colortype(bmp)
 	return valid_colortype(valid_format(bmp.format).colortype)
 end
 
-local function new(w, h, format, bottom_up, stride_aligned, stride, alloc)
-	stride = valid_stride(format, w, stride, stride_aligned)
-	local size = ceil(stride * h)
+local function new(w, h, format, bottom_up, align, stride, alloc)
+	local stride, align = valid_stride(format, w, stride, align)
+	local size = ceil(stride * h) + (align - 1)
 	assert(size > 0, 'invalid size')
-	local data = alloc and alloc(size) or ffi.new(ffi.typeof('char[$]', size))
+	local _data = alloc and alloc(size) or ffi.new(ffi.typeof('char[$]', size))
+	local data = aligned_pointer(_data, align)
 	return {w = w, h = h, format = format, bottom_up = bottom_up or nil,
-		stride = stride, data = data, size = size,
+		stride = stride, data = data, _data = _data, size = size,
 		alloc = alloc and true or nil}
 end
 
@@ -646,11 +665,10 @@ local function paint(src, dst, dstx, dsty, convert_pixel, src_colortype, dst_col
 		and not convert_pixel
 		and src_stride == dst_stride
 		and not src.bottom_up == not dst.bottom_up
-		and src_stride == floor(src_rowsize) --won't write outside rowsize
 	then
 		if src.data ~= dst.data then
-			assert(src.size == dst.size)
-			ffi.copy(dst.data, src.data, dst.size)
+			assert(dst.size >= src.size)
+			ffi.copy(dst.data, src.data, src.size)
 		end
 		return dst
 	end
@@ -675,8 +693,6 @@ local function paint(src, dst, dstx, dsty, convert_pixel, src_colortype, dst_col
 		and dst_stride == floor(dst_stride) --can't copy from fractional offsets
 		and src_rowsize == floor(src_rowsize) --can't copy fractional row sizes
 	then
-		dst_data = ffi.cast('char*', dst.data)
-		src_data = ffi.cast('char*', src.data)
 		for sj = 0, (src.h - 1) * src_stride, src_stride do
 			ffi.copy(dst_data + dj, src_data + sj, src_rowsize)
 			dj = dj + dst_stride
@@ -715,13 +731,13 @@ end
 
 --bitmap copy
 
-local function copy(src, format, bottom_up, stride_aligned, stride)
+local function copy(src, format, bottom_up, align, stride)
 	if not format then
 		format = src.format
 		if bottom_up == nil then bottom_up = src.bottom_up end
 		stride = stride or src.stride
 	end
-	local dst = new(src.w, src.h, format, bottom_up, stride_aligned, stride)
+	local dst = new(src.w, src.h, format, bottom_up, align, stride)
 	return paint(src, dst)
 end
 
@@ -780,6 +796,7 @@ return glue.autoload({
 	--format/stride math
 	valid_format = valid_format,
 	aligned_stride = aligned_stride,
+	aligned_pointer = aligned_pointer,
 	min_stride = min_stride,
 	valid_stride = valid_stride,
 	--bitmap info
