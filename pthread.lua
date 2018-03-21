@@ -389,7 +389,7 @@ end
 local function timespec(time, ts)
 	local int, frac = math.modf(time)
 	ts.s = int
-	ts.ns = frac * 10^9
+	ts.ns = frac * 1e9
 	return ts
 end
 

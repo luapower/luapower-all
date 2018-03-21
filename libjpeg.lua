@@ -311,14 +311,15 @@ local function open(t)
 
 	local function load_image(img, t)
 
+		local bmp = {}
 		--find the best accepted output pixel format
 		assert(img.format, 'invalid pixel format')
 		assert(cinfo.num_components == channel_count[img.format])
-		img.format = best_format(img.format, t and t.accept)
+		bmp.format = best_format(img.format, t and t.accept)
 
 		--set decompression options
-		cinfo.out_color_space = assert(color_spaces[img.format])
-		cinfo.output_components = channel_count[img.format]
+		cinfo.out_color_space = assert(color_spaces[bmp.format])
+		cinfo.output_components = channel_count[bmp.format]
 		cinfo.scale_num = t and t.scale_num or 1
 		cinfo.scale_denom = t and t.scale_denom or 1
 		local dct_method = dct_methods[t and t.dct_method or 'accurate']
@@ -333,21 +334,21 @@ local function open(t)
 		end
 
 		--get info about the output image
-		img.w = cinfo.output_width
-		img.h = cinfo.output_height
+		bmp.w = cinfo.output_width
+		bmp.h = cinfo.output_height
 
 		--compute the stride
-		img.stride = cinfo.output_width * cinfo.output_components
+		bmp.stride = cinfo.output_width * cinfo.output_components
 		if t and t.accept and t.accept.stride_aligned then
-			img.stride = pad_stride(img.stride)
+			bmp.stride = pad_stride(bmp.stride)
 		end
 
 		--allocate image and row buffers
-		img.size = img.h * img.stride
-		img.data = ffi.new('uint8_t[?]', img.size)
-		img.bottom_up = t and t.accept and t.accept.bottom_up
+		bmp.size = bmp.h * bmp.stride
+		bmp.data = ffi.new('uint8_t[?]', bmp.size)
+		bmp.bottom_up = t and t.accept and t.accept.bottom_up
 
-		local rows = rows_buffer(img.h, img.bottom_up, img.data, img.stride)
+		local rows = rows_buffer(bmp.h, bmp.bottom_up, bmp.data, bmp.stride)
 
 		--decompress the image
 		while C.jpeg_input_complete(cinfo) == 0 do
@@ -366,11 +367,11 @@ local function open(t)
 			C.jpeg_start_output(cinfo, cinfo.input_scan_number)
 
 			--read all the scanlines into the row buffers
-			while cinfo.output_scanline < img.h do
+			while cinfo.output_scanline < bmp.h do
 
 				--read several scanlines at once, depending on the size of the output buffer
 				local i = cinfo.output_scanline
-				local n = math.min(img.h - i, cinfo.rec_outbuf_height)
+				local n = math.min(bmp.h - i, cinfo.rec_outbuf_height)
 				while C.jpeg_read_scanlines(cinfo, rows + i, n) < n do
 					fill_input_buffer()
 				end
@@ -378,7 +379,7 @@ local function open(t)
 
 			--call the rendering callback on the converted image
 			if t and t.render_scan then
-				t.render_scan(img, last_scan, cinfo.output_scan_number)
+				t.render_scan(bmp, last_scan, cinfo.output_scan_number)
 			end
 
 			while C.jpeg_finish_output(cinfo) == 0 do
@@ -391,7 +392,7 @@ local function open(t)
 			fill_input_buffer()
 		end
 
-		return img
+		return bmp
 	end
 
 	jit.off(load_image) --can't call error() from callbacks called from C

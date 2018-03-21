@@ -118,7 +118,7 @@ local timeval, fds
 local function select_fd(fd, timeout) --returns true if fd has data, false if timed out
 	timeval = timeval or ffi.new'xlib_timeval'
 	timeval.tv_sec = timeout
-	timeval.tv_usec = (timeout - math.floor(timeout)) * 10^6
+	timeval.tv_usec = (timeout - math.floor(timeout)) * 1e6
 	fds = fds or ffi.new'xlib_fd_set'
 	FD_ZERO(fds)
 	FD_SET(fd, fds)
