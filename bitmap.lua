@@ -525,9 +525,10 @@ end
 
 local function new(w, h, format, bottom_up, align, stride, alloc)
 	local stride, align = valid_stride(format, w, stride, align)
-	local size = ceil(stride * h) + (align - 1)
+	local size = ceil(stride * h)
 	assert(size > 0, 'invalid size')
-	local _data = alloc and alloc(size) or ffi.new(ffi.typeof('char[$]', size))
+	local _size = size + (align - 1)
+	local _data = alloc and alloc(_size) or ffi.new(ffi.typeof('char[$]', _size))
 	local data = aligned_pointer(_data, align)
 	return {w = w, h = h, format = format, bottom_up = bottom_up or nil,
 		stride = stride, data = data, _data = _data, size = size,
@@ -690,7 +691,7 @@ local function paint(src, dst, dstx, dsty, convert_pixel, src_colortype, dst_col
 	if src_format == dst_format
 		and not convert_pixel
 		and src_stride == floor(src_stride) --can't copy from fractional offsets
-		and dst_stride == floor(dst_stride) --can't copy from fractional offsets
+		and dst_stride == floor(dst_stride) --can't copy into fractional offsets
 		and src_rowsize == floor(src_rowsize) --can't copy fractional row sizes
 	then
 		for sj = 0, (src.h - 1) * src_stride, src_stride do
