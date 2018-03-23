@@ -97,11 +97,16 @@ raw64          x                 integer               0..0xffffffffffffffffUL
 ## Quick API Reference
 
 --------------------------------------------------------- --------------------------------------------
-__format conversion__
+__bitmap info__
+`bitmap.format(bmp|format_name) -> format`,               bitmap format (a table)
+`bitmap.stride(bmp) -> stride`                            row stride in bytes
+`bitmap.row_size(bmp) -> size`                            row size in bytes
+`bitmap.colortype(bmp|colortype_name) -> colortype`       bitmap colortype (a table)
+__bitmap operations__
 `bitmap.new(w, h, ...) -> dst`                            create a bitmap
 `bitmap.copy(src[, format], ...) -> dst`                  copy and convert a bitmap
 `bitmap.paint(src, dst, dstx, dsty, ...) -> dst`          paint a bitmap on another
-__cropping__
+`bitmap.clear([byte_value])`                              clear bitmap
 `bitmap.sub(src, x, y, w, h) -> dst`                      make a sub-bitmap
 __pixel access__
 `bitmap.pixel_interface(src) -> getpixel, setpixel`       get a pixel interface
@@ -124,7 +129,6 @@ __utilities__
 `bitmap.min_stride(format, width) -> min_stride`          minimum stride for width
 `bitmap.aligned_stride(stride[, align]) -> stride, align` next aligned stride
 `bitmap.aligned_pointer(ptr[, align]) -> ptr, align`      next aligned pointer
-`bitmap.row_size(bmp) -> size`                            row size in bytes
 --------------------------------------------------------- --------------------------------------------
 
 

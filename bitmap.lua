@@ -516,11 +516,12 @@ local function bitmap_row_size(bmp) --can be fractional
 end
 
 local function bitmap_format(bmp)
-	return valid_format(bmp.format)
+	return valid_format(type(bmp) == 'string' and bmp or bmp.format)
 end
 
 local function bitmap_colortype(bmp)
-	return valid_colortype(valid_format(bmp.format).colortype)
+	return valid_colortype(type(bmp) == 'string' and bmp
+			or valid_format(bmp.format).colortype)
 end
 
 local function new(w, h, format, bottom_up, align, stride, alloc)
@@ -742,6 +743,10 @@ local function copy(src, format, bottom_up, align, stride)
 	return paint(src, dst)
 end
 
+local function clear(bmp, c)
+	ffi.fill(bmp.data, bmp.h * bmp.stride, c)
+end
+
 --reflection
 
 local function conversions(src_format)
@@ -809,9 +814,10 @@ return glue.autoload({
 	new = new,
 	paint = paint,
 	copy = copy,
+	clear = clear,
 	sub = sub,
 	--pixel interface
-	data_interface = data_interface,
+	--data_interface = data_interface, --publish if needed
 	pixel_interface = pixel_interface,
 	channel_interface = channel_interface,
 	--reflection
