@@ -620,7 +620,8 @@ local function sub(bmp, x, y, w, h)
 	assert(i == floor(i), 'invalid coordinates')
 	local byte_stride = stride * ffi.sizeof(format.ctype)
 	return {w = w, h = h, format = bmp.format, bottom_up = bmp.bottom_up,
-				stride = bmp.stride, data = data + i, size = byte_stride * h, parent = bmp}
+				stride = bmp.stride, data = data + i, size = byte_stride * h,
+				parent = bmp, x = x, y = y}
 end
 
 --bitmap converter
