@@ -610,7 +610,7 @@ end
 --create a bitmap representing a rectangular region of another bitmap.
 --no pixels are copied: the bitmap references the same data buffer as the original.
 local function sub(bmp, x, y, w, h)
-	x, y, w, h = box2d.clip(x, y, w, h, 0, 0, bmp.w, bmp.h)
+	x, y, w, h = box2d.clip(x or 0, y or 0, w or 1/0, h or 1/0, 0, 0, bmp.w, bmp.h)
 	if w == 0 or h == 0 then return end --can't have bitmaps in 1 or 0 dimensions
 	local format, data, stride, pixelsize = data_interface(bmp)
 	if bmp.bottom_up then

@@ -107,7 +107,7 @@ __bitmap operations__
 `bitmap.copy(src[, format], ...) -> dst`                  copy and convert a bitmap
 `bitmap.paint(src, dst, dstx, dsty, ...) -> dst`          paint a bitmap on another
 `bitmap.clear([byte_value])`                              clear bitmap
-`bitmap.sub(src, x, y, w, h) -> dst`                      make a sub-bitmap
+`bitmap.sub(src, [x], [y], [w], [h]) -> dst`              make a sub-bitmap
 __pixel access__
 `bitmap.pixel_interface(src) -> getpixel, setpixel`       get a pixel interface
 `bitmap.channel_interface(bmp, n) -> getval, setval`      get a channel interface
