@@ -18,7 +18,7 @@ for src_format in glue.sortedpairs(bitmap.formats) do
 		local dst = bitmap.new(1921, 1081, dst_format, 'flipped', true)
 
 		timediff()
-		bitmap.paint(src, dst)
+		bitmap.paint(dst, src)
 		local dt = timediff()
 
 		local flag = src_format == dst_format and '*' or ''

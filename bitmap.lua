@@ -640,7 +640,7 @@ local function chain(f, g)
 	return f or g
 end
 
-local function paint(src, dst, dstx, dsty, convert_pixel, src_colortype, dst_colortype)
+local function paint(dst, src, dstx, dsty, convert_pixel, src_colortype, dst_colortype)
 
 	if not tonumber(dstx) then --dstx, dsty are optional inner args
 		convert_pixel, dstx, dsty = dstx
@@ -741,7 +741,7 @@ local function copy(src, format, bottom_up, align, stride)
 		stride = stride or src.stride
 	end
 	local dst = new(src.w, src.h, format, bottom_up, align, stride)
-	return paint(src, dst)
+	return paint(dst, src)
 end
 
 local function clear(bmp, c)

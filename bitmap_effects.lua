@@ -103,7 +103,7 @@ function bitmap.convolve(bmp, kernel, edge)
 	end
 	local sum = sumkernel(kernel)
 	local final = bitmap.new(dst.w, dst.h, bmp.format)
-	bitmap.paint(dst, final, function(r, g, b, a)
+	bitmap.paint(final, dst, function(r, g, b, a)
 		return
 			math.min(math.max(r / sum, 0), 0xff),
 			math.min(math.max(g / sum, 0), 0xff),

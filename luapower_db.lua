@@ -4,6 +4,10 @@ return {
 			affine2d={
 			}
 		},
+		amoeba={
+			amoeba={
+			}
+		},
 		bitmap={
 			bitmap={
 				autoloads={
@@ -97,6 +101,17 @@ return {
 		},
 		box2d={
 			box2d={
+			}
+		},
+		boxblur={
+			boxblur={
+				ffi_deps={
+					boxblur=true
+				},
+				mdeps={
+					bitmap=true,
+					ffi=true
+				}
 			}
 		},
 		bundle={
@@ -904,6 +919,8 @@ return {
 				}
 			}
 		},
+		ljstr={
+		},
 		llvm={
 		},
 		lpeg={
@@ -1019,14 +1036,18 @@ return {
 			table={
 			}
 		},
+		luaparser={
+			luaparser={
+				loaderr='./luaparser.lua:15: ./ljstr.lua:6: libljstr.so: cannot open shared object file: No such file or directory'
+			}
+		},
 		luapower={
 			luapower={
 				mdeps={
 					ffi=true,
 					glue=true,
 					lfs=true,
-					luapower_rpc=true,
-					tuple=true
+					luapower_rpc=true
 				}
 			},
 			luapower_cli={
@@ -1144,14 +1165,7 @@ return {
 		},
 		nanojpeg={
 			nanojpeg={
-				ffi_deps={
-					nanojpeg2=true
-				},
-				mdeps={
-					ffi=true,
-					glue=true,
-					stdio=true
-				}
+				loaderr='./nanojpeg.lua:7: ./stdio.lua:190: cannot change a protected metatable'
 			}
 		},
 		nw={
@@ -1185,13 +1199,7 @@ return {
 		},
 		obj_parser={
 			obj_loader={
-				mdeps={
-					ffi=true,
-					glue=true,
-					obj_parser=true,
-					stdio=true,
-					tuple=true
-				}
+				loaderr='./obj_loader.lua:8: ./stdio.lua:190: cannot change a protected metatable'
 			},
 			obj_parser={
 				mdeps={
@@ -1606,9 +1614,7 @@ return {
 		},
 		stdio={
 			stdio={
-				mdeps={
-					ffi=true
-				}
+				loaderr='./stdio.lua:190: cannot change a protected metatable'
 			}
 		},
 		struct={
@@ -2054,18 +2060,19 @@ return {
 		ui={
 			ui={
 				mdeps={
+					amoeba=true,
 					box2d=true,
+					cairo=true,
+					color=true,
+					easing=true,
+					freetype=true,
+					fs=true,
+					gfonts=true,
 					glue=true,
+					libjpeg=true,
 					oo=true,
 					time=true,
-					tweening=true,
-					ui_draw=true
-				}
-			},
-			ui_draw={
-				mdeps={
-					color=true,
-					glue=true
+					tuple=true
 				}
 			}
 		},
@@ -2255,6 +2262,10 @@ return {
 			affine2d={
 			}
 		},
+		amoeba={
+			amoeba={
+			}
+		},
 		bitmap={
 			bitmap={
 				autoloads={
@@ -2348,6 +2359,17 @@ return {
 		},
 		box2d={
 			box2d={
+			}
+		},
+		boxblur={
+			boxblur={
+				ffi_deps={
+					boxblur=true
+				},
+				mdeps={
+					bitmap=true,
+					ffi=true
+				}
 			}
 		},
 		bundle={
@@ -3155,6 +3177,8 @@ return {
 				}
 			}
 		},
+		ljstr={
+		},
 		llvm={
 		},
 		lpeg={
@@ -3270,14 +3294,18 @@ return {
 			table={
 			}
 		},
+		luaparser={
+			luaparser={
+				loaderr='./luaparser.lua:15: ./ljstr.lua:6: libljstr.so: cannot open shared object file: No such file or directory'
+			}
+		},
 		luapower={
 			luapower={
 				mdeps={
 					ffi=true,
 					glue=true,
 					lfs=true,
-					luapower_rpc=true,
-					tuple=true
+					luapower_rpc=true
 				}
 			},
 			luapower_cli={
@@ -3395,14 +3423,7 @@ return {
 		},
 		nanojpeg={
 			nanojpeg={
-				ffi_deps={
-					nanojpeg2=true
-				},
-				mdeps={
-					ffi=true,
-					glue=true,
-					stdio=true
-				}
+				loaderr='./nanojpeg.lua:7: ./stdio.lua:190: cannot change a protected metatable'
 			}
 		},
 		nw={
@@ -3436,13 +3457,7 @@ return {
 		},
 		obj_parser={
 			obj_loader={
-				mdeps={
-					ffi=true,
-					glue=true,
-					obj_parser=true,
-					stdio=true,
-					tuple=true
-				}
+				loaderr='./obj_loader.lua:8: ./stdio.lua:190: cannot change a protected metatable'
 			},
 			obj_parser={
 				mdeps={
@@ -3857,9 +3872,7 @@ return {
 		},
 		stdio={
 			stdio={
-				mdeps={
-					ffi=true
-				}
+				loaderr='./stdio.lua:190: cannot change a protected metatable'
 			}
 		},
 		struct={
@@ -4305,18 +4318,19 @@ return {
 		ui={
 			ui={
 				mdeps={
+					amoeba=true,
 					box2d=true,
+					cairo=true,
+					color=true,
+					easing=true,
+					freetype=true,
+					fs=true,
+					gfonts=true,
 					glue=true,
+					libjpeg=true,
 					oo=true,
 					time=true,
-					tweening=true,
-					ui_draw=true
-				}
-			},
-			ui_draw={
-				mdeps={
-					color=true,
-					glue=true
+					tuple=true
 				}
 			}
 		},
@@ -4512,6 +4526,10 @@ return {
 			affine2d={
 			}
 		},
+		amoeba={
+			amoeba={
+			}
+		},
 		bitmap={
 			bitmap={
 				autoloads={
@@ -4620,6 +4638,17 @@ return {
 		},
 		box2d={
 			box2d={
+			}
+		},
+		boxblur={
+			boxblur={
+				ffi_deps={
+					boxblur=true
+				},
+				mdeps={
+					bitmap=true,
+					ffi=true
+				}
 			}
 		},
 		bundle={
@@ -5268,11 +5297,7 @@ return {
 		},
 		fs={
 			fs={
-				mdeps={
-					ffi=true,
-					fs_common=true,
-					fs_win=true
-				}
+				loaderr='.\\fs.lua:19: cannot change a protected metatable'
 			},
 			fs_common={
 				mdeps={
@@ -5310,11 +5335,7 @@ return {
 		},
 		gfonts={
 			gfonts={
-				mdeps={
-					fs=true,
-					glue=true,
-					pp=true
-				}
+				loaderr='.\\gfonts.lua:7: .\\fs.lua:19: cannot change a protected metatable'
 			}
 		},
 		giflib={
@@ -5518,14 +5539,7 @@ return {
 		},
 		imgui_nw_cairo={
 			imgui_nw_cairo={
-				mdeps={
-					cairo=true,
-					freetype=true,
-					gfonts=true,
-					imgui=true,
-					nw=true,
-					time=true
-				}
+				loaderr='.\\imgui_nw_cairo.lua:12: .\\gfonts.lua:7: .\\fs.lua:19: cannot change a protected metatable'
 			}
 		},
 		lanes={
@@ -5720,6 +5734,8 @@ return {
 				}
 			}
 		},
+		ljstr={
+		},
 		llvm={
 		},
 		lpeg={
@@ -5835,14 +5851,18 @@ return {
 			table={
 			}
 		},
+		luaparser={
+			luaparser={
+				loaderr='.\\luaparser.lua:15: .\\ljstr.lua:6: cannot load module \'ljstr\': The specified module could not be found.'
+			}
+		},
 		luapower={
 			luapower={
 				mdeps={
 					ffi=true,
 					glue=true,
 					lfs=true,
-					luapower_rpc=true,
-					tuple=true
+					luapower_rpc=true
 				}
 			},
 			luapower_cli={
@@ -6022,7 +6042,13 @@ return {
 		},
 		obj_parser={
 			obj_loader={
-				loaderr='.\\obj_loader.lua:8: .\\stdio.lua:190: cannot change a protected metatable'
+				mdeps={
+					ffi=true,
+					glue=true,
+					obj_parser=true,
+					stdio=true,
+					tuple=true
+				}
 			},
 			obj_parser={
 				mdeps={
@@ -6365,10 +6391,22 @@ return {
 				}
 			},
 			sg_gl_obj={
-				loaderr='.\\sg_gl_obj.lua:3: .\\obj_loader.lua:8: .\\stdio.lua:190: cannot change a protected metatable'
+				mdeps={
+					obj_loader=true,
+					sg_gl=true,
+					sg_gl_mesh=true
+				}
 			},
 			sg_gl_player={
-				loaderr='.\\sg_gl_player.lua:8: .\\sg_gl_obj.lua:3: .\\obj_loader.lua:8: .\\stdio.lua:190: cannot change a protected metatable'
+				mdeps={
+					glue=true,
+					sg_gl=true,
+					sg_gl_mesh=true,
+					sg_gl_obj=true,
+					winapi=true,
+					['winapi.wglpanel']=true,
+					['winapi.windowclass']=true
+				}
 			},
 			sg_gl_shape={
 				mdeps={
@@ -6545,20 +6583,7 @@ return {
 		},
 		ui={
 			ui={
-				mdeps={
-					box2d=true,
-					glue=true,
-					oo=true,
-					time=true,
-					tweening=true,
-					ui_draw=true
-				}
-			},
-			ui_draw={
-				mdeps={
-					color=true,
-					glue=true
-				}
+				loaderr='.\\ui.lua:15: .\\gfonts.lua:7: .\\fs.lua:19: cannot change a protected metatable'
 			}
 		},
 		unit={
@@ -7436,6 +7461,10 @@ return {
 			affine2d={
 			}
 		},
+		amoeba={
+			amoeba={
+			}
+		},
 		bitmap={
 			bitmap={
 				autoloads={
@@ -7544,6 +7573,17 @@ return {
 		},
 		box2d={
 			box2d={
+			}
+		},
+		boxblur={
+			boxblur={
+				ffi_deps={
+					boxblur=true
+				},
+				mdeps={
+					bitmap=true,
+					ffi=true
+				}
 			}
 		},
 		bundle={
@@ -8192,11 +8232,7 @@ return {
 		},
 		fs={
 			fs={
-				mdeps={
-					ffi=true,
-					fs_common=true,
-					fs_win=true
-				}
+				loaderr='.\\fs.lua:19: cannot change a protected metatable'
 			},
 			fs_common={
 				mdeps={
@@ -8234,11 +8270,7 @@ return {
 		},
 		gfonts={
 			gfonts={
-				mdeps={
-					fs=true,
-					glue=true,
-					pp=true
-				}
+				loaderr='.\\gfonts.lua:7: .\\fs.lua:19: cannot change a protected metatable'
 			}
 		},
 		giflib={
@@ -8442,14 +8474,7 @@ return {
 		},
 		imgui_nw_cairo={
 			imgui_nw_cairo={
-				mdeps={
-					cairo=true,
-					freetype=true,
-					gfonts=true,
-					imgui=true,
-					nw=true,
-					time=true
-				}
+				loaderr='.\\imgui_nw_cairo.lua:12: .\\gfonts.lua:7: .\\fs.lua:19: cannot change a protected metatable'
 			}
 		},
 		lanes={
@@ -8661,6 +8686,16 @@ return {
 				}
 			}
 		},
+		ljstr={
+			ljstr={
+				ffi_deps={
+					ljstr=true
+				},
+				mdeps={
+					ffi=true
+				}
+			}
+		},
 		llvm={
 		},
 		lpeg={
@@ -8776,14 +8811,24 @@ return {
 			table={
 			}
 		},
+		luaparser={
+			luaparser={
+				mdeps={
+					bit=true,
+					ffi=true,
+					ljstr=true,
+					pp=true,
+					strict=true
+				}
+			}
+		},
 		luapower={
 			luapower={
 				mdeps={
 					ffi=true,
 					glue=true,
 					lfs=true,
-					luapower_rpc=true,
-					tuple=true
+					luapower_rpc=true
 				}
 			},
 			luapower_cli={
@@ -8968,7 +9013,13 @@ return {
 		},
 		obj_parser={
 			obj_loader={
-				loaderr='.\\obj_loader.lua:8: .\\stdio.lua:190: cannot change a protected metatable'
+				mdeps={
+					ffi=true,
+					glue=true,
+					obj_parser=true,
+					stdio=true,
+					tuple=true
+				}
 			},
 			obj_parser={
 				mdeps={
@@ -9311,10 +9362,22 @@ return {
 				}
 			},
 			sg_gl_obj={
-				loaderr='.\\sg_gl_obj.lua:3: .\\obj_loader.lua:8: .\\stdio.lua:190: cannot change a protected metatable'
+				mdeps={
+					obj_loader=true,
+					sg_gl=true,
+					sg_gl_mesh=true
+				}
 			},
 			sg_gl_player={
-				loaderr='.\\sg_gl_player.lua:8: .\\sg_gl_obj.lua:3: .\\obj_loader.lua:8: .\\stdio.lua:190: cannot change a protected metatable'
+				mdeps={
+					glue=true,
+					sg_gl=true,
+					sg_gl_mesh=true,
+					sg_gl_obj=true,
+					winapi=true,
+					['winapi.wglpanel']=true,
+					['winapi.windowclass']=true
+				}
 			},
 			sg_gl_shape={
 				mdeps={
@@ -9491,20 +9554,7 @@ return {
 		},
 		ui={
 			ui={
-				mdeps={
-					box2d=true,
-					glue=true,
-					oo=true,
-					time=true,
-					tweening=true,
-					ui_draw=true
-				}
-			},
-			ui_draw={
-				mdeps={
-					color=true,
-					glue=true
-				}
+				loaderr='.\\ui.lua:15: .\\gfonts.lua:7: .\\fs.lua:19: cannot change a protected metatable'
 			}
 		},
 		unit={
@@ -10382,6 +10432,10 @@ return {
 			affine2d={
 			}
 		},
+		amoeba={
+			amoeba={
+			}
+		},
 		bitmap={
 			bitmap={
 				autoloads={
@@ -10475,6 +10529,17 @@ return {
 		},
 		box2d={
 			box2d={
+			}
+		},
+		boxblur={
+			boxblur={
+				ffi_deps={
+					boxblur=true
+				},
+				mdeps={
+					bitmap=true,
+					ffi=true
+				}
 			}
 		},
 		bundle={
@@ -10857,11 +10922,7 @@ return {
 		},
 		fs={
 			fs={
-				mdeps={
-					ffi=true,
-					fs_common=true,
-					fs_posix=true
-				}
+				loaderr='./fs.lua:19: cannot change a protected metatable'
 			},
 			fs_common={
 				mdeps={
@@ -10899,11 +10960,7 @@ return {
 		},
 		gfonts={
 			gfonts={
-				mdeps={
-					fs=true,
-					glue=true,
-					pp=true
-				}
+				loaderr='./gfonts.lua:7: ./fs.lua:19: cannot change a protected metatable'
 			}
 		},
 		giflib={
@@ -11098,14 +11155,7 @@ return {
 		},
 		imgui_nw_cairo={
 			imgui_nw_cairo={
-				mdeps={
-					cairo=true,
-					freetype=true,
-					gfonts=true,
-					imgui=true,
-					nw=true,
-					time=true
-				}
+				loaderr='./imgui_nw_cairo.lua:12: ./gfonts.lua:7: ./fs.lua:19: cannot change a protected metatable'
 			}
 		},
 		lanes={
@@ -11300,6 +11350,8 @@ return {
 				}
 			}
 		},
+		ljstr={
+		},
 		llvm={
 		},
 		lpeg={
@@ -11415,14 +11467,18 @@ return {
 			table={
 			}
 		},
+		luaparser={
+			luaparser={
+				loaderr='./luaparser.lua:15: ./ljstr.lua:6: dlopen(libljstr.dylib, 5): image not found'
+			}
+		},
 		luapower={
 			luapower={
 				mdeps={
 					ffi=true,
 					glue=true,
 					lfs=true,
-					luapower_rpc=true,
-					tuple=true
+					luapower_rpc=true
 				}
 			},
 			luapower_cli={
@@ -11588,7 +11644,13 @@ return {
 		},
 		obj_parser={
 			obj_loader={
-				loaderr='./obj_loader.lua:8: ./stdio.lua:190: cannot change a protected metatable'
+				mdeps={
+					ffi=true,
+					glue=true,
+					obj_parser=true,
+					stdio=true,
+					tuple=true
+				}
 			},
 			obj_parser={
 				mdeps={
@@ -12468,20 +12530,7 @@ return {
 		},
 		ui={
 			ui={
-				mdeps={
-					box2d=true,
-					glue=true,
-					oo=true,
-					time=true,
-					tweening=true,
-					ui_draw=true
-				}
-			},
-			ui_draw={
-				mdeps={
-					color=true,
-					glue=true
-				}
+				loaderr='./ui.lua:15: ./gfonts.lua:7: ./fs.lua:19: cannot change a protected metatable'
 			}
 		},
 		unit={
@@ -12625,6 +12674,10 @@ return {
 			affine2d={
 			}
 		},
+		amoeba={
+			amoeba={
+			}
+		},
 		bitmap={
 			bitmap={
 				autoloads={
@@ -12718,6 +12771,17 @@ return {
 		},
 		box2d={
 			box2d={
+			}
+		},
+		boxblur={
+			boxblur={
+				ffi_deps={
+					boxblur=true
+				},
+				mdeps={
+					bitmap=true,
+					ffi=true
+				}
 			}
 		},
 		bundle={
@@ -13100,11 +13164,7 @@ return {
 		},
 		fs={
 			fs={
-				mdeps={
-					ffi=true,
-					fs_common=true,
-					fs_posix=true
-				}
+				loaderr='./fs.lua:19: cannot change a protected metatable'
 			},
 			fs_common={
 				mdeps={
@@ -13142,11 +13202,7 @@ return {
 		},
 		gfonts={
 			gfonts={
-				mdeps={
-					fs=true,
-					glue=true,
-					pp=true
-				}
+				loaderr='./gfonts.lua:7: ./fs.lua:19: cannot change a protected metatable'
 			}
 		},
 		giflib={
@@ -13341,14 +13397,7 @@ return {
 		},
 		imgui_nw_cairo={
 			imgui_nw_cairo={
-				mdeps={
-					cairo=true,
-					freetype=true,
-					gfonts=true,
-					imgui=true,
-					nw=true,
-					time=true
-				}
+				loaderr='./imgui_nw_cairo.lua:12: ./gfonts.lua:7: ./fs.lua:19: cannot change a protected metatable'
 			}
 		},
 		lanes={
@@ -13543,6 +13592,8 @@ return {
 				}
 			}
 		},
+		ljstr={
+		},
 		llvm={
 		},
 		lpeg={
@@ -13658,14 +13709,18 @@ return {
 			table={
 			}
 		},
+		luaparser={
+			luaparser={
+				loaderr='./luaparser.lua:15: ./ljstr.lua:6: dlopen(libljstr.dylib, 5): image not found'
+			}
+		},
 		luapower={
 			luapower={
 				mdeps={
 					ffi=true,
 					glue=true,
 					lfs=true,
-					luapower_rpc=true,
-					tuple=true
+					luapower_rpc=true
 				}
 			},
 			luapower_cli={
@@ -13831,7 +13886,13 @@ return {
 		},
 		obj_parser={
 			obj_loader={
-				loaderr='./obj_loader.lua:8: ./stdio.lua:190: cannot change a protected metatable'
+				mdeps={
+					ffi=true,
+					glue=true,
+					obj_parser=true,
+					stdio=true,
+					tuple=true
+				}
 			},
 			obj_parser={
 				mdeps={
@@ -14711,20 +14772,7 @@ return {
 		},
 		ui={
 			ui={
-				mdeps={
-					box2d=true,
-					glue=true,
-					oo=true,
-					time=true,
-					tweening=true,
-					ui_draw=true
-				}
-			},
-			ui_draw={
-				mdeps={
-					color=true,
-					glue=true
-				}
+				loaderr='./ui.lua:15: ./gfonts.lua:7: ./fs.lua:19: cannot change a protected metatable'
 			}
 		},
 		unit={

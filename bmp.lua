@@ -441,7 +441,7 @@ M.open = glue.protect(function(read_bytes)
 				local read_row = row_reader(row_bmp)
 				function load_row()
 					read_row()
-					bitmap.paint(row_bmp, dst_bmp, 0, 0,
+					bitmap.paint(dst_bmp, row_bmp, 0, 0,
 						convert_pixel, nil, dst_colorspace)
 				end
 			else --load row into dst_bmp directly
@@ -478,7 +478,7 @@ M.open = glue.protect(function(read_bytes)
 
 			local function load_row(j)
 				read_row()
-				bitmap.paint(row_bmp, dst_bmp, dst_x, dst_y + j,
+				bitmap.paint(dst_bmp, row_bmp, dst_x, dst_y + j,
 					convert_pixel, nil, dst_colorspace)
 			end
 
@@ -567,7 +567,7 @@ M.save = glue.protect(function(bmp, write)
 	local row_bmp = bitmap.new(bmp.w, 1, 'bgra8')
 	for j=bmp.h-1,0,-1 do
 		local src_row_bmp = bitmap.sub(bmp, 0, j, bmp.w, 1)
-		bitmap.paint(src_row_bmp, row_bmp)
+		bitmap.paint(row_bmp, src_row_bmp)
 		write(row_bmp.data, row_bmp.stride)
 	end
 end)

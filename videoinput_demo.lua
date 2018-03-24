@@ -26,7 +26,7 @@ function win:repaint()
 	if not src then return end
 	local dst = self:bitmap()
 	dst:clear()
-	bitmap.paint(src, dst, 10, 10)
+	bitmap.paint(dst, src, 10, 10)
 end
 
 function win:keydown(key)

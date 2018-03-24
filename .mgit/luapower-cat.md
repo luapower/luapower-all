@@ -36,6 +36,7 @@ tagline: package categories
 	* [freetype]
 	* [bitmap]
 	* [color]
+	* [boxblur]
 * 2D Geometry
 	* [path2d]
 	* [affine2d]
@@ -112,7 +113,6 @@ Development Tools
 	* [stdio]
 	* [vararg]
 	* [nanojpeg]
-	* [blur]
 	* [openvg]
 	* [hpdf]
 	* [svg_parser]

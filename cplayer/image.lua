@@ -15,7 +15,7 @@ function player:image(t)
 		or bitmap.stride(src) ~= bitmap.aligned_stride(bitmap.min_stride(src.format, src.w))
 	then
 		img = bitmap.new(src.w, src.h, 'bgra8', false, true)
-		bitmap.paint(src, img)
+		bitmap.paint(img, src)
 	end
 	local surface = cairo.image_surface(img)
 

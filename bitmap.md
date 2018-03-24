@@ -105,7 +105,7 @@ __bitmap info__
 __bitmap operations__
 `bitmap.new(w, h, ...) -> dst`                            create a bitmap
 `bitmap.copy(src[, format], ...) -> dst`                  copy and convert a bitmap
-`bitmap.paint(src, dst, dstx, dsty, ...) -> dst`          paint a bitmap on another
+`bitmap.paint(dst, src, dstx, dsty, ...) -> dst`          paint a bitmap on another
 `bitmap.clear([byte_value])`                              clear bitmap
 `bitmap.sub(src, [x], [y], [w], [h]) -> dst`              make a sub-bitmap
 __pixel access__
@@ -146,7 +146,7 @@ Copy a bitmap, optionally to a new format, orientation and stride. If `format`
 is not specified, stride and orientation default to those of source bitmap's,
 otherwise they default to top-down, minimum stride.
 
-### `bitmap.paint(source_bmp, dest_bmp[, dstx, dsty][, convert_pixel, [src_colortype], [dst_colortype]]) -> dest_bmp`
+### `bitmap.paint(dest_bmp, source_bmp[, dstx, dsty][, convert_pixel, [src_colortype], [dst_colortype]]) -> dest_bmp`
 
 Paint a source bitmap into a destination bitmap, with all the necessary
 clipping and pixel and colortype conversions.

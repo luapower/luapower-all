@@ -68,7 +68,7 @@ function win:repaint()
 			end
 			local ok, err = pcall(function()
 				for j, row_bmp in bmp:rows('bgr8', nil, true) do
-					bitmap.paint(row_bmp, wbmp, x, y + j)
+					bitmap.paint(wbmp, row_bmp, x, y + j)
 				end
 			end)
 			if not ok then
