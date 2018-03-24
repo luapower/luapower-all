@@ -15,7 +15,7 @@ pass for the grayscale variant, measured on a 5000-passmark-score CPU.
 ## API
 
 ------------------------------------------------------------ --------------------------------------------------
-`boxblur.new(img, [max_radius], [passes], [format]) -> blur` create a new blur object for a [bitmap]
+`boxblur.new(img, max_radius, [passes], [format]) -> blur`   create a new blur object for a [bitmap]
 `blur:blur([radius], [passes]) -> bmp`                       blur `img` (returns a [bitmap])
 `blur:invalidate()`                                          tell blur that the source image changed
 ------------------------------------------------------------ --------------------------------------------------

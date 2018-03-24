@@ -37,7 +37,6 @@ function boxblur.new(img, radius, passes, format)
 	local format = bitmap.format(format or img)
 	local blur_func = assert(blur_func[format.bpp])
 	assert(radius >= 0 and radius <= 255)
-	assert(passes >= 0 and passes <= 10)
 
 	local self = {__index = blur}
 	setmetatable(self, self)
@@ -117,7 +116,7 @@ function blur:update()
 end
 
 function blur:blur(radius, passes)
-	radius = radius or self.max_radius or 1
+	radius = radius or self.max_radius
 	passes = passes or self.default_passes or 1
 	assert(radius >= 0 and radius <= self.max_radius)
 	assert(passes >= 0 and passes <= 10)
