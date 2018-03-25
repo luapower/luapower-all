@@ -15,11 +15,14 @@ pass for the grayscale variant, measured on a 5000-passmark-score CPU.
 ## API
 
 ------------------------------------------------------------ --------------------------------------------------
-`boxblur.new(img, max_radius, [passes], [format]) -> blur`   create a new blur object for a [bitmap]
+`boxblur.new(img, max_radius, [passes], [format]) -> blur`   create a blur object for a [bitmap]
+`boxblur.new(w, h, format, max_radius, [passes]) -> blur`    create a blur object for painting on
 `blur:blur([radius], [passes]) -> bmp`                       blur `img` (returns a [bitmap])
+`blur:repaint()`                                             override with painting code
 `blur:invalidate()`                                          tell blur that the source image changed
 ------------------------------------------------------------ --------------------------------------------------
 
 A blur object holds all the temporary buffers necessary for blurring the same
 image multiple times using a different radius without allocating new memory
-each time. Each blur action returns a potentially different [bitmap] object.
+each time. Each call to `blur()` returns a potentially different [bitmap]
+object which contains the blurred image.

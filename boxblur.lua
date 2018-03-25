@@ -32,40 +32,51 @@ local blur_func = {
 
 local blur = {}
 
-function boxblur.new(img, radius, passes, format)
+function boxblur.new(...)
+	local w, h, bottom_up, img, radius, passes, format
+	if type((...)) == 'number' then
+		w, h, format, radius, passes = ...
+		bottom_up = false
+	else
+		img, radius, passes, format = ...
+		w = img.w
+		h = img.h
+		bottom_up = img.bottom_up
+	end
 
-	local format = bitmap.format(format or img)
-	local blur_func = assert(blur_func[format.bpp])
-	assert(radius >= 0 and radius <= 255)
+	local format_string = assert(format or img.format, 'format expected')
+	local format = bitmap.format(format_string)
+	local blur_func = assert(blur_func[format.bpp], 'unsupoorted format')
+	radius = math.min(math.max(radius, 0), 255)
 
 	local self = {__index = blur}
 	setmetatable(self, self)
 
-	--all paddings needed for source and dest. bitmaps together.
-	--we combine them since we're swapping src with dst for multiple passes.
+	--compute side paddings needed for both source and dest. bitmaps.
+	--we set max padding since we're swapping src with dst for multiple passes.
 	local w1 = radius
 	local h1 = 2 * radius
 	local w2 = radius + 128 / format.bpp
 	local h2 = radius
 
 	local src_data = bitmap.new(
-		img.w + w1 + w2,
-		img.h + h1 + h2,
-		format, img.bottom_up, 16)
+		w + w1 + w2,
+		h + h1 + h2,
+		format_string, bottom_up, 16)
 
-	self.src = bitmap.sub(src_data, w1, h1, img.w, img.h)
+	self.src = bitmap.sub(src_data, w1, h1, w, h)
 
 	local dst_data = bitmap.new(
-		img.w + w1 + w2,
-		img.h + h1 + h2,
-		format, img.bottom_up, 16)
+		w + w1 + w2,
+		h + h1 + h2,
+		format_string, bottom_up, 16)
 
-	self.dst = bitmap.sub(dst_data, w1, h1, img.w, img.h)
+	self.dst = bitmap.sub(dst_data, w1, h1, w, h)
 
 	local blurx_data = bitmap.new(
-		img.w * 2,
-		img.h + 4 * radius + 1,
-		format, false, 16, self.src.stride * 2)
+		w * 2,
+		h + 4 * radius + 1,
+		format_string, false, 16, self.src.stride * 2) --16bit samples
 
 	self._blurx = bitmap.sub(blurx_data, 0, 3 * radius + 1)
 
@@ -83,7 +94,7 @@ end
 
 function blur:_blur(src, dst)
 	bitmap.clear(self._blurx.parent)
-	--clear it because blur needs to read 0es that weren't ever written.
+	--clear sumx because blur needs to read some 0es from it.
 	ffi.fill(self._sumx, ffi.sizeof(self._sumx))
 	self._blur_func(
 		src.data,
@@ -102,8 +113,15 @@ function blur:invalidate()
 	self._valid = false
 end
 
-function blur:update()
-	bitmap.paint(self.src, self.img)
+function blur:repaint(src) end --stub
+
+function blur:_repaint()
+	if self.img then
+		bitmap.paint(self.src, self.img)
+	else
+		bitmap.clear(self.src)
+		self:repaint(self.src)
+	end
 	C.boxblur_extend(
 		self.src.data,
 		self.src.w,
@@ -113,13 +131,12 @@ function blur:update()
 		self.max_radius)
 	self.radius = nil
 	self.passes = nil
+	self._valid = true
 end
 
 function blur:blur(radius, passes)
-	radius = radius or self.max_radius
-	passes = passes or self.default_passes or 1
-	assert(radius >= 0 and radius <= self.max_radius)
-	assert(passes >= 0 and passes <= 10)
+	radius = math.min(math.max(radius or self.max_radius, 0), self.max_radius)
+	passes = math.min(math.max(passes or self.default_passes or 1, 0), 10)
 	if self._valid and radius == self.radius and passes == self.passes then
 		--nothing changed
 	elseif self._valid and radius == 0 or passes == 0 then --no blur
@@ -128,15 +145,13 @@ function blur:blur(radius, passes)
 		bitmap.paint(self.dst, self.src)
 	elseif passes == 1 then
 		if not self._valid then
-			self:update()
-			self._valid = true
+			self:_repaint()
 		end
 		self.radius = radius
 		self.passes = 1
 		self:_blur(self.src, self.dst)
 	else
-		self:update()
-		self._valid = true
+		self:_repaint()
 		self.radius = radius
 		self.passes = passes
 		local src, dst = self.dst, self.src
