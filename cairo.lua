@@ -771,6 +771,27 @@ local path = {}
 
 path.free = destroy_func(C.cairo_path_destroy)
 
+local path_node_types = {
+	[C.CAIRO_PATH_MOVE_TO] = 'move_to',
+	[C.CAIRO_PATH_LINE_TO] = 'line_to',
+	[C.CAIRO_PATH_CURVE_TO] = 'curve_to',
+	[C.CAIRO_PATH_CLOSE_PATH] = 'close_path',
+}
+
+function path.dump(p)
+	print(string.format('cairo_path_t (length = %d)', p.num_data))
+	local i = 0
+	while i < p.num_data do
+		local d = p.data[i]
+		print('', path_node_types[tonumber(d.header.type)])
+		i = i + 1
+		for j = 1, d.header.length-1 do
+			print('', '', string.format('%g, %g', d.points[i].x, d.points[i].y))
+			i = i + 1
+		end
+	end
+end
+
 M.status_message = str_func(C.cairo_status_to_string)
 
 local dev = {}

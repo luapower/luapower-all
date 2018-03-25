@@ -116,10 +116,10 @@ end
 function blur:repaint(src) end --stub
 
 function blur:_repaint()
+	if self._valid then return end
 	if self.img then
 		bitmap.paint(self.src, self.img)
 	else
-		bitmap.clear(self.src)
 		self:repaint(self.src)
 	end
 	C.boxblur_extend(
@@ -139,18 +139,18 @@ function blur:blur(radius, passes)
 	passes = math.min(math.max(passes or self.default_passes or 1, 0), 10)
 	if self._valid and radius == self.radius and passes == self.passes then
 		--nothing changed
-	elseif self._valid and radius == 0 or passes == 0 then --no blur
+	elseif radius == 0 or passes == 0 then --no blur
 		self.radius = 0
 		self.passes = 0
+		self:_repaint()
 		bitmap.paint(self.dst, self.src)
 	elseif passes == 1 then
-		if not self._valid then
-			self:_repaint()
-		end
+		self:_repaint()
 		self.radius = radius
 		self.passes = 1
 		self:_blur(self.src, self.dst)
 	else
+		self._valid = false
 		self:_repaint()
 		self.radius = radius
 		self.passes = passes

@@ -449,6 +449,9 @@ union _cairo_path_data_t {
 	struct {
 		double x, y;
 	} point;
+	struct {
+		double x, y;
+	} points[1];
 };
 
 typedef struct cairo_path {
