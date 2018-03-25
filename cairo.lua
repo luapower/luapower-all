@@ -779,14 +779,15 @@ local path_node_types = {
 }
 
 function path.dump(p)
-	print(string.format('cairo_path_t (length = %d)', p.num_data))
+	print(string.format('cairo_path_t (length = %d, status = %s)',
+		p.num_data, M.status_message(p.status)))
 	local i = 0
 	while i < p.num_data do
 		local d = p.data[i]
 		print('', path_node_types[tonumber(d.header.type)])
 		i = i + 1
 		for j = 1, d.header.length-1 do
-			print('', '', string.format('%g, %g', d.points[i].x, d.points[i].y))
+			print('', '', string.format('%g, %g', d.points[j].x, d.points[j].y))
 			i = i + 1
 		end
 	end
