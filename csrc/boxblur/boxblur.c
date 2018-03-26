@@ -174,11 +174,11 @@ void boxblur_extend(u8 *src, i32 width, i32 height,
 	/* extend source image top and bottom sides */
 	for (y = -radius; y < 0; y++) {
 		u8* row = src + y * src_stride;
-		memcpy(row, src, src_stride);
+		memcpy(row, src, width * bpp);
 	}
 	for (y = height; y < height + radius; y++) {
 		u8* row = src + y * src_stride;
-		memcpy(row, src + (height - 1) * src_stride, src_stride);
+		memcpy(row, src + (height - 1) * src_stride, width * bpp);
 	}
 
 	/* extend source image left and right sides */
