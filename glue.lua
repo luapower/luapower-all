@@ -10,8 +10,13 @@ local select, pairs, tonumber, tostring, unpack, xpcall, assert =
       select, pairs, tonumber, tostring, unpack, xpcall, assert
 local getmetatable, setmetatable, type, pcall =
       getmetatable, setmetatable, type, pcall
-local sort, format, byte, char, min, max =
-      table.sort, string.format, string.byte, string.char, math.min, math.max
+local sort, format, byte, char, min, max, floor =
+      table.sort, string.format, string.byte, string.char,
+		math.min, math.max, math.floor
+
+function glue.round(x)
+	return floor(x + 0.5)
+end
 
 function glue.clamp(x, x0, x1)
 	return min(max(x, x0), x1)

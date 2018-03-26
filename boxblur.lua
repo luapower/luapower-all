@@ -30,6 +30,14 @@ local blur_func = {
 	[32] = C.boxblur_8888;
 }
 
+local function round(x)
+	return math.floor(x + 0.5)
+end
+
+local function clamp(x, x0, x1)
+	return math.min(math.max(x, x0), x1)
+end
+
 local blur = {}
 
 function boxblur.new(...)
@@ -47,7 +55,7 @@ function boxblur.new(...)
 	local format_string = assert(format or img.format, 'format expected')
 	local format = bitmap.format(format_string)
 	local blur_func = assert(blur_func[format.bpp], 'unsupoorted format')
-	radius = math.min(math.max(radius, 0), 255)
+	radius = round(clamp(radius, 0, 255))
 
 	local self = {__index = blur}
 	setmetatable(self, self)
@@ -135,8 +143,8 @@ function blur:_repaint()
 end
 
 function blur:blur(radius, passes)
-	radius = math.min(math.max(radius or self.max_radius, 0), self.max_radius)
-	passes = math.min(math.max(passes or self.default_passes or 1, 0), 10)
+	radius = round(clamp(radius or self.max_radius, 0, self.max_radius))
+	passes = clamp(passes or self.default_passes or 1, 0, 10)
 	if self._valid and radius == self.radius and passes == self.passes then
 		--nothing changed
 	elseif radius == 0 or passes == 0 then --no blur
