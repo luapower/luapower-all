@@ -142,8 +142,6 @@ function blur:_repaint()
 	else
 		self:repaint(self.src)
 	end
-	self.radius = nil
-	self.passes = nil
 	self._valid = true
 end
 
@@ -153,11 +151,17 @@ function blur:blur(radius, passes)
 	if self._valid and radius == self.radius and passes == self.passes then
 		--nothing changed
 	elseif radius == 0 or passes == 0 then --no blur
+		if self.radius and self.radius ~= 0 then --src blurred, repaint
+			self._valid = false
+			self:_repaint()
+		end
 		self.radius = 0
 		self.passes = 0
-		self:_repaint()
 		bitmap.paint(self.dst, self.src)
 	elseif passes == 1 then
+		if self.passes and self.passes > 1 then --src blurred, repaint
+			self._valid = false
+		end
 		self:_repaint()
 		self.radius = radius
 		self.passes = 1

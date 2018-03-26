@@ -2,7 +2,7 @@
 	Fast box blur algorithm for bgra8 and g8 pixel formats.
 	Written by Cosmin Apreutesei. Public Domain.
 
-	Compile with: gcc boxblur.c -ansi -pedantic -Wall -msse2 -O3
+	Compile with: gcc boxblur.c -ansi -pedantic -Wall -msse2 -DSSE -O3
 */
 
 #include <x86intrin.h>
