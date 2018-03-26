@@ -5,8 +5,6 @@
 	Compile with: gcc boxblur.c -ansi -pedantic -Wall -msse2 -O3
 */
 
-#define SSE
-
 #include <x86intrin.h>
 #include <stdint.h>
 #include <string.h>
@@ -184,7 +182,7 @@ void boxblur_extend(u8 *src, i32 width, i32 height,
 	}
 
 	/* extend source image left and right sides */
-	for (y = 0; y < height; y++) {
+	for (y = -radius; y < height + radius; y++) {
 		u8* row = src + y * src_stride;
 		for (x = -radius * bpp; x < 0; x += bpp) {
 			memcpy(row + x, row, bpp);

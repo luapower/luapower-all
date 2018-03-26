@@ -4,7 +4,7 @@ local bitmap = require'bitmap'
 local boxblur = require'boxblur'
 local nw = require'nw'
 
-local passes = 2
+local passes = 3
 local max_radius = 50
 local repeats = max_radius
 

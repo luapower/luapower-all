@@ -51,6 +51,8 @@ function boxblur.new(...)
 		h = img.h
 		bottom_up = img.bottom_up
 	end
+	w = math.ceil(w)
+	h = math.ceil(h)
 
 	local format_string = assert(format or img.format, 'format expected')
 	local format = bitmap.format(format_string)
@@ -123,6 +125,16 @@ end
 
 function blur:repaint(src) end --stub
 
+function blur:_extend(src)
+	C.boxblur_extend(
+		src.data,
+		src.w,
+		src.h,
+		src.stride,
+		self.format.bpp,
+		self.max_radius)
+end
+
 function blur:_repaint()
 	if self._valid then return end
 	if self.img then
@@ -130,13 +142,6 @@ function blur:_repaint()
 	else
 		self:repaint(self.src)
 	end
-	C.boxblur_extend(
-		self.src.data,
-		self.src.w,
-		self.src.h,
-		self.src.stride,
-		self.format.bpp,
-		self.max_radius)
 	self.radius = nil
 	self.passes = nil
 	self._valid = true
@@ -156,6 +161,7 @@ function blur:blur(radius, passes)
 		self:_repaint()
 		self.radius = radius
 		self.passes = 1
+		self:_extend(self.src)
 		self:_blur(self.src, self.dst)
 	else
 		self._valid = false
@@ -165,6 +171,7 @@ function blur:blur(radius, passes)
 		local src, dst = self.dst, self.src
 		for i=1,passes do
 			src, dst = dst, src
+			self:_extend(src)
 			self:_blur(src, dst)
 		end
 		self.src, self.dst = src, dst
