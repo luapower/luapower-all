@@ -10,6 +10,7 @@ local tuple = require'tuple'
 local box2d = require'box2d'
 local easing = require'easing'
 local color = require'color'
+local boxblur = require'boxblur'
 local amoeba = require'amoeba'
 local time = require'time'
 local gfonts = require'gfonts'
@@ -366,9 +367,9 @@ function ui.transition:after_init(ui, elem, attr, to, duration, ease, delay)
 	local interpolate = self.interpolate[atype]
 	local from = elem[attr]
 	assert(from ~= nil, 'no value for attribute "%s"', attr)
-	local v1 = interpolate(1, from, from) --copy for by-ref semantics
-	local v2 = interpolate(1, to, to)     --copy for by-ref semantics
-	elem[attr] = v1 --set to its copy to avoid overwriting the original
+	--set the element value to a copy to avoid overwritting the original value
+	--when updating with by-ref semantics.
+	elem[attr] = interpolate(1, from, from)
 
 	function self:update(clock)
 		local t = (clock - start) / duration
@@ -378,7 +379,7 @@ function ui.transition:after_init(ui, elem, attr, to, duration, ease, delay)
 			elem[attr] = to
 		else --running, set to interpolated value
 			local d = easing.ease(ease, way, t)
-			elem[attr] = interpolate(d, v1, v2, elem[attr])
+			elem[attr] = interpolate(d, from, to, elem[attr])
 		end
 		return t <= 1
 	end
@@ -415,7 +416,6 @@ end
 
 function ui.transition.interpolate.gradient_colors(d, t1, t2, t)
 	t = t or {}
-	local offset1, offset2 = 0, 0
 	for i,arg1 in ipairs(t1) do
 		local arg2 = t2[i]
 		local atype = type(arg1) == 'number' and 'number' or 'color'
@@ -1081,7 +1081,7 @@ ui.layer.background_rotation_cy = 0
 ui.layer.background_scale = 1
 ui.layer.background_scale_cx = 0
 ui.layer.background_scale_cy = 0
---soldi color backgrounds
+--solid color backgrounds
 ui.layer.background_color = nil --no background
 --gradient backgrounds
 ui.layer.background_colors = {} --{[offset1], color1, ...}
@@ -1114,6 +1114,11 @@ ui.layer.border_offset = -1
 --draw rounded corners with a modified bezier for smoother line-to-arc
 --transitions. kappa=1 uses circle arcs instead.
 ui.layer.border_radius_kappa = 1.2
+
+ui.layer.shadow_x = 0
+ui.layer.shadow_y = 0
+ui.layer.shadow_color = '#000'
+ui.layer.shadow_blur = 0
 
 function ui.layer:after_init(ui, t)
 	self._matrix = cairo.matrix()
@@ -1306,11 +1311,11 @@ function ui.layer:border_pos(offset)
 end
 
 --border rect at %-offset in border width.
-function ui.layer:border_rect(offset)
+function ui.layer:border_rect(offset, size_offset)
 	local w1, h1, w2, h2 = self:_border_edge_widths(offset)
 	local w = self.w - w2 - w1
 	local h = self.h - h2 - h1
-	return w1, h1, w, h
+	return box2d.offset(size_offset or 0, w1, h1, w, h)
 end
 
 --corner radius at pixel offset from the stroke's center on one dimension.
@@ -1319,11 +1324,11 @@ local function offset_radius(r, o)
 end
 
 --border rect at %-offset in border width, plus radii of rounded corners.
-function ui.layer:border_round_rect(offset)
+function ui.layer:border_round_rect(offset, size_offset)
 	local k = self.border_radius_kappa
 
-	local x1, y1, w, h = self:border_rect(0) --border at stroke center
-	local X1, Y1, W, H = self:border_rect(offset) --border at given offset
+	local x1, y1, w, h = self:border_rect(0) --at stroke center
+	local X1, Y1, W, H = self:border_rect(offset, size_offset) --at offset
 
 	local x2, y2 = x1 + w, y1 + h
 	local X2, Y2 = X1 + W, Y1 + H
@@ -1437,10 +1442,10 @@ end
 
 --trace the border contour path at offset.
 --offset is in -1..1 where -1=inner edge, 0=center, 1=outer edge.
-function ui.layer:border_path(offset)
+function ui.layer:border_path(offset, size_offset)
 	local cr = self.window.cr
 	local x1, y1, w, h, r1x, r1y, r2x, r2y, r3x, r3y, r4x, r4y, k =
-		self:border_round_rect(offset)
+		self:border_round_rect(offset, size_offset)
 	local x2, y2 = x1 + w, y1 + h
 	cr:move_to(x1, y1+r1y)
 	qarc(cr, x1+r1x, y1+r1y, r1x, r1y, 1, 1, k) --tl
@@ -1550,12 +1555,16 @@ function ui.layer:background_visible()
 		and true or false
 end
 
-function ui.layer:background_rect()
-	return self:border_rect(self.background_clip_border_offset)
+function ui.layer:background_rect(size_offset)
+	return self:border_rect(self.background_clip_border_offset, size_offset)
 end
 
-function ui.layer:background_path()
-	self:border_path(self.background_clip_border_offset)
+function ui.layer:background_round_rect(size_offset)
+	return self:border_round_rect(self.background_clip_border_offset, size_offset)
+end
+
+function ui.layer:background_path(size_offset)
+	self:border_path(self.background_clip_border_offset, size_offset)
 end
 
 function ui.layer:set_background_scale(scale)
@@ -1619,6 +1628,131 @@ function ui.layer:paint_background()
 	cr:rgb(0, 0, 0) --release source
 end
 
+--box-shadow geometry and drawing
+
+ui.layer._shadow_blur_passes = 2
+
+function ui.layer:shadow_visible()
+	return self.shadow_blur > 0 or self.shadow_x ~= 0 or self.shadow_y ~= 0
+end
+
+function ui.layer:shadow_rect(size)
+	if self:border_visible() then
+		return self:border_rect(1, size)
+	else
+		return self:background_rect(size)
+	end
+end
+
+function ui.layer:shadow_round_rect(size)
+	if self:border_visible() then
+		return self:border_round_rect(1, size)
+	else
+		return self:background_round_rect(size)
+	end
+end
+
+function ui.layer:shadow_path(size)
+	if self:border_visible() then
+		self:border_path(1, size)
+	else
+		self:background_path(size)
+	end
+end
+
+function ui.layer:draw_shadow()
+	if not self:shadow_visible() then return end
+	local cr = self.window.cr
+	local t = self._shadow or {}
+	self._shadow = t
+	local passes = self._shadow_blur_passes
+	local radius = self.shadow_blur
+	local spread = radius * passes
+
+	--check if the cached shadow image is still valid
+	local shadow_valid
+	if t.blur_radius == self.shadow_blur then
+		local x, y, w, h, r1x, r1y, r2x, r2y, r3x, r3y, r4x, r4y, k =
+			self:shadow_round_rect(0)
+		shadow_valid = t.x == x and t.y == y and t.w == w and t.h == h
+			and t.r1x == r1x and t.r1y == r1y and t.r2x == r2x and t.r2y == r2y
+			and t.r3x == r3x and t.r3y == r3y and t.r4x == r4x and t.r4y == r4y
+			and t.k == k
+	end
+
+	if not shadow_valid then
+
+		local grow_blur = t.blur and t.blur.max_radius < spread
+		local max_radius = spread * (grow_blur and 2 or 1)
+
+		if grow_blur then --free it so we can make a larger one
+			t.blurred_surface:free()
+			t.blurred_surface = false
+			t.bx = false
+			t.by = false
+			t.blur = false
+		end
+
+		--store cache invalidation keys
+		t.blur_radius = self.shadow_blur
+		t.x, t.y, t.w, t.h, t.r1x, t.r1y,
+			t.r2x, t.r2y, t.r3x, t.r3y, t.r4x, t.r4y, t.k =
+				self:shadow_round_rect(0)
+
+		if not t.blur then
+
+			local bx, by, bw, bh = self:shadow_rect(max_radius)
+			t.bx = bx
+			t.by = by
+
+			t.blur = boxblur.new(bw, bh, 'g8', max_radius)
+
+			function t.blur.repaint(blur, src)
+				local ssr = cairo.image_surface(src)
+				local scr = ssr:context()
+				scr:operator'source'
+				scr:rgba(0, 0, 0, 0)
+				scr:paint()
+				scr:translate(-bx, -by)
+				local cr = self.window.cr
+				self.window.cr = scr
+				self:shadow_path(0)
+				self.window.cr = cr
+				scr:rgba(0, 0, 0, 1)
+				scr:fill()
+				scr:free()
+				ssr:free()
+			end
+		end
+
+		if t.blurred_surface then
+			t.blurred_surface:free()
+			t.blurred_surface = false
+		end
+
+		local dst = t.blur:blur(radius, passes)
+		t.blurred_surface = cairo.image_surface(dst)
+	end
+
+	local sx = t.bx + self.shadow_x
+	local sy = t.by + self.shadow_y
+	if true then
+		cr:translate(sx, sy)
+		cr:source(t.blurred_surface)
+		cr:paint()
+		cr:translate(-sx, -sy)
+		cr:rgba(0, 0, 0, 0) --clear source
+	else
+		cr:save()
+		cr:new_path()
+		self:shadow_path(spread)
+		cr:clip()
+		cr:rgba(self.ui:color(self.shadow_color))
+		cr:mask(t.blurred_surface)
+		cr:restore()
+	end
+end
+
 --content-box geometry, drawing and hit testing
 
 function ui.layer:padding_pos()
@@ -1674,6 +1808,8 @@ function ui.layer:after_draw() --called in parent's space
 
 	local cc = self.content_clip
 	local bg = self:background_visible()
+
+	self:draw_shadow()
 
 	local clip = bg or cc
 	if clip then
