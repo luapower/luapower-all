@@ -1736,21 +1736,10 @@ function ui.layer:draw_shadow()
 
 	local sx = t.bx + self.shadow_x
 	local sy = t.by + self.shadow_y
-	if true then
-		cr:translate(sx, sy)
-		cr:source(t.blurred_surface)
-		cr:paint()
-		cr:translate(-sx, -sy)
-		cr:rgba(0, 0, 0, 0) --clear source
-	else
-		cr:save()
-		cr:new_path()
-		self:shadow_path(spread)
-		cr:clip()
-		cr:rgba(self.ui:color(self.shadow_color))
-		cr:mask(t.blurred_surface)
-		cr:restore()
-	end
+	cr:translate(sx, sy)
+	cr:rgba(self.ui:color(self.shadow_color))
+	cr:mask(t.blurred_surface)
+	cr:translate(-sx, -sy)
 end
 
 --content-box geometry, drawing and hit testing
