@@ -42,21 +42,6 @@ local function round(x)
 	return math.floor(x + .5)
 end
 
-local function args4(s, convert) --parse a string of 4 non-space args
-	local a1, a2, a3, a4
-	if type(s) == 'string' then
-		a1, a2, a3, a4 = s:match'([^%s]+)%s+([^%s]+)([^%s]+)%s+([^%s]+)'
-	end
-	if not a1 then
-		a1, a2, a3, a4 = s, s, s, s
-	end
-	if convert then
-		return convert(a1), convert(a2), convert(a3), convert(a4)
-	else
-		return a1, a2, a3, a4
-	end
-end
-
 --object system --------------------------------------------------------------
 
 local object = oo.object()
@@ -514,6 +499,10 @@ ui.element.text_size = 14
 ui.element.text_color = '#fff'
 ui.element.line_spacing = 1
 
+function ui.element:iswindow()
+	return false
+end
+
 --tags & styles
 
 local function add_tags(tags, t)
@@ -682,8 +671,18 @@ function ui.window:after_init(ui, t)
 
 	self.layer = self.layer_class(self.ui, merge({
 		id = self:_subtag'layer', x = 0, y = 0, w = self.w, h = self.h,
-		parent = self, content_clip = false,
+		content_clip = false,
 	}, self.layer))
+
+	function self.layer:to_window(x, y)
+		return x, y
+	end
+
+	function self.layer:from_window(x, y)
+		return x, y
+	end
+
+	self.layer.window = self
 end
 
 function ui.window:before_free()
@@ -692,6 +691,10 @@ function ui.window:before_free()
 	self.active_widget = false
 	self.layer:free()
 	self.native_window = false
+end
+
+function ui.window:iswindow()
+	return true
 end
 
 --`hot` and `active` widget logic and mouse events routing
@@ -717,16 +720,22 @@ function ui.window:_mousemove(mx, my, force)
 	self.mouse_x = mx
 	self.mouse_y = my
 	self:fire('mousemove', mx, my)
+
+	local d = self.ui.drag_info
 	local widget = self.active_widget
 	if widget then
 		widget:_mousemove(mx, my)
 	end
-	if not self.active_widget then
+	if not self.active_widget or (d and d.drag_object) then
 		local widget, area = self:hit_test(mx, my)
 		self:_set_hot_widget(widget, mx, my, area)
 		if widget then
 			widget:_mousemove(mx, my, area)
 		end
+	end
+
+	if d and d.drag_object then
+		d.drag_object:_dragging(mx, my)
 	end
 end
 
@@ -792,27 +801,6 @@ function ui.window:after_draw()
 	self.cr:new_path()
 	self.layer:draw()
 	self.cr:restore()
-end
-
---parent interface
-
-function ui.window:_add_layer(layer)
-	if not self.layer then return end
-	self.layer:_add_layer(layer)
-end
-function ui.window:_remove_layer(layer)
-	if layer == self.layer then return end
-	self.layer:_remove_layer(layer)
-end
-
-local function pass_xy(self, x, y)
-	return x, y
-end
-ui.window.from_window = pass_xy
-ui.window.to_window   = pass_xy
-
-function ui.window:mouse_pos()
-	return self.mouse_x, self.mouse_y
 end
 
 --window interface; also element interface
@@ -921,6 +909,7 @@ end
 
 --override this for different ways of loading fonts
 function ui:_font_face(family, weight, slant)
+	--TODO: remove tuple() dep. and use memoize
 	local id = tuple(family, weight, slant)
 	local file = self._font_files[id]
 	if not file then
@@ -1023,6 +1012,21 @@ end
 ui.layer = oo.layer(ui.element)
 ui.window.layer_class = ui.layer
 
+local function args4(s, convert) --parse a string of 4 non-space args
+	local a1, a2, a3, a4
+	if type(s) == 'string' then
+		a1, a2, a3, a4 = s:match'([^%s]+)%s+([^%s]+)([^%s]+)%s+([^%s]+)'
+	end
+	if not a1 then
+		a1, a2, a3, a4 = s, s, s, s
+	end
+	if convert then
+		return convert(a1), convert(a2), convert(a3), convert(a4)
+	else
+		return a1, a2, a3, a4
+	end
+end
+
 function ui.layer:set_padding(s)
 	self.padding_left, self.padding_top, self.padding_right,
 		self.padding_bottom = args4(s, tonumber)
@@ -1120,6 +1124,8 @@ ui.layer.shadow_y = 0
 ui.layer.shadow_color = '#000'
 ui.layer.shadow_blur = 0
 
+ui.layer.drag_threshold = 10 --snapping pixels before starting to drag
+
 function ui.layer:after_init(ui, t)
 	self._matrix = cairo.matrix()
 	self._matrix2 = cairo.matrix()
@@ -1155,8 +1161,6 @@ function ui.layer:from_parent(x, y)
 	return self.rel_inverse_matrix:point(x, y)
 end
 
---parent/child relationship
-
 function ui.layer:get_parent() --child interface
 	return self._parent
 end
@@ -1165,12 +1169,16 @@ function ui.layer:set_parent(parent)
 	if self._parent then
 		self._parent:_remove_layer(self)
 		self._parent = false
+		self.window = false
 	end
 	if parent then
+		if parent:iswindow() then
+			parent = parent.layer
+		end
 		parent:_add_layer(self)
+		self._parent = parent
+		self.window = parent.window
 	end
-	self._parent = parent
-	self.window = parent and parent.window or parent
 end
 
 function ui.layer:get_z_order() --child interface
@@ -1178,10 +1186,26 @@ function ui.layer:get_z_order() --child interface
 end
 
 function ui.layer:set_z_order(z_order)
-	self._z_order = z_order
-	if self.parent then
-		self.parent:_sort_layers()
+	if z_order == 'front' then
+		self:to_front()
+	elseif z_order == 'back' then
+		self:to_back()
+	else
+		self._z_order = z_order
+		if self.parent then
+			self.parent:_sort_layers()
+		end
 	end
+end
+
+function ui.layer:to_back()
+	local t = self.parent.layers
+	self.z_order = t and #t > 0 and t[1].z_order - 1 or 0
+end
+
+function ui.layer:to_front()
+	local t = self.parent.layers
+	self.z_order = t and #t > 0 and t[#t].z_order + 1 or 0
 end
 
 function ui.layer:_add_layer(layer) --parent interface
@@ -1223,6 +1247,41 @@ end
 function ui.layer:_mousemove(mx, my, area)
 	local mx, my = self:to_content(self:from_window(mx, my))
 	self:fire('mousemove', mx, my, area)
+
+	--drag test
+	local d = self.ui.drag_info
+	if d and d.state == 'test' and d.initiator == self then
+		local dx = math.abs(d.mx - mx)
+		local dy = math.abs(d.my - my)
+		if dx >= self.drag_threshold or dy >= self.drag_threshold then
+			local obj = self:drag(d.button, d.mx, d.my, d.area)
+			if obj then
+				if d.drag_object then
+					d.drag_object:fire'cancel_drag'
+					self.ui.drag_info = false
+				end
+				d.drag_object = obj
+				d.state = 'dragging'
+				obj:fire'start_drag'
+			end
+		end
+	end
+
+	--drop test
+	local obj = d and d.drag_object
+	if obj then
+		if self:accepts_drag_object(obj, mx, my, area)
+			and obj:accepts_drop_target(self, mx, my, area)
+		then
+			if d.drop_target ~= self then
+				obj:fire('enter_drop_target', self, mx, my, area)
+				d.drop_target = self
+			end
+		elseif d.drop_target == self then
+			obj:fire('leave_drop_target', self)
+			d.drop_target = false
+		end
+	end
 end
 
 function ui.layer:_mouseenter(mx, my, area)
@@ -1232,16 +1291,88 @@ end
 
 function ui.layer:_mouseleave()
 	self:fire'mouseleave'
+
+	--drop leave
+	local d = self.ui.drag_info
+	local obj = d and d.drag_object
+	if obj and d.drop_target == self then
+		obj:fire('leave_drop_target', self)
+		d.drop_target = false
+	end
 end
 
 function ui.layer:_mousedown(button, mx, my, area)
 	local mx, my = self:to_content(self:from_window(mx, my))
 	self:fire('mousedown', button, mx, my, area)
+
+	--drag test
+	local d = self.ui.drag_info
+	if not d then d = {}; self.ui.drag_info = d; end
+	if not d.state then
+		d.state = 'test'
+		d.initiator = self
+		d.button = button
+		d.mx = mx
+		d.my = my
+		d.area = area
+	end
+end
+
+function ui.window:after__mouseup(button)
+	local d = self.ui.drag_info
+	if d and d.state and d.button == button then
+		local obj = d.drag_object
+		if obj then
+			obj:fire'cancel_drag'
+		end
+		self.ui.drag_info = false
+	end
 end
 
 function ui.layer:_mouseup(button, mx, my, area)
 	local mx, my = self:to_content(self:from_window(mx, my))
 	self:fire('mouseup', button, mx, my, area)
+
+	--drop test
+	local d = self.ui.drag_info
+	local obj = self.ui.drag_object
+	if obj
+		and d.button == button
+		and d.drop_target == self
+	then
+		self:drop(obj, mx, my, area)
+		obj:fire('dropped', self, mx, my, area)
+		self.ui.drag_info = false
+	end
+end
+
+function ui.layer:_dragging(mx, my)
+	local mx, my = self:to_content(self:from_window(mx, my))
+	local d = self.ui.drag_info
+	self:fire('dragging', mx - d.mx, my - d.my)
+end
+
+function ui.layer:drag(button, mx, my, area) end --stub
+function ui.layer:accepts_drag_object(drag_object, mx, my, area) end --stub
+function ui.layer:accepts_drop_target(drop_target, mx, my, area) end --stub
+function ui.layer:drop(drag_object, mx, my, area) end --stub
+
+function ui.layer:start_drag()
+	self.active = true
+	self:settags'dragging'
+end
+
+function ui.layer:end_drag()
+	self.active = false
+	self:settags'-dragging'
+end
+
+function ui.layer:dropped()
+	self:fire'end_drag'
+end
+
+function ui.layer:cancel_drag()
+	self:fire'end_drag'
 end
 
 function ui.layer:mouse_pos()
@@ -2009,7 +2140,6 @@ end
 function ui.layer:get_cw() return (select(3, self:padding_rect())) end
 function ui.layer:get_ch() return (select(4, self:padding_rect())) end
 
-
 function ui.layer:setfont(family, weight, slant, size, color)
 	self.window:setfont(
 		family or self.font_family,
@@ -2150,8 +2280,16 @@ local function bar_segment(w, size, i, minw)
 	return bx, bw
 end
 
-function ui.scrollbar:hit_test_near(mx, my)
-	return true --stub
+function ui.scrollbar:grabbar_rect()
+	local bx, by, bw, bh
+	if self.vertical then
+		by, bh = bar_segment(self.ch, self.size, self.offset, self.min_width)
+		bx, bw = 0, self.cw
+	else
+		bx, bw = bar_segment(self.cw, self.size, self.offset, self.min_width)
+		by, bh = 0, self.ch
+	end
+	return bx, by, bw, bh
 end
 
 function ui.scrollbar:after_init(ui, t)
@@ -2162,12 +2300,55 @@ function ui.scrollbar:after_init(ui, t)
 		self.vertical and self.ch or self.cw, self.step)
 
 	local bx, by, bw, bh = self:grabbar_rect()
+
 	self.grabbar = self.grabbar(self.ui, {
 		id = self:_subtag'grabbar', parent = self,
 		x = bx, y = by, w = bw, h = bh,
 		background_color = '#ff0',
 	})
 
+	function self.grabbar:after_mousedown(button, mx, my)
+		if button == 'left' and not self._grab then
+			self._grab = self.vertical and my - by or mx - bx
+			self.active = true
+		end
+	end
+
+	function self.grabbar:after_mouseup(button, mx, my)
+		if button == 'left' and self._grab then
+			self._grab = false
+			self.active = false
+		end
+	end
+
+	function ui.scrollbar:after_mousemove(mx, my)
+		if self._grab then
+			local offset = self.offset
+			local bx, by, bw, bh = self:grabbar_rect()
+			if self.vertical then
+				local by = bar_offset_clamp(my - self._grab, self.h, bh)
+				self.offset = client_offset(by, self.ch, bh, self.size, self.step)
+			else
+				local bx = bar_offset_clamp(mx - self._grab, self.w, bw)
+				self.offset = client_offset(bx, self.cw, bw, self.size, self.step)
+			end
+			if self.offset ~= offset then
+				self:fire('changed', self.offset, offset)
+				self:invalidate()
+			end
+		end
+	end
+
+	self:_init_autohide()
+end
+
+function ui.scrollbar:before_free()
+	self.window:off{nil, self}
+end
+
+--autohide
+
+function ui.scrollbar:_init_autohide()
 	self.window:on({'mousemove', self}, function(win, mx, my)
 		local mx, my = self:from_window(mx, my)
 		self:_autohide_mousemove(mx, my)
@@ -2182,20 +2363,8 @@ function ui.scrollbar:after_init(ui, t)
 	end
 end
 
-function ui.scrollbar:before_free()
-	self.window:off{nil, self}
-end
-
-function ui.scrollbar:grabbar_rect()
-	local bx, by, bw, bh
-	if self.vertical then
-		by, bh = bar_segment(self.ch, self.size, self.offset, self.min_width)
-		bx, bw = 0, self.cw
-	else
-		bx, bw = bar_segment(self.cw, self.size, self.offset, self.min_width)
-		by, bh = 0, self.ch
-	end
-	return bx, by, bw, bh
+function ui.scrollbar:hit_test_near(mx, my)
+	return true --stub
 end
 
 function ui.scrollbar:_autohide_mousemove(mx, my)
@@ -2219,47 +2388,12 @@ function ui.scrollbar:_autohide_mouseleave()
 	end
 end
 
-function ui.scrollbar:after_mousedown(button, mx, my)
-	if button == 'left' and not self._grab then
-		local bx, by, bw, bh = self:grabbar_rect()
-		if self:hit(bx, by, bw, bh) then
-			self._grab = self.vertical and my - by or mx - bx
-			self.active = true
-		end
-	end
-end
-
-function ui.scrollbar:after_mouseup(button, mx, my)
-	if button == 'left' and self._grab then
-		self._grab = false
-		self.active = false
-	end
-end
-
-function ui.scrollbar:after_mousemove(mx, my)
-	if self._grab then
-		local offset = self.offset
-		local bx, by, bw, bh = self:grabbar_rect()
-		if self.vertical then
-			local by = bar_offset_clamp(my - self._grab, self.h, bh)
-			self.offset = client_offset(by, self.ch, bh, self.size, self.step)
-		else
-			local bx = bar_offset_clamp(mx - self._grab, self.w, bw)
-			self.offset = client_offset(bx, self.cw, bw, self.size, self.step)
-		end
-		if self.offset ~= offset then
-			self:fire('changed', self.offset, offset)
-			self:invalidate()
-		end
-	end
-end
-
 function ui.scrollbar:before_draw_content()
-	local bx, by, bw, bh = self:grabbar_rect()
-	if bw < self.w or bh < self.h then
+	--local bx, by, bw, bh = self:grabbar_rect()
+	--if bw < self.w or bh < self.h then
 		--self.grabbar_background_color
 		--self.window.cr:rectacngle(bx, by, bw, bh, )
-	end
+	--end
 end
 
 --`vertical` and `horizontal` tags based on `vertical` property
