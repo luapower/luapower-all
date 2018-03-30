@@ -149,6 +149,18 @@ function ui.selector:selects(elem)
 	return true
 end
 
+--attribute expansion --------------------------------------------------------
+
+local expand = {} -- {attr -> expand(dest, val)}
+
+local function expand_attr(attr, val, dest)
+	local expand = expand[attr]
+	if expand then
+		expand(dest, val)
+		return true
+	end
+end
+
 --stylesheets ----------------------------------------------------------------
 
 ui.stylesheet = oo.stylesheet(ui.object)
@@ -166,6 +178,11 @@ function ui.stylesheet:after_init(ui)
 end
 
 function ui.stylesheet:add_style(sel, attrs)
+	for attr, val in pairs(attrs) do
+		if expand_attr(attr, val, attrs) then
+			attrs[attr] = nil
+		end
+	end
 	sel.attrs = attrs
 	push(self.selectors, sel)
 	sel.priority = #self.selectors
@@ -293,7 +310,7 @@ function ui.stylesheet:update_element(elem)
 end
 
 function ui.stylesheet:update_style(style)
-	for _,elem in ipairs(self._elements) do
+	for _,elem in ipairs(self.elements) do
 		--TODO:
 	end
 end
@@ -411,32 +428,33 @@ end
 
 --element lists --------------------------------------------------------------
 
+ui.element_list = oo.element_list(ui.object)
 ui.element_index = oo.element_index(ui.object)
 
 function ui:after_init()
-	self._elements = {}
+	self.elements = self:element_list()
 	self._element_index = self:element_index()
 end
 
 function ui:before_free()
-	while #self._elements > 0 do
-		self._elements[#self._elements]:free()
+	while #self.elements > 0 do
+		self.elements[#self.elements]:free()
 	end
 end
 
 function ui:_add_element(elem)
-	push(self._elements, elem)
+	push(self.elements, elem)
 	self._element_index:add_element(elem)
 end
 
 function ui:_remove_element(elem)
-	popval(self._elements, elem)
+	popval(self.elements, elem)
 	self._element_index:remove_element(elem)
 end
 
 function ui:_find_elements(sel, elems)
-	local elems = elems or self._elements
-	local res = self.element_list()
+	local elems = elems or self.elements
+	local res = self:element_list()
 	for i,elem in ipairs(elems) do
 		if sel:selects(elem) then
 			push(res, elem)
@@ -462,7 +480,6 @@ function ui.element_index:find_elements(sel)
 	return self.ui:_find_elements(sel)
 end
 
-ui.element_list = oo.element_list(ui.object)
 
 function ui.element_list:each(f)
 	for i,elem in ipairs(self) do
@@ -499,9 +516,8 @@ ui.element.text_size = 14
 ui.element.text_color = '#fff'
 ui.element.line_spacing = 1
 
-function ui.element:iswindow()
-	return false
-end
+function ui.element:iswindow() return false end
+function ui.element:iswidget() return false end
 
 --tags & styles
 
@@ -629,30 +645,49 @@ function ui.window:after_init(ui, t)
 		self.cr = win:bitmap():cairo()
 	end
 
-	win:on('mousemove.ui', function(win, x, y)
+	local function setmouse(mx, my)
 		setcontext()
-		self:_mousemove(x, y)
+		self.mouse_x = mx
+		self.mouse_y = my
+	end
+
+	win:on('mousemove.ui', function(win, mx, my)
+		setmouse(mx, my)
+		self.ui:_window_mousemove(self, mx, my)
 	end)
-	win:on('mouseenter.ui', function(win, x, y)
-		setcontext()
-		self:_mouseenter(x, y)
+
+	win:on('mouseenter.ui', function(win, mx, my)
+		setmouse(mx, my)
+		self.ui:_window_mouseenter(self, mx, my)
 	end)
+
 	win:on('mouseleave.ui', function(win)
-		setcontext()
-		self:_mouseleave()
+		setmouse(false, false)
+		self.ui:_window_mouseleave(self)
 	end)
-	win:on('mousedown.ui', function(win, button, x, y)
-		setcontext()
-		self:_mousedown(button, x, y)
+
+	win:on('mousedown.ui', function(win, button, mx, my)
+		if self.mouse_x ~= mx or self.mouse_y ~= my then
+			self.ui:_window_mousemove(self, mx, my)
+		end
+		setmouse(mx, my)
+		self:fire('mousedown', button, mx, my)
+		self.ui:_window_mousedown(self, button, mx, my)
 	end)
-	win:on('mouseup.ui', function(win, button, x, y)
-		setcontext()
-		self:_mouseup(button, x, y)
+
+	win:on('mouseup.ui', function(win, button, mx, my)
+		if self.mouse_x ~= mx or self.mouse_y ~= my then
+			self.ui:_window_mousemove(self, mx, my)
+		end
+		setmouse(mx, my)
+		self.ui:_window_mouseup(self, button, mx, my)
 	end)
+
 	win:on('repaint.ui', function(win)
 		setcontext()
 		self:draw()
 	end)
+
 	win:on('client_rect_changed.ui', function(win, cx, cy, cw, ch)
 		if not cx then return end --hidden or minimized
 		self.x = cx
@@ -662,33 +697,28 @@ function ui.window:after_init(ui, t)
 		self.layer.w = cw
 		self.layer.h = ch
 	end)
+
 	win:on('closed.ui', function()
 		self:free()
 	end)
 
-	self.hot_widget = false
-	self.active_widget = false
-
 	self.layer = self.layer_class(self.ui, merge({
 		id = self:_subtag'layer', x = 0, y = 0, w = self.w, h = self.h,
-		content_clip = false,
+		content_clip = false, window = self,
 	}, self.layer))
 
+	--prepare the layer for working parent-less
 	function self.layer:to_window(x, y)
 		return x, y
 	end
-
 	function self.layer:from_window(x, y)
 		return x, y
 	end
 
-	self.layer.window = self
 end
 
 function ui.window:before_free()
 	self.native_window:off'.ui'
-	self.hot_widget = false
-	self.active_widget = false
 	self.layer:free()
 	self.native_window = false
 end
@@ -697,9 +727,34 @@ function ui.window:iswindow()
 	return true
 end
 
---`hot` and `active` widget logic and mouse events routing
+function ui.window:hit_test(x, y)
+	return self.layer:hit_test(x, y)
+end
 
-function ui.window:_set_hot_widget(widget, mx, my, area)
+function ui.window:mouse_pos()
+	return self.mouse_x, self.mouse_y
+end
+
+--window mouse events routing with hot, active and drag & drop logic.
+
+function ui:_reset_drag_state()
+	self.drag_start_widget = false --widget initiating the drag
+	self.drag_button = false
+	self.drag_mx = false --mouse coords in start_widget's content space
+	self.drag_my = false
+	self.drag_area = false --hit test area in drag_start_widget
+	self.drag_widget = false --the widget being dragged
+	self.drop_widget = false --the drop target widget
+	self.drop_area = false --drop area in drop_widget
+end
+
+function ui:after_init()
+	self.hot_widget = false
+	self.active_widget = false
+	self:_reset_drag_state()
+end
+
+function ui:_set_hot_widget(widget, mx, my, area)
 	if self.hot_widget == widget then
 		return
 	end
@@ -713,84 +768,127 @@ function ui.window:_set_hot_widget(widget, mx, my, area)
 	self.hot_widget = widget
 end
 
-function ui.window:_mousemove(mx, my, force)
-	if not force and self.mouse_x == mx and self.mouse_y == my then
-		return
-	end
-	self.mouse_x = mx
-	self.mouse_y = my
-	self:fire('mousemove', mx, my)
-
-	local d = self.ui.drag_info
-	local widget = self.active_widget
-	if widget then
-		widget:_mousemove(mx, my)
-	end
-	if not self.active_widget or (d and d.drag_object) then
-		local widget, area = self:hit_test(mx, my)
-		self:_set_hot_widget(widget, mx, my, area)
-		if widget then
-			widget:_mousemove(mx, my, area)
-		end
-	end
-
-	if d and d.drag_object then
-		d.drag_object:_dragging(mx, my)
-	end
+function ui:_accept_drop(drag_widget, drop_widget, mx, my, area)
+	return drop_widget:_accept_drag_widget(drag_widget, mx, my, area)
+		and drag_widget:accept_drop_widget(drop_widget, area)
 end
 
-function ui.window:_mouseenter(mx, my)
-	self:fire('mouseenter', mx, my)
-	self:_mousemove(mx, my, true)
-end
-
-function ui.window:_mouseleave()
-	self.mouse_x = false
-	self.mouse_y = false
-	self:fire'mouseleave'
-	local widget = self.active_widget
-	if widget then
-		widget:_mouseleave()
-	end
-	self:_set_hot_widget(false)
-end
-
-function ui.window:_mousedown(button, mx, my)
-	self.mouse_x = mx
-	self.mouse_y = my
-	self:fire('mousedown', button, mx, my)
-	local widget = self.active_widget
-	if widget then
-		widget:_mousedown(button, mx, my)
+function ui:_window_mousedown(window, button, mx, my)
+	local hot_widget, hot_area = window:hit_test(mx, my)
+	if self.active_widget then
+		local area = self.active_widget == hot_widget and hot_area or nil
+		self.active_widget:_mousedown(button, mx, my, area, hot_widget, hot_area)
 	end
 	if not self.active_widget then
-		local widget, area = self:hit_test(mx, my)
-		self:_set_hot_widget(widget, mx, my, area)
-		if widget then
-			widget:_mousedown(button, mx, my, area)
+		self:_set_hot_widget(hot_widget, mx, my, hot_area)
+		if hot_widget then
+			hot_widget:_mousedown(button, mx, my, hot_area, hot_widget, hot_area)
 		end
 	end
 end
 
-function ui.window:_mouseup(button, mx, my)
-	self.mouse_x = mx
-	self.mouse_y = my
-	self:fire('mouseup', button, mx, my)
-	local widget = self.active_widget
-	if widget then
-		widget:_mouseup(button, mx, my)
+function ui:_widget_mousedown(widget, button, mx, my, area)
+	if self.drag_start_widget then return end --already dragging on other button
+	if self.active_widget ~= widget then return end --widget not activated
+	self.drag_start_widget = widget
+	self.drag_button = button
+	self.drag_mx = mx
+	self.drag_my = my
+	self.drag_area = area
+end
+
+function ui:_window_mousemove(window, mx, my)
+	window:fire('mousemove', mx, my)
+	local hot_widget, hot_area = window:hit_test(mx, my)
+	if self.active_widget then
+		local area = self.active_widget == hot_widget and hot_area or nil
+		self.active_widget:_mousemove(mx, my, area, hot_widget, hot_area)
 	end
 	if not self.active_widget then
-		local widget, area = self:hit_test(mx, my)
-		self:_set_hot_widget(widget, mx, my, area)
+		self:_set_hot_widget(hot_widget, mx, my, hot_area)
+		if hot_widget then
+			hot_widget:_mousemove(mx, my, hot_area, hot_widget, hot_area)
+		end
+	end
+	if self.drag_widget then
+		local widget, area = window:hit_test(mx, my)
 		if widget then
-			widget:_mouseup(button, mx, my, area)
+			if not self:_accept_drop(self.drag_widget, widget, mx, my, area) then
+				widget = nil
+			end
+		end
+		if self.drop_widget ~= (widget or false) then
+			if self.drop_widget then
+				self.drag_widget:_leave_drop_target(self.drop_widget)
+				self.drop_widget = false
+				self.drop_area = false
+			end
+			if widget then
+				self.drag_widget:_enter_drop_target(widget, area)
+				self.drop_widget = widget
+				self.drop_area = area
+			end
+		end
+	end
+	if self.drag_widget then
+		self.drag_widget:_drag(mx, my)
+	end
+end
+
+function ui:_widget_mousemove(widget, mx, my, area)
+	if not self.drag_widget and widget == self.drag_start_widget then
+		local dx = math.abs(self.drag_mx - mx)
+		local dy = math.abs(self.drag_my - my)
+		if dx >= widget.drag_threshold or dy >= widget.drag_threshold then
+			self.drag_widget = widget:_start_drag(
+				self.drag_button,
+				self.drag_mx,
+				self.drag_my,
+				self.drag_area)
 		end
 	end
 end
 
-function ui.window:hit_test(x, y)
-	return self.layer:hit_test(x, y)
+function ui:_window_mouseenter(window, mx, my)
+	window:fire('mouseenter', mx, my)
+	self:_window_mousemove(window, mx, my)
+end
+
+function ui:_window_mouseleave(window)
+	window:fire'mouseleave'
+	if not self.active_widget then
+		self:_set_hot_widget(false)
+	end
+end
+
+function ui:_window_mouseup(window, button, mx, my)
+	window:fire('mouseup', button, mx, my)
+	local hot_widget, hot_area = window:hit_test(mx, my)
+	if self.active_widget then
+		local area = self.active_widget == hot_widget and hot_area or nil
+		self.active_widget:_mouseup(button, mx, my, area, hot_widget, hot_area)
+	else
+		self:_set_hot_widget(widget, mx, my, hot_area)
+		if widget then
+			widget:_mouseup(button, mx, my, hot_area, hot_widget, hot_area)
+		end
+	end
+	if self.drag_button == button then
+		if self.drop_widget then
+			self.drop_widget:_drop(self.drag_widget, mx, my, self.drop_area)
+			self.drag_widget:_leave_drop_target(self.drop_widget)
+		end
+		if self.drag_widget then
+			self.drag_widget:_ended_dragging()
+		end
+		self.drag_start_widget:_end_drag()
+		for _,elem in ipairs(self.elements) do
+			if elem:iswidget() then
+				elem:_set_drop_target(false)
+			end
+		end
+		self:_reset_drag_state()
+	end
 end
 
 --rendering
@@ -1009,9 +1107,6 @@ end
 
 --layers ---------------------------------------------------------------------
 
-ui.layer = oo.layer(ui.element)
-ui.window.layer_class = ui.layer
-
 local function args4(s, convert) --parse a string of 4 non-space args
 	local a1, a2, a3, a4
 	if type(s) == 'string' then
@@ -1027,35 +1122,47 @@ local function args4(s, convert) --parse a string of 4 non-space args
 	end
 end
 
-function ui.layer:set_padding(s)
+function expand:padding(s)
 	self.padding_left, self.padding_top, self.padding_right,
 		self.padding_bottom = args4(s, tonumber)
 end
 
-function ui.layer:set_border_color(s)
-	self.border_color_left, self.border_color_right,
-		self.border_color_top, self.border_color_bottom = args4(s)
+function expand:border_color(s)
+	self.border_color_left, self.border_color_right, self.border_color_top,
+		self.border_color_bottom = args4(s)
 end
 
-function ui.layer:set_border_width(s)
-	self.border_width_left, self.border_width_right,
-		self.border_width_top, self.border_width_bottom = args4(s, tonumber)
+function expand:border_width(s)
+	self.border_width_left, self.border_width_right, self.border_width_top,
+		self.border_width_bottom = args4(s, tonumber)
 end
 
-function ui.layer:set_border_radius(s)
+function expand:border_radius(s)
 	self.border_radius_top_left, self.border_radius_top_right,
 		self.border_radius_bottom_right, self.border_radius_bottom_left =
 			args4(s, tonumber)
 end
 
-function ui.layer:set_scale(scale)
+function expand:scale(scale)
 	self.scale_x = scale
 	self.scale_y = scale
 end
 
-function ui.layer:set_background_scale(scale)
+function expand:background_scale(scale)
 	self.background_scale_x = scale
 	self.background_scale_y = scale
+end
+
+ui.layer = oo.layer(ui.element)
+ui.window.layer_class = ui.layer
+
+function ui.layer:set_padding(s) expand_attr('padding', s, self) end
+function ui.layer:set_border_color(s) expand_attr('border_color', s, self) end
+function ui.layer:set_border_width(s) expand_attr('border_width', s, self) end
+function ui.layer:set_border_radius(s) expand_attr('border_radius', s, self) end
+function ui.layer:set_scale(scale) expand_attr('scale', scale, self) end
+function ui.layer:set_background_scale(scale)
+	expand_attr('background_scale', scale, self)
 end
 
 ui.layer.x = 0
@@ -1063,7 +1170,8 @@ ui.layer.y = 0
 ui.layer.rotation = 0
 ui.layer.rotation_cx = 0
 ui.layer.rotation_cy = 0
-ui.layer.scale = 1
+ui.layer.scale_x = 1
+ui.layer.scale_y = 1
 ui.layer.scale_cx = 0
 ui.layer.scale_cy = 0
 
@@ -1107,7 +1215,7 @@ ui.layer.background_image = nil
 ui.layer.background_operator = 'over'
 -- overlapping between background clipping edge and border stroke.
 -- -1..1 goes from inside to outside of border edge.
-ui.layer.background_clip_border_offset = -1
+ui.layer.background_clip_border_offset = 1
 
 ui.layer.border_width = 0 --no border
 ui.layer.border_radius = 0 --square
@@ -1136,7 +1244,9 @@ function ui.layer:before_free()
 	self.parent = false
 end
 
---matrix-affecting fields
+function ui.layer:iswidget()
+	return true
+end
 
 function ui.layer:get_rel_matrix()
 	return self._matrix
@@ -1242,139 +1352,6 @@ function ui.layer:from_window(x, y) --parent & child interface
 	return self:from_parent(self.parent:from_window(x, y))
 end
 
---mouse event handling
-
-function ui.layer:_mousemove(mx, my, area)
-	local mx, my = self:to_content(self:from_window(mx, my))
-	self:fire('mousemove', mx, my, area)
-
-	--drag test
-	local d = self.ui.drag_info
-	if d and d.state == 'test' and d.initiator == self then
-		local dx = math.abs(d.mx - mx)
-		local dy = math.abs(d.my - my)
-		if dx >= self.drag_threshold or dy >= self.drag_threshold then
-			local obj = self:drag(d.button, d.mx, d.my, d.area)
-			if obj then
-				if d.drag_object then
-					d.drag_object:fire'cancel_drag'
-					self.ui.drag_info = false
-				end
-				d.drag_object = obj
-				d.state = 'dragging'
-				obj:fire'start_drag'
-			end
-		end
-	end
-
-	--drop test
-	local obj = d and d.drag_object
-	if obj then
-		if self:accepts_drag_object(obj, mx, my, area)
-			and obj:accepts_drop_target(self, mx, my, area)
-		then
-			if d.drop_target ~= self then
-				obj:fire('enter_drop_target', self, mx, my, area)
-				d.drop_target = self
-			end
-		elseif d.drop_target == self then
-			obj:fire('leave_drop_target', self)
-			d.drop_target = false
-		end
-	end
-end
-
-function ui.layer:_mouseenter(mx, my, area)
-	local mx, my = self:to_content(self:from_window(mx, my))
-	self:fire('mouseenter', mx, my, area)
-end
-
-function ui.layer:_mouseleave()
-	self:fire'mouseleave'
-
-	--drop leave
-	local d = self.ui.drag_info
-	local obj = d and d.drag_object
-	if obj and d.drop_target == self then
-		obj:fire('leave_drop_target', self)
-		d.drop_target = false
-	end
-end
-
-function ui.layer:_mousedown(button, mx, my, area)
-	local mx, my = self:to_content(self:from_window(mx, my))
-	self:fire('mousedown', button, mx, my, area)
-
-	--drag test
-	local d = self.ui.drag_info
-	if not d then d = {}; self.ui.drag_info = d; end
-	if not d.state then
-		d.state = 'test'
-		d.initiator = self
-		d.button = button
-		d.mx = mx
-		d.my = my
-		d.area = area
-	end
-end
-
-function ui.window:after__mouseup(button)
-	local d = self.ui.drag_info
-	if d and d.state and d.button == button then
-		local obj = d.drag_object
-		if obj then
-			obj:fire'cancel_drag'
-		end
-		self.ui.drag_info = false
-	end
-end
-
-function ui.layer:_mouseup(button, mx, my, area)
-	local mx, my = self:to_content(self:from_window(mx, my))
-	self:fire('mouseup', button, mx, my, area)
-
-	--drop test
-	local d = self.ui.drag_info
-	local obj = self.ui.drag_object
-	if obj
-		and d.button == button
-		and d.drop_target == self
-	then
-		self:drop(obj, mx, my, area)
-		obj:fire('dropped', self, mx, my, area)
-		self.ui.drag_info = false
-	end
-end
-
-function ui.layer:_dragging(mx, my)
-	local mx, my = self:to_content(self:from_window(mx, my))
-	local d = self.ui.drag_info
-	self:fire('dragging', mx - d.mx, my - d.my)
-end
-
-function ui.layer:drag(button, mx, my, area) end --stub
-function ui.layer:accepts_drag_object(drag_object, mx, my, area) end --stub
-function ui.layer:accepts_drop_target(drop_target, mx, my, area) end --stub
-function ui.layer:drop(drag_object, mx, my, area) end --stub
-
-function ui.layer:start_drag()
-	self.active = true
-	self:settags'dragging'
-end
-
-function ui.layer:end_drag()
-	self.active = false
-	self:settags'-dragging'
-end
-
-function ui.layer:dropped()
-	self:fire'end_drag'
-end
-
-function ui.layer:cancel_drag()
-	self:fire'end_drag'
-end
-
 function ui.layer:mouse_pos()
 	if not self.window.mouse_x then
 		return false, false
@@ -1384,6 +1361,119 @@ end
 
 function ui.layer:get_mouse_x() return (select(1, self:mouse_pos())) end
 function ui.layer:get_mouse_y() return (select(2, self:mouse_pos())) end
+
+--mouse event handling
+
+function ui.layer:_mousemove(mx, my, area)
+	local mx, my = self:to_content(self:from_window(mx, my))
+	self:fire('mousemove', mx, my, area)
+	self.ui:_widget_mousemove(self, mx, my, area)
+end
+
+function ui.layer:_mouseenter(mx, my, area)
+	local mx, my = self:to_content(self:from_window(mx, my))
+	self:settags'hot'
+	self:fire('mouseenter', mx, my, area)
+end
+
+function ui.layer:_mouseleave()
+	self:fire'mouseleave'
+	self:settags'-hot'
+end
+
+function ui.layer:_mousedown(button, mx, my, area, hot_widget, hot_area)
+	local mx, my = self:to_content(self:from_window(mx, my))
+	self:fire('mousedown', button, mx, my, area, hot_widget, hot_area)
+	self.ui:_widget_mousedown(self, button, mx, my, area)
+end
+
+function ui.layer:_mouseup(button, mx, my, area, hot_widget, hot_area)
+	local mx, my = self:to_content(self:from_window(mx, my))
+	self:fire('mouseup', button, mx, my, area, hot_widget, hot_area)
+end
+
+--called on a potential drop target widget to accept the dragged widget.
+function ui.layer:_accept_drag_widget(widget, mx, my, area)
+	if mx then
+		mx, my = self:to_content(self:from_window(mx, my))
+	end
+	return self:accept_drag_widget(widget, mx, my, area)
+end
+
+--return true to accept a dragged widget. if mx/my/area are nil
+--then return true if there's _any_ area which would accept the widget.
+function ui.layer:accept_drag_widget(widget, mx, my, area) end
+
+--called on the dragged widget to accept a potential drop target widget.
+function ui.layer:accept_drop_widget(widget, area) return true; end
+
+--called on the dragged widget once upon entering a new drop target.
+function ui.layer:_enter_drop_target(widget, area)
+	self:settags'dropping'
+	self:fire('enter_drop_target', widget, area)
+end
+
+--called on the dragged widget once upon leaving a drop target.
+function ui.layer:_leave_drop_target(widget)
+	self:fire('leave_drop_target', widget)
+	self:settags'-dropping'
+end
+
+--called on the dragged widget when dragging starts.
+function ui.layer:_started_dragging()
+	self:settags'dragging'
+	self:fire'started_dragging'
+end
+
+--called on the dragged widget when dragging ends.
+function ui.layer:_ended_dragging()
+	self:fire'ended_dragging'
+	self:settags'-dragging'
+end
+
+function ui.layer:_set_drop_target(set)
+	self:settags(set and 'drop_target' or '-drop_target')
+end
+
+--called on drag_start_widget to initiate a drag operation.
+function ui.layer:_start_drag(button, mx, my, area)
+	local widget = self:start_drag(button, mx, my, area)
+	if widget then
+		self:settags'drag_source'
+		for i,elem in ipairs(self.ui.elements) do
+			if elem:iswidget() then
+				if self.ui:_accept_drop(widget, elem) then
+					elem:_set_drop_target(true)
+				end
+			end
+		end
+		widget:_started_dragging()
+	end
+	return widget
+end
+
+--stub: return a widget to drag (self works too).
+function ui.layer:start_drag(button, mx, my, area) end
+
+function ui.layer:_end_drag() --called on the drag_start_widget
+	self:settags'-drag_source'
+end
+
+function ui.layer:_drop(widget, mx, my, area)
+	self:fire('drop', widget, mx, my, area)
+end
+
+function ui.layer:_drag(mx, my)
+	local mx, my = self:to_content(self:from_window(mx, my))
+	self:fire('drag', mx - self.ui.drag_mx, my - self.ui.drag_my)
+end
+
+function ui.layer:drag(mx, my) --stub
+	local mx, my = self:to_parent(mx, my)
+	self.x = mx
+	self.y = my
+	self:invalidate()
+end
 
 --layers geometry, drawing and hit testing
 
@@ -1973,7 +2063,11 @@ function ui.layer:after_draw() --called in parent's space
 end
 
 function ui.layer:hit_test(x, y) --called in parent's space
+
 	if not self.visible or self.opacity == 0 then return end
+
+	if self.ui.drag_widget == self then return end
+
 	local cr = self.window.cr
 	local x, y = self:from_parent(x, y)
 	cr:save()
@@ -2082,34 +2176,24 @@ end
 --the `hot` property which is managed by the window
 
 function ui.layer:get_hot()
-	return self.window.hot_widget == self
-end
-
-function ui.layer:after_mouseenter()
-	if not self.window.active_widget then
-		self:settags'hot'
-	end
-end
-
-function ui.layer:after_mouseleave()
-	self:settags'-hot'
+	return self.ui.hot_widget == self
 end
 
 --the `active` property and tag which the widget must set manually
 
 function ui.layer:get_active()
-	return self.window.active_widget == self
+	return self.ui.active_widget == self
 end
 
 function ui.layer:set_active(active)
 	if self.active == active then return end
-	local active_widget = self.window.active_widget
+	local active_widget = self.ui.active_widget
 	if active_widget then
 		active_widget:settags'-active'
-		self.window.active_widget = false
+		self.ui.active_widget = false
 	end
 	if active then
-		self.window.active_widget = self
+		self.ui.active_widget = self
 		self:settags'active'
 	end
 end
