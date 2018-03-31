@@ -723,19 +723,19 @@ function ui.window:before_free()
 	self.native_window = false
 end
 
-function ui.window:iswindow()
+function ui.window:iswindow() --parent interface
 	return true
 end
 
-function ui.window:hit_test(x, y)
-	return self.layer:hit_test(x, y)
-end
-
-function ui.window:mouse_pos()
+function ui.window:mouse_pos() --window interface
 	return self.mouse_x, self.mouse_y
 end
 
 --window mouse events routing with hot, active and drag & drop logic.
+
+function ui.window:hit_test(x, y)
+	return self.layer:hit_test(x, y)
+end
 
 function ui:_reset_drag_state()
 	self.drag_start_widget = false --widget initiating the drag
@@ -903,13 +903,11 @@ function ui.window:after_draw()
 	self.cr:restore()
 end
 
---window interface; also element interface
-
-function ui.window:invalidate(for_animation)
+function ui.window:invalidate(for_animation) --element interface; window intf.
 	self.native_window:invalidate()
 end
 
-function ui.window:frame_clock()
+function ui.window:frame_clock() --element interface; window intf.
 	return self._frame_clock
 end
 
@@ -1236,44 +1234,64 @@ ui.layer.shadow_blur = 0
 
 ui.layer.drag_threshold = 10 --snapping pixels before starting to drag
 
-function ui.layer:after_init(ui, t)
-	self._matrix = cairo.matrix()
-	self._matrix2 = cairo.matrix()
-end
-
 function ui.layer:before_free()
 	self:_free_layers()
 	self.parent = false
 end
 
-function ui.layer:iswidget()
+function ui.layer:iswidget() --element interface
 	return true
 end
 
-function ui.layer:get_rel_matrix()
-	return self._matrix
-		:reset()
+local mt
+function ui.layer:rel_matrix() --box matrix relative to parent's content space
+	mt = mt or cairo.matrix()
+	return mt:reset()
 		:translate(self.x, self.y)
 		:rotate_around(self.rotation_cx, self.rotation_cy,
 			math.rad(self.rotation))
 		:scale_around(self.scale_cx, self.scale_cy, self.scale_x, self.scale_y)
 end
 
-function ui.layer:get_rel_inverse_matrix()
-	return self.rel_matrix:invert()
+function ui.layer:abs_matrix() --box matrix in window space
+	return self.parent:abs_matrix():transform(self:rel_matrix())
 end
 
---convert point from own space to parent space
+local mt
+function ui.layer:cr_abs_matrix(cr) --box matrix in cr's current space
+	mt = mt or cairo.matrix()
+	return cr:matrix(nil, mt):transform(self:rel_matrix())
+end
+
+--convert point from own content space to parent's content space
 function ui.layer:to_parent(x, y)
-	return self.rel_matrix:point(x, y)
+	return self:rel_matrix():translate(self:padding_pos()):point(x, y)
 end
 
---convert point from parent space to own space
+--convert point from parent's content space to own content space
 function ui.layer:from_parent(x, y)
-	return self.rel_inverse_matrix:point(x, y)
+	return self:rel_matrix():translate(self:padding_pos()):invert():point(x, y)
 end
 
---convert point from own space to other's space
+--convert point from parent's content space to own box space
+function ui.layer:from_box_to_parent(x, y)
+	return self:rel_matrix():point(x, y)
+end
+
+--convert point from parent's content space to own box space
+function ui.layer:from_parent_to_box(x, y)
+	return self:rel_matrix():invert():point(x, y)
+end
+
+function ui.layer:to_window(x, y) --parent & child interface
+	return self.parent:to_window(self:to_parent(x, y))
+end
+
+function ui.layer:from_window(x, y) --parent & child interface
+	return self:from_parent(self.parent:from_window(x, y))
+end
+
+--convert point from own content space to other's content space
 function ui.layer:to_other(widget, x, y)
 	return widget:from_window(self:to_window(x, y))
 end
@@ -1282,6 +1300,16 @@ end
 function ui.layer:from_other(widget, x, y)
 	return self:from_window(widget:to_window(x, y))
 end
+
+function ui.layer:mouse_pos()
+	if not self.window.mouse_x then
+		return false, false
+	end
+	return self:from_window(self.window:mouse_pos())
+end
+
+function ui.layer:get_mouse_x() return (select(1, self:mouse_pos())) end
+function ui.layer:get_mouse_y() return (select(2, self:mouse_pos())) end
 
 function ui.layer:get_parent() --child interface
 	return self._parent
@@ -1356,36 +1384,16 @@ function ui.layer:_sort_layers() --parent interface
 	end)
 end
 
-function ui.layer:to_window(x, y) --parent & child interface
-	return self.parent:to_window(self:to_parent(x, y))
-end
-
-function ui.layer:from_window(x, y) --parent & child interface
-	return self:from_parent(
-		self.parent:to_content(
-			self.parent:from_window(x, y)))
-end
-
-function ui.layer:mouse_pos()
-	if not self.window.mouse_x then
-		return false, false
-	end
-	return self:to_content(self:from_window(self.window:mouse_pos()))
-end
-
-function ui.layer:get_mouse_x() return (select(1, self:mouse_pos())) end
-function ui.layer:get_mouse_y() return (select(2, self:mouse_pos())) end
-
 --mouse event handling
 
 function ui.layer:_mousemove(mx, my, area)
-	local mx, my = self:to_content(self:from_window(mx, my))
+	local mx, my = self:from_window(mx, my)
 	self:fire('mousemove', mx, my, area)
 	self.ui:_widget_mousemove(self, mx, my, area)
 end
 
 function ui.layer:_mouseenter(mx, my, area)
-	local mx, my = self:to_content(self:from_window(mx, my))
+	local mx, my = self:from_window(mx, my)
 	self:settags'hot'
 	self:fire('mouseenter', mx, my, area)
 end
@@ -1396,20 +1404,20 @@ function ui.layer:_mouseleave()
 end
 
 function ui.layer:_mousedown(button, mx, my, area, hot_widget, hot_area)
-	local mx, my = self:to_content(self:from_window(mx, my))
+	local mx, my = self:from_window(mx, my)
 	self:fire('mousedown', button, mx, my, area, hot_widget, hot_area)
 	self.ui:_widget_mousedown(self, button, mx, my, area)
 end
 
 function ui.layer:_mouseup(button, mx, my, area, hot_widget, hot_area)
-	local mx, my = self:to_content(self:from_window(mx, my))
+	local mx, my = self:from_window(mx, my)
 	self:fire('mouseup', button, mx, my, area, hot_widget, hot_area)
 end
 
 --called on a potential drop target widget to accept the dragged widget.
 function ui.layer:_accept_drag_widget(widget, mx, my, area)
 	if mx then
-		mx, my = self:to_content(self:from_window(mx, my))
+		mx, my = self:from_window(mx, my)
 	end
 	return self:accept_drag_widget(widget, mx, my, area)
 end
@@ -1474,18 +1482,13 @@ function ui.layer:_end_drag() --called on the drag_start_widget
 end
 
 function ui.layer:_drop(widget, mx, my, area) --called on the drop target
-	local mx, my = self:to_content(self:from_window(mx, my))
+	local mx, my = self:from_window(mx, my)
 	self:fire('drop', widget, mx, my, area)
 end
 
 function ui.layer:_drag(mx, my) --called on the dragged widget
 	local pmx, pmy = self.parent:from_window(mx, my)
-	local dmx, dmy =
-		self.parent:to_content(
-			self:to_parent(
-				self:from_content(
-					self.ui.drag_mx,
-					self.ui.drag_my)))
+	local dmx, dmy = self:to_parent(self.ui.drag_mx, self.ui.drag_my)
 	self:fire('drag', pmx - dmx, pmy - dmy)
 end
 
@@ -1814,6 +1817,7 @@ function ui.layer:set_background_scale(scale)
 	self.background_scale_y = scale
 end
 
+local mt
 function ui.layer:paint_background()
 	local cr = self.window.cr
 	cr:operator(self.background_operator)
@@ -1849,8 +1853,9 @@ function ui.layer:paint_background()
 	else
 		assert(false, 'invalid background type %s', tostring(bg_type))
 	end
+	mt = mt or cairo.matrix()
 	patt:matrix(
-		self._matrix:reset()
+		mt:reset()
 			:translate(
 				self.background_x,
 				self.background_y)
@@ -1986,14 +1991,14 @@ end
 
 --content-box geometry, drawing and hit testing
 
-function ui.layer:padding_pos()
+function ui.layer:padding_pos() --in box space
 	local x, y = self:border_pos(-1) --inner edge
 	return
 		x + self.padding_left,
 		y + self.padding_top
 end
 
-function ui.layer:padding_rect()
+function ui.layer:padding_rect() --in box space
 	local x, y, w, h = self:border_rect(-1) --inner edge
 	return
 		x + self.padding_left,
@@ -2012,17 +2017,15 @@ function ui.layer:from_content(x, y) --content space coord in box space
 	return px + x, py + y
 end
 
-function ui.layer:draw_content() --called in content space
+function ui.layer:draw_content() --called in own content space
 	self:draw_layers()
 end
 
-function ui.layer:hit_test_content(x, y) --called in content space
+function ui.layer:hit_test_content(x, y) --called in own content space
 	return self:hit_test_layers(x, y)
 end
 
---child interface
-
-function ui.layer:after_draw() --called in parent's space
+function ui.layer:after_draw() --called in parent's content space; child intf.
 	if not self.visible or self.opacity == 0 then return end
 	if self.opacity <= 0 then return end
 	local cr = self.window.cr
@@ -2035,7 +2038,7 @@ function ui.layer:after_draw() --called in parent's space
 		cr:save()
 	end
 
-	cr:matrix(cr:matrix(nil, self._matrix2):transform(self.rel_matrix))
+	cr:matrix(self:cr_abs_matrix(cr))
 
 	local cc = self.content_clip
 	local bg = self:background_visible()
@@ -2083,14 +2086,14 @@ function ui.layer:after_draw() --called in parent's space
 	end
 end
 
-function ui.layer:hit_test(x, y) --called in parent's space
+function ui.layer:hit_test(x, y) --called in parent's content space; child int.
 
 	if not self.visible or self.opacity == 0 then return end
 
 	if self.ui.drag_widget == self then return end
 
 	local cr = self.window.cr
-	local x, y = self:from_parent(x, y)
+	local x, y = self:from_parent_to_box(x, y)
 	cr:save()
 	cr:identity_matrix()
 
@@ -2163,7 +2166,7 @@ function ui.layer:hit_test(x, y) --called in parent's space
 	end
 end
 
-function ui.layer:bounding_box()
+function ui.layer:bounding_box() --child interface
 	x, y, w, h = self:layers_bounding_box()
 	local cc = self.content_clip
 	if cc then
@@ -2227,11 +2230,6 @@ function ui.layer:size() return self.w, self.h end
 function ui.layer:hit(x, y, w, h)
 	local mx, my = self:mouse_pos()
 	return box2d.hit(mx, my, x, y, w, h)
-end
-
-function ui.layer:from_origin(x, y) --from box space to content space
-	local px, py = self:padding_pos()
-	return x-px, y-py
 end
 
 function ui.layer:content_size()
