@@ -837,6 +837,8 @@ end
 
 function ui:_widget_mousemove(widget, mx, my, area)
 	if not self.drag_widget and widget == self.drag_start_widget then
+		--local dmx, dmy = self:to_window(self.drag_mx, self.drag_my)
+		--TODO: make this diff. in window space!
 		local dx = math.abs(self.drag_mx - mx)
 		local dy = math.abs(self.drag_my - my)
 		if dx >= widget.drag_threshold or dy >= widget.drag_threshold then
@@ -868,9 +870,9 @@ function ui:_window_mouseup(window, button, mx, my)
 		local area = self.active_widget == hot_widget and hot_area or nil
 		self.active_widget:_mouseup(button, mx, my, area, hot_widget, hot_area)
 	else
-		self:_set_hot_widget(widget, mx, my, hot_area)
-		if widget then
-			widget:_mouseup(button, mx, my, hot_area, hot_widget, hot_area)
+		self:_set_hot_widget(hot_widget, mx, my, hot_area)
+		if hot_widget then
+			hot_widget:_mouseup(button, mx, my, hot_area, hot_widget, hot_area)
 		end
 	end
 	if self.drag_button == button then
@@ -1271,6 +1273,16 @@ function ui.layer:from_parent(x, y)
 	return self.rel_inverse_matrix:point(x, y)
 end
 
+--convert point from own space to other's space
+function ui.layer:to_other(widget, x, y)
+	return widget:from_window(self:to_window(x, y))
+end
+
+--convert point from other's space to own space
+function ui.layer:from_other(widget, x, y)
+	return self:from_window(widget:to_window(x, y))
+end
+
 function ui.layer:get_parent() --child interface
 	return self._parent
 end
@@ -1349,7 +1361,9 @@ function ui.layer:to_window(x, y) --parent & child interface
 end
 
 function ui.layer:from_window(x, y) --parent & child interface
-	return self:from_parent(self.parent:from_window(x, y))
+	return self:from_parent(
+		self.parent:to_content(
+			self.parent:from_window(x, y)))
 end
 
 function ui.layer:mouse_pos()
@@ -1459,19 +1473,26 @@ function ui.layer:_end_drag() --called on the drag_start_widget
 	self:settags'-drag_source'
 end
 
-function ui.layer:_drop(widget, mx, my, area)
+function ui.layer:_drop(widget, mx, my, area) --called on the drop target
+	local mx, my = self:to_content(self:from_window(mx, my))
 	self:fire('drop', widget, mx, my, area)
 end
 
-function ui.layer:_drag(mx, my)
-	local mx, my = self:to_content(self:from_window(mx, my))
-	self:fire('drag', mx - self.ui.drag_mx, my - self.ui.drag_my)
+function ui.layer:_drag(mx, my) --called on the dragged widget
+	local pmx, pmy = self.parent:from_window(mx, my)
+	local dmx, dmy =
+		self.parent:to_content(
+			self:to_parent(
+				self:from_content(
+					self.ui.drag_mx,
+					self.ui.drag_my)))
+	self:fire('drag', pmx - dmx, pmy - dmy)
 end
 
-function ui.layer:drag(mx, my) --stub
-	local mx, my = self:to_parent(mx, my)
-	self.x = mx
-	self.y = my
+--default behavior: drag the widget from the initial grabbing point.
+function ui.layer:drag(dx, dy)
+	self.x = self.x + dx
+	self.y = self.y + dy
 	self:invalidate()
 end
 
@@ -2014,7 +2035,7 @@ function ui.layer:after_draw() --called in parent's space
 		cr:save()
 	end
 
-	cr:matrix(cr:matrix(nil, self._matrix2):multiply(self.rel_matrix))
+	cr:matrix(cr:matrix(nil, self._matrix2):transform(self.rel_matrix))
 
 	local cc = self.content_clip
 	local bg = self:background_visible()
