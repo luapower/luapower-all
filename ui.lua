@@ -102,7 +102,7 @@ end
 function ui.selector:after_init(ui, sel, filter)
 	if sel:find'>' then --parents filter
 		self.parent_tags = {} --{{tag,...}, ...}
-		sel = sel:gsub('%s*([^>%s]+)%s*>', function(s) -- tag > ...
+		sel = sel:gsub('([^>]+)%s*>', function(s) -- tags... >
 			local tags = collect(gmatch_tags(s))
 			push(self.parent_tags, tags)
 			return ''
@@ -508,6 +508,8 @@ end
 ui.element = oo.element(ui.object)
 
 ui.element.visible = true
+ui.element.iswindw = false
+ui.element.iswidget = false
 
 ui.element.font_family = 'Open Sans'
 ui.element.font_weight = 'normal'
@@ -515,9 +517,6 @@ ui.element.font_slant = 'normal'
 ui.element.text_size = 14
 ui.element.text_color = '#fff'
 ui.element.line_spacing = 1
-
-function ui.element:iswindow() return false end
-function ui.element:iswidget() return false end
 
 --tags & styles
 
@@ -539,10 +538,12 @@ function ui.element:after_init(ui, t)
 	add_tags(t.tags, tags)
 	self.tags = tags
 	--update elements in lexicographic order so that eg. `border_width` comes
-	--before `border_width_left`.
+	--before `border_width_left` even though it's actually undefined behavior.
+	self:begin_update()
 	for k,v in sortedpairs(t) do
 		self[k] = v
 	end
+	self:end_update()
 	self.tags = tags
 	if self.id then
 		tags[self.id] = true
@@ -553,6 +554,16 @@ end
 function ui.element:before_free()
 	self.ui:_remove_element(self)
 	self.ui = false
+end
+
+function ui.element:begin_update()
+	assert(not self.updating)
+	self.updating = true
+end
+
+function ui.element:end_update()
+	assert(self.updating)
+	self.updating = false
 end
 
 function ui.element:_addtags(s)
@@ -624,6 +635,8 @@ end
 --windows --------------------------------------------------------------------
 
 ui.window = oo.window(ui.element)
+
+ui.window.iswindow = true
 
 ui:style('window_layer', {
 	--screen-wiping options that work with transparent windows
@@ -703,7 +716,8 @@ function ui.window:after_init(ui, t)
 	end)
 
 	self.layer = self.layer_class(self.ui, merge({
-		id = self:_subtag'layer', x = 0, y = 0, w = self.w, h = self.h,
+		id = self:_subtag'layer', tags = 'window_layer',
+		x = 0, y = 0, w = self.w, h = self.h,
 		content_clip = false, window = self,
 	}, self.layer))
 
@@ -721,10 +735,6 @@ function ui.window:before_free()
 	self.native_window:off'.ui'
 	self.layer:free()
 	self.native_window = false
-end
-
-function ui.window:iswindow() --parent interface
-	return true
 end
 
 function ui.window:mouse_pos() --window interface
@@ -885,7 +895,7 @@ function ui:_window_mouseup(window, button, mx, my)
 		end
 		self.drag_start_widget:_end_drag()
 		for _,elem in ipairs(self.elements) do
-			if elem:iswidget() then
+			if elem.iswidget then
 				elem:_set_drop_target(false)
 			end
 		end
@@ -919,12 +929,20 @@ function ui.window:size() return self.w, self.h end
 --drawing helpers ------------------------------------------------------------
 
 function ui:_color(s)
-	return {color.string_to_rgba(s)}
+	local r, g, b, a = color.string_to_rgba(s)
+	self:check(r, 'invalid color "%s"', s)
+	return r and {r, g, b, a}
 end
 ui:memoize'_color'
 
 function ui:color(c)
-	return unpack(type(c) == 'string' and self:_color(c) or c)
+	if type(c) == 'string' then
+		c = self:_color(c)
+	end
+	if not c then
+		return 0, 0, 0, 0
+	end
+	return unpack(c)
 end
 
 function ui:_add_color_stops(g, ...)
@@ -1165,6 +1183,7 @@ function ui.layer:set_background_scale(scale)
 	expand_attr('background_scale', scale, self)
 end
 
+ui.layer.iswidget = true
 ui.layer.x = 0
 ui.layer.y = 0
 ui.layer.rotation = 0
@@ -1174,8 +1193,6 @@ ui.layer.scale_x = 1
 ui.layer.scale_y = 1
 ui.layer.scale_cx = 0
 ui.layer.scale_cy = 0
-
-ui.layer._z_order = 0
 
 ui.layer.opacity = 1
 
@@ -1237,10 +1254,6 @@ ui.layer.drag_threshold = 10 --snapping pixels before starting to drag
 function ui.layer:before_free()
 	self:_free_layers()
 	self.parent = false
-end
-
-function ui.layer:iswidget() --element interface
-	return true
 end
 
 local mt
@@ -1317,57 +1330,56 @@ end
 
 function ui.layer:set_parent(parent)
 	if self._parent then
-		self._parent:_remove_layer(self)
-		self._parent = false
-		self.window = false
+		self._parent:remove_layer(self)
 	end
 	if parent then
-		if parent:iswindow() then
+		if parent.iswindow then
 			parent = parent.layer
 		end
-		parent:_add_layer(self)
-		self._parent = parent
-		self.window = parent.window
+		parent:add_layer(self)
 	end
-end
-
-function ui.layer:get_z_order() --child interface
-	return self._z_order
-end
-
-function ui.layer:set_z_order(z_order)
-	if z_order == 'front' then
-		self:to_front()
-	elseif z_order == 'back' then
-		self:to_back()
-	else
-		self._z_order = z_order
-		if self.parent then
-			self.parent:_sort_layers()
-		end
-	end
+	self:invalidate()
 end
 
 function ui.layer:to_back()
-	local t = self.parent.layers
-	self.z_order = t and #t > 0 and t[1].z_order - 1 or 0
+	self.layer_index = 1
 end
 
 function ui.layer:to_front()
-	local t = self.parent.layers
-	self.z_order = t and #t > 0 and t[#t].z_order + 1 or 0
+	self.layer_index = 1/0
 end
 
-function ui.layer:_add_layer(layer) --parent interface
+function ui.layer:get_layer_index()
+	return indexof(self, self.parent.layers)
+end
+
+function ui.layer:move_layer(layer, index)
+	local new_index = clamp(index, 1, #self.layers)
+	local old_index = indexof(layer, self.layers)
+	if old_index == new_index then return end
+	table.remove(self.layers, old_index)
+	table.insert(self.layers, new_index, layer)
+end
+
+function ui.layer:set_layer_index(index)
+	self.parent:move_layer(self, index)
+end
+
+function ui.layer:add_layer(layer) --parent interface
 	self.layers = self.layers or {}
 	push(self.layers, layer)
-	self:_sort_layers()
+	layer._parent = self
+	layer.window = self.window
 	self:fire('layer_added', layer)
+	self:invalidate()
 end
 
-function ui.layer:_remove_layer(layer) --parent interface
+function ui.layer:remove_layer(layer) --parent interface
 	popval(self.layers, layer)
 	self:fire('layer_removed', layer)
+	layer._parent = false
+	layer.window = false
+	self:invalidate()
 end
 
 function ui.layer:_free_layers()
@@ -1375,13 +1387,6 @@ function ui.layer:_free_layers()
 	while #self.layers > 0 do
 		self.layers[#self.layers]:free()
 	end
-end
-
-function ui.layer:_sort_layers() --parent interface
-	if not self.layers then return end
-	table.sort(self.layers, function(a, b)
-		return a.z_order < b.z_order
-	end)
 end
 
 --mouse event handling
@@ -1463,7 +1468,7 @@ function ui.layer:_start_drag(button, mx, my, area)
 	if widget then
 		self:settags'drag_source'
 		for i,elem in ipairs(self.ui.elements) do
-			if elem:iswidget() then
+			if elem.iswidget then
 				if self.ui:_accept_drop(widget, elem) then
 					elem:_set_drop_target(true)
 				end
@@ -1907,6 +1912,21 @@ function ui.layer:shadow_path(size)
 	end
 end
 
+function ui.layer:shadow_valid_key(t)
+	local x, y, w, h, r1x, r1y, r2x, r2y, r3x, r3y, r4x, r4y, k =
+		self:shadow_round_rect(0)
+	return t.x == x and t.y == y and t.w == w and t.h == h
+		and t.r1x == r1x and t.r1y == r1y and t.r2x == r2x and t.r2y == r2y
+		and t.r3x == r3x and t.r3y == r3y and t.r4x == r4x and t.r4y == r4y
+		and t.k == k
+end
+
+function ui.layer:shadow_store_key(t)
+	t.x, t.y, t.w, t.h, t.r1x, t.r1y,
+		t.r2x, t.r2y, t.r3x, t.r3y, t.r4x, t.r4y, t.k =
+			self:shadow_round_rect(0)
+end
+
 function ui.layer:draw_shadow()
 	if not self:shadow_visible() then return end
 	local cr = self.window.cr
@@ -1919,12 +1939,7 @@ function ui.layer:draw_shadow()
 	--check if the cached shadow image is still valid
 	local shadow_valid
 	if t.blur_radius == self.shadow_blur then
-		local x, y, w, h, r1x, r1y, r2x, r2y, r3x, r3y, r4x, r4y, k =
-			self:shadow_round_rect(0)
-		shadow_valid = t.x == x and t.y == y and t.w == w and t.h == h
-			and t.r1x == r1x and t.r1y == r1y and t.r2x == r2x and t.r2y == r2y
-			and t.r3x == r3x and t.r3y == r3y and t.r4x == r4x and t.r4y == r4y
-			and t.k == k
+		shadow_valid = self:shadow_valid_key(t)
 	end
 
 	if not shadow_valid then
@@ -1942,9 +1957,7 @@ function ui.layer:draw_shadow()
 
 		--store cache invalidation keys
 		t.blur_radius = self.shadow_blur
-		t.x, t.y, t.w, t.h, t.r1x, t.r1y,
-			t.r2x, t.r2y, t.r3x, t.r3y, t.r4x, t.r4y, t.k =
-				self:shadow_round_rect(0)
+		self:shadow_store_key(t)
 
 		if not t.blur then
 
@@ -2252,338 +2265,5 @@ function ui.layer:setfont(family, weight, slant, size, color)
 	self.window.cr:rgba(self.ui:color(color or self.text_color))
 end
 
---buttons --------------------------------------------------------------------
-
-ui.button = oo.button(ui.layer)
-
-ui.button.background_color = '#444'
-ui.button.border_color = '#888'
-ui.button.border_width = 1
-
-ui:style('button', {
-	transition_background_color = true,
-	transition_border_color = true,
-	transition_duration = .5,
-	transition_ease = 'expo out',
-})
-
-ui:style('button hot', {
-	background_color = '#ccc',
-	border_color = '#ccc',
-	text_color = '#000',
-})
-
-ui:style('button active', {
-	background_color = '#fff',
-	border_color = '#fff',
-	text_color = '#000',
-	transition_duration = 0.2,
-})
-
-function ui.button:mousedown(button, x, y)
-	if button == 'left' then
-		self.active = true
-	end
-end
-
-function ui.button:mouseup(button, x, y)
-	if button == 'left' then
-		self.active = false
-	end
-end
-
-function ui.button:before_draw_content()
-	if self.text then
-		self.window:textbox(0, 0, self.w, self.h, self.text,
-			self.font_family, self.font_weight, self.font_slant, self.text_size,
-			self.line_spacing, self.text_color, 'center', 'center')
-	end
-end
-
---scrollbars -----------------------------------------------------------------
-
-ui.scrollbar = oo.scrollbar(ui.layer)
-
-ui.scrollbar:_addtags'scrollbar'
-
-ui.scrollbar._vertical = true
-ui.scrollbar.step = 1
-ui.scrollbar.thickness = 20
-ui.scrollbar.min_width = 0
-ui.scrollbar.autohide = true
-ui.scrollbar.background_color = '#222'
-ui.scrollbar.grabbar_background_color = '#444'
-ui.scrollbar.opacity = 0
-
-ui.scrollbar.grabbar = ui.layer --class for the grabbar
-
-ui:style('scrollbar', {
-	transition_background_color = true,
-	transition_duration = .5,
-	transition_ease = 'expo out',
-	transition_opacity = true,
-	transition_delay_opacity = .5,
-	transition_duration_opacity = 1,
-})
-
-ui:style('scrollbar near', {
-	opacity = 1,
-	transition_opacity = true,
-	transition_duration_opacity = .5,
-	transition_delay_opacity = 0,
-})
-
-ui:style('scrollbar hot', {
-	grabbar_background_color = '#ccc',
-	transition_grabbar_background_color = true,
-})
-
-ui:style('scrollbar active', {
-	grabbar_background_color = '#fff',
-	transition_grabbar_background_color = true,
-	transition_duration = 0.2,
-})
-
-function ui.scrollbar:set_thickness(thickness)
-	if self.vertical then
-		self.w = self.w or thickness
-	else
-		self.h = self.h or thickness
-	end
-end
-
-local function client_offset_round(i, step)
-	return i - i % step
-end
-
-local function client_offset(bx, w, bw, size, step)
-	return client_offset_round(bx / (w - bw) * (size - w), step)
-end
-
-local function client_offset_clamp(i, size, w, step)
-	return client_offset_round(clamp(i, 0, math.max(size - w, 0)), step)
-end
-
-local function bar_size(w, size, minw)
-	return clamp(w^2 / size, minw, w)
-end
-
-local function bar_offset(w, size, i, bw)
-	return i * (w - bw) / (size - w)
-end
-
-local function bar_offset_clamp(bx, w, bw)
-	return clamp(bx, 0, w - bw)
-end
-
-local function bar_segment(w, size, i, minw)
-	local bw = bar_size(w, size, minw)
-	local bx = bar_offset(w, size, i, bw)
-	local bx = bar_offset_clamp(bx, w, bw)
-	return bx, bw
-end
-
-function ui.scrollbar:grabbar_rect()
-	local bx, by, bw, bh
-	if self.vertical then
-		by, bh = bar_segment(self.ch, self.size, self.offset, self.min_width)
-		bx, bw = 0, self.cw
-	else
-		bx, bw = bar_segment(self.cw, self.size, self.offset, self.min_width)
-		by, bh = 0, self.ch
-	end
-	return bx, by, bw, bh
-end
-
-function ui.scrollbar:after_init(ui, t)
-
-	self.thickness = self.thickness --auto-set w/h
-
-	self.offset = client_offset_clamp(self.offset or 0, self.size,
-		self.vertical and self.ch or self.cw, self.step)
-
-	local bx, by, bw, bh = self:grabbar_rect()
-
-	self.grabbar = self.grabbar(self.ui, {
-		id = self:_subtag'grabbar', parent = self,
-		x = bx, y = by, w = bw, h = bh,
-		background_color = '#ff0',
-	})
-
-	function self.grabbar:after_mousedown(button, mx, my)
-		if button == 'left' and not self._grab then
-			self._grab = self.vertical and my - by or mx - bx
-			self.active = true
-		end
-	end
-
-	function self.grabbar:after_mouseup(button, mx, my)
-		if button == 'left' and self._grab then
-			self._grab = false
-			self.active = false
-		end
-	end
-
-	function ui.scrollbar:after_mousemove(mx, my)
-		if self._grab then
-			local offset = self.offset
-			local bx, by, bw, bh = self:grabbar_rect()
-			if self.vertical then
-				local by = bar_offset_clamp(my - self._grab, self.h, bh)
-				self.offset = client_offset(by, self.ch, bh, self.size, self.step)
-			else
-				local bx = bar_offset_clamp(mx - self._grab, self.w, bw)
-				self.offset = client_offset(bx, self.cw, bw, self.size, self.step)
-			end
-			if self.offset ~= offset then
-				self:fire('changed', self.offset, offset)
-				self:invalidate()
-			end
-		end
-	end
-
-	self:_init_autohide()
-end
-
-function ui.scrollbar:before_free()
-	self.window:off{nil, self}
-end
-
---autohide
-
-function ui.scrollbar:_init_autohide()
-	self.window:on({'mousemove', self}, function(win, mx, my)
-		local mx, my = self:from_window(mx, my)
-		self:_autohide_mousemove(mx, my)
-	end)
-
-	self.window:on({'mouseleave', self}, function(win)
-		self:_autohide_mouseleave()
-	end)
-
-	if not self.autohide then
-		self:settags'near'
-	end
-end
-
-function ui.scrollbar:hit_test_near(mx, my)
-	return true --stub
-end
-
-function ui.scrollbar:_autohide_mousemove(mx, my)
-	local near = not self.autohide or self:hit_test_near(mx, my)
-	if near and not self._to1 then
-		self._to1 = true
-		self._to0 = false
-		self:settags'near'
-	elseif not near and not self._to0 then
-		self._to0 = true
-		self._to1 = false
-		self:settags'-near'
-	end
-end
-
-function ui.scrollbar:_autohide_mouseleave()
-	if self.autohide and not self._to0 then
-		self._to0 = true
-		self._to1 = false
-		self:settags'-near'
-	end
-end
-
-function ui.scrollbar:before_draw_content()
-	--local bx, by, bw, bh = self:grabbar_rect()
-	--if bw < self.w or bh < self.h then
-		--self.grabbar_background_color
-		--self.window.cr:rectacngle(bx, by, bw, bh, )
-	--end
-end
-
---`vertical` and `horizontal` tags based on `vertical` property
-
-function ui.scrollbar:get_vertical()
-	return self._vertical
-end
-
-function ui.scrollbar:set_vertical(vertical)
-	self._vertical = vertical
-	self:settags(vertical and 'vertical' or '-vertical')
-	self:settags(vertical and '-horizontal' or 'horizontal')
-end
-
---scrollbox ------------------------------------------------------------------
-
-ui.scrollbox = oo.scrollbox(ui.layer)
-
-ui.scrollbox.vscroll = 'always'
-ui.scrollbox.hscroll = 'always'
-ui.scrollbox.scroll_width = 20
-ui.scrollbox.page_size = 120
-
---classes of sub-components
-ui.scrollbox.vscrollbar = ui.scrollbar
-ui.scrollbox.hscrollbar = ui.scrollbar
-ui.scrollbox.content_layer = ui.layer
-
-function ui.scrollbox:after_init(ui, t)
-
-	self.vscrollbar = self.vscrollbar(self.ui, {
-		id = self:_subtag'vertical_scrollbar', parent = self, vertical = true,
-		h = 0, size = 500, z_order = 100,
-	})
-
-	self.hscrollbar = self.hscrollbar(self.ui, {
-		id = self:_subtag'horizontal_scrollbar', parent = self, vertical = false,
-		w = 0, size = 500, z_order = 100,
-	})
-
-	function self.vscrollbar:hit_test_near(x, y)
-		return true
-	end
-
-	function self.hscrollbar:hit_test_near(x, y)
-		return true
-	end
-
-	local dw = self.vscrollbar.w
-	local dh = self.hscrollbar.h
-	local cw = self.w - (self.vscrollbar.autohide and 0 or dw)
-	local ch = self.h - (self.hscrollbar.autohide and 0 or dh)
-
-	self.vscrollbar.x = cw - (self.vscrollbar.autohide and dw or 0)
-	self.vscrollbar.h = ch
-	self.hscrollbar.y = ch - (self.vscrollbar.autohide and dh or 0)
-	self.hscrollbar.w = cw
-
-	self.content = self.content_layer(self.ui, {
-		id = self:_subtag'content', parent = self,
-		x = 0, y = 0, w = cw, h = ch,
-	})
-
-end
-
-function ui.scrollbox:before_draw_content()
-	local cr = self.window.cr
-end
-
---tab ------------------------------------------------------------------------
-
-ui.tab = oo.tab(ui.layer)
-
-function ui.tab:border_path()
-	--
-end
-
---tab list -------------------------------------------------------------------
-
-ui.tablist = oo.tablist(ui.layer)
-
-function ui.tablist:widget_added(widget)
-	--
-end
-
-function ui.tablist:before_draw_content()
-
-end
 
 return ui
