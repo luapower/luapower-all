@@ -9,11 +9,14 @@ Includes construction, drawing, measuring, hit testing and editing of 2D paths.
 
 ### Overview
 
-  * written in Lua
   * modular, bottom-up style programming (procedural, no state, no objects)
-  * dynamic allocations avoided throughout
+  * no dynamic allocations on most operations
   * all features available under [affine transformation][affine2d], with fast code paths for special cases
   * full support for SVG path command set and semantics and more.
+
+### Status
+
+See open [issues](https://github.com/luapower/path2d/issues).
 
 ### Geometric types
 
@@ -64,7 +67,4 @@ Includes construction, drawing, measuring, hit testing and editing of 2D paths.
   * direct manipulation [path editor][path2d_editor] with chained updates and constraints,
     making it easy to customize and extend to support new command types (WIP).
 
-### Help needed
-
-Please see the list of open [issues](https://github.com/luapower/path2d/issues).
 
