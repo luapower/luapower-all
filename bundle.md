@@ -122,8 +122,20 @@ The bundle loader (Lua part):
 
 #### bundle.lua
 
-Optional module for loading embedded binary files: contains the function
-`bundle.load(filename) -> string`.
+Optional module with an API for loading embedded binary files:
+
+----------------------------------------- -------------------------------------------------
+`bundle.canopen(file) -> t|f`             check if a file exists and can be opened
+`bundle.load(filename) -> string`         load a file
+`bundle.mmap(filename) -> mmap`           memory-map a file
+`mmap.data`                               pointer to file data
+`mmap.size`                               file size
+`mmap:close()`                            close the mmap object
+----------------------------------------- -------------------------------------------------
+
+__NOTE:__ These functions look in the filesystem _first_ and only if that fails
+they use the embedded blobs.
+
 
 ## Search paths
 

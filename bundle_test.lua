@@ -8,9 +8,9 @@ local function test_load_all()
 	local glue = require'glue'
 	local lp = require'luapower'
 
-	lp.config('luapower_dir', glue.bin..'/../..')
-	lp.config('auto_update_db', false)
-	lp.config('allow_update_db_locally', false)
+	lp.luapower_dir = glue.bin..'/../..'
+	lp.auto_update_db = false
+	lp.allow_update_db_locally = false
 
 	--warming up the cache
 	io.stdout:write'loading module list... '

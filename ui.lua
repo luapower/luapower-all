@@ -13,7 +13,6 @@ local color = require'color'
 local boxblur = require'boxblur'
 local amoeba = require'amoeba'
 local time = require'time'
-local gfonts = require'gfonts'
 local freetype = require'freetype'
 local cairo = require'cairo'
 local libjpeg = require'libjpeg'
@@ -1031,17 +1030,16 @@ ui:memoize'image'
 
 function ui:after_init()
 	self._freetype = freetype:new()
-	self._font_files = {} --{(family, weight, slant) -> file}
-	self._font_faces = {} --{file -> {ft_face=, cr_face=}}
+	self._fonts = {} --{file -> {ft_face=, cr_face=, mmap=}}
 end
 
 function ui:before_free()
-	for _,face in pairs(self._font_faces) do
+	for _,font in pairs(self._fonts) do
 		--can't free() it because cairo's cache is lazy.
 		--cairo will free the freetype face object on its own.
-		face.cr_face:unref()
+		font.cr_face:unref()
 	end
-	self._font_faces = nil
+	self._fonts = nil
 	--safe to free() the freetype object here because cr_face holds a reference
 	--to the FT_Library and will call FT_Done_Library() on its destructor.
 	self._freetype:free()
@@ -1054,34 +1052,29 @@ function ui.window:before_free()
 end
 
 --override this for different ways of finding font files
-function ui:_font_file(family, weight, slant)
-	return gfonts.font_file(family, weight, slant)
+function ui:font_file(family, weight, slant)
+	local gfonts = require'gfonts'
+	return gfonts.font_file(family, weight, slant, true)
 end
 
---override this for different ways of loading fonts
-function ui:_font_face(family, weight, slant)
-	--TODO: remove tuple() dep. and use memoize
-	local id = tuple(family, weight, slant)
-	local file = self._font_files[id]
-	if not file then
-		file = assert(self:_font_file(family, weight, slant),
-			'could not find a font for "%s, %s, %s"', family, weight, slant)
-		self._font_files[id] = file
-	end
-	local face = self._font_faces[file]
-	if not face then
-		face = {}
-		face.ft_face = self._freetype:face(file)
-		face.cr_face = assert(cairo.ft_font_face(face.ft_face))
-		self._font_faces[file] = face
-	end
-	return face
+--override this for different ways of loading font faces
+function ui:_font(family, weight, slant)
+	local bundle = require'bundle'
+	local file = assert(self:font_file(family, weight, slant),
+		'could not find a font for "%s, %s, %s"', family, weight, slant)
+	local font = {}
+	font.mmap = assert(bundle.mmap(file))
+	font.ft_face = self._freetype:memory_face(font.mmap.data, font.mmap.size)
+	font.cr_face = assert(cairo.ft_font_face(font.ft_face))
+	self._fonts[file] = font
+	return font
 end
+ui:memoize'_font'
 
 --override this for different ways of setting a loaded font
 function ui.window:setfont(family, weight, slant, size, line_spacing)
-	local face = self.ui:_font_face(family, weight, slant)
-	self.cr:font_face(face.cr_face)
+	local font = self.ui:_font(family, weight, slant)
+	self.cr:font_face(font.cr_face)
 	self.cr:font_size(size)
 	local ext = self.cr:font_extents()
 	self._font_height = ext.height
