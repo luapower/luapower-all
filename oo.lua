@@ -26,8 +26,9 @@ local function is(obj, class)
 	end
 end
 
-function Object:subclass()
-	return setmetatable({super = self, classname = ''}, getmetatable(self))
+function Object:subclass(classname)
+	local subclass = {super = self, classname = classname or ''}
+	return setmetatable(subclass, getmetatable(self))
 end
 
 function Object:init(...) return ... end

@@ -83,12 +83,12 @@ local function test_layers()
 
 		border_offset = -1,
 
-		border_radius = 10,
-		border_radius_top_left = 10,
-		border_radius_top_right = 100,
-		border_radius_bottom_right = 50,
-		border_radius_bottom_left = 10,
-		border_radius_kappa = 1,
+		corner_radius = 10,
+		corner_radius_top_left = 10,
+		corner_radius_top_right = 100,
+		corner_radius_bottom_right = 50,
+		corner_radius_bottom_left = 10,
+		corner_radius_kappa = 1,
 
 		--background_type = 'color',
 		background_color = '#00f',

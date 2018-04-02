@@ -113,6 +113,8 @@ local function rgb_string_to_rgba(s)
 				a = 255
 			end
 			if not (r and g and b and a) then return end
+		else
+			return
 		end
 	else --`rgba(r, g, b, a)` or `rgb(r, g, b)`
 		r, g, b, a = s:match(rgba)
@@ -275,6 +277,10 @@ local function new(h, s, L)
 	return setmetatable({h = h, s = s, L = L}, color_mt)
 end
 
+local function new_from_rgb(r, g, b)
+	return new(rgb_to_hsl(r, g, b))
+end
+
 function color:hsl()
 	return self.h, self.s, self.L
 end
@@ -333,6 +339,10 @@ function color:lighten_by(r)
 	return new(self.h, self.s, self.L*r)
 end
 
+function color:bw(whiteL)
+	return new(self.h, self.s, self.L >= (whiteL or .5) and 0 or 1)
+end
+
 function color:variations(f, n)
 	n = n or 5
 	local results = {}
@@ -376,6 +386,9 @@ local color_module = {
 
 	hsla_to_string = hsla_to_string,
 	hsl_to_string  = hsl_to_string,
+
+	hsl = new,
+	rgb = new_from_rgb,
 }
 
 setmetatable(color_module, {__call = function(self, ...) return new(...) end})

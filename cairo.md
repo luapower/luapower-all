@@ -129,6 +129,7 @@ __paths__
 `cr:close_path()`                                                   [close current path][cairo_close_path]
 `cr:copy_path() -> path`                                            [copy current path to a path object][cairo_copy_path]
 `cr:copy_path_flat() -> path`                                       [copy current path flattened][cairo_copy_path_flat]
+`path:equal(other_path) -> t|f`                                     compare paths
 `cr:append_path(path)`                                              [append a path to current path][cairo_append_path]
 `cr:path_extents() -> x1, y1, x2, y2`                               [get the bouding box of the current path][cairo_path_extents]
 `cr:current_point() -> x, y`                                        [get the current point][cairo_get_current_point]

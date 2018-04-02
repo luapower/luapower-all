@@ -53,8 +53,8 @@ Object system with virtual properties and method overriding hooks.
    * `self:inspect([show_oo_fields])` - inspect the class/instance structure
 	  and contents in detail (requires [glue]).
  * overridable subclassing and instantiation mechanisms:
-   * `Fruit = oo.Fruit()` is sugar for `Fruit = oo.Object:subclass()`
-   * `Apple = oo.Apple(Fruit)` is sugar for `Apple = Fruit:subclass()`
+   * `Fruit = oo.Fruit()` is sugar for `Fruit = oo.Object:subclass('Fruit')`
+   * `Apple = oo.Apple(Fruit)` is sugar for `Apple = Fruit:subclass('Apple')`
    * `apple = Apple(...)` is sugar for `apple = Apple:create(...)`
       * `Apple:create()` calls `apple:init(...)`
 	* `Fruit.__install['^prefix_(.*)'] = function(self, k, v) ... end` -
@@ -297,10 +297,16 @@ cool because:
 
 ## Events
 
-Events are for associating actions with functions. Events facts:
+Events are useful for associating actions with callback functions. This
+can already be done more flexibly with plain methods and overriding, but
+events add to that the ability to revert the overidding at runtime
+(with `obj:off()`) and enforce the protocol whereby returning a value
+short-circuits the call chain.
+
+Events facts:
 
 * events fire in the order in which they were added.
-* extra args passed to `fire()` are passed to the event handlers.
+* extra args passed to `fire()` are passed to each event handler.
 * if the method `obj:<event>(args...)` is found, it is called first.
 * returning a non-nil value from a handler interrupts the event handling
   call chain and the value is returned back by `fire()`.

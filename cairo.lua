@@ -793,6 +793,16 @@ function path.dump(p)
 	end
 end
 
+function path.equal(p1, p2)
+	if not ffi.istype('cairo_path_t', p2) then return false end
+	if p1.num_data ~= p2.num_data then return false end
+	for i = 0, p1.num_data-1 do
+		if p1.data[i].e1 ~= p2.data[i].e1
+		or p1.data[i].e2 ~= p2.data[i].e2
+		then return false end
+	end
+end
+
 M.status_message = str_func(C.cairo_status_to_string)
 
 local dev = {}

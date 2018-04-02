@@ -78,7 +78,7 @@ function player:on_render(cr)
 	local len2 = arc.length(1, cx2, cy2, r2x, r2y, start_angle2, sweep_angle2, rotation2, nil, nil, mt, max_segment_sweep)
 
 	--split time
-	self:label{x = x, y = y+30, text =
+	self:label{x = x, y = y+30, w = 100, h = 26, text =
 		string.format('t: %4.2f (scale: %d), tlen: %4.2f, len1: %4.2f\nlen1+len2-tlen: %4.4f, len1-clen: %4.4f',
 								t, scale, tlen, len1, len1+len2-tlen, len1-clen), font_size = 16}
 end

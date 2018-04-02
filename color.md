@@ -36,6 +36,8 @@ Original code from Sputnik's [colors lib], by Yuri Takhteyev.
 ---------------------------------------------------- ------------------------------------------------
 `color(str) -> col`                                  create a new HSL color object from a string
 `color(h, s, L) -> col`                              create a new HSL color object from HSL values
+`color.hsl(h, s, L) -> col`                          create a new HSL color object from HSL values
+`color.rgb(r, g, b) -> col`                          create a new HSL color object from RGB values
 `col.h, col.s, col.L`                                color fields (for reading and writing)
 `col:hsl() -> h, s, L` <br> `col() -> h, s, L`       color fields unpacked
 `col:rgb() -> r, g, b`                               convert to RGB
@@ -50,6 +52,7 @@ Original code from Sputnik's [colors lib], by Yuri Takhteyev.
 `col:desaturate_by(r) -> color`                      create a new color with saturation set to a old saturation times r
 `col:lighten_to(lightness) -> color`                 create a new color with lightness set to a new value
 `col:lighten_by(r) -> color`                         create a new color with lightness set to its lightness times r
+`col:bw([whiteL]) -> color`                          create a new color with lightness either 0 or 1 based on whiteL threshold
 `col:variations(f, n) -> {color1, ...}`              create n variations of a color using supplied function and return them as a table
 `col:tints(n) -> {color1, ...}`                      create n tints of a color and return them as a table
 `col:shades(n) -> {color1, ...}`                     create n shades of a color and return them as a table

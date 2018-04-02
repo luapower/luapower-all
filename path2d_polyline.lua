@@ -56,8 +56,6 @@ local function segment_pairs(readsegment)
 	return coroutine.wrap(function() segment_pair_proc(readsegment, coroutine.yield) end)
 end
 
---local function line.line_line_intersection(x1, y1, x2, y2, x3, y3, x4, y4)
-
 local function polygon_offset_proc(d, readpair, writepoint)
 	local first = true
 	local lastox, lastoy, lastx, lasty
@@ -142,13 +140,13 @@ function player:on_render(cr)
 	end
 
 	for x1, y1, x2, y2 in segments(polygon_offset(d, segment_pairs(segments(points_iter(points))))) do
-		--self:dot(x1, y1, 2)
-		--self:dot(x2, y2, 2)
+		self:dot(x1, y1, 2)
+		self:dot(x2, y2, 2)
 		self:line(x1, y1, x2, y2, '#ffffff40', 2)
 	end
 	for x1, y1, x2, y2 in segments(polygon_offset(-d, segment_pairs(segments(points_iter(points))))) do
-		--self:dot(x1, y1, 2)
-		--self:dot(x2, y2, 2)
+		self:dot(x1, y1, 2)
+		self:dot(x2, y2, 2)
 		self:line(x1, y1, x2, y2, '#ffffff40', 2)
 	end
 

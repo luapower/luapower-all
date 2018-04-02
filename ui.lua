@@ -242,6 +242,8 @@ local nilkey = {}
 local function encode_nil(x) return x == nil and nilkey or x end
 local function decode_nil(x) if x == nilkey then return nil end; return x; end
 
+ui.initial = {} --value to use for "initial value" in stylesheets
+
 function ui.stylesheet:update_element(elem)
 	local attrs = self:_gather_attrs(elem)
 
@@ -259,11 +261,13 @@ function ui.stylesheet:update_element(elem)
 
 	--add the saved initial values of attributes that were overwritten by this
 	--function in the past but are missing from the computed styles this time.
-	local rt = elem._revert_attrs
+	local rt = elem._initial_values
+	local initial = self.ui.initial
 	if rt then
-		for attr, val in pairs(rt) do
-			if attrs[attr] == nil then
-				attrs[attr] = decode_nil(val)
+		for attr, init_val in pairs(rt) do
+			local val = attrs[attr]
+			if val == nil or val == initial then
+				attrs[attr] = decode_nil(init_val)
 			end
 		end
 	end
@@ -273,11 +277,10 @@ function ui.stylesheet:update_element(elem)
 	local function save(elem, attr, rt)
 		if not rt then
 			rt = {}
-			elem._revert_attrs = rt
+			elem._initial_values = rt
 		end
 		if rt[attr] == nil then --new initial value to save
-			local val = elem[attr]
-			rt[attr] = encode_nil(val)
+			rt[attr] = encode_nil(elem[attr])
 		end
 		return rt
 	end
@@ -291,18 +294,20 @@ function ui.stylesheet:update_element(elem)
 	--set all attribute values into elem via transition().
 	local changed = false
 	for attr, val in pairs(attrs) do
-		if tr and tr[attr] then
-			rt = save(elem, attr, rt)
-			local duration = attrs['transition_duration_'..attr] or duration
-			local ease = attrs['transition_ease_'..attr] or ease
-			local delay = attrs['transition_delay_'..attr] or delay
-			local speed = attrs['transition_speed_'..attr] or speed
-			elem:transition(attr, val, duration / speed, ease, delay)
-			changed = true
-		elseif not attr:find'^transition_' then
-			rt = save(elem, attr, rt)
-			elem:transition(attr, val, 0)
-			changed = true
+		if val ~= initial then
+			if tr and tr[attr] then
+				rt = save(elem, attr, rt)
+				local duration = attrs['transition_duration_'..attr] or duration
+				local ease = attrs['transition_ease_'..attr] or ease
+				local delay = attrs['transition_delay_'..attr] or delay
+				local speed = attrs['transition_speed_'..attr] or speed
+				elem:transition(attr, val, duration / speed, ease, delay)
+				changed = true
+			elseif not attr:find'^transition_' then
+				rt = save(elem, attr, rt)
+				elem:transition(attr, val, 0)
+				changed = true
+			end
 		end
 	end
 
@@ -354,7 +359,12 @@ ui.type['_colors$'] = 'gradient_colors'
 
 ui.transition = oo.transition(ui.object)
 
-ui.transition.interpolate = {} --func(d, x1, x2, xout) -> xout
+ui.transition.interpolate = {} --{attr_type -> func(d, x1, x2, xout) -> xout}
+
+function ui.transition:interpolate_function(elem, attr)
+	local atype = ui:_attr_type(attr)
+	return self.interpolate[atype]
+end
 
 function ui.transition:after_init(ui, elem, attr, to, duration, ease, delay)
 
@@ -365,8 +375,7 @@ function ui.transition:after_init(ui, elem, attr, to, duration, ease, delay)
 	local duration = duration or 0
 
 	--animation model
-	local atype = ui:_attr_type(attr)
-	local interpolate = self.interpolate[atype]
+	local interpolate = self:interpolate_function(elem, attr)
 	local from = elem[attr]
 	assert(from ~= nil, 'no value for attribute "%s"', attr)
 	--set the element value to a copy to avoid overwritting the original value
@@ -493,7 +502,7 @@ function ui.element_list:find(sel)
 end
 
 function ui:find(sel)
-	if type(sel) == 'string' then
+	if type(sel) == 'string' or type(sel) == 'function' then
 		sel = self:selector(sel)
 	end
 	return self._element_index:find_elements(sel)
@@ -594,9 +603,23 @@ function ui.element:update_styles()
 	return self.ui._stylesheet:update_element(self)
 end
 
+function ui.element:initial_value(attr)
+	local t = self._initial_values
+	if t then
+		local ival = t[attr]
+		if ival ~= nil then
+			return decode_nil(ival)
+		end
+	end
+	return self[attr]
+end
+
 --animated attribute transitions
 
 function ui.element:transition(attr, val, duration, ease, delay)
+	if type(val) == 'function' then
+		val = val(self, attr)
+	end
 	if not duration or duration <= 0 then
 		if self._transitions then
 			self._transitions[attr] = nil --remove existing transition on attr
@@ -709,6 +732,7 @@ function ui.window:after_init(ui, t)
 		self.h = ch
 		self.layer.w = cw
 		self.layer.h = ch
+		self:fire('client_rect_changed', cx, cy, cw, ch)
 	end)
 
 	win:on('closed.ui', function()
@@ -735,6 +759,17 @@ function ui.window:before_free()
 	self.native_window:off'.ui'
 	self.layer:free()
 	self.native_window = false
+end
+
+function ui.window:find(sel)
+	local sel = ui:selector(sel, function(elem)
+		return elem.window == self
+	end)
+	return self.ui:find(sel)
+end
+
+function ui.window:each(sel, f)
+	return self:find(sel):each(f)
 end
 
 function ui.window:mouse_pos() --window interface
@@ -1044,7 +1079,7 @@ function ui:_font_face(family, weight, slant)
 end
 
 --override this for different ways of setting a loaded font
-function ui.window:setfont(family, weight, slant, size)
+function ui.window:setfont(family, weight, slant, size, line_spacing)
 	local face = self.ui:_font_face(family, weight, slant)
 	self.cr:font_face(face.cr_face)
 	self.cr:font_size(size)
@@ -1052,6 +1087,7 @@ function ui.window:setfont(family, weight, slant, size)
 	self._font_height = ext.height
 	self._font_descent = ext.descent
 	self._font_ascent = ext.ascent
+	self._line_spacing = line_spacing
 end
 
 --multi-line self-aligned and box-aligned text
@@ -1061,12 +1097,7 @@ function ui.window:line_extents(s)
 	return ext.width, ext.height, ext.y_bearing
 end
 
-function ui.window:textbox(x, y, w, h, s,
-	font_family, font_weight, font_slant, text_size, line_spacing, text_color,
-	halign, valign)
-
-	self:setfont(font_family, font_weight, font_slant, text_size)
-	self.cr:rgba(self.ui:color(text_color))
+function ui.window:textbox(x, y, w, h, s, halign, valign)
 
 	self.cr:save()
 	self.cr:rectangle(x, y, w, h)
@@ -1074,7 +1105,7 @@ function ui.window:textbox(x, y, w, h, s,
 
 	local cr = self.cr
 
-	local line_h = self._font_height * line_spacing
+	local line_h = self._font_height * self._line_spacing
 
 	if halign == 'right' then
 		x = w
@@ -1155,9 +1186,9 @@ function expand:border_width(s)
 		self.border_width_bottom = args4(s, tonumber)
 end
 
-function expand:border_radius(s)
-	self.border_radius_top_left, self.border_radius_top_right,
-		self.border_radius_bottom_right, self.border_radius_bottom_left =
+function expand:corner_radius(s)
+	self.corner_radius_top_left, self.corner_radius_top_right,
+		self.corner_radius_bottom_right, self.corner_radius_bottom_left =
 			args4(s, tonumber)
 end
 
@@ -1177,7 +1208,7 @@ ui.window.layer_class = ui.layer
 function ui.layer:set_padding(s) expand_attr('padding', s, self) end
 function ui.layer:set_border_color(s) expand_attr('border_color', s, self) end
 function ui.layer:set_border_width(s) expand_attr('border_width', s, self) end
-function ui.layer:set_border_radius(s) expand_attr('border_radius', s, self) end
+function ui.layer:set_corner_radius(s) expand_attr('corner_radius', s, self) end
 function ui.layer:set_scale(scale) expand_attr('scale', scale, self) end
 function ui.layer:set_background_scale(scale)
 	expand_attr('background_scale', scale, self)
@@ -1235,14 +1266,14 @@ ui.layer.background_operator = 'over'
 ui.layer.background_clip_border_offset = 1
 
 ui.layer.border_width = 0 --no border
-ui.layer.border_radius = 0 --square
+ui.layer.corner_radius = 0 --square
 ui.layer.border_color = '#0000'
 -- border stroke positioning relative to box edge.
 -- -1..1 goes from inside to outside of box edge.
 ui.layer.border_offset = -1
 --draw rounded corners with a modified bezier for smoother line-to-arc
 --transitions. kappa=1 uses circle arcs instead.
-ui.layer.border_radius_kappa = 1.2
+ui.layer.corner_radius_kappa = 1.2
 
 ui.layer.shadow_x = 0
 ui.layer.shadow_y = 0
@@ -1575,7 +1606,7 @@ end
 
 --border rect at %-offset in border width, plus radii of rounded corners.
 function ui.layer:border_round_rect(offset, size_offset)
-	local k = self.border_radius_kappa
+	local k = self.corner_radius_kappa
 
 	local x1, y1, w, h = self:border_rect(0) --at stroke center
 	local X1, Y1, W, H = self:border_rect(offset, size_offset) --at offset
@@ -1583,10 +1614,10 @@ function ui.layer:border_round_rect(offset, size_offset)
 	local x2, y2 = x1 + w, y1 + h
 	local X2, Y2 = X1 + W, Y1 + H
 
-	local r1 = self.border_radius_top_left
-	local r2 = self.border_radius_top_right
-	local r3 = self.border_radius_bottom_right
-	local r4 = self.border_radius_bottom_left
+	local r1 = self.corner_radius_top_left
+	local r2 = self.corner_radius_top_right
+	local r3 = self.corner_radius_bottom_right
+	local r4 = self.corner_radius_bottom_left
 
 	--offset the radii to preserve curvature at offset.
 	local r1x = offset_radius(r1, x1-X1)
@@ -2228,11 +2259,14 @@ function ui.layer:set_active(active)
 	if active_widget then
 		active_widget:settags'-active'
 		self.ui.active_widget = false
+		active_widget:fire'deactivated'
 	end
 	if active then
 		self.ui.active_widget = self
 		self:settags'active'
+		self:fire'activated'
 	end
+	self:invalidate()
 end
 
 --utils in content space to use from draw_content() and hit_test_content()
@@ -2256,12 +2290,13 @@ end
 function ui.layer:get_cw() return (select(3, self:padding_rect())) end
 function ui.layer:get_ch() return (select(4, self:padding_rect())) end
 
-function ui.layer:setfont(family, weight, slant, size, color)
+function ui.layer:setfont(family, weight, slant, size, color, line_spacing)
 	self.window:setfont(
 		family or self.font_family,
 		weight or self.font_weight,
 		slant or self.font_slant,
-		size or self.text_size)
+		size or self.text_size,
+		line_spacing or self.line_spacing)
 	self.window.cr:rgba(self.ui:color(color or self.text_color))
 end
 

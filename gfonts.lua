@@ -61,10 +61,12 @@ local function parse_metadata_dir(dir, dt)
 	dir = path(dir)
 	dt = dt or {}
 	for name, d in fs.dir(dir) do
-		if d:is'dir' then
-			parse_metadata_dir(path(dir, name), dt)
-		elseif name == 'METADATA.pb' then
-			parse_metadata_file(dir, name, dt)
+		if name then
+			if d:is'dir' then
+				parse_metadata_dir(path(dir, name), dt)
+			elseif name == 'METADATA.pb' then
+				parse_metadata_file(dir, name, dt)
+			end
 		end
 	end
 	return dt
