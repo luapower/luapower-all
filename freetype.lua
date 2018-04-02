@@ -135,15 +135,15 @@ function lib.free(library)
 	checknz(C.FT_Done_FreeType(library))
 end
 
-function lib.face(library, filename, i)
+function lib.face(library, filename, face_index)
 	local face = ffi.new'FT_Face[1]'
-	checknz(C.FT_New_Face(library, filename, i or 0, face))
+	checknz(C.FT_New_Face(library, filename, face_index or 0, face))
 	return face[0]
 end
 
-function lib.memory_face(library, file_base, file_size, face_index)
+function lib.memory_face(library, data, size, face_index)
 	local face = ffi.new'FT_Face[1]'
-	checknz(C.FT_New_Memory_Face(library, file_base, file_size, face_index or 0, face))
+	checknz(C.FT_New_Memory_Face(library, data, size, face_index or 0, face))
 	return face[0]
 end
 

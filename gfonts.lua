@@ -83,10 +83,15 @@ local function parse_metadata()
 end
 
 local fonts
-function get_fonts()
+function get_fonts(use_bundle)
 	if not fonts then
 		local mcache = path(nil, 'metadata.cache')
-		if glue.canopen(mcache) then
+		if use_bundle then
+			local bundle = require'bundle'
+			if bundle.canopen(mcache) then
+				fonts = loadstring(bundle.load(mcache))()
+			end
+		elseif glue.canopen(mcache) then
 			fonts = loadfile(mcache)()
 		else
 			fonts = parse_metadata()
@@ -122,7 +127,7 @@ local weights = {
 	extrabold = 800,
 }
 
-function gfonts.font_file(name, weight, style)
+function gfonts.font_file(name, weight, style, use_bundle)
 	assert(name)
 	name = name:lower()
 	weight = weight or 'normal'
@@ -132,7 +137,7 @@ function gfonts.font_file(name, weight, style)
 	weight = weights[weight] or weight
 	style = (style or 'normal'):lower()
 
-	local styles = get_fonts()[name]
+	local styles = get_fonts(use_bundle)[name]
 	if not styles then return end
 	local fonts = styles[style]
 	if not fonts then return end
@@ -141,7 +146,7 @@ function gfonts.font_file(name, weight, style)
 end
 
 if not ... then
-	print(gfonts.font_file('Open Sans', 'semibold', 'italic'))
+	print(gfonts.font_file('Open Sans', 'semibold', 'italic', true))
 end
 
 return gfonts
