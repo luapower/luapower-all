@@ -5,7 +5,6 @@
 local ui = require'ui'
 local glue = require'glue'
 
-local lerp = glue.lerp
 local indexof = glue.indexof
 local clamp = glue.clamp
 
@@ -14,8 +13,8 @@ local clamp = glue.clamp
 ui.tab = ui.layer:subclass'tab'
 
 ui.tab.istab = true
-
 ui.tab._tab_index = 1/0 --add to the tablist tail
+ui.tab.close_button = ui.button
 
 function ui.tab:get_tab_index()
 	return self._tab_index
@@ -236,7 +235,7 @@ if not ... then require('ui_demo')(function(ui, win)
 
 	for i = 1, 5 do
 		local bg_color = {i / 5, i / 5, 0, 1}
-		local tab = ui:tab{parent = tl, background_color = bg_color}
+		local tab = ui:tab{parent = tl, background_color = bg_color, padding_left = 15}
 
 		local content = ui:layer{parent = win,
 			x = tl.x, y = tl.y + tl.h, w = 800, h = (win.h or 0) - tl.h,
@@ -250,7 +249,7 @@ if not ... then require('ui_demo')(function(ui, win)
 			local bg_color = self.background_color
 			local text_color = {color.rgb(unpack(bg_color)):bw(.25):rgba()}
 			self.window.cr:rgba(self.ui:color(text_color))
-			self.window:textbox(0, 0, self.cw, self.ch, 'Tab '..i, 'center', 'center')
+			self.window:textbox(0, 0, self.cw, self.ch, 'Tab '..i, 'left', 'center')
 		end
 		function tab:activated()
 			ui:each('content', function(self) self.visible = false end)

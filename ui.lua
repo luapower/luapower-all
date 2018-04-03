@@ -635,7 +635,7 @@ function ui.element:draw()
 	--update transitioning attributes
 	local a = self._transitions
 	if not a or not next(a) then return end
-	local clock = self:frame_clock()
+	local clock = self.frame_clock
 	local invalidate
 	for attr, transition in pairs(a) do
 		if transition:update(clock) then
@@ -674,9 +674,10 @@ function ui.window:after_init(ui, t)
 
 	self.mouse_x = win:mouse'x' or false
 	self.mouse_y = win:mouse'y' or false
+	self.mouse = {left = false, right = false} --{button -> true|false}
 
 	local function setcontext()
-		self._frame_clock = time.clock()
+		self.frame_clock = time.clock()
 		self.cr = win:bitmap():cairo()
 	end
 
@@ -706,6 +707,8 @@ function ui.window:after_init(ui, t)
 			self.ui:_window_mousemove(self, mx, my)
 		end
 		setmouse(mx, my)
+		--self.mouse_clock = self.frame_clock
+		self.mouse[button] = true
 		self:fire('mousedown', button, mx, my)
 		self.ui:_window_mousedown(self, button, mx, my)
 	end)
@@ -715,6 +718,8 @@ function ui.window:after_init(ui, t)
 			self.ui:_window_mousemove(self, mx, my)
 		end
 		setmouse(mx, my)
+		--self.mouse_clock = self.frame_clock
+		self.mouse[button] = false
 		self.ui:_window_mouseup(self, button, mx, my)
 	end)
 
@@ -758,6 +763,10 @@ function ui.window:before_free()
 	self.native_window:off'.ui'
 	self.layer:free()
 	self.native_window = false
+end
+
+function ui.window:get_mouse_clock(clock)
+	return self._mouse_clock
 end
 
 function ui.window:find(sel)
@@ -843,6 +852,17 @@ end
 
 function ui:_window_mousemove(window, mx, my)
 	window:fire('mousemove', mx, my)
+
+	--[[ --TODO
+	if self._hover_handler then
+		self._hover_handler(false)
+	end
+	self._hover_handler = function(stop)
+		self:_hover(self.mouse_x, self.mouse_y)
+	end
+	self.native_window:runafter(self.hover_delay, self._hover_handler)
+	]]
+
 	local hot_widget, hot_area = window:hit_test(mx, my)
 	if self.active_widget then
 		local area = self.active_widget == hot_widget and hot_area or nil
@@ -949,10 +969,6 @@ end
 
 function ui.window:invalidate(for_animation) --element interface; window intf.
 	self.native_window:invalidate()
-end
-
-function ui.window:frame_clock() --element interface; window intf.
-	return self._frame_clock
 end
 
 --sugar & utils
@@ -1273,7 +1289,12 @@ ui.layer.shadow_y = 0
 ui.layer.shadow_color = '#000'
 ui.layer.shadow_blur = 0
 
+ui.layer.text_align = 'center'
+ui.layer.text_valign = 'center'
+ui.layer.text = nil
+
 ui.layer.drag_threshold = 10 --snapping pixels before starting to drag
+ui.layer.hover_delay = 1 --hover event delay
 
 function ui.layer:before_free()
 	self:_free_layers()
@@ -1347,6 +1368,10 @@ end
 
 function ui.layer:get_mouse_x() return (select(1, self:mouse_pos())) end
 function ui.layer:get_mouse_y() return (select(2, self:mouse_pos())) end
+
+function ui.layer:get_mouse()
+	return self.window.mouse
+end
 
 function ui.layer:get_parent() --child interface
 	return self._parent
@@ -2026,6 +2051,16 @@ function ui.layer:draw_shadow()
 	cr:translate(-sx, -sy)
 end
 
+--text drawing
+
+function ui.layer:draw_text()
+	local text = self.text
+	if not text then return end
+	self:setfont()
+	self.window:textbox(0, 0, self.cw, self.ch,
+		self.text, self.align, self.valign)
+end
+
 --content-box geometry, drawing and hit testing
 
 function ui.layer:padding_pos() --in box space
@@ -2056,6 +2091,7 @@ end
 
 function ui.layer:draw_content() --called in own content space
 	self:draw_layers()
+	self:draw_text()
 end
 
 function ui.layer:hit_test_content(x, y) --called in own content space
@@ -2204,12 +2240,12 @@ function ui.layer:hit_test(x, y) --called in parent's content space; child int.
 end
 
 function ui.layer:bounding_box() --child interface
-	x, y, w, h = self:layers_bounding_box()
+	local x, y, w, h = self:layers_bounding_box()
 	local cc = self.content_clip
 	if cc then
-		x, y, w, h = box.clip(x, y, w, h, self:background_rect())
+		x, y, w, h = box2d.clip(x, y, w, h, self:background_rect())
 		if cc == 'padding' or cc == true then
-			x, y, w, h = box.clip(x, y, w, h, self:padding_rect())
+			x, y, w, h = box2d.clip(x, y, w, h, self:padding_rect())
 		end
 	else
 		if self:background_visible() then
@@ -2224,8 +2260,8 @@ end
 
 --element interface
 
-function ui.layer:frame_clock()
-	return self.window:frame_clock()
+function ui.layer:get_frame_clock()
+	return self.window.frame_clock
 end
 
 function ui.layer:invalidate()
