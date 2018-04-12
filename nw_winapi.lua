@@ -6,7 +6,7 @@ local ffi = require'ffi'
 local bit = require'bit'
 local glue = require'glue'
 local box2d = require'box2d'
-local cbframe = require'cbframe'
+local cbframe = require'cbframe' --for drag&drop on x64
 local bitmap = require'bitmap' --for clipboard
 local winapi = require'winapi'
 require'winapi.spi'
@@ -1269,6 +1269,9 @@ function Mouse:on_mouse_wheel(x, y, buttons, delta)
 		delta = delta - 1
 	end
 	delta = delta / 120 * wheel_scroll_lines()
+	local cx, cy = self.backend:get_client_pos()
+	x = x - cx
+	y = y - cy
 	self.backend:_setmouse(x, y, buttons)
 	self.frontend:_backend_mousewheel(delta, x, y)
 end

@@ -50,7 +50,8 @@ function object:_check()
 	assert(not self._dead, 'dead object')
 end
 
---create a read/write property that is implemented via a getter and setter in the backend.
+--create a get / set method `m() -> v` / `m(v)` implemented via calls to
+--separate getter and setter methods in the backend.
 function object:_property(name)
 	local getter = 'get_'..name
 	local setter = 'set_'..name
