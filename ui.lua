@@ -21,9 +21,11 @@ local fs = require'fs'
 local push = table.insert
 local pop = table.remove
 
+local round = glue.round
 local indexof = glue.indexof
 local update = glue.update
 local merge = glue.merge
+local extend = glue.extend
 local attr = glue.attr
 local lerp = glue.lerp
 local clamp = glue.clamp
@@ -31,15 +33,16 @@ local assert = glue.assert
 local collect = glue.collect
 local sortedpairs = glue.sortedpairs
 local memoize = glue.memoize
+local lines = glue.lines
 
 local function popval(t, v)
 	local i = indexof(v, t)
 	return i and pop(t, i)
 end
 
-local function round(x)
-	return math.floor(x + .5)
-end
+local nilkey = {}
+local function encode_nil(x) return x == nil and nilkey or x end
+local function decode_nil(x) if x == nilkey then return nil end; return x; end
 
 --object system --------------------------------------------------------------
 
@@ -48,6 +51,7 @@ local object = oo.object()
 --speed up class field lookup by converting subclassing to static
 --inheritance. note that runtime patching of non-final classes doesn't work
 --anymore (extending classes still works but it's less useful).
+--TODO: be one smarter and only do this once on super on instantiation.
 function object:override_subclass(inherited, ...)
 	return inherited(self, ...):inherit(self)
 end
@@ -78,6 +82,22 @@ end
 local ui = oo.ui(object)
 ui.object = object
 
+function ui:native_app()
+	local nw = require'nw'
+	return nw:app()
+end
+
+function ui:init(t)
+	if not (t and t.native_app) then
+		self.native_app = self:native_app()
+	end
+	update(self, t)
+end
+
+function ui:run(t)
+	return self.native_app:run()
+end
+
 function ui:error(msg, ...)
 	msg = string.format(msg, ...)
 	io.stderr:write(msg)
@@ -89,16 +109,32 @@ function ui:check(ret, ...)
 	self:error(...)
 end
 
+local default_ease = 'expo out'
+
 --selectors ------------------------------------------------------------------
 
 ui.selector = oo.selector(ui.object)
+ui.selector.isselector = true
+
+function ui.selector:override_create(inherited, ui, sel, ...)
+	if type(sel) == 'table' and sel.isselector then
+		return sel
+	end
+	return inherited(self, ui, sel, ...)
+end
 
 local function noop() end
 local function gmatch_tags(s)
 	return s and s:gmatch'[^%s]+' or noop
 end
 
-function ui.selector:after_init(ui, sel, filter)
+function ui.selector:after_init(ui, sel)
+	local filter
+	if type(sel) == 'function' then
+		sel, filter = '', sel
+	elseif sel == nil then
+		sel = ''
+	end
 	if sel:find'>' then --parents filter
 		self.parent_tags = {} --{{tag,...}, ...}
 		sel = sel:gsub('([^>]+)%s*>', function(s) -- tags... >
@@ -108,8 +144,21 @@ function ui.selector:after_init(ui, sel, filter)
 		end)
 	end
 	self.tags = collect(gmatch_tags(sel)) --tags filter
-	assert(next(self.tags))
-	self.filter = filter --custom filter
+	if filter then
+		self:filter(filter)
+	end
+end
+
+function ui.selector:filter(filter)
+	if not self._filter then
+		self._filter = filter
+	else
+		local prev_filter = self._filter
+		self._filter = function(elem)
+			return prev_filter(elem) and filter(elem)
+		end
+	end
+	return self
 end
 
 --check that all needed_tags are found in tags table as keys
@@ -142,7 +191,7 @@ function ui.selector:selects(elem)
 		end
 		return false
 	end
-	if self.filter and not self.filter(elem) then
+	if self._filter and not self._filter(elem) then
 		return false
 	end
 	return true
@@ -165,9 +214,9 @@ end
 ui.stylesheet = oo.stylesheet(ui.object)
 
 function ui:after_init()
-	local class_stylesheet = self._stylesheet
-	self._stylesheet = self:stylesheet()
-	self._stylesheet:add_stylesheet(class_stylesheet)
+	local class_stylesheet = self.stylesheet
+	self.stylesheet = self:stylesheet()
+	self.stylesheet:add_stylesheet(class_stylesheet)
 end
 
 function ui.stylesheet:after_init(ui)
@@ -193,13 +242,7 @@ end
 
 function ui.stylesheet:add_stylesheet(stylesheet)
 	for tag, selectors in pairs(stylesheet.tags) do
-		if self.tags[tag] then
-			for i,sel in ipairs(selectors) do
-				push(self.tags, sel)
-			end
-		else
-			self.tags[tag] = selectors
-		end
+		extend(attr(self.tags, tag), selectors)
 	end
 end
 
@@ -232,85 +275,52 @@ function ui.stylesheet:_gather_attrs(elem)
 	for _,sel in ipairs(st) do
 		update(t, sel.attrs)
 	end
+	update(t, elem.style)
 	return t
 end
 
-local transition_fields = {delay=1, duration=1, ease=1, speed=1}
+--attr. value to use in styles for "initial value of this attr"
+function ui.initial(self, attr)
+	return self:initial_value(attr)
+end
 
-local nilkey = {}
-local function encode_nil(x) return x == nil and nilkey or x end
-local function decode_nil(x) if x == nilkey then return nil end; return x; end
-
-ui.initial = {} --value to use for "initial value" in stylesheets
+--attr. value to use in styles for "inherit value from parent for this attr"
+function ui.inherit(self, attr)
+	return self:parent_value(attr)
+end
 
 function ui.stylesheet:update_element(elem)
 	local attrs = self:_gather_attrs(elem)
 
-	--gather transition-enabled attrs
-	local tr
-	for attr, val in pairs(attrs) do
-		if val == true then
-			local tr_attr = attr:match'^transition_(.*)'
-			if tr_attr and not transition_fields[tr_attr] then
-				tr = tr or {}
-				tr[tr_attr] = true
-			end
-		end
-	end
-
-	--add the saved initial values of attributes that were overwritten by this
-	--function in the past but are missing from the computed styles this time.
-	local rt = elem._initial_values
-	local initial = self.ui.initial
-	if rt then
-		for attr, init_val in pairs(rt) do
-			local val = attrs[attr]
-			if val == nil or val == initial then
+	--add the saved initial values of attributes that were changed by
+	--this function before but are missing from the styles this time.
+	local init = elem._initial_values
+	if init then
+		for attr, init_val in pairs(init) do
+			if attrs[attr] == nil then
 				attrs[attr] = decode_nil(init_val)
 			end
 		end
 	end
 
-	--save the initial value for an attribute we're about to change for the
-	--first time so that later on we can set it back.
-	local function save(elem, attr, rt)
-		if not rt then
-			rt = {}
-			elem._initial_values = rt
+	--set transition attrs first so that elem:transition() can use them.
+	for attr, val in pairs(attrs) do
+		if attr:find'^transition_' then
+			elem:_save_initial_value(attr)
+			if type(val) == 'function' then --computed value
+				val = val(elem, attr)
+			end
+			elem[attr] = val
 		end
-		if rt[attr] == nil then --new initial value to save
-			rt[attr] = encode_nil(elem[attr])
-		end
-		return rt
 	end
-
-	--gather global transition values
-	local duration = attrs.transition_duration or 0
-	local ease = attrs.transition_ease
-	local delay = attrs.transition_delay or 0
-	local speed = attrs.transition_speed or 1
 
 	--set all attribute values into elem via transition().
-	local changed = false
 	for attr, val in pairs(attrs) do
-		if val ~= initial then
-			if tr and tr[attr] then
-				rt = save(elem, attr, rt)
-				local duration = attrs['transition_duration_'..attr] or duration
-				local ease = attrs['transition_ease_'..attr] or ease
-				local delay = attrs['transition_delay_'..attr] or delay
-				local speed = attrs['transition_speed_'..attr] or speed
-				elem:transition(attr, val, duration / speed, ease, delay)
-				changed = true
-			elseif not attr:find'^transition_' then
-				rt = save(elem, attr, rt)
-				elem:transition(attr, val, 0)
-				changed = true
-			end
+		if not attr:find'^transition_' then
+			elem:_save_initial_value(attr)
+			elem:transition(attr, val)
 		end
 	end
-
-	return changed
 end
 
 function ui.stylesheet:update_style(style)
@@ -326,11 +336,11 @@ function ui:style(sel, attrs)
 		end
 	else
 		local sel = self:selector(sel)
-		self._stylesheet:add_style(sel, attrs)
+		self.stylesheet:add_style(sel, attrs)
 	end
 end
 
-ui._stylesheet = ui:stylesheet()
+ui.stylesheet = ui:stylesheet()
 
 --attribute types ------------------------------------------------------------
 
@@ -361,15 +371,20 @@ ui.transition = oo.transition(ui.object)
 ui.transition.interpolate = {} --{attr_type -> func(d, x1, x2, xout) -> xout}
 
 function ui.transition:interpolate_function(elem, attr)
-	local atype = ui:_attr_type(attr)
+	local atype = self.ui:_attr_type(attr)
 	return self.interpolate[atype]
 end
 
-function ui.transition:after_init(ui, elem, attr, to, duration, ease, delay)
+function ui.transition:after_init(ui, elem, attr, to,
+	duration, ease, delay, clock)
+
+	self.ui = ui
 
 	--timing model
-	local start = time.clock() + (delay or 0)
-	local ease, way = (ease or 'linear'):match'^([^%s_]+)[%s_]?(.*)'
+	local clock = clock or time.clock()
+	local delay = delay or 0
+	local start = clock + delay
+	local ease, way = (ease or default_ease):match'^([^%s_]+)[%s_]?(.*)'
 	if way == '' then way = 'in' end
 	local duration = duration or 0
 
@@ -377,6 +392,7 @@ function ui.transition:after_init(ui, elem, attr, to, duration, ease, delay)
 	local interpolate = self:interpolate_function(elem, attr)
 	local from = elem[attr]
 	assert(from ~= nil, 'no value for attribute "%s"', attr)
+
 	--set the element value to a copy to avoid overwritting the original value
 	--when updating with by-ref semantics.
 	elem[attr] = interpolate(1, from, from)
@@ -389,10 +405,29 @@ function ui.transition:after_init(ui, elem, attr, to, duration, ease, delay)
 			elem[attr] = to
 		else --running, set to interpolated value
 			local d = easing.ease(ease, way, t)
+			--print(elem.id, attr, t, d, from, to, interpolate(d, from, to, elem[attr]))
 			elem[attr] = interpolate(d, from, to, elem[attr])
 		end
 		return t <= 1
 	end
+
+	function self:end_clock()
+		return start + duration
+	end
+
+	function self:end_value()
+		if self.next_transition then
+			return self.next_transition:end_value()
+		end
+		return to
+	end
+
+	function self:chain_to(tran)
+		start = tran:end_clock() + delay
+		from = tran:end_value()
+		tran.next_transition = self
+	end
+
 end
 
 --interpolators
@@ -442,12 +477,6 @@ ui.element_index = oo.element_index(ui.object)
 function ui:after_init()
 	self.elements = self:element_list()
 	self._element_index = self:element_index()
-end
-
-function ui:before_free()
-	while #self.elements > 0 do
-		self.elements[#self.elements]:free()
-	end
 end
 
 function ui:_add_element(elem)
@@ -501,9 +530,7 @@ function ui.element_list:find(sel)
 end
 
 function ui:find(sel)
-	if type(sel) == 'string' or type(sel) == 'function' then
-		sel = self:selector(sel)
-	end
+	sel = self:selector(sel)
 	return self._element_index:find_elements(sel)
 end
 
@@ -516,8 +543,12 @@ end
 ui.element = oo.element(ui.object)
 
 ui.element.visible = true
-ui.element.iswindw = false
-ui.element.iswidget = false
+ui.element.iswindow = false
+ui.element.activable = false --can clicked and set as hot
+ui.element.targetable = false --can be a potential drop target
+ui.element.vscrollable = false --can be hit for vscroll
+ui.element.hscrollable = false --can be hit for hscroll
+ui.element.focusable = false --can be focused
 
 ui.element.font_family = 'Open Sans'
 ui.element.font_weight = 'normal'
@@ -525,6 +556,12 @@ ui.element.font_slant = 'normal'
 ui.element.text_size = 14
 ui.element.text_color = '#fff'
 ui.element.line_spacing = 1
+
+ui.element.transition_duration = 0
+ui.element.transition_ease = default_ease
+ui.element.transition_delay = 0
+ui.element.transition_speed = 1
+ui.element.transition_blend = 'replace_nodelay'
 
 --tags & styles
 
@@ -545,13 +582,7 @@ function ui.element:after_init(ui, t)
 	tags[self.classname] = true
 	add_tags(t.tags, tags)
 	self.tags = tags
-	--update elements in lexicographic order so that eg. `border_width` comes
-	--before `border_width_left` even though it's actually undefined behavior.
-	self:begin_update()
-	for k,v in sortedpairs(t) do
-		self[k] = v
-	end
-	self:end_update()
+	self:update(t)
 	self.tags = tags
 	if self.id then
 		tags[self.id] = true
@@ -559,7 +590,7 @@ function ui.element:after_init(ui, t)
 	self:update_styles()
 end
 
-function ui.element:before_free()
+function ui.element:free()
 	self.ui:_remove_element(self)
 	self.ui = false
 end
@@ -567,6 +598,16 @@ end
 function ui.element:begin_update()
 	assert(not self.updating)
 	self.updating = true
+end
+
+function ui.element:update(t)
+	self:begin_update()
+	--update elements in lexicographic order so that eg. `border_width` comes
+	--before `border_width_left` even though it's actually undefined behavior.
+	for k,v in sortedpairs(t) do
+		self[k] = v
+	end
+	self:end_update()
 end
 
 function ui.element:end_update()
@@ -584,22 +625,39 @@ function ui.element:_subtag(tag)
 end
 
 function ui.element:settags(s)
+	local some_changed
 	for op, tag in s:gmatch'([-+~]?)([^%s]+)' do
-		if op == '' or op == '+' then
+		local changed = true
+		local had_tag = self.tags[tag]
+		if not had_tag and (op == '' or op == '+') then
 			self.tags[tag] = true
-		elseif op == '-' then
+		elseif had_tag and op == '-' then
 			self.tags[tag] = false
 		elseif op == '~' then
-			self.tags[tag] = not self.tags[tag]
+			self.tags[tag] = not had_tag
+		else
+			changed = false
 		end
+		some_changed = some_changed or changed
 	end
-	if self:update_styles() then
-		self:invalidate()
+	if some_changed then
+		self:update_styles()
 	end
 end
 
 function ui.element:update_styles()
-	return self.ui._stylesheet:update_element(self)
+	return self.ui.stylesheet:update_element(self)
+end
+
+function ui.element:_save_initial_value(attr)
+	local init = self._initial_values
+	if not init then
+		init = {}
+		self._initial_values = init
+	end
+	if init[attr] == nil then --wasn't saved before
+		init[attr] = encode_nil(self[attr])
+	end
 end
 
 function ui.element:initial_value(attr)
@@ -613,39 +671,114 @@ function ui.element:initial_value(attr)
 	return self[attr]
 end
 
+function ui.element:parent_value(attr)
+	local val = self[attr]
+	if val == nil and self.parent then
+		return self:parent_value(self.parent, attr)
+	end
+	return val
+end
+
 --animated attribute transitions
 
-function ui.element:transition(attr, val, duration, ease, delay)
-	if type(val) == 'function' then
+ui.blend = {}
+
+function ui.blend.replace(ui, tran, elem, attr, val, duration, ease, delay, clock)
+	return ui:transition(elem, attr, val, duration, ease, delay, clock)
+end
+
+function ui.blend.replace_nodelay(ui, tran, elem, attr, val,
+	duration, ease, delay, clock)
+	return ui:transition(elem, attr, val, duration, ease, 0, clock)
+end
+
+function ui.blend.wait(ui, tran, elem, attr, val, duration, ease, delay, clock)
+	local new_tran = ui:transition(elem, attr, val, duration, ease, delay, clock)
+	new_tran:chain_to(tran)
+	return tran
+end
+
+function ui.blend.wait_nodelay(ui, tran, elem, attr, val, duration, ease, delay, clock)
+	local new_tran = ui:transition(elem, attr, val, duration, ease, 0, clock)
+	new_tran:chain_to(tran)
+	return tran
+end
+
+function ui.element:end_value(attr)
+	local tran = self._transitions and self._transitions[attr]
+	if tran then
+		return tran:end_value()
+	else
+		return self[attr]
+	end
+end
+
+function ui.element:transition(attr, val, duration, ease, delay, blend)
+
+	if val == nil then --get existing transition
+		return self._transitions and self._transitions[attr]
+	end
+
+	if type(val) == 'function' then --computed value
 		val = val(self, attr)
 	end
-	if not duration or duration <= 0 then
-		if self._transitions then
-			self._transitions[attr] = nil --remove existing transition on attr
-		end
+
+	--get transition parameters
+	if not duration and self['transition_'..attr] then
+		duration = self['transition_duration_'..attr] or self.transition_duration
+		ease = ease or self['transition_ease_'..attr] or self.transition_ease
+		delay = delay or self['transition_delay_'..attr] or self.transition_delay
+		local speed = self['transition_speed_'..attr] or self.transition_speed
+		blend = blend or self['transition_blend_'..attr] or self.transition_blend
+		duration = duration / speed
+	else
+		duration = duration or 0
+		ease = ease or default_ease
+		delay = delay or 0
+		blend = blend or 'replace_nodelay'
+	end
+	local blend_func = self.ui.blend[blend]
+
+	local tran = self._transitions and self._transitions[attr]
+
+	if duration <= 0
+		and ((blend == 'replace' and delay <= 0) or blend == 'replace_nodelay')
+	then
+		tran = nil --remove existing transition on attr
 		self[attr] = val --set attr directly
 	else --set attr with transition
-		self._transitions = self._transitions or {}
-		self._transitions[attr] =
-			self.ui:transition(self, attr, val, duration, ease, delay)
+		if tran then
+			if tran:end_value() ~= val then
+				tran = blend_func(self.ui, tran, self, attr, val,
+					duration, ease, delay, self.frame_clock)
+			end
+		elseif self[attr] ~= val then
+			tran = self.ui:transition(self, attr, val,
+				duration, ease, delay, self.frame_clock)
+		end
 	end
+
+	if tran then
+		self._transitions = self._transitions or {}
+		self._transitions[attr] = tran
+	elseif self._transitions then
+		self._transitions[attr] = nil
+	end
+
+	self:invalidate()
 end
 
 function ui.element:draw()
 	--update transitioning attributes
-	local a = self._transitions
-	if not a or not next(a) then return end
-	local clock = self.frame_clock
-	local invalidate
-	for attr, transition in pairs(a) do
-		if transition:update(clock) then
-			invalidate = true
-		else
-			a[attr] = nil --finished, remove it
+	local tr = self._transitions
+	if tr and next(tr) then
+		local clock = self.frame_clock
+		for attr, transition in pairs(tr) do
+			if not transition:update(clock) then
+				tr[attr] = transition.next_transition
+			end
 		end
-	end
-	if invalidate then
-		self:invalidate(true)
+		self:invalidate()
 	end
 end
 
@@ -666,15 +799,44 @@ ui:style('window_layer', {
 	background_operator = 'source',
 })
 
+function ui:native_window(t)
+	return self.native_app:window(t)
+end
+
+function ui:after_init()
+	self.windows = {}
+end
+
+function ui:free()
+	for win in pairs(self.windows) do
+		win:free()
+	end
+end
+
+function ui.window:update(t)
+	--don't update fields wholesale because most are for the native window.
+end
+
 function ui.window:after_init(ui, t)
 
 	local win = self.native_window
+	if not win then
+		win = self.ui:native_window(t)
+		self.native_window = win
+		self.own_native_window = true
+	end
+	self.ui.windows[self] = true
 
-	self.x, self.y, self.w, self.h = self.native_window:client_rect()
+	self.x, self.y, self.w, self.h = self.native_window:frame_rect()
+	self.cx, self.cy, self.cw, self.ch = self.native_window:client_rect()
 
 	self.mouse_x = win:mouse'x' or false
 	self.mouse_y = win:mouse'y' or false
-	self.mouse = {left = false, right = false} --{button -> true|false}
+	self.mouse_left = false
+	self.mouse_right = false
+	self.mouse_middle = false
+	self.mouse_x1 = false --mouse aux button 1
+	self.mouse_x2 = false --mouse aux button 2
 
 	local function setcontext()
 		self.frame_clock = time.clock()
@@ -703,33 +865,68 @@ function ui.window:after_init(ui, t)
 	end)
 
 	win:on('mousedown.ui', function(win, button, mx, my)
-		if self.mouse_x ~= mx or self.mouse_y ~= my then
+		local moved = self.mouse_x ~= mx or self.mouse_y ~= my
+		setmouse(mx, my)
+		if moved then
 			self.ui:_window_mousemove(self, mx, my)
 		end
-		setmouse(mx, my)
-		--self.mouse_clock = self.frame_clock
-		self.mouse[button] = true
-		self:fire('mousedown', button, mx, my)
+		self['mouse_'..button] = true
 		self.ui:_window_mousedown(self, button, mx, my)
 	end)
 
+	win:on('mouseclick.ui', function(win, button, count, mx, my)
+		local moved = self.mouse_x ~= mx or self.mouse_y ~= my
+		setmouse(mx, my)
+		self.ui:_window_mouseclick(self, button, count, mx, my)
+	end)
+
 	win:on('mouseup.ui', function(win, button, mx, my)
-		if self.mouse_x ~= mx or self.mouse_y ~= my then
+		local moved = self.mouse_x ~= mx or self.mouse_y ~= my
+		setmouse(mx, my)
+		if moved then
 			self.ui:_window_mousemove(self, mx, my)
 		end
-		setmouse(mx, my)
-		--self.mouse_clock = self.frame_clock
-		self.mouse[button] = false
+		self['mouse_'..button] = false
 		self.ui:_window_mouseup(self, button, mx, my)
+	end)
+
+	win:on('mousewheel.ui', function(win, delta, mx, my)
+		local moved = self.mouse_x ~= mx or self.mouse_y ~= my
+		setmouse(mx, my)
+		if moved then
+			self.ui:_window_mousemove(self, mx, my)
+		end
+		self.ui:_window_mousewheel(self, delta, mx, my)
+	end)
+
+	win:on('keydown.ui', function(win, key)
+		setcontext()
+		self:_keydown(key)
+	end)
+
+	win:on('keyup.ui', function(win, key)
+		setcontext()
+		self:_keyup(key)
+	end)
+
+	win:on('keypress.ui', function(win, key)
+		setcontext()
+		self:_keypress(key)
 	end)
 
 	win:on('repaint.ui', function(win)
 		setcontext()
+		self._norepaint = true
+		if self.mouse_x then
+			self.ui:_window_mousemove(self, self.mouse_x, self.mouse_y)
+		end
+		self._norepaint = false
 		self:draw()
 	end)
 
 	win:on('client_rect_changed.ui', function(win, cx, cy, cw, ch)
 		if not cx then return end --hidden or minimized
+		setcontext()
 		self.x = cx
 		self.y = cy
 		self.w = cw
@@ -743,7 +940,7 @@ function ui.window:after_init(ui, t)
 		self:free()
 	end)
 
-	self.layer = self.layer_class(self.ui, merge({
+	self.layer = self.layer(self.ui, merge({
 		id = self:_subtag'layer', tags = 'window_layer',
 		x = 0, y = 0, w = self.w, h = self.h,
 		content_clip = false, window = self,
@@ -762,15 +959,29 @@ end
 function ui.window:before_free()
 	self.native_window:off'.ui'
 	self.layer:free()
+	if self.own_native_window then
+		self.native_window:close()
+	end
 	self.native_window = false
+	self.ui.windows[self] = nil
 end
 
-function ui.window:get_mouse_clock(clock)
-	return self._mouse_clock
+function ui.window:get_visible()
+	return self.native_window:visible()
+end
+
+function ui.window:set_visible(visible)
+	self.native_window:visible(visible)
+end
+
+for method in pairs{show=1, hide=1} do
+	ui.window[method] = function(self, ...)
+		return self.native_window[method](self.native_window, ...)
+	end
 end
 
 function ui.window:find(sel)
-	local sel = ui:selector(sel, function(elem)
+	local sel = ui:selector(sel):filter(function(elem)
 		return elem.window == self
 	end)
 	return self.ui:find(sel)
@@ -786,13 +997,13 @@ end
 
 --window mouse events routing with hot, active and drag & drop logic.
 
-function ui.window:hit_test(x, y)
-	return self.layer:hit_test(x, y)
+function ui.window:hit_test(x, y, reason)
+	return self.layer:hit_test(x, y, reason)
 end
 
 function ui:_reset_drag_state()
 	self.drag_start_widget = false --widget initiating the drag
-	self.drag_button = false
+	self.drag_button = false --mouse button which started the drag
 	self.drag_mx = false --mouse coords in start_widget's content space
 	self.drag_my = false
 	self.drag_area = false --hit test area in drag_start_widget
@@ -804,6 +1015,8 @@ end
 function ui:after_init()
 	self.hot_widget = false
 	self.active_widget = false
+	self.hit_widget = false
+	self.hit_area = false
 	self:_reset_drag_state()
 end
 
@@ -815,8 +1028,7 @@ function ui:_set_hot_widget(widget, mx, my, area)
 		self.hot_widget:_mouseleave()
 	end
 	if widget then
-		--the hot widget is still the old widget when entering the new widget
-		widget:_mouseenter(mx, my, area)
+		widget:_mouseenter(mx, my, area) --hot widget not changed yet
 	end
 	self.hot_widget = widget
 end
@@ -827,17 +1039,21 @@ function ui:_accept_drop(drag_widget, drop_widget, mx, my, area)
 end
 
 function ui:_window_mousedown(window, button, mx, my)
-	local hot_widget, hot_area = window:hit_test(mx, my)
+	local event = button == 'left' and 'mousedown' or button..'mousedown'
+	window:fire(event, mx, my)
+
 	if self.active_widget then
-		local area = self.active_widget == hot_widget and hot_area or nil
-		self.active_widget:_mousedown(button, mx, my, area, hot_widget, hot_area)
+		local area = self.active_widget == self.hit_widget and self.hit_area
+		self.active_widget:_mousedown(button, mx, my, area)
+	elseif self.hot_widget then
+		self.hot_widget:_mousedown(button, mx, my, self.hit_area)
 	end
-	if not self.active_widget then
-		self:_set_hot_widget(hot_widget, mx, my, hot_area)
-		if hot_widget then
-			hot_widget:_mousedown(button, mx, my, hot_area, hot_widget, hot_area)
-		end
-	end
+end
+
+function ui:_window_mouseclick(window, button, count, mx, my)
+	local event = button == 'left' and 'mousedown' or button..'mousedown'
+	window:fire(event, count, mx, my)
+	--TODO:
 end
 
 function ui:_widget_mousedown(widget, button, mx, my, area)
@@ -853,7 +1069,7 @@ end
 function ui:_window_mousemove(window, mx, my)
 	window:fire('mousemove', mx, my)
 
-	--[[ --TODO
+	--[[ --TODO: hovering with delay
 	if self._hover_handler then
 		self._hover_handler(false)
 	end
@@ -863,19 +1079,22 @@ function ui:_window_mousemove(window, mx, my)
 	self.native_window:runafter(self.hover_delay, self._hover_handler)
 	]]
 
-	local hot_widget, hot_area = window:hit_test(mx, my)
 	if self.active_widget then
-		local area = self.active_widget == hot_widget and hot_area or nil
-		self.active_widget:_mousemove(mx, my, area, hot_widget, hot_area)
-	end
-	if not self.active_widget then
-		self:_set_hot_widget(hot_widget, mx, my, hot_area)
-		if hot_widget then
-			hot_widget:_mousemove(mx, my, hot_area, hot_widget, hot_area)
+		self.active_widget:_mousemove(mx, my)
+	else
+		local hit_widget, hit_area = window:hit_test(mx, my, 'activate')
+		hit_widget = hit_widget or false
+		hit_area = hit_area or false
+		self.hit_widget = hit_widget
+		self.hit_area = hit_area
+		self:_set_hot_widget(hit_widget, mx, my, hit_area)
+		if hit_widget then
+			hit_widget:_mousemove(mx, my, hit_area)
 		end
 	end
+
 	if self.drag_widget then
-		local widget, area = window:hit_test(mx, my)
+		local widget, area = window:hit_test(mx, my, 'drop')
 		if widget then
 			if not self:_accept_drop(self.drag_widget, widget, mx, my, area) then
 				widget = nil
@@ -906,11 +1125,14 @@ function ui:_widget_mousemove(widget, mx, my, area)
 		local dx = math.abs(self.drag_mx - mx)
 		local dy = math.abs(self.drag_my - my)
 		if dx >= widget.drag_threshold or dy >= widget.drag_threshold then
-			self.drag_widget = widget:_start_drag(
+			local dx, dy
+			self.drag_widget, dx, dy = widget:_start_drag(
 				self.drag_button,
 				self.drag_mx,
 				self.drag_my,
 				self.drag_area)
+			if dx then self.drag_mx = dx end
+			if dy then self.drag_my = dy end
 		end
 	end
 end
@@ -928,17 +1150,16 @@ function ui:_window_mouseleave(window)
 end
 
 function ui:_window_mouseup(window, button, mx, my)
-	window:fire('mouseup', button, mx, my)
-	local hot_widget, hot_area = window:hit_test(mx, my)
+	local event = button == 'left' and 'mouseup' or button..'mouseup'
+	window:fire(event, mx, my)
+
 	if self.active_widget then
-		local area = self.active_widget == hot_widget and hot_area or nil
-		self.active_widget:_mouseup(button, mx, my, area, hot_widget, hot_area)
-	else
-		self:_set_hot_widget(hot_widget, mx, my, hot_area)
-		if hot_widget then
-			hot_widget:_mouseup(button, mx, my, hot_area, hot_widget, hot_area)
-		end
+		local area = self.active_widget == self.hit_widget and self.hit_area
+		self.active_widget:_mouseup(button, mx, my, area)
+	elseif self.hot_widget then
+		self.hot_widget:_mouseup(button, mx, my, self.hit_area)
 	end
+
 	if self.drag_button == button then
 		if self.drop_widget then
 			self.drop_widget:_drop(self.drag_widget, mx, my, self.drop_area)
@@ -949,7 +1170,7 @@ function ui:_window_mouseup(window, button, mx, my)
 		end
 		self.drag_start_widget:_end_drag()
 		for _,elem in ipairs(self.elements) do
-			if elem.iswidget then
+			if elem.targetable then
 				elem:_set_drop_target(false)
 			end
 		end
@@ -957,17 +1178,69 @@ function ui:_window_mouseup(window, button, mx, my)
 	end
 end
 
+function ui:_window_mousewheel(window, delta, mx, my)
+	window:fire('mousewheel', delta, mx, my)
+	local widget, area = window:hit_test(mx, my, 'vscroll')
+	if widget then
+		widget:_mousewheel(delta, mx, my, area)
+	end
+end
+
+--keyboard events routing with focus logic
+
+function ui:key(query)
+	return self.native_app:key(query)
+end
+
+function ui.window:first_focusable_widget()
+	return self.layer:focusable_widgets()[1]
+end
+
+function ui.window:next_focusable_widget(forward)
+	if self.focused_widget then
+		return self.focused_widget:next_focusable_widget(forward)
+	else
+		return self:first_focusable_widget()
+	end
+end
+
+function ui.window:_keydown(key)
+	self:fire('keydown', key)
+	if self.focused_widget then
+		self.focused_widget:fire('keydown', key)
+	end
+end
+
+function ui.window:_keyup(key)
+	self:fire('keyup', key)
+	if self.focused_widget then
+		self.focused_widget:fire('keyup', key)
+	end
+end
+
+function ui.window:_keypress(key)
+	self:fire('keypress', key)
+	if key == 'tab' and not self.ui:key'ctrl' then
+		local next_widget = self:next_focusable_widget(not self.ui:key'shift')
+		if next_widget then
+			next_widget:focus()
+		end
+	elseif self.focused_widget then
+		self.focused_widget:fire('keypress', key)
+	end
+end
+
 --rendering
 
 function ui.window:after_draw()
-	if not self.visible or self.opacity == 0 then return end
 	self.cr:save()
 	self.cr:new_path()
 	self.layer:draw()
 	self.cr:restore()
 end
 
-function ui.window:invalidate(for_animation) --element interface; window intf.
+function ui.window:invalidate() --element interface; window intf.
+	if self._norepaint then return end
 	self.native_window:invalidate()
 end
 
@@ -1106,14 +1379,19 @@ function ui.window:line_extents(s)
 	return ext.width, ext.height, ext.y_bearing
 end
 
+function ui.window:text_size(s)
+	local w, h, y1 = 0, 0, self._font_ascent
+	local line_h = self._font_height * self._line_spacing
+	for s in lines(s) do
+		local w1, h1, yb = self:line_extents(s)
+		w, h = select(3, box2d.bounding_box(0, 0, w, h, 0, y1 + yb, w1, h1))
+		y1 = y1 + line_h
+	end
+	return w, h
+end
+
 function ui.window:textbox(x, y, w, h, s, halign, valign)
-
-	self.cr:save()
-	self.cr:rectangle(x, y, w, h)
-	self.cr:clip()
-
 	local cr = self.cr
-
 	local line_h = self._font_height * self._line_spacing
 
 	if halign == 'right' then
@@ -1128,7 +1406,7 @@ function ui.window:textbox(x, y, w, h, s, halign, valign)
 		y = self._font_ascent
 	else
 		local lines_h = 0
-		for _ in glue.lines(s) do
+		for _ in lines(s) do
 			lines_h = lines_h + line_h
 		end
 		lines_h = lines_h - line_h
@@ -1144,7 +1422,8 @@ function ui.window:textbox(x, y, w, h, s, halign, valign)
 		y = y - lines_h
 	end
 
-	for s in glue.lines(s) do
+	cr:new_path()
+	for s in lines(s) do
 		if halign == 'right' then
 			local tw = self:line_extents(s)
 			cr:move_to(x - tw, y)
@@ -1159,11 +1438,15 @@ function ui.window:textbox(x, y, w, h, s, halign, valign)
 		cr:show_text(s)
 		y = y + line_h
 	end
-
-	self.cr:restore()
 end
 
 --layers ---------------------------------------------------------------------
+
+ui.layer = oo.layer(ui.element)
+ui.window.layer = ui.layer
+
+ui.layer.activable = true
+ui.layer.targetable = true
 
 local function args4(s, convert) --parse a string of 4 non-space args
 	local a1, a2, a3, a4
@@ -1211,9 +1494,6 @@ function expand:background_scale(scale)
 	self.background_scale_y = scale
 end
 
-ui.layer = oo.layer(ui.element)
-ui.window.layer_class = ui.layer
-
 function ui.layer:set_padding(s) expand_attr('padding', s, self) end
 function ui.layer:set_border_color(s) expand_attr('border_color', s, self) end
 function ui.layer:set_border_width(s) expand_attr('border_width', s, self) end
@@ -1223,9 +1503,10 @@ function ui.layer:set_background_scale(scale)
 	expand_attr('background_scale', scale, self)
 end
 
-ui.layer.iswidget = true
 ui.layer.x = 0
 ui.layer.y = 0
+ui.layer.w = 0
+ui.layer.h = 0
 ui.layer.rotation = 0
 ui.layer.rotation_cx = 0
 ui.layer.rotation_cy = 0
@@ -1236,7 +1517,7 @@ ui.layer.scale_cy = 0
 
 ui.layer.opacity = 1
 
-ui.layer.content_clip = true --'padding'/true, 'background', false
+ui.layer.content_clip = false --'padding'/true, 'background', false
 
 ui.layer.padding = 0
 
@@ -1294,9 +1575,22 @@ ui.layer.text_valign = 'center'
 ui.layer.text = nil
 
 ui.layer.drag_threshold = 10 --snapping pixels before starting to drag
+
 ui.layer.hover_delay = 1 --hover event delay
 
+ui.layer.canfocus = false
+ui.layer.tabindex = false
+
 function ui.layer:before_free()
+	if self.hot then
+		self.ui.hot_widget = false
+	end
+	if self.hit then
+		self.ui.hit_widget = false
+	end
+	if self.active then
+		self.ui.active_widget = false
+	end
 	self:_free_layers()
 	self.parent = false
 end
@@ -1457,15 +1751,21 @@ function ui.layer:_mouseleave()
 	self:settags'-hot'
 end
 
-function ui.layer:_mousedown(button, mx, my, area, hot_widget, hot_area)
+function ui.layer:_mousedown(button, mx, my, area)
 	local mx, my = self:from_window(mx, my)
-	self:fire('mousedown', button, mx, my, area, hot_widget, hot_area)
+	local event = button == 'left' and 'mousedown' or button..'mousedown'
+	self:fire(event, mx, my, area)
 	self.ui:_widget_mousedown(self, button, mx, my, area)
 end
 
-function ui.layer:_mouseup(button, mx, my, area, hot_widget, hot_area)
+function ui.layer:_mouseup(button, mx, my, area)
 	local mx, my = self:from_window(mx, my)
-	self:fire('mouseup', button, mx, my, area, hot_widget, hot_area)
+	local event = button == 'left' and 'mouseup' or button..'mouseup'
+	self:fire(event, mx, my, area)
+end
+
+function ui.layer:_mousewheel(delta, mx, my, area)
+	self:fire('mousewheel', delta, mx, my, area)
 end
 
 --called on a potential drop target widget to accept the dragged widget.
@@ -1497,14 +1797,16 @@ end
 
 --called on the dragged widget when dragging starts.
 function ui.layer:_started_dragging()
+	self.dragging = true
 	self:settags'dragging'
 	self:fire'started_dragging'
 end
 
 --called on the dragged widget when dragging ends.
 function ui.layer:_ended_dragging()
-	self:fire'ended_dragging'
+	self.dragging = false
 	self:settags'-dragging'
+	self:fire'ended_dragging'
 end
 
 function ui.layer:_set_drop_target(set)
@@ -1513,11 +1815,11 @@ end
 
 --called on drag_start_widget to initiate a drag operation.
 function ui.layer:_start_drag(button, mx, my, area)
-	local widget = self:start_drag(button, mx, my, area)
+	local widget, dx, dy = self:start_drag(button, mx, my, area)
 	if widget then
 		self:settags'drag_source'
 		for i,elem in ipairs(self.ui.elements) do
-			if elem.iswidget then
+			if elem.targetable then
 				if self.ui:_accept_drop(widget, elem) then
 					elem:_set_drop_target(true)
 				end
@@ -1525,7 +1827,7 @@ function ui.layer:_start_drag(button, mx, my, area)
 		end
 		widget:_started_dragging()
 	end
-	return widget
+	return widget, dx, dy
 end
 
 --stub: return a widget to drag (self works too).
@@ -1533,6 +1835,7 @@ function ui.layer:start_drag(button, mx, my, area) end
 
 function ui.layer:_end_drag() --called on the drag_start_widget
 	self:settags'-drag_source'
+	self:fire('end_drag', self.drag_widget)
 end
 
 function ui.layer:_drop(widget, mx, my, area) --called on the drop target
@@ -1553,13 +1856,100 @@ function ui.layer:drag(dx, dy)
 	self:invalidate()
 end
 
+--focusing and keyboard event handling
+
+function ui.window:remove_focus()
+	local fw = self.focused_widget
+	if not fw then return end
+	fw:fire'lostfocus'
+	fw:settags'-focused'
+end
+
+function ui.layer:focus()
+	if not self.visible then
+		return
+	end
+	if self.focusable then
+		self.window:remove_focus()
+		self:fire'focused'
+		self:settags'focused'
+		self.window.focused_widget = self
+		return true
+	else --focus first focusable child
+		local layer = self.layers and self:focusable_widgets()[1]
+		if layer and layer:focus() then
+			return true
+		end
+	end
+end
+
+function ui.layer:get_hasfocus()
+	return self.window and self.window.focused_widget == self
+end
+
+function ui.layer:get_focused_widget()
+	if self.hasfocus then
+		return self
+	end
+	if self.layers then
+		for _,layer in ipairs(self.layers) do
+			local focused_widget = layer.focused_widget
+			if focused_widget then
+				return focused_widget
+			end
+		end
+	end
+end
+
+function ui.layer:focusable_widgets()
+	local t = {}
+	if self.layers then
+		for i,layer in ipairs(self.layers) do
+			if layer.focusable then
+				push(t, layer)
+			end
+		end
+	end
+	table.sort(t, function(t1, t2)
+		if t1.tabindex == t2.tabindex then
+			if t1.x == t2.x then
+				return t1.y < t2.y
+			else
+				return t1.x < t2.x
+			end
+		else
+			return t1.tabindex < t2.tabindex
+		end
+	end)
+	return t
+end
+
+function ui.layer:next_focusable_sibling_widget(widget, forward)
+	assert(widget.parent == self)
+	local t = self:focusable_widgets()
+	for i,layer in ipairs(t) do
+		if layer == widget then
+			return t[i + (forward and 1 or -1)]
+		end
+	end
+end
+
+function ui.layer:next_focusable_widget(forward)
+	if not self.parent then
+		return self
+	else
+		return self.parent:next_focusable_sibling_widget(self, forward)
+	end
+end
+
 --layers geometry, drawing and hit testing
 
-function ui.layer:layers_bounding_box()
+function ui.layer:layers_bounding_box(strict)
 	local x, y, w, h = 0, 0, 0, 0
 	if self.layers then
 		for _,layer in ipairs(self.layers) do
-			x, y, w, h = box2d.bounding_box(x, y, w, h, layer:bounding_box())
+			x, y, w, h = box2d.bounding_box(x, y, w, h,
+				layer:bounding_box(strict))
 		end
 	end
 	return x, y, w, h
@@ -1572,10 +1962,10 @@ function ui.layer:draw_layers() --called in content space
 	end
 end
 
-function ui.layer:hit_test_layers(x, y) --called in content space
+function ui.layer:hit_test_layers(x, y, reason) --called in content space
 	if not self.layers then return end
 	for i = #self.layers, 1, -1 do
-		local widget, area = self.layers[i]:hit_test(x, y)
+		local widget, area = self.layers[i]:hit_test(x, y, reason)
 		if widget then
 			return widget, area
 		end
@@ -1616,6 +2006,11 @@ function ui.layer:border_rect(offset, size_offset)
 	local h = self.h - h2 - h1
 	return box2d.offset(size_offset or 0, w1, h1, w, h)
 end
+
+function ui.layer:get_border_outer_x() return (select(1, self:border_rect(1))) end
+function ui.layer:get_border_outer_y() return (select(2, self:border_rect(1))) end
+function ui.layer:get_border_outer_w() return (select(3, self:border_rect(1))) end
+function ui.layer:get_border_outer_h() return (select(4, self:border_rect(1))) end
 
 --corner radius at pixel offset from the stroke's center on one dimension.
 local function offset_radius(r, o)
@@ -1846,12 +2241,13 @@ end
 --background geometry and drawing
 
 function ui.layer:background_visible()
-	return (self.background_type == 'color' and self.background_color)
+	return (
+		(self.background_type == 'color' and self.background_color)
 		or ((self.background_type == 'gradient'
 			or self.background_type == 'radial_gradient')
 			and self.background_colors and #self.background_colors > 0)
 		or (self.background_type == 'image' and self.background_image)
-		and true or false
+	) and true or false
 end
 
 function ui.layer:background_rect(size_offset)
@@ -2051,14 +2447,27 @@ function ui.layer:draw_shadow()
 	cr:translate(-sx, -sy)
 end
 
---text drawing
+--text geometry and drawing
+
+function ui.layer:text_visible()
+	return self.text and true or false
+end
 
 function ui.layer:draw_text()
-	local text = self.text
-	if not text then return end
+	if not self:text_visible() then return end
 	self:setfont()
-	self.window:textbox(0, 0, self.cw, self.ch,
-		self.text, self.align, self.valign)
+	local cw, ch = self:content_size()
+	self.window:textbox(0, 0, cw, ch, self.text,
+		self.text_align, self.text_valign)
+end
+
+function ui.layer:text_bounding_box()
+	if not self:text_visible() then return 0, 0, 0, 0 end
+	self:setfont()
+	local w, h = self.window:text_size(self.text)
+	local cw, ch = self:content_size()
+	return box2d.align(w, h, self.text_align, self.text_valign,
+		0, 0, cw, ch)
 end
 
 --content-box geometry, drawing and hit testing
@@ -2094,8 +2503,13 @@ function ui.layer:draw_content() --called in own content space
 	self:draw_text()
 end
 
-function ui.layer:hit_test_content(x, y) --called in own content space
-	return self:hit_test_layers(x, y)
+function ui.layer:hit_test_content(x, y, reason) --called in own content space
+	return self:hit_test_layers(x, y, reason)
+end
+
+function ui.layer:content_bounding_box(strict)
+	local x, y, w, h = self:layers_bounding_box(strict)
+	return box2d.bounding_box(x, y, w, h, self:text_bounding_box())
 end
 
 function ui.layer:after_draw() --called in parent's content space; child intf.
@@ -2159,25 +2573,28 @@ function ui.layer:after_draw() --called in parent's content space; child intf.
 	end
 end
 
-function ui.layer:hit_test(x, y) --called in parent's content space; child int.
+--called in parent's content space; child interface.
+function ui.layer:hit_test(x, y, reason)
 
 	if not self.visible or self.opacity == 0 then return end
 
-	if self.ui.drag_widget == self then return end
+	local self_allowed =
+		   (reason == 'activate' and self.activable)
+		or (reason == 'drop' and self.targetable)
+		or (reason == 'vscroll' and self.vscrollable)
+		or (reason == 'hscroll' and self.hscrollable)
 
 	local cr = self.window.cr
 	local x, y = self:from_parent_to_box(x, y)
 	cr:save()
 	cr:identity_matrix()
 
-	local border = self:border_visible()
-	local bg = self:background_visible()
 	local cc = self.content_clip
 
 	--hit the content first if it's not clipped
 	if not cc then
 		local cx, cy = self:to_content(x, y)
-		local widget, area = self:hit_test_content(cx, cy)
+		local widget, area = self:hit_test_content(cx, cy, reason)
 		if widget then
 			cr:restore()
 			return widget, area
@@ -2185,7 +2602,7 @@ function ui.layer:hit_test(x, y) --called in parent's content space; child int.
 	end
 
 	--border is drawn last so hit it first
-	if border then
+	if self:border_visible() then
 		cr:new_path()
 		self:border_path(1)
 		if cr:in_fill(x, y) then --inside border outer edge
@@ -2193,7 +2610,11 @@ function ui.layer:hit_test(x, y) --called in parent's content space; child int.
 			self:border_path(-1)
 			if not cr:in_fill(x, y) then --outside border inner edge
 				cr:restore()
-				return self, 'border'
+				if self_allowed then
+					return self, 'border'
+				else
+					return
+				end
 			end
 		elseif cc then --outside border outer edge when clipped
 			cr:restore()
@@ -2203,7 +2624,7 @@ function ui.layer:hit_test(x, y) --called in parent's content space; child int.
 
 	--hit background's clip area
 	local in_bg
-	if cc or bg then
+	if cc or self:background_visible() then
 		cr:new_path()
 		self:background_path()
 		in_bg = cr:in_fill(x, y)
@@ -2226,7 +2647,7 @@ function ui.layer:hit_test(x, y) --called in parent's content space; child int.
 	--hit the content
 	if in_cc then
 		local cx, cy = self:to_content(x, y)
-		local widget, area = self:hit_test_content(cx, cy)
+		local widget, area = self:hit_test_content(cx, cy, reason)
 		if widget then
 			cr:restore()
 			return widget, area
@@ -2234,26 +2655,28 @@ function ui.layer:hit_test(x, y) --called in parent's content space; child int.
 	end
 
 	--hit the background if any
-	if in_bg then
+	if self_allowed and in_bg then
 		return self, 'background'
 	end
 end
 
-function ui.layer:bounding_box() --child interface
-	local x, y, w, h = self:layers_bounding_box()
+function ui.layer:bounding_box(strict) --child interface
+	local x, y, w, h = 0, 0, 0, 0
 	local cc = self.content_clip
-	if cc then
-		x, y, w, h = box2d.clip(x, y, w, h, self:background_rect())
-		if cc == 'padding' or cc == true then
-			x, y, w, h = box2d.clip(x, y, w, h, self:padding_rect())
+	if strict or not cc then
+		x, y, w, h = self:content_bounding_box(strict)
+		if cc then
+			x, y, w, h = box2d.clip(x, y, w, h, self:background_rect())
+			if cc == 'padding' or cc == true then
+				x, y, w, h = box2d.clip(x, y, w, h, self:padding_rect())
+			end
 		end
-	else
-		if self:background_visible() then
-			x, y, w, h = box2d.bounding_box(x, y, w, h, self:background_rect())
-		end
-		if self:border_visible() then
-			x, y, w, h = box2d.bounding_box(x, y, w, h, self:border_rect(1))
-		end
+	end
+	if self:background_visible() then
+		x, y, w, h = box2d.bounding_box(x, y, w, h, self:background_rect())
+	end
+	if self:border_visible() then
+		x, y, w, h = box2d.bounding_box(x, y, w, h, self:border_rect(1))
 	end
 	return x, y, w, h
 end
@@ -2274,6 +2697,12 @@ end
 
 function ui.layer:get_hot()
 	return self.ui.hot_widget == self
+end
+
+--the `hit` property which is managed by the window
+
+function ui.layer:get_hit()
+	return self.ui.hit_widget == self
 end
 
 --the `active` property and tag which the widget must set manually
@@ -2298,15 +2727,17 @@ function ui.layer:set_active(active)
 	self:invalidate()
 end
 
+function ui.layer:activate()
+	if not self.active then
+		self.active = true
+		self.active = false
+	end
+end
+
 --utils in content space to use from draw_content() and hit_test_content()
 
 function ui.layer:rect() return 0, 0, self.w, self.h end --the box itself
 function ui.layer:size() return self.w, self.h end
-
-function ui.layer:hit(x, y, w, h)
-	local mx, my = self:mouse_pos()
-	return box2d.hit(mx, my, x, y, w, h)
-end
 
 function ui.layer:content_size()
 	return select(3, self:padding_rect())
@@ -2315,7 +2746,9 @@ end
 function ui.layer:content_rect() --in content space
 	return 0, 0, select(3, self:padding_rect())
 end
-
+function ui.layer:content_size()
+	return select(3, self:padding_rect())
+end
 function ui.layer:get_cw() return (select(3, self:padding_rect())) end
 function ui.layer:get_ch() return (select(4, self:padding_rect())) end
 

@@ -5,6 +5,8 @@
 local ui = require'ui'
 
 ui.button = ui.layer:subclass'button'
+ui.button.isbutton = true
+ui.button.focusable = true
 
 ui.button.background_color = '#444'
 ui.button.border_color = '#888'
@@ -30,30 +32,34 @@ ui:style('button active', {
 	transition_duration = 0.2,
 })
 
-function ui.button:mousedown(button, x, y)
-	if button == 'left' then
-		self.active = true
-	end
+ui:style('button focused', {
+	border_color = '#fff',
+	shadow_blur = 3,
+	shadow_color = '#666',
+})
+
+function ui.button:mousedown()
+	self.active = true
 end
 
-function ui.button:mouseup(button, x, y)
-	if button == 'left' then
-		self.active = false
-	end
-end
-
-function ui.button:before_draw_content()
-	if self.text then
-		self.window:textbox(0, 0, self.w, self.h, self.text,
-			self.font_family, self.font_weight, self.font_slant, self.text_size,
-			self.line_spacing, self.text_color, 'center', 'center')
-	end
+function ui.button:mouseup()
+	self.active = false
 end
 
 --demo -----------------------------------------------------------------------
 
 if not ... then require('ui_demo')(function(ui, win)
 
-	--TOOD:
+	local b1 = ui:button{
+		parent = win,
+		x = 100, y = 100, w = 100, h = 26,
+		text = 'OK',
+	}
+
+	local b2 = ui:button{
+		parent = win,
+		x = 100, y = 150, w = 100, h = 26,
+		text = 'OK',
+	}
 
 end) end

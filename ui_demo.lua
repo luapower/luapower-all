@@ -3,19 +3,14 @@ jit.off(true, true)
 
 local time = require'time'
 local ui = require'ui'
-local nw = require'nw'
-local app = nw:app()
-local win = app:window{x = 840, y = 300, w = 900, h = 500, visible = false,
-	--transparent = true, frame = 'none',
-	}
 local ui = ui()
-local win = ui:window{native_window = win}
+local win = ui:window{x = 840, y = 300, cw = 900, ch = 500, visible = false}
 
 if ... == 'ui_demo' then --loaded via require()
 	return function(test)
 		test(ui, win)
-		win.native_window:show()
-		app:run()
+		win:show()
+		ui:run()
 		ui:free()
 	end
 end
@@ -370,17 +365,13 @@ local function test_drag()
 		--function layer1:drop(drag_object, mx, my, area) end --stub
 		--function layer1:cancel(drag_object) end --stub
 
-		function layer:mousedown(button, mx, my, area)
+		function layer:mousedown(mx, my, area)
 			--print('mousedown', time.clock(), self.id, button, mx, my, area)
-			if button == 'left' then
-				self.active = true
-			end
+			self.active = true
 		end
 
-		function layer:mouseup(button, mx, my, area)
-			if button == 'left' then
-				self.active = false
-			end
+		function layer:mouseup(mx, my, area)
+			self.active = false
 		end
 		--function layer:mousemove(...) print('mousemove', time.clock(), self.id, ...) end
 		--function layer:mouseup(...) print('mouseup', time.clock(), self.id, ...) end
@@ -390,9 +381,36 @@ local function test_drag()
 	win.native_window:show()
 end
 
---test_layers()
-test_drag()
+local function test_text()
 
-win.native_window:show()
-app:run()
+	local layer = ui:layer{
+		x = 100, y = 100,
+		w = 200, h = 200,
+		text = 'gftjim;\nqTv\nxyZ',
+		text_align = 'center',
+		text_valign = 'center',
+		text_color = '#fff',
+		text_size = 36,
+		border_width = 1,
+		border_color = '#fff',
+		parent = win,
+	}
+
+	function layer:after_draw_content()
+		local cr = self.window.cr
+		cr:rgb(1, 1, 1)
+		cr:line_width(1)
+		cr:rectangle(self:text_bounding_box())
+		cr:stroke()
+	end
+
+end
+
+--test_css()
+test_layers()
+--test_drag()
+--test_text()
+
+win:show()
+ui:run()
 ui:free()
