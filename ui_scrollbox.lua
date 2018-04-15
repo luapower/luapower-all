@@ -258,11 +258,12 @@ function ui.scrollbox:after_init(ui, t)
 
 	self.content = self.ui:layer{
 		id = self:_subtag'content', parent = self.content_container,
-		content_clip = true,
+		content_clip = true, --for faster bounding box computation
 	}
 
 	self.vscrollbar = self.vscrollbar(self.ui, {
-		id = self:_subtag'vertical_scrollbar', parent = self, vertical = true,
+		id = self:_subtag'vertical_scrollbar',
+		parent = self, vertical = true, autohide = self.autohide,
 	})
 
 	function self.vscrollbar:override_hit_test_near(inherited, mx, my)
@@ -276,7 +277,8 @@ function ui.scrollbox:after_init(ui, t)
 	end
 
 	self.hscrollbar = self.hscrollbar(self.ui, {
-		id = self:_subtag'horizontal_scrollbar', parent = self, vertical = false,
+		id = self:_subtag'horizontal_scrollbar',
+		parent = self, vertical = false, autohide = self.autohide,
 	})
 
 	function self.hscrollbar:override_hit_test_near(inherited, mx, my)

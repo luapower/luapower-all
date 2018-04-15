@@ -4,7 +4,7 @@
 
 if not ... then require'codedit_demo'; return end
 
---prototype-based dynamic inheritance with __call constructor.
+--prototype-based dynamic inheritance with __call constructor (from glue).
 local function object(super, o)
 	o = o or {}
 	o.__index = super
@@ -2375,6 +2375,7 @@ end
 function view:draw_char(x, y, s, i, color) error'stub' end
 function view:draw_rect(x, y, w, h, color) error'stub' end
 function view:clip(x, y, w, h) error'stub' end
+function view:end_clip() error'stub' end
 
 function view:draw_string(cx, cy, s, color, i, j)
 	cy = cy + self.ascender
@@ -2514,6 +2515,7 @@ function view:draw_margin(margin)
 			self:draw_margin_line(margin, cursor.line, cx, cy, cw, ch, true)
 		end
 	end
+	self:end_clip()
 end
 
 function view:draw_line_highlight(line, color)
@@ -2548,6 +2550,7 @@ function view:draw_client()
 	for cur in pairs(self.cursors) do
 		self:draw_cursor(cur, cx, cy)
 	end
+	self:end_clip()
 end
 
 --draw a scrollbox widget with the outside rect (x, y, w, h) and the client
@@ -3173,6 +3176,29 @@ end
 function editor:setactive(active) end --stub
 function editor:focused() end --stub
 function editor:focus() end --stub
+
+function editor:key(key) error'stub' end
+
+function editor:keychar(char)
+	local ctrl = self:key'ctrl'
+	local alt = self:key'alt'
+	local is_input_char =
+		not ctrl and not alt and (#char > 1 or char:byte(1) > 31)
+	if is_input_char then
+		self:insert_char(char)
+	end
+end
+
+function editor:keypress(key)
+	local ctrl = self:key'ctrl'
+	local alt = self:key'alt'
+	local shift = self:key'shift'
+	local shortcut =
+		(ctrl  and 'ctrl+'  or '') ..
+		(alt   and 'alt+'   or '') ..
+		(shift and 'shift+' or '') .. key
+	self:perform_shortcut(shortcut)
+end
 
 function editor:input(focused, active, key, char, ctrl, shift, alt,
 								mousex, mousey, lbutton, rbutton, wheel_delta,

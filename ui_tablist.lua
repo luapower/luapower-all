@@ -17,6 +17,7 @@ ui.tab._index = 1/0 --add to the tablist tail
 ui.tab.close_button = ui.button
 ui.tab.focusable = true
 ui.tab.drag_threshold = 0
+ui.tab.content_clip = true
 
 ui:style('tab', {
 	transition_x = true,
@@ -180,19 +181,31 @@ function ui.tablist:index(tab)
 	return indexof(tab, self.tabs)
 end
 
+function ui.tablist:real_tab_w()
+	local w = self.w - self.tabs_padding_left + self.tab_spacing * #self.tabs
+	local sl = self.tab_slant_left
+	local sr = self.tab_slant_right
+	local wl = self.h / math.tan(math.rad(sl))
+	local wr = self.h / math.tan(math.rad(sr))
+	local tw = math.min(self.tab_w + self.tab_spacing, math.floor(w / #self.tabs))
+	return math.max(tw, wl + wr + 10)
+end
+
 function ui.tablist:pos_by_index(index)
-	return self.tabs_padding_left + (index - 1) * (self.tab_w + self.tab_spacing)
+	return self.tabs_padding_left +
+		(index - 1) * (self:real_tab_w() + self.tab_spacing)
 end
 
 function ui.tablist:index_by_pos(x)
 	local x = x - self.tabs_padding_left
-	return math.floor(x / (self.tab_w + self.tab_spacing) + 0.5) + 1
+	return math.floor(x / self:real_tab_w() + 0.5) + 1
 end
 
 function ui.tablist:_update_tabs_pos()
 	for i,tab in ipairs(self.tabs) do
 		if not tab.active then
-			tab:transition('x', self:pos_by_index(i))
+			tab:transition('x', self:pos_by_index(i), 0)
+			tab:transition('w', self:real_tab_w(), 0)
 		end
 	end
 end
@@ -210,7 +223,7 @@ function ui.tablist:after_add_layer(tab)
 	local index = self:clamped_index(tab.index, true)
 	table.insert(self.tabs, index, tab)
 	tab.h = self.h + 1
-	tab.w = self.tab_w
+	tab.w = self:real_tab_w()
 	tab:on('mousedown.tablist', function(tab)
 		tab.active = true
 		tab:focus()
@@ -293,6 +306,8 @@ if not ... then require('ui_demo')(function(ui, win)
 	local tl = ui:tablist{
 		x = 10, y = 10, w = 800,
 		parent = win,
+		tab_slant_left = 70,
+		tab_slant_right = 70,
 	}
 
 	for i = 1, 5 do
@@ -331,6 +346,10 @@ if not ... then require('ui_demo')(function(ui, win)
 		self:each('content', function(self)
 			self.w = cw - 2 * tl.x
 			self.h = ch - 2 * tl.y - tl.h
+		end)
+		self:each('tablist', function(self)
+			self.w = cw - 2 * tl.x
+			self:_update_tabs_pos()
 		end)
 	end
 

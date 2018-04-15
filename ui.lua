@@ -222,6 +222,7 @@ end
 function ui.stylesheet:after_init(ui)
 	self.ui = ui
 	self.tags = {} --{tag -> {sel1, ...}}
+	self.parent_tags = {} --{tag -> {sel1, ...}}
 	self.selectors = {} --{selector1, ...}
 end
 
@@ -235,8 +236,14 @@ function ui.stylesheet:add_style(sel, attrs)
 	push(self.selectors, sel)
 	sel.priority = #self.selectors
 	for _,tag in ipairs(sel.tags) do
-		local t = attr(self.tags, tag)
-		push(t, sel)
+		push(attr(self.tags, tag), sel)
+	end
+	if sel.parent_tags then
+		for _,tags in ipairs(sel.parent_tags) do
+			for _,tag in ipairs(tags) do
+				push(attr(self.parent_tags, tag), sel)
+			end
+		end
 	end
 end
 
@@ -244,17 +251,31 @@ function ui.stylesheet:add_stylesheet(stylesheet)
 	for tag, selectors in pairs(stylesheet.tags) do
 		extend(attr(self.tags, tag), selectors)
 	end
+	for tag, selectors in pairs(stylesheet.parent_tags) do
+		extend(attr(self.parent_tags, tag), selectors)
+	end
 end
 
 local function cmp_sel(sel1, sel2)
 	return sel1.priority < sel2.priority
 end
 
---gather all attribute values from all selectors affecting all tags of elem.
---later selectors affecting a tag take precedence over earlier ones affecting
---that tag. tags are like css classes while elem.tags is like the html class
---attribute which specifies a list of css classes (i.e. tags) to apply.
-function ui.stylesheet:_gather_attrs(elem)
+--attr. value to use in styles for "initial value of this attr"
+function ui.initial(self, attr)
+	return self:initial_value(attr)
+end
+
+--attr. value to use in styles for "inherit value from parent for this attr"
+function ui.inherit(self, attr)
+	return self:parent_value(attr)
+end
+
+function ui.stylesheet:update_element(elem, update_children)
+
+	--gather all attribute values from all selectors affecting all tags of elem.
+	--later selectors affecting a tag take precedence over earlier ones affecting
+	--that tag. tags are like css classes while elem.tags is like the html class
+	--attribute which specifies a list of css classes (i.e. tags) to apply.
 	local st = {} --{sel1, ...}
 	local checked = {} --{sel -> true}
 	for tag in pairs(elem.tags) do
@@ -271,26 +292,11 @@ function ui.stylesheet:_gather_attrs(elem)
 		end
 	end
 	table.sort(st, cmp_sel)
-	local t = {} --{attr -> val}
+	local attrs = {} --{attr -> val}
 	for _,sel in ipairs(st) do
-		update(t, sel.attrs)
+		update(attrs, sel.attrs)
 	end
-	update(t, elem.style)
-	return t
-end
-
---attr. value to use in styles for "initial value of this attr"
-function ui.initial(self, attr)
-	return self:initial_value(attr)
-end
-
---attr. value to use in styles for "inherit value from parent for this attr"
-function ui.inherit(self, attr)
-	return self:parent_value(attr)
-end
-
-function ui.stylesheet:update_element(elem)
-	local attrs = self:_gather_attrs(elem)
+	update(attrs, elem.style)
 
 	--add the saved initial values of attributes that were changed by
 	--this function before but are missing from the styles this time.
@@ -319,6 +325,26 @@ function ui.stylesheet:update_element(elem)
 		if not attr:find'^transition_' then
 			elem:_save_initial_value(attr)
 			elem:transition(attr, val)
+		end
+	end
+
+	--update all children of elem if elem has parent tags in any style.
+	--TODO: speed up the pathological case when a container with many children
+	--needs to be updated and there's a style which has parent tags that match
+	--one of the container's tags (for now, just don't make selectors with too
+	--generic parent filters that could match a container and not a widget).
+	if not update_children then
+		for tag in pairs(elem.tags) do
+			--print(tag, self.parent_tags[tag])
+			if self.parent_tags[tag] then
+				update_children = true
+				break
+			end
+		end
+	end
+	if update_children and elem.layers then
+		for _,layer in ipairs(elem.layers) do
+			self:update_element(layer, update_children)
 		end
 	end
 end
@@ -914,6 +940,11 @@ function ui.window:after_init(ui, t)
 		self:_keypress(key)
 	end)
 
+	win:on('keychar.ui', function(win, s)
+		setcontext()
+		self:_keychar(s)
+	end)
+
 	win:on('repaint.ui', function(win)
 		setcontext()
 		self._norepaint = true
@@ -1230,6 +1261,13 @@ function ui.window:_keypress(key)
 	end
 end
 
+function ui.window:_keychar(s)
+	self:fire('keychar', s)
+	if self.focused_widget then
+		self.focused_widget:fire('keychar', s)
+	end
+end
+
 --rendering
 
 function ui.window:after_draw()
@@ -1291,7 +1329,7 @@ function ui:radial_gradient(cx1, cy1, r1, cx2, cy2, r2, ...)
 	return self:_add_color_stops(g, ...)
 end
 
-function ui:image(file)
+function ui:image_pattern(file)
 	local ext = file:match'%.([^%.]+)$'
 	if ext == 'jpg' or ext == 'jpeg' then
 		local f, err = fs.open(file)
@@ -1313,7 +1351,7 @@ function ui:image(file)
 		return {patt = patt, sr = sr}
 	end
 end
-ui:memoize'image'
+ui:memoize'image_pattern'
 
 --fonts and text
 
@@ -1377,6 +1415,10 @@ end
 function ui.window:line_extents(s)
 	local ext = self.cr:text_extents(s)
 	return ext.width, ext.height, ext.y_bearing
+end
+
+function ui.window:text_line_h()
+	return self._font_height * self._line_spacing
 end
 
 function ui.window:text_size(s)
@@ -2297,7 +2339,7 @@ function ui.layer:paint_background()
 				unpack(self.background_colors))
 		end
 	elseif bg_type == 'image' then
-		local img = self.ui:image(self.background_image)
+		local img = self.ui:image_pattern(self.background_image)
 		if not img then return end
 		patt = img.patt
 	else
@@ -2762,5 +2804,26 @@ function ui.layer:setfont(family, weight, slant, size, color, line_spacing)
 	self.window.cr:rgba(self.ui:color(color or self.text_color))
 end
 
+--widgets autoload -----------------------------------------------------------
+
+local autoload = {
+	scrollbar  = 'ui_scrollbox',
+	scrollbox  = 'ui_scrollbox',
+	button     = 'ui_button',
+	slider     = 'ui_slider',
+	editbox    = 'ui_editbox',
+	tab        = 'ui_tablist',
+	tablist    = 'ui_tablist',
+	menuitem   = 'ui_menu',
+	menu       = 'ui_menu',
+	image      = 'ui_image',
+}
+
+for widget, submodule in pairs(autoload) do
+	ui['get_'..widget] = function(self)
+		require(submodule)
+		return self[widget]
+	end
+end
 
 return ui

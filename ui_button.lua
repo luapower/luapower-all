@@ -20,12 +20,12 @@ ui:style('button', {
 })
 
 ui:style('button hot', {
-	background_color = '#ccc',
-	border_color = '#ccc',
+	background_color = '#999',
+	border_color = '#999',
 	text_color = '#000',
 })
 
-ui:style('button active', {
+ui:style('button down', {
 	background_color = '#fff',
 	border_color = '#fff',
 	text_color = '#000',
@@ -39,11 +39,25 @@ ui:style('button focused', {
 })
 
 function ui.button:mousedown()
-	self.active = true
+	self:settags'down'
+	self:focus()
+end
+
+function ui.button:mouseleave()
+	self:settags'-down'
 end
 
 function ui.button:mouseup()
-	self.active = false
+	self:settags'-down'
+	if self.hot then
+		self:fire'click'
+	end
+end
+
+function ui.button:keydown(key)
+	if key == 'enter' then
+		self:fire'click'
+	end
 end
 
 --demo -----------------------------------------------------------------------
@@ -61,5 +75,8 @@ if not ... then require('ui_demo')(function(ui, win)
 		x = 100, y = 150, w = 100, h = 26,
 		text = 'OK',
 	}
+
+	function b1:click() print'b1 click' end
+	function b2:click() print'b2 click' end
 
 end) end

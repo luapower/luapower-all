@@ -101,9 +101,13 @@ function view:draw_scrollbox(x, y, w, h, cx, cy, cw, ch)
 end
 
 function view:clip(x, y, w, h)
-	self.player.cr:reset_clip()
+	self.player.cr:save()
 	self.player.cr:rectangle(x, y, w, h)
 	self.player.cr:clip()
+end
+
+function view:end_clip()
+	self.player.cr:restore()
 end
 
 function view:draw_rect(x, y, w, h, color)
