@@ -184,8 +184,9 @@ override `self:properties()`.
 **Virtual properties** are created by defining a getter and a setter. Once
 you have defined `self:get_foo()` and `self:set_foo(value)` you can read and
 write to `self.foo` and the getter and setter will be called to fulfill
-the indexing. The setter is optional: without it, the property is read-only
-and assigning it fails with an error.
+the indexing. The setter is optional. Assigning a value to a property without
+a setter removes the getter and sets the value. This can be used for
+implementing autoloading of component classes (see [glue].autoload).
 
 ~~~{.lua}
 function cls:get_answer_to_life() return deep_thought:get_answer() end
@@ -197,8 +198,8 @@ assert(obj.answer_to_life == 42) --assuming deep_thought can store a number
 
 Virtual properties can be *generated in bulk* given a _multikey_ getter and
 a _multikey_ setter and a list of property names, by calling
-`self:gen_properties(names, getter, setter)`. The setter and getter must be
-methods of form:
+`self:gen_properties(names, [getter], [setter])`. The setter and getter must
+be methods of form:
 
   * `getter(self, k) -> v`
   * `setter(self, k, v)`

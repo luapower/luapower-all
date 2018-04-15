@@ -26,8 +26,10 @@ local function is(obj, class)
 	end
 end
 
-function Object:subclass(classname)
-	local subclass = {super = self, classname = classname or ''}
+function Object:subclass(classname, subclass)
+	local subclass = subclass or {}
+	subclass.super = self
+	subclass.classname = classname or ''
 	return setmetatable(subclass, getmetatable(self))
 end
 
@@ -92,9 +94,30 @@ function meta:__newindex(k,v)
 		return
 	end
 	local getters = self.__getters
+<<<<<<< HEAD
 	local get = getters and getters[k]
 	if get then --r/o property
 		error(string.format('trying to set read only property "%s"', k))
+=======
+	if getters and getters[k] then --replacing a read-only property
+		getters[k] = nil
+	end
+	if k:find'^get_' then --install getter
+		local getters = create_table(self, '__getters')
+		self.__getters[k:sub(5)] = v
+	elseif k:find'^set_' then --install setter
+		local setters = create_table(self, '__setters')
+		self.__setters[k:sub(5)] = v
+	elseif k:find'^before_' then --install before hook
+		local method_name = k:match'^before_(.*)'
+		self:before(method_name, v)
+	elseif k:find'^after_' then --install after hook
+		local method_name = k:match'^after_(.*)'
+		self:after(method_name, v)
+	elseif k:find'^override_' then --install override hook
+		local method_name = k:match'^override_(.*)'
+		self:override(method_name, v)
+>>>>>>> 5e03e0f952ec0fb54fa20e716e5840067785d8e8
 	else
 		local installed
 		for patt, install in pairs(self.__install) do
