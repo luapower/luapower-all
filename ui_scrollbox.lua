@@ -249,6 +249,7 @@ ui.scrollbox.page_size = 50 --pixels per scroll wheel notch
 ui.scrollbox.vscrollbar = ui.scrollbar
 ui.scrollbox.hscrollbar = ui.scrollbar
 ui.scrollbox.scrollbar_margin = 6
+ui.scrollbox.content_class = ui.layer
 
 function ui.scrollbox:after_init(ui, t)
 
@@ -256,10 +257,10 @@ function ui.scrollbox:after_init(ui, t)
 		parent = self, content_clip = true,
 	}
 
-	self.content = self.ui:layer{
+	self.content = self.content_class(self.ui, {
 		id = self:_subtag'content', parent = self.content_container,
 		content_clip = true, --for faster bounding box computation
-	}
+	})
 
 	self.vscrollbar = self.vscrollbar(self.ui, {
 		id = self:_subtag'vertical_scrollbar',

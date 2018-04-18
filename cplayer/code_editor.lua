@@ -211,7 +211,7 @@ function view:draw_char(x, y, s, i, color)
 end
 
 --draw a reverse pilcrow at eol
-function view:render_eol_marker(line)
+function view:draw_eol_marker(line)
 	local x, y = self:char_coords(line, self.buffer:visual_col(line, self.buffer:last_col(line) + 1))
 	local x = x + 2.5
 	local y = y + self.char_baseline - self.line_h + 3.5
@@ -230,16 +230,16 @@ function view:render_eol_marker(line)
 	cr:fill()
 end
 
-function view:render_eol_markers()
+function view:draw_eol_markers()
 	if self.eol_markers then
 		local line1, line2 = self:visible_lines()
 		for line = line1, line2 do
-			self:render_eol_marker(line)
+			self:draw_eol_marker(line)
 		end
 	end
 end
 
-function view:render_minimap()
+function view:draw_minimap()
 	local cr = self.player.cr
 	local mmap = glue.inherit({editor = self}, self)
 	local self = mmap
@@ -253,14 +253,14 @@ function view:render_minimap()
 	cr:save()
 		cr:translate(self.editor.x + self.editor.w - 100, self.editor.y)
 		cr:scale(scale, scale)
-		codedit.render(self)
+		codedit.draw(self)
 		cr:restore()
 	cr:restore()
 end
 
-local view_render = view.render
-function view:render()
-	view_render(self)
+local view_imgui_draw = view.imgui_draw
+function view:view_imgui_draw()
+	view_imgui_draw(self)
 	self.player.cr:identity_matrix()
 	self.player.cr:reset_clip()
 end
@@ -291,14 +291,14 @@ function view:font_size(font_size)
 	self.ascender = self.ft_face.size.metrics.ascender / 64
 end
 
-function editor:render()
+function editor:imgui_draw()
 	local cr = self.player.cr
 	for i = 1,1 do
-		self.view:render()
-		self.view:render_eol_markers()
+		self.view:imgui_draw()
+		self.view:draw_eol_markers()
 		--cr:restore()
 		if self.view.minimap then
-			self.view:render_minimap()
+			self.view:draw_minimap()
 		end
 	end
 end
@@ -336,7 +336,7 @@ function player:code_editor(t)
 	end
 	ed.cursor.on = (self.clock - ed.cursor.start_clock) % 1 < 0.5
 
-	ed:input(
+	ed:imgui_input(
 		true, --self.focused == ed.id,
 		self.active,
 		self.key,
@@ -353,7 +353,7 @@ function player:code_editor(t)
 		self.tripleclicked,
 		self.quadrupleclicked,
 		self.waiting_for_tripleclick)
-	ed:render()
+	ed:imgui_draw()
 
 	return ed
 end

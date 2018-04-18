@@ -214,9 +214,10 @@ end
 ui.stylesheet = oo.stylesheet(ui.object)
 
 function ui:after_init()
-	local class_stylesheet = self.stylesheet
-	self.stylesheet = self:stylesheet()
-	self.stylesheet:add_stylesheet(class_stylesheet)
+	--TODO: fix issue with late-loading of class styles in autoloaded widgets.
+	--local class_stylesheet = self.stylesheet
+	--self.stylesheet = self:stylesheet()
+	--self.stylesheet:add_stylesheet(class_stylesheet)
 end
 
 function ui.stylesheet:after_init(ui)
@@ -335,7 +336,6 @@ function ui.stylesheet:update_element(elem, update_children)
 	--generic parent filters that could match a container and not a widget).
 	if not update_children then
 		for tag in pairs(elem.tags) do
-			--print(tag, self.parent_tags[tag])
 			if self.parent_tags[tag] then
 				update_children = true
 				break
@@ -890,30 +890,28 @@ function ui.window:after_init(ui, t)
 		self.ui:_window_mouseleave(self)
 	end)
 
-	win:on('mousedown.ui', function(win, button, mx, my)
+	win:on('mousedown.ui', function(win, button, mx, my, click_count)
 		local moved = self.mouse_x ~= mx or self.mouse_y ~= my
 		setmouse(mx, my)
 		if moved then
 			self.ui:_window_mousemove(self, mx, my)
 		end
 		self['mouse_'..button] = true
-		self.ui:_window_mousedown(self, button, mx, my)
+		self.ui:_window_mousedown(self, button, mx, my, click_count)
 	end)
 
-	win:on('mouseclick.ui', function(win, button, count, mx, my)
-		local moved = self.mouse_x ~= mx or self.mouse_y ~= my
-		setmouse(mx, my)
-		self.ui:_window_mouseclick(self, button, count, mx, my)
+	win:on('click.ui', function(win, button, count, mx, my)
+		return self.ui:_window_click(self, button, count, mx, my)
 	end)
 
-	win:on('mouseup.ui', function(win, button, mx, my)
+	win:on('mouseup.ui', function(win, button, mx, my, click_count)
 		local moved = self.mouse_x ~= mx or self.mouse_y ~= my
 		setmouse(mx, my)
 		if moved then
 			self.ui:_window_mousemove(self, mx, my)
 		end
 		self['mouse_'..button] = false
-		self.ui:_window_mouseup(self, button, mx, my)
+		self.ui:_window_mouseup(self, button, mx, my, click_count)
 	end)
 
 	win:on('mousewheel.ui', function(win, delta, mx, my)
@@ -1005,7 +1003,7 @@ function ui.window:set_visible(visible)
 	self.native_window:visible(visible)
 end
 
-for method in pairs{show=1, hide=1} do
+for method in pairs{show=1, hide=1, cursor=1} do
 	ui.window[method] = function(self, ...)
 		return self.native_window[method](self.native_window, ...)
 	end
@@ -1028,10 +1026,6 @@ end
 
 --window mouse events routing with hot, active and drag & drop logic.
 
-function ui.window:hit_test(x, y, reason)
-	return self.layer:hit_test(x, y, reason)
-end
-
 function ui:_reset_drag_state()
 	self.drag_start_widget = false --widget initiating the drag
 	self.drag_button = false --mouse button which started the drag
@@ -1045,14 +1039,34 @@ end
 
 function ui:after_init()
 	self.hot_widget = false
+	self.hot_area = false
+	self.last_click_hot_widget = false
+	self.last_click_hot_area = false
+	self.last_click_button = false
 	self.active_widget = false
-	self.hit_widget = false
-	self.hit_area = false
 	self:_reset_drag_state()
 end
 
-function ui:_set_hot_widget(widget, mx, my, area)
+function ui.window:hit_test(x, y, reason)
+	return self.layer:hit_test(x, y, reason)
+end
+
+function ui.window:get_cursor()
+	return (self.native_window:cursor())
+end
+
+function ui.window:set_cursor(cursor)
+	self.native_window:cursor(cursor)
+end
+
+function ui:_set_hot_widget(window, widget, mx, my, area)
 	if self.hot_widget == widget then
+		if area ~= self.hot_area then
+			self.hot_area = area
+			if widget then
+				window.cursor = widget:getcursor(area)
+			end
+		end
 		return
 	end
 	if self.hot_widget then
@@ -1060,8 +1074,12 @@ function ui:_set_hot_widget(widget, mx, my, area)
 	end
 	if widget then
 		widget:_mouseenter(mx, my, area) --hot widget not changed yet
+		window.cursor = widget:getcursor(area)
+	else
+		window.cursor = 'arrow'
 	end
-	self.hot_widget = widget
+	self.hot_widget = widget or false
+	self.hot_area = area or false
 end
 
 function ui:_accept_drop(drag_widget, drop_widget, mx, my, area)
@@ -1069,56 +1087,16 @@ function ui:_accept_drop(drag_widget, drop_widget, mx, my, area)
 		and drag_widget:accept_drop_widget(drop_widget, area)
 end
 
-function ui:_window_mousedown(window, button, mx, my)
-	local event = button == 'left' and 'mousedown' or button..'mousedown'
-	window:fire(event, mx, my)
-
-	if self.active_widget then
-		local area = self.active_widget == self.hit_widget and self.hit_area
-		self.active_widget:_mousedown(button, mx, my, area)
-	elseif self.hot_widget then
-		self.hot_widget:_mousedown(button, mx, my, self.hit_area)
-	end
-end
-
-function ui:_window_mouseclick(window, button, count, mx, my)
-	local event = button == 'left' and 'mousedown' or button..'mousedown'
-	window:fire(event, count, mx, my)
-	--TODO:
-end
-
-function ui:_widget_mousedown(widget, button, mx, my, area)
-	if self.drag_start_widget then return end --already dragging on other button
-	if self.active_widget ~= widget then return end --widget not activated
-	self.drag_start_widget = widget
-	self.drag_button = button
-	self.drag_mx = mx
-	self.drag_my = my
-	self.drag_area = area
-end
-
 function ui:_window_mousemove(window, mx, my)
 	window:fire('mousemove', mx, my)
 
-	--[[ --TODO: hovering with delay
-	if self._hover_handler then
-		self._hover_handler(false)
-	end
-	self._hover_handler = function(stop)
-		self:_hover(self.mouse_x, self.mouse_y)
-	end
-	self.native_window:runafter(self.hover_delay, self._hover_handler)
-	]]
+	--TODO: hovering with delay
 
 	if self.active_widget then
 		self.active_widget:_mousemove(mx, my)
 	else
 		local hit_widget, hit_area = window:hit_test(mx, my, 'activate')
-		hit_widget = hit_widget or false
-		hit_area = hit_area or false
-		self.hit_widget = hit_widget
-		self.hit_area = hit_area
-		self:_set_hot_widget(hit_widget, mx, my, hit_area)
+		self:_set_hot_widget(window, hit_widget, mx, my, hit_area)
 		if hit_widget then
 			hit_widget:_mousemove(mx, my, hit_area)
 		end
@@ -1149,9 +1127,20 @@ function ui:_window_mousemove(window, mx, my)
 	end
 end
 
+function ui:_window_mouseenter(window, mx, my)
+	window:fire('mouseenter', mx, my)
+	self:_window_mousemove(window, mx, my)
+end
+
+function ui:_window_mouseleave(window)
+	window:fire'mouseleave'
+	if not self.active_widget then
+		self:_set_hot_widget(window, false)
+	end
+end
+
 function ui:_widget_mousemove(widget, mx, my, area)
 	if not self.drag_widget and widget == self.drag_start_widget then
-		--local dmx, dmy = self:to_window(self.drag_mx, self.drag_my)
 		--TODO: make this diff. in window space!
 		local dx = math.abs(self.drag_mx - mx)
 		local dy = math.abs(self.drag_my - my)
@@ -1168,27 +1157,60 @@ function ui:_widget_mousemove(widget, mx, my, area)
 	end
 end
 
-function ui:_window_mouseenter(window, mx, my)
-	window:fire('mouseenter', mx, my)
-	self:_window_mousemove(window, mx, my)
-end
+function ui:_window_mousedown(window, button, mx, my, click_count)
+	local event = button == 'left' and 'mousedown' or button..'mousedown'
+	window:fire(event, mx, my, click_count)
 
-function ui:_window_mouseleave(window)
-	window:fire'mouseleave'
-	if not self.active_widget then
-		self:_set_hot_widget(false)
+	if click_count > 1 then return end
+
+	if self.active_widget then
+		self.active_widget:_mousedown(button, mx, my)
+	elseif self.hot_widget then
+		self.hot_widget:_mousedown(button, mx, my, self.hot_area)
 	end
 end
 
-function ui:_window_mouseup(window, button, mx, my)
+function ui:_window_click(window, button, count, mx, my)
+	local event = button == 'left' and 'click' or button..'click'
+	window:fire(event, count, mx, my)
+
+	if self.active_widget then
+		return self.active_widget:_click(button, count, mx, my)
+	elseif self.hot_widget then
+		local reset_click_count =
+			self.last_click_hot_widget ~= self.hot_widget
+			or self.last_click_hot_area ~= self.hot_widget
+			or self.last_click_button ~= button
+		self.last_click_hot_widget = self.hot_widget
+		self.last_click_hot_area = self.hot_widget
+		self.last_click_button = button
+		count = reset_click_count and 1 or count
+		return
+			self.hot_widget:_click(button, count, mx, my, self.hot_area)
+			or reset_click_count
+	end
+end
+
+function ui:_widget_mousedown(widget, button, mx, my, area)
+	if self.drag_start_widget then return end --already dragging on other button
+	if self.active_widget ~= widget then return end --widget not activated
+	self.drag_start_widget = widget
+	self.drag_button = button
+	self.drag_mx = mx
+	self.drag_my = my
+	self.drag_area = area
+end
+
+function ui:_window_mouseup(window, button, mx, my, click_count)
 	local event = button == 'left' and 'mouseup' or button..'mouseup'
 	window:fire(event, mx, my)
 
+	if click_count > 1 then return end
+
 	if self.active_widget then
-		local area = self.active_widget == self.hit_widget and self.hit_area
-		self.active_widget:_mouseup(button, mx, my, area)
+		self.active_widget:_mouseup(button, mx, my)
 	elseif self.hot_widget then
-		self.hot_widget:_mouseup(button, mx, my, self.hit_area)
+		self.hot_widget:_mouseup(button, mx, my, self.hot_area)
 	end
 
 	if self.drag_button == button then
@@ -1574,7 +1596,7 @@ ui.layer.background_scale = 1
 ui.layer.background_scale_cx = 0
 ui.layer.background_scale_cy = 0
 --solid color backgrounds
-ui.layer.background_color = nil --no background
+ui.layer.background_color = false --no background
 --gradient backgrounds
 ui.layer.background_colors = {} --{[offset1], color1, ...}
 --linear gradient backgrounds
@@ -1590,7 +1612,7 @@ ui.layer.background_cx2 = 0
 ui.layer.background_cy2 = 0
 ui.layer.background_r2 = 0
 --image backgrounds
-ui.layer.background_image = nil
+ui.layer.background_image = false
 
 ui.layer.background_operator = 'over'
 -- overlapping between background clipping edge and border stroke.
@@ -1616,8 +1638,10 @@ ui.layer.text_align = 'center'
 ui.layer.text_valign = 'center'
 ui.layer.text = nil
 
-ui.layer.drag_threshold = 10 --snapping pixels before starting to drag
+ui.layer.cursor = 'arrow'
 
+ui.layer.drag_threshold = 10 --snapping pixels before starting to drag
+ui.layer.max_click_chain = 1 --2 for getting doubleclick events etc.
 ui.layer.hover_delay = 1 --hover event delay
 
 ui.layer.canfocus = false
@@ -1626,9 +1650,7 @@ ui.layer.tabindex = false
 function ui.layer:before_free()
 	if self.hot then
 		self.ui.hot_widget = false
-	end
-	if self.hit then
-		self.ui.hit_widget = false
+		self.ui.hot_area = false
 	end
 	if self.active then
 		self.ui.active_widget = false
@@ -1776,6 +1798,10 @@ end
 
 --mouse event handling
 
+function ui.layer:getcursor(area)
+	return area and self['cursor_'..area] or self.cursor
+end
+
 function ui.layer:_mousemove(mx, my, area)
 	local mx, my = self:from_window(mx, my)
 	self:fire('mousemove', mx, my, area)
@@ -1804,6 +1830,22 @@ function ui.layer:_mouseup(button, mx, my, area)
 	local mx, my = self:from_window(mx, my)
 	local event = button == 'left' and 'mouseup' or button..'mouseup'
 	self:fire(event, mx, my, area)
+end
+
+function ui.layer:_click(button, count, mx, my, area)
+	local mx, my = self:from_window(mx, my)
+	local event =
+		count == 1 and 'click'
+		or count == 2 and 'doubleclick'
+		or count == 3 and 'tripleclick'
+		or count == 4 and 'quadrupleclick'
+	local event = button == 'left' and event or button..event
+	self:fire(event, mx, my, area)
+	local max_click_chain = self['max_'..button..'_click_chain']
+		or self.max_click_chain
+	if count >= max_click_chain then
+		return true --stop the click chain
+	end
 end
 
 function ui.layer:_mousewheel(delta, mx, my, area)
@@ -2741,12 +2783,6 @@ function ui.layer:get_hot()
 	return self.ui.hot_widget == self
 end
 
---the `hit` property which is managed by the window
-
-function ui.layer:get_hit()
-	return self.ui.hit_widget == self
-end
-
 --the `active` property and tag which the widget must set manually
 
 function ui.layer:get_active()
@@ -2820,9 +2856,9 @@ local autoload = {
 }
 
 for widget, submodule in pairs(autoload) do
-	ui['get_'..widget] = function(self)
+	ui['get_'..widget] = function()
 		require(submodule)
-		return self[widget]
+		return ui[widget]
 	end
 end
 
