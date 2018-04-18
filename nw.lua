@@ -1448,7 +1448,7 @@ function window:_backend_mousedown(button, mx, my)
 		t.y = my - t.h / 2
 	end
 
-	self:fire('mousedown', button, mx, my)
+	self:fire('mousedown', button, mx, my, t.count)
 
 	if self:fire('click', button, t.count, mx, my) then
 		t.count = 0
@@ -1456,7 +1456,8 @@ function window:_backend_mousedown(button, mx, my)
 end
 
 function window:_backend_mouseup(button, x, y)
-	self:fire('mouseup', button, x, y)
+	local t = self._down[button]
+	self:fire('mouseup', button, x, y, t and t.count or 0)
 end
 
 function window:_backend_mouseenter(x, y)

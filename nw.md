@@ -219,8 +219,8 @@ __mouse__
 `win/view:mouseenter(x, y)`                  event: mouse entered the client area of the window
 `win/view:mouseleave()`                      event: mouse left the client area of the window
 `win/view:mousemove(x, y)`                   event: mouse was moved
-`win/view:mousedown(button, x, y)`           event: mouse button was pressed
-`win/view:mouseup(button, x, y)`             event: mouse button was depressed
+`win/view:mousedown(button, x, y, count)`    event: mouse button was pressed
+`win/view:mouseup(button, x, y, count)`      event: mouse button was depressed
 `win/view:click(button, count, x, y)`        event: mouse button was clicked
 `win/view:mousewheel(delta, x, y)`           event: mouse wheel was moved
 `win/view:hmousewheel(delta, x, y)`          event: mouse horizontal wheel was moved
@@ -1140,7 +1140,7 @@ outside the client area of the window/view that captured the mouse.
 
 Event: the mouse was moved.
 
-### `win/view:mousedown(button, x, y)`
+### `win/view:mousedown(button, x, y, click_count)`
 
 Event: a mouse button was pressed; button can be 'left', 'right', 'middle', 'x1', 'x2'.
 
@@ -1149,7 +1149,7 @@ which received the mousedown event, which means that the same window/view
 will continue to receive mousemove events even if the mouse leaves
 its client area.
 
-### `win/view:mouseup(button, x, y)`
+### `win/view:mouseup(button, x, y, click_count)`
 
 Event: a mouse button was depressed.
 
