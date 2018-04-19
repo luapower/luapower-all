@@ -1933,13 +1933,22 @@ end
 function View:scrollWheel(event)
 	local m = self:nw_setmouse(event)
 	local x, y = m.x, m.y
-	local dx = event:deltaX()
+	local delta_in_pixels = event:hasPreciseScrollingDeltas()
+	local dx = event:scrollingDeltaX()
 	if dx ~= 0 then
-		self.frontend:_backend_mousehwheel(dx, x, y)
+		local pdx
+		if delta_in_pixels then
+			pdx, dx = dx, dx / 12
+		end
+		self.frontend:_backend_mousehwheel(dx, x, y, pdx)
 	end
-	local dy = event:deltaY()
+	local dy = event:scrollingDeltaY()
 	if dy ~= 0 then
-		self.frontend:_backend_mousewheel(dy, x, y)
+		local pdy
+		if delta_in_pixels then
+			pdy, dy = dy, dy / 12
+		end
+		self.frontend:_backend_mousewheel(dy, x, y, pdy)
 	end
 end
 

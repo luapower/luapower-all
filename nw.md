@@ -222,8 +222,8 @@ __mouse__
 `win/view:mousedown(button, x, y, count)`    event: mouse button was pressed
 `win/view:mouseup(button, x, y, count)`      event: mouse button was depressed
 `win/view:click(button, count, x, y)`        event: mouse button was clicked
-`win/view:mousewheel(delta, x, y)`           event: mouse wheel was moved
-`win/view:hmousewheel(delta, x, y)`          event: mouse horizontal wheel was moved
+`win/view:mousewheel(delta, x, y, pdelta)`   event: mouse wheel was moved
+`win/view:hmousewheel(delta, x, y, pdelta)`  event: mouse horizontal wheel was moved
 __rendering__
 `win/view:repaint()`                         event: window needs redrawing
 `win/view:invalidate()`                      request window redrawing
@@ -967,8 +967,8 @@ Get/set the mouse cursor and/or visibility. The name can be:
   * 'hand'
   * 'cross'
   * 'forbidden'
-  * 'size_diag1' (i.e. NE-SW, slash)
-  * 'size_diag2' (i.e. NW-SE, backslash)
+  * 'size_diag1' (i.e. NE-SW, forward-slash-looking)
+  * 'size_diag2' (i.e. NW-SE, backslash-looking)
   * 'size_h'
   * 'size_v'
   * 'move'
@@ -1198,13 +1198,16 @@ or you'll never get a count of 3.
 The double-click time interval is from the user's mouse settings
 and it is queried on every click.
 
-### `win/view:wheel(delta, x, y)` <br> `win/view:hwheel(delta, x, y)`
+### `win/view:mousewheel(delta, x, y, pixeldelta)` <br> `win/view:mousehwheel(delta, x, y, pixeldelta)`
 
 Event: the mouse vertical or horizontal wheel was moved.
 The delta represents the number of lines to scroll.
 
 The number of lines per scroll notch is from the user's mouse settings
 and it is queried on every wheel event (Windows, OSX).
+
+The extra `pixeldelta` arg is given on OSX on devices where analog scrolling
+is available, in which case that value should be used instead.
 
 ## Rendering
 

@@ -1472,12 +1472,12 @@ function window:_backend_mousemove(x, y)
 	self:fire('mousemove', x, y)
 end
 
-function window:_backend_mousewheel(delta, x, y)
-	self:fire('mousewheel', delta, x, y)
+function window:_backend_mousewheel(delta, x, y, pixeldelta)
+	self:fire('mousewheel', delta, x, y, pixeldelta)
 end
 
-function window:_backend_mousehwheel(delta, x, y)
-	self:fire('mousehwheel', delta, x, y)
+function window:_backend_mousehwheel(delta, x, y, pixeldelta)
+	self:fire('mousehwheel', delta, x, y, pixeldelta)
 end
 
 --rendering ------------------------------------------------------------------
