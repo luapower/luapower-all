@@ -7,7 +7,6 @@ local ui = require'ui'
 --menu item ------------------------------------------------------------------
 
 ui.menuitem = ui.layer:subclass'menuitem'
-ui.menuitem.ismenuitem = true
 ui.menuitem.h = 20
 ui.menuitem.padding_left = 10
 ui.menuitem.align = 'left'

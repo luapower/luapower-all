@@ -15,7 +15,6 @@ ui.slider.fill = ui.layer:subclass'slider_fill'
 ui.slider.pin = ui.layer:subclass'slider_pin'
 ui.slider.step_label = ui.layer:subclass'slider_step_label'
 
-ui.slider.isslider = true
 ui.slider.focusable = true
 ui.slider.h = 20
 ui.slider._position = 0

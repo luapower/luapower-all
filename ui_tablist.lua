@@ -12,7 +12,6 @@ local clamp = glue.clamp
 
 ui.tab = ui.layer:subclass'tab'
 
-ui.tab.istab = true
 ui.tab._index = 1/0 --add to the tablist tail
 ui.tab.close_button = ui.button
 ui.tab.focusable = true
@@ -107,7 +106,6 @@ end
 
 ui.tablist = ui.layer:subclass'tablist'
 
-ui.tablist.istablist = true
 ui.tablist.h = 30
 ui.tablist.tab_w = 150
 ui.tablist.tabs_padding_left = 10

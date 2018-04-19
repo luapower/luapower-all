@@ -5,7 +5,6 @@
 local ui = require'ui'
 
 ui.button = ui.layer:subclass'button'
-ui.button.isbutton = true
 ui.button.focusable = true
 
 ui.button.background_color = '#444'

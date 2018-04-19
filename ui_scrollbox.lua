@@ -27,7 +27,7 @@ ui.scrollbar.autohide = true
 ui.scrollbar.autohide_empty = false
 ui.scrollbar.autohide_offset = 20 --around-distance to scrollbar
 ui.scrollbar.opacity = 0
-ui.scrollbar.page_size = 300 --pixels to scroll when clicking on the bg
+ui.scrollbar.click_scroll_size = 300 --scroll when clicking on the background
 
 ui.scrollbar.grabbar = ui.layer:subclass'grabbar'
 ui.scrollbar.grabbar.corner_radius = 6
@@ -165,6 +165,18 @@ function ui.scrollbar:after_init(ui, t)
 		grabbar:invalidate()
 	end
 
+	if not self.autohide then
+		self:settags'near'
+	end
+end
+
+function ui.scrollbar:before_set_parent()
+	if not self.window then return end
+	self.window:off{nil, self}
+end
+
+function ui.scrollbar:after_set_parent()
+	if not self.window then return end
 	--autohide hooks
 	self.window:on({'mousemove', self}, function(win, mx, my)
 		self:_autohide_mousemove(mx, my)
@@ -172,10 +184,6 @@ function ui.scrollbar:after_init(ui, t)
 	self.window:on({'mouseleave', self}, function(win)
 		self:_autohide_mouseleave()
 	end)
-
-	if not self.autohide then
-		self:settags'near'
-	end
 end
 
 function ui.scrollbar:before_free()
@@ -197,12 +205,18 @@ end
 --TODO: mousepress or mousehold
 function ui.scrollbar:mousedown(mx, my)
 	self.active = true
-	local delta = self.page_size * (mx < self.grabbar.x and -1 or 1)
+	local delta = self.click_scroll_size * (mx < self.grabbar.x and -1 or 1)
 	self:transition('offset', self:end_value'offset' + delta)
 end
 
 function ui.scrollbar:mouseup(mx, my)
 	self.active = false
+end
+
+function ui.scrollbar:scroll_by(delta)
+	self:settags'near'
+	self:settags'-near'
+	self:transition('offset', self:end_value'offset' - delta)
 end
 
 function ui.scrollbar:hit_test_near(mx, my)
@@ -245,7 +259,7 @@ ui.scrollbox.hscrollable = true
 ui.scrollbox.background_color = '#0000' --enable hit testing for scrolling
 ui.scrollbox.vscroll = 'always' --true/'always', 'near', 'auto', false/'never'
 ui.scrollbox.hscroll = 'always'
-ui.scrollbox.page_size = 50 --pixels per scroll wheel notch
+ui.scrollbox.wheel_scroll_size = 50 --pixels per scroll wheel notch
 ui.scrollbox.vscrollbar = ui.scrollbar
 ui.scrollbox.hscrollbar = ui.scrollbar
 ui.scrollbox.scrollbar_margin = 6
@@ -295,10 +309,7 @@ function ui.scrollbox:after_init(ui, t)
 end
 
 function ui.scrollbox:mousewheel(delta)
-	self.vscrollbar:settags'near'
-	self.vscrollbar:settags'-near'
-	self.vscrollbar:transition('offset',
-		self.vscrollbar:end_value'offset' - delta * self.page_size)
+	self.vscrollbar:scroll_by(delta * self.wheel_scroll_size)
 end
 
 function ui.scrollbox:before_draw_content()

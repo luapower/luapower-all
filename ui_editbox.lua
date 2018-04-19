@@ -10,6 +10,7 @@ local editbox = ui.layer:subclass'editbox'
 ui.editbox = editbox
 
 editbox.focusable = true
+editbox.scrollable = true
 editbox.max_click_chain = 3 --receive doubleclick and tripleclick events
 editbox.cursor_client = 'text'
 
@@ -63,18 +64,20 @@ local editor = codedit.object(codedit.editor, {
 
 editbox.editor = editor
 
-function editbox:before_draw_content()
-	local cr = self.window.cr
+function editbox:_sync()
 	self:setfont()
-	local view = self.editor.view
-	view.line_h = self.window:text_line_h()
-	view.ascender = self.window._font_ascent
-	self:_update_scrollbars()
-	view.scroll_x = -self.hscrollbar.offset
-	view.scroll_y = -self.vscrollbar.offset
-	view.w = self.w
-	view.h = self.h
+	self:_sync_view()
+	self:_sync_scrollbars()
+end
+
+function editbox:before_draw_content()
+	self:_sync()
 	self.editor:draw()
+end
+
+function view:scroll_changed(scroll_x, scroll_y)
+	self.editbox.vscrollbar:transition('offset', -scroll_y)
+	self.editbox.hscrollbar:transition('offset', -scroll_x)
 end
 
 function editbox:override_hit_test_content(inherited, x, y, reason)
@@ -93,38 +96,39 @@ function editor:capture_mouse(capture)
 end
 
 function editbox:mousedown(mx, my)
-	self:setfont()
 	self.editor:mousedown(mx, my)
 	self:invalidate()
 end
 
 function editbox:mouseup(mx, my)
-	self:setfont()
 	self.editor:mouseup(mx, my)
 	self:invalidate()
 end
 
 function editbox:mousemove(mx, my)
-	self:setfont()
+	self:_sync()
 	self.editor:mousemove(mx, my)
 	self:invalidate()
 end
 
 function editbox:click(mx, my)
-	self:setfont()
 	self.editor:click(mx, my)
 	self:invalidate()
 end
 
 function editbox:doubleclick(mx, my)
-	self:setfont()
 	self.editor:doubleclick(mx, my)
 	self:invalidate()
 end
 
 function editbox:tripleclick(mx, my)
-	self:setfont()
 	self.editor:tripleclick(mx, my)
+	self:invalidate()
+end
+
+function editbox:mousewheel(delta, mx, my, area, pdelta)
+	self:_sync()
+	self.vscrollbar:scroll_by(delta * self.editor.view.line_h)
 	self:invalidate()
 end
 
@@ -265,24 +269,45 @@ function editbox:keychar(s)
 	self:invalidate()
 end
 
-function editbox:_update_scrollbars()
-	local client_w, client_h = self.editor.view:client_size()
-
+function editbox:view_rect()
 	local vs = self.vscrollbar
 	local hs = self.hscrollbar
-
-	vs.x = self.x + w
-	vs.y = self.y
-	vs.w = self.y + h
-	vs.view_size = h
-	vs.content_size = ch
-
-	hs.x = self.x
-	hs.y = h
-	hs.w = w
-	hs.view_size = w
-	hs.content_size = cw
+	return
+		0, 0,
+		self.w - (vs.autohide and 0 or vs.h),
+		self.h - (hs.autohide and 0 or hs.h)
 end
+
+function editbox:_sync_view()
+	local view = self.editor.view
+	self:setfont()
+	view.line_h = self.window:text_line_h()
+	view.ascender = self.window._font_ascent
+	view.x, view.y, view.w, view.h = self:view_rect()
+	view.scroll_x = -self.hscrollbar.offset
+	view.scroll_y = -self.vscrollbar.offset
+end
+
+function editbox:_sync_scrollbars()
+	local vs = self.vscrollbar
+	local hs = self.hscrollbar
+	local view = self.editor.view
+	local cw, ch = view:client_size()
+	local mw = view:margins_width()
+	local vx, vy, vw, vh = self:view_rect()
+	vs.x = vx + vw + (vs.autohide and -vs.h or 0)
+	vs.w = vh
+	vs.view_size = vh
+	vs.content_size = ch
+	hs.y = vy + vh + (hs.autohide and -hs.h or 0)
+	hs.x = vx + mw
+	hs.w = vw - mw - vs.h
+	hs.view_size = vw - mw
+	hs.content_size = cw + view.cursor_xoffset + view.cursor_thickness
+end
+
+editbox.vscrollbar_class = ui.scrollbar
+editbox.hscrollbar_class = ui.scrollbar
 
 function editbox:after_init(ui, t)
 
@@ -292,18 +317,17 @@ function editbox:after_init(ui, t)
 	editor.editbox = self
 	editor.view.editbox = self
 
-	self.vscrollbar = self.ui:scrollbar{
+	self.vscrollbar = self.vscrollbar_class(self.ui, self.vscrollbar):merge{
 		id = self:_subtag'vscrollbar',
 		parent = self,
 		vertical = true,
-		autohide = false,
 	}
 
 	self.hscrollbar = self.ui:scrollbar{
 		id = self:_subtag'hscrollbar',
 		parent = self,
 		vertical = false,
-		autohide = false,
+		autohide = true,
 	}
 
 	--[[
@@ -330,5 +354,10 @@ if not ... then require('ui_demo')(function(ui, win)
 	}
 
 	edit:focus()
+
+	function win:client_rect_changed(cx, cy, cw, ch)
+		edit.w = cw - 20
+		edit.h = ch - 20
+	end
 
 end) end

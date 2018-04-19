@@ -5,5 +5,4 @@
 local ui = require'ui'
 
 ui.image = ui.layer:subclass'image'
-ui.image.isimage = true
 

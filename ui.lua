@@ -48,18 +48,18 @@ local function decode_nil(x) if x == nilkey then return nil end; return x; end
 
 local object = oo.object()
 
---speed up class field lookup by converting subclassing to static
---inheritance. note that runtime patching of non-final classes doesn't work
---anymore (extending classes still works but it's less useful).
---TODO: be one smarter and only do this once on super on instantiation.
-function object:override_subclass(inherited, ...)
-	return inherited(self, ...):inherit(self)
-end
-
---speed up virtual property lookup without detaching instances completely
---which would make instances too fat. patching of getters and setters through
---instances is not allowed anymore because this will patch the class instead!
 function object:before_init()
+	--speed up class field lookup by having the final class statically inherit
+	--all its fields. with this change, runtime patching of non-final classes
+	--after the first instantiation doesn't have an effect anymore (extending
+	--those classes still works but it's not that useful).
+	if not rawget(self.super, 'isfinalclass') then
+		self.super:inherit(self.super.super)
+		self.super.isfinalclass = true
+	end
+	--speed up virtual property lookup without detaching/fattening the instance.
+	--with this change, adding or overriding getters and setters through the
+	--instance is not allowed anymore, that would patch the class instead!
 	self.__setters = self.__setters
 	self.__getters = self.__getters
 end
@@ -114,11 +114,10 @@ local default_ease = 'expo out'
 --selectors ------------------------------------------------------------------
 
 ui.selector = oo.selector(ui.object)
-ui.selector.isselector = true
 
 function ui.selector:override_create(inherited, ui, sel, ...)
-	if type(sel) == 'table' and sel.isselector then
-		return sel
+	if oo.isinstance(sel, self) then
+		return sel --pass-through
 	end
 	return inherited(self, ui, sel, ...)
 end
@@ -401,6 +400,13 @@ function ui.transition:interpolate_function(elem, attr)
 	return self.interpolate[atype]
 end
 
+function ui.transition:override_create(inherited, ui, t, ...)
+	if oo.isinstance(t, self) then
+		--return t --pass-through
+	end
+	return inherited(self, ui, t, ...)
+end
+
 function ui.transition:after_init(ui, elem, attr, to,
 	duration, ease, delay, clock)
 
@@ -589,6 +595,13 @@ ui.element.transition_delay = 0
 ui.element.transition_speed = 1
 ui.element.transition_blend = 'replace_nodelay'
 
+function ui.element:override_create(inherited, ui, t, ...)
+	if oo.isinstance(t, self)  then
+		return t --pass-through
+	end
+	return inherited(self, ui, t, ...)
+end
+
 --tags & styles
 
 local function add_tags(tags, t)
@@ -606,14 +619,31 @@ function ui.element:after_init(ui, t)
 	local tags = {['*'] = true}
 	add_tags(class_tags, tags)
 	tags[self.classname] = true
-	add_tags(t.tags, tags)
+	if t and t.tags then
+		add_tags(t.tags, tags)
+	end
 	self.tags = tags
 	self:update(t)
 	self.tags = tags
-	if self.id then
-		tags[self.id] = true
-	end
 	self:update_styles()
+end
+
+function ui.element:get_id()
+	return self._id
+end
+
+function ui.element:set_id(id)
+	if self._id == id then return end
+	if self._id then
+		tags[self._id] = nil
+	end
+	self._id = id
+	self.tags[id] = true
+	if not self.updating then
+		self:update_styles()
+	else
+		self._invalid_styles = true
+	end
 end
 
 function ui.element:free()
@@ -627,6 +657,7 @@ function ui.element:begin_update()
 end
 
 function ui.element:update(t)
+	if not t then return end
 	self:begin_update()
 	--update elements in lexicographic order so that eg. `border_width` comes
 	--before `border_width_left` even though it's actually undefined behavior.
@@ -634,11 +665,34 @@ function ui.element:update(t)
 		self[k] = v
 	end
 	self:end_update()
+	return self
+end
+
+function ui.element:merge(t)
+	if not t then return end
+	self:begin_update()
+	--update elements in lexicographic order so that eg. `border_width` comes
+	--before `border_width_left` even though it's actually undefined behavior.
+	for k,v in sortedpairs(t) do
+		if self[k] == nil then
+			self[k] = v
+		end
+	end
+	self:end_update()
+	return self
 end
 
 function ui.element:end_update()
 	assert(self.updating)
 	self.updating = false
+end
+
+--TODO: generic mechanism for registering delayed updates
+function ui.element:after_end_update()
+	if self._invalid_styles then
+		self:update_styles()
+		self._invalid_styles = nil
+	end
 end
 
 function ui.element:_addtags(s)
@@ -672,7 +726,7 @@ function ui.element:settags(s)
 end
 
 function ui.element:update_styles()
-	return self.ui.stylesheet:update_element(self)
+	self.ui.stylesheet:update_element(self)
 end
 
 function ui.element:_save_initial_value(attr)
@@ -816,7 +870,6 @@ end
 --windows --------------------------------------------------------------------
 
 ui.window = oo.window(ui.element)
-
 ui.window.iswindow = true
 
 ui:style('window_layer', {
@@ -914,13 +967,13 @@ function ui.window:after_init(ui, t)
 		self.ui:_window_mouseup(self, button, mx, my, click_count)
 	end)
 
-	win:on('mousewheel.ui', function(win, delta, mx, my)
+	win:on('mousewheel.ui', function(win, delta, mx, my, pdelta)
 		local moved = self.mouse_x ~= mx or self.mouse_y ~= my
 		setmouse(mx, my)
 		if moved then
 			self.ui:_window_mousemove(self, mx, my)
 		end
-		self.ui:_window_mousewheel(self, delta, mx, my)
+		self.ui:_window_mousewheel(self, delta, mx, my, pdelta)
 	end)
 
 	win:on('keydown.ui', function(win, key)
@@ -969,11 +1022,11 @@ function ui.window:after_init(ui, t)
 		self:free()
 	end)
 
-	self.layer = self.layer(self.ui, merge({
-		id = self:_subtag'layer', tags = 'window_layer',
+	self.layer = self.layer_class(self.ui, self.layer):merge{
+		id = self:_subtag'layer',
 		x = 0, y = 0, w = self.w, h = self.h,
 		content_clip = false, window = self,
-	}, self.layer))
+	}
 
 	--prepare the layer for working parent-less
 	function self.layer:to_window(x, y)
@@ -1231,11 +1284,11 @@ function ui:_window_mouseup(window, button, mx, my, click_count)
 	end
 end
 
-function ui:_window_mousewheel(window, delta, mx, my)
-	window:fire('mousewheel', delta, mx, my)
+function ui:_window_mousewheel(window, delta, mx, my, pdelta)
+	window:fire('mousewheel', delta, mx, my, pdelta)
 	local widget, area = window:hit_test(mx, my, 'vscroll')
 	if widget then
-		widget:_mousewheel(delta, mx, my, area)
+		widget:_mousewheel(delta, mx, my, area, pdelta)
 	end
 end
 
@@ -1507,7 +1560,7 @@ end
 --layers ---------------------------------------------------------------------
 
 ui.layer = oo.layer(ui.element)
-ui.window.layer = ui.layer
+ui.window.layer_class = ui.layer
 
 ui.layer.activable = true
 ui.layer.targetable = true
@@ -1772,11 +1825,26 @@ function ui.layer:set_layer_index(index)
 	self.parent:move_layer(self, index)
 end
 
+function ui.layer:each_child(func)
+	if not self.layers then return end
+	for _,layer in ipairs(self.layers) do
+		layer:each_child(func)
+		func(layer)
+	end
+end
+
+function ui.layer:children()
+	return coroutine.wrap(function()
+		self:each_child(coroutine.yield)
+	end)
+end
+
 function ui.layer:add_layer(layer) --parent interface
 	self.layers = self.layers or {}
 	push(self.layers, layer)
 	layer._parent = self
 	layer.window = self.window
+	layer:each_child(function(layer) layer.window = self.window end)
 	self:fire('layer_added', layer)
 	self:invalidate()
 end
@@ -1786,6 +1854,7 @@ function ui.layer:remove_layer(layer) --parent interface
 	self:fire('layer_removed', layer)
 	layer._parent = false
 	layer.window = false
+	layer:each_child(function(layer) layer.window = false end)
 	self:invalidate()
 end
 
@@ -1848,8 +1917,8 @@ function ui.layer:_click(button, count, mx, my, area)
 	end
 end
 
-function ui.layer:_mousewheel(delta, mx, my, area)
-	self:fire('mousewheel', delta, mx, my, area)
+function ui.layer:_mousewheel(delta, mx, my, area, pdelta)
+	self:fire('mousewheel', delta, mx, my, area, pdelta)
 end
 
 --called on a potential drop target widget to accept the dragged widget.
