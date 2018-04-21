@@ -168,7 +168,6 @@ function ui.slider:set_position(pos)
 	local old_pos = self._position
 	pos = pos or old_pos
 	self._position = pos
-	if self.updating then return end
 	self._position = self:snap_position(pos)
 	local br = self.border.corner_radius_top_left
 	if not self.pin.dragging then
@@ -211,7 +210,10 @@ function ui.slider:keypress(key)
 	end
 end
 
-function ui.slider:after_init()
+ui.slider:_init_priority{position=0}
+
+function ui.slider:after_init(ui, t)
+	self._position = t and t.position
 	local br = self.border.corner_radius_top_left
 	self.border = self.border(self.ui, {
 		id = self:_subtag'border',

@@ -5,12 +5,12 @@
 local ui = require'ui'
 local box2d = require'box2d'
 local glue = require'glue'
+
+local merge = glue.merge
 local clamp = glue.clamp
 local lerp = glue.lerp
 
 ui.scrollbar = ui.layer:subclass'scrollbar'
-
-ui.scrollbar:_addtags'scrollbar'
 
 ui.scrollbar._vertical = true
 ui.scrollbar._offset = 0
@@ -117,7 +117,6 @@ end
 function ui.scrollbar:set_offset(offset)
 	if self._offset == offset then return end
 	self._offset = offset
-	if self.updating then return end
 	self:_clamp_offset()
 	self:_update_grabbar()
 end
@@ -125,7 +124,6 @@ end
 function ui.scrollbar:set_content_size(size)
 	if self._content_size == size then return end
 	self._content_size = size
-	if self.updating then return end
 	self:_clamp_offset()
 	self:_update_grabbar()
 end
@@ -133,7 +131,6 @@ end
 function ui.scrollbar:set_view_size(size)
 	if self._view_size == size then return end
 	self._view_size = size
-	if self.updating then return end
 	self:_clamp_offset()
 	self:_update_grabbar()
 end
@@ -146,8 +143,15 @@ function ui.scrollbar:override_rel_matrix(inherited)
 	return mt
 end
 
+ui.scrollbar:_init_priority{offset=0, view_size=0, content_size=0}
+
 function ui.scrollbar:after_init(ui, t)
 
+	if t then
+		self._offset = t.offset
+		self._content_size = t.content_size
+		self._view_size = t.view_size
+	end
 	self:_clamp_offset()
 	local bx, by, bw, bh = self:grabbar_rect()
 
@@ -260,8 +264,8 @@ ui.scrollbox.background_color = '#0000' --enable hit testing for scrolling
 ui.scrollbox.vscroll = 'always' --true/'always', 'near', 'auto', false/'never'
 ui.scrollbox.hscroll = 'always'
 ui.scrollbox.wheel_scroll_size = 50 --pixels per scroll wheel notch
-ui.scrollbox.vscrollbar = ui.scrollbar
-ui.scrollbox.hscrollbar = ui.scrollbar
+ui.scrollbox.vscrollbar_class = ui.scrollbar
+ui.scrollbox.hscrollbar_class = ui.scrollbar
 ui.scrollbox.scrollbar_margin = 6
 ui.scrollbox.content_class = ui.layer
 
@@ -276,10 +280,10 @@ function ui.scrollbox:after_init(ui, t)
 		content_clip = true, --for faster bounding box computation
 	})
 
-	self.vscrollbar = self.vscrollbar(self.ui, {
+	self.vscrollbar = self.vscrollbar_class(self.ui, merge({
 		id = self:_subtag'vertical_scrollbar',
 		parent = self, vertical = true, autohide = self.autohide,
-	})
+	}, self.vscrollbar))
 
 	function self.vscrollbar:override_hit_test_near(inherited, mx, my)
 		if inherited(self, mx, my)
@@ -291,10 +295,10 @@ function ui.scrollbox:after_init(ui, t)
 		end
 	end
 
-	self.hscrollbar = self.hscrollbar(self.ui, {
+	self.hscrollbar = self.hscrollbar_class(self.ui, merge({
 		id = self:_subtag'horizontal_scrollbar',
 		parent = self, vertical = false, autohide = self.autohide,
-	})
+	}, self.hscrollbar))
 
 	function self.hscrollbar:override_hit_test_near(inherited, mx, my)
 		if inherited(self, mx, my)
@@ -399,6 +403,7 @@ ui:style('scrollbar active', {
 		parent = win,
 		x = 0, y = 0, w = 900, h = 500,
 		background_color = '#111',
+		vscrollbar = {view_size = 100, content_size = 1000, offset = 10},
 		autohide = true,
 	}
 

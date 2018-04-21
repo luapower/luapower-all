@@ -32,7 +32,7 @@ function ui.tab:get_front_tab()
 end
 
 function ui.tab:set_index(index)
-	if self.updating or not self.parent then
+	if not self.parent then
 		self._index = index
 	else
 		self._index = nil
@@ -40,10 +40,8 @@ function ui.tab:set_index(index)
 	end
 end
 
-function ui.tab:after_end_update()
-	if self._index then
-		self.index = self._index
-	end
+function ui.tab:after_set_parent()
+	self.index = self._index
 end
 
 function ui.tab:after_set_active(active)
@@ -199,11 +197,11 @@ function ui.tablist:index_by_pos(x)
 	return math.floor(x / self:real_tab_w() + 0.5) + 1
 end
 
-function ui.tablist:_update_tabs_pos()
+function ui.tablist:_update_tabs_pos(duration)
 	for i,tab in ipairs(self.tabs) do
 		if not tab.active then
-			tab:transition('x', self:pos_by_index(i), 0)
-			tab:transition('w', self:real_tab_w(), 0)
+			tab:transition('x', self:pos_by_index(i), duration)
+			tab:transition('w', self:real_tab_w(), duration)
 		end
 	end
 end
@@ -238,7 +236,7 @@ function ui.tablist:after_add_layer(tab)
 	function tab:start_drag()
 		return self
 	end
-	self:_update_tabs_pos()
+	self:_update_tabs_pos(0)
 end
 
 function ui.tablist:after_remove_layer(tab)
@@ -312,6 +310,7 @@ if not ... then require('ui_demo')(function(ui, win)
 		local bg_color = {i / 5, i / 5, 0, 1}
 		local tab = ui:tab{
 			id = 'tab'..i,
+			index = 1,
 			parent = tl,
 			background_color = bg_color,
 			padding_left = 15,
@@ -347,7 +346,7 @@ if not ... then require('ui_demo')(function(ui, win)
 		end)
 		self:each('tablist', function(self)
 			self.w = cw - 2 * tl.x
-			self:_update_tabs_pos()
+			self:_update_tabs_pos(0)
 		end)
 	end
 

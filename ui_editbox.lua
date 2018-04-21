@@ -6,6 +6,8 @@ local ui = require'ui'
 local glue = require'glue'
 local codedit = require'codedit'
 
+local merge = glue.merge
+
 local editbox = ui.layer:subclass'editbox'
 ui.editbox = editbox
 
@@ -317,18 +319,18 @@ function editbox:after_init(ui, t)
 	editor.editbox = self
 	editor.view.editbox = self
 
-	self.vscrollbar = self.vscrollbar_class(self.ui, self.vscrollbar):merge{
+	self.vscrollbar = self.vscrollbar_class(self.ui, merge({
 		id = self:_subtag'vscrollbar',
 		parent = self,
 		vertical = true,
-	}
+	}, self.vscrollbar))
 
-	self.hscrollbar = self.ui:scrollbar{
+	self.hscrollbar = self.hscrollbar_class(self.ui, merge({
 		id = self:_subtag'hscrollbar',
 		parent = self,
 		vertical = false,
 		autohide = true,
-	}
+	}, self.hscrollbar))
 
 	--[[
 	--make the cursor blink

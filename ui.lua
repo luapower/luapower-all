@@ -437,7 +437,6 @@ function ui.transition:after_init(ui, elem, attr, to,
 			elem[attr] = to
 		else --running, set to interpolated value
 			local d = easing.ease(ease, way, t)
-			--print(elem.id, attr, t, d, from, to, interpolate(d, from, to, elem[attr]))
 			elem[attr] = interpolate(d, from, to, elem[attr])
 		end
 		return t <= 1
@@ -604,28 +603,62 @@ end
 
 --tags & styles
 
-local function add_tags(tags, t)
-	for tag in gmatch_tags(tags) do
-		t[tag] = true
+function ui.element:_init_priority(t)
+	if self.__init_priority == self.super.__init_priority then
+		self.__init_priority = {}
 	end
+	update(self.__init_priority, t)
 end
 
+ui.element:_init_priority{id=0, tags=0}
+
+local function add_tags(tags, t)
+	if not t then return end
+	for tag in gmatch_tags(t) do
+		tags[tag] = true
+	end
+end
 function ui.element:after_init(ui, t)
 	self.ui = ui
-
 	self.ui:_add_element(self)
-
 	local class_tags = self.tags
-	local tags = {['*'] = true}
-	add_tags(class_tags, tags)
-	tags[self.classname] = true
-	if t and t.tags then
-		add_tags(t.tags, tags)
+	self.tags = {['*'] = true}
+	add_tags(self.tags, class_tags)
+	self.tags[self.classname] = true
+	local id = t and t.id
+	if id then
+		self._id = id
+		self.tags[id] = true
 	end
-	self.tags = tags
-	self:update(t)
-	self.tags = tags
+	add_tags(self.tags, t and t.tags)
+	--update attrs in lexicographic order so that eg. `border_width` comes
+	--before `border_width_left` even though it's actually undefined behavior.
+	if t then
+		local pri = self.__init_priority
+		local function cmp(a, b)
+			local pa, pb = pri[a], pri[b]
+			if pa and pb then
+				return pa < pb
+			elseif pa then
+				return true
+			elseif pb then
+				return false
+			else
+				return a < b
+			end
+		end
+		for k,v in sortedpairs(t, cmp) do
+			if (pri[k] or 1) > 0 then
+				self[k] = v
+			end
+		end
+	end
 	self:update_styles()
+end
+
+function ui.element:free()
+	self.ui:_remove_element(self)
+	self.ui = false
 end
 
 function ui.element:get_id()
@@ -635,68 +668,11 @@ end
 function ui.element:set_id(id)
 	if self._id == id then return end
 	if self._id then
-		tags[self._id] = nil
+		self.tags[self._id] = nil
 	end
 	self._id = id
 	self.tags[id] = true
-	if not self.updating then
-		self:update_styles()
-	else
-		self._invalid_styles = true
-	end
-end
-
-function ui.element:free()
-	self.ui:_remove_element(self)
-	self.ui = false
-end
-
-function ui.element:begin_update()
-	assert(not self.updating)
-	self.updating = true
-end
-
-function ui.element:update(t)
-	if not t then return end
-	self:begin_update()
-	--update elements in lexicographic order so that eg. `border_width` comes
-	--before `border_width_left` even though it's actually undefined behavior.
-	for k,v in sortedpairs(t) do
-		self[k] = v
-	end
-	self:end_update()
-	return self
-end
-
-function ui.element:merge(t)
-	if not t then return end
-	self:begin_update()
-	--update elements in lexicographic order so that eg. `border_width` comes
-	--before `border_width_left` even though it's actually undefined behavior.
-	for k,v in sortedpairs(t) do
-		if self[k] == nil then
-			self[k] = v
-		end
-	end
-	self:end_update()
-	return self
-end
-
-function ui.element:end_update()
-	assert(self.updating)
-	self.updating = false
-end
-
---TODO: generic mechanism for registering delayed updates
-function ui.element:after_end_update()
-	if self._invalid_styles then
-		self:update_styles()
-		self._invalid_styles = nil
-	end
-end
-
-function ui.element:_addtags(s)
-	self.tags = self.tags and self.tags .. ' ' .. s or s
+	self:update_styles()
 end
 
 function ui.element:_subtag(tag)
@@ -892,19 +868,21 @@ function ui:free()
 	end
 end
 
-function ui.window:update(t)
-	--don't update fields wholesale because most are for the native window.
-end
+ui.window:_init_priority{native_window=0}
 
-function ui.window:after_init(ui, t)
+function ui.window:override_init(inherited, ui, t)
 
-	local win = self.native_window
+	local win = t.native_window
 	if not win then
-		win = self.ui:native_window(t)
+		win = ui:native_window(t)
 		self.native_window = win
 		self.own_native_window = true
+	else
+		self.native_window = t.native_window
 	end
-	self.ui.windows[self] = true
+	ui.windows[self] = true
+
+	inherited(self, ui, t)
 
 	self.x, self.y, self.w, self.h = self.native_window:frame_rect()
 	self.cx, self.cy, self.cw, self.ch = self.native_window:client_rect()
@@ -1022,11 +1000,11 @@ function ui.window:after_init(ui, t)
 		self:free()
 	end)
 
-	self.layer = self.layer_class(self.ui, self.layer):merge{
+	self.layer = self.layer_class(self.ui, merge({
 		id = self:_subtag'layer',
 		x = 0, y = 0, w = self.w, h = self.h,
 		content_clip = false, window = self,
-	}
+	}, self.layer))
 
 	--prepare the layer for working parent-less
 	function self.layer:to_window(x, y)
