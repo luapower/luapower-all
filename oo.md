@@ -14,6 +14,7 @@ Object system with virtual properties and method overriding hooks.
    * `apple = Apple(...)`
    * `apple.super -> Apple`
    * `Apple.super -> Fruit`
+   * `apple.isApple, apple.isFruit, Apple.isApple, Apple.isFruit -> true`
  * multiple, static inheritance by request:
    * `Apple:inherit(Fruit[,replace])` - statically inherit `Fruit`,
 	  optionally replacing existing properties.
@@ -44,9 +45,13 @@ Object system with virtual properties and method overriding hooks.
 	* `apple:off'.ns1'` - remove all event handlers on the `ns1` namespace
 	* `apple:off() - remove all event handlers registered on `apple`
  * introspection:
-   * `oo.is(obj, class|classname) -> true|false` - check instance/class ancestry
-   * `self:is(class|classname) -> true|false` - check instance/class ancestry
-   * `self:allpairs() -> iterator() -> name, value, source` - iterate all
+   * `oo.is(obj|class, class|classname) -> true|false` - check instance/class ancestry
+   * `oo.isinstance(obj|class[, class|classname]) -> true|false` - check instance ancestry
+   * `oo.issubclass(class[, class|classname]) -> true|false` - check class ancestry
+	* `apple:is(class|classname) -> true|false` - check instance/class ancestry
+	* `apple:isinstance([class|classname]) -> true|false` - check instance ancestry
+	* `Apple:issubclass([class|classname]) -> true|false` - check class ancestry
+	* `self:allpairs() -> iterator() -> name, value, source` - iterate all
 	  properties, including inherited _and overriden_ ones.
    * `self:properties()` -> get a table of all current properties and values,
 	  including inherited ones.
@@ -57,10 +62,6 @@ Object system with virtual properties and method overriding hooks.
    * `Apple = oo.Apple(Fruit)` is sugar for `Apple = Fruit:subclass('Apple')`
    * `apple = Apple(...)` is sugar for `apple = Apple:create(...)`
       * `Apple:create()` calls `apple:init(...)`
-	* `Fruit.__install['^prefix_(.*)'] = function(self, k, v) ... end` -
-	add a new meta-method installer. Getters, setters and overriding hooks
-	are implemented this way (the matches being `^get_(.*)`, `^set_(.*)`,
-	`^before_(.*)`, `^after_(.*)` and `^override_(.*)`).
 
 ## Inheritance and instantiation
 

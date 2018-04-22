@@ -18,18 +18,25 @@ local function class(super,...)
 	return (super or Object):subclass(...)
 end
 
-local function is(obj, class)
-	if type(obj) == 'table' and type(obj.is) == 'function' then
-		return obj:is(class)
-	else
-		return false
+local function isfunc(test)
+	return function(obj, class)
+		if type(obj) ~= 'table' then return false end
+		local test = obj[test]
+		if type(test) ~= 'function' then return false end
+		return test(obj, class)
 	end
 end
+local is = isfunc'is'
+local isinstance = isfunc'isinstance'
+local issubclass = isfunc'issubclass'
 
 function Object:subclass(classname, subclass)
 	local subclass = subclass or {}
 	subclass.super = self
 	subclass.classname = classname or ''
+	if classname then
+		subclass['is'..classname] = true
+	end
 	return setmetatable(subclass, getmetatable(self))
 end
 
@@ -52,7 +59,7 @@ function meta:__index(k)
 	if type(k) == 'string' then
 		--some keys are not virtualizable to avoid infinite recursion,
 		--but they are dynamically inheritable nonetheless.
-		if k ~= '__getters' and k ~= '__setters' and k ~= '__install' then
+		if k ~= '__getters' and k ~= '__setters' then
 			if k == 'super' then --'super' is not even inheritable
 				return nil
 			end
@@ -94,11 +101,6 @@ function meta:__newindex(k,v)
 		return
 	end
 	local getters = self.__getters
-<<<<<<< HEAD
-	local get = getters and getters[k]
-	if get then --r/o property
-		error(string.format('trying to set read only property "%s"', k))
-=======
 	if getters and getters[k] then --replacing a read-only property
 		getters[k] = nil
 	end
@@ -117,43 +119,9 @@ function meta:__newindex(k,v)
 	elseif k:find'^override_' then --install override hook
 		local method_name = k:match'^override_(.*)'
 		self:override(method_name, v)
->>>>>>> 5e03e0f952ec0fb54fa20e716e5840067785d8e8
 	else
-		local installed
-		for patt, install in pairs(self.__install) do
-			local s = k:match(patt)
-			if s then
-				install(self, s, v)
-				installed = true
-				break
-			end
-		end
-		if not installed then
-			rawset(self, k, v)
-		end
+		rawset(self, k, v)
 	end
-end
-
-create_table(Object, '__install')
-
-Object.__install['^get_(.*)'] = function(self, k, v)
-	create_table(self, '__getters')[k] = v
-end
-
-Object.__install['^set_(.*)'] = function(self, k, v)
-	create_table(self, '__setters')[k] = v
-end
-
-Object.__install['^before_(.*)'] = function(self, k, v)
-	self:before(k, v)
-end
-
-Object.__install['^after_(.*)'] = function(self, k, v)
-	self:after(k, v)
-end
-
-Object.__install['^override_(.*)'] = function(self, k, v)
-	self:override(k, v)
 end
 
 local function install(self, combine, method_name, hook)
@@ -218,6 +186,14 @@ function Object:is(class)
 	else
 		return false
 	end
+end
+
+function Object:isinstance(class)
+	return rawget(self, 'classname') == nil and (not class or self:is(class))
+end
+
+function Object:issubclass(class)
+	return rawget(self, 'classname') ~= nil and (not class or self:is(class))
 end
 
 --returns iterator<k,v,source>; iterates bottom-up in the inheritance chain
@@ -473,6 +449,8 @@ setmetatable(Object, meta)
 return setmetatable({
 	class = class,
 	is = is,
+	isinstance = isinstance,
+	issubclass = issubclass,
 	Object = Object,
 }, {
 	__index = function(t,k)
