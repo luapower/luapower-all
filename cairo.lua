@@ -630,7 +630,6 @@ cr.font_face = getset_func(C.cairo_get_font_face, function(cr, family, slant, we
 	else
 		C.cairo_set_font_face(cr, family) --in fact: cairo_font_face_t
 	end
-	cr:check()
 end)
 cr.scaled_font = getset_func(C.cairo_get_scaled_font, C.cairo_set_scaled_font) --weak ref
 cr.show_text = C.cairo_show_text
@@ -638,7 +637,6 @@ cr.show_glyphs = C.cairo_show_glyphs
 cr.show_text_glyphs = function(cr, s, slen, glyphs, num_glyphs, clusters, num_clusters, cluster_flags)
 	C.cairo_show_text_glyphs(cr, s, slen or #s, glyphs, num_glyphs, clusters, num_clusters,
 		cluster_flags and X('CAIRO_TEXT_CLUSTER_FLAG_', cluster_flags) or 0)
-	cr:check()
 end
 cr.text_path = C.cairo_text_path
 cr.glyph_path = C.cairo_glyph_path
