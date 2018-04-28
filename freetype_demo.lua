@@ -162,6 +162,7 @@ local faces = {
 	['Amiri Regular'] = 'media/fonts/amiri-regular.ttf',
 	['DejaVu Serif']  = 'media/fonts/DejaVuSerif.ttf',
 	['Firefly Sung']  = 'media/fonts/fireflysung.ttf',
+	['Fixedsys300']  = 'media/fonts/FSEX300.ttf',
 }
 
 --metrics
@@ -235,10 +236,11 @@ function player:on_render(cr)
 	for i=1,face.num_charmaps do
 		local v = i-1
 		values[i] = v
-		texts[v] = 'Charmap '..tostring(i)
+		texts[v] = 'Charmap '..tostring(i)..' '..
+			ffi.string(face.charmaps[v]:encoding_str(), 4)
 	end
 
-	charmap = self:mbutton{id = 'charmap', x = 610, y = 10, w = #values * 80, h = button_h,
+	charmap = self:mbutton{id = 'charmap', x = 690, y = 10, w = #values * 80, h = button_h,
 									values = values, texts = texts, selected = charmap}
 
 	face:select_charmap(face.charmaps[charmap].encoding)
@@ -247,10 +249,10 @@ function player:on_render(cr)
 
 	local glyph_count = face:char_count()
 	local charmap_h = charmap_height(glyph_count, cell_size, self.w - scroll_w)
-	local page_size = cell_size * 4
-	local line_size = cell_size / 2
+	local page_size = self.h - charmap_y
+	local line_size = cell_size
 
-	scroll = scroll - self.wheel_delta * page_size
+	scroll = scroll - self.wheel_delta * line_size
 
 	if self.key == 'pagedown' or self.key == 'right' then
 		scroll = scroll + page_size

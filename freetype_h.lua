@@ -307,7 +307,10 @@ typedef enum FT_Encoding_ {
 
 typedef struct FT_CharMapRec_ {
 	FT_Face face;
-	FT_Encoding encoding;
+	union {
+		FT_Encoding encoding;
+		char _encoding_str[4];
+	};
 	FT_UShort platform_id;
 	FT_UShort encoding_id;
 } FT_CharMapRec;

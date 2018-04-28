@@ -233,7 +233,11 @@ end
 
 function face.select_charmap(face, encoding)
 	if type(encoding) == 'string' then
-		encoding = (s:byte(1) or 32) * 2^24 + (s:byte(2) or 32) * 2^16 + (s:byte(3) or 32) * 256 + (s:byte(4) or 32)
+		encoding =
+			  (encoding:byte(1) or 32) * 2^24
+			+ (encoding:byte(2) or 32) * 2^16
+			+ (encoding:byte(3) or 32) * 2^8
+			+ (encoding:byte(4) or 32)
 	end
 	checknz(C.FT_Select_Charmap(face, encoding))
 end
@@ -248,6 +252,10 @@ function charmap.index(charmap)
 	local ret = C.FT_Get_Charmap_Index(charmap)
 	assert(ret ~= -1, 'invalid charmap')
 	return ret
+end
+
+function charmap.encoding_str(charmap)
+	return string.reverse(ffi.string(charmap._encoding_str, 4))
 end
 
 face.first_char = C.FT_Get_First_Char
