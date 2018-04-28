@@ -7,7 +7,7 @@ tagline: everyday Lua functions
 ## API Summary
 ------------------------------------------------------------------ ---------------------------------------------------------
 __math__
-`glue.round(x) -> y`                                               round x to nearest integer
+`glue.round(x) -> y`                                               round x to nearest integer (half up)
 `glue.clamp(x, min, max) -> y`                                     clamp x in range
 `glue.lerp(x, x0, x1, y0, y1) -> y`                                linear interpolation
 __varargs__
@@ -29,11 +29,12 @@ __lists__
 `glue.reverse(t) -> t`                                             reverse list in place
 __strings__
 `glue.gsplit(s,sep[,start[,plain]]) -> iter() -> e[,captures...]`  split a string by a pattern
-`glue.lines(s) -> iter() -> s`                                     iterate the lines of a string
+`glue.lines(s[, opt]) -> iter() -> s`                              iterate the lines of a string
 `glue.trim(s) -> s`                                                remove padding
 `glue.escape(s [,mode]) -> pat`                                    escape magic pattern characters
 `glue.tohex(s|n [,upper]) -> s`                                    string to hex
 `glue.fromhex(s) -> s`                                             hex to string
+`glue.starts(s, p) -> t|f`                                         find if string `s` starts with string `p`
 __iterators__
 `glue.collect([i,] iterator) -> t`                                 collect iterated values into a list
 __closures__
@@ -41,7 +42,7 @@ __closures__
 `glue.memoize(f) -> f`                                             memoize pattern
 __metatables__
 `glue.inherit(t, parent) -> t`                                     set or clear inheritance
-`glue.object([super][, t]) -> t`                                   create a class or object (see description)
+`glue.object([super][, t], ...) -> t`                              create a class or object (see description)
 `glue.autotable([t]) -> t`                                         autotable pattern
 __i/o__
 `glue.canopen(filename[, mode]) -> filename | nil`                 check if a file exists and can be opened
@@ -70,6 +71,18 @@ __ffi__
 ------------------------------------------------------------------ ---------------------------------------------------------
 
 ## Math
+
+### `glue.round(x) -> y`
+
+Round a number towards nearest integer (implemented as `math.floor(x + .5)`.
+Rounds half-up (i.e. it returns `-1` for `-1.5`). Works with numbers up to
+`+/-2^52`. It's not dead accurate as it returns eg. `1` instead of `0` for
+`0.49999999999999997` (the number right before `0.5`) which is < `0.5`.
+
+### `glue.snap(x, y) -> y`
+
+Snap a number to the nearest multiple of `y`. The rounding behavior is
+half-up (i.e. returns `-5` for `glue.snap(-7.5, 5)`).
 
 ### `glue.clamp(x, min, max)`
 
@@ -312,14 +325,15 @@ end
 
 ------------------------------------------------------------------------------
 
-### `glue.lines(s) -> iter() -> s`
+### `glue.lines(s[, opt]) -> iter() -> s`
 
 Iterate the lines of a string.
 
   * the lines are split at `\r\n`, `\r` and `\n` markers.
-  * the line ending markers are included in the iterated strings.
+  * the line ending markers are included or excluded depending on the second
+  arg, which can be `*L` (include line endings; default) or `*l` (exclude).
   * if the string is empty or doesn't contain a line ending marker, it is
-  is iterated once.
+  iterated once.
   * if the string ends with a line ending marker, one more empty string is
   iterated.
 
@@ -364,6 +378,14 @@ Convert a binary string or a Lua number to its hex representation.
 ### `glue.fromhex(s) -> s`
 
 Convert a hex string to its binary representation.
+
+------------------------------------------------------------------------------
+
+### `glue.starts(s, p) -> t|f`
+
+Find if string `s` starts with `p`. Implemented as `s:sub(1, #p) == p` which
+is 5x faster than `s:find'^...'` in LuaJIT 2.1 with JIT on (and about the
+same with jit off).
 
 ------------------------------------------------------------------------------
 
@@ -478,22 +500,22 @@ Hints:
 
 ------------------------------------------------------------------------------
 
-### `glue.object([super][, t]) -> t`
+### `glue.object([super][, t], ...) -> t`
 
 Create a class or object from `t` (which defaults to `{}`) by setting `t`
 as its own metatable, setting `t.__index` to `super` and `t.__call` to
-`super.__call`. This simple object model has the following qualities:
+`super.__call`. Extra args are passed to `glue.update(self, ...)`.
+This simple object model has the following qualities:
 
-  * the implementation is only 4 LOC (not a typo) and can thus be copy-pasted
-  into any module to avoid a dependency on the glue library.
+  * the implementation is only 4 LOC (14 LOC if extra args are used) and can
+  thus be copy-pasted into any module to avoid a dependency on the glue library.
   * procedural instantiation with `t(...)` which calls `t:__call(...)`.
   * small memory footprint (3 table slots and no additional tables).
   * subclassing from instances is allowed (prototype-based inheritance).
-  * a stub class/instance constructor looks like this:
-    * `function t:__call(o) return glue.object(self, o) end`.
+  * `glue.object` can serve as a stub class/instance constructor:
+  `t.__call = glue.object`.
   * a separate constructor to be used only for subclassing can be made with
-  the same pattern:
-    * `function t:subclass(c) return glue.object(self, c) end`.
+  the same pattern: `t.subclass = glue.object`.
   * virtual classes (i.e. nested inner classes whose fields and methods can
   be overridden by subclasses of the outer class): composite objects which
   need to instantiate other objects can be made extendable easily by exposing
@@ -836,32 +858,14 @@ for the pointer (defaults to `void*`).
 
 ## Tips
 
-String functions are also in the `glue.string` table. You can extend the Lua `string` namespace:
+String functions are also in the `glue.string` table.
+You can extend the Lua `string` namespace:
 
-	glue.update(string, glue.string)
+	`glue.update(string, glue.string)`
 
 so you can use them as string methods:
 
-	s = s:trim()
-
-
-## Keywords
-
-_for syntax highlighting_
-
-glue.clamp,
-glue.pack, glue.unpack,
-glue.count, glue.index, glue.keys, glue.update, glue.merge, glue.sortedpairs, glue.attr,
-glue.indexof, glue.extend, glue.append, glue.shift, glue.reverse,
-glue.gsplit, glue.lines, glue.trim, glue.escape, glue.tohex, glue.fromhex,
-glue.collect,
-glue.pass, glue.memoize,
-glue.inherit, glue.object, glue.autotable,
-glue.canopen, glue.readfile, glue.readpipe, glue.writefile, glue.printer,
-glue.assert, glue.protect, glue.pcall, glue.fpcall, glue.fcall,
-glue.autoload, glue.bin, glue.luapath, glue.cpath,
-glue.malloc, glue.free, glue.addr, glue.ptr
-
+	`s = s:trim()`
 
 ## Design
 

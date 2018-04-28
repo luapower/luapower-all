@@ -18,6 +18,10 @@ function glue.round(x)
 	return floor(x + 0.5)
 end
 
+function glue.snap(x, y)
+	return math.floor(x / y + .5) * y
+end
+
 function glue.clamp(x, x0, x1)
 	return min(max(x, x0), x1)
 end
@@ -274,6 +278,10 @@ function glue.string.fromhex(s)
 	end))
 end
 
+function glue.string.starts(s, p) --5x faster than s:find'^...' in LuaJIT 2.1
+	return s:sub(1, #p) == p
+end
+
 --publish the string submodule in the glue namespace.
 glue.update(glue, glue.string)
 
@@ -318,10 +326,11 @@ function glue.inherit(t, parent)
 end
 
 --prototype-based dynamic inheritance with __call constructor.
-function glue.object(super, o)
+function glue.object(super, o, ...)
 	o = o or {}
 	o.__index = super
 	o.__call = super and super.__call
+	glue.update(self, ...) --add mixins, defaults, etc.
 	return setmetatable(o, o)
 end
 

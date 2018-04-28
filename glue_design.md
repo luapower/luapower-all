@@ -5,16 +5,12 @@ tagline:  how and why
 
 ## Scope
 
-A small, highly useful bag of tricks.
-
-The glue API should be _compact, not complete_. This is the one API that
-should fit comfortably in someone's head. Adding rarely used or too
-specialized functions should be avoided.
-
-Every function should come with a compelling real-world example in its
-defense. In fact, the library should only be permitted to grow from
-real-world examples which should be used to document and justify the
-inclusions.
+A place to accumulate good implementations of common Lua idioms, mainly so
+that they can be copy-pasted in library code (a typical library only needs
+a few functions from glue) or used directly in app code (where another
+dependency is a problem). In this context a good implementation is first
+of all small and its corner cases well documented (since they are usually not
+addressed in the implementation in order to keep the code small and fast).
 
 ## Naming
 
@@ -54,7 +50,7 @@ the required learning time from programmers by themselves.
 ### Sugar
 
 Don't add shortcut functions except when calling the shortcut function makes
-the code more readable than the equivalent Lua code.
+the intent clearer than when reading the equivalent Lua code.
 
 If something is an [idiom][lua-tricks], don't add a function for it, use it
 directly. Chances are its syntax will be more popular than its name. Eg. it's
