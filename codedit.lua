@@ -5,10 +5,19 @@
 if not ... then require'codedit_demo'; return end
 
 --prototype-based dynamic inheritance with __call constructor (from glue).
-local function object(super, o)
+local function object(super, o, ...)
 	o = o or {}
 	o.__index = super
 	o.__call = super and super.__call
+	if not super then o.subclass = object end
+	for i = 1, select('#', ...) do --add mixins, defaults, etc.
+		local t = select(i, ...)
+		if t then
+			for k,v in pairs(t) do
+				o[k] = v
+			end
+		end
+	end
 	return setmetatable(o, o)
 end
 
@@ -241,14 +250,6 @@ function str.lines(s)
 	return str.next_line, s
 end
 
-function str.line_count(s)
-	local n = 0
-	for _ in str.lines(s) do
-		n = n + 1
-	end
-	return n
-end
-
 --returns the most common line terminator in a string, if any, and whether
 --the string contains mixed line terminators or not.
 function str.detect_term(s)
@@ -356,11 +357,12 @@ local tabs = {
 
 local buffer = object()
 
+buffer.multiline = true
 buffer.line_terminator = '\n' --line terminator to use when inserting text
 
-function buffer:__call()
-	self = object(self)
-	self:_init()
+function buffer:__call(...)
+	self = object(self, ...)
+	self:init()
 	return self
 end
 
@@ -368,13 +370,26 @@ end
 --terminator at its end, except the last line which doesn't have one, never.
 --the empty string is thus stored as a single line containing itself.
 
-function buffer:_init(lines)
+function buffer:init(lines)
 	self.lines = lines or {}
 	if #self.lines == 0 then
 		self.lines[1] = '' --can't have zero lines
 	end
 	self:_init_undo()
 	self:_init_changed()
+end
+
+local function whole_string(s, last)
+	if not last then
+		return #s + 1, 1
+	end
+end
+function buffer:_lines(s)
+	if self.multiline then
+		return str.lines(s)
+	else
+		return whole_string, s
+	end
 end
 
 --invalidation & events ------------------------------------------------------
@@ -425,7 +440,7 @@ function buffer:_load_stream(read)
 		local s = read()
 		if not s then break end
 		local s0 = lines[#lines]
-		for j,i in str.lines(s) do
+		for j,i in self:_lines(s) do
 			local s = s:sub(i,j-1)
 			if s0 and #s0 > 0 then
 				s = s0 .. s --stitch to last line
@@ -436,15 +451,15 @@ function buffer:_load_stream(read)
 			end
 		end
 	end
-	self:_init(lines)
+	self:init(lines)
 end
 
 function buffer:_load_string(s)
 	local lines = {}
-	for j,i in str.lines(s) do
+	for j,i in self:_lines(s) do
 		lines[#lines+1] = s:sub(i,j-1)
 	end
-	self:_init(lines)
+	self:init(lines)
 end
 
 function buffer:load(arg)
@@ -477,7 +492,7 @@ function buffer:start_undo_group(group_type)
 		self:end_undo_group() --auto-close current group to start a new one
 	end
 	self.undo_group = {type = group_type}
-	--TODO: self.editor:save_state(self.undo_group)
+	self.editor:save_state(self.undo_group)
 end
 
 function buffer:end_undo_group()
@@ -504,7 +519,7 @@ local function undo_from(self, group_stack)
 		self[cmd[1]](self, unpack(cmd, 2))
 	end
 	self:end_undo_group()
-	--TODO: self.editor:load_state(group)
+	self.editor:load_state(group)
 end
 
 function buffer:undo()
@@ -564,9 +579,12 @@ local function next_nonterm_char(s, i)
 	if str.isterm(s, i) then return end
 	return i, s
 end
+local function next_char(s, i) --iterate the chars of a line
+	return str.next_char(s, i), s
+end
 function buffer:chars(line)
 	local s = self.lines[line]
-	return next_nonterm_char, s or ''
+	return self.multiline and next_nonterm_char or next_char, s or ''
 end
 
 --the position after the last char in the text
@@ -680,7 +698,7 @@ function buffer:insert(line, i, s)
 	local s2 = s0:sub(i)
 	s = s1 .. s .. s2
 	local first_line = true
-	for j, i in str.lines(s) do
+	for j, i in self:_lines(s) do
 		local s = s:sub(i, j-1)
 		if first_line then
 			self:setline(line, s)
@@ -846,11 +864,8 @@ cursor.thickness = nil
 cursor.color = nil
 cursor.line_highlight_color = nil
 
-function cursor:__call(buffer, view, visible)
-	self = object(self)
-	self.buffer = buffer
-	self.view = view
-	self.visible = visible
+function cursor:__call(...)
+	self = object(self, ...)
 	self.line = 1
 	self.i = 1 --current byte index in current line
 	self.x = 0 --wanted x offset when navigating up/down
@@ -1117,7 +1132,8 @@ function cursor:word_bounds()
 	if not s then return self.i, self.i end
 	local i1 = str.prev_word_break_char(s, self.i, self.word_chars) or 1
 	local i2 = str.next_word_break_char(s, self.i, self.word_chars)
-	i2 = (i2 and str.prev_nonspace_char(s, i2) or self:eol(line) - 1) + 1
+	i2 = (i2 and str.prev_nonspace_char(s, i2)
+		or self.buffer:eol(self.line) - 1) + 1
 	return i1, i2
 end
 
@@ -1303,11 +1319,8 @@ selection.line_rect = nil --line_rect(line) -> x, y, w, h
 
 --lifetime
 
-function selection:__call(buffer, view, visible)
-	self = object(self)
-	self.buffer = buffer
-	self.view = view
-	self.visible = visible
+function selection:__call(...)
+	self = object(self, ...)
 	self.line1, self.i1 = 1, 1
 	self.line2, self.i2 = 1, 1
 	self.changed = {}
@@ -1462,7 +1475,8 @@ end
 function selection:indent(use_tab)
 	local line1, line2 = self:line_range()
 	for line = line1, line2 do
-		self.buffer:indent_line(line, use_tab)
+		--TODO: implement this
+		--self.buffer:indent_line(line, use_tab)
 	end
 	self:set_to_line_range()
 end
@@ -1835,10 +1849,8 @@ end
 
 local hl = {}
 
-function hl:__call(buffer, lang)
-	self = object(self)
-	self.buffer = buffer
-	self.lang = lang
+function hl:__call(...)
+	self = object(self, ...)
 	self.last_line = 0
 	return self
 end
@@ -1860,19 +1872,19 @@ local hl = {
 	tokens = project_lines,
 }
 
---view: measuring, layouting, rendering and hit testing ----------------------
+--view: measuring, layouting, drawing and hit testing ------------------------
 
 --features: proportional fonts, auto-wrapping, line margins, scrolling.
 
 --[[
 
 ...................................
-:client :m1 :m2 :                 :  view rect (*):     x, y, w, h (contains the clipped margins and the scrollbox)
-:rect   :   :   :                 :  scrollbox rect:    x + margins_w, y, w - margins_w, h
-:       :___:___:______________   :  clip rect:         clip_x, clip_y, clip_w, clip_h (from drawing the scrollbox)
-:       |(*)|   |clip       | |   :  client rect:       clip_x + scroll_x, clip_y + scroll_y, client_size()
-:       |   |   |rect       | |   :  margin1 rect:      x, client_y, m1:get_width(), client_h
-:       |   |   |           |#|   :  margin1 clip rect: m1_x, clip_y, m1_w, clip_h
+:client :m1 :m2 :                 :
+:rect   :   :   :                 :
+:       :___:___:______________   :
+:       |(*)|   |clip       | |   :
+:       |   |   |rect       | |   :
+:       |   |   |           |#|   :
 :       |   |   |           |#|   :
 :       |   |   |           |#|   :
 :       |   |   |           |#|   :
@@ -1882,6 +1894,13 @@ local hl = {
 :       :   :   :                 :
 :       :   :   :                 :
 ...................................
+
+view rect (*):     x, y, w, h (contains the clipped margins and the scrollbox)
+scrollbox rect:    x + margins_w, y, w - margins_w, h
+clip rect:         clip_x, clip_y, clip_w, clip_h (from drawing the scrollbox)
+client rect:       clip_x + scroll_x, clip_y + scroll_y, client_size()
+margin1 rect:      x, client_y, m1:get_width(), client_h
+margin1 clip rect: m1_x, clip_y, m1_w, clip_h
 
 ]]
 
@@ -1901,9 +1920,17 @@ view.cursor_xoffset_col1 = 0 --cursor x offset for the first column
 view.cursor_thickness = 2
 
 --scrolling
-view.cursor_margins = {top = 16, left = 0, right = 0, bottom = 16}
+view.x = 0
+view.y = 0
+view.scroll_x = 0 --client rect position relative to the clip rect
+view.scroll_y = 0
+view.cursor_margins = {
+	top = 16,
+	left = 0,
+	right = view.cursor_xoffset + view.cursor_thickness,
+	bottom = 16}
 
---rendering
+--drawing
 view.highlight_cursor_lines = true
 view.lang = nil --optional lexer to use for syntax highlighting
 
@@ -1912,25 +1939,22 @@ view.line_width = 72
 
 --lifetime
 
-function view:__call(buffer)
-	self = object(self)
-	self:init(buffer)
+function view:__call(...)
+	self = object(self, ...)
+	self:init()
 	return self
 end
 
-function view:init(buffer)
-	self.buffer = buffer
-	--objects to render
+function view:init()
+	--objects to draw
 	self.selections = {} --{selections = true, ...}
 	self.cursors = {} --{cursor = true, ...}
 	self.margins = {} --{margin1, ...}
 	--state
-	self.scroll_x = 0 --client rect position relative to the clip rect
-	self.scroll_y = 0
 	self.last_valid_line = 0 --for incremental lexing
 end
 
---adding objects to render
+--adding objects to draw
 
 function view:add_selection(sel) self.selections[sel] = true end
 function view:add_cursor(cur) self.cursors[cur] = true end
@@ -2272,7 +2296,7 @@ function view:client_to_screen(x, y)
 	return x, y
 end
 
---clip rect of the client area in screen space, obtained from drawing the scrollbox.
+--clip rect of the client area in screen space.
 function view:clip_rect()
 	return self.clip_x, self.clip_y, self.clip_w, self.clip_h
 end
@@ -2338,9 +2362,13 @@ function view:pagesize()
 	return math.floor(self.clip_h / self.line_h + 0.5)
 end
 
+--event: adjust scrollbars.
+function view:scroll_changed(scroll_x, scroll_y) end
+
 function view:scroll_by(x, y)
 	self.scroll_x = self.scroll_x + x
 	self.scroll_y = self.scroll_y + y
+	self:scroll_changed(self.scroll_x, self.scroll_y)
 end
 
 function view:scroll_up()
@@ -2355,6 +2383,7 @@ end
 function view:make_rect_visible(x, y, w, h)
 	self.scroll_x = -clamp(-self.scroll_x, x + w - self.clip_w, x)
 	self.scroll_y = -clamp(-self.scroll_y, y + h - self.clip_h, y)
+	self:scroll_changed(self.scroll_x, self.scroll_y)
 end
 
 --scroll to make the char under cursor visible
@@ -2368,9 +2397,9 @@ function view:cursor_make_visible(cur)
 	self:make_rect_visible(x, y, w, h)
 end
 
---rendering ------------------------------------------------------------------
+--drawing --------------------------------------------------------------------
 
---rendering stubs: all rendering is based on these functions
+--drawing stubs: all drawing is based on these functions
 
 function view:draw_char(x, y, s, i, color) error'stub' end
 function view:draw_rect(x, y, w, h, color) error'stub' end
@@ -2524,11 +2553,14 @@ function view:draw_line_highlight(line, color)
 	self:draw_rect(x, y, w, h, color)
 end
 
-function view:draw_client()
-	self:clip(self:clip_rect())
-	--background
+function view:draw_background()
 	local color = self.buffer.background_color or 'background'
 	self:draw_rect(self.clip_x, self.clip_y, self.clip_w, self.clip_h, color)
+end
+
+function view:draw_client()
+	self:clip(self:clip_rect())
+	self:draw_background()
 	--highlighting the line under cursor
 	for cur in pairs(self.cursors) do
 		self:draw_line_highlight(cur.line, cur.line_highlight_color)
@@ -2553,28 +2585,13 @@ function view:draw_client()
 	self:end_clip()
 end
 
---draw a scrollbox widget with the outside rect (x, y, w, h) and the client
---rect (cx, cy, cw, ch). return the new cx, cy, adjusted from user input
---and other scrollbox constraints, followed by the clipping rect.
---the client rect is relative to the clipping rect of the scrollbox (which
---can be different than it's outside rect). this stub implementation is
---equivalent to a scrollbox that takes no user input, has no margins, and has
---invisible scrollbars.
-function view:draw_scrollbox(x, y, w, h, cx, cy, cw, ch)
-	return cx, cy, x, y, w, h
-end
+function view:draw()
 
-function view:render()
-
-	local client_w, client_h = self:client_size()
 	local margins_w = self:margins_width()
-
-	self.scroll_x, self.scroll_y, self.clip_x, self.clip_y, self.clip_w, self.clip_h =
-		self:draw_scrollbox(
-			self.x + margins_w, self.y,
-			self.w - margins_w, self.h,
-			self.scroll_x, self.scroll_y,
-			client_w, client_h)
+	self.clip_x = self.x + margins_w
+	self.clip_y = self.y
+	self.clip_w = self.w - margins_w
+	self.clip_h = self.h
 
 	for i,margin in ipairs(self.margins) do
 		self:draw_margin(margin)
@@ -2597,10 +2614,8 @@ margin.background_color = nil
 margin.highlighted_text_color = nil
 margin.highlighted_background_color = nil
 
-function margin:__call(buffer, view)
-	self = object(self)
-	self.buffer = buffer
-	self.view = view
+function margin:__call(...)
+	self = object(self, ...)
 	self.view:add_margin(self)
 	return self
 end
@@ -2667,7 +2682,7 @@ function blame_margin:get_blame_info(filename)
 	local cmd = string.format(self.blame_command, filename)
 	local f = io.popen(cmd)
 	local s = f:read('*a')
-	for _,line in str.lines(s) do
+	for _,line in self:_lines(s) do
 		local user = line:match('([^%:]+)%:') or ''
 		self.w = math.max(self.w, self.view:string_width(user))
 		table.insert(self.blame_info, user)
@@ -2693,13 +2708,13 @@ end
 
 local editor = object()
 --subclasses
-editor.buffer = buffer
-editor.line_selection = selection
-editor.block_selection = block_selection
-editor.cursor = cursor
-editor.line_numbers_margin = ln_margin
-editor.blame_margin = blame_margin
-editor.view = view
+editor.buffer_class = buffer
+editor.line_selection_class = selection
+editor.block_selection_class = block_selection
+editor.cursor_class = cursor
+editor.line_numbers_margin_class = ln_margin
+editor.blame_margin_class = blame_margin
+editor.view_class = view
 --margins
 editor.line_numbers = true
 editor.blame = false
@@ -2707,21 +2722,20 @@ editor.blame = false
 editor.next_reflow_mode = {left = 'justify', justify = 'left'}
 editor.default_reflow_mode = 'left'
 
-function editor:__call(options)
-	self = setmetatable(options or {}, {__index = self})
+function editor:__call(...)
+	self = object(self, ...)
 
 	--core objects
-	self.buffer = self.buffer()
-	self.view = self.view(self.buffer)
+	self.buffer = self:create_buffer(self.buffer)
+	self.view = self:create_view(self.view)
 	if self.text then
 		self.buffer:load(self.text)
 	end
-	self.view.buffer = self.buffer
 
 	--main cursor & selection objects
-	self.cursor = self:create_cursor(true)
-	self.line_selection = self:create_line_selection(true)
-	self.block_selection = self:create_block_selection(false)
+	self.cursor = self:create_cursor(self.cursor)
+	self.line_selection = self:create_line_selection(self.line_selection)
+	self.block_selection = self:create_block_selection(self.block_selection)
 	self.selection = self.line_selection --replaced by block_selection when selecting in block mode
 
 	--selection changed flags
@@ -2730,10 +2744,12 @@ function editor:__call(options)
 
 	--margins
 	if self.blame then
-		self.blame_margin = self:create_blame_margin()
+		self.blame_margin =
+			self:create_blame_margin(self.blame_margin)
 	end
 	if self.line_numbers then
-		self.line_numbers_margin = self:create_line_numbers_margin()
+		self.line_numbers_margin =
+			self:create_line_numbers_margin(self.line_numbers_margin)
 	end
 
 	return self
@@ -2741,24 +2757,50 @@ end
 
 --object constructors
 
-function editor:create_cursor(visible)
-	return self.cursor(self.buffer, self.view, visible)
+function editor:create_buffer(...)
+	return self.buffer_class({editor = self}, ...)
 end
 
-function editor:create_line_selection(visible)
-	return self.line_selection(self.buffer, self.view, visible)
+function editor:create_view(...)
+	return self.view_class({buffer = self.buffer}, ...)
 end
 
-function editor:create_block_selection(visible)
-	return self.block_selection(self.buffer, self.view, visible)
+function editor:create_cursor(...)
+	return self.cursor_class({
+		buffer = self.buffer,
+		view = self.view,
+		visible = true,
+	}, ...)
 end
 
-function editor:create_line_numbers_margin()
-	return self.line_numbers_margin(self.buffer, self.view)
+function editor:create_line_selection(...)
+	return self.line_selection_class({
+		buffer = self.buffer,
+		view = self.view,
+		visible = true,
+	}, ...)
 end
 
-function editor:create_blame_margin()
-	return self.blame_margin(self.buffer, self.view)
+function editor:create_block_selection(...)
+	return self.block_selection_class({
+		buffer = self.buffer,
+		view = self.view,
+		visible = false,
+	}, ...)
+end
+
+function editor:create_line_numbers_margin(...)
+	return self.line_numbers_margin_class({
+		buffer = self.buffer,
+		view = self.view,
+	}, ...)
+end
+
+function editor:create_blame_margin(...)
+	return self.blame_margin_class({
+		buffer = self.buffer,
+		view = self.view,
+	}, ...)
 end
 
 --undo/redo integration
@@ -2814,7 +2856,10 @@ function editor:_before_move_cursor(mode)
 	if mode == 'select' or mode == 'select_block' or mode == 'unrestricted' then
 		local old_restrict_eol = self.cursor.restrict_eol
 		self.cursor.restrict_eol = nil
-		self.cursor.restrict_eol = self.cursor.restrict_eol and not self.selection.block and mode ~= 'unrestricted'
+		self.cursor.restrict_eol =
+			self.cursor.restrict_eol
+			and not self.selection.block
+			and mode ~= 'unrestricted'
 		if not old_restrict_eol and self.cursor.restrict_eol then
 			self.cursor:move(self.cursor.line, self.cursor.i)
 		end
@@ -2887,6 +2932,10 @@ function editor:select_block_down_page() self:move_cursor('down_page', 'select_b
 function editor:select_all()
 	self:move_cursor('home')
 	self:move_cursor('end', 'select')
+end
+
+function editor:reset_selection_to_cursor()
+	self.selection:reset_to_cursor(self.cursor)
 end
 
 function editor:select_word_at_cursor()
@@ -3084,6 +3133,22 @@ function editor:save(filename)
 	self.buffer:save_to_file(filename)
 end
 
+--replace command
+
+function editor:replace(s, with_undo)
+	if with_undo then
+		self.buffer:start_undo_group'replace'
+		self.selection:select_all()
+		self.selection:remove()
+		self.cursor:move_to_selection(self.selection)
+		self.cursor:insert(s)
+		self.selection:reset_to_cursor(self.cursor)
+	else
+		self.cursor:move_home()
+		self.selection:reset_to_cursor()
+		self.buffer:load(s)
+	end
+end
 
 --input ----------------------------------------------------------------------
 
@@ -3156,10 +3221,14 @@ editor.key_bindings = { --flag order is ctrl+alt+shift
 	--reflowing
 	['ctrl+R']          = 'reflow',
 	--copy/pasting
-	['ctrl+X']          = 'cut',
-	['ctrl+C']          = 'copy',
-	['ctrl+V']          = 'paste',
-	['ctrl+alt+V']      = 'paste_block',
+	['ctrl+X']            = 'cut',
+	['ctrl+C']            = 'copy',
+	['ctrl+V']            = 'paste',
+	['ctrl+alt+V']        = 'paste_block',
+	['shift+delete']      = 'cut',
+	['ctrl+insert']       = 'copy',
+	['shift+insert']      = 'paste',
+	['shift+alt+insert']  = 'paste_block',
 	--saving
 	['ctrl+S'] = 'save',
 }
@@ -3173,9 +3242,19 @@ function editor:perform_shortcut(shortcut, ctrl, alt, shift)
 	self[command](self, ctrl, alt, shift)
 end
 
-function editor:setactive(active) end --stub
-function editor:focused() end --stub
-function editor:focus() end --stub
+function editor:hit_test(x, y)
+	if self.selection:hit_test(x, y) then
+		return 'selection'
+	elseif self.view:client_hit_test(x, y) then
+		return 'client'
+	elseif self.line_numbers_margin:hit_test(x, y) then
+		return 'line_numbers_margin'
+	end
+end
+
+--RMGUI integration ----------------------------------------------------------
+
+function editor:capture_mouse(capture) end
 
 function editor:key(key) error'stub' end
 
@@ -3200,11 +3279,95 @@ function editor:keypress(key)
 	self:perform_shortcut(shortcut)
 end
 
-function editor:input(focused, active, key, char, ctrl, shift, alt,
-								mousex, mousey, lbutton, rbutton, wheel_delta,
-								doubleclicked, tripleclicked, quadrupleclicked, waiting_for_triple_click)
+function editor:mousedown()
+	self:capture_mouse(true)
+	self.active = true
+end
 
-	if not self.view.clip_x then return end --editor has not been rendered yet, input cannot work
+function editor:mouseup()
+	self:capture_mouse(false)
+	self.active = false
+end
+
+function editor:click(mx, my)
+	self:move_cursor_to_coords(mx, my)
+end
+
+function editor:doubleclick(mx, my)
+	if self:hit_test(mx, my) == 'client' then
+		self:select_word_at_cursor()
+	end
+end
+
+function editor:tripleclick(mx, my)
+	local area = self:hit_test(mx, my)
+	if area == 'selection' or area == 'client' then
+		self:select_line_at_cursor()
+	end
+end
+
+function editor:mousemove(mx, my)
+	if self.active then
+		if self.moving_selection then
+			if self.moving_at_pos then
+				--TODO: finish moving sub-line selection with the mouse
+			elseif not self.moving_adjusted and
+				(math.abs(mx - self.moving_mousex) >= 6 or
+				 math.abs(my - self.moving_mousey) >= 6)
+			then
+				self.selection:set_to_line_range()
+				self.selection:reverse()
+				self.cursor:move_to_selection(self.selection)
+				self.moving_adjusted = true
+			end
+			if self.moving_adjusted then
+				--TODO: finish moving multiline selection with the mouse
+			end
+		else
+			local mode = self:key'alt' and 'select_block' or 'select'
+			self:move_cursor_to_coords(mx, my, mode)
+		end
+	end
+end
+
+--IMGUI integration ----------------------------------------------------------
+
+--draw a scrollbox widget with the clipping rect (x, y, w, h) and the client
+--rect (cx, cy, cw, ch). return the new cx, cy, adjusted from user input
+--and other scrollbox constraints, followed by the clipping rect.
+--the client rect is relative to the clipping rect of the scrollbox (which
+--can be different than its outside rect). this stub implementation is
+--equivalent to a scrollbox that takes no user input, has no margins, and has
+--invisible scrollbars.
+function view:imgui_draw_scrollbox(x, y, w, h, cx, cy, cw, ch)
+	return cx, cy, x, y, w, h
+end
+
+function view:imgui_draw()
+
+	local client_w, client_h = self:client_size()
+	local margins_w = self:margins_width()
+
+	self.scroll_x, self.scroll_y,
+	self.clip_x, self.clip_y, self.clip_w, self.clip_h =
+		self:draw_scrollbox(
+			self.x + margins_w, self.y,
+			self.w - margins_w, self.h,
+			self.scroll_x, self.scroll_y,
+			client_w, client_h)
+
+	for i,margin in ipairs(self.margins) do
+		self:draw_margin(margin)
+	end
+	self:draw_client()
+end
+
+function editor:imgui_input(focused, active, key, char, ctrl, shift, alt,
+	mousex, mousey, lbutton, rbutton, wheel_delta,
+	doubleclicked, tripleclicked, quadrupleclicked, waiting_for_triple_click)
+
+	--scrollbox has not been rendered yet, input cannot work
+	if not self.view.clip_x then return end
 
 	local client_hit = self.view:client_hit_test(mousex, mousey)
 	local selection_hit = self.selection:hit_test(mousex, mousey)
@@ -3278,6 +3441,8 @@ function editor:input(focused, active, key, char, ctrl, shift, alt,
 	end
 
 end
+
+--codedit module -------------------------------------------------------------
 
 return {
 	str = str,

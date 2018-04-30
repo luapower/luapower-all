@@ -24,7 +24,6 @@ local pop = table.remove
 local round = glue.round
 local indexof = glue.indexof
 local update = glue.update
-local merge = glue.merge
 local extend = glue.extend
 local attr = glue.attr
 local lerp = glue.lerp
@@ -79,7 +78,7 @@ end
 
 --module object --------------------------------------------------------------
 
-local ui = oo.ui(object)
+local ui = object:subclass'ui'
 ui.object = object
 
 function ui:native_app()
@@ -94,7 +93,7 @@ function ui:init(t)
 	update(self, t)
 end
 
-function ui:run(t)
+function ui:run()
 	return self.native_app:run()
 end
 
@@ -111,9 +110,17 @@ end
 
 local default_ease = 'expo out'
 
+function ui:setclipboard(data, format)
+	self.native_app:setclipboard(data, format)
+end
+
+function ui:getclipboard(format)
+	return self.native_app:getclipboard(format)
+end
+
 --selectors ------------------------------------------------------------------
 
-ui.selector = oo.selector(ui.object)
+ui.selector = ui.object:subclass'selector'
 
 function ui.selector:override_create(inherited, ui, sel, ...)
 	if oo.isinstance(sel, self) then
@@ -210,7 +217,7 @@ end
 
 --stylesheets ----------------------------------------------------------------
 
-ui.stylesheet = oo.stylesheet(ui.object)
+ui.stylesheet = ui.object:subclass'stylesheet'
 
 function ui:after_init()
 	--TODO: fix issue with late-loading of class styles in autoloaded widgets.
@@ -373,7 +380,7 @@ ui._type = {} --{attr -> type}
 ui.type = {}  --{patt|f(attr) -> type}
 
 --find an attribute type based on its name
-function ui:_attr_type(attr)
+function ui:attr_type(attr)
 	for patt, atype in pairs(self.type) do
 		if (type(patt) == 'string' and attr:find(patt))
 			or (type(patt) ~= 'string' and patt(attr))
@@ -383,7 +390,7 @@ function ui:_attr_type(attr)
 	end
 	return 'number'
 end
-ui:memoize'_attr_type'
+ui:memoize'attr_type'
 
 ui.type['_color$'] = 'color'
 ui.type['_color_'] = 'color'
@@ -391,20 +398,13 @@ ui.type['_colors$'] = 'gradient_colors'
 
 --transition animations ------------------------------------------------------
 
-ui.transition = oo.transition(ui.object)
+ui.transition = ui.object:subclass'transition'
 
 ui.transition.interpolate = {} --{attr_type -> func(d, x1, x2, xout) -> xout}
 
 function ui.transition:interpolate_function(elem, attr)
-	local atype = self.ui:_attr_type(attr)
+	local atype = self.ui:attr_type(attr)
 	return self.interpolate[atype]
-end
-
-function ui.transition:override_create(inherited, ui, t, ...)
-	if oo.isinstance(t, self) then
-		--return t --pass-through
-	end
-	return inherited(self, ui, t, ...)
 end
 
 function ui.transition:after_init(ui, elem, attr, to,
@@ -502,8 +502,8 @@ end
 
 --element lists --------------------------------------------------------------
 
-ui.element_list = oo.element_list(ui.object)
-ui.element_index = oo.element_index(ui.object)
+ui.element_list = ui.object:subclass'element_list'
+ui.element_index = ui.object:subclass'element_index'
 
 function ui:after_init()
 	self.elements = self:element_list()
@@ -571,7 +571,7 @@ end
 
 --elements -------------------------------------------------------------------
 
-ui.element = oo.element(ui.object)
+ui.element = ui.object:subclass'element'
 
 ui.element.visible = true
 ui.element.iswindow = false
@@ -594,23 +594,29 @@ ui.element.transition_delay = 0
 ui.element.transition_speed = 1
 ui.element.transition_blend = 'replace_nodelay'
 
-function ui.element:override_create(inherited, ui, t, ...)
-	if oo.isinstance(t, self)  then
-		return t --pass-through
-	end
-	return inherited(self, ui, t, ...)
-end
-
 --tags & styles
 
-function ui.element:_init_priority(t)
-	if self.__init_priority == self.super.__init_priority then
-		self.__init_priority = {}
+function ui.element:init_ignore(t)
+	if self._init_ignore == self.super._init_ignore then
+		self._init_ignore = {}
 	end
-	update(self.__init_priority, t)
+	update(self._init_ignore, t)
 end
 
-ui.element:_init_priority{id=0, tags=0}
+function ui.element:init_priority(t)
+	if self._init_priority == self.super._init_priority then
+		self._init_priority = {}
+	end
+	update(self._init_priority, t)
+end
+
+ui.element:init_priority{}
+ui.element:init_ignore{id=1, tags=1}
+
+--override element constructor to take in additional initialization tables
+function ui.element:override_create(inherited, ui, t, ...)
+	return inherited(self, ui, update(t, ...))
+end
 
 local function add_tags(tags, t)
 	if not t then return end
@@ -631,10 +637,10 @@ function ui.element:after_init(ui, t)
 		self.tags[id] = true
 	end
 	add_tags(self.tags, t and t.tags)
-	--update attrs in lexicographic order so that eg. `border_width` comes
+	--set attributes in lexicographic order so that eg. `border_width` comes
 	--before `border_width_left` even though it's actually undefined behavior.
 	if t then
-		local pri = self.__init_priority
+		local pri = self._init_priority
 		local function cmp(a, b)
 			local pa, pb = pri[a], pri[b]
 			if pa and pb then
@@ -647,8 +653,9 @@ function ui.element:after_init(ui, t)
 				return a < b
 			end
 		end
+		local ignore = self._init_ignore
 		for k,v in sortedpairs(t, cmp) do
-			if (pri[k] or 1) > 0 then
+			if not ignore[k] then
 				self[k] = v
 			end
 		end
@@ -761,7 +768,7 @@ function ui.blend.wait_nodelay(ui, tran, elem, attr, val, duration, ease, delay,
 end
 
 function ui.element:end_value(attr)
-	local tran = self._transitions and self._transitions[attr]
+	local tran = self.transitions and self.transitions[attr]
 	if tran then
 		return tran:end_value()
 	else
@@ -770,10 +777,6 @@ function ui.element:end_value(attr)
 end
 
 function ui.element:transition(attr, val, duration, ease, delay, blend)
-
-	if val == nil then --get existing transition
-		return self._transitions and self._transitions[attr]
-	end
 
 	if type(val) == 'function' then --computed value
 		val = val(self, attr)
@@ -795,7 +798,7 @@ function ui.element:transition(attr, val, duration, ease, delay, blend)
 	end
 	local blend_func = self.ui.blend[blend]
 
-	local tran = self._transitions and self._transitions[attr]
+	local tran = self.transitions and self.transitions[attr]
 
 	if duration <= 0
 		and ((blend == 'replace' and delay <= 0) or blend == 'replace_nodelay')
@@ -815,10 +818,10 @@ function ui.element:transition(attr, val, duration, ease, delay, blend)
 	end
 
 	if tran then
-		self._transitions = self._transitions or {}
-		self._transitions[attr] = tran
-	elseif self._transitions then
-		self._transitions[attr] = nil
+		self.transitions = self.transitions or {}
+		self.transitions[attr] = tran
+	elseif self.transitions then
+		self.transitions[attr] = nil
 	end
 
 	self:invalidate()
@@ -826,7 +829,7 @@ end
 
 function ui.element:draw()
 	--update transitioning attributes
-	local tr = self._transitions
+	local tr = self.transitions
 	if tr and next(tr) then
 		local clock = self.frame_clock
 		for attr, transition in pairs(tr) do
@@ -845,7 +848,7 @@ end
 
 --windows --------------------------------------------------------------------
 
-ui.window = oo.window(ui.element)
+ui.window = ui.element:subclass'window'
 ui.window.iswindow = true
 
 ui:style('window_layer', {
@@ -868,11 +871,11 @@ function ui:free()
 	end
 end
 
-ui.window:_init_priority{native_window=0}
+ui.window:init_priority{native_window=0}
 
 function ui.window:override_init(inherited, ui, t)
 
-	local win = t.native_window
+	local win = t and t.native_window
 	if not win then
 		win = ui:native_window(t)
 		self.native_window = win
@@ -1000,11 +1003,11 @@ function ui.window:override_init(inherited, ui, t)
 		self:free()
 	end)
 
-	self.layer = self.layer_class(self.ui, merge({
+	self.layer = self.layer_class(self.ui, {
 		id = self:_subtag'layer',
 		x = 0, y = 0, w = self.w, h = self.h,
 		content_clip = false, window = self,
-	}, self.layer))
+	}, self.layer)
 
 	--prepare the layer for working parent-less
 	function self.layer:to_window(x, y)
@@ -1204,18 +1207,17 @@ end
 function ui:_window_click(window, button, count, mx, my)
 	local event = button == 'left' and 'click' or button..'click'
 	window:fire(event, count, mx, my)
-
+	local reset_click_count =
+		self.last_click_hot_widget ~= self.hot_widget
+		or self.last_click_hot_area ~= self.hot_widget
+		or self.last_click_button ~= button
+	self.last_click_hot_widget = self.hot_widget
+	self.last_click_hot_area = self.hot_widget
+	self.last_click_button = button
+	count = reset_click_count and 1 or count
 	if self.active_widget then
 		return self.active_widget:_click(button, count, mx, my)
 	elseif self.hot_widget then
-		local reset_click_count =
-			self.last_click_hot_widget ~= self.hot_widget
-			or self.last_click_hot_area ~= self.hot_widget
-			or self.last_click_button ~= button
-		self.last_click_hot_widget = self.hot_widget
-		self.last_click_hot_area = self.hot_widget
-		self.last_click_button = button
-		count = reset_click_count and 1 or count
 		return
 			self.hot_widget:_click(button, count, mx, my, self.hot_area)
 			or reset_click_count
@@ -1304,7 +1306,8 @@ end
 
 function ui.window:_keypress(key)
 	self:fire('keypress', key)
-	if key == 'tab' and not self.ui:key'ctrl' then
+	local capture_tab = self.focused_widget and self.focused_widget.capture_tab
+	if not capture_tab and key == 'tab' and not self.ui:key'ctrl' then
 		local next_widget = self:next_focusable_widget(not self.ui:key'shift')
 		if next_widget then
 			next_widget:focus()
@@ -1457,10 +1460,10 @@ function ui.window:setfont(family, weight, slant, size, line_spacing)
 	self.cr:font_face(font.cr_face)
 	self.cr:font_size(size)
 	local ext = self.cr:font_extents()
-	self._font_height = ext.height
-	self._font_descent = ext.descent
-	self._font_ascent = ext.ascent
-	self._line_spacing = line_spacing
+	self.font_height = ext.height
+	self.font_descent = ext.descent
+	self.font_ascent = ext.ascent
+	self.line_spacing = line_spacing
 end
 
 --multi-line self-aligned and box-aligned text
@@ -1471,12 +1474,12 @@ function ui.window:line_extents(s)
 end
 
 function ui.window:text_line_h()
-	return self._font_height * self._line_spacing
+	return self.font_height * self.line_spacing
 end
 
 function ui.window:text_size(s)
-	local w, h, y1 = 0, 0, self._font_ascent
-	local line_h = self._font_height * self._line_spacing
+	local w, h, y1 = 0, 0, self.font_ascent
+	local line_h = self.font_height * self.line_spacing
 	for s in lines(s) do
 		local w1, h1, yb = self:line_extents(s)
 		w, h = select(3, box2d.bounding_box(0, 0, w, h, 0, y1 + yb, w1, h1))
@@ -1487,7 +1490,7 @@ end
 
 function ui.window:textbox(x, y, w, h, s, halign, valign)
 	local cr = self.cr
-	local line_h = self._font_height * self._line_spacing
+	local line_h = self.font_height * self.line_spacing
 
 	if halign == 'right' then
 		x = w
@@ -1498,7 +1501,7 @@ function ui.window:textbox(x, y, w, h, s, halign, valign)
 	end
 
 	if valign == 'top' then
-		y = self._font_ascent
+		y = self.font_ascent
 	else
 		local lines_h = 0
 		for _ in lines(s) do
@@ -1507,9 +1510,9 @@ function ui.window:textbox(x, y, w, h, s, halign, valign)
 		lines_h = lines_h - line_h
 
 		if valign == 'bottom' then
-			y = h - self._font_descent
+			y = h - self.font_descent
 		elseif not valign or valign == 'center' then
-			local h1 = h + self._font_ascent - self._font_descent + lines_h
+			local h1 = h + self.font_ascent - self.font_descent + lines_h
 			y = round(h1 / 2)
 		else
 			assert(false, 'invalid valign "%s"', valign)
@@ -1537,7 +1540,7 @@ end
 
 --layers ---------------------------------------------------------------------
 
-ui.layer = oo.layer(ui.element)
+ui.layer = ui.element:subclass'layer'
 ui.window.layer_class = ui.layer
 
 ui.layer.activable = true
@@ -1616,7 +1619,7 @@ ui.layer.content_clip = false --'padding'/true, 'background', false
 
 ui.layer.padding = 0
 
-ui.layer.background_type = 'color'
+ui.layer.background_type = 'color' --false, 'color', 'gradient', 'radial_gradient', 'image'
 --all backgrounds
 ui.layer.background_x = 0
 ui.layer.background_y = 0
@@ -1629,7 +1632,7 @@ ui.layer.background_scale_cy = 0
 --solid color backgrounds
 ui.layer.background_color = false --no background
 --gradient backgrounds
-ui.layer.background_colors = {} --{[offset1], color1, ...}
+ui.layer.background_colors = false --{[offset1], color1, ...}
 --linear gradient backgrounds
 ui.layer.background_x1 = 0
 ui.layer.background_y1 = 0
@@ -2848,6 +2851,7 @@ function ui.layer:set_active(active)
 		self.ui.active_widget = self
 		self:settags'active'
 		self:fire'activated'
+		self:focus()
 	end
 	self:invalidate()
 end
@@ -2876,6 +2880,9 @@ function ui.layer:content_size()
 end
 function ui.layer:get_cw() return (select(3, self:padding_rect())) end
 function ui.layer:get_ch() return (select(4, self:padding_rect())) end
+
+function ui.layer:set_cw(cw) self.w = cw + (self.w - self.cw) end
+function ui.layer:set_ch(ch) self.h = ch + (self.h - self.ch) end
 
 function ui.layer:setfont(family, weight, slant, size, color, line_spacing)
 	self.window:setfont(

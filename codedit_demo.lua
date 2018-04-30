@@ -19,8 +19,8 @@ filename = root_dir .. '/codedt_demo.lua'
 --text = '    x   y   z\r\n    a   b\n\tc\td'
 --text = glue.readfile'c:/temp.c'
 --text = glue.readfile'c:/temp2.c'
-text = glue.readfile(root_dir .. 'codedit.lua')
---text = 'abcd\nefgh'
+text = ('hello world\r\n'):rep(100)
+--text = glue.readfile(root_dir .. 'codedit.lua')
 
 player.show_magnifier = false
 
@@ -56,19 +56,24 @@ function player:on_render(cr)
 				eol_markers = false, minimap = false, line_numbers = false,
 				_font_file = font_files[1],
 				_font_size = 16,
+				tabsize = 4,
 			},
 			text = text,
+			buffer = {
+				multiline = i > 1,
+			},
+			cursor = {
+				restrict_eof = true,
+				--restrict_eol = false,
+				--land_bof = false,
+				--land_eof = false,
+			},
 		}
 
 		editor = self:code_editor(editor)
 
 		if not created then
 			editors[i] = editor
-			editor.view.tabsize = 4
-			editor.cursor.restrict_eol = false
-			editor.cursor.restrict_eof = false
-			editor.cursor.land_bof = false
-			editor.cursor.land_eof = false
 		end
 
 		editor.view.x = nav_w + 10 + x
@@ -95,6 +100,7 @@ function player:on_render(cr)
 
 		self.layout:move(0, 40, 'vert')
 
+		--[[
 		self.layout:push(0, 0, 'h', nav_w / 3)
 
 		editor.cursor.restrict_eol = self:togglebutton{
@@ -113,6 +119,7 @@ function player:on_render(cr)
 		}
 
 		self.layout:pop()
+		]]
 
 		editor.cursor.land_eof = self:togglebutton{
 			id = 'land_eof' .. i,

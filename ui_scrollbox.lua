@@ -6,7 +6,6 @@ local ui = require'ui'
 local box2d = require'box2d'
 local glue = require'glue'
 
-local merge = glue.merge
 local clamp = glue.clamp
 local lerp = glue.lerp
 
@@ -92,7 +91,6 @@ function ui.scrollbar:_clamp_offset()
 end
 
 function ui.scrollbar:_update_grabbar()
-	self.visible = not (self.autohide_empty and self:empty())
 	local g = self.grabbar
 	g.x, g.y, g.w, g.h = self:grabbar_rect()
 	self:invalidate()
@@ -143,7 +141,7 @@ function ui.scrollbar:override_rel_matrix(inherited)
 	return mt
 end
 
-ui.scrollbar:_init_priority{offset=0, view_size=0, content_size=0}
+ui.scrollbar:init_ignore{offset=1, view_size=1, content_size=1}
 
 function ui.scrollbar:after_init(ui, t)
 
@@ -254,6 +252,13 @@ function ui.scrollbar:set_vertical(vertical)
 	self:settags(vertical and '-horizontal' or 'horizontal')
 end
 
+function ui.scrollbar:override_draw(inherited)
+	if self.autohide_empty and self:empty() then
+		return
+	end
+	inherited(self)
+end
+
 --scrollbox ------------------------------------------------------------------
 
 ui.scrollbox = ui.layer:subclass'scrollbox'
@@ -278,12 +283,12 @@ function ui.scrollbox:after_init(ui, t)
 	self.content = self.content_class(self.ui, {
 		id = self:_subtag'content', parent = self.content_container,
 		content_clip = true, --for faster bounding box computation
-	})
+	}, self.content)
 
-	self.vscrollbar = self.vscrollbar_class(self.ui, merge({
+	self.vscrollbar = self.vscrollbar_class(self.ui, {
 		id = self:_subtag'vertical_scrollbar',
 		parent = self, vertical = true, autohide = self.autohide,
-	}, self.vscrollbar))
+	}, self.vscrollbar)
 
 	function self.vscrollbar:override_hit_test_near(inherited, mx, my)
 		if inherited(self, mx, my)
@@ -295,10 +300,10 @@ function ui.scrollbox:after_init(ui, t)
 		end
 	end
 
-	self.hscrollbar = self.hscrollbar_class(self.ui, merge({
+	self.hscrollbar = self.hscrollbar_class(self.ui, {
 		id = self:_subtag'horizontal_scrollbar',
 		parent = self, vertical = false, autohide = self.autohide,
-	}, self.hscrollbar))
+	}, self.hscrollbar)
 
 	function self.hscrollbar:override_hit_test_near(inherited, mx, my)
 		if inherited(self, mx, my)

@@ -6,71 +6,73 @@ local ui = require'ui'
 local glue = require'glue'
 local codedit = require'codedit'
 
-local merge = glue.merge
-
 local editbox = ui.layer:subclass'editbox'
 ui.editbox = editbox
+
+local view = codedit.view:subclass()
+local editor = codedit.editor:subclass()
+
+editbox.editor_class = editor
+editor.view_class = view
 
 editbox.focusable = true
 editbox.scrollable = true
 editbox.max_click_chain = 3 --receive doubleclick and tripleclick events
 editbox.cursor_client = 'text'
 
-local view = codedit.object(codedit.view, {
-	colors = {
-		background = '#080808',
-		selection_background = '#999999',
-		selection_text = '#333333',
-		cursor = '#ffffff',
-		text = '#ffffff',
-		tabstop = '#111',
-		margin_background = '#000000',
-		line_number_text = '#66ffff',
-		line_number_background = '#111111',
-		line_number_highlighted_text = '#66ffff',
-		line_number_highlighted_background = '#222222',
-		line_number_separator = '#333333',
-		line_highlight = '#222222',
-		blame_text = '#444444',
-		--lexer styles
-		default = '#CCCCCC',
-		whitespace = '#000000',
-		comment = '#56CC66',
-		string = '#FF3333',
-		number = '#FF6666',
-		keyword = '#FFFF00',
-		identifier = '#FFFFFF',
-		operator = '#FFFFFF',
-		error = '#FF0000',
-		preprocessor = '#56CC66',
-		constant = '#FF3333',
-		variable = '#FFFFFF',
-		['function'] = '#FF6699',
-		class        = '#FFFF00',
-		type         = '#56CC66',
-		label        = '#FFFF66',
-		regex        = '#FF3333',
-	},
-	--extras
-	eol_markers = false,
-	minimap = false,
-	smooth_vscroll = false,
-	smooth_hscroll = false,
+editbox.eol_markers = false
+editbox.minimap = false
+
+--codedit colors
+editbox.background_color = '#080808'
+editbox.selection_background_color = '#333'
+editbox.selection_text_color = '#ddd'
+editbox.cursor_color = '#ffffff'
+editbox.tabstop_color = '#111'
+editbox.margin_background_color = '#000000'
+editbox.line_number_text_color = '#66ffff'
+editbox.line_number_background_color = '#111111'
+editbox.line_number_highlighted_text_color = '#66ffff'
+editbox.line_number_highlighted_background_color = '#222222'
+editbox.line_number_separator_color = '#333333'
+editbox.line_highlight_color = '#222222'
+editbox.blame_text_color = '#444444'
+--codedit colors / syntax highlighting
+editbox.default_color = '#CCCCCC'
+editbox.whitespace_color = '#000000'
+editbox.comment_color = '#56CC66'
+editbox.string_color = '#FF3333'
+editbox.number_color = '#FF6666'
+editbox.keyword_color = '#FFFF00'
+editbox.identifier_color = '#FFFFFF'
+editbox.operator_color = '#FFFFFF'
+editbox.error_color = '#FF0000'
+editbox.preprocessor_color = '#56CC66'
+editbox.constant_color = '#FF3333'
+editbox.variable_color = '#FFFFFF'
+editbox.function_color = '#FF6699'
+editbox.class_color = '#FFFF00'
+editbox.type_color = '#56CC66'
+editbox.label_color = '#FFFF66'
+editbox.regex_color = '#FF3333'
+
+ui:style('editbox focused', {
+	selection_background_color = '#666',
+	selection_text_color = '#fff',
 })
 
-editbox.view = view
-
-local editor = codedit.object(codedit.editor, {
-	view = view,
-})
-
-editbox.editor = editor
+function editbox:color(color)
+	return self.ui:color(self[color..'_color'] or self.text_color)
+end
 
 function editbox:_sync()
 	self:setfont()
 	self:_sync_view()
 	self:_sync_scrollbars()
 end
+
+function editbox:draw_text() end --reinterpreting the text property
+function editbox:text_bounding_box() return 0, 0, 0, 0 end
 
 function editbox:before_draw_content()
 	self:_sync()
@@ -147,9 +149,11 @@ function view:end_clip()
 	cr:restore()
 end
 
+function view:draw_background() end --using layer's background
+
 function view:draw_rect(x, y, w, h, color)
 	local cr = self.editbox.window.cr
-	cr:rgba(self.editbox.ui:color(self.colors[color]))
+	cr:rgba(self.editbox:color(color))
 	cr:new_path()
 	cr:rectangle(x, y, w, h)
 	cr:fill()
@@ -163,7 +167,7 @@ end
 
 function view:draw_char(x, y, s, i, color)
 	local cr = self.editbox.window.cr
-	cr:rgba(self.editbox.ui:color(self.colors[color] or self.colors.text))
+	cr:rgba(self.editbox:color(color))
 	cr:move_to(x, y)
 	cr:show_text(s:sub(i, i))
 end
@@ -190,7 +194,7 @@ function view:draw_eol_marker(line)
 end
 
 function view:draw_eol_markers()
-	if self.eol_markers then
+	if self.editbox.eol_markers then
 		local line1, line2 = self:visible_lines()
 		for line = line1, line2 do
 			self:draw_eol_marker(line)
@@ -199,6 +203,7 @@ function view:draw_eol_markers()
 end
 
 function view:draw_minimap()
+	if not self.editbox.minimap then return end
 	local cr = self.player.cr
 	local mmap = glue.inherit({editor = self}, self)
 	local self = mmap
@@ -244,25 +249,28 @@ end
 function editor:draw()
 	self.view:draw()
 	self.view:draw_eol_markers()
-	if self.view.minimap then
-		self.view:draw_minimap()
-	end
+	self.view:draw_minimap()
 end
 
 function editor:set_clipboard(s)
-	nw:app():setclipboard(s, 'text')
+	self.editbox.ui:setclipboard(s, 'text')
 end
 
 function editor:get_clipboard()
-	return nw:app():getclipboard'text' or ''
+	return self.editbox.ui:getclipboard'text' or ''
 end
 
-function editbox.editor:key(key)
+function editor:key(key)
 	return self.editbox.ui:key(key)
 end
 
 function editbox:keypress(key)
-	self.editor:keypress(key)
+	--if tab is kept for navigation, use ctrl+tab to indent
+	if key == 'tab' and not self.capture_tab and self.ui:key'ctrl' then
+		self.editor:indent()
+	else
+		self.editor:keypress(key)
+	end
 	self:invalidate()
 end
 
@@ -284,10 +292,13 @@ function editbox:_sync_view()
 	local view = self.editor.view
 	self:setfont()
 	view.line_h = self.window:text_line_h()
-	view.ascender = self.window._font_ascent
+	view.ascender = self.window.font_ascent
 	view.x, view.y, view.w, view.h = self:view_rect()
 	view.scroll_x = -self.hscrollbar.offset
 	view.scroll_y = -self.vscrollbar.offset
+	if not self.multiline then
+		self.ch = view.line_h
+	end
 end
 
 function editbox:_sync_scrollbars()
@@ -311,26 +322,86 @@ end
 editbox.vscrollbar_class = ui.scrollbar
 editbox.hscrollbar_class = ui.scrollbar
 
-function editbox:after_init(ui, t)
+function editbox:init_proxy_properties() end
 
-	local editor = self.super.editor(t.editor)
+function editbox:proxy_properties(proxy, props)
+	for k in ipairs(props) do
+		self['get_'..k] = function(self)
+			return self[proxy][k]
+		end
+		self['set_'..k] = function(self, v)
+			self[proxy][k] = v
+		end
+	end
+	function self:after_init_proxy_properties()
+		for k in ipairs(props) do
+			self[proxy] = self[k]
+		end
+	end
+end
+
+function editbox:get_multiline(multiline)
+	return self.editor.buffer.multiline
+end
+
+function editbox:_set_multiline(multiline)
+	self.editor.buffer.multiline = multiline
+	self.vscrollbar.visible = multiline
+	self.hscrollbar.visible = multiline
+	self:settags(multiline and 'multiline' or '-multiline')
+end
+
+function editbox:set_multiline(multiline)
+	if multiline == self.multiline then return end
+	local s = self.editor.buffer:select()
+	self:_set_multiline(multiline)
+	self.editor:replace(s)
+end
+
+function editbox:get_text()
+	return self.editor.buffer:select()
+end
+
+function editbox:set_text(s)
+	self.editor:replace(s)
+end
+
+editbox:init_ignore{editor=1, multiline=1, text=1}
+
+function editbox:override_init(inherited, ui, t)
+
+	self.editor = self.editor_class(t.editor)
+
+	inherited(self, ui, t)
+
+	self:init_proxy_properties()
+
 	--self.cursor.changed.blinking = true
-	self.editor = editor
-	editor.editbox = self
-	editor.view.editbox = self
+	self.editor.editbox = self
+	self.editor.view.editbox = self
 
-	self.vscrollbar = self.vscrollbar_class(self.ui, merge({
+	self.vscrollbar = self.vscrollbar_class(self.ui, {
 		id = self:_subtag'vscrollbar',
 		parent = self,
 		vertical = true,
-	}, self.vscrollbar))
+	}, self.vscrollbar)
 
-	self.hscrollbar = self.hscrollbar_class(self.ui, merge({
+	self.hscrollbar = self.hscrollbar_class(self.ui, {
 		id = self:_subtag'hscrollbar',
 		parent = self,
 		vertical = false,
 		autohide = true,
-	}, self.hscrollbar))
+	}, self.hscrollbar)
+
+	self:_set_multiline(t.multiline)
+
+	--[[ TODO:
+	if self.text then
+		self.editor.buffer:load(self.text)
+		self.editor.cursor:move_end()
+		self.editor.selection:reset_selection_to_cursor()
+	end
+	]]
 
 	--[[
 	--make the cursor blink
@@ -340,7 +411,21 @@ function editbox:after_init(ui, t)
 	end
 	ed.cursor.on = (self.clock - ed.cursor.start_clock) % 1 < 0.5
 	]]
+	self.editor.cursor.on = self.active
+end
+
+function editbox:after_focused()
 	self.editor.cursor.on = true
+	if not self.multiline then
+		self.editor:select_all()
+	end
+end
+
+function editbox:after_lostfocus()
+	self.editor.cursor.on = false
+	if not self.multiline then
+		self.editor:reset_selection_to_cursor()
+	end
 end
 
 --demo -----------------------------------------------------------------------
@@ -350,15 +435,28 @@ if not ... then require('ui_demo')(function(ui, win)
 	local edit = ui:editbox{
 		id = 'ed',
 		x = 10, y = 10,
-		w = 500, h = 300,
+		w = 300, h = 300,
 		parent = win,
-		editor = {text = (('Hello World! '):rep(10)..'\n'):rep(30) }
+		text = (('Hello World! '):rep(10)..'\n'):rep(30),
+		multiline = true,
 	}
+
+	for i=1,2 do
+		local ed = ui:editbox{
+			id = 'ed'..i,
+			x = 320,
+			y = 10 + 30 * (i-1),
+			w = 200,
+			h = 26,
+			parent = win,
+			text = (('Hello World! '):rep(10)..'\n'):rep(30),
+			multiline = false,
+		}
+	end
 
 	edit:focus()
 
 	function win:client_rect_changed(cx, cy, cw, ch)
-		edit.w = cw - 20
 		edit.h = ch - 20
 	end
 

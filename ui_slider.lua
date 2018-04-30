@@ -210,7 +210,7 @@ function ui.slider:keypress(key)
 	end
 end
 
-ui.slider:_init_priority{position=0}
+ui.slider:init_ignore{position=1}
 
 function ui.slider:after_init(ui, t)
 	self._position = t and t.position
