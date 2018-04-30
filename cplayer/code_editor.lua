@@ -59,10 +59,9 @@ local view = codedit.object(codedit.view, {
 	smooth_hscroll = false,
 })
 
-view._init = view.init
-
+local inherited = view.init
 function view:init()
-	self:_init()
+	inherited(self)
 	self._glyph_cache = {}
 	self:font_file(self._font_file)
 	self:font_size(self._font_size)
@@ -183,8 +182,8 @@ function view:get_glyph(s, i)
 		self.ft_face:select_charmap(ft.FT_ENCODING_UNICODE)
 		local glyph_index = self.ft_face:char_index(charcode)
 		t = self:load_glyph(glyph_index)
+		self._glyph_cache[charcode] = t
 	end
-	self._glyph_cache[charcode] = t
 	if not t.advance_x then return end
 	return t
 end
@@ -265,7 +264,7 @@ function view:view_imgui_draw()
 	self.player.cr:reset_clip()
 end
 
-local editor = codedit.object(codedit.editor, {view = view})
+local editor = codedit.object(codedit.editor, {view_class = view})
 
 function view:font_file(font_file)
 	if not font_file then
@@ -319,9 +318,6 @@ function player:code_editor(t)
 	local id = assert(t.id, 'id missing')
 	local ed = t
 	if not t.buffer or not t.buffer.lines then
-		t.view = t.view and codedit.object(view, t.view) or view
-		t.cursor = t.cursor and
-			coededit.object(editor.cursor, t.cursor) or editor.cursor
 		ed = editor(t)
 		ed.cursor.changed.blinking = true
 	end

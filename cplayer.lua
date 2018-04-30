@@ -258,7 +258,7 @@ function player:window(t)
 	end
 
 	function window.mousewheel(window, delta, x, y)
-		self.wheel_delta = self.wheel_delta + (delta / 120 or 0)
+		self.wheel_delta = self.wheel_delta + (delta or 0)
 		self.rmgui:update('mouse_wheel', delta)
 		window:invalidate()
 	end
