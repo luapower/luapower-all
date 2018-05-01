@@ -182,6 +182,7 @@ __displays__
 `win:display() -> disp|nil`                  the display the window is on
 __cursors__
 `win:cursor(name|t|f) /-> name, t|f`         get/set the mouse cursor and visibility
+`app:caret_blink_time() -> time | 1/0`       caret blink time
 __frame flags__
 `win:frame() -> frame`                       window's frame: 'normal', 'none', 'toolbox'
 `win:transparent() -> t|f`                   transparent flag
@@ -190,12 +191,6 @@ __child windows__
 `win:parent() -> win|nil`                    window's parent
 `win:children() -> {win1, ...}`              child windows
 `win:sticky() -> t|f`                        sticky flag
-__keyboard__
-`app:key(query) -> t|f`                      get key pressed and toggle states
-`win:keydown(key)`                           event: a key was pressed
-`win:keyup(key)`                             event: a key was depressed
-`win:keypress(key)`                          event: sent after each keydown, including repeats
-`win:keychar(s)`                             event: input char pressed; _`s`_ is utf-8
 __hi-dpi support__
 `app:autoscaling(t|f) /-> t|f`               get/enable/disable autoscaling
 `disp.scalingfactor`                         display's scaling factor
@@ -214,6 +209,12 @@ __views__
 `view:rect_changed(x, y, w, h)`              event: view's size and/or position changed
 `view:moved(x, y, oldx, oldy)`               event: view was moved
 `view:resized(w, h, oldw, oldh)`             event: view was resized
+__keyboard__
+`app:key(query) -> t|f`                      get key pressed and toggle states
+`win:keydown(key)`                           event: a key was pressed
+`win:keyup(key)`                             event: a key was depressed
+`win:keypress(key)`                          event: sent after each keydown, including repeats
+`win:keychar(s)`                             event: input char pressed; _`s`_ is utf-8
 __mouse__
 `app/win/view:mouse(var) -> val`             mouse state: _x, y, pos, inside, left, right, middle, x1, x2_
 `win/view:mouseenter(x, y)`                  event: mouse entered the client area of the window
@@ -224,6 +225,8 @@ __mouse__
 `win/view:click(button, count, x, y)`        event: mouse button was clicked
 `win/view:mousewheel(delta, x, y, pdelta)`   event: mouse wheel was moved
 `win/view:hmousewheel(delta, x, y, pdelta)`  event: mouse horizontal wheel was moved
+`app:double_click_time() -> time`            double click time
+`app:double_click_target_area() -> w, h`     double click target area
 __rendering__
 `win/view:repaint()`                         event: window needs redrawing
 `win/view:invalidate()`                      request window redrawing

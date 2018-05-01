@@ -1297,6 +1297,10 @@ function app:double_click_time()
 	return (self:_xsettings'Net/DoubleClickTime' or 400) / 1000 --seconds
 end
 
+function app:caret_blink_time()
+	return (self:_xsettings'Net/CursorBlinkTime' or 500) / 1000 --seconds
+end
+
 function app:double_click_target_area()
 	return 4, 4 --like in windows
 end

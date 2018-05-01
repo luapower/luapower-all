@@ -403,25 +403,10 @@ function buffer:_init_changed()
 end
 
 function buffer:invalidate()
-	--set changed flags
 	for k in pairs(self.changed) do
 		self.changed[k] = true
 	end
-end
-
-function buffer:on(event, handler)
-	local t = self.event_handlers
-	t[event] = t[event] or {}
-	table.insert(t[event], handler)
-end
-
-function buffer:trigger(event, ...)
-	local t = self.event_handlers
-	t = t and t[event]
-	if not t then return end
-	for i,f in ipairs(t) do
-		f(...)
-	end
+	self.editor:invalidate()
 end
 
 --serialization --------------------------------------------------------------
@@ -635,7 +620,6 @@ function buffer:insert_line(line, s)
 	end
 	self:_ins(line, s)
 	self:invalidate()
-	self:trigger('line_inserted', line)
 end
 
 function buffer:remove_line(line)
@@ -645,7 +629,6 @@ function buffer:remove_line(line)
 		self:_upd(line-1, self:select(line-1))
 	end
 	self:invalidate()
-	self:trigger('line_removed', line)
 end
 
 function buffer:setline(line, s)
@@ -656,7 +639,6 @@ function buffer:setline(line, s)
 	end
 	self:_upd(line, s)
 	self:invalidate()
-	self:trigger('line_changed', line)
 end
 
 --switch two lines with one another
@@ -754,7 +736,8 @@ end
 
 buffer.eol_spaces = 'remove' --leave, remove.
 buffer.eof_lines = 'leave' --leave, remove, ensure, or a number.
-buffer.convert_indent = 'tabs' --tabs, spaces, leave: convert indentation to tabs or spaces based on current tabsize
+buffer.convert_indent = 'tabs' --tabs, spaces, leave: convert indentation to
+	--tabs or spaces based on current tabsize
 
 function buffer:detect_line_terminator(s)
 	return str.line_terminator(s)
@@ -882,6 +865,7 @@ function cursor:invalidate()
 	for k in pairs(self.changed) do
 		self.changed[k] = true
 	end
+	self.editor:invalidate()
 end
 
 local function update_state(dst, src)
@@ -1336,6 +1320,7 @@ function selection:invalidate()
 	for k in pairs(self.changed) do
 		self.changed[k] = true
 	end
+	self.editor:invalidate()
 end
 
 local function update_state(dst, src)
@@ -1857,6 +1842,7 @@ end
 
 function hl:invalidate(line)
 	self.last_line = math.min(self.last_line, line - 1)
+	self.editor:invalidate()
 end
 
 function hl:relex(maxline)
@@ -1933,6 +1919,7 @@ view.cursor_margins = {
 --drawing
 view.highlight_cursor_lines = true
 view.lang = nil --optional lexer to use for syntax highlighting
+view.tabstops = false --draw tabstop guidelines
 
 --reflowing
 view.line_width = 72
@@ -1968,6 +1955,7 @@ function view:invalidate(line)
 	if line then
 		self.last_valid_line = math.min(self.last_valid_line, line - 1)
 	end
+	self.editor:invalidate()
 end
 
 local function update_state(dst, src)
@@ -2369,6 +2357,7 @@ function view:scroll_by(x, y)
 	self.scroll_x = self.scroll_x + x
 	self.scroll_y = self.scroll_y + y
 	self:scroll_changed(self.scroll_x, self.scroll_y)
+	self:invalidate()
 end
 
 function view:scroll_up()
@@ -2403,7 +2392,7 @@ end
 
 function view:draw_char(x, y, s, i, color) error'stub' end
 function view:draw_rect(x, y, w, h, color) error'stub' end
-function view:clip(x, y, w, h) error'stub' end
+function view:begin_clip(x, y, w, h) error'stub' end
 function view:end_clip() error'stub' end
 
 function view:draw_string(cx, cy, s, color, i, j)
@@ -2500,7 +2489,6 @@ function view:draw_visible_text(cx, cy)
 end
 
 function view:draw_selection(sel, cx, cy)
-	if not sel.visible then return end
 	if sel:isempty() then return end
 	local bg_color = sel.background_color or 'selection_background'
 	local text_color = sel.text_color or 'selection_text'
@@ -2513,7 +2501,6 @@ function view:draw_selection(sel, cx, cy)
 end
 
 function view:draw_cursor(cursor, cx, cy)
-	if not (cursor.visible and cursor.on) then return end
 	local x, y, w, h = self:cursor_rect(cursor)
 	local color = cursor.color or 'cursor'
 	self:draw_rect(cx + x, cy + y, w, h, color)
@@ -2526,7 +2513,7 @@ end
 
 function view:draw_margin(margin)
 	local clip_x, clip_y, clip_w, clip_h = self:margin_clip_rect(margin)
-	self:clip(clip_x, clip_y, clip_w, clip_h)
+	self:begin_clip(clip_x, clip_y, clip_w, clip_h)
 	--background
 	local color = margin.background_color or 'margin_background'
 	self:draw_rect(clip_x, clip_y, clip_w, clip_h, color)
@@ -2558,29 +2545,35 @@ function view:draw_background()
 	self:draw_rect(self.clip_x, self.clip_y, self.clip_w, self.clip_h, color)
 end
 
-function view:draw_client()
-	self:clip(self:clip_rect())
-	self:draw_background()
-	--highlighting the line under cursor
-	for cur in pairs(self.cursors) do
-		self:draw_line_highlight(cur.line, cur.line_highlight_color)
-	end
-	--tabstops
+function view:draw_tabstops()
+	local color = self.buffer.tabstop_color or 'tabstop'
 	local x0 = 0
 	while x0 < self.clip_w do
 		x0 = self:next_tabstop_x(x0)
 		self:draw_rect(self.clip_x + x0, 0, 1, 1000, 'tabstop')
 	end
-	--text
+end
+
+function view:draw_client()
+	self:begin_clip(self:clip_rect())
+	self:draw_background()
+	for cur in pairs(self.cursors) do
+		self:draw_line_highlight(cur.line, cur.line_highlight_color)
+	end
+	if self.tabstops then
+		self:draw_tabstops()
+	end
 	local cx, cy = self:client_to_screen(0, 0)
 	self:draw_visible_text(cx, cy)
-	--selections
 	for sel in pairs(self.selections) do
-		self:draw_selection(sel, cx, cy)
+		if sel.visible then
+			self:draw_selection(sel, cx, cy)
+		end
 	end
-	--cursors
 	for cur in pairs(self.cursors) do
-		self:draw_cursor(cur, cx, cy)
+		if cur.visible and cur.on then
+			self:draw_cursor(cur, cx, cy)
+		end
 	end
 	self:end_clip()
 end
@@ -2758,23 +2751,31 @@ end
 --object constructors
 
 function editor:create_buffer(...)
-	return self.buffer_class({editor = self}, ...)
+	return self.buffer_class({
+		editor = self,
+	}, ...)
 end
 
 function editor:create_view(...)
-	return self.view_class({buffer = self.buffer}, ...)
+	return self.view_class({
+		editor = self,
+		buffer = self.buffer,
+	}, ...)
 end
 
 function editor:create_cursor(...)
 	return self.cursor_class({
+		editor = self,
 		buffer = self.buffer,
 		view = self.view,
 		visible = true,
+		on = true,
 	}, ...)
 end
 
 function editor:create_line_selection(...)
 	return self.line_selection_class({
+		editor = self,
 		buffer = self.buffer,
 		view = self.view,
 		visible = true,
@@ -2783,6 +2784,7 @@ end
 
 function editor:create_block_selection(...)
 	return self.block_selection_class({
+		editor = self,
 		buffer = self.buffer,
 		view = self.view,
 		visible = false,
@@ -2791,6 +2793,7 @@ end
 
 function editor:create_line_numbers_margin(...)
 	return self.line_numbers_margin_class({
+		editor = self,
 		buffer = self.buffer,
 		view = self.view,
 	}, ...)
@@ -2798,6 +2801,7 @@ end
 
 function editor:create_blame_margin(...)
 	return self.blame_margin_class({
+		editor = self,
 		buffer = self.buffer,
 		view = self.view,
 	}, ...)
@@ -2954,6 +2958,7 @@ end
 
 function editor:toggle_insert_mode()
 	self.cursor.insert_mode = not self.cursor.insert_mode
+	self.cursor:invalidate()
 end
 
 function editor:remove_selection()
@@ -3088,6 +3093,7 @@ function editor:cut()
 	self.buffer:start_undo_group'cut'
 	self.selection:remove()
 	self.cursor:move_to_selection(self.selection)
+	self.cursor:make_visible()
 end
 
 function editor:copy()
@@ -3108,6 +3114,7 @@ function editor:paste(mode)
 		self.cursor:insert(s)
 	end
 	self.selection:reset_to_cursor(self.cursor)
+	self.cursor:make_visible()
 end
 
 function editor:paste_block()
@@ -3330,6 +3337,24 @@ function editor:mousemove(mx, my)
 	end
 end
 
+function editor:focus()
+	self.cursor.visible = true
+	if not self.buffer.multiline then
+		self:select_all()
+	end
+	self.cursor:invalidate()
+end
+
+function editor:unfocus()
+	self.cursor.visible = false
+	self.cursor:invalidate()
+	if not self.buffer.multiline then
+		self:reset_selection_to_cursor()
+	end
+end
+
+function editor:invalidate() end --stub
+
 --IMGUI integration ----------------------------------------------------------
 
 --draw a scrollbox widget with the clipping rect (x, y, w, h) and the client
@@ -3405,7 +3430,9 @@ function editor:imgui_input(focused, active, key, char, ctrl, shift, alt,
 			self.moving_mousey = mousey
 			self.moving_adjusted = false
 			self:setactive(true)
-		elseif not active and lbutton and (client_hit or ln_margin_hit) and not waiting_for_triple_click then
+		elseif not active and lbutton and (client_hit or ln_margin_hit)
+			and not waiting_for_triple_click
+		then
 			self:move_cursor_to_coords(mousex, mousey)
 			self:setactive(true)
 		elseif active == self.id then

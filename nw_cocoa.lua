@@ -1652,6 +1652,11 @@ function app:double_click_time()
 	return objc.NSEvent:doubleClickInterval() --seconds
 end
 
+function app:caret_blink_time()
+	--TODO: find the API for this
+	return .5
+end
+
 function app:double_click_target_area()
 	return 4, 4 --like in Windows
 end

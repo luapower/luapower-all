@@ -1405,6 +1405,18 @@ function app:mouse(var)
 	end
 end
 
+function app:double_click_time()
+	return self.backend:double_click_time()
+end
+
+function app:double_click_target_area()
+	return self.backend:double_click_target_area()
+end
+
+function app:caret_blink_time()
+	return self.backend:caret_blink_time()
+end
+
 function window:mouse(var)
 	if not self:_can_get_rect() then return end
 	local inside = self._mouse.inside

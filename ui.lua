@@ -81,21 +81,22 @@ end
 local ui = object:subclass'ui'
 ui.object = object
 
-function ui:native_app()
+function ui:init(t)
+	update(self, t)
+end
+
+function ui:_app()
 	local nw = require'nw'
 	return nw:app()
 end
 
-function ui:init(t)
-	if not (t and t.native_app) then
-		self.native_app = self:native_app()
-	end
-	update(self, t)
-end
-
-function ui:run()
-	return self.native_app:run()
-end
+function ui:clock()               return time.clock() end
+function ui:native_window(t)      return self:_app():window(t) end
+function ui:run()                 return self:_app():run() end
+function ui:key(query)            return self:_app():key(query) end
+function ui:getclipboard(type)    return self:_app():getclipboard(type) end
+function ui:setclipboard(s, type) return self:_app():setclipboard(s, type) end
+function ui:caret_blink_time()    return self:_app():caret_blink_time() end
 
 function ui:error(msg, ...)
 	msg = string.format(msg, ...)
@@ -109,14 +110,6 @@ function ui:check(ret, ...)
 end
 
 local default_ease = 'expo out'
-
-function ui:setclipboard(data, format)
-	self.native_app:setclipboard(data, format)
-end
-
-function ui:getclipboard(format)
-	return self.native_app:getclipboard(format)
-end
 
 --selectors ------------------------------------------------------------------
 
@@ -413,7 +406,7 @@ function ui.transition:after_init(ui, elem, attr, to,
 	self.ui = ui
 
 	--timing model
-	local clock = clock or time.clock()
+	local clock = clock or ui:clock()
 	local delay = delay or 0
 	local start = clock + delay
 	local ease, way = (ease or default_ease):match'^([^%s_]+)[%s_]?(.*)'
@@ -439,7 +432,7 @@ function ui.transition:after_init(ui, elem, attr, to,
 			local d = easing.ease(ease, way, t)
 			elem[attr] = interpolate(d, from, to, elem[attr])
 		end
-		return t <= 1
+		return t <= 1 --alive status
 	end
 
 	function self:end_clock()
@@ -857,10 +850,6 @@ ui:style('window_layer', {
 	background_operator = 'source',
 })
 
-function ui:native_window(t)
-	return self.native_app:window(t)
-end
-
 function ui:after_init()
 	self.windows = {}
 end
@@ -899,7 +888,7 @@ function ui.window:override_init(inherited, ui, t)
 	self.mouse_x2 = false --mouse aux button 2
 
 	local function setcontext()
-		self.frame_clock = time.clock()
+		self.frame_clock = ui:clock()
 		self.cr = win:bitmap():cairo()
 	end
 
@@ -1273,10 +1262,6 @@ function ui:_window_mousewheel(window, delta, mx, my, pdelta)
 end
 
 --keyboard events routing with focus logic
-
-function ui:key(query)
-	return self.native_app:key(query)
-end
 
 function ui.window:first_focusable_widget()
 	return self.layer:focusable_widgets()[1]

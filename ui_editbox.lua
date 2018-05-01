@@ -13,7 +13,9 @@ local view = codedit.view:subclass()
 local editor = codedit.editor:subclass()
 
 editbox.editor_class = editor
+
 editor.view_class = view
+editor.line_numbers = false
 
 editbox.focusable = true
 editbox.scrollable = true
@@ -27,48 +29,72 @@ editbox.minimap = false
 editbox.background_color = '#080808'
 editbox.selection_background_color = '#333'
 editbox.selection_text_color = '#ddd'
-editbox.cursor_color = '#ffffff'
+editbox.cursor_color = '#fff'
 editbox.tabstop_color = '#111'
-editbox.margin_background_color = '#000000'
+editbox.margin_background_color = '#000'
 editbox.line_number_text_color = '#66ffff'
-editbox.line_number_background_color = '#111111'
+editbox.line_number_background_color = '#111'
 editbox.line_number_highlighted_text_color = '#66ffff'
 editbox.line_number_highlighted_background_color = '#222222'
-editbox.line_number_separator_color = '#333333'
-editbox.line_highlight_color = '#222222'
-editbox.blame_text_color = '#444444'
+editbox.line_number_separator_color = '#333'
+editbox.line_highlight_color = '#222'
+editbox.blame_text_color = '#444'
 --codedit colors / syntax highlighting
-editbox.default_color = '#CCCCCC'
-editbox.whitespace_color = '#000000'
-editbox.comment_color = '#56CC66'
-editbox.string_color = '#FF3333'
-editbox.number_color = '#FF6666'
-editbox.keyword_color = '#FFFF00'
-editbox.identifier_color = '#FFFFFF'
-editbox.operator_color = '#FFFFFF'
-editbox.error_color = '#FF0000'
-editbox.preprocessor_color = '#56CC66'
-editbox.constant_color = '#FF3333'
-editbox.variable_color = '#FFFFFF'
-editbox.function_color = '#FF6699'
-editbox.class_color = '#FFFF00'
-editbox.type_color = '#56CC66'
-editbox.label_color = '#FFFF66'
-editbox.regex_color = '#FF3333'
+editbox.default_color = '#ccc'
+editbox.whitespace_color = '#000'
+editbox.comment_color = '#56cc66'
+editbox.string_color = '#ff3333'
+editbox.number_color = '#ff6666'
+editbox.keyword_color = '#ffff00'
+editbox.identifier_color = '#fff'
+editbox.operator_color = '#fff'
+editbox.error_color = '#ff0000'
+editbox.preprocessor_color = '#56cc66'
+editbox.constant_color = '#ff3333'
+editbox.variable_color = '#fff'
+editbox.function_color = '#ff6699'
+editbox.class_color = '#ffff00'
+editbox.type_color = '#56cc66'
+editbox.label_color = '#ffff66'
+editbox.regex_color = '#ff3333'
+
+editbox.content_clip = true --TODO: remove this
+editbox.border_color = '#888'
+editbox.border_width = 1
+
+ui:style('editbox', {
+	transition_border_color = true,
+	transition_duration = .5,
+	transition_ease = 'expo out',
+})
+
+ui:style('editbox hot', {
+	border_color = '#999',
+	transition_border_color = true,
+	transition_duration = .5,
+	transition_ease = 'expo out',
+})
 
 ui:style('editbox focused', {
 	selection_background_color = '#666',
 	selection_text_color = '#fff',
+	border_color = '#fff',
+	shadow_blur = 3,
+	shadow_color = '#666',
 })
 
+local caret = ui.layer
+editbox.caret_class = caret
+
 function editbox:color(color)
-	return self.ui:color(self[color..'_color'] or self.text_color)
+	return self[color..'_color'] or self.text_color
 end
 
 function editbox:_sync()
 	self:setfont()
 	self:_sync_view()
 	self:_sync_scrollbars()
+	self:_sync_caret()
 end
 
 function editbox:draw_text() end --reinterpreting the text property
@@ -101,42 +127,35 @@ end
 
 function editbox:mousedown(mx, my)
 	self.editor:mousedown(mx, my)
-	self:invalidate()
 end
 
 function editbox:mouseup(mx, my)
 	self.editor:mouseup(mx, my)
-	self:invalidate()
 end
 
 function editbox:mousemove(mx, my)
 	self:_sync()
 	self.editor:mousemove(mx, my)
-	self:invalidate()
 end
 
 function editbox:click(mx, my)
 	self.editor:click(mx, my)
-	self:invalidate()
 end
 
 function editbox:doubleclick(mx, my)
 	self.editor:doubleclick(mx, my)
-	self:invalidate()
 end
 
 function editbox:tripleclick(mx, my)
 	self.editor:tripleclick(mx, my)
-	self:invalidate()
 end
 
 function editbox:mousewheel(delta, mx, my, area, pdelta)
 	self:_sync()
 	self.vscrollbar:scroll_by(delta * self.editor.view.line_h)
-	self:invalidate()
 end
 
-function view:clip(x, y, w, h)
+function view:begin_clip(x, y, w, h)
 	local cr = self.editbox.window.cr
 	cr:save()
 	cr:new_path()
@@ -150,10 +169,11 @@ function view:end_clip()
 end
 
 function view:draw_background() end --using layer's background
+function view:draw_cursor() end --using the cursor layer
 
 function view:draw_rect(x, y, w, h, color)
 	local cr = self.editbox.window.cr
-	cr:rgba(self.editbox:color(color))
+	cr:rgba(self.editbox.ui:color(self.editbox:color(color)))
 	cr:new_path()
 	cr:rectangle(x, y, w, h)
 	cr:fill()
@@ -167,7 +187,7 @@ end
 
 function view:draw_char(x, y, s, i, color)
 	local cr = self.editbox.window.cr
-	cr:rgba(self.editbox:color(color))
+	cr:rgba(self.editbox.ui:color(self.editbox:color(color)))
 	cr:move_to(x, y)
 	cr:show_text(s:sub(i, i))
 end
@@ -252,6 +272,10 @@ function editor:draw()
 	self.view:draw_minimap()
 end
 
+function editor:invalidate()
+	self.editbox:invalidate()
+end
+
 function editor:set_clipboard(s)
 	self.editbox.ui:setclipboard(s, 'text')
 end
@@ -271,12 +295,10 @@ function editbox:keypress(key)
 	else
 		self.editor:keypress(key)
 	end
-	self:invalidate()
 end
 
 function editbox:keychar(s)
 	self.editor:keychar(s)
-	self:invalidate()
 end
 
 function editbox:view_rect()
@@ -284,8 +306,8 @@ function editbox:view_rect()
 	local hs = self.hscrollbar
 	return
 		0, 0,
-		self.w - (vs.autohide and 0 or vs.h),
-		self.h - (hs.autohide and 0 or hs.h)
+		self.cw - (vs.autohide and 0 or vs.h),
+		self.ch - (hs.autohide and 0 or hs.h)
 end
 
 function editbox:_sync_view()
@@ -317,6 +339,25 @@ function editbox:_sync_scrollbars()
 	hs.w = vw - mw - vs.h
 	hs.view_size = vw - mw
 	hs.content_size = cw + view.cursor_xoffset + view.cursor_thickness
+end
+
+function editbox:_sync_caret()
+
+	self.caret.x, self.caret.y, self.caret.w, self.caret.h =
+		self.editor.view:cursor_rect(self.editor.cursor)
+
+	self.caret.background_color =
+		self:color(self.editor.cursor.color or 'cursor')
+
+	self.caret.visible = self.editor.cursor.visible
+
+	if self.editor.cursor.changed.blinking then
+		self.editor.cursor.changed.blinking = false
+		local bt = self.ui:caret_blink_time()
+		if bt then
+			self.caret:transition('opacity', 0, 0, nil, bt, 'replace')
+		end
+	end
 end
 
 editbox.vscrollbar_class = ui.scrollbar
@@ -376,9 +417,13 @@ function editbox:override_init(inherited, ui, t)
 
 	self:init_proxy_properties()
 
-	--self.cursor.changed.blinking = true
 	self.editor.editbox = self
 	self.editor.view.editbox = self
+
+	self.caret = self.caret_class(self.ui, {
+		id = self:_subtag'caret',
+		parent = self,
+	}, self.caret)
 
 	self.vscrollbar = self.vscrollbar_class(self.ui, {
 		id = self:_subtag'vscrollbar',
@@ -403,29 +448,33 @@ function editbox:override_init(inherited, ui, t)
 	end
 	]]
 
+	self.editor.cursor.visible = false
+	self.editor.cursor.changed.blinking = false
+
 	--[[
-	--make the cursor blink
-	if ed.cursor.changed.blinking then
-		ed.cursor.start_clock = self.clock
-		ed.cursor.changed.blinking = false
+	local toggle_blink
+	local function schedule_toggle_blink()
+		self.ui:runafter(self.ui.app():caret_blink_time(), toggle_blink)
 	end
-	ed.cursor.on = (self.clock - ed.cursor.start_clock) % 1 < 0.5
+	function toggle_blink()
+		if not self.ui then return end --editbox freed
+		if not self.editor.cursor.changed.blinking then
+			self:settags'blinking'
+			self.editor.cursor.changed.blinking = true
+		end
+		schedule_toggle_blink()
+	end
+	toggle_blink()
+	schedule_toggle_blink()
 	]]
-	self.editor.cursor.on = self.active
 end
 
 function editbox:after_focused()
-	self.editor.cursor.on = true
-	if not self.multiline then
-		self.editor:select_all()
-	end
+	self.editor:focus()
 end
 
 function editbox:after_lostfocus()
-	self.editor.cursor.on = false
-	if not self.multiline then
-		self.editor:reset_selection_to_cursor()
-	end
+	self.editor:unfocus()
 end
 
 --demo -----------------------------------------------------------------------
@@ -447,14 +496,11 @@ if not ... then require('ui_demo')(function(ui, win)
 			x = 320,
 			y = 10 + 30 * (i-1),
 			w = 200,
-			h = 26,
 			parent = win,
 			text = (('Hello World! '):rep(10)..'\n'):rep(30),
 			multiline = false,
 		}
 	end
-
-	edit:focus()
 
 	function win:client_rect_changed(cx, cy, cw, ch)
 		edit.h = ch - 20

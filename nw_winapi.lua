@@ -1131,6 +1131,11 @@ function app:double_click_time()
 	return winapi.GetDoubleClickTime() / 1000 --seconds
 end
 
+function app:caret_blink_time()
+	local t = winapi.GetCaretBlinkTime()
+	return t and t / 1000 --seconds
+end
+
 function app:double_click_target_area()
 	local w = winapi.GetSystemMetrics'SM_CXDOUBLECLK'
 	local h = winapi.GetSystemMetrics'SM_CYDOUBLECLK'
