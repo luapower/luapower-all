@@ -25,6 +25,7 @@ BOOL ClipCursor(const RECT *lpRect);
 BOOL GetClipCursor(LPRECT lpRect);
 HCURSOR GetCursor(void);
 BOOL GetCursorInfo(PCURSORINFO pci);
+UINT GetCaretBlinkTime();
 ]]
 
 IDC_ARROW       = 32512
@@ -84,6 +85,11 @@ function GetCursorPos(p, pci)
 end
 
 SetCursorPos = C.SetCursorPos
+
+function GetCaretBlinkTime()
+	local t = checknz(C.GetCaretBlinkTime())
+	return t ~= 0xffffffff and t
+end
 
 --messages
 
