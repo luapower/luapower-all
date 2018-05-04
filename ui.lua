@@ -197,11 +197,13 @@ function ui.selector:selects(elem)
 end
 
 --attribute expansion --------------------------------------------------------
+--attributes from styles need to be expanded first so that we know which
+--initial values to save before applying the attributes.
 
-local expand = {} -- {attr -> expand(dest, val)}
+ui.expand = {} -- {attr -> expand(dest, val)}
 
-local function expand_attr(attr, val, dest)
-	local expand = expand[attr]
+function ui:expand_attr(attr, val, dest)
+	local expand = self.expand[attr]
 	if expand then
 		expand(dest, val)
 		return true
@@ -210,7 +212,8 @@ end
 
 --stylesheets ----------------------------------------------------------------
 
-ui.stylesheet = ui.object:subclass'stylesheet'
+ui.stylesheet_class = ui.object:subclass'stylesheet'
+ui.stylesheet = ui.stylesheet_class()
 
 function ui:after_init()
 	--TODO: fix issue with late-loading of class styles in autoloaded widgets.
@@ -228,7 +231,7 @@ end
 
 function ui.stylesheet:add_style(sel, attrs)
 	for attr, val in pairs(attrs) do
-		if expand_attr(attr, val, attrs) then
+		if self.ui:expand_attr(attr, val, attrs) then
 			attrs[attr] = nil
 		end
 	end
@@ -256,10 +259,6 @@ function ui.stylesheet:add_stylesheet(stylesheet)
 	end
 end
 
-local function cmp_sel(sel1, sel2)
-	return sel1.priority < sel2.priority
-end
-
 --attr. value to use in styles for "initial value of this attr"
 function ui.initial(self, attr)
 	return self:initial_value(attr)
@@ -270,12 +269,13 @@ function ui.inherit(self, attr)
 	return self:parent_value(attr)
 end
 
+local function cmp_sel(sel1, sel2)
+	return sel1.priority < sel2.priority
+end
+
 function ui.stylesheet:update_element(elem, update_children)
 
-	--gather all attribute values from all selectors affecting all tags of elem.
-	--later selectors affecting a tag take precedence over earlier ones affecting
-	--that tag. tags are like css classes while elem.tags is like the html class
-	--attribute which specifies a list of css classes (i.e. tags) to apply.
+	--gather all style selectors which select the element.
 	local st = {} --{sel1, ...}
 	local checked = {} --{sel -> true}
 	for tag in pairs(elem.tags) do
@@ -291,7 +291,10 @@ function ui.stylesheet:update_element(elem, update_children)
 			end
 		end
 	end
+	--sort selectors in style declaration order.
 	table.sort(st, cmp_sel)
+
+	--compute attribute values.
 	local attrs = {} --{attr -> val}
 	for _,sel in ipairs(st) do
 		update(attrs, sel.attrs)
@@ -565,6 +568,7 @@ end
 --elements -------------------------------------------------------------------
 
 ui.element = ui.object:subclass'element'
+ui.element.ui = ui
 
 ui.element.visible = true
 ui.element.iswindow = false
@@ -611,6 +615,10 @@ function ui.element:override_create(inherited, ui, t, ...)
 	return inherited(self, ui, update(t, ...))
 end
 
+function ui.element:expand_attr(attr, val)
+	return self.ui:expand_attr(attr, val, self)
+end
+
 local function add_tags(tags, t)
 	if not t then return end
 	for tag in gmatch_tags(t) do
@@ -624,15 +632,14 @@ function ui.element:after_init(ui, t)
 	self.tags = {['*'] = true}
 	add_tags(self.tags, class_tags)
 	self.tags[self.classname] = true
-	local id = t and t.id
-	if id then
-		self._id = id
-		self.tags[id] = true
-	end
-	add_tags(self.tags, t and t.tags)
-	--set attributes in lexicographic order so that eg. `border_width` comes
-	--before `border_width_left` even though it's actually undefined behavior.
 	if t then
+		if t.id then
+			self._id = t.id
+			self.tags[t.id] = true
+		end
+		add_tags(self.tags, t.tags)
+		--set attributes in priority and/or lexicographic order so that eg.
+		--`border_width` comes before `border_width_left`.
 		local pri = self._init_priority
 		local function cmp(a, b)
 			local pa, pb = pri[a], pri[b]
@@ -1473,9 +1480,11 @@ function ui.window:text_size(s)
 	return w, h
 end
 
-function ui.window:textbox(x, y, w, h, s, halign, valign)
+function ui.window:textbox(x0, y0, w, h, s, halign, valign)
 	local cr = self.cr
 	local line_h = self.font_height * self.line_spacing
+
+	local x, y
 
 	if halign == 'right' then
 		x = w
@@ -1504,6 +1513,9 @@ function ui.window:textbox(x, y, w, h, s, halign, valign)
 		end
 		y = y - lines_h
 	end
+
+	x = x + x0
+	y = y + y0
 
 	cr:new_path()
 	for s in lines(s) do
@@ -1546,44 +1558,44 @@ local function args4(s, convert) --parse a string of 4 non-space args
 	end
 end
 
-function expand:padding(s)
+function ui.expand:padding(s)
 	self.padding_left, self.padding_top, self.padding_right,
 		self.padding_bottom = args4(s, tonumber)
 end
 
-function expand:border_color(s)
+function ui.expand:border_color(s)
 	self.border_color_left, self.border_color_right, self.border_color_top,
 		self.border_color_bottom = args4(s)
 end
 
-function expand:border_width(s)
+function ui.expand:border_width(s)
 	self.border_width_left, self.border_width_right, self.border_width_top,
 		self.border_width_bottom = args4(s, tonumber)
 end
 
-function expand:corner_radius(s)
+function ui.expand:corner_radius(s)
 	self.corner_radius_top_left, self.corner_radius_top_right,
 		self.corner_radius_bottom_right, self.corner_radius_bottom_left =
 			args4(s, tonumber)
 end
 
-function expand:scale(scale)
+function ui.expand:scale(scale)
 	self.scale_x = scale
 	self.scale_y = scale
 end
 
-function expand:background_scale(scale)
+function ui.expand:background_scale(scale)
 	self.background_scale_x = scale
 	self.background_scale_y = scale
 end
 
-function ui.layer:set_padding(s) expand_attr('padding', s, self) end
-function ui.layer:set_border_color(s) expand_attr('border_color', s, self) end
-function ui.layer:set_border_width(s) expand_attr('border_width', s, self) end
-function ui.layer:set_corner_radius(s) expand_attr('corner_radius', s, self) end
-function ui.layer:set_scale(scale) expand_attr('scale', scale, self) end
+function ui.layer:set_padding(s) self:expand_attr('padding', s) end
+function ui.layer:set_border_color(s) self:expand_attr('border_color', s) end
+function ui.layer:set_border_width(s) self:expand_attr('border_width', s) end
+function ui.layer:set_corner_radius(s) self:expand_attr('corner_radius', s) end
+function ui.layer:set_scale(scale) self:expand_attr('scale', scale) end
 function ui.layer:set_background_scale(scale)
-	expand_attr('background_scale', scale, self)
+	self:expand_attr('background_scale', scale)
 end
 
 ui.layer.x = 0
@@ -1661,7 +1673,7 @@ ui.layer.cursor = 'arrow'
 
 ui.layer.drag_threshold = 10 --snapping pixels before starting to drag
 ui.layer.max_click_chain = 1 --2 for getting doubleclick events etc.
-ui.layer.hover_delay = 1 --hover event delay
+ui.layer.hover_delay = 1 --TODO: hover event delay
 
 ui.layer.canfocus = false
 ui.layer.tabindex = false

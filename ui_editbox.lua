@@ -242,30 +242,6 @@ function view:draw_minimap()
 	cr:restore()
 end
 
-function view:font_file(font_file)
-	if not font_file then
-		return self._font_file
-	end
-	self:clear_glpyh_cache()
-	if self.ft_face then
-		self.ft_face:free()
-	end
-	self._font_file = font_file
-	self.ft_face = ft_lib:face(font_file)
-	self:font_size(self._font_size)
-end
-
-function view:font_size(font_size)
-	if not font_size then
-		return self._font_size
-	end
-	self:clear_glpyh_cache()
-	self._font_size = font_size
-	self.ft_face:set_pixel_sizes(self._font_size)
-	self.line_h = self.ft_face.size.metrics.height / 64
-	self.ascender = self.ft_face.size.metrics.ascender / 64
-end
-
 function editor:draw()
 	self.view:draw()
 	self.view:draw_eol_markers()

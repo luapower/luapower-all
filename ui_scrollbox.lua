@@ -17,19 +17,19 @@ ui.scrollbar._content_size = 0
 ui.scrollbar._view_size = 0
 ui.scrollbar.step = false --no snapping
 ui.scrollbar.min_width = 20
-ui.scrollbar.w = 12
-ui.scrollbar.h = 12
+ui.scrollbar.w = 10
+ui.scrollbar.h = 10
 ui.scrollbar.background_color = '#222'
-ui.scrollbar.corner_radius = 6
+ui.scrollbar.corner_radius = 5
 
 ui.scrollbar.autohide = true
-ui.scrollbar.autohide_empty = false
+ui.scrollbar.autohide_empty = true
 ui.scrollbar.autohide_offset = 20 --around-distance to scrollbar
 ui.scrollbar.opacity = 0
 ui.scrollbar.click_scroll_size = 300 --scroll when clicking on the background
 
 ui.scrollbar.grabbar = ui.layer:subclass'grabbar'
-ui.scrollbar.grabbar.corner_radius = 6
+ui.scrollbar.grabbar.corner_radius = 5
 
 ui:style('scrollbar', {
 	transition_opacity = true,

@@ -5,20 +5,22 @@
 if not ... then require'codedit_demo'; return end
 
 --prototype-based dynamic inheritance with __call constructor (from glue).
-local function object(super, o, ...)
+local function object(super, o)
 	o = o or {}
 	o.__index = super
 	o.__call = super and super.__call
 	if not super then o.subclass = object end
-	for i = 1, select('#', ...) do --add mixins, defaults, etc.
-		local t = select(i, ...)
-		if t then
-			for k,v in pairs(t) do
-				o[k] = v
-			end
+	return setmetatable(o, o)
+end
+
+--update a table with the contents of another table if any.
+local function update(dt, t)
+	if t then
+		for k,v in pairs(t) do
+			dt[k] = v
 		end
 	end
-	return setmetatable(o, o)
+	return dt
 end
 
 --str module: plain text boundaries ------------------------------------------
@@ -360,8 +362,8 @@ local buffer = object()
 buffer.multiline = true
 buffer.line_terminator = '\n' --line terminator to use when inserting text
 
-function buffer:__call(...)
-	self = object(self, ...)
+function buffer:__call(buffer)
+	self = object(self, buffer)
 	self:init()
 	return self
 end
@@ -847,8 +849,8 @@ cursor.thickness = nil
 cursor.color = nil
 cursor.line_highlight_color = nil
 
-function cursor:__call(...)
-	self = object(self, ...)
+function cursor:__call(cursor)
+	self = object(self, cursor)
 	self.line = 1
 	self.i = 1 --current byte index in current line
 	self.x = 0 --wanted x offset when navigating up/down
@@ -1303,8 +1305,8 @@ selection.line_rect = nil --line_rect(line) -> x, y, w, h
 
 --lifetime
 
-function selection:__call(...)
-	self = object(self, ...)
+function selection:__call(selection)
+	self = object(self, selection)
 	self.line1, self.i1 = 1, 1
 	self.line2, self.i2 = 1, 1
 	self.changed = {}
@@ -1834,8 +1836,8 @@ end
 
 local hl = {}
 
-function hl:__call(...)
-	self = object(self, ...)
+function hl:__call(hl)
+	self = object(self, hl)
 	self.last_line = 0
 	return self
 end
@@ -1926,8 +1928,8 @@ view.line_width = 72
 
 --lifetime
 
-function view:__call(...)
-	self = object(self, ...)
+function view:__call(view)
+	self = object(self, view)
 	self:init()
 	return self
 end
@@ -2607,8 +2609,8 @@ margin.background_color = nil
 margin.highlighted_text_color = nil
 margin.highlighted_background_color = nil
 
-function margin:__call(...)
-	self = object(self, ...)
+function margin:__call(margin)
+	self = object(self, margin)
 	self.view:add_margin(self)
 	return self
 end
@@ -2715,8 +2717,8 @@ editor.blame = false
 editor.next_reflow_mode = {left = 'justify', justify = 'left'}
 editor.default_reflow_mode = 'left'
 
-function editor:__call(...)
-	self = object(self, ...)
+function editor:__call(editor)
+	self = object(self, editor)
 
 	--core objects
 	self.buffer = self:create_buffer(self.buffer)
@@ -2750,61 +2752,61 @@ end
 
 --object constructors
 
-function editor:create_buffer(...)
-	return self.buffer_class({
+function editor:create_buffer(buffer)
+	return self.buffer_class(update({
 		editor = self,
-	}, ...)
+	}, buffer))
 end
 
-function editor:create_view(...)
-	return self.view_class({
+function editor:create_view(view)
+	return self.view_class(update({
 		editor = self,
 		buffer = self.buffer,
-	}, ...)
+	}, view))
 end
 
-function editor:create_cursor(...)
-	return self.cursor_class({
+function editor:create_cursor(cursor)
+	return self.cursor_class(update({
 		editor = self,
 		buffer = self.buffer,
 		view = self.view,
 		visible = true,
 		on = true,
-	}, ...)
+	}, cursor))
 end
 
-function editor:create_line_selection(...)
-	return self.line_selection_class({
+function editor:create_line_selection(selection)
+	return self.line_selection_class(update({
 		editor = self,
 		buffer = self.buffer,
 		view = self.view,
 		visible = true,
-	}, ...)
+	}, selection))
 end
 
-function editor:create_block_selection(...)
-	return self.block_selection_class({
+function editor:create_block_selection(selection)
+	return self.block_selection_class(update({
 		editor = self,
 		buffer = self.buffer,
 		view = self.view,
 		visible = false,
-	}, ...)
+	}, selection))
 end
 
-function editor:create_line_numbers_margin(...)
-	return self.line_numbers_margin_class({
+function editor:create_line_numbers_margin(margin)
+	return self.line_numbers_margin_class(update({
 		editor = self,
 		buffer = self.buffer,
 		view = self.view,
-	}, ...)
+	}, margin))
 end
 
-function editor:create_blame_margin(...)
-	return self.blame_margin_class({
+function editor:create_blame_margin(margin)
+	return self.blame_margin_class(update({
 		editor = self,
 		buffer = self.buffer,
 		view = self.view,
-	}, ...)
+	}, margin))
 end
 
 --undo/redo integration
