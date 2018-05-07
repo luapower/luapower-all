@@ -58,7 +58,7 @@ editbox.type_color = '#56cc66'
 editbox.label_color = '#ffff66'
 editbox.regex_color = '#ff3333'
 
-editbox.content_clip = true --TODO: remove this
+editbox.clip_content = true --TODO: remove this
 editbox.border_color = '#888'
 editbox.border_width = 1
 
@@ -308,13 +308,13 @@ function editbox:_sync_scrollbars()
 	local vx, vy, vw, vh = self:view_rect()
 	vs.x = vx + vw + (vs.autohide and -vs.h or 0)
 	vs.w = vh
-	vs.view_size = vh
-	vs.content_size = ch
+	vs.view_length = vh
+	vs.content_length = ch
 	hs.y = vy + vh + (hs.autohide and -hs.h or 0)
 	hs.x = vx + mw
 	hs.w = vw - mw - vs.h
-	hs.view_size = vw - mw
-	hs.content_size = cw + view.cursor_xoffset + view.cursor_thickness
+	hs.view_length = vw - mw
+	hs.content_length = cw + view.cursor_xoffset + view.cursor_thickness
 end
 
 function editbox:_sync_caret()

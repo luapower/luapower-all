@@ -32,7 +32,18 @@ local assert = glue.assert
 local collect = glue.collect
 local sortedpairs = glue.sortedpairs
 local memoize = glue.memoize
-local lines = glue.lines
+
+local function single_line(s, val)
+	return not val and s or nil
+end
+
+local function lines(s, multiline)
+	if multiline then
+		return glue.lines(s)
+	else
+		return single_line, s
+	end
+end
 
 local function popval(t, v)
 	local i = indexof(v, t)
@@ -576,6 +587,7 @@ ui.element.activable = false --can clicked and set as hot
 ui.element.targetable = false --can be a potential drop target
 ui.element.vscrollable = false --can be hit for vscroll
 ui.element.hscrollable = false --can be hit for hscroll
+ui.element.scrollable = false --can be hit for vscroll or hscroll
 ui.element.focusable = false --can be focused
 
 ui.element.font_family = 'Open Sans'
@@ -595,33 +607,33 @@ ui.element.transition_blend = 'replace_nodelay'
 
 function ui.element:init_ignore(t)
 	if self._init_ignore == self.super._init_ignore then
-		self._init_ignore = {}
+		self._init_ignore = update({}, self.super._init_ignore)
 	end
 	update(self._init_ignore, t)
 end
 
 function ui.element:init_priority(t)
 	if self._init_priority == self.super._init_priority then
-		self._init_priority = {}
+		self._init_priority = update({}, self.super._init_priority)
 	end
 	update(self._init_priority, t)
 end
 
 ui.element:init_priority{}
-ui.element:init_ignore{id=1, tags=1}
+ui.element:init_ignore{id=1, tags=1, subtag=1}
 
 --override element constructor to take in additional initialization tables
 function ui.element:override_create(inherited, ui, t, ...)
-	return inherited(self, ui, update(t, ...))
+	return inherited(self, ui, t and update({}, t, ...))
 end
 
 function ui.element:expand_attr(attr, val)
 	return self.ui:expand_attr(attr, val, self)
 end
 
-local function add_tags(tags, t)
-	if not t then return end
-	for tag in gmatch_tags(t) do
+local function add_tags(tags, s)
+	if not s then return end
+	for tag in gmatch_tags(s) do
 		tags[tag] = true
 	end
 end
@@ -638,6 +650,9 @@ function ui.element:after_init(ui, t)
 			self.tags[t.id] = true
 		end
 		add_tags(self.tags, t.tags)
+		if t.subtag then
+			self:_subtag(t.subtag)
+		end
 		--set attributes in priority and/or lexicographic order so that eg.
 		--`border_width` comes before `border_width_left`.
 		local pri = self._init_priority
@@ -888,11 +903,11 @@ function ui.window:override_init(inherited, ui, t)
 
 	self.mouse_x = win:mouse'x' or false
 	self.mouse_y = win:mouse'y' or false
-	self.mouse_left = false
-	self.mouse_right = false
-	self.mouse_middle = false
-	self.mouse_x1 = false --mouse aux button 1
-	self.mouse_x2 = false --mouse aux button 2
+	self.mouse_left = win:mouse'left' or false
+	self.mouse_right = win:mouse'right' or false
+	self.mouse_middle = win:mouse'middle' or false
+	self.mouse_x1 = win:mouse'x1' or false --mouse aux button 1
+	self.mouse_x2 = win:mouse'x2' or false --mouse aux button 2
 
 	local function setcontext()
 		self.frame_clock = ui:clock()
@@ -1002,7 +1017,7 @@ function ui.window:override_init(inherited, ui, t)
 	self.layer = self.layer_class(self.ui, {
 		id = self:_subtag'layer',
 		x = 0, y = 0, w = self.w, h = self.h,
-		content_clip = false, window = self,
+		clip_content = false, window = self,
 	}, self.layer)
 
 	--prepare the layer for working parent-less
@@ -1469,10 +1484,10 @@ function ui.window:text_line_h()
 	return self.font_height * self.line_spacing
 end
 
-function ui.window:text_size(s)
+function ui.window:text_size(s, multiline)
 	local w, h, y1 = 0, 0, self.font_ascent
 	local line_h = self.font_height * self.line_spacing
-	for s in lines(s) do
+	for s in lines(s, multiline) do
 		local w1, h1, yb = self:line_extents(s)
 		w, h = select(3, box2d.bounding_box(0, 0, w, h, 0, y1 + yb, w1, h1))
 		y1 = y1 + line_h
@@ -1480,7 +1495,7 @@ function ui.window:text_size(s)
 	return w, h
 end
 
-function ui.window:textbox(x0, y0, w, h, s, halign, valign)
+function ui.window:textbox(x0, y0, w, h, s, halign, valign, multiline)
 	local cr = self.cr
 	local line_h = self.font_height * self.line_spacing
 
@@ -1498,7 +1513,7 @@ function ui.window:textbox(x0, y0, w, h, s, halign, valign)
 		y = self.font_ascent
 	else
 		local lines_h = 0
-		for _ in lines(s) do
+		for _ in lines(s, multiline) do
 			lines_h = lines_h + line_h
 		end
 		lines_h = lines_h - line_h
@@ -1518,7 +1533,7 @@ function ui.window:textbox(x0, y0, w, h, s, halign, valign)
 	y = y + y0
 
 	cr:new_path()
-	for s in lines(s) do
+	for s in lines(s, multiline) do
 		if halign == 'right' then
 			local tw = self:line_extents(s)
 			cr:move_to(x - tw, y)
@@ -1612,11 +1627,12 @@ ui.layer.scale_cy = 0
 
 ui.layer.opacity = 1
 
-ui.layer.content_clip = false --'padding'/true, 'background', false
+ui.layer.clip_content = false --'padding'/true, 'background', false
 
 ui.layer.padding = 0
 
 ui.layer.background_type = 'color' --false, 'color', 'gradient', 'radial_gradient', 'image'
+ui.layer.background_hittable = false
 --all backgrounds
 ui.layer.background_x = 0
 ui.layer.background_y = 0
@@ -1667,11 +1683,12 @@ ui.layer.shadow_blur = 0
 
 ui.layer.text_align = 'center'
 ui.layer.text_valign = 'center'
+ui.layer.text_multiline = true
 ui.layer.text = nil
 
 ui.layer.cursor = 'arrow'
 
-ui.layer.drag_threshold = 10 --snapping pixels before starting to drag
+ui.layer.drag_threshold = 0 --snapping pixels before starting to drag
 ui.layer.max_click_chain = 1 --2 for getting doubleclick events etc.
 ui.layer.hover_delay = 1 --TODO: hover event delay
 
@@ -1846,7 +1863,13 @@ end
 --mouse event handling
 
 function ui.layer:getcursor(area)
-	return area and self['cursor_'..area] or self.cursor
+	if type(area) == 'string' then
+		return self['cursor_'..area] or self.cursor
+	elseif type(area) == 'table' then
+		return area.cursor or self.cursor
+	else
+		return self.cursor
+	end
 end
 
 function ui.layer:_mousemove(mx, my, area)
@@ -1966,7 +1989,7 @@ function ui.layer:start_drag(button, mx, my, area) end
 
 function ui.layer:_end_drag() --called on the drag_start_widget
 	self:settags'-drag_source'
-	self:fire('end_drag', self.drag_widget)
+	self:fire('end_drag', self.ui.drag_widget)
 end
 
 function ui.layer:_drop(widget, mx, my, area) --called on the drop target
@@ -2589,13 +2612,13 @@ function ui.layer:draw_text()
 	self:setfont()
 	local cw, ch = self:content_size()
 	self.window:textbox(0, 0, cw, ch, self.text,
-		self.text_align, self.text_valign)
+		self.text_align, self.text_valign, self.text_multiline)
 end
 
 function ui.layer:text_bounding_box()
 	if not self:text_visible() then return 0, 0, 0, 0 end
 	self:setfont()
-	local w, h = self.window:text_size(self.text)
+	local w, h = self.window:text_size(self.text, self.text_multiline)
 	local cw, ch = self:content_size()
 	return box2d.align(w, h, self.text_align, self.text_valign,
 		0, 0, cw, ch)
@@ -2604,19 +2627,17 @@ end
 --content-box geometry, drawing and hit testing
 
 function ui.layer:padding_pos() --in box space
-	local x, y = self:border_pos(-1) --inner edge
 	return
-		x + self.padding_left,
-		y + self.padding_top
+		self.padding_left,
+		self.padding_top
 end
 
 function ui.layer:padding_rect() --in box space
-	local x, y, w, h = self:border_rect(-1) --inner edge
 	return
-		x + self.padding_left,
-		y + self.padding_top,
-		w - self.padding_left - self.padding_right,
-		h - self.padding_top - self.padding_bottom
+		self.padding_left,
+		self.padding_top,
+		self.w - self.padding_left - self.padding_right,
+		self.h - self.padding_top - self.padding_bottom
 end
 
 function ui.layer:to_content(x, y) --box space coord in content space
@@ -2658,7 +2679,7 @@ function ui.layer:after_draw() --called in parent's content space; child intf.
 
 	cr:matrix(self:cr_abs_matrix(cr))
 
-	local cc = self.content_clip
+	local cc = self.clip_content
 	local bg = self:background_visible()
 
 	self:draw_shadow()
@@ -2712,15 +2733,15 @@ function ui.layer:hit_test(x, y, reason)
 	local self_allowed =
 		   (reason == 'activate' and self.activable)
 		or (reason == 'drop' and self.targetable)
-		or (reason == 'vscroll' and self.vscrollable)
-		or (reason == 'hscroll' and self.hscrollable)
+		or (reason == 'vscroll' and (self.vscrollable or self.scrollable))
+		or (reason == 'hscroll' and (self.hscrollable or self.scrollable))
 
 	local cr = self.window.cr
 	local x, y = self:from_parent_to_box(x, y)
 	cr:save()
 	cr:identity_matrix()
 
-	local cc = self.content_clip
+	local cc = self.clip_content
 
 	--hit the content first if it's not clipped
 	if not cc then
@@ -2755,7 +2776,7 @@ function ui.layer:hit_test(x, y, reason)
 
 	--hit background's clip area
 	local in_bg
-	if cc or self:background_visible() then
+	if cc or self.background_hittable or self:background_visible() then
 		cr:new_path()
 		self:background_path()
 		in_bg = cr:in_fill(x, y)
@@ -2793,7 +2814,7 @@ end
 
 function ui.layer:bounding_box(strict) --child interface
 	local x, y, w, h = 0, 0, 0, 0
-	local cc = self.content_clip
+	local cc = self.clip_content
 	if strict or not cc then
 		x, y, w, h = self:content_bounding_box(strict)
 		if cc then
@@ -2803,7 +2824,10 @@ function ui.layer:bounding_box(strict) --child interface
 			end
 		end
 	end
-	if self:background_visible() then
+	if (not strict and cc)
+		or self.background_hittable
+		or self:background_visible()
+	then
 		x, y, w, h = box2d.bounding_box(x, y, w, h, self:background_rect())
 	end
 	if self:border_visible() then

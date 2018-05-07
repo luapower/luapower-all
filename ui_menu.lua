@@ -94,7 +94,7 @@ if not ... then require('ui_demo')(function(ui, win)
 		border_color = '#fff',
 		padding = 10,
 		border_width = 10,
-		--content_clip = false,
+		--clip_content = false,
 	}
 
 	for i=1,5 do

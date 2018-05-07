@@ -15,8 +15,7 @@ ui.tab = ui.layer:subclass'tab'
 ui.tab._index = 1/0 --add to the tablist tail
 ui.tab.close_button = ui.button
 ui.tab.focusable = true
-ui.tab.drag_threshold = 0
-ui.tab.content_clip = true
+ui.tab.clip_content = true
 
 ui:style('tab', {
 	transition_x = true,

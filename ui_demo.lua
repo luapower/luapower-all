@@ -6,6 +6,28 @@ local ui = require'ui'
 local ui = ui()
 local win = ui:window{x = 840, y = 300, cw = 900, ch = 500, visible = false}
 
+local function fps_function()
+	local count_per_sec = 2
+	local frame_count, last_frame_count, last_time = 0, 0
+	return function()
+		last_time = last_time or time.clock()
+		frame_count = frame_count + 1
+		local time = time.clock()
+		if time - last_time > 1 / count_per_sec then
+			last_frame_count, frame_count = frame_count, 0
+			last_time = time
+		end
+		return last_frame_count * count_per_sec
+	end
+end
+
+local fps = fps_function()
+
+win.native_window:on('repaint', function(self)
+	local title = string.format('%d fps', fps())
+	self:title(title)
+end)
+
 if ... == 'ui_demo' then --loaded via require()
 	return function(test)
 		test(ui, win)
@@ -58,10 +80,10 @@ local function test_layers()
 		id = 'layer1',
 		parent = win,
 
-		--content_clip = true,
-		--content_clip = false,
-		--content_clip = 'padding',
-		content_clip = 'background',
+		--clip_content = true,
+		--clip_content = false,
+		--clip_content = 'padding',
+		  clip_content = 'background',
 
 		border_width = 10,
 		border_color = '#fff2',
@@ -144,7 +166,7 @@ local function test_layers()
 		visible = true,
 		id = 'layer2',
 		parent = layer1,
-		content_clip = false,
+		clip_content = false,
 		x = 10,
 		y = 10,
 		w = 200,
@@ -289,7 +311,7 @@ local function test_drag()
 		parent = win,
 		z_order = 1,
 		background_color = '#f66',
-		content_clip = false,
+		clip_content = false,
 		rotation_cx = 100,
 		rotation_cy = 100,
 		rotation = 80,

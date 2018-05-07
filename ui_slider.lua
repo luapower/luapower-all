@@ -33,7 +33,7 @@ ui.slider.border.corner_radius = 5
 ui.slider.border.border_width = 1
 ui.slider.border.border_color = '#999'
 ui.slider.border.background_color = '#000'
-ui.slider.border.content_clip = true
+ui.slider.border.clip_content = true
 
 ui.slider.fill.activable = false
 ui.slider.fill.h = 10

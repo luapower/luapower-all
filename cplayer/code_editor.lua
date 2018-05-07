@@ -99,7 +99,7 @@ function view:draw_scrollbox(x, y, w, h, cx, cy, cw, ch)
 	return scroll_x, scroll_y, clip_x, clip_y, clip_w, clip_h
 end
 
-function view:clip(x, y, w, h)
+function view:begin_clip(x, y, w, h)
 	self.player.cr:save()
 	self.player.cr:rectangle(x, y, w, h)
 	self.player.cr:clip()
