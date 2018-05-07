@@ -27,6 +27,7 @@ __lists__
 `glue.append(dt, v1, ...) -> dt`                                   append non-nil values to a list
 `glue.shift(t, i, n) -> t`                                         shift list elements
 `glue.reverse(t) -> t`                                             reverse list in place
+`glue.binsearch(v, t[, cmp]) -> i`                                 binary search
 __strings__
 `glue.gsplit(s,sep[,start[,plain]]) -> iter() -> e[,captures...]`  split a string by a pattern
 `glue.lines(s[, opt]) -> iter() -> s`                              iterate the lines of a string
@@ -294,6 +295,12 @@ Removing a portion of a list or making room for more elements inside the list.
 ### `glue.reverse(t) -> t`
 
 Reverse a list in-place and return the input arg.
+
+### `glue.binsearch(v, t[, cmp]) -> i`
+
+Return the smallest index whereby inserting the value `v` in sorted list `t`
+will keep `t` sorted (i.e. `t[i-1] < v` and `t[i] >= v`). Return `nil` if `v`
+is larger than the largest value or if `t` is empty.
 
 ------------------------------------------------------------------------------
 

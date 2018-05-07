@@ -19,7 +19,7 @@ function glue.round(x)
 end
 
 function glue.snap(x, y)
-	return math.floor(x / y + .5) * y
+	return floor(x / y + .5) * y
 end
 
 function glue.clamp(x, x0, x1)
@@ -186,6 +186,28 @@ function glue.reverse(t)
 		t[i], t[len-i] = t[len-i], t[i]
 	end
 	return t
+end
+
+--binary search for an insert position that keeps the table sorted.
+local function less(a, b) return a < b end
+function glue.binsearch(v, t, cmp)
+	cmp = cmp or less
+	local n = #t
+	if n == 0 then return nil end
+	if n == 1 then return not cmp(t[1], v) and 1 or nil end
+	local lo, hi = 1, n
+	while lo < hi do
+		local mid = floor(lo + (hi - lo) / 2)
+		if cmp(t[mid], v) then
+			lo = mid + 1
+			if lo == n and cmp(t[lo], v) then
+				return nil
+			end
+		else
+			hi = mid
+		end
+	end
+	return lo
 end
 
 --string submodule. has its own namespace which can be merged with _G.string.

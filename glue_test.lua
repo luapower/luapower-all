@@ -66,6 +66,20 @@ test(remove({'a','b','c','d'}, 4, 2), {'a', 'b', 'c'}) --too many
 test(remove({'a','b','c','d'}, 5, 5), {'a', 'b', 'c', 'd'}) --from too far
 test(remove({}, 5, 5), {}) --from too far
 
+test(glue.binsearch(10, {}), nil)
+test(glue.binsearch(10, {11}), 1)
+test(glue.binsearch(11, {11}), 1)
+test(glue.binsearch(12, {11}), nil)
+test(glue.binsearch(12, {11, 13}), 2)
+test(glue.binsearch(13, {11, 13}), 2)
+test(glue.binsearch(11, {11, 13}), 1)
+test(glue.binsearch(14, {11, 13}), nil)
+test(glue.binsearch(10, {11, 13}), 1)
+test(glue.binsearch(14, {11, 13, 15}), 3)
+test(glue.binsearch(12, {11, 13, 15}), 2)
+test(glue.binsearch(10, {11, 13, 15}), 1)
+test(glue.binsearch(16, {11, 13, 15}), nil)
+
 local function test1(s,sep,expect)
 	local t={} for c in glue.gsplit(s,sep) do t[#t+1]=c end
 	assert(#t == #expect)
