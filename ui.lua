@@ -2902,6 +2902,18 @@ function ui.layer:get_ch() return (select(4, self:padding_rect())) end
 function ui.layer:set_cw(cw) self.w = cw + (self.w - self.cw) end
 function ui.layer:set_ch(ch) self.h = ch + (self.h - self.ch) end
 
+function ui.layer:get_x2() return self.x + self.w end
+function ui.layer:get_y2() return self.x + self.h end
+
+function ui.layer:set_x2(x2) self.x = x2 - self.w end
+function ui.layer:set_y2(y2) self.y = y2 - self.h end
+
+function ui.layer:get_cx() return self.x + self.w / 2 end
+function ui.layer:get_cy() return self.x + self.h / 2 end
+
+function ui.layer:set_cx(cx) self.x = cx - self.w / 2 end
+function ui.layer:set_cy(cy) self.y = cy - self.h / 2 end
+
 function ui.layer:setfont(family, weight, slant, size, color, line_spacing)
 	self.window:setfont(
 		family or self.font_family,

@@ -90,54 +90,37 @@ end
 function pane:col_at_x(x)
 	for i,col in ipairs(self.grid.cols) do
 		if col.visible and col.pane == self then
-			if x >= col.x and x <= col.x + col.w then
+			if x >= col.x and x <= col.x2 then
 				return col
 			end
 		end
 	end
 end
 
-function grid:nearest_col_at_x(x, exclude_last)
-	local last_col, found_col
+function grid:nearest_col_at_x(x)
+	local first_col, last_col, found_col
 	for i,col in ipairs(self.cols) do
 		if col.visible then
 			local x = self:to_other(col.parent, x, 0)
-			if x <= col.x + col.w / 2 then
-				found_col = found_col or last_col or col
+			if x <= col.cx then
+				return last_col
 			elseif x <= col.x + col.w then
-				found_col = found_col or col
+				return col
 			end
 			last_col = col
 		end
 	end
-	found_col = found_col or last_col
-	if exclude_last and found_col == last_col then
-		return nil
-	end
-	return found_col
+	return last_col
 end
 
---[[
-grid.col_inbetween_margin = 10
-
-function pane:col_at_x_inbetween(x)
-	local margin = self.grid.col_inbetween_margin
-	for i,col in ipairs(self.grid.cols) do
-		if col.visible and col.pane == self then
-			if math.abs(x - (col.x + col.w)) <= margin then
-				return col
-			end
+function grid:last_visible_col()
+	for i = #self.cols, 1, -1 do
+		local col = self.cols[i]
+		if col.visible then
+			return col
 		end
 	end
 end
-
-function grid:col_at_x_inbetween(x)
-	local fp = self.freeze_pane
-	local sp = self.scroll_pane
-	return (fp:nearest_col_at_x(fp:from_parent(x, 0))
-		  or sp:nearest_col_at_x(sp:from_parent(x, 0)))
-end
-]]
 
 local scroll_pane = ui.scrollbox:subclass'grid_scroll_pane'
 grid.scroll_pane_class = scroll_pane
@@ -174,27 +157,27 @@ function grid:_sync_content_panes()
 	local fp = self.freeze_pane
 	local sp = self.scroll_pane
 	local s = self.splitter
+	local sw = s.visible and s.w or 0
 
 	fp.h = self.ch
 	sp.h = fp.h
 	sp.content.h = sp.h
 
-	--move cols to their content panes
-	local fw = 0
-	local sw = 0
+	local fpw = 0
+	local spw = 0
 	for i,col in ipairs(self.cols) do
 		local frozen = self.freeze_col and i <= self.freeze_col
 		col.pane = frozen and self.freeze_pane or self.scroll_pane
 		col.parent = col.pane.header_layer
 		if col.visible then
-			fw = fw + (frozen and col.w or 0)
-			sw = sw + (frozen and 0 or col.w)
+			fpw = fpw + (frozen and col.w or 0)
+			spw = spw + (frozen and 0 or col.w)
 		end
 	end
-	fp.cw = fw
-	sp.x = fp.w + s.w
-	sp.w = self.cw - fw - s.w
-	sp.content.w = sw
+	fp.cw = fpw
+	sp.x = fp.w + sw
+	sp.w = self.cw - fpw - sw
+	sp.content.w = spw
 	self.scroll_pane:sync()
 	self.freeze_pane:sync()
 end
@@ -205,7 +188,7 @@ end
 
 function grid:set_freeze_col(col_index)
 	if col_index == self.freeze_col then return end
-	self._freeze_col = col_index
+	self._freeze_col = col_index or false
 	self:_sync_content_panes()
 end
 
@@ -223,14 +206,6 @@ splitter.w = 6
 splitter.background_color = '#888'
 splitter.cursor = 'size_h'
 
-function drag_splitter:drag(dx, dy)
-	self.x = self.x + dx
-	local x = self:to_other(self.grid, self.cw / 2, 0)
-	local col = self.grid:nearest_col_at_x(x, true)
-	self.grid.freeze_col = col.index
-	self:invalidate()
-end
-
 function splitter:mousedown()
 	self.active = true
 end
@@ -241,6 +216,8 @@ end
 
 function splitter:start_drag(button, mx, my, area)
 	if button ~= 'left' then return end
+
+	self.grid.scroll_pane.hscrollbar:transition('offset', 0)
 
 	local ds = self.grid.drag_splitter
 		or self.drag_splitter_class(self.ui, {
@@ -259,14 +236,23 @@ function splitter:start_drag(button, mx, my, area)
 	return ds
 end
 
-function splitter:end_drag(ds)
-	ds.visible = false
+function drag_splitter:drag(dx, dy)
+	local sp = self.grid.scroll_pane
+	sp.hscrollbar.offset = 0
+	local max_w = math.min(sp.w, sp.content.w)
+	self.x = clamp(self.x + dx, 0, sp.x + max_w - self.w)
+	local col = self.grid:nearest_col_at_x(self.cx)
+	if col == self.grid:last_visible_col() then
+		col = nil
+	end
+	self.grid.freeze_col = col and col.index
+	self.grid.splitter.visible = col and true or false
+	self.grid.freeze_pane.visible = self.grid.splitter.visible
+	self:invalidate()
 end
 
-function splitter:drag(dx, dy)
-	self.x = self.x + dx
-	self.split.w = math.max(0, self.x - self.split.x)
-	self:invalidate()
+function splitter:end_drag(ds)
+	ds.visible = false
 end
 
 function grid:create_splitter()
@@ -292,12 +278,84 @@ col.text_align = 'left'
 col.w = 200
 col.padding_left = 4
 col.padding_right = 4
+col.clip_content = true
+col.background_hittable = true
+col.cursor_resize_left = 'size_h'
+col.cursor_resize_right = 'size_h'
 
 grid.col_h = 20
 
 function col:get_index()
 	return indexof(self, self.grid.cols)
 end
+
+function col:set_index(index)
+	--
+end
+
+function col:override_hit_test(inherited, x, y, reason)
+	local widget, area = inherited(self, x, y, reason)
+	if widget == self then
+		if x >= self.x and x <= self.x + self.padding_left then
+			return self, 'resize_left'
+		elseif x <= self.x2 and x >= self.x2 - self.padding_right then
+			return self, 'resize_right'
+		end
+	end
+	return widget, area
+end
+
+function col:mousedown(mx, my, area)
+	if area == 'resize_left' or area == 'resize_right' then
+		self.active = true
+	end
+end
+
+function col:mouseup(mx, my, area)
+	self.active = false
+end
+
+function col:start_drag(button, mx, my, area)
+	if button ~= 'left' then return end
+	if area ~= 'resize_left' and area ~= 'resize_right' then return end
+	self.drag_op = area
+	return self
+end
+
+function col:drag(dx, dy)
+	if self.drag_op == 'resize_right' then
+		self.drag_w = self.drag_w or self.w
+		self.w = self.drag_w + dx
+	else
+		self.x = self.x + dx
+	end
+end
+
+ui:style('grid_col active', {
+	background_color = '#f00',
+})
+
+--[[
+grid.col_inbetween_margin = 10
+
+function pane:col_at_x_inbetween(x)
+	local margin = self.grid.col_inbetween_margin
+	for i,col in ipairs(self.grid.cols) do
+		if col.visible and col.pane == self then
+			if math.abs(x - (col.x + col.w)) <= margin then
+				return col
+			end
+		end
+	end
+end
+
+function grid:col_at_x_inbetween(x)
+	local fp = self.freeze_pane
+	local sp = self.scroll_pane
+	return (fp:nearest_col_at_x(fp:from_parent(x, 0))
+		  or sp:nearest_col_at_x(sp:from_parent(x, 0)))
+end
+]]
 
 function col:get_frozen()
 	local fi = self.grid.freeze_col
@@ -346,7 +404,9 @@ function grid:_sync_cols()
 			if last_col and last_col.parent ~= col.parent then
 				x = 0
 			end
-			col.x = x
+			if not col.dragging then
+				col.x = x
+			end
 			x = x + col.w
 			last_col = col
 		end
@@ -560,7 +620,7 @@ if not ... then require('ui_demo')(function(ui, win)
 			{text = 'col5', w = 150},
 			{text = 'col6', w = 150},
 			{text = 'col7', w = 150},
-			{text = 'col8', w = 1500},
+			{text = 'col8', w = 500},
 		},
 		col = {
 			border_width = 1,
