@@ -17,9 +17,14 @@ local binsearch = glue.binsearch
 local grid = ui.layer:subclass'grid'
 ui.grid = grid
 
---scroll pane and freeze pane ------------------------------------------------
+--scroll & freeze panes; header & rows layers --------------------------------
+
+grid.header_visible = true
 
 local pane = {} --scroll/freeze pane mixin
+
+local header = ui.layer:subclass'grid_header_layer'
+pane.header_layer_class = header
 
 local rows = ui.layer:subclass'grid_rows_layer'
 pane.rows_layer_class = rows
@@ -40,7 +45,7 @@ function rows:override_hit_test_content(inherited, x, y, reason)
 	if reason == 'activate' then
 		local i = self.grid:row_at_y(y)
 		if i then
-			local col = i and self.pane:col_by_x(x)
+			local col = i and self.pane:col_at_x(x)
 			if col then
 				self._area = self._area or {}
 				self._area.i = i
@@ -55,22 +60,34 @@ end
 
 function pane:after_init()
 
-	self.rows_layer = self.rows_layer_class(self.ui, {
+	self.header_layer = self.header_layer_class(self.ui, {
+		subtag = 'header_layer',
 		parent = self.content or self,
 		pane = self,
 		grid = self.grid,
-	}, self.grid.rows_layer)
+	}, self.grid.header_layer, self.header_layer)
+
+	self.rows_layer = self.rows_layer_class(self.ui, {
+		subtags = 'rows_layer',
+		parent = self.content or self,
+		pane = self,
+		grid = self.grid,
+	}, self.grid.rows_layer, self.rows_layer)
 
 end
 
-function pane:sync_rows_layer()
+function pane:after_sync()
+	local h = self.header_layer
+	h.visible = self.grid.header_visible
+	h.w = self.content.w
+	h.h = self.grid.col_h
 	local r = self.rows_layer
-	r.y = self.grid.col_h
+	r.y = h.visible and self.grid.col_h or 0
 	r.w = self.content.w
 	r.h = self.content_container.h - r.y
 end
 
-function pane:col_by_x(x)
+function pane:col_at_x(x)
 	for i,col in ipairs(self.grid.cols) do
 		if col.visible and col.pane == self then
 			if x >= col.x and x <= col.x + col.w then
@@ -79,6 +96,48 @@ function pane:col_by_x(x)
 		end
 	end
 end
+
+function grid:nearest_col_at_x(x, exclude_last)
+	local last_col, found_col
+	for i,col in ipairs(self.cols) do
+		if col.visible then
+			local x = self:to_other(col.parent, x, 0)
+			if x <= col.x + col.w / 2 then
+				found_col = found_col or last_col or col
+			elseif x <= col.x + col.w then
+				found_col = found_col or col
+			end
+			last_col = col
+		end
+	end
+	found_col = found_col or last_col
+	if exclude_last and found_col == last_col then
+		return nil
+	end
+	return found_col
+end
+
+--[[
+grid.col_inbetween_margin = 10
+
+function pane:col_at_x_inbetween(x)
+	local margin = self.grid.col_inbetween_margin
+	for i,col in ipairs(self.grid.cols) do
+		if col.visible and col.pane == self then
+			if math.abs(x - (col.x + col.w)) <= margin then
+				return col
+			end
+		end
+	end
+end
+
+function grid:col_at_x_inbetween(x)
+	local fp = self.freeze_pane
+	local sp = self.scroll_pane
+	return (fp:nearest_col_at_x(fp:from_parent(x, 0))
+		  or sp:nearest_col_at_x(sp:from_parent(x, 0)))
+end
+]]
 
 local scroll_pane = ui.scrollbox:subclass'grid_scroll_pane'
 grid.scroll_pane_class = scroll_pane
@@ -126,18 +185,28 @@ function grid:_sync_content_panes()
 	for i,col in ipairs(self.cols) do
 		local frozen = self.freeze_col and i <= self.freeze_col
 		col.pane = frozen and self.freeze_pane or self.scroll_pane
-		col.parent = col.pane.content
-		fw = fw + (frozen and col.w or 0)
-		sw = sw + (frozen and 0 or col.w)
+		col.parent = col.pane.header_layer
+		if col.visible then
+			fw = fw + (frozen and col.w or 0)
+			sw = sw + (frozen and 0 or col.w)
+		end
 	end
 	fp.cw = fw
 	sp.x = fp.w + s.w
 	sp.w = self.cw - fw - s.w
 	sp.content.w = sw
-
 	self.scroll_pane:sync()
-	self.scroll_pane:sync_rows_layer()
-	self.freeze_pane:sync_rows_layer()
+	self.freeze_pane:sync()
+end
+
+function grid:get_freeze_col()
+	return self._freeze_col
+end
+
+function grid:set_freeze_col(col_index)
+	if col_index == self.freeze_col then return end
+	self._freeze_col = col_index
+	self:_sync_content_panes()
 end
 
 --freeze pane splitter -------------------------------------------------------
@@ -145,9 +214,22 @@ end
 local splitter = ui.layer:subclass'grid_splitter'
 grid.splitter_class = splitter
 
+local drag_splitter = ui.layer:subclass'grid_drag_splitter'
+splitter.drag_splitter_class = drag_splitter
+
+drag_splitter.background_color = '#fff2'
+
 splitter.w = 6
 splitter.background_color = '#888'
 splitter.cursor = 'size_h'
+
+function drag_splitter:drag(dx, dy)
+	self.x = self.x + dx
+	local x = self:to_other(self.grid, self.cw / 2, 0)
+	local col = self.grid:nearest_col_at_x(x, true)
+	self.grid.freeze_col = col.index
+	self:invalidate()
+end
 
 function splitter:mousedown()
 	self.active = true
@@ -159,63 +241,26 @@ end
 
 function splitter:start_drag(button, mx, my, area)
 	if button ~= 'left' then return end
-	if self.split.auto_w then
 
-		local drag_splitter = self.ui:layer{
-			x = self.x,
-			y = self.y,
-			w = self.w,
-			h = self.h,
-			parent = self.parent,
-			split = self.split,
-			grid = self.split.grid,
-			background_color = '#fff2',
-		}
+	local ds = self.grid.drag_splitter
+		or self.drag_splitter_class(self.ui, {
+				parent = self.parent,
+				grid = self.grid,
+			}, self.grid.drag_splitter)
 
-		drag_splitter.drop_splitter = self.ui:layer{
-			x = self.x,
-			y = self.y,
-			w = self.w,
-			h = self.h,
-			parent = self.parent,
-			split = self.split,
-			grid = self.split.grid,
-			background_color = '#fff8',
-			visible = false,
-		}
+	self.grid.drag_splitter = ds
 
-		function drag_splitter:drag(dx, dy)
-			self.x = self.x + dx
-			local cx = self:to_other(self.grid, self.w / 2, 0)
-			local col, d = self.grid:nearest_col_inbetween(cx)
-			local ds = self.drop_splitter
-			if col then
-				ds.x = col:to_other(self.grid, col.w, 0)
-				ds.visible = true
-				ds.col = col
-			else
-				ds.visible = false
-			end
-			self:invalidate()
-		end
+	ds.x = self.x
+	ds.y = self.y
+	ds.w = self.w
+	ds.h = self.h
+	ds.visible = true
 
-		return drag_splitter
-	else
-		return self
-	end
+	return ds
 end
 
-function splitter:end_drag(drag_splitter)
-	if self.split.auto_w then
-		local col = drag_splitter.drop_splitter.col
-		if col.split == self.split then
-
-		else
-
-		end
-		drag_splitter.drop_splitter:free()
-		drag_splitter:free()
-	end
+function splitter:end_drag(ds)
+	ds.visible = false
 end
 
 function splitter:drag(dx, dy)
@@ -228,6 +273,7 @@ function grid:create_splitter()
 	self.splitter = self.splitter_class(self.ui, {
 		subtag = 'splitter',
 		parent = self,
+		grid = self,
 	}, self.splitter)
 end
 
@@ -267,10 +313,10 @@ function col:get_clipped()
 	return w == 0 or h == 0
 end
 
-function grid:add_col(col, value_index)
+function grid:add_col(col, col_index)
 	col = self.col_class(self.ui, self.col, col)
 	col.grid = self
-	col.value_index = col.value_index or value_index
+	col.value_index = col.value_index or col_index
 	push(self.cols, col)
 end
 
@@ -281,6 +327,7 @@ function grid:remove_col(col)
 end
 
 function grid:create_cols()
+
 	local cols = self.cols
 	self.cols = {}
 	if cols then
@@ -353,7 +400,7 @@ function grid:cell_at(i, col)
 end
 
 function grid:cell_value(i, col)
-	return self.values[i][col.value_index]
+	return self.rows[i][col.value_index]
 end
 
 --rows -----------------------------------------------------------------------
@@ -362,8 +409,7 @@ grid.row_h = 20
 grid.var_row_h = false
 
 function grid:get_row_count()
-	local rows = self.rows
-	return rows and #rows or 0
+	return #self.rows
 end
 
 function grid:rows_h()
@@ -372,9 +418,7 @@ function grid:rows_h()
 end
 
 function grid:row_var_h(i)
-	local rows = self.rows
-	local row = rows and rows[i]
-	return row and row.h or self.row_h
+	return self.rows[i].h or self.row_h
 end
 
 function grid:_build_row_y_table()
@@ -460,7 +504,7 @@ function grid:_sync_vscrollbar()
 	local vs = self.vscrollbar
 	local m1 = 6
 	local m2 = 6
-	vs.y = self.col_h + m1
+	vs.y = (self.scroll_pane.header_layer.visible and self.col_h or 0) + m1
 	vs.x = self.cw - vs.h - m1
 	vs.w = self.ch - vs.y - m1 - m2
 	vs.view_length = self.scroll_pane.rows_layer.h
@@ -468,6 +512,8 @@ function grid:_sync_vscrollbar()
 end
 
 --grid -----------------------------------------------------------------------
+
+grid:init_ignore{freeze_col=1}
 
 function grid:sync()
 	self:_sync_content_panes()
@@ -480,7 +526,7 @@ function grid:before_draw()
 	self:sync()
 end
 
-function grid:after_init()
+function grid:after_init(ui, t)
 	self:create_content_panes()
 	self:create_cols()
 	self:create_splitter()
@@ -489,6 +535,7 @@ function grid:after_init()
 	if self.var_row_h then
 		self:_build_row_y_table()
 	end
+	self._freeze_col = t.freeze_col
 end
 
 
@@ -497,8 +544,8 @@ if not ... then require('ui_demo')(function(ui, win)
 	local g = ui:grid{
 		x = 10,
 		y = 10,
-		w = 900,
-		h = 500,
+		w = 800,
+		h = 450,
 		row_count = 1e6,
 		parent = win,
 		border_width = 5,
@@ -551,7 +598,7 @@ if not ... then require('ui_demo')(function(ui, win)
 	end
 
 	win.native_window:on('shown', function(self)
-		self:maximize()
+		--self:maximize()
 	end)
 
 	win.native_window:on('repaint', function(self)

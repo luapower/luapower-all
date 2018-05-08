@@ -1,6 +1,4 @@
 
-- col header visible property
-- freeze splitter move
 - col move
 - col resize
 - row move

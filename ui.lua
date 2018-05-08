@@ -1014,19 +1014,16 @@ function ui.window:override_init(inherited, ui, t)
 		self:free()
 	end)
 
+	local function passxy(self, x, y) return x, y end
+
 	self.layer = self.layer_class(self.ui, {
 		id = self:_subtag'layer',
 		x = 0, y = 0, w = self.w, h = self.h,
 		clip_content = false, window = self,
+		--parent interface
+		to_window = passxy,
+		from_window = passxy,
 	}, self.layer)
-
-	--prepare the layer for working parent-less
-	function self.layer:to_window(x, y)
-		return x, y
-	end
-	function self.layer:from_window(x, y)
-		return x, y
-	end
 
 end
 
@@ -1760,7 +1757,7 @@ function ui.layer:to_other(widget, x, y)
 	return widget:from_window(self:to_window(x, y))
 end
 
---convert point from other's space to own space
+--convert point from other's content space to own content space
 function ui.layer:from_other(widget, x, y)
 	return self:from_window(widget:to_window(x, y))
 end
