@@ -1098,7 +1098,7 @@ function ui.window:get_cursor()
 end
 
 function ui.window:set_cursor(cursor)
-	self.native_window:cursor(cursor)
+	self.native_window:cursor(cursor or 'arrow')
 end
 
 function ui:_set_hot_widget(window, widget, mx, my, area)
@@ -1118,7 +1118,7 @@ function ui:_set_hot_widget(window, widget, mx, my, area)
 		widget:_mouseenter(mx, my, area) --hot widget not changed yet
 		window.cursor = widget:getcursor(area)
 	else
-		window.cursor = 'arrow'
+		window.cursor = nil
 	end
 	self.hot_widget = widget or false
 	self.hot_area = area or false
@@ -1683,7 +1683,7 @@ ui.layer.text_valign = 'center'
 ui.layer.text_multiline = true
 ui.layer.text = nil
 
-ui.layer.cursor = 'arrow'
+ui.layer.cursor = false
 
 ui.layer.drag_threshold = 0 --snapping pixels before starting to drag
 ui.layer.max_click_chain = 1 --2 for getting doubleclick events etc.

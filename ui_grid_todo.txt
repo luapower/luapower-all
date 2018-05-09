@@ -1,9 +1,6 @@
 
 - col move
-- col resize
 - row move
-- col min. size
-- col max. size
 - col %-size
 
 - cell_at(i, col) -> cell object for drawing and hit-testing
