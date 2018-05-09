@@ -148,7 +148,7 @@ __size and position__
 `win:client_size(cw, ch) /-> cw, ch`         get/set client rect size
 `win/view:to_screen(x, y) -> x, y`           client space -> screen space conversion
 `win/view:to_client(x, y) -> x, y`           screen space -> client space conversion
-`win:normal_frame_rect(x,y,w,h)`             get frame rect in normal state
+`win:normal_frame_rect() -> x,y,w,h`         get frame rect in normal state
 `win:sizing(when, how, rect)`                event: window size/position is about to change
 `win:frame_rect_changed(x, y, w, h, ...)`    event: window frame was moved and/or resized
 `win:frame_moved(x, y, oldx, oldy)`          event: window frame was moved

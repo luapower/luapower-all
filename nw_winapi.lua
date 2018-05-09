@@ -803,6 +803,10 @@ function window:update_cursor()
 	--trigger WM_SETCURSOR without having to invalidate the whole window.
 	local p = winapi.GetCursorPos()
 	winapi.SetCursorPos(p.x, p.y)
+	if (self.win.capture_count or 0) > 0 then
+		--when the mouse is captured, WM_SETCURSOR events are not sent.
+		self.win:on_set_cursor(nil, winapi.HTCLIENT)
+	end
 end
 
 function Window:on_set_cursor(_, ht)
