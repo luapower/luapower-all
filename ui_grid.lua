@@ -40,7 +40,8 @@ rows.clip_content = true
 function rows:after_sync()
 	self.y = self.pane.header_layer.visible and self.grid.col_h or 0
 	self.w = self.pane.content.w
-	self.h = self.pane.content_container.h - self.y
+	local ct = self.pane.content_container
+	self.h = (ct and ct.h or self.pane.h) - self.y
 end
 
 function rows:mousewheel(delta, mx, my, area, pdelta)
@@ -93,11 +94,11 @@ function pane:after_init()
 
 end
 
-function pane:after_sync()
+function pane:before_sync()
 
-	local fi = self.grid.freeze_col
+	local fi = self.freeze_col or self.grid.freeze_col
 	local pw = 0
-	for i,col in ipairs(self.grid.cols) do
+	for i,col in ipairs(self.cols) do
 		local frozen = fi and i <= fi or false
 		if frozen == self.frozen then
 			col.pane = self
@@ -111,12 +112,12 @@ function pane:after_sync()
 	end
 
 	self.h = self.grid.ch
-	self.content.h = self.h
 
 	if self.frozen then
 		self.cw = pw
 	else
-		local fp = self.grid.freeze_pane
+		self.content.h = self.h
+		local fp = self.freeze_pane
 		local s = self.grid.splitter
 		local sw = s.visible and s.w or 0
 		self.x = fp.w + sw
@@ -129,18 +130,37 @@ function pane:after_sync()
 		end
 	end
 
+end
+
+function pane:after_sync()
 	self.header_layer:sync()
 	self.rows_layer:sync()
 end
 
 function pane:col_at_x(x)
-	for i,col in ipairs(self.grid.cols) do
+	for i,col in ipairs(self.cols) do
 		if col.visible and col.pane == self then
 			if x >= col.x and x <= col.x2 then
 				return col
 			end
 		end
 	end
+end
+
+local freeze_pane = ui.layer:subclass'grid_freeze_pane'
+grid.freeze_pane_class = freeze_pane
+update(freeze_pane, pane)
+
+function grid:create_freeze_pane()
+	local pane = self.freeze_pane_class(self.ui, {
+		subtag = 'freeze_pane',
+		parent = self,
+		grid = self,
+		frozen = true,
+		cols = self.cols,
+	}, self.freeze_pane)
+	pane.content = pane
+	return pane
 end
 
 local scroll_pane = ui.scrollbox:subclass'grid_scroll_pane'
@@ -150,36 +170,20 @@ update(scroll_pane, pane)
 scroll_pane.vscrollable = false
 scroll_pane.scrollbar_margin_right = 12
 
-local freeze_pane = ui.layer:subclass'grid_freeze_pane'
-grid.freeze_pane_class = freeze_pane
-update(freeze_pane, pane)
-
-function grid:create_scroll_pane()
+function grid:create_scroll_pane(freeze_pane)
 	return self.scroll_pane_class(self.ui, {
 		subtag = 'scroll_pane',
 		parent = self,
 		grid = self,
 		frozen = false,
+		freeze_pane = freeze_pane,
+		cols = self.cols,
 	}, self.scroll_pane)
 end
 
-function grid:create_freeze_pane()
-	local pane = self.freeze_pane_class(self.ui, {
-		subtag = 'freeze_pane',
-		parent = self,
-		grid = self,
-		frozen = true,
-	}, self.freeze_pane)
-
-	pane.content = pane
-	pane.content_container = pane
-
-	return pane
-end
-
 function grid:create_content_panes()
-	self.scroll_pane = self:create_scroll_pane()
 	self.freeze_pane = self:create_freeze_pane()
+	self.scroll_pane = self:create_scroll_pane(self.freeze_pane)
 end
 
 function grid:_sync_content_panes()
@@ -328,7 +332,7 @@ col.cursor_resize = 'size_h'
 grid.col_h = 20
 
 function col:get_index()
-	return indexof(self, self.grid.cols)
+	return indexof(self, self.pane.cols)
 end
 
 function col:set_index(index)
@@ -374,6 +378,10 @@ function col:start_drag(button, mx, my, area)
 		self.grid.resizing_col = true
 	else
 		self.moving = true
+
+		local pane = self.grid:create_freeze_pane()
+
+
 		self.window.cursor = 'move'
 		self.x = self.parent:to_other(self.grid, self.x, 0)
 		self.own_parent = self.parent
@@ -699,8 +707,8 @@ function grid:before_draw()
 end
 
 function grid:after_init(ui, t)
-	self:create_content_panes()
 	self:create_cols()
+	self:create_content_panes()
 	self:create_splitter()
 	self:create_vscrollbar()
 	self:create_cell()
