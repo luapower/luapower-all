@@ -14,6 +14,11 @@ local indexof = glue.indexof
 local update = glue.update
 local binsearch = glue.binsearch
 
+local function popval(t, v)
+	local i = indexof(v, t)
+	return i and pop(t, i)
+end
+
 local grid = ui.layer:subclass'grid'
 ui.grid = grid
 
@@ -22,6 +27,7 @@ grid.header_visible = true
 --header layer ---------------------------------------------------------------
 
 local header = ui.layer:subclass'grid_header_layer'
+header.clip_content = true --for column moving
 
 function header:after_sync()
 	self.visible = self.grid.header_visible
@@ -35,7 +41,7 @@ local rows = ui.layer:subclass'grid_rows_layer'
 
 rows.vscrollable = true
 rows.background_hittable = true
-rows.clip_content = true
+rows.clip_content = true --for rows
 
 function rows:after_sync()
 	self.y = self.pane.header_layer.visible and self.grid.col_h or 0
@@ -44,12 +50,12 @@ function rows:after_sync()
 	self.h = (ct and ct.h or self.pane.h) - self.y
 end
 
-function rows:mousewheel(delta, mx, my, area, pdelta)
-	self.grid.vscrollbar:scroll_by(delta * self.grid.row_h)
-end
-
 function rows:before_draw_content()
 	self.grid:draw_rows(self)
+end
+
+function rows:mousewheel(delta, mx, my, area, pdelta)
+	self.grid.vscrollbar:scroll_by(delta * self.grid.row_h)
 end
 
 function rows:override_hit_test_content(inherited, x, y, reason)
@@ -69,7 +75,7 @@ function rows:override_hit_test_content(inherited, x, y, reason)
 	return inherited(self, x, y, reason)
 end
 
---scroll/freeze panes --------------------------------------------------------
+--panes ----------------------------------------------------------------------
 
 local pane = {} --scroll/freeze pane mixin
 
@@ -96,18 +102,18 @@ end
 
 function pane:before_sync()
 
-	local fi = self.freeze_col or self.grid.freeze_col
 	local pw = 0
+	local x = 0
 	for i,col in ipairs(self.cols) do
-		local frozen = fi and i <= fi or false
-		if frozen == self.frozen then
-			col.pane = self
+		col.pane = self
+		col.parent = self.header_layer
+		col.h = self.grid.col_h
+		if col.visible then
+			pw = pw + col.w
 			if not col.moving then
-				col.parent = self.header_layer
+				col.x = x
 			end
-			if col.visible then
-				pw = pw + col.w
-			end
+			x = x + col.w
 		end
 	end
 
@@ -138,7 +144,7 @@ function pane:after_sync()
 end
 
 function pane:col_at_x(x)
-	for i,col in ipairs(self.cols) do
+	for i,col in ipairs(self.grid.cols) do
 		if col.visible and col.pane == self then
 			if x >= col.x and x <= col.x2 then
 				return col
@@ -147,21 +153,34 @@ function pane:col_at_x(x)
 	end
 end
 
+function pane:max_w()
+	return 1/0
+end
+
+--freeze panes ---------------------------------------------------------------
+
 local freeze_pane = ui.layer:subclass'grid_freeze_pane'
 grid.freeze_pane_class = freeze_pane
 update(freeze_pane, pane)
 
-function grid:create_freeze_pane()
+function grid:create_freeze_pane(t)
 	local pane = self.freeze_pane_class(self.ui, {
 		subtag = 'freeze_pane',
 		parent = self,
 		grid = self,
 		frozen = true,
-		cols = self.cols,
-	}, self.freeze_pane)
+		cols = self:frozen_cols(),
+	}, t)
 	pane.content = pane
 	return pane
 end
+
+--the freeze pane must be small enough so that the splitter is always visible.
+function freeze_pane:max_w()
+	return self.grid.cw - self.grid.splitter.w
+end
+
+--scroll panes ---------------------------------------------------------------
 
 local scroll_pane = ui.scrollbox:subclass'grid_scroll_pane'
 grid.scroll_pane_class = scroll_pane
@@ -177,22 +196,15 @@ function grid:create_scroll_pane(freeze_pane)
 		grid = self,
 		frozen = false,
 		freeze_pane = freeze_pane,
-		cols = self.cols,
+		cols = self:unfrozen_cols(),
 	}, self.scroll_pane)
 end
 
-function grid:create_content_panes()
-	self.freeze_pane = self:create_freeze_pane()
-	self.scroll_pane = self:create_scroll_pane(self.freeze_pane)
-end
+--freeze col -----------------------------------------------------------------
 
-function grid:_sync_content_panes()
-	self.freeze_pane:sync()
-	self.scroll_pane:sync()
-end
-
-function grid:max_freeze_col_index()
-	local max_w = self.cw - self.splitter.w
+--returns the largest freeze_col which satisifes freeze_pane_max_w().
+function grid:max_freeze_col()
+	local max_w = self.freeze_pane:max_w()
 	local last_i
 	for i,col in ipairs(self.cols) do
 		if col.visible then
@@ -219,20 +231,29 @@ function grid:get_freeze_col()
 	return self._freeze_col
 end
 
-function grid:reset_freeze_col(ci)
-	local max_ci = self:max_freeze_col_index()
+function grid:set_freeze_col(ci)
+	ci = ci or nil
+	if ci == self.freeze_col then return end
+	local max_ci = self:max_freeze_col()
 	if max_ci then
 		ci = ci and clamp(ci, 1, max_ci)
 	else
 		ci = max_ci
 	end
 	self._freeze_col = ci
+	if self.freeze_pane then
+		self.freeze_pane.cols = self:frozen_cols()
+		self.scroll_pane.cols = self:unfrozen_cols()
+	end
 end
 
-function grid:set_freeze_col(ci)
-	ci = ci or nil
-	if ci == self.freeze_col then return end
-	self:reset_freeze_col(ci)
+function grid:sync_freeze_col()
+	if self.freeze_col then
+		local max_ci = self:max_freeze_col()
+		if not max_ci or max_ci < self.freeze_col then
+			self.freeze_col = max_ci
+		end
+	end
 end
 
 --freeze pane splitter -------------------------------------------------------
@@ -248,6 +269,19 @@ drag_splitter.background_color = '#fff2'
 splitter.w = 6
 splitter.background_color = '#888'
 splitter.cursor = 'size_h'
+
+function grid:create_splitter()
+	return self.splitter_class(self.ui, {
+		subtag = 'splitter',
+		parent = self,
+		grid = self,
+	}, self.splitter)
+end
+
+function splitter:sync()
+	self.x = self.grid.scroll_pane.x - self.w
+	self.h = self.grid.ch
+end
 
 function splitter:mousedown()
 	self.active = true
@@ -286,8 +320,8 @@ function drag_splitter:drag(dx, dy)
 	local col = self.grid:last_visible_col()
 	local last_col_x2 = col and col.parent:to_other(self.grid, col.x2, 0)
 	local max_w = math.min(last_col_x2 or 0, self.grid.cw) - self.w
-
 	self.x = clamp(0, self.x + dx + self.w / 2, max_w)
+
 	local ci = self.grid:nearest_col_index_at_x(self.x)
 	self.grid.freeze_col = ci
 	local freezed = self.grid.freeze_col and true or false
@@ -298,20 +332,6 @@ end
 
 function splitter:end_drag(ds)
 	ds.visible = false
-end
-
-function grid:create_splitter()
-	self.splitter = self.splitter_class(self.ui, {
-		subtag = 'splitter',
-		parent = self,
-		grid = self,
-	}, self.splitter)
-end
-
-function grid:_sync_splitter()
-	local s = self.splitter
-	s.x = self.scroll_pane.x - s.w
-	s.h = self.ch
 end
 
 --column headers -------------------------------------------------------------
@@ -332,7 +352,7 @@ col.cursor_resize = 'size_h'
 grid.col_h = 20
 
 function col:get_index()
-	return indexof(self, self.pane.cols)
+	return indexof(self, self.grid.cols)
 end
 
 function col:set_index(index)
@@ -363,6 +383,8 @@ function col:override_hit_test(inherited, x, y, reason)
 	return widget, area
 end
 
+--column drag & drop
+
 function col:mousedown(mx, my, area)
 	if area == 'resize' or area == 'background' then
 		self.active = true
@@ -375,72 +397,88 @@ end
 
 function col:start_drag(button, mx, my, area)
 	if area == 'resize' then
-		self.grid.resizing_col = true
+		return self:start_drag_resize(button, mx, my)
 	else
-		self.moving = true
-
-		local pane = self.grid:create_freeze_pane()
-
-
-		self.window.cursor = 'move'
-		self.x = self.parent:to_other(self.grid, self.x, 0)
-		self.own_parent = self.parent
-		self.parent = self.grid
-
-		local grid = self.grid
-		local rows = grid.rows_layer_move_col
-		rows = rows or grid.rows_layer_class(self.ui, {
-				subtags = 'rows_layer_move_col',
-				parent = grid,
-				grid = grid,
-				col = self,
-			}, grid.rows_layer_move_col)
-
-		grid.rows_layer_move_col = rows
-		rows.visible = true
-
-		function rows:before_draw_content()
-			local i1, i2 = self.grid:visible_rows_range()
-			if not i1 then return end
-			self.grid:draw_rows_col(i1, i2, self.col)
-		end
-
+		return self:start_drag_move(button, mx, my)
 	end
-	return self
 end
 
 function col:drag(dx, dy)
 	if self.grid.resizing_col then
-		self.drag_w = self.drag_w or self.w
-		self.w = self.drag_w + dx
-		self.grid:reset_freeze_col(self.grid.freeze_col)
+		self:drag_resize(dx, dy)
 	else
-		self.x = self.x + dx
+		self:drag_move(dx, dy)
 	end
 end
 
 function col:end_drag()
 	if self.grid.resizing_col then
-		self.drag_w = false
-		self.grid.resizing_col = false
+		self:end_drag_resize()
 	else
-		self.x = self.parent:to_other(self.own_parent, self.x, 0)
-		self.parent = self.own_parent
-		self.own_parent = nil
-		self.window.cursor = nil
-		self.grid.rows_layer_move_col.visible = false
-		self.moving = false
+		self:end_drag_move()
 	end
 end
 
-ui:style('grid_col active', {
-	background_color = '#f00',
-})
+--column resize --------------------------------------------------------------
+
+function col:start_drag_resize(button, mx, my)
+	if button ~= 'left' then return end
+	self.grid.resizing_col = true
+	self.drag_w = self.w
+	self.drag_max_w = self.pane:max_w() - self.pane.content.w + self.w
+	return self
+end
+
+function col:drag_resize(dx, dy)
+	local w = self.drag_w + dx
+	self.w = math.min(w, self.drag_max_w)
+	self:invalidate()
+end
+
+function col:end_drag_resize()
+	self.drag_w = false
+	self.grid.resizing_col = false
+end
+
+--column move ----------------------------------------------------------------
+
+function col:start_drag_move(button, mx, my, area)
+	if button ~= 'left' then return end
+	self.window.cursor = 'move'
+	self.moving = true
+	self:to_front()
+	return self
+end
+
+function col:drag_move(dx, dy)
+	self.x = self.x + dx
+	self:invalidate()
+end
+
+function col:end_drag_move()
+	self.moving = false
+	self.window.cursor = nil
+end
+
+--column utils
 
 function col:get_frozen()
 	local fi = self.grid.freeze_col
 	return fi and self.index <= fi
 end
+
+function grid:_cols(frozen)
+	local fi = self.freeze_col
+	local t = {}
+	for i,col in ipairs(self.cols) do
+		if frozen == (fi and i <= fi or false) then
+			push(t, col)
+		end
+	end
+	return t
+end
+function grid:frozen_cols() return self:_cols(true) end
+function grid:unfrozen_cols() return self:_cols(false) end
 
 function col:get_clipped()
 	if not self.visible then
@@ -451,46 +489,17 @@ function col:get_clipped()
 	return w == 0 or h == 0
 end
 
-function grid:add_col(col, col_index)
+function grid:create_col(col, col_index)
 	col = self.col_class(self.ui, self.col, col)
 	col.grid = self
 	col.value_index = col.value_index or col_index
-	push(self.cols, col)
+	return col
 end
 
 function grid:remove_col(col)
 	if col.grid ~= self then return end
-	pop(self.cols, indexof(col, self.cols))
+	popval(self.cols, col)
 	col.grid = nil
-end
-
-function grid:create_cols()
-
-	local cols = self.cols
-	self.cols = {}
-	if cols then
-		for i,col in ipairs(cols) do
-			self:add_col(col, i)
-		end
-	end
-end
-
-function grid:_sync_cols()
-	local x = 0
-	local last_col
-	for i,col in ipairs(self.cols) do
-		col.h = self.col_h
-		if col.visible then
-			if last_col and last_col.pane ~= col.pane then
-				x = 0
-			end
-			if not col.moving then
-				col.x = x
-			end
-			x = x + col.w
-			last_col = col
-		end
-	end
 end
 
 function grid:nearest_col_index_at_x(x)
@@ -534,6 +543,7 @@ grid.cell_class = cell
 
 cell.clip_content = true
 cell.text_multiline = false
+cell.background_color = '#000' --for column moving
 
 function cell:sync_col(col)
 	self.parent = col.pane.rows_layer
@@ -557,7 +567,7 @@ end
 function cell:sync_row(i, y, h)
 	self.y = y
 	self.h = h
-	self.background_color = i % 2 == 0 and '#111' or false
+	self.background_color = i % 2 == 0 and '#111' or '#000'
 end
 
 function cell:sync_value(i, col, val)
@@ -565,8 +575,9 @@ function cell:sync_value(i, col, val)
 end
 
 function grid:create_cell()
-	self.cell = self.cell_class(self.ui, self.cell)
-	self.cell:inherit(self.cell.super) --speed up cell drawing
+	local cell = self.cell_class(self.ui, self.cell)
+	cell:inherit(cell.super) --speed up cell drawing
+	return cell
 end
 
 function grid:cell_at(i, col)
@@ -657,49 +668,61 @@ end
 function grid:draw_rows(rows_layer)
 	local i1, i2 = self:visible_rows_range()
 	if not i1 then return end
+	local moving_col
 	for _,col in ipairs(self.cols) do
-		if col.pane == rows_layer.pane
-			and not col.moving
-			and not col.clipped
-		then
-			self:draw_rows_col(i1, i2, col)
+		if col.pane == rows_layer.pane and not col.clipped then
+			if col.moving then
+				moving_col = col
+			else
+				self:draw_rows_col(i1, i2, col)
+			end
 		end
+	end
+	if moving_col then
+		self:draw_rows_col(i1, i2, moving_col)
 	end
 end
 
 --vertical scrollbar ---------------------------------------------------------
 
-grid.vscrollbar_class = ui.scrollbar
+local vscrollbar = ui.scrollbar:subclass'grid_vscrollbar'
+grid.vscrollbar_class = vscrollbar
+
+grid.vscrollbar_margin_top = 6
+grid.vscrollbar_margin_bottom = 6
+grid.vscrollbar_margin_right = 6
 
 function grid:create_vscrollbar()
-
-	self.vscrollbar = self.vscrollbar_class(self.ui, {
+	return self.vscrollbar_class(self.ui, {
 		subtag = 'vscrollbar',
 		parent = self,
+		grid = self,
+		vertical = true,
 	}, self.vscrollbar)
-
 end
 
-function grid:_sync_vscrollbar()
-	local vs = self.vscrollbar
-	local m1 = 6
-	local m2 = 6
-	vs.y = (self.scroll_pane.header_layer.visible and self.col_h or 0) + m1
-	vs.x = self.cw - vs.h - m1
-	vs.w = self.ch - vs.y - m1 - m2
-	vs.view_length = self.scroll_pane.rows_layer.h
-	vs.content_length = self:rows_h()
+function vscrollbar:after_sync()
+	local m1 = grid.vscrollbar_margin_top
+	local m2 = grid.vscrollbar_margin_bottom
+	local m3 = grid.vscrollbar_margin_right
+	local sp = self.grid.scroll_pane
+	self.y = (sp.header_layer.visible and self.grid.col_h or 0) + m1
+	self.x = self.grid.cw - self.h - m3
+	self.w = self.grid.ch - self.y - m1 - m2
+	self.view_length = sp.rows_layer.h
+	self.content_length = self.grid:rows_h()
 end
 
 --grid -----------------------------------------------------------------------
 
 grid:init_ignore{freeze_col=1}
 
-function grid:sync()
-	self:_sync_content_panes()
-	self:_sync_cols()
-	self:_sync_splitter()
-	self:_sync_vscrollbar()
+function grid:after_sync()
+	self:sync_freeze_col()
+	self.freeze_pane:sync()
+	self.scroll_pane:sync()
+	self.splitter:sync()
+	self.vscrollbar:sync()
 end
 
 function grid:before_draw()
@@ -707,21 +730,28 @@ function grid:before_draw()
 end
 
 function grid:after_init(ui, t)
-	self:create_cols()
-	self:create_content_panes()
-	self:create_splitter()
-	self:create_vscrollbar()
-	self:create_cell()
+	self._freeze_col = t.freeze_col
+	self.cols = {}
+	if t.cols then
+		for i,col in ipairs(t.cols) do
+			push(self.cols, self:create_col(col, i))
+		end
+	end
+	self.freeze_pane = self:create_freeze_pane(self.freeze_pane)
+	self.scroll_pane = self:create_scroll_pane(self.freeze_pane)
+	self.splitter = self:create_splitter()
+	self.vscrollbar = self:create_vscrollbar()
+	self.cell = self:create_cell()
 	if self.var_row_h then
 		self:_build_row_y_table()
 	end
-	self._freeze_col = t.freeze_col
 end
 
 
 if not ... then require('ui_demo')(function(ui, win)
 
 	local g = ui:grid{
+		id = 'g',
 		x = 10,
 		y = 10,
 		w = 800,
@@ -782,7 +812,7 @@ if not ... then require('ui_demo')(function(ui, win)
 	end)
 
 	win.native_window:on('repaint', function(self)
-		self:invalidate()
+		--self:invalidate()
 	end)
 
 end) end

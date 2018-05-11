@@ -24,8 +24,7 @@ end
 local fps = fps_function()
 
 win.native_window:on('repaint', function(self)
-	local title = string.format('%d fps', fps())
-	self:title(title)
+	self:title(string.format('%d fps', fps()))
 end)
 
 if ... == 'ui_demo' then --loaded via require()

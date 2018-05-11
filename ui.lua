@@ -108,6 +108,8 @@ function ui:key(query)            return self:_app():key(query) end
 function ui:getclipboard(type)    return self:_app():getclipboard(type) end
 function ui:setclipboard(s, type) return self:_app():setclipboard(s, type) end
 function ui:caret_blink_time()    return self:_app():caret_blink_time() end
+function ui:runevery(t, f)        return self:_app():runevery(t, f) end
+function ui:runafter(t, f)        return self:_app():runafter(t, f) end
 
 function ui:error(msg, ...)
 	msg = string.format(msg, ...)
@@ -640,10 +642,19 @@ end
 function ui.element:after_init(ui, t)
 	self.ui = ui
 	self.ui:_add_element(self)
+
 	local class_tags = self.tags
 	self.tags = {['*'] = true}
 	add_tags(self.tags, class_tags)
-	self.tags[self.classname] = true
+
+	local super = self.super
+	while super do
+		if super.classname then
+			self.tags[super.classname] = true
+			super = super.super
+		end
+	end
+
 	if t then
 		if t.id then
 			self._id = t.id
@@ -852,6 +863,7 @@ function ui.element:draw()
 				tr[attr] = transition.next_transition
 			end
 		end
+		--TODO: when transition is in delay, set a timer, don't invalidate.
 		self:invalidate()
 	end
 end
@@ -1715,33 +1727,56 @@ function ui.layer:rel_matrix() --box matrix relative to parent's content space
 end
 
 function ui.layer:abs_matrix() --box matrix in window space
-	return self.parent:abs_matrix():transform(self:rel_matrix())
+	return self.pos_parent:abs_matrix():transform(self:rel_matrix())
 end
 
 local mt
 function ui.layer:cr_abs_matrix(cr) --box matrix in cr's current space
-	mt = mt or cairo.matrix()
-	return cr:matrix(nil, mt):transform(self:rel_matrix())
+	if self.pos_parent ~= self.parent then
+		return self:abs_matrix()
+	else
+		mt = mt or cairo.matrix()
+		return cr:matrix(nil, mt):transform(self:rel_matrix())
+	end
 end
 
---convert point from own content space to parent's content space
-function ui.layer:to_parent(x, y)
-	return self:rel_matrix():translate(self:padding_pos()):point(x, y)
-end
-
---convert point from parent's content space to own content space
-function ui.layer:from_parent(x, y)
-	return self:rel_matrix():translate(self:padding_pos()):invert():point(x, y)
-end
-
---convert point from parent's content space to own box space
+--convert point from own box space to parent content space
 function ui.layer:from_box_to_parent(x, y)
-	return self:rel_matrix():point(x, y)
+	if self.pos_parent ~= self.parent then
+		return self.parent:from_window(self:abs_matrix():point(x, y))
+	else
+		return self:rel_matrix():point(x, y)
+	end
 end
 
---convert point from parent's content space to own box space
+--convert point from parent content space to own box space
 function ui.layer:from_parent_to_box(x, y)
-	return self:rel_matrix():invert():point(x, y)
+	if self.pos_parent ~= self.parent then
+		return self:abs_matrix():invert():point(self.parent:to_window(x, y))
+	else
+		return self:rel_matrix():invert():point(x, y)
+	end
+end
+
+--convert point from own content space to parent content space
+function ui.layer:to_parent(x, y)
+	if self.pos_parent ~= self.parent then
+		return self.parent:from_window(
+			self:abs_matrix():translate(self:padding_pos()):point(x, y))
+	else
+		return self:rel_matrix():translate(self:padding_pos()):point(x, y)
+	end
+end
+
+--convert point from parent content space to own content space
+function ui.layer:from_parent(x, y)
+	if self.pos_parent ~= self.parent then
+		return self:abs_matrix():translate(self:padding_pos()):invert()
+			:point(self.parent:to_window(x, y))
+	else
+		return self:rel_matrix():translate(self:padding_pos()):invert()
+			:point(x, y)
+	end
 end
 
 function ui.layer:to_window(x, y) --parent & child interface
@@ -1781,16 +1816,31 @@ function ui.layer:get_parent() --child interface
 end
 
 function ui.layer:set_parent(parent)
-	if self._parent then
-		self._parent:remove_layer(self)
+	if parent and parent.iswindow then
+		parent = parent.layer
 	end
-	if parent then
-		if parent.iswindow then
-			parent = parent.layer
+	if self._parent ~= parent then
+		if self._parent then
+			self._parent:remove_layer(self)
 		end
-		parent:add_layer(self)
+		if parent then
+			parent:add_layer(self)
+		end
 	end
-	self:invalidate()
+end
+
+function ui.layer:get_pos_parent() --child interface
+	return self._pos_parent or self._parent
+end
+
+function ui.layer:set_pos_parent(parent)
+	if parent and parent.iswindow then
+		parent = parent.layer
+	end
+	if parent == self.parent then
+		parent = nil
+	end
+	self._pos_parent = parent
 end
 
 function ui.layer:to_back()
@@ -1838,7 +1888,6 @@ function ui.layer:add_layer(layer) --parent interface
 	layer.window = self.window
 	layer:each_child(function(layer) layer.window = self.window end)
 	self:fire('layer_added', layer)
-	self:invalidate()
 end
 
 function ui.layer:remove_layer(layer) --parent interface
@@ -1847,7 +1896,6 @@ function ui.layer:remove_layer(layer) --parent interface
 	layer._parent = false
 	layer.window = false
 	layer:each_child(function(layer) layer.window = false end)
-	self:invalidate()
 end
 
 function ui.layer:_free_layers()
