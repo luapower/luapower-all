@@ -1,5 +1,4 @@
 
-- col move
 - row move
 - col %-size
 

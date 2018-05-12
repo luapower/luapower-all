@@ -1925,13 +1925,24 @@ end
 
 function ui.layer:_mouseenter(mx, my, area)
 	local mx, my = self:from_window(mx, my)
-	self:settags'hot'
+	if area then
+		area = type(area) == 'table' and area.area or area
+		self:settags('hot hot_'..area)
+	else
+		self:settags'hot'
+	end
 	self:fire('mouseenter', mx, my, area)
 end
 
 function ui.layer:_mouseleave()
 	self:fire'mouseleave'
-	self:settags'-hot'
+	local area = self.ui.hot_area
+	if area then
+		area = type(area) == 'table' and area.area or area
+		self:settags('-hot -hot_'..area)
+	else
+		self:settags'-hot'
+	end
 end
 
 function ui.layer:_mousedown(button, mx, my, area)
