@@ -1,4 +1,5 @@
 local glue = require'glue'
+local sgc = require'sg_cairo'
 
 local operator_palette = {
 	type = 'group', y = 380, x = 10,
@@ -100,10 +101,10 @@ line_styles = {type = 'group',
 
 local fill_rule = {type = 'group',
 	{type = 'group', x = 960, y = 10,
-		{type = 'shape', x = 0, fill_rule = 'evenodd',
+		{type = 'shape', x = 0, fill_rule = 'even_odd',
 			path = {'move', 0, 0, 'circle', 50, 50, 50, 'circle', 50, 50, 20},
 			stroke = {type = 'color', 1,1,1,1}, fill = {type = 'color', 1,1,1,.5},},
-		{type = 'shape', x = 110, fill_rule = 'nonzero',
+		{type = 'shape', x = 110, fill_rule = 'winding',
 			path = {'move', 0, 0, 'circle', 50, 50, 50, 'circle', 50, 50, 20},
 			stroke = {type = 'color', 1,1,1,1}, fill = {type = 'color', 1,1,1,.5},},
 	},
@@ -219,7 +220,11 @@ local highlight_stroke = {type = 'color', 1,0,0,1}
 
 local player = require'cplayer'
 
-function player:on_render()
+local sg
+function player:on_render(cr)
+	sg = sg or sgc:new(cr)
+	sg:render(scene)
+	--[[
 	measuring_box.path = {'rect', box2rect(self:measure(measuring_subject))}
 	local t = {}
 	local x, y = self.scene_graph.mouse_x, self.scene_graph.mouse_y
@@ -235,8 +240,15 @@ function player:on_render()
 			--print(e.type)
 		end
 	end
-	self:render(scene)
-	for e in pairs(t) do if e.type == 'shape' then e.stroke, e.old_stroke = e.old_stroke end end
+	]]
+	--self:render(scene)
+	--[[
+	for e in pairs(t) do
+		if e.type == 'shape' then
+			e.stroke, e.old_stroke = e.old_stroke
+		end
+	end
+	]]
 end
 
 player:play()

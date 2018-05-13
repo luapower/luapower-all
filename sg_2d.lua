@@ -4,7 +4,7 @@ local defaults = {
 	font_size = 12,
 	font_options = {antialias = 'default', subpixel_order = 'default',
 							hint_style = 'default', hint_metrics = 'default'},
-	fill_rule = 'nonzero',
+	fill_rule = 'winding',
 	line_width = 1,
 	line_cap = 'square',
 	line_join = 'miter',

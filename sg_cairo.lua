@@ -8,9 +8,9 @@ local path_cairo = require'path2d_cairo'
 
 local SG = glue.update({}, BaseSG)
 
-function SG:new(surface, cache)
+function SG:new(cr, cache)
 	local o = BaseSG.new(self, cache)
-	self.cr = surface:create_context()
+	self.cr = cr --surface:create_context()
 	return o
 end
 
@@ -22,39 +22,24 @@ end
 
 SG.defaults = require'sg_2d'.defaults
 
-local function cairo_sym(k) return cairo[k] end --raises an exception for invalid k's
-local function cairo_enum(prefix) --eg. cairo_enum('CAIRO_OPERATOR_') -> t; t.over -> cairo.CAIRO_OPERATOR_OVER
-	return setmetatable({}, {__index = function(t,k)
-		local ok, sym = pcall(cairo_sym, prefix..k:upper())
-		t[k] = ok and sym or nil
-		return rawget(t,k)
-	end})
-end
-
-local antialias_methods = cairo_enum'CAIRO_ANTIALIAS_'
-local subpixel_orders = cairo_enum'CAIRO_SUBPIXEL_ORDER_'
-local hint_styles = cairo_enum'CAIRO_HINT_STYLE_'
-local hint_metrics = cairo_enum'CAIRO_HINT_METRICS_'
-
 SG:state_value('font_options', function(self, e)
 	local fopt = self.cache:get(e)
 	if not fopt then
 		fopt = cairo.cairo_font_options_create()
-		fopt:set_antialias(antialias_methods[e.antialias or self.defaults.font_options.antialias])
-		fopt:set_subpixel_order(subpixel_orders[e.subpixel_order or self.defaults.font_options.subpixel_order])
-		fopt:set_hint_style(hint_styles[e.hint_style or self.defaults.font_options.hint_style])
-		fopt:set_hint_metrics(hint_metrics[e.hint_metrics or self.defaults.font_options.hint_metrics])
+		fopt:antialias(e.antialias or self.defaults.font_options.antialias)
+		fopt:subpixel_order(e.subpixel_order or self.defaults.font_options.subpixel_order)
+		fopt:hint_style(e.hint_style or self.defaults.font_options.hint_style)
+		fopt:hint_metrics(e.hint_metrics or self.defaults.font_options.hint_metrics)
 		self.cache:set(e, fopt)
 	end
 	self.cr:font_options(fopt)
 end)
 
-local font_slants = cairo_enum'CAIRO_FONT_SLANT_'
-local font_weights = cairo_enum'CAIRO_FONT_WEIGHT_'
-
 local function font_file_free(ff)
 	ff.cairo_face:free()
 	ff.ft_face:free()
+	ff.cairo_face = nil
+	ff.ft_face = nil
 end
 
 local function bitmask(consts, bits, prefix)
@@ -76,19 +61,21 @@ function SG:load_font_file(e) --for preloading
 		local load_options = bitmask(freetype, e.load_options, 'FT_LOAD_')
 		local cairo_face = cairo.cairo_ft_font_face_create_for_ft_face(ft_face, load_options)
 		local ff_object = newproxy(true)
-		getmetatable(ff_object).__index = {
+		getmetatable(ff).__index = {
 			ft_face = ft_face,
 			cairo_face = cairo_face,
 			free = font_file_free,
 		}
-		getmetatable(ff_object).__gc = font_file_free
+		getmetatable(ff).__gc = font_file_free
 		self.cache:set(e, ff)
 	end
 	return ff
 end
 
 SG:state_value('font_file', function(self, e)
-	self.cr:font_face(self:load_font_file(e))
+	local ff = self:load_font_file(e)
+	if not ff then return end
+	self.cr:font_face(ff.cairo_face)
 end)
 
 SG:state_value('font_size', function(self, size)
@@ -100,8 +87,8 @@ SG:state_value('font', function(self, font)
 		self:set_font_file(font.file)
 	else
 		self.cr:font_face(font.family or self.defaults.font.family,
-								font_slants[font.slant or self.defaults.font.slant],
-								font_weights[font.weight or self.defaults.font.weight])
+								font.slant or self.defaults.font.slant,
+								font.weight or self.defaults.font.weight)
 	end
 	self:set_font_options(font.options)
 	self:set_font_size(font.size)
@@ -110,7 +97,7 @@ end)
 SG:state_value('line_dashes', function(self, e)
 	local d = self.cache:get(e)
 	if not d then
-		local a = #e > 0 and ffi.new('double[?]', #e, e) or nil
+		local a = #e > 0 and ffi.new('double[?]', #e, e) or false
 		d = {a = a, n = #e, offset = e.offset}
 		self.cache:set(d)
 	end
@@ -121,18 +108,11 @@ SG:state_value('line_width', function(self, width)
 	self.cr:line_width(width)
 end)
 
---like state_value but use a lookup table; for invalid values, set the default value and record the error.
-function SG:state_enum(k, enum, set) --too much abstraction?
-	self:state_value(k, function(self, e)
-		set(self, self:assert(enum[e], 'invalid %s %s', k, tostring(e)) or enum[self.defaults[k]])
-	end)
-end
-
-SG:state_enum('line_cap', cairo_enum'CAIRO_LINE_CAP_', function(self, cap)
+SG:state_value('line_cap', function(self, cap)
 	self.cr:line_cap(cap)
 end)
 
-SG:state_enum('line_join', cairo_enum'CAIRO_LINE_JOIN_', function(self, join)
+SG:state_value('line_join', function(self, join)
 	self.cr:line_join(join)
 end)
 
@@ -140,16 +120,13 @@ SG:state_value('miter_limit', function(self, limit)
 	self.cr:miter_limit(limit)
 end)
 
-local fill_rules = {
-	nonzero = cairo.CAIRO_FILL_RULE_WINDING,
-   evenodd = cairo.CAIRO_FILL_RULE_EVEN_ODD,
-}
-
-SG:state_enum('fill_rule', fill_rules, function(self, rule)
+SG:state_value('fill_rule', function(self, rule)
+	if rule == 'nonzero' then rule = 'winding'
+	elseif rule == 'evenodd' then rule = 'even_odd' end
 	self.cr:fill_rule(rule)
 end)
 
-SG:state_enum('operator', cairo_enum'CAIRO_OPERATOR_', function(self, op)
+SG:state_value('operator', function(self, op)
 	self.cr:operator(op)
 end)
 
@@ -285,9 +262,6 @@ function SG:stroke_color(e, alpha, operator)
 	self.cr:stroke_preserve()
 end
 
-SG.pattern_filters = cairo_enum'CAIRO_FILTER_'
-SG.pattern_extends = cairo_enum'CAIRO_EXTEND_'
-
 local function pattern_free(patt)
 	patt.pattern:free()
 end
@@ -297,16 +271,16 @@ function SG:set_gradient_source(e, alpha)
 	local pat
 	if not patt then
 		if e.r1 then
-			pat = cairo.cairo_pattern_create_radial(e.x1, e.y1, e.r1, e.x2, e.y2, e.r2)
+			pat = cairo.radial_gradient(e.x1, e.y1, e.r1, e.x2, e.y2, e.r2)
 		else
-			pat = cairo.cairo_pattern_create_linear(e.x1, e.y1, e.x2, e.y2)
+			pat = cairo.linear_gradient(e.x1, e.y1, e.x2, e.y2)
 		end
 		for i=1,#e,2 do
 			local offset, c = e[i], e[i+1]
 			pat:add_color_stop(offset, c[1], c[2], c[3], (c[4] or 1) * alpha)
 		end
-		pat:set_filter(self.pattern_filters[e.filter or self.defaults.gradient_filter])
-		pat:set_extend(self.pattern_extends[e.extend or self.defaults.gradient_extend])
+		pat:filter(e.filter or self.defaults.gradient_filter)
+		pat:extend(e.extend or self.defaults.gradient_extend)
 		local patt = newproxy(true)
 		local patt_t = {pattern = pat, alpha = alpha}
 		getmetatable(patt).__index = patt_t
@@ -314,7 +288,7 @@ function SG:set_gradient_source(e, alpha)
 		self.cache:set(e, patt)
 	elseif patt.alpha ~= alpha then
 		self.cache:release(patt)
-		return self:set_gradient_source(e, alpha)
+		return self:gradient_source(e, alpha)
 	else
 		pat = patt.pattern
 	end
@@ -322,7 +296,7 @@ function SG:set_gradient_source(e, alpha)
 		assert(self.shape_bounding_box, 'relative fill not inside a shape')
 		local bx1, by1, bx2, by2 = unpack(self.shape_bounding_box)
 		local x, y, w, h = bx1, by1, bx2-bx1, by2-by1
-		pat:set_matrix(new_matrix(1/w, 0, 0, 1/h, -x/w, -y/h))
+		pat:matrix(new_matrix(1/w, 0, 0, 1/h, -x/w, -y/h))
 	end
 	self.cr:source(pat)
 end
@@ -373,6 +347,7 @@ local imagefile_load_options = {
 }
 
 function SG:load_image_file(e, alpha)
+	do return end --TODO: revive imagefile
 	alpha = alpha or 1
 	local source = self.cache:get(e)
 	if not source then
@@ -413,8 +388,8 @@ function SG:set_image_source(e, alpha)
 	if not source then return end
 	self.cr:source(source.surface, 0, 0)
 	local pat = self.cr:get_source()
-	pat:set_filter(self.pattern_filters[e.filter or self.defaults.image_filter])
-	pat:set_extend(self.pattern_extends[e.extend or self.defaults.image_extend])
+	pat:set_filter(e.filter or self.defaults.image_filter)
+	pat:set_extend(e.extend or self.defaults.image_extend)
 end
 
 function SG:paint_image(e, alpha, operator)
@@ -608,7 +583,7 @@ function SG:draw_composite(e)
 end
 
 function SG:draw_group(e)
-	local mt = self.cr:get_matrix()
+	local mt = self.cr:matrix()
 	for i=1,#e do
 		self:paint(e[i])
 		self.cr:matrix(mt)
@@ -617,7 +592,7 @@ function SG:draw_group(e)
 end
 
 function SG:draw_shape(e)
-	local mt = self.cr:get_matrix()
+	local mt = self.cr:matrix()
 	self:set_path(e.path)
 	if e.fill and e.fill.type == 'gradient' and e.fill.relative then
 		self.shape_bounding_box = {self.cr:path_extents()}

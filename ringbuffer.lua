@@ -10,8 +10,12 @@ local min, max, band, assert = math.min, math.max, bit.band, assert
 
 --select the offset normalization function to use: if the buffer size
 --is a power-of-2, we can normalize offsets faster.
-local function offset_and(self, offset) return band(offset, (self.size - 1)) end
-local function offset_mod(self, offset) return offset % self.size end
+local function offset_and(self, offset)
+	return band(offset, (self.size - 1))
+end
+local function offset_mod(self, offset)
+	return offset % self.size
+end
 local function offset_func(size)
 	local pow2_size = band(size, size - 1) == 0
 	return pow2_size and offset_and or offset_mod

@@ -109,7 +109,7 @@ and only the transformation matrix and clipping area are contextual._
 	path = <path_object> (see the path module),
 
 	fill = <object> (nil),
-	fill_rule = 'nonzero' | 'evenodd' (nonzero),
+	fill_rule = 'nonzero' | 'evenodd' (winding),
 
 	stroke = <object> (nil),
 	line_dashes = {offset = N (0), N1,...} (nil, no dashes)

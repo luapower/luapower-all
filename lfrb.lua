@@ -47,7 +47,7 @@ ffi.metatype('struct lfrb_state', {__index = {
 }})
 
 if not ... then
-	io.stdout:setvbuf'no'
+	io.stdout:setvbuf'full'
 	local lfrb = M
 	local pthread = require'pthread'
 	local lua = require'luastate'
@@ -65,7 +65,8 @@ if not ... then
 				local n = rb:fill_count()
 				local n = math.floor(math.random() * n)
 				if n > 0 then
-					io.stdout:write(string.format('read  %4d [%3d%%]\n', n, rb:fill_count() / rb.capacity * 100))
+					io.stdout:write(string.format('read  %4d [%3d%%]\n',
+						n, rb:fill_count() / rb.capacity * 100))
 					rb:advance_read_index(n)
 				end
 				time.sleep(math.random() * maxpause)
@@ -89,7 +90,8 @@ if not ... then
 		local n = rb:free_count()
 		local n = math.floor(math.random() * n)
 		if n > 0 then
-			io.stdout:write(string.format('write %4d [%3d%%]\n', n, rb:fill_count() / rb.capacity * 100))
+			io.stdout:write(string.format('write %4d [%3d%%]\n',
+				n, rb:fill_count() / rb.capacity * 100))
 			rb:advance_write_index(n)
 		end
 		time.sleep(math.random() * maxpause)

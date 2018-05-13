@@ -1908,13 +1908,7 @@ end
 --mouse event handling
 
 function ui.layer:getcursor(area)
-	if type(area) == 'string' then
-		return self['cursor_'..area] or self.cursor
-	elseif type(area) == 'table' then
-		return area.cursor or self.cursor
-	else
-		return self.cursor
-	end
+	return self['cursor_'..area] or self.cursor
 end
 
 function ui.layer:_mousemove(mx, my, area)
@@ -1925,24 +1919,14 @@ end
 
 function ui.layer:_mouseenter(mx, my, area)
 	local mx, my = self:from_window(mx, my)
-	if area then
-		area = type(area) == 'table' and area.area or area
-		self:settags('hot hot_'..area)
-	else
-		self:settags'hot'
-	end
+	self:settags(area and 'hot hot_'..area or 'hot')
 	self:fire('mouseenter', mx, my, area)
 end
 
 function ui.layer:_mouseleave()
 	self:fire'mouseleave'
 	local area = self.ui.hot_area
-	if area then
-		area = type(area) == 'table' and area.area or area
-		self:settags('-hot -hot_'..area)
-	else
-		self:settags'-hot'
-	end
+	self:settags(area and '-hot -hot_'..area or '-hot')
 end
 
 function ui.layer:_mousedown(button, mx, my, area)
@@ -2768,6 +2752,7 @@ function ui.layer:after_draw() --called in parent's content space; child intf.
 	if clip then
 		cr:restore()
 	end
+
 	if cc then
 		self:draw_border()
 	end

@@ -340,44 +340,25 @@ end
 
 function rows:override_hit_test_content(inherited, x, y, reason)
 	if reason == 'activate' then
-		local i = self.grid:row_at_y(y)
+		local i = self.grid:row_at_y(y + self.grid.vscrollbar.offset)
 		if i then
-			local col = i and self.pane:col_at_x(x)
+			local col = self.pane:col_at_x(x)
 			if col then
-				self._area = self._area or {}
-				self._area.i = i
-				self._area.col = col
-				self._area.area = 'cell'
-				return self, self._area
+				self.hot_row_index = i
+				self.hot_col = col
+				return self, 'cell'
 			end
 		end
 	end
+	self.hot_row_index = false
+	self.hot_col = false
 	return inherited(self, x, y, reason)
 end
 
-function rows:sync_cell_to_area()
-	local area = self.hot_area
-	if not area then return end
-	local grid = self.grid
-	local cell = grid.cell
-	local i, col = area.i, area.col
-	cell:sync_col(col)
-	local y, h = grid:row_yh(i)
-	cell:sync_row(i, y, h)
-	cell:sync_value(i, col, grid:cell_value(i, col))
-	return cell
-end
-
-function rows:mousemove(mx, my, area)
-	if type(area) == 'table' and area.area == 'cell' then
-		self.hot_area = area
-	else
-		self.hot_area = false
+function rows:hot_cell_coords()
+	if self.ui.hot_widget == self and self.ui.hot_area == 'cell' then
+		return self.hot_row_index, self.hot_col
 	end
-end
-
-function rows:mouseleave()
-	self.hot_area = false
 end
 
 --column headers -------------------------------------------------------------
@@ -591,6 +572,11 @@ cell.clip_content = true
 cell.text_multiline = false
 cell.background_color = '#000' --for column moving
 
+function cell:sync_grid(grid)
+	self.grid = grid
+	self.y_offset = self.grid.vscrollbar.offset
+end
+
 function cell:sync_col(col)
 	self.parent = col.pane.rows_layer
 	self.x = col.x
@@ -611,7 +597,7 @@ function cell:sync_col(col)
 end
 
 function cell:sync_row(i, y, h)
-	self.y = y
+	self.y = y - self.y_offset
 	self.h = h
 	self.background_color = i % 2 == 0 and '#111' or '#000'
 end
@@ -627,7 +613,11 @@ function grid:create_cell()
 end
 
 function grid:cell_at(i, col)
-	return self.cell
+	if not self.default_cell then
+		self.default_cell = self:create_cell(self.cell)
+		self.default_cell:sync_grid(self)
+	end
+	return self.default_cell
 end
 
 function grid:cell_value(i, col)
@@ -701,40 +691,65 @@ function grid:visible_rows_range()
 end
 
 function grid:draw_rows_col(i1, i2, col)
-	local offset = self.vscrollbar.offset
+	local cell = self:cell_at(i1, col)
+	if cell ~= self.cell then
+		self.cell = cell
+		self.cell:sync_grid(self)
+	end
 	self.cell:sync_col(col)
 	for i = i1, i2 do
 		local y, h = self:row_yh(i)
-		self.cell:sync_row(i, y - offset, h)
+		self.cell:sync_row(i, y, h)
 		self.cell:sync_value(i, col, self:cell_value(i, col))
 		self.cell:draw()
+		if i < i2 then
+			local cell = self:cell_at(i+1, col)
+			if cell ~= self.cell then
+				self.cell = cell
+				self.cell:sync_grid(self)
+				self.cell:sync_col(col)
+			end
+		end
 	end
 end
 
 function grid:draw_rows(rows_layer)
 	local i1, i2 = self:visible_rows_range()
 	if not i1 then return end
-	local moving_col
 	for _,col in ipairs(self.cols) do
 		if col.pane == rows_layer.pane and not col.clipped then
-			if col.moving then
-				moving_col = col
-			else
+			if not col.moving then
 				self:draw_rows_col(i1, i2, col)
 			end
 		end
 	end
-	if moving_col then
-		self:draw_rows_col(i1, i2, moving_col)
+	if self.moving_col then
+		self:draw_rows_col(i1, i2, self.moving_col)
 	end
-	local cell = rows_layer:sync_cell_to_area()
-	if cell then
-		--cell.border_width_left = 2
-		--cell.border_color = '#fff'
-		cell.background_color = '#333'
-		cell:draw()
-		--cell.border_width_left = 0
+	local i, col = rows_layer:hot_cell_coords()
+	if i then
+		self:draw_cell(i, col)
 	end
+end
+
+function grid:draw_cell(i, col)
+	local cell = self:cell_at(i, col)
+	if cell ~= self.cell then
+		self.cell = cell
+		self.cell:sync_grid(self)
+	end
+	cell:sync_col(col)
+	local y, h = self:row_yh(i)
+	cell:sync_row(i, y, h)
+	cell:sync_value(i, col, self:cell_value(i, col))
+
+	cell.border_width = 10
+	cell.border_color = '#fff'
+	--cell.background_color = '#333'
+	cell.border_offset = 0
+	cell:draw()
+	cell.border_width = 1
+	cell.border_offset = -1
 end
 
 --vertical scrollbar ---------------------------------------------------------
@@ -795,7 +810,6 @@ function grid:after_init(ui, t)
 	self.scroll_pane = self:create_scroll_pane(self.freeze_pane)
 	self.splitter = self:create_splitter()
 	self.vscrollbar = self:create_vscrollbar()
-	self.cell = self:create_cell()
 	if self.var_row_h then
 		self:_build_row_y_table()
 	end

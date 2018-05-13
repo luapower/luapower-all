@@ -35,7 +35,8 @@ function panel:on_destroy()
 	self.sg:free()
 end
 
-local obj_model = {type = 'obj_model', y = 0, scale = .003, file = {use_cache = true, path = 'media/obj/lancer/lancer.obj'}}
+local obj_model = {type = 'obj_model', y = 0, scale = .003,
+	file = {use_cache = false, path = 'media/obj/lancer/lancer.obj'}}
 local axes = {type = 'axes'}
 local cube = {type = 'cube'}
 local scene = {type = 'group', z = -2, scale = 1, obj_model}

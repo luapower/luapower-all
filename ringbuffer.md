@@ -9,7 +9,7 @@ Unidirectional cdata array-based ring buffers with the following properties:
   * elements can be added or removed one by one or in bulk.
   * data can only be added to the tail and removed from the head (FIFO).
   * the buffer is fixed-size and can grow on request.
-  * can work with an internally allocated byffer, an external buffer,
+  * can work with an internally allocated buffer, an external buffer,
   or can be used as an abstract interface over an external API.
 
 ## API
@@ -34,7 +34,7 @@ Unidirectional cdata array-based ring buffers with the following properties:
 
 ### `ringbuffer(cb) -> cb`
 
-Convert an initial table to a ring buffer and return it. The table can have fields:
+Convert an initial table to a ring buffer and return it. The table can have the fields:
 
   * `size`: the size of the buffer.
   * `ctype`: the element type for allocating an internal buffer, or
