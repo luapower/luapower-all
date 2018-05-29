@@ -610,6 +610,14 @@ cell.clip_content = true
 cell.text_multiline = false
 cell.background_color = '#000' --for column moving
 
+ui:style('grid_cell even', {
+	background_color = '#111',
+})
+
+ui:style('grid_cell hot', {
+	background_color = '#333',
+})
+
 function cell:sync_grid(grid)
 	self.grid = grid
 	self.y_offset = self.grid.vscrollbar.offset
@@ -639,7 +647,7 @@ end
 function cell:sync_row(i, y, h)
 	self.y = y - self.y_offset
 	self.h = h
-	self.background_color = i % 2 == 0 and '#111' or '#000'
+	self:settags(i % 2 == 0 and 'even' or '-even')
 end
 
 function cell:sync_value(i, col, val)
@@ -655,13 +663,23 @@ end
 function grid:cell_at(i, col)
 	if not self.default_cell then
 		self.default_cell = self:create_cell(self.cell)
-		self.default_cell:sync_grid(self)
 	end
 	return self.default_cell
 end
 
 function grid:cell_value(i, col)
 	return self.rows[i][col.value_index]
+end
+
+function grid:draw_cell(i, col, hot)
+	local y, h = self:row_yh(i)
+	local cell = self:cell_at(i, col)
+	cell:sync_grid(self)
+	cell:sync_col(col)
+	cell:sync_row(i, y, h)
+	cell:sync_value(i, col, self:cell_value(i, col))
+	cell:settags(hot and 'hot' or '-hot')
+	cell:draw()
 end
 
 --rows -----------------------------------------------------------------------
@@ -730,62 +748,37 @@ function grid:visible_rows_range()
 	end
 end
 
-function grid:draw_rows_col(i1, i2, col)
-	local cell = self:cell_at(i1, col)
-	if cell ~= self.cell then
-		self.cell = cell
-		self.cell:sync_grid(self)
-	end
-	self.cell:sync_col(col)
+function grid:draw_rows_col(i1, i2, col, hot_i, hot_col)
 	for i = i1, i2 do
+		local hot = i == hot_i and col == hot_col
 		local y, h = self:row_yh(i)
-		self.cell:sync_row(i, y, h)
-		self.cell:sync_value(i, col, self:cell_value(i, col))
-		self.cell:draw()
-		if i < i2 then
-			local cell = self:cell_at(i+1, col)
-			if cell ~= self.cell then
-				self.cell = cell
-				self.cell:sync_grid(self)
-				self.cell:sync_col(col)
-			end
+		local cell = self:cell_at(i, col)
+		if cell ~= self.cell then
+			self.cell = cell
+			cell:sync_grid(self)
+			cell:sync_col(col)
 		end
+		cell:sync_row(i, y, h)
+		cell:sync_value(i, col, self:cell_value(i, col))
+		cell:settags(hot and 'hot' or '-hot')
+		cell:draw()
 	end
 end
 
 function grid:draw_rows(rows_layer)
 	local i1, i2 = self:visible_rows_range()
 	if not i1 then return end
-	local moving_col
+	local hot_i, hot_col = rows_layer:hot_cell_coords()
+	self.cell = false
 	for _,col in ipairs(rows_layer.pane.header_layer.layers) do
 		if col.isgrid_col and not col.clipped then
-			self:draw_rows_col(i1, i2, col)
+			local cell = self:cell_at(i1, col)
+			if cell == self.cell then
+				cell:sync_col(col)
+			end
+			self:draw_rows_col(i1, i2, col, hot_i, hot_col)
 		end
 	end
-	local i, col = rows_layer:hot_cell_coords()
-	if i then
-		self:draw_cell(i, col)
-	end
-end
-
-function grid:draw_cell(i, col)
-	local cell = self:cell_at(i, col)
-	if cell ~= self.cell then
-		self.cell = cell
-		self.cell:sync_grid(self)
-	end
-	cell:sync_col(col)
-	local y, h = self:row_yh(i)
-	cell:sync_row(i, y, h)
-	cell:sync_value(i, col, self:cell_value(i, col))
-
-	cell.border_width = 10
-	cell.border_color = '#fff'
-	--cell.background_color = '#333'
-	cell.border_offset = 0
-	cell:draw()
-	cell.border_width = 1
-	cell.border_offset = -1
 end
 
 --vertical scrollbar ---------------------------------------------------------
