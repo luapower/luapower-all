@@ -33,38 +33,39 @@ end
 
 function pane:before_sync()
 
-	--sync columns, including their temporary position while moving a column.
+	--sync columns, including their position and index while moving a column.
 	local moving_col = self.grid.moving_col
-	if moving_col and moving_col.pane ~= self then
-		moving_col = nil
+	moving_col = moving_col and moving_col.pane == self and moving_col
+	if moving_col then
+		moving_col.move_index = false
 	end
-	local moving_col_index
+	local max_col_index = self.frozen and self.grid.freeze_col or 1/0
 	local x = 0
-	for i,col in ipairs(self.grid.cols) do
+	local i = 1
+	for _,col in ipairs(self.grid.cols) do
 		if col.pane == self then
 			col.parent = self.header_layer
 			col.h = self.grid.col_h
-			if col.visible then
-				if moving_col
-					and not moving_col_index
-					and moving_col.x + moving_col.w / 2 < x + col.w / 2
-				then
-					x = x + moving_col.w --make room for the moving col
-					moving_col_index = i
-				end
-				if not col.moving then
+			if not col.moving then
+				if col.visible then
+					if moving_col
+						and not moving_col.move_index
+						and i <= max_col_index
+						and moving_col.x < x + col.w / 2
+					then
+						moving_col.move_index = i
+						x = x + moving_col.w --make room for the moving col
+					end
 					col:transition('x', x)
 					x = x + col.w
 				end
+				i = i + 1
 			end
 		end
 	end
-	if moving_col and not moving_col_index then
+	if moving_col and not moving_col.move_index then --too far to the right
 		x = x + moving_col.w
-		moving_col_index = 1/0
-	end
-	if moving_col_index then
-		moving_col.index = moving_col_index
+		moving_col.move_index = max_col_index
 	end
 
 	local pw = x
@@ -88,6 +89,11 @@ function pane:before_sync()
 
 	self.h = self.grid.ch
 end
+
+ui:style('grid > grid_col', {
+	transition_x = true,
+	transition_duration = .2,
+})
 
 ui:style('grid move_col > grid_col', {
 	transition_x = true,
@@ -482,6 +488,7 @@ function col:start_drag_move(button, mx, my, area)
 	if button ~= 'left' then return end
 	self.window.cursor = 'move'
 	self.moving = true
+	self:settags'moving'
 	self.grid.moving_col = self
 	self.grid:settags'move_col'
 	self:to_front()
@@ -489,13 +496,16 @@ function col:start_drag_move(button, mx, my, area)
 end
 
 function col:drag_move(dx, dy)
-	self.x = self.x + dx
+	self:transition('x', self.x + dx, 0)
 	self:invalidate()
 end
 
 function col:end_drag_move()
+	self.index = self.move_index
+	self.move_index = false
 	self.moving = false
 	self.grid.moving_col = false
+	self:settags'-moving'
 	self.grid:settags'-move_col'
 	self.window.cursor = nil
 end
@@ -716,15 +726,11 @@ end
 function grid:draw_rows(rows_layer)
 	local i1, i2 = self:visible_rows_range()
 	if not i1 then return end
-	for _,col in ipairs(self.cols) do
-		if col.pane == rows_layer.pane and not col.clipped then
-			if not col.moving then
-				self:draw_rows_col(i1, i2, col)
-			end
+	local moving_col
+	for _,col in ipairs(rows_layer.pane.header_layer.layers) do
+		if col.isgrid_col and not col.clipped then
+			self:draw_rows_col(i1, i2, col)
 		end
-	end
-	if self.moving_col then
-		self:draw_rows_col(i1, i2, self.moving_col)
 	end
 	local i, col = rows_layer:hot_cell_coords()
 	if i then
