@@ -39,6 +39,9 @@ function pane:before_sync()
 	if moving_col then
 		moving_col.move_index = false
 	end
+	local min_col_index =
+		not self.frozen and self.grid.freeze_col
+		and self.grid.freeze_col + 1 or 1
 	local max_col_index = self.frozen and self.grid.freeze_col or 1/0
 	local x = 0
 	local i = 1
@@ -46,21 +49,22 @@ function pane:before_sync()
 		if col.pane == self then
 			col.parent = self.header_layer
 			col.h = self.grid.col_h
-			if not col.moving then
-				if col.visible then
-					if moving_col
-						and not moving_col.move_index
-						and i <= max_col_index
-						and moving_col.x < x + col.w / 2
-					then
-						moving_col.move_index = i
-						x = x + moving_col.w --make room for the moving col
-					end
-					col:transition('x', x)
-					x = x + col.w
+			if not col.moving and col.visible then
+				if moving_col
+					and not moving_col.move_index
+					and i >= min_col_index
+					and i <= max_col_index
+					and moving_col.x < x + col.w / 2
+				then
+					moving_col.move_index = i
+					x = x + moving_col.w --make room for the moving col
 				end
-				i = i + 1
+				col:transition('x', x)
+				x = x + col.w
 			end
+		end
+		if not col.moving then
+			i = i + 1
 		end
 	end
 	if moving_col and not moving_col.move_index then --too far to the right
@@ -76,8 +80,8 @@ function pane:before_sync()
 		local fp = self.freeze_pane
 		local s = self.grid.splitter
 		local sw = s.visible and s.w or 0
-		self.x = fp.w + sw
-		self.w = self.grid.cw - fp.w - sw
+		self:transition('x', fp.w + sw)
+		self:transition('w', self.grid.cw - fp.w - sw)
 		if self.grid.resizing_col then
 			--prevent shrinking to avoid scrolling while resizing
 			self.content.w = math.max(self.content.w, pw)
@@ -90,7 +94,7 @@ function pane:before_sync()
 	self.h = self.grid.ch
 end
 
-ui:style('grid > grid_col', {
+ui:style('grid_col', {
 	transition_x = true,
 	transition_duration = .2,
 })
@@ -98,6 +102,23 @@ ui:style('grid > grid_col', {
 ui:style('grid move_col > grid_col', {
 	transition_x = true,
 	transition_duration = .5,
+})
+
+ui:style('grid_splitter', {
+	transition_x = true,
+	transition_duration = .1,
+})
+
+ui:style([[
+	grid resize_col > grid_col,
+	grid resize_col > grid_splitter,
+	grid move_splitter > grid_col,
+]], {
+	transition_x = false,
+})
+
+ui:style('grid_col moving, grid_cell moving', {
+	opacity = .7,
 })
 
 function pane:after_sync()
@@ -183,7 +204,7 @@ function grid:create_splitter()
 end
 
 function splitter:sync()
-	self.x = self.grid.scroll_pane.x - self.w
+	self:transition('x', self.grid.scroll_pane.x - self.w)
 	self.h = self.grid.ch
 end
 
@@ -214,6 +235,8 @@ function splitter:start_drag(button, mx, my, area)
 	ds.h = self.h
 	ds.visible = true
 
+	self.grid:settags'move_splitter'
+
 	return ds
 end
 
@@ -224,7 +247,7 @@ function drag_splitter:drag(dx, dy)
 	local col = self.grid:last_visible_col()
 	local last_col_x2 = col and col.parent:to_other(self.grid, col.x2, 0)
 	local max_w = math.min(last_col_x2 or 0, self.grid.cw) - self.w
-	self.x = clamp(0, self.x + dx + self.w / 2, max_w)
+	self:transition('x', clamp(0, self.x + dx + self.w / 2, max_w), 0)
 
 	local ci = self.grid:nearest_col_index_at_x(self.x)
 	self.grid.freeze_col = ci
@@ -233,6 +256,7 @@ end
 
 function splitter:end_drag(ds)
 	ds.visible = false
+	self.grid:settags'-move_splitter'
 end
 
 --freeze col -----------------------------------------------------------------
@@ -464,7 +488,9 @@ end
 function col:start_drag_resize(button, mx, my)
 	if button ~= 'left' then return end
 	self.resizing = true
+	self:settags'resizing'
 	self.grid.resizing_col = self
+	self.grid:settags'resize_col'
 	self.drag_w = self.w
 	self.drag_max_w = self.pane:max_w() - self.pane.content.w + self.w
 	return self
@@ -479,7 +505,9 @@ end
 function col:end_drag_resize()
 	self.drag_w = false
 	self.resizing = false
+	self:settags'-resizing'
 	self.grid.resizing_col = false
+	self.grid:settags'-resize_col'
 end
 
 --column move ----------------------------------------------------------------
@@ -504,8 +532,8 @@ function col:end_drag_move()
 	self.index = self.move_index
 	self.move_index = false
 	self.moving = false
-	self.grid.moving_col = false
 	self:settags'-moving'
+	self.grid.moving_col = false
 	self.grid:settags'-move_col'
 	self.window.cursor = nil
 end
@@ -604,6 +632,8 @@ function cell:sync_col(col)
 	self.padding_right = col.padding_right
 	self.padding_top = col.padding_top
 	self.padding_bottom = col.padding_bottom
+	self:settags(col.moving and 'moving'  or '-moving')
+	self:settags(col.resizing and 'resizing'  or '-resizing')
 end
 
 function cell:sync_row(i, y, h)
