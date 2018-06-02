@@ -6,24 +6,16 @@ if not ... then require'glue_test'; return end
 
 local glue = {}
 
-local select, pairs, tonumber, tostring, unpack, xpcall, assert =
-      select, pairs, tonumber, tostring, unpack, xpcall, assert
-local getmetatable, setmetatable, type, pcall =
-      getmetatable, setmetatable, type, pcall
-local sort, format, byte, char, min, max, floor =
-      table.sort, string.format, string.byte, string.char,
-		math.min, math.max, math.floor
-
 function glue.round(x)
-	return floor(x + 0.5)
+	return math.floor(x + 0.5)
 end
 
 function glue.snap(x, y)
-	return floor(x / y + .5) * y
+	return math.floor(x / y + .5) * y
 end
 
 function glue.clamp(x, x0, x1)
-	return min(max(x, x0), x1)
+	return math.min(math.max(x, x0), x1)
 end
 
 function glue.lerp(x, x0, x1, y0, y1)
@@ -38,18 +30,13 @@ function glue.unpack(t, i, j)
 	return unpack(t, i or 1, j or t.n or #t)
 end
 
---count the keys in a table.
+--count the keys in a table with an optional upper limit.
 function glue.count(t, maxn)
+	local maxn = maxn or 1/0
 	local n = 0
-	if maxn then
-		for _ in pairs(t) do
-			n = n + 1
-			if n >= maxn then break end
-		end
-	else
-		for _ in pairs(t) do
-			n = n + 1
-		end
+	for _ in pairs(t) do
+		n = n + 1
+		if n >= maxn then break end
 	end
 	return n
 end
@@ -68,17 +55,16 @@ function glue.keys(t, cmp)
 		dt[#dt+1]=k
 	end
 	if cmp == true then
-		sort(dt)
+		table.sort(dt)
 	elseif cmp then
-		sort(dt, cmp)
+		table.sort(dt, cmp)
 	end
 	return dt
 end
 
 --stateless pairs() that iterate elements in key order.
-local keys = glue.keys
 function glue.sortedpairs(t, cmp)
-	local kt = keys(t, cmp or true)
+	local kt = glue.keys(t, cmp or true)
 	local i = 0
 	return function()
 		i = i + 1
@@ -138,13 +124,11 @@ function glue.append(dt,...)
 	return dt
 end
 
-local tinsert, tremove = table.insert, table.remove
-
 --insert n elements at i, shifting elemens on the right of i (i inclusive)
 --to the right.
 local function insert(t, i, n)
 	if n == 1 then --shift 1
-		tinsert(t, i, false)
+		table.insert(t, i, false)
 		return
 	end
 	for p = #t,i,-1 do --shift n
@@ -155,9 +139,9 @@ end
 --remove n elements at i, shifting elements on the right of i (i inclusive)
 --to the left.
 local function remove(t, i, n)
-	n = min(n, #t-i+1)
+	n = math.min(n, #t-i+1)
 	if n == 1 then --shift 1
-		tremove(t, i)
+		table.remove(t, i)
 		return
 	end
 	for p=i+n,#t do --shift n
@@ -168,7 +152,7 @@ local function remove(t, i, n)
 	end
 end
 
---shift all the elements to the right of i (i inclusive) to the left
+--shift all the elements on the right of i (i inclusive) to the left
 --or further to the right.
 function glue.shift(t, i, n)
 	if n > 0 then
@@ -197,7 +181,7 @@ function glue.binsearch(v, t, cmp)
 	if n == 1 then return not cmp(t[1], v) and 1 or nil end
 	local lo, hi = 1, n
 	while lo < hi do
-		local mid = floor(lo + (hi - lo) / 2)
+		local mid = math.floor(lo + (hi - lo) / 2)
 		if cmp(t[mid], v) then
 			lo = mid + 1
 			if lo == n and cmp(t[lo], v) then
@@ -208,6 +192,26 @@ function glue.binsearch(v, t, cmp)
 		end
 	end
 	return lo
+end
+
+--find something in a list with a testing function.
+function glue.find(t, f)
+	for i=1,#t do
+		local v = f(i, t[i])
+		if v ~= nil then
+			return v
+		end
+	end
+end
+
+--find in reverse.
+function glue.find_reverse(t, f)
+	for i=#t,1,-1 do
+		local v = f(i, t[i])
+		if v ~= nil then
+			return v
+		end
+	end
 end
 
 --string submodule. has its own namespace which can be merged with _G.string.
@@ -242,6 +246,7 @@ function glue.string.gsplit(s, sep, start, plain)
 	end
 end
 
+--split a string into lines, optionally including the line terminator.
 function glue.lines(s, opt)
 	local term = opt == '*L'
 	local patt = term and '([^\r\n]*()\r?\n?())' or '([^\r\n]*)()\r?\n?()'
@@ -265,7 +270,7 @@ end
 
 --escape a string so that it can be matched literally inside a pattern.
 local function format_ci_pat(c)
-	return format('[%s%s]', c:lower(), c:upper())
+	return ('[%s%s]'):format(c:lower(), c:upper())
 end
 function glue.string.escape(s, mode)
 	s = s:gsub('%%','%%%%'):gsub('%z','%%z')
@@ -277,15 +282,15 @@ end
 --string or number to hex.
 function glue.string.tohex(s, upper)
 	if type(s) == 'number' then
-		return format(upper and '%08.8X' or '%08.8x', s)
+		return (upper and '%08.8X' or '%08.8x'):format(s)
 	end
 	if upper then
 		return (s:gsub('.', function(c)
-		  return format('%02X', byte(c))
+		  return ('%02X'):format(c:byte())
 		end))
 	else
 		return (s:gsub('.', function(c)
-		  return format('%02x', byte(c))
+		  return ('%02x'):format(c:byte())
 		end))
 	end
 end
@@ -296,7 +301,7 @@ function glue.string.fromhex(s)
 		return glue.string.fromhex('0'..s)
 	end
 	return (s:gsub('..', function(cc)
-	  return char(tonumber(cc, 16))
+	  return string.char(tonumber(cc, 16))
 	end))
 end
 
@@ -370,36 +375,12 @@ function glue.attr(t, k, v0)
 	return v
 end
 
---set up a table so that missing keys are created automatically as autotables.
-local autotable
-local auto_meta = {
-	__index = function(t, k)
-		t[k] = autotable()
-		return t[k]
-	end,
-}
-function autotable(t)
-	t = t or {}
-	local meta = getmetatable(t)
-	if meta then
-		assert(not meta.__index or meta.__index == auto_meta.__index,
-			'__index already set')
-		meta.__index = auto_meta.__index
-	else
-		setmetatable(t, auto_meta)
-	end
-	return t
-end
-glue.autotable = autotable
-
 --check if a file exists and can be opened for reading or writing.
 function glue.canopen(name, mode)
 	local f = io.open(name, mode or 'rb')
 	if f then f:close() end
 	return f ~= nil and name or nil
 end
-
-glue.fileexists = glue.canopen --for backwards compat.
 
 --read a file into a string (in binary mode by default).
 function glue.readfile(name, mode, open)
@@ -495,6 +476,7 @@ function glue.writefile(filename, s, mode, tmpfile)
 	f:close()
 end
 
+--virtualize the print function.
 function glue.printer(out, format)
 	format = format or glue.pass
 	return function(...)
@@ -516,7 +498,7 @@ function glue.assert(v, err, ...)
 	if v then return v end
 	err = err or 'assertion failed!'
 	if select('#',...) > 0 then
-		err = format(err,...)
+		err = string.format(err, ...)
 	end
 	error(err, 2)
 end
@@ -632,7 +614,7 @@ local function memoize_vararg(fn, nparams)
 	local values = {}
 	return function(...)
 		local key = cache
-		local nparams = max(nparams, select('#',...))
+		local nparams = math.max(nparams, select('#',...))
 		for i = 1, nparams do
 			local a = select(i,...)
 			local k = a ~= a and nankey or a == nil and nilkey or a

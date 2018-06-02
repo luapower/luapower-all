@@ -27,7 +27,9 @@ __lists__
 `glue.append(dt, v1, ...) -> dt`                                   append non-nil values to a list
 `glue.shift(t, i, n) -> t`                                         shift list elements
 `glue.reverse(t) -> t`                                             reverse list in place
-`glue.binsearch(v, t[, cmp]) -> i`                                 binary search
+`glue.binsearch(v, t[, cmp]) -> i`                                 binary search in sorted list
+`glue.find(t, f) -> ...`                                           linear search
+`glue.find_reverse(t, f) -> ...`                                   linear search from the list end
 __strings__
 `glue.gsplit(s,sep[,start[,plain]]) -> iter() -> e[,captures...]`  split a string by a pattern
 `glue.lines(s[, opt]) -> iter() -> s`                              iterate the lines of a string
@@ -44,7 +46,6 @@ __closures__
 __metatables__
 `glue.inherit(t, parent) -> t`                                     set or clear inheritance
 `glue.object([super][, t], ...) -> t`                              create a class or object (see description)
-`glue.autotable([t]) -> t`                                         autotable pattern
 __i/o__
 `glue.canopen(filename[, mode]) -> filename | nil`                 check if a file exists and can be opened
 `glue.readfile(filename[, format][, open]) -> s | nil, err`        read the contents of a file into a string
@@ -240,7 +241,6 @@ The implementation creates a temporary table to sort the keys in.
 ### `glue.attr(t,k1[,v])[k2] = v`
 
 Idiom for `t[k1][k2] = v` with auto-creating of `t[k1]` if not present.
-Useful for when an autotable is not wanted.
 
 ------------------------------------------------------------------------------
 
@@ -301,6 +301,19 @@ Reverse a list in-place and return the input arg.
 Return the smallest index whereby inserting the value `v` in sorted list `t`
 will keep `t` sorted (i.e. `t[i-1] < v` and `t[i] >= v`). Return `nil` if `v`
 is larger than the largest value or if `t` is empty.
+
+------------------------------------------------------------------------------
+
+### `glue.find(t, f) -> v`
+
+Call `f(i, e) -> v|nil` for each element of list `t` and return the first
+non-nil value returned by `f`.
+
+------------------------------------------------------------------------------
+
+### `glue.find_reverse(t, f) -> v`
+
+Like `glue.find()` but traverses the list in reverse order.
 
 ------------------------------------------------------------------------------
 
@@ -541,20 +554,6 @@ There are also some limitations:
 
 ------------------------------------------------------------------------------
 
-### `glue.autotable([t]) -> t`
-
-Set a table to create/return missing keys as autotables.
-
-In the example below, `t.a`, `t.a.b`, `t.a.b.c` are created automatically
-as autotables.
-
-~~~{.lua}
-local t = autotable()
-t.a.b.c.d = 'hello'
-~~~
-
-------------------------------------------------------------------------------
-
 ## I/O
 
 ### `glue.canopen(file[, mode]) -> filename | nil`
@@ -591,7 +590,8 @@ in different filesystems or if `oldpath` is missing or locked, etc.
 For consistent behavior across OSes, both paths should be absolute paths
 or just filenames.
 
-> __NOTE__: LuaJIT only.
+> __NOTE__: LuaJIT only (uses `MoveFileExA` on Windows and `os.rename()`
+on all other platforms).
 
 ------------------------------------------------------------------------------
 
@@ -612,7 +612,7 @@ Write the contents of a string, table or reader to a file.
 ### `glue.printer(out[, format]) -> f`
 
 Create a `print()`-like function which uses the function `out` to output
-its values and `format` to format each value. For instance
+its values and uses the optional `format` to format each value. For instance
 `glue.printer(io.write, tostring)` returns a function which behaves like
 the standard `print()` function.
 
@@ -628,8 +628,8 @@ Like `assert` but supports formatting of the error message using
 This is better than `assert(v, string.format(message, format_args...))`
 because it avoids creating the message string when the assertion is true.
 
-__NOTE__:  Unlike standard `assert()`, this only returns the first argument
-to avoid returning the error message and it's args along with it.
+__NOTE__:  Unlike standard `assert()`, this only returns its first argument
+to avoid returning the error message and its args along with it.
 
 #### Example
 
@@ -676,8 +676,8 @@ you don't want that. This variant appends the traceback to the error message.
 
 ### `glue.fcall(f,...) -> result`
 
-These constructs bring the ubiquitous try/finally/except idiom to Lua. The first variant returns nil,error
-when errors occur while the second re-raises the error.
+These constructs bring the try/finally/except idiom to Lua. The first variant
+returns nil,error when errors occur while the second re-raises the error.
 
 #### Example
 
@@ -768,7 +768,7 @@ local foobar = glue.readfile(glue.bin .. '/' .. file_near_this_script)
 
 This only works if glue itself can already be found and required
 (chicken/egg problem). Also, the path is relative to the current directory,
-so this stops working if the current directory is changed.
+so this stops working as soon as the current directory is changed.
 
 ------------------------------------------------------------------------------
 
@@ -857,9 +857,8 @@ on 64bit platforms). This is useful for:
 
 ### `glue.ptr([ctype,]number|string) -> ptr`
 
-Convert an address value stored as a Lua number (or possibly string
-on 64bit platforms) to a cdata pointer, optionally specifying a ctype
-for the pointer (defaults to `void*`).
+Convert an address value stored as a Lua number or string to a cdata pointer,
+optionally specifying a ctype for the pointer (defaults to `void*`).
 
 ------------------------------------------------------------------------------
 
@@ -872,11 +871,9 @@ You can extend the Lua `string` namespace:
 
 so you can use them as string methods:
 
-	`s = s:trim()`
+	`s:trim()`
 
 ## Design
 
 [glue_design]
 
-
-[lua-find-bin]:  https://github.com/davidm/lua-find-bin

@@ -8,7 +8,7 @@ tagline:  how and why
 A place to accumulate good implementations of common Lua idioms, mainly so
 that they can be copy-pasted in library code (a typical library only needs
 a few functions from glue) or used directly in app code (where another
-dependency is a problem). In this context a good implementation is first
+dependency is not a problem). In this context a good implementation is first
 of all small and its corner cases well documented (since they are usually not
 addressed in the implementation in order to keep the code small and fast).
 
@@ -18,10 +18,7 @@ The idea is to find the most popular, familiar and _short_ names for _each
 and every_ function (no underscores and no capitals). Python gets this right,
 so does UNIX. A function with an unheard of name or alien semantics will be
 avoided. People rather recall known names/semantics rather than learn
-unfamiliar new names/semantics, even when they are clearer.
-
-For non-obvious O(n) operations, use verbs to emphasize the process rather
-than the result, eg. `count(t)` not `size(t)`.
+unfamiliar new names/semantics, even when those would be more clear.
 
 ## Semantics
 
@@ -38,14 +35,8 @@ need to be wrapped first.
 
 ### Write in Lua
 
-String lambdas, callable strings, list comprehensions are all fun, but even
-the simplest DSLs have a learning curve, complex semantics and performance
-corner cases, and become a barrier to reading other people's code. I remember
-loathing Lua's unfamiliar regex language with its non-linear performance.
-
-Adding DSLs make reading code frustrating. Why not give them _an identity of
-their own_ and ship them as individual libraries and see if they can claim
-the required learning time from programmers by themselves.
+String lambdas, callable strings, list comprehensions are all fun, but they
+they add syntax and and a learning curve.
 
 ### Sugar
 
@@ -62,9 +53,9 @@ math (`sign()`, `clamp()`, etc. are idioms too).
 Functional programming sugars like `compose` and `bind` makes code harder to
 read because brains are slow to switch between abstraction levels unless it's
 a self-contained DSL with radically different syntax and semantics than the
-surrounding code. Eg. it's relatively easy to read a Lua string pattern or an
-embedded SQL string more than it is reading expressions involving `bind` and
-`compose` which force you to simulate the equivalent Lua syntax in your head.
+surrounding code. Eg. it's easier to read a Lua string pattern or an embedded
+SQL string than it is to read expressions involving `bind` and `compose`
+which force you to simulate the equivalent Lua syntax in your head.
 
 Sugars like "message %s" % arg are the good ones: % is odd enough to put after
 a string constant that it has an idiomatic quality, and its semantics is
