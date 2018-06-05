@@ -29,9 +29,6 @@
 
 - col shrink/expand-to-widest-row option on double-clicking between columns
 
-FIXES
-- drag-to-select cells scrolling when outside on left/right sides doesn't work
-
 
 LATER/DATASET
 - sorting

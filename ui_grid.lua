@@ -61,17 +61,22 @@ function pane:after_sync()
 	self.rows_layer:sync()
 end
 
-function pane:col_at_x(x, clamp)
+function pane:col_at_x(x, clamp_left, clamp_right)
+	local first_col, last_col
 	for _,col in ipairs(self.grid.cols) do
 		if col.visible and col.pane == self then
-			if x >= col.x then
-				if x <= col.x2 then
-					return col
-				end
-			else
-				--TODO: clamp
+			if x >= col.x and x <= col.x2 then
+				return col
 			end
+			first_col = first_col or col
+			last_col = col
 		end
+	end
+	if clamp_left and x < first_col.x then
+		return first_col
+	end
+	if clamp_right and x > last_col.x2 then
+		return last_col
 	end
 end
 
@@ -344,10 +349,10 @@ function rows:mousewheel(delta, mx, my, area, pdelta)
 	self.grid.vscrollbar:scroll(-delta * self.grid.row_h) --TODO:
 end
 
-function rows:hit_test_cell(x, y, clamp)
-	local i = self.grid:row_at_y(y + self.grid.vscrollbar.offset)
+function rows:hit_test_cell(x, y, clamp_top, clamp_bottom, clamp_left, clamp_right)
+	local i = self.grid:row_at_y(y + self.grid.vscrollbar.offset, clamp_top, clamp_bottom)
 	if i then
-		local col = self.pane:col_at_x(x, clamp)
+		local col = self.pane:col_at_x(x, clamp_left, clamp_right)
 		if col then
 			return i, col
 		end
@@ -831,15 +836,26 @@ function grid:row_yh(i)
 	end
 end
 
-function grid:row_at_y(y)
+function grid:row_at_y(y, clamp_top, clamp_bottom)
 	if self.var_row_h then
 		local t = self._row_y
-		if #t > 0 and y < t[1] then return nil end
+		if #t == 0 then return nil end
+		if y < t[1] then
+			return clamp_top and 1 or nil
+		elseif y > t[#t] then
+			return clamp_bottom and self.row_count or nil
+		end
 		local i = binsearch(y, t)
-		return i and y < t[i] and i-1 or i
+		return y < t[i] and i-1 or i
 	else
 		local i = (y + self.vscrollbar.offset) / self.row_h + 1
-		return i >= 1 and i <= self.row_count and i or nil
+		if i < 1 then
+			return clamp_top and 1 or nil
+		end
+		if i >= self.row_count then
+			return clamp_bottom and self.row_count or nil
+		end
+		return i
 	end
 end
 
@@ -973,11 +989,15 @@ end
 
 function rows:after_mousemove(mx, my)
 	if not self.active or self.dragging then return end
-	local i, col = self:hit_test_cell(mx, my, true)
+	local pane = self.pane
+	local i, col = self:hit_test_cell(mx, my,
+		true, true, pane.clamp_left, pane.clamp_right)
 	if not i then
-		local rows = self.pane.other_pane.rows_layer
+		local pane = self.pane.other_pane
+		local rows = pane.rows_layer
 		local mx, my = self:to_other(rows, mx, my)
-		i, col = rows:hit_test_cell(mx, my, true)
+		i, col = rows:hit_test_cell(mx, my,
+			true, true, pane.clamp_left, pane.clamp_right)
 	end
 	if i then
 		self.grid.hot_row_index = i
@@ -1213,7 +1233,9 @@ function grid:after_init(ui, t)
 	self.freeze_pane = self:create_freeze_pane(self.freeze_pane)
 	self.scroll_pane = self:create_scroll_pane(self.freeze_pane)
 	self.freeze_pane.other_pane = self.scroll_pane
+	self.freeze_pane.clamp_left = true
 	self.scroll_pane.other_pane = self.freeze_pane
+	self.scroll_pane.clamp_right = true
 	self.splitter = self:create_splitter()
 	self.vscrollbar = self:create_vscrollbar()
 	if self.var_row_h then
