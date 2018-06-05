@@ -2,7 +2,7 @@
 tagline: portable filesystem support
 ---
 
-<warn>Work in progress!</warn>
+<warn>Memory mapping is not finished yet!</warn>
 
 ## `local fs = require'fs'`
 
