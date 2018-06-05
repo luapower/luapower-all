@@ -445,7 +445,7 @@ function editbox:override_init(inherited, ui, t)
 	]]
 end
 
-function editbox:after_focused()
+function editbox:after_gotfocus()
 	self.editor:focus()
 end
 

@@ -713,29 +713,40 @@ function ui.element:_subtag(tag)
 	return self.id and self.id..'.'..tag or tag
 end
 
-function ui.element:settags(s)
-	local some_changed
-	for op, tag in s:gmatch'([-+~]?)([^%s]+)' do
-		local changed = true
-		local had_tag = self.tags[tag]
-		if not had_tag and (op == '' or op == '+') then
-			self.tags[tag] = true
-		elseif had_tag and op == '-' then
-			self.tags[tag] = false
-		elseif op == '~' then
-			self.tags[tag] = not had_tag
-		else
-			changed = false
-		end
-		some_changed = some_changed or changed
+function ui.element:settag(tag, op)
+	local had_tag = self.tags[tag]
+	if op == '~' then
+		self.tags[tag] = not had_tag
+		self._styles_valid = false
+	elseif op and not had_tag then
+		self.tags[tag] = true
+		self._styles_valid = false
+	elseif not op and had_tag then
+		self.tags[tag] = false
+		self._styles_valid = false
 	end
-	if some_changed then
-		self:update_styles()
+end
+
+function ui.element:settags(s)
+	if type(s) == 'string' then
+		for op, tag in s:gmatch'([-+~]?)([^%s]+)' do
+			if op == '+' or op == '' then
+				op = true
+			elseif op == '-' then
+				op = false
+			end
+			self:settag(tag, op)
+		end
+	else
+		for tag, op in pairs(s) do
+			self:settag(tag, op)
+		end
 	end
 end
 
 function ui.element:update_styles()
 	self.ui.stylesheet:update_element(self)
+	self._styles_valid = true
 end
 
 function ui.element:_save_initial_value(attr)
@@ -854,6 +865,9 @@ function ui.element:transition(attr, val, duration, ease, delay, blend)
 end
 
 function ui.element:draw()
+	if not self._styles_valid then
+		self:update_styles()
+	end
 	--update transitioning attributes
 	local tr = self.transitions
 	if tr and next(tr) then
@@ -1267,17 +1281,17 @@ function ui:_window_mouseup(window, button, mx, my, click_count)
 	end
 
 	if self.drag_button == button then
-		if self.drop_widget then
-			self.drop_widget:_drop(self.drag_widget, mx, my, self.drop_area)
-			self.drag_widget:_leave_drop_target(self.drop_widget)
-		end
 		if self.drag_widget then
+			if self.drop_widget then
+				self.drop_widget:_drop(self.drag_widget, mx, my, self.drop_area)
+				self.drag_widget:_leave_drop_target(self.drop_widget)
+			end
 			self.drag_widget:_ended_dragging()
-		end
-		self.drag_start_widget:_end_drag()
-		for _,elem in ipairs(self.elements) do
-			if elem.targetable then
-				elem:_set_drop_target(false)
+			self.drag_start_widget:_end_drag()
+			for _,elem in ipairs(self.elements) do
+				if elem.targetable then
+					elem:_set_drop_target(false)
+				end
 			end
 		end
 		self:_reset_drag_state()
@@ -1697,7 +1711,7 @@ ui.layer.text = nil
 
 ui.layer.cursor = false
 
-ui.layer.drag_threshold = 0 --snapping pixels before starting to drag
+ui.layer.drag_threshold = 0 --moving distance before start dragging
 ui.layer.max_click_chain = 1 --2 for getting doubleclick events etc.
 ui.layer.hover_delay = 1 --TODO: hover event delay
 
@@ -1919,14 +1933,20 @@ end
 
 function ui.layer:_mouseenter(mx, my, area)
 	local mx, my = self:from_window(mx, my)
-	self:settags(area and 'hot hot_'..area or 'hot')
+	self:settag('hot', true)
+	if area then
+		self:settag('hot_'..area, true)
+	end
 	self:fire('mouseenter', mx, my, area)
 end
 
 function ui.layer:_mouseleave()
 	self:fire'mouseleave'
 	local area = self.ui.hot_area
-	self:settags(area and '-hot -hot_'..area or '-hot')
+	self:settag('hot', false)
+	if area then
+		self:settag('hot_'..area, false)
+	end
 end
 
 function ui.layer:_mousedown(button, mx, my, area)
@@ -1979,39 +1999,39 @@ function ui.layer:accept_drop_widget(widget, area) return true; end
 
 --called on the dragged widget once upon entering a new drop target.
 function ui.layer:_enter_drop_target(widget, area)
-	self:settags'dropping'
+	self:settag('dropping', true)
 	self:fire('enter_drop_target', widget, area)
 end
 
 --called on the dragged widget once upon leaving a drop target.
 function ui.layer:_leave_drop_target(widget)
 	self:fire('leave_drop_target', widget)
-	self:settags'-dropping'
+	self:settag('dropping', false)
 end
 
 --called on the dragged widget when dragging starts.
 function ui.layer:_started_dragging()
 	self.dragging = true
-	self:settags'dragging'
+	self:settag('dragging', true)
 	self:fire'started_dragging'
 end
 
 --called on the dragged widget when dragging ends.
 function ui.layer:_ended_dragging()
 	self.dragging = false
-	self:settags'-dragging'
+	self:settag('dragging', false)
 	self:fire'ended_dragging'
 end
 
 function ui.layer:_set_drop_target(set)
-	self:settags(set and 'drop_target' or '-drop_target')
+	self:settag('drop_target', set)
 end
 
 --called on drag_start_widget to initiate a drag operation.
 function ui.layer:_start_drag(button, mx, my, area)
 	local widget, dx, dy = self:start_drag(button, mx, my, area)
 	if widget then
-		self:settags'drag_source'
+		self:settag('drag_source', true)
 		for i,elem in ipairs(self.ui.elements) do
 			if elem.targetable then
 				if self.ui:_accept_drop(widget, elem) then
@@ -2028,7 +2048,7 @@ end
 function ui.layer:start_drag(button, mx, my, area) end
 
 function ui.layer:_end_drag() --called on the drag_start_widget
-	self:settags'-drag_source'
+	self:settag('drag_source', false)
 	self:fire('end_drag', self.ui.drag_widget)
 end
 
@@ -2056,7 +2076,7 @@ function ui.window:remove_focus()
 	local fw = self.focused_widget
 	if not fw then return end
 	fw:fire'lostfocus'
-	fw:settags'-focused'
+	fw:settag('focused', false)
 end
 
 function ui.layer:focus()
@@ -2065,8 +2085,8 @@ function ui.layer:focus()
 	end
 	if self.focusable then
 		self.window:remove_focus()
-		self:fire'focused'
-		self:settags'focused'
+		self:fire'gotfocus'
+		self:settag('focused', true)
 		self.window.focused_widget = self
 		return true
 	else --focus first focusable child
@@ -2077,12 +2097,12 @@ function ui.layer:focus()
 	end
 end
 
-function ui.layer:get_hasfocus()
+function ui.layer:get_focused()
 	return self.window and self.window.focused_widget == self
 end
 
 function ui.layer:get_focused_widget()
-	if self.hasfocus then
+	if self.focused then
 		return self
 	end
 	if self.layers then
@@ -2554,13 +2574,15 @@ end
 function ui.layer:shadow_valid_key(t)
 	local x, y, w, h, r1x, r1y, r2x, r2y, r3x, r3y, r4x, r4y, k =
 		self:shadow_round_rect(0)
-	return t.x == x and t.y == y and t.w == w and t.h == h
+	return t.shadow_blur == self.shadow_blur
+		and t.x == x and t.y == y and t.w == w and t.h == h
 		and t.r1x == r1x and t.r1y == r1y and t.r2x == r2x and t.r2y == r2y
 		and t.r3x == r3x and t.r3y == r3y and t.r4x == r4x and t.r4y == r4y
 		and t.k == k
 end
 
 function ui.layer:shadow_store_key(t)
+	t.shadow_blur = self.shadow_blur
 	t.x, t.y, t.w, t.h, t.r1x, t.r1y,
 		t.r2x, t.r2y, t.r3x, t.r3y, t.r4x, t.r4y, t.k =
 			self:shadow_round_rect(0)
@@ -2576,12 +2598,7 @@ function ui.layer:draw_shadow()
 	local spread = radius * passes
 
 	--check if the cached shadow image is still valid
-	local shadow_valid
-	if t.blur_radius == self.shadow_blur then
-		shadow_valid = self:shadow_valid_key(t)
-	end
-
-	if not shadow_valid then
+	if not self:shadow_valid_key(t) then
 
 		local grow_blur = t.blur and t.blur.max_radius < spread
 		local max_radius = spread * (grow_blur and 2 or 1)
@@ -2595,7 +2612,6 @@ function ui.layer:draw_shadow()
 		end
 
 		--store cache invalidation keys
-		t.blur_radius = self.shadow_blur
 		self:shadow_store_key(t)
 
 		if not t.blur then
@@ -2905,13 +2921,13 @@ function ui.layer:set_active(active)
 	if self.active == active then return end
 	local active_widget = self.ui.active_widget
 	if active_widget then
-		active_widget:settags'-active'
+		active_widget:settag('active', false)
 		self.ui.active_widget = false
 		active_widget:fire'deactivated'
 	end
 	if active then
 		self.ui.active_widget = self
-		self:settags'active'
+		self:settag('active', true)
 		self:fire'activated'
 		self:focus()
 	end

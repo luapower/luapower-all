@@ -198,14 +198,19 @@ function ui.scrollbar:mouseup(mx, my)
 	self.active = false
 end
 
-function ui.scrollbar:scroll_by(delta)
+function ui.scrollbar:scroll(delta)
 	if self.visible and self.autohide and not self.grabbar.active
 		and (not self.autohide_empty or not self:empty())
 	then
-		self:settags'near'
-		self:settags'-near'
+		self:settag('near', true)
+		self:update_styles()
+		self:settag('near', false)
 	end
-	self:transition('offset', self:end_value'offset' - delta)
+	self:transition('offset', self:end_value'offset' + delta)
+end
+
+function ui.scrollbar:scroll_pages(pages)
+	self:scroll(self.view_length * (pages or 1))
 end
 
 function ui.scrollbar:_check_visible()
@@ -223,14 +228,14 @@ function ui.scrollbar:_window_mousemove(mx, my)
 	local visible = self:_check_visible()
 	if visible == 'hit_test' then
 		local near = self:hit_test_near(self:from_window(mx, my))
-		self:settags(near and 'near' or '-near')
+		self:settag('near', near)
 	end
 end
 
 function ui.scrollbar:_window_mouseleave()
 	local visible = self:_check_visible()
 	if visible == 'hit_test' then
-		self:settags'-near'
+		self:settag('near', false)
 	end
 end
 
@@ -242,8 +247,8 @@ end
 
 function ui.scrollbar:set_vertical(vertical)
 	self._vertical = vertical
-	self:settags(vertical and 'vertical' or '-vertical')
-	self:settags(vertical and '-horizontal' or 'horizontal')
+	self:settag('vertical', vertical)
+	self:settag('horizontal', not vertical)
 end
 
 function ui.scrollbar:sync()
@@ -252,12 +257,18 @@ function ui.scrollbar:sync()
 
 	local visible = self:_check_visible()
 	if visible ~= 'hit_test' then
-		self:settags(visible and 'near' or '-near')
+		self:settag('near', visible)
 	end
 end
 
 function ui.scrollbar:before_draw()
 	self:sync()
+end
+
+function ui.scrollbar:scroll_to_view(x, w)
+	local sx = self.offset
+	local sw = self.view_length
+	self:transition('offset', clamp(sx, x + w - sw, x))
 end
 
 --scrollbox ------------------------------------------------------------------
@@ -321,7 +332,7 @@ function ui.scrollbox:after_init(ui, t)
 end
 
 function ui.scrollbox:mousewheel(delta)
-	self.vscrollbar:scroll_by(delta * self.wheel_scroll_length)
+	self.vscrollbar:scroll(-delta * self.wheel_scroll_length)
 end
 
 function ui.scrollbox:sync()
@@ -357,6 +368,12 @@ end
 
 function ui.scrollbox:before_draw()
 	self:sync()
+end
+
+function ui.scrollbox:scroll_to_view(x, y, w, h)
+	self:sync()
+	self.hscrollbar:scroll_to_view(x, w)
+	self.vscrollbar:scroll_to_view(y, h)
 end
 
 --demo -----------------------------------------------------------------------

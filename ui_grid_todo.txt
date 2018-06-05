@@ -1,15 +1,17 @@
 
-- row move
+- page-up number of rows based on height
+- page-down number of rows based on height
+- scroll wheel number of rows based on height
+
+- multiple row move
+- row move with animation
+
 - col %-size
 
-- cell_at(i, col) -> cell object for drawing and hit-testing
-
-- nav cell-by-cell / row-by-row
-- nav with mouse, arrows, pgup/down, home/end, ctrl+arrows
-- select multi-cell/multi-row with ctrl/shift/ctrl+a
-
 - cell/col border collapse option
+
 - cell formatting: format-string/class/function
+
 - tooltip display on hover for clipped cells
 
 - editable
@@ -19,10 +21,16 @@
 	- automatic cell advancing
 	- cell advancing with tab
 
-
 - tree-column
-	- tree-column: expand/collapse-all nodes option
-	- tree-column: row moving to another parent via drag&drop
+	- expand/collapse-all nodes option
+	- row moving to another parent via drag & drop
+
+- col colapse/show
+
+- col shrink/expand-to-widest-row option on double-clicking between columns
+
+FIXES
+- drag-to-select cells scrolling when outside on left/right sides doesn't work
 
 
 LATER/DATASET
@@ -42,9 +50,6 @@ LATER/DATASET
 	- invert selection
 	- row moving to another group via drag&drop
 
-LATER/EASY
-- col colapse/show
-- col expand-to-widest-row option on double-clicking inbetween columns
 
 LATER/HARD
 - column bands
