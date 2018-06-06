@@ -24,7 +24,7 @@ ui:style('button hot', {
 	text_color = '#000',
 })
 
-ui:style('button down', {
+ui:style('button active over', {
 	background_color = '#fff',
 	border_color = '#fff',
 	text_color = '#000',
@@ -38,24 +38,47 @@ ui:style('button focused', {
 })
 
 function ui.button:mousedown()
-	self:settags'down'
+	if self.active_by_key then return end
+	self.active = true
 	self:focus()
+	self:invalidate()
 end
 
-function ui.button:mouseleave()
-	self:settags'-down'
+function ui.button:mousemove(mx, my)
+	if self.active_by_key then return end
+	local mx, my = self:to_parent(mx, my)
+	self:settag('over', self:hit_test(mx, my, 'activate') == self)
+	self:invalidate()
 end
 
 function ui.button:mouseup()
-	self:settags'-down'
-	if self.hot then
-		self:fire'click'
+	if self.active_by_key then return end
+	self.active = false
+	if self.tags.over then
+		self:fire'pressed'
 	end
+	self:invalidate()
 end
 
 function ui.button:keydown(key)
-	if key == 'enter' then
-		self:fire'click'
+	if key == 'enter' or key == 'space' then
+		self.active = true
+		self.active_by_key = true
+		self:settag('over', true)
+		self:invalidate()
+	end
+end
+
+function ui.button:keyup(key)
+	if not self.active_by_key then return end
+	if key == 'enter' or key == 'space' or key == 'esc' then
+		self.active = false
+		self.active_by_key = false
+		self:settag('over', false)
+		if key == 'enter' or key == 'space' then
+			self:fire'pressed'
+		end
+		self:invalidate()
 	end
 end
 
@@ -75,7 +98,7 @@ if not ... then require('ui_demo')(function(ui, win)
 		text = 'OK',
 	}
 
-	function b1:click() print'b1 click' end
-	function b2:click() print'b2 click' end
+	function b1:pressed() print'b1 pressed' end
+	function b2:pressed() print'b2 pressed' end
 
 end) end

@@ -911,12 +911,16 @@ end
 
 ui.window:init_priority{native_window=0}
 
+function ui.window:create_native_window(t)
+	return self.ui:native_window(t)
+end
+
 function ui.window:override_init(inherited, ui, t)
 	assert(ui.elements, 'forgot to instantiate the ui class?')
 
 	local win = t and t.native_window
 	if not win then
-		win = ui:native_window(t)
+		win = self:create_native_window(t)
 		self.native_window = win
 		self.own_native_window = true
 	else
@@ -926,6 +930,8 @@ function ui.window:override_init(inherited, ui, t)
 
 	inherited(self, ui, t)
 
+	--TODO: actual client and frame dimensions not available while the window
+	--is minimized, can we solve this in nw?
 	self.x, self.y, self.w, self.h = self.native_window:frame_rect()
 	self.cx, self.cy, self.cw, self.ch = self.native_window:client_rect()
 
@@ -1027,13 +1033,21 @@ function ui.window:override_init(inherited, ui, t)
 		self:draw()
 	end)
 
+	win:on('frame_rect_changed.ui', function(win, x, y, w, h)
+		if not x then return end --hidden or minimized
+		self.x = x
+		self.y = y
+		self.w = w
+		self.h = h
+	end)
+
 	win:on('client_rect_changed.ui', function(win, cx, cy, cw, ch)
 		if not cx then return end --hidden or minimized
 		setcontext()
-		self.x = cx
-		self.y = cy
-		self.w = cw
-		self.h = ch
+		self.cx = cx
+		self.cy = cy
+		self.cw = cw
+		self.ch = ch
 		self.layer.w = cw
 		self.layer.h = ch
 		self:fire('client_rect_changed', cx, cy, cw, ch)
@@ -1074,7 +1088,7 @@ function ui.window:set_visible(visible)
 	self.native_window:visible(visible)
 end
 
-for method in pairs{show=1, hide=1, cursor=1} do
+for method in pairs{show=1, hide=1, cursor=1, client_rect=1, frame_rect=1, normal_frame_rect=1} do
 	ui.window[method] = function(self, ...)
 		return self.native_window[method](self.native_window, ...)
 	end

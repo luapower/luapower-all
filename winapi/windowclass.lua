@@ -28,6 +28,7 @@ Window = subclass({
 		clip_children = WS_CLIPCHILDREN,
 		clip_siblings = WS_CLIPSIBLINGS,
 		child = WS_CHILD, --needed for windows with WS_EX_TOOLWINDOW + WS_EX_NOACTIVATE!
+		popup = WS_POPUP,
 	},
 	__style_ex_bitmask = bitmask{
 		topmost = WS_EX_TOPMOST,

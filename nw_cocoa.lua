@@ -228,8 +228,10 @@ function window:new(app, frontend, t)
 	if toolbox or (not t.maximizable and not t.minimizable) then
 		--hide the minimize and maximize buttons when they're both disabled
 		--or if toolbox frame, to emulate Windows behavior.
-		self.nswin:standardWindowButton(objc.NSWindowZoomButton):setHidden(true)
-		self.nswin:standardWindowButton(objc.NSWindowMiniaturizeButton):setHidden(true)
+		local zb = self.nswin:standardWindowButton(objc.NSWindowZoomButton)
+		if zb then zb:setHidden(true) end
+		local rb = self.nswin:standardWindowButton(objc.NSWindowMiniaturizeButton)
+		if rb then rb:setHidden(true) end
 	else
 		if not t.minimizable then
 			self.nswin:standardWindowButton(objc.NSWindowMiniaturizeButton):setHidden(true)
@@ -1678,9 +1680,6 @@ end
 --make a bitmap that can be painted on the current NSGraphicsContext.
 local function make_bitmap(w, h)
 
-	--can't create a zero-sized bitmap
-	if w <= 0 or h <= 0 then return end
-
 	local stride = w * 4
 	local size = stride * h
 	local data = glue.malloc(size)
@@ -1752,6 +1751,9 @@ local function dynbitmap(api)
 	local w, h, bitmap
 	function api:get()
 		local w1, h1 = api:size()
+		--can't create a zero-sized bitmap
+		w1 = math.max(1, w1)
+		h1 = math.max(1, h1)
 		if w1 ~= w or h1 ~= h then
 			self:free()
 			bitmap = make_bitmap(w1, h1)

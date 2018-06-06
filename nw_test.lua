@@ -955,7 +955,7 @@ local function mkdemo(t, child)
 		function app:activated()             print_state'    app activated' end
 		function app:changed(old, new)       print_state('app changed', old..' -> '..new) end
 
-		--make a control window that receive key presses when win gets hidden
+		--make a control window that receives key presses when win gets hidden
 		cwin = app:window(winpos{w = 200, h = 50, title = 'cwin'})
 		cwin.name = 'cwin'
 
@@ -2681,7 +2681,7 @@ end)
 
 --run tests ------------------------------------------------------------------
 
-local name = ... or 'demo-frameless'
+local name = ...
 if not name then
 	print(string.format('Usage: %s name | prefix*', arg[0]))
 	print'Available tests:'

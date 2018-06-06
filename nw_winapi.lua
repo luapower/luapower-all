@@ -1330,12 +1330,12 @@ end
 --rendering/bitmap -----------------------------------------------------------
 
 function rendering:_create_bitmap()
-	local w1, h1 = self:_bitmap_size()
-	if not self._bitmap or w1 ~= self._bitmap.w or h1 ~= self._bitmap.h then
+	local w, h = self:_bitmap_size()
+	w = math.max(1, w)
+	h = math.max(1, h)
+	if not self._bitmap or w ~= self._bitmap.w or h ~= self._bitmap.h then
 		self:_free_bitmap()
-		if w1 > 0 and h1 > 0 then
-			self._bitmap = winapi.DIBitmap(w1, h1, self.win.hwnd)
-		end
+		self._bitmap = winapi.DIBitmap(w, h, self.win.hwnd)
 	end
 end
 

@@ -37,7 +37,7 @@ dropdown.button_class = button
 button.border_color = dropdown.border_color
 button.border_width = dropdown.border_width
 
-local list = ui.grid:subclass'dropdown_list'
+local list = ui.grid--:subclass'dropdown_list'
 dropdown.list_class = list
 
 --list.header_visible = false
@@ -75,10 +75,12 @@ end
 function dropdown:create_button()
 	local button = self.button_class(self.ui, {
 		parent = self,
+		dropdown = self,
 	}, self.button)
 
-	function button:click(...)
-		print('here', ...)
+	function button:pressed()
+		self.dropdown.list.visible = not self.dropdown.list.visible
+		self:invalidate()
 	end
 
 	return button
@@ -97,6 +99,7 @@ function dropdown:create_list()
 			'abcd',
 		},
 	}, self.list)
+	list:to_front()
 
 	return list
 end

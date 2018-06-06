@@ -1444,8 +1444,6 @@ function window:bitmap()
 			end,
 		}, self.win, self._depth, self._visual)
 	end
-	--can't paint the bitmap while the window is unmapped.
-	if self._hidden or (self.minimized and self:minimized()) then return end
 	return self._dynbitmap:get()
 end
 

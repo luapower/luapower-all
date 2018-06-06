@@ -452,11 +452,11 @@ end
 function window:_new(app, backend_class, useropt)
 
 	--check/normalize args.
-	local frame = checkframe(useropt.frame)
-	local opt = glue.update({frame = frame},
+	local opt = glue.update({},
 		defaults,
 		useropt.parent and defaults_child or nil,
 		useropt)
+	opt.frame = checkframe(opt.frame)
 	opt.opengl = opengl_options(useropt.opengl)
 
 	if opt.parent then
@@ -477,12 +477,12 @@ function window:_new(app, backend_class, useropt)
 	--unparented toolboxes don't make sense because they don't show in taskbar
 	--so they can't be activated when they are completely behind other windows.
 	--they can't be (minimiz|maximiz|fullscreen)able either (winapi/X11 limitation).
-	if frame == 'toolbox' then
+	if opt.frame == 'toolbox' then
 		assert(opt.parent, 'toolbox windows must have a parent')
 	end
 
 	--only toolboxes can be non-activable (winapi limitation)
-	if frame ~= 'toolbox' then
+	if opt.frame ~= 'toolbox' then
 		assert(opt.activable, 'only toolbox windows can be non-activable')
 	end
 
@@ -706,7 +706,9 @@ end
 
 function window:isminimized()
 	self:_check()
-	assert(not self:parent(), 'child windows cannot be minimized')
+	if self:parent() then
+		return false -- child windows cannot be minimized
+	end
 	return self.backend:minimized()
 end
 
@@ -887,12 +889,11 @@ end
 --positioning/client rect ----------------------------------------------------
 
 function window:_can_get_rect()
-	return self:visible() and not self:isminimized()
+	return not self:isminimized()
 end
 
 function window:_can_set_rect()
-	return self:visible() and not (self:isminimized()
-		or self:ismaximized() or self:fullscreen())
+	return not (self:isminimized() or self:ismaximized() or self:fullscreen())
 end
 
 function window:_get_client_size()
@@ -1514,8 +1515,8 @@ end
 
 function window:bitmap()
 	assert(not self:opengl(), 'bitmap not available on OpenGL window/view')
-	local self = self.backend:bitmap()
-	return self and glue.update(self, bitmap)
+	local bmp = self.backend:bitmap()
+	return bmp and glue.update(bmp, bitmap)
 end
 
 --cairo

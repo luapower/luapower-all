@@ -25,6 +25,7 @@ __compiler__
 `state:load(reader, data, chunkname)`     load a Lua chunk from a reader function
 `state:dofile(filename) -> ok, ...`       load and exec file
 `state:dostring(string) -> ok, ...`       load and exec string
+`state:dump([writer, [data]]) -> s`       dump function bytecode
 __stack / indices__
 `state:abs_index() -> i`                  absolute stack index
 `state:gettop() -> i`                     top stack index
@@ -39,6 +40,10 @@ __stack / read__
 `state:type(i) -> type`                   type at index (same as type())
 `state:objlen(i) -> n`                    string/table/userdata length
 `state:strlen(i) -> n`                    string length
+`state:isnumber(t) -> true | false`       check if number
+`state:isstring(i) -> true | false`       check if string
+`state:iscfunction(i) -> true | false`    check if C function
+`state:isuserdata(i) -> true | false`     check if userdata
 `state:isfunction(i) -> true | false`     check if function
 `state:istable(i) -> true | false`        check if table
 `state:islightuserdata(i) -> true|false`  check if lightuserdata
@@ -49,6 +54,7 @@ __stack / read__
 `state:isnoneornil(i) -> true | false`    check if boolean
 `state:toboolean(i) -> true | false`      get as boolean
 `state:tonumber(i) -> n`                  get as number
+`state:tointeger(i) -> n`                 get as integer
 `state:tolstring(i) -> buf, sz`           get as C string
 `state:tostring(i) -> s`                  get as Lua string
 `state:tothread(i) -> state`              get as Lua state
@@ -84,6 +90,10 @@ __stack / write / tables__
 `state:setmetatable(i)`                   pop mt and setmetatable(t, mt), where t at i
 __stack / write / any value__
 `state:push(v, [opt])`                    push a value to the top of the stack
+__stack / compare __
+`state:equal(i1, i2) -> true | false`     compare two values for equality
+`state:rawequal(i1, i2) -> true | false`  compare two values for equality
+`state:lessthan(i1, i2) -> true | false`  compare two values for inequality
 __interpreter__
 `state:pushvalues(...)`                   push multiple values
 `state:pushvalues_opt(opt, ...)`          push values with options

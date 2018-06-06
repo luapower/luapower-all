@@ -809,11 +809,11 @@ frame type. If `has_menu` is true, then the window also has a menu.
 
 Get/set the client/frame rect/size in screen coordinates.
 
-When getting: returns nothing if the window is hidden or minimized.
+When getting: returns nothing if the window is minimized.
 
 When setting: if any of the arguments is nil or false, it is replaced with
 the current value of that argument to allow for partial changes. Does nothing
-if the window is hidden, minimized, maximized, or in fullscreen mode.
+if the window is minimized, maximized, or in fullscreen mode.
 
 ### `win/view:to_screen(x, y) -> x, y` <br> `win/view:to_client(x, y) -> x, y`
 
@@ -1235,9 +1235,10 @@ Request redrawing.
 
 ### `win/view:bitmap() -> bmp`
 
-Get a bgra8 [bitmap] object to draw on. The bitmap is freed when
-the window's client area changes size, so keeping a reference to it
-outside the `repaint()` event is generally not useful.
+Get a bgra8 [bitmap] object to draw on. The bitmap is freed and replaced when
+the window's client area changes size. The bitmap must be requested inside
+the `repaint()` event for drawing purposes, but can also be requested outside
+the `repaint()` event for hit-testing purposes.
 
 The alpha channel is not used unless this is a transparent window
 (note: views cannot be transparent).

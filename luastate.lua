@@ -164,7 +164,6 @@ end
 
 M.tonumber = C.lua_tonumber
 M.tointeger = C.lua_tointeger
-M.toboolean = function(L, i) return C.lua_toboolean(L, i) == 1 end
 M.tothread = C.lua_tothread
 M.touserdata = C.lua_touserdata
 M.topointer = C.lua_topointer
@@ -349,9 +348,9 @@ end
 
 --stack (compare)
 
-M.equal = C.lua_equal
-M.rawequal = C.lua_rawequal
-M.lessthan = C.lua_lessthan
+function M.equal(i1, i2)    return C.lua_equal(i1, i2) == 1 end
+function M.rawequal(i1, i2) return C.lua_rawequal(i1, i2) == 1 end
+function M.lessthan(i1, i2) return C.lua_lessthan(i1, i2) == 1 end
 
 --debug
 
@@ -561,7 +560,6 @@ ffi.metatype('lua_State', {__index = {
 	toboolean = M.toboolean,
 	tonumber = M.tonumber,
 	tointeger = M.tointeger,
-	toboolean = M.toboolean,
 	tolstring = M.tolstring,
 	tostring = M.tostring,
 	tothread = M.tothread,

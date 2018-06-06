@@ -23,6 +23,8 @@ __file objects__
 `f:close()`                                       close file
 `f:closed() -> true|false`                        check if file is closed
 `fs.isfile(f) -> true|false`                      check if `f` is a file object
+`f.handle -> HANDLE`                              Windows HANDLE (Windows platforms)
+`f.fd -> fd`                                      POSIX file descriptor (POSIX platforms)
 __stdio streams__
 `f:stream(mode) -> fs`                            open a `FILE*` object from a file
 `fs:close()`                                      close the `FILE*` object

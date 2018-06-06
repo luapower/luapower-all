@@ -1172,7 +1172,7 @@ end
 
 function WM.WM_DISPLAYCHANGE(wParam, lParam) --w, h, bpp
 	local w, h = splitlong(lParam)
-	return w, h, bpp
+	return w, h, tonumber(wParam)
 end
 
 -- controls/wm_*command
