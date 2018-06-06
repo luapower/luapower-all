@@ -90,6 +90,20 @@ function M.openlibs(L, ...) --open specific libs (or all libs if no args given)
 	return L
 end
 
+function M.dump(L, write)
+	if not write then
+		local t = {}
+		function write(L, buf, sz, data)
+			t[#t+1] = ffi.string(buf, sz)
+			return 0 --no error
+		end
+		C.lua_dump(L, write, nil)
+		return table.concat(t)
+	else
+		return C.lua_dump(L, write, data)
+	end
+end
+
 --stack (indices)
 
 function M.abs_index(L, i)
@@ -131,6 +145,10 @@ end
 M.objlen = C.lua_objlen
 M.strlen = C.lua_objlen
 
+M.isnumber = C.lua_isnumber
+M.isstring = C.lua_isstring
+M.iscfunction = C.lua_iscfunction
+M.isuserdata = C.lua_isuserdata
 function M.isfunction(L, i) return C.lua_type(L, i) == C.LUA_TFUNCTION end
 function M.istable(L, i) return C.lua_type(L, i) == C.LUA_TTABLE end
 function M.islightuserdata(L, i) return C.lua_type(L, i) == C.LUA_TLIGHTUSERDATA end
@@ -145,6 +163,8 @@ function M.toboolean(L, index)
 end
 
 M.tonumber = C.lua_tonumber
+M.tointeger = C.lua_tointeger
+M.toboolean = function(L, i) return C.lua_toboolean(L, i) == 1 end
 M.tothread = C.lua_tothread
 M.touserdata = C.lua_touserdata
 M.topointer = C.lua_topointer
@@ -184,13 +204,20 @@ function M.get(L, index, opt)
 	elseif t == 'function' then
 		local top = M.gettop(L)
 		index = M.abs_index(L, index)
-		M.checkstack(L, 4)
-		M.getglobal(L, 'string')
-		M.getfield(L, -1, 'dump')
-		M.pushvalue(L, index)
-		C.lua_call(L, 1, 1)
-		local s = M.get(L) --result of string.dump()
-		M.pop(L, 2)
+		local s
+		if false then
+			--old method of dumping a function.
+			--requires calling C.luaopen_string(L) before use.
+			M.checkstack(L, 4)
+			M.getglobal(L, 'string')
+			M.getfield(L, -1, 'dump')
+			M.pushvalue(L, index)
+			C.lua_call(L, 1, 1)
+			s = M.get(L) --result of string.dump()
+			M.pop(L, 2)
+		else
+			s = M.dump(L)
+		end
 		assert(M.gettop(L) == top)
 		local f = assert(loadstring(s))
 		if copy_upvalues then
@@ -228,7 +255,7 @@ function M.get(L, index, opt)
 		return M.touserdata(L, index)
 	elseif t == 'thread' then
 		--NOTE: this will get out a cdata of type 'lua_State*', not a coroutine.
-		return M.lua_tothread(L, index)
+		return M.tothread(L, index)
 	elseif t == 'cdata' then
 		--NOTE: there's no LuaJIT C API extension to get the address of a cdata.
 		not_implemented()
@@ -319,6 +346,12 @@ function M.push(L, v, opt)
 		not_implemented()
 	end
 end
+
+--stack (compare)
+
+M.equal = C.lua_equal
+M.rawequal = C.lua_rawequal
+M.lessthan = C.lua_lessthan
 
 --debug
 
@@ -498,6 +531,7 @@ ffi.metatype('lua_State', {__index = {
 	load = M.load,
 	dofile = M.dofile,
 	dostring = M.dostring,
+	dump = M.dump,
 	--stack / indices
 	abs_index = M.abs_index,
 	gettop = M.gettop,
@@ -512,6 +546,10 @@ ffi.metatype('lua_State', {__index = {
 	type = M.type,
 	objlen = M.objlen,
 	strlen = M.strlen,
+	isnumber = M.isnumber,
+	isstring = M.isstring,
+	iscfunction = M.iscfunction,
+	isuserdata = M.isuserdata,
 	isfunction = M.isfunction,
 	istable = M.istable,
 	islightuserdata = M.islightuserdata,
@@ -522,6 +560,8 @@ ffi.metatype('lua_State', {__index = {
 	isnoneornil = M.isnoneornil,
 	toboolean = M.toboolean,
 	tonumber = M.tonumber,
+	tointeger = M.tointeger,
+	toboolean = M.toboolean,
 	tolstring = M.tolstring,
 	tostring = M.tostring,
 	tothread = M.tothread,
@@ -557,6 +597,10 @@ ffi.metatype('lua_State', {__index = {
 	setmetatable = M.setmetatable,
 	--stack / write / synthesis
 	push = M.push,
+	--stack / compare
+	equal = M.equal,
+	rawequal = M.rawequal,
+	lessthan = M.lessthan,
 	--interpreter
 	pushvalues_opt = M.pushvalues_opt,
 	popvalues_opt = M.popvalues_opt,
