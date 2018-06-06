@@ -1,7 +1,5 @@
 
-- page-up number of rows based on height
-- page-down number of rows based on height
-- scroll wheel number of rows based on height
+--ctrl+page-up/page-down navigation based on fixed pages
 
 - multiple row move
 - row move with animation

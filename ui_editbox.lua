@@ -366,6 +366,7 @@ function editbox:_set_multiline(multiline)
 	self.vscrollbar.visible = multiline
 	self.hscrollbar.visible = multiline
 	self:settags(multiline and 'multiline' or '-multiline')
+	self:invalidate()
 end
 
 function editbox:set_multiline(multiline)

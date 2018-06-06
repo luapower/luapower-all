@@ -520,6 +520,7 @@ function ui:after_init()
 end
 
 function ui:_add_element(elem)
+	assert(self.elements, 'forgot to instantiate the ui class?')
 	push(self.elements, elem)
 	self._element_index:add_element(elem)
 end
@@ -911,6 +912,7 @@ end
 ui.window:init_priority{native_window=0}
 
 function ui.window:override_init(inherited, ui, t)
+	assert(ui.elements, 'forgot to instantiate the ui class?')
 
 	local win = t and t.native_window
 	if not win then
@@ -1017,6 +1019,7 @@ function ui.window:override_init(inherited, ui, t)
 	win:on('repaint.ui', function(win)
 		setcontext()
 		self._norepaint = true
+		self._invalidated = false
 		if self.mouse_x then
 			self.ui:_window_mousemove(self, self.mouse_x, self.mouse_y)
 		end
@@ -1364,8 +1367,9 @@ function ui.window:after_draw()
 end
 
 function ui.window:invalidate() --element interface; window intf.
-	if self._norepaint then return end
+	if self._norepaint or self._invalidated then return end
 	self.native_window:invalidate()
+	self._invalidated = true
 end
 
 --sugar & utils
@@ -1740,8 +1744,14 @@ function ui.layer:rel_matrix() --box matrix relative to parent's content space
 		:scale_around(self.scale_cx, self.scale_cy, self.scale_x, self.scale_y)
 end
 
+local mt
 function ui.layer:abs_matrix() --box matrix in window space
-	return self.pos_parent:abs_matrix():transform(self:rel_matrix())
+	if self.pos_parent then
+		return self.pos_parent:abs_matrix():transform(self:rel_matrix())
+	else
+		mt = mt or cairo.matrix()
+		return mt:reset(self:rel_matrix())
+	end
 end
 
 local mt
@@ -1938,6 +1948,7 @@ function ui.layer:_mouseenter(mx, my, area)
 		self:settag('hot_'..area, true)
 	end
 	self:fire('mouseenter', mx, my, area)
+	self:invalidate()
 end
 
 function ui.layer:_mouseleave()
@@ -1947,6 +1958,7 @@ function ui.layer:_mouseleave()
 	if area then
 		self:settag('hot_'..area, false)
 	end
+	self:invalidate()
 end
 
 function ui.layer:_mousedown(button, mx, my, area)
@@ -2001,12 +2013,14 @@ function ui.layer:accept_drop_widget(widget, area) return true; end
 function ui.layer:_enter_drop_target(widget, area)
 	self:settag('dropping', true)
 	self:fire('enter_drop_target', widget, area)
+	self:invalidate()
 end
 
 --called on the dragged widget once upon leaving a drop target.
 function ui.layer:_leave_drop_target(widget)
 	self:fire('leave_drop_target', widget)
 	self:settag('dropping', false)
+	self:invalidate()
 end
 
 --called on the dragged widget when dragging starts.
@@ -2014,6 +2028,7 @@ function ui.layer:_started_dragging()
 	self.dragging = true
 	self:settag('dragging', true)
 	self:fire'started_dragging'
+	self:invalidate()
 end
 
 --called on the dragged widget when dragging ends.
@@ -2021,10 +2036,12 @@ function ui.layer:_ended_dragging()
 	self.dragging = false
 	self:settag('dragging', false)
 	self:fire'ended_dragging'
+	self:invalidate()
 end
 
 function ui.layer:_set_drop_target(set)
 	self:settag('drop_target', set)
+	self:invalidate()
 end
 
 --called on drag_start_widget to initiate a drag operation.
@@ -2032,6 +2049,7 @@ function ui.layer:_start_drag(button, mx, my, area)
 	local widget, dx, dy = self:start_drag(button, mx, my, area)
 	if widget then
 		self:settag('drag_source', true)
+		self:invalidate()
 		for i,elem in ipairs(self.ui.elements) do
 			if elem.targetable then
 				if self.ui:_accept_drop(widget, elem) then
@@ -2050,17 +2068,20 @@ function ui.layer:start_drag(button, mx, my, area) end
 function ui.layer:_end_drag() --called on the drag_start_widget
 	self:settag('drag_source', false)
 	self:fire('end_drag', self.ui.drag_widget)
+	self:invalidate()
 end
 
 function ui.layer:_drop(widget, mx, my, area) --called on the drop target
 	local mx, my = self:from_window(mx, my)
 	self:fire('drop', widget, mx, my, area)
+	self:invalidate()
 end
 
 function ui.layer:_drag(mx, my) --called on the dragged widget
 	local pmx, pmy = self.parent:from_window(mx, my)
 	local dmx, dmy = self:to_parent(self.ui.drag_mx, self.ui.drag_my)
 	self:fire('drag', pmx - dmx, pmy - dmy)
+	self:invalidate()
 end
 
 --default behavior: drag the widget from the initial grabbing point.
@@ -2077,6 +2098,7 @@ function ui.window:remove_focus()
 	if not fw then return end
 	fw:fire'lostfocus'
 	fw:settag('focused', false)
+	fw:invalidate()
 end
 
 function ui.layer:focus()
@@ -2088,6 +2110,7 @@ function ui.layer:focus()
 		self:fire'gotfocus'
 		self:settag('focused', true)
 		self.window.focused_widget = self
+		self:invalidate()
 		return true
 	else --focus first focusable child
 		local layer = self.layers and self:focusable_widgets()[1]
@@ -2997,6 +3020,7 @@ local autoload = {
 	menuitem   = 'ui_menu',
 	menu       = 'ui_menu',
 	image      = 'ui_image',
+	grid       = 'ui_grid',
 }
 
 for widget, submodule in pairs(autoload) do

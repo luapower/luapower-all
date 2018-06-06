@@ -24,6 +24,8 @@ local grid = ui.layer:subclass'grid'
 ui.grid = grid
 
 grid.focusable = true
+grid.border_color = '#080808'
+grid.border_width = 1
 
 --column panes ---------------------------------------------------------------
 
@@ -62,6 +64,8 @@ function pane:after_sync()
 end
 
 function pane:col_at_x(x, clamp_left, clamp_right)
+	clamp_left = clamp_left == nil or clamp_left
+	clamp_right = clamp_right == nil or clamp_right
 	local first_col, last_col
 	for _,col in ipairs(self.grid.cols) do
 		if col.visible and col.pane == self then
@@ -346,11 +350,15 @@ function rows:before_draw_content()
 end
 
 function rows:mousewheel(delta, mx, my, area, pdelta)
-	self.grid.vscrollbar:scroll(-delta * self.grid.row_h) --TODO:
+	local rows = math.floor(-delta)
+	local i = rows < 0
+		and self.grid:row_at_screen_y(0)
+		or self.grid:row_at_screen_bottom_y(-1)
+	self.grid:scroll_to_view_row(i + rows)
 end
 
-function rows:hit_test_cell(x, y, clamp_top, clamp_bottom, clamp_left, clamp_right)
-	local i = self.grid:row_at_y(y + self.grid.vscrollbar.offset, clamp_top, clamp_bottom)
+function rows:hit_test_cell(x, y, clamp_left, clamp_right)
+	local i = self.grid:row_at_screen_y(y)
 	if i then
 		local col = self.pane:col_at_x(x, clamp_left, clamp_right)
 		if col then
@@ -361,7 +369,7 @@ end
 
 function rows:override_hit_test_content(inherited, x, y, reason)
 	if reason == 'activate' then
-		local i, col = self:hit_test_cell(x, y)
+		local i, col = self:hit_test_cell(x, y, false, false)
 		if i then
 			self.grid.hot_row_index = i
 			self.grid.hot_col = col
@@ -397,7 +405,7 @@ col.border_color = '#333'
 col.background_hittable = true
 col.cursor_resize = 'size_h'
 
-grid.col_h = 20
+grid.col_h = 24
 
 function grid:create_col(col, col_index)
 	col = self.col_class(self.ui, self.col, col)
@@ -663,11 +671,8 @@ grid.cell_class = cell
 
 cell.clip_content = true
 cell.text_multiline = false
-
-ui:style('grid_cell', {
-	border_width_bottom = 1,
-	border_color = '#080808',
-})
+cell.border_width_bottom = 1
+cell.border_color = '#080808'
 
 ui:style('grid_cell moving', {
 	background_color = '#000',
@@ -725,7 +730,6 @@ ui:style('grid_cell cell_select focused', {
 
 function cell:sync_grid(grid)
 	self.grid = grid
-	self.y_offset = self.grid.vscrollbar.offset
 	self:settag('cell_select', self.grid.cell_select)
 	self:settag('grid_focused', self.grid.focused)
 end
@@ -755,7 +759,7 @@ function cell:sync_col(col)
 end
 
 function cell:sync_row(i, y, h)
-	self.y = y - self.y_offset
+	self.y = y - self.grid.vscrollbar.offset
 	self.h = h
 	self:settag('even', i % 2 == 0)
 	if self.grid.moving_row_index == i then
@@ -783,7 +787,12 @@ function grid:cell_at(i, col)
 end
 
 function grid:cell_value(i, col)
-	return self.rows[i][col.value_index]
+	local row = self.rows[i]
+	if type(row) == 'table' then
+		return row[col.value_index]
+	else
+		return tostring(row)
+	end
 end
 
 function grid:draw_cell(i, col, hot)
@@ -799,7 +808,7 @@ end
 
 --rows -----------------------------------------------------------------------
 
-grid.row_h = 20
+grid.row_h = 24
 grid.var_row_h = false
 
 function grid:get_row_count()
@@ -837,6 +846,8 @@ function grid:row_yh(i)
 end
 
 function grid:row_at_y(y, clamp_top, clamp_bottom)
+	clamp_top = clamp_top == nil or clamp_top
+	clamp_bottom = clamp_bottom == nil or clamp_bottom
 	if self.var_row_h then
 		local t = self._row_y
 		if #t == 0 then return nil end
@@ -848,7 +859,7 @@ function grid:row_at_y(y, clamp_top, clamp_bottom)
 		local i = binsearch(y, t)
 		return y < t[i] and i-1 or i
 	else
-		local i = (y + self.vscrollbar.offset) / self.row_h + 1
+		local i = math.floor(y / self.row_h) + 1
 		if i < 1 then
 			return clamp_top and 1 or nil
 		end
@@ -859,20 +870,33 @@ function grid:row_at_y(y, clamp_top, clamp_bottom)
 	end
 end
 
+function grid:abs_row_y(y)
+	return y + self.vscrollbar.offset
+end
+
+function grid:rel_row_y(y)
+	return y - self.vscrollbar.offset
+end
+
+function grid:row_screen_yh(i)
+	local y, h = self:row_yh(i)
+	return self:rel_row_y(y), h
+end
+
+function grid:row_at_screen_y(y, ...)
+	return self:row_at_y(self:abs_row_y(y), ...)
+end
+
+function grid:row_at_screen_bottom_y(y, ...)
+	local screen_h = self.vscrollbar.view_length
+	return self:row_at_screen_y(y + screen_h, ...)
+end
+
 function grid:visible_rows_range()
-	local y = self.vscrollbar.offset
 	local h = self.scroll_pane.rows_layer.ch
-	if self.var_row_h then
-		local i1 = self:row_at_y(y)
-		local i2 = self:row_at_y(y + h - 1)
-		return i1, i2
-	else
-		local i1 = math.floor(y / self.row_h) + 1
-		local i2 = math.ceil((y + h) / self.row_h)
-		i1 = i1 >= 1 and i1 <= self.row_count and i1 or nil
-		i2 = i2 >= 1 and i2 <= self.row_count and i2 or nil
-		return i1, i2
-	end
+	local i1 = self:row_at_screen_y(0)
+	local i2 = self:row_at_screen_y(h - 1)
+	return i1, i2
 end
 
 function grid:draw_row_col(i, col, y, h, hot)
@@ -894,9 +918,8 @@ function grid:draw_rows_col(i1, i2, col, hot_i, hot_col)
 	local moving_i = self.moving_row_index
 	local moving_y, moving_h
 	if moving_i then
-		moving_y, moving_h = self:row_yh(moving_i)
-		local y_offset = self.vscrollbar.offset
-		moving_y = y_offset + self.moving_row_y + self.moving_row_dy
+		moving_y, moving_h = self:row_screen_yh(moving_i)
+		moving_y = self:abs_row_y(self.moving_row_y + self.moving_row_dy)
 	end
 
 	for i = i1, i2 do
@@ -943,7 +966,7 @@ end
 
 --row moving -----------------------------------------------------------------
 
-grid.allow_move_rows = true
+grid.row_move = true
 
 function rows:mousedown(mx, my, area)
 	if area == 'cell' then
@@ -956,7 +979,7 @@ function rows:mouseup(mx, my, area)
 end
 
 function grid:allow_move_row(i, col) --stub
-	return self.ui:key'ctrl' and self.allow_move_rows
+	return self.ui:key'ctrl' and self.row_move
 end
 
 function grid:move_row(i1, i2) end --stub
@@ -965,9 +988,8 @@ function rows:start_drag(button, mx, my)
 	local i, col = self.grid.focused_row_index, self.grid.focused_col
 	if self.grid:allow_move_row(i, col) then
 		self.grid.moving_row_index = i
-		local y, h = self.grid:row_yh(i)
-		local y_offset = self.grid.vscrollbar.offset
-		self.grid.moving_row_y = y - y_offset
+		local y, h = self.grid:row_screen_yh(i)
+		self.grid.moving_row_y = y
 		self.grid.moving_row_dy = 0
 		self.grid:settag('move_row', true)
 		self.grid.drag_select = false
@@ -990,14 +1012,12 @@ end
 function rows:after_mousemove(mx, my)
 	if not self.active or self.dragging then return end
 	local pane = self.pane
-	local i, col = self:hit_test_cell(mx, my,
-		true, true, pane.clamp_left, pane.clamp_right)
+	local i, col = self:hit_test_cell(mx, my, pane.clamp_left, pane.clamp_right)
 	if not i then
 		local pane = self.pane.other_pane
 		local rows = pane.rows_layer
 		local mx, my = self:to_other(rows, mx, my)
-		i, col = rows:hit_test_cell(mx, my,
-			true, true, pane.clamp_left, pane.clamp_right)
+		i, col = rows:hit_test_cell(mx, my, pane.clamp_left, pane.clamp_right)
 	end
 	if i then
 		self.grid.hot_row_index = i
@@ -1142,6 +1162,71 @@ function rows:after_click()
 		or '@hot reset select focus scroll')
 end
 
+--find the number of rows relative to the focused row that should move the
+--focused row on page-up/down requests. the scrolling logic is two-phase:
+--first, move the focused row to the top/bottom on the current screen, then
+--scroll _at most_ one full screen such that no gaps between screens occur
+--i.e. no information is lost between screens.
+function grid:screen_page_offset(dir, focused)
+	focused = focused or self.focused_row_index
+	local screen_h = self.vscrollbar.view_length
+	if dir > 0 then
+		local bottom = self:row_at_screen_y(screen_h - 1)
+		if bottom > focused then
+			return bottom - focused
+		else
+			local bottom = self:row_at_screen_bottom_y(screen_h, true, false)
+			bottom = (bottom or self.row_count + 1) - 1
+			return bottom - focused
+		end
+	else
+		local top = self:row_at_screen_y(0)
+		if top < focused then
+			return top - focused
+		else
+			local top = self:row_at_screen_y(-screen_h, false, true)
+			top = (top or 0) + 1
+			return top - focused
+		end
+	end
+end
+
+function grid:fixed_page_yh(page)
+	local page_h = self.vscrollbar.view_length
+	return (page - 1) * page_h, page_h
+end
+
+function grid:fixed_page_at_y(y)
+	local page_h = self.vscrollbar.view_length
+	return math.floor(y / page_h) + 1
+end
+
+function grid:fixed_page_at_screen_y(y)
+	return self:fixed_page_at_y(self:abs_row_y(y))
+end
+
+--find the number of rows relative to the focused row that should move the
+--focused row on ctrl+page-up/down requests. the logic here is to split the
+--rows into fixed-pixel-height pages and scroll to the row at the top of the
+--previous or next page.
+function grid:fixed_page_offset(dir, focused)
+	focused = focused or self.focused_row_index
+	--local screen_y = self.vscrollbar.offset
+	local row_y, row_h = self:row_yh(focused)
+	local page
+	if dir > 0 then
+		page = self:fixed_page_at_y(row_y + row_h) + 1
+	else
+		page = self:fixed_page_at_y(row_y)
+		if row_y == screen_y then
+			page = page - 1
+		end
+	end
+	local page_y = self:fixed_page_yh(page)
+	local row = self:row_at_y(page_y)
+	return row - focused
+end
+
 function grid:keypress(key)
 	local shift = self.ui:key'shift'
 	local ctrl = self.ui:key'ctrl'
@@ -1151,8 +1236,10 @@ function grid:keypress(key)
 		or ctrl and key == 'up' and -1/0
 		or key == 'down' and 1
 		or key == 'up' and -1
-		or key == 'pagedown' and 10 --TODO:
-		or key == 'pageup' and -10 --TODO:
+		or ctrl and key == 'pagedown' and self:fixed_page_offset(1)
+		or ctrl and key == 'pageup' and self:fixed_page_offset(-1)
+		or key == 'pagedown' and self:screen_page_offset(1)
+		or key == 'pageup' and self:screen_page_offset(-1)
 		or (ctrl or not self.cell_select) and key == 'home' and -1/0
 		or (ctrl or not self.cell_select) and key == 'end' and 1/0
 		or not self.cell_select and key == 'right' and 1
@@ -1202,7 +1289,7 @@ function vscrollbar:after_sync()
 	self.y = (sp.header_layer.visible and self.grid.col_h or 0) + m1
 	self.x = self.grid.cw - self.h - m3
 	self.w = self.grid.ch - self.y - m1 - m2
-	self.view_length = sp.rows_layer.h
+	self.view_length = sp.rows_layer.ch
 	self.content_length = self.grid:rows_h()
 end
 
@@ -1232,10 +1319,15 @@ function grid:after_init(ui, t)
 	end
 	self.freeze_pane = self:create_freeze_pane(self.freeze_pane)
 	self.scroll_pane = self:create_scroll_pane(self.freeze_pane)
+
+	--set up panes for drag-selecting over the other pane
 	self.freeze_pane.other_pane = self.scroll_pane
 	self.freeze_pane.clamp_left = true
+	self.freeze_pane.clamp_right = false
 	self.scroll_pane.other_pane = self.freeze_pane
+	self.scroll_pane.clamp_left = false
 	self.scroll_pane.clamp_right = true
+
 	self.splitter = self:create_splitter()
 	self.vscrollbar = self:create_vscrollbar()
 	if self.var_row_h then
@@ -1250,21 +1342,18 @@ if not ... then require('ui_demo')(function(ui, win)
 
 	local g = ui:grid{
 		id = 'g',
-		x = 10,
-		y = 10,
-		w = 800,
-		h = 450,
+		x = 20,
+		y = 20,
+		w = 860,
+		h = 460,
 		row_count = 1e6,
 		parent = win,
-		border_width = 5,
-		padding = 15,
-		border_color = '#00f',
 		--clip_content = true,
 		cols = {
 			{text = 'col1', w = 150},
 			{text = 'icol', w = 100, visible = false},
 			{text = 'col2', w = 300},
-			{text = 'col3', w = 200},
+			{text = 'col3', w = 300},
 			{text = 'col4', w = 150},
 			--{text = 'col5', w = 150},
 			--{text = 'col6', w = 150},
