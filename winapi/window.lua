@@ -108,7 +108,7 @@ function CreateWindow(info)
 								flags(info.style),
 								info.x, info.y, info.w, info.h,
 								info.parent,
-								nil, nil, nil))
+								info.menu, info.instance, info.param))
 	if not info.parent then own(hwnd, DestroyWindow) end
 	return hwnd
 end

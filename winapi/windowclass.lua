@@ -105,6 +105,7 @@ Window = subclass({
 		on_input_language_change = WM_INPUTLANGCHANGE,
 		on_user_change = WM_USERCHANGED,
 		on_display_change = WM_DISPLAYCHANGE,
+		on_mouse_activate = WM_MOUSEACTIVATE,
 	},
 	__wm_syscommand_handler_names = index{
 		on_minimizing = SC_MINIMIZE, --before minimize; return false to prevent.
@@ -254,6 +255,12 @@ function Window:WM_NCACTIVATE(flag, update_hrgn)
 	end
 end
 
+function Window:WM_MOUSEACTIVATE()
+	if not self.activable then
+		return MA_NOACTIVATE
+	end
+end
+
 --constraints & maximized size and position ----------------------------------
 
 function Window:WM_GETMINMAXINFO(info)
@@ -311,6 +318,18 @@ end
 --and the restore_to_maximized flag becomes true.
 function Window:get_maximized()
 	return IsZoomed(self.hwnd)
+end
+
+--override show() for non activable windows.
+function Window:show(SW, async)
+	if not self.activable then
+		if SW == SW_SHOWNORMAL then
+			SW = SW_SHOWNOACTIVATE
+		elseif SW == nil or SW == true or SW == SW_SHOW then
+			SW = SW_SHOWNA
+		end
+	end
+	BaseWindow.show(self, SW, async)
 end
 
 --minimize (or show minimized if hidden) and deactivate or not.

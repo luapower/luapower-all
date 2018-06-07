@@ -104,7 +104,7 @@ __window & app activation__
 `app:activate([mode])`                       activate the app
 `app:active_window() -> win`                 the active window, if any
 `win:activate()`                             activate the window
-`win:activable() -> t|f`                     activable flag (for 'toolbox' windows)
+`win:activable() -> t|f`                     activable flag
 `app/win:activated()`                        event: app/window was activated
 `app/win:deactivated()`                      event: app/window was deactivated
 __app visibility (OSX)__
@@ -440,7 +440,7 @@ Create a window (fields of _`t`_ below with default value in parenthesis):
 	* `closeable`                - allow closing (true)
 	* `resizeable`               - allow resizing (true)
 	* `fullscreenable`           - allow fullscreen mode (true)
-	* `activable`                - allow activation (true); only for 'toolbox' frame
+	* `activable`                - allow activation (true)
 	* `autoquit`                 - quit the app on closing (false)
 	* `edgesnapping`             - magnetized edges ('screen')
 * __rendering__
@@ -522,8 +522,7 @@ Get the sticky flag (read-only).
 ### Toolbox windows
 
 Toolbox windows (`frame = 'toolbox'`) show a thin title bar on Windows
-(they show a normal frame on OSX and Linux).
-They must be parented. They can be non-activable (`activable = false`).
+(they show a normal frame on OSX and Linux). They must have a parent.
 
 ## Transparent windows
 
@@ -644,10 +643,9 @@ Event: window was activated/deactivated.
 
 ### `win:activable() -> t|f`
 
-Get the activable flag (read-only).
-
-Only toolbox windows can be made non-activable. This is useful for toolboxes
-that can be clicked inside without stealing keyboard focus away from the main window.
+Get the activable flag (read-only). This is useful for creating toolboxes
+and popup menus that can be clicked on without stealing keyboard focus away
+from the main window.
 
 __NOTE:__ This [doesn't work](https://github.com/luapower/nw/issues/26) in Linux.
 

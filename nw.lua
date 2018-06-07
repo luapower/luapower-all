@@ -405,7 +405,7 @@ local defaults = {
 	closeable = true,
 	resizeable = true,
 	fullscreenable = true,
-	activable = true, --only for 'toolbox' frames
+	activable = true,
 	autoquit = false, --quit the app on closing
 	edgesnapping = 'screen',
 	sticky = false, --only for child windows
@@ -479,11 +479,6 @@ function window:_new(app, backend_class, useropt)
 	--they can't be (minimiz|maximiz|fullscreen)able either (winapi/X11 limitation).
 	if opt.frame == 'toolbox' then
 		assert(opt.parent, 'toolbox windows must have a parent')
-	end
-
-	--only toolboxes can be non-activable (winapi limitation)
-	if opt.frame ~= 'toolbox' then
-		assert(opt.activable, 'only toolbox windows can be non-activable')
 	end
 
 	--transparent windows must be frameless (winapi limitation)
