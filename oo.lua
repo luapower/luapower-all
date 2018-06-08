@@ -223,6 +223,7 @@ function Object:properties()
 end
 
 local function copy_table(dst, src, k, override)
+	create_table(dst, k)
 	local st = rawget(src, k)
 	if st then
 		local dt = rawget(dst, k)
@@ -244,34 +245,34 @@ local function copy_table(dst, src, k, override)
 end
 
 function Object:inherit(other, override)
+	other = other or rawget(self, 'super')
 	if not is(other, Object) then --plain table, treat is as mixin
 		for k,v in pairs(other) do
 			if override or self[k] == nil then
 				self[k] = v --not rawsetting so that meta-methods apply
 			end
 		end
-		return
-	end
-	other = other or rawget(self, 'super')
-	local properties = other:properties()
-	for k,v in pairs(properties) do
-		if (override or rawget(self, k) == nil)
-			and k ~= 'classname' --keep the classname (preserve identity)
-			and k ~= 'super' --keep super (preserve dynamic inheritance)
-			and k ~= '__getters' --getters are deep-copied
-			and k ~= '__setters' --getters are deep-copied
-		then
-			rawset(self, k, v)
+	else --oo class or instance
+		local properties = other:properties()
+		for k,v in pairs(properties) do
+			if (override or rawget(self, k) == nil)
+				and k ~= 'classname' --keep the classname (preserve identity)
+				and k ~= 'super' --keep super (preserve dynamic inheritance)
+				and k ~= '__getters' --getters are deep-copied
+				and k ~= '__setters' --getters are deep-copied
+			then
+				rawset(self, k, v)
+			end
 		end
+		--copy getters and setters
+		copy_table(self, other, '__getters', override)
+		copy_table(self, other, '__setters', override)
 	end
-	--copy getters and setters
-	copy_table(self, other, '__getters', override)
-	copy_table(self, other, '__setters', override)
 
 	--copy metafields if metatables are different
 	local src_meta = getmetatable(other)
 	local dst_meta = getmetatable(self)
-	if src_meta ~= dst_meta then
+	if src_meta and src_meta ~= dst_meta then
 		for k,v in pairs(src_meta) do
 			if override or rawget(dst_meta, k) == nil then
 				rawset(dst_meta, k, v)
