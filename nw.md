@@ -73,10 +73,11 @@ that `foo(t|f)` sets the value of foo and `foo() -> t|f` gets it.
 __the app object__
 `nw:app() -> app`                            the global application object
 __the app loop__
-`app:run()`                                  run the loop
+`app:run()`                                  start the loop
 `app:stop()`                                 stop the loop
 `app:running() -> t|f`                       check if the loop is running
-`app:poll() -> t|f`                          process the next pending event (return true if there was one)
+`app:poll([timeout]) -> t|f`                 process the next pending event (return true if there was one)
+`app:maxfps(fps|false) -> fps|false`         cap the window repaint rate
 __quitting__
 `app:quit()`                                 quit the app, i.e. close all windows and stop the loop
 `app:autoquit(t|f) /-> t|f`                  quit the app when the last window is closed (true)
@@ -307,7 +308,7 @@ backend for the current platform.
 
 ### `app:run()`
 
-Run the loop.
+Start the application main loop.
 
 Calling run() when the loop is already running does nothing.
 
@@ -321,10 +322,17 @@ Calling stop() when the loop is not running does nothing.
 
 Check if the loop is running.
 
-### `app:poll() -> t|f`
+### `app:poll([timeout]) -> t|f`
 
 Process the next pending event from the event queue.
-Return true if there was an event to process, false if there wasn't.
+Returns `true` if there was an event to process, `false` if there wasn't.
+Returns `false, exit_code` if the application was asked to quit.
+`timeout` (default=0) specifies a maximum wait time for an event to appear.
+
+### `app:maxfps(fps|false)` <br> `app:maxfps() -> fps|false`
+
+Get/set the maximum window repaint rate (frames per second).
+`false` disables the throttling.
 
 ## Quitting
 

@@ -398,18 +398,18 @@ function editbox:override_init(inherited, ui, t)
 	self.editor.view.editbox = self
 
 	self.caret = self.caret_class(self.ui, {
-		id = self:_subtag'caret',
+		tags = 'caret',
 		parent = self,
 	}, self.caret)
 
 	self.vscrollbar = self.vscrollbar_class(self.ui, {
-		id = self:_subtag'vscrollbar',
+		tags = 'vscrollbar',
 		parent = self,
 		vertical = true,
 	}, self.vscrollbar)
 
 	self.hscrollbar = self.hscrollbar_class(self.ui, {
-		id = self:_subtag'hscrollbar',
+		tags = 'hscrollbar',
 		parent = self,
 		vertical = false,
 		autohide = true,

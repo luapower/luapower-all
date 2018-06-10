@@ -64,7 +64,7 @@ function object:before_init()
 	--after the first instantiation doesn't have an effect anymore (extending
 	--those classes still works but it's not that useful).
 	if not rawget(self.super, 'isfinalclass') then
-		self.super:inherit(self.super.super)
+		self.super:inherit()
 		self.super.isfinalclass = true
 	end
 	--speed up virtual property lookup without detaching/fattening the instance.
@@ -104,6 +104,8 @@ end
 function ui:clock()               return time.clock() end
 function ui:native_window(t)      return self:_app():window(t) end
 function ui:run()                 return self:_app():run() end
+function ui:get_maxfps()          return self:_app():maxfps() end
+function ui:set_maxfps(fps)       return self:_app():maxfps(fps) end
 function ui:key(query)            return self:_app():key(query) end
 function ui:getclipboard(type)    return self:_app():getclipboard(type) end
 function ui:setclipboard(s, type) return self:_app():setclipboard(s, type) end
@@ -623,7 +625,7 @@ function ui.element:init_priority(t)
 end
 
 ui.element:init_priority{}
-ui.element:init_ignore{id=1, tags=1, subtag=1}
+ui.element:init_ignore{tags=1}
 
 --override element constructor to take in additional initialization tables
 function ui.element:override_create(inherited, ui, t, ...)
@@ -644,27 +646,25 @@ function ui.element:after_init(ui, t)
 	self.ui = ui
 	self.ui:_add_element(self)
 
+	--custom class tags
 	local class_tags = self.tags
 	self.tags = {['*'] = true}
 	add_tags(self.tags, class_tags)
 
+	--classname tags
 	local super = self.super
-	while super do
+	while super.classname ~= 'element' do
 		if super.classname then
 			self.tags[super.classname] = true
-			super = super.super
 		end
+		super = super.super
 	end
 
 	if t then
-		if t.id then
-			self._id = t.id
-			self.tags[t.id] = true
+		if t.tags then
+			add_tags(self.tags, t.tags)
 		end
-		add_tags(self.tags, t.tags)
-		if t.subtag then
-			self:_subtag(t.subtag)
-		end
+
 		--set attributes in priority and/or lexicographic order so that eg.
 		--`border_width` comes before `border_width_left`.
 		local pri = self._init_priority
@@ -706,12 +706,7 @@ function ui.element:set_id(id)
 	end
 	self._id = id
 	self.tags[id] = true
-	self:update_styles()
-end
-
-function ui.element:_subtag(tag)
-	tag = self.classname..'_'..tag
-	return self.id and self.id..'.'..tag or tag
+	self._styles_valid = false
 end
 
 function ui.element:settag(tag, op)
@@ -719,12 +714,15 @@ function ui.element:settag(tag, op)
 	if op == '~' then
 		self.tags[tag] = not had_tag
 		self._styles_valid = false
+		self:invalidate()
 	elseif op and not had_tag then
 		self.tags[tag] = true
 		self._styles_valid = false
+		self:invalidate()
 	elseif not op and had_tag then
 		self.tags[tag] = false
 		self._styles_valid = false
+		self:invalidate()
 	end
 end
 
@@ -838,20 +836,25 @@ function ui.element:transition(attr, val, duration, ease, delay, blend)
 
 	local tran = self.transitions and self.transitions[attr]
 
+	local changed
+
 	if duration <= 0
 		and ((blend == 'replace' and delay <= 0) or blend == 'replace_nodelay')
 	then
 		tran = nil --remove existing transition on attr
+		changed = self[attr] ~= val
 		self[attr] = val --set attr directly
 	else --set attr with transition
 		if tran then
 			if tran:end_value() ~= val then
 				tran = blend_func(self.ui, tran, self, attr, val,
 					duration, ease, delay, self.frame_clock)
+				changed = true
 			end
 		elseif self[attr] ~= val then
 			tran = self.ui:transition(self, attr, val,
 				duration, ease, delay, self.frame_clock)
+			changed = true
 		end
 	end
 
@@ -862,7 +865,9 @@ function ui.element:transition(attr, val, duration, ease, delay, blend)
 		self.transitions[attr] = nil
 	end
 
-	self:invalidate()
+	if changed then
+		self:invalidate()
+	end
 end
 
 function ui.element:draw()
@@ -883,15 +888,10 @@ function ui.element:draw()
 	end
 end
 
---direct manipulation interface
-
---TODO: function ui.element
-
-
 --windows --------------------------------------------------------------------
 
-ui.window = ui.element:subclass'window'
-ui.window.iswindow = true
+local window = ui.element:subclass'window'
+ui.window = window
 
 ui:style('window_layer', {
 	--screen-wiping options that work with transparent windows
@@ -909,13 +909,25 @@ function ui:free()
 	end
 end
 
-ui.window:init_priority{native_window=0}
+window:init_ignore{native_window=1, visible=1,
+	x=1, y=1, w=1, h=1, cx=1, cy=1, cw=1, ch=1}
 
-function ui.window:create_native_window(t)
-	return self.ui:native_window(t)
+function window:create_native_window(t)
+	local super = self.super
+	return self.ui:native_window{
+		visible = false,
+		x = t.x or super.x,
+		y = t.y or super.y,
+		w = t.w or super.w,
+		h = t.h or super.h,
+		cx = t.cx or super.cx,
+		cy = t.cy or super.cy,
+		cw = t.cw or super.cw,
+		ch = t.ch or super.ch,
+	}
 end
 
-function ui.window:override_init(inherited, ui, t)
+function window:override_init(inherited, ui, t)
 	assert(ui.elements, 'forgot to instantiate the ui class?')
 
 	local win = t and t.native_window
@@ -1024,12 +1036,9 @@ function ui.window:override_init(inherited, ui, t)
 
 	win:on('repaint.ui', function(win)
 		setcontext()
-		self._norepaint = true
-		self._invalidated = false
 		if self.mouse_x then
 			self.ui:_window_mousemove(self, self.mouse_x, self.mouse_y)
 		end
-		self._norepaint = false
 		self:draw()
 	end)
 
@@ -1051,26 +1060,40 @@ function ui.window:override_init(inherited, ui, t)
 		self.layer.w = cw
 		self.layer.h = ch
 		self:fire('client_rect_changed', cx, cy, cw, ch)
+		self.ui:fire('client_rect_changed', self, cx, cy, cw, ch)
 	end)
 
 	win:on('closed.ui', function()
 		self:free()
 	end)
 
-	local function passxy(self, x, y) return x, y end
+	self.layer = self:create_layer()
 
-	self.layer = self.layer_class(self.ui, {
-		id = self:_subtag'layer',
+	if self.own_native_window then
+		local visible = t.visible
+		if visible == nil then
+			visible = self.super.visible
+		end
+		if visible then
+			self.visible = true
+		end
+	end
+end
+
+local function passxy(self, x, y) return x, y end
+
+function window:create_layer()
+	return self.layer_class(self.ui, {
+		tags = 'window_layer',
 		x = 0, y = 0, w = self.w, h = self.h,
-		clip_content = false, window = self,
+		parent = self,
 		--parent interface
 		to_window = passxy,
 		from_window = passxy,
-	}, self.layer)
-
+	}, self.window_layer)
 end
 
-function ui.window:before_free()
+function window:before_free()
 	self.native_window:off'.ui'
 	self.layer:free()
 	if self.own_native_window then
@@ -1080,32 +1103,64 @@ function ui.window:before_free()
 	self.ui.windows[self] = nil
 end
 
-function ui.window:get_visible()
+--layer interface
+
+function window:add_layer(layer)
+	if self.layer then
+		self.layer:add_layer(layer)
+	else --this is the main layer we're adding
+		layer._parent = self
+		layer.window = self
+	end
+end
+
+function window:remove_layer(layer)
+	layer._parent = false
+	layer.window = false
+end
+
+local mt
+function window:abs_matrix()
+	mt = mt or cairo.matrix()
+	return mt:reset()
+end
+
+--native window interface
+
+function window:get_visible()
 	return self.native_window:visible()
 end
 
-function ui.window:set_visible(visible)
+function window:set_visible(visible)
 	self.native_window:visible(visible)
 end
 
-for method in pairs{show=1, hide=1, cursor=1, client_rect=1, frame_rect=1, normal_frame_rect=1} do
-	ui.window[method] = function(self, ...)
+for method in pairs{
+	show=1, hide=1, cursor=1, client_rect=1, frame_rect=1,
+	to_screen=1, to_client=1,
+} do
+	window[method] = function(self, ...)
 		return self.native_window[method](self.native_window, ...)
 	end
 end
 
-function ui.window:find(sel)
+window.from_screen = window.to_client
+window.to_client = nil
+
+--query interface
+
+function window:find(sel)
 	local sel = ui:selector(sel):filter(function(elem)
 		return elem.window == self
 	end)
 	return self.ui:find(sel)
 end
 
-function ui.window:each(sel, f)
+function window:each(sel, f)
 	return self:find(sel):each(f)
 end
 
-function ui.window:mouse_pos() --window interface
+function window:mouse_pos() --window interface
 	return self.mouse_x, self.mouse_y
 end
 
@@ -1132,15 +1187,15 @@ function ui:after_init()
 	self:_reset_drag_state()
 end
 
-function ui.window:hit_test(x, y, reason)
+function window:hit_test(x, y, reason)
 	return self.layer:hit_test(x, y, reason)
 end
 
-function ui.window:get_cursor()
+function window:get_cursor()
 	return (self.native_window:cursor())
 end
 
-function ui.window:set_cursor(cursor)
+function window:set_cursor(cursor)
 	self.native_window:cursor(cursor or 'arrow')
 end
 
@@ -1173,6 +1228,7 @@ function ui:_accept_drop(drag_widget, drop_widget, mx, my, area)
 end
 
 function ui:_window_mousemove(window, mx, my)
+	self:fire('mousemove', window, mx, my)
 	window:fire('mousemove', mx, my)
 
 	--TODO: hovering with delay
@@ -1213,11 +1269,13 @@ function ui:_window_mousemove(window, mx, my)
 end
 
 function ui:_window_mouseenter(window, mx, my)
+	self:fire('mouseenter', window, mx, my)
 	window:fire('mouseenter', mx, my)
 	self:_window_mousemove(window, mx, my)
 end
 
 function ui:_window_mouseleave(window)
+	self:fire('mouseleave', window)
 	window:fire'mouseleave'
 	if not self.active_widget then
 		self:_set_hot_widget(window, false)
@@ -1244,6 +1302,7 @@ end
 
 function ui:_window_mousedown(window, button, mx, my, click_count)
 	local event = button == 'left' and 'mousedown' or button..'mousedown'
+	self:fire(event, window, mx, my, click_count)
 	window:fire(event, mx, my, click_count)
 
 	if click_count > 1 then return end
@@ -1257,6 +1316,7 @@ end
 
 function ui:_window_click(window, button, count, mx, my)
 	local event = button == 'left' and 'click' or button..'click'
+	self:fire(event, window, count, mx, my)
 	window:fire(event, count, mx, my)
 	local reset_click_count =
 		self.last_click_hot_widget ~= self.hot_widget
@@ -1287,6 +1347,7 @@ end
 
 function ui:_window_mouseup(window, button, mx, my, click_count)
 	local event = button == 'left' and 'mouseup' or button..'mouseup'
+	self:fire(event, window, mx, my)
 	window:fire(event, mx, my)
 
 	if click_count > 1 then return end
@@ -1316,6 +1377,7 @@ function ui:_window_mouseup(window, button, mx, my, click_count)
 end
 
 function ui:_window_mousewheel(window, delta, mx, my, pdelta)
+	self:fire('mousewheel', window, delta, mx, my, pdelta)
 	window:fire('mousewheel', delta, mx, my, pdelta)
 	local widget, area = window:hit_test(mx, my, 'vscroll')
 	if widget then
@@ -1325,11 +1387,11 @@ end
 
 --keyboard events routing with focus logic
 
-function ui.window:first_focusable_widget()
+function window:first_focusable_widget()
 	return self.layer:focusable_widgets()[1]
 end
 
-function ui.window:next_focusable_widget(forward)
+function window:next_focusable_widget(forward)
 	if self.focused_widget then
 		return self.focused_widget:next_focusable_widget(forward)
 	else
@@ -1337,21 +1399,24 @@ function ui.window:next_focusable_widget(forward)
 	end
 end
 
-function ui.window:_keydown(key)
+function window:_keydown(key)
+	self.ui:fire('keydown', self, key)
 	self:fire('keydown', key)
 	if self.focused_widget then
 		self.focused_widget:fire('keydown', key)
 	end
 end
 
-function ui.window:_keyup(key)
+function window:_keyup(key)
+	self.ui:fire('keyup', self, key)
 	self:fire('keyup', key)
 	if self.focused_widget then
 		self.focused_widget:fire('keyup', key)
 	end
 end
 
-function ui.window:_keypress(key)
+function window:_keypress(key)
+	self.ui:fire('keypress', self, key)
 	self:fire('keypress', key)
 	local capture_tab = self.focused_widget and self.focused_widget.capture_tab
 	if not capture_tab and key == 'tab' and not self.ui:key'ctrl' then
@@ -1364,7 +1429,8 @@ function ui.window:_keypress(key)
 	end
 end
 
-function ui.window:_keychar(s)
+function window:_keychar(s)
+	self.ui:fire('keychar', self, s)
 	self:fire('keychar', s)
 	if self.focused_widget then
 		self.focused_widget:fire('keychar', s)
@@ -1373,23 +1439,24 @@ end
 
 --rendering
 
-function ui.window:after_draw()
+function window:after_draw()
+	self._invalid = false
 	self.cr:save()
 	self.cr:new_path()
 	self.layer:draw()
 	self.cr:restore()
 end
 
-function ui.window:invalidate() --element interface; window intf.
-	if self._norepaint or self._invalidated then return end
+function window:invalidate() --element interface; window intf.
+	if self._invalid then return end
+	self._invalid = true
 	self.native_window:invalidate()
-	self._invalidated = true
 end
 
 --sugar & utils
 
-function ui.window:rect() return 0, 0, self.w, self.h end
-function ui.window:size() return self.w, self.h end
+function window:rect() return 0, 0, self.w, self.h end
+function window:size() return self.w, self.h end
 
 --drawing helpers ------------------------------------------------------------
 
@@ -1476,7 +1543,7 @@ function ui:before_free()
 	self._freetype:free()
 end
 
-function ui.window:before_free()
+function window:before_free()
 	if self.cr then
 		self.cr:font_face(cairo.NULL)
 	end
@@ -1503,7 +1570,7 @@ end
 ui:memoize'_font'
 
 --override this for different ways of setting a loaded font
-function ui.window:setfont(family, weight, slant, size, line_spacing)
+function window:setfont(family, weight, slant, size, line_spacing)
 	local font = self.ui:_font(family, weight, slant)
 	self.cr:font_face(font.cr_face)
 	self.cr:font_size(size)
@@ -1516,16 +1583,16 @@ end
 
 --multi-line self-aligned and box-aligned text
 
-function ui.window:line_extents(s)
+function window:line_extents(s)
 	local ext = self.cr:text_extents(s)
 	return ext.width, ext.height, ext.y_bearing
 end
 
-function ui.window:text_line_h()
+function window:text_line_h()
 	return self.font_height * self.line_spacing
 end
 
-function ui.window:text_size(s, multiline)
+function window:text_size(s, multiline)
 	local w, h, y1 = 0, 0, self.font_ascent
 	local line_h = self.font_height * self.line_spacing
 	for s in lines(s, multiline) do
@@ -1536,7 +1603,7 @@ function ui.window:text_size(s, multiline)
 	return w, h
 end
 
-function ui.window:textbox(x0, y0, w, h, s, halign, valign, multiline)
+function window:textbox(x0, y0, w, h, s, halign, valign, multiline)
 	local cr = self.cr
 	local line_h = self.font_height * self.line_spacing
 
@@ -1593,11 +1660,12 @@ end
 
 --layers ---------------------------------------------------------------------
 
-ui.layer = ui.element:subclass'layer'
-ui.window.layer_class = ui.layer
+local layer = ui.element:subclass'layer'
+ui.layer = layer
+window.layer_class = layer
 
-ui.layer.activable = true
-ui.layer.targetable = true
+layer.activable = true
+layer.targetable = true
 
 local function args4(s, convert) --parse a string of 4 non-space args
 	local a1, a2, a3, a4
@@ -1645,98 +1713,98 @@ function ui.expand:background_scale(scale)
 	self.background_scale_y = scale
 end
 
-function ui.layer:set_padding(s) self:expand_attr('padding', s) end
-function ui.layer:set_border_color(s) self:expand_attr('border_color', s) end
-function ui.layer:set_border_width(s) self:expand_attr('border_width', s) end
-function ui.layer:set_corner_radius(s) self:expand_attr('corner_radius', s) end
-function ui.layer:set_scale(scale) self:expand_attr('scale', scale) end
-function ui.layer:set_background_scale(scale)
+function layer:set_padding(s) self:expand_attr('padding', s) end
+function layer:set_border_color(s) self:expand_attr('border_color', s) end
+function layer:set_border_width(s) self:expand_attr('border_width', s) end
+function layer:set_corner_radius(s) self:expand_attr('corner_radius', s) end
+function layer:set_scale(scale) self:expand_attr('scale', scale) end
+function layer:set_background_scale(scale)
 	self:expand_attr('background_scale', scale)
 end
 
-ui.layer.x = 0
-ui.layer.y = 0
-ui.layer.w = 0
-ui.layer.h = 0
-ui.layer.rotation = 0
-ui.layer.rotation_cx = 0
-ui.layer.rotation_cy = 0
-ui.layer.scale_x = 1
-ui.layer.scale_y = 1
-ui.layer.scale_cx = 0
-ui.layer.scale_cy = 0
+layer.x = 0
+layer.y = 0
+layer.w = 0
+layer.h = 0
+layer.rotation = 0
+layer.rotation_cx = 0
+layer.rotation_cy = 0
+layer.scale_x = 1
+layer.scale_y = 1
+layer.scale_cx = 0
+layer.scale_cy = 0
 
-ui.layer.opacity = 1
+layer.opacity = 1
 
-ui.layer.clip_content = false --'padding'/true, 'background', false
+layer.clip_content = false --'padding'/true, 'background', false
 
-ui.layer.padding = 0
+layer.padding = 0
 
-ui.layer.background_type = 'color' --false, 'color', 'gradient', 'radial_gradient', 'image'
-ui.layer.background_hittable = false
+layer.background_type = 'color' --false, 'color', 'gradient', 'radial_gradient', 'image'
+layer.background_hittable = false
 --all backgrounds
-ui.layer.background_x = 0
-ui.layer.background_y = 0
-ui.layer.background_rotation = 0
-ui.layer.background_rotation_cx = 0
-ui.layer.background_rotation_cy = 0
-ui.layer.background_scale = 1
-ui.layer.background_scale_cx = 0
-ui.layer.background_scale_cy = 0
+layer.background_x = 0
+layer.background_y = 0
+layer.background_rotation = 0
+layer.background_rotation_cx = 0
+layer.background_rotation_cy = 0
+layer.background_scale = 1
+layer.background_scale_cx = 0
+layer.background_scale_cy = 0
 --solid color backgrounds
-ui.layer.background_color = false --no background
+layer.background_color = false --no background
 --gradient backgrounds
-ui.layer.background_colors = false --{[offset1], color1, ...}
+layer.background_colors = false --{[offset1], color1, ...}
 --linear gradient backgrounds
-ui.layer.background_x1 = 0
-ui.layer.background_y1 = 0
-ui.layer.background_x2 = 0
-ui.layer.background_y2 = 0
+layer.background_x1 = 0
+layer.background_y1 = 0
+layer.background_x2 = 0
+layer.background_y2 = 0
 --radial gradient backgrounds
-ui.layer.background_cx1 = 0
-ui.layer.background_cy1 = 0
-ui.layer.background_r1 = 0
-ui.layer.background_cx2 = 0
-ui.layer.background_cy2 = 0
-ui.layer.background_r2 = 0
+layer.background_cx1 = 0
+layer.background_cy1 = 0
+layer.background_r1 = 0
+layer.background_cx2 = 0
+layer.background_cy2 = 0
+layer.background_r2 = 0
 --image backgrounds
-ui.layer.background_image = false
+layer.background_image = false
 
-ui.layer.background_operator = 'over'
+layer.background_operator = 'over'
 -- overlapping between background clipping edge and border stroke.
 -- -1..1 goes from inside to outside of border edge.
-ui.layer.background_clip_border_offset = 1
+layer.background_clip_border_offset = 1
 
-ui.layer.border_width = 0 --no border
-ui.layer.corner_radius = 0 --square
-ui.layer.border_color = '#0000'
+layer.border_width = 0 --no border
+layer.corner_radius = 0 --square
+layer.border_color = '#0000'
 -- border stroke positioning relative to box edge.
 -- -1..1 goes from inside to outside of box edge.
-ui.layer.border_offset = -1
+layer.border_offset = -1
 --draw rounded corners with a modified bezier for smoother line-to-arc
 --transitions. kappa=1 uses circle arcs instead.
-ui.layer.corner_radius_kappa = 1.2
+layer.corner_radius_kappa = 1.2
 
-ui.layer.shadow_x = 0
-ui.layer.shadow_y = 0
-ui.layer.shadow_color = '#000'
-ui.layer.shadow_blur = 0
+layer.shadow_x = 0
+layer.shadow_y = 0
+layer.shadow_color = '#000'
+layer.shadow_blur = 0
 
-ui.layer.text_align = 'center'
-ui.layer.text_valign = 'center'
-ui.layer.text_multiline = true
-ui.layer.text = nil
+layer.text_align = 'center'
+layer.text_valign = 'center'
+layer.text_multiline = true
+layer.text = nil
 
-ui.layer.cursor = false
+layer.cursor = false
 
-ui.layer.drag_threshold = 0 --moving distance before start dragging
-ui.layer.max_click_chain = 1 --2 for getting doubleclick events etc.
-ui.layer.hover_delay = 1 --TODO: hover event delay
+layer.drag_threshold = 0 --moving distance before start dragging
+layer.max_click_chain = 1 --2 for getting doubleclick events etc.
+layer.hover_delay = 1 --TODO: hover event delay
 
-ui.layer.canfocus = false
-ui.layer.tabindex = false
+layer.canfocus = false
+layer.tabindex = false
 
-function ui.layer:before_free()
+function layer:before_free()
 	if self.hot then
 		self.ui.hot_widget = false
 		self.ui.hot_area = false
@@ -1749,7 +1817,7 @@ function ui.layer:before_free()
 end
 
 local mt
-function ui.layer:rel_matrix() --box matrix relative to parent's content space
+function layer:rel_matrix() --box matrix relative to parent's content space
 	mt = mt or cairo.matrix()
 	return mt:reset()
 		:translate(self.x, self.y)
@@ -1758,18 +1826,12 @@ function ui.layer:rel_matrix() --box matrix relative to parent's content space
 		:scale_around(self.scale_cx, self.scale_cy, self.scale_x, self.scale_y)
 end
 
-local mt
-function ui.layer:abs_matrix() --box matrix in window space
-	if self.pos_parent then
-		return self.pos_parent:abs_matrix():transform(self:rel_matrix())
-	else
-		mt = mt or cairo.matrix()
-		return mt:reset(self:rel_matrix())
-	end
+function layer:abs_matrix() --box matrix in window space
+	return self.pos_parent:abs_matrix():transform(self:rel_matrix())
 end
 
 local mt
-function ui.layer:cr_abs_matrix(cr) --box matrix in cr's current space
+function layer:cr_abs_matrix(cr) --box matrix in cr's current space
 	if self.pos_parent ~= self.parent then
 		return self:abs_matrix()
 	else
@@ -1779,7 +1841,7 @@ function ui.layer:cr_abs_matrix(cr) --box matrix in cr's current space
 end
 
 --convert point from own box space to parent content space
-function ui.layer:from_box_to_parent(x, y)
+function layer:from_box_to_parent(x, y)
 	if self.pos_parent ~= self.parent then
 		return self.parent:from_window(self:abs_matrix():point(x, y))
 	else
@@ -1788,7 +1850,7 @@ function ui.layer:from_box_to_parent(x, y)
 end
 
 --convert point from parent content space to own box space
-function ui.layer:from_parent_to_box(x, y)
+function layer:from_parent_to_box(x, y)
 	if self.pos_parent ~= self.parent then
 		return self:abs_matrix():invert():point(self.parent:to_window(x, y))
 	else
@@ -1797,7 +1859,7 @@ function ui.layer:from_parent_to_box(x, y)
 end
 
 --convert point from own content space to parent content space
-function ui.layer:to_parent(x, y)
+function layer:to_parent(x, y)
 	if self.pos_parent ~= self.parent then
 		return self.parent:from_window(
 			self:abs_matrix():translate(self:padding_pos()):point(x, y))
@@ -1807,7 +1869,7 @@ function ui.layer:to_parent(x, y)
 end
 
 --convert point from parent content space to own content space
-function ui.layer:from_parent(x, y)
+function layer:from_parent(x, y)
 	if self.pos_parent ~= self.parent then
 		return self:abs_matrix():translate(self:padding_pos()):invert()
 			:point(self.parent:to_window(x, y))
@@ -1817,61 +1879,65 @@ function ui.layer:from_parent(x, y)
 	end
 end
 
-function ui.layer:to_window(x, y) --parent & child interface
+function layer:to_window(x, y) --parent & child interface
 	return self.parent:to_window(self:to_parent(x, y))
 end
 
-function ui.layer:from_window(x, y) --parent & child interface
+function layer:from_window(x, y) --parent & child interface
 	return self:from_parent(self.parent:from_window(x, y))
 end
 
+function layer:to_screen(x, y)
+	local x, y = self:to_window(x, y)
+	return self.window:to_screen(x, y)
+end
+
+function layer:from_screen(x, y)
+	local x, y = self.window:from_screen(x, y)
+	return self:from_window(x, y)
+end
+
 --convert point from own content space to other's content space
-function ui.layer:to_other(widget, x, y)
+function layer:to_other(widget, x, y)
 	return widget:from_window(self:to_window(x, y))
 end
 
 --convert point from other's content space to own content space
-function ui.layer:from_other(widget, x, y)
+function layer:from_other(widget, x, y)
 	return self:from_window(widget:to_window(x, y))
 end
 
-function ui.layer:mouse_pos()
+function layer:mouse_pos()
 	if not self.window.mouse_x then
 		return false, false
 	end
 	return self:from_window(self.window:mouse_pos())
 end
 
-function ui.layer:get_mouse_x() return (select(1, self:mouse_pos())) end
-function ui.layer:get_mouse_y() return (select(2, self:mouse_pos())) end
+function layer:get_mouse_x() return (select(1, self:mouse_pos())) end
+function layer:get_mouse_y() return (select(2, self:mouse_pos())) end
 
-function ui.layer:get_mouse()
+function layer:get_mouse()
 	return self.window.mouse
 end
 
-function ui.layer:get_parent() --child interface
+function layer:get_parent() --child interface
 	return self._parent
 end
 
-function ui.layer:set_parent(parent)
-	if parent and parent.iswindow then
-		parent = parent.layer
-	end
-	if self._parent ~= parent then
-		if self._parent then
-			self._parent:remove_layer(self)
-		end
-		if parent then
-			parent:add_layer(self)
-		end
+function layer:set_parent(parent)
+	if parent then
+		parent:add_layer(self)
+	elseif self._parent then
+		self._parent:remove_layer(self)
 	end
 end
 
-function ui.layer:get_pos_parent() --child interface
+function layer:get_pos_parent() --child interface
 	return self._pos_parent or self._parent
 end
 
-function ui.layer:set_pos_parent(parent)
+function layer:set_pos_parent(parent)
 	if parent and parent.iswindow then
 		parent = parent.layer
 	end
@@ -1881,19 +1947,19 @@ function ui.layer:set_pos_parent(parent)
 	self._pos_parent = parent
 end
 
-function ui.layer:to_back()
+function layer:to_back()
 	self.layer_index = 1
 end
 
-function ui.layer:to_front()
+function layer:to_front()
 	self.layer_index = 1/0
 end
 
-function ui.layer:get_layer_index()
+function layer:get_layer_index()
 	return indexof(self, self.parent.layers)
 end
 
-function ui.layer:move_layer(layer, index)
+function layer:move_layer(layer, index)
 	local new_index = clamp(index, 1, #self.layers)
 	local old_index = indexof(layer, self.layers)
 	if old_index == new_index then return end
@@ -1901,11 +1967,11 @@ function ui.layer:move_layer(layer, index)
 	table.insert(self.layers, new_index, layer)
 end
 
-function ui.layer:set_layer_index(index)
+function layer:set_layer_index(index)
 	self.parent:move_layer(self, index)
 end
 
-function ui.layer:each_child(func)
+function layer:each_child(func)
 	if not self.layers then return end
 	for _,layer in ipairs(self.layers) do
 		layer:each_child(func)
@@ -1913,13 +1979,17 @@ function ui.layer:each_child(func)
 	end
 end
 
-function ui.layer:children()
+function layer:children()
 	return coroutine.wrap(function()
 		self:each_child(coroutine.yield)
 	end)
 end
 
-function ui.layer:add_layer(layer) --parent interface
+function layer:add_layer(layer) --parent interface
+	if layer._parent == self then return end
+	if layer._parent then
+		layer._parent:remove_layer(layer)
+	end
 	self.layers = self.layers or {}
 	push(self.layers, layer)
 	layer._parent = self
@@ -1928,7 +1998,7 @@ function ui.layer:add_layer(layer) --parent interface
 	self:fire('layer_added', layer)
 end
 
-function ui.layer:remove_layer(layer) --parent interface
+function layer:remove_layer(layer) --parent interface
 	popval(self.layers, layer)
 	self:fire('layer_removed', layer)
 	layer._parent = false
@@ -1936,7 +2006,7 @@ function ui.layer:remove_layer(layer) --parent interface
 	layer:each_child(function(layer) layer.window = false end)
 end
 
-function ui.layer:_free_layers()
+function layer:_free_layers()
 	if not self.layers then return end
 	while #self.layers > 0 do
 		self.layers[#self.layers]:free()
@@ -1945,17 +2015,17 @@ end
 
 --mouse event handling
 
-function ui.layer:getcursor(area)
+function layer:getcursor(area)
 	return self['cursor_'..area] or self.cursor
 end
 
-function ui.layer:_mousemove(mx, my, area)
+function layer:_mousemove(mx, my, area)
 	local mx, my = self:from_window(mx, my)
 	self:fire('mousemove', mx, my, area)
 	self.ui:_widget_mousemove(self, mx, my, area)
 end
 
-function ui.layer:_mouseenter(mx, my, area)
+function layer:_mouseenter(mx, my, area)
 	local mx, my = self:from_window(mx, my)
 	self:settag('hot', true)
 	if area then
@@ -1965,7 +2035,7 @@ function ui.layer:_mouseenter(mx, my, area)
 	self:invalidate()
 end
 
-function ui.layer:_mouseleave()
+function layer:_mouseleave()
 	self:fire'mouseleave'
 	local area = self.ui.hot_area
 	self:settag('hot', false)
@@ -1975,20 +2045,20 @@ function ui.layer:_mouseleave()
 	self:invalidate()
 end
 
-function ui.layer:_mousedown(button, mx, my, area)
+function layer:_mousedown(button, mx, my, area)
 	local mx, my = self:from_window(mx, my)
 	local event = button == 'left' and 'mousedown' or button..'mousedown'
 	self:fire(event, mx, my, area)
 	self.ui:_widget_mousedown(self, button, mx, my, area)
 end
 
-function ui.layer:_mouseup(button, mx, my, area)
+function layer:_mouseup(button, mx, my, area)
 	local mx, my = self:from_window(mx, my)
 	local event = button == 'left' and 'mouseup' or button..'mouseup'
 	self:fire(event, mx, my, area)
 end
 
-function ui.layer:_click(button, count, mx, my, area)
+function layer:_click(button, count, mx, my, area)
 	local mx, my = self:from_window(mx, my)
 	local event =
 		count == 1 and 'click'
@@ -2004,12 +2074,12 @@ function ui.layer:_click(button, count, mx, my, area)
 	end
 end
 
-function ui.layer:_mousewheel(delta, mx, my, area, pdelta)
+function layer:_mousewheel(delta, mx, my, area, pdelta)
 	self:fire('mousewheel', delta, mx, my, area, pdelta)
 end
 
 --called on a potential drop target widget to accept the dragged widget.
-function ui.layer:_accept_drag_widget(widget, mx, my, area)
+function layer:_accept_drag_widget(widget, mx, my, area)
 	if mx then
 		mx, my = self:from_window(mx, my)
 	end
@@ -2018,27 +2088,27 @@ end
 
 --return true to accept a dragged widget. if mx/my/area are nil
 --then return true if there's _any_ area which would accept the widget.
-function ui.layer:accept_drag_widget(widget, mx, my, area) end
+function layer:accept_drag_widget(widget, mx, my, area) end
 
 --called on the dragged widget to accept a potential drop target widget.
-function ui.layer:accept_drop_widget(widget, area) return true; end
+function layer:accept_drop_widget(widget, area) return true; end
 
 --called on the dragged widget once upon entering a new drop target.
-function ui.layer:_enter_drop_target(widget, area)
+function layer:_enter_drop_target(widget, area)
 	self:settag('dropping', true)
 	self:fire('enter_drop_target', widget, area)
 	self:invalidate()
 end
 
 --called on the dragged widget once upon leaving a drop target.
-function ui.layer:_leave_drop_target(widget)
+function layer:_leave_drop_target(widget)
 	self:fire('leave_drop_target', widget)
 	self:settag('dropping', false)
 	self:invalidate()
 end
 
 --called on the dragged widget when dragging starts.
-function ui.layer:_started_dragging()
+function layer:_started_dragging()
 	self.dragging = true
 	self:settag('dragging', true)
 	self:fire'started_dragging'
@@ -2046,24 +2116,23 @@ function ui.layer:_started_dragging()
 end
 
 --called on the dragged widget when dragging ends.
-function ui.layer:_ended_dragging()
+function layer:_ended_dragging()
 	self.dragging = false
 	self:settag('dragging', false)
 	self:fire'ended_dragging'
 	self:invalidate()
 end
 
-function ui.layer:_set_drop_target(set)
+function layer:_set_drop_target(set)
 	self:settag('drop_target', set)
 	self:invalidate()
 end
 
 --called on drag_start_widget to initiate a drag operation.
-function ui.layer:_start_drag(button, mx, my, area)
+function layer:_start_drag(button, mx, my, area)
 	local widget, dx, dy = self:start_drag(button, mx, my, area)
 	if widget then
 		self:settag('drag_source', true)
-		self:invalidate()
 		for i,elem in ipairs(self.ui.elements) do
 			if elem.targetable then
 				if self.ui:_accept_drop(widget, elem) then
@@ -2077,21 +2146,21 @@ function ui.layer:_start_drag(button, mx, my, area)
 end
 
 --stub: return a widget to drag (self works too).
-function ui.layer:start_drag(button, mx, my, area) end
+function layer:start_drag(button, mx, my, area) end
 
-function ui.layer:_end_drag() --called on the drag_start_widget
+function layer:_end_drag() --called on the drag_start_widget
 	self:settag('drag_source', false)
 	self:fire('end_drag', self.ui.drag_widget)
 	self:invalidate()
 end
 
-function ui.layer:_drop(widget, mx, my, area) --called on the drop target
+function layer:_drop(widget, mx, my, area) --called on the drop target
 	local mx, my = self:from_window(mx, my)
 	self:fire('drop', widget, mx, my, area)
 	self:invalidate()
 end
 
-function ui.layer:_drag(mx, my) --called on the dragged widget
+function layer:_drag(mx, my) --called on the dragged widget
 	local pmx, pmy = self.parent:from_window(mx, my)
 	local dmx, dmy = self:to_parent(self.ui.drag_mx, self.ui.drag_my)
 	self:fire('drag', pmx - dmx, pmy - dmy)
@@ -2099,7 +2168,7 @@ function ui.layer:_drag(mx, my) --called on the dragged widget
 end
 
 --default behavior: drag the widget from the initial grabbing point.
-function ui.layer:drag(dx, dy)
+function layer:drag(dx, dy)
 	self.x = self.x + dx
 	self.y = self.y + dy
 	self:invalidate()
@@ -2107,15 +2176,17 @@ end
 
 --focusing and keyboard event handling
 
-function ui.window:remove_focus()
+function window:remove_focus()
 	local fw = self.focused_widget
 	if not fw then return end
 	fw:fire'lostfocus'
 	fw:settag('focused', false)
+	self:fire('lostfocus', fw)
+	self.ui:fire('lostfocus', fw)
 	fw:invalidate()
 end
 
-function ui.layer:focus()
+function layer:focus()
 	if not self.visible then
 		return
 	end
@@ -2124,6 +2195,8 @@ function ui.layer:focus()
 		self:fire'gotfocus'
 		self:settag('focused', true)
 		self.window.focused_widget = self
+		self.window:fire('gotfocus', self)
+		self.ui:fire('gotfocus', self)
 		self:invalidate()
 		return true
 	else --focus first focusable child
@@ -2134,11 +2207,11 @@ function ui.layer:focus()
 	end
 end
 
-function ui.layer:get_focused()
+function layer:get_focused()
 	return self.window and self.window.focused_widget == self
 end
 
-function ui.layer:get_focused_widget()
+function layer:get_focused_widget()
 	if self.focused then
 		return self
 	end
@@ -2152,7 +2225,7 @@ function ui.layer:get_focused_widget()
 	end
 end
 
-function ui.layer:focusable_widgets()
+function layer:focusable_widgets()
 	local t = {}
 	if self.layers then
 		for i,layer in ipairs(self.layers) do
@@ -2175,7 +2248,7 @@ function ui.layer:focusable_widgets()
 	return t
 end
 
-function ui.layer:next_focusable_sibling_widget(widget, forward)
+function layer:next_focusable_sibling_widget(widget, forward)
 	assert(widget.parent == self)
 	local t = self:focusable_widgets()
 	for i,layer in ipairs(t) do
@@ -2185,7 +2258,7 @@ function ui.layer:next_focusable_sibling_widget(widget, forward)
 	end
 end
 
-function ui.layer:next_focusable_widget(forward)
+function layer:next_focusable_widget(forward)
 	if not self.parent then
 		return self
 	else
@@ -2195,7 +2268,7 @@ end
 
 --layers geometry, drawing and hit testing
 
-function ui.layer:layers_bounding_box(strict)
+function layer:layers_bounding_box(strict)
 	local x, y, w, h = 0, 0, 0, 0
 	if self.layers then
 		for _,layer in ipairs(self.layers) do
@@ -2206,14 +2279,14 @@ function ui.layer:layers_bounding_box(strict)
 	return x, y, w, h
 end
 
-function ui.layer:draw_layers() --called in content space
+function layer:draw_layers() --called in content space
 	if not self.layers then return end
 	for i = 1, #self.layers do
 		self.layers[i]:draw()
 	end
 end
 
-function ui.layer:hit_test_layers(x, y, reason) --called in content space
+function layer:hit_test_layers(x, y, reason) --called in content space
 	if not self.layers then return end
 	for i = #self.layers, 1, -1 do
 		local widget, area = self.layers[i]:hit_test(x, y, reason)
@@ -2228,7 +2301,7 @@ end
 --border edge widths relative to box rect at %-offset in border width.
 --offset is in -1..1 where -1=inner edge, 0=center, 1=outer edge.
 --returned widths are positive when inside and negative when outside box rect.
-function ui.layer:_border_edge_widths(offset)
+function layer:_border_edge_widths(offset)
 	local o = self.border_offset + offset + 1
 	local w1 = lerp(o, -1, 1, self.border_width_left, 0)
 	local h1 = lerp(o, -1, 1, self.border_width_top, 0)
@@ -2245,23 +2318,23 @@ function ui.layer:_border_edge_widths(offset)
 	return w1, h1, w2, h2
 end
 
-function ui.layer:border_pos(offset)
+function layer:border_pos(offset)
 	local w, h = self:_border_edge_widths(offset)
 	return w, h
 end
 
 --border rect at %-offset in border width.
-function ui.layer:border_rect(offset, size_offset)
+function layer:border_rect(offset, size_offset)
 	local w1, h1, w2, h2 = self:_border_edge_widths(offset)
 	local w = self.w - w2 - w1
 	local h = self.h - h2 - h1
 	return box2d.offset(size_offset or 0, w1, h1, w, h)
 end
 
-function ui.layer:get_border_outer_x() return (select(1, self:border_rect(1))) end
-function ui.layer:get_border_outer_y() return (select(2, self:border_rect(1))) end
-function ui.layer:get_border_outer_w() return (select(3, self:border_rect(1))) end
-function ui.layer:get_border_outer_h() return (select(4, self:border_rect(1))) end
+function layer:get_border_outer_x() return (select(1, self:border_rect(1))) end
+function layer:get_border_outer_y() return (select(2, self:border_rect(1))) end
+function layer:get_border_outer_w() return (select(3, self:border_rect(1))) end
+function layer:get_border_outer_h() return (select(4, self:border_rect(1))) end
 
 --corner radius at pixel offset from the stroke's center on one dimension.
 local function offset_radius(r, o)
@@ -2269,7 +2342,7 @@ local function offset_radius(r, o)
 end
 
 --border rect at %-offset in border width, plus radii of rounded corners.
-function ui.layer:border_round_rect(offset, size_offset)
+function layer:border_round_rect(offset, size_offset)
 	local k = self.corner_radius_kappa
 
 	local x1, y1, w, h = self:border_rect(0) --at stroke center
@@ -2387,7 +2460,7 @@ end
 
 --trace the border contour path at offset.
 --offset is in -1..1 where -1=inner edge, 0=center, 1=outer edge.
-function ui.layer:border_path(offset, size_offset)
+function layer:border_path(offset, size_offset)
 	local cr = self.window.cr
 	local x1, y1, w, h, r1x, r1y, r2x, r2y, r3x, r3y, r4x, r4y, k =
 		self:border_round_rect(offset, size_offset)
@@ -2400,7 +2473,7 @@ function ui.layer:border_path(offset, size_offset)
 	cr:close_path()
 end
 
-function ui.layer:border_visible()
+function layer:border_visible()
 	return
 		self.border_width_left ~= 0
 		or self.border_width_top ~= 0
@@ -2408,7 +2481,7 @@ function ui.layer:border_visible()
 		or self.border_width_bottom ~= 0
 end
 
-function ui.layer:draw_border()
+function layer:draw_border()
 	if not self:border_visible() then return end
 	local cr = self.window.cr
 
@@ -2491,7 +2564,7 @@ end
 
 --background geometry and drawing
 
-function ui.layer:background_visible()
+function layer:background_visible()
 	return (
 		(self.background_type == 'color' and self.background_color)
 		or ((self.background_type == 'gradient'
@@ -2501,25 +2574,25 @@ function ui.layer:background_visible()
 	) and true or false
 end
 
-function ui.layer:background_rect(size_offset)
+function layer:background_rect(size_offset)
 	return self:border_rect(self.background_clip_border_offset, size_offset)
 end
 
-function ui.layer:background_round_rect(size_offset)
+function layer:background_round_rect(size_offset)
 	return self:border_round_rect(self.background_clip_border_offset, size_offset)
 end
 
-function ui.layer:background_path(size_offset)
+function layer:background_path(size_offset)
 	self:border_path(self.background_clip_border_offset, size_offset)
 end
 
-function ui.layer:set_background_scale(scale)
+function layer:set_background_scale(scale)
 	self.background_scale_x = scale
 	self.background_scale_y = scale
 end
 
 local mt
-function ui.layer:paint_background()
+function layer:paint_background()
 	local cr = self.window.cr
 	cr:operator(self.background_operator)
 	local bg_type = self.background_type
@@ -2578,13 +2651,13 @@ end
 
 --box-shadow geometry and drawing
 
-ui.layer._shadow_blur_passes = 2
+layer._shadow_blur_passes = 2
 
-function ui.layer:shadow_visible()
+function layer:shadow_visible()
 	return self.shadow_blur > 0 or self.shadow_x ~= 0 or self.shadow_y ~= 0
 end
 
-function ui.layer:shadow_rect(size)
+function layer:shadow_rect(size)
 	if self:border_visible() then
 		return self:border_rect(1, size)
 	else
@@ -2592,7 +2665,7 @@ function ui.layer:shadow_rect(size)
 	end
 end
 
-function ui.layer:shadow_round_rect(size)
+function layer:shadow_round_rect(size)
 	if self:border_visible() then
 		return self:border_round_rect(1, size)
 	else
@@ -2600,7 +2673,7 @@ function ui.layer:shadow_round_rect(size)
 	end
 end
 
-function ui.layer:shadow_path(size)
+function layer:shadow_path(size)
 	if self:border_visible() then
 		self:border_path(1, size)
 	else
@@ -2608,7 +2681,7 @@ function ui.layer:shadow_path(size)
 	end
 end
 
-function ui.layer:shadow_valid_key(t)
+function layer:shadow_valid_key(t)
 	local x, y, w, h, r1x, r1y, r2x, r2y, r3x, r3y, r4x, r4y, k =
 		self:shadow_round_rect(0)
 	return t.shadow_blur == self.shadow_blur
@@ -2618,14 +2691,14 @@ function ui.layer:shadow_valid_key(t)
 		and t.k == k
 end
 
-function ui.layer:shadow_store_key(t)
+function layer:shadow_store_key(t)
 	t.shadow_blur = self.shadow_blur
 	t.x, t.y, t.w, t.h, t.r1x, t.r1y,
 		t.r2x, t.r2y, t.r3x, t.r3y, t.r4x, t.r4y, t.k =
 			self:shadow_round_rect(0)
 end
 
-function ui.layer:draw_shadow()
+function layer:draw_shadow()
 	if not self:shadow_visible() then return end
 	local cr = self.window.cr
 	local t = self._shadow or {}
@@ -2696,11 +2769,11 @@ end
 
 --text geometry and drawing
 
-function ui.layer:text_visible()
+function layer:text_visible()
 	return self.text and true or false
 end
 
-function ui.layer:draw_text()
+function layer:draw_text()
 	if not self:text_visible() then return end
 	self:setfont()
 	local cw, ch = self:content_size()
@@ -2708,7 +2781,7 @@ function ui.layer:draw_text()
 		self.text_align, self.text_valign, self.text_multiline)
 end
 
-function ui.layer:text_bounding_box()
+function layer:text_bounding_box()
 	if not self:text_visible() then return 0, 0, 0, 0 end
 	self:setfont()
 	local w, h = self.window:text_size(self.text, self.text_multiline)
@@ -2719,13 +2792,13 @@ end
 
 --content-box geometry, drawing and hit testing
 
-function ui.layer:padding_pos() --in box space
+function layer:padding_pos() --in box space
 	return
 		self.padding_left,
 		self.padding_top
 end
 
-function ui.layer:padding_rect() --in box space
+function layer:padding_rect() --in box space
 	return
 		self.padding_left,
 		self.padding_top,
@@ -2733,31 +2806,31 @@ function ui.layer:padding_rect() --in box space
 		self.h - self.padding_top - self.padding_bottom
 end
 
-function ui.layer:to_content(x, y) --box space coord in content space
+function layer:to_content(x, y) --box space coord in content space
 	local px, py = self:padding_pos()
 	return x - px, y - py
 end
 
-function ui.layer:from_content(x, y) --content space coord in box space
+function layer:from_content(x, y) --content space coord in box space
 	local px, py = self:padding_pos()
 	return px + x, py + y
 end
 
-function ui.layer:draw_content() --called in own content space
+function layer:draw_content() --called in own content space
 	self:draw_layers()
 	self:draw_text()
 end
 
-function ui.layer:hit_test_content(x, y, reason) --called in own content space
+function layer:hit_test_content(x, y, reason) --called in own content space
 	return self:hit_test_layers(x, y, reason)
 end
 
-function ui.layer:content_bounding_box(strict)
+function layer:content_bounding_box(strict)
 	local x, y, w, h = self:layers_bounding_box(strict)
 	return box2d.bounding_box(x, y, w, h, self:text_bounding_box())
 end
 
-function ui.layer:after_draw() --called in parent's content space; child intf.
+function layer:after_draw() --called in parent's content space; child intf.
 	if not self.visible or self.opacity == 0 then return end
 	if self.opacity <= 0 then return end
 	local cr = self.window.cr
@@ -2820,7 +2893,7 @@ function ui.layer:after_draw() --called in parent's content space; child intf.
 end
 
 --called in parent's content space; child interface.
-function ui.layer:hit_test(x, y, reason)
+function layer:hit_test(x, y, reason)
 
 	if not self.visible or self.opacity == 0 then return end
 
@@ -2906,7 +2979,7 @@ function ui.layer:hit_test(x, y, reason)
 	end
 end
 
-function ui.layer:bounding_box(strict) --child interface
+function layer:bounding_box(strict) --child interface
 	local x, y, w, h = 0, 0, 0, 0
 	local cc = self.clip_content
 	if strict or not cc then
@@ -2932,11 +3005,11 @@ end
 
 --element interface
 
-function ui.layer:get_frame_clock()
+function layer:get_frame_clock()
 	return self.window.frame_clock
 end
 
-function ui.layer:invalidate()
+function layer:invalidate()
 	if self.window then
 		self.window:invalidate()
 	end
@@ -2944,34 +3017,38 @@ end
 
 --the `hot` property which is managed by the window
 
-function ui.layer:get_hot()
+function layer:get_hot()
 	return self.ui.hot_widget == self
 end
 
 --the `active` property and tag which the widget must set manually
 
-function ui.layer:get_active()
+function layer:get_active()
 	return self.ui.active_widget == self
 end
 
-function ui.layer:set_active(active)
+function layer:set_active(active)
 	if self.active == active then return end
 	local active_widget = self.ui.active_widget
 	if active_widget then
 		active_widget:settag('active', false)
 		self.ui.active_widget = false
 		active_widget:fire'deactivated'
+		active_widget.window:fire('deactivated', active_widget)
+		active_widget.ui:fire('deactivated', active_widget)
 	end
 	if active then
 		self.ui.active_widget = self
 		self:settag('active', true)
 		self:fire'activated'
+		self.window:fire('activated', self)
+		self.ui:fire('activated', self)
 		self:focus()
 	end
 	self:invalidate()
 end
 
-function ui.layer:activate()
+function layer:activate()
 	if not self.active then
 		self.active = true
 		self.active = false
@@ -2980,38 +3057,38 @@ end
 
 --utils in content space to use from draw_content() and hit_test_content()
 
-function ui.layer:rect() return 0, 0, self.w, self.h end --the box itself
-function ui.layer:size() return self.w, self.h end
+function layer:rect() return 0, 0, self.w, self.h end --the box itself
+function layer:size() return self.w, self.h end
 
-function ui.layer:content_size()
+function layer:content_size()
 	return select(3, self:padding_rect())
 end
 
-function ui.layer:content_rect() --in content space
+function layer:content_rect() --in content space
 	return 0, 0, select(3, self:padding_rect())
 end
-function ui.layer:content_size()
+function layer:content_size()
 	return select(3, self:padding_rect())
 end
-function ui.layer:get_cw() return (select(3, self:padding_rect())) end
-function ui.layer:get_ch() return (select(4, self:padding_rect())) end
+function layer:get_cw() return (select(3, self:padding_rect())) end
+function layer:get_ch() return (select(4, self:padding_rect())) end
 
-function ui.layer:set_cw(cw) self.w = cw + (self.w - self.cw) end
-function ui.layer:set_ch(ch) self.h = ch + (self.h - self.ch) end
+function layer:set_cw(cw) self.w = cw + (self.w - self.cw) end
+function layer:set_ch(ch) self.h = ch + (self.h - self.ch) end
 
-function ui.layer:get_x2() return self.x + self.w end
-function ui.layer:get_y2() return self.x + self.h end
+function layer:get_x2() return self.x + self.w end
+function layer:get_y2() return self.x + self.h end
 
-function ui.layer:set_x2(x2) self.x = x2 - self.w end
-function ui.layer:set_y2(y2) self.y = y2 - self.h end
+function layer:set_x2(x2) self.x = x2 - self.w end
+function layer:set_y2(y2) self.y = y2 - self.h end
 
-function ui.layer:get_cx() return self.x + self.w / 2 end
-function ui.layer:get_cy() return self.x + self.h / 2 end
+function layer:get_cx() return self.x + self.w / 2 end
+function layer:get_cy() return self.x + self.h / 2 end
 
-function ui.layer:set_cx(cx) self.x = cx - self.w / 2 end
-function ui.layer:set_cy(cy) self.y = cy - self.h / 2 end
+function layer:set_cx(cx) self.x = cx - self.w / 2 end
+function layer:set_cy(cy) self.y = cy - self.h / 2 end
 
-function ui.layer:setfont(family, weight, slant, size, color, line_spacing)
+function layer:setfont(family, weight, slant, size, color, line_spacing)
 	self.window:setfont(
 		family or self.font_family,
 		weight or self.font_weight,
@@ -3035,6 +3112,8 @@ local autoload = {
 	menu       = 'ui_menu',
 	image      = 'ui_image',
 	grid       = 'ui_grid',
+	popup      = 'ui_popup',
+	dropdown   = 'ui_dropdown',
 }
 
 for widget, submodule in pairs(autoload) do

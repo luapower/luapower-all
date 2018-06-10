@@ -143,13 +143,12 @@ function ui.scrollbar:after_init(ui, t)
 	self:_clamp_offset()
 
 	self.grabbar = self.grabbar_class(self.ui, {
-		subtag = 'grabbar', parent = self,
+		tags = 'scrollbar_grabbar', parent = self,
 	}, self.grabbar)
 
 	function self.grabbar.drag(grabbar, dx, dy)
 		grabbar.x = clamp(0, grabbar.x + dx, self.cw - grabbar.w)
-		self.offset = self:grabbar_offset()
-		self:invalidate()
+		self:transition('offset', self:grabbar_offset(), 0)
 	end
 end
 
@@ -296,12 +295,13 @@ function ui.scrollbox:after_init(ui, t)
 	}
 
 	self.content = self.content_class(self.ui, {
-		id = self:_subtag'content', parent = self.content_container,
+		tags = 'content',
+		parent = self.content_container,
 		clip_content = true, --for faster bounding box computation
 	}, self.content)
 
 	self.vscrollbar = self.vscrollbar_class(self.ui, {
-		id = self:_subtag'vertical_scrollbar',
+		tags = 'vhscrollbar',
 		parent = self, vertical = true, autohide = self.autohide,
 	}, self.vscrollbar)
 
@@ -316,7 +316,7 @@ function ui.scrollbox:after_init(ui, t)
 	end
 
 	self.hscrollbar = self.hscrollbar_class(self.ui, {
-		id = self:_subtag'horizontal_scrollbar',
+		tags = 'hscrollbar',
 		parent = self, vertical = false, autohide = self.autohide,
 	}, self.hscrollbar)
 

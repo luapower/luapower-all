@@ -83,12 +83,11 @@ WS_EX_NOINHERITLAYOUT = 0x00100000
 WS_EX_LAYOUTRTL       = 0x00400000
 WS_EX_COMPOSITED      = 0x02000000
 
---NOTE: WS_EX_NOACTIVATE only works if there's only a single window in the app,
---otherwise it only works for windows with WS_EX_TOOLWINDOW + WS_CHILD + WS_THICKFRAME.
---there's also a bug: "show window contents while dragging" doesn't work,
---so SetWindowPos() must be called in WM_MOVING and WM_SIZING too.
---Also, you must set WS_CHILD **after** the window is created, otherwise
---your toolboxes will be clipped by the parent window, just like controls!
+--NOTE: There's a bug with WS_EX_TOOLWINDOW + WS_EX_NOACTIVATE: showing
+--window contents while dragging doesn't work, so SetWindowPos() must be
+--called in WM_MOVING and WM_SIZING. Also, you must set WS_CHILD **after**
+--the window is created, otherwise your toolboxes will be clipped by the
+--parent window, just like controls!
 WS_EX_NOACTIVATE      = 0x08000000
 
 WS_POPUPWINDOW         = bit.bor(WS_POPUP, WS_BORDER, WS_SYSMENU)
@@ -675,8 +674,11 @@ BOOL PostMessageW(
 LONG GetMessageTime(void);
 ]]
 
+local msg0 = types.MSG()
 function GetMessage(hwnd, WMmin, WMmax, msg)
-	return checkpoz(C.GetMessageW(types.MSG(msg), hwnd, flags(WMmin), flags(WMmax)))
+	msg = msg and types.MSG(msg) or msg0
+	checkpoz(C.GetMessageW(msg, hwnd, flags(WMmin), flags(WMmax)))
+	return msg
 end
 
 function DispatchMessage(msg)
@@ -755,6 +757,61 @@ QS_INPUT            = bit.bor(QS_MOUSE, QS_KEY, QS_RAWINPUT)
 QS_ALLEVENTS        = bit.bor(QS_INPUT, QS_POSTMESSAGE, QS_TIMER, QS_PAINT, QS_HOTKEY)
 QS_ALLINPUT         = bit.bor(QS_INPUT, QS_POSTMESSAGE, QS_TIMER, QS_PAINT, QS_HOTKEY, QS_SENDMESSAGE)
 
+local STATUS_ABANDONED_WAIT_0 = 0x00000080
+
+--flags for MsgWaitForMultipleObjectsEx()
+MWMO_WAITALL        = 0x0001
+MWMO_ALERTABLE      = 0x0002
+MWMO_INPUTAVAILABLE = 0x0004
+
+--return values for MsgWaitForMultipleObjectsEx()
+WAIT_FAILED         = 0xFFFFFFFF
+WAIT_OBJECT_0       = 0
+WAIT_ABANDONED      = STATUS_ABANDONED_WAIT_0
+WAIT_ABANDONED_0    = STATUS_ABANDONED_WAIT_0
+WAIT_TIMEOUT        = 258
+WAIT_IO_COMPLETION  = 0x000000C0
+
+ffi.cdef[[
+DWORD GetQueueStatus(UINT flags);
+DWORD MsgWaitForMultipleObjectsEx(
+	DWORD  nCount,
+	HANDLE *pHandles,
+	DWORD  dwMilliseconds,
+	DWORD  dwWakeMask,
+	DWORD  dwFlags
+);
+]]
+
+--returns:
+	-- true: input in queue
+	-- false: timeout
+	-- number[, abandoned]: index in handles array (and mutex abandoned status)
+	-- 'io': WAIT_IO_COMPLETION
+function MsgWaitForMultipleObjectsEx(count, handles, wait_ms, QS, MWMO)
+	if wait_ms == 1/0 then
+		wait_ms = 0xFFFFFFFF
+	end
+
+	local ret = C.MsgWaitForMultipleObjectsEx(
+		count, handles, wait_ms, flags(QS), flags(MWMO))
+
+	check(ret ~= WAIT_FAILED)
+	if ret >= WAIT_OBJECT_0 and ret < WAIT_OBJECT_0 + count then
+		return ret - WAIT_OBJECT_0
+	elseif ret == WAIT_OBJECT_0 + count then
+		return true
+	elseif ret >= WAIT_ABANDONED_0 and ret < WAIT_ABANDONED_0 + count then
+		return ret - WAIT_ABANDONED_0, true
+	elseif ret == WAIT_TIMEOUT then
+		return false
+	elseif ret == WAIT_IO_COMPLETION then
+		return 'io'
+	else
+		assert(false)
+	end
+end
+
 PM_NOREMOVE         = 0x0000
 PM_REMOVE           = 0x0001
 PM_NOYIELD          = 0x0002
@@ -763,8 +820,9 @@ PM_QS_POSTMESSAGE   = bit.lshift(bit.bor(QS_POSTMESSAGE, QS_HOTKEY, QS_TIMER), 1
 PM_QS_PAINT         = bit.lshift(QS_PAINT, 16)
 PM_QS_SENDMESSAGE   = bit.lshift(QS_SENDMESSAGE, 16)
 
+local msg0 = types.MSG()
 function PeekMessage(hwnd, WMmin, WMmax, PM, msg)
-	msg = types.MSG(msg)
+	msg = msg and types.MSG(msg) or msg0
 	return C.PeekMessageW(msg, hwnd, flags(WMmin), flags(WMmax), flags(PM)) ~= 0, msg
 end
 

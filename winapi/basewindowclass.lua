@@ -98,6 +98,11 @@ MessageRouter = MessageRouter() --singleton
 
 --standard recipe message dispatcher based on the Window tracker.
 function ProcessMessage(msg)
+	if msg.message == WM_QUIT then --posted by PostQuitMessage()
+		local exit_code = tonumber(msg.signed_wParam)
+		return false, exit_code
+	end
+
 	local window = Windows.active_window
 	if window then
 		if window.accelerators and window.accelerators.haccel then
@@ -118,31 +123,43 @@ function ProcessMessage(msg)
 	TranslateMessage(msg) --make keyboard work
 	DispatchMessage(msg) --make everything else work
 
-	--posted by Window objects to unregister their WNDCLASS after they're gone.
-	if msg.message == WM_UNREGISTER_CLASS then
+	if msg.message == WM_UNREGISTER_CLASS then --posted by Window objects
 		UnregisterClass(msg.wParam)
-	elseif msg.message == WM_EXCEPTION then
+	elseif msg.message == WM_EXCEPTION then --posted by MessageRouter
 		error'WM_EXCEPTION'
 	end
+
+	return true
 end
 
 --NOTE: you can call the message loop like this: os.exit(MessageLoop()).
 function MessageLoop()
-	local msg = types.MSG()
 	while true do
-		local ret = GetMessage(nil, 0, 0, msg)
-		if ret == 0 then break end --WM_QUIT received
-		ProcessMessage(msg)
+		local continue, exit_code = ProcessMessage(GetMessage(nil, 0, 0))
+		if not continue then return exit_code end
 	end
-	return tonumber(msg.signed_wParam) --WM_QUIT sends an int exit code in wParam
 end
 
-function ProcessNextMessage()
-	local ok, msg = PeekMessage(nil, 0, 0, PM_REMOVE)
-	if not ok then return false end
-	if msg.message == WM_QUIT then return false, true end
-	ProcessMessage(msg)
-	return true
+function ProcessNextMessage(timeout)
+	if (timeout or 0) <= 0 then
+		local ok, msg = PeekMessage(nil, 0, 0, PM_REMOVE)
+		if not ok then return false end
+		return ProcessMessage(msg)
+	elseif timeout == 1/0 then
+		return ProcessMessage(GetMessage(nil, 0, 0))
+	else
+		local ok, msg = PeekMessage(nil, 0, 0, PM_REMOVE)
+		if ok then
+			return ProcessMessage(msg)
+		end
+		local ret = MsgWaitForMultipleObjectsEx(0, nil, timeout * 1000,
+			QS_ALLINPUT, bit.bor(MWMO_INPUTAVAILABLE, MWMO_ALERTABLE))
+		if ret == false then return false end
+		assert(ret == true)
+		local ok, msg = PeekMessage(nil, 0, 0, PM_REMOVE)
+		if not ok then return false end
+		return ProcessMessage(msg)
+	end
 end
 
 --process all pending messages from the queue (if any) and return.
@@ -822,13 +839,17 @@ function BaseWindow:batch_update(f, ...)
 	assert(ok, err)
 end
 
-function BaseWindow:redraw()
+function BaseWindow:redraw(RDW)
 	RedrawWindow(self.hwnd, nil,
-		bit.bor(RDW_ERASE, RDW_FRAME, RDW_INVALIDATE, RDW_ALLCHILDREN))
+		RDW or bit.bor(RDW_ERASE, RDW_FRAME, RDW_INVALIDATE, RDW_ALLCHILDREN))
 end
 
 function BaseWindow:invalidate(r, erase_background)
 	InvalidateRect(self.hwnd, r, erase_background ~= false)
+end
+
+function BaseWindow:update()
+	UpdateWindow(self.hwnd)
 end
 
 function BaseWindow:__WM_PAINT_pass(ok, err)

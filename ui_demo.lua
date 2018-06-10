@@ -31,6 +31,7 @@ if ... == 'ui_demo' then --loaded via require()
 	return function(test)
 		test(ui, win)
 		win:show()
+		ui.maxfps = 60
 		ui:run()
 		ui:free()
 	end
@@ -433,5 +434,6 @@ test_layers()
 --test_text()
 
 win:show()
+ui.maxfps = 60
 ui:run()
 ui:free()

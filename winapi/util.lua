@@ -105,6 +105,7 @@ function checkwith(valid) --error raising variant
 	end
 end
 
+local function valid(ret) return ret, 'error' end
 local function validz(ret) return ret == 0, 'zero expected, got non-zero' end
 local function validnz(ret) return ret ~= 0, 'non-zero expected, got zero' end
 local function validtrue(ret) return ret == 1, '1 (TRUE) expected, got 0 (FALSE)' end
@@ -124,6 +125,7 @@ checknz   = checkwith(validnz)    --a zero is an error
 checktrue = checkwith(validtrue)  --non-TRUE is an error
 checkh    = checkwith(validh)     --a null pointer is an error (also converts NULL->nil)
 checkpoz  = checkwith(validpoz)   --a (strictly) negative number is an error
+check     = checkwith(valid)      --generic checker
 
 --create a special call wrapper for functions for which the return value alone may or may not
 --indicate an error, the differentiator being GetLastError() returning 0 or not.

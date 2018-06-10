@@ -37,12 +37,20 @@ dropdown.button_class = button
 button.border_color = dropdown.border_color
 button.border_width = dropdown.border_width
 
-local list = ui.grid--:subclass'dropdown_list'
-dropdown.list_class = list
+function dropdown:create_button()
+	local button = self.button_class(self.ui, {
+		parent = self,
+		dropdown = self,
+	}, self.button)
 
---list.header_visible = false
---list.col_move = false
---list.row_move = false
+	function button:pressed()
+		local popup = self.dropdown.popup
+		popup.visible = not popup.visible
+		self:invalidate()
+	end
+
+	return button
+end
 
 function button:sync_triangle()
 	local cw, ch = self.cw, self.ch
@@ -72,24 +80,31 @@ function button:before_draw_content()
 	self:draw_triangle()
 end
 
-function dropdown:create_button()
-	local button = self.button_class(self.ui, {
+local popup = ui.popup--:subclass'dropdown_popup'
+dropdown.popup_class = popup
+
+function dropdown:create_popup()
+	local x = 0
+	local y = self.h
+	local w = self.w
+	local h = math.floor(w * 1.4)
+	return self.ui.popup(self.ui, {
 		parent = self,
-		dropdown = self,
-	}, self.button)
-
-	function button:pressed()
-		self.dropdown.list.visible = not self.dropdown.list.visible
-		self:invalidate()
-	end
-
-	return button
+		x = x, y = y, w = w, h = h,
+		visible = false,
+	})
 end
 
-function dropdown:create_list()
+local list = ui.grid:subclass'dropdown_list'
+dropdown.list_class = list
+
+list.header_visible = false
+list.col_move = false
+list.row_move = false
+
+function dropdown:create_list(popup)
 	local list = self.list_class(self.ui, {
-		pos_parent = self,
-		parent = self.window,
+		parent = popup,
 		cols = {
 			{w = 150},
 		},
@@ -106,7 +121,8 @@ end
 
 function dropdown:after_init()
 	self.button = self:create_button()
-	self.list = self:create_list()
+	self.popup = self:create_popup()
+	self.list = self:create_list(self.popup)
 end
 
 function dropdown:after_sync()
@@ -118,8 +134,11 @@ function dropdown:after_sync()
 
 	local l = self.list
 	l.w = self.w
-	l.h = math.floor(l.w * 1.4)
-	l.y = self.h
+	l.h = math.min(l:rows_h(), math.floor(l.w * 1.4))
+
+	local p = self.popup
+	p.h = l.h
+	p:sync()
 end
 
 function dropdown:before_draw()

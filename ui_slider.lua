@@ -216,19 +216,19 @@ function ui.slider:after_init(ui, t)
 	self._position = t and t.position
 	local br = self.border.corner_radius_top_left
 	self.border = self.border(self.ui, {
-		id = self:_subtag'border',
+		tags = 'slider_border',
 		x = -br,
 		y = (self.h - self.border.h) / 2,
 		w = self.cw + 2 * br,
 		parent = self,
 	})
 	self.fill = self.fill(self.ui, {
-		id = self:_subtag'fill',
+		tags = 'slider_fill',
 		h = self.border.h,
 		parent = self.border,
 	})
 	self.pin = self.pin(self.ui, {
-		id = self:_subtag'pin',
+		tags = 'slider_pin',
 		y = (self.h - self.pin.h) / 2,
 		parent = self,
 	})
@@ -240,14 +240,14 @@ function ui.slider:after_init(ui, t)
 				w = 200,
 				h = 20,
 				text = label,
-				id = self:_subtag'step_label',
+				tags = 'slider_step_label',
 				issteplabel = true,
 				parent = self,
 			})
 		end
 	end
 	self.tooltip = self.tooltip(self.ui, {
-		id = self:_subtag'tooltip',
+		tags = 'slider_tooltip',
 		x = self.pin.w / 2,
 		parent = self.pin,
 	})

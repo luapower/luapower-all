@@ -9,6 +9,7 @@ local box2d = require'box2d'
 local cbframe = require'cbframe' --for drag&drop on x64
 local bitmap = require'bitmap' --for clipboard
 local winapi = require'winapi'
+local time = require'time'
 require'winapi.spi'
 require'winapi.sysinfo'
 require'winapi.systemmetrics'
@@ -54,6 +55,7 @@ nw.app = app
 function app:init(frontend)
 
 	self.frontend = frontend
+	self._norepaint = true
 
 	--enable WM_INPUT for keyboard events
 	local rid = winapi.types.RAWINPUTDEVICE()
@@ -78,12 +80,59 @@ end
 
 --message loop ---------------------------------------------------------------
 
-function app:run()
-	winapi.MessageLoop()
+--manual repainting of all windows based on the `_invalid` flag
+function app:_repaint_all(d)
+
+	local t0 = self._first_frame_time
+	local t1 = self._last_frame_time
+	local t2 = time.clock()
+	local n = d > 0 and t0 and (t2 - t0) / d or 0
+	local i0 = self._last_frame or 1
+	local i1 = math.floor(n) + 1
+	local dt = (math.ceil(n) - n) * d
+
+	if t1 and t2 - t1 < d - 1/1000 and dt > 1/1000 then
+		return dt
+	end
+
+	local lost_count = i1 - i0 - 1
+	if lost_count > 0 then
+		--TODO: we're still losing one frame every now and then
+		--print('lost frames:', lost_count)
+	end
+
+	self._first_frame_time = t0 or t2
+	self._last_frame_time = t2
+	self._last_frame = i1
+
+	self._norepaint = false
+	local t = self.frontend._windows
+	for i = 1, #t do
+		local win = t[i]
+		if not win:dead() then
+			win.backend:repaint()
+		end
+	end
+	self._norepaint = true
+
+	return d
 end
 
-function app:poll()
-	return winapi.ProcessNextMessage()
+function app:poll(timeout)
+	self:_repaint_all(0)
+	return winapi.ProcessNextMessage(timeout)
+end
+
+function app:run()
+	local fps = self.frontend:maxfps()
+	local d = fps and 1/fps or 0
+	while true do
+		local dt = self:_repaint_all(d)
+		local more, exit_code = winapi.ProcessNextMessage(dt)
+		if not more and exit_code then
+			return exit_code
+		end
+	end
 end
 
 function app:stop()
@@ -401,7 +450,6 @@ function window:enter_fullscreen()
 
 	--disable events while we're changing the frame, size and state.
 	local events = self.frontend:events(false)
-	self._norepaint = true --invalidate() barrier
 
 	--this flickers but without it the taskbar won't dissapear immediately.
 	self.win:hide()
@@ -418,7 +466,6 @@ function window:enter_fullscreen()
 
 	--restore events, invalidate and show.
 	self._fullscreen = true
-	self._norepaint = false
 	self.frontend:events(events)
 
 	--show synchronously to avoid re-entring.
@@ -430,7 +477,6 @@ function window:exit_fullscreen()
 
 	--disable events while we're changing the frame and size.
 	local events = self.frontend:events(false)
-	self._norepaint = true
 
 	--put back the frame and normal rect
 	self.win.frame = self._fs.frame
@@ -440,7 +486,6 @@ function window:exit_fullscreen()
 
 	--restore events, invalidate and show.
 	self._fullscreen = false
-	self._norepaint = false
 	self.frontend:events(events)
 	self:invalidate()
 
@@ -1309,22 +1354,24 @@ glue.update(Window, Mouse)
 local rendering = {}
 local Rendering = {}
 
-function rendering:_invalidate(x, y, w, h)
-	if x then
-		self.win:invalidate(winapi.RECT(x, y, x + w, y + h))
+function rendering:_repaint(hdc)
+	if self.app._norepaint then
+		self._invalid = true
 	else
-		self.win:invalidate()
+		self._invalid = false
+		self:_paint_bitmap(hdc)
+		self:_paint_gl(hdc)
 	end
 end
 
 function Rendering:on_paint(hdc)
-	self.backend:_paint_bitmap(hdc)
-	self.backend:_paint_gl(hdc)
+	self.backend:_repaint(hdc)
 end
 
 function Rendering:WM_ERASEBKGND()
-	if not (self.backend._bitmap or self.backend._hrc) then return end
-	return false --skip drawing the background to prevent flicker.
+	if self.backend._bitmap or self.backend._hrc or self.backend._invalid then
+		return false --skip drawing the background to prevent flicker.
+	end
 end
 
 --rendering/bitmap -----------------------------------------------------------
@@ -1459,27 +1506,23 @@ function window:_update_layered()
 	self._bitmap:update_layered(self.win.hwnd, r.x, r.y)
 end
 
-function window:_invalidate_layered()
-	if self._layered_invalid then
-		self._layered_invalid = false
-		self.frontend:_backend_repaint()
-		self:_update_layered()
+function window:_repaint_layered()
+	self.frontend:_backend_repaint()
+	self:_update_layered()
+end
+
+function rendering:repaint()
+	if not self._invalid then return end
+	if self._layered then
+		self:_repaint_layered()
+	else
+		self.win:invalidate()
+		self.win:update()
 	end
 end
 
-function window:invalidate(...)
-	if self._norepaint then return end
-	if self._layered then
-		self._layered_invalid = true
-		if not self._layered_timer then
-			self._layered_timer = true
-			self.app:runevery(0, function()
-				self:_invalidate_layered()
-			end)
-		end
-	else
-		self:_invalidate(...)
-	end
+function window:invalidate()
+	self._invalid = true
 end
 
 --clear the bitmap's pixels and update the layered window.

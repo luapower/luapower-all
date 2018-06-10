@@ -268,8 +268,8 @@ function app:run(func)
 	self._stopping = false --stop() barrier
 end
 
-function app:step()
-	self.backend:step()
+function app:poll(timeout)
+	return self.backend:poll(timeout)
 end
 
 function app:running()
@@ -277,7 +277,7 @@ function app:running()
 end
 
 function app:stop()
-	if not self._running then return end --ignore while not running
+	--if not self._running then return end --ignore while not running
 	if self._stopping then return end --ignore repeated attempts
 	self._stopping = true
 	self.backend:stop()
@@ -293,6 +293,14 @@ function app:runafter(seconds, func)
 		func()
 		return false
 	end)
+end
+
+function app:maxfps(fps)
+	if fps == nil then
+		return self._maxfps or false
+	else
+		self._maxfps = fps
+	end
 end
 
 --quitting -------------------------------------------------------------------

@@ -41,14 +41,12 @@ function ui.button:mousedown()
 	if self.active_by_key then return end
 	self.active = true
 	self:focus()
-	self:invalidate()
 end
 
 function ui.button:mousemove(mx, my)
 	if self.active_by_key then return end
 	local mx, my = self:to_parent(mx, my)
 	self:settag('over', self:hit_test(mx, my, 'activate') == self)
-	self:invalidate()
 end
 
 function ui.button:mouseup()
@@ -57,7 +55,6 @@ function ui.button:mouseup()
 	if self.tags.over then
 		self:fire'pressed'
 	end
-	self:invalidate()
 end
 
 function ui.button:keydown(key)
@@ -65,7 +62,6 @@ function ui.button:keydown(key)
 		self.active = true
 		self.active_by_key = true
 		self:settag('over', true)
-		self:invalidate()
 	end
 end
 
@@ -78,7 +74,6 @@ function ui.button:keyup(key)
 		if key == 'enter' or key == 'space' then
 			self:fire'pressed'
 		end
-		self:invalidate()
 	end
 end
 
@@ -92,11 +87,13 @@ if not ... then require('ui_demo')(function(ui, win)
 		text = 'OK',
 	}
 
-	local b2 = ui:button{
+	local btn = ui.button:subclass'btn'
+
+	local b2 = btn(ui, {
 		parent = win,
 		x = 100, y = 150, w = 100, h = 26,
 		text = 'OK',
-	}
+	})
 
 	function b1:pressed() print'b1 pressed' end
 	function b2:pressed() print'b2 pressed' end

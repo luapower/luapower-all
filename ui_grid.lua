@@ -11,7 +11,6 @@ local push = table.insert
 local pop = table.remove
 local clamp = glue.clamp
 local indexof = glue.indexof
-local update = glue.update
 local binsearch = glue.binsearch
 local attr = glue.attr
 
@@ -92,11 +91,10 @@ end
 
 local freeze_pane = ui.layer:subclass'grid_freeze_pane'
 grid.freeze_pane_class = freeze_pane
-update(freeze_pane, pane)
+freeze_pane:inherit(pane)
 
 function grid:create_freeze_pane(t)
 	local pane = self.freeze_pane_class(self.ui, {
-		subtag = 'freeze_pane',
 		parent = self,
 		grid = self,
 		frozen = true,
@@ -123,14 +121,13 @@ end
 
 local scroll_pane = ui.scrollbox:subclass'grid_scroll_pane'
 grid.scroll_pane_class = scroll_pane
-update(scroll_pane, pane)
+scroll_pane:inherit(pane)
 
 scroll_pane.vscrollable = false
 scroll_pane.scrollbar_margin_right = 12
 
 function grid:create_scroll_pane(freeze_pane)
 	return self.scroll_pane_class(self.ui, {
-		subtag = 'scroll_pane',
 		parent = self,
 		grid = self,
 		frozen = false,
@@ -184,7 +181,6 @@ drag_splitter.background_color = '#fff2'
 
 function grid:create_splitter()
 	return self.splitter_class(self.ui, {
-		subtag = 'splitter',
 		parent = self,
 		grid = self,
 	}, self.splitter)
@@ -307,7 +303,6 @@ grid.header_visible = true
 
 function grid:create_header_layer(pane)
 	return self.header_layer_class(self.ui, {
-		subtag = 'header_layer',
 		parent = pane.content or pane,
 		pane = pane,
 		grid = self,
@@ -331,7 +326,6 @@ rows.clip_content = true --for rows
 
 function grid:create_rows_layer(pane)
 	return self.rows_layer_class(self.ui, {
-		subtags = 'rows_layer',
 		parent = pane.content or pane,
 		pane = pane,
 		grid = self,
@@ -373,10 +367,12 @@ function rows:override_hit_test_content(inherited, x, y, reason)
 		if i then
 			self.grid.hot_row_index = i
 			self.grid.hot_col = col
+			self:invalidate()
 			return self, 'cell'
 		end
 		self.grid.hot_row_index = false
 		self.grid.hot_col = false
+		self:invalidate()
 	end
 	return inherited(self, x, y, reason)
 end
@@ -773,9 +769,11 @@ function cell:sync_value(i, col, val)
 	self:settag('focused', self.grid:cell_focused(i, col))
 end
 
+function cell:invalidate() end --we call draw() manually
+
 function grid:create_cell()
 	local cell = self.cell_class(self.ui, self.cell)
-	cell:inherit(cell.super) --speed up cell drawing
+	cell:inherit() --speed up cell drawing
 	return cell
 end
 
@@ -909,7 +907,6 @@ function grid:draw_row_col(i, col, y, h, hot)
 	cell:sync_row(i, y, h)
 	cell:sync_value(i, col, self:cell_value(i, col))
 	cell:settag('hot', hot)
-	cell:update_styles()
 	cell:draw()
 end
 
@@ -1150,6 +1147,7 @@ function grid:move(actions, di, dj)
 		self.extend_row_index = false
 		self.extend_col = false
 	end
+	self:invalidate()
 end
 
 function rows:after_click()
@@ -1274,7 +1272,6 @@ grid.vscrollbar_margin_right = 6
 
 function grid:create_vscrollbar()
 	return self.vscrollbar_class(self.ui, {
-		subtag = 'vscrollbar',
 		parent = self,
 		grid = self,
 		vertical = true,
@@ -1310,6 +1307,7 @@ function grid:before_draw()
 end
 
 function grid:after_init(ui, t)
+
 	self._freeze_col = t.freeze_col
 	self.cols = {}
 	if t.cols then
@@ -1340,7 +1338,9 @@ end
 
 if not ... then require('ui_demo')(function(ui, win)
 
-	local g = ui:grid{
+	local grid = ui.grid:subclass'subgrid'
+
+	local g = grid(ui, {
 		id = 'g',
 		x = 20,
 		y = 20,
@@ -1386,7 +1386,7 @@ if not ... then require('ui_demo')(function(ui, win)
 			local n = math.random()
 			return n < .1 and 200 or 34
 		end,
-	}
+	})
 
 	function g:cell_value(i, col)
 		return col.text..' '..i..' 123456789 ................ abcdefghijklmnopqrstuvwxyz'
