@@ -108,7 +108,7 @@ function ProcessMessage(msg)
 		if window.accelerators and window.accelerators.haccel then
 			--make hotkeys work
 			if TranslateAccelerator(window.hwnd, window.accelerators.haccel, msg) then
-				return
+				return true
 			end
 		end
 		if not window.__wantallkeys then
@@ -116,7 +116,7 @@ function ProcessMessage(msg)
 			--for windows with no focusable controls, set __wantallkeys,
 			--which skips this step so that no WM_CHAR messages are filtered.
 			if IsDialogMessage(window.hwnd, msg) then
-				return
+				return true
 			end
 		end
 	end
