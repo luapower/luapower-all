@@ -1497,7 +1497,8 @@ just a convenience to aid in bulk removal of events).
 
 Remove all handlers associated with an event name and/or namespace.
 `event` can be `'event_name'`, `'.namespace'`, `'event_name.namespace'`,
-`{event_name, namespace}` or `nil/false` which removes all events.
+`{event_name, namespace}`, `{nil, namespace}` or `nil/false` which removes
+all events.
 
 ### `app/win/view:fire(event, ...) -> ret`
 

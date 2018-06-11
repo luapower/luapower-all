@@ -69,7 +69,7 @@ end
 
 local function event_namespace(event) --parse 'event', 'event.ns' or '.ns'
 	if type(event) == 'table' then
-		return unpack(event)
+		return event[1], event[2] --event, ns
 	end
 	local ev, ns = event:match'^([^%.]*)%.([^%.]+)$'
 	ev = ev or event
@@ -500,6 +500,10 @@ function window:_new(app, backend_class, useropt)
 	if opt.max_cw or opt.max_ch or not opt.resizeable then
 		assert(not opt.maximizable, 'a maximizable window cannot have a maximum size')
 		assert(not opt.fullscreenable, 'a fullscreenable window cannot have a maximum size')
+	end
+	if not opt.resizeable then
+		assert(not opt.maximizable, 'a maximizable window cannot be non-resizeable')
+		assert(not opt.fullscreenable, 'a fullscreenable cannot be non-resizeable')
 	end
 
 	--if missing some frame coords but given some client coords, convert client

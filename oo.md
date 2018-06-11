@@ -38,11 +38,13 @@ Object system with virtual properties and method overriding hooks.
  of the outer class (more below).
  * events with optional namespace tags:
    * `apple:on('falling.ns1', function(self, args...) ... end)` - register
-	  an event handler
+	  an event handler and associate it with the `ns1` tag (aka namespace)
+   * `apple:on({'falling', obj}, function ... end)` - same but link it to `obj`
 	* `Apple:falling(args...)` - default event handler for the `falling` event
 	* `apple:fire('falling', args...)` - call all `falling` event handlers
 	* `apple:off'falling'` - remove all `falling` event handlers
-	* `apple:off'.ns1'` - remove all event handlers on the `ns1` namespace
+	* `apple:off'.ns1'` - remove all event handlers on the `ns1` tag
+	* `apple:off{nil, obj}` - remove all event handlers on the `obj` tag
 	* `apple:off() - remove all event handlers registered on `apple`
  * introspection:
    * `oo.is(obj|class, class|classname) -> true|false` - check instance/class ancestry

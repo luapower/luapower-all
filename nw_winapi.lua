@@ -55,7 +55,6 @@ nw.app = app
 function app:init(frontend)
 
 	self.frontend = frontend
-	self._norepaint = true
 
 	--enable WM_INPUT for keyboard events
 	local rid = winapi.types.RAWINPUTDEVICE()
@@ -105,7 +104,6 @@ function app:_repaint_all(d)
 	self._last_frame_time = t2
 	self._last_frame = i1
 
-	self._norepaint = false
 	local t = self.frontend._windows
 	for i = 1, #t do
 		local win = t[i]
@@ -113,7 +111,6 @@ function app:_repaint_all(d)
 			win.backend:repaint()
 		end
 	end
-	self._norepaint = true
 
 	return d
 end
@@ -1355,7 +1352,7 @@ local rendering = {}
 local Rendering = {}
 
 function rendering:_repaint(hdc)
-	if self.app._norepaint then
+	if not self.frontend:events() then
 		self._invalid = true
 	else
 		self._invalid = false

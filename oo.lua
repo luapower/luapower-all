@@ -304,7 +304,7 @@ end
 
 local function event_namespace(event) --parse 'event', 'event.ns' or '.ns'
 	if type(event) == 'table' then
-		return unpack(event)
+		return event[1], event[2] --event, ns
 	end
 	local ev, ns = event:match'^([^%.]*)%.(.*)$'
 	ev = ev or event
