@@ -195,7 +195,7 @@ __child windows__
 __hi-dpi support__
 `app:autoscaling(t|f) /-> t|f`               get/enable/disable autoscaling
 `disp.scalingfactor`                         display's scaling factor
-`win:scalingfactor_changed()`                a window's display scaling factor changed
+`win:scalingfactor_changed()`                event: a window's display scaling factor changed
 __views__
 `win:views() -> {view1, ...}`                list views
 `win:view(t) -> view`                        create a view
