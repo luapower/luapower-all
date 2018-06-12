@@ -88,11 +88,17 @@ function dropdown:create_popup()
 	local y = self.h
 	local w = self.w
 	local h = math.floor(w * 1.4)
-	return self.ui.popup(self.ui, {
+	local popup = self.ui.popup(self.ui, {
 		parent = self,
 		x = x, y = y, w = w, h = h,
 		visible = false,
 	})
+
+	self.ui:on('mousedown', function(mx, my)
+
+	end)
+
+	return popup
 end
 
 local list = ui.grid:subclass'dropdown_list'
@@ -101,6 +107,8 @@ dropdown.list_class = list
 list.header_visible = false
 list.col_move = false
 list.row_move = false
+list.multi_select = false
+list.cell_select = false
 
 function dropdown:create_list(popup)
 	local list = self.list_class(self.ui, {

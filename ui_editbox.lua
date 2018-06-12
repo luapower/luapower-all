@@ -329,7 +329,7 @@ function editbox:_sync_caret()
 
 	if self.editor.cursor.changed.blinking then
 		self.editor.cursor.changed.blinking = false
-		local bt = self.ui:caret_blink_time()
+		local bt = self.ui.caret_blink_time
 		if bt then
 			self.caret:transition('opacity', 0, 0, nil, bt, 'replace')
 		end
@@ -431,7 +431,7 @@ function editbox:override_init(inherited, ui, t)
 	--[[
 	local toggle_blink
 	local function schedule_toggle_blink()
-		self.ui:runafter(self.ui.app():caret_blink_time(), toggle_blink)
+		self.ui:runafter(self.ui.caret_blink_time, toggle_blink)
 	end
 	function toggle_blink()
 		if not self.ui then return end --editbox freed

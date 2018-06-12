@@ -964,6 +964,8 @@ end
 --row moving -----------------------------------------------------------------
 
 grid.row_move = true
+grid.row_move_ctrl = true
+rows.drag_threshold = 4 --TODO: fix conflict between row-move and drag-select
 
 function rows:mousedown(mx, my, area)
 	if area == 'cell' then
@@ -976,7 +978,7 @@ function rows:mouseup(mx, my, area)
 end
 
 function grid:allow_move_row(i, col) --stub
-	return self.ui:key'ctrl' and self.row_move
+	return self.row_move and (not self.row_move_ctrl or self.ui:key'ctrl')
 end
 
 function grid:move_row(i1, i2) end --stub
@@ -989,7 +991,6 @@ function rows:start_drag(button, mx, my)
 		self.grid.moving_row_y = y
 		self.grid.moving_row_dy = 0
 		self.grid:settag('move_row', true)
-		self.grid.drag_select = false
 		return self
 	end
 end
@@ -1006,6 +1007,8 @@ end
 
 --row drag-select ------------------------------------------------------------
 
+grid.drag_select = true --select by dragging with the mouse
+
 function rows:after_mousemove(mx, my)
 	if not self.active or self.dragging then return end
 	local pane = self.pane
@@ -1019,13 +1022,16 @@ function rows:after_mousemove(mx, my)
 	if i then
 		self.grid.hot_row_index = i
 		self.grid.hot_col = col
-		self.grid:move('@hot reset extend scroll')
+		self.grid:move(self.grid.multi_select
+			and '@hot reset extend scroll'
+			or '@hot reset select focus scroll')
 	end
 end
 
 --row & cell focus, selection, scrolling -------------------------------------
 
 grid.cell_select = true --select individual cells or entire rows
+grid.multi_select = true --allow selecting multiple cells/rows
 
 function grid:cell_selected(i, col)
 	local t = self.selected_cells[col]
@@ -1153,11 +1159,13 @@ end
 function rows:after_click()
 	local shift = self.ui:key'shift'
 	local ctrl = self.ui:key'ctrl'
-	self.grid:move(
-		shift and ctrl and '@hot extend scroll'
-		or shift and '@hot reset extend scroll'
-		or ctrl and '@hot focus invert scroll'
-		or '@hot reset select focus scroll')
+	if self.grid.multi_select then
+		self.grid:move(
+			shift and ctrl and '@hot extend scroll'
+			or shift and '@hot reset extend scroll'
+			or ctrl and '@hot focus invert scroll'
+			or '@hot reset select focus scroll')
+	end
 end
 
 --find the number of rows relative to the focused row that should move the
@@ -1252,12 +1260,15 @@ function grid:keypress(key)
 	if rows or cols then
 
 		self:move(
-			shift and '@focus @extend reset extend scroll'
+			self.multi_select and shift
+				and '@focus @extend reset extend scroll'
 				or '@focus reset select focus scroll',
 			rows or 0, cols or 0)
 
 	elseif ctrl and key == 'A' then
-		self:move('select_all')
+		if self.multi_select then
+			self:move('select_all')
+		end
 	end
 end
 
@@ -1336,6 +1347,8 @@ end
 
 --demo -----------------------------------------------------------------------
 
+ui.window.topmost = true
+
 if not ... then require('ui_demo')(function(ui, win)
 
 	local grid = ui.grid:subclass'subgrid'
@@ -1386,6 +1399,10 @@ if not ... then require('ui_demo')(function(ui, win)
 			local n = math.random()
 			return n < .1 and 200 or 34
 		end,
+		--multi_select = false,
+		--row_move_ctrl = false,
+		--row_move = false,
+		--cell_select = false,
 	})
 
 	function g:cell_value(i, col)

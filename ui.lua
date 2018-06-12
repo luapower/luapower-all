@@ -24,6 +24,7 @@ local pop = table.remove
 local round = glue.round
 local indexof = glue.indexof
 local update = glue.update
+local inherit = glue.inherit
 local extend = glue.extend
 local attr = glue.attr
 local lerp = glue.lerp
@@ -92,26 +93,35 @@ end
 local ui = object:subclass'ui'
 ui.object = object
 
-function ui:init(t)
-	update(self, t)
+function ui:create() --singleton class (no instance creation)
+	if not self._initialized then
+		self:init()
+		self._initialized = true
+	end
+	return self
 end
 
-function ui:_app()
+function ui:init()
 	local nw = require'nw'
-	return nw:app()
+	self.app = nw:app()
+
+	--forward native events
+	local native_events = {
+		'quitting',
+		'activated', 'deactivated',
+		'hidden', 'unhidden',
+		'displays_changed',
+	}
+	for _,event in ipairs(native_events) do
+		self.app:on({event, self}, function(app, ...)
+			return self:fire(event, ...)
+		end)
+	end
 end
 
-function ui:clock()               return time.clock() end
-function ui:native_window(t)      return self:_app():window(t) end
-function ui:run()                 return self:_app():run() end
-function ui:get_maxfps()          return self:_app():maxfps() end
-function ui:set_maxfps(fps)       return self:_app():maxfps(fps) end
-function ui:key(query)            return self:_app():key(query) end
-function ui:getclipboard(type)    return self:_app():getclipboard(type) end
-function ui:setclipboard(s, type) return self:_app():setclipboard(s, type) end
-function ui:caret_blink_time()    return self:_app():caret_blink_time() end
-function ui:runevery(t, f)        return self:_app():runevery(t, f) end
-function ui:runafter(t, f)        return self:_app():runafter(t, f) end
+function ui:free()
+	self.app:off{nil, self}
+end
 
 function ui:error(msg, ...)
 	msg = string.format(msg, ...)
@@ -125,6 +135,47 @@ function ui:check(ret, ...)
 end
 
 local default_ease = 'expo out'
+
+--native app proxy methods ---------------------------------------------------
+
+function ui:native_window(t)       return self.app:window(t) end
+
+function ui:get_active_window()
+	local win = self.app:active_window()
+	return win and win.ui_window
+end
+
+function ui:clock()                return time.clock() end
+function ui:run(func)              return self.app:run(func) end
+function ui:poll(timeout)          return self.app:poll(timeout) end
+function ui:stop()                 return self.app:stop() end
+function ui:quit()                 return self.app:quit() end
+function ui:get_autoquit()         return self.app:autoquit() end
+function ui:set_autoquit(aq)       return self.app:autoquit(aq or false) end
+function ui:get_maxfps()           return self.app:maxfps() end
+function ui:set_maxfps(fps)        return self.app:maxfps(fps or false) end
+function ui:runevery(t, f)         return self.app:runevery(t, f) end
+function ui:runafter(t, f)         return self.app:runafter(t, f) end
+function ui:sleep(s)               return self.app:sleep(s) end
+
+function ui:get_active()           return self.app:active() end
+function ui:get_visible()          return self.app:visible() end
+function ui:set_visible(v)         return self.app:visible(v or false) end
+function ui:hide()                 return self.app:hide() end
+function ui:unhide()               return self.app:unhide() end
+
+function ui:key(query)             return self.app:key(query) end
+function ui:get_caret_blink_time() return self.app:caret_blink_time() end
+
+function ui:get_displays()         return self.app:displays() end
+function ui:get_main_display()     return self.app:main_display() end
+function ui:get_active_display()   return self.app:active_display() end
+
+function ui:getclipboard(type)     return self.app:getclipboard(type) end
+function ui:setclipboard(s, type)  return self.app:setclipboard(s, type) end
+
+function ui:opendialog(t)          return self.app:opendialog(t) end
+function ui:savedialog(t)          return self.app:savedialog(t) end
 
 --selectors ------------------------------------------------------------------
 
@@ -229,13 +280,6 @@ end
 
 ui.stylesheet_class = ui.object:subclass'stylesheet'
 ui.stylesheet = ui.stylesheet_class()
-
-function ui:after_init()
-	--TODO: fix issue with late-loading of class styles in autoloaded widgets.
-	--local class_stylesheet = self.stylesheet
-	--self.stylesheet = self:stylesheet()
-	--self.stylesheet:add_stylesheet(class_stylesheet)
-end
 
 function ui.stylesheet:after_init(ui)
 	self.ui = ui
@@ -522,7 +566,6 @@ function ui:after_init()
 end
 
 function ui:_add_element(elem)
-	assert(self.elements, 'forgot to instantiate the ui class?')
 	push(self.elements, elem)
 	self._element_index:add_element(elem)
 end
@@ -587,7 +630,6 @@ ui.element = ui.object:subclass'element'
 ui.element.ui = ui
 
 ui.element.visible = true
-ui.element.iswindow = false
 ui.element.activable = false --can clicked and set as hot
 ui.element.targetable = false --can be a potential drop target
 ui.element.vscrollable = false --can be hit for vscroll
@@ -643,7 +685,7 @@ local function add_tags(tags, s)
 	end
 end
 function ui.element:after_init(ui, t)
-	self.ui = ui
+	self.ui = ui()
 	self.ui:_add_element(self)
 
 	--custom class tags
@@ -893,6 +935,9 @@ end
 local window = ui.element:subclass'window'
 ui.window = window
 
+window._rel_x = 0
+window._rel_y = 0
+
 ui:style('window_layer', {
 	--screen-wiping options that work with transparent windows
 	background_color = '#0000',
@@ -909,29 +954,68 @@ function ui:free()
 	end
 end
 
-window:init_ignore{native_window=1, visible=1,
-	x=1, y=1, w=1, h=1, cx=1, cy=1, cw=1, ch=1}
+window:init_ignore{
+	native_window=1, parent=1,
+	--native window fields
+	x=1, y=1, w=1, h=1,
+	cx=1, cy=1, cw=1, ch=1,
+	min_cw=1, min_ch=1, max_cw=1, max_ch=1,
+	visible=1, minimized=1, maximized=1, enabled=1,
+	frame=1, title=1, transparent=1, corner_radius=1,
+	sticky=1, topmost=1, minimizable=1, maximizable=1, closeable=1,
+	resizeable=1, fullscreenable=1, activable=1, autoquit=1, edgesnapping=1,
+}
 
 function window:create_native_window(t)
-	local super = self.super
-	return self.ui:native_window{
-		visible = false,
-		x = t.x or super.x,
-		y = t.y or super.y,
-		w = t.w or super.w,
-		h = t.h or super.h,
-		cx = t.cx or super.cx,
-		cy = t.cy or super.cy,
-		cw = t.cw or super.cw,
-		ch = t.ch or super.ch,
-	}
+	return self.ui:native_window(t)
 end
 
 function window:override_init(inherited, ui, t)
-	assert(ui.elements, 'forgot to instantiate the ui class?')
+	self.ui = ui()
 
+	local show_it
 	local win = t and t.native_window
+	local parent = t and t.parent
+	if parent and parent.iswindow then
+		parent = parent.layer
+	end
 	if not win then
+		local s = self.super
+		local t = update({
+			x = s.x,
+			y = s.y,
+			w = s.w,
+			h = s.h,
+			cx = s.cx,
+			cy = s.cy,
+			cw = s.cw,
+			ch = s.ch,
+			min_cw = s.min_cw,
+			min_ch = s.min_ch,
+			max_cw = s.max_cw,
+			max_ch = s.max_ch,
+			visible = s.visible,
+			minimized = s.minimized,
+			maximized = s.maximized,
+			enabled = s.enabled,
+			frame = s.frame,
+			title = s.title,
+			transparent = s.transparent,
+			corner_radius = s.corner_radius,
+			sticky = s.sticky,
+			topmost = s.topmost,
+			minimizable = s.minimizable,
+			maximizable = s.maximizable,
+			closeable = s.closeable,
+			resizeable = s.resizeable,
+			fullscreenable = s.fullscreenable,
+			activable = s.activable,
+			autoquit = s.autoquit,
+			edgesnapping = s.edgesnapping,
+		}, t)
+		show_it = t and t.visible --defer
+		t.parent = parent and assert(parent.window.native_window)
+		t.visible = false
 		win = self:create_native_window(t)
 		self.native_window = win
 		self.own_native_window = true
@@ -939,8 +1023,34 @@ function window:override_init(inherited, ui, t)
 		self.native_window = t.native_window
 	end
 	ui.windows[self] = true
+	win.ui_window = self
+	self._parent = parent
 
 	inherited(self, ui, t)
+
+	--forward native events
+	local native_events = {
+		'closing',
+		'activated', 'deactivated',
+		'shown', 'hidden',
+		'minimized', 'unminimized',
+		'maximized', 'unmaximized',
+		'entered_fullscreen', 'exited_fullscreen',
+		'changed',
+		'sizing',
+		'frame_rect_changed', 'frame_moved', 'frame_resized',
+		'client_rect_changed', 'client_moved', 'client_resized',
+		'hittest',
+		'magnets',
+		'free_cairo', 'free_bitmap',
+		'scalingfactor_changed',
+		--TODO: dispatch to widgets: 'dropfiles', 'dragging',
+	}
+	for _,event in ipairs(native_events) do
+		win:on({event, self}, function(win, ...)
+			return self:fire(event, ...)
+		end)
+	end
 
 	--TODO: actual client and frame dimensions not available while the window
 	--is minimized, can we solve this in nw?
@@ -966,22 +1076,22 @@ function window:override_init(inherited, ui, t)
 		self.mouse_y = my
 	end
 
-	win:on('mousemove.ui', function(win, mx, my)
+	win:on({'mousemove', self}, function(win, mx, my)
 		setmouse(mx, my)
 		self.ui:_window_mousemove(self, mx, my)
 	end)
 
-	win:on('mouseenter.ui', function(win, mx, my)
+	win:on({'mouseenter', self}, function(win, mx, my)
 		setmouse(mx, my)
 		self.ui:_window_mouseenter(self, mx, my)
 	end)
 
-	win:on('mouseleave.ui', function(win)
+	win:on({'mouseleave', self}, function(win)
 		setmouse(false, false)
 		self.ui:_window_mouseleave(self)
 	end)
 
-	win:on('mousedown.ui', function(win, button, mx, my, click_count)
+	win:on({'mousedown', self}, function(win, button, mx, my, click_count)
 		local moved = self.mouse_x ~= mx or self.mouse_y ~= my
 		setmouse(mx, my)
 		if moved then
@@ -991,11 +1101,11 @@ function window:override_init(inherited, ui, t)
 		self.ui:_window_mousedown(self, button, mx, my, click_count)
 	end)
 
-	win:on('click.ui', function(win, button, count, mx, my)
+	win:on({'click', self}, function(win, button, count, mx, my)
 		return self.ui:_window_click(self, button, count, mx, my)
 	end)
 
-	win:on('mouseup.ui', function(win, button, mx, my, click_count)
+	win:on({'mouseup', self}, function(win, button, mx, my, click_count)
 		local moved = self.mouse_x ~= mx or self.mouse_y ~= my
 		setmouse(mx, my)
 		if moved then
@@ -1005,7 +1115,7 @@ function window:override_init(inherited, ui, t)
 		self.ui:_window_mouseup(self, button, mx, my, click_count)
 	end)
 
-	win:on('mousewheel.ui', function(win, delta, mx, my, pdelta)
+	win:on({'mousewheel', self}, function(win, delta, mx, my, pdelta)
 		local moved = self.mouse_x ~= mx or self.mouse_y ~= my
 		setmouse(mx, my)
 		if moved then
@@ -1014,27 +1124,27 @@ function window:override_init(inherited, ui, t)
 		self.ui:_window_mousewheel(self, delta, mx, my, pdelta)
 	end)
 
-	win:on('keydown.ui', function(win, key)
+	win:on({'keydown', self}, function(win, key)
 		setcontext()
 		self:_keydown(key)
 	end)
 
-	win:on('keyup.ui', function(win, key)
+	win:on({'keyup', self}, function(win, key)
 		setcontext()
 		self:_keyup(key)
 	end)
 
-	win:on('keypress.ui', function(win, key)
+	win:on({'keypress', self}, function(win, key)
 		setcontext()
 		self:_keypress(key)
 	end)
 
-	win:on('keychar.ui', function(win, s)
+	win:on({'keychar', self}, function(win, s)
 		setcontext()
 		self:_keychar(s)
 	end)
 
-	win:on('repaint.ui', function(win)
+	win:on({'repaint', self}, function(win)
 		setcontext()
 		if self.mouse_x then
 			self.ui:_window_mousemove(self, self.mouse_x, self.mouse_y)
@@ -1042,7 +1152,7 @@ function window:override_init(inherited, ui, t)
 		self:draw()
 	end)
 
-	win:on('frame_rect_changed.ui', function(win, x, y, w, h)
+	win:on({'frame_rect_changed', self}, function(win, x, y, w, h)
 		if not x then return end --hidden or minimized
 		self.x = x
 		self.y = y
@@ -1050,7 +1160,7 @@ function window:override_init(inherited, ui, t)
 		self.h = h
 	end)
 
-	win:on('client_rect_changed.ui', function(win, cx, cy, cw, ch)
+	win:on({'client_rect_changed', self}, function(win, cx, cy, cw, ch)
 		if not cx then return end --hidden or minimized
 		setcontext()
 		self.cx = cx
@@ -1059,24 +1169,17 @@ function window:override_init(inherited, ui, t)
 		self.ch = ch
 		self.layer.w = cw
 		self.layer.h = ch
-		self:fire('client_rect_changed', cx, cy, cw, ch)
-		self.ui:fire('client_rect_changed', self, cx, cy, cw, ch)
 	end)
 
-	win:on('closed.ui', function()
+	win:on({'closed', self}, function()
+		self:fire('closed')
 		self:free()
 	end)
 
 	self.layer = self:create_layer()
 
-	if self.own_native_window then
-		local visible = t.visible
-		if visible == nil then
-			visible = self.super.visible
-		end
-		if visible then
-			self.visible = true
-		end
+	if show_it then
+		self.visible = true
 	end
 end
 
@@ -1094,7 +1197,8 @@ function window:create_layer()
 end
 
 function window:before_free()
-	self.native_window:off'.ui'
+	self.native_window:off{nil, self}
+	self.native_window.ui_window = nil
 	self.layer:free()
 	if self.own_native_window then
 		self.native_window:close()
@@ -1102,6 +1206,102 @@ function window:before_free()
 	self.native_window = false
 	self.ui.windows[self] = nil
 end
+
+--parent/child interface
+
+function window:get_parent()
+	return self._parent
+end
+
+function window:set_parent(parent)
+	assert(parent)
+	if parent.iswindow then parent = parent.layer end
+	assert(parent.window == self._parent.window)
+	self._parent = parent
+	self:sync_pos()
+end
+
+function window:to_parent(x, y)
+	if self.parent then
+		return self.layer:to_other(self.parent.layer, x, y)
+	else
+		return x, y
+	end
+end
+
+function window:from_parent(x, y)
+	if self.parent then
+		return self.layer:from_other(self.parent.layer, x, y)
+	else
+		return x, y
+	end
+end
+
+function window:sync_pos()
+	--
+end
+
+function window:rel_pos(rx, ry)
+	if rx or ry then
+		self._rel_x0 = self._rel_x
+		self._rel_y0 = self._rel_y
+		self._rel_x = rx or self._rel_x
+		self._rel_y = ry or self._rel_y
+		self:sync_pos()
+	else
+		return self._rel_x, self._rel_y
+	end
+end
+function window:get_rel_x() return self._rel_x end
+function window:get_rel_y() return self._rel_y end
+function window:set_rel_x(rx) self:rel_pos(rx, nil) end
+function window:set_rel_y(ry) self:rel_pos(nil, rx) end
+
+--geometry
+
+function window:frame_rect(x, y, w, h)
+	if self:isinstance() then
+		return self.native_window:frame_rect(x, y, w, h)
+	elseif x or y or w or h then
+		if x then self._x = x end
+		if y then self._y = y end
+		if w then self._w = w end
+		if h then self._h = h end
+	else
+		return self._x, self._y, self._w, self._h
+	end
+end
+
+function window:client_rect(cx, cy, cw, ch)
+	if self:isinstance() then
+		return self.native_window:client_rect(cx, cy, cw, ch)
+	elseif cx or cy or cw or ch then
+		if cx then self._cx = cx end
+		if cy then self._cy = cy end
+		if cw then self._cw = cw end
+		if ch then self._ch = ch end
+	else
+		return self._cx, self._cy, self._cw, self._ch
+	end
+end
+
+function window:get_x() return (select(1, self:frame_rect())) end
+function window:get_y() return (select(2, self:frame_rect())) end
+function window:get_w() return (select(3, self:frame_rect())) end
+function window:get_h() return (select(4, self:frame_rect())) end
+function window:set_x(x) self:frame_rect(x, nil, nil, nil) end
+function window:set_y(y) self:frame_rect(nil, y, nil, nil) end
+function window:set_w(w) self:frame_rect(nil, nil, w, nil) end
+function window:set_h(h) self:frame_rect(nil, nil, nil, h) end
+
+function window:get_cx() return (select(1, self:client_rect())) end
+function window:get_cy() return (select(2, self:client_rect())) end
+function window:get_cw() return (select(3, self:client_rect())) end
+function window:get_ch() return (select(4, self:client_rect())) end
+function window:set_cx(cx) self:client_rect(cx, nil, nil, nil) end
+function window:set_cy(cy) self:client_rect(nil, cy, nil, nil) end
+function window:set_cw(cw) self:client_rect(nil, nil, cw, nil) end
+function window:set_ch(ch) self:client_rect(nil, nil, nil, ch) end
 
 --layer interface
 
@@ -1125,27 +1325,125 @@ function window:abs_matrix()
 	return mt:reset()
 end
 
---native window interface
+--native window API forwarding
 
-function window:get_visible()
-	return self.native_window:visible()
-end
-
-function window:set_visible(visible)
-	self.native_window:visible(visible)
-end
-
-for method in pairs{
-	show=1, hide=1, cursor=1, client_rect=1, frame_rect=1,
-	to_screen=1, to_client=1,
-} do
-	window[method] = function(self, ...)
-		return self.native_window[method](self.native_window, ...)
+--r/w and r/o properties which map uniformly to the native API
+local props = {
+	--r/w properties
+	autoquit=1, visible=1, fullscreen=1, enabled=1, edgesnapping=1,
+	topmost=1, title=1,
+	--r/o properties
+	closeable=0, activable=0, minimizable=0, maximizable=0, resizeable=0,
+	fullscreenable=0, frame=0, transparent=0, corner_radius=0, sticky=0,
+}
+for prop, writable in pairs(props) do
+	local priv = '_'..prop
+	window['get_'..prop] = function(self)
+		if self:isinstance() then
+			local nwin = self.native_window
+			return nwin[prop](nwin)
+		else
+			return self[priv]
+		end
+	end
+	window['set_'..prop] = function(self, value)
+		if self:isinstance() then
+			assert(writable == 1, 'read-only property')
+			local nwin = self.native_window
+			nwin[prop](nwin, value)
+		else
+			self[priv] = value
+		end
 	end
 end
 
-window.from_screen = window.to_client
-window.to_client = nil
+--methods
+function window:close()      self.native_window:close() end
+function window:show()       self.native_window:show() end
+function window:hide()       self.native_window:hide() end
+function window:activate()   self.native_window:activate() end
+function window:minimize()   self.native_window:minimize() end
+function window:maximize()   self.native_window:maximize() end
+function window:restore()    self.native_window:restore() end
+function window:shownormal() self.native_window:shownormal() end
+function window:raise(rel)   self.native_window:raise(rel) end
+function window:lower(rel)   self.native_window:lower(rel) end
+function window:to_screen(x, y)   return self.native_window:to_screen(x, y) end
+function window:from_screen(x, y) return self.native_window:to_client(x, y) end
+
+--runtime state
+function window:get_active()      return self.native_window:active() end
+function window:get_isminimized() return self.native_window:isminimized() end
+function window:get_ismaximized() return self.native_window:ismaximized() end
+function window:get_display()     return self.native_window:display() end
+
+function window:get_dead()
+	return not self.native_window or self.native_window:dead()
+end
+
+function window:get_min_cw()
+	if self:isinstance() then
+		return (self.native_window:minsize())
+	else
+		return self._min_cw
+	end
+end
+
+function window:get_min_ch()
+	if self:isinstance() then
+		return (select(2, self.native_window:minsize()))
+	else
+		return self._min_ch
+	end
+end
+
+function window:get_max_cw()
+	if self:isinstance() then
+		return (self.native_window:maxsize())
+	else
+		return self._max_cw
+	end
+end
+
+function window:get_max_ch()
+	if self:isinstance() then
+		return (select(2, self.native_window:maxsize()))
+	else
+		return self._max_ch
+	end
+end
+
+function window:set_min_cw(cw)
+	if self:isinstance() then
+		self.native_window:minsize(cw, nil)
+	else
+		self._min_cw = cw
+	end
+end
+
+function window:set_min_ch(ch)
+	if self:isinstance() then
+		self.native_window:minsize(nil, ch)
+	else
+		self._min_ch = ch
+	end
+end
+
+function window:set_max_cw(cw)
+	if self:isinstance() then
+		self.native_window:maxsize(cw, nil)
+	else
+		self._max_cw = cw
+	end
+end
+
+function window:set_max_ch(ch)
+	if self:isinstance() then
+		self.native_window:maxsize(nil, ch)
+	else
+		self._max_ch = ch
+	end
+end
 
 --query interface
 
@@ -1228,7 +1526,6 @@ function ui:_accept_drop(drag_widget, drop_widget, mx, my, area)
 end
 
 function ui:_window_mousemove(window, mx, my)
-	self:fire('mousemove', window, mx, my)
 	window:fire('mousemove', mx, my)
 
 	--TODO: hovering with delay
@@ -1269,13 +1566,11 @@ function ui:_window_mousemove(window, mx, my)
 end
 
 function ui:_window_mouseenter(window, mx, my)
-	self:fire('mouseenter', window, mx, my)
 	window:fire('mouseenter', mx, my)
 	self:_window_mousemove(window, mx, my)
 end
 
 function ui:_window_mouseleave(window)
-	self:fire('mouseleave', window)
 	window:fire'mouseleave'
 	if not self.active_widget then
 		self:_set_hot_widget(window, false)
@@ -1302,7 +1597,6 @@ end
 
 function ui:_window_mousedown(window, button, mx, my, click_count)
 	local event = button == 'left' and 'mousedown' or button..'mousedown'
-	self:fire(event, window, mx, my, click_count)
 	window:fire(event, mx, my, click_count)
 
 	if click_count > 1 then return end
@@ -1316,7 +1610,6 @@ end
 
 function ui:_window_click(window, button, count, mx, my)
 	local event = button == 'left' and 'click' or button..'click'
-	self:fire(event, window, count, mx, my)
 	window:fire(event, count, mx, my)
 	local reset_click_count =
 		self.last_click_hot_widget ~= self.hot_widget
@@ -1347,7 +1640,6 @@ end
 
 function ui:_window_mouseup(window, button, mx, my, click_count)
 	local event = button == 'left' and 'mouseup' or button..'mouseup'
-	self:fire(event, window, mx, my)
 	window:fire(event, mx, my)
 
 	if click_count > 1 then return end
@@ -1377,7 +1669,6 @@ function ui:_window_mouseup(window, button, mx, my, click_count)
 end
 
 function ui:_window_mousewheel(window, delta, mx, my, pdelta)
-	self:fire('mousewheel', window, delta, mx, my, pdelta)
 	window:fire('mousewheel', delta, mx, my, pdelta)
 	local widget, area = window:hit_test(mx, my, 'vscroll')
 	if widget then
@@ -1400,7 +1691,6 @@ function window:next_focusable_widget(forward)
 end
 
 function window:_keydown(key)
-	self.ui:fire('keydown', self, key)
 	self:fire('keydown', key)
 	if self.focused_widget then
 		self.focused_widget:fire('keydown', key)
@@ -1408,7 +1698,6 @@ function window:_keydown(key)
 end
 
 function window:_keyup(key)
-	self.ui:fire('keyup', self, key)
 	self:fire('keyup', key)
 	if self.focused_widget then
 		self.focused_widget:fire('keyup', key)
@@ -1416,7 +1705,6 @@ function window:_keyup(key)
 end
 
 function window:_keypress(key)
-	self.ui:fire('keypress', self, key)
 	self:fire('keypress', key)
 	local capture_tab = self.focused_widget and self.focused_widget.capture_tab
 	if not capture_tab and key == 'tab' and not self.ui:key'ctrl' then
@@ -1430,7 +1718,6 @@ function window:_keypress(key)
 end
 
 function window:_keychar(s)
-	self.ui:fire('keychar', self, s)
 	self:fire('keychar', s)
 	if self.focused_widget then
 		self.focused_widget:fire('keychar', s)
@@ -1452,11 +1739,6 @@ function window:invalidate() --element interface; window intf.
 	self._invalid = true
 	self.native_window:invalidate()
 end
-
---sugar & utils
-
-function window:rect() return 0, 0, self.w, self.h end
-function window:size() return self.w, self.h end
 
 --drawing helpers ------------------------------------------------------------
 
@@ -1899,12 +2181,16 @@ end
 
 --convert point from own content space to other's content space
 function layer:to_other(widget, x, y)
-	return widget:from_window(self:to_window(x, y))
+	if widget.window == self.window then
+		return widget:from_window(self:to_window(x, y))
+	else
+		return widget:from_screen(self:to_screen(x, y))
+	end
 end
 
 --convert point from other's content space to own content space
 function layer:from_other(widget, x, y)
-	return self:from_window(widget:to_window(x, y))
+	return widget:to_other(self, x, y)
 end
 
 function layer:mouse_pos()
