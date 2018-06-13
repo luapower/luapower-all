@@ -105,7 +105,7 @@ Window = subclass({
 		on_input_language_change = WM_INPUTLANGCHANGE,
 		on_user_change = WM_USERCHANGED,
 		on_display_change = WM_DISPLAYCHANGE,
-		on_mouse_activate = WM_MOUSEACTIVATE,
+		on_mouse_activate = WM_MOUSEACTIVATE, --clicked on window's client area
 	},
 	__wm_syscommand_handler_names = index{
 		on_minimizing = SC_MINIMIZE, --before minimize; return false to prevent.
@@ -225,8 +225,9 @@ function Window:WM_ACTIVATE(flag, minimized, other_hwnd)
 			self:on_activate(Windows:find(other_hwnd))
 		end
 	elseif flag == 'inactive' then
+		local other = Windows:find(other_hwnd)
 		if self.on_deactivate then
-			self:on_deactivate(Windows:find(other_hwnd))
+			self:on_deactivate(other)
 		end
 	end
 end
@@ -243,6 +244,8 @@ function Window:WM_ACTIVATEAPP(flag, other_thread_id)
 	end
 end
 
+--NOTE: windows with WS_EX_TOOLBOX don't receive this event.
+--NOTE: windows with WS_EX_NOACTIVATE do receive this event.
 function Window:WM_NCACTIVATE(flag, update_hrgn)
 	if flag == 'active' then
 		if self.on_nc_activate then
@@ -255,6 +258,7 @@ function Window:WM_NCACTIVATE(flag, update_hrgn)
 	end
 end
 
+--NOTE: only sent when the user clicks on the window's client area.
 function Window:WM_MOUSEACTIVATE()
 	if not self.activable then
 		return MA_NOACTIVATE

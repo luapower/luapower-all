@@ -467,6 +467,11 @@ function window:_new(app, backend_class, useropt)
 	opt.frame = checkframe(opt.frame)
 	opt.opengl = opengl_options(useropt.opengl)
 
+	if not opt.activable then
+		--windows limitation
+		assert(opt.frame == 'none', 'windows with a title bar cannot be non-activable')
+	end
+
 	if opt.parent then
 		--prevent creating child windows in parent's closed() event or after.
 		assert(not opt.parent._closed, 'parent is closed')
@@ -497,7 +502,7 @@ function window:_new(app, backend_class, useropt)
 	--maxsize constraints result in undefined behavior in maximized and fullscreen state.
 	--they work except in Unity which doesn't respect them when maximizing.
 	--also Windows doesn't center the window on screen in fullscreen mode.
-	if opt.max_cw or opt.max_ch or not opt.resizeable then
+	if opt.max_cw or opt.max_ch then
 		assert(not opt.maximizable, 'a maximizable window cannot have a maximum size')
 		assert(not opt.fullscreenable, 'a fullscreenable window cannot have a maximum size')
 	end

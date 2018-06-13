@@ -651,9 +651,11 @@ Event: window was activated/deactivated.
 
 ### `win:activable() -> t|f`
 
-Get the activable flag (read-only). This is useful for creating toolboxes
-and popup menus that can be clicked on without stealing keyboard focus away
-from the main window.
+Get the activable flag (read-only). This is useful for creating popup menus
+that can be clicked on without stealing keyboard focus away from the main
+window.
+
+__NOTE:__ Only works with frameless windows.
 
 __NOTE:__ This [doesn't work](https://github.com/luapower/nw/issues/26) in Linux.
 

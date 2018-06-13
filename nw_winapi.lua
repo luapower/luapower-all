@@ -199,11 +199,6 @@ function window:new(app, frontend, t)
 
 	self:_set_region()
 
-	--must set WS_CHILD **after** window is created for non-activable toolboxes!
-	if t.frame == 'toolbox' and not t.activable then
-		self.win.child = true
-	end
-
 	--init keyboard state
 	self.win.__wantallkeys = true --don't let IsDialogMessage() filter out our precious WM_CHARs
 	self:_reset_keystate()
@@ -602,11 +597,6 @@ function Window:on_end_sizemove()
 	local how = self.nw_sizemove_how
 	self.nw_sizemove_how = nil
 	self.frontend:_backend_sizing('end', how)
-
-	--fix bug where moving non-activable child toolboxes deactivates the parent.
-	if not self.frontend:activable() then
-		self.frontend:parent():activate()
-	end
 end
 
 function Window:nw_frame_changing(how, rect)
@@ -634,14 +624,6 @@ function Window:nw_frame_changing(how, rect)
 	pack_rect(rect, self.frontend:_backend_sizing('progress', how, unpack_rect(rect)))
 
 	if how == 'move' then
-
-		--fix winapi bug where non-activable toolbox windows don't show contents while moving.
-		if not self.frontend:activable() then
-			local x, y, w, h = unpack_rect(rect)
-			--NOTE: SWP_NOACTIVATE has no effect here, so might as well pass 0.
-			winapi.SetWindowPos(self.hwnd, nil, x, y, w, h, 0)
-		end
-
 		--move sticky children too to emulate default OSX behavior.
 		local children = self.frontend:children()
 		if #children > 0 then

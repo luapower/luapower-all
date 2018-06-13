@@ -472,7 +472,7 @@ function BaseWindow:get_dead() return self.hwnd == nil end
 --message routing ------------------------------------------------------------
 
 function BaseWindow:__handle_message(WM, wParam, lParam)
-	--print(WM_NAMES[WM], wParam, lParam)
+	--print(self, WM_NAMES[WM], wParam, lParam)
 
 	--look for a low-level handler self:WM_*()
 	local handler = self[WM_NAMES[WM]]
