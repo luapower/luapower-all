@@ -36,7 +36,6 @@ if ... == 'ui_demo' then --loaded via require()
 	end
 end
 
-
 local function test_window_layer()
 	ui:style('window_layer hot', {
 		background_color = '#080808',
@@ -431,7 +430,6 @@ end
 test_layers()
 --test_drag()
 --test_text()
-
 win:show()
 ui.maxfps = 60
 ui:run()

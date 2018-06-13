@@ -94,10 +94,8 @@ local ui = object:subclass'ui'
 ui.object = object
 
 function ui:create() --singleton class (no instance creation)
-	if not self._initialized then
-		self:init()
-		self._initialized = true
-	end
+	self:init()
+	function self:create() return self end
 	return self
 end
 
@@ -626,55 +624,56 @@ end
 
 --elements -------------------------------------------------------------------
 
-ui.element = ui.object:subclass'element'
+local element = ui.object:subclass'element'
+ui.element = element
 ui.element.ui = ui
 
-ui.element.visible = true
-ui.element.activable = false --can clicked and set as hot
-ui.element.targetable = false --can be a potential drop target
-ui.element.vscrollable = false --can be hit for vscroll
-ui.element.hscrollable = false --can be hit for hscroll
-ui.element.scrollable = false --can be hit for vscroll or hscroll
-ui.element.focusable = false --can be focused
+element.visible = true
+element.activable = false --can be clicked and set as hot
+element.targetable = false --can be a potential drop target
+element.vscrollable = false --can be hit for vscroll
+element.hscrollable = false --can be hit for hscroll
+element.scrollable = false --can be hit for vscroll or hscroll
+element.focusable = false --can be focused
 
-ui.element.font_family = 'Open Sans'
-ui.element.font_weight = 'normal'
-ui.element.font_slant = 'normal'
-ui.element.text_size = 14
-ui.element.text_color = '#fff'
-ui.element.line_spacing = 1
+element.font_family = 'Open Sans'
+element.font_weight = 'normal'
+element.font_slant = 'normal'
+element.text_size = 14
+element.text_color = '#fff'
+element.line_spacing = 1
 
-ui.element.transition_duration = 0
-ui.element.transition_ease = default_ease
-ui.element.transition_delay = 0
-ui.element.transition_speed = 1
-ui.element.transition_blend = 'replace_nodelay'
+element.transition_duration = 0
+element.transition_ease = default_ease
+element.transition_delay = 0
+element.transition_speed = 1
+element.transition_blend = 'replace_nodelay'
 
 --tags & styles
 
-function ui.element:init_ignore(t)
+function element:init_ignore(t)
 	if self._init_ignore == self.super._init_ignore then
 		self._init_ignore = update({}, self.super._init_ignore)
 	end
 	update(self._init_ignore, t)
 end
 
-function ui.element:init_priority(t)
+function element:init_priority(t)
 	if self._init_priority == self.super._init_priority then
 		self._init_priority = update({}, self.super._init_priority)
 	end
 	update(self._init_priority, t)
 end
 
-ui.element:init_priority{}
-ui.element:init_ignore{tags=1}
+element:init_priority{}
+element:init_ignore{tags=1}
 
 --override element constructor to take in additional initialization tables
-function ui.element:override_create(inherited, ui, t, ...)
+function element:override_create(inherited, ui, t, ...)
 	return inherited(self, ui, t and update({}, t, ...))
 end
 
-function ui.element:expand_attr(attr, val)
+function element:expand_attr(attr, val)
 	return self.ui:expand_attr(attr, val, self)
 end
 
@@ -684,7 +683,7 @@ local function add_tags(tags, s)
 		tags[tag] = true
 	end
 end
-function ui.element:after_init(ui, t)
+function element:after_init(ui, t)
 	self.ui = ui()
 	self.ui:_add_element(self)
 
@@ -732,16 +731,16 @@ function ui.element:after_init(ui, t)
 	self:update_styles()
 end
 
-function ui.element:free()
+function element:free()
 	self.ui:_remove_element(self)
 	self.ui = false
 end
 
-function ui.element:get_id()
+function element:get_id()
 	return self._id
 end
 
-function ui.element:set_id(id)
+function element:set_id(id)
 	if self._id == id then return end
 	if self._id then
 		self.tags[self._id] = nil
@@ -751,7 +750,7 @@ function ui.element:set_id(id)
 	self._styles_valid = false
 end
 
-function ui.element:settag(tag, op)
+function element:settag(tag, op)
 	local had_tag = self.tags[tag]
 	if op == '~' then
 		self.tags[tag] = not had_tag
@@ -768,7 +767,7 @@ function ui.element:settag(tag, op)
 	end
 end
 
-function ui.element:settags(s)
+function element:settags(s)
 	if type(s) == 'string' then
 		for op, tag in s:gmatch'([-+~]?)([^%s]+)' do
 			if op == '+' or op == '' then
@@ -785,12 +784,12 @@ function ui.element:settags(s)
 	end
 end
 
-function ui.element:update_styles()
+function element:update_styles()
 	self.ui.stylesheet:update_element(self)
 	self._styles_valid = true
 end
 
-function ui.element:_save_initial_value(attr)
+function element:_save_initial_value(attr)
 	local init = self._initial_values
 	if not init then
 		init = {}
@@ -801,7 +800,7 @@ function ui.element:_save_initial_value(attr)
 	end
 end
 
-function ui.element:initial_value(attr)
+function element:initial_value(attr)
 	local t = self._initial_values
 	if t then
 		local ival = t[attr]
@@ -812,7 +811,7 @@ function ui.element:initial_value(attr)
 	return self[attr]
 end
 
-function ui.element:parent_value(attr)
+function element:parent_value(attr)
 	local val = self[attr]
 	if val == nil and self.parent then
 		return self:parent_value(self.parent, attr)
@@ -845,7 +844,7 @@ function ui.blend.wait_nodelay(ui, tran, elem, attr, val, duration, ease, delay,
 	return tran
 end
 
-function ui.element:end_value(attr)
+function element:end_value(attr)
 	local tran = self.transitions and self.transitions[attr]
 	if tran then
 		return tran:end_value()
@@ -854,7 +853,7 @@ function ui.element:end_value(attr)
 	end
 end
 
-function ui.element:transition(attr, val, duration, ease, delay, blend)
+function element:transition(attr, val, duration, ease, delay, blend)
 
 	if type(val) == 'function' then --computed value
 		val = val(self, attr)
@@ -912,7 +911,7 @@ function ui.element:transition(attr, val, duration, ease, delay, blend)
 	end
 end
 
-function ui.element:draw()
+function element:draw()
 	if not self._styles_valid then
 		self:update_styles()
 	end
@@ -932,17 +931,8 @@ end
 
 --windows --------------------------------------------------------------------
 
-local window = ui.element:subclass'window'
+local window = element:subclass'window'
 ui.window = window
-
-window._rel_x = 0
-window._rel_y = 0
-
-ui:style('window_layer', {
-	--screen-wiping options that work with transparent windows
-	background_color = '#0000',
-	background_operator = 'source',
-})
 
 function ui:after_init()
 	self.windows = {}
@@ -954,9 +944,7 @@ function ui:free()
 	end
 end
 
-window:init_ignore{
-	native_window=1, parent=1,
-	--native window fields
+local native_fields = {
 	x=1, y=1, w=1, h=1,
 	cx=1, cy=1, cw=1, ch=1,
 	min_cw=1, min_ch=1, max_cw=1, max_ch=1,
@@ -966,57 +954,38 @@ window:init_ignore{
 	resizeable=1, fullscreenable=1, activable=1, autoquit=1, edgesnapping=1,
 }
 
+window:init_ignore{native_window=1, parent=1}
+window:init_ignore(native_fields)
+
 function window:create_native_window(t)
 	return self.ui:native_window(t)
 end
 
 function window:override_init(inherited, ui, t)
 	self.ui = ui()
+	t = t or {}
 
 	local show_it
-	local win = t and t.native_window
-	local parent = t and t.parent
+	local win = t.native_window
+	local parent = t.parent
 	if parent and parent.iswindow then
 		parent = parent.layer
 	end
 	if not win then
 		local s = self.super
-		local t = update({
-			x = s.x,
-			y = s.y,
-			w = s.w,
-			h = s.h,
-			cx = s.cx,
-			cy = s.cy,
-			cw = s.cw,
-			ch = s.ch,
-			min_cw = s.min_cw,
-			min_ch = s.min_ch,
-			max_cw = s.max_cw,
-			max_ch = s.max_ch,
-			visible = s.visible,
-			minimized = s.minimized,
-			maximized = s.maximized,
-			enabled = s.enabled,
-			frame = s.frame,
-			title = s.title,
-			transparent = s.transparent,
-			corner_radius = s.corner_radius,
-			sticky = s.sticky,
-			topmost = s.topmost,
-			minimizable = s.minimizable,
-			maximizable = s.maximizable,
-			closeable = s.closeable,
-			resizeable = s.resizeable,
-			fullscreenable = s.fullscreenable,
-			activable = s.activable,
-			autoquit = s.autoquit,
-			edgesnapping = s.edgesnapping,
-		}, t)
-		show_it = t and t.visible --defer
-		t.parent = parent and assert(parent.window.native_window)
-		t.visible = false
-		win = self:create_native_window(t)
+		local nt = {}
+		for k in pairs(native_fields) do
+			nt[k] = (t[k] ~= nil and t or s)[k]
+		end
+		show_it = nt.visible ~= false --defer
+		nt.parent = parent and assert(parent.window.native_window)
+		nt.visible = false
+		if parent then
+			local rx = nt.x or 0
+			local ry = nt.y or 0
+			nt.x, nt.y = parent:to_screen(rx, ry)
+		end
+		win = self:create_native_window(nt)
 		self.native_window = win
 		self.own_native_window = true
 	else
@@ -1025,6 +994,27 @@ function window:override_init(inherited, ui, t)
 	ui.windows[self] = true
 	win.ui_window = self
 	self._parent = parent
+
+	if parent then
+
+		function parent.before_free()
+			self._parent = false
+		end
+
+		local px0, py0 = parent:to_window(0, 0)
+		function parent.before_draw()
+			if not self.native_window then return end --freed
+			local px1, py1 = parent:to_window(0, 0)
+			local dx = px1 - px0
+			local dy = py1 - py0
+			if dx ~= 0 or dy ~= 0 then
+				local x0, y0 = self.native_window:frame_rect()
+				self:frame_rect(x0 + dx, y0 + dy)
+				px0, py0 = px1, py1
+			end
+		end
+
+	end
 
 	inherited(self, ui, t)
 
@@ -1051,11 +1041,6 @@ function window:override_init(inherited, ui, t)
 			return self:fire(event, ...)
 		end)
 	end
-
-	--TODO: actual client and frame dimensions not available while the window
-	--is minimized, can we solve this in nw?
-	self.x, self.y, self.w, self.h = self.native_window:frame_rect()
-	self.cx, self.cy, self.cw, self.ch = self.native_window:client_rect()
 
 	self.mouse_x = win:mouse'x' or false
 	self.mouse_y = win:mouse'y' or false
@@ -1152,21 +1137,9 @@ function window:override_init(inherited, ui, t)
 		self:draw()
 	end)
 
-	win:on({'frame_rect_changed', self}, function(win, x, y, w, h)
-		if not x then return end --hidden or minimized
-		self.x = x
-		self.y = y
-		self.w = w
-		self.h = h
-	end)
-
 	win:on({'client_rect_changed', self}, function(win, cx, cy, cw, ch)
 		if not cx then return end --hidden or minimized
 		setcontext()
-		self.cx = cx
-		self.cy = cy
-		self.cw = cw
-		self.ch = ch
 		self.layer.w = cw
 		self.layer.h = ch
 	end)
@@ -1183,17 +1156,12 @@ function window:override_init(inherited, ui, t)
 	end
 end
 
-local function passxy(self, x, y) return x, y end
-
 function window:create_layer()
 	return self.layer_class(self.ui, {
 		tags = 'window_layer',
-		x = 0, y = 0, w = self.w, h = self.h,
+		w = self.w, h = self.h,
 		parent = self,
-		--parent interface
-		to_window = passxy,
-		from_window = passxy,
-	}, self.window_layer)
+	}, self.layer)
 end
 
 function window:before_free()
@@ -1214,11 +1182,7 @@ function window:get_parent()
 end
 
 function window:set_parent(parent)
-	assert(parent)
-	if parent.iswindow then parent = parent.layer end
-	assert(parent.window == self._parent.window)
-	self._parent = parent
-	self:sync_pos()
+	error'NYI'
 end
 
 function window:to_parent(x, y)
@@ -1237,31 +1201,29 @@ function window:from_parent(x, y)
 	end
 end
 
-function window:sync_pos()
-	--
-end
-
-function window:rel_pos(rx, ry)
-	if rx or ry then
-		self._rel_x0 = self._rel_x
-		self._rel_y0 = self._rel_y
-		self._rel_x = rx or self._rel_x
-		self._rel_y = ry or self._rel_y
-		self:sync_pos()
-	else
-		return self._rel_x, self._rel_y
-	end
-end
-function window:get_rel_x() return self._rel_x end
-function window:get_rel_y() return self._rel_y end
-function window:set_rel_x(rx) self:rel_pos(rx, nil) end
-function window:set_rel_y(ry) self:rel_pos(nil, rx) end
-
 --geometry
 
 function window:frame_rect(x, y, w, h)
 	if self:isinstance() then
-		return self.native_window:frame_rect(x, y, w, h)
+		if self.parent then
+			if x or y or w or h then
+				if x or y then
+					if not (x and y) then
+						local x0, y0 = self:frame_rect()
+						x = x or x0
+						y = y or y0
+					end
+					x, y = self.parent:to_screen(x, y)
+				end
+				self.native_window:frame_rect(x, y, w, h)
+			else
+				local x, y, w, h = self.native_window:frame_rect()
+				x, y = self.parent:from_screen(x, y)
+				return x, y, w, h
+			end
+		else
+			return self.native_window:frame_rect(x, y, w, h)
+		end
 	elseif x or y or w or h then
 		if x then self._x = x end
 		if y then self._y = y end
@@ -1272,9 +1234,44 @@ function window:frame_rect(x, y, w, h)
 	end
 end
 
+function window:client_to_frame(cx1, cy1)
+	local x, y = self.native_window:frame_rect()
+	local cx, cy = self.native_window:client_rect()
+	return
+		cx1 + (cx - x),
+		cy1 + (cy - y)
+end
+
+function window:frame_to_client(x1, y1)
+	local x, y = self.native_window:frame_rect()
+	local cx, cy = self.native_window:client_rect()
+	return
+		x1 - (cx - x),
+		y1 - (cy - y)
+end
+
 function window:client_rect(cx, cy, cw, ch)
 	if self:isinstance() then
-		return self.native_window:client_rect(cx, cy, cw, ch)
+		if self.parent then
+			if cx or cy or cw or ch then
+				if cx or cy then
+					if not (cx and cy) then
+						local cx0, cy0 = self:client_rect()
+						cx = cx or cx0
+						cy = cy or cy0
+					end
+					cx, cy = self.parent:to_screen(cx, cy)
+					self:client_rect(cx, cy, cw, ch)
+				end
+				self.native_window:client_rect(cx, cy, cw, ch)
+			else
+				local cx, cy, cw, ch = self.native_window:client_rect()
+				cx, cy = self.parent:from_screen(cx, cy)
+				return cx, cy, cw, ch
+			end
+		else
+			return self.native_window:client_rect(cx, cy, cw, ch)
+		end
 	elseif cx or cy or cw or ch then
 		if cx then self._cx = cx end
 		if cy then self._cy = cy end
@@ -1306,12 +1303,12 @@ function window:set_ch(ch) self:client_rect(nil, nil, nil, ch) end
 --layer interface
 
 function window:add_layer(layer)
-	if self.layer then
-		self.layer:add_layer(layer)
-	else --this is the main layer we're adding
+	if layer.iswindow_layer then --this is the top layer we're adding
 		layer._parent = self
 		layer.window = self
+		return
 	end
+	self.layer:add_layer(layer)
 end
 
 function window:remove_layer(layer)
@@ -1942,9 +1939,8 @@ end
 
 --layers ---------------------------------------------------------------------
 
-local layer = ui.element:subclass'layer'
+local layer = element:subclass'layer'
 ui.layer = layer
-window.layer_class = layer
 
 layer.activable = true
 layer.targetable = true
@@ -3343,9 +3339,6 @@ end
 
 --utils in content space to use from draw_content() and hit_test_content()
 
-function layer:rect() return 0, 0, self.w, self.h end --the box itself
-function layer:size() return self.w, self.h end
-
 function layer:content_size()
 	return select(3, self:padding_rect())
 end
@@ -3383,6 +3376,20 @@ function layer:setfont(family, weight, slant, size, color, line_spacing)
 		line_spacing or self.line_spacing)
 	self.window.cr:rgba(self.ui:color(color or self.text_color))
 end
+
+--top layer ------------------------------------------------------------------
+
+local window_layer = layer:subclass'window_layer'
+window.layer_class = window_layer
+
+--screen-wiping options that work with transparent windows
+window_layer.background_color = '#0000'
+window_layer.background_operator = 'source'
+
+--parent layer interface
+local function passxy(self, x, y) return x, y end
+window_layer.to_window = passxy
+window_layer.from_window = passxy
 
 --widgets autoload -----------------------------------------------------------
 

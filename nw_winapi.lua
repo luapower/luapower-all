@@ -197,6 +197,8 @@ function window:new(app, frontend, t)
 		own_dc = t.opengl and true or nil,
 	}
 
+	self:invalidate() --prevent flicker on first WM_PAINT from WM_ERASEBKGND
+
 	self:_set_region()
 
 	--init keyboard state
@@ -365,9 +367,6 @@ function window:show()
 		self:minimize()
 	else
 		self.win:show() --sync call
-		if self._layered then
-			self:invalidate()
-		end
 	end
 end
 

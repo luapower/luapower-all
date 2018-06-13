@@ -197,7 +197,7 @@ function ui.scrollbar:mouseup(mx, my)
 	self.active = false
 end
 
-function ui.scrollbar:scroll(delta)
+function ui.scrollbar:scroll_to(offset)
 	if self.visible and self.autohide and not self.grabbar.active
 		and (not self.autohide_empty or not self:empty())
 	then
@@ -205,7 +205,11 @@ function ui.scrollbar:scroll(delta)
 		self:update_styles()
 		self:settag('near', false)
 	end
-	self:transition('offset', self:end_value'offset' + delta)
+	self:transition('offset', offset)
+end
+
+function ui.scrollbar:scroll(delta)
+	self:scroll_to(self:end_value'offset' + delta)
 end
 
 function ui.scrollbar:scroll_pages(pages)
@@ -267,7 +271,7 @@ end
 function ui.scrollbar:scroll_to_view(x, w)
 	local sx = self.offset
 	local sw = self.view_length
-	self:transition('offset', clamp(sx, x + w - sw, x))
+	self:scroll_to(clamp(sx, x + w - sw, x))
 end
 
 --scrollbox ------------------------------------------------------------------

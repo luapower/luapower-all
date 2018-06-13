@@ -146,7 +146,6 @@ function dropdown:after_sync()
 
 	local p = self.popup
 	p.h = l.h
-	p:sync()
 end
 
 function dropdown:before_draw()
