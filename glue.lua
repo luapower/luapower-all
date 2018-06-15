@@ -357,7 +357,7 @@ function glue.object(super, o, ...)
 	o = o or {}
 	o.__index = super
 	o.__call = super and super.__call
-	glue.update(self, ...) --add mixins, defaults, etc.
+	glue.update(o, ...) --add mixins, defaults, etc.
 	return setmetatable(o, o)
 end
 

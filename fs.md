@@ -34,6 +34,7 @@ __file i/o__
 `f:flush()`                                       flush buffers
 `f:seek([whence] [, offset]) -> pos`              get/set the file pointer
 `f:truncate([opt])`                               truncate file to current file pointer
+`f:buffered_read([ctype], [bufsize]) -> read()`   get a buffered read function
 __open file attributes__
 `f:attr([attr]) -> val|t`                         get/set attribute(s) of open file
 __directory listing__
@@ -248,6 +249,11 @@ instead). The problem with calling `ftruncate()` if `fallocate()` fails is
 that on most filesystems that creates a sparse file, hence the `fail` option.
 The default is `'fallocate emulate'` which should never create a sparse file.
 
+### `f:buffered_read([ctype], [bufsize]) -> read()`
+
+Returns a `read(buf, sz) -> sz` function which reads ahead from file. The
+optional `ctype` and `bufsize` specify the buffer's C type and size and
+default to `char` and `4096` respectively.
 
 ## Open file attributes
 
