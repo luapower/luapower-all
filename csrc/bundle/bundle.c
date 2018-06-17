@@ -131,7 +131,7 @@ static int bundle_loader_lua(lua_State *L)
 /* ------------------------------------------------------------------------ */
 
 /* add our two bundle loaders at the end of package.loaders */
-extern void bundle_add_loaders(lua_State* L)
+LUA_API void bundle_add_loaders(lua_State* L)
 {
 	int top = lua_gettop(L);
 

@@ -751,7 +751,7 @@ function cell:sync_col(col)
 	self:settag('moving', col.moving)
 	self:settag('resizing', col.resizing)
 	self:settag('first_col', index == 1)
-	self:settag('last_col', index == self.grid:rel_visible_col(-1))
+	self:settag('last_col', index == self.grid:rel_visible_col(-1).index)
 end
 
 function cell:sync_row(i, y, h)
@@ -899,8 +899,8 @@ end
 
 function grid:draw_row_col(i, col, y, h, hot)
 	local cell = self:cell_at(i, col)
-	if cell ~= self.cell then
-		self.cell = cell
+	if cell ~= self._cell then
+		self._cell = cell
 		cell:sync_grid(self)
 		cell:sync_col(col)
 	end
@@ -949,11 +949,11 @@ function grid:draw_rows(rows_layer)
 	if self:cell_hot() then
 		hot_i, hot_col = self.hot_row_index, self.hot_col
 	end
-	self.cell = false
+	self._cell = false
 	for _,col in ipairs(rows_layer.pane.header_layer.layers) do
 		if col.isgrid_col and not col.clipped then
 			local cell = self:cell_at(i1, col)
-			if cell == self.cell then
+			if cell == self._cell then
 				cell:sync_col(col)
 			end
 			self:draw_rows_col(i1, i2, col, hot_i, hot_col)
@@ -1402,7 +1402,7 @@ if not ... then require('ui_demo')(function(ui, win)
 		--multi_select = false,
 		--row_move_ctrl = false,
 		--row_move = false,
-		--cell_select = false,
+		cell_select = false,
 	})
 
 	function g:cell_value(i, col)

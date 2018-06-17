@@ -198,6 +198,12 @@ compile_manifest() {
 		" o=$ODIR/_manifest.o compile_resource
 }
 
+compile_libs_list() {
+	echo "return '$ALIBS'" > $ODIR/bundle_libs.lua
+	compile_module bundle_libs.lua
+	rm bundle_libs.lua
+}
+
 # usage: MODULES='mod1 ...' $0 -> $ODIR/*.o
 compile_all() {
 	say "Compiling modules..."
@@ -236,6 +242,9 @@ compile_all() {
 	# compile our custom luajit frontend which calls bundle_add_loaders()
 	# and bundle_main() on startup.
 	compile_bundle_module luajit.c
+
+	# compile a listing of all static libs needed for ffi.load() logic
+	compile_libs_list
 }
 
 # linking --------------------------------------------------------------------

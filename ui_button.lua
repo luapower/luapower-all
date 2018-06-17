@@ -40,7 +40,6 @@ ui:style('button focused', {
 function ui.button:mousedown()
 	if self.active_by_key then return end
 	self.active = true
-	self:focus()
 end
 
 function ui.button:mousemove(mx, my)
@@ -94,6 +93,11 @@ if not ... then require('ui_demo')(function(ui, win)
 		x = 100, y = 150, w = 100, h = 26,
 		text = 'OK',
 	})
+
+	function b1:gotfocus() print'b1 got focus' end
+	function b1:lostfocus() print'b1 lost focus' end
+	function b2:gotfocus() print'b2 got focus' end
+	function b2:lostfocus() print'b2 lost focus' end
 
 	function b1:pressed() print'b1 pressed' end
 	function b2:pressed() print'b2 pressed' end

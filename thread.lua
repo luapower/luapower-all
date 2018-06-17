@@ -304,16 +304,20 @@ thread.shared_object('queue', queue)
 
 --threads --------------------------------------------------------------------
 
+function thread.init_state(state)
+	state:openlibs()
+end
+
 function thread.new(func, ...)
 	local state = luastate.open()
-	state:openlibs()
+	thread.init_state(state)
 	state:push(function(func, args)
 
+	   local ffi = require'ffi'
 		local pthread = require'pthread'
 		local luastate = require'luastate'
 		local glue = require'glue'
 		local thread = require'thread'
-	   local ffi = require'ffi'
 	   local cast = ffi.cast
 	   local addr = glue.addr
 

@@ -81,11 +81,11 @@ function M.openlibs(L, ...) --open specific libs (or all libs if no args given)
 	local n = select('#', ...)
 	if n == 0 then
 		C.luaL_openlibs(L)
-		return
-	end
-	for i=1,n do
-		C.lua_pushcclosure(L, assert(lib_openers[select(i,...)]), 0)
-		C.lua_call(L, 0, 0)
+	else
+		for i=1,n do
+			C.lua_pushcclosure(L, assert(lib_openers[select(i,...)]), 0)
+			C.lua_call(L, 0, 0)
+		end
 	end
 	return L
 end
@@ -516,6 +516,7 @@ end
 --object interface
 
 ffi.metatype('lua_State', {__index = {
+	check = M.check,
 	--states
 	close = M.close,
 	status = M.status,
@@ -610,6 +611,8 @@ ffi.metatype('lua_State', {__index = {
 	xpcall = M.xpcall,
 	pcall = M.pcall,
 	call = M.call,
+	lua_pcall = C.lua_pcall,
+	lua_call = C.lua_call,
 	--gc
 	gc = M.gc,
 	getgccount = M.getgccount,

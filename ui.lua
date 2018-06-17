@@ -6,7 +6,6 @@ if not ... then require'ui_demo'; return end
 
 local oo = require'oo'
 local glue = require'glue'
-local tuple = require'tuple'
 local box2d = require'box2d'
 local easing = require'easing'
 local color = require'color'
@@ -15,7 +14,6 @@ local amoeba = require'amoeba'
 local time = require'time'
 local freetype = require'freetype'
 local cairo = require'cairo'
-local libjpeg = require'libjpeg'
 local fs = require'fs'
 
 local push = table.insert
@@ -119,6 +117,7 @@ end
 
 function ui:free()
 	self.app:off{nil, self}
+	self.app = false
 end
 
 function ui:error(msg, ...)
@@ -670,7 +669,7 @@ element:init_ignore{tags=1}
 
 --override element constructor to take in additional initialization tables
 function element:override_create(inherited, ui, t, ...)
-	return inherited(self, ui, t and update({}, t, ...))
+	return inherited(self, ui, update({}, t, ...))
 end
 
 function element:expand_attr(attr, val)
@@ -694,9 +693,12 @@ function element:after_init(ui, t)
 
 	--classname tags
 	local super = self.super
-	while super.classname ~= 'element' do
+	while true do
 		if super.classname then
 			self.tags[super.classname] = true
+			if super.classname == 'element' then
+				break
+			end
 		end
 		super = super.super
 	end
@@ -732,6 +734,7 @@ function element:after_init(ui, t)
 end
 
 function element:free()
+	self.ui:off{nil, self}
 	self.ui:_remove_element(self)
 	self.ui = false
 end
@@ -938,10 +941,11 @@ function ui:after_init()
 	self.windows = {}
 end
 
-function ui:free()
+function ui:before_free()
 	for win in pairs(self.windows) do
-		win:free()
+		win:close()
 	end
+	self.windows = false
 end
 
 local native_fields = {
@@ -991,7 +995,7 @@ function window:override_init(inherited, ui, t)
 	else
 		self.native_window = t.native_window
 	end
-	ui.windows[self] = true
+	self.ui.windows[self] = true
 	win.ui_window = self
 	self._parent = parent
 
@@ -1144,9 +1148,20 @@ function window:override_init(inherited, ui, t)
 		self.layer.h = ch
 	end)
 
-	win:on({'closed', self}, function()
+	win:on({'closed', self}, function(win)
 		self:fire('closed')
 		self:free()
+	end)
+
+	win:on({'changed', self}, function(win, _, state)
+		self:settag('active', state.active)
+		self:settag('fullscreen', state.fullscreen)
+	end)
+
+	--create `window_*` events in ui
+	self:on('event', function(self, event, ...)
+		if event == 'mousemove' then return end
+		self.ui:fire('window_'..event, self, ...)
 	end)
 
 	self.layer = self:create_layer()
@@ -1168,6 +1183,7 @@ function window:before_free()
 	self.native_window:off{nil, self}
 	self.native_window.ui_window = nil
 	self.layer:free()
+	self.layer = false
 	if self.own_native_window then
 		self.native_window:close()
 	end
@@ -1330,6 +1346,7 @@ local props = {
 	autoquit=1, visible=1, fullscreen=1, enabled=1, edgesnapping=1,
 	topmost=1, title=1,
 	--r/o properties
+	dead=0,
 	closeable=0, activable=0, minimizable=0, maximizable=0, resizeable=0,
 	fullscreenable=0, frame=0, transparent=0, corner_radius=0, sticky=0,
 }
@@ -1791,6 +1808,7 @@ function ui:image_pattern(file)
 		local function read(buf, sz)
 			return self:check(bread(buf, sz))
 		end
+		local libjpeg = require'libjpeg'
 		local img = self:check(libjpeg.open({read = read}))
 		if not img then return end
 		local bmp = self:check(img:load{accept = {bgra8 = true}})
@@ -1883,6 +1901,7 @@ function window:text_size(s, multiline)
 end
 
 function window:textbox(x0, y0, w, h, s, halign, valign, multiline)
+	s = tostring(s)
 	local cr = self.cr
 	local line_h = self.font_height * self.line_spacing
 
@@ -2458,7 +2477,7 @@ end
 
 --focusing and keyboard event handling
 
-function window:remove_focus()
+function window:unfocus()
 	local fw = self.focused_widget
 	if not fw then return end
 	fw:fire'lostfocus'
@@ -2466,6 +2485,7 @@ function window:remove_focus()
 	self:fire('lostfocus', fw)
 	self.ui:fire('lostfocus', fw)
 	fw:invalidate()
+	self.focused_widget = false
 end
 
 function layer:focus()
@@ -2473,13 +2493,15 @@ function layer:focus()
 		return
 	end
 	if self.focusable then
-		self.window:remove_focus()
-		self:fire'gotfocus'
-		self:settag('focused', true)
-		self.window.focused_widget = self
-		self.window:fire('gotfocus', self)
-		self.ui:fire('gotfocus', self)
-		self:invalidate()
+		if not self.focused then
+			self.window:unfocus()
+			self:fire'gotfocus'
+			self:settag('focused', true)
+			self.window.focused_widget = self
+			self.window:fire('widget_gotfocus', self)
+			self.ui:fire('gotfocus', self)
+			self:invalidate()
+		end
 		return true
 	else --focus first focusable child
 		local layer = self.layers and self:focusable_widgets()[1]
@@ -3316,14 +3338,14 @@ function layer:set_active(active)
 		active_widget:settag('active', false)
 		self.ui.active_widget = false
 		active_widget:fire'deactivated'
-		active_widget.window:fire('deactivated', active_widget)
+		active_widget.window:fire('widget_deactivated', active_widget)
 		active_widget.ui:fire('deactivated', active_widget)
 	end
 	if active then
 		self.ui.active_widget = self
 		self:settag('active', true)
 		self:fire'activated'
-		self.window:fire('activated', self)
+		self.window:fire('widget_activated', self)
 		self.ui:fire('activated', self)
 		self:focus()
 	end

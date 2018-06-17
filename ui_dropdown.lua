@@ -83,6 +83,8 @@ end
 local popup = ui.popup--:subclass'dropdown_popup'
 dropdown.popup_class = popup
 
+popup.autohide = false
+
 function dropdown:create_popup()
 	local x = 0
 	local y = self.h
@@ -94,8 +96,18 @@ function dropdown:create_popup()
 		visible = false,
 	})
 
-	self.ui:on('mousedown', function(mx, my)
+	self.button:on('lostfocus.self', function()
+		popup:hide()
+	end)
 
+	self.ui:on({'window_deactivated', self}, function()
+		popup:hide()
+	end)
+
+	self.ui:on({'window_mousedown', self}, function(ui, win)
+		if win ~= self.popup and not self.button.hot then
+			popup:hide()
+		end
 	end)
 
 	return popup
@@ -150,6 +162,13 @@ end
 
 function dropdown:before_draw()
 	self:sync()
+end
+
+function dropdown:before_free()
+	if not self.popup.dead then
+		self.popup:free()
+		self.popup = false
+	end
 end
 
 --demo -----------------------------------------------------------------------
