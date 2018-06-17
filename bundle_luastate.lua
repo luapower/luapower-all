@@ -19,7 +19,7 @@ function M.init_bundle(state)
 	local ok, err = pcall(bundle_add_loaders, state)
 	if not ok then return end --not running a bundled luajit exe
 	local top = state:gettop()
-	state:push{[0] = arg[0]}
+	state:push{[0] = arg[0]} --used by bundle_loader to get exe dir
 	state:setglobal'arg'
 	state:loadstring"return require'bundle_loader'()"
 	local ok, ret = state:pcall()

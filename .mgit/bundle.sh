@@ -199,7 +199,7 @@ compile_manifest() {
 }
 
 compile_libs_list() {
-	echo "return '$ALIBS'" > $ODIR/bundle_libs.lua
+	echo "return '$ALIBS'" > bundle_libs.lua
 	compile_module bundle_libs.lua
 	rm bundle_libs.lua
 }

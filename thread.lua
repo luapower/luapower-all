@@ -306,6 +306,12 @@ thread.shared_object('queue', queue)
 
 function thread.init_state(state)
 	state:openlibs()
+	state:push{[0] = arg[0]} --used by some modules to get the exe dir
+	state:setglobal'arg'
+	if package.loaded.bundle_loader then
+		local bundle_luastate = require'bundle_luastate'
+		bundle_luastate.init_bundle(state)
+	end
 end
 
 function thread.new(func, ...)
