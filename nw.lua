@@ -468,8 +468,8 @@ function window:_new(app, backend_class, useropt)
 	opt.frame = checkframe(opt.frame)
 	opt.opengl = opengl_options(useropt.opengl)
 
+	--non-activable windows must be frameless (Windows limitation)
 	if not opt.activable then
-		--windows limitation
 		assert(opt.frame == 'none', 'windows with a title bar cannot be non-activable')
 	end
 
@@ -490,14 +490,21 @@ function window:_new(app, backend_class, useropt)
 
 	--unparented toolboxes don't make sense because they don't show in taskbar
 	--so they can't be activated when they are completely behind other windows.
-	--they can't be (minimiz|maximiz|fullscreen)able either (winapi/X11 limitation).
+	--they can't be (minimiz|maximiz|fullscreen)able either (Windows/X11 limitation).
 	if opt.frame == 'toolbox' then
 		assert(opt.parent, 'toolbox windows must have a parent')
 	end
 
-	--transparent windows must be frameless (winapi limitation)
+	--transparent windows must be frameless (Windows limitation)
 	if opt.transparent then
 		assert(opt.frame == 'none', 'transparent windows must be frameless')
+	end
+
+	if not opt.resizeable then
+		if useropt.maximizable == nil then opt.maximizable = false end
+		if useropt.fullscreenable == nil then opt.fullscreenable = false end
+		assert(not opt.maximizable, 'a maximizable window cannot be non-resizeable')
+		assert(not opt.fullscreenable, 'a fullscreenable cannot be non-resizeable')
 	end
 
 	--maxsize constraints result in undefined behavior in maximized and fullscreen state.
@@ -506,10 +513,6 @@ function window:_new(app, backend_class, useropt)
 	if opt.max_cw or opt.max_ch then
 		assert(not opt.maximizable, 'a maximizable window cannot have a maximum size')
 		assert(not opt.fullscreenable, 'a fullscreenable window cannot have a maximum size')
-	end
-	if not opt.resizeable then
-		assert(not opt.maximizable, 'a maximizable window cannot be non-resizeable')
-		assert(not opt.fullscreenable, 'a fullscreenable cannot be non-resizeable')
 	end
 
 	--if missing some frame coords but given some client coords, convert client
