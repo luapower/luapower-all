@@ -44,6 +44,8 @@ DWORD FormatMessageA(
 			DWORD nSize,
 		   va_list *Arguments
 	 );
+
+UINT SetErrorMode(UINT uMode);
 ]]
 
 GetLastError = C.GetLastError
@@ -64,6 +66,15 @@ local function get_error_message(id)
 	end
 	assert(sz ~= 0, 'error getting error message for %d: %d', id, GetLastError())
 	return ffi.string(buf, sz)
+end
+
+SEM_FAILCRITICALERRORS      = 0x0001
+SEM_NOGPFAULTERRORBOX       = 0x0002
+SEM_NOALIGNMENTFAULTEXCEPT  = 0x0004
+SEM_NOOPENFILEERRORBOX      = 0x8000
+
+function SetErrorMode(mode)
+	return C.SetErrorMode(flags(mode))
 end
 
 --error handling -------------------------------------------------------------
