@@ -332,7 +332,7 @@ Returns `false, exit_code` if the application was asked to quit.
 ### `app:maxfps(fps|false)` <br> `app:maxfps() -> fps|false`
 
 Get/set the maximum window repaint rate (frames per second).
-`false` disables the throttling.
+`false` disables the throttling. The default is `60`.
 
 ## Quitting
 
@@ -461,6 +461,9 @@ Create a window (fields of _`t`_ below with default value in parenthesis):
 You can pass any combination of `x`, `y`, `w`, `h`, `cx`, `cy`, `cw`, `ch`
 as long as you pass the width and the height in one way or another.
 The position is optional and it defaults to OS-driven cascading.
+
+Additionally, `x` and/or `y` can be `'center-main'` or `'center-active'`
+which will center the window on the main or active display respectively.
 
 If the size is max-constrained by either `max_cw`, `max_ch`
 or `resizeable = false` then `maximizable = false` and

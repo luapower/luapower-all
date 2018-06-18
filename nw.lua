@@ -159,7 +159,6 @@ local app = glue.update({}, object)
 
 --return the singleton app object.
 --load a default backend on the first call if no backend was set by the user.
-
 function nw:app()
 	if not self._app then
 		self._app = app:_init(self, self.backend.app)
@@ -294,6 +293,8 @@ function app:runafter(seconds, func)
 		return false
 	end)
 end
+
+app._maxfps = 60
 
 function app:maxfps(fps)
 	if fps == nil then
@@ -534,6 +535,18 @@ function window:_new(app, backend_class, useropt)
 	--either cascading or fixating the position, there's no mix.
 	assert((not opt.x) == (not opt.y),
 		'both x (or cx) and y (or cy) or none expected')
+
+	if opt.x == 'center-main' or opt.x == 'center-active' then
+		local disp = opt.x == 'center-active'
+			and app:active_display() or app:main_display()
+		opt.x = disp.cx + (disp.cw - opt.w) / 2
+	end
+
+	if opt.y == 'center-main' or opt.y == 'center-active' then
+		local disp = opt.y == 'center-active'
+			and app:active_display() or app:main_display()
+		opt.y = disp.cy + (disp.ch - opt.h) / 2
+	end
 
 	--avoid zero client sizes (X limitation)
 	opt.min_cw = math.max(opt.min_cw, 1)
