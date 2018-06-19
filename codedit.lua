@@ -3256,8 +3256,10 @@ function editor:hit_test(x, y)
 		return 'selection'
 	elseif self.view:client_hit_test(x, y) then
 		return 'client'
-	elseif self.line_numbers_margin:hit_test(x, y) then
-		return 'line_numbers_margin'
+	elseif self.line_numbers_margin then
+		if self.line_numbers_margin:hit_test(x, y) then
+			return 'line_numbers_margin'
+		end
 	end
 end
 

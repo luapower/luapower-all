@@ -460,12 +460,13 @@ function ui.transition:interpolate_function(elem, attr)
 end
 
 function ui.transition:after_init(ui, elem, attr, to,
-	duration, ease, delay, clock)
+	duration, ease, delay, times, backval, clock)
 
 	self.ui = ui
 
 	--timing model
 	local clock = clock or ui:clock()
+	local times = times or 1
 	local delay = delay or 0
 	local start = clock + delay
 	local ease, way = (ease or default_ease):match'^([^%s_]+)[%s_]?(.*)'
@@ -481,17 +482,31 @@ function ui.transition:after_init(ui, elem, attr, to,
 	--when updating with by-ref semantics.
 	elem[attr] = interpolate(1, from, from)
 
+	local v0, v1 = from, to
+	local repeated
+
 	function self:update(clock)
 		local t = (clock - start) / duration
 		if t < 0 then --not started
 			--nothing
 		elseif t >= 1 then --finished, set to actual final value
-			elem[attr] = to
+			elem[attr] = v1
 		else --running, set to interpolated value
 			local d = easing.ease(ease, way, t)
-			elem[attr] = interpolate(d, from, to, elem[attr])
+			elem[attr] = interpolate(d, v0, v1, elem[attr])
 		end
-		return t <= 1 --alive status
+		local alive = t <= 1
+		if not alive and times > 1 then --repeat in opposite direction
+			if not repeated then
+				v0 = backval
+				repeated = true
+			end
+			times = times - 1
+			start = clock + delay
+			v0, v1 = v1, v0
+			alive = true
+		end
+		return alive
 	end
 
 	function self:end_clock()
@@ -645,6 +660,7 @@ element.line_spacing = 1
 element.transition_duration = 0
 element.transition_ease = default_ease
 element.transition_delay = 0
+element.transition_repeat = 1
 element.transition_speed = 1
 element.transition_blend = 'replace_nodelay'
 
@@ -827,22 +843,22 @@ end
 ui.blend = {}
 
 function ui.blend.replace(ui, tran, elem, attr, val, duration, ease, delay, clock)
-	return ui:transition(elem, attr, val, duration, ease, delay, clock)
+	return ui:transition(elem, attr, val, duration, ease, delay, nil, nil, clock)
 end
 
 function ui.blend.replace_nodelay(ui, tran, elem, attr, val,
 	duration, ease, delay, clock)
-	return ui:transition(elem, attr, val, duration, ease, 0, clock)
+	return ui:transition(elem, attr, val, duration, ease, 0, nil, nil, clock)
 end
 
 function ui.blend.wait(ui, tran, elem, attr, val, duration, ease, delay, clock)
-	local new_tran = ui:transition(elem, attr, val, duration, ease, delay, clock)
+	local new_tran = ui:transition(elem, attr, val, duration, ease, delay, nil, nil, clock)
 	new_tran:chain_to(tran)
 	return tran
 end
 
 function ui.blend.wait_nodelay(ui, tran, elem, attr, val, duration, ease, delay, clock)
-	local new_tran = ui:transition(elem, attr, val, duration, ease, 0, clock)
+	local new_tran = ui:transition(elem, attr, val, duration, ease, 0, nil, nil, clock)
 	new_tran:chain_to(tran)
 	return tran
 end
@@ -856,7 +872,7 @@ function element:end_value(attr)
 	end
 end
 
-function element:transition(attr, val, duration, ease, delay, blend)
+function element:transition(attr, val, duration, ease, delay, times, backval, blend)
 
 	if type(val) == 'function' then --computed value
 		val = val(self, attr)
@@ -867,6 +883,7 @@ function element:transition(attr, val, duration, ease, delay, blend)
 		duration = self['transition_duration_'..attr] or self.transition_duration
 		ease = ease or self['transition_ease_'..attr] or self.transition_ease
 		delay = delay or self['transition_delay_'..attr] or self.transition_delay
+		times = times or self['transition_repeat_'..attr] or self.transition_repeat
 		local speed = self['transition_speed_'..attr] or self.transition_speed
 		blend = blend or self['transition_blend_'..attr] or self.transition_blend
 		duration = duration / speed
@@ -874,6 +891,7 @@ function element:transition(attr, val, duration, ease, delay, blend)
 		duration = duration or 0
 		ease = ease or default_ease
 		delay = delay or 0
+		times = times or 1
 		blend = blend or 'replace_nodelay'
 	end
 	local blend_func = self.ui.blend[blend]
@@ -896,8 +914,11 @@ function element:transition(attr, val, duration, ease, delay, blend)
 				changed = true
 			end
 		elseif self[attr] ~= val then
+			if times > 1 and backval == nil then
+				backval = self:initial_value(attr)
+			end
 			tran = self.ui:transition(self, attr, val,
-				duration, ease, delay, self.frame_clock)
+				duration, ease, delay, times, backval, self.frame_clock)
 			changed = true
 		end
 	end
@@ -914,7 +935,7 @@ function element:transition(attr, val, duration, ease, delay, blend)
 	end
 end
 
-function element:draw()
+function element:draw(cr)
 	if not self._styles_valid then
 		self:update_styles()
 	end
@@ -1006,7 +1027,7 @@ function window:override_init(inherited, ui, t)
 		end
 
 		local px0, py0 = parent:to_window(0, 0)
-		function parent.before_draw()
+		function parent.before_draw(cr)
 			if not self.native_window then return end --freed
 			local px1, py1 = parent:to_window(0, 0)
 			local dx = px1 - px0
@@ -1138,7 +1159,7 @@ function window:override_init(inherited, ui, t)
 		if self.mouse_x then
 			self.ui:_window_mousemove(self, self.mouse_x, self.mouse_y)
 		end
-		self:draw()
+		self:draw(self.cr)
 	end)
 
 	win:on({'client_rect_changed', self}, function(win, cx, cy, cw, ch)
@@ -1174,7 +1195,7 @@ end
 function window:create_layer()
 	return self.layer_class(self.ui, {
 		tags = 'window_layer',
-		w = self.w, h = self.h,
+		w = self.cw, h = self.ch,
 		parent = self,
 	}, self.layer)
 end
@@ -1332,9 +1353,8 @@ function window:remove_layer(layer)
 	layer.window = false
 end
 
-local mt
+local mt = cairo.matrix()
 function window:abs_matrix()
-	mt = mt or cairo.matrix()
 	return mt:reset()
 end
 
@@ -1740,11 +1760,11 @@ end
 
 --rendering
 
-function window:after_draw()
+function window:after_draw(cr)
 	self._invalid = false
 	self.cr:save()
 	self.cr:new_path()
-	self.layer:draw()
+	self.layer:draw(cr)
 	self.cr:restore()
 end
 
@@ -2038,7 +2058,7 @@ layer.clip_content = false --'padding'/true, 'background', false
 layer.padding = 0
 
 layer.background_type = 'color' --false, 'color', 'gradient', 'radial_gradient', 'image'
-layer.background_hittable = false
+layer.background_hittable = true
 --all backgrounds
 layer.background_x = 0
 layer.background_y = 0
@@ -2113,9 +2133,8 @@ function layer:before_free()
 	self.parent = false
 end
 
-local mt
+local mt = cairo.matrix()
 function layer:rel_matrix() --box matrix relative to parent's content space
-	mt = mt or cairo.matrix()
 	return mt:reset()
 		:translate(self.x, self.y)
 		:rotate_around(self.rotation_cx, self.rotation_cy,
@@ -2127,12 +2146,11 @@ function layer:abs_matrix() --box matrix in window space
 	return self.pos_parent:abs_matrix():transform(self:rel_matrix())
 end
 
-local mt
+local mt = cairo.matrix()
 function layer:cr_abs_matrix(cr) --box matrix in cr's current space
 	if self.pos_parent ~= self.parent then
 		return self:abs_matrix()
 	else
-		mt = mt or cairo.matrix()
 		return cr:matrix(nil, mt):transform(self:rel_matrix())
 	end
 end
@@ -2477,6 +2495,10 @@ end
 
 --focusing and keyboard event handling
 
+function layer:canfocus()
+	return self.focusable
+end
+
 function window:unfocus()
 	local fw = self.focused_widget
 	if not fw then return end
@@ -2488,11 +2510,15 @@ function window:unfocus()
 	self.focused_widget = false
 end
 
+function layer:unfocus()
+	return self.window:unfocus()
+end
+
 function layer:focus()
 	if not self.visible then
 		return
 	end
-	if self.focusable then
+	if self:canfocus() then
 		if not self.focused then
 			self.window:unfocus()
 			self:fire'gotfocus'
@@ -2533,7 +2559,7 @@ function layer:focusable_widgets()
 	local t = {}
 	if self.layers then
 		for i,layer in ipairs(self.layers) do
-			if layer.focusable then
+			if layer:canfocus() then
 				push(t, layer)
 			end
 		end
@@ -2583,10 +2609,10 @@ function layer:layers_bounding_box(strict)
 	return x, y, w, h
 end
 
-function layer:draw_layers() --called in content space
+function layer:draw_layers(cr) --called in content space
 	if not self.layers then return end
 	for i = 1, #self.layers do
-		self.layers[i]:draw()
+		self.layers[i]:draw(cr)
 	end
 end
 
@@ -2764,8 +2790,7 @@ end
 
 --trace the border contour path at offset.
 --offset is in -1..1 where -1=inner edge, 0=center, 1=outer edge.
-function layer:border_path(offset, size_offset)
-	local cr = self.window.cr
+function layer:border_path(cr, offset, size_offset)
 	local x1, y1, w, h, r1x, r1y, r2x, r2y, r3x, r3y, r4x, r4y, k =
 		self:border_round_rect(offset, size_offset)
 	local x2, y2 = x1 + w, y1 + h
@@ -2785,9 +2810,8 @@ function layer:border_visible()
 		or self.border_width_bottom ~= 0
 end
 
-function layer:draw_border()
+function layer:draw_border(cr)
 	if not self:border_visible() then return end
-	local cr = self.window.cr
 
 	--seamless drawing when all side colors are the same.
 	if self.border_color_left == self.border_color_top
@@ -2796,8 +2820,8 @@ function layer:draw_border()
 	then
 		cr:new_path()
 		cr:fill_rule'even_odd'
-		self:border_path(-1)
-		self:border_path(1)
+		self:border_path(cr, -1)
+		self:border_path(cr, 1)
 		cr:rgba(self.ui:color(self.border_color_bottom))
 		cr:fill()
 		return
@@ -2886,8 +2910,8 @@ function layer:background_round_rect(size_offset)
 	return self:border_round_rect(self.background_clip_border_offset, size_offset)
 end
 
-function layer:background_path(size_offset)
-	self:border_path(self.background_clip_border_offset, size_offset)
+function layer:background_path(cr, size_offset)
+	self:border_path(cr, self.background_clip_border_offset, size_offset)
 end
 
 function layer:set_background_scale(scale)
@@ -2895,7 +2919,7 @@ function layer:set_background_scale(scale)
 	self.background_scale_y = scale
 end
 
-local mt
+local mt = cairo.matrix()
 function layer:paint_background()
 	local cr = self.window.cr
 	cr:operator(self.background_operator)
@@ -2931,7 +2955,6 @@ function layer:paint_background()
 	else
 		assert(false, 'invalid background type %s', tostring(bg_type))
 	end
-	mt = mt or cairo.matrix()
 	patt:matrix(
 		mt:reset()
 			:translate(
@@ -2977,11 +3000,11 @@ function layer:shadow_round_rect(size)
 	end
 end
 
-function layer:shadow_path(size)
+function layer:shadow_path(cr, size)
 	if self:border_visible() then
-		self:border_path(1, size)
+		self:border_path(cr, 1, size)
 	else
-		self:background_path(size)
+		self:background_path(cr, size)
 	end
 end
 
@@ -3002,9 +3025,8 @@ function layer:shadow_store_key(t)
 			self:shadow_round_rect(0)
 end
 
-function layer:draw_shadow()
+function layer:draw_shadow(cr)
 	if not self:shadow_visible() then return end
-	local cr = self.window.cr
 	local t = self._shadow or {}
 	self._shadow = t
 	local passes = self._shadow_blur_passes
@@ -3043,10 +3065,7 @@ function layer:draw_shadow()
 				scr:rgba(0, 0, 0, 0)
 				scr:paint()
 				scr:translate(-bx, -by)
-				local cr = self.window.cr
-				self.window.cr = scr
-				self:shadow_path(0)
-				self.window.cr = cr
+				self:shadow_path(scr, 0)
 				scr:rgba(0, 0, 0, 1)
 				scr:fill()
 				scr:free()
@@ -3077,7 +3096,7 @@ function layer:text_visible()
 	return self.text and true or false
 end
 
-function layer:draw_text()
+function layer:draw_text(cr)
 	if not self:text_visible() then return end
 	self:setfont()
 	local cw, ch = self:content_size()
@@ -3120,9 +3139,9 @@ function layer:from_content(x, y) --content space coord in box space
 	return px + x, py + y
 end
 
-function layer:draw_content() --called in own content space
-	self:draw_layers()
-	self:draw_text()
+function layer:draw_content(cr) --called in own content space
+	self:draw_layers(cr)
+	self:draw_text(cr)
 end
 
 function layer:hit_test_content(x, y, reason) --called in own content space
@@ -3134,10 +3153,9 @@ function layer:content_bounding_box(strict)
 	return box2d.bounding_box(x, y, w, h, self:text_bounding_box())
 end
 
-function layer:after_draw() --called in parent's content space; child intf.
+function layer:after_draw(cr) --called in parent's content space; child intf.
 	if not self.visible or self.opacity == 0 then return end
 	if self.opacity <= 0 then return end
-	local cr = self.window.cr
 
 	local opacity = self.opacity
 	local compose = opacity < 1
@@ -3152,13 +3170,13 @@ function layer:after_draw() --called in parent's content space; child intf.
 	local cc = self.clip_content
 	local bg = self:background_visible()
 
-	self:draw_shadow()
+	self:draw_shadow(cr)
 
 	local clip = bg or cc
 	if clip then
 		cr:save()
 		cr:new_path()
-		self:background_path() --'background' clipping is implicit in 'padding'
+		self:background_path(cr) --'background' clipping is implicit in 'padding'
 		cr:clip()
 		if bg then
 			self:paint_background()
@@ -3173,18 +3191,18 @@ function layer:after_draw() --called in parent's content space; child intf.
 		end
 	end
 	if not cc then
-		self:draw_border()
+		self:draw_border(cr)
 	end
 	local cx, cy = self:padding_pos()
 	cr:translate(cx, cy)
-	self:draw_content()
+	self:draw_content(cr)
 	cr:translate(-cx, -cy)
 	if clip then
 		cr:restore()
 	end
 
 	if cc then
-		self:draw_border()
+		self:draw_border(cr)
 	end
 
 	if compose then
@@ -3227,10 +3245,10 @@ function layer:hit_test(x, y, reason)
 	--border is drawn last so hit it first
 	if self:border_visible() then
 		cr:new_path()
-		self:border_path(1)
+		self:border_path(cr, 1)
 		if cr:in_fill(x, y) then --inside border outer edge
 			cr:new_path()
-			self:border_path(-1)
+			self:border_path(cr, -1)
 			if not cr:in_fill(x, y) then --outside border inner edge
 				cr:restore()
 				if self_allowed then
@@ -3249,7 +3267,7 @@ function layer:hit_test(x, y, reason)
 	local in_bg
 	if cc or self.background_hittable or self:background_visible() then
 		cr:new_path()
-		self:background_path()
+		self:background_path(cr)
 		in_bg = cr:in_fill(x, y)
 	end
 
@@ -3409,9 +3427,9 @@ window_layer.background_color = '#0000'
 window_layer.background_operator = 'source'
 
 --parent layer interface
-local function passxy(self, x, y) return x, y end
-window_layer.to_window = passxy
-window_layer.from_window = passxy
+
+window_layer.to_window = window_layer.to_parent
+window_layer.from_window = window_layer.from_parent
 
 --widgets autoload -----------------------------------------------------------
 

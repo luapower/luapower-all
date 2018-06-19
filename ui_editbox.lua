@@ -7,26 +7,30 @@ local glue = require'glue'
 local codedit = require'codedit'
 
 local editbox = ui.layer:subclass'editbox'
-ui.editbox = editbox
-
 local view = codedit.view:subclass()
 local editor = codedit.editor:subclass()
-
+ui.editbox = editbox
 editbox.editor_class = editor
-
 editor.view_class = view
-editor.line_numbers = false
 
+editbox.w = 200
+editbox.h = 30
+editbox.padding = 4
 editbox.focusable = true
 editbox.scrollable = true
 editbox.max_click_chain = 3 --receive doubleclick and tripleclick events
 editbox.cursor_client = 'text'
+editbox.clip_content = true --TODO: remove this
+editbox.border_color = '#888'
+editbox.border_width = 1
 
+editbox.multiline = false
 editbox.eol_markers = false
 editbox.minimap = false
+editor.line_numbers = false
 
 --codedit colors
-editbox.background_color = '#080808'
+editbox.background_color = '#000'
 editbox.selection_background_color = '#333'
 editbox.selection_text_color = '#ddd'
 editbox.cursor_color = '#fff'
@@ -37,7 +41,7 @@ editbox.line_number_background_color = '#111'
 editbox.line_number_highlighted_text_color = '#66ffff'
 editbox.line_number_highlighted_background_color = '#222222'
 editbox.line_number_separator_color = '#333'
-editbox.line_highlight_color = '#222'
+editbox.line_highlight_color = '#000' --same as background (i.e. disabled)
 editbox.blame_text_color = '#444'
 --codedit colors / syntax highlighting
 editbox.default_color = '#ccc'
@@ -57,10 +61,6 @@ editbox.class_color = '#ffff00'
 editbox.type_color = '#56cc66'
 editbox.label_color = '#ffff66'
 editbox.regex_color = '#ff3333'
-
-editbox.clip_content = true --TODO: remove this
-editbox.border_color = '#888'
-editbox.border_width = 1
 
 ui:style('editbox', {
 	transition_border_color = true,
@@ -331,7 +331,8 @@ function editbox:_sync_caret()
 		self.editor.cursor.changed.blinking = false
 		local bt = self.ui.caret_blink_time
 		if bt then
-			self.caret:transition('opacity', 0, 0, nil, bt, 'replace')
+			self.caret:transition('opacity', 1, 0)
+			self.caret:transition('opacity', 0, 0, nil, bt, 1/0, 1, 'replace')
 		end
 	end
 end
@@ -415,7 +416,11 @@ function editbox:override_init(inherited, ui, t)
 		autohide = true,
 	}, self.hscrollbar)
 
-	self:_set_multiline(t.multiline)
+	local multiline = t.multiline
+	if multiline == nil then
+		multiline = self.super.multiline
+	end
+	self:_set_multiline(multiline)
 
 	--[[ TODO:
 	if self.text then
@@ -427,23 +432,6 @@ function editbox:override_init(inherited, ui, t)
 
 	self.editor.cursor.visible = false
 	self.editor.cursor.changed.blinking = false
-
-	--[[
-	local toggle_blink
-	local function schedule_toggle_blink()
-		self.ui:runafter(self.ui.caret_blink_time, toggle_blink)
-	end
-	function toggle_blink()
-		if not self.ui then return end --editbox freed
-		if not self.editor.cursor.changed.blinking then
-			self:settags'blinking'
-			self.editor.cursor.changed.blinking = true
-		end
-		schedule_toggle_blink()
-	end
-	toggle_blink()
-	schedule_toggle_blink()
-	]]
 end
 
 function editbox:after_gotfocus()

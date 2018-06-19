@@ -339,8 +339,8 @@ function rows:after_sync()
 	self.h = (ct and ct.h or self.pane.h) - self.y
 end
 
-function rows:before_draw_content()
-	self.grid:draw_rows(self)
+function rows:before_draw_content(cr)
+	self.grid:draw_rows(cr, self)
 end
 
 function rows:mousewheel(delta, mx, my, area, pdelta)
@@ -793,7 +793,7 @@ function grid:cell_value(i, col)
 	end
 end
 
-function grid:draw_cell(i, col, hot)
+function grid:draw_cell(cr, i, col, hot)
 	local y, h = self:row_yh(i)
 	local cell = self:cell_at(i, col)
 	cell:sync_grid(self)
@@ -897,7 +897,7 @@ function grid:visible_rows_range()
 	return i1, i2
 end
 
-function grid:draw_row_col(i, col, y, h, hot)
+function grid:draw_row_col(cr, i, col, y, h, hot)
 	local cell = self:cell_at(i, col)
 	if cell ~= self._cell then
 		self._cell = cell
@@ -907,10 +907,10 @@ function grid:draw_row_col(i, col, y, h, hot)
 	cell:sync_row(i, y, h)
 	cell:sync_value(i, col, self:cell_value(i, col))
 	cell:settag('hot', hot)
-	cell:draw()
+	cell:draw(cr)
 end
 
-function grid:draw_rows_col(i1, i2, col, hot_i, hot_col)
+function grid:draw_rows_col(cr, i1, i2, col, hot_i, hot_col)
 
 	local moving_i = self.moving_row_index
 	local moving_y, moving_h
@@ -933,16 +933,16 @@ function grid:draw_rows_col(i1, i2, col, hot_i, hot_col)
 					y = y + moving_h
 				end
 			end
-			self:draw_row_col(i, col, y, h, hot)
+			self:draw_row_col(cr, i, col, y, h, hot)
 		end
 	end
 
 	if moving_i then
-		self:draw_row_col(moving_i, col, moving_y, moving_h)
+		self:draw_row_col(cr, moving_i, col, moving_y, moving_h)
 	end
 end
 
-function grid:draw_rows(rows_layer)
+function grid:draw_rows(cr, rows_layer)
 	local i1, i2 = self:visible_rows_range()
 	if not i1 then return end
 	local hot_i, hot_col
@@ -956,7 +956,7 @@ function grid:draw_rows(rows_layer)
 			if cell == self._cell then
 				cell:sync_col(col)
 			end
-			self:draw_rows_col(i1, i2, col, hot_i, hot_col)
+			self:draw_rows_col(cr, i1, i2, col, hot_i, hot_col)
 		end
 	end
 end
@@ -1055,7 +1055,13 @@ function grid:select_cells(i1, col1, i2, col2, selected)
 		local col = self.cols[j]
 		local t = attr(self.selected_cells, col)
 		for i = i1, i2 do
+			local was_selected = t[i]
 			t[i] = selected
+			if selected and not was_selected then
+				self:fire('cell_was_selected', i, col)
+			elseif not selected and was_selected then
+				self:fire('cell_was_deselected', i, col)
+			end
 		end
 	end
 end
@@ -1077,10 +1083,19 @@ function grid:after_focus()
 	end
 end
 
+function grid:canfocus()
+	return self.focusable and self.row_count > 0 and #self.cols > 0
+end
+
 function grid:focus_cell(i, col)
-	self.focused_row_index = clamp(i, 1, self.row_count)
-	self.focused_col = col
-	self:focus()
+	if self:canfocus() then
+		self.focused_row_index = clamp(i, 1, self.row_count)
+		self.focused_col = col
+		self:focus()
+		return true
+	else
+		return false
+	end
 end
 
 function grid:scroll_to_view_row(i)

@@ -4,12 +4,15 @@
 
 local ui = require'ui'
 
-ui.button = ui.layer:subclass'button'
-ui.button.focusable = true
+local button = ui.layer:subclass'button'
+ui.button = button
 
-ui.button.background_color = '#444'
-ui.button.border_color = '#888'
-ui.button.border_width = 1
+button.focusable = true
+button.w = 100
+button.h = 30
+button.background_color = '#444'
+button.border_color = '#888'
+button.border_width = 1
 
 ui:style('button', {
 	transition_background_color = true,
@@ -37,18 +40,18 @@ ui:style('button focused', {
 	shadow_color = '#666',
 })
 
-function ui.button:mousedown()
+function button:mousedown()
 	if self.active_by_key then return end
 	self.active = true
 end
 
-function ui.button:mousemove(mx, my)
+function button:mousemove(mx, my)
 	if self.active_by_key then return end
 	local mx, my = self:to_parent(mx, my)
 	self:settag('over', self:hit_test(mx, my, 'activate') == self)
 end
 
-function ui.button:mouseup()
+function button:mouseup()
 	if self.active_by_key then return end
 	self.active = false
 	if self.tags.over then
@@ -56,7 +59,7 @@ function ui.button:mouseup()
 	end
 end
 
-function ui.button:keydown(key)
+function button:keydown(key)
 	if key == 'enter' or key == 'space' then
 		self.active = true
 		self.active_by_key = true
@@ -64,7 +67,7 @@ function ui.button:keydown(key)
 	end
 end
 
-function ui.button:keyup(key)
+function button:keyup(key)
 	if not self.active_by_key then return end
 	if key == 'enter' or key == 'space' or key == 'esc' then
 		self.active = false
@@ -86,7 +89,7 @@ if not ... then require('ui_demo')(function(ui, win)
 		text = 'OK',
 	}
 
-	local btn = ui.button:subclass'btn'
+	local btn = button:subclass'btn'
 
 	local b2 = btn(ui, {
 		parent = win,

@@ -61,8 +61,7 @@ function button:sync_triangle()
 	self.triangle = {x, y, w, h}
 end
 
-function button:draw_triangle()
-	local cr = self.window.cr
+function button:draw_triangle(cr)
 	local x, y, w, h = unpack(self.triangle)
 	cr:move_to(x, y)
 	cr:rel_line_to(w, 0)
@@ -76,8 +75,8 @@ function button:after_sync()
 	self:sync_triangle()
 end
 
-function button:before_draw_content()
-	self:draw_triangle()
+function button:before_draw_content(cr)
+	self:draw_triangle(cr)
 end
 
 local popup = ui.popup--:subclass'dropdown_popup'
@@ -160,7 +159,7 @@ function dropdown:after_sync()
 	p.h = l.h
 end
 
-function dropdown:before_draw()
+function dropdown:before_draw(cr)
 	self:sync()
 end
 

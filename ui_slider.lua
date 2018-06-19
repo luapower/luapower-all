@@ -258,9 +258,8 @@ function ui.slider:step_lines_visible()
 	return self.step and self.step_line_color and self.size / self.step >= 5
 end
 
-function ui.slider:draw_step_lines()
+function ui.slider:draw_step_lines(cr)
 	if not self:step_lines_visible() then return end
-	local cr = self.window.cr
 	cr:rgba(self.ui:color(self.step_line_color))
 	cr:line_width(1)
 	cr:new_path()
@@ -271,8 +270,8 @@ function ui.slider:draw_step_lines()
 	cr:stroke()
 end
 
-function ui.slider:after_draw_content()
-	self:draw_step_lines()
+function ui.slider:after_draw_content(cr)
+	self:draw_step_lines(cr)
 end
 
 --demo -----------------------------------------------------------------------

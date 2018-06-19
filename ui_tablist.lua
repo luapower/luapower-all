@@ -68,7 +68,7 @@ end
 
 --NYI: border width ~= 1, diff. border colors per side, rounded corners,
 --border offset, shadows (needs border offset).
-function ui.tab:border_path()
+function ui.tab:border_path(cr)
 	local w, h = self.w, self.h
 	local sl = self.parent.tab_slant_left
 	local sr = self.parent.tab_slant_right
@@ -82,18 +82,16 @@ function ui.tab:border_path()
 	local y2 = 0
 	local y3 = h
 	local y4 = h
-	local cr = self.window.cr
 	cr:move_to(x4 + .5, y4 - .5)
 	cr:line_to(x1 + .5, y1 + .5)
 	cr:line_to(x2 - .5, y2 + .5)
 	cr:line_to(x3 - .5, y3 - .5)
 end
 
-function ui.tab:draw_border()
+function ui.tab:draw_border(cr)
 	if not self:border_visible() then return end
-	local cr = self.window.cr
 	cr:new_path()
-	self:border_path()
+	self:border_path(cr)
 	cr:rgba(self.ui:color(self.border_color_left))
 	cr:line_width(self.border_width_left)
 	cr:stroke()
@@ -245,9 +243,8 @@ function ui.tablist:after_remove_layer(tab)
 	tab.index = 1/0 --reset to default
 end
 
-function ui.tablist:draw_tabline_underneath(front_tab)
+function ui.tablist:draw_tabline_underneath(cr, front_tab)
 	if not front_tab:border_visible() then return end
-	local cr = self.window.cr
 	cr:new_path()
 	cr:move_to(self.tabs_padding_left, self.h - .5)
 	cr:rel_line_to(self.w - self.tabs_padding_left, 0)
@@ -256,15 +253,15 @@ function ui.tablist:draw_tabline_underneath(front_tab)
 	cr:stroke()
 end
 
-function ui.tablist:draw_layers()
+function ui.tablist:draw_layers(cr)
 	if not self.layers then return end
 	local front_tab = self.front_tab
 	for i = 1, #self.layers do
 		local layer = self.layers[i]
 		if layer == front_tab then
-			self:draw_tabline_underneath(front_tab)
+			self:draw_tabline_underneath(cr, front_tab)
 		end
-		layer:draw()
+		layer:draw(cr)
 	end
 end
 
@@ -325,11 +322,11 @@ if not ... then require('ui_demo')(function(ui, win)
 			corner_radius = 5,
 		}
 
-		function tab:after_draw_content()
+		function tab:after_draw_content(cr)
 			self:setfont()
 			local bg_color = self.background_color
 			local text_color = {color.rgb(bg_color):bw(.25):rgba()}
-			self.window.cr:rgba(self.ui:color(text_color))
+			cr:rgba(self.ui:color(text_color))
 			self.window:textbox(0, 0, self.cw, self.ch, 'Tab '..i, 'left', 'center')
 		end
 		function tab:activated()
