@@ -157,22 +157,25 @@ local Window = objc.class('Window', 'NSWindow <NSWindowDelegate, NSDraggingDesti
 
 local cascadePoint
 
+local function stylemask(t)
+	if t.frame == 'none' then
+		return objc.NSBorderlessWindowMask
+	else
+		return bit.bor(
+			objc.NSTitledWindowMask,
+			t.closeable and objc.NSClosableWindowMask or 0,
+			t.frame == 'toolbox' and t.minimizable and objc.NSMiniaturizableWindowMask or 0,
+			t.resizeable and objc.NSResizableWindowMask or 0
+		)
+	end
+end
+
 function window:new(app, frontend, t)
 	self = glue.update({app = app, frontend = frontend}, self)
 
-	local toolbox = t.frame == 'toolbox'
-	local framed = t.frame == 'normal' or toolbox
-
 	--compute initial window style.
-	local style
-	if framed then
-		style = bit.bor(
-			objc.NSTitledWindowMask,
-			t.closeable and objc.NSClosableWindowMask or 0,
-			not toolbox and t.minimizable and objc.NSMiniaturizableWindowMask or 0,
-			t.resizeable and objc.NSResizableWindowMask or 0)
-	else
-		style = objc.NSBorderlessWindowMask
+	local style = stylemask(t)
+	if t.frame == 'none' then
 		--for frameless windows we have to handle maximization manually.
 		self._frameless = true
 	end
@@ -217,6 +220,8 @@ function window:new(app, frontend, t)
 	--messages and it makes moving the window a bit jerky. OTOH we get magnets
 	--and proper event sequence (when was Cocoa fast anyway?).
 	self.nswin:setMovable(false)
+
+	local toolbox = t.frame == 'toolbox'
 
 	--enable the fullscreen button.
 	if not toolbox and t.fullscreenable and self.app.frontend:ver'OSX 10.7' then
@@ -899,11 +904,7 @@ end
 
 --positioning/frame extents --------------------------------------------------
 
-local function stylemask(frame)
-	return frame == 'none' and objc.NSBorderlessWindowMask or objc.NSTitledWindowMask
-end
-
-function app:frame_extents(frame, has_menu)
+function app:frame_extents(frame, has_menu, resizeable)
 	--NOTE: these computations are done in non-flipped space (y=0 at the bottom)
 	local style = stylemask(frame)
 	local cx, cy, cw, ch = 200, 200, 400, 400

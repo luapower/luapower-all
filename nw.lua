@@ -521,6 +521,7 @@ function window:_new(app, backend_class, useropt)
 		local x1, y1, w1, h1 = app:client_to_frame(
 			opt.frame,
 			opt.menu and true or false,
+			opt.resizeable and true or false,
 			opt.cx or 0,
 			opt.cy or 0,
 			opt.cw or 0,
@@ -898,20 +899,20 @@ end
 
 --positioning/frame extents --------------------------------------------------
 
-function app:frame_extents(frame, has_menu)
+function app:frame_extents(frame, has_menu, resizeable)
 	frame = checkframe(frame)
 	if frame == 'none' then
 		return 0, 0, 0, 0
 	end
-	return self.backend:frame_extents(frame, has_menu)
+	return self.backend:frame_extents(frame, has_menu, resizeable)
 end
 
-function app:client_to_frame(frame, has_menu, x, y, w, h)
-	return frame_rect(x, y, w, h, self:frame_extents(frame, has_menu))
+function app:client_to_frame(frame, has_menu, resizeable, x, y, w, h)
+	return frame_rect(x, y, w, h, self:frame_extents(frame, has_menu, resizeable))
 end
 
-function app:frame_to_client(frame, has_menu, x, y, w, h)
-	return unframe_rect(x, y, w, h, self:frame_extents(frame, has_menu))
+function app:frame_to_client(frame, has_menu, resizeable, x, y, w, h)
+	return unframe_rect(x, y, w, h, self:frame_extents(frame, has_menu, resizeable))
 end
 
 --positioning/client rect ----------------------------------------------------

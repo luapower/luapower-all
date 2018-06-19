@@ -799,17 +799,17 @@ __NOTE:__ This [doesn't work](https://github.com/luapower/nw/issues/25) on Linux
 
 ## Frame extents
 
-### `app:frame_extents(frame, has_menu) -> left, top, right, bottom`
+### `app:frame_extents(frame, has_menu, resizeable) -> left, top, right, bottom`
 
 Get the frame extents for a certain frame type.
 If `has_menu` is true, then the window also has a menu.
 
-### `app:client_to_frame(frame, has_menu, x, y, w, h) -> x, y, w, h`
+### `app:client_to_frame(frame, has_menu, resizeable, x, y, w, h) -> x, y, w, h`
 
 Given a client rectangle, return the frame rectangle for a certain
 frame type. If `has_menu` is true, then the window also has a menu.
 
-### `app:frame_to_client(frame, has_menu, x, y, w, h) -> x, y, w, h`
+### `app:frame_to_client(frame, has_menu, resizeable, x, y, w, h) -> x, y, w, h`
 
 Given a frame rectangle, return the client rectangle for a certain
 frame type. If `has_menu` is true, then the window also has a menu.

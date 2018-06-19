@@ -749,7 +749,7 @@ local function unmapped_frame_extents(win)
 	return w1, h1, w2, h2
 end
 
-local frame_extents = glue.memoize(function(frame, has_menu)
+local frame_extents = glue.memoize(function(frame, has_menu, resizeable)
 	--create a dummy window
 	local win = xlib.create_window{width = 200, height = 200}
 	--get its frame extents
@@ -760,8 +760,8 @@ local frame_extents = glue.memoize(function(frame, has_menu)
 	return {w1, h1, w2, h2}
 end)
 
-function app:frame_extents(frame, has_menu)
-	return unpack(frame_extents(frame, has_menu))
+function app:frame_extents(frame, has_menu, resizeable)
+	return unpack(frame_extents(frame, has_menu, resizeable))
 end
 
 --positioning/rectangles -----------------------------------------------------

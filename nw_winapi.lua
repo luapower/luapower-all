@@ -506,22 +506,22 @@ end
 
 --positioning/frame extents --------------------------------------------------
 
-local function frame_args(frame, has_menu)
+local function frame_args(frame, has_menu, resizeable)
 	local framed = frame == 'normal' or frame == 'toolbox'
 	return {
 		border = framed,
 		frame = framed,
 		window_edge = framed,
-		resizeable = framed,
+		resizeable = resizeable,
 		tool_window = frame == 'toolbox',
 		menu = has_menu or nil,
 	}
 end
 
-function app:frame_extents(frame, has_menu)
+function app:frame_extents(frame, has_menu, resizeable)
 	local cx, cy, cw, ch = 200, 200, 400, 400
 	local rect = pack_rect(nil, cx, cy, cw, ch)
-	local rect = winapi.Window:client_to_frame(frame_args(frame, has_menu), rect)
+	local rect = winapi.Window:client_to_frame(frame_args(frame, has_menu, resizeable), rect)
 	local x, y, w, h = unpack_rect(rect)
 	return cx-x, cy-y, w-cw-(cx-x), h-ch-(cy-y)
 end
