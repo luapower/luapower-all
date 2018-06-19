@@ -132,7 +132,7 @@ compile_bin_module() {
 
 sayt() { [ "$VERBOSE" ] && printf "  %-15s %s\n" "$1" "$2"; }
 
-# usage: mtype=type osuffix=suffix $0 file[.lua]|.c|.dasl|.* CFLAGS... -> file.o
+# usage: mtype=type [osuffix=] $0 file[.lua]|.c|.dasl|.* CFLAGS... -> file.o
 compile_module() {
 	local f=$1; shift
 
@@ -150,9 +150,7 @@ compile_module() {
 	[ "$mtype" ] && x=$mtype
 
 	local o=$ODIR/$f$osuffix.o   # a.ext -> $ODIR/a.ext.o
-
-	# add the .o file to the list of files to be linked
-	OFILES="$OFILES $o"
+	OFILES="$OFILES $o"  # add the .o file to the list of files to be linked
 
 	# use the cached .o file if the source file hasn't changed, make-style.
 	[ -z "$IGNORE_ODIR" -a -f $o -a $o -nt $f ] && return
@@ -169,9 +167,14 @@ compile_bundle_module() {
 	compile_module csrc/bundle/$f -Icsrc/bundle -Icsrc/luajit/src/src "$@"
 }
 
-# usage: o=file.o s="res code..." $0
+# usage: o=file.o s="res code..." [f=source_file] $0 -> file.o
 compile_resource() {
 	OFILES="$OFILES $o"
+
+	# use the cached .o file if the source file hasn't changed, make-style.
+	[ -n "$f" ] && [ -z "$IGNORE_ODIR" -a -f $o -a $o -nt $f ] && return
+
+	sayt res $o
 	echo "$s" | windres -o $o
 }
 
@@ -182,7 +185,7 @@ compile_icon() {
 	local f=$1; shift
 	[ "$f" ] || return
 	sayt icon $f
-	o=$ODIR/_icon.o s="0  ICON  \"$f\"" compile_resource
+	s="0  ICON  \"$f\"" o=$ODIR/$f.res.o f=$f compile_resource
 }
 
 # add a manifest file to enable the exe to use comctl 6.0
@@ -195,22 +198,62 @@ compile_manifest() {
 	s="\
 		#include \"winuser.h\"
 		1 RT_MANIFEST $f
-		" o=$ODIR/_manifest.o compile_resource
+		" o=$ODIR/$f.res.o f=$f compile_resource
 }
 
-compile_libs_list() {
-	echo "return '$ALIBS'" > bundle_libs.lua
-	compile_module bundle_libs.lua
-	rm bundle_libs.lua
+# auto-generate app version based on last git tag + number of commits after it
+app_auto_version() {
+	[ "$APPREPO" ] || die "-av option requires -ar option"
+	mgit - "$APPREPO" describe --tags --long --always | sed -e 's/\-[^\-]\+$//' | tr '-' '.'
+}
+
+# add a VERSIONINFO resource to populate exe's Properties dialog box.
+# usage: $0 "Name=Value;..."
+# NOTE: $FileDescription is what appears in Task Manager on Windows.
+compile_version_info() {
+	[ $OS = mingw ] || return
+	sayt versioninfo "$VERSIONINFO"
+	s="$(echo '
+	1 VERSIONINFO
+		{
+		BLOCK "StringFileInfo" {
+			BLOCK "040904b0" {'
+			while read -d';' -r pair; do
+				IFS='=' read -r key val <<<"$pair"
+				echo "				VALUE \"$key\", \"$val\000\""
+			done <<<"$1;"
+	echo '			}
+		}
+	}
+	')" o=$ODIR/_versioninfo.res.o compile_resource
+}
+
+# compile stdin-generated Lua module
+# usage: s="Lua code..." $0 -> module.lua.o
+compile_virtual_lua_module() {
+	local o=$ODIR/$1.lua.o
+	sayt vlua $1
+	OFILES="$OFILES $o"
+	echo "$s" | o=$o filename=$1.lua f=- compile_lua_module
+}
+
+compile_bundle_libs() {
+	s="return '$ALIBS'" compile_virtual_lua_module bundle_libs
+}
+
+compile_bundle_appversion() {
+	[ "$APPVERSION" ] || return
+	[ "$APPVERSION" = "auto" ] && APPVERSION="$(app_auto_version)"
+	s="return '$APPVERSION'" compile_virtual_lua_module bundle_appversion
 }
 
 # usage: MODULES='mod1 ...' $0 -> $ODIR/*.o
 compile_all() {
 	say "Compiling modules..."
 
-	# the dir where .o files are generated
+	# the dir where static .o files are generated
 	ODIR=.bundle-tmp/$P
-	mkdir -p $ODIR || { echo "Cannot mkdir $ODIR"; exit 1; }
+	mkdir -p $ODIR || die "Cannot mkdir $ODIR"
 
 	# the compile_*() functions will add the names of all .o files to this var
 	OFILES=
@@ -218,7 +261,6 @@ compile_all() {
 	# the icon has to be linked first, believe it!
 	# so we compile it first so that it's added to $OFILES first.
 	compile_icon "$ICON"
-	compile_manifest "bin/mingw32/luajit.exe.manifest"
 
 	# compile all the modules
 	for m in $MODULES; do
@@ -229,22 +271,27 @@ compile_all() {
 	done
 
 	# compile bundle.c which implements bundle_add_loaders() and bundle_main().
-	local osuffix
+	# bundle.c is a template: it compiles differently for each $MAIN
 	local copt
-	[ "$MAIN" ] && {
-		# bundle.c is a template: it compiles differently for each $MAIN,
-		# so we make a different .o file for each unique value of $MAIN.
-		osuffix=_$MAIN
-		copt=-DBUNDLE_MAIN=$MAIN
-	}
-	osuffix=$osuffix compile_bundle_module bundle.c $copt
+	[ "$MAIN" ] && copt=-DBUNDLE_MAIN=$MAIN
+	osuffix=_$MAIN compile_bundle_module bundle.c $copt
 
 	# compile our custom luajit frontend which calls bundle_add_loaders()
 	# and bundle_main() on startup.
 	compile_bundle_module luajit.c
 
 	# compile a listing of all static libs needed for ffi.load() logic
-	compile_libs_list
+	compile_bundle_libs
+
+	# compile the auto-generated app version
+	compile_bundle_appversion
+
+	# embed the luajit manifest file
+	compile_manifest "bin/mingw32/luajit.exe.manifest"
+
+	# generate a VERSIONINFO resource (Windows)
+	compile_version_info "$VERSIONINFO"
+
 }
 
 # linking --------------------------------------------------------------------
@@ -376,6 +423,7 @@ compress_exe() {
 bundle() {
 	say "Bundle parameters:"
 	say "  Platform:      " "$OS ($P)"
+	say "  Output file:   " "$EXE"
 	say "  Modules:       " $MODULES
 	say "  Static libs:   " $ALIBS
 	say "  Dynamic libs:  " $DLIBS
@@ -411,6 +459,9 @@ usage() {
 	echo "  -w  --no-console                   Make app bundle (OSX)"
 	echo "  -i  --icon FILE.ico                Set icon (Windows)"
 	echo "  -i  --icon FILE.png                Set icon (OSX; requires -w)"
+	echo "  -vi --versioninfo \"Name=Val;...\" Set VERSIONINFO fields (Windows)"
+	echo "  -av --appversion VERSION|auto      Set bundle.appversion to VERSION"
+	echo "  -ar --apprepo REPO                 Git repo for -av auto"
 	echo
 	echo "  -ll --list-lua-modules             List Lua modules"
 	echo "  -la --list-alibs                   List static libs (.a files)"
@@ -493,6 +544,12 @@ parse_opts() {
 				ICON="$1"; shift;;
 			-w  | --no-console)
 				NOCONSOLE=1;;
+			-vi | --versioninfo)
+				VERSIONINFO="$VERSIONINFO;$1"; shift;;
+			-av  | --appversion)
+				APPVERSION="$1"; shift;;
+			-ar  | --apprepo)
+				APPREPO="$1"; shift;;
 			-h  | --help)
 				usage;;
 			-v | --verbose)

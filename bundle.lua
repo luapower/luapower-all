@@ -5,6 +5,8 @@
 local ffi = require'ffi'
 local BBIN_PREFIX = 'Bbin_'
 
+local bundle = {}
+
 --portable way to get exe's directory, based on arg[0].
 --the resulted directory is relative to the current directory.
 local dir = arg[0]:gsub('[/\\]?[^/\\]+$', '') or '' --remove file name
@@ -32,7 +34,7 @@ local function mmap_blob(file)
 	return data and {data = data, size = size, close = function() end}
 end
 
-local function canopen(file)
+function bundle.canopen(file)
 	local f = io.open(file, 'r')
 	if f then
 		f:close()
@@ -51,11 +53,11 @@ local function load_file(file)
 	end
 end
 
-local function load(file)
+function bundle.load(file)
 	return load_file(file) or load_blob(file)
 end
 
-local function mmap(file)
+function bundle.mmap(file)
 	local s = load_file(file)
 	if s then
 		--TODO: use fs.mmap() here
@@ -66,8 +68,7 @@ local function mmap(file)
 	end
 end
 
-return {
-	canopen = canopen,
-	load = load,
-	mmap = mmap,
-}
+local ok, ver = pcall(require, 'bundle_appversion')
+bundle.appversion = ok and ver or nil
+
+return bundle
