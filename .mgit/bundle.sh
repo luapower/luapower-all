@@ -175,6 +175,7 @@ compile_resource() {
 	[ -n "$f" ] && [ -z "$IGNORE_ODIR" -a -f $o -a $o -nt $f ] && return
 
 	sayt res $o
+	mkdir -p `dirname $o`
 	echo "$s" | windres -o $o
 }
 
@@ -185,7 +186,7 @@ compile_icon() {
 	local f=$1; shift
 	[ "$f" ] || return
 	sayt icon $f
-	s="0  ICON  \"$f\"" o=$ODIR/$f.res.o f=$f compile_resource
+	s="100 ICON \"$f\"" o=$ODIR/$f.res.o f=$f compile_resource
 }
 
 # add a manifest file to enable the exe to use comctl 6.0
@@ -195,10 +196,8 @@ compile_manifest() {
 	local f=$1; shift
 	[ "$f" ] || return
 	sayt manifest $f
-	s="\
-		#include \"winuser.h\"
-		1 RT_MANIFEST $f
-		" o=$ODIR/$f.res.o f=$f compile_resource
+	# 24 is RT_MANIFEST from winuser.h
+	s="1 24 \"$f\"" o=$ODIR/$f.res.o f=$f compile_resource
 }
 
 # auto-generate app version based on last git tag + number of commits after it
@@ -234,6 +233,7 @@ compile_virtual_lua_module() {
 	local o=$ODIR/$1.lua.o
 	sayt vlua $1
 	OFILES="$OFILES $o"
+	mkdir -p `dirname $o`
 	echo "$s" | o=$o filename=$1.lua f=- compile_lua_module
 }
 
