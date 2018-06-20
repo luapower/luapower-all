@@ -432,6 +432,16 @@ function Window:canBecomeMainWindow()
 	return self.frontend:activable()
 end
 
+--remote wakeup --------------------------------------------------------------
+
+function app:already_running()
+	return false --TODO
+end
+
+function app:wakeup_other_instances()
+	--TODO
+end
+
 --state/app visibility -------------------------------------------------------
 
 function app:visible()

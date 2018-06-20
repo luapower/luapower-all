@@ -108,6 +108,12 @@ __window & app activation__
 `win:activable() -> t|f`                     activable flag
 `app/win:activated()`                        event: app/window was activated
 `app/win:deactivated()`                      event: app/window was deactivated
+__app instances__
+`app:check_single_instance()`                single app instance check
+`app.id`                                     set an app ID
+`app:already_running() -> t|f`               check if other app instances running
+`app:wakeup_other_instances()`               send `wakeup` event to other app instances
+`app:wakeup()`                               event: wakeup from another instance
 __app visibility (OSX)__
 `app:visible(t|f) /-> t|f`                   get/set app visibility
 `app:hide()`                                 hide the app
@@ -661,6 +667,35 @@ window.
 __NOTE:__ Only works with frameless windows.
 
 __NOTE:__ This [doesn't work](https://github.com/luapower/nw/issues/26) in Linux.
+
+## App instances
+
+### `app:check_single_instance()`
+
+If another instance of this app is already running, activate it and exit
+this process. Calling this at the beginning of the app (after setting
+`nw.app_id` if that's necessasry) is enough to enable single-app instance
+behavior.
+
+### `nw.app_id = id`
+
+Set the app ID for single-app-instance checks. All processes with the same
+app ID will be considered instances of the same app. If this is not set,
+the executable file which started the process is used as app ID.
+
+__NOTE:__ This must be set before calling `nw:app()` for the first time.
+
+### `app:already_running() -> t|f`
+
+Check if other instances of this app are running.
+
+### `app:wakeup_other_instances()`
+
+Send `wakeup` event to other instances of this app.
+
+### `app:wakeup()`
+
+Event: another instance of this app has called `app:wakeup_other_instances()`.
 
 ## App visibility (OSX)
 

@@ -141,27 +141,6 @@ function app:stop()
 	winapi.PostQuitMessage()
 end
 
---remote wakeup --------------------------------------------------------------
-
-function app:_id(id)
-	return self.frontend:id()
-		or winapi.GetModuleFilename():lower():gsub('[\\/%:]', '_')
-end
-
-function app:_init_wakeup()
-	self._wakeup_wm_name = 'WM_'..self:_id()
-	self._wakeup_wm_code = winapi.RegisterWindowMessage(self._wakeup_wm_name)
-end
-
-function app:already_running()
-	local mutex, err = winapi.CreateMutex(nil, false, self:_id())
-	return err == 'already_exists'
-end
-
-function app:wakeup()
-	winapi.PostMessage(winapi.HWND_BROADCAST, self._wakeup_wm_code, 0, 0)
-end
-
 --timers ---------------------------------------------------------------------
 
 local appwin
@@ -260,7 +239,9 @@ function window:new(app, frontend, t)
 	end
 
 	self.win[app._wakeup_wm_name] = function(win)
-		self.frontend:_backend_wakeup()
+		if last_active_window == self then --receive this on one window only
+			app.frontend:_backend_wakeup()
+		end
 	end
 
 	return self
@@ -375,6 +356,27 @@ end
 
 function Window:on_deactivate_app() --triggered after on_deactivate().
 	self.frontend.app:_backend_changed()
+end
+
+--single app instance --------------------------------------------------------
+
+function app:id()
+	return self.frontend.nw.app_id
+		or winapi.GetModuleFilename():lower():gsub('[\\/%:]', '_')
+end
+
+function app:_init_wakeup()
+	self._wakeup_wm_name = 'WM_'..self:id()
+	self._wakeup_wm_code = winapi.RegisterWindowMessage(self._wakeup_wm_name)
+end
+
+function app:already_running()
+	local mutex, err = winapi.CreateMutex(nil, false, self:id())
+	return err == 'already_exists'
+end
+
+function app:wakeup_other_instances()
+	winapi.PostMessage(winapi.HWND_BROADCAST, self._wakeup_wm_code, 0, 0)
 end
 
 --state/app visibility -------------------------------------------------------

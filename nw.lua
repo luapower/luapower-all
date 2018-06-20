@@ -687,20 +687,28 @@ function window:active()
 	return self.backend:active()
 end
 
-function window:_backend_wakeup()
-	self:fire'wakeup'
-end
-
---remote wakeup --------------------------------------------------------------
-
-function app:id() end --stub
+--single app instance --------------------------------------------------------
 
 function app:already_running()
 	return self.backend:already_running()
 end
 
-function app:wakeup()
-	self.backend:wakeup()
+function app:wakeup_other_instances()
+	self.backend:wakeup_other_instances()
+end
+
+function app:_backend_wakeup()
+	self:fire'wakeup'
+end
+
+function app:check_single_instance()
+	if self:already_running() then
+		self:wakeup_other_instances()
+		os.exit(0)
+	end
+	self:on('wakeup', function(self)
+		self:activate()
+	end)
 end
 
 --state/app visibility (OSX only) --------------------------------------------
