@@ -7,62 +7,78 @@ tagline: single-executable app deployment
 Bundle is a small framework for bundling together LuaJIT, Lua modules,
 Lua/C modules, DynASM/Lua modules, C libraries, and other static assets
 into a single fat executable. In its default configuration, it assumes
-luapower's [toolchain][building] and [directory layout][get-involved] 
-(read: you have to place your own code in the luapower directory) and 
+luapower's [toolchain][building] and [directory layout][get-involved]
+(read: you have to place your own code in the luapower directory) and
 it works on Windows, Linux and OSX, x86 and x64.
 
 ## Usage
 
-	mgit bundle options...
+~~~
+ Compile and link together LuaJIT, Lua modules, Lua/C modules, C libraries,
+ and other static assets into a single fat executable.
 
-	  -o  --output FILE                  Output executable (required)
+ Tested with mingw, gcc and clang on Windows, Linux and OSX respectively.
+ Written by Cosmin Apreutesei. Public Domain.
 
-	  -m  --modules "FILE1 ..."|--all|-- Lua (or other) modules to bundle [1]
-	  -a  --alibs "LIB1 ..."|--all|--    Static libs to bundle            [2]
-	  -d  --dlibs "LIB1 ..."|--          Dynamic libs to link against     [3]
-	  -f  --frameworks "FRM1 ..."        Frameworks to link against (OSX) [4]
-	  -b  --bin-modules "FILE1 ..."      Files to force bundling as blobs
+ USAGE: mgit bundle options...
 
-	  -M  --main MODULE                  Module to run on start-up
+  -o  --output FILE                  Output executable (required)
 
-	  -m32                               Compile for 32bit (OSX)
-	  -z  --compress                     Compress the executable (needs UPX)
-	  -w  --no-console                   Hide console (Windows)
-	  -w  --no-console                   Make app bundle (OSX)
-	  -i  --icon FILE.ico                Set icon (Windows)
-	  -i  --icon FILE.png                Set icon (OSX; requires -w)
+  -m  --modules "FILE1 ..."|--all|-- Lua (or other) modules to bundle [1]
+  -a  --alibs "LIB1 ..."|--all|--    Static libs to bundle            [2]
+  -d  --dlibs "LIB1 ..."|--          Dynamic libs to link against     [3]
+  -f  --frameworks "FRM1 ..."        Frameworks to link against (OSX) [4]
+  -b  --bin-modules "FILE1 ..."      Files to force-bundle as binary blobs
 
-	  -ll --list-lua-modules             List Lua modules
-	  -la --list-alibs                   List static libs (.a files)
+  -M  --main MODULE                  Module to run on start-up
 
-	  -C  --clean                        Ignore the object cache
+  -m32                               Compile for 32bit (OSX)
+  -z  --compress                     Compress the executable (needs UPX)
+  -w  --no-console                   Hide console (Windows)
+  -w  --no-console                   Make app bundle (OSX)
+  -i  --icon FILE.ico                Set icon (Windows)
+  -i  --icon FILE.png                Set icon (OSX; requires -w)
+  -vi --versioninfo "Name=Val;..."   Set VERSIONINFO fields (Windows)
+  -av --appversion VERSION|auto      Set bundle.appversion to VERSION
+  -ar --apprepo REPO                 Git repo for -av auto
 
-	  -v  --verbose                      Be verbose
-	  -h  --help                         Show this screen
+  -ll --list-lua-modules             List Lua modules
+  -la --list-alibs                   List static libs (.a files)
 
-	 Passing -- clears the list of args for that option, including implicit args.
+  -C  --clean                        Ignore the object cache
 
-	 [1] .lua, .c and .dasl are compiled, other files are added as blobs.
+  -v  --verbose                      Be verbose
+  -h  --help                         Show this screen
 
-	 [2] implicit static libs:           luajit
-	 [3] implicit dynamic libs:
-	 [4] implicit frameworks:            ApplicationServices
+ Passing -- clears the list of args for that option, including implicit args.
+
+ [1] .lua, .c and .dasl are compiled, other files are added as blobs.
+
+ [2] implicit static libs:           luajit
+ [3] implicit dynamic libs:
+ [4] implicit frameworks:            ApplicationServices
+
+~~~
 
 
 ### Examples
 
-	# full bundle: all Lua modules plus all static libraries
-	mgit bundle -a --all -m --all -M main -o fat.exe
+~~~
+# full bundle: all Lua modules plus all static libraries
+mgit bundle -a --all -m --all -M main -o fat.exe
 
-	# minimal bundle: two Lua modules, one static lib, one blob
-	mgit bundle -a sha2 -m 'sha2 main media/bmp/bg.bmp' -M main -o lean.exe
+# minimal bundle: two Lua modules, one static lib, one blob
+mgit bundle -a sha2 -m 'sha2 main media/bmp/bg.bmp' -M main -o lean.exe
 
-	# luajit frontend with built-in luasocket support, no main module
-	mgit bundle -a 'socket_core mime_core' -m 'socket mime ltn12 socket/*.lua' -o luajit.exe
+# luajit frontend with built-in luasocket support, no main module
+mgit bundle -a 'socket_core mime_core' -m 'socket mime ltn12 socket/*.lua' -o luajit.exe
 
-	# run the unit tests
-	mgit bundle-test
+# run the unit tests
+mgit bundle-test
+~~~
 
+__TIP:__ Pass `-vi "FileDescription=..."` to set the process description
+that is shown in the Windows task manager.
 
 ## How it works
 
@@ -131,6 +147,7 @@ Optional module with an API for loading embedded binary files:
 `mmap.data`                               pointer to file data
 `mmap.size`                               file size
 `mmap:close()`                            close the mmap object
+`bundle.appversion -> string`             app version from the `-av` cmdline option
 ----------------------------------------- -------------------------------------------------
 
 __NOTE:__ These functions look in the filesystem _first_ and only if that fails
