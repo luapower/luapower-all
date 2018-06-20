@@ -60,7 +60,7 @@ Windows = Windows'hwnd' --singleton
 --SetWindowLong(GWL_WNDPROC) or via RegisterClass(), and adding your window
 --object to the window tracker via Windows:add(window), your window's
 --__handle_message() method will be called for each message destined to your
---window. This way only one ffi callback object is wasted for all windows.
+--window. This way only one ffi callback object is used for all windows.
 
 MessageRouter = class(Object)
 
@@ -73,7 +73,7 @@ function MessageRouter:__init()
 		return DefWindowProc(hwnd, WM, wParam, lParam) --catch WM_CREATE etc.
 	end
 
-	--exceptions in WNDPROC are caught by Windows on x64, see:
+	--exceptions in WNDPROC are silently eaten by Windows on x64, see:
 	--http://stackoverflow.com/questions/1487950/access-violation-in-wm-paint-not-caught
 	if ffi.abi'64bit' then
 		local dispatch0 = dispatch

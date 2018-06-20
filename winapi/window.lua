@@ -698,6 +698,8 @@ end
 -- NOTE: a FFI callback cannot safely be called from a C function which is
 -- itself called via the FFI from JIT-compiled code. This means we must disable
 -- jitting for all functions that could trigger a FFI callback.
+jit.off(SendMessage)
+jit.off(PeekMessage)
 jit.off(GetMessage)
 jit.off(DispatchMessage)
 jit.off(TranslateAccelerator)
