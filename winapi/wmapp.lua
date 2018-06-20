@@ -34,8 +34,8 @@ local function remove_message(code)
 	end
 end
 
-function register_message(name)
-	local code = add_message()
+function register_message(name, code)
+	code = code or add_message()
 	if name then
 		WM_NAMES[code] = name
 		rawset(_M, name, code)

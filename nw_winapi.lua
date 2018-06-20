@@ -32,6 +32,8 @@ require'winapi.clipboard'
 require'winapi.shellapi'
 require'winapi.dragdrop'
 require'winapi.panelclass'
+require'winapi.module'
+require'winapi.sync'
 
 local nw = {name = 'winapi'}
 
@@ -62,6 +64,9 @@ function app:init(frontend)
 	rid.usUsagePage = 1 --generic desktop controls
 	rid.usUsage     = 6 --keyboard
 	winapi.RegisterRawInputDevices(rid, 1, ffi.sizeof(rid))
+
+	--enable waking up this app instance by other instances of this app
+	self:_init_wakeup()
 
 	return self
 end
@@ -134,6 +139,27 @@ end
 
 function app:stop()
 	winapi.PostQuitMessage()
+end
+
+--remote wakeup --------------------------------------------------------------
+
+function app:_id(id)
+	return self.frontend:id()
+		or winapi.GetModuleFilename():lower():gsub('[\\/%:]', '_')
+end
+
+function app:_init_wakeup()
+	self._wakeup_wm_name = 'WM_'..self:_id()
+	self._wakeup_wm_code = winapi.RegisterWindowMessage(self._wakeup_wm_name)
+end
+
+function app:already_running()
+	local mutex, err = winapi.CreateMutex(nil, false, self:_id())
+	return err == 'already_exists'
+end
+
+function app:wakeup()
+	winapi.PostMessage(winapi.HWND_BROADCAST, self._wakeup_wm_code, 0, 0)
 end
 
 --timers ---------------------------------------------------------------------
@@ -231,6 +257,10 @@ function window:new(app, frontend, t)
 	--just in case the user calls app:activate() before this window activates.
 	if not last_active_window then
 		last_active_window = self
+	end
+
+	self.win[app._wakeup_wm_name] = function(win)
+		self.frontend:_backend_wakeup()
 	end
 
 	return self

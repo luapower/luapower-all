@@ -156,6 +156,9 @@ function ui:runafter(t, f)         return self.app:runafter(t, f) end
 function ui:sleep(s)               return self.app:sleep(s) end
 
 function ui:get_active()           return self.app:active() end
+function ui:activate()             return self.app:activate() end
+function ui:already_running()      return self.app:already_running() end
+function ui:wakeup()               return self.app:wakeup() end
 function ui:get_visible()          return self.app:visible() end
 function ui:set_visible(v)         return self.app:visible(v or false) end
 function ui:hide()                 return self.app:hide() end
@@ -1046,7 +1049,7 @@ function window:override_init(inherited, ui, t)
 	--forward native events
 	local native_events = {
 		'closing',
-		'activated', 'deactivated',
+		'activated', 'deactivated', 'wakeup',
 		'shown', 'hidden',
 		'minimized', 'unminimized',
 		'maximized', 'unmaximized',

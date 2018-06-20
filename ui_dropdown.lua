@@ -118,8 +118,6 @@ dropdown.list_class = list
 list.header_visible = false
 list.col_move = false
 list.row_move = false
-list.multi_select = false
-list.cell_select = false
 
 function dropdown:create_list(popup)
 	local list = self.list_class(self.ui, {

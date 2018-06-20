@@ -687,6 +687,22 @@ function window:active()
 	return self.backend:active()
 end
 
+function window:_backend_wakeup()
+	self:fire'wakeup'
+end
+
+--remote wakeup --------------------------------------------------------------
+
+function app:id() end --stub
+
+function app:already_running()
+	return self.backend:already_running()
+end
+
+function app:wakeup()
+	self.backend:wakeup()
+end
+
 --state/app visibility (OSX only) --------------------------------------------
 
 function app:visible(visible)

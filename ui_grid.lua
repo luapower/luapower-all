@@ -1030,12 +1030,17 @@ end
 
 --row & cell focus, selection, scrolling -------------------------------------
 
-grid.cell_select = true --select individual cells or entire rows
-grid.multi_select = true --allow selecting multiple cells/rows
+grid.cell_select = false --select individual cells or entire rows
+grid.multi_select = false --allow selecting multiple cells/rows
 
 function grid:cell_selected(i, col)
-	local t = self.selected_cells[col]
-	return t and t[i] or false
+	if not self.multi_select then
+		return self.selected_row_index == i
+			and (not self.cell_select or self.selected_col == col)
+	else
+		local t = self.selected_cells[col]
+		return t and t[i] or false
+	end
 end
 
 function grid:select_cells(i1, col1, i2, col2, selected)
@@ -1051,16 +1056,21 @@ function grid:select_cells(i1, col1, i2, col2, selected)
 	if j2 < j1 then
 		j1, j2 = j2, j1
 	end
-	for j = j1, j2 do
-		local col = self.cols[j]
-		local t = attr(self.selected_cells, col)
-		for i = i1, i2 do
-			local was_selected = t[i]
-			t[i] = selected
-			if selected and not was_selected then
-				self:fire('cell_was_selected', i, col)
-			elseif not selected and was_selected then
-				self:fire('cell_was_deselected', i, col)
+	if not self.multi_select then
+		self.selected_row_index = selected and i1
+		self.selected_col = selected and col1
+	else
+		for j = j1, j2 do
+			local col = self.cols[j]
+			local t = attr(self.selected_cells, col)
+			for i = i1, i2 do
+				local was_selected = t[i]
+				t[i] = selected
+				if selected and not was_selected then
+					self:fire('cell_was_selected', i, col)
+				elseif not selected and was_selected then
+					self:fire('cell_was_deselected', i, col)
+				end
 			end
 		end
 	end
@@ -1116,6 +1126,8 @@ end
 
 function grid:select_none()
 	self.selected_cells = {}
+	self.selected_row_index = false
+	self.selected_col = false
 end
 
 function grid:select_all()
@@ -1357,7 +1369,7 @@ function grid:after_init(ui, t)
 	if self.var_row_h then
 		self:_build_row_y_table()
 	end
-	self.selected_cells = {}
+	self:select_none()
 end
 
 --demo -----------------------------------------------------------------------

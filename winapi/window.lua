@@ -666,6 +666,9 @@ BOOL PostMessageW(
      LPARAM lParam);
 
 LONG GetMessageTime(void);
+
+UINT RegisterWindowMessageW(LPCWSTR lpString);
+
 ]]
 
 local msg0 = types.MSG()
@@ -706,6 +709,12 @@ HWND_MESSAGE   = ffi.cast('HWND', -3)
 
 function PostQuitMessage(exitcode)
 	C.PostQuitMessage(exitcode or 0)
+end
+
+function RegisterWindowMessage(name)
+	local code = checknz(C.RegisterWindowMessageW(wcs(name)))
+	register_message(name, code)
+	return code
 end
 
 function SendMessagePtr(hwnd, WM, wParam, lParam)
