@@ -3201,7 +3201,7 @@ end
 --text geometry and drawing
 
 function layer:text_visible()
-	return self.text and true or false
+	return self.text and self.text ~= '' and true or false
 end
 
 function layer:draw_text(cr)
