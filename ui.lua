@@ -104,7 +104,7 @@ function ui:init()
 	--forward native events
 	local native_events = {
 		'quitting',
-		'activated', 'deactivated',
+		'activated', 'deactivated', 'wakeup',
 		'hidden', 'unhidden',
 		'displays_changed',
 	}
@@ -135,47 +135,55 @@ local default_ease = 'expo out'
 
 --native app proxy methods ---------------------------------------------------
 
-function ui:native_window(t)       return self.app:window(t) end
+function ui:native_window(t)       return self().app:window(t) end
 
 function ui:get_active_window()
-	local win = self.app:active_window()
+	local win = self().app:active_window()
 	return win and win.ui_window
 end
 
 function ui:clock()                return time.clock() end
-function ui:run(func)              return self.app:run(func) end
-function ui:poll(timeout)          return self.app:poll(timeout) end
-function ui:stop()                 return self.app:stop() end
-function ui:quit()                 return self.app:quit() end
-function ui:get_autoquit()         return self.app:autoquit() end
-function ui:set_autoquit(aq)       return self.app:autoquit(aq or false) end
-function ui:get_maxfps()           return self.app:maxfps() end
-function ui:set_maxfps(fps)        return self.app:maxfps(fps or false) end
-function ui:runevery(t, f)         return self.app:runevery(t, f) end
-function ui:runafter(t, f)         return self.app:runafter(t, f) end
-function ui:sleep(s)               return self.app:sleep(s) end
+function ui:run(func)              return self().app:run(func) end
+function ui:poll(timeout)          return self().app:poll(timeout) end
+function ui:stop()                 return self().app:stop() end
+function ui:quit()                 return self().app:quit() end
+function ui:get_autoquit()         return self().app:autoquit() end
+function ui:set_autoquit(aq)       return self().app:autoquit(aq or false) end
+function ui:get_maxfps()           return self().app:maxfps() end
+function ui:set_maxfps(fps)        return self().app:maxfps(fps or false) end
+function ui:runevery(t, f)         return self().app:runevery(t, f) end
+function ui:runafter(t, f)         return self().app:runafter(t, f) end
+function ui:sleep(s)               return self().app:sleep(s) end
 
-function ui:get_active()           return self.app:active() end
-function ui:activate()             return self.app:activate() end
-function ui:already_running()      return self.app:already_running() end
-function ui:wakeup()               return self.app:wakeup() end
-function ui:get_visible()          return self.app:visible() end
-function ui:set_visible(v)         return self.app:visible(v or false) end
-function ui:hide()                 return self.app:hide() end
-function ui:unhide()               return self.app:unhide() end
+function ui:get_app_active()       return self().app:active() end
+function ui:activate_app()         return self().app:activate() end
+function ui:get_app_visible()      return self().app:visible() end
+function ui:set_app_visible(v)     return self().app:visible(v or false) end
+function ui:hide_app()             return self().app:hide() end
+function ui:unhide_app()           return self().app:unhide() end
 
-function ui:key(query)             return self.app:key(query) end
-function ui:get_caret_blink_time() return self.app:caret_blink_time() end
+function ui:key(query)             return self().app:key(query) end
+function ui:get_caret_blink_time() return self().app:caret_blink_time() end
 
-function ui:get_displays()         return self.app:displays() end
-function ui:get_main_display()     return self.app:main_display() end
-function ui:get_active_display()   return self.app:active_display() end
+function ui:get_displays()         return self().app:displays() end
+function ui:get_main_display()     return self().app:main_display() end
+function ui:get_active_display()   return self().app:active_display() end
 
-function ui:getclipboard(type)     return self.app:getclipboard(type) end
-function ui:setclipboard(s, type)  return self.app:setclipboard(s, type) end
+function ui:getclipboard(type)     return self().app:getclipboard(type) end
+function ui:setclipboard(s, type)  return self().app:setclipboard(s, type) end
 
-function ui:opendialog(t)          return self.app:opendialog(t) end
-function ui:savedialog(t)          return self.app:savedialog(t) end
+function ui:opendialog(t)          return self().app:opendialog(t) end
+function ui:savedialog(t)          return self().app:savedialog(t) end
+
+function ui:set_app_id(id)         require'nw'.app_id = id end
+function ui:get_app_id(id)         return require'nw'.app_id end
+function ui:app_already_running()  return self().app:already_running() end
+function ui:wakeup_other_app_instances()
+	return self().app:wakeup_other_instances()
+end
+function ui:check_single_app_instance()
+	return self().app:check_single_instance()
+end
 
 --selectors ------------------------------------------------------------------
 
@@ -1241,6 +1249,14 @@ function window:from_parent(x, y)
 	end
 end
 
+function window:from_window(x, y)
+	return x, y
+end
+
+function window:to_window(x, y)
+	return x, y
+end
+
 --geometry
 
 function window:frame_rect(x, y, w, h)
@@ -1871,21 +1887,28 @@ end
 
 --override this for different ways of finding font files
 function ui:font_file(family, weight, slant)
+	if family:find'%.[to]tf$' then
+		return family
+	end
 	local gfonts = require'gfonts'
-	return gfonts.font_file(family, weight, slant, true)
+	local file = gfonts.font_file(family, weight, slant, true)
+	return assert(file, 'could not find a font for "%s, %s, %s"',
+		family, weight, slant)
 end
 
 --override this for different ways of loading font faces
-function ui:_font(family, weight, slant)
+function ui:font_object(file)
 	local bundle = require'bundle'
-	local file = assert(self:font_file(family, weight, slant),
-		'could not find a font for "%s, %s, %s"', family, weight, slant)
 	local font = {}
 	font.mmap = assert(bundle.mmap(file))
 	font.ft_face = self._freetype:memory_face(font.mmap.data, font.mmap.size)
 	font.cr_face = assert(cairo.ft_font_face(font.ft_face))
 	self._fonts[file] = font
 	return font
+end
+
+function ui:_font(family, weight, slant)
+	return self:font_object(self:font_file(family, weight, slant))
 end
 ui:memoize'_font'
 
@@ -2113,6 +2136,7 @@ layer.shadow_blur = 0
 layer.text_align = 'center'
 layer.text_valign = 'center'
 layer.text_multiline = true
+layer.text_operator = 'over'
 layer.text = nil
 
 layer.cursor = false
@@ -2483,8 +2507,9 @@ function layer:_drop(widget, mx, my, area) --called on the drop target
 end
 
 function layer:_drag(mx, my) --called on the dragged widget
-	local pmx, pmy = self.parent:from_window(mx, my)
-	local dmx, dmy = self:to_parent(self.ui.drag_mx, self.ui.drag_my)
+	local pmx, pmy, dmx, dmy
+	pmx, pmy = self.parent:from_window(mx, my)
+	dmx, dmy = self:to_parent(self.ui.drag_mx, self.ui.drag_my)
 	self:fire('drag', pmx - dmx, pmy - dmy)
 	self:invalidate()
 end
@@ -3103,6 +3128,7 @@ function layer:draw_text(cr)
 	if not self:text_visible() then return end
 	self:setfont()
 	local cw, ch = self:content_size()
+	cr:operator(self.text_operator)
 	self.window:textbox(0, 0, cw, ch, self.text,
 		self.text_align, self.text_valign, self.text_multiline)
 end

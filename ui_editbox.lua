@@ -21,7 +21,7 @@ editbox.scrollable = true
 editbox.max_click_chain = 3 --receive doubleclick and tripleclick events
 editbox.cursor_client = 'text'
 editbox.clip_content = true --TODO: remove this
-editbox.border_color = '#888'
+editbox.border_color = '#333'
 editbox.border_width = 1
 
 editbox.multiline = false

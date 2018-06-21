@@ -1,0 +1,109 @@
+UI ---------------------------------------------------------------------------
+
+- fix tab navigation
+- fix module autoloading vs css decl. order conflict
+-
+
+
+EDITBOX ----------------------------------------------------------------------
+
+- fix hscroll
+- maxchars
+- key filter
+- password_char & eye_icon
+- text_align: left, right, center
+- mask:
+	- select/navigate text with the mask or without
+	- 0	digit required
+	- 9	digit or space, optional
+	- #	digit or space or +/-
+	- L	a-zA-Z
+	-
+
+- fix editbox->editor/view/cursor/selection property proxying
+
+
+LATER/HARD
+- autowrap
+
+
+DROPDOWN ---------------------------------------------------------------------
+
+- static-text-dropdown
+- editbox-dropdown
+- calendar + maskedit dropdown
+-
+
+LITTLE WIDGETS ---------------------------------------------------------------
+
+- checkbox
+- radio-button
+- menu bar
+- menu
+- popup menu
+- tooltip
+- progress-bar
+- calendar
+- color-picker
+- linear-calendar
+
+GRID -------------------------------------------------------------------------
+
+--ctrl+page-up/page-down navigation based on fixed pages
+
+- multiple row move
+- row move with animation
+
+- col %-size
+
+- cell/col border collapse option
+
+- cell formatting: format-string/class/function
+
+- tooltip display on hover for clipped cells
+
+- editable
+	- immediate mode (click) or click-click mode
+	- tab goes to next cell
+	- right/left goes to next/prev cell
+	- automatic cell advancing
+	- cell advancing with tab
+
+- tree-column
+	- expand/collapse-all nodes option
+	- row moving to another parent via drag & drop
+
+- col colapse/show
+
+- col shrink/expand-to-widest-row option on double-clicking between columns
+
+
+LATER/DATASET
+- sorting
+	- sort by multiple columns
+	? client-side sorting with collation
+- filtering
+	- quick filter (i.e. by value list)
+	- search-in-column filter
+	- result can be highlighting or hiding
+- filter by range
+- grouping:
+	- group-by hierarchy
+	- group-by multiple fields
+	- expand/collapse all children
+	- hide/show grouping header
+	- invert selection
+	- row moving to another group via drag&drop
+
+
+LATER/HARD
+- column bands
+- summary row
+- save/load grid configurations
+
+LATER/NEVER
+- auto row height based on wrapped text
+- multi-line cell text with word-wrapping
+- cell auto-ellipsis
+- vertical grid with bands
+

@@ -1059,6 +1059,7 @@ function grid:select_cells(i1, col1, i2, col2, selected)
 	if not self.multi_select then
 		self.selected_row_index = selected and i1
 		self.selected_col = selected and col1
+		self:fire(selected and 'row_was_selected' or 'row_was_deselected', i1)
 	else
 		for j = j1, j2 do
 			local col = self.cols[j]
