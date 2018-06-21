@@ -365,10 +365,17 @@ function Object:fire(event, ...)
 	end
 	local t = self.__observers and self.__observers[event]
 	if t then
-		for i = 1, #t do
+		local i = 1
+		while true do
 			local handler = t[i]
+			if not handler then break end --list end or handler removed
 			local ret = handler(self, ...)
 			if ret ~= nil then return ret end
+			if t[i] ~= handler then
+				--handler was removed from inside itself, stay at i
+			else
+				i = i + 1
+			end
 		end
 	end
 	if event ~= 'event' then
