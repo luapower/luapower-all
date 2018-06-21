@@ -3,6 +3,7 @@
 --Written by Cosmin Apreutesei. Public Domain.
 
 local ui = require'ui'
+local glue = require'glue'
 
 local button = ui.layer:subclass'button'
 ui.button = button
@@ -16,11 +17,12 @@ button.border_width = 1
 button._default = false
 button._cancel = false
 
+button.uses_enter_key = true
+
 ui:style('button', {
 	transition_background_color = true,
 	transition_border_color = true,
 	transition_duration = .5,
-	transition_ease = 'expo out',
 })
 
 ui:style('button default', {
@@ -46,7 +48,6 @@ ui:style('button disabled', {
 
 ui:style('button active over', {
 	background_color = '#fff',
-	border_color = '#fff',
 	text_color = '#000',
 	transition_duration = 0.2,
 })
@@ -60,6 +61,15 @@ ui:style('button focused', {
 	shadow_blur = 3,
 	shadow_color = '#666',
 })
+
+function button:press()
+	self:fire'pressed'
+	if self.default then
+		self.window:close'default'
+	elseif self.cancel then
+		self.window:close'cancel'
+	end
+end
 
 function button:mousedown()
 	if self.active_by_key then return end
@@ -76,7 +86,7 @@ function button:mouseup()
 	if self.active_by_key then return end
 	self.active = false
 	if self.tags.over then
-		self:fire'pressed'
+		self:press()
 	end
 end
 
@@ -95,12 +105,12 @@ function button:keyup(key)
 		self.active_by_key = false
 		self:settag('over', false)
 		if key == 'enter' or key == 'space' then
-			self:fire'pressed'
+			self:press()
 		end
 	end
 end
 
---default & cancel properties/tags -------------------------------------------
+--default & cancel properties/tags
 
 function button:get_default()
 	return self._default
@@ -123,24 +133,31 @@ function button:set_cancel(cancel)
 end
 
 function button:after_set_window(win)
-	if win then
-		local action
-		win:on({'keydown', self}, function(win, key)
-			if self.default and key == 'enter' then
-				action = 'default'
-				self:keydown'enter'
-			elseif self.cancel and key == 'esc' then
-				action = 'cancel'
+	if not win then return end
+	local action
+	win:on({'keydown', self}, function(win, key)
+		if self.default and key == 'enter' then
+			if not win.focused_widget
+				or not win.focused_widget:uses_key'enter'
+			then
+				action = true
 				self:keydown'enter'
 			end
-		end)
-		win:on({'keyup', self}, function(win, key)
-			if action then
-				self:keyup'enter'
-				win:close(action)
+		elseif self.cancel and key == 'esc' then
+			if not win.focused_widget
+				or not win.focused_widget:uses_key'esc'
+			then
+				action = true
+				self:keydown'enter'
 			end
-		end)
-	end
+		end
+	end)
+	win:on({'keyup', self}, function(win, key)
+		if action then
+			action = false
+			self:keyup'enter'
+		end
+	end)
 end
 
 --checkbox -------------------------------------------------------------------
@@ -150,6 +167,24 @@ ui.checkbox = checkbox
 
 checkbox.h = 18
 checkbox.align = 'left'
+checkbox._checked = false
+
+function checkbox:get_checked()
+	return self._checked
+end
+
+function checkbox:set_checked(checked)
+	checked = checked and true or false
+	if self._checked == checked then return end
+	self._checked = checked
+	self:settag('checked', checked)
+	self:fire(checked and 'was_checked' or 'was_unchecked')
+	self:fire('checked_changed', checked)
+end
+
+function checkbox:toggle()
+	self.checked = not self.checked
+end
 
 local cbutton = ui.button:subclass'checkbox_button'
 checkbox.button_class = cbutton
@@ -160,14 +195,17 @@ cbutton.padding_left = 2
 
 ui:style('checkbox_button hot', {
 	text_color = '#fff',
-	transition_duration_text_color = 0,
+	background_color = '#555',
+})
+
+ui:style('checkbox_button active over', {
+	background_color = '#888',
 })
 
 function cbutton:sync()
 	self.h = self.checkbox.ch
 	self.w = self.h
 	self.x = self.checkbox.align == 'left' and 0 or self.checkbox.cw - self.h
-	self.text_color = self.checkbox.text_color
 	self.text = self.checkbox.checked and self.text_checked
 end
 
@@ -187,17 +225,15 @@ function cbutton:override_hit_test(inherited, mx, my, reason)
 	return widget, area
 end
 
+function cbutton:pressed()
+	self.checkbox:toggle()
+end
+
 function checkbox:create_button()
-	local btn = self.button_class(self.ui, {
+	return self.button_class(self.ui, {
 		parent = self,
 		checkbox = self,
 	}, self.button)
-
-	function btn:pressed()
-		self.checkbox.checked = not self.checkbox.checked
-	end
-
-	return btn
 end
 
 local clabel = ui.layer:subclass'checkbox_label'
@@ -236,6 +272,36 @@ end
 local radiobutton = ui.checkbox:subclass'radiobutton'
 ui.radiobutton = radiobutton
 
+radiobutton.radio_group = 'default'
+
+radiobutton:init_ignore{checked=1}
+
+function radiobutton:after_init(ui, t)
+	if t.checked then
+		self.checked = true
+	end
+end
+
+function radiobutton:override_set_checked(inherited, checked)
+	local was_checked = self.checked
+	inherited(self, checked)
+	if self.checked and not was_checked then
+		self.window.layer:each_child(function(rb)
+			if rb.isradiobutton
+				and rb ~= self
+				and rb.radio_group == self.radio_group
+				and rb.checked
+			then
+				rb.checked = false
+			end
+		end)
+	end
+end
+
+function radiobutton:check()
+	self.checked = true
+end
+
 local rbutton = ui.checkbox.button_class:subclass'radiobutton_button'
 radiobutton.button_class = rbutton
 
@@ -246,11 +312,28 @@ end
 
 function rbutton:draw_text() end
 
+rbutton.circle_radius = 0
+
+ui:style('radiobutton_button', {
+	transition_circle_radius = true,
+	transition_duration = .2,
+})
+
+ui:style('radiobutton checked > radiobutton_button', {
+	circle_radius = 1,
+	transition_duration = .2,
+})
+
 function rbutton:before_draw_content(cr)
-	if not self.checkbox.checked then return end
-	cr:circle(self.cw / 2, self.ch / 2, self.cw / 4)
+	local r = glue.lerp(self.circle_radius, 0, 1, 0, self.cw / 4)
+	if r <= 0 then return end
+	cr:circle(self.cw / 2, self.ch / 2, r)
 	cr:rgba(self.ui:color(self.text_color))
 	cr:fill()
+end
+
+function rbutton:pressed()
+	self.checkbox:check()
 end
 
 --demo -----------------------------------------------------------------------

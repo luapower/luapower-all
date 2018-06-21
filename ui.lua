@@ -2594,6 +2594,15 @@ end
 
 --focusing and keyboard event handling
 
+layer.uses_enter_key = false
+layer.uses_esc_key = false
+
+function layer:uses_key(key) --check if the focused widget uses a certain key
+	return
+		(key == 'enter' and self.uses_enter_key)
+		or (key == 'esc' and self.uses_esc_key)
+end
+
 function layer:canfocus()
 	return self.visible and self.focusable and self.enabled
 end
