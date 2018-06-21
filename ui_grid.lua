@@ -1094,8 +1094,8 @@ function grid:after_focus()
 	end
 end
 
-function grid:canfocus()
-	return self.focusable and self.row_count > 0 and #self.cols > 0
+function grid:override_canfocus(inherited)
+	return inherited(self) and self.row_count > 0 and #self.cols > 0
 end
 
 function grid:focus_cell(i, col)

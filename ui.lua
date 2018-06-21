@@ -661,13 +661,6 @@ element.hscrollable = false --can be hit for hscroll
 element.scrollable = false --can be hit for vscroll or hscroll
 element.focusable = false --can be focused
 
-element.font_family = 'Open Sans'
-element.font_weight = 'normal'
-element.font_slant = 'normal'
-element.text_size = 14
-element.text_color = '#fff'
-element.line_spacing = 1
-
 element.transition_duration = 0
 element.transition_ease = default_ease
 element.transition_delay = 0
@@ -757,7 +750,6 @@ function element:after_init(ui, t)
 			end
 		end
 	end
-	self:update_styles()
 end
 
 function element:free()
@@ -1056,7 +1048,6 @@ function window:override_init(inherited, ui, t)
 
 	--forward native events
 	local native_events = {
-		'closing',
 		'activated', 'deactivated', 'wakeup',
 		'shown', 'hidden',
 		'minimized', 'unminimized',
@@ -1180,6 +1171,12 @@ function window:override_init(inherited, ui, t)
 		self.layer.h = ch
 	end)
 
+	function win.closing(win)
+		local reason = self._close_reason
+		self._close_reason = nil
+		return self:closing(reason)
+	end
+
 	win:on({'closed', self}, function(win)
 		self:fire('closed')
 		self:free()
@@ -1190,9 +1187,10 @@ function window:override_init(inherited, ui, t)
 		self:settag('fullscreen', state.fullscreen)
 	end)
 
-	--create `window_*` events in ui
+	--create `window_*` events in ui (needed for ui_popup)
 	self:on('event', function(self, event, ...)
 		if event == 'mousemove' then return end
+		if not self.ui then return end --window was closed
 		self.ui:fire('window_'..event, self, ...)
 	end)
 
@@ -1411,16 +1409,20 @@ for prop, writable in pairs(props) do
 end
 
 --methods
-function window:close()      self.native_window:close() end
-function window:show()       self.native_window:show() end
-function window:hide()       self.native_window:hide() end
-function window:activate()   self.native_window:activate() end
-function window:minimize()   self.native_window:minimize() end
-function window:maximize()   self.native_window:maximize() end
-function window:restore()    self.native_window:restore() end
-function window:shownormal() self.native_window:shownormal() end
-function window:raise(rel)   self.native_window:raise(rel) end
-function window:lower(rel)   self.native_window:lower(rel) end
+function window:closing(reason) end --stub
+function window:close(reason)
+	self._close_reason = reason
+	self.native_window:close()
+end
+function window:show()        self.native_window:show() end
+function window:hide()        self.native_window:hide() end
+function window:activate()    self.native_window:activate() end
+function window:minimize()    self.native_window:minimize() end
+function window:maximize()    self.native_window:maximize() end
+function window:restore()     self.native_window:restore() end
+function window:shownormal()  self.native_window:shownormal() end
+function window:raise(rel)    self.native_window:raise(rel) end
+function window:lower(rel)    self.native_window:lower(rel) end
 function window:to_screen(x, y)   return self.native_window:to_screen(x, y) end
 function window:from_screen(x, y) return self.native_window:to_client(x, y) end
 
@@ -1563,14 +1565,16 @@ function ui:_set_hot_widget(window, widget, mx, my, area)
 	if self.hot_widget then
 		self.hot_widget:_mouseleave()
 	end
-	if widget then
+	if widget and widget.enabled then
 		widget:_mouseenter(mx, my, area) --hot widget not changed yet
 		window.cursor = widget:getcursor(area)
+		self.hot_widget = widget
+		self.hot_area = area
 	else
+		self.hot_widget = false
+		self.hot_area = false
 		window.cursor = nil
 	end
-	self.hot_widget = widget or false
-	self.hot_area = area or false
 end
 
 function ui:_accept_drop(drag_widget, drop_widget, mx, my, area)
@@ -1588,7 +1592,7 @@ function ui:_window_mousemove(window, mx, my)
 	else
 		local hit_widget, hit_area = window:hit_test(mx, my, 'activate')
 		self:_set_hot_widget(window, hit_widget, mx, my, hit_area)
-		if hit_widget then
+		if hit_widget and hit_widget.enabled then
 			hit_widget:_mousemove(mx, my, hit_area)
 		end
 	end
@@ -2007,6 +2011,9 @@ end
 local layer = element:subclass'layer'
 ui.layer = layer
 
+layer:init_ignore{parent=1, enabled=1}
+layer._enabled = true
+
 layer.activable = true
 layer.targetable = true
 
@@ -2138,6 +2145,16 @@ layer.text_valign = 'center'
 layer.text_multiline = true
 layer.text_operator = 'over'
 layer.text = nil
+layer.font_family = 'Open Sans'
+layer.font_weight = 'normal'
+layer.font_slant = 'normal'
+layer.text_size = 14
+layer.text_color = '#fff'
+layer.line_spacing = 1
+
+ui:style('layer disabled', {
+	text_color = '#666',
+})
 
 layer.cursor = false
 
@@ -2145,8 +2162,15 @@ layer.drag_threshold = 0 --moving distance before start dragging
 layer.max_click_chain = 1 --2 for getting doubleclick events etc.
 layer.hover_delay = 1 --TODO: hover event delay
 
-layer.canfocus = false
 layer.tabindex = false
+
+function layer:after_init(ui, t)
+	if t.enabled ~= nil then
+		self._enabled = t.enabled
+	end
+	--setting parent after _enabled updates the `disabled` tag only once.
+	self.parent = t.parent
+end
 
 function layer:before_free()
 	if self.hot then
@@ -2157,7 +2181,9 @@ function layer:before_free()
 		self.ui.active_widget = false
 	end
 	self:_free_layers()
-	self.parent = false
+	if self.parent then
+		self.parent:remove_layer(self, true)
+	end
 end
 
 local mt = cairo.matrix()
@@ -2277,6 +2303,7 @@ function layer:set_parent(parent)
 	elseif self._parent then
 		self._parent:remove_layer(self)
 	end
+	self:_update_enabled(self.enabled)
 end
 
 function layer:get_pos_parent() --child interface
@@ -2340,16 +2367,18 @@ function layer:add_layer(layer) --parent interface
 	push(self.layers, layer)
 	layer._parent = self
 	layer.window = self.window
-	layer:each_child(function(layer) layer.window = self.window end)
 	self:fire('layer_added', layer)
 end
 
-function layer:remove_layer(layer) --parent interface
+function layer:remove_layer(layer, freeing) --parent interface
+	assert(layer._parent == self)
+	self:off({nil, layer})
 	popval(self.layers, layer)
-	self:fire('layer_removed', layer)
+	if not freeing then
+		self:fire('layer_removed', layer)
+	end
 	layer._parent = false
 	layer.window = false
-	layer:each_child(function(layer) layer.window = false end)
 end
 
 function layer:_free_layers()
@@ -2521,10 +2550,52 @@ function layer:drag(dx, dy)
 	self:invalidate()
 end
 
+--window property
+
+function layer:get_window()
+	return self._window
+end
+
+function layer:set_window(window)
+	if self._window then
+		self._window:off({nil, self})
+	end
+	self._window = window
+	if self.layers then
+		for i,layer in ipairs(self.layers) do
+			layer.window = window
+		end
+	end
+end
+
+--enabled property/tag
+
+function layer:get_enabled()
+	return self._enabled and (not self.parent or self.parent.enabled)
+end
+
+function layer:_update_enabled(enabled)
+	self:settag('disabled', not enabled)
+	if self.layers then
+		for i,layer in ipairs(self.layers) do
+			layer:_update_enabled(enabled)
+		end
+	end
+end
+
+function layer:set_enabled(enabled)
+	enabled = enabled and true or false
+	if self._enabled == enabled then return end
+	self._enabled = enabled
+	if self:isinstance() then
+		self:_update_enabled(enabled)
+	end
+end
+
 --focusing and keyboard event handling
 
 function layer:canfocus()
-	return self.focusable
+	return self.visible and self.focusable and self.enabled
 end
 
 function window:unfocus()
@@ -2543,9 +2614,6 @@ function layer:unfocus()
 end
 
 function layer:focus()
-	if not self.visible then
-		return
-	end
 	if self:canfocus() then
 		if not self.focused then
 			self.window:unfocus()
@@ -2558,6 +2626,9 @@ function layer:focus()
 		end
 		return true
 	else --focus first focusable child
+		if not (self.visible and self.enabled) then
+			return
+		end
 		local layer = self.layers and self:focusable_widgets()[1]
 		if layer and layer:focus() then
 			return true

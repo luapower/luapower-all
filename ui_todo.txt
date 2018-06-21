@@ -36,13 +36,10 @@ DROPDOWN ---------------------------------------------------------------------
 
 LITTLE WIDGETS ---------------------------------------------------------------
 
-- checkbox
-- radio-button
+- tooltip
 - menu bar
 - menu
 - popup menu
-- tooltip
-- progress-bar
 - calendar
 - color-picker
 - linear-calendar
