@@ -25,7 +25,7 @@ Robert Penner's easing functions.
 These functions map a number in `0..1` into a number in `0..1`.
 
 Currently implemented functions: `linear`, `quad`, `cubic`, `quart`, `quint`,
-`expo`, `sine`, `circ`, `back`, `elastic`, `bounce`.
+`expo`, `sine`, `circ`, `back`, `elastic`, `bounce`, `slowmo`.
 
 __Note:__
 

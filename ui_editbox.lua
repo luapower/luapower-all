@@ -24,6 +24,8 @@ editbox.clip_content = true --TODO: remove this
 editbox.border_color = '#333'
 editbox.border_width = 1
 
+editbox.uses_enter_key = true
+
 editbox.multiline = false
 editbox.eol_markers = false
 editbox.minimap = false

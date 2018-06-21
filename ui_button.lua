@@ -87,8 +87,9 @@ function button:set_text(s)
 		self.underline_pos = false
 		self.underline_text = false
 	else
+		s = s:gsub('&&', '\0') --TODO: hack
 		local pos, key = s:match'()&(.)'
-		self._text = s:gsub('&([^&])', '%1')
+		self._text = s:gsub('&', ''):gsub('%z', '&')
 		if key then
 			self.key = key:upper()
 			self.underline_pos = pos

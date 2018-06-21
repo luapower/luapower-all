@@ -400,7 +400,11 @@ col.border_width = 1
 col.border_color = '#333'
 col.background_hittable = true
 col.cursor_resize = 'size_h'
+col.resizeable = true
+col.moveable = true
 
+grid.col_resize = true
+grid.col_move = true
 grid.col_h = 24
 
 function grid:create_col(col, col_index)
@@ -453,7 +457,7 @@ end
 
 function col:override_hit_test(inherited, x, y, reason)
 	local widget, area = inherited(self, x, y, reason)
-	if widget == self then
+	if self.grid.col_resize and self.resizeable and widget == self then
 		if x >= self.x2 - self.padding_right then
 			return self, 'resize'
 		elseif x <= self.x + self.padding_left then
@@ -578,6 +582,8 @@ end
 
 function col:start_drag_move(button, mx, my, area)
 	if button ~= 'left' then return end
+	if not self.grid.col_move then return end
+	if not self.moveable then return end
 	self.window.cursor = 'move'
 	self.moving = true
 	self:settag('moving', true)
@@ -764,7 +770,7 @@ function cell:sync_row(i, y, h)
 end
 
 function cell:sync_value(i, col, val)
-	self.text = val
+	self.text = tostring(val)
 	self:settag('selected', self.grid:cell_selected(i, col))
 	self:settag('focused', self.grid:cell_focused(i, col))
 end
@@ -789,8 +795,12 @@ function grid:cell_value(i, col)
 	if type(row) == 'table' then
 		return row[col.value_index]
 	else
-		return tostring(row)
+		return row
 	end
+end
+
+function grid:sync_cell(cell, i, col, val)
+	cell:sync_value(i, col, self:cell_value(i, col))
 end
 
 function grid:draw_cell(cr, i, col, hot)
@@ -799,7 +809,8 @@ function grid:draw_cell(cr, i, col, hot)
 	cell:sync_grid(self)
 	cell:sync_col(col)
 	cell:sync_row(i, y, h)
-	cell:sync_value(i, col, self:cell_value(i, col))
+	self:sync_cell(cell, i, col, self:cell_value(i, col))
+	--cell:sync_value(i, col, self:cell_value(i, col))
 	cell:settag('hot', hot)
 	cell:draw()
 end
@@ -905,7 +916,8 @@ function grid:draw_row_col(cr, i, col, y, h, hot)
 		cell:sync_col(col)
 	end
 	cell:sync_row(i, y, h)
-	cell:sync_value(i, col, self:cell_value(i, col))
+	self:sync_cell(cell, i, col, self:cell_value(i, col))
+	--cell:sync_value(i, col, self:cell_value(i, col))
 	cell:settag('hot', hot)
 	cell:draw(cr)
 end
@@ -950,13 +962,16 @@ function grid:draw_rows(cr, rows_layer)
 		hot_i, hot_col = self.hot_row_index, self.hot_col
 	end
 	self._cell = false
-	for _,col in ipairs(rows_layer.pane.header_layer.layers) do
-		if col.isgrid_col and not col.clipped then
-			local cell = self:cell_at(i1, col)
-			if cell == self._cell then
-				cell:sync_col(col)
+	local header = rows_layer.pane.header_layer
+	if header.layers then
+		for _,col in ipairs(header.layers) do
+			if col.isgrid_col and not col.clipped then
+				local cell = self:cell_at(i1, col)
+				if cell == self._cell then
+					cell:sync_col(col)
+				end
+				self:draw_rows_col(cr, i1, i2, col, hot_i, hot_col)
 			end
-			self:draw_rows_col(cr, i1, i2, col, hot_i, hot_col)
 		end
 	end
 end
@@ -1347,10 +1362,13 @@ end
 
 function grid:after_init(ui, t)
 
+	self.rows = self.rows or {}
+
 	self._freeze_col = t.freeze_col
+	local cols = t.cols or self.cols
 	self.cols = {}
-	if t.cols then
-		for i,col in ipairs(t.cols) do
+	if cols then
+		for i,col in ipairs(cols) do
 			push(self.cols, self:create_col(col, i))
 		end
 	end

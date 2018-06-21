@@ -175,7 +175,7 @@ function ui:setclipboard(s, type)  return self().app:setclipboard(s, type) end
 function ui:opendialog(t)          return self().app:opendialog(t) end
 function ui:savedialog(t)          return self().app:savedialog(t) end
 
-function ui:set_app_id(id)         require'nw'.app_id = id end
+function ui:set_app_id(id)         self().app.nw.app_id = id end
 function ui:get_app_id(id)         return require'nw'.app_id end
 function ui:app_already_running()  return self().app:already_running() end
 function ui:wakeup_other_app_instances()

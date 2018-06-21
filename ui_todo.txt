@@ -1,8 +1,13 @@
 UI ---------------------------------------------------------------------------
 
 - fix tab navigation
+
 - fix module autoloading vs css decl. order conflict
--
+
+- fix style matching order so that styles with state tags are applied later
+	option 1: introduce :state tags
+	option 2: add styles to multiple stylesheets which are applied in order
+		- this also solves the problem with module autoloading
 
 
 EDITBOX ----------------------------------------------------------------------
@@ -34,17 +39,37 @@ DROPDOWN ---------------------------------------------------------------------
 - calendar + maskedit dropdown
 -
 
+CALENDAR ---------------------------------------------------------------------
+
+- review/add a date-math lib to luapower
+
+- make week start day configurable (ui.week_start_day = 'Mo' / 'Su')
+	- make sunday column movable but only to position 1 or 7
+- add month & year above with left-right nav buttons
+- change month by keyboard left-right page-up/down navigation
+- change start week (scroll weeks vertically) by keyboard up/down navigation
+	- scroll with scroll wheel too
+	- alternate cell colors on consecutive months
+	- change title to reflect month-in-view and surrounding months
+		- we're always viewing 2 or 3 months
+- multi-cell select restricted to consecutive days
+	- make it work with vertical scrolling as well
+	- allow multiple restricted multi-cell selections
+
+
 LITTLE WIDGETS ---------------------------------------------------------------
 
 - tooltip
 - menu bar
 - menu
 - popup menu
-- calendar
 - color-picker
 - linear-calendar
 
 GRID -------------------------------------------------------------------------
+
+- cell navigation: go to next/prev row on left-right nav
+- cell navigation: tab to advance cell
 
 --ctrl+page-up/page-down navigation based on fixed pages
 
