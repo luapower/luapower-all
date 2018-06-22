@@ -1079,7 +1079,8 @@ function window:override_init(inherited, ui, t)
 
 	local function setcontext()
 		self.frame_clock = ui:clock()
-		self.cr = win:bitmap():cairo()
+		self.bitmap = win:bitmap()
+		self.cr = self.bitmap:cairo()
 	end
 
 	local function setmouse(mx, my)

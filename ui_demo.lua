@@ -1,6 +1,4 @@
 
-jit.off(true, true)
-
 local time = require'time'
 local ui = require'ui'
 local win = ui:window{x = 840, y = 300, cw = 900, ch = 500, visible = false}
