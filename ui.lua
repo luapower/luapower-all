@@ -3029,8 +3029,7 @@ function layer:set_background_scale(scale)
 end
 
 local mt = cairo.matrix()
-function layer:paint_background()
-	local cr = self.window.cr
+function layer:paint_background(cr)
 	cr:operator(self.background_operator)
 	local bg_type = self.background_type
 	if bg_type == 'color' then
@@ -3289,7 +3288,7 @@ function layer:after_draw(cr) --called in parent's content space; child intf.
 		self:background_path(cr) --'background' clipping is implicit in 'padding'
 		cr:clip()
 		if bg then
-			self:paint_background()
+			self:paint_background(cr)
 		end
 		if cc == 'padding' or cc == true then
 			cr:new_path()

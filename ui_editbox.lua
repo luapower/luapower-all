@@ -384,6 +384,7 @@ function editbox:get_text()
 end
 
 function editbox:set_text(s)
+	self:_sync()
 	self.editor:replace(s)
 end
 
