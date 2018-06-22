@@ -3505,7 +3505,7 @@ function layer:set_cw(cw) self.w = cw + (self.w - self.cw) end
 function layer:set_ch(ch) self.h = ch + (self.h - self.ch) end
 
 function layer:get_x2() return self.x + self.w end
-function layer:get_y2() return self.x + self.h end
+function layer:get_y2() return self.y + self.h end
 
 function layer:set_x2(x2) self.x = x2 - self.w end
 function layer:set_y2(y2) self.y = y2 - self.h end

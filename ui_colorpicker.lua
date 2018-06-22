@@ -9,6 +9,23 @@ local color = require'color'
 local cairo = require'cairo'
 local lerp = glue.lerp
 local clamp = glue.clamp
+require'ui_slider'
+
+--property generator: fires a `<prop>_changed` event when the value changes.
+local function add_prop(class, prop, min, max)
+	local priv = '_'..prop
+	class['get_'..prop] = function(self)
+		return self[priv]
+	end
+	class['set_'..prop] = function(self, val)
+		local val = clamp(val, min, max)
+		local old_val = self[priv]
+		if val == old_val then return end
+		self[priv] = val
+		self:fire(prop..'_changed', val, old_val)
+		self:invalidate()
+	end
+end
 
 --hue vertical bar -----------------------------------------------------------
 
@@ -17,13 +34,11 @@ ui.hue_bar = hue_bar
 
 hue_bar.focusable = true
 
-hue_bar.corner_radius = 4
 hue_bar.pointer_style = 'bar' --bar, needle
 
 hue_bar._hue = 0
 
-function hue_bar:get_hue()    return self._hue end
-function hue_bar:set_hue(hue) self._hue = clamp(hue, 0, 360) end
+add_prop(hue_bar, 'hue', 0, 360)
 
 function hue_bar:sync_bar()
 	if not self._bmp or self._bmp.h ~= self.ch or self._bmp.w ~= self.cw then
@@ -153,52 +168,49 @@ function hue_bar:keypress(key)
 	end
 end
 
---saturation/luminance square ------------------------------------------------
+--saturation/luminance rectangle ---------------------------------------------
 
-local sl_square = ui.layer:subclass'color_sat_lum_square'
-ui.color_sat_lum_square = sl_square
+local slrect = ui.layer:subclass'color_sat_lum_rectangle'
+ui.color_sat_lum_rectangle = slrect
 
-sl_square.focusable = true
+slrect.focusable = true
 
-sl_square.pointer_style = 'circle' --circle, cross
+slrect.pointer_style = 'circle' --circle, cross
 
-sl_square._hue = 0
-sl_square._sat = 0
-sl_square._lum = 0
+slrect._hue = 0
+slrect._sat = 0
+slrect._lum = 0
 
-function sl_square:get_hue()    return self._hue end
-function sl_square:set_hue(hue) self._hue = clamp(hue, 0, 360) end
-function sl_square:get_sat()    return self._sat end
-function sl_square:set_sat(sat) self._sat = clamp(sat, 0, 1) end
-function sl_square:get_lum()    return self._lum end
-function sl_square:set_lum(lum) self._lum = clamp(lum, 0, 1) end
+add_prop(slrect, 'hue', 0, 360)
+add_prop(slrect, 'sat', 0, 1)
+add_prop(slrect, 'lum', 0, 1)
 
-function sl_square:sat_lum_at(x, y)
+function slrect:sat_lum_at(x, y)
 	return
 		clamp(lerp(x, 0, self.cw-1, 0, 1), 0, 1),
 		clamp(lerp(y, 0, self.ch-1, 1, 0), 0, 1)
 end
 
-function sl_square:sat_lum_coords(sat, lum)
+function slrect:sat_lum_coords(sat, lum)
 	return
 		sat * self.cw,
 		(1 - lum) * self.ch
 end
 
-function sl_square:hsl()
+function slrect:hsl()
 	return self.hue, self.sat, self.lum
 end
 
-function sl_square:rgb()
+function slrect:rgb()
 	return color.hsl_to_rgb(self:hsl())
 end
 
-function sl_square:rgba(a)
+function slrect:rgba(a)
 	local r, g, b = color.hsl_to_rgb(self:hsl())
 	return r, g, b, a or 1
 end
 
-function sl_square:sync()
+function slrect:sync()
 	if not self._bmp or self._bmp.h ~= self.ch or self._bmp.w ~= self.cw then
 		self._bmp = bitmap.new(self.cw, self.ch, 'bgra8')
 	end
@@ -219,7 +231,7 @@ function sl_square:sync()
 	end
 end
 
-function sl_square:draw_square(cr)
+function slrect:draw_rectangle(cr)
 	local sr = cairo.image_surface(self._bmp)
 	cr:operator'over'
 	cr:source(sr)
@@ -228,13 +240,13 @@ function sl_square:draw_square(cr)
 	sr:free()
 end
 
-sl_square.pointer_cross_opacity = .5
+slrect.pointer_cross_opacity = .5
 
-ui:style('color_sat_lum_square focused', {
+ui:style('color_sat_lum_rectangle focused', {
 	pointer_cross_opacity = 1,
 })
 
-function sl_square:draw_pointer_cross(cr, cx, cy)
+function slrect:draw_pointer_cross(cr, cx, cy)
 	local hue = self.hue + 180
 	local lum = self.lum > 0.5 and 0 or 1
 	local sat = 1 - self.sat
@@ -258,18 +270,18 @@ function sl_square:draw_pointer_cross(cr, cx, cy)
 	cr:stroke()
 end
 
-sl_square.circle_pointer_color = '#fff8'
-sl_square.circle_pointer_outline_color = '#3338'
-sl_square.circle_pointer_outline_width = 1
-sl_square.circle_pointer_radius = 9
-sl_square.circle_pointer_inner_radius = 6
+slrect.circle_pointer_color = '#fff8'
+slrect.circle_pointer_outline_color = '#3338'
+slrect.circle_pointer_outline_width = 1
+slrect.circle_pointer_radius = 9
+slrect.circle_pointer_inner_radius = 6
 
-ui:style('color_sat_lum_square focused', {
+ui:style('color_sat_lum_rectangle focused', {
 	circle_pointer_color = '#fff',
 	circle_pointer_outline_color = '#333',
 })
 
-function sl_square:draw_pointer_circle(cr, cx, cy)
+function slrect:draw_pointer_circle(cr, cx, cy)
 	cr:rgba(self.ui:color(self.circle_pointer_color))
 	cr:operator'over'
 	cr:line_width(self.circle_pointer_outline_width)
@@ -282,28 +294,28 @@ function sl_square:draw_pointer_circle(cr, cx, cy)
 	cr:stroke()
 end
 
-function sl_square:before_draw_content(cr)
+function slrect:before_draw_content(cr)
 	self:sync()
-	self:draw_square(cr)
+	self:draw_rectangle(cr)
 	local cx, cy = self:sat_lum_coords(self.sat, self.lum)
 	self['draw_pointer_'..self.pointer_style](self, cr, cx, cy)
 end
 
-function sl_square:mousedown()
+function slrect:mousedown()
 	self.active = true
 end
 
-function sl_square:mouseup()
+function slrect:mouseup()
 	self.active = false
 end
 
-function sl_square:mousemove(mx, my)
+function slrect:mousemove(mx, my)
 	if not self.active then return end
 	self.sat, self.lum = self:sat_lum_at(mx, my)
 	self:invalidate()
 end
 
-function sl_square:keypress(key)
+function slrect:keypress(key)
 	if key == 'down' or key == 'up' or key == 'pagedown' or key == 'pageup' then
 		local delta =
 			(key:find'down' and -1 or 1)
@@ -327,24 +339,36 @@ end
 local picker = ui.layer:subclass'colorpicker'
 ui.colorpicker = picker
 picker.hue_bar_class = hue_bar
-picker.sat_lum_square_class = sl_square
+picker.sat_lum_rectangle_class = slrect
 
 function picker:create_hue_bar()
 	return self.hue_bar_class(self.ui, {
 		picker = self,
 		parent = self,
+		hue_changed = function(_, hue)
+			if not self.hue_slider then return end
+			self.hue_slider.position = hue
+		end,
 	}, self.hue_bar)
 end
 
-function picker:create_sat_lum_square()
-	return self.sat_lum_square_class(self.ui, {
+function picker:create_sat_lum_rectangle()
+	return self.sat_lum_rectangle_class(self.ui, {
 		parent = self,
 		picker = self,
-	}, self.sat_lum_square)
+		sat_changed = function(_, sat)
+			if not self.sat_slider then return end
+			self.sat_slider.position = sat
+		end,
+		lum_changed = function(_, lum)
+			if not self.lum_slider then return end
+			self.lum_slider.position = lum
+		end,
+	}, self.sat_lum_rectangle)
 end
 
 function picker:create_rgb_editbox()
-	self.rgb_edit = self.ui:editbox{
+	return self.ui:editbox{
 		multiline = false,
 		picker = self,
 		parent = self,
@@ -353,15 +377,48 @@ end
 
 function picker:after_init()
 	self.hue_bar = self:create_hue_bar()
-	self.sat_lum_square = self:create_sat_lum_square()
+	self.sat_lum_rectangle = self:create_sat_lum_rectangle()
 	self.rgb_editbox = self:create_rgb_editbox()
+	self.hex_editbox = self:create_rgb_editbox()
+	self.rgb_label = self.ui:layer{text = 'RGB:', parent = self, text_align = 'left'}
+	self.hex_label = self.ui:layer{text = 'HEX:', parent = self, text_align = 'left'}
+	self.hue_label = self.ui:layer{text = 'Hue:', parent = self, text_align = 'left'}
+	self.sat_label = self.ui:layer{text = 'Sat:', parent = self, text_align = 'left'}
+	self.lum_label = self.ui:layer{text = 'Lum:', parent = self, text_align = 'left'}
+	self.hue_slider = self.ui:slider{
+		parent = self,
+		changed = function(_, pos)
+			self.hue_bar.hue = pos
+		end,
+	}
+	self.sat_slider = self.ui:slider{
+		parent = self,
+		changed = function(_, pos)
+			self.sat_lum_rectangle.sat = pos
+		end,
+	}
+	self.lum_slider = self.ui:slider{
+		parent = self,
+		changed = function(_, pos)
+			self.sat_lum_rectangle.lum = pos
+		end,
+	}
 end
 
 function picker:sync()
 
 	local hb = self.hue_bar
-	local sl = self.sat_lum_square
-	local re = self.rgb_edit
+	local sr = self.sat_lum_rectangle
+	local re = self.rgb_editbox
+	local xe = self.hex_editbox
+	local rl = self.rgb_label
+	local xl = self.hex_label
+	local hl = self.hue_label
+	local hs = self.hue_slider
+	local sl = self.sat_label
+	local ss = self.sat_slider
+	local ll = self.lum_label
+	local ls = self.lum_slider
 
 	local h = 1
 	local w = self.cw - h - 10
@@ -374,20 +431,79 @@ function picker:sync()
 	local dw = math.max(1, x2 - self.ch)
 	hb.w = hb.w + dw
 	hb.x = hb.x - dw
-	sl.w = w
-	sl.h = w
+	sr.w = w
+	sr.h = w
 
-	sl.hue = self.hue_bar.hue
+	sr.hue = self.hue_bar.hue
 
-	re.x = self.cw + 10 + 8
-	re.y = 0
-	re.w = 200
-	re.h = self.ch
+	local sx, sy = 14, 4
+	local x1 = self.cw + sx + sx
+	local w1 = 30
+	local h = 30
+	local x2 = x1 + sx + w1
+	local w2 = 100
+	local y = 0
 
-	local r, g, b = sl:rgb()
+	rl.x = x1
+	rl.y = y
+	rl.w = w1
+	rl.h = h
+	re.x = x2
+	re.y = y
+	re.w = w2
+
+	local r, g, b = sr:rgb()
 	re.text = string.format(
-		'RGB: %d, %d, %d',
+		'%d, %d, %d',
 		r * 255, g * 255, b * 255)
+
+	y = y + h + sy
+
+	xl.x = x1
+	xl.y = y
+	xl.w = w1
+	xl.h = h
+	xe.x = x2
+	xe.y = y
+	xe.w = w2
+
+	xe.text = color.rgb_to_string(r, g, b, 'hex')
+
+	y = y + h + sy + 20
+
+	hl.x = x1
+	hl.y = y
+	hl.w = w1
+	hl.h = h
+	hs.x = x2
+	hs.y = y
+	hs.w = w2
+	hs.h = h
+	hs.size = 360
+
+	y = y + h + sy
+
+	sl.x = x1
+	sl.y = y
+	sl.w = w1
+	sl.h = h
+	ss.x = x2
+	ss.y = y
+	ss.w = w2
+	ss.h = h
+	ss.size = 1
+
+	y = y + h + sy
+
+	ll.x = x1
+	ll.y = y
+	ll.w = w1
+	ll.h = h
+	ls.x = x2
+	ls.y = y
+	ls.w = w2
+	ls.h = h
+	ls.size = 1
 end
 
 function picker:before_draw_content()
@@ -398,11 +514,14 @@ end
 
 if not ... then require('ui_demo')(function(ui, win)
 
+	win.layer.background_color = '#222'
+
 	local cp = ui:colorpicker{
 		x = 20, y = 20,
 		w = 220, h = 200,
 		parent = win,
-		hue = 270,
+		hue_bar = {hue = 60},
+		sat_lum_rectangle = {sat = .7, lum = .3},
 	}
 
 end) end

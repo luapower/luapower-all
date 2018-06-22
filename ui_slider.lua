@@ -169,6 +169,7 @@ function ui.slider:set_position(pos)
 	pos = pos or old_pos
 	self._position = pos
 	self._position = self:snap_position(pos)
+	self:fire('changed', self._position, old_pos)
 	local br = self.border.corner_radius_top_left
 	if not self.pin.dragging then
 		pos = self._position
@@ -212,33 +213,51 @@ end
 
 ui.slider:init_ignore{position=1}
 
+function ui.slider:sync()
+	local b = self.border
+
+	local br = b.corner_radius_top_left
+	b.x = -br
+	b.y = (self.h - b.h) / 2
+	b.w = self.cw + 2 * br
+
+	local f = self.fill
+	f.h = b.h
+
+	local p = self.pin
+	p.y = (self.h - p.h) / 2
+
+	if self.step_labels then
+		for _,l in ipairs(self.layers) do
+			if l.isslider_step_label then
+				l.x = self:pin_cx(l.value) - 100
+				l.y = self.h
+				l.w = 200
+				l.h = 20
+			end
+		end
+	end
+end
+
 function ui.slider:after_init(ui, t)
 	self._position = t and t.position
 	local br = self.border.corner_radius_top_left
 	self.border = self.border(self.ui, {
 		tags = 'slider_border',
-		x = -br,
-		y = (self.h - self.border.h) / 2,
-		w = self.cw + 2 * br,
 		parent = self,
 	})
 	self.fill = self.fill(self.ui, {
 		tags = 'slider_fill',
-		h = self.border.h,
 		parent = self.border,
 	})
 	self.pin = self.pin(self.ui, {
 		tags = 'slider_pin',
-		y = (self.h - self.pin.h) / 2,
 		parent = self,
 	})
 	if self.step_labels then
 		for label, value in pairs(self.step_labels) do
 			self.step_label(self.ui, {
-				x = self:pin_cx(value) - 100,
-				y = self.h,
-				w = 200,
-				h = 20,
+				value = value,
 				text = label,
 				tags = 'slider_step_label',
 				issteplabel = true,
@@ -268,6 +287,10 @@ function ui.slider:draw_step_lines(cr)
 		cr:rel_line_to(0, self.step_line_h)
 	end
 	cr:stroke()
+end
+
+function ui.slider:before_draw(cr)
+	self:sync()
 end
 
 function ui.slider:after_draw_content(cr)

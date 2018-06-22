@@ -55,15 +55,26 @@ CALENDAR ---------------------------------------------------------------------
 - multi-cell select restricted to consecutive days
 	- make it work with vertical scrolling as well
 	- allow multiple restricted multi-cell selections
+- left bar with week-of-the-year number
 
+COLOR PICKER -----------------------------------------------------------------
+
+- editboxes: hsL
+	- parse the text and change the display accordingly
+- display chosen color + complementary hues
+- color history / select color from history
+	- history name so we can have diff. histories depending on usage context
+- color dropper tool from anywhere on the desktop
+- hue wheel with configurable granularity + lum/sat triangle
+- hue/sat square with lum ramp instead of sat/lum with hue ramp
 
 LITTLE WIDGETS ---------------------------------------------------------------
 
+- upgrade slider to current coding practice
 - tooltip
 - menu bar
 - menu
 - popup menu
-- color-picker
 - linear-calendar
 
 GRID -------------------------------------------------------------------------
