@@ -111,7 +111,8 @@ function ui.slider.pin:drag(dx, dy)
 end
 
 function ui.slider:pin_cx(pos)
-	return ((pos or self.position) / self.size) * self.cw
+	local dx = self.border.corner_radius_top_left
+	return dx + ((pos or self.position) / self.size) * (self.cw - dx * 2)
 end
 
 function ui.slider:position_at_cx(cx)
@@ -216,10 +217,9 @@ ui.slider:init_ignore{position=1}
 function ui.slider:sync()
 	local b = self.border
 
-	local br = b.corner_radius_top_left
-	b.x = -br
+	b.x = 0
 	b.y = (self.h - b.h) / 2
-	b.w = self.cw + 2 * br
+	b.w = self.cw
 
 	local f = self.fill
 	f.h = b.h
@@ -274,7 +274,8 @@ function ui.slider:after_init(ui, t)
 end
 
 function ui.slider:step_lines_visible()
-	return self.step and self.step_line_color and self.size / self.step >= 5
+	return self.step and self.step_line_color
+		and self.cw / (self.size / self.step) >= 5
 end
 
 function ui.slider:draw_step_lines(cr)
@@ -302,22 +303,23 @@ end
 if not ... then require('ui_demo')(function(ui, win)
 
 	ui:slider{
-		id = 's1',
 		x = 100, y = 100, w = 200, parent = win,
 		position = 5, size = 10,
 		step_labels = {Low = 0, Medium = 5, High = 10},
-		border_color = '#0000',
-		snap_to_labels = true,
+		snap_to_labels = false,
+		border_color = '#fff',
 		border_width = 1,
 	}
 
 	ui:slider{
-		id = 's2',
 		x = 100, y = 200, w = 200, parent = win,
 		position = 5, size = 10,
-		border_color = '#0000',
 		step = 1.5,
-		border_width = 1,
+	}
+
+	ui:slider{
+		x = 100, y = 300, w = 200, parent = win,
+		position = 5, size = 10,
 	}
 
 end) end

@@ -170,8 +170,8 @@ end
 
 --saturation/luminance rectangle ---------------------------------------------
 
-local slrect = ui.layer:subclass'color_sat_lum_rectangle'
-ui.color_sat_lum_rectangle = slrect
+local slrect = ui.layer:subclass'sat_lum_rectangle'
+ui.sat_lum_rectangle = slrect
 
 slrect.focusable = true
 
@@ -242,7 +242,7 @@ end
 
 slrect.pointer_cross_opacity = .5
 
-ui:style('color_sat_lum_rectangle focused', {
+ui:style('sat_lum_rectangle focused', {
 	pointer_cross_opacity = 1,
 })
 
@@ -276,7 +276,7 @@ slrect.circle_pointer_outline_width = 1
 slrect.circle_pointer_radius = 9
 slrect.circle_pointer_inner_radius = 6
 
-ui:style('color_sat_lum_rectangle focused', {
+ui:style('sat_lum_rectangle focused', {
 	circle_pointer_color = '#fff',
 	circle_pointer_outline_color = '#333',
 })
@@ -387,19 +387,25 @@ function picker:after_init()
 	self.lum_label = self.ui:layer{text = 'Lum:', parent = self, text_align = 'left'}
 	self.hue_slider = self.ui:slider{
 		parent = self,
-		changed = function(_, pos)
+		size = 360,
+		step = 1,
+		changed = function(slider, pos)
 			self.hue_bar.hue = pos
 		end,
 	}
 	self.sat_slider = self.ui:slider{
 		parent = self,
-		changed = function(_, pos)
+		size = 1,
+		step = 0.01,
+		changed = function(slider, pos)
 			self.sat_lum_rectangle.sat = pos
 		end,
 	}
 	self.lum_slider = self.ui:slider{
 		parent = self,
-		changed = function(_, pos)
+		size = 1,
+		step = 0.01,
+		changed = function(slider, pos)
 			self.sat_lum_rectangle.lum = pos
 		end,
 	}
@@ -479,7 +485,6 @@ function picker:sync()
 	hs.y = y
 	hs.w = w2
 	hs.h = h
-	hs.size = 360
 
 	y = y + h + sy
 
@@ -491,7 +496,6 @@ function picker:sync()
 	ss.y = y
 	ss.w = w2
 	ss.h = h
-	ss.size = 1
 
 	y = y + h + sy
 
@@ -503,7 +507,6 @@ function picker:sync()
 	ls.y = y
 	ls.w = w2
 	ls.h = h
-	ls.size = 1
 end
 
 function picker:before_draw_content()
