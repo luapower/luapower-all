@@ -11,22 +11,6 @@ local lerp = glue.lerp
 local clamp = glue.clamp
 require'ui_slider'
 
---property generator: fires a `<prop>_changed` event when the value changes.
-local function add_prop(class, prop, min, max)
-	local priv = '_'..prop
-	class['get_'..prop] = function(self)
-		return self[priv]
-	end
-	class['set_'..prop] = function(self, val)
-		local val = clamp(val, min, max)
-		local old_val = self[priv]
-		if val == old_val then return end
-		self[priv] = val
-		self:fire(prop..'_changed', val, old_val)
-		self:invalidate()
-	end
-end
-
 --hue vertical bar -----------------------------------------------------------
 
 local hue_bar = ui.layer:subclass'hue_bar'
@@ -36,9 +20,15 @@ hue_bar.focusable = true
 
 hue_bar.pointer_style = 'bar' --bar, needle
 
-hue_bar._hue = 0
+hue_bar.hue = 0
 
-add_prop(hue_bar, 'hue', 0, 360)
+hue_bar:track_changes'hue'
+
+function hue_bar:override_set_hue(inherited, hue)
+	if inherited(self, clamp(hue, 0, 360)) then
+		self:invalidate()
+	end
+end
 
 function hue_bar:sync_bar()
 	if not self._bmp or self._bmp.h ~= self.ch or self._bmp.w ~= self.cw then
@@ -177,13 +167,31 @@ slrect.focusable = true
 
 slrect.pointer_style = 'circle' --circle, cross
 
-slrect._hue = 0
-slrect._sat = 0
-slrect._lum = 0
+slrect.hue = 0
+slrect.sat = 0
+slrect.lum = 0
 
-add_prop(slrect, 'hue', 0, 360)
-add_prop(slrect, 'sat', 0, 1)
-add_prop(slrect, 'lum', 0, 1)
+slrect:track_changes'hue'
+slrect:track_changes'sat'
+slrect:track_changes'lum'
+
+function slrect:override_set_hue(inherited, hue)
+	if inherited(self, clamp(hue, 0, 360)) then
+		self:invalidate()
+	end
+end
+
+function slrect:override_set_sat(inherited, sat)
+	if inherited(self, clamp(sat, 0, 1)) then
+		self:invalidate()
+	end
+end
+
+function slrect:override_set_lum(inherited, lum)
+	if inherited(self, clamp(lum, 0, 1)) then
+		self:invalidate()
+	end
+end
 
 function slrect:sat_lum_at(x, y)
 	return
@@ -346,7 +354,6 @@ function picker:create_hue_bar()
 		picker = self,
 		parent = self,
 		hue_changed = function(_, hue)
-			if not self.hue_slider then return end
 			self.hue_slider.position = hue
 		end,
 	}, self.hue_bar)
@@ -357,11 +364,9 @@ function picker:create_sat_lum_rectangle()
 		parent = self,
 		picker = self,
 		sat_changed = function(_, sat)
-			if not self.sat_slider then return end
 			self.sat_slider.position = sat
 		end,
 		lum_changed = function(_, lum)
-			if not self.lum_slider then return end
 			self.lum_slider.position = lum
 		end,
 	}, self.sat_lum_rectangle)
@@ -388,24 +393,27 @@ function picker:after_init()
 	self.hue_slider = self.ui:slider{
 		parent = self,
 		size = 360,
-		step = 1,
-		changed = function(slider, pos)
+		step = 0.1,
+		position = self.hue_bar.hue,
+		position_changed = function(slider, pos)
 			self.hue_bar.hue = pos
 		end,
 	}
 	self.sat_slider = self.ui:slider{
 		parent = self,
 		size = 1,
-		step = 0.01,
-		changed = function(slider, pos)
+		step = 0.001,
+		position = self.sat_lum_rectangle.sat,
+		position_changed = function(slider, pos)
 			self.sat_lum_rectangle.sat = pos
 		end,
 	}
 	self.lum_slider = self.ui:slider{
 		parent = self,
 		size = 1,
-		step = 0.01,
-		changed = function(slider, pos)
+		step = 0.001,
+		position = self.sat_lum_rectangle.lum,
+		position_changed = function(slider, pos)
 			self.sat_lum_rectangle.lum = pos
 		end,
 	}

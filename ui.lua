@@ -86,6 +86,23 @@ function object:memoize(method_name)
 	end
 end
 
+--generate a r/w property which triggers `<prop>_changed` event and returns
+--true when its value is set to a different value.
+function object:track_changes(prop)
+	local priv = '_'..prop
+	self[priv] = self[prop] --transfer current value to private field
+	self['get_'..prop] = function(self)
+		return self[priv]
+	end
+	self['set_'..prop] = function(self, val)
+		local old_val = self[priv]
+		if val == old_val then return end
+		self[priv] = val
+		self:fire(prop..'_changed', val, old_val)
+		return true --useful when overriding the setter
+	end
+end
+
 --module object --------------------------------------------------------------
 
 local ui = object:subclass'ui'
@@ -655,6 +672,7 @@ ui.element.ui = ui
 
 element.visible = true
 element.activable = false --can be clicked and set as hot
+element.mousedown_activate = false --activate on left mouse down
 element.targetable = false --can be a potential drop target
 element.vscrollable = false --can be hit for vscroll
 element.hscrollable = false --can be hit for hscroll
@@ -2425,6 +2443,9 @@ function layer:_mousedown(button, mx, my, area)
 	local mx, my = self:from_window(mx, my)
 	local event = button == 'left' and 'mousedown' or button..'mousedown'
 	self:fire(event, mx, my, area)
+	if self.mousedown_activate then
+		self.active = true
+	end
 	self.ui:_widget_mousedown(self, button, mx, my, area)
 end
 
@@ -2432,6 +2453,9 @@ function layer:_mouseup(button, mx, my, area)
 	local mx, my = self:from_window(mx, my)
 	local event = button == 'left' and 'mouseup' or button..'mouseup'
 	self:fire(event, mx, my, area)
+	if self.active and self.mousedown_activate then
+		self.active = false
+	end
 end
 
 function layer:_click(button, count, mx, my, area)
@@ -3507,14 +3531,16 @@ function layer:set_ch(ch) self.h = ch + (self.h - self.ch) end
 function layer:get_x2() return self.x + self.w end
 function layer:get_y2() return self.y + self.h end
 
-function layer:set_x2(x2) self.x = x2 - self.w end
-function layer:set_y2(y2) self.y = y2 - self.h end
+function layer:set_x2(x2) self.w = x2 - self.x end
+function layer:set_y2(y2) self.h = y2 - self.y end
 
 function layer:get_cx() return self.x + self.w / 2 end
-function layer:get_cy() return self.x + self.h / 2 end
+function layer:get_cy() return self.y + self.h / 2 end
 
 function layer:set_cx(cx) self.x = cx - self.w / 2 end
 function layer:set_cy(cy) self.y = cy - self.h / 2 end
+
+function layer:rect() return self.x, self.y, self.w, self.h end
 
 function layer:setfont(family, weight, slant, size, color, line_spacing)
 	self.window:setfont(
