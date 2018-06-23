@@ -34,10 +34,13 @@ Original code from Sputnik's [colors lib], by Yuri Takhteyev.
 ## Color objects
 
 ---------------------------------------------------- ------------------------------------------------
-`color(str) -> col`                                  create a new HSL color object from a string
-`color(h, s, L) -> col`                              create a new HSL color object from HSL values
-`color.hsl(h, s, L) -> col`                          create a new HSL color object from HSL values
-`color.rgb(r, g, b) -> col`                          create a new HSL color object from RGB values
+`color(str) -> col`                                  create a HSL color object from a HSL or RGB string
+`color(h, s, L) -> col`                              create a HSL color object from HSL values
+`color{h, s, L} -> col`                              create a HSL color object from HSL values
+`color.hsl(...) -> col`                              calls `color(...)`
+`color.rgb(str) -> col`                              create a HSL color object from a HSL or RGB string
+`color.rgb(r, g, b) -> col`                          create a HSL color object from RGB values
+`color.rgb{r, g, b} -> col`                          create a HSL color object from RGB values
 `col.h, col.s, col.L`                                color fields (for reading and writing)
 `col:hsl() -> h, s, L` <br> `col() -> h, s, L`       color fields unpacked
 `col:rgb() -> r, g, b`                               convert to RGB

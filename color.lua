@@ -265,20 +265,40 @@ end
 local color = {}
 local color_mt = {__index = color}
 
---either H, S, L (0..360, 0..1, 0..1) or RGB(A) or HSL(A) string.
+--either H, S, L (0..360, 0..1, 0..1) or RGB(A) or HSL(A) string or table.
 local function new(h, s, L)
-	if type(h) == 'string' then
+	if type(h) == 'table' then
+		h, s, L = clamp_hsl(h[1], h[2], h[3])
+	elseif type(h) == 'string' then
 		h, s, L = string_to_hsl(h)
 		if not h then
 			h, s, L = rgb_to_hsl(string_to_rgb(h))
+		else
+			h, s, L = clamp_hsl(h, s, L)
 		end
+	else
+		h, s, L = clamp_hsl(h, s, L)
 	end
-	h, s, L = clamp_hsl(h, s, L)
 	return setmetatable({h = h, s = s, L = L}, color_mt)
 end
 
+--either R, G, B (0..1, 0..1, 0..1) or RGB(A) string or HSL(A) string or table.
 local function new_from_rgb(r, g, b)
-	return new(rgb_to_hsl(r, g, b))
+	local h, s, L
+	if type(r) == 'table' then
+		h, s, L = rgb_to_hsl(r[1], r[2], r[3])
+	elseif type(r) == 'string' then
+		h, s, L = string_to_hsl(r)
+		if not h then
+			h, s, L = rgb_to_hsl(string_to_rgb(r))
+		else
+			h, s, L = clamp_hsl(h, s, L)
+		end
+	else
+		h, s, L = rgb_to_hsl(r, g, b)
+	end
+
+	return setmetatable({h = h, s = s, L = L}, color_mt)
 end
 
 function color:hsl()
