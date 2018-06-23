@@ -393,7 +393,7 @@ function picker:after_init()
 	self.hue_slider = self.ui:slider{
 		parent = self,
 		size = 360,
-		step = 0.1,
+		step = 1,
 		position = self.hue_bar.hue,
 		position_changed = function(slider, pos)
 			self.hue_bar.hue = pos

@@ -28,11 +28,13 @@ slider.focusable = true
 slider.h = 20
 
 slider._min_position = 0
-slider._max_position = 1
+slider._max_position = false --overrides size
 slider._position = 0
+slider._progress = false --overrides position
 slider.step = false --no stepping
 slider.snap_to_labels = true --...if there are any
 slider.step_labels = false --{label = value, ...}
+slider.show_tooltip = true
 slider.step_line_h = 5
 slider.step_line_color = '#fff'
 
@@ -54,15 +56,9 @@ fill.activable = false
 fill.h = 10
 fill.background_color = '#444'
 
---[[
-ui:style('slider hot > slider_pin, slider focused > slider_pin, slider focused > slider_fill', {
-	border_color = '#000',
-	background_color = '#fff',
-	transition_border_color = true,
-	transition_background_color = true,
-	transition_duration = .2,
+ui:style('slider focused > slider_fill', {
+	background_color = '#ccc',
 })
-]]
 
 pin.w = 18
 pin.h = 18
@@ -71,7 +67,18 @@ pin.border_width = 1
 pin.border_color = '#000'
 pin.background_color = '#999'
 
-tooltip.y = -16
+ui:style('slider_pin', {
+	transition_duration = .2,
+	transition_cx = true,
+	transition_border_color = true,
+	transition_background_color = true,
+})
+
+ui:style('slider focused > slider_pin', {
+	background_color = '#fff',
+})
+
+tooltip.y = -10
 tooltip.format = '%g'
 tooltip.border_width = 0
 tooltip.border_color = '#fff'
@@ -94,28 +101,28 @@ ui:style('slider_tooltip visible', {
 
 --pin position
 
-function pin:position_at_cx(cx)
+function pin:progress_at_cx(cx)
 	local cx1, cx2 = self:cx_range()
-	return lerp(cx, cx1, cx2, self.slider:position_range())
+	return lerp(cx, cx1, cx2, 0, 1)
 end
 
-function pin:cx_at_position(pos)
+function pin:cx_at_progress(progress)
 	local cx1, cx2 = self:cx_range()
-	local p1, p2 = self.slider:position_range()
-	return lerp(pos, p1, p2, cx1, cx2)
+	return lerp(progress, 0, 1, cx1, cx2)
 end
 
-function pin:get_position()
-	return self:position_at_cx(self.cx)
+function pin:get_progress()
+	return self:progress_at_cx(self.cx)
 end
 
-function pin:set_position(pos)
-	local cx = self:cx_at_position(pos)
-	if cx ~= self.cx then
-		self.cx = cx
-		self.slider.fill.x2 = cx
-		self:invalidate()
+function pin:set_progress(progress)
+	local cx = self:cx_at_progress(progress)
+	local duration = not self.slider.animating and 0 or nil
+	self:transition('cx', cx, duration)
+	if self.slider.animating and self.slider.show_tooltip then
+		self.slider.tooltip:settag('visible', true)
 	end
+	self.slider.animating = false
 end
 
 function pin:cx_range()
@@ -174,9 +181,15 @@ function slider:sync()
 	b.w = self.cw
 
 	p.y = (self.h - p.h) / 2
-	p.position = self.position
+	if not p:transitioning'cx' then
+		p.progress = self.progress
+		if not p.dragging then
+			self.tooltip:settag('visible', false)
+		end
+	end
 
 	f.h = b.h
+	f.w = p.cx
 
 	t.x = p.w / 2
 
@@ -185,13 +198,39 @@ function slider:sync()
 	if self.step_labels then
 		for _,l in ipairs(self.layers) do
 			if l.tags.slider_step_label then
-				l.x = self.pin:cx_at_position(l.position) - 100
+				if l.progress then
+					l.x = self.pin:cx_at_progress(l.progress)
+				elseif l.position then
+					l.x = self.pin:cx_at_progress(l.position / self.size)
+				end
 				l.y = self.h
 				l.w = 200
+				l.x = l.x - l.w / 2
 				l.h = 20
 			end
 		end
 	end
+end
+
+function slider:step_lines_visible()
+	return self.step and self.step_line_color
+		and self.cw / (self.size / self.step) >= 5
+end
+
+function slider:draw_step_lines(cr)
+	if not self:step_lines_visible() then return end
+	cr:rgba(self.ui:color(self.step_line_color))
+	cr:line_width(1)
+	cr:new_path()
+	for progress = 0, 1, self.step / self.size do
+		cr:move_to(self.pin:cx_at_progress(progress), self.h)
+		cr:rel_line_to(0, self.step_line_h)
+	end
+	cr:stroke()
+end
+
+function slider:after_draw_content(cr)
+	self:draw_step_lines(cr)
 end
 
 function slider:before_draw(cr)
@@ -200,22 +239,26 @@ end
 
 --input
 
-pin.drag_threshold = 1
 pin.mousedown_activate = true
 function pin:mousedown()
 	self.slider:focus()
 end
 function pin:start_drag()
+	self.slider.tooltip:settag('visible', true)
 	return self
 end
+function pin:end_drag()
+	self.slider.tooltip:settag('visible', false)
+end
 function pin:drag(dx)
-	self.x = self.x + dx
-	self.slider.position = self.position
+	local cx = self.x + dx + self.w / 2
+	self.slider.progress = self:progress_at_cx(cx)
 end
 
 slider.mousedown_activate = true
 function slider:start_drag(_, mx)
-	self.pin.cx = mx
+	self.animating = true
+	self.progress = self.pin:progress_at_cx(mx)
 	return self.pin, self.pin.w / 2, 0
 end
 
@@ -225,19 +268,27 @@ function slider:keypress(key)
 	then
 		local pos = self.position
 		local dir = (key == 'left' or key:find'up') and -1 or 1
-		if self:smooth() then
+		if self.step_labels and self.snap_to_labels then --label-to-label
+			self.animating = true
+			self.position = self:nearest_position(nil, dir)
+		else
 			local delta =
 				(self.ui:key'shift' and 0.01 or 1) *
 				(self.ui:key'ctrl' and 0.1 or 1) *
-				(key:find'page' and 4 or 1) *
-				0.1
+				((key == 'up' or key == 'down') and 0.1 or 1) *
+				(key:find'page' and 5 or 1) *
+				0.1 --constant speed of 10%
+			if self.step then --ensure at least one step
+				delta = math.max(self.step / self.size, delta)
+			end
+			self.animating = true
 			self.progress = self.progress + delta * dir
-		else
-			self.position = self:nearest_position(nil, dir)
 		end
 	elseif key == 'home' then
+		self.animating = true
 		self.progress = 0
 	elseif key == 'end' then
+		self.animating = true
 		self.progress = 1
 	end
 end
@@ -267,12 +318,7 @@ function ui.slider:nearest_position(ref_pos, rounding)
 				best_pos = pos
 			end
 		end
-	end
-	if self.step then
-		if best_pos then
-			ref_pos = best_pos
-			best_pos = nil
-		end
+	elseif self.step then
 		ref_pos = clamp(ref_pos, self:position_range())
 		for pos = ref_pos - self.step, ref_pos + self.step, self.step do
 			pos = snap(pos, self.step)
@@ -284,17 +330,21 @@ function ui.slider:nearest_position(ref_pos, rounding)
 	return clamp(best_pos or ref_pos, self:position_range())
 end
 
-function slider:smooth()
-	return not (self.step or self.step_labels)
-end
-
 function slider:get_progress()
-	local p1, p2 = self:position_range()
-	return lerp(self.position, p1, p2, 0, 1)
+	if self:isinstance() then
+		local p1, p2 = self:position_range()
+		return lerp(self.position, p1, p2, 0, 1)
+	else
+		return self._progress
+	end
 end
 
 function slider:set_progress(progress)
-	self.position = lerp(progress, 0, 1, self:position_range())
+	if self:isinstance() then
+		self.position = lerp(progress, 0, 1, self:position_range())
+	else
+		self._progress = progress
+	end
 end
 
 function slider:position_range()
@@ -326,15 +376,17 @@ slider:track_changes'position'
 
 function slider:override_set_position(inherited, pos)
 	local pos = self:nearest_position(pos)
-	inherited(self, pos)
-	if self:isinstance() then
-		self:invalidate()
+	if inherited(self, pos) then
+		if self:isinstance() then
+			self.pin.progress = self.progress
+			self:invalidate()
+		end
 	end
 end
 
-slider:init_ignore{min_position=1, max_position=1, size=1, position=1}
+slider:init_ignore{min_position=1, max_position=1, size=1, position=1, progress=1}
 
-function slider:after_init(ui, t)
+function slider:after_init()
 	self.border  = self:create_border()
 	self.fill    = self:create_fill()
 	self.pin     = self:create_pin()
@@ -347,11 +399,15 @@ function slider:after_init(ui, t)
 			self:create_step_label(text, pos)
 		end
 	end
-	self._min_position = t.min_position or self.min_position
-	self._max_position = t.max_position
-		or t.size and self.min_position + t.size
-		or self.max_position
-	self._position = self:nearest_position(t.position or self.position)
+	local t = self._init_vars
+	self._min_position = t.min_position
+	self._max_position = t.max_position or (self._min_position + t.size)
+	if t.progress then
+		self._position = lerp(t.progress, 0, 1, self:position_range())
+	else
+		self._position = t.position
+	end
+	self._position = self:nearest_position(self._position)
 end
 
 --demo -----------------------------------------------------------------------
@@ -360,9 +416,20 @@ if not ... then require('ui_demo')(function(ui, win)
 
 	ui:slider{
 		x = 100, y = 100, w = 200, parent = win,
-		size = 10, position = 2,
-		step = 1,
-		step_labels = {Low = .5, Medium = 5, High = 10},
+		position = 3, size = 10,
+		step_labels = {Low = 0, Medium = 5, High = 10},
+		--snap_to_labels = false,
+	}
+
+	ui:slider{
+		x = 100, y = 200, w = 200, parent = win,
+		position = 5, size = 10,
+		step = 1.5,
+	}
+
+	ui:slider{
+		x = 100, y = 300, w = 200, parent = win,
+		progress = .3, size = 10,
 	}
 
 end) end

@@ -767,6 +767,20 @@ function element:after_init(ui, t)
 				self[k] = v
 			end
 		end
+
+		--create _init_vars table to get init_ignore var values
+		local init = {}
+		setmetatable(init, init)
+		self._init_vars = init
+		function init.__index(init, k)
+			if t[k] ~= nil then
+				return t[k]
+			else
+				return self.super[k]
+			end
+		end
+	else
+		self._init_vars = inherit({}, self)
 	end
 end
 
@@ -954,6 +968,10 @@ function element:transition(attr, val, duration, ease, delay, times, backval, bl
 	if changed then
 		self:invalidate()
 	end
+end
+
+function element:transitioning(attr)
+	return self.transitions and self.transitions[attr] and true or false
 end
 
 function element:draw(cr)
