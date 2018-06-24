@@ -146,13 +146,19 @@ function hue_bar:mousemove(mx, my)
 end
 
 function hue_bar:keypress(key)
-	if key == 'down' or key == 'up' or key == 'pagedown' or key == 'pageup' then
+	if key == 'down' or key == 'up'
+		or key == 'pagedown' or key == 'pageup'
+		or key == 'home' or key == 'end'
+	then
 		local delta =
 			(key:find'down' and 1 or -1)
-			* (key:find'page' and 10 or 1)
-			* (self.ui:key'shift' and .001 or .01)
-			* (self.ui:key'ctrl' and 5 or 1)
+			* (self.ui:key'shift' and .01 or 1)
+			* (self.ui:key'ctrl' and .1 or 1)
+			* (key:find'page' and 5 or 1)
+			* (key == 'home' and 1/0 or 1)
+			* (key == 'end' and -1/0 or 1)
 			* 360
+			* 0.1
 		self.hue = self.hue + delta
 		self:invalidate()
 	end
@@ -324,19 +330,21 @@ function slrect:mousemove(mx, my)
 end
 
 function slrect:keypress(key)
-	if key == 'down' or key == 'up' or key == 'pagedown' or key == 'pageup' then
-		local delta =
-			(key:find'down' and -1 or 1)
-			* (key:find'page' and 10 or 1)
-			* (self.ui:key'shift' and .001 or .01)
-			* (self.ui:key'ctrl' and 5 or 1)
+	local delta =
+		  (self.ui:key'shift' and .01 or 1)
+		* (self.ui:key'ctrl' and 0.1 or 1)
+		* (key:find'page' and 5 or 1)
+		* (key == 'home' and 1/0 or 1)
+		* (key == 'end' and -1/0 or 1)
+		* 0.1
+	if key == 'down' or key == 'up' or key == 'pagedown' or key == 'pageup'
+		or key == 'home' or key == 'end'
+	then
+		local delta = delta * (key:find'down' and -1 or 1)
 		self.lum = self.lum + delta
 		self:invalidate()
 	elseif key == 'left' or key == 'right' then
-		local delta =
-			(key:find'left' and -1 or 1)
-			* (self.ui:key'shift' and .001 or .01)
-			* (self.ui:key'ctrl' and 5 or 1)
+		local delta = delta * (key:find'left' and -1 or 1)
 		self.sat = self.sat + delta
 		self:invalidate()
 	end
