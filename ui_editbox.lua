@@ -17,7 +17,6 @@ editbox.w = 200
 editbox.h = 30
 editbox.padding = 4
 editbox.focusable = true
-editbox.scrollable = true
 editbox.max_click_chain = 3 --receive doubleclick and tripleclick events
 editbox.cursor_client = 'text'
 editbox.clip_content = true --TODO: remove this

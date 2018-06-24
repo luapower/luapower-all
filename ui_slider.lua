@@ -31,7 +31,7 @@ slider.h = 20
 
 slider._min_position = 0
 slider._max_position = false --overrides size
-slider._position = 0
+slider.position = 0
 slider._progress = false --overrides position
 slider.step_start = 0
 slider.step = false --no stepping
@@ -403,19 +403,33 @@ function slider:keypress(key)
 	then
 		local pos = self.position
 		local dir = (key == 'left' or key:find'up') and -1 or 1
-		local delta =
-			(self.ui:key'shift' and 0.01 or 1) *
-			(self.ui:key'ctrl' and 0.1 or 1) *
-			((key == 'up' or key == 'down') and 0.1 or 1) *
-			(key:find'page' and 5 or 1) *
-			self.key_nav_speed --constant speed
-		self.position = self:nearest_position(
-			self.position + delta * self.size * dir, dir)
+		local progress_delta =
+			  (self.ui:key'shift' and 0.01 or 1)
+			* (self.ui:key'ctrl' and 0.1 or 1)
+			* ((key == 'up' or key == 'down') and 0.1 or 1)
+			* (key:find'page' and 5 or 1)
+			* self.key_nav_speed --constant speed
+			* dir
+		self.position = self:position_at_progress_offset(nil, progress_delta)
 	elseif key == 'home' then
 		self.progress = 0
 	elseif key == 'end' then
 		self.progress = 1
 	end
+	self.pin.animate = false
+end
+
+slider.vscrollable = true
+
+function slider:mousewheel(pages)
+	--move the pin to the final position animated as if clicked
+	self.pin.animate = true
+	local progress_delta =
+		  -pages / 3
+		* (self.ui:key'shift' and 0.01 or 1)
+		* (self.ui:key'ctrl' and 0.1 or 1)
+		* self.key_nav_speed
+	self.position = self:position_at_progress_offset(nil, progress_delta)
 	self.pin.animate = false
 end
 
@@ -435,12 +449,12 @@ end
 local function nearest_pos(pos, best_pos, ref_pos)
 	return not best_pos or math.abs(pos - ref_pos) < math.abs(best_pos - ref_pos)
 end
-function slider:nearest_position(ref_pos, rounding)
+function slider:nearest_position(ref_pos, dir)
 	ref_pos = ref_pos or self.position
-	rounding = rounding or 0
+	dir = dir or 0
 	local choose =
-		rounding > 0 and next_pos
-		or rounding < 0 and prev_pos
+		dir > 0 and next_pos
+		or dir < 0 and prev_pos
 		or nearest_pos
 	local best_pos
 	if self.snap_to_labels and self.step_labels then
@@ -452,8 +466,8 @@ function slider:nearest_position(ref_pos, rounding)
 	end
 	if self.step then
 		ref_pos = clamp(ref_pos, self:position_range())
-		local sp1 = self:snap_position(ref_pos - self.step)
-		local sp2 = self:snap_position(ref_pos + self.step)
+		local sp1 = self:snap_position(ref_pos - 2 * self.step)
+		local sp2 = self:snap_position(ref_pos + 2 * self.step)
 		for pos = sp1, sp2, self.step do
 			if choose(pos, best_pos, ref_pos) then
 				best_pos = pos
@@ -461,6 +475,20 @@ function slider:nearest_position(ref_pos, rounding)
 		end
 	end
 	return clamp(best_pos or ref_pos, self:position_range())
+end
+
+function slider:position_at_position_offset(ref_pos, delta)
+	ref_pos = ref_pos or self.position
+	local target_pos = ref_pos + delta
+	local pos = self:nearest_position(target_pos)
+	if pos == ref_pos then --nearest-to-target pos is the ref pos
+		pos = self:nearest_position(target_pos, delta)
+	end
+	return pos
+end
+
+function slider:position_at_progress_offset(ref_pos, delta)
+	return self:position_at_position_offset(ref_pos, delta * self.size)
 end
 
 function slider:get_progress()
@@ -569,7 +597,8 @@ if not ... then require('ui_demo')(function(ui, win)
 
 	ui:slider{
 		x = 100, y = 300, w = 200, parent = win,
-		progress = .3, size = 10,
+		progress = .3,
+		size = 1,
 	}
 
 end) end

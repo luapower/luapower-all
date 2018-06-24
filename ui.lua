@@ -674,8 +674,8 @@ element.visible = true
 element.activable = false --can be clicked and set as hot
 element.mousedown_activate = false --activate on left mouse down
 element.targetable = false --can be a potential drop target
-element.vscrollable = false --can be hit for vscroll
-element.hscrollable = false --can be hit for hscroll
+element.vscrollable = false --can be hit for vscroll while not focused
+element.hscrollable = false --can be hit for hscroll while not focused
 element.scrollable = false --can be hit for vscroll or hscroll
 element.focusable = false --can be focused
 
@@ -3373,8 +3373,8 @@ function layer:hit_test(x, y, reason)
 	local self_allowed =
 		   (reason == 'activate' and self.activable)
 		or (reason == 'drop' and self.targetable)
-		or (reason == 'vscroll' and (self.vscrollable or self.scrollable))
-		or (reason == 'hscroll' and (self.hscrollable or self.scrollable))
+		or (reason == 'vscroll' and (self.vscrollable or self.scrollable or self.focused))
+		or (reason == 'hscroll' and (self.hscrollable or self.scrollable or self.focused))
 
 	local cr = self.window.cr
 	local x, y = self:from_parent_to_box(x, y)

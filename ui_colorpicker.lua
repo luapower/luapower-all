@@ -131,13 +131,7 @@ function hue_bar:before_draw_content(cr)
 	self['draw_pointer_'..self.pointer_style](self, cr, y)
 end
 
-function hue_bar:mousedown()
-	self.active = true
-end
-
-function hue_bar:mouseup()
-	self.active = false
-end
+hue_bar.mousedown_activate = true
 
 function hue_bar:mousemove(mx, my)
 	if not self.active then return end
@@ -151,7 +145,7 @@ function hue_bar:keypress(key)
 		or key == 'home' or key == 'end'
 	then
 		local delta =
-			(key:find'down' and 1 or -1)
+			  (key:find'down' and 1 or -1)
 			* (self.ui:key'shift' and .01 or 1)
 			* (self.ui:key'ctrl' and .1 or 1)
 			* (key:find'page' and 5 or 1)
@@ -160,8 +154,18 @@ function hue_bar:keypress(key)
 			* 360
 			* 0.1
 		self.hue = self.hue + delta
-		self:invalidate()
 	end
+end
+
+hue_bar.vscrollable = true
+
+function hue_bar:mousewheel(pages)
+	self.hue = self.hue +
+		-pages / 3
+		* (self.ui:key'shift' and .01 or 1)
+		* (self.ui:key'ctrl' and .1 or 1)
+		* 360
+		* 0.1
 end
 
 --saturation/luminance rectangle ---------------------------------------------
@@ -315,18 +319,11 @@ function slrect:before_draw_content(cr)
 	self['draw_pointer_'..self.pointer_style](self, cr, cx, cy)
 end
 
-function slrect:mousedown()
-	self.active = true
-end
-
-function slrect:mouseup()
-	self.active = false
-end
+slrect.mousedown_activate = true
 
 function slrect:mousemove(mx, my)
 	if not self.active then return end
 	self.sat, self.lum = self:sat_lum_at(mx, my)
-	self:invalidate()
 end
 
 function slrect:keypress(key)
@@ -348,6 +345,16 @@ function slrect:keypress(key)
 		self.sat = self.sat + delta
 		self:invalidate()
 	end
+end
+
+slrect.vscrollable = true
+
+function slrect:mousewheel(pages)
+	self.lum = self.lum +
+		pages / 3
+		* (self.ui:key'shift' and .01 or 1)
+		* (self.ui:key'ctrl' and .1 or 1)
+		* 0.1
 end
 
 --color picker ---------------------------------------------------------------
@@ -401,7 +408,7 @@ function picker:after_init()
 	self.hue_slider = self.ui:slider{
 		parent = self,
 		size = 360,
-		step = 1,
+		step = 1/4,
 		position = self.hue_bar.hue,
 		position_changed = function(slider, pos)
 			self.hue_bar.hue = pos
