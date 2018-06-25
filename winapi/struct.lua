@@ -135,13 +135,21 @@ end
 
 function Struct:init(cdata) end --stub
 
+function Struct:reset(cdata)
+	local size = ffi.sizeof(cdata)
+	ffi.fill(cdata, size)
+	if self.size then
+		cdata[self.size] = size
+	end
+	self:setdefaults(cdata)
+end
+
 --create a struct with a clear mask and default values.
 --cdata passes through untouched.
 function Struct:new(t)
 	if type(t) == 'cdata' then return t end
 	local cdata = self.ctype_cons()
-	if self.size then cdata[self.size] = ffi.sizeof(cdata) end
-	self:setdefaults(cdata)
+	self:reset(cdata)
 	self:setall(cdata, t)
 	--TODO: provide a way to make in/out buffer allocations declarative
 	--instead of manually via init constructor (see winapi.filedialogs).

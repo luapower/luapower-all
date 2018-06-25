@@ -34,6 +34,7 @@ require'winapi.dragdrop'
 require'winapi.panelclass'
 require'winapi.module'
 require'winapi.sync'
+require'winapi.tooltipclass'
 
 local nw = {name = 'winapi'}
 
@@ -2165,7 +2166,7 @@ function setbackend(self, backend)
 	imap[ptonumber(ffi.cast('void*', self))] = backend
 end
 
---IUnknown -------------------------------------------------------------------
+--IUnknown
 
 local function QueryInterface(self, riid, ppvobject)
 	ppvobject[0] = nil
@@ -2182,7 +2183,7 @@ local function Release(self)
 	return self.refcount
 end
 
---IDropSource ----------------------------------------------------------------
+--IDropSource
 
 local function QueryContinueDrag(self, esc_pressed, key_state)
 	if esc_pressed ~= 0 then
@@ -2210,7 +2211,7 @@ function window:start_drag()
 	winapi.DoDragDrop(data_object, drop_source, ok_effects, effect)
 end
 
---IDropTarget ----------------------------------------------------------------
+--IDropTarget
 
 local effects = {
 	copy = winapi.DROPEFFECT_COPY,
@@ -2328,5 +2329,33 @@ function window:_free_drop_target()
 	winapi.RevokeDragDrop(self.win.hwnd)
 end
 
+--tooltips -------------------------------------------------------------------
+
+function window:set_tooltip(text)
+	if self._tooltip_text == text then
+		--using a same-text barrier because setting the tooltip's text
+		--invalidates the tooltip's parent window which flickers the tooltip.
+		return
+	end
+	self._tooltip_text = text
+	if text then
+		if not self._tooltip then
+			self._tooltip = winapi.Tooltip{
+				parent = self.win,
+				text = text,
+			}
+		else
+			self._tooltip.text = text --NOTE: this invalidates the window
+			self._tooltip.rect = self.win.client_rect
+			self._tooltip.active = true
+		end
+	elseif self._tooltip then
+		self._tooltip.active = false
+	end
+end
+
+function window:get_tooltip()
+	return self._tooltip and self._tooltip_text or false
+end
 
 return nw

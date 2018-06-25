@@ -24,6 +24,7 @@ Tooltip = subclass({
 	__defaults = {
 		--style bits
 		clip_siblings = true, --avoid warning
+		no_prefix = true,
 		--ex style bits
 		topmost = true,
 		--window properties
@@ -98,11 +99,11 @@ local ti = TOOLINFO()
 function Tooltip:__after_create(info, args)
 	SetWindowPos(self.hwnd, HWND_TOPMOST,
 		0, 0, 0, 0, bit.bor(SWP_NOMOVE, SWP_NOSIZE, SWP_NOACTIVATE))
+	TOOLINFO:reset(ti)
 	ti.text = info.text or ffi.cast('LPWSTR', -1)
 	ti.flagbits = info
 	ti.hwnd = args.parent
-	--ti.uID = info.id
-	GetClientRect(args.parent, ti.rect)
+	ti.rect = info.rect or info.parent.client_rect
 	checktrue(SNDMSG(self.hwnd, TTM_ADDTOOL, 0, ffi.cast('void*', ti)))
 end
 
@@ -111,8 +112,8 @@ function Tooltip:get_parent()
 end
 
 function Tooltip:set_rect(r)
+	TOOLINFO:reset(ti)
 	ti.hwnd = self.parent.hwnd
-	--ti.uID = self.id
 	ti.rect = r
 	SNDMSG(self.hwnd, TTM_NEWTOOLRECT, 0, ffi.cast('void*', ti))
 end
@@ -121,18 +122,26 @@ function Tooltip:set_active(active)
 	SNDMSG(self.hwnd, TTM_ACTIVATE, active and 1 or 0, 0)
 end
 
+function Tooltip:set_text(text)
+	TOOLINFO:reset(ti)
+	ti.hwnd = self.parent.hwnd
+	ti.text = text
+	SNDMSG(self.hwnd, TTM_UPDATETIPTEXT, 0, ffi.cast('void*', ti))
+end
+
 --showcase -------------------------------------------------------------------
 
 if not ... then
 require'winapi.showcase'
 local window = ShowcaseWindow{w=300,h=200}
-local t1 = Tooltip{parent = window}--, text = 'Hellooo!'}
+local t1 = Tooltip{parent = window} --, text='xxxx'}--, visible = false}--, text = 'Hellooo!'}
 
-local n = 0
+local n = 10
 function t1:on_get_display_info(nmt)
 	print'on_get_display_info'
-	n = n + 1
-	nmt.text = 'Helloo '..n
+	n = n - 1
+	nmt.text = string.format('H%s!!!!', ('o'):rep(n))
+	nmt.uFlags = 0
 end
 
 function t1:on_show()
@@ -145,8 +154,13 @@ end
 
 function window:on_mouse_move(mx, my)
 	t1.rect = t1.parent.client_rect
+	n = n + .001
+	--t1.text = string.format('H%s!!!!', ('o'):rep(math.floor(n)))
 	t1.active = mx < window.client_w / 2
 end
+
+t1.active = false
+--t1.text = 'xx'
 
 MessageLoop()
 end

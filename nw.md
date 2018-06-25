@@ -286,6 +286,8 @@ __drag & drop__
 `win/view:dragging('hover',t,x,y) -> s`      event: mouse move with payload
 `win/view:dragging('drop',t,x,y)`            event: dropped the payload
 `win/view:dragging('leave')`                 event: mouse left with payload
+__tooltips__
+`win:tooltip(text|f) -> text|f`              get/set/hide tooltip text
 __events__
 `app/win/view:on(event, func)`               call _func_ when _event_ happens
 `app/win/view:off(event)`                    remove event handlers
@@ -461,6 +463,8 @@ Create a window (fields of _`t`_ below with default value in parenthesis):
 	* `opengl`                   - enable and [configure OpenGL](#winviewgl---gl) on the window
 * __menu__
 	* `menu`                     - the menu bar
+* __tooltip__
+	* `tooltip`                  - tooltip text (false)
 
 ### Initial size and position
 
@@ -930,12 +934,13 @@ maximizable or fullscreenable window raises an error.
 Get/set edge snapping mode, which is a string containing any combination
 of the following words separated by spaces:
 
-  * 'app' - snap to app's windows
-  * 'other' - snap to other apps' windows
-  * 'parent' - snap to parent window
-  * 'siblings' - snap to sibling windows
-  * 'screen' - snap to screen edges
-  * 'all' - equivalent to 'app other screen'
+  * `'app'` - snap to app's windows
+  * `'other'` - snap to other apps' windows
+  * `'parent'` - snap to parent window
+  * `'siblings'` - snap to sibling windows
+  * `'screen'` or `true` - snap to screen edges
+  * `'all'` - equivalent to 'app other screen'
+  * `false` - disable snapping
 
 __NOTE:__ Edge snapping doesn't work on Linux because the `win:sizing()`
 event doesn't fire there. It is however already (poorly) implemented
@@ -1505,6 +1510,12 @@ You can respond to the 'enter' and 'hover' stages by returning:
   * true - means 'copy'
   * false - means 'abort'
   * nil/nothing - means 'abort'
+
+## Tooltips
+
+### `win:tooltip(text)` <br> `win:tooltip(false)` <br> `win:tooltip() -> text|false`
+
+Get/set/hide window's tooltip.
 
 ## Events
 
