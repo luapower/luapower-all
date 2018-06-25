@@ -74,8 +74,6 @@ COLOR PICKER -----------------------------------------------------------------
 
 LITTLE WIDGETS ---------------------------------------------------------------
 
-- upgrade slider to current coding practice
-- tooltip
 - menu bar
 - menu
 - popup menu

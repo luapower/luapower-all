@@ -54,8 +54,8 @@ end
 
 function button:sync_triangle()
 	local cw, ch = self.cw, self.ch
-	local w = .4 * cw
-	local h = .2 * ch
+	local w = .4 * self.w
+	local h = .2 * self.h
 	local x = (cw - w) / 2
 	local y = math.floor((ch - h) / 2 + h / 5)
 	self.triangle = {x, y, w, h}
@@ -63,6 +63,7 @@ end
 
 function button:draw_triangle(cr)
 	local x, y, w, h = unpack(self.triangle)
+	cr:new_path()
 	cr:move_to(x, y)
 	cr:rel_line_to(w, 0)
 	cr:rel_line_to(-w/2, h)

@@ -546,8 +546,8 @@ if not ... then require('ui_demo')(function(ui, win)
 		x = 20, y = 20,
 		w = 220, h = 200,
 		parent = win,
-		hue_bar = {hue = 60},
-		sat_lum_rectangle = {sat = .7, lum = .3},
+		hue_bar = {hue = 60, tooltip = 'Hue bar'},
+		sat_lum_rectangle = {sat = .7, lum = .3, tooltip = 'Saturation x Luminance square'},
 	}
 
 end) end

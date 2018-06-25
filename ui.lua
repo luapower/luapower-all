@@ -1537,7 +1537,11 @@ function window:set_max_ch(ch)
 	end
 end
 
---query interface
+function window:_settooltip(text)
+	return self.native_window:tooltip(text)
+end
+
+--element query interface
 
 function window:find(sel)
 	local sel = ui:selector(sel):filter(function(elem)
@@ -2193,7 +2197,8 @@ ui:style('layer disabled', {
 	text_color = '#666',
 })
 
-layer.cursor = false
+layer.cursor = false  --false or cursor name from nw
+layer._tooltip = false --false or text
 
 layer.drag_threshold = 0 --moving distance before start dragging
 layer.max_click_chain = 1 --2 for getting doubleclick events etc.
@@ -2444,10 +2449,12 @@ function layer:_mouseenter(mx, my, area)
 		self:settag('hot_'..area, true)
 	end
 	self:fire('mouseenter', mx, my, area)
+	self.window:_settooltip(self.tooltip)
 	self:invalidate()
 end
 
 function layer:_mouseleave()
+	self.window:_settooltip(false)
 	self:fire'mouseleave'
 	local area = self.ui.hot_area
 	self:settag('hot', false)
@@ -2632,6 +2639,19 @@ function layer:set_enabled(enabled)
 	self._enabled = enabled
 	if self:isinstance() then
 		self:_update_enabled(enabled)
+	end
+end
+
+--tooltip property
+
+function layer:get_tooltip()
+	return self._tooltip
+end
+
+function layer:set_tooltip(text)
+	self._tooltip = text
+	if self.window and self.hot then --change tooltip text on the fly
+		self.window:_settooltip(text)
 	end
 end
 

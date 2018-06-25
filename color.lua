@@ -40,20 +40,18 @@ local function h2rgb(m1, m2, h)
 end
 
 --hsl is clamped to (0..360, 0..1, 0..1); rgb is (0..1, 0..1, 0..1)
-local function hsl_to_rgb(h, s, L)
-	h, s, L = clamp_hsl(h, s, L)
+local function hsl_to_rgb_unclamped(h, s, L)
 	h = h / 360
-	local m1, m2
-	if L<=0.5 then
-		m2 = L*(s+1)
-	else
-		m2 = L+s-L*s
-	end
-	m1 = L*2-m2
+	local m2 = L <= .5 and L*(s+1) or L+s-L*s
+	local m1 = L*2-m2
 	return
 		h2rgb(m1, m2, h+1/3),
 		h2rgb(m1, m2, h),
 		h2rgb(m1, m2, h-1/3)
+end
+
+local function hsl_to_rgb(h, s, L)
+	return hsl_to_rgb_unclamped(clamp_hsl(h, s, L))
 end
 
 --rgb is clamped to (0..1, 0..1, 0..1); hsl is (0..360, 0..1, 0..1)
@@ -394,6 +392,7 @@ end
 
 local color_module = {
 	hsl_to_rgb = hsl_to_rgb,
+	hsl_to_rgb_unclamped = hsl_to_rgb_unclamped,
 	rgb_to_hsl = rgb_to_hsl,
 
 	string_to_rgba = string_to_rgba,

@@ -140,6 +140,7 @@ end
 --create a top-down or bottom-up array of rows pointing to a bitmap buffer.
 local function rows_buffer(h, bottom_up, data, stride)
 	local rows = ffi.new('uint8_t*[?]', h)
+	local data = ffi.cast('uint8_t*', data)
 	if bottom_up then
 		for i=0,h-1 do
 			rows[h-1-i] = data + (i * stride)

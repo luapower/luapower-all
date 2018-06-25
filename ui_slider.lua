@@ -13,17 +13,17 @@ local lerp = glue.lerp
 local slider = ui.layer:subclass'slider'
 ui.slider = slider
 
-local border  = ui.layer:subclass'slider_border'
+local shaft   = ui.layer:subclass'slider_shaft'
 local fill    = ui.layer:subclass'slider_fill'
 local pin     = ui.layer:subclass'slider_pin'
 local marker  = ui.layer:subclass'slider_marker'
-local tooltip = ui.layer:subclass'slider_tooltip'
+local tip     = ui.layer:subclass'slider_tip'
 
-slider.border_class     = border
+slider.shaft_class      = shaft
 slider.fill_class       = fill
 slider.pin_class        = pin
 slider.marker_class     = marker
-slider.tooltip_class    = tooltip
+slider.tip_class        = tip
 slider.step_label_class = ui.layer
 
 slider.focusable = true
@@ -45,15 +45,15 @@ slider.smooth_dragging = true --pin stays under the mouse while dragging
 slider.phantom_dragging = true --drag a secondary translucent pin
 slider.landing_position_marker = true --mark landing position while dragging
 
-border.activable = false
-border.h = 10
-border.corner_radius = 5
-border.border_width = 1
-border.border_color = '#999'
-border.background_color = '#000'
-border.clip_content = true --clip the fill
+shaft.activable = false
+shaft.h = 10
+shaft.corner_radius = 5
+shaft.border_width = 1
+shaft.border_color = '#999'
+shaft.background_color = '#000'
+shaft.clip_content = true --clip the fill
 
-ui:style('slider focused > slider_border', {
+ui:style('slider focused > slider_shaft', {
 	border_color = '#fff',
 	shadow_blur = 2,
 	shadow_color = '#fff',
@@ -104,21 +104,21 @@ ui:style('slider_marker visible', {
 	opacity = 1,
 })
 
-tooltip.y = -10
-tooltip.format = '%g'
-tooltip.border_width = 0
-tooltip.border_color = '#fff'
-tooltip.border_offset = 1
-tooltip.opacity = 0
+tip.y = -10
+tip.format = '%g'
+tip.border_width = 0
+tip.border_color = '#fff'
+tip.border_offset = 1
+tip.opacity = 0
 
-ui:style('slider_tooltip', {
+ui:style('slider_tip', {
 	transition_opacity = true,
 	transition_duration_opacity = .5,
 	transition_delay_opacity = .5,
 	transition_blend_opacity = 'replace',
 })
 
-ui:style('slider_tooltip visible', {
+ui:style('slider_tip visible', {
 	opacity = 1,
 	transition_opacity = true,
 	transition_duration_opacity = .5,
@@ -128,7 +128,7 @@ ui:style('slider_tooltip visible', {
 --pin position
 
 function pin:cx_range()
-	local r = self.slider.border.corner_radius_top_left
+	local r = self.slider.shaft.corner_radius_top_left
 	return r, self.slider.cw - r
 end
 
@@ -164,7 +164,7 @@ function pin:move(cx)
 	local duration = not self.animate and 0 or nil
 	self:transition('cx', cx, duration)
 	if self.animate then
-		self.slider.tooltip:settag('visible', true)
+		self.slider.tip:settag('visible', true)
 	end
 end
 
@@ -178,17 +178,17 @@ end
 
 --sync'ing
 
-function slider:create_border()
-	return self.border_class(self.ui, {
+function slider:create_shaft()
+	return self.shaft_class(self.ui, {
 		slider = self,
 		parent = self,
-	}, self.border)
+	}, self.shaft)
 end
 
 function slider:create_fill()
 	return self.fill_class(self.ui, {
 		slider = self,
-		parent = self.border,
+		parent = self.shaft,
 	}, self.fill)
 end
 
@@ -214,11 +214,11 @@ function slider:create_marker()
 	}, self.marker)
 end
 
-function slider:create_tooltip()
-	return self.tooltip_class(self.ui, {
+function slider:create_tip()
+	return self.tip_class(self.ui, {
 		slider = self,
 		parent = self.pin,
-	}, self.tooltip)
+	}, self.tip)
 end
 
 function slider:create_step_label(text, position)
@@ -232,16 +232,16 @@ function slider:create_step_label(text, position)
 end
 
 function slider:sync()
-	local b = self.border
+	local s = self.shaft
 	local f = self.fill
 	local p = self.pin
 	local dp = self.drag_pin
 	local m = self.marker
-	local t = self.tooltip
+	local t = self.tip
 
-	b.x = 0
-	b.cy = self.h / 2
-	b.w = self.cw
+	s.x = 0
+	s.cy = self.h / 2
+	s.w = self.cw
 
 	p.cy = self.h / 2
 	dp.y = p.y
@@ -250,11 +250,11 @@ function slider:sync()
 	if not p:transitioning'cx' and not dragging and not self.active then
 		p.progress = self.progress
 		if not dragging then
-			self.tooltip:settag('visible', false)
+			self.tip:settag('visible', false)
 		end
 	end
 
-	f.h = b.h
+	f.h = s.h
 	f.w = p.cx
 
 	m.cy = self.h / 2
@@ -277,7 +277,7 @@ function slider:sync()
 				l.y = self.h
 				l.w = 200
 				l.x = l.x - l.w / 2
-				l.h = 20
+				l.h = 26
 			end
 		end
 	end
@@ -339,15 +339,21 @@ function pin:mousedown()
 end
 
 function pin:start_drag()
-	self.slider.tooltip:settag('visible', true)
+	self.slider.tip:settag('visible', true)
 	return self.slider:_drag_pin()
 end
 
 function pin:drag(dx)
+	local cx1, cx2 = self:cx_range()
+	local cxsize = cx2 - cx1
 	local cx = self.x + dx + self.w / 2
-	local cx = clamp(cx, self:cx_range())
+	if self.ui:key'ctrl' then
+		cx = snap(cx - cx1, .1 * cxsize) + cx1
+	elseif self.ui:key'shift' then
+		cx = snap(cx - cx1, .01 * cxsize) + cx1
+	end
+	local cx = clamp(cx, cx1, cx2)
 	self.slider.position = self:position_at_cx(cx)
-
 	if self.slider.phantom_dragging or self.slider.smooth_dragging then
 		self:move(cx) --grab the drag-pin instantly, cancelling any animation
 		if self.slider.phantom_dragging and self.slider.smooth_dragging then
@@ -548,12 +554,12 @@ slider:init_ignore{min_position=1, max_position=1, size=1, position=1, progress=
 
 function slider:after_init()
 	local pin_fields = self.pin
-	self.border   = self:create_border()
+	self.shaft    = self:create_shaft()
 	self.fill     = self:create_fill()
 	self.marker   = self:create_marker()
 	self.pin      = self:create_pin()
 	self.drag_pin = self:create_drag_pin(pin_fields)
-	self.tooltip  = self:create_tooltip()
+	self.tip      = self:create_tip()
 	if self.step_labels then
 		for text, pos in pairs(self.step_labels) do
 			if type(text) == 'number' then
