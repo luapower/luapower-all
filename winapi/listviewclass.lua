@@ -182,7 +182,7 @@ ListView = {
 		w = 200, h = 100,
 	},
 	__init_properties = {'hoover_time'},
-	__wm_notify_handler_names = {
+	__wm_notify_handler_names = index{
 		on_item_changing = LVN_ITEMCHANGING,
 		on_item_change = LVN_ITEMCHANGED,
 		on_insert_item = LVN_INSERTITEM,

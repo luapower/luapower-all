@@ -151,8 +151,8 @@ local function set_style(t, cdata)
 	return style_bitmask:set(cdata.fsStyle, t)
 end
 
-local function get_style(cdata)
-	return style_bitmask:get(cdata.fsStyle)
+local function get_style(fsStyle)
+	return style_bitmask:get(fsStyle)
 end
 
 TBBUTTON = struct{

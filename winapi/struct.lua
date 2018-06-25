@@ -73,7 +73,7 @@ function Struct:set(cdata, field, value) --hot code
 end
 
 local getbit = getbit
-function Struct:get(cdata, field, value) --hot code
+function Struct:get(cdata, field) --hot code
 	if type(field) ~= 'string' then
 		error(string.format('struct "%s" has no field of type "%s"', self.ctype, type(field)), 5)
 	end

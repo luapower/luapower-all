@@ -236,9 +236,9 @@ BaseWindow = {
 		on_nc_hittest = WM_NCHITTEST,
 		on_nc_calcsize = WM_NCCALCSIZE,
 	},
-	__wm_syscommand_handler_names = {}, --WM_SYSCOMMAND code -> handler name map
-	__wm_command_handler_names = {},    --WM_COMMAND code -> handler name map
-	__wm_notify_handler_names = {},     --WM_NOTIFY code -> handler name map
+	__wm_syscommand_handler_names = index{}, --WM_SYSCOMMAND code -> handler name map
+	__wm_command_handler_names = index{},    --WM_COMMAND code -> handler name map
+	__wm_notify_handler_names = index{},     --WM_NOTIFY code -> handler name map
 }
 
 BaseWindow = subclass(BaseWindow, VObject)
@@ -329,7 +329,7 @@ function BaseWindow:__before_create(info, args) end --stub
 function BaseWindow:__after_create(info, args) end --stub
 
 --Windows will ignore style bits that are contradictory, so we check our
---wanted style attributes to what was actually set and raise an error if
+--wanted style attributes to what was actually set and print a warning if
 --any of our attributes were ignored.
 function BaseWindow:__check_bitmask(name, mask, wanted, actual)
 	if bit.tobit(wanted) == bit.tobit(actual) then return end

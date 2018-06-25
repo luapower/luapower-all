@@ -92,6 +92,7 @@ showcase their functionality, so there's lots of little demos there too.
 				* [ListView][winapi.listviewclass] - list views
 				* [TabControl][winapi.tabcontrolclass] - tab bars
 				* [Toolbar][winapi.toolbarclass] - toolbars
+			* [Tooltip][winapi.tooltipclass] - tooltips
 		* [Menu][winapi.menuclass] - menus and menu bars
 		* [NotifyIcon][winapi.notifyiconclass] - system tray icons
 
