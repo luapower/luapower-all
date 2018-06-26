@@ -17,7 +17,7 @@ function player:sat_lum_square(sx, sy, sw, sh, hue, s, L)
 	local _, setpixel = bitmap.pixel_interface(self.cr:group_target():bitmap())
 	for y = 0, sh-1 do
 		for x = 0, sw-1 do
-			local r, g, b = color.hsl_to_rgb(hue, x / (sw-1), y / (sh-1))
+			local r, g, b = color.convert('rgb', 'hsl', hue, x / (sw-1), y / (sh-1))
 			setpixel(sx + x, sy + y, r * 255, g * 255, b * 255, 255)
 		end
 	end

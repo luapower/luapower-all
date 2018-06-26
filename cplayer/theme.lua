@@ -75,7 +75,8 @@ end
 
 local function parse_color(c)
 	if type(c) == 'string' then
-		return color.string_to_rgba(c)
+		local r, g, b, a = color.parse(c, 'rgb')
+		return r, g, b, a or 1
 	elseif type(c) == 'table' then
 		return unpack(c)
 	end

@@ -1,51 +1,57 @@
 ---
-tagline: color computation
+tagline: color parsing, formatting and computation
 ---
 
 ## `local color = require'color'`
 
-Color computation in HSL space.
-Original code from Sputnik's [colors lib], by Yuri Takhteyev.
+Color parsing, formatting, conversion and computation in HSL, HSV
+and RGB color spaces.
 
-  * `r, g, b, s, L` are in `0..1` range.
-  * `h` is in `0..360` range.
-  * supported color formats: `'#rrggbbaa'`, `'#rgba'`, `'rgba(r, g, b, a)'`,
-    `rgb(r, g, b)`, `hsla(h, s%, l%, a), `hsl(h, s%, l%)`, `hsla(h, s, l, a),
-	 `hsl(h, s, l)`.
+Quick facts:
 
-## Direct conversions
+  * color spaces: `'hsl'`, `'hsv'`, `'rgb'`.
+  * `r, g, b, s, L, v` are in `0..1` range, `h` is in `0..360` range.
+  * color formats: `'#'`, `'#rrggbbaa'`, `'#rrggbb'`, `'#rgba'`, `'#rgb'`,
+  `'rgba'`, `'rgb'`, `'hsla'`, `'hsl'`, `'hsla%'`, `'hsl%'`.
+
+## API
 
 ---------------------------------------------------- ------------------------------------------------
-`color.hsl_to_rgb(h, s, L) -> r, g, b`               HSL -> RGB; h is modulo 360; s, L are clamped to range
-`color.rgb_to_hsl(r, g, b) -> h, s, L`               RGB -> HSL; r, g, b are clamped to range
-`color.rgba_to_string(r, g, b, a[, fmt]) -> s`       format a color from RGBA
-`color.rgb_to_string (r, g, b   [, fmt]) -> s`       format a color from RGB
-`color.hsla_to_string(h, s, L, a[, fmt]) -> s`       format a color from HSLA
-`color.hsl_to_string (h, s, L   [, fmt]) -> s`       format a color from HSL
-`color.string_to_rgba(s) -> r, g, b, a | nil`        parse a color as RGBA
-`color.string_to_rgb (s) -> r, g, b    | nil`        parse a color as RGB
-`color.string_to_hsla(s) -> h, s, L, a | nil`        parse a color as HSLA
-`color.string_to_hsl (s) -> h, s, L    | nil`        parse a color as HSL
+`color.parse(str[, space]) -> [space, ]x, y, z[, a]` parse color string
+`color.convert(dspace, sspace, x, y, z[, a]) -> ...` convert color from sspace to dspace
+`color.format([fmt], space, x, y, z[, a]) -> s`      format color (see above)
+`color.clamp(space, x, y, z[, a]) -> x, y, z, a`     clamp values to color space
 ---------------------------------------------------- ------------------------------------------------
 
-`fmt` can be `hexa` (default for `rgba_to_string`), `hexa1`, `hex`, `hex1`,
-`rgba`, `rgb`, `hsla%` (default for `hsla_to_string`), `hsl%`, `hsla`, `hsl`.
+__NOTE__: x, y, z means r, g, b in the `'rgb'` color space,
+h, s, L in the `'hsl'` color space and h, s, v in the `'hsv'` color space.
+
+__NOTE__: When alpha is missing, the color has no alpha when formatting or clamping.
 
 ## Color objects
 
 ---------------------------------------------------- ------------------------------------------------
-`color(str) -> col`                                  create a HSL color object from a HSL or RGB string
-`color(h, s, L) -> col`                              create a HSL color object from HSL values
-`color{h, s, L} -> col`                              create a HSL color object from HSL values
-`color.hsl(...) -> col`                              calls `color(...)`
-`color.rgb(str) -> col`                              create a HSL color object from a HSL or RGB string
-`color.rgb(r, g, b) -> col`                          create a HSL color object from RGB values
-`color.rgb{r, g, b} -> col`                          create a HSL color object from RGB values
-`col.h, col.s, col.L`                                color fields (for reading and writing)
-`col:hsl() -> h, s, L` <br> `col() -> h, s, L`       color fields unpacked
+__constructors__
+`color(str) -> col`                                  create a HSL color object from a string
+`color([space, ]x, y, z[, a]) -> col`                create a HSL color object from discrete values
+`color([space, ]{x, y, z[, a]}) -> col`              create a HSL color object from a table
+`color.hsl(h, s, L[, a]) -> col`                     calls `color('hsl', h, s, L, a)`
+`color.hsv(h, s, v[, a]) -> col`                     calls `color('hsv', h, s, v, a)`
+`color.rgb(r, g, b[, a]) -> col`                     calls `color('rgb', r, g, b, a)`
+__fields__
+`col.h, col.s, col.L, col.a`                         color fields (for reading and writing)
+`col() -> h, s, L[, a]`                              color fields unpacked
+__conversion__
+`col:hsl() -> h, s, L`                               color fields unpacked without alpha
+`col:hsla() -> h, s, L, a`                           color fields unpacked with alpha
+`col:hsv() -> h, s, v`                               convert to HSV
 `col:rgb() -> r, g, b`                               convert to RGB
-`col:rgba() -> r, g, b, 1`                           convert to RGBA
-`col:tostring() -> '#rrggbb'`                        convert to RGB string
+`col:hsva() -> h, s, v, a`                           convert to HSVA
+`col:rgba() -> r, g, b, a`                           convert to RGBA
+__formatting__
+`col:format([fmt]) -> str`                           convert to string
+`tostring(col) -> str`                               calls `col:format'#'`
+__computation in HSL space__
 `col:hue_offset(hue_delta) -> color`                 create a color with a different hue (in degrees)
 `col:complementary() -> color`                       create a complementary color
 `col:neighbors(angle) -> color1, color2`             create two neighboring colors (by hue), offset by "angle"

@@ -40,7 +40,7 @@ DROPDOWN ---------------------------------------------------------------------
 
 - static-text-dropdown
 - editbox-dropdown
-- calendar + maskedit dropdown
+- maskedit dropdown with calendar
 -
 
 CALENDAR ---------------------------------------------------------------------

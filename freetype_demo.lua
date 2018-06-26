@@ -163,6 +163,7 @@ local faces = {
 	['DejaVu Serif']  = 'media/fonts/DejaVuSerif.ttf',
 	['Firefly Sung']  = 'media/fonts/fireflysung.ttf',
 	['Fixedsys300']  = 'media/fonts/FSEX300.ttf',
+	['MaterialIcons'] = 'media/fonts/MaterialIcons-Regular.ttf',
 }
 
 --metrics
@@ -240,7 +241,7 @@ function player:on_render(cr)
 			ffi.string(face.charmaps[v]:encoding_str(), 4)
 	end
 
-	charmap = self:mbutton{id = 'charmap', x = 690, y = 10, w = #values * 80, h = button_h,
+	charmap = self:mbutton{id = 'charmap', x = 790, y = 10, w = #values * 80, h = button_h,
 									values = values, texts = texts, selected = charmap}
 
 	face:select_charmap(face.charmaps[charmap].encoding)

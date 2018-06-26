@@ -564,7 +564,7 @@ end
 
 local function rgba(s)
 	if type(s) == 'string' then
-		return color.string_to_rgba(s)
+		return color.parse(s, 'rgb')
 	else
 		return unpack(s)
 	end
@@ -576,7 +576,7 @@ function ui.transition.interpolate.color(d, c1, c2, c)
 	local r = lerp(d, 0, 1, r1, r2)
 	local g = lerp(d, 0, 1, g1, g2)
 	local b = lerp(d, 0, 1, b1, b2)
-	local a = lerp(d, 0, 1, a1, a2)
+	local a = lerp(d, 0, 1, a1 or 1, a2 or 1)
 	if type(c) == 'table' then --by-reference semantics
 		c[1], c[2], c[3], c[4] = r, g, b, a
 		return c
@@ -1841,9 +1841,9 @@ end
 --drawing helpers ------------------------------------------------------------
 
 function ui:_color(s)
-	local r, g, b, a = color.string_to_rgba(s)
+	local r, g, b, a = color.parse(s, 'rgb')
 	self:check(r, 'invalid color "%s"', s)
-	return r and {r, g, b, a}
+	return r and {r, g, b, a or 1}
 end
 ui:memoize'_color'
 

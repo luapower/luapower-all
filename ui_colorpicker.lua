@@ -37,7 +37,7 @@ function hue_bar:sync_bar()
 		local _, setpixel = bitmap.pixel_interface(bmp)
 		for y = 0, bmp.h-1 do
 			local hue = lerp(y, 0, bmp.h-1, 0, 360)
-			local r, g, b = color.hsl_to_rgb(hue, 1, 0.5)
+			local r, g, b = color.convert('rgb', 'hsl', hue, 1, 0.5)
 			for x = 0, bmp.w-1 do
 				setpixel(x, y, r * 255, g * 255, b * 255, 255)
 			end
@@ -168,14 +168,157 @@ function hue_bar:mousewheel(pages)
 		* 0.1
 end
 
+--abstract pick rectangle ----------------------------------------------------
+
+local prect = ui.layer:subclass'pick_rectangle'
+ui.pick_rectangle = prect
+
+function prect:get_a() error'stub' end
+function prect:set_a(a) error'stub' end
+function prect:get_b() error'stub' end
+function prect:set_b(b) error'stub' end
+function prect:a_range() error'stub' end
+function prect:b_range() error'stub' end
+
+function prect:ab(x, y)
+	local a1, a2 = self:a_range()
+	local b1, b2 = self:b_range()
+	local a = clamp(lerp(x, 0, self.cw-1, a1, a2), a1, a2)
+	local b = clamp(lerp(y, 0, self.ch-1, b1, b2), b1, b2)
+	return a, b
+end
+
+function prect:xy(a, b)
+	local a1, a2 = self:a_range()
+	local b1, b2 = self:b_range()
+	local x = lerp(a, a1, a2, 0, self.cw-1)
+	local y = lerp(b, b1, b2, 0, self.ch-1)
+	return x, y
+end
+
+prect.focusable = true
+
+prect.pointer_style = 'circle' --circle, cross
+
+function prect:abrect()
+	local a0, b0 = self:ab(0, 0)
+	local a1, b1 = self:ab(self.cw, self.ch)
+	return a0, b0, a1, b1
+end
+
+function prect:a_range()
+	local a0, b0, a1, b1 = self:abrect()
+	return a0, a1
+end
+
+function prect:b_range()
+	local a0, b0, a1, b1 = self:abrect()
+	return b0, b1
+end
+
+prect.pointer_cross_opacity = .5
+
+ui:style('pick_rectangle focused', {
+	pointer_cross_opacity = 1,
+})
+
+function prect:pointer_cross_rgb(x, y) error'stub' end
+
+function prect:draw_pointer_cross(cr, cx, cy)
+	local r, g, b = self:pointer_cross_rgb(cx, cy)
+	cr:save()
+	cr:rgba(r, g, b, self.pointer_cross_opacity)
+	cr:operator'over'
+	cr:line_width(1)
+	cr:translate(cx, cy)
+	cr:new_path()
+	for i=1,4 do
+		cr:move_to(0, 6)
+		cr:rel_line_to(-1, 4)
+		cr:rel_line_to(2, 0)
+		cr:close_path()
+		cr:rotate(math.rad(90))
+	end
+	cr:fill_preserve()
+	cr:stroke()
+	cr:restore()
+end
+
+prect.circle_pointer_color = '#fff8'
+prect.circle_pointer_outline_color = '#3338'
+prect.circle_pointer_outline_width = 1
+prect.circle_pointer_radius = 9
+prect.circle_pointer_inner_radius = 6
+
+ui:style('pick_rectangle focused', {
+	circle_pointer_color = '#fff',
+	circle_pointer_outline_color = '#333',
+})
+
+function prect:draw_pointer_circle(cr, cx, cy)
+	cr:save()
+	cr:rgba(self.ui:color(self.circle_pointer_color))
+	cr:operator'over'
+	cr:line_width(self.circle_pointer_outline_width)
+	cr:fill_rule'even_odd'
+	cr:new_path()
+	cr:circle(cx, cy, self.circle_pointer_radius)
+	cr:circle(cx, cy, self.circle_pointer_inner_radius)
+	cr:fill_preserve()
+	cr:rgba(self.ui:color(self.circle_pointer_outline_color))
+	cr:stroke()
+	cr:restore()
+end
+
+function prect:before_draw_content(cr)
+	local cx, cy = self:xy(self.a, self.b)
+	self['draw_pointer_'..self.pointer_style](self, cr, cx, cy)
+end
+
+prect.mousedown_activate = true
+
+function prect:mousemove(mx, my)
+	if not self.active then return end
+	self.a, self.b = self:ab(mx, my)
+end
+
+function prect:keypress(key)
+	local delta =
+		  (self.ui:key'shift' and .01 or 1)
+		* (self.ui:key'ctrl' and 0.1 or 1)
+		* (key:find'page' and 5 or 1)
+		* (key == 'home' and 1/0 or 1)
+		* (key == 'end' and -1/0 or 1)
+		* 0.1
+	if key == 'down' or key == 'up' or key == 'pagedown' or key == 'pageup'
+		or key == 'home' or key == 'end'
+	then
+		local delta = delta * (key:find'down' and -1 or 1)
+		self.b = self.b + lerp(delta, 0, 1, self:b_range())
+		self:invalidate()
+	elseif key == 'left' or key == 'right' then
+		local delta = delta * (key:find'left' and -1 or 1)
+		self.a = self.a + lerp(delta, 0, 1, self:a_range())
+		self:invalidate()
+	end
+end
+
+prect.vscrollable = true
+
+function prect:mousewheel(pages)
+	local delta =
+		pages / 3
+		* (self.ui:key'shift' and .01 or 1)
+		* (self.ui:key'ctrl' and .1 or 1)
+		* 0.1
+	self.b = self.b + lerp(delta, 0, 1, self:b_range())
+end
+
+
 --saturation/luminance rectangle ---------------------------------------------
 
-local slrect = ui.layer:subclass'sat_lum_rectangle'
+local slrect = prect:subclass'sat_lum_rectangle'
 ui.sat_lum_rectangle = slrect
-
-slrect.focusable = true
-
-slrect.pointer_style = 'circle' --circle, cross
 
 slrect.hue = 0
 slrect.sat = 0
@@ -203,24 +346,12 @@ function slrect:override_set_lum(inherited, lum)
 	end
 end
 
-function slrect:sat_lum_at(x, y)
-	return
-		clamp(lerp(x, 0, self.cw-1, 0, 1), 0, 1),
-		clamp(lerp(y, 0, self.ch-1, 1, 0), 0, 1)
-end
-
-function slrect:sat_lum_coords(sat, lum)
-	return
-		sat * self.cw,
-		(1 - lum) * self.ch
-end
-
 function slrect:hsl()
 	return self.hue, self.sat, self.lum
 end
 
 function slrect:rgb()
-	return color.hsl_to_rgb(self:hsl())
+	return color.convert('rgb', 'hsl', self:hsl())
 end
 
 function slrect:rgba(a)
@@ -228,7 +359,14 @@ function slrect:rgba(a)
 	return r, g, b, a or 1
 end
 
-function slrect:sync()
+function prect:get_a() return self.sat end
+function prect:set_a(a) self.sat = a end
+function prect:get_b() return 1-self.lum end
+function prect:set_b(b) self.lum = 1-b end
+function prect:a_range() return 0, 1 end
+function prect:b_range() return 0, 1 end
+
+function slrect:draw_colors(cr)
 	if not self._bmp or self._bmp.h ~= self.ch or self._bmp.w ~= self.cw then
 		self._bmp = bitmap.new(self.cw, self.ch, 'bgra8')
 	end
@@ -237,124 +375,204 @@ function slrect:sync()
 		local bmp = self._bmp
 		local _, setpixel = bitmap.pixel_interface(bmp)
 		local w, h = bmp.w, bmp.h
-		local hsl_to_rgb = color.hsl_to_rgb_unclamped
 		for y = 0, h-1 do
 			for x = 0, w-1 do
 				local sat = lerp(x, 0, w-1, 0, 1)
 				local lum = lerp(y, 0, h-1, 1, 0)
-				local r, g, b = hsl_to_rgb(self.hue, sat, lum)
+				local r, g, b = color.convert('rgb', 'hsl', self.hue, sat, lum)
 				setpixel(x, y, r * 255, g * 255, b * 255, 255)
 			end
 		end
 	end
-end
-
-function slrect:draw_rectangle(cr)
+	cr:save()
 	local sr = cairo.image_surface(self._bmp)
 	cr:operator'over'
 	cr:source(sr)
 	cr:paint()
 	cr:rgb(0, 0, 0) --release source
 	sr:free()
+	cr:restore()
 end
 
-slrect.pointer_cross_opacity = .5
-
-ui:style('sat_lum_rectangle focused', {
-	pointer_cross_opacity = 1,
-})
-
-function slrect:draw_pointer_cross(cr, cx, cy)
+function slrect:pointer_cross_rgb(x, y)
 	local hue = self.hue + 180
 	local lum = self.lum > 0.5 and 0 or 1
 	local sat = 1 - self.sat
-	local r, g, b = color.hsl_to_rgb(hue, sat, lum)
-	cr:rgba(r, g, b, self.pointer_cross_opacity)
-	cr:operator'over'
-	cr:line_width(1)
-
-	cr:save()
-	cr:translate(cx, cy)
-	cr:new_path()
-	for i=1,4 do
-		cr:move_to(0, 6)
-		cr:rel_line_to(-1, 4)
-		cr:rel_line_to(2, 0)
-		cr:close_path()
-		cr:rotate(math.rad(90))
-	end
-	cr:restore()
-	cr:fill_preserve()
-	cr:stroke()
-end
-
-slrect.circle_pointer_color = '#fff8'
-slrect.circle_pointer_outline_color = '#3338'
-slrect.circle_pointer_outline_width = 1
-slrect.circle_pointer_radius = 9
-slrect.circle_pointer_inner_radius = 6
-
-ui:style('sat_lum_rectangle focused', {
-	circle_pointer_color = '#fff',
-	circle_pointer_outline_color = '#333',
-})
-
-function slrect:draw_pointer_circle(cr, cx, cy)
-	cr:rgba(self.ui:color(self.circle_pointer_color))
-	cr:operator'over'
-	cr:line_width(self.circle_pointer_outline_width)
-	cr:fill_rule'even_odd'
-	cr:new_path()
-	cr:circle(cx, cy, self.circle_pointer_radius)
-	cr:circle(cx, cy, self.circle_pointer_inner_radius)
-	cr:fill_preserve()
-	cr:rgba(self.ui:color(self.circle_pointer_outline_color))
-	cr:stroke()
+	return color.hsl_to_rgb(hue, sat, lum)
 end
 
 function slrect:before_draw_content(cr)
-	self:sync()
-	self:draw_rectangle(cr)
-	local cx, cy = self:sat_lum_coords(self.sat, self.lum)
-	self['draw_pointer_'..self.pointer_style](self, cr, cx, cy)
+	self:draw_colors(cr)
 end
 
-slrect.mousedown_activate = true
+--saturation / value rectangle -----------------------------------------------
 
-function slrect:mousemove(mx, my)
-	if not self.active then return end
-	self.sat, self.lum = self:sat_lum_at(mx, my)
-end
+local svrect = prect:subclass'sat_val_rectangle'
+ui.sat_val_rectangle = svrect
 
-function slrect:keypress(key)
-	local delta =
-		  (self.ui:key'shift' and .01 or 1)
-		* (self.ui:key'ctrl' and 0.1 or 1)
-		* (key:find'page' and 5 or 1)
-		* (key == 'home' and 1/0 or 1)
-		* (key == 'end' and -1/0 or 1)
-		* 0.1
-	if key == 'down' or key == 'up' or key == 'pagedown' or key == 'pageup'
-		or key == 'home' or key == 'end'
-	then
-		local delta = delta * (key:find'down' and -1 or 1)
-		self.lum = self.lum + delta
-		self:invalidate()
-	elseif key == 'left' or key == 'right' then
-		local delta = delta * (key:find'left' and -1 or 1)
-		self.sat = self.sat + delta
+svrect.hue = 0
+svrect.sat = 0
+svrect.val = 0
+
+svrect:track_changes'hue'
+svrect:track_changes'sat'
+svrect:track_changes'val'
+
+function svrect:override_set_hue(inherited, hue)
+	if inherited(self, clamp(hue, 0, 360)) then
 		self:invalidate()
 	end
 end
 
-slrect.vscrollable = true
+function svrect:override_set_sat(inherited, sat)
+	if inherited(self, clamp(sat, 0, 1)) then
+		self:invalidate()
+	end
+end
 
-function slrect:mousewheel(pages)
-	self.lum = self.lum +
-		pages / 3
-		* (self.ui:key'shift' and .01 or 1)
-		* (self.ui:key'ctrl' and .1 or 1)
-		* 0.1
+function svrect:override_set_val(inherited, val)
+	if inherited(self, clamp(val, 0, 1)) then
+		self:invalidate()
+	end
+end
+
+function svrect:hsv()
+	return self.hue, self.sat, self.val
+end
+
+function svrect:rgb()
+	return color.hsv_to_rgb(self:hsv())
+end
+
+function svrect:rgba(a)
+	local r, g, b = color.hsv_to_rgb(self:hsv())
+	return r, g, b, a or 1
+end
+
+function svrect:get_a() return self.sat end
+function svrect:set_a(a) self.sat = a end
+function svrect:get_b() return 1-self.val end
+function svrect:set_b(b) self.val = 1-b end
+function svrect:a_range() return 0, 1 end
+function svrect:b_range() return 0, 1 end
+
+function svrect:draw_colors(cr)
+	cr:save()
+
+	local g1 = cairo.linear_gradient(0, 0, 0, self.h)
+	g1:add_color_stop(0, 1, 1, 1, 1)
+	g1:add_color_stop(1, 0, 0, 0, 1)
+
+	local g2 = cairo.linear_gradient(0, 0, self.cw, 0)
+	local r, g, b = color.hsl_to_rgb(self.hue, 1, .5)
+	g2:add_color_stop(0, r, g, b, 0)
+	g2:add_color_stop(1, r, g, b, 1)
+
+	cr:operator'over'
+	cr:new_path()
+	cr:rectangle(0, 0, self.cw, self.ch)
+	cr:source(g1)
+	cr:fill_preserve()
+	cr:operator'multiply'
+	cr:source(g2)
+	cr:fill()
+
+	cr:rgb(0, 0, 0) --clear source
+	g1:free()
+	g2:free()
+
+	cr:restore()
+end
+
+function slrect:pointer_cross_rgb(x, y)
+	local hue = self.hue + 180
+	local val = self.val > 0.5 and 0 or 1
+	local sat = 1 - self.sat
+	return color.hsv_to_rgb(hue, sat, val)
+end
+
+function slrect:before_draw_content(cr)
+	self:draw_colors(cr)
+end
+
+--saturation / luminance triangle --------------------------------------------
+
+local sltr = slrect:subclass'sat_lum_triangle'
+ui.sat_lum_triangle = sltr
+
+sltr.angle = 0
+
+sltr:track_changes'angle'
+
+function sltr:override_set_angle(inherited, angle)
+	if inherited(self, clamp(angle, 0, 2*math.pi)) then
+		self:invalidate()
+	end
+end
+
+function sltr:sat_lum_at(x, y)
+	return --TODO
+end
+
+function sltr:sat_lum_coords(sat, lum)
+	return --TODO
+end
+
+function sltr:draw_colors(cr)
+	if not self._bmp or self._bmp.h ~= self.ch or self._bmp.w ~= self.cw then
+		self._bmp = bitmap.new(self.cw, self.ch, 'bgra8')
+	end
+	if self._bmp_hue ~= self.hue or self._bmp_angle ~= self.angle then
+		self._bmp_hue = self.hue
+		self._bmp_angle = self.angle
+		local bmp = self._bmp
+		local _, setpixel = bitmap.pixel_interface(bmp)
+		local w, h = bmp.w, bmp.h
+		local hsl_to_rgb = color.hsl_to_rgb_unclamped
+
+		--[[
+		local hx = self.hx
+		local hy = self.hy
+		local sx = self.sx
+		local sy = self.sy
+		local vx = self.vx
+		local vy = self.vy
+		local size = self.innerSize
+
+		--ctx.translate(this.wheelRadius, this.wheelRadius);
+
+		// make a triangle
+		ctx.beginPath();
+		ctx.moveTo(hx, hy);
+		ctx.lineTo(sx, sy);
+		ctx.lineTo(vx, vy);
+		ctx.closePath();
+		ctx.clip();
+
+		ctx.fillStyle = '#000';
+		ctx.fillRect(-this.wheelRadius, -this.wheelRadius, size, size);
+
+		// create gradient from hsl(hue, 1, 1) to transparent
+		var grad0 = ctx.createLinearGradient(hx, hy, (sx + vx) / 2, (sy + vy) / 2);
+		var hsla = 'hsla(' + M.round(this.hue * (180/PI)) + ', 100%, 50%, ';
+		grad0.addColorStop(0, hsla + '1)');
+		grad0.addColorStop(1, hsla + '0)');
+		ctx.fillStyle = grad0;
+		ctx.fillRect(-this.wheelRadius, -this.wheelRadius, size, size);
+		// => gradient: one side of the triangle is black, the opponent angle is $color
+
+		// create color gradient from white to transparent
+		var grad1 = ctx.createLinearGradient(vx, vy, (hx + sx) / 2, (hy + sy) / 2);
+		grad1.addColorStop(0, '#fff');
+		grad1.addColorStop(1, 'rgba(255, 255, 255, 0)');
+		ctx.globalCompositeOperation = 'lighter';
+		ctx.fillStyle = grad1;
+		ctx.fillRect(-this.wheelRadius, -this.wheelRadius, size, size);
+		// => white angle
+
+		]]
+
+	end
 end
 
 --color picker ---------------------------------------------------------------
@@ -496,7 +714,7 @@ function picker:sync()
 	xe.y = y
 	xe.w = w2
 
-	xe.text = color.rgb_to_string(r, g, b, 'hex')
+	xe.text = color.format('#', 'rgb', r, g, b)
 
 	y = y + h + sy + 20
 

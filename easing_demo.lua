@@ -79,7 +79,7 @@ function player:on_render(cr)
 			self:rect(610, 300, 100, 100, {1-i, 1-i, 1-i, 1})
 
 			--as hue change
-			local r, g, b = color.hsl_to_rgb(i * 360, .5, .5)
+			local r, g, b = color.convert('rgb', 'hsl', i * 360, .5, .5)
 			self:rect(500, 410, 100, 100, {r, g, b, 1})
 		end
 

@@ -13,7 +13,7 @@ function player:on_render(cr)
 		'h: ' .. hue .. '\n' ..
 		's: ' .. sat .. '\n' ..
 		'L: ' .. lum .. '\n' ..
-		'rgb: ' .. color(hue, sat, lum):tostring()
+		'rgb: ' .. tostring(color(hue, sat, lum))
 	)
 
 	cr:translate(800, 100)
