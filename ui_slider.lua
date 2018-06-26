@@ -46,7 +46,7 @@ slider.phantom_dragging = true --drag a secondary translucent pin
 slider.landing_position_marker = true --mark landing position while dragging
 
 shaft.activable = false
-shaft.h = 10
+shaft.h = 8
 shaft.corner_radius = 5
 shaft.border_width = 1
 shaft.border_color = '#999'
@@ -67,9 +67,9 @@ ui:style('slider focused > slider_fill', {
 	background_color = '#ccc',
 })
 
-pin.w = 18
-pin.h = 18
-pin.corner_radius = 9
+pin.w = 16
+pin.h = 16
+pin.corner_radius = 8
 pin.border_width = 1
 pin.border_color = '#000'
 pin.background_color = '#999'
@@ -93,9 +93,9 @@ ui:style('slider_drag_pin dragging', {
 	opacity = .5,
 })
 
-marker.w = 6
-marker.h = 6
-marker.corner_radius = 3
+marker.w = 4
+marker.h = 4
+marker.corner_radius = 2
 marker.background_color = '#fff'
 marker.background_operator = 'difference'
 marker.opacity = 0
@@ -104,12 +104,13 @@ ui:style('slider_marker visible', {
 	opacity = 1,
 })
 
-tip.y = -10
+tip.y = -8
 tip.format = '%g'
 tip.border_width = 0
 tip.border_color = '#fff'
 tip.border_offset = 1
 tip.opacity = 0
+tip.text_size = 12
 
 ui:style('slider_tip', {
 	transition_opacity = true,

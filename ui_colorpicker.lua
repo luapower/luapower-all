@@ -360,7 +360,7 @@ slrect:track_changes'sat'
 slrect:track_changes'lum'
 
 function slrect:override_set_hue(inherited, hue)
-	if inherited(self, clamp(hue, 0, 360)) then
+	if inherited(self, hue % 360) then
 		self:invalidate()
 	end
 end
@@ -449,7 +449,7 @@ svrect:track_changes'sat'
 svrect:track_changes'val'
 
 function svrect:override_set_hue(inherited, hue)
-	if inherited(self, clamp(hue, 0, 360)) then
+	if inherited(self, hue % 360) then
 		self:invalidate()
 	end
 end
@@ -527,74 +527,78 @@ sltr.angle = 0
 sltr:track_changes'angle'
 
 function sltr:override_set_angle(inherited, angle)
-	if inherited(self, clamp(angle, 0, 2*math.pi)) then
+	if inherited(self, angle % 360) then
 		self:invalidate()
 	end
 end
 
-function sltr:sat_lum_at(x, y)
-	return --TODO
-end
-
-function sltr:sat_lum_coords(sat, lum)
-	return --TODO
+function sltr:xy1(s, l)
+	local s = s or self.sat
+	local l = l or self.lum
+	local mx = (sx + vx) / 2
+	local my = (sy + vy) / 2
+	local a  = (1 - 2 * math.abs(l - .5)) * s
+	local x = sx + (vx - sx) * l + (hx - mx) * a
+	local y = sy + (vy - sy) * l + (hy - my) * a
 end
 
 function sltr:draw_colors(cr)
-	if not self._bmp or self._bmp.h ~= self.ch or self._bmp.w ~= self.cw then
-		self._bmp = bitmap.new(self.cw, self.ch, 'bgra8')
-	end
-	if self._bmp_hue ~= self.hue or self._bmp_angle ~= self.angle then
-		self._bmp_hue = self.hue
-		self._bmp_angle = self.angle
-		local bmp = self._bmp
-		local _, setpixel = bitmap.pixel_interface(bmp)
-		local w, h = bmp.w, bmp.h
-		local hsl_to_rgb = color.hsl_to_rgb_unclamped
+	local r = math.min(self.cw, self.ch) / 2
+	local third = (2/3) * math.pi
+	local a = math.rad(self.hue)
 
-		--[[
-		local hx = self.hx
-		local hy = self.hy
-		local sx = self.sx
-		local sy = self.sy
-		local vx = self.vx
-		local vy = self.vy
-		local size = self.innerSize
+	--max hue point
+	local hx = math.cos(a) * r
+	local hy = -math.sin(a) * r
+	--black point
+	local sx = math.cos(a - third) * r
+	local sy = -math.sin(a - third) * r
+	--white point
+	local vx =  math.cos(a + third) * r
+	local vy = -math.sin(a + third) * r
 
-		--ctx.translate(this.wheelRadius, this.wheelRadius);
+	cr:save()
 
-		// make a triangle
-		ctx.beginPath();
-		ctx.moveTo(hx, hy);
-		ctx.lineTo(sx, sy);
-		ctx.lineTo(vx, vy);
-		ctx.closePath();
-		ctx.clip();
+	cr:translate(r, r)
 
-		ctx.fillStyle = '#000';
-		ctx.fillRect(-this.wheelRadius, -this.wheelRadius, size, size);
+	cr:new_path()
+	cr:move_to(hx, hy)
+	cr:line_to(sx, sy)
+	cr:line_to(vx, vy)
+	cr:close_path()
+	cr:clip()
 
-		// create gradient from hsl(hue, 1, 1) to transparent
-		var grad0 = ctx.createLinearGradient(hx, hy, (sx + vx) / 2, (sy + vy) / 2);
-		var hsla = 'hsla(' + M.round(this.hue * (180/PI)) + ', 100%, 50%, ';
-		grad0.addColorStop(0, hsla + '1)');
-		grad0.addColorStop(1, hsla + '0)');
-		ctx.fillStyle = grad0;
-		ctx.fillRect(-this.wheelRadius, -this.wheelRadius, size, size);
-		// => gradient: one side of the triangle is black, the opponent angle is $color
+	--start from a black triangle
+	cr:rgba(0, 0, 0, 1)
+	cr:rectangle(-r, -r, 2*r, 2*r)
+	cr:operator'over'
+	cr:fill()
 
-		// create color gradient from white to transparent
-		var grad1 = ctx.createLinearGradient(vx, vy, (hx + sx) / 2, (hy + sy) / 2);
-		grad1.addColorStop(0, '#fff');
-		grad1.addColorStop(1, 'rgba(255, 255, 255, 0)');
-		ctx.globalCompositeOperation = 'lighter';
-		ctx.fillStyle = grad1;
-		ctx.fillRect(-this.wheelRadius, -this.wheelRadius, size, size);
-		// => white angle
+	--hsl(hue, 1, 1) to transparent gradient
+	local g1 = cairo.linear_gradient(hx, hy, (sx + vx) / 2, (sy + vy) / 2)
+	local R, G, B = color.convert('rgb', 'hsl', self.hue, 1, .5)
+	g1:add_color_stop(0, R, G, B, 1)
+	g1:add_color_stop(1, R, G, B, 0)
+	cr:operator'over'
+	cr:source(g1)
+	cr:rectangle(-r, -r, 2*r, 2*r)
+	cr:fill()
 
-		]]
+	--white to transparent gradient
+	local g2 = cairo.linear_gradient(vx, vy, (hx + sx) / 2, (hy + sy) / 2)
+	g2:matrix(cairo.matrix())
+	g2:add_color_stop(0, 1, 1, 1, 1)
+	g2:add_color_stop(1, 1, 1, 1, 0)
+	cr:operator'lighten'
+	cr:source(g2)
+	cr:rectangle(-r, -r, 2*r, 2*r)
+	cr:fill()
 
-	end
+	cr:rgb(0, 0, 0) --release source
+	g1:free()
+	g2:free()
+
+	cr:restore()
 end
 
 --color picker ---------------------------------------------------------------
@@ -897,7 +901,8 @@ if not ... then require('ui_demo')(function(ui, win)
 		hue_bar = {hue = 60, tooltip = 'Hue bar'},
 		sat_lum_rectangle = {sat = .7, lum = .3, tooltip = 'Saturation x Luminance square'},
 		sat_val_rectangle = {sat = .7, val = .3, tooltip = 'Saturation x Value square'},
-		mode = 'HSV',
+		--mode = 'HSV',
+		sat_lum_rectangle_class = sltr,
 	}
 
 end) end
