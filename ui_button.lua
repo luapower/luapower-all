@@ -4,6 +4,7 @@
 
 local ui = require'ui'
 local glue = require'glue'
+local lerp = glue.lerp
 
 local button = ui.layer:subclass'button'
 ui.button = button
@@ -282,8 +283,12 @@ function cbutton:override_hit_test(inherited, mx, my, reason)
 	return widget, area
 end
 
-function cbutton:pressed()
+function cbutton:checkbox_press()
 	self.checkbox:toggle()
+end
+
+function cbutton:before_press()
+	self:checkbox_press()
 end
 
 function checkbox:create_button()
@@ -382,15 +387,155 @@ ui:style('radiobutton checked > radiobutton_button', {
 })
 
 function rbutton:before_draw_content(cr)
-	local r = glue.lerp(self.circle_radius, 0, 1, 0, self.cw / 4)
+	local r = lerp(self.circle_radius, 0, 1, 0, self.cw / 4)
 	if r <= 0 then return end
 	cr:circle(self.cw / 2, self.ch / 2, r)
 	cr:rgba(self.ui:color(self.text_color))
 	cr:fill()
 end
 
-function rbutton:pressed()
+function rbutton:checkbox_press()
 	self.checkbox:check()
+end
+
+--multi-choice button --------------------------------------------------------
+
+local choicebutton = ui.layer:subclass'choicebutton'
+ui.choicebutton = choicebutton
+
+--model
+
+choicebutton.values = {} --{{index=, text=, value=, ...}, ...}
+
+function choicebutton:get_selected()
+	local btn = self.selected_button
+	return btn and btn.value
+end
+
+function choicebutton:set_selected(value)
+	self:select_button(self:button_by_value(value))
+end
+
+--view
+
+ui:style('button selected', {
+	background_color = '#ccc',
+	text_color = '#000',
+})
+
+function choicebutton:find_button(selects)
+	if self.layers then
+		for i,btn in ipairs(self.layers) do
+			if btn.choicebutton == self and selects(btn) then
+				return btn
+			end
+		end
+	end
+end
+
+function choicebutton:button_by_value(value)
+	return self:find_button(function(btn) return btn.value == value end)
+end
+
+function choicebutton:button_by_index(index)
+	return self:find_button(function(btn) return btn.index == index end)
+end
+
+function choicebutton:get_selected_button()
+	return self:find_button(function(btn) return btn.tags.selected end)
+end
+
+function choicebutton:set_selected_button(btn)
+	self:select_button(btn)
+end
+
+function choicebutton:unselect_button(btn)
+	btn:settag('selected', false)
+end
+
+function choicebutton:select_button(btn)
+	if not btn then return end
+	local sbtn = self.selected_button
+	if sbtn == btn then return end
+	if sbtn then
+		self:unselect_button(sbtn)
+	end
+	btn:focus()
+	btn:settag('selected', true)
+	self:fire('value_selected', btn.value)
+end
+
+--drawing
+
+choicebutton.button_corner_radius = 0
+
+function choicebutton:button_xw(index)
+	local w = self.cw / #self.values
+	local x = (index - 1) * w
+	return x, w
+end
+
+function choicebutton:sync_button(b)
+	b.x, b.w = self:button_xw(b.index)
+	self.ch = b.h
+	local r = self.button_corner_radius
+	b.corner_radius_top_left = b.index == 1 and r or 0
+	b.corner_radius_bottom_left = b.index == 1 and r or 0
+	b.corner_radius_top_right = b.index == #self.values and r or 0
+	b.corner_radius_bottom_right = b.index == #self.values and r or 0
+end
+
+function choicebutton:before_draw_content(cr)
+	if self.layers then
+		for _, layer in ipairs(self.layers) do
+			if layer.choicebutton == self then
+				self:sync_button(layer)
+			end
+		end
+	end
+end
+
+--init
+
+choicebutton.button_class = ui.button
+
+choicebutton:init_ignore{selected=1}
+
+function choicebutton:create_button(index, value)
+
+	local btn = self.button_class(self.ui, {
+		tags = 'choicebutton_button',
+		choicebutton = self,
+		parent = self,
+		index = index,
+		text = type(value) == 'table' and value.text or value,
+		value = type(value) == 'table' and value.value or value,
+	}, self.button, type(value) == 'table' and value or nil)
+
+	--input/abstract
+	function btn.before_press(btn)
+		self:select_button(btn)
+	end
+
+	--input/keyboard
+	function btn.before_keypress(btn, key)
+		if key == 'left' then
+			self:select_button(self:button_by_index(btn.index - 1))
+		elseif key == 'right' then
+			self:select_button(self:button_by_index(btn.index + 1))
+		end
+	end
+
+	return btn
+end
+
+function choicebutton:after_init()
+	local t = self._init_vars
+
+	for i,val in ipairs(t.values) do
+		local btn = self:create_button(type(val) == 'table' and val.index or i, val)
+	end
+	self.selected = t.selected
 end
 
 --demo -----------------------------------------------------------------------
@@ -463,6 +608,17 @@ if not ... then require('ui_demo')(function(ui, win)
 		radio_group = 1,
 		align = 'right',
 		--enabled = false,
+	}
+
+	local cb1 = ui:choicebutton{
+		parent = win,
+		x = 100, y = 300, w = 400,
+		values = {
+			'Choose me',
+			'No, me!',
+			{text = 'Me, me, me!', value = 'val3'},
+		},
+		selected = 'val3',
 	}
 
 end) end

@@ -16,12 +16,9 @@ require'ui_slider'
 local hue_bar = ui.layer:subclass'hue_bar'
 ui.hue_bar = hue_bar
 
-hue_bar.focusable = true
-
-hue_bar.pointer_style = 'bar' --bar, needle
+--model
 
 hue_bar.hue = 0
-
 hue_bar:track_changes'hue'
 
 function hue_bar:override_set_hue(inherited, hue)
@@ -29,6 +26,8 @@ function hue_bar:override_set_hue(inherited, hue)
 		self:invalidate()
 	end
 end
+
+--view/hue-bar
 
 function hue_bar:sync_bar()
 	if not self._bmp or self._bmp.h ~= self.ch or self._bmp.w ~= self.cw then
@@ -55,6 +54,25 @@ function hue_bar:draw_bar(cr)
 	sr:free()
 end
 
+function hue_bar:background_visible()
+	return true
+end
+
+function hue_bar:paint_background(cr)
+	self:draw_bar(cr)
+end
+
+--view/pointer
+
+hue_bar.pointer_style = 'sliderule' --sliderule, needle
+
+function hue_bar:before_draw_content(cr)
+	local y = glue.round(self.hue / 360 * self.ch) + .5
+	self['draw_pointer_'..self.pointer_style](self, cr, y)
+end
+
+--view/pointer/needle
+
 hue_bar.needle_pointer_color = '#0008'
 
 ui:style('hue_bar focused', {
@@ -63,10 +81,10 @@ ui:style('hue_bar focused', {
 
 function hue_bar:draw_pointer_needle(cr, y)
 	local w = self.cw
+	cr:save()
 	cr:line_width(1)
 	cr:operator'over'
 	cr:rgba(self.ui:color(self.needle_pointer_color))
-
 	local sw = w / 3
 	local sh = 1.5
 	cr:new_path()
@@ -78,27 +96,30 @@ function hue_bar:draw_pointer_needle(cr, y)
 	cr:line_to(w, y+sh)
 	cr:line_to(w - sw, y)
 	cr:fill()
+	cr:restore()
 end
 
-local pbar = ui.layer:subclass'hue_bar_pointer_bar'
-hue_bar.pointer_bar_class = pbar
+--view/pointer/sliderule
 
-pbar.activable = false
+local rule = ui.layer:subclass'hue_bar_sliderule'
+hue_bar.sliderule_class = rule
 
-pbar.h = 8
-pbar.opacity = .7
-pbar.border_offset = 1
-pbar.border_width = 2
-pbar.border_color = '#fff'
-pbar.corner_radius = 3
-pbar.outline_width = 1
-pbar.outline_color = '#333'
+rule.activable = false
 
-ui:style('hue_bar focused > hue_bar_pointer_bar', {
+rule.h = 8
+rule.opacity = .7
+rule.border_offset = 1
+rule.border_width = 2
+rule.border_color = '#fff'
+rule.corner_radius = 3
+rule.outline_width = 1
+rule.outline_color = '#333'
+
+ui:style('hue_bar focused > hue_bar_sliderule', {
 	opacity = 1,
 })
 
-function pbar:before_draw_border(cr)
+function rule:before_draw_border(cr)
 	cr:line_width(self.outline_width)
 	cr:rgba(self.ui:color(self.outline_color))
 	self:border_path(cr, -1)
@@ -107,29 +128,18 @@ function pbar:before_draw_border(cr)
 	cr:stroke()
 end
 
-function hue_bar:draw_pointer_bar(cr, y)
-	if not self.pointer_bar or not self.pointer_bar.islayer then
-		self.pointer_bar = self.pointer_bar_class(self.ui, {
+function hue_bar:draw_pointer_sliderule(cr, y)
+	if not self.sliderule or not self.sliderule.islayer then
+		self.sliderule = self.sliderule_class(self.ui, {
 				parent = self,
-			}, self.pointer_bar)
+			}, self.sliderule)
 	end
-	local pb = self.pointer_bar
-	pb.y = glue.round(y - pb.h / 2)
-	pb.w = self.w
+	local rule = self.sliderule
+	rule.y = glue.round(y - rule.h / 2)
+	rule.w = self.w
 end
 
-function hue_bar:background_visible()
-	return true
-end
-
-function hue_bar:paint_background(cr)
-	self:draw_bar(cr)
-end
-
-function hue_bar:before_draw_content(cr)
-	local y = glue.round(self.hue / 360 * self.ch) + .5
-	self['draw_pointer_'..self.pointer_style](self, cr, y)
-end
+--input/mouse
 
 hue_bar.mousedown_activate = true
 
@@ -138,6 +148,10 @@ function hue_bar:mousemove(mx, my)
 	self.hue = lerp(my, 0, self.ch-1, 0, 360)
 	self:invalidate()
 end
+
+--input/keyboard
+
+hue_bar.focusable = true
 
 function hue_bar:keypress(key)
 	if key == 'down' or key == 'up'
@@ -157,6 +171,8 @@ function hue_bar:keypress(key)
 	end
 end
 
+--input/wheel
+
 hue_bar.vscrollable = true
 
 function hue_bar:mousewheel(pages)
@@ -172,6 +188,8 @@ end
 
 local prect = ui.layer:subclass'pick_rectangle'
 ui.pick_rectangle = prect
+
+--model
 
 function prect:get_a() error'stub' end
 function prect:set_a(a) error'stub' end
@@ -196,10 +214,6 @@ function prect:xy(a, b)
 	return x, y
 end
 
-prect.focusable = true
-
-prect.pointer_style = 'circle' --circle, cross
-
 function prect:abrect()
 	local a0, b0 = self:ab(0, 0)
 	local a1, b1 = self:ab(self.cw, self.ch)
@@ -215,6 +229,17 @@ function prect:b_range()
 	local a0, b0, a1, b1 = self:abrect()
 	return b0, b1
 end
+
+--view/pointer
+
+prect.pointer_style = 'cross' --circle, cross
+
+function prect:before_draw_content(cr)
+	local cx, cy = self:xy(self.a, self.b)
+	self['draw_pointer_'..self.pointer_style](self, cr, cx, cy)
+end
+
+--view/pointer/cross
 
 prect.pointer_cross_opacity = .5
 
@@ -244,6 +269,8 @@ function prect:draw_pointer_cross(cr, cx, cy)
 	cr:restore()
 end
 
+--view/pointer/circle
+
 prect.circle_pointer_color = '#fff8'
 prect.circle_pointer_outline_color = '#3338'
 prect.circle_pointer_outline_width = 1
@@ -270,10 +297,7 @@ function prect:draw_pointer_circle(cr, cx, cy)
 	cr:restore()
 end
 
-function prect:before_draw_content(cr)
-	local cx, cy = self:xy(self.a, self.b)
-	self['draw_pointer_'..self.pointer_style](self, cr, cx, cy)
-end
+--input/mouse
 
 prect.mousedown_activate = true
 
@@ -281,6 +305,10 @@ function prect:mousemove(mx, my)
 	if not self.active then return end
 	self.a, self.b = self:ab(mx, my)
 end
+
+--input/keyboard
+
+prect.focusable = true
 
 function prect:keypress(key)
 	local delta =
@@ -293,7 +321,7 @@ function prect:keypress(key)
 	if key == 'down' or key == 'up' or key == 'pagedown' or key == 'pageup'
 		or key == 'home' or key == 'end'
 	then
-		local delta = delta * (key:find'down' and -1 or 1)
+		local delta = delta * (key:find'down' and 1 or -1)
 		self.b = self.b + lerp(delta, 0, 1, self:b_range())
 		self:invalidate()
 	elseif key == 'left' or key == 'right' then
@@ -303,22 +331,25 @@ function prect:keypress(key)
 	end
 end
 
+--input/wheel
+
 prect.vscrollable = true
 
 function prect:mousewheel(pages)
 	local delta =
-		pages / 3
+		-pages / 3
 		* (self.ui:key'shift' and .01 or 1)
 		* (self.ui:key'ctrl' and .1 or 1)
 		* 0.1
 	self.b = self.b + lerp(delta, 0, 1, self:b_range())
 end
 
-
 --saturation/luminance rectangle ---------------------------------------------
 
 local slrect = prect:subclass'sat_lum_rectangle'
 ui.sat_lum_rectangle = slrect
+
+--model
 
 slrect.hue = 0
 slrect.sat = 0
@@ -354,17 +385,14 @@ function slrect:rgb()
 	return color.convert('rgb', 'hsl', self:hsl())
 end
 
-function slrect:rgba(a)
-	local r, g, b = color.hsl_to_rgb(self:hsl())
-	return r, g, b, a or 1
-end
-
 function prect:get_a() return self.sat end
 function prect:set_a(a) self.sat = a end
 function prect:get_b() return 1-self.lum end
 function prect:set_b(b) self.lum = 1-b end
 function prect:a_range() return 0, 1 end
 function prect:b_range() return 0, 1 end
+
+--view
 
 function slrect:draw_colors(cr)
 	if not self._bmp or self._bmp.h ~= self.ch or self._bmp.w ~= self.cw then
@@ -398,7 +426,7 @@ function slrect:pointer_cross_rgb(x, y)
 	local hue = self.hue + 180
 	local lum = self.lum > 0.5 and 0 or 1
 	local sat = 1 - self.sat
-	return color.hsl_to_rgb(hue, sat, lum)
+	return color.convert('rgb', 'hsl', hue, sat, lum)
 end
 
 function slrect:before_draw_content(cr)
@@ -409,6 +437,8 @@ end
 
 local svrect = prect:subclass'sat_val_rectangle'
 ui.sat_val_rectangle = svrect
+
+--model
 
 svrect.hue = 0
 svrect.sat = 0
@@ -441,12 +471,7 @@ function svrect:hsv()
 end
 
 function svrect:rgb()
-	return color.hsv_to_rgb(self:hsv())
-end
-
-function svrect:rgba(a)
-	local r, g, b = color.hsv_to_rgb(self:hsv())
-	return r, g, b, a or 1
+	return color.convert('rgb', 'hsv', self:hsv())
 end
 
 function svrect:get_a() return self.sat end
@@ -456,18 +481,17 @@ function svrect:set_b(b) self.val = 1-b end
 function svrect:a_range() return 0, 1 end
 function svrect:b_range() return 0, 1 end
 
+--view
+
 function svrect:draw_colors(cr)
 	cr:save()
-
-	local g1 = cairo.linear_gradient(0, 0, 0, self.h)
+	local g1 = cairo.linear_gradient(0, 0, 0, self.ch)
 	g1:add_color_stop(0, 1, 1, 1, 1)
 	g1:add_color_stop(1, 0, 0, 0, 1)
-
 	local g2 = cairo.linear_gradient(0, 0, self.cw, 0)
-	local r, g, b = color.hsl_to_rgb(self.hue, 1, .5)
+	local r, g, b = color.convert('rgb', 'hsl', self.hue, 1, .5)
 	g2:add_color_stop(0, r, g, b, 0)
 	g2:add_color_stop(1, r, g, b, 1)
-
 	cr:operator'over'
 	cr:new_path()
 	cr:rectangle(0, 0, self.cw, self.ch)
@@ -476,22 +500,20 @@ function svrect:draw_colors(cr)
 	cr:operator'multiply'
 	cr:source(g2)
 	cr:fill()
-
 	cr:rgb(0, 0, 0) --clear source
 	g1:free()
 	g2:free()
-
 	cr:restore()
 end
 
-function slrect:pointer_cross_rgb(x, y)
+function svrect:pointer_cross_rgb(x, y)
 	local hue = self.hue + 180
 	local val = self.val > 0.5 and 0 or 1
 	local sat = 1 - self.sat
-	return color.hsv_to_rgb(hue, sat, val)
+	return color.convert('rgb', 'hsv', hue, sat, val)
 end
 
-function slrect:before_draw_content(cr)
+function svrect:before_draw_content(cr)
 	self:draw_colors(cr)
 end
 
@@ -579,8 +601,49 @@ end
 
 local picker = ui.layer:subclass'colorpicker'
 ui.colorpicker = picker
+
+--model
+
+picker._mode = 'HSL'
+
+function picker:get_mode()
+	return self._mode
+end
+
+function picker:set_mode(mode)
+	self._mode = mode
+	if self:isinstance() then
+		local hsl = mode == 'HSL'
+		self.rectangle = hsl and self.sat_lum_rectangle or self.sat_val_rectangle
+
+		self.sat_lum_rectangle.visible = hsl
+		self.lum_label.visible = hsl
+		self.lum_slider.visible = hsl
+
+		self.sat_val_rectangle.visible = not hsl
+		self.val_label.visible = not hsl
+		self.val_slider.visible = not hsl
+
+		if hsl then
+			local h, s, l = color.convert('hsl', 'hsv', self.sat_val_rectangle:hsv())
+			self.sat_lum_rectangle.sat = s
+			self.sat_lum_rectangle.lum = l
+		else
+			local h, s, v = color.convert('hsv', 'hsl', self.sat_lum_rectangle:hsl())
+			self.sat_val_rectangle.sat = s
+			self.sat_val_rectangle.val = v
+		end
+
+		self.mode_button.selected = mode
+	end
+end
+
+--view
+
 picker.hue_bar_class = hue_bar
 picker.sat_lum_rectangle_class = slrect
+picker.sat_val_rectangle_class = svrect
+picker.mode_button_class = ui.choicebutton
 
 function picker:create_hue_bar()
 	return self.hue_bar_class(self.ui, {
@@ -596,6 +659,7 @@ function picker:create_sat_lum_rectangle()
 	return self.sat_lum_rectangle_class(self.ui, {
 		parent = self,
 		picker = self,
+		visible = false,
 		sat_changed = function(_, sat)
 			self.sat_slider.position = sat
 		end,
@@ -603,6 +667,34 @@ function picker:create_sat_lum_rectangle()
 			self.lum_slider.position = lum
 		end,
 	}, self.sat_lum_rectangle)
+end
+
+function picker:create_sat_val_rectangle()
+	return self.sat_val_rectangle_class(self.ui, {
+		parent = self,
+		picker = self,
+		visible = false,
+		sat_changed = function(_, sat)
+			self.sat_slider.position = sat
+		end,
+		val_changed = function(_, val)
+			self.val_slider.position = val
+		end,
+	}, self.sat_val_rectangle)
+end
+
+function picker:create_mode_button()
+	return self.mode_button_class(self.ui, {
+		parent = self,
+		picker = self,
+		values = {'HSL', 'HSV'},
+		value_selected = function(_, mode)
+			self.mode = mode
+		end,
+		button = {h = 17, text_size = 11},
+		button_corner_radius = 5,
+		w = 70,
+	}, self.mode_button)
 end
 
 function picker:create_rgb_editbox()
@@ -613,49 +705,11 @@ function picker:create_rgb_editbox()
 	}
 end
 
-function picker:after_init()
-	self.hue_bar = self:create_hue_bar()
-	self.sat_lum_rectangle = self:create_sat_lum_rectangle()
-	self.rgb_editbox = self:create_rgb_editbox()
-	self.hex_editbox = self:create_rgb_editbox()
-	self.rgb_label = self.ui:layer{text = 'RGB:', parent = self, text_align = 'left'}
-	self.hex_label = self.ui:layer{text = 'HEX:', parent = self, text_align = 'left'}
-	self.hue_label = self.ui:layer{text = 'Hue:', parent = self, text_align = 'left'}
-	self.sat_label = self.ui:layer{text = 'Sat:', parent = self, text_align = 'left'}
-	self.lum_label = self.ui:layer{text = 'Lum:', parent = self, text_align = 'left'}
-	self.hue_slider = self.ui:slider{
-		parent = self,
-		size = 360,
-		step = 1/4,
-		position = self.hue_bar.hue,
-		position_changed = function(slider, pos)
-			self.hue_bar.hue = pos
-		end,
-	}
-	self.sat_slider = self.ui:slider{
-		parent = self,
-		size = 1,
-		step = 0.001,
-		position = self.sat_lum_rectangle.sat,
-		position_changed = function(slider, pos)
-			self.sat_lum_rectangle.sat = pos
-		end,
-	}
-	self.lum_slider = self.ui:slider{
-		parent = self,
-		size = 1,
-		step = 0.001,
-		position = self.sat_lum_rectangle.lum,
-		position_changed = function(slider, pos)
-			self.sat_lum_rectangle.lum = pos
-		end,
-	}
-end
-
 function picker:sync()
 
 	local hb = self.hue_bar
-	local sr = self.sat_lum_rectangle
+	local sr = self.rectangle
+	local mb = self.mode_button
 	local re = self.rgb_editbox
 	local xe = self.hex_editbox
 	local rl = self.rgb_label
@@ -666,6 +720,8 @@ function picker:sync()
 	local ss = self.sat_slider
 	local ll = self.lum_label
 	local ls = self.lum_slider
+	local vl = self.val_label
+	local vs = self.val_slider
 
 	local h = 1
 	local w = self.cw - h - 10
@@ -682,6 +738,8 @@ function picker:sync()
 	sr.h = w
 
 	sr.hue = self.hue_bar.hue
+
+	mb.x = 400
 
 	local sx, sy = 14, 4
 	local x1 = self.cw + sx + sx
@@ -748,10 +806,82 @@ function picker:sync()
 	ls.y = y
 	ls.w = w2
 	ls.h = h
+
+	vl.x = x1
+	vl.y = y
+	vl.w = w1
+	vl.h = h
+	vs.x = x2
+	vs.y = y
+	vs.w = w2
+	vs.h = h
 end
 
 function picker:before_draw_content()
 	self:sync()
+end
+
+--init
+
+picker:init_ignore{mode=1}
+
+function picker:after_init()
+
+	self.hue_bar = self:create_hue_bar()
+
+	self.sat_lum_rectangle = self:create_sat_lum_rectangle()
+	self.sat_val_rectangle = self:create_sat_val_rectangle()
+
+	self.mode_button = self:create_mode_button()
+
+	self.rgb_editbox = self:create_rgb_editbox()
+	self.hex_editbox = self:create_rgb_editbox()
+
+	self.rgb_label = self.ui:layer{text = 'RGB:', parent = self, text_align = 'left'}
+	self.hex_label = self.ui:layer{text = 'HEX:', parent = self, text_align = 'left'}
+	self.hue_label = self.ui:layer{text = 'Hue:', parent = self, text_align = 'left'}
+	self.sat_label = self.ui:layer{text = 'Sat:', parent = self, text_align = 'left'}
+	self.lum_label = self.ui:layer{text = 'Lum:', parent = self, text_align = 'left'}
+	self.val_label = self.ui:layer{text = 'Val:', parent = self, text_align = 'left'}
+
+	self.hue_slider = self.ui:slider{
+		parent = self,
+		size = 360,
+		step = 1/4,
+		position = self.hue_bar.hue,
+		position_changed = function(slider, pos)
+			self.hue_bar.hue = pos
+		end,
+	}
+	self.sat_slider = self.ui:slider{
+		parent = self,
+		size = 1,
+		step = 0.001,
+		position = self.sat_lum_rectangle.sat,
+		position_changed = function(slider, pos)
+			self.rectangle.sat = pos
+		end,
+	}
+	self.lum_slider = self.ui:slider{
+		parent = self,
+		size = 1,
+		step = 0.001,
+		position = self.sat_lum_rectangle.lum,
+		position_changed = function(slider, pos)
+			self.sat_lum_rectangle.lum = pos
+		end,
+	}
+	self.val_slider = self.ui:slider{
+		parent = self,
+		size = 1,
+		step = 0.001,
+		position = self.sat_val_rectangle.val,
+		position_changed = function(slider, pos)
+			self.sat_val_rectangle.val = pos
+		end,
+	}
+
+	self.mode = self._init_vars.mode
 end
 
 --demo -----------------------------------------------------------------------
@@ -766,6 +896,8 @@ if not ... then require('ui_demo')(function(ui, win)
 		parent = win,
 		hue_bar = {hue = 60, tooltip = 'Hue bar'},
 		sat_lum_rectangle = {sat = .7, lum = .3, tooltip = 'Saturation x Luminance square'},
+		sat_val_rectangle = {sat = .7, val = .3, tooltip = 'Saturation x Value square'},
+		mode = 'HSV',
 	}
 
 end) end

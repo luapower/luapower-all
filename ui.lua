@@ -2389,8 +2389,10 @@ end
 function layer:each_child(func)
 	if not self.layers then return end
 	for _,layer in ipairs(self.layers) do
-		layer:each_child(func)
-		func(layer)
+		local ret = layer:each_child(func)
+		if ret ~= nil then return ret end
+		local ret = func(layer)
+		if ret ~= nil then return ret end
 	end
 end
 
@@ -3607,19 +3609,22 @@ window_layer.from_window = window_layer.from_parent
 --widgets autoload -----------------------------------------------------------
 
 local autoload = {
-	scrollbar  = 'ui_scrollbox',
-	scrollbox  = 'ui_scrollbox',
-	button     = 'ui_button',
-	slider     = 'ui_slider',
-	editbox    = 'ui_editbox',
-	tab        = 'ui_tablist',
-	tablist    = 'ui_tablist',
-	menuitem   = 'ui_menu',
-	menu       = 'ui_menu',
-	image      = 'ui_image',
-	grid       = 'ui_grid',
-	popup      = 'ui_popup',
-	dropdown   = 'ui_dropdown',
+	scrollbar    = 'ui_scrollbox',
+	scrollbox    = 'ui_scrollbox',
+	button       = 'ui_button',
+	checkbox     = 'ui_button',
+	radiobutton  = 'ui_button',
+	choicebutton = 'ui_button',
+	slider       = 'ui_slider',
+	editbox      = 'ui_editbox',
+	tab          = 'ui_tablist',
+	tablist      = 'ui_tablist',
+	menuitem     = 'ui_menu',
+	menu         = 'ui_menu',
+	image        = 'ui_image',
+	grid         = 'ui_grid',
+	popup        = 'ui_popup',
+	dropdown     = 'ui_dropdown',
 }
 
 for widget, submodule in pairs(autoload) do
