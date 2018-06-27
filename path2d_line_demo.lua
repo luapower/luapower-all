@@ -26,7 +26,9 @@ function player:on_render(cr)
 		self:line(bx1, by1, bx2, by2, '#ff00ff')
 
 		--length
-		self:label{x = x, y = y+10, text = string.format('t: %4.2f, len: %4.2f', t, line.length(t, unpack(l)))}
+		self:label{x = x, y = y+10,
+			text = string.format('t: %4.2f, len: %4.2f', t, line.length(t, unpack(l))),
+		}
 	end
 
 	--line intersect

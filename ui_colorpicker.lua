@@ -7,6 +7,7 @@ local glue = require'glue'
 local bitmap = require'bitmap'
 local color = require'color'
 local cairo = require'cairo'
+local line = require'path2d_line'
 local lerp = glue.lerp
 local clamp = glue.clamp
 require'ui_slider'
@@ -532,30 +533,50 @@ function sltr:override_set_angle(inherited, angle)
 	end
 end
 
-function sltr:xy1(s, l)
-	local s = s or self.sat
-	local l = l or self.lum
+function sltr:get_triangle_radius()
+	return math.min(self.cw, self.ch) / 2
+end
+
+function sltr:triangle_points()
+	local r = self.triangle_radius
+	local a = math.rad(self.hue)
+	local third = 2/3 * math.pi
+	local x1 =  math.cos(a + 0 * third) * r
+	local y1 = -math.sin(a + 0 * third) * r
+	local x2 =  math.cos(a + 1 * third) * r
+	local y2 = -math.sin(a + 1 * third) * r
+	local x3 =  math.cos(a + 2 * third) * r
+	local y3 = -math.sin(a + 2 * third) * r
+	return x1, y1, x2, y2, x3, y3
+end
+
+function sltr:xy(a, b)
+	local s, l = a, 1-b
+	local hx, hy, sx, sy, vx, vy = self:triangle_points()
 	local mx = (sx + vx) / 2
 	local my = (sy + vy) / 2
 	local a  = (1 - 2 * math.abs(l - .5)) * s
-	local x = sx + (vx - sx) * l + (hx - mx) * a
-	local y = sy + (vy - sy) * l + (hy - my) * a
+	local x = self.cx + sx + (vx - sx) * l + (hx - mx) * a
+	local y = self.cy + sy + (vy - sy) * l + (hy - my) * a
+	return x, y
+end
+
+function sltr:ab(x, y)
+	local r = self.triangle_radius
+	x = x - r
+	y = y - r
+	local hx, hy, sx, sy, vx, vy = self:triangle_points()
+	local bx = (sx + vx) / 2
+	local by = (sy + vy) / 2
+	local _, _, _, l = line.hit(x, y, sx, sy, vx, vy)
+	local _, _, _, t = line.hit(x, y, bx, by, hx, hy)
+	local s = clamp(t / (2 * (l <= 0.5 and l or (1 - l))), 0, 1)
+	return s, 1-l
 end
 
 function sltr:draw_colors(cr)
-	local r = math.min(self.cw, self.ch) / 2
-	local third = (2/3) * math.pi
-	local a = math.rad(self.hue)
-
-	--max hue point
-	local hx = math.cos(a) * r
-	local hy = -math.sin(a) * r
-	--black point
-	local sx = math.cos(a - third) * r
-	local sy = -math.sin(a - third) * r
-	--white point
-	local vx =  math.cos(a + third) * r
-	local vy = -math.sin(a + third) * r
+	local r = self.triangle_radius
+	local hx, hy, sx, sy, vx, vy = self:triangle_points()
 
 	cr:save()
 
@@ -586,7 +607,6 @@ function sltr:draw_colors(cr)
 
 	--white to transparent gradient
 	local g2 = cairo.linear_gradient(vx, vy, (hx + sx) / 2, (hy + sy) / 2)
-	g2:matrix(cairo.matrix())
 	g2:add_color_stop(0, 1, 1, 1, 1)
 	g2:add_color_stop(1, 1, 1, 1, 0)
 	cr:operator'lighten'
@@ -899,8 +919,8 @@ if not ... then require('ui_demo')(function(ui, win)
 		w = 220, h = 200,
 		parent = win,
 		hue_bar = {hue = 60, tooltip = 'Hue bar'},
-		sat_lum_rectangle = {sat = .7, lum = .3, tooltip = 'Saturation x Luminance square'},
-		sat_val_rectangle = {sat = .7, val = .3, tooltip = 'Saturation x Value square'},
+		sat_lum_rectangle = {sat = .7, lum = .3}, --, tooltip = 'Saturation x Luminance square'},
+		sat_val_rectangle = {sat = .7, val = .3}, --, tooltip = 'Saturation x Value square'},
 		--mode = 'HSV',
 		sat_lum_rectangle_class = sltr,
 	}

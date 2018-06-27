@@ -335,7 +335,10 @@ function null:pop() end
 
 --basic auto-advancing layout
 
-local gr = {}
+local gr = {
+	default_w = 800,
+	default_h = 400,
+}
 player.group_layout = gr
 
 function gr:new()
