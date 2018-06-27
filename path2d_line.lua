@@ -5,7 +5,10 @@ local abs, min, max = math.abs, math.min, math.max
 local distance = require'path2d_point'.distance
 local distance2 = require'path2d_point'.distance2
 
-local function near(x, y) return abs(x - y) < 1e-13 end
+local epsilon = 1e-10
+local function near(x, y)
+	return abs(x - y) <= epsilon * max(1, abs(x), abs(y))
+end
 
 --evaluate a line at time t using linear interpolation.
 --the time between 0..1 covers the segment interval.
