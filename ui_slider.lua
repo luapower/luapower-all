@@ -109,21 +109,22 @@ tip.format = '%g'
 tip.border_width = 0
 tip.border_color = '#fff'
 tip.border_offset = 1
-tip.opacity = 0
 tip.text_size = 12
+
+tip.opacity = 0
 
 ui:style('slider_tip', {
 	transition_opacity = true,
 	transition_duration_opacity = .5,
 	transition_delay_opacity = .5,
-	transition_blend_opacity = 'wait_once',
+	transition_blend_opacity = 'wait',
 })
 
 ui:style('slider_tip visible', {
 	opacity = 1,
 	transition_opacity = true,
-	transition_blend_opacity = 'replace',
 	transition_delay_opacity = 0,
+	transition_blend_opacity = 'replace',
 })
 
 --pin position

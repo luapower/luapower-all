@@ -511,7 +511,6 @@ function ui.transition:after_init(ui, elem, attr, to,
 	--when updating with by-ref semantics.
 	elem[attr] = interpolate(1, from, from)
 
-	local v0, v1 = from, to
 	local repeated
 
 	function self:update(clock)
@@ -519,20 +518,20 @@ function ui.transition:after_init(ui, elem, attr, to,
 		if t < 0 then --not started
 			--nothing
 		elseif t >= 1 then --finished, set to actual final value
-			elem[attr] = v1
+			elem[attr] = to
 		else --running, set to interpolated value
 			local d = easing.ease(ease, way, t)
-			elem[attr] = interpolate(d, v0, v1, elem[attr])
+			elem[attr] = interpolate(d, from, to, elem[attr])
 		end
 		local alive = t <= 1
 		if not alive and times > 1 then --repeat in opposite direction
 			if not repeated then
-				v0 = backval
+				from = backval
 				repeated = true
 			end
 			times = times - 1
 			start = clock + delay
-			v0, v1 = v1, v0
+			from, to = to, from
 			alive = true
 		end
 		return alive
@@ -544,15 +543,17 @@ function ui.transition:after_init(ui, elem, attr, to,
 
 	function self:end_value()
 		if self.next_transition then
-			return self.next_transition:end_value()
+			return self.next_transition.to
 		end
 		return to
 	end
 
+	--NOTE: chain_to() replaces the next transaction, it does not chain to it.
 	function self:chain_to(tran)
 		start = tran:end_clock() + delay
 		from = tran:end_value()
 		tran.next_transition = self
+		return tran
 	end
 
 end
@@ -887,27 +888,14 @@ function ui.blend.replace_nodelay(ui, tran, elem, attr, val,
 	return ui:transition(elem, attr, val, duration, ease, 0, nil, nil, clock)
 end
 
-function ui.blend.wait_once(ui, tran, elem, attr, val, duration, ease, delay, clock)
-	local new_tran = ui:transition(elem, attr, val, duration, ease, delay, nil, nil, clock)
-	new_tran.wait_once = true
-	if tran.wait_once then
-		return new_tran
-	else
-		new_tran:chain_to(tran)
-		return tran
-	end
-end
-
 function ui.blend.wait(ui, tran, elem, attr, val, duration, ease, delay, clock)
 	local new_tran = ui:transition(elem, attr, val, duration, ease, delay, nil, nil, clock)
-	new_tran:chain_to(tran)
-	return tran
+	return new_tran:chain_to(tran)
 end
 
 function ui.blend.wait_nodelay(ui, tran, elem, attr, val, duration, ease, delay, clock)
 	local new_tran = ui:transition(elem, attr, val, duration, ease, 0, nil, nil, clock)
-	new_tran:chain_to(tran)
-	return tran
+	return new_tran:chain_to(tran)
 end
 
 function element:end_value(attr)

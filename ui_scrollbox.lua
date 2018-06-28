@@ -25,13 +25,14 @@ ui.scrollbar.corner_radius = 5
 ui.scrollbar.autohide = true
 ui.scrollbar.autohide_empty = true
 ui.scrollbar.autohide_offset = 20 --around-distance to scrollbar
-ui.scrollbar.opacity = 0
 ui.scrollbar.click_scroll_length = 300 --scroll when clicking on the background
 
 local grabbar = ui.layer:subclass'scrollbar_grabbar'
 ui.scrollbar.grabbar_class = grabbar
 
 grabbar.background_color = '#ccc'
+
+ui.scrollbar.opacity = 0
 
 ui:style('scrollbar', {
 	transition_opacity = true,
@@ -48,7 +49,7 @@ ui:style('scrollbar near', {
 	transition_opacity = true,
 	transition_delay_opacity = 0,
 	transition_duration_opacity = .5,
-	transition_blend_opacity = ui.initial,
+	transition_blend_opacity = 'replace',
 })
 
 ui:style('scrollbar active', {
