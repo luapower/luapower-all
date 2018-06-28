@@ -1400,7 +1400,7 @@ if not ... then require('ui_demo')(function(ui, win)
 	local grid = ui.grid:subclass'subgrid'
 
 	local g = grid(ui, {
-		id = 'g',
+		tags = 'g',
 		x = 20,
 		y = 20,
 		w = 860,

@@ -86,17 +86,18 @@ function object:memoize(method_name)
 	end
 end
 
---generate a r/w property which triggers `<prop>_changed` event and returns
---true when its value is set to a different value.
+--create or modify a r/w property to trigger `<prop>_changed` event and
+--to return true when its value is set to a different value.
 function object:track_changes(prop)
 	local priv = '_'..prop
 	self[priv] = self[prop] --transfer current value to private field
 	self['get_'..prop] = function(self)
 		return self[priv]
 	end
-	self['set_'..prop] = function(self, val)
+	self['override_set_'..prop] = function(self, inherited, val)
 		local old_val = self[priv]
 		if val == old_val then return end
+		inherited(val)
 		self[priv] = val
 		self:fire(prop..'_changed', val, old_val)
 		return true --useful when overriding the setter
@@ -790,20 +791,6 @@ function element:free()
 	self.ui = false
 end
 
-function element:get_id()
-	return self._id
-end
-
-function element:set_id(id)
-	if self._id == id then return end
-	if self._id then
-		self.tags[self._id] = nil
-	end
-	self._id = id
-	self.tags[id] = true
-	self._styles_valid = false
-end
-
 function element:settag(tag, op)
 	local had_tag = self.tags[tag]
 	if op == '~' then
@@ -839,8 +826,22 @@ function element:settags(s)
 end
 
 function element:update_styles()
-	self.ui.stylesheet:update_element(self)
-	self._styles_valid = true
+	if not self._styles_valid then
+		self.ui.stylesheet:update_element(self)
+		self._styles_valid = true
+	end
+	--update transitioning attributes
+	local tr = self.transitions
+	if tr and next(tr) then
+		local clock = self.frame_clock
+		for attr, transition in pairs(tr) do
+			if not transition:update(clock) then
+				tr[attr] = transition.next_transition
+			end
+		end
+		--TODO: when transition is in delay, set a timer, don't invalidate.
+		self:invalidate()
+	end
 end
 
 function element:_save_initial_value(attr)
@@ -886,6 +887,17 @@ function ui.blend.replace_nodelay(ui, tran, elem, attr, val,
 	return ui:transition(elem, attr, val, duration, ease, 0, nil, nil, clock)
 end
 
+function ui.blend.wait_once(ui, tran, elem, attr, val, duration, ease, delay, clock)
+	local new_tran = ui:transition(elem, attr, val, duration, ease, delay, nil, nil, clock)
+	new_tran.wait_once = true
+	if tran.wait_once then
+		return new_tran
+	else
+		new_tran:chain_to(tran)
+		return tran
+	end
+end
+
 function ui.blend.wait(ui, tran, elem, attr, val, duration, ease, delay, clock)
 	local new_tran = ui:transition(elem, attr, val, duration, ease, delay, nil, nil, clock)
 	new_tran:chain_to(tran)
@@ -929,10 +941,8 @@ function element:transition(attr, val, duration, ease, delay, times, backval, bl
 		times = times or 1
 		blend = blend or 'replace_nodelay'
 	end
-	local blend_func = self.ui.blend[blend]
 
 	local tran = self.transitions and self.transitions[attr]
-
 	local changed
 
 	if duration <= 0
@@ -944,6 +954,7 @@ function element:transition(attr, val, duration, ease, delay, times, backval, bl
 	else --set attr with transition
 		if tran then
 			if tran:end_value() ~= val then
+				local blend_func = self.ui.blend[blend]
 				tran = blend_func(self.ui, tran, self, attr, val,
 					duration, ease, delay, self.frame_clock)
 				changed = true
@@ -974,22 +985,8 @@ function element:transitioning(attr)
 	return self.transitions and self.transitions[attr] and true or false
 end
 
-function element:draw(cr)
-	if not self._styles_valid then
-		self:update_styles()
-	end
-	--update transitioning attributes
-	local tr = self.transitions
-	if tr and next(tr) then
-		local clock = self.frame_clock
-		for attr, transition in pairs(tr) do
-			if not transition:update(clock) then
-				tr[attr] = transition.next_transition
-			end
-		end
-		--TODO: when transition is in delay, set a timer, don't invalidate.
-		self:invalidate()
-	end
+function element:before_draw(cr)
+	self:update_styles()
 end
 
 --windows --------------------------------------------------------------------
@@ -1033,7 +1030,7 @@ function window:override_init(inherited, ui, t)
 	local win = t.native_window
 	local parent = t.parent
 	if parent and parent.iswindow then
-		parent = parent.layer
+		parent = parent.view
 	end
 	if not win then
 		local s = self.super
@@ -1204,8 +1201,8 @@ function window:override_init(inherited, ui, t)
 	win:on({'client_rect_changed', self}, function(win, cx, cy, cw, ch)
 		if not cx then return end --hidden or minimized
 		setcontext()
-		self.layer.w = cw
-		self.layer.h = ch
+		self.view.w = cw
+		self.view.h = ch
 	end)
 
 	function win.closing(win)
@@ -1231,26 +1228,25 @@ function window:override_init(inherited, ui, t)
 		self.ui:fire('window_'..event, self, ...)
 	end)
 
-	self.layer = self:create_layer()
+	self.view = self:create_view()
 
 	if show_it then
 		self.visible = true
 	end
 end
 
-function window:create_layer()
-	return self.layer_class(self.ui, {
-		tags = 'window_layer',
+function window:create_view()
+	return self.view_class(self.ui, {
 		w = self.cw, h = self.ch,
 		parent = self,
-	}, self.layer)
+	}, self.view)
 end
 
 function window:before_free()
 	self.native_window:off{nil, self}
 	self.native_window.ui_window = nil
-	self.layer:free()
-	self.layer = false
+	self.view:free()
+	self.view = false
 	if self.own_native_window then
 		self.native_window:close()
 	end
@@ -1270,7 +1266,7 @@ end
 
 function window:to_parent(x, y)
 	if self.parent then
-		return self.layer:to_other(self.parent.layer, x, y)
+		return self.view:to_other(self.parent.view, x, y)
 	else
 		return x, y
 	end
@@ -1278,7 +1274,7 @@ end
 
 function window:from_parent(x, y)
 	if self.parent then
-		return self.layer:from_other(self.parent.layer, x, y)
+		return self.view:from_other(self.parent.view, x, y)
 	else
 		return x, y
 	end
@@ -1394,12 +1390,12 @@ function window:set_ch(ch) self:client_rect(nil, nil, nil, ch) end
 --layer interface
 
 function window:add_layer(layer)
-	if layer.iswindow_layer then --this is the top layer we're adding
+	if layer.iswindow_view then
 		layer._parent = self
 		layer.window = self
 		return
 	end
-	self.layer:add_layer(layer)
+	self.view:add_layer(layer)
 end
 
 function window:remove_layer(layer)
@@ -1582,7 +1578,7 @@ function ui:after_init()
 end
 
 function window:hit_test(x, y, reason)
-	return self.layer:hit_test(x, y, reason)
+	return self.view:hit_test(x, y, reason)
 end
 
 function window:get_cursor()
@@ -1777,7 +1773,7 @@ end
 --keyboard events routing with focus logic
 
 function window:first_focusable_widget()
-	return self.layer:focusable_widgets()[1]
+	return self.view:focusable_widgets()[1]
 end
 
 function window:next_focusable_widget(forward)
@@ -1828,7 +1824,7 @@ function window:after_draw(cr)
 	self._invalid = false
 	self.cr:save()
 	self.cr:new_path()
-	self.layer:draw(cr)
+	self.view:draw(cr)
 	self.cr:restore()
 end
 
@@ -2354,7 +2350,7 @@ end
 
 function layer:set_pos_parent(parent)
 	if parent and parent.iswindow then
-		parent = parent.layer
+		parent = parent.view
 	end
 	if parent == self.parent then
 		parent = nil
@@ -3594,17 +3590,17 @@ end
 
 --top layer ------------------------------------------------------------------
 
-local window_layer = layer:subclass'window_layer'
-window.layer_class = window_layer
+local view = layer:subclass'window_view'
+window.view_class = view
 
 --screen-wiping options that work with transparent windows
-window_layer.background_color = '#0000'
-window_layer.background_operator = 'source'
+view.background_color = '#0000'
+view.background_operator = 'source'
 
 --parent layer interface
 
-window_layer.to_window = window_layer.to_parent
-window_layer.from_window = window_layer.from_parent
+view.to_window = view.to_parent
+view.from_window = view.from_parent
 
 --widgets autoload -----------------------------------------------------------
 

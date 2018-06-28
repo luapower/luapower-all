@@ -449,7 +449,7 @@ end
 if not ... then require('ui_demo')(function(ui, win)
 
 	local edit = ui:editbox{
-		id = 'ed',
+		tags = 'ed',
 		x = 10, y = 10,
 		w = 300, h = 300,
 		parent = win,
@@ -459,7 +459,7 @@ if not ... then require('ui_demo')(function(ui, win)
 
 	for i=1,2 do
 		local ed = ui:editbox{
-			id = 'ed'..i,
+			tags = 'ed'..i,
 			x = 320,
 			y = 10 + 30 * (i-1),
 			w = 200,

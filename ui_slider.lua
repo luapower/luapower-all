@@ -116,13 +116,13 @@ ui:style('slider_tip', {
 	transition_opacity = true,
 	transition_duration_opacity = .5,
 	transition_delay_opacity = .5,
-	transition_blend_opacity = 'replace',
+	transition_blend_opacity = 'wait_once',
 })
 
 ui:style('slider_tip visible', {
 	opacity = 1,
 	transition_opacity = true,
-	transition_duration_opacity = .5,
+	transition_blend_opacity = 'replace',
 	transition_delay_opacity = 0,
 })
 
@@ -260,7 +260,7 @@ function slider:sync()
 
 	m.cy = self.h / 2
 	m.cx = self.pin:cx_at_position(self.position)
-	m:settag('visible', dragging)
+	m:settag('visible', dragging or self.active)
 
 	t.x = p.w / 2
 
@@ -317,12 +317,12 @@ function slider:draw_step_lines(cr)
 	cr:stroke()
 end
 
-function slider:after_draw_content(cr)
-	self:draw_step_lines(cr)
+function slider:before_draw_content(cr)
+	self:sync()
 end
 
-function slider:before_draw(cr)
-	self:sync()
+function slider:after_draw_content(cr)
+	self:draw_step_lines(cr)
 end
 
 --input
@@ -422,6 +422,9 @@ function slider:keypress(key)
 		self.progress = 0
 	elseif key == 'end' then
 		self.progress = 1
+	elseif key == 'enter' or key == 'space' then
+		self.tip:settag('visible', true)
+		self.tip:update_styles()
 	end
 	self.pin.animate = false
 end
@@ -593,6 +596,7 @@ if not ... then require('ui_demo')(function(ui, win)
 		--snap_to_labels = false,
 	}
 
+	--[[
 	ui:slider{
 		x = 100, y = 200, w = 200, parent = win,
 		position = 0,
@@ -607,5 +611,6 @@ if not ... then require('ui_demo')(function(ui, win)
 		progress = .3,
 		size = 1,
 	}
+	]]
 
 end) end

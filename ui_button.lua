@@ -348,7 +348,7 @@ function radiobutton:override_set_checked(inherited, checked)
 	local was_checked = self.checked
 	inherited(self, checked)
 	if self.checked and not was_checked then
-		self.window.layer:each_child(function(rb)
+		self.window.view:each_child(function(rb)
 			if rb.isradiobutton
 				and rb ~= self
 				and rb.radio_group == self.radio_group

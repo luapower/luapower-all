@@ -305,7 +305,7 @@ if not ... then require('ui_demo')(function(ui, win)
 	for i = 1, 5 do
 		local bg_color = {i / 5, i / 5, 0, 1}
 		local tab = ui:tab{
-			id = 'tab'..i,
+			tags = 'tab'..i,
 			index = 1,
 			parent = tl,
 			background_color = bg_color,

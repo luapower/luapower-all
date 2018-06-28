@@ -385,7 +385,7 @@ end
 if not ... then require('ui_demo')(function(ui, win)
 
 	local sb = ui:scrollbox{
-		id = 'sb',
+		tags = 'sb',
 		parent = win,
 		x = 0, y = 0, w = 900, h = 500,
 		background_color = '#111',

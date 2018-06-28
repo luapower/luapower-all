@@ -72,7 +72,7 @@ local function test_layers()
 		y = 50,
 		w = 500,
 		h = 200,
-		id = 'layer1',
+		tags = 'layer1',
 		parent = win,
 
 		--clip_content = true,
@@ -159,7 +159,7 @@ local function test_layers()
 
 	local layer2 = ui:layer{
 		visible = true,
-		id = 'layer2',
+		tags = 'layer2',
 		parent = layer1,
 		clip_content = false,
 		x = 10,
@@ -300,8 +300,7 @@ local function test_drag()
 	})
 
 	local layer1 = ui:layer{
-		id = 'layer1',
-		tags = 'test',
+		tags = 'layer1 test',
 		x = 50, y = 50, w = 200, h = 200,
 		parent = win,
 		z_order = 1,
@@ -313,8 +312,7 @@ local function test_drag()
 	}
 
 	local layer2 = ui:layer{
-		id = 'layer2',
-		tags = 'test',
+		tags = 'layer2 test',
 		x = 300,	y = 50, w = 200, h = 200,
 		parent = win,
 		z_order = 0,
@@ -323,8 +321,7 @@ local function test_drag()
 	}
 
 	local layer = ui:layer{
-		id = 'drag_layer',
-		tags = 'test',
+		tags = 'drag_layer test',
 		x = 50, y = 0, w = 100, h = 100,
 		parent = layer1,
 		z_parent = win,
