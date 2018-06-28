@@ -308,12 +308,12 @@ local format_spaces = {
 	hsva = 'hsv', hsv = 'hsv', ['hsva%'] = 'hsv', ['hsv%'] = 'hsv',
 }
 
-local function scale(x)
+local function loss(x) --...of precision when converting to #rgb
 	return math.abs(x * 15 - round(x * 15))
 end
-local sigma = math.abs(scale(0x89 / 255))
+local threshold = math.abs(loss(0x89 / 255))
 local function short(x)
-	return scale(x) < sigma
+	return loss(x) < threshold
 end
 
 local function format(fmt, space, x, y, z, a)
