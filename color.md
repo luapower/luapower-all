@@ -20,7 +20,7 @@ Quick facts:
 `color.parse(str[, space]) -> [space, ]x, y, z[, a]` parse color string
 `color.convert(dspace, sspace, x, y, z[, a]) -> ...` convert color from sspace to dspace
 `color.format([fmt], space, x, y, z[, a]) -> s`      format color (see above)
-`color.clamp(space, x, y, z[, a]) -> x, y, z, a`     clamp values to color space
+`color.clamp(space, x, y, z[, a]) -> x, y, z[, a]`   clamp values to color space
 ---------------------------------------------------- ------------------------------------------------
 
 __NOTE__: x, y, z means r, g, b in the `'rgb'` color space,
