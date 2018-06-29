@@ -368,7 +368,7 @@ local rbutton = ui.checkbox.button_class:subclass'radiobutton_button'
 radiobutton.button_class = rbutton
 
 function rbutton:after_sync()
-	self.corner_radius = self.w / 2
+	self.corner_radius = self.w
 	self.padding = 0
 end
 
@@ -453,14 +453,16 @@ function choicebutton:unselect_button(btn)
 	btn:settag('selected', false)
 end
 
-function choicebutton:select_button(btn)
+function choicebutton:select_button(btn, focus)
 	if not btn then return end
 	local sbtn = self.selected_button
 	if sbtn == btn then return end
 	if sbtn then
 		self:unselect_button(sbtn)
 	end
-	btn:focus()
+	if focus ~= false then
+		btn:focus()
+	end
 	btn:settag('selected', true)
 	self:fire('value_selected', btn.value)
 end
@@ -535,7 +537,9 @@ function choicebutton:after_init()
 	for i,val in ipairs(t.values) do
 		local btn = self:create_button(type(val) == 'table' and val.index or i, val)
 	end
-	self.selected = t.selected
+	if t.selected then
+		self:select_button(self:button_by_value(t.selected), false)
+	end
 end
 
 --demo -----------------------------------------------------------------------
@@ -543,6 +547,7 @@ end
 if not ... then require('ui_demo')(function(ui, win)
 
 	local b1 = ui:button{
+		id = 'OK',
 		parent = win,
 		x = 100, y = 100, w = 100,
 		text = '&OK',
@@ -553,6 +558,7 @@ if not ... then require('ui_demo')(function(ui, win)
 	local btn = button:subclass'btn'
 
 	local b2 = btn(ui, {
+		id = 'Disabled',
 		parent = win,
 		x = 100, y = 150, w = 100,
 		text = 'Disabled',
@@ -561,6 +567,7 @@ if not ... then require('ui_demo')(function(ui, win)
 	})
 
 	local b3 = btn(ui, {
+		id = 'Cancel',
 		parent = win,
 		x = 100, y = 200, w = 100,
 		text = '&Cancel',
@@ -577,6 +584,7 @@ if not ... then require('ui_demo')(function(ui, win)
 	function b2:pressed() print'b2 pressed' end
 
 	local cb1 = ui:checkbox{
+		id = 'CB1',
 		parent = win,
 		x = 300, y = 100, w = 200,
 		label =  {text = 'Check me'},
@@ -585,6 +593,7 @@ if not ... then require('ui_demo')(function(ui, win)
 	}
 
 	local cb2 = ui:checkbox{
+		id = 'CB2',
 		parent = win,
 		x = 300, y = 140, w = 200,
 		label =  {text = 'Check me too'},
@@ -593,6 +602,7 @@ if not ... then require('ui_demo')(function(ui, win)
 	}
 
 	local rb1 = ui:radiobutton{
+		id = 'RB1',
 		parent = win,
 		x = 300, y = 180, w = 200,
 		label =  {text = 'Radio me'},
@@ -602,6 +612,7 @@ if not ... then require('ui_demo')(function(ui, win)
 	}
 
 	local rb2 = ui:radiobutton{
+		id = 'RB2',
 		parent = win,
 		x = 300, y = 220, w = 200,
 		label =  {text = 'Radio me too'},
@@ -611,6 +622,7 @@ if not ... then require('ui_demo')(function(ui, win)
 	}
 
 	local cb1 = ui:choicebutton{
+		id = 'CHOICE',
 		parent = win,
 		x = 100, y = 300, w = 400,
 		values = {
@@ -620,5 +632,10 @@ if not ... then require('ui_demo')(function(ui, win)
 		},
 		selected = 'val3',
 	}
+	for i,b in ipairs(cb1.layers) do
+		if b.isbutton then
+			b.id = 'CHOICE'..i
+		end
+	end
 
 end) end

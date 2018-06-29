@@ -142,3 +142,55 @@ LATER/NEVER
 - cell auto-ellipsis
 - vertical grid with bands
 
+
+NEW TAB-ORDER ALGORITHM =-----------------------------------------------------
+
+--TODO: make a new tab-order-assigning algorithm based on horizontal and
+--vertical overlap between widgets and the vertical/horizontal distance
+--between them.
+
+--TIPS: make a weighted DAG from inspecting all positiblities
+--(that's O(n^2) btw) and then sort the nodes at each level based on the
+--weights and walk the graph in toplogical+weighted order.
+
+--[[
+local function overlap(
+	ax1, ay1, ax2, ay2,
+	bx1, by1, bx2, by2,
+	t1, t2
+)
+	local overlap_v = math.min(ay2, by2) - math.max(ay1, by1)
+	local max_overlap_v = math.min(ay2 - ay1, by2 - by1)
+	local distance_h = bx1 - ax2
+
+	print(
+		t1.id or t1.parent.id,
+		t2.id or t2.parent.id,
+		string.format('%.2f\t%.2f', overlap_v, distance_h),
+		not (overlap_v < 0 or distance_h < 0) and '!!!' or ''
+	)
+
+	if overlap_v < 0 or distance_h < 0 then
+		return 0
+	end
+	assert(max_overlap_v > 0)
+
+	return (overlap_v / max_overlap_v) / distance_h
+end
+
+	print()
+	print()
+	print()
+
+	if self.iswindow_view then
+		for i,t in ipairs(t) do
+			local x1, y1 = t:to_window(0, 0)
+			local x2, y2 = t:to_window(t.w, t.h)
+			print(
+				t.id or t.parent.id,
+				x1, y1
+			)
+		end
+	end
+
+]]

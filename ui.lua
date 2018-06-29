@@ -671,6 +671,7 @@ end
 local element = ui.object:subclass'element'
 ui.element = element
 ui.element.ui = ui
+ui.element.stylesheet = ui.stylesheet
 
 element.visible = true
 element.activable = false --can be clicked and set as hot
@@ -705,7 +706,7 @@ function element:init_priority(t)
 end
 
 element:init_priority{}
-element:init_ignore{tags=1}
+element:init_ignore{tags=1, stylesheet=1}
 
 --override element constructor to take in additional initialization tables
 function element:override_create(inherited, ui, t, ...)
@@ -744,6 +745,10 @@ function element:after_init(ui, t)
 	end
 
 	if t then
+		if t.stylesheet then
+			self.stylesheet = t.stylesheet
+		end
+
 		if t.tags then
 			add_tags(self.tags, t.tags)
 		end
@@ -828,7 +833,7 @@ end
 
 function element:update_styles()
 	if not self._styles_valid then
-		self.ui.stylesheet:update_element(self)
+		self.stylesheet:update_element(self)
 		self._styles_valid = true
 	end
 	--update transitioning attributes
@@ -868,9 +873,14 @@ function element:initial_value(attr)
 end
 
 function element:parent_value(attr)
+	::again::
 	local val = self[attr]
-	if val == nil and self.parent then
-		return self:parent_value(self.parent, attr)
+	if val == nil then
+		local parent = rawget(self, '_parent')
+		if parent then
+			self = parent
+			goto again
+		end
 	end
 	return val
 end
@@ -1761,7 +1771,7 @@ end
 --keyboard events routing with focus logic
 
 function window:first_focusable_widget()
-	return self.view:focusable_widgets()[1]
+	return self.view:first_focusable_widget()
 end
 
 function window:next_focusable_widget(forward)
@@ -2189,6 +2199,7 @@ layer.max_click_chain = 1 --2 for getting doubleclick events etc.
 layer.hover_delay = 1 --TODO: hover event delay
 
 layer.tabindex = false
+layer.tabgroup = false
 
 function layer:after_init(ui, t)
 	if t.enabled ~= nil then
@@ -2683,11 +2694,11 @@ function layer:focus()
 			self:invalidate()
 		end
 		return true
-	else --focus first focusable child
+	else --focus the first focusable child
 		if not (self.visible and self.enabled) then
 			return
 		end
-		local layer = self.layers and self:focusable_widgets()[1]
+		local layer = self:first_focusable_widget()
 		if layer and layer:focus() then
 			return true
 		end
@@ -2712,44 +2723,57 @@ function layer:get_focused_widget()
 	end
 end
 
-function layer:focusable_widgets()
-	local t = {}
+layer._taborder = 'vh' --simple vertical-first-horizontal-second tab order
+
+function layer:get_taborder()
+	return self:parent_value'_taborder'
+end
+
+function layer:focusable_widgets(t)
+	t = t or {}
 	if self.layers then
 		for i,layer in ipairs(self.layers) do
 			if layer:canfocus() then
 				push(t, layer)
+			else --add layers' focusable children recursively, depth-first
+				layer:focusable_widgets(t)
 			end
 		end
 	end
 	table.sort(t, function(t1, t2)
-		if t1.tabindex == t2.tabindex then
-			if t1.x == t2.x then
-				return t1.y < t2.y
+		if t1.tabgroup == t2.tabgroup then
+			if t1.tabindex == t2.tabindex then
+				local ax1, ay1 = t1.parent:to_window(t1.x, t1.y)
+				local bx1, by1 = t2.parent:to_window(t2.x, t2.y)
+				if self.taborder == 'hv' then
+					ax1, bx1, ay1, by1 = ay1, by1, ax1, bx1
+				end
+				if ax1 == bx1 then
+					return ay1 < by1
+				else
+					return ax1 < bx1
+				end
 			else
-				return t1.x < t2.x
+				return (t1.tabindex or 0) < (t2.tabindex or 0)
 			end
 		else
-			return t1.tabindex < t2.tabindex
+			return (t1.tabgroup or 0) < (t2.tabgroup or 0)
 		end
 	end)
 	return t
 end
 
-function layer:next_focusable_sibling_widget(widget, forward)
-	assert(widget.parent == self)
-	local t = self:focusable_widgets()
-	for i,layer in ipairs(t) do
-		if layer == widget then
-			return t[i + (forward and 1 or -1)]
-		end
-	end
+function layer:first_focusable_widget()
+	if not self.layers then return end
+	return self:focusable_widgets()[1]
 end
 
 function layer:next_focusable_widget(forward)
-	if not self.parent then
-		return self
-	else
-		return self.parent:next_focusable_sibling_widget(self, forward)
+	local t = self.window.view:focusable_widgets()
+	for i,layer in ipairs(t) do
+		if layer == self then
+			return t[i + (forward and 1 or -1)] or t[forward and 1 or #t]
+		end
 	end
 end
 
