@@ -278,7 +278,7 @@ local function run_tests(mag)
 end
 
 chapter = 'J_'
-run_tests(1)
+run_tests(4)
 
 chapter = 'I_'
 jit.off(true, true)
@@ -320,4 +320,4 @@ print'I      : interpreter mode'
 print'J      : JIT mode'
 print'0_d    : called detach() on instance'
 print'N+1    : N+1-level deep dynamic inheritance'
-print'_p     : copied getproperty, setproperty, __getters, __setters to instance'
+print'_p     : copied __getters, __setters to instance'
