@@ -19,13 +19,13 @@ ui:style('dropdown', {
 	transition_duration = .5,
 })
 
-ui:style('dropdown hot', {
+ui:style('dropdown :hot', {
 	border_color = '#999',
 	transition_border_color = true,
 	transition_duration = .5,
 })
 
-ui:style('dropdown focused', {
+ui:style('dropdown :focused', {
 	border_color = '#fff',
 	shadow_blur = 3,
 	shadow_color = '#666',

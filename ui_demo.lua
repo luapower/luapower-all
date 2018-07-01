@@ -34,7 +34,7 @@ if ... == 'ui_demo' then --loaded via require()
 end
 
 local function test_window_layer()
-	ui:style('window_layer hot', {
+	ui:style('window_view :hot', {
 		background_color = '#080808',
 		transition_background_color = true,
 		transition_duration = 0.1,
@@ -43,7 +43,7 @@ end
 
 local function test_layers()
 
-	ui:style('window_layer', {
+	ui:style('window_view', {
 		background_color = '#fff',
 	})
 
@@ -54,7 +54,7 @@ local function test_layers()
 		transition_rotation = true,
 	})
 
-	ui:style('layer1 hot', {
+	ui:style('layer1 :hot', {
 		--border_color_left = '#fff',
 		background_colors = {'#0f0', .5, '#f0f'},
 		transition_background_colors = true,
@@ -192,14 +192,13 @@ local function test_layers()
 		cr:fill_rule(rule)
 	end
 
-	ui:style('xlayer hot', {
+	ui:style('xlayer :hot', {
 		background_color = '#0ff',
 		border_color_left = '#ff0',
 		transition_duration = 1,
 		transition_border_color_left = true,
 	})
 
-	--ui:style('layer2 hot', {
 end
 
 local function test_css()
@@ -270,31 +269,31 @@ local function test_drag()
 		--border_color = '#333',
 	})
 
-	ui:style('test active', {
+	ui:style('test :active', {
 		border_color = '#fff',
 	})
 
-	ui:style('test hot', {
+	ui:style('test :hot', {
 		background_color = '#ff0',
 	})
 
-	ui:style('test dragging', {
+	ui:style('test :dragging', {
 		background_color = '#00f',
 	})
 
-	ui:style('test dropping', {
+	ui:style('test :dropping', {
 		background_color = '#f0f',
 	})
 
-	ui:style('test drag_source', {
+	ui:style('test :drag_source', {
 		border_color = '#0ff',
 	})
 
-	ui:style('test drop_target', {
+	ui:style('test :drop_target', {
 		border_color = '#ff0',
 	})
 
-	ui:style('test drag_layer', {
+	ui:style('test :drag_layer', {
 		border_width = 20,
 		border_color = '#ccc',
 	})

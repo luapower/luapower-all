@@ -44,7 +44,7 @@ ui:style('scrollbar', {
 	transition_duration_offset = .2,
 })
 
-ui:style('scrollbar near', {
+ui:style('scrollbar :near', {
 	opacity = .5,
 	transition_opacity = true,
 	transition_delay_opacity = 0,
@@ -52,7 +52,7 @@ ui:style('scrollbar near', {
 	transition_blend_opacity = 'replace',
 })
 
-ui:style('scrollbar active', {
+ui:style('scrollbar :active', {
 	opacity = .5,
 })
 
@@ -202,9 +202,9 @@ function ui.scrollbar:scroll_to(offset)
 	if self.visible and self.autohide and not self.grabbar.active
 		and (not self.autohide_empty or not self:empty())
 	then
-		self:settag('near', true)
+		self:settag(':near', true)
 		self:update_styles()
-		self:settag('near', false)
+		self:settag(':near', false)
 	end
 	self:transition('offset', offset)
 end
@@ -232,14 +232,14 @@ function ui.scrollbar:_window_mousemove(mx, my)
 	local visible = self:_check_visible()
 	if visible == 'hit_test' then
 		local near = self:hit_test_near(self:from_window(mx, my))
-		self:settag('near', near)
+		self:settag(':near', near)
 	end
 end
 
 function ui.scrollbar:_window_mouseleave()
 	local visible = self:_check_visible()
 	if visible == 'hit_test' then
-		self:settag('near', false)
+		self:settag(':near', false)
 	end
 end
 
@@ -261,7 +261,7 @@ function ui.scrollbar:sync()
 
 	local visible = self:_check_visible()
 	if visible ~= 'hit_test' then
-		self:settag('near', visible)
+		self:settag(':near', visible)
 	end
 end
 

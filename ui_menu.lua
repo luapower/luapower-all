@@ -83,7 +83,7 @@ if not ... then require('ui_demo')(function(ui, win)
 		border_color = '#ff0',
 	})
 
-	ui:style('menuitem hot', {
+	ui:style('menuitem :hot', {
 		background_color = '#333',
 	})
 

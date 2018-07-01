@@ -35,7 +35,6 @@ local memoize = glue.memoize
 local function single_line(s, val)
 	return not val and s or nil
 end
-
 local function lines(s, multiline)
 	if multiline then
 		return glue.lines(s)
@@ -60,8 +59,8 @@ local object = oo.object()
 function object:before_init()
 	--speed up class field lookup by having the final class statically inherit
 	--all its fields. with this change, runtime patching of non-final classes
-	--after the first instantiation doesn't have an effect anymore (extending
-	--those classes still works but it's not that useful).
+	--after the first instantiation doesn't have an effect anymore (it will
+	--require calling inherit() manually on all those final classes).
 	if not rawget(self.super, 'isfinalclass') then
 		self.super:inherit()
 		self.super.isfinalclass = true
@@ -69,14 +68,20 @@ function object:before_init()
 	--speed up virtual property lookup without detaching/fattening the instance.
 	--with this change, adding or overriding getters and setters through the
 	--instance is not allowed anymore, that would patch the class instead!
+	--TODO: I don't like this arbitrary limitation, do something about it.
 	self.__setters = self.__setters
 	self.__getters = self.__getters
 end
 
+--method and property decorators ---------------------------------------------
+
 --generic method memoizer
 function object:memoize(method_name)
 	function self:after_init()
-		local method = self[method_name]
+		local method =
+			   method_name:find'^get_' and self.__getters[method_name:sub(5)]
+			or method_name:find'^set_' and self.__setters[method_name:sub(5)]
+			or self[method_name]
 		local memfunc = memoize(function(...)
 			return method(self, ...)
 		end)
@@ -86,21 +91,65 @@ function object:memoize(method_name)
 	end
 end
 
---create or modify a r/w property to trigger `<prop>_changed` event and
---to return true when its value is set to a different value.
-function object:track_changes(prop)
+--install event listeners in object which forward events in self.
+function object:forward_events(object, event_names)
+	for _,event in ipairs(event_names) do
+		object:on({event, self}, function(object, ...)
+			return self:fire(event, ...)
+		end)
+	end
+	function self:before_free()
+		for _,event in ipairs(event_names) do
+			object:off{event, self}
+		end
+	end
+end
+
+--create a r/w property which reads/writes to a "private var".
+function object:stored_property(prop, normalize)
 	local priv = '_'..prop
-	self[priv] = self[prop] --transfer current value to private field
+	self[priv] = self[prop] --transfer existing value to private var
+	self[prop] = nil
 	self['get_'..prop] = function(self)
 		return self[priv]
 	end
-	self['override_set_'..prop] = function(self, inherited, val)
-		local old_val = self[priv]
-		if val == old_val then return end
-		inherited(val)
+	self['set_'..prop] = function(self, val)
 		self[priv] = val
-		self:fire(prop..'_changed', val, old_val)
-		return true --useful when overriding the setter
+	end
+end
+
+--change a property so that its setter is only called when the value changes
+--and also '<prop>_changed' event is fired.
+function object:track_changes(prop)
+	local changed_event = prop..'_changed'
+	self['override_set_'..prop] = function(self, inherited, val)
+		local old_val = self[prop]
+		if val ~= old_val then
+			inherited(self, val)
+			self:fire(changed_event, val, old_val)
+			return true --useful when overriding the setter further
+		end
+	end
+end
+
+--inhibit a property's getter and setter when using the property on the class.
+--instead, set a private var on the class which serves as default value.
+--use this _after_ defining the getter and setter.
+function object:instance_only(prop)
+	local priv = '_'..prop
+	self['override_get_'..prop] = function(self, inherited)
+		if self:isinstance() then
+			return inherited(self)
+		else
+			return self[priv] --get the default value
+		end
+	end
+	self['override_set_'..prop] = function(self, inherited, val)
+		if self:isinstance() then
+			return inherited(self, val)
+		else
+			self[priv] = val --set the default value
+		end
 	end
 end
 
@@ -109,32 +158,25 @@ end
 local ui = object:subclass'ui'
 ui.object = object
 
-function ui:create() --singleton class (no instance creation)
+function ui:create() --singleton class (no instance is created)
 	self:init()
 	function self:create() return self end
 	return self
 end
 
-function ui:init()
+function ui:after_init()
 	local nw = require'nw'
 	self.app = nw:app()
 
-	--forward native events
-	local native_events = {
+	self:forward_events(self.app, {
 		'quitting',
 		'activated', 'deactivated', 'wakeup',
 		'hidden', 'unhidden',
 		'displays_changed',
-	}
-	for _,event in ipairs(native_events) do
-		self.app:on({event, self}, function(app, ...)
-			return self:fire(event, ...)
-		end)
-	end
+		})
 end
 
-function ui:free()
-	self.app:off{nil, self}
+function ui:before_free()
 	self.app = false
 end
 
@@ -148,8 +190,6 @@ function ui:check(ret, ...)
 	if ret then return ret end
 	self:error(...)
 end
-
-local default_ease = 'expo out'
 
 --native app proxy methods ---------------------------------------------------
 
@@ -252,6 +292,26 @@ function ui.selector:filter(filter)
 	return self
 end
 
+local function has_state_tags(tags)
+	for _,tag in ipairs(tags) do
+		if tag:find(':', 1, true) then
+			return true
+		end
+	end
+end
+function ui.selector:has_state_tags()
+	if has_state_tags(self.tags) then
+		return true
+	end
+	if self.parent_tags then
+		for _,tags in ipairs(self.parent_tags) do
+			if has_state_tags(tags) then
+				return true
+			end
+		end
+	end
+end
+
 --check that all needed_tags are found in tags table as keys
 local function has_all_tags(needed_tags, tags)
 	for i,tag in ipairs(needed_tags) do
@@ -304,25 +364,47 @@ end
 
 --stylesheets ----------------------------------------------------------------
 
-ui.stylesheet_class = ui.object:subclass'stylesheet'
-ui.stylesheet = ui.stylesheet_class()
+local stylesheet = ui.object:subclass'stylesheet'
+ui.stylesheet_class = stylesheet
 
-function ui.stylesheet:after_init(ui)
+function stylesheet:after_init(ui)
 	self.ui = ui
 	self.tags = {} --{tag -> {sel1, ...}}
 	self.parent_tags = {} --{tag -> {sel1, ...}}
 	self.selectors = {} --{selector1, ...}
+	self.first_state_sel_index = 1 --index of first selector with :state tags
 end
 
-function ui.stylesheet:add_style(sel, attrs)
+function stylesheet:add_style(sel, attrs)
+
+	if type(sel) == 'string' and sel:find(',', 1, true) then
+		for sel in sel:gmatch'[^,]+' do
+			self:add_style(sel, attrs)
+		end
+		return
+	end
+	local sel = self.ui:selector(sel)
+
+	--expand attributes
 	for attr, val in pairs(attrs) do
 		if self.ui:expand_attr(attr, val, attrs) then
 			attrs[attr] = nil
 		end
 	end
 	sel.attrs = attrs
-	push(self.selectors, sel)
-	sel.priority = #self.selectors
+
+	local is_state_sel = sel:has_state_tags()
+	local index = is_state_sel and #self.selectors+1 or self.first_state_sel_index
+	sel.index = index
+	push(self.selectors, index, sel)
+	for i = index+1, #self.selectors do --update index field on shifted selectors
+		self.selectors[i].index = i
+	end
+	if not is_state_sel then
+		self.first_state_sel_index = index+1
+	end
+
+	--populate the selector reverse-lookup tables
 	for _,tag in ipairs(sel.tags) do
 		push(attr(self.tags, tag), sel)
 	end
@@ -335,7 +417,7 @@ function ui.stylesheet:add_style(sel, attrs)
 	end
 end
 
-function ui.stylesheet:add_stylesheet(stylesheet)
+function stylesheet:add_stylesheet(stylesheet)
 	for tag, selectors in pairs(stylesheet.tags) do
 		extend(attr(self.tags, tag), selectors)
 	end
@@ -355,10 +437,10 @@ function ui.inherit(self, attr)
 end
 
 local function cmp_sel(sel1, sel2)
-	return sel1.priority < sel2.priority
+	return sel1.index < sel2.index
 end
 
-function ui.stylesheet:update_element(elem, update_children)
+function stylesheet:update_element(elem, update_children)
 
 	--gather all style selectors which select the element.
 	local st = {} --{sel1, ...}
@@ -436,28 +518,20 @@ function ui.stylesheet:update_element(elem, update_children)
 	end
 end
 
-function ui.stylesheet:update_style(style)
+function stylesheet:update_style(style)
 	for _,elem in ipairs(self.elements) do
 		--TODO:
 	end
 end
 
 function ui:style(sel, attrs)
-	if type(sel) == 'string' and sel:find(',', 1, true) then
-		for sel in sel:gmatch'[^,]+' do
-			ui:style(sel, attrs)
-		end
-	else
-		local sel = self:selector(sel)
-		self.stylesheet:add_style(sel, attrs)
-	end
+	self.stylesheet:add_style(sel, attrs)
 end
 
-ui.stylesheet = ui:stylesheet()
+ui.stylesheet = ui:stylesheet_class()
 
 --attribute types ------------------------------------------------------------
 
-ui._type = {} --{attr -> type}
 ui.type = {}  --{patt|f(attr) -> type}
 
 --find an attribute type based on its name
@@ -478,6 +552,8 @@ ui.type['_color_'] = 'color'
 ui.type['_colors$'] = 'gradient_colors'
 
 --transition animations ------------------------------------------------------
+
+local default_ease = 'expo out'
 
 ui.transition = ui.object:subclass'transition'
 
@@ -543,7 +619,7 @@ function ui.transition:after_init(ui, elem, attr, to,
 
 	function self:end_value()
 		if self.next_transition then
-			return self.next_transition.to
+			return self.next_transition:end_value()
 		end
 		return to
 	end
@@ -671,34 +747,21 @@ end
 local element = ui.object:subclass'element'
 ui.element = element
 ui.element.ui = ui
-ui.element.stylesheet = ui.stylesheet
 
-element.visible = true
-element.activable = false --can be clicked and set as hot
-element.mousedown_activate = false --activate on left mouse down
-element.targetable = false --can be a potential drop target
-element.vscrollable = false --can be hit for vscroll while not focused
-element.hscrollable = false --can be hit for hscroll while not focused
-element.scrollable = false --can be hit for vscroll or hscroll
-element.focusable = false --can be focused
+function element:expand_attr(attr, val)
+	return self.ui:expand_attr(attr, val, self)
+end
 
-element.transition_duration = 0
-element.transition_ease = default_ease
-element.transition_delay = 0
-element.transition_repeat = 1
-element.transition_speed = 1
-element.transition_blend = 'replace_nodelay'
+--init
 
---tags & styles
-
-function element:init_ignore(t)
+function element:init_ignore(t) --class method
 	if self._init_ignore == self.super._init_ignore then
 		self._init_ignore = update({}, self.super._init_ignore)
 	end
 	update(self._init_ignore, t)
 end
 
-function element:init_priority(t)
+function element:init_priority(t) --class method
 	if self._init_priority == self.super._init_priority then
 		self._init_priority = update({}, self.super._init_priority)
 	end
@@ -706,16 +769,58 @@ function element:init_priority(t)
 end
 
 element:init_priority{}
-element:init_ignore{tags=1, stylesheet=1}
+element:init_ignore{}
 
---override element constructor to take in additional initialization tables
+--override element constructor so that:
+-- 1) it can take multiple initialization tables as args.
+-- 2) it inherits the class to get default values directly through t.
 function element:override_create(inherited, ui, t, ...)
-	return inherited(self, ui, update({}, t, ...))
+	local t = inherit(update({}, t, ...), self)
+	return inherited(self, ui, t)
 end
 
-function element:expand_attr(attr, val)
-	return self.ui:expand_attr(attr, val, self)
+function element:init_fields(t)
+	--set attributes in priority and/or lexicographic order so that eg.
+	--`border_width` comes before `border_width_left`.
+	local pri = self._init_priority
+	local function cmp(a, b)
+		local pa, pb = pri[a], pri[b]
+		if pa and pb then
+			return pa < pb
+		elseif pa then
+			return true
+		elseif pb then
+			return false
+		else
+			return a < b
+		end
+	end
+	local ignore = self._init_ignore
+	for k,v in sortedpairs(t, cmp) do
+		if not ignore[k] then
+			self[k] = v
+		end
+	end
 end
+
+function element:after_init(ui, t)
+	self.ui = ui()
+	self:init_tags(t)
+	self:init_fields(t)
+	self.ui:_add_element(self)
+end
+
+function element:before_free()
+	self.ui:off{nil, self}
+	self.ui:_remove_element(self)
+	self.ui = false
+end
+
+--tags & styles
+
+element.stylesheet = ui.stylesheet
+
+element:init_ignore{tags=1, stylesheet=1}
 
 local function add_tags(tags, s)
 	if not s then return end
@@ -723,10 +828,7 @@ local function add_tags(tags, s)
 		tags[tag] = true
 	end
 end
-function element:after_init(ui, t)
-	self.ui = ui()
-	self.ui:_add_element(self)
-
+function element:init_tags(t)
 	--custom class tags
 	local class_tags = self.tags
 	self.tags = {['*'] = true}
@@ -748,53 +850,10 @@ function element:after_init(ui, t)
 		if t.stylesheet then
 			self.stylesheet = t.stylesheet
 		end
-
 		if t.tags then
 			add_tags(self.tags, t.tags)
 		end
-
-		--set attributes in priority and/or lexicographic order so that eg.
-		--`border_width` comes before `border_width_left`.
-		local pri = self._init_priority
-		local function cmp(a, b)
-			local pa, pb = pri[a], pri[b]
-			if pa and pb then
-				return pa < pb
-			elseif pa then
-				return true
-			elseif pb then
-				return false
-			else
-				return a < b
-			end
-		end
-		local ignore = self._init_ignore
-		for k,v in sortedpairs(t, cmp) do
-			if not ignore[k] then
-				self[k] = v
-			end
-		end
-
-		--create _init_vars table to get init_ignore var values
-		local init = {}
-		setmetatable(init, init)
-		self._init_vars = init
-		function init.__index(init, k)
-			if t[k] ~= nil then
-				return t[k]
-			else
-				return self.super[k]
-			end
-		end
-	else
-		self._init_vars = inherit({}, self)
 	end
-end
-
-function element:free()
-	self.ui:off{nil, self}
-	self.ui:_remove_element(self)
-	self.ui = false
 end
 
 function element:settag(tag, op)
@@ -917,6 +976,13 @@ function element:end_value(attr)
 	end
 end
 
+element.transition_duration = 0
+element.transition_ease = default_ease
+element.transition_delay = 0
+element.transition_repeat = 1
+element.transition_speed = 1
+element.transition_blend = 'replace_nodelay'
+
 function element:transition(attr, val, duration, ease, delay, times, backval, blend)
 
 	if type(val) == 'function' then --computed value
@@ -1031,10 +1097,9 @@ function window:override_init(inherited, ui, t)
 		parent = parent.view
 	end
 	if not win then
-		local s = self.super
 		local nt = {}
 		for k in pairs(native_fields) do
-			nt[k] = (t[k] ~= nil and t or s)[k]
+			nt[k] = t[k]
 		end
 		show_it = nt.visible ~= false --defer
 		nt.parent = parent and assert(parent.window.native_window)
@@ -1077,8 +1142,7 @@ function window:override_init(inherited, ui, t)
 
 	inherited(self, ui, t)
 
-	--forward native events
-	local native_events = {
+	self:forward_events(win, {
 		'activated', 'deactivated', 'wakeup',
 		'shown', 'hidden',
 		'minimized', 'unminimized',
@@ -1093,12 +1157,7 @@ function window:override_init(inherited, ui, t)
 		'free_cairo', 'free_bitmap',
 		'scalingfactor_changed',
 		--TODO: dispatch to widgets: 'dropfiles', 'dragging',
-	}
-	for _,event in ipairs(native_events) do
-		win:on({event, self}, function(win, ...)
-			return self:fire(event, ...)
-		end)
-	end
+	})
 
 	self.mouse_x = win:mouse'x' or false
 	self.mouse_y = win:mouse'y' or false
@@ -1215,8 +1274,8 @@ function window:override_init(inherited, ui, t)
 	end)
 
 	win:on({'changed', self}, function(win, _, state)
-		self:settag('active', state.active)
-		self:settag('fullscreen', state.fullscreen)
+		self:settag(':active', state.active)
+		self:settag(':fullscreen', state.fullscreen)
 	end)
 
 	--create `window_*` events in ui (needed for ui_popup)
@@ -1442,8 +1501,11 @@ end
 --methods
 function window:closing(reason) end --stub
 function window:close(reason)
-	self._close_reason = reason
-	self.native_window:close()
+	--closing asynchronously so that we don't destroy the window inside an event.
+	self.ui:runafter(0, function()
+		self._close_reason = reason
+		self.native_window:close()
+	end)
 end
 function window:show()        self.native_window:show() end
 function window:hide()        self.native_window:hide() end
@@ -1467,69 +1529,19 @@ function window:get_dead()
 	return not self.native_window or self.native_window:dead()
 end
 
-function window:get_min_cw()
-	if self:isinstance() then
-		return (self.native_window:minsize())
-	else
-		return self._min_cw
-	end
-end
+function window:get_min_cw() return (select(1, self.native_window:minsize())) end
+function window:get_min_ch() return (select(2, self.native_window:minsize())) end
+function window:get_max_cw() return (select(1, self.native_window:maxsize())) end
+function window:get_max_ch() return (select(2, self.native_window:maxsize())) end
+function window:set_min_cw(cw) self.native_window:minsize(cw, nil) end
+function window:set_min_ch(ch) self.native_window:minsize(nil, ch) end
+function window:set_max_cw(cw) self.native_window:maxsize(cw, nil) end
+function window:set_max_ch(ch) self.native_window:maxsize(nil, ch) end
 
-function window:get_min_ch()
-	if self:isinstance() then
-		return (select(2, self.native_window:minsize()))
-	else
-		return self._min_ch
-	end
-end
-
-function window:get_max_cw()
-	if self:isinstance() then
-		return (self.native_window:maxsize())
-	else
-		return self._max_cw
-	end
-end
-
-function window:get_max_ch()
-	if self:isinstance() then
-		return (select(2, self.native_window:maxsize()))
-	else
-		return self._max_ch
-	end
-end
-
-function window:set_min_cw(cw)
-	if self:isinstance() then
-		self.native_window:minsize(cw, nil)
-	else
-		self._min_cw = cw
-	end
-end
-
-function window:set_min_ch(ch)
-	if self:isinstance() then
-		self.native_window:minsize(nil, ch)
-	else
-		self._min_ch = ch
-	end
-end
-
-function window:set_max_cw(cw)
-	if self:isinstance() then
-		self.native_window:maxsize(cw, nil)
-	else
-		self._max_cw = cw
-	end
-end
-
-function window:set_max_ch(ch)
-	if self:isinstance() then
-		self.native_window:maxsize(nil, ch)
-	else
-		self._max_ch = ch
-	end
-end
+window:instance_only'min_cw'
+window:instance_only'min_ch'
+window:instance_only'max_cw'
+window:instance_only'max_ch'
 
 function window:_settooltip(text)
 	return self.native_window:tooltip(text)
@@ -2047,10 +2059,16 @@ local layer = element:subclass'layer'
 ui.layer = layer
 
 layer:init_ignore{parent=1, enabled=1}
-layer._enabled = true
 
-layer.activable = true
-layer.targetable = true
+layer.visible = true
+layer._enabled = true
+layer.activable = true --can be clicked and set as hot
+layer.targetable = true --can be a potential drop target
+layer.vscrollable = false --enable mouse wheel when hot and not focused
+layer.hscrollable = false --enable mouse horiz. wheel when hot and not focused
+layer.scrollable = false --can be hit for vscroll or hscroll
+layer.focusable = false --can be focused
+layer.mousedown_activate = false --activate/deactivate on left mouse down/up
 
 local function args4(s, convert) --parse a string of 4 non-space args
 	local a1, a2, a3, a4
@@ -2067,144 +2085,18 @@ local function args4(s, convert) --parse a string of 4 non-space args
 	end
 end
 
-function ui.expand:padding(s)
-	self.padding_left, self.padding_top, self.padding_right,
-		self.padding_bottom = args4(s, tonumber)
-end
-
-function ui.expand:border_color(s)
-	self.border_color_left, self.border_color_right, self.border_color_top,
-		self.border_color_bottom = args4(s)
-end
-
-function ui.expand:border_width(s)
-	self.border_width_left, self.border_width_right, self.border_width_top,
-		self.border_width_bottom = args4(s, tonumber)
-end
-
-function ui.expand:corner_radius(s)
-	self.corner_radius_top_left, self.corner_radius_top_right,
-		self.corner_radius_bottom_right, self.corner_radius_bottom_left =
-			args4(s, tonumber)
-end
-
-function ui.expand:scale(scale)
-	self.scale_x = scale
-	self.scale_y = scale
-end
-
-function ui.expand:background_scale(scale)
-	self.background_scale_x = scale
-	self.background_scale_y = scale
-end
-
-function layer:set_padding(s) self:expand_attr('padding', s) end
-function layer:set_border_color(s) self:expand_attr('border_color', s) end
-function layer:set_border_width(s) self:expand_attr('border_width', s) end
-function layer:set_corner_radius(s) self:expand_attr('corner_radius', s) end
-function layer:set_scale(scale) self:expand_attr('scale', scale) end
-function layer:set_background_scale(scale)
-	self:expand_attr('background_scale', scale)
-end
-
-layer.x = 0
-layer.y = 0
-layer.w = 0
-layer.h = 0
-layer.rotation = 0
-layer.rotation_cx = 0
-layer.rotation_cy = 0
-layer.scale_x = 1
-layer.scale_y = 1
-layer.scale_cx = 0
-layer.scale_cy = 0
-
-layer.opacity = 1
-
-layer.clip_content = false --'padding'/true, 'background', false
-
-layer.padding = 0
-
-layer.background_type = 'color' --false, 'color', 'gradient', 'radial_gradient', 'image'
-layer.background_hittable = true
---all backgrounds
-layer.background_x = 0
-layer.background_y = 0
-layer.background_rotation = 0
-layer.background_rotation_cx = 0
-layer.background_rotation_cy = 0
-layer.background_scale = 1
-layer.background_scale_cx = 0
-layer.background_scale_cy = 0
---solid color backgrounds
-layer.background_color = false --no background
---gradient backgrounds
-layer.background_colors = false --{[offset1], color1, ...}
---linear gradient backgrounds
-layer.background_x1 = 0
-layer.background_y1 = 0
-layer.background_x2 = 0
-layer.background_y2 = 0
---radial gradient backgrounds
-layer.background_cx1 = 0
-layer.background_cy1 = 0
-layer.background_r1 = 0
-layer.background_cx2 = 0
-layer.background_cy2 = 0
-layer.background_r2 = 0
---image backgrounds
-layer.background_image = false
-
-layer.background_operator = 'over'
--- overlapping between background clipping edge and border stroke.
--- -1..1 goes from inside to outside of border edge.
-layer.background_clip_border_offset = 1
-
-layer.border_width = 0 --no border
-layer.corner_radius = 0 --square
-layer.border_color = '#0000'
--- border stroke positioning relative to box edge.
--- -1..1 goes from inside to outside of box edge.
-layer.border_offset = -1
---draw rounded corners with a modified bezier for smoother line-to-arc
---transitions. kappa=1 uses circle arcs instead.
-layer.corner_radius_kappa = 1.2
-
-layer.shadow_x = 0
-layer.shadow_y = 0
-layer.shadow_color = '#000'
-layer.shadow_blur = 0
-
-layer.text_align = 'center'
-layer.text_valign = 'center'
-layer.text_multiline = true
-layer.text_operator = 'over'
-layer.text = nil
-layer.font_family = 'Open Sans'
-layer.font_weight = 'normal'
-layer.font_slant = 'normal'
-layer.text_size = 14
-layer.text_color = '#fff'
-layer.line_spacing = 1
-
-ui:style('layer disabled', {
+ui:style('layer :disabled', {
 	text_color = '#666',
 })
 
 layer.cursor = false  --false or cursor name from nw
-layer._tooltip = false --false or text
 
 layer.drag_threshold = 0 --moving distance before start dragging
 layer.max_click_chain = 1 --2 for getting doubleclick events etc.
 layer.hover_delay = 1 --TODO: hover event delay
 
-layer.tabindex = false
-layer.tabgroup = false
-
 function layer:after_init(ui, t)
-	if t.enabled ~= nil then
-		self._enabled = t.enabled
-	end
+	self._enabled = t.enabled
 	--setting parent after _enabled updates the `disabled` tag only once.
 	self.parent = t.parent
 end
@@ -2222,6 +2114,27 @@ function layer:before_free()
 		self.parent:remove_layer(self, true)
 	end
 end
+
+--layer relative geometry & matrix
+
+function ui.expand:scale(scale)
+	self.scale_x = scale
+	self.scale_y = scale
+end
+
+function layer:set_scale(scale) self:expand_attr('scale', scale) end
+
+layer.x = 0
+layer.y = 0
+layer.w = 0
+layer.h = 0
+layer.rotation = 0
+layer.rotation_cx = 0
+layer.rotation_cy = 0
+layer.scale_x = 1
+layer.scale_y = 1
+layer.scale_cx = 0
+layer.scale_cy = 0
 
 local mt = cairo.matrix()
 function layer:rel_matrix() --box matrix relative to parent's content space
@@ -2441,9 +2354,9 @@ end
 
 function layer:_mouseenter(mx, my, area)
 	local mx, my = self:from_window(mx, my)
-	self:settag('hot', true)
+	self:settag(':hot', true)
 	if area then
-		self:settag('hot_'..area, true)
+		self:settag(':hot_'..area, true)
 	end
 	self:fire('mouseenter', mx, my, area)
 	self.window:_settooltip(self.tooltip)
@@ -2454,9 +2367,9 @@ function layer:_mouseleave()
 	self.window:_settooltip(false)
 	self:fire'mouseleave'
 	local area = self.ui.hot_area
-	self:settag('hot', false)
+	self:settag(':hot', false)
 	if area then
-		self:settag('hot_'..area, false)
+		self:settag(':hot_'..area, false)
 	end
 	self:invalidate()
 end
@@ -2517,7 +2430,7 @@ function layer:accept_drop_widget(widget, area) return true; end
 
 --called on the dragged widget once upon entering a new drop target.
 function layer:_enter_drop_target(widget, area)
-	self:settag('dropping', true)
+	self:settag(':dropping', true)
 	self:fire('enter_drop_target', widget, area)
 	self:invalidate()
 end
@@ -2525,14 +2438,14 @@ end
 --called on the dragged widget once upon leaving a drop target.
 function layer:_leave_drop_target(widget)
 	self:fire('leave_drop_target', widget)
-	self:settag('dropping', false)
+	self:settag(':dropping', false)
 	self:invalidate()
 end
 
 --called on the dragged widget when dragging starts.
 function layer:_started_dragging()
 	self.dragging = true
-	self:settag('dragging', true)
+	self:settag(':dragging', true)
 	self:fire'started_dragging'
 	self:invalidate()
 end
@@ -2540,13 +2453,13 @@ end
 --called on the dragged widget when dragging ends.
 function layer:_ended_dragging()
 	self.dragging = false
-	self:settag('dragging', false)
+	self:settag(':dragging', false)
 	self:fire'ended_dragging'
 	self:invalidate()
 end
 
 function layer:_set_drop_target(set)
-	self:settag('drop_target', set)
+	self:settag(':drop_target', set)
 	self:invalidate()
 end
 
@@ -2554,7 +2467,7 @@ end
 function layer:_start_drag(button, mx, my, area)
 	local widget, dx, dy = self:start_drag(button, mx, my, area)
 	if widget then
-		self:settag('drag_source', true)
+		self:settag(':drag_source', true)
 		for i,elem in ipairs(self.ui.elements) do
 			if elem.targetable then
 				if self.ui:_accept_drop(widget, elem) then
@@ -2571,7 +2484,7 @@ end
 function layer:start_drag(button, mx, my, area) end
 
 function layer:_end_drag() --called on the drag_start_widget
-	self:settag('drag_source', false)
+	self:settag(':drag_source', false)
 	self:fire('end_drag', self.ui.drag_widget)
 	self:invalidate()
 end
@@ -2622,7 +2535,7 @@ function layer:get_enabled()
 end
 
 function layer:_update_enabled(enabled)
-	self:settag('disabled', not enabled)
+	self:settag(':disabled', not enabled)
 	if self.layers then
 		for i,layer in ipairs(self.layers) do
 			layer:_update_enabled(enabled)
@@ -2640,6 +2553,8 @@ function layer:set_enabled(enabled)
 end
 
 --tooltip property
+
+layer._tooltip = false --false or text
 
 function layer:get_tooltip()
 	return self._tooltip
@@ -2671,7 +2586,7 @@ function window:unfocus()
 	local fw = self.focused_widget
 	if not fw then return end
 	fw:fire'lostfocus'
-	fw:settag('focused', false)
+	fw:settag(':focused', false)
 	self:fire('lostfocus', fw)
 	self.ui:fire('lostfocus', fw)
 	fw:invalidate()
@@ -2687,7 +2602,7 @@ function layer:focus()
 		if not self.focused then
 			self.window:unfocus()
 			self:fire'gotfocus'
-			self:settag('focused', true)
+			self:settag(':focused', true)
 			self.window.focused_widget = self
 			self.window:fire('widget_gotfocus', self)
 			self.ui:fire('gotfocus', self)
@@ -2723,6 +2638,8 @@ function layer:get_focused_widget()
 	end
 end
 
+layer.tabindex = 0
+layer.tabgroup = 0
 layer._taborder = 'vh' --simple vertical-first-horizontal-second tab order
 
 function layer:get_taborder()
@@ -2754,10 +2671,10 @@ function layer:focusable_widgets(t)
 					return ax1 < bx1
 				end
 			else
-				return (t1.tabindex or 0) < (t2.tabindex or 0)
+				return t1.tabindex < t2.tabindex
 			end
 		else
-			return (t1.tabgroup or 0) < (t2.tabgroup or 0)
+			return t1.tabgroup < t2.tabgroup
 		end
 	end)
 	return t
@@ -2769,6 +2686,11 @@ function layer:first_focusable_widget()
 end
 
 function layer:next_focusable_widget(forward)
+	if forward and self.nexttab then
+		return self.nexttab
+	elseif not forward and self.prevtab then
+		return self.prevtab
+	end
 	local t = self.window.view:focusable_widgets()
 	for i,layer in ipairs(t) do
 		if layer == self then
@@ -2808,6 +2730,36 @@ function layer:hit_test_layers(x, y, reason) --called in content space
 end
 
 --border geometry and drawing
+
+function ui.expand:border_color(s)
+	self.border_color_left, self.border_color_right, self.border_color_top,
+		self.border_color_bottom = args4(s)
+end
+
+function ui.expand:border_width(s)
+	self.border_width_left, self.border_width_right, self.border_width_top,
+		self.border_width_bottom = args4(s, tonumber)
+end
+
+function ui.expand:corner_radius(s)
+	self.corner_radius_top_left, self.corner_radius_top_right,
+		self.corner_radius_bottom_right, self.corner_radius_bottom_left =
+			args4(s, tonumber)
+end
+
+function layer:set_border_color(s) self:expand_attr('border_color', s) end
+function layer:set_border_width(s) self:expand_attr('border_width', s) end
+function layer:set_corner_radius(s) self:expand_attr('corner_radius', s) end
+
+layer.border_width = 0 --no border
+layer.corner_radius = 0 --square
+layer.border_color = '#0000'
+-- border stroke positioning relative to box edge.
+-- -1..1 goes from inside to outside of box edge.
+layer.border_offset = -1
+--draw rounded corners with a modified bezier for smoother line-to-arc
+--transitions. kappa=1 uses circle arcs instead.
+layer.corner_radius_kappa = 1.2
 
 --border edge widths relative to box rect at %-offset in border width.
 --offset is in -1..1 where -1=inner edge, 0=center, 1=outer edge.
@@ -3073,6 +3025,50 @@ end
 
 --background geometry and drawing
 
+function ui.expand:background_scale(scale)
+	self.background_scale_x = scale
+	self.background_scale_y = scale
+end
+
+function layer:set_background_scale(scale)
+	self:expand_attr('background_scale', scale)
+end
+
+layer.background_type = 'color' --false, 'color', 'gradient', 'radial_gradient', 'image'
+layer.background_hittable = true
+--all backgrounds
+layer.background_x = 0
+layer.background_y = 0
+layer.background_rotation = 0
+layer.background_rotation_cx = 0
+layer.background_rotation_cy = 0
+layer.background_scale = 1
+layer.background_scale_cx = 0
+layer.background_scale_cy = 0
+--solid color backgrounds
+layer.background_color = false --no background
+--gradient backgrounds
+layer.background_colors = false --{[offset1], color1, ...}
+--linear gradient backgrounds
+layer.background_x1 = 0
+layer.background_y1 = 0
+layer.background_x2 = 0
+layer.background_y2 = 0
+--radial gradient backgrounds
+layer.background_cx1 = 0
+layer.background_cy1 = 0
+layer.background_r1 = 0
+layer.background_cx2 = 0
+layer.background_cy2 = 0
+layer.background_r2 = 0
+--image backgrounds
+layer.background_image = false
+
+layer.background_operator = 'over'
+-- overlapping between background clipping edge and border stroke.
+-- -1..1 goes from inside to outside of border edge.
+layer.background_clip_border_offset = 1
+
 function layer:background_visible()
 	return (
 		(self.background_type == 'color' and self.background_color)
@@ -3158,6 +3154,10 @@ end
 
 --box-shadow geometry and drawing
 
+layer.shadow_x = 0
+layer.shadow_y = 0
+layer.shadow_color = '#000'
+layer.shadow_blur = 0
 layer._shadow_blur_passes = 2
 
 function layer:shadow_visible()
@@ -3272,6 +3272,18 @@ end
 
 --text geometry and drawing
 
+layer.text_align = 'center'
+layer.text_valign = 'center'
+layer.text_multiline = true
+layer.text_operator = 'over'
+layer.text = nil
+layer.font_family = 'Open Sans'
+layer.font_weight = 'normal'
+layer.font_slant = 'normal'
+layer.text_size = 14
+layer.text_color = '#fff'
+layer.line_spacing = 1
+
 function layer:text_visible()
 	return self.text and self.text ~= '' and true or false
 end
@@ -3296,6 +3308,15 @@ end
 
 --content-box geometry, drawing and hit testing
 
+function ui.expand:padding(s)
+	self.padding_left, self.padding_top, self.padding_right,
+		self.padding_bottom = args4(s, tonumber)
+end
+
+function layer:set_padding(s) self:expand_attr('padding', s) end
+
+layer.padding = 0
+
 function layer:padding_pos() --in box space
 	return
 		self.padding_left,
@@ -3319,6 +3340,11 @@ function layer:from_content(x, y) --content space coord in box space
 	local px, py = self:padding_pos()
 	return px + x, py + y
 end
+
+--layer drawing & hit testing
+
+layer.opacity = 1
+layer.clip_content = false --'padding'/true, 'background', false
 
 function layer:draw_content(cr) --called in own content space
 	self:draw_layers(cr)
@@ -3534,7 +3560,7 @@ function layer:set_active(active)
 	if self.active == active then return end
 	local active_widget = self.ui.active_widget
 	if active_widget then
-		active_widget:settag('active', false)
+		active_widget:settag(':active', false)
 		self.ui.active_widget = false
 		active_widget:fire'deactivated'
 		active_widget.window:fire('widget_deactivated', active_widget)
@@ -3542,7 +3568,7 @@ function layer:set_active(active)
 	end
 	if active then
 		self.ui.active_widget = self
-		self:settag('active', true)
+		self:settag(':active', true)
 		self:fire'activated'
 		self.window:fire('widget_activated', self)
 		self.ui:fire('activated', self)

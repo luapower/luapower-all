@@ -69,14 +69,14 @@ ui:style('editbox', {
 	transition_ease = 'expo out',
 })
 
-ui:style('editbox hot', {
+ui:style('editbox :hot', {
 	border_color = '#999',
 	transition_border_color = true,
 	transition_duration = .5,
 	transition_ease = 'expo out',
 })
 
-ui:style('editbox focused', {
+ui:style('editbox :focused', {
 	selection_background_color = '#666',
 	selection_text_color = '#fff',
 	border_color = '#fff',
@@ -153,7 +153,7 @@ end
 
 function editbox:mousewheel(delta, mx, my, area, pdelta)
 	self:_sync()
-	self.vscrollbar:scroll_by(delta * self.editor.view.line_h)
+	self.vscrollbar:scroll(delta * self.editor.view.line_h)
 end
 
 function view:begin_clip(x, y, w, h)
@@ -367,7 +367,7 @@ function editbox:_set_multiline(multiline)
 	self.editor.buffer.multiline = multiline
 	self.vscrollbar.visible = multiline
 	self.hscrollbar.visible = multiline
-	self:settags(multiline and 'multiline' or '-multiline')
+	self:settag('multiline', multiline)
 	self:invalidate()
 end
 

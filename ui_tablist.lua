@@ -46,9 +46,9 @@ end
 function ui.tab:after_set_active(active)
 	if active then
 		if self.parent.front_tab then
-			self.parent.front_tab:settags'-front_tab'
+			self.parent.front_tab:settag(':front_tab', false)
 		end
-		self:settags'front_tab'
+		self:settag(':front_tab', true)
 		self:to_front()
 	end
 end
@@ -210,9 +210,9 @@ end
 function ui.tablist:after_add_layer(tab)
 	if not tab.istab then return end
 	if self.front_tab then
-		self.front_tab:settags'-front_tab'
+		self.front_tab:settag(':front_tab', false)
 	end
-	tab:settags'front_tab'
+	tab:settag(':front_tab', true)
 	local index = self:clamped_index(tab.index, true)
 	table.insert(self.tabs, index, tab)
 	tab.h = self.h + 1
@@ -275,21 +275,21 @@ if not ... then require('ui_demo')(function(ui, win)
 		border_width = 1,
 	})
 
-	ui:style('tab hot', {
+	ui:style('tab :hot', {
 		background_color = '#dd8',
 		transition_background_color = true,
 		transition_duration = 1.5,
 	})
 
-	ui:style('tab focused', {
+	ui:style('tab :focused', {
 		font_weight = 'bold',
 	})
 
-	ui:style('tab active', {
+	ui:style('tab :active', {
 		font_slant = 'italic',
 	})
 
-	ui:style('tab front_tab', {
+	ui:style('tab :front_tab', {
 		background_color = ui.initial,
 		border_color = '#0003',
 		transition_duration = 0,

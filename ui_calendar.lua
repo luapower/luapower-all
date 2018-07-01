@@ -28,11 +28,11 @@ local function month(time)
 	return t0
 end
 
-ui:style('grid_cell current_month', {
+ui:style('grid_cell :current_month', {
 	background_color = '#111',
 })
 
-ui:style('grid_cell today', {
+ui:style('grid_cell :today', {
 	background_color = '#260',
 })
 

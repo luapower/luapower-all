@@ -10,7 +10,6 @@ local cairo = require'cairo'
 local line = require'path2d_line'
 local lerp = glue.lerp
 local clamp = glue.clamp
-require'ui_slider'
 
 --hue vertical bar -----------------------------------------------------------
 
@@ -19,13 +18,28 @@ ui.hue_bar = hue_bar
 
 --model
 
-hue_bar.hue = 0
-hue_bar:track_changes'hue'
+function hue_bar:get_hue()
+	return self._hue
+end
 
-function hue_bar:override_set_hue(inherited, hue)
-	if inherited(self, clamp(hue, 0, 360)) then
-		self:invalidate()
+function hue_bar:set_hue(hue)
+	hue = clamp(hue, 0, 360)
+	local old_hue = self._hue
+	if old_hue ~= hue then
+		self._hue = hue
+		if self:isinstance() then
+			self:fire('hue_changed', hue, old_hue)
+			self:invalidate()
+		end
 	end
+end
+
+hue_bar.hue = 0
+
+hue_bar:init_ignore{hue=1}
+
+function hue_bar:after_init(ui, t)
+	self._hue = t.hue
 end
 
 --view/hue-bar
@@ -76,7 +90,7 @@ end
 
 hue_bar.needle_pointer_color = '#0008'
 
-ui:style('hue_bar focused', {
+ui:style('hue_bar :focused', {
 	needle_pointer_color = '#000',
 })
 
@@ -116,7 +130,7 @@ rule.corner_radius = 3
 rule.outline_width = 1
 rule.outline_color = '#333'
 
-ui:style('hue_bar focused > hue_bar_sliderule', {
+ui:style('hue_bar :focused > hue_bar_sliderule', {
 	opacity = 1,
 })
 
@@ -244,7 +258,7 @@ end
 
 prect.pointer_cross_opacity = .5
 
-ui:style('pick_rectangle focused', {
+ui:style('pick_rectangle :focused', {
 	pointer_cross_opacity = 1,
 })
 
@@ -278,7 +292,7 @@ prect.circle_pointer_outline_width = 1
 prect.circle_pointer_radius = 9
 prect.circle_pointer_inner_radius = 6
 
-ui:style('pick_rectangle focused', {
+ui:style('pick_rectangle :focused', {
 	circle_pointer_color = '#fff',
 	circle_pointer_outline_color = '#333',
 })
@@ -356,6 +370,10 @@ slrect.hue = 0
 slrect.sat = 0
 slrect.lum = 0
 
+slrect:stored_property'hue'
+slrect:stored_property'sat'
+slrect:stored_property'lum'
+
 slrect:track_changes'hue'
 slrect:track_changes'sat'
 slrect:track_changes'lum'
@@ -392,6 +410,14 @@ function prect:get_b() return 1-self.lum end
 function prect:set_b(b) self.lum = 1-b end
 function prect:a_range() return 0, 1 end
 function prect:b_range() return 0, 1 end
+
+slrect:init_ignore{hue=1, sat=1, lum=1}
+
+function hue_bar:after_init(ui, t)
+	self._hue = t.hue
+	self._sat = t.sat
+	self._lum = t.lum
+end
 
 --view
 
@@ -445,6 +471,10 @@ svrect.hue = 0
 svrect.sat = 0
 svrect.val = 0
 
+svrect:stored_property'hue'
+svrect:stored_property'sat'
+svrect:stored_property'val'
+
 svrect:track_changes'hue'
 svrect:track_changes'sat'
 svrect:track_changes'val'
@@ -481,6 +511,14 @@ function svrect:get_b() return 1-self.val end
 function svrect:set_b(b) self.val = 1-b end
 function svrect:a_range() return 0, 1 end
 function svrect:b_range() return 0, 1 end
+
+slrect:init_ignore{hue=1, sat=1, val=1}
+
+function hue_bar:after_init(ui, t)
+	self._hue = t.hue
+	self._sat = t.sat
+	self._val = t.val
+end
 
 --view
 
@@ -522,10 +560,6 @@ end
 
 local sltr = slrect:subclass'sat_lum_triangle'
 ui.sat_lum_triangle = sltr
-
-sltr.angle = 0
-
-sltr:track_changes'angle'
 
 function sltr:override_set_angle(inherited, angle)
 	if inherited(self, angle % 360) then
@@ -849,7 +883,7 @@ end
 
 picker:init_ignore{mode=1}
 
-function picker:after_init()
+function picker:after_init(ui, t)
 
 	self.hue_bar = self:create_hue_bar()
 
@@ -905,14 +939,14 @@ function picker:after_init()
 		end,
 	}
 
-	self.mode = self._init_vars.mode
+	self.mode = t.mode
 end
 
 --demo -----------------------------------------------------------------------
 
 if not ... then require('ui_demo')(function(ui, win)
 
-	win.layer.background_color = '#222'
+	win.view.background_color = '#222'
 
 	local cp = ui:colorpicker{
 		x = 20, y = 20,

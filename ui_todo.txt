@@ -4,8 +4,6 @@ NW ---------------------------------------------------------------------------
 
 UI ---------------------------------------------------------------------------
 
-- fix tab navigation
-
 - fix module autoloading vs css decl. order conflict
 
 - fix style matching order so that styles with state tags are applied later

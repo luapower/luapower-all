@@ -53,7 +53,7 @@ shaft.border_color = '#999'
 shaft.background_color = '#000'
 shaft.clip_content = true --clip the fill
 
-ui:style('slider focused > slider_shaft', {
+ui:style('slider :focused > slider_shaft', {
 	border_color = '#fff',
 	shadow_blur = 2,
 	shadow_color = '#fff',
@@ -63,7 +63,7 @@ fill.activable = false
 fill.h = 10
 fill.background_color = '#444'
 
-ui:style('slider focused > slider_fill', {
+ui:style('slider :focused > slider_fill', {
 	background_color = '#ccc',
 })
 
@@ -81,7 +81,7 @@ ui:style('slider_pin', {
 	transition_background_color = true,
 })
 
-ui:style('slider focused > slider_pin', {
+ui:style('slider :focused > slider_pin', {
 	background_color = '#fff',
 })
 
@@ -89,7 +89,7 @@ ui:style('slider_drag_pin', {
 	opacity = 0,
 })
 
-ui:style('slider_drag_pin dragging', {
+ui:style('slider_drag_pin :dragging', {
 	opacity = .5,
 })
 
@@ -100,7 +100,7 @@ marker.background_color = '#fff'
 marker.background_operator = 'difference'
 marker.opacity = 0
 
-ui:style('slider_marker visible', {
+ui:style('slider_marker :visible', {
 	opacity = 1,
 })
 
@@ -120,7 +120,7 @@ ui:style('slider_tip', {
 	transition_blend_opacity = 'wait',
 })
 
-ui:style('slider_tip visible', {
+ui:style('slider_tip :visible', {
 	opacity = 1,
 	transition_opacity = true,
 	transition_delay_opacity = 0,
@@ -166,7 +166,7 @@ function pin:move(cx)
 	local duration = not self.animate and 0 or nil
 	self:transition('cx', cx, duration)
 	if self.animate then
-		self.slider.tip:settag('visible', true)
+		self.slider.tip:settag(':visible', true)
 	end
 end
 
@@ -252,7 +252,7 @@ function slider:sync()
 	if not p:transitioning'cx' and not dragging and not self.active then
 		p.progress = self.progress
 		if not dragging then
-			self.tip:settag('visible', false)
+			self.tip:settag(':visible', false)
 		end
 	end
 
@@ -261,7 +261,7 @@ function slider:sync()
 
 	m.cy = self.h / 2
 	m.cx = self.pin:cx_at_position(self.position)
-	m:settag('visible', dragging or self.active)
+	m:settag(':visible', dragging or self.active)
 
 	t.x = p.w / 2
 
@@ -341,7 +341,7 @@ function pin:mousedown()
 end
 
 function pin:start_drag()
-	self.slider.tip:settag('visible', true)
+	self.slider.tip:settag(':visible', true)
 	return self.slider:_drag_pin()
 end
 
@@ -424,7 +424,7 @@ function slider:keypress(key)
 	elseif key == 'end' then
 		self.progress = 1
 	elseif key == 'enter' or key == 'space' then
-		self.tip:settag('visible', true)
+		self.tip:settag(':visible', true)
 		self.tip:update_styles()
 	end
 	self.pin.animate = false
@@ -544,20 +544,22 @@ function slider:set_max_position(pos)
 	self.position = self.position --clamp it
 end
 
-slider:track_changes'position'
+function slider:get_position()
+	return self._position
+end
 
-function slider:override_set_position(inherited, pos)
-	local pos = self:nearest_position(pos)
-	if inherited(self, pos) then
-		if self:isinstance() then
-			self.pin.position = self.position
-		end
+function slider:set_position(pos)
+	self._position = pos
+	if self:isinstance() then
+		self._position = self:nearest_position(pos)
+		self.pin.position = self._position
 	end
 end
+slider:track_changes'position'
 
 slider:init_ignore{min_position=1, max_position=1, size=1, position=1, progress=1}
 
-function slider:after_init()
+function slider:after_init(ui, t)
 	local pin_fields = self.pin
 	self.shaft    = self:create_shaft()
 	self.fill     = self:create_fill()
@@ -573,7 +575,6 @@ function slider:after_init()
 			self:create_step_label(text, pos)
 		end
 	end
-	local t = self._init_vars
 	self._min_position = t.min_position
 	self._max_position = t.max_position or (self._min_position + t.size)
 	if t.progress then

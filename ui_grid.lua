@@ -170,7 +170,7 @@ ui:style('grid_splitter', {
 	transition_duration = .1,
 })
 
-ui:style('grid resize_col > grid_splitter', {
+ui:style('grid :resize_col > grid_splitter', {
 	transition_x = false,
 })
 
@@ -218,7 +218,7 @@ function splitter:start_drag(button, mx, my, area)
 	ds.h = self.h
 	ds.visible = true
 
-	self.grid:settag('move_splitter', true)
+	self.grid:settag(':move_splitter', true)
 
 	return ds
 end
@@ -239,7 +239,7 @@ end
 
 function splitter:end_drag(ds)
 	ds.visible = false
-	self.grid:settag('move_splitter', false)
+	self.grid:settag(':move_splitter', false)
 end
 
 --freeze col -----------------------------------------------------------------
@@ -556,9 +556,9 @@ end
 function col:start_drag_resize(button, mx, my)
 	if button ~= 'left' then return end
 	self.resizing = true
-	self:settag('resizing', true)
+	self:settag(':resizing', true)
 	self.grid.resizing_col = self
-	self.grid:settag('resize_col', true)
+	self.grid:settag(':resize_col', true)
 	self.drag_w = self.w
 	self.drag_max_w = self.pane:max_w() - self.pane.content.w + self.w
 	return self
@@ -573,9 +573,9 @@ end
 function col:end_drag_resize()
 	self.drag_w = false
 	self.resizing = false
-	self:settag('resizing', false)
+	self:settag(':resizing', false)
 	self.grid.resizing_col = false
-	self.grid:settag('resize_col', false)
+	self.grid:settag(':resize_col', false)
 end
 
 --column moving --------------------------------------------------------------
@@ -586,9 +586,9 @@ function col:start_drag_move(button, mx, my, area)
 	if not self.moveable then return end
 	self.window.cursor = 'move'
 	self.moving = true
-	self:settag('moving', true)
+	self:settag(':moving', true)
 	self.grid.moving_col = self
-	self.grid:settag('move_col', true)
+	self.grid:settag(':move_col', true)
 	self:to_front()
 	return self
 end
@@ -602,9 +602,9 @@ function col:end_drag_move()
 	self.index = self.move_index
 	self.move_index = false
 	self.moving = false
-	self:settag('moving', false)
+	self:settag(':moving', false)
 	self.grid.moving_col = false
-	self.grid:settag('move_col', false)
+	self.grid:settag(':move_col', false)
 	self.window.cursor = nil
 end
 
@@ -650,19 +650,19 @@ ui:style('grid_col', {
 	transition_duration = .2,
 })
 
-ui:style('grid move_col > grid_col', {
+ui:style('grid :move_col > grid_col', {
 	transition_x = true,
 	transition_duration = .5,
 })
 
 ui:style([[
-	grid resize_col > grid_col,
-	grid move_splitter > grid_col,
+	grid :resize_col > grid_col,
+	grid :move_splitter > grid_col,
 ]], {
 	transition_x = false,
 })
 
-ui:style('grid_col moving, grid_cell moving', {
+ui:style('grid_col :moving, grid_cell :moving', {
 	opacity = .7,
 })
 
@@ -673,67 +673,62 @@ grid.cell_class = cell
 
 cell.clip_content = true
 cell.text_multiline = false
-cell.border_width_bottom = 1
 cell.border_color = '#080808'
 
-ui:style('grid_cell moving', {
+ui:style('grid_cell :moving', {
 	background_color = '#000',
 })
 
-ui:style('grid_cell even', {
+ui:style('grid_cell :even', {
 	background_color = '#040404',
 })
 
-ui:style('grid_cell hot', {
+ui:style('grid_cell :hot', {
 	background_color = '#111',
 })
 
-ui:style('grid_cell selected', {
+ui:style('grid_cell :selected', {
 	background_color = '#111',
 	border_color = '#333',
 })
 
-ui:style('grid_cell grid_focused selected', {
+ui:style('grid_cell :grid_focused :selected', {
 	background_color = '#113',
 	border_color = '#335',
 })
 
-ui:style('grid_cell focused selected', {
+ui:style('grid_cell :focused :selected', {
 	background_color = '#181818',
 	border_color = '#333',
 })
 
-ui:style('grid_cell grid_focused focused selected', {
+ui:style('grid_cell :grid_focused :focused :selected', {
 	background_color = '#181844',
 	border_color = '#669',
 })
 
-ui:style('grid_cell focused', {
+ui:style('grid_cell :focused', {
 	border_width_top = 1,
 	border_width_bottom = 1,
+	border_color = '#0000', --not visibile but preserving the widths
 })
 
-ui:style('grid_cell focused', {
-	border_width_top = 1,
-	border_width_bottom = 1,
-})
-
-ui:style('grid_cell focused first_col', {
+ui:style('grid_cell :focused :first_col', {
 	border_width_left = 1,
 })
 
-ui:style('grid_cell focused last_col', {
+ui:style('grid_cell :focused :last_col', {
 	border_width_right = 1,
 })
 
-ui:style('grid_cell cell_select focused', {
+ui:style('grid_cell :cell_select :focused', {
 	border_width = 1,
 })
 
 function cell:sync_grid(grid)
 	self.grid = grid
-	self:settag('cell_select', self.grid.cell_select)
-	self:settag('grid_focused', self.grid.focused)
+	self:settag(':cell_select', self.grid.cell_select)
+	self:settag(':grid_focused', self.grid.focused)
 end
 
 function cell:sync_col(col)
@@ -754,25 +749,25 @@ function cell:sync_col(col)
 	self.padding_top = col.padding_top
 	self.padding_bottom = col.padding_bottom
 	local index = col.index
-	self:settag('moving', col.moving)
-	self:settag('resizing', col.resizing)
-	self:settag('first_col', index == 1)
-	self:settag('last_col', index == self.grid:rel_visible_col(-1).index)
+	self:settag(':moving', col.moving)
+	self:settag(':resizing', col.resizing)
+	self:settag(':first_col', index == 1)
+	self:settag(':last_col', index == self.grid:rel_visible_col(-1).index)
 end
 
 function cell:sync_row(i, y, h)
 	self.y = y - self.grid.vscrollbar.offset
 	self.h = h
-	self:settag('even', i % 2 == 0)
+	self:settag(':even', i % 2 == 0)
 	if self.grid.moving_row_index == i then
-		self:settag('moving', true)
+		self:settag(':moving', true)
 	end
 end
 
 function cell:sync_value(i, col, val)
 	self.text = tostring(val)
-	self:settag('selected', self.grid:cell_selected(i, col))
-	self:settag('focused', self.grid:cell_focused(i, col))
+	self:settag(':selected', self.grid:cell_selected(i, col))
+	self:settag(':focused', self.grid:cell_focused(i, col))
 end
 
 function cell:invalidate() end --we call draw() manually
@@ -811,7 +806,7 @@ function grid:draw_cell(cr, i, col, hot)
 	cell:sync_row(i, y, h)
 	self:sync_cell(cell, i, col, self:cell_value(i, col))
 	--cell:sync_value(i, col, self:cell_value(i, col))
-	cell:settag('hot', hot)
+	cell:settag(':hot', hot)
 	cell:draw()
 end
 
@@ -918,7 +913,7 @@ function grid:draw_row_col(cr, i, col, y, h, hot)
 	cell:sync_row(i, y, h)
 	self:sync_cell(cell, i, col, self:cell_value(i, col))
 	--cell:sync_value(i, col, self:cell_value(i, col))
-	cell:settag('hot', hot)
+	cell:settag(':hot', hot)
 	cell:draw(cr)
 end
 
@@ -1005,7 +1000,7 @@ function rows:start_drag(button, mx, my)
 		local y, h = self.grid:row_screen_yh(i)
 		self.grid.moving_row_y = y
 		self.grid.moving_row_dy = 0
-		self.grid:settag('move_row', true)
+		self.grid:settag(':move_row', true)
 		return self
 	end
 end
@@ -1017,7 +1012,7 @@ end
 function rows:end_drag()
 	--TODO: move multiple rows
 	self.grid.moving_row_index = false
-	self.grid:settag('move_row', false)
+	self.grid:settag(':move_row', false)
 end
 
 --row drag-select ------------------------------------------------------------

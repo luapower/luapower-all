@@ -31,14 +31,14 @@ end
 
 if not ... then require('ui_demo')(function(ui, win)
 
-	ui:style('window > window_layer hot', {
+	ui:style('window_view :hot', {
 		background_color = '#fff',
 		transition_background_color = true,
 		transition_duration = 1,
 	})
 
-	ui:style('popup > window_layer hot', {
-		background_color = '#fff',
+	ui:style('popup > window_view :hot', {
+		background_color = '#ff0',
 		transition_background_color = true,
 		transition_duration = 1,
 	})

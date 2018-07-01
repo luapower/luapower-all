@@ -28,38 +28,38 @@ ui:style('button', {
 	transition_duration = .5,
 })
 
-ui:style('button default', {
+ui:style('button :default', {
 	background_color = '#092',
 })
 
-ui:style('button hot', {
+ui:style('button :hot', {
 	background_color = '#999',
 	border_color = '#999',
 	text_color = '#000',
 })
 
-ui:style('button default hot', {
+ui:style('button :default :hot', {
 	background_color = '#3e3',
 })
 
-ui:style('button disabled', {
+ui:style('button :disabled', {
 	background_color = '#222',
 	border_color = '#444',
 	text_color = '#666',
 	transition_duration = 0,
 })
 
-ui:style('button active over', {
+ui:style('button :active :over', {
 	background_color = '#fff',
 	text_color = '#000',
 	transition_duration = 0.2,
 })
 
-ui:style('button default active over', {
+ui:style('button :default :active :over', {
 	background_color = '#9f7',
 })
 
-ui:style('button focused', {
+ui:style('button :focused', {
 	border_color = '#fff',
 	shadow_blur = 3,
 	shadow_color = '#666',
@@ -116,13 +116,13 @@ end
 function button:mousemove(mx, my)
 	if self.active_by_key then return end
 	local mx, my = self:to_parent(mx, my)
-	self:settag('over', self:hit_test(mx, my, 'activate') == self)
+	self:settag(':over', self.active and self:hit_test(mx, my, 'activate') == self)
 end
 
 function button:mouseup()
 	if self.active_by_key then return end
 	self.active = false
-	if self.tags.over then
+	if self.tags[':over'] then
 		self:press()
 	end
 end
@@ -131,7 +131,7 @@ function button:keydown(key)
 	if key == 'enter' or key == 'space' then
 		self.active = true
 		self.active_by_key = true
-		self:settag('over', true)
+		self:settag(':over', true)
 	end
 end
 
@@ -140,7 +140,7 @@ function button:keyup(key)
 	if key == 'enter' or key == 'space' or key == 'esc' then
 		self.active = false
 		self.active_by_key = false
-		self:settag('over', false)
+		self:settag(':over', false)
 		if key == 'enter' or key == 'space' then
 			self:press()
 		end
@@ -156,7 +156,7 @@ end
 function button:set_default(default)
 	default = default and true or false
 	self._default = default
-	self:settag('default', default)
+	self:settag(':default', default)
 end
 
 function button:get_cancel()
@@ -166,7 +166,7 @@ end
 function button:set_cancel(cancel)
 	cancel = cancel and true or false
 	self._cancel = cancel
-	self:settag('cancel', cancel)
+	self:settag(':cancel', cancel)
 end
 
 function button:allow_key(key)
@@ -234,7 +234,7 @@ function checkbox:set_checked(checked)
 	checked = checked and true or false
 	if self._checked == checked then return end
 	self._checked = checked
-	self:settag('checked', checked)
+	self:settag(':checked', checked)
 	self:fire(checked and 'was_checked' or 'was_unchecked')
 	self:fire('checked_changed', checked)
 end
@@ -251,12 +251,12 @@ cbutton.text_size = 10
 cbutton.padding_left = 2
 cbutton.padding_right = 0
 
-ui:style('checkbox_button hot', {
+ui:style('checkbox_button :hot', {
 	text_color = '#fff',
 	background_color = '#555',
 })
 
-ui:style('checkbox_button active over', {
+ui:style('checkbox_button :active :over', {
 	background_color = '#888',
 })
 
@@ -381,7 +381,7 @@ ui:style('radiobutton_button', {
 	transition_duration = .2,
 })
 
-ui:style('radiobutton checked > radiobutton_button', {
+ui:style('radiobutton :checked > radiobutton_button', {
 	circle_radius = 1,
 	transition_duration = .2,
 })
@@ -418,7 +418,7 @@ end
 
 --view
 
-ui:style('button selected', {
+ui:style('button :selected', {
 	background_color = '#ccc',
 	text_color = '#000',
 })
@@ -442,7 +442,7 @@ function choicebutton:button_by_index(index)
 end
 
 function choicebutton:get_selected_button()
-	return self:find_button(function(btn) return btn.tags.selected end)
+	return self:find_button(function(btn) return btn.tags[':selected'] end)
 end
 
 function choicebutton:set_selected_button(btn)
@@ -450,7 +450,7 @@ function choicebutton:set_selected_button(btn)
 end
 
 function choicebutton:unselect_button(btn)
-	btn:settag('selected', false)
+	btn:settag(':selected', false)
 end
 
 function choicebutton:select_button(btn, focus)
@@ -460,10 +460,10 @@ function choicebutton:select_button(btn, focus)
 	if sbtn then
 		self:unselect_button(sbtn)
 	end
-	if focus ~= false then
+	if focus then
 		btn:focus()
 	end
-	btn:settag('selected', true)
+	btn:settag(':selected', true)
 	self:fire('value_selected', btn.value)
 end
 
@@ -522,18 +522,16 @@ function choicebutton:create_button(index, value)
 	--input/keyboard
 	function btn.before_keypress(btn, key)
 		if key == 'left' then
-			self:select_button(self:button_by_index(btn.index - 1))
+			self:select_button(self:button_by_index(btn.index - 1), true)
 		elseif key == 'right' then
-			self:select_button(self:button_by_index(btn.index + 1))
+			self:select_button(self:button_by_index(btn.index + 1), true)
 		end
 	end
 
 	return btn
 end
 
-function choicebutton:after_init()
-	local t = self._init_vars
-
+function choicebutton:after_init(ui, t)
 	for i,val in ipairs(t.values) do
 		local btn = self:create_button(type(val) == 'table' and val.index or i, val)
 	end
