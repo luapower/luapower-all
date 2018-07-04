@@ -104,12 +104,13 @@ function meta:__newindex(k,v)
 	if getters and getters[k] then --replacing a read-only property
 		getters[k] = nil
 	end
-	if k:find'^get_' then --install getter
-		local getters = create_table(self, '__getters')
-		self.__getters[k:sub(5)] = v
-	elseif k:find'^set_' then --install setter
-		local setters = create_table(self, '__setters')
-		self.__setters[k:sub(5)] = v
+	if k:find'^get_' or k:find'^set_' then --install getter or setter
+		local name = k:sub(5)
+		if rawget(self, name) ~= nil then
+			error(string.format('attribute "%s" already exists', name))
+		end
+		local tname = k:find'^get_' and '__getters' or '__setters'
+		create_table(self, tname)[name] = v
 	elseif k:find'^before_' then --install before hook
 		local method_name = k:match'^before_(.*)'
 		self:before(method_name, v)
