@@ -20,6 +20,42 @@ filename = root_dir .. '/codedt_demo.lua'
 --text = glue.readfile'c:/temp.c'
 --text = glue.readfile'c:/temp2.c'
 text = ('hello world\r\n'):rep(100)
+text = [==[
+bbbbbb
+--search forwards for:
+	--1) 1..n spaces followed by a non-space char
+	--2) 1..n non-space chars follwed by case 1
+	--3) 1..n word chars followed by a non-word char
+	--4) 1..n non-word chars followed by a word char
+--if the next break should be on a different line, return nil.
+function str.next_word_break_char(s, i, word_chars)
+	i = i or 0
+	assert(i >= 0)
+	if i == 0 then return 1 end
+	if i >= #s then return end
+	if str.isterm(s, i) then return end
+	local expect =
+		str.iswhitespace(s, i) and 'space'
+		or str.isword(s, i, word_chars) and 'word'
+		or 'nonword'
+	for i in str.chars(s, i) do
+		if str.isterm(s, i) then return end
+		if expect == 'space' then --case 1
+			if not str.iswhitespace(s, i) then --case 1 exit
+				return i
+			end
+		elseif str.iswhitespace(s, i) then --case 2 -> case 1
+			expect = 'space'
+		elseif
+			expect ~= (str.isword(s, i, word_chars) and 'word' or 'nonword')
+		then --case 3 and 4 exit
+			return i
+		end
+	end
+	return str.next_char(s, i)
+end
+]==] .. text
+
 --text = glue.readfile(root_dir .. 'codedit.lua')
 
 player.show_magnifier = false
@@ -41,7 +77,7 @@ function player:on_render(cr)
 	self.layout.default_w = nav_w
 	self.layout.default_h = 22
 
-	for i = 1, n do
+	for i = 2, n do
 		local w = math.floor(self.w / n)
 		local h = self.h - editor_y - 20
 		local x = (i - 1) * w + 20
@@ -63,10 +99,10 @@ function player:on_render(cr)
 				multiline = i > 1,
 			},
 			cursor = {
-				restrict_eof = true,
-				--restrict_eol = false,
-				--land_bof = false,
-				--land_eof = false,
+				restrict_eof = false,
+				restrict_eol = false,
+				land_bof = false,
+				land_eof = false,
 			},
 		}
 
@@ -182,9 +218,9 @@ function player:on_render(cr)
 			text = 'eol_markers',
 			selected = editor.eol_markers}
 
-		local s = editor.buffer.undo_group
-			and (editor.buffer.undo_group.type .. '\n\n') or ''
-		for i,g in ipairs(editor.buffer.undo_stack) do
+		local s = editor.undo_stack.undo_group
+			and (editor.undo_stack.undo_group.type .. '\n\n') or ''
+		for i,g in ipairs(editor.undo_stack.undo_stack) do
 			s = s .. g.type .. '\n'
 		end
 		self:label{font_face = 'Fixedsys', text = s}

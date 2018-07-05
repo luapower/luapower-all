@@ -4,23 +4,30 @@
 
 if not ... then require'codedit_demo'; return end
 
+--update a table with the contents of other table(s) (from glue).
+local function update(dt,...)
+	for i=1,select('#',...) do
+		local t=select(i,...)
+		if t ~= nil then
+			for k,v in pairs(t) do dt[k]=v end
+		end
+	end
+	return dt
+end
+
 --prototype-based dynamic inheritance with __call constructor (from glue).
-local function object(super, o)
+local function object(super, o, ...)
 	o = o or {}
 	o.__index = super
 	o.__call = super and super.__call
 	if not super then o.subclass = object end
+	update(o, ...) --add mixins, defaults, etc.
 	return setmetatable(o, o)
 end
 
---update a table with the contents of another table if any.
-local function update(dt, t)
-	if t then
-		for k,v in pairs(t) do
-			dt[k] = v
-		end
-	end
-	return dt
+local function coalesce(v, default)
+	if v == nil then return default end
+	return v
 end
 
 --str module: plain text boundaries ------------------------------------------
@@ -36,15 +43,13 @@ local str = {}
 --overwritten with utf8 variants in order to fully support unicode.
 
 function str.next_char(s, i)
-	i = i or 0
-	assert(i >= 0)
+	i = math.max(0, i or 0)
 	if i >= #s then return end
 	return i + 1
 end
 
 function str.prev_char(s, i)
-	i = i or #s + 1
-	assert(i <= #s + 1)
+	i = math.min(#s + 1, i or 1/0)
 	if i <= 1 then return end
 	return i - 1
 end
@@ -58,11 +63,6 @@ function str.chars_reverse(s, i)
 end
 
 --tabs and whitespace boundaries ---------------------------------------------
-
-function str.isascii(s, i)
-	assert(i >= 1 and i <= #s)
-	return s:byte(i) >= 0 and s:byte(i) <= 127
-end
 
 --check an ascii char at a byte index without string creation
 function str.ischar(s, i, c)
@@ -169,7 +169,7 @@ end
 	--3) 1..n word chars followed by a non-word char
 	--4) 1..n non-word chars followed by a word char
 --if the next break should be on a different line, return nil.
-function str.next_word_break_char(s, i, word_chars)
+function str.next_wordbreak_char(s, i, word_chars)
 	i = i or 0
 	assert(i >= 0)
 	if i == 0 then return 1 end
@@ -197,12 +197,11 @@ function str.next_word_break_char(s, i, word_chars)
 end
 
 --NOTE: this is O(#s) so use it only on short strings (single lines of text).
-function str.prev_word_break_char(s, firsti, word_chars)
+function str.prev_wordbreak_char(s, firsti, word_chars)
 	local lasti
 	while true do
-		local i = str.next_word_break_char(s, lasti, word_chars)
-		if not i then return end
-		if i >= firsti then return lasti end
+		local i = str.next_wordbreak_char(s, lasti or 1, word_chars)
+		if not i or i >= firsti then return lasti end
 		lasti = i
 	end
 end
@@ -276,34 +275,37 @@ function str.detect_term(s)
 	return term, mixed
 end
 
---tab expansion module -------------------------------------------------------
+--tab expansion --------------------------------------------------------------
 
 --translates between visual columns and char columns based on a fixed tabsize.
 --char columns map 1:1 to chars occupying a single fixed char width, while
 --visual columns represent char columns after tab expansion.
 
 --the first tabstop after a visual column
-local function next_tabstop(vcol, tabsize)
+function str.next_tabstop(vcol, tabsize)
 	return (math.floor((vcol - 1) / tabsize) + 1) * tabsize + 1
 end
 
 --the first tabstop before a visual column
-local function prev_tabstop(vcol, tabsize)
-	return next_tabstop(vcol - 1, tabsize) - tabsize
+function str.prev_tabstop(vcol, tabsize)
+	return str.next_tabstop(vcol - 1, tabsize) - tabsize
 end
 
 --how wide should a tab character be if found at a certain visual position
-local function tab_width(vcol, tabsize)
-	return next_tabstop(vcol, tabsize) - vcol
+function str.tab_width(vcol, tabsize)
+	return str.next_tabstop(vcol, tabsize) - vcol
 end
 
---how many tabs and left-over spaces fit between two visual columns (vcol2 is the char right after the last tab/space)
-local function tabs_and_spaces(vcol1, vcol2, tabsize)
+--how many tabs and left-over spaces fit between two visual columns (vcol2 is
+--the char right after the last tab/space)
+function str.tabs_and_spaces(vcol1, vcol2, tabsize)
 	if vcol2 < vcol1 then
 		return 0, 0
 	end
-	--the distance is covered by a first (full or partial) tab, a number of full tabs, and finally a number of spaces
-	local distance_left = vcol2 - next_tabstop(vcol1, tabsize) --distance left after the first tab
+	--the distance is covered by a first (full or partial) tab, a number of
+	--full tabs, and finally a number of spaces
+	local distance_left = vcol2 - str.next_tabstop(vcol1, tabsize)
+		--distance left after the first tab
 	if distance_left >= 0 then
 		local full_tabs = math.floor(distance_left / tabsize)
 		local spaces = distance_left - full_tabs * tabsize
@@ -314,8 +316,9 @@ local function tabs_and_spaces(vcol1, vcol2, tabsize)
 end
 
 --real column -> visual column, for a fixed tabsize.
---the real column can be past string's end, in which case vcol will expand to the same amount.
-local function visual_col(s, col, tabsize)
+--the real column can be past string's end, in which case vcol will expand
+--to the same amount.
+function str.visual_col(s, col, tabsize)
 	local col1 = 0
 	local vcol = 1
 	for i in str.chars(s) do
@@ -323,7 +326,7 @@ local function visual_col(s, col, tabsize)
 		if col1 >= col then
 			return vcol
 		end
-		vcol = vcol + (str.istab(s, i) and tab_width(vcol, tabsize) or 1)
+		vcol = vcol + (str.istab(s, i) and str.tab_width(vcol, tabsize) or 1)
 	end
 	vcol = vcol + col - col1 - 1 --extend vcol past eol
 	return vcol
@@ -331,12 +334,12 @@ end
 
 --visual column -> real column, for a fixed tabsize.
 --if the target vcol is between two possible vcols, return the vcol that is closer.
-local function real_col(s, vcol, tabsize)
+function str.real_col(s, vcol, tabsize) --TODO: unused
 	local vcol1 = 1
 	local col = 0
 	for i in str.chars(s) do
 		col = col + 1
-		local vcol2 = vcol1 + (str.istab(s, i) and tab_width(vcol1, tabsize) or 1)
+		local vcol2 = vcol1 + (str.istab(s, i) and str.tab_width(vcol1, tabsize) or 1)
 		if vcol >= vcol1 and vcol <= vcol2 then --vcol is between the current and the next vcol
 			return col + (vcol - vcol1 > vcol2 - vcol and 1 or 0)
 		end
@@ -346,24 +349,91 @@ local function real_col(s, vcol, tabsize)
 	return col
 end
 
-local tabs = {
-	tab_width = tab_width,
-	next_tabstop = next_tabstop,
-	prev_tabstop = prev_tabstop,
-	tabs_and_spaces = tabs_and_spaces,
-	visual_col = visual_col,
-	real_col = real_col,
-}
+--undo/redo stack ------------------------------------------------------------
+
+--the undo stack is a stack of undo groups. an undo group is a list of
+--functions to be executed in reverse order in order to perform a single undo
+--operation. consecutive undo groups of the same type are merged together.
+--the undo commands can be any function with any non-mutable arguments.
+
+local undo_stack = object()
+
+function undo_stack:__call(undo_stack)
+	self = object(self, {}, undo_stack)
+	self.undo_stack = {}
+	self.redo_stack = {}
+	self.undo_group = nil
+	return self
+end
+
+function undo_stack:save_state(undo_group) end --stub
+function undo_stack:load_state(undo_group) end --stub
+
+function undo_stack:start_undo_group(group_type)
+	if self.undo_group then
+		if self.undo_group.type == group_type then
+			--same type of group, continue using the current group
+			return
+		end
+		self:end_undo_group() --auto-close current group to start a new one
+	end
+	self.undo_group = {type = group_type}
+	self:save_state(self.undo_group)
+end
+
+function undo_stack:end_undo_group()
+	if not self.undo_group then return end
+	if #self.undo_group > 0 then --push group if not empty
+		table.insert(self.undo_stack, self.undo_group)
+	end
+	self.undo_group = nil
+end
+
+--add an undo command to the current undo group, if any.
+function undo_stack:undo_command(...)
+	if not self.undo_group then return end
+	table.insert(self.undo_group, {...})
+end
+
+local function undo_from(self, group_stack)
+	self:end_undo_group()
+	local group = table.remove(group_stack)
+	if not group then return end
+	self:start_undo_group(group.type)
+	for i = #group, 1, -1 do
+		local cmd = group[i]
+		cmd[1](unpack(cmd, 2))
+	end
+	self:end_undo_group()
+	self:load_state(group)
+end
+
+function undo_stack:undo()
+	undo_from(self, self.undo_stack)
+	if #self.undo_stack == 0 then return end
+	table.insert(self.redo_stack, table.remove(self.undo_stack))
+end
+
+function undo_stack:redo()
+	undo_from(self, self.redo_stack)
+end
+
+function undo_stack:last_undo_command()
+	if not self.undo_group then return end
+	local last_cmd = self.undo_group[#self.undo_group]
+	if not last_cmd then return end
+	return unpack(last_cmd)
+end
 
 --buffer object: multi-line text navigation and editing ----------------------
 
 local buffer = object()
 
 buffer.multiline = true
-buffer.line_terminator = '\n' --line terminator to use when inserting text
+buffer.term = '\n' --line terminator to use when inserting text
 
 function buffer:__call(buffer)
-	self = object(self, buffer)
+	self = object(self, {}, buffer)
 	self:init()
 	return self
 end
@@ -377,8 +447,10 @@ function buffer:init(lines)
 	if #self.lines == 0 then
 		self.lines[1] = '' --can't have zero lines
 	end
-	self:_init_undo()
-	self:_init_changed()
+	--you can add any flags, they will all be set when the buffer changes.
+	self.changed = {} --{<flag> = true/false}
+	--"file" is the default changed flag to decide when to save.
+	self.changed.file = false
 end
 
 local function whole_string(s, last)
@@ -392,16 +464,6 @@ function buffer:_lines(s)
 	else
 		return whole_string, s
 	end
-end
-
---invalidation & events ------------------------------------------------------
-
-function buffer:_init_changed()
-	--you can add any flags, they will all be set when the buffer changes.
-	self.changed = {} --{<flag> = true/false}
-	--"file" is the default changed flag to decide when to save.
-	self.changed.file = false
-	self.event_handlers = self.event_handlers or {}
 end
 
 function buffer:invalidate()
@@ -432,7 +494,7 @@ function buffer:_load_stream(read)
 			if s0 and #s0 > 0 then
 				s = s0 .. s --stitch to last line
 				s0 = nil
-				lubes[#lines] = s
+				lines[#lines] = s
 			else
 				lines[#lines+1] = s
 			end
@@ -457,96 +519,27 @@ function buffer:load(arg)
 	end
 end
 
---undo/redo ------------------------------------------------------------------
-
---the undo stack is a stack of undo groups. an undo group is a list of buffer
---methods to be executed in reverse order in order to perform a single undo
---operation. consecutive undo groups of the same type are merged together.
---the undo commands in the group can be any editor method with any arguments.
-
-function buffer:_init_undo()
-	self.undo_stack = {}
-	self.redo_stack = {}
-	self.undo_group = nil
-end
-
-function buffer:start_undo_group(group_type)
-	if self.undo_group then
-		if self.undo_group.type == group_type then
-			--same type of group, continue using the current group
-			return
-		end
-		self:end_undo_group() --auto-close current group to start a new one
-	end
-	self.undo_group = {type = group_type}
-	self.editor:save_state(self.undo_group)
-end
-
-function buffer:end_undo_group()
-	if not self.undo_group then return end
-	if #self.undo_group > 0 then --push group if not empty
-		table.insert(self.undo_stack, self.undo_group)
-	end
-	self.undo_group = nil
-end
-
---add an undo command to the current undo group, if any.
-function buffer:undo_command(...)
-	if not self.undo_group then return end
-	table.insert(self.undo_group, {...})
-end
-
-local function undo_from(self, group_stack)
-	self:end_undo_group()
-	local group = table.remove(group_stack)
-	if not group then return end
-	self:start_undo_group(group.type)
-	for i = #group, 1, -1 do
-		local cmd = group[i]
-		self[cmd[1]](self, unpack(cmd, 2))
-	end
-	self:end_undo_group()
-	self.editor:load_state(group)
-end
-
-function buffer:undo()
-	undo_from(self, self.undo_stack)
-	if #self.undo_stack == 0 then return end
-	table.insert(self.redo_stack, table.remove(self.undo_stack))
-end
-
-function buffer:redo()
-	undo_from(self, self.redo_stack)
-end
-
-function buffer:last_undo_command()
-	if not self.undo_group then return end
-	local last_cmd = self.undo_group[#self.undo_group]
-	if not last_cmd then return end
-	return unpack(last_cmd)
-end
-
 --low-level undo-able commands -----------------------------------------------
 
 function buffer:_ins(line, s)
 	assert(line >= 1 and line <= #self.lines + 1)
 	table.insert(self.lines, line, s)
-	self:undo_command('_rem', line)
+	self.undo_stack:undo_command(self._rem, self, line)
 end
 
 function buffer:_rem(line)
 	assert(line >= 2 and line <= #self.lines)
 	local s = table.remove(self.lines, line)
-	self:undo_command('_ins', line, s)
+	self.undo_stack:undo_command(self._ins, self, line, s)
 end
 
 function buffer:_upd(line, s)
 	assert(line >= 1 and line <= #self.lines)
 	local s0 = self.lines[line]
 	if s0 == s then return end
-	local cmd, arg = self:last_undo_command()
-	if not (cmd == '_upd' and arg == line) then --optimization
-		self:undo_command('_upd', line, s0)
+	local cmd, arg = self.undo_stack:last_undo_command()
+	if not (cmd == self._upd and arg == line) then --optimization
+		self.undo_stack:undo_command(self._upd, self, line, s0)
 	end
 	self.lines[line] = s
 end
@@ -557,6 +550,18 @@ end
 function buffer:eol(line)
 	local s = self.lines[line]
 	return s and str.term_char(s)
+end
+
+--byte index at visible line terminator (or at #s + 1 if there's no terminator)
+function buffer:visible_eol(line)
+	local s = self.lines[line]
+	if not s then return end
+	local i = str.prev_nonspace_char(s)
+	return i and str.next_char(s, i) or 1
+end
+
+function buffer:visible_bol(line)
+	return self:next_nonspace_char(line) or 1
 end
 
 --iterate the chars of a line, excluding the line terminator
@@ -590,6 +595,71 @@ function buffer:clamp_pos(line, i)
 	end
 end
 
+--next non-space char on the same line, if any
+function buffer:next_nonspace_char(line, i)
+	local s = self.lines[line]
+	return s and str.next_nonspace_char(s, i)
+end
+
+--prev non-space char on the same line, if any
+function buffer:prev_nonspace_char(line, i)
+	local s = self.lines[line]
+	if not s then return end
+	i = i or self:eol(line)
+	return str.prev_nonspace_char(s, i)
+end
+
+--check if a line is either invalid, empty or made entirely of whitespace
+function buffer:isempty(line)
+	return not self:next_nonspace_char(line)
+end
+
+--next non-space char in text, if any
+function buffer:next_nonspace_pos(line, i)
+	if line < 1 then
+		line, i = 1, nil
+	end
+	while line <= #self.lines do
+		local ns_i = self:next_nonspace_char(line, i)
+		if ns_i then
+			return line, ns_i
+		end
+		line, i = line + 1, nil
+	end
+end
+
+--prev non-space char in text, if any
+function buffer:prev_nonspace_pos(line, i)
+	if line > #self.lines then
+		line, i = #self.lines, nil
+	end
+	while line >= 1 do
+		local ps_i = self:prev_nonspace_char(line, i)
+		if ps_i then
+			return line, ps_i
+		end
+		line, i = line - 1, nil
+	end
+end
+
+--next wordbreak char in text, if any
+function buffer:next_wordbreak_pos(line, i, word_chars)
+	local s = self.lines[line]
+	local wb_i = s and str.next_wordbreak_char(s, i, word_chars)
+	if wb_i then
+		return line, wb_i
+	end
+end
+
+--prev wordbreak char in text, if any
+function buffer:prev_wordbreak_pos(line, i, word_chars)
+	local s = self.lines[line]
+	local wb_i = s and str.prev_wordbreak_char(s, i, word_chars)
+	if wb_i then
+		return line, wb_i
+	end
+end
+
 --select the string between two subsequent positions in the text.
 --select(line) selects the contents of a line without the line terminator.
 function buffer:select(line1, i1, line2, i2)
@@ -612,12 +682,12 @@ end
 
 function buffer:insert_line(line, s)
 	if line <= #self.lines then
-		s = str.add_term(s, self.line_terminator)
+		s = str.add_term(s, self.term)
 	else
 		s = str.remove_term(s)
 		--appending a line: add a line terminator on the prev. line
 		if line > 1 then
-			self:_upd(line-1, self.lines[line-1] .. self.line_terminator)
+			self:_upd(line-1, self.lines[line-1] .. self.term)
 		end
 	end
 	self:_ins(line, s)
@@ -637,7 +707,7 @@ function buffer:setline(line, s)
 	if line == #self.lines then
 		s = str.remove_term(s)
 	else
-		s = str.add_term(s, self.line_terminator)
+		s = str.add_term(s, self.term)
 	end
 	self:_upd(line, s)
 	self:invalidate()
@@ -710,28 +780,36 @@ end
 
 --indentation ----------------------------------------------------------------
 
-function buffer:_next_nonspace_char(line, i)
-	local s = self.lines[line]
-	return s and str.next_nonspace_char(s, i)
-end
-
---check if a line is either invalid, empty or made entirely of whitespace
-function buffer:isempty(line)
-	return not self:_next_nonspace_char(line)
-end
-
 --check if a position is before the first non-space char, that is, check if
 --it's in the indentation area.
 function buffer:indenting(line, i)
-	local nsi = self:_next_nonspace_char(line)
+	local nsi = self:next_nonspace_char(line)
 	return not nsi or i <= nsi
 end
 
 --return the indent of the line, optionally up to some char.
 function buffer:select_indent(line, i)
-	local nsi = self:_next_nonspace_char(line) or self:eol(line)
+	local nsi = self:next_nonspace_char(line) or self:eol(line)
 	local indent_i = math.min(i or 1/0, nsi)
-	return self.lines[line] and self.lines[line]:sub(1, indent_i - 1)
+	local s = self.lines[line]
+	return s and s:sub(1, indent_i - 1)
+end
+
+function buffer:indent_line(line, use_tabs)
+	self:insert(line, 1, use_tabs and '\t' or (' '):rep(self.view.tabsize))
+end
+
+function buffer:outdent_line(line)
+	local s = self.lines[line]
+	if s:sub(1, 1) == '\t' then
+		self:remove(line, 1, line, 2)
+	else
+		local n = s:match('^ +()')
+		if n then
+			n = math.min(n, self.view.tabsize)
+			self:remove(line, 1, line, n)
+		end
+	end
 end
 
 --buffer normalization -------------------------------------------------------
@@ -741,14 +819,14 @@ buffer.eof_lines = 'leave' --leave, remove, ensure, or a number.
 buffer.convert_indent = 'tabs' --tabs, spaces, leave: convert indentation to
 	--tabs or spaces based on current tabsize
 
-function buffer:detect_line_terminator(s)
-	return str.line_terminator(s)
+function buffer:detect_term(s)
+	return str.detect_term(s)
 end
 
 --detect indent type and tab size of current buffer
 function buffer:detect_indent()
 	local tabs, spaces = 0, 0
-	for line = 1, self:last_line() do
+	for line = 1, #self.lines do
 		local tabs1, spaces1 = str.indent_counts(self:line(line))
 		tabs = tabs + tabs1
 		spaces = spaces + spaces1
@@ -757,40 +835,42 @@ function buffer:detect_indent()
 end
 
 function buffer:remove_eol_spaces() --remove any spaces past eol
-	for line = 1, self:last_line() do
+	for line = 1, #self.lines do
 		self:setline(line, str.rtrim(self:line(line)))
 	end
 end
 
 function buffer:ensure_eof_line() --add an empty line at eof if there is none
-	if not self:isempty(self:last_line()) then
-		self:insert_line(self:last_line() + 1, '')
+	if not self:isempty(#self.lines) then
+		self:insert_line(#self.lines + 1, '')
 	end
 end
 
 function buffer:remove_eof_lines() --remove any empty lines at eof, except the first line
-	while self:last_line() > 1 and self:isempty(self:last_line()) do
-		self:remove_line(self:last_line())
+	while #self.lines > 1 and self:isempty(#self.lines) do
+		self:remove_line(#self.lines)
 	end
 end
 
 function buffer:convert_indent_to_tabs()
-	for line = 1, self:last_line() do
+	for line = 1, #self.lines do
 		local indent_col = self:next_nonspace_col(line) or self:last_col(line)
 		if indent_col > 0 then
 			local indent_vcol = self:visual_col(line, indent_col)
 			local tabs, spaces = self:tabs_and_spaces(1, indent_vcol)
-			self:setline(line, string.rep('\t', tabs) .. string.rep(' ', spaces) .. self:sub(line, indent_col))
+			self:setline(line, string.rep('\t', tabs) .. string.rep(' ', spaces)
+				.. self:sub(line, indent_col))
 		end
 	end
 end
 
 function buffer:convert_indent_to_spaces()
-	for line = 1, self:last_line() do
+	for line = 1, #self.lines do
 		local indent_col = self:next_nonspace_col(line) or self:last_col(line)
 		if indent_col > 0 then
 			local indent_vcol = self:visual_col(line, indent_col)
-			self:setline(line, string.rep(' ', indent_vcol - 1) .. self:sub(line, indent_col))
+			self:setline(line, string.rep(' ', indent_vcol - 1)
+				.. self:sub(line, indent_col))
 		end
 	end
 end
@@ -811,7 +891,7 @@ function buffer:normalize()
 	elseif type(self.eof_lines) == 'number' then
 		self:remove_eof_lines()
 		for i = 1, self.eof_lines do
-			self:insert_line(self:last_line() + 1, '')
+			self:insert_line(#self.lines + 1, '')
 		end
 	end
 end
@@ -850,7 +930,7 @@ cursor.color = nil
 cursor.line_highlight_color = nil
 
 function cursor:__call(cursor)
-	self = object(self, cursor)
+	self = object(self, {}, cursor)
 	self.line = 1
 	self.i = 1 --current byte index in current line
 	self.x = 0 --wanted x offset when navigating up/down
@@ -885,11 +965,11 @@ function cursor:load_state(state)
 	self:invalidate()
 end
 
---navigation -----------------------------------------------------------------
+--cursor navigation ----------------------------------------------------------
 
---move to a specific position in the text, restricting the final position
---according to buffer boundaries and navigation policies.
-function cursor:move(line, i, keep_x)
+function cursor:pos(line, i, keep_x)
+	line = line or self.line
+	i = i or self.i
 	if i < 1 then
 		i = 1
 	end
@@ -913,7 +993,13 @@ function cursor:move(line, i, keep_x)
 			i = 1
 		end
 	end
-	self.line, self.i = line, i
+	return line, i, keep_x
+end
+
+--move to a specific position in the text, restricting the final position
+--according to buffer boundaries and navigation policies.
+function cursor:move(line, i, keep_x)
+	self.line, self.i, keep_x = self:pos(line, i, keep_x)
 	if not keep_x then
 		--store the cursor x to be used as the wanted landing x by move_vert()
 		self.x = self.view:cursor_coords(self)
@@ -921,146 +1007,180 @@ function cursor:move(line, i, keep_x)
 	self:invalidate()
 end
 
-function cursor:prev_pos(jump_tabstops)
+function cursor:prev_pos(line, i, jump_tabstops)
+	line = line or self.line
+	i = i or self.i
+	jump_tabstops = coalesce(jump_tabstops, self.jump_tabstops)
 
-	if self.i == 1 then --move to the end of the prev. line
-		if self.line == 1 then
+	if i == 1 then --move to the end of the prev. line
+		if line == 1 then
 			return 1, 1
-		elseif self.line - 1 > #self.buffer.lines then --outside buffer
-			return self.line - 1, 1
+		elseif line - 1 > #self.buffer.lines then --outside buffer
+			return line - 1, 1
 		else
-			return self.line - 1, self.buffer:eol(self.line - 1)
+			return line - 1, self.buffer:eol(line - 1)
 		end
-	elseif self.line > #self.buffer.lines then --outside buffer
-		return self.line, self.i - 1
-	elseif self.i > self.buffer:eol(self.line) then --outside line
-		return self.line, self.i - 1
+	elseif line > #self.buffer.lines then --outside buffer
+		return line, i - 1
+	elseif i > self.buffer:eol(line) then --outside line
+		return line, i - 1
 	end
 
 	local jump_tabstops =
 		jump_tabstops == 'always'
 		or (jump_tabstops == 'indent'
-			and self.buffer:indenting(self.line, self.i))
+			and self.buffer:indenting(line, i))
 
-	local s = self.buffer.lines[self.line]
+	local s = self.buffer.lines[line]
 
 	if jump_tabstops then
-		local x0 = self.view:char_x(self.line, self.i)
+		local x0 = self.view:char_x(line, i)
 		local ts_x = self.view:prev_tabstop_x(x0)
-		local ts_i = self.view:char_at_line(self.line, ts_x)
-		if ts_i == self.i then --tabstop too close, get the prev. one
+		local ts_i = self.view:char_at_line(line, ts_x)
+		if ts_i == i then --tabstop too close, get the prev. one
 			ts_x = self.view:prev_tabstop_x(ts_x)
-			ts_i = self.view:char_at_line(self.line, ts_x)
+			ts_i = self.view:char_at_line(line, ts_x)
 		end
-		local ns_i = str.prev_nonspace_char(s, self.i)
+		local ns_i = str.prev_nonspace_char(s, i)
 		local ps_i = str.next_char(s, ns_i) or #s + 1
 		local prev_i = math.max(ps_i, ts_i) --whichever is closest
-		if prev_i < self.i then
-			return self.line, prev_i
+		if prev_i < i then
+			return line, prev_i
 		end
 	end
 
-	return self.line, str.prev_char(s, self.i)
+	return line, str.prev_char(s, i)
 end
 
 function cursor:move_prev_pos()
-	self:move(self:prev_pos(self.jump_tabstops))
+	self:move(self:prev_pos())
 end
 
-function cursor:next_pos(restrict_eol, jump_tabstops)
+function cursor:next_pos(line, i, restrict_eol, jump_tabstops)
+	line = line or self.line
+	i = i or self.i
+	restrict_eol = coalesce(restrict_eol, self.restrict_eol)
+	jump_tabstops = coalesce(jump_tabstops, self.jump_tabstops)
 
 	local lastline = #self.buffer.lines
-	if self.line > lastline then --outside buffer
+	if line > lastline then --outside buffer
 		if self.restrict_eof then
 			return self.buffer:end_pos()
 		elseif restrict_eol then
-			return self.line + 1, 1
+			return line + 1, 1
 		else
-			return self.line, self.i + 1
+			return line, i + 1
 		end
-	elseif self.i >= self.buffer:eol(self.line) then --outside line
+	elseif i >= self.buffer:eol(line) then --outside line
 		if restrict_eol then
-			if self.restrict_eof and self.line == lastline then
+			if self.restrict_eof and line == lastline then
 				return self.buffer:end_pos()
 			else
-				return self.line + 1, 1
+				return line + 1, 1
 			end
 		else
-			return self.line, self.i + 1
+			return line, i + 1
 		end
 	end
 
-	local s = self.buffer.lines[self.line]
+	local s = self.buffer.lines[line]
 
 	if jump_tabstops == 'always' then
 		jump_tabstops = true
 	elseif jump_tabstops == 'indent' then
-		local i = str.next_char(s, self.i)
-		jump_tabstops = i and self.buffer:indenting(self.line, i)
+		local i = str.next_char(s, i)
+		jump_tabstops = i and self.buffer:indenting(line, i)
 	else
 		jump_tabstops = false
 	end
-	jump_tabstops = jump_tabstops and str.iswhitespace(s, self.i)
+	jump_tabstops = jump_tabstops and str.iswhitespace(s, i)
 
 	if jump_tabstops then
-		local x0 = self.view:char_x(self.line, self.i)
+		local x0 = self.view:char_x(line, i)
 		local ts_x = self.view:next_tabstop_x(x0)
-		local ts_i = self.view:char_at_line(self.line, ts_x)
-		if ts_i == self.i then --tabstop too close, get the next one
+		local ts_i = self.view:char_at_line(line, ts_x)
+		if ts_i == i then --tabstop too close, get the next one
 			ts_x = self.view:next_tabstop_x(ts_x)
-			ts_i = self.view:char_at_line(self.line, ts_x)
+			ts_i = self.view:char_at_line(line, ts_x)
 		end
 		local ns_i =
-			str.next_nonspace_char(s, self.i)
-			or self.buffer:eol(self.line)
+			str.next_nonspace_char(s, i)
+			or self.buffer:eol(line)
 		local next_i = math.min(ts_i, ns_i) --whichever is closer
-		if next_i > self.i then
-			return self.line, next_i
+		if next_i > i then
+			return line, next_i
 		end
 	end
 
-	return self.line, str.next_char(s, self.i) or #s + 1
+	return line, str.next_char(s, i) or #s + 1
 end
 
 function cursor:move_next_pos()
-	self:move(self:next_pos(self.restrict_eol, self.jump_tabstops))
+	self:move(self:next_pos())
 end
 
-function cursor:move_prev_word_break()
-	local s = self.buffer.lines[self.line]
-	local wb_i = s and str.prev_word_break_char(s, self.i, self.word_chars)
-	if wb_i then
-		self:move(self.line, wb_i)
-	elseif self.line > #self.buffer.lines then
-		if self.i == 1 then
-			self:move(self.line - 1, self.buffer:eol(self.line - 1) or 1)
+function cursor:next_wordbreak_pos(line, i)
+	line = line or self.line
+	i = i or self.i
+	local line1, i1 = self.buffer:next_wordbreak_pos(line, i, self.word_chars)
+	if not line1 then
+		local eol = self.buffer:visible_eol(line)
+		if i < eol then
+			line1, i1 = line, eol
 		else
-			self:move(self.line, 1)
+			line1, i1 = self.buffer:next_nonspace_pos(line, i)
 		end
-	elseif self.line > #self.buffer.lines then
-		self:move(self.line, self.buffer:eol(self.line))
-	elseif self.i > self.buffer:eol(self.line) then
-		self:move(self.line, self.buffer:eol(self.line))
-	else
-		self:move_prev_pos()
 	end
+	if not line1 then
+		line1, i1 = self:next_pos(line, i)
+	end
+	return line1, i1
 end
 
-function cursor:move_next_word_break()
-	local s = self.buffer.lines[self.line]
-	local wb_i = s and str.next_word_break_char(s, self.i, self.word_chars)
-	if wb_i then
-		self:move(self.line, wb_i)
-	else
-		self:move(self:next_pos(true, self.jump_tabstops))
+function cursor:move_next_wordbreak()
+	self:move(self:next_wordbreak_pos())
+end
+
+function cursor:prev_wordbreak_pos(line, i)
+	line = line or self.line
+	i = i or self.i
+	local eol = self.buffer:visible_eol(line)
+	if i > eol then
+		return line, eol
 	end
+	local line1, i1 = self.buffer:prev_wordbreak_pos(line, i, self.word_chars)
+	if not line1 then
+		local bol = self.buffer:visible_bol(line)
+		if i > bol then
+			return line, bol
+		else
+			line1, i1 = self.buffer:prev_nonspace_pos(line, i)
+			if line1 then
+				i1 = self.buffer:visible_eol(line1)
+			end
+		end
+	end
+	if not line1 then
+		line1, i1 = self:prev_pos(line, i)
+	end
+	return line1, i1
+end
+
+function cursor:move_prev_wordbreak()
+	self:move(self:prev_wordbreak_pos())
 end
 
 --cursor vertical navigation -------------------------------------------------
 
-function cursor:move_vert(lines)
-	local line = self.line + lines
-	local i = self.view:cursor_char_at_line(math.max(1, line), self.x)
+function cursor:vert_pos(line, x)
+	line = line or self.line
+	x = x or self.x
+	local i = self.view:cursor_char_at_line(math.max(1, line), x)
+	return line, i
+end
+
+function cursor:move_vert(line_count)
+	local line, i = self:vert_pos(self.line + line_count)
 	self:move(line, i, true)
 end
 
@@ -1116,14 +1236,14 @@ end
 function cursor:word_bounds()
 	local s = self.buffer.lines[self.line]
 	if not s then return self.i, self.i end
-	local i1 = str.prev_word_break_char(s, self.i, self.word_chars) or 1
-	local i2 = str.next_word_break_char(s, self.i, self.word_chars)
+	local i1 = str.prev_wordbreak_char(s, self.i, self.word_chars) or 1
+	local i2 = str.next_wordbreak_char(s, self.i, self.word_chars)
 	i2 = (i2 and str.prev_nonspace_char(s, i2)
 		or self.buffer:eol(self.line) - 1) + 1
 	return i1, i2
 end
 
---editing --------------------------------------------------------------------
+--editing at cursor ----------------------------------------------------------
 
 --insert a string at cursor and move the cursor to after the string
 function cursor:insert(s)
@@ -1147,13 +1267,13 @@ end
 
 --delete the text up to the next cursor position
 function cursor:delete_pos(restrict_eol)
-	local line2, i2 = self:next_pos(restrict_eol, self.delete_tabstops)
+	local line2, i2 = self:next_pos(self.line, self.i, restrict_eol, self.delete_tabstops)
 	self.buffer:remove(self.line, self.i, line2, i2)
 end
 
 --delete the char before the cursor position.
 function cursor:delete_prev_pos()
-	self:move(self:prev_pos(self.delete_tabstops))
+	self:move(self:prev_pos(self.line, self.i, self.delete_tabstops))
 	self:delete_pos(true)
 end
 
@@ -1174,7 +1294,8 @@ function cursor:insert_tab()
 	if self.insert_align_list then
 		local ls_x = self.buffer:next_list_aligned_vcol(self.line, self.i, self.restrict_eol)
 		if ls_x then
-			local line, i = self.buffer:insert_whitespace(self.line, self.i, ls_x, self.insert_tabs == 'always')
+			local line, i = self.buffer:insert_whitespace(
+				self.line, self.i, ls_x, self.insert_tabs == 'always')
 			self:move(line, i)
 			return
 		end
@@ -1185,12 +1306,14 @@ function cursor:insert_tab()
 		if arg_x then
 			if self.buffer:indenting(self.line, self.i) then
 				local indent = self.buffer:select_indent(self.line - 1)
-				local indent_x = tabs.visual_col(indent, str.len(indent) + 1, self.tabsize)
-				local whitespace = self.buffer:gen_whitespace(indent_x, arg_x, self.insert_tabs == 'always')
+				local indent_x = str.visual_col(indent, str.len(indent) + 1, self.view.tabsize)
+				local whitespace = self.buffer:gen_whitespace(
+					indent_x, arg_x, self.insert_tabs == 'always')
 				local line, i = self.buffer:insert(self.line, 1, indent .. whitespace)
 				self:move(line, i)
 			else
-				local line, i = self.buffer:insert_whitespace(self.line, self.i, arg_x, self.insert_tabs == 'always')
+				local line, i = self.buffer:insert_whitespace(
+					self.line, self.i, arg_x, self.insert_tabs == 'always')
 				self:move(line, i)
 			end
 			return
@@ -1238,52 +1361,6 @@ function cursor:move_line_down()
 	self:move_down()
 end
 
---[==[
-
---editing based on tab expansion
-
---find the max number of tabs and minimum number of spaces that fit between two visual columns
-function view:tabs_and_spaces(vcol1, vcol2)
-	return tabs.tabs_and_spaces(vcol1, vcol2, self.tabsize)
-end
-
---generate whitespace (tabs and spaces or just spaces, depending on the use_tabs flag) between two vcols.
-function view:gen_whitespace(vcol1, vcol2, use_tabs)
-	if vcol2 <= vcol1 then
-		return '' --target before cursor: ignore
-	end
-	local tabs, spaces
-	if use_tabs then
-		tabs, spaces = self:tabs_and_spaces(vcol1, vcol2)
-	else
-		tabs, spaces = 0, vcol2 - vcol1
-	end
-	return string.rep('\t', tabs) .. string.rep(' ', spaces)
-end
-
---insert whitespace on a line, from a position up to (but excluding) a visual col on the same line.
-function view:insert_whitespace(line, col, vcol2, use_tabs)
-	local vcol1 = self:visual_col(line, col)
-	local whitespace = self:gen_whitespace(vcol1, vcol2, use_tabs)
-	return self.buffer:insert(line, col, whitespace)
-end
-
---editing based on tabfuls
-
---remove the space up to the next tabstop or non-space char, in other words, remove a tabful.
-function view:outdent(line, col)
-	local tf_col = self:next_tabful_col(line, col, true)
-	if tf_col then
-		self.buffer:remove_string(line, col, line, tf_col)
-	end
-end
-
-function view:outdent_line(line)
-	self.buffer:outdent(line, 1)
-end
-
-]==]
-
 --scrolling ------------------------------------------------------------------
 
 function cursor:make_visible()
@@ -1291,10 +1368,10 @@ function cursor:make_visible()
 	self.view:cursor_make_visible(self)
 end
 
---selection object: selecting contiguous text between two line,i pairs. ------
+--selection object -----------------------------------------------------------
 
---line1,i1 is the first selected char and line2,i2 is the char immediately
---after the last selected char.
+--selecting contiguous text between two line,i pairs. line1,i1 is the first
+--selected char and line2,i2 is the char right after the last selected char.
 
 local selection = object()
 
@@ -1306,7 +1383,7 @@ selection.line_rect = nil --line_rect(line) -> x, y, w, h
 --lifetime
 
 function selection:__call(selection)
-	self = object(self, selection)
+	self = object(self, {}, selection)
 	self.line1, self.i1 = 1, 1
 	self.line2, self.i2 = 1, 1
 	self.changed = {}
@@ -1459,13 +1536,12 @@ function selection:remove()
 	self:reset(line1, i1)
 end
 
-function selection:indent(use_tab)
+function selection:indent(use_tabs)
 	local line1, line2 = self:line_range()
-	for line = line1, line2 do
-		--TODO: implement this
-		--self.buffer:indent_line(line, use_tab)
-	end
 	self:set_to_line_range()
+	for line = line1, line2 do
+		self.buffer:indent_line(line, use_tabs)
+	end
 end
 
 function selection:outdent()
@@ -1510,10 +1586,10 @@ function selection:hit_test(x, y)
 	return self.view:selection_hit_test(self, x, y)
 end
 
---block selection object: selecting the text inside a rectangle. -------------
+--block selection object -----------------------------------------------------
 
---line1,line2 are the horizontal boundaries and col1,col2 are the vertical
---boundaries of the rectangle.
+--selecting the text inside a rectangle. line1,line2 are the horizontal
+--boundaries and col1,col2 are the vertical boundaries of the rectangle.
 
 local block_selection = object{block = true}
 
@@ -1619,8 +1695,8 @@ local function select_text(buffer, line1, p1, line2)
 	line2 = line2 or #buffer.lines
 	local s = buffer:line(line1):sub(p1)
 	if line2 > line1 then
-		s = s .. buffer.line_terminator ..
-				table.concat(buffer.lines, buffer.line_terminator, line1 + 1, line2)
+		s = s .. buffer.term ..
+				table.concat(buffer.lines, buffer.term, line1 + 1, line2)
 	end
 	return s
 end
@@ -1670,7 +1746,7 @@ local function tokens(t)
 end
 
 local function linesize(line, buffer)
-	return #buffer:line(line) + #buffer.line_terminator
+	return #buffer:line(line) + #buffer.term
 end
 
 --project token positions originated from text at (line1, p1) back into the text,
@@ -1678,7 +1754,8 @@ end
 local function project_pos(t, line1, p1, buffer)
 	local line = line1
 	local minp, maxp = 1, linesize(line1, buffer)
-	--token positions are relative to (line1, p1), not (line1, 1). shift line positions to accomodate that.
+	--token positions are relative to (line1, p1), not (line1, 1). shift line
+	--positions to accomodate that.
 	minp = minp - p1 + 1
 	maxp = maxp - p1 + 1
 	local i
@@ -1837,7 +1914,7 @@ end
 local hl = {}
 
 function hl:__call(hl)
-	self = object(self, hl)
+	self = object(self, {}, hl)
 	self.last_line = 0
 	return self
 end
@@ -1860,11 +1937,12 @@ local hl = {
 	tokens = project_lines,
 }
 
---view: measuring, layouting, drawing and hit testing ------------------------
-
---features: proportional fonts, auto-wrapping, line margins, scrolling.
+--view object ----------------------------------------------------------------
 
 --[[
+
+Views are about measuring, layouting, drawing and hit testing.
+Features: proportional fonts, auto-wrapping, line margins, scrolling.
 
 ...................................
 :client :m1 :m2 :                 :
@@ -1912,11 +1990,10 @@ view.x = 0
 view.y = 0
 view.scroll_x = 0 --client rect position relative to the clip rect
 view.scroll_y = 0
-view.cursor_margins = {
-	top = 16,
-	left = 0,
-	right = view.cursor_xoffset + view.cursor_thickness,
-	bottom = 16}
+view.cursor_margin_top = 16
+view.cursor_margin_left = 0
+view.cursor_margin_right = view.cursor_xoffset + view.cursor_thickness
+view.cursor_margin_bottom = 16
 
 --drawing
 view.highlight_cursor_lines = true
@@ -1929,7 +2006,7 @@ view.line_width = 72
 --lifetime
 
 function view:__call(view)
-	self = object(self, view)
+	self = object(self, {}, view)
 	self:init()
 	return self
 end
@@ -2121,7 +2198,7 @@ function view:cursor_xw(cursor)
 	if extra_spaces >= 0 then
 		w = self:space_width(1)
 	else
-		local _, i2 = cursor:next_pos(false, cursor.jump_tabstops)
+		local _, i2 = cursor:next_pos(cursor.line, cursor.i, false, cursor.jump_tabstops)
 		local x2 = self:char_coords(cursor.line, i2)
 		w = x2 - x
 	end
@@ -2134,7 +2211,7 @@ function view:cursor_coords(cursor)
 	return x, y, w
 end
 
-function view:_cursor_rect_insert_mode(cursor)
+function view:cursor_rect_insert_mode(cursor)
 	local x, y = self:cursor_coords(cursor)
 	local w = cursor.thickness or self.cursor_thickness
 	local h = self.line_h
@@ -2142,7 +2219,7 @@ function view:_cursor_rect_insert_mode(cursor)
 	return x, y, w, h
 end
 
-function view:_cursor_rect_overwrite_mode(cursor)
+function view:cursor_rect_overwrite_mode(cursor)
 	local x, y, w = self:cursor_coords(cursor)
 	local h = cursor.thickness or self.cursor_thickness
 	y = y + self.ascender + 1
@@ -2151,22 +2228,22 @@ end
 
 function view:cursor_rect(cursor)
 	if cursor.insert_mode then
-		return self:_cursor_rect_insert_mode(cursor)
+		return self:cursor_rect_insert_mode(cursor)
 	else
-		return self:_cursor_rect_overwrite_mode(cursor)
+		return self:cursor_rect_overwrite_mode(cursor)
 	end
 end
 
 --cursor hit testing ---------------------------------------------------------
 
-function view:_space_chars(w)
+function view:space_chars(w)
 	return math.floor(w / self:space_width(1) + 0.5)
 end
 
 function view:cursor_char_at_line(line, x, restrict_eof)
 	if line > #self.buffer.lines then --outside buffer
 		if not restrict_eof then
-			return self:_space_chars(x) + 1
+			return self:space_chars(x) + 1
 		else
 			line = #self.buffer.lines
 		end
@@ -2175,7 +2252,7 @@ function view:cursor_char_at_line(line, x, restrict_eof)
 	if i == self.buffer:eol(line) then --possibly outside line
 		local w = x - self:char_x(line, i) --outside width
 		if w > 0 then
-			i = i + self:_space_chars(w)
+			i = i + self:space_chars(w)
 		end
 	end
 	return i
@@ -2207,7 +2284,9 @@ end
 --selection hit testing ------------------------------------------------------
 
 function view:selection_hit_test(sel, x, y)
-	if not sel.visible or sel:isempty() or not point_in_rect(x, y, self:clip_rect()) then
+	if not sel.visible or sel:isempty()
+		or not point_in_rect(x, y, self:clip_rect())
+	then
 		return false
 	end
 	x, y = self:screen_to_client(x, y)
@@ -2228,7 +2307,8 @@ end
 
 function view:max_line_width()
 	local w = 0
-	for line = 1, #self.buffer.lines do
+	local line1, line2 = self:visible_lines()
+	for line = line1, line2 do
 		w = math.max(w, self:line_width(line))
 	end
 	return w
@@ -2381,10 +2461,10 @@ end
 function view:cursor_make_visible(cur)
 	local x, y, w, h = self:char_rect(cur.line, cur.i, cur.i)
 	--enlarge the char rectangle with the cursor margins
-	x = x - self.cursor_margins.left
-	y = y - self.cursor_margins.top
-	w = w + self.cursor_margins.right  + self.cursor_margins.left
-	h = h + self.cursor_margins.bottom + self.cursor_margins.top
+	x = x - self.cursor_margin_left
+	y = y - self.cursor_margin_top
+	w = w + self.cursor_margin_right  + self.cursor_margin_left
+	h = h + self.cursor_margin_bottom + self.cursor_margin_top
 	self:make_rect_visible(x, y, w, h)
 end
 
@@ -2580,14 +2660,16 @@ function view:draw_client()
 	self:end_clip()
 end
 
-function view:draw()
-
+function view:sync()
 	local margins_w = self:margins_width()
 	self.clip_x = self.x + margins_w
 	self.clip_y = self.y
 	self.clip_w = self.w - margins_w
 	self.clip_h = self.h
+end
 
+function view:draw()
+	self:sync()
 	for i,margin in ipairs(self.margins) do
 		self:draw_margin(margin)
 	end
@@ -2610,7 +2692,7 @@ margin.highlighted_text_color = nil
 margin.highlighted_background_color = nil
 
 function margin:__call(margin)
-	self = object(self, margin)
+	self = object(self, {}, margin)
 	self.view:add_margin(self)
 	return self
 end
@@ -2663,8 +2745,9 @@ end
 
 --blame margin ---------------------------------------------------------------
 
---TODO: synchronize the blame list with buffer:insert_line() / buffer:remove_line() / buffer:setline() operations
---TODO: request blame info again after each file save
+--TODO: synchronize the blame list with buffer:insert_line() /
+--buffer:remove_line() / buffer:setline() operations.
+--TODO: request blame info again after each file save.
 
 local blame_margin = object(margin)
 
@@ -2699,10 +2782,14 @@ function blame_margin:draw_line(line, cx, cy, cw, ch, highlighted)
 	self.view:draw_text(cx, cy, s, color)
 end
 
---editor object: putting it all together (aka the controller) ----------------
+--editor object --------------------------------------------------------------
+
+--the editor manages a buffer, a cursor and a selection, draws them though
+--a view, and takes user input to advance its state.
 
 local editor = object()
 --subclasses
+editor.undo_stack_class = undo_stack
 editor.buffer_class = buffer
 editor.line_selection_class = selection
 editor.block_selection_class = block_selection
@@ -2718,20 +2805,25 @@ editor.next_reflow_mode = {left = 'justify', justify = 'left'}
 editor.default_reflow_mode = 'left'
 
 function editor:__call(editor)
-	self = object(self, editor)
+	self = object(self, {}, editor)
 
 	--core objects
-	self.buffer = self:create_buffer(self.buffer)
-	self.view = self:create_view(self.view)
+	self.undo_stack = self:create_undo_stack(self.undo_stack)
+	self.buffer = self:create_buffer(self.buffer, self.undo_stack)
+	self.view = self:create_view(self.view, self.buffer)
+	self.buffer.view = self.view
 	if self.text then
 		self.buffer:load(self.text)
 	end
 
 	--main cursor & selection objects
-	self.cursor = self:create_cursor(self.cursor)
-	self.line_selection = self:create_line_selection(self.line_selection)
-	self.block_selection = self:create_block_selection(self.block_selection)
-	self.selection = self.line_selection --replaced by block_selection when selecting in block mode
+	self.cursor = self:create_cursor(self.cursor, self.buffer, self.view)
+	self.line_selection = self:create_line_selection(self.line_selection,
+		self.buffer, self.view)
+	self.block_selection = self:create_block_selection(self.block_selection,
+		self.buffer, self.view)
+	self.selection = self.line_selection
+		--replaced by block_selection when selecting in block mode
 
 	--selection changed flags
 	self.block_selection.changed.reflow_mode = false
@@ -2752,43 +2844,55 @@ end
 
 --object constructors
 
-function editor:create_buffer(buffer)
+function editor:create_undo_stack()
+	local undo_stack = self.undo_stack_class(update({}, undo_stack))
+	function undo_stack.save_state(_, undo_group)
+		self:save_state(undo_group)
+	end
+	function undo_stack.load_state(_, undo_group)
+		self:load_state(undo_group)
+	end
+	return undo_stack
+end
+
+function editor:create_buffer(buffer, undo_stack)
 	return self.buffer_class(update({
 		editor = self,
+		undo_stack = undo_stack,
 	}, buffer))
 end
 
-function editor:create_view(view)
+function editor:create_view(view, buffer)
 	return self.view_class(update({
 		editor = self,
-		buffer = self.buffer,
+		buffer = buffer,
 	}, view))
 end
 
-function editor:create_cursor(cursor)
+function editor:create_cursor(cursor, buffer, view)
 	return self.cursor_class(update({
 		editor = self,
-		buffer = self.buffer,
-		view = self.view,
+		buffer = buffer,
+		view = view,
 		visible = true,
 		on = true,
 	}, cursor))
 end
 
-function editor:create_line_selection(selection)
+function editor:create_line_selection(selection, buffer, view)
 	return self.line_selection_class(update({
 		editor = self,
-		buffer = self.buffer,
-		view = self.view,
+		buffer = buffer,
+		view = view,
 		visible = true,
 	}, selection))
 end
 
-function editor:create_block_selection(selection)
+function editor:create_block_selection(selection, buffer, view)
 	return self.block_selection_class(update({
 		editor = self,
-		buffer = self.buffer,
-		view = self.view,
+		buffer = buffer,
+		view = view,
 		visible = false,
 	}, selection))
 end
@@ -2836,13 +2940,13 @@ end
 
 --undo/redo commands
 
-function editor:undo() self.buffer:undo() end
-function editor:redo() self.buffer:redo() end
+function editor:undo() self.undo_stack:undo() end
+function editor:redo() self.undo_stack:redo() end
 
 --navigation & selection commands
 
 function editor:_before_move_cursor(mode)
-	self.buffer:start_undo_group'move'
+	self.undo_stack:start_undo_group'move'
 	if mode == 'select' or mode == 'select_block' then
 		if self.selection.block ~= (mode == 'select_block') then
 			self.selection.visible = false
@@ -2856,10 +2960,11 @@ function editor:_before_move_cursor(mode)
 			self.selection.visible = true
 		end
 	else
-		self.cursor.restrict_eol = nil
+		--self.cursor.restrict_eol = nil
 	end
 
 	if mode == 'select' or mode == 'select_block' or mode == 'unrestricted' then
+		--[[
 		local old_restrict_eol = self.cursor.restrict_eol
 		self.cursor.restrict_eol = nil
 		self.cursor.restrict_eol =
@@ -2869,6 +2974,7 @@ function editor:_before_move_cursor(mode)
 		if not old_restrict_eol and self.cursor.restrict_eol then
 			self.cursor:move(self.cursor.line, self.cursor.i)
 		end
+		]]
 	end
 end
 
@@ -2896,12 +3002,16 @@ end
 
 function editor:move_prev_pos()  self:move_cursor('prev_pos') end
 function editor:move_next_pos() self:move_cursor('next_pos') end
-function editor:move_prev_pos_unrestricted()  self:move_cursor('prev_pos',  'unrestricted') end
-function editor:move_next_pos_unrestricted() self:move_cursor('next_pos', 'unrestricted') end
+function editor:move_prev_pos_unrestricted()
+	self:move_cursor('prev_pos',  'unrestricted')
+end
+function editor:move_next_pos_unrestricted()
+	self:move_cursor('next_pos', 'unrestricted')
+end
 function editor:move_up()    self:move_cursor('up') end
 function editor:move_down()  self:move_cursor('down') end
-function editor:move_prev_word_break()  self:move_cursor('prev_word_break') end
-function editor:move_next_word_break() self:move_cursor('next_word_break') end
+function editor:move_prev_wordbreak() self:move_cursor('prev_wordbreak') end
+function editor:move_next_wordbreak() self:move_cursor('next_wordbreak') end
 function editor:move_home()  self:move_cursor('home') end
 function editor:move_end()   self:move_cursor('end') end
 function editor:move_bol()   self:move_cursor('bol') end
@@ -2913,8 +3023,8 @@ function editor:select_prev_pos()  self:move_cursor('prev_pos', 'select') end
 function editor:select_next_pos() self:move_cursor('next_pos', 'select') end
 function editor:select_up()    self:move_cursor('up', 'select') end
 function editor:select_down()  self:move_cursor('down', 'select') end
-function editor:select_prev_word_break()  self:move_cursor('prev_word_break', 'select') end
-function editor:select_next_word_break() self:move_cursor('next_word_break', 'select') end
+function editor:select_prev_wordbreak() self:move_cursor('prev_wordbreak', 'select') end
+function editor:select_next_wordbreak() self:move_cursor('next_wordbreak', 'select') end
 function editor:select_home()  self:move_cursor('home', 'select') end
 function editor:select_end()   self:move_cursor('end', 'select') end
 function editor:select_bol()   self:move_cursor('bol', 'select') end
@@ -2926,8 +3036,12 @@ function editor:select_block_prev_pos()  self:move_cursor('prev_pos', 'select_bl
 function editor:select_block_next_pos() self:move_cursor('next_pos', 'select_block') end
 function editor:select_block_up()    self:move_cursor('up', 'select_block') end
 function editor:select_block_down()  self:move_cursor('down', 'select_block') end
-function editor:select_block_prev_word_break()  self:move_cursor('prev_word_break', 'select_block') end
-function editor:select_block_next_word_break() self:move_cursor('next_word_break', 'select_block') end
+function editor:select_block_prev_wordbreak()
+	self:move_cursor('prev_wordbreak', 'select_block')
+end
+function editor:select_block_next_wordbreak()
+	self:move_cursor('next_wordbreak', 'select_block')
+end
 function editor:select_block_home()  self:move_cursor('home', 'select_block') end
 function editor:select_block_end()   self:move_cursor('end', 'select_block') end
 function editor:select_block_bol()   self:move_cursor('bol', 'select_block') end
@@ -2965,14 +3079,14 @@ end
 
 function editor:remove_selection()
 	if self.selection:isempty() then return end
-	self.buffer:start_undo_group'remove_selection'
+	self.undo_stack:start_undo_group'remove_selection'
 	self.selection:remove()
 	self.cursor:move_to_selection(self.selection)
 end
 
 function editor:insert_char(char)
 	self:remove_selection()
-	self.buffer:start_undo_group'insert_char'
+	self.undo_stack:start_undo_group'insert_char'
 	self.cursor:insert_char(char)
 	self.selection:reset_to_cursor(self.cursor)
 	self.cursor:make_visible()
@@ -2980,7 +3094,7 @@ end
 
 function editor:delete_pos(prev)
 	if self.selection:isempty() then
-		self.buffer:start_undo_group'delete_position'
+		self.undo_stack:start_undo_group'delete_position'
 		if prev then
 			if not (self.cursor.line == 1 and self.cursor.i == 1) then
 				self.cursor:delete_prev_pos()
@@ -3001,7 +3115,7 @@ end
 
 function editor:newline()
 	self:remove_selection()
-	self.buffer:start_undo_group'insert_newline'
+	self.undo_stack:start_undo_group'insert_newline'
 	self.cursor:insert_newline()
 	self.selection:reset_to_cursor(self.cursor)
 	self.cursor:make_visible()
@@ -3009,11 +3123,11 @@ end
 
 function editor:indent()
 	if self.selection:isempty() then
-		self.buffer:start_undo_group'insert_tab'
+		self.undo_stack:start_undo_group'insert_tab'
 		self.cursor:insert_tab()
 		self.selection:reset_to_cursor(self.cursor)
 	else
-		self.buffer:start_undo_group'indent_selection'
+		self.undo_stack:start_undo_group'indent_selection'
 		self.selection:indent(self.cursor.insert_tabs ~= 'never')
 		self.cursor:move_to_selection(self.selection)
 	end
@@ -3022,11 +3136,11 @@ end
 
 function editor:outdent()
 	if self.selection:isempty() then
-		self.buffer:start_undo_group'outdent_line'
+		self.undo_stack:start_undo_group'outdent_line'
 		self.cursor:outdent_line()
 		self.selection:reset_to_cursor(self.cursor)
 	else
-		self.buffer:start_undo_group'outdent_selection'
+		self.undo_stack:start_undo_group'outdent_selection'
 		self.selection:outdent()
 		self.cursor:move_to_selection(self.selection)
 	end
@@ -3035,11 +3149,11 @@ end
 
 function editor:move_lines_up()
 	if self.selection:isempty() then
-		self.buffer:start_undo_group'move_line_up'
+		self.undo_stack:start_undo_group'move_line_up'
 		self.cursor:move_line_up()
 		self.selection:reset_to_cursor(self.cursor)
 	elseif self.selection.move_up then
-		self.buffer:start_undo_group'move_selection_up'
+		self.undo_stack:start_undo_group'move_selection_up'
 		self.selection:move_up()
 		self.cursor:move_to_selection(self.selection)
 	end
@@ -3048,11 +3162,11 @@ end
 
 function editor:move_lines_down()
 	if self.selection:isempty() then
-		self.buffer:start_undo_group'move_line_down'
+		self.undo_stack:start_undo_group'move_line_down'
 		self.cursor:move_line_down()
 		self.selection:reset_to_cursor(self.cursor)
 	elseif self.selection.move_up then
-		self.buffer:start_undo_group'move_selection_down'
+		self.undo_stack:start_undo_group'move_selection_down'
 		self.selection:move_down()
 		self.cursor:move_to_selection(self.selection)
 	end
@@ -3070,8 +3184,8 @@ function editor:reflow()
 	end
 	self.last_reflow_mode = reflow_mode
 
-	self.buffer:start_undo_group'reflow_selection'
-	self.selection:reflow(self.view.line_width, self.tabsize, reflow_mode, 'greedy')
+	self.undo_stack:start_undo_group'reflow_selection'
+	self.selection:reflow(self.view.line_width, self.view.tabsize, reflow_mode, 'greedy')
 	self.cursor:move_to_selection(self.selection)
 end
 
@@ -3092,7 +3206,7 @@ function editor:cut()
 	if self.selection:isempty() then return end
 	local s = self.selection:contents()
 	self:set_clipboard(s)
-	self.buffer:start_undo_group'cut'
+	self.undo_stack:start_undo_group'cut'
 	self.selection:remove()
 	self.cursor:move_to_selection(self.selection)
 	self.cursor:make_visible()
@@ -3100,14 +3214,14 @@ end
 
 function editor:copy()
 	if self.selection:isempty() then return end
-	self.buffer:start_undo_group'copy'
+	self.undo_stack:start_undo_group'copy'
 	self:set_clipboard(self.selection:contents())
 end
 
 function editor:paste(mode)
 	local s = self:get_clipboard()
 	if not s then return end
-	self.buffer:start_undo_group'paste'
+	self.undo_stack:start_undo_group'paste'
 	self.selection:remove()
 	self.cursor:move_to_selection(self.selection)
 	if mode == 'block' then
@@ -3136,9 +3250,10 @@ end
 --save command
 
 function editor:save(filename)
-	self.buffer:start_undo_group'normalize'
+	self.undo_stack:start_undo_group'normalize'
 	self.buffer:normalize()
-	self.cursor:move(self.cursor.line, self.cursor.i) --cursor could get invalid after normalization
+	self.cursor:move(self.cursor.line, self.cursor.i)
+		--the cursor could get invalid after normalization
 	self.buffer:save_to_file(filename)
 end
 
@@ -3146,7 +3261,7 @@ end
 
 function editor:replace(s, with_undo)
 	if with_undo then
-		self.buffer:start_undo_group'replace'
+		self.undo_stack:start_undo_group'replace'
 		self.selection:select_all()
 		self.selection:remove()
 		self.cursor:move_to_selection(self.selection)
@@ -3154,7 +3269,7 @@ function editor:replace(s, with_undo)
 		self.selection:reset_to_cursor(self.cursor)
 	else
 		self.cursor:move_home()
-		self.selection:reset_to_cursor()
+		self.selection:reset_to_cursor(self.cursor)
 		self.buffer:load(s)
 	end
 end
@@ -3172,8 +3287,8 @@ editor.key_bindings = { --flag order is ctrl+alt+shift
 	['alt+right']   = 'move_next_pos_unrestricted',
 	['up']          = 'move_up',
 	['down']        = 'move_down',
-	['ctrl+left']   = 'move_prev_word_break',
-	['ctrl+right']  = 'move_next_word_break',
+	['ctrl+left']   = 'move_prev_wordbreak',
+	['ctrl+right']  = 'move_next_wordbreak',
 	['home']        = 'move_bol',
 	['end']         = 'move_eol',
 	['ctrl+home']   = 'move_home',
@@ -3185,8 +3300,8 @@ editor.key_bindings = { --flag order is ctrl+alt+shift
 	['shift+right']      = 'select_next_pos',
 	['shift+up']         = 'select_up',
 	['shift+down']       = 'select_down',
-	['ctrl+shift+left']  = 'select_prev_word_break',
-	['ctrl+shift+right'] = 'select_next_word_break',
+	['ctrl+shift+left']  = 'select_prev_wordbreak',
+	['ctrl+shift+right'] = 'select_next_wordbreak',
 	['shift+home']       = 'select_bol',
 	['shift+end']        = 'select_eol',
 	['ctrl+shift+home']  = 'select_home',
@@ -3198,8 +3313,8 @@ editor.key_bindings = { --flag order is ctrl+alt+shift
 	['alt+shift+right']      = 'select_block_next_pos',
 	['alt+shift+up']         = 'select_block_up',
 	['alt+shift+down']       = 'select_block_down',
-	['ctrl+alt+shift+left']  = 'select_block_prev_word_break',
-	['ctrl+alt+shift+right'] = 'select_block_next_word_break',
+	['ctrl+alt+shift+left']  = 'select_block_prev_wordbreak',
+	['ctrl+alt+shift+right'] = 'select_block_next_wordbreak',
 	['alt+shift+home']       = 'select_block_bol',
 	['alt+shift+end']        = 'select_block_eol',
 	['ctrl+alt+shift+home']  = 'select_block_home',
@@ -3408,7 +3523,9 @@ function editor:imgui_input(focused, active, key, char, ctrl, shift, alt,
 
 	if focused then
 
-		local is_input_char = char and not ctrl and not alt and (#char > 1 or char:byte(1) > 31)
+		local is_input_char = char and not ctrl and not alt
+			and (#char > 1 or char:byte(1) > 31)
+
 		if is_input_char then
 			self:insert_char(char)
 		elseif key then
@@ -3427,7 +3544,9 @@ function editor:imgui_input(focused, active, key, char, ctrl, shift, alt,
 	else
 		if tripleclicked and client_hit then
 			self:select_line_at_cursor()
-		elseif not active and lbutton and selection_hit and not waiting_for_triple_click then
+		elseif not active and lbutton and selection_hit
+			and not waiting_for_triple_click
+		then
 			self.moving_selection = true
 			self.moving_at_pos = self.selection.line2 == self.selection.line1
 			self.moving_mousex = mousex

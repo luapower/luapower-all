@@ -380,18 +380,21 @@ slrect:track_changes'lum'
 
 function slrect:override_set_hue(inherited, hue)
 	if inherited(self, hue % 360) then
+		self:fire'color_changed'
 		self:invalidate()
 	end
 end
 
 function slrect:override_set_sat(inherited, sat)
 	if inherited(self, clamp(sat, 0, 1)) then
+		self:fire'color_changed'
 		self:invalidate()
 	end
 end
 
 function slrect:override_set_lum(inherited, lum)
 	if inherited(self, clamp(lum, 0, 1)) then
+		self:fire'color_changed'
 		self:invalidate()
 	end
 end
@@ -404,16 +407,16 @@ function slrect:rgb()
 	return color.convert('rgb', 'hsl', self:hsl())
 end
 
-function prect:get_a() return self.sat end
-function prect:set_a(a) self.sat = a end
-function prect:get_b() return 1-self.lum end
-function prect:set_b(b) self.lum = 1-b end
-function prect:a_range() return 0, 1 end
-function prect:b_range() return 0, 1 end
+function slrect:get_a() return self.sat end
+function slrect:set_a(a) self.sat = a end
+function slrect:get_b() return 1-self.lum end
+function slrect:set_b(b) self.lum = 1-b end
+function slrect:a_range() return 0, 1 end
+function slrect:b_range() return 0, 1 end
 
 slrect:init_ignore{hue=1, sat=1, lum=1}
 
-function hue_bar:after_init(ui, t)
+function slrect:after_init(ui, t)
 	self._hue = t.hue
 	self._sat = t.sat
 	self._lum = t.lum
@@ -481,18 +484,21 @@ svrect:track_changes'val'
 
 function svrect:override_set_hue(inherited, hue)
 	if inherited(self, hue % 360) then
+		self:fire'color_changed'
 		self:invalidate()
 	end
 end
 
 function svrect:override_set_sat(inherited, sat)
 	if inherited(self, clamp(sat, 0, 1)) then
+		self:fire'color_changed'
 		self:invalidate()
 	end
 end
 
 function svrect:override_set_val(inherited, val)
 	if inherited(self, clamp(val, 0, 1)) then
+		self:fire'color_changed'
 		self:invalidate()
 	end
 end
@@ -512,9 +518,9 @@ function svrect:set_b(b) self.val = 1-b end
 function svrect:a_range() return 0, 1 end
 function svrect:b_range() return 0, 1 end
 
-slrect:init_ignore{hue=1, sat=1, val=1}
+svrect:init_ignore{hue=1, sat=1, val=1}
 
-function hue_bar:after_init(ui, t)
+function svrect:after_init(ui, t)
 	self._hue = t.hue
 	self._sat = t.sat
 	self._val = t.val
@@ -724,6 +730,9 @@ function picker:create_sat_lum_rectangle()
 		lum_changed = function(_, lum)
 			self.lum_slider.position = lum
 		end,
+		color_changed = function()
+			self:sync_editboxes()
+		end,
 	}, self.sat_lum_rectangle)
 end
 
@@ -737,6 +746,9 @@ function picker:create_sat_val_rectangle()
 		end,
 		val_changed = function(_, val)
 			self.val_slider.position = val
+		end,
+		color_changed = function()
+			self:sync_editboxes()
 		end,
 	}, self.sat_val_rectangle)
 end
@@ -761,6 +773,18 @@ function picker:create_rgb_editbox()
 		picker = self,
 		parent = self,
 	}
+end
+
+function picker:sync_editboxes()
+	if not self.window.cr then return end
+	local sr = self.rectangle
+	local re = self.rgb_editbox
+	local xe = self.hex_editbox
+	local r, g, b = sr:rgb()
+	re.text = string.format(
+		'%d, %d, %d',
+		r * 255, g * 255, b * 255)
+	xe.text = color.format('#', 'rgb', r, g, b)
 end
 
 function picker:sync()
@@ -815,11 +839,6 @@ function picker:sync()
 	re.y = y
 	re.w = w2
 
-	local r, g, b = sr:rgb()
-	re.text = string.format(
-		'%d, %d, %d',
-		r * 255, g * 255, b * 255)
-
 	y = y + h + sy
 
 	xl.x = x1
@@ -829,8 +848,6 @@ function picker:sync()
 	xe.x = x2
 	xe.y = y
 	xe.w = w2
-
-	xe.text = color.format('#', 'rgb', r, g, b)
 
 	y = y + h + sy + 20
 
@@ -956,7 +973,7 @@ if not ... then require('ui_demo')(function(ui, win)
 		sat_lum_rectangle = {sat = .7, lum = .3}, --, tooltip = 'Saturation x Luminance square'},
 		sat_val_rectangle = {sat = .7, val = .3}, --, tooltip = 'Saturation x Value square'},
 		--mode = 'HSV',
-		sat_lum_rectangle_class = sltr,
+		--sat_lum_rectangle_class = sltr,
 	}
 
 end) end

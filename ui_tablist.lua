@@ -10,27 +10,52 @@ local clamp = glue.clamp
 
 --tab ------------------------------------------------------------------------
 
-ui.tab = ui.layer:subclass'tab'
+local tab = ui.layer:subclass'tab'
+ui.tab = tab
 
-ui.tab._index = 1/0 --add to the tablist tail
-ui.tab.close_button = ui.button
-ui.tab.focusable = true
-ui.tab.clip_content = true
+tab._index = 1/0 --add to the tablist tail
+tab.close_button = ui.button
+tab.focusable = true
+tab.clip_content = true
+tab.border_width = 1
+tab.background_color = '#888'
+tab.text_align = 'left'
+tab.padding_left = 15
 
 ui:style('tab', {
 	transition_x = true,
 	transition_duration_x = 0.5,
 })
 
-function ui.tab:get_index()
+ui:style('tab :hot', {
+	background_color = '#dd8',
+	transition_background_color = true,
+	transition_duration = 1.5,
+})
+
+ui:style('tab :focused', {
+	font_weight = 'bold',
+})
+
+ui:style('tab :active', {
+	font_slant = 'italic',
+})
+
+ui:style('tab :selected', {
+	background_color = ui.initial,
+	border_color = '#0003',
+	transition_duration = 0,
+})
+
+function tab:get_index()
 	return self.parent and self.parent:index(self) or self._index
 end
 
-function ui.tab:get_front_tab()
-	return self.parent and self == self.parent.front_tab
+function tab:get_selected()
+	return self.parent and self == self.parent.selected_tab
 end
 
-function ui.tab:set_index(index)
+function tab:set_index(index)
 	if not self.parent then
 		self._index = index
 	else
@@ -39,36 +64,50 @@ function ui.tab:set_index(index)
 	end
 end
 
-function ui.tab:after_set_parent()
+function tab:select(force)
+	local ftab = self.parent._selected_tab
+	self.parent._selected_tab = false
+	if not force and ftab == self then return end
+	if ftab and ftab ~= self then
+		ftab:settag(':selected', false)
+		ftab:fire'tab_unselected'
+		self.parent:fire('tab_unselected', ftab)
+	end
+	self:settag(':selected', true)
+	self:to_front()
+	self:focus()
+	self:fire'tab_selected'
+	self.parent:fire('tab_selected', self)
+end
+
+function tab:after_set_parent()
 	self.index = self._index
 end
 
-function ui.tab:after_set_active(active)
+function tab:before_set_active(active)
+	self.parent._selected_tab = self.parent.selected_tab
+end
+
+function tab:after_set_active(active)
 	if active then
-		if self.parent.front_tab then
-			self.parent.front_tab:settag(':front_tab', false)
-		end
-		self:settag(':front_tab', true)
-		self:to_front()
+		self:select()
 	end
 end
 
-function ui.tab:keypress(key)
+function tab:keypress(key)
 	if key == 'enter' or key == 'space' then
 		self:activate()
-		self:focus()
 	elseif key == 'left' or key == 'right' then
 		local next_tab = self.parent:next_tab(self, key == 'right')
 		if next_tab then
 			next_tab:activate()
-			next_tab:focus()
 		end
 	end
 end
 
 --NYI: border width ~= 1, diff. border colors per side, rounded corners,
 --border offset, shadows (needs border offset).
-function ui.tab:border_path(cr)
+function tab:border_path(cr)
 	local w, h = self.w, self.h
 	local sl = self.parent.tab_slant_left
 	local sr = self.parent.tab_slant_right
@@ -82,13 +121,14 @@ function ui.tab:border_path(cr)
 	local y2 = 0
 	local y3 = h
 	local y4 = h
+	cr:new_path()
 	cr:move_to(x4 + .5, y4 - .5)
 	cr:line_to(x1 + .5, y1 + .5)
 	cr:line_to(x2 - .5, y2 + .5)
 	cr:line_to(x3 - .5, y3 - .5)
 end
 
-function ui.tab:draw_border(cr)
+function tab:draw_border(cr)
 	if not self:border_visible() then return end
 	cr:new_path()
 	self:border_path(cr)
@@ -99,31 +139,52 @@ end
 
 --tablist --------------------------------------------------------------------
 
-ui.tablist = ui.layer:subclass'tablist'
+local tablist = ui.layer:subclass'tablist'
+ui.tablist = tablist
 
-ui.tablist.h = 30
-ui.tablist.tab_w = 150
-ui.tablist.tabs_padding_left = 10
-ui.tablist.tab_spacing = -10
-ui.tablist.tab_slant_left = 70 --degrees
-ui.tablist.tab_slant_right = 70 --degrees
-ui.tablist.main_tablist = true --responds to tab/ctrl+tab globally
+tablist.h = 30
+tablist.tab_w = 150
+tablist.tabs_padding_left = 10
+tablist.tab_spacing = -10
+tablist.tab_slant_left = 70 --degrees
+tablist.tab_slant_right = 70 --degrees
+tablist.main_tablist = true --responds to tab/ctrl+tab globally
 
-function ui.tablist:after_init()
+tablist:init_ignore{tabs = 1}
+
+function tablist:before_init(ui, t)
 	self.tabs = {} --{tab1,...}
+end
+
+function tablist:after_init(ui, t)
+	if t.tabs then
+		for i,tab in ipairs(t.tabs) do
+			self:tab(tab)
+		end
+	end
 	self.window:on({'keypress', self}, function(win, key)
 		self:_window_keypress(key)
 	end)
 end
 
-function ui.tablist:before_free()
+function tablist:before_free()
 	self.window:off({nil, self})
 end
 
-function ui.tablist:next_tab(tab, forward, rotate)
+function tablist:tab(tab)
+	if not tab.istab then
+		local class = tab.class or self.ui.tab
+		tab = class(self.ui, self[class], tab)
+	end
+	assert(tab.istab)
+	tab.parent = self
+	return tab
+end
+
+function tablist:next_tab(tab, forward, rotate)
 	local first_index = forward and 1 or #self.tabs
 	if tab == nil then
-		tab = self.front_tab
+		tab = self.selected_tab
 	end
 	if tab == false then
 		return self.tabs[first_index]
@@ -133,7 +194,7 @@ function ui.tablist:next_tab(tab, forward, rotate)
 	end
 end
 
-function ui.tablist:_window_keypress(key)
+function tablist:_window_keypress(key)
 	if not self.main_tablist then return end
 	if #self.tabs == 0 then return end
 	if key == 'tab' and self.ui:key'ctrl' then
@@ -141,7 +202,7 @@ function ui.tablist:_window_keypress(key)
 		next_tab:activate()
 		local widget = self.focused_widget
 		if widget and widget.istab and self:index(widget) then
-			next_tab:focus()
+			next_tab:select()
 		end
 	end
 end
@@ -160,7 +221,7 @@ function ui.layer:_move_tab(tab, index)
 	end
 end
 
-function ui.tablist:get_front_tab()
+function tablist:get_selected_tab()
 	if not self.layers then return end
 	for i = #self.layers, 1, -1 do --frontmost layer that is a tab
 		local tab = self.layers[i]
@@ -170,11 +231,11 @@ function ui.tablist:get_front_tab()
 	end
 end
 
-function ui.tablist:index(tab)
+function tablist:index(tab)
 	return indexof(tab, self.tabs)
 end
 
-function ui.tablist:real_tab_w()
+function tablist:real_tab_w()
 	local w = self.w - self.tabs_padding_left + self.tab_spacing * #self.tabs
 	local sl = self.tab_slant_left
 	local sr = self.tab_slant_right
@@ -184,17 +245,17 @@ function ui.tablist:real_tab_w()
 	return math.max(tw, wl + wr + 10)
 end
 
-function ui.tablist:pos_by_index(index)
+function tablist:pos_by_index(index)
 	return self.tabs_padding_left +
 		(index - 1) * (self:real_tab_w() + self.tab_spacing)
 end
 
-function ui.tablist:index_by_pos(x)
+function tablist:index_by_pos(x)
 	local x = x - self.tabs_padding_left
 	return math.floor(x / self:real_tab_w() + 0.5) + 1
 end
 
-function ui.tablist:_update_tabs_pos(duration)
+function tablist:_update_tabs_pos(duration)
 	for i,tab in ipairs(self.tabs) do
 		if not tab.active then
 			tab:transition('x', self:pos_by_index(i), duration)
@@ -203,30 +264,28 @@ function ui.tablist:_update_tabs_pos(duration)
 	end
 end
 
-function ui.tablist:clamp_tab_pos(x)
+function tablist:clamp_tab_pos(x)
 	return clamp(x, self.tabs_padding_left, self.w - self.tab_w)
 end
 
-function ui.tablist:after_add_layer(tab)
+function tablist:before_add_layer()
+	self._selected_tab = self.selected_tab
+end
+
+function tablist:after_add_layer(tab)
 	if not tab.istab then return end
-	if self.front_tab then
-		self.front_tab:settag(':front_tab', false)
-	end
-	tab:settag(':front_tab', true)
 	local index = self:clamped_index(tab.index, true)
 	table.insert(self.tabs, index, tab)
 	tab.h = self.h + 1
 	tab.w = self:real_tab_w()
 	tab:on('mousedown.tablist', function(tab)
 		tab.active = true
-		tab:focus()
 	end)
 	tab:on('mouseup.tablist', function(tab)
 		tab.active = false
 		self:_update_tabs_pos()
 	end)
 	function tab.drag(tab, dx, dy)
-		tab.active = true
 		tab.index = self:index_by_pos(tab.x + dx)
 		tab:transition('x', self:clamp_tab_pos(tab.x + dx), 0)
 	end
@@ -234,32 +293,33 @@ function ui.tablist:after_add_layer(tab)
 		return self
 	end
 	self:_update_tabs_pos(0)
+	tab:select(true)
 end
 
-function ui.tablist:after_remove_layer(tab)
+function tablist:after_remove_layer(tab)
 	if not tab.istab then return end
 	tab:off'.tablist'
 	table.remove(self.tabs, self:index(tab))
 	tab.index = 1/0 --reset to default
 end
 
-function ui.tablist:draw_tabline_underneath(cr, front_tab)
-	if not front_tab:border_visible() then return end
+function tablist:draw_tabline_underneath(cr, selected_tab)
+	if not selected_tab:border_visible() then return end
 	cr:new_path()
 	cr:move_to(self.tabs_padding_left, self.h - .5)
 	cr:rel_line_to(self.w - self.tabs_padding_left, 0)
-	cr:rgba(self.ui:color(front_tab.border_color_left))
+	cr:rgba(self.ui:color(selected_tab.border_color_left))
 	cr:line_width(1)
 	cr:stroke()
 end
 
-function ui.tablist:draw_layers(cr)
+function tablist:draw_layers(cr)
 	if not self.layers then return end
-	local front_tab = self.front_tab
+	local selected_tab = self.selected_tab
 	for i = 1, #self.layers do
 		local layer = self.layers[i]
-		if layer == front_tab then
-			self:draw_tabline_underneath(cr, front_tab)
+		if layer == selected_tab then
+			self:draw_tabline_underneath(cr, selected_tab)
 		end
 		layer:draw(cr)
 	end
@@ -270,30 +330,6 @@ end
 if not ... then require('ui_demo')(function(ui, win)
 
 	local color = require'color'
-
-	ui:style('tab', {
-		border_width = 1,
-	})
-
-	ui:style('tab :hot', {
-		background_color = '#dd8',
-		transition_background_color = true,
-		transition_duration = 1.5,
-	})
-
-	ui:style('tab :focused', {
-		font_weight = 'bold',
-	})
-
-	ui:style('tab :active', {
-		font_slant = 'italic',
-	})
-
-	ui:style('tab :front_tab', {
-		background_color = ui.initial,
-		border_color = '#0003',
-		transition_duration = 0,
-	})
 
 	local tl = ui:tablist{
 		x = 10, y = 10, w = 800,
@@ -309,10 +345,11 @@ if not ... then require('ui_demo')(function(ui, win)
 			index = 1,
 			parent = tl,
 			background_color = bg_color,
-			padding_left = 15,
 			style = {
 				font_slant = 'normal',
 			},
+			text = 'Tab '..i,
+			text_color = {color.rgb(ui.tab.background_color):bw(.25):rgba()},
 		}
 
 		local content = ui:layer{parent = win,
@@ -321,14 +358,6 @@ if not ... then require('ui_demo')(function(ui, win)
 			background_color = bg_color,
 			corner_radius = 5,
 		}
-
-		function tab:after_draw_content(cr)
-			self:setfont()
-			local bg_color = self.background_color
-			local text_color = {color.rgb(bg_color):bw(.25):rgba()}
-			cr:rgba(self.ui:color(text_color))
-			self.window:textbox(0, 0, self.cw, self.ch, 'Tab '..i, 'left', 'center')
-		end
 		function tab:activated()
 			ui:each('content', function(self) self.visible = false end)
 			content.visible = true

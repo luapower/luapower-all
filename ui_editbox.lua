@@ -24,8 +24,8 @@ editbox.border_color = '#333'
 editbox.border_width = 1
 
 editbox.uses_enter_key = true
+editbox.capture_tab = false
 
-editbox.multiline = false
 editbox.eol_markers = false
 editbox.minimap = false
 editor.line_numbers = false
@@ -66,14 +66,12 @@ editbox.regex_color = '#ff3333'
 ui:style('editbox', {
 	transition_border_color = true,
 	transition_duration = .5,
-	transition_ease = 'expo out',
 })
 
 ui:style('editbox :hot', {
 	border_color = '#999',
 	transition_border_color = true,
 	transition_duration = .5,
-	transition_ease = 'expo out',
 })
 
 ui:style('editbox :focused', {
@@ -84,8 +82,14 @@ ui:style('editbox :focused', {
 	shadow_color = '#666',
 })
 
-local caret = ui.layer
+ui:style('editbox_caret', {
+
+})
+
+local caret = ui.layer:subclass'editbox_caret'
 editbox.caret_class = caret
+
+caret.activable = false
 
 function editbox:color(color)
 	return self[color..'_color'] or self.text_color
@@ -170,7 +174,13 @@ function view:end_clip()
 end
 
 function view:draw_background() end --using layer's background
-function view:draw_cursor() end --using the cursor layer
+function view:draw_cursor(cursor, cx, cy)
+	local caret = self.editbox.caret
+	caret.x, caret.y, caret.w, caret.h = self:cursor_rect(cursor)
+	caret.x = caret.x + cx
+	caret.y = caret.y + cy
+	caret.background_color = self.editbox:color(cursor.color or 'cursor')
+end
 
 function view:draw_rect(x, y, w, h, color)
 	local cr = self.editbox.window.cr
@@ -180,15 +190,31 @@ function view:draw_rect(x, y, w, h, color)
 	cr:fill()
 end
 
+local ffi = require'ffi'
+local ext = ffi.new'cairo_text_extents_t'
+local cbuf = ffi.new'uint8_t[2]'
 function view:char_advance_x(s, i)
+	local xt = self._xt
+	if not xt then
+		xt = {}
+		self._xt = xt
+	end
 	local cr = self.editbox.window.cr
-	local ext = cr:text_extents(s:sub(i, i))
-	return ext.x_advance
+	local c = s:byte(i, i)
+	local x = xt[c]
+	if not x then
+		cbuf[0] = c
+		cr:text_extents(cbuf, ext)
+		x = ext.x_advance
+		xt[c] = x
+	end
+	return x
 end
 
 function view:draw_char(x, y, s, i, color)
 	local cr = self.editbox.window.cr
 	cr:rgba(self.editbox.ui:color(self.editbox:color(color)))
+	cr:new_path()
 	cr:move_to(x, y)
 	cr:show_text(s:sub(i, i))
 end
@@ -267,8 +293,18 @@ end
 
 function editbox:keypress(key)
 	--if tab is kept for navigation, use ctrl+tab to indent
-	if key == 'tab' and not self.capture_tab and self.ui:key'ctrl' then
-		self.editor:indent()
+	if key == 'tab' then
+		if (not self.capture_tab and self.ui:key'ctrl')
+			or (self.capture_tab and not self.ui:key'ctrl')
+		then
+			self.editor:indent()
+		else
+			local next_widget =
+				self.window:next_focusable_widget(not self.ui:key'shift')
+			if next_widget then
+				next_widget:focus()
+			end
+		end
 	else
 		self.editor:keypress(key)
 	end
@@ -298,6 +334,7 @@ function editbox:_sync_view()
 	if not self.multiline then
 		self.ch = view.line_h
 	end
+	view:sync()
 end
 
 function editbox:_sync_scrollbars()
@@ -319,12 +356,6 @@ function editbox:_sync_scrollbars()
 end
 
 function editbox:_sync_caret()
-
-	self.caret.x, self.caret.y, self.caret.w, self.caret.h =
-		self.editor.view:cursor_rect(self.editor.cursor)
-
-	self.caret.background_color =
-		self:color(self.editor.cursor.color or 'cursor')
 
 	self.caret.visible = self.editor.cursor.visible
 
@@ -372,11 +403,14 @@ function editbox:_set_multiline(multiline)
 end
 
 function editbox:set_multiline(multiline)
-	if multiline == self.multiline then return end
 	local s = self.editor.buffer:select()
 	self:_set_multiline(multiline)
 	self.editor:replace(s)
 end
+
+editbox:instance_only'multiline'
+
+editbox.multiline = false
 
 function editbox:get_text()
 	return self.editor.buffer:select()
@@ -389,20 +423,19 @@ end
 
 editbox:init_ignore{editor=1, multiline=1, text=1}
 
-function editbox:override_init(inherited, ui, t)
-
+function editbox:before_init(ui, t)
 	self.editor = self.editor_class(t.editor)
+	self.editor.editbox = self
+	self.editor.view.editbox = self
+end
 
-	inherited(self, ui, t)
+function editbox:after_init(ui, t)
 
 	self:init_proxy_properties()
 
-	self.editor.editbox = self
-	self.editor.view.editbox = self
-
 	self.caret = self.caret_class(self.ui, {
-		tags = 'caret',
 		parent = self,
+		editbox = self,
 	}, self.caret)
 
 	self.vscrollbar = self.vscrollbar_class(self.ui, {
@@ -418,19 +451,12 @@ function editbox:override_init(inherited, ui, t)
 		autohide = true,
 	}, self.hscrollbar)
 
-	local multiline = t.multiline
-	if multiline == nil then
-		multiline = self.super.multiline
-	end
-	self:_set_multiline(multiline)
+	self:_set_multiline(t.multiline)
 
-	--[[ TODO:
-	if self.text then
-		self.editor.buffer:load(self.text)
-		self.editor.cursor:move_end()
-		self.editor.selection:reset_selection_to_cursor()
+	if t.text then
+		self.editor.buffer:load(t.text)
+		self.editor.selection:reset_to_cursor(self.editor.cursor)
 	end
-	]]
 
 	self.editor.cursor.visible = false
 	self.editor.cursor.changed.blinking = false

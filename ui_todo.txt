@@ -6,15 +6,25 @@ UI ---------------------------------------------------------------------------
 
 - fix module autoloading vs css decl. order conflict
 
-- fix style matching order so that styles with state tags are applied later
-	option 1: introduce :state tags
-	option 2: add styles to multiple stylesheets which are applied in order
-		- this also solves the problem with module autoloading
-
-
 EDITBOX ----------------------------------------------------------------------
 
-- fix hscroll
+CODEDIT
+=======
+- block selection
+- reflow (ctrl+R)
+- paste block (ctrl+alt+V)
+- buffer normalization
+- insert_align_args
+- insert_align_list
+
+- save
+
+- bookmarks
+- line margin highlighting
+
+EDITBOX
+=======
+- fix scrolling (wrong metrics)
 - maxchars
 - key filter
 - password_char & eye_icon

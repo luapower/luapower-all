@@ -65,7 +65,9 @@ ui:style('button :focused', {
 	shadow_color = '#666',
 })
 
-button:init_priority{text=1, key=2}
+button:init_priority{
+	text=-2, key=-1, --because text can contain a key
+}
 
 function button:press()
 	self:fire'pressed'

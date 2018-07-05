@@ -106,7 +106,7 @@ function object:forward_events(object, event_names)
 end
 
 --create a r/w property which reads/writes to a "private var".
-function object:stored_property(prop, normalize)
+function object:stored_property(prop)
 	local priv = '_'..prop
 	self[priv] = self[prop] --transfer existing value to private var
 	self[prop] = nil
@@ -785,12 +785,8 @@ function element:init_fields(t)
 	local pri = self._init_priority
 	local function cmp(a, b)
 		local pa, pb = pri[a], pri[b]
-		if pa and pb then
-			return pa < pb
-		elseif pa then
-			return true
-		elseif pb then
-			return false
+		if pa or pb then
+			return (pa or 0) < (pb or 0)
 		else
 			return a < b
 		end
@@ -2058,8 +2054,6 @@ end
 local layer = element:subclass'layer'
 ui.layer = layer
 
-layer:init_ignore{parent=1, enabled=1}
-
 layer.visible = true
 layer._enabled = true
 layer.activable = true --can be clicked and set as hot
@@ -2095,10 +2089,32 @@ layer.drag_threshold = 0 --moving distance before start dragging
 layer.max_click_chain = 1 --2 for getting doubleclick events etc.
 layer.hover_delay = 1 --TODO: hover event delay
 
+function layer:override_init(inherited, ui, t)
+	if ui.islayer or ui.iswindow then --ui is actually the parent
+		t.parent = ui
+		ui = ui.ui
+	end
+	return inherited(self, ui, t)
+end
+
+layer:init_ignore{parent=1, enabled=1, layers=1, class=1}
+
 function layer:after_init(ui, t)
 	self._enabled = t.enabled
-	--setting parent after _enabled updates the `disabled` tag only once.
+	--setting parent after _enabled updates the `disabled` tag only once!
 	self.parent = t.parent
+
+	--create and/or attach layers
+	if t.layers then
+		self.layers = {}
+		for i,layer in ipairs(t.layers) do
+			if not layer.islayer then
+				layer = layer.class(self.ui, self[layer.class], layer)
+			end
+			assert(layer.islayer)
+			layer.parent = self
+		end
+	end
 end
 
 function layer:before_free()
@@ -3659,6 +3675,7 @@ local autoload = {
 	grid         = 'ui_grid',
 	popup        = 'ui_popup',
 	dropdown     = 'ui_dropdown',
+	colorpicker  = 'ui_colorpicker',
 }
 
 for widget, submodule in pairs(autoload) do
