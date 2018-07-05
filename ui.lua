@@ -1307,6 +1307,38 @@ function window:before_free()
 	self.ui.windows[self] = nil
 end
 
+--move frameless window by dragging it
+
+window._move_layer = false
+
+function window:get_move_layer()
+	return self._move_layer
+end
+
+function window:set_move_layer(layer)
+	layer = layer or false
+	assert(not layer or layer.window == self)
+	if self._move_layer == layer then return end
+	if self._move_layer then
+		layer.mousedown_activate = false
+		layer.start_drag = nil --reset to default
+		layer.drag = nil --reset to default
+	end
+	self._move_layer = layer
+	if layer then
+		layer.mousedown_activate = true
+		layer.focusable = false
+		layer.focus_children = false
+		function layer:start_drag()
+			return self
+		end
+		function layer:drag(dx, dy)
+			local cx, cy = self.window:client_rect()
+			self.window:client_rect(cx + dx, cy + dy)
+		end
+	end
+end
+
 --parent/child interface
 
 function window:get_parent()
@@ -2062,6 +2094,7 @@ layer.vscrollable = false --enable mouse wheel when hot and not focused
 layer.hscrollable = false --enable mouse horiz. wheel when hot and not focused
 layer.scrollable = false --can be hit for vscroll or hscroll
 layer.focusable = false --can be focused
+layer.focus_children = false --it's a container of focusable children
 layer.mousedown_activate = false --activate/deactivate on left mouse down/up
 
 local function args4(s, convert) --parse a string of 4 non-space args
@@ -2093,6 +2126,9 @@ function layer:override_init(inherited, ui, t)
 	if ui.islayer or ui.iswindow then --ui is actually the parent
 		t.parent = ui
 		ui = ui.ui
+	end
+	if t.parent then
+		ui = t.parent.ui
 	end
 	return inherited(self, ui, t)
 end
@@ -2553,7 +2589,7 @@ end
 function layer:_update_enabled(enabled)
 	self:settag(':disabled', not enabled)
 	if self.layers then
-		for i,layer in ipairs(self.layers) do
+		for _,layer in ipairs(self.layers) do
 			layer:_update_enabled(enabled)
 		end
 	end
@@ -2625,10 +2661,8 @@ function layer:focus()
 			self:invalidate()
 		end
 		return true
-	else --focus the first focusable child
-		if not (self.visible and self.enabled) then
-			return
-		end
+	elseif self.focus_children and self.visible and self.enabled then
+		--focus the first focusable child
 		local layer = self:first_focusable_widget()
 		if layer and layer:focus() then
 			return true

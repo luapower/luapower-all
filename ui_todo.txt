@@ -1,6 +1,7 @@
 NW ---------------------------------------------------------------------------
 
 - fix window moving & drag threshold
+- fix inhibit window grabbing-to-move while it is resizing
 
 UI ---------------------------------------------------------------------------
 
