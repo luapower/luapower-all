@@ -913,7 +913,8 @@ local keynames = { --vkey code -> vkey name
 
 	[winapi.VK_CAPITAL]  = 'capslock',
 	[winapi.VK_NUMLOCK]  = 'numlock',     --win keyboard; mapped to 'numclear' on mac
-	[winapi.VK_SNAPSHOT] = 'printscreen', --win keyboard; mapped to 'F13' on mac; taken on windows (screen snapshot)
+	[winapi.VK_SNAPSHOT] = 'printscreen', --win keyboard; mapped to 'F13' on mac;
+		--taken on windows (screen snapshot)
 	[winapi.VK_SCROLL]   = 'scrolllock',  --win keyboard; mapped to 'F14' on mac
 
 	[winapi.VK_NUMPAD0] = 'num0',
@@ -1077,7 +1078,9 @@ end
 
 --prevent repeating these keys to emulate OSX behavior, and also because
 --flags.prev_key_state doesn't work on them.
-local norepeat = glue.index{'lshift', 'rshift', 'lalt', 'ralt', 'altgr', 'lctrl', 'rctrl', 'capslock'}
+local norepeat = glue.index{
+	'lshift', 'rshift', 'lalt', 'ralt', 'altgr', 'lctrl', 'rctrl', 'capslock',
+}
 
 function Window:on_key_down(vk, flags)
 	local key = self:nw_setkey(vk, flags, true)
@@ -1149,6 +1152,43 @@ function app:key(name) --name is in lowercase!
 			return keystate[name] or false
 		end
 	end
+end
+
+--TODO: finish this API
+local exclude_keystate = glue.index{
+	VK_SHIFT, VK_CONTROL, VK_MENU,  --we have L/R variants on those
+}
+local sort_first = glue.index{
+	'lshift', 'rshift', 'lalt', 'ralt', 'altgr', 'lctrl', 'rctrl',
+}
+local t = {}
+local function cmp(a, b)
+	local sa = sort_first[a] and 1 or 0
+	local sb = sort_first[b] and 1 or 0
+	if sa == sb then
+		return a < b
+	else
+		return sa < sb
+	end
+end
+function app:keys_pressed()
+	local keys = winapi.GetKeyboardState()
+	local j = 0
+	for i=0,255 do
+		if not exclude_keystate[i] then
+			local keyname = keynames[i]
+			if keyname then
+				local bits = keys[i]
+				local down = bit.band(bits, 0x80) == 0x80
+				if down then
+					j = j + 1
+					t[j] = keyname
+				end
+			end
+		end
+	end
+	table.sort(t, cmp)
+	return table.concat(t, ' ', 1, j)
 end
 
 function Window:on_raw_input(raw)

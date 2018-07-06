@@ -294,6 +294,13 @@ function GetAsyncKeyState(vk) --down
 	return bit.band(C.GetAsyncKeyState(flags(vk)), 0x8000) ~= 0
 end
 
+local state
+function GetKeyboardState()
+	state = state or ffi.new'PBYTE[256]'
+	checknz(C.GetKeyboardState(state))
+	return state
+end
+
 MAPVK_VK_TO_VSC    = 0
 MAPVK_VSC_TO_VK    = 1
 MAPVK_VK_TO_CHAR   = 2

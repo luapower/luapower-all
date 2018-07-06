@@ -7,9 +7,9 @@ tagline: native windows key codes
 Keyboards are used differently depending on purpose, which can be text input,
 navigation, editing, shortcuts and other functions.
 
-For text input it's a combination of physical layout, logical layout
-input method, capslock state, numlock state, shift state, key pause
-and repeat intervals that determines what is being typed.
+For text input what is being typed is determined by a combination of physical
+layout, logical layout input method, capslock state, numlock state,
+shift state, key pause and repeat intervals.
 Since all this is very complex and involves various user settings,
 this is entirely serviced by OS: we just get an event with one or more
 unicode code points representing what is being typed.
@@ -23,7 +23,7 @@ creates the need to get the keycap name for those keys. Games also want
 to ignore the numlock and capslock states, and may want to distinguish
 between left and right modifier keys.
 
-Editing keys (tab, enter), as well as function, control and modifier keys
+Editing keys (Tab, Enter), as well as function, control and modifier keys
 are universal, but not all of them are available between PC, Mac and laptop
 keyboards.
 
@@ -62,22 +62,22 @@ esc
 
 F1-F10
 
-F11														taken on mac (show desktop)
-F12														taken on mac (show dashboard)
+F11														taken on Mac (show desktop)
+F12														taken on Mac (show dashboard)
 
-F13														osx only
-F14														osx only; taken (brightness down)
-F15														osx only; taken (brightness up)
-F16														mac keyboard
-F17														mac keyboard
-F18														mac keyboard
-F19														mac keyboard
+F13														OSX only
+F14														OSX only; taken (brightness down)
+F15														OSX only; taken (brightness up)
+F16														Mac keyboard
+F17														Mac keyboard
+F18														Mac keyboard
+F19														Mac keyboard
 
-capslock													no key-up timing on osx
-numlock													windows only; light always off on OSX
-printscreen												windows only; taken (screen capture)
-scrolllock												windows only
-break														windows only
+capslock													no key-up timing on OSX
+numlock													Windows only; light always off on OSX
+printscreen												Windows only; taken (screen capture)
+scrolllock												Windows only
+break														Windows only
 
 num0-num9
 
@@ -86,21 +86,21 @@ num*
 num+
 num-
 num/
-numclear													separate key on mac keyboard
+numclear													separate key on Mac keyboard
 
-lwin														windows only
-rwin														windows only
-menu														win keyboard
-num=														osx only
+lwin														Windows only
+rwin														Windows only
+menu														Windows keyboard
+num=														OSX only
 
 0-9
 A-Z
 
 ctrl				lctrl				rctrl
 alt				lalt				ralt
-command			lcommand			rcommand			osx only
+command			lcommand			rcommand			OSX only
 
-left				left!				numleft			num... variants are windows only
+left				left!				numleft			num... variants are Windows only
 up					up!				numup
 right				right!			numright
 down				down!				numdown
@@ -113,7 +113,7 @@ insert			insert!			numinsert
 delete			delete!			numdelete
 enter				enter!			numenter
 
-help														osx only; no keydown event
+help														OSX only; no keydown event
 
 mute
 volumedown
@@ -133,10 +133,10 @@ regardless of what is written on the key cap.
 Here's how the mappings go:
 
 
-### Windows Keyboard on OSX
+### Windows keyboard on OSX
 
 ~~~
-win keyboard		key on OSX
+Windows keyboard		key on OSX
 ----------------------------------
 lwin					lcommand
 rwin					rcommand
@@ -152,12 +152,12 @@ insert!				help
 ~~~
 
 
-### Mac Keyboard on Windows
+### Mac keyboard on Windows
 
 If you have a Mac keyboard on a Windows box, please fill these up.
 
 ~~~
-mac keyboard		key on Windows
+Mac keyboard		key on Windows
 ----------------------------------
 F13					?
 F14					?
