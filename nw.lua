@@ -1445,8 +1445,8 @@ function app:key(keys)
 	end
 	if keys:find(' ', 1, true) then --it's a sequence, eg. 'alt f3'
 		local found
-		for key in keys:gmatch'[^%s]+' do
-			if not self.backend:key(key) then
+		for _not, key in keys:gmatch'(!?)([^%s]+)' do
+			if self.backend:key(key) == (_not == '') then
 				return false
 			end
 			found = true

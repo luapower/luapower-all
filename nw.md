@@ -1038,10 +1038,13 @@ See [nw_keyboard] for the list of key names.
 
 Get key pressed and toggle states. The query can be one or more
 key names separated by spaces or by `+` eg. 'alt+f3' or 'alt f3'.
+
 The key name can start with `^` in which case the toggle state of that key
-is queried instead eg. '^capslock' returns the toggle state of the
-caps lock key while 'capslock' returns its pressed state.
-(only the capslock, numlock and scrolllock keys have toggle states).
+is queried instead eg. '^capslock' returns the toggle state of the caps lock
+key while 'capslock' returns its pressed state. (only the capslock, numlock
+and scrolllock keys have toggle states).
+
+The key name can start with `!` which checks that the key is _not_ pressed.
 
 ### `win:keydown(key)`
 
