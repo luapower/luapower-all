@@ -2764,7 +2764,11 @@ return {
 		},
 		fs={
 			fs={
-				loaderr='./fs.lua:19: cannot change a protected metatable'
+				mdeps={
+					ffi=true,
+					fs_common=true,
+					fs_posix=true
+				}
 			},
 			fs_common={
 				mdeps={
@@ -2805,7 +2809,11 @@ return {
 		},
 		gfonts={
 			gfonts={
-				loaderr='./gfonts.lua:7: ./fs.lua:19: cannot change a protected metatable'
+				mdeps={
+					fs=true,
+					glue=true,
+					pp=true
+				}
 			}
 		},
 		giflib={
@@ -2995,11 +3003,16 @@ return {
 					ffi=true,
 					imgui=true
 				}
+			},
+			imgui_scrollbars={
+				mdeps={
+					imgui=true
+				}
 			}
 		},
 		imgui_nw_cairo={
 			imgui_nw_cairo={
-				loaderr='./imgui_nw_cairo.lua:12: ./gfonts.lua:7: ./fs.lua:19: cannot change a protected metatable'
+				loaderr='./xlib.lua:161: assertion failed!'
 			}
 		},
 		lanes={
@@ -3308,6 +3321,9 @@ return {
 		luaparser={
 			luaparser={
 				loaderr='./luaparser.lua:15: ./ljstr.lua:6: libljstr.so: cannot open shared object file: No such file or directory'
+			},
+			luaparser_lpeg={
+				loaderr='./luaparser_lpeg.lua:201: bad argument #2 to \'match\' (string expected, got nil)'
 			}
 		},
 		luapower={
@@ -3439,8 +3455,7 @@ return {
 				},
 				mdeps={
 					ffi=true,
-					glue=true,
-					stdio=true
+					glue=true
 				}
 			}
 		},
@@ -3479,7 +3494,6 @@ return {
 					ffi=true,
 					glue=true,
 					obj_parser=true,
-					stdio=true,
 					tuple=true
 				}
 			},
@@ -3546,6 +3560,16 @@ return {
 				}
 			},
 			openvg_h={
+				mdeps={
+					ffi=true
+				}
+			}
+		},
+		opus={
+			opus={
+				loaderr='./opus.lua:7: libopus.so: cannot open shared object file: No such file or directory'
+			},
+			opus_h={
 				mdeps={
 					ffi=true
 				}
@@ -3694,7 +3718,7 @@ return {
 				loaderr='./pfglab3_conf.lua:5: ./bundle.lua:12: attempt to index global \'arg\' (a nil value)'
 			},
 			pfglab3_gen={
-				loaderr='./pfglab3_gen.lua:6: ./rs232.lua:6: ./fs.lua:19: cannot change a protected metatable'
+				loaderr='./pfglab3_gen.lua:8: ./pfglab3_conf.lua:5: ./bundle.lua:12: attempt to index global \'arg\' (a nil value)'
 			},
 			pfglab3_keygen={
 				mdeps={
@@ -3756,7 +3780,10 @@ return {
 		},
 		rs232={
 			rs232={
-				loaderr='./rs232.lua:6: ./fs.lua:19: cannot change a protected metatable'
+				mdeps={
+					ffi=true,
+					fs=true
+				}
 			}
 		},
 		rsync={
@@ -4364,49 +4391,114 @@ return {
 		},
 		ui={
 			ui={
-				loaderr='./ui.lua:18: ./fs.lua:19: cannot change a protected metatable'
+				mdeps={
+					amoeba=true,
+					box2d=true,
+					boxblur=true,
+					cairo=true,
+					color=true,
+					easing=true,
+					freetype=true,
+					fs=true,
+					glue=true,
+					oo=true,
+					time=true,
+					tuple=true
+				}
 			},
 			ui_button={
-				loaderr='./ui_button.lua:5: ./ui.lua:18: ./fs.lua:19: cannot change a protected metatable'
+				mdeps={
+					glue=true,
+					ui=true
+				}
 			},
 			ui_calendar={
-				loaderr='./ui_calendar.lua:5: ./ui.lua:18: ./fs.lua:19: cannot change a protected metatable'
+				mdeps={
+					glue=true,
+					ui=true,
+					ui_grid=true
+				}
 			},
 			ui_colorpicker={
-				loaderr='./ui_colorpicker.lua:5: ./ui.lua:18: ./fs.lua:19: cannot change a protected metatable'
+				mdeps={
+					bitmap=true,
+					cairo=true,
+					color=true,
+					glue=true,
+					path2d_line=true,
+					ui=true
+				}
 			},
 			ui_dropdown={
-				loaderr='./ui_dropdown.lua:5: ./ui.lua:18: ./fs.lua:19: cannot change a protected metatable'
+				mdeps={
+					glue=true,
+					ui=true,
+					ui_button=true,
+					ui_popup=true
+				}
 			},
 			ui_editbox={
-				loaderr='./ui_editbox.lua:5: ./ui.lua:18: ./fs.lua:19: cannot change a protected metatable'
+				mdeps={
+					codedit=true,
+					ffi=true,
+					glue=true,
+					ui=true
+				}
 			},
 			ui_grid={
-				loaderr='./ui_grid.lua:6: ./ui.lua:18: ./fs.lua:19: cannot change a protected metatable'
+				mdeps={
+					box2d=true,
+					glue=true,
+					ui=true,
+					ui_scrollbox=true
+				}
 			},
 			ui_image={
-				loaderr='./ui_image.lua:5: ./ui.lua:18: ./fs.lua:19: cannot change a protected metatable'
+				mdeps={
+					ui=true
+				}
 			},
 			ui_menu={
-				loaderr='./ui_menu.lua:5: ./ui.lua:18: ./fs.lua:19: cannot change a protected metatable'
+				mdeps={
+					ui=true
+				}
 			},
 			ui_popup={
-				loaderr='./ui_popup.lua:5: ./ui.lua:18: ./fs.lua:19: cannot change a protected metatable'
+				mdeps={
+					glue=true,
+					ui=true
+				}
 			},
 			ui_progressbar={
-				loaderr='./ui_progressbar.lua:5: ./ui.lua:18: ./fs.lua:19: cannot change a protected metatable'
+				mdeps={
+					ui=true
+				}
 			},
 			ui_scrollbox={
-				loaderr='./ui_scrollbox.lua:5: ./ui.lua:18: ./fs.lua:19: cannot change a protected metatable'
+				mdeps={
+					box2d=true,
+					glue=true,
+					ui=true
+				}
 			},
 			ui_slider={
-				loaderr='./ui_slider.lua:5: ./ui.lua:18: ./fs.lua:19: cannot change a protected metatable'
+				mdeps={
+					box2d=true,
+					glue=true,
+					ui=true
+				}
 			},
 			ui_tablist={
-				loaderr='./ui_tablist.lua:5: ./ui.lua:18: ./fs.lua:19: cannot change a protected metatable'
+				mdeps={
+					glue=true,
+					ui=true
+				}
 			},
 			ui_zoomcalendar={
-				loaderr='./ui_zoomcalendar.lua:5: ./ui.lua:18: ./fs.lua:19: cannot change a protected metatable'
+				mdeps={
+					glue=true,
+					ui=true
+				}
 			}
 		},
 		unit={
@@ -5386,7 +5478,11 @@ return {
 		},
 		fs={
 			fs={
-				loaderr='.\\fs.lua:19: cannot change a protected metatable'
+				mdeps={
+					ffi=true,
+					fs_common=true,
+					fs_win=true
+				}
 			},
 			fs_common={
 				mdeps={
@@ -5424,7 +5520,11 @@ return {
 		},
 		gfonts={
 			gfonts={
-				loaderr='.\\gfonts.lua:7: .\\fs.lua:19: cannot change a protected metatable'
+				mdeps={
+					fs=true,
+					glue=true,
+					pp=true
+				}
 			}
 		},
 		giflib={
@@ -5623,11 +5723,23 @@ return {
 					ffi=true,
 					imgui=true
 				}
+			},
+			imgui_scrollbars={
+				mdeps={
+					imgui=true
+				}
 			}
 		},
 		imgui_nw_cairo={
 			imgui_nw_cairo={
-				loaderr='.\\imgui_nw_cairo.lua:12: .\\gfonts.lua:7: .\\fs.lua:19: cannot change a protected metatable'
+				mdeps={
+					cairo=true,
+					freetype=true,
+					gfonts=true,
+					imgui=true,
+					nw=true,
+					time=true
+				}
 			}
 		},
 		lanes={
@@ -5942,6 +6054,9 @@ return {
 		luaparser={
 			luaparser={
 				loaderr='.\\luaparser.lua:15: .\\ljstr.lua:6: cannot load module \'ljstr\': The specified module could not be found.'
+			},
+			luaparser_lpeg={
+				loaderr='.\\luaparser_lpeg.lua:201: bad argument #2 to \'match\' (string expected, got nil)'
 			}
 		},
 		luapower={
@@ -6073,8 +6188,7 @@ return {
 				},
 				mdeps={
 					ffi=true,
-					glue=true,
-					stdio=true
+					glue=true
 				}
 			}
 		},
@@ -6138,7 +6252,6 @@ return {
 					ffi=true,
 					glue=true,
 					obj_parser=true,
-					stdio=true,
 					tuple=true
 				}
 			},
@@ -6214,6 +6327,16 @@ return {
 				}
 			},
 			openvg_h={
+				mdeps={
+					ffi=true
+				}
+			}
+		},
+		opus={
+			opus={
+				loaderr='.\\opus.lua:7: cannot load module \'opus\': The specified module could not be found.'
+			},
+			opus_h={
 				mdeps={
 					ffi=true
 				}
@@ -6362,7 +6485,7 @@ return {
 				loaderr='.\\pfglab3_conf.lua:5: .\\bundle.lua:12: attempt to index global \'arg\' (a nil value)'
 			},
 			pfglab3_gen={
-				loaderr='.\\pfglab3_gen.lua:6: .\\rs232.lua:6: .\\fs.lua:19: cannot change a protected metatable'
+				loaderr='.\\pfglab3_gen.lua:8: .\\pfglab3_conf.lua:5: .\\bundle.lua:12: attempt to index global \'arg\' (a nil value)'
 			},
 			pfglab3_keygen={
 				mdeps={
@@ -6430,7 +6553,10 @@ return {
 		},
 		rs232={
 			rs232={
-				loaderr='.\\rs232.lua:6: .\\fs.lua:19: cannot change a protected metatable'
+				mdeps={
+					ffi=true,
+					fs=true
+				}
 			}
 		},
 		rsync={
@@ -6696,49 +6822,114 @@ return {
 		},
 		ui={
 			ui={
-				loaderr='.\\ui.lua:18: .\\fs.lua:19: cannot change a protected metatable'
+				mdeps={
+					amoeba=true,
+					box2d=true,
+					boxblur=true,
+					cairo=true,
+					color=true,
+					easing=true,
+					freetype=true,
+					fs=true,
+					glue=true,
+					oo=true,
+					time=true,
+					tuple=true
+				}
 			},
 			ui_button={
-				loaderr='.\\ui_button.lua:5: .\\ui.lua:18: .\\fs.lua:19: cannot change a protected metatable'
+				mdeps={
+					glue=true,
+					ui=true
+				}
 			},
 			ui_calendar={
-				loaderr='.\\ui_calendar.lua:5: .\\ui.lua:18: .\\fs.lua:19: cannot change a protected metatable'
+				mdeps={
+					glue=true,
+					ui=true,
+					ui_grid=true
+				}
 			},
 			ui_colorpicker={
-				loaderr='.\\ui_colorpicker.lua:5: .\\ui.lua:18: .\\fs.lua:19: cannot change a protected metatable'
+				mdeps={
+					bitmap=true,
+					cairo=true,
+					color=true,
+					glue=true,
+					path2d_line=true,
+					ui=true
+				}
 			},
 			ui_dropdown={
-				loaderr='.\\ui_dropdown.lua:5: .\\ui.lua:18: .\\fs.lua:19: cannot change a protected metatable'
+				mdeps={
+					glue=true,
+					ui=true,
+					ui_button=true,
+					ui_popup=true
+				}
 			},
 			ui_editbox={
-				loaderr='.\\ui_editbox.lua:5: .\\ui.lua:18: .\\fs.lua:19: cannot change a protected metatable'
+				mdeps={
+					codedit=true,
+					ffi=true,
+					glue=true,
+					ui=true
+				}
 			},
 			ui_grid={
-				loaderr='.\\ui_grid.lua:6: .\\ui.lua:18: .\\fs.lua:19: cannot change a protected metatable'
+				mdeps={
+					box2d=true,
+					glue=true,
+					ui=true,
+					ui_scrollbox=true
+				}
 			},
 			ui_image={
-				loaderr='.\\ui_image.lua:5: .\\ui.lua:18: .\\fs.lua:19: cannot change a protected metatable'
+				mdeps={
+					ui=true
+				}
 			},
 			ui_menu={
-				loaderr='.\\ui_menu.lua:5: .\\ui.lua:18: .\\fs.lua:19: cannot change a protected metatable'
+				mdeps={
+					ui=true
+				}
 			},
 			ui_popup={
-				loaderr='.\\ui_popup.lua:5: .\\ui.lua:18: .\\fs.lua:19: cannot change a protected metatable'
+				mdeps={
+					glue=true,
+					ui=true
+				}
 			},
 			ui_progressbar={
-				loaderr='.\\ui_progressbar.lua:5: .\\ui.lua:18: .\\fs.lua:19: cannot change a protected metatable'
+				mdeps={
+					ui=true
+				}
 			},
 			ui_scrollbox={
-				loaderr='.\\ui_scrollbox.lua:5: .\\ui.lua:18: .\\fs.lua:19: cannot change a protected metatable'
+				mdeps={
+					box2d=true,
+					glue=true,
+					ui=true
+				}
 			},
 			ui_slider={
-				loaderr='.\\ui_slider.lua:5: .\\ui.lua:18: .\\fs.lua:19: cannot change a protected metatable'
+				mdeps={
+					box2d=true,
+					glue=true,
+					ui=true
+				}
 			},
 			ui_tablist={
-				loaderr='.\\ui_tablist.lua:5: .\\ui.lua:18: .\\fs.lua:19: cannot change a protected metatable'
+				mdeps={
+					glue=true,
+					ui=true
+				}
 			},
 			ui_zoomcalendar={
-				loaderr='.\\ui_zoomcalendar.lua:5: .\\ui.lua:18: .\\fs.lua:19: cannot change a protected metatable'
+				mdeps={
+					glue=true,
+					ui=true
+				}
 			}
 		},
 		unit={
@@ -8422,7 +8613,11 @@ return {
 		},
 		fs={
 			fs={
-				loaderr='.\\fs.lua:19: cannot change a protected metatable'
+				mdeps={
+					ffi=true,
+					fs_common=true,
+					fs_win=true
+				}
 			},
 			fs_common={
 				mdeps={
@@ -8460,7 +8655,11 @@ return {
 		},
 		gfonts={
 			gfonts={
-				loaderr='.\\gfonts.lua:7: .\\fs.lua:19: cannot change a protected metatable'
+				mdeps={
+					fs=true,
+					glue=true,
+					pp=true
+				}
 			}
 		},
 		giflib={
@@ -8659,11 +8858,23 @@ return {
 					ffi=true,
 					imgui=true
 				}
+			},
+			imgui_scrollbars={
+				mdeps={
+					imgui=true
+				}
 			}
 		},
 		imgui_nw_cairo={
 			imgui_nw_cairo={
-				loaderr='.\\imgui_nw_cairo.lua:12: .\\gfonts.lua:7: .\\fs.lua:19: cannot change a protected metatable'
+				mdeps={
+					cairo=true,
+					freetype=true,
+					gfonts=true,
+					imgui=true,
+					nw=true,
+					time=true
+				}
 			}
 		},
 		lanes={
@@ -8790,7 +9001,12 @@ return {
 		},
 		librsync={
 			librsync={
-				loaderr='.\\librsync.lua:8: cannot load module \'rsync\': The specified module could not be found.'
+				ffi_deps={
+					rsync=true
+				},
+				mdeps={
+					ffi=true
+				}
 			}
 		},
 		libsodium={
@@ -9009,6 +9225,9 @@ return {
 					pp=true,
 					strict=true
 				}
+			},
+			luaparser_lpeg={
+				loaderr='.\\luaparser_lpeg.lua:201: bad argument #2 to \'match\' (string expected, got nil)'
 			}
 		},
 		luapower={
@@ -9145,8 +9364,7 @@ return {
 				},
 				mdeps={
 					ffi=true,
-					glue=true,
-					stdio=true
+					glue=true
 				}
 			}
 		},
@@ -9210,7 +9428,6 @@ return {
 					ffi=true,
 					glue=true,
 					obj_parser=true,
-					stdio=true,
 					tuple=true
 				}
 			},
@@ -9286,6 +9503,16 @@ return {
 				}
 			},
 			openvg_h={
+				mdeps={
+					ffi=true
+				}
+			}
+		},
+		opus={
+			opus={
+				loaderr='.\\opus.lua:7: cannot load module \'opus\': The specified module could not be found.'
+			},
+			opus_h={
 				mdeps={
 					ffi=true
 				}
@@ -9434,7 +9661,7 @@ return {
 				loaderr='.\\pfglab3_conf.lua:5: .\\bundle.lua:12: attempt to index global \'arg\' (a nil value)'
 			},
 			pfglab3_gen={
-				loaderr='.\\pfglab3_gen.lua:6: .\\rs232.lua:6: .\\fs.lua:19: cannot change a protected metatable'
+				loaderr='.\\pfglab3_gen.lua:8: .\\pfglab3_conf.lua:5: .\\bundle.lua:12: attempt to index global \'arg\' (a nil value)'
 			},
 			pfglab3_keygen={
 				mdeps={
@@ -9502,7 +9729,10 @@ return {
 		},
 		rs232={
 			rs232={
-				loaderr='.\\rs232.lua:6: .\\fs.lua:19: cannot change a protected metatable'
+				mdeps={
+					ffi=true,
+					fs=true
+				}
 			}
 		},
 		rsync={
@@ -9768,49 +9998,114 @@ return {
 		},
 		ui={
 			ui={
-				loaderr='.\\ui.lua:18: .\\fs.lua:19: cannot change a protected metatable'
+				mdeps={
+					amoeba=true,
+					box2d=true,
+					boxblur=true,
+					cairo=true,
+					color=true,
+					easing=true,
+					freetype=true,
+					fs=true,
+					glue=true,
+					oo=true,
+					time=true,
+					tuple=true
+				}
 			},
 			ui_button={
-				loaderr='.\\ui_button.lua:5: .\\ui.lua:18: .\\fs.lua:19: cannot change a protected metatable'
+				mdeps={
+					glue=true,
+					ui=true
+				}
 			},
 			ui_calendar={
-				loaderr='.\\ui_calendar.lua:5: .\\ui.lua:18: .\\fs.lua:19: cannot change a protected metatable'
+				mdeps={
+					glue=true,
+					ui=true,
+					ui_grid=true
+				}
 			},
 			ui_colorpicker={
-				loaderr='.\\ui_colorpicker.lua:5: .\\ui.lua:18: .\\fs.lua:19: cannot change a protected metatable'
+				mdeps={
+					bitmap=true,
+					cairo=true,
+					color=true,
+					glue=true,
+					path2d_line=true,
+					ui=true
+				}
 			},
 			ui_dropdown={
-				loaderr='.\\ui_dropdown.lua:5: .\\ui.lua:18: .\\fs.lua:19: cannot change a protected metatable'
+				mdeps={
+					glue=true,
+					ui=true,
+					ui_button=true,
+					ui_popup=true
+				}
 			},
 			ui_editbox={
-				loaderr='.\\ui_editbox.lua:5: .\\ui.lua:18: .\\fs.lua:19: cannot change a protected metatable'
+				mdeps={
+					codedit=true,
+					ffi=true,
+					glue=true,
+					ui=true
+				}
 			},
 			ui_grid={
-				loaderr='.\\ui_grid.lua:6: .\\ui.lua:18: .\\fs.lua:19: cannot change a protected metatable'
+				mdeps={
+					box2d=true,
+					glue=true,
+					ui=true,
+					ui_scrollbox=true
+				}
 			},
 			ui_image={
-				loaderr='.\\ui_image.lua:5: .\\ui.lua:18: .\\fs.lua:19: cannot change a protected metatable'
+				mdeps={
+					ui=true
+				}
 			},
 			ui_menu={
-				loaderr='.\\ui_menu.lua:5: .\\ui.lua:18: .\\fs.lua:19: cannot change a protected metatable'
+				mdeps={
+					ui=true
+				}
 			},
 			ui_popup={
-				loaderr='.\\ui_popup.lua:5: .\\ui.lua:18: .\\fs.lua:19: cannot change a protected metatable'
+				mdeps={
+					glue=true,
+					ui=true
+				}
 			},
 			ui_progressbar={
-				loaderr='.\\ui_progressbar.lua:5: .\\ui.lua:18: .\\fs.lua:19: cannot change a protected metatable'
+				mdeps={
+					ui=true
+				}
 			},
 			ui_scrollbox={
-				loaderr='.\\ui_scrollbox.lua:5: .\\ui.lua:18: .\\fs.lua:19: cannot change a protected metatable'
+				mdeps={
+					box2d=true,
+					glue=true,
+					ui=true
+				}
 			},
 			ui_slider={
-				loaderr='.\\ui_slider.lua:5: .\\ui.lua:18: .\\fs.lua:19: cannot change a protected metatable'
+				mdeps={
+					box2d=true,
+					glue=true,
+					ui=true
+				}
 			},
 			ui_tablist={
-				loaderr='.\\ui_tablist.lua:5: .\\ui.lua:18: .\\fs.lua:19: cannot change a protected metatable'
+				mdeps={
+					glue=true,
+					ui=true
+				}
 			},
 			ui_zoomcalendar={
-				loaderr='.\\ui_zoomcalendar.lua:5: .\\ui.lua:18: .\\fs.lua:19: cannot change a protected metatable'
+				mdeps={
+					glue=true,
+					ui=true
+				}
 			}
 		},
 		unit={
@@ -11213,7 +11508,11 @@ return {
 		},
 		fs={
 			fs={
-				loaderr='./fs.lua:19: cannot change a protected metatable'
+				mdeps={
+					ffi=true,
+					fs_common=true,
+					fs_posix=true
+				}
 			},
 			fs_common={
 				mdeps={
@@ -11251,7 +11550,11 @@ return {
 		},
 		gfonts={
 			gfonts={
-				loaderr='./gfonts.lua:7: ./fs.lua:19: cannot change a protected metatable'
+				mdeps={
+					fs=true,
+					glue=true,
+					pp=true
+				}
 			}
 		},
 		giflib={
@@ -11441,11 +11744,23 @@ return {
 					ffi=true,
 					imgui=true
 				}
+			},
+			imgui_scrollbars={
+				mdeps={
+					imgui=true
+				}
 			}
 		},
 		imgui_nw_cairo={
 			imgui_nw_cairo={
-				loaderr='./imgui_nw_cairo.lua:12: ./gfonts.lua:7: ./fs.lua:19: cannot change a protected metatable'
+				mdeps={
+					cairo=true,
+					freetype=true,
+					gfonts=true,
+					imgui=true,
+					nw=true,
+					time=true
+				}
 			}
 		},
 		lanes={
@@ -11760,6 +12075,9 @@ return {
 		luaparser={
 			luaparser={
 				loaderr='./luaparser.lua:15: ./ljstr.lua:6: dlopen(libljstr.dylib, 5): image not found'
+			},
+			luaparser_lpeg={
+				loaderr='./luaparser_lpeg.lua:201: bad argument #2 to \'match\' (string expected, got nil)'
 			}
 		},
 		luapower={
@@ -11891,8 +12209,7 @@ return {
 				},
 				mdeps={
 					ffi=true,
-					glue=true,
-					stdio=true
+					glue=true
 				}
 			}
 		},
@@ -11940,7 +12257,6 @@ return {
 					ffi=true,
 					glue=true,
 					obj_parser=true,
-					stdio=true,
 					tuple=true
 				}
 			},
@@ -12030,6 +12346,16 @@ return {
 				}
 			},
 			openvg_h={
+				mdeps={
+					ffi=true
+				}
+			}
+		},
+		opus={
+			opus={
+				loaderr='./opus.lua:7: dlopen(libopus.dylib, 5): image not found'
+			},
+			opus_h={
 				mdeps={
 					ffi=true
 				}
@@ -12178,7 +12504,7 @@ return {
 				loaderr='./pfglab3_conf.lua:5: ./bundle.lua:12: attempt to index global \'arg\' (a nil value)'
 			},
 			pfglab3_gen={
-				loaderr='./pfglab3_gen.lua:6: ./rs232.lua:6: ./fs.lua:19: cannot change a protected metatable'
+				loaderr='./pfglab3_gen.lua:8: ./pfglab3_conf.lua:5: ./bundle.lua:12: attempt to index global \'arg\' (a nil value)'
 			},
 			pfglab3_keygen={
 				mdeps={
@@ -12240,7 +12566,10 @@ return {
 		},
 		rs232={
 			rs232={
-				loaderr='./rs232.lua:6: ./fs.lua:19: cannot change a protected metatable'
+				mdeps={
+					ffi=true,
+					fs=true
+				}
 			}
 		},
 		rsync={
@@ -12843,49 +13172,114 @@ return {
 		},
 		ui={
 			ui={
-				loaderr='./ui.lua:18: ./fs.lua:19: cannot change a protected metatable'
+				mdeps={
+					amoeba=true,
+					box2d=true,
+					boxblur=true,
+					cairo=true,
+					color=true,
+					easing=true,
+					freetype=true,
+					fs=true,
+					glue=true,
+					oo=true,
+					time=true,
+					tuple=true
+				}
 			},
 			ui_button={
-				loaderr='./ui_button.lua:5: ./ui.lua:18: ./fs.lua:19: cannot change a protected metatable'
+				mdeps={
+					glue=true,
+					ui=true
+				}
 			},
 			ui_calendar={
-				loaderr='./ui_calendar.lua:5: ./ui.lua:18: ./fs.lua:19: cannot change a protected metatable'
+				mdeps={
+					glue=true,
+					ui=true,
+					ui_grid=true
+				}
 			},
 			ui_colorpicker={
-				loaderr='./ui_colorpicker.lua:5: ./ui.lua:18: ./fs.lua:19: cannot change a protected metatable'
+				mdeps={
+					bitmap=true,
+					cairo=true,
+					color=true,
+					glue=true,
+					path2d_line=true,
+					ui=true
+				}
 			},
 			ui_dropdown={
-				loaderr='./ui_dropdown.lua:5: ./ui.lua:18: ./fs.lua:19: cannot change a protected metatable'
+				mdeps={
+					glue=true,
+					ui=true,
+					ui_button=true,
+					ui_popup=true
+				}
 			},
 			ui_editbox={
-				loaderr='./ui_editbox.lua:5: ./ui.lua:18: ./fs.lua:19: cannot change a protected metatable'
+				mdeps={
+					codedit=true,
+					ffi=true,
+					glue=true,
+					ui=true
+				}
 			},
 			ui_grid={
-				loaderr='./ui_grid.lua:6: ./ui.lua:18: ./fs.lua:19: cannot change a protected metatable'
+				mdeps={
+					box2d=true,
+					glue=true,
+					ui=true,
+					ui_scrollbox=true
+				}
 			},
 			ui_image={
-				loaderr='./ui_image.lua:5: ./ui.lua:18: ./fs.lua:19: cannot change a protected metatable'
+				mdeps={
+					ui=true
+				}
 			},
 			ui_menu={
-				loaderr='./ui_menu.lua:5: ./ui.lua:18: ./fs.lua:19: cannot change a protected metatable'
+				mdeps={
+					ui=true
+				}
 			},
 			ui_popup={
-				loaderr='./ui_popup.lua:5: ./ui.lua:18: ./fs.lua:19: cannot change a protected metatable'
+				mdeps={
+					glue=true,
+					ui=true
+				}
 			},
 			ui_progressbar={
-				loaderr='./ui_progressbar.lua:5: ./ui.lua:18: ./fs.lua:19: cannot change a protected metatable'
+				mdeps={
+					ui=true
+				}
 			},
 			ui_scrollbox={
-				loaderr='./ui_scrollbox.lua:5: ./ui.lua:18: ./fs.lua:19: cannot change a protected metatable'
+				mdeps={
+					box2d=true,
+					glue=true,
+					ui=true
+				}
 			},
 			ui_slider={
-				loaderr='./ui_slider.lua:5: ./ui.lua:18: ./fs.lua:19: cannot change a protected metatable'
+				mdeps={
+					box2d=true,
+					glue=true,
+					ui=true
+				}
 			},
 			ui_tablist={
-				loaderr='./ui_tablist.lua:5: ./ui.lua:18: ./fs.lua:19: cannot change a protected metatable'
+				mdeps={
+					glue=true,
+					ui=true
+				}
 			},
 			ui_zoomcalendar={
-				loaderr='./ui_zoomcalendar.lua:5: ./ui.lua:18: ./fs.lua:19: cannot change a protected metatable'
+				mdeps={
+					glue=true,
+					ui=true
+				}
 			}
 		},
 		unit={
@@ -13531,7 +13925,11 @@ return {
 		},
 		fs={
 			fs={
-				loaderr='./fs.lua:19: cannot change a protected metatable'
+				mdeps={
+					ffi=true,
+					fs_common=true,
+					fs_posix=true
+				}
 			},
 			fs_common={
 				mdeps={
@@ -13569,7 +13967,11 @@ return {
 		},
 		gfonts={
 			gfonts={
-				loaderr='./gfonts.lua:7: ./fs.lua:19: cannot change a protected metatable'
+				mdeps={
+					fs=true,
+					glue=true,
+					pp=true
+				}
 			}
 		},
 		giflib={
@@ -13759,11 +14161,23 @@ return {
 					ffi=true,
 					imgui=true
 				}
+			},
+			imgui_scrollbars={
+				mdeps={
+					imgui=true
+				}
 			}
 		},
 		imgui_nw_cairo={
 			imgui_nw_cairo={
-				loaderr='./imgui_nw_cairo.lua:12: ./gfonts.lua:7: ./fs.lua:19: cannot change a protected metatable'
+				mdeps={
+					cairo=true,
+					freetype=true,
+					gfonts=true,
+					imgui=true,
+					nw=true,
+					time=true
+				}
 			}
 		},
 		lanes={
@@ -14078,6 +14492,9 @@ return {
 		luaparser={
 			luaparser={
 				loaderr='./luaparser.lua:15: ./ljstr.lua:6: dlopen(libljstr.dylib, 5): image not found'
+			},
+			luaparser_lpeg={
+				loaderr='./luaparser_lpeg.lua:201: bad argument #2 to \'match\' (string expected, got nil)'
 			}
 		},
 		luapower={
@@ -14209,8 +14626,7 @@ return {
 				},
 				mdeps={
 					ffi=true,
-					glue=true,
-					stdio=true
+					glue=true
 				}
 			}
 		},
@@ -14258,7 +14674,6 @@ return {
 					ffi=true,
 					glue=true,
 					obj_parser=true,
-					stdio=true,
 					tuple=true
 				}
 			},
@@ -14348,6 +14763,16 @@ return {
 				}
 			},
 			openvg_h={
+				mdeps={
+					ffi=true
+				}
+			}
+		},
+		opus={
+			opus={
+				loaderr='./opus.lua:7: dlopen(libopus.dylib, 5): image not found'
+			},
+			opus_h={
 				mdeps={
 					ffi=true
 				}
@@ -14496,7 +14921,7 @@ return {
 				loaderr='./pfglab3_conf.lua:5: ./bundle.lua:12: attempt to index global \'arg\' (a nil value)'
 			},
 			pfglab3_gen={
-				loaderr='./pfglab3_gen.lua:6: ./rs232.lua:6: ./fs.lua:19: cannot change a protected metatable'
+				loaderr='./pfglab3_gen.lua:8: ./pfglab3_conf.lua:5: ./bundle.lua:12: attempt to index global \'arg\' (a nil value)'
 			},
 			pfglab3_keygen={
 				mdeps={
@@ -14558,7 +14983,10 @@ return {
 		},
 		rs232={
 			rs232={
-				loaderr='./rs232.lua:6: ./fs.lua:19: cannot change a protected metatable'
+				mdeps={
+					ffi=true,
+					fs=true
+				}
 			}
 		},
 		rsync={
@@ -15161,49 +15589,114 @@ return {
 		},
 		ui={
 			ui={
-				loaderr='./ui.lua:18: ./fs.lua:19: cannot change a protected metatable'
+				mdeps={
+					amoeba=true,
+					box2d=true,
+					boxblur=true,
+					cairo=true,
+					color=true,
+					easing=true,
+					freetype=true,
+					fs=true,
+					glue=true,
+					oo=true,
+					time=true,
+					tuple=true
+				}
 			},
 			ui_button={
-				loaderr='./ui_button.lua:5: ./ui.lua:18: ./fs.lua:19: cannot change a protected metatable'
+				mdeps={
+					glue=true,
+					ui=true
+				}
 			},
 			ui_calendar={
-				loaderr='./ui_calendar.lua:5: ./ui.lua:18: ./fs.lua:19: cannot change a protected metatable'
+				mdeps={
+					glue=true,
+					ui=true,
+					ui_grid=true
+				}
 			},
 			ui_colorpicker={
-				loaderr='./ui_colorpicker.lua:5: ./ui.lua:18: ./fs.lua:19: cannot change a protected metatable'
+				mdeps={
+					bitmap=true,
+					cairo=true,
+					color=true,
+					glue=true,
+					path2d_line=true,
+					ui=true
+				}
 			},
 			ui_dropdown={
-				loaderr='./ui_dropdown.lua:5: ./ui.lua:18: ./fs.lua:19: cannot change a protected metatable'
+				mdeps={
+					glue=true,
+					ui=true,
+					ui_button=true,
+					ui_popup=true
+				}
 			},
 			ui_editbox={
-				loaderr='./ui_editbox.lua:5: ./ui.lua:18: ./fs.lua:19: cannot change a protected metatable'
+				mdeps={
+					codedit=true,
+					ffi=true,
+					glue=true,
+					ui=true
+				}
 			},
 			ui_grid={
-				loaderr='./ui_grid.lua:6: ./ui.lua:18: ./fs.lua:19: cannot change a protected metatable'
+				mdeps={
+					box2d=true,
+					glue=true,
+					ui=true,
+					ui_scrollbox=true
+				}
 			},
 			ui_image={
-				loaderr='./ui_image.lua:5: ./ui.lua:18: ./fs.lua:19: cannot change a protected metatable'
+				mdeps={
+					ui=true
+				}
 			},
 			ui_menu={
-				loaderr='./ui_menu.lua:5: ./ui.lua:18: ./fs.lua:19: cannot change a protected metatable'
+				mdeps={
+					ui=true
+				}
 			},
 			ui_popup={
-				loaderr='./ui_popup.lua:5: ./ui.lua:18: ./fs.lua:19: cannot change a protected metatable'
+				mdeps={
+					glue=true,
+					ui=true
+				}
 			},
 			ui_progressbar={
-				loaderr='./ui_progressbar.lua:5: ./ui.lua:18: ./fs.lua:19: cannot change a protected metatable'
+				mdeps={
+					ui=true
+				}
 			},
 			ui_scrollbox={
-				loaderr='./ui_scrollbox.lua:5: ./ui.lua:18: ./fs.lua:19: cannot change a protected metatable'
+				mdeps={
+					box2d=true,
+					glue=true,
+					ui=true
+				}
 			},
 			ui_slider={
-				loaderr='./ui_slider.lua:5: ./ui.lua:18: ./fs.lua:19: cannot change a protected metatable'
+				mdeps={
+					box2d=true,
+					glue=true,
+					ui=true
+				}
 			},
 			ui_tablist={
-				loaderr='./ui_tablist.lua:5: ./ui.lua:18: ./fs.lua:19: cannot change a protected metatable'
+				mdeps={
+					glue=true,
+					ui=true
+				}
 			},
 			ui_zoomcalendar={
-				loaderr='./ui_zoomcalendar.lua:5: ./ui.lua:18: ./fs.lua:19: cannot change a protected metatable'
+				mdeps={
+					glue=true,
+					ui=true
+				}
 			}
 		},
 		unit={

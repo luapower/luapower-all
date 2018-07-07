@@ -3,11 +3,7 @@
 local parse = require'obj_parser'.parse
 local glue = require'glue'
 local tuple = require'tuple'
-
---begin caching
-local stdio = require'stdio'
 local ffi = require'ffi'
---end caching
 
 local function ibo_ctype(count)
 	return count > 65535 and 'uint32_t[?]' or count > 255 and 'uint16_t[?]' or 'uint8_t[?]'
@@ -16,8 +12,9 @@ end
 local function load(file, use_file_cache)
 
 	if use_file_cache and glue.canopen(file..'.vbo') then
-		local buf, sz = stdio.readfile(file..'.vbo.tmp')
-		local vbo = {layout = 'vnt', data = buf, size = sz}
+		local s = assert(glue.readfile(file..'.vbo.tmp'))
+		local buf, sz = ffi.cast('const char*', s), #s
+		local vbo = {layout = 'vnt', data = buf, size = sz, s = s}
 		local buf, sz = read_binary_file(file..'.ibo.tmp')
 		local ibo = {data = buf, size = sz}
 		local ibo_partitions = loadfile(file..'.ibop.tmp')()
@@ -143,11 +140,11 @@ local function load(file, use_file_cache)
 		--write vbo
 		local data = ffi.new('float[?]', #vbo.values, vbo.values)
 		local sz = ffi.sizeof(data)
-		stdio.writefile(file..'.vbo.tmp', data, sz)
+		glue.writefile(file..'.vbo.tmp', ffi.string(data, sz))
 		--write ibo
 		local data = ffi.new(ibo_ctype(#ibo.values), #ibo.values, ibo.values)
 		local sz = ffi.sizeof(data)
-		stdio.writefile(file..'.ibo.tmp', data, sz)
+		glue.writefile(file..'.ibo.tmp', ffi.string(data, sz))
 		--write partitions
 		local pp = require'pp'
 		pp.save(file..'.ibop.tmp', ibo_partitions)
@@ -167,9 +164,7 @@ if not ... then
 --load'../media/obj/nexus2/nexus2.obj'
 --load'../media/obj/cube/cube.obj'
 --require'pp'(load'media/obj/greek_vase1/greek_vase.obj')
-
-require'sg_gl_demo'
-
+--require'sg_gl_demo'
 end
 
 return {

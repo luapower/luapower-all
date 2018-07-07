@@ -2,9 +2,10 @@
 --nanojpeg2 binding (see csrc/nanojpeg).
 --Written by Cosmin Apreutesei. Public Domain.
 
+if not ... then require'nanojpeg_demo'; return end
+
 local ffi = require'ffi'
 local glue = require'glue'
-local stdio = require'stdio'
 local C = ffi.load'nanojpeg2'
 
 ffi.cdef[[
@@ -29,17 +30,20 @@ local error_messages = {
 }
 
 local function load(t)
-	local data, sz
+	local s, data, sz
 	if type(t) == 'string' then
-		data, sz = stdio.readfile(t)
+		s = t
 	elseif t.path then
-		data, sz = stdio.readfile(t.path)
+		s = assert(glue.readfile(t.path))
 	elseif t.string then
-		data, sz = t.string, #t.string
+		s = t.string
 	elseif t.cdata then
 		data, sz = t.cdata, t.size
 	else
 		error'source missing'
+	end
+	if s then
+		data, sz = ffi.cast('const char*', s), #s
 	end
 
 	return glue.fcall(function(finally)
@@ -61,8 +65,6 @@ local function load(t)
 		return img
 	end)
 end
-
-if not ... then require'nanojpeg_demo' end
 
 return {
 	load = load,
