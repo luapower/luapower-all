@@ -23,9 +23,6 @@ editbox.clip_content = true --TODO: remove this
 editbox.border_color = '#333'
 editbox.border_width = 1
 
-editbox.uses_enter_key = true
-editbox.capture_tab = false
-
 editbox.eol_markers = false
 editbox.minimap = false
 editor.line_numbers = false
@@ -157,7 +154,7 @@ end
 
 function editbox:mousewheel(delta, mx, my, area, pdelta)
 	self:_sync()
-	self.vscrollbar:scroll(delta * self.editor.view.line_h)
+	self.vscrollbar:scroll(-delta * self.editor.view.line_h)
 end
 
 function view:begin_clip(x, y, w, h)
@@ -199,11 +196,11 @@ function view:char_advance_x(s, i)
 		xt = {}
 		self._xt = xt
 	end
-	local cr = self.editbox.window.cr
 	local c = s:byte(i, i)
 	local x = xt[c]
 	if not x then
 		cbuf[0] = c
+		local cr = self.editbox.window.cr
 		cr:text_extents(cbuf, ext)
 		x = ext.x_advance
 		xt[c] = x
@@ -292,22 +289,18 @@ function editor:key(key)
 end
 
 function editbox:keypress(key)
-	--if tab is kept for navigation, use ctrl+tab to indent
 	if key == 'tab' then
-		if (not self.capture_tab and self.ui:key'ctrl')
-			or (self.capture_tab and not self.ui:key'ctrl')
-		then
-			self.editor:indent()
-		else
-			local next_widget =
-				self.window:next_focusable_widget(not self.ui:key'shift')
+		if not self.multiline then
+			return
+		elseif self.ui:key'ctrl' then
+			local next_widget = self:next_focusable_widget(not self.ui:key'shift')
 			if next_widget then
-				next_widget:focus()
+				next_widget:focus(true)
 			end
+			return true
 		end
-	else
-		self.editor:keypress(key)
 	end
+	return self.editor:keypress(key)
 end
 
 function editbox:keychar(s)
@@ -421,6 +414,8 @@ function editbox:set_text(s)
 	self.editor:replace(s)
 end
 
+editbox:instance_only'text'
+
 editbox:init_ignore{editor=1, multiline=1, text=1}
 
 function editbox:before_init(ui, t)
@@ -474,12 +469,16 @@ end
 
 if not ... then require('ui_demo')(function(ui, win)
 
+	local long_text = (('Hello World! '):rep(10)..'\n'):rep(30)
+
+	print(#long_text)
+
 	local edit = ui:editbox{
 		tags = 'ed',
 		x = 10, y = 10,
 		w = 300, h = 300,
 		parent = win,
-		text = (('Hello World! '):rep(10)..'\n'):rep(30),
+		text = long_text,
 		multiline = true,
 	}
 
@@ -490,7 +489,7 @@ if not ... then require('ui_demo')(function(ui, win)
 			y = 10 + 30 * (i-1),
 			w = 200,
 			parent = win,
-			text = (('Hello World! '):rep(10)..'\n'):rep(30),
+			text = long_text,
 			multiline = false,
 		}
 	end

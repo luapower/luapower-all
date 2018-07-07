@@ -1296,16 +1296,16 @@ function grid:keypress(key)
 		or not ctrl and key == 'end' and 1/0
 
 	if rows or cols then
-
 		self:move(
 			self.multi_select and shift
 				and '@focus @extend reset extend scroll'
 				or '@focus reset select focus scroll',
 			rows or 0, cols or 0)
-
+		return true
 	elseif ctrl and key == 'A' then
 		if self.multi_select then
 			self:move('select_all')
+			return true
 		end
 	end
 end

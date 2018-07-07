@@ -9,30 +9,31 @@ local glue = require'glue'
 local clamp = glue.clamp
 local lerp = glue.lerp
 
-ui.scrollbar = ui.layer:subclass'scrollbar'
+local scrollbar = ui.layer:subclass'scrollbar'
+ui.scrollbar = scrollbar
 
-ui.scrollbar._vertical = true
-ui.scrollbar._offset = 0
-ui.scrollbar._content_length = 0
-ui.scrollbar._view_length = 0
-ui.scrollbar.step = false --no snapping
-ui.scrollbar.min_width = 20
-ui.scrollbar.w = 10
-ui.scrollbar.h = 10
-ui.scrollbar.background_color = '#222'
-ui.scrollbar.corner_radius = 5
+scrollbar._vertical = true
+scrollbar._offset = 0
+scrollbar._content_length = 0
+scrollbar._view_length = 0
+scrollbar.step = false --no snapping
+scrollbar.min_width = 20
+scrollbar.w = 10
+scrollbar.h = 10
+scrollbar.background_color = '#222'
+scrollbar.corner_radius = 5
 
-ui.scrollbar.autohide = true
-ui.scrollbar.autohide_empty = true
-ui.scrollbar.autohide_offset = 20 --around-distance to scrollbar
-ui.scrollbar.click_scroll_length = 300 --scroll when clicking on the background
+scrollbar.autohide = true
+scrollbar.autohide_empty = true
+scrollbar.autohide_offset = 20 --around-distance to scrollbar
+scrollbar.click_scroll_length = 300 --scroll when clicking on the background
 
 local grabbar = ui.layer:subclass'scrollbar_grabbar'
-ui.scrollbar.grabbar_class = grabbar
+scrollbar.grabbar_class = grabbar
 
 grabbar.background_color = '#ccc'
 
-ui.scrollbar.opacity = 0
+scrollbar.opacity = 0
 
 ui:style('scrollbar', {
 	transition_opacity = true,
@@ -76,55 +77,55 @@ local function bar_segment(w, content_length, view_length, i, minw)
 	return bx, bw
 end
 
-function ui.scrollbar:grabbar_rect()
+function scrollbar:grabbar_rect()
 	local bx, bw = bar_segment(self.cw, self.content_length, self.view_length,
 		self.offset, self.min_width)
 	local by, bh = 0, self.ch
 	return bx, by, bw, bh
 end
 
-function ui.scrollbar:grabbar_offset()
+function scrollbar:grabbar_offset()
 	return bar_offset(self.grabbar.x, self.cw, self.grabbar.w,
 		self.content_length, self.view_length, self.step)
 end
 
-function ui.scrollbar:_clamp_offset()
+function scrollbar:_clamp_offset()
 	self._offset = clamp_offset(self._offset, self.content_length,
 		self.view_length, self.step)
 end
 
-function ui.scrollbar:get_offset()
+function scrollbar:get_offset()
 	return self._offset
 end
 
-function ui.scrollbar:get_content_length()
+function scrollbar:get_content_length()
 	return self._content_length
 end
 
-function ui.scrollbar:get_view_length()
+function scrollbar:get_view_length()
 	return self._view_length
 end
 
-function ui.scrollbar:empty()
+function scrollbar:empty()
 	return self.content_length <= self.view_length
 end
 
-function ui.scrollbar:set_offset(offset)
+function scrollbar:set_offset(offset)
 	self._offset = offset
 	self:_clamp_offset()
 end
 
-function ui.scrollbar:set_content_length(length)
+function scrollbar:set_content_length(length)
 	self._content_length = length
 	self:_clamp_offset()
 end
 
-function ui.scrollbar:set_view_length(length)
+function scrollbar:set_view_length(length)
 	self._view_length = length
 	self:_clamp_offset()
 end
 
-function ui.scrollbar:override_rel_matrix(inherited)
+function scrollbar:override_rel_matrix(inherited)
 	local mt = inherited(self)
 	if self._vertical then
 		mt:rotate(math.rad(90)):translate(0, -self.h)
@@ -132,19 +133,17 @@ function ui.scrollbar:override_rel_matrix(inherited)
 	return mt
 end
 
-ui.scrollbar:init_ignore{offset=1, view_length=1, content_length=1}
+scrollbar:init_ignore{offset=1, view_length=1, content_length=1}
 
-function ui.scrollbar:after_init(ui, t)
+function scrollbar:after_init(ui, t)
 
-	if t then
-		self._offset = t.offset
-		self._content_length = t.content_length
-		self._view_length = t.view_length
-	end
+	self._offset = t.offset
+	self._content_length = t.content_length
+	self._view_length = t.view_length
 	self:_clamp_offset()
 
 	self.grabbar = self.grabbar_class(self.ui, {
-		tags = 'scrollbar_grabbar', parent = self,
+		parent = self,
 	}, self.grabbar)
 
 	function self.grabbar.drag(grabbar, dx, dy)
@@ -153,12 +152,7 @@ function ui.scrollbar:after_init(ui, t)
 	end
 end
 
-function ui.scrollbar:before_set_parent()
-	if not self.window then return end
-	self.window:off{nil, self}
-end
-
-function ui.scrollbar:after_set_parent()
+function scrollbar:after_set_parent()
 	if not self.window then return end
 	--autohide hooks
 	self.window:on({'mousemove', self}, function(win, mx, my)
@@ -169,36 +163,23 @@ function ui.scrollbar:after_set_parent()
 	end)
 end
 
-function ui.scrollbar:before_free()
-	self.window:off{nil, self}
-end
-
 grabbar.corner_radius = 5
 
-function grabbar:mousedown()
-	self.active = true
-end
-
-function grabbar:mouseup()
-	self.active = false
-end
+grabbar.mousedown_activate = true
 
 function grabbar:start_drag()
 	return self
 end
 
+scrollbar.mousedown_activate = true
+
 --TODO: mousepress or mousehold
-function ui.scrollbar:mousedown(mx, my)
-	self.active = true
+function scrollbar:mousedown(mx, my)
 	local delta = self.click_scroll_length * (mx < self.grabbar.x and -1 or 1)
 	self:transition('offset', self:end_value'offset' + delta)
 end
 
-function ui.scrollbar:mouseup(mx, my)
-	self.active = false
-end
-
-function ui.scrollbar:scroll_to(offset)
+function scrollbar:scroll_to(offset)
 	if self.visible and self.autohide and not self.grabbar.active
 		and (not self.autohide_empty or not self:empty())
 	then
@@ -209,26 +190,26 @@ function ui.scrollbar:scroll_to(offset)
 	self:transition('offset', offset)
 end
 
-function ui.scrollbar:scroll(delta)
+function scrollbar:scroll(delta)
 	self:scroll_to(self:end_value'offset' + delta)
 end
 
-function ui.scrollbar:scroll_pages(pages)
+function scrollbar:scroll_pages(pages)
 	self:scroll(self.view_length * (pages or 1))
 end
 
-function ui.scrollbar:_check_visible()
+function scrollbar:_check_visible()
 	return self.visible
 		and (not self.autohide_empty or not self:empty())
 		and (not self.autohide or self.grabbar.active or 'hit_test')
 end
 
-function ui.scrollbar:hit_test_near(mx, my)
+function scrollbar:hit_test_near(mx, my)
 	return box2d.hit(mx, my,
 		box2d.offset(self.autohide_offset, self:content_rect()))
 end
 
-function ui.scrollbar:_window_mousemove(mx, my)
+function scrollbar:_window_mousemove(mx, my)
 	local visible = self:_check_visible()
 	if visible == 'hit_test' then
 		local near = self:hit_test_near(self:from_window(mx, my))
@@ -236,7 +217,7 @@ function ui.scrollbar:_window_mousemove(mx, my)
 	end
 end
 
-function ui.scrollbar:_window_mouseleave()
+function scrollbar:_window_mouseleave()
 	local visible = self:_check_visible()
 	if visible == 'hit_test' then
 		self:settag(':near', false)
@@ -245,17 +226,17 @@ end
 
 --`vertical` and `horizontal` tags based on `vertical` property
 
-function ui.scrollbar:get_vertical()
+function scrollbar:get_vertical()
 	return self._vertical
 end
 
-function ui.scrollbar:set_vertical(vertical)
+function scrollbar:set_vertical(vertical)
 	self._vertical = vertical
 	self:settag('vertical', vertical)
 	self:settag('horizontal', not vertical)
 end
 
-function ui.scrollbar:sync()
+function scrollbar:sync()
 	local g = self.grabbar
 	g.x, g.y, g.w, g.h = self:grabbar_rect()
 
@@ -265,11 +246,11 @@ function ui.scrollbar:sync()
 	end
 end
 
-function ui.scrollbar:before_draw()
+function scrollbar:before_draw()
 	self:sync()
 end
 
-function ui.scrollbar:scroll_to_view(x, w)
+function scrollbar:scroll_to_view(x, w)
 	local sx = self.offset
 	local sw = self.view_length
 	self:scroll_to(clamp(sx, x + w - sw, x))
@@ -285,8 +266,8 @@ ui.scrollbox.background_hittable = true --enable hit-testing for scrolling
 ui.scrollbox.vscroll = 'always' --true/'always', 'near', 'auto', false/'never'
 ui.scrollbox.hscroll = 'always'
 ui.scrollbox.wheel_scroll_length = 50 --pixels per scroll wheel notch
-ui.scrollbox.vscrollbar_class = ui.scrollbar
-ui.scrollbox.hscrollbar_class = ui.scrollbar
+ui.scrollbox.vscrollbar_class = scrollbar
+ui.scrollbox.hscrollbar_class = scrollbar
 ui.scrollbox.scrollbar_margin_left = 6
 ui.scrollbox.scrollbar_margin_right = 6
 ui.scrollbox.scrollbar_margin_top = 6

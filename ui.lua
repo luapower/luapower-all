@@ -31,6 +31,7 @@ local assert = glue.assert
 local collect = glue.collect
 local sortedpairs = glue.sortedpairs
 local memoize = glue.memoize
+local trim = glue.trim
 
 local function single_line(s, val)
 	return not val and s or nil
@@ -1328,7 +1329,6 @@ function window:set_move_layer(layer)
 	if layer then
 		layer.mousedown_activate = true
 		layer.focusable = false
-		layer.focus_children = false
 		function layer:start_drag()
 			return self
 		end
@@ -1823,36 +1823,48 @@ function window:next_focusable_widget(forward)
 end
 
 function window:_keydown(key)
-	self:fire('keydown', key)
+	local ret
 	if self.focused_widget then
-		self.focused_widget:fire('keydown', key)
+		ret = self.focused_widget:fire('keydown', key)
+	end
+	if ret == nil then
+		self:fire('keydown', key)
 	end
 end
 
 function window:_keyup(key)
-	self:fire('keyup', key)
+	local ret
 	if self.focused_widget then
-		self.focused_widget:fire('keyup', key)
+		ret = self.focused_widget:fire('keyup', key)
+	end
+	if ret == nil then
+		self:fire('keyup', key)
 	end
 end
 
 function window:_keypress(key)
-	self:fire('keypress', key)
-	local capture_tab = self.focused_widget and self.focused_widget.capture_tab
-	if not capture_tab and key == 'tab' and not self.ui:key'ctrl' then
-		local next_widget = self:next_focusable_widget(not self.ui:key'shift')
-		if next_widget then
-			next_widget:focus()
+	local ret
+	if self.focused_widget then
+		ret = self.focused_widget:fire('keypress', key)
+	end
+	if ret == nil then
+		ret = self:fire('keypress', key)
+		if ret == nil and key == 'tab' then
+			local next_widget = self:next_focusable_widget(not self.ui:key'shift')
+			if next_widget then
+				next_widget:focus(true)
+			end
 		end
-	elseif self.focused_widget then
-		self.focused_widget:fire('keypress', key)
 	end
 end
 
 function window:_keychar(s)
-	self:fire('keychar', s)
+	local ret
 	if self.focused_widget then
-		self.focused_widget:fire('keychar', s)
+		ret = self.focused_widget:fire('keychar', s)
+	end
+	if ret == nil then
+		self:fire('keychar', ret)
 	end
 end
 
@@ -2094,7 +2106,6 @@ layer.vscrollable = false --enable mouse wheel when hot and not focused
 layer.hscrollable = false --enable mouse horiz. wheel when hot and not focused
 layer.scrollable = false --can be hit for vscroll or hscroll
 layer.focusable = false --can be focused
-layer.focus_children = false --it's a container of focusable children
 layer.mousedown_activate = false --activate/deactivate on left mouse down/up
 
 local function args4(s, convert) --parse a string of 4 non-space args
@@ -2621,15 +2632,6 @@ end
 
 --focusing and keyboard event handling
 
-layer.uses_enter_key = false
-layer.uses_esc_key = false
-
-function layer:uses_key(key) --check if the focused widget uses a certain key
-	return
-		(key == 'enter' and self.uses_enter_key)
-		or (key == 'esc' and self.uses_esc_key)
-end
-
 function layer:canfocus()
 	return self.visible and self.focusable and self.enabled
 end
@@ -2649,7 +2651,7 @@ function layer:unfocus()
 	return self.window:unfocus()
 end
 
-function layer:focus()
+function layer:focus(focus_children)
 	if self:canfocus() then
 		if not self.focused then
 			self.window:unfocus()
@@ -2661,10 +2663,10 @@ function layer:focus()
 			self:invalidate()
 		end
 		return true
-	elseif self.focus_children and self.visible and self.enabled then
+	elseif focus_children and self.visible and self.enabled then
 		--focus the first focusable child
 		local layer = self:first_focusable_widget()
-		if layer and layer:focus() then
+		if layer and layer:focus(focus_children) then
 			return true
 		end
 	end

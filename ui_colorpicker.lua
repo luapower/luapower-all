@@ -183,6 +183,7 @@ function hue_bar:keypress(key)
 			* 360
 			* 0.1
 		self.hue = self.hue + delta
+		return true
 	end
 end
 
@@ -339,10 +340,12 @@ function prect:keypress(key)
 		local delta = delta * (key:find'down' and 1 or -1)
 		self.b = self.b + lerp(delta, 0, 1, self:b_range())
 		self:invalidate()
+		return true
 	elseif key == 'left' or key == 'right' then
 		local delta = delta * (key:find'left' and -1 or 1)
 		self.a = self.a + lerp(delta, 0, 1, self:a_range())
 		self:invalidate()
+		return true
 	end
 end
 

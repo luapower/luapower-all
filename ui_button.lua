@@ -20,8 +20,6 @@ button.padding_right = 8
 button._default = false
 button._cancel = false
 
-button.uses_enter_key = true
-
 ui:style('button', {
 	transition_background_color = true,
 	transition_border_color = true,
@@ -134,6 +132,7 @@ function button:keydown(key)
 		self.active = true
 		self.active_by_key = true
 		self:settag(':over', true)
+		return true
 	end
 end
 
@@ -146,6 +145,7 @@ function button:keyup(key)
 		if key == 'enter' or key == 'space' then
 			self:press()
 		end
+		return true
 	end
 end
 
@@ -171,31 +171,25 @@ function button:set_cancel(cancel)
 	self:settag(':cancel', cancel)
 end
 
-function button:allow_key(key)
-	local win = self.window
-	return not win or not win.focused_widget
-		or not win.focused_widget:uses_key(key)
-end
-
 function button:after_set_window(win)
 	if not win then return end
 	local action
 	win:on({'keydown', self}, function(win, key)
-		if key == self.key and self:allow_key(key) then
+		if key == self.key then
 			action = true
-			self:keydown'enter'
-		elseif self.default and key == 'enter' and self:allow_key'enter' then
+			return self:keydown'enter'
+		elseif self.default and key == 'enter' then
 			action = true
-			self:keydown'enter'
-		elseif self.cancel and key == 'esc' and self:allow_key'esc' then
+			return self:keydown'enter'
+		elseif self.cancel and key == 'esc' then
 			action = true
-			self:keydown'enter'
+			return self:keydown'enter'
 		end
 	end)
 	win:on({'keyup', self}, function(win, key)
 		if action then
 			action = false
-			self:keyup'enter'
+			return self:keyup'enter'
 		end
 	end)
 end
@@ -525,8 +519,10 @@ function choicebutton:create_button(index, value)
 	function btn.before_keypress(btn, key)
 		if key == 'left' then
 			self:select_button(self:button_by_index(btn.index - 1), true)
+			return true
 		elseif key == 'right' then
 			self:select_button(self:button_by_index(btn.index + 1), true)
+			return true
 		end
 	end
 

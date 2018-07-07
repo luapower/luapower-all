@@ -129,11 +129,13 @@ tab.focusable = true
 function tab:keypress(key)
 	if key == 'enter' or key == 'space' then
 		self:select()
+		return true
 	elseif key == 'left' or key == 'right' then
 		local next_tab = self.tablist:next_tab(self, key == 'right')
 		if next_tab then
 			next_tab:focus()
 		end
+		return true
 	end
 end
 
@@ -148,7 +150,7 @@ tab.padding_left = 15
 
 ui:style('tab', {
 	transition_x = true,
-	transition_duration_x = 0.5,
+	transition_duration_x = .2,
 })
 
 ui:style('tab :focused', {
@@ -313,17 +315,15 @@ tablist.main_tablist = true --responds to tab/ctrl+tab globally
 
 function tablist:after_init()
 	self.window:on({'keypress', self}, function(win, key)
-		self:_window_keypress(key)
-	end)
-end
-
-function tablist:_window_keypress(key)
-	if self.main_tablist and key == 'tab' and self.ui:key'ctrl' then
-		local tab = self:next_tab(self.selected_tab, not self.ui:key'shift', true)
-		if tab then
-			tab:select()
+		if self.main_tablist and key == 'tab' and self.ui:key'ctrl' then
+			local shift = self.ui:key'shift'
+			local tab = self:next_tab(self.selected_tab, not shift, true)
+			if tab then
+				tab:select()
+			end
+			return true
 		end
-	end
+	end)
 end
 
 --drawing & hit-testing

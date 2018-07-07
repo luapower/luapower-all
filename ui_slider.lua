@@ -419,13 +419,17 @@ function slider:keypress(key)
 			* self.key_nav_speed --constant speed
 			* dir
 		self.position = self:position_at_progress_offset(nil, progress_delta)
+		return true
 	elseif key == 'home' then
 		self.progress = 0
+		return true
 	elseif key == 'end' then
 		self.progress = 1
+		return true
 	elseif key == 'enter' or key == 'space' then
 		self.tip:settag(':visible', true)
 		self.tip:update_styles()
+		return true
 	end
 	self.pin.animate = false
 end
