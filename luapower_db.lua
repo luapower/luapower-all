@@ -116,11 +116,17 @@ return {
 		},
 		bundle={
 			bundle={
-				loaderr='./bundle.lua:5: not a module'
+				loaderr='./bundle.lua:12: attempt to index global \'arg\' (a nil value)'
 			},
 			bundle_loader={
 				mdeps={
 					ffi=true
+				}
+			},
+			bundle_luastate={
+				mdeps={
+					ffi=true,
+					luastate=true
 				}
 			}
 		},
@@ -2374,11 +2380,17 @@ return {
 		},
 		bundle={
 			bundle={
-				loaderr='./bundle.lua:5: not a module'
+				loaderr='./bundle.lua:12: attempt to index global \'arg\' (a nil value)'
 			},
 			bundle_loader={
 				mdeps={
 					ffi=true
+				}
+			},
+			bundle_luastate={
+				mdeps={
+					ffi=true,
+					luastate=true
 				}
 			}
 		},
@@ -2482,6 +2494,8 @@ return {
 					ffi=true
 				}
 			}
+		},
+		code={
 		},
 		codedit={
 			codedit={
@@ -2709,6 +2723,12 @@ return {
 				}
 			}
 		},
+		['fonts-awesome']={
+		},
+		['fonts-ionicons']={
+		},
+		['fonts-material-icons']={
+		},
 		freetype={
 			freetype={
 				ffi_deps={
@@ -2744,11 +2764,7 @@ return {
 		},
 		fs={
 			fs={
-				mdeps={
-					ffi=true,
-					fs_common=true,
-					fs_posix=true
-				}
+				loaderr='./fs.lua:19: cannot change a protected metatable'
 			},
 			fs_common={
 				mdeps={
@@ -2789,11 +2805,7 @@ return {
 		},
 		gfonts={
 			gfonts={
-				mdeps={
-					fs=true,
-					glue=true,
-					pp=true
-				}
+				loaderr='./gfonts.lua:7: ./fs.lua:19: cannot change a protected metatable'
 			}
 		},
 		giflib={
@@ -2825,7 +2837,6 @@ return {
 		grid={
 			grid_band={
 				mdeps={
-					glue=true,
 					grid_band_layout=true
 				}
 			},
@@ -2988,7 +2999,7 @@ return {
 		},
 		imgui_nw_cairo={
 			imgui_nw_cairo={
-				loaderr='./xlib.lua:161: assertion failed!'
+				loaderr='./imgui_nw_cairo.lua:12: ./gfonts.lua:7: ./fs.lua:19: cannot change a protected metatable'
 			}
 		},
 		lanes={
@@ -3423,7 +3434,14 @@ return {
 		},
 		nanojpeg={
 			nanojpeg={
-				loaderr='./nanojpeg.lua:7: ./stdio.lua:190: cannot change a protected metatable'
+				ffi_deps={
+					nanojpeg2=true
+				},
+				mdeps={
+					ffi=true,
+					glue=true,
+					stdio=true
+				}
 			}
 		},
 		nw={
@@ -3457,7 +3475,13 @@ return {
 		},
 		obj_parser={
 			obj_loader={
-				loaderr='./obj_loader.lua:8: ./stdio.lua:190: cannot change a protected metatable'
+				mdeps={
+					ffi=true,
+					glue=true,
+					obj_parser=true,
+					stdio=true,
+					tuple=true
+				}
 			},
 			obj_parser={
 				mdeps={
@@ -3665,6 +3689,22 @@ return {
 			path2d_text={
 			}
 		},
+		pfglab3={
+			pfglab3_conf={
+				loaderr='./pfglab3_conf.lua:5: ./bundle.lua:12: attempt to index global \'arg\' (a nil value)'
+			},
+			pfglab3_gen={
+				loaderr='./pfglab3_gen.lua:6: ./rs232.lua:6: ./fs.lua:19: cannot change a protected metatable'
+			},
+			pfglab3_keygen={
+				mdeps={
+					ffi=true,
+					glue=true,
+					hmac=true,
+					sha2=true
+				}
+			}
+		},
 		pixman={
 		},
 		pmurhash={
@@ -3712,6 +3752,11 @@ return {
 					bit=true,
 					ffi=true
 				}
+			}
+		},
+		rs232={
+			rs232={
+				loaderr='./rs232.lua:6: ./fs.lua:19: cannot change a protected metatable'
 			}
 		},
 		rsync={
@@ -3872,7 +3917,9 @@ return {
 		},
 		stdio={
 			stdio={
-				loaderr='./stdio.lua:190: cannot change a protected metatable'
+				mdeps={
+					ffi=true
+				}
 			}
 		},
 		struct={
@@ -4317,21 +4364,49 @@ return {
 		},
 		ui={
 			ui={
-				mdeps={
-					amoeba=true,
-					box2d=true,
-					cairo=true,
-					color=true,
-					easing=true,
-					freetype=true,
-					fs=true,
-					gfonts=true,
-					glue=true,
-					libjpeg=true,
-					oo=true,
-					time=true,
-					tuple=true
-				}
+				loaderr='./ui.lua:18: ./fs.lua:19: cannot change a protected metatable'
+			},
+			ui_button={
+				loaderr='./ui_button.lua:5: ./ui.lua:18: ./fs.lua:19: cannot change a protected metatable'
+			},
+			ui_calendar={
+				loaderr='./ui_calendar.lua:5: ./ui.lua:18: ./fs.lua:19: cannot change a protected metatable'
+			},
+			ui_colorpicker={
+				loaderr='./ui_colorpicker.lua:5: ./ui.lua:18: ./fs.lua:19: cannot change a protected metatable'
+			},
+			ui_dropdown={
+				loaderr='./ui_dropdown.lua:5: ./ui.lua:18: ./fs.lua:19: cannot change a protected metatable'
+			},
+			ui_editbox={
+				loaderr='./ui_editbox.lua:5: ./ui.lua:18: ./fs.lua:19: cannot change a protected metatable'
+			},
+			ui_grid={
+				loaderr='./ui_grid.lua:6: ./ui.lua:18: ./fs.lua:19: cannot change a protected metatable'
+			},
+			ui_image={
+				loaderr='./ui_image.lua:5: ./ui.lua:18: ./fs.lua:19: cannot change a protected metatable'
+			},
+			ui_menu={
+				loaderr='./ui_menu.lua:5: ./ui.lua:18: ./fs.lua:19: cannot change a protected metatable'
+			},
+			ui_popup={
+				loaderr='./ui_popup.lua:5: ./ui.lua:18: ./fs.lua:19: cannot change a protected metatable'
+			},
+			ui_progressbar={
+				loaderr='./ui_progressbar.lua:5: ./ui.lua:18: ./fs.lua:19: cannot change a protected metatable'
+			},
+			ui_scrollbox={
+				loaderr='./ui_scrollbox.lua:5: ./ui.lua:18: ./fs.lua:19: cannot change a protected metatable'
+			},
+			ui_slider={
+				loaderr='./ui_slider.lua:5: ./ui.lua:18: ./fs.lua:19: cannot change a protected metatable'
+			},
+			ui_tablist={
+				loaderr='./ui_tablist.lua:5: ./ui.lua:18: ./fs.lua:19: cannot change a protected metatable'
+			},
+			ui_zoomcalendar={
+				loaderr='./ui_zoomcalendar.lua:5: ./ui.lua:18: ./fs.lua:19: cannot change a protected metatable'
 			}
 		},
 		unit={
@@ -4653,11 +4728,17 @@ return {
 		},
 		bundle={
 			bundle={
-				loaderr='.\\bundle.lua:5: not a module'
+				loaderr='.\\bundle.lua:12: attempt to index global \'arg\' (a nil value)'
 			},
 			bundle_loader={
 				mdeps={
 					ffi=true
+				}
+			},
+			bundle_luastate={
+				mdeps={
+					ffi=true,
+					luastate=true
 				}
 			}
 		},
@@ -4776,6 +4857,8 @@ return {
 					ffi=true
 				}
 			}
+		},
+		code={
 		},
 		codedit={
 			codedit={
@@ -5262,6 +5345,12 @@ return {
 				}
 			}
 		},
+		['fonts-awesome']={
+		},
+		['fonts-ionicons']={
+		},
+		['fonts-material-icons']={
+		},
 		freetype={
 			freetype={
 				ffi_deps={
@@ -5376,7 +5465,6 @@ return {
 		grid={
 			grid_band={
 				mdeps={
-					glue=true,
 					grid_band_layout=true
 				}
 			},
@@ -6011,6 +6099,7 @@ return {
 					cbframe=true,
 					ffi=true,
 					glue=true,
+					time=true,
 					winapi=true,
 					['winapi.bitmap']=true,
 					['winapi.clipboard']=true,
@@ -6024,6 +6113,7 @@ return {
 					['winapi.gdi']=true,
 					['winapi.icon']=true,
 					['winapi.keyboard']=true,
+					['winapi.module']=true,
 					['winapi.monitor']=true,
 					['winapi.mouse']=true,
 					['winapi.notifyiconclass']=true,
@@ -6031,8 +6121,10 @@ return {
 					['winapi.rawinput']=true,
 					['winapi.shellapi']=true,
 					['winapi.spi']=true,
+					['winapi.sync']=true,
 					['winapi.sysinfo']=true,
 					['winapi.systemmetrics']=true,
+					['winapi.tooltipclass']=true,
 					['winapi.windowclass']=true
 				}
 			},
@@ -6265,6 +6357,22 @@ return {
 			path2d_text={
 			}
 		},
+		pfglab3={
+			pfglab3_conf={
+				loaderr='.\\pfglab3_conf.lua:5: .\\bundle.lua:12: attempt to index global \'arg\' (a nil value)'
+			},
+			pfglab3_gen={
+				loaderr='.\\pfglab3_gen.lua:6: .\\rs232.lua:6: .\\fs.lua:19: cannot change a protected metatable'
+			},
+			pfglab3_keygen={
+				mdeps={
+					ffi=true,
+					glue=true,
+					hmac=true,
+					sha2=true
+				}
+			}
+		},
 		pixman={
 		},
 		pmurhash={
@@ -6318,6 +6426,11 @@ return {
 					bit=true,
 					ffi=true
 				}
+			}
+		},
+		rs232={
+			rs232={
+				loaderr='.\\rs232.lua:6: .\\fs.lua:19: cannot change a protected metatable'
 			}
 		},
 		rsync={
@@ -6583,7 +6696,49 @@ return {
 		},
 		ui={
 			ui={
-				loaderr='.\\ui.lua:15: .\\gfonts.lua:7: .\\fs.lua:19: cannot change a protected metatable'
+				loaderr='.\\ui.lua:18: .\\fs.lua:19: cannot change a protected metatable'
+			},
+			ui_button={
+				loaderr='.\\ui_button.lua:5: .\\ui.lua:18: .\\fs.lua:19: cannot change a protected metatable'
+			},
+			ui_calendar={
+				loaderr='.\\ui_calendar.lua:5: .\\ui.lua:18: .\\fs.lua:19: cannot change a protected metatable'
+			},
+			ui_colorpicker={
+				loaderr='.\\ui_colorpicker.lua:5: .\\ui.lua:18: .\\fs.lua:19: cannot change a protected metatable'
+			},
+			ui_dropdown={
+				loaderr='.\\ui_dropdown.lua:5: .\\ui.lua:18: .\\fs.lua:19: cannot change a protected metatable'
+			},
+			ui_editbox={
+				loaderr='.\\ui_editbox.lua:5: .\\ui.lua:18: .\\fs.lua:19: cannot change a protected metatable'
+			},
+			ui_grid={
+				loaderr='.\\ui_grid.lua:6: .\\ui.lua:18: .\\fs.lua:19: cannot change a protected metatable'
+			},
+			ui_image={
+				loaderr='.\\ui_image.lua:5: .\\ui.lua:18: .\\fs.lua:19: cannot change a protected metatable'
+			},
+			ui_menu={
+				loaderr='.\\ui_menu.lua:5: .\\ui.lua:18: .\\fs.lua:19: cannot change a protected metatable'
+			},
+			ui_popup={
+				loaderr='.\\ui_popup.lua:5: .\\ui.lua:18: .\\fs.lua:19: cannot change a protected metatable'
+			},
+			ui_progressbar={
+				loaderr='.\\ui_progressbar.lua:5: .\\ui.lua:18: .\\fs.lua:19: cannot change a protected metatable'
+			},
+			ui_scrollbox={
+				loaderr='.\\ui_scrollbox.lua:5: .\\ui.lua:18: .\\fs.lua:19: cannot change a protected metatable'
+			},
+			ui_slider={
+				loaderr='.\\ui_slider.lua:5: .\\ui.lua:18: .\\fs.lua:19: cannot change a protected metatable'
+			},
+			ui_tablist={
+				loaderr='.\\ui_tablist.lua:5: .\\ui.lua:18: .\\fs.lua:19: cannot change a protected metatable'
+			},
+			ui_zoomcalendar={
+				loaderr='.\\ui_zoomcalendar.lua:5: .\\ui.lua:18: .\\fs.lua:19: cannot change a protected metatable'
 			}
 		},
 		unit={
@@ -7225,6 +7380,12 @@ return {
 					['winapi.util']=true
 				}
 			},
+			['winapi.sync']={
+				mdeps={
+					winapi=true,
+					['winapi.winbase']=true
+				}
+			},
 			['winapi.sysinfo']={
 				mdeps={
 					winapi=true
@@ -7272,7 +7433,17 @@ return {
 			},
 			['winapi.tooltip']={
 				mdeps={
-					winapi=true
+					winapi=true,
+					['winapi.comctl']=true,
+					['winapi.window']=true
+				}
+			},
+			['winapi.tooltipclass']={
+				mdeps={
+					winapi=true,
+					['winapi.basewindowclass']=true,
+					['winapi.controlclass']=true,
+					['winapi.tooltip']=true
 				}
 			},
 			['winapi.treeview']={
@@ -7306,6 +7477,11 @@ return {
 				mdeps={
 					winapi=true,
 					['winapi.object']=true
+				}
+			},
+			['winapi.volman']={
+				mdeps={
+					winapi=true
 				}
 			},
 			['winapi.waitemlistclass']={
@@ -7588,11 +7764,17 @@ return {
 		},
 		bundle={
 			bundle={
-				loaderr='.\\bundle.lua:5: not a module'
+				loaderr='.\\bundle.lua:12: attempt to index global \'arg\' (a nil value)'
 			},
 			bundle_loader={
 				mdeps={
 					ffi=true
+				}
+			},
+			bundle_luastate={
+				mdeps={
+					ffi=true,
+					luastate=true
 				}
 			}
 		},
@@ -7711,6 +7893,8 @@ return {
 					ffi=true
 				}
 			}
+		},
+		code={
 		},
 		codedit={
 			codedit={
@@ -8197,6 +8381,12 @@ return {
 				}
 			}
 		},
+		['fonts-awesome']={
+		},
+		['fonts-ionicons']={
+		},
+		['fonts-material-icons']={
+		},
 		freetype={
 			freetype={
 				ffi_deps={
@@ -8311,7 +8501,6 @@ return {
 		grid={
 			grid_band={
 				mdeps={
-					glue=true,
 					grid_band_layout=true
 				}
 			},
@@ -8982,6 +9171,7 @@ return {
 					cbframe=true,
 					ffi=true,
 					glue=true,
+					time=true,
 					winapi=true,
 					['winapi.bitmap']=true,
 					['winapi.clipboard']=true,
@@ -8995,6 +9185,7 @@ return {
 					['winapi.gdi']=true,
 					['winapi.icon']=true,
 					['winapi.keyboard']=true,
+					['winapi.module']=true,
 					['winapi.monitor']=true,
 					['winapi.mouse']=true,
 					['winapi.notifyiconclass']=true,
@@ -9002,8 +9193,10 @@ return {
 					['winapi.rawinput']=true,
 					['winapi.shellapi']=true,
 					['winapi.spi']=true,
+					['winapi.sync']=true,
 					['winapi.sysinfo']=true,
 					['winapi.systemmetrics']=true,
+					['winapi.tooltipclass']=true,
 					['winapi.windowclass']=true
 				}
 			},
@@ -9236,6 +9429,22 @@ return {
 			path2d_text={
 			}
 		},
+		pfglab3={
+			pfglab3_conf={
+				loaderr='.\\pfglab3_conf.lua:5: .\\bundle.lua:12: attempt to index global \'arg\' (a nil value)'
+			},
+			pfglab3_gen={
+				loaderr='.\\pfglab3_gen.lua:6: .\\rs232.lua:6: .\\fs.lua:19: cannot change a protected metatable'
+			},
+			pfglab3_keygen={
+				mdeps={
+					ffi=true,
+					glue=true,
+					hmac=true,
+					sha2=true
+				}
+			}
+		},
 		pixman={
 		},
 		pmurhash={
@@ -9289,6 +9498,11 @@ return {
 					bit=true,
 					ffi=true
 				}
+			}
+		},
+		rs232={
+			rs232={
+				loaderr='.\\rs232.lua:6: .\\fs.lua:19: cannot change a protected metatable'
 			}
 		},
 		rsync={
@@ -9554,7 +9768,49 @@ return {
 		},
 		ui={
 			ui={
-				loaderr='.\\ui.lua:15: .\\gfonts.lua:7: .\\fs.lua:19: cannot change a protected metatable'
+				loaderr='.\\ui.lua:18: .\\fs.lua:19: cannot change a protected metatable'
+			},
+			ui_button={
+				loaderr='.\\ui_button.lua:5: .\\ui.lua:18: .\\fs.lua:19: cannot change a protected metatable'
+			},
+			ui_calendar={
+				loaderr='.\\ui_calendar.lua:5: .\\ui.lua:18: .\\fs.lua:19: cannot change a protected metatable'
+			},
+			ui_colorpicker={
+				loaderr='.\\ui_colorpicker.lua:5: .\\ui.lua:18: .\\fs.lua:19: cannot change a protected metatable'
+			},
+			ui_dropdown={
+				loaderr='.\\ui_dropdown.lua:5: .\\ui.lua:18: .\\fs.lua:19: cannot change a protected metatable'
+			},
+			ui_editbox={
+				loaderr='.\\ui_editbox.lua:5: .\\ui.lua:18: .\\fs.lua:19: cannot change a protected metatable'
+			},
+			ui_grid={
+				loaderr='.\\ui_grid.lua:6: .\\ui.lua:18: .\\fs.lua:19: cannot change a protected metatable'
+			},
+			ui_image={
+				loaderr='.\\ui_image.lua:5: .\\ui.lua:18: .\\fs.lua:19: cannot change a protected metatable'
+			},
+			ui_menu={
+				loaderr='.\\ui_menu.lua:5: .\\ui.lua:18: .\\fs.lua:19: cannot change a protected metatable'
+			},
+			ui_popup={
+				loaderr='.\\ui_popup.lua:5: .\\ui.lua:18: .\\fs.lua:19: cannot change a protected metatable'
+			},
+			ui_progressbar={
+				loaderr='.\\ui_progressbar.lua:5: .\\ui.lua:18: .\\fs.lua:19: cannot change a protected metatable'
+			},
+			ui_scrollbox={
+				loaderr='.\\ui_scrollbox.lua:5: .\\ui.lua:18: .\\fs.lua:19: cannot change a protected metatable'
+			},
+			ui_slider={
+				loaderr='.\\ui_slider.lua:5: .\\ui.lua:18: .\\fs.lua:19: cannot change a protected metatable'
+			},
+			ui_tablist={
+				loaderr='.\\ui_tablist.lua:5: .\\ui.lua:18: .\\fs.lua:19: cannot change a protected metatable'
+			},
+			ui_zoomcalendar={
+				loaderr='.\\ui_zoomcalendar.lua:5: .\\ui.lua:18: .\\fs.lua:19: cannot change a protected metatable'
 			}
 		},
 		unit={
@@ -10196,6 +10452,12 @@ return {
 					['winapi.util']=true
 				}
 			},
+			['winapi.sync']={
+				mdeps={
+					winapi=true,
+					['winapi.winbase']=true
+				}
+			},
 			['winapi.sysinfo']={
 				mdeps={
 					winapi=true
@@ -10243,7 +10505,17 @@ return {
 			},
 			['winapi.tooltip']={
 				mdeps={
-					winapi=true
+					winapi=true,
+					['winapi.comctl']=true,
+					['winapi.window']=true
+				}
+			},
+			['winapi.tooltipclass']={
+				mdeps={
+					winapi=true,
+					['winapi.basewindowclass']=true,
+					['winapi.controlclass']=true,
+					['winapi.tooltip']=true
 				}
 			},
 			['winapi.treeview']={
@@ -10277,6 +10549,11 @@ return {
 				mdeps={
 					winapi=true,
 					['winapi.object']=true
+				}
+			},
+			['winapi.volman']={
+				mdeps={
+					winapi=true
 				}
 			},
 			['winapi.waitemlistclass']={
@@ -10544,11 +10821,17 @@ return {
 		},
 		bundle={
 			bundle={
-				loaderr='./bundle.lua:5: not a module'
+				loaderr='./bundle.lua:12: attempt to index global \'arg\' (a nil value)'
 			},
 			bundle_loader={
 				mdeps={
 					ffi=true
+				}
+			},
+			bundle_luastate={
+				mdeps={
+					ffi=true,
+					luastate=true
 				}
 			}
 		},
@@ -10664,6 +10947,8 @@ return {
 					ffi=true
 				}
 			}
+		},
+		code={
 		},
 		codedit={
 			codedit={
@@ -10887,6 +11172,12 @@ return {
 				}
 			}
 		},
+		['fonts-awesome']={
+		},
+		['fonts-ionicons']={
+		},
+		['fonts-material-icons']={
+		},
 		freetype={
 			freetype={
 				ffi_deps={
@@ -10992,7 +11283,6 @@ return {
 		grid={
 			grid_band={
 				mdeps={
-					glue=true,
 					grid_band_layout=true
 				}
 			},
@@ -11623,6 +11913,8 @@ return {
 					['/System/Library/Frameworks/ApplicationServices.framework/Versions/Current/Frameworks/CoreGraphics.framework/CoreGraphics']=true,
 					['/System/Library/Frameworks/ApplicationServices.framework/Versions/Current/Frameworks/CoreGraphics.framework/Resources/BridgeSupport/CoreGraphics.dylib']=true,
 					['/System/Library/Frameworks/Carbon.framework/Versions/Current/Frameworks/HIToolbox.framework/HIToolbox']=true,
+					['/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation']=true,
+					['/System/Library/Frameworks/CoreFoundation.framework/Resources/BridgeSupport/CoreFoundation.dylib']=true,
 					['/System/Library/Frameworks/Foundation.framework/Foundation']=true,
 					['/System/Library/Frameworks/Foundation.framework/Resources/BridgeSupport/Foundation.dylib']=true
 				},
@@ -11881,6 +12173,22 @@ return {
 			path2d_text={
 			}
 		},
+		pfglab3={
+			pfglab3_conf={
+				loaderr='./pfglab3_conf.lua:5: ./bundle.lua:12: attempt to index global \'arg\' (a nil value)'
+			},
+			pfglab3_gen={
+				loaderr='./pfglab3_gen.lua:6: ./rs232.lua:6: ./fs.lua:19: cannot change a protected metatable'
+			},
+			pfglab3_keygen={
+				mdeps={
+					ffi=true,
+					glue=true,
+					hmac=true,
+					sha2=true
+				}
+			}
+		},
 		pixman={
 		},
 		pmurhash={
@@ -11928,6 +12236,11 @@ return {
 					bit=true,
 					ffi=true
 				}
+			}
+		},
+		rs232={
+			rs232={
+				loaderr='./rs232.lua:6: ./fs.lua:19: cannot change a protected metatable'
 			}
 		},
 		rsync={
@@ -12530,7 +12843,49 @@ return {
 		},
 		ui={
 			ui={
-				loaderr='./ui.lua:15: ./gfonts.lua:7: ./fs.lua:19: cannot change a protected metatable'
+				loaderr='./ui.lua:18: ./fs.lua:19: cannot change a protected metatable'
+			},
+			ui_button={
+				loaderr='./ui_button.lua:5: ./ui.lua:18: ./fs.lua:19: cannot change a protected metatable'
+			},
+			ui_calendar={
+				loaderr='./ui_calendar.lua:5: ./ui.lua:18: ./fs.lua:19: cannot change a protected metatable'
+			},
+			ui_colorpicker={
+				loaderr='./ui_colorpicker.lua:5: ./ui.lua:18: ./fs.lua:19: cannot change a protected metatable'
+			},
+			ui_dropdown={
+				loaderr='./ui_dropdown.lua:5: ./ui.lua:18: ./fs.lua:19: cannot change a protected metatable'
+			},
+			ui_editbox={
+				loaderr='./ui_editbox.lua:5: ./ui.lua:18: ./fs.lua:19: cannot change a protected metatable'
+			},
+			ui_grid={
+				loaderr='./ui_grid.lua:6: ./ui.lua:18: ./fs.lua:19: cannot change a protected metatable'
+			},
+			ui_image={
+				loaderr='./ui_image.lua:5: ./ui.lua:18: ./fs.lua:19: cannot change a protected metatable'
+			},
+			ui_menu={
+				loaderr='./ui_menu.lua:5: ./ui.lua:18: ./fs.lua:19: cannot change a protected metatable'
+			},
+			ui_popup={
+				loaderr='./ui_popup.lua:5: ./ui.lua:18: ./fs.lua:19: cannot change a protected metatable'
+			},
+			ui_progressbar={
+				loaderr='./ui_progressbar.lua:5: ./ui.lua:18: ./fs.lua:19: cannot change a protected metatable'
+			},
+			ui_scrollbox={
+				loaderr='./ui_scrollbox.lua:5: ./ui.lua:18: ./fs.lua:19: cannot change a protected metatable'
+			},
+			ui_slider={
+				loaderr='./ui_slider.lua:5: ./ui.lua:18: ./fs.lua:19: cannot change a protected metatable'
+			},
+			ui_tablist={
+				loaderr='./ui_tablist.lua:5: ./ui.lua:18: ./fs.lua:19: cannot change a protected metatable'
+			},
+			ui_zoomcalendar={
+				loaderr='./ui_zoomcalendar.lua:5: ./ui.lua:18: ./fs.lua:19: cannot change a protected metatable'
 			}
 		},
 		unit={
@@ -12579,8 +12934,6 @@ return {
 			videoinput_cocoa={
 				ffi_deps={
 					['/System/Library/Frameworks/AVFoundation.framework/AVFoundation']=true,
-					['/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation']=true,
-					['/System/Library/Frameworks/CoreFoundation.framework/Resources/BridgeSupport/CoreFoundation.dylib']=true,
 					['/System/Library/Frameworks/CoreMedia.framework/CoreMedia']=true,
 					['/System/Library/Frameworks/CoreVideo.framework/CoreVideo']=true
 				},
@@ -12786,11 +13139,17 @@ return {
 		},
 		bundle={
 			bundle={
-				loaderr='./bundle.lua:5: not a module'
+				loaderr='./bundle.lua:12: attempt to index global \'arg\' (a nil value)'
 			},
 			bundle_loader={
 				mdeps={
 					ffi=true
+				}
+			},
+			bundle_luastate={
+				mdeps={
+					ffi=true,
+					luastate=true
 				}
 			}
 		},
@@ -12906,6 +13265,8 @@ return {
 					ffi=true
 				}
 			}
+		},
+		code={
 		},
 		codedit={
 			codedit={
@@ -13129,6 +13490,12 @@ return {
 				}
 			}
 		},
+		['fonts-awesome']={
+		},
+		['fonts-ionicons']={
+		},
+		['fonts-material-icons']={
+		},
 		freetype={
 			freetype={
 				ffi_deps={
@@ -13234,7 +13601,6 @@ return {
 		grid={
 			grid_band={
 				mdeps={
-					glue=true,
 					grid_band_layout=true
 				}
 			},
@@ -13865,6 +14231,8 @@ return {
 					['/System/Library/Frameworks/ApplicationServices.framework/Versions/Current/Frameworks/CoreGraphics.framework/CoreGraphics']=true,
 					['/System/Library/Frameworks/ApplicationServices.framework/Versions/Current/Frameworks/CoreGraphics.framework/Resources/BridgeSupport/CoreGraphics.dylib']=true,
 					['/System/Library/Frameworks/Carbon.framework/Versions/Current/Frameworks/HIToolbox.framework/HIToolbox']=true,
+					['/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation']=true,
+					['/System/Library/Frameworks/CoreFoundation.framework/Resources/BridgeSupport/CoreFoundation.dylib']=true,
 					['/System/Library/Frameworks/Foundation.framework/Foundation']=true,
 					['/System/Library/Frameworks/Foundation.framework/Resources/BridgeSupport/Foundation.dylib']=true
 				},
@@ -14123,6 +14491,22 @@ return {
 			path2d_text={
 			}
 		},
+		pfglab3={
+			pfglab3_conf={
+				loaderr='./pfglab3_conf.lua:5: ./bundle.lua:12: attempt to index global \'arg\' (a nil value)'
+			},
+			pfglab3_gen={
+				loaderr='./pfglab3_gen.lua:6: ./rs232.lua:6: ./fs.lua:19: cannot change a protected metatable'
+			},
+			pfglab3_keygen={
+				mdeps={
+					ffi=true,
+					glue=true,
+					hmac=true,
+					sha2=true
+				}
+			}
+		},
 		pixman={
 		},
 		pmurhash={
@@ -14170,6 +14554,11 @@ return {
 					bit=true,
 					ffi=true
 				}
+			}
+		},
+		rs232={
+			rs232={
+				loaderr='./rs232.lua:6: ./fs.lua:19: cannot change a protected metatable'
 			}
 		},
 		rsync={
@@ -14772,7 +15161,49 @@ return {
 		},
 		ui={
 			ui={
-				loaderr='./ui.lua:15: ./gfonts.lua:7: ./fs.lua:19: cannot change a protected metatable'
+				loaderr='./ui.lua:18: ./fs.lua:19: cannot change a protected metatable'
+			},
+			ui_button={
+				loaderr='./ui_button.lua:5: ./ui.lua:18: ./fs.lua:19: cannot change a protected metatable'
+			},
+			ui_calendar={
+				loaderr='./ui_calendar.lua:5: ./ui.lua:18: ./fs.lua:19: cannot change a protected metatable'
+			},
+			ui_colorpicker={
+				loaderr='./ui_colorpicker.lua:5: ./ui.lua:18: ./fs.lua:19: cannot change a protected metatable'
+			},
+			ui_dropdown={
+				loaderr='./ui_dropdown.lua:5: ./ui.lua:18: ./fs.lua:19: cannot change a protected metatable'
+			},
+			ui_editbox={
+				loaderr='./ui_editbox.lua:5: ./ui.lua:18: ./fs.lua:19: cannot change a protected metatable'
+			},
+			ui_grid={
+				loaderr='./ui_grid.lua:6: ./ui.lua:18: ./fs.lua:19: cannot change a protected metatable'
+			},
+			ui_image={
+				loaderr='./ui_image.lua:5: ./ui.lua:18: ./fs.lua:19: cannot change a protected metatable'
+			},
+			ui_menu={
+				loaderr='./ui_menu.lua:5: ./ui.lua:18: ./fs.lua:19: cannot change a protected metatable'
+			},
+			ui_popup={
+				loaderr='./ui_popup.lua:5: ./ui.lua:18: ./fs.lua:19: cannot change a protected metatable'
+			},
+			ui_progressbar={
+				loaderr='./ui_progressbar.lua:5: ./ui.lua:18: ./fs.lua:19: cannot change a protected metatable'
+			},
+			ui_scrollbox={
+				loaderr='./ui_scrollbox.lua:5: ./ui.lua:18: ./fs.lua:19: cannot change a protected metatable'
+			},
+			ui_slider={
+				loaderr='./ui_slider.lua:5: ./ui.lua:18: ./fs.lua:19: cannot change a protected metatable'
+			},
+			ui_tablist={
+				loaderr='./ui_tablist.lua:5: ./ui.lua:18: ./fs.lua:19: cannot change a protected metatable'
+			},
+			ui_zoomcalendar={
+				loaderr='./ui_zoomcalendar.lua:5: ./ui.lua:18: ./fs.lua:19: cannot change a protected metatable'
 			}
 		},
 		unit={
@@ -14821,8 +15252,6 @@ return {
 			videoinput_cocoa={
 				ffi_deps={
 					['/System/Library/Frameworks/AVFoundation.framework/AVFoundation']=true,
-					['/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation']=true,
-					['/System/Library/Frameworks/CoreFoundation.framework/Resources/BridgeSupport/CoreFoundation.dylib']=true,
 					['/System/Library/Frameworks/CoreMedia.framework/CoreMedia']=true,
 					['/System/Library/Frameworks/CoreVideo.framework/CoreVideo']=true
 				},
