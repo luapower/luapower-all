@@ -595,13 +595,13 @@ function buffer:clamp_pos(line, i)
 	end
 end
 
---next non-space char on the same line, if any
+--next non-space char on a line, if any
 function buffer:next_nonspace_char(line, i)
 	local s = self.lines[line]
 	return s and str.next_nonspace_char(s, i)
 end
 
---prev non-space char on the same line, if any
+--prev non-space char on a line, if any
 function buffer:prev_nonspace_char(line, i)
 	local s = self.lines[line]
 	if not s then return end
@@ -642,22 +642,16 @@ function buffer:prev_nonspace_pos(line, i)
 	end
 end
 
---next wordbreak char in text, if any
-function buffer:next_wordbreak_pos(line, i, word_chars)
+--next wordbreak char on a line, if any
+function buffer:next_wordbreak_char(line, i, word_chars)
 	local s = self.lines[line]
-	local wb_i = s and str.next_wordbreak_char(s, i, word_chars)
-	if wb_i then
-		return line, wb_i
-	end
+	return s and str.next_wordbreak_char(s, i, word_chars)
 end
 
---prev wordbreak char in text, if any
-function buffer:prev_wordbreak_pos(line, i, word_chars)
+--prev wordbreak char on a line, if any
+function buffer:prev_wordbreak_char(line, i, word_chars)
 	local s = self.lines[line]
-	local wb_i = s and str.prev_wordbreak_char(s, i, word_chars)
-	if wb_i then
-		return line, wb_i
-	end
+	return s and str.prev_wordbreak_char(s, i, word_chars)
 end
 
 --select the string between two subsequent positions in the text.
@@ -1119,11 +1113,12 @@ function cursor:move_next_pos()
 	self:move(self:next_pos())
 end
 
+--WARNING: this is more complicated than it looks!
 function cursor:next_wordbreak_pos(line, i)
 	line = line or self.line
 	i = i or self.i
-	local line1, i1 = self.buffer:next_wordbreak_pos(line, i, self.word_chars)
-	if not line1 then
+	local line1, i1 = line, self.buffer:next_wordbreak_char(line, i, self.word_chars)
+	if not i1 then
 		local eol = self.buffer:visible_eol(line)
 		if i < eol then
 			line1, i1 = line, eol
@@ -1141,6 +1136,7 @@ function cursor:move_next_wordbreak()
 	self:move(self:next_wordbreak_pos())
 end
 
+--WARNING: this is more complicated than it looks!
 function cursor:prev_wordbreak_pos(line, i)
 	line = line or self.line
 	i = i or self.i
@@ -1148,8 +1144,8 @@ function cursor:prev_wordbreak_pos(line, i)
 	if i > eol then
 		return line, eol
 	end
-	local line1, i1 = self.buffer:prev_wordbreak_pos(line, i, self.word_chars)
-	if not line1 then
+	local line1, i1 = line, self.buffer:prev_wordbreak_char(line, i, self.word_chars)
+	if not i1 then
 		local bol = self.buffer:visible_bol(line)
 		if i > bol then
 			return line, bol
@@ -3114,6 +3110,9 @@ function editor:delete_prev_pos()
 end
 
 function editor:newline()
+	if not self.buffer.multiline then
+		return
+	end
 	self:remove_selection()
 	self.undo_stack:start_undo_group'insert_newline'
 	self.cursor:insert_newline()
@@ -3357,13 +3356,14 @@ editor.key_bindings = { --flag order is ctrl+alt+shift
 	['ctrl+S'] = 'save',
 }
 
-function editor:perform_shortcut(shortcut, ctrl, alt, shift)
+function editor:perform_shortcut(shortcut)
 	local command = self.key_bindings[shortcut]
 	if not command then return end
 	if not self[command] then
 		error(string.format('command not found: %s for %s', command, shortcut))
 	end
-	self[command](self, ctrl, alt, shift)
+	self[command](self)
+	return true
 end
 
 function editor:hit_test(x, y)
@@ -3402,7 +3402,7 @@ function editor:keypress(key)
 		(ctrl  and 'ctrl+'  or '') ..
 		(alt   and 'alt+'   or '') ..
 		(shift and 'shift+' or '') .. key
-	self:perform_shortcut(shortcut)
+	return self:perform_shortcut(shortcut)
 end
 
 function editor:mousedown()

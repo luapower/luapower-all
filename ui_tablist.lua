@@ -147,6 +147,7 @@ tab.border_color = '#222'
 tab.background_color = '#111'
 tab.text_align = 'left'
 tab.padding_left = 15
+tab.padding_right = 12
 
 ui:style('tab', {
 	transition_x = true,
@@ -202,12 +203,69 @@ function tab:draw_border(cr)
 	cr:stroke()
 end
 
+function tab:before_draw()
+	self:sync()
+end
+
 --close button
+
+tab.closeable = true --show close button and receive 'close' event
 
 local xbutton = ui.button:subclass'tab_close_button'
 tab.close_button_class = xbutton
 
---TODO
+xbutton.font_family = 'Ionicons'
+xbutton.text = '\xEF\x8B\x80'
+xbutton.text_size = 13
+xbutton.w = 16
+xbutton.h = 16
+xbutton.corner_radius = 10
+xbutton.corner_radius_kappa = 1
+xbutton.padding = 0
+xbutton.focusable = false
+xbutton.border_width = 0
+xbutton.background_color = false
+xbutton.text_color = '#999'
+
+ui:style('tab_close_button', {
+	transition_background_color = false,
+})
+
+ui:style('tab_close_button :hot', {
+	background_color = false,
+	text_color = '#fff',
+	transition_background_color = false,
+})
+
+ui:style('tab_close_button :over', {
+	text_color = '#fff',
+})
+
+function xbutton:before_mousedown()
+	self.tab:select()
+end
+
+function xbutton:pressed()
+	self.tab:fire'close'
+end
+
+function tab:create_close_button(button)
+	return self.close_button_class(self.ui, {
+		parent = self,
+		tab = self,
+	}, self.close_button, button)
+end
+
+function tab:after_init()
+	self.close_button = self:create_close_button()
+end
+
+function tab:after_sync()
+	local xb = self.close_button
+	xb.x = self.cw - self.close_button.w
+	xb.cy = math.ceil(self.cy)
+	xb.visible = tab.closeable
+end
 
 --tablist --------------------------------------------------------------------
 
@@ -434,6 +492,9 @@ if not ... then require('ui_demo')(function(ui, win)
 				ui:each('content', function(self) self.visible = false end)
 				content:to_front()
 				content.visible = self.visible
+			end,
+			close = function(self)
+				self:free()
 			end,
 		}
 

@@ -543,6 +543,8 @@ local tracking_state = memoize(function()
 	local luastate = require'luastate'
 	local state = luastate.open()
 	state:openlibs()
+	state:push{[0] = arg[0]} --used by some modules to get the exe dir
+	state:setglobal'arg'
 	state:push(install_trackers)
 	state:call(builtin_modules, filter)
 	return state

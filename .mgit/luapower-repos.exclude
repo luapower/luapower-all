@@ -2,7 +2,6 @@
 !/.mgit/
 /.mgit/*/
 !/.mgit/luapower-repos.exclude
-!/.mgit/*.origin
 !/.mgit/*.baseurl
 !/.mgit/*.release
 !/.mgit/luapower-repos.help

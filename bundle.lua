@@ -61,7 +61,7 @@ function bundle.mmap(file)
 	local s = load_file(file)
 	if s then
 		--TODO: use fs.mmap() here
-		return {data = ffi.cast('void*', s), size = #s,
+		return {data = ffi.cast('const void*', s), size = #s,
 			close = function() local _ = s; end}
 	else
 		return mmap_blob(file)

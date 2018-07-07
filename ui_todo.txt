@@ -5,6 +5,7 @@ NW ---------------------------------------------------------------------------
 
 UI ---------------------------------------------------------------------------
 
+- text rendering
 - fix module autoloading vs css decl. order conflict
 
 EDITBOX ----------------------------------------------------------------------
@@ -40,16 +41,34 @@ EDITBOX
 
 - fix editbox->editor/view/cursor/selection property proxying
 
-
-LATER/HARD
 - autowrap
-
 
 DROPDOWN ---------------------------------------------------------------------
 
 - static-text-dropdown
 - editbox-dropdown
 - maskedit dropdown with calendar
+-
+
+TABLIST ----------------------------------------------------------------------
+
+- close button
+- horizontal/bottom
+- vertical left/right
+
+BUTTON -----------------------------------------------------------------------
+
+- profiles: text, outlined, contained, toggle
+- icon, icon_align left/right
+
+CHECKBOX ---------------------------------------------------------------------
+
+- tristate
+- children, indent
+-
+
+SLIDER -----------------------------------------------------------------------
+
 -
 
 CALENDAR ---------------------------------------------------------------------
@@ -81,12 +100,21 @@ COLOR PICKER -----------------------------------------------------------------
 - hue wheel with configurable granularity + lum/sat triangle
 - hue/sat square with lum ramp instead of sat/lum with hue ramp
 
-LITTLE WIDGETS ---------------------------------------------------------------
+MENU BAR ---------------------------------------------------------------------
 
-- menu bar
-- menu
-- popup menu
-- linear-calendar
+-
+
+MENU -------------------------------------------------------------------------
+
+-
+
+POPUP MENU -------------------------------------------------------------------
+
+-
+
+LINEAR CALENDAR --------------------------------------------------------------
+
+-
 
 GRID -------------------------------------------------------------------------
 
@@ -152,7 +180,7 @@ LATER/NEVER
 - vertical grid with bands
 
 
-NEW TAB-ORDER ALGORITHM =-----------------------------------------------------
+NEW TAB-ORDER ALGORITHM ------------------------------------------------------
 
 --TODO: make a new tab-order-assigning algorithm based on horizontal and
 --vertical overlap between widgets and the vertical/horizontal distance

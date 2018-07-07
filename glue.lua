@@ -564,7 +564,6 @@ function glue.fcall(...)
 end
 
 --memoize for 1 and 2-arg and vararg and 1 retval functions.
---NOTE: cache layouts differ for each type of memoization.
 local function memoize0(fn) --for strict no-arg functions
 	local v, stored
 	return function()

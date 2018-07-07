@@ -31,7 +31,7 @@ slider.h = 20
 
 slider._min_position = 0
 slider._max_position = false --overrides size
-slider.position = 0
+slider._position = 0
 slider._progress = false --overrides position
 slider.step_start = 0
 slider.step = false --no stepping
@@ -43,7 +43,6 @@ slider.step_line_color = '#fff' --false to disable
 slider.key_nav_speed = 0.1 --constant 10% speed on left/right keys
 slider.smooth_dragging = true --pin stays under the mouse while dragging
 slider.phantom_dragging = true --drag a secondary translucent pin
-slider.landing_position_marker = true --mark landing position while dragging
 
 shaft.activable = false
 shaft.h = 8
@@ -581,12 +580,43 @@ function slider:after_init(ui, t)
 	end
 	self._min_position = t.min_position
 	self._max_position = t.max_position or (self._min_position + t.size)
+	assert(self.min_position)
+	assert(self.max_position)
 	if t.progress then
 		self._position = lerp(t.progress, 0, 1, self:position_range())
 	else
 		self._position = t.position
 	end
 	self._position = self:nearest_position(self._position)
+end
+
+--toggle-button --------------------------------------------------------------
+
+local toggle = slider:subclass'toggle'
+ui.toggle = toggle
+
+toggle.step = 1
+toggle.size = 1
+toggle.w = 30
+toggle.step_line_color = false
+toggle.tip = {visible = false}
+toggle.marker = {visible = false}
+
+ui:style('toggle :on > slider_pin', {
+	background_color = '#fff',
+})
+
+ui:style('toggle :on > slider_fill', {
+	background_color = '#fff',
+})
+
+function toggle:after_set_position()
+	self:settag(':on', self.position == 1)
+end
+
+function toggle:after_position_changed(new_pos)
+	self:fire(new_pos == 1 and 'option_enabled' or 'option_disabled')
+	self:fire('option_changed', new_pos == 1)
 end
 
 --demo -----------------------------------------------------------------------
@@ -602,7 +632,6 @@ if not ... then require('ui_demo')(function(ui, win)
 		--snap_to_labels = false,
 	}
 
-	--[[
 	ui:slider{
 		x = 100, y = 200, w = 200, parent = win,
 		position = 0,
@@ -617,6 +646,12 @@ if not ... then require('ui_demo')(function(ui, win)
 		progress = .3,
 		size = 1,
 	}
-	]]
+
+	ui:toggle{
+		x = 100, y = 400, parent = win,
+		option_changed = function(self, enabled)
+			print(enabled and 'enabled' or 'disabled')
+		end,
+	}
 
 end) end

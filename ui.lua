@@ -6,6 +6,7 @@ if not ... then require'ui_demo'; return end
 
 local oo = require'oo'
 local glue = require'glue'
+local tuple = require'tuple'
 local box2d = require'box2d'
 local easing = require'easing'
 local color = require'color'
@@ -1951,7 +1952,7 @@ function ui:image_pattern(file)
 end
 ui:memoize'image_pattern'
 
---fonts and text
+--fonts ----------------------------------------------------------------------
 
 function ui:after_init()
 	self._freetype = freetype:new()
@@ -1976,13 +1977,36 @@ function window:before_free()
 	end
 end
 
+function ui:gfonts_font_file(family, weight, slant)
+	local gfonts = require'gfonts'
+	return gfonts.font_file(family, weight, slant, true)
+end
+
+local function font_tuple(family, weight, slant)
+	family = family:lower()
+	weight = weight and tostring(weight):lower() or 'normal'
+	slant = slant and slant:lower() or 'normal'
+	return tuple(family, weight, slant)
+end
+
+function ui:register_font_file(family, weight, slant, file)
+	self._font_files[font_tuple(family, weight, slant)] = file
+end
+
+ui._font_files = {} --{(family, weight, slant) -> file}
+
+function ui:registered_font_file(family, weight, slant, file)
+	return self._font_files[font_tuple(family, weight, slant)]
+end
+
 --override this for different ways of finding font files
 function ui:font_file(family, weight, slant)
 	if family:find'%.[to]tf$' then
 		return family
 	end
-	local gfonts = require'gfonts'
-	local file = gfonts.font_file(family, weight, slant, true)
+	local file =
+		self:registered_font_file(family, weight, slant)
+		or self:gfonts_font_file(family, weight, slant)
 	return assert(file, 'could not find a font for "%s, %s, %s"',
 		family, weight, slant)
 end
@@ -2015,7 +2039,16 @@ function window:setfont(family, weight, slant, size, line_spacing)
 	self.line_spacing = line_spacing
 end
 
---multi-line self-aligned and box-aligned text
+--mgit clone fonts-awesome
+ui:register_font_file('Font Awesome', nil, nil, 'media/fonts/fa-regular-400.ttf')
+ui:register_font_file('Font Awesome', 'bold', nil, 'media/fonts/fa-solid-900.ttf')
+ui:register_font_file('Font Awesome Brands', nil, nil, 'media/fonts/fa-brands-400.ttf')
+--mgit clone fonts-material-icons
+ui:register_font_file('Material Icons', nil, nil, 'media/fonts/MaterialIcons-Regular.ttf')
+--mgit clone fonts-ionicons
+ui:register_font_file('Ionicons', nil, nil, 'media/fonts/ionicons.ttf')
+
+--multi-line self-aligned and box-aligned text -------------------------------
 
 function window:line_extents(s)
 	local ext = self.cr:text_extents(s)
@@ -2451,7 +2484,7 @@ function layer:_mouseup(button, mx, my, area)
 	local mx, my = self:from_window(mx, my)
 	local event = button == 'left' and 'mouseup' or button..'mouseup'
 	self:fire(event, mx, my, area)
-	if self.active and self.mousedown_activate then
+	if self.ui and self.active and self.mousedown_activate then
 		self.active = false
 	end
 end
@@ -3702,6 +3735,7 @@ local autoload = {
 	radiobutton  = 'ui_button',
 	choicebutton = 'ui_button',
 	slider       = 'ui_slider',
+	toggle       = 'ui_slider',
 	editbox      = 'ui_editbox',
 	tab          = 'ui_tablist',
 	tablist      = 'ui_tablist',

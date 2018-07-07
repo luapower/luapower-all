@@ -231,7 +231,7 @@ function checkbox:set_checked(checked)
 	if self._checked == checked then return end
 	self._checked = checked
 	self:settag(':checked', checked)
-	self:fire(checked and 'was_checked' or 'was_unchecked')
+	self:fire(checked and 'box_checked' or 'box_unchecked')
 	self:fire('checked_changed', checked)
 end
 
@@ -241,7 +241,7 @@ end
 
 local cbutton = ui.button:subclass'checkbox_button'
 checkbox.button_class = cbutton
-cbutton.font_family = 'media/fonts/Font Awesome 5 Free-Solid-900.otf'
+cbutton.font_family = 'Font Awesome'
 cbutton.text_checked = '\xEF\x80\x8C'
 cbutton.text_size = 10
 cbutton.padding_left = 2
