@@ -12469,8 +12469,6 @@ return {
 					['/System/Library/Frameworks/ApplicationServices.framework/Versions/Current/Frameworks/CoreGraphics.framework/CoreGraphics']=true,
 					['/System/Library/Frameworks/ApplicationServices.framework/Versions/Current/Frameworks/CoreGraphics.framework/Resources/BridgeSupport/CoreGraphics.dylib']=true,
 					['/System/Library/Frameworks/Carbon.framework/Versions/Current/Frameworks/HIToolbox.framework/HIToolbox']=true,
-					['/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation']=true,
-					['/System/Library/Frameworks/CoreFoundation.framework/Resources/BridgeSupport/CoreFoundation.dylib']=true,
 					['/System/Library/Frameworks/Foundation.framework/Foundation']=true,
 					['/System/Library/Frameworks/Foundation.framework/Resources/BridgeSupport/Foundation.dylib']=true
 				},
@@ -13576,6 +13574,8 @@ return {
 			videoinput_cocoa={
 				ffi_deps={
 					['/System/Library/Frameworks/AVFoundation.framework/AVFoundation']=true,
+					['/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation']=true,
+					['/System/Library/Frameworks/CoreFoundation.framework/Resources/BridgeSupport/CoreFoundation.dylib']=true,
 					['/System/Library/Frameworks/CoreMedia.framework/CoreMedia']=true,
 					['/System/Library/Frameworks/CoreVideo.framework/CoreVideo']=true
 				},
@@ -14905,8 +14905,6 @@ return {
 					['/System/Library/Frameworks/ApplicationServices.framework/Versions/Current/Frameworks/CoreGraphics.framework/CoreGraphics']=true,
 					['/System/Library/Frameworks/ApplicationServices.framework/Versions/Current/Frameworks/CoreGraphics.framework/Resources/BridgeSupport/CoreGraphics.dylib']=true,
 					['/System/Library/Frameworks/Carbon.framework/Versions/Current/Frameworks/HIToolbox.framework/HIToolbox']=true,
-					['/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation']=true,
-					['/System/Library/Frameworks/CoreFoundation.framework/Resources/BridgeSupport/CoreFoundation.dylib']=true,
 					['/System/Library/Frameworks/Foundation.framework/Foundation']=true,
 					['/System/Library/Frameworks/Foundation.framework/Resources/BridgeSupport/Foundation.dylib']=true
 				},
@@ -16012,6 +16010,8 @@ return {
 			videoinput_cocoa={
 				ffi_deps={
 					['/System/Library/Frameworks/AVFoundation.framework/AVFoundation']=true,
+					['/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation']=true,
+					['/System/Library/Frameworks/CoreFoundation.framework/Resources/BridgeSupport/CoreFoundation.dylib']=true,
 					['/System/Library/Frameworks/CoreMedia.framework/CoreMedia']=true,
 					['/System/Library/Frameworks/CoreVideo.framework/CoreVideo']=true
 				},
