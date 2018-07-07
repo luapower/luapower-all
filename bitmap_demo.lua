@@ -1,13 +1,20 @@
 local player = require'cplayer'
 local glue = require'glue'
-local stdio = require'stdio'
+local glue = require'glue'
 local ffi = require'ffi'
 local bitmap = require'bitmap'
 
 bitmap.dumpinfo()
 
+local bmps = {}
+
 local function load_bmp(filename)
-	local bmp = stdio.readfile(filename)
+	local bmp_s = bmps[filename]
+	if not bmp_s then
+		bmp_s = assert(glue.readfile(filename))
+		bmps[filename] = bmp_s
+	end
+	local bmp = ffi.cast('const char*', bmp_s)
 	assert(ffi.string(bmp, 2) == 'BM')
 	local function read(ctype, offset)
 		return ffi.cast(ctype, bmp + offset)[0]
@@ -17,7 +24,8 @@ local function load_bmp(filename)
 	local h = read('int32_t*', 0x16)
 	local stride = bitmap.aligned_stride(w * 3)
 	local size = stride * h
-	assert(size == ffi.sizeof(bmp) - (data - bmp))
+	--print(size, #bmp_s - (data - bmp))
+	assert(size == #bmp_s - (data - bmp))
 	return {w = w, h = h, stride = stride, data = data, size = size,
 		format = 'bgr8', bottom_up = true, bmp = bmp}
 end

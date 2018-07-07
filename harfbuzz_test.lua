@@ -3,8 +3,10 @@ local hb = require'harfbuzz'
 print('version: ', hb.hb_version())
 print('vstring: ', hb.hb_version_string())
 
-local stdio = require'stdio'
-local buf, sz = stdio.readfile('media/fonts/DejaVuSerif.ttf')
+local ffi = require'ffi'
+local glue = require'glue'
+local s = assert(glue.readfile('media/fonts/DejaVuSerif.ttf'))
+local buf, sz = ffi.cast('const char*', s), #s
 
 local blob = hb.hb_blob_create(buf, sz, hb.HB_MEMORY_MODE_WRITABLE, nil, nil)
 
