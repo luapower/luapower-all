@@ -116,7 +116,20 @@ function object:stored_property(prop)
 		return self[priv]
 	end
 	self['set_'..prop] = function(self, val)
-		self[priv] = val
+		self[priv] = val or false
+	end
+end
+
+--change a property so that its setter is only called when the value changes.
+function object:nochange_barrier(prop)
+	local changed_event = prop..'_changed'
+	self['override_set_'..prop] = function(self, inherited, val)
+		val = val or false
+		local old_val = self[prop] or false
+		if val ~= old_val then
+			inherited(self, val, old_val)
+			return true --useful when overriding the setter further
+		end
 	end
 end
 
@@ -125,9 +138,10 @@ end
 function object:track_changes(prop)
 	local changed_event = prop..'_changed'
 	self['override_set_'..prop] = function(self, inherited, val)
-		local old_val = self[prop]
+		val = val or false
+		local old_val = self[prop] or false
 		if val ~= old_val then
-			inherited(self, val)
+			inherited(self, val, old_val)
 			self:fire(changed_event, val, old_val)
 			return true --useful when overriding the setter further
 		end
@@ -1475,13 +1489,13 @@ function window:set_ch(ch) self:client_rect(nil, nil, nil, ch) end
 
 --layer interface
 
-function window:add_layer(layer)
+function window:add_layer(layer, index)
 	if layer.iswindow_view then
 		layer._parent = self
 		layer.window = self
 		return
 	end
-	self.view:add_layer(layer)
+	self.view:add_layer(layer, index)
 end
 
 function window:remove_layer(layer)
@@ -1653,7 +1667,7 @@ function ui:_set_hot_widget(window, widget, mx, my, area)
 	end
 end
 
-function ui:_accept_drop(drag_widget, drop_widget, mx, my, area)
+function ui:accept_drop(drag_widget, drop_widget, mx, my, area)
 	return drop_widget:_accept_drag_widget(drag_widget, mx, my, area)
 		and drag_widget:accept_drop_widget(drop_widget, area)
 end
@@ -1676,7 +1690,7 @@ function ui:_window_mousemove(window, mx, my)
 	if self.drag_widget then
 		local widget, area = window:hit_test(mx, my, 'drop')
 		if widget then
-			if not self:_accept_drop(self.drag_widget, widget, mx, my, area) then
+			if not self:accept_drop(self.drag_widget, widget, mx, my, area) then
 				widget = nil
 			end
 		end
@@ -1777,27 +1791,27 @@ function ui:_window_mouseup(window, button, mx, my, click_count)
 
 	if click_count > 1 then return end
 
-	if self.active_widget then
-		self.active_widget:_mouseup(button, mx, my)
-	elseif self.hot_widget then
-		self.hot_widget:_mouseup(button, mx, my, self.hot_area)
-	end
-
 	if self.drag_button == button then
 		if self.drag_widget then
 			if self.drop_widget then
 				self.drop_widget:_drop(self.drag_widget, mx, my, self.drop_area)
-				self.drag_widget:_leave_drop_target(self.drop_widget)
+				self.drag_widget:settag(':dropping', false)
 			end
 			self.drag_widget:_ended_dragging()
 			self.drag_start_widget:_end_drag()
 			for _,elem in ipairs(self.elements) do
-				if elem.targetable then
+				if elem.islayer and elem.tags[':drop_target'] then
 					elem:_set_drop_target(false)
 				end
 			end
 		end
 		self:_reset_drag_state()
+	end
+
+	if self.active_widget then
+		self.active_widget:_mouseup(button, mx, my)
+	elseif self.hot_widget then
+		self.hot_widget:_mouseup(button, mx, my, self.hot_area)
 	end
 end
 
@@ -2134,7 +2148,6 @@ ui.layer = layer
 layer.visible = true
 layer._enabled = true
 layer.activable = true --can be clicked and set as hot
-layer.targetable = true --can be a potential drop target
 layer.vscrollable = false --enable mouse wheel when hot and not focused
 layer.hscrollable = false --enable mouse horiz. wheel when hot and not focused
 layer.scrollable = false --can be hit for vscroll or hscroll
@@ -2177,11 +2190,13 @@ function layer:override_init(inherited, ui, t)
 	return inherited(self, ui, t)
 end
 
-layer:init_ignore{parent=1, enabled=1, layers=1, class=1}
+layer:init_ignore{parent=1, layer_index=1, enabled=1, layers=1, class=1}
 
 function layer:after_init(ui, t)
-	self._enabled = t.enabled
 	--setting parent after _enabled updates the `disabled` tag only once!
+	--setting layer_index before parent inserts the layer at its index directly.
+	self._enabled = t.enabled
+	self.layer_index = t.layer_index
 	self.parent = t.parent
 
 	--create and/or attach layers
@@ -2345,11 +2360,10 @@ end
 
 function layer:set_parent(parent)
 	if parent then
-		parent:add_layer(self)
+		parent:add_layer(self, self._layer_index)
 	elseif self._parent then
 		self._parent:remove_layer(self)
 	end
-	self:_update_enabled(self.enabled)
 end
 
 function layer:get_pos_parent() --child interface
@@ -2375,7 +2389,11 @@ function layer:to_front()
 end
 
 function layer:get_layer_index()
-	return indexof(self, self.parent.layers)
+	if self.parent then
+		return indexof(self, self.parent.layers)
+	else
+		return self._layer_index
+	end
 end
 
 function layer:move_layer(layer, index)
@@ -2384,10 +2402,15 @@ function layer:move_layer(layer, index)
 	if old_index == new_index then return end
 	table.remove(self.layers, old_index)
 	table.insert(self.layers, new_index, layer)
+	self:invalidate()
 end
 
 function layer:set_layer_index(index)
-	self.parent:move_layer(self, index)
+	if self.parent then
+		self.parent:move_layer(self, index)
+	else
+		self._layer_index = index
+	end
 end
 
 function layer:each_child(func)
@@ -2406,16 +2429,18 @@ function layer:children()
 	end)
 end
 
-function layer:add_layer(layer) --parent interface
+function layer:add_layer(layer, index) --parent interface
 	if layer._parent == self then return end
 	if layer._parent then
 		layer._parent:remove_layer(layer)
 	end
 	self.layers = self.layers or {}
-	push(self.layers, layer)
+	index = clamp(index or 1/0, 1, #self.layers + 1)
+	push(self.layers, index, layer)
 	layer._parent = self
 	layer.window = self.window
-	self:fire('layer_added', layer)
+	self:fire('layer_added', layer, index)
+	layer:_update_enabled(layer.enabled)
 end
 
 function layer:remove_layer(layer, freeing) --parent interface
@@ -2427,6 +2452,7 @@ function layer:remove_layer(layer, freeing) --parent interface
 	end
 	layer._parent = false
 	layer.window = false
+	layer:_update_enabled(layer.enabled)
 end
 
 function layer:_free_layers()
@@ -2556,7 +2582,6 @@ end
 
 function layer:_set_drop_target(set)
 	self:settag(':drop_target', set)
-	self:invalidate()
 end
 
 --called on drag_start_widget to initiate a drag operation.
@@ -2565,10 +2590,8 @@ function layer:_start_drag(button, mx, my, area)
 	if widget then
 		self:settag(':drag_source', true)
 		for i,elem in ipairs(self.ui.elements) do
-			if elem.targetable then
-				if self.ui:_accept_drop(widget, elem) then
-					elem:_set_drop_target(true)
-				end
+			if elem.islayer and self.ui:accept_drop(widget, elem) then
+				elem:_set_drop_target(true)
 			end
 		end
 		widget:_started_dragging()
@@ -3513,7 +3536,7 @@ function layer:hit_test(x, y, reason)
 
 	local self_allowed =
 		   (reason == 'activate' and self.activable)
-		or (reason == 'drop' and self.targetable)
+		or (reason == 'drop' and self.tags[':drop_target'])
 		or (reason == 'vscroll' and (self.vscrollable or self.scrollable or self.focused))
 		or (reason == 'hscroll' and (self.hscrollable or self.scrollable or self.focused))
 

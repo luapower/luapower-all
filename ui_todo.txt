@@ -5,7 +5,10 @@ NW ---------------------------------------------------------------------------
 
 UI ---------------------------------------------------------------------------
 
+- freeing
+
 - text rendering
+
 - fix module autoloading vs css decl. order conflict
 
 EDITBOX ----------------------------------------------------------------------
@@ -52,7 +55,7 @@ DROPDOWN ---------------------------------------------------------------------
 
 TABLIST ----------------------------------------------------------------------
 
-- close button
+- x position is off when moving tabs on a tablist with too many tabs
 - horizontal/bottom
 - vertical left/right
 

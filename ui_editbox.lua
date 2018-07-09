@@ -288,11 +288,13 @@ function editor:key(key)
 	return self.editbox.ui:key(key)
 end
 
+editbox.ctrl_tab_exits = true
+
 function editbox:keypress(key)
 	if key == 'tab' then
 		if not self.multiline then
 			return
-		elseif self.ui:key'ctrl' then
+		elseif self.ctrl_tab_exits and self.ui:key'ctrl' then
 			local next_widget = self:next_focusable_widget(not self.ui:key'shift')
 			if next_widget then
 				next_widget:focus(true)
