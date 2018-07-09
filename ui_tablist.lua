@@ -183,11 +183,19 @@ function tab:drag(dx, dy)
 	end
 end
 
+tab.draggable_outside = true
+
+function tab:accept_drop_widget(widget)
+	return self.draggable_outside or widget == self.origin_tablist
+end
+
 function tab:enter_drop_target(tablist)
+	if not tab.draggable_outside then return end
 	self.tablist = tablist
 end
 
 function tab:leave_drop_target(tablist)
+	if not tab.draggable_outside then return end
 	self.tablist = false
 	self.parent = tablist.window.view
 	self:to_front()
@@ -512,9 +520,14 @@ end
 
 --drag & drop
 
+tablist.tablist_group = false
+
 function tablist:accept_drag_widget(widget, mx, my, area)
 	if widget.istab then
-		return true
+		local group = widget.origin_tablist.tablist_group
+		if not group or group == self.tablist_group then
+			return true
+		end
 	end
 end
 

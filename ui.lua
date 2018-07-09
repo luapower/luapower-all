@@ -1778,6 +1778,7 @@ end
 function ui:_widget_mousedown(widget, button, mx, my, area)
 	if self.drag_start_widget then return end --already dragging on other button
 	if self.active_widget ~= widget then return end --widget not activated
+	if not widget.draggable then return end --widget not draggable
 	self.drag_start_widget = widget
 	self.drag_button = button
 	self.drag_mx = mx
@@ -2152,6 +2153,7 @@ layer.vscrollable = false --enable mouse wheel when hot and not focused
 layer.hscrollable = false --enable mouse horiz. wheel when hot and not focused
 layer.scrollable = false --can be hit for vscroll or hscroll
 layer.focusable = false --can be focused
+layer.draggable = true --can be dragged (still needs to respond to start_drag())
 layer.mousedown_activate = false --activate/deactivate on left mouse down/up
 
 local function args4(s, convert) --parse a string of 4 non-space args
