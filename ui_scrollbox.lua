@@ -262,7 +262,6 @@ ui.scrollbox = ui.layer:subclass'scrollbox'
 
 ui.scrollbox.vscrollable = true
 ui.scrollbox.hscrollable = true
-ui.scrollbox.background_hittable = true --enable hit-testing for scrolling
 ui.scrollbox.vscroll = 'always' --true/'always', 'near', 'auto', false/'never'
 ui.scrollbox.hscroll = 'always'
 ui.scrollbox.wheel_scroll_length = 50 --pixels per scroll wheel notch

@@ -1,7 +1,6 @@
 NW ---------------------------------------------------------------------------
 
-- fix window moving & drag threshold
-- fix inhibit window grabbing-to-move while it is resizing
+- bug when dragging the title bar
 
 UI ---------------------------------------------------------------------------
 

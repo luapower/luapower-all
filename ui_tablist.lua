@@ -13,14 +13,14 @@ local clamp = glue.clamp
 local tab = ui.layer:subclass'tab'
 ui.tab = tab
 
---tablist property
+--tablist property: removing the selected tab selects the previous tab.
+--adding a tab selects the tab based on its stored selected state.
 
 tab.tablist = false
 tab:stored_property'tablist'
 function tab:before_set_tablist()
 	if self.tablist then
 		self.tablist:_remove_tab(self)
-		self.parent = false
 	end
 end
 function tab:after_set_tablist()
@@ -32,7 +32,7 @@ function tab:after_set_tablist()
 end
 tab:nochange_barrier'tablist'
 
---index property
+--index property: get/set a tab's positional index.
 
 tab._index = 1/0 --add to the tablist tail
 
@@ -48,8 +48,7 @@ function tab:set_index(index)
 	end
 end
 
---visible state
---reason: we need to select the previous tab after hiding a tab.
+--visible state: hiding the selected tab selects the previous tab.
 
 tab._visible = tab.visible
 
@@ -58,24 +57,22 @@ function tab:get_visible(visible)
 end
 
 function tab:set_visible(visible)
-	local select_tab
-	if not visible and self.tablist and self.selected then
-		select_tab = self.tablist:prev_tab(self)
-	elseif visible and self.tablist then
-		select_tab = self
-	end
-	self._visible = visible
-	if select_tab then
-		select_tab:select()
-	end
 	if self.tablist then
+		if not visible then
+			local prev_tab = self.tablist:prev_tab(self)
+			if prev_tab then
+				prev_tab:select()
+			else
+				self:unselect()
+			end
+		end
+		self._visible = false
 		self.tablist:sync()
 	end
 end
 tab:nochange_barrier'visible'
 
---close() method
---reason: decoupling visibility from closing, semantically.
+--close() method for decoupling visibility from closing.
 
 function tab:close()
 	if not self.closeable then return end
@@ -85,7 +82,7 @@ function tab:close()
 	end
 end
 
---selected property
+--selected property: selecting a tab unselects the previously selected tab.
 
 tab._selected = false
 
@@ -106,8 +103,10 @@ function tab:set_selected(selected)
 end
 
 function tab:select()
-	if not (self.tablist and self.visible and self.enabled) then
+	if not self.tablist then
 		self._selected = true
+		return
+	elseif not self.visible or not self.enabled then
 		return
 	end
 	local stab = self.tablist.selected_tab
@@ -159,53 +158,68 @@ function tab:activated()
 	self:select()
 end
 
-function tab:deactivated()
-	self.tablist:sync()
-end
-
-function tab:start_drag()
-	if not self.tablist then return end
+function tab:start_drag(button, mx, my)
+	if not self.tablist or my > self.tab_h then return end
 	self.origin_tablist = self.tablist
+	self.origin_tab_x = self.tab_x
+	self.origin_index = self.index
 	return self
 end
 
 function tab:drag(dx, dy)
-	local x = self.x + dx
-	local y = self.y + dy
 	if self.tablist then
-		local vi = self.tablist:visual_index_by_pos(x)
+		local x = self.origin_tab_x + dx
+		local vi = self.tablist:tab_visual_index_by_pos(x)
 		self.index = self.tablist:tab_index_by_visual_index(vi)
-		self:transition('x', self.tablist:clamp_tab_pos(x), 0)
-		self:transition('y', 0, 0)
+		self:transition('tab_x', self.tablist:clamp_tab_pos(x), 0)
+		self:transition('tab_w', self.tablist.live_tab_w)
+		self:transition('x', 0, 0)
+		self:transition('y', self.tab_h, 0)
+		self:transition('w', self.tablist.w, 0)
+		self:transition('h', self.tablist.h - self.tablist.tab_h, 0)
 	else
+		local x = self.x + dx
+		local y = self.y + dy
+		self:transition('tab_x', self.origin_tab_x, 0)
 		self:transition('x', x, 0)
 		self:transition('y', y, 0)
 	end
 end
 
-tab.draggable_outside = true
+tab.draggable_outside = true --can be dragged out of the original tablist
 
 function tab:accept_drop_widget(widget)
 	return self.draggable_outside or widget == self.origin_tablist
 end
 
 function tab:enter_drop_target(tablist)
-	if not tab.draggable_outside then return end
+	if not tab.draggable_outside and tablist ~= self.origin_tablist then
+		return
+	end
 	self.tablist = tablist
+	self:select()
 end
 
 function tab:leave_drop_target(tablist)
-	if not tab.draggable_outside then return end
+	if not tab.draggable_outside and tablist == self.origin_tablist then
+		return
+	end
 	self.tablist = false
-	self.parent = tablist.window.view
+	self.parent = tablist.window
 	self:to_front()
 end
 
 function tab:ended_dragging()
 	if self.origin_tablist then
+		self.x, self.y = self:to_other(self.origin_tablist, 0, 0)
 		self.tablist = self.origin_tablist
-		self.origin_tablist = false
+		self.index = self.origin_index
+		self:select()
 	end
+	self.origin_tablist = false
+	self.origin_tab_x = false
+	self.origin_index = false
+	self.tablist:sync()
 end
 
 --input / mouse / close-on-doubleclick
@@ -241,12 +255,23 @@ tab.border_width = 1
 tab.border_color = '#222'
 tab.background_color = '#111'
 tab.text_align = 'left'
-tab.padding_left = 15
-tab.padding_right = 12
+tab.text_valign = 'top'
+tab.padding = 5
+tab.corner_radius = 5
 
 ui:style('tab', {
+	transition_tab_x = true,
+	transition_tab_w = true,
+	transition_duration_tab_x = .2,
+	transition_duration_tab_w = .2,
 	transition_x = true,
-	transition_duration_x = .2,
+	transition_y = true,
+	transition_w = true,
+	transition_h = true,
+	transition_duration_x = .5,
+	transition_duration_y = .5,
+	transition_duration_w = 0,
+	transition_duration_h = 0,
 })
 
 ui:style('tab :focused', {
@@ -265,42 +290,62 @@ ui:style('tab :selected', {
 	transition_duration = 0,
 })
 
---NYI: border width ~= 1, diff. border colors per side, rounded corners,
---border offset, shadows (needs border offset).
-function tab:border_path(cr)
+ui:style('tab :dragging', {
+	opacity = .5,
+})
+
+ui:style('tab :dropping', {
+	opacity = 1,
+})
+
+function tab:slant_widths()
+	local h = self.tab_h
 	local tablist = self.tablist or self.origin_tablist
-	local w, h = self.w, self.h
 	local sl = tablist.tab_slant_left
 	local sr = tablist.tab_slant_right
 	local wl = h / math.tan(math.rad(sl))
 	local wr = h / math.tan(math.rad(sr))
-	local x1 = wl
-	local x2 = w - wr
-	local x3 = w
-	local x4 = 0
-	local y1 = 0
-	local y2 = 0
-	local y3 = h
-	local y4 = h
-	cr:new_path()
-	cr:move_to(x4 + .5, y4 - .5)
-	cr:line_to(x1 + .5, y1 + .5)
-	cr:line_to(x2 - .5, y2 + .5)
-	cr:line_to(x3 - .5, y3 - .5)
+	return wl, wr
 end
 
-function tab:draw_border(cr)
-	if not self:border_visible() then return end
-	cr:operator'over'
-	cr:new_path()
-	self:border_path(cr)
-	cr:line_width(self.border_width_left)
-	cr:rgba(self.ui:color(self.border_color_left))
-	cr:stroke()
+--TODO: rounded-corner slants
+function tab:border_line_to(cr, x, y, q)
+	if q ~= 1 then return end
+	local tablist = self.tablist or self.origin_tablist
+	local w, h = self.tab_w, self.tab_h
+	local wl, wr = self:slant_widths()
+	local x0 = self.tab_x
+	local x1 = x0 + wl
+	local x2 = x0 + w - wr
+	local x3 = x0 + w
+	local x4 = x0 + 0
+	local y1 = -h
+	local y2 = -h
+	local y3 = 0
+	local y4 = 0
+	cr:line_to(x4, y + y4)
+	cr:line_to(x1, y + y1)
+	cr:line_to(x2, y + y2)
+	cr:line_to(x3, y + y3)
 end
 
 function tab:before_draw()
 	self:sync()
+end
+
+tab.title_padding_left = 2
+
+function tab:before_draw_content(cr)
+	if self.title then
+		local wl, wr = self:slant_widths()
+		self:setfont()
+		cr:operator'over'
+		self.window:textbox(
+			self.tab_x + self.title_padding_left + wl - self.padding_left,
+			-self.tab_h - self.padding_top,
+				self.tab_w, self.tab_h,
+			self.title, 'left', 'center', false)
+	end
 end
 
 --close button
@@ -354,8 +399,9 @@ end
 
 function tab:after_sync()
 	local xb = self.close_button
-	xb.x = self.cw - self.close_button.w
-	xb.cy = math.ceil(self.ch / 2)
+	local wl, wr = self:slant_widths()
+	xb.x = self.tab_x + self.tab_w - xb.w - wr - self.padding_left
+	xb.cy = -math.ceil(self.tab_h / 2) - self.padding_top
 	xb.visible = self.closeable
 end
 
@@ -382,12 +428,12 @@ end
 
 function tablist:_remove_tab(tab)
 	local select_tab = tab.visible and tab.selected and self:prev_tab(tab)
-	tab.selected = false
+	tab:unselect()
 	table.remove(self.tabs, self:tab_index(tab))
+	self:sync()
 	if select_tab then
 		select_tab.selected = true
 	end
-	self:sync()
 end
 
 function ui.layer:_move_tab(tab, index)
@@ -400,9 +446,11 @@ function ui.layer:_move_tab(tab, index)
 	end
 end
 
+tablist.tab_class = tab
+
 function tablist:tab(tab)
 	if not tab.istab then
-		local class = tab.class or self.ui.tab
+		local class = tab.class or self.tab_class
 		assert(class.istab)
 		tab = class(self.ui, self[class], tab, {tablist = self})
 	end
@@ -418,6 +466,13 @@ function tablist:after_init(ui, t)
 			self:tab(tab)
 		end
 	end
+	if not self.selected_tab then
+		if self.selected_tab_index then
+			self.selected_tab = self.tabs[self.selected_tab_index]
+		else
+			self.selected_tab = self:next_tab(nil, 'next_index')
+		end
+	end
 end
 
 --selected tab state
@@ -429,8 +484,8 @@ function tablist:get_selected_tab()
 end
 
 function tablist:set_selected_tab(tab)
-	assert(tab.tablist == self)
 	if tab then
+		assert(tab.tablist == self)
 		tab:select()
 	elseif self.selected_tab then
 		self.selected_tab:unselect()
@@ -442,15 +497,15 @@ end
 function tablist:visible_tab_count()
 	local n = 0
 	for _,tab in ipairs(self.tabs) do
-		if tab.visible and not tab.drag_outside then n = n + 1 end
+		if tab.visible then n = n + 1 end
 	end
 	return n
 end
 
-tablist.last_selected_order = true
+tablist.last_selected_order = false
 
 --modes: next_index, prev_index, next_layer_index, prev_layer_index.
-function tablist:next_tab(from_tab, mode, rotate)
+function tablist:next_tab(from_tab, mode, rotate, include_dragging)
 	if mode == nil then
 		mode = true
 	end
@@ -475,7 +530,9 @@ function tablist:next_tab(from_tab, mode, rotate)
 	end
 	for i = i0, i1, step do
 		local tab = tabs[i]
-		if tab.istab and tab.visible and tab.enabled and not tab.dragging then
+		if tab.istab and tab.visible and tab.enabled
+			and (include_dragging or not tab.dragging)
+		then
 			return tab
 		end
 	end
@@ -488,10 +545,10 @@ function tablist:prev_tab(tab)
 	local stab = self.selected_tab
 	local prev_tab
 	if stab == tab then
-		local is_first = (stab == self.tabs[self:tab_index_by_visual_index(1)])
+		local is_first = (stab == self:next_tab(nil, 'next_index', nil, true))
 		local mode = self.last_selected_order and 'prev_layer_index'
 			or (is_first and 'next_index' or 'prev_index')
-		prev_tab = self:next_tab(tab, mode)
+		prev_tab = self:next_tab(tab, mode, nil, true)
 	end
 	return prev_tab
 end
@@ -523,7 +580,7 @@ end
 tablist.tablist_group = false
 
 function tablist:accept_drag_widget(widget, mx, my, area)
-	if widget.istab then
+	if widget.istab and (not my or my <= self.tab_h) then
 		local group = widget.origin_tablist.tablist_group
 		if not group or group == self.tablist_group then
 			return true
@@ -532,52 +589,55 @@ function tablist:accept_drag_widget(widget, mx, my, area)
 end
 
 function tablist:drop(widget, mx, my, area)
-	widget.tablist = self
 	widget.origin_tablist = false
 end
 
 --drawing & hit-testing
 
-tablist.h = 26
+tablist.w = 400
+tablist.h = 400
+tablist.tab_h = 26
 tablist.tab_w = 150
+tablist.min_tab_w = 10
 tablist.tab_spacing = -10
 tablist.tab_slant_left = 70 --degrees
 tablist.tab_slant_right = 70 --degrees
-tablist.tabs_padding = 3
 tablist.tabs_padding_left = 10
+tablist.tabs_padding_right = 10
 
 function tablist:clamp_tab_pos(x)
 	return clamp(x,
-		self.tabs_padding,
-		self.w - self.tab_w + self.tabs_padding_left - self.tabs_padding)
+		self.tabs_padding_left,
+		self.w - self.live_tab_w - self.tabs_padding_right)
 end
 
-function tablist:real_tab_w()
+function tablist:sync_live_tab_w()
 	local n = self:visible_tab_count()
 	local w = self.w - self.tabs_padding_left + self.tab_spacing * n
+	local tw = math.min(self.tab_w + self.tab_spacing, math.floor(w / n))
 	local sl = self.tab_slant_left
 	local sr = self.tab_slant_right
-	local wl = self.h / math.tan(math.rad(sl))
-	local wr = self.h / math.tan(math.rad(sr))
-	local tw = math.min(self.tab_w + self.tab_spacing, math.floor(w / n))
-	return math.max(tw, wl + wr + 10)
+	local wl = self.tab_h / math.tan(math.rad(sl))
+	local wr = self.tab_h / math.tan(math.rad(sr))
+	local min_tw = wl + wr + self.min_tab_w
+	self.live_tab_w = math.max(tw, min_tw)
 end
 
-function tablist:pos_by_visual_index(index)
+function tablist:tab_pos_by_visual_index(index)
 	return self.tabs_padding_left +
-		(index - 1) * (self:real_tab_w() + self.tab_spacing)
+		(index - 1) * (self.live_tab_w + self.tab_spacing)
 end
 
-function tablist:visual_index_by_pos(x)
+function tablist:tab_visual_index_by_pos(x)
 	local x = x - self.tabs_padding_left
-	return math.floor(x / self:real_tab_w() + 0.5) + 1
+	return math.floor(x / self.live_tab_w + 0.5) + 1
 end
 
 function tablist:tab_index_by_visual_index(vi)
 	vi = math.max(1, vi)
 	local vi1 = 1
 	for i,tab in ipairs(self.tabs) do
-		if tab.visible and not tab.drag_outside then
+		if tab.visible then
 			if vi1 == vi then
 				return i
 			end
@@ -588,22 +648,21 @@ function tablist:tab_index_by_visual_index(vi)
 end
 
 function tablist:sync(duration)
+	self:sync_live_tab_w()
+	local tab_w = self.live_tab_w
 	local vi = 1
-	local tab_w = self:real_tab_w()
-	local tab_h = self.h + 1
 	for i,tab in ipairs(self.tabs) do
-		tab.h = tab_h
-		if tab.visible and not tab.drag_outside then
-			if not tab.active then
-				tab:transition('x', self:pos_by_visual_index(vi), duration)
-				tab:transition('w', tab_w, duration)
-				tab:transition('y', 0)
-			else
-				tab.w = tab_w
+		tab:transition('w', self.w)
+		tab:transition('h', self.h - self.tab_h)
+		if tab.visible then
+			if not tab.dragging then
+				tab:transition('tab_x', self:tab_pos_by_visual_index(vi), duration)
+				tab:transition('tab_w', tab_w, duration)
+				tab:transition('tab_h', self.tab_h, duration)
+				tab:transition('x', 0, duration)
+				tab:transition('y', self.tab_h, duration)
 			end
 			vi = vi + 1
-		else
-			tab.w = tab_w
 		end
 	end
 end
@@ -614,15 +673,21 @@ if not ... then require('ui_demo')(function(ui, win)
 
 	local color = require'color'
 
-	local w = (win.cw - 30) / 2
+	win.view.padding = 50
 
-	local tl1 = ui:tablist{
-		x = 10, y = 10, w = w,
+	local w = (win.view.cw - 10) / 2
+	local h = win.view.ch
+
+	local tl1 = {
+		w = w, h = h,
 		parent = win,
+		tabs = {},
 	}
 
-	local tl2 = ui:tablist{
-		x = tl1.x2 + 10, y = 10, w = w, parent = win,
+	local tl2 = {
+		x = w + 10, w = w, h = h / 2,
+		parent = win,
+		tabs = {},
 	}
 
 	for i = 1, 10 do
@@ -634,46 +699,30 @@ if not ... then require('ui_demo')(function(ui, win)
 
 		local tl = i % 2 == 0 and tl1 or tl2
 
-		local content = ui:layer{
-			parent = win,
-			x = tl.x, y = tl.y2, w = tl.w, h = (win.ch or 0) - tl.y2 - 10,
-			tags = 'content',
-			background_color = '#222',
-			corner_radius = 5,
-			visible = visible and selected,
-			tablist = tl,
-			text = i,
-			text_size = 24,
-		}
-
-		local tab = ui:tab{
+		table.insert(tl.tabs, {
 			tags = 'tab'..i,
 			--index = 1,
 			layer_index = layer_index,
-			tablist = tl,
 			style = {
 				font_slant = 'normal',
 			},
-			text = 'Tab '..i,
-			text_color = {color.rgb(ui.tab.background_color):bw(.25):rgba()},
+			title = 'Tab '..i,
 			visible = visible,
-			selected = selected,
+			--selected = selected,
 			enabled = enabled,
 			closeable = closeable,
-			tab_selected = function(tab)
-				ui:each('content', function(self)
-					if self.ui and self.tablist == tab.tablist then
-						self.visible = false
-					end
-				end)
-				if not content.ui then return end
-				content.visible = tab.visible
-			end,
+			content = {
+				text = i,
+				text_size = 24,
+			},
 			closed = function(self)
 				self:free()
 			end,
-		}
+		})
 
 	end
+
+	tl1 = ui:tablist(tl1)
+	tl2 = ui:tablist(tl2)
 
 end) end

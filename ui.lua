@@ -1099,9 +1099,6 @@ function window:create_native_window(t)
 end
 
 function window:override_init(inherited, ui, t)
-	self.ui = ui()
-	t = t or {}
-
 	local show_it
 	local win = t.native_window
 	local parent = t.parent
@@ -1191,10 +1188,25 @@ function window:override_init(inherited, ui, t)
 		self.mouse_y = my
 	end
 
-	win:on({'mousemove', self}, function(win, mx, my)
-		setmouse(mx, my)
-		self.ui:_window_mousemove(self, mx, my)
-	end)
+	if win:frame() == 'none' then
+
+		win:on({'hittest', self}, function(win, mx, my, where)
+			setmouse(mx, my)
+			self.ui:_window_mousemove(self, mx, my)
+			local hw = self.ui.hot_widget
+			if hw and hw ~= self.view then
+				return false
+			end
+		end)
+
+	else
+
+		win:on({'mousemove', self}, function(win, mx, my)
+			setmouse(mx, my)
+			self.ui:_window_mousemove(self, mx, my)
+		end)
+
+	end
 
 	win:on({'mouseenter', self}, function(win, mx, my)
 		setmouse(mx, my)
@@ -2030,7 +2042,7 @@ end
 function ui:font_object(file)
 	local bundle = require'bundle'
 	local font = {}
-	font.mmap = assert(bundle.mmap(file))
+	font.mmap = assert(bundle.mmap(file), 'font file not found: '..file)
 	font.ft_face = self._freetype:memory_face(font.mmap.data, font.mmap.size)
 	font.cr_face = assert(cairo.ft_font_face(font.ft_face))
 	self._fonts[file] = font
@@ -3031,6 +3043,8 @@ local function qarc(cr, cx, cy, rx, ry, q1, qlen, k)
 	end
 end
 
+function layer:border_line_to(cr, x, y, q) end --stub (used by tablist)
+
 --trace the border contour path at offset.
 --offset is in -1..1 where -1=inner edge, 0=center, 1=outer edge.
 function layer:border_path(cr, offset, size_offset)
@@ -3038,10 +3052,15 @@ function layer:border_path(cr, offset, size_offset)
 		self:border_round_rect(offset, size_offset)
 	local x2, y2 = x1 + w, y1 + h
 	cr:move_to(x1, y1+r1y)
+	local line = self.border_line_to
 	qarc(cr, x1+r1x, y1+r1y, r1x, r1y, 1, 1, k) --tl
+	line(self, cr, x2-r2x, y1, 1)
 	qarc(cr, x2-r2x, y1+r2y, r2x, r2y, 2, 1, k) --tr
+	line(self, cr, x2, y2-r3y, 2)
 	qarc(cr, x2-r3x, y2-r3y, r3x, r3y, 3, 1, k) --br
+	line(self, cr, x1+r4x, y2, 3)
 	qarc(cr, x1+r4x, y2-r4y, r4x, r4y, 4, 1, k) --bl
+	line(self, cr, x1, y1+r1y, 4)
 	cr:close_path()
 end
 
@@ -3062,11 +3081,20 @@ function layer:draw_border(cr)
 		and self.border_color_left == self.border_color_bottom
 	then
 		cr:new_path()
-		cr:fill_rule'even_odd'
-		self:border_path(cr, -1)
-		self:border_path(cr, 1)
 		cr:rgba(self.ui:color(self.border_color_bottom))
-		cr:fill()
+		if self.border_width_left == self.border_width_top
+			and self.border_width_left == self.border_width_right
+			and self.border_width_left == self.border_width_bottom
+		then
+			self:border_path(cr, 0)
+			cr:line_width(self.border_width_left)
+			cr:stroke()
+		else --stroke-based method (doesn't require path offseting; supports dotting)
+			cr:fill_rule'even_odd'
+			self:border_path(cr, -1)
+			self:border_path(cr, 1)
+			cr:fill()
+		end
 		return
 	end
 
@@ -3742,7 +3770,7 @@ local view = layer:subclass'window_view'
 window.view_class = view
 
 --screen-wiping options that work with transparent windows
-view.background_color = '#0000'
+view.background_color = '#040404'
 view.background_operator = 'source'
 
 --parent layer interface

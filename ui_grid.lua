@@ -321,7 +321,6 @@ local rows = ui.layer:subclass'grid_rows'
 grid.rows_layer_class = rows
 
 rows.vscrollable = true
-rows.background_hittable = true
 rows.clip_content = true --for rows
 
 function grid:create_rows_layer(pane)
@@ -398,7 +397,6 @@ col.clip_content = true
 col.background_color = '#111' --for moving
 col.border_width = 1
 col.border_color = '#333'
-col.background_hittable = true
 col.cursor_resize = 'size_h'
 col.resizeable = true
 col.moveable = true

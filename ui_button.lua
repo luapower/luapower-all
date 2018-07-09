@@ -67,6 +67,26 @@ button:init_priority{
 	text=-2, key=-1, --because text can contain a key
 }
 
+ui:style('button profile=text', {
+	background_type = false,
+	border_width = 0,
+	text_color = '#999',
+})
+
+ui:style('button profile=text :hot', {
+	text_color = '#fff',
+})
+
+function button:get_profile()
+	return self._profile
+end
+
+function button:set_profile(profile)
+	if self._profile then self:settag('profile='..self._profile, false) end
+	self._profile = profile
+	if self._profile then self:settag('profile='..self._profile, true) end
+end
+
 function button:press()
 	self:fire'pressed'
 	if self.default then
@@ -127,22 +147,29 @@ function button:mouseup()
 	end
 end
 
+function button:activate_by_key(key)
+	if self.active_by_key then return end
+	self.active = true
+	self.active_by_key = key
+	self:settag(':over', true)
+	return true
+end
+
 function button:keydown(key)
+	if self.active_by_key then return end
 	if key == 'enter' or key == 'space' then
-		self.active = true
-		self.active_by_key = true
-		self:settag(':over', true)
-		return true
+		return self:activate_by_key(key)
 	end
 end
 
 function button:keyup(key)
 	if not self.active_by_key then return end
-	if key == 'enter' or key == 'space' or key == 'esc' then
+	local press = key == self.active_by_key
+	if press or key == 'esc' then
 		self.active = false
 		self.active_by_key = false
 		self:settag(':over', false)
-		if key == 'enter' or key == 'space' then
+		if press then
 			self:press()
 		end
 		return true
@@ -173,23 +200,13 @@ end
 
 function button:after_set_window(win)
 	if not win then return end
-	local action
 	win:on({'keydown', self}, function(win, key)
-		if key == self.key then
-			action = true
-			return self:keydown'enter'
+		if self.key and self.ui:key(self.key) then
+			return self:activate_by_key(key)
 		elseif self.default and key == 'enter' then
-			action = true
-			return self:keydown'enter'
+			return self:activate_by_key(key)
 		elseif self.cancel and key == 'esc' then
-			action = true
-			return self:keydown'enter'
-		end
-	end)
-	win:on({'keyup', self}, function(win, key)
-		if action then
-			action = false
-			return self:keyup'enter'
+			return self:activate_by_key(key)
 		end
 	end)
 end
