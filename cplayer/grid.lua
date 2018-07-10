@@ -30,7 +30,7 @@ function cgrid.view:draw_scrollbox(x, y, w, h, cx, cy, cw, ch)
 		hscroll = self.hscroll,
 		vscroll_w = self.vscroll_w,
 		hscroll_h = self.hscroll_h,
-		page_size = self.scroll_page_size,
+		line_size = self.scroll_line_size,
 		--vscroll_step = self.smooth_vscroll and 1 or self.linesize,
 		--hscroll_step = self.smooth_hscroll and 1 or self.charsize,
 	}

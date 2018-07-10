@@ -3,6 +3,7 @@
 if not ... then require'codedit_demo'; return end
 
 local codedit = require'codedit'
+require'cplayer.codedit_imgui'
 local glue = require'glue'
 local player = require'cplayer'
 local nw = require'nw'
@@ -16,7 +17,6 @@ local view = codedit.object(codedit.view, {
 	hscroll = 'auto',
 	vscroll_w = 16, --use default
 	hscroll_h = 16, --use default
-	scroll_page_size = nil,
 	--colors
 	colors = {
 		background = '#080808',
@@ -82,7 +82,7 @@ function view:draw_scrollbox(x, y, w, h, cx, cy, cw, ch)
 		hscroll = self.hscroll,
 		vscroll_w = self.vscroll_w,
 		hscroll_h = self.hscroll_h,
-		page_size = self.scroll_page_size or ch,
+		line_size = self.line_h,
 		--vscroll_step = self.smooth_vscroll and 1 or self.line_h,
 		--hscroll_step = self.smooth_hscroll and 1 or self:char_width' ',
 	}
@@ -306,11 +306,11 @@ function editor:setactive(active)
 	self.player.active = active and self.id or nil
 end
 
-function editor:set_clipboard(s)
+function editor:setclipboard(s)
 	nw:app():setclipboard(s, 'text')
 end
 
-function editor:get_clipboard()
+function editor:getclipboard()
 	return nw:app():getclipboard'text' or ''
 end
 
