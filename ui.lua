@@ -1194,7 +1194,7 @@ function window:override_init(inherited, ui, t)
 			self.ui:_window_mousemove(self, mx, my)
 			local hw = self.ui.hot_widget
 			if hw and hw ~= self.view then
-				return false
+				return false --cancel test
 			end
 			return self:fire('hittest', mx, my, where)
 		end)

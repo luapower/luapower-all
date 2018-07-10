@@ -24,7 +24,6 @@ CODEDIT
 - save
 
 - bookmarks
-- line margin highlighting
 
 EDITBOX
 =======

@@ -102,7 +102,9 @@ function button:set_profile(profile)
 end
 
 function button:press()
-	self:fire'pressed'
+	if self:fire'pressed' ~= nil then
+		return
+	end
 	if self.default then
 		self.window:close'default'
 	elseif self.cancel then
@@ -180,12 +182,12 @@ function button:keyup(key)
 	if not self.active_by_key then return end
 	local press = key == self.active_by_key
 	if press or key == 'esc' then
-		self.active = false
-		self.active_by_key = false
 		self:settag(':over', false)
 		if press then
 			self:press()
 		end
+		self.active = false
+		self.active_by_key = false
 		return true
 	end
 end

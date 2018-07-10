@@ -275,11 +275,11 @@ function editor:invalidate()
 	self.editbox:invalidate()
 end
 
-function editor:set_clipboard(s)
+function editor:setclipboard(s)
 	self.editbox.ui:setclipboard(s, 'text')
 end
 
-function editor:get_clipboard()
+function editor:getclipboard()
 	return self.editbox.ui:getclipboard'text' or ''
 end
 
