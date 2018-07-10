@@ -74,6 +74,16 @@ ui:style('button profile=text', {
 })
 
 ui:style('button profile=text :hot', {
+	text_color = '#ccc',
+})
+
+ui:style('button profile=text :focused', {
+	shadow_blur = 2,
+	shadow_color = '#111',
+	text_color = '#ccc',
+})
+
+ui:style('button profile=text :active :over', {
 	text_color = '#fff',
 })
 

@@ -2876,6 +2876,7 @@ function layer:set_corner_radius(s) self:expand_attr('corner_radius', s) end
 layer.border_width = 0 --no border
 layer.corner_radius = 0 --square
 layer.border_color = '#0000'
+layer.border_dash = false
 -- border stroke positioning relative to box edge.
 -- -1..1 goes from inside to outside of box edge.
 layer.border_offset = -1
@@ -3085,11 +3086,14 @@ function layer:draw_border(cr)
 		if self.border_width_left == self.border_width_top
 			and self.border_width_left == self.border_width_right
 			and self.border_width_left == self.border_width_bottom
-		then
+		then --stroke-based method (doesn't require path offseting; supports dashing)
 			self:border_path(cr, 0)
 			cr:line_width(self.border_width_left)
+			if self.border_dash then
+				cr:dash{self.border_dash}
+			end
 			cr:stroke()
-		else --stroke-based method (doesn't require path offseting; supports dotting)
+		else --fill-based method (requires path offsetting; supports patterns)
 			cr:fill_rule'even_odd'
 			self:border_path(cr, -1)
 			self:border_path(cr, 1)

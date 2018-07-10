@@ -66,7 +66,7 @@ function tab:set_visible(visible)
 				self:unselect()
 			end
 		end
-		self._visible = false
+		self._visible = visible
 		self.tablist:sync()
 	end
 end

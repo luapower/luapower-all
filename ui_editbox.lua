@@ -93,7 +93,6 @@ function editbox:color(color)
 end
 
 function editbox:_sync()
-	self:setfont()
 	self:_sync_view()
 	self:_sync_scrollbars()
 	self:_sync_caret()
