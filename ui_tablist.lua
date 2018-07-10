@@ -159,7 +159,7 @@ function tab:activated()
 end
 
 function tab:start_drag(button, mx, my)
-	if not self.tablist or my > self.tab_h then return end
+	if not self.tablist or my >= -self.padding_top then return end
 	self.origin_tablist = self.tablist
 	self.origin_tab_x = self.tab_x
 	self.origin_index = self.index
@@ -250,7 +250,7 @@ end
 
 --drawing
 
-tab.clip_content = true
+tab.clip_content = 'background' --TODO: find a way to set this as 'padding'
 tab.border_width = 1
 tab.border_color = '#222'
 tab.background_color = '#111'
@@ -270,8 +270,8 @@ ui:style('tab', {
 	transition_h = true,
 	transition_duration_x = .5,
 	transition_duration_y = .5,
-	transition_duration_w = 0,
-	transition_duration_h = 0,
+	transition_duration_w = .5,
+	transition_duration_h = .5,
 })
 
 ui:style('tab :focused', {
@@ -580,7 +580,7 @@ end
 tablist.tablist_group = false
 
 function tablist:accept_drag_widget(widget, mx, my, area)
-	if widget.istab and (not my or my <= self.tab_h) then
+	if widget.istab and (not my or my < self.tab_h) then
 		local group = widget.origin_tablist.tablist_group
 		if not group or group == self.tablist_group then
 			return true
@@ -652,8 +652,6 @@ function tablist:sync(duration)
 	local tab_w = self.live_tab_w
 	local vi = 1
 	for i,tab in ipairs(self.tabs) do
-		tab:transition('w', self.w)
-		tab:transition('h', self.h - self.tab_h)
 		if tab.visible then
 			if not tab.dragging then
 				tab:transition('tab_x', self:tab_pos_by_visual_index(vi), duration)
@@ -662,6 +660,8 @@ function tablist:sync(duration)
 				tab:transition('x', 0, duration)
 				tab:transition('y', self.tab_h, duration)
 			end
+			tab:transition('w', self.w, duration)
+			tab:transition('h', self.h - self.tab_h, duration)
 			vi = vi + 1
 		end
 	end
@@ -711,10 +711,6 @@ if not ... then require('ui_demo')(function(ui, win)
 			--selected = selected,
 			enabled = enabled,
 			closeable = closeable,
-			content = {
-				text = i,
-				text_size = 24,
-			},
 			closed = function(self)
 				self:free()
 			end,
