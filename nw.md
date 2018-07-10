@@ -894,6 +894,15 @@ __NOTE:__ This event does not fire in Linux.
 Event: window was moved/resized. These events also fire when a window is
 hidden or minimized in which case all args are nil, so make sure to test for that.
 
+These events fire together every time in the same order:
+
+  * `client_rect_changed`
+  * `client_moved`
+  * `client_resized`
+  * `frame_rect_changed`
+  * `frame_moved`
+  * `frame_resized`
+
 ### `win:hittest(x, y, where) -> where`
 
 Hit test for moving and resizing frameless windows. Return 'left', 'top',

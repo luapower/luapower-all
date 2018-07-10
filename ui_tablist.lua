@@ -334,12 +334,14 @@ function tab:before_draw()
 end
 
 tab.title_padding_left = 2
+tab.title_color = '#ccc'
 
 function tab:before_draw_content(cr)
-	if self.title then
+	if self.title and self.title_color then
 		local wl, wr = self:slant_widths()
 		self:setfont()
 		cr:operator'over'
+		cr:rgba(self.ui:color(self.title_color))
 		self.window:textbox(
 			self.tab_x + self.title_padding_left + wl - self.padding_left,
 			-self.tab_h - self.padding_top,

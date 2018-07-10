@@ -1160,8 +1160,7 @@ function window:override_init(inherited, ui, t)
 		'changed',
 		'sizing',
 		'frame_rect_changed', 'frame_moved', 'frame_resized',
-		'client_rect_changed', 'client_moved', 'client_resized',
-		'hittest',
+		'client_moved', 'client_resized',
 		'magnets',
 		'free_cairo', 'free_bitmap',
 		'scalingfactor_changed',
@@ -1197,6 +1196,7 @@ function window:override_init(inherited, ui, t)
 			if hw and hw ~= self.view then
 				return false
 			end
+			return self:fire('hittest', mx, my, where)
 		end)
 
 	else
@@ -1284,6 +1284,8 @@ function window:override_init(inherited, ui, t)
 		setcontext()
 		self.view.w = cw
 		self.view.h = ch
+		self:fire('client_rect_changed', cx, cy, cw, ch)
+		self:invalidate()
 	end)
 
 	function win.closing(win)

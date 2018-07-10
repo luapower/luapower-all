@@ -14,7 +14,6 @@ button.w = 100
 button.h = 26
 button.background_color = '#444'
 button.border_color = '#888'
-button.border_width = 1
 button.padding_left = 8
 button.padding_right = 8
 button._default = false
@@ -50,6 +49,8 @@ ui:style('button :disabled', {
 ui:style('button :active :over', {
 	background_color = '#fff',
 	text_color = '#000',
+	shadow_blur = 3,
+	shadow_color = '#666',
 	transition_duration = 0.2,
 })
 
@@ -59,6 +60,7 @@ ui:style('button :default :active :over', {
 
 ui:style('button :focused', {
 	border_color = '#fff',
+	border_width = 1,
 	shadow_blur = 3,
 	shadow_color = '#666',
 })
@@ -85,6 +87,8 @@ ui:style('button profile=text :focused', {
 
 ui:style('button profile=text :active :over', {
 	text_color = '#fff',
+	shadow_blur = 2,
+	shadow_color = '#111',
 })
 
 function button:get_profile()
@@ -218,6 +222,11 @@ function button:after_set_window(win)
 		elseif self.cancel and key == 'esc' then
 			return self:activate_by_key(key)
 		end
+	end)
+
+	--if the button is not focusable, we need to catch keyups globally too
+	win:on({'keyup', self}, function(win, key)
+		return self:keyup(key)
 	end)
 end
 
