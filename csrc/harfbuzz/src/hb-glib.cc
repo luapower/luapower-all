@@ -340,7 +340,7 @@ hb_glib_unicode_decompose_compatibility (hb_unicode_funcs_t *ufuncs HB_UNUSED,
 					 void               *user_data HB_UNUSED)
 {
 #if GLIB_CHECK_VERSION(2,29,12)
-  return g_unichar_fully_decompose (u, TRUE, decomposed, HB_UNICODE_MAX_DECOMPOSITION_LEN);
+  return g_unichar_fully_decompose (u, true, decomposed, HB_UNICODE_MAX_DECOMPOSITION_LEN);
 #endif
 
   /* If the user doesn't have GLib >= 2.29.12 we have to perform
@@ -364,21 +364,73 @@ hb_glib_unicode_decompose_compatibility (hb_unicode_funcs_t *ufuncs HB_UNUSED,
   return utf8_decomposed_len;
 }
 
+static hb_unicode_funcs_t *static_glib_funcs = nullptr;
+
+#ifdef HB_USE_ATEXIT
+static
+void free_static_glib_funcs (void)
+{
+retry:
+  hb_unicode_funcs_t *glib_funcs = (hb_unicode_funcs_t *) hb_atomic_ptr_get (&static_glib_funcs);
+  if (!hb_atomic_ptr_cmpexch (&static_glib_funcs, glib_funcs, nullptr))
+    goto retry;
+
+  hb_unicode_funcs_destroy (glib_funcs);
+}
+#endif
+
 hb_unicode_funcs_t *
 hb_glib_get_unicode_funcs (void)
 {
-  static const hb_unicode_funcs_t _hb_glib_unicode_funcs = {
-    HB_OBJECT_HEADER_STATIC,
+retry:
+  hb_unicode_funcs_t *funcs = (hb_unicode_funcs_t *) hb_atomic_ptr_get (&static_glib_funcs);
 
-    NULL, /* parent */
-    true, /* immutable */
-    {
-#define HB_UNICODE_FUNC_IMPLEMENT(name) hb_glib_unicode_##name,
+  if (unlikely (!funcs))
+  {
+    funcs = hb_unicode_funcs_create (nullptr);
+
+#define HB_UNICODE_FUNC_IMPLEMENT(name) \
+    hb_unicode_funcs_set_##name##_func (funcs, hb_glib_unicode_##name, nullptr, nullptr);
       HB_UNICODE_FUNCS_IMPLEMENT_CALLBACKS
 #undef HB_UNICODE_FUNC_IMPLEMENT
+
+    hb_unicode_funcs_make_immutable (funcs);
+
+    if (!hb_atomic_ptr_cmpexch (&static_glib_funcs, nullptr, funcs)) {
+      hb_unicode_funcs_destroy (funcs);
+      goto retry;
     }
+
+#ifdef HB_USE_ATEXIT
+    atexit (free_static_glib_funcs); /* First person registers atexit() callback. */
+#endif
   };
 
-  return const_cast<hb_unicode_funcs_t *> (&_hb_glib_unicode_funcs);
+  return hb_unicode_funcs_reference (funcs);
 }
 
+#if GLIB_CHECK_VERSION(2,31,10)
+
+static void
+_hb_g_bytes_unref (void *data)
+{
+  g_bytes_unref ((GBytes *) data);
+}
+
+/**
+ * hb_glib_blob_create:
+ *
+ * Since: 0.9.38
+ **/
+hb_blob_t *
+hb_glib_blob_create (GBytes *gbytes)
+{
+  gsize size = 0;
+  gconstpointer data = g_bytes_get_data (gbytes, &size);
+  return hb_blob_create ((const char *) data,
+			 size,
+			 HB_MEMORY_MODE_READONLY,
+			 g_bytes_ref (gbytes),
+			 _hb_g_bytes_unref);
+}
+#endif

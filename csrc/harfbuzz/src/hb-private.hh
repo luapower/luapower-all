@@ -29,6 +29,8 @@
 #ifndef HB_PRIVATE_HH
 #define HB_PRIVATE_HH
 
+#define _GNU_SOURCE 1
+
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
@@ -40,36 +42,216 @@
 #define HB_OT_H_IN
 #endif
 
+#include <math.h>
 #include <stdlib.h>
 #include <stddef.h>
 #include <string.h>
 #include <assert.h>
-
-/* We only use these two for debug output.  However, the debug code is
- * always seen by the compiler (and optimized out in non-debug builds.
- * If including these becomes a problem, we can start thinking about
- * someway around that. */
-#include <stdio.h>
 #include <errno.h>
+#include <stdio.h>
 #include <stdarg.h>
 
+#if (defined(_MSC_VER) && _MSC_VER >= 1500) || defined(__MINGW32__)
+#include <intrin.h>
+#endif
 
+#define HB_PASTE1(a,b) a##b
+#define HB_PASTE(a,b) HB_PASTE1(a,b)
 
-/* Essentials */
+/* Compile-time custom allocator support. */
 
-#ifndef NULL
-# define NULL ((void *) 0)
+#if defined(hb_malloc_impl) \
+ && defined(hb_calloc_impl) \
+ && defined(hb_realloc_impl) \
+ && defined(hb_free_impl)
+extern "C" void* hb_malloc_impl(size_t size);
+extern "C" void* hb_calloc_impl(size_t nmemb, size_t size);
+extern "C" void* hb_realloc_impl(void *ptr, size_t size);
+extern "C" void  hb_free_impl(void *ptr);
+#define malloc hb_malloc_impl
+#define calloc hb_calloc_impl
+#define realloc hb_realloc_impl
+#define free hb_free_impl
 #endif
 
 
-/* Void! */
-struct _hb_void_t {};
-typedef const _hb_void_t &hb_void_t;
-#define HB_VOID (* (const _hb_void_t *) NULL)
+/* Compiler attributes */
 
+
+#if __cplusplus < 201103L
+
+#ifndef nullptr
+#define nullptr NULL
+#endif
+
+// Static assertions
+#ifndef static_assert
+#define static_assert(e, msg) \
+	HB_UNUSED typedef int HB_PASTE(static_assertion_failed_at_line_, __LINE__) [(e) ? 1 : -1]
+#endif // static_assert
+
+#ifdef __GNUC__
+#if (__GNUC__ < 4 || (__GNUC__ == 4 && __GNUC_MINOR__ < 8))
+#define thread_local __thread
+#endif
+#else
+#define thread_local
+#endif
+
+#endif // __cplusplus < 201103L
+
+#if (defined(__GNUC__) || defined(__clang__)) && defined(__OPTIMIZE__)
+#define likely(expr) (__builtin_expect (!!(expr), 1))
+#define unlikely(expr) (__builtin_expect (!!(expr), 0))
+#else
+#define likely(expr) (expr)
+#define unlikely(expr) (expr)
+#endif
+
+#if !defined(__GNUC__) && !defined(__clang__)
+#undef __attribute__
+#define __attribute__(x)
+#endif
+
+#if __GNUC__ >= 3
+#define HB_PURE_FUNC	__attribute__((pure))
+#define HB_CONST_FUNC	__attribute__((const))
+#define HB_PRINTF_FUNC(format_idx, arg_idx) __attribute__((__format__ (__printf__, format_idx, arg_idx)))
+#else
+#define HB_PURE_FUNC
+#define HB_CONST_FUNC
+#define HB_PRINTF_FUNC(format_idx, arg_idx)
+#endif
+#if __GNUC__ >= 4
+#define HB_UNUSED	__attribute__((unused))
+#elif defined(_MSC_VER) /* https://github.com/harfbuzz/harfbuzz/issues/635 */
+#define HB_UNUSED __pragma(warning(suppress: 4100 4101))
+#else
+#define HB_UNUSED
+#endif
+
+#ifndef HB_INTERNAL
+# if !defined(HB_NO_VISIBILITY) && !defined(__MINGW32__) && !defined(__CYGWIN__) && !defined(_MSC_VER) && !defined(__SUNPRO_CC)
+#  define HB_INTERNAL __attribute__((__visibility__("hidden")))
+# else
+#  define HB_INTERNAL
+#  define HB_NO_VISIBILITY 1
+# endif
+#endif
+
+#if __GNUC__ >= 3
+#define HB_FUNC __PRETTY_FUNCTION__
+#elif defined(_MSC_VER)
+#define HB_FUNC __FUNCSIG__
+#else
+#define HB_FUNC __func__
+#endif
+
+#if defined(__SUNPRO_CC) && (__SUNPRO_CC < 0x5140)
+/* https://github.com/harfbuzz/harfbuzz/issues/630 */
+#define __restrict
+#endif
+
+/*
+ * Borrowed from https://bugzilla.mozilla.org/show_bug.cgi?id=1215411
+ * HB_FALLTHROUGH is an annotation to suppress compiler warnings about switch
+ * cases that fall through without a break or return statement. HB_FALLTHROUGH
+ * is only needed on cases that have code:
+ *
+ * switch (foo) {
+ *   case 1: // These cases have no code. No fallthrough annotations are needed.
+ *   case 2:
+ *   case 3:
+ *     foo = 4; // This case has code, so a fallthrough annotation is needed:
+ *     HB_FALLTHROUGH;
+ *   default:
+ *     return foo;
+ * }
+ */
+#if defined(__clang__) && __cplusplus >= 201103L
+   /* clang's fallthrough annotations are only available starting in C++11. */
+#  define HB_FALLTHROUGH [[clang::fallthrough]]
+#elif __GNUC__ >= 7
+   /* GNU fallthrough attribute is available from GCC7 */
+#  define HB_FALLTHROUGH __attribute__((fallthrough))
+#elif defined(_MSC_VER)
+   /*
+    * MSVC's __fallthrough annotations are checked by /analyze (Code Analysis):
+    * https://msdn.microsoft.com/en-us/library/ms235402%28VS.80%29.aspx
+    */
+#  include <sal.h>
+#  define HB_FALLTHROUGH __fallthrough
+#else
+#  define HB_FALLTHROUGH /* FALLTHROUGH */
+#endif
+
+#if defined(_WIN32) || defined(__CYGWIN__)
+   /* We need Windows Vista for both Uniscribe backend and for
+    * MemoryBarrier.  We don't support compiling on Windows XP,
+    * though we run on it fine. */
+#  if defined(_WIN32_WINNT) && _WIN32_WINNT < 0x0600
+#    undef _WIN32_WINNT
+#  endif
+#  ifndef _WIN32_WINNT
+#    define _WIN32_WINNT 0x0600
+#  endif
+#  ifndef WIN32_LEAN_AND_MEAN
+#    define WIN32_LEAN_AND_MEAN 1
+#  endif
+#  ifndef STRICT
+#    define STRICT 1
+#  endif
+
+#  if defined(_WIN32_WCE)
+     /* Some things not defined on Windows CE. */
+#    define vsnprintf _vsnprintf
+#    define getenv(Name) nullptr
+#    if _WIN32_WCE < 0x800
+#      define setlocale(Category, Locale) "C"
+static int errno = 0; /* Use something better? */
+#    endif
+#  elif defined(WINAPI_FAMILY) && (WINAPI_FAMILY==WINAPI_FAMILY_PC_APP || WINAPI_FAMILY==WINAPI_FAMILY_PHONE_APP)
+#    define getenv(Name) nullptr
+#  endif
+#  if defined(_MSC_VER) && _MSC_VER < 1900
+#    define snprintf _snprintf
+#  endif
+#endif
+
+#if HAVE_ATEXIT
+/* atexit() is only safe to be called from shared libraries on certain
+ * platforms.  Whitelist.
+ * https://bugs.freedesktop.org/show_bug.cgi?id=82246 */
+#  if defined(__linux) && defined(__GLIBC_PREREQ)
+#    if __GLIBC_PREREQ(2,3)
+/* From atexit() manpage, it's safe with glibc 2.2.3 on Linux. */
+#      define HB_USE_ATEXIT 1
+#    endif
+#  elif defined(_MSC_VER) || defined(__MINGW32__)
+/* For MSVC:
+ * https://msdn.microsoft.com/en-us/library/tze57ck3.aspx
+ * https://msdn.microsoft.com/en-us/library/zk17ww08.aspx
+ * mingw32 headers say atexit is safe to use in shared libraries.
+ */
+#    define HB_USE_ATEXIT 1
+#  elif defined(__ANDROID__)
+/* This is available since Android NKD r8 or r8b:
+ * https://issuetracker.google.com/code/p/android/issues/detail?id=6455
+ */
+#    define HB_USE_ATEXIT 1
+#  elif defined(__APPLE__)
+/* For macOS and related platforms, the atexit man page indicates
+ * that it will be invoked when the library is unloaded, not only
+ * at application exit.
+ */
+#    define HB_USE_ATEXIT 1
+#  endif
+#endif
+#ifdef HB_NO_ATEXIT
+#  undef HB_USE_ATEXIT
+#endif
 
 /* Basics */
-
 
 #undef MIN
 template <typename Type>
@@ -92,31 +274,26 @@ static inline unsigned int ARRAY_LENGTH (const Type (&)[n]) { return n; }
 #define HB_STMT_START do
 #define HB_STMT_END   while (0)
 
-#define _ASSERT_STATIC1(_line, _cond)	typedef int _static_assert_on_line_##_line##_failed[(_cond)?1:-1]
-#define _ASSERT_STATIC0(_line, _cond)	_ASSERT_STATIC1 (_line, (_cond))
-#define ASSERT_STATIC(_cond)		_ASSERT_STATIC0 (__LINE__, (_cond))
+template <unsigned int cond> class hb_assert_constant_t;
+template <> class hb_assert_constant_t<1> {};
 
-#define ASSERT_STATIC_EXPR(_cond)((void) sizeof (char[(_cond) ? 1 : -1]))
-#define ASSERT_STATIC_EXPR_ZERO(_cond) (0 * sizeof (char[(_cond) ? 1 : -1]))
-
-#define _PASTE1(a,b) a##b
-#define PASTE(a,b) _PASTE1(a,b)
+#define ASSERT_STATIC_EXPR_ZERO(_cond) (0 * (unsigned int) sizeof (hb_assert_constant_t<_cond>))
 
 /* Lets assert int types.  Saves trouble down the road. */
 
-ASSERT_STATIC (sizeof (int8_t) == 1);
-ASSERT_STATIC (sizeof (uint8_t) == 1);
-ASSERT_STATIC (sizeof (int16_t) == 2);
-ASSERT_STATIC (sizeof (uint16_t) == 2);
-ASSERT_STATIC (sizeof (int32_t) == 4);
-ASSERT_STATIC (sizeof (uint32_t) == 4);
-ASSERT_STATIC (sizeof (int64_t) == 8);
-ASSERT_STATIC (sizeof (uint64_t) == 8);
+static_assert ((sizeof (int8_t) == 1), "");
+static_assert ((sizeof (uint8_t) == 1), "");
+static_assert ((sizeof (int16_t) == 2), "");
+static_assert ((sizeof (uint16_t) == 2), "");
+static_assert ((sizeof (int32_t) == 4), "");
+static_assert ((sizeof (uint32_t) == 4), "");
+static_assert ((sizeof (int64_t) == 8), "");
+static_assert ((sizeof (uint64_t) == 8), "");
 
-ASSERT_STATIC (sizeof (hb_codepoint_t) == 4);
-ASSERT_STATIC (sizeof (hb_position_t) == 4);
-ASSERT_STATIC (sizeof (hb_mask_t) == 4);
-ASSERT_STATIC (sizeof (hb_var_int_t) == 4);
+static_assert ((sizeof (hb_codepoint_t) == 4), "");
+static_assert ((sizeof (hb_position_t) == 4), "");
+static_assert ((sizeof (hb_mask_t) == 4), "");
+static_assert ((sizeof (hb_var_int_t) == 4), "");
 
 
 /* We like our types POD */
@@ -139,124 +316,207 @@ ASSERT_STATIC (sizeof (hb_var_int_t) == 4);
 
 /* Check _assertion in a method environment */
 #define _ASSERT_POD1(_line) \
-	inline void _static_assertion_on_line_##_line (void) const \
+	HB_UNUSED inline void _static_assertion_on_line_##_line (void) const \
 	{ _ASSERT_INSTANCE_POD1 (_line, *this); /* Make sure it's POD. */ }
 # define _ASSERT_POD0(_line)	_ASSERT_POD1 (_line)
 # define ASSERT_POD()		_ASSERT_POD0 (__LINE__)
 
 
 
-/* Misc */
+/* Tiny functions */
 
+/*
+ * Void!
+ */
+typedef const struct _hb_void_t *hb_void_t;
+#define HB_VOID ((const _hb_void_t *) nullptr)
 
-#if defined(__GNUC__) && (__GNUC__ > 2) && defined(__OPTIMIZE__)
-#define _HB_BOOLEAN_EXPR(expr) ((expr) ? 1 : 0)
-#define likely(expr) (__builtin_expect (_HB_BOOLEAN_EXPR(expr), 1))
-#define unlikely(expr) (__builtin_expect (_HB_BOOLEAN_EXPR(expr), 0))
-#else
-#define likely(expr) (expr)
-#define unlikely(expr) (expr)
-#endif
-
-#ifndef __GNUC__
-#undef __attribute__
-#define __attribute__(x)
-#endif
-
-#if __GNUC__ >= 3
-#define HB_PURE_FUNC	__attribute__((pure))
-#define HB_CONST_FUNC	__attribute__((const))
-#define HB_PRINTF_FUNC(format_idx, arg_idx) __attribute__((__format__ (__printf__, format_idx, arg_idx)))
-#else
-#define HB_PURE_FUNC
-#define HB_CONST_FUNC
-#define HB_PRINTF_FUNC(format_idx, arg_idx)
-#endif
-#if __GNUC__ >= 4
-#define HB_UNUSED	__attribute__((unused))
-#else
-#define HB_UNUSED
-#endif
-
-#ifndef HB_INTERNAL
-# ifndef __MINGW32__
-#  define HB_INTERNAL __attribute__((__visibility__("hidden")))
-# else
-#  define HB_INTERNAL
-# endif
-#endif
-
-
-#if (defined(__WIN32__) && !defined(__WINE__)) || defined(_MSC_VER)
-#define snprintf _snprintf
-#endif
-
-#ifdef _MSC_VER
-#undef inline
-#define inline __inline
-#endif
-
-#ifdef __STRICT_ANSI__
-#undef inline
-#define inline __inline__
-#endif
-
-
-#if __GNUC__ >= 3
-#define HB_FUNC __PRETTY_FUNCTION__
-#elif defined(_MSC_VER)
-#define HB_FUNC __FUNCSIG__
-#else
-#define HB_FUNC __func__
-#endif
-
-
-/* Return the number of 1 bits in mask. */
+/* Return the number of 1 bits in v. */
+template <typename T>
 static inline HB_CONST_FUNC unsigned int
-_hb_popcount32 (uint32_t mask)
+_hb_popcount (T v)
 {
-#if __GNUC__ > 3 || (__GNUC__ == 3 && __GNUC_MINOR__ >= 4)
-  return __builtin_popcount (mask);
-#else
-  /* "HACKMEM 169" */
-  register uint32_t y;
-  y = (mask >> 1) &033333333333;
-  y = mask - y - ((y >>1) & 033333333333);
-  return (((y + (y >> 3)) & 030707070707) % 077);
+#if (__GNUC__ > 3 || (__GNUC__ == 3 && __GNUC_MINOR__ >= 4)) && defined(__OPTIMIZE__)
+  if (sizeof (T) <= sizeof (unsigned int))
+    return __builtin_popcount (v);
+
+  if (sizeof (T) <= sizeof (unsigned long))
+    return __builtin_popcountl (v);
+
+  if (sizeof (T) <= sizeof (unsigned long long))
+    return __builtin_popcountll (v);
 #endif
+
+  if (sizeof (T) <= 4)
+  {
+    /* "HACKMEM 169" */
+    uint32_t y;
+    y = (v >> 1) &033333333333;
+    y = v - y - ((y >>1) & 033333333333);
+    return (((y + (y >> 3)) & 030707070707) % 077);
+  }
+
+  if (sizeof (T) == 8)
+  {
+    unsigned int shift = 32;
+    return _hb_popcount<uint32_t> ((uint32_t) v) + _hb_popcount ((uint32_t) (v >> shift));
+  }
+
+  if (sizeof (T) == 16)
+  {
+    unsigned int shift = 64;
+    return _hb_popcount<uint64_t> ((uint64_t) v) + _hb_popcount ((uint64_t) (v >> shift));
+  }
+
+  assert (0);
+  return 0; /* Shut up stupid compiler. */
 }
 
 /* Returns the number of bits needed to store number */
+template <typename T>
 static inline HB_CONST_FUNC unsigned int
-_hb_bit_storage (unsigned int number)
+_hb_bit_storage (T v)
 {
+  if (unlikely (!v)) return 0;
+
 #if defined(__GNUC__) && (__GNUC__ >= 4) && defined(__OPTIMIZE__)
-  return likely (number) ? (sizeof (unsigned int) * 8 - __builtin_clz (number)) : 0;
-#else
-  register unsigned int n_bits = 0;
-  while (number) {
-    n_bits++;
-    number >>= 1;
-  }
-  return n_bits;
+  if (sizeof (T) <= sizeof (unsigned int))
+    return sizeof (unsigned int) * 8 - __builtin_clz (v);
+
+  if (sizeof (T) <= sizeof (unsigned long))
+    return sizeof (unsigned long) * 8 - __builtin_clzl (v);
+
+  if (sizeof (T) <= sizeof (unsigned long long))
+    return sizeof (unsigned long long) * 8 - __builtin_clzll (v);
 #endif
+
+#if (defined(_MSC_VER) && _MSC_VER >= 1500) || defined(__MINGW32__)
+  if (sizeof (T) <= sizeof (unsigned int))
+  {
+    unsigned long where;
+    _BitScanReverse (&where, v);
+    return 1 + where;
+  }
+# if _WIN64
+  if (sizeof (T) <= 8)
+  {
+    unsigned long where;
+    _BitScanReverse64 (&where, v);
+    return 1 + where;
+  }
+# endif
+#endif
+
+  if (sizeof (T) <= 4)
+  {
+    /* "bithacks" */
+    const unsigned int b[] = {0x2, 0xC, 0xF0, 0xFF00, 0xFFFF0000};
+    const unsigned int S[] = {1, 2, 4, 8, 16};
+    unsigned int r = 0;
+    for (int i = 4; i >= 0; i--)
+      if (v & b[i])
+      {
+	v >>= S[i];
+	r |= S[i];
+      }
+    return r + 1;
+  }
+  if (sizeof (T) <= 8)
+  {
+    /* "bithacks" */
+    const uint64_t b[] = {0x2ULL, 0xCULL, 0xF0ULL, 0xFF00ULL, 0xFFFF0000ULL, 0xFFFFFFFF00000000ULL};
+    const unsigned int S[] = {1, 2, 4, 8, 16, 32};
+    unsigned int r = 0;
+    for (int i = 5; i >= 0; i--)
+      if (v & b[i])
+      {
+	v >>= S[i];
+	r |= S[i];
+      }
+    return r + 1;
+  }
+  if (sizeof (T) == 16)
+  {
+    unsigned int shift = 64;
+    return (v >> shift) ? _hb_bit_storage<uint64_t> ((uint64_t) (v >> shift)) + shift :
+			  _hb_bit_storage<uint64_t> ((uint64_t) v);
+  }
+
+  assert (0);
+  return 0; /* Shut up stupid compiler. */
 }
 
-/* Returns the number of zero bits in the least significant side of number */
+/* Returns the number of zero bits in the least significant side of v */
+template <typename T>
 static inline HB_CONST_FUNC unsigned int
-_hb_ctz (unsigned int number)
+_hb_ctz (T v)
 {
+  if (unlikely (!v)) return 0;
+
 #if defined(__GNUC__) && (__GNUC__ >= 4) && defined(__OPTIMIZE__)
-  return likely (number) ? __builtin_ctz (number) : 0;
-#else
-  register unsigned int n_bits = 0;
-  if (unlikely (!number)) return 0;
-  while (!(number & 1)) {
-    n_bits++;
-    number >>= 1;
-  }
-  return n_bits;
+  if (sizeof (T) <= sizeof (unsigned int))
+    return __builtin_ctz (v);
+
+  if (sizeof (T) <= sizeof (unsigned long))
+    return __builtin_ctzl (v);
+
+  if (sizeof (T) <= sizeof (unsigned long long))
+    return __builtin_ctzll (v);
 #endif
+
+#if (defined(_MSC_VER) && _MSC_VER >= 1500) || defined(__MINGW32__)
+  if (sizeof (T) <= sizeof (unsigned int))
+  {
+    unsigned long where;
+    _BitScanForward (&where, v);
+    return where;
+  }
+# if _WIN64
+  if (sizeof (T) <= 8)
+  {
+    unsigned long where;
+    _BitScanForward64 (&where, v);
+    return where;
+  }
+# endif
+#endif
+
+  if (sizeof (T) <= 4)
+  {
+    /* "bithacks" */
+    unsigned int c = 32;
+    v &= - (int32_t) v;
+    if (v) c--;
+    if (v & 0x0000FFFF) c -= 16;
+    if (v & 0x00FF00FF) c -= 8;
+    if (v & 0x0F0F0F0F) c -= 4;
+    if (v & 0x33333333) c -= 2;
+    if (v & 0x55555555) c -= 1;
+    return c;
+  }
+  if (sizeof (T) <= 8)
+  {
+    /* "bithacks" */
+    unsigned int c = 64;
+    v &= - (int64_t) (v);
+    if (v) c--;
+    if (v & 0x00000000FFFFFFFFULL) c -= 32;
+    if (v & 0x0000FFFF0000FFFFULL) c -= 16;
+    if (v & 0x00FF00FF00FF00FFULL) c -= 8;
+    if (v & 0x0F0F0F0F0F0F0F0FULL) c -= 4;
+    if (v & 0x3333333333333333ULL) c -= 2;
+    if (v & 0x5555555555555555ULL) c -= 1;
+    return c;
+  }
+  if (sizeof (T) == 16)
+  {
+    unsigned int shift = 64;
+    return (uint64_t) v ? _hb_bit_storage<uint64_t> ((uint64_t) v) :
+			  _hb_bit_storage<uint64_t> ((uint64_t) v >> shift) + shift;
+  }
+
+  assert (0);
+  return 0; /* Shut up stupid compiler. */
 }
 
 static inline bool
@@ -265,64 +525,207 @@ _hb_unsigned_int_mul_overflows (unsigned int count, unsigned int size)
   return (size > 0) && (count >= ((unsigned int) -1) / size);
 }
 
+static inline unsigned int
+_hb_ceil_to_4 (unsigned int v)
+{
+  return ((v - 1) | 3) + 1;
+}
 
-/* Type of bsearch() / qsort() compare function */
-typedef int (*hb_compare_func_t) (const void *, const void *);
 
+
+/*
+ *
+ * Utility types
+ *
+ */
+
+#define HB_DISALLOW_COPY_AND_ASSIGN(TypeName) \
+  TypeName(const TypeName&); \
+  void operator=(const TypeName&)
+
+/*
+ * Static pools
+ */
+
+/* Global nul-content Null pool.  Enlarge as necessary. */
+
+#define HB_NULL_POOL_SIZE 264
+static_assert (HB_NULL_POOL_SIZE % sizeof (void *) == 0, "Align HB_NULL_POOL_SIZE.");
+
+#ifdef HB_NO_VISIBILITY
+static
+#else
+extern HB_INTERNAL
+#endif
+void * const _hb_NullPool[HB_NULL_POOL_SIZE / sizeof (void *)]
+#ifdef HB_NO_VISIBILITY
+= {}
+#endif
+;
+/* Generic nul-content Null objects. */
+template <typename Type>
+static inline Type const & Null (void) {
+  static_assert (sizeof (Type) <= HB_NULL_POOL_SIZE, "Increase HB_NULL_POOL_SIZE.");
+  return *reinterpret_cast<Type const *> (_hb_NullPool);
+}
+#define Null(Type) Null<Type>()
+
+/* Specializaiton for arbitrary-content arbitrary-sized Null objects. */
+#define DEFINE_NULL_DATA(Namespace, Type, data) \
+} /* Close namespace. */ \
+static const char _Null##Type[sizeof (Namespace::Type) + 1] = data; /* +1 is for nul-termination in data */ \
+template <> \
+/*static*/ inline const Namespace::Type& Null<Namespace::Type> (void) { \
+  return *reinterpret_cast<const Namespace::Type *> (_Null##Type); \
+} \
+namespace Namespace { \
+/* The following line really exists such that we end in a place needing semicolon */ \
+static_assert (Namespace::Type::min_size + 1 <= sizeof (_Null##Type), "Null pool too small.  Enlarge.")
+
+
+/* Global writable pool.  Enlarge as necessary. */
+
+/* To be fully correct, CrapPool must be thread_local. However, we do not rely on CrapPool
+ * for correct operation. It only exist to catch and divert program logic bugs instead of
+ * causing bad memory access. So, races there are not actually introducing incorrectness
+ * in the code. Has ~12kb binary size overhead to have it, also clang build fails with it. */
+#ifdef HB_NO_VISIBILITY
+static
+#else
+extern HB_INTERNAL
+#endif
+/*thread_local*/ void * _hb_CrapPool[HB_NULL_POOL_SIZE / sizeof (void *)]
+#ifdef HB_NO_VISIBILITY
+= {}
+#endif
+;
+/* CRAP pool: Common Region for Access Protection. */
+template <typename Type>
+static inline Type& Crap (void) {
+  static_assert (sizeof (Type) <= HB_NULL_POOL_SIZE, "Increase HB_NULL_POOL_SIZE.");
+  Type *obj = reinterpret_cast<Type *> (_hb_CrapPool);
+  *obj = Null(Type);
+  return *obj;
+}
+#define Crap(Type) Crap<Type>()
+
+template <typename Type>
+struct CrapOrNull {
+  static inline Type & get (void) { return Crap(Type); }
+};
+template <typename Type>
+struct CrapOrNull<const Type> {
+  static inline Type const & get (void) { return Null(Type); }
+};
+#define CrapOrNull(Type) CrapOrNull<Type>::get ()
 
 
 
 /* arrays and maps */
 
 
-#define HB_PREALLOCED_ARRAY_INIT {0}
-template <typename Type, unsigned int StaticSize>
-struct hb_prealloced_array_t
+#define HB_PREALLOCED_ARRAY_INIT {0, 0, nullptr}
+template <typename Type, unsigned int StaticSize=8>
+struct hb_vector_t
 {
   unsigned int len;
   unsigned int allocated;
-  Type *array;
+  bool successful;
+  Type *arrayZ;
   Type static_array[StaticSize];
 
-  void init (void) { memset (this, 0, sizeof (*this)); }
+  void init (void)
+  {
+    len = 0;
+    allocated = ARRAY_LENGTH (static_array);
+    successful = true;
+    arrayZ = static_array;
+  }
 
-  inline Type& operator [] (unsigned int i) { return array[i]; }
-  inline const Type& operator [] (unsigned int i) const { return array[i]; }
+  inline Type& operator [] (unsigned int i)
+  {
+    if (unlikely (i >= len))
+      return Crap (Type);
+    return arrayZ[i];
+  }
+  inline const Type& operator [] (unsigned int i) const
+  {
+    if (unlikely (i >= len))
+      return Null(Type);
+    return arrayZ[i];
+  }
 
   inline Type *push (void)
   {
-    if (!array) {
-      array = static_array;
-      allocated = ARRAY_LENGTH (static_array);
-    }
-    if (likely (len < allocated))
-      return &array[len++];
+    if (unlikely (!resize (len + 1)))
+      return &Crap(Type);
+    return &arrayZ[len - 1];
+  }
+  inline Type *push (const Type& v)
+  {
+    Type *p = push ();
+    *p = v;
+    return p;
+  }
 
-    /* Need to reallocate */
-    unsigned int new_allocated = allocated + (allocated >> 1) + 8;
-    Type *new_array = NULL;
+  /* Allocate for size but don't adjust len. */
+  inline bool alloc (unsigned int size)
+  {
+    if (unlikely (!successful))
+      return false;
 
-    if (array == static_array) {
+    if (likely (size <= allocated))
+      return true;
+
+    /* Reallocate */
+
+    unsigned int new_allocated = allocated;
+    while (size >= new_allocated)
+      new_allocated += (new_allocated >> 1) + 8;
+
+    Type *new_array = nullptr;
+
+    if (arrayZ == static_array)
+    {
       new_array = (Type *) calloc (new_allocated, sizeof (Type));
       if (new_array)
-        memcpy (new_array, array, len * sizeof (Type));
-    } else {
+        memcpy (new_array, arrayZ, len * sizeof (Type));
+    }
+    else
+    {
       bool overflows = (new_allocated < allocated) || _hb_unsigned_int_mul_overflows (new_allocated, sizeof (Type));
-      if (likely (!overflows)) {
-	new_array = (Type *) realloc (array, new_allocated * sizeof (Type));
-      }
+      if (likely (!overflows))
+        new_array = (Type *) realloc (arrayZ, new_allocated * sizeof (Type));
     }
 
     if (unlikely (!new_array))
-      return NULL;
+    {
+      successful = false;
+      return false;
+    }
 
-    array = new_array;
+    arrayZ = new_array;
     allocated = new_allocated;
-    return &array[len++];
+
+    return true;
+  }
+
+  inline bool resize (int size_)
+  {
+    unsigned int size = size_ < 0 ? 0u : (unsigned int) size_;
+    if (!alloc (size))
+      return false;
+
+    if (size > len)
+      memset (arrayZ + len, 0, (size - len) * sizeof (*arrayZ));
+
+    len = size;
+    return true;
   }
 
   inline void pop (void)
   {
+    if (!len) return;
     len--;
   }
 
@@ -330,77 +733,121 @@ struct hb_prealloced_array_t
   {
      if (unlikely (i >= len))
        return;
-     memmove (static_cast<void *> (&array[i]),
-	      static_cast<void *> (&array[i + 1]),
+     memmove (static_cast<void *> (&arrayZ[i]),
+	      static_cast<void *> (&arrayZ[i + 1]),
 	      (len - i - 1) * sizeof (Type));
      len--;
   }
 
-  inline void shrink (unsigned int l)
+  inline void shrink (int size_)
   {
-     if (l < len)
-       len = l;
+    unsigned int size = size_ < 0 ? 0u : (unsigned int) size_;
+     if (size < len)
+       len = size;
   }
 
   template <typename T>
   inline Type *find (T v) {
     for (unsigned int i = 0; i < len; i++)
-      if (array[i] == v)
-	return &array[i];
-    return NULL;
+      if (arrayZ[i] == v)
+	return &arrayZ[i];
+    return nullptr;
   }
   template <typename T>
   inline const Type *find (T v) const {
     for (unsigned int i = 0; i < len; i++)
-      if (array[i] == v)
-	return &array[i];
-    return NULL;
+      if (arrayZ[i] == v)
+	return &arrayZ[i];
+    return nullptr;
   }
 
-  inline void sort (void)
+  inline void qsort (int (*cmp)(const void*, const void*))
   {
-    qsort (array, len, sizeof (Type), (hb_compare_func_t) Type::cmp);
+    ::qsort (arrayZ, len, sizeof (Type), cmp);
   }
 
-  inline void sort (unsigned int start, unsigned int end)
+  inline void qsort (void)
   {
-    qsort (array + start, end - start, sizeof (Type), (hb_compare_func_t) Type::cmp);
+    ::qsort (arrayZ, len, sizeof (Type), Type::cmp);
+  }
+
+  inline void qsort (unsigned int start, unsigned int end)
+  {
+    ::qsort (arrayZ + start, end - start, sizeof (Type), Type::cmp);
   }
 
   template <typename T>
-  inline Type *bsearch (T *key)
+  inline Type *lsearch (const T &x)
   {
-    return (Type *) ::bsearch (key, array, len, sizeof (Type), (hb_compare_func_t) Type::cmp);
-  }
-  template <typename T>
-  inline const Type *bsearch (T *key) const
-  {
-    return (const Type *) ::bsearch (key, array, len, sizeof (Type), (hb_compare_func_t) Type::cmp);
+    for (unsigned int i = 0; i < len; i++)
+      if (0 == this->arrayZ[i].cmp (&x))
+	return &arrayZ[i];
+    return nullptr;
   }
 
-  inline void finish (void)
+  template <typename T>
+  inline Type *bsearch (const T &x)
   {
-    if (array != static_array)
-      free (array);
-    array = NULL;
+    unsigned int i;
+    return bfind (x, &i) ? &arrayZ[i] : nullptr;
+  }
+  template <typename T>
+  inline const Type *bsearch (const T &x) const
+  {
+    unsigned int i;
+    return bfind (x, &i) ? &arrayZ[i] : nullptr;
+  }
+  template <typename T>
+  inline bool bfind (const T &x, unsigned int *i) const
+  {
+    int min = 0, max = (int) this->len - 1;
+    while (min <= max)
+    {
+      int mid = (min + max) / 2;
+      int c = this->arrayZ[mid].cmp (&x);
+      if (c < 0)
+        max = mid - 1;
+      else if (c > 0)
+        min = mid + 1;
+      else
+      {
+        *i = mid;
+	return true;
+      }
+    }
+    if (max < 0 || (max < (int) this->len && this->arrayZ[max].cmp (&x) > 0))
+      max++;
+    *i = max;
+    return false;
+  }
+
+  inline void fini (void)
+  {
+    if (arrayZ != static_array)
+      free (arrayZ);
+    arrayZ = nullptr;
     allocated = len = 0;
   }
 };
 
-#define HB_AUTO_ARRAY_PREALLOCED 16
 template <typename Type>
-struct hb_auto_array_t : hb_prealloced_array_t <Type, HB_AUTO_ARRAY_PREALLOCED>
+struct hb_auto_t : Type
 {
-  hb_auto_array_t (void) { hb_prealloced_array_t<Type, HB_AUTO_ARRAY_PREALLOCED>::init (); }
-  ~hb_auto_array_t (void) { hb_prealloced_array_t<Type, HB_AUTO_ARRAY_PREALLOCED>::finish (); }
+  hb_auto_t (void) { Type::init (); }
+  ~hb_auto_t (void) { Type::fini (); }
+  private: /* Hide */
+  void init (void) {}
+  void fini (void) {}
 };
+template <typename Type>
+struct hb_auto_array_t : hb_auto_t <hb_vector_t <Type> > {};
 
 
 #define HB_LOCKABLE_SET_INIT {HB_PREALLOCED_ARRAY_INIT}
 template <typename item_t, typename lock_t>
 struct hb_lockable_set_t
 {
-  hb_prealloced_array_t <item_t, 2> items;
+  hb_vector_t <item_t, 1> items;
 
   inline void init (void) { items.init (); }
 
@@ -414,16 +861,14 @@ struct hb_lockable_set_t
 	item_t old = *item;
 	*item = v;
 	l.unlock ();
-	old.finish ();
+	old.fini ();
       }
       else {
-        item = NULL;
+        item = nullptr;
 	l.unlock ();
       }
     } else {
-      item = items.push ();
-      if (likely (item))
-	*item = v;
+      item = items.push (v);
       l.unlock ();
     }
     return item;
@@ -439,7 +884,7 @@ struct hb_lockable_set_t
       *item = items[items.len - 1];
       items.pop ();
       l.unlock ();
-      old.finish ();
+      old.fini ();
     } else {
       l.unlock ();
     }
@@ -462,19 +907,17 @@ struct hb_lockable_set_t
     l.lock ();
     item_t *item = items.find (v);
     if (!item) {
-      item = items.push ();
-      if (likely (item))
-        *item = v;
+      item = items.push (v);
     }
     l.unlock ();
     return item;
   }
 
-  inline void finish (lock_t &l)
+  inline void fini (lock_t &l)
   {
     if (!items.len) {
       /* No need for locking. */
-      items.finish ();
+      items.fini ();
       return;
     }
     l.lock ();
@@ -482,55 +925,14 @@ struct hb_lockable_set_t
       item_t old = items[items.len - 1];
 	items.pop ();
 	l.unlock ();
-	old.finish ();
+	old.fini ();
 	l.lock ();
     }
-    items.finish ();
+    items.fini ();
     l.unlock ();
   }
 
 };
-
-
-
-
-/* Big-endian handling */
-
-static inline uint16_t hb_be_uint16 (const uint16_t v)
-{
-  const uint8_t *V = (const uint8_t *) &v;
-  return (V[0] << 8) | V[1];
-}
-
-static inline uint16_t hb_uint16_swap (const uint16_t v)
-{
-  return (v >> 8) | (v << 8);
-}
-
-static inline uint32_t hb_uint32_swap (const uint32_t v)
-{
-  return (hb_uint16_swap (v) << 16) | hb_uint16_swap (v >> 16);
-}
-
-/* Note, of the following macros, uint16_get is the one called many many times.
- * If there is any optimizations to be done, it's in that macro.  However, I
- * already confirmed that on my T400 ThinkPad at least, using bswap_16(), which
- * results in a single ror instruction, does NOT speed this up.  In fact, it
- * resulted in a minor slowdown.  At any rate, note that v may not be correctly
- * aligned, so I think the current implementation is optimal.
- */
-
-#define hb_be_uint16_put(v,V)	HB_STMT_START { v[0] = (V>>8); v[1] = (V); } HB_STMT_END
-#define hb_be_uint16_get(v)	(uint16_t) ((v[0] << 8) + v[1])
-#define hb_be_uint16_eq(a,b)	(a[0] == b[0] && a[1] == b[1])
-
-#define hb_be_uint32_put(v,V)	HB_STMT_START { v[0] = (V>>24); v[1] = (V>>16); v[2] = (V>>8); v[3] = (V); } HB_STMT_END
-#define hb_be_uint32_get(v)	(uint32_t) ((v[0] << 24) + (v[1] << 16) + (v[2] << 8) + v[3])
-#define hb_be_uint32_eq(a,b)	(a[0] == b[0] && a[1] == b[1] && a[2] == b[2] && a[3] == b[3])
-
-#define hb_be_uint24_put(v,V)	HB_STMT_START { v[0] = (V>>16); v[1] = (V>>8); v[2] = (V); } HB_STMT_END
-#define hb_be_uint24_get(v)	(uint32_t) ((v[0] << 16) + (v[1] << 8) + v[2])
-#define hb_be_uint24_eq(a,b)	(a[0] == b[0] && a[1] == b[1] && a[2] == b[2])
 
 
 /* ASCII tag/character handling */
@@ -546,265 +948,44 @@ static inline unsigned char TOUPPER (unsigned char c)
 static inline unsigned char TOLOWER (unsigned char c)
 { return (c >= 'A' && c <= 'Z') ? c - 'A' + 'a' : c; }
 
-#define HB_TAG_CHAR4(s)   (HB_TAG(((const char *) s)[0], \
-				  ((const char *) s)[1], \
-				  ((const char *) s)[2], \
-				  ((const char *) s)[3]))
 
-
-/* C++ helpers */
-
-/* Makes class uncopyable.  Use in private: section. */
-#define NO_COPY(T) \
-  T (const T &o); \
-  T &operator = (const T &o)
-
-
-/* Debug */
-
-
-#ifndef HB_DEBUG
-#define HB_DEBUG 0
+/* HB_NDEBUG disables some sanity checks that are very safe to disable and
+ * should be disabled in production systems.  If NDEBUG is defined, enable
+ * HB_NDEBUG; but if it's desirable that normal assert()s (which are very
+ * light-weight) to be enabled, then HB_DEBUG can be defined to disable
+ * the costlier checks. */
+#ifdef NDEBUG
+#define HB_NDEBUG 1
 #endif
 
-static inline bool
-_hb_debug (unsigned int level,
-	   unsigned int max_level)
-{
-  return level < max_level;
-}
-
-#define DEBUG_LEVEL_ENABLED(WHAT, LEVEL) (_hb_debug ((LEVEL), HB_DEBUG_##WHAT))
-#define DEBUG_ENABLED(WHAT) (DEBUG_LEVEL_ENABLED (WHAT, 0))
-
-template <int max_level> static inline void
-_hb_debug_msg_va (const char *what,
-		  const void *obj,
-		  const char *func,
-		  bool indented,
-		  unsigned int level,
-		  int level_dir,
-		  const char *message,
-		  va_list ap)
-{
-  if (!_hb_debug (level, max_level))
-    return;
-
-  fprintf (stderr, "%-10s", what ? what : "");
-
-  if (obj)
-    fprintf (stderr, "(%0*lx) ", (unsigned int) (2 * sizeof (void *)), (unsigned long) obj);
-  else
-    fprintf (stderr, " %*s  ", (unsigned int) (2 * sizeof (void *)), "");
-
-  if (indented) {
-/* One may want to add ASCII version of these.  See:
- * https://bugs.freedesktop.org/show_bug.cgi?id=50970 */
-#define VBAR	"\342\224\202"	/* U+2502 BOX DRAWINGS LIGHT VERTICAL */
-#define VRBAR	"\342\224\234"	/* U+251C BOX DRAWINGS LIGHT VERTICAL AND RIGHT */
-#define DLBAR	"\342\225\256"	/* U+256E BOX DRAWINGS LIGHT ARC DOWN AND LEFT */
-#define ULBAR	"\342\225\257"	/* U+256F BOX DRAWINGS LIGHT ARC UP AND LEFT */
-#define LBAR	"\342\225\264"	/* U+2574 BOX DRAWINGS LIGHT LEFT */
-    static const char bars[] = VBAR VBAR VBAR VBAR VBAR VBAR VBAR VBAR VBAR VBAR VBAR VBAR VBAR VBAR VBAR VBAR VBAR VBAR VBAR VBAR VBAR VBAR VBAR VBAR VBAR VBAR VBAR VBAR VBAR VBAR;
-    fprintf (stderr, "%2u %s" VRBAR "%s",
-	     level,
-	     bars + sizeof (bars) - 1 - MIN ((unsigned int) sizeof (bars), (unsigned int) (sizeof (VBAR) - 1) * level),
-	     level_dir ? (level_dir > 0 ? DLBAR : ULBAR) : LBAR);
-  } else
-    fprintf (stderr, "   " VRBAR LBAR);
-
-  if (func)
-  {
-    unsigned int func_len = strlen (func);
-#ifndef HB_DEBUG_VERBOSE
-    /* Skip "typename" */
-    if (0 == strncmp (func, "typename ", 9))
-      func += 9;
-    /* Skip return type */
-    const char *space = strchr (func, ' ');
-    if (space)
-      func = space + 1;
-    /* Skip parameter list */
-    const char *paren = strchr (func, '(');
-    if (paren)
-      func_len = paren - func;
-#endif
-    fprintf (stderr, "%.*s: ", func_len, func);
-  }
-
-  if (message)
-    vfprintf (stderr, message, ap);
-
-  fprintf (stderr, "\n");
-}
-template <> inline void
-_hb_debug_msg_va<0> (const char *what HB_UNUSED,
-		     const void *obj HB_UNUSED,
-		     const char *func HB_UNUSED,
-		     bool indented HB_UNUSED,
-		     unsigned int level HB_UNUSED,
-		     int level_dir HB_UNUSED,
-		     const char *message HB_UNUSED,
-		     va_list ap HB_UNUSED) {}
-
-template <int max_level> static inline void
-_hb_debug_msg (const char *what,
-	       const void *obj,
-	       const char *func,
-	       bool indented,
-	       unsigned int level,
-	       int level_dir,
-	       const char *message,
-	       ...) HB_PRINTF_FUNC(7, 8);
-template <int max_level> static inline void
-_hb_debug_msg (const char *what,
-	       const void *obj,
-	       const char *func,
-	       bool indented,
-	       unsigned int level,
-	       int level_dir,
-	       const char *message,
-	       ...)
-{
-  va_list ap;
-  va_start (ap, message);
-  _hb_debug_msg_va<max_level> (what, obj, func, indented, level, level_dir, message, ap);
-  va_end (ap);
-}
-template <> inline void
-_hb_debug_msg<0> (const char *what HB_UNUSED,
-		  const void *obj HB_UNUSED,
-		  const char *func HB_UNUSED,
-		  bool indented HB_UNUSED,
-		  unsigned int level HB_UNUSED,
-		  int level_dir HB_UNUSED,
-		  const char *message HB_UNUSED,
-		  ...) HB_PRINTF_FUNC(7, 8);
-template <> inline void
-_hb_debug_msg<0> (const char *what HB_UNUSED,
-		  const void *obj HB_UNUSED,
-		  const char *func HB_UNUSED,
-		  bool indented HB_UNUSED,
-		  unsigned int level HB_UNUSED,
-		  int level_dir HB_UNUSED,
-		  const char *message HB_UNUSED,
-		  ...) {}
-
-#define DEBUG_MSG_LEVEL(WHAT, OBJ, LEVEL, LEVEL_DIR, ...)	_hb_debug_msg<HB_DEBUG_##WHAT> (#WHAT, (OBJ), NULL,    true, (LEVEL), (LEVEL_DIR), __VA_ARGS__)
-#define DEBUG_MSG(WHAT, OBJ, ...) 				_hb_debug_msg<HB_DEBUG_##WHAT> (#WHAT, (OBJ), NULL,    false, 0, 0, __VA_ARGS__)
-#define DEBUG_MSG_FUNC(WHAT, OBJ, ...)				_hb_debug_msg<HB_DEBUG_##WHAT> (#WHAT, (OBJ), HB_FUNC, false, 0, 0, __VA_ARGS__)
-
-
-/*
- * Printer
- */
-
-template <typename T>
-struct hb_printer_t {};
-
-template <>
-struct hb_printer_t<bool> {
-  const char *print (bool v) { return v ? "true" : "false"; }
-};
-
-template <>
-struct hb_printer_t<hb_void_t> {
-  const char *print (hb_void_t) { return ""; }
-};
-
-
-/*
- * Trace
- */
-
-template <typename T>
-static inline void _hb_warn_no_return (bool returned)
-{
-  if (unlikely (!returned)) {
-    fprintf (stderr, "OUCH, returned with no call to TRACE_RETURN.  This is a bug, please report.\n");
-  }
-}
-template <>
-inline void _hb_warn_no_return<hb_void_t> (bool returned HB_UNUSED)
-{}
-
-template <int max_level, typename ret_t>
-struct hb_auto_trace_t {
-  explicit inline hb_auto_trace_t (unsigned int *plevel_,
-				   const char *what_,
-				   const void *obj_,
-				   const char *func,
-				   const char *message,
-				   ...) : plevel (plevel_), what (what_), obj (obj_), returned (false)
-  {
-    if (plevel) ++*plevel;
-
-    va_list ap;
-    va_start (ap, message);
-    _hb_debug_msg_va<max_level> (what, obj, func, true, plevel ? *plevel : 0, +1, message, ap);
-    va_end (ap);
-  }
-  inline ~hb_auto_trace_t (void)
-  {
-    _hb_warn_no_return<ret_t> (returned);
-    if (!returned) {
-      _hb_debug_msg<max_level> (what, obj, NULL, true, plevel ? *plevel : 1, -1, " ");
-    }
-    if (plevel) --*plevel;
-  }
-
-  inline ret_t ret (ret_t v, unsigned int line = 0)
-  {
-    if (unlikely (returned)) {
-      fprintf (stderr, "OUCH, double calls to TRACE_RETURN.  This is a bug, please report.\n");
-      return v;
-    }
-
-    _hb_debug_msg<max_level> (what, obj, NULL, true, plevel ? *plevel : 1, -1,
-			      "return %s (line %d)",
-			      hb_printer_t<ret_t>().print (v), line);
-    if (plevel) --*plevel;
-    plevel = NULL;
-    returned = true;
-    return v;
-  }
-
-  private:
-  unsigned int *plevel;
-  const char *what;
-  const void *obj;
-  bool returned;
-};
-template <typename ret_t> /* Optimize when tracing is disabled */
-struct hb_auto_trace_t<0, ret_t> {
-  explicit inline hb_auto_trace_t (unsigned int *plevel_ HB_UNUSED,
-				   const char *what HB_UNUSED,
-				   const void *obj HB_UNUSED,
-				   const char *func HB_UNUSED,
-				   const char *message HB_UNUSED,
-				   ...) {}
-
-  inline ret_t ret (ret_t v, unsigned int line HB_UNUSED = 0) { return v; }
-};
-
-#define TRACE_RETURN(RET) trace.ret (RET, __LINE__)
 
 /* Misc */
 
+template <typename T> class hb_assert_unsigned_t;
+template <> class hb_assert_unsigned_t<unsigned char> {};
+template <> class hb_assert_unsigned_t<unsigned short> {};
+template <> class hb_assert_unsigned_t<unsigned int> {};
+template <> class hb_assert_unsigned_t<unsigned long> {};
 
-/* Pre-mature optimization:
- * Checks for lo <= u <= hi but with an optimization if lo and hi
- * are only different in a contiguous set of lower-most bits.
- */
 template <typename T> static inline bool
 hb_in_range (T u, T lo, T hi)
 {
-  if ( ((lo^hi) & lo) == 0 &&
-       ((lo^hi) & hi) == (lo^hi) &&
-       ((lo^hi) & ((lo^hi) + 1)) == 0 )
-    return (u & ~(lo^hi)) == lo;
-  else
-    return lo <= u && u <= hi;
+  /* The sizeof() is here to force template instantiation.
+   * I'm sure there are better ways to do this but can't think of
+   * one right now.  Declaring a variable won't work as HB_UNUSED
+   * is unusable on some platforms and unused types are less likely
+   * to generate a warning than unused variables. */
+  static_assert ((sizeof (hb_assert_unsigned_t<T>) >= 0), "");
+
+  /* The casts below are important as if T is smaller than int,
+   * the subtract results will become a signed int! */
+  return (T)(u - lo) <= (T)(hi - lo);
+}
+
+template <typename T> static inline bool
+hb_in_ranges (T u, T lo1, T hi1, T lo2, T hi2)
+{
+  return hb_in_range (u, lo1, hi1) || hb_in_range (u, lo2, hi2);
 }
 
 template <typename T> static inline bool
@@ -814,51 +995,67 @@ hb_in_ranges (T u, T lo1, T hi1, T lo2, T hi2, T lo3, T hi3)
 }
 
 
+/* Enable bitwise ops on enums marked as flags_t */
+/* To my surprise, looks like the function resolver is happy to silently cast
+ * one enum to another...  So this doesn't provide the type-checking that I
+ * originally had in mind... :(.
+ *
+ * For MSVC warnings, see: https://github.com/harfbuzz/harfbuzz/pull/163
+ */
+#ifdef _MSC_VER
+# pragma warning(disable:4200)
+# pragma warning(disable:4800)
+#endif
+#define HB_MARK_AS_FLAG_T(T) \
+	extern "C++" { \
+	  static inline T operator | (T l, T r) { return T ((unsigned) l | (unsigned) r); } \
+	  static inline T operator & (T l, T r) { return T ((unsigned) l & (unsigned) r); } \
+	  static inline T operator ^ (T l, T r) { return T ((unsigned) l ^ (unsigned) r); } \
+	  static inline T operator ~ (T r) { return T (~(unsigned int) r); } \
+	  static inline T& operator |= (T &l, T r) { l = l | r; return l; } \
+	  static inline T& operator &= (T& l, T r) { l = l & r; return l; } \
+	  static inline T& operator ^= (T& l, T r) { l = l ^ r; return l; } \
+	}
+
+
 /* Useful for set-operations on small enums.
  * For example, for testing "x ∈ {x1, x2, x3}" use:
- * (FLAG(x) & (FLAG(x1) | FLAG(x2) | FLAG(x3)))
+ * (FLAG_UNSAFE(x) & (FLAG(x1) | FLAG(x2) | FLAG(x3)))
  */
-#define FLAG(x) (1<<(x))
+#define FLAG(x) (ASSERT_STATIC_EXPR_ZERO ((unsigned int)(x) < 32) + (1U << (unsigned int)(x)))
+#define FLAG_UNSAFE(x) ((unsigned int)(x) < 32 ? (1U << (unsigned int)(x)) : 0)
 #define FLAG_RANGE(x,y) (ASSERT_STATIC_EXPR_ZERO ((x) < (y)) + FLAG(y+1) - FLAG(x))
 
 
-template <typename T, typename T2> inline void
-hb_bubble_sort (T *array, unsigned int len, int(*compar)(const T *, const T *), T2 *array2)
+template <typename T, typename T2> static inline void
+hb_stable_sort (T *array, unsigned int len, int(*compar)(const T *, const T *), T2 *array2)
 {
-  if (unlikely (!len))
-    return;
-
-  unsigned int k = len - 1;
-  do {
-    unsigned int new_k = 0;
-
-    for (unsigned int j = 0; j < k; j++)
-      if (compar (&array[j], &array[j+1]) > 0)
-      {
-        {
-	  T t;
-	  t = array[j];
-	  array[j] = array[j + 1];
-	  array[j + 1] = t;
-	}
-        if (array2)
-        {
-	  T2 t;
-	  t = array2[j];
-	  array2[j] = array2[j + 1];
-	  array2[j + 1] = t;
-	}
-
-	new_k = j;
-      }
-    k = new_k;
-  } while (k);
+  for (unsigned int i = 1; i < len; i++)
+  {
+    unsigned int j = i;
+    while (j && compar (&array[j - 1], &array[i]) > 0)
+      j--;
+    if (i == j)
+      continue;
+    /* Move item i to occupy place for item j, shift what's in between. */
+    {
+      T t = array[i];
+      memmove (&array[j + 1], &array[j], (i - j) * sizeof (T));
+      array[j] = t;
+    }
+    if (array2)
+    {
+      T2 t = array2[i];
+      memmove (&array2[j + 1], &array2[j], (i - j) * sizeof (T2));
+      array2[j] = t;
+    }
+  }
 }
 
-template <typename T> inline void
-hb_bubble_sort (T *array, unsigned int len, int(*compar)(const T *, const T *))
+template <typename T> static inline void
+hb_stable_sort (T *array, unsigned int len, int(*compar)(const T *, const T *))
 {
-  hb_bubble_sort (array, len, compar, (int *) NULL);
+  hb_stable_sort (array, len, compar, (int *) nullptr);
 }
 
 static inline hb_bool_t
@@ -880,19 +1077,109 @@ hb_codepoint_parse (const char *s, unsigned int len, int base, hb_codepoint_t *o
 }
 
 
+/* Vectorization */
+
+struct HbOpOr
+{
+  static const bool passthru_left = true;
+  static const bool passthru_right = true;
+  template <typename T> static void process (T &o, const T &a, const T &b) { o = a | b; }
+};
+struct HbOpAnd
+{
+  static const bool passthru_left = false;
+  static const bool passthru_right = false;
+  template <typename T> static void process (T &o, const T &a, const T &b) { o = a & b; }
+};
+struct HbOpMinus
+{
+  static const bool passthru_left = true;
+  static const bool passthru_right = false;
+  template <typename T> static void process (T &o, const T &a, const T &b) { o = a & ~b; }
+};
+struct HbOpXor
+{
+  static const bool passthru_left = true;
+  static const bool passthru_right = true;
+  template <typename T> static void process (T &o, const T &a, const T &b) { o = a ^ b; }
+};
+
+
+/* Compiler-assisted vectorization. */
+
+/* The `vector_size' attribute was introduced in gcc 3.1. */
+#if defined( __GNUC__ ) && ( __GNUC__ >= 4 )
+#define HB_VECTOR_SIZE 128
+#elif !defined(HB_VECTOR_SIZE)
+#define HB_VECTOR_SIZE 0
+#endif
+
+/* Type behaving similar to vectorized vars defined using __attribute__((vector_size(...))). */
+template <typename elt_t, unsigned int byte_size>
+struct hb_vector_size_t
+{
+  elt_t& operator [] (unsigned int i) { return u.v[i]; }
+  const elt_t& operator [] (unsigned int i) const { return u.v[i]; }
+
+  template <class Op>
+  inline hb_vector_size_t process (const hb_vector_size_t &o) const
+  {
+    hb_vector_size_t r;
+#if HB_VECTOR_SIZE
+    if (HB_VECTOR_SIZE && 0 == (byte_size * 8) % HB_VECTOR_SIZE)
+      for (unsigned int i = 0; i < ARRAY_LENGTH (u.vec); i++)
+	Op::process (r.u.vec[i], u.vec[i], o.u.vec[i]);
+    else
+#endif
+      for (unsigned int i = 0; i < ARRAY_LENGTH (u.v); i++)
+	Op::process (r.u.v[i], u.v[i], o.u.v[i]);
+    return r;
+  }
+  inline hb_vector_size_t operator | (const hb_vector_size_t &o) const
+  { return process<HbOpOr> (o); }
+  inline hb_vector_size_t operator & (const hb_vector_size_t &o) const
+  { return process<HbOpAnd> (o); }
+  inline hb_vector_size_t operator ^ (const hb_vector_size_t &o) const
+  { return process<HbOpXor> (o); }
+  inline hb_vector_size_t operator ~ () const
+  {
+    hb_vector_size_t r;
+#if HB_VECTOR_SIZE && 0
+    if (HB_VECTOR_SIZE && 0 == (byte_size * 8) % HB_VECTOR_SIZE)
+      for (unsigned int i = 0; i < ARRAY_LENGTH (u.vec); i++)
+	r.u.vec[i] = ~u.vec[i];
+    else
+#endif
+    for (unsigned int i = 0; i < ARRAY_LENGTH (u.v); i++)
+      r.u.v[i] = ~u.v[i];
+    return r;
+  }
+
+  private:
+  static_assert (byte_size / sizeof (elt_t) * sizeof (elt_t) == byte_size, "");
+  union {
+    elt_t v[byte_size / sizeof (elt_t)];
+#if HB_VECTOR_SIZE
+    typedef unsigned long vec_t __attribute__((vector_size (HB_VECTOR_SIZE / 8)));
+    vec_t vec[byte_size / sizeof (vec_t)];
+#endif
+  } u;
+};
+
+
 /* Global runtime options. */
 
 struct hb_options_t
 {
-  int initialized : 1;
-  int uniscribe_bug_compatible : 1;
+  unsigned int initialized : 1;
+  unsigned int uniscribe_bug_compatible : 1;
 };
 
 union hb_options_union_t {
-  int i;
+  unsigned int i;
   hb_options_t opts;
 };
-ASSERT_STATIC (sizeof (int) == sizeof (hb_options_union_t));
+static_assert ((sizeof (int) == sizeof (hb_options_union_t)), "");
 
 HB_INTERNAL void
 _hb_options_init (void);
@@ -907,6 +1194,49 @@ hb_options (void)
 
   return _hb_options.opts;
 }
+
+/* Size signifying variable-sized array */
+#define VAR 1
+
+
+/* String type. */
+
+struct hb_bytes_t
+{
+  inline hb_bytes_t (void) : bytes (nullptr), len (0) {}
+  inline hb_bytes_t (const char *bytes_, unsigned int len_) : bytes (bytes_), len (len_) {}
+
+  inline int cmp (const hb_bytes_t &a) const
+  {
+    if (len != a.len)
+      return (int) a.len - (int) len;
+
+    return memcmp (a.bytes, bytes, len);
+  }
+  static inline int cmp (const void *pa, const void *pb)
+  {
+    hb_bytes_t *a = (hb_bytes_t *) pa;
+    hb_bytes_t *b = (hb_bytes_t *) pb;
+    return b->cmp (*a);
+  }
+
+  const char *bytes;
+  unsigned int len;
+};
+
+
+/* fallback for round() */
+#if !defined (HAVE_ROUND) && !defined (HAVE_DECL_ROUND)
+static inline double
+_hb_round (double x)
+{
+  if (x >= 0)
+    return floor (x + 0.5);
+  else
+    return ceil (x - 0.5);
+}
+#define round(x) _hb_round(x)
+#endif
 
 
 #endif /* HB_PRIVATE_HH */

@@ -1,35 +1,38 @@
---harfbuzz binding with extensions: ucdn, opentype, freetype.
+
+--harfbuzz ffi binding with extensions: ucdn, opentype, freetype.
+--Written by Cosmin Apreutesei. Public Domain.
+
+if not ... then require'harfbuzz_demo'; return end
+
 local ffi = require'ffi'
 require'harfbuzz_h'
 require'harfbuzz_ot_h'
 require'harfbuzz_ft_h'
 local C = ffi.load'harfbuzz'
-local M = setmetatable({C = C}, {__index = C})
+local M = {C = C}
 
 --wrappers
 
+local x = ffi.new'int32_t[1]'
+local y = ffi.new'int32_t[1]'
 local function get_xy_func(func)
-	return function(self, x, y)
-		x = x or ffi.new'int32_t[1]'
-		y = y or ffi.new'int32_t[1]'
+	return function(self)
 		func(self, x, y)
 		return x[0], y[0]
 	end
 end
 
+local x = ffi.new'hb_position_t[1]'
+local y = ffi.new'hb_position_t[1]'
 local function get_pos_func(func)
-	return function(self, glyph, x, y)
-		x = x or ffi.new'hb_position_t[1]'
-		y = y or ffi.new'hb_position_t[1]'
+	return function(self, glyph)
 		func(self, glyph, x, y)
 		return x[0], y[0]
 	end
 end
 
 local function get_pos2_func(func)
-	return function(self, glyph, index, x, y)
-		x = x or ffi.new'hb_position_t[1]'
-		y = y or ffi.new'hb_position_t[1]'
+	return function(self, glyph, index)
 		func(self, glyph, index, x, y)
 		return x[0], y[0]
 	end
@@ -54,7 +57,7 @@ M.hb_version_string = string_func(C.hb_version_string)
 function M.list_shapers()
 	local t = {}
 	local s = C.hb_shape_list_shapers()
-	while s ~= nil do
+	while s[0] ~= nil do
 		t[#t+1] = ffi.string(s[0])
 		s = s + 1
 	end
@@ -78,30 +81,30 @@ local function destroy_func(destroy_func)
 	end
 end
 
-M.hb_blob_create = create_func(C.hb_blob_create, C.hb_blob_destroy)
+M.blob = create_func(C.hb_blob_create, C.hb_blob_destroy)
 
-function M.hb_buffer_create()
+function M.buffer()
 	local self = assert(ffi.gc(C.hb_buffer_create(), C.hb_buffer_destroy))
 	C.hb_buffer_set_unicode_funcs(self, nil)
 	return self
 end
 
-function M.hb_feature_from_string(str, len, feature)
+function M.feature_from_string(str, len, feature)
 	feature = feature or ffi.new'hb_feature_t'
 	assert(C.hb_feature_from_string(str, len or #str, feature) == 1)
 	return feature
 end
 
-function M.hb_feature_to_string(feature, buf, size)
+function M.feature_to_string(feature, buf, size)
 	buf = buf or ffi.new('uint8_t[?]', size or 64)
 	C.hb_feature_to_string(feature, buf, size)
 	return ffi.string(buf)
 end
 
 --from hb-ft.h
-M.hb_ft_face_create = create_func(C.hb_ft_face_create, C.hb_face_destroy)
-M.hb_ft_face_create_cached = create_func(C.hb_ft_face_create_cached, C.hb_face_destroy)
-M.hb_ft_font_create = create_func(C.hb_ft_font_create, C.hb_font_destroy)
+M.ft_face        = create_func(C.hb_ft_face_create, C.hb_face_destroy)
+M.ft_face_cached = create_func(C.hb_ft_face_create_cached, C.hb_face_destroy)
+M.ft_font        = create_func(C.hb_ft_font_create, C.hb_font_destroy)
 
 --methods
 
@@ -117,8 +120,8 @@ ffi.metatype('hb_blob_t', {__index = {
 	get_data = C.hb_blob_get_data, --length -> data
 	get_data_writable = C.hb_blob_get_data_writable, --length -> data,
 
-	create_sub_blob = create_func(C.hb_blob_create_sub_blob, C.hb_blob_destroy), -- offset, length -> hb_blob_t
-	create_face = create_func(C.hb_face_create, C.hb_face_destroy),
+	sub_blob = create_func(C.hb_blob_create_sub_blob, C.hb_blob_destroy), -- offset, length -> hb_blob_t
+	face = create_func(C.hb_face_create, C.hb_face_destroy),
 }})
 
 ffi.metatype('hb_face_t', {__index = {
@@ -138,9 +141,9 @@ ffi.metatype('hb_face_t', {__index = {
 	set_glyph_count = C.hb_face_set_glyph_count,
 	get_glyph_count = C.hb_face_get_glyph_count,
 
-	create_font = create_func(C.hb_font_create, C.hb_font_destroy),
-	create_shape_plan = create_func(C.hb_shape_plan_create, C.hb_shape_plan_destroy),
-	create_shape_plan_cached = create_func(C.hb_shape_plan_create_cached, C.hb_shape_plan_destroy),
+	font              = create_func(C.hb_font_create, C.hb_font_destroy),
+	shape_plan        = create_func(C.hb_shape_plan_create, C.hb_shape_plan_destroy),
+	shape_plan_cached = create_func(C.hb_shape_plan_create_cached, C.hb_shape_plan_destroy),
 
 	--from hb-ot.h
 	get_script_tags     = C.hb_ot_layout_table_get_script_tags,
@@ -171,7 +174,7 @@ ffi.metatype('hb_font_t', {__index = {
 	make_immutable = C.hb_font_make_immutable,
 	is_immutable = C.hb_font_is_immutable,
 
-	create_sub_font = create_func(C.hb_font_create_sub_font, C.hb_font_destroy),
+	sub_font = create_func(C.hb_font_create_sub_font, C.hb_font_destroy),
 
 	get_parent = C.hb_font_get_parent,
 	get_face = C.hb_font_get_face,
@@ -300,8 +303,6 @@ ffi.metatype('hb_shape_plan_t', {__index = {
 	--from hb-ot.h
 	collect_lookups = C.hb_ot_shape_plan_collect_lookups,
 }})
-
-if not ... then require'harfbuzz_demo' end
 
 return M
 

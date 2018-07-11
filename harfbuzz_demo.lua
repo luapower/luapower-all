@@ -6,9 +6,9 @@ local time = require'time'
 local player = require'cplayer'
 
 local function shape_text(s, ft_face, hb_font, size, direction, script, language, features)
-	local buf = hb.hb_buffer_create()
-	buf:set_direction(direction or hb.HB_DIRECTION_LTR)
-	buf:set_script(script or hb.HB_SCRIPT_UNKNOWN)
+	local buf = hb.buffer()
+	buf:set_direction(direction or hb.C.HB_DIRECTION_LTR)
+	buf:set_script(script or hb.C.HB_SCRIPT_UNKNOWN)
 	if language then buf:set_language(language) end
 	buf:add_utf8(s)
 	local feats, feats_count = nil, 0
@@ -17,7 +17,7 @@ local function shape_text(s, ft_face, hb_font, size, direction, script, language
 		feats = ffi.new('hb_feature_t[?]', feats_count)
 		local i = 0
 		for k,v in pairs(features) do
-			assert(hb.hb_feature_from_string(k, #k, feats[i]) == 1)
+			assert(hb.C.feature_from_string(k, #k, feats[i]) == 1)
 			feats[i].value = v
 			i = i + 1
 		end
@@ -68,7 +68,7 @@ ffi.gc(ft_lib, nil)
 local function font(filename, load_flags)
 	local ft_face = ft_lib:face(filename)
 	local cairo_face = cairo.ft_font_face(ft_face, load_flags or 0)
-	local hb_font = hb.hb_ft_font_create(ft_face, nil)
+	local hb_font = hb.ft_font(ft_face, nil)
 	ffi.gc(ft_face, nil)
 	ffi.gc(cairo_face, nil)
 	ffi.gc(hb_font, nil)
@@ -155,12 +155,12 @@ function player:on_render(cr)
 		selected = selected_font}
 
 	self:draw_text(100 + sub, 150, "هذه هي بعض النصوص العربي", amiri, 40,
-							hb.HB_DIRECTION_RTL, hb.HB_SCRIPT_ARABIC, 'ar', nil, use_show_glyphs)
+							hb.C.HB_DIRECTION_RTL, hb.C.HB_SCRIPT_ARABIC, 'ar', nil, use_show_glyphs)
 
 	local y = 0
 	for i=6,26 do
 		self:draw_text(100 + sub, 200 + y, 'iiiiiiiiii - Te VA - This is Some English Text - Jumped', selected_font, i,
-							hb.HB_DIRECTION_LTR, hb.HB_SCRIPT_LATIN, 'en', nil, use_show_glyphs)
+							hb.C.HB_DIRECTION_LTR, hb.C.HB_SCRIPT_LATIN, 'en', nil, use_show_glyphs)
 		y = y + i
 	end
 

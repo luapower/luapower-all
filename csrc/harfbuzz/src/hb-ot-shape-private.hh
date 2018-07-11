@@ -40,6 +40,11 @@ struct hb_ot_shape_plan_t
   const struct hb_ot_complex_shaper_t *shaper;
   hb_ot_map_t map;
   const void *data;
+  hb_mask_t rtlm_mask, frac_mask, numr_mask, dnom_mask;
+  hb_mask_t kern_mask;
+  unsigned int has_frac : 1;
+  unsigned int has_kern : 1;
+  unsigned int has_mark : 1;
 
   inline void collect_lookups (hb_tag_t table_tag, hb_set_t *lookups) const
   {
@@ -54,7 +59,14 @@ struct hb_ot_shape_plan_t
   inline void substitute (hb_font_t *font, hb_buffer_t *buffer) const { map.substitute (this, font, buffer); }
   inline void position (hb_font_t *font, hb_buffer_t *buffer) const { map.position (this, font, buffer); }
 
-  void finish (void) { map.finish (); }
+  void init (void)
+  {
+    memset (this, 0, sizeof (*this));
+    map.init ();
+  }
+  void fini (void) {
+    map.fini ();
+  }
 };
 
 struct hb_ot_shape_planner_t
@@ -68,19 +80,32 @@ struct hb_ot_shape_planner_t
   hb_ot_shape_planner_t (const hb_shape_plan_t *master_plan) :
 			 face (master_plan->face_unsafe),
 			 props (master_plan->props),
-			 shaper (NULL),
+			 shaper (nullptr),
 			 map (face, &props) {}
-  ~hb_ot_shape_planner_t (void) { map.finish (); }
 
-  inline void compile (hb_ot_shape_plan_t &plan)
+  inline void compile (hb_ot_shape_plan_t &plan,
+		       const int          *coords,
+		       unsigned int        num_coords)
   {
     plan.props = props;
     plan.shaper = shaper;
-    map.compile (plan.map);
+    map.compile (plan.map, coords, num_coords);
+
+    plan.rtlm_mask = plan.map.get_1_mask (HB_TAG ('r','t','l','m'));
+    plan.frac_mask = plan.map.get_1_mask (HB_TAG ('f','r','a','c'));
+    plan.numr_mask = plan.map.get_1_mask (HB_TAG ('n','u','m','r'));
+    plan.dnom_mask = plan.map.get_1_mask (HB_TAG ('d','n','o','m'));
+
+    plan.kern_mask = plan.map.get_mask (HB_DIRECTION_IS_HORIZONTAL (plan.props.direction) ?
+					HB_TAG ('k','e','r','n') : HB_TAG ('v','k','r','n'));
+
+    plan.has_frac = plan.frac_mask || (plan.numr_mask && plan.dnom_mask);
+    plan.has_kern = !!plan.kern_mask;
+    plan.has_mark = !!plan.map.get_1_mask (HB_TAG ('m','a','r','k'));
   }
 
   private:
-  NO_COPY (hb_ot_shape_planner_t);
+  HB_DISALLOW_COPY_AND_ASSIGN (hb_ot_shape_planner_t);
 };
 
 

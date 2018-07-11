@@ -4,9 +4,13 @@ local ft = require'freetype'
 local player = require'cplayer'
 local cairo = require'cairo'
 
-local load_mode = bit.bor(ft.FT_LOAD_IGNORE_GLOBAL_ADVANCE_WIDTH, ft.FT_LOAD_NO_BITMAP,
-									ft.FT_LOAD_NO_HINTING, ft.FT_LOAD_NO_AUTOHINT)
-local render_mode = ft.FT_RENDER_MODE_LIGHT
+local load_mode = bit.bor(
+	ft.C.FT_LOAD_IGNORE_GLOBAL_ADVANCE_WIDTH,
+	ft.C.FT_LOAD_NO_BITMAP,
+	ft.C.FT_LOAD_NO_HINTING,
+	ft.C.FT_LOAD_NO_AUTOHINT)
+
+local render_mode = ft.C.FT_RENDER_MODE_LIGHT
 
 function player:render_glyph(face, glyph_index, glyph_size, x, y, t, i)
 
@@ -14,10 +18,10 @@ function player:render_glyph(face, glyph_index, glyph_size, x, y, t, i)
 	face:load_glyph(glyph_index, load_mode)
 	local glyph = face.glyph
 
-	if glyph.format ~= ft.FT_GLYPH_FORMAT_BITMAP then
+	if glyph.format ~= ft.C.FT_GLYPH_FORMAT_BITMAP then
 		glyph:render(render_mode)
 	end
-	assert(glyph.format == ft.FT_GLYPH_FORMAT_BITMAP)
+	assert(glyph.format == ft.C.FT_GLYPH_FORMAT_BITMAP)
 
 	local bitmap = glyph.bitmap
 
@@ -25,14 +29,14 @@ function player:render_glyph(face, glyph_index, glyph_size, x, y, t, i)
 		return
 	end
 
-	if bitmap.pitch % 4 ~= 0 or bitmap.pixel_mode ~= ft.FT_PIXEL_MODE_GRAY then
+	if bitmap.pitch % 4 ~= 0 or bitmap.pixel_mode ~= ft.C.FT_PIXEL_MODE_GRAY then
 		bitmap = glyph.library:bitmap()
 		glyph.library:convert_bitmap(glyph.bitmap, bitmap, 4)
 	end
 	local cairo_format = 'a8'
 	local cairo_stride = cairo.stride('a8', bitmap.width)
 
-	assert(bitmap.pixel_mode == ft.FT_PIXEL_MODE_GRAY)
+	assert(bitmap.pixel_mode == ft.C.FT_PIXEL_MODE_GRAY)
 	assert(bitmap.pitch == cairo_stride)
 
 	local image = cairo.image_surface{
@@ -70,13 +74,13 @@ function player:render_glyph2(face, glyph_index, glyph_size, x, y, t, i)
 		return
 	end
 	local old_bitmap = bitmap
-	if bitmap.pitch % 4 ~= 0 or bitmap.pixel_mode ~= ft.FT_PIXEL_MODE_GRAY then
+	if bitmap.pitch % 4 ~= 0 or bitmap.pixel_mode ~= ft.C.FT_PIXEL_MODE_GRAY then
 		bitmap = face.glyph.library:bitmap()
 		face.glyph.library:convert_bitmap(old_bitmap, bitmap, 4)
 	end
 
 	local cairo_stride = cairo.stride('a8', bitmap.width)
-	assert(bitmap.pixel_mode == ft.FT_PIXEL_MODE_GRAY)
+	assert(bitmap.pixel_mode == ft.C.FT_PIXEL_MODE_GRAY)
 	assert(bitmap.pitch == cairo_stride)
 
 	local image = cairo.image_surface{
@@ -163,7 +167,8 @@ local faces = {
 	['DejaVu Serif']  = 'media/fonts/DejaVuSerif.ttf',
 	['Firefly Sung']  = 'media/fonts/fireflysung.ttf',
 	['Fixedsys300']  = 'media/fonts/FSEX300.ttf',
-	['MaterialIcons'] = 'media/fonts/MaterialIcons-Regular.ttf',
+	--['MaterialIcons'] = 'media/fonts/MaterialIcons-Regular.ttf',
+	--['Font Awesome'] = 'media/fonts/fa-regular-400.ttf',
 }
 
 --metrics
@@ -237,7 +242,7 @@ function player:on_render(cr)
 	for i=1,face.num_charmaps do
 		local v = i-1
 		values[i] = v
-		texts[v] = 'Charmap '..tostring(i)..' '..
+		texts[v] = 'cmap '..tostring(i)..' '..
 			ffi.string(face.charmaps[v]:encoding_str(), 4)
 	end
 

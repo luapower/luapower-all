@@ -2057,7 +2057,10 @@ build_order = memoize(function(packages, platform)
 				end
 			end
 		end
-		assert(not guard, 'all packages have dependencies')
+		if guard then
+			dt.circular = true --circular dependencies found
+			break
+		end
 	end
 	return dt
 end)

@@ -31,7 +31,6 @@
 
 #include "hb-private.hh"
 
-#include "hb-font.h"
 #include "hb-object-private.hh"
 #include "hb-shaper-private.hh"
 #include "hb-shape-plan-private.hh"
@@ -51,12 +50,16 @@ struct hb_face_t {
   void                      *user_data;
   hb_destroy_func_t          destroy;
 
-  unsigned int index;
-  mutable unsigned int upem;
-  mutable unsigned int num_glyphs;
+  unsigned int index;			/* Face index in a collection, zero-based. */
+  mutable unsigned int upem;		/* Units-per-EM. */
+  mutable unsigned int num_glyphs;	/* Number of glyphs. */
 
-  struct hb_shaper_data_t shaper_data;
+  struct hb_shaper_data_t shaper_data;	/* Various shaper data. */
 
+  /* Various non-shaping data. */
+  /* ... */
+
+  /* Cache */
   struct plan_node_t {
     hb_shape_plan_t *shape_plan;
     plan_node_t *next;
@@ -67,7 +70,7 @@ struct hb_face_t {
   {
     hb_blob_t *blob;
 
-    if (unlikely (!this || !reference_table_func))
+    if (unlikely (!reference_table_func))
       return hb_blob_get_empty ();
 
     blob = reference_table_func (/*XXX*/const_cast<hb_face_t *> (this), tag, user_data);

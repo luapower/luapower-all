@@ -10,25 +10,25 @@ local function inspect_face(lib, facename)
 	print(('-'):rep(78))
 
 	local face_flag_names = {
-		[ft.FT_FACE_FLAG_SCALABLE]            = 'SCALABLE',
-		[ft.FT_FACE_FLAG_FIXED_SIZES]         = 'FIXED_SIZES',
-		[ft.FT_FACE_FLAG_FIXED_WIDTH]         = 'FIXED_WIDTH',
-		[ft.FT_FACE_FLAG_SFNT]                = 'SFNT',
-		[ft.FT_FACE_FLAG_HORIZONTAL]          = 'HORIZONTAL',
-		[ft.FT_FACE_FLAG_VERTICAL]            = 'VERTICAL',
-		[ft.FT_FACE_FLAG_KERNING]             = 'KERNING',
-		[ft.FT_FACE_FLAG_FAST_GLYPHS]         = 'FAST_GLYPHS',
-		[ft.FT_FACE_FLAG_MULTIPLE_MASTERS]    = 'MULTIPLE_MASTERS',
-		[ft.FT_FACE_FLAG_GLYPH_NAMES]         = 'GLYPH_NAMES',
-		[ft.FT_FACE_FLAG_EXTERNAL_STREAM]     = 'EXTERNAL_STREAM',
-		[ft.FT_FACE_FLAG_HINTER]              = 'HINTER',
-		[ft.FT_FACE_FLAG_CID_KEYED]           = 'CID_KEYED',
-		[ft.FT_FACE_FLAG_TRICKY]              = 'TRICKY',
+		[ft.C.FT_FACE_FLAG_SCALABLE]            = 'SCALABLE',
+		[ft.C.FT_FACE_FLAG_FIXED_SIZES]         = 'FIXED_SIZES',
+		[ft.C.FT_FACE_FLAG_FIXED_WIDTH]         = 'FIXED_WIDTH',
+		[ft.C.FT_FACE_FLAG_SFNT]                = 'SFNT',
+		[ft.C.FT_FACE_FLAG_HORIZONTAL]          = 'HORIZONTAL',
+		[ft.C.FT_FACE_FLAG_VERTICAL]            = 'VERTICAL',
+		[ft.C.FT_FACE_FLAG_KERNING]             = 'KERNING',
+		[ft.C.FT_FACE_FLAG_FAST_GLYPHS]         = 'FAST_GLYPHS',
+		[ft.C.FT_FACE_FLAG_MULTIPLE_MASTERS]    = 'MULTIPLE_MASTERS',
+		[ft.C.FT_FACE_FLAG_GLYPH_NAMES]         = 'GLYPH_NAMES',
+		[ft.C.FT_FACE_FLAG_EXTERNAL_STREAM]     = 'EXTERNAL_STREAM',
+		[ft.C.FT_FACE_FLAG_HINTER]              = 'HINTER',
+		[ft.C.FT_FACE_FLAG_CID_KEYED]           = 'CID_KEYED',
+		[ft.C.FT_FACE_FLAG_TRICKY]              = 'TRICKY',
 	}
 
 	local style_flag_names = {
-		[ft.FT_STYLE_FLAG_ITALIC]  = 'ITALIC',
-		[ft.FT_STYLE_FLAG_BOLD]    = 'BOLD',
+		[ft.C.FT_STYLE_FLAG_ITALIC]  = 'ITALIC',
+		[ft.C.FT_STYLE_FLAG_BOLD]    = 'BOLD',
 	}
 
 	local function flags(flags, flag_names)

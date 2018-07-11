@@ -34,6 +34,7 @@
 #include "hb-common.h"
 #include "hb-unicode.h"
 #include "hb-font.h"
+#include "hb-set.h"
 
 HB_BEGIN_DECLS
 
@@ -43,6 +44,19 @@ HB_BEGIN_DECLS
 
 #define HB_BUFFER_FLAGS_DEFAULT			HB_BUFFER_FLAG_DEFAULT
 #define HB_BUFFER_SERIALIZE_FLAGS_DEFAULT	HB_BUFFER_SERIALIZE_FLAG_DEFAULT
+
+typedef hb_bool_t (*hb_font_get_glyph_func_t) (hb_font_t *font, void *font_data,
+					       hb_codepoint_t unicode, hb_codepoint_t variation_selector,
+					       hb_codepoint_t *glyph,
+					       void *user_data);
+
+HB_EXTERN void
+hb_font_funcs_set_glyph_func (hb_font_funcs_t *ffuncs,
+			      hb_font_get_glyph_func_t func,
+			      void *user_data, hb_destroy_func_t destroy);
+
+HB_EXTERN void
+hb_set_invert (hb_set_t *set);
 
 #endif
 

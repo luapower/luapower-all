@@ -33,43 +33,37 @@
 #define HB_OBJECT_PRIVATE_HH
 
 #include "hb-private.hh"
+#include "hb-debug.hh"
 
 #include "hb-atomic-private.hh"
 #include "hb-mutex-private.hh"
 
 
-/* Debug */
-
-#ifndef HB_DEBUG_OBJECT
-#define HB_DEBUG_OBJECT (HB_DEBUG+0)
-#endif
-
-
 /* reference_count */
 
-#define HB_REFERENCE_COUNT_INVALID_VALUE ((hb_atomic_int_t) -1)
-#define HB_REFERENCE_COUNT_INVALID {HB_REFERENCE_COUNT_INVALID_VALUE}
+#define HB_REFERENCE_COUNT_INERT_VALUE 0
+#define HB_REFERENCE_COUNT_POISON_VALUE -0x0000DEAD
+#define HB_REFERENCE_COUNT_INIT {HB_ATOMIC_INT_INIT (HB_REFERENCE_COUNT_INERT_VALUE)}
+
 struct hb_reference_count_t
 {
   hb_atomic_int_t ref_count;
 
-  inline void init (int v) { ref_count = v; }
-  inline int inc (void) { return hb_atomic_int_add (const_cast<hb_atomic_int_t &> (ref_count),  1); }
-  inline int dec (void) { return hb_atomic_int_add (const_cast<hb_atomic_int_t &> (ref_count), -1); }
-  inline void finish (void) { ref_count = HB_REFERENCE_COUNT_INVALID_VALUE; }
+  inline void init (int v) { ref_count.set_unsafe (v); }
+  inline int get_unsafe (void) const { return ref_count.get_unsafe (); }
+  inline int inc (void) { return ref_count.inc (); }
+  inline int dec (void) { return ref_count.dec (); }
+  inline void fini (void) { ref_count.set_unsafe (HB_REFERENCE_COUNT_POISON_VALUE); }
 
-  inline bool is_invalid (void) const { return ref_count == HB_REFERENCE_COUNT_INVALID_VALUE; }
-
+  inline bool is_inert (void) const { return ref_count.get_unsafe () == HB_REFERENCE_COUNT_INERT_VALUE; }
+  inline bool is_valid (void) const { return ref_count.get_unsafe () > 0; }
 };
 
 
 /* user_data */
 
-#define HB_USER_DATA_ARRAY_INIT {HB_MUTEX_INIT, HB_LOCKABLE_SET_INIT}
 struct hb_user_data_array_t
 {
-  /* TODO Add tracing. */
-
   struct hb_user_data_item_t {
     hb_user_data_key_t *key;
     void *data;
@@ -78,7 +72,7 @@ struct hb_user_data_array_t
     inline bool operator == (hb_user_data_key_t *other_key) const { return key == other_key; }
     inline bool operator == (hb_user_data_item_t &other) const { return key == other.key; }
 
-    void finish (void) { if (destroy) destroy (data); }
+    void fini (void) { if (destroy) destroy (data); }
   };
 
   hb_mutex_t lock;
@@ -93,7 +87,7 @@ struct hb_user_data_array_t
 
   HB_INTERNAL void *get (hb_user_data_key_t *key);
 
-  inline void finish (void) { items.finish (lock); lock.finish (); }
+  inline void fini (void) { items.fini (lock); lock.fini (); }
 };
 
 
@@ -102,72 +96,9 @@ struct hb_user_data_array_t
 struct hb_object_header_t
 {
   hb_reference_count_t ref_count;
-  hb_user_data_array_t user_data;
+  hb_user_data_array_t *user_data;
 
-#define HB_OBJECT_HEADER_STATIC {HB_REFERENCE_COUNT_INVALID, HB_USER_DATA_ARRAY_INIT}
-
-  static inline void *create (unsigned int size) {
-    hb_object_header_t *obj = (hb_object_header_t *) calloc (1, size);
-
-    if (likely (obj))
-      obj->init ();
-
-    return obj;
-  }
-
-  inline void init (void) {
-    ref_count.init (1);
-    user_data.init ();
-  }
-
-  inline bool is_inert (void) const {
-    return unlikely (ref_count.is_invalid ());
-  }
-
-  inline void reference (void) {
-    if (unlikely (!this || this->is_inert ()))
-      return;
-    ref_count.inc ();
-  }
-
-  inline bool destroy (void) {
-    if (unlikely (!this || this->is_inert ()))
-      return false;
-    if (ref_count.dec () != 1)
-      return false;
-
-    ref_count.finish (); /* Do this before user_data */
-    user_data.finish ();
-
-    return true;
-  }
-
-  inline bool set_user_data (hb_user_data_key_t *key,
-			     void *              data,
-			     hb_destroy_func_t   destroy_func,
-			     hb_bool_t           replace) {
-    if (unlikely (!this || this->is_inert ()))
-      return false;
-
-    return user_data.set (key, data, destroy_func, replace);
-  }
-
-  inline void *get_user_data (hb_user_data_key_t *key) {
-    if (unlikely (!this || this->is_inert ()))
-      return NULL;
-
-    return user_data.get (key);
-  }
-
-  inline void trace (const char *function) const {
-    if (unlikely (!this)) return;
-    /* TODO We cannot use DEBUG_MSG_FUNC here since that one currently only
-     * prints the class name and throws away the template info. */
-    DEBUG_MSG (OBJECT, (void *) this,
-	       "%s refcount=%d",
-	       function,
-	       this ? ref_count.ref_count : 0);
-  }
+#define HB_OBJECT_HEADER_STATIC {HB_REFERENCE_COUNT_INIT, nullptr}
 
   private:
   ASSERT_POD ();
@@ -179,32 +110,72 @@ struct hb_object_header_t
 template <typename Type>
 static inline void hb_object_trace (const Type *obj, const char *function)
 {
-  obj->header.trace (function);
+  DEBUG_MSG (OBJECT, (void *) obj,
+	     "%s refcount=%d",
+	     function,
+	     obj ? obj->header.ref_count.get_unsafe () : 0);
 }
+
 template <typename Type>
 static inline Type *hb_object_create (void)
 {
-  Type *obj = (Type *) hb_object_header_t::create (sizeof (Type));
+  Type *obj = (Type *) calloc (1, sizeof (Type));
+
+  if (unlikely (!obj))
+    return obj;
+
+  hb_object_init (obj);
   hb_object_trace (obj, HB_FUNC);
   return obj;
 }
 template <typename Type>
+static inline void hb_object_init (Type *obj)
+{
+  obj->header.ref_count.init (1);
+  obj->header.user_data = nullptr;
+}
+template <typename Type>
 static inline bool hb_object_is_inert (const Type *obj)
 {
-  return unlikely (obj->header.is_inert ());
+  return unlikely (obj->header.ref_count.is_inert ());
+}
+template <typename Type>
+static inline bool hb_object_is_valid (const Type *obj)
+{
+  return likely (obj->header.ref_count.is_valid ());
 }
 template <typename Type>
 static inline Type *hb_object_reference (Type *obj)
 {
   hb_object_trace (obj, HB_FUNC);
-  obj->header.reference ();
+  if (unlikely (!obj || hb_object_is_inert (obj)))
+    return obj;
+  assert (hb_object_is_valid (obj));
+  obj->header.ref_count.inc ();
   return obj;
 }
 template <typename Type>
 static inline bool hb_object_destroy (Type *obj)
 {
   hb_object_trace (obj, HB_FUNC);
-  return obj->header.destroy ();
+  if (unlikely (!obj || hb_object_is_inert (obj)))
+    return false;
+  assert (hb_object_is_valid (obj));
+  if (obj->header.ref_count.dec () != 1)
+    return false;
+
+  hb_object_fini (obj);
+  return true;
+}
+template <typename Type>
+static inline void hb_object_fini (Type *obj)
+{
+  obj->header.ref_count.fini (); /* Do this before user_data */
+  if (obj->header.user_data)
+  {
+    obj->header.user_data->fini ();
+    free (obj->header.user_data);
+  }
 }
 template <typename Type>
 static inline bool hb_object_set_user_data (Type               *obj,
@@ -213,14 +184,37 @@ static inline bool hb_object_set_user_data (Type               *obj,
 					    hb_destroy_func_t   destroy,
 					    hb_bool_t           replace)
 {
-  return obj->header.set_user_data (key, data, destroy, replace);
+  if (unlikely (!obj || hb_object_is_inert (obj)))
+    return false;
+  assert (hb_object_is_valid (obj));
+
+retry:
+  hb_user_data_array_t *user_data = (hb_user_data_array_t *) hb_atomic_ptr_get (&obj->header.user_data);
+  if (unlikely (!user_data))
+  {
+    user_data = (hb_user_data_array_t *) calloc (sizeof (hb_user_data_array_t), 1);
+    if (unlikely (!user_data))
+      return false;
+    user_data->init ();
+    if (unlikely (!hb_atomic_ptr_cmpexch (&obj->header.user_data, nullptr, user_data)))
+    {
+      user_data->fini ();
+      free (user_data);
+      goto retry;
+    }
+  }
+
+  return user_data->set (key, data, destroy, replace);
 }
 
 template <typename Type>
 static inline void *hb_object_get_user_data (Type               *obj,
 					     hb_user_data_key_t *key)
 {
-  return obj->header.get_user_data (key);
+  if (unlikely (!obj || hb_object_is_inert (obj) || !obj->header.user_data))
+    return nullptr;
+  assert (hb_object_is_valid (obj));
+  return obj->header.user_data->get (key);
 }
 
 

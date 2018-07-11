@@ -7,7 +7,7 @@ if not ... then require'freetype_test'; return end
 local ffi = require'ffi'
 require'freetype_h'
 local C = ffi.load'freetype'
-local freetype = setmetatable({C = C}, {__index = C})
+local freetype = {C = C}
 
 --utilities
 
@@ -459,12 +459,12 @@ end
 
 --methods
 
-ffi.metatype('FT_LibraryRec', {__index = lib})
-ffi.metatype('FT_FaceRec', {__index = face})
-ffi.metatype('FT_GlyphSlotRec', {__index = slot})
-ffi.metatype('FT_GlyphRec', {__index = glyph})
-ffi.metatype('FT_CharMapRec', {__index = charmap})
-ffi.metatype('FT_Bitmap', {__index = bitmap})
-ffi.metatype('FT_Outline', {__index = outline})
+ffi.metatype('struct FT_LibraryRec_', {__index = lib})
+ffi.metatype('struct FT_FaceRec_', {__index = face})
+ffi.metatype('struct FT_GlyphSlotRec_', {__index = slot})
+ffi.metatype('struct FT_GlyphRec_', {__index = glyph})
+ffi.metatype('struct FT_CharMapRec_', {__index = charmap})
+ffi.metatype('struct FT_Bitmap_', {__index = bitmap})
+ffi.metatype('struct FT_Outline_', {__index = outline})
 
 return freetype

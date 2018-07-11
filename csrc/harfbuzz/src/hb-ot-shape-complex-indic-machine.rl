@@ -38,7 +38,6 @@
 %%{
 
 # Same order as enum indic_category_t.  Not sure how to avoid duplication.
-X    = 0;
 C    = 1;
 V    = 2;
 N    = 3;
@@ -47,41 +46,36 @@ ZWNJ = 5;
 ZWJ  = 6;
 M    = 7;
 SM   = 8;
-VD   = 9;
 A    = 10;
-NBSP = 11;
+PLACEHOLDER = 11;
 DOTTEDCIRCLE = 12;
 RS    = 13;
-Coeng = 14;
 Repha = 15;
 Ra    = 16;
 CM    = 17;
-Avag  = 18;
-CM2   = 31;
+Symbol= 18;
+CS    = 19;
 
 c = (C | Ra);			# is_consonant
 n = ((ZWNJ?.RS)? (N.N?)?);	# is_consonant_modifier
 z = ZWJ|ZWNJ;			# is_joiner
-h = H | Coeng;			# is_halant_or_coeng
 reph = (Ra H | Repha);		# possible reph
 
 cn = c.ZWJ?.n?;
 forced_rakar = ZWJ H ZWJ Ra;
-avagraha = Avag.N?;
+symbol = Symbol.N?;
 matra_group = z{0,3}.M.N?.(H | forced_rakar)?;
-syllable_tail2 = (SM.SM?.ZWNJ?)? (A.A?)? VD?;
-syllable_tail =  (Coeng (cn|V))? avagraha? syllable_tail2;
-place_holder = NBSP | DOTTEDCIRCLE;
-halant_group = (z?.h.(ZWJ.N?)?);
-final_halant_group = halant_group | h.ZWNJ;
-medial_group = CM?.CM2?;
-halant_or_matra_group = (final_halant_group | (h.ZWJ)? matra_group{0,4});
+syllable_tail = (z?.SM.SM?.ZWNJ?)? A{0,3}?;
+halant_group = (z?.H.(ZWJ.N?)?);
+final_halant_group = halant_group | H.ZWNJ;
+medial_group = CM?;
+halant_or_matra_group = (final_halant_group | (H.ZWJ)? matra_group{0,4});
 
 
-consonant_syllable =	Repha? (cn.halant_group){0,4} cn medial_group halant_or_matra_group syllable_tail;
+consonant_syllable =	(Repha|CS)? (cn.halant_group){0,4} cn medial_group halant_or_matra_group syllable_tail;
 vowel_syllable =	reph? V.n? (ZWJ | (halant_group.cn){0,4} medial_group halant_or_matra_group syllable_tail);
-standalone_cluster =	reph? place_holder.n? (halant_group.cn){0,4} medial_group halant_or_matra_group syllable_tail;
-avagraha_cluster = 	avagraha syllable_tail2;
+standalone_cluster =	((Repha|CS)? PLACEHOLDER | reph? DOTTEDCIRCLE).n? (halant_group.cn){0,4} medial_group halant_or_matra_group syllable_tail;
+symbol_cluster = 	symbol syllable_tail;
 broken_cluster =	reph? n? (halant_group.cn){0,4} medial_group halant_or_matra_group syllable_tail;
 other =			any;
 
@@ -89,7 +83,7 @@ main := |*
 	consonant_syllable	=> { found_syllable (consonant_syllable); };
 	vowel_syllable		=> { found_syllable (vowel_syllable); };
 	standalone_cluster	=> { found_syllable (standalone_cluster); };
-	avagraha_cluster	=> { found_syllable (avagraha_cluster); };
+	symbol_cluster		=> { found_syllable (symbol_cluster); };
 	broken_cluster		=> { found_syllable (broken_cluster); };
 	other			=> { found_syllable (non_indic_cluster); };
 *|;
@@ -110,7 +104,7 @@ main := |*
 static void
 find_syllables (hb_buffer_t *buffer)
 {
-  unsigned int p, pe, eof, ts HB_UNUSED, te HB_UNUSED, act HB_UNUSED;
+  unsigned int p, pe, eof, ts HB_UNUSED, te, act;
   int cs;
   hb_glyph_info_t *info = buffer->info;
   %%{
