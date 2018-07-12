@@ -2,7 +2,7 @@
  *
  * Copyright (C) 2004  Sharif FarsiWeb, Inc
  * Copyright (C) 2001, 2002, 2004  Behdad Esfahbod
- * Copyright (C) 1999, 2000  Dov Grobgeld
+ * Copyright (C) 1999, 2000, 2017  Dov Grobgeld
  * 
  * This file is part of GNU FriBidi.
  * 
@@ -20,14 +20,8 @@
  * along with GNU FriBidi; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  * 
- * For licensing issues, contact <license@farsiweb.info> or write to
+ * For licensing issues, contact <fribidi.license@gmail.com> or write to
  * Sharif FarsiWeb, Inc., PO Box 13445-389, Tehran, Iran.
- */
-/* $Id: fribidi-mirroring.h,v 1.10 2004-09-28 07:58:57 behdad Exp $
- * $Author: behdad $
- * $Date: 2004-09-28 07:58:57 $
- * $Revision: 1.10 $
- * $Source: /home/behdad/src/fdo/fribidi/togit/git/../fribidi/fribidi2/lib/fribidi-mirroring.h,v $
  *
  * Author(s):
  *   Behdad Esfahbod, 2001, 2002, 2004
@@ -43,7 +37,6 @@
 
 #include "fribidi-begindecls.h"
 
-#define fribidi_get_mirror_char FRIBIDI_NAMESPACE(get_mirror_char)
 /* fribidi_get_mirror_char - get mirrored character
  *
  * This function finds the mirrored equivalent of a character as defined in
@@ -62,7 +55,6 @@ FRIBIDI_ENTRY fribidi_boolean fribidi_get_mirror_char (
   FriBidiChar *mirrored_ch	/* output mirrored character */
 );
 
-#define fribidi_shape_mirroring FRIBIDI_NAMESPACE(shape_mirroring)
 /* fribidi_shape_mirroring - do mirroring shaping
  *
  * This functions replaces mirroring characters on right-to-left embeddings in

@@ -5249,9 +5249,15 @@ return {
 					cairo=true,
 					codedit=true,
 					cplayer=true,
+					['cplayer.codedit_imgui']=true,
 					freetype=true,
 					glue=true,
 					nw=true
+				}
+			},
+			['cplayer.codedit_imgui']={
+				mdeps={
+					codedit=true
 				}
 			},
 			['cplayer.combobox']={
@@ -8403,9 +8409,15 @@ return {
 					cairo=true,
 					codedit=true,
 					cplayer=true,
+					['cplayer.codedit_imgui']=true,
 					freetype=true,
 					glue=true,
 					nw=true
+				}
+			},
+			['cplayer.codedit_imgui']={
+				mdeps={
+					codedit=true
 				}
 			},
 			['cplayer.combobox']={

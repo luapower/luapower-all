@@ -2,13 +2,16 @@
 /* config.h.in.  Generated from configure.ac by autoheader.  */
 
 /* Define to 1 if you want to include debug code in the library */
-#define DEBUG 0
+/* #undef DEBUG */
+
+/* Don not build deprecated functionality */
+/* #undef FRIBIDI_NO_DEPRECATED */
 
 /* Define to 1 if you have the <asm/page.h> header file. */
 /* #undef HAVE_ASM_PAGE_H */
 
 /* Define to 1 if you have the <dlfcn.h> header file. */
-/* #undef HAVE_DLFCN_H */
+#define HAVE_DLFCN_H 1
 
 /* Define to 1 if you have the <inttypes.h> header file. */
 #define HAVE_INTTYPES_H 1
@@ -44,7 +47,7 @@
 #define HAVE_SYS_STAT_H 1
 
 /* Define to 1 if you have the <sys/times.h> header file. */
-/* #undef HAVE_SYS_TIMES_H */
+#define HAVE_SYS_TIMES_H 1
 
 /* Define to 1 if you have the <sys/types.h> header file. */
 #define HAVE_SYS_TYPES_H 1
@@ -60,13 +63,13 @@
 #define LT_OBJDIR ".libs/"
 
 /* Define to the address where bug reports for this package should be sent. */
-#define PACKAGE_BUGREPORT "http://bugs.freedesktop.org/enter_bug.cgi?product=fribidi"
+#define PACKAGE_BUGREPORT "https://github.com/fribidi/fribidi/issues/new"
 
 /* Define to the full name of this package. */
 #define PACKAGE_NAME "GNU FriBidi"
 
 /* Define to the full name and version of this package. */
-#define PACKAGE_STRING "GNU FriBidi 0.19.5"
+#define PACKAGE_STRING "GNU FriBidi 1.0.4"
 
 /* Define to the one symbol short name of this package. */
 #define PACKAGE_TARNAME "fribidi"
@@ -75,7 +78,7 @@
 #define PACKAGE_URL "http://fribidi.org/"
 
 /* Define to the version of this package. */
-#define PACKAGE_VERSION "0.19.5"
+#define PACKAGE_VERSION "1.0.4"
 
 /* Define as the return type of signal handlers (`int' or `void'). */
 #define RETSIGTYPE void
@@ -87,16 +90,13 @@
 #define SIZEOF_SHORT 2
 
 /* The size of `void *', as computed by sizeof. */
-#define SIZEOF_VOID_P 4
+#define SIZEOF_VOID_P 8
 
 /* The size of `wchar_t', as computed by sizeof. */
-#define SIZEOF_WCHAR_T 2
+#define SIZEOF_WCHAR_T 4
 
 /* Define to 1 if you have the ANSI C header files. */
 #define STDC_HEADERS 1
-
-/* Define to 1 if you want to use simple mallocs instead of memory chunks */
-/* #undef USE_SIMPLE_MALLOC */
 
 /* Define to empty if `const' does not conform to ANSI C. */
 /* #undef const */

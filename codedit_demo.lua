@@ -7,7 +7,7 @@ local boxlayout = require'cplayer.boxlayout'
 local editors = {}
 local loaded
 
-local root_dir = 'x:/luapower/'
+local root_dir = 'x:/luapower'
 
 local font_files = {
 	root_dir .. '/media/fonts/FSEX300.ttf',

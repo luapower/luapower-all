@@ -1,10 +1,14 @@
---libunibreak binding
+
+--libunibreak ffi binding
+--Written by Cosmin Apreutesei. Public Domain.
+
 local ffi = require'ffi'
 
---linebreak.h and wordbreak.h from libunibreak 1.0
-ffi.cdef[[
-const int linebreak_version;
+if not ... then require'libunibreak_demo'; return end
 
+--linebreak.h, wordbreak.h, graphemebreak.h from libunibreak 4.0
+ffi.cdef[[
+const int unibreak_version;
 typedef unsigned char utf8_t;
 typedef unsigned short utf16_t;
 typedef unsigned int utf32_t;
@@ -17,10 +21,10 @@ enum {
 };
 
 void init_linebreak(void);
-void set_linebreaks_utf8(const utf8_t *s, size_t len, const char* lang, char *brks);
-void set_linebreaks_utf16(const utf16_t *s, size_t len, const char* lang, char *brks);
-void set_linebreaks_utf32(const utf32_t *s, size_t len, const char* lang, char *brks);
-int is_line_breakable(utf32_t char1, utf32_t char2, const char* lang);
+void set_linebreaks_utf8 (const utf8_t  *s, size_t len, const char *lang, char *brks);
+void set_linebreaks_utf16(const utf16_t *s, size_t len, const char *lang, char *brks);
+void set_linebreaks_utf32(const utf32_t *s, size_t len, const char *lang, char *brks);
+int is_line_breakable(utf32_t char1, utf32_t char2, const char *lang);
 
 enum {
 	WORDBREAK_BREAK       = 0,  // Break is allowed.
@@ -29,13 +33,24 @@ enum {
 };
 
 void init_wordbreak(void);
-void set_wordbreaks_utf8(const utf8_t *s, size_t len, const char* lang, char *brks);
+void set_wordbreaks_utf8 (const utf8_t  *s, size_t len, const char* lang, char *brks);
 void set_wordbreaks_utf16(const utf16_t *s, size_t len, const char* lang, char *brks);
 void set_wordbreaks_utf32(const utf32_t *s, size_t len, const char* lang, char *brks);
 
-utf32_t lb_get_next_char_utf8(const utf8_t *s, size_t len, size_t *ip);
-utf32_t lb_get_next_char_utf16(const utf16_t *s, size_t len, size_t *ip);
-utf32_t lb_get_next_char_utf32(const utf32_t *s, size_t len, size_t *ip);
+enum {
+	GRAPHEMEBREAK_BREAK       = 0,
+	GRAPHEMEBREAK_NOBREAK     = 1,
+	GRAPHEMEBREAK_INSIDEACHAR = 2,
+};
+void init_graphemebreak(void);
+void set_graphemebreaks_utf8 (const utf8_t  *s, size_t len, const char *lang, char *brks);
+void set_graphemebreaks_utf16(const utf16_t *s, size_t len, const char *lang, char *brks);
+void set_graphemebreaks_utf32(const utf32_t *s, size_t len, const char *lang, char *brks);
+
+
+utf32_t ub_get_next_char_utf8 (const utf8_t  *s, size_t len, size_t *ip);
+utf32_t ub_get_next_char_utf16(const utf16_t *s, size_t len, size_t *ip);
+utf32_t ub_get_next_char_utf32(const utf32_t *s, size_t len, size_t *ip);
 ]]
 
 local C = ffi.load'unibreak'
@@ -43,8 +58,9 @@ local M = {C = C}
 
 C.init_linebreak()
 C.init_wordbreak()
+C.init_graphemebreak()
 
-M.version = C.linebreak_version
+M.version = C.unibreak_version
 M.is_line_breakable = C.is_line_breakable
 
 local function set_breaks_func(set_func, code_size)
@@ -64,7 +80,11 @@ M.wordbreaks_utf8  = set_breaks_func(C.set_wordbreaks_utf8, 1)
 M.wordbreaks_utf16 = set_breaks_func(C.set_wordbreaks_utf16, 2)
 M.wordbreaks_utf32 = set_breaks_func(C.set_wordbreaks_utf32, 4)
 
-local EOS = 0xFFFF
+M.graphemebreaks_utf8  = set_breaks_func(C.set_graphemebreaks_utf8, 1)
+M.graphemebreaks_utf16 = set_breaks_func(C.set_graphemebreaks_utf16, 2)
+M.graphemebreaks_utf32 = set_breaks_func(C.set_graphemebreaks_utf32, 4)
+
+local EOS = 0xFFFFFFFF
 
 local function iter_func(next_char_func, code_size) --func(s[,len]) -> iter() -> uc
 	return function(s, len, ip)
@@ -78,9 +98,9 @@ local function iter_func(next_char_func, code_size) --func(s[,len]) -> iter() ->
 	end
 end
 
-M.chars_utf8  = iter_func(C.lb_get_next_char_utf8, 1)
-M.chars_utf16 = iter_func(C.lb_get_next_char_utf16, 2)
-M.chars_utf32 = iter_func(C.lb_get_next_char_utf32, 4)
+M.chars_utf8  = iter_func(C.ub_get_next_char_utf8, 1)
+M.chars_utf16 = iter_func(C.ub_get_next_char_utf16, 2)
+M.chars_utf32 = iter_func(C.ub_get_next_char_utf32, 4)
 
 local function len_func(next_char_func, code_size)
 	return function(s, len, ip)
@@ -94,11 +114,8 @@ local function len_func(next_char_func, code_size)
 	end
 end
 
-M.len_utf8  = len_func(C.lb_get_next_char_utf8, 1)
-M.len_utf16 = len_func(C.lb_get_next_char_utf16, 2)
-M.len_utf32 = len_func(C.lb_get_next_char_utf32, 4)
-
-
-if not ... then require'libunibreak_demo' end
+M.len_utf8  = len_func(C.ub_get_next_char_utf8, 1)
+M.len_utf16 = len_func(C.ub_get_next_char_utf16, 2)
+M.len_utf32 = len_func(C.ub_get_next_char_utf32, 4)
 
 return M

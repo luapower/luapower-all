@@ -127,18 +127,18 @@ function view:load_glyph(glyph_index)
 
 	local face = self.ft_face
 
-	local load_mode = ft.FT_LOAD_IGNORE_GLOBAL_ADVANCE_WIDTH
-	local render_mode = ft.FT_RENDER_MODE_LIGHT
+	local load_mode = ft.C.FT_LOAD_IGNORE_GLOBAL_ADVANCE_WIDTH
+	local render_mode = ft.C.FT_RENDER_MODE_LIGHT
 
 	face:set_char_size(self:font_size() * 64)
 	face:load_glyph(glyph_index, load_mode)
 
 	local glyph = face.glyph
 
-	if glyph.format ~= ft.FT_GLYPH_FORMAT_BITMAP then
+	if glyph.format ~= ft.C.FT_GLYPH_FORMAT_BITMAP then
 		glyph:render(render_mode)
 	end
-	assert(glyph.format == ft.FT_GLYPH_FORMAT_BITMAP)
+	assert(glyph.format == ft.C.FT_GLYPH_FORMAT_BITMAP)
 
 	local t = {}
 	t.advance_x = glyph.advance.x
@@ -152,7 +152,7 @@ function view:load_glyph(glyph_index)
 
 	local stride = cairo.stride('a8', bitmap.width)
 
-	assert(bitmap.pixel_mode == ft.FT_PIXEL_MODE_GRAY)
+	assert(bitmap.pixel_mode == ft.C.FT_PIXEL_MODE_GRAY)
 	assert(bitmap.pitch == stride)
 
 	local image = cairo.image_surface{
@@ -179,7 +179,7 @@ function view:get_glyph(s, i)
 
 	local t = self._glyph_cache[charcode]
 	if not t then
-		self.ft_face:select_charmap(ft.FT_ENCODING_UNICODE)
+		self.ft_face:select_charmap(ft.C.FT_ENCODING_UNICODE)
 		local glyph_index = self.ft_face:char_index(charcode)
 		t = self:load_glyph(glyph_index)
 		self._glyph_cache[charcode] = t

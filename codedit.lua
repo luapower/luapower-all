@@ -4,6 +4,16 @@
 
 if not ... then require'codedit_demo'; return end
 
+--shared utils ---------------------------------------------------------------
+
+local function clamp(x, a, b)
+	return math.min(math.max(x, a), b)
+end
+
+local function point_in_rect(x, y, x1, y1, w1, h1)
+	return x >= x1 and x <= x1 + w1 and y >= y1 and y <= y1 + h1
+end
+
 --update a table with the contents of other table(s) (from glue).
 local function update(dt,...)
 	for i=1,select('#',...) do
@@ -37,7 +47,7 @@ end
 
 local str = {}
 
---char (i.e. grapheme cluster) boundaries ------------------------------------
+--str / char (i.e. grapheme cluster) boundaries ------------------------------
 
 --next_char() and prev_char() are the only functions that need to be
 --overwritten with utf8 variants in order to fully support unicode.
@@ -62,7 +72,7 @@ function str.chars_reverse(s, i)
 	return str.prev_char, s, i
 end
 
---tabs and whitespace boundaries ---------------------------------------------
+--str / tabs and whitespace boundaries ---------------------------------------
 
 --check an ascii char at a byte index without string creation
 function str.ischar(s, i, c)
@@ -156,7 +166,7 @@ function str.indent_counts(s)
 	return tabs, spaces
 end
 
---word boundaries ------------------------------------------------------------
+--str / word boundaries ------------------------------------------------------
 
 function str.isword(s, i, word_chars)
 	assert(i >= 1 and i <= #s)
@@ -206,7 +216,7 @@ function str.prev_wordbreak_char(s, firsti, word_chars)
 	end
 end
 
---line boundaries ------------------------------------------------------------
+--str / line boundaries ------------------------------------------------------
 
 --check if a string ends with a line terminator
 function str.hasterm(s)
@@ -275,7 +285,7 @@ function str.detect_term(s)
 	return term, mixed
 end
 
---tab expansion --------------------------------------------------------------
+--str / tab expansion --------------------------------------------------------
 
 --translates between visual columns and char columns based on a fixed tabsize.
 --char columns map 1:1 to chars occupying a single fixed char width, while
@@ -316,8 +326,7 @@ function str.tabs_and_spaces(vcol1, vcol2, tabsize)
 end
 
 --real column -> visual column, for a fixed tabsize.
---the real column can be past string's end, in which case vcol will expand
---to the same amount.
+--the real column can be past string's end.
 function str.visual_col(s, col, tabsize)
 	local col1 = 0
 	local vcol = 1
@@ -332,15 +341,16 @@ function str.visual_col(s, col, tabsize)
 	return vcol
 end
 
---visual column -> real column, for a fixed tabsize.
---if the target vcol is between two possible vcols, return the vcol that is closer.
+--visual column -> closest real column, for a fixed tabsize.
 function str.real_col(s, vcol, tabsize) --TODO: unused
 	local vcol1 = 1
 	local col = 0
 	for i in str.chars(s) do
 		col = col + 1
-		local vcol2 = vcol1 + (str.istab(s, i) and str.tab_width(vcol1, tabsize) or 1)
-		if vcol >= vcol1 and vcol <= vcol2 then --vcol is between the current and the next vcol
+		local vcol2 = vcol1 + (str.istab(s, i)
+			and str.tab_width(vcol1, tabsize) or 1)
+		if vcol >= vcol1 and vcol <= vcol2 then
+			--vcol is between the current and the next vcol
 			return col + (vcol - vcol1 > vcol2 - vcol and 1 or 0)
 		end
 		vcol1 = vcol2
@@ -439,7 +449,7 @@ function buffer:__call(buffer)
 end
 
 --the convention for storing lines is that each line preserves its own line
---terminator at its end, except the last line which doesn't have one, never.
+--terminator at its end, except the last line which doesn't have one, ever.
 --the empty string is thus stored as a single line containing itself.
 
 function buffer:init(lines)
@@ -473,7 +483,7 @@ function buffer:invalidate()
 	self.editor:invalidate()
 end
 
---serialization --------------------------------------------------------------
+--buffer / serialization -----------------------------------------------------
 
 function buffer:save(write)
 	for i,s in ipairs(self.lines) do
@@ -519,7 +529,7 @@ function buffer:load(arg)
 	end
 end
 
---low-level undo-able commands -----------------------------------------------
+--buffer / low-level undo-able commands --------------------------------------
 
 function buffer:_ins(line, s)
 	assert(line >= 1 and line <= #self.lines + 1)
@@ -544,7 +554,7 @@ function buffer:_upd(line, s)
 	self.lines[line] = s
 end
 
---buffer boundaries ----------------------------------------------------------
+--buffer / boundaries --------------------------------------------------------
 
 --byte index at line terminator (or at #s + 1 if there's no terminator)
 function buffer:eol(line)
@@ -552,7 +562,8 @@ function buffer:eol(line)
 	return s and str.term_char(s)
 end
 
---byte index at visible line terminator (or at #s + 1 if there's no terminator)
+--byte index at visible (that is, excluding trailing whitespace) line
+--terminator (or at #s + 1 if there's no terminator).
 function buffer:visible_eol(line)
 	local s = self.lines[line]
 	if not s then return end
@@ -672,7 +683,7 @@ function buffer:select(line1, i1, line2, i2)
 	end
 end
 
---line-level editing ---------------------------------------------------------
+--buffer / line-level editing ------------------------------------------------
 
 function buffer:insert_line(line, s)
 	if line <= #self.lines then
@@ -716,7 +727,7 @@ function buffer:move_line(line1, line2)
 	self:setline(line2, s1)
 end
 
---char-level editing ---------------------------------------------------------
+--buffer / char-level editing ------------------------------------------------
 
 --extend the buffer up to (line,i-1) with whitespace so we can edit there.
 function buffer:extend(line, i)
@@ -772,7 +783,7 @@ function buffer:remove(line1, i1, line2, i2)
 	self:setline(line1, s1 .. s2)
 end
 
---indentation ----------------------------------------------------------------
+--buffer / indentation -------------------------------------------------------
 
 --check if a position is before the first non-space char, that is, check if
 --it's in the indentation area.
@@ -806,7 +817,7 @@ function buffer:outdent_line(line)
 	end
 end
 
---buffer normalization -------------------------------------------------------
+--buffer / normalization -----------------------------------------------------
 
 buffer.eol_spaces = 'remove' --leave, remove.
 buffer.eof_lines = 'leave' --leave, remove, ensure, or a number.
@@ -840,7 +851,8 @@ function buffer:ensure_eof_line() --add an empty line at eof if there is none
 	end
 end
 
-function buffer:remove_eof_lines() --remove any empty lines at eof, except the first line
+--remove any empty lines at eof, except the first line.
+function buffer:remove_eof_lines()
 	while #self.lines > 1 and self:isempty(#self.lines) do
 		self:remove_line(#self.lines)
 	end
@@ -897,8 +909,8 @@ local cursor = object()
 --navigation options
 cursor.restrict_eol = true --don't allow caret past end-of-line
 cursor.restrict_eof = true --don't allow caret past end-of-file
-cursor.land_bof = true --go at bof if cursor goes up past it
-cursor.land_eof = true --go at eof if cursor goes down past it (needs restrict_eof)
+cursor.land_bof = true --go to bof if cursor goes up past it
+cursor.land_eof = true --go to eof if cursor goes down past it (needs restrict_eof)
 cursor.word_chars = '^[a-zA-Z_]' --for jumping between words
 cursor.jump_tabstops = 'always' --'always', 'indent', 'never'
 
@@ -911,12 +923,15 @@ cursor.insert_mode = true --insert or overwrite when typing characters
 --editing options
 cursor.auto_indent = true
 
---pressing enter copies the indentation of the current line over to the following line
+--pressing enter replicates the indentation of the current line over to the
+--inserted line.
 cursor.insert_tabs = 'indent' --'never', 'indent', 'always'
 
 --where to insert a tab instead of enough spaces that make up a tab.
-cursor.insert_align_list = false --TODO: insert whitespace up to the next word on the above line
-cursor.insert_align_args = false --TODO: insert whitespace up to after '(' on the above line
+--TODO: insert whitespace up to the next word on the above line
+cursor.insert_align_list = false
+--TODO: insert whitespace up to after '(' on the above line
+cursor.insert_align_args = false
 
 --view overrides
 cursor.thickness = nil
@@ -935,7 +950,7 @@ function cursor:__call(cursor)
 	return self
 end
 
---state management -----------------------------------------------------------
+--cursor / state management --------------------------------------------------
 
 function cursor:invalidate()
 	for k in pairs(self.changed) do
@@ -959,8 +974,9 @@ function cursor:load_state(state)
 	self:invalidate()
 end
 
---cursor navigation ----------------------------------------------------------
+--cursor / jump-to-position navigation ---------------------------------------
 
+--restrict a cursor position based on buffer boundaries and navigation policies.
 function cursor:pos(line, i, keep_x)
 	line = line or self.line
 	i = i or self.i
@@ -990,8 +1006,8 @@ function cursor:pos(line, i, keep_x)
 	return line, i, keep_x
 end
 
---move to a specific position in the text, restricting the final position
---according to buffer boundaries and navigation policies.
+--move to a specific position in or outside the text, restricting the final
+--position according to buffer boundaries and navigation policies.
 function cursor:move(line, i, keep_x)
 	self.line, self.i, keep_x = self:pos(line, i, keep_x)
 	if not keep_x then
@@ -1000,6 +1016,8 @@ function cursor:move(line, i, keep_x)
 	end
 	self:invalidate()
 end
+
+--cursor / linear char-by-char navigation ------------------------------------
 
 function cursor:prev_pos(line, i, jump_tabstops)
 	line = line or self.line
@@ -1113,11 +1131,14 @@ function cursor:move_next_pos()
 	self:move(self:next_pos())
 end
 
+--cursor / linear word-by-word navigation ------------------------------------
+
 --WARNING: this is more complicated than it looks!
 function cursor:next_wordbreak_pos(line, i)
 	line = line or self.line
 	i = i or self.i
-	local line1, i1 = line, self.buffer:next_wordbreak_char(line, i, self.word_chars)
+	local line1, i1 =
+		line, self.buffer:next_wordbreak_char(line, i, self.word_chars)
 	if not i1 then
 		local eol = self.buffer:visible_eol(line)
 		if i < eol then
@@ -1144,7 +1165,8 @@ function cursor:prev_wordbreak_pos(line, i)
 	if i > eol then
 		return line, eol
 	end
-	local line1, i1 = line, self.buffer:prev_wordbreak_char(line, i, self.word_chars)
+	local line1, i1 =
+		line, self.buffer:prev_wordbreak_char(line, i, self.word_chars)
 	if not i1 then
 		local bol = self.buffer:visible_bol(line)
 		if i > bol then
@@ -1191,7 +1213,7 @@ function cursor:move_down_page()
 	self:move_vert(self.view:pagesize())
 end
 
---cursor navigation to buffer boundaries -------------------------------------
+--cursor / navigation to buffer boundaries -----------------------------------
 
 function cursor:move_home()
 	self:move(1, 1)
@@ -1202,7 +1224,7 @@ function cursor:move_end()
 	self:move(line, i)
 end
 
---cursor navigation to line boundaries ---------------------------------------
+--cursor / navigation to line boundaries -------------------------------------
 
 function cursor:move_bol()
 	self:move(self.line, 1)
@@ -1213,13 +1235,13 @@ function cursor:move_eol()
 	self:move(line, i)
 end
 
---cursor navigation to selection end -----------------------------------------
+--cursor / navigation to selection end ---------------------------------------
 
 function cursor:move_to_selection(sel)
 	self:move(sel.line2, sel.i2)
 end
 
---cursor navigation to mouse coordinates -------------------------------------
+--cursor / navigation to mouse coordinates -----------------------------------
 
 function cursor:move_to_coords(x, y)
 	x, y = self.view:screen_to_client(x, y)
@@ -1227,7 +1249,7 @@ function cursor:move_to_coords(x, y)
 	self:move(line, i)
 end
 
---word boundaries surrounding at cursor --------------------------------------
+--cursor / word boundaries around the cursor ---------------------------------
 
 function cursor:word_bounds()
 	local s = self.buffer.lines[self.line]
@@ -1239,9 +1261,9 @@ function cursor:word_bounds()
 	return i1, i2
 end
 
---editing at cursor ----------------------------------------------------------
+--cursor / editing at cursor -------------------------------------------------
 
---insert a string at cursor and move the cursor to after the string
+--insert a string at cursor and move the cursor to after the string.
 function cursor:insert(s)
 	local line, i = self.buffer:insert(self.line, self.i, s)
 	self:move(line, i)
@@ -1253,7 +1275,7 @@ function cursor:insert_block(s)
 	return self.buffer:insert_block(self.line, self.i, s)
 end
 
---insert or overwrite a char at cursor, depending on insert mode
+--insert or overwrite a char at cursor, depending on insert mode.
 function cursor:insert_char(c)
 	if not self.insert_mode then
 		self:delete_pos(false)
@@ -1261,9 +1283,10 @@ function cursor:insert_char(c)
 	self:insert(c)
 end
 
---delete the text up to the next cursor position
+--delete the text up to the next cursor position.
 function cursor:delete_pos(restrict_eol)
-	local line2, i2 = self:next_pos(self.line, self.i, restrict_eol, self.delete_tabstops)
+	local line2, i2 = self:next_pos(
+		self.line, self.i, restrict_eol, self.delete_tabstops)
 	self.buffer:remove(self.line, self.i, line2, i2)
 end
 
@@ -1273,7 +1296,8 @@ function cursor:delete_prev_pos()
 	self:delete_pos(true)
 end
 
---add a new line, optionally copying the indent of the current line, and carry the cursor over
+--add a new line, optionally copying the indent of the current line, and
+--carry the cursor over.
 function cursor:insert_newline()
 	if self.auto_indent then
 		self.buffer:extend(self.line, self.i)
@@ -1288,7 +1312,8 @@ end
 function cursor:insert_tab()
 
 	if self.insert_align_list then
-		local ls_x = self.buffer:next_list_aligned_vcol(self.line, self.i, self.restrict_eol)
+		local ls_x = self.buffer:next_list_aligned_vcol(
+			self.line, self.i, self.restrict_eol)
 		if ls_x then
 			local line, i = self.buffer:insert_whitespace(
 				self.line, self.i, ls_x, self.insert_tabs == 'always')
@@ -1298,14 +1323,17 @@ function cursor:insert_tab()
 	end
 
 	if false and self.insert_align_args then
-		local arg_x = self.buffer:next_args_aligned_vcol(self.line, self.i, self.restrict_eol)
+		local arg_x = self.buffer:next_args_aligned_vcol(
+			self.line, self.i, self.restrict_eol)
 		if arg_x then
 			if self.buffer:indenting(self.line, self.i) then
 				local indent = self.buffer:select_indent(self.line - 1)
-				local indent_x = str.visual_col(indent, str.len(indent) + 1, self.view.tabsize)
+				local indent_x = str.visual_col(
+					indent, str.len(indent) + 1, self.view.tabsize)
 				local whitespace = self.buffer:gen_whitespace(
 					indent_x, arg_x, self.insert_tabs == 'always')
-				local line, i = self.buffer:insert(self.line, 1, indent .. whitespace)
+				local line, i = self.buffer:insert(
+					self.line, 1, indent .. whitespace)
 				self:move(line, i)
 			else
 				local line, i = self.buffer:insert_whitespace(
@@ -1357,7 +1385,7 @@ function cursor:move_line_down()
 	self:move_down()
 end
 
---scrolling ------------------------------------------------------------------
+--cursor / scrolling ---------------------------------------------------------
 
 function cursor:make_visible()
 	if not self.visible then return end
@@ -1572,7 +1600,8 @@ end
 
 function selection:reflow(line_width, tabsize, align, wrap)
 	local line1, line2 = self:line_range()
-	local line2, i2 = self.buffer:reflow_lines(line1, line2, line_width, tabsize, align, wrap)
+	local line2, i2 = self.buffer:reflow_lines(
+		line1, line2, line_width, tabsize, align, wrap)
 	self:set(line1, 1, line2, i2)
 end
 
@@ -1676,7 +1705,8 @@ end
 
 function block_selection:reflow(line_width, tabsize, align, wrap)
 	local line1, col1, line2, col2 = self:endpoints()
-	local line2, col2 = self.buffer:reflow_block(line1, col1, line2, col2, line_width, tabsize, align, wrap)
+	local line2, col2 = self.buffer:reflow_block(
+		line1, col1, line2, col2, line_width, tabsize, align, wrap)
 	self:set(line1, col1, line2, col2)
 end
 
@@ -1686,7 +1716,8 @@ block_selection.hit_test = selection.hit_test
 
 --syntax highlighting --------------------------------------------------------
 
---select text from buffer between (line1, p1) up to the end of line2 excluding line terminator.
+--select text from buffer between (line1, p1) up to the end of line2
+--excluding line terminator.
 local function select_text(buffer, line1, p1, line2)
 	line2 = line2 or #buffer.lines
 	local s = buffer:line(line1):sub(p1)
@@ -1698,7 +1729,8 @@ local function select_text(buffer, line1, p1, line2)
 end
 
 --lex selected text returning a list of token positions and styles.
---the token list is a zero-based array of form {[0] = pos1, style1, ..., posN, styleN, posN+1}
+--the token list is a zero-based array of form
+--{[0] = pos1, style1, ..., posN, styleN, posN+1}
 local function lex_text(s, lang)
 
 	local lexer = require'lexer'
@@ -1921,7 +1953,8 @@ function hl:invalidate(line)
 end
 
 function hl:relex(maxline)
-	self.tokens, self.last_line = relex(maxline, self.tokens, self.last_line, self.buffer, self.lang)
+	self.tokens, self.last_line = relex(
+		maxline, self.tokens, self.last_line, self.buffer, self.lang)
 end
 
 function hl:lines()
@@ -1959,9 +1992,9 @@ Features: proportional fonts, auto-wrapping, line margins, scrolling.
 
 view rect (*):     x, y, w, h (contains the clipped margins and the scrollbox)
 scrollbox rect:    x + margins_w, y, w - margins_w, h
-clip rect:         clip_x, clip_y, clip_w, clip_h (from drawing the scrollbox)
+clip rect:         clip_x, clip_y, clip_w, clip_h
 client rect:       clip_x + scroll_x, clip_y + scroll_y, client_size()
-margin1 rect:      x, client_y, m1:get_width(), client_h
+margin1 rect:      x, client_y, m1:width(), client_h
 margin1 clip rect: m1_x, clip_y, m1_w, clip_h
 
 ]]
@@ -1977,8 +2010,8 @@ view.line_h = nil   --to be set when setting the font
 view.ascender = nil --to be set when setting the font
 
 --cursor metrics
-view.cursor_xoffset = -1     --cursor x offset from a char's left corner
-view.cursor_xoffset_col1 = 0 --cursor x offset for the first column
+view.cursor_xoffset = -1     --cursor x offset from a char's left side
+view.cursor_xoffset_col1 = 0 --cursor x offset for the first char
 view.cursor_thickness = 2
 
 --scrolling
@@ -1992,7 +2025,7 @@ view.cursor_margin_right = view.cursor_xoffset + view.cursor_thickness
 view.cursor_margin_bottom = 16
 
 --drawing
-view.highlight_cursor_lines = true
+view.highlight_cursor_line = true
 view.lang = nil --optional lexer to use for syntax highlighting
 view.tabstops = false --draw tabstop guidelines
 
@@ -2047,17 +2080,7 @@ function view:load_state(state)
 	self:invalidate()
 end
 
---utils
-
-local function clamp(x, a, b)
-	return math.min(math.max(x, a), b)
-end
-
-local function point_in_rect(x, y, x1, y1, w1, h1)
-	return x >= x1 and x <= x1 + w1 and y >= y1 and y <= y1 + h1
-end
-
---tabstop metrics ------------------------------------------------------------
+--view / tabstop metrics -----------------------------------------------------
 
 --pixel width of n space characters
 function view:space_width(n)
@@ -2081,7 +2104,7 @@ function view:prev_tabstop_x(x0)
 	return math.floor((x0 - self.tabstop_margin) / w) * w
 end
 
---text positioning -----------------------------------------------------------
+--view / text positioning ----------------------------------------------------
 
 --x-advance of the grapheme cluster at s[i]
 function view:char_advance_x(s, i) error'stub' end
@@ -2131,7 +2154,7 @@ function view:char_coords(line, i)
 	return x, y
 end
 
---text hit testing -----------------------------------------------------------
+--view / text hit testing ----------------------------------------------------
 
 function view:line_at(y)
 	return math.max(1, math.floor(y / self.line_h) + 1)
@@ -2172,7 +2195,7 @@ function view:char_at(x, y, closest)
 	return line, self:char_at_line(line, x, closest)
 end
 
---cursor positioning & shape -------------------------------------------------
+--view / cursor positioning & shape ------------------------------------------
 
 function view:cursor_y(cursor)
 	return self:char_y(cursor.line, cursor.i)
@@ -2194,7 +2217,8 @@ function view:cursor_xw(cursor)
 	if extra_spaces >= 0 then
 		w = self:space_width(1)
 	else
-		local _, i2 = cursor:next_pos(cursor.line, cursor.i, false, cursor.jump_tabstops)
+		local _, i2 = cursor:next_pos(
+			cursor.line, cursor.i, false, cursor.jump_tabstops)
 		local x2 = self:char_coords(cursor.line, i2)
 		w = x2 - x
 	end
@@ -2230,7 +2254,7 @@ function view:cursor_rect(cursor)
 	end
 end
 
---cursor hit testing ---------------------------------------------------------
+--view / cursor hit testing --------------------------------------------------
 
 function view:space_chars(w)
 	return math.floor(w / self:space_width(1) + 0.5)
@@ -2259,7 +2283,7 @@ function view:cursor_char_at(x, y, restrict_eof)
 	return line, self:cursor_char_at_line(line, x, restrict_eof)
 end
 
---selection positioning & shape ----------------------------------------------
+--view / selection positioning & shape ---------------------------------------
 
 --rectangle surrounding a block of text
 function view:char_rect(line, i1, i2)
@@ -2277,7 +2301,7 @@ function view:selection_line_rect(sel, line)
 	return x, y, w, h, i1, i2
 end
 
---selection hit testing ------------------------------------------------------
+--view / selection hit testing -----------------------------------------------
 
 function view:selection_hit_test(sel, x, y)
 	if not sel.visible or sel:isempty()
@@ -2295,7 +2319,7 @@ function view:selection_hit_test(sel, x, y)
 	return false
 end
 
---text size ------------------------------------------------------------------
+--view / text size -----------------------------------------------------------
 
 function view:line_width(line)
 	return self:char_x(line, 1/0)
@@ -2326,13 +2350,13 @@ function view:client_size()
 	return maxw, self:line_y(maxline + 1)
 end
 
---margin metrics -------------------------------------------------------------
+--view / margin metrics ------------------------------------------------------
 
 --width of all margins combined
 function view:margins_width()
 	local w = 0
 	for _,m in ipairs(self.margins) do
-		w = w + m:get_width()
+		w = w + m:width()
 	end
 	return w
 end
@@ -2344,11 +2368,11 @@ function view:margin_x(target_margin)
 		if margin == target_margin then
 			return x
 		end
-		x = x + margin:get_width()
+		x = x + margin:width()
 	end
 end
 
---clipping and scrolling -----------------------------------------------------
+--view / clipping and scrolling ----------------------------------------------
 
 function view:screen_to_client(x, y)
 	x = x - self.clip_x - self.scroll_x
@@ -2367,14 +2391,14 @@ function view:clip_rect()
 	return self.clip_x, self.clip_y, self.clip_w, self.clip_h
 end
 
---clip rect of a margin area in screen space
+--clip rect of a margin area in screen space.
 function view:margin_clip_rect(margin)
 	local clip_x = self:margin_x(margin)
-	local clip_w = margin:get_width()
+	local clip_w = margin:width()
 	return clip_x, self.clip_y, clip_w, self.clip_h
 end
 
---clip rect of a line in screen space
+--clip rect of a line in screen space.
 function view:line_clip_rect(line)
 	local y = self:line_y(line)
 	local _, y = self:client_to_screen(0, y)
@@ -2423,7 +2447,7 @@ end
 --scrolling, i.e. adjusting the position of the client rectangle relative to
 --the clipping rectangle.
 
---how many lines are in the clipping rect
+--how many lines are in the clipping rect.
 function view:pagesize()
 	return math.floor(self.clip_h / self.line_h + 0.5)
 end
@@ -2464,10 +2488,9 @@ function view:cursor_make_visible(cur)
 	self:make_rect_visible(x, y, w, h)
 end
 
---drawing --------------------------------------------------------------------
+--view / drawing -------------------------------------------------------------
 
---drawing stubs: all drawing is based on these functions
-
+--drawing stubs: all drawing is based on these functions.
 function view:draw_char(x, y, s, i, color) error'stub' end
 function view:draw_rect(x, y, w, h, color) error'stub' end
 function view:begin_clip(x, y, w, h) error'stub' end
@@ -2496,7 +2519,7 @@ function view:draw_string_aligned(cx, cy, s, color, i, j, align, cw)
 	end
 end
 
-function view:draw_buffer(cx, cy, line1, i1, line2, i2, color)
+function view:draw_buffer_monocolor(cx, cy, line1, i1, line2, i2, color)
 
 	--clamp the text rectangle to the visible rectangle
 	local minline, maxline = self:visible_lines()
@@ -2562,7 +2585,7 @@ function view:draw_visible_text(cx, cy)
 		self:draw_buffer_highlighted(cx, cy)
 	else
 		local color = self.buffer.text_color or 'text'
-		self:draw_buffer(cx, cy, 1, 1, 1/0, 1/0, color)
+		self:draw_buffer_monocolor(cx, cy, 1, 1, 1/0, 1/0, color)
 	end
 end
 
@@ -2574,7 +2597,7 @@ function view:draw_selection(sel, cx, cy)
 	for line = line1, line2 do
 		local x, y, w, h, i1, i2 = self:selection_line_rect(sel, line)
 		self:draw_rect(cx + x, cy + y, w, h, bg_color)
-		self:draw_buffer(cx, cy, line, i1, line, i2 - 1, text_color)
+		self:draw_buffer_monocolor(cx, cy, line, i1, line, i2 - 1, text_color)
 	end
 end
 
@@ -2597,14 +2620,14 @@ function view:draw_margin(margin)
 	self:draw_rect(clip_x, clip_y, clip_w, clip_h, color)
 	--contents
 	local cx, cy = self:margin_client_to_screen(margin, 0, 0)
-	local cw = margin:get_width()
+	local cw = margin:width()
 	local ch = self.line_h
 	local minline, maxline = self:visible_lines()
 	for line = minline, maxline do
 		self:draw_margin_line(margin, line, cx, cy, cw, ch)
 	end
 	--highlighted lines
-	if self.highlight_cursor_lines then
+	if self.highlight_cursor_line then
 		for cursor in pairs(self.cursors) do
 			self:draw_margin_line(margin, cursor.line, cx, cy, cw, ch, true)
 		end
@@ -2693,7 +2716,7 @@ function margin:__call(margin)
 	return self
 end
 
-function margin:get_width()
+function margin:width()
 	return self.w
 end
 
@@ -2711,7 +2734,7 @@ local function digits(n) --number of base-10 digits of a number
 	return math.floor(math.log10(n) + 1)
 end
 
-function ln_margin:get_width()
+function ln_margin:width()
 	return math.max(self.min_digits, digits(#self.buffer.lines))
 		* self.view:char_advance_x('0', 1)
 		+ self.margin_left
@@ -2749,7 +2772,7 @@ local blame_margin = object(margin)
 
 blame_margin.blame_command = 'hg blame -u "%s"'
 
-function blame_margin:get_blame_info(filename)
+function blame_margin:retrieve_blame_info(filename)
 	self.blame_info = {}
 	self.w = 0
 
@@ -2769,7 +2792,7 @@ function blame_margin:draw_line(line, cx, cy, cw, ch, highlighted)
 		self.blame_info = nil
 	end
 	if not self.blame_info and self.view.buffer.filename then
-		self:get_blame_info(self.view.buffer.filename)
+		self:retrieve_blame_info(self.view.buffer.filename)
 		self.view.buffer.changed.blame_info = false
 	end
 	if not self.blame_info then return end
@@ -3193,18 +3216,18 @@ end
 --global clipboard over all editor instances on the same Lua state
 local clipboard_contents = ''
 
-function editor:set_clipboard(s)
+function editor:setclipboard(s)
 	clipboard_contents = s
 end
 
-function editor:get_clipboard()
+function editor:getclipboard()
 	return clipboard_contents
 end
 
 function editor:cut()
 	if self.selection:isempty() then return end
 	local s = self.selection:contents()
-	self:set_clipboard(s)
+	self:setclipboard(s)
 	self.undo_stack:start_undo_group'cut'
 	self.selection:remove()
 	self.cursor:move_to_selection(self.selection)
@@ -3214,11 +3237,11 @@ end
 function editor:copy()
 	if self.selection:isempty() then return end
 	self.undo_stack:start_undo_group'copy'
-	self:set_clipboard(self.selection:contents())
+	self:setclipboard(self.selection:contents())
 end
 
 function editor:paste(mode)
-	local s = self:get_clipboard()
+	local s = self:getclipboard()
 	if not s then return end
 	self.undo_stack:start_undo_group'paste'
 	self.selection:remove()
@@ -3473,124 +3496,6 @@ function editor:unfocus()
 end
 
 function editor:invalidate() end --stub
-
---IMGUI integration ----------------------------------------------------------
-
---draw a scrollbox widget with the clipping rect (x, y, w, h) and the client
---rect (cx, cy, cw, ch). return the new cx, cy, adjusted from user input
---and other scrollbox constraints, followed by the clipping rect.
---the client rect is relative to the clipping rect of the scrollbox (which
---can be different than its outside rect). this stub implementation is
---equivalent to a scrollbox that takes no user input, has no margins, and has
---invisible scrollbars.
-function view:imgui_draw_scrollbox(x, y, w, h, cx, cy, cw, ch)
-	return cx, cy, x, y, w, h
-end
-
-function view:imgui_draw()
-
-	local client_w, client_h = self:client_size()
-	local margins_w = self:margins_width()
-
-	self.scroll_x, self.scroll_y,
-	self.clip_x, self.clip_y, self.clip_w, self.clip_h =
-		self:draw_scrollbox(
-			self.x + margins_w, self.y,
-			self.w - margins_w, self.h,
-			self.scroll_x, self.scroll_y,
-			client_w, client_h)
-
-	for i,margin in ipairs(self.margins) do
-		self:draw_margin(margin)
-	end
-	self:draw_client()
-end
-
-function editor:imgui_input(focused, active, key, char, ctrl, shift, alt,
-	mousex, mousey, lbutton, rbutton, wheel_delta,
-	doubleclicked, tripleclicked, quadrupleclicked, waiting_for_triple_click)
-
-	--scrollbox has not been rendered yet, input cannot work
-	if not self.view.clip_x then return end
-
-	local client_hit = self.view:client_hit_test(mousex, mousey)
-	local selection_hit = self.selection:hit_test(mousex, mousey)
-	local ln_margin_hit = self.line_numbers_margin:hit_test(mousex, mousey)
-
-	if client_hit and not selection_hit then
-		self.player.cursor = 'text'
-	end
-
-	if focused then
-
-		local is_input_char = char and not ctrl and not alt
-			and (#char > 1 or char:byte(1) > 31)
-
-		if is_input_char then
-			self:insert_char(char)
-		elseif key then
-			local shortcut =
-				(ctrl  and 'ctrl+'  or '') ..
-				(alt   and 'alt+'   or '') ..
-				(shift and 'shift+' or '') .. key
-			self:perform_shortcut(shortcut)
-		end
-
-	end
-
-	if doubleclicked and client_hit then
-		self:select_word_at_cursor()
-		self.word_selected = true
-	else
-		if tripleclicked and client_hit then
-			self:select_line_at_cursor()
-		elseif not active and lbutton and selection_hit
-			and not waiting_for_triple_click
-		then
-			self.moving_selection = true
-			self.moving_at_pos = self.selection.line2 == self.selection.line1
-			self.moving_mousex = mousex
-			self.moving_mousey = mousey
-			self.moving_adjusted = false
-			self:setactive(true)
-		elseif not active and lbutton and (client_hit or ln_margin_hit)
-			and not waiting_for_triple_click
-		then
-			self:move_cursor_to_coords(mousex, mousey)
-			self:setactive(true)
-		elseif active == self.id then
-			if lbutton then
-				if self.moving_selection then
-					if self.moving_at_pos then
-						--TODO: finish moving sub-line selection with the mouse
-					elseif not self.moving_adjusted and
-						(math.abs(mousex - self.moving_mousex) >= 6 or
-						 math.abs(mousey - self.moving_mousey) >= 6)
-					then
-						self.selection:set_to_line_range()
-						self.selection:reverse()
-						self.cursor:move_to_selection(self.selection)
-						self.moving_adjusted = true
-					end
-					if self.moving_adjusted then
-						--TODO: finish moving multiline selection with the mouse
-					end
-				else
-					local mode = alt and 'select_block' or 'select'
-					self:move_cursor_to_coords(mousex, mousey, mode)
-				end
-			else
-				if self.moving_selection and not self.moving_adjusted then
-					self:move_cursor_to_coords(mousex, mousey)
-				end
-				self.moving_selection = nil
-				self:setactive(false)
-			end
-		end
-		self.word_selected = false
-	end
-
-end
 
 --codedit module -------------------------------------------------------------
 

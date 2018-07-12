@@ -9,7 +9,7 @@ the [unicode line breaking algorithm][tr14] and word breaking from [unicode text
 
 ## Line breaking
 
-	ub.linebreaks_utf8(s[,size[,lang]]) -> line_breaks
+	ub.linebreaks_utf8 (s[,size[,lang]]) -> line_breaks
 	ub.linebreaks_utf16(s[,size[,lang]]) -> line_breaks
 	ub.linebreaks_utf32(s[,size[,lang]]) -> line_breaks
 
@@ -24,11 +24,25 @@ The returned `line_breaks` is a 0-based array of flags, one for each byte of the
 
 ## Word breaking
 
-	ub.wordbreaks_utf8(s[,size[,lang]]) -> word_breaks
+	ub.wordbreaks_utf8 (s[,size[,lang]]) -> word_breaks
 	ub.wordbreaks_utf16(s[,size[,lang]]) -> word_breaks
 	ub.wordbreaks_utf32(s[,size[,lang]]) -> word_breaks
 
 The returned `word_breaks` is a 0-based array of flags, one for each byte of the input string:
+
+--- ------------------------------------
+0   Break is allowed.
+1   No break is allowed.
+2   A UTF-8/16 sequence is unfinished.
+--- ------------------------------------
+
+## Grapheme breaking
+
+	ub.graphemebreaks_utf8 (s[,size[,lang]]) -> grapheme_breaks
+	ub.graphemebreaks_utf16(s[,size[,lang]]) -> grapheme_breaks
+	ub.graphemebreaks_utf32(s[,size[,lang]]) -> grapheme_breaks
+
+The returned `grapheme_breaks` is a 0-based array of flags, one for each byte of the input string:
 
 --- ------------------------------------
 0   Break is allowed.

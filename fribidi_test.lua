@@ -1,39 +1,42 @@
 local fb = require'fribidi'
 local ffi = require'ffi'
 
-print(fb.fribidi_version_info)
-print(fb.fribidi_unicode_version)
+print('fb.unicode_version()', fb.unicode_version)
+print('fb.version_info()')
+print(fb.version_info)
 
 for i,charset in ipairs{
-	fb.FRIBIDI_CHAR_SET_NA,
-	fb.FRIBIDI_CHAR_SET_UTF8,
-	fb.FRIBIDI_CHAR_SET_CAP_RTL,
-	fb.FRIBIDI_CHAR_SET_ISO8859_6,
-	fb.FRIBIDI_CHAR_SET_ISO8859_8,
-	fb.FRIBIDI_CHAR_SET_CP1255,
-	fb.FRIBIDI_CHAR_SET_CP1256,
+	'utf-8', 'caprtl', 'iso8859-6', 'iso8859-8', 'cp1255', 'cp1256'
 } do
-	print(fb.fribidi_char_set_name(charset), fb.fribidi_char_set_title(charset))
+	print(string.format('%-10s %-10s %s\n%s',
+		charset,
+		fb.charset_name(charset),
+		fb.charset_title(charset),
+		fb.charset_desc(charset) or ''
+	))
 end
 
-print(fb.fribidi_char_set_desc_cap_rtl())
-
-local function debug_func(str, visual_str, len, v_to_l, l_to_v, pbase_dir_out, bidi_types, levels, ar_props)
-	print('dir', fb.fribidi_get_bidi_par_type_name(pbase_dir_out))
+local function test(s0, charset, b)
+	local s, len, b = fb.bidi(s0, nil, charset, b)
+	print()
+	print(s0, #s0, charset, '->')
+	print(s, len)
+	print('dir', fb.par_type_name(b.par_base_dir))
 	for i=0,len-1 do
-		local bidi_type_name = fb.fribidi_get_bidi_type_name(bidi_types[i])
-		local joining_type_name = fb.fribidi_get_joining_type_name(ar_props[i])
+		local bidi_type_name = fb.bidi_type_name(b.bidi_types[i])
+		local joining_type_name = fb.joining_type_name(b.ar_props[i])
 		print(
-			str[i],
+			s:sub(i+1, i+1),
 			bidi_type_name,
-			levels[i],
+			b.levels[i],
 			joining_type_name,
-			visual_str[i],
-			v_to_l[i],
-			l_to_v[i])
+			b.visual_str[i],
+			b.v_to_l[i],
+			b.l_to_v[i])
 	end
 end
 
-print(fb.log2vis('english test', 'utf-8', debug_func))
-print(fb.log2vis('a _lsimple _RteST_o th_oat', 'caprtl', debug_func))
-print(fb.log2vis('HE SAID "it is a car!" AND RAN', 'caprtl', debug_func))
+local b = fb.buffers(1)
+test('english test', 'utf-8', b)
+test('a _lsimple _RteST_o th_oat', 'caprtl', b)
+test('HE SAID "it is a car!" AND RAN', 'caprtl', b)

@@ -1532,7 +1532,7 @@ function M.ft_font_face(ft_face, load_flags)
 		C.cairo_ft_font_face_create_for_ft_face(ft_face, load_flags or 0),
 		C.cairo_font_face_destroy)
 	local status = C.cairo_font_face_set_user_data(
-		face, key, ft_face, ffi.cast('cairo_destroy_func_t', function(ft_face)
+		face, key, ft_face, ffi.cast('cairo_destroy_func_t', function()
 			ft_face:free()
 			ft_face.glyph.library:free()
 		end))

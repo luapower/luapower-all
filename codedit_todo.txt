@@ -1,0 +1,55 @@
+- block selection
+- reflow (ctrl+R)
+- paste block (ctrl+alt+V)
+- buffer normalization
+- insert_align_args
+- insert_align_list
+- bookmarks
+- syntax highlighting
+- integrate hunspell
+- undo/redo stack serialization
+- simultaneous edits
+	- ctrl+click creates multiple cursors and movement and typing is available to all
+	- ctrl+select creates multiple selections that can be copy/pasted
+- move selection (or current line) up/down with the mouse
+- select by click-dragging over the line numbers column
+	- select entire line by clicking?
+	- change mouse pointer to margin.cur?
+- double click on selected word selects line
+- how to select a paragraph? double click on selected line? triple click on selected word? ctrl+A ?
+
+- carets:
+	- caret jumps - when must scroll, scroll longer so the caret can move longer before scrolling again.
+
+- autodetect tabs mode and tabsize
+	- skip empty lines
+	- count the number of lines that use tabs exclusively for indentation
+	- count the number of lines that use spaces exclusively for indentation
+	- count the number of lines that use a mixture of tabs and spaces for indentation
+	- count the number of lines that use tabs inside the line
+	- count the number of lines that use multiple spaces inside the line
+
+- rendering:
+	- long lines - display a limit bar or mark the excess with a text style
+	- syntax highlighting with embedded lexers (js and css in html etc.)
+	- bracket matching highlighting (needs help from the lexer: either to get the tokens or at least to ignore comments)
+		- make an engine independent of lexers
+	- view whitespace
+	- mark special chars and invalid unicode chars
+	- annotations (tooltips)
+	- text styles: strike-through, underline, dashed/dotted/squiggle underline, selection rectangle,
+	- animated scrolling like in sublime text (actually that's pretty annoying)
+	- spell checking (configurable to apply only to comments and strings)
+	- minimap like sublime text
+	- zooming
+
+
+See if we can compete with a fully-plugined VIM
+	http://sontek.net/blog/detail/turning-vim-into-a-modern-python-ide
+
+Code reading:
+	textedit from tekui (2300 LOC, looks beautiful)
+		[[X:\work\_research\tekui-1.08\tek\ui\class\textedit.lua]]
+	zerobrane studio
+		https://github.com/pkulchenko/ZeroBraneStudio
+
