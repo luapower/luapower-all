@@ -4,8 +4,8 @@ local ffi = require'ffi'
 local glue = require'glue'
 local pp = require'pp'
 
-print('version: ', hb.hb_version())
-print('vstring: ', hb.hb_version_string())
+print('version: ', hb.version())
+print('vstring: ', hb.version_string())
 
 local s = assert(glue.readfile('media/fonts/DejaVuSerif.ttf'))
 local buf, sz = ffi.cast('const char*', s), #s

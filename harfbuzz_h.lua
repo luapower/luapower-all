@@ -521,7 +521,7 @@ typedef unsigned int (*hb_unicode_decompose_compatibility_func_t) (
 	hb_codepoint_t *decomposed,
 	void *user_data);
 
-	enum {
+enum {
 	HB_UNICODE_MAX_DECOMPOSITION_LEN = (18+1),
 };
 

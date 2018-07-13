@@ -9,7 +9,7 @@ require'harfbuzz_h'
 require'harfbuzz_ot_h'
 require'harfbuzz_ft_h'
 local C = ffi.load'harfbuzz'
-local M = {C = C}
+local hb = {C = C}
 
 --wrappers
 
@@ -40,37 +40,49 @@ end
 
 local function string_func(func)
 	return function(...)
-		return ffi.string(func(...))
+		local s = func(...)
+		return s ~= nil and ffi.string(s) or nil
 	end
 end
 
---globals
-
-function M.hb_version()
-	local v = ffi.new'uint32_t[3]'
-	C.hb_version(v, v+1, v+2)
-	return v[0], v[1], v[2]
-end
-
-M.hb_version_string = string_func(C.hb_version_string)
-
-function M.list_shapers()
-	local t = {}
-	local s = C.hb_shape_list_shapers()
-	while s[0] ~= nil do
-		t[#t+1] = ffi.string(s[0])
-		s = s + 1
+function from_string_func(func)
+	return function(s)
+		if type(s) == 'string' then
+			local s = func(s, -1)
+			if s == 0 then return nil end
+		end
+		return s
 	end
-	return t
 end
 
---constructors
+function obj_from_string_func(func, obj_type)
+	return function(s, obj)
+		obj = obj or ffi.new(obj_type)
+		if type(s) == 'string' then
+			local ret = func(s, -1, obj)
+			if ret == 0 then return nil end
+			return obj
+		end
+		return s
+	end
+end
+
+function obj_tostring_func(func)
+	return function(obj)
+		local buf = ffi.new'char[128]'
+		func(buf, 128)
+		return ffi.string(buf)
+	end
+end
 
 local function create_func(func, destroy_func)
 	return function(...)
 		local ptr = func(...)
 		assert(ptr ~= nil)
-		return ffi.gc(ptr, destroy_func)
+		return ffi.gc(ptr, function(ptr)
+			ffi.gc(ptr, nil)
+			destroy_func(ptr)
+		end)
 	end
 end
 
@@ -81,32 +93,74 @@ local function destroy_func(destroy_func)
 	end
 end
 
-M.blob = create_func(C.hb_blob_create, C.hb_blob_destroy)
+--globals
 
-function M.buffer()
-	local self = assert(ffi.gc(C.hb_buffer_create(), C.hb_buffer_destroy))
-	C.hb_buffer_set_unicode_funcs(self, nil)
-	return self
+function hb.version()
+	local v = ffi.new'uint32_t[3]'
+	C.hb_version(v, v+1, v+2)
+	return v[0], v[1], v[2]
 end
 
-function M.feature_from_string(str, len, feature)
-	feature = feature or ffi.new'hb_feature_t'
-	assert(C.hb_feature_from_string(str, len or #str, feature) == 1)
-	return feature
+hb.version_string = string_func(C.hb_version_string)
+
+function hb.list_shapers()
+	local t = {}
+	local s = C.hb_shape_list_shapers()
+	while s[0] ~= nil do
+		t[#t+1] = ffi.string(s[0])
+		s = s + 1
+	end
+	return t
 end
 
-function M.feature_to_string(feature, buf, size)
-	buf = buf or ffi.new('uint8_t[?]', size or 64)
-	C.hb_feature_to_string(feature, buf, size)
-	return ffi.string(buf)
+--tags, languages, directions, scripts (static objects)
+
+hb.tag = from_string_func(C.hb_tag_from_string)
+hb.tag_tostring = string_func(C.hb_tag_to_string)
+
+hb.direction = from_string_func(C.hb_direction_from_string)
+hb.direction_tostring = string_func(C.hb_direction_to_string)
+
+hb.language = from_string_func(C.hb_language_from_string)
+hb.language_tostring = string_func(C.hb_language_to_string)
+hb.default_language = C.hb_language_get_default
+
+function hb.script(s)
+	if type(s) == 'string' then
+		local script = C.hb_script_from_string(s, -1)
+		if script == 0 then return nil end
+	elseif ffi.istype('hb_tag_t', s) then
+		local script = C.hb_script_from_iso15924_tag(s)
+		if script == 0 then return nil end
+	end
+	return script
 end
+hb.script_horizontal_direction = C.hb_script_get_horizontal_direction
+
+--features, variations (user-allocated objects without a destructor)
+
+hb.feature = obj_from_string_func(C.hb_feature_from_string, 'hb_feature_t')
+hb.variation = obj_from_string_func(C.hb_variation_from_string, 'hb_variation_t')
+
+--blobs, buffers (user-allocated objects with a destructor)
+
+hb.blob = create_func(C.hb_blob_create, C.hb_blob_destroy)
+hb.buffer = create_func(C.hb_buffer_create, C.hb_buffer_destroy)
 
 --from hb-ft.h
-M.ft_face        = create_func(C.hb_ft_face_create, C.hb_face_destroy)
-M.ft_face_cached = create_func(C.hb_ft_face_create_cached, C.hb_face_destroy)
-M.ft_font        = create_func(C.hb_ft_font_create, C.hb_font_destroy)
+hb.ft_face        = create_func(C.hb_ft_face_create, C.hb_face_destroy)
+hb.ft_face_cached = create_func(C.hb_ft_face_create_cached, C.hb_face_destroy)
+hb.ft_font        = create_func(C.hb_ft_font_create, C.hb_font_destroy)
 
 --methods
+
+ffi.metatype('hb_feature_t', {__index = {
+	tostring = obj_tostring_func(C.hb_feature_to_string),
+}})
+
+ffi.metatype('hb_variation_t', {__index = {
+	tostring = obj_tostring_func(C.hb_variation_to_string),
+}})
 
 ffi.metatype('hb_blob_t', {__index = {
 	reference = create_func(C.hb_blob_reference, C.hb_blob_destroy),
@@ -304,5 +358,5 @@ ffi.metatype('hb_shape_plan_t', {__index = {
 	collect_lookups = C.hb_ot_shape_plan_collect_lookups,
 }})
 
-return M
+return hb
 
