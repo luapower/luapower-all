@@ -1,21 +1,51 @@
-- block selection
-- reflow (ctrl+R)
-- paste block (ctrl+alt+V)
-- buffer normalization
-- insert_align_args
-- insert_align_list
-- bookmarks
-- syntax highlighting
-- integrate hunspell
+
 - undo/redo stack serialization
+
+- block selection
+	- paste block (ctrl+alt+V)
+
+- smart auto-indent with spaces
+	- indent with spaces if going one indent too far the indent above
+	- one-shot indent until under parenthesis above
+
+- syntax highlighting with embedded lexers (js and css in html etc.)
+
+- bracket matching highlighting (needs help from the lexer to get the tokens
+	or at least to ignore comments)
+		- make an engine independent of lexers
+
+- auto-complete system (event-based)
+	- dumb generic auto-complete for Lua
+	- smart SQL auto-complete (table names, field names)
+	- smarter linter-based Lua autocomplete
+
+- reflow (ctrl+R)
+
+- buffer normalization
+	- add/remove line-at-eof
+	- remove spaces-at-eol
+	- normalize line terms
+	- normalize indents (multiple modes)
+
+- bookmarks
+
+- spell checking
+	- configurable to apply only to comments and strings
+	- auto-ignore language keywords and API names
+	- auto-ignore words that occur more than x times
+
 - simultaneous edits
 	- ctrl+click creates multiple cursors and movement and typing is available to all
 	- ctrl+select creates multiple selections that can be copy/pasted
+
 - move selection (or current line) up/down with the mouse
+
 - select by click-dragging over the line numbers column
 	- select entire line by clicking?
 	- change mouse pointer to margin.cur?
+
 - double click on selected word selects line
+
 - how to select a paragraph? double click on selected line? triple click on selected word? ctrl+A ?
 
 - carets:
@@ -31,15 +61,10 @@
 
 - rendering:
 	- long lines - display a limit bar or mark the excess with a text style
-	- syntax highlighting with embedded lexers (js and css in html etc.)
-	- bracket matching highlighting (needs help from the lexer: either to get the tokens or at least to ignore comments)
-		- make an engine independent of lexers
 	- view whitespace
 	- mark special chars and invalid unicode chars
 	- annotations (tooltips)
 	- text styles: strike-through, underline, dashed/dotted/squiggle underline, selection rectangle,
-	- animated scrolling like in sublime text (actually that's pretty annoying)
-	- spell checking (configurable to apply only to comments and strings)
 	- minimap like sublime text
 	- zooming
 
