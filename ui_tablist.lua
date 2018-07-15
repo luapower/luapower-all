@@ -7,6 +7,7 @@ local glue = require'glue'
 
 local indexof = glue.indexof
 local clamp = glue.clamp
+local round = glue.round
 
 --tab ------------------------------------------------------------------------
 
@@ -632,7 +633,7 @@ end
 
 function tablist:tab_visual_index_by_pos(x)
 	local x = x - self.tabs_padding_left
-	return math.floor(x / self.live_tab_w + 0.5) + 1
+	return round(x / (self.live_tab_w + self.tab_spacing)) + 1
 end
 
 function tablist:tab_index_by_visual_index(vi)

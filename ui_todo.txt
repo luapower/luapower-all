@@ -1,32 +1,31 @@
+LOW-LEVEL --------------------------------------------------------------------
+
+- text rendering & shaping
+
+	- text shaping
+		- text shaping
+		- unicode grapheme splitting
+
+	- glyph cache keyed on (font, font_size, glyph_index, x_offset, rotation_angle)
+		- x_offset step configurable from 0 to 1/256
+		- use freetype's caching system?
+		- glyph rasterization options
+
+- finish libpng
+	- revive imagefile (libjpeg, libpng, bmp)
+		- revive sg_*
+
 NW ---------------------------------------------------------------------------
 
 - bug when dragging the title bar
 
 UI ---------------------------------------------------------------------------
 
-- freeing
-
-- text rendering
-
-- fix module autoloading vs css decl. order conflict
+- design: freeing self inside events
+- design: widget module autoloading vs css decl. order conflict
 
 EDITBOX ----------------------------------------------------------------------
 
-CODEDIT
-=======
-- block selection
-- reflow (ctrl+R)
-- paste block (ctrl+alt+V)
-- buffer normalization
-- insert_align_args
-- insert_align_list
-
-- save
-
-- bookmarks
-
-EDITBOX
-=======
 - fix scrolling (wrong metrics)
 - maxchars
 - key filter
@@ -42,7 +41,10 @@ EDITBOX
 
 - fix editbox->editor/view/cursor/selection property proxying
 
-- autowrap
+- word-wrapping (greedy, knuth)
+- unicode chars (shaping)
+- drag/drop
+- IME integration
 
 DROPDOWN ---------------------------------------------------------------------
 
@@ -66,7 +68,6 @@ CHECKBOX ---------------------------------------------------------------------
 
 - tristate
 - children, indent
--
 
 SLIDER -----------------------------------------------------------------------
 
@@ -118,6 +119,7 @@ LINEAR CALENDAR --------------------------------------------------------------
 -
 
 GRID -------------------------------------------------------------------------
+
 
 - cell navigation: go to next/prev row on left-right nav
 - cell navigation: tab to advance cell
@@ -181,7 +183,45 @@ LATER/NEVER
 - vertical grid with bands
 
 
-NEW TAB-ORDER ALGORITHM ------------------------------------------------------
+DOCKING TABLIST --------------------------------------------------------------
+
+- done: drag tab to tab list add tab to tablist.
+
+- define docking layers and auto-accept tabs on the same docking_group.
+- drag tab to dock sides to split a dock tablist horizontally or vertically.
+
+- later: move tab outside its window to wrap in a popup.
+- later: move a popup over the window to dock it back.
+
+SETTINGS WIDGET --------------------------------------------------------------
+
+- group options by category and show a scroll-following list of categories on the side.
+- filter/highlight options which have changed from default and show the default.
+- option type definitions for booleans, numbers, strings, multiple options etc.
+	- boolean -> toggle, checkbox
+	- number + range + step -> editbox, slider
+	- single option -> choicebutton, slider, dropdown, radio buttons, grid with checkbox column
+	- multiple options -> checkboxes
+	- multiple options grouped -> checkbox tree
+	- text -> editbox, multiline editbox
+	- records -> grid, grid + CRUD,
+	- color -> color picker
+	- color scheme (i.e. list of colors) -> little wizard
+	- embelishments:
+		- description
+		- warning popup when changing the option
+		-
+		- image
+		- buttons
+- use an object with r/w properties to get/set the settings.
+- cascading hierarchy of options files:
+	- "project" options file (look into dir and all parent dirs).
+	- "home" options file (look in all HOME locations -- put that in fs or path).
+	- other custom option files.
+- show options file hierarchy and select which file to affect changes to.
+
+
+BETTER TAB-ORDER ALGORITHM ---------------------------------------------------
 
 --TODO: make a new tab-order-assigning algorithm based on horizontal and
 --vertical overlap between widgets and the vertical/horizontal distance
@@ -232,6 +272,4 @@ end
 	end
 
 ]]
-
-TEXT RENDERING ---------------------------------------------------------------
 

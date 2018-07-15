@@ -64,9 +64,15 @@ end
 function button:draw_triangle(cr)
 	local x, y, w, h = unpack(self.triangle)
 	cr:new_path()
-	cr:move_to(x, y)
-	cr:rel_line_to(w, 0)
-	cr:rel_line_to(-w/2, h)
+	if self.dropdown.popup.visible then
+		cr:move_to(x, y + h - 1)
+		cr:rel_line_to(w, 0)
+		cr:rel_line_to(-w/2, -h)
+	else
+		cr:move_to(x, y)
+		cr:rel_line_to(w, 0)
+		cr:rel_line_to(-w/2, h)
+	end
 	cr:close_path()
 	cr:rgba(self.ui:color(self.text_color))
 	cr:fill()

@@ -1,5 +1,5 @@
 
---extensible UI toolkit with layouts, styles and animations.
+--Extensible UI toolkit with layouts, styles and animations.
 --Written by Cosmin Apreutesei. Public Domain.
 
 if not ... then require'ui_demo'; return end
