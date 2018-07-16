@@ -6,13 +6,17 @@ if not ... then require'glue_test'; return end
 
 local glue = {}
 
-function glue.round(x)
-	return math.floor(x + 0.5)
+function glue.round(x, p)
+	p = p or 1
+	return math.floor(x / p + .5) * p
 end
 
-function glue.snap(x, y)
-	return math.floor(x / y + .5) * y
+function glue.floor(x, p)
+	p = p or 1
+	return math.floor(x / p) * p
 end
+
+glue.snap = glue.round
 
 function glue.clamp(x, x0, x1)
 	return math.min(math.max(x, x0), x1)

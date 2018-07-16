@@ -7,7 +7,9 @@ tagline: everyday Lua functions
 ## API Summary
 ------------------------------------------------------------------ ---------------------------------------------------------
 __math__
-`glue.round(x) -> y`                                               round x to nearest integer (half up)
+`glue.round(x[, p]) -> y`                                          round x to nearest integer or multiple of `p` (half up)
+`glue.snap(x[, p]) -> y`                                           synonym for glue.round
+`glue.floor(x[, p]) -> y`                                          round x down to nearest integer or multiple of `p`
 `glue.clamp(x, min, max) -> y`                                     clamp x in range
 `glue.lerp(x, x0, x1, y0, y1) -> y`                                linear interpolation
 __varargs__
@@ -74,17 +76,19 @@ __ffi__
 
 ## Math
 
-### `glue.round(x) -> y`
+### `glue.round(x[, p]) -> y` <br> `glue.snap(x[, p]) -> y`
 
-Round a number towards nearest integer (implemented as `math.floor(x + .5)`.
-Rounds half-up (i.e. it returns `-1` for `-1.5`). Works with numbers up to
-`+/-2^52`. It's not dead accurate as it returns eg. `1` instead of `0` for
-`0.49999999999999997` (the number right before `0.5`) which is < `0.5`.
+Round a number towards nearest integer or multiple of `p`.
+Implemented as `math.floor(x / p + .5) * p`.
+Rounds half-up (i.e. it returns `-1` for `-1.5`).
+Works with numbers up to `+/-2^52`.
+It's not dead accurate as it returns eg. `1` instead of `0`
+for `0.49999999999999997` (the number right before `0.5`) which is < `0.5`.
 
-### `glue.snap(x, y) -> y`
+## `glue.floor(x[, p]) -> y`
 
-Snap a number to the nearest multiple of `y`. The rounding behavior is
-half-up (i.e. returns `-5` for `glue.snap(-7.5, 5)`).
+Round a number towards nearest smaller integer or multiple of `p`.
+Implemented as `math.floor(x / p) * p`.
 
 ### `glue.clamp(x, min, max)`
 
