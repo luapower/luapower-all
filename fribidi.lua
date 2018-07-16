@@ -184,7 +184,7 @@ end
 
 --http://lists.freedesktop.org/archives/fribidi/2005-September/000439.html
 --also see fribidi_log2vis() in fribidi-deprecated.c
-function fb.bidi(str, len, charset, buffers, flags)
+function fb.bidi(str, len, charset, buffers, flags, par_base_dir)
 
 	local was_string = type(str) == 'string'
 	local len = len or #str
@@ -203,7 +203,7 @@ function fb.bidi(str, len, charset, buffers, flags)
 
 	fb.bidi_types(str, len, b.bidi_types)
 	fb.bracket_types(str, len, b.bidi_types, b.bracket_types)
-	local par_base_dir = C.FRIBIDI_PAR_ON --fb.par_direction(b.bidi_types, len)
+	local par_base_dir = par_base_dir or C.FRIBIDI_PAR_ON
 	local max_level, resolved_par_base_dir = fb.par_embedding_levels(
 		b.bidi_types, b.bracket_types, len, par_base_dir, b.levels)
 
