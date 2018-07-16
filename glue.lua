@@ -93,7 +93,7 @@ function glue.merge(dt,...)
 		local t=select(i,...)
 		if t ~= nil then
 			for k,v in pairs(t) do
-				if dt[k] == nil then dt[k]=v end
+				if rawget(dt, k) == nil then dt[k]=v end
 			end
 		end
 	end

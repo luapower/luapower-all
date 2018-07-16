@@ -175,10 +175,6 @@ test(t.k, {v = 1}) --created key
 glue.attr(t, 'k2', 'v2')
 test(t.k2, 'v2') --custom value
 
-local t = glue.autotable()
-t.a.b.c = 'x'
-assert(t.a.b.c == 'x')
-
 assert(glue.canopen('glue.lua'))
 assert(glue.readfile(glue.bin..'/glue.lua'):match'glue', 'glue')
 assert(glue.readfile(glue.bin..'/glue.lua'):match'glue', 'glue')
