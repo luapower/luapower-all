@@ -16,6 +16,10 @@ local function path(dir, file)
 	return (dir or gfonts.root_dir) .. (file and '/' .. file or '')
 end
 
+local function normal_name(s)
+	return s and glue.trim(s):lower():gsub('[%s%-_]+', '_')
+end
+
 local function parse_metadata_file(dir, file, fonts)
 	file = file or 'METADATA.pb'
 	fonts = fonts or {}
@@ -26,19 +30,21 @@ local function parse_metadata_file(dir, file, fonts)
 			font = {}
 		elseif s:find'^}' then
 			assert(font)
-			local name = font.name:lower()
-			local fname = font.full_name:lower()
+			local name = normal_name(font.name)
+			local fname = normal_name(font.full_name)
 			local style = font.style:lower()
 			fonts[name] = fonts[name] or {}
 			fonts[fname] = fonts[fname] or {}
 			fonts[name][style] = fonts[name][style] or {}
 			fonts[fname][style] = fonts[fname][style] or {}
 			local t = {
-				path = path(dir, font.filename),
+				path = path(dir, font.filename):sub(#gfonts.root_dir + 2),
 				weight = font.weight,
 			}
 			table.insert(fonts[name][style], t)
-			table.insert(fonts[fname][style], t)
+			if fname ~= name then
+				table.insert(fonts[fname][style], t)
+			end
 			font = nil
 		elseif font then
 			local k,v = assert(s:match'^(.-):(.*)$')
@@ -76,7 +82,9 @@ local function parse_metadata()
 	local fonts = parse_metadata_dir()
 	for name, styles in ipairs(fonts) do
 		for style, fonts in pairs(styles) do
-			table.sort(fonts, function(f1, f2) return f1.weight < f2.weight end)
+			table.sort(fonts, function(f1, f2)
+				return f1.weight < f2.weight
+			end)
 		end
 	end
 	return fonts
@@ -89,11 +97,12 @@ function get_fonts(use_bundle)
 		if use_bundle then
 			local bundle = require'bundle'
 			if bundle.canopen(mcache) then
-				fonts = loadstring(bundle.load(mcache))()
+				fonts = assert(loadstring(bundle.load(mcache))())
 			end
 		elseif glue.canopen(mcache) then
-			fonts = loadfile(mcache)()
-		else
+			fonts = assert(loadfile(mcache)())
+		end
+		if not fonts then
 			fonts = parse_metadata()
 			pp.save(mcache, fonts)
 		end
@@ -129,7 +138,7 @@ local weights = {
 
 function gfonts.font_file(name, weight, style, use_bundle)
 	assert(name)
-	name = name:lower()
+	name = normal_name(name)
 	weight = weight or 'normal'
 	if type(weight) == 'string' then
 		weight = weight:lower()
@@ -138,15 +147,15 @@ function gfonts.font_file(name, weight, style, use_bundle)
 	style = (style or 'normal'):lower()
 
 	local styles = get_fonts(use_bundle)[name]
-	if not styles then return end
+	if not styles then return nil end
 	local fonts = styles[style]
-	if not fonts then return end
+	if not fonts then return nil end
 	local font = closest_weight_font(fonts, weight)
-	return font and font.path
+	return font and gfonts.root_dir .. '/' .. font.path
 end
 
 if not ... then
-	print(gfonts.font_file('Open Sans', 'semibold', 'italic', true))
+	print(gfonts.font_file('open_sans', 'semibold', 'italic', true))
 end
 
 return gfonts
