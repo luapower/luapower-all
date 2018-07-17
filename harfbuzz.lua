@@ -163,8 +163,8 @@ ffi.metatype('hb_variation_t', {__index = {
 }})
 
 ffi.metatype('hb_blob_t', {__index = {
-	reference = create_func(C.hb_blob_reference, C.hb_blob_destroy),
-	destroy = destroy_func(C.hb_blob_destroy),
+	ref = create_func(C.hb_blob_reference, C.hb_blob_destroy),
+	free = destroy_func(C.hb_blob_destroy),
 	set_user_data = C.hb_blob_set_user_data, --key, data, destroy, replace
 	get_user_data = C.hb_blob_get_user_data, --key -> data
 	make_immutable = C.hb_blob_make_immutable,
@@ -179,8 +179,8 @@ ffi.metatype('hb_blob_t', {__index = {
 }})
 
 ffi.metatype('hb_face_t', {__index = {
-	reference = create_func(C.hb_face_reference, C.hb_face_destroy),
-	destroy = destroy_func(C.hb_face_destroy),
+	ref = create_func(C.hb_face_reference, C.hb_face_destroy),
+	free = destroy_func(C.hb_face_destroy),
 	set_user_data = C.hb_face_set_user_data, --key, data, destroy, replace
 	get_user_data = C.hb_face_get_user_data, --key -> data
 	make_immutable = C.hb_face_make_immutable,
@@ -221,8 +221,8 @@ ffi.metatype('hb_face_t', {__index = {
 }})
 
 ffi.metatype('hb_font_t', {__index = {
-	reference = create_func(C.hb_font_reference, C.hb_font_destroy),
-	destroy = destroy_func(C.hb_font_destroy),
+	ref = create_func(C.hb_font_reference, C.hb_font_destroy),
+	free = destroy_func(C.hb_font_destroy),
 	set_user_data = C.hb_font_set_user_data, --key, data, destroy, replace
 	get_user_data = C.hb_font_get_user_data, --key -> data
 	make_immutable = C.hb_font_make_immutable,
@@ -276,8 +276,8 @@ ffi.metatype('hb_font_t', {__index = {
 }})
 
 ffi.metatype('hb_buffer_t', {__index = {
-	reference = create_func(C.hb_buffer_reference, C.hb_buffer_destroy),
-	destroy = destroy_func(C.hb_buffer_destroy),
+	ref = create_func(C.hb_buffer_reference, C.hb_buffer_destroy),
+	free = destroy_func(C.hb_buffer_destroy),
 	set_user_data = C.hb_buffer_set_user_data, --key, data, destroy, replace
 	get_user_data = C.hb_buffer_get_user_data, --key -> data
 
@@ -347,8 +347,8 @@ ffi.metatype('hb_buffer_t', {__index = {
 }})
 
 ffi.metatype('hb_shape_plan_t', {__index = {
-	reference = create_func(C.hb_shape_plan_reference, C.hb_shape_plan_destroy),
-	destroy = destroy_func(C.hb_shape_plan_destroy),
+	ref = create_func(C.hb_shape_plan_reference, C.hb_shape_plan_destroy),
+	free = destroy_func(C.hb_shape_plan_destroy),
 	set_user_data = C.hb_shape_plan_set_user_data,
 	get_user_data = C.hb_shape_plan_get_user_data,
 	execute = C.hb_shape_plan_execute,

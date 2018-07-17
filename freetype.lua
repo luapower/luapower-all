@@ -5,9 +5,11 @@
 if not ... then require'freetype_test'; return end
 
 local ffi = require'ffi'
+local bit = require'bit'
 require'freetype_h'
 local C = ffi.load'freetype'
 local freetype = {C = C}
+setmetatable(freetype, freetype)
 
 --utilities
 
@@ -115,6 +117,23 @@ local function ptr(p)
 	return p ~= nil and p or nil
 end
 
+function freetype.tag_tostring(i)
+	i = tonumber(i)
+	return
+		string.char(bit.band(bit.rshift(i, 24), 0xff)) ..
+		string.char(bit.band(bit.rshift(i, 16), 0xff)) ..
+		string.char(bit.band(bit.rshift(i,  8), 0xff)) ..
+		string.char(bit.band(bit.rshift(i,  0), 0xff))
+end
+
+function freetype.tag(s)
+	if type(s) == 'string' then
+		return s:byte(1) * 2^24 + s:byte(2) * 2^16 + s:byte(3) * 2^8 + s:byte(4)
+	else
+		return s
+	end
+end
+
 --wrappers
 
 function freetype.new()
@@ -122,6 +141,7 @@ function freetype.new()
 	checknz(C.FT_Init_FreeType(library))
 	return library[0]
 end
+freetype.__call = freetype.new
 
 local lib = {} --FT_Library methods
 
@@ -394,7 +414,7 @@ end
 
 function glyph.as_outline(glyph)
 	assert(glyph.format == C.FT_GLYPH_FORMAT_OUTLINE)
-	return ffi.cast('FT_BitmapGlyph', glyph)
+	return ffi.cast('FT_OutlineGlyph', glyph)
 end
 
 --ftoutln.h

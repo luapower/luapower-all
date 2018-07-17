@@ -39,15 +39,6 @@ local function inspect_face(lib, facename)
 		return s or ''
 	end
 
-	local function s4(i)
-		i = tonumber(i)
-		return
-			string.char(bit.band(bit.rshift(i, 24), 255)) ..
-			string.char(bit.band(bit.rshift(i, 16), 255)) ..
-			string.char(bit.band(bit.rshift(i,  8), 255)) ..
-			string.char(bit.band(bit.rshift(i,  0), 255))
-	end
-
 	local function pad(s, n)
 		return s..(' '):rep(n - #s)
 	end
@@ -73,12 +64,16 @@ local function inspect_face(lib, facename)
 		return s
 	end
 
+	local function x26_6(x)
+		return tonumber(x) / 64
+	end
+
 	local bitmap_size_fields = {'height','width','size','x_ppem','y_ppem'}
-	local bitmap_size_decoders = {height = tonumber, width = tonumber, size = tonumber, x_ppem = tonumber, y_ppem = tonumber}
+	local bitmap_size_decoders = {height = tonumber, width = tonumber, size = x26_6, x_ppem = x26_6, y_ppem = x26_6}
 	local charmap_fields = {'encoding','platform_id','encoding_id'}
-	local charmap_decoders = {encoding = s4}
+	local charmap_decoders = {encoding = ft.tag_tostring}
 	local bbox_fields = {'xMin','yMin','xMax','yMax'}
-	local bbox_decoders = {xMin = tonumber, yMin = tonumber, xMax = tonumber, yMax = tonumber}
+	local bbox_decoders = {xMin = x26_6, yMin = x26_6, xMax = x26_6, yMax = x26_6}
 	local metrics_fields = {'x_ppem','y_ppem','x_scale','y_scale','ascender','descender','height','max_advance'}
 	local metrics_decoders = { x_ppem = tonumber, y_ppem = tonumber, x_scale = tonumber, y_scale = tonumber, ascender = tonumber, descender = tonumber, height = tonumber, max_advance = tonumber}
 	local size_fields = {'metrics'}
@@ -95,18 +90,19 @@ local function inspect_face(lib, facename)
 	print('num_charmaps:        ', face.num_charmaps)
 	print('charmaps:            ', struct_array(face.charmaps, face.num_charmaps, charmap_fields, charmap_decoders))
 	print('bbox:                ', struct(face.bbox, bbox_fields, bbox_decoders))
-	print('units_per_EM:        ', face.units_per_EM)
-	print('ascender:            ', face.ascender)
-	print('descender:           ', face.descender)
-	print('height:              ', face.height)
-	print('max_advance_width:   ', face.max_advance_width)
-	print('max_advance_height:  ', face.max_advance_height)
-	print('underline_position:  ', face.underline_position)
-	print('underline_thickness: ', face.underline_thickness)
-	print('size:                ', struct(face.size, size_fields, size_decoders))
+	print('units_per_EM:        ', x26_6(face.units_per_EM))
+	print('ascender:            ', x26_6(face.ascender))
+	print('descender:           ', x26_6(face.descender))
+	print('height:              ', x26_6(face.height))
+	print('max_advance_width:   ', x26_6(face.max_advance_width))
+	print('max_advance_height:  ', x26_6(face.max_advance_height))
+	print('underline_position:  ', x26_6(face.underline_position))
+	print('underline_thickness: ', x26_6(face.underline_thickness))
 	print('charmap:             ', struct(face.charmap, charmap_fields, charmap_decoders))
 
-	face:set_pixel_sizes(16)
+	--print('size:                ', struct(face.size, size_fields, size_decoders))
+	--face:set_pixel_sizes(16)
+
 	for i=0,face.num_charmaps-1 do
 		face:select_charmap(face.charmaps[i].encoding)
 		local n = face:char_count()
@@ -122,5 +118,6 @@ local lib = ft:new()
 inspect_face(lib, 'media/fonts/DejaVuSerif.ttf')
 inspect_face(lib, 'media/fonts/amiri-regular.ttf')
 inspect_face(lib, 'media/fonts/fireflysung.ttf')
+--inspect_face(lib, 'media/fonts/NotoColorEmoji.ttf')
 
 lib:free()

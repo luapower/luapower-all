@@ -37,7 +37,7 @@ local function shape_text(s, ft_face, hb_font, size, direction, script, language
 		x = x + glyph_pos[i].x_advance / 64
 		y = y - glyph_pos[i].y_advance / 64
 	end
-	buf:destroy()
+	buf:free()
 
 	return cairo_glyphs, glyph_count
 end

@@ -545,9 +545,9 @@ enum {
 	FT_LOAD_NO_BITMAP        = ( 1 << 3 ),
 	FT_LOAD_VERTICAL_LAYOUT  = ( 1 << 4 ),
 	FT_LOAD_FORCE_AUTOHINT   = ( 1 << 5 ),
-	FT_LOAD_CROP_BITMAP      = ( 1 << 6 ),
+	FT_LOAD_CROP_BITMAP      = ( 1 << 6 ), // ignored, deprecated
 	FT_LOAD_PEDANTIC         = ( 1 << 7 ),
-	FT_LOAD_IGNORE_GLOBAL_ADVANCE_WIDTH = ( 1 << 9 ),
+	FT_LOAD_IGNORE_GLOBAL_ADVANCE_WIDTH = ( 1 << 9 ),  // ignored, deprecated
 	FT_LOAD_NO_RECURSE       = ( 1 << 10 ),
 	FT_LOAD_IGNORE_TRANSFORM = ( 1 << 11 ),
 	FT_LOAD_MONOCHROME       = ( 1 << 12 ),
