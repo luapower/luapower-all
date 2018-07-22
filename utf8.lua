@@ -1,181 +1,23 @@
---utf8 module (Cosmin Apreutesei, public domain).
---byte indices are i's, char (codepoint) indices are ci's.
---invalid characters are counted as 1-byte chars so they don't get lost. validate/sanitize beforehand as needed.
-local glue = require'glue' --for autoload
+
+--UTF-8 encoding and decoding for LuaJIT
+--Written by Cosmin Apreutesei. Public Domain.
+
+if not ... then require'utf8_test'; return end
+
+local ffi = require'ffi'
+local bit = require'bit'
+local band, shl, shr = bit.band, bit.lshift, bit.rshift
 local utf8 = {}
 
---byte index of the next char after the char at byte index i, followed by a valid flag for the char at byte index i.
---nil if not found. invalid characters are iterated as 1-byte chars.
-function utf8.next_raw(s, i)
-	if not i then
-		if #s == 0 then return nil end
-		return 1, true --fake flag (doesn't matter since this flag is not to be taken as full validation)
-	end
-	if i > #s then return end
-	local c = s:byte(i)
-	if c >= 0x00 and c <= 0x7F then
-		i = i + 1
-	elseif c >= 0xC2 and c <= 0xDF then
-		i = i + 2
-	elseif c >= 0xE0 and c <= 0xEF then
-		i = i + 3
-	elseif c >= 0xF0 and c <= 0xF4 then
-		i = i + 4
-	else --invalid
-		return i + 1, false
-	end
-	if i > #s then return end
-	return i, true
-end
-
---next() is the generic iterator and can be replaced for different semantics. next_raw() must preserve its semantics.
-utf8.next = utf8.next_raw
-
---iterate chars, returning the byte index where each char starts
-function utf8.byte_indices(s, previ)
-	return utf8.next, s, previ
-end
-
---number of chars in string
-function utf8.len(s)
-	local len = 0
-	for _ in utf8.byte_indices(s) do
-		len = len + 1
-	end
-	return len
-end
-
---byte index given char index. nil if the index is outside the string.
-function utf8.byte_index(s, target_ci)
-	if target_ci < 1 then return end
-	local ci = 0
-	for i in utf8.byte_indices(s) do
-		ci = ci + 1
-		if ci == target_ci then
-			return i
-		end
-	end
-	assert(target_ci > ci, 'invalid index')
-end
-
---char index given byte index. nil if the index is outside the string.
-function utf8.char_index(s, target_i)
-	if target_i < 1 or target_i > #s then return end
-	local ci = 0
-	for i in utf8.byte_indices(s) do
-		ci = ci + 1
-		if i == target_i then
-			return ci
-		end
-	end
-	error'invalid index'
-end
-
---byte index of the prev. char before the char at byte index i, which defaults to #s + 1.
---nil if the index is outside the 2..#s+1 range.
---NOTE: unlike next(), this is a O(N) operation!
-function utf8.prev(s, nexti)
-	nexti = nexti or #s + 1
-	if nexti <= 1 or nexti > #s + 1 then return end
-	local lasti, lastvalid = utf8.next(s)
-	for i, valid in utf8.byte_indices(s) do
-		if i == nexti then
-			return lasti, lastvalid
-		end
-		lasti, lastvalid = i, valid
-	end
-	if nexti == #s + 1 then
-		return lasti, lastvalid
-	end
-	error'invalid index'
-end
-
---iterate chars in reverse order, returning the byte index where each char starts.
-function utf8.byte_indices_reverse(s, nexti)
-	if #s < 200 then
-		--using prev() is a O(N^2/2) operation, ok for small strings (200 chars need 40,000 iterations)
-		return utf8.prev, s, nexti
+local function tobuf(s, len)
+	if type(s) == 'string' then
+		return s, ffi.cast('const uint8_t*', s), #s
 	else
-		--store byte indices in a table and iterate them in reverse.
-		--this is 40x slower than byte_indices() but still fast at 2mil chars/second (but eats RAM and makes garbage).
-		local t = {}
-		for i in utf8.byte_indices(s) do
-			if nexti and i >= nexti then break end
-			table.insert(t, i)
-		end
-		local i = #t + 1
-		return function()
-			i = i - 1
-			return t[i]
-		end
+		return nil, s, len
 	end
 end
 
---sub based on char indices, which, unlike with standard string.sub(), can't be negative.
---start_ci can be 1..inf and end_ci can be 0..inf. end_ci can be nil meaning last char.
---if start_ci is out of range or end_ci < start_ci, the empty string is returned.
---if end_ci is out of range, it is considered to be the last position in the string.
-function utf8.sub(s, start_ci, end_ci)
-	--assert for positive indices because we might implement negative indices in the future.
-	assert(start_ci >= 1)
-	assert(not end_ci or end_ci >= 0)
-	if end_ci and start_ci > end_ci then
-		return ''
-	end
-	local ci = 0
-	local start_i, end_i
-	for i in utf8.byte_indices(s) do
-		ci = ci + 1
-		if ci == start_ci then
-			start_i = i
-			if end_i then
-				break
-			end
-		end
-		if end_ci and ci == end_ci + 1 then
-			end_i = i - 1
-			break
-		end
-	end
-	if not start_i then
-		return ''
-	end
-	return s:sub(start_i, end_i)
-end
-
---check if a string contains a substring at byte index i without making garbage.
---nil if the index is out of range. true if searching for the empty string.
-function utf8.contains(s, i, sub)
-	if i < 1 or i > #s then return nil end
-	for si = 1, #sub do
-		if s:byte(i + si - 1) ~= sub:byte(si) then
-			return false
-		end
-	end
-	return true
-end
-
---count the number of occurences of a substring in a string. the substring cannot be the empty string.
-function utf8.count(s, sub)
-	assert(#sub > 0)
-	local count = 0
-	local i = 1
-	while i do
-		if utf8.contains(s, i, sub) then
-			count = count + 1
-			i = i + #sub
-			if i > #s then break end
-		else
-			i = utf8.next(s, i)
-		end
-	end
-	return count
-end
-
---utf8 validation and sanitization
-
---check if there's a valid utf8 codepoint at byte index i. valid ranges for each utf8 byte are:
--- byte  1          2           3          4
+-- byte 1     byte 2      byte 3     byte 4
 --------------------------------------------
 -- 00 - 7F
 -- C2 - DF    80 - BF
@@ -186,131 +28,197 @@ end
 -- F0         90 - BF     80 - BF    80 - BF
 -- F1 - F3    80 - BF     80 - BF    80 - BF
 -- F4         80 - 8F     80 - BF    80 - BF
-function utf8.isvalid(s, i)
-	local c = s:byte(i)
-	if not c then
-		return false
-	elseif c >= 0x00 and c <= 0x7F then
-		return true
-	elseif c >= 0xC2 and c <= 0xDF then
-		local c2 = s:byte(i + 1)
-		return c2 and c2 >= 0x80 and c2 <= 0xBF
-	elseif c >= 0xE0 and c <= 0xEF then
-		local c2 = s:byte(i + 1)
-		local c3 = s:byte(i + 2)
-		if c == 0xE0 then
-			return c2 and c3 and
-				c2 >= 0xA0 and c2 <= 0xBF and
-				c3 >= 0x80 and c3 <= 0xBF
-		elseif c >= 0xE1 and c <= 0xEC then
-			return c2 and c3 and
-				c2 >= 0x80 and c2 <= 0xBF and
-				c3 >= 0x80 and c3 <= 0xBF
-		elseif c == 0xED then
-			return c2 and c3 and
-				c2 >= 0x80 and c2 <= 0x9F and
-				c3 >= 0x80 and c3 <= 0xBF
-		elseif c >= 0xEE and c <= 0xEF then
-			if c == 0xEF and c2 == 0xBF and (c3 == 0xBE or c3 == 0xBF) then
-				return false --uFFFE and uFFFF non-characters
+
+function utf8.next(buf, len, i)
+	if i >= len then
+		return nil --EOS
+	end
+	local c1 = buf[i]
+	i = i + 1
+	if c1 <= 0x7F then
+		return i, c1 --ASCII
+	elseif c1 < 0xC2 then
+		--invalid
+	elseif c1 <= 0xDF then --2-byte
+		if i < len then
+			local c2 = buf[i]
+			if c2 >= 0x80 and c2 <= 0xBF then
+				return i + 1,
+				      shl(band(c1, 0x1F), 6)
+				        + band(c2, 0x3F)
 			end
-			return c2 and c3 and
-				c2 >= 0x80 and c2 <= 0xBF and
-				c3 >= 0x80 and c3 <= 0xBF
 		end
-	elseif c >= 0xF0 and c <= 0xF4 then
-		local c2 = s:byte(i + 1)
-		local c3 = s:byte(i + 2)
-		local c4 = s:byte(i + 3)
-		if c == 0xF0 then
-			return c2 and c3 and c4 and
-				c2 >= 0x90 and c2 <= 0xBF and
-				c3 >= 0x80 and c3 <= 0xBF and
-				c4 >= 0x80 and c4 <= 0xBF
-		elseif c >= 0xF1 and c <= 0xF3 then
-			return c2 and c3 and c4 and
-				c2 >= 0x80 and c2 <= 0xBF and
-				c3 >= 0x80 and c3 <= 0xBF and
-				c4 >= 0x80 and c4 <= 0xBF
-		elseif c == 0xF4 then
-			return c2 and c3 and c4 and
-				c2 >= 0x80 and c2 <= 0x8F and
-				c3 >= 0x80 and c3 <= 0xBF and
-				c4 >= 0x80 and c4 <= 0xBF
+	elseif c1 <= 0xEF then --3-byte
+		if i < len + 1 then
+			local c2, c3 = buf[i], buf[i+1]
+			if not (
+				   c2 < 0x80 or c2 > 0xBF
+				or c3 < 0x80 or c3 > 0xBF
+				or (c1 == 0xE0 and c2 < 0xA0)
+				or (c1 == 0xED and c2 > 0x9F)
+			) then
+				return i + 2,
+				      shl(band(c1, 0x0F), 12)
+				    + shl(band(c2, 0x3F), 6)
+				        + band(c3, 0x3F)
+			end
 		end
-	end
-	return false
-end
-
---byte index of the next valid utf8 char after the char at byte index i.
---nil if indices go out of range. invalid characters are skipped.
-function utf8.next_valid(s, i)
-	local valid
-	i, valid = utf8.next_raw(s, i)
-	while i and (not valid or not utf8.isvalid(s, i)) do
-		i, valid = utf8.next(s, i)
-	end
-	return i
-end
-
---iterate valid chars, returning the byte index where each char starts
-function utf8.valid_byte_indices(s)
-	return utf8.next_valid, s
-end
-
---assert that a string only contains valid utf8 characters
-function utf8.validate(s)
-	for i, valid in utf8.byte_indices(s) do
-		if not valid or not utf8.isvalid(s, i) then
-			error(string.format('invalid utf8 char at #%d', i))
+	elseif c1 <= 0xF4 then --4-byte
+		if i < len + 2 then
+			local c2, c3, c4 = buf[i], buf[i+1], buf[i+2]
+			if not (
+				   c2 < 0x80 or c2 > 0xBF
+				or c3 < 0x80 or c3 > 0xBF
+				or c3 < 0x80 or c3 > 0xBF
+				or c4 < 0x80 or c4 > 0xBF
+				or (c1 == 0xF0 and c2 < 0x90)
+				or (c1 == 0xF4 and c2 > 0x8F)
+			) then
+				return i + 3,
+				     shl(band(c1, 0x07), 18)
+				   + shl(band(c2, 0x3F), 12)
+				   + shl(band(c3, 0x3F), 6)
+				       + band(c4, 0x3F)
+			end
 		end
 	end
+	return i --invalid
 end
 
-local function table_lookup(s, i, j, t)
-	return t[s:sub(i, j)]
+function utf8.prev(buf, len, i)
+	if i <= 0 then
+		return nil
+	end
+	local j = i
+	while i > 0 do --go back to a previous possible start byte
+		i = i - 1
+		local c = buf[i]
+		if c < 0x80 or c > 0xBF or i == j-4 then
+			break
+		end
+	end
+	while true do --go forward to the real previous character
+		local i1, c = utf8.next(buf, len, i)
+		i1 = i1 or len
+		if i1 == j then
+			return i, c
+		end
+		i = i1
+		assert(i < j)
+	end
+	return i, c
 end
 
---replace characters in string based on a function f(s, i, j, ...) -> replacement_string | nil
-function utf8.replace(s, f, ...)
-	if type(f) == 'table' then
-		return utf8.replace(s, table_lookup, f)
+function utf8.chars(s, i)
+	local _, buf, len = tobuf(s)
+	i = i and i-1 or 0
+	return function()
+		local c
+		i, c = utf8.next(buf, len, i)
+		return i+1, c
 	end
-	if s == '' then
-		return s
+end
+
+function utf8.decode(buf, len, out, outlen, repl)
+	local _, buf, len = tobuf(buf, len)
+	local j, p, i = 0, 0, 0
+	while true do
+		local i1, c = utf8.next(buf, len, i)
+		if not i1 then
+			break
+		end
+		local c = c or repl
+		if c then
+			if c == 'iso-8859-1' then
+				c = buf[i] --interpret as iso-8859-1 like browsers do
+			end
+			if out then
+				if j >= outlen then
+					return nil, 'buffer overflow'
+				end
+				out[j] = c
+			end
+			j = j + 1
+		else
+			p = p + 1
+		end
+		i = i1
 	end
-	local t = {}
-	local lasti = 1
-	for i in utf8.byte_indices(s) do
-		local nexti = utf8.next(s, i) or #s + 1
-		local repl = f(s, i, nexti - 1, ...)
+	return j, p
+end
+
+local function char_byte_count(c, invalid_size)
+	if c < 0 or c > 0x10FFFF or (c >= 0xD800 and c <= 0xDFFF) then
+		return invalid_size
+	elseif c <= 0x7F then
+		return 1
+	elseif c <= 0x7FF then
+		return 2
+	elseif c <= 0xFFFF then
+		return 3
+	else
+		return 4
+	end
+end
+
+local function byte_count(buf, len, repl)
+	local n = 0
+	local invalid_size = repl and char_byte_count(repl, 0) or 0
+	for i = 0, len-1 do
+		n = n + char_byte_count(buf[i], invalid_size)
+	end
+	return n
+end
+
+local function encode_char(c, repl)
+	local n, b1, b2, b3, b4 = 0
+	if c >= 0xD800 and c <= 0xDFFF then --surrogate pair
 		if repl then
-			table.insert(t, s:sub(lasti, i - 1))
-			table.insert(t, repl)
-			lasti = nexti
+			return encode_char(repl)
 		end
+	elseif c <= 0x7F then
+		b1 = c
+		n = 1
+	elseif c <= 0x7FF then
+		b2 = 0x80 + band(c, 0x3F); c = shr(c, 6)
+		b1 = 0xC0 + c
+		n = 2
+	elseif c <= 0xFFFF then
+		b3 = 0x80 + band(c, 0x3F); c = shr(c, 6)
+		b2 = 0x80 + band(c, 0x3F); c = shr(c, 6)
+		b1 = 0xE0 + c
+		n = 3
+	elseif c <= 0x10FFFF then
+		b4 = 0x80 + band(c, 0x3F); c = shr(c, 6)
+		b3 = 0x80 + band(c, 0x3F); c = shr(c, 6)
+		b2 = 0x80 + band(c, 0x3F); c = shr(c, 6)
+		b1 = 0xF0 + c
+		n = 4
+	elseif repl then
+		return enncode_char(repl)
 	end
-	table.insert(t, s:sub(lasti))
-	return table.concat(t)
+	return n, b1, b2, b3, b4
 end
 
-local function replace_invalid(s, i, j, repl_char)
-	if not utf8.isvalid(s, i) then
-		return repl_char
+function utf8.encode(buf, len, out, outlen, repl)
+	local _, buf, len = tobuf(buf, len)
+	if not out then --compute outlen
+		return byte_count(buf, len, repl)
 	end
+	local j = 0
+	for i = 0, len-1 do
+		local n, b1, b2, b3, b4 = encode_char(buf[i], repl)
+		if n > outlen then
+			return nil, 'buffer overflow'
+		end
+		if b1 then out[j  ] = b1 end
+		if b2 then out[j+1] = b2 end
+		if b3 then out[j+2] = b3 end
+		if b4 then out[j+3] = b4 end
+		outlen = outlen - n
+		j = j + n
+	end
+	return j
 end
 
---replace invalid utf8 chars with a replacement char
-function utf8.sanitize(s, repl_char)
-	repl_char = repl_char or '�' --\uFFFD
-	return utf8.replace(s, replace_invalid, repl_char)
-end
-
-
-if not ... then require 'utf8_test' end
-
-return glue.autoload(utf8, {
-	upper = 'utf8_case',
-	lower = 'utf8_case',
-})
-
+return utf8

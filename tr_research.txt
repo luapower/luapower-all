@@ -1,0 +1,283 @@
+UNICODE ☭ CONCEPTS  ----------------------------------------------------------
+
+- canonical equivalence:
+	- ñ: U+00F1 or U+006E,U+0303 (n + ◌̃)
+	- ü: U+00FC or U+0075,U+0308
+
+- sources of canonical equivanence:
+	- character duplication: Å (U+00C5 = U+212B)
+	- composed vs decomposed characters
+	- multiple non-interacting combining marks
+
+- compatibility equivalence:
+	- ﬀ = ff (U+FB00 ~= U+0066,U+0066)
+
+- compatibilty decomposition:
+	- can result in a single character (the point is equivalence, not decomposition).
+	- homoglyphs are decomposed eg. Roman numeral 'Ⅰ' -> capital Latin letter 'I'
+	- decomposed characters are tagged to show what kind of information was
+	lost by the decomposition.
+
+- compatibility characters:
+	- any character with compatibility-decomposition property.
+	- introduced to help incomplete unicode implementations (so avoid them).
+
+- compatibility mapping types:
+	- glyph substitution and composition
+		- ligatures
+		- precomposed roman numerals
+		- precomposed fractions
+		- contextual glyph forms
+	- rich text cc
+		- math alphanumerics
+		- enclosed alphanumerics
+		- circled alphanumerics
+		- spaces and nb-spaces
+		- some subscript and superscript forms
+	- semantically distinct cc: borderline-compatible!
+
+- normalization:
+	- NFC/NFKC = to fully composed (K=compatibility)
+	- NFD/NFKD = to fully decomposed (K=compatibility)
+	- idempotent, not injective, not bijective!
+	- concatenation breaks normalization (there's an optimized algo in UAX#15)!
+	- NFC can actually expand the original text!
+	- normalization to NFC is frozen! no new letters can be added to it!
+		- this is to preserve idemptency against future Unicode versions!
+			- but: idemptency is not preserved for future characters!
+
+combining character sequence:
+	- letter+mark+mark... marks are stacked together onto letter.
+	- can't have a single combining mark affect more than one letter
+	(eg. can't enclose the sequence "Esc" inside a keycap).
+
+combining class property:
+	- used to determine which sequences of combining marks are to be considered
+	canonically equivalent and which are not.
+
+diacritical mark:
+	- they are encoded by appearance, not by function, thus the same mark
+	can serve different functions in different scripts!
+	- diacritics over 'i' automatically remove i's default dot.
+
+combining grapheme joiner (CGJ) U+034F:
+	- it is used to affect collation of some adjacent characters.
+	- it is used to inhibit canonical equivalence of some sequences.
+
+grapheme:
+	- a minimally distinctive unit of writing in a writing system.
+
+grapheme cluster:
+	- the codepoints that make up a single grapheme.
+
+glyph:
+	- indivisible shape + positioning information.
+	- must be selected by a shaper because they don't map directly to code
+	points (forget charmaps).
+
+general category property:
+	- letter, mark, number, punctuation, symbol, separator.
+	- other: control, format, surrogate, private-use, not-assigned.
+	- control characters have logic associated to them (eg. soft-hyphen)!
+
+- non-characters: 66 total, for internal use only (not for interchange; not removable).
+- private characters: for interchange.
+
+
+script property:
+
+language property:
+
+locale:
+	- a locale is an identifier that refers to a set of geographically-shared
+	users preferences; IOW it's a language + some additional information.
+	-
+
+glyph:
+	- the shaper selects the glpyhs and their positioning.
+
+variation selectors:
+	- selecting a different glyph variant
+	- base char + variation selector
+		- StandardizedVariants.txt
+			- math varations
+		- emoji-variation-sequences.txt
+			- turn color emoji to b&w (U+FE0E)
+		- Ideographic Variation Database (IVD)
+			- Han ideographic variation sequences
+
+
+ligature:
+	- two characters fused in a single glyph.
+	- the font decides when to ligate (no need for specific characters).
+
+digraph:
+	- two glyphs placed close together
+
+presentation forms:
+	- mostly compatibility characters, avoid them.
+	- includes italic/bold variants (they say it's for math, so semantic).
+	- no general subscript/superscript modifier (they say it's stylistic - what??).
+	- arabic presentation forms don't get decomposed under NFC!
+
+rich text vs plain text (controversial?):
+	- plain text is stateless, i.e. removing part of it doesn't change rendering.
+	- unicode only deals with plain text, stays out of rich text issues.
+	- they invoke the fuzzy "minimum legibility" principle.
+
+homoglyph: glyphs that look the same but mean different things.
+	- also named "confusables".
+
+hyphenation:
+
+justification: automatic line-breaking at word boundaries.
+
+presentation forms:
+	- ligatures or glyph variants which are selected by the shaper contextually
+	and which don't have special unicode encodings.
+	- unicode does define some presentation forms but they are not recommended.
+
+ruby characters (furigana):
+	- are not to be displayed (used only for storage).
+
+thai/khmer/burmese/lao: no spaces between words (needs separate libs)
+
+CPL: complex text shaping.
+
+
+LANGUAGES --------------------------------------------------------------------
+
+Han unification ☭:
+	- the problem: native language speakers feel that the other glyph forms
+	for the same character are a foreign language, contrary to the Unicode people!
+	- multiple glyph variants are needed for the same characters:
+		- traditional Chinese (Taiwan, Hong Kong, and overseas Chinese communities)
+		- simplified Chinese (mainland China and Singapore)
+		- Japanese
+		- Korean
+		- there are variations between Hong Kong, Macao and Taiwan forms as well.
+	- this can be solved two-ways:
+		1) in-band, with variation selectors from IVD, although that doesn't
+		cover all characters.
+		2) out-of-band, by tagging the locale for each text run and either:
+			1) passing that to harfbuzz which will use OpenType's `locl` feature
+			to select the glyph variant (good CJK fonts have that).
+			2) passing that to font_db which is pre-configured to select diff.
+			fonts based on locale.
+	- the upside of Han unification is that you can turn a Chinese map into a
+	Japanese map by just changing the font :)
+
+- Cyrillic alphabet:
+	- same problem as Han: Russian, Bulgarian, Serbian and Macedonian variants.
+
+
+COMPLEX TEXT SHAPING ALGORITHMS ----------------------------------------------
+
+unicode script-detecting/breaking algorithm:
+	-
+
+unicode bidi algorithm:
+	- computes LTR/RTL embedding levels.
+	- reorders RTL runs on each line.
+
+unicode line-breaking algorithm:
+	- no hyphenation (needs dictionaries)
+	- no space between words in east-asian scripts (needs dictionaries)
+
+unicode word-breaking algorithm:
+	-
+
+unicode grapheme-breaking algorithm:
+	-
+
+
+OpenType FEATURES ------------------------------------------------------------
+
+pnum+onum   Proportional Oldstyle
+tnum+lnum   Tabular Lining
+pnum+lnum   Proportional Lining
+tnum+onum   Tabular Oldstyle
+liga        Standard Ligatures
+dlig        Discretionary Ligatures
+hlig        Historical Ligatures
+case+cpsp   All Caps
+smcp        Small Caps
+c2sc        Capitals to Small Caps
+sups        Superscript
+sinf        Scientific Inferiors
+subs        Subscript
+ordn        Ordinals
+titl        Titling Alternates
+swsh        Swash
+cswh        Contextual Swash
+aalt        All Alternates
+calt        Contextual Alternates
+clig        Contextual Ligatures
+frac        Fractions
+afrc        Alternative Fractions
+numr        Numerator
+dnom        Denominator
+ornm        Ornaments
+salt        Stylistic Alternates
+ss01..20    Stylistic Sets
+hist        Historical Forms
+zero        Slashed Zero
+jalt        Justification Alternates
+nalt        Alternate Annotation
+mgrk        Mathematical Greek
+locl        Localized Forms
+pcap        Petite Caps
+c2pc        Capitals to Petite Caps
+unic        Unicase
+ccmp        Glyph de/composition
+rlig        Required Ligatures
+mark        Mark Positioning
+mkmk        Mark-to-mark Positioning
+mset        Mark Positioning via Subs.
+fina        Terminal Form
+init        Initial Form
+isol        Isolated Form
+medi        Form Medial
+
+
+TYPESETTING FEATURES/ALGORITHMS ----------------------------------------------
+
+- chinese typesetting:
+	- chinese is on a square grid including punctuation, no exceptions.
+	- no spacing between words, people just know.
+	- no hyphenation, must know where words end to do line breaking.
+
+- math typesetting:
+	- TODO
+
+- knuth's line-breaking algorithm:
+	- vary each line width
+
+- hanging punctuation (eg. extendation of quotation marks)
+
+- optical margin alignment:
+	- outdent punctuation and A, V, W, Y to align the text border optically.
+
+- italic correction:
+	- exclamation mark hangs outside its advance width "Bang!"
+	- see https://github.com/libertinus-fonts/libertinus/issues/50
+
+- vertical layout (stylistic choice, no bidi involved):
+	- TODO: read UAX#50
+	- punctuation changes shape in vertical layouts.
+	- latin runs are rotated 90 degrees clockwise in LR and counter-clockwise in RL.
+	- chinese is LR-TB or TB-LR.
+	- japanese is LR-TB or TB-RL.
+	- mongolian TB-LR.
+
+EDITING, IMEs ----------------------------------------------------------------
+
+- romanization-of-pronunciation IMEs (most commonly used is pinyin)
+	- each syllable of Beijing Chinese (PRC Modern Standard) is typed as a
+	combination of latin characters + tone marks
+	- multiple syllable systems greatly reduce the number of options.
+	- sorting choices by most-commonly used one can also help with fast choosing.
+- component IMEs
+	- common components and strokes assigned to keys or shown on a palette.
+	- ref: Wenlin's CDL XML application for describing Han (CJKV) characters
+	-
