@@ -4,7 +4,7 @@ local nw = require'nw'
 local bundle = require'bundle'
 local gfonts = require'gfonts'
 
-local tr = tr.cairo_renderer()
+local tr = tr.cairo_tr()
 
 local win = nw:app():window{
 	w = 1800, h = 800,
@@ -14,7 +14,7 @@ local function font(file, name)
 	local name = name or assert(file:match('([^\\/]+)%.[a-z]+$')):lower()
 	tr:add_font_file(file, name)
 	local font = tr:load_font(name)
-	print(tr:internal_font_name(font))
+	--print(tr:internal_font_name(font))
 end
 
 local function gfont(name)
@@ -36,7 +36,7 @@ font'media/fonts/Hand Faces St.ttf'
 font'media/fonts/FSEX300.ttf'
 font'media/fonts/amiri-regular.ttf'
 
-tr.font_db:dump()
+--tr.font_db:dump()
 
 tr:setfont'NotoColorEmoji, 100'
 tr:setfont'NotoEmoji, 109'
@@ -86,22 +86,30 @@ function win:repaint()
 
 	elseif true then
 
+		tr:setfont'amiri, 50'
 		tr:clear_runs()
-		tr:text_run{text = 'Hello!'}
-		tr:process_runs()
+		local s = 'A ثلاثةثلاثةثلاثةثلاثةثلاثة 1111 خمسة'
+		tr:text_run{
+			--text = 'AخمسةBC',
+			text = s,
+		}
+		local utf8 = require'utf8'
+		for _,cp in utf8.chars(s) do
+			--print(cp)
+		end
+		tr:paint_runs(100, 100)
 		--tr:run_text'هذه هي بعض النصوص العربي\nHello there!'
 		--tr:run_font'amiri, 50'
 
-		tr:setfont'amiri, 50'
 		--tr:shape_text('Hello there!\nهذه هي بعض النصوص العربي')
-		tr:shape_text('هذه هي بعض النصوص العربي\nHello there!')
-		tr:paint_text(100, 300)
-		tr:clear()
+		--tr:shape_text('هذه هي بعض النصوص العربي\nHello there!')
+		--tr:paint_text(100, 300)
+		tr:clear_runs()
 
 	end
 
 	ii=ii+1/60
-	self:invalidate()
+	--self:invalidate()
 end
 
 nw:app():run()

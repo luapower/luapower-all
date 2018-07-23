@@ -433,10 +433,16 @@ FriBidiCharSet fribidi_parse_charset (const char *s);
 const char *fribidi_char_set_name (FriBidiCharSet char_set);
 const char *fribidi_char_set_title (FriBidiCharSet char_set);
 const char *fribidi_char_set_desc (FriBidiCharSet char_set);
-]]
 
---[[
 // fribidi-deprecated.h
+
+FriBidiStrIndex fribidi_remove_bidi_marks (
+	FriBidiChar *str,
+	const FriBidiStrIndex len,
+	FriBidiStrIndex *positions_to_this,
+	FriBidiStrIndex *position_from_this_list,
+	FriBidiLevel *embedding_levels
+);
 
 fribidi_boolean fribidi_mirroring_status (void);
 fribidi_boolean fribidi_set_mirroring (fribidi_boolean state);
@@ -452,13 +458,6 @@ FriBidiLevel fribidi_log2vis_get_embedding_levels (
 
 FriBidiCharType fribidi_get_type (FriBidiChar ch);
 FriBidiCharType fribidi_get_type_internal (FriBidiChar ch);
-FriBidiStrIndex fribidi_remove_bidi_marks (
-	FriBidiChar *str,
-	const FriBidiStrIndex len,
-	FriBidiStrIndex *positions_to_this,
-	FriBidiStrIndex *position_from_this_list,
-	FriBidiLevel *embedding_levels
-);
 
 FriBidiLevel fribidi_log2vis (
 	const FriBidiChar *str,
@@ -500,7 +499,10 @@ enum {
 	FRIBIDI_TYPE_B       = FRIBIDI_TYPE_BS,
 	FRIBIDI_TYPE_S       = FRIBIDI_TYPE_SS,
 };
+]]
 
+--[[
+--macros that need conversion to Lua...
 function FRIBIDI_LEVEL_IS_RTL(lev) ((lev) & 1)
 function FRIBIDI_LEVEL_TO_DIR(lev) (FRIBIDI_LEVEL_IS_RTL (lev) ? FRIBIDI_TYPE_RTL : FRIBIDI_TYPE_LTR)
 function FRIBIDI_DIR_TO_LEVEL(dir) ((FriBidiLevel) (FRIBIDI_IS_RTL (dir) ? 1 : 0))
@@ -530,7 +532,6 @@ function FRIBIDI_IS_PRIVATE(p) ((p) & FRIBIDI_MASK_PRIVATE)
 function FRIBIDI_CHANGE_NUMBER_TO_RTL(p) (FRIBIDI_IS_NUMBER(p) ? FRIBIDI_TYPE_RTL : (p))
 function FRIBIDI_EXPLICIT_TO_OVERRIDE_DIR(p) (FRIBIDI_IS_OVERRIDE(p) ? FRIBIDI_LEVEL_TO_DIR(FRIBIDI_DIR_TO_LEVEL(p)) : FRIBIDI_TYPE_ON)
 function FRIBIDI_WEAK_PARAGRAPH(p) (FRIBIDI_PAR_WLTR | ((p) & FRIBIDI_MASK_RTL))
-
 function FRIBIDI_IS_JOINING_TYPE_U(p) ( 0 == ( (p) & ( FRIBIDI_MASK_TRANSPARENT | FRIBIDI_MASK_IGNORED | FRIBIDI_MASK_JOINS_RIGHT | FRIBIDI_MASK_JOINS_LEFT ) ) )
 function FRIBIDI_IS_JOINING_TYPE_R(p) ( FRIBIDI_MASK_JOINS_RIGHT == ( (p) & ( FRIBIDI_MASK_TRANSPARENT | FRIBIDI_MASK_IGNORED | FRIBIDI_MASK_JOINS_RIGHT | FRIBIDI_MASK_JOINS_LEFT ) ) )
 function FRIBIDI_IS_JOINING_TYPE_D(p) ( ( FRIBIDI_MASK_JOINS_RIGHT | FRIBIDI_MASK_JOINS_LEFT | FRIBIDI_MASK_ARAB_SHAPES ) == ( (p) & ( FRIBIDI_MASK_TRANSPARENT | FRIBIDI_MASK_IGNORED | FRIBIDI_MASK_JOINS_RIGHT | FRIBIDI_MASK_JOINS_LEFT | FRIBIDI_MASK_ARAB_SHAPES ) ) )
@@ -548,7 +549,6 @@ function FRIBIDI_IS_JOIN_BASE_SHAPES(p) ( FRIBIDI_MASK_ARAB_SHAPES == ( (p) & ( 
 function FRIBIDI_JOINS_PRECEDING_MASK(level) (FRIBIDI_LEVEL_IS_RTL (level) ? FRIBIDI_MASK_JOINS_RIGHT : FRIBIDI_MASK_JOINS_LEFT)
 function FRIBIDI_JOINS_FOLLOWING_MASK(level) (FRIBIDI_LEVEL_IS_RTL (level) ? FRIBIDI_MASK_JOINS_LEFT : FRIBIDI_MASK_JOINS_RIGHT)
 function FRIBIDI_JOIN_SHAPE(p) ((p) & ( FRIBIDI_MASK_JOINS_RIGHT | FRIBIDI_MASK_JOINS_LEFT ))
-
 function FRIBIDI_IS_BRACKET_OPEN(bt) ((bt & FRIBIDI_BRACKET_OPEN_MASK)>0)
 function FRIBIDI_BRACKET_ID(bt) ((bt & FRIBIDI_BRACKET_ID_MASK))
 ]]

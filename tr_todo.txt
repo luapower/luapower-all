@@ -34,40 +34,17 @@ RENDERING --------------------------------------------------------------------
 
 SHAPING ----------------------------------------------------------------------
 
-itemize_text()
-shape_text()
-paint_text()
-
-- itemization:
-	script, language
-	font, text_size
-
-Please note that characters with common or inherited script property
-need special treatment, the corresponding Pango code is in
-pango/pango-script.c
 
 FINE FEATURE BIN -------------------------------------------------------------
 
 - coloring half-ligatures, see hb_ot_layout_get_ligature_carets
-- localized glyphs with font's `locl` table
+- localized glyphs with font's `locl` table (harfbuzz should select that automatically)
 - path-following (eg. on a map; know where to break runs on cursive scripts)
 - hyphenation: https://github.com/hunspell/hyphen (what libreoffice uses)
 
 SHAPING ----------------------------------------------------------------------
 
 ==============================================================================
-
-Determine bidi run boundaries and order (using FriBiDi or another bidi implementation).
-Determine script run boundaries.
-Determine font, language or other styles run boundaries (e.g. if you are doing styles text).
-Split the text into runs of characters that has the same direction, script, language and font.
-Pass the runs to HarfBuzz for shaping, and get back glyph indices and positions from HarfBuzz and use them to draw the text.
-From earlier replies I think the problem here is the APIs used for text drawing takes only text strings not glyphs indics, this is really a deal breaker and no complex text layout can be done with such APIs (unless they are doing the above processing internally, and apparently they don’t).
-
-
-==============================================================================
-
-do bidi, script, font itemisation etc. and shape the text.
 
 instead of reversing RTL runs (which I tried but gave me all sorts of funny
 bugs which mixed direction text and line breaks), store the index of all
@@ -82,18 +59,6 @@ breaking code I had unmodified.
 
 ==============================================================================
 
-The document, frames and paragraphs should have a direction, and by default
-it inherits from its parent.
-
-The paragraph direction is the fare direction when applying the BiDi algorithm.
-
-Text nodes should have a script and language properties. The script defaults
-to the value from Unicode character properties, and the language to the
-document language. There should be a way to override text language.
-
-Characters with common or inherit script should be resolved according the
-Unicode algorithm.
-
 BiDi algorithm should then be applied to each paragraph, splitting it into BiDi runs.
 
 BiDi runs should then be reordered, but without rendering the text of the RTL runs.
@@ -104,25 +69,11 @@ HarfBuzz will take care of reversing the glyphs in RTL runs.
 
 I think the proper way to do itemization is to first resolve the script
 property of each character, do bidi itemization, then further split the
-bidi runs into script runs. Resolve the script before breaking the bidi
+bidi runs into script runs.
+
+Resolve the script before breaking the bidi
 runs is important so that script property of common characters across
 bidi runs are resolved properly.
-
-==============================================================================
-
-- determine bidi run boundaries and order
-
-- determine script run boundaries
-	- fix script for chars with script Common and Inherited (UAX#24 has an algo)
-
-- API for setting language run boundaries
-
-- API for setting font run boundaries
-
-- split the text into runs of characters that has the same
-	(direction, script, language, font) and feed them to harfbuzz.
-
-
 
 LAYOUTING --------------------------------------------------------------------
 

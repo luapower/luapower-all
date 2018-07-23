@@ -1,5 +1,4 @@
 local fb = require'fribidi'
-local ffi = require'ffi'
 
 print('fb.unicode_version()', fb.unicode_version)
 print('fb.version_info()')
@@ -17,7 +16,7 @@ for i,charset in ipairs{
 end
 
 local function test(s0, charset, b)
-	local s, len, b = fb.bidi(s0, nil, charset, b)
+	local s, len, b = fb.log2vis(s0, nil, charset, b)
 	print()
 	print(s0, #s0, charset, '->')
 	print(s, len)
@@ -30,7 +29,8 @@ local function test(s0, charset, b)
 			bidi_type_name,
 			b.levels[i],
 			joining_type_name,
-			b.visual_str[i],
+			string.format('x%04x', tonumber(b.str[i])),
+			string.format('x%04x', b.visual_str[i]),
 			b.v_to_l[i],
 			b.l_to_v[i])
 	end

@@ -26,7 +26,7 @@ fb.bidi_type = C.fribidi_get_bidi_type
 fb.bidi_types = C.fribidi_get_bidi_types
 fb.bidi_type_name = str_func(C.fribidi_get_bidi_type_name)
 
---joining
+--arabic joining (deprecated)
 
 fb.joining_type = C.fribidi_get_joining_type
 fb.joining_types = C.fribidi_get_joining_types
@@ -34,7 +34,7 @@ fb.joining_type_name = str_func(C.fribidi_get_joining_type_name)
 
 fb.join_arabic = C.fribidi_join_arabic
 
---mirroring
+--mirroring shaping
 
 local c1 = 'FriBidiChar[1]'
 function fb.mirror_char(c)
@@ -49,7 +49,7 @@ fb.shape_mirroring = C.fribidi_shape_mirroring
 fb.bracket = C.fribidi_get_bracket
 fb.bracket_types = C.fribidi_get_bracket_types
 
---arabic shaper
+--arabic shaper (deprecated)
 
 fb.shape_arabic = C.fribidi_shape_arabic
 
@@ -83,12 +83,14 @@ function fb.par_embedding_levels(
 	return max_level > 0 and max_level - 1, par_base_dir_out[0]
 end
 
+--line reordering (deprecated)
+
 function fb.reorder_line(...)
 	local max_level = C.fribidi_reorder_line(...)
 	return max_level > 0 and max_level - 1
 end
 
---charsets
+--charsets (deprecated)
 
 function fb.charset(cs)
 	if type(cs) == 'string' then
@@ -108,19 +110,13 @@ fb.charset_name = cs_func(C.fribidi_char_set_name)
 fb.charset_title = cs_func(C.fribidi_char_set_title)
 fb.charset_desc = cs_func(C.fribidi_char_set_desc)
 
---charset conversion
+--charset conversion (deprecated)
 
 function fb.charset_to_unicode(charset, s, len, us, us_len)
 	local charset, err = fb.charset(charset)
 	if not charset then return nil, err end
 	len = len or #s
-	local min_us_len = len
-	if not us then
-		us_len = min_us_len
-		us = ffi.new('FriBidiChar[?]', us_len)
-	elseif us_len < min_us_len then
-		return nil, 'output buffer too small'
-	end
+	us = us or ffi.new('FriBidiChar[?]', len)
 	return us, C.fribidi_charset_to_unicode(charset, s, len, us)
 end
 
@@ -128,24 +124,36 @@ function fb.unicode_to_charset(charset, us, len, s, s_len)
 	local charset, err = fb.charset(charset)
 	if not charset then return nil, err end
 	len = len or #s
-	local min_s_len = len * 4 + 1 -- +1 for traling \0
-	if not s then
-		s_len = min_s_len
-		s = ffi.new('char[?]', s_len)
-	elseif s_len < min_s_len then
-		return nil, 'output buffer too small'
-	end
+	s = s or ffi.new('char[?]', len * 4 + 1) -- +1 for traling \0
 	return s, C.fribidi_unicode_to_charset(charset, us, len, s)
 end
 
---hi-level API
+--hi-level API (deprecated but used in tests)
+
+--[=[
+### `fb.log2vis(s, [len], [charset], [buffers], [flags], [par_base_dir], [line_offsets]) -> s, len, buffers`
+
+Convert a string according to the Unicode BiDi algorithm. Returns the output
+string, its length and a set of buffers with additional info.
+
+  * `s` can be a string or a cdata buffer, in which case the output is also
+  a cdata buffer
+  * `charset` can be: 'ucs4', 'utf-8', 'iso8859-6', 'iso8859-8', 'cp1255',
+  'cp1256' (defaults to 'utf8')
+  * `buffers` returned from the last call can be passed on to the next call
+  to avoid reallocation.
+  * `flags`: a combination of `FRIBIDI_FLAG_*`
+  * `par_base_dir`: paragraph's base direction, `FRIBIDI_PAR_*`
+  * `line_offsets`: optional iterator to get line offses
+    `line_offsets(s, len, buffers) -> iter() -> offset`
+]=]
 
 function fb.buffers(len, b, charset)
 
-	charset = charset or 'ucs4'
+	charset = charset or 'utf32'
 
 	if b and b.len >= len then
-		if charset ~= 'ucs4' then
+		if charset ~= 'utf32' then
 			if b.str then
 				ffi.fill(b.str, len)
 				ffi.fill(b.s, len + 1)
@@ -173,7 +181,7 @@ function fb.buffers(len, b, charset)
 	b.v_to_l        = ffi.new('FriBidiStrIndex[?]', len)
 	b.l_to_v        = ffi.new('FriBidiStrIndex[?]', len)
 
-	if charset ~= 'ucs4' then
+	if charset ~= 'utf32' then
 		b.s_len = len * 4 + 1
 		b.s   = ffi.new('char[?]', b.s_len)
 		b.str = ffi.new('FriBidiCharType[?]', len)
@@ -184,7 +192,7 @@ end
 
 --http://lists.freedesktop.org/archives/fribidi/2005-September/000439.html
 --also see fribidi_log2vis() in fribidi-deprecated.c
-function fb.bidi(str, len, charset, buffers, flags, par_base_dir)
+function fb.log2vis(str, len, charset, buffers, flags, par_base_dir, line_offsets)
 
 	local was_string = type(str) == 'string'
 	local len = len or #str
@@ -192,19 +200,15 @@ function fb.bidi(str, len, charset, buffers, flags, par_base_dir)
 
 	local b = fb.buffers(len, buffers, charset)
 
-	if charset ~= 'ucs4' then --str needs conversion
+	if charset ~= 'utf32' then --str needs conversion
 		str, len = fb.charset_to_unicode(charset, str, len, b.str, b.len)
 		if not str then return str, len end
 	end
 
-	local flags = flags or bit.bor(
-		C.FRIBIDI_FLAGS_DEFAULT,
-		C.FRIBIDI_FLAGS_ARABIC)
-
 	fb.bidi_types(str, len, b.bidi_types)
 	fb.bracket_types(str, len, b.bidi_types, b.bracket_types)
-	local par_base_dir = par_base_dir or C.FRIBIDI_PAR_ON
-	local max_level, resolved_par_base_dir = fb.par_embedding_levels(
+	par_base_dir = par_base_dir or C.FRIBIDI_PAR_ON
+	local max_level, par_base_dir = fb.par_embedding_levels(
 		b.bidi_types, b.bracket_types, len, par_base_dir, b.levels)
 
 	if not max_level then
@@ -215,34 +219,35 @@ function fb.bidi(str, len, charset, buffers, flags, par_base_dir)
    fb.joining_types(str, len, b.ar_props)
 	fb.join_arabic(b.bidi_types, len, b.levels, b.ar_props)
 
-	--mirror shaping and arabic shaping
+	local flags = flags or bit.bor(
+		C.FRIBIDI_FLAGS_DEFAULT,
+		C.FRIBIDI_FLAGS_ARABIC)
+
+	--mirror shaping and arabic shaping (if requested by flags)
 	ffi.copy(b.visual_str, str, len * ffi.sizeof('FriBidiChar'))
 	fb.shape(flags, b.levels, len, b.ar_props, b.visual_str)
-
-	--TODO: line breaking.
-	--The bidi algorithm assumes that that line breaking is done *before* reordering.
-	--You need to carry over the paragraph bidirectional direction from line to line,
-	--but that is done after the lines have been broken into paragraphs.
 
 	--set up the ordering array to identity order
 	for i=0,len-1 do
 		b.v_to_l[i] = i
 	end
 
-	--TODO: line breaking
-	--[[
-	local x = 0
-	for i, offset in ipairs(line_offsets) do
-		local bidi_types
-		local max_level = fb.reorder_line(flags, bidi_types, len, offset,
-			resolved_par_base_dir, levels, visual_str, v_to_l)
-	end
-	]]
-	local max_level = fb.reorder_line(flags, b.bidi_types, len, 0,
-		resolved_par_base_dir, b.levels, b.visual_str, b.v_to_l)
-
-	if not max_level then
-		return nil, 'fribidi_reorder_line() error'
+	--RTL reordering and reversing with or without line-breaking.
+	if line_offsets then
+		local x = 0
+		for offset in line_offsets(str, len, b) do
+			local max_level = fb.reorder_line(flags, b.bidi_types, len, offset,
+				par_base_dir, b.levels, b.visual_str, b.v_to_l)
+			if not max_level then
+				return nil, 'fribidi_reorder_line() error'
+			end
+		end
+	elseif line_offsets ~= false then
+		local max_level = fb.reorder_line(flags, b.bidi_types, len, 0,
+			par_base_dir, b.levels, b.visual_str, b.v_to_l)
+		if not max_level then
+			return nil, 'fribidi_reorder_line() error'
+		end
 	end
 
 	--convert the v2l list to l2v
@@ -255,11 +260,11 @@ function fb.bidi(str, len, charset, buffers, flags, par_base_dir)
 
 	--add additional info into the output object
 	b.max_level = max_level
-	b.par_base_dir = resolved_par_base_dir
+	b.par_base_dir = par_base_dir
 
 	--convert the output back to the same charset as the input
 	local s, s_len = b.visual_str, len
-	if charset ~= 'ucs4' then
+	if charset ~= 'utf32' then
 		s, s_len = fb.unicode_to_charset(charset, s, s_len, b.s, b.s_len)
 		if not s then return nil, s_len end
 	end
@@ -271,5 +276,6 @@ function fb.bidi(str, len, charset, buffers, flags, par_base_dir)
 
 	return s, s_len, b
 end
+
 
 return fb
