@@ -248,7 +248,7 @@ end
 function view:draw_minimap()
 	if not self.editbox.minimap then return end
 	local cr = self.player.cr
-	local mmap = glue.inherit({editor = self}, self)
+	local mmap = setmetatable({editor = self}, {__index = self})
 	local self = mmap
 	local scale = 1/6
 	self.vscroll = 'never'

@@ -1,3 +1,4 @@
+
 local dlist = require'dlist'
 
 local list = dlist()
@@ -18,18 +19,18 @@ local function test(t) --test length and list traversal in both directions
 	assert(i == 1)
 end
 
-list:push({'a'}); test{'a'}
-list:push({'b'}); test{'a','b'}
-list:unshift({'0'}); test{'0','a','b'}
-list:insert({'1'}, list:next()); test{'0','1','a','b'}
-assert(list:pop()[1] == 'b'); test{'0','1','a'}
-assert(list:shift()[1] == '0'); test{'1','a'}
+list:insert_last({'a'}); test{'a'}
+list:insert_last({'b'}); test{'a','b'}
+list:insert_first({'0'}); test{'0','a','b'}
+list:insert_after(list:next(), {'1'}); test{'0','1','a','b'}
+assert(list:remove_last()[1] == 'b'); test{'0','1','a'}
+assert(list:remove_first()[1] == '0'); test{'1','a'}
 assert(list:remove(list:next())[1] == '1'); test{'a'}
 assert(list:remove(list:prev())[1] == 'a'); test{}
 
 list:clear(); test{}
-assert(list:pop() == nil)
+assert(list:remove_last() == nil)
 
-list:clear(); list:unshift({'a'}); test{'a'}
-list:clear(); list:insert({'a'}); test{'a'}
+list:clear(); list:insert_first({'a'}); test{'a'}
+list:clear(); list:insert_first({'a'}); test{'a'}
 

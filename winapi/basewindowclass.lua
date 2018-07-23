@@ -281,6 +281,10 @@ function BaseWindow:__set_style_ex_bit(k,v)
 	SetWindowPos(self.hwnd, nil, 0, 0, 0, 0, SWP_FRAMECHANGED_ONLY)
 end
 
+local function inherit(self, super)
+	return setmetatable(self, {__index = super})
+end
+
 function BaseWindow:__subclass(class)
 	BaseWindow.__index.__subclass(self, class)
 

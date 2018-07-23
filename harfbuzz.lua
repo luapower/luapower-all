@@ -67,11 +67,12 @@ function obj_from_string_func(func, obj_type)
 	end
 end
 
+local strbuf = ffi.new'char[128]'
+
 function obj_tostring_func(func)
 	return function(obj)
-		local buf = ffi.new'char[128]'
-		func(buf, 128)
-		return ffi.string(buf)
+		func(obj, strbuf, 128)
+		return ffi.string(strbuf)
 	end
 end
 
@@ -116,8 +117,11 @@ end
 --tags, languages, directions, scripts (static objects)
 
 hb.tag = from_string_func(C.hb_tag_from_string)
-hb.tag_tostring = string_func(C.hb_tag_to_string)
 
+hb.tag_tostring = string_func(function(tag)
+	C.hb_tag_to_string(tag, strbuf)
+	return strbuf
+end)
 hb.direction = from_string_func(C.hb_direction_from_string)
 hb.direction_tostring = string_func(C.hb_direction_to_string)
 
@@ -135,17 +139,66 @@ function hb.script(s)
 	end
 	return script
 end
+hb.script_to_tag = C.hb_script_to_iso15924_tag --output == input
 hb.script_horizontal_direction = C.hb_script_get_horizontal_direction
 
 --features, variations (user-allocated objects without a destructor)
 
-hb.feature = obj_from_string_func(C.hb_feature_from_string, 'hb_feature_t')
+hb.feature   = obj_from_string_func(C.hb_feature_from_string,   'hb_feature_t')
 hb.variation = obj_from_string_func(C.hb_variation_from_string, 'hb_variation_t')
 
 --blobs, buffers (user-allocated objects with a destructor)
 
 hb.blob = create_func(C.hb_blob_create, C.hb_blob_destroy)
 hb.buffer = create_func(C.hb_buffer_create, C.hb_buffer_destroy)
+
+--hb-unicode.h
+
+local default_unicode_funcs = C.hb_unicode_funcs_get_default()
+
+function hb.unicode_combining_class(c)
+	return C.hb_unicode_combining_class(default_unicode_funcs, c)
+end
+
+function hb.unicode_eastasian_width(c)
+	return C.hb_unicode_eastasian_width(default_unicode_funcs, c)
+end
+
+function hb.unicode_general_category(c)
+	return C.hb_unicode_general_category(default_unicode_funcs, c)
+end
+
+function hb.unicode_mirroring(c)
+	return C.hb_unicode_mirroring(default_unicode_funcs, c)
+end
+
+function hb.unicode_script(c)
+	return C.hb_unicode_script(default_unicode_funcs, c)
+end
+
+local c1 = ffi.new'hb_codepoint_t[1]'
+local c2 = ffi.new'hb_codepoint_t[1]'
+
+function hb.unicode_compose(a, b)
+	local ok = C.hb_unicode_compose(default_unicode_funcs, a, b, c1) == 1
+	return ok and c1[0] or nil
+end
+
+function hb.unicode_decompose(c)
+	local ok = C.hb_unicode_decompose(default_unicode_funcs, c, c1, c2) == 1
+	if not ok then return nil end
+	return c1[0], c2[0]
+end
+
+local c0 = ffi.new'uint32_t[18]'
+
+function hb.unicode_decompose_compatibility(c, out)
+	local out = out or c0
+	local len = C.hb_unicode_decompose_compatibility(
+		default_unicode_funcs, c, out)
+	if len == 0 then return nil end
+	return out, len
+end
 
 --from hb-ft.h
 hb.ft_face        = create_func(C.hb_ft_face_create, C.hb_face_destroy)

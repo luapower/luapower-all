@@ -250,7 +250,7 @@ end
 local last_active_window
 
 function window:new(app, frontend, t)
-	self = glue.inherit({app = app, frontend = frontend}, self)
+	self = setmetatable({app = app, frontend = frontend}, {__index = self})
 
 	local attrs = {}
 
@@ -1507,11 +1507,11 @@ local view = {}
 window.view = view
 
 function view:new(window, frontend, t)
-	local self = glue.inherit({
+	local self = setmetatable({
 		window = window,
 		app = window.app,
 		frontend = frontend,
-	}, self)
+	}, {__index = self})
 
 	local attrs = {
 		depth = window._depth,
@@ -1636,7 +1636,7 @@ local notifyicon = {}
 app.notifyicon = notifyicon
 
 function notifyicon:new(app, frontend, opt)
-	self = glue.inherit({app = app, frontend = frontend}, notifyicon)
+	self = setmetatable({app = app, frontend = frontend}, {__index = notifyicon})
 	return self
 end
 

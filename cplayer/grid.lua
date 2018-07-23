@@ -6,8 +6,8 @@ do return end --TODO: finish this
 
 local grid = require'grid_widget'
 
-cgrid = glue.inherit({}, grid)
-cgrid.view = glue.inherit({}, grid.view)
+cgrid = setmetatable({}, {__index = grid})
+cgrid.view = setmetatable({}, {__index = grid.view})
 
 function cgrid:new(t, player)
 	self = grid.new(self, t)

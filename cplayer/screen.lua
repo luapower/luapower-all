@@ -1,6 +1,5 @@
 --screen: window manager for hit-testing, reordering, snapping, and rendering overlapping windows.
 local app = require'cplayer'
-local glue = require'glue'
 local box = require'box2d'
 
 local screen = {
@@ -10,7 +9,7 @@ local screen = {
 }
 
 function screen:new(t)
-	self = glue.inherit(t or {}, self)
+	self = setmetatable(t or {}, {__index = self})
 	self.windows = {} --{window1,...} in reverse z_order
 	return self
 end

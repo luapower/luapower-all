@@ -1,12 +1,11 @@
 local player = require'cplayer'
 local boxlayer = require'cplayer.boxlayer'
 local layers = require'cplayer.layerlist'
-local glue = require'glue'
 
 local layers = layers:new()
-layers:add(glue.inherit({color = '#ff6666', x = 10, y = 10, w = 200, h = 150}, boxlayer))
-layers:add(glue.inherit({color = '#66ff66', x = 50, y = 50, w = 200, h = 150}, boxlayer))
-layers:add(glue.inherit({color = '#6666ff', x = 90, y = 90, w = 200, h = 150}, boxlayer))
+layers:add(setmetatable({color = '#ff6666', x = 10, y = 10, w = 200, h = 150}, {__index = boxlayer}))
+layers:add(setmetatable({color = '#66ff66', x = 50, y = 50, w = 200, h = 150}, {__index = boxlayer}))
+layers:add(setmetatable({color = '#6666ff', x = 90, y = 90, w = 200, h = 150}, {__index = boxlayer}))
 
 function player:on_render(cr)
 	local mx, my = self:mousepos()

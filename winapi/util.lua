@@ -21,7 +21,6 @@ assert       = glue.assert
 extend       = glue.extend
 fcall        = glue.fcall
 index        = glue.index
-inherit      = glue.inherit
 merge        = glue.merge
 pass         = glue.pass
 pcall        = glue.pcall

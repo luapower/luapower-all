@@ -12,9 +12,7 @@ local s = 'The quick (“brown”) fox can’t jump 32.3 feet,\xC2\x85right?'
 print('len', ub.len_utf8(s), #s)
 print()
 
-local j = 0
-for c, i in ub.chars_utf8(s) do
-	j = j + 1
+for j, c, i in ub.chars_utf8(s) do
 	print(j, i, c < 256 and string.char(c) or '', string.format('0x%X', c))
 end
 print()

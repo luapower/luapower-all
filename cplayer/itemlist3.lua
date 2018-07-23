@@ -1,11 +1,10 @@
 local player = require'cplayer'
 local box = require'box2d'
-local glue = require'glue'
 
 local itemlist = {}
 
 function itemlist:new(t)
-	return glue.inherit(t or {}, itemlist)
+	return setmetatable(t or {}, {__index = itemlist})
 end
 
 function itemlist:add(item, index)

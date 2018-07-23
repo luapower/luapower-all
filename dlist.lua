@@ -1,7 +1,8 @@
 
---doubly linked lists: dlists make insert, remove and move operations fast,
---and access by index slow.
+--Doubly linked lists.
 --Written by Cosmin Apreutesei. Public Domain.
+
+if not ... then require'dlist_test'; return end
 
 local list = {}
 list.__index = list
@@ -18,20 +19,7 @@ function list:clear()
 	self.last = nil
 end
 
-function list:push(t)
-	assert(t)
-	if self.last then
-		self.last._next = t
-		t._prev = self.last
-		self.last = t
-	else
-		self.first = t
-		self.last = t
-	end
-	self.length = self.length + 1
-end
-
-function list:unshift(t)
+function list:insert_first(t)
 	assert(t)
 	if self.first then
 		self.first._prev = t
@@ -44,51 +32,40 @@ function list:unshift(t)
 	self.length = self.length + 1
 end
 
-function list:insert(t, after)
+function list:insert_after(anchor, t)
+	if not t then anchor, t = nil, anchor end
+	if not anchor then anchor = self.last end
 	assert(t)
-	if not after then
-		return self:push(t)
-	end
-	assert(t ~= after)
-	if after._next then
-		after._next._prev = t
-		t._next = after._next
+	if anchor then
+		assert(t ~= anchor)
+		if anchor._next then
+			anchor._next._prev = t
+			t._next = anchor._next
+		else
+			self.last = t
+		end
+		t._prev = anchor
+		anchor._next = t
+		self.length = self.length + 1
 	else
-		self.last = t
+		self:insert_first(t)
 	end
-	t._prev = after
-	after._next = t
-	self.length = self.length + 1
 end
 
-function list:pop()
-	if not self.last then return end
-	local t = self.last
-	if t._prev then
-		t._prev._next = nil
-		self.last = t._prev
-		t._prev = nil
-	else
-		self.first = nil
-		self.last = nil
-	end
-	self.length = self.length - 1
-	return t
+function list:insert_last(t)
+	self:insert_after(nil, t)
 end
 
-function list:shift()
-	if not self.first then return end
-	local t = self.first
-	if t._next then
-		t._next._prev = nil
-		self.first = t._next
-		t._next = nil
+function list:insert_before(anchor, t)
+	if not t then anchor, t = nil, anchor end
+	if not anchor then anchor = self.first end
+	anchor = anchor and anchor._prev
+	assert(t)
+	if anchor then
+		self:insert_after(anchor, t)
 	else
-		self.first = nil
-		self.last = nil
+		self:insert_first(t)
 	end
-	self.length = self.length - 1
-	return t
 end
 
 function list:remove(t)
@@ -115,6 +92,16 @@ function list:remove(t)
 	t._prev = nil
 	self.length = self.length - 1
 	return t
+end
+
+function list:remove_last()
+	if not self.last then return end
+	return self:remove(self.last)
+end
+
+function list:remove_first()
+	if not self.first then return end
+	return self:remove(self.first)
 end
 
 --iterating
@@ -152,9 +139,5 @@ function list:copy()
 	end
 	return list
 end
-
-
-if not ... then require'dlist_test' end
-
 
 return list

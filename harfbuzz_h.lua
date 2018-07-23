@@ -14,39 +14,43 @@ ffi.cdef[[
 
 // hb-common.h ---------------------------------------------------------------
 
-typedef int hb_bool_t;
+typedef int      hb_bool_t;
 typedef uint32_t hb_codepoint_t;
-typedef int32_t hb_position_t;
+typedef int32_t  hb_position_t;
 typedef uint32_t hb_mask_t;
+
 typedef union _hb_var_int_t {
-  uint32_t u32;
-  int32_t i32;
-  uint16_t u16[2];
-  int16_t i16[2];
-  uint8_t u8[4];
-  int8_t i8[4];
+	uint32_t u32;
+	int32_t i32;
+	uint16_t u16[2];
+	int16_t i16[2];
+	uint8_t u8[4];
+	int8_t i8[4];
 } hb_var_int_t;
+
 typedef uint32_t hb_tag_t;
 
 hb_tag_t hb_tag_from_string (const char *str, int len);
-void hb_tag_to_string (hb_tag_t tag, char *buf);
+void     hb_tag_to_string   (hb_tag_t tag, char *buf);
 
 typedef enum {
-  HB_DIRECTION_INVALID = 0,
-  HB_DIRECTION_LTR = 4,
-  HB_DIRECTION_RTL,
-  HB_DIRECTION_TTB,
-  HB_DIRECTION_BTT
+	HB_DIRECTION_INVALID = 0,
+	HB_DIRECTION_LTR = 4,
+	HB_DIRECTION_RTL,
+	HB_DIRECTION_TTB,
+	HB_DIRECTION_BTT
 } hb_direction_t;
 
 hb_direction_t hb_direction_from_string (const char *str, int len);
-const char * hb_direction_to_string (hb_direction_t direction);
+const char*    hb_direction_to_string (hb_direction_t direction);
+
 typedef const struct hb_language_impl_t *hb_language_t;
+
 hb_language_t hb_language_from_string (const char *str, int len);
 const char *hb_language_to_string (hb_language_t language);
 
 enum {
-	HB_LANGUAGE_INVALID  = 0,
+	HB_LANGUAGE_INVALID = 0,
 };
 
 hb_language_t hb_language_get_default (void);
@@ -201,18 +205,16 @@ typedef enum {
 	HB_SCRIPT_MEDEFAIDRIN = ((hb_tag_t)((((uint8_t)('M'))<<24)|(((uint8_t)('e'))<<16)|(((uint8_t)('d'))<<8)|((uint8_t)('f')))),
 	HB_SCRIPT_OLD_SOGDIAN = ((hb_tag_t)((((uint8_t)('S'))<<24)|(((uint8_t)('o'))<<16)|(((uint8_t)('g'))<<8)|((uint8_t)('o')))),
 	HB_SCRIPT_SOGDIAN = ((hb_tag_t)((((uint8_t)('S'))<<24)|(((uint8_t)('o'))<<16)|(((uint8_t)('g'))<<8)|((uint8_t)('d')))),
-	HB_SCRIPT_INVALID = ((hb_tag_t)((((uint8_t)(0))<<24)|(((uint8_t)(0))<<16)|(((uint8_t)(0))<<8)|((uint8_t)(0)))),
-	_HB_SCRIPT_MAX_VALUE = ((hb_tag_t)((((uint8_t)(0xff))<<24)|(((uint8_t)(0xff))<<16)|(((uint8_t)(0xff))<<8)|((uint8_t)(0xff)))),
-	_HB_SCRIPT_MAX_VALUE_SIGNED = ((hb_tag_t)((((uint8_t)(0x7f))<<24)|(((uint8_t)(0xff))<<16)|(((uint8_t)(0xff))<<8)|((uint8_t)(0xff))))
+	HB_SCRIPT_INVALID = 0,
 } hb_script_t;
 
-hb_script_t hb_script_from_iso15924_tag (hb_tag_t tag);
-hb_script_t hb_script_from_string (const char *str, int len);
-hb_tag_t hb_script_to_iso15924_tag (hb_script_t script);
+hb_script_t    hb_script_from_iso15924_tag        (hb_tag_t tag);
+hb_script_t    hb_script_from_string              (const char *str, int len);
+hb_tag_t       hb_script_to_iso15924_tag          (hb_script_t script);
 hb_direction_t hb_script_get_horizontal_direction (hb_script_t script);
 
 typedef struct hb_user_data_key_t {
-  char unused;
+	char unused;
 } hb_user_data_key_t;
 
 typedef void (*hb_destroy_func_t) (void *user_data);
@@ -225,7 +227,7 @@ typedef struct hb_feature_t {
 } hb_feature_t;
 
 hb_bool_t hb_feature_from_string (const char *str, int len, hb_feature_t *feature);
-void hb_feature_to_string (hb_feature_t *feature, char *buf, unsigned int size);
+void      hb_feature_to_string   (hb_feature_t *feature, char *buf, unsigned int size);
 
 typedef struct hb_variation_t {
   hb_tag_t tag;
@@ -233,7 +235,7 @@ typedef struct hb_variation_t {
 } hb_variation_t;
 
 hb_bool_t hb_variation_from_string (const char *str, int len, hb_variation_t *variation);
-void hb_variation_to_string (hb_variation_t *variation, char *buf, unsigned int size);
+void      hb_variation_to_string   (hb_variation_t *variation, char *buf, unsigned int size);
 
 // hb-set.h ------------------------------------------------------------------
 
@@ -241,83 +243,41 @@ enum {
 	HB_SET_VALUE_INVALID = ((hb_codepoint_t) -1),
 };
 typedef struct hb_set_t hb_set_t;
+
 hb_set_t * hb_set_create (void);
 hb_set_t * hb_set_get_empty (void);
 hb_set_t * hb_set_reference (hb_set_t *set);
 void       hb_set_destroy (hb_set_t *set);
-hb_bool_t
-hb_set_set_user_data (hb_set_t *set,
-        hb_user_data_key_t *key,
-        void * data,
-        hb_destroy_func_t destroy,
-        hb_bool_t replace);
-void *
-hb_set_get_user_data (hb_set_t *set,
-        hb_user_data_key_t *key);
-hb_bool_t
-hb_set_allocation_successful (const hb_set_t *set);
-void
-hb_set_clear (hb_set_t *set);
-hb_bool_t
-hb_set_is_empty (const hb_set_t *set);
-hb_bool_t
-hb_set_has (const hb_set_t *set,
-     hb_codepoint_t codepoint);
-void
-hb_set_add (hb_set_t *set,
-     hb_codepoint_t codepoint);
-void
-hb_set_add_range (hb_set_t *set,
-    hb_codepoint_t first,
-    hb_codepoint_t last);
-void
-hb_set_del (hb_set_t *set,
-     hb_codepoint_t codepoint);
-void
-hb_set_del_range (hb_set_t *set,
-    hb_codepoint_t first,
-    hb_codepoint_t last);
-hb_bool_t
-hb_set_is_equal (const hb_set_t *set,
-   const hb_set_t *other);
-hb_bool_t
-hb_set_is_subset (const hb_set_t *set,
-    const hb_set_t *larger_set);
-void
-hb_set_set (hb_set_t *set,
-     const hb_set_t *other);
-void
-hb_set_union (hb_set_t *set,
-       const hb_set_t *other);
-void
-hb_set_intersect (hb_set_t *set,
-    const hb_set_t *other);
-void
-hb_set_subtract (hb_set_t *set,
-   const hb_set_t *other);
-void
-hb_set_symmetric_difference (hb_set_t *set,
-        const hb_set_t *other);
-unsigned int
-hb_set_get_population (const hb_set_t *set);
-hb_codepoint_t
-hb_set_get_min (const hb_set_t *set);
-hb_codepoint_t
-hb_set_get_max (const hb_set_t *set);
-hb_bool_t
-hb_set_next (const hb_set_t *set,
-      hb_codepoint_t *codepoint);
-hb_bool_t
-hb_set_previous (const hb_set_t *set,
-   hb_codepoint_t *codepoint);
-hb_bool_t
-hb_set_next_range (const hb_set_t *set,
-     hb_codepoint_t *first,
-     hb_codepoint_t *last);
-hb_bool_t
-hb_set_previous_range (const hb_set_t *set,
-         hb_codepoint_t *first,
-         hb_codepoint_t *last);
+hb_bool_t  hb_set_set_user_data (
+	hb_set_t *set,
+	hb_user_data_key_t *key,
+	void * data,
+	hb_destroy_func_t destroy,
+	hb_bool_t replace
+);
+void *         hb_set_get_user_data  (hb_set_t *set, hb_user_data_key_t *key);
+hb_bool_t      hb_set_allocation_successful (const hb_set_t *set);
+void           hb_set_clear          (hb_set_t *set);
+hb_bool_t      hb_set_is_empty       (const hb_set_t *set);
+hb_bool_t      hb_set_has            (const hb_set_t *set, hb_codepoint_t codepoint);
+void           hb_set_add            (hb_set_t *set, hb_codepoint_t codepoint);
+void           hb_set_add_range      (hb_set_t *set, hb_codepoint_t first, hb_codepoint_t last);
+void           hb_set_del            (hb_set_t *set, hb_codepoint_t codepoint);
+void           hb_set_del_range      (hb_set_t *set, hb_codepoint_t first, hb_codepoint_t last);
+hb_bool_t      hb_set_is_equal       (const hb_set_t *set, const hb_set_t *other);
+hb_bool_t      hb_set_is_subset      (const hb_set_t *set, const hb_set_t *larger_set);
+void           hb_set_set            (hb_set_t *set, const hb_set_t *other);
+void           hb_set_union          (hb_set_t *set, const hb_set_t *other);
+void           hb_set_intersect      (hb_set_t *set, const hb_set_t *other);
+void           hb_set_subtract       (hb_set_t *set, const hb_set_t *other);
+void           hb_set_symmetric_difference (hb_set_t *set, const hb_set_t *other);
+unsigned int   hb_set_get_population (const hb_set_t *set);
+hb_codepoint_t hb_set_get_min        (const hb_set_t *set);
+hb_codepoint_t hb_set_get_max        (const hb_set_t *set);
+hb_bool_t      hb_set_next           (const hb_set_t *set, hb_codepoint_t *codepoint);
+hb_bool_t      hb_set_previous       (const hb_set_t *set, hb_codepoint_t *codepoint);
+hb_bool_t      hb_set_next_range     (const hb_set_t *set, hb_codepoint_t *first, hb_codepoint_t *last);
+hb_bool_t      hb_set_previous_range (const hb_set_t *set, hb_codepoint_t *first, hb_codepoint_t *last);
 
 // hb-map.h ------------------------------------------------------------------
 
@@ -325,44 +285,27 @@ enum {
 	HB_MAP_VALUE_INVALID = ((hb_codepoint_t) -1),
 };
 typedef struct hb_map_t hb_map_t;
-hb_map_t *
-hb_map_create (void);
-hb_map_t *
-hb_map_get_empty (void);
-hb_map_t *
-hb_map_reference (hb_map_t *map);
-void
-hb_map_destroy (hb_map_t *map);
-hb_bool_t
-hb_map_set_user_data (hb_map_t *map,
-        hb_user_data_key_t *key,
-        void * data,
-        hb_destroy_func_t destroy,
-        hb_bool_t replace);
-void *
-hb_map_get_user_data (hb_map_t *map,
-        hb_user_data_key_t *key);
-hb_bool_t
-hb_map_allocation_successful (const hb_map_t *map);
-void
-hb_map_clear (hb_map_t *map);
-hb_bool_t
-hb_map_is_empty (const hb_map_t *map);
-unsigned int
-hb_map_get_population (const hb_map_t *map);
-void
-hb_map_set (hb_map_t *map,
-     hb_codepoint_t key,
-     hb_codepoint_t value);
-hb_codepoint_t
-hb_map_get (const hb_map_t *map,
-     hb_codepoint_t key);
-void
-hb_map_del (hb_map_t *map,
-     hb_codepoint_t key);
-hb_bool_t
-hb_map_has (const hb_map_t *map,
-     hb_codepoint_t key);
+
+hb_map_t*  hb_map_create (void);
+hb_map_t*  hb_map_get_empty (void);
+hb_map_t*  hb_map_reference (hb_map_t *map);
+void       hb_map_destroy (hb_map_t *map);
+hb_bool_t  hb_map_set_user_data (
+	hb_map_t *map,
+	hb_user_data_key_t *key,
+	void * data,
+	hb_destroy_func_t destroy,
+	hb_bool_t replace
+);
+void*          hb_map_get_user_data  (hb_map_t *map, hb_user_data_key_t *key);
+hb_bool_t      hb_map_allocation_successful (const hb_map_t *map);
+void           hb_map_clear          (hb_map_t *map);
+hb_bool_t      hb_map_is_empty       (const hb_map_t *map);
+unsigned int   hb_map_get_population (const hb_map_t *map);
+void           hb_map_set            (hb_map_t *map, hb_codepoint_t key, hb_codepoint_t value);
+hb_codepoint_t hb_map_get            (const hb_map_t *map, hb_codepoint_t key);
+void           hb_map_del            (hb_map_t *map, hb_codepoint_t key);
+hb_bool_t      hb_map_has            (const hb_map_t *map, hb_codepoint_t key);
 
 // hb-unicode.h --------------------------------------------------------------
 
@@ -461,12 +404,11 @@ typedef enum {
 
 typedef struct hb_unicode_funcs_t hb_unicode_funcs_t;
 
-hb_unicode_funcs_t * hb_unicode_funcs_get_default (void);
-hb_unicode_funcs_t * hb_unicode_funcs_create (hb_unicode_funcs_t *parent);
-hb_unicode_funcs_t * hb_unicode_funcs_get_empty (void);
-hb_unicode_funcs_t * hb_unicode_funcs_reference (hb_unicode_funcs_t *ufuncs);
-
-void hb_unicode_funcs_destroy (hb_unicode_funcs_t *ufuncs);
+hb_unicode_funcs_t* hb_unicode_funcs_get_default (void);
+hb_unicode_funcs_t* hb_unicode_funcs_create      (hb_unicode_funcs_t *parent);
+hb_unicode_funcs_t* hb_unicode_funcs_get_empty   (void);
+hb_unicode_funcs_t* hb_unicode_funcs_reference   (hb_unicode_funcs_t *ufuncs);
+void                hb_unicode_funcs_destroy     (hb_unicode_funcs_t *ufuncs);
 
 hb_bool_t hb_unicode_funcs_set_user_data (
 	hb_unicode_funcs_t *ufuncs,

@@ -52,32 +52,23 @@ function ucdn.bidi_class(c)
 	return bidi[C.ucdn_get_bidi_class(c)]
 end
 
-local scripts = {[0] = 'common', 'latin', 'greek', 'cyrillic', 'armenian',
-	'hebrew', 'arabic', 'syriac', 'thaana', 'devanagari', 'bengali',
-	'gurmukhi', 'gujarati', 'oriya', 'tamil', 'telugu', 'kannada', 'malayalam',
-	'sinhala', 'thai', 'lao', 'tibetan', 'myanmar', 'georgian', 'hangul',
-	'ethiopic', 'cherokee', 'canadian_aboriginal', 'ogham', 'runic', 'khmer',
-	'mongolian', 'hiragana', 'katakana', 'bopomofo', 'han', 'yi', 'old_italic',
-	'gothic', 'deseret', 'inherited', 'tagalog', 'hanunoo', 'buhid',
-	'tagbanwa', 'limbu', 'tai_le', 'linear_b', 'ugaritic', 'shavian',
-	'osmanya', 'cypriot', 'braille', 'buginese', 'coptic', 'new_tai_lue',
-	'glagolitic', 'tifinagh', 'syloti_nagri', 'old_persian', 'kharoshthi',
-	'balinese', 'cuneiform', 'phoenician', 'phags_pa', 'nko', 'sundanese',
-	'lepcha', 'ol_chiki', 'vai', 'saurashtra', 'kayah_li', 'rejang', 'lycian',
-	'carian', 'lydian', 'cham', 'tai_tham', 'tai_viet', 'avestan',
-	'egyptian_hieroglyphs', 'samaritan', 'lisu', 'bamum', 'javanese',
-	'meetei_mayek', 'imperial_aramaic', 'old_south_arabian',
-	'inscriptional_parthian', 'inscriptional_pahlavi', 'old_turkic', 'kaithi',
-	'batak', 'brahmi', 'mandaic', 'chakma', 'meroitic_cursive',
-	'meroitic_hieroglyphs', 'miao', 'sharada', 'sora_sompeng', 'takri',
-	'unknown', 'bassa_vah', 'caucasian_albanian', 'duployan', 'elbasan',
-	'grantha', 'khojki', 'khudawadi', 'linear_a', 'mahajani', 'manichaean',
-	'mende_kikakui', 'modi', 'mro', 'nabataean', 'old_north_arabian',
-	'old_permic', 'pahawh_hmong', 'palmyrene', 'pau_cin_hau',
-	'psalter_pahlavi', 'siddham', 'tirhuta', 'warang_citi', 'ahom',
-	'anatolian_hieroglyphs', 'hatran', 'multani', 'old_hungarian',
-	'signwriting', 'adlam', 'bhaiksuki', 'marchen', 'newa', 'osage', 'tangut',
-	'masaram_gondi', 'nushu', 'soyombo', 'zanabazar_square',
+--149 script names in ISO 15924 format
+local scripts = {[0] =
+	'Zyyy','Latn','Grek','Cyrl','Armn','Hebr','Arab','Syrc','Thaa','Deva',
+	'Beng','Guru','Gujr','Orya','Taml','Telu','Knda','Mlym','Sinh','Thai',
+	'Laoo','Tibt','Mymr','Geor','Hang','Ethi','Cher','Cans','Ogam','Runr',
+	'Khmr','Mong','Hira','Kana','Bopo','Hani','Yiii','Ital','Goth','Dsrt',
+	'Zinh','Tglg','Hano','Buhd','Tagb','Limb','Tale','Linb','Ugar','Shaw',
+	'Osma','Cprt','Brai','Bugi','Copt','Talu','Glag','Tfng','Sylo','Xpeo',
+	'Khar','Bali','Xsux','Phnx','Phag','Nkoo','Sund','Lepc','Olck','Vaii',
+	'Saur','Kali','Rjng','Lyci','Cari','Lydi','Cham','Lana','Tavt','Avst',
+	'Egyp','Samr','Lisu','Bamu','Java','Mtei','Armi','Sarb','Prti','Phli',
+	'Orkh','Kthi','Batk','Brah','Mand','Cakm','Merc','Mero','Plrd','Shrd',
+	'Sora','Takr','Zzzz','Bass','Aghb','Dupl','Elba','Gran','Khoj','Sind',
+	'Lina','Mahj','Mani','Mend','Modi','Mroo','Nbat','Narb','Perm','Hmng',
+	'Palm','Pauc','Phlp','Sidd','Tirh','Wara','Ahom','Hluw','Hatr','Mult',
+	'Hung','Sgnw','Adlm','Bhks','Marc','Newa','Osge','Tang','Gonm','Nshu',
+	'Soyo','Zanb','Dogr','Gong','Rohg','Maka','Medf','Sogo','Sogd',
 }
 function ucdn.script(c)
 	return scripts[C.ucdn_get_script(c)]
@@ -111,21 +102,25 @@ end
 
 local c1 = ffi.new'uint32_t[1]'
 local c2 = ffi.new'uint32_t[1]'
-function ucdn.decompose(code)
-	local ok = C.ucdn_decompose(code, c1, c2) == 1
-	return ok, c1[0], c2[0]
+
+function ucdn.decompose(c)
+	local ok = C.ucdn_decompose(c, c1, c2) == 1
+	if not ok then return nil end
+	return c1[0], c2[0]
 end
 
 local c0 = ffi.new'uint32_t[18]'
-function ucdn.compat_decompose(code, c)
-	local c = c or c0
-	local len = C.ucdn_compat_decompose(code, c)
-	return c, len
+
+function ucdn.compat_decompose(c, out)
+	out = out or c0
+	local len = C.ucdn_compat_decompose(c, out)
+	if len == 0 then return nil end
+	return out, len
 end
 
 function ucdn.compose(a, b)
 	local ok = C.ucdn_compose(c1, a, b) == 1
-	return ok, c1[0]
+	return ok and c1[0] or nil
 end
 
 --tests ----------------------------------------------------------------------
@@ -140,7 +135,7 @@ if not ... then
 	assert(ucdn.general_category(('a'):byte(1)) == 'Ll')
 	assert(ucdn.bidi_class(0x202B) == 'RLE')
 	assert(ucdn.bidi_class(0x202C) == 'PDF')
-	assert(ucdn.script(0x32D0) == 'katakana')
+	assert(ucdn.script(0x32D0) == 'Kana')
 	assert(ucdn.linebreak_class(10) == 'LF')
 	assert(ucdn.linebreak_class(('A'):byte(1)) == 'AL')
 	assert(ucdn.resolved_linebreak_class(('A'):byte(1)) == 'AL')
@@ -149,12 +144,12 @@ if not ... then
 	assert(ucdn.paired_bracket(0x0028) == 0x0029) --()
 	assert(ucdn.paired_bracket_type(0x0028) == 'open')
 	assert(ucdn.paired_bracket_type(0x0029) == 'close')
-	local ok,a,b = ucdn.decompose(0x00f1) --fi
-	assert(ok and a == 0x006e and b == 0x0303)
+	local a,b = ucdn.decompose(0x00f1) --fi
+	assert(a == 0x006e and b == 0x0303)
 	local p, len = ucdn.compat_decompose(0x00f1)
 	assert(len == 2 and p[0] == 0x006e and p[1] == 0x0303)
-	local ok, c = ucdn.compose(0x006e, 0x0303)
-	assert(ok and c == 0x00f1)
+	local c = ucdn.compose(0x006e, 0x0303)
+	assert(c == 0x00f1)
 
 end
 

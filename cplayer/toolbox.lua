@@ -1,5 +1,4 @@
 local app = require'cplayer'
-local glue = require'glue'
 local box = require'box2d'
 
 local toolbox = {
@@ -26,7 +25,7 @@ local toolbox = {
 }
 
 function toolbox:new(t)
-	self = glue.inherit(t, self)
+	self = setmetatable(t, {__index = self})
 	self.visible = true
 	self.minimized = false
 	self:set_edges()

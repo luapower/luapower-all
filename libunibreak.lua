@@ -65,9 +65,6 @@ M.is_line_breakable = C.is_line_breakable
 
 local function set_breaks_func(set_func, code_size)
 	return function(s, len, lang, brks)
-		if type(len) ~= 'number' then
-			len, lang, brks = nil, len, lang
-		end
 		len = len or math.floor(#s / code_size)
 		brks = brks or ffi.new('char[?]', len)
 		set_func(s, len, lang, brks)
@@ -75,17 +72,18 @@ local function set_breaks_func(set_func, code_size)
 	end
 end
 
-M.linebreaks_utf8  = set_breaks_func(C.set_linebreaks_utf8 , 1)
-M.linebreaks_utf16 = set_breaks_func(C.set_linebreaks_utf16, 2)
-M.linebreaks_utf32 = set_breaks_func(C.set_linebreaks_utf32, 4)
+M.linebreaks     = set_breaks_func(C.set_linebreaks_utf32    , 4)
+M.wordbreaks     = set_breaks_func(C.set_wordbreaks_utf32    , 4)
+M.graphemebreaks = set_breaks_func(C.set_graphemebreaks_utf32, 4)
 
-M.wordbreaks_utf8  = set_breaks_func(C.set_wordbreaks_utf8 , 1)
-M.wordbreaks_utf16 = set_breaks_func(C.set_wordbreaks_utf16, 2)
-M.wordbreaks_utf32 = set_breaks_func(C.set_wordbreaks_utf32, 4)
+--utf8/16 APIs (deprecated but used in tests)
 
+M.linebreaks_utf8      = set_breaks_func(C.set_linebreaks_utf8     , 1)
+M.linebreaks_utf16     = set_breaks_func(C.set_linebreaks_utf16    , 2)
+M.wordbreaks_utf8      = set_breaks_func(C.set_wordbreaks_utf8     , 1)
+M.wordbreaks_utf16     = set_breaks_func(C.set_wordbreaks_utf16    , 2)
 M.graphemebreaks_utf8  = set_breaks_func(C.set_graphemebreaks_utf8 , 1)
 M.graphemebreaks_utf16 = set_breaks_func(C.set_graphemebreaks_utf16, 2)
-M.graphemebreaks_utf32 = set_breaks_func(C.set_graphemebreaks_utf32, 4)
 
 local EOS = 0xFFFFFFFF
 
@@ -102,25 +100,25 @@ local function next_char_func(next_char_func, code_size)
 end
 M.next_char_utf8  = next_char_func(C.ub_get_next_char_utf8 , 1)
 M.next_char_utf16 = next_char_func(C.ub_get_next_char_utf16, 2)
-M.next_char_utf32 = next_char_func(C.ub_get_next_char_utf32, 4)
 
 local function iter_func(next_char_func, code_size)
 	return function(s, len, start, ip)
 		local str = type(s) == 'string'
 		len = len or math.floor(#s / code_size)
+		local i = str and 0 or -1
 		ip = ip or ffi.new'size_t[1]'
 		ip[0] = start and start + (str and -1 or 0) or 0
 		return function()
 			local uc = next_char_func(s, len, ip)
 			if uc == EOS then return nil end
-			return uc, tonumber(ip[0]) + (str and 1 or 0)
+			i = i + 1
+			return i, uc, tonumber(ip[0]) + (str and 1 or 0)
 		end
 	end
 end
 
 M.chars_utf8  = iter_func(C.ub_get_next_char_utf8 , 1)
 M.chars_utf16 = iter_func(C.ub_get_next_char_utf16, 2)
-M.chars_utf32 = iter_func(C.ub_get_next_char_utf32, 4)
 
 local function len_func(next_char_func, code_size)
 	return function(s, len, ip)
@@ -137,6 +135,5 @@ local function len_func(next_char_func, code_size)
 end
 M.len_utf8  = len_func(M.next_char_utf8 , 1)
 M.len_utf16 = len_func(M.next_char_utf16, 2)
-M.len_utf32 = len_func(M.next_char_utf32, 4)
 
 return M

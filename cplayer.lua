@@ -38,7 +38,7 @@ function player:on_close() end --stub
 function player:window(t)
 
 	local referer = self
-	local self = glue.inherit({}, player)
+	local self = setmetatable({}, {__index = player})
 
 	local window = nw:app():window{
 		autoquit = referer == player and true,
@@ -422,8 +422,8 @@ end
 local stopwatch = {}
 
 function player:stopwatch(duration, formula)
-	local t = glue.inherit({player = self, start = self.clock,
-		duration = duration, formula = formula}, stopwatch)
+	local t = setmetatable({player = self, start = self.clock,
+		duration = duration, formula = formula}, {__index = stopwatch})
 	self.stopwatches[t] = true
 	return t
 end

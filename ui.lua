@@ -23,7 +23,6 @@ local pop = table.remove
 local round = glue.round
 local indexof = glue.indexof
 local update = glue.update
-local inherit = glue.inherit
 local extend = glue.extend
 local attr = glue.attr
 local lerp = glue.lerp
@@ -791,7 +790,7 @@ element:init_ignore{}
 -- 1) it can take multiple initialization tables as args.
 -- 2) it inherits the class to get default values directly through t.
 function element:override_create(inherited, ui, t, ...)
-	local t = inherit(update({}, t, ...), self)
+	local t = setmetatable(update({}, t, ...), {__index = self})
 	return inherited(self, ui, t)
 end
 

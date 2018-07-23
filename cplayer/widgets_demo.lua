@@ -13,7 +13,7 @@ local t = {
 	theme = 'dark',
 }
 
-local layer = glue.inherit({x = 50, y = 20, w = 280, h = 300}, boxlayer)
+local layer = setmetatable({x = 50, y = 20, w = 280, h = 300}, {__index = boxlayer})
 
 function player:on_render(cr)
 
