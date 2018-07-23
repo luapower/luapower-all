@@ -398,7 +398,7 @@ local function describe_package(package, platform)
 	h'Overview'
 	local dtags = lp.doc_tags(package, package) or {}
 	print(_('  %-20s: %s', 'name', package))
-	print(_('  %-20s: %s', 'tagline', dtags.tagline or ''))
+	print(_('  %-20s: %s', 'tagline', lp.module_tagline(package, package)))
 	print(_('  %-20s: %s', 'type', lp.package_type(package)))
 	print(_('  %-20s: %s', 'tag', lp.git_tag(package)))
 	print(_('  %-20s: %s', 'tags', enum_values(lp.git_tags(package))))

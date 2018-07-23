@@ -1980,9 +1980,10 @@ end)
 --a module's tagline can be specified in the header of the module file
 --or in the .md of the module.
 module_tagline = memoize_package(function(package, mod)
-	return
-		key('descr', module_header(package, mod)) or
-		key('tagline', doc_tags(package, mod))
+	local s =
+		   key('descr', module_header(package, mod))
+		or key('tagline', doc_tags(package, mod))
+	return s and s:gsub('^[%w]', string.upper):gsub('%.%s*$', '')
 end)
 
 --pkg -> cat map
