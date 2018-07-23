@@ -2,8 +2,6 @@
 tagline: PNG reader
 ---
 
-<warn>Work-in-progress (version 1.0 coming soon)</warn>
-
 ## `local libpng = require'libpng'`
 
 A ffi binding of the ubiquitous [libpng][libpng lib].
@@ -65,7 +63,7 @@ The returned image object is a table with the fields:
 
 ## Help needed
 
-  * encoding API
+  * saving API
   * jit is turned off because we can't call error() from a ffi callback called
     from C; and yet we must not return control to C on errors.
 	 Is there a way around it?

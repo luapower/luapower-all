@@ -1,5 +1,5 @@
 
---Unicode text rendering based on harfbuzz and freetype.
+--Unicode text shaping and rendering.
 --Written by Cosmin Apreutesei. Public Domain.
 
 if not ... then require'tr_demo'; return end
