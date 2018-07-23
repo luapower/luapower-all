@@ -4,7 +4,7 @@ tagline: unicode database and normalization
 
 ## `local ucdn = require'ucdn'`
 
-A ffi binding of [UCDN][https://github.com/grigorig/ucdn].
+A ffi binding of [UCDN](https://github.com/grigorig/ucdn).
 
 UCDN is a Unicode support library. Currently, it provides access
 to basic character properties contained in the Unicode Character

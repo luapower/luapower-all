@@ -10,7 +10,7 @@ from [Unicode text segmentation][tr29].
 
 ## Line breaking
 
-	`ub.linebreaks(s,[len],[lang],[out]) -> line_breaks`
+### `ub.linebreaks(s,[len],[lang],[out]) -> line_breaks`
 
 The returned `line_breaks` is a 0-based array of flags, one for each byte
 of the input string:
@@ -23,7 +23,7 @@ of the input string:
 
 ## Word breaking
 
-	`ub.wordbreaks(s,[len],[lang],[out]) -> word_breaks`
+### `ub.wordbreaks(s,[len],[lang],[out]) -> word_breaks`
 
 The returned `word_breaks` is a 0-based array of flags, one for each byte
 of the input string:
@@ -35,7 +35,7 @@ of the input string:
 
 ## Grapheme breaking
 
-	`ub.graphemebreaks(s,[len],[lang],[out]) -> grapheme_breaks`
+### `ub.graphemebreaks(s,[len],[lang],[out]) -> grapheme_breaks`
 
 The returned `grapheme_breaks` is a 0-based array of flags, one for each byte
 of the input string:

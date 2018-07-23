@@ -8,6 +8,8 @@ Doubly linked lists in Lua. Doubly linked lists make insert, remove and move ope
 and access by index slow. In this particular implementation items must be Lua tables for which
 fields `_prev` and `_next` must be reserved for linking.
 
+## API
+
 ---------------------------------------------- ----------------------------------------------
 `dlist() -> list`                              create a new list
 `list:clear()`                                 clear the list

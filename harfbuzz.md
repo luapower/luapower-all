@@ -6,7 +6,5 @@ tagline: complex text shaping
 
 A ffi binding of [HarfBuzz][harfbuzz lib], a library for OpenType complex text shaping.
 
-Work-in-progress. There's a quick demo to try out in the meantime (for which you'll need [freetype]).
-
 [harfbuzz lib]: http://harfbuzz.org/
 

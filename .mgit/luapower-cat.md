@@ -23,6 +23,7 @@ tagline: package categories
 	* [thread]
 	* [pthread]
 	* [time]
+	* [rs232]
 * Native OS APIs
 	* [winapi]
 	* [winapi.wglpanel]
@@ -33,7 +34,6 @@ tagline: package categories
 	* [mysql]
 * 2D Graphics
 	* [cairo]
-	* [freetype]
 	* [bitmap]
 	* [color]
 	* [boxblur]
@@ -48,6 +48,7 @@ tagline: package categories
 * File Formats
 	* [giflib]
 	* [libjpeg]
+	* [libpng]
 	* [bmp]
 	* [libexif]
 * Hashing
@@ -76,13 +77,26 @@ tagline: package categories
 * Motion
 	* [tweening]
 	* [easing]
+* Data Structures
+	* [heap]
+	* [dlist]
+	* [lrucache]
+	* [lfrb]
+* Text Layouting
+	* [tr]
+	* [harfbuzz]
+   * [freetype]
+* Unicode
+	* [utf8]
+	* [ucdn]
+	* [libunibreak]
+	* [fribidi]
 * Support APIs
+	* [amoeba]
+	* [eq]
 	* [opengl]
 	* [luastate]
-	* [lfrb]
-	* [eq]
 	* [cbframe]
-	* [heap]
 	* [path]
 	* [unixperms]
 	* [lexer]
@@ -96,7 +110,9 @@ tagline: package categories
    * [libogg]
 	* [lua-headers]
 	* [shm]
-Development Tools
+* Development Tools
+	* [cplayer]
+	* [gfonts]
 	* [hash_benchmark]
    * [unit]
 * Package Management
@@ -113,14 +129,3 @@ Development Tools
 	* [minizip]
 	* [terra]
 	* [llvm]
-* Pending Inclusion
-	* [libunibreak]
-	* [harfbuzz]
-	* [ucdn]
-	* [fribidi]
-	* [libpng]
-   * [gfonts]
-   * [imgui]
-   * [imgui_nw_cairo]
-   * [sg]
-	* [cplayer]
