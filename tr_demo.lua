@@ -4,7 +4,7 @@ local nw = require'nw'
 local bundle = require'bundle'
 local gfonts = require'gfonts'
 
-local tr = tr.cairo_tr()
+local tr = tr()
 
 local win = nw:app():window{
 	w = 1800, h = 800,
@@ -12,13 +12,13 @@ local win = nw:app():window{
 
 local function font(file, name)
 	local name = name or assert(file:match('([^\\/]+)%.[a-z]+$')):lower()
-	tr:add_font_file(file, name)
-	local font = tr:load_font(name)
+	tr.rs:add_font_file(file, name)
+	local font = tr.rs:load_font(name)
 	--print(tr:internal_font_name(font))
 end
 
 local function gfont(name)
-	local file = assert(gfonts.font_file(tr.font_db:parse_font(name)))
+	local file = assert(gfonts.font_file(tr.rs.font_db:parse_font(name)))
 	font(file, name)
 end
 
@@ -38,15 +38,15 @@ font'media/fonts/amiri-regular.ttf'
 
 --tr.font_db:dump()
 
-tr:setfont'NotoColorEmoji, 100'
-tr:setfont'NotoEmoji, 109'
-tr:setfont'EmojiSymbols, 100'
-tr:setfont'SubwayTicker, 15'
-tr:setfont'dotty, 32'
-tr:setfont'ss-emoji-microsoft, 14'
-tr:setfont'Hand Faces St, 14'
-tr:setfont'fsex300, 14'
-tr:setfont'open sans 200 italic, 200'
+tr.rs:setfont'NotoColorEmoji, 100'
+tr.rs:setfont'NotoEmoji, 109'
+tr.rs:setfont'EmojiSymbols, 100'
+tr.rs:setfont'SubwayTicker, 15'
+tr.rs:setfont'dotty, 32'
+tr.rs:setfont'ss-emoji-microsoft, 14'
+tr.rs:setfont'Hand Faces St, 14'
+tr.rs:setfont'fsex300, 14'
+tr.rs:setfont'open sans 200 italic, 200'
 
 local ii=0
 function win:repaint()
@@ -55,7 +55,7 @@ function win:repaint()
 	cr:paint()
 	cr:rgb(1, 1, 1)
 
-	tr.cr = cr
+	tr.rs.cr = cr
 
 	if false then
 
@@ -86,7 +86,7 @@ function win:repaint()
 
 	elseif true then
 
-		tr:setfont'amiri, 50'
+		tr.rs:setfont'amiri, 50'
 		tr:clear_runs()
 		local s = 'A ثلاثةثلاثةثلاثةثلاثةثلاثة 1111 خمسة'
 		tr:text_run{

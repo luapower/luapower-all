@@ -1,5 +1,5 @@
 
---font selection.
+--font database for font selection.
 --Written by Cosmin Apreutesei. Public Domain.
 
 local glue = require'glue'
@@ -12,7 +12,7 @@ local index = glue.index
 local font_db = object()
 
 function font_db:__call()
-	self = object(self, {})
+	self = object(self)
 	self.db = {} --{name -> {slant -> {weight -> font}}}
 	self.namecache = {} --{name -> font_name}
 	self.searchers = {} --{searcher1, ...}

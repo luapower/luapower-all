@@ -1,333 +1,50 @@
 
---Unicode text rendering based on harfbuzz and freetype.
+--Unicode text shaping and rendering based on harfbuzz and freetype.
 --Written by Cosmin Apreutesei. Public Domain.
 
 if not ... then require'tr_demo'; return end
 
 local ffi = require'ffi'
-local bit = require'bit'
 local utf8 = require'utf8'
 local hb = require'harfbuzz'
-local ft = require'freetype'
 local fb = require'fribidi'
 local ub = require'libunibreak'
 local glue = require'glue'
-local tuple = require'tuple'
-local lrucache = require'lrucache'
-local cairo = require'cairo'
 local font_db = require'tr_font_db'
 local detect_scripts = require'tr_shape_script'
 local reorder_runs = require'tr_shape_reorder'
 
-local push = table.insert
-local pop = table.remove
-local merge = glue.merge
 local object = glue.object
-local snap = glue.snap
+local push = table.insert
 local assert = glue.assert --assert with string formatting
 local count = glue.count
-local attr = glue.attr
-local trim = glue.trim
-local index = glue.index
-
---glyph rendering ------------------------------------------------------------
 
 local tr = object()
 
-tr.glyph_cache_size = 1024^2 * 20 --20MB net (arbitrary default)
-tr.font_size_resolutiob = 1/8
-tr.subpixel_resolution = 1/64 --1/64 is max with freetype
-
 function tr:__call()
-	local self = object(self, {})
-
-	--speed up method access by caching methods
-	local super = self.__index
-	while super do
-		merge(self, super)
-		super = super.__index
+	self = object(self)
+	self.rs = self:create_rasterizer()
+	function self.rs:font_loaded(font)
+		font.hb_font = assert(hb.ft_font(font.ft_face, nil))
 	end
-
-	self.freetype = ft()
-	self.loaded_fonts = {} --{data -> font}
-	self.font_db = font_db()
-
-	self.glyphs = lrucache{max_size = self.glyph_cache_size}
-	function self.glyphs:value_size(glyph)
-		return glyph:size()
+	function self.rs:font_unloading(font)
+		font.hb_font:free()
+		font.hb_font = false
 	end
-	function self.glyphs:free_value(glyph)
-		glyph:free()
-	end
-
 	return self
 end
 
 function tr:free()
-	if not self.freetype then return end
-
-	self.buffers = false
-
-	self.glyphs:free()
-
-	for font in pairs(self.loaded_fonts) do
-		self:unload_font(font)
-	end
-	self.fonts = false
-
-	self.freetype:free()
-	self.freetype = false
-
-	self.font_db:free()
-	self.font_db = false
+	self.rs:free()
+	self.rs = false
 end
 
---font loading ---------------------------------------------------------------
+--rasterizer selection
 
-function tr:add_font_file(file, ...)
-	local font = {file = file, load = self.load_font_file}
-	self.font_db:add_font(font, ...)
+tr.rasterizer_module = 'tr_raster_cairo'
+function tr:create_rasterizer()
+	return require(self.rasterizer_module)()
 end
-
-function tr:add_mem_font(data, data_size, ...)
-	local font = {data = data, data_size = data_size, load = self.load_mem_font}
-	self.font_db:add_font(font, ...)
-end
-
-function tr:load_font_file(font)
-	local bundle = require'bundle'
-	local mmap = bundle.mmap(font.file)
-	assert(mmap, 'Font file not found: %s', font.file)
-	font.data = mmap.data
-	font.data_size = mmap.size
-	font.mmap = mmap --pin it
-	self:load_mem_font(font)
-end
-
-local function str(s)
-	return s ~= nil and ffi.string(s) or nil
-end
-
-function tr:internal_font_name(font)
-	local ft_face = font.ft_face
-	local ft_name = str(ft_face.family_name)
-	if not ft_name then return nil end
-	local ft_style = str(ft_face.style_name)
-	local ft_italic = bit.band(ft_face.style_flags, ft.C.FT_STYLE_FLAG_ITALIC) ~= 0
-	local ft_bold = bit.band(ft_face.style_flags, ft.C.FT_STYLE_FLAG_BOLD) ~= 0
-	return self.font_db:parse_font(
-		self.font_db:normalized_font_name(ft_name)
-		.. (ft_style and ' '..ft_style or '')
-		.. (ft_italic and ' italic' or '')
-		.. (ft_bold and ' bold' or ''))
-end
-
-function tr:load_mem_font(font, ...)
-	local ft_face = assert(self.freetype:memory_face(font.data, font.data_size))
-	font.ft_face = ft_face
-	font.hb_font = assert(hb.ft_font(ft_face, nil))
-	font.size_info = {} --{size -> info_table}
-	font.loaded = true
-	self.loaded_fonts[font] = true
-end
-
-function tr:load_font(...)
-	local font, size = self.font_db:find_font(...)
-	assert(font, 'Font not found: %s', (...))
-	if not font.loaded then
-		font.load(self, font, ...)
-	end
-	return font, size
-end
-
-function tr:unload_font(font)
-	if not font.loaded then return end
-	font.hb_font:free()
-	font.ft_face:free()
-	font.hb_font = false
-	font.ft_face = false
-	font.loaded = false
-	self.loaded_fonts[font] = nil
-end
-
---glyph rendering ------------------------------------------------------------
-
-function tr:_select_font_size_index(face, size)
-	local best_diff = 1/0
-	local index, best_size
-	for i=0,face.num_fixed_sizes-1 do
-		local sz = face.available_sizes[i]
-		local this_size = sz.width
-		local diff = math.abs(size - this_size)
-		if diff < best_diff then
-			index = i
-			best_size = this_size
-		end
-	end
-	return index, best_size or size
-end
-
-function tr:setfont(font, size, ...)
-	font, size = self:load_font(font, size, ...)
-	assert(size, 'Invalid font size: %s', tostring(size))
-	local face = font.ft_face
-	local size = snap(size, self.font_size_resolutiob)
-	local info = font.size_info[size]
-	if not info then
-		local size_index, fixed_size = self:_select_font_size_index(face, size)
-		info = font.size_info[fixed_size]
-		if not info then
-			info = {
-				size = fixed_size,
-				size_index = size_index,
-			}
-			font.size_info[fixed_size] = info
-		end
-		font.size_info[size] = info
-	end
-	self.font = font
-	self.size = size
-	self.size_info = info
-end
-
-tr.ft_load_mode = bit.bor(
-	ft.C.FT_LOAD_COLOR,
-	ft.C.FT_LOAD_PEDANTIC
-)
-tr.ft_render_mode = bit.bor(
-	ft.C.FT_RENDER_MODE_LIGHT --disable hinting on the x-axis
-)
-
-local empty_glyph = {}
-
-function tr:rasterize_glyph(glyph_index, subpixel_x_offset)
-
-	local font = self.font
-	local face = font.ft_face
-
-	local info = self.size_info
-	if font.size_info ~= info then
-		if info.size_index then
-			face:select_size(info.size_index)
-		else
-			face:set_pixel_sizes(info.size)
-		end
-		font.size_info = info
-	end
-	if not info.line_h then
-		info.line_h = face.size.metrics.height / 64
-		info.ascender = face.size.metrics.ascender / 64
-	end
-
-	face:load_glyph(glyph_index, self.ft_load_mode)
-
-	local glyph = face.glyph
-
-	if glyph.format == ft.C.FT_GLYPH_FORMAT_OUTLINE then
-		glyph.outline:translate(subpixel_x_offset * 64, 0)
-	end
-	local fmt = glyph.format
-	if glyph.format ~= ft.C.FT_GLYPH_FORMAT_BITMAP then
-		glyph:render(self.ft_render_mode)
-	end
-	assert(glyph.format == ft.C.FT_GLYPH_FORMAT_BITMAP)
-
-	--BGRA bitmaps must already have aligned pitch because we can't change that
-	assert(glyph.bitmap.pixel_mode ~= ft.C.FT_PIXEL_MODE_BGRA
-		or glyph.bitmap.pitch % 4 == 0)
-
-	--bitmaps must be top-down because we can't change that
-	assert(glyph.bitmap.pitch >= 0) --top-down
-
-	local bitmap = self.freetype:bitmap()
-
-	if glyph.bitmap.pitch % 4 ~= 0
-		or (glyph.bitmap.pixel_mode ~= ft.C.FT_PIXEL_MODE_GRAY
-			and glyph.bitmap.pixel_mode ~= ft.C.FT_PIXEL_MODE_BGRA)
-	then
-		self.freetype:convert_bitmap(glyph.bitmap, bitmap, 4)
-		assert(bitmap.pixel_mode == ft.C.FT_PIXEL_MODE_GRAY)
-		assert(bitmap.pitch % 4 == 0)
-	else
-		self.freetype:copy_bitmap(glyph.bitmap, bitmap)
-	end
-
-	local ft_glyph = glyph
-	local glyph = {}
-
-	glyph.bitmap = bitmap
-	glyph.bitmap_left = ft_glyph.bitmap_left
-	glyph.bitmap_top = ft_glyph.bitmap_top
-
-	local freetype = self.freetype
-	function glyph:free()
-		freetype:free_bitmap(self.bitmap)
-		self.bitmap = false
-	end
-
-	function glyph:size()
-		return self.bitmap.width * self.bitmap.rows
-	end
-
-	return glyph
-end
-
-function tr:load_glyph(glyph_index, x, y)
-	local pixel_x = math.floor(x)
-	local subpixel_x_offset = snap(x - pixel_x, self.subpixel_resolution)
-	local glyph_key = tuple(self.size_info, glyph_index, subpixel_x_offset)
-	local glyph = self.glyphs:get(glyph_key)
-	if not glyph then
-		glyph = self:rasterize_glyph(glyph_index, subpixel_x_offset)
-		self.glyphs:put(glyph_key, glyph, glyph.size)
-	end
-	local x = pixel_x + glyph.bitmap_left
-	local y = y - glyph.bitmap_top
-	return glyph, x, y
-end
-
-function tr:paint_glyph(glyph, x, y) end --stub
-
---cairo glyph rendering ------------------------------------------------------
-
-local cairo_tr = object(tr)
-
-cairo_tr.rasterize_glyph_freetype = tr.rasterize_glyph
-
-function cairo_tr:rasterize_glyph(glyph_index, subpixel_x_offset)
-
-	local glyph = self:rasterize_glyph_freetype(glyph_index, subpixel_x_offset)
-
-	glyph.surface = cairo.image_surface{
-		data = glyph.bitmap.buffer,
-		format = glyph.bitmap.pixel_mode == ft.C.FT_PIXEL_MODE_BGRA
-			and 'bgra8' or 'g8',
-		w = glyph.bitmap.width,
-		h = glyph.bitmap.rows,
-		stride = glyph.bitmap.pitch,
-	}
-
-	local free_bitmap = glyph.free
-	function glyph:free()
-		free_bitmap(self)
-		self.surface:free()
-	end
-
-	return glyph
-end
-
-function cairo_tr:paint_glyph(glyph, x, y)
-	local cr = self.cr
-	if glyph.surface:format() == 'a8' then
-		cr:mask(glyph.surface, x, y)
-	else
-		cr:source(glyph.surface, x, y)
-		cr:paint()
-		cr:rgb(0, 0, 0) --clear source
-	end
-end
-
---unicode text shaping -------------------------------------------------------
 
 function tr:text_run(run)
 	self.runs = self.runs or {}
@@ -368,7 +85,7 @@ function tr:shape_segment(s, len, dir, script, language, features)
 		end
 	end
 
-	local font = self.font
+	local font = self.rs.font
 	buf:shape_full(font.hb_font, feats, feats_count)
 
 	return buf
@@ -387,8 +104,8 @@ function tr:paint_shaped_segment(buf, x, y)
 		local px = x + glyph_pos[i].x_offset / 64
 		local py = y - glyph_pos[i].y_offset / 64
 
-		local glyph, px, py = self:load_glyph(glyph_index, px, py)
-		self:paint_glyph(glyph, px, py)
+		local glyph, px, py = self.rs:load_glyph(glyph_index, px, py)
+		self.rs:paint_glyph(glyph, px, py)
 
 		x = x + glyph_pos[i].x_advance / 64
 		y = y - glyph_pos[i].y_advance / 64
@@ -516,8 +233,8 @@ function tr:paint_runs(x, y)
 	for i = 0, len-1 do
 		local rtl1 = levels[i] % 2 == 1
 		local script1 = scripts[i]
-		local font1 = self.font
-		local size1 = self.size_info.size
+		local font1 = self.rs.font
+		local size1 = self.rs.size_info.size
 		local lang1 = script1 == hb.C.HB_SCRIPT_ARABIC and 'ar' or 'en'
 
 		--print(i, str[i], vstr[i], levels[i], self.buffers.levels[i], lang1)
@@ -567,61 +284,4 @@ function tr:paint_runs(x, y)
 	self.runs = false
 end
 
---text markup parser ---------------------------------------------------------
-
---xml tag processor that dispatches the processing of tags inside <signatures> tag to a table of tag handlers.
---the tag handler gets the tag attributes and a conditional iterator to get any subtags.
-local function process_tags(gettag)
-
-	local function nextwhile(endtag)
-		local start, tag, attrs = gettag()
-		if not start then
-			if tag == endtag then return end
-			return nextwhile(endtag)
-		end
-		return tag, attrs
-	end
-	local function getwhile(endtag) --iterate tags until `endtag` ends, returning (tag, attrs) for each tag
-		return nextwhile, endtag
-	end
-
-	for tagname, attrs in getwhile'signatures' do
-		if tag[tagname] then
-			tag[tagname](attrs, getwhile)
-		end
-	end
-end
-
---fast, push-style xml parser.
-local function parse_xml(s, write)
-	for endtag, tag, attrs, tagends in s:gmatch'<(/?)([%a_][%w_]*)([^/>]*)(/?)>' do
-		if endtag == '/' then
-			write(false, tag)
-		else
-			local t = {}
-			for name, val in attrs:gmatch'([%a_][%w_]*)=["\']([^"\']*)["\']' do
-				if val:find('&quot;', 1, true) then --gsub alone is way slower
-					val = val:gsub('&quot;', '"') --the only escaping found in all xml files tested
-				end
-				t[name] = val
-			end
-			write(true, tag, t)
-			if tagends == '/' then
-				write(false, tag)
-			end
-		end
-	end
-end
-
-local function text_runs(s)
-	--parse_xml(s,
-end
-
---module ---------------------------------------------------------------------
-
-return {
-	font_db = font_db,
-	tr = tr,
-	cairo_tr = cairo_tr,
-}
-
+return tr

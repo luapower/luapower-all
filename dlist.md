@@ -9,14 +9,15 @@ and access by index slow. In this particular implementation items must be Lua ta
 fields `_prev` and `_next` must be reserved for linking.
 
 ---------------------------------------------- ----------------------------------------------
-`dlist() -> list`<br> `dlist:new() -> list`    create a new list
+`dlist() -> list`                              create a new list
 `list:clear()`                                 clear the list
-`list:push(t)`                                 add an item at end of the list
-`list:unshift(t)`                              add an item at the beginning of the list
-`list:insert(t[, after_t])`                    add an item after another item (or at the end)
-`list:pop() -> t`                              remove and return the last item, if any
-`list:shift() -> t`                            remove and return the first item, if any
-`list:remove(t) -> t`                          remove and return a specific item
+`list:insert_first(t)`                         add an item at beginning of the list
+`list:insert_last(t)`                          add an item at the end of the list
+`list:insert_after([anchor, ]t)`               add an item after another item (or at the end)
+`list:insert_before([anchor, ]t)`              add an item before another item (or at the beginning)
+`list:remove(t) -> t`                          remove a specific item (and return it)
+`list:removel_last() -> t`                     remove and return the last item, if any
+`list:remove_first() -> t`                     remove and return the first item, if any
 `list:next([current]) -> t`                    next item after some item (or first item)
 `list:prev([current]) -> t`                    previous item after some item (or last item)
 `list:items() -> iterator<item>`               iterate items
