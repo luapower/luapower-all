@@ -82,7 +82,7 @@ function utf8.next(buf, len, i)
 			end
 		end
 	end
-	return i --invalid
+	return i, nil, c1 --invalid
 end
 
 function utf8.prev(buf, len, i)
@@ -98,40 +98,50 @@ function utf8.prev(buf, len, i)
 		end
 	end
 	while true do --go forward to the real previous character
-		local i1, c = utf8.next(buf, len, i)
+		local i1, c, b = utf8.next(buf, len, i)
 		i1 = i1 or len
 		if i1 == j then
-			return i, c
+			return i, c, b
 		end
 		i = i1
 		assert(i < j)
 	end
-	return i, c
 end
 
 function utf8.chars(s, i)
 	local _, buf, len = tobuf(s)
 	i = i and i-1 or 0
 	return function()
-		local c
-		i, c = utf8.next(buf, len, i)
-		return i+1, c
+		local c, b
+		i, c, b = utf8.next(buf, len, i)
+		if not i then return nil end
+		return i+1, c, b
 	end
 end
 
+--pass `false` to `out` to only get the output length.
+--pass `nil` to `out` to have the function allocate the buffer.
 function utf8.decode(buf, len, out, outlen, repl)
 	local _, buf, len = tobuf(buf, len)
+	if out == nil then
+		outlen = outlen or utf8.decode(buf, len, false, nil, repl)
+		out = ffi.new('uint32_t[?]', outlen)
+	end
 	local j, p, i = 0, 0, 0
 	while true do
 		local i1, c = utf8.next(buf, len, i)
 		if not i1 then
 			break
 		end
-		local c = c or repl
-		if c then
-			if c == 'iso-8859-1' then
+		if not c then
+			p = p + 1
+			if repl == 'iso-8859-1' then
 				c = buf[i] --interpret as iso-8859-1 like browsers do
+			else
+				c = repl
 			end
+		end
+		if c then
 			if out then
 				if j >= outlen then
 					return nil, 'buffer overflow'
@@ -139,12 +149,14 @@ function utf8.decode(buf, len, out, outlen, repl)
 				out[j] = c
 			end
 			j = j + 1
-		else
-			p = p + 1
 		end
 		i = i1
 	end
-	return j, p
+	if out then
+		return out, j, p
+	else
+		return j, p
+	end
 end
 
 local function char_byte_count(c, invalid_size)
@@ -202,7 +214,10 @@ end
 
 function utf8.encode(buf, len, out, outlen, repl)
 	local _, buf, len = tobuf(buf, len)
-	if not out then --compute outlen
+	if out == nil then --allocate output buffer
+		outlen = outlen or utf8.encode(buf, len, false, nil, repl)
+		out = ffi.new('uint32_t[?]', outlen)
+	elseif not out then --compute output length
 		return byte_count(buf, len, repl)
 	end
 	local j = 0
@@ -215,10 +230,40 @@ function utf8.encode(buf, len, out, outlen, repl)
 		if b2 then out[j+1] = b2 end
 		if b3 then out[j+2] = b3 end
 		if b4 then out[j+3] = b4 end
-		outlen = outlen - n
 		j = j + n
+		outlen = outlen - n
 	end
-	return j
+	return out, j
+end
+
+function utf8.encode_chars(...)
+	local char = string.char
+	local out = {}
+	local t, repl = ...
+	if type(t) == 'table' then
+		local j = 1
+		for i = 1, #t do
+			local c = t[i]
+			local n, b1, b2, b3, b4 = encode_char(c, repl)
+			if b1 then out[j  ] = char(b1) end
+			if b2 then out[j+1] = char(b2) end
+			if b3 then out[j+2] = char(b3) end
+			if b4 then out[j+3] = char(b4) end
+			j = j + n
+		end
+	else
+		local j = 1
+		for i = 1, select('#',...) do
+			local c = select(i, ...)
+			local n, b1, b2, b3, b4 = encode_char(c)
+			if b1 then out[j  ] = char(b1) end
+			if b2 then out[j+1] = char(b2) end
+			if b3 then out[j+2] = char(b3) end
+			if b4 then out[j+3] = char(b4) end
+			j = j + n
+		end
+	end
+	return table.concat(out)
 end
 
 return utf8

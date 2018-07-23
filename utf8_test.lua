@@ -1,6 +1,5 @@
 local utf8 = require'utf8'
 local time = require'time'
-local fb = require'fribidi'
 local ffi = require'ffi'
 
 --add some invalid chars
@@ -29,46 +28,45 @@ Sîne klâwen durh die wolken sint geslagen,
 
 ]]
 
-local n, p = utf8.decode(valid)
+local n, p = utf8.decode(valid, nil, false)
 assert(n == 300)
 assert(p == 0)
 
-local n1, p = utf8.decode(invalid)
+local n1, p = utf8.decode(invalid, nil, false)
 assert(n1 == 0)
 assert(p == #invalid)
 
 local s = valid .. invalid
-local n1, p1 = utf8.decode(s)
+local n1, p1 = utf8.decode(s, nil, false)
 assert(n1 == n)
 assert(p1 == p)
-local n2, p2 = utf8.decode(s, nil, nil, nil, 0)
+local n2, p2 = utf8.decode(s, nil, false, nil, 0)
 assert(n2 == n1 + p1)
-assert(p2 == 0)
+assert(p2 == p1)
 
 local rep = math.floor(5 * 1024^2 / #s)
 s = s:rep(rep)
-local n, p = utf8.decode(s)
-local outbuf = ffi.new('uint32_t[?]', n)
+local outbuf, n, p = utf8.decode(s)
 assert(n == rep * n1)
 assert(p == rep * p1)
 
 local t0 = time.clock()
 local bytes = 0
 for i = 1, 10 do
-	local len = utf8.decode(s, #s, outbuf, n)
+	local outbuf, len = utf8.decode(s, #s, outbuf, n)
 	assert(len == n)
 	bytes = bytes + #s
 end
 print(string.format('decode: %.2f Mbytes -> %.2f Mchars, %d MB/s',
 	#s / 1024^2, n / 1024^2, bytes / (time.clock() - t0) / 1024^2))
 
-local slen = utf8.encode(outbuf, n)
+local slen = utf8.encode(outbuf, n, false)
 assert(slen == #valid * rep)
 local sbuf = ffi.new('uint8_t[?]', slen)
 local t0 = time.clock()
 local bytes = 0
 for i = 1, 10 do
-	local len = utf8.encode(outbuf, n, sbuf, slen)
+	local outbuf, len = utf8.encode(outbuf, n, sbuf, slen)
 	assert(len == #valid * rep)
 	bytes = bytes + len
 end
@@ -92,6 +90,20 @@ end
 print(string.format('prev:   %.2f Mbytes -> %.2f Mchars, %d MB/s',
 	#s / 1024^2, n / 1024^2, bytes / (time.clock() - t0) / 1024^2))
 
+
+--test the string API
+local ts = '我能吞下玻璃而不伤身体'
+local t = {}
+for _,c,b in utf8.chars(ts) do
+	t[#t+1] = c or b
+end
+assert(utf8.encode_chars(unpack(t)) == ts)
+assert(utf8.encode_chars(t) == ts)
+
+--compare speed to fribidi's implementation.
+--the Lua variant is 5x slower but still pretty fast at 200M/s.
+
+local fb = require'fribidi'
 
 local outbuf, len = fb.charset_to_unicode('utf-8', s, #s)
 assert(len == n + p / 4 + 3)
