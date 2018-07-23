@@ -625,7 +625,10 @@ local function parse_module_header(file)
 	--TODO: parse long comments too.
 	if f then
 		local s1 = f:read'*l'
-		if s1 and s1:find'^%s*$' then --sometimes the first line is empty
+		while s1 and (
+			s1:find'^%s*$' --skip empty lines
+			or s1:find'^%s*[%-=]+%s*$' --skip "section" delimiters (dynasm.lua)
+		) do
 			s1 = f:read'*l'
 		end
 		local s2 = f:read'*l'
@@ -633,7 +636,9 @@ local function parse_module_header(file)
 		if s1 then
 			t.name, t.descr = s1:match'^%-%-%s*([^%:]+)%:%s*(.*)'
 			if not t.name then
-				t.descr = s1:match'^%-%-%s*(.*)'
+				t.descr = s1:match'^%s*%-%-%[%[%s*(.-)%]%]%[%-%s]*$'
+					--ffi_reflect.lua style header
+				t.descr = t.descr or s1:match'^%-%-%s*(.*)'
 			end
 		end
 		if s2 then
@@ -1981,9 +1986,9 @@ end)
 --or in the .md of the module.
 module_tagline = memoize_package(function(package, mod)
 	local s =
-		   key('descr', module_header(package, mod))
-		or key('tagline', doc_tags(package, mod))
-	return s and s:gsub('^[%w]', string.upper):gsub('%.%s*$', '')
+		   key('tagline', doc_tags(package, mod))
+		or key('descr', module_header(package, mod))
+	return s and s:gsub('^[%w]', string.upper):gsub('%.%s*$', '') or nil
 end)
 
 --pkg -> cat map

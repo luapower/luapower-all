@@ -1,4 +1,6 @@
---2nd and 3rd degree equation solvers (Cosmin Apreutesei, public domain).
+
+--2nd and 3rd degree equation solvers
+--Written by Cosmin Apreutesei. Public domain.
 
 local abs, sqrt, acos, cos, pi = math.abs, math.sqrt, math.acos, math.cos, math.pi
 

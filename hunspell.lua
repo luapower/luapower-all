@@ -1,4 +1,9 @@
---hunspell ffi binding by Cosmin Apreutesei for hunspell 1.3.2
+
+--hunspell ffi binding.
+--Written by Cosmin Apreutesei. Publid Domain.
+
+--Made for hunspell 1.3.2.
+
 local ffi = require'ffi'
 local C = ffi.load'hunspell'
 local M = {C = C}

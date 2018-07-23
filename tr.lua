@@ -1,5 +1,5 @@
 
---Unicode text shaping and rendering based on harfbuzz and freetype.
+--Unicode text rendering based on harfbuzz and freetype.
 --Written by Cosmin Apreutesei. Public Domain.
 
 if not ... then require'tr_demo'; return end
@@ -21,8 +21,14 @@ local count = glue.count
 
 local tr = object()
 
+tr.rasterizer_module = 'tr_raster_cairo'
+function tr:create_rasterizer()
+	return require(self.rasterizer_module)()
+end
+
 function tr:__call()
 	self = object(self)
+
 	self.rs = self:create_rasterizer()
 	function self.rs:font_loaded(font)
 		font.hb_font = assert(hb.ft_font(font.ft_face, nil))
@@ -31,19 +37,13 @@ function tr:__call()
 		font.hb_font:free()
 		font.hb_font = false
 	end
+
 	return self
 end
 
 function tr:free()
 	self.rs:free()
 	self.rs = false
-end
-
---rasterizer selection
-
-tr.rasterizer_module = 'tr_raster_cairo'
-function tr:create_rasterizer()
-	return require(self.rasterizer_module)()
 end
 
 function tr:text_run(run)

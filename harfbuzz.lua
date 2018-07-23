@@ -1,5 +1,5 @@
 
---harfbuzz ffi binding with extensions: ucdn, opentype, freetype.
+--harfbuzz ffi binding.
 --Written by Cosmin Apreutesei. Public Domain.
 
 if not ... then require'harfbuzz_demo'; return end

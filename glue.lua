@@ -356,6 +356,18 @@ function glue.inherit(t, parent)
 	return t
 end
 
+--speed up method access by copying methods into the instance.
+function glue.copy_super(t)
+	local from = t
+	while from do
+		local meta = getmetatable(from)
+		if type(meta) == 'table' then
+			from = meta.__index
+		end
+		glue.merge(t, from)
+	end
+end
+
 --prototype-based dynamic inheritance with __call constructor.
 function glue.object(super, o, ...)
 	o = o or {}

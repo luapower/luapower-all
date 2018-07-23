@@ -34,6 +34,7 @@ RENDERING --------------------------------------------------------------------
 
 SHAPING ----------------------------------------------------------------------
 
+- line breaking
 
 FINE FEATURE BIN -------------------------------------------------------------
 
@@ -56,24 +57,6 @@ after line breaking, sort the glyphs in each line separately by their visual ind
 This seems to give me proper line breaking, and works whether the base
 paragraph direction in LTR or RTL and allows me to keep using whatever line
 breaking code I had unmodified.
-
-==============================================================================
-
-BiDi algorithm should then be applied to each paragraph, splitting it into BiDi runs.
-
-BiDi runs should then be reordered, but without rendering the text of the RTL runs.
-
-The runs should then be split further based on script and language, and then
-each run shaped with HarfBuzz using the script, language and direction.
-HarfBuzz will take care of reversing the glyphs in RTL runs.
-
-I think the proper way to do itemization is to first resolve the script
-property of each character, do bidi itemization, then further split the
-bidi runs into script runs.
-
-Resolve the script before breaking the bidi
-runs is important so that script property of common characters across
-bidi runs are resolved properly.
 
 LAYOUTING --------------------------------------------------------------------
 

@@ -1,5 +1,5 @@
 
---LRU cache.
+--size-limited LRU cache in Lua.
 --Written by Cosmin Apreutesei. Public Domain.
 
 local dlist = require'dlist'

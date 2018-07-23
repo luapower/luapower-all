@@ -1,5 +1,5 @@
 ---
-tagline: doubly linked lists
+tagline: doubly linked lists in Lua
 ---
 
 ## `local dlist = require'dlist'`

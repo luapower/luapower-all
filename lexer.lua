@@ -1,3 +1,5 @@
+
+-- Lexers in Lua and LPeg
 -- Copyright 2006-2015 Mitchell mitchell.att.foicica.com. See LICENSE.
 
 local M = {}
