@@ -2,6 +2,8 @@
 --glyph caching & rasterization based on freetype's rasterizer.
 --Written by Cosmin Apreutesei. Public Domain.
 
+if not ... then require'tr_demo'; return end
+
 local bit = require'bit'
 local ffi = require'ffi'
 local glue = require'glue'
@@ -19,7 +21,7 @@ local assert = glue.assert --assert with string formatting
 local rs = object()
 
 rs.glyph_cache_size = 1024^2 * 20 --20MB net (arbitrary default)
-rs.font_size_resolutiob = 1/8
+rs.font_size_resolution = 1/8
 rs.subpixel_resolution = 1/64 --1/64 is max with freetype
 
 function rs:__call()
@@ -173,24 +175,21 @@ end
 function rs:setfont(font, size, ...)
 	font, size = self:load_font(font, size, ...)
 	assert(size, 'Invalid font size: %s', tostring(size))
-	local face = font.ft_face
-	local size = snap(size, self.font_size_resolutiob)
-	local info = font.size_info[size]
-	if not info then
+	local size = snap(size, self.font_size_resolution)
+	if self.font ~= font or self.requested_size ~= size then
+		local face = font.ft_face
 		local size_index, fixed_size = self:_select_font_size_index(face, size)
-		info = font.size_info[fixed_size]
-		if not info then
-			info = {
-				size = fixed_size,
-				size_index = size_index,
-			}
-			font.size_info[fixed_size] = info
+		self.line_h = face.size.metrics.height / 64
+		self.ascender = face.size.metrics.ascender / 64
+		self.font = font
+		self.requested_size = size
+		self.size = fixed_size
+		if size_index then
+			face:select_size(size_index)
+		else
+			face:set_pixel_sizes(fixed_size)
 		end
-		font.size_info[size] = info
 	end
-	self.font = font
-	self.size = size
-	self.size_info = info
 end
 
 rs.ft_load_mode = bor(
@@ -204,23 +203,8 @@ rs.ft_render_mode = bor(
 local empty_glyph = {}
 
 function rs:rasterize_glyph(glyph_index, subpixel_x_offset)
-
 	local font = self.font
 	local face = font.ft_face
-
-	local info = self.size_info
-	if font.size_info ~= info then
-		if info.size_index then
-			face:select_size(info.size_index)
-		else
-			face:set_pixel_sizes(info.size)
-		end
-		font.size_info = info
-	end
-	if not info.line_h then
-		info.line_h = face.size.metrics.height / 64
-		info.ascender = face.size.metrics.ascender / 64
-	end
 
 	face:load_glyph(glyph_index, self.ft_load_mode)
 

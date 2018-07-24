@@ -22,31 +22,31 @@ local function gfont(name)
 	font(file, name)
 end
 
-gfont'open sans'
-gfont'open sans italic'
-gfont'open sans bold italic'
-gfont'open sans 300 italic'
-font'media/fonts/NotoColorEmoji.ttf'
-font'media/fonts/NotoEmoji-Regular.ttf'
-font'media/fonts/EmojiSymbols-Regular.ttf'
-font'media/fonts/SubwayTicker.ttf'
-font'media/fonts/dotty.ttf'
-font'media/fonts/ss-emoji-microsoft.ttf'
-font'media/fonts/Hand Faces St.ttf'
-font'media/fonts/FSEX300.ttf'
+--gfont'open sans'
+--gfont'open sans italic'
+--gfont'open sans bold italic'
+--gfont'open sans 300 italic'
+--font'media/fonts/NotoColorEmoji.ttf'
+--font'media/fonts/NotoEmoji-Regular.ttf'
+--font'media/fonts/EmojiSymbols-Regular.ttf'
+--font'media/fonts/SubwayTicker.ttf'
+--font'media/fonts/dotty.ttf'
+--font'media/fonts/ss-emoji-microsoft.ttf'
+--font'media/fonts/Hand Faces St.ttf'
+--font'media/fonts/FSEX300.ttf'
 font'media/fonts/amiri-regular.ttf'
 
 --tr.font_db:dump()
 
-tr.rs:setfont'NotoColorEmoji, 100'
-tr.rs:setfont'NotoEmoji, 109'
-tr.rs:setfont'EmojiSymbols, 100'
-tr.rs:setfont'SubwayTicker, 15'
-tr.rs:setfont'dotty, 32'
-tr.rs:setfont'ss-emoji-microsoft, 14'
-tr.rs:setfont'Hand Faces St, 14'
-tr.rs:setfont'fsex300, 14'
-tr.rs:setfont'open sans 200 italic, 200'
+--tr.rs:setfont'NotoColorEmoji, 100'
+--tr.rs:setfont'NotoEmoji, 109'
+--tr.rs:setfont'EmojiSymbols, 100'
+--tr.rs:setfont'SubwayTicker, 15'
+--tr.rs:setfont'dotty, 32'
+--tr.rs:setfont'ss-emoji-microsoft, 14'
+--tr.rs:setfont'Hand Faces St, 14'
+--tr.rs:setfont'fsex300, 14'
+--tr.rs:setfont'open sans 200 italic, 200'
 
 local ii=0
 function win:repaint()
@@ -88,7 +88,7 @@ function win:repaint()
 
 		tr.rs:setfont'amiri, 50'
 		tr:clear_runs()
-		local s = 'A ثلاثةثلاثةثلاثةثلاثةثلاثة 1111 خمسة'
+		local s = 'A ثلاثةثلاثةثلاثةثلاثةثلاثة 1234 خمسة'
 		tr:text_run{
 			--text = 'AخمسةBC',
 			text = s,

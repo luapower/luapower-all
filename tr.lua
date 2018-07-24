@@ -234,7 +234,7 @@ function tr:paint_runs(x, y)
 		local rtl1 = levels[i] % 2 == 1
 		local script1 = scripts[i]
 		local font1 = self.rs.font
-		local size1 = self.rs.size_info.size
+		local size1 = self.rs.size
 		local lang1 = script1 == hb.C.HB_SCRIPT_ARABIC and 'ar' or 'en'
 
 		--print(i, str[i], vstr[i], levels[i], self.buffers.levels[i], lang1)
