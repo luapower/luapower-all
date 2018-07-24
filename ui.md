@@ -1,6 +1,3 @@
----
-tagline: extensible UI toolkit
----
 
 <warn>Work in Progress</warn>
 
@@ -15,6 +12,7 @@ Extensible UI toolkit written in Lua with layouts, styles and animations.
 	 * a tab list with animated, moveable, draggable, dockable tabs?
 	 * a code editor in Lua?
 	 * see demos!
+  * consistent Unicode text rendering and editing on all platforms.
   * cascading styles with `> parent` and `:state` selectors.
   * transition-based animations.
   * constraint-based, container-based and flow-based layout systems.
@@ -24,4 +22,4 @@ Extensible UI toolkit written in Lua with layouts, styles and animations.
 
   * [object system][oo] with virtual properties and method overriding hooks.
   * a kitchen-sink base layer class for making widgets out of.
-  * a drag & drop system which almost works by itself.
+  * simple drag & drop API.

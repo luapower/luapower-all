@@ -6,7 +6,7 @@ tagline: code editor engine in Lua
 
 ## `local codedit = require'codedit'`
 
-Codedit is a source code editor engine written in Lua.
+A source code editor engine written in Lua.
 Codedit exposes the logic of source code editing with all its intricacies
 in a set of highly compartimentalized APIs, making it easy to explore,
 understand and extend.
@@ -34,7 +34,7 @@ capabilities to your app.
 
 ## Features
 
-  * preserves mixed line terminators and mixed tab styles in the same files.
+  * preserves mixed line terminators and mixed tab styles in the same file.
   * multiple selections, block selections and editing with multiple cursors.
   * configurable cursor movement policies.
   * syntax highlighting with [scintillua](http://foicica.com/scintillua/) lexers.
