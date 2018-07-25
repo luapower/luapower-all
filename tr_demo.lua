@@ -3,6 +3,7 @@ local tr = require'tr'
 local nw = require'nw'
 local bundle = require'bundle'
 local gfonts = require'gfonts'
+local time = require'time'
 
 local tr = tr()
 
@@ -86,9 +87,14 @@ function win:repaint()
 
 	elseif true then
 
-		tr.rs:setfont'amiri, 50'
+	local t0 = time.clock()
+	local n = 100
+	local size = 20
+	for i=1,n do
+		tr.rs:setfont('amiri', nil, nil, size)
 		tr:clear_runs()
-		local s = 'A ثلاثةثلاثةثلاثةثلاثةثلاثة 1234 خمسة'
+		local s = ('fi AVثلاثة 1234 خمسة '):rep(12)
+		--local s = 'Hebrew אדםה (adamah)'
 		tr:text_run{
 			--text = 'AخمسةBC',
 			text = s,
@@ -97,7 +103,7 @@ function win:repaint()
 		for _,cp in utf8.chars(s) do
 			--print(cp)
 		end
-		tr:paint_runs(100, 100)
+		tr:paint_runs(0, size * i)
 		--tr:run_text'هذه هي بعض النصوص العربي\nHello there!'
 		--tr:run_font'amiri, 50'
 
@@ -105,6 +111,9 @@ function win:repaint()
 		--tr:shape_text('هذه هي بعض النصوص العربي\nHello there!')
 		--tr:paint_text(100, 300)
 		tr:clear_runs()
+
+	end
+	print( (1 / ((time.clock() - t0) / n))..' fps')
 
 	end
 

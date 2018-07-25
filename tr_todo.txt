@@ -36,6 +36,11 @@ SHAPING ----------------------------------------------------------------------
 
 - line breaking
 
+LAYOUTING --------------------------------------------------------------------
+
+- letter spacing
+- line height
+
 FINE FEATURE BIN -------------------------------------------------------------
 
 - coloring half-ligatures, see hb_ot_layout_get_ligature_carets
@@ -75,3 +80,5 @@ EDITING ----------------------------------------------------------------------
 	- variation selectors
 	- hangul fillers
 - look-alike characters:   ; ꓸ ꓹ ꓽ
+
+

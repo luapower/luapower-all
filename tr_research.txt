@@ -191,6 +191,13 @@ unicode grapheme-breaking algorithm:
 	-
 
 
+RESEARCH FROM W3C ------------------------------------------------------------
+
+http://w3c.github.io/i18n-drafts/articles/typography/linebreak.en
+
+
+
+
 OpenType FEATURES ------------------------------------------------------------
 
 pnum+onum   Proportional Oldstyle
@@ -253,8 +260,6 @@ TYPESETTING FEATURES/ALGORITHMS ----------------------------------------------
 - knuth's line-breaking algorithm:
 	- vary each line width
 
-- hanging punctuation (eg. extendation of quotation marks)
-
 - optical margin alignment:
 	- outdent punctuation and A, V, W, Y to align the text border optically.
 
@@ -270,6 +275,26 @@ TYPESETTING FEATURES/ALGORITHMS ----------------------------------------------
 	- japanese is LR-TB or TB-RL.
 	- mongolian TB-LR.
 
+MICROTYPOGRAPHY FEATURES -----------------------------------------------------
+
+- glyph expansion (stretching for purposes of justification)
+
+- protrusion (aka margin kerning)
+
+- hanging punctuation, eg. extendation of quotation marks
+
+- letter-spacing (aka tracking)
+	- purposes: justification, emphasis, chunking (<-psy term)
+	- break at grapheme cluster boundaries
+	- decide when it's ok to break ligatures
+	- kashida justification (must be user-controlled)
+
+- glyph versions (rare, available with some multiple-master fonts)
+
+- algorithms to eliminate widows and orphans in both paragraphs and lines.
+	- early page breaks
+	- adjust word-wrapping parameters
+
 EDITING, IMEs ----------------------------------------------------------------
 
 - romanization-of-pronunciation IMEs (most commonly used is pinyin)
@@ -280,4 +305,37 @@ EDITING, IMEs ----------------------------------------------------------------
 - component IMEs
 	- common components and strokes assigned to keys or shown on a palette.
 	- ref: Wenlin's CDL XML application for describing Han (CJKV) characters
-	-
+
+
+FEATURE CATEGORIES FOR SCRIPTS/LANGUAGES -------------------------------------
+
+http://w3c.github.io/typography/gap-analysis/language-matrix.html
+
+Level
+Encoding
+Fonts
+Font styles
+Glyph control
+Cursive text
+Char transforms
+Numbers & digits
+Boundaries & selection
+Quotation
+Inter-char spacing
+Ruby
+Text decoration
+Emphasis & highlight
+Bidi text
+Other inline
+Line breaking
+Hyphenation
+Justification & alignment
+Lists, counters
+Initial letter style
+Baselines, inline align
+Other paragraph
+Bidi layout
+Vertical text
+Notes, footnotes
+Page no.s, running heads
+Other pagination

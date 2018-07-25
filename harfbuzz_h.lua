@@ -421,113 +421,40 @@ void * hb_unicode_funcs_get_user_data (
 	hb_unicode_funcs_t *ufuncs,
    hb_user_data_key_t *key);
 
-void hb_unicode_funcs_make_immutable (hb_unicode_funcs_t *ufuncs);
-hb_bool_t hb_unicode_funcs_is_immutable (hb_unicode_funcs_t *ufuncs);
-hb_unicode_funcs_t * hb_unicode_funcs_get_parent (hb_unicode_funcs_t *ufuncs);
+void                 hb_unicode_funcs_make_immutable (hb_unicode_funcs_t *ufuncs);
+hb_bool_t            hb_unicode_funcs_is_immutable   (hb_unicode_funcs_t *ufuncs);
+hb_unicode_funcs_t*  hb_unicode_funcs_get_parent     (hb_unicode_funcs_t *ufuncs);
 
-typedef hb_unicode_combining_class_t (*hb_unicode_combining_class_func_t) (
-	hb_unicode_funcs_t *ufuncs,
-	hb_codepoint_t unicode,
-	void *user_data);
-typedef unsigned int (*hb_unicode_eastasian_width_func_t) (
-	hb_unicode_funcs_t *ufuncs,
-	hb_codepoint_t unicode,
-	void *user_data);
-typedef hb_unicode_general_category_t (*hb_unicode_general_category_func_t) (
-	hb_unicode_funcs_t *ufuncs,
-	hb_codepoint_t unicode,
-	void *user_data);
-typedef hb_codepoint_t (*hb_unicode_mirroring_func_t) (
-	hb_unicode_funcs_t *ufuncs,
-	hb_codepoint_t unicode,
-	void *user_data);
-typedef hb_script_t (*hb_unicode_script_func_t) (
-	hb_unicode_funcs_t *ufuncs,
-	hb_codepoint_t unicode,
-	void *user_data);
-typedef hb_bool_t (*hb_unicode_compose_func_t) (
-	hb_unicode_funcs_t *ufuncs,
-	hb_codepoint_t a,
-	hb_codepoint_t b,
-	hb_codepoint_t *ab,
-	void *user_data);
-typedef hb_bool_t (*hb_unicode_decompose_func_t) (
-	hb_unicode_funcs_t *ufuncs,
-	hb_codepoint_t ab,
-	hb_codepoint_t *a,
-	hb_codepoint_t *b,
-	void *user_data);
-typedef unsigned int (*hb_unicode_decompose_compatibility_func_t) (
-	hb_unicode_funcs_t *ufuncs,
-	hb_codepoint_t u,
-	hb_codepoint_t *decomposed,
-	void *user_data);
+typedef hb_unicode_combining_class_t  (*hb_unicode_combining_class_func_t)         (hb_unicode_funcs_t *ufuncs, hb_codepoint_t unicode, void *user_data);
+typedef unsigned int                  (*hb_unicode_eastasian_width_func_t)         (hb_unicode_funcs_t *ufuncs, hb_codepoint_t unicode, void *user_data);
+typedef hb_unicode_general_category_t (*hb_unicode_general_category_func_t)        (hb_unicode_funcs_t *ufuncs, hb_codepoint_t unicode, void *user_data);
+typedef hb_codepoint_t                (*hb_unicode_mirroring_func_t)               (hb_unicode_funcs_t *ufuncs, hb_codepoint_t unicode, void *user_data);
+typedef hb_script_t                   (*hb_unicode_script_func_t)                  (hb_unicode_funcs_t *ufuncs, hb_codepoint_t unicode, void *user_data);
+typedef hb_bool_t                     (*hb_unicode_compose_func_t)                 (hb_unicode_funcs_t *ufuncs, hb_codepoint_t a, hb_codepoint_t b, hb_codepoint_t *ab, void *user_data);
+typedef hb_bool_t                     (*hb_unicode_decompose_func_t)               (hb_unicode_funcs_t *ufuncs, hb_codepoint_t ab, hb_codepoint_t *a, hb_codepoint_t *b, void *user_data);
+typedef unsigned int                  (*hb_unicode_decompose_compatibility_func_t) (hb_unicode_funcs_t *ufuncs, hb_codepoint_t u, hb_codepoint_t *decomposed, void *user_data);
 
 enum {
 	HB_UNICODE_MAX_DECOMPOSITION_LEN = (18+1),
 };
 
-void
-hb_unicode_funcs_set_combining_class_func (hb_unicode_funcs_t *ufuncs,
-        hb_unicode_combining_class_func_t func,
-        void *user_data, hb_destroy_func_t destroy);
-void
-hb_unicode_funcs_set_eastasian_width_func (hb_unicode_funcs_t *ufuncs,
-        hb_unicode_eastasian_width_func_t func,
-        void *user_data, hb_destroy_func_t destroy);
-void
-hb_unicode_funcs_set_general_category_func (hb_unicode_funcs_t *ufuncs,
-         hb_unicode_general_category_func_t func,
-         void *user_data, hb_destroy_func_t destroy);
-void
-hb_unicode_funcs_set_mirroring_func (hb_unicode_funcs_t *ufuncs,
-         hb_unicode_mirroring_func_t func,
-         void *user_data, hb_destroy_func_t destroy);
-void
-hb_unicode_funcs_set_script_func (hb_unicode_funcs_t *ufuncs,
-      hb_unicode_script_func_t func,
-      void *user_data, hb_destroy_func_t destroy);
-void
-hb_unicode_funcs_set_compose_func (hb_unicode_funcs_t *ufuncs,
-       hb_unicode_compose_func_t func,
-       void *user_data, hb_destroy_func_t destroy);
-void
-hb_unicode_funcs_set_decompose_func (hb_unicode_funcs_t *ufuncs,
-         hb_unicode_decompose_func_t func,
-         void *user_data, hb_destroy_func_t destroy);
-void
-hb_unicode_funcs_set_decompose_compatibility_func (hb_unicode_funcs_t *ufuncs,
-         hb_unicode_decompose_compatibility_func_t func,
-         void *user_data, hb_destroy_func_t destroy);
-hb_unicode_combining_class_t
-hb_unicode_combining_class (hb_unicode_funcs_t *ufuncs,
-       hb_codepoint_t unicode);
-unsigned int
-hb_unicode_eastasian_width (hb_unicode_funcs_t *ufuncs,
-       hb_codepoint_t unicode);
-hb_unicode_general_category_t
-hb_unicode_general_category (hb_unicode_funcs_t *ufuncs,
-        hb_codepoint_t unicode);
-hb_codepoint_t
-hb_unicode_mirroring (hb_unicode_funcs_t *ufuncs,
-        hb_codepoint_t unicode);
-hb_script_t
-hb_unicode_script (hb_unicode_funcs_t *ufuncs,
-     hb_codepoint_t unicode);
-hb_bool_t
-hb_unicode_compose (hb_unicode_funcs_t *ufuncs,
-      hb_codepoint_t a,
-      hb_codepoint_t b,
-      hb_codepoint_t *ab);
-hb_bool_t
-hb_unicode_decompose (hb_unicode_funcs_t *ufuncs,
-        hb_codepoint_t ab,
-        hb_codepoint_t *a,
-        hb_codepoint_t *b);
-unsigned int
-hb_unicode_decompose_compatibility (hb_unicode_funcs_t *ufuncs,
-        hb_codepoint_t u,
-        hb_codepoint_t *decomposed);
+void hb_unicode_funcs_set_combining_class_func         (hb_unicode_funcs_t *ufuncs, hb_unicode_combining_class_func_t func, void *user_data, hb_destroy_func_t destroy);
+void hb_unicode_funcs_set_eastasian_width_func         (hb_unicode_funcs_t *ufuncs, hb_unicode_eastasian_width_func_t func, void *user_data, hb_destroy_func_t destroy);
+void hb_unicode_funcs_set_general_category_func        (hb_unicode_funcs_t *ufuncs, hb_unicode_general_category_func_t func, void *user_data, hb_destroy_func_t destroy);
+void hb_unicode_funcs_set_mirroring_func               (hb_unicode_funcs_t *ufuncs, hb_unicode_mirroring_func_t func, void *user_data, hb_destroy_func_t destroy);
+void hb_unicode_funcs_set_script_func                  (hb_unicode_funcs_t *ufuncs, hb_unicode_script_func_t func, void *user_data, hb_destroy_func_t destroy);
+void hb_unicode_funcs_set_compose_func                 (hb_unicode_funcs_t *ufuncs, hb_unicode_compose_func_t func, void *user_data, hb_destroy_func_t destroy);
+void hb_unicode_funcs_set_decompose_func               (hb_unicode_funcs_t *ufuncs, hb_unicode_decompose_func_t func, void *user_data, hb_destroy_func_t destroy);
+void hb_unicode_funcs_set_decompose_compatibility_func (hb_unicode_funcs_t *ufuncs, hb_unicode_decompose_compatibility_func_t func, void *user_data, hb_destroy_func_t destroy);
+
+hb_unicode_combining_class_t  hb_unicode_combining_class         (hb_unicode_funcs_t *ufuncs, hb_codepoint_t unicode);
+unsigned int                  hb_unicode_eastasian_width         (hb_unicode_funcs_t *ufuncs, hb_codepoint_t unicode);
+hb_unicode_general_category_t hb_unicode_general_category        (hb_unicode_funcs_t *ufuncs, hb_codepoint_t unicode);
+hb_codepoint_t                hb_unicode_mirroring               (hb_unicode_funcs_t *ufuncs, hb_codepoint_t unicode);
+hb_script_t                   hb_unicode_script                  (hb_unicode_funcs_t *ufuncs, hb_codepoint_t unicode);
+hb_bool_t                     hb_unicode_compose                 (hb_unicode_funcs_t *ufuncs, hb_codepoint_t a, hb_codepoint_t b, hb_codepoint_t *ab);
+hb_bool_t                     hb_unicode_decompose               (hb_unicode_funcs_t *ufuncs, hb_codepoint_t ab, hb_codepoint_t *a, hb_codepoint_t *b);
+unsigned int                  hb_unicode_decompose_compatibility (hb_unicode_funcs_t *ufuncs, hb_codepoint_t u, hb_codepoint_t *decomposed);
 
 // hb-blob.h -----------------------------------------------------------------
 
@@ -540,136 +467,85 @@ typedef enum {
 
 typedef struct hb_blob_t hb_blob_t;
 
-hb_blob_t *
-hb_blob_create (const char *data,
-  unsigned int length,
-  hb_memory_mode_t mode,
-  void *user_data,
-  hb_destroy_func_t destroy);
-hb_blob_t *
-hb_blob_create_sub_blob (hb_blob_t *parent,
-    unsigned int offset,
-    unsigned int length);
-hb_blob_t *
-hb_blob_copy_writable_or_fail (hb_blob_t *blob);
-hb_blob_t *
-hb_blob_get_empty (void);
-hb_blob_t *
-hb_blob_reference (hb_blob_t *blob);
-void
-hb_blob_destroy (hb_blob_t *blob);
-hb_bool_t
-hb_blob_set_user_data (hb_blob_t *blob,
-         hb_user_data_key_t *key,
-         void * data,
-         hb_destroy_func_t destroy,
-         hb_bool_t replace);
-void *
-hb_blob_get_user_data (hb_blob_t *blob,
-         hb_user_data_key_t *key);
-void
-hb_blob_make_immutable (hb_blob_t *blob);
-hb_bool_t
-hb_blob_is_immutable (hb_blob_t *blob);
-unsigned int
-hb_blob_get_length (hb_blob_t *blob);
-const char *
-hb_blob_get_data (hb_blob_t *blob, unsigned int *length);
-char *
-hb_blob_get_data_writable (hb_blob_t *blob, unsigned int *length);
-hb_blob_t *
-hb_blob_create_from_file (const char *file_name);
+hb_blob_t*   hb_blob_create                (const char *data, unsigned int length, hb_memory_mode_t mode, void *user_data, hb_destroy_func_t destroy);
+hb_blob_t*   hb_blob_create_sub_blob       (hb_blob_t *parent, unsigned int offset, unsigned int length);
+hb_blob_t*   hb_blob_copy_writable_or_fail (hb_blob_t *blob);
+hb_blob_t*   hb_blob_get_empty             (void);
+hb_blob_t*   hb_blob_reference             (hb_blob_t *blob);
+void         hb_blob_destroy               (hb_blob_t *blob);
+hb_bool_t    hb_blob_set_user_data         (hb_blob_t *blob, hb_user_data_key_t *key, void * data, hb_destroy_func_t destroy, hb_bool_t replace);
+void *       hb_blob_get_user_data         (hb_blob_t *blob, hb_user_data_key_t *key);
+void         hb_blob_make_immutable        (hb_blob_t *blob);
+hb_bool_t    hb_blob_is_immutable          (hb_blob_t *blob);
+unsigned int hb_blob_get_length            (hb_blob_t *blob);
+const char*  hb_blob_get_data              (hb_blob_t *blob, unsigned int *length);
+char*        hb_blob_get_data_writable     (hb_blob_t *blob, unsigned int *length);
+hb_blob_t*   hb_blob_create_from_file      (const char *file_name);
 
 // hb-face.h -----------------------------------------------------------------
 
 unsigned int hb_face_count (hb_blob_t *blob);
+
 typedef struct hb_face_t hb_face_t;
-hb_face_t * hb_face_create (hb_blob_t *blob, unsigned int index);
 
 typedef hb_blob_t * (*hb_reference_table_func_t) (hb_face_t *face, hb_tag_t tag, void *user_data);
 
-hb_face_t * hb_face_create_for_tables (
-	hb_reference_table_func_t reference_table_func,
-	void *user_data,
-	hb_destroy_func_t destroy);
-
-hb_face_t * hb_face_get_empty (void);
-hb_face_t * hb_face_reference (hb_face_t *face);
-void hb_face_destroy (hb_face_t *face);
-
-hb_bool_t hb_face_set_user_data (
-	hb_face_t *face,
-	hb_user_data_key_t *key,
-	void * data,
-	hb_destroy_func_t destroy,
-	hb_bool_t replace);
-
-void * hb_face_get_user_data (hb_face_t *face, hb_user_data_key_t *key);
-
-void hb_face_make_immutable (hb_face_t *face);
-hb_bool_t hb_face_is_immutable (hb_face_t *face);
-hb_blob_t * hb_face_reference_table (hb_face_t *face, hb_tag_t tag);
-hb_blob_t * hb_face_reference_blob (hb_face_t *face);
-void         hb_face_set_index (hb_face_t *face, unsigned int index);
-unsigned int hb_face_get_index (hb_face_t *face);
-void         hb_face_set_upem (hb_face_t *face, unsigned int upem);
-unsigned int hb_face_get_upem (hb_face_t *face);
-void         hb_face_set_glyph_count (hb_face_t *face, unsigned int glyph_count);
-unsigned int hb_face_get_glyph_count (hb_face_t *face);
-unsigned int hb_face_get_table_tags (hb_face_t *face,
-	unsigned int start_offset,
-	unsigned int *table_count,
-	hb_tag_t *table_tags );
+hb_face_t*   hb_face_create            (hb_blob_t *blob, unsigned int index);
+hb_face_t*   hb_face_create_for_tables (hb_reference_table_func_t reference_table_func, void *user_data, hb_destroy_func_t destroy);
+hb_face_t*   hb_face_get_empty         (void);
+hb_face_t*   hb_face_reference         (hb_face_t *face);
+void         hb_face_destroy           (hb_face_t *face);
+hb_bool_t    hb_face_set_user_data     (hb_face_t *face, hb_user_data_key_t *key, void* data, hb_destroy_func_t destroy, hb_bool_t replace);
+void*        hb_face_get_user_data     (hb_face_t *face, hb_user_data_key_t *key);
+void         hb_face_make_immutable    (hb_face_t *face);
+hb_bool_t    hb_face_is_immutable      (hb_face_t *face);
+hb_blob_t*   hb_face_reference_table   (hb_face_t *face, hb_tag_t tag);
+hb_blob_t*   hb_face_reference_blob    (hb_face_t *face);
+void         hb_face_set_index         (hb_face_t *face, unsigned int index);
+unsigned int hb_face_get_index         (hb_face_t *face);
+void         hb_face_set_upem          (hb_face_t *face, unsigned int upem);
+unsigned int hb_face_get_upem          (hb_face_t *face);
+void         hb_face_set_glyph_count   (hb_face_t *face, unsigned int glyph_count);
+unsigned int hb_face_get_glyph_count   (hb_face_t *face);
+unsigned int hb_face_get_table_tags    (hb_face_t *face, unsigned int start_offset, unsigned int *table_count, hb_tag_t *table_tags );
 
 // hb-font.h -----------------------------------------------------------------
 
 typedef struct hb_font_t hb_font_t;
 typedef struct hb_font_funcs_t hb_font_funcs_t;
-hb_font_funcs_t * hb_font_funcs_create (void);
-hb_font_funcs_t * hb_font_funcs_get_empty (void);
-hb_font_funcs_t * hb_font_funcs_reference (hb_font_funcs_t *ffuncs);
-void hb_font_funcs_destroy (hb_font_funcs_t *ffuncs);
 
-hb_bool_t hb_font_funcs_set_user_data (
-	hb_font_funcs_t *ffuncs,
-	hb_user_data_key_t *key,
-	void * data,
-	hb_destroy_func_t destroy,
-	hb_bool_t replace);
-
-void * hb_font_funcs_get_user_data (
-	hb_font_funcs_t *ffuncs,
-	hb_user_data_key_t *key);
-
-void hb_font_funcs_make_immutable (hb_font_funcs_t *ffuncs);
-hb_bool_t hb_font_funcs_is_immutable (hb_font_funcs_t *ffuncs);
+hb_font_funcs_t* hb_font_funcs_create         (void);
+hb_font_funcs_t* hb_font_funcs_get_empty      (void);
+hb_font_funcs_t* hb_font_funcs_reference      (hb_font_funcs_t *ffuncs);
+void             hb_font_funcs_destroy        (hb_font_funcs_t *ffuncs);
+hb_bool_t        hb_font_funcs_set_user_data  (hb_font_funcs_t *ffuncs, hb_user_data_key_t *key, void* data, hb_destroy_func_t destroy, hb_bool_t replace);
+void*            hb_font_funcs_get_user_data  (hb_font_funcs_t *ffuncs, hb_user_data_key_t *key);
+void             hb_font_funcs_make_immutable (hb_font_funcs_t *ffuncs);
+hb_bool_t        hb_font_funcs_is_immutable   (hb_font_funcs_t *ffuncs);
 
 typedef struct hb_font_extents_t {
-  hb_position_t ascender;
-  hb_position_t descender;
-  hb_position_t line_gap;
-  hb_position_t reserved9;
-  hb_position_t reserved8;
-  hb_position_t reserved7;
-  hb_position_t reserved6;
-  hb_position_t reserved5;
-  hb_position_t reserved4;
-  hb_position_t reserved3;
-  hb_position_t reserved2;
-  hb_position_t reserved1;
+	hb_position_t ascender;
+	hb_position_t descender;
+	hb_position_t line_gap;
+	hb_position_t reserved9;
+	hb_position_t reserved8;
+	hb_position_t reserved7;
+	hb_position_t reserved6;
+	hb_position_t reserved5;
+	hb_position_t reserved4;
+	hb_position_t reserved3;
+	hb_position_t reserved2;
+	hb_position_t reserved1;
 } hb_font_extents_t;
 
 typedef struct hb_glyph_extents_t {
-  hb_position_t x_bearing;
-  hb_position_t y_bearing;
-  hb_position_t width;
-  hb_position_t height;
+	hb_position_t x_bearing;
+	hb_position_t y_bearing;
+	hb_position_t width;
+	hb_position_t height;
 } hb_glyph_extents_t;
 
-typedef hb_bool_t (*hb_font_get_font_extents_func_t) (
-	hb_font_t *font, void *font_data,
-   hb_font_extents_t *metrics,
-   void *user_data);
+typedef hb_bool_t (*hb_font_get_font_extents_func_t) (hb_font_t *font, void *font_data, hb_font_extents_t *metrics, void *user_data);
 typedef hb_font_get_font_extents_func_t hb_font_get_font_h_extents_func_t;
 typedef hb_font_get_font_extents_func_t hb_font_get_font_v_extents_func_t;
 typedef hb_bool_t (*hb_font_get_nominal_glyph_func_t) (hb_font_t *font, void *font_data,
@@ -965,81 +841,53 @@ typedef enum {
 hb_glyph_flags_t hb_glyph_info_get_glyph_flags (const hb_glyph_info_t *info);
 
 typedef struct hb_glyph_position_t {
-  hb_position_t x_advance;
-  hb_position_t y_advance;
-  hb_position_t x_offset;
-  hb_position_t y_offset;
-  hb_var_int_t var;
+	hb_position_t x_advance;
+	hb_position_t y_advance;
+	hb_position_t x_offset;
+	hb_position_t y_offset;
+	hb_var_int_t var;
 } hb_glyph_position_t;
+
 typedef struct hb_segment_properties_t {
-  hb_direction_t direction;
-  hb_script_t script;
-  hb_language_t language;
-  void *reserved1;
-  void *reserved2;
+	hb_direction_t direction;
+	hb_script_t script;
+	hb_language_t language;
+	void *reserved1;
+	void *reserved2;
 } hb_segment_properties_t;
 
-hb_bool_t
-hb_segment_properties_equal (const hb_segment_properties_t *a,
-        const hb_segment_properties_t *b);
-unsigned int
-hb_segment_properties_hash (const hb_segment_properties_t *p);
+hb_bool_t    hb_segment_properties_equal (const hb_segment_properties_t *a, const hb_segment_properties_t *b);
+unsigned int hb_segment_properties_hash  (const hb_segment_properties_t *p);
+
 typedef struct hb_buffer_t hb_buffer_t;
-hb_buffer_t *
-hb_buffer_create (void);
-hb_buffer_t *
-hb_buffer_get_empty (void);
-hb_buffer_t *
-hb_buffer_reference (hb_buffer_t *buffer);
-void
-hb_buffer_destroy (hb_buffer_t *buffer);
-hb_bool_t
-hb_buffer_set_user_data (hb_buffer_t *buffer,
-    hb_user_data_key_t *key,
-    void * data,
-    hb_destroy_func_t destroy,
-    hb_bool_t replace);
-void *
-hb_buffer_get_user_data (hb_buffer_t *buffer,
-    hb_user_data_key_t *key);
+
+hb_buffer_t* hb_buffer_create (void);
+hb_buffer_t* hb_buffer_get_empty (void);
+hb_buffer_t* hb_buffer_reference (hb_buffer_t *buffer);
+void         hb_buffer_destroy (hb_buffer_t *buffer);
+hb_bool_t    hb_buffer_set_user_data (hb_buffer_t *buffer, hb_user_data_key_t *key, void* data, hb_destroy_func_t destroy, hb_bool_t replace);
+void*        hb_buffer_get_user_data (hb_buffer_t *buffer, hb_user_data_key_t *key);
+
 typedef enum {
 	HB_BUFFER_CONTENT_TYPE_INVALID = 0,
 	HB_BUFFER_CONTENT_TYPE_UNICODE,
 	HB_BUFFER_CONTENT_TYPE_GLYPHS
 } hb_buffer_content_type_t;
-void
-hb_buffer_set_content_type (hb_buffer_t *buffer,
-       hb_buffer_content_type_t content_type);
-hb_buffer_content_type_t
-hb_buffer_get_content_type (hb_buffer_t *buffer);
-void
-hb_buffer_set_unicode_funcs (hb_buffer_t *buffer,
-        hb_unicode_funcs_t *unicode_funcs);
-hb_unicode_funcs_t *
-hb_buffer_get_unicode_funcs (hb_buffer_t *buffer);
-void
-hb_buffer_set_direction (hb_buffer_t *buffer,
-    hb_direction_t direction);
-hb_direction_t
-hb_buffer_get_direction (hb_buffer_t *buffer);
-void
-hb_buffer_set_script (hb_buffer_t *buffer,
-        hb_script_t script);
-hb_script_t
-hb_buffer_get_script (hb_buffer_t *buffer);
-void
-hb_buffer_set_language (hb_buffer_t *buffer,
-   hb_language_t language);
-hb_language_t
-hb_buffer_get_language (hb_buffer_t *buffer);
-void
-hb_buffer_set_segment_properties (hb_buffer_t *buffer,
-      const hb_segment_properties_t *props);
-void
-hb_buffer_get_segment_properties (hb_buffer_t *buffer,
-      hb_segment_properties_t *props);
-void
-hb_buffer_guess_segment_properties (hb_buffer_t *buffer);
+
+void                     hb_buffer_set_content_type  (hb_buffer_t *buffer, hb_buffer_content_type_t content_type);
+hb_buffer_content_type_t hb_buffer_get_content_type  (hb_buffer_t *buffer);
+void                     hb_buffer_set_unicode_funcs (hb_buffer_t *buffer, hb_unicode_funcs_t *unicode_funcs);
+hb_unicode_funcs_t*      hb_buffer_get_unicode_funcs (hb_buffer_t *buffer);
+void                     hb_buffer_set_direction     (hb_buffer_t *buffer, hb_direction_t direction);
+hb_direction_t           hb_buffer_get_direction     (hb_buffer_t *buffer);
+void                     hb_buffer_set_script        (hb_buffer_t *buffer, hb_script_t script);
+hb_script_t              hb_buffer_get_script        (hb_buffer_t *buffer);
+void                     hb_buffer_set_language      (hb_buffer_t *buffer, hb_language_t language);
+hb_language_t            hb_buffer_get_language      (hb_buffer_t *buffer);
+void                     hb_buffer_set_segment_properties   (hb_buffer_t *buffer, const hb_segment_properties_t *props);
+void                     hb_buffer_get_segment_properties   (hb_buffer_t *buffer, hb_segment_properties_t *props);
+void                     hb_buffer_guess_segment_properties (hb_buffer_t *buffer);
+
 typedef enum {
 	HB_BUFFER_FLAG_DEFAULT = 0x00000000u,
 	HB_BUFFER_FLAG_BOT = 0x00000001u,
@@ -1047,98 +895,47 @@ typedef enum {
 	HB_BUFFER_FLAG_PRESERVE_DEFAULT_IGNORABLES = 0x00000004u,
 	HB_BUFFER_FLAG_REMOVE_DEFAULT_IGNORABLES = 0x00000008u
 } hb_buffer_flags_t;
-void
-hb_buffer_set_flags (hb_buffer_t *buffer,
-       hb_buffer_flags_t flags);
-hb_buffer_flags_t
-hb_buffer_get_flags (hb_buffer_t *buffer);
+
+void              hb_buffer_set_flags (hb_buffer_t *buffer, hb_buffer_flags_t flags);
+hb_buffer_flags_t hb_buffer_get_flags (hb_buffer_t *buffer);
+
 typedef enum {
 	HB_BUFFER_CLUSTER_LEVEL_MONOTONE_GRAPHEMES = 0,
 	HB_BUFFER_CLUSTER_LEVEL_MONOTONE_CHARACTERS = 1,
 	HB_BUFFER_CLUSTER_LEVEL_CHARACTERS = 2,
 	HB_BUFFER_CLUSTER_LEVEL_DEFAULT = HB_BUFFER_CLUSTER_LEVEL_MONOTONE_GRAPHEMES
 } hb_buffer_cluster_level_t;
-void
-hb_buffer_set_cluster_level (hb_buffer_t *buffer,
-        hb_buffer_cluster_level_t cluster_level);
-hb_buffer_cluster_level_t
-hb_buffer_get_cluster_level (hb_buffer_t *buffer);
+
+void                      hb_buffer_set_cluster_level (hb_buffer_t *buffer, hb_buffer_cluster_level_t cluster_level);
+hb_buffer_cluster_level_t hb_buffer_get_cluster_level (hb_buffer_t *buffer);
+
 enum {
 	HB_BUFFER_REPLACEMENT_CODEPOINT_DEFAULT = 0xFFFDu,
 };
-void
-hb_buffer_set_replacement_codepoint (hb_buffer_t *buffer,
-         hb_codepoint_t replacement);
-hb_codepoint_t
-hb_buffer_get_replacement_codepoint (hb_buffer_t *buffer);
-void
-hb_buffer_reset (hb_buffer_t *buffer);
-void
-hb_buffer_clear_contents (hb_buffer_t *buffer);
-hb_bool_t
-hb_buffer_pre_allocate (hb_buffer_t *buffer,
-          unsigned int size);
-hb_bool_t
-hb_buffer_allocation_successful (hb_buffer_t *buffer);
-void
-hb_buffer_reverse (hb_buffer_t *buffer);
-void
-hb_buffer_reverse_range (hb_buffer_t *buffer,
-    unsigned int start, unsigned int end);
-void
-hb_buffer_reverse_clusters (hb_buffer_t *buffer);
-void
-hb_buffer_add (hb_buffer_t *buffer,
-        hb_codepoint_t codepoint,
-        unsigned int cluster);
-void
-hb_buffer_add_utf8 (hb_buffer_t *buffer,
-      const char *text,
-      int text_length,
-      unsigned int item_offset,
-      int item_length);
-void
-hb_buffer_add_utf16 (hb_buffer_t *buffer,
-       const uint16_t *text,
-       int text_length,
-       unsigned int item_offset,
-       int item_length);
-void
-hb_buffer_add_utf32 (hb_buffer_t *buffer,
-       const uint32_t *text,
-       int text_length,
-       unsigned int item_offset,
-       int item_length);
-void
-hb_buffer_add_latin1 (hb_buffer_t *buffer,
-        const uint8_t *text,
-        int text_length,
-        unsigned int item_offset,
-        int item_length);
-void
-hb_buffer_add_codepoints (hb_buffer_t *buffer,
-     const hb_codepoint_t *text,
-     int text_length,
-     unsigned int item_offset,
-     int item_length);
-void
-hb_buffer_append (hb_buffer_t *buffer,
-    hb_buffer_t *source,
-    unsigned int start,
-    unsigned int end);
-hb_bool_t
-hb_buffer_set_length (hb_buffer_t *buffer,
-        unsigned int length);
-unsigned int
-hb_buffer_get_length (hb_buffer_t *buffer);
-hb_glyph_info_t *
-hb_buffer_get_glyph_infos (hb_buffer_t *buffer,
-                           unsigned int *length);
-hb_glyph_position_t *
-hb_buffer_get_glyph_positions (hb_buffer_t *buffer,
-                               unsigned int *length);
-void
-hb_buffer_normalize_glyphs (hb_buffer_t *buffer);
+
+void                 hb_buffer_set_replacement_codepoint (hb_buffer_t *buffer, hb_codepoint_t replacement);
+hb_codepoint_t       hb_buffer_get_replacement_codepoint (hb_buffer_t *buffer);
+
+void                 hb_buffer_reset                     (hb_buffer_t *buffer);
+void                 hb_buffer_clear_contents            (hb_buffer_t *buffer);
+hb_bool_t            hb_buffer_pre_allocate              (hb_buffer_t *buffer, unsigned int size);
+hb_bool_t            hb_buffer_allocation_successful     (hb_buffer_t *buffer);
+void                 hb_buffer_reverse                   (hb_buffer_t *buffer);
+void                 hb_buffer_reverse_range             (hb_buffer_t *buffer, unsigned int start, unsigned int end);
+void                 hb_buffer_reverse_clusters          (hb_buffer_t *buffer);
+void                 hb_buffer_add                       (hb_buffer_t *buffer, hb_codepoint_t codepoint, unsigned int cluster);
+void                 hb_buffer_add_utf8                  (hb_buffer_t *buffer, const char *text, int text_length, unsigned int item_offset, int item_length);
+void                 hb_buffer_add_utf16                 (hb_buffer_t *buffer, const uint16_t *text, int text_length, unsigned int item_offset, int item_length);
+void                 hb_buffer_add_utf32                 (hb_buffer_t *buffer, const uint32_t *text, int text_length, unsigned int item_offset, int item_length);
+void                 hb_buffer_add_latin1                (hb_buffer_t *buffer, const uint8_t *text, int text_length, unsigned int item_offset, int item_length);
+void                 hb_buffer_add_codepoints            (hb_buffer_t *buffer, const hb_codepoint_t *text, int text_length, unsigned int item_offset, int item_length);
+void                 hb_buffer_append                    (hb_buffer_t *buffer, hb_buffer_t *source, unsigned int start, unsigned int end);
+hb_bool_t            hb_buffer_set_length                (hb_buffer_t *buffer, unsigned int length);
+unsigned int         hb_buffer_get_length                (hb_buffer_t *buffer);
+hb_glyph_info_t*     hb_buffer_get_glyph_infos           (hb_buffer_t *buffer, unsigned int *length);
+hb_glyph_position_t* hb_buffer_get_glyph_positions       (hb_buffer_t *buffer, unsigned int *length);
+void                 hb_buffer_normalize_glyphs          (hb_buffer_t *buffer);
+
 typedef enum {
 	HB_BUFFER_SERIALIZE_FLAG_DEFAULT = 0x00000000u,
 	HB_BUFFER_SERIALIZE_FLAG_NO_CLUSTERS = 0x00000001u,
@@ -1148,34 +945,20 @@ typedef enum {
 	HB_BUFFER_SERIALIZE_FLAG_GLYPH_FLAGS = 0x00000010u,
 	HB_BUFFER_SERIALIZE_FLAG_NO_ADVANCES = 0x00000020u
 } hb_buffer_serialize_flags_t;
+
 typedef enum {
 	HB_BUFFER_SERIALIZE_FORMAT_TEXT = ((hb_tag_t)((((uint8_t)('T'))<<24)|(((uint8_t)('E'))<<16)|(((uint8_t)('X'))<<8)|((uint8_t)('T')))),
 	HB_BUFFER_SERIALIZE_FORMAT_JSON = ((hb_tag_t)((((uint8_t)('J'))<<24)|(((uint8_t)('S'))<<16)|(((uint8_t)('O'))<<8)|((uint8_t)('N')))),
 	HB_BUFFER_SERIALIZE_FORMAT_INVALID = ((hb_tag_t)((((uint8_t)(0))<<24)|(((uint8_t)(0))<<16)|(((uint8_t)(0))<<8)|((uint8_t)(0))))
 } hb_buffer_serialize_format_t;
-hb_buffer_serialize_format_t
-hb_buffer_serialize_format_from_string (const char *str, int len);
-const char *
-hb_buffer_serialize_format_to_string (hb_buffer_serialize_format_t format);
-const char **
-hb_buffer_serialize_list_formats (void);
-unsigned int
-hb_buffer_serialize_glyphs (hb_buffer_t *buffer,
-       unsigned int start,
-       unsigned int end,
-       char *buf,
-       unsigned int buf_size,
-       unsigned int *buf_consumed,
-       hb_font_t *font,
-       hb_buffer_serialize_format_t format,
-       hb_buffer_serialize_flags_t flags);
-hb_bool_t
-hb_buffer_deserialize_glyphs (hb_buffer_t *buffer,
-         const char *buf,
-         int buf_len,
-         const char **end_ptr,
-         hb_font_t *font,
-         hb_buffer_serialize_format_t format);
+
+hb_buffer_serialize_format_t hb_buffer_serialize_format_from_string (const char *str, int len);
+const char*                  hb_buffer_serialize_format_to_string   (hb_buffer_serialize_format_t format);
+const char**                 hb_buffer_serialize_list_formats       (void);
+unsigned int                 hb_buffer_serialize_glyphs             (hb_buffer_t *buffer, unsigned int start, unsigned int end, char *buf, unsigned int buf_size, unsigned int *buf_consumed, hb_font_t *font, hb_buffer_serialize_format_t format, hb_buffer_serialize_flags_t flags);
+
+hb_bool_t hb_buffer_deserialize_glyphs (hb_buffer_t *buffer, const char *buf, int buf_len, const char **end_ptr, hb_font_t *font, hb_buffer_serialize_format_t format);
+
 typedef enum {
 	HB_BUFFER_DIFF_FLAG_EQUAL = 0x0000,
 	HB_BUFFER_DIFF_FLAG_CONTENT_TYPE_MISMATCH = 0x0001,
@@ -1187,35 +970,18 @@ typedef enum {
 	HB_BUFFER_DIFF_FLAG_GLYPH_FLAGS_MISMATCH = 0x0040,
 	HB_BUFFER_DIFF_FLAG_POSITION_MISMATCH = 0x0080
 } hb_buffer_diff_flags_t;
-hb_buffer_diff_flags_t
-hb_buffer_diff (hb_buffer_t *buffer,
-  hb_buffer_t *reference,
-  hb_codepoint_t dottedcircle_glyph,
-  unsigned int position_fuzz);
-typedef hb_bool_t (*hb_buffer_message_func_t) (hb_buffer_t *buffer,
-        hb_font_t *font,
-        const char *message,
-        void *user_data);
-void
-hb_buffer_set_message_func (hb_buffer_t *buffer,
-       hb_buffer_message_func_t func,
-       void *user_data, hb_destroy_func_t destroy);
+
+hb_buffer_diff_flags_t hb_buffer_diff (hb_buffer_t *buffer, hb_buffer_t *reference, hb_codepoint_t dottedcircle_glyph, unsigned int position_fuzz);
+
+typedef hb_bool_t (*hb_buffer_message_func_t) (hb_buffer_t *buffer, hb_font_t *font, const char *message, void *user_data);
+
+void hb_buffer_set_message_func (hb_buffer_t *buffer, hb_buffer_message_func_t func, void *user_data, hb_destroy_func_t destroy);
 
 // hb-shape.h ----------------------------------------------------------------
 
-void
-hb_shape (hb_font_t *font,
-   hb_buffer_t *buffer,
-   const hb_feature_t *features,
-   unsigned int num_features);
-hb_bool_t
-hb_shape_full (hb_font_t *font,
-        hb_buffer_t *buffer,
-        const hb_feature_t *features,
-        unsigned int num_features,
-        const char * const *shaper_list);
-const char **
-hb_shape_list_shapers (void);
+void         hb_shape              (hb_font_t *font, hb_buffer_t *buffer, const hb_feature_t *features, unsigned int num_features);
+hb_bool_t    hb_shape_full         (hb_font_t *font, hb_buffer_t *buffer, const hb_feature_t *features, unsigned int num_features, const char* const *shaper_list);
+const char** hb_shape_list_shapers (void);
 
 // hb-shape-plan.h -----------------------------------------------------------
 

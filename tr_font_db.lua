@@ -80,7 +80,7 @@ function font_db:parse_font(name, weight, slant, size)
 		end)
 	end
 	if weight then
-		weight = weights[weight] or tonumber(weight)
+		weight = self.weights[weight] or tonumber(weight)
 	else
 		weight = weight_str
 	end

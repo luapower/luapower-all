@@ -119,7 +119,6 @@ end
 function rs:load_mem_font(font, ...)
 	local ft_face = assert(self.freetype:memory_face(font.data, font.data_size))
 	font.ft_face = ft_face
-	font.size_info = {} --{size -> info_table}
 end
 
 function rs:load_font(...)
@@ -262,7 +261,7 @@ end
 function rs:load_glyph(glyph_index, x, y)
 	local pixel_x = math.floor(x)
 	local subpixel_x_offset = snap(x - pixel_x, self.subpixel_resolution)
-	local glyph_key = tuple(self.size_info, glyph_index, subpixel_x_offset)
+	local glyph_key = tuple(self.font, self.size, glyph_index, subpixel_x_offset)
 	local glyph = self.glyphs:get(glyph_key)
 	if not glyph then
 		glyph = self:rasterize_glyph(glyph_index, subpixel_x_offset)

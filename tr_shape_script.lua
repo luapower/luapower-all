@@ -4,7 +4,10 @@
 
 local hb = require'harfbuzz'
 local glue = require'glue'
+
 local index = glue.index
+local push = table.insert
+local pop = table.remove
 
 local non_scripts = index{
 	hb.C.HB_SCRIPT_INVALID,
