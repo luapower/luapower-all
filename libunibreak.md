@@ -12,14 +12,25 @@ from [Unicode text segmentation][tr29].
 
 ### `ub.linebreaks(s,[len],[lang],[out]) -> line_breaks`
 
+`lang` can be one of:
+
+* `'de'`: German
+* `'en'`: English
+* `'es'`: Spanish
+* `'fr'`: French
+* `'ja'`: Japanese
+* `'ko'`: Korean
+* `'ru'`: Russian
+* `'zh'`: Chinese
+
+...with or without the `'-strict'` suffix.
+
 The returned `line_breaks` is a 0-based array of flags, one for each byte
 of the input string:
 
---- ------------------------------------
-0   Break is mandatory.
-1   Break is allowed.
-2   No break is possible.
---- ------------------------------------
+* `0`: Break is mandatory.
+* `1`: Break is allowed.
+* `2`: No break is possible.
 
 ## Word breaking
 
@@ -28,10 +39,8 @@ of the input string:
 The returned `word_breaks` is a 0-based array of flags, one for each byte
 of the input string:
 
---- ------------------------------------
-0   Break is allowed.
-1   No break is allowed.
---- ------------------------------------
+* `0`: Break is allowed.
+* `1`: No break is allowed.
 
 ## Grapheme breaking
 
@@ -40,10 +49,8 @@ of the input string:
 The returned `grapheme_breaks` is a 0-based array of flags, one for each byte
 of the input string:
 
---- ------------------------------------
-0   Break is allowed.
-1   No break is allowed.
---- ------------------------------------
+* `0`: Break is allowed.
+* `1`: No break is allowed.
 
 [libunibreak lib]: http://vimgadgets.sourceforge.net/libunibreak/
 [tr14]:            http://www.unicode.org/reports/tr14/
