@@ -8,7 +8,8 @@ local time = require'time'
 local tr = tr()
 
 local win = nw:app():window{
-	w = 1800, h = 800,
+	--w = 1800, h = 800,
+	w = 800, h = 400,
 }
 
 local function font(file, name)
@@ -52,6 +53,7 @@ font'media/fonts/amiri-regular.ttf'
 local ii=0
 function win:repaint()
 	local cr = self:bitmap():cairo()
+	cr:identity_matrix()
 	cr:rgb(0, 0, 0)
 	cr:paint()
 	cr:rgb(1, 1, 1)
@@ -88,30 +90,40 @@ function win:repaint()
 	elseif true then
 
 	local t0 = time.clock()
-	local n = 100
-	local size = 20
+	local n = 1
+	local size = 30
+	local line_h = 1.5
 	for i=1,n do
-		tr.rs:setfont('amiri', nil, nil, size)
-		tr:clear_runs()
-		local s = ('fi AVثلاثة 1234 خمسة '):rep(12)
-		--local s = 'Hebrew אדםה (adamah)'
-		tr:text_run{
-			--text = 'AخمسةBC',
-			text = s,
-		}
-		local utf8 = require'utf8'
-		for _,cp in utf8.chars(s) do
-			--print(cp)
-		end
-		tr:paint_runs(0, size * i)
-		--tr:run_text'هذه هي بعض النصوص العربي\nHello there!'
-		--tr:run_font'amiri, 50'
+		--tr.rs:setfont('amiri', nil, nil, size)
 
-		--tr:shape_text('Hello there!\nهذه هي بعض النصوص العربي')
-		--tr:shape_text('هذه هي بعض النصوص العربي\nHello there!')
-		--tr:paint_text(100, 300)
 		tr:clear_runs()
+		--local s1 = ('gmmI '):rep(1)
+		--local s2 = ('fi AV (ثلاثة 1234 خمسة) '):rep(1)
+		--local s3 = ('Hebrew (אדםה (adamah))'):rep(1)
+		--tr:text_run{text = s1}
+		--tr:text_run{text = s2}
+		--tr:text_run{text = s3}
+		tr:text_run{text = 'ABCD EFGH', font = 'amiri', font_size = 20}
+		tr:text_run{text = 'abc def', font = 'amiri', font_size = 30}
+		tr:shape_runs()
 
+		--local x = 0
+		--local w, h = self:client_size()
+		--local y = line_h * size * (i-1)
+		local x = 100
+		local y = 100
+		local w = 500
+		local h = 100
+
+		cr:save()
+		cr:rectangle(x, y, w, h)
+		cr:line_width(1)
+		cr:rgb(1, 1, 0)
+		cr:stroke()
+		cr:restore()
+
+		tr:paint_runs(x, y, w, h, 'right', 'bottom')
+		tr:clear_runs()
 	end
 	print( (1 / ((time.clock() - t0) / n))..' fps')
 

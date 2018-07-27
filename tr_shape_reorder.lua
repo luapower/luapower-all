@@ -104,6 +104,7 @@ function reorder_runs(run)
 	end
 
 	range.right.next = nil
+	range.left.last = range.right
 
 	return range.left
 end

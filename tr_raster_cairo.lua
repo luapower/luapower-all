@@ -13,9 +13,9 @@ local cairo_rs = object(rs_ft)
 
 cairo_rs.rasterize_glyph_ft = rs_ft.rasterize_glyph
 
-function cairo_rs:rasterize_glyph(glyph_index, subpixel_x_offset)
+function cairo_rs:rasterize_glyph(...)
 
-	local glyph = self:rasterize_glyph_ft(glyph_index, subpixel_x_offset)
+	local glyph = self:rasterize_glyph_ft(...)
 
 	glyph.surface = cairo.image_surface{
 		data = glyph.bitmap.buffer,

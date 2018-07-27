@@ -2,6 +2,8 @@
 --Unicode UAX#24 algorithm for detecting the script property of text runs.
 --Written by Cosmin Apreutesei. Public Domain.
 
+if not ... then require'tr_demo'; return end
+
 local hb = require'harfbuzz'
 local glue = require'glue'
 

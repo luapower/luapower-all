@@ -21,8 +21,10 @@ local assert = glue.assert --assert with string formatting
 local rs = object()
 
 rs.glyph_cache_size = 1024^2 * 20 --20MB net (arbitrary default)
-rs.font_size_resolution = 1/8
-rs.subpixel_resolution = 1/64 --1/64 is max with freetype
+rs.font_size_resolution = 1/8 --in pixels
+rs.subpixel_x_resolution = 1/64 --1/64 pixels is max with freetype
+rs.subpixel_y_resolution = 1 --no subpixel positioning with vertical hinting
+rs.line_spacing = 1.2
 
 function rs:__call()
 	local self = object(self)
@@ -171,23 +173,26 @@ function rs:_select_font_size_index(face, size)
 	return index, best_size or size
 end
 
-function rs:setfont(font, size, ...)
-	font, size = self:load_font(font, size, ...)
+function rs:setfont(font, ...)
+	local font, size = self:load_font(font, ...)
 	assert(size, 'Invalid font size: %s', tostring(size))
 	local size = snap(size, self.font_size_resolution)
-	if self.font ~= font or self.requested_size ~= size then
+	if self.font ~= font or self._requested_size ~= size then
 		local face = font.ft_face
 		local size_index, fixed_size = self:_select_font_size_index(face, size)
-		self.line_h = face.size.metrics.height / 64
-		self.ascender = face.size.metrics.ascender / 64
 		self.font = font
-		self.requested_size = size
-		self.size = fixed_size
+		self.font_size = fixed_size
+		self._requested_size = size
 		if size_index then
 			face:select_size(size_index)
 		else
 			face:set_pixel_sizes(fixed_size)
 		end
+		local m = face.size.metrics
+		self.font_height = m.height / 64
+		self.font_ascent = m.ascender / 64
+		self.font_descent = m.descender / 64
+		self.line_height = self.font_height * self.line_spacing
 	end
 end
 
@@ -199,51 +204,52 @@ rs.ft_render_mode = bor(
 	ft.C.FT_RENDER_MODE_LIGHT --disable hinting on the x-axis
 )
 
-local empty_glyph = {}
+function rs:rasterize_glyph(glyph_index, x_offset, y_offset)
 
-function rs:rasterize_glyph(glyph_index, subpixel_x_offset)
-	local font = self.font
-	local face = font.ft_face
+	self.font.ft_face:load_glyph(glyph_index, self.ft_load_mode)
+	local ft_glyph = self.font.ft_face.glyph
 
-	face:load_glyph(glyph_index, self.ft_load_mode)
-
-	local glyph = face.glyph
-
-	if glyph.format == ft.C.FT_GLYPH_FORMAT_OUTLINE then
-		glyph.outline:translate(subpixel_x_offset * 64, 0)
+	if ft_glyph.format == ft.C.FT_GLYPH_FORMAT_OUTLINE then
+		ft_glyph.outline:translate(x_offset * 64, y_offset * 64)
 	end
-	local fmt = glyph.format
-	if glyph.format ~= ft.C.FT_GLYPH_FORMAT_BITMAP then
-		glyph:render(self.ft_render_mode)
+	local fmt = ft_glyph.format
+	if ft_glyph.format ~= ft.C.FT_GLYPH_FORMAT_BITMAP then
+		ft_glyph:render(self.ft_render_mode)
 	end
-	assert(glyph.format == ft.C.FT_GLYPH_FORMAT_BITMAP)
+	assert(ft_glyph.format == ft.C.FT_GLYPH_FORMAT_BITMAP)
 
 	--BGRA bitmaps must already have aligned pitch because we can't change that
-	assert(glyph.bitmap.pixel_mode ~= ft.C.FT_PIXEL_MODE_BGRA
-		or glyph.bitmap.pitch % 4 == 0)
+	assert(ft_glyph.bitmap.pixel_mode ~= ft.C.FT_PIXEL_MODE_BGRA
+		or ft_glyph.bitmap.pitch % 4 == 0)
 
 	--bitmaps must be top-down because we can't change that
-	assert(glyph.bitmap.pitch >= 0) --top-down
+	assert(ft_glyph.bitmap.pitch >= 0) --top-down
 
 	local bitmap = self.freetype:bitmap()
 
-	if glyph.bitmap.pitch % 4 ~= 0
-		or (glyph.bitmap.pixel_mode ~= ft.C.FT_PIXEL_MODE_GRAY
-			and glyph.bitmap.pixel_mode ~= ft.C.FT_PIXEL_MODE_BGRA)
+	if ft_glyph.bitmap.pitch % 4 ~= 0
+		or (ft_glyph.bitmap.pixel_mode ~= ft.C.FT_PIXEL_MODE_GRAY
+			and ft_glyph.bitmap.pixel_mode ~= ft.C.FT_PIXEL_MODE_BGRA)
 	then
-		self.freetype:convert_bitmap(glyph.bitmap, bitmap, 4)
+		self.freetype:convert_bitmap(ft_glyph.bitmap, bitmap, 4)
 		assert(bitmap.pixel_mode == ft.C.FT_PIXEL_MODE_GRAY)
 		assert(bitmap.pitch % 4 == 0)
 	else
-		self.freetype:copy_bitmap(glyph.bitmap, bitmap)
+		self.freetype:copy_bitmap(ft_glyph.bitmap, bitmap)
 	end
 
-	local ft_glyph = glyph
 	local glyph = {}
 
 	glyph.bitmap = bitmap
 	glyph.bitmap_left = ft_glyph.bitmap_left
 	glyph.bitmap_top = ft_glyph.bitmap_top
+
+	glyph.x = x_offset
+	glyph.y = y_offset
+	glyph.w = ft_glyph.metrics.width / 64
+	glyph.h = ft_glyph.metrics.height / 64
+	glyph.x_bearing = ft_glyph.metrics.horiBearingX / 64
+	glyph.y_bearing = ft_glyph.metrics.horiBearingY / 64
 
 	local freetype = self.freetype
 	function glyph:free()
@@ -260,15 +266,17 @@ end
 
 function rs:load_glyph(glyph_index, x, y)
 	local pixel_x = math.floor(x)
-	local subpixel_x_offset = snap(x - pixel_x, self.subpixel_resolution)
-	local glyph_key = tuple(self.font, self.size, glyph_index, subpixel_x_offset)
+	local pixel_y = math.floor(y)
+	local x_offset = snap(x - pixel_x, self.subpixel_x_resolution)
+	local y_offset = snap(y - pixel_y, self.subpixel_y_resolution)
+	local glyph_key = tuple(self.font, self.font_size, glyph_index, x_offset, y_offset)
 	local glyph = self.glyphs:get(glyph_key)
 	if not glyph then
-		glyph = self:rasterize_glyph(glyph_index, subpixel_x_offset)
+		glyph = self:rasterize_glyph(glyph_index, x_offset, y_offset)
 		self.glyphs:put(glyph_key, glyph, glyph.size)
 	end
 	local x = pixel_x + glyph.bitmap_left
-	local y = y - glyph.bitmap_top
+	local y = pixel_y - glyph.bitmap_top
 	return glyph, x, y
 end
 

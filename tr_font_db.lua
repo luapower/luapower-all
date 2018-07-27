@@ -26,11 +26,25 @@ font_db.weights = {
 	ultralight = 200,
 	extralight = 200,
 	light      = 300,
+	medium     = 500,
 	semibold   = 600,
 	bold       = 700,
 	ultrabold  = 800,
 	extrabold  = 800,
-	heavy      = 800,
+	heavy      = 900,
+}
+
+--TODO: use these
+font_db.widths = {
+	ultracondensed = 1,
+	extracondensed = 2,
+	condensed      = 3,
+	semicondensed  = 4,
+	normal         = 5,
+	semiexpanded   = 6,
+	expanded       = 7,
+	extraexpanded  = 8,
+	ultraexpanded  = 9,
 }
 
 font_db.slants = {
@@ -136,9 +150,20 @@ function font_db:find_font(name, weight, slant, size)
 		return font
 	end
 	local name, weight, slant, size = self:parse_font(name, weight, slant, size)
+	--search in local db
 	local t = self.db[name or false]
 	local t = t and t[slant or 'normal']
 	local font = t and closest_weight(t, weight or 400)
+	--extend search with plugins
+	if not font then
+		for _,searcher in ipairs(self.searchers) do
+			local font1, size1 = searcher(self, name, weight, slant, size)
+			if font1 then
+				font, size = font1, size1 or size
+				break
+			end
+		end
+	end
 	if font and name_only then
 		self.namecache[name] = font
 	end
