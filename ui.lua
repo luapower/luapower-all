@@ -16,6 +16,7 @@ local time = require'time'
 local freetype = require'freetype'
 local cairo = require'cairo'
 local fs = require'fs'
+local tr = require'tr'
 
 local push = table.insert
 local pop = table.remove
@@ -1983,112 +1984,48 @@ ui:memoize'image_pattern'
 --fonts ----------------------------------------------------------------------
 
 function ui:after_init()
-	self._freetype = freetype:new()
-	self._fonts = {} --{file -> {ft_face=, cr_face=, mmap=}}
+	self.tr = tr()
+	push(self.tr.rs.font_db.searchers,
+		function(font_db, family, weight, slant)
+			local gfonts = require'gfonts'
+			local file = gfonts.font_file(family, weight, slant, true)
+			return file and self.tr.rs:add_font_file(file, family, weight, slant)
+		end)
 end
 
 function ui:before_free()
-	for _,font in pairs(self._fonts) do
-		--can't free() it because cairo's cache is lazy.
-		--cairo will free the freetype face object on its own.
-		font.cr_face:unref()
-	end
-	self._fonts = nil
-	--safe to free() the freetype object here because cr_face holds a reference
-	--to the FT_Library and will call FT_Done_Library() on its destructor.
-	self._freetype:free()
+	self.tr:free()
+	self.tr = false
 end
 
-function window:before_free()
-	if self.cr then
-		self.cr:font_face(cairo.NULL)
-	end
+function ui:add_font_file(file, family, weight, slant)
+	self:tr.rs:add_font_file(file, family, weight, slant)
 end
 
-function ui:gfonts_font_file(family, weight, slant)
-	local gfonts = require'gfonts'
-	return gfonts.font_file(family, weight, slant, true)
-end
-
-local function font_tuple(family, weight, slant)
-	family = family:lower()
-	weight = weight and tostring(weight):lower() or 'normal'
-	slant = slant and slant:lower() or 'normal'
-	return tuple(family, weight, slant)
-end
-
-function ui:register_font_file(family, weight, slant, file)
-	self._font_files[font_tuple(family, weight, slant)] = file
-end
-
-ui._font_files = {} --{(family, weight, slant) -> file}
-
-function ui:registered_font_file(family, weight, slant, file)
-	return self._font_files[font_tuple(family, weight, slant)]
-end
-
---override this for different ways of finding font files
-function ui:font_file(family, weight, slant)
-	if family:find'%.[to]tf$' then
-		return family
-	end
-	local file =
-		self:registered_font_file(family, weight, slant)
-		or self:gfonts_font_file(family, weight, slant)
-	return assert(file, 'could not find a font for "%s, %s, %s"',
-		family, weight, slant)
-end
-
---override this for different ways of loading font faces
-function ui:font_object(file)
-	local bundle = require'bundle'
-	local font = {}
-	font.mmap = assert(bundle.mmap(file), 'font file not found: '..file)
-	font.ft_face = self._freetype:memory_face(font.mmap.data, font.mmap.size)
-	font.cr_face = assert(cairo.ft_font_face(font.ft_face))
-	self._fonts[file] = font
-	return font
-end
-
-function ui:_font(family, weight, slant)
-	return self:font_object(self:font_file(family, weight, slant))
-end
-ui:memoize'_font'
-
---override this for different ways of setting a loaded font
 function window:setfont(family, weight, slant, size, line_spacing)
-	local font = self.ui:_font(family, weight, slant)
-	self.cr:font_face(font.cr_face)
-	self.cr:font_size(size)
+	self.tr.rs:setfont(family, weight, slant, size)
 	local ext = self.cr:font_extents()
-	self.font_height = ext.height
-	self.font_descent = ext.descent
-	self.font_ascent = ext.ascent
-	self.line_spacing = line_spacing
 end
 
 --mgit clone fonts-awesome
-ui:register_font_file('Font Awesome', nil, nil, 'media/fonts/fa-regular-400.ttf')
-ui:register_font_file('Font Awesome', 'bold', nil, 'media/fonts/fa-solid-900.ttf')
-ui:register_font_file('Font Awesome Brands', nil, nil, 'media/fonts/fa-brands-400.ttf')
+ui:add_font_file('media/fonts/fa-regular-400.ttf', 'Font Awesome')
+ui:add_font_file('media/fonts/fa-solid-900.ttf', 'Font Awesome Bold')
+ui:add_font_file('media/fonts/fa-brands-400.ttf', 'Font Awesome Brands')
 --mgit clone fonts-material-icons
-ui:register_font_file('Material Icons', nil, nil, 'media/fonts/MaterialIcons-Regular.ttf')
+ui:add_font_file('media/fonts/MaterialIcons-Regular.ttf', 'Material Icons')
 --mgit clone fonts-ionicons
-ui:register_font_file('Ionicons', nil, nil, 'media/fonts/ionicons.ttf')
+ui:add_font_file('media/fonts/ionicons.ttf', 'Ionicons')
 
 --multi-line self-aligned and box-aligned text -------------------------------
 
+--[[
 function window:line_extents(s)
 	local ext = self.cr:text_extents(s)
 	return ext.width, ext.height, ext.y_bearing
 end
 
-function window:text_line_h()
-	return self.font_height * self.line_spacing
-end
-
 function window:text_size(s, multiline)
-	local w, h, y1 = 0, 0, self.font_ascent
+	local w, h, y1 = 0, 0, self.font_ascender
 	local line_h = self.font_height * self.line_spacing
 	for s in lines(s, multiline) do
 		local w1, h1, yb = self:line_extents(s)
@@ -2114,7 +2051,7 @@ function window:textbox(x0, y0, w, h, s, halign, valign, multiline)
 	end
 
 	if valign == 'top' then
-		y = self.font_ascent
+		y = self.font_ascender
 	else
 		local lines_h = 0
 		for _ in lines(s, multiline) do
@@ -2123,9 +2060,9 @@ function window:textbox(x0, y0, w, h, s, halign, valign, multiline)
 		lines_h = lines_h - line_h
 
 		if valign == 'bottom' then
-			y = h - self.font_descent
+			y = h - self.font_descender
 		elseif not valign or valign == 'center' then
-			local h1 = h + self.font_ascent - self.font_descent + lines_h
+			local h1 = h + self.font_ascender - self.font_descender + lines_h
 			y = round(h1 / 2)
 		else
 			assert(false, 'invalid valign "%s"', valign)
@@ -2153,6 +2090,7 @@ function window:textbox(x0, y0, w, h, s, halign, valign, multiline)
 		y = y + line_h
 	end
 end
+]]
 
 --layers ---------------------------------------------------------------------
 

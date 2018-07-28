@@ -14,9 +14,10 @@ local font_db = require'tr_font_db'
 
 local band, bor = bit.band, bit.bor
 local object = glue.object
-local merge = glue.merge
-local snap = glue.snap
+local update = glue.update
 local assert = glue.assert --assert with string formatting
+local snap = glue.snap
+local pass = glue.pass
 
 local rs = object()
 
@@ -27,14 +28,7 @@ rs.subpixel_y_resolution = 1 --no subpixel positioning with vertical hinting
 rs.line_spacing = 1.2
 
 function rs:__call()
-	local self = object(self)
-
-	--speed up method access by caching methods
-	local super = self.__index
-	while super do
-		merge(self, super)
-		super = super.__index
-	end
+	local self = update(object(self), self)
 
 	self.freetype = ft()
 	self.loaded_fonts = {} --{data -> font}
@@ -42,7 +36,7 @@ function rs:__call()
 
 	self.glyphs = lrucache{max_size = self.glyph_cache_size}
 	function self.glyphs:value_size(glyph)
-		return glyph:size()
+		return glyph.size
 	end
 	function self.glyphs:free_value(glyph)
 		glyph:free()
@@ -204,10 +198,18 @@ rs.ft_render_mode = bor(
 	ft.C.FT_RENDER_MODE_LIGHT --disable hinting on the x-axis
 )
 
+local empty_glyph = {bitmap_left = 0, bitmap_top = 0, size = 0, free = pass}
+
 function rs:rasterize_glyph(glyph_index, x_offset, y_offset)
 
 	self.font.ft_face:load_glyph(glyph_index, self.ft_load_mode)
 	local ft_glyph = self.font.ft_face.glyph
+
+	local w = ft_glyph.metrics.width
+	local h = ft_glyph.metrics.height
+	if w == 0 or h == 0 then
+		return empty_glyph
+	end
 
 	if ft_glyph.format == ft.C.FT_GLYPH_FORMAT_OUTLINE then
 		ft_glyph.outline:translate(x_offset * 64, y_offset * 64)
@@ -244,27 +246,21 @@ function rs:rasterize_glyph(glyph_index, x_offset, y_offset)
 	glyph.bitmap_left = ft_glyph.bitmap_left
 	glyph.bitmap_top = ft_glyph.bitmap_top
 
-	glyph.x = x_offset
-	glyph.y = y_offset
-	glyph.w = ft_glyph.metrics.width / 64
-	glyph.h = ft_glyph.metrics.height / 64
-	glyph.x_bearing = ft_glyph.metrics.horiBearingX / 64
-	glyph.y_bearing = ft_glyph.metrics.horiBearingY / 64
-
 	local freetype = self.freetype
 	function glyph:free()
 		freetype:free_bitmap(self.bitmap)
 		self.bitmap = false
 	end
 
-	function glyph:size()
-		return self.bitmap.width * self.bitmap.rows
-	end
+	glyph.size = bitmap.rows * bitmap.pitch + 200
 
 	return glyph
 end
 
-function rs:load_glyph(glyph_index, x, y)
+function rs:glyph(glyph_index, x, y)
+	if glyph_index == 0 then --freetype code for "missing glyph"
+		return empty_glyph, x, y
+	end
 	local pixel_x = math.floor(x)
 	local pixel_y = math.floor(y)
 	local x_offset = snap(x - pixel_x, self.subpixel_x_resolution)
@@ -273,7 +269,7 @@ function rs:load_glyph(glyph_index, x, y)
 	local glyph = self.glyphs:get(glyph_key)
 	if not glyph then
 		glyph = self:rasterize_glyph(glyph_index, x_offset, y_offset)
-		self.glyphs:put(glyph_key, glyph, glyph.size)
+		self.glyphs:put(glyph_key, glyph)
 	end
 	local x = pixel_x + glyph.bitmap_left
 	local y = pixel_y - glyph.bitmap_top

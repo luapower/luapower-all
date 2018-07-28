@@ -1,75 +1,96 @@
 RESEARCH ---------------------------------------------------------------------
 
 - how does harfbuzz select charmap?
-- text justification with bidi when reordering of runs changes line width?
 
-MARKUP -----------------------------------------------------------------------
+FEATURES ---------------------------------------------------------------------
 
-- font: family, size
-	- weight: numeric or bold, etc.
-	- slant: normal, italic
-	- variant: normal, smallcaps
-	- stretch: 'ultracondensed', 'extracondensed', 'condensed', 'semicondensed',
-		'normal', 'semiexpanded', 'expanded', 'extraexpanded', 'ultraexpanded'
-- shaper features: 'dlig=1, -kern, afrc on'
-- rise: subscript, superscript, numeric
-- color, opacity
-- underline_style: none, single, double, low, error; underline_color
-- strikethrough: true/false; strikethrough_color
-- letter_spacing: numeric
-- gravity, gravity_hint?
-- abbreviations: b, big, small, i, s, sub, sup, tt, u.
+font modifiers:
+	- weight: weight, bold/b...
+	- slant: slant, italic/oblique/i
+	- size: size, %size, big, small
 
-FONT SELECTION ---------------------------------------------------------------
+- hit testing -> initial text run object + index in text + cluster len
 
-- glyph substitution
-	- have a list of fonts and inspect them for unicode coverage
-- locale substitution (diff. font per locale, eg. for CJK)
+- reuse/reallocate buffers and Lua tables
 
-RENDERING --------------------------------------------------------------------
+- font_variant: normal, smallcaps; smallcaps modifier
 
-- on translucent text runs, apply opacity on the whole run.
-- display missing glyphs as either blank space, invisible or tofu.
-	- see faq: http://www.unicode.org/faq/unsup_char.html
+- raise: raise, subscript, superscript, sub, sup
 
-SHAPING ----------------------------------------------------------------------
+- color
 
-- line breaking
+- opacity
+	- apply on the whole run
+	- optimize to only do that if the runs are ligated
 
-LAYOUTING --------------------------------------------------------------------
+- paragraph splitting at PS
+
+- p attribute
+
+- br attribute
+
+- nowrap attribute
+
+- plaintext: follow tabstops, preserve whitespace widths.
+
+- underline / strikethrough:
+	- skip descenders (trick: use white shadow around text)
+	- color, thickness, style (single, double, wavy, image), dashes
+
+- font_db: stretch
+
+- halign: justify
+
+- wrapping algos: greedy, knuth
 
 - letter spacing
-- line height
+	- identify breaking points
+	- adjust justification to include letter spacing
 
-FINE FEATURE BIN -------------------------------------------------------------
+- tabstops: width
 
-- coloring half-ligatures, see hb_ot_layout_get_ligature_carets
-- localized glyphs with font's `locl` table (harfbuzz should select that automatically)
-- path-following (eg. on a map; know where to break runs on cursive scripts)
+- wrap inside path
+
+- paragraph splitting
+
+- bounding box with/without ascents/descents
+
+- html-like markup parser
+
+- language/script font override
+
+- glyph substitution
+	- register fallback fonts for script/language and try them in order
+	- match original font's size, weight, slant, stretch
+	- cache the substitutions
+
 - hyphenation: https://github.com/hunspell/hyphen (what libreoffice uses)
 
-SHAPING ----------------------------------------------------------------------
+- coloring half-ligatures, see hb_ot_layout_get_ligature_carets
 
-==============================================================================
+- rotation, translation, scale, shear, matrix for each run
 
-instead of reversing RTL runs (which I tried but gave me all sorts of funny
-bugs which mixed direction text and line breaks), store the index of all
-the shaped glyphs before doing any line breaking (that will be the visual
-index), then sort all the glyphs by their cluster values so now they are in
-logical order.
-Do line breaking pretending the text is unidirectional LTR.
-after line breaking, sort the glyphs in each line separately by their visual indices.
-This seems to give me proper line breaking, and works whether the base
-paragraph direction in LTR or RTL and allows me to keep using whatever line
-breaking code I had unmodified.
+- arbitrary path baseline
+	- same breaking points as for letter-spacing
+	- translate & rotate glyphs to match path's normals at glyph's center
 
-LAYOUTING --------------------------------------------------------------------
+- show hex boxes for:
+	- invalid bytes
+	- missing glyphs
+	- control characters
 
+- vertical layouts
+	- gravity, gravity_hint?
 
+- advanced arbitrary path baseline
+	- extract glyphs outlines
+	- break outlines into polygons
+	- distort points based on path's normal vectors
+	- rasterize new distorted outline
 
 EDITING ----------------------------------------------------------------------
 
-- invisible characters
+- mark invisible characters positions
 	- ZW-NBSP: prevents ligatures
 	- NBSP: prevents word-wrapping
 	- SOFT HYPHEN: hyphenate if word-wrapping
@@ -79,6 +100,4 @@ EDITING ----------------------------------------------------------------------
 	- LTR/RTL modifiers
 	- variation selectors
 	- hangul fillers
-- look-alike characters:   ; ꓸ ꓹ ꓽ
-
-
+- mark look-alike characters:   ; ꓸ ꓹ ꓽ

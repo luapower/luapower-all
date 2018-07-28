@@ -96,23 +96,26 @@ function win:repaint()
 	for i=1,n do
 		--tr.rs:setfont('amiri', nil, nil, size)
 
-		tr:clear_runs()
 		--local s1 = ('gmmI '):rep(1)
 		--local s2 = ('fi AV (ثلاثة 1234 خمسة) '):rep(1)
 		--local s3 = ('Hebrew (אדםה (adamah))'):rep(1)
 		--tr:text_run{text = s1}
 		--tr:text_run{text = s2}
 		--tr:text_run{text = s3}
-		tr:text_run{text = 'ABCD EFGH', font = 'amiri', font_size = 20}
-		tr:text_run{text = 'abc def', font = 'amiri', font_size = 30}
-		tr:shape_runs()
+		local runs = tr:shape{
+			font = 'amiri', font_size = 20,
+			--dir = 'rtl',
+			--{'A'},
+			--{'m mm'},
+			{'خمسة ABC ', features = {}, {'abc def \r\r\n\nghi jkl ', font_size = 30}, 'DEFG'},
+		}
 
 		--local x = 0
 		--local w, h = self:client_size()
 		--local y = line_h * size * (i-1)
 		local x = 100
-		local y = 100
-		local w = 500
+		local y = 200
+		local w = 550
 		local h = 100
 
 		cr:save()
@@ -122,8 +125,8 @@ function win:repaint()
 		cr:stroke()
 		cr:restore()
 
-		tr:paint_runs(x, y, w, h, 'right', 'bottom')
-		tr:clear_runs()
+		tr:paint(runs, x, y, w, h, 'right', 'bottom')
+		runs:free()
 	end
 	print( (1 / ((time.clock() - t0) / n))..' fps')
 
