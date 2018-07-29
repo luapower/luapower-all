@@ -238,7 +238,7 @@ compile_virtual_lua_module() {
 }
 
 compile_bundle_libs() {
-	s="return '$ALIBS'" compile_virtual_lua_module bundle_libs
+	s="return [[$ALIBS]]" compile_virtual_lua_module bundle_libs
 }
 
 compile_bundle_appversion() {

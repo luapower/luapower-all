@@ -43,5 +43,6 @@ ${X}gcc -c -O2 $C -DHAVE_INTEL_ATOMIC_PRIMITIVES -DUCDN_EXPORT \
 	-I. -I../../freetype/include -I../../ucdn \
 	-fno-exceptions -fno-rtti
 ${X}gcc *.o -shared -o ../../../bin/$P/$D -L../../../bin/$P $L -lfreetype -lucdn
+rm -f ../../../bin/$P/$A
 ${X}ar rcs ../../../bin/$P/$A *.o
 rm *.o
