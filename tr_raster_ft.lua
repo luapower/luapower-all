@@ -72,6 +72,7 @@ function rs:add_font_file(file, ...)
 		unload = self.unload_font_file,
 	}
 	self.font_db:add_font(font, ...)
+	return font
 end
 
 function rs:add_mem_font(data, data_size, ...)
@@ -82,6 +83,7 @@ function rs:add_mem_font(data, data_size, ...)
 		unload = self.unload_mem_font,
 	}
 	self.font_db:add_font(font, ...)
+	return font
 end
 
 function rs:load_font_file(font)

@@ -19,7 +19,7 @@ BLUA_PREFIX=Blua_
 BBIN_PREFIX=Bbin_
 
 # note: only the mingw linker is smart to ommit dlibs that are not used.
-DLIBS_mingw="gdi32 msimg32 opengl32 winmm ws2_32"
+DLIBS_mingw="gdi32 msimg32 opengl32 winmm ws2_32 ole32"
 DLIBS_linux="m dl"
 DLIBS_osx=
 FRAMEWORKS="ApplicationServices" # for OSX

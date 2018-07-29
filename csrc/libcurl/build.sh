@@ -30,5 +30,6 @@ ${X}gcc -c -O2 -Wall -fno-strict-aliasing -DBUILDING_LIBCURL $C \
 	-DCURL_DISABLE_LDAP
 ${X}gcc *.o -shared -o ../../../bin/$P/$D $L \
 	-L../../../bin/$P -lz
+rm -f      ../../../bin/$P/$A
 ${X}ar rcs ../../../bin/$P/$A *.o
 rm *.o

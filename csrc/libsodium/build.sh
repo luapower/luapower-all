@@ -176,6 +176,6 @@ files="$files
 "
 gcc -c -O2 $C $files -Iinclude/sodium
 gcc *.o -shared -o ../../bin/$P/$D $L
-rm -f ../../bin/$P/$A
+rm -f  ../../bin/$P/$A
 ar rcs ../../bin/$P/$A *.o
 rm *.o

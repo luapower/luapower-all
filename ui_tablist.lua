@@ -709,7 +709,9 @@ if not ... then require('ui_demo')(function(ui, win)
 			style = {
 				font_slant = 'normal',
 			},
-			title = 'Tab '..i,
+			title = 'خمسة',
+			font_family = 'amiri',
+			--title = 'Tab '..i,
 			visible = visible,
 			--selected = selected,
 			enabled = enabled,

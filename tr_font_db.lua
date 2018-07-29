@@ -99,7 +99,7 @@ function font_db:parse_font(name, weight, slant, size)
 		weight = weight_str
 	end
 	if slant then
-		slant = slants[slant]
+		slant = self.slants[slant]
 	else
 		slant = slant_str
 	end

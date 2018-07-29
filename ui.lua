@@ -1983,14 +1983,26 @@ ui:memoize'image_pattern'
 
 --fonts ----------------------------------------------------------------------
 
+function ui:add_font_file(file, family, weight, slant)
+	return self.tr.rs:add_font_file(file, family, weight, slant)
+end
+
 function ui:after_init()
 	self.tr = tr()
 	push(self.tr.rs.font_db.searchers,
 		function(font_db, family, weight, slant)
 			local gfonts = require'gfonts'
 			local file = gfonts.font_file(family, weight, slant, true)
-			return file and self.tr.rs:add_font_file(file, family, weight, slant)
+			return file and self:add_font_file(file, family, weight, slant)
 		end)
+	--mgit clone fonts-awesome
+	ui:add_font_file('media/fonts/fa-regular-400.ttf', 'Font Awesome')
+	ui:add_font_file('media/fonts/fa-solid-900.ttf', 'Font Awesome Bold')
+	ui:add_font_file('media/fonts/fa-brands-400.ttf', 'Font Awesome Brands')
+	--mgit clone fonts-material-icons
+	ui:add_font_file('media/fonts/MaterialIcons-Regular.ttf', 'Material Icons')
+	--mgit clone fonts-ionicons
+	ui:add_font_file('media/fonts/ionicons.ttf', 'Ionicons')
 end
 
 function ui:before_free()
@@ -1998,99 +2010,29 @@ function ui:before_free()
 	self.tr = false
 end
 
-function ui:add_font_file(file, family, weight, slant)
-	self:tr.rs:add_font_file(file, family, weight, slant)
-end
-
 function window:setfont(family, weight, slant, size, line_spacing)
-	self.tr.rs:setfont(family, weight, slant, size)
-	local ext = self.cr:font_extents()
+	self.ui.tr.rs.line_spacing = line_spacing
+	self._font_family = family
+	self._font_size = size
+	--self.ui.tr.rs:setfont(family, weight, slant, size)
 end
-
---mgit clone fonts-awesome
-ui:add_font_file('media/fonts/fa-regular-400.ttf', 'Font Awesome')
-ui:add_font_file('media/fonts/fa-solid-900.ttf', 'Font Awesome Bold')
-ui:add_font_file('media/fonts/fa-brands-400.ttf', 'Font Awesome Brands')
---mgit clone fonts-material-icons
-ui:add_font_file('media/fonts/MaterialIcons-Regular.ttf', 'Material Icons')
---mgit clone fonts-ionicons
-ui:add_font_file('media/fonts/ionicons.ttf', 'Ionicons')
 
 --multi-line self-aligned and box-aligned text -------------------------------
 
---[[
-function window:line_extents(s)
-	local ext = self.cr:text_extents(s)
-	return ext.width, ext.height, ext.y_bearing
-end
-
 function window:text_size(s, multiline)
-	local w, h, y1 = 0, 0, self.font_ascender
-	local line_h = self.font_height * self.line_spacing
-	for s in lines(s, multiline) do
-		local w1, h1, yb = self:line_extents(s)
-		w, h = select(3, box2d.bounding_box(0, 0, w, h, 0, y1 + yb, w1, h1))
-		y1 = y1 + line_h
-	end
-	return w, h
+	--TODO:
+	return 0, 0
 end
 
-function window:textbox(x0, y0, w, h, s, halign, valign, multiline)
-	s = tostring(s)
-	local cr = self.cr
-	local line_h = self.font_height * self.line_spacing
-
-	local x, y
-
-	if halign == 'right' then
-		x = w
-	elseif not halign or halign == 'center' then
-		x = round(w / 2)
-	else
-		x = 0
-	end
-
-	if valign == 'top' then
-		y = self.font_ascender
-	else
-		local lines_h = 0
-		for _ in lines(s, multiline) do
-			lines_h = lines_h + line_h
-		end
-		lines_h = lines_h - line_h
-
-		if valign == 'bottom' then
-			y = h - self.font_descender
-		elseif not valign or valign == 'center' then
-			local h1 = h + self.font_ascender - self.font_descender + lines_h
-			y = round(h1 / 2)
-		else
-			assert(false, 'invalid valign "%s"', valign)
-		end
-		y = y - lines_h
-	end
-
-	x = x + x0
-	y = y + y0
-
-	cr:new_path()
-	for s in lines(s, multiline) do
-		if halign == 'right' then
-			local tw = self:line_extents(s)
-			cr:move_to(x - tw, y)
-		elseif not halign or halign == 'center' then
-			local tw = self:line_extents(s)
-			cr:move_to(x - round(tw / 2), y)
-		elseif halign == 'left' then
-			cr:move_to(x, y)
-		else
-			assert(false, 'invalid halign "%s"', halign)
-		end
-		cr:show_text(s)
-		y = y + line_h
-	end
+function window:textbox(x, y, w, h, text, halign, valign)
+	local glyph_runs = self.ui.tr:shape{
+		text,
+		font = self._font_family,
+		font_size = self._font_size,
+	}
+	self.ui.tr.rs.cr = self.cr
+	self.ui.tr:paint(glyph_runs, x, y, w, h, halign, valign)
 end
-]]
 
 --layers ---------------------------------------------------------------------
 
@@ -3355,7 +3297,6 @@ end
 
 layer.text_align = 'center'
 layer.text_valign = 'center'
-layer.text_multiline = true
 layer.text_operator = 'over'
 layer.text = nil
 layer.font_family = 'Open Sans'
@@ -3375,13 +3316,13 @@ function layer:draw_text(cr)
 	local cw, ch = self:content_size()
 	cr:operator(self.text_operator)
 	self.window:textbox(0, 0, cw, ch, self.text,
-		self.text_align, self.text_valign, self.text_multiline)
+		self.text_align, self.text_valign)
 end
 
 function layer:text_bounding_box()
 	if not self:text_visible() then return 0, 0, 0, 0 end
 	self:setfont()
-	local w, h = self.window:text_size(self.text, self.text_multiline)
+	local w, h = self.window:text_size(self.text)
 	local cw, ch = self:content_size()
 	return box2d.align(w, h, self.text_align, self.text_valign,
 		0, 0, cw, ch)
