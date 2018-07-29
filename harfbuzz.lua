@@ -48,7 +48,7 @@ end
 function from_string_func(func)
 	return function(s)
 		if type(s) == 'string' then
-			local s = func(s, -1)
+			local s = func(s, #s)
 			if s == 0 then return nil end
 		end
 		return s
@@ -59,7 +59,7 @@ function obj_from_string_func(func, obj_type)
 	return function(s, obj)
 		obj = obj or ffi.new(obj_type)
 		if type(s) == 'string' then
-			local ret = func(s, -1, obj)
+			local ret = func(s, #s, obj)
 			if ret == 0 then return nil end
 			return obj
 		end
@@ -131,7 +131,7 @@ hb.default_language = C.hb_language_get_default
 
 function hb.script(s)
 	if type(s) == 'string' then
-		local script = C.hb_script_from_string(s, -1)
+		local script = C.hb_script_from_string(s, #s)
 		if script == 0 then return nil end
 	elseif ffi.istype('hb_tag_t', s) then
 		local script = C.hb_script_from_iso15924_tag(s)
@@ -201,6 +201,7 @@ function hb.unicode_decompose_compatibility(c, out)
 end
 
 --from hb-ft.h
+
 hb.ft_face        = create_func(C.hb_ft_face_create, C.hb_face_destroy)
 hb.ft_face_cached = create_func(C.hb_ft_face_create_cached, C.hb_face_destroy)
 hb.ft_font        = create_func(C.hb_ft_font_create, C.hb_font_destroy)
@@ -286,22 +287,22 @@ ffi.metatype('hb_font_t', {__index = {
 	get_parent = C.hb_font_get_parent,
 	get_face = C.hb_font_get_face,
 
-	set_scale = C.hb_font_set_scale, --int x_scale, int y_scale
-	get_scale = get_xy_func(C.hb_font_get_scale), --int *x_scale, int *y_scale
-	set_ppem = C.hb_font_set_ppem, --x_ppem, y_ppem
-	get_ppem = get_xy_func(C.hb_font_get_ppem), --uint *x_ppem, uint *y_ppem
+	set_scale = C.hb_font_set_scale, --(x_scale, y_scale)
+	get_scale = get_xy_func(C.hb_font_get_scale), -- () -> x_scale, y_scale
+	set_ppem = C.hb_font_set_ppem, --(x_ppem, y_ppem)
+	get_ppem = get_xy_func(C.hb_font_get_ppem), --() -> x_ppem, y_ppem
 
-	get_glyph = C.hb_font_get_glyph, --hb_codepoint_t unicode, hb_codepoint_t variation_selector, hb_codepoint_t *glyph -> hb_glyph_t
-	get_glyph_h_advance = C.hb_font_get_glyph_h_advance, --glyph -> hb_position_t
-	get_glyph_v_advance = C.hb_font_get_glyph_v_advance, --glyph -> hb_position_t
-	get_glyph_h_origin = get_pos_func(C.hb_font_get_glyph_h_origin), --glyph -> x, y
-	get_glyph_v_origin = get_pos_func(C.hb_font_get_glyph_v_origin), --glyph -> x, y
-	get_glyph_h_kerning = C.hb_font_get_glyph_h_kerning, --left_glyph, right_glyph -> hb_position_t
-	get_glyph_v_kerning = C.hb_font_get_glyph_v_kerning, --top_glyph, bottom_glyph -> hb_position_t
-	get_glyph_extents = C.hb_font_get_glyph_extents, --glyph, hb_glyph_extents_t *extents
-	get_glyph_contour_point = get_pos2_func(C.hb_font_get_glyph_contour_point), --glyph, point_index -> x, y
-	get_glyph_name = C.hb_font_get_glyph_name, --glyph, name, size
-	get_glyph_from_name = C.hb_font_get_glyph_from_name, --name, len, *glyph
+	get_glyph = C.hb_font_get_glyph, --(hb_codepoint_t unicode, hb_codepoint_t variation_selector, hb_codepoint_t *glyph) -> hb_glyph_t
+	get_glyph_h_advance = C.hb_font_get_glyph_h_advance, --(glyph) -> hb_position_t
+	get_glyph_v_advance = C.hb_font_get_glyph_v_advance, --(glyph) -> hb_position_t
+	get_glyph_h_origin = get_pos_func(C.hb_font_get_glyph_h_origin), --(glyph) -> x, y
+	get_glyph_v_origin = get_pos_func(C.hb_font_get_glyph_v_origin), --(glyph) -> x, y
+	get_glyph_h_kerning = C.hb_font_get_glyph_h_kerning, --(left_glyph, right_glyph) -> hb_position_t
+	get_glyph_v_kerning = C.hb_font_get_glyph_v_kerning, --(top_glyph, bottom_glyph) -> hb_position_t
+	get_glyph_extents = C.hb_font_get_glyph_extents, --(glyph, hb_glyph_extents_t *extents)
+	get_glyph_contour_point = get_pos2_func(C.hb_font_get_glyph_contour_point), --(glyph, point_index) -> x, y
+	get_glyph_name = C.hb_font_get_glyph_name, --(glyph, name, size)
+	get_glyph_from_name = C.hb_font_get_glyph_from_name, --(name, len, *glyph)
 	get_glyph_advance_for_direction = C.hb_font_get_glyph_advance_for_direction, --hb_codepoint_t glyph, hb_direction_t direction, hb_position_t *x, hb_position_t *y
 	get_glyph_origin_for_direction = C.hb_font_get_glyph_origin_for_direction, --hb_codepoint_t glyph, hb_direction_t direction, hb_position_t *x, hb_position_t *y
 	add_glyph_origin_for_direction = C.hb_font_add_glyph_origin_for_direction, --hb_codepoint_t glyph, hb_direction_t direction, hb_position_t *x, hb_position_t *y

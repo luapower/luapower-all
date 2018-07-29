@@ -40,14 +40,14 @@ print(T())
 ~~~
 
 > __NOTE:__ all the tuple elements of all the tuples created with this
-function are indexed internally with a global weak hash tree. This means that
-creating a tuple takes N hash lookups and M table creations, where N+M is the
-number of elements of the tuple. Lookup time depends on how dense the tree is
+function are indexed internally with a global weak hash tree. Creating a
+tuple thus takes N hash lookups and M table creations, where N+M is the
+number of elements in the tuple. Lookup time depends on how dense the tree is
 on the search path, which depends on how many existing tuples share a first
 sequence of elements with the tuple being created. In particular, creating
 tuples out of all permutations of a certain set of values hits the worst case
-for hash lookup time, but creates the minimum amount of tables relative to
-the number of tuples.
+for lookup time, but creates the minimum amount of tables relative to the
+number of tuples.
 
 __TIP:__ Create tuple spaces that don't use weak tables for better gc
 performance. When no longer needed, release the tuple space to free all

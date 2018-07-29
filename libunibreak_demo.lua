@@ -24,7 +24,7 @@ print()
 local line_brks = ub.linebreaks(str, len)
 local word_brks = ub.wordbreaks(str, len)
 local grap_brks = ub.graphemebreaks(str, len)
-for i=0,len do
+for i=0,len-1 do
 	print(
 		string.format('0x%04X', str[i]),
 		str[i] > 32 and str[i] < 128 and string.char(str[i]) or '',

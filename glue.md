@@ -632,8 +632,9 @@ Like `assert` but supports formatting of the error message using
 This is better than `assert(v, string.format(message, format_args...))`
 because it avoids creating the message string when the assertion is true.
 
-__NOTE__:  Unlike standard `assert()`, this only returns its first argument
-to avoid returning the error message and its args along with it.
+__NOTE__: Unlike standard `assert()`, this only returns its first argument
+even when no message is given, to avoid returning the error message and its
+args when a message is given and the assertion is true.
 
 #### Example
 
