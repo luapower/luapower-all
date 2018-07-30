@@ -1,6 +1,11 @@
 --result of `cpp cairo.h` from cairo 1.12.3 (native extensions in separate files)
 
+--NOTE: enum types are replaced with cairo_enum_t which is an int32_t so that
+--functions returning an enum will not create an enum object on the heap!
+
 require'ffi'.cdef[[
+
+typedef int32_t cairo_enum_t;
 
 int cairo_version (void);
 
@@ -68,13 +73,13 @@ typedef enum _cairo_status {
 	CAIRO_STATUS_INVALID_MESH_CONSTRUCTION,
 	CAIRO_STATUS_DEVICE_FINISHED,
 	CAIRO_STATUS_LAST_STATUS
-} cairo_status_t;
+}; typedef cairo_enum_t cairo_status_t;
 
 typedef enum _cairo_content {
 	CAIRO_CONTENT_COLOR = 0x1000,
 	CAIRO_CONTENT_ALPHA = 0x2000,
 	CAIRO_CONTENT_COLOR_ALPHA = 0x3000
-} cairo_content_t;
+}; typedef cairo_enum_t cairo_content_t;
 
 typedef enum _cairo_format {
 	CAIRO_FORMAT_INVALID = -1,
@@ -84,7 +89,7 @@ typedef enum _cairo_format {
 	CAIRO_FORMAT_A1 = 3,
 	CAIRO_FORMAT_RGB16_565 = 4,
 	CAIRO_FORMAT_RGB30 = 5
-} cairo_format_t;
+}; typedef cairo_enum_t cairo_format_t;
 
 typedef cairo_status_t (*cairo_write_func_t) (void *closure, const void *data, unsigned int length);
 typedef cairo_status_t (*cairo_read_func_t)  (void *closure, void *data, unsigned int length);
@@ -137,7 +142,7 @@ typedef enum _cairo_operator {
 	CAIRO_OPERATOR_HSL_SATURATION,
 	CAIRO_OPERATOR_HSL_COLOR,
 	CAIRO_OPERATOR_HSL_LUMINOSITY
-} cairo_operator_t;
+}; typedef cairo_enum_t cairo_operator_t;
 
 void cairo_set_operator       (cairo_t *cr, cairo_operator_t op);
 void cairo_set_source         (cairo_t *cr, cairo_pattern_t *source);
@@ -154,14 +159,14 @@ typedef enum _cairo_antialias {
 	CAIRO_ANTIALIAS_FAST,
 	CAIRO_ANTIALIAS_GOOD,
 	CAIRO_ANTIALIAS_BEST
-} cairo_antialias_t;
+}; typedef cairo_enum_t cairo_antialias_t;
 
 void cairo_set_antialias (cairo_t *cr, cairo_antialias_t antialias);
 
 typedef enum _cairo_fill_rule {
 	CAIRO_FILL_RULE_WINDING,
 	CAIRO_FILL_RULE_EVEN_ODD
-} cairo_fill_rule_t;
+}; typedef cairo_enum_t cairo_fill_rule_t;
 
 void cairo_set_fill_rule (cairo_t *cr, cairo_fill_rule_t fill_rule);
 void cairo_set_line_width (cairo_t *cr, double width);
@@ -170,7 +175,7 @@ typedef enum _cairo_line_cap {
 	CAIRO_LINE_CAP_BUTT,
 	CAIRO_LINE_CAP_ROUND,
 	CAIRO_LINE_CAP_SQUARE
-} cairo_line_cap_t;
+}; typedef cairo_enum_t cairo_line_cap_t;
 
 void cairo_set_line_cap (cairo_t *cr, cairo_line_cap_t line_cap);
 
@@ -178,7 +183,7 @@ typedef enum _cairo_line_join {
 	CAIRO_LINE_JOIN_MITER,
 	CAIRO_LINE_JOIN_ROUND,
 	CAIRO_LINE_JOIN_BEVEL
-} cairo_line_join_t;
+}; typedef cairo_enum_t cairo_line_join_t;
 
 void cairo_set_line_join (cairo_t *cr, cairo_line_join_t line_join);
 
@@ -272,7 +277,7 @@ void                   cairo_text_cluster_free (cairo_text_cluster_t *clusters);
 
 typedef enum _cairo_text_cluster_flags {
 	CAIRO_TEXT_CLUSTER_FLAG_BACKWARD = 0x00000001
-} cairo_text_cluster_flags_t;
+}; typedef cairo_enum_t cairo_text_cluster_flags_t;
 
 typedef struct {
 	double x_bearing;
@@ -295,12 +300,12 @@ typedef enum _cairo_font_slant {
 	CAIRO_FONT_SLANT_NORMAL,
 	CAIRO_FONT_SLANT_ITALIC,
 	CAIRO_FONT_SLANT_OBLIQUE
-} cairo_font_slant_t;
+}; typedef cairo_enum_t cairo_font_slant_t;
 
 typedef enum _cairo_font_weight {
 	CAIRO_FONT_WEIGHT_NORMAL,
 	CAIRO_FONT_WEIGHT_BOLD
-} cairo_font_weight_t;
+}; typedef cairo_enum_t cairo_font_weight_t;
 
 typedef enum _cairo_subpixel_order {
 	CAIRO_SUBPIXEL_ORDER_DEFAULT,
@@ -308,7 +313,7 @@ typedef enum _cairo_subpixel_order {
 	CAIRO_SUBPIXEL_ORDER_BGR,
 	CAIRO_SUBPIXEL_ORDER_VRGB,
 	CAIRO_SUBPIXEL_ORDER_VBGR
-} cairo_subpixel_order_t;
+}; typedef cairo_enum_t cairo_subpixel_order_t;
 
 typedef enum _cairo_hint_style {
 	CAIRO_HINT_STYLE_DEFAULT,
@@ -316,13 +321,13 @@ typedef enum _cairo_hint_style {
 	CAIRO_HINT_STYLE_SLIGHT,
 	CAIRO_HINT_STYLE_MEDIUM,
 	CAIRO_HINT_STYLE_FULL
-} cairo_hint_style_t;
+}; typedef cairo_enum_t cairo_hint_style_t;
 
 typedef enum _cairo_hint_metrics {
 	CAIRO_HINT_METRICS_DEFAULT,
 	CAIRO_HINT_METRICS_OFF,
 	CAIRO_HINT_METRICS_ON
-} cairo_hint_metrics_t;
+}; typedef cairo_enum_t cairo_hint_metrics_t;
 
 typedef struct _cairo_font_options cairo_font_options_t;
 
@@ -370,7 +375,7 @@ typedef enum _cairo_font_type {
 	CAIRO_FONT_TYPE_WIN32,
 	CAIRO_FONT_TYPE_QUARTZ,
 	CAIRO_FONT_TYPE_USER
-} cairo_font_type_t;
+}; typedef cairo_enum_t cairo_font_type_t;
 
 cairo_font_type_t cairo_font_face_get_type      (cairo_font_face_t *font_face);
 void *            cairo_font_face_get_user_data (cairo_font_face_t *font_face, const cairo_user_data_key_t *key);
@@ -437,7 +442,7 @@ typedef enum _cairo_path_data_type {
 	CAIRO_PATH_LINE_TO,
 	CAIRO_PATH_CURVE_TO,
 	CAIRO_PATH_CLOSE_PATH
-} cairo_path_data_type_t;
+}; typedef cairo_enum_t cairo_path_data_type_t;
 
 typedef union _cairo_path_data_t cairo_path_data_t;
 
@@ -481,7 +486,7 @@ typedef enum _cairo_device_type {
 	CAIRO_DEVICE_TYPE_COGL,
 	CAIRO_DEVICE_TYPE_WIN32,
 	CAIRO_DEVICE_TYPE_INVALID = -1
-} cairo_device_type_t;
+}; typedef cairo_enum_t cairo_device_type_t;
 
 cairo_device_t *    cairo_device_reference           (cairo_device_t *device);
 cairo_device_type_t cairo_device_get_type            (cairo_device_t *device);
@@ -504,7 +509,7 @@ cairo_surface_t * cairo_surface_create_for_rectangle (cairo_surface_t *target, d
 typedef enum _cairo_surface_observer {
  CAIRO_SURFACE_OBSERVER_NORMAL = 0,
  CAIRO_SURFACE_OBSERVER_RECORD_OPERATIONS = 0x1
-} cairo_surface_observer_mode_t;
+}; typedef cairo_enum_t cairo_surface_observer_mode_t;
 
 cairo_surface_t * cairo_surface_create_observer (cairo_surface_t *target, cairo_surface_observer_mode_t mode);
 
@@ -562,7 +567,7 @@ typedef enum _cairo_surface_type {
 	CAIRO_SURFACE_TYPE_SKIA,
 	CAIRO_SURFACE_TYPE_SUBSURFACE,
 	CAIRO_SURFACE_TYPE_COGL
-} cairo_surface_type_t;
+}; typedef cairo_enum_t cairo_surface_type_t;
 
 cairo_surface_type_t cairo_surface_get_type                (cairo_surface_t *surface);
 cairo_content_t      cairo_surface_get_content             (cairo_surface_t *surface);
@@ -639,7 +644,7 @@ typedef enum _cairo_pattern_type {
 	CAIRO_PATTERN_TYPE_RADIAL,
 	CAIRO_PATTERN_TYPE_MESH,
 	CAIRO_PATTERN_TYPE_RASTER_SOURCE
-} cairo_pattern_type_t;
+}; typedef cairo_enum_t cairo_pattern_type_t;
 
 cairo_pattern_type_t cairo_pattern_get_type (cairo_pattern_t *pattern);
 
@@ -663,7 +668,7 @@ typedef enum _cairo_extend {
 	CAIRO_EXTEND_REPEAT,
 	CAIRO_EXTEND_REFLECT,
 	CAIRO_EXTEND_PAD
-} cairo_extend_t;
+}; typedef cairo_enum_t cairo_extend_t;
 
 void           cairo_pattern_set_extend (cairo_pattern_t *pattern, cairo_extend_t extend);
 cairo_extend_t cairo_pattern_get_extend (cairo_pattern_t *pattern);
@@ -675,7 +680,7 @@ typedef enum _cairo_filter {
 	CAIRO_FILTER_NEAREST,
 	CAIRO_FILTER_BILINEAR,
 	CAIRO_FILTER_GAUSSIAN
-} cairo_filter_t;
+}; typedef cairo_enum_t cairo_filter_t;
 
 void           cairo_pattern_set_filter                 (cairo_pattern_t *pattern, cairo_filter_t filter);
 cairo_filter_t cairo_pattern_get_filter                 (cairo_pattern_t *pattern);
@@ -709,7 +714,7 @@ typedef enum _cairo_region_overlap {
 	CAIRO_REGION_OVERLAP_IN,
 	CAIRO_REGION_OVERLAP_OUT,
 	CAIRO_REGION_OVERLAP_PART
-} cairo_region_overlap_t;
+}; typedef cairo_enum_t cairo_region_overlap_t;
 
 cairo_region_t *       cairo_region_create              (void);
 cairo_region_t *       cairo_region_create_rectangle    (const cairo_rectangle_int_t *rectangle);
@@ -745,13 +750,13 @@ typedef enum _cairo_lcd_filter {
 	CAIRO_LCD_FILTER_INTRA_PIXEL,
 	CAIRO_LCD_FILTER_FIR3,
 	CAIRO_LCD_FILTER_FIR5
-} cairo_lcd_filter_t;
+}; typedef cairo_enum_t cairo_lcd_filter_t;
 
 typedef enum _cairo_round_glyph_pos {
 	CAIRO_ROUND_GLYPH_POS_DEFAULT,
 	CAIRO_ROUND_GLYPH_POS_ON,
 	CAIRO_ROUND_GLYPH_POS_OFF
-} cairo_round_glyph_positions_t;
+}; typedef cairo_enum_t cairo_round_glyph_positions_t;
 
 void                          _cairo_font_options_set_lcd_filter            (cairo_font_options_t *options, cairo_lcd_filter_t lcd_filter);
 cairo_lcd_filter_t            _cairo_font_options_get_lcd_filter            (const cairo_font_options_t *options);
@@ -765,7 +770,7 @@ typedef struct FT_FaceRec_* FT_Face;
 typedef enum {
     CAIRO_FT_SYNTHESIZE_BOLD = 1 << 0,
     CAIRO_FT_SYNTHESIZE_OBLIQUE = 1 << 1
-} cairo_ft_synthesize_t;
+}; typedef cairo_enum_t cairo_ft_synthesize_t;
 
 cairo_font_face_t * cairo_ft_font_face_create_for_ft_face (FT_Face face, int load_flags);
 void                cairo_ft_font_face_set_synthesize     (cairo_font_face_t *font_face, unsigned int synth_flags);
@@ -780,7 +785,7 @@ void                cairo_ft_scaled_font_unlock_face (cairo_scaled_font_t *scale
 typedef enum _cairo_pdf_version {
 	CAIRO_PDF_VERSION_1_4,
 	CAIRO_PDF_VERSION_1_5
-} cairo_pdf_version_t;
+}; typedef cairo_enum_t cairo_pdf_version_t;
 
 cairo_surface_t * cairo_pdf_surface_create              (const char *filename, double width_in_points, double height_in_points);
 cairo_surface_t * cairo_pdf_surface_create_for_stream   (cairo_write_func_t write_func, void *closure, double width_in_points, double height_in_points);
@@ -794,7 +799,7 @@ void              cairo_pdf_surface_set_size            (cairo_surface_t *surfac
 typedef enum _cairo_ps_level {
     CAIRO_PS_LEVEL_2,
     CAIRO_PS_LEVEL_3
-} cairo_ps_level_t;
+}; typedef cairo_enum_t cairo_ps_level_t;
 
 cairo_surface_t * cairo_ps_surface_create               (const char *filename, double width_in_points, double height_in_points);
 cairo_surface_t * cairo_ps_surface_create_for_stream    (cairo_write_func_t write_func, void *closure, double width_in_points, double height_in_points);
@@ -813,7 +818,7 @@ void              cairo_ps_surface_dsc_begin_page_setup (cairo_surface_t *surfac
 typedef enum _cairo_svg_version {
 	CAIRO_SVG_VERSION_1_1,
 	CAIRO_SVG_VERSION_1_2
-} cairo_svg_version_t;
+}; typedef cairo_enum_t cairo_svg_version_t;
 
 cairo_surface_t * cairo_svg_surface_create              (const char *filename, double width_in_points, double height_in_points);
 cairo_surface_t * cairo_svg_surface_create_for_stream   (cairo_write_func_t write_func, void *closure, double width_in_points, double height_in_points);

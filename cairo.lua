@@ -79,7 +79,7 @@ end
 --create a flag getter
 local function getflag_func(get, prefix)
 	return get and function(self)
-		return X(prefix, tonumber(get(self)))
+		return X(prefix, get(self))
 	end
 end
 
