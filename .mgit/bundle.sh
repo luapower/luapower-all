@@ -453,7 +453,7 @@ usage() {
 	echo
 	echo "  -M  --main MODULE                  Module to run on start-up"
 	echo
-	echo "  -m32                               Compile for 32bit (OSX)"
+	echo "  -m32                               Compile for 32bit (Windows, OSX)"
 	echo "  -z  --compress                     Compress the executable (needs UPX)"
 	echo "  -w  --no-console                   Hide console (Windows)"
 	echo "  -w  --no-console                   Make app bundle (OSX)"
