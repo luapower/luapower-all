@@ -138,7 +138,12 @@ function Window:__before_create(info, args)
 
 	local class_args = {}
 	class_args.name = gen_classname()
-	class_args.style = self.__class_style_bitmask:set(0, info)
+	local class_style = bit.bor(
+		--send WM_PAINT when shrinking the window too, otherwise WM_PAINT is
+		--sent only when enlarging the window!
+		CS_HREDRAW, CS_VREDRAW
+	)
+	class_args.style = self.__class_style_bitmask:set(class_style, info)
 	class_args.proc = MessageRouter.proc
 	class_args.icon = info.icon
 	class_args.small_icon = info.small_icon

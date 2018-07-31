@@ -701,7 +701,7 @@ function Window:on_resized(flag)
 			self.nw_maximizing = false
 		end
 		self.backend:invalidate()
-	elseif flag == 'restored' then --also triggered on show
+	elseif flag == 'restored' then --also triggered on show and on resize
 		self.backend:invalidate()
 	end
 
