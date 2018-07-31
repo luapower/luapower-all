@@ -44,6 +44,7 @@ __iterators__
 `glue.collect([i,] iterator) -> t`                                 collect iterated values into a list
 __closures__
 `glue.pass(...) -> ...`                                            does nothing, returns back all arguments
+`glue.noop(...)`                                                   does nothing, returns nothing
 `glue.memoize(f) -> f`                                             memoize pattern
 __metatables__
 `glue.inherit(t, parent) -> t`                                     set or clear inheritance
@@ -66,6 +67,8 @@ __modules__
 `glue.bin`                                                         get the script's directory
 `glue.luapath(path [,index [,ext]])`                               insert a path in package.path
 `glue.cpath(path [,index])`                                        insert a path in package.cpath
+__allocation__
+`glue.freelist([create], [destroy]) -> alloc, free`                freelist allocation pattern
 __ffi__
 `glue.malloc([ctype, ]size) -> cdata`                              allocate an array using system's malloc
 `glue.malloc(ctype) -> cdata`                                      allocate a C type using system's malloc
@@ -802,6 +805,17 @@ glue.cpath(glue.bin)
 
 require'foo' --looking for `foo` in the same directory as the running script first
 ~~~
+
+------------------------------------------------------------------------------
+
+## Allocation
+
+### `glue.freelist([create], [destroy]) -> alloc, free`
+
+Returns `alloc() -> e` and `free(e)` functions to allocate and deallocate
+Lua objects. The allocator returns the last freed object or calls `create()`
+to create a new one if the freelist is empty. `create` defaults to
+`function() return {} end`.
 
 ------------------------------------------------------------------------------
 

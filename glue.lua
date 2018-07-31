@@ -344,6 +344,7 @@ end
 
 --no-op filter.
 function glue.pass(...) return ... end
+function glue.noop() return end
 
 --set up dynamic inheritance by creating or updating a table's metatable.
 function glue.inherit(t, parent)
@@ -354,18 +355,6 @@ function glue.inherit(t, parent)
 		setmetatable(t, {__index = parent})
 	end
 	return t
-end
-
---speed up method access by copying methods into the instance.
-function glue.copy_super(t)
-	local from = t
-	while from do
-		local meta = getmetatable(from)
-		if type(meta) == 'table' then
-			from = meta.__index
-		end
-		glue.merge(t, from)
-	end
 end
 
 --prototype-based dynamic inheritance with __call constructor.
@@ -728,6 +717,30 @@ function glue.cpath(path, index)
 	if index < 1 then index = #paths + 1 + index end
 	table.insert(paths, index,  path .. psep .. wild .. '.' .. ext)
 	package.cpath = table.concat(paths, tsep)
+end
+
+local function create_table()
+	return {}
+end
+function glue.freelist(create, destroy)
+	create = create or create_table
+	destroy = destroy or glue.noop
+	local t = {}
+	local n = 0
+	local function alloc()
+		local e = t[n]
+		if e then
+			t[n] = false
+			n = n - 1
+		end
+		return e or create()
+	end
+	local function free(e)
+		destroy(e)
+		n = n + 1
+		t[n] = e
+	end
+	return alloc, free
 end
 
 if jit then

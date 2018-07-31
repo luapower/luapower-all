@@ -327,6 +327,9 @@ ffi.metatype('hb_font_t', {__index = {
 	--from hb-ft.h
 	set_ft_funcs = C.hb_ft_font_set_funcs,
 	get_ft_face = C.hb_ft_font_get_face,
+	set_ft_load_flags = C.hb_ft_font_set_load_flags,
+	get_ft_load_flags = C.hb_ft_font_get_load_flags,
+	ft_changed = C.hb_ft_font_changed,
 }})
 
 ffi.metatype('hb_buffer_t', {__index = {

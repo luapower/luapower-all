@@ -305,3 +305,5 @@ end
 for k,v in glue.sortedpairs(glue) do
 	print(string.format('glue.%-20s %s', k, v))
 end
+
+--TODO: freelist
