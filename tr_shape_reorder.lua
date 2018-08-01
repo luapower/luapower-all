@@ -25,7 +25,11 @@ struct range_t {
 };
 ]]
 
+local bit = require'bit'
 local glue = require'glue'
+
+local band = bit.band
+local odd = function(x) return band(x, 1) == 1 end
 
 local alloc_range, free_range = glue.freelist()
 
@@ -36,7 +40,7 @@ local function merge_range_with_previous(range)
 	assert(previous.level < range.level)
 
 	local left, right
-	if previous.level % 2 == 1 then
+	if odd(previous.level) then
 		-- Odd, previous goes to the right of range.
 		left = range
 		right = previous
@@ -77,15 +81,17 @@ function reorder_runs(run)
 		while range and range.level > run.level
 			and range.previous and range.previous.level >= run.level
 		do
+			assert(false)
 			range = merge_range_with_previous (range)
 		end
 
 		if range and range.level >= run.level then
 			-- Attach run to the range.
-			if run.level % 2 == 1 then
+			if odd(run.level) then
 				-- Odd, range goes to the right of run.
 				run.next = range.left
 				range.left = run
+				assert(false)
 			else
 				-- Even, range goes to the left of run.
 				range.right.next = run
@@ -105,11 +111,11 @@ function reorder_runs(run)
 	end
 	assert (range)
 	while range.previous do
+		assert(false)
 		range = merge_range_with_previous (range)
 	end
 
-	range.right.next = nil
-	range.left.last = range.right
+	range.right.next = false
 
 	free_range(range)
 	return range.left

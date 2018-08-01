@@ -73,10 +73,10 @@ function cairo_rs:rasterize_glyph(font, font_size, glyph_index, x_offset, y_offs
 	return glyph
 end
 
-function cairo_rs:paint_glyph(glyph, x, y)
+function cairo_rs:paint_glyph(cr, glyph, x, y)
 	local paint = glyph.paint
 	if not paint then return end
-	paint(self, self.cr, glyph, x, y)
+	paint(self, cr, glyph, x, y)
 end
 
 function cairo_rs:paint_g8_glyph(cr, glyph, x, y)

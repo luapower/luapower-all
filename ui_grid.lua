@@ -733,13 +733,12 @@ function cell:sync_col(col)
 	self.parent = col.pane.rows_layer
 	self.x = col.x
 	self.w = col.w
-	self:setfont(
-		col.font_family,
-		col.font_weight,
-		col.font_slant,
-		col.text_size,
-		col.text_color,
-		col.line_spacing)
+	self.font_name = col.font_name
+	self.font_weight = col.font_weight
+	self.font_slant = col.font_slant
+	self.font_size = col.text_size
+	self.font_color = col.text_color
+	self.line_spacing = col.line_spacing
 	self.text_align = col.text_align
 	self.text_valign = col.text_valign
 	self.padding_left = col.padding_left
@@ -1322,6 +1321,7 @@ function grid:create_vscrollbar()
 		parent = self,
 		grid = self,
 		vertical = true,
+		step = 1, --no blurred of text
 	}, self.vscrollbar)
 end
 
@@ -1445,7 +1445,12 @@ if not ... then require('ui_demo')(function(ui, win)
 	})
 
 	function g:cell_value(i, col)
-		return col.text..' '..i..' 123456789 ................ abcdefghijklmnopqrstuvwxyz'
+		return ''
+			.. col.text
+			.. ' '..i
+			.. ' 123456789 '
+			.. '................ '
+			.. 'abcdefghijklmnopqrstuvwxyz'
 	end
 
 	win.native_window:on('shown', function(self)
@@ -1453,7 +1458,7 @@ if not ... then require('ui_demo')(function(ui, win)
 	end)
 
 	win.native_window:on('repaint', function(self)
-		--self:invalidate()
+		self:invalidate()
 	end)
 
 end) end

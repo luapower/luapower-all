@@ -3,6 +3,8 @@ local time = require'time'
 local ui = require'ui'
 local win = ui:window{x = 840, y = 300, cw = 900, ch = 500, visible = false}
 
+ui.maxfps = 1/0
+
 local function fps_function()
 	local count_per_sec = 2
 	local frame_count, last_frame_count, last_time = 0, 0
@@ -229,7 +231,7 @@ local function test_css()
 
 
 	--ui:style('*', {transition_speed = 1/0})
-	--ui:style('*', {font_family = 'Roboto Condensed', font_weigt = 'bold', text_size = 24})
+	--ui:style('*', {font_name = 'Roboto Condensed', font_weigt = 'bold', text_size = 24})
 	--b1:update_styles()
 	--b2:update_styles()
 

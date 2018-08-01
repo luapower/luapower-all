@@ -358,7 +358,7 @@ tab.closeable = true --show close button and receive 'closing' event
 local xbutton = ui.button:subclass'tab_close_button'
 tab.close_button_class = xbutton
 
-xbutton.font_family = 'Ionicons'
+xbutton.font = 'Ionicons'
 xbutton.text = '\xEF\x8B\x80'
 xbutton.text_size = 13
 xbutton.w = 14
@@ -710,7 +710,7 @@ if not ... then require('ui_demo')(function(ui, win)
 				font_slant = 'normal',
 			},
 			title = 'خمسة',
-			font_family = 'amiri',
+			font = 'amiri',
 			--title = 'Tab '..i,
 			visible = visible,
 			--selected = selected,

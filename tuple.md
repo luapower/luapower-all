@@ -6,21 +6,20 @@ tagline: real tuples
 
 Tuples are immutable lists that can be used as table keys because they have
 value semantics, that is, the tuple constructor returns the same identity
-for the exact same list of identities. If you don't need this property,
-[vararg.pack] is a more memory efficient way to store small lists of values.
+for the exact same list of identities.
 
-[vararg.pack]: vararg.html#pack
+## API
 
 ---------------------------------- -------------------------------------------
-`tuple(e1,...) -> t`					  get a tuple
+`tuple(e1,...) -> t`               get a tuple
 `tuple.narg(n,e1,...) -> t`        get a tuple with a fixed number of elements
 `tuple.from_array{n=,e1,...} -> t` get a tuple from a (sparse) array
-`t([i[, j]) -> e1,...`				  unpack elements
-`t[i] -> ei`							  access elements
-`t.n`										  number of elements
-`tostring(t) -> s`					  string representation
-`pp.format(t) -> s`					  serialization with [pp]
-`tuple.space([weak]) -> tuple`	  create a new (weak or strong) tuple space
+`t([i[, j]) -> e1,...`             unpack elements
+`t[i] -> ei`                       access elements
+`t.n`                              number of elements
+`tostring(t) -> s`                 string representation
+`pp.format(t) -> s`                serialization with [pp]
+`tuple.space([weak]) -> tuple`     create a new (weak or strong) tuple space
 ---------------------------------- -------------------------------------------
 
 > __NOTE:__ Tuple elements can be anything, including `nil` and `NaN`.

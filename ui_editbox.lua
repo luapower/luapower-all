@@ -319,8 +319,8 @@ end
 
 function editbox:_sync_view()
 	local view = self.editor.view
-	self:setfont()
-	view.line_h = self.window:text_line_h()
+	--TODO: self:setfont()
+	view.line_h = 20 --self.window:text_line_h()
 	view.ascender = self.window.font_ascent
 	view.x, view.y, view.w, view.h = self:view_rect()
 	view.scroll_x = -self.hscrollbar.offset

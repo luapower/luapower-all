@@ -36,7 +36,7 @@ function rs:__call()
 
 	self.glyphs = lrucache{max_size = self.glyph_cache_size}
 	function self.glyphs:value_size(glyph)
-		return glyph.size
+		return glyph.mem_size
 	end
 	function self.glyphs:free_value(glyph)
 		glyph:free()
@@ -231,7 +231,7 @@ rs.ft_render_mode = bor(
 
 local empty_glyph = {
 	bitmap_left = 0, bitmap_top = 0,
-	size = 0, free = pass, --for the lru cache
+	mem_size = 0, free = pass, --for the lru cache
 }
 
 function rs:rasterize_glyph(font, font_size, glyph_index, x_offset, y_offset)
@@ -288,7 +288,7 @@ function rs:rasterize_glyph(font, font_size, glyph_index, x_offset, y_offset)
 		font:unref()
 	end
 
-	glyph.size = bitmap.rows * bitmap.pitch + 200 --for caching
+	glyph.mem_size = bitmap.rows * bitmap.pitch + 200 --cache load
 
 	return glyph
 end
@@ -317,7 +317,7 @@ end
 
 local empty_glyph_metrics = {
 	w = 0, h = 0, bearing_x = 0, bearing_y = 0, --null metrics
-	size = 0, free = pass, --for the lru cache
+	mem_size = 0, free = pass, --for the lru cache
 }
 
 function rs:load_glyph_metrics(font, font_size, glyph_index)
@@ -334,7 +334,7 @@ function rs:load_glyph_metrics(font, font_size, glyph_index)
 	glyph.h = ft_glyph.metrics.height * ft_scale
 	glyph.bearing_x = ft_glyph.metrics.horiBearingX * ft_scale
 	glyph.bearing_y = ft_glyph.metrics.horiBearingY * ft_scale
-	glyph.size = 4 * 8 + 40 --metrics size, for caching
+	glyph.mem_size = 4 * 8 + 40 --cache load
 
 	font:ref()
 	function glyph:free()

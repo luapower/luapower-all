@@ -6,7 +6,6 @@ if not ... then require'ui_demo'; return end
 
 local oo = require'oo'
 local glue = require'glue'
-local tuple = require'tuple'
 local box2d = require'box2d'
 local easing = require'easing'
 local color = require'color'
@@ -1981,57 +1980,37 @@ function ui:image_pattern(file)
 end
 ui:memoize'image_pattern'
 
---fonts ----------------------------------------------------------------------
+--fonts & text ---------------------------------------------------------------
 
-function ui:add_font_file(file, family, weight, slant)
-	return self.tr.rs:add_font_file(file, family, weight, slant)
+function ui:add_font_file(file, name, weight, slant)
+	return self.tr:add_font_file(file, name, weight, slant)
+end
+
+function ui:add_mem_font(data, data_size, weight, slant)
+	return self.tr:add_mem_font(data, data_size, name, weight, slant)
 end
 
 function ui:after_init()
 	self.tr = tr()
 	push(self.tr.rs.font_db.searchers,
-		function(font_db, family, weight, slant)
+		function(font_db, name, weight, slant)
 			local gfonts = require'gfonts'
-			local file = gfonts.font_file(family, weight, slant, true)
-			return file and self:add_font_file(file, family, weight, slant)
+			local file = gfonts.font_file(name, weight, slant, true)
+			return file and self:add_font_file(file, name, weight, slant)
 		end)
 	--mgit clone fonts-awesome
-	ui:add_font_file('media/fonts/fa-regular-400.ttf', 'Font Awesome')
-	ui:add_font_file('media/fonts/fa-solid-900.ttf', 'Font Awesome Bold')
-	ui:add_font_file('media/fonts/fa-brands-400.ttf', 'Font Awesome Brands')
+	self:add_font_file('media/fonts/fa-regular-400.ttf', 'Font Awesome')
+	self:add_font_file('media/fonts/fa-solid-900.ttf', 'Font Awesome Bold')
+	self:add_font_file('media/fonts/fa-brands-400.ttf', 'Font Awesome Brands')
 	--mgit clone fonts-material-icons
-	ui:add_font_file('media/fonts/MaterialIcons-Regular.ttf', 'Material Icons')
+	self:add_font_file('media/fonts/MaterialIcons-Regular.ttf', 'Material Icons')
 	--mgit clone fonts-ionicons
-	ui:add_font_file('media/fonts/ionicons.ttf', 'Ionicons')
+	self:add_font_file('media/fonts/ionicons.ttf', 'Ionicons')
 end
 
 function ui:before_free()
 	self.tr:free()
 	self.tr = false
-end
-
-function window:setfont(family, weight, slant, size, line_spacing)
-	self.ui.tr.rs.line_spacing = line_spacing
-	self._font_family = family
-	self._font_size = size
-	--self.ui.tr.rs:setfont(family, weight, slant, size)
-end
-
---multi-line self-aligned and box-aligned text -------------------------------
-
-function window:text_size(s, multiline)
-	--TODO:
-	return 0, 0
-end
-
-function window:textbox(x, y, w, h, text, halign, valign)
-	local glyph_runs = self.ui.tr:shape{
-		text,
-		font = self._font_family,
-		font_size = self._font_size,
-	}
-	self.ui.tr.rs.cr = self.cr
-	self.ui.tr:paint(glyph_runs, x, y, w, h, halign, valign)
 end
 
 --layers ---------------------------------------------------------------------
@@ -3299,12 +3278,13 @@ layer.text_align = 'center'
 layer.text_valign = 'center'
 layer.text_operator = 'over'
 layer.text = nil
-layer.font_family = 'Open Sans'
+layer.font_name = 'Open Sans'
 layer.font_weight = 'normal'
 layer.font_slant = 'normal'
 layer.text_size = 14
 layer.text_color = '#fff'
 layer.line_spacing = 1
+layer.text_dir = 'auto' --auto, rtl, ltr
 
 function layer:text_visible()
 	return self.text and self.text ~= '' and true or false
@@ -3312,16 +3292,24 @@ end
 
 function layer:draw_text(cr)
 	if not self:text_visible() then return end
-	self:setfont()
-	local cw, ch = self:content_size()
+	local tr = self.ui.tr
+	local segs = tr:shape{
+		self.text,
+		dir = self.text_dir,
+		font_name = self.font_name,
+		font_weight = self.font_weight,
+		font_slant = self.font_slant,
+		font_size = self.text_size,
+		line_spacing = self.line_spacing,
+	}
 	cr:operator(self.text_operator)
-	self.window:textbox(0, 0, cw, ch, self.text,
-		self.text_align, self.text_valign)
+	cr:rgba(self.ui:color(self.text_color))
+	local cw, ch = self:content_size()
+	tr:paint(cr, segs, 0, 0, cw, ch, self.text_align, self.text_valign)
 end
 
 function layer:text_bounding_box()
 	if not self:text_visible() then return 0, 0, 0, 0 end
-	self:setfont()
 	local w, h = self.window:text_size(self.text)
 	local cw, ch = self:content_size()
 	return box2d.align(w, h, self.text_align, self.text_valign,
@@ -3637,16 +3625,6 @@ function layer:set_cx(cx) self.x = cx - self.w / 2 end
 function layer:set_cy(cy) self.y = cy - self.h / 2 end
 
 function layer:rect() return self.x, self.y, self.w, self.h end
-
-function layer:setfont(family, weight, slant, size, color, line_spacing)
-	self.window:setfont(
-		family or self.font_family,
-		weight or self.font_weight,
-		slant or self.font_slant,
-		size or self.text_size,
-		line_spacing or self.line_spacing)
-	self.window.cr:rgba(self.ui:color(color or self.text_color))
-end
 
 --top layer ------------------------------------------------------------------
 

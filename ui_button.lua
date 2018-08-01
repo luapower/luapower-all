@@ -279,7 +279,7 @@ end
 
 local cbutton = ui.button:subclass'checkbox_button'
 checkbox.button_class = cbutton
-cbutton.font_family = 'Font Awesome'
+cbutton.font_name = 'Font Awesome'
 cbutton.text_checked = '\xEF\x80\x8C'
 cbutton.text_size = 10
 cbutton.padding_left = 2

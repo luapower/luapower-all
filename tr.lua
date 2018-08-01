@@ -4,6 +4,7 @@
 
 if not ... then require'tr_demo'; return end
 
+local bit = require'bit'
 local ffi = require'ffi'
 local utf8 = require'utf8'
 local hb = require'harfbuzz'
@@ -12,9 +13,12 @@ local ub = require'libunibreak'
 local glue = require'glue'
 local box2d = require'box2d'
 local lrucache = require'lrucache'
+local tuple = require'tuple'
 local detect_scripts = require'tr_shape_script'
 local reorder_runs = require'tr_shape_reorder'
+local zone = require'jit.zone' --glue.noop
 
+local band = bit.band
 local push = table.insert
 local update = glue.update
 local assert = glue.assert --assert with string formatting
@@ -22,6 +26,7 @@ local count = glue.count
 local clamp = glue.clamp
 local snap = glue.snap
 local bounding_box = box2d.bounding_box
+local odd = function(x) return band(x, 1) == 1 end
 
 --iterate a list of values in run-length encoded form.
 local function pass(t, i) return t[i] end
@@ -52,6 +57,7 @@ local tr = {}
 setmetatable(tr, tr)
 
 tr.glyph_run_cache_size = 1024^2 * 10 --10MB net (arbitrary default)
+
 tr.rasterizer_module = 'tr_raster_cairo'
 
 function tr:create_rasterizer()
@@ -60,12 +66,24 @@ end
 
 function tr:__call()
 	self = update({}, self)
+
 	self.rs = self:create_rasterizer()
-	self.glyph_runs = lrucache{maxsize = self.glyph_run_cache_size}
+
+	self.glyph_runs = lrucache{max_size = self.glyph_run_cache_size}
+	function self.glyph_runs:value_size(glyph_run)
+		return glyph_run.mem_size
+	end
+	function self.glyph_runs:free_value(glyph_run)
+		glyph_run:free()
+	end
+
 	return self
 end
 
 function tr:free()
+	self.glyph_runs:free()
+	self.glyph_runs = false
+
 	self.rs:free()
 	self.rs = false
 end
@@ -97,46 +115,32 @@ function tr:add_mem_font(...)
 	return override_font(self.rs:add_mem_font(...))
 end
 
-function tr:paint_glyph_run(run, x, y)
+function tr:paint_glyph_run(cr, run, x, y)
 
+	local font = run.font
+	local font_size = run.font_size
 	local hb_buf = run.hb_buf
+
 	local glyph_count = hb_buf:get_length()
 	local glyph_info  = hb_buf:get_glyph_infos()
 	local glyph_pos   = hb_buf:get_glyph_positions()
 
 	for i = 0, glyph_count-1 do
 		local glyph_index = glyph_info[i].codepoint
+
 		local px = x + glyph_pos[i].x_offset / 64
 		local py = y - glyph_pos[i].y_offset / 64
-		local glyph, bmpx, bmpy =
-			self.rs:glyph(run.font, run.font_size, glyph_index, px, py)
+
+		local glyph, bmpx, bmpy = self.rs:glyph(
+			font, font_size, glyph_index, px, py)
+
 		x = x + glyph_pos[i].x_advance / 64
 		y = y - glyph_pos[i].y_advance / 64
-		self.rs:paint_glyph(glyph, bmpx, bmpy)
+
+		self.rs:paint_glyph(cr, glyph, bmpx, bmpy)
 	end
 
 	return x, y
-end
-
-function tr:_hb_buf_extents(font, font_size, hb_buf)
-
-	local glyph_count = hb_buf:get_length()
-	local glyph_info  = hb_buf:get_glyph_infos()
-	local glyph_pos   = hb_buf:get_glyph_positions()
-
-	local x, y = 0, 0
-	local bx, by, bw, bh = 0, 0, 0, 0
-	for i = 0, glyph_count-1 do
-		local m = self.rs:glyph_metrics(font, font_size, glyph_info[i].codepoint)
-		bx, by, bw, bh = bounding_box(bx, by, bw, bh,
-			x + m.bearing_x,
-			x + m.bearing_y,
-			m.w,
-			m.h)
-		x = x + glyph_pos[i].x_advance / 64
-		y = y - glyph_pos[i].y_advance / 64
-	end
-	return bw, bh, x, y
 end
 
 local function hb_feature_list(features)
@@ -197,11 +201,112 @@ function tr:free()
 	tr_free(self)
 end
 
+local function free_glyph_run(self)
+	self.hb_buf:free()
+	self.hb_buf = false
+	self.font:unref()
+	self.font = false
+end
+
+local glyph_size =
+	ffi.sizeof'hb_glyph_info_t'
+	+ ffi.sizeof'hb_glyph_position_t'
+
+function tr:shape_text_run(
+	vstr, i, len,
+	font, font_size, features, feat_count, rtl, script, lang
+)
+	font:ref()
+	font:setsize(font_size)
+
+	local hb_buf = hb.buffer()
+
+	local dir = rtl and hb.C.HB_DIRECTION_RTL or hb.C.HB_DIRECTION_LTR
+	hb_buf:set_direction(dir)
+	hb_buf:set_script(script)
+	hb_buf:set_language(lang)
+
+	hb_buf:add_utf32(vstr + i, len)
+
+	hb_buf:shape_full(font.hb_font, features, feat_count)
+
+	local glyph_count = hb_buf:get_length()
+	local glyph_info  = hb_buf:get_glyph_infos()
+	local glyph_pos   = hb_buf:get_glyph_positions()
+
+	local ax, ay = 0, 0
+	local bx, by, bw, bh = 0, 0, 0, 0
+	for i = 0, glyph_count-1 do
+		local m = self.rs:glyph_metrics(font, font_size, glyph_info[i].codepoint)
+		bx, by, bw, bh = bounding_box(bx, by, bw, bh,
+			ax + m.bearing_x,
+			ax + m.bearing_y,
+			m.w,
+			m.h)
+		ax = ax + glyph_pos[i].x_advance / 64
+		ay = ay - glyph_pos[i].y_advance / 64
+	end
+
+	return {
+		--for painting
+		font = font,
+		font_size = font_size,
+		hb_buf = hb_buf,
+		--for layouting
+		w = bw,
+		h = bh,
+		advance_x = ax,
+		advance_y = ay,
+		font_height = font.height,
+		font_ascent = font.ascent,
+		font_descent = font.descent,
+		--for lru cache
+		free = free_glyph_run,
+		mem_size =
+			224 --hb_buffer_t
+			+ 200 --this table
+			+ 4 * len --input text
+			+ glyph_size * glyph_count,  --output glyphs
+		--for debugging
+		--text = ffi.string(utf8.encode(vstr + i, len)),
+	}
+end
+
+local xxhash = require'xxhash'
+local xxhash32 = xxhash.hash32
+--local t = {}
+local function hash(s, i, len)
+	--local s = ffi.string(s + i, len * 4)
+	--t[s] = true
+	return xxhash32(s + i, 4 * len, 0)
+end
+
+function tr:glyph_run(
+	vstr, i, len,
+	font, font_size, features, feat_count, rtl, script, lang
+)
+	local text_hash = hash(vstr, i, len)
+	local lang_id = tonumber(lang)
+	local key = tuple(text_hash, font, font_size, rtl, script, lang_id)
+	local glyph_run = self.glyph_runs:get(key)
+	if not glyph_run then
+		glyph_run = self:shape_text_run(
+			vstr, i, len,
+			font, font_size, features, feat_count, rtl, script, lang
+		)
+		self.glyph_runs:put(key, glyph_run)
+	end
+	return glyph_run
+end
+
 function tr:shape(text_tree)
+
+	zone'shape'
 
 	local text_runs = flatten_text_tree(text_tree, {})
 
 	--decode utf8 text, compile (font, size) and get text length in codepoints.
+	zone'len'
 	local len = 0
 	for _,run in ipairs(text_runs) do
 
@@ -216,7 +321,7 @@ function tr:shape(text_tree)
 		assert(run.font_size, 'Font size missing')
 		run.font_size = snap(run.font_size, self.rs.font_size_resolution)
 
-		--decode utf8 text.
+		--find length in codepoints of each run.
 		run.text_size = run.text_size or #run.text
 		assert(run.text_size, 'text buffer size missing')
 		run.charset = run.charset or 'utf8'
@@ -230,12 +335,15 @@ function tr:shape(text_tree)
 
 		len = len + run.len
 	end
+	zone()
 
 	if len == 0 then
+		zone()
 		return {}
 	end
 
 	--convert and concatenate text into a utf32 buffer.
+	zone'decode'
 	str = realloc(str, 'uint32_t[?]', len)
 	local offset = 0
 	for _,run in ipairs(text_runs) do
@@ -248,13 +356,17 @@ function tr:shape(text_tree)
 		run.offset = offset
 		offset = offset + run.len
 	end
+	zone()
 
 	--detect the script and lang properties for each char of the entire text.
 	scripts = realloc(scripts, 'hb_script_t[?]', len)
 	langs = realloc(langs, 'hb_language_t[?]', len)
+	zone'detect_script'
 	detect_scripts(str, len, scripts)
+	zone()
 
 	--override scripts and langs with user-provided values.
+	zone'script_lang_override'
 	for _,run in ipairs(text_runs) do
 		if run.script then
 			local script = hb.script(run.script)
@@ -271,12 +383,14 @@ function tr:shape(text_tree)
 			end
 		end
 	end
+	zone()
 
 	--Run fribidi over the entire text as follows:
 	--Request mirroring since it's part of BiDi and harfbuzz doesn't do that.
 	--Skip arabic shaping since harfbuzz does that better with font assistance.
 	--Skip RTL reordering since it also reverses the _contents_ of the RTL runs
 	--which harfbuzz also does (we do reordering separately below).
+	zone'bidi'
 	local dir = (text_tree.dir or 'auto'):lower()
 	dir = dir == 'rtl'  and fb.C.FRIBIDI_PAR_RTL
 		or dir == 'ltr'  and fb.C.FRIBIDI_PAR_LTR
@@ -294,14 +408,17 @@ function tr:shape(text_tree)
 	assert(max_level, dir)
 	ffi.copy(vstr, str, len * 4)
 	fb.shape_mirroring(levels, len, vstr)
+	zone()
 
 	--run Unicode line breaking algorithm over each run of text with same language.
+	zone'lbreak'
 	linebreaks = realloc(linebreaks, 'char[?]', len)
 	for i, len, lang in runs(langs, len, 0) do
 		local lang = hb.language_tostring(lang)
 		lang = lang and lang:sub(1, 2)
 		ub.linebreaks(vstr + i, len, lang, linebreaks + i)
 	end
+	zone()
 
 	--make an iterator of text segments which share the same text properties
 	--for the purpose of shaping them separately.
@@ -391,7 +508,8 @@ function tr:shape(text_tree)
 	end
 
 	--shape the text segments.
-	local glyph_runs = {}
+	zone'hb_shape'
+	local segments = {}
 	for
 		i, len,
 		font, font_size, line_spacing,
@@ -400,77 +518,57 @@ function tr:shape(text_tree)
 	in
 		next_segment
 	do
-		font:ref()
-		font:setsize(font_size)
+		local segment = {}
 
-		local hb_buf = hb.buffer()
+		segment.run = self:glyph_run(
+				vstr, i, len,
+				font, font_size, features, feat_count, odd(level), script, lang
+			)
 
-		hb_buf:set_direction(level % 2 == 1
-			and hb.C.HB_DIRECTION_RTL
-			 or hb.C.HB_DIRECTION_LTR)
-		hb_buf:set_script(script)
-		hb_buf:set_language(lang)
-		hb_buf:add_utf32(vstr + i, len)
-		hb_buf:shape_full(font.hb_font, features, feat_count)
+		segment.level = level
+		segment.linebreak = hardbreak
+		segment.line_spacing = line_spacing
 
-		local bw, bh, adv_x, adv_y = self:_hb_buf_extents(font, font_size, hb_buf)
-
-		local text = ffi.string(utf8.encode(vstr + i, len))
-
-		local glyph_run = {
-			level = level, --for bidi reordering
-			linebreak = hardbreak, --for line breaking
-			font = font, font_size = font_size, hb_buf = hb_buf, --for painting
-			line_h = font.height * line_spacing,
-			font_ascent = font.ascent,
-			font_descent = font.descent, --for layouting
-			text = text,
-		}
-		glyph_run.w = bw
-		glyph_run.h = bh
-		glyph_run.advance_x = adv_x
-		glyph_run.advance_y = adv_y
-
-		push(glyph_runs, glyph_run)
+		push(segments, segment)
 	end
-
-	function glyph_runs:free()
-		self.__gc = false
-		for _,glyph_run in ipairs(self) do
-			glyph_run.hb_buf:free()
-			glyph_run.font:unref()
-		end
-	end
-	glyph_runs.__gc = glyph_runs.free
-	setmetatable(glyph_runs, glyph_runs)
+	zone()
 
 	len0 = len
-	return glyph_runs
+	zone()
+	return segments
 end
 
-function tr:paint(glyph_runs, x0, y0, w, h, halign, valign)
+function tr:paint(cr, segments, x0, y0, w, h, halign, valign)
 
 	halign = halign or 'left'
 	valign = valign or 'top'
 
+	if #segments == 0 then
+		return
+	end
+
+	zone'paint'
+
 	--do line wrapping.
+	zone'wrap'
 	local lines = {}
 	local line
-	for i,run in ipairs(glyph_runs) do
-		if not line or line.advance_x + run.w > w then
+	for i,seg in ipairs(segments) do
+		if not line or line.advance_x + seg.run.w > w then
 			line = {advance_x = 0, w = 0, h = 0, ascent = 0, descent = 0}
 			push(lines, line)
 		end
-		line.w = line.advance_x + run.w
-		line.advance_x = line.advance_x + run.advance_x
-		line.h = math.max(line.h, run.line_h)
-		line.ascent = math.max(line.ascent, run.font_ascent)
-		line.descent = math.min(line.descent, run.font_descent)
-		push(line, run)
-		if run.linebreak then
+		line.w = line.advance_x + seg.run.w
+		line.advance_x = line.advance_x + seg.run.advance_x
+		line.h = math.max(line.h, seg.run.font_height * seg.line_spacing)
+		line.ascent = math.max(line.ascent, seg.run.font_ascent)
+		line.descent = math.min(line.descent, seg.run.font_descent)
+		push(line, seg)
+		if seg.linebreak then
 			line = nil
 		end
 	end
+	zone()
 
 	--compute total line height.
 	local lines_h = 0
@@ -478,13 +576,23 @@ function tr:paint(glyph_runs, x0, y0, w, h, halign, valign)
 		lines_h = lines_h + line.h
 	end
 
-	--reorder RTL runs on each line separately, and concatenate the runs.
+	--reorder RTL segments on each line separately, and concatenate the runs.
+	zone'reorder'
 	for _,line in ipairs(lines) do
-		for i,run in ipairs(line) do
-			run.next = line[i+1]
+		local n = #line
+		for i,seg in ipairs(line) do
+			seg.next = line[i+1] or false
 		end
-		line.first_visual_run = reorder_runs(line[1])
+		local seg = reorder_runs(line[1])
+		local i = 0
+		while seg do
+			i = i + 1
+			line[i] = seg
+			seg = seg.next
+		end
+		assert(i == n)
 	end
+	zone()
 
 	--compute first line's baseline based on vertical alignment.
 	local x, y = x0, y0
@@ -502,6 +610,7 @@ function tr:paint(glyph_runs, x0, y0, w, h, halign, valign)
 	end
 
 	--paint the glyph runs.
+	zone'paint'
 	local line_y = y
 	for i,line in ipairs(lines) do
 		local x
@@ -515,14 +624,14 @@ function tr:paint(glyph_runs, x0, y0, w, h, halign, valign)
 			assert(false, 'invalid halign: %s', halign)
 		end
 		local y = line_y
-		local run = line.first_visual_run
-		while run do
-			x, y = self:paint_glyph_run(run, x, y)
-			run = run.next
+		for _,seg in ipairs(line) do
+			x, y = self:paint_glyph_run(cr, seg.run, x, y)
 		end
 		line_y = line_y + (lines[i+1] and lines[i+1].h or 0)
 	end
+	zone()
 
+	zone()
 end
 
 return tr
