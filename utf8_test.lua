@@ -116,4 +116,3 @@ for i = 1, 20 do
 end
 print(string.format('fb-dec: %.2f Mbytes -> %.2f Mchars, %d MB/s',
 	#s / 1024^2, n / 1024^2, bytes / (time.clock() - t0) / 1024^2))
-

@@ -216,7 +216,7 @@ function utf8.encode(buf, len, out, outlen, repl)
 	local _, buf, len = tobuf(buf, len)
 	if out == nil then --allocate output buffer
 		outlen = outlen or utf8.encode(buf, len, false, nil, repl)
-		out = ffi.new('uint32_t[?]', outlen)
+		out = ffi.new('uint8_t[?]', outlen)
 	elseif not out then --compute output length
 		return byte_count(buf, len, repl)
 	end
