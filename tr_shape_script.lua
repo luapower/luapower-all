@@ -7,9 +7,11 @@ if not ... then require'tr_demo'; return end
 local hb = require'harfbuzz'
 local glue = require'glue'
 
-local index = glue.index
 local push = table.insert
 local pop = table.remove
+
+local index = glue.index
+local memoize = glue.memoize
 
 local non_scripts = index{
 	hb.C.HB_SCRIPT_INVALID,
@@ -54,6 +56,7 @@ local function is_combining_mark(c)
 		cat == hb.C.HB_UNICODE_GENERAL_CATEGORY_SPACING_MARK or
 		cat == hb.C.HB_UNICODE_GENERAL_CATEGORY_ENCLOSING_MARK
 end
+is_combining_mark = memoize(is_combining_mark)
 
 --fills a buffer with the Script property for each char in a utf32 buffer.
 --uses UAX#24 Section 5.1 and 5.2 to resolve chars with implicit scripts.

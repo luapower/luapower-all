@@ -5,15 +5,10 @@ RESEARCH ---------------------------------------------------------------------
 FEATURES ---------------------------------------------------------------------
 
 font modifiers:
-	- weight: weight, bold/b...
-	- slant: slant, italic/oblique/i
-	- size: size, %size, big, small
+	- bold/b..., italic/oblique/i
+	- %size, big, small
 
 - hit testing -> initial text run object + index in text + cluster len
-
-- reuse/reallocate buffers and Lua tables
-
-
 
 - font_variant: normal, smallcaps; smallcaps modifier
 
@@ -33,6 +28,9 @@ font modifiers:
 
 - nowrap attribute
 
+- bug: shaping words separately breaks contextual ligatures.
+	- see: https://bugzilla.mozilla.org/show_bug.cgi?id=761442
+
 - plaintext: follow tabstops, preserve whitespace widths.
 
 - underline / strikethrough:
@@ -46,7 +44,7 @@ font modifiers:
 - wrapping algos: greedy, knuth
 
 - letter spacing
-	- identify breaking points
+	- identify breaking points (see HB_UNSAFE_TO_BREAK_HERE flag)
 	- adjust justification to include letter spacing
 
 - tabstops: width

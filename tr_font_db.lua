@@ -4,15 +4,16 @@
 
 local glue = require'glue'
 
-local object = glue.object
+local update = glue.update
 local attr = glue.attr
 local trim = glue.trim
 local index = glue.index
 
-local font_db = object()
+local font_db = {}
+setmetatable(font_db, font_db)
 
 function font_db:__call()
-	self = object(self)
+	self = update({}, self)
 	self.db = {} --{name -> {slant -> {weight -> font}}}
 	self.namecache = {} --{name -> font_name}
 	self.searchers = {} --{searcher1, ...}

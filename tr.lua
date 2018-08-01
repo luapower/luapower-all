@@ -11,13 +11,11 @@ local fb = require'fribidi'
 local ub = require'libunibreak'
 local glue = require'glue'
 local box2d = require'box2d'
-local font_db = require'tr_font_db'
 local detect_scripts = require'tr_shape_script'
 local reorder_runs = require'tr_shape_reorder'
 
 local push = table.insert
 
-local object = glue.object
 local update = glue.update
 local assert = glue.assert --assert with string formatting
 local count = glue.count
@@ -50,7 +48,8 @@ local function runs(t, len, start, run_value)
 	end
 end
 
-local tr = object()
+local tr = {}
+setmetatable(tr, tr)
 
 tr.rasterizer_module = 'tr_raster_cairo'
 function tr:create_rasterizer()
@@ -58,17 +57,8 @@ function tr:create_rasterizer()
 end
 
 function tr:__call()
-	self = update(object(self), self)
-
+	self = update({}, self)
 	self.rs = self:create_rasterizer()
-	function self.rs:font_loaded(font)
-		font.hb_font = assert(hb.ft_font(font.ft_face, nil))
-	end
-	function self.rs:font_unloading(font)
-		font.hb_font:free()
-		font.hb_font = false
-	end
-
 	return self
 end
 
@@ -77,35 +67,55 @@ function tr:free()
 	self.rs = false
 end
 
+local function override_font(font)
+	local inherited = font.load
+	function font:load()
+		inherited(self)
+		assert(not self.hb_font)
+		self.hb_font = assert(hb.ft_font(self.ft_face, nil))
+	end
+	local inherited = font.unload
+	function font:unload()
+		self.hb_font:free()
+		self.hb_font = false
+		inherited(self)
+	end
+	function font:size_changed()
+		self.hb_font:ft_changed()
+	end
+	return font
+end
+
+function tr:add_font_file(...)
+	return override_font(self.rs:add_font_file(...))
+end
+
+function tr:add_mem_font(...)
+	return override_font(self.rs:add_mem_font(...))
+end
+
 function tr:paint_glyph_run(run, x, y)
+	run.font:setsize(run.font_size)
 
-	self.rs:setfont(run.font, nil, nil, run.font_size)
+	local hb_buf = run.hb_buf
+	local glyph_count = hb_buf:get_length()
+	local glyph_info  = hb_buf:get_glyph_infos()
+	local glyph_pos   = hb_buf:get_glyph_positions()
 
-	local buf = run.buf
-	local glyph_count = buf:get_length()
-	local glyph_info  = buf:get_glyph_infos()
-	local glyph_pos   = buf:get_glyph_positions()
-
-	for i=0,glyph_count-1 do
-
+	for i = 0, glyph_count-1 do
 		local glyph_index = glyph_info[i].codepoint
-
 		local px = x + glyph_pos[i].x_offset / 64
 		local py = y - glyph_pos[i].y_offset / 64
-
-		local glyph, bmpx, bmpy = self.rs:glyph(glyph_index, px, py)
-		self.rs:paint_glyph(glyph, bmpx, bmpy)
-
+		local glyph, bmpx, bmpy = self.rs:glyph(run.font, glyph_index, px, py)
 		x = x + glyph_pos[i].x_advance / 64
 		y = y - glyph_pos[i].y_advance / 64
+		self.rs:paint_glyph(glyph, bmpx, bmpy)
 	end
 
 	return x, y
 end
 
-local hb_extents = ffi.new'hb_glyph_extents_t'
-
-local function hb_buf_extents(hb_buf, hb_font)
+function tr:_hb_buf_extents(font, hb_buf)
 
 	local glyph_count = hb_buf:get_length()
 	local glyph_info  = hb_buf:get_glyph_infos()
@@ -113,26 +123,16 @@ local function hb_buf_extents(hb_buf, hb_font)
 
 	local x, y = 0, 0
 	local bx, by, bw, bh = 0, 0, 0, 0
-
 	for i = 0, glyph_count-1 do
-
-		local glyph_index = glyph_info[i].codepoint
-
-		local px = x + glyph_pos[i].x_offset / 64
-		local py = y - glyph_pos[i].y_offset / 64
-
-		hb_font:get_glyph_extents(glyph_index, hb_extents)
-
+		local m = self.rs:glyph_metrics(font, glyph_info[i].codepoint)
 		bx, by, bw, bh = bounding_box(bx, by, bw, bh,
-			x + hb_extents.x_bearing / 64,
-			x + hb_extents.y_bearing / 64,
-			hb_extents.width / 64,
-			hb_extents.height / 64)
-
+			x + m.bearing_x,
+			x + m.bearing_y,
+			m.w,
+			m.h)
 		x = x + glyph_pos[i].x_advance / 64
 		y = y - glyph_pos[i].y_advance / 64
 	end
-
 	return bw, bh, x, y
 end
 
@@ -161,6 +161,7 @@ local function flatten_text_tree(parent, runs)
 			run = run_or_text
 			flatten_text_tree(run, runs)
 		end
+		--TODO: make features individually inheritable.
 		if run.features then
 			run.features, run.feat_count = hb_feature_list(run.features)
 		end
@@ -170,22 +171,59 @@ local function flatten_text_tree(parent, runs)
 	return runs
 end
 
+local len0 = 0
+
+local function realloc(var, ctype, len)
+	if len > len0 then
+		return ffi.new(ctype, len)
+	else
+		return var
+	end
+end
+
+local
+	str, scripts, langs,
+	bidi_types, bracket_types, levels, vstr,
+	linebreaks
+
+local tr_free = tr.free
+function tr:free()
+	str, scripts, langs,
+	bidi_types, bracket_types, levels, vstr,
+	linebreaks = nil
+	tr_free(self)
+end
+
 function tr:shape(text_tree)
 
 	local text_runs = flatten_text_tree(text_tree, {})
 
-	--get text length in codepoints.
+	--decode utf8 text, compile (font, size) and get text length in codepoints.
 	local len = 0
 	for _,run in ipairs(text_runs) do
-		run.size = assert(run.size or #run.text, 'text buffer size missing')
+
+		--find (font, size) of each run.
+		run.font, run.font_size = self.rs.font_db:find_font(
+			run.font_name,
+			run.font_weight,
+			run.font_slant,
+			run.font_size
+		)
+		assert(run.font, 'Font not found: %s', run.font_name)
+		assert(run.font_size, 'Font size missing')
+
+		--decode utf8 text.
+		run.text_size = run.text_size or #run.text
+		assert(run.text_size, 'text buffer size missing')
 		run.charset = run.charset or 'utf8'
 		if run.charset == 'utf8' then
-			run.len = utf8.decode(run.text, run.size, false)
+			run.len = utf8.decode(run.text, run.text_size, false)
 		elseif run.charset == 'utf32' then
-			run.len = math.floor(run.size / 4)
+			run.len = math.floor(run.text_size / 4)
 		else
 			assert(false, 'invalid charset: %s', run.charset)
 		end
+
 		len = len + run.len
 	end
 
@@ -194,22 +232,22 @@ function tr:shape(text_tree)
 	end
 
 	--convert and concatenate text into a utf32 buffer.
-	local str = ffi.new('uint32_t[?]', len)
+	str = realloc(str, 'uint32_t[?]', len)
 	local offset = 0
 	for _,run in ipairs(text_runs) do
 		local str = str + offset
 		if run.charset == 'utf8' then
-			utf8.decode(run.text, run.size, str, run.len)
+			utf8.decode(run.text, run.text_size, str, run.len)
 		elseif run.charset == 'utf32' then
-			ffi.copy(str, run.text, run.size)
+			ffi.copy(str, run.text, run.text_size)
 		end
 		run.offset = offset
 		offset = offset + run.len
 	end
 
 	--detect the script and lang properties for each char of the entire text.
-	local scripts = ffi.new('hb_script_t[?]', len)
-	local langs = ffi.new('hb_language_t[?]', len)
+	scripts = realloc(scripts, 'hb_script_t[?]', len)
+	langs = realloc(langs, 'hb_language_t[?]', len)
 	detect_scripts(str, len, scripts)
 
 	--override scripts and langs with user-provided values.
@@ -240,10 +278,10 @@ function tr:shape(text_tree)
 		or dir == 'ltr'  and fb.C.FRIBIDI_PAR_LTR
 		or dir == 'auto' and fb.C.FRIBIDI_PAR_ON
 
-	local bidi_types    = ffi.new('FriBidiCharType[?]', len)
-	local bracket_types = ffi.new('FriBidiBracketType[?]', len)
-	local levels        = ffi.new('FriBidiLevel[?]', len)
-	local vstr          = ffi.new('FriBidiChar[?]', len)
+	bidi_types    = realloc(bidi_types, 'FriBidiCharType[?]', len)
+	bracket_types = realloc(bracket_types, 'FriBidiBracketType[?]', len)
+	levels        = realloc(levels, 'FriBidiLevel[?]', len)
+	vstr          = realloc(vstr, 'FriBidiChar[?]', len)
 
 	fb.bidi_types(str, len, bidi_types)
 	fb.bracket_types(str, len, bidi_types, bracket_types)
@@ -254,7 +292,7 @@ function tr:shape(text_tree)
 	fb.shape_mirroring(levels, len, vstr)
 
 	--run Unicode line breaking algorithm over each run of text with same language.
-	local linebreaks = ffi.new('char[?]', len)
+	linebreaks = realloc(linebreaks, 'char[?]', len)
 	for i, len, lang in runs(langs, len, 0) do
 		local lang = hb.language_tostring(lang)
 		lang = lang and lang:sub(1, 2)
@@ -272,6 +310,7 @@ function tr:shape(text_tree)
 	local offset = 0
 	local font = text_run.font
 	local font_size = text_run.font_size
+	local line_spacing = text_run.line_spacing
 	local features, feat_count = text_run.features, text_run.feat_count
 	local level = levels[0]
 	local script = scripts[0]
@@ -287,7 +326,8 @@ function tr:shape(text_tree)
 			local seglen = i - offset
 			return
 				offset, seglen,
-				font, font_size, features, feat_count, level, script, lang,
+				font, font_size, line_spacing,
+				features, feat_count, level, script, lang,
 				false
 		end
 
@@ -300,6 +340,7 @@ function tr:shape(text_tree)
 		--check for a softbreak point in which case return the last segment.
 		local font1 = text_run.font
 		local font_size1 = text_run.font_size
+		local line_spacing1 = text_run.line_spacing
 		local features1, feat_count1 = text_run.features, text_run.feat_count
 		local level1 = levels[i]
 		local script1 = scripts[i]
@@ -310,6 +351,7 @@ function tr:shape(text_tree)
 		local softbreak = softbreak or hardbreak
 			or font1 ~= font
 			or font_size1 ~= font_size
+			or line_spacing1 ~= line_spacing
 			or features1 ~= features
 			or level1 ~= level
 			or script1 ~= script
@@ -320,17 +362,27 @@ function tr:shape(text_tree)
 		end
 
 		local seglen0 = i - offset
+
 		local
-			offset0, font0, font_size0, features0, feat_count0, level0, script0, lang0 =
-			offset,  font,  font_size,  features,  feat_count,  level,  script,  lang
+			offset0, font0, font_size0, line_spacing0 =
+			offset,  font,  font_size,  line_spacing
+
+		local
+			features0, feat_count0, level0, script0, lang0 =
+			features,  feat_count,  level,  script,  lang
 
 		offset = i
-		font,  font_size,  features,  feat_count,  level,  script,  lang =
-		font1, font_size1, features1, feat_count1, level1, script1, lang1
+
+		font,  font_size,  line_spacing  =
+		font1, font_size1, line_spacing1
+
+		features,  feat_count,  level,  script,  lang =
+		features1, feat_count1, level1, script1, lang1
 
 		return
 			offset0, seglen0,
-			font0, font_size0, features0, feat_count0, level0, script0, lang0,
+			font0, font_size0, line_spacing0,
+			features0, feat_count0, level0, script0, lang0,
 			hardbreak
 	end
 
@@ -338,29 +390,34 @@ function tr:shape(text_tree)
 	local glyph_runs = {}
 	for
 		i, len,
-		font, font_size, features, feat_count, level, script, lang,
-		hardbreak in next_segment
+		font, font_size, line_spacing,
+		features, feat_count, level, script, lang,
+		hardbreak
+	in
+		next_segment
 	do
-		local buf = hb.buffer()
+		font:ref()
+		font:setsize(font_size)
 
-		buf:set_direction(level % 2 == 1
+		local hb_buf = hb.buffer()
+
+		hb_buf:set_direction(level % 2 == 1
 			and hb.C.HB_DIRECTION_RTL
 			 or hb.C.HB_DIRECTION_LTR)
-		buf:set_script(script)
-		buf:set_language(lang)
-		buf:add_utf32(vstr + i, len)
+		hb_buf:set_script(script)
+		hb_buf:set_language(lang)
+		hb_buf:add_utf32(vstr + i, len)
+		hb_buf:shape_full(font.hb_font, features, feat_count)
 
-		self.rs:setfont(font, nil, nil, font_size)
-		local hb_font = self.rs.font.hb_font
-
-		buf:shape_full(hb_font, features, feat_count)
-
-		local bw, bh, adv_x, adv_y = hb_buf_extents(buf, hb_font)
+		local bw, bh, adv_x, adv_y = self:_hb_buf_extents(font, hb_buf)
 
 		local glyph_run = {
 			level = level, --for reordering
 			linebreak = hardbreak, --for wrapping
-			font = font, font_size = font_size, buf = buf, --for painting
+			font = font, font_size = font_size, hb_buf = hb_buf, --for painting
+			line_h = font.height * line_spacing,
+			font_ascent = font.ascent,
+			font_descent = font.descent, --for alignment
 			text_run = text_run, --for debugging
 		}
 		glyph_run.w = bw
@@ -372,14 +429,16 @@ function tr:shape(text_tree)
 	end
 
 	function glyph_runs:free()
-		self.__gc = nil
+		self.__gc = false
 		for _,glyph_run in ipairs(self) do
-			glyph_run.buf:free()
+			glyph_run.hb_buf:free()
+			glyph_run.font:unref()
 		end
 	end
 	glyph_runs.__gc = glyph_runs.free
 	setmetatable(glyph_runs, glyph_runs)
 
+	len0 = len
 	return glyph_runs
 end
 
@@ -392,13 +451,25 @@ function tr:paint(glyph_runs, x0, y0, w, h, halign, valign)
 	local lines = {}
 	local line
 	for i,run in ipairs(glyph_runs) do
-		if not line or run.linebreak or line.advance_x + run.w > w then
-			line = {advance_x = 0, w = 0}
+		if not line or line.advance_x + run.w > w then
+			line = {advance_x = 0, w = 0, h = 0, ascent = 0, descent = 0}
 			push(lines, line)
 		end
 		line.w = line.advance_x + run.w
 		line.advance_x = line.advance_x + run.advance_x
+		line.h = math.max(line.h, run.line_h)
+		line.ascent = math.max(line.ascent, run.font_ascent)
+		line.descent = math.min(line.descent, run.font_descent)
 		push(line, run)
+		if run.linebreak then
+			line = nil
+		end
+	end
+
+	--compute total line height.
+	local lines_h = 0
+	for _,line in ipairs(lines) do
+		lines_h = lines_h + line.h
 	end
 
 	--reorder RTL runs on each line separately, and concatenate the runs.
@@ -410,17 +481,15 @@ function tr:paint(glyph_runs, x0, y0, w, h, halign, valign)
 	end
 
 	--compute paragraph's baseline based on vertical alignment.
-	local line_h = self.rs.line_height
 	local x, y = x0, y0
 	if valign == 'top' then
-		y = y + self.rs.font_ascent
+		y = y + lines[1].ascent
 	else
-		local baseline_h = ((#lines - 1) * line_h)
 		if valign == 'bottom' then
-			y = y + h - baseline_h + self.rs.font_descent
+			y = y + h - lines_h + lines[1].h + lines[#lines].descent
 		elseif valign == 'center' then
-			y = y + (h + baseline_h + self.rs.font_ascent
-				+ self.rs.font_descent) / 2
+			y = y + (h - lines_h + lines[1].h
+				+ lines[1].ascent + lines[#lines].descent) / 2
 		else
 			assert(false, 'invalid valign: %s', valign)
 		end
@@ -445,7 +514,7 @@ function tr:paint(glyph_runs, x0, y0, w, h, halign, valign)
 			x, y = self:paint_glyph_run(run, x, y)
 			run = run.next
 		end
-		line_y = line_y + line_h
+		line_y = line_y + line.h
 	end
 
 end

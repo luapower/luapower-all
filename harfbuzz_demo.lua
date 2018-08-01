@@ -150,8 +150,13 @@ function player:on_render(cr)
 	selected_font = self:mbutton{id = 'font',
 		x = 100, y = 10, w = 300, h = 24,
 		multiselect = false,
-		values = {dejavu_hinted, dejavu_nohint, dejavu_autohint},
-		texts = {[dejavu_hinted] = 'hinted', [dejavu_nohint] = 'unhinted', [dejavu_autohint] = 'autohinted'},
+		values = {amiri, dejavu_hinted, dejavu_nohint, dejavu_autohint},
+		texts = {
+			[amiri] = 'amiri',
+			[dejavu_hinted] = 'hinted',
+			[dejavu_nohint] = 'unhinted',
+			[dejavu_autohint] = 'autohinted',
+		},
 		selected = selected_font}
 
 	self:draw_text(100 + sub, 150, "هذه هي بعض النصوص العربي", amiri, 40,

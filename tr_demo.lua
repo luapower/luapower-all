@@ -4,19 +4,22 @@ local nw = require'nw'
 local bundle = require'bundle'
 local gfonts = require'gfonts'
 local time = require'time'
+local box2d = require'box2d'
 
 local tr = tr()
 
+nw:app():maxfps(1/0)
+
 local win = nw:app():window{
-	--w = 1800, h = 800,
-	w = 800, h = 400,
+	x = 100, y = 60,
+	w = 1800, h = 900,
+	--w = 800, h = 600,
 }
 
 local function font(file, name)
 	local name = name or assert(file:match('([^\\/]+)%.[a-z]+$')):lower()
-	tr.rs:add_font_file(file, name)
-	local font = tr.rs:load_font(name)
-	--print(tr:internal_font_name(font))
+	local font = tr:add_font_file(file, name)
+	--print(font:internal_name())
 end
 
 local function gfont(name)
@@ -24,11 +27,12 @@ local function gfont(name)
 	font(file, name)
 end
 
---gfont'open sans'
---gfont'open sans italic'
---gfont'open sans bold italic'
---gfont'open sans 300 italic'
---font'media/fonts/NotoColorEmoji.ttf'
+gfont'open sans'
+gfont'open sans italic'
+gfont'open sans bold italic'
+gfont'open sans 300'
+gfont'open sans 300 italic'
+font'media/fonts/NotoColorEmoji.ttf'
 --font'media/fonts/NotoEmoji-Regular.ttf'
 --font'media/fonts/EmojiSymbols-Regular.ttf'
 --font'media/fonts/SubwayTicker.ttf'
@@ -38,25 +42,13 @@ end
 --font'media/fonts/FSEX300.ttf'
 font'media/fonts/amiri-regular.ttf'
 
---tr.font_db:dump()
-
---tr.rs:setfont'NotoColorEmoji, 100'
---tr.rs:setfont'NotoEmoji, 109'
---tr.rs:setfont'EmojiSymbols, 100'
---tr.rs:setfont'SubwayTicker, 15'
---tr.rs:setfont'dotty, 32'
---tr.rs:setfont'ss-emoji-microsoft, 14'
---tr.rs:setfont'Hand Faces St, 14'
---tr.rs:setfont'fsex300, 14'
---tr.rs:setfont'open sans 200 italic, 200'
+--tr.rs.font_db:dump()
 
 local ii=0
 function win:repaint()
 	local cr = self:bitmap():cairo()
-	cr:identity_matrix()
-	cr:rgb(0, 0, 0)
-	cr:paint()
-	cr:rgb(1, 1, 1)
+	--cr:rgb(1, 1, 1); cr:paint(); cr:rgb(0, 0, 0)
+	cr:rgb(0, 0, 0); cr:paint(); cr:rgb(1, 1, 1)
 
 	tr.rs.cr = cr
 
@@ -91,32 +83,24 @@ function win:repaint()
 
 	local t0 = time.clock()
 	local n = 1
-	local size = 30
-	local line_h = 1.5
+	local s = require'glue'.readfile('winapi_history.md')
 	for i=1,n do
-		--tr.rs:setfont('amiri', nil, nil, size)
-
 		--local s1 = ('gmmI '):rep(1)
 		--local s2 = ('fi AV (ثلاثة 1234 خمسة) '):rep(1)
 		--local s3 = ('Hebrew (אדםה (adamah))'):rep(1)
-		--tr:text_run{text = s1}
-		--tr:text_run{text = s2}
-		--tr:text_run{text = s3}
-		local runs = tr:shape{
-			font = 'amiri', font_size = 20,
+		self.runs = self.runs or tr:shape{
+			font_name = 'open sans,14',
+			--font_name = 'amiri,20',
+			line_spacing = 1,
 			--dir = 'rtl',
 			--{'A'},
-			--{'m mm'},
-			{'خمسة ABC ', features = {}, {'abc def \r\r\n\nghi jkl ', font_size = 30}, 'DEFG'},
+			{s, {'\n'..('\xF0\x9F\x98\x81'):rep(2), font_name = 'NotoColorEmoji,34', scale_glyphs = true}}
+			--{('ABCD efghi jkl 12345678 '):rep(500)},
+			--{('خمسة ABC '):rep(100), {'abc def \r\r\n\nghi jkl ', font_size = 30}, 'DEFG'},
+			--{('ABCD EFGH abcd efgh 1234'):rep(200)},
 		}
 
-		--local x = 0
-		--local w, h = self:client_size()
-		--local y = line_h * size * (i-1)
-		local x = 100
-		local y = 200
-		local w = 550
-		local h = 100
+		local x, y, w, h = box2d.offset(-20, 0, 0, win:client_size())
 
 		cr:save()
 		cr:rectangle(x, y, w, h)
@@ -125,14 +109,19 @@ function win:repaint()
 		cr:stroke()
 		cr:restore()
 
-		tr:paint(runs, x, y, w, h, 'right', 'bottom')
-		runs:free()
+		tr:paint(self.runs, x, y, w, h, 'right', 'bottom')
+		self.runs:free()
+		self.runs = false
 	end
-	print( (1 / ((time.clock() - t0) / n))..' fps')
+
+	local s = (time.clock() - t0) / n
+	print(string.format('%0.2f ms    %d fps', s * 1000, 1 / s))
 
 	end
 
 	ii=ii+1/60
+	print(string.format('glyph cache size:  %d KB', tr.rs.glyphs.total_size / 1024))
+	print(string.format('glyph count:       %d   ', tr.rs.glyphs.lru.length))
 	--self:invalidate()
 end
 

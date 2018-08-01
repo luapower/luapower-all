@@ -25,6 +25,10 @@ struct range_t {
 };
 ]]
 
+local glue = require'glue'
+
+local alloc_range, free_range = glue.freelist()
+
 -- Merges range with previous range and returns the previous range.
 local function merge_range_with_previous(range)
 	local previous = range.previous
@@ -46,6 +50,7 @@ local function merge_range_with_previous(range)
 	previous.left = left.left
 	previous.right = right.right
 
+	free_range(range)
 	return previous
 end
 
@@ -89,7 +94,7 @@ function reorder_runs(run)
 			range.level = run.level
 		else
 			-- Allocate new range for run and push into stack.
-			local r = {}
+			local r = alloc_range()
 			r.left = run
 			r.right = run
 			r.level = run.level
@@ -106,6 +111,7 @@ function reorder_runs(run)
 	range.right.next = nil
 	range.left.last = range.right
 
+	free_range(range)
 	return range.left
 end
 
