@@ -44,6 +44,15 @@ font'media/fonts/amiri-regular.ttf'
 
 --tr.rs.font_db:dump()
 
+local function rect(cr, x, y, w, h)
+	cr:save()
+	cr:rectangle(x, y, w, h)
+	cr:line_width(1)
+	cr:rgb(1, 1, 0)
+	cr:stroke()
+	cr:restore()
+end
+
 local ii=0
 function win:repaint()
 	local cr = self:bitmap():cairo()
@@ -72,50 +81,45 @@ function win:repaint()
 
 	elseif false then
 
-		tr:setfont'NotoColorEmoji,100'
-		for i = 1, 10 do
-			for j = 1, 10 do
-				tr:paint_glyph(tr:load_glyph(i*10+j, i*150, j*150))
-			end
-		end
+		local runs = tr:shape{
+			('\xF0\x9F\x98\x81'):rep(2), font_name = 'NotoColorEmoji,34',
+		}
+		local x, y, w, h = 100, 100, 80, 80
+		rect(cr, x, y, w, h)
+		tr:paint(runs, x, y, w, h, 'center', 'bottom')
 
 	elseif true then
 
-	local t0 = time.clock()
-	local n = 1
-	local s = require'glue'.readfile('winapi_history.md')
-	for i=1,n do
-		--local s1 = ('gmmI '):rep(1)
-		--local s2 = ('fi AV (ثلاثة 1234 خمسة) '):rep(1)
-		--local s3 = ('Hebrew (אדםה (adamah))'):rep(1)
-		self.runs = self.runs or tr:shape{
-			font_name = 'open sans,14',
-			--font_name = 'amiri,20',
-			line_spacing = 1,
-			--dir = 'rtl',
-			--{'A'},
-			{s, {'\n'..('\xF0\x9F\x98\x81'):rep(2), font_name = 'NotoColorEmoji,34', scale_glyphs = true}}
-			--{('ABCD efghi jkl 12345678 '):rep(500)},
-			--{('خمسة ABC '):rep(100), {'abc def \r\r\n\nghi jkl ', font_size = 30}, 'DEFG'},
-			--{('ABCD EFGH abcd efgh 1234'):rep(200)},
-		}
+		local t0 = time.clock()
+		local n = 1
+		local s = require'glue'.readfile('winapi_history.md')
+		for i=1,n do
+			--local s1 = ('gmmI '):rep(1)
+			--local s2 = ('fi AV (ثلاثة 1234 خمسة) '):rep(1)
+			--local s3 = ('Hebrew (אדםה (adamah))'):rep(1)
+			self.runs = self.runs or tr:shape{
+				font_name = 'open sans,14',
+				--font_name = 'amiri,20',
+				line_spacing = 1,
+				--dir = 'rtl',
+				--{'A'},
+				{s
+					, {''..('\xF0\x9F\x98\x81'):rep(3)..'', font_name = 'NotoColorEmoji,34'}
+				}
+				--{('ABCD efghi jkl 12345678 '):rep(500)},
+				--{('خمسة ABC '):rep(100), {'abc def \r\r\n\nghi jkl ', font_size = 30}, 'DEFG'},
+				--{('ABCD EFGH abcd efgh 1234'):rep(200)},
+			}
 
-		local x, y, w, h = box2d.offset(-20, 0, 0, win:client_size())
+			local x, y, w, h = box2d.offset(-50, 0, 0, win:client_size())
+			rect(cr, x, y, w, h)
+			tr:paint(self.runs, x, y, w, h, 'center', 'bottom')
+			self.runs:free()
+			self.runs = false
+		end
 
-		cr:save()
-		cr:rectangle(x, y, w, h)
-		cr:line_width(1)
-		cr:rgb(1, 1, 0)
-		cr:stroke()
-		cr:restore()
-
-		tr:paint(self.runs, x, y, w, h, 'right', 'bottom')
-		self.runs:free()
-		self.runs = false
-	end
-
-	local s = (time.clock() - t0) / n
-	print(string.format('%0.2f ms    %d fps', s * 1000, 1 / s))
+		local s = (time.clock() - t0) / n
+		print(string.format('%0.2f ms    %d fps', s * 1000, 1 / s))
 
 	end
 

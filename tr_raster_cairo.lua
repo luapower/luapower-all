@@ -20,9 +20,9 @@ setmetatable(cairo_rs, cairo_rs)
 
 cairo_rs.rasterize_glyph_ft = rs_ft.rasterize_glyph
 
-function cairo_rs:rasterize_glyph(font, ...)
+function cairo_rs:rasterize_glyph(font, font_size, glyph_index, x_offset, y_offset)
 
-	local glyph = self:rasterize_glyph_ft(font, ...)
+	local glyph = self:rasterize_glyph_ft(font, font_size, glyph_index, x_offset, y_offset)
 
 	if glyph.bitmap then
 
@@ -47,6 +47,7 @@ function cairo_rs:rasterize_glyph(font, ...)
 					math.ceil(w1),
 					math.ceil(h1))
 				local cr = sr1:context()
+				cr:translate(x_offset, y_offset)
 				cr:scale(w1 / w, h1 / h)
 				cr:source(sr0)
 				cr:paint()
