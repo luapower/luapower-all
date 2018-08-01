@@ -7,10 +7,11 @@ if not ... then require'tr_demo'; return end
 local bit = require'bit'
 local ffi = require'ffi'
 local glue = require'glue'
-local tuple = require'tuple'
 local lrucache = require'lrucache'
 local ft = require'freetype'
 local font_db = require'tr_font_db'
+local tuple = require'tuple'
+local zone = require'jit.zone' --glue.noop
 
 local band, bor = bit.band, bit.bor
 local update = glue.update
@@ -18,6 +19,8 @@ local assert = glue.assert --assert with string formatting
 local snap = glue.snap
 local pass = glue.pass
 local round = glue.round
+
+--glyph rasterizer -----------------------------------------------------------
 
 local rs = {}
 setmetatable(rs, rs)
@@ -159,9 +162,11 @@ setmetatable(mem_font, mem_font)
 function mem_font:load()
 	assert(not self.ft_face)
 	self.ft_face = assert(self.freetype:memory_face(self.data, self.data_size))
+	self.tuple = tuple.fast_space()
 end
 
 function mem_font:unload()
+	self.tuple = false
 	self.ft_face:free()
 	self.ft_face = false
 end
@@ -297,12 +302,13 @@ function rs:glyph(font, font_size, glyph_index, x, y)
 	if glyph_index == 0 then --freetype code for "missing glyph"
 		return empty_glyph, x, y
 	end
+	zone'glyph'
 	font_size = snap(font_size, self.font_size_resolution)
 	local pixel_x = math.floor(x)
 	local pixel_y = math.floor(y)
 	local x_offset = snap(x - pixel_x, self.subpixel_x_resolution)
 	local y_offset = snap(y - pixel_y, self.subpixel_y_resolution)
-	local glyph_key = tuple(font, font_size, glyph_index, x_offset, y_offset)
+	local glyph_key = font.tuple(font_size, glyph_index, x_offset, y_offset)
 	local glyph = self.glyphs:get(glyph_key)
 	if not glyph then
 		glyph = self:rasterize_glyph(font, font_size, glyph_index, x_offset, y_offset)
@@ -310,6 +316,7 @@ function rs:glyph(font, font_size, glyph_index, x, y)
 	end
 	local x = pixel_x + glyph.bitmap_left
 	local y = pixel_y - glyph.bitmap_top
+	zone()
 	return glyph, x, y
 end
 
@@ -321,26 +328,21 @@ local empty_glyph_metrics = {
 }
 
 function rs:load_glyph_metrics(font, font_size, glyph_index)
-
 	local ft_glyph = self:load_glyph(font, font_size, glyph_index)
 	if not ft_glyph then
 		return empty_glyph_metrics
 	end
-
 	local glyph = {}
-
 	local ft_scale = font.scale / 64
 	glyph.w = ft_glyph.metrics.width * ft_scale
 	glyph.h = ft_glyph.metrics.height * ft_scale
 	glyph.bearing_x = ft_glyph.metrics.horiBearingX * ft_scale
 	glyph.bearing_y = ft_glyph.metrics.horiBearingY * ft_scale
 	glyph.mem_size = 4 * 8 + 40 --cache load
-
 	font:ref()
 	function glyph:free()
 		font:unref()
 	end
-
 	return glyph
 end
 
@@ -349,7 +351,7 @@ function rs:glyph_metrics(font, font_size, glyph_index)
 		return empty_glyph_metrics
 	end
 	font_size = snap(font_size, self.font_size_resolution)
-	local glyph_key = tuple(font, font_size, glyph_index)
+	local glyph_key = font.tuple(font_size, glyph_index)
 	local glyph = self.glyphs:get(glyph_key)
 	if not glyph then
 		glyph = self:load_glyph_metrics(font, font_size, glyph_index)

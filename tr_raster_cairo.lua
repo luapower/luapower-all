@@ -10,6 +10,7 @@ local box2d = require'box2d'
 local ft = require'freetype'
 local cairo = require'cairo'
 local rs_ft = require'tr_raster_ft'
+local zone = require'jit.zone' --glue.noop
 
 local update = glue.update
 local round = glue.round

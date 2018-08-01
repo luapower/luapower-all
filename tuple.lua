@@ -4,6 +4,50 @@
 
 if not ... then require'tuple_test'; return end
 
+--make a new tuple space with strong references and no support for nil/NaN.
+local function fast_space()
+	local index = {} --{k1 = index1}; index1 = {k2 = index2}
+	local tuples = {} --{index1 = tuple(k1), index2 = tuple(k1, k2)}
+
+	--find a matching tuple by going through the index tree.
+	local function find(n, ...)
+		local t = {}
+		local index = index
+		for i = 1, n do
+			local k = select(i, ...)
+			index = index[k]
+			if not index then
+				return
+			end
+		end
+		return tuples[index]
+	end
+
+	--add a new tuple to the index tree.
+	local function add(n, tuple)
+		local index = index
+		for i = 1, n do
+			local k = tuple[i]
+			local t = index[k]
+			if not t then
+				t = {}
+				index[k] = t
+			end
+			index = t
+		end
+		tuples[index] = tuple
+		return tuple
+	end
+
+	--get a matching tuple, or make a new one and add it to the index.
+	local function tuple(...)
+		local n = select('#', ...)
+		return find(n, ...) or add(n, {n = n, ...})
+	end
+
+	return tuple
+end
+
 local weakvals_meta = {__mode = 'v'}
 
 --make a table with weak values.
@@ -20,7 +64,13 @@ end
 local NIL = {}
 local NAN = {}
 local function tokey(v)
-	return v == nil and NIL or v ~= v and NAN or v
+	if v == nil then
+		return NIL
+	elseif v ~= v then
+		return NAN
+	else
+		return v
+	end
 end
 
 --make a new tuple space, with weak or strong references.
@@ -133,6 +183,7 @@ function space_module(weak, ...)
 	local tuple_vararg, tuple_narg, tuple_array = space(weak, ...)
 	return setmetatable({
 		space = space_module,
+		fast_space = fast_space,
 		narg = function(n, ...)
 			return wrap(tuple_narg(n, ...))
 		end,

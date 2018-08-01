@@ -13,7 +13,7 @@ local ub = require'libunibreak'
 local glue = require'glue'
 local box2d = require'box2d'
 local lrucache = require'lrucache'
-local tuple = require'tuple'
+local xxhash64 = require'xxhash'.hash64
 local detect_scripts = require'tr_shape_script'
 local reorder_runs = require'tr_shape_reorder'
 local zone = require'jit.zone' --glue.noop
@@ -218,8 +218,6 @@ function tr:shape_text_run(
 	vstr, i, len,
 	font, font_size, features, feat_count, rtl, script, lang
 )
-	zone'hb_shape_text_run'
-
 	font:ref()
 	font:setsize(font_size)
 
@@ -279,27 +277,17 @@ function tr:shape_text_run(
 		--text = ffi.string(utf8.encode(vstr + i, len)),
 	}
 
-	zone()
 	return glyph_run
-end
-
-local xxhash = require'xxhash'
-local xxhash32 = xxhash.hash32
---local t = {}
-local function hash(s, i, len)
-	--local s = ffi.string(s + i, len * 4)
-	--t[s] = true
-	return xxhash32(s + i, 4 * len, 0)
 end
 
 function tr:glyph_run(
 	vstr, i, len,
 	font, font_size, features, feat_count, rtl, script, lang
 )
-	zone'glyph_run'
-	local text_hash = hash(vstr, i, len)
-	local lang_id = tonumber(lang)
-	local key = tuple(text_hash, font, font_size, rtl, script, lang_id)
+	font:ref()
+	local text_hash = tonumber(xxhash64(vstr + i, 4 * len, 0))
+	local lang_id = tonumber(lang) or false
+	local key = font.tuple(text_hash, font_size, rtl, script, lang_id)
 	local glyph_run = self.glyph_runs:get(key)
 	if not glyph_run then
 		glyph_run = self:shape_text_run(
@@ -308,18 +296,14 @@ function tr:glyph_run(
 		)
 		self.glyph_runs:put(key, glyph_run)
 	end
-	zone()
+	font:unref()
 	return glyph_run
 end
 
 function tr:shape(text_tree)
-
-	zone'shape'
-
 	local text_runs = flatten_text_tree(text_tree, {})
 
 	--decode utf8 text, compile (font, size) and get text length in codepoints.
-	zone'len'
 	local len = 0
 	for _,run in ipairs(text_runs) do
 
@@ -348,15 +332,12 @@ function tr:shape(text_tree)
 
 		len = len + run.len
 	end
-	zone()
 
 	if len == 0 then
-		zone()
 		return {}
 	end
 
 	--convert and concatenate text into a utf32 buffer.
-	zone'decode'
 	str = realloc(str, 'uint32_t[?]', len)
 	local offset = 0
 	for _,run in ipairs(text_runs) do
@@ -369,7 +350,6 @@ function tr:shape(text_tree)
 		run.offset = offset
 		offset = offset + run.len
 	end
-	zone()
 
 	--detect the script and lang properties for each char of the entire text.
 	scripts = realloc(scripts, 'hb_script_t[?]', len)
@@ -379,7 +359,6 @@ function tr:shape(text_tree)
 	zone()
 
 	--override scripts and langs with user-provided values.
-	zone'script_lang_override'
 	for _,run in ipairs(text_runs) do
 		if run.script then
 			local script = hb.script(run.script)
@@ -396,7 +375,6 @@ function tr:shape(text_tree)
 			end
 		end
 	end
-	zone()
 
 	--Run fribidi over the entire text as follows:
 	--Request mirroring since it's part of BiDi and harfbuzz doesn't do that.
@@ -547,7 +525,6 @@ function tr:shape(text_tree)
 	zone()
 
 	len0 = len
-	zone()
 	return segments
 end
 
@@ -623,7 +600,7 @@ function tr:paint(cr, segments, x0, y0, w, h, halign, valign)
 	end
 
 	--paint the glyph runs.
-	zone'paint'
+	zone'paint_lines'
 	local line_y = y
 	for i,line in ipairs(lines) do
 		local x

@@ -1,5 +1,4 @@
-
---go@ luajit -jp=z test.lua
+--go@ luajit -jp=zf test.lua
 
 io.stdout:setvbuf'no'
 io.stderr:setvbuf'no'
