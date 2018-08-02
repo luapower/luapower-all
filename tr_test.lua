@@ -1,4 +1,4 @@
---go@ luajit -jp=zf test.lua
+--go@ luajit -jp=zf tr_test.lua
 
 io.stdout:setvbuf'no'
 io.stderr:setvbuf'no'
@@ -36,7 +36,8 @@ for i=1,n do
 	local y = 450
 	local w = 550
 	local h = 100
-	tr:paint(cr, segs, x, y, w, h, 'right', 'bottom')
+	local lines = segs:layout(x, y, w, h, 'right', 'bottom')
+	lines:paint(cr)
 end
 
 local s = (time.clock() - t0) / n
