@@ -1,5 +1,8 @@
 
---hb.h from harfbuzz 1.8.2
+--hb.h from harfbuzz 1.8.2 (extensions in separate files)
+
+--NOTE: enum types are replaced with hb_enum_t which is an int32_t so that
+--functions returning an enum will not create an enum object on the heap!
 
 local ffi = require'ffi'
 ffi.cdef[[
@@ -11,6 +14,8 @@ ffi.cdef[[
 //#define HB_DIRECTION_IS_FORWARD(dir) ((((unsigned int) (dir)) & ~2U) == 4)
 //#define HB_DIRECTION_IS_BACKWARD(dir) ((((unsigned int) (dir)) & ~2U) == 5)
 //#define HB_DIRECTION_REVERSE(dir) ((hb_direction_t) (((unsigned int) (dir)) ^ 1))
+
+typedef int32_t hb_enum_t;
 
 // hb-common.h ---------------------------------------------------------------
 
@@ -39,7 +44,7 @@ typedef enum {
 	HB_DIRECTION_RTL,
 	HB_DIRECTION_TTB,
 	HB_DIRECTION_BTT
-} hb_direction_t;
+}; typedef hb_enum_t hb_direction_t;
 
 hb_direction_t hb_direction_from_string (const char *str, int len);
 const char*    hb_direction_to_string (hb_direction_t direction);
@@ -206,7 +211,7 @@ typedef enum {
 	HB_SCRIPT_OLD_SOGDIAN = ((hb_tag_t)((((uint8_t)('S'))<<24)|(((uint8_t)('o'))<<16)|(((uint8_t)('g'))<<8)|((uint8_t)('o')))),
 	HB_SCRIPT_SOGDIAN = ((hb_tag_t)((((uint8_t)('S'))<<24)|(((uint8_t)('o'))<<16)|(((uint8_t)('g'))<<8)|((uint8_t)('d')))),
 	HB_SCRIPT_INVALID = 0,
-} hb_script_t;
+}; typedef hb_enum_t hb_script_t;
 
 hb_script_t    hb_script_from_iso15924_tag        (hb_tag_t tag);
 hb_script_t    hb_script_from_string              (const char *str, int len);
@@ -340,7 +345,7 @@ typedef enum {
 	HB_UNICODE_GENERAL_CATEGORY_LINE_SEPARATOR,
 	HB_UNICODE_GENERAL_CATEGORY_PARAGRAPH_SEPARATOR,
 	HB_UNICODE_GENERAL_CATEGORY_SPACE_SEPARATOR
-} hb_unicode_general_category_t;
+}; typedef hb_enum_t hb_unicode_general_category_t;
 
 typedef enum {
 	HB_UNICODE_COMBINING_CLASS_NOT_REORDERED = 0,
@@ -400,7 +405,7 @@ typedef enum {
 	HB_UNICODE_COMBINING_CLASS_DOUBLE_ABOVE = 234,
 	HB_UNICODE_COMBINING_CLASS_IOTA_SUBSCRIPT = 240,
 	HB_UNICODE_COMBINING_CLASS_INVALID = 255
-} hb_unicode_combining_class_t;
+}; typedef hb_enum_t hb_unicode_combining_class_t;
 
 typedef struct hb_unicode_funcs_t hb_unicode_funcs_t;
 
@@ -463,7 +468,7 @@ typedef enum {
 	HB_MEMORY_MODE_READONLY,
 	HB_MEMORY_MODE_WRITABLE,
 	HB_MEMORY_MODE_READONLY_MAY_MAKE_WRITABLE
-} hb_memory_mode_t;
+}; typedef hb_enum_t hb_memory_mode_t;
 
 typedef struct hb_blob_t hb_blob_t;
 
@@ -651,7 +656,7 @@ typedef struct hb_glyph_info_t {
 typedef enum {
 	HB_GLYPH_FLAG_UNSAFE_TO_BREAK = 0x00000001,
 	HB_GLYPH_FLAG_DEFINED = 0x00000001
-} hb_glyph_flags_t;
+}; typedef hb_enum_t hb_glyph_flags_t;
 
 hb_glyph_flags_t hb_glyph_info_get_glyph_flags (const hb_glyph_info_t *info);
 
@@ -687,7 +692,7 @@ typedef enum {
 	HB_BUFFER_CONTENT_TYPE_INVALID = 0,
 	HB_BUFFER_CONTENT_TYPE_UNICODE,
 	HB_BUFFER_CONTENT_TYPE_GLYPHS
-} hb_buffer_content_type_t;
+}; typedef hb_enum_t hb_buffer_content_type_t;
 
 void                     hb_buffer_set_content_type  (hb_buffer_t *buffer, hb_buffer_content_type_t content_type);
 hb_buffer_content_type_t hb_buffer_get_content_type  (hb_buffer_t *buffer);
@@ -709,7 +714,7 @@ typedef enum {
 	HB_BUFFER_FLAG_EOT = 0x00000002u,
 	HB_BUFFER_FLAG_PRESERVE_DEFAULT_IGNORABLES = 0x00000004u,
 	HB_BUFFER_FLAG_REMOVE_DEFAULT_IGNORABLES = 0x00000008u
-} hb_buffer_flags_t;
+}; typedef hb_enum_t hb_buffer_flags_t;
 
 void              hb_buffer_set_flags (hb_buffer_t *buffer, hb_buffer_flags_t flags);
 hb_buffer_flags_t hb_buffer_get_flags (hb_buffer_t *buffer);
@@ -719,7 +724,7 @@ typedef enum {
 	HB_BUFFER_CLUSTER_LEVEL_MONOTONE_CHARACTERS = 1,
 	HB_BUFFER_CLUSTER_LEVEL_CHARACTERS = 2,
 	HB_BUFFER_CLUSTER_LEVEL_DEFAULT = HB_BUFFER_CLUSTER_LEVEL_MONOTONE_GRAPHEMES
-} hb_buffer_cluster_level_t;
+}; typedef hb_enum_t hb_buffer_cluster_level_t;
 
 void                      hb_buffer_set_cluster_level (hb_buffer_t *buffer, hb_buffer_cluster_level_t cluster_level);
 hb_buffer_cluster_level_t hb_buffer_get_cluster_level (hb_buffer_t *buffer);
@@ -759,13 +764,13 @@ typedef enum {
 	HB_BUFFER_SERIALIZE_FLAG_GLYPH_EXTENTS = 0x00000008u,
 	HB_BUFFER_SERIALIZE_FLAG_GLYPH_FLAGS = 0x00000010u,
 	HB_BUFFER_SERIALIZE_FLAG_NO_ADVANCES = 0x00000020u
-} hb_buffer_serialize_flags_t;
+}; typedef hb_enum_t hb_buffer_serialize_flags_t;
 
 typedef enum {
 	HB_BUFFER_SERIALIZE_FORMAT_TEXT = ((hb_tag_t)((((uint8_t)('T'))<<24)|(((uint8_t)('E'))<<16)|(((uint8_t)('X'))<<8)|((uint8_t)('T')))),
 	HB_BUFFER_SERIALIZE_FORMAT_JSON = ((hb_tag_t)((((uint8_t)('J'))<<24)|(((uint8_t)('S'))<<16)|(((uint8_t)('O'))<<8)|((uint8_t)('N')))),
 	HB_BUFFER_SERIALIZE_FORMAT_INVALID = ((hb_tag_t)((((uint8_t)(0))<<24)|(((uint8_t)(0))<<16)|(((uint8_t)(0))<<8)|((uint8_t)(0))))
-} hb_buffer_serialize_format_t;
+}; typedef hb_enum_t hb_buffer_serialize_format_t;
 
 hb_buffer_serialize_format_t hb_buffer_serialize_format_from_string (const char *str, int len);
 const char*                  hb_buffer_serialize_format_to_string   (hb_buffer_serialize_format_t format);
@@ -784,7 +789,7 @@ typedef enum {
 	HB_BUFFER_DIFF_FLAG_CLUSTER_MISMATCH = 0x0020,
 	HB_BUFFER_DIFF_FLAG_GLYPH_FLAGS_MISMATCH = 0x0040,
 	HB_BUFFER_DIFF_FLAG_POSITION_MISMATCH = 0x0080
-} hb_buffer_diff_flags_t;
+}; typedef hb_enum_t hb_buffer_diff_flags_t;
 
 hb_buffer_diff_flags_t hb_buffer_diff (hb_buffer_t *buffer, hb_buffer_t *reference, hb_codepoint_t dottedcircle_glyph, unsigned int position_fuzz);
 

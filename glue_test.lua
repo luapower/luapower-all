@@ -237,6 +237,10 @@ for i=1,100 do
 	test(f(0/0), 0/0) --1+0 args with NaN
 end
 test(n, 4)
+local n = 0
+local f = glue.memoize(function(x, y, z) n = n + 1; return x + y + z + n end)
+test(f(1, 1, 1), 4)
+test(f(1, 1, 1, 1), 4) --arg#4 ignored even though using memoize_vararg()
 
 local M = {}
 local x, y, z, p = 0, 0, 0, 0

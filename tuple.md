@@ -20,7 +20,6 @@ for the exact same list of identities.
 `tostring(t) -> s`                 string representation
 `pp.format(t) -> s`                serialization with [pp]
 `tuple.space([weak]) -> tuple`     create a new (weak or strong) tuple space
-`tuple.fast_space() -> tuple`      create a new fast tuple space
 ---------------------------------- -------------------------------------------
 
 > __NOTE:__ Tuple elements can be anything, including `nil` and `NaN`.
@@ -52,7 +51,3 @@ number of tuples.
 __TIP:__ Create tuple spaces that don't use weak tables for better gc
 performance. When no longer needed, release the tuple space to free all
 the dead tuples and associated index tables.
-
-__NOTE:__ `fast_space()` creates a tuple space with strong references
-not support for nil/NaN and no narg/from_array methods. This is a simpler
-implementation that is easier to JIT-compile.

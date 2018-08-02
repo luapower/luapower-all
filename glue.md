@@ -23,6 +23,7 @@ __tables__
 `glue.merge(dt, t1, ...) -> dt`                                    merge tables - no overwriting
 `glue.sortedpairs(t [,cmp]) -> iter() -> k, v`                     like pairs() but in key order
 `glue.attr(t, k1 [,v])[k2] = v`                                    autofield pattern
+`glue.tuples([n]) -> tuple(...) -> t`                              create a tuple space
 __lists__
 `glue.indexof(v, t) -> i`                                          scan array for value
 `glue.extend(dt, t1, ...) -> dt`                                   extend a list
@@ -45,7 +46,7 @@ __iterators__
 __closures__
 `glue.pass(...) -> ...`                                            does nothing, returns back all arguments
 `glue.noop(...)`                                                   does nothing, returns nothing
-`glue.memoize(f) -> f`                                             memoize pattern
+`glue.memoize(f[, n]) -> f`                                        memoize pattern
 __metatables__
 `glue.inherit(t, parent) -> t`                                     set or clear inheritance
 `glue.object([super][, t], ...) -> t`                              create a class or object (see description)
@@ -248,6 +249,17 @@ The implementation creates a temporary table to sort the keys in.
 ### `glue.attr(t,k1[,v])[k2] = v`
 
 Idiom for `t[k1][k2] = v` with auto-creating of `t[k1]` if not present.
+
+------------------------------------------------------------------------------
+
+### `glue.tuples([n]) -> tuple(...) -> t`
+
+Create a tuple space for generating unique keys for multiple-key indexing.
+Calling `tuple()` twice with the same arguments returns the same empty table
+`t`, which can be further used as a key representing those arguments in any
+Lua table, effectively enabling multiple-key indexing.
+
+The optional `n` fixates the tuple to always use exactly `n` args.
 
 ------------------------------------------------------------------------------
 
@@ -468,16 +480,18 @@ end
 
 ------------------------------------------------------------------------------
 
-### `glue.memoize(f) -> f`
+### `glue.memoize(f[, n]) -> f`
 
 Memoization for functions with any number of arguments and _one return value_.
-Supports nil and NaN args and retvals.
+Supports `nil` and `NaN` args and retvals.
 
 Guarantees to only call the original function _once_ for the same combination
 of arguments, with special attention to the vararg part of the function,
 if any. For instance, for a function `f(x, y, ...)`, calling `f(1)` is
 considered the same as calling `f(1, nil)`, but calling `f(1, nil)` is not
 the same as calling `f(1, nil, nil)`.
+
+The optional `n` fixates the function to always take exactly `n` args.
 
 ------------------------------------------------------------------------------
 

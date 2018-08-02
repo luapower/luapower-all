@@ -6,20 +6,23 @@ if not ... then require'glue_test'; return end
 
 local glue = {}
 
+local min, max, floor, select, unpack, pairs, rawget =
+	math.min, math.max, math.floor, select, unpack, pairs, rawget
+
 function glue.round(x, p)
 	p = p or 1
-	return math.floor(x / p + .5) * p
+	return floor(x / p + .5) * p
 end
 
 function glue.floor(x, p)
 	p = p or 1
-	return math.floor(x / p) * p
+	return floor(x / p) * p
 end
 
 glue.snap = glue.round
 
 function glue.clamp(x, x0, x1)
-	return math.min(math.max(x, x0), x1)
+	return min(max(x, x0), x1)
 end
 
 function glue.lerp(x, x0, x1, y0, y1)
@@ -143,7 +146,7 @@ end
 --remove n elements at i, shifting elements on the right of i (i inclusive)
 --to the left.
 local function remove(t, i, n)
-	n = math.min(n, #t-i+1)
+	n = min(n, #t-i+1)
 	if n == 1 then --shift 1
 		table.remove(t, i)
 		return
@@ -185,7 +188,7 @@ function glue.binsearch(v, t, cmp)
 	if n == 1 then return not cmp(t[1], v) and 1 or nil end
 	local lo, hi = 1, n
 	while lo < hi do
-		local mid = math.floor(lo + (hi - lo) / 2)
+		local mid = floor(lo + (hi - lo) / 2)
 		if cmp(t[mid], v) then
 			lo = mid + 1
 			if lo == n and cmp(t[lo], v) then
@@ -613,13 +616,13 @@ local function memoize2(fn) --for strict two-arg functions
 		return v
 	end
 end
-local function memoize_vararg(fn, nparams)
+local function memoize_vararg(fn, minarg, maxarg)
 	local cache = {}
 	local values = {}
 	return function(...)
 		local key = cache
-		local nparams = math.max(nparams, select('#',...))
-		for i = 1, nparams do
+		local narg = min(max(select('#',...), minarg), maxarg)
+		for i = 1, narg do
 			local a = select(i,...)
 			local k = a ~= a and nankey or a == nil and nilkey or a
 			local t = key[k]
@@ -637,23 +640,35 @@ local function memoize_vararg(fn, nparams)
 	end
 end
 local memoize_narg = {[0] = memoize0, memoize1, memoize2}
-function glue.memoize(func)
-	local info = debug.getinfo(func, 'u')
-	local memoize_narg = memoize_narg[info.nparams]
-	if info.isvararg or not memoize_narg then
-		return memoize_vararg(func, info.nparams)
+function glue.memoize(func, narg)
+	if narg then
+		local memoize_narg = memoize_narg[narg]
+		if memoize_narg then
+			return memoize_narg(func)
+		else
+			return memoize_vararg(func, narg, narg)
+		end
 	else
-		return memoize_narg(func)
+		local info = debug.getinfo(func, 'u')
+		if info.isvararg then
+			return memoize_vararg(func, info.nparams, 1/0)
+		else
+			return glue.memoize(func, info.nparams)
+		end
 	end
+end
+
+function glue.tuples(n)
+	return glue.memoize(function(...)
+		return {}
+	end, n)
 end
 
 --setup a module to load sub-modules when accessing specific keys.
 function glue.autoload(t, k, v)
 	local mt = getmetatable(t) or {}
 	if not mt.__autoload then
-		if mt.__index then
-			error('__index already assigned for something else')
-		end
+		assert(not mt.__index, '__index already assigned')
 		local submodules = {}
 		mt.__autoload = submodules
 		mt.__index = function(t, k)

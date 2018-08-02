@@ -359,6 +359,33 @@ map('CAIRO_FORMAT_', {
 	'RGB30',
 })
 
+local cairo_formats = {
+	bgra8  = 'argb32',
+	bgrx8  = 'rgb24',
+	g8     = 'a8',
+	g1     = 'a1',
+	rgb565 = 'rgb16_565',
+	bgr10  = 'rgb30',
+}
+
+local bitmap_formats = {
+	argb32    = 'bgra8',
+	rgb24     = 'bgrx8',
+	a8        = 'g8',
+	a1        = 'g1',
+	rgb16_565 = 'rgb565',
+	rgb30     = 'bgr10',
+	invalid   = 'invalid',
+}
+
+function M.cairo_format(format)
+	return cairo_formats[format] or format
+end
+
+function M.bitmap_format(format)
+	return bitmap_formats[format] or format
+end
+
 local cr = {}
 
 cr.status = C.cairo_status
@@ -839,8 +866,9 @@ sr.similar_surface = ref_func(function(sr, content, w, h)
 	return C.cairo_surface_create_similar(sr, X('CAIRO_CONTENT_', content), w, h)
 end, C.cairo_surface_destroy)
 
-sr.similar_image_surface = ref_func(function(sr, format, w, h)
-	return C.cairo_surface_create_similar_image(sr, X('CAIRO_FORMAT_', format), w, h)
+sr.similar_image_surface = ref_func(function(sr, fmt, w, h)
+	local fmt = M.cairo_format(fmt)
+	return C.cairo_surface_create_similar_image(sr, X('CAIRO_FORMAT_', fmt), w, h)
 end, C.cairo_surface_destroy)
 
 sr.map_to_image = function(sr, x, y, w, h)
@@ -970,31 +998,6 @@ sr.copy_page = C.cairo_surface_copy_page
 sr.show_page = C.cairo_surface_show_page
 sr.has_show_text_glyphs = bool_func(C.cairo_surface_has_show_text_glyphs)
 
-local cairo_formats = {
-	bgra8  = 'argb32',
-	bgrx8  = 'rgb24',
-	g8     = 'a8',
-	g1     = 'a1',
-	rgb565 = 'rgb16_565',
-	bgr10  = 'rgb30',
-}
-function M.cairo_format(format)
-	return cairo_formats[format]
-end
-
-local bitmap_formats = {
-	argb32    = 'bgra8',
-	rgb24     = 'bgrx8',
-	a8        = 'g8',
-	a1        = 'g1',
-	rgb16_565 = 'rgb565',
-	rgb30     = 'bgr10',
-	invalid   = 'invalid',
-}
-function M.bitmap_format(format)
-	return bitmap_formats[format]
-end
-
 M.image_surface = function(fmt, w, h)
 	if type(fmt) == 'table' then
 		local bmp = fmt
@@ -1006,6 +1009,7 @@ M.image_surface = function(fmt, w, h)
 			C.cairo_surface_destroy(sr)
 		end)
 	else
+		local fmt = M.cairo_format(fmt)
 		return ffi.gc(
 			C.cairo_image_surface_create(X('CAIRO_FORMAT_', fmt), w, h),
 			C.cairo_surface_destroy)
@@ -1013,6 +1017,7 @@ M.image_surface = function(fmt, w, h)
 end
 
 M.stride = function(fmt, width)
+	local fmt = M.cairo_format(fmt)
 	return C.cairo_format_stride_for_width(X('CAIRO_FORMAT_', fmt), width)
 end
 

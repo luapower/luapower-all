@@ -1,4 +1,5 @@
---result of `cpp cairo.h` from cairo 1.12.3 (native extensions in separate files)
+
+--cairo.h from cairo 1.12.3 (native extensions in separate files)
 
 --NOTE: enum types are replaced with cairo_enum_t which is an int32_t so that
 --functions returning an enum will not create an enum object on the heap!
