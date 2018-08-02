@@ -37,7 +37,7 @@ font modifiers:
 	- skip descenders (trick: use white shadow around text)
 	- color, thickness, style (single, double, wavy, image), dashes
 
-- font_db: stretch
+- font_db: stretch/condensed...
 
 - halign: justify
 
@@ -50,8 +50,6 @@ font modifiers:
 - tabstops: width
 
 - wrap inside path
-
-- paragraph splitting
 
 - bounding box with/without ascents/descents
 

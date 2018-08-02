@@ -301,9 +301,10 @@ function tr:glyph_run(
 end
 
 function tr:shape(text_tree)
+
 	local text_runs = flatten_text_tree(text_tree, {})
 
-	--decode utf8 text, compile (font, size) and get text length in codepoints.
+	--find (font, size) of each text run and get text length in codepoints.
 	local len = 0
 	for _,run in ipairs(text_runs) do
 
@@ -337,7 +338,7 @@ function tr:shape(text_tree)
 		return {}
 	end
 
-	--convert and concatenate text into a utf32 buffer.
+	--convert and concatenate text into a single utf32 buffer.
 	str = realloc(str, 'uint32_t[?]', len)
 	local offset = 0
 	for _,run in ipairs(text_runs) do
@@ -379,8 +380,9 @@ function tr:shape(text_tree)
 	--Run fribidi over the entire text as follows:
 	--Request mirroring since it's part of BiDi and harfbuzz doesn't do that.
 	--Skip arabic shaping since harfbuzz does that better with font assistance.
-	--Skip RTL reordering since it also reverses the _contents_ of the RTL runs
-	--which harfbuzz also does (we do reordering separately below).
+	--Skip RTL reordering because 1) fribidi also reverses the _contents_ of
+	--the RTL runs which harfbuzz also does, and 2) because bidi reordering
+	--needs to be done after line breaking and is thus part of layouting.
 	zone'bidi'
 	local dir = (text_tree.dir or 'auto'):lower()
 	dir = dir == 'rtl'  and fb.C.FRIBIDI_PAR_RTL
@@ -401,7 +403,7 @@ function tr:shape(text_tree)
 	fb.shape_mirroring(levels, len, vstr)
 	zone()
 
-	--run Unicode line breaking algorithm over each run of text with same language.
+	--run Unicode line breaking over each run of text with same language.
 	zone'linebreak'
 	linebreaks = realloc(linebreaks, 'char[?]', len)
 	for i, len, lang in runs(langs, len, 0) do
@@ -411,116 +413,80 @@ function tr:shape(text_tree)
 	end
 	zone()
 
-	--make an iterator of text segments which share the same text properties
-	--for the purpose of shaping them separately.
+	--split text into segments of characters with the same properties
+	--and shape those individually with harfbuzz.
 
-	--current-char state
-	local i = 0
-	local tri = 1
-	local text_run = text_runs[1]
-	--current-segment state
+	zone'segment'
+	local segments = {} --{seg1, ...}
 	local offset = 0
-	local font = text_run.font
-	local font_size = text_run.font_size
-	local line_spacing = text_run.line_spacing or 1
-	local features, feat_count = text_run.features, text_run.feat_count
-	local level = levels[0]
-	local script = scripts[0]
-	local lang = langs[0]
+	local text_run_index = 1
+	local text_run = text_runs[1]
+	local level, script, lang
+	for i = 0, len do
 
-	local function next_segment()
+		--0: break required, 1: break allowed, 2: break not allowed.
+		local linebreak = i > 0 and linebreaks[i-1] or 2
 
-		if i == len then --exit condition
-			return nil
-		end
-		i = i + 1
-		if i == len then --last segment
-			local seglen = i - offset
-			return
-				offset, seglen,
-				font, font_size, line_spacing,
-				features, feat_count, level, script, lang,
-				false
+		local text_run1, level1, script1, lang1
+		local text_run_same_props
+
+		if i == len then
+			goto process
 		end
 
 		--change to the next text_run if we're past the current text run.
 		if i > text_run.offset + text_run.len - 1 then
-			tri = tri + 1
-			text_run = text_runs[tri]
+			text_run_index = text_run_index + 1
+			text_run1 = text_runs[text_run_index]
+			text_run_same_props =
+				text_run1.font == text_run.font
+				and text_run1.font_size == text_run.font_size
+				and text_run1.features == text_run.features
+				and text_run1.line_spacing == text_run.line_spacing
+		else
+			text_run1 = text_run
+			text_run_same_props = true
 		end
 
-		--check for a softbreak point in which case return the last segment.
-		local font1 = text_run.font
-		local font_size1 = text_run.font_size
-		local line_spacing1 = text_run.line_spacing or 1
-		local features1, feat_count1 = text_run.features, text_run.feat_count
-		local level1 = levels[i]
-		local script1 = scripts[i]
-		local lang1 = langs[i]
-		local linebreak = linebreaks[i-1]
-		local hardbreak = linebreak == 0
-		local softbreak = linebreak == 1
-		local softbreak = softbreak or hardbreak
-			or font1 ~= font
-			or font_size1 ~= font_size
-			or line_spacing1 ~= line_spacing
-			or features1 ~= features
-			or level1 ~= level
-			or script1 ~= script
-			or lang1 ~= lang
+		level1 = levels[i]
+		script1 = scripts[i]
+		lang1 = langs[i]
 
-		if not softbreak then
-			return next_segment() --tail call
+		if i == 0 then
+			goto advance
 		end
 
-		local seglen0 = i - offset
+		if linebreak > 1
+			and text_run_same_props
+			and level1 == level
+			and script1 == script
+			and lang1 == lang
+		then
+			goto advance
+		end
 
-		local
-			offset0, font0, font_size0, line_spacing0 =
-			offset,  font,  font_size,  line_spacing
-
-		local
-			features0, feat_count0, level0, script0, lang0 =
-			features,  feat_count,  level,  script,  lang
-
-		offset = i
-
-		font,  font_size,  line_spacing  =
-		font1, font_size1, line_spacing1
-
-		features,  feat_count,  level,  script,  lang =
-		features1, feat_count1, level1, script1, lang1
-
-		return
-			offset0, seglen0,
-			font0, font_size0, line_spacing0,
-			features0, feat_count0, level0, script0, lang0,
-			hardbreak
-	end
-
-	--shape the text segments.
-	zone'segment'
-	local segments = {}
-	for
-		i, len,
-		font, font_size, line_spacing,
-		features, feat_count, level, script, lang,
-		hardbreak
-	in
-		next_segment
-	do
-		local segment = {
+		::process::
+		push(segments, {
 			--reusable part
 			run = self:glyph_run(
-				vstr, i, len,
-				font, font_size, features, feat_count, odd(level), script, lang
+				vstr, offset, i - offset,
+				text_run.font,
+				text_run.font_size,
+				text_run.features,
+				text_run.feat_count,
+				odd(level),
+				script,
+				lang
 			),
 			--non-reusable part
 			level = level,
-			linebreak = hardbreak,
-			line_spacing = line_spacing,
-		}
-		push(segments, segment)
+			linebreak = linebreak == 0, --hard break
+			line_spacing = text_run.line_spacing,
+		})
+		offset = i
+
+		::advance::
+		text_run, level, script, lang = text_run1, level1, script1, lang1
 	end
 	zone()
 
@@ -550,7 +516,7 @@ function tr:paint(cr, segments, x0, y0, w, h, halign, valign)
 		end
 		line.w = line.advance_x + seg.run.w
 		line.advance_x = line.advance_x + seg.run.advance_x
-		line.h = math.max(line.h, seg.run.font_height * seg.line_spacing)
+		line.h = math.max(line.h, seg.run.font_height * (seg.line_spacing or 1))
 		line.ascent = math.max(line.ascent, seg.run.font_ascent)
 		line.descent = math.min(line.descent, seg.run.font_descent)
 		push(line, seg)
