@@ -3275,7 +3275,7 @@ end
 --text geometry and drawing
 
 layer.text_align = 'center'
-layer.text_valign = 'center'
+layer.text_valign = 'middle'
 layer.text_operator = 'over'
 layer.text = nil
 layer.font_name = 'Open Sans'
@@ -3302,10 +3302,11 @@ function layer:draw_text(cr)
 		font_size = self.text_size,
 		line_spacing = self.line_spacing,
 	}
+	local cw, ch = self:content_size()
+	local lines = tr:layout(segs, cw, ch, self.text_align, self.text_valign)
 	cr:operator(self.text_operator)
 	cr:rgba(self.ui:color(self.text_color))
-	local cw, ch = self:content_size()
-	tr:paint(cr, segs, 0, 0, cw, ch, self.text_align, self.text_valign)
+	tr:paint(cr, lines, 0, 0)
 end
 
 function layer:text_bounding_box()
