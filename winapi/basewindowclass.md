@@ -44,7 +44,7 @@ min_w, min_h				irw		minimum size											WM_WINDOWPOSCHANGING
 max_w, max_h				irw		maximum size											WM_WINDOWPOSCHANGING
 monitor						 r			monitor (HMONITOR)									MonitorFromWindow
 __painting__				__irw__	__description__				__default__			__reference__
-updating						 w			control automatic radraw							SetRedraw
+updating						 w			control automatic redraw							SetRedraw
 __other__					__irw__	__description__				__default__			__reference__
 font							irw		default font					DEFAULT_GUI_FONT	Get/SetWindowFont
 text							 rw		depends on control									Get/SetWindowText
@@ -77,7 +77,7 @@ bring_to_front([rel_to_win])				bring in front of other windows					SetWindowPos
 __painting__									__description__										__reference__
 redraw()											redraw the window immediately						RedrawWindow
 invalidate([RECT], [erase_bg])			invalidate the window or a subregion			InvalidateRect
-batch_update(func, args...)				run func() with redrawing desabled				SetRedraw/RedrawWindow
+batch_update(func, args...)				run func() with redrawing disabled				SetRedraw/RedrawWindow
 __drag & drop__								__description__										__reference__
 dragging(POINT) -> true|false				check if dragging										DragDetect
 __timers__										__description__										__reference__
