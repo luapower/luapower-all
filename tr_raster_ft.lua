@@ -28,7 +28,7 @@ setmetatable(rs, rs)
 rs.glyph_cache_size = 1024^2 * 10 --10MB net (arbitrary default)
 rs.font_size_resolution = 1/8 --in pixels
 rs.subpixel_x_resolution = 1/16 --1/64 pixels is max with freetype
-rs.subpixel_y_resolution = 1 --no subpixel positioning with vertical hinting
+rs.subpixel_y_resolution = 1/16 --no subpixel positioning with vertical hinting
 
 function rs:__call()
 	local self = update({}, self)
@@ -199,28 +199,31 @@ end
 
 function rs:add_font_file(file, ...)
 	local font = font_file{file = file,
-		freetype = self.freetype}
+		freetype = self.freetype, ft_load_flags = self.ft_load_flags}
 	self.font_db:add_font(font, ...)
 	return font
 end
 
 function rs:add_mem_font(data, size, ...)
 	local font = mem_font{data = data, data_size = size,
-		freetype = self.freetype}
+		freetype = self.freetype, ft_load_flags = self.ft_load_flags}
 	self.font_db:add_font(font, ...)
 	return font
 end
 
 --glyph loading --------------------------------------------------------------
 
-rs.ft_load_mode = bor(
+rs.ft_load_flags = bor(
 	ft.C.FT_LOAD_COLOR,
-	ft.C.FT_LOAD_PEDANTIC
+	ft.C.FT_LOAD_PEDANTIC,
+	--ft.C.FT_LOAD_NO_HINTING
+	--ft.C.FT_LOAD_NO_AUTOHINT
+	ft.C.FT_LOAD_FORCE_AUTOHINT
 )
 
 function rs:load_glyph(font, font_size, glyph_index)
 	font:setsize(font_size)
-	font.ft_face:load_glyph(glyph_index, self.ft_load_mode)
+	font.ft_face:load_glyph(glyph_index, self.ft_load_flags)
 	local ft_glyph = font.ft_face.glyph
 	local w = ft_glyph.metrics.width
 	local h = ft_glyph.metrics.height
@@ -232,7 +235,7 @@ end
 
 --glyph rendering ------------------------------------------------------------
 
-rs.ft_render_mode = bor(
+rs.ft_render_flags = bor(
 	ft.C.FT_RENDER_MODE_LIGHT --disable hinting on the x-axis
 )
 
@@ -241,7 +244,7 @@ local empty_glyph = {
 	mem_size = 0, free = pass, --for the lru cache
 }
 
-function rs:rasterize_glyph(font, font_size, glyph_index, x_offset, y_offset)
+function rs:rasterize_glyph(font, font_size, glyph_index, offset_x, offset_y)
 
 	local ft_glyph = self:load_glyph(font, font_size, glyph_index)
 	if not ft_glyph then
@@ -249,11 +252,11 @@ function rs:rasterize_glyph(font, font_size, glyph_index, x_offset, y_offset)
 	end
 
 	if ft_glyph.format == ft.C.FT_GLYPH_FORMAT_OUTLINE then
-		ft_glyph.outline:translate(x_offset * 64, y_offset * 64)
+		ft_glyph.outline:translate(offset_x * 64, -offset_y * 64)
 	end
 	local fmt = ft_glyph.format
 	if ft_glyph.format ~= ft.C.FT_GLYPH_FORMAT_BITMAP then
-		ft_glyph:render(self.ft_render_mode)
+		ft_glyph:render(self.ft_render_flags)
 	end
 	assert(ft_glyph.format == ft.C.FT_GLYPH_FORMAT_BITMAP)
 
@@ -308,12 +311,12 @@ function rs:glyph(font, font_size, glyph_index, x, y)
 	font_size = snap(font_size, self.font_size_resolution)
 	local pixel_x = math.floor(x)
 	local pixel_y = math.floor(y)
-	local x_offset = snap(x - pixel_x, self.subpixel_x_resolution)
-	local y_offset = snap(y - pixel_y, self.subpixel_y_resolution)
-	local glyph_key = font.tuple(font_size, glyph_index, x_offset, y_offset)
+	local offset_x = snap(x - pixel_x, self.subpixel_x_resolution)
+	local offset_y = snap(y - pixel_y, self.subpixel_y_resolution)
+	local glyph_key = font.tuple(font_size, glyph_index, offset_x, offset_y)
 	local glyph = self.glyphs:get(glyph_key)
 	if not glyph then
-		glyph = self:rasterize_glyph(font, font_size, glyph_index, x_offset, y_offset)
+		glyph = self:rasterize_glyph(font, font_size, glyph_index, offset_x, offset_y)
 		self.glyphs:put(glyph_key, glyph)
 	end
 	local x = pixel_x + glyph.bitmap_left
@@ -325,7 +328,7 @@ end
 --glyph measuring ------------------------------------------------------------
 
 local empty_glyph_metrics = {
-	w = 0, h = 0, bearing_x = 0, bearing_y = 0, --null metrics
+	w = 0, h = 0, hlsb = 0, htsb = 0, vlsb = 0, vtsb = 0, --null metrics
 	mem_size = 0, free = pass, --for the lru cache
 }
 
@@ -338,8 +341,10 @@ function rs:load_glyph_metrics(font, font_size, glyph_index)
 	local ft_scale = font.scale / 64
 	glyph.w = ft_glyph.metrics.width * ft_scale
 	glyph.h = ft_glyph.metrics.height * ft_scale
-	glyph.bearing_x = ft_glyph.metrics.horiBearingX * ft_scale
-	glyph.bearing_y = ft_glyph.metrics.horiBearingY * ft_scale
+	glyph.hlsb = ft_glyph.metrics.horiBearingX * ft_scale
+	glyph.htsb = ft_glyph.metrics.horiBearingY * ft_scale
+	glyph.vlsb = ft_glyph.metrics.vertBearingX * ft_scale
+	glyph.vtsb = ft_glyph.metrics.vertBearingY * ft_scale
 	glyph.mem_size = 4 * 8 + 40 --cache load
 	font:ref()
 	function glyph:free()

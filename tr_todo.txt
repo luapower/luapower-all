@@ -8,7 +8,18 @@ font modifiers:
 	- bold/b..., italic/oblique/i
 	- %size, big, small
 
-- hit testing -> initial text run object + index in text + cluster len
+- hit testing
+	- done: initial text run object + index in text + cluster len
+	- todo: count graphemes in cluster
+	- todo: compute pixel width of cluster
+	- todo: divide cluster pixel width by number of graphemes evenly
+	- todo: ... or use ligature carets if available
+	- todo: adjust cursor to closest caret boundary
+	- fix: rtl
+
+- rtl: fix line width computation
+
+- rtl: test cursor position with mirroring implications
 
 - font_variant: normal, smallcaps; smallcaps modifier
 

@@ -81,7 +81,6 @@ function reorder_runs(run)
 		while range and range.level > run.level
 			and range.previous and range.previous.level >= run.level
 		do
-			assert(false)
 			range = merge_range_with_previous (range)
 		end
 
@@ -91,7 +90,6 @@ function reorder_runs(run)
 				-- Odd, range goes to the right of run.
 				run.next = range.left
 				range.left = run
-				assert(false)
 			else
 				-- Even, range goes to the left of run.
 				range.right.next = run
@@ -111,7 +109,6 @@ function reorder_runs(run)
 	end
 	assert (range)
 	while range.previous do
-		assert(false)
 		range = merge_range_with_previous (range)
 	end
 
