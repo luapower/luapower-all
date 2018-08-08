@@ -3292,8 +3292,10 @@ end
 
 function layer:draw_text(cr)
 	if not self:text_visible() then return end
-	local tr = self.ui.tr
-	local segs = tr:shape{
+	local cw, ch = self:content_size()
+	cr:operator(self.text_operator)
+	cr:rgba(self.ui:color(self.text_color))
+	self.ui.tr:shape({
 		self.text,
 		dir = self.text_dir,
 		font_name = self.font_name,
@@ -3301,12 +3303,7 @@ function layer:draw_text(cr)
 		font_slant = self.font_slant,
 		font_size = self.text_size,
 		line_spacing = self.line_spacing,
-	}
-	local cw, ch = self:content_size()
-	local lines = tr:layout(segs, cw, ch, self.text_align, self.text_valign)
-	cr:operator(self.text_operator)
-	cr:rgba(self.ui:color(self.text_color))
-	tr:paint(cr, lines, 0, 0)
+	}):layout(0, 0, cw, ch, self.text_align, self.text_valign):paint(cr)
 end
 
 function layer:text_bounding_box()
