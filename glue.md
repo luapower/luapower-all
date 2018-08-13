@@ -70,6 +70,7 @@ __modules__
 `glue.cpath(path [,index])`                                        insert a path in package.cpath
 __allocation__
 `glue.freelist([create], [destroy]) -> alloc, free`                freelist allocation pattern
+`glue.growbuffer([ctype]) -> alloc(len) -> buf, len`               static auto-growing buffer
 __ffi__
 `glue.malloc([ctype, ]size) -> cdata`                              allocate an array using system's malloc
 `glue.malloc(ctype) -> cdata`                                      allocate a C type using system's malloc
@@ -478,6 +479,10 @@ function urlopen(url, callback, errback)
 end
 ~~~
 
+### `glue.noop()`
+
+Does nothing. Returns nothing.
+
 ------------------------------------------------------------------------------
 
 ### `glue.memoize(f[, n]) -> f`
@@ -829,7 +834,15 @@ require'foo' --looking for `foo` in the same directory as the running script fir
 Returns `alloc() -> e` and `free(e)` functions to allocate and deallocate
 Lua objects. The allocator returns the last freed object or calls `create()`
 to create a new one if the freelist is empty. `create` defaults to
-`function() return {} end`.
+`function() return {} end`; `destroy` defaults to `glue.noop`.
+
+### `glue.growbuffer([ctype]) -> alloc(len) -> buf, len`
+
+Return an allocation function which reallocates or reuses an internal static
+buffer. Good for allocating small but otherwise var-sized temporary buffers
+without stressing the garbage collector.
+
+> __NOTE__: LuaJIT only.
 
 ------------------------------------------------------------------------------
 

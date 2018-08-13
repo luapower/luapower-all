@@ -734,6 +734,7 @@ function glue.cpath(path, index)
 	package.cpath = table.concat(paths, tsep)
 end
 
+--freelist for Lua tables, providing the fields .
 local function create_table()
 	return {}
 end
@@ -761,6 +762,20 @@ end
 if jit then
 
 local ffi = require'ffi'
+
+--static, auto-growing buffer allocation pattern.
+function glue.growbuffer(ctype)
+	local ctype = ffi.typeof(ctype or 'char[?]')
+	local buf
+	local len = -1
+	return function(newlen)
+		if newlen > len then
+			len = newlen
+			buf = ffi.new(ctype, len)
+		end
+		return buf, newlen
+	end
+end
 
 ffi.cdef[[
 	void* malloc (size_t size);
