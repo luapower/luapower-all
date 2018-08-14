@@ -274,6 +274,33 @@ ffi.metatype('hb_face_t', {__index = {
 	get_size_params     = C.hb_ot_layout_get_size_params,
 }})
 
+--static, auto-growing buffer allocation pattern (from glue).
+local function growbuffer(ctype)
+	local ctype = ffi.typeof(ctype or 'char[?]')
+	local buf
+	local len = -1
+	return function(newlen)
+		if newlen > len then
+			len = newlen
+			buf = ffi.new(ctype, len)
+		end
+		return buf, newlen
+	end
+end
+
+local carets_buffer = growbuffer'hb_position_t[?]'
+local count_buf = ffi.new'unsigned int[1]'
+local function get_ligature_carets(hb_font, direction, glyph_index, start_offset)
+	start_offset = start_offset or 0
+	local count = C.hb_ot_layout_get_ligature_carets(hb_font, direction,
+		glyph_index, start_offset, nil, nil)
+	local carets_buf = carets_buffer(count)
+	count_buf[0] = count
+	C.hb_ot_layout_get_ligature_carets(hb_font, direction, glyph_index,
+		start_offset, count_buf, carets_buf)
+	return carets_buf, count
+end
+
 ffi.metatype('hb_font_t', {__index = {
 	ref = create_func(C.hb_font_reference, C.hb_font_destroy),
 	free = destroy_func(C.hb_font_destroy),
@@ -321,7 +348,7 @@ ffi.metatype('hb_font_t', {__index = {
 	end,
 
 	--from hb-ot.h
-	get_ligature_carets  = C.hb_ot_layout_get_ligature_carets,
+	get_ligature_carets  = get_ligature_carets,
 	shape_glyphs_closure = C.hb_ot_shape_glyphs_closure,
 
 	--from hb-ft.h
@@ -331,6 +358,13 @@ ffi.metatype('hb_font_t', {__index = {
 	get_ft_load_flags = C.hb_ft_font_get_load_flags,
 	ft_changed = C.hb_ft_font_changed,
 }})
+
+local function add_func(c_add_func, charsize)
+	return function(self, buf, len, item_ofs, item_len)
+		len = len or #buf / charsize
+		c_add_func(self, buf, len, item_ofs or 0, item_len or len)
+	end
+end
 
 ffi.metatype('hb_buffer_t', {__index = {
 	ref = create_func(C.hb_buffer_reference, C.hb_buffer_destroy),
@@ -364,6 +398,11 @@ ffi.metatype('hb_buffer_t', {__index = {
 
 	set_flags = C.hb_buffer_set_flags, --hb_buffer_flags_t flags
 	get_flags = C.hb_buffer_get_flags,
+	set_cluster_level = C.hb_buffer_set_cluster_level,
+	get_cluster_level = C.hb_buffer_get_cluster_level,
+	set_replacement_codepoint = C.hb_buffer_set_replacement_codepoint,
+	get_replacement_codepoint = C.hb_buffer_get_replacement_codepoint,
+
 	reset = C.hb_buffer_reset,
 	clear = C.hb_buffer_clear_contents,
 	pre_allocate = C.hb_buffer_pre_allocate, --size
@@ -372,9 +411,10 @@ ffi.metatype('hb_buffer_t', {__index = {
 	reverse_clusters = C.hb_buffer_reverse_clusters,
 
 	add = C.hb_buffer_add, --hb_codepoint_t codepoint, unsigned int cluster
-	add_utf8  = function(self, buf, sz, iofs, isz) C.hb_buffer_add_utf8 (self, buf, sz or #buf, iofs or 0, isz or sz or #buf) end,
-	add_utf16 = function(self, buf, sz, iofs, isz) C.hb_buffer_add_utf16(self, buf, sz or #buf, iofs or 0, isz or sz or #buf) end,
-	add_utf32 = function(self, buf, sz, iofs, isz) C.hb_buffer_add_utf32(self, buf, sz or #buf, iofs or 0, isz or sz or #buf) end,
+	add_utf8  = add_func(C.hb_buffer_add_utf8, 1),
+	add_utf16 = add_func(C.hb_buffer_add_utf16, 2),
+	add_utf32 = add_func(C.hb_buffer_add_utf32, 4),
+	add_codepoints = add_func(C.hb_buffer_add_codepoints, 4),
 
 	set_length = C.hb_buffer_set_length, --length
 	get_length = C.hb_buffer_get_length,
