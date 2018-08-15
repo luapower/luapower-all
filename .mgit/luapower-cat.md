@@ -111,6 +111,7 @@ tagline: package categories
 	* [lua-headers]
 	* [shm]
 * Development Tools
+	* [inspect]
 	* [cplayer]
 	* [gfonts]
 	* [hash_benchmark]
