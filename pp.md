@@ -36,6 +36,7 @@ Fast, compact serialization producing portable Lua source code.
 
 ## Limitations
 
+  * object identity is not preserved.
   * recursive: table nesting depth is stack-bound.
   * some fractions are not compact eg. the fraction 5/6 takes 19 bytes
   vs 8 bytes in its native double format.
@@ -43,17 +44,16 @@ Fast, compact serialization producing portable Lua source code.
   featuring many newlines, tabs, zero bytes, apostrophes, backslashes
   or control characters.
   * loading back the output with the Lua interpreter is not safe.
-  * object identity is not preserved.
 
 ## API
 
-### `pp.print(v1, ...)`
 ### `pp(v1, ...)`
 
 Print the arguments to standard output.
-Only tables are pretty-printed, everything else goes unfiltered.
+Only tables are pretty-printed, everything else gets printed raw.
 Cycle detection, indentation and sorting of keys are enabled in this mode.
 Unserializable values get a comment in place.
+Functions are skipped entirely.
 
 ### `pp.write(write, v, options...)`
 
@@ -68,6 +68,8 @@ The options can be given in a table or as separate args:
   * `onerror` - enable error handling eg. `function(err_type, v, depth)
   error(err_type..': '..tostring(v)) end`
   * `sort_keys` - sort keys to get deterministic output.
+  * `filter` - filter keys, values or key/value combinations:
+  `filter(v[, k]) -> true|false`
 
 __Example:__
 
@@ -83,10 +85,17 @@ for s in chunks(t) do
 end
 ~~~
 
-### `pp.save(file, v, options...)`
+### `pp.save(path, v, options...)`
 
 Pretty-print a value to a file.
 
+### `pp.stream(f, v, options...)`
+
+Pretty-print a value to an opened file.
+
+### `pp.print(v, options...)`
+
+Pretty-print a value to `io.stdout`.
 
 ### `pp.format(v, options...) -> s`
 
