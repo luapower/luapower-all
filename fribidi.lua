@@ -26,7 +26,7 @@ fb.bidi_type = C.fribidi_get_bidi_type
 fb.bidi_types = C.fribidi_get_bidi_types
 fb.bidi_type_name = str_func(C.fribidi_get_bidi_type_name)
 
---arabic joining (deprecated)
+--arabic joining (deprecated; use harfbuzz instead)
 
 fb.joining_type = C.fribidi_get_joining_type
 fb.joining_types = C.fribidi_get_joining_types
@@ -34,7 +34,7 @@ fb.joining_type_name = str_func(C.fribidi_get_joining_type_name)
 
 fb.join_arabic = C.fribidi_join_arabic
 
---mirroring shaping
+--mirroring shaping (deprecated; use harfbuzz instead)
 
 local c1 = 'FriBidiChar[1]'
 function fb.mirror_char(c)
@@ -49,13 +49,13 @@ fb.shape_mirroring = C.fribidi_shape_mirroring
 fb.bracket = C.fribidi_get_bracket
 fb.bracket_types = C.fribidi_get_bracket_types
 
---arabic shaper (deprecated)
+--arabic shaper (deprecated; use harfbuzz instead)
 
 fb.shape_arabic = C.fribidi_shape_arabic
 
---shaping
+--shaping (deprecated; use harfbuzz instead)
 
-fb.shape = C.fribidi_shape --calls shape_mirroring and shape_arabic
+fb.shape = C.fribidi_shape --just calls shape_mirroring() and shape_arabic()
 
 --bidi algorithm
 
@@ -83,7 +83,7 @@ function fb.par_embedding_levels(
 	return max_level > 0 and max_level - 1, par_base_dir_out[0]
 end
 
---line reordering (deprecated)
+--line reordering (deprecated; see tr_shape_reorder.lua)
 
 function fb.reorder_line(...)
 	local max_level = C.fribidi_reorder_line(...)
