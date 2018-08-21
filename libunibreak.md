@@ -5,8 +5,8 @@ tagline: Unicode line breaking
 ## `local ub = require'libunibreak'`
 
 A ffi binding to [libunibreak][libunibreak lib], a C library implementing
-the [Unicode line breaking algorithm][tr14] and word breaking
-from [Unicode text segmentation][tr29].
+the [Unicode Line Breaking Algorithm][tr14] and word breaking
+from [Unicode Text Segmentation][tr29].
 
 ## Line breaking
 
@@ -23,7 +23,7 @@ from [Unicode text segmentation][tr29].
 * `'ru'`: Russian
 * `'zh'`: Chinese
 
-...with or without the `'-strict'` suffix.
+...with or without the `'-strict'` suffix (see [CJ section on ULBA][tr14]).
 
 The returned `line_breaks` is a 0-based array of flags, one for each byte
 of the input string:
