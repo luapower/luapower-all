@@ -103,21 +103,13 @@ function glue.merge(dt,...)
 	return dt
 end
 
---scan list for value.
-function glue.indexof(v, t)
-	for i=1,#t do
-		if t[i] == v then
-			return i
-		end
-	end
-end
-
 --extend a list with the elements of other lists.
 function glue.extend(dt,...)
 	for j=1,select('#',...) do
 		local t=select(j,...)
 		if t ~= nil then
-			for i=1,#t do dt[#dt+1]=t[i] end
+			local j = #dt
+			for i=1,#t do dt[j+i]=t[i] end
 		end
 	end
 	return dt
@@ -125,8 +117,9 @@ end
 
 --append non-nil arguments to a list.
 function glue.append(dt,...)
+	local j = #dt
 	for i=1,select('#',...) do
-		dt[#dt+1] = select(i,...)
+		dt[j+i] = select(i,...)
 	end
 	return dt
 end
@@ -170,28 +163,39 @@ function glue.shift(t, i, n)
 	return t
 end
 
---reverse elements of a list in place.
-function glue.reverse(t)
-	local len = #t+1
-	for i = 1, (len-1)/2 do
-		t[i], t[len-i] = t[len-i], t[i]
+--scan list for value. works with ffi arrays too.
+function glue.indexof(v, t, i, j)
+	for i = i or 1, j or #t do
+		if t[i] == v then
+			return i
+		end
+	end
+end
+
+--reverse elements of a list in place. works with ffi arrays too.
+function glue.reverse(t, i, j)
+	i = i or 1
+	j = (j or #t) + 1
+	for k = 1, (j-i)/2 do
+		t[i+k-1], t[j-k] = t[j-k], t[i+k-1]
 	end
 	return t
 end
 
 --binary search for an insert position that keeps the table sorted.
+--works with ffi arrays too if lo and hi are provided.
 local function less(a, b) return a < b end
-function glue.binsearch(v, t, cmp)
+function glue.binsearch(v, t, cmp, lo, hi)
+	lo, hi = lo or 1, hi or #t
 	cmp = cmp or less
-	local n = #t
-	if n == 0 then return nil end
-	if n == 1 then return not cmp(t[1], v) and 1 or nil end
-	local lo, hi = 1, n
+	local len = hi - lo + 1
+	if len == 0 then return nil end
+	if len == 1 then return not cmp(t[lo], v) and lo or nil end
 	while lo < hi do
 		local mid = floor(lo + (hi - lo) / 2)
 		if cmp(t[mid], v) then
 			lo = mid + 1
-			if lo == n and cmp(t[lo], v) then
+			if lo == hi and cmp(t[lo], v) then
 				return nil
 			end
 		else
@@ -199,26 +203,6 @@ function glue.binsearch(v, t, cmp)
 		end
 	end
 	return lo
-end
-
---find something in a list with a testing function.
-function glue.find(t, f)
-	for i=1,#t do
-		local v = f(i, t[i])
-		if v ~= nil then
-			return v
-		end
-	end
-end
-
---find in reverse.
-function glue.find_reverse(t, f)
-	for i=#t,1,-1 do
-		local v = f(i, t[i])
-		if v ~= nil then
-			return v
-		end
-	end
 end
 
 --string submodule. has its own namespace which can be merged with _G.string.

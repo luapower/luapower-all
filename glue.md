@@ -25,14 +25,13 @@ __tables__
 `glue.attr(t, k1 [,v])[k2] = v`                                    autofield pattern
 `glue.tuples([n]) -> tuple(...) -> t`                              create a tuple space
 __lists__
-`glue.indexof(v, t) -> i`                                          scan array for value
 `glue.extend(dt, t1, ...) -> dt`                                   extend a list
 `glue.append(dt, v1, ...) -> dt`                                   append non-nil values to a list
 `glue.shift(t, i, n) -> t`                                         shift list elements
-`glue.reverse(t) -> t`                                             reverse list in place
-`glue.binsearch(v, t[, cmp]) -> i`                                 binary search in sorted list
-`glue.find(t, f) -> ...`                                           linear search
-`glue.find_reverse(t, f) -> ...`                                   linear search from the list end
+__arrays__
+`glue.indexof(v, t, [i], [j]) -> i`                                scan array for value
+`glue.binsearch(v, t, [cmp], [i], [j]) -> i`                       binary search in sorted list
+`glue.reverse(t, [i], [j]) -> t`                                   reverse list in place
 __strings__
 `glue.gsplit(s,sep[,start[,plain]]) -> iter() -> e[,captures...]`  split a string by a pattern
 `glue.lines(s[, opt]) -> iter() -> s`                              iterate the lines of a string
@@ -266,12 +265,6 @@ The optional `n` fixates the tuple to always use exactly `n` args.
 
 ## Lists
 
-### `glue.indexof(v, t) -> i`
-
-Scan an array (up to #t) for a value and if found, return the index.
-
-------------------------------------------------------------------------------
-
 ### `glue.extend(dt,t1,...) -> dt`
 
 Extend the list with the elements of other lists.
@@ -312,28 +305,33 @@ Removing a portion of a list or making room for more elements inside the list.
 
 ------------------------------------------------------------------------------
 
-### `glue.reverse(t) -> t`
+## Arrays
 
-Reverse a list in-place and return the input arg.
+------------------------------------------------------------------------------
 
-### `glue.binsearch(v, t[, cmp]) -> i`
+### `glue.indexof(v, t, [i], [j]) -> i`
+
+Scan an array for a value and if found, return the index.
+
+__NOTE:__ Works on ffi arrays too if `i` and `j` are provided.
+
+------------------------------------------------------------------------------
+
+### `glue.binsearch(v, t, [cmp], [i], [j]) -> i`
 
 Return the smallest index whereby inserting the value `v` in sorted list `t`
 will keep `t` sorted (i.e. `t[i-1] < v` and `t[i] >= v`). Return `nil` if `v`
 is larger than the largest value or if `t` is empty.
 
-------------------------------------------------------------------------------
-
-### `glue.find(t, f) -> v`
-
-Call `f(i, e) -> v|nil` for each element of list `t` and return the first
-non-nil value returned by `f`.
+__NOTE:__ Works on ffi arrays too if `i` and `j` are provided.
 
 ------------------------------------------------------------------------------
 
-### `glue.find_reverse(t, f) -> v`
+### `glue.reverse(t, [i], [j]) -> t`
 
-Like `glue.find()` but traverses the list in reverse order.
+Reverse a list in-place and return the input arg.
+
+__NOTE:__ Works on ffi arrays too if `i` and `j` are provided.
 
 ------------------------------------------------------------------------------
 

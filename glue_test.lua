@@ -66,6 +66,14 @@ test(remove({'a','b','c','d'}, 4, 2), {'a', 'b', 'c'}) --too many
 test(remove({'a','b','c','d'}, 5, 5), {'a', 'b', 'c', 'd'}) --from too far
 test(remove({}, 5, 5), {}) --from too far
 
+test(glue.reverse({}), {})
+test(glue.reverse({5}), {5})
+test(glue.reverse({5, 2}), {2, 5})
+test(glue.reverse({5, 2, 1}), {1, 2, 5})
+test(glue.reverse({1, 3, 7, 5, 2}), {2, 5, 7, 3, 1})
+test(glue.reverse({1, 3, 7, 5, 2}, 3), {1, 3, 2, 5, 7})
+test(glue.reverse({1, 3, 7, 5, 2}, 2, 3), {1, 7, 3, 5, 2})
+
 test(glue.binsearch(10, {}), nil)
 test(glue.binsearch(10, {11}), 1)
 test(glue.binsearch(11, {11}), 1)
