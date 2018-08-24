@@ -320,8 +320,16 @@ __NOTE:__ Works on ffi arrays too if `i` and `j` are provided.
 ### `glue.binsearch(v, t, [cmp], [i], [j]) -> i`
 
 Return the smallest index whereby inserting the value `v` in sorted list `t`
-will keep `t` sorted (i.e. `t[i-1] < v` and `t[i] >= v`). Return `nil` if `v`
+will keep `t` sorted i.e. `t[i-1] < v` and `t[i] >= v`. Return `nil` if `v`
 is larger than the largest value or if `t` is empty.
+
+The comparison function `cmp` is called as `cmp(t, i, v)` and must return
+`true` if `v < t[i]`.
+
+__TIP:__ Use a `cmp` that returns `t[i] < v` to search in a reverse-sorted list.
+
+__TIP:__ Use a `cmp` that returns `v <= t[i]` to get the largest index that
+will keep `t` sorted when inserting `v`, i.e. `t[i-1] <= v` and `t[i] > v`.
 
 __NOTE:__ Works on ffi arrays too if `i` and `j` are provided.
 

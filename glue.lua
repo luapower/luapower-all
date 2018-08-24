@@ -164,9 +164,11 @@ function glue.shift(t, i, n)
 end
 
 --scan list for value. works with ffi arrays too.
-function glue.indexof(v, t, i, j)
+local function equals(a, b) return a == b end
+function glue.indexof(v, t, eq, i, j)
+	eq = eq or equals
 	for i = i or 1, j or #t do
-		if t[i] == v then
+		if eq(t[i], v) then
 			return i
 		end
 	end
@@ -184,18 +186,18 @@ end
 
 --binary search for an insert position that keeps the table sorted.
 --works with ffi arrays too if lo and hi are provided.
-local function less(a, b) return a < b end
+local function less(t, i, b) return t[i] < b end
 function glue.binsearch(v, t, cmp, lo, hi)
 	lo, hi = lo or 1, hi or #t
 	cmp = cmp or less
 	local len = hi - lo + 1
 	if len == 0 then return nil end
-	if len == 1 then return not cmp(t[lo], v) and lo or nil end
+	if len == 1 then return not cmp(t, lo, v) and lo or nil end
 	while lo < hi do
 		local mid = floor(lo + (hi - lo) / 2)
-		if cmp(t[mid], v) then
+		if cmp(t, mid, v) then
 			lo = mid + 1
-			if lo == hi and cmp(t[lo], v) then
+			if lo == hi and cmp(t, lo, v) then
 				return nil
 			end
 		else
