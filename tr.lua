@@ -102,23 +102,27 @@ tr.PS = '\u{2029}' --paragraph separator
 tr.LS = '\u{2028}' --line separator
 
 --for use in bidi text.
-tr.LRM = '\u{200E}' --LTR mark
-tr.RLM = '\u{200F}' --RTL mark
-tr.LRE = '\u{202A}' --embedding
-tr.RLE = '\u{202B}' --embedding
+tr.LRM = '\u{200E}' --LR mark
+tr.RLM = '\u{200F}' --RL mark
+tr.LRE = '\u{202A}' --LR embedding
+tr.RLE = '\u{202B}' --RL embedding
 tr.PDF = '\u{202C}' --close LRE or RLE
-tr.LRO = '\u{202D}' --override
-tr.RLO = '\u{202E}' --override
-tr.LRI = '\u{2066}' --isolate
-tr.RLI = '\u{2067}' --isolate
-tr.FSI = '\u{2068}'
-tr.PDI = '\u{2069}' --close RLI, LRI, FSI
+tr.LRO = '\u{202D}' --LR override
+tr.RLO = '\u{202E}' --RL override
+tr.LRI = '\u{2066}' --LR isolate
+tr.RLI = '\u{2067}' --RL isolate
+tr.FSI = '\u{2068}' --first-strong isolate
+tr.PDI = '\u{2069}' --close RLI, LRI or FSI
 
 --line wrapping control.
 tr.NBSP   = '\u{00A0}' --non-breaking space
 tr.ZWSP   = '\u{200B}' --zero-width space (i.e. soft-wrap mark)
 tr.ZWNBSP = '\u{FEFF}' --zero-width non-breaking space (i.e. nowrap mark)
-tr.FSP    = '\u{2007}' --figure non-breaking space (for separating digits)
+
+--spacing control.
+tr.FIGURE_SP = '\u{2007}' --figure non-breaking space (for separating digits)
+tr.THIN_SP   = '\u{2009}' --thin space
+tr.HAIR_SP   = '\u{200A}' --hair space
 
 --font management ------------------------------------------------------------
 

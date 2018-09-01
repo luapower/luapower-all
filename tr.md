@@ -4,7 +4,8 @@
 Text shaping and rendering engine for multi-language Unicode text using
 portable technologies exclusively for pixel-perfect consistent output
 across platforms. Uses [harfbuzz] for complex text shaping, [fribidi] for
-bidirectional text and [freetype] for glyph rasterization.
+bidirectional text and [freetype] for glyph rasterization. This is the lib
+used for [ui] and all text rendering in luapower.
 
 ### Features
 
@@ -28,8 +29,6 @@ bidirectional text and [freetype] for glyph rasterization.
   * letter spacing
   * vertical layout
 
-Note: this is a support lib for [ui] but can be used standalone.
-
 ### API
 
 ---------------------------------------------------- ------------------------------------
@@ -42,7 +41,7 @@ Note: this is a support lib for [ui] but can be used standalone.
 `segs:layout(x, y, w, h, [ha], [va]) -> segs`        layout shaped text
 `segs:paint(cr)`                                     paint laid out text
 `tr:textbox(text_tree, cr, x, y, w, h, [ha], [va])`  shape, layout and paint text
-`segs:cursor()
+`segs:cursor() -> cursor`
 ---------------------------------------------------- ------------------------------------
 
 ### `tr:add_font_file(file, name, [slant], [weight])`
