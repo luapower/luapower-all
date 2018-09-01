@@ -164,12 +164,20 @@ function glue.shift(t, i, n)
 end
 
 --scan list for value. works with ffi arrays too.
-local function equals(a, b) return a == b end
 function glue.indexof(v, t, eq, i, j)
-	eq = eq or equals
-	for i = i or 1, j or #t do
-		if eq(t[i], v) then
-			return i
+	i = i or 1
+	j = j or #t
+	if eq then
+		for i = i, j do
+			if eq(t[i], v) then
+				return i
+			end
+		end
+	else
+		for i = i, j do
+			if t[i] == v then
+				return i
+			end
 		end
 	end
 end
@@ -752,12 +760,13 @@ local ffi = require'ffi'
 --static, auto-growing buffer allocation pattern.
 function glue.growbuffer(ctype)
 	local ctype = ffi.typeof(ctype or 'char[?]')
-	local buf
-	local len = -1
+	local buf, len = nil, -1
 	return function(newlen)
-		if newlen > len then
+		if not newlen then
+			buf, len = nil, -1
+		elseif newlen > len then
 			len = newlen
-			buf = ffi.new(ctype, len)
+			buf = ctype(len)
 		end
 		return buf, newlen
 	end

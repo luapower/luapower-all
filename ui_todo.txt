@@ -1,16 +1,5 @@
 LOW-LEVEL --------------------------------------------------------------------
 
-- text rendering & shaping
-
-	- text shaping
-		- text shaping
-		- unicode grapheme splitting
-
-	- glyph cache keyed on (font, font_size, glyph_index, x_offset, rotation_angle)
-		- x_offset step configurable from 0 to 1/256
-		- use freetype's caching system?
-		- glyph rasterization options
-
 - finish libpng
 	- revive imagefile (libjpeg, libpng, bmp)
 		- revive sg_*
@@ -41,8 +30,6 @@ EDITBOX ----------------------------------------------------------------------
 
 - fix editbox->editor/view/cursor/selection property proxying
 
-- word-wrapping (greedy, knuth)
-- unicode chars (shaping)
 - drag/drop
 - IME integration
 
@@ -272,4 +259,18 @@ end
 	end
 
 ]]
+
+RTL --------------------------------------------------------------------------
+
+- menu bar right alignment and reverse item order
+- tablist right alignment and reverse item order
+- menu right alignment
+- button bar right alignment and mirror specific mirrorable icons
+- status bar reverse item order
+- use auto-reversible hierarchical flow layouts to layout:
+	- label + actionable pairs, eg:
+		- label + editbox combinations
+		- icon + title + x-button on tablist items
+	- a row of buttons
+	- entire sections of the UI
 

@@ -5,11 +5,14 @@
 if not ... then require'harfbuzz_demo'; return end
 
 local ffi = require'ffi'
+local bit = require'bit'
 require'harfbuzz_h'
 require'harfbuzz_ot_h'
 require'harfbuzz_ft_h'
 local C = ffi.load'harfbuzz'
 local hb = {C = C}
+
+local band = bit.band
 
 --wrappers
 
@@ -45,25 +48,28 @@ local function string_func(func)
 	end
 end
 
-function from_string_func(func)
+function from_string_func(func, badret)
 	return function(s)
 		if type(s) == 'string' then
-			local s = func(s, #s)
-			if s == 0 then return nil end
+			local c = func(s, #s)
+			return c ~= badret and c or nil
+		else
+			return s
 		end
-		return s
 	end
 end
 
 function obj_from_string_func(func, obj_type)
+	obj_type = ffi.typeof(obj_type)
 	return function(s, obj)
-		obj = obj or ffi.new(obj_type)
+		obj = obj or obj_type()
 		if type(s) == 'string' then
 			local ret = func(s, #s, obj)
 			if ret == 0 then return nil end
 			return obj
+		else
+			return s
 		end
-		return s
 	end
 end
 
@@ -116,16 +122,16 @@ end
 
 --tags, languages, directions, scripts (static objects)
 
-hb.tag = from_string_func(C.hb_tag_from_string)
+hb.tag = from_string_func(C.hb_tag_from_string, 0)
 
 hb.tag_tostring = string_func(function(tag)
 	C.hb_tag_to_string(tag, strbuf)
 	return strbuf
 end)
-hb.direction = from_string_func(C.hb_direction_from_string)
+hb.direction = from_string_func(C.hb_direction_from_string, 0)
 hb.direction_tostring = string_func(C.hb_direction_to_string)
 
-hb.language = from_string_func(C.hb_language_from_string)
+hb.language = from_string_func(C.hb_language_from_string, nil)
 hb.language_tostring = string_func(C.hb_language_to_string)
 hb.default_language = C.hb_language_get_default
 
@@ -137,7 +143,7 @@ function hb.script(s)
 		local script = C.hb_script_from_iso15924_tag(s)
 		if script == 0 then return nil end
 	end
-	return script
+	return s
 end
 hb.script_to_tag = C.hb_script_to_iso15924_tag --output == input
 hb.script_horizontal_direction = C.hb_script_get_horizontal_direction
@@ -282,7 +288,7 @@ local function growbuffer(ctype)
 	return function(newlen)
 		if newlen > len then
 			len = newlen
-			buf = ffi.new(ctype, len)
+			buf = ctype(len)
 		end
 		return buf, newlen
 	end
@@ -344,7 +350,7 @@ ffi.metatype('hb_font_t', {__index = {
 		C.hb_shape(font, buffer, features, num_features or 0)
 	end,
 	shape_full = function(font, buffer, features, num_features, shaper_list)
-		return C.hb_shape_full(font, buffer, features, num_features or 0, shaper_list)
+		return C.hb_shape_full(font, buffer, features, num_features or 0, shaper_list) == 1
 	end,
 
 	--from hb-ot.h
@@ -453,6 +459,12 @@ ffi.metatype('hb_shape_plan_t', {__index = {
 
 	--from hb-ot.h
 	collect_lookups = C.hb_ot_shape_plan_collect_lookups,
+}})
+
+ffi.metatype('hb_glyph_info_t', {__index = {
+	unsafe_to_break = function(glyph_info, i)
+		return band(glyph_info[i].mask, C.HB_GLYPH_FLAG_UNSAFE_TO_BREAK) ~= 0
+	end,
 }})
 
 return hb

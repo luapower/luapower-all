@@ -477,6 +477,26 @@ function lib.render_outline(library, outline, params)
 	checknz(C.FT_Outline_Render(library, outline, params))
 end
 
+--matrix methods not included in freetype
+
+local matrix = {}
+
+function matrix:reset(...)
+	self.xx, self.yx, self.xy, self.yy = 64, 0, 0, 64
+	return self
+end
+
+function matrix:rotate(a)
+	local s = math.sin(a) * 64
+	local c = math.cos(a) * 64
+	self.xx, self.yx, self.xy, self.yy =
+		 c * self.xx + s * self.xy,
+		 c * self.yx + s * self.yy,
+		-s * self.xx + c * self.xy,
+		-s * self.yx + c * self.yy
+	return self
+end
+
 --methods
 
 ffi.metatype('struct FT_LibraryRec_', {__index = lib})
@@ -486,5 +506,6 @@ ffi.metatype('struct FT_GlyphRec_', {__index = glyph})
 ffi.metatype('struct FT_CharMapRec_', {__index = charmap})
 ffi.metatype('struct FT_Bitmap_', {__index = bitmap})
 ffi.metatype('struct FT_Outline_', {__index = outline})
+ffi.metatype('struct FT_Matrix_', {__index = matrix})
 
 return freetype

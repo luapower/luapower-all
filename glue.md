@@ -324,12 +324,14 @@ will keep `t` sorted i.e. `t[i-1] < v` and `t[i] >= v`. Return `nil` if `v`
 is larger than the largest value or if `t` is empty.
 
 The comparison function `cmp` is called as `cmp(t, i, v)` and must return
-`true` if `v < t[i]`.
+`true` when `v < t[i]`.
 
-__TIP:__ Use a `cmp` that returns `t[i] < v` to search in a reverse-sorted list.
+__TIP:__ Use a `cmp` that returns `true` when `t[i] < v` to search in a
+reverse-sorted list.
 
-__TIP:__ Use a `cmp` that returns `v <= t[i]` to get the largest index that
-will keep `t` sorted when inserting `v`, i.e. `t[i-1] <= v` and `t[i] > v`.
+__TIP:__ Use a `cmp` that returns `true` when `v <= t[i]` to get the largest
+index that will keep `t` sorted when inserting `v`,
+i.e. `t[i-1] <= v` and `t[i] > v`.
 
 __NOTE:__ Works on ffi arrays too if `i` and `j` are provided.
 
@@ -842,11 +844,12 @@ Lua objects. The allocator returns the last freed object or calls `create()`
 to create a new one if the freelist is empty. `create` defaults to
 `function() return {} end`; `destroy` defaults to `glue.noop`.
 
-### `glue.growbuffer([ctype]) -> alloc(len) -> buf, len`
+### `glue.growbuffer([ctype]) -> alloc(len|false) -> buf, len`
 
 Return an allocation function which reallocates or reuses an internal static
 buffer. Good for allocating small but otherwise var-sized temporary buffers
-without stressing the garbage collector.
+without stressing the garbage collector. Calling `alloc(false)` frees the
+internal buffer (alloc can still be used afterwards).
 
 > __NOTE__: LuaJIT only.
 

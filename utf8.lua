@@ -9,9 +9,14 @@ local bit = require'bit'
 local band, shl, shr = bit.band, bit.lshift, bit.rshift
 local utf8 = {}
 
-local function tobuf(s, len)
+local uint32_array = ffi.typeof'uint32_t[?]'
+local uint8_array = ffi.typeof'uint8_t[?]'
+local uint32_ptr = ffi.typeof'const uint32_t*'
+local uint8_ptr = ffi.typeof'const uint8_t*'
+
+local function tobuf(s, len, ct, sizeof_ct)
 	if type(s) == 'string' then
-		return s, ffi.cast('const uint8_t*', s), #s
+		return s, ffi.cast(ct or uint8_ptr, s), #s / (sizeof_ct or 1)
 	else
 		return nil, s, len
 	end
@@ -125,7 +130,7 @@ function utf8.decode(buf, len, out, outlen, repl)
 	local _, buf, len = tobuf(buf, len)
 	if out == nil then
 		outlen = outlen or utf8.decode(buf, len, false, nil, repl)
-		out = ffi.new('uint32_t[?]', outlen)
+		out = uint32_array(outlen + 1)
 	end
 	local j, p, i = 0, 0, 0
 	while true do
@@ -213,10 +218,10 @@ local function encode_char(c, repl)
 end
 
 function utf8.encode(buf, len, out, outlen, repl)
-	local _, buf, len = tobuf(buf, len)
+	local _, buf, len = tobuf(buf, len, uint32_ptr, 4)
 	if out == nil then --allocate output buffer
 		outlen = outlen or utf8.encode(buf, len, false, nil, repl)
-		out = ffi.new('uint8_t[?]', outlen)
+		out = uint8_array(outlen + 1)
 	elseif not out then --compute output length
 		return byte_count(buf, len, repl)
 	end

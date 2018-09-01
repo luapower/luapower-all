@@ -10,6 +10,8 @@ require'fribidi_h'
 local C = ffi.load'fribidi'
 local fb = {C = C}
 
+local band, bor = bit.band, bit.bor
+
 fb.version_info = ffi.string(C.fribidi_version_info)
 fb.unicode_version = ffi.string(C.fribidi_unicode_version)
 
@@ -25,6 +27,11 @@ end
 fb.bidi_type = C.fribidi_get_bidi_type
 fb.bidi_types = C.fribidi_get_bidi_types
 fb.bidi_type_name = str_func(C.fribidi_get_bidi_type_name)
+
+--macros (many more at the end of fribidi_h, convert as needed)
+function fb.IS_EXPLICIT_OR_BN_OR_WS(p)
+	return band(p, bor(C.FRIBIDI_MASK_EXPLICIT, C.FRIBIDI_MASK_BN, C.FRIBIDI_MASK_WS)) ~= 0
+end
 
 --arabic joining (deprecated; use harfbuzz instead)
 
@@ -219,7 +226,7 @@ function fb.log2vis(str, len, charset, buffers, flags, par_base_dir, line_offset
    fb.joining_types(str, len, b.ar_props)
 	fb.join_arabic(b.bidi_types, len, b.levels, b.ar_props)
 
-	local flags = flags or bit.bor(
+	local flags = flags or bor(
 		C.FRIBIDI_FLAGS_DEFAULT,
 		C.FRIBIDI_FLAGS_ARABIC)
 
