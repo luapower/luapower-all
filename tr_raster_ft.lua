@@ -148,7 +148,6 @@ function font:setsize(size)
 	self.scale = scale
 	local ft_scale = scale / 64
 	local m = self.ft_face.size.metrics
-	self.height = m.height * ft_scale
 	self.ascent = m.ascender * ft_scale
 	self.descent = m.descender * ft_scale
 	self:size_changed()
@@ -337,20 +336,20 @@ function rs:load_glyph_metrics(font, font_size, glyph_index)
 	if not ft_glyph then
 		return empty_glyph_metrics
 	end
-	local glyph = {}
+	local m = {}
 	local ft_scale = font.scale / 64
-	glyph.w = ft_glyph.metrics.width * ft_scale
-	glyph.h = ft_glyph.metrics.height * ft_scale
-	glyph.hlsb = ft_glyph.metrics.horiBearingX * ft_scale
-	glyph.htsb = ft_glyph.metrics.horiBearingY * ft_scale
-	glyph.vlsb = ft_glyph.metrics.vertBearingX * ft_scale
-	glyph.vtsb = ft_glyph.metrics.vertBearingY * ft_scale
-	glyph.mem_size = 4 * 8 + 40 --cache load
+	m.w = ft_glyph.metrics.width * ft_scale
+	m.h = ft_glyph.metrics.height * ft_scale
+	m.hlsb = ft_glyph.metrics.horiBearingX * ft_scale
+	m.htsb = ft_glyph.metrics.horiBearingY * ft_scale
+	m.vlsb = ft_glyph.metrics.vertBearingX * ft_scale
+	m.vtsb = ft_glyph.metrics.vertBearingY * ft_scale
+	m.mem_size = 4 * 8 + 40 --cache load
 	font:ref()
-	function glyph:free()
+	function m:free()
 		font:unref()
 	end
-	return glyph
+	return m
 end
 
 function rs:glyph_metrics(font, font_size, glyph_index)

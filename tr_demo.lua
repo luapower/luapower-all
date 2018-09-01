@@ -9,28 +9,9 @@ local color = require'color'
 
 local tr = tr()
 
-nw:app():maxfps(1/0)
-
-local function fps_function()
-	local count_per_sec = 2
-	local frame_count, last_frame_count, last_time = 0, 0
-	return function()
-		last_time = last_time or time.clock()
-		frame_count = frame_count + 1
-		local time = time.clock()
-		if time - last_time > 1 / count_per_sec then
-			last_frame_count, frame_count = frame_count, 0
-			last_time = time
-		end
-		return last_frame_count * count_per_sec
-	end
-end
-
-local fps = fps_function()
-
 local win = nw:app():window{
 	x = 100, y = 60,
-	w = 1800, h = 900,
+	w = 550, h = 900,
 	--w = 800, h = 600,
 }
 
@@ -46,6 +27,9 @@ local function gfont(name)
 end
 
 gfont'eb garamond'
+gfont'eb garamond italic'
+gfont'eb garamond bold'
+gfont'eb garamond bold italic'
 gfont'dancing script'
 gfont'open sans'
 gfont'open sans italic'
@@ -67,6 +51,7 @@ font'media/fonts/amiri-regular.ttf'
 local function rect(cr, col, x, y, w, h)
 	local r, g, b, a = color.parse(col, 'rgb')
 	cr:save()
+	cr:new_path()
 	cr:rectangle(x, y, w, h)
 	cr:line_width(1)
 	cr:rgba(r, g, b, a or 1)
@@ -74,9 +59,45 @@ local function rect(cr, col, x, y, w, h)
 	cr:restore()
 end
 
+local function triangle(cr, col, x, y, w, angle)
+	local r, g, b, a = color.parse(col, 'rgb')
+	angle = math.rad(angle)
+	local h = math.sqrt(3) / 2 * w
+	cr:save()
+	cr:new_path()
+	cr:translate(x, y)
+	cr:rotate(angle)
+	cr:translate(-w/2, -h)
+	cr:move_to(0, 0)
+	cr:rel_line_to(w, 0)
+	cr:rel_line_to(-w/2, h)
+	cr:close_path()
+	cr:rgba(r, g, b, a or 1)
+	cr:fill()
+	cr:restore()
+end
+
+local function straightline(cr, col, x, y, x2, y2)
+	local r, g, b, a = color.parse(col, 'rgb')
+	cr:save()
+	cr:new_path()
+	cr:move_to(x, y)
+	cr:line_to(x2, y2)
+	cr:line_width(1)
+	cr:rgba(r, g, b, a or 1)
+	cr:stroke()
+	cr:restore()
+end
+
+local function vector(cr, col, x, y, x2, y2)
+	straightline(cr, col, x, y, x2, y2)
+	triangle(cr, col, x2, y2, 8, -90 + math.deg(math.atan2(y2-y, x2-x)))
+end
+
 local function dot(cr, col, x, y, size)
 	local r, g, b, a = color.parse(col, 'rgb')
 	cr:save()
+	cr:new_path()
 	cr:circle(x, y, size or 5)
 	cr:rgba(r, g, b, a or 1)
 	cr:fill()
@@ -85,12 +106,13 @@ end
 
 local text = require'glue'.readfile('winapi_history.md')
 
-function win:repaint()
-	self:title(string.format('%d fps', fps()))
+local segs, lines, cursor
 
+function win:repaint()
 	local cr = self:bitmap():cairo()
 	--cr:rgb(1, 1, 1); cr:paint(); cr:rgb(0, 0, 0)
 	cr:rgb(0, 0, 0); cr:paint(); cr:rgb(1, 1, 1)
+	--cr:identity_matrix():rotate_around(500, 400, math.rad(-30))
 
 	local t0 = time.clock()
 
@@ -112,90 +134,197 @@ function win:repaint()
 		local x, y, w, h = box2d.offset(-50, 0, 0, win:client_size())
 		rect(cr, '#888', x, y, w, h)
 
-		self.segs = self.segs or tr:shape{
-			line_spacing = 1.5,
-			--dir = 'rtl',
+		local t = {
+			line_spacing = 1.2,
+			paragraph_spacing = 1.5,
 			--{'A'},
-			{
-				line_spacing = 1.2,
-				font_name = 'amiri,120',
+			font_name = 'amiri,100',
+			--font_name = 'eb garamond, 50',
 
-				--font_name = 'eb garamond, 200',
+			--'abc', 'def', 'ghi',
+
+			--'mff\n12',
+
+			--{font_size = 30, 'We find \u{202B}פעילות הבינאום\u{202C}\u{200E} 5 times.\n'},
+
+			--'פעילות ABC הבינאום',
+			--'ABC DEF \nGHI\n',
+
+			--'مفاتيح ABC DEF\n',
+			--dir = 'rtl',
+			--'ABC DEF السَّلَامُ عَلَيْكُمْ مفاتيح ',
+			--'السَّلَامُ عَلَيْكُمْ',
+			'ffi السَّلَامُ',
+
+			--dir = 'rtl', 'مفاتيح ABC', '\u{2029}', {dir = 'ltr', 'مفاتيح ABC'},
+			--'XXX פעילות ABC הבינאום DEF',
+
+			--'مفاتيح 123 456 مفاتيح abc',
+			--{'المفاتي','ح\n'},
+			--{color = '#ff0', 'ال  ( مف ) اتيح', font_size = 81},
+			--'\r\n',
+			--{color = '#f6f', '  A(B)C  .  المفاتيح  '},
+
+			--'\u{2029}', --paragraph split
+
+			--{
+			--line_spacing = 1,
+
+				--'abc    def       ghi   123   xxx',
+
+				features = 'smcp liga=1 +kern',
+
+				--{'f'},{color = '#ff0','f'},{'i'},
+				--'Td', 'fb\n',
+				--{'Td'}, {color = '#ff0', 'f'}, {color = '#0ff', 'f'}, {color = '#f0f', 'i'}, {'b\n'}, 'abc def ghi',
+				--' abc',
+				--'abc', {'def\n'}, 'ABC 123',
+				--t=0,
+				--{t=1, nowrap = true, 'abc def'}, ' xyz ',
+				--{t=2, nowrap = true, '12 abc 789'}, ' zyz', {x = 20, y = -30, font_size = 40, '2'},
+				--{t=3, nowrap = true, 'ABC def GH'},
+
 				--font_name = 'open sans, 200',
-				--'خمسة المفاتيح'
 
 				--multiple glyphs with the same cluster value
 				--{'\x15\x09\0\0\x4D\x09\0\0\x15\x09\0\0\x3F\x09\0\0\x15\x09\0\0', charset = 'utf32'},
 				--{'\x15\x09\0\0\x4D\x09\0\0\x15\x09\0\0\x3F\x09\0\0\x15\x09\0\0', charset = 'utf32'},
-				--'BDgt \u{65}\u{301}ffi fi D\r\nTd  VA Dg'
-			},
-			--{font_name = 'amiri,200', 'خمسة المفاتيح ABC\n'},
-			{font_name = 'eb garamond, 200', 'fa AVy ffi fl lg MM f\nDEF EF F D glm\n'},
+
+				--'\u{65}\u{301}ff',
+				--'i fi mTm\n\n', {i=1, 'VA', {b=1, 'Dg', {i=false, 'dT\n'}}},
+			--},
+
+			--{font_name = 'eb garamond, 100', 'ffix xfl ffi fl\n'},
+			--{font_name = 'amiri, 100', 'ffix xfl ffi fl'},
+
 			--{font_name = 'NotoColorEmoji,34', ('\xF0\x9F\x98\x81'):rep(3)},
 		}
-		self.lines = self.segs:layout(x, y, w, h, 'center', 'middle')
-		self.lines:paint(cr)
 
-		local x = self.lines.x
-		local y = self.lines.y + self.lines.baseline
-		for i,line in ipairs(self.lines) do
+		--[[
+		local utf8 = require'utf8'
+		local ffi = require'ffi'
+		local s,len = utf8.decode'السَّلَامُ'
+		local t = {font_name = 'amiri,100'}
+		for i=1,10 do
+			local cp = ffi.string(s+i-1, 4)
+			t[i] = {charset = 'utf32', text_len = 1, cp}
+		end
+		]]
+
+		segs = segs or tr:shape(t)
+		segs:layout(x, y, w, h, 'center', 'middle')
+		segs:paint(cr)
+
+		local lines = segs.lines
+		local x = lines.x
+		local y = lines.y + lines.baseline
+		for i,line in ipairs(lines) do
 			local hit = self.hit_line_i == i
 			local x = x + line.x
 			local y = y + line.y
-			rect(cr, hit and '#f22' or '#222', x + line.hlsb, y, line.w, -line.spacing_ascent)
-			rect(cr, hit and '#f22' or '#022', x + line.hlsb, y, line.w, -line.spacing_descent)
-			rect(cr, hit and '#fff' or '#888', x + line.hlsb, y, line.w, -line.ascent)
-			rect(cr, hit and '#0ff' or '#088', x + line.hlsb, y, line.w, -line.descent)
-			dot(cr, '#ff0', x + line.advance_x, y, 10)
+			rect(cr, hit and '#f22' or '#222', x, y, line.advance_x, -line.spacing_ascent)
+			rect(cr, hit and '#f22' or '#022', x, y, line.advance_x, -line.spacing_descent)
+			rect(cr, hit and '#fff' or '#888', x, y, line.advance_x, -line.ascent)
+			rect(cr, hit and '#0ff' or '#088', x, y, line.advance_x, -line.descent)
+			dot(cr, '#fff', x, y, 6)
+			dot(cr, '#ff0', x + line.advance_x, y, 6)
 			local ax = x
 			local ay = y
 			for i,seg in ipairs(line) do
 				local run = seg.glyph_run
-				local hit = hit and self.hit_seg_i == i
-				rect(cr, hit and '#f00' or '#555', ax + run.hlsb, ay + run.htsb, run.w, run.h)
-				dot(cr, '#f0f', ax, ay, 6)
-				dot(cr, '#f0f', ax + run.advance_x, ay, 6)
-				for i = 0, run.len-1 do
-					local px, py = run:glyph_pos(i)
-					local hit = hit and self.hit_glyph_i == i
-					local m = run:glyph_metrics(i)
-					dot(cr, '#0ff', ax + px, ay + py, 3)
-					if hit then
-						rect(cr, '#fff', ax + px - 1, ay, 2, -line.ascent)
+				local hit = hit and self.hit_seg == seg
+				--rect(cr, hit and '#f00' or '#555', ax + run.hlsb, ay + run.htsb, run.w, run.h)
+				dot(cr, '#f0f', ax, ay, 4)
+				dot(cr, '#0f0', ax + seg.advance_x, ay, 5)
+				--dot(cr, '#fff', ax + run.hlsb, ay + run.htsb, 4)
+				do
+					local ay = ay + (seg.index - 1) * 10
+					if run.rtl then
+						vector(cr, '#f00', ax + seg.advance_x, ay, ax, ay + 10)
+					else
+						vector(cr, '#66f', ax, ay, ax + seg.advance_x, ay + 10)
 					end
 				end
-				local hit = hit and self.hit_glyph_i == run.len
-				if hit then
-					rect(cr, '#fff', ax + run.advance_x - 1, ay, 2, -line.ascent)
+				for i = 0, run.text_len do
+					local cx = seg.offset_x + run.cursor_xs[i]
+					local px = ax + cx
+					local hit = hit and self.hit_cursor_i == i
+					dot(cr, '#0ff', px, ay, 2)
 				end
-				ax = ax + run.advance_x
+				for i = 0, run.len do
+					local glyph_index = run.info[i].codepoint
+					local px = i > 0 and run.pos[i-1].x_advance / 64 or 0
+					local ox = run.pos[i].x_offset / 64
+					local oy = run.pos[i].y_offset / 64
+					dot(cr, '#ff0', ax + seg.offset_x + px + ox, ay - oy, 3)
+				end
+				ax = ax + seg.advance_x
 			end
 		end
 
-		--graphemebreaks = realloc(graphemebreaks, 'char[?]', len)
-		--ub.graphemebreaks(vstr + i, len, lang, graphemebreaks + i)
+		if self.hit_cursor_i then
+			local x, y, h = lines:cursor_pos(self.hit_seg, self.hit_cursor_i)
+			rect(cr, '#f00', x-4, y, 8, h)
+		end
 
+		cursor = cursor or segs:cursor()
+		local x, y, h, rtl = cursor:pos()
+		vector(cr, '#fff', x, y, x, y+h)
+		local w = (rtl and 10 or -10)
+		triangle(cr, '#fff', x-w*.8, y, w, 90)
 	end
 
-	--local s = (time.clock() - t0)
-	--print(string.format('%0.2f ms    %d fps', s * 1000, 1 / s))
-	--print(string.format('word  cache size:  %d KB', tr.glyph_runs.total_size / 1024))
-	--print(string.format('word  count:       %d   ', tr.glyph_runs.lru.length))
-	--print(string.format('glyph cache size:  %d KB', tr.rs.glyphs.total_size / 1024))
-	--print(string.format('glyph count:       %d   ', tr.rs.glyphs.lru.length))
-	--self:invalidate()
 end
 
 function win:mousemove(mx, my)
-	if not self.lines then return end
-	self.hit_line_i,
-	self.hit_seg_i,
-	self.hit_glyph_i,
-	self.hit_text_run,
-	self.hit_text_i =
-		self.lines:hit_test(mx, my)
-	self:invalidate()
+	if lines then
+		self.hit_line_i, self.hit_seg, self.hit_cursor_i = lines:hit_test(mx, my)
+		if cursor then
+			cursor:move_to(mx, my)
+		end
+		self:invalidate()
+	end
 end
+
+function win:keypress(key)
+	if not cursor then return end
+
+	if key == 'k' then
+		require'inspect'({tr, lines}, {
+			process = function(v)
+				if v == '_next' or v == '_prev' then return end
+				return v
+			end,
+		})
+	elseif key == 'enter' then
+
+		for seg_i,seg in ipairs(segs) do
+			local run = seg.glyph_run
+			for i=1,#run.cursor_offsets do
+				print(seg_i, seg.offset + run.cursor_offsets[i], run.cursor_xs[i])
+			end
+		end
+
+	end
+
+	if key == 'right' or key == 'left' then
+		cursor:move('horiz', key == 'right' and 1 or -1)
+		self:invalidate()
+		local t = {}
+		for i = 0, cursor.seg.glyph_run.len do
+			t[#t+1] = cursor.seg.glyph_run.cursor_xs[i]
+		end
+		print(cursor.offset, cursor.seg.index, cursor.cursor_i,
+			cursor.seg.glyph_run.cursor_xs[cursor.cursor_i], pp.format(t))
+	elseif key == 'up' then
+		cursor:move('vert', -1)
+		self:invalidate()
+	elseif key == 'down' then
+		cursor:move('vert', 1)
+		self:invalidate()
+	end
+end
+
 
 nw:app():run()
 

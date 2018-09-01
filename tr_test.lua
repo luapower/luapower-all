@@ -42,3 +42,8 @@ end
 
 local s = (time.clock() - t0) / n
 print(string.format('%0.2f ms    %d fps', s * 1000, 1 / s))
+
+print(string.format('word  cache size:  %d KB', tr.glyph_runs.total_size / 1024))
+print(string.format('word  count:       %d   ', tr.glyph_runs.lru.length))
+print(string.format('glyph cache size:  %d KB', tr.rs.glyphs.total_size / 1024))
+print(string.format('glyph count:       %d   ', tr.rs.glyphs.lru.length))

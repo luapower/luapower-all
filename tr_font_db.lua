@@ -119,7 +119,7 @@ function font_db:normalized_font_name(name)
 end
 
 --NOTE: multiple (name, weight, slant) can be registered with the same font.
---NOTE: `name' doesn't have to be a string, it can be any indexable value.
+--NOTE: `name` doesn't have to be a string, it can be any indexable value.
 function font_db:add_font(font, name, weight, slant)
 	local name, weight, slant = self:parse_font(name, weight, slant)
 	attr(attr(self.db, name or false), slant or 'normal')[weight or 400] = font

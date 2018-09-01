@@ -2,111 +2,187 @@ RESEARCH ---------------------------------------------------------------------
 
 - how does harfbuzz select charmap?
 
-FEATURES ---------------------------------------------------------------------
 
-font modifiers:
-	- bold/b..., italic/oblique/i
+FEATURES / NOW ---------------------------------------------------------------
+
+- BUG/RTL: sub-segments don't work on RTL runs.
+	- find a RTL ligature glyph.
+
+- BUG: segment.text_run is that of last sub-segment: sometimes this is a bad
+	choice eg. with `nowrap` on {nowrap=true, 'a b'},' c' which creates
+	segments 'a ','b ','c' but sub-segments 'a','b',' ','c'
+	where ' ' has nowrap=false.
+	- same problem with selecting `paragraph_spacing`
+	- need a way to distribute enclosing attributes like `p` to text_runs.
+
+- follow tabstops (for codedit)
+
+LATER ------------------------------------------------------------------------
+
+- underline / strikethrough (for accelerators and links):
+	- color, thickness, style (single, double, wavy, image), dashes.
+
+- font baseline modifiers:
+	- raise, subscript, superscript, sub, sup
+
+- halign: justify:
+	- distribute whitespace uniformly, including cursor positions.
+
+- glyph substitution:
+	- font_override text attribute for manual override.
+	- register fallback fonts for script/language and try them in order.
+	- match original font's size, weight, slant, stretch.
+	- cache the substitutions.
+
+- font size modifiers:
 	- %size, big, small
 
-- hit testing
-	- done: initial text run object + index in text + cluster len
-	- todo: count graphemes in cluster
-	- todo: compute pixel width of cluster
-	- todo: divide cluster pixel width by number of graphemes evenly
-	- todo: ... or use ligature carets if available
-	- todo: adjust cursor to closest caret boundary
-	- fix: rtl
+- font_db selector: stretch/condensed...
 
-- rtl: fix line width computation
+- p attribute:
+	- for now: use PS (makes text more portable too).
 
-- rtl: test cursor position with mirroring implications
 
-- font_variant: normal, smallcaps; smallcaps modifier
+EVEN LATER -------------------------------------------------------------------
 
-- raise: raise, subscript, superscript, sub, sup
-
-- color
-
-- opacity
+- opacity:
 	- apply on the whole run
-	- optimize to only do that if the runs are ligated
+		- optimize to only do that if the glyphs are ligated (how can we know?)
 
-- paragraph splitting at PS
+- vertical alignment top/bottom margins option:
+	- ascent/descent
+	- spacing_ascent/spacing_descent
+	- paragraph_ascent/paragraph_descent
 
-- p attribute
+- html-like markup parser with tags, attributes and escapes.
+	- how is it better than serialized Lua which is syntax-highlighted in code
+	and can be built iteratively without string concatenation?
 
-- br attribute
+- font lrucache instead of ref-counting.
+	- use two caches: count-limited mmapped fonts and size-limited heap fonts.
 
-- nowrap attribute
+- individually inheritable features:
+	- just concatenate the features string with parent's when flattening.
+		- how does harfbuzz handle duplicate features?
+
+- don't modify user-provided text_tree.
+	- currently setting metatable & __index on all subtables (good compromise).
+
+
+ADVANCED LAYOUTING -----------------------------------------------------------
+
+- vertical layouts:
+	- gravity, gravity_hint?
 
 - bug: shaping words separately breaks contextual ligatures.
 	- see: https://bugzilla.mozilla.org/show_bug.cgi?id=761442
+	- there's talk about a harfbuzz "context" option but I can't see it.
+	- this also disables some advanced features such as word kerning and
+	collision avoidance.
 
-- plaintext: follow tabstops, preserve whitespace widths.
+- allow varying the formatting attributes within a single grapheme, IOW
+allow coloring the diacritical marks differently than the base glyph.
 
-- underline / strikethrough:
-	- skip descenders (trick: use white shadow around text)
-	- color, thickness, style (single, double, wavy, image), dashes
+- underline to skip descenders:
+	- fast outline intersection algorithm + caching the results.
 
-- font_db: stretch/condensed...
-
-- halign: justify
-
-- wrapping algos: greedy, knuth
-
-- letter spacing
-	- identify breaking points (see HB_UNSAFE_TO_BREAK_HERE flag)
-	- adjust justification to include letter spacing
-
-- tabstops: width
-
-- wrap inside path
-
-- bounding box with/without ascents/descents
-
-- html-like markup parser
-
-- language/script font override
-
-- glyph substitution
-	- register fallback fonts for script/language and try them in order
-	- match original font's size, weight, slant, stretch
-	- cache the substitutions
+- knuth's line wrapping algorithm.
 
 - hyphenation: https://github.com/hunspell/hyphen (what libreoffice uses)
+	- mandatory for word-wrapping of east-asian scripts with no spaces between
+	words (Thai, Lao, Khmer, Burmese, etc.)
+		- word caching would need to be disabled for those scripts as well.
 
-- coloring half-ligatures, see hb_ot_layout_get_ligature_carets
+- letter spacing:
+	- identify breaking points (see HB_UNSAFE_TO_BREAK_HERE flag).
+	- adjust justification algorithm to include letter spacing.
 
-- rotation, translation, scale, shear, matrix for each run
+- line wrapping inside an arbitrary enclosure (path).
 
-- arbitrary path baseline
-	- same breaking points as for letter-spacing
-	- translate & rotate glyphs to match path's normals at glyph's center
+- text rotation at arbitrary angles using rotated outlines:
+	- convert glyph runs to cairo path objects and rasterize with cairo.
 
-- show hex boxes for:
-	- invalid bytes
-	- missing glyphs
-	- control characters
+- arbitrary path baseline (eg. for names on maps):
+	- same breaking points as for letter-spacing.
+	- translate & rotate glyphs to match path's normals at glyph's center.
 
-- vertical layouts
-	- gravity, gravity_hint?
-
-- advanced arbitrary path baseline
+- advanced arbitrary path baseline (i.e. distorted glyphs):
 	- extract glyphs outlines
 	- break outlines into polygons
 	- distort points based on path's normal vectors
 	- rasterize new distorted outline
 
+- horizontal alignment left/right margins option:
+	- bounding-box: exclude side bearings eg. so that a trailing "f" doesn't
+	overflow the enclosing box. don't know how to implement for mixed-dir
+	lines because of bidi reordering.
+	- advance: current solution, works with mixed-dir lines.
+
+
 EDITING ----------------------------------------------------------------------
 
-- mark invisible characters positions
-	- ZW-NBSP: prevents ligatures
-	- NBSP: prevents word-wrapping
-	- SOFT HYPHEN: hyphenate if word-wrapping
-	- ZWJ: force joining
-	- ZWNJ: prevent joining
-	- WORD JOINER: ZW-NBSP-like
-	- LTR/RTL modifiers
-	- variation selectors
-	- hangul fillers
-- mark look-alike characters:   ; ꓸ ꓹ ꓽ
+- insert mode cursor
+
+- IME integration
+
+- unicode debugging / visual editing aids:
+
+	- show hex boxes for:
+		- invalid bytes
+		- missing glyphs
+		- control characters
+
+	- mark invisible characters positions:
+		- ZW-NBSP: prevents ligatures
+		- NBSP: prevents word-wrapping
+		- SOFT HYPHEN: hyphenate if word-wrapping
+		- ZWJ: force joining
+		- ZWNJ: prevent joining
+		- WORD JOINER: ZW-NBSP-like
+		- LTR/RTL modifiers
+		- variation selectors
+		- hangul fillers
+
+	- mark look-alike characters:   ; ꓸ ꓹ ꓽ
+
+	- mark runs by script and language
+
+	- spell checking: upgrade hunspell and integrate it:
+		- highlighting, autocompletion, autocorrection, autoignore, manual ignore.
+
+	- cursor:
+		- show direction
+		- show all codepoints individually between cursor and next cursor
+		- shape/show all graphemes individually between cursor and next cursor
+
+
+DEAD CODE --------------------------------------------------------------------
+
+--not yet used.
+function glyph_run:glyph_metrics(i)
+	local glyph_index = self.info[i].codepoint
+	return self.tr.rs:glyph_metrics(self.font, self.font_size, glyph_index)
+end
+
+function glyph_run:bounding_box()
+	local bx, by, bw, bh = 0, 0, 0, 0
+	for i = 0, glyph_count-1 do
+
+		--glyph origin relative to the start of the run.
+		local ax = i > 0 and glyph_pos[i-1].x_advance or 0
+		local ay = 0
+		local px = ax + glyph_pos[i].x_offset
+		local py = ay - glyph_pos[i].y_offset
+
+		--glyph run metrics, used for more precise word wrapping and alignment
+		--(commented because not used in current layouting algorithm).
+		local glyph_index = glyph_info[i].codepoint
+		local m = self.rs:glyph_metrics(font, font_size, glyph_index)
+		bx, by, bw, bh = bounding_box(bx, by, bw, bh,
+			px / 64 + m.hlsb,
+			py / 64 - m.htsb,
+			m.w, m.h)
+
+	end
+	return bx, by, bw, bh
+end

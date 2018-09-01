@@ -7,6 +7,7 @@ if not ... then require'tr_demo'; return end
 local ffi = require'ffi'
 local glue = require'glue'
 local box2d = require'box2d'
+local color = require'color'
 local ft = require'freetype'
 local cairo = require'cairo'
 local rs_ft = require'tr_raster_ft'
@@ -21,9 +22,15 @@ setmetatable(cairo_rs, cairo_rs)
 
 cairo_rs.rasterize_glyph_ft = rs_ft.rasterize_glyph
 
-function cairo_rs:rasterize_glyph(font, font_size, glyph_index, x_offset, y_offset)
+function cairo_rs:rasterize_glyph(
+	font, font_size, glyph_index,
+	x_offset, y_offset
+)
 
-	local glyph = self:rasterize_glyph_ft(font, font_size, glyph_index, x_offset, y_offset)
+	local glyph = self:rasterize_glyph_ft(
+		font, font_size, glyph_index,
+		x_offset, y_offset
+	)
 
 	if glyph.bitmap then
 
@@ -72,6 +79,11 @@ function cairo_rs:rasterize_glyph(font, font_size, glyph_index, x_offset, y_offs
 	end
 
 	return glyph
+end
+
+function cairo_rs:setcolor(cr, clr)
+	local r, g, b, a = color.parse(clr, 'rgb')
+	cr:rgba(r, g, b, a or 1)
 end
 
 function cairo_rs:paint_glyph(cr, glyph, x, y)

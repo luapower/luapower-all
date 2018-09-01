@@ -5,25 +5,13 @@
 -- Derived from code by Behdad Esfahbod, Copyright (C) 2013 Google, Inc.
 -- https://github.com/fribidi/linear-reorder/blob/master/linear-reorder.c
 
---[[
-// Data structures used:
-
-struct run_t {
-  int level;
-  // len, glyphs, text, ...
-  struct run_t *next;
-};
-
-struct range_t {
-	int level;
-	// Left-most and right-most runs in the range, in visual order.
-	// Following left's next member eventually gets us to right.
-	// The right run's next member is undefined.
-	struct run_t *left;
-	struct run_t *right;
-	struct range_t *previous;
-};
-]]
+-- Data structures used: `run` and `range`.
+-- A run is a segment with fields: {bidi_level = level, next = next_run}.
+-- A range is an internal structure used by the algorithm with the fields:
+--   {left = left_run, right = right_run, prev = prev_range}.
+-- A range contains the left-most and right-most runs in the range,
+-- in visual order. Following left's `next` member eventually gets us to
+-- `right`. The right run's `next` member is undefined.
 
 local bit = require'bit'
 local glue = require'glue'
@@ -34,28 +22,28 @@ local odd = function(x) return band(x, 1) == 1 end
 local alloc_range, free_range = glue.freelist()
 
 -- Merges range with previous range and returns the previous range.
-local function merge_range_with_previous(range)
-	local previous = range.previous
-	assert(previous)
-	assert(previous.level < range.level)
+local function merge_range_with_prev(range)
+	local prev = range.prev
+	assert(prev)
+	assert(prev.bidi_level < range.bidi_level)
 
 	local left, right
-	if odd(previous.level) then
+	if odd(prev.bidi_level) then
 		-- Odd, previous goes to the right of range.
 		left = range
-		right = previous
+		right = prev
 	else
 		-- Even, previous goes to the left of range.
-		left = previous
+		left = prev
 		right = range
 	end
 	--Stich them.
 	left.right.next = right.left
-	previous.left = left.left
-	previous.right = right.right
+	prev.left = left.left
+	prev.right = right.right
 
 	free_range(range)
-	return previous
+	return prev
 end
 
 -- Takes a list of runs on the line in the logical order and
@@ -78,15 +66,15 @@ function reorder_runs(run)
 	while run do
 		local next_run = run.next
 
-		while range and range.level > run.level
-			and range.previous and range.previous.level >= run.level
+		while range and range.bidi_level > run.bidi_level
+			and range.prev and range.prev.bidi_level >= run.bidi_level
 		do
-			range = merge_range_with_previous (range)
+			range = merge_range_with_prev(range)
 		end
 
-		if range and range.level >= run.level then
+		if range and range.bidi_level >= run.bidi_level then
 			-- Attach run to the range.
-			if odd(run.level) then
+			if odd(run.bidi_level) then
 				-- Odd, range goes to the right of run.
 				run.next = range.left
 				range.left = run
@@ -95,21 +83,21 @@ function reorder_runs(run)
 				range.right.next = run
 				range.right = run
 			end
-			range.level = run.level
+			range.bidi_level = run.bidi_level
 		else
 			-- Allocate new range for run and push into stack.
 			local r = alloc_range()
 			r.left = run
 			r.right = run
-			r.level = run.level
-			r.previous = range
+			r.bidi_level = run.bidi_level
+			r.prev = range
 			range = r
 		end
 		run = next_run
 	end
 	assert (range)
-	while range.previous do
-		range = merge_range_with_previous (range)
+	while range.prev do
+		range = merge_range_with_prev(range)
 	end
 
 	range.right.next = false
