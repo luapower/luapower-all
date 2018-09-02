@@ -276,6 +276,8 @@ function win:repaint()
 		vector(cr, '#fff', x, y, x, y+h)
 		local w = (rtl and 10 or -10)
 		triangle(cr, '#fff', x-w*.8, y, w, 90)
+
+		rect(cr, '#f00', segs:bounding_box())
 	end
 
 end

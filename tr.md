@@ -1,32 +1,19 @@
 
 ## `local tr = require'tr'`
 
-Text shaping and rendering engine for multi-language Unicode text using
-portable technologies exclusively for pixel-perfect consistent output
-across platforms. Uses [harfbuzz] for complex text shaping, [fribidi] for
-bidirectional text, [libunibreak] for line breaking and [freetype] for
-glyph rasterization. Used by [ui] for all text rendering.
+Text shaping and rendering engine for Unicode text using portable technologies
+exclusively for pixel-perfect consistent output across platforms. Uses
+[harfbuzz] for complex text shaping, [fribidi] for bidirectional text,
+[libunibreak] for line breaking and [freetype] for glyph rasterization.
+Used by [ui] for all text rendering.
 
-### Features
+Supports subpixel positioning, color bitmap fonts (emoticons!), word
+wrapping, alignments, hit testing, cursors, selections, control over OpenType
+features, cursors and coloring inside ligatures, OpenType-assisted auto-hinter.
 
-  * subpixel positioning
-  * OMG color emoticons!
-  * word wrapping and alignments
-  * hit testing, cursors and selections
-  * control over OpenType features
-  * cursor positioning and coloring inside ligatures
-  * OpenType-assisted auto-hinter enabled in freetype
-
-### Not-yet implemented
-
-  * full justification
-  * subscript, superscript
-  * underline, strikethrough
-  * glyph substitution
-  * shaping across words
-  * hyphenation
-  * letter spacing
-  * vertical layout
+Not-yet implemented: full justification, subscript, superscript, underline,
+strikethrough, glyph substitution, shaping across words, hyphenation,
+letter spacing, vertical layout.
 
 ### API
 
@@ -199,16 +186,17 @@ segments which end at each soft wrap opportunity (whitespace, newline, etc.).
 Segments also break whenever the font, font size or OpenType feature list
 change.
 
-In the end, segments are formed at the boundaries created by all of the above
-segmentation rules and each segment is shaped separately with harfbuzz
-resulting in a *glyph run*. Glyph runs are cached so that the same word with
-the same combination of font, size, script, language, direction and OpenType
-feature list is not shaped multiple times unnecessarily because shaping is
-expensive.
+In the end, segments are formed at the boundaries that result from all of the
+above segmentation rules and each segment is shaped separately with harfbuzz
+resulting in a *glyph run*.
 
-A glyph run is a list of glyph indices (in its font), positions and advances
-which can be passed directly to a glyph rasterizer for display. Glyph runs
-also contain cursor positions (more on that later).
+A glyph run is a list of glyph indices, positions and advances from a single
+font which can be passed directly to a glyph rasterizer for display. Glyph
+runs also contain cursor positions (more on that later).
+
+Glyph runs are cached so that the same word with the same combination of font,
+size, script, language, direction and OpenType feature list is not shaped
+multiple times unnecessarily because shaping is expensive.
 
 The segments can also contain sub-segments. Segments are formed at the
 boundaries of property combinations which require separate shaping.

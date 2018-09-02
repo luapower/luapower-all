@@ -1223,9 +1223,10 @@ end
 function segments:bounding_box()
 	local lines = assert(self.lines, 'text not laid out')
 	local bx = lines.x + lines.min_x
-	local by = lines.y + lines.baseline
-	local bw = lines.max_ah
-	local bh = lines[#lines].y - lines[#lines].spacing_descent
+	local bw = lines.max_ax
+	local a1 = lines[1].spacing_ascent
+	local by = lines.y + lines.baseline - a1
+	local bh = a1 + lines[#lines].y - lines[#lines].spacing_descent
 	return bx, by, bw, bh
 end
 
