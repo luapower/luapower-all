@@ -251,7 +251,7 @@ blitter is under 200 LOC).
 
 Rendering can be performed multiple times in O(n).
 
-#### 5. Cursors
+### Cursors
 
 Cursor positions are stored in each glyph run in two arrays: `cursor_offsets`
 and `cursor_xs`. Both arrays are indexed by codepoint offset (relative to the

@@ -106,7 +106,7 @@ end
 
 local text = require'glue'.readfile('winapi_history.md')
 
-local segs, lines, cursor
+local segs, cursor
 
 function win:repaint()
 	local cr = self:bitmap():cairo()
@@ -153,6 +153,7 @@ function win:repaint()
 
 			--'مفاتيح ABC DEF\n',
 			--dir = 'rtl',
+			--'ABC',
 			--'ABC DEF السَّلَامُ عَلَيْكُمْ مفاتيح ',
 			'السَّلَامُ عَلَيْكُمْ',
 
@@ -219,7 +220,7 @@ function win:repaint()
 		local x = lines.x
 		local y = lines.y + lines.baseline
 		for i,line in ipairs(lines) do
-			local hit = self.hit_line_i == i
+			local hit = cursor and cursor.line_i == i
 			local x = x + line.x
 			local y = y + line.y
 			rect(cr, hit and '#f22' or '#222', x, y, line.advance_x, -line.spacing_ascent)
@@ -232,7 +233,7 @@ function win:repaint()
 			local ay = y
 			for i,seg in ipairs(line) do
 				local run = seg.glyph_run
-				local hit = hit and self.hit_seg == seg
+				local hit = hit and cursor and cursor.seg == seg
 
 				dot(cr, '#f0f', ax, ay, 4)
 				dot(cr, '#0f0', ax + seg.advance_x, ay, 5)
@@ -257,7 +258,7 @@ function win:repaint()
 				for i = 0, run.text_len do
 					local cx = seg.offset_x + run.cursor_xs[i]
 					local px = ax + cx
-					local hit = hit and self.hit_cursor_i == i
+					local hit = hit and cursor and cursor.cursor_i == i
 					dot(cr, '#0ff', px, ay, 2)
 				end
 
@@ -265,8 +266,8 @@ function win:repaint()
 			end
 		end
 
-		if self.hit_cursor_i then
-			local x, y, h = lines:cursor_pos(self.hit_seg, self.hit_cursor_i)
+		if cursor and cursor.cursor_i then
+			local x, y, h = cursor:pos()
 			rect(cr, '#f00', x-4, y, 8, h)
 		end
 
@@ -280,8 +281,7 @@ function win:repaint()
 end
 
 function win:mousemove(mx, my)
-	if lines then
-		self.hit_line_i, self.hit_seg, self.hit_cursor_i = lines:hit_test(mx, my)
+	if segs then
 		if cursor then
 			cursor:move_to(mx, my)
 		end
