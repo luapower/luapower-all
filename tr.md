@@ -271,3 +271,34 @@ having different on-screen positions and direction of movement. It is left to
 the cursor navigation API to skip duplicate cursors according to various
 editing policies.
 
+### Subtle points
+
+#### Word wrapping and whitespace
+
+The Unicode Line Breaking algorithm breaks the text into words such that the
+whitespace between two words is always considered to be part of the first
+word and not the second word. Thus whitespace is always trailing and never
+leading. Even whitespace at the beginning of the text is standalone and not
+tied to the first word.
+
+When word-wrapping, the whitespace at the end of the last word on a line must
+be ignored when computing the width of that line (another subtle point is that
+this ignoring must happen only if the line is to be soft-wrapped, i.e. only
+if a hard break like a newline character or end-of-text doesn't directly
+follow the word's trailing whitespace). This is how most rich text editors
+and browsers behave. The downside of ignoring the entire trailing whitespace
+of the last word as opposed to only the last space character is that when
+there's multiple trailing space characters, editing that whitespace will place
+the cursor beyond the text box boundaries, which depending on the context
+might even render the cursor invisible. Because of that, we take a different
+approach, and only collapse the last space character and not the entire
+whitespace when doing line-wrapping.
+
+Another subtle point is that in RTL runs, this logically-trailing whitespace
+is visually at the beginning of the word, thus the glyph run (along with its
+cursor positions) must be shifted one space-character to the left, hence
+the segment's `offset_x` field which contains this adjustment. Also note
+that this field is part of the segment not the glyph run because it is
+layout-dependent (it's only applied for last-on-the-line-when-soft-wrapping
+segments), while the glyph run is cached and can be used in multiple layouts.
+
