@@ -162,8 +162,9 @@ a simple rasterizer which can paint glyphs into a [cairo] context. To paint
 glyphs using other graphics APIs you need to implement a new rasterizer.
 Glyph caching and the actual rasterization is done in `tr_raster_ft` using
 [freetype], so your rasterizer can subclass that and then it only needs to
-handle blitting of 8-bit gray and 32-bit BGRA bitmaps and also bitmap scaling
-if you use bitmap fonts, since freetype doesn't handle that.
+handle blitting of (clipped portions of) 8-bit gray and 32-bit BGRA bitmaps
+and also bitmap scaling if you use bitmap fonts, since freetype doesn't handle
+that.
 
 ### `tr:textbox(text_tree, cr, x, y, w, h, [halign], [valign]) -> segments`
 
