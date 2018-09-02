@@ -12,7 +12,6 @@ local fb = require'fribidi'
 local ub = require'libunibreak'
 local ft = require'freetype'
 local glue = require'glue'
-local box2d = require'box2d'
 local lrucache = require'lrucache'
 local detect_scripts = require'tr_shape_script'
 local lang_for_script = require'tr_shape_lang'
@@ -29,8 +28,6 @@ local binsearch = glue.binsearch
 local memoize = glue.memoize
 local growbuffer = glue.growbuffer
 local trim = glue.trim
-local bounding_box = box2d.bounding_box
-local hit_box = box2d.hit
 local odd = function(x) return band(x, 1) == 1 end
 local PS = fb.C.FRIBIDI_CHAR_PS --paragraph separator codepoint
 local LS = fb.C.FRIBIDI_CHAR_LS --line separator codepoint
@@ -1152,6 +1149,10 @@ function segments:layout(x, y, w, h, halign, valign)
 		zone()
 	end
 
+	--bounding-box horizontal dimensions.
+	lines.min_x = 1/0
+	lines.max_ax = -1/0
+
 	for i,line in ipairs(lines) do
 
 		--compute line's aligned x position relative to the textbox.
@@ -1162,6 +1163,9 @@ function segments:layout(x, y, w, h, halign, valign)
 		elseif halign == 'center' then
 			line.x = (w - line.advance_x) / 2
 		end
+
+		lines.min_x = math.min(lines.min_x, line.x)
+		lines.max_ax = math.max(lines.max_ax, line.advance_x)
 
 		--compute line ascent and descent scaling based on paragraph spacing.
 		local last_line = lines[i-1]
@@ -1209,18 +1213,25 @@ function segments:layout(x, y, w, h, halign, valign)
 		end
 	end
 
-	--store textbox's origin.
-	--the textbox can be moved after layouting without requiring re-layouting.
+	--store textbox's origin, which can be changed anytime after layouting.
 	lines.x = x
 	lines.y = y
 
 	return self
 end
 
-tr.default_color = '#fff'
+function segments:bounding_box()
+	local lines = assert(self.lines, 'text not laid out')
+	local bx = lines.x + lines.min_x
+	local by = lines.y + lines.baseline
+	local bw = lines.max_ah
+	local bh = lines[#lines].y - lines[#lines].spacing_descent
+	return bx, by, bw, bh
+end
 
-function segments:paint_glyph_run(cr, rs, run, i, j, ax, ay, color, clip_left, clip_right)
-	rs:setcolor(cr, color)
+--painting -------------------------------------------------------------------
+
+function segments:paint_glyph_run(cr, rs, run, i, j, ax, ay, clip_left, clip_right)
 	for i = i, j do
 
 		local glyph_index = run.info[i].codepoint
@@ -1263,8 +1274,7 @@ end
 
 function segments:paint(cr)
 	local rs = self.tr.rs
-	local default_color = self.tr.default_color
-	local lines = self.lines
+	local lines = assert(self.lines, 'text not laid out')
 
 	for _,line in ipairs(lines) do
 
@@ -1279,12 +1289,12 @@ function segments:paint(cr)
 			if #seg > 0 then --has sub-segments, paint them separately
 				for i = 1, #seg, 5 do
 					local i, j, text_run, clip_left, clip_right = unpack(seg, i, i + 4)
-					local color = text_run.color or default_color
-					self:paint_glyph_run(cr, rs, run, i, j, x, y, color, clip_left, clip_right)
+					rs:setcontext(cr, text_run)
+					self:paint_glyph_run(cr, rs, run, i, j, x, y, text_run, clip_left, clip_right)
 				end
 			else
-				local color = seg.text_run.color or default_color
-				self:paint_glyph_run(cr, rs, run, 0, run.len-1, x, y, color)
+				rs:setcontext(cr, seg.text_run)
+				self:paint_glyph_run(cr, rs, run, 0, run.len-1, x, y)
 			end
 
 			ax = ax + seg.advance_x

@@ -81,9 +81,13 @@ function cairo_rs:rasterize_glyph(
 	return glyph
 end
 
-function cairo_rs:setcolor(cr, clr)
-	local r, g, b, a = color.parse(clr, 'rgb')
+cairo_rs.default_color = '#888' --safe default not knowing the bg color
+cairo_rs.operator = 'over'
+
+function cairo_rs:setcontext(cr, text_run)
+	local r, g, b, a = color.parse(text_run.color or self.default_color, 'rgb')
 	cr:rgba(r, g, b, a or 1)
+	cr:operator(text_run.operator or self.default_operator)
 end
 
 function cairo_rs:paint_glyph(cr, glyph, x, y)
