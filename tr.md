@@ -250,3 +250,24 @@ so that blitters can be created with minimum effort (the current cairo-based
 blitter is under 200 LOC).
 
 Rendering can be performed multiple times in O(n).
+
+#### 5. Cursors
+
+Cursor positions are stored in each glyph run in two arrays: `cursor_offsets`
+and `cursor_xs`. Both arrays are indexed by codepoint offset (relative to the
+start of the glyph run), so a cursor position and its corresponding codepoint
+offset can be found for any text offset in O(1). Unique cursors are created
+at *cluster* boundaries (a term which means indivisible unit of text from
+harfbuzz's point of view) but additional cursors are also created at
+*grapheme boundaries* for clusters/glyphs that cover multiple graphemes like
+ligated "fi" pairs. Some OpenType fonts contain cursor positions for such
+ligatures which are used for this case, if available.
+
+Duplicate cursors are not pruned. For example, the first cursor of the glyph
+run of any segment is the same as the last cursor of the glyph run of the
+previous segment. Similarly in the case of lines with mixed LTR/RTL runs,
+there will be cursors pointing at the same offset in the logical text, but
+having different on-screen positions and direction of movement. It is left to
+the cursor navigation API to skip duplicate cursors according to various
+editing policies.
+

@@ -137,6 +137,7 @@ function win:repaint()
 		local t = {
 			line_spacing = 1.2,
 			paragraph_spacing = 1.5,
+			color = '#fff',
 			--{'A'},
 			font_name = 'amiri,100',
 			--font_name = 'eb garamond, 50',
@@ -153,8 +154,7 @@ function win:repaint()
 			--'مفاتيح ABC DEF\n',
 			--dir = 'rtl',
 			--'ABC DEF السَّلَامُ عَلَيْكُمْ مفاتيح ',
-			--'السَّلَامُ عَلَيْكُمْ',
-			'ffi السَّلَامُ',
+			'السَّلَامُ عَلَيْكُمْ',
 
 			--dir = 'rtl', 'مفاتيح ABC', '\u{2029}', {dir = 'ltr', 'مفاتيح ABC'},
 			--'XXX פעילות ABC הבינאום DEF',
@@ -233,10 +233,10 @@ function win:repaint()
 			for i,seg in ipairs(line) do
 				local run = seg.glyph_run
 				local hit = hit and self.hit_seg == seg
-				--rect(cr, hit and '#f00' or '#555', ax + run.hlsb, ay + run.htsb, run.w, run.h)
+
 				dot(cr, '#f0f', ax, ay, 4)
 				dot(cr, '#0f0', ax + seg.advance_x, ay, 5)
-				--dot(cr, '#fff', ax + run.hlsb, ay + run.htsb, 4)
+
 				do
 					local ay = ay + (seg.index - 1) * 10
 					if run.rtl then
@@ -245,19 +245,22 @@ function win:repaint()
 						vector(cr, '#66f', ax, ay, ax + seg.advance_x, ay + 10)
 					end
 				end
+
+				for i = 0, run.len do
+					local glyph_index = run.info[i].codepoint
+					local px = i > 0 and run.pos[i-1].x_advance / 64 or 0
+					local ox = run.pos[i].x_offset / 64
+					local oy = run.pos[i].y_offset / 64
+					dot(cr, '#f00', ax + seg.offset_x + px + ox, ay - oy, 3)
+				end
+
 				for i = 0, run.text_len do
 					local cx = seg.offset_x + run.cursor_xs[i]
 					local px = ax + cx
 					local hit = hit and self.hit_cursor_i == i
 					dot(cr, '#0ff', px, ay, 2)
 				end
-				for i = 0, run.len do
-					local glyph_index = run.info[i].codepoint
-					local px = i > 0 and run.pos[i-1].x_advance / 64 or 0
-					local ox = run.pos[i].x_offset / 64
-					local oy = run.pos[i].y_offset / 64
-					dot(cr, '#ff0', ax + seg.offset_x + px + ox, ay - oy, 3)
-				end
+
 				ax = ax + seg.advance_x
 			end
 		end
