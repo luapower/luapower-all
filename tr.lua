@@ -517,17 +517,17 @@ function tr:flatten(text_tree)
 	for _,run in ipairs(text_runs) do
 
 		--resolve `font` and `font_size`.
-		local font_name = run.font_name
-			or type(run.font) == 'string' and run.font or nil
-		local weight = (run.bold or run.b) and 'bold' or run.font_weight
-		local slant = (run.italic or run.i) and 'italic' or run.font_slant
-		local font_size = run.font_size
-		run.font, run.font_size = self.rs.font_db:find_font(
-			font_name, weight, slant, font_size
-		)
-		assert(run.font, 'Font not found: "%s" %s %s %s',
-			font_name, weight or '', slant or '', font_size or ''
-		)
+		if not run.font or type(run.font) == 'string' then
+			local font_name = run.font_name or run.font or nil
+			local weight = (run.bold or run.b) and 'bold' or run.font_weight
+			local slant = (run.italic or run.i) and 'italic' or run.font_slant
+			local font_size = run.font_size
+			run.font, run.font_size = self.rs.font_db:find_font(
+				font_name, weight, slant, font_size
+			)
+			assert(run.font, 'Font not found: "%s" %s %s %s',
+				font_name, weight or '', slant or '', font_size or '')
+		end
 		assert(run.font_size, 'Font size missing')
 		run.font_size = snap(run.font_size, self.rs.font_size_resolution)
 

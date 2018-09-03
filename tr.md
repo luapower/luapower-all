@@ -53,6 +53,8 @@ same font. See [freetype] for supported font formats.
 
 The font is not loaded immediately, but it's loaded and unloaded on demand.
 
+Registering fonts is a necessary step before trying to shape anything.
+
 ### `tr:add_mem_font(buf, sz, [slant], [weight])`
 
 Add a font file from a memory buffer.
