@@ -70,15 +70,14 @@ inherited from parent nodes and can be overriden in child nodes.
 
 Attributes can be:
 
-  * `font_name`: font name in the format `'family [weight] [slant][, size]'`
-  (parsed by `tr_font_db.lua`).
+  * `font` or `font_name`: font specified as `'family [weight] [slant][, size]'`.
   * `font_size`: font size override.
   * `font_weight`: font weight override: `'bold'`, `'thin'` etc. or a weight
   number between `100` and `900`.
   * `font_slant`: font slant override: `'italic'`, `'normal'`.
-  * `bold`, `b`, `italic`, `i`: `font_weight` and `font_slant` overrides.
-  * `features`: a list of OpenType features in string form, eg.
-  `'+kern -liga smcp'`
+  * `bold`, `b`, `italic`, `i`: boolean `font_weight` and `font_slant` overrides.
+  * `features`: OpenType features specified as `'[+|-]feat[=val] ...'`,
+  eg. `'+kern -liga smcp'`.
   * `script`: an [ISO-15924] script tag (the default is auto-detected).
   * `lang`: a [BCP-47] language-country code (the default is auto-detected).
   * `dir`: `'ltr'`, `'rtl'`, `'auto'`: bidi direction for current and
@@ -123,7 +122,8 @@ input in general).
 Shape a text tree (flattened or not) into a list of segments.
 
 The segments can be laid out multiple times and must be laid out at least
-once in order to be rendered.
+once in order to be rendered. Changing the text tree in any way except
+for styling attributes (color) requires reshaping and relayouting.
 
 ### `segments:layout(x, y, w, h, [halign], [valign]) -> segments`
 
@@ -155,7 +155,8 @@ that.
 
 ### `tr:textbox(text_tree, cr, x, y, w, h, [halign], [valign]) -> segments`
 
-Shape, layout and paint text. Return segments.
+Shape, layout and paint text in one call. Return segments so that
+layouting or painting can be done again without reshaping.
 
 ## Rendering stages
 

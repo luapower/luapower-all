@@ -37,6 +37,7 @@ gfont'open sans bold italic'
 gfont'open sans 300'
 gfont'open sans 300 italic'
 font'media/fonts/NotoColorEmoji.ttf'
+font'media/fonts/IonIcons.ttf'
 --font'media/fonts/NotoEmoji-Regular.ttf'
 --font'media/fonts/EmojiSymbols-Regular.ttf'
 --font'media/fonts/SubwayTicker.ttf'
@@ -119,7 +120,7 @@ function win:repaint()
 	if false then
 
 		local segs = tr:shape{
-			('\xF0\x9F\x98\x81'):rep(2), font_name = 'NotoColorEmoji,34',
+			('\xF0\x9F\x98\x81'):rep(2), font = 'NotoColorEmoji,34',
 		}
 		local x, y, w, h = 100, 100, 80, 80
 		rect(cr, '#888', x, y, w, h)
@@ -139,8 +140,12 @@ function win:repaint()
 			paragraph_spacing = 1.5,
 			color = '#fff',
 			--{'A'},
-			font_name = 'amiri,100',
-			--font_name = 'eb garamond, 50',
+			--font = 'amiri,100',
+			--font = 'eb garamond, 50',
+
+			font = 'IonIcons,100',
+			'\xEF\x8B\x80',
+			'\u{f12a}',
 
 			--'abc', 'def', 'ghi',
 
@@ -153,7 +158,6 @@ function win:repaint()
 
 			--'مفاتيح ABC DEF\n',
 			--dir = 'rtl',
-			'     ABC DEF.    ABC DEF.',
 			--'ABC DEF السَّلَامُ عَلَيْكُمْ مفاتيح ',
 			--'السَّلَامُ عَلَيْكُمْ',
 
@@ -173,10 +177,8 @@ function win:repaint()
 
 				--'abc    def       ghi   123   xxx',
 
-				features = 'smcp liga=1 +kern',
+				--features = 'smcp liga=1 +kern',
 
-				--{'f'},{color = '#ff0','f'},{'i'},
-				--'Td', 'fb\n',
 				--{'Td'}, {color = '#ff0', 'f'}, {color = '#0ff', 'f'}, {color = '#f0f', 'i'}, {'b\n'}, 'abc def ghi',
 				--' abc',
 				--'abc', {'def\n'}, 'ABC 123',
@@ -185,7 +187,7 @@ function win:repaint()
 				--{t=2, nowrap = true, '12 abc 789'}, ' zyz', {x = 20, y = -30, font_size = 40, '2'},
 				--{t=3, nowrap = true, 'ABC def GH'},
 
-				--font_name = 'open sans, 200',
+				--font = 'open sans, 200',
 
 				--multiple glyphs with the same cluster value
 				--{'\x15\x09\0\0\x4D\x09\0\0\x15\x09\0\0\x3F\x09\0\0\x15\x09\0\0', charset = 'utf32'},
@@ -195,17 +197,17 @@ function win:repaint()
 				--'i fi mTm\n\n', {i=1, 'VA', {b=1, 'Dg', {i=false, 'dT\n'}}},
 			--},
 
-			--{font_name = 'eb garamond, 100', 'ffix xfl ffi fl\n'},
-			--{font_name = 'amiri, 100', 'ffix xfl ffi fl'},
+			--{font = 'eb garamond, 100', 'ffix xfl ffi fl\n'},
+			--{font = 'amiri, 100', 'ffix xfl ffi fl'},
 
-			--{font_name = 'NotoColorEmoji,34', ('\xF0\x9F\x98\x81'):rep(3)},
+			--{font = 'NotoColorEmoji,34', ('\xF0\x9F\x98\x81'):rep(3)},
 		}
 
 		--[[
 		local utf8 = require'utf8'
 		local ffi = require'ffi'
 		local s,len = utf8.decode'السَّلَامُ'
-		local t = {font_name = 'amiri,100'}
+		local t = {font = 'amiri,100'}
 		for i=1,10 do
 			local cp = ffi.string(s+i-1, 4)
 			t[i] = {charset = 'utf32', text_len = 1, cp}

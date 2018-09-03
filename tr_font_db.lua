@@ -70,6 +70,7 @@ end
 
 font_db.redundant_suffixes = {regular=1, normal=1}
 
+--NOTE: used as class method by ui!
 function font_db:parse_font(name, weight, slant, size)
 	local weight_str, slant_str, size_str
 	if type(name) == 'string' then
@@ -108,6 +109,7 @@ function font_db:parse_font(name, weight, slant, size)
 	return name, weight, slant, size
 end
 
+--NOTE: used as class method by tr_raster_ft!
 function font_db:normalized_font_name(name)
 	name = trim(name):lower()
 		:gsub('[%-%s_]+', '_') --normalize word separators

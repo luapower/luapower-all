@@ -90,10 +90,22 @@ function cairo_rs:setcontext(cr, text_run)
 	cr:operator(text_run.operator or self.default_operator)
 end
 
-function cairo_rs:paint_glyph(cr, glyph, x, y)
+--NOTE: clip_left and clip_right are relative to bitmap's left edge.
+function cairo_rs:paint_glyph(cr, glyph, x, y, clip_left, clip_right)
 	local paint = glyph.paint
 	if not paint then return end
-	paint(self, cr, glyph, x, y)
+	if clip_left or clip_right then
+		cr:save()
+		cr:new_path()
+		local x1 = x + (clip_left or 0)
+		local x2 = x + glyph.bitmap.width + (clip_right or 0)
+		cr:rectangle(x1, y, x2 - x1, glyph.bitmap.rows)
+		cr:clip()
+		paint(self, cr, glyph, x, y)
+		cr:restore()
+	else
+		paint(self, cr, glyph, x, y)
+	end
 end
 
 function cairo_rs:paint_g8_glyph(cr, glyph, x, y)

@@ -518,6 +518,7 @@ function tr:flatten(text_tree)
 
 		--resolve `font` and `font_size`.
 		local font_name = run.font_name
+			or type(run.font) == 'string' and run.font or nil
 		local weight = (run.bold or run.b) and 'bold' or run.font_weight
 		local slant = (run.italic or run.i) and 'italic' or run.font_slant
 		local font_size = run.font_size
@@ -885,7 +886,7 @@ function tr:shape(text_runs)
 				local last_sub_len = seg_len - sub_offset
 				local sub_offset = 0
 				local glyph_i = 0
-				local clip_left, clip_right = false, false
+				local clip_left, clip_right = false, false --from run's origin
 				for i = 1, substack_n + 1, 2 do
 					local sub_len, sub_text_run
 					if i < substack_n  then
@@ -900,8 +901,6 @@ function tr:shape(text_runs)
 					assert(next_sub_offset <= seg_len)
 					local next_sub_offset = glyph_run.cursor_offsets[next_sub_offset]
 					local sub_len = next_sub_offset - sub_offset
-
-					print((i+1)/2, sub_offset, sub_len, next_sub_offset)
 
 					if sub_len == 0 then
 						break
@@ -1232,6 +1231,7 @@ end
 
 --painting -------------------------------------------------------------------
 
+--NOTE: clip_left and clip_right are relative to glyph run's origin.
 function segments:paint_glyph_run(cr, rs, run, i, j, ax, ay, clip_left, clip_right)
 	for i = i, j do
 
@@ -1246,30 +1246,11 @@ function segments:paint_glyph_run(cr, rs, run, i, j, ax, ay, clip_left, clip_rig
 			ay - oy
 		)
 
-		if clip_left or clip_right then
-			local x = bmpx
-			local y = bmpy
-			local w = glyph.bitmap.width
-			local h = glyph.bitmap.rows
-			local bmpw = w
-			if clip_left then
-				local dx = clip_left + ax - bmpx
-				x = x + dx
-				w = w - dx
-			end
-			if clip_right then
-				local dx = bmpw - (clip_right + ax - bmpx)
-				w = w - dx
-			end
-			cr:save()
-			cr:new_path()
-			cr:rectangle(x, y, w, h)
-			cr:clip()
-			rs:paint_glyph(cr, glyph, bmpx, bmpy)
-			cr:restore()
-		else
-			rs:paint_glyph(cr, glyph, bmpx, bmpy)
-		end
+		--make clip_left and clip_right relative to bitmap's left edge.
+		clip_left = clip_left and clip_left + ax - bmpx
+		clip_right = clip_right and clip_right + ax - bmpx
+
+		rs:paint_glyph(cr, glyph, bmpx, bmpy, clip_left, clip_right)
 	end
 end
 
@@ -1291,7 +1272,7 @@ function segments:paint(cr)
 				for i = 1, #seg, 5 do
 					local i, j, text_run, clip_left, clip_right = unpack(seg, i, i + 4)
 					rs:setcontext(cr, text_run)
-					self:paint_glyph_run(cr, rs, run, i, j, x, y, text_run, clip_left, clip_right)
+					self:paint_glyph_run(cr, rs, run, i, j, x, y, clip_left, clip_right)
 				end
 			else
 				rs:setcontext(cr, seg.text_run)
