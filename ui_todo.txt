@@ -208,6 +208,21 @@ SETTINGS WIDGET --------------------------------------------------------------
 - show options file hierarchy and select which file to affect changes to.
 
 
+RTL --------------------------------------------------------------------------
+
+- menu bar right alignment and reverse item order
+- tablist right alignment and reverse item order
+- menu right alignment
+- button bar right alignment and mirror specific mirrorable icons
+- status bar reverse item order
+- use auto-reversible hierarchical flow layouts to layout:
+	- label + actionable pairs, eg:
+		- label + editbox combinations
+		- icon + title + x-button on tablist items
+	- a row of buttons
+	- entire sections of the UI
+
+
 BETTER TAB-ORDER ALGORITHM ---------------------------------------------------
 
 --TODO: make a new tab-order-assigning algorithm based on horizontal and
@@ -259,18 +274,4 @@ end
 	end
 
 ]]
-
-RTL --------------------------------------------------------------------------
-
-- menu bar right alignment and reverse item order
-- tablist right alignment and reverse item order
-- menu right alignment
-- button bar right alignment and mirror specific mirrorable icons
-- status bar reverse item order
-- use auto-reversible hierarchical flow layouts to layout:
-	- label + actionable pairs, eg:
-		- label + editbox combinations
-		- icon + title + x-button on tablist items
-	- a row of buttons
-	- entire sections of the UI
 

@@ -11,8 +11,7 @@ local tr = tr()
 
 local win = nw:app():window{
 	x = 100, y = 60,
-	w = 550, h = 900,
-	--w = 800, h = 600,
+	w = 1200, h = 950,
 }
 
 local function font(file, name)
@@ -135,6 +134,7 @@ function win:repaint()
 		local x, y, w, h = box2d.offset(-50, 0, 0, win:client_size())
 		rect(cr, '#888', x, y, w, h)
 
+		--[[
 		local t = {
 			line_spacing = 1.2,
 			paragraph_spacing = 1.5,
@@ -203,7 +203,6 @@ function win:repaint()
 			--{font = 'NotoColorEmoji,34', ('\xF0\x9F\x98\x81'):rep(3)},
 		}
 
-		--[[
 		local utf8 = require'utf8'
 		local ffi = require'ffi'
 		local s,len = utf8.decode'السَّلَامُ'
@@ -214,63 +213,76 @@ function win:repaint()
 		end
 		]]
 
+		local t = {
+			font='open sans, 14',
+			require'glue'.readfile('winapi_design.md'),
+		}
+
 		segs = segs or tr:shape(t)
-		segs:layout(x, y, w, h, 'center', 'middle')
+		segs:layout(x, y, w, h, 'left', 'top')
+
+		local cw, ch = win:client_size()
+		local cx, cy, cw, ch = cw / 2 - 300, ch / 2 - 200, 200, 300
+		segs:fastclip(cx, cy, cw, ch)
+		rect(cr, '#ff0', cx, cy, cw, ch)
+
 		segs:paint(cr)
 
-		local lines = segs.lines
-		local x = lines.x
-		local y = lines.y + lines.baseline
-		for i,line in ipairs(lines) do
-			local hit = cursor and cursor.line_i == i
-			local x = x + line.x
-			local y = y + line.y
-			rect(cr, hit and '#f22' or '#222', x, y, line.advance_x, -line.spacing_ascent)
-			rect(cr, hit and '#f22' or '#022', x, y, line.advance_x, -line.spacing_descent)
-			rect(cr, hit and '#fff' or '#888', x, y, line.advance_x, -line.ascent)
-			rect(cr, hit and '#0ff' or '#088', x, y, line.advance_x, -line.descent)
-			dot(cr, '#fff', x, y, 6)
-			dot(cr, '#ff0', x + line.advance_x, y, 6)
-			local ax = x
-			local ay = y
-			for i,seg in ipairs(line) do
-				local run = seg.glyph_run
-				local hit = hit and cursor and cursor.seg == seg
+		if false then
+			local lines = segs.lines
+			local x = lines.x
+			local y = lines.y + lines.baseline
+			for i,line in ipairs(lines) do
+				local hit = cursor and cursor.line_i == i
+				local x = x + line.x
+				local y = y + line.y
+				rect(cr, hit and '#f22' or '#222', x, y, line.advance_x, -line.spacing_ascent)
+				rect(cr, hit and '#f22' or '#022', x, y, line.advance_x, -line.spacing_descent)
+				rect(cr, hit and '#fff' or '#888', x, y, line.advance_x, -line.ascent)
+				rect(cr, hit and '#0ff' or '#088', x, y, line.advance_x, -line.descent)
+				dot(cr, '#fff', x, y, 6)
+				dot(cr, '#ff0', x + line.advance_x, y, 6)
+				local ax = x
+				local ay = y
+				for i,seg in ipairs(line) do
+					local run = seg.glyph_run
+					local hit = hit and cursor and cursor.seg == seg
 
-				dot(cr, '#f0f', ax, ay, 4)
-				dot(cr, '#0f0', ax + seg.advance_x, ay, 5)
+					dot(cr, '#f0f', ax, ay, 4)
+					dot(cr, '#0f0', ax + seg.advance_x, ay, 5)
 
-				do
-					local ay = ay + (seg.index - 1) * 10
-					if run.rtl then
-						vector(cr, '#f00', ax + seg.advance_x, ay, ax, ay + 10)
-					else
-						vector(cr, '#66f', ax, ay, ax + seg.advance_x, ay + 10)
+					do
+						local ay = ay + (seg.index - 1) * 10
+						if run.rtl then
+							vector(cr, '#f00', ax + seg.advance_x, ay, ax, ay + 10)
+						else
+							vector(cr, '#66f', ax, ay, ax + seg.advance_x, ay + 10)
+						end
 					end
-				end
 
-				for i = 0, run.len do
-					local glyph_index = run.info[i].codepoint
-					local px = i > 0 and run.pos[i-1].x_advance / 64 or 0
-					local ox = run.pos[i].x_offset / 64
-					local oy = run.pos[i].y_offset / 64
-					dot(cr, '#f00', ax + seg.offset_x + px + ox, ay - oy, 3)
-				end
+					for i = 0, run.len-1 do
+						local glyph_index = run.info[i].codepoint
+						local px = i > 0 and run.pos[i-1].x_advance / 64 or 0
+						local ox = run.pos[i].x_offset / 64
+						local oy = run.pos[i].y_offset / 64
+						dot(cr, '#f00', ax + seg.offset_x + px + ox, ay - oy, 3)
+					end
 
-				for i = 0, run.text_len do
-					local cx = seg.offset_x + run.cursor_xs[i]
-					local px = ax + cx
-					local hit = hit and cursor and cursor.cursor_i == i
-					dot(cr, '#0ff', px, ay, 2)
-				end
+					for i = 0, run.text_len do
+						local cx = seg.offset_x + run.cursor_xs[i]
+						local px = ax + cx
+						local hit = hit and cursor and cursor.cursor_i == i
+						dot(cr, '#0ff', px, ay, 2)
+					end
 
-				ax = ax + seg.advance_x
+					ax = ax + seg.advance_x
+				end
 			end
-		end
 
-		if cursor and cursor.cursor_i then
-			local x, y, h = cursor:pos()
-			rect(cr, '#f00', x-4, y, 8, h)
+			if cursor and cursor.cursor_i then
+				local x, y, h = cursor:pos()
+				rect(cr, '#f00', x-4, y, 8, h)
+			end
 		end
 
 		cursor = cursor or segs:cursor()

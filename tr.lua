@@ -12,6 +12,7 @@ local fb = require'fribidi'
 local ub = require'libunibreak'
 local ft = require'freetype'
 local glue = require'glue'
+local box2d = require'box2d'
 local lrucache = require'lrucache'
 local detect_scripts = require'tr_shape_script'
 local lang_for_script = require'tr_shape_lang'
@@ -28,6 +29,7 @@ local binsearch = glue.binsearch
 local memoize = glue.memoize
 local growbuffer = glue.growbuffer
 local trim = glue.trim
+local box_overlapping = box2d.overlapping
 local odd = function(x) return band(x, 1) == 1 end
 local PS = fb.C.FRIBIDI_CHAR_PS --paragraph separator codepoint
 local LS = fb.C.FRIBIDI_CHAR_LS --line separator codepoint
@@ -877,6 +879,7 @@ function tr:shape(text_runs)
 				offset_x = false,
 				line_index = false,
 				wrapped = false, --ignore trailing space
+				visible = true, --entirely clipped or not
 			}
 
 			segments[seg_i] = segment
@@ -1088,6 +1091,7 @@ function segments:layout(x, y, w, h, halign, valign)
 				advance_x = 0,
 				ascent = 0, descent = 0,
 				spacing_ascent = 0, spacing_descent = 0,
+				visible = true, --entirely clipped or not
 			}
 			line_i = line_i + 1
 			self.lines[line_i] = line
@@ -1219,14 +1223,48 @@ function segments:layout(x, y, w, h, halign, valign)
 	return self
 end
 
+function segments:checklines()
+	return assert(self.lines, 'text not laid out')
+end
+
 function segments:bounding_box()
-	local lines = assert(self.lines, 'text not laid out')
+	local lines = self:checklines()
 	local bx = lines.x + lines.min_x
 	local bw = lines.max_ax
 	local a1 = lines[1].spacing_ascent
 	local by = lines.y + lines.baseline - a1
 	local bh = a1 + lines[#lines].y - lines[#lines].spacing_descent
 	return bx, by, bw, bh
+end
+
+--NOTE: it's called fastclip because it's not totally accurate because
+--it doesn't take into account side bearings.
+function segments:fastclip(x, y, w, h)
+	local lines = self:checklines()
+	x = x - self.lines.x
+	y = y - self.lines.y - self.lines.baseline
+	for _,line in ipairs(lines) do
+		local bx = line.x
+		local bw = line.advance_x
+		local by = line.y - line.ascent
+		local bh = line.ascent - line.descent
+		line.visible = box_overlapping(x, y, w, h, bx, by, bw, bh)
+		if line.visible then
+			local ax = bx
+			for _,seg in ipairs(line) do
+				local bx = ax
+				local bw = seg.advance_x
+				seg.visible = box_overlapping(x, y, w, h, bx, by, bw, bh)
+				ax = ax + seg.advance_x
+			end
+		end
+	end
+end
+
+function segments:reset_clip()
+	for _,seg in ipairs(self) do
+		seg.visible = true
+	end
 end
 
 --painting -------------------------------------------------------------------
@@ -1256,30 +1294,33 @@ end
 
 function segments:paint(cr)
 	local rs = self.tr.rs
-	local lines = assert(self.lines, 'text not laid out')
+	local lines = self:checklines()
 
 	for _,line in ipairs(lines) do
+		if line.visible then
 
-		local ax = lines.x + line.x
-		local ay = lines.y + lines.baseline + line.y
+			local ax = lines.x + line.x
+			local ay = lines.y + lines.baseline + line.y
 
-		for _,seg in ipairs(line) do
+			for _,seg in ipairs(line) do
+				if seg.visible then
 
-			local run = seg.glyph_run
-			local x, y = ax + seg.offset_x, ay
+					local run = seg.glyph_run
+					local x, y = ax + seg.offset_x, ay
 
-			if #seg > 0 then --has sub-segments, paint them separately
-				for i = 1, #seg, 5 do
-					local i, j, text_run, clip_left, clip_right = unpack(seg, i, i + 4)
-					rs:setcontext(cr, text_run)
-					self:paint_glyph_run(cr, rs, run, i, j, x, y, clip_left, clip_right)
+					if #seg > 0 then --has sub-segments, paint them separately
+						for i = 1, #seg, 5 do
+							local i, j, text_run, clip_left, clip_right = unpack(seg, i, i + 4)
+							rs:setcontext(cr, text_run)
+							self:paint_glyph_run(cr, rs, run, i, j, x, y, clip_left, clip_right)
+						end
+					else
+						rs:setcontext(cr, seg.text_run)
+						self:paint_glyph_run(cr, rs, run, 0, run.len-1, x, y)
+					end
 				end
-			else
-				rs:setcontext(cr, seg.text_run)
-				self:paint_glyph_run(cr, rs, run, 0, run.len-1, x, y)
+				ax = ax + seg.advance_x
 			end
-
-			ax = ax + seg.advance_x
 		end
 	end
 
@@ -1409,7 +1450,7 @@ end
 function segments:hit_test_lines(x, y,
 	extend_top, extend_bottom, extend_left, extend_right
 )
-	local lines = self.lines
+	local lines = self:checklines()
 	x = x - lines.x
 	y = y - (lines.y + lines.baseline)
 	if y < -lines[1].spacing_ascent then
@@ -1426,8 +1467,9 @@ function segments:hit_test_lines(x, y,
 end
 
 function segments:hit_test_cursors(line_i, x, extend_left, extend_right)
-	local line = self.lines[line_i]
-	local ax = self.lines.x + line.x
+	local lines = self:checklines()
+	local line = lines[line_i]
+	local ax = lines.x + line.x
 	for seg_i, seg in ipairs(line) do
 		local run = seg.glyph_run
 		local x = x - ax
@@ -1459,7 +1501,7 @@ function segments:hit_test(x, y,
 end
 
 function segments:cursor_pos(seg, cursor_i)
-	local lines = self.lines
+	local lines = self:checklines()
 	local line = lines[seg.line_index]
 	local ax = lines.x + line.x
 	local ay = lines.y + lines.baseline + line.y
@@ -1534,7 +1576,7 @@ function cursor:next_line(delta)
 	local line_i = clamp(wanted_line_i, 1, #self.segments.lines)
 	local delta = wanted_line_i - line_i
 	local line = self.segments.lines[line_i]
-	local seg1, cursor_i1 = self:hit_test_cursors(line_i, x, true, true)
+	local seg1, cursor_i1 = self.segments:hit_test_cursors(line_i, x, true, true)
 	if seg1 then
 		seg, cursor_i = seg1, cursor_i1
 		offset = self.segments:offset_at_cursor(seg, cursor_i)

@@ -8,8 +8,9 @@ exclusively for pixel-perfect consistent output across platforms. Uses
 Used by [ui] for all text rendering.
 
 Supports subpixel positioning, color bitmap fonts (emoticons!), word
-wrapping, alignments, hit testing, cursors, selections, control over OpenType
-features, cursors and coloring inside ligatures, OpenType-assisted auto-hinter.
+wrapping, alignments, hit testing, clipping, cursors, selections,
+control over OpenType features, cursors and coloring inside ligatures,
+OpenType-assisted auto-hinter.
 
 Not-yet implemented: full justification, subscript, superscript, underline,
 strikethrough, glyph substitution, shaping across words, hyphenation,
@@ -30,6 +31,8 @@ __layouting__
 `segs:bounding_box() -> x, y, w, h`                  bounding box of laid out text
 __rendering__
 `segs:paint(cr)`                                     paint laid out text
+`segs:clip(x, y, w, h)`                              clip visible text to rectangle
+`segs:reset_clip()`                                  reset clipping area
 `tr:textbox(text_tree, cr, x, y, w, h, [ha], [va])`  shape, layout and paint text
 __cursors__
 `segs:cursor([offset]) -> cursor`                    create a cursor
@@ -154,6 +157,15 @@ Glyph caching and the actual rasterization is done in `tr_raster_ft` using
 handle blitting of (clipped portions of) 8-bit gray and 32-bit BGRA bitmaps
 and also bitmap scaling if you use bitmap fonts, since freetype doesn't handle
 that.
+
+### `segments:clip(x, y, w, h)`
+
+Mark all lines and segments which are completely outside the given rectangle
+as invisible, and everything else as visible.
+
+### `segments:reset_clip()`
+
+Mark all lines and segments as visible.
 
 ### `tr:textbox(text_tree, cr, x, y, w, h, [halign], [valign]) -> segments`
 

@@ -255,8 +255,6 @@ tab.clip_content = 'background' --TODO: find a way to set this as 'padding'
 tab.border_width = 1
 tab.border_color = '#222'
 tab.background_color = '#111'
-tab.text_align = 'left'
-tab.text_valign = 'top'
 tab.padding = 5
 tab.corner_radius = 5
 
@@ -273,10 +271,6 @@ ui:style('tab', {
 	transition_duration_y = .5,
 	transition_duration_w = .5,
 	transition_duration_h = .5,
-})
-
-ui:style('tab :focused', {
-	font_weight = 'bold',
 })
 
 ui:style('tab :hot', {
@@ -334,21 +328,41 @@ function tab:before_draw()
 	self:sync()
 end
 
-tab.title_padding_left = 2
-tab.title_color = '#ccc'
+--title
 
-function tab:before_draw_content(cr)
-	if self.title and self.title_color then
-		local wl, wr = self:slant_widths()
-		self:setfont()
-		cr:operator'over'
-		cr:rgba(self.ui:color(self.title_color))
-		self.window:textbox(
-			self.tab_x + self.title_padding_left + wl - self.padding_left,
-			-self.tab_h - self.padding_top,
-				self.tab_w, self.tab_h,
-			self.title, 'left', 'center', false)
-	end
+local title = ui.layer:subclass'tab_title'
+tab.title_class = title
+
+title.text_align = 'left'
+title.padding_left = 2
+title.padding_right = 2
+title.text_color = '#ccc'
+title.nowrap = true
+title.activable = false
+title.clip_content = 'padding'
+
+ui:style('tab_title :focused', {
+	font_weight = 'bold',
+})
+
+function tab:create_title(title)
+	return self.title_class(self.ui, {
+		parent = self,
+		tab = self,
+	}, self.title, title)
+end
+
+function tab:after_init()
+	self.title = self:create_title()
+end
+
+function tab:after_sync()
+	local t = self.title
+	local wl, wr = self:slant_widths()
+	t.x = self.tab_x - self.padding_left + wl
+	t.y = round(-self.tab_h - self.padding_top)
+	t.w = self.close_button.x - t.x
+	t.h = self.tab_h
 end
 
 --close button
@@ -358,9 +372,8 @@ tab.closeable = true --show close button and receive 'closing' event
 local xbutton = ui.button:subclass'tab_close_button'
 tab.close_button_class = xbutton
 
-xbutton.font = 'Ionicons'
+xbutton.font = 'Ionicons,13'
 xbutton.text = '\xEF\x8B\x80'
-xbutton.text_size = 13
 xbutton.w = 14
 xbutton.h = 14
 xbutton.corner_radius = 10
@@ -682,6 +695,8 @@ if not ... then require('ui_demo')(function(ui, win)
 	local h = win.view.ch
 
 	local tl1 = {
+		--tab_slant_left = 90,
+		--tab_slant_right = 90,
 		w = w, h = h,
 		parent = win,
 		tabs = {},
@@ -709,8 +724,7 @@ if not ... then require('ui_demo')(function(ui, win)
 			style = {
 				font_slant = 'normal',
 			},
-			title = 'خمسة',
-			font = 'amiri',
+			title = {text = 'خمسة tab '..i, font = 'amiri,16'},
 			--title = 'Tab '..i,
 			visible = visible,
 			--selected = selected,

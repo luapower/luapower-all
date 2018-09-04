@@ -16,6 +16,7 @@ local freetype = require'freetype'
 local cairo = require'cairo'
 local fs = require'fs'
 local tr = require'tr'
+local font_db = require'tr_font_db'
 
 local push = table.insert
 local pop = table.remove
@@ -3274,44 +3275,87 @@ end
 
 --text geometry and drawing
 
+function ui.expand:font(font)
+	local name, weight, slant, size = font_db:parse_font(font)
+	if name then self.font_name = name end
+	if weight then self.font_weight = weight end
+	if slant then self.font_slant = slant end
+	if size then self.text_size = size end
+end
+
+function layer:set_font(font) self:expand_attr('font', font) end
+
 layer.text_align = 'center'
 layer.text_valign = 'middle'
 layer.text_operator = 'over'
 layer.text = nil
-layer.font_name = 'Open Sans'
-layer.font_weight = 'normal'
-layer.font_slant = 'normal'
-layer.text_size = 14
+layer.font = 'Open Sans,14'
 layer.text_color = '#fff'
 layer.line_spacing = 1
+layer.paragraph_spacing = 2
 layer.text_dir = 'auto' --auto, rtl, ltr
+layer.nowrap = false
 
 function layer:text_visible()
 	return self.text and self.text ~= '' and true or false
 end
 
-function layer:draw_text(cr)
+function layer:layout_text()
 	if not self:text_visible() then return end
 	local cw, ch = self:content_size()
-	cr:operator(self.text_operator)
-	cr:rgba(self.ui:color(self.text_color))
-	self.ui.tr:shape({
-		self.text,
-		dir = self.text_dir,
-		font_name = self.font_name,
-		font_weight = self.font_weight,
-		font_slant = self.font_slant,
-		font_size = self.text_size,
-		line_spacing = self.line_spacing,
-	}):layout(0, 0, cw, ch, self.text_align, self.text_valign):paint(cr)
+	if not self._text_tree
+		or self.text        ~= self._text_tree.text
+		or self.dir         ~= self._text_tree.dir
+		or self.font_name   ~= self._text_tree.font_name
+		or self.font_weight ~= self._text_tree.font_weight
+		or self.font_slant  ~= self._text_tree.font_slant
+		or self.text_size   ~= self._text_tree.font_size
+		or self.nowrap      ~= self._text_tree.nowrap
+	then
+		self._text_tree = self._text_tree or {}
+		self._text_tree[1] = self.text
+		self._text_tree.dir         = self.text_dir
+		self._text_tree.font_name   = self.font_name
+		self._text_tree.font_weight = self.font_weight
+		self._text_tree.font_slant  = self.font_slant
+		self._text_tree.font_size   = self.text_size
+		self._text_tree.nowrap      = self.nowrap
+		self._text_segments = self.ui.tr:shape(self._text_tree)
+		self._text_w = false --force layout
+	end
+	local ha = self.text_align
+	local va = self.text_valign
+	local ls = self.line_spacing
+	local ps = self.paragraph_spacing
+	if    cw ~= self._text_w
+		or ch ~= self._text_h
+		or ha ~= self._text_ha
+		or va ~= self._text_va
+		or ls ~= self._text_tree.line_spacing
+		or ps ~= self._text_tree.paragraph_spacing
+	then
+		self._text_w  = cw
+		self._text_h  = ch
+		self._text_ha = ha
+		self._text_va = va
+		self._text_ls = ls
+		self._text_tree.line_spacing = self.line_spacing
+		self._text_tree.paragraph_spacing = self.paragraph_spacing
+		self._text_segments:layout(0, 0, cw, ch, ha, va)
+	end
+	return true
+end
+
+function layer:draw_text(cr)
+	if not self:layout_text() then return end
+	self._text_tree.color    = self.text_color
+	self._text_tree.operator = self.text_operator
+	self._text_segments:paint(cr)
 end
 
 function layer:text_bounding_box()
-	if not self:text_visible() then return 0, 0, 0, 0 end
-	local w, h = self.window:text_size(self.text)
-	local cw, ch = self:content_size()
-	return box2d.align(w, h, self.text_align, self.text_valign,
-		0, 0, cw, ch)
+	if not self:layout_text() then return 0, 0, 0, 0 end
+	return self._text_segments:bounding_box()
 end
 
 --content-box geometry, drawing and hit testing
