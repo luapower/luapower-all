@@ -1237,9 +1237,8 @@ function segments:bounding_box()
 	return bx, by, bw, bh
 end
 
---NOTE: it's called fastclip because it's not totally accurate because
---it doesn't take into account side bearings.
-function segments:fastclip(x, y, w, h)
+--NOTE: doesn't take into account side bearings, so it's not 100% accurate!
+function segments:clip(x, y, w, h)
 	local lines = self:checklines()
 	x = x - self.lines.x
 	y = y - self.lines.y - self.lines.baseline

@@ -216,6 +216,7 @@ function win:repaint()
 		local t = {
 			font='open sans, 14',
 			require'glue'.readfile('winapi_design.md'),
+			--nowrap = true,
 		}
 
 		segs = segs or tr:shape(t)
@@ -223,7 +224,7 @@ function win:repaint()
 
 		local cw, ch = win:client_size()
 		local cx, cy, cw, ch = cw / 2 - 300, ch / 2 - 200, 200, 300
-		segs:fastclip(cx, cy, cw, ch)
+		--segs:clip(cx, cy, cw, ch)
 		rect(cr, '#ff0', cx, cy, cw, ch)
 
 		segs:paint(cr)
