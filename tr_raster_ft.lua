@@ -115,7 +115,7 @@ local function select_font_size_index(face, size)
 	local index, best_size
 	for i=0,face.num_fixed_sizes-1 do
 		local sz = face.available_sizes[i]
-		local this_size = sz.width
+		local this_size = sz.height
 		local diff = math.abs(size - this_size)
 		if diff < best_diff then
 			index = i
@@ -135,12 +135,6 @@ function font:setsize(size)
 	if size_index then
 		scale = size / fixed_size
 		self.ft_face:select_size(size_index)
-		--scale the font metrics manually to trick harfbuzz into
-		--scaling the advances so that we don't have to.
-		local m = self.ft_face.size.metrics
-		local ft_scale = scale * 2^18 --TODO: this should be 16.16 not 14.18 wtf?
-		m.x_scale = ft_scale
-		m.y_scale = ft_scale
 	else
 		scale = 1
 		self.ft_face:set_pixel_sizes(fixed_size)
@@ -214,10 +208,10 @@ end
 
 rs.ft_load_flags = bor(
 	ft.C.FT_LOAD_COLOR,
-	ft.C.FT_LOAD_PEDANTIC,
-	--ft.C.FT_LOAD_NO_HINTING
+	ft.C.FT_LOAD_PEDANTIC
+	--ft.C.FT_LOAD_NO_HINTING,
 	--ft.C.FT_LOAD_NO_AUTOHINT
-	ft.C.FT_LOAD_FORCE_AUTOHINT
+	--ft.C.FT_LOAD_FORCE_AUTOHINT
 )
 
 function rs:load_glyph(font, font_size, glyph_index)

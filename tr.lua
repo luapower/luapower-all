@@ -263,12 +263,15 @@ function tr:shape_text_run(
 	local glyph_info  = hb_buf:get_glyph_infos()
 	local glyph_pos   = hb_buf:get_glyph_positions()
 
-	--make the advance of each glyph relative to the start of the run
-	--so that pos_x() is O(1) for any index.
-	--also compute the run's total advance.
+	--1. scale advances and offsets based on `font.scale` (for bitmap fonts).
+	--2. make the advance of each glyph relative to the start of the run
+	--   so that pos_x() is O(1) for any index.
+	--3. compute the run's total advance.
+	local scale = font.scale
 	local ax = 0
 	for i = 0, glyph_count-1 do
-		ax = ax + glyph_pos[i].x_advance
+		ax = (ax + glyph_pos[i].x_advance) * scale
+		glyph_pos[i].x_offset = glyph_pos[i].x_offset * scale
 		glyph_pos[i].x_advance = ax
 	end
 	ax = ax / 64

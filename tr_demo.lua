@@ -116,184 +116,177 @@ function win:repaint()
 
 	local t0 = time.clock()
 
-	if false then
+	--local s1 = ('gmmI '):rep(1)
+	--local s2 = ('fi AV (ثلاثة 1234 خمسة) '):rep(1)
+	--local s3 = ('Hebrew (אדםה (adamah))'):rep(1)
 
-		local segs = tr:shape{
-			('\xF0\x9F\x98\x81'):rep(2), font = 'NotoColorEmoji,34',
-		}
-		local x, y, w, h = 100, 100, 80, 80
-		rect(cr, '#888', x, y, w, h)
-		tr:paint(cr, segs, x, y, w, h, 'center', 'bottom')
+	local x, y, w, h = box2d.offset(-50, 0, 0, win:client_size())
+	rect(cr, '#888', x, y, w, h)
 
-	elseif true then
+	--[[
+	local t = {
+		line_spacing = 1.2,
+		paragraph_spacing = 1.5,
+		color = '#fff',
+		--{'A'},
+		--font = 'amiri,100',
+		--font = 'eb garamond, 50',
 
-		--local s1 = ('gmmI '):rep(1)
-		--local s2 = ('fi AV (ثلاثة 1234 خمسة) '):rep(1)
-		--local s3 = ('Hebrew (אדםה (adamah))'):rep(1)
+		font = 'IonIcons,100',
+		'\xEF\x8B\x80',
+		'\u{f12a}',
 
-		local x, y, w, h = box2d.offset(-50, 0, 0, win:client_size())
-		rect(cr, '#888', x, y, w, h)
+		--'abc', 'def', 'ghi',
 
-		--[[
-		local t = {
-			line_spacing = 1.2,
-			paragraph_spacing = 1.5,
-			color = '#fff',
-			--{'A'},
-			--font = 'amiri,100',
-			--font = 'eb garamond, 50',
+		--'mff\n12',
 
-			font = 'IonIcons,100',
-			'\xEF\x8B\x80',
-			'\u{f12a}',
+		--{font_size = 30, 'We find \u{202B}פעילות הבינאום\u{202C}\u{200E} 5 times.\n'},
 
-			--'abc', 'def', 'ghi',
+		--'פעילות ABC הבינאום',
+		--'ABC DEF \nGHI\n',
 
-			--'mff\n12',
+		--'مفاتيح ABC DEF\n',
+		--dir = 'rtl',
+		--'ABC DEF السَّلَامُ عَلَيْكُمْ مفاتيح ',
+		--'السَّلَامُ عَلَيْكُمْ',
 
-			--{font_size = 30, 'We find \u{202B}פעילות הבינאום\u{202C}\u{200E} 5 times.\n'},
+		--dir = 'rtl', 'مفاتيح ABC', '\u{2029}', {dir = 'ltr', 'مفاتيح ABC'},
+		--'XXX פעילות ABC הבינאום DEF',
 
-			--'פעילות ABC הבינאום',
-			--'ABC DEF \nGHI\n',
+		--'مفاتيح 123 456 مفاتيح abc',
+		--{'المفاتي','ح\n'},
+		--{color = '#ff0', 'ال  ( مف ) اتيح', font_size = 81},
+		--'\r\n',
+		--{color = '#f6f', '  A(B)C  .  المفاتيح  '},
 
-			--'مفاتيح ABC DEF\n',
-			--dir = 'rtl',
-			--'ABC DEF السَّلَامُ عَلَيْكُمْ مفاتيح ',
-			--'السَّلَامُ عَلَيْكُمْ',
+		--'\u{2029}', --paragraph split
 
-			--dir = 'rtl', 'مفاتيح ABC', '\u{2029}', {dir = 'ltr', 'مفاتيح ABC'},
-			--'XXX פעילות ABC הבינאום DEF',
+		--{
+		--line_spacing = 1,
 
-			--'مفاتيح 123 456 مفاتيح abc',
-			--{'المفاتي','ح\n'},
-			--{color = '#ff0', 'ال  ( مف ) اتيح', font_size = 81},
-			--'\r\n',
-			--{color = '#f6f', '  A(B)C  .  المفاتيح  '},
+			--'abc    def       ghi   123   xxx',
 
-			--'\u{2029}', --paragraph split
+			--features = 'smcp liga=1 +kern',
 
-			--{
-			--line_spacing = 1,
+			--{'Td'}, {color = '#ff0', 'f'}, {color = '#0ff', 'f'}, {color = '#f0f', 'i'}, {'b\n'}, 'abc def ghi',
+			--' abc',
+			--'abc', {'def\n'}, 'ABC 123',
+			--t=0,
+			--{t=1, nowrap = true, 'abc def'}, ' xyz ',
+			--{t=2, nowrap = true, '12 abc 789'}, ' zyz', {x = 20, y = -30, font_size = 40, '2'},
+			--{t=3, nowrap = true, 'ABC def GH'},
 
-				--'abc    def       ghi   123   xxx',
+			--font = 'open sans, 200',
 
-				--features = 'smcp liga=1 +kern',
+			--multiple glyphs with the same cluster value
+			--{'\x15\x09\0\0\x4D\x09\0\0\x15\x09\0\0\x3F\x09\0\0\x15\x09\0\0', charset = 'utf32'},
+			--{'\x15\x09\0\0\x4D\x09\0\0\x15\x09\0\0\x3F\x09\0\0\x15\x09\0\0', charset = 'utf32'},
 
-				--{'Td'}, {color = '#ff0', 'f'}, {color = '#0ff', 'f'}, {color = '#f0f', 'i'}, {'b\n'}, 'abc def ghi',
-				--' abc',
-				--'abc', {'def\n'}, 'ABC 123',
-				--t=0,
-				--{t=1, nowrap = true, 'abc def'}, ' xyz ',
-				--{t=2, nowrap = true, '12 abc 789'}, ' zyz', {x = 20, y = -30, font_size = 40, '2'},
-				--{t=3, nowrap = true, 'ABC def GH'},
+			--'\u{65}\u{301}ff',
+			--'i fi mTm\n\n', {i=1, 'VA', {b=1, 'Dg', {i=false, 'dT\n'}}},
+		--},
 
-				--font = 'open sans, 200',
+		--{font = 'eb garamond, 100', 'ffix xfl ffi fl\n'},
+		--{font = 'amiri, 100', 'ffix xfl ffi fl'},
 
-				--multiple glyphs with the same cluster value
-				--{'\x15\x09\0\0\x4D\x09\0\0\x15\x09\0\0\x3F\x09\0\0\x15\x09\0\0', charset = 'utf32'},
-				--{'\x15\x09\0\0\x4D\x09\0\0\x15\x09\0\0\x3F\x09\0\0\x15\x09\0\0', charset = 'utf32'},
+		--{font = 'NotoColorEmoji,34', ('\xF0\x9F\x98\x81'):rep(3)},
+	}
 
-				--'\u{65}\u{301}ff',
-				--'i fi mTm\n\n', {i=1, 'VA', {b=1, 'Dg', {i=false, 'dT\n'}}},
-			--},
-
-			--{font = 'eb garamond, 100', 'ffix xfl ffi fl\n'},
-			--{font = 'amiri, 100', 'ffix xfl ffi fl'},
-
-			--{font = 'NotoColorEmoji,34', ('\xF0\x9F\x98\x81'):rep(3)},
-		}
-
-		local utf8 = require'utf8'
-		local ffi = require'ffi'
-		local s,len = utf8.decode'السَّلَامُ'
-		local t = {font = 'amiri,100'}
-		for i=1,10 do
-			local cp = ffi.string(s+i-1, 4)
-			t[i] = {charset = 'utf32', text_len = 1, cp}
-		end
-		]]
-
-		local t = {
-			font='open sans, 14',
-			require'glue'.readfile('winapi_design.md'),
-			--nowrap = true,
-		}
-
-		segs = segs or tr:shape(t)
-		segs:layout(x, y, w, h, 'left', 'top')
-
-		local cw, ch = win:client_size()
-		local cx, cy, cw, ch = cw / 2 - 300, ch / 2 - 200, 200, 300
-		--segs:clip(cx, cy, cw, ch)
-		rect(cr, '#ff0', cx, cy, cw, ch)
-
-		segs:paint(cr)
-
-		if false then
-			local lines = segs.lines
-			local x = lines.x
-			local y = lines.y + lines.baseline
-			for i,line in ipairs(lines) do
-				local hit = cursor and cursor.line_i == i
-				local x = x + line.x
-				local y = y + line.y
-				rect(cr, hit and '#f22' or '#222', x, y, line.advance_x, -line.spacing_ascent)
-				rect(cr, hit and '#f22' or '#022', x, y, line.advance_x, -line.spacing_descent)
-				rect(cr, hit and '#fff' or '#888', x, y, line.advance_x, -line.ascent)
-				rect(cr, hit and '#0ff' or '#088', x, y, line.advance_x, -line.descent)
-				dot(cr, '#fff', x, y, 6)
-				dot(cr, '#ff0', x + line.advance_x, y, 6)
-				local ax = x
-				local ay = y
-				for i,seg in ipairs(line) do
-					local run = seg.glyph_run
-					local hit = hit and cursor and cursor.seg == seg
-
-					dot(cr, '#f0f', ax, ay, 4)
-					dot(cr, '#0f0', ax + seg.advance_x, ay, 5)
-
-					do
-						local ay = ay + (seg.index - 1) * 10
-						if run.rtl then
-							vector(cr, '#f00', ax + seg.advance_x, ay, ax, ay + 10)
-						else
-							vector(cr, '#66f', ax, ay, ax + seg.advance_x, ay + 10)
-						end
-					end
-
-					for i = 0, run.len-1 do
-						local glyph_index = run.info[i].codepoint
-						local px = i > 0 and run.pos[i-1].x_advance / 64 or 0
-						local ox = run.pos[i].x_offset / 64
-						local oy = run.pos[i].y_offset / 64
-						dot(cr, '#f00', ax + seg.offset_x + px + ox, ay - oy, 3)
-					end
-
-					for i = 0, run.text_len do
-						local cx = seg.offset_x + run.cursor_xs[i]
-						local px = ax + cx
-						local hit = hit and cursor and cursor.cursor_i == i
-						dot(cr, '#0ff', px, ay, 2)
-					end
-
-					ax = ax + seg.advance_x
-				end
-			end
-
-			if cursor and cursor.cursor_i then
-				local x, y, h = cursor:pos()
-				rect(cr, '#f00', x-4, y, 8, h)
-			end
-		end
-
-		cursor = cursor or segs:cursor()
-		local x, y, h, rtl = cursor:pos()
-		vector(cr, '#fff', x, y, x, y+h)
-		local w = (rtl and 10 or -10)
-		triangle(cr, '#fff', x-w*.8, y, w, 90)
-
-		rect(cr, '#f00', segs:bounding_box())
+	local utf8 = require'utf8'
+	local ffi = require'ffi'
+	local s,len = utf8.decode'السَّلَامُ'
+	local t = {font = 'amiri,100'}
+	for i=1,10 do
+		local cp = ffi.string(s+i-1, 4)
+		t[i] = {charset = 'utf32', text_len = 1, cp}
 	end
+	]]
+
+	local t = {
+		{
+			('\xF0\x9F\x98\x81'):rep(2), '\n',
+			font = 'NotoColorEmoji,32',
+		},
+		font='open sans, 14',
+		color = '#fff',
+		require'glue'.readfile('winapi_design.md'),
+		--nowrap = true,
+	}
+
+	segs = segs or tr:shape(t)
+	segs:layout(x, y, w, h, 'left', 'top')
+
+	local cw, ch = win:client_size()
+	local cx, cy, cw, ch = cw / 2 - 300, ch / 2 - 200, 200, 300
+	--segs:clip(cx, cy, cw, ch)
+	rect(cr, '#ff0', cx, cy, cw, ch)
+
+	segs:paint(cr)
+
+	if false then
+		local lines = segs.lines
+		local x = lines.x
+		local y = lines.y + lines.baseline
+		for i,line in ipairs(lines) do
+			local hit = cursor and cursor.line_i == i
+			local x = x + line.x
+			local y = y + line.y
+			rect(cr, hit and '#f22' or '#222', x, y, line.advance_x, -line.spacing_ascent)
+			rect(cr, hit and '#f22' or '#022', x, y, line.advance_x, -line.spacing_descent)
+			rect(cr, hit and '#fff' or '#888', x, y, line.advance_x, -line.ascent)
+			rect(cr, hit and '#0ff' or '#088', x, y, line.advance_x, -line.descent)
+			dot(cr, '#fff', x, y, 6)
+			dot(cr, '#ff0', x + line.advance_x, y, 6)
+			local ax = x
+			local ay = y
+			for i,seg in ipairs(line) do
+				local run = seg.glyph_run
+				local hit = hit and cursor and cursor.seg == seg
+
+				dot(cr, '#f0f', ax, ay, 4)
+				dot(cr, '#0f0', ax + seg.advance_x, ay, 5)
+
+				do
+					local ay = ay + (seg.index - 1) * 10
+					if run.rtl then
+						vector(cr, '#f00', ax + seg.advance_x, ay, ax, ay + 10)
+					else
+						vector(cr, '#66f', ax, ay, ax + seg.advance_x, ay + 10)
+					end
+				end
+
+				for i = 0, run.len-1 do
+					local glyph_index = run.info[i].codepoint
+					local px = i > 0 and run.pos[i-1].x_advance / 64 or 0
+					local ox = run.pos[i].x_offset / 64
+					local oy = run.pos[i].y_offset / 64
+					dot(cr, '#f00', ax + seg.offset_x + px + ox, ay - oy, 3)
+				end
+
+				for i = 0, run.text_len do
+					local cx = seg.offset_x + run.cursor_xs[i]
+					local px = ax + cx
+					local hit = hit and cursor and cursor.cursor_i == i
+					dot(cr, '#0ff', px, ay, 2)
+				end
+
+				ax = ax + seg.advance_x
+			end
+		end
+
+		if cursor and cursor.cursor_i then
+			local x, y, h = cursor:pos()
+			rect(cr, '#f00', x-4, y, 8, h)
+		end
+	end
+
+	cursor = cursor or segs:cursor()
+	local x, y, h, rtl = cursor:pos()
+	vector(cr, '#fff', x, y, x, y+h)
+	local w = (rtl and 10 or -10)
+	triangle(cr, '#fff', x-w*.8, y, w, 90)
+
+	rect(cr, '#f00', segs:bounding_box())
 
 end
 
