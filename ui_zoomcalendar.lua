@@ -1,5 +1,5 @@
 
---ui linear zoom calendar widget.
+--Linear Zoom Calendar widget.
 --Written by Cosmin Apreutesei. Public Domain.
 
 local ui = require'ui'

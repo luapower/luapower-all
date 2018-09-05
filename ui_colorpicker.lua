@@ -1,5 +1,5 @@
 
---ui color picker widget.
+--Color Picker widget.
 --Written by Cosmin Apreutesei. Public Domain.
 
 local ui = require'ui'

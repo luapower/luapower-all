@@ -878,8 +878,8 @@ function tr:shape(text_runs)
 				offset = seg_offset,
 				index = seg_i,
 				--table slots filled by layouting
+				x = false,
 				advance_x = false,
-				offset_x = false,
 				line_index = false,
 				wrapped = false, --ignore trailing space
 				visible = true, --entirely clipped or not
@@ -1084,7 +1084,7 @@ function segments:layout(x, y, w, h, halign, valign)
 				local last_run = last_seg.glyph_run
 				line.advance_x = line.advance_x - last_seg.advance_x
 				last_seg.advance_x = last_run.wrap_advance_x
-				last_seg.offset_x = last_run.rtl
+				last_seg.x = last_run.rtl
 					and -(last_run.advance_x - last_run.wrap_advance_x) or 0
 				last_seg.wrapped = true
 				line.advance_x = line.advance_x + last_seg.advance_x
@@ -1107,7 +1107,7 @@ function segments:layout(x, y, w, h, halign, valign)
 			local seg = self[i]
 			local run = seg.glyph_run
 			seg.advance_x = run.advance_x
-			seg.offset_x = 0
+			seg.x = 0
 			seg.line_index = line_i
 			push(line, seg)
 		end
@@ -1178,8 +1178,9 @@ function segments:layout(x, y, w, h, halign, valign)
 		local ascent_factor = last_line and last_line.paragraph_spacing or 1
 		local descent_factor = line.paragraph_spacing or 1
 
-		--compute line's vertical metrics.
+		local ax = 0
 		for _,seg in ipairs(line) do
+			--compute line's vertical metrics.
 			local run = seg.glyph_run
 			local ascent = run.font.ascent
 			local descent = run.font.descent
@@ -1194,6 +1195,9 @@ function segments:layout(x, y, w, h, halign, valign)
 			line.spacing_descent
 				= math.min(line.spacing_descent,
 					(descent - half_line_gap) * descent_factor)
+			--set segments `x` to be relative to the line's origin.
+			seg.x = ax + seg.x
+			ax = ax + seg.advance_x
 		end
 
 		--compute line's y position relative to first line's baseline.
@@ -1254,10 +1258,9 @@ function segments:clip(x, y, w, h)
 		if line.visible then
 			local ax = bx
 			for _,seg in ipairs(line) do
-				local bx = ax
+				local bx = seg.x
 				local bw = seg.advance_x
 				seg.visible = box_overlapping(x, y, w, h, bx, by, bw, bh)
-				ax = ax + seg.advance_x
 			end
 		end
 	end
@@ -1308,7 +1311,7 @@ function segments:paint(cr)
 				if seg.visible then
 
 					local run = seg.glyph_run
-					local x, y = ax + seg.offset_x, ay
+					local x, y = ax + seg.x, ay
 
 					if #seg > 0 then --has sub-segments, paint them separately
 						for i = 1, #seg, 5 do
@@ -1321,7 +1324,6 @@ function segments:paint(cr)
 						self:paint_glyph_run(cr, rs, run, 0, run.len-1, x, y)
 					end
 				end
-				ax = ax + seg.advance_x
 			end
 		end
 	end
@@ -1347,7 +1349,7 @@ function segments:cursor_at_offset(offset)
 	local run = seg.glyph_run
 	local i = offset - seg.offset
 	assert(i >= 0)
-	assert(i <= run.text_len)
+	local i = clamp(i, 0, run.text_len)
 	return seg, run.cursor_offsets[i]
 end
 
@@ -1408,44 +1410,6 @@ function segments:next_unique_cursor(seg, i, delta)
 	return seg, i, delta
 end
 
---move `delta` cursor positions from a certain cursor position.
---advance until the furthest cursor position with the required offset.
-function segments:next_greedy_cursor(seg, i, delta)
-	local step = (delta or 1) > 0 and 1 or -1
-	local seg0, i0 = seg, i
-	local offset0 = self:offset_at_cursor(seg, i)
-	local x0, y0
-	local target_offset
-	::again::
-	seg, i, delta = self:next_physical_cursor(seg, i, delta)
-	if delta == 0 then
-		local offset = self:offset_at_cursor(seg, i)
-		if offset == offset0 then
-			--duplicate cursor (same text position):
-			--advance further until a different one is found.
-			delta = step
-			goto again
-		else
-			target_offset = offset
-		end
-	end
-	if target_offset and step < 0 then
-		::again::
-		local seg1, i1, delta1 = self:next_physical_cursor(seg, i, delta)
-		if delta1 == 0 then
-			local offset = self:offset_at_cursor(seg1, i1)
-			if offset == target_offset then
-				--duplicate cursor (same text position):
-				--advance further until a different one is found.
-				seg, i, delta = seg1, i1, delta1
-				delta = step
-				goto again
-			end
-		end
-	end
-	return seg, i, delta
-end
-
 local function cmp_ys(lines, i, y)
 	return lines[i].y - lines[i].spacing_descent < y
 end
@@ -1471,24 +1435,25 @@ end
 function segments:hit_test_cursors(line_i, x, extend_left, extend_right)
 	local lines = self:checklines()
 	local line = lines[line_i]
-	local ax = lines.x + line.x
+	local x = x - lines.x - line.x
+	--TODO: use binsearch here.
 	for seg_i, seg in ipairs(line) do
 		local run = seg.glyph_run
-		local x = x - ax
+		local x = x - seg.x
 		if ((extend_left and seg_i == 1) or x >= 0)
 			and ((extend_right and seg_i == #line) or x <= seg.advance_x)
 		then
 			--find the cursor position closest to x.
+			--TODO: use binsearch here.
 			local min_d, cursor_i = 1/0
 			for i = 0, run.text_len do
-				local d = math.abs(seg.offset_x + seg.glyph_run.cursor_xs[i] - x)
+				local d = math.abs(seg.glyph_run.cursor_xs[i] - x)
 				if d < min_d then
 					min_d, cursor_i = d, i
 				end
 			end
 			return seg, cursor_i
 		end
-		ax = ax + seg.advance_x
 	end
 end
 
@@ -1502,23 +1467,104 @@ function segments:hit_test(x, y,
 	return line_i, self:hit_test_cursors(line_i, x, extend_left, extend_right)
 end
 
-function segments:cursor_pos(seg, cursor_i)
+function segments:cursor_pos(seg, i)
 	local lines = self:checklines()
 	local line = lines[seg.line_index]
-	local ax = lines.x + line.x
-	local ay = lines.y + lines.baseline + line.y
-	--TODO: store ax for each segment to avoid O(n) when displaying cursors?
-	local target_seg = seg
-	for _,seg in ipairs(line) do
-		local run = seg.glyph_run
-		if seg == target_seg then
-			return
-				ax + seg.offset_x + run.cursor_xs[cursor_i],
-				ay - line.ascent,
-				line.ascent - line.descent, --cursor height
-				seg.glyph_run.rtl --cursor direction
+	local run = seg.glyph_run
+	local x = lines.x + line.x + seg.x
+	local y = lines.y + lines.baseline + line.y - line.ascent
+	local i = clamp(i, 0, run.text_len)
+	local cx = run.cursor_xs[i]
+	return x + cx, y
+end
+
+function segments:cursor_size(seg, i)
+	local rtl = seg.glyph_run.rtl
+	local line = self.lines[seg.line_index]
+	local w = rtl and -1 or 1
+	local h = line.ascent - line.descent
+	local seg2, i2, delta = self:next_unique_cursor(seg, i)
+	if delta == 0 and seg2.line_index == seg.line_index then
+		local cx1 = self:cursor_pos(seg, i)
+		local cx2 = self:cursor_pos(seg2, i2)
+		w = cx2 - cx1
+	end
+	return w, h, rtl
+end
+
+--selection rectangles -------------------------------------------------------
+
+--return the line-relative (x, w) of a selection rectangle on two cursor
+--positions in the same segment (in whatever order).
+local function segment_xw(seg, i1, i2)
+	local run = seg.glyph_run
+	local i1 = clamp(i1, 0, run.text_len)
+	local i2 = clamp(i2, 0, run.text_len)
+	local cx1 = run.cursor_xs[i1]
+	local cx2 = run.cursor_xs[i2]
+	if cx1 > cx2 then
+		cx1, cx2 = cx2, cx1
+	end
+	return seg.x + cx1, cx2 - cx1
+end
+
+--return the selection rectangle of an entire line.
+local function line_xywh(lines, line)
+	local x = lines.x + line.x
+	local y = lines.y + lines.baseline + line.y - line.ascent
+	local w = line.advance_x
+	local h = line.ascent - line.descent
+	return x, y, w, h
+end
+
+--merge two (x, w) segments together, if possible.
+local function merge_xw(x1, w1, x2, w2)
+	if not x1 then --is first
+		return x2, w2
+	elseif x2 == x1 + w1 then --comes after
+		return x1, w1 + w2
+	elseif x1 == x2 + w2 then --comes before
+		return x2, w1 + w2
+	else --not connected
+		return x2, w2, true
+	end
+end
+
+function segments:selection_rectangles(seg1, i1, seg2, i2, write)
+	if seg1.offset > seg2.offset then
+		seg1, i1, seg2, i2 = seg2, i2, seg1, i1
+	end
+	assert(seg1.index <= seg2.index)
+	local lines = self.lines
+	local line1_i = seg1.line_index
+	local line2_i = seg2.line_index
+	local seg = seg1
+	local line_i = seg.line_index
+	while seg and seg.index <= seg2.index do
+		local line = lines[line_i]
+		if line.visible then
+			local line_x, line_y, line_w, line_h = line_xywh(lines, line)
+			local x, w
+			while seg and seg.index <= seg2.index and seg.line_index == line_i do
+				local i1 = seg == seg1 and i1 or 0
+				local i2 = seg == seg2 and i2 or 1/0
+				local x1, w1 = segment_xw(seg, i1, i2)
+				local x1, w1, failed = merge_xw(x, w, x1, w1)
+				if failed then
+					write(line_x + x, line_y, w, line_h)
+				end
+				x, w = x1, w1
+				seg = self[seg.index + 1]
+			end
+			write(line_x + x, line_y, w, line_h)
+		else
+			--TODO: find a quicker way to skip invisible lines (we scan segments
+			--because we don't know which is the first logical segment on a line).
+			while seg and seg.index <= seg2.index and seg.line_index == line_i do
+				seg = self[seg.index + 1]
+			end
 		end
-		ax = ax + seg.advance_x
+		line_i = seg and seg.line_index
 	end
 end
 
@@ -1533,18 +1579,17 @@ function segments:cursor(offset)
 		tr = self.tr,
 		segments = self,
 	}, self.tr.cursor_class)
-	self:set_offset(offset or 0)
+	self:move_to_offset(offset or 0)
 	return self
-end
-
-function cursor:set_offset(offset)
-	self.seg, self.cursor_i = self.segments:cursor_at_offset(offset)
-	self.offset = self.segments:offset_at_cursor(self.seg, self.cursor_i)
 end
 
 --text position -> layout position.
 function cursor:pos()
 	return self.segments:cursor_pos(self.seg, self.cursor_i)
+end
+
+function cursor:size()
+	return self.segments:cursor_size(self.seg, self.cursor_i)
 end
 
 --layout position -> text position.
@@ -1555,11 +1600,16 @@ function cursor:hit_test(x, y, ...)
 end
 
 --move based on a layout position.
-function cursor:move_to(x, y, ...)
+function cursor:move_to_pos(x, y, ...)
 	local offset, seg, cursor_i = self:hit_test(x, y, ...)
 	if offset then
 		self.offset, self.seg, self.cursor_i = offset, seg, cursor_i
 	end
+end
+
+function cursor:move_to_offset(offset)
+	self.seg, self.cursor_i = self.segments:cursor_at_offset(offset)
+	self.offset = self.segments:offset_at_cursor(self.seg, self.cursor_i)
 end
 
 function cursor:next_cursor(delta)
@@ -1614,26 +1664,20 @@ function segments:selection(offset1, offset2)
 	return self
 end
 
-function selection:lines()
-	local line_i1 = cursor1.seg.line_index
-	local line_i2 = cursor2.seg.line_index
-	if line_i2 < line_i1 then
-		line_i1, line_i2 = line_i2, line_i1
-	end
-	return line_i1, line_i2
+function selection:rectangles(write)
+	self.segments:selection_rectangles(
+		self.cursor1.seg, self.cursor1.cursor_i,
+		self.cursor2.seg, self.cursor2.cursor_i, write)
 end
 
-function selection:rectangles(write)
-	local cursor1, cursor2
-	local line_i1 = cursor1.seg.line_index
-	local line_i2 = cursor2.seg.line_index
-	if line_i2 < line_i1 then
-		line_i1, line_i2 = line_i2, line_i1
-	end
-	local line_i1, line_i2 = self:lines()
-	for i = line_i1, line_i2 do
+function selection:select_all()
+	self.cursor1:move_to_offset(0)
+	self.cursor2:move_to_offset(1/0)
+end
 
-	end
+function selection:reset(offset)
+	self.cursor1:move_to_offset(offset or 0)
+	self.cursor2:move_to_offset(offset or 0)
 end
 
 return tr

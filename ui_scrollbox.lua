@@ -1,5 +1,5 @@
 
---ui scrollbar and scrollbox widgets.
+--Scrollbar and Scrollbox Widgets.
 --Written by Cosmin Apreutesei. Public Domain.
 
 local ui = require'ui'

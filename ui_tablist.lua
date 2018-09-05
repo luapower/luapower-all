@@ -1,5 +1,5 @@
 
---ui tab and tablist widgets.
+--Tab and Tablist widgets.
 --Written by Cosmin Apreutesei. Public Domain.
 
 local ui = require'ui'
@@ -339,7 +339,7 @@ title.padding_right = 2
 title.text_color = '#ccc'
 title.nowrap = true
 title.activable = false
-title.clip_content = 'padding'
+title.clip_content = true
 
 ui:style('tab_title :focused', {
 	font_weight = 'bold',
@@ -373,7 +373,7 @@ local xbutton = ui.button:subclass'tab_close_button'
 tab.close_button_class = xbutton
 
 xbutton.font = 'Ionicons,13'
-xbutton.text = '\xEF\x8B\x80'
+xbutton.text = '\u{f2c0}'
 xbutton.w = 14
 xbutton.h = 14
 xbutton.corner_radius = 10

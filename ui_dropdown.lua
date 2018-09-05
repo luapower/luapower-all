@@ -1,5 +1,5 @@
 
---ui drop-down widget.
+--Drop-down widget.
 --Written by Cosmin Apreutesei. Public Domain.
 
 local ui = require'ui'

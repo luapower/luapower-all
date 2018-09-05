@@ -1,5 +1,5 @@
 
---ui pop-up window.
+--Pop-up Window.
 --Written by Cosmin Apreutesei. Public Domain.
 
 local ui = require'ui'

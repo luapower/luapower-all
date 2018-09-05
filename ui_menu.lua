@@ -1,5 +1,5 @@
 
---ui menu bar & menu widgets.
+--Menu Bar & Menu widgets.
 --Written by Cosmin Apreutesei. Public Domain.
 
 local ui = require'ui'

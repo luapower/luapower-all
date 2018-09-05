@@ -1983,13 +1983,8 @@ ui:memoize'image_pattern'
 
 --fonts & text ---------------------------------------------------------------
 
-function ui:add_font_file(file, name, weight, slant)
-	return self.tr:add_font_file(file, name, weight, slant)
-end
-
-function ui:add_mem_font(data, data_size, weight, slant)
-	return self.tr:add_mem_font(data, data_size, name, weight, slant)
-end
+function ui:add_font_file(...) return self.tr:add_font_file(...) end
+function ui:add_mem_font(...) return self.tr:add_mem_font(...) end
 
 function ui:after_init()
 	self.tr = tr()
@@ -3302,10 +3297,9 @@ end
 
 function layer:layout_text()
 	if not self:text_visible() then return end
-	local cw, ch = self:content_size()
 	if not self._text_tree
-		or self.text        ~= self._text_tree.text
-		or self.dir         ~= self._text_tree.dir
+		or self.text        ~= self._text_tree[1]
+		or self.text_dir    ~= self._text_tree.text_dir
 		or self.font_name   ~= self._text_tree.font_name
 		or self.font_weight ~= self._text_tree.font_weight
 		or self.font_slant  ~= self._text_tree.font_slant
@@ -3313,8 +3307,8 @@ function layer:layout_text()
 		or self.nowrap      ~= self._text_tree.nowrap
 	then
 		self._text_tree = self._text_tree or {}
-		self._text_tree[1] = self.text
-		self._text_tree.dir         = self.text_dir
+		self._text_tree[1]          = self.text
+		self._text_tree.text_dir    = self.text_dir
 		self._text_tree.font_name   = self.font_name
 		self._text_tree.font_weight = self.font_weight
 		self._text_tree.font_slant  = self.font_slant
@@ -3323,6 +3317,7 @@ function layer:layout_text()
 		self._text_segments = self.ui.tr:shape(self._text_tree)
 		self._text_w = false --force layout
 	end
+	local cw, ch = self:content_size()
 	local ha = self.text_align
 	local va = self.text_valign
 	local ls = self.line_spacing
@@ -3339,11 +3334,11 @@ function layer:layout_text()
 		self._text_ha = ha
 		self._text_va = va
 		self._text_ls = ls
-		self._text_tree.line_spacing = self.line_spacing
-		self._text_tree.paragraph_spacing = self.paragraph_spacing
+		self._text_tree.line_spacing = ls
+		self._text_tree.paragraph_spacing = ps
 		self._text_segments:layout(0, 0, cw, ch, ha, va)
 	end
-	return true
+	return self._text_segments
 end
 
 function layer:draw_text(cr)
@@ -3693,7 +3688,8 @@ local autoload = {
 	choicebutton = 'ui_button',
 	slider       = 'ui_slider',
 	toggle       = 'ui_slider',
-	editbox      = 'ui_editbox',
+	editbox1     = 'ui_editbox1',
+	editbox      = 'ui_editbox2',
 	tab          = 'ui_tablist',
 	tablist      = 'ui_tablist',
 	menuitem     = 'ui_menu',

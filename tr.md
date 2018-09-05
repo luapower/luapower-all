@@ -36,15 +36,20 @@ __rendering__
 `tr:textbox(text_tree, cr, x, y, w, h, [ha], [va])`  shape, layout and paint text
 __cursors__
 `segs:cursor([offset]) -> cursor`                    create a cursor
-`cursor:pos() -> x, y, h, rtl`                       cursor position, height and direction
+`cursor:pos() -> x, y`                               cursor position
+`cursor:size() -> w, h, rtl`                         cursor size and direction
 `cursor:set_offset(offset)`                          move cursor to text offset
 `cursor:hit_test(x, y, ...) -> off, seg, i, line_i`  hit test
-`cursor:move_to(x, y, ...)`                          move cursor to closest position
+`cursor:move_to_offset(offset)`                      move cursor to closest offset in text
+`cursor:move_to_pos(x, y, ...)`                      move cursor to closest position
 `cursor:next_cursor([delta]) -> off, seg, i, line_i` next/prev cursor in text
 `cursor:move(dir[, delta])`                          move cursor in text
 __selections__
 `segs:selection() -> sel`                            create a selection
 `sel:rectangles(write_func)`                         get selection rectangles
+`sel:select_all()`                                   select all
+`sel:reset([offset])`                                select none
+`sel.cursor1`, `sel.cursor2`                         selection ends
 ---------------------------------------------------- ------------------------------------
 
 ### `tr:add_font_file(file, name, [slant], [weight])`
@@ -300,9 +305,6 @@ whitespace when doing line-wrapping.
 
 Another subtle point is that in RTL runs, this logically-trailing whitespace
 is visually at the beginning of the word, thus the glyph run (along with its
-cursor positions) must be shifted one space-character to the left, hence
-the segment's `offset_x` field which contains this adjustment. Also note
-that this field is part of the segment not the glyph run because it is
-layout-dependent (it's only applied for last-on-the-line-when-soft-wrapping
-segments), while the glyph run is cached and can be used in multiple layouts.
+cursor positions) must be shifted one space-character to the left. The
+segment's `x` field contains this adjustment.
 

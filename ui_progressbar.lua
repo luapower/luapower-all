@@ -1,5 +1,5 @@
 
---ui progress bar widget.
+--Progress Bar widget.
 --Written by Cosmin Apreutesei. Public Domain.
 
 local ui = require'ui'

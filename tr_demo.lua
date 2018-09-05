@@ -106,7 +106,7 @@ end
 
 local text = require'glue'.readfile('winapi_history.md')
 
-local segs, cursor
+local segs, cursor, sel
 
 function win:repaint()
 	local cr = self:bitmap():cairo()
@@ -218,7 +218,7 @@ function win:repaint()
 
 	local cw, ch = win:client_size()
 	local cx, cy, cw, ch = cw / 2 - 300, ch / 2 - 200, 200, 300
-	--segs:clip(cx, cy, cw, ch)
+	segs:clip(cx, cy, cw, ch)
 	rect(cr, '#ff0', cx, cy, cw, ch)
 
 	segs:paint(cr)
@@ -240,6 +240,7 @@ function win:repaint()
 			local ax = x
 			local ay = y
 			for i,seg in ipairs(line) do
+				local ax = ax + seg.x
 				local run = seg.glyph_run
 				local hit = hit and cursor and cursor.seg == seg
 
@@ -260,40 +261,49 @@ function win:repaint()
 					local px = i > 0 and run.pos[i-1].x_advance / 64 or 0
 					local ox = run.pos[i].x_offset / 64
 					local oy = run.pos[i].y_offset / 64
-					dot(cr, '#f00', ax + seg.offset_x + px + ox, ay - oy, 3)
+					dot(cr, '#f00', ax + px + ox, ay - oy, 2)
 				end
 
 				for i = 0, run.text_len do
-					local cx = seg.offset_x + run.cursor_xs[i]
-					local px = ax + cx
+					local px = ax + run.cursor_xs[i]
 					local hit = hit and cursor and cursor.cursor_i == i
-					dot(cr, '#0ff', px, ay, 2)
+					dot(cr, '#0ff', px, ay, 1)
 				end
 
-				ax = ax + seg.advance_x
 			end
 		end
 
 		if cursor and cursor.cursor_i then
-			local x, y, h = cursor:pos()
-			rect(cr, '#f00', x-4, y, 8, h)
+			local x, y = cursor:pos()
+			local w, h, rtl = cursor:size()
+			rect(cr, '#f00', x, y, w, h)
 		end
 	end
 
 	cursor = cursor or segs:cursor()
-	local x, y, h, rtl = cursor:pos()
-	vector(cr, '#fff', x, y, x, y+h)
+	local x, y = cursor:pos()
+	local w, h, rtl = cursor:size()
+	rect(cr, '#fff', x, y, w, h)
 	local w = (rtl and 10 or -10)
 	triangle(cr, '#fff', x-w*.8, y, w, 90)
 
 	rect(cr, '#f00', segs:bounding_box())
+
+	sel = sel or segs:selection()
+	sel.cursor1:move_to_offset(200)
+	sel.cursor2:move_to_offset(628)
+	--sel:select_all()
+
+	sel:rectangles(function(x, y, w, h)
+		rect(cr, '#f008', x, y, w, h)
+	end)
 
 end
 
 function win:mousemove(mx, my)
 	if segs then
 		if cursor then
-			cursor:move_to(mx, my)
+			cursor:move_to_pos(mx, my, true, true, true, true)
 		end
 		self:invalidate()
 	end

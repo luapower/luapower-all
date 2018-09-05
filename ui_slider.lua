@@ -1,5 +1,5 @@
 
---slider widget.
+--Slider widget.
 --Written by Cosmin Apreutesei. Public Domain.
 
 local ui = require'ui'
