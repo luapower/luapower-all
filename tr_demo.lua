@@ -303,7 +303,7 @@ end
 function win:mousemove(mx, my)
 	if segs then
 		if cursor then
-			cursor:move_to_pos(mx, my, true, true, true, true)
+			cursor:move_to_pos(mx, my)
 		end
 		self:invalidate()
 	end

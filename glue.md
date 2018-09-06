@@ -69,7 +69,7 @@ __modules__
 `glue.cpath(path [,index])`                                        insert a path in package.cpath
 __allocation__
 `glue.freelist([create], [destroy]) -> alloc, free`                freelist allocation pattern
-`glue.growbuffer([ctype]) -> alloc(len) -> buf, len`               static auto-growing buffer
+`glue.growbuffer([ctype][, factor]) -> alloc(len) -> buf, len`     static auto-growing buffer
 __ffi__
 `glue.malloc([ctype, ]size) -> cdata`                              allocate an array using system's malloc
 `glue.malloc(ctype) -> cdata`                                      allocate a C type using system's malloc
@@ -284,20 +284,24 @@ Append non-nil arguments to a list.
 
 #### Uses
 
-Appending an object to a flattened list of lists (eg. appending a path element to a 2d path).
+Appending an object to a flattened list of lists (eg. appending a path element
+to a 2d path).
 
 ------------------------------------------------------------------------------
 
 ### `glue.shift(t,i,n) -> t`
 
-Shift all the list elements starting at index `i`, `n` positions to the left or further to the right.
+Shift all the list elements starting at index `i`, `n` positions to the left
+or further to the right.
 
-For a positive `n`, shift the elements further to the right, effectively creating room for `n` new elements at index `i`.
-When `n` is 1, the effect is the same as for `table.insert(t, i, t[i])`.
-The old values at index `i` to `i+n-1` are preserved, so `#t` still works after the shifting.
+For a positive `n`, shift the elements further to the right, effectively
+creating room for `n` new elements at index `i`. When `n` is 1, the effect
+is the same as for `table.insert(t, i, t[i])`. The old values at index `i`
+to `i+n-1` are preserved, so `#t` still works after the shifting.
 
-For a negative `n`, shift the elements to the left, effectively removing the `n` elements at index `i`.
-When `n` is -1, the effect is the same as for `table.remove(t, i)`.
+For a negative `n`, shift the elements to the left, effectively removing
+`n` elements at index `i`. When `n` is -1, the effect is the same as for
+`table.remove(t, i)`.
 
 #### Uses
 
@@ -329,9 +333,9 @@ The comparison function `cmp` is called as `cmp(t, i, v)` and must return
 __TIP:__ Use a `cmp` that returns `true` when `t[i] < v` to search in a
 reverse-sorted list.
 
-__TIP:__ Use a `cmp` that returns `true` when `v <= t[i]` to get the largest
-index that will keep `t` sorted when inserting `v`,
-i.e. `t[i-1] <= v` and `t[i] > v`.
+__TIP:__ Use a `cmp` that returns `true` when `v <= t[i]` to get the *largest*
+index (as opposed to the *smallest* index) that will keep `t` sorted when
+inserting `v`, i.e. `t[i-1] <= v` and `t[i] > v`.
 
 __NOTE:__ Works on ffi arrays too if `i` and `j` are provided.
 
@@ -844,12 +848,15 @@ Lua objects. The allocator returns the last freed object or calls `create()`
 to create a new one if the freelist is empty. `create` defaults to
 `function() return {} end`; `destroy` defaults to `glue.noop`.
 
-### `glue.growbuffer([ctype]) -> alloc(len|false) -> buf, len`
+### `glue.growbuffer([ctype][, growth_factor]) -> alloc(len|false) -> buf, len`
 
 Return an allocation function which reallocates or reuses an internal static
 buffer. Good for allocating small but otherwise var-sized temporary buffers
 without stressing the garbage collector. Calling `alloc(false)` frees the
 internal buffer (alloc can still be used afterwards).
+
+Set `growth_factor` to 2 or larger if there's a pattern of continuously
+growing allocations (at least at first).
 
 > __NOTE__: LuaJIT only.
 

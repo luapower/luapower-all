@@ -22,22 +22,25 @@ editbox.caret_color_insert_mode = '#fff8'
 editbox.selection_color = '#8888'
 editbox.nowrap = true
 editbox.insert_mode = false
+editbox.cursor = 'text'
+editbox.cursor_selection = 'arrow'
+
+function editbox:after_init(ui, t)
+	local segs = self:layout_text()
+	self._scroll_x = 0
+	self.selection = segs:selection()
+end
+
+--drawing
 
 function editbox:text_visible()
 	return true --ensure that segments are created when text is empty
 end
 
-function editbox:after_init(ui, t)
-	local segs = self:layout_text()
-	self._scroll_x = 0
-	self.cur = segs:cursor()
-	self.sel = segs:selection()
-end
-
 function editbox:cursor_rect()
 	self:layout_text()
-	local x, y = self.cur:pos()
-	local w, h, dir = self.cur:size()
+	local x, y = self.selection.cursor1:pos()
+	local w, h, dir = self.selection.cursor1:size()
 	if not self.insert_mode then
 		w = w > 0 and 1 or -1
 	end
@@ -59,6 +62,11 @@ function editbox:before_draw()
 	self:sync()
 end
 
+local function draw_sel_rect(x, y, w, h, cr)
+		cr:new_path()
+		cr:rectangle(x, y, w, h)
+		cr:fill()
+end
 function editbox:after_draw_content(cr)
 	if self.focused then
 		local x, y, w, h, dir = self:cursor_rect()
@@ -70,13 +78,11 @@ function editbox:after_draw_content(cr)
 		cr:rectangle(x, y, w, h)
 		cr:fill()
 	end
-	self.sel:rectangles(function(x, y, w, h)
-		cr:rgba(self.ui:color(self.selection_color))
-		cr:new_path()
-		cr:rectangle(x, y, w, h)
-		cr:fill()
-	end)
+	cr:rgba(self.ui:color(self.selection_color))
+	self.selection:rectangles(draw_sel_rect, cr)
 end
+
+--keyboard
 
 function editbox:scroll_to_caret()
 	local segs = self:layout_text()
@@ -86,44 +92,110 @@ function editbox:scroll_to_caret()
 	self:invalidate()
 end
 
+function editbox:keychar(s)
+	print(#s, s:byte(1, 1))
+	--self.selection:insert(s)
+end
+
 function editbox:keypress(key)
 	local shift = self.ui:key'shift'
 	local ctrl = self.ui:key'ctrl'
 	if key == 'right' or key == 'left' then
-		self.cur:move('horiz', key == 'right' and 1 or -1)
+		self.selection.cursor1:move('horiz', key == 'right' and 1 or -1)
 		if not shift then
-			self.sel:reset(self.cur.offset)
+			self.selection.cursor2:move_to_cursor(self.selection.cursor1)
 		else
-			self.sel.cursor2:move_to_offset(self.cur.offset)
+			--
 		end
 		self:scroll_to_caret()
+		return true
 	elseif key == 'up' or key == 'down' then
-		self.cur:move('vert', key == 'down' and 1 or -1)
-		self.sel:reset(self.cur.offset)
+		self.selection.cursor1:move('vert', key == 'down' and 1 or -1)
+		if not shift then
+			self.selection.cursor2:move_to_cursor(self.selection.cursor1)
+		end
 		self:scroll_to_caret()
+		return true
 	elseif key == 'insert' then
 		self.insert_mode = not self.insert_mode
 		self:scroll_to_caret()
-	elseif key == 'A' and ctrl then
-		self.sel:select_all()
-		self.cur:move_to_offset(1/0)
+		return true
+	elseif key == 'delete' then
+		if self.selection:empty() then
+			--
+		else
+			self.selection:remove()
+		end
+		self:invalidate()
+		return true
+	elseif ctrl and key == 'A' then
+		self.selection:select_all()
 		self:scroll_to_caret()
+		return true
+	elseif ctrl and (key == 'C' or key == 'X') then
+		self.ui:setclipboard(self.selection:string(), 'text')
+		if key == 'X' then
+			self.selection:remove()
+		end
+		return true
+	elseif ctrl and key == 'V' then
+		local s = self.ui:getclipboard'text' or ''
+		return true
 	end
 end
 
 function editbox:gotfocus()
-	self.cur:move_to_offset(0)
-	self:scroll_to_caret()
+	if not self.active then
+		self.selection:select_all()
+		self:scroll_to_caret()
+	end
+end
+
+function editbox:lostfocus()
+	self.selection:reset()
+	self:invalidate()
+end
+
+--mouse
+
+function editbox:override_hit_test_content(inherited, x, y, reason)
+	local widget, area = inherited(self, x, y, reason)
+	if not widget then
+		if not self.selection:empty() then
+			if self.selection:hit_test(x, y) then
+				return self, 'selection'
+			end
+		end
+	end
+	return widget, area
 end
 
 editbox.mousedown_activate = true
 
+function editbox:click(x, y)
+
+end
+
+function editbox:doubleclick(x, y)
+
+end
+
+function editbox:tripleclick(x, y)
+
+end
+
+function editbox:mousedown(x, y)
+	self.selection.cursor1:move_to_pos(x, y)
+	self.selection:reset()
+	self:scroll_to_caret()
+end
+
 function editbox:mousemove(x, y)
 	if not self.active then return end
-	self.cur:move_to_pos(x, y, true, true, true, true)
+	self.selection.cursor1:move_to_pos(x, y)
 	self:scroll_to_caret()
-	self:invalidate()
 end
+
 
 --demo -----------------------------------------------------------------------
 
@@ -133,16 +205,33 @@ if not ... then require('ui_demo')(function(ui, win)
 
 	ui:add_font_file('media/fonts/FSEX300.ttf', 'fixedsys')
 
-	for i=1,3 do
-		local ed = ui:editbox{
-			font = 'fixedsys,16',
-			tags = 'ed'..i,
-			x = 320,
-			y = 10 + 30 * (i-1),
-			w = 200,
-			parent = win,
-			text = long_text,
-		}
-	end
+	local ed1 = ui:editbox{
+		--font = 'fixedsys,16',
+		x = 320,
+		y = 10 + 35 * 1,
+		w = 200,
+		parent = win,
+		text = long_text,
+	}
+
+	local ed2 = ui:editbox{
+		--font = 'fixedsys,16',
+		x = 320,
+		y = 10 + 35 * 2,
+		w = 200,
+		parent = win,
+		text = long_text,
+	}
+
+	local ed3 = ui:editbox{
+		--font = 'fixedsys,16',
+		x = 320,
+		y = 10 + 35 * 3,
+		w = 200,
+		h = 200,
+		parent = win,
+		text = long_text,
+		multiline = true,
+	}
 
 end) end

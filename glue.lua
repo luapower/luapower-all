@@ -758,14 +758,15 @@ if jit then
 local ffi = require'ffi'
 
 --static, auto-growing buffer allocation pattern.
-function glue.growbuffer(ctype)
+function glue.growbuffer(ctype, growth_factor)
 	local ctype = ffi.typeof(ctype or 'char[?]')
+	growth_factor = growth_factor or 1
 	local buf, len = nil, -1
 	return function(newlen)
 		if not newlen then
 			buf, len = nil, -1
 		elseif newlen > len then
-			len = newlen
+			len = math.max(newlen, len * growth_factor)
 			buf = ctype(len)
 		end
 		return buf, newlen

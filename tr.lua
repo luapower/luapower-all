@@ -27,9 +27,11 @@ local clamp = glue.clamp
 local snap = glue.snap
 local binsearch = glue.binsearch
 local memoize = glue.memoize
+local shift = glue.shift
 local growbuffer = glue.growbuffer
 local trim = glue.trim
 local box_overlapping = box2d.overlapping
+local box_hit = box2d.hit
 local odd = function(x) return band(x, 1) == 1 end
 local PS = fb.C.FRIBIDI_CHAR_PS --paragraph separator codepoint
 local LS = fb.C.FRIBIDI_CHAR_LS --line separator codepoint
@@ -227,11 +229,11 @@ end
 local alloc_grapheme_breaks = growbuffer'char[?]'
 
 local function cmp_clusters(glyph_info, i, cluster)
-	return glyph_info[i].cluster < cluster
+	return glyph_info[i].cluster < cluster -- < < [=] = < <
 end
 
 local function cmp_clusters_reverse(glyph_info, i, cluster)
-	return cluster < glyph_info[i].cluster
+	return cluster < glyph_info[i].cluster -- < < [=] = < <
 end
 
 local alloc_int_array = ffi.typeof'int[?]'
@@ -488,7 +490,7 @@ end
 
 --flattening a text tree into a utf32 string + metadata ----------------------
 
-local alloc_str = ffi.typeof'uint32_t[?]'
+local uint32_ct = ffi.typeof'uint32_t[?]'
 local const_char_ct = ffi.typeof'const char*'
 
 --convert a tree of nested text runs into a flat list of runs with properties
@@ -513,7 +515,8 @@ end
 
 function tr:flatten(text_tree)
 
-	local text_runs = {}
+	local text_runs = update({tr = self}, self.text_runs_class)
+
 	flatten_text_tree(text_tree, text_runs)
 
 	--for each text run: set `font` `font_size` and `len`.
@@ -553,8 +556,10 @@ function tr:flatten(text_tree)
 		len = len + run.len
 	end
 
+	text_runs.alloc_codepoints = growbuffer(uint32_ct, 2)
+	local str = text_runs.alloc_codepoints(len + 1) -- +1 for linebreaks
+
 	--resolve `offset` and convert/place text into a linear utf32 buffer.
-	local str = alloc_str(len + 1) -- +1 for linebreaks (see below)
 	local offset = 0
 	for _,run in ipairs(text_runs) do
 		local charset = run.charset or 'utf8'
@@ -597,7 +602,7 @@ end
 
 local const_uint32_ct = ffi.typeof'const uint32_t*'
 
-function tr:shape(text_runs)
+function tr:shape(text_runs, segments)
 
 	if not text_runs.codepoints then --it's a text_tree, flatten it
 		text_runs = self:flatten(text_runs)
@@ -735,7 +740,8 @@ function tr:shape(text_runs)
 	--shaping can contain sub-segments that require separate styling.
 	zone'segment'
 
-	local segments = update({tr = self}, self.segments_class) --{seg1, ...}
+	segments = segments or update({tr = self}, self.segments_class) --{seg1, ...}
+	local old_seg_count = #segments
 
 	segments.text_runs = text_runs --for accessing codepoints by clients
 	segments.reorder = reorder_segments --for optimization
@@ -1018,6 +1024,13 @@ function tr:shape(text_runs)
 	end
 	zone()
 
+	--clean up excess old segments from previous segments list, if any.
+	local seg_count = #segments
+	while old_seg_count > seg_count do
+		segments[old_seg_count] = nil
+		old_seg_count = old_seg_count - 1
+	end
+
 	return segments
 end
 
@@ -1227,6 +1240,12 @@ function segments:layout(x, y, w, h, halign, valign)
 	lines.x = x
 	lines.y = y
 
+	--store the other args for relayouting after reshaping.
+	lines.w = w
+	lines.h = h
+	lines.valign = valign
+	lines.halign = halign
+
 	return self
 end
 
@@ -1341,7 +1360,7 @@ end
 --hit testing and cursor positions -------------------------------------------
 
 local function cmp_offsets(segments, i, offset)
-	return segments[i].offset <= offset
+	return segments[i].offset <= offset -- < < = = [<] <
 end
 function segments:cursor_at_offset(offset)
 	local seg_i = (binsearch(offset, self, cmp_offsets) or #self + 1) - 1
@@ -1410,8 +1429,11 @@ function segments:next_unique_cursor(seg, i, delta)
 	return seg, i, delta
 end
 
+local function default_true(x)
+	return x == nil or x
+end
 local function cmp_ys(lines, i, y)
-	return lines[i].y - lines[i].spacing_descent < y
+	return lines[i].y - lines[i].spacing_descent < y -- < < [=] = < <
 end
 function segments:hit_test_lines(x, y,
 	extend_top, extend_bottom, extend_left, extend_right
@@ -1420,14 +1442,14 @@ function segments:hit_test_lines(x, y,
 	x = x - lines.x
 	y = y - (lines.y + lines.baseline)
 	if y < -lines[1].spacing_ascent then
-		return extend_top and 1 or nil
+		return default_true(extend_top) and 1 or nil
 	elseif y > lines[#lines].y - lines[#lines].spacing_descent then
-		return extend_bottom and #lines or nil
+		return default_true(extend_bottom) and #lines or nil
 	else
 		local i = binsearch(y, lines, cmp_ys) or #lines
 		local line = lines[i]
-		return (extend_left or x >= line.x)
-			and (extend_right or x <= line.x + line.advance_x)
+		return (default_true(extend_left) or x >= line.x)
+			and (default_true(extend_right) or x <= line.x + line.advance_x)
 			and i or nil
 	end
 end
@@ -1440,8 +1462,8 @@ function segments:hit_test_cursors(line_i, x, extend_left, extend_right)
 	for seg_i, seg in ipairs(line) do
 		local run = seg.glyph_run
 		local x = x - seg.x
-		if ((extend_left and seg_i == 1) or x >= 0)
-			and ((extend_right and seg_i == #line) or x <= seg.advance_x)
+		if ((default_true(extend_left) and seg_i == 1) or x >= 0)
+			and ((default_true(extend_right) and seg_i == #line) or x <= seg.advance_x)
 		then
 			--find the cursor position closest to x.
 			--TODO: use binsearch here.
@@ -1530,7 +1552,7 @@ local function merge_xw(x1, w1, x2, w2)
 	end
 end
 
-function segments:selection_rectangles(seg1, i1, seg2, i2, write)
+function segments:selection_rectangles(seg1, i1, seg2, i2, write, ...)
 	if seg1.offset > seg2.offset then
 		seg1, i1, seg2, i2 = seg2, i2, seg1, i1
 	end
@@ -1551,12 +1573,14 @@ function segments:selection_rectangles(seg1, i1, seg2, i2, write)
 				local x1, w1 = segment_xw(seg, i1, i2)
 				local x1, w1, failed = merge_xw(x, w, x1, w1)
 				if failed then
-					write(line_x + x, line_y, w, line_h)
+					local ret = write(line_x + x, line_y, w, line_h, ...)
+					if ret then return ret end
 				end
 				x, w = x1, w1
 				seg = self[seg.index + 1]
 			end
-			write(line_x + x, line_y, w, line_h)
+			local ret = write(line_x + x, line_y, w, line_h, ...)
+			if ret then return ret end
 		else
 			--TODO: find a quicker way to skip invisible lines (we scan segments
 			--because we don't know which is the first logical segment on a line).
@@ -1566,6 +1590,141 @@ function segments:selection_rectangles(seg1, i1, seg2, i2, write)
 		end
 		line_i = seg and seg.line_index
 	end
+end
+
+--editing --------------------------------------------------------------------
+
+local text_runs = {}
+tr.text_runs_class = text_runs
+
+function text_runs:text_range(i1, i2)
+	local len = self.len
+	local i1 = clamp(i1 or 0, 0, len-1)
+	local i2 = clamp(i2 or 1/0, 0, len-1)
+	return i1, math.max(0, i2-i1)
+end
+
+function text_runs:string(i1, i2)
+	local i, len = self:text_range(i1, i2)
+	return ffi.string(utf8.encode(self.codepoints + i, len))
+end
+
+--remove text between two offsets. return offset at removal point.
+local function cmp_remove_first(text_runs, i, offset)
+	return text_runs[i].offset < offset -- < < [=] = < <
+end
+
+local function cmp_remove_last(text_runs, i, offset)
+	return text_runs[i].offset + text_runs[i].len <= offset  -- < < = = [<] <
+end
+function text_runs:remove(i1, i2)
+
+	local i1, len = self:text_range(i1, i2)
+	local i2 = i1 + len
+
+	--reallocate and copy the remaining ends of the codepoints buffer.
+	if len > 0 then
+		local old_len = self.len
+		local old_str = self.codepoints
+		local new_len = old_len - len
+		local new_str = self.alloc_codepoints(new_len + 1) -- +1 for linebreaks
+		ffi.copy(new_str, old_str, i1 * 4)
+		ffi.copy(new_str + i1, old_str + i2, (old_len - i2) * 4)
+		self.len = new_len
+		self.codepoints = new_str
+	end
+
+	--adjust/remove affected text_runs.
+	--NOTE: this includes all zero-length text_runs at both ends.
+
+	--1. find the first and last text runs which need to be entirely removed.
+	local tr_i1 = binsearch(i1, self, cmp_remove_first) or #self + 1
+	local tr_i2 = (binsearch(i2, self, cmp_remove_last) or #self + 1) - 1
+	local tr_remove_count = tr_i2 - tr_i1 + 1
+
+	local offset = 0
+
+	--2. adjust the length of the run before the first run that needs removing.
+	if tr_i1 > 1 then
+		local run = self[tr_i1-1]
+		local part_before_i1 = i1 - run.offset
+		local part_after_i2 = math.max(run.offset + run.len - i2, 0)
+		run.len = part_before_i1 + part_after_i2
+		offset = run.offset + run.len
+	end
+
+	if tr_remove_count > 0 then
+
+		--3. adjust the offset of all runs after the last run that needs removing.
+		for tr_i = tr_i2+1, #self do
+			self[tr_i].offset = offset
+			offset = offset + self[tr_i].len
+		end
+
+		--4. remove all text runs that need removing from the text run list.
+		shift(self, tr_i1, tr_remove_count)
+	end
+
+	return i1
+end
+
+--insert text at offset. return offset after inserted text.
+function text_runs:insert(i, s, sz, charset)
+	sz = sz or #s
+	charset = charset or 'utf8'
+
+	--get length of the inserted text in codepoints.
+	local len
+	if charset == 'utf8' then
+		len = utf8.decode(s, sz, false)
+	elseif charset == 'utf32' then
+		len = sz
+	else
+		assert(false, 'Invalid charset: %s', charset)
+	end
+	if len <= 0 then return end
+
+	--reallocate and copy the remaining ends of the codepoints buffer.
+	local old_len = self.len
+	local old_str = self.codepoints
+	local new_len = old_len + len
+	local new_str = self.alloc_codepoints(new_len + 1)
+	local i = clamp(i, 0, old_len)
+	ffi.copy(new_str, old_str, i * 4)
+	ffi.copy(new_str + i + len, old_str + i, (old_len - i) * 4)
+	self.len = new_len
+	self.codepoints = new_str
+
+	--adjust the text_runs list.
+	--TODO:
+
+end
+
+--editing text from segments which includes reshaping and relayouting.
+
+function segments:reshape()
+	local x, y, w, h, ha, va
+	local t = self.lines
+	if t then
+		x, y, w, h, ha, va = t.x, t.y, t.w, t.h, t.halign, t.valign
+	end
+	self.tr:shape(self.text_runs, self)
+	if x then
+		self:layout(x, y, w, h, ha, va)
+	end
+	return self
+end
+
+function segments:insert(...)
+	local i1 = self.text_runs:insert(...)
+	self:reshape()
+	return i1
+end
+
+function segments:remove(...)
+	local i1 = self.text_runs:remove(...)
+	self:reshape()
+	return i1
 end
 
 --cursor object --------------------------------------------------------------
@@ -1583,36 +1742,38 @@ function segments:cursor(offset)
 	return self
 end
 
---text position -> layout position.
-function cursor:pos()
+function cursor:pos() --position in layout.
 	return self.segments:cursor_pos(self.seg, self.cursor_i)
 end
 
-function cursor:size()
+function cursor:size() --size in layout.
 	return self.segments:cursor_size(self.seg, self.cursor_i)
 end
 
---layout position -> text position.
-function cursor:hit_test(x, y, ...)
+function cursor:hit_test(x, y, ...) --position based on position in layout.
 	local line_i, seg, cursor_i = self.segments:hit_test(x, y, ...)
 	if not cursor_i then return nil end
 	return self.segments:offset_at_cursor(seg, cursor_i), seg, cursor_i, line_i
 end
 
---move based on a layout position.
-function cursor:move_to_pos(x, y, ...)
+function cursor:move_to_pos(x, y, ...) --move based on position in layout.
 	local offset, seg, cursor_i = self:hit_test(x, y, ...)
 	if offset then
 		self.offset, self.seg, self.cursor_i = offset, seg, cursor_i
 	end
 end
 
-function cursor:move_to_offset(offset)
+function cursor:move_to_offset(offset) --move based on position in text.
 	self.seg, self.cursor_i = self.segments:cursor_at_offset(offset)
 	self.offset = self.segments:offset_at_cursor(self.seg, self.cursor_i)
 end
 
-function cursor:next_cursor(delta)
+function cursor:move_to_cursor(cur) --sync to another cursor.
+	assert(cur.segments == self.segments)
+	self.offset, self.seg, self.cursor_i = cur.offset, cur.seg, cur.cursor_i
+end
+
+function cursor:next_cursor(delta) --move in logical text.
 	local seg, i, delta =
 		self.segments:next_unique_cursor(
 			self.seg, self.cursor_i, delta
@@ -1621,7 +1782,7 @@ function cursor:next_cursor(delta)
 	return offset, seg, i, delta
 end
 
-function cursor:next_line(delta)
+function cursor:next_line(delta) --move vertically in layout.
 	local offset, seg, cursor_i = self.offset, self.seg, self.cursor_i
 	local x = self.x or self:pos()
 	local wanted_line_i = seg.line_index + delta
@@ -1637,7 +1798,7 @@ function cursor:next_line(delta)
 	return offset, seg, cursor_i, x, delta
 end
 
-function cursor:move(dir, delta)
+function cursor:move(dir, delta) --move horizontally or vertically.
 	if dir == 'horiz' then
 		self.offset, self.seg, self.cursor_i = self:next_cursor(delta)
 		self.x = false
@@ -1646,6 +1807,18 @@ function cursor:move(dir, delta)
 	else
 		assert(false, 'Invalid direction: %s', dir)
 	end
+end
+
+--editing text at cursor which includes adjusting the cursor.
+
+function cursor:insert(...) --insert text at cursor.
+	self:move_to_offset(self.segments:insert(self.offset, ...))
+end
+
+function cursor:remove(delta) --remove delta cursor positions of text.
+	local i1 = self.offset
+	local i2 = self:next_cursor(delta)
+	self:move_to_offset(self.segments:remove(i1, i2))
 end
 
 --selection object -----------------------------------------------------------
@@ -1664,10 +1837,19 @@ function segments:selection(offset1, offset2)
 	return self
 end
 
-function selection:rectangles(write)
-	self.segments:selection_rectangles(
-		self.cursor1.seg, self.cursor1.cursor_i,
-		self.cursor2.seg, self.cursor2.cursor_i, write)
+--manipulation
+
+function selection:cursors()
+	local c1 = self.cursor1
+	local c2 = self.cursor2
+	if c1.seg.offset > c2.seg.offset then
+		c1, c2 = c2, c1
+	end
+	return c1, c2
+end
+
+function selection:empty()
+	return self.cursor1.offset == self.cursor2.offset
 end
 
 function selection:select_all()
@@ -1675,9 +1857,56 @@ function selection:select_all()
 	self.cursor2:move_to_offset(1/0)
 end
 
-function selection:reset(offset)
-	self.cursor1:move_to_offset(offset or 0)
-	self.cursor2:move_to_offset(offset or 0)
+function selection:reset()
+	self.cursor2:move_to_cursor(self.cursor1)
+end
+
+--drawing & hit-testing
+
+function selection:rectangles(write, ...)
+	local c1, c2 = self:cursors()
+	return self.segments:selection_rectangles(
+		c1.seg, c1.cursor_i,
+		c2.seg, c2.cursor_i, write, ...)
+end
+
+local function hit_test_rect(x, y, w, h, mx, my)
+	return box_hit(mx, my, x, y, w, h)
+end
+function selection:hit_test(x, y)
+	local c1, c2 = self:cursors()
+	return self.segments:selection_rectangles(
+		c1.seg, c1.cursor_i,
+		c2.seg, c2.cursor_i, hit_test_rect, x, y) or false
+end
+
+--editing text from selection, which includes adjusting the selection.
+
+function selection:codepoints()
+	local c1, c2 = self:cursors()
+	local i, len = self.segments.text_runs:text_range(c1.offset, c2.offset)
+	return self.segments.text_runs.codepoints, i, len
+end
+
+function selection:string()
+	local c1, c2 = self:cursors()
+	return self.segments.text_runs:string(c1.offset, c2.offset)
+end
+
+function selection:insert(...) --replace selection with text.
+	self:remove()
+	local c1, c2 = self:cursors()
+	c1:insert(...)
+	c2:move_to_cursor(c1)
+end
+
+function selection:remove() --remove selected text.
+	if self:empty() then return end
+	local c1, c2 = self:cursors()
+	local offset = self.segments:remove(c1.offset, c2.offset)
+	assert(c1.offset == offset)
+	c1:move_to_offset(offset) --same offset, but we need to reset c1.seg!
+	c2:move_to_cursor(c1)
 end
 
 return tr

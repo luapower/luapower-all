@@ -145,7 +145,7 @@ string, its length and a set of buffers with additional info.
 
   * `s` can be a string or a cdata buffer, in which case the output is also
   a cdata buffer
-  * `charset` can be: 'ucs4', 'utf-8', 'iso8859-6', 'iso8859-8', 'cp1255',
+  * `charset` can be: 'utf-32', 'utf-8', 'iso8859-6', 'iso8859-8', 'cp1255',
   'cp1256' (defaults to 'utf8')
   * `buffers` returned from the last call can be passed on to the next call
   to avoid reallocation.
@@ -157,10 +157,10 @@ string, its length and a set of buffers with additional info.
 
 function fb.buffers(len, b, charset)
 
-	charset = charset or 'utf32'
+	charset = charset or 'utf-32'
 
 	if b and b.len >= len then
-		if charset ~= 'utf32' then
+		if charset ~= 'utf-32' then
 			if b.str then
 				ffi.fill(b.str, len)
 				ffi.fill(b.s, len + 1)
@@ -188,7 +188,7 @@ function fb.buffers(len, b, charset)
 	b.v_to_l        = ffi.new('FriBidiStrIndex[?]', len)
 	b.l_to_v        = ffi.new('FriBidiStrIndex[?]', len)
 
-	if charset ~= 'utf32' then
+	if charset ~= 'utf-32' then
 		b.s_len = len * 4 + 1
 		b.s   = ffi.new('char[?]', b.s_len)
 		b.str = ffi.new('FriBidiCharType[?]', len)
@@ -207,7 +207,7 @@ function fb.log2vis(str, len, charset, buffers, flags, par_base_dir, line_offset
 
 	local b = fb.buffers(len, buffers, charset)
 
-	if charset ~= 'utf32' then --str needs conversion
+	if charset ~= 'utf-32' then --str needs conversion
 		str, len = fb.charset_to_unicode(charset, str, len, b.str, b.len)
 		if not str then return str, len end
 	end
@@ -271,7 +271,7 @@ function fb.log2vis(str, len, charset, buffers, flags, par_base_dir, line_offset
 
 	--convert the output back to the same charset as the input
 	local s, s_len = b.visual_str, len
-	if charset ~= 'utf32' then
+	if charset ~= 'utf-32' then
 		s, s_len = fb.unicode_to_charset(charset, s, s_len, b.s, b.s_len)
 		if not s then return nil, s_len end
 	end
