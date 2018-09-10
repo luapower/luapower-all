@@ -102,12 +102,14 @@ function editbox:keypress(key)
 	local shift = self.ui:key'shift'
 	local ctrl = self.ui:key'ctrl'
 	if key == 'right' or key == 'left' then
+		local movement = ctrl and 'word' or 'char'
+		local delta = key == 'right' and 1 or -1
 		if shift then
-			self.selection.cursor1:move('horiz', key == 'right' and 1 or -1)
+			self.selection.cursor1:move(movement, delta)
 		else
 			local c1, c2 = self.selection:cursors()
 			if self.selection:empty() then
-				c1:move('horiz', key == 'right' and 1 or -1)
+				c1:move(movement, delta)
 				c2:move_to_cursor(c1)
 			else
 				if key == 'left' then
@@ -133,9 +135,9 @@ function editbox:keypress(key)
 	elseif key == 'delete' or key == 'backspace' then
 		if self.selection:empty() then
 			if key == 'delete' then --remove the char after the cursor
-				self.selection.cursor1:move('horiz', 1)
+				self.selection.cursor1:move('char', 1)
 			else --remove the char before the cursor
-				self.selection.cursor1:move('horiz', -1)
+				self.selection.cursor1:move('char', -1)
 			end
 		end
 		self.selection:remove()

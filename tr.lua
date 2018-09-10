@@ -1796,13 +1796,27 @@ function cursor:move_to_cursor(cur) --sync to another cursor.
 	self.offset, self.seg, self.cursor_i = cur.offset, cur.seg, cur.cursor_i
 end
 
-function cursor:next_cursor(delta) --move in logical text.
+function cursor:next_cursor(delta) --move char-by-char in logical text.
 	local seg, i, delta =
 		self.segments:next_unique_cursor(
 			self.seg, self.cursor_i, delta
 		)
 	local offset = self.segments:offset_at_cursor(seg, i)
 	return offset, seg, i, delta
+end
+
+function cursor:next_word_cursor(delta) --move word-by-word in logical text.
+	if self.cursor_i > 0 and delta < 0 then
+		delta = delta + 1 --going back from inside a word.
+	end
+	local wanted_seg_i = self.seg.index + delta
+	local max_seg_i = #self.segments
+	local eos = wanted_seg_i > max_seg_i
+	local seg_i = clamp(wanted_seg_i, 1, max_seg_i)
+	local seg = self.segments[seg_i]
+	local cursor_i = eos and seg.glyph_run.text_len or 0
+	local offset = self.segments:offset_at_cursor(seg, cursor_i)
+	return offset, seg, cursor_i, wanted_seg_i - seg_i
 end
 
 function cursor:next_line(delta) --move vertically in layout.
@@ -1822,8 +1836,11 @@ function cursor:next_line(delta) --move vertically in layout.
 end
 
 function cursor:move(dir, delta) --move horizontally or vertically.
-	if dir == 'horiz' then
+	if dir == 'char' then
 		self.offset, self.seg, self.cursor_i = self:next_cursor(delta)
+		self.x = false
+	elseif dir == 'word' then
+		self.offset, self.seg, self.cursor_i = self:next_word_cursor(delta)
 		self.x = false
 	elseif dir == 'vert' then
 		self.offset, self.seg, self.cursor_i, self.x = self:next_line(delta)
