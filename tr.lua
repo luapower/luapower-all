@@ -565,7 +565,7 @@ function tr:flatten(text_tree)
 		local charset = run.charset or 'utf8'
 		if charset == 'utf8' then
 			local size = run.size or #run.text
-			utf8.decode(run.text, size, str + offset, run.len)
+			assert(utf8.decode(run.text, size, str + offset, run.len))
 		elseif charset == 'utf32' then
 			ffi.copy(str + offset, ffi.cast(const_char_ct, run.text), run.len * 4)
 		end
@@ -753,7 +753,7 @@ function tr:shape(text_runs, segments)
 
 	local seg_offset = 0 --curent segment's offset in text
 	local sub_offset = 0 --current sub-segment's relative text offset
-	local seg_i = 0
+	local seg_count = 0
 	local substack = {}
 	local substack_n = 0
 
@@ -871,7 +871,7 @@ function tr:shape(text_runs, segments)
 			local linebreak = linebreak_code == 0
 				and (str[i-1] == PS and 'paragraph' or 'line')
 
-			seg_i = seg_i + 1
+			seg_count = seg_count + 1
 
 			local segment = {
 				glyph_run = glyph_run,
@@ -882,7 +882,7 @@ function tr:shape(text_runs, segments)
 				--for cursor positioning
 				text_run = text_run, --text run of the last sub-segment
 				offset = seg_offset,
-				index = seg_i,
+				index = seg_count,
 				--table slots filled by layouting
 				x = false,
 				advance_x = false,
@@ -891,7 +891,7 @@ function tr:shape(text_runs, segments)
 				visible = true, --entirely clipped or not
 			}
 
-			segments[seg_i] = segment
+			segments[seg_count] = segment
 
 			--add sub-segments from the sub-segment stack and empty the stack.
 			if substack_n > 0 then
@@ -1025,7 +1025,6 @@ function tr:shape(text_runs, segments)
 	zone()
 
 	--clean up excess old segments from previous segments list, if any.
-	local seg_count = #segments
 	while old_seg_count > seg_count do
 		segments[old_seg_count] = nil
 		old_seg_count = old_seg_count - 1
@@ -1599,8 +1598,8 @@ tr.text_runs_class = text_runs
 
 function text_runs:text_range(i1, i2)
 	local len = self.len
-	local i1 = clamp(i1 or 0, 0, len-1)
-	local i2 = clamp(i2 or 1/0, 0, len-1)
+	local i1 = clamp(i1 or 0, 0, len)
+	local i2 = clamp(i2 or 1/0, 0, len)
 	return i1, math.max(0, i2-i1)
 end
 
@@ -1613,7 +1612,6 @@ end
 local function cmp_remove_first(text_runs, i, offset)
 	return text_runs[i].offset < offset -- < < [=] = < <
 end
-
 local function cmp_remove_last(text_runs, i, offset)
 	return text_runs[i].offset + text_runs[i].len <= offset  -- < < = = [<] <
 end
@@ -1634,13 +1632,14 @@ function text_runs:remove(i1, i2)
 		self.codepoints = new_str
 	end
 
-	--adjust/remove affected text_runs.
-	--NOTE: this includes all zero-length text_runs at both ends.
+	--adjust/remove affected text runs.
+	--NOTE: this includes all zero-length text runs at both ends.
 
 	--1. find the first and last text runs which need to be entirely removed.
 	local tr_i1 = binsearch(i1, self, cmp_remove_first) or #self + 1
 	local tr_i2 = (binsearch(i2, self, cmp_remove_last) or #self + 1) - 1
-	local tr_remove_count = tr_i2 - tr_i1 + 1
+	--NOTE: clamping to #self-1 so that the last text run cannot be removed.
+	local tr_remove_count = clamp(tr_i2 - tr_i1 + 1, 0, #self-1)
 
 	local offset = 0
 
@@ -1662,18 +1661,24 @@ function text_runs:remove(i1, i2)
 		end
 
 		--4. remove all text runs that need removing from the text run list.
-		shift(self, tr_i1, tr_remove_count)
+		shift(self, tr_i1, -tr_remove_count)
+		for tr_i = #self, tr_i1 + tr_remove_count, -1 do
+			self[tr_i] = nil
+		end
 	end
 
 	return i1
 end
 
 --insert text at offset. return offset after inserted text.
+local function cmp_insert(text_runs, i, offset)
+	return text_runs[i].offset <= offset -- < < = = [<] <
+end
 function text_runs:insert(i, s, sz, charset)
 	sz = sz or #s
 	charset = charset or 'utf8'
 
-	--get length of the inserted text in codepoints.
+	--get the length of the inserted text in codepoints.
 	local len
 	if charset == 'utf8' then
 		len = utf8.decode(s, sz, false)
@@ -1684,20 +1689,38 @@ function text_runs:insert(i, s, sz, charset)
 	end
 	if len <= 0 then return end
 
-	--reallocate and copy the remaining ends of the codepoints buffer.
+	--reallocate the codepoints buffer and copy over the existing codepoints
+	--and copy/convert the new codepoints at the insert point.
 	local old_len = self.len
 	local old_str = self.codepoints
 	local new_len = old_len + len
 	local new_str = self.alloc_codepoints(new_len + 1)
-	local i = clamp(i, 0, old_len)
+	i = clamp(i, 0, old_len)
 	ffi.copy(new_str, old_str, i * 4)
 	ffi.copy(new_str + i + len, old_str + i, (old_len - i) * 4)
+	if charset == 'utf8' then
+		assert(utf8.decode(s, sz, new_str + i, len))
+	else
+		ffi.copy(new_str + i, ffi.cast(const_char_ct, s), len * 4)
+	end
 	self.len = new_len
 	self.codepoints = new_str
 
-	--adjust the text_runs list.
-	--TODO:
+	--adjust affected text runs.
 
+	--1. find the text run which needs to be extended to include the new text.
+	local tr_i = (binsearch(i, self, cmp_insert) or #self + 1) - 1
+	assert(tr_i >= 0)
+
+	--2. adjust the length of that run to include the length of the new text.
+	self[tr_i].len = self[tr_i].len + len
+
+	--3. adjust offset for all runs after the extended run.
+	for tr_i = tr_i+1, #self do
+		self[tr_i].offset = self[tr_i].offset + len
+	end
+
+	return i+len
 end
 
 --editing text from segments which includes reshaping and relayouting.
@@ -1842,7 +1865,7 @@ end
 function selection:cursors()
 	local c1 = self.cursor1
 	local c2 = self.cursor2
-	if c1.seg.offset > c2.seg.offset then
+	if c1.offset > c2.offset then
 		c1, c2 = c2, c1
 	end
 	return c1, c2

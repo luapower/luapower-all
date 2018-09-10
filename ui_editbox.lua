@@ -63,12 +63,12 @@ function editbox:before_draw()
 end
 
 local function draw_sel_rect(x, y, w, h, cr)
-		cr:new_path()
-		cr:rectangle(x, y, w, h)
-		cr:fill()
+	cr:new_path()
+	cr:rectangle(x, y, w, h)
+	cr:fill()
 end
 function editbox:after_draw_content(cr)
-	if self.focused then
+	if self.focused and self.selection:empty() then
 		local x, y, w, h, dir = self:cursor_rect()
 		local color = self.insert_mode
 			and self.caret_color_insert_mode
@@ -93,19 +93,29 @@ function editbox:scroll_to_caret()
 end
 
 function editbox:keychar(s)
-	print(#s, s:byte(1, 1))
-	--self.selection:insert(s)
+	if s:byte(1, 1) < 32 then return end
+	self.selection:insert(s)
+	self:scroll_to_caret()
 end
 
 function editbox:keypress(key)
 	local shift = self.ui:key'shift'
 	local ctrl = self.ui:key'ctrl'
 	if key == 'right' or key == 'left' then
-		self.selection.cursor1:move('horiz', key == 'right' and 1 or -1)
-		if not shift then
-			self.selection.cursor2:move_to_cursor(self.selection.cursor1)
+		if shift then
+			self.selection.cursor1:move('horiz', key == 'right' and 1 or -1)
 		else
-			--
+			local c1, c2 = self.selection:cursors()
+			if self.selection:empty() then
+				c1:move('horiz', key == 'right' and 1 or -1)
+				c2:move_to_cursor(c1)
+			else
+				if key == 'left' then
+					c2:move_to_cursor(c1)
+				else
+					c1:move_to_cursor(c2)
+				end
+			end
 		end
 		self:scroll_to_caret()
 		return true
@@ -120,12 +130,15 @@ function editbox:keypress(key)
 		self.insert_mode = not self.insert_mode
 		self:scroll_to_caret()
 		return true
-	elseif key == 'delete' then
+	elseif key == 'delete' or key == 'backspace' then
 		if self.selection:empty() then
-			--
-		else
-			self.selection:remove()
+			if key == 'delete' then --remove the char after the cursor
+				self.selection.cursor1:move('horiz', 1)
+			else --remove the char before the cursor
+				self.selection.cursor1:move('horiz', -1)
+			end
 		end
+		self.selection:remove()
 		self:invalidate()
 		return true
 	elseif ctrl and key == 'A' then
@@ -201,7 +214,8 @@ end
 
 if not ... then require('ui_demo')(function(ui, win)
 
-	local long_text = ('Hello World! '):rep(10) -- (('Hello World! '):rep(10)..'\n'):rep(30)
+	local long_text = ('Hello World! '):rep(2) -- (('Hello World! '):rep(10)..'\n'):rep(30)
+	local long_text = 'Hello W'
 
 	ui:add_font_file('media/fonts/FSEX300.ttf', 'fixedsys')
 
