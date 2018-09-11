@@ -313,7 +313,7 @@ The directory that was passed to `fs.dir()`.
 
 ### `d:path() -> s`
 
-The full path of the current dir entry (`d:dir() combined with `d:name()`).
+The full path of the current dir entry (`d:dir()` combined with `d:name()`).
 
 ### `d:attr([attr, ][deref]) -> t|val`
 
