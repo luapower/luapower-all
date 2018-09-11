@@ -19,11 +19,41 @@ editbox.text_align = 'left'
 editbox.text = ''
 editbox.caret_color = '#fff'
 editbox.caret_color_insert_mode = '#fff8'
-editbox.selection_color = '#8888'
+editbox.selection_color = '#66f8'
 editbox.nowrap = true
 editbox.insert_mode = false
 editbox.cursor = 'text'
 editbox.cursor_selection = 'arrow'
+editbox.password = false
+
+ui:style('editbox', {
+	transition_border_color = true,
+	transition_duration = .5,
+})
+
+ui:style('editbox :hot', {
+	border_color = '#999',
+	transition_border_color = true,
+	transition_duration = .5,
+})
+
+ui:style('editbox :focused', {
+	border_color = '#fff',
+	background_color = '#040404',
+	shadow_blur = 3,
+	shadow_color = '#666',
+})
+
+ui:style('editbox_caret', {
+
+})
+
+function ui.expand:multiline(multiline)
+	self.text_valign = multiline and 'top' or 'middle'
+	self.nowrap = not multiline
+end
+
+function editbox:set_multiline(m) self:expand_attr('multiline', m) end
 
 function editbox:after_init(ui, t)
 	local segs = self:layout_text()
@@ -39,12 +69,16 @@ end
 
 function editbox:cursor_rect()
 	self:layout_text()
-	local x, y = self.selection.cursor1:pos()
-	local w, h, dir = self.selection.cursor1:size()
-	if not self.insert_mode then
-		w = w > 0 and 1 or -1
+	if not self.password then
+		local x, y = self.selection.cursor1:pos()
+		local w, h, dir = self.selection.cursor1:size()
+		if not self.insert_mode then
+			w = w > 0 and 1 or -1
+		end
+		return x, y, w, h, dir
+	else
+		--self.selection.cursor1.offset
 	end
-	return x, y, w, h, dir
 end
 
 function editbox:sync()
@@ -62,24 +96,58 @@ function editbox:before_draw()
 	self:sync()
 end
 
+function editbox:draw_password_chars(cr)
+	if not self:layout_text() then return end
+
+	--count unique cursor positions
+	local n = self._text_segments.editbox_password_char_count
+	if not n then
+		n = 0
+		for _,seg in ipairs(self._text_segments) do
+			local x0
+			for i = 0, seg.glyph_run.text_len do
+				local x = seg.x + seg.glyph_run.cursor_xs[i]
+				if x ~= x0 then
+					n = n + 1
+				end
+				x0 = x
+			end
+			self._text_segments.editbox_password_char_count = n
+		end
+		print(n)
+	end
+
+end
+
+function editbox:override_draw_text(inherited, cr)
+	if not self.password then
+		inherited(self, cr)
+	else
+		self:draw_password_chars(cr)
+	end
+end
+
 local function draw_sel_rect(x, y, w, h, cr)
 	cr:new_path()
 	cr:rectangle(x, y, w, h)
 	cr:fill()
 end
 function editbox:after_draw_content(cr)
-	if self.focused and self.selection:empty() then
-		local x, y, w, h, dir = self:cursor_rect()
-		local color = self.insert_mode
-			and self.caret_color_insert_mode
-			or self.caret_color
-		cr:rgba(self.ui:color(color))
-		cr:new_path()
-		cr:rectangle(x, y, w, h)
-		cr:fill()
+	if self.selection:empty() then
+		if self.focused then
+			local x, y, w, h, dir = self:cursor_rect()
+			local color = self.insert_mode
+				and self.caret_color_insert_mode
+				or self.caret_color
+			cr:rgba(self.ui:rgba(color))
+			cr:new_path()
+			cr:rectangle(x, y, w, h)
+			cr:fill()
+		end
+	else
+		cr:rgba(self.ui:rgba(self.selection_color))
+		self.selection:rectangles(draw_sel_rect, cr)
 	end
-	cr:rgba(self.ui:color(self.selection_color))
-	self.selection:rectangles(draw_sel_rect, cr)
 end
 
 --keyboard

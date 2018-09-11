@@ -573,7 +573,8 @@ local default_ease = 'expo out'
 
 ui.transition = ui.object:subclass'transition'
 
-ui.transition.interpolate = {} --{attr_type -> func(d, x1, x2, xout) -> xout}
+ui.transition.interpolate = {}
+	--^ {attr_type -> func(self, d, x1, x2, xout) -> xout}
 
 function ui.transition:interpolate_function(elem, attr)
 	local atype = self.ui:attr_type(attr)
@@ -601,7 +602,7 @@ function ui.transition:after_init(ui, elem, attr, to,
 
 	--set the element value to a copy to avoid overwritting the original value
 	--when updating with by-ref semantics.
-	elem[attr] = interpolate(1, from, from)
+	elem[attr] = interpolate(self, 1, from, from)
 
 	local repeated
 
@@ -613,7 +614,7 @@ function ui.transition:after_init(ui, elem, attr, to,
 			elem[attr] = to
 		else --running, set to interpolated value
 			local d = easing.ease(ease, way, t)
-			elem[attr] = interpolate(d, from, to, elem[attr])
+			elem[attr] = interpolate(self, d, from, to, elem[attr])
 		end
 		local alive = t <= 1
 		if not alive and times > 1 then --repeat in opposite direction
@@ -652,21 +653,13 @@ end
 
 --interpolators
 
-function ui.transition.interpolate.number(d, x1, x2)
+function ui.transition.interpolate:number(d, x1, x2)
 	return lerp(d, 0, 1, tonumber(x1), tonumber(x2))
 end
 
-local function rgba(s)
-	if type(s) == 'string' then
-		return color.parse(s, 'rgb')
-	else
-		return unpack(s)
-	end
-end
-
-function ui.transition.interpolate.color(d, c1, c2, c)
-	local r1, g1, b1, a1 = rgba(c1)
-	local r2, g2, b2, a2 = rgba(c2)
+function ui.transition.interpolate:color(d, c1, c2, c)
+	local r1, g1, b1, a1 = self.ui:rgba(c1)
+	local r2, g2, b2, a2 = self.ui:rgba(c2)
 	local r = lerp(d, 0, 1, r1, r2)
 	local g = lerp(d, 0, 1, g1, g2)
 	local b = lerp(d, 0, 1, b1, b2)
@@ -679,12 +672,12 @@ function ui.transition.interpolate.color(d, c1, c2, c)
 	end
 end
 
-function ui.transition.interpolate.gradient_colors(d, t1, t2, t)
+function ui.transition.interpolate:gradient_colors(d, t1, t2, t)
 	t = t or {}
 	for i,arg1 in ipairs(t1) do
 		local arg2 = t2[i]
 		local atype = type(arg1) == 'number' and 'number' or 'color'
-		t[i] = ui.transition.interpolate[atype](d, arg1, arg2, t[i])
+		t[i] = ui.transition.interpolate[atype](self, d, arg1, arg2, t[i])
 	end
 	return t
 end
@@ -1916,21 +1909,21 @@ end
 
 --drawing helpers ------------------------------------------------------------
 
-function ui:_color(s)
+function ui:_rgba(s)
 	local r, g, b, a = color.parse(s, 'rgb')
 	self:check(r, 'invalid color "%s"', s)
 	return r and {r, g, b, a or 1}
 end
-ui:memoize'_color'
+ui:memoize'_rgba'
 
-function ui:color(c)
+function ui:rgba(c)
 	if type(c) == 'string' then
-		c = self:_color(c)
+		c = self:_rgba(c)
 	end
 	if not c then
 		return 0, 0, 0, 0
 	end
-	return unpack(c)
+	return c[1], c[2], c[3], c[4] or 1
 end
 
 function ui:_add_color_stops(g, ...)
@@ -2938,7 +2931,7 @@ function layer:draw_border(cr)
 		and self.border_color_left == self.border_color_bottom
 	then
 		cr:new_path()
-		cr:rgba(self.ui:color(self.border_color_bottom))
+		cr:rgba(self.ui:rgba(self.border_color_bottom))
 		if self.border_width_left == self.border_width_top
 			and self.border_width_left == self.border_width_right
 			and self.border_width_left == self.border_width_bottom
@@ -2977,7 +2970,7 @@ function layer:draw_border(cr)
 		qarc(cr, X1+R4X, Y2-R4Y, R4X, R4Y, 5, -.5, K)
 		qarc(cr, x1+r4x, y2-r4y, r4x, r4y, 4.5, .5, k)
 		cr:close_path()
-		cr:rgba(self.ui:color(self.border_color_left))
+		cr:rgba(self.ui:rgba(self.border_color_left))
 		cr:fill()
 	end
 
@@ -2990,7 +2983,7 @@ function layer:draw_border(cr)
 		qarc(cr, X1+R1X, Y1+R1Y, R1X, R1Y, 2, -.5, K)
 		qarc(cr, x1+r1x, y1+r1y, r1x, r1y, 1.5, .5, k)
 		cr:close_path()
-		cr:rgba(self.ui:color(self.border_color_top))
+		cr:rgba(self.ui:rgba(self.border_color_top))
 		cr:fill()
 	end
 
@@ -3003,7 +2996,7 @@ function layer:draw_border(cr)
 		qarc(cr, X2-R2X, Y1+R2Y, R2X, R2Y, 3, -.5, K)
 		qarc(cr, x2-r2x, y1+r2y, r2x, r2y, 2.5, .5, k)
 		cr:close_path()
-		cr:rgba(self.ui:color(self.border_color_right))
+		cr:rgba(self.ui:rgba(self.border_color_right))
 		cr:fill()
 	end
 
@@ -3016,7 +3009,7 @@ function layer:draw_border(cr)
 		qarc(cr, X2-R3X, Y2-R3Y, R3X, R3Y, 4, -.5, K)
 		qarc(cr, x2-r3x, y2-r3y, r3x, r3y, 3.5, .5, k)
 		cr:close_path()
-		cr:rgba(self.ui:color(self.border_color_bottom))
+		cr:rgba(self.ui:rgba(self.border_color_bottom))
 		cr:fill()
 	end
 end
@@ -3099,7 +3092,7 @@ function layer:paint_background(cr)
 	cr:operator(self.background_operator)
 	local bg_type = self.background_type
 	if bg_type == 'color' then
-		cr:rgba(self.ui:color(self.background_color))
+		cr:rgba(self.ui:rgba(self.background_color))
 		cr:paint()
 		return
 	end
@@ -3263,7 +3256,7 @@ function layer:draw_shadow(cr)
 	local sx = t.bx + self.shadow_x
 	local sy = t.by + self.shadow_y
 	cr:translate(sx, sy)
-	cr:rgba(self.ui:color(self.shadow_color))
+	cr:rgba(self.ui:rgba(self.shadow_color))
 	cr:mask(t.blurred_surface)
 	cr:translate(-sx, -sy)
 end
@@ -3688,8 +3681,7 @@ local autoload = {
 	choicebutton = 'ui_button',
 	slider       = 'ui_slider',
 	toggle       = 'ui_slider',
-	editbox1     = 'ui_editbox1',
-	editbox      = 'ui_editbox2',
+	editbox      = 'ui_editbox',
 	tab          = 'ui_tablist',
 	tablist      = 'ui_tablist',
 	menuitem     = 'ui_menu',

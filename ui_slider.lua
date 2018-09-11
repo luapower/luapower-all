@@ -296,7 +296,7 @@ end
 
 function slider:draw_step_lines(cr)
 	if not self:step_lines_visible() then return end
-	cr:rgba(self.ui:color(self.step_line_color))
+	cr:rgba(self.ui:rgba(self.step_line_color))
 	cr:line_width(1)
 	cr:new_path()
 	local p1, p2 = self:position_range()

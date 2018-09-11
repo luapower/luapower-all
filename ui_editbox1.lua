@@ -180,7 +180,7 @@ end
 
 function view:draw_rect(x, y, w, h, color)
 	local cr = self.editbox.window.cr
-	cr:rgba(self.editbox.ui:color(self.editbox:color(color)))
+	cr:rgba(self.editbox.ui:rgba(self.editbox:color(color)))
 	cr:new_path()
 	cr:rectangle(x, y, w, h)
 	cr:fill()
@@ -209,7 +209,7 @@ end
 
 function view:draw_char(x, y, s, i, color)
 	local cr = self.editbox.window.cr
-	cr:rgba(self.editbox.ui:color(self.editbox:color(color)))
+	cr:rgba(self.editbox.ui:rgba(self.editbox:color(color)))
 	cr:new_path()
 	cr:move_to(x, y)
 	cr:show_text(s:sub(i, i))

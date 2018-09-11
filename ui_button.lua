@@ -244,7 +244,7 @@ function button:before_draw_text(cr)
 	local s = self.text:sub(1, self.underline_pos - 1)
 	local line_pos = self.window:text_size(s, self.text_multiline)
 	--draw
-	cr:rgba(self.ui:color(self.text_color))
+	cr:rgba(self.ui:rgba(self.text_color))
 	cr:line_width(1)
 	cr:move_to(x + line_pos + 1, math.floor(y + h + 2) + .5)
 	cr:rel_line_to(line_w - 2, 0)
@@ -424,7 +424,7 @@ function rbutton:before_draw_content(cr)
 	local r = lerp(self.circle_radius, 0, 1, 0, self.cw / 4)
 	if r <= 0 then return end
 	cr:circle(self.cw / 2, self.ch / 2, r)
-	cr:rgba(self.ui:color(self.text_color))
+	cr:rgba(self.ui:rgba(self.text_color))
 	cr:fill()
 end
 

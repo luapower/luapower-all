@@ -99,7 +99,7 @@ function hue_bar:draw_pointer_needle(cr, y)
 	cr:save()
 	cr:line_width(1)
 	cr:operator'over'
-	cr:rgba(self.ui:color(self.needle_pointer_color))
+	cr:rgba(self.ui:rgba(self.needle_pointer_color))
 	local sw = w / 3
 	local sh = 1.5
 	cr:new_path()
@@ -136,7 +136,7 @@ ui:style('hue_bar :focused > hue_bar_sliderule', {
 
 function rule:before_draw_border(cr)
 	cr:line_width(self.outline_width)
-	cr:rgba(self.ui:color(self.outline_color))
+	cr:rgba(self.ui:rgba(self.outline_color))
 	self:border_path(cr, -1)
 	cr:stroke()
 	self:border_path(cr, 1)
@@ -300,7 +300,7 @@ ui:style('pick_rectangle :focused', {
 
 function prect:draw_pointer_circle(cr, cx, cy)
 	cr:save()
-	cr:rgba(self.ui:color(self.circle_pointer_color))
+	cr:rgba(self.ui:rgba(self.circle_pointer_color))
 	cr:operator'over'
 	cr:line_width(self.circle_pointer_outline_width)
 	cr:fill_rule'even_odd'
@@ -308,7 +308,7 @@ function prect:draw_pointer_circle(cr, cx, cy)
 	cr:circle(cx, cy, self.circle_pointer_radius)
 	cr:circle(cx, cy, self.circle_pointer_inner_radius)
 	cr:fill_preserve()
-	cr:rgba(self.ui:color(self.circle_pointer_outline_color))
+	cr:rgba(self.ui:rgba(self.circle_pointer_outline_color))
 	cr:stroke()
 	cr:restore()
 end
@@ -772,7 +772,6 @@ end
 
 function picker:create_rgb_editbox()
 	return self.ui:editbox{
-		multiline = false,
 		picker = self,
 		parent = self,
 	}

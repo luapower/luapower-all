@@ -74,7 +74,7 @@ function button:draw_triangle(cr)
 		cr:rel_line_to(-w/2, h)
 	end
 	cr:close_path()
-	cr:rgba(self.ui:color(self.text_color))
+	cr:rgba(self.ui:rgba(self.text_color))
 	cr:fill()
 end
 
