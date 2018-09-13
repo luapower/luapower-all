@@ -1900,9 +1900,9 @@ end
 function cursor:insert(...) --insert text at cursor.
 	local offset, changed = self.segments:insert(self.offset, ...)
 	if changed then
-		self:move_to_offset()
+		self:move_to_offset(offset)
 	end
-	return offset, changed
+	return changed
 end
 
 function cursor:remove(delta) --remove delta cursor positions of text.
@@ -1912,7 +1912,7 @@ function cursor:remove(delta) --remove delta cursor positions of text.
 	if changed then
 		self:move_to_offset(offset)
 	end
-	return offset, changed
+	return changed
 end
 
 --selection object -----------------------------------------------------------
@@ -2009,11 +2009,11 @@ function selection:remove() --remove selected text.
 end
 
 function selection:replace(...) --replace selection with text.
-	local _, removed = self:remove()
+	local removed = self:remove()
 	local c1, c2 = self:cursors()
-	local offset, inserted = c1:insert(...)
+	local inserted = c1:insert(...)
 	c2:move_to_cursor(c1)
-	return offset, removed or inserted
+	return removed or inserted
 end
 
 return tr
