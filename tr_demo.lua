@@ -331,7 +331,7 @@ function win:keypress(key)
 	end
 
 	if key == 'right' or key == 'left' then
-		cursor:move('horiz', key == 'right' and 1 or -1)
+		cursor:move('char', key == 'right' and 1 or -1)
 		self:invalidate()
 		local t = {}
 		for i = 0, cursor.seg.glyph_run.len do

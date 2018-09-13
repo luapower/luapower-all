@@ -1654,6 +1654,7 @@ function text_runs:remove(i1, i2)
 
 	local i1, len = self:text_range(i1, i2)
 	local i2 = i1 + len
+	local changed = false
 
 	--reallocate and copy the remaining ends of the codepoints buffer.
 	if len > 0 then
@@ -1665,6 +1666,7 @@ function text_runs:remove(i1, i2)
 		ffi.copy(new_str + i1, old_str + i2, (old_len - i2) * 4)
 		self.len = new_len
 		self.codepoints = new_str
+		changed = true
 	end
 
 	--adjust/remove affected text runs.
@@ -1683,7 +1685,9 @@ function text_runs:remove(i1, i2)
 		local run = self[tr_i1-1]
 		local part_before_i1 = i1 - run.offset
 		local part_after_i2 = math.max(run.offset + run.len - i2, 0)
-		run.len = part_before_i1 + part_after_i2
+		local new_len = part_before_i1 + part_after_i2
+		changed = changed or run.len ~= new_len
+		run.len = new_len
 		offset = run.offset + run.len
 	end
 
@@ -1700,9 +1704,11 @@ function text_runs:remove(i1, i2)
 		for tr_i = #self, tr_i1 + tr_remove_count, -1 do
 			self[tr_i] = nil
 		end
+
+		changed = true
 	end
 
-	return i1
+	return i1, changed
 end
 
 --insert text at offset. return offset after inserted text.
@@ -1712,6 +1718,7 @@ end
 function text_runs:insert(i, s, sz, charset)
 	sz = sz or #s
 	charset = charset or 'utf8'
+	if sz <= 0 then return i, false end
 
 	--get the length of the inserted text in codepoints.
 	local len
@@ -1722,7 +1729,7 @@ function text_runs:insert(i, s, sz, charset)
 	else
 		assert(false, 'Invalid charset: %s', charset)
 	end
-	if len <= 0 then return end
+	if len <= 0 then return i, false end
 
 	--reallocate the codepoints buffer and copy over the existing codepoints
 	--and copy/convert the new codepoints at the insert point.
@@ -1755,7 +1762,7 @@ function text_runs:insert(i, s, sz, charset)
 		self[tr_i].offset = self[tr_i].offset + len
 	end
 
-	return i+len
+	return i+len, true
 end
 
 --editing text from segments which includes reshaping and relayouting.
@@ -1774,15 +1781,19 @@ function segments:reshape()
 end
 
 function segments:insert(...)
-	local i1 = self.text_runs:insert(...)
-	self:reshape()
-	return i1
+	local i1, changed = self.text_runs:insert(...)
+	if changed then
+		self:reshape()
+	end
+	return i1, changed
 end
 
 function segments:remove(...)
-	local i1 = self.text_runs:remove(...)
-	self:reshape()
-	return i1
+	local i1, changed = self.text_runs:remove(...)
+	if changed then
+		self:reshape()
+	end
+	return i1, changed
 end
 
 --cursor object --------------------------------------------------------------
@@ -1887,13 +1898,21 @@ end
 --editing text at cursor which includes adjusting the cursor.
 
 function cursor:insert(...) --insert text at cursor.
-	self:move_to_offset(self.segments:insert(self.offset, ...))
+	local offset, changed = self.segments:insert(self.offset, ...)
+	if changed then
+		self:move_to_offset()
+	end
+	return offset, changed
 end
 
 function cursor:remove(delta) --remove delta cursor positions of text.
 	local i1 = self.offset
 	local i2 = self:next_cursor(delta)
-	self:move_to_offset(self.segments:remove(i1, i2))
+	local offset, changed = self.segments:remove(i1, i2)
+	if changed then
+		self:move_to_offset(offset)
+	end
+	return offset, changed
 end
 
 --selection object -----------------------------------------------------------
@@ -1978,20 +1997,23 @@ function selection:string()
 	return self.segments.text_runs:string(c1.offset, c2.offset)
 end
 
-function selection:replace(...) --replace selection with text.
-	self:remove()
+function selection:remove() --remove selected text.
+	if self:empty() then return false end
 	local c1, c2 = self:cursors()
-	c1:insert(...)
-	c2:move_to_cursor(c1)
+	local offset, changed = self.segments:remove(c1.offset, c2.offset)
+	if changed then
+		c1:move_to_offset(offset) --same offset, but we need to reset c1.seg!
+		c2:move_to_cursor(c1)
+	end
+	return changed
 end
 
-function selection:remove() --remove selected text.
-	if self:empty() then return end
+function selection:replace(...) --replace selection with text.
+	local _, removed = self:remove()
 	local c1, c2 = self:cursors()
-	local offset = self.segments:remove(c1.offset, c2.offset)
-	assert(c1.offset == offset)
-	c1:move_to_offset(offset) --same offset, but we need to reset c1.seg!
+	local offset, inserted = c1:insert(...)
 	c2:move_to_cursor(c1)
+	return offset, removed or inserted
 end
 
 return tr
