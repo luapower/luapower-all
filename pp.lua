@@ -160,11 +160,10 @@ end
 local to_string --fw. decl.
 
 local cache = setmetatable({}, {__mode = 'kv'})
-local opt = {parents = {}, sort_keys = true}
-local function cached_to_string(v)
+local function cached_to_string(v, parents)
 	local s = cache[v]
 	if not s then
-		s = to_string(v, opt)
+		s = to_string(v, nil, parents, nil, nil, nil, true)
 		cache[v] = s
 	end
 	return s
@@ -175,7 +174,7 @@ local function virttype(v)
 end
 
 local type_order = {boolean = 1, number = 2, string = 3, table = 4}
-local function cmp_func(t)
+local function cmp_func(t, parents)
 	local function cmp(a, b)
 		local ta, tb = virttype(a), virttype(b)
 		if ta == tb then
@@ -188,8 +187,8 @@ local function cmp_func(t)
 			elseif a == nil then --can happen when comparing values
 				return false
 			else
-				local sa = cached_to_string(a)
-				local sb = cached_to_string(b)
+				local sa = cached_to_string(a, parents)
+				local sb = cached_to_string(b, parents)
 				if sa == sb then --keys look the same serialized, compare values
 					return cmp(t[a], t[b])
 				else
@@ -203,12 +202,12 @@ local function cmp_func(t)
 	return cmp
 end
 
-local function sortedpairs(t)
+local function sortedpairs(t, parents)
 	local keys = {}
 	for k in pairs(t) do
 		keys[#keys+1] = k
 	end
-	table.sort(keys, cmp_func(t))
+	table.sort(keys, cmp_func(t, parents))
 	local i = 0
 	return function()
 		i = i + 1
@@ -277,7 +276,7 @@ local function pretty(v, write, depth, wwrapper, indent,
 		end
 
 		local pairs = sort_keys and sortedpairs or pairs
-		for k,v in pairs(v) do
+		for k,v in pairs(v, parents) do
 			if not is_array_index_key(k, maxn) and filter(v, k) then
 				if first then
 					first = false
@@ -368,21 +367,16 @@ local function to_stdout(v, ...)
 	return to_openfile(io.stdout, v, ...)
 end
 
-local pp_opt = {
-	indent = '   ',
-	parents = {},
-	sort_keys = true,
-	filter = function(v, k)
-		return type(v) ~= 'function' and type(k) ~= 'function'
-	end,
-}
+local function filter(v, k)
+	return type(v) ~= 'function' and type(k) ~= 'function'
+end
 local function pp(...)
 	local t = {}
 	local n = select('#',...)
 	for i=1,n do
 		local v = select(i,...)
 		if type(v) == 'table' then
-			t[i] = to_string(v, pp_opt)
+			t[i] = to_string(v, '   ', {}, nil, nil, nil, true, filter)
 		else
 			t[i] = v
 		end

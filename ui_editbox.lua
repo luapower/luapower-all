@@ -5,6 +5,7 @@
 local ui = require'ui'
 local tr = require'tr'
 local glue = require'glue'
+local undostack = require'undostack'
 
 clamp = glue.clamp
 snap = glue.snap
@@ -14,6 +15,7 @@ ui.editbox = editbox
 
 --TODO: make the caret a layer so it can be styled.
 --TODO: make selection rectangles layers so they can be styled.
+--TODO: drag & drop selection in/out of the editor.
 
 editbox.w = 200
 editbox.h = 30
@@ -88,10 +90,9 @@ end
 
 function editbox:set_text(s)
 	s = s or '' --an editbox can never have its text property as false!
+	self.undo_stack:reset()
 	self.selection:select_all()
-	self.selection:replace(s)
-	self._text = false --invalidate the text property
-	self:scroll_to_caret()
+	self:replace_selection(s)
 end
 
 editbox:instance_only'text'
@@ -105,12 +106,23 @@ end
 editbox:init_ignore{text=1}
 
 function editbox:after_init(ui, t)
+
+	self.undo_stack = undostack()
+	function self.undo_stack.save_state(_, undo_group)
+		self:save_state(undo_group)
+	end
+	function self.undo_stack.load_state(_, undo_group)
+		self:load_state(undo_group)
+	end
+
 	self._scroll_x = 0
+
 	self._text = sanitize(t.text or '')
+
 	self.selection = self:sync_text():selection()
 end
 
---sync
+--sync'ing
 
 function editbox:override_sync_text(inherited)
 	local segs = inherited(self)
@@ -176,7 +188,7 @@ function editbox:after_draw_content(cr)
 	end
 end
 
---editing & scrolling
+--scrolling
 
 function editbox:scroll_to_caret(preserve_screen_x)
 	local segs = self:sync_text()
@@ -186,24 +198,68 @@ function editbox:scroll_to_caret(preserve_screen_x)
 		self._scroll_x = x - self._screen_x
 	end
 	self._scroll_x = clamp(self._scroll_x, x - self.cw + w, x)
-	self._scroll_x = clamp(self._scroll_x, 0, 1/0)
+	local max_scroll_x = math.max(0, segs.lines[1].advance_x - self.cw + w)
+	self._scroll_x = clamp(self._scroll_x, 0, max_scroll_x)
 	self._screen_x = x - self._scroll_x
 	self:invalidate()
+end
+
+--editing
+
+function editbox:save_state(state)
+	state.t = {}
+	state.t.cursor1_seg_i = self.selection.cursor1.seg.index
+	state.t.cursor2_seg_i = self.selection.cursor2.seg.index
+	state.t.cursor1_cursor_i = self.selection.cursor1.cursor_i
+	state.t.cursor2_cursor_i = self.selection.cursor2.cursor_i
+	state.t.text = self.text
+	--pp('save_state', state.t)
+end
+
+function editbox:load_state(state)
+	--pp('load_state', state.t)
+	self.selection:select_all()
+	self:replace_selection(state.t.text)
+	local segs = self.selection.segments
+	self.selection.cursor1.seg = assert(segs[state.t.cursor1_seg_i])
+	self.selection.cursor2.seg = assert(segs[state.t.cursor2_seg_i])
+	self.selection.cursor1.cursor_i = state.t.cursor1_cursor_i
+	self.selection.cursor2.cursor_i = state.t.cursor2_cursor_i
+	self:invalidate()
+end
+
+function editbox:restore() end --stub
+
+function editbox:replace_selection(s, preserve_screen_x)
+	if not self.selection:replace(s) then return end
+	self._text = false --invalidate the text property
+	self:scroll_to_caret(preserve_screen_x)
+	self:fire'text_changed'
+end
+
+function editbox:undo()
+	self.undo_stack:undo()
+end
+
+function editbox:redo()
+	self.undo_stack:redo()
 end
 
 --keyboard
 
 function editbox:keychar(s)
 	if not check_char(s) then return end
-	self.selection:replace(s)
-	self._text = false
-	self:scroll_to_caret()
+	self.undo_stack:start_undo_group'typing'
+	self.undo_stack:undo_command(self.restore, self)
+	self:replace_selection(s)
 end
 
 function editbox:keypress(key)
 	local shift = self.ui:key'shift'
 	local ctrl = self.ui:key'ctrl'
 	if key == 'right' or key == 'left' then
+		self.undo_stack:start_undo_group'move'
+		self.undo_stack:undo_command(self.restore, self)
 		local movement = ctrl and 'word' or 'char'
 		local delta = key == 'right' and 1 or -1
 		if shift then
@@ -224,6 +280,8 @@ function editbox:keypress(key)
 		self:scroll_to_caret()
 		return true
 	elseif key == 'up' or key == 'down' then
+		self.undo_stack:start_undo_group'move'
+		self.undo_stack:undo_command(self.restore, self)
 		self.selection.cursor1:move('vert', key == 'down' and 1 or -1)
 		if not shift then
 			self.selection.cursor2:move_to_cursor(self.selection.cursor1)
@@ -235,6 +293,8 @@ function editbox:keypress(key)
 		self:scroll_to_caret()
 		return true
 	elseif key == 'delete' or key == 'backspace' then
+		self.undo_stack:start_undo_group'delete'
+		self.undo_stack:undo_command(self.restore, self)
 		if self.selection:empty() then
 			if key == 'delete' then --remove the char after the cursor
 				self.selection.cursor1:move('char', 1)
@@ -242,11 +302,11 @@ function editbox:keypress(key)
 				self.selection.cursor1:move('char', -1)
 			end
 		end
-		self.selection:remove()
-		self._text = false
-		self:scroll_to_caret(true)
+		self:replace_selection('', true)
 		return true
 	elseif ctrl and key == 'A' then
+		self.undo_stack:start_undo_group'move'
+		self.undo_stack:undo_command(self.restore, self)
 		self.selection:select_all()
 		self:scroll_to_caret()
 		return true
@@ -254,9 +314,9 @@ function editbox:keypress(key)
 		if not self.selection:empty() then
 			self.ui:setclipboard(self.selection:string(), 'text')
 			if key == 'X' then
-				self.selection:remove()
-				self._text = false
-				self:scroll_to_caret()
+				self.undo_stack:start_undo_group'cut'
+				self.undo_stack:undo_command(self.restore, self)
+				self:replace_selection('', true)
 			end
 		end
 		return true
@@ -264,10 +324,19 @@ function editbox:keypress(key)
 		local s = self.ui:getclipboard'text'
 		if s then
 			s = sanitize(s)
-			self.selection:replace(s)
-			self._text = false
-			self:scroll_to_caret()
+			self.undo_stack:start_undo_group'paste'
+			self.undo_stack:undo_command(self.restore, self)
+			self:replace_selection(s)
 		end
+		return true
+	elseif ctrl and key == 'Z' then
+		self:undo()
+		return true
+	elseif ctrl and key == 'Y' then
+		self:redo()
+		return true
+	elseif ctrl and shift and key == 'Z' then
+		self:redo()
 		return true
 	end
 end
@@ -440,7 +509,10 @@ if not ... then require('ui_demo')(function(ui, win)
 		y = 10 + 35 * 2,
 		w = 200,
 		parent = win,
-		text = long_text,
+		font = 'Amiri,20',
+		text = 'السَّلَامُ عَلَيْكُمْ',
+		text_align = 'right',
+		text_dir = 'rtl',
 	}
 
 	local ed3 = ui:editbox{
