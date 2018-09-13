@@ -150,7 +150,7 @@ end
 
 --inhibit a property's getter and setter when using the property on the class.
 --instead, set a private var on the class which serves as default value.
---use this _after_ defining the getter and setter.
+--NOTE: use this only _after_ defining the getter and setter.
 function object:instance_only(prop)
 	local priv = '_'..prop
 	self['override_get_'..prop] = function(self, inherited)
@@ -3288,7 +3288,7 @@ function layer:text_visible()
 	return self.text and self.text ~= '' and true or false
 end
 
-function layer:layout_text()
+function layer:sync_text()
 	if not self:text_visible() then return end
 	if not self._text_tree
 		or self.text        ~= self._text_tree[1]
@@ -3335,14 +3335,14 @@ function layer:layout_text()
 end
 
 function layer:draw_text(cr)
-	if not self:layout_text() then return end
+	if not self:sync_text() then return end
 	self._text_tree.color    = self.text_color
 	self._text_tree.operator = self.text_operator
 	self._text_segments:paint(cr)
 end
 
 function layer:text_bounding_box()
-	if not self:layout_text() then return 0, 0, 0, 0 end
+	if not self:sync_text() then return 0, 0, 0, 0 end
 	return self._text_segments:bounding_box()
 end
 

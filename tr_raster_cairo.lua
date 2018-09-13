@@ -15,10 +15,29 @@ local zone = require'jit.zone' --glue.noop
 
 local update = glue.update
 local round = glue.round
-local fit = box2d.fit
+local memoize = glue.memoize
+local box_fit = box2d.fit
 
 local cairo_rs = update({}, rs_ft)
 setmetatable(cairo_rs, cairo_rs)
+
+cairo_rs.__call_ft = rs_ft.__call
+
+function cairo_rs:__call()
+	self = self:__call_ft()
+
+	--memoize color parsing results.
+	local rgba = memoize(function(c)
+		local r, g, b, a = color.parse(c, 'rgb')
+		return {r, g, b, a}
+	end)
+	function self.rgba(c)
+		local t = rgba(c)
+		return t[1], t[2], t[3], t[4] or 1
+	end
+
+	return self
+end
 
 cairo_rs.rasterize_glyph_ft = rs_ft.rasterize_glyph
 
@@ -26,6 +45,7 @@ function cairo_rs:rasterize_glyph(
 	font, font_size, glyph_index,
 	x_offset, y_offset
 )
+	zone'rasterize_glyph'
 
 	local glyph = self:rasterize_glyph_ft(
 		font, font_size, glyph_index,
@@ -48,7 +68,7 @@ function cairo_rs:rasterize_glyph(
 		if font.scale ~= 1 then
 			local bw = font.wanted_size
 			if w ~= bw and h ~= bw then
-				local w1, h1 = fit(w, h, bw, bw)
+				local w1, h1 = box_fit(w, h, bw, bw)
 				local sr0 = glyph.surface
 				local sr1 = cairo.image_surface(
 					glyph.bitmap_format,
@@ -78,6 +98,7 @@ function cairo_rs:rasterize_glyph(
 
 	end
 
+	zone()
 	return glyph
 end
 
@@ -85,8 +106,7 @@ cairo_rs.default_color = '#888' --safe default not knowing the bg color
 cairo_rs.operator = 'over'
 
 function cairo_rs:setcontext(cr, text_run)
-	local r, g, b, a = color.parse(text_run.color or self.default_color, 'rgb')
-	cr:rgba(r, g, b, a or 1)
+	cr:rgba(self.rgba(text_run.color or self.default_color))
 	cr:operator(text_run.operator or self.default_operator)
 end
 

@@ -46,17 +46,19 @@ __cursors__
 `cursor:move(dir[, delta])`                          move cursor in text
 __selections__
 `segs:selection() -> sel`                            create a selection
-`sel:rectangles(write_func, ...)`                    get selection rectangles
-`sel:hit_test(x, y) -> true|false`                   hit test the selection rectangles
+`sel:empty() -> true|false`                          check if selection is empty
+`sel.cursor1`, `sel.cursor2`                         selection cursors
+`sel:cursors() -> c1, c2`                            selection cursors in text-order
 `sel:select_all()`                                   select all
 `sel:reset()`                                        select none
-`sel:cursors() -> c1, c2`                            selection cursors in text-order
-`sel:empty() -> true|false`                          check if selection is empty
+`sel:select_word()`                                  select the word around cursor1
+`sel:rectangles(write_func, ...)`                    get selection rectangles
+`sel:hit_test(x, y) -> true|false`                   hit test the selection rectangles
 __editing__
 `sel:codepoints() -> buf, offset, len`               selected text in utf-32 buffer
 `sel:string() -> s`                                  selected text as utf-8 string
-`sel:insert(s[, nil, charset]) -> offset`            replace selection with text from string
-`sel:insert(s|buf, len, [charset]) -> offset`        replace selection with text from buffer
+`sel:replace(s[, nil, charset]) -> offset`           replace selection with text from string
+`sel:replace(s|buf, len, [charset]) -> offset`       replace selection with text from buffer
 `sel:remove() -> offset`                             remove selected text
 ---------------------------------------------------- ------------------------------------
 

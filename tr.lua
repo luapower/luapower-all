@@ -180,7 +180,7 @@ local function hb_features(s)
 	return unpack(parse_features(s))
 end
 
---shaping a single text run into an array of glyphs --------------------------
+--shaping a single word into an array of glyphs ------------------------------
 
 local glyph_run = {} --glyph run methods
 tr.glyph_run_class = glyph_run
@@ -202,10 +202,6 @@ end
 local function ub_lang(hb_lang)
 	local s = hb.language_tostring(hb_lang)
 	return s and s:gsub('[%-_].*$', '')
-end
-
-local function get_cluster(glyph_info, i)
-	return glyph_info[i].cluster
 end
 
 local function count_graphemes(grapheme_breaks, start, len)
@@ -239,7 +235,10 @@ end
 local alloc_int_array = ffi.typeof'int[?]'
 local alloc_double_array = ffi.typeof'double[?]'
 
-function tr:shape_text_run(
+local function get_cluster(glyph_info, i)
+	return glyph_info[i].cluster
+end
+function tr:shape_word(
 	str, str_offset, len, trailing_space,
 	font, font_size, features,
 	rtl, script, lang
@@ -476,7 +475,7 @@ function tr:glyph_run(
 	--get the shaped run from cache or shape it and cache it.
 	local glyph_run = self.glyph_runs:get(key)
 	if not glyph_run then
-		glyph_run = self:shape_text_run(
+		glyph_run = self:shape_word(
 			str, str_offset, len, trailing_space,
 			font, font_size, features,
 			rtl, script, lang
@@ -604,8 +603,11 @@ local const_uint32_ct = ffi.typeof'const uint32_t*'
 
 function tr:shape(text_runs, segments)
 
-	if not text_runs.codepoints then --it's a text_tree, flatten it
+	if not text_runs.codepoints then --it's a text tree, flatten it.
 		text_runs = self:flatten(text_runs)
+	else --it's a text runs array, wrap it.
+		update(text_runs, self.text_runs_class)
+		text_runs.tr = self
 	end
 
 	local str = ffi.cast(const_uint32_ct, text_runs.codepoints)
@@ -1072,6 +1074,9 @@ function segments:layout(x, y, w, h, halign, valign)
 	assert(valign == 'top' or valign == 'bottom' or valign == 'middle',
 		'Invalid valign: %s', valign)
 
+	--NOTE: users expect this table to be re-created from scratch upon
+	--re-layouting (they will add data to this table that must only be valid
+	--for the lifetime of a single computed layout).
 	local lines = {}
 	self.lines = lines
 
@@ -1316,6 +1321,8 @@ function segments:paint_glyph_run(cr, rs, run, i, j, ax, ay, clip_left, clip_rig
 end
 
 function segments:paint(cr)
+	zone'paint'
+
 	local rs = self.tr.rs
 	local lines = self:checklines()
 
@@ -1346,6 +1353,7 @@ function segments:paint(cr)
 		end
 	end
 
+	zone()
 	return self
 end
 
@@ -1488,15 +1496,19 @@ function segments:hit_test(x, y,
 	return line_i, self:hit_test_cursors(line_i, x, extend_left, extend_right)
 end
 
-function segments:cursor_pos(seg, i)
+function segments:line_pos(line_i)
 	local lines = self:checklines()
-	local line = lines[seg.line_index]
-	local run = seg.glyph_run
-	local x = lines.x + line.x + seg.x
+	local line = lines[line_i]
+	local x = lines.x + line.x
 	local y = lines.y + lines.baseline + line.y - line.ascent
+	return x, y
+end
+
+function segments:cursor_pos(seg, i)
+	local x, y = self:line_pos(seg.line_index)
+	local run = seg.glyph_run
 	local i = clamp(i, 0, run.text_len)
-	local cx = run.cursor_xs[i]
-	return x + cx, y
+	return x + seg.x + run.cursor_xs[i], y
 end
 
 function segments:cursor_size(seg, i)
@@ -1511,6 +1523,29 @@ function segments:cursor_size(seg, i)
 		w = cx2 - cx1
 	end
 	return w, h, rtl
+end
+
+--iterate all unique cursor positions in visual order.
+function segments:cursor_xs()
+	return coroutine.wrap(function()
+		for line_i, line in ipairs(self.lines) do
+			local last_x
+			for seg_i, seg in ipairs(line) do
+				local run = seg.glyph_run
+				local i, j, step = 0, run.text_len, 1
+				if run.rtl then
+					i, j, step = j, i, -step
+				end
+				for cursor_i = i, j, step do
+					local x = seg.x + run.cursor_xs[cursor_i]
+					if x ~= last_x then
+						coroutine.yield(line_i, x)
+					end
+					last_x = x
+				end
+			end
+		end
+	end)
 end
 
 --selection rectangles -------------------------------------------------------
@@ -1604,7 +1639,7 @@ function text_runs:text_range(i1, i2)
 end
 
 function text_runs:string(i1, i2)
-	local i, len = self:text_range(i1, i2)
+	local i, len = self:text_range(i1 or 0, i2 or 1/0)
 	return ffi.string(utf8.encode(self.codepoints + i, len))
 end
 
@@ -1901,6 +1936,15 @@ function selection:reset()
 	self.cursor2:move_to_cursor(self.cursor1)
 end
 
+function selection:select_word()
+	if self.cursor1.cursor_i > 0 then
+		self.cursor1:move('word', -1)
+	end
+	if self.cursor2.cursor_i < self.cursor2.seg.glyph_run.text_len then
+		self.cursor2:move('word', 1)
+	end
+end
+
 --drawing & hit-testing
 
 function selection:rectangles(write, ...)
@@ -1914,6 +1958,7 @@ local function hit_test_rect(x, y, w, h, mx, my)
 	return box_hit(mx, my, x, y, w, h)
 end
 function selection:hit_test(x, y)
+	if self:empty() then return false end
 	local c1, c2 = self:cursors()
 	return self.segments:selection_rectangles(
 		c1.seg, c1.cursor_i,
@@ -1933,7 +1978,7 @@ function selection:string()
 	return self.segments.text_runs:string(c1.offset, c2.offset)
 end
 
-function selection:insert(...) --replace selection with text.
+function selection:replace(...) --replace selection with text.
 	self:remove()
 	local c1, c2 = self:cursors()
 	c1:insert(...)
