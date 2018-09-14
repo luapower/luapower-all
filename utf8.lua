@@ -149,7 +149,7 @@ function utf8.decode(buf, len, out, outlen, repl)
 		if c then
 			if out then
 				if j >= outlen then
-					return nil, 'buffer overflow'
+					return nil, 'buffer overflow', i
 				end
 				out[j] = c
 			end

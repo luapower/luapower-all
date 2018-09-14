@@ -36,7 +36,8 @@ Decode utf8 buffer into a utf32 buffer or get output length.
     * if `repl` is `'iso-8859-1'`, invalid bytes are treated as iso-8859-1
     characters like browsers do.
     * replaced invalid bytes are counted in `n`.
-  * returns `nil, err` on error (output buffer overflow).
+  * returns `nil, err, sz` on output buffer overflow, where `sz` is the byte
+  size of the text that fit into the buffer.
 
 ### `utf8.encode(buf, len, out, outlen, repl) -> [out, ]bytes`
 
