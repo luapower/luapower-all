@@ -5,8 +5,9 @@
 local ui = require'ui'
 local tr = require'tr'
 local glue = require'glue'
-local undostack = require'undostack'
 
+local push = table.insert
+local pop = table.remove
 clamp = glue.clamp
 snap = glue.snap
 
@@ -48,7 +49,7 @@ ui:style('editbox :hot', {
 ui:style('editbox :focused', {
 	border_color = '#fff',
 	background_color = '#040404',
-	shadow_blur = 3,
+	shadow_blur = 2,
 	shadow_color = '#666',
 })
 
@@ -90,7 +91,7 @@ end
 
 function editbox:set_text(s)
 	s = s or '' --an editbox can never have its text property as false!
-	self.undo_stack:reset()
+	self:clear_undo_stack()
 	self.selection:select_all()
 	self:replace_selection(s)
 end
@@ -106,19 +107,8 @@ end
 editbox:init_ignore{text=1}
 
 function editbox:after_init(ui, t)
-
-	self.undo_stack = undostack()
-	function self.undo_stack.save_state(_, undo_group)
-		self:save_state(undo_group)
-	end
-	function self.undo_stack.load_state(_, undo_group)
-		self:load_state(undo_group)
-	end
-
 	self._scroll_x = 0
-
 	self._text = sanitize(t.text or '')
-
 	self.selection = self:sync_text():selection()
 end
 
@@ -204,31 +194,70 @@ function editbox:scroll_to_caret(preserve_screen_x)
 	self:invalidate()
 end
 
---editing
+--undo/redo
+
+function editbox:clear_undo_stack()
+	self.undo_stack = false
+	self.redo_stack = false
+end
 
 function editbox:save_state(state)
-	state.t = {}
-	state.t.cursor1_seg_i = self.selection.cursor1.seg.index
-	state.t.cursor2_seg_i = self.selection.cursor2.seg.index
-	state.t.cursor1_cursor_i = self.selection.cursor1.cursor_i
-	state.t.cursor2_cursor_i = self.selection.cursor2.cursor_i
-	state.t.text = self.text
-	--pp('save_state', state.t)
+	state.cursor1_seg_i = self.selection.cursor1.seg.index
+	state.cursor2_seg_i = self.selection.cursor2.seg.index
+	state.cursor1_cursor_i = self.selection.cursor1.cursor_i
+	state.cursor2_cursor_i = self.selection.cursor2.cursor_i
+	state.cursor1_offset = self.selection.cursor1.offset
+	state.cursor2_offset = self.selection.cursor2.offset
+	state.text = self.text
+	return state
 end
 
 function editbox:load_state(state)
-	--pp('load_state', state.t)
 	self.selection:select_all()
-	self:replace_selection(state.t.text)
+	self:replace_selection(state.text)
 	local segs = self.selection.segments
-	self.selection.cursor1.seg = assert(segs[state.t.cursor1_seg_i])
-	self.selection.cursor2.seg = assert(segs[state.t.cursor2_seg_i])
-	self.selection.cursor1.cursor_i = state.t.cursor1_cursor_i
-	self.selection.cursor2.cursor_i = state.t.cursor2_cursor_i
+	self.selection.cursor1.seg = assert(segs[state.cursor1_seg_i])
+	self.selection.cursor2.seg = assert(segs[state.cursor2_seg_i])
+	self.selection.cursor1.cursor_i = state.cursor1_cursor_i
+	self.selection.cursor2.cursor_i = state.cursor2_cursor_i
+	self.selection.cursor1.offset = state.cursor1_offset
+	self.selection.cursor2.offset = state.cursor2_offset
 	self:invalidate()
 end
 
-function editbox:restore() end --stub
+function editbox:_undo_redo(undo_stack, redo_stack)
+	if not undo_stack then return end
+	local state = pop(undo_stack)
+	if state then
+		push(redo_stack, self:save_state{type = 'undo'})
+		self:load_state(state)
+	end
+end
+
+function editbox:undo()
+	self:_undo_redo(self.undo_stack, self.redo_stack)
+end
+
+function editbox:redo()
+	self:_undo_redo(self.redo_stack, self.undo_stack)
+end
+
+function editbox:undo_group(type)
+	if not type then
+		--cursor moved, force an undo group on the next editing operation.
+		self.force_undo_group = true
+		return
+	end
+	local top = self.undo_stack and self.undo_stack[#self.undo_stack]
+	if not top or top.type ~= type or self.force_undo_group then
+		self.undo_stack = self.undo_stack or {}
+		self.redo_stack = self.redo_stack or {}
+		push(self.undo_stack, self:save_state{type = type})
+		self.force_undo_group = false
+	end
+end
+
+--editing
 
 function editbox:replace_selection(s, preserve_screen_x)
 	if not self.selection:replace(s) then return end
@@ -237,20 +266,11 @@ function editbox:replace_selection(s, preserve_screen_x)
 	self:fire'text_changed'
 end
 
-function editbox:undo()
-	self.undo_stack:undo()
-end
-
-function editbox:redo()
-	self.undo_stack:redo()
-end
-
 --keyboard
 
 function editbox:keychar(s)
 	if not check_char(s) then return end
-	self.undo_stack:start_undo_group'typing'
-	self.undo_stack:undo_command(self.restore, self)
+	self:undo_group'typing'
 	self:replace_selection(s)
 end
 
@@ -258,8 +278,7 @@ function editbox:keypress(key)
 	local shift = self.ui:key'shift'
 	local ctrl = self.ui:key'ctrl'
 	if key == 'right' or key == 'left' then
-		self.undo_stack:start_undo_group'move'
-		self.undo_stack:undo_command(self.restore, self)
+		self:undo_group()
 		local movement = ctrl and 'word' or 'char'
 		local delta = key == 'right' and 1 or -1
 		if shift then
@@ -280,8 +299,7 @@ function editbox:keypress(key)
 		self:scroll_to_caret()
 		return true
 	elseif key == 'up' or key == 'down' then
-		self.undo_stack:start_undo_group'move'
-		self.undo_stack:undo_command(self.restore, self)
+		self:undo_group()
 		self.selection.cursor1:move('vert', key == 'down' and 1 or -1)
 		if not shift then
 			self.selection.cursor2:move_to_cursor(self.selection.cursor1)
@@ -293,8 +311,7 @@ function editbox:keypress(key)
 		self:scroll_to_caret()
 		return true
 	elseif key == 'delete' or key == 'backspace' then
-		self.undo_stack:start_undo_group'delete'
-		self.undo_stack:undo_command(self.restore, self)
+		self:undo_group'delete'
 		if self.selection:empty() then
 			if key == 'delete' then --remove the char after the cursor
 				self.selection.cursor1:move('char', 1)
@@ -305,8 +322,7 @@ function editbox:keypress(key)
 		self:replace_selection('', true)
 		return true
 	elseif ctrl and key == 'A' then
-		self.undo_stack:start_undo_group'move'
-		self.undo_stack:undo_command(self.restore, self)
+		self:undo_group()
 		self.selection:select_all()
 		self:scroll_to_caret()
 		return true
@@ -314,8 +330,7 @@ function editbox:keypress(key)
 		if not self.selection:empty() then
 			self.ui:setclipboard(self.selection:string(), 'text')
 			if key == 'X' then
-				self.undo_stack:start_undo_group'cut'
-				self.undo_stack:undo_command(self.restore, self)
+				self:undo_group'cut'
 				self:replace_selection('', true)
 			end
 		end
@@ -324,8 +339,7 @@ function editbox:keypress(key)
 		local s = self.ui:getclipboard'text'
 		if s then
 			s = sanitize(s)
-			self.undo_stack:start_undo_group'paste'
-			self.undo_stack:undo_command(self.restore, self)
+			self:undo_group'paste'
 			self:replace_selection(s)
 		end
 		return true
