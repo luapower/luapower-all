@@ -15,23 +15,20 @@ UI ---------------------------------------------------------------------------
 
 EDITBOX ----------------------------------------------------------------------
 
-- fix scrolling (wrong metrics)
-- maxchars
-- key filter
-- password_char & eye_icon
-- text_align: left, right, center
 - mask:
 	- select/navigate text with the mask or without
 	- 0	digit required
 	- 9	digit or space, optional
 	- #	digit or space or +/-
 	- L	a-zA-Z
-	-
 
-- fix editbox->editor/view/cursor/selection property proxying
+- eye_icon for password mask.
 
-- drag/drop
-- IME integration
+- make the caret a layer so it can be styled.
+--make selection rectangles layers so they can be styled.
+--drag & drop selection in/out of the editor.
+
+- IME integration.
 
 DROPDOWN ---------------------------------------------------------------------
 

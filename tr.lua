@@ -1389,7 +1389,6 @@ end
 function segments:next_physical_cursor(seg, ci, delta)
 	delta = math.floor(delta or 0) --prevent infinite loop
 	local step = delta > 0 and 1 or -1
-	local offsets = seg.glyph_run.cursor_offsets
 	local len = seg.glyph_run.text_len
 	while delta ~= 0 do
 		local i = ci + step
@@ -1399,7 +1398,6 @@ function segments:next_physical_cursor(seg, ci, delta)
 				break
 			end
 			seg = next_seg
-			offsets = seg.glyph_run.cursor_offsets
 			len = seg.glyph_run.text_len
 			i = step > 0 and 0 or len
 		end
@@ -1715,7 +1713,7 @@ end
 local function cmp_insert(text_runs, i, offset)
 	return text_runs[i].offset <= offset -- < < = = [<] <
 end
-function text_runs:insert(i, s, sz, charset)
+function text_runs:insert(i, s, sz, charset, maxlen)
 	sz = sz or #s
 	charset = charset or 'utf8'
 	if sz <= 0 then return i, false end
@@ -1723,7 +1721,8 @@ function text_runs:insert(i, s, sz, charset)
 	--get the length of the inserted text in codepoints.
 	local len
 	if charset == 'utf8' then
-		len = utf8.decode(s, sz, false)
+		maxlen = maxlen and math.floor(maxlen)
+		len = utf8.decode(s, sz, false, maxlen) or maxlen
 	elseif charset == 'utf32' then
 		len = sz
 	else
@@ -1741,7 +1740,7 @@ function text_runs:insert(i, s, sz, charset)
 	ffi.copy(new_str, old_str, i * 4)
 	ffi.copy(new_str + i + len, old_str + i, (old_len - i) * 4)
 	if charset == 'utf8' then
-		assert(utf8.decode(s, sz, new_str + i, len))
+		utf8.decode(s, sz, new_str + i, len)
 	else
 		ffi.copy(new_str + i, ffi.cast(const_char_ct, s), len * 4)
 	end

@@ -3291,7 +3291,7 @@ end
 function layer:sync_text()
 	if not self:text_visible() then return end
 	if not self._text_tree
-		or self.text        ~= self._text_tree[1]
+		or (not self._text_valid and self.text ~= self._text_tree[1])
 		or self.text_dir    ~= self._text_tree.text_dir
 		or self.font_name   ~= self._text_tree.font_name
 		or self.font_weight ~= self._text_tree.font_weight

@@ -1,3 +1,4 @@
+--go @ luajit ui_editbox.lua
 
 --Edit Box widget based on tr.
 --Written by Cosmin Apreutesei. Public Domain.
@@ -5,6 +6,7 @@
 local ui = require'ui'
 local tr = require'tr'
 local glue = require'glue'
+local utf8 = require'utf8'
 
 local push = table.insert
 local pop = table.remove
@@ -13,10 +15,6 @@ snap = glue.snap
 
 local editbox = ui.layer:subclass'editbox'
 ui.editbox = editbox
-
---TODO: make the caret a layer so it can be styled.
---TODO: make selection rectangles layers so they can be styled.
---TODO: drag & drop selection in/out of the editor.
 
 editbox.w = 200
 editbox.h = 30
@@ -34,6 +32,7 @@ editbox.insert_mode = false
 editbox.cursor_text = 'text'
 editbox.cursor_selection = 'arrow'
 editbox.password = false
+editbox.maxlen = 4096
 
 ui:style('editbox', {
 	transition_border_color = true,
@@ -57,18 +56,6 @@ ui:style('editbox :insert_mode', {
 	caret_color = '#fff8',
 })
 
---sanitize text by replacing newlines and ASCII control chars with spaces.
---TODO: make `tr.multiline` option so that we don't have to do this.
-local function sanitize(s)
-	return s:gsub(tr.PS, ' '):gsub(tr.LS, ' '):gsub('[%z\1-\31]', ' ')
-end
-
-local function check_char(s) --validation but for single utf8 chars.
-	if s:byte(1, 1) < 32 then return end
-	if s == tr.PS or s == tr.LS then return end
-	return s
-end
-
 --insert_mode property
 
 editbox:stored_property'insert_mode'
@@ -81,10 +68,15 @@ end
 
 --utf8 text property, computed on-demand.
 
+editbox._text = ''
+
+--tell ui:sync_text() that we're managing text reshaping ourselves.
+--reshaping is done by selection:replace().
+editbox._text_valid = true
+
 function editbox:get_text()
 	if not self._text then
 		self._text = self.selection.segments.text_runs:string()
-		self._text_tree[1] = self._text --prevent resync by layer:sync_text()
 	end
 	return self._text
 end
@@ -93,7 +85,7 @@ function editbox:set_text(s)
 	s = s or '' --an editbox can never have its text property as false!
 	self:clear_undo_stack()
 	self.selection:select_all()
-	self:replace_selection(s)
+	self:replace_selection(s, nil, false)
 end
 
 editbox:instance_only'text'
@@ -102,14 +94,31 @@ function editbox:text_visible()
 	return true --always sync, even for the empty string.
 end
 
+--filtering & truncating the input text.
+
+--filter text by replacing newlines and ASCII control chars with spaces.
+--TODO: make `tr.multiline` option so that we don't have to do this.
+function editbox:filter_text(s)
+	return s:gsub(tr.PS, ' '):gsub(tr.LS, ' '):gsub('[%z\1-\31]', ' ')
+end
+
+--validation for single utf8 chars.
+function editbox:check_char(s)
+	return
+		self.selection.segments.text_runs.len < self.maxlen
+		and s:byte(1, 1) >= 32 and s ~= tr.PS and s ~= tr.LS
+end
+
 --init
 
 editbox:init_ignore{text=1}
 
 function editbox:after_init(ui, t)
 	self._scroll_x = 0
-	self._text = sanitize(t.text or '')
+	--create a selection so we can add the text through the selection which
+	--obeys maxlen and triggers changed event.
 	self.selection = self:sync_text():selection()
+	self.text = t.text
 end
 
 --sync'ing
@@ -188,7 +197,13 @@ function editbox:scroll_to_caret(preserve_screen_x)
 		self._scroll_x = x - self._screen_x
 	end
 	self._scroll_x = clamp(self._scroll_x, x - self.cw + w, x)
-	local max_scroll_x = math.max(0, segs.lines[1].advance_x - self.cw + w)
+	local line_w
+	if segs.lines.pw_cursor_xs then
+		line_w = #segs.lines.pw_cursor_xs * self:password_char_advance_x()
+	else
+		line_w = segs.lines[1].advance_x
+	end
+	local max_scroll_x = math.max(0, line_w - self.cw + w)
 	self._scroll_x = clamp(self._scroll_x, 0, max_scroll_x)
 	self._screen_x = x - self._scroll_x
 	self:invalidate()
@@ -259,17 +274,20 @@ end
 
 --editing
 
-function editbox:replace_selection(s, preserve_screen_x)
-	if not self.selection:replace(s) then return end
+function editbox:replace_selection(s, preserve_screen_x, fire_event)
+	local maxlen = self.maxlen - self.selection.segments.text_runs.len
+	if not self.selection:replace(s, nil, nil, maxlen) then return end
 	self._text = false --invalidate the text property
 	self:scroll_to_caret(preserve_screen_x)
-	self:fire'text_changed'
+	if fire_event ~= false then
+		self:fire'text_changed'
+	end
 end
 
 --keyboard
 
 function editbox:keychar(s)
-	if not check_char(s) then return end
+	if not self:check_char(s) then return end
 	self:undo_group'typing'
 	self:replace_selection(s)
 end
@@ -337,8 +355,8 @@ function editbox:keypress(key)
 		return true
 	elseif ctrl and key == 'V' then
 		local s = self.ui:getclipboard'text'
-		if s then
-			s = sanitize(s)
+		s = s and self:filter_text(s)
+		if s and s ~= '' then
 			self:undo_group'paste'
 			self:replace_selection(s)
 		end
@@ -502,42 +520,63 @@ end
 
 if not ... then require('ui_demo')(function(ui, win)
 
-	local long_text = ('Hello World! '):rep(2) -- (('Hello World! '):rep(10)..'\n'):rep(30)
-	local long_text = 'Hello W'
-
 	ui:add_font_file('media/fonts/FSEX300.ttf', 'fixedsys')
 
 	local ed1 = ui:editbox{
 		--font = 'fixedsys,16',
-		x = 320,
-		y = 10 + 35 * 1,
+		x = 20,
+		y = 20 + 35 * 0,
 		w = 200,
 		parent = win,
-		text = long_text,
+		text = 'Hello World!',
 		password = true,
+		maxlen = 28,
 	}
 
 	local ed2 = ui:editbox{
 		--font = 'fixedsys,16',
-		x = 320,
-		y = 10 + 35 * 2,
-		w = 200,
-		parent = win,
 		font = 'Amiri,20',
 		text = 'السَّلَامُ عَلَيْكُمْ',
 		text_align = 'right',
 		text_dir = 'rtl',
+		x = 20,
+		y = 20 + 35 * 1,
+		w = 200,
+		parent = win,
 	}
 
 	local ed3 = ui:editbox{
+		text = ('Hello World! '):rep(100000),
+		maxlen = 65536 / 10,
+		x = 20,
+		y = 20 + 35 * 2,
+		w = 200,
+		parent = win,
+	}
+
+	local ed4 = ui:editbox{
 		--font = 'fixedsys,16',
-		x = 320,
-		y = 10 + 35 * 3,
+		x = 20,
+		y = 20 + 35 * 3,
 		w = 200,
 		h = 200,
 		parent = win,
-		text = long_text,
+		text = 'Hello World!',
+		text_align = 'center',
 		multiline = true,
 	}
+
+	--[[
+	local t0 = require'time'.clock()
+	require'jit.p'.start()
+	ed3.selection.cursor1:move_to_offset(0)
+	ed3.selection.cursor2:move_to_offset(10)
+	assert(not ed3.selection:empty())
+	ed3:replace_selection('1234')
+	ed3:sync_text()
+	require'jit.p'.stop()
+	print(require'time'.clock() - t0)
+	--win:close()
+	]]
 
 end) end
