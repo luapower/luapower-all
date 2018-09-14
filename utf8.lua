@@ -16,7 +16,8 @@ local uint8_ptr = ffi.typeof'const uint8_t*'
 
 local function tobuf(s, len, ct, sizeof_ct)
 	if type(s) == 'string' then
-		return s, ffi.cast(ct or uint8_ptr, s), #s / (sizeof_ct or 1)
+		return s, ffi.cast(ct or uint8_ptr, s),
+			math.min(len or 1/0, #s / (sizeof_ct or 1))
 	else
 		return nil, s, len
 	end
@@ -132,6 +133,7 @@ function utf8.decode(buf, len, out, outlen, repl)
 		outlen = outlen or utf8.decode(buf, len, false, nil, repl)
 		out = uint32_array(outlen + 1)
 	end
+	outlen = outlen or 1/0
 	local j, p, i = 0, 0, 0
 	while true do
 		local i1, c = utf8.next(buf, len, i)
@@ -147,10 +149,10 @@ function utf8.decode(buf, len, out, outlen, repl)
 			end
 		end
 		if c then
+			if j >= outlen then
+				return nil, 'buffer overflow', i
+			end
 			if out then
-				if j >= outlen then
-					return nil, 'buffer overflow', i
-				end
 				out[j] = c
 			end
 			j = j + 1
