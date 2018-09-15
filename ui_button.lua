@@ -234,10 +234,10 @@ end
 
 --drawing
 
---TODO: use the future hi-level text API to draw the underline
 function button:before_draw_text(cr)
 	if not self:text_visible() then return end
 	if not self.underline_pos then return end
+	do return end --TODO: use the future hi-level text API to draw the underline
 	--measure
 	local x, y, w, h = self:text_bounding_box() --sets font
 	local line_w = self.window:text_size(self.underline_text, self.text_multiline)
@@ -279,9 +279,8 @@ end
 
 local cbutton = ui.button:subclass'checkbox_button'
 checkbox.button_class = cbutton
-cbutton.font_name = 'Font Awesome'
-cbutton.text_checked = '\xEF\x80\x8C'
-cbutton.text_size = 10
+cbutton.font = 'Ionicons,16'
+cbutton.text_checked = '\u{f2bc}'
 cbutton.padding_left = 2
 cbutton.padding_right = 0
 

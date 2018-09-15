@@ -1981,19 +1981,30 @@ function ui:add_mem_font(...) return self.tr:add_mem_font(...) end
 
 function ui:after_init()
 	self.tr = tr()
-	push(self.tr.rs.font_db.searchers,
-		function(font_db, name, weight, slant)
-			local gfonts = require'gfonts'
-			local file = gfonts.font_file(name, weight, slant, true)
-			return file and self:add_font_file(file, name, weight, slant)
-		end)
-	--mgit clone fonts-awesome
+
+	--use our own overridable rgba parser.
+	function self.tr.rs.rgba(c)
+		return self:rgba(c)
+	end
+
+	--add a font searcher for the google fonts repository.
+	--$ git clone https://github.com/google/fonts media/fonts/gfonts
+	local function find_font(font_db, name, weight, slant)
+		local gfonts = require'gfonts'
+		local file, real_weight = gfonts.font_file(name, weight, slant, true)
+		local font = file and self:add_font_file(file, name, real_weight, slant)
+		return font, real_weight
+	end
+	push(self.tr.rs.font_db.searchers, find_font)
+
+	--add default fonts.
+	--$ mgit clone fonts-awesome
 	self:add_font_file('media/fonts/fa-regular-400.ttf', 'Font Awesome')
 	self:add_font_file('media/fonts/fa-solid-900.ttf', 'Font Awesome Bold')
 	self:add_font_file('media/fonts/fa-brands-400.ttf', 'Font Awesome Brands')
-	--mgit clone fonts-material-icons
+	--$ mgit clone fonts-material-icons
 	self:add_font_file('media/fonts/MaterialIcons-Regular.ttf', 'Material Icons')
-	--mgit clone fonts-ionicons
+	--$ mgit clone fonts-ionicons
 	self:add_font_file('media/fonts/ionicons.ttf', 'Ionicons')
 end
 

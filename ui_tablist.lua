@@ -724,8 +724,7 @@ if not ... then require('ui_demo')(function(ui, win)
 			style = {
 				font_slant = 'normal',
 			},
-			title = {text = 'خمسة tab '..i, font = 'amiri,16'},
-			--title = 'Tab '..i,
+			title = {text = 'Tab '..i},
 			visible = visible,
 			--selected = selected,
 			enabled = enabled,

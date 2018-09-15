@@ -677,7 +677,7 @@ ui:style('grid_cell :moving', {
 	background_color = '#000',
 })
 
-ui:style('grid_cell :even', {
+ui:style('grid_cell even', {
 	background_color = '#040404',
 })
 
@@ -711,21 +711,21 @@ ui:style('grid_cell :focused', {
 	border_color = '#0000', --not visibile but preserving the widths
 })
 
-ui:style('grid_cell :focused :first_col', {
+ui:style('grid_cell first_col :focused', {
 	border_width_left = 1,
 })
 
-ui:style('grid_cell :focused :last_col', {
+ui:style('grid_cell last_col :focused', {
 	border_width_right = 1,
 })
 
-ui:style('grid_cell :cell_select :focused', {
+ui:style('grid_cell cell_select :focused', {
 	border_width = 1,
 })
 
 function cell:sync_grid(grid)
 	self.grid = grid
-	self:settag(':cell_select', self.grid.cell_select)
+	self:settag('cell_select', self.grid.cell_select)
 	self:settag(':grid_focused', self.grid.focused)
 end
 
@@ -733,14 +733,15 @@ function cell:sync_col(col)
 	self.parent = col.pane.rows_layer
 	self.x = col.x
 	self.w = col.w
+	self.font = col.font
 	self.font_name = col.font_name
 	self.font_weight = col.font_weight
 	self.font_slant = col.font_slant
-	self.font_size = col.text_size
-	self.font_color = col.text_color
-	self.line_spacing = col.line_spacing
+	self.text_size = col.text_size
+	self.text_color = col.text_color
 	self.text_align = col.text_align
 	self.text_valign = col.text_valign
+	self.line_spacing = col.line_spacing
 	self.padding_left = col.padding_left
 	self.padding_right = col.padding_right
 	self.padding_top = col.padding_top
@@ -748,14 +749,14 @@ function cell:sync_col(col)
 	local index = col.index
 	self:settag(':moving', col.moving)
 	self:settag(':resizing', col.resizing)
-	self:settag(':first_col', index == 1)
-	self:settag(':last_col', index == self.grid:rel_visible_col(-1).index)
+	self:settag('first_col', index == 1)
+	self:settag('last_col', index == self.grid:rel_visible_col(-1).index)
 end
 
 function cell:sync_row(i, y, h)
 	self.y = y - self.grid.vscrollbar.offset
 	self.h = h
-	self:settag(':even', i % 2 == 0)
+	self:settag('even', i % 2 == 0)
 	if self.grid.moving_row_index == i then
 		self:settag(':moving', true)
 	end
@@ -795,14 +796,13 @@ function grid:sync_cell(cell, i, col, val)
 	cell:sync_value(i, col, self:cell_value(i, col))
 end
 
-function grid:draw_cell(cr, i, col, hot)
+function grid:draw_cell(cr, i, col, hot) --TODO: unused
 	local y, h = self:row_yh(i)
 	local cell = self:cell_at(i, col)
 	cell:sync_grid(self)
 	cell:sync_col(col)
 	cell:sync_row(i, y, h)
 	self:sync_cell(cell, i, col, self:cell_value(i, col))
-	--cell:sync_value(i, col, self:cell_value(i, col))
 	cell:settag(':hot', hot)
 	cell:draw()
 end
@@ -909,7 +909,6 @@ function grid:draw_row_col(cr, i, col, y, h, hot)
 	end
 	cell:sync_row(i, y, h)
 	self:sync_cell(cell, i, col, self:cell_value(i, col))
-	--cell:sync_value(i, col, self:cell_value(i, col))
 	cell:settag(':hot', hot)
 	cell:draw(cr)
 end

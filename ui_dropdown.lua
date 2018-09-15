@@ -34,8 +34,17 @@ ui:style('dropdown :focused', {
 local button = ui.button:subclass'dropdown_button'
 dropdown.button_class = button
 
-button.border_color = dropdown.border_color
-button.border_width = dropdown.border_width
+ui:style('dropdown_button, dropdown_button :focused, dropdown_button :hot', {
+	transition_background_color = false,
+	background_color = false,
+	border_color = false,
+	shadow_color = false,
+	text_color = '#fff',
+})
+
+ui:style('dropdown_button', {
+	text_color = '#999',
+})
 
 function dropdown:create_button()
 	local button = self.button_class(self.ui, {
