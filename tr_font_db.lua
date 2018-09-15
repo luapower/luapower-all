@@ -128,10 +128,6 @@ function font_db:add_font(font, name, weight, slant)
 end
 
 local function closest_weight(t, wanted_weight)
-	local font = t[wanted_weight] --direct lookup
-	if font then
-		return font
-	end
 	local best_diff = 1/0
 	local best_font
 	for weight, font in pairs(t) do
@@ -153,19 +149,33 @@ function font_db:find_font(name, weight, slant, size)
 		return font
 	end
 	local name, weight, slant, size = self:parse_font(name, weight, slant, size)
-	--search in local db
+	--exact search in local db.
 	local t = self.db[name or false]
 	local t = t and t[slant or 'normal']
-	local font = t and closest_weight(t, weight or 400)
-	--extend search with plugins
+	local font = t and t[weight or 400]
+	--loose search using installed searchers.
 	if not font then
+		local closest_weight
 		for _,searcher in ipairs(self.searchers) do
-			local font1, size1 = searcher(self, name, weight, slant, size)
-			if font1 then
-				font, size = font1, size1 or size
-				break
+			local found_font, found_weight = searcher(self, name, weight, slant)
+			if not closest_weight
+				or math.abs(weight - found_weight)
+				 < math.abs(weight - closest_weight)
+			then
+				font = found_font
+				closest_weight = found_weight
 			end
 		end
+	end
+	--loose search in local db.
+	if not font and t then
+		font = closest_weight(t, weight or 400)
+	end
+	--register the found font for the requested weight.
+	--NOTE: register all the searchers before looking up any fonts, otherwise
+	--later searchers won't be invoked to find fonts with closer weights.
+	if font then
+		self:add_font(font, name, weight, slant)
 	end
 	if font and name_only then
 		self.namecache[name] = font

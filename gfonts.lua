@@ -1,8 +1,8 @@
 
---google fonts font selector.
+--Google Fonts font file finder.
 --Written by Cosmin Apreutesei. Public Domain.
 
---Requires: git clone https://github.com/google/fonts media/fonts/gfonts.
+--$ git clone https://github.com/google/fonts media/fonts/gfonts
 
 local fs = require'fs'
 local glue = require'glue'
@@ -118,7 +118,11 @@ local function closest_weight_font(fonts, weight)
 	for i=2,#fonts do
 		local w1 = fonts[i].weight
 		if w1 >= weight then
-			return w1 - weight < weight - w0 and fonts[i] or fonts[i-1]
+			if w1 - weight < weight - w0 then
+				return fonts[i], w1
+			else
+				return fonts[i-1], w0
+			end
 		end
 		w0 = w1
 	end
@@ -150,8 +154,8 @@ function gfonts.font_file(name, weight, style, use_bundle)
 	if not styles then return nil end
 	local fonts = styles[style]
 	if not fonts then return nil end
-	local font = closest_weight_font(fonts, weight)
-	return font and gfonts.root_dir .. '/' .. font.path
+	local font, weight = closest_weight_font(fonts, weight)
+	return font and gfonts.root_dir .. '/' .. font.path, weight
 end
 
 if not ... then
