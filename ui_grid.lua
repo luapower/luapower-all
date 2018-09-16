@@ -1144,7 +1144,8 @@ end
 function grid:move(actions, di, dj)
 	di = di or 0
 	dj = dj or 0
-	local i, col, reset_extend
+	local i, col = di, self:rel_visible_col(dj)
+	local reset_extend
 	for action in actions:gmatch'[^%s]+' do
 		if action == '@extend' then
 			if self.extend_row_index then

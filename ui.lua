@@ -364,20 +364,6 @@ function ui.selector:selects(elem)
 	return true
 end
 
---attribute expansion --------------------------------------------------------
---attributes from styles need to be expanded first so that we know which
---initial values to save before applying the attributes.
-
-ui.expand = {} -- {attr -> expand(dest, val)}
-
-function ui:expand_attr(attr, val, dest)
-	local expand = self.expand[attr]
-	if expand then
-		expand(dest, val)
-		return true
-	end
-end
-
 --stylesheets ----------------------------------------------------------------
 
 local stylesheet = ui.object:subclass'stylesheet'
@@ -400,13 +386,6 @@ function stylesheet:add_style(sel, attrs)
 		return
 	end
 	local sel = self.ui:selector(sel)
-
-	--expand attributes
-	for attr, val in pairs(attrs) do
-		if self.ui:expand_attr(attr, val, attrs) then
-			attrs[attr] = nil
-		end
-	end
 	sel.attrs = attrs
 
 	local is_state_sel = sel:has_state_tags()
@@ -757,10 +736,6 @@ local element = ui.object:subclass'element'
 ui.element = element
 ui.element.ui = ui
 
-function element:expand_attr(attr, val)
-	return self.ui:expand_attr(attr, val, self)
-end
-
 --init
 
 function element:init_ignore(t) --class method
@@ -782,15 +757,14 @@ element:init_ignore{}
 
 --override element constructor so that:
 -- 1) it can take multiple initialization tables as args.
--- 2) it inherits the class to get default values directly through t.
+-- 2) it inherits the class to get default values directly through `t`.
 function element:override_create(inherited, ui, t, ...)
 	local t = setmetatable(update({}, t, ...), {__index = self})
 	return inherited(self, ui, t)
 end
 
 function element:init_fields(t)
-	--set attributes in priority and/or lexicographic order so that eg.
-	--`border_width` comes before `border_width_left`.
+	--set attributes in priority and/or lexicographic order.
 	local pri = self._init_priority
 	local function cmp(a, b)
 		local pa, pb = pri[a], pri[b]
@@ -1933,7 +1907,7 @@ function ui:_add_color_stops(g, ...)
 		if type(arg) == 'number' then
 			offset = arg
 		else
-			g:add_color_stop(offset, self:color(arg))
+			g:add_color_stop(offset, self:rgba(arg))
 		end
 	end
 	return g
@@ -2028,21 +2002,6 @@ layer.focusable = false --can be focused
 layer.draggable = true --can be dragged (still needs to respond to start_drag())
 layer.mousedown_activate = false --activate/deactivate on left mouse down/up
 
-local function args4(s, convert) --parse a string of 4 non-space args
-	local a1, a2, a3, a4
-	if type(s) == 'string' then
-		a1, a2, a3, a4 = s:match'([^%s]+)%s+([^%s]+)([^%s]+)%s+([^%s]+)'
-	end
-	if not a1 then
-		a1, a2, a3, a4 = s, s, s, s
-	end
-	if convert then
-		return convert(a1), convert(a2), convert(a3), convert(a4)
-	else
-		return a1, a2, a3, a4
-	end
-end
-
 ui:style('layer :disabled', {
 	text_color = '#666',
 })
@@ -2054,7 +2013,7 @@ layer.max_click_chain = 1 --2 for getting doubleclick events etc.
 layer.hover_delay = 1 --TODO: hover event delay
 
 function layer:override_init(inherited, ui, t)
-	if ui.islayer or ui.iswindow then --ui is actually the parent
+	if ui and (ui.islayer or ui.iswindow) then --ui is actually the parent
 		t.parent = ui
 		ui = ui.ui
 	end
@@ -2102,13 +2061,6 @@ end
 
 --layer relative geometry & matrix
 
-function ui.expand:scale(scale)
-	self.scale_x = scale
-	self.scale_y = scale
-end
-
-function layer:set_scale(scale) self:expand_attr('scale', scale) end
-
 layer.x = 0
 layer.y = 0
 layer.w = 0
@@ -2116,8 +2068,7 @@ layer.h = 0
 layer.rotation = 0
 layer.rotation_cx = 0
 layer.rotation_cy = 0
-layer.scale_x = 1
-layer.scale_y = 1
+layer.scale = 1
 layer.scale_cx = 0
 layer.scale_cy = 0
 
@@ -2127,7 +2078,9 @@ function layer:rel_matrix() --box matrix relative to parent's content space
 		:translate(self.x, self.y)
 		:rotate_around(self.rotation_cx, self.rotation_cy,
 			math.rad(self.rotation))
-		:scale_around(self.scale_cx, self.scale_cy, self.scale_x, self.scale_y)
+		:scale_around(self.scale_cx, self.scale_cy,
+			self.scale_x or self.scale,
+			self.scale_y or self.scale)
 end
 
 function layer:abs_matrix() --box matrix in window space
@@ -2713,26 +2666,6 @@ end
 
 --border geometry and drawing
 
-function ui.expand:border_color(s)
-	self.border_color_left, self.border_color_right, self.border_color_top,
-		self.border_color_bottom = args4(s)
-end
-
-function ui.expand:border_width(s)
-	self.border_width_left, self.border_width_right, self.border_width_top,
-		self.border_width_bottom = args4(s, tonumber)
-end
-
-function ui.expand:corner_radius(s)
-	self.corner_radius_top_left, self.corner_radius_top_right,
-		self.corner_radius_bottom_right, self.corner_radius_bottom_left =
-			args4(s, tonumber)
-end
-
-function layer:set_border_color(s) self:expand_attr('border_color', s) end
-function layer:set_border_width(s) self:expand_attr('border_width', s) end
-function layer:set_corner_radius(s) self:expand_attr('corner_radius', s) end
-
 layer.border_width = 0 --no border
 layer.corner_radius = 0 --square
 layer.border_color = '#0000'
@@ -2749,10 +2682,11 @@ layer.corner_radius_kappa = 1.2
 --returned widths are positive when inside and negative when outside box rect.
 function layer:_border_edge_widths(offset)
 	local o = self.border_offset + offset + 1
-	local w1 = lerp(o, -1, 1, self.border_width_left, 0)
-	local h1 = lerp(o, -1, 1, self.border_width_top, 0)
-	local w2 = lerp(o, -1, 1, self.border_width_right, 0)
-	local h2 = lerp(o, -1, 1, self.border_width_bottom, 0)
+	local bw = self.border_width
+	local w1 = lerp(o, -1, 1, self.border_width_left or bw, 0)
+	local h1 = lerp(o, -1, 1, self.border_width_top or bw, 0)
+	local w2 = lerp(o, -1, 1, self.border_width_right or bw, 0)
+	local h2 = lerp(o, -1, 1, self.border_width_bottom or bw, 0)
 	--adjust overlapping widths by scaling them down proportionally.
 	if w1 + w2 > self.w or h1 + h2 > self.h then
 		local scale = math.min(self.w / (w1 + w2), self.h / (h1 + h2))
@@ -2797,10 +2731,11 @@ function layer:border_round_rect(offset, size_offset)
 	local x2, y2 = x1 + w, y1 + h
 	local X2, Y2 = X1 + W, Y1 + H
 
-	local r1 = self.corner_radius_top_left
-	local r2 = self.corner_radius_top_right
-	local r3 = self.corner_radius_bottom_right
-	local r4 = self.corner_radius_bottom_left
+	local r = self.corner_radius
+	local r1 = self.corner_radius_top_left or r
+	local r2 = self.corner_radius_top_right or r
+	local r3 = self.corner_radius_bottom_right or r
+	local r4 = self.corner_radius_bottom_left or r
 
 	--offset the radii to preserve curvature at offset.
 	local r1x = offset_radius(r1, x1-X1)
@@ -2927,7 +2862,8 @@ end
 
 function layer:border_visible()
 	return
-		self.border_width_left ~= 0
+		self.border_width ~= 0
+		or self.border_width_left ~= 0
 		or self.border_width_top ~= 0
 		or self.border_width_right ~= 0
 		or self.border_width_bottom ~= 0
@@ -2936,19 +2872,21 @@ end
 function layer:draw_border(cr)
 	if not self:border_visible() then return end
 
+	local border_color = self.border_color
+
 	--seamless drawing when all side colors are the same.
 	if self.border_color_left == self.border_color_top
 		and self.border_color_left == self.border_color_right
 		and self.border_color_left == self.border_color_bottom
 	then
 		cr:new_path()
-		cr:rgba(self.ui:rgba(self.border_color_bottom))
+		cr:rgba(self.ui:rgba(self.border_color_bottom or border_color))
 		if self.border_width_left == self.border_width_top
 			and self.border_width_left == self.border_width_right
 			and self.border_width_left == self.border_width_bottom
 		then --stroke-based method (doesn't require path offseting; supports dashing)
 			self:border_path(cr, 0)
-			cr:line_width(self.border_width_left)
+			cr:line_width(self.border_width_left or self.border_width)
 			if self.border_dash then
 				cr:dash{self.border_dash}
 			end
@@ -2972,7 +2910,7 @@ function layer:draw_border(cr)
 	local x2, y2 = x1 + w, y1 + h
 	local X2, Y2 = X1 + W, Y1 + H
 
-	if self.border_color_left then
+	if border_color or self.border_color_left then
 		cr:new_path()
 		cr:move_to(x1, y1+r1y)
 		qarc(cr, x1+r1x, y1+r1y, r1x, r1y, 1, .5, k)
@@ -2981,11 +2919,11 @@ function layer:draw_border(cr)
 		qarc(cr, X1+R4X, Y2-R4Y, R4X, R4Y, 5, -.5, K)
 		qarc(cr, x1+r4x, y2-r4y, r4x, r4y, 4.5, .5, k)
 		cr:close_path()
-		cr:rgba(self.ui:rgba(self.border_color_left))
+		cr:rgba(self.ui:rgba(self.border_color_left or border_color))
 		cr:fill()
 	end
 
-	if self.border_color_top then
+	if border_color or self.border_color_top then
 		cr:new_path()
 		cr:move_to(x2-r2x, y1)
 		qarc(cr, x2-r2x, y1+r2y, r2x, r2y, 2, .5, k)
@@ -2994,11 +2932,11 @@ function layer:draw_border(cr)
 		qarc(cr, X1+R1X, Y1+R1Y, R1X, R1Y, 2, -.5, K)
 		qarc(cr, x1+r1x, y1+r1y, r1x, r1y, 1.5, .5, k)
 		cr:close_path()
-		cr:rgba(self.ui:rgba(self.border_color_top))
+		cr:rgba(self.ui:rgba(self.border_color_top or border_color))
 		cr:fill()
 	end
 
-	if self.border_color_right then
+	if border_color or self.border_color_right then
 		cr:new_path()
 		cr:move_to(x2, y2-r3y)
 		qarc(cr, x2-r3x, y2-r3y, r3x, r3y, 3, .5, k)
@@ -3007,11 +2945,11 @@ function layer:draw_border(cr)
 		qarc(cr, X2-R2X, Y1+R2Y, R2X, R2Y, 3, -.5, K)
 		qarc(cr, x2-r2x, y1+r2y, r2x, r2y, 2.5, .5, k)
 		cr:close_path()
-		cr:rgba(self.ui:rgba(self.border_color_right))
+		cr:rgba(self.ui:rgba(self.border_color_right or border_color))
 		cr:fill()
 	end
 
-	if self.border_color_bottom then
+	if border_color or self.border_color_bottom then
 		cr:new_path()
 		cr:move_to(x1+r4x, y2)
 		qarc(cr, x1+r4x, y2-r4y, r4x, r4y, 4, .5, k)
@@ -3020,21 +2958,12 @@ function layer:draw_border(cr)
 		qarc(cr, X2-R3X, Y2-R3Y, R3X, R3Y, 4, -.5, K)
 		qarc(cr, x2-r3x, y2-r3y, r3x, r3y, 3.5, .5, k)
 		cr:close_path()
-		cr:rgba(self.ui:rgba(self.border_color_bottom))
+		cr:rgba(self.ui:rgba(self.border_color_bottom or border_color))
 		cr:fill()
 	end
 end
 
 --background geometry and drawing
-
-function ui.expand:background_scale(scale)
-	self.background_scale_x = scale
-	self.background_scale_y = scale
-end
-
-function layer:set_background_scale(scale)
-	self:expand_attr('background_scale', scale)
-end
 
 layer.background_type = 'color' --false, 'color', 'gradient', 'radial_gradient', 'image'
 layer.background_hittable = true
@@ -3093,11 +3022,6 @@ function layer:background_path(cr, size_offset)
 	self:border_path(cr, self.background_clip_border_offset, size_offset)
 end
 
-function layer:set_background_scale(scale)
-	self.background_scale_x = scale
-	self.background_scale_y = scale
-end
-
 local mt = cairo.matrix()
 function layer:paint_background(cr)
 	cr:operator(self.background_operator)
@@ -3145,8 +3069,8 @@ function layer:paint_background(cr)
 			:scale_around(
 				self.background_scale_cx,
 				self.background_scale_cy,
-				self.background_scale_x,
-				self.background_scale_y)
+				self.background_scale_x or self.background_scale,
+				self.background_scale_y or self.background_scale)
 			:invert())
 	patt:extend(self.background_extend)
 	cr:source(patt)
@@ -3274,16 +3198,6 @@ end
 
 --text geometry and drawing
 
-function ui.expand:font(font)
-	local name, weight, slant, size = font_db:parse_font(font)
-	if name then self.font_name = name end
-	if weight then self.font_weight = weight end
-	if slant then self.font_slant = slant end
-	if size then self.text_size = size end
-end
-
-function layer:set_font(font) self:expand_attr('font', font) end
-
 layer.text_align = 'center'
 layer.text_valign = 'middle'
 layer.text_operator = 'over'
@@ -3303,21 +3217,23 @@ function layer:sync_text()
 	if not self:text_visible() then return end
 	if not self._text_tree
 		or (not self._text_valid and self.text ~= self._text_tree[1])
-		or self.text_dir    ~= self._text_tree.text_dir
+		or self.font        ~= self._text_tree.font
 		or self.font_name   ~= self._text_tree.font_name
 		or self.font_weight ~= self._text_tree.font_weight
 		or self.font_slant  ~= self._text_tree.font_slant
 		or self.text_size   ~= self._text_tree.font_size
 		or self.nowrap      ~= self._text_tree.nowrap
+		or self.text_dir    ~= self._text_tree.text_dir
 	then
 		self._text_tree = self._text_tree or {}
 		self._text_tree[1]          = self.text
-		self._text_tree.text_dir    = self.text_dir
+		self._text_tree.font        = self.font
 		self._text_tree.font_name   = self.font_name
 		self._text_tree.font_weight = self.font_weight
 		self._text_tree.font_slant  = self.font_slant
 		self._text_tree.font_size   = self.text_size
 		self._text_tree.nowrap      = self.nowrap
+		self._text_tree.text_dir    = self.text_dir
 		self._text_segments = self.ui.tr:shape(self._text_tree)
 		self._text_w = false --force layout
 	end
@@ -3359,27 +3275,22 @@ end
 
 --content-box geometry, drawing and hit testing
 
-function ui.expand:padding(s)
-	self.padding_left, self.padding_top, self.padding_right,
-		self.padding_bottom = args4(s, tonumber)
-end
-
-function layer:set_padding(s) self:expand_attr('padding', s) end
-
 layer.padding = 0
 
 function layer:padding_pos() --in box space
+	local p = self.padding
 	return
-		self.padding_left,
-		self.padding_top
+		self.padding_left or p,
+		self.padding_top or p
 end
 
 function layer:padding_rect() --in box space
+	local p = self.padding
 	return
-		self.padding_left,
-		self.padding_top,
-		self.w - self.padding_left - self.padding_right,
-		self.h - self.padding_top - self.padding_bottom
+		self.padding_left or p,
+		self.padding_top or p,
+		self.w - (self.padding_left or p) - (self.padding_right or p),
+		self.h - (self.padding_top or p) - (self.padding_bottom or p)
 end
 
 function layer:to_content(x, y) --box space coord in content space

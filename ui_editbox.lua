@@ -16,8 +16,8 @@ snap = glue.snap
 local editbox = ui.layer:subclass'editbox'
 ui.editbox = editbox
 
-editbox.w = 200
-editbox.h = 30
+editbox.w = 180
+editbox.h = 24
 editbox.padding = 4
 editbox.focusable = true
 editbox.max_click_chain = 3 --receive doubleclick and tripleclick events
@@ -457,7 +457,7 @@ end
 
 function editbox:password_char_advance_x()
 	--TODO: maybe use the min(w, h) of the "M" char here?
-	return self.text_size * .75
+	return self.selection.segments.text_runs[1].font_size * .75
 end
 
 --convert "text space" cursor coordinates to "mask space" coordinates.
@@ -526,7 +526,6 @@ if not ... then require('ui_demo')(function(ui, win)
 		--font = 'fixedsys,16',
 		x = 20,
 		y = 20 + 35 * 0,
-		w = 200,
 		parent = win,
 		text = 'Hello World!',
 		password = true,
@@ -541,7 +540,6 @@ if not ... then require('ui_demo')(function(ui, win)
 		text_dir = 'rtl',
 		x = 20,
 		y = 20 + 35 * 1,
-		w = 200,
 		parent = win,
 	}
 
@@ -550,7 +548,6 @@ if not ... then require('ui_demo')(function(ui, win)
 		maxlen = 65536 / 10,
 		x = 20,
 		y = 20 + 35 * 2,
-		w = 200,
 		parent = win,
 	}
 
@@ -558,7 +555,6 @@ if not ... then require('ui_demo')(function(ui, win)
 		--font = 'fixedsys,16',
 		x = 20,
 		y = 20 + 35 * 3,
-		w = 200,
 		h = 200,
 		parent = win,
 		text = 'Hello World!',

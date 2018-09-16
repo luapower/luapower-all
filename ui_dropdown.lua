@@ -8,10 +8,11 @@ local glue = require'glue'
 local dropdown = ui.layer:subclass'dropdown'
 ui.dropdown = dropdown
 
-dropdown.h = 22
+dropdown.w = 180
+dropdown.h = 24
 dropdown.focusable = true
 dropdown.background_color = '#080808'
-dropdown.border_color = '#888'
+dropdown.border_color = '#333'
 dropdown.border_width = 1
 
 ui:style('dropdown', {
@@ -27,7 +28,7 @@ ui:style('dropdown :hot', {
 
 ui:style('dropdown :focused', {
 	border_color = '#fff',
-	shadow_blur = 3,
+	shadow_blur = 2,
 	shadow_color = '#666',
 })
 
@@ -113,15 +114,18 @@ function dropdown:create_popup()
 
 	self.button:on('lostfocus.self', function()
 		popup:hide()
+		self.window:invalidate()
 	end)
 
 	self.ui:on({'window_deactivated', self}, function()
 		popup:hide()
+		self.window:invalidate()
 	end)
 
 	self.ui:on({'window_mousedown', self}, function(ui, win)
 		if win ~= self.popup and not self.button.hot then
 			popup:hide()
+			self.window:invalidate()
 		end
 	end)
 

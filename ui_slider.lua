@@ -13,21 +13,23 @@ local lerp = glue.lerp
 local slider = ui.layer:subclass'slider'
 ui.slider = slider
 
-local shaft   = ui.layer:subclass'slider_shaft'
-local fill    = ui.layer:subclass'slider_fill'
-local pin     = ui.layer:subclass'slider_pin'
-local marker  = ui.layer:subclass'slider_marker'
-local tip     = ui.layer:subclass'slider_tip'
+local track      = ui.layer:subclass'slider_track'
+local fill       = ui.layer:subclass'slider_fill'
+local pin        = ui.layer:subclass'slider_pin'
+local marker     = ui.layer:subclass'slider_marker'
+local tip        = ui.layer:subclass'slider_tip'
+local step_label = ui.layer:subclass'slider_step_label'
 
-slider.shaft_class      = shaft
+slider.track_class      = track
 slider.fill_class       = fill
 slider.pin_class        = pin
 slider.marker_class     = marker
 slider.tip_class        = tip
-slider.step_label_class = ui.layer
+slider.step_label_class = step_label
 
 slider.focusable = true
-slider.h = 20
+slider.w = 180
+slider.h = 24
 
 slider._min_position = 0
 slider._max_position = false --overrides size
@@ -44,18 +46,18 @@ slider.key_nav_speed = 0.1 --constant 10% speed on left/right keys
 slider.smooth_dragging = true --pin stays under the mouse while dragging
 slider.phantom_dragging = true --drag a secondary translucent pin
 
-shaft.activable = false
-shaft.h = 8
-shaft.corner_radius = 5
-shaft.border_width = 1
-shaft.border_color = '#999'
-shaft.background_color = '#000'
-shaft.clip_content = true --clip the fill
+track.activable = false
+track.h = 8
+track.corner_radius = 5
+track.border_width = 1
+track.border_color = '#333'
+track.background_color = '#000'
+track.clip_content = true --clip the fill
 
-ui:style('slider :focused > slider_shaft', {
+ui:style('slider :focused > slider_track', {
 	border_color = '#fff',
-	shadow_blur = 2,
-	shadow_color = '#fff',
+	shadow_blur = 1,
+	shadow_color = '#999',
 })
 
 fill.activable = false
@@ -108,7 +110,7 @@ tip.format = '%g'
 tip.border_width = 0
 tip.border_color = '#fff'
 tip.border_offset = 1
-tip.text_size = 12
+tip.text_size = 11
 
 tip.opacity = 0
 
@@ -126,10 +128,12 @@ ui:style('slider_tip :visible', {
 	transition_blend_opacity = 'replace',
 })
 
+step_label.text_size = 10
+
 --pin position
 
 function pin:cx_range()
-	local r = self.slider.shaft.corner_radius_top_left
+	local r = self.slider.track.corner_radius
 	return r, self.slider.cw - r
 end
 
@@ -179,17 +183,17 @@ end
 
 --sync'ing
 
-function slider:create_shaft()
-	return self.shaft_class(self.ui, {
+function slider:create_track()
+	return self.track_class(self.ui, {
 		slider = self,
 		parent = self,
-	}, self.shaft)
+	}, self.track)
 end
 
 function slider:create_fill()
 	return self.fill_class(self.ui, {
 		slider = self,
-		parent = self.shaft,
+		parent = self.track,
 	}, self.fill)
 end
 
@@ -224,7 +228,6 @@ end
 
 function slider:create_step_label(text, position)
 	return self.step_label_class(self.ui, {
-		tags = 'slider_step_label',
 		slider = self,
 		parent = self,
 		text = text,
@@ -233,7 +236,7 @@ function slider:create_step_label(text, position)
 end
 
 function slider:sync()
-	local s = self.shaft
+	local s = self.track
 	local f = self.fill
 	local p = self.pin
 	local dp = self.drag_pin
@@ -268,6 +271,7 @@ function slider:sync()
 		p.dragging and self:nearest_position(p.position) or self.position))
 
 	if self.step_labels then
+		local h = math.floor(self.h - (self:step_lines_visible() and 0 or 10))
 		for _,l in ipairs(self.layers) do
 			if l.tags.slider_step_label then
 				if l.progress then
@@ -275,7 +279,7 @@ function slider:sync()
 				elseif l.position then
 					l.x = self.pin:cx_at_position(l.position)
 				end
-				l.y = self.h
+				l.y = h
 				l.w = 200
 				l.x = l.x - l.w / 2
 				l.h = 26
@@ -564,7 +568,7 @@ slider:init_ignore{min_position=1, max_position=1, size=1, position=1, progress=
 
 function slider:after_init(ui, t)
 	local pin_fields = self.pin
-	self.shaft    = self:create_shaft()
+	self.track    = self:create_track()
 	self.fill     = self:create_fill()
 	self.marker   = self:create_marker()
 	self.pin      = self:create_pin()

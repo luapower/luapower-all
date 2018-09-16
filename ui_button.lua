@@ -10,8 +10,8 @@ local button = ui.layer:subclass'button'
 ui.button = button
 
 button.focusable = true
-button.w = 100
-button.h = 26
+button.w = 90
+button.h = 24
 button.background_color = '#444'
 button.border_color = '#888'
 button.padding_left = 8
@@ -49,7 +49,7 @@ ui:style('button :disabled', {
 ui:style('button :active :over', {
 	background_color = '#fff',
 	text_color = '#000',
-	shadow_blur = 3,
+	shadow_blur = 2,
 	shadow_color = '#666',
 	transition_duration = 0.2,
 })
@@ -279,9 +279,10 @@ end
 
 local cbutton = ui.button:subclass'checkbox_button'
 checkbox.button_class = cbutton
+
 cbutton.font = 'Ionicons,16'
 cbutton.text_checked = '\u{f2bc}'
-cbutton.padding_left = 2
+cbutton.padding_left = 0
 cbutton.padding_right = 0
 
 ui:style('checkbox_button :hot', {
@@ -400,9 +401,11 @@ end
 local rbutton = ui.checkbox.button_class:subclass'radiobutton_button'
 radiobutton.button_class = rbutton
 
+rbutton.padding_left = 0
+rbutton.padding_right = 0
+
 function rbutton:after_sync()
 	self.corner_radius = self.w
-	self.padding = 0
 end
 
 function rbutton:draw_text() end
@@ -415,12 +418,12 @@ ui:style('radiobutton_button', {
 })
 
 ui:style('radiobutton :checked > radiobutton_button', {
-	circle_radius = 1,
+	circle_radius = .45,
 	transition_duration = .2,
 })
 
 function rbutton:before_draw_content(cr)
-	local r = lerp(self.circle_radius, 0, 1, 0, self.cw / 4)
+	local r = lerp(self.circle_radius, 0, 1, 0, self.cw / 2)
 	if r <= 0 then return end
 	cr:circle(self.cw / 2, self.ch / 2, r)
 	cr:rgba(self.ui:rgba(self.text_color))
