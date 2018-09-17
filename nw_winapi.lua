@@ -95,6 +95,7 @@ function app:_repaint_all(d)
 	local i0 = self._last_frame or 1
 	local i1 = math.floor(n) + 1
 	local dt = (math.ceil(n) - n) * d
+	--print(t2 - (t1 or t2))
 
 	if t1 and t2 - t1 < d - 1/1000 and dt > 1/1000 then
 		return dt
@@ -127,9 +128,8 @@ function app:poll(timeout)
 end
 
 function app:run()
-	local fps = self.frontend:maxfps()
-	local d = fps and 1/fps or 0
 	while true do
+		local d = 1 / self.frontend:maxfps()
 		local dt = self:_repaint_all(d)
 		local more, exit_code = winapi.ProcessNextMessage(dt)
 		if not more and exit_code then

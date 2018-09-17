@@ -77,7 +77,7 @@ __the app loop__
 `app:stop()`                                 stop the loop
 `app:running() -> t|f`                       check if the loop is running
 `app:poll([timeout]) -> t|f`                 process the next pending event (return true if there was one)
-`app:maxfps(fps|false) -> fps|false`         cap the window repaint rate
+`app:maxfps(fps) -> fps`                     cap the window repaint rate
 __quitting__
 `app:quit()`                                 quit the app, i.e. close all windows and stop the loop
 `app:autoquit(t|f) /-> t|f`                  quit the app when the last window is closed (true)
@@ -337,10 +337,11 @@ Returns `true` if there was an event to process, `false` if there wasn't.
 Returns `false, exit_code` if the application was asked to quit.
 `timeout` (default=0) specifies a maximum wait time for an event to appear.
 
-### `app:maxfps(fps|false)` <br> `app:maxfps() -> fps|false`
+### `app:maxfps(fps)` <br> `app:maxfps() -> fps`
 
 Get/set the maximum window repaint rate (frames per second).
-`false` disables the throttling. The default is `60`.
+`1/0` disables the throttling. The default is `60`. Note that you still need
+to call `invalidate()` in order to trigger a repaint.
 
 ## Quitting
 
@@ -350,9 +351,9 @@ Quit the app, i.e. close all windows and stop the loop.
 
 Quitting is a multi-phase process:
 
-1. the `app:quitting()` event is fired. If it returns false, quitting is aborted.
+1. the `app:quitting()` event is fired. If it returns `false`, quitting is aborted.
 2. the `win:closing()` event is fired on all non-parented windows.
-   If any of them returns false, quitting is aborted.
+   If any of them returns `false`, quitting is aborted.
 3. `win:close(true)` is called on all windows (in reverse-creation order).
    If new windows are created during this process, quitting is aborted.
 4. the app loop is stopped.
@@ -363,17 +364,17 @@ is in progress does nothing.
 ### `app:autoquit() -> t|f` <br> `app:autoquit(t|f)`
 
 Get/set the app autoquit flag (default: true).
-When this flag is true, the app quits when the last window is closed.
+When this flag is `true`, the app quits when the last window is closed.
 
 ### `app:quitting() -> [false]`
 
 Event: the app wants to quit, but nothing was done to that effect.
-Return false from this event to cancel the process.
+Return `false` from this event to cancel the process.
 
 ### `win:autoquit() -> t|f` <br> `win:autoquit(t|f)`
 
-Get/set the window autoquit flag (default: false).
-When this flag is true, the app quits when the window is closed.
+Get/set the window autoquit flag (default: `false`).
+When this flag is `true`, the app quits when the window is closed.
 This flag can be used on the app's main window if there is such a thing.
 
 ## Timers
@@ -381,7 +382,7 @@ This flag can be used on the app's main window if there is such a thing.
 ### `app:runevery(seconds, func)`
 
 Run a function on a recurrent timer.
-The timer can be stopped by returning false from the function.
+The timer can be stopped by returning `false` from the function.
 
 ### `app:runafter(seconds, func)`
 
@@ -469,7 +470,7 @@ Create a window (fields of _`t`_ below with default value in parenthesis):
 ### Initial size and position
 
 You can pass any combination of `x`, `y`, `w`, `h`, `cx`, `cy`, `cw`, `ch`
-as long as you pass the width and the height in one way or another.
+as long as you pass both the width and the height in one way or another.
 The position is optional and it defaults to OS-driven cascading.
 
 Additionally, `x` and/or `y` can be `'center-main'` or `'center-active'`
@@ -564,7 +565,7 @@ Get the transparent flag (read-only).
 ## Window closing
 
 Closing the window destroys it by default.
-You can prevent that by returning false in the `win:closing()` event:
+You can prevent that by returning `false` in the `win:closing()` event:
 
 ~~~{.lua}
 function win:closing()
@@ -589,13 +590,13 @@ Check if the window was destroyed.
 ### `win:closing()`
 
 Event: The window is about to close.
-Return false from the event handler to refuse.
+Return `false` from the event handler to refuse.
 
 ### `win:closed()`
 
 Event: The window was closed.
 Fired after all children are closed, but before the window itself
-is destroyed (`win:dead()` still returns false at this point).
+is destroyed (`win:dead()` still returns `false` at this point).
 
 ### `win:closeable() -> t|f`
 
@@ -649,7 +650,7 @@ Get the active window, if any (nil if the app is inactive).
 
 ### `win:active() -> t|f`
 
-Check if the window is active (false for all windows if the app is inactive).
+Check if the window is active (`false` for all windows if the app is inactive).
 
 ### `win:activate()`
 
@@ -748,7 +749,7 @@ Get the minimizable flag (read-only).
 
 ### `win:isminimized() -> t|f`
 
-Get the minimized state. This flag remains true when a minimized window is hidden.
+Get the minimized state. This flag remains `true` when a minimized window is hidden.
 
 ### `win:minimize()`
 
@@ -765,7 +766,7 @@ Get the maximizable flag (read-only).
 
 ### `win:ismaximized() -> t|f`
 
-Get the maximized state. This flag stays true if a maximized window
+Get the maximized state. This flag stays `true` if a maximized window
 is minimized, hidden or enters fullscreen mode.
 
 ### `win:maximize()`
@@ -841,17 +842,17 @@ __NOTE:__ This [doesn't work](https://github.com/luapower/nw/issues/25) on Linux
 ### `app:frame_extents(frame, has_menu, resizeable) -> left, top, right, bottom`
 
 Get the frame extents for a certain frame type.
-If `has_menu` is true, then the window also has a menu.
+If `has_menu` is `true`, then the window also has a menu.
 
 ### `app:client_to_frame(frame, has_menu, resizeable, x, y, w, h) -> x, y, w, h`
 
 Given a client rectangle, return the frame rectangle for a certain
-frame type. If `has_menu` is true, then the window also has a menu.
+frame type. If `has_menu` is `true`, then the window also has a menu.
 
 ### `app:frame_to_client(frame, has_menu, resizeable, x, y, w, h) -> x, y, w, h`
 
 Given a frame rectangle, return the client rectangle for a certain
-frame type. If `has_menu` is true, then the window also has a menu.
+frame type. If `has_menu` is `true`, then the window also has a menu.
 
 ## Size and position
 
@@ -861,7 +862,7 @@ Get/set the client/frame rect/size in screen coordinates.
 
 When getting: returns nothing if the window is minimized.
 
-When setting: if any of the arguments is nil or false, it is replaced with
+When setting: if any of the arguments is nil or `false`, it is replaced with
 the current value of that argument to allow for partial changes. Does nothing
 if the window is minimized, maximized, or in fullscreen mode.
 
@@ -884,7 +885,7 @@ mode afterwards).
 
 Event: window size/position is about to change. The `rect` arg is a table
 with the fields _x, y, w, h_. Change these values in the table to affect
-the window's final size and position (and optionally return true to stop
+the window's final size and position (and optionally return `true` to stop
 calling the following event handlers).
 
 __NOTE:__ This event does not fire in Linux.
@@ -908,7 +909,7 @@ These events fire together every time in the same order:
 Hit test for moving and resizing frameless windows. Return 'left', 'top',
 'right', 'bottom', 'topleft', 'bottomright', 'topright' or 'bottomleft'
 to specify that the window should be resized, 'move' which means the window
-should be moved, false which means the coordinates are over the client area,
+should be moved, `false` which means the coordinates are over the client area,
 or nil which means that standard resizing should take place. The `where`
 arg is the default response for the given coordinates.
 
@@ -922,7 +923,7 @@ Check if the window is resizeable.
 
 Get/set/clear the minimum client rect size.
 
-The constraint can be applied to one dimension only by passing false or nil
+The constraint can be applied to one dimension only by passing `false` or nil
 for the other dimension. The window is resized if it was smaller than this size.
 The size is clamped to maxsize if that is set. The size is finally clamped to
 the minimum (1, 1) which is also the default.
@@ -931,7 +932,7 @@ the minimum (1, 1) which is also the default.
 
 Get/set/clear the maximum client rect size.
 
-The constraint can be applied to one dimension only by passing false or nil
+The constraint can be applied to one dimension only by passing `false` or nil
 for the other dimension. The window is resized if it was larger than this size.
 The size is clamped to minsize if that is set. Trying to set this on a
 maximizable or fullscreenable window raises an error.
