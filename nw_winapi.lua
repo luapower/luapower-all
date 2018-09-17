@@ -85,19 +85,20 @@ end
 
 --message loop ---------------------------------------------------------------
 
---manual repainting of all windows based on the `_invalid` flag
+--manual repainting of all windows based on the `_invalid` flag.
+--returns the number of seconds to wait until calling this again.
 function app:_repaint_all(d)
 
 	local t0 = self._first_frame_time
 	local t1 = self._last_frame_time
 	local t2 = time.clock()
-	local n = d > 0 and t0 and (t2 - t0) / d or 0
+	local n = d > 0 and t0 and (t2 - t0) / d or 0 --quantity of frame markers
 	local i0 = self._last_frame or 1
 	local i1 = math.floor(n) + 1
-	local dt = (math.ceil(n) - n) * d
-	--print(t2 - (t1 or t2))
+	local dt = (math.ceil(n) - n) * d --how much time till next frame mark
+	local eps = 1/1000 --how much time is close enough to the next frame mark
 
-	if t1 and t2 - t1 < d - 1/1000 and dt > 1/1000 then
+	if t1 and t2 - t1 < d - eps and dt > eps then
 		return dt
 	end
 
@@ -119,7 +120,10 @@ function app:_repaint_all(d)
 		end
 	end
 
-	return d
+	local repaint_time = time.clock() - t2
+	local wait_time = math.max(0, d - dt - repaint_time)
+
+	return wait_time
 end
 
 function app:poll(timeout)
@@ -130,11 +134,14 @@ end
 function app:run()
 	while true do
 		local d = 1 / self.frontend:maxfps()
-		local dt = self:_repaint_all(d)
-		local more, exit_code = winapi.ProcessNextMessage(dt)
-		if not more and exit_code then
-			return exit_code
-		end
+		local wait_time = self:_repaint_all(d)
+		repeat
+			local more, exit_code = winapi.ProcessNextMessage(wait_time)
+			if not more and exit_code then
+				return exit_code
+			end
+			wait_time = 0
+		until not more
 	end
 end
 

@@ -120,7 +120,7 @@ function ProcessMessage(msg)
 			end
 		end
 	end
-	TranslateMessage(msg) --make keyboard work
+	TranslateMessage(msg) --generate WM_CHAR messages for WM_KEYDOWN messages.
 	DispatchMessage(msg) --make everything else work
 
 	if msg.message == WM_UNREGISTER_CLASS then --posted by Window objects
@@ -476,7 +476,7 @@ function BaseWindow:get_dead() return self.hwnd == nil end
 --message routing ------------------------------------------------------------
 
 function BaseWindow:__handle_message(WM, wParam, lParam)
-	--print(self, WM_NAMES[WM], wParam, lParam)
+	--print(os.time(), self, WM_NAMES[WM], wParam, lParam)
 
 	--look for a low-level handler self:WM_*()
 	local handler = self[WM_NAMES[WM]]
