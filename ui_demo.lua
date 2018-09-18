@@ -3,7 +3,7 @@ local time = require'time'
 local ui = require'ui'
 local win = ui:window{x = 840, y = 300, cw = 900, ch = 500, visible = false}
 
-ui.maxfps = 1/0
+--ui.maxfps = 1/0
 
 local function fps_function()
 	local count_per_sec = 2

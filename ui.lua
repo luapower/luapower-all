@@ -869,7 +869,7 @@ function element:settags(s)
 	end
 end
 
-function element:update_styles()
+function element:sync_styles()
 	if not self._styles_valid then
 		self.stylesheet:update_element(self)
 		self._styles_valid = true
@@ -886,6 +886,10 @@ function element:update_styles()
 		--TODO: when transition is in delay, set a timer, don't invalidate.
 		self:invalidate()
 	end
+end
+
+function element:before_sync()
+	self:sync_styles()
 end
 
 function element:_save_initial_value(attr)
@@ -1028,10 +1032,6 @@ function element:transitioning(attr)
 	return self.transitions and self.transitions[attr] and true or false
 end
 
-function element:before_draw(cr)
-	self:update_styles()
-end
-
 --windows --------------------------------------------------------------------
 
 local window = element:subclass'window'
@@ -1093,7 +1093,7 @@ function window:override_init(inherited, ui, t)
 	end
 	self.ui.windows[self] = true
 	win.ui_window = self
-	self._parent = parent
+	self.parent = parent
 
 	if parent then
 
@@ -1136,11 +1136,6 @@ function window:override_init(inherited, ui, t)
 
 	self.mouse_x = win:mouse'x' or false
 	self.mouse_y = win:mouse'y' or false
-	self.mouse_left = win:mouse'left' or false
-	self.mouse_right = win:mouse'right' or false
-	self.mouse_middle = win:mouse'middle' or false
-	self.mouse_x1 = win:mouse'x1' or false --mouse aux button 1
-	self.mouse_x2 = win:mouse'x2' or false --mouse aux button 2
 
 	local function setcontext()
 		self.frame_clock = ui:clock()
@@ -1275,7 +1270,7 @@ function window:override_init(inherited, ui, t)
 	self:on('event', function(self, event, ...)
 		if event == 'mousemove' then return end
 		if not self.ui then return end --window was closed
-		self.ui:fire('window_'..event, self, ...)
+		return self.ui:fire('window_'..event, self, ...)
 	end)
 
 	self.view = self:create_view()
@@ -1342,7 +1337,11 @@ function window:get_parent()
 end
 
 function window:set_parent(parent)
-	error'NYI'
+	assert(not self._parent, 'changing the parent is NYI')
+	if parent and parent.iswindow then
+		parent = parent.view
+	end
+	self._parent = parent
 end
 
 function window:to_parent(x, y)
@@ -1867,7 +1866,7 @@ end
 
 --rendering
 
-function window:after_draw(cr)
+function window:draw(cr)
 	self._invalid = false
 	self.cr:save()
 	self.cr:new_path()
@@ -2581,29 +2580,36 @@ function layer:get_taborder()
 	return self:parent_value'_taborder'
 end
 
-function layer:focusable_widgets(t)
+function layer:focusable_widgets(t, depth)
 	t = t or {}
+	depth = depth or 1
+	self._depth = depth
 	if self.layers then
 		for i,layer in ipairs(self.layers) do
 			if layer:canfocus() then
+				layer._depth = depth + 1
 				push(t, layer)
 			else --add layers' focusable children recursively, depth-first
-				layer:focusable_widgets(t)
+				layer:focusable_widgets(t, depth + 1)
 			end
 		end
 	end
 	table.sort(t, function(t1, t2)
 		if t1.tabgroup == t2.tabgroup then
 			if t1.tabindex == t2.tabindex then
-				local ax1, ay1 = t1.parent:to_window(t1.x, t1.y)
-				local bx1, by1 = t2.parent:to_window(t2.x, t2.y)
-				if self.taborder == 'hv' then
-					ax1, bx1, ay1, by1 = ay1, by1, ax1, bx1
-				end
-				if ax1 == bx1 then
-					return ay1 < by1
+				if t1.parent == t2.parent then
+					local ax1, ay1 = t1.parent:to_window(t1.x, t1.y)
+					local bx1, by1 = t2.parent:to_window(t2.x, t2.y)
+					if self.taborder == 'hv' then
+						ax1, bx1, ay1, by1 = ay1, by1, ax1, bx1
+					end
+					if ax1 == bx1 then
+						return ay1 < by1
+					else
+						return ax1 < bx1
+					end
 				else
-					return ax1 < bx1
+					return t1.parent._depth < t2.parent._depth
 				end
 			else
 				return t1.tabindex < t2.tabindex
@@ -3322,9 +3328,10 @@ function layer:content_bounding_box(strict)
 	return box2d.bounding_box(x, y, w, h, self:text_bounding_box())
 end
 
-function layer:after_draw(cr) --called in parent's content space; child intf.
+function layer:draw(cr) --called in parent's content space; child intf.
 	if not self.visible or self.opacity == 0 then return end
 	if self.opacity <= 0 then return end
+	self:sync()
 
 	local opacity = self.opacity
 	local compose = opacity < 1
@@ -3534,7 +3541,7 @@ function layer:set_active(active)
 		self:fire'activated'
 		self.window:fire('widget_activated', self)
 		self.ui:fire('activated', self)
-		self:focus()
+		self:focus(false)
 	end
 	self:invalidate()
 end
@@ -3611,8 +3618,8 @@ local autoload = {
 	image        = 'ui_image',
 	grid         = 'ui_grid',
 	popup        = 'ui_popup',
-	dropdown     = 'ui_dropdown',
 	colorpicker  = 'ui_colorpicker',
+	dropdown     = 'ui_dropdown',
 }
 
 for widget, submodule in pairs(autoload) do

@@ -789,7 +789,7 @@ function picker:sync_editboxes()
 	xe.text = color.format('#', 'rgb', r, g, b)
 end
 
-function picker:sync()
+function picker:after_sync()
 
 	local hb = self.hue_bar
 	local sr = self.rectangle
@@ -892,10 +892,6 @@ function picker:sync()
 	vs.y = y
 	vs.w = w2
 	vs.h = h
-end
-
-function picker:before_draw_content()
-	self:sync()
 end
 
 --init

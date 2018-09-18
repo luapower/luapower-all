@@ -294,15 +294,11 @@ ui:style('checkbox_button :active :over', {
 	background_color = '#888',
 })
 
-function cbutton:sync()
+function cbutton:after_sync()
 	self.h = self.checkbox.ch
 	self.w = self.h
 	self.x = self.checkbox.align == 'left' and 0 or self.checkbox.cw - self.h
 	self.text = self.checkbox.checked and self.text_checked
-end
-
-function cbutton:before_draw()
-	self:sync()
 end
 
 function cbutton:override_hit_test(inherited, mx, my, reason)
@@ -337,7 +333,7 @@ checkbox.label_class = clabel
 
 function clabel:hit_test(mx, my, reason) end --cbutton does it for us
 
-function clabel:sync()
+function clabel:after_sync()
 	self.h = self.checkbox.ch
 	self.w = self.checkbox.cw - self.checkbox.button.w
 	local align = self.checkbox.align
@@ -345,10 +341,6 @@ function clabel:sync()
 	self.text_align = align
 	self.padding_left = align == 'left' and self.h / 2 or 0
 	self.padding_right = align == 'right' and self.h / 2 or 0
-end
-
-function clabel:before_draw()
-	self:sync()
 end
 
 function checkbox:create_label()

@@ -236,7 +236,7 @@ function scrollbar:set_vertical(vertical)
 	self:settag('horizontal', not vertical)
 end
 
-function scrollbar:sync()
+function scrollbar:after_sync()
 	local g = self.grabbar
 	g.x, g.y, g.w, g.h = self:grabbar_rect()
 
@@ -244,10 +244,6 @@ function scrollbar:sync()
 	if visible ~= 'hit_test' then
 		self:settag(':near', visible)
 	end
-end
-
-function scrollbar:before_draw()
-	self:sync()
 end
 
 function scrollbar:scroll_to_view(x, w)
@@ -320,7 +316,7 @@ function ui.scrollbox:mousewheel(delta)
 	self.vscrollbar:scroll(-delta * self.wheel_scroll_length)
 end
 
-function ui.scrollbox:sync()
+function ui.scrollbox:after_sync()
 	local vs = self.vscrollbar
 	local hs = self.hscrollbar
 	local cw, ch = self:content_size()
@@ -349,10 +345,6 @@ function ui.scrollbox:sync()
 	hs.view_length = cc.w
 	hs.content_length = ctw
 	ct.x = -hs.offset
-end
-
-function ui.scrollbox:before_draw()
-	self:sync()
 end
 
 function ui.scrollbox:scroll_to_view(x, y, w, h)

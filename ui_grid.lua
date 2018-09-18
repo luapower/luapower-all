@@ -1,4 +1,4 @@
---go @ bin/mingw64/luajit -jp=a -e io.stdout:setvbuf'no';io.stderr:setvbuf'no';require'strict';pp=require'pp' "ui_grid.lua"
+--go @ luajit -joff -jp=a -e io.stdout:setvbuf'no';io.stderr:setvbuf'no';require'strict';pp=require'pp' "ui_grid.lua"
 
 --Grid widget.
 --Written by Cosmin Apreutesei. Public Domain.
@@ -23,8 +23,7 @@ local grid = ui.layer:subclass'grid'
 ui.grid = grid
 
 grid.focusable = true
-grid.border_color = '#080808'
-grid.border_width = 1
+grid.border_color = '#333'
 
 --column panes ---------------------------------------------------------------
 
@@ -671,7 +670,8 @@ grid.cell_class = cell
 
 cell.clip_content = true
 cell.text_multiline = false
-cell.border_color = '#080808'
+cell.border_color_top = '#080808'
+cell.border_color_bottom = '#080808'
 
 ui:style('grid_cell :moving', {
 	background_color = '#000',
@@ -706,8 +706,8 @@ ui:style('grid_cell :grid_focused :focused :selected', {
 })
 
 ui:style('grid_cell :focused', {
-	border_width_top = 1,
-	border_width_bottom = 1,
+	border_width_left = 0,
+	border_width_right = 0,
 	border_color = '#0000', --not visibile but preserving the widths
 })
 
@@ -742,6 +742,7 @@ function cell:sync_col(col)
 	self.text_align = col.text_align
 	self.text_valign = col.text_valign
 	self.line_spacing = col.line_spacing
+	self.padding = col.padding
 	self.padding_left = col.padding_left
 	self.padding_right = col.padding_right
 	self.padding_top = col.padding_top
@@ -762,8 +763,12 @@ function cell:sync_row(i, y, h)
 	end
 end
 
+function cell:display_value(i, col, val)
+	return tostring(val)
+end
+
 function cell:sync_value(i, col, val)
-	self.text = tostring(val)
+	self.text = self:display_value(i, col, val)
 	self:settag(':selected', self.grid:cell_selected(i, col))
 	self:settag(':focused', self.grid:cell_focused(i, col))
 end
@@ -1121,7 +1126,7 @@ function grid:scroll_to_view_row(i)
 end
 
 function grid:scroll_to_view_col(col)
-	if col.pane == self.scroll_pane then
+	if col and col.pane == self.scroll_pane then
 		col.pane.hscrollbar:scroll_to_view(col.x, col.w)
 	end
 end
@@ -1180,6 +1185,10 @@ function grid:move(actions, di, dj)
 		elseif action == 'select' or action == 'unselect' then
 			self:select_cells(i, col, i, col, action == 'select')
 			reset_extend = true
+		elseif action == 'pick' then
+			self:pick_cell(i, col)
+		elseif action == 'choose' then
+			self:pick_cell(i, col, true)
 		elseif action == 'scroll' then
 			self:scroll_to_view_cell(i, col)
 		end
@@ -1194,12 +1203,14 @@ end
 function rows:after_click()
 	local shift = self.ui:key'shift'
 	local ctrl = self.ui:key'ctrl'
-	if self.grid.multi_select then
+	if self.grid.multi_select and (shift or ctrl) then
 		self.grid:move(
 			shift and ctrl and '@hot extend scroll'
 			or shift and '@hot reset extend scroll'
 			or ctrl and '@hot focus invert scroll'
-			or '@hot reset select focus scroll')
+		)
+	else
+		self.grid:move'@hot reset select focus choose scroll'
 	end
 end
 
@@ -1252,7 +1263,7 @@ end
 --previous or next page.
 function grid:fixed_page_offset(dir, focused)
 	focused = focused or self.focused_row_index
-	--local screen_y = self.vscrollbar.offset
+	local screen_y = self.vscrollbar.offset
 	local row_y, row_h = self:row_yh(focused)
 	local page
 	if dir > 0 then
@@ -1296,7 +1307,7 @@ function grid:keypress(key)
 		self:move(
 			self.multi_select and shift
 				and '@focus @extend reset extend scroll'
-				or '@focus reset select focus scroll',
+				or '@focus reset select pick focus scroll',
 			rows or 0, cols or 0)
 		return true
 	elseif ctrl and key == 'A' then
@@ -1304,6 +1315,8 @@ function grid:keypress(key)
 			self:move('select_all')
 			return true
 		end
+	elseif key == 'enter' then
+		self:move('@focus choose scroll')
 	end
 end
 
@@ -1349,20 +1362,16 @@ function grid:after_sync()
 	self.vscrollbar:sync()
 end
 
-function grid:before_draw()
-	self:sync()
-end
-
 function grid:after_init(ui, t)
 
 	self.rows = self.rows or {}
 
 	self._freeze_col = t.freeze_col
-	local cols = t.cols or self.cols
+	local cols = t.cols or self.cols or {}
 	self.cols = {}
 	if cols then
 		for i,col in ipairs(cols) do
-			push(self.cols, self:create_col(col, i))
+			push(self.cols, self:create_col(col, 1))
 		end
 	end
 	self.freeze_pane = self:create_freeze_pane(self.freeze_pane)
@@ -1384,9 +1393,86 @@ function grid:after_init(ui, t)
 	self:select_none()
 end
 
---demo -----------------------------------------------------------------------
+--value lookup ---------------------------------------------------------------
 
-ui.window.topmost = true
+--TODO: build and use an index here!
+function grid:lookup(val, col)
+	for i = 1, #self.rows do
+		if self:cell_value(i, col) == val then
+			return true, i
+		end
+	end
+end
+
+--dropdown picker API --------------------------------------------------------
+
+ui:style('grid dropdown_picker', {
+	header_visible = false,
+	col_move = false,
+	row_move = false,
+	border_width_right = 1,
+	border_width_left = 1,
+	border_width_bottom = 1,
+	border_color = '#ccc',
+	padding_left = 1,
+	padding_right = 1,
+	padding_bottom = 1,
+})
+
+function grid:set_dropdown(dropdown)
+	self._dropdown = dropdown
+	self:settag('dropdown_picker', dropdown and true or false)
+end
+
+function grid:get_dropdown()
+	return self._dropdown
+end
+
+function grid:after_init()
+	if self.dropdown then
+		--create one implicit column.
+		if #self.cols == 0 then
+			push(self.cols, self:create_col({}))
+		end
+	end
+end
+
+grid.pick_col_index = 1
+grid.pick_text_col_index = 1
+
+--choosing a cell is different than picking it: whereas picking can be done
+--using arrow keys (so by navigating), choosing the value must be done by
+--clicking on a cell or by pressing enter on the selected cell.
+function grid:pick_cell(i, _, choose)
+	if not self.dropdown then return end
+	local val_col = assert(self.cols[self.pick_col_index])
+	local text_col = assert(self.cols[self.pick_text_col_index])
+	local val = self:cell_value(i, val_col)
+	local text = self:cell_value(i, text_col)
+	self.dropdown:value_picked(val, text, choose)
+end
+
+function grid:pick_value(val, choose)
+	local found, i = self:lookup(val, self.cols[self.pick_col_index])
+	if found then
+		self:pick_cell(i, nil, choose)
+		return true
+	end
+end
+
+function grid:after_sync()
+	if not self.dropdown then return end
+	local min_w = self.dropdown.w
+	local w = min_w
+	local noscroll_h = self:rows_h()
+		+ (self.padding_top or self.padding)
+		+ (self.padding_bottom or self.padding)
+	local max_h = w * 1.4
+	local h = math.min(noscroll_h, max_h)
+	self.w, self.h = w, h
+end
+
+--demo -----------------------------------------------------------------------
 
 if not ... then require('ui_demo')(function(ui, win)
 
@@ -1449,8 +1535,7 @@ if not ... then require('ui_demo')(function(ui, win)
 			.. col.text
 			.. ' '..i
 			.. ' 123456789 '
-			.. '................ '
-			.. 'abcdefghijklmnopqrstuvwxyz'
+			--.. 'abcdefghijklmnopqrstuvwxyz'
 	end
 
 	win.native_window:on('shown', function(self)
@@ -1458,7 +1543,7 @@ if not ... then require('ui_demo')(function(ui, win)
 	end)
 
 	win.native_window:on('repaint', function(self)
-		self:invalidate()
+		--self:invalidate()
 	end)
 
 end) end

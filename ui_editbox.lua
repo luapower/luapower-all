@@ -22,8 +22,6 @@ editbox.padding = 4
 editbox.focusable = true
 editbox.max_click_chain = 3 --receive doubleclick and tripleclick events
 editbox.clip_content = true
-editbox.border_color = '#333'
-editbox.border_width = 1
 editbox.text_align = 'left'
 editbox.caret_color = '#fff'
 editbox.selection_color = '#66f8'
@@ -33,23 +31,26 @@ editbox.cursor_text = 'text'
 editbox.cursor_selection = 'arrow'
 editbox.password = false
 editbox.maxlen = 4096
+editbox.tags = 'standalone'
 
-ui:style('editbox', {
+ui:style('editbox standalone', {
+	border_color = '#333',
+	border_width = 1,
 	transition_border_color = true,
 	transition_duration = .5,
 })
 
-ui:style('editbox :hot', {
+ui:style('editbox standalone :hot', {
 	border_color = '#999',
 	transition_border_color = true,
 	transition_duration = .5,
 })
 
-ui:style('editbox :focused', {
+ui:style('editbox standalone :focused', {
 	border_color = '#fff',
-	background_color = '#040404',
 	shadow_blur = 2,
 	shadow_color = '#666',
+	background_color = '#040404', --to cover the shadow
 })
 
 ui:style('editbox :insert_mode', {
@@ -386,18 +387,24 @@ function editbox:lostfocus()
 	self:scroll_to_caret()
 end
 
---mouse
+--mouse interaction
+
+function editbox:hit_test_selection(x, y)
+	x, y = self:mask_to_text(x, y)
+	if self.selection:hit_test(x, y) then
+		return self, 'selection'
+	elseif self.selection.segments:hit_test(x, y) then
+		return self, 'text'
+	end
+end
 
 function editbox:override_hit_test_content(inherited, x, y, reason)
 	local widget, area = inherited(self, x, y, reason)
 	if widget then
 		return widget, area
 	end
-	x, y = self:mask_to_text(x, y)
-	if self.selection:hit_test(x, y) then
-		return self, 'selection'
-	elseif self.selection.segments:hit_test(x, y) then
-		return self, 'text'
+	if reason == 'activate' and self.activable then
+		return self:hit_test_selection(x, y)
 	end
 end
 

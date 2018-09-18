@@ -50,19 +50,19 @@ track.activable = false
 track.h = 8
 track.corner_radius = 5
 track.border_width = 1
-track.border_color = '#333'
-track.background_color = '#000'
+track.border_color = '#999'
 track.clip_content = true --clip the fill
 
 ui:style('slider :focused > slider_track', {
 	border_color = '#fff',
 	shadow_blur = 1,
 	shadow_color = '#999',
+	background_color = '#040404' --to cover the shadow
 })
 
 fill.activable = false
 fill.h = 10
-fill.background_color = '#444'
+fill.background_color = '#999'
 
 ui:style('slider :focused > slider_fill', {
 	background_color = '#ccc',
@@ -235,7 +235,7 @@ function slider:create_step_label(text, position)
 	}, self.step_label)
 end
 
-function slider:sync()
+function slider:after_sync()
 	local s = self.track
 	local f = self.fill
 	local p = self.pin
@@ -319,10 +319,6 @@ function slider:draw_step_lines(cr)
 		end
 	end
 	cr:stroke()
-end
-
-function slider:before_draw_content(cr)
-	self:sync()
 end
 
 function slider:after_draw_content(cr)

@@ -160,7 +160,8 @@ function tab:activated()
 end
 
 function tab:start_drag(button, mx, my)
-	if not self.tablist or my >= -self.padding_top then return end
+	local p = self.padding_top or self.padding
+	if not self.tablist or my >= -p then return end
 	self.origin_tablist = self.tablist
 	self.origin_tab_x = self.tab_x
 	self.origin_index = self.index
@@ -324,10 +325,6 @@ function tab:border_line_to(cr, x, y, q)
 	cr:line_to(x3, y + y3)
 end
 
-function tab:before_draw()
-	self:sync()
-end
-
 --title
 
 local title = ui.layer:subclass'tab_title'
@@ -359,8 +356,9 @@ end
 function tab:after_sync()
 	local t = self.title
 	local wl, wr = self:slant_widths()
-	t.x = self.tab_x - self.padding_left + wl
-	t.y = round(-self.tab_h - self.padding_top)
+	local p = self.padding
+	t.x = self.tab_x - (self.padding_left or p) + wl
+	t.y = round(-self.tab_h - (self.padding_top or p))
 	t.w = self.close_button.x - t.x
 	t.h = self.tab_h
 end
@@ -416,8 +414,9 @@ end
 function tab:after_sync()
 	local xb = self.close_button
 	local wl, wr = self:slant_widths()
-	xb.x = self.tab_x + self.tab_w - xb.w - wr - self.padding_left
-	xb.cy = -math.ceil(self.tab_h / 2) - self.padding_top
+	local p = self.padding
+	xb.x = self.tab_x + self.tab_w - xb.w - wr - (self.padding_left or p)
+	xb.cy = -math.ceil(self.tab_h / 2) - (self.padding_top or p)
 	xb.visible = self.closeable
 end
 

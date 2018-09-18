@@ -8,6 +8,8 @@ local glue = require'glue'
 local popup = ui.window:subclass'popup'
 ui.popup = popup
 
+popup.w = 200
+popup.h = 200
 popup.frame = false
 popup.activable = false
 popup.closeable = false
@@ -17,16 +19,29 @@ popup.maximizable = false
 popup.fullscreenable = false
 popup.topmost = true
 
-popup.autohide = true --hide when clicking outside of the popup
+--autohide property: hide when clicking outside of the popup
 
-function popup:after_init()
-	local function hide()
-		if self.ui and self.autohide then
-			self:hide()
+popup.autohide = true
+
+function popup:mousedown_autohide(win, button, mx, my)
+	self:hide()
+end
+
+function popup:window_deactivated_autohide(win)
+	self:hide()
+end
+
+function popup:after_set_parent(parent)
+	parent.window:on({'deactivated', self}, function(win)
+		if self.ui and self.autohide and self.visible then
+			self:window_deactivated_autohide(win)
 		end
-	end
-	self.ui:on({'window_deactivated', self}, hide)
-	self.ui:on({'window_mousedown', self}, hide)
+	end)
+	parent.window:on({'mousedown', self}, function(win, button, mx, my)
+		if self.ui and self.autohide and self.visible then
+			self:mousedown_autohide(button, mx, my)
+		end
+	end)
 end
 
 if not ... then require('ui_demo')(function(ui, win)
@@ -49,6 +64,7 @@ if not ... then require('ui_demo')(function(ui, win)
 		h = 600,
 		parent = win,
 	}
+
 	--function win:mousemove(mx, my)    print('win  ', 'move', mx, my) end
 	--function popup:mousemove(mx, my)  print('popup', 'move', mx, my) end
 	--function win:mouseleave()         print('win  ', 'leave') end
