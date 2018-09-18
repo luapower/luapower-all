@@ -184,7 +184,7 @@ function scrollbar:scroll_to(offset)
 		and (not self.autohide_empty or not self:empty())
 	then
 		self:settag(':near', true)
-		self:update_styles()
+		self:sync_styles()
 		self:settag(':near', false)
 	end
 	self:transition('offset', offset)

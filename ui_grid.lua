@@ -1186,9 +1186,9 @@ function grid:move(actions, di, dj)
 			self:select_cells(i, col, i, col, action == 'select')
 			reset_extend = true
 		elseif action == 'pick' then
-			self:pick_cell(i, col)
-		elseif action == 'choose' then
-			self:pick_cell(i, col, true)
+			self:pick_row(i, false)
+		elseif action == 'pick/commit' then
+			self:pick_row(i, true)
 		elseif action == 'scroll' then
 			self:scroll_to_view_cell(i, col)
 		end
@@ -1210,7 +1210,7 @@ function rows:after_click()
 			or ctrl and '@hot focus invert scroll'
 		)
 	else
-		self.grid:move'@hot reset select focus choose scroll'
+		self.grid:move'@hot reset select focus pick/commit scroll'
 	end
 end
 
@@ -1316,7 +1316,7 @@ function grid:keypress(key)
 			return true
 		end
 	elseif key == 'enter' then
-		self:move('@focus choose scroll')
+		self:move('@focus pick/commit scroll')
 	end
 end
 
@@ -1399,7 +1399,7 @@ end
 function grid:lookup(val, col)
 	for i = 1, #self.rows do
 		if self:cell_value(i, col) == val then
-			return true, i
+			return i
 		end
 	end
 end
@@ -1419,6 +1419,8 @@ ui:style('grid dropdown_picker', {
 	padding_bottom = 1,
 })
 
+--dropdown property
+
 function grid:set_dropdown(dropdown)
 	self._dropdown = dropdown
 	self:settag('dropdown_picker', dropdown and true or false)
@@ -1437,28 +1439,7 @@ function grid:after_init()
 	end
 end
 
-grid.pick_col_index = 1
-grid.pick_text_col_index = 1
-
---choosing a cell is different than picking it: whereas picking can be done
---using arrow keys (so by navigating), choosing the value must be done by
---clicking on a cell or by pressing enter on the selected cell.
-function grid:pick_cell(i, _, choose)
-	if not self.dropdown then return end
-	local val_col = assert(self.cols[self.pick_col_index])
-	local text_col = assert(self.cols[self.pick_text_col_index])
-	local val = self:cell_value(i, val_col)
-	local text = self:cell_value(i, text_col)
-	self.dropdown:value_picked(val, text, choose)
-end
-
-function grid:pick_value(val, choose)
-	local found, i = self:lookup(val, self.cols[self.pick_col_index])
-	if found then
-		self:pick_cell(i, nil, choose)
-		return true
-	end
-end
+--metrics
 
 function grid:after_sync()
 	if not self.dropdown then return end
@@ -1470,6 +1451,43 @@ function grid:after_sync()
 	local max_h = w * 1.4
 	local h = math.min(noscroll_h, max_h)
 	self.w, self.h = w, h
+end
+
+--picking values
+
+grid.pick_col_index = 1
+grid.pick_text_col_index = false --same as pick_col_index
+
+function grid:pick_row(i, commit)
+	if not self.dropdown then return end
+	local vci = self.pick_col_index
+	local tci = self.pick_text_col_index or vci
+	local val = self:cell_value(i, assert(self.cols[vci]))
+	local text = self:cell_value(i, assert(self.cols[tci]))
+	self.dropdown:value_picked(val, text, commit)
+end
+
+function grid:_pick_row(i, commit)
+	self:move('reset select focus scroll pick'..(commit and '/commit' or ''), i)
+	return true
+end
+
+function grid:pick_value(val, commit)
+	local i = self:lookup(val, self.cols[self.pick_col_index])
+	if not i then return end
+	return self:_pick_row(i, commit)
+end
+
+function grid:pick_previous_value(commit)
+	local i = self.selected_row_index
+	i = i and clamp(i - 1, 1, self.row_count) or 1
+	return self:_pick_row(i, commit)
+end
+
+function grid:pick_next_value(commit)
+	local i = self.selected_row_index
+	i = i and clamp(i + 1, 1, self.row_count) or 1
+	return self:_pick_row(i, commit)
 end
 
 --demo -----------------------------------------------------------------------

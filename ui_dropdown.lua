@@ -18,25 +18,55 @@ dropdown.padding_right = 0
 
 --value property
 
+dropdown.free_edit = false
+
 function dropdown:get_value()
 	return self._value
 end
 
 function dropdown:set_value(val)
-	self._value = val
-	self.editbox.text = self:display_value(val)
+	if not self.picker:pick_value(val, true) then
+		if self.free_edit then
+			self:value_picked(val, val, true)
+		end
+	end
+end
+
+function dropdown:get_pending()
+	return self._pending
+end
+
+function dropdown:get_pending_value()
+	return self._pending_value
+end
+
+function dropdown:set_pending_value(val)
+	if not self.picker:pick_value(val, false) then
+		if self.free_edit then
+			self:value_picked(val, val, false)
+		end
+	end
+end
+
+function dropdown:value_picked(val, text, commit)
+	if commit then
+		self._value = val
+		self._display_value = text
+		self._pending = false
+		self._pending_value = false
+	else
+		self._pending = true
+		self._pending_value = val
+	end
+	self.editbox.text = tostring(text)
 end
 
 function dropdown:revert()
-	self.value = self._initial_value
+	self:value_picked(self.value, self._display_value, true)
 end
 
 function dropdown:commit()
-	self._initial_value = self.value
-end
-
-function dropdown:display_value(val)
-	return tostring(val)
+	self:value_picked(self.pending_value, self.editbox.text, true)
 end
 
 --open/close state
@@ -53,14 +83,6 @@ end
 function dropdown:cancel()
 	self:close()
 	self:revert()
-end
-
-function dropdown:toggle()
-	if self.popup.visible then
-		self:cancel()
-	else
-		self:open()
-	end
 end
 
 --editable state
@@ -110,7 +132,7 @@ function editbox:lostfocus()
 end
 
 function editbox:override_keypress(inherited, key)
-	if key == 'enter' then
+	if key == 'enter' or key == 'esc' or key == 'up' or key == 'down' then
 		return self.dropdown:keypress(key)
 	end
 	return inherited(self, key)
@@ -217,9 +239,22 @@ end
 
 function dropdown:keypress(key)
 	if key == 'enter' then
-		self:toggle()
+		if self.popup.visible then
+			self:close()
+			self:commit()
+		else
+			self:open()
+		end
 	elseif key == 'esc' then
 		self:cancel()
+	elseif not self.popup.visible then
+		if key == 'up' then
+			self.picker:pick_previous_value(true)
+		elseif key == 'down' then
+			self.picker:pick_next_value(true)
+		end
+	else
+		self.picker:fire('keypress', key)
 	end
 end
 
@@ -232,7 +267,11 @@ function dropdown:click()
 		self._mousedown_autohidden = false
 		return
 	end
-	self:toggle()
+	if self.popup.visible then
+		self:cancel()
+	else
+		self:open()
+	end
 end
 
 --state styles
