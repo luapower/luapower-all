@@ -112,7 +112,7 @@ __app instances__
 `app:check_single_instance()`                single app instance check
 `app.id`                                     set an app ID
 `app:already_running() -> t|f`               check if other app instances running
-`app:wakeup_other_instances()`               send `wakeup` event to other app instances
+`app:wakeup_other_instances()`               send wakeup event to other app instances
 `app:wakeup()`                               event: wakeup from another instance
 __app visibility (OSX)__
 `app:visible(t|f) /-> t|f`                   get/set app visibility
@@ -221,7 +221,7 @@ __keyboard__
 `win:keydown(key)`                           event: a key was pressed
 `win:keyup(key)`                             event: a key was depressed
 `win:keypress(key)`                          event: sent after each keydown, including repeats
-`win:keychar(s)`                             event: input char pressed; _`s`_ is utf-8
+`win:keychar(s)`                             event: input char pressed; _s_ is utf-8
 __mouse__
 `app/win/view:mouse(var) -> val`             mouse state: _x, y, pos, inside, left, right, middle, x1, x2_
 `win/view:mouseenter(x, y)`                  event: mouse entered the client area of the window

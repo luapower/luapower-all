@@ -1565,6 +1565,7 @@ function window:_update_layered()
 end
 
 function window:_repaint_layered()
+	if not self.win.visible then return end
 	self.frontend:_backend_repaint()
 	self:_update_layered()
 end
