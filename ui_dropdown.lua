@@ -19,7 +19,8 @@ dropdown.padding_right = 0
 
 --value property
 
-dropdown.free_edit = false --allow typing values outside the picker's range.
+--allow setting and typing values outside of the picker's range.
+dropdown.allow_any_value = false
 
 function dropdown:get_value()
 	return self._value
@@ -33,11 +34,9 @@ function dropdown:display_value(val)
 	return tostring(val)
 end
 
---NOTE: setting the value to itself is not redundant since the picker might
---be on a different value or the text might not be set.
 function dropdown:set_value(val)
 	if not self.picker:pick_value(val, true) then
-		if self.free_edit then
+		if self.allow_any_value then
 			self:value_picked(val, nil, true)
 		end
 	end
@@ -206,6 +205,7 @@ function dropdown:after_init(ui, t)
 	self.popup = self:create_popup()
 	self.picker = self:create_picker()
 	self.editable = t.editable
+	self.picker:focus() --picks the first value from the picker!
 	self.value = t.value
 end
 
@@ -291,6 +291,8 @@ if not ... then require('ui_demo')(function(ui, win)
 		x = 10, y = 10,
 		parent = win,
 		picker = {rows = {'Row 1', 'Row 2', 'Row 3', {}}},
+		value = 'some invalid value',
+		allow_any_value = true,
 	}
 
 	local t = {}
@@ -303,7 +305,6 @@ if not ... then require('ui_demo')(function(ui, win)
 		picker = {rows = t},
 		value = 'Row 592',
 		editable = true,
-		free_edit = false,
 	}
 
 end) end

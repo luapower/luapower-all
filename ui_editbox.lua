@@ -6,7 +6,6 @@
 local ui = require'ui'
 local tr = require'tr'
 local glue = require'glue'
-local utf8 = require'utf8'
 
 local push = table.insert
 local pop = table.remove

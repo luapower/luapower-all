@@ -1104,7 +1104,7 @@ function grid:after_focus()
 	if not self.focused_row_index then
 		self.focused_row_index = 1
 		self.focused_col = self:rel_visible_col(1)
-		self:move('@focus reset select focus')
+		self:move('@focus reset select focus scroll pick')
 	end
 end
 
