@@ -8,7 +8,6 @@ tagline: package categories
 	* [bundle]
 * Standard Libraries
 	* [glue]
-	* [tuple]
 	* [pp]
 	* [oo]
 	* [lpeg]
@@ -24,33 +23,40 @@ tagline: package categories
 	* [pthread]
 	* [time]
 	* [rs232]
+* Portable UI
+   * [ui]
+	* [codedit]
+* Portable Text Rendering
+	* [tr]
+   * [freetype]
+	* [harfbuzz]
+	* [fribidi]
+	* [libunibreak]
+* Portable 2D Graphics
+	* [cairo]
+	* [bitmap]
+	* [color]
+	* [boxblur]
 * Native OS APIs
 	* [winapi]
 	* [winapi.wglpanel]
 	* [winapi.cairopanel]
 	* [objc]
 	* [xlib]
-* Databases
-	* [mysql]
-* 2D Graphics
-	* [cairo]
-	* [bitmap]
-	* [color]
-	* [boxblur]
 * 2D Geometry
 	* [path2d]
 	* [affine2d]
 	* [box2d]
 	* [clipper]
-* GUI
-   * [ui]
-	* [codedit]
-* File Formats
+* Image Formats
 	* [giflib]
 	* [libjpeg]
 	* [libpng]
 	* [bmp]
 	* [libexif]
+* Unicode
+	* [utf8]
+	* [ucdn]
 * Hashing
 	* [xxhash]
    * [blake2]
@@ -70,27 +76,20 @@ tagline: package categories
 * Networking
 	* [libcurl]
 	* [rsync]
-* Spell Checking
-	* [hunspell]
+* Databases
+	* [mysql]
 * Templating
    * [mustache]
 * Motion
 	* [tweening]
 	* [easing]
+* Spell Checking
+	* [hunspell]
 * Data Structures
 	* [heap]
 	* [dlist]
 	* [lrucache]
 	* [lfrb]
-* Text Layouting
-	* [tr]
-	* [harfbuzz]
-   * [freetype]
-* Unicode
-	* [utf8]
-	* [ucdn]
-	* [libunibreak]
-	* [fribidi]
 * Support APIs
 	* [amoeba]
 	* [eq]
@@ -130,3 +129,4 @@ tagline: package categories
 	* [minizip]
 	* [terra]
 	* [llvm]
+	* [tuple]

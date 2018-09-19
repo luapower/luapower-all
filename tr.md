@@ -12,9 +12,10 @@ wrapping, alignments, hit testing, clipping, cursors, selections, editing,
 control over OpenType features, moving, coloring and editing inside ligatures,
 OpenType-assisted auto-hinter.
 
-Not-yet implemented: full justification, subscript, superscript, underline,
-strikethrough, glyph substitution, shaping across words, hyphenation,
-letter spacing, vertical layout.
+## Status
+
+See [issues](https://github.com/luapower/tr/issues)
+and [milestones](https://github.com/luapower/tr/milestones).
 
 ### API
 

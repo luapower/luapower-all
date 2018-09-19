@@ -1,5 +1,5 @@
 
---native windows - frontend.
+--Cross-platform windows for Lua.
 --Written by Cosmin Apreutesei. Public domain.
 
 local ffi   = require'ffi'

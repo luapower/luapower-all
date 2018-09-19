@@ -1,28 +1,23 @@
 
-<warn>Work in Progress</warn>
-
 ## `local ui = require'ui'`
 
-Extensible UI toolkit written in Lua with layouts, styles and animations.
+Extensible UI toolkit written in Lua featuring layouts, styles and animations.
+
+## Status
+
+See [issues](https://github.com/luapower/ui/issues)
+and [milestones](https://github.com/luapower/ui/milestones).
 
 ## Features
 
-  * OMG widgets!
-    * an editable grid that can scroll millions of rows at 60 fps?
-	 * a tab list with animated, moveable, draggable, dockable tabs?
-	 * a code editor in Lua?
-	 * run the demos!
-  * consistent Unicode text rendering and editing with [tr].
-  * transition-based animations.
-  * cascading styles with `> parent` and `:state` selectors.
+  * feature-packed editable grid that can scroll millions of rows at 60 fps.
+  * tab list with animated, moveable, draggable, dockable tabs.
+  * highly hackable code editor written in Lua.
+  * consistent Unicode [text rendering][tr] and editing on all platforms.
+  * cascading styles.
+  * declarative transition animations.
   * constraint-based, container-based and flow-based layouts.
   * affine transforms.
-
-## Programming Features
-
-  * [object system][oo] with virtual properties and method overriding hooks.
-  * layer class containing all the mechanisms necessary for making widgets.
-  * comprehensive event-based drag & drop API.
 
 ## Example
 
@@ -50,15 +45,15 @@ ui:run()
 -------------------------------------- ---------------------------------------
 __native properties__
 
-`autoquit, maxfps, app_active,` \      these map directly to `nw:app()` \
-`app_visible, caret_blink_time,` \     features, see [nw].
+`autoquit, maxfps, app_active,` \      these map directly to nw app \
+`app_visible, caret_blink_time,` \     features, so see [nw].
 `displays, main_display,` \
 `active_display, app_id`
 
 __native methods__
 
-`run, poll, stop, quit, runevery,` \   these map directly to `nw:app()` \
-`runafter, sleep, activate_app,` \     features, see [nw].
+`run, poll, stop, quit, runevery,` \   these map directly to nw app \
+`runafter, sleep, activate_app,` \     features, so see [nw].
 `hide_app, unhide_app, key,` \
 `getclipboard, setclipboard,` \
 `opendialog, savedialog,` \
@@ -147,8 +142,8 @@ __parent/child relationship__
 
 __native methods__
 
-`frame_rect, client_rect,` \           these map directly to [nw] features \
-`client_to_frame, frame_to_client,` \  so they are documented there.
+`frame_rect, client_rect,` \           these map directly to nw window \
+`client_to_frame, frame_to_client,` \  methods, so see [nw].
 `closing, close, show, hide,` \
 `activate, minimize, maximize,` \
 `restore, shownormal, raise, lower,` \
@@ -156,8 +151,8 @@ __native methods__
 
 __native properties__
 
-`x, y, w, h, cx, cy, cw, ch,` \        these map directly to [nw] features \
-`min_cw, min_ch, max_cw, max_ch,` \    so they are documented there.
+`x, y, w, h, cx, cy, cw, ch,` \        these map directly to nw window \
+`min_cw, min_ch, max_cw, max_ch,` \    methods, so see [nw].
 `autoquit, visible, fullscreen,` \
 `enabled, edgesnapping, topmost,` \
 `title, dead, closeable,` \
@@ -325,4 +320,33 @@ TODO
 
 ## Creating new widgets
 
-TODO
+The API for creating and extending widgets is far larger and more complex
+than the API for instantiating and using existing widgets. This is normal,
+since widgets are supposed to encapsulate complex user interaction patterns
+as well as provide customizable presentation and behavior. This API is also
+less stable than the user API and not formally documented (that's not to say
+that it's not stable at all, and it is well documented in the code IMHO).
+
+That being said, there are many programming features which combined enable
+short, clean, extensible implementations that don't degenerate into
+spagetti-code past a certain level of complexity.
+
+These are the main programming features that need to be understood for
+hacking widgets:
+
+ * the [object system][oo],
+ * the layer class,
+ * the drag & drop API.
+
+The object system provides subclassing and instantiation (of course) but also
+virtual properties and method overriding hooks which are the bread and butter
+of extensible widget programming.
+
+The ui layer class (the base class from which all widgets are derived)
+contains many abstractions that widgets can be built upon like relative
+positioning, hit testing and tab-based navigation.
+
+The drag & drop API is nothing special except that it's a litte more complex
+so I mention it because it needs a little extra effort to understand. OTOH,
+ignoring it and reinventing it in your widgets or apps could be worse,
+since it's hard to get it right.

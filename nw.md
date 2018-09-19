@@ -1,6 +1,3 @@
----
-tagline: native windows
----
 
 ## `local nw = require'nw'`
 
