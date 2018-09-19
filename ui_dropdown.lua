@@ -59,14 +59,31 @@ function dropdown:value_picked(val, text, commit)
 		self._pending_value = val
 	end
 	self.editbox.text = tostring(text)
-end
-
-function dropdown:revert()
-	self:value_picked(self.value, self._display_value, true)
+	self.ui:runafter(0, function() --TODO: remove this hack
+		self.editbox:invalidate()
+	end)
+	if commit then
+		self:close()
+	end
+	if val == false then
+		assert(false)
+	end
 end
 
 function dropdown:commit()
+	if not self.pending then
+		self:close()
+		return
+	end
 	self:value_picked(self.pending_value, self.editbox.text, true)
+end
+
+function dropdown:cancel()
+	if not self.pending then
+		self:close()
+		return
+	end
+	self.value = self.value
 end
 
 --open/close state
@@ -78,11 +95,6 @@ end
 
 function dropdown:close()
 	self.popup:hide()
-end
-
-function dropdown:cancel()
-	self:close()
-	self:revert()
 end
 
 --editable state
@@ -127,8 +139,7 @@ end
 
 function editbox:lostfocus()
 	self.dropdown:settag(':focused', false)
-	self.dropdown:close()
-	self.dropdown:revert()
+	self.dropdown:cancel()
 end
 
 function editbox:override_keypress(inherited, key)
@@ -193,8 +204,7 @@ function popup:override_mousedown_autohide(inherited, ...)
 end
 
 function popup:after_hidden()
-	self.dropdown:close()
-	self.dropdown:revert()
+	self.dropdown:cancel()
 end
 
 --value picker widget
@@ -221,7 +231,6 @@ function dropdown:after_init(ui, t)
 	self.picker = self:create_picker()
 	self.editable = t.editable
 	self.value = t.value
-	self:commit()
 end
 
 function dropdown:before_free()
@@ -238,21 +247,14 @@ function dropdown:lostfocus()
 end
 
 function dropdown:keypress(key)
-	if key == 'enter' then
-		if self.popup.visible then
-			self:close()
-			self:commit()
-		else
-			self:open()
-		end
+	if key == 'enter' and not self.popup.visible then
+		self:open()
 	elseif key == 'esc' then
 		self:cancel()
-	elseif not self.popup.visible then
-		if key == 'up' then
-			self.picker:pick_previous_value(true)
-		elseif key == 'down' then
-			self.picker:pick_next_value(true)
-		end
+	elseif key == 'up' and not self.popup.visible then
+		self.picker:pick_previous_value(true)
+	elseif key == 'down' and not self.popup.visible then
+		self.picker:pick_next_value(true)
 	else
 		self.picker:fire('keypress', key)
 	end
@@ -315,6 +317,8 @@ if not ... then require('ui_demo')(function(ui, win)
 		x = 10, y = 10,
 		parent = win,
 		picker = {rows = {'Row 1', 'Row 2', 'Row 3', {}}},
+		editable = false,
+		--free_edit = false,
 	}
 
 	local t = {}

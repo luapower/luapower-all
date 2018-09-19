@@ -1443,6 +1443,8 @@ end
 
 function grid:after_sync()
 	if not self.dropdown then return end
+
+	--sync size
 	local min_w = self.dropdown.w
 	local w = min_w
 	local noscroll_h = self:rows_h()
@@ -1451,6 +1453,14 @@ function grid:after_sync()
 	local max_h = w * 1.4
 	local h = math.min(noscroll_h, max_h)
 	self.w, self.h = w, h
+
+	--sync columns size
+	if #self.cols == 1 then
+		local vci = self.pick_col_index
+		local tci = self.pick_text_col_index or vci
+		assert(vci == tci)
+		self.cols[tci].w = self.cw
+	end
 end
 
 --picking values
