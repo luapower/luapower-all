@@ -12,81 +12,54 @@ ui.dropdown = dropdown
 
 dropdown.w = 180
 dropdown.h = 24
+--these must match grid's metrics.
 dropdown.text_align = 'left'
 dropdown.padding_left = 4
 dropdown.padding_right = 0
 
 --value property
 
-dropdown.free_edit = false
+dropdown.free_edit = false --allow typing values outside the picker's range.
 
 function dropdown:get_value()
 	return self._value
 end
 
+--display value for free-edited values where the picker is not involved.
+function dropdown:display_value(val)
+	if type(val) == 'nil' or type(val) == 'boolean' then
+		return string.format('<%s>', tostring(val))
+	end
+	return tostring(val)
+end
+
+--NOTE: setting the value to itself is not redundant since the picker might
+--be on a different value or the text might not be set.
 function dropdown:set_value(val)
 	if not self.picker:pick_value(val, true) then
 		if self.free_edit then
-			self:value_picked(val, val, true)
+			self:value_picked(val, nil, true)
 		end
 	end
 end
 
-function dropdown:get_pending()
-	return self._pending
-end
-
-function dropdown:get_pending_value()
-	return self._pending_value
-end
-
-function dropdown:set_pending_value(val)
-	if not self.picker:pick_value(val, false) then
-		if self.free_edit then
-			self:value_picked(val, val, false)
-		end
-	end
-end
-
-function dropdown:value_picked(val, text, commit)
-	if commit then
-		self._value = val
-		self._display_value = text
-		self._pending = false
-		self._pending_value = false
-	else
-		self._pending = true
-		self._pending_value = val
-	end
-	self.editbox.text = tostring(text)
+--API for the picker to signal that a value was picked.
+function dropdown:value_picked(val, text, close)
+	self._value = val
+	self.editbox.text = text or self:display_value(val)
 	self.ui:runafter(0, function() --TODO: remove this hack
 		self.editbox:invalidate()
 	end)
-	if commit then
+	if close then
 		self:close()
 	end
-	if val == false then
-		assert(false)
-	end
-end
-
-function dropdown:commit()
-	if not self.pending then
-		self:close()
-		return
-	end
-	self:value_picked(self.pending_value, self.editbox.text, true)
-end
-
-function dropdown:cancel()
-	if not self.pending then
-		self:close()
-		return
-	end
-	self.value = self.value
 end
 
 --open/close state
+
+function dropdown:get_isopen()
+	return self.popup.visible
+end
 
 function dropdown:open()
 	self:focus(true)
@@ -110,7 +83,7 @@ function dropdown:set_editable(editable)
 end
 
 dropdown:instance_only'editable'
-dropdown.editable = true
+dropdown.editable = false
 
 --editbox
 
@@ -139,14 +112,21 @@ end
 
 function editbox:lostfocus()
 	self.dropdown:settag(':focused', false)
-	self.dropdown:cancel()
+	self.dropdown:close()
 end
 
+--keys that we steal from the editbox and forward to the dropdown.
+local fw_keys = {enter=1, esc=1, up=1, down=1, pageup=1, pagedown=1}
+
 function editbox:override_keypress(inherited, key)
-	if key == 'enter' or key == 'esc' or key == 'up' or key == 'down' then
+	if fw_keys[key] then
 		return self.dropdown:keypress(key)
 	end
 	return inherited(self, key)
+end
+
+function editbox:text_changed()
+	print(self.text)
 end
 
 --open/close button
@@ -203,10 +183,6 @@ function popup:override_mousedown_autohide(inherited, ...)
 	inherited(self, ...)
 end
 
-function popup:after_hidden()
-	self.dropdown:cancel()
-end
-
 --value picker widget
 
 dropdown.picker_classname = 'grid'
@@ -243,20 +219,18 @@ end
 --keyboard interaction
 
 function dropdown:lostfocus()
-	self:cancel()
+	self:close()
 end
 
 function dropdown:keypress(key)
-	if key == 'enter' and not self.popup.visible then
+	if key == 'enter' and not self.isopen then
 		self:open()
+		return true
 	elseif key == 'esc' then
-		self:cancel()
-	elseif key == 'up' and not self.popup.visible then
-		self.picker:pick_previous_value(true)
-	elseif key == 'down' and not self.popup.visible then
-		self.picker:pick_next_value(true)
+		self:close()
+		return true
 	else
-		self.picker:fire('keypress', key)
+		return self.picker:fire('keypress', key)
 	end
 end
 
@@ -269,8 +243,8 @@ function dropdown:click()
 		self._mousedown_autohidden = false
 		return
 	end
-	if self.popup.visible then
-		self:cancel()
+	if self.isopen then
+		self:close()
 	else
 		self:open()
 	end
@@ -317,8 +291,6 @@ if not ... then require('ui_demo')(function(ui, win)
 		x = 10, y = 10,
 		parent = win,
 		picker = {rows = {'Row 1', 'Row 2', 'Row 3', {}}},
-		editable = false,
-		--free_edit = false,
 	}
 
 	local t = {}
@@ -330,6 +302,8 @@ if not ... then require('ui_demo')(function(ui, win)
 		parent = win,
 		picker = {rows = t},
 		value = 'Row 592',
+		editable = true,
+		free_edit = false,
 	}
 
 end) end

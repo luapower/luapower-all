@@ -764,6 +764,9 @@ function cell:sync_row(i, y, h)
 end
 
 function cell:display_value(i, col, val)
+	if type(val) == 'nil' or type(val) == 'boolean' then
+		return string.format('<%s>', tostring(val))
+	end
 	return tostring(val)
 end
 
@@ -1187,7 +1190,7 @@ function grid:move(actions, di, dj)
 			reset_extend = true
 		elseif action == 'pick' then
 			self:pick_row(i, false)
-		elseif action == 'pick/commit' then
+		elseif action == 'pick/close' then
 			self:pick_row(i, true)
 		elseif action == 'scroll' then
 			self:scroll_to_view_cell(i, col)
@@ -1210,7 +1213,7 @@ function rows:after_click()
 			or ctrl and '@hot focus invert scroll'
 		)
 	else
-		self.grid:move'@hot reset select focus pick/commit scroll'
+		self.grid:move'@hot reset select focus pick/close scroll'
 	end
 end
 
@@ -1316,7 +1319,8 @@ function grid:keypress(key)
 			return true
 		end
 	elseif key == 'enter' then
-		self:move('@focus pick/commit scroll')
+		self:move('@focus pick/close scroll')
+		return true
 	end
 end
 
@@ -1468,36 +1472,20 @@ end
 grid.pick_col_index = 1
 grid.pick_text_col_index = false --same as pick_col_index
 
-function grid:pick_row(i, commit)
+function grid:pick_row(i, close)
 	if not self.dropdown then return end
+	i = clamp(i, 1, self.row_count)
 	local vci = self.pick_col_index
 	local tci = self.pick_text_col_index or vci
 	local val = self:cell_value(i, assert(self.cols[vci]))
 	local text = self:cell_value(i, assert(self.cols[tci]))
-	self.dropdown:value_picked(val, text, commit)
+	self.dropdown:value_picked(val, text, close)
 end
 
-function grid:_pick_row(i, commit)
-	self:move('reset select focus scroll pick'..(commit and '/commit' or ''), i)
-	return true
-end
-
-function grid:pick_value(val, commit)
+function grid:pick_value(val, close)
 	local i = self:lookup(val, self.cols[self.pick_col_index])
 	if not i then return end
-	return self:_pick_row(i, commit)
-end
-
-function grid:pick_previous_value(commit)
-	local i = self.selected_row_index
-	i = i and clamp(i - 1, 1, self.row_count) or 1
-	return self:_pick_row(i, commit)
-end
-
-function grid:pick_next_value(commit)
-	local i = self.selected_row_index
-	i = i and clamp(i + 1, 1, self.row_count) or 1
-	return self:_pick_row(i, commit)
+	self:move('reset select focus scroll pick'..(close and '/close' or ''), i)
 end
 
 --demo -----------------------------------------------------------------------

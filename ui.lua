@@ -93,7 +93,7 @@ function object:memoize(method_name)
 	end
 end
 
---install event listeners in object which forward events in self.
+--install event handlers in object which forward events to self.
 function object:forward_events(object, event_names)
 	for _,event in ipairs(event_names) do
 		object:on({event, self}, function(object, ...)
