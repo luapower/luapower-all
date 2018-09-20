@@ -26,7 +26,7 @@ local ui = require'ui'
 
 local win = ui:window{
 	cw = 500, ch = 300,
-	title = 'luapower!',
+	title = 'UI Demo',
 }
 
 local b = ui:button{
@@ -191,6 +191,39 @@ __frameless windows__
 -------------------------------------- ---------------------------------------
 TODO
 -------------------------------------- ---------------------------------------
+
+### Box model
+
+  * layers can be nested, which affects their painting order, clipping and
+  positioning relative to each other.
+  * layers have a "box" defined by their `x, y, w, h`, and a "content box"
+  which is the same box adjusted by paddings.
+  * layers are positioned and clipped relative to their parent's content box.
+  * unlike html, the content box is _not_ affected by borders.
+  * borders can be drawn at an offset relative to the layer's box and the
+  border's thickness.
+  * a layer's contents and background can be clipped by the padding box
+  of its parent, or by the border inner contour of its parent, or it can be
+  left unclipped.
+
+### Mouse interaction
+
+  * layers must be `activable` in order to receive mouse events.
+  * a layer is `hot` when the mouse is over it or when it's `active`.
+  * a layer must set `active` on `mousedown` and must reset it on `mouseup`
+  in order to have the mouse _captured_ while a mouse button is down;
+  this can be done automatically by statically setting `mousedown_activate`.
+  * while a layer is `active`, it continues to be `hot` and receive
+  `mousemove` events even when the mouse is outside its hit test area or
+  outside the window even (that is, the mouse is captured).
+  * a layer must be `active` in order to receive drag & drop events.
+
+### Keyboard interaction
+
+  * layers must be `focusable` in order to receive keyboard events.
+  * keyboard events are only received by the focused layer.
+  * return `true` in a `keydown` to eat up a key stroke so that it
+  isn't used by other actions: this is how key conflicts are solved.
 
 ## Widgets
 

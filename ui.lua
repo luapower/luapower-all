@@ -620,7 +620,7 @@ function ui.transition:after_init(ui, elem, attr, to,
 		return to
 	end
 
-	--NOTE: chain_to() replaces the next transaction, it does not chain to it.
+	--NOTE: chain_to() replaces the next transition, it does not chain to it.
 	function self:chain_to(tran)
 		start = tran:end_clock() + delay
 		from = tran:end_value()
@@ -869,27 +869,30 @@ function element:settags(s)
 	end
 end
 
-function element:sync_styles()
+function element:update_styles()
 	if not self._styles_valid then
 		self.stylesheet:update_element(self)
 		self._styles_valid = true
 	end
-	--update transitioning attributes
-	local tr = self.transitions
-	if tr and next(tr) then
-		local clock = self.frame_clock
-		for attr, transition in pairs(tr) do
-			if not transition:update(clock) then
-				tr[attr] = transition.next_transition
-			end
-		end
-		--TODO: when transition is in delay, set a timer, don't invalidate.
-		self:invalidate()
-	end
 end
 
-function element:before_sync()
-	self:sync_styles()
+function element:update_transitions()
+	local tr = self.transitions
+	if not tr or not next(tr) then return end
+	local clock = self.frame_clock
+	if not clock then return end --not inside repaint
+	for attr, transition in pairs(tr) do
+		if not transition:update(clock) then
+			tr[attr] = transition.next_transition
+		end
+	end
+	--TODO: when transition is in delay, set a timer, don't invalidate.
+	self:invalidate()
+end
+
+function element:sync()
+	self:update_styles()
+	self:update_transitions()
 end
 
 function element:_save_initial_value(attr)
@@ -1138,7 +1141,6 @@ function window:override_init(inherited, ui, t)
 	self.mouse_y = win:mouse'y' or false
 
 	local function setcontext()
-		self.frame_clock = ui:clock()
 		self.bitmap = win:bitmap()
 		self.cr = self.bitmap:cairo()
 	end
@@ -1205,6 +1207,26 @@ function window:override_init(inherited, ui, t)
 	end)
 
 	win:on({'mousewheel', self}, function(win, delta, mx, my, pdelta)
+
+		--forward mouse wheel events to non-activable child popups, if any.
+		--TODO: do this in nw in a portable way!
+		for win in pairs(self.ui.windows) do
+			if win.parent and win.parent.window == self
+				and not win.activable
+				and win.visible
+			then
+				local mx, my = win:from_screen(self:to_screen(mx, my))
+				local _, _, pw, ph = win:client_rect()
+				if box2d.hit(mx, my, 0, 0, pw, ph) then
+					self.ui:_window_mousewheel(win, delta, mx, my, pdelta)
+					return
+				end
+				--break because this is a hack which doesn't work with multiple
+				--children because they are not given in z-order (fix this in nw).
+				break
+			end
+		end
+
 		local moved = self.mouse_x ~= mx or self.mouse_y ~= my
 		setmouse(mx, my)
 		if moved then
@@ -1238,7 +1260,9 @@ function window:override_init(inherited, ui, t)
 		if self.mouse_x then
 			self.ui:_window_mousemove(self, self.mouse_x, self.mouse_y)
 		end
+		self.frame_clock = ui:clock()
 		self:draw(self.cr)
+		self.frame_clock = false
 	end)
 
 	win:on({'client_rect_changed', self}, function(win, cx, cy, cw, ch)
@@ -3329,9 +3353,10 @@ function layer:content_bounding_box(strict)
 end
 
 function layer:draw(cr) --called in parent's content space; child intf.
-	if not self.visible or self.opacity == 0 then return end
-	if self.opacity <= 0 then return end
+	--must always sync because the layer might become visible as an effect
+	--of sync'ing or from tag, style or transition changes.
 	self:sync()
+	if not self.visible or self.opacity <= 0 then return end
 
 	local opacity = self.opacity
 	local compose = opacity < 1

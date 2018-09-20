@@ -68,7 +68,7 @@ function tab:set_visible(visible)
 			end
 		end
 		self._visible = visible
-		self.tablist:sync()
+		self.tablist:sync_tabs()
 	end
 end
 tab:nochange_barrier'visible'
@@ -151,7 +151,7 @@ function tab:before_free()
 	self.tablist = false
 end
 
---input / mouse / drag & drop
+--mouse interaction: drag & drop
 
 tab.mousedown_activate = true
 
@@ -221,10 +221,10 @@ function tab:ended_dragging()
 	self.origin_tablist = false
 	self.origin_tab_x = false
 	self.origin_index = false
-	self.tablist:sync()
+	self.tablist:sync_tabs()
 end
 
---input / mouse / close-on-doubleclick
+--mouse interaction: close-on-doubleclick
 
 tab.max_click_chain = 2
 
@@ -232,7 +232,7 @@ function tab:doubleclick()
 	self:close()
 end
 
---input / keyboard
+--keyboard interaction
 
 tab.focusable = true
 
@@ -438,14 +438,14 @@ end
 function tablist:_add_tab(tab, index)
 	index = self:clamped_tab_index(index, true)
 	table.insert(self.tabs, index, tab)
-	self:sync()
+	self:sync_tabs()
 end
 
 function tablist:_remove_tab(tab)
 	local select_tab = tab.visible and tab.selected and self:prev_tab(tab)
 	tab:unselect()
 	table.remove(self.tabs, self:tab_index(tab))
-	self:sync()
+	self:sync_tabs()
 	if select_tab then
 		select_tab.selected = true
 	end
@@ -457,7 +457,7 @@ function ui.layer:_move_tab(tab, index)
 	if old_index ~= new_index then
 		table.remove(self.tabs, old_index)
 		table.insert(self.tabs, new_index, tab)
-		self:sync()
+		self:sync_tabs()
 	end
 end
 
@@ -568,7 +568,7 @@ function tablist:prev_tab(tab)
 	return prev_tab
 end
 
---input / keyboard
+--keyboard interaction
 
 tablist.main_tablist = true --responds to tab/ctrl+tab globally
 
@@ -662,7 +662,7 @@ function tablist:tab_index_by_visual_index(vi)
 	return #self.tabs
 end
 
-function tablist:sync(duration)
+function tablist:sync_tabs(duration)
 	self:sync_live_tab_w()
 	local tab_w = self.live_tab_w
 	local vi = 1

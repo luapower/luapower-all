@@ -12,40 +12,52 @@ local lerp = glue.lerp
 local scrollbar = ui.layer:subclass'scrollbar'
 ui.scrollbar = scrollbar
 
-scrollbar._vertical = true
-scrollbar._offset = 0
-scrollbar._content_length = 0
-scrollbar._view_length = 0
-scrollbar.step = false --no snapping
-scrollbar.min_width = 20
+local grip = ui.layer:subclass'scrollbar_grip'
+scrollbar.grip_class = grip
+
+--default geometry
+
 scrollbar.w = 10
 scrollbar.h = 10
-scrollbar.background_color = '#222'
+grip.min_w = 20
 scrollbar.corner_radius = 5
+grip.corner_radius = 5
 
-scrollbar.autohide = true
-scrollbar.autohide_empty = true
-scrollbar.autohide_offset = 20 --around-distance to scrollbar
-scrollbar.click_scroll_length = 300 --scroll when clicking on the background
+--default colors
 
-local grabbar = ui.layer:subclass'scrollbar_grabbar'
-scrollbar.grabbar_class = grabbar
+scrollbar.background_color = '#222'
+grip.background_color = '#ccc'
 
-grabbar.background_color = '#ccc'
+--default initial state
+
+scrollbar.content_length = 0
+scrollbar.view_length = 0
+scrollbar.offset = 0  --in 0..content_length range
+
+--default behavior
+
+scrollbar.vertical = true --scrollbar is rotated 90deg to make it vertical
+scrollbar.step = false --no snapping
+scrollbar.autohide = true --hide when mouse is not near the scrollbar
+scrollbar.autohide_empty = true --hide when content is smaller than the view
+scrollbar.autohide_distance = 20 --distance around the scrollbar
+scrollbar.click_scroll_length = 300
+	--^how much to scroll when clicking on the track (area around the grip)
+
+--fade animation
 
 scrollbar.opacity = 0
 
 ui:style('scrollbar', {
+	--fade out
 	transition_opacity = true,
 	transition_delay_opacity = .5,
 	transition_duration_opacity = 1,
 	transition_blend_opacity = 'wait',
-
-	transition_offset = true,
-	transition_duration_offset = .2,
 })
 
 ui:style('scrollbar :near', {
+	--fade in
 	opacity = .5,
 	transition_opacity = true,
 	transition_delay_opacity = 0,
@@ -57,36 +69,75 @@ ui:style('scrollbar :active', {
 	opacity = .5,
 })
 
+--smooth scrolling
+
+ui:style('scrollbar', {
+	transition_offset = true,
+	transition_duration_offset = .2,
+})
+
+--vertical property and tags
+
+scrollbar:stored_property'vertical'
+
+function scrollbar:after_set_vertical(vertical)
+	self:settag('vertical', vertical)
+	self:settag('horizontal', not vertical)
+end
+
+scrollbar:instance_only'vertical'
+
+--grip geometry
+
 local function snap_offset(i, step)
 	return step and i - i % step or i
 end
 
-local function bar_offset(bx, w, bw, content_length, view_length, step)
-	local offset = snap_offset(bx / (w - bw) * (content_length - view_length), step)
+local function grip_offset(x, bar_w, grip_w, content_length, view_length, step)
+	local offset = x / (bar_w - grip_w) * (content_length - view_length)
+	local offset = snap_offset(offset, step)
 	return offset ~= offset and 0 or offset
 end
 
-local function clamp_offset(i, content_length, view_length, step)
-	return snap_offset(clamp(i, 0, math.max(content_length - view_length, 0)), step)
+local function grip_segment(content_length, view_length, offset, bar_w, min_w)
+	local w = clamp(bar_w * view_length / content_length, min_w, bar_w)
+	local x = offset * (bar_w - w) / (content_length - view_length)
+	local x = clamp(x, 0, bar_w - w)
+	return x, w
 end
 
-local function bar_segment(w, content_length, view_length, i, minw)
-	local bw = clamp(w * view_length / content_length, minw, w)
-	local bx = i * (w - bw) / (content_length - view_length)
-	local bx = clamp(bx, 0, w - bw)
-	return bx, bw
+function scrollbar:grip_rect()
+	local x, w = grip_segment(
+		self.content_length, self.view_length, self.offset,
+		self.cw, self.grip.min_w
+	)
+	local y, h = 0, self.ch
+	return x, y, w, h
 end
 
-function scrollbar:grabbar_rect()
-	local bx, bw = bar_segment(self.cw, self.content_length, self.view_length,
-		self.offset, self.min_width)
-	local by, bh = 0, self.ch
-	return bx, by, bw, bh
-end
-
-function scrollbar:grabbar_offset()
-	return bar_offset(self.grabbar.x, self.cw, self.grabbar.w,
+function scrollbar:grip_offset()
+	return grip_offset(self.grip.x, self.cw, self.grip.w,
 		self.content_length, self.view_length, self.step)
+end
+
+function scrollbar:create_grip()
+	local grip = self.grip_class(self.ui, {
+		parent = self,
+	}, self.grip)
+
+	function grip.drag(grip, dx, dy)
+		grip.x = clamp(0, grip.x + dx, self.cw - grip.w)
+		self:transition('offset', self:grip_offset(), 0)
+	end
+
+	return grip
+end
+
+--scroll state
+
+local function clamp_offset(offset, content_length, view_length, step)
+	offset = clamp(offset, 0, math.max(content_length - view_length, 0))
+	return snap_offset(offset, step)
 end
 
 function scrollbar:_clamp_offset()
@@ -94,119 +145,88 @@ function scrollbar:_clamp_offset()
 		self.view_length, self.step)
 end
 
-function scrollbar:get_offset()
-	return self._offset
-end
+scrollbar:stored_property'content_length'
+scrollbar:stored_property'view_length'
+scrollbar:stored_property'offset'
 
-function scrollbar:get_content_length()
-	return self._content_length
-end
-
-function scrollbar:get_view_length()
-	return self._view_length
-end
+function scrollbar:after_set_content_length() self:_clamp_offset() end
+function scrollbar:after_set_view_length() self:_clamp_offset() end
+function scrollbar:after_set_offset() self:_clamp_offset() end
 
 function scrollbar:empty()
 	return self.content_length <= self.view_length
-end
-
-function scrollbar:set_offset(offset)
-	self._offset = offset
-	self:_clamp_offset()
-end
-
-function scrollbar:set_content_length(length)
-	self._content_length = length
-	self:_clamp_offset()
-end
-
-function scrollbar:set_view_length(length)
-	self._view_length = length
-	self:_clamp_offset()
-end
-
-function scrollbar:override_rel_matrix(inherited)
-	local mt = inherited(self)
-	if self._vertical then
-		mt:rotate(math.rad(90)):translate(0, -self.h)
-	end
-	return mt
 end
 
 scrollbar:init_ignore{offset=1, view_length=1, content_length=1}
 
 function scrollbar:after_init(ui, t)
 
+	--init scroll state
 	self._offset = t.offset
 	self._content_length = t.content_length
 	self._view_length = t.view_length
 	self:_clamp_offset()
 
-	self.grabbar = self.grabbar_class(self.ui, {
-		parent = self,
-	}, self.grabbar)
+	self.grip = self:create_grip()
+end
 
-	function self.grabbar.drag(grabbar, dx, dy)
-		grabbar.x = clamp(0, grabbar.x + dx, self.cw - grabbar.w)
-		self:transition('offset', self:grabbar_offset(), 0)
+--scroll API
+
+function scrollbar:scroll_to(offset, duration)
+	if self.visible and self.autohide and not self.grip.active
+		and (not self.autohide_empty or not self:empty())
+	then
+		self:settag(':near', true)
+		self:sync()
+		self:settag(':near', false)
 	end
+	self:transition('offset', offset, duration)
 end
 
-function scrollbar:after_set_parent()
-	if not self.window then return end
-	--autohide hooks
-	self.window:on({'mousemove', self}, function(win, mx, my)
-		self:_window_mousemove(mx, my)
-	end)
-	self.window:on({'mouseleave', self}, function(win)
-		self:_window_mouseleave()
-	end)
+function scrollbar:scroll_to_view(x, w, duration)
+	local sx = self.offset
+	local sw = self.view_length
+	self:scroll_to(clamp(sx, x + w - sw, x), duration)
 end
 
-grabbar.corner_radius = 5
+function scrollbar:scroll(delta, duration)
+	self:scroll_to(self:end_value'offset' + delta, duration)
+end
 
-grabbar.mousedown_activate = true
+function scrollbar:scroll_pages(pages, duration)
+	self:scroll(self.view_length * (pages or 1), duration)
+end
 
-function grabbar:start_drag()
+--mouse interaction: grip dragging
+
+grip.mousedown_activate = true
+
+function grip:start_drag()
 	return self
 end
+
+--mouse interaction: clicking on the track
 
 scrollbar.mousedown_activate = true
 
 --TODO: mousepress or mousehold
 function scrollbar:mousedown(mx, my)
-	local delta = self.click_scroll_length * (mx < self.grabbar.x and -1 or 1)
+	local delta = self.click_scroll_length * (mx < self.grip.x and -1 or 1)
 	self:transition('offset', self:end_value'offset' + delta)
 end
 
-function scrollbar:scroll_to(offset)
-	if self.visible and self.autohide and not self.grabbar.active
-		and (not self.autohide_empty or not self:empty())
-	then
-		self:settag(':near', true)
-		self:sync_styles()
-		self:settag(':near', false)
-	end
-	self:transition('offset', offset)
-end
-
-function scrollbar:scroll(delta)
-	self:scroll_to(self:end_value'offset' + delta)
-end
-
-function scrollbar:scroll_pages(pages)
-	self:scroll(self.view_length * (pages or 1))
-end
+--mouse interaction: proximity showing (autohide feature)
 
 function scrollbar:_check_visible()
 	return self.visible
+		and not self.ui.active_widget
 		and (not self.autohide_empty or not self:empty())
-		and (not self.autohide or self.grabbar.active or 'hit_test')
+		and (not self.autohide or self.grip.active or 'hit_test')
 end
 
 function scrollbar:hit_test_near(mx, my)
 	return box2d.hit(mx, my,
-		box2d.offset(self.autohide_offset, self:content_rect()))
+		box2d.offset(self.autohide_distance, self:content_rect()))
 end
 
 function scrollbar:_window_mousemove(mx, my)
@@ -224,21 +244,31 @@ function scrollbar:_window_mouseleave()
 	end
 end
 
---`vertical` and `horizontal` tags based on `vertical` property
-
-function scrollbar:get_vertical()
-	return self._vertical
+function scrollbar:after_set_parent()
+	if not self.window then return end
+	self.window:on({'mousemove', self}, function(win, mx, my)
+		self:_window_mousemove(mx, my)
+	end)
+	self.window:on({'mouseleave', self}, function(win)
+		self:_window_mouseleave()
+	end)
 end
 
-function scrollbar:set_vertical(vertical)
-	self._vertical = vertical
-	self:settag('vertical', vertical)
-	self:settag('horizontal', not vertical)
+--drawing: rotate matrix for vertical scrollbar
+
+function scrollbar:override_rel_matrix(inherited)
+	local mt = inherited(self)
+	if self._vertical then
+		mt:rotate(math.rad(90)):translate(0, -self.h)
+	end
+	return mt
 end
+
+--drawing: sync grip geometry; sync :near tag.
 
 function scrollbar:after_sync()
-	local g = self.grabbar
-	g.x, g.y, g.w, g.h = self:grabbar_rect()
+	local g = self.grip
+	g.x, g.y, g.w, g.h = self:grip_rect()
 
 	local visible = self:_check_visible()
 	if visible ~= 'hit_test' then
@@ -246,45 +276,55 @@ function scrollbar:after_sync()
 	end
 end
 
-function scrollbar:scroll_to_view(x, w)
-	local sx = self.offset
-	local sw = self.view_length
-	self:scroll_to(clamp(sx, x + w - sw, x))
-end
-
 --scrollbox ------------------------------------------------------------------
 
-ui.scrollbox = ui.layer:subclass'scrollbox'
+local scrollbox = ui.layer:subclass'scrollbox'
+ui.scrollbox = scrollbox
 
-ui.scrollbox.vscrollable = true
-ui.scrollbox.hscrollable = true
-ui.scrollbox.vscroll = 'always' --true/'always', 'near', 'auto', false/'never'
-ui.scrollbox.hscroll = 'always'
-ui.scrollbox.wheel_scroll_length = 50 --pixels per scroll wheel notch
-ui.scrollbox.vscrollbar_class = scrollbar
-ui.scrollbox.hscrollbar_class = scrollbar
-ui.scrollbox.scrollbar_margin_left = 6
-ui.scrollbox.scrollbar_margin_right = 6
-ui.scrollbox.scrollbar_margin_top = 6
-ui.scrollbox.scrollbar_margin_bottom = 6
-ui.scrollbox.content_class = ui.layer
+scrollbox.vscrollbar_class = scrollbar
+scrollbox.hscrollbar_class = scrollbar
 
-function ui.scrollbox:after_init(ui, t)
+--default geometry
 
-	self.content_container = self.ui:layer{
+scrollbox.scrollbar_margin_left = 6
+scrollbox.scrollbar_margin_right = 6
+scrollbox.scrollbar_margin_top = 6
+scrollbox.scrollbar_margin_bottom = 6
+
+--default behavior
+
+scrollbox.vscrollable = true
+scrollbox.hscrollable = true
+scrollbox.vscroll = 'always' --true/'always', 'near', 'auto', false/'never'
+scrollbox.hscroll = 'always'
+scrollbox.wheel_scroll_length = 50 --pixels per scroll wheel notch
+scrollbox.autohide = true --single option for both scrollbars
+
+function scrollbox:after_init(ui, t)
+
+	self.view = self.ui:layer{
 		parent = self, clip_content = true,
 	}
 
-	self.content = self.content_class(self.ui, {
-		tags = 'content',
-		parent = self.content_container,
-		clip_content = true, --for faster bounding box computation
-	}, self.content)
+	if not self.content or not self.content.islayer then
+		self.content = self.ui:layer({
+			tags = 'content',
+			parent = self.view,
+			clip_content = true, --for faster bounding box computation
+		}, self.content)
+	elseif self.content then
+		self.content.parent = self.view
+	end
 
 	self.vscrollbar = self.vscrollbar_class(self.ui, {
-		tags = 'vhscrollbar',
+		tags = 'vscrollbar',
 		parent = self, vertical = true, autohide = self.autohide,
 	}, self.vscrollbar)
+
+	self.hscrollbar = self.hscrollbar_class(self.ui, {
+		tags = 'hscrollbar',
+		parent = self, vertical = false, autohide = self.autohide,
+	}, self.hscrollbar)
 
 	function self.vscrollbar:override_hit_test_near(inherited, mx, my)
 		if inherited(self, mx, my)
@@ -295,11 +335,6 @@ function ui.scrollbox:after_init(ui, t)
 			return self.parent:hit_test(pmx, pmy, 'vscroll') and true
 		end
 	end
-
-	self.hscrollbar = self.hscrollbar_class(self.ui, {
-		tags = 'hscrollbar',
-		parent = self, vertical = false, autohide = self.autohide,
-	}, self.hscrollbar)
 
 	function self.hscrollbar:override_hit_test_near(inherited, mx, my)
 		if inherited(self, mx, my)
@@ -312,43 +347,49 @@ function ui.scrollbox:after_init(ui, t)
 	end
 end
 
-function ui.scrollbox:mousewheel(delta)
+--mouse interaction: wheel scrolling
+
+function scrollbox:mousewheel(delta)
 	self.vscrollbar:scroll(-delta * self.wheel_scroll_length)
 end
 
-function ui.scrollbox:after_sync()
+--drawing
+
+function scrollbox:after_sync()
 	local vs = self.vscrollbar
 	local hs = self.hscrollbar
 	local cw, ch = self:content_size()
 	local sw = vs.h
 	local sh = hs.h
-	local cc = self.content_container
+	local cv = self.view
 	local ct = self.content
+	ct.parent = cv
 	local hm1 = hs.autohide and self.scrollbar_margin_left or 0
 	local hm2 = hs.autohide and self.scrollbar_margin_right or 0
 	local vm1 = vs.autohide and self.scrollbar_margin_top or 0
 	local vm2 = vs.autohide and self.scrollbar_margin_bottom or 0
 	local ctw, cth = select(3, ct:bounding_box())
-	cc.w = cw - (vs.autohide and 0 or sw)
-	cc.h = ch - (hs.autohide and 0 or sh)
+	cv.w = cw - (vs.autohide and 0 or sw)
+	cv.h = ch - (hs.autohide and 0 or sh)
 	vs.visible = self.vscrollable
-	vs.x = cc.w - (vs.autohide and sw or 0) - vm1
+	vs.x = cv.w - (vs.autohide and sw or 0) - vm1
 	vs.y = vm1
-	vs.w = cc.h - (hs.visible and sw or 0) - vm1 - vm2
-	vs.view_length = cc.h
+	vs.w = cv.h - (hs.visible and sw or 0) - vm1 - vm2
+	vs.view_length = cv.h
 	vs.content_length = cth
 	ct.y = -vs.offset
 	hs.visible = self.hscrollable
-	hs.y = cc.h - (hs.autohide and sw or 0) - hm1
+	hs.y = cv.h - (hs.autohide and sw or 0) - hm1
 	hs.x = hm1
-	hs.w = cc.w - (vs.visible and sw or 0) - hm1 - hm2
-	hs.view_length = cc.w
+	hs.w = cv.w - (vs.visible and sw or 0) - hm1 - hm2
+	hs.view_length = cv.w
 	hs.content_length = ctw
 	ct.x = -hs.offset
 end
 
-function ui.scrollbox:scroll_to_view(x, y, w, h)
-	self:sync()
+--scroll API
+
+function scrollbox:scroll_to_view(x, y, w, h)
 	self.hscrollbar:scroll_to_view(x, w)
 	self.vscrollbar:scroll_to_view(y, h)
 end
@@ -357,23 +398,25 @@ end
 
 if not ... then require('ui_demo')(function(ui, win)
 
+	local content = ui:layer{
+		w = 2000,
+		h = 32000,
+		border_width = 20,
+		border_color = '#ff0',
+		background_type = 'gradient',
+		background_colors = {'#ff0', 0.5, '#00f'},
+		background_x2 = 100,
+		background_y2 = 100,
+		background_extend = 'repeat',
+	}
+
 	local sb = ui:scrollbox{
 		tags = 'sb',
 		parent = win,
 		x = 0, y = 0, w = 900, h = 500,
 		background_color = '#111',
-		vscrollbar = {view_length = 100, content_length = 1000, offset = 10},
+		content = content,
 		autohide = true,
 	}
-
-	sb.content.w = 2000
-	sb.content.h = 32000
-	sb.content.border_width = 20
-	sb.content.border_color = '#ff0'
-	sb.content.background_type = 'gradient'
-	sb.content.background_colors = {'#ff0', 0.5, '#00f'}
-	sb.content.background_x2 = 100
-	sb.content.background_y2 = 100
-	sb.content.background_extend = 'repeat'
 
 end) end

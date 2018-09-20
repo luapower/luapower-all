@@ -44,7 +44,7 @@ function pane:cols_w()
 	return w
 end
 
-function pane:after_sync()
+function pane:sync_grid()
 	--sync columns parent and height based on their pane property.
 	local col_h = self.grid.col_h
 	for _,col in ipairs(self.grid.cols) do
@@ -56,9 +56,11 @@ function pane:after_sync()
 	end
 	--sync column positions.
 	self:sync_cols_x()
+end
 
-	self.header_layer:sync()
-	self.rows_layer:sync()
+function pane:sync_header_and_rows()
+	self.header_layer:sync_pane()
+	self.rows_layer:sync_pane()
 end
 
 function pane:col_at_x(x, clamp_left, clamp_right)
@@ -111,9 +113,10 @@ function freeze_pane:max_w()
 	return self.grid.cw - self.grid.splitter.w
 end
 
-function freeze_pane:after_sync()
+function freeze_pane:after_sync_grid()
 	self.h = self.grid.ch
 	self.cw = self:cols_w()
+	self:sync_header_and_rows()
 end
 
 --scroll pane ----------------------------------------------------------------
@@ -138,7 +141,7 @@ function scroll_pane:col_index_range()
 	return self.grid.freeze_col and self.grid.freeze_col + 1 or 1, 1/0
 end
 
-function scroll_pane:after_sync()
+function scroll_pane:after_sync_grid()
 	self.h = self.grid.ch
 	self.content.h = self.h
 	local fp = self.freeze_pane
@@ -146,13 +149,16 @@ function scroll_pane:after_sync()
 	local sw = s.visible and s.w or 0
 	self:transition('x', fp.w + sw)
 	self:transition('w', self.grid.cw - fp.w - sw)
+	self:sync() --because we use self.view.cw and header & rows sync also does.
 	if self.grid.resizing_col then
-		--prevent shrinking to avoid scrolling while resizing
+		--prevent shrinking to avoid scrolling while resizing columns.
 		self.content.w = math.max(self.content.w, self:cols_w())
 	else
-		--prevent going smaller than container to prevent clipping while moving
-		self.content.w = math.max(self:cols_w(), self.content_container.cw)
+		--prevent going smaller than container to prevent clipping the content
+		--while moving columns.
+		self.content.w = math.max(self:cols_w(), self.view.cw)
 	end
+	self:sync_header_and_rows()
 end
 
 --freeze pane splitter -------------------------------------------------------
@@ -185,7 +191,7 @@ function grid:create_splitter()
 	}, self.splitter)
 end
 
-function splitter:sync()
+function splitter:sync_grid()
 	self:transition('x', self.grid.scroll_pane.x - self.w)
 	self.h = self.grid.ch
 end
@@ -308,7 +314,7 @@ function grid:create_header_layer(pane)
 	}, self.header_layer)
 end
 
-function header:after_sync()
+function header:sync_pane()
 	self.visible = self.grid.header_visible
 	self.w = self.pane.content.w
 	self.h = self.grid.col_h
@@ -330,11 +336,12 @@ function grid:create_rows_layer(pane)
 	}, self.rows_layer)
 end
 
-function rows:after_sync()
-	self.y = self.pane.header_layer.visible and self.grid.col_h or 0
+function rows:sync_pane()
+	local header = self.pane.header_layer
+	self.y = header.visible and header.h or 0
 	self.w = self.pane.content.w
-	local ct = self.pane.content_container
-	self.h = (ct and ct.h or self.pane.h) - self.y
+	local cv = self.pane.view
+	self.h = (cv and cv.h or self.pane.h) - self.y
 end
 
 function rows:before_draw_content(cr)
@@ -678,7 +685,7 @@ ui:style('grid_cell :moving', {
 })
 
 ui:style('grid_cell even', {
-	background_color = '#040404',
+	background_color = '#020202',
 })
 
 ui:style('grid_cell :hot', {
@@ -801,7 +808,7 @@ function grid:cell_value(i, col)
 end
 
 function grid:sync_cell(cell, i, col, val)
-	cell:sync_value(i, col, self:cell_value(i, col))
+	cell:sync_value(i, col, val)
 end
 
 function grid:draw_cell(cr, i, col, hot) --TODO: unused
@@ -1104,7 +1111,9 @@ function grid:after_focus()
 	if not self.focused_row_index then
 		self.focused_row_index = 1
 		self.focused_col = self:rel_visible_col(1)
-		self:move('@focus reset select focus scroll pick')
+		self:move'@focus reset select focus scroll pick'
+	else
+		self:move'@focus scroll'
 	end
 end
 
@@ -1123,20 +1132,20 @@ function grid:focus_cell(i, col)
 	end
 end
 
-function grid:scroll_to_view_row(i)
+function grid:scroll_to_view_row(i, duration)
 	local y, h = self:row_yh(i)
-	self.vscrollbar:scroll_to_view(y, h)
+	self.vscrollbar:scroll_to_view(y, h, duration)
 end
 
-function grid:scroll_to_view_col(col)
+function grid:scroll_to_view_col(col, duration)
 	if col and col.pane == self.scroll_pane then
-		col.pane.hscrollbar:scroll_to_view(col.x, col.w)
+		col.pane.hscrollbar:scroll_to_view(col.x, col.w, duration)
 	end
 end
 
-function grid:scroll_to_view_cell(i, col)
-	self:scroll_to_view_row(i)
-	self:scroll_to_view_col(col)
+function grid:scroll_to_view_cell(i, col, duration)
+	self:scroll_to_view_row(i, duration)
+	self:scroll_to_view_col(col, duration)
 end
 
 function grid:select_none()
@@ -1194,6 +1203,8 @@ function grid:move(actions, di, dj)
 			self:pick_row(i, true)
 		elseif action == 'scroll' then
 			self:scroll_to_view_cell(i, col)
+		elseif action == 'scroll/instant' then
+			self:scroll_to_view_cell(i, col, 0)
 		end
 	end
 	if reset_extend then
@@ -1342,7 +1353,7 @@ function grid:create_vscrollbar()
 	}, self.vscrollbar)
 end
 
-function vscrollbar:after_sync()
+function vscrollbar:sync_grid()
 	local m1 = grid.vscrollbar_margin_top
 	local m2 = grid.vscrollbar_margin_bottom
 	local m3 = grid.vscrollbar_margin_right
@@ -1359,11 +1370,12 @@ end
 grid:init_ignore{freeze_col=1}
 
 function grid:after_sync()
+	self:sync_picker_col_size()
 	self:sync_freeze_col()
-	self.freeze_pane:sync()
-	self.scroll_pane:sync()
-	self.splitter:sync()
-	self.vscrollbar:sync()
+	self.freeze_pane:sync_grid()
+	self.scroll_pane:sync_grid()
+	self.splitter:sync_grid()
+	self.vscrollbar:sync_grid()
 end
 
 function grid:after_init(ui, t)
@@ -1375,7 +1387,7 @@ function grid:after_init(ui, t)
 	self.cols = {}
 	if cols then
 		for i,col in ipairs(cols) do
-			push(self.cols, self:create_col(col, 1))
+			push(self.cols, self:create_col(col, i))
 		end
 	end
 	self.freeze_pane = self:create_freeze_pane(self.freeze_pane)
@@ -1443,12 +1455,14 @@ function grid:after_init()
 	end
 end
 
---metrics
+--geometry
 
-function grid:after_sync()
-	if not self.dropdown then return end
+--return the picker size so that the dropdown can resize the popup window
+--before it is shown (which is why we can't just set the size on sync).
+function grid:sync_dropdown()
+	--update styles first because we use self's paddings.
+	self:update_styles()
 
-	--sync size
 	local min_w = self.dropdown.w
 	local w = min_w
 	local noscroll_h = self:rows_h()
@@ -1458,7 +1472,13 @@ function grid:after_sync()
 	local h = math.min(noscroll_h, max_h)
 	self.w, self.h = w, h
 
-	--sync columns size
+	self:sync() --sync so that vscrollbar is synced so that scroll works.
+	self:move'@focus scroll/instant'
+
+	return w, h
+end
+
+function grid:sync_picker_col_size()
 	if #self.cols == 1 then
 		local vci = self.pick_col_index
 		local tci = self.pick_text_col_index or vci
@@ -1482,10 +1502,14 @@ function grid:pick_row(i, close)
 	self.dropdown:value_picked(val, text, close)
 end
 
+function grid:_pick_row(i, close)
+	self:move('reset select focus scroll pick'..(close and '/close' or ''), i)
+end
+
 function grid:pick_value(val, close)
 	local i = self:lookup(val, self.cols[self.pick_col_index])
 	if not i then return end
-	self:move('reset select focus scroll pick'..(close and '/close' or ''), i)
+	self:_pick_row(i, close)
 end
 
 --demo -----------------------------------------------------------------------

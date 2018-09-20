@@ -8,7 +8,7 @@ local glue = require'glue'
 local dropdown = ui.layer:subclass'dropdown'
 ui.dropdown = dropdown
 
---default metrics
+--default geometry
 
 dropdown.w = 180
 dropdown.h = 24
@@ -17,7 +17,7 @@ dropdown.text_align = 'left'
 dropdown.padding_left = 4
 dropdown.padding_right = 0
 
---value property
+--value property/state
 
 --allow setting and typing values outside of the picker's range.
 dropdown.allow_any_value = false
@@ -42,13 +42,11 @@ function dropdown:set_value(val)
 	end
 end
 
---API for the picker to signal that a value was picked.
+--called by the picker to signal that a value was picked.
 function dropdown:value_picked(val, text, close)
 	self._value = val
 	self.editbox.text = text or self:display_value(val)
-	self.ui:runafter(0, function() --TODO: remove this hack
-		self.editbox:invalidate()
-	end)
+	self.editbox:invalidate()
 	if close then
 		self:close()
 	end
@@ -69,7 +67,7 @@ function dropdown:close()
 	self.popup:hide()
 end
 
---editable state
+--editable property
 
 function dropdown:get_editable()
 	return self.editbox.focusable
@@ -98,9 +96,8 @@ function dropdown:create_editbox()
 	}, self.editbox)
 end
 
-function editbox:after_sync()
+function editbox:sync_dropdown()
 	local b = self.dropdown.button
-	b:sync()
 	self.w = self.dropdown.cw - (b.visible and b.w or 0)
 	self.h = self.dropdown.ch
 end
@@ -146,7 +143,7 @@ button.font = 'IonIcons,16'
 button.open_text = '\u{f280}'
 button.close_text = '\u{f286}'
 
-function button:before_sync()
+function button:sync_dropdown()
 	self.h = self.dropdown.ch
 	self.w = math.floor(self.h * .9)
 	self.x = self.dropdown.cw - self.w
@@ -168,10 +165,8 @@ function dropdown:create_popup()
 end
 
 function popup:before_shown()
-	local picker = self.dropdown.picker
-	picker:sync()
 	self.x, self.y = self.dropdown:to_content(0, self.dropdown.h)
-	self.cw, self.ch = picker.w, picker.h
+	self.cw, self.ch = self.dropdown.picker:sync_dropdown()
 end
 
 function popup:override_mousedown_autohide(inherited, ...)
@@ -206,6 +201,7 @@ function dropdown:after_init(ui, t)
 	self.picker = self:create_picker()
 	self.editable = t.editable
 	self.picker:focus() --picks the first value from the picker!
+	self.picker:sync_dropdown() --sync to dropdown so that scroll works.
 	self.value = t.value
 end
 
@@ -214,6 +210,13 @@ function dropdown:before_free()
 		self.popup:free()
 		self.popup = false
 	end
+end
+
+--sync'ing
+
+function dropdown:after_sync()
+	self.button:sync_dropdown()
+	self.editbox:sync_dropdown()
 end
 
 --keyboard interaction

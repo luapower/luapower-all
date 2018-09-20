@@ -40,6 +40,10 @@ function popup:after_set_parent(parent)
 	parent.window:on({'mousedown', self}, function(win, button, mx, my)
 		if self.ui and self.autohide and self.visible then
 			self:mousedown_autohide(button, mx, my)
+			--TODO: find out why this needs to be async.
+			self.ui:runafter(0, function()
+				parent:invalidate()
+			end)
 		end
 	end)
 end
