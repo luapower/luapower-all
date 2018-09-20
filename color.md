@@ -12,6 +12,7 @@ Quick facts:
   * color spaces: `'hsl'`, `'hsv'`, `'rgb'`.
   * `r, g, b, s, L, v` are in `0..1` range, `h` is in `0..360` range.
   * color formats: `'#'`, `'#rrggbbaa'`, `'#rrggbb'`, `'#rgba'`, `'#rgb'`,
+  `'#g'`, `#gg`
   `'rgba'`, `'rgb'`, `'hsla'`, `'hsl'`, `'hsla%'`, `'hsl%'`.
 
 ## API

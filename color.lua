@@ -150,6 +150,8 @@ end
 --parsing --------------------------------------------------------------------
 
 local hex = {
+	[2] = {'#g',        'rgb'},
+	[3] = {'#gg',       'rgb'},
 	[4] = {'#rgb',      'rgb'},
 	[5] = {'#rgba',     'rgb'},
 	[7] = {'#rrggbb',   'rgb'},
@@ -180,6 +182,14 @@ end
 local parsers = {}
 
 local function parse(s)
+	local g = tonumber(s:sub(2, 2), 16)
+	if not g then return end
+	g = (g * 16 + g) / 255
+	return g, g, g
+end
+parsers['#g']  = parse
+
+local function parse(s)
 	local r = tonumber(s:sub(2, 2), 16)
 	local g = tonumber(s:sub(3, 3), 16)
 	local b = tonumber(s:sub(4, 4), 16)
@@ -197,6 +207,14 @@ local function parse(s)
 end
 parsers['#rgb']  = parse
 parsers['#rgba'] = parse
+
+local function parse(s)
+	local g = tonumber(s:sub(2, 3), 16)
+	if not g then return end
+	g = g / 255
+	return g, g, g
+end
+parsers['#gg'] = parse
 
 local function parse(s)
 	local r = tonumber(s:sub(2, 3), 16)
@@ -511,6 +529,11 @@ if not ... then
 	print(parse'#808080')
 	print(parse'#0000')
 	print(parse'#80808080')
+	print(parse'#80')
+	print(parse'#7f')
+	print(parse'#88')
+	print(parse'#8')
+	print()
 	print(parse'rgb (128, 128, 128      )')
 	print(parse'rgba(128, 128, 128, 0.42)')
 	print(parse'rgba(128, 128, 128, 0.42)')
@@ -521,6 +544,7 @@ if not ... then
 	print(parse'hsla(360, .432,  .432, 0.42   )')
 	print(parse'hsla(180, 1, .5, .5)')
 	print(parse'rgba(128, 128, 128, .5)')
+	print()
 	print(format(nil,       'rgb', .533, .533, .533, .533))
 	print(format('#rrggbb', 'rgb', .533, .533, .533, .533))
 	print(format('#rgba',   'rgb', .533, .533, .533, .533))
