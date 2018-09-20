@@ -434,6 +434,9 @@ function tr:shape_word(
 		--for positioning in horizontal flow
 		advance_x = ax,
 		wrap_advance_x = wx,
+		--for positioning in multi-line flow
+		ascent = font.ascent,
+		descent = font.descent,
 		--for lru cache
 		mem_size =
 			224 + hb_glyph_size * math.max(len, glyph_count) --hb_buffer_t[]
@@ -1199,19 +1202,17 @@ function segments:layout(x, y, w, h, halign, valign)
 		for _,seg in ipairs(line) do
 			--compute line's vertical metrics.
 			local run = seg.glyph_run
-			local ascent = run.font.ascent
-			local descent = run.font.descent
-			line.ascent = math.max(line.ascent, ascent)
-			line.descent = math.min(line.descent, descent)
-			local run_h = ascent - descent
+			line.ascent = math.max(line.ascent, run.ascent)
+			line.descent = math.min(line.descent, run.descent)
+			local run_h = run.ascent - run.descent
 			local line_spacing = seg.text_run.line_spacing or 1
 			local half_line_gap = run_h * (line_spacing - 1) / 2
 			line.spacing_ascent
 				= math.max(line.spacing_ascent,
-					(ascent + half_line_gap) * ascent_factor)
+					(run.ascent + half_line_gap) * ascent_factor)
 			line.spacing_descent
 				= math.min(line.spacing_descent,
-					(descent - half_line_gap) * descent_factor)
+					(run.descent - half_line_gap) * descent_factor)
 			--set segments `x` to be relative to the line's origin.
 			seg.x = ax + seg.x
 			ax = ax + seg.advance_x

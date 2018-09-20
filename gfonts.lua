@@ -113,15 +113,16 @@ end
 local function closest_weight_font(fonts, weight)
 	if #fonts == 0 then return end
 	if #fonts == 1 then return fonts[1] end
+	if weight <= fonts[1].weight then return fonts[1] end
+	if weight >= fonts[#fonts].weight then return fonts[#fonts] end
 	local w0 = fonts[1].weight
-	if weight <= w0 then return fonts[1] end
 	for i=2,#fonts do
 		local w1 = fonts[i].weight
 		if w1 >= weight then
 			if w1 - weight < weight - w0 then
-				return fonts[i], w1
+				return fonts[i]
 			else
-				return fonts[i-1], w0
+				return fonts[i-1]
 			end
 		end
 		w0 = w1
@@ -138,6 +139,7 @@ local weights = {
 	semibold = 600,
 	bold = 700,
 	extrabold = 800,
+	heavy = 900,
 }
 
 function gfonts.font_file(name, weight, style, use_bundle)
@@ -154,8 +156,9 @@ function gfonts.font_file(name, weight, style, use_bundle)
 	if not styles then return nil end
 	local fonts = styles[style]
 	if not fonts then return nil end
-	local font, weight = closest_weight_font(fonts, weight)
-	return font and gfonts.root_dir .. '/' .. font.path, weight
+	local font = closest_weight_font(fonts, weight)
+	if not font then return end
+	return gfonts.root_dir .. '/' .. font.path, font.weight
 end
 
 if not ... then
