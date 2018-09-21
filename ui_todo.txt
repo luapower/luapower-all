@@ -6,12 +6,18 @@ LOW-LEVEL --------------------------------------------------------------------
 
 NW ---------------------------------------------------------------------------
 
-- bug when dragging the title bar
+- BUG when dragging the title bar.
+- BUG parent doesn't get repainted right after closing a child popup.
+- FEAT get a window's children in z-order so we can forward mouse wheel events
+to non-activable children.
 
 UI ---------------------------------------------------------------------------
 
-- design: freeing self inside events
-- design: widget module autoloading vs css decl. order conflict
+- design bug: make transitions work on invisible widgets and windows.
+	- manifest: page-up/page-down on a dropdown while pickup is closed doesn't
+	update the offset because it's updated with a transition.
+- design bug: widget module autoloading vs css decl. order conflict.
+- design bug: allow freeing self inside events (with a double-free barrier).
 
 EDITBOX ----------------------------------------------------------------------
 
@@ -32,22 +38,26 @@ EDITBOX ----------------------------------------------------------------------
 
 DROPDOWN ---------------------------------------------------------------------
 
-- maskedit dropdown with calendar
+- maskedit dropdown with calendar.
+
+- autocomplete mode: while typing, the pickup grid filters the results
+	and the editbox contain the rest of the text selected.
 
 TABLIST ----------------------------------------------------------------------
 
-- x position is off when moving tabs on a tablist with too many tabs
 - horizontal/bottom
 - vertical left/right
 
 BUTTON -----------------------------------------------------------------------
 
 - profiles: text, outlined, contained, toggle
+
 - icon, icon_align left/right
 
 CHECKBOX ---------------------------------------------------------------------
 
 - tristate
+
 - children, indent
 
 SLIDER -----------------------------------------------------------------------

@@ -1,7 +1,7 @@
 
 local time = require'time'
 local ui = require'ui'
-local win = ui:window{x = 840, y = 300, cw = 900, ch = 500, visible = false}
+local win = ui:window{x = 700, y = 100, cw = 1200, ch = 700, visible = false}
 
 --ui.maxfps = 1/0
 

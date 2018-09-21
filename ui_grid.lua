@@ -126,7 +126,7 @@ grid.scroll_pane_class = scroll_pane
 scroll_pane:inherit(pane)
 
 scroll_pane.vscrollable = false
-scroll_pane.scrollbar_margin_right = 12
+scroll_pane.hscrollbar_margin_right = 12 --TODO: don't go over the vscrollbar
 
 function grid:create_scroll_pane(freeze_pane)
 	return self.scroll_pane_class(self.ui, {
@@ -1340,23 +1340,22 @@ end
 local vscrollbar = ui.scrollbar:subclass'grid_vscrollbar'
 grid.vscrollbar_class = vscrollbar
 
-grid.vscrollbar_margin_top = 6
-grid.vscrollbar_margin_bottom = 6
-grid.vscrollbar_margin_right = 6
+grid.vscrollbar_margin_right = 0
 
 function grid:create_vscrollbar()
 	return self.vscrollbar_class(self.ui, {
 		parent = self,
 		grid = self,
 		vertical = true,
-		step = 1, --no blurred of text
+		step = 1, --avoid blurred text
 	}, self.vscrollbar)
 end
 
 function vscrollbar:sync_grid()
-	local m1 = grid.vscrollbar_margin_top
-	local m2 = grid.vscrollbar_margin_bottom
-	local m3 = grid.vscrollbar_margin_right
+	local m = grid.vscrollbar_margin or 0
+	local m1 = grid.vscrollbar_margin_top or m
+	local m2 = grid.vscrollbar_margin_bottom or m
+	local m3 = grid.vscrollbar_margin_right or m
 	local sp = self.grid.scroll_pane
 	self.y = (sp.header_layer.visible and self.grid.col_h or 0) + m1
 	self.x = self.grid.cw - self.h - m3
@@ -1520,10 +1519,11 @@ if not ... then require('ui_demo')(function(ui, win)
 
 	local g = grid(ui, {
 		tags = 'g',
-		x = 20,
-		y = 20,
-		w = 860,
-		h = 460,
+		w = 900, h = 500,
+		--x = 20,
+		--y = 20,
+		--w = 860,
+		--h = 460,
 		row_count = 1e6,
 		parent = win,
 		--clip_content = true,

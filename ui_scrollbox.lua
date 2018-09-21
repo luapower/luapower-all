@@ -17,16 +17,22 @@ scrollbar.grip_class = grip
 
 --default geometry
 
-scrollbar.w = 10
-scrollbar.h = 10
+scrollbar.w = 12
+scrollbar.h = 12
 grip.min_w = 20
-scrollbar.corner_radius = 5
-grip.corner_radius = 5
+
+ui:style('scrollbar autohide, scrollbar autohide > scrollbar_grip', {
+	corner_radius = 100,
+})
 
 --default colors
 
 scrollbar.background_color = '#222'
 grip.background_color = '#ccc'
+
+ui:style('scrollbar_grip :active', {
+	background_color = '#fff',
+})
 
 --default initial state
 
@@ -38,7 +44,7 @@ scrollbar.offset = 0  --in 0..content_length range
 
 scrollbar.vertical = true --scrollbar is rotated 90deg to make it vertical
 scrollbar.step = false --no snapping
-scrollbar.autohide = true --hide when mouse is not near the scrollbar
+scrollbar.autohide = false --hide when mouse is not near the scrollbar
 scrollbar.autohide_empty = true --hide when content is smaller than the view
 scrollbar.autohide_distance = 20 --distance around the scrollbar
 scrollbar.click_scroll_length = 300
@@ -46,27 +52,28 @@ scrollbar.click_scroll_length = 300
 
 --fade animation
 
-scrollbar.opacity = 0
+scrollbar.opacity = 0 --prevent fade out on init
 
 ui:style('scrollbar', {
-	--fade out
+	opacity = 1,
+})
+
+--fade out
+ui:style('scrollbar autohide, scrollbar :empty', {
+	opacity = 0,
 	transition_opacity = true,
 	transition_delay_opacity = .5,
 	transition_duration_opacity = 1,
 	transition_blend_opacity = 'wait',
 })
 
-ui:style('scrollbar :near', {
-	--fade in
+--fade in
+ui:style('scrollbar autohide :near', {
 	opacity = .5,
 	transition_opacity = true,
 	transition_delay_opacity = 0,
 	transition_duration_opacity = .5,
 	transition_blend_opacity = 'replace',
-})
-
-ui:style('scrollbar :active', {
-	opacity = .5,
 })
 
 --smooth scrolling
@@ -79,12 +86,10 @@ ui:style('scrollbar', {
 --vertical property and tags
 
 scrollbar:stored_property'vertical'
-
 function scrollbar:after_set_vertical(vertical)
 	self:settag('vertical', vertical)
 	self:settag('horizontal', not vertical)
 end
-
 scrollbar:instance_only'vertical'
 
 --grip geometry
@@ -140,42 +145,50 @@ local function clamp_offset(offset, content_length, view_length, step)
 	return snap_offset(offset, step)
 end
 
-function scrollbar:_clamp_offset()
+function scrollbar:_adjust()
 	self._offset = clamp_offset(self._offset, self.content_length,
 		self.view_length, self.step)
+	self:settag(':empty', self:empty())
 end
 
 scrollbar:stored_property'content_length'
 scrollbar:stored_property'view_length'
 scrollbar:stored_property'offset'
 
-function scrollbar:after_set_content_length() self:_clamp_offset() end
-function scrollbar:after_set_view_length() self:_clamp_offset() end
-function scrollbar:after_set_offset() self:_clamp_offset() end
+function scrollbar:after_set_content_length() self:_adjust() end
+function scrollbar:after_set_view_length() self:_adjust() end
+function scrollbar:after_set_offset() self:_adjust() end
+
+function scrollbar:reset(content_length, view_length, offset)
+	self._content_length = content_length
+	self._view_length = view_length
+	self._offset = offset
+	self:_adjust()
+end
 
 function scrollbar:empty()
 	return self.content_length <= self.view_length
 end
 
-scrollbar:init_ignore{offset=1, view_length=1, content_length=1}
+scrollbar:init_ignore{content_length=1, view_length=1, offset=1}
 
 function scrollbar:after_init(ui, t)
-
-	--init scroll state
-	self._offset = t.offset
-	self._content_length = t.content_length
-	self._view_length = t.view_length
-	self:_clamp_offset()
-
+	self:reset(t.content_length, t.view_length, t.offset)
 	self.grip = self:create_grip()
+end
+
+--visibility state
+
+function scrollbar:check_visible(mx, my, brk)
+	return self.visible
+		and (not self.autohide_empty or not self:empty())
+		and (not self.autohide or self:check_visible_autohide(mx, my, brk))
 end
 
 --scroll API
 
 function scrollbar:scroll_to(offset, duration)
-	if self.visible and self.autohide and not self.grip.active
-		and (not self.autohide_empty or not self:empty())
-	then
+	if self:check_visible() == 'hit_test' then
 		self:settag(':near', true)
 		self:sync()
 		self:settag(':near', false)
@@ -184,7 +197,7 @@ function scrollbar:scroll_to(offset, duration)
 end
 
 function scrollbar:scroll_to_view(x, w, duration)
-	local sx = self.offset
+	local sx = self:end_value'offset'
 	local sw = self.view_length
 	self:scroll_to(clamp(sx, x + w - sw, x), duration)
 end
@@ -215,42 +228,37 @@ function scrollbar:mousedown(mx, my)
 	self:transition('offset', self:end_value'offset' + delta)
 end
 
---mouse interaction: proximity showing (autohide feature)
+--autohide feature
 
-function scrollbar:_check_visible()
-	return self.visible
-		and not self.ui.active_widget
-		and (not self.autohide_empty or not self:empty())
-		and (not self.autohide or self.grip.active or 'hit_test')
+scrollbar:stored_property'autohide'
+function scrollbar:after_set_autohide(autohide)
+	self:settag('autohide', autohide)
 end
+scrollbar:instance_only'autohide'
 
-function scrollbar:hit_test_near(mx, my)
+function scrollbar:hit_test_near(mx, my) --mx,my in window space
+	if not mx then
+		return 'hit_test'
+	end
+	mx, my = self:from_window(mx, my)
 	return box2d.hit(mx, my,
 		box2d.offset(self.autohide_distance, self:content_rect()))
 end
 
-function scrollbar:_window_mousemove(mx, my)
-	local visible = self:_check_visible()
-	if visible == 'hit_test' then
-		local near = self:hit_test_near(self:from_window(mx, my))
-		self:settag(':near', near)
-	end
-end
-
-function scrollbar:_window_mouseleave()
-	local visible = self:_check_visible()
-	if visible == 'hit_test' then
-		self:settag(':near', false)
-	end
+function scrollbar:check_visible_autohide(mx, my, brk)
+	return self.grip.active
+		or (not self.ui.active_widget and self:hit_test_near(mx, my))
 end
 
 function scrollbar:after_set_parent()
 	if not self.window then return end
 	self.window:on({'mousemove', self}, function(win, mx, my)
-		self:_window_mousemove(mx, my)
+		self:settag(':near', self:check_visible(mx, my))
 	end)
 	self.window:on({'mouseleave', self}, function(win)
-		self:_window_mouseleave()
+		local visible = self:check_visible()
+		if visible == 'hit_test' then visible = false end
+		self:settag(':near', visible)
 	end)
 end
 
@@ -270,7 +278,7 @@ function scrollbar:after_sync()
 	local g = self.grip
 	g.x, g.y, g.w, g.h = self:grip_rect()
 
-	local visible = self:_check_visible()
+	local visible = self:check_visible()
 	if visible ~= 'hit_test' then
 		self:settag(':near', visible)
 	end
@@ -286,19 +294,17 @@ scrollbox.hscrollbar_class = scrollbar
 
 --default geometry
 
-scrollbox.scrollbar_margin_left = 6
-scrollbox.scrollbar_margin_right = 6
-scrollbox.scrollbar_margin_top = 6
-scrollbox.scrollbar_margin_bottom = 6
+scrollbox.scrollbar = {
+	margin = 0,
+}
 
 --default behavior
 
 scrollbox.vscrollable = true
 scrollbox.hscrollable = true
-scrollbox.vscroll = 'always' --true/'always', 'near', 'auto', false/'never'
-scrollbox.hscroll = 'always'
 scrollbox.wheel_scroll_length = 50 --pixels per scroll wheel notch
-scrollbox.autohide = true --single option for both scrollbars
+
+scrollbox:init_ignore{scrollbar=1}
 
 function scrollbox:after_init(ui, t)
 
@@ -318,32 +324,29 @@ function scrollbox:after_init(ui, t)
 
 	self.vscrollbar = self.vscrollbar_class(self.ui, {
 		tags = 'vscrollbar',
-		parent = self, vertical = true, autohide = self.autohide,
-	}, self.vscrollbar)
+		parent = self,
+		scrollbox = self,
+		vertical = true,
+	}, self.super.scrollbar, t.scrollbar, self.vscrollbar)
 
 	self.hscrollbar = self.hscrollbar_class(self.ui, {
 		tags = 'hscrollbar',
-		parent = self, vertical = false, autohide = self.autohide,
-	}, self.hscrollbar)
+		parent = self,
+		scrollbox = self,
+		vertical = false,
+	}, self.super.scrollbar, t.scrollbar, self.hscrollbar)
 
-	function self.vscrollbar:override_hit_test_near(inherited, mx, my)
-		if inherited(self, mx, my)
-			or self.parent.hscrollbar.super.hit_test_near(self.parent.hscrollbar,
-				self:to_other(self.parent.hscrollbar, mx, my))
-		then
-			local pmx, pmy = self.parent:to_parent(self:to_parent(mx, my))
-			return self.parent:hit_test(pmx, pmy, 'vscroll') and true
-		end
+	--make autohide scrollbars to show and hide in sync.
+	--TODO: remove the brk hack.
+	local vs = self.vscrollbar
+	local hs = self.hscrollbar
+	function vs:override_check_visible_autohide(inherited, mx, my, brk)
+		return inherited(self, mx, my)
+			or (not brk and hs.autohide and hs:check_visible(mx, my, true))
 	end
-
-	function self.hscrollbar:override_hit_test_near(inherited, mx, my)
-		if inherited(self, mx, my)
-			or self.parent.vscrollbar.super.hit_test_near(self.parent.vscrollbar,
-				self:to_other(self.parent.vscrollbar, mx, my))
-		then
-			local pmx, pmy = self.parent:to_parent(self:to_parent(mx, my))
-			return self.parent:hit_test(pmx, pmy, 'hscroll') and true
-		end
+	function hs:override_check_visible_autohide(inherited, mx, my, brk)
+		return inherited(self, mx, my)
+			or (not brk and vs.autohide and vs:check_visible(mx, my, true))
 	end
 end
 
@@ -356,35 +359,77 @@ end
 --drawing
 
 function scrollbox:after_sync()
+
 	local vs = self.vscrollbar
 	local hs = self.hscrollbar
-	local cw, ch = self:content_size()
+	local view = self.view
+	local content = self.content
+	content.parent = view
+
+	local _, _, cw, ch = content:bounding_box()
+	local w, h = self:content_size()
 	local sw = vs.h
 	local sh = hs.h
-	local cv = self.view
-	local ct = self.content
-	ct.parent = cv
-	local hm1 = hs.autohide and self.scrollbar_margin_left or 0
-	local hm2 = hs.autohide and self.scrollbar_margin_right or 0
-	local vm1 = vs.autohide and self.scrollbar_margin_top or 0
-	local vm2 = vs.autohide and self.scrollbar_margin_bottom or 0
-	local ctw, cth = select(3, ct:bounding_box())
-	cv.w = cw - (vs.autohide and 0 or sw)
-	cv.h = ch - (hs.autohide and 0 or sh)
-	vs.visible = self.vscrollable
-	vs.x = cv.w - (vs.autohide and sw or 0) - vm1
+
+	--compute view dimensions by deciding which scrollbar must be hidden,
+	--as in does not occupy an area outside from the view.
+	local hide_vs, hide_hs
+
+	local hide_vs = not vs.visible or vs.autohide
+		or (vs.autohide_empty and ch <= h and (ch <= h - sh or 'depends'))
+
+	local hide_hs = not hs.visible or hs.autohide
+		or (hs.autohide_empty and cw <= w and (cw <= w - sw or 'depends'))
+
+	if    (hide_vs == 'depends' and not hide_hs)
+		or (hide_hs == 'depends' and not hide_vs)
+	then
+		hide_vs = false
+		hide_hs = false
+	end
+
+	view.w = w - (hide_vs and 0 or sw)
+	view.h = h - (hide_hs and 0 or sh)
+
+	--reset the scrollbars state.
+	hs:reset(cw, view.w, hs.offset)
+	vs:reset(ch, view.h, vs.offset)
+
+	--scroll the content layer.
+	content.y = -vs.offset
+	content.x = -hs.offset
+
+	--compute scrollbar dimensions.
+	vs.w = view.h --.w is its height!
+	hs.w = view.w
+
+	--shorten the dimensions if scrollbars are overlapping.
+	--NOTE: scrollbars state must be already set since we call `empty()`.
+	local hs_overlaps = hs.visible and hs.autohide
+		and (not hs.autohide_empty or not hs:empty())
+
+	local vs_overlaps = vs.visible and vs.autohide
+		and (not vs.autohide_empty or not vs:empty())
+
+	vs.w = vs.w - (vs.autohide and hs_overlaps and sh or 0)
+	hs.w = hs.w - (hs.autohide and vs_overlaps and sw or 0)
+
+	--compute scrollbar positions.
+	vs.x = view.w - (vs.autohide and sw or 0)
+	hs.y = view.h - (hs.autohide and sh or 0)
+
+	--apply margins to scrollbar positions and dimensions.
+	local hm1 = hs.margin_left or hs.margin
+	local hm2 = hs.margin_right or hs.margin
+	local vm1 = vs.margin_top or vs.margin
+	local vm2 = vs.margin_bottom or vs.margin
+
+	vs.x = vs.x - vm1
+	vs.w = vs.w - vm1 - vm2
+	hs.y = hs.y - hm1
+	hs.w = hs.w - hm1 - hm2
 	vs.y = vm1
-	vs.w = cv.h - (hs.visible and sw or 0) - vm1 - vm2
-	vs.view_length = cv.h
-	vs.content_length = cth
-	ct.y = -vs.offset
-	hs.visible = self.hscrollable
-	hs.y = cv.h - (hs.autohide and sw or 0) - hm1
 	hs.x = hm1
-	hs.w = cv.w - (vs.visible and sw or 0) - hm1 - hm2
-	hs.view_length = cv.w
-	hs.content_length = ctw
-	ct.x = -hs.offset
 end
 
 --scroll API
@@ -398,25 +443,122 @@ end
 
 if not ... then require('ui_demo')(function(ui, win)
 
-	local content = ui:layer{
-		w = 2000,
-		h = 32000,
-		border_width = 20,
-		border_color = '#ff0',
-		background_type = 'gradient',
-		background_colors = {'#ff0', 0.5, '#00f'},
-		background_x2 = 100,
-		background_y2 = 100,
-		background_extend = 'repeat',
-	}
+	ui:style('scrollbox', {
+		border_width = 1,
+		border_color = '#f00',
+		border_offset = 1,
+	})
 
-	local sb = ui:scrollbox{
-		tags = 'sb',
+	local function mkcontent(w, h)
+		return ui:layer{
+			w = w or 2000,
+			h = h or 32000,
+			border_width = 20,
+			border_color = '#ff0',
+			background_type = 'gradient',
+			background_colors = {'#ff0', 0.5, '#00f'},
+			background_x2 = 100,
+			background_y2 = 100,
+			background_extend = 'repeat',
+		}
+	end
+
+	local x, y = 10, 10
+	local function xy()
+		x = x + 200
+		if x + 200 > win.cw then
+			x = 10
+			y = y + 200
+		end
+	end
+
+	--not autohide, custom bar metrics
+	ui:scrollbox{
 		parent = win,
-		x = 0, y = 0, w = 900, h = 500,
-		background_color = '#111',
-		content = content,
+		x = x, y = y, w = 180, h = 180,
+		content = mkcontent(),
+		vscrollbar = {h = 20},
+		hscrollbar = {h = 30},
+	}
+	xy()
+
+	--not autohide, autohide_empty vertical
+	ui:scrollbox{
+		parent = win,
+		x = x, y = y, w = 180, h = 180,
+		content = mkcontent(nil, 165),
+	}
+	xy()
+
+	--not autohide, autohide_empty horizontal
+	ui:scrollbox{
+		parent = win,
+		x = x, y = y, w = 180, h = 180,
+		content = mkcontent(165),
 		autohide = true,
 	}
+	xy()
+
+	--not autohide, autohide_empty horizontal -> vertical
+	ui:scrollbox{
+		parent = win,
+		x = x, y = y, w = 180, h = 180,
+		content = mkcontent(185, 175),
+		autohide = true,
+	}
+	xy()
+
+	--not autohide, autohide_empty vertical -> horizontal
+	ui:scrollbox{
+		parent = win,
+		x = x, y = y, w = 180, h = 180,
+		content = mkcontent(175, 185),
+		autohide = true,
+	}
+	xy()
+
+	--autohide
+	ui:scrollbox{
+		parent = win,
+		x = x, y = y, w = 180, h = 180,
+		content = mkcontent(),
+		scrollbar = {
+			autohide = true,
+		},
+	}
+	xy()
+
+	--autohide, autohide_empty vertical
+	ui:scrollbox{
+		parent = win,
+		x = x, y = y, w = 180, h = 180,
+		content = mkcontent(nil, 175),
+		scrollbar = {
+			autohide = true,
+		}
+	}
+	xy()
+
+	--autohide, autohide_empty horizontal
+	ui:scrollbox{
+		parent = win,
+		x = x, y = y, w = 180, h = 180,
+		content = mkcontent(175),
+		scrollbar = {
+			autohide = true,
+		}
+	}
+	xy()
+
+	--autohide horizontal only
+	ui:scrollbox{
+		parent = win,
+		x = x, y = y, w = 180, h = 180,
+		content = mkcontent(175),
+		hscrollbar = {
+			autohide = true,
+		}
+	}
+	xy()
 
 end) end

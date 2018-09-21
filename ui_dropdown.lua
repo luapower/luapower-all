@@ -14,7 +14,7 @@ dropdown.w = 180
 dropdown.h = 24
 --these must match grid's metrics.
 dropdown.text_align = 'left'
-dropdown.padding_left = 4
+dropdown.padding_left = 2
 dropdown.padding_right = 0
 
 --value property/state
@@ -112,7 +112,7 @@ function editbox:lostfocus()
 end
 
 --keys that we steal from the editbox and forward to the dropdown.
-local fw_keys = {enter=1, esc=1, up=1, down=1, pageup=1, pagedown=1}
+local fw_keys = {enter=1, esc=1, up=1, down=1}
 
 function editbox:override_keypress(inherited, key)
 	if fw_keys[key] then
