@@ -1415,8 +1415,10 @@ local Rendering = {}
 function rendering:_repaint(hdc)
 	if not self.frontend:events() then
 		self._invalid = true
+		self._unsynced = true
 	else
 		self._invalid = false
+		self._unsynced = false
 		self:_paint_bitmap(hdc)
 		self:_paint_gl(hdc)
 	end
@@ -1565,23 +1567,8 @@ function window:_update_layered()
 end
 
 function window:_repaint_layered()
-	if not self.win.visible then return end
 	self.frontend:_backend_repaint()
 	self:_update_layered()
-end
-
-function rendering:repaint()
-	if not self._invalid then return end
-	if self._layered then
-		self:_repaint_layered()
-	else
-		self.win:invalidate()
-		self.win:update()
-	end
-end
-
-function window:invalidate()
-	self._invalid = true
 end
 
 --clear the bitmap's pixels and update the layered window.
@@ -1589,6 +1576,24 @@ function window:_clear_layered()
 	if not self._bitmap or not self._layered then return end
 	self._bitmap:clear()
 	self:_update_layered()
+end
+
+function rendering:repaint() --called by the main loop, not by Windows.
+	if not self._invalid then return end
+	if self._unsynced and not self.win.visible then
+		self._unsynced = false
+		self.frontend:_backend_sync()
+	elseif self._layered then
+		self:_repaint_layered()
+	else
+		self.win:invalidate()
+		self.win:update() --force WM_PAINT
+	end
+end
+
+function window:invalidate()
+	self._invalid = true
+	self._unsynced = true
 end
 
 window._bitmap_size = window.get_client_size
@@ -1645,7 +1650,9 @@ function view:set_rect(x, y, w, h)
 	self.win.rect = pack_rect(nil, x, y, w, h)
 end
 
-view.invalidate = rendering._invalidate
+function view:invalidate()
+	self.win:invalidate()
+end
 
 function view:_bitmap_size()
 	return select(3, self:get_rect())

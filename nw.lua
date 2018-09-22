@@ -1575,6 +1575,10 @@ function window:_backend_repaint(...)
 	self:fire('repaint', ...)
 end
 
+function window:_backend_sync()
+	self:fire'sync'
+end
+
 --bitmap
 
 local bitmap = {}
