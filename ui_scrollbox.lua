@@ -28,7 +28,7 @@ ui:style('scrollbar autohide, scrollbar autohide > scrollbar_grip', {
 --default colors
 
 scrollbar.background_color = '#222'
-grip.background_color = '#ccc'
+grip.background_color = '#999'
 
 ui:style('scrollbar_grip :active', {
 	background_color = '#fff',

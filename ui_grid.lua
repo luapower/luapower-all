@@ -1058,30 +1058,60 @@ function grid:cell_selected(i, col)
 	if not self.multi_select then
 		return self.selected_row_index == i
 			and (not self.cell_select or self.selected_col == col)
-	else
+	elseif self.cell_select then
 		local t = self.selected_cells[col]
 		return t and t[i] or false
+	else
+		return self.selected_rows[i] or false
 	end
 end
 
 function grid:select_cells(i1, col1, i2, col2, selected)
 	selected = selected and true or false
+
 	i2 = i2 or i1
 	i1 = clamp(i1, 1, self.row_count)
 	i2 = clamp(i2, 1, self.row_count)
 	if i2 < i1 then
 		i1, i2 = i2, i1
 	end
+
 	local j1 = self.cell_select and col1 and col1.index or 1
 	local j2 = self.cell_select and col2 and col2.index or #self.cols
 	if j2 < j1 then
 		j1, j2 = j2, j1
 	end
+
 	if not self.multi_select then
+
+		local i0 = self.selected_row_index
+		local col0 = self.selected_col
+
+		local sel_i1 = selected and i0 ~= i1
+		local desel_i0 = not selected and i0 == i1
+		local desel_i0 = i0 and sel_i1 or desel_i0
+		local sel_col1 = sel_i1 or (selected and col0 ~= col1)
+		local desel_col0 = desel_i0 or (not selected and col0 == col1)
+		local desel_col0 = col0 and sel_col1 or desel_col0
+
+		if desel_i0 then
+			self:fire('row_was_deselected', i0)
+			if desel_col0 and self.cell_select then
+				self:fire('cell_was_deselected', i0, col0)
+			end
+		end
+		if sel_i1 then
+			self:fire('row_was_selected', i1)
+			if sel_col1 and self.cell_select then
+				self:fire('cell_was_selected', i1, col1)
+			end
+		end
+
 		self.selected_row_index = selected and i1
-		self.selected_col = selected and col1
-		self:fire(selected and 'row_was_selected' or 'row_was_deselected', i1)
-	else
+		self.selected_col = selected and self.cell_select and col1
+
+	elseif self.cell_select then
+
 		for j = j1, j2 do
 			local col = self.cols[j]
 			local t = attr(self.selected_cells, col)
@@ -1095,6 +1125,20 @@ function grid:select_cells(i1, col1, i2, col2, selected)
 				end
 			end
 		end
+
+	else
+
+		local t = self.selected_rows
+		for i = i1, i2 do
+			local was_selected = t[i]
+			t[i] = selected
+			if selected and not was_selected then
+				self:fire('row_was_selected', i)
+			elseif not selected and was_selected then
+				self:fire('row_was_deselected', i)
+			end
+		end
+
 	end
 end
 
@@ -1149,9 +1193,27 @@ function grid:scroll_to_view_cell(i, col, duration)
 end
 
 function grid:select_none()
-	self.selected_cells = {}
-	self.selected_row_index = false
-	self.selected_col = false
+	if not self.multi_select then
+		if self.selected_row_index then
+			self:select_cells(self.selected_row_index, self.selected_col, false)
+		end
+	elseif self.cell_select then
+		if self.selected_cells then
+			for col, cells in pairs(self.selected_cells) do
+				for i in pairs(cells) do
+					self:fire('cell_was_deselected', i, col)
+				end
+			end
+		end
+		self.selected_cells = {}
+	else
+		if self.selected_rows then
+			for i in pairs(self.selected_rows) do
+				self:fire('row_was_deselected', i)
+			end
+		end
+		self.selected_rows = {}
+	end
 end
 
 function grid:select_all()

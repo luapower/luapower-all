@@ -2606,6 +2606,7 @@ function layer:get_taborder()
 end
 
 function layer:focusable_widgets(t, depth)
+	if not self.visible then return end
 	t = t or {}
 	depth = depth or 1
 	self._depth = depth
@@ -2614,7 +2615,7 @@ function layer:focusable_widgets(t, depth)
 			if layer:canfocus() then
 				layer._depth = depth + 1
 				push(t, layer)
-			else --add layers' focusable children recursively, depth-first
+			else --add layers' focusable children recursively, depth-first.
 				layer:focusable_widgets(t, depth + 1)
 			end
 		end
@@ -3421,7 +3422,7 @@ end
 --called in parent's content space; child interface.
 function layer:hit_test(x, y, reason)
 
-	if not self.visible or self.opacity == 0 then return end
+	if not self.visible or self.opacity <= 0 then return end
 
 	local self_allowed =
 		   (reason == 'activate' and self.activable)
