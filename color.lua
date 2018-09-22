@@ -238,31 +238,34 @@ parsers['#rrggbbaa'] = parse
 local rgb_patt = '^rgb%s*%(([^,]+),([^,]+),([^,]+)%)$'
 local rgba_patt = '^rgba%s*%(([^,]+),([^,]+),([^,]+),([^,]+)%)$'
 
+local function np(s)
+	local p = s and tonumber((s:match'^([^%%]+)%%%s*$'))
+	return p and p * .01
+end
+
+local function n255(s)
+	local n = tonumber(s)
+	return n and n / 255
+end
+
 local function parse(s)
 	local r, g, b, a = s:match(rgba_patt)
-	r = tonumber(r)
-	g = tonumber(g)
-	b = tonumber(b)
-	a = tonumber(a)
+	r = np(r) or n255(r)
+	g = np(g) or n255(g)
+	b = np(b) or n255(b)
+	a = np(a) or tonumber(a)
 	if not (r and g and b and a) then return end
-	return
-		r / 255,
-		g / 255,
-		b / 255,
-		a
+	return r, g, b, a
 end
 parsers.rgba = parse
 
 local function parse(s)
 	local r, g, b = s:match(rgb_patt)
-	r = tonumber(r)
-	g = tonumber(g)
-	b = tonumber(b)
+	r = np(r) or n255(r)
+	g = np(g) or n255(g)
+	b = np(b) or n255(b)
 	if not (r and g and b) then return end
-	return
-		r / 255,
-		g / 255,
-		b / 255
+	return r, g, b
 end
 parsers.rgb = parse
 
@@ -272,18 +275,13 @@ local hsla_patt = '^hsla%s*%(([^,]+),([^,]+),([^,]+),([^,]+)%)$'
 local hsv_patt = hsl_patt:gsub('hsl', 'hsv')
 local hsva_patt = hsla_patt:gsub('hsla', 'hsva')
 
-local function np(s)
-	local p = s and tonumber((s:match'^([^%%]+)%%%s*$'))
-	return p and p * .01 or tonumber(s)
-end
-
 local function parser(patt)
 	return function(s)
 		local h, s, x, a = s:match(patt)
 		h = tonumber(h)
-		s = np(s)
-		x = np(x)
-		a = tonumber(a)
+		s = np(s) or tonumber(s)
+		x = np(x) or tonumber(x)
+		a = np(a) or tonumber(a)
 		if not (h and s and x and a) then return end
 		return h, s, x, a
 	end
@@ -295,8 +293,8 @@ local function parser(patt)
 	return function(s)
 		local h, s, x = s:match(patt)
 		h = tonumber(h)
-		s = np(s)
-		x = np(x)
+		s = np(s) or tonumber(s)
+		x = np(x) or tonumber(x)
 		if not (h and s and x) then return end
 		return h, s, x
 	end
@@ -544,6 +542,7 @@ if not ... then
 	print(parse'hsla(360, .432,  .432, 0.42   )')
 	print(parse'hsla(180, 1, .5, .5)')
 	print(parse'rgba(128, 128, 128, .5)')
+	print(parse'rgba(100%, 0%, 50%, 25%)')
 	print()
 	print(format(nil,       'rgb', .533, .533, .533, .533))
 	print(format('#rrggbb', 'rgb', .533, .533, .533, .533))
