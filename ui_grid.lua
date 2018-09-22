@@ -126,6 +126,7 @@ grid.scroll_pane_class = scroll_pane
 scroll_pane:inherit(pane)
 
 scroll_pane.vscrollable = false
+scroll_pane.vscrollbar = {visible = false}
 scroll_pane.hscrollbar_margin_right = 12 --TODO: don't go over the vscrollbar
 
 function grid:create_scroll_pane(freeze_pane)
@@ -394,6 +395,7 @@ local col = ui.layer:subclass'grid_col'
 grid.col_class = col
 
 col.text_align = 'left'
+col.nowrap = true
 col._w = 200
 col.min_cw = 8
 col.max_w = 1000
@@ -749,6 +751,7 @@ function cell:sync_col(col)
 	self.text_align = col.text_align
 	self.text_valign = col.text_valign
 	self.line_spacing = col.line_spacing
+	self.nowrap = col.nowrap
 	self.padding = col.padding
 	self.padding_left = col.padding_left
 	self.padding_right = col.padding_right
@@ -1426,50 +1429,6 @@ function vscrollbar:sync_grid()
 	self.content_length = self.grid:rows_h()
 end
 
---grid -----------------------------------------------------------------------
-
-grid:init_ignore{freeze_col=1}
-
-function grid:after_sync()
-	self:sync_picker_col_size()
-	self:sync_freeze_col()
-	self.freeze_pane:sync_grid()
-	self.scroll_pane:sync_grid()
-	self.splitter:sync_grid()
-	self.vscrollbar:sync_grid()
-end
-
-function grid:after_init(ui, t)
-
-	self.rows = self.rows or {}
-
-	self._freeze_col = t.freeze_col
-	local cols = t.cols or self.cols or {}
-	self.cols = {}
-	if cols then
-		for i,col in ipairs(cols) do
-			push(self.cols, self:create_col(col, i))
-		end
-	end
-	self.freeze_pane = self:create_freeze_pane(self.freeze_pane)
-	self.scroll_pane = self:create_scroll_pane(self.freeze_pane)
-
-	--set up panes for drag-selecting over the other pane
-	self.freeze_pane.other_pane = self.scroll_pane
-	self.freeze_pane.clamp_left = true
-	self.freeze_pane.clamp_right = false
-	self.scroll_pane.other_pane = self.freeze_pane
-	self.scroll_pane.clamp_left = false
-	self.scroll_pane.clamp_right = true
-
-	self.splitter = self:create_splitter()
-	self.vscrollbar = self:create_vscrollbar()
-	if self.var_row_h then
-		self:_build_row_y_table()
-	end
-	self:select_none()
-end
-
 --value lookup ---------------------------------------------------------------
 
 --TODO: build and use an index here!
@@ -1500,6 +1459,7 @@ ui:style('grid dropdown_picker', {
 
 function grid:set_dropdown(dropdown)
 	self._dropdown = dropdown
+	self:_create_dropdown_implicit_column()
 	self:settag('dropdown_picker', dropdown and true or false)
 end
 
@@ -1507,25 +1467,22 @@ function grid:get_dropdown()
 	return self._dropdown
 end
 
-function grid:after_init()
-	if self.dropdown then
-		--create one implicit column.
-		if #self.cols == 0 then
-			push(self.cols, self:create_col({}))
-		end
+function grid:_create_dropdown_implicit_column()
+	if not self.dropdown then return end
+	if #self.cols == 0 then
+		push(self.cols, self:create_col({}))
 	end
 end
 
 --geometry
 
---return the picker size so that the dropdown can resize the popup window
---before it is shown (which is why we can't just set the size on sync).
+--called by the dropdown to resize the picker's popup window before it is
+--shown (which is why we can't just set the grid size on sync()).
 function grid:sync_dropdown()
 	--update styles first because we use self's paddings.
 	self:update_styles()
 
-	local min_w = self.dropdown.w
-	local w = min_w
+	local w = self.dropdown.w
 	local noscroll_h = self:rows_h()
 		+ (self.padding_top or self.padding)
 		+ (self.padding_bottom or self.padding)
@@ -1540,7 +1497,7 @@ function grid:sync_dropdown()
 end
 
 function grid:sync_picker_col_size()
-	if #self.cols == 1 then
+	if self.dropdown and #self.cols == 1 then
 		local vci = self.pick_col_index
 		local tci = self.pick_text_col_index or vci
 		assert(vci == tci)
@@ -1571,6 +1528,52 @@ function grid:pick_value(val, close)
 	local i = self:lookup(val, self.cols[self.pick_col_index])
 	if not i then return end
 	self:_pick_row(i, close)
+end
+
+--grid -----------------------------------------------------------------------
+
+function grid:after_sync()
+	self:sync_picker_col_size()
+	self:sync_freeze_col()
+	self.freeze_pane:sync_grid()
+	self.scroll_pane:sync_grid()
+	self.splitter:sync_grid()
+	self.vscrollbar:sync_grid()
+end
+
+grid:init_ignore{freeze_col=1, dropdown=1}
+
+function grid:after_init(ui, t)
+
+	self.rows = self.rows or {}
+
+	self._freeze_col = t.freeze_col
+	local cols = t.cols or self.cols or {}
+	self.cols = {}
+	if cols then
+		for i,col in ipairs(cols) do
+			push(self.cols, self:create_col(col, i))
+		end
+	end
+	self.dropdown = t.dropdown
+
+	self.freeze_pane = self:create_freeze_pane(self.freeze_pane)
+	self.scroll_pane = self:create_scroll_pane(self.freeze_pane)
+
+	--set up panes for drag-selecting over the other pane
+	self.freeze_pane.other_pane = self.scroll_pane
+	self.freeze_pane.clamp_left = true
+	self.freeze_pane.clamp_right = false
+	self.scroll_pane.other_pane = self.freeze_pane
+	self.scroll_pane.clamp_left = false
+	self.scroll_pane.clamp_right = true
+
+	self.splitter = self:create_splitter()
+	self.vscrollbar = self:create_vscrollbar()
+	if self.var_row_h then
+		self:_build_row_y_table()
+	end
+	self:select_none()
 end
 
 --demo -----------------------------------------------------------------------

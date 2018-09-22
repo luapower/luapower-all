@@ -155,13 +155,15 @@ end
 local popup = ui.popup:subclass'dropdown_popup'
 dropdown.popup_class = popup
 
-function dropdown:create_popup()
-	local popup = self.popup_class(self.ui, {
+popup.activable = false
+
+function dropdown:create_popup(ui, t)
+	return self.popup_class(self.ui, {
+		w = 200, h = 200, --required; sync'ed layer
 		parent = self,
 		visible = false,
 		dropdown = self,
-	})
-	return popup
+	}, self.popup)
 end
 
 function popup:before_shown()

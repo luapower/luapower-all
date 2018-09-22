@@ -13,9 +13,6 @@ to non-activable children.
 
 UI ---------------------------------------------------------------------------
 
-- design bug: make transitions work on invisible widgets and windows.
-	- manifest: page-up/page-down on a dropdown while pickup is closed doesn't
-	update the offset because it's updated with a transition.
 - design bug: widget module autoloading vs css decl. order conflict.
 - design bug: allow freeing self inside events (with a double-free barrier).
 

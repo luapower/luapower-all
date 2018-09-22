@@ -8,16 +8,13 @@ local glue = require'glue'
 local popup = ui.window:subclass'popup'
 ui.popup = popup
 
-popup.w = 200
-popup.h = 200
 popup.frame = false
-popup.activable = false
 popup.closeable = false
 popup.moveable = false
 popup.resizeable = false
 popup.maximizable = false
 popup.fullscreenable = false
-popup.topmost = true
+popup.topmost = false
 
 --autohide property: hide when clicking outside of the popup
 

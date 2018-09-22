@@ -426,6 +426,40 @@ function rbutton:checkbox_press()
 	self.checkbox:check()
 end
 
+--radio button list ----------------------------------------------------------
+
+local rblist = ui.layer:subclass'radiobutton_list'
+ui.radiobuttonlist = rblist
+
+rblist.radiobutton_class = ui.radiobutton
+
+rblist:init_ignore{values=1}
+
+function rblist:create_radiobutton(i, v)
+	local t = type(v) == 'table' and v or nil
+	local text = t and t.text or v
+	local y = i * 36
+	self.radiobutton_class(self.ui, {
+		y = y,
+		w = self.w,
+		parent = self,
+		button = glue.update({
+			tabgroup = self.tabgroup or self,
+			tabindex = i,
+		}),
+		label = glue.update({
+			text = text,
+		}),
+		radio_group = self,
+	}, self.radiobutton, t)
+end
+
+function rblist:after_init(ui, t)
+	for i,v in ipairs(t.values) do
+		self:create_radiobutton(i, v)
+	end
+end
+
 --multi-choice button --------------------------------------------------------
 
 local choicebutton = ui.layer:subclass'choicebutton'

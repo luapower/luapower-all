@@ -1265,6 +1265,13 @@ function window:override_init(inherited, ui, t)
 		self.frame_clock = false
 	end)
 
+	win:on({'sync', self}, function(win)
+		setcontext()
+		self.frame_clock = ui:clock()
+		self:sync()
+		self.frame_clock = false
+	end)
+
 	win:on({'client_rect_changed', self}, function(win, cx, cy, cw, ch)
 		if not cx then return end --hidden or minimized
 		setcontext()
@@ -1898,6 +1905,15 @@ function window:draw(cr)
 	self.cr:restore()
 end
 
+function window:sync()
+	self._invalid = false
+	self.cr:save()
+	self.cr:new_path()
+	self.view:sync()
+	self.view:sync_children()
+	self.cr:restore()
+end
+
 function window:invalidate() --element interface; window intf.
 	if self._invalid then return end
 	self._invalid = true
@@ -1946,27 +1962,44 @@ function ui:radial_gradient(cx1, cy1, r1, cx2, cy2, r2, ...)
 	return self:_add_color_stops(g, ...)
 end
 
+ui.io_module = 'fs' --TODO: bundle
+
 function ui:image_pattern(file)
 	local ext = file:match'%.([^%.]+)$'
 	if ext == 'jpg' or ext == 'jpeg' then
-		local f, err = fs.open(file)
-		if not f then
-			self:error('error loading "%s": %s', file, err)
-			return
+		if self.io_module == 'bundle' then
+			local bundle = require'bundle'
+			if bundle.canopen(mcache) then
+				fonts = assert(loadstring(bundle.load(mcache))())
+			end
+			local mmap = bundle.mmap(file)
+			self:check(mmap, 'Font file not found: %s', file)
+
+			self.data = mmap.data
+			self.data_size = mmap.size
+			self.mmap = mmap --pin it
+			mem_font.load(self)
+
+		elseif self.io_module == 'fs' then
+			local f, err = fs.open(file)
+			if not f then
+				self:error('error loading "%s": %s', file, err)
+				return
+			end
+			local bread = f:buffered_read()
+			local function read(buf, sz)
+				return self:check(bread(buf, sz))
+			end
+			local libjpeg = require'libjpeg'
+			local img = self:check(libjpeg.open({read = read}))
+			if not img then return end
+			local bmp = self:check(img:load{accept = {bgra8 = true}})
+			if not bmp then return end
+			img:free()
+			local sr = cairo.image_surface(bmp) --bmp is Lua-pinned to sr
+			local patt = cairo.surface_pattern(sr) --sr is cairo-pinned to patt
+			return {patt = patt, sr = sr}
 		end
-		local bread = f:buffered_read()
-		local function read(buf, sz)
-			return self:check(bread(buf, sz))
-		end
-		local libjpeg = require'libjpeg'
-		local img = self:check(libjpeg.open({read = read}))
-		if not img then return end
-		local bmp = self:check(img:load{accept = {bgra8 = true}})
-		if not bmp then return end
-		img:free()
-		local sr = cairo.image_surface(bmp) --bmp is Lua-pinned to sr
-		local patt = cairo.surface_pattern(sr) --sr is cairo-pinned to patt
-		return {patt = patt, sr = sr}
 	end
 end
 ui:memoize'image_pattern'
@@ -2999,7 +3032,8 @@ end
 
 --background geometry and drawing
 
-layer.background_type = 'color' --false, 'color', 'gradient', 'radial_gradient', 'image'
+layer.background_type = 'color'
+	--^ false, 'color', 'gradient', 'radial_gradient', 'image'
 layer.background_hittable = true
 --all backgrounds
 layer.background_x = 0
@@ -3034,8 +3068,25 @@ layer.background_operator = 'over'
 -- -1..1 goes from inside to outside of border edge.
 layer.background_clip_border_offset = 1
 
+--TODO: add 'auto' ?
+function layer:detect_background_type()
+	if self.background_type ~= 'auto' then
+		return self.background_type
+	elseif self.background_image then
+		return 'image'
+	elseif self.background_colors then
+		return 'gradient'
+	elseif self.background_color then
+		return 'color'
+	else
+		return false
+	end
+end
+
 function layer:background_visible()
 	return (
+		--TODO: add 'auto' ?
+		--(self.background_type == 'auto' and self:detect_background_type())
 		(self.background_type == 'color' and self.background_color)
 		or ((self.background_type == 'gradient'
 			or self.background_type == 'radial_gradient')
@@ -3356,11 +3407,24 @@ function layer:content_bounding_box(strict)
 	return box2d.bounding_box(x, y, w, h, self:text_bounding_box())
 end
 
+--sync layer's children depth-first.
+function layer:sync_children()
+	if not self.layers then return end
+	for _,layer in ipairs(self.layers) do
+		layer:sync()
+		layer:sync_children()
+	end
+end
+
 function layer:draw(cr) --called in parent's content space; child intf.
+
 	--must always sync because the layer might become visible as an effect
 	--of sync'ing or from tag, style or transition changes.
 	self:sync()
-	if not self.visible or self.opacity <= 0 then return end
+	if not self.visible or self.opacity <= 0 then
+		self:sync_children()
+		return
+	end
 
 	local opacity = self.opacity
 	local compose = opacity < 1
