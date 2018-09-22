@@ -2026,6 +2026,7 @@ layer.draggable = true --can be dragged (still needs to respond to start_drag())
 layer.mousedown_activate = false --activate/deactivate on left mouse down/up
 
 ui:style('layer :disabled', {
+	background_color = '#222',
 	text_color = '#666',
 })
 
@@ -2638,8 +2639,10 @@ function layer:focusable_widgets(t, depth)
 			else
 				return t1.tabindex < t2.tabindex
 			end
+		elseif type(t1.tabgroup) == type(t2.tabgroup) then
+			return  t1.tabgroup < t2.tabgroup
 		else
-			return t1.tabgroup < t2.tabgroup
+			return type(t1.tabgroup) < type(t2.tabgroup)
 		end
 	end)
 	return t

@@ -522,6 +522,49 @@ function editbox:override_draw_text(inherited, cr)
 	end
 end
 
+--cue layer
+
+ui:style('editbox > cue_layer', {
+	text_color = '#666',
+})
+
+editbox.show_cue_when_focused = false
+
+function editbox:get_cue()
+	return self.cue_layer.text
+end
+function editbox:set_cue(s)
+	self.cue_layer.text = s
+end
+editbox:instance_only'cue'
+
+editbox.cue_layer_class = ui.layer
+
+editbox:init_ignore{cue=1}
+
+function editbox:create_cue_layer()
+	return self.cue_layer_class(self.ui, {
+		tags = 'cue_layer',
+		parent = self,
+		editbox = self,
+		activable = false,
+	}, self.cue_layere)
+end
+
+function editbox:after_init(ui, t)
+	self.cue_layer = self:create_cue_layer()
+	self.cue = t.cue
+end
+
+function editbox:after_sync()
+	self.cue_layer.w = self.cw
+	self.cue_layer.h = self.ch
+	self.cue_layer.text_align = self.text_align
+	local len = self.selection.segments.text_runs.len
+	self.cue_layer.visible = len == 0
+		and (self.show_cue_when_focused or not self.focused)
+end
+
 --demo -----------------------------------------------------------------------
 
 if not ... then require('ui_demo')(function(ui, win)
@@ -566,6 +609,7 @@ if not ... then require('ui_demo')(function(ui, win)
 		text = 'Hello World!',
 		text_align = 'center',
 		multiline = true,
+		cue = 'Type text here...',
 	}
 
 	--[[

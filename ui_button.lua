@@ -269,7 +269,7 @@ function checkbox:set_checked(checked)
 	if self._checked == checked then return end
 	self._checked = checked
 	self:settag(':checked', checked)
-	self:fire(checked and 'box_checked' or 'box_unchecked')
+	self:fire(checked and 'was_checked' or 'was_unchecked')
 	self:fire('checked_changed', checked)
 end
 
@@ -580,7 +580,6 @@ if not ... then require('ui_demo')(function(ui, win)
 		x = 100, y = 100, w = 100,
 		text = '&OK',
 		default = true,
-		text_align = 'center',
 	}
 
 	local btn = button:subclass'btn'
