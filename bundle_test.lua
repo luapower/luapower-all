@@ -1,3 +1,4 @@
+--@go ./mgit bundle-test
 
 local ffi = require'ffi'
 
@@ -47,11 +48,25 @@ end
 local function test_blob()
 	local bundle = require'bundle'
 	io.stdout:write'loading blob... '
-	local s = bundle.load('.bundle-test/'..current_platform()..'/big.blob')
-	print('ok ('..#s..' bytes)')
-	assert(#s == 20*1024*1024+#'header'+#'footer')
+	local blobfile = '.bundle-test/'..current_platform()..'/big.blob'
+	local filesize = 20*1024*1024+#'header'+#'footer'
+
+	local s = assert(bundle.load(blobfile))
+	assert(#s == filesize)
 	assert(s:find'^header')
 	assert(s:sub(-#'footer') == 'footer')
+
+	local f = assert(bundle.fs_open(blobfile))
+	local buf = ffi.new'char[6]'
+	assert(f:seek(0) == 0)
+	assert(f:read(buf, 6) == 6)
+	assert(ffi.string(buf, 6) == 'header')
+	assert(f:seek('end', -6) == filesize - 6)
+	assert(f:read(buf, 6) == 6)
+	assert(ffi.string(buf, 6) == 'footer')
+	f:close()
+
+	print('ok ('..#s..' bytes)')
 end
 
 test_load_all()

@@ -1962,44 +1962,33 @@ function ui:radial_gradient(cx1, cy1, r1, cx2, cy2, r2, ...)
 	return self:_add_color_stops(g, ...)
 end
 
-ui.io_module = 'fs' --TODO: bundle
-
 function ui:image_pattern(file)
 	local ext = file:match'%.([^%.]+)$'
 	if ext == 'jpg' or ext == 'jpeg' then
-		if self.io_module == 'bundle' then
-			local bundle = require'bundle'
-			if bundle.canopen(mcache) then
-				fonts = assert(loadstring(bundle.load(mcache))())
-			end
-			local mmap = bundle.mmap(file)
-			self:check(mmap, 'Font file not found: %s', file)
-
-			self.data = mmap.data
-			self.data_size = mmap.size
-			self.mmap = mmap --pin it
-			mem_font.load(self)
-
-		elseif self.io_module == 'fs' then
-			local f, err = fs.open(file)
-			if not f then
-				self:error('error loading "%s": %s', file, err)
-				return
-			end
-			local bread = f:buffered_read()
-			local function read(buf, sz)
-				return self:check(bread(buf, sz))
-			end
-			local libjpeg = require'libjpeg'
-			local img = self:check(libjpeg.open({read = read}))
-			if not img then return end
-			local bmp = self:check(img:load{accept = {bgra8 = true}})
-			if not bmp then return end
-			img:free()
-			local sr = cairo.image_surface(bmp) --bmp is Lua-pinned to sr
-			local patt = cairo.surface_pattern(sr) --sr is cairo-pinned to patt
-			return {patt = patt, sr = sr}
+		local bundle = require'bundle'
+		local f = bundle.fs_open(file)
+		if not self:check(f, 'file not found: "%s"', file) then
+			return
 		end
+		local bufread = f:buffered_read()
+		local function read(buf, sz)
+			return self:check(bufread(buf, sz))
+		end
+		local libjpeg = require'libjpeg'
+		local img = self:check(libjpeg.open({read = read}))
+		if not img then
+			f:close()
+			return
+		end
+		local bmp = self:check(img:load{accept = {bgra8 = true}})
+		img:free()
+		f:close()
+		if not bmp then
+			return
+		end
+		local sr = cairo.image_surface(bmp) --bmp is Lua-pinned to sr
+		local patt = cairo.surface_pattern(sr) --sr is cairo-pinned to patt
+		return {patt = patt, sr = sr}
 	end
 end
 ui:memoize'image_pattern'

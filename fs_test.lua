@@ -952,9 +952,39 @@ function test.map_disk_full()
 end
 ]]
 
+--virtual files --------------------------------------------------------------
+
+function test.open_buffer()
+	local sz = 100
+	local buf = ffi.new('char[?]', sz)
+	ffi.fill(buf, sz, 42)
+	local f = assert(fs.open_buffer(buf, sz, 'w'))
+	assert(f:seek(100) == 100)
+	assert(f:seek(100) == 200)
+	assert(f:seek() == 200)
+	assert(f:seek('end', 0) == 100)
+	assert(f:seek('set', 0) == 0)
+	local buf = ffi.new('char[?]', 100)
+	assert(f:seek(200) == 200)
+	assert(f:read(buf, 10) == 0)
+	assert(f:seek('set', 50) == 50)
+	assert(f:read(buf, 1000) == 50)
+	assert(ffi.string(buf, 50) == (string.char(42):rep(50)))
+	assert(f:write(buf, 1000) == 0)
+	assert(f:seek('set', 0))
+	ffi.fill(buf, sz, 43)
+	assert(f:write(buf, 1000) == 100)
+	assert(ffi.string(buf, 100) == (string.char(43):rep(100)))
+	assert(f:close())
+	assert(f:closed())
+	assert(f:read(buf, 1000) == nil)
+	assert(f:write(buf, 1000) == nil)
+end
+
 --test cmdline ---------------------------------------------------------------
 
-if not ... or ... == 'fs_test' then
+local name = ...
+if not name or name == 'fs_test' then
 	--run all tests in the order in which they appear in the code.
 	for i,k in ipairs(test) do
 		if not k:find'^_' then
@@ -965,8 +995,8 @@ if not ... or ... == 'fs_test' then
 			end
 		end
 	end
-elseif test[...] then
-	test[...](select(2, ...))
+elseif test[name] then
+	test[name](select(2, ...))
 else
-	print('Unknown test "'..(...)..'".')
+	print('Unknown test "'..(name)..'".')
 end

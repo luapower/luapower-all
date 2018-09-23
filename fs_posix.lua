@@ -178,7 +178,7 @@ function file.flush(f)
 	return check(C.fsync(f.fd) == 0)
 end
 
-function file_seek(f, whence, offset)
+function file._seek(f, whence, offset)
 	local offs = C.lseek(f.fd, offset, whence)
 	if offs == -1 then return check() end
 	return tonumber(offs)

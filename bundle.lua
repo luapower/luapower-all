@@ -68,6 +68,16 @@ function bundle.mmap(file)
 	end
 end
 
+function bundle.fs_open(file)
+	local fs = require'fs'
+	local buf, sz = blob_data(file)
+	if not buf then
+		return fs.open(file)
+	else
+		return fs.open_buffer(buf, sz)
+	end
+end
+
 local ok, ver = pcall(require, 'bundle_appversion')
 bundle.appversion = ok and ver or nil
 

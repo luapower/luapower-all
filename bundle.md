@@ -147,11 +147,12 @@ Optional module with an API for loading embedded binary files:
 `mmap.data`                               pointer to file data
 `mmap.size`                               file size
 `mmap:close()`                            close the mmap object
+`bundle.fs_open(filename) -> f`           open a file with [fs]
 `bundle.appversion -> string`             app version from the `-av` cmdline option
 ----------------------------------------- -------------------------------------------------
 
-__NOTE:__ These functions look in the filesystem _first_ and only if that fails
-they use the embedded blobs.
+__NOTE:__ These functions look in the filesystem _first_ and only if that
+fails they use the embedded blobs.
 
 
 ## Search paths

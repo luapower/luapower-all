@@ -485,7 +485,7 @@ function file.flush(f)
 end
 
 local ofsbuf = ffi.new'LARGE_INTEGER[1]'
-function file_seek(f, whence, offset)
+function file._seek(f, whence, offset)
 	ofsbuf[0].QuadPart = offset
 	local ok = C.SetFilePointerEx(f.handle, ofsbuf[0], libuf, whence) ~= 0
 	if not ok then return check() end

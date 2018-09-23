@@ -8,6 +8,8 @@ local ffi = require'ffi'
 local bit = require'bit'
 local path = require'path'
 
+local min, max, floor = math.min, math.max, math.floor
+
 local C = ffi.C
 
 local backend = setmetatable({}, {__index = _G})
@@ -26,6 +28,11 @@ stream = {} --FILE methods
 dir = {} --dir listing object methods
 
 --binding tools --------------------------------------------------------------
+
+local char_ptr_ct = ffi.typeof'char*'
+local uint64_ct = ffi.typeof'uint64_t'
+local void_ptr_ct = ffi.typeof'void*'
+local uintptr_ct = ffi.typeof'uintptr_t'
 
 --assert() with string formatting.
 function assert(v, err, ...)
@@ -117,14 +124,14 @@ local function table_flags(t, masks, strict)
 		if type(k) == 'string' and v then --flags as table keys: {flag->true}
 			flag = k
 		elseif type(k) == 'number'
-			and math.floor(k) == k
+			and floor(k) == k
 			and type(v) == 'string'
 		then --flags as array: {flag1,...}
 			flag = v
 		end
 		local bitmask = masks[flag]
 		if strict then
-			assert(bitmask, 'invalid flag %s', tostring(flag))
+			assert(bitmask, 'invalid flag: "%s"', tostring(flag))
 		elseif bitmask then
 			mask = bit.bor(mask, bitmask)
 			if flag then
@@ -178,7 +185,7 @@ function flags(arg, masks, cur_bits, strict)
 	elseif arg == nil then
 		return 0
 	else
-		assert(false, 'flags expected but %s given', type(arg))
+		assert(false, 'flags expected but "%s" given', type(arg))
 	end
 end
 
@@ -221,7 +228,7 @@ function file.buffered_read(f, ctype, bufsize)
 					return rsz
 				end
 			end
-			local n = math.min(sz, len)
+			local n = min(sz, len)
 			ffi.copy(ffi.cast(ptr_ct, dst) + rsz, buf + ofs, n)
 			ofs = ofs + n
 			len = len - n
@@ -257,8 +264,8 @@ function file.seek(f, whence, offset)
 	end
 	whence = whence or 'cur'
 	offset = tonumber(offset or 0)
-	whence = assert(whences[whence], 'invalid whence %s', whence)
-	return file_seek(f, whence, offset)
+	whence = assert(whences[whence], 'invalid whence: "%s"', whence)
+	return f._seek(f, whence, offset)
 end
 
 --truncate/getsize/setsize ---------------------------------------------------
@@ -539,7 +546,7 @@ end
 --memory mapping -------------------------------------------------------------
 
 function fs.aligned_size(size, dir) --dir can be 'l' or 'r' (default: 'r')
-	if ffi.istype('uint64_t', size) then --an uintptr_t on x64
+	if ffi.istype(uint64_ct, size) then --an uintptr_t on x64
 		local pagesize = fs.pagesize()
 		local hi, lo = split_uint64(size)
 		local lo = fs.aligned_size(lo, dir)
@@ -554,8 +561,8 @@ function fs.aligned_size(size, dir) --dir can be 'l' or 'r' (default: 'r')
 end
 
 function fs.aligned_addr(addr, dir)
-	return ffi.cast('void*',
-		fs.aligned_size(ffi.cast('uintptr_t', addr), dir))
+	return ffi.cast(void_ptr_ct,
+		fs.aligned_size(ffi.cast(uintptr_ct, addr), dir))
 end
 
 function map_check_tagname(tagname)
@@ -568,7 +575,7 @@ end
 function protect(map, offset, size)
 	local offset = offset or 0
 	assert(offset >= 0 and offset < map.size, 'offset out of bounds')
-	local size = math.min(size or map.size, map.size - offset)
+	local size = min(size or map.size, map.size - offset)
 	assert(size >= 0, 'negative size')
 	local addr = ffi.cast('const char*', map.addr) + offset
 	fs.protect(addr, size)
@@ -598,7 +605,7 @@ local function map_args(t,...)
 	--apply defaults/convert
 	local access = access or ''
 	local offset = file and offset or 0
-	local addr = addr and ffi.cast('void*', addr)
+	local addr = addr and ffi.cast(void_ptr_ct, addr)
 	local access_write, access_exec, access_copy = map_access_args(access)
 
 	--check
@@ -670,7 +677,7 @@ function fs.mirror_map(f, ...)
 	local maps = {addr = map.addr, size = size}
 	map:free()
 
-	local addr = ffi.cast('char*', maps.addr)
+	local addr = ffi.cast(char_ptr_ct, maps.addr)
 
 	function maps:free()
 		for _,map in ipairs(self) do
@@ -694,6 +701,79 @@ function fs.mirror_map(f, ...)
 
 	return maps
 end
+
+--file interface over a buffer -----------------------------------------------
+
+local vfile = {}
+
+function fs.open_buffer(buf, sz, mode)
+	sz = sz or #buf
+	mode = mode or 'r'
+	assert(mode == 'r' or mode == 'w', 'invalid mode: "%s"', mode)
+	local f = {
+		buffer = ffi.cast(char_ptr_ct, buf),
+		size = sz,
+		offset = 0,
+		mode = mode,
+		_buffer = buf, --anchor it
+		__index = vfile,
+	}
+	return setmetatable(f, f)
+end
+
+function vfile.close(f) f._closed = true; return true end
+function vfile.closed(f) return f._closed end
+
+function vfile.flush(f)
+	if f._closed then
+		return nil, 'access_denied'
+	end
+	return true
+end
+
+function vfile.read(f, buf, sz)
+	if f._closed then
+		return nil, 'access_denied'
+	end
+	sz = min(max(0, sz), max(0, f.size - f.offset))
+	ffi.copy(buf, f.buffer + f.offset, sz)
+	f.offset = f.offset + sz
+	return sz
+end
+
+function vfile.write(f, buf, sz)
+	if f._closed then
+		return nil, 'access_denied'
+	end
+	if f.mode ~= 'w' then
+		return nil, 'access_denied'
+	end
+	sz = min(max(0, sz), max(0, f.size - f.offset))
+	ffi.copy(f.buffer + f.offset, buf, sz)
+	f.offset = f.offset + sz
+	return sz
+end
+
+vfile.seek = file.seek
+
+function vfile._seek(f, whence, offset)
+	if whence == 1 then --cur
+		offset = f.offset + offset
+	elseif whence == 2 then --end
+		offset = f.size + offset
+	end
+	if offset < 0 then
+		return nil, 'invalid offset'
+	end
+	f.offset = offset
+	return offset
+end
+
+function vfile:truncate()
+	f.size = f.offset
+end
+
+vfile.buffered_read = file.buffered_read
 
 
 return backend
