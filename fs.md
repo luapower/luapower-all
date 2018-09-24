@@ -28,6 +28,8 @@ __file objects__
 __stdio streams__
 `f:stream(mode) -> fs`                            open a `FILE*` object from a file
 `fs:close()`                                      close the `FILE*` object
+__memory streams__
+`fs.open_buffer(buf, [size], [mode]) -> f`        create a memory stream
 __file i/o__
 `f:read(buf, len) -> readlen`                     read data from file
 `f:write(buf, len) -> writelen`                   write data to file
@@ -217,6 +219,12 @@ and `fs:close()` should be called to close the file.
 
 Close the `FILE*` object and the underlying file object.
 
+## Memory Streams
+
+### `fs.open_buffer(buf, [size], [mode]) -> f`
+
+Create a memory stream for reading and writing data from and into a buffer
+using the file API. Only opening modes `'r'` and `'w'` are supported.
 
 ## File I/O
 

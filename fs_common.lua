@@ -702,7 +702,7 @@ function fs.mirror_map(f, ...)
 	return maps
 end
 
---file interface over a buffer -----------------------------------------------
+--memory streams -------------------------------------------------------------
 
 local vfile = {}
 
@@ -762,15 +762,17 @@ function vfile._seek(f, whence, offset)
 	elseif whence == 2 then --end
 		offset = f.size + offset
 	end
-	if offset < 0 then
-		return nil, 'invalid offset'
-	end
+	offset = max(offset, 0)
 	f.offset = offset
 	return offset
 end
 
 function vfile:truncate()
+	if f.offset > f.size then
+		return nil, 'access_denied'
+	end
 	f.size = f.offset
+	return true
 end
 
 vfile.buffered_read = file.buffered_read
