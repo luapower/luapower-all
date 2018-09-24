@@ -1,4 +1,4 @@
---@go ./mgit bundle-test
+--go@ mgit bundle-test
 
 local ffi = require'ffi'
 
@@ -69,6 +69,20 @@ local function test_blob()
 	print('ok ('..#s..' bytes)')
 end
 
+local function test_dir()
+	local bundle = require'bundle'
+	print'loading dir listing for .mgit...'
+	for name, d in bundle.fs_dir'.mgit' do
+		if not name then
+			print('error: '..d)
+			break
+		else
+			print(string.format("%-8s %-30s %s", d:attr'type', d:name(), d:path()))
+		end
+	end
+end
+
 test_load_all()
 test_load_mysql()
 test_blob()
+test_dir()

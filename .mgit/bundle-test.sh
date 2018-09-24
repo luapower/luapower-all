@@ -26,7 +26,10 @@ blobsize=$((20*1024*1024))
 	) > $blobfile
 
 # bundle everything; the main script is bundle_test.
-.mgit/bundle.sh $m32 -v -a --all -m --all -m bundle_test -m $blobfile -M bundle_test -o $D/$EXE
+min_modules="fs* path bundle bundle_test"
+.mgit/bundle.sh $m32 -v -a --all -o $D/$EXE \
+	-m --all -m $blobfile -m .mgit -M bundle_test
+
 
 # we don't static link mysql (cuz it's GPL and we don't have a static lib for it anyway).
 # so copy it to the dest. dir so we can test that too.

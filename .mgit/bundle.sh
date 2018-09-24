@@ -31,6 +31,7 @@ APREFIX_osx=lib
 ALIBS="luajit"
 MODULES="bundle_loader"
 BIN_MODULES=
+DIR_MODULES=
 ICON_mingw=csrc/bundle/luapower.ico
 ICON_osx=csrc/bundle/luapower-icon.png
 OSX_ICON_SIZES="16 32 128" # you can add 256 and 512 but the icns will be 0.5M
@@ -124,10 +125,24 @@ compile_dasl_module() {
 	./luajit dynasm.lua $f | filename=$f f=- compile_lua_module "$@"
 }
 
-# usage: f=file.* o=file.o $0 CFLAGS... -> file.o
+# usage: f=file.* [name=file.*] o=file.o $0 CFLAGS... -> file.o
 compile_bin_module() {
-	local sym=${f//[\-\.\/\\]/_}  # foo/bar-baz.ext -> foo_bar_baz_ext
+	[ "$name" ] || name=$f
+	local sym=${name//[\-\.\/\\]/_}  # foo/bar-baz.ext -> foo_bar_baz_ext
 	sym=$BBIN_PREFIX$sym compile_bin_file "$@"
+}
+
+# usage: $0 dir
+serialize_dir_listing() {
+	echo -n 'return {'
+	ls -1F $1 | sed 's/"/\\\\"/g' | while read f; do echo -n "\"$f\","; done
+	echo -n '}'
+}
+
+# usage: f=dir o=file.o $0 CFLAGS... -> file.o
+compile_dir_module() {
+	serialize_dir_listing $f > $o.dir
+	name=$f f=$o.dir compile_bin_module "$@"
 }
 
 sayt() { [ "$VERBOSE" ] && printf "  %-15s %s\n" "$1" "$2"; }
@@ -137,7 +152,7 @@ compile_module() {
 	local f=$1; shift
 
 	# disambiguate between file `a.b` and Lua module `a.b`.
-	[ -f $f ] || {
+	[ -f $f -o -d $f ] || {
 		local luaf=${f//\./\/}    # a.b -> a/b
 		luaf=$luaf.lua            # a/b -> a/b.lua
 		[ -f $luaf ] || die "File not found: $f (nor $luaf)"
@@ -145,9 +160,15 @@ compile_module() {
 	}
 
 	# infer file type from file extension
-	local x=${f##*.}             # a.ext -> ext
-	[ $x = c -o $x = lua -o $x = dasl ] || x=bin
-	[ "$mtype" ] && x=$mtype
+	local x
+	if [ "$mtype" ]; then
+		x=$mtype
+	elif [ -d $f ]; then
+		x=dir
+	else
+		x=${f##*.}             # a.ext -> ext
+		[ $x = c -o $x = lua -o $x = dasl ] || x=bin
+	fi
 
 	local o=$ODIR/$f$osuffix.o   # a.ext -> $ODIR/a.ext.o
 	OFILES="$OFILES $o"  # add the .o file to the list of files to be linked
@@ -268,6 +289,9 @@ compile_all() {
 	done
 	for m in $BIN_MODULES; do
 		mtype=bin compile_module $m
+	done
+	for d in $DIR_MODULES; do
+		mtype=dir compile_module $d
 	done
 
 	# compile bundle.c which implements bundle_add_loaders() and bundle_main().
@@ -422,13 +446,15 @@ compress_exe() {
 #         MAIN=module EXE=exe_file NOCONSOLE=1 ICON=icon COMPRESS_EXE=1 $0
 bundle() {
 	say "Bundle parameters:"
-	say "  Platform:      " "$OS ($P)"
-	say "  Output file:   " "$EXE"
-	say "  Modules:       " $MODULES
-	say "  Static libs:   " $ALIBS
-	say "  Dynamic libs:  " $DLIBS
-	say "  Main module:   " $MAIN
-	say "  Icon:          " $ICON
+	say "  Platform:       " "$OS ($P)"
+	say "  Output file:    " "$EXE"
+	say "  Modules:        " $MODULES
+	say "  Static libs:    " $ALIBS
+	say "  Dynamic libs:   " $DLIBS
+	say "  Binary Modules: " $BIN_MODULES
+	say "  Dir Modules:    " $DIR_MODULES
+	say "  Main module:    " $MAIN
+	say "  Icon:           " $ICON
 	compile_all
 	link_all
 	compress_exe
@@ -449,7 +475,8 @@ usage() {
 	echo "  -a  --alibs \"LIB1 ...\"|--all|--    Static libs to bundle            [2]"
 	echo "  -d  --dlibs \"LIB1 ...\"|--          Dynamic libs to link against     [3]"
 	echo "  -f  --frameworks \"FRM1 ...\"        Frameworks to link against (OSX) [4]"
-	echo "  -b  --bin-modules \"FILE1 ...\"      Files to force-bundle as binary blobs"
+	echo "  -b  --bin-modules \"FILE1 ...\"      Files to bundle as binary blobs"
+	echo "  -D  --dir-modules \"DIR1 ...\"       Directory listings to bundle as blobs"
 	echo
 	echo "  -M  --main MODULE                  Module to run on start-up"
 	echo
@@ -459,7 +486,7 @@ usage() {
 	echo "  -w  --no-console                   Make app bundle (OSX)"
 	echo "  -i  --icon FILE.ico                Set icon (Windows)"
 	echo "  -i  --icon FILE.png                Set icon (OSX; requires -w)"
-	echo "  -vi --versioninfo \"Name=Val;...\" Set VERSIONINFO fields (Windows)"
+	echo "  -vi --versioninfo \"Name=Val;...\"   Set VERSIONINFO fields (Windows)"
 	echo "  -av --appversion VERSION|auto      Set bundle.appversion to VERSION"
 	echo "  -ar --apprepo REPO                 Git repo for -av auto"
 	echo
@@ -514,8 +541,10 @@ parse_opts() {
 				;;
 			-b | --bin-modules)
 				BIN_MODULES="$BIN_MODULES $1"; shift;;
+			-D | --dir-modules)
+				DIR_MODULES="$DIR_MODULES $1"; shift;;
 			-M  | --main)
-				MAIN="$1"; shift;;
+				MAIN="$1"; MODULES="$MODULES $1"; shift;;
 			-a  | --alibs)
 				[ "$1" = -- ] && ALIBS= || \
 					[ "$1" = --all ] && ALIBS="$(alibs)" || \

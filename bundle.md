@@ -6,10 +6,11 @@ tagline: single-executable app deployment
 
 Bundle is a small framework for bundling together LuaJIT, Lua modules,
 Lua/C modules, DynASM/Lua modules, C libraries, and other static assets
-into a single fat executable. In its default configuration, it assumes
-luapower's [toolchain][building] and [directory layout][get-involved]
-(read: you have to place your own code in the luapower directory) and
-it works on Windows, Linux and OSX, x86 and x64.
+(and even directory listings) into a single fat executable. In its default
+configuration, it assumes luapower's [toolchain][building] and
+[directory layout][get-involved] (meaning that you have to place your own
+code in the luapower directory) and it works on Windows, Linux and OSX,
+x86 and x64.
 
 ## Usage
 
@@ -17,7 +18,7 @@ it works on Windows, Linux and OSX, x86 and x64.
  Compile and link together LuaJIT, Lua modules, Lua/C modules, C libraries,
  and other static assets into a single fat executable.
 
- Tested with mingw, gcc and clang on Windows, Linux and OSX respectively.
+ Tested with MinGW, GCC and Clang on Windows, Linux and OSX respectively.
  Written by Cosmin Apreutesei. Public Domain.
 
  USAGE: mgit bundle options...
@@ -29,6 +30,8 @@ it works on Windows, Linux and OSX, x86 and x64.
   -d  --dlibs "LIB1 ..."|--          Dynamic libs to link against     [3]
   -f  --frameworks "FRM1 ..."        Frameworks to link against (OSX) [4]
   -b  --bin-modules "FILE1 ..."      Files to force-bundle as binary blobs
+  -b  --bin-modules "FILE1 ..."      Files to force-bundle as binary blobs
+  -D  --dir-modules "DIR1 ..."       Directory listings to bundle as blobs
 
   -M  --main MODULE                  Module to run on start-up
 
@@ -68,7 +71,7 @@ it works on Windows, Linux and OSX, x86 and x64.
 mgit bundle -a --all -m --all -M main -o fat.exe
 
 # minimal bundle: two Lua modules, one static lib, one blob
-mgit bundle -a sha2 -m 'sha2 main media/bmp/bg.bmp' -M main -o lean.exe
+mgit bundle -a sha2 -m 'sha2 media/bmp/bg.bmp' -M main -o lean.exe
 
 # luajit frontend with built-in luasocket support, no main module
 mgit bundle -a 'socket_core mime_core' -m 'socket mime ltn12 socket/*.lua' -o luajit.exe
@@ -76,6 +79,9 @@ mgit bundle -a 'socket_core mime_core' -m 'socket mime ltn12 socket/*.lua' -o lu
 # run the unit tests
 mgit bundle-test
 ~~~
+
+__NOTE:__ Pass `-m --all` before any explicit `-m` arguments!<br>
+__NOTE:__ Pass `-a --all` before any explicit `-a` arguments!
 
 __TIP:__ Pass `-vi "FileDescription=..."` to set the process description
 that is shown in the Windows task manager.
@@ -148,6 +154,7 @@ Optional module with an API for loading embedded binary files:
 `mmap.size`                               file size
 `mmap:close()`                            close the mmap object
 `bundle.fs_open(filename) -> f`           open a file with [fs]
+`bundle.fs_dir(dirname) -> d`             open a dir with [fs]
 `bundle.appversion -> string`             app version from the `-av` cmdline option
 ----------------------------------------- -------------------------------------------------
 
