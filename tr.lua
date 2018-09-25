@@ -1825,21 +1825,38 @@ function cursor:hit_test(x, y, ...) --position based on position in layout.
 	return self.segments:offset_at_cursor(seg, cursor_i), seg, cursor_i, line_i
 end
 
+function cursor:changed() end --event stub
+
+function cursor:set(offset, seg, cursor_i, x)
+	local changed =
+		offset ~= self.offset
+		or seg ~= self.seg
+		or cursor_i ~= self.cursor_i
+	self.offset, self.seg, self.cursor_i = offset, seg, cursor_i
+	if x then
+		self.x = x
+	end
+	if changed then
+		self:changed()
+	end
+end
+
 function cursor:move_to_pos(x, y, ...) --move based on position in layout.
 	local offset, seg, cursor_i = self:hit_test(x, y, ...)
 	if offset then
-		self.offset, self.seg, self.cursor_i = offset, seg, cursor_i
+		self:set(offset, seg, cursor_i)
 	end
 end
 
 function cursor:move_to_offset(offset) --move based on position in text.
-	self.seg, self.cursor_i = self.segments:cursor_at_offset(offset)
-	self.offset = self.segments:offset_at_cursor(self.seg, self.cursor_i)
+	local seg, cursor_i = self.segments:cursor_at_offset(offset)
+	local offset = self.segments:offset_at_cursor(seg, cursor_i)
+	self:set(offset, seg, cursor_i)
 end
 
 function cursor:move_to_cursor(cur) --sync to another cursor.
 	assert(cur.segments == self.segments)
-	self.offset, self.seg, self.cursor_i = cur.offset, cur.seg, cur.cursor_i
+	self:set(cur.offset, cur.seg, cur.cursor_i)
 end
 
 function cursor:next_cursor(delta) --move char-by-char in logical text.
@@ -1883,13 +1900,13 @@ end
 
 function cursor:move(dir, delta) --move horizontally or vertically.
 	if dir == 'char' then
-		self.offset, self.seg, self.cursor_i = self:next_cursor(delta)
+		self:set(self:next_cursor(delta))
 		self.x = false
 	elseif dir == 'word' then
-		self.offset, self.seg, self.cursor_i = self:next_word_cursor(delta)
+		self:set(self:next_word_cursor(delta))
 		self.x = false
 	elseif dir == 'vert' then
-		self.offset, self.seg, self.cursor_i, self.x = self:next_line(delta)
+		self:set(self:next_line(delta))
 	else
 		assert(false, 'Invalid direction: %s', dir)
 	end

@@ -45,6 +45,7 @@ __cursors__
 `cursor:move_to_pos(x, y, ...)`                      move cursor to closest position
 `cursor:next_cursor([delta]) -> off, seg, i, line_i` next/prev cursor in text
 `cursor:move(dir[, delta])`                          move cursor in text
+`cursor:changed()`                                   event: cursor changed
 __selections__
 `segs:selection() -> sel`                            create a selection
 `sel:empty() -> true|false`                          check if selection is empty
