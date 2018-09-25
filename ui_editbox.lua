@@ -412,7 +412,9 @@ function editbox:gotfocus()
 	if not self.active then
 		self.selection:select_all()
 		self:scroll_to_caret()
-		self.caret_visible = false
+		self.caret_visible = self.selection:empty()
+	else
+		self.caret_visible = true
 	end
 end
 

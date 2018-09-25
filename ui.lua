@@ -612,7 +612,7 @@ function ui.transition:after_init(ui, elem, attr, to,
 			from, to = to, from
 			alive = true
 		end
-		return alive
+		return alive, start
 	end
 
 	function self:end_clock()
@@ -1080,13 +1080,16 @@ function element:update_transitions()
 	local clock = self.frame_clock
 	if not clock then return end --not inside repaint
 	for attr, transition in pairs(tr) do
-		if not transition:update(clock) then
+		local alive, start = transition:update(clock)
+		if not alive then
 			tr[attr] = transition.next_transition
+			if transition.next_transition then
+				self:invalidate()
+			end
+		else
+			self:invalidate(start)
 		end
 	end
-	--TODO: when transition is in delay, set a timer, don't invalidate.
-	--This makes the editbox caret invalidate continuously!
-	self:invalidate()
 end
 
 --sync'ing
@@ -1959,7 +1962,13 @@ end
 --rendering
 
 function window:draw(cr)
-	self._invalid = false
+	if self._frame_expire_clock > self.frame_clock then
+		--TODO: this still does blitting at 60fps even when there are
+		--no active (that is, not in delay) transitions!
+		self.native_window:invalidate()
+		return
+	end
+	self._frame_expire_clock = false
 	self.cr:save()
 	self.cr:new_path()
 	self.view:draw(cr)
@@ -1967,7 +1976,11 @@ function window:draw(cr)
 end
 
 function window:sync()
-	self._invalid = false
+	if self._frame_expire_clock > self.frame_clock then
+		self.native_window:invalidate()
+		return
+	end
+	self._frame_expire_clock = false
 	self.cr:save()
 	self.cr:new_path()
 	self.view:sync()
@@ -1975,10 +1988,13 @@ function window:sync()
 	self.cr:restore()
 end
 
-function window:invalidate() --element interface; window intf.
-	if self._invalid then return end
-	self._invalid = true
-	self.native_window:invalidate()
+function window:invalidate(clock) --element interface; window intf.
+	local invalidated = self._frame_expire_clock
+	self._frame_expire_clock = clock
+		and math.min(self._frame_expire_clock or 1/0, clock) or -1/0
+	if not invalidated then
+		self.native_window:invalidate()
+	end
 end
 
 --drawing helpers ------------------------------------------------------------
@@ -2828,6 +2844,10 @@ function layer:border_rect(offset, size_offset)
 	return box2d.offset(size_offset or 0, w1, h1, w, h)
 end
 
+function layer:get_border_inner_x() return (select(1, self:border_rect(-1))) end
+function layer:get_border_inner_y() return (select(2, self:border_rect(-1))) end
+function layer:get_border_inner_w() return (select(3, self:border_rect(-1))) end
+function layer:get_border_inner_h() return (select(4, self:border_rect(-1))) end
 function layer:get_border_outer_x() return (select(1, self:border_rect(1))) end
 function layer:get_border_outer_y() return (select(2, self:border_rect(1))) end
 function layer:get_border_outer_w() return (select(3, self:border_rect(1))) end
@@ -3650,9 +3670,9 @@ function layer:get_frame_clock()
 	return self.window.frame_clock
 end
 
-function layer:invalidate()
+function layer:invalidate(delay)
 	if self.window then
-		self.window:invalidate()
+		self.window:invalidate(delay)
 	end
 end
 
