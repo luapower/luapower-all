@@ -291,6 +291,7 @@ function ui.selector:after_init(ui, sel)
 		end)
 	end
 	self.tags = collect(gmatch_tags(sel)) --tags filter
+	self.text = sel --for debugging
 	if filter then
 		self:filter(filter)
 	end
@@ -475,6 +476,7 @@ function stylesheet:update_element(elem, update_children)
 	end
 
 	--set transition attrs first so that elem:transition() can use them.
+	--also because we don't want to transition the transition attrs.
 	for attr, val in pairs(attrs) do
 		if attr:find'^transition_' then
 			elem:_save_initial_value(attr)
@@ -508,7 +510,7 @@ function stylesheet:update_element(elem, update_children)
 	end
 	if update_children and elem.layers then
 		for _,layer in ipairs(elem.layers) do
-			self:update_element(layer, update_children)
+			self:update_element(layer, true)
 		end
 	end
 end
@@ -546,7 +548,7 @@ ui.type['_color$'] = 'color'
 ui.type['_color_'] = 'color'
 ui.type['_colors$'] = 'gradient_colors'
 
---transition animations ------------------------------------------------------
+--transition animation objects -----------------------------------------------
 
 local default_ease = 'expo out'
 
@@ -561,7 +563,7 @@ function ui.transition:interpolate_function(elem, attr)
 end
 
 function ui.transition:after_init(ui, elem, attr, to,
-	duration, ease, delay, times, backval, clock)
+	duration, ease, delay, times, backval, from, clock)
 
 	self.ui = ui
 
@@ -576,8 +578,12 @@ function ui.transition:after_init(ui, elem, attr, to,
 
 	--animation model
 	local interpolate = self:interpolate_function(elem, attr)
-	local from = elem[attr]
-	assert(from ~= nil, 'no value for attribute "%s"', attr)
+	if from == nil then
+		from = elem[attr]
+	end
+	assert(from ~= nil)
+	assert(to ~= nil)
+	local end_value = to
 
 	--set the element value to a copy to avoid overwritting the original value
 	--when updating with by-ref semantics.
@@ -617,11 +623,20 @@ function ui.transition:after_init(ui, elem, attr, to,
 		if self.next_transition then
 			return self.next_transition:end_value()
 		end
-		return to
+		return end_value
+	end
+
+	function self:infinite()
+		return times == 1/0
 	end
 
 	--NOTE: chain_to() replaces the next transition, it does not chain to it.
 	function self:chain_to(tran)
+		if not tran then
+			return self
+		elseif tran:infinite() then --`self` never gets to run after `tran`.
+			return tran
+		end
 		start = tran:end_clock() + delay
 		from = tran:end_value()
 		tran.next_transition = self
@@ -876,25 +891,6 @@ function element:update_styles()
 	end
 end
 
-function element:update_transitions()
-	local tr = self.transitions
-	if not tr or not next(tr) then return end
-	local clock = self.frame_clock
-	if not clock then return end --not inside repaint
-	for attr, transition in pairs(tr) do
-		if not transition:update(clock) then
-			tr[attr] = transition.next_transition
-		end
-	end
-	--TODO: when transition is in delay, set a timer, don't invalidate.
-	self:invalidate()
-end
-
-function element:sync()
-	self:update_styles()
-	self:update_transitions()
-end
-
 function element:_save_initial_value(attr)
 	local init = self._initial_values
 	if not init then
@@ -930,28 +926,7 @@ function element:parent_value(attr)
 	return val
 end
 
---animated attribute transitions
-
-ui.blend = {}
-
-function ui.blend.replace(ui, tran, elem, attr, val, duration, ease, delay, clock)
-	return ui:transition(elem, attr, val, duration, ease, delay, nil, nil, clock)
-end
-
-function ui.blend.replace_nodelay(ui, tran, elem, attr, val,
-	duration, ease, delay, clock)
-	return ui:transition(elem, attr, val, duration, ease, 0, nil, nil, clock)
-end
-
-function ui.blend.wait(ui, tran, elem, attr, val, duration, ease, delay, clock)
-	local new_tran = ui:transition(elem, attr, val, duration, ease, delay, nil, nil, clock)
-	return new_tran:chain_to(tran)
-end
-
-function ui.blend.wait_nodelay(ui, tran, elem, attr, val, duration, ease, delay, clock)
-	local new_tran = ui:transition(elem, attr, val, duration, ease, 0, nil, nil, clock)
-	return new_tran:chain_to(tran)
-end
+--attribute transitions
 
 function element:end_value(attr)
 	local tran = self.transitions and self.transitions[attr]
@@ -962,20 +937,76 @@ function element:end_value(attr)
 	end
 end
 
+element.blend_transition = {}
+
+function element.blend_transition:replace(
+	tran, attr, cur_val, val, cur_end_val,
+	duration, ease, delay, times, backval
+)
+	if duration <= 0 and delay <= 0 then
+		--instant transition: set the value immediately.
+		if val ~= cur_val then
+			self[attr] = val
+			self:invalidate()
+		end
+		return nil --stop the current transition if any.
+	elseif val == cur_end_val then
+		--same end value: continue with the current transition if any.
+		return tran
+	else
+		return self.ui:transition(
+			self, attr, val,
+			duration, ease, delay, times, backval, cur_val
+		)
+	end
+end
+
+function element.blend_transition:restart(
+	tran, attr, cur_val, val, cur_end_val,
+	duration, ease, delay, times, backval
+)
+	if duration <= 0 and delay <= 0 then
+		--instant transition: set the value immediately.
+		if val ~= cur_val then
+			self[attr] = val
+			self:invalidate()
+		end
+		return nil --stop the current transition if any.
+	else
+		--restarting means starting from `backval` instead of `cur_val`!
+		return self.ui:transition(
+			self, attr, val,
+			duration, ease, delay, times, backval, backval
+		)
+	end
+end
+
+function element.blend_transition:wait(
+	tran, attr, cur_val, val, cur_end_val,
+	duration, ease, delay, times, backval
+)
+	if val == cur_end_val then
+		--same end value: continue with the current transition if any.
+		return tran
+	else
+		return self.ui:transition(
+			self, attr, val,
+			duration, ease, delay, times, backval, cur_val
+		):chain_to(tran)
+	end
+end
+
 element.transition_duration = 0
 element.transition_ease = default_ease
 element.transition_delay = 0
 element.transition_repeat = 1
 element.transition_speed = 1
-element.transition_blend = 'replace_nodelay'
+element.transition_blend = 'replace'
 
-function element:transition(attr, val, duration, ease, delay, times, backval, blend)
-
-	if type(val) == 'function' then --computed value
-		val = val(self, attr)
-	end
-
-	--get transition parameters
+function element:transition(
+	attr, val, duration, ease, delay, times, backval, blend
+)
+	--pass duration=nil to get transition parameters from the element.
 	if not duration and self['transition_'..attr] then
 		duration = self['transition_duration_'..attr] or self.transition_duration
 		ease = ease or self['transition_ease_'..attr] or self.transition_ease
@@ -989,50 +1020,80 @@ function element:transition(attr, val, duration, ease, delay, times, backval, bl
 		ease = ease or default_ease
 		delay = delay or 0
 		times = times or 1
-		blend = blend or 'replace_nodelay'
+		blend = blend or 'replace'
 	end
 
-	local tran = self.transitions and self.transitions[attr]
-	local changed
-
-	if duration <= 0
-		and ((blend == 'replace' and delay <= 0) or blend == 'replace_nodelay')
-	then
-		tran = nil --remove existing transition on attr
-		changed = self[attr] ~= val
-		self[attr] = val --set attr directly
-	else --set attr with transition
-		if tran then
-			if tran:end_value() ~= val then
-				local blend_func = self.ui.blend[blend]
-				tran = blend_func(self.ui, tran, self, attr, val,
-					duration, ease, delay, self.frame_clock)
-				changed = true
-			end
-		elseif self[attr] ~= val then
-			if times > 1 and backval == nil then
-				backval = self:initial_value(attr)
-			end
-			tran = self.ui:transition(self, attr, val,
-				duration, ease, delay, times, backval, self.frame_clock)
-			changed = true
-		end
+	local cur_tran = self.transitions and self.transitions[attr]
+	local cur_val = self[attr]
+	local cur_end_val
+	if cur_tran then
+		cur_end_val = cur_tran:end_value()
+	else
+		cur_end_val = cur_val
 	end
+
+	--values can be functions in style declarations.
+	if type(val) == 'function' then
+		val = val(self, attr)
+	end
+
+	--pass val=nil to restart an existing transition but also to
+	--fast-forward a transition by also passing duration=0.
+	if val == nil then
+		val = cur_end_val
+	end
+
+	--pass backval=nil on a repeat (yoyo) transition in order to transition
+	--back to the initial value (the value before styles were applied) on
+	--every reverse (even) loop.
+	if times > 1 and backval == nil then
+		backval = self:initial_value(attr)
+	end
+
+	local blend_func = self.blend_transition[blend]
+	local tran = blend_func(self,
+		cur_tran, attr, cur_val, val, cur_end_val,
+		duration, ease, delay, times, backval
+	)
 
 	if tran then
-		self.transitions = self.transitions or {}
-		self.transitions[attr] = tran
+		if tran ~= cur_tran then
+			self.transitions = self.transitions or {}
+			self.transitions[attr] = tran
+		end
 	elseif self.transitions then
 		self.transitions[attr] = nil
 	end
 
-	if changed then
+	if tran ~= cur_tran then
 		self:invalidate()
 	end
 end
 
 function element:transitioning(attr)
 	return self.transitions and self.transitions[attr] and true or false
+end
+
+function element:update_transitions()
+	local tr = self.transitions
+	if not tr or not next(tr) then return end
+	local clock = self.frame_clock
+	if not clock then return end --not inside repaint
+	for attr, transition in pairs(tr) do
+		if not transition:update(clock) then
+			tr[attr] = transition.next_transition
+		end
+	end
+	--TODO: when transition is in delay, set a timer, don't invalidate.
+	--This makes the editbox caret invalidate continuously!
+	self:invalidate()
+end
+
+--sync'ing
+
+function element:sync()
+	self:update_styles()
+	self:update_transitions()
 end
 
 --windows --------------------------------------------------------------------

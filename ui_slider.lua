@@ -115,13 +115,18 @@ tip.text_size = 11
 tip.opacity = 0
 
 ui:style('slider_tip', {
+	--fade-out
 	transition_opacity = true,
 	transition_duration_opacity = .5,
-	transition_delay_opacity = .5,
+	transition_delay_opacity = 1.5,
+	--prevent interrupting a fade-in with a delayed fade-out.
+	--TODO: think of implementing an `start_value='end_value` option similar
+	--to CSS which would also solve this.
 	transition_blend_opacity = 'wait',
 })
 
 ui:style('slider_tip :visible', {
+	--fade-in
 	opacity = 1,
 	transition_opacity = true,
 	transition_delay_opacity = 0,

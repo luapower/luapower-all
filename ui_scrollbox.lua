@@ -56,15 +56,21 @@ scrollbar.opacity = 0 --prevent fade out on init
 
 ui:style('scrollbar', {
 	opacity = 1,
+	transition_opacity = false,
 })
 
 --fade out
-ui:style('scrollbar autohide, scrollbar :empty', {
+ui:style('scrollbar autohide', {
 	opacity = 0,
 	transition_opacity = true,
 	transition_delay_opacity = .5,
 	transition_duration_opacity = 1,
 	transition_blend_opacity = 'wait',
+})
+
+ui:style('scrollbar :empty', {
+	opacity = 0,
+	transition_opacity = false,
 })
 
 --fade in
@@ -374,24 +380,25 @@ function scrollbox:after_sync()
 	local vs_overlap = vs.autohide or vs.overlap
 	local hs_overlap = hs.autohide or hs.overlap
 
-	--compute view dimensions by deciding which scrollbar should be hidden.
-	local hide_vs, hide_hs
+	--compute view dimensions by deciding which scrollbar is either hidden
+	--or is overlapping the view box so it takes no space of its own.
+	local vs_nospace, hs_nospace
 
-	local hide_vs = not vs.visible or vs_overlap
+	local vs_nospace = not vs.visible or vs_overlap
 		or (vs.autohide_empty and ch <= h and (ch <= h - sh or 'depends'))
 
-	local hide_hs = not hs.visible or hs_overlap
+	local hs_nospace = not hs.visible or hs_overlap
 		or (hs.autohide_empty and cw <= w and (cw <= w - sw or 'depends'))
 
-	if    (hide_vs == 'depends' and not hide_hs)
-		or (hide_hs == 'depends' and not hide_vs)
+	if    (vs_nospace == 'depends' and not hs_nospace)
+		or (hs_nospace == 'depends' and not vs_nospace)
 	then
-		hide_vs = false
-		hide_hs = false
+		vs_nospace = false
+		hs_nospace = false
 	end
 
-	view.w = w - (hide_vs and 0 or sw)
-	view.h = h - (hide_hs and 0 or sh)
+	view.w = w - (vs_nospace and 0 or sw)
+	view.h = h - (hs_nospace and 0 or sh)
 
 	--reset the scrollbars state.
 	hs:reset(cw, view.w, hs.offset)
@@ -405,20 +412,21 @@ function scrollbox:after_sync()
 	vs.w = view.h - 2 * vs.margin --.w is its height!
 	hs.w = view.w - 2 * hs.margin
 
-	--shorten the dimensions if scrollbars are overlapping.
-	--NOTE: scrollbars state must be already set since we call `empty()`.
-	local hs_overlaps = hs.visible and hs_overlap
+	--check which scrollbars are visible and actually overlapping the view.
+	--NOTE: scrollbars state must already be set here since we call `empty()`.
+	local hs_overlapping = hs.visible and hs_overlap
 		and (not hs.autohide_empty or not hs:empty())
 
-	local vs_overlaps = vs.visible and vs_overlap
+	local vs_overlapping = vs.visible and vs_overlap
 		and (not vs.autohide_empty or not vs:empty())
 
-	vs.w = vs.w - (vs_overlap and hs_overlaps and sh or 0)
-	hs.w = hs.w - (hs_overlap and vs_overlaps and sw or 0)
+	--shorten the ends of scrollbars so they don't overlap each other.
+	vs.w = vs.w - (vs_overlap and hs_overlapping and sh or 0)
+	hs.w = hs.w - (hs_overlap and vs_overlapping and sw or 0)
 
 	--compute scrollbar positions.
-	vs.x = view.w - (vs_overlap and sw or 0)
-	hs.y = view.h - (hs_overlap and sh or 0)
+	vs.x = view.w - (vs_nospace and sw or 0)
+	hs.y = view.h - (hs_nospace and sh or 0)
 	vs.y = vs.margin
 	hs.x = hs.margin
 end

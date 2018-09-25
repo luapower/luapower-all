@@ -127,7 +127,7 @@ scroll_pane:inherit(pane)
 
 scroll_pane.vscrollable = false
 scroll_pane.vscrollbar = {visible = false}
-scroll_pane.hscrollbar_margin_right = 12 --TODO: don't go over the vscrollbar
+scroll_pane.hscrollbar = {margin_right = 16}
 
 function grid:create_scroll_pane(freeze_pane)
 	return self.scroll_pane_class(self.ui, {
@@ -912,7 +912,7 @@ function grid:row_at_screen_bottom_y(y, ...)
 end
 
 function grid:visible_rows_range()
-	local h = self.scroll_pane.rows_layer.ch
+	local h = self.freeze_pane.rows_layer.ch
 	local i1 = self:row_at_screen_y(0)
 	local i2 = self:row_at_screen_y(h - 1)
 	return i1, i2
@@ -1609,7 +1609,6 @@ if not ... then require('ui_demo')(function(ui, win)
 			--border_color = '#f00',
 		},
 		freeze_col = 3,
-		freeze_scroll_col = 6,
 		scroll_pane = {
 			--background_color = '#f00',
 			content = {

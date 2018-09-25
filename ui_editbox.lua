@@ -32,17 +32,27 @@ editbox.password = false
 editbox.maxlen = 4096
 editbox.tags = 'standalone'
 
+ui:style('editbox', {
+	caret_color = '#fff0',
+	transition_caret_color = true,
+	transition_delay_caret_color = function(self)
+		return self.ui.caret_blink_time
+	end,
+	transition_blend_caret_color = 'restart', --(re)start from default color
+	transition_repeat_caret_color = 1/0, --blink indefinitely
+})
+
 ui:style('editbox standalone', {
 	border_color = '#333',
 	border_width = 1,
 	transition_border_color = true,
-	transition_duration = .5,
+	transition_duration_border_color = .5,
 })
 
 ui:style('editbox standalone :hot', {
 	border_color = '#999',
 	transition_border_color = true,
-	transition_duration = .5,
+	transition_duration_border_color = .5,
 })
 
 ui:style('editbox standalone :focused', {
@@ -119,6 +129,13 @@ function editbox:after_init(ui, t)
 	--obeys maxlen and triggers changed event.
 	self.selection = self:sync_text():selection()
 	self.text = t.text
+
+	function self.selection.cursor1.changed()
+		self:blink_caret()
+	end
+	function self.selection.cursor2.changed()
+		self:blink_caret()
+	end
 end
 
 --sync'ing
@@ -126,13 +143,17 @@ end
 function editbox:override_sync_text(inherited)
 	local segs = inherited(self)
 
+	--extra padding needed to make the rightmost cursor visible when the text
+	--is right-aligned.
+	local caret_padding = self.text_align == 'right' and 1 or 0
+
 	--scroll text.
 	local new_x = -self._scroll_x
 	local scrolled = segs.lines.x ~= new_x
-	segs.lines.x = new_x
+	segs.lines.x = new_x - caret_padding
 
 	--clip text segments to the content rectangle.
-	if not self.password then
+	if false and not self.password then
 		if scrolled or not segs.lines.editbox_clipped then
 			segs:clip(self:content_rect())
 			--mark the lines as clipped: this flag will be gone after re-layouting.
@@ -166,12 +187,15 @@ local function draw_sel_rect(x, y, w, h, cr, self)
 	cr:fill()
 end
 function editbox:draw_selection(cr)
+	if self.selection:empty() then return end
 	cr:rgba(self.ui:rgba(self.selection_color))
 	cr:new_path()
 	self.selection:rectangles(draw_sel_rect, cr, self)
 end
 
 function editbox:draw_caret(cr)
+	if not self.focused then return end
+	if not self.caret_visible then return end
 	local x, y, w, h, dir = self:caret_rect()
 	cr:rgba(self.ui:rgba(self.caret_color))
 	cr:new_path()
@@ -179,12 +203,14 @@ function editbox:draw_caret(cr)
 	cr:fill()
 end
 
+function editbox:blink_caret()
+	self.caret_visible = true
+	self:transition'caret_color'
+end
+
 function editbox:after_draw_content(cr)
-	if not self.selection:empty() then
-		self:draw_selection(cr)
-	elseif self.focused then
-		self:draw_caret(cr)
-	end
+	self:draw_selection(cr)
+	self:draw_caret(cr)
 end
 
 --scrolling
@@ -377,6 +403,7 @@ function editbox:gotfocus()
 	if not self.active then
 		self.selection:select_all()
 		self:scroll_to_caret()
+		self.caret_visible = false
 	end
 end
 
@@ -446,7 +473,7 @@ function editbox:sync_password_mask(segs)
 	segs.lines.pw_cursor_is = {}
 	segs.lines.pw_cursor_xs = {}
 	local i = 0
-	for _, x in segs:cursor_xs() do
+	for _,x in segs:cursor_xs() do
 		segs.lines.pw_cursor_is[snap(x, 1/256)] = i
 		segs.lines.pw_cursor_xs[i] = x
 		i = i + 1
@@ -474,6 +501,7 @@ function editbox:text_to_mask(x, y)
 		local line_x = segs:line_pos(1)
 		local i = segs.lines.pw_cursor_is[snap(x - line_x, 1/256)]
 		x = line_x + i * self:password_char_advance_x()
+		x = snap(x, 1) --prevent blurry carets
 	end
 	return x, y
 end
@@ -570,40 +598,68 @@ end
 if not ... then require('ui_demo')(function(ui, win)
 
 	ui:add_font_file('media/fonts/FSEX300.ttf', 'fixedsys')
+	local x, y = 10, 10
+	local function xy()
+		local editbox = win.view.layers[#win.view.layers]
+		y = y + editbox.h + 10
+		if y + editbox.h + 10 > win.ch then
+			x = x + editbox.y + 10
+		end
+	end
 
-	local ed1 = ui:editbox{
+	--defaults all-around.
+	ui:editbox{
+		x = x, y = y, parent = win,
+		text = 'Hello World!',
+	}
+	xy()
+
+	--maxlen: truncate initial text. prevent editing past maxlen.
+	ui:editbox{
+		x = x, y = y, parent = win,
+		text = 'Hello World!',
+		maxlen = 5,
+	}
+	xy()
+
+	--right align
+	ui:editbox{
+		x = x, y = y, parent = win,
+		text = 'Hello World!',
+		text_align = 'right',
+	}
+	xy()
+
+	--password
+	ui:editbox{
 		--font = 'fixedsys,16',
-		x = 20,
-		y = 20 + 35 * 0,
-		parent = win,
+		x = x, y = y, parent = win,
 		text = 'Hello World!',
 		password = true,
 		maxlen = 28,
 	}
+	xy()
 
-	local ed2 = ui:editbox{
+	ui:editbox{
 		--font = 'fixedsys,16',
+		x = x, y = y, parent = win,
 		font = 'Amiri,20',
 		text = 'السَّلَامُ عَلَيْكُمْ',
 		text_align = 'right',
 		text_dir = 'rtl',
-		x = 20,
-		y = 20 + 35 * 1,
-		parent = win,
 	}
+	xy()
 
-	local ed3 = ui:editbox{
+	ui:editbox{
+		x = x, y = y, parent = win,
 		text = ('Hello World! '):rep(100000),
 		maxlen = 65536 / 10,
-		x = 20,
-		y = 20 + 35 * 2,
-		parent = win,
 	}
+	xy()
 
-	local ed4 = ui:editbox{
+	ui:editbox{
+		x = x, y = y, parent = win,
 		--font = 'fixedsys,16',
-		x = 20,
-		y = 20 + 35 * 3,
 		h = 200,
 		parent = win,
 		text = 'Hello World!',
@@ -611,6 +667,7 @@ if not ... then require('ui_demo')(function(ui, win)
 		multiline = true,
 		cue = 'Type text here...',
 	}
+	xy()
 
 	--[[
 	local t0 = require'time'.clock()
