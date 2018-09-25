@@ -11,6 +11,7 @@ local lerp = glue.lerp
 
 local scrollbar = ui.layer:subclass'scrollbar'
 ui.scrollbar = scrollbar
+scrollbar.iswidget = true
 
 local grip = ui.layer:subclass'scrollbar_grip'
 scrollbar.grip_class = grip
@@ -294,6 +295,7 @@ end
 
 local scrollbox = ui.layer:subclass'scrollbox'
 ui.scrollbox = scrollbox
+scrollbox.iswidget = true
 
 scrollbox.vscrollbar_class = scrollbar
 scrollbox.hscrollbar_class = scrollbar
@@ -315,7 +317,8 @@ scrollbox:init_ignore{scrollbar=1}
 function scrollbox:after_init(ui, t)
 
 	self.view = self.ui:layer{
-		parent = self, clip_content = true,
+		parent = self,
+		clip_content = true,
 	}
 
 	if not self.content or not self.content.islayer then
@@ -333,6 +336,7 @@ function scrollbox:after_init(ui, t)
 		parent = self,
 		scrollbox = self,
 		vertical = true,
+		iswidget = false,
 	}, self.super.scrollbar, t.scrollbar, self.vscrollbar)
 
 	self.hscrollbar = self.hscrollbar_class(self.ui, {
@@ -340,6 +344,7 @@ function scrollbox:after_init(ui, t)
 		parent = self,
 		scrollbox = self,
 		vertical = false,
+		iswidget = false,
 	}, self.super.scrollbar, t.scrollbar, self.hscrollbar)
 
 	--make autohide scrollbars to show and hide in sync.

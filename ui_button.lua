@@ -8,6 +8,7 @@ local lerp = glue.lerp
 
 local button = ui.layer:subclass'button'
 ui.button = button
+button.iswidget = true
 
 button.focusable = true
 button.w = 90
@@ -325,6 +326,7 @@ function checkbox:create_button()
 	return self.button_class(self.ui, {
 		parent = self,
 		checkbox = self,
+		iswidget = false,
 	}, self.button)
 end
 
@@ -347,6 +349,7 @@ function checkbox:create_label()
 	return self.label_class(self.ui, {
 		parent = self,
 		checkbox = self,
+		iswidget = false,
 	}, self.label)
 end
 
@@ -443,6 +446,7 @@ function rblist:create_radiobutton(i, v)
 		y = y,
 		w = self.w,
 		parent = self,
+		iswidget = false,
 		button = glue.update({
 			tabgroup = self.tabgroup or self,
 			tabindex = i,
@@ -571,6 +575,7 @@ function choicebutton:create_button(index, value)
 		tags = 'choicebutton_button',
 		choicebutton = self,
 		parent = self,
+		iswidget = false,
 		index = index,
 		text = type(value) == 'table' and value.text or value,
 		value = type(value) == 'table' and value.value or value,

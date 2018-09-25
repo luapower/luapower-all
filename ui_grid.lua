@@ -21,6 +21,7 @@ end
 
 local grid = ui.layer:subclass'grid'
 ui.grid = grid
+grid.iswidget = true
 
 grid.focusable = true
 grid.border_color = '#333'
@@ -97,6 +98,7 @@ freeze_pane:inherit(pane)
 function grid:create_freeze_pane(t)
 	local pane = self.freeze_pane_class(self.ui, {
 		parent = self,
+		iswidget = false,
 		grid = self,
 		frozen = true,
 	}, t)
@@ -132,6 +134,7 @@ scroll_pane.hscrollbar = {margin_right = 16}
 function grid:create_scroll_pane(freeze_pane)
 	return self.scroll_pane_class(self.ui, {
 		parent = self,
+		iswidget = false,
 		grid = self,
 		frozen = false,
 		freeze_pane = freeze_pane,
@@ -188,6 +191,7 @@ drag_splitter.background_color = '#fff2'
 function grid:create_splitter()
 	return self.splitter_class(self.ui, {
 		parent = self,
+		iswidget = false,
 		grid = self,
 	}, self.splitter)
 end
@@ -310,6 +314,7 @@ grid.header_visible = true
 function grid:create_header_layer(pane)
 	return self.header_layer_class(self.ui, {
 		parent = pane.content or pane,
+		iswidget = false,
 		pane = pane,
 		grid = self,
 	}, self.header_layer)
@@ -332,6 +337,7 @@ rows.clip_content = true --for rows
 function grid:create_rows_layer(pane)
 	return self.rows_layer_class(self.ui, {
 		parent = pane.content or pane,
+		iswidget = false,
 		pane = pane,
 		grid = self,
 	}, self.rows_layer)
@@ -791,6 +797,7 @@ function cell:invalidate() end --we call draw() manually
 function grid:create_cell()
 	local cell = self.cell_class(self.ui, self.cell)
 	cell:inherit() --speed up cell drawing
+	cell.iswidget = false
 	return cell
 end
 
@@ -1411,6 +1418,7 @@ grid.vscrollbar_margin_right = 0
 function grid:create_vscrollbar()
 	return self.vscrollbar_class(self.ui, {
 		parent = self,
+		iswidget = false,
 		grid = self,
 		vertical = true,
 		step = 1, --avoid blurred text

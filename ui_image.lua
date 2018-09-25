@@ -4,4 +4,6 @@
 
 local ui = require'ui'
 
-ui.image = ui.layer:subclass'image'
+local image = ui.layer:subclass'image'
+ui.image = image
+image.iswidget = true

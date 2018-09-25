@@ -1444,7 +1444,8 @@ function window:_backend_keychar(s)
 	self:fire('keychar', s)
 end
 
-function app:key(keys)
+--TODO: implement `key_pressed_now` arg and use it in `ui_editbox`!
+function app:key(keys, key_pressed_now)
 	keys = keys:lower()
 	if keys:find'[^%+]%+' then --'alt+f3' -> 'alt f3'; 'ctrl++' -> 'ctrl +'
 		keys = keys:gsub('([^%+%s])%+', '%1 ')

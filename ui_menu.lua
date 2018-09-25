@@ -27,6 +27,7 @@ end
 --menu bar -------------------------------------------------------------------
 
 ui.menubar = ui.layer:subclass'menubar'
+ui.menubar.iswidget = true
 
 --function ui.menubar:
 

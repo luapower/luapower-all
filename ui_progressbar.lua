@@ -6,6 +6,7 @@ local ui = require'ui'
 
 local progressbar = ui.layer:subclass'progressbar'
 ui.progressbar = progressbar
+progressbar.iswidget = true
 
 progressbar.border_width = 1
 progressbar.border_color = '#333'
@@ -27,6 +28,7 @@ bar.background_color = '#fff'
 function progressbar:create_bar()
 	return self.bar_class(self.ui, {
 		parent = self,
+		iswidget = false,
 		progressbar = self,
 	}, self.bar)
 end

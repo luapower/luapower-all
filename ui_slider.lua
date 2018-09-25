@@ -12,6 +12,7 @@ local lerp = glue.lerp
 
 local slider = ui.layer:subclass'slider'
 ui.slider = slider
+slider.iswidget = true
 
 local track      = ui.layer:subclass'slider_track'
 local fill       = ui.layer:subclass'slider_fill'

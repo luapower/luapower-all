@@ -14,6 +14,7 @@ snap = glue.snap
 
 local editbox = ui.layer:subclass'editbox'
 ui.editbox = editbox
+editbox.iswidget = true
 
 editbox.w = 180
 editbox.h = 24
@@ -319,8 +320,14 @@ function editbox:keychar(s)
 end
 
 function editbox:keypress(key)
+
 	local shift = self.ui:key'shift'
 	local ctrl = self.ui:key'ctrl'
+	local shift_ctrl = shift and ctrl
+	local shift_only = shift and not ctrl
+	local ctrl_only = ctrl and not shift
+	local key_only = not ctrl and not shift
+
 	if key == 'right' or key == 'left' then
 		self:undo_group()
 		local movement = ctrl and 'word' or 'char'
@@ -350,11 +357,11 @@ function editbox:keypress(key)
 		end
 		self:scroll_to_caret()
 		return true
-	elseif key == 'insert' then
+	elseif key_only and key == 'insert' then
 		self.insert_mode = not self.insert_mode
 		self:scroll_to_caret()
 		return true
-	elseif key == 'delete' or key == 'backspace' then
+	elseif key_only and (key == 'delete' or key == 'backspace') then
 		self:undo_group'delete'
 		if self.selection:empty() then
 			if key == 'delete' then --remove the char after the cursor
@@ -370,16 +377,21 @@ function editbox:keypress(key)
 		self.selection:select_all()
 		self:scroll_to_caret()
 		return true
-	elseif ctrl and (key == 'C' or key == 'X') then
+	elseif
+		(ctrl and (key == 'C' or key == 'X'))
+		or (shift_only and key == 'delete') --cut
+		or (ctrl_only and key == 'insert') --paste
+	then
 		if not self.selection:empty() then
 			self.ui:setclipboard(self.selection:string(), 'text')
-			if key == 'X' then
+			local cut = key == 'X' or key == 'delete'
+			if cut then
 				self:undo_group'cut'
 				self:replace_selection('', true)
 			end
 		end
 		return true
-	elseif ctrl and key == 'V' then
+	elseif (ctrl and key == 'V') or (shift_only and key == 'insert') then
 		local s = self.ui:getclipboard'text'
 		s = s and self:filter_text(s)
 		if s and s ~= '' then
@@ -390,10 +402,7 @@ function editbox:keypress(key)
 	elseif ctrl and key == 'Z' then
 		self:undo()
 		return true
-	elseif ctrl and key == 'Y' then
-		self:redo()
-		return true
-	elseif ctrl and shift and key == 'Z' then
+	elseif (ctrl and key == 'Y') or (shift_ctrl and key == 'Z') then
 		self:redo()
 		return true
 	end

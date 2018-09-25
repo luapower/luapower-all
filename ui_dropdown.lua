@@ -7,6 +7,7 @@ local glue = require'glue'
 
 local dropdown = ui.layer:subclass'dropdown'
 ui.dropdown = dropdown
+dropdown.iswidget = true
 
 --default geometry
 
@@ -93,6 +94,7 @@ function dropdown:create_editbox()
 	return self.editbox_class(self.ui, {
 		parent = self,
 		dropdown = self,
+		iswidget = false,
 	}, self.editbox)
 end
 
@@ -136,6 +138,7 @@ function dropdown:create_button()
 	return self.button_class(self.ui, {
 		parent = self,
 		dropdown = self,
+		iswidget = false,
 	}, self.button)
 end
 

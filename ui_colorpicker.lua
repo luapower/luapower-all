@@ -668,6 +668,7 @@ end
 
 local picker = ui.layer:subclass'colorpicker'
 ui.colorpicker = picker
+picker.iswidget = true
 
 --model
 
@@ -714,8 +715,9 @@ picker.mode_button_class = ui.choicebutton
 
 function picker:create_hue_bar()
 	return self.hue_bar_class(self.ui, {
-		picker = self,
 		parent = self,
+		iswidget = false,
+		picker = self,
 		hue_changed = function(_, hue)
 			self.hue_slider.position = hue
 		end,
@@ -725,6 +727,7 @@ end
 function picker:create_sat_lum_rectangle()
 	return self.sat_lum_rectangle_class(self.ui, {
 		parent = self,
+		iswidget = false,
 		picker = self,
 		visible = false,
 		sat_changed = function(_, sat)
@@ -742,6 +745,7 @@ end
 function picker:create_sat_val_rectangle()
 	return self.sat_val_rectangle_class(self.ui, {
 		parent = self,
+		iswidget = false,
 		picker = self,
 		visible = false,
 		sat_changed = function(_, sat)
@@ -759,6 +763,7 @@ end
 function picker:create_mode_button()
 	return self.mode_button_class(self.ui, {
 		parent = self,
+		iswidget = false,
 		picker = self,
 		values = {'HSL', 'HSV'},
 		value_selected = function(_, mode)
@@ -772,8 +777,9 @@ end
 
 function picker:create_rgb_editbox()
 	return self.ui:editbox{
-		picker = self,
 		parent = self,
+		iswidget = false,
+		picker = self,
 	}
 end
 

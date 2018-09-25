@@ -13,6 +13,7 @@ local round = glue.round
 
 local tab = ui.layer:subclass'tab'
 ui.tab = tab
+tab.iswidget = true
 
 --tablist property: removing the selected tab selects the previous tab.
 --adding a tab selects the tab based on its stored selected state.
@@ -345,6 +346,7 @@ ui:style('tab_title :focused', {
 function tab:create_title(title)
 	return self.title_class(self.ui, {
 		parent = self,
+		iswidget = false,
 		tab = self,
 	}, self.title, title)
 end
@@ -403,6 +405,7 @@ end
 function tab:create_close_button(button)
 	return self.close_button_class(self.ui, {
 		parent = self,
+		iswidget = false,
 		tab = self,
 	}, self.close_button, button)
 end

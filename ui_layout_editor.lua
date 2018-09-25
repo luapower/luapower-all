@@ -41,7 +41,6 @@ end
 --editor.background_color = '#3338'
 
 function editor:before_sync()
-	self.window.view.iswidget = true
 	self.w = self.window.view.cw
 	self.h = self.window.view.ch
 end
@@ -113,7 +112,7 @@ end
 function editor:hit_test_target(cr, layer, x, y)
 	if layer == self then return end
 	if not layer.visible then return end
-	if not layer.iswidget then return end
+	if not (layer.iswidget or layer == layer.window.view) then return end
 	local x, y = layer:from_parent(x, y)
 	if self:hit_test_target_layers(cr, layer, x, y) then
 		return true
