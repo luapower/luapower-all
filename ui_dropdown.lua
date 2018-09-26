@@ -123,10 +123,6 @@ function editbox:override_keypress(inherited, key)
 	return inherited(self, key)
 end
 
-function editbox:text_changed()
-	print(self.text)
-end
-
 --open/close button
 
 local button = ui.layer:subclass'dropdown_button'

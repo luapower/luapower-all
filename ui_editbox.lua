@@ -16,44 +16,31 @@ local editbox = ui.layer:subclass'editbox'
 ui.editbox = editbox
 editbox.iswidget = true
 
-editbox.w = 180
-editbox.h = 24
-editbox.padding = 4
-editbox.focusable = true
-editbox.max_click_chain = 3 --receive doubleclick and tripleclick events
-editbox.clip_content = true
+--features
+
 editbox.text_align = 'left'
-editbox.caret_color = '#fff'
-editbox.selection_color = '#66f8'
-editbox.nowrap = true
-editbox.insert_mode = false
-editbox.cursor_text = 'text'
-editbox.cursor_selection = 'arrow'
 editbox.password = false
 editbox.maxlen = 4096
+editbox.insert_mode = false
+
+--metrics & colors
+
+editbox.w = 180
+editbox.h = 24
+editbox.border_color = '#000'
+editbox.padding = 4
+editbox.caret_color = '#fff'
+editbox.selection_color = '#66f8'
+
 editbox.tags = 'standalone'
 
-ui:style('editbox', {
-	caret_color = '#fff0',
-	transition_caret_color = true,
-	transition_delay_caret_color = function(self)
-		return self.ui.caret_blink_time
-	end,
-	transition_blend_caret_color = 'restart', --(re)start from default color
-	transition_repeat_caret_color = 1/0, --blink indefinitely
-})
-
 ui:style('editbox standalone', {
-	border_color = '#333',
 	border_width = 1,
-	transition_border_color = true,
-	transition_duration_border_color = .5,
+	border_color = '#333',
 })
 
 ui:style('editbox standalone :hot', {
 	border_color = '#999',
-	transition_border_color = true,
-	transition_duration_border_color = .5,
 })
 
 ui:style('editbox standalone :focused', {
@@ -65,7 +52,39 @@ ui:style('editbox standalone :focused', {
 
 ui:style('editbox :insert_mode', {
 	caret_color = '#fff8',
+	transition_caret_color = false, --no blinking
 })
+
+--animation
+
+--caret blinking
+ui:style('editbox', {
+	caret_color = '#fff0', --TODO: animate opacity instead!
+	transition_caret_color = true,
+	transition_delay_caret_color = function(self)
+		return self.ui.caret_blink_time
+	end,
+	transition_times_caret_color = 1/0, --blink indefinitely
+})
+
+ui:style('editbox standalone', {
+	transition_border_color = true,
+	transition_duration_border_color = .5,
+})
+
+ui:style('editbox standalone :hot', {
+	transition_border_color = true,
+	transition_duration_border_color = .5,
+})
+
+--internal config
+
+editbox.focusable = true
+editbox.max_click_chain = 3 --receive doubleclick and tripleclick events
+editbox.clip_content = true
+editbox.nowrap = true
+editbox.cursor_text = 'text'
+editbox.cursor_selection = 'arrow'
 
 --insert_mode property
 
@@ -81,8 +100,8 @@ end
 
 editbox._text = ''
 
---tell ui:sync_text() that we're managing text reshaping ourselves.
---reshaping is done by selection:replace().
+--tell ui:sync_text() to stop checking the `text` property to decide
+--if the text needs reshaping. reshaping is done by selection:replace() now.
 editbox._text_valid = true
 
 function editbox:get_text()
@@ -125,7 +144,6 @@ end
 editbox:init_ignore{text=1}
 
 function editbox:after_init(ui, t)
-	self._scroll_x = 0
 	--create a selection so we can add the text through the selection which
 	--obeys maxlen and triggers changed event.
 	self.selection = self:sync_text():selection()
@@ -142,22 +160,48 @@ end
 --sync'ing
 
 function editbox:override_sync_text(inherited)
+	if self.password then
+		self.text_align = 'left' --only left-alignment supported!
+	end
 	local segs = inherited(self)
+	if not self.selection then
+		return segs
+	end
+	if self.password then
+		self:sync_password_mask(segs)
+	end
 
-	--extra padding needed to make the rightmost cursor visible when the text
-	--is right-aligned.
-	local caret_padding = self.text_align == 'right' and 1 or 0
+	--move the text behind the editbox such that the caret remains visible.
+	local line_w
+	if self.password then
+		local t = segs.lines.pw_cursor_xs
+		line_w = #t * self:password_char_advance_x()
+	else
+		line_w = segs.lines[1].advance_x
+	end
+	local x, _, w = self:caret_rect()
+	local view_w = self.cw - w
+	local sx = segs.lines.x
+	if line_w > view_w then
+		local ax = segs.lines[1].x --alignment x.
+		local sx = sx + ax --text offset relative to the editbox.
+		x = x - sx
+		--scroll to make the cursor visible.
+		sx = clamp(sx, -x, -x + view_w)
+		--scroll to keep the text within the editbox bounds.
+		sx = clamp(sx, math.min(view_w - line_w, 0), 0)
+		--apply the scroll offset.
+		segs.lines.x = sx - ax
+	else
+		segs.lines.x = 0
+	end
 
-	--scroll text.
-	local new_x = -self._scroll_x
-	local scrolled = segs.lines.x ~= new_x
-	segs.lines.x = new_x - caret_padding
-
-	--clip text segments to the content rectangle.
-	if false and not self.password then
-		if scrolled or not segs.lines.editbox_clipped then
+	--clip the text segments to the content rectangle to avoid drawing
+	--any invisible text segments. mark the lines as clipped in the `lines`
+	--table because `lines` will be replaced after re-layouting.
+	if not self.password then
+		if segs.lines.x ~= sx or not segs.lines.editbox_clipped then
 			segs:clip(self:content_rect())
-			--mark the lines as clipped: this flag will be gone after re-layouting.
 			segs.lines.editbox_clipped = true
 		end
 	end
@@ -206,34 +250,13 @@ end
 
 function editbox:blink_caret()
 	self.caret_visible = true
-	self:transition'caret_color'
+	self:transition{attr = 'caret_color', blend = 'restart'}
+	self:invalidate()
 end
 
 function editbox:after_draw_content(cr)
 	self:draw_selection(cr)
 	self:draw_caret(cr)
-end
-
---scrolling
-
-function editbox:scroll_to_caret(preserve_screen_x)
-	local segs = self:sync_text()
-	local x, y, w, h, dir = self:caret_rect()
-	x = x - segs.lines.x
-	if preserve_screen_x and self._screen_x then
-		self._scroll_x = x - self._screen_x
-	end
-	self._scroll_x = clamp(self._scroll_x, x - self.cw + w, x)
-	local line_w
-	if segs.lines.pw_cursor_xs then
-		line_w = #segs.lines.pw_cursor_xs * self:password_char_advance_x()
-	else
-		line_w = segs.lines[1].advance_x
-	end
-	local max_scroll_x = math.max(0, line_w - self.cw + w)
-	self._scroll_x = clamp(self._scroll_x, 0, max_scroll_x)
-	self._screen_x = x - self._scroll_x
-	self:invalidate()
 end
 
 --undo/redo
@@ -305,7 +328,7 @@ function editbox:replace_selection(s, preserve_screen_x, fire_event)
 	local maxlen = self.maxlen - self.selection.segments.text_runs.len
 	if not self.selection:replace(s, nil, nil, maxlen) then return end
 	self._text = false --invalidate the text property
-	self:scroll_to_caret(preserve_screen_x)
+	self:invalidate()
 	if fire_event ~= false then
 		self:fire'text_changed'
 	end
@@ -347,7 +370,6 @@ function editbox:keypress(key)
 				end
 			end
 		end
-		self:scroll_to_caret()
 		return true
 	elseif key == 'up' or key == 'down' then
 		self:undo_group()
@@ -355,11 +377,9 @@ function editbox:keypress(key)
 		if not shift then
 			self.selection.cursor2:move_to_cursor(self.selection.cursor1)
 		end
-		self:scroll_to_caret()
 		return true
 	elseif key_only and key == 'insert' then
 		self.insert_mode = not self.insert_mode
-		self:scroll_to_caret()
 		return true
 	elseif key_only and (key == 'delete' or key == 'backspace') then
 		self:undo_group'delete'
@@ -375,7 +395,6 @@ function editbox:keypress(key)
 	elseif ctrl and key == 'A' then
 		self:undo_group()
 		self.selection:select_all()
-		self:scroll_to_caret()
 		return true
 	elseif
 		(ctrl and (key == 'C' or key == 'X'))
@@ -411,7 +430,6 @@ end
 function editbox:gotfocus()
 	if not self.active then
 		self.selection:select_all()
-		self:scroll_to_caret()
 		self.caret_visible = self.selection:empty()
 	else
 		self.caret_visible = true
@@ -421,7 +439,6 @@ end
 function editbox:lostfocus()
 	self.selection.cursor1:move_to_offset(0)
 	self.selection:reset()
-	self:scroll_to_caret()
 end
 
 --mouse interaction
@@ -449,24 +466,20 @@ editbox.mousedown_activate = true
 
 function editbox:doubleclick(x, y)
 	self.selection:select_word()
-	self:scroll_to_caret()
 end
 
 function editbox:tripleclick(x, y)
 	self.selection:select_all()
-	self:scroll_to_caret()
 end
 
 function editbox:mousedown(x, y)
 	self.selection.cursor1:move_to_pos(self:mask_to_text(x, y))
 	self.selection:reset()
-	self:scroll_to_caret()
 end
 
 function editbox:mousemove(x, y)
 	if not self.active then return end
 	self.selection.cursor1:move_to_pos(self:mask_to_text(x, y))
-	self:scroll_to_caret()
 end
 
 --password mask drawing & hit testing
@@ -489,14 +502,6 @@ function editbox:sync_password_mask(segs)
 		segs.lines.pw_cursor_xs[i] = x
 		i = i + 1
 	end
-end
-
-function editbox:override_sync_text(inherited)
-	local segs = inherited(self)
-	if self.password then
-		self:sync_password_mask(segs)
-	end
-	return segs
 end
 
 function editbox:password_char_advance_x()
@@ -618,6 +623,8 @@ if not ... then require('ui_demo')(function(ui, win)
 		end
 	end
 
+	local s = 'abcd efgh ijkl mnop qrst uvw xyz 0123 4567 8901 2345'
+
 	--defaults all-around.
 	ui:editbox{
 		x = x, y = y, parent = win,
@@ -633,26 +640,42 @@ if not ... then require('ui_demo')(function(ui, win)
 	}
 	xy()
 
-	--right align
+	--scrolling, left align
 	ui:editbox{
 		x = x, y = y, parent = win,
-		text = 'Hello World!',
+		text = s,
+	}
+	xy()
+
+	--scrolling, right align
+	ui:editbox{
+		x = x, y = y, parent = win,
+		text = s,
 		text_align = 'right',
 	}
 	xy()
 
-	--password
+	--scrolling, center align
 	ui:editbox{
-		--font = 'fixedsys,16',
 		x = x, y = y, parent = win,
-		text = 'Hello World!',
-		password = true,
-		maxlen = 28,
+		text = s,
+		text_align = 'center',
 	}
 	xy()
 
+	local s = '0123 4567 8901 2345'
+
+	--password, scrolling, left align (the only alignment supported)
 	ui:editbox{
-		--font = 'fixedsys,16',
+		x = x, y = y, parent = win,
+		text = s,
+		password = true,
+		text_align = 'right', --overriden!
+	}
+	xy()
+
+	--rtl
+	ui:editbox{
 		x = x, y = y, parent = win,
 		font = 'Amiri,20',
 		text = 'السَّلَامُ عَلَيْكُمْ',
@@ -661,16 +684,9 @@ if not ... then require('ui_demo')(function(ui, win)
 	}
 	xy()
 
+	--multiline
 	ui:editbox{
 		x = x, y = y, parent = win,
-		text = ('Hello World! '):rep(100000),
-		maxlen = 65536 / 10,
-	}
-	xy()
-
-	ui:editbox{
-		x = x, y = y, parent = win,
-		--font = 'fixedsys,16',
 		h = 200,
 		parent = win,
 		text = 'Hello World!',

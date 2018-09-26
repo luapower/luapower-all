@@ -173,8 +173,6 @@ LATER/NEVER
 
 DOCKING TABLIST --------------------------------------------------------------
 
-- done: drag tab to tab list add tab to tablist.
-
 - define docking layers and auto-accept tabs on the same docking_group.
 - drag tab to dock sides to split a dock tablist horizontally or vertically.
 

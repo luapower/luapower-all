@@ -1280,9 +1280,8 @@ function segments:clip(x, y, w, h)
 		local bh = line.ascent - line.descent
 		line.visible = box_overlapping(x, y, w, h, bx, by, bw, bh)
 		if line.visible then
-			local ax = bx
 			for _,seg in ipairs(line) do
-				local bx = seg.x
+				local bx = bx + seg.x
 				local bw = seg.advance_x
 				seg.visible = box_overlapping(x, y, w, h, bx, by, bw, bh)
 			end

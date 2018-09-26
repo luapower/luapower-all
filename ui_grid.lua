@@ -1287,7 +1287,7 @@ function grid:move(actions, di, dj)
 end
 
 function rows:after_click()
-	if not self.hot_row_index then return end
+	if not self.grid.hot_row_index then return end
 	local shift = self.ui:key'shift'
 	local ctrl = self.ui:key'ctrl'
 	if self.grid.multi_select and (shift or ctrl) then

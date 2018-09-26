@@ -12,11 +12,8 @@ local color = require'color'
 local boxblur = require'boxblur'
 local amoeba = require'amoeba'
 local time = require'time'
-local freetype = require'freetype'
 local cairo = require'cairo'
-local fs = require'fs'
 local tr = require'tr'
-local font_db = require'tr_font_db'
 
 local push = table.insert
 local pop = table.remove
@@ -59,18 +56,19 @@ local function decode_nil(x) if x == nilkey then return nil end; return x; end
 local object = oo.object()
 
 function object:before_init()
-	--speed up class field lookup by having the final class statically inherit
-	--all its fields. with this change, runtime patching of non-final classes
+	--Speed up class field lookup by having the final class statically inherit
+	--all its fields. With this change, runtime patching of non-final classes
 	--after the first instantiation doesn't have an effect anymore (it will
 	--require calling inherit() manually on all those final classes).
+	--That's ok, you shouldn't patch classes anyway.
 	if not rawget(self.super, 'isfinalclass') then
 		self.super:inherit()
 		self.super.isfinalclass = true
 	end
-	--speed up virtual property lookup without detaching/fattening the instance.
+	--Speed up virtual property lookup without detaching/fattening the instance.
 	--with this change, adding or overriding getters and setters through the
 	--instance is not allowed anymore, that would patch the class instead!
-	--TODO: I don't like this arbitrary limitation, do something about it.
+	--TODO: remove this limitation somehow!
 	self.__setters = self.__setters
 	self.__getters = self.__getters
 end
@@ -550,108 +548,88 @@ ui.type['_colors$'] = 'gradient_colors'
 
 --transition animation objects -----------------------------------------------
 
-local default_ease = 'expo out'
+local tran = ui.object:subclass'transition'
+ui.transition = tran
 
-ui.transition = ui.object:subclass'transition'
-
-ui.transition.interpolate = {}
+tran.interpolate = {}
 	--^ {attr_type -> func(self, d, x1, x2, xout) -> xout}
 
-function ui.transition:interpolate_function(elem, attr)
+function tran:interpolate_function(elem, attr)
 	local atype = self.ui:attr_type(attr)
 	return self.interpolate[atype]
 end
 
-function ui.transition:after_init(ui, elem, attr, to,
-	duration, ease, delay, times, backval, from, clock)
+tran.duration = 0
+tran.delay = 0
+tran.ease = 'expo out'
+tran.times = 1
+
+function tran:after_init(ui, t, ...)
 
 	self.ui = ui
+	update(self, self.super, t, ...)
 
 	--timing model
-	local clock = clock or ui:clock()
-	local times = times or 1
-	local delay = delay or 0
-	local start = clock + delay
-	local ease, way = (ease or default_ease):match'^([^%s_]+)[%s_]?(.*)'
-	if way == '' then way = 'in' end
-	local duration = duration or 0
+	self.clock = self.clock or ui:clock()
+	self.start = self.clock + self.delay
+	if not self.way then
+		self.ease, self.way = self.ease:match'^([^%s_]+)[%s_]?(.*)'
+		if self.way == '' then self.way = 'in' end
+	end
 
 	--animation model
-	local interpolate = self:interpolate_function(elem, attr)
-	if from == nil then
-		from = elem[attr]
+	if self.from == nil then
+		self.from = self.elem[self.attr]
+		assert(self.from ~= nil)
 	end
-	assert(from ~= nil)
-	assert(to ~= nil)
-	local end_value = to
+	assert(self.to ~= nil)
+	self.interpolate = self:interpolate_function(self.elem, self.attr)
+	self.end_value = self.to --store it for later
 
 	--set the element value to a copy to avoid overwritting the original value
 	--when updating with by-ref semantics.
-	elem[attr] = interpolate(self, 1, from, from)
+	self.elem[self.attr] = self.interpolate(self, 1, self.from, self.from)
+end
 
-	local repeated
+function tran:value_at(t)
+	local d = easing.ease(self.ease, self.way, t)
+	return self:interpolate(d, self.from, self.to, self.elem[self.attr])
+end
 
-	function self:update(clock)
-		local t = (clock - start) / duration
-		if t < 0 then --not started
-			--nothing
-		elseif t >= 1 then --finished, set to actual final value
-			elem[attr] = to
-		else --running, set to interpolated value
-			local d = easing.ease(ease, way, t)
-			elem[attr] = interpolate(self, d, from, to, elem[attr])
+function tran:update(clock)
+	local t = (clock - self.start) / self.duration
+	if t < 0 then --not started
+		--nothing
+	elseif t >= 1 then --finished, set to actual final value
+		self.elem[self.attr] = self.to
+	else --running, set to interpolated value
+		self.elem[self.attr] = self:value_at(t)
+	end
+	local alive = t <= 1
+	if not alive and self.times > 1 then --repeat in opposite direction
+		self.times = self.times - 1
+		self.start = clock + self.delay
+		self.from, self.to = self.to, self.from
+		if not self.repeated then
+			self.to = self.backval
+			self.repeated = true
 		end
-		local alive = t <= 1
-		if not alive and times > 1 then --repeat in opposite direction
-			if not repeated then
-				from = backval
-				repeated = true
-			end
-			times = times - 1
-			start = clock + delay
-			from, to = to, from
-			alive = true
-		end
-		return alive, start
+		alive = true
 	end
+	return alive
+end
 
-	function self:end_clock()
-		return start + duration
-	end
-
-	function self:end_value()
-		if self.next_transition then
-			return self.next_transition:end_value()
-		end
-		return end_value
-	end
-
-	function self:infinite()
-		return times == 1/0
-	end
-
-	--NOTE: chain_to() replaces the next transition, it does not chain to it.
-	function self:chain_to(tran)
-		if not tran then
-			return self
-		elseif tran:infinite() then --`self` never gets to run after `tran`.
-			return tran
-		end
-		start = tran:end_clock() + delay
-		from = tran:end_value()
-		tran.next_transition = self
-		return tran
-	end
-
+function tran:get_end_clock()
+	return self.start + self.duration
 end
 
 --interpolators
 
-function ui.transition.interpolate:number(d, x1, x2)
+function tran.interpolate:number(d, x1, x2)
 	return lerp(d, 0, 1, tonumber(x1), tonumber(x2))
 end
 
-function ui.transition.interpolate:color(d, c1, c2, c)
+function tran.interpolate:color(d, c1, c2, c)
 	local r1, g1, b1, a1 = self.ui:rgba(c1)
 	local r2, g2, b2, a2 = self.ui:rgba(c2)
 	local r = lerp(d, 0, 1, r1, r2)
@@ -666,7 +644,7 @@ function ui.transition.interpolate:color(d, c1, c2, c)
 	end
 end
 
-function ui.transition.interpolate:gradient_colors(d, t1, t2, t)
+function tran.interpolate:gradient_colors(d, t1, t2, t)
 	t = t or {}
 	for i,arg1 in ipairs(t1) do
 		local arg2 = t2[i]
@@ -931,7 +909,10 @@ end
 function element:end_value(attr)
 	local tran = self.transitions and self.transitions[attr]
 	if tran then
-		return tran:end_value()
+		while tran.next_transition do
+			tran = tran.next_transition
+		end
+		return tran.end_value
 	else
 		return self[attr]
 	end
@@ -940,97 +921,140 @@ end
 element.blend_transition = {}
 
 function element.blend_transition:replace(
-	tran, attr, cur_val, val, cur_end_val,
-	duration, ease, delay, times, backval
+	tran, attr, cur_val, end_val, cur_end_val,
+	duration, ease, delay, times, backval, start_val
 )
 	if duration <= 0 and delay <= 0 then
 		--instant transition: set the value immediately.
-		if val ~= cur_val then
-			self[attr] = val
+		if end_val ~= cur_val then
+			self[attr] = end_val
 			self:invalidate()
 		end
 		return nil --stop the current transition if any.
-	elseif val == cur_end_val then
+	elseif end_val == cur_end_val then
 		--same end value: continue with the current transition if any.
 		return tran
 	else
-		return self.ui:transition(
-			self, attr, val,
-			duration, ease, delay, times, backval, cur_val
-		)
+		if start_val == nil then
+			start_val = cur_val
+		end
+		return self.ui:transition{
+			elem = self, attr = attr, to = end_val,
+			duration = duration, ease = ease, delay = delay,
+			times = times, backval = backval, from = start_val,
+		}
 	end
 end
 
 function element.blend_transition:restart(
-	tran, attr, cur_val, val, cur_end_val,
-	duration, ease, delay, times, backval
+	tran, attr, cur_val, end_val, cur_end_val,
+	duration, ease, delay, times, backval, start_val
 )
 	if duration <= 0 and delay <= 0 then
 		--instant transition: set the value immediately.
-		if val ~= cur_val then
-			self[attr] = val
+		if end_val ~= cur_val then
+			self[attr] = end_val
 			self:invalidate()
 		end
 		return nil --stop the current transition if any.
 	else
-		--restarting means starting from `backval` instead of `cur_val`!
-		return self.ui:transition(
-			self, attr, val,
-			duration, ease, delay, times, backval, backval
-		)
+		if start_val == nil then
+			start_val = backval --restarting starts from `backval` by default!
+		end
+		return self.ui:transition{
+			elem = self, attr = attr, to = end_val,
+			duration = duration, ease = ease, delay = delay,
+			times = times, backval = backval, from = start_val,
+		}
 	end
 end
 
 function element.blend_transition:wait(
-	tran, attr, cur_val, val, cur_end_val,
-	duration, ease, delay, times, backval
+	tran, attr, cur_val, end_val, cur_end_val,
+	duration, ease, delay, times, backval, start_val
 )
-	if val == cur_end_val then
+	if end_val == cur_end_val then
 		--same end value: continue with the current transition if any.
 		return tran
 	else
-		return self.ui:transition(
-			self, attr, val,
-			duration, ease, delay, times, backval, cur_val
-		):chain_to(tran)
+		local new_tran = self.ui:transition{
+			elem = self, attr = attr, to = end_val,
+			duration = duration, ease = ease, delay = delay,
+			times = times, backval = backval, from = cur_val,
+		}
+		if tran then
+			tran.next_transition = new_tran
+			return tran
+		else
+			return new_tran
+		end
 	end
 end
 
-element.transition_duration = 0
-element.transition_ease = default_ease
-element.transition_delay = 0
-element.transition_repeat = 1
-element.transition_speed = 1
+element.transition_duration = tran.duration
+element.transition_ease = tran.ease
+element.transition_delay = tran.delay
+element.transition_times = tran.times
 element.transition_blend = 'replace'
+element.transition_speed = 1
+
+local function transition_args(t,
+	attr, val, duration, ease, delay,
+	times, backval, blend, speed, from
+)
+	return
+	  t.attr or attr
+	, t.val or val
+	, t.duration or duration
+	, t.ease or ease
+	, t.delay or delay
+	, t.times or times
+	, t.backval or backval
+	, t.blend or blend
+	, t.speed or speed
+	, t.from or from
+end
 
 function element:transition(
-	attr, val, duration, ease, delay, times, backval, blend
+	attr, val, duration, ease, delay,
+	times, backval, blend, speed, from
 )
-	--pass duration=nil to get transition parameters from the element.
-	if not duration and self['transition_'..attr] then
-		duration = self['transition_duration_'..attr] or self.transition_duration
-		ease = ease or self['transition_ease_'..attr] or self.transition_ease
-		delay = delay or self['transition_delay_'..attr] or self.transition_delay
-		times = times or self['transition_repeat_'..attr] or self.transition_repeat
-		local speed = self['transition_speed_'..attr] or self.transition_speed
-		blend = blend or self['transition_blend_'..attr] or self.transition_blend
-		duration = duration / speed
-	else
-		duration = duration or 0
-		ease = ease or default_ease
-		delay = delay or 0
-		times = times or 1
-		blend = blend or 'replace'
+	if type(attr) == 'table' then
+		attr, val, duration, ease, delay,
+		times, backval, blend, speed, from =
+			transition_args(attr)
 	end
 
-	local cur_tran = self.transitions and self.transitions[attr]
-	local cur_val = self[attr]
-	local cur_end_val
-	if cur_tran then
-		cur_end_val = cur_tran:end_value()
+	--get default transition parameters from the element.
+	local t = self['transition_'..attr]
+	if t then
+		if type(t) == 'table' then
+			attr, val, duration, ease, delay,
+			times, backval, blend, speed, from =
+				transition_args(t,
+					attr, val, duration, ease, delay,
+					times, backval, blend, speed, from)
+		end
+		duration = duration or self['transition_duration_'..attr] or self.transition_duration
+		ease = ease or self['transition_ease_'..attr] or self.transition_ease
+		delay = delay or self['transition_delay_'..attr] or self.transition_delay
+		times = times or self['transition_times_'..attr] or self.transition_times
+		blend = blend or self['transition_blend_'..attr] or self.transition_blend
+		speed = self['transition_speed_'..attr] or self.transition_speed
+		from = self['transition_from_'..attr]
 	else
-		cur_end_val = cur_val
+		duration = duration or 0
+		ease = ease or tran.ease
+		delay = delay or tran.delay
+		times = times or tran.times
+		blend = blend or 'replace'
+		speed = speed or 1
 	end
+	duration = duration / speed
+
+	local cur_tran = self.transitions and self.transitions[attr]
+	local cur_end_val = self:end_value(attr)
+	local cur_val = self[attr]
 
 	--values can be functions in style declarations.
 	if type(val) == 'function' then
@@ -1053,7 +1077,7 @@ function element:transition(
 	local blend_func = self.blend_transition[blend]
 	local tran = blend_func(self,
 		cur_tran, attr, cur_val, val, cur_end_val,
-		duration, ease, delay, times, backval
+		duration, ease, delay, times, backval, from
 	)
 
 	if tran then
@@ -1070,26 +1094,23 @@ function element:transition(
 	end
 end
 
-function element:transitioning(attr)
-	return self.transitions and self.transitions[attr] and true or false
-end
-
 function element:update_transitions()
 	local tr = self.transitions
 	if not tr or not next(tr) then return end
 	local clock = self.frame_clock
 	if not clock then return end --not inside repaint
-	for attr, transition in pairs(tr) do
-		local alive, start = transition:update(clock)
+	for attr, tran in pairs(tr) do
+		local alive = tran:update(clock)
 		if not alive then
-			tr[attr] = transition.next_transition
-			if transition.next_transition then
-				self:invalidate()
-			end
-		else
-			self:invalidate(start)
+			tran = tran.next_transition
+			tr[attr] = tran
 		end
+		self:invalidate(tran and tran.start)
 	end
+end
+
+function element:transitioning(attr)
+	return self.transactions and self.transactions[attr]
 end
 
 --sync'ing
@@ -1962,9 +1983,10 @@ end
 --rendering
 
 function window:draw(cr)
-	if self._frame_expire_clock > self.frame_clock then
-		--TODO: this still does blitting at 60fps even when there are
-		--no active (that is, not in delay) transitions!
+	local exp = self._frame_expire_clock
+	if exp and exp > self.frame_clock then
+		--TODO: this still does blitting at 60fps when there are only in-delay
+		--transitions, even if we skip drawing the screen.
 		self.native_window:invalidate()
 		return
 	end
@@ -2801,7 +2823,7 @@ end
 
 layer.border_width = 0 --no border
 layer.corner_radius = 0 --square
-layer.border_color = '#0000'
+layer.border_color = '#fff'
 layer.border_dash = false
 -- border stroke positioning relative to box edge.
 -- -1..1 goes from inside to outside of box edge.
