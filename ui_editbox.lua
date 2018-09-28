@@ -21,7 +21,6 @@ editbox.iswidget = true
 editbox.text_align = 'left'
 editbox.password = false
 editbox.maxlen = 4096
-editbox.insert_mode = false
 
 --metrics & colors
 
@@ -77,16 +76,9 @@ ui:style('editbox standalone :hot', {
 	transition_duration_border_color = .5,
 })
 
---internal config
-
-editbox.focusable = true
-editbox.max_click_chain = 3 --receive doubleclick and tripleclick events
-editbox.clip_content = true
-editbox.nowrap = true
-editbox.cursor_text = 'text'
-editbox.cursor_selection = 'arrow'
-
 --insert_mode property
+
+editbox.insert_mode = false
 
 editbox:stored_property'insert_mode'
 editbox:track_changes'insert_mode'
@@ -102,7 +94,7 @@ editbox._text = ''
 
 --tell ui:sync_text() to stop checking the `text` property to decide
 --if the text needs reshaping. reshaping is done by selection:replace() now.
-editbox._text_valid = true
+editbox.text_editabe = true
 
 function editbox:get_text()
 	if not self._text then
@@ -120,8 +112,8 @@ end
 
 editbox:instance_only'text'
 
-function editbox:text_visible()
-	return true --always sync, even for the empty string.
+function editbox:get_text_len()
+	return self.selection.segments.text_runs.len
 end
 
 --filtering & truncating the input text.
@@ -135,7 +127,7 @@ end
 --validation for single utf8 chars.
 function editbox:check_char(s)
 	return
-		self.selection.segments.text_runs.len < self.maxlen
+		self.text_len < self.maxlen
 		and s:byte(1, 1) >= 32 and s ~= tr.PS and s ~= tr.LS
 end
 
@@ -158,6 +150,22 @@ function editbox:after_init(ui, t)
 end
 
 --sync'ing
+
+function editbox:text_visible()
+	return true --always sync, even for the empty string.
+end
+
+function editbox:caret_rect()
+	local x, y = self:text_to_mask(self.selection.cursor1:pos())
+	local w, h, dir = self.selection.cursor1:size()
+	if self.password then
+		w = self:password_char_advance_x() * (w > 0 and 1 or -1)
+	end
+	if not self.insert_mode then
+		w = w > 0 and 1 or -1
+	end
+	return x, y, w, h, dir
+end
 
 function editbox:override_sync_text(inherited)
 	if self.password then
@@ -201,7 +209,7 @@ function editbox:override_sync_text(inherited)
 	--table because `lines` will be replaced after re-layouting.
 	if not self.password then
 		if segs.lines.x ~= sx or not segs.lines.editbox_clipped then
-			segs:clip(self:content_rect())
+			segs:clip(self:client_rect())
 			segs.lines.editbox_clipped = true
 		end
 	end
@@ -211,17 +219,8 @@ end
 
 --drawing cursor & selection
 
-function editbox:caret_rect()
-	local x, y = self:text_to_mask(self.selection.cursor1:pos())
-	local w, h, dir = self.selection.cursor1:size()
-	if self.password then
-		w = self:password_char_advance_x() * (w > 0 and 1 or -1)
-	end
-	if not self.insert_mode then
-		w = w > 0 and 1 or -1
-	end
-	return x, y, w, h, dir
-end
+editbox.nowrap = true
+editbox.clip_content = true
 
 local function draw_sel_rect(x, y, w, h, cr, self)
 	local x2 = x + w
@@ -250,7 +249,7 @@ end
 
 function editbox:blink_caret()
 	self.caret_visible = true
-	self:transition{attr = 'caret_color', blend = 'restart'}
+	self:transition{attr = 'caret_color', blend = 'restart', val = ui.end_value}
 	self:invalidate()
 end
 
@@ -325,7 +324,7 @@ end
 --editing
 
 function editbox:replace_selection(s, preserve_screen_x, fire_event)
-	local maxlen = self.maxlen - self.selection.segments.text_runs.len
+	local maxlen = self.maxlen - self.text_len
 	if not self.selection:replace(s, nil, nil, maxlen) then return end
 	self._text = false --invalidate the text property
 	self:invalidate()
@@ -334,7 +333,9 @@ function editbox:replace_selection(s, preserve_screen_x, fire_event)
 	end
 end
 
---keyboard
+--keyboard interaction
+
+editbox.focusable = true
 
 function editbox:keychar(s)
 	if not self:check_char(s) then return end
@@ -443,6 +444,9 @@ end
 
 --mouse interaction
 
+editbox.cursor_text = 'text'
+editbox.cursor_selection = 'arrow'
+
 function editbox:hit_test_selection(x, y)
 	x, y = self:mask_to_text(x, y)
 	if self.selection:hit_test(x, y) then
@@ -463,6 +467,7 @@ function editbox:override_hit_test_content(inherited, x, y, reason)
 end
 
 editbox.mousedown_activate = true
+editbox.max_click_chain = 3 --receive doubleclick and tripleclick events
 
 function editbox:doubleclick(x, y)
 	self.selection:select_word()
@@ -568,11 +573,11 @@ end
 
 --cue layer
 
+editbox.show_cue_when_focused = false
+
 ui:style('editbox > cue_layer', {
 	text_color = '#666',
 })
-
-editbox.show_cue_when_focused = false
 
 function editbox:get_cue()
 	return self.cue_layer.text
@@ -604,8 +609,7 @@ function editbox:after_sync()
 	self.cue_layer.w = self.cw
 	self.cue_layer.h = self.ch
 	self.cue_layer.text_align = self.text_align
-	local len = self.selection.segments.text_runs.len
-	self.cue_layer.visible = len == 0
+	self.cue_layer.visible = self.text_len == 0
 		and (self.show_cue_when_focused or not self.focused)
 end
 

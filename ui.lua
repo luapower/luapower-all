@@ -140,7 +140,10 @@ function object:track_changes(prop)
 		local old_val = self[prop] or false
 		if val ~= old_val then
 			inherited(self, val, old_val)
-			self:fire(changed_event, val, old_val)
+			val = self[prop] --see if the value really changed.
+			if val ~= old_val then
+				self:fire(changed_event, val, old_val)
+			end
 			return true --useful when overriding the setter further
 		end
 	end
@@ -468,7 +471,7 @@ function stylesheet:update_element(elem, update_children)
 	if init then
 		for attr, init_val in pairs(init) do
 			if attrs[attr] == nil then
-				attrs[attr] = decode_nil(init_val)
+				attrs[attr] = init_val
 			end
 		end
 	end
@@ -481,7 +484,7 @@ function stylesheet:update_element(elem, update_children)
 			if type(val) == 'function' then --computed value
 				val = val(elem, attr)
 			end
-			elem[attr] = val
+			elem[attr] = decode_nil(val)
 		end
 	end
 
@@ -489,7 +492,7 @@ function stylesheet:update_element(elem, update_children)
 	for attr, val in pairs(attrs) do
 		if not attr:find'^transition_' then
 			elem:_save_initial_value(attr)
-			elem:transition(attr, val)
+			elem:transition(attr, decode_nil(val))
 		end
 	end
 
@@ -862,6 +865,14 @@ function element:settags(s)
 	end
 end
 
+function element:tags_tostring()
+	local t = {}
+	for tag, on in sortedpairs(self.tags) do
+		if on then t[#t+1] = tag end
+	end
+	return table.concat(t, ' ')
+end
+
 function element:update_styles()
 	if not self._styles_valid then
 		self.stylesheet:update_element(self)
@@ -980,7 +991,7 @@ function element.blend_transition:wait(
 		local new_tran = self.ui:transition{
 			elem = self, attr = attr, to = end_val,
 			duration = duration, ease = ease, delay = delay,
-			times = times, backval = backval, from = cur_val,
+			times = times, backval = backval, from = cur_end_val,
 		}
 		if tran then
 			tran.next_transition = new_tran
@@ -1059,12 +1070,6 @@ function element:transition(
 	--values can be functions in style declarations.
 	if type(val) == 'function' then
 		val = val(self, attr)
-	end
-
-	--pass val=nil to restart an existing transition but also to
-	--fast-forward a transition by also passing duration=0.
-	if val == nil then
-		val = cur_end_val
 	end
 
 	--pass backval=nil on a repeat (yoyo) transition in order to transition
@@ -3390,10 +3395,14 @@ function layer:text_visible()
 	return self.text and self.text ~= '' and true or false
 end
 
+--editable text is not sync'ed based on changes to the `text` property.
+--see editbox implementation for details.
+layer.text_editabe = false
+
 function layer:sync_text()
 	if not self:text_visible() then return end
 	if not self._text_tree
-		or (not self._text_valid and self.text ~= self._text_tree[1])
+		or (not self.text_editabe and self.text ~= self._text_tree[1])
 		or self.font        ~= self._text_tree.font
 		or self.font_name   ~= self._text_tree.font_name
 		or self.font_weight ~= self._text_tree.font_weight
@@ -3414,7 +3423,7 @@ function layer:sync_text()
 		self._text_segments = self.ui.tr:shape(self._text_tree)
 		self._text_w = false --force layout
 	end
-	local cw, ch = self:content_size()
+	local cw, ch = self:client_size()
 	local ha = self.text_align
 	local va = self.text_valign
 	local ls = self.line_spacing
@@ -3456,19 +3465,58 @@ layer.padding = 0
 
 function layer:padding_pos() --in box space
 	local p = self.padding
-	return
-		self.padding_left or p,
-		self.padding_top or p
+	local px1 = self.padding_left or p
+	local py1 = self.padding_top or p
+	return px1, py1
 end
+
+function layer:padding_size()
+	local p = self.padding
+	local px1 = self.padding_left or p
+	local py1 = self.padding_top or p
+	local px2 = self.padding_right or p
+	local py2 = self.padding_bottom or p
+	return
+		self.w - (px1 + px2),
+		self.h - (py1 + py2)
+end
+
+layer.client_size = layer.padding_size
 
 function layer:padding_rect() --in box space
 	local p = self.padding
+	local px1 = self.padding_left or p
+	local py1 = self.padding_top or p
+	local px2 = self.padding_right or p
+	local py2 = self.padding_bottom or p
 	return
-		self.padding_left or p,
-		self.padding_top or p,
-		self.w - (self.padding_left or p) - (self.padding_right or p),
-		self.h - (self.padding_top or p) - (self.padding_bottom or p)
+		px1, py1,
+		self.w - (px1 + px2),
+		self.h - (py1 + py2)
 end
+
+function layer:client_rect() --in content space
+	return 0, 0, self:padding_size()
+end
+
+function layer:get_cw()
+	local p = self.padding
+	local px1 = self.padding_left or p
+	local px2 = self.padding_right or p
+	return
+		self.w - (px1 + px2)
+end
+
+function layer:get_ch()
+	local p = self.padding
+	local py1 = self.padding_top or p
+	local py2 = self.padding_bottom or p
+	return
+		self.h - (py1 + py2)
+end
+
+function layer:set_cw(cw) self.w = cw + (self.w - self.cw) end
+function layer:set_ch(ch) self.h = ch + (self.h - self.ch) end
 
 function layer:to_content(x, y) --box space coord in content space
 	local px, py = self:padding_pos()
@@ -3740,33 +3788,17 @@ end
 
 --utils in content space to use from draw_content() and hit_test_content()
 
-function layer:content_size()
-	return select(3, self:padding_rect())
-end
+function layer:get_cx() return self.x + self.w / 2 end
+function layer:get_cy() return self.y + self.h / 2 end
 
-function layer:content_rect() --in content space
-	return 0, 0, select(3, self:padding_rect())
-end
-function layer:content_size()
-	return select(3, self:padding_rect())
-end
-function layer:get_cw() return (select(3, self:padding_rect())) end
-function layer:get_ch() return (select(4, self:padding_rect())) end
-
-function layer:set_cw(cw) self.w = cw + (self.w - self.cw) end
-function layer:set_ch(ch) self.h = ch + (self.h - self.ch) end
+function layer:set_cx(cx) self.x = cx - self.w / 2 end
+function layer:set_cy(cy) self.y = cy - self.h / 2 end
 
 function layer:get_x2() return self.x + self.w end
 function layer:get_y2() return self.y + self.h end
 
 function layer:set_x2(x2) self.w = x2 - self.x end
 function layer:set_y2(y2) self.h = y2 - self.y end
-
-function layer:get_cx() return self.x + self.w / 2 end
-function layer:get_cy() return self.y + self.h / 2 end
-
-function layer:set_cx(cx) self.x = cx - self.w / 2 end
-function layer:set_cy(cy) self.y = cy - self.h / 2 end
 
 function layer:rect() return self.x, self.y, self.w, self.h end
 

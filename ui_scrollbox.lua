@@ -31,6 +31,10 @@ ui:style('scrollbar autohide, scrollbar autohide > scrollbar_grip', {
 scrollbar.background_color = '#222'
 grip.background_color = '#999'
 
+ui:style('scrollbar_grip :hot', {
+	background_color = '#bbb',
+})
+
 ui:style('scrollbar_grip :active', {
 	background_color = '#fff',
 })
@@ -133,9 +137,7 @@ function scrollbar:grip_offset()
 end
 
 function scrollbar:create_grip()
-	local grip = self.grip_class(self.ui, {
-		parent = self,
-	}, self.grip)
+	local grip = self:grip_class(self.grip)
 
 	function grip.drag(grip, dx, dy)
 		grip.x = clamp(0, grip.x + dx, self.cw - grip.w)
@@ -147,30 +149,37 @@ end
 
 --scroll state
 
+scrollbar:stored_property'content_length'
+scrollbar:stored_property'view_length'
+scrollbar:stored_property'offset'
+
 local function clamp_offset(offset, content_length, view_length, step)
 	offset = clamp(offset, 0, math.max(content_length - view_length, 0))
 	return snap_offset(offset, step)
 end
 
-function scrollbar:_adjust()
-	self._offset = clamp_offset(self._offset, self.content_length,
-		self.view_length, self.step)
+function scrollbar:set_offset(offset)
+	local old_offset = self._offset
+	offset = clamp_offset(offset,
+		self.content_length, self.view_length, self.step)
+	self._offset = offset
 	self:settag(':empty', self:empty())
+	if offset ~= old_offset then
+		self:fire('offset_changed', offset, old_offset)
+	end
 end
 
-scrollbar:stored_property'content_length'
-scrollbar:stored_property'view_length'
-scrollbar:stored_property'offset'
+function scrollbar:after_set_content_length() self.offset = self.offset end
+function scrollbar:after_set_view_length() self.offset = self.offset end
 
-function scrollbar:after_set_content_length() self:_adjust() end
-function scrollbar:after_set_view_length() self:_adjust() end
-function scrollbar:after_set_offset() self:_adjust() end
+scrollbar:instance_only'content_length'
+scrollbar:instance_only'view_length'
+scrollbar:instance_only'offset'
 
 function scrollbar:reset(content_length, view_length, offset)
 	self._content_length = content_length
 	self._view_length = view_length
-	self._offset = offset
-	self:_adjust()
+	self.offset = offset
 end
 
 function scrollbar:empty()
@@ -249,7 +258,7 @@ function scrollbar:hit_test_near(mx, my) --mx,my in window space
 	end
 	mx, my = self:from_window(mx, my)
 	return box2d.hit(mx, my,
-		box2d.offset(self.autohide_distance, self:content_rect()))
+		box2d.offset(self.autohide_distance, self:client_rect()))
 end
 
 function scrollbar:check_visible_autohide(mx, my)
@@ -297,32 +306,19 @@ local scrollbox = ui.layer:subclass'scrollbox'
 ui.scrollbox = scrollbox
 scrollbox.iswidget = true
 
+scrollbox.view_class = ui.layer
+scrollbox.content_class = ui.layer
 scrollbox.vscrollbar_class = scrollbar
 scrollbox.hscrollbar_class = scrollbar
 
---default geometry
-
-scrollbox.scrollbar = {
-	margin = 0,
-}
-
---default behavior
-
-scrollbox.vscrollable = true
-scrollbox.hscrollable = true
-scrollbox.wheel_scroll_length = 50 --pixels per scroll wheel notch
-
-scrollbox:init_ignore{scrollbar=1}
-
 function scrollbox:after_init(ui, t)
 
-	self.view = self.ui:layer{
-		parent = self,
+	self.view = self:view_class({
 		clip_content = true,
-	}
+	}, self.view)
 
 	if not self.content or not self.content.islayer then
-		self.content = self.ui:layer({
+		self.content = self.content_class(self.ui, {
 			tags = 'content',
 			parent = self.view,
 			clip_content = true, --for faster bounding box computation
@@ -331,21 +327,19 @@ function scrollbox:after_init(ui, t)
 		self.content.parent = self.view
 	end
 
-	self.vscrollbar = self.vscrollbar_class(self.ui, {
+	self.vscrollbar = self:vscrollbar_class({
 		tags = 'vscrollbar',
-		parent = self,
 		scrollbox = self,
 		vertical = true,
 		iswidget = false,
-	}, self.super.scrollbar, t.scrollbar, self.vscrollbar)
+	}, self.scrollbar, self.vscrollbar)
 
-	self.hscrollbar = self.hscrollbar_class(self.ui, {
+	self.hscrollbar = self:hscrollbar_class({
 		tags = 'hscrollbar',
-		parent = self,
 		scrollbox = self,
 		vertical = false,
 		iswidget = false,
-	}, self.super.scrollbar, t.scrollbar, self.hscrollbar)
+	}, self.scrollbar, self.hscrollbar)
 
 	--make autohide scrollbars to show and hide in sync.
 	--TODO: remove the brk anti-recursion barrier hack.
@@ -363,11 +357,19 @@ end
 
 --mouse interaction: wheel scrolling
 
+scrollbox.vscrollable = true
+scrollbox.hscrollable = true
+scrollbox.wheel_scroll_length = 50 --pixels per scroll wheel notch
+
 function scrollbox:mousewheel(delta)
 	self.vscrollbar:scroll(-delta * self.wheel_scroll_length)
 end
 
 --drawing
+
+--stretch content to the view size to avoid scrolling on that direction.
+scrollbox.auto_h = false
+scrollbox.auto_w = false
 
 function scrollbox:after_sync()
 
@@ -377,10 +379,16 @@ function scrollbox:after_sync()
 	local content = self.content
 	content.parent = view
 
+	if self.auto_h then content.h = 0 end
+	if self.auto_w then content.w = 0 end
+
+	local vs_margin = vs.margin or 0
+	local hs_margin = hs.margin or 0
+
 	local _, _, cw, ch = content:bounding_box()
-	local w, h = self:content_size()
-	local sw = vs.h + vs.margin
-	local sh = hs.h + hs.margin
+	local w, h = self:client_size()
+	local sw = vs.h + vs_margin
+	local sh = hs.h + hs_margin
 
 	local vs_overlap = vs.autohide or vs.overlap
 	local hs_overlap = hs.autohide or hs.overlap
@@ -405,6 +413,9 @@ function scrollbox:after_sync()
 	view.w = w - (vs_nospace and 0 or sw)
 	view.h = h - (hs_nospace and 0 or sh)
 
+	if self.auto_h then content.h = view.h end
+	if self.auto_w then content.w = view.w end
+
 	--reset the scrollbars state.
 	hs:reset(cw, view.w, hs.offset)
 	vs:reset(ch, view.h, vs.offset)
@@ -414,8 +425,8 @@ function scrollbox:after_sync()
 	content.x = -hs.offset
 
 	--compute scrollbar dimensions.
-	vs.w = view.h - 2 * vs.margin --.w is its height!
-	hs.w = view.w - 2 * hs.margin
+	vs.w = view.h - 2 * vs_margin --.w is its height!
+	hs.w = view.w - 2 * hs_margin
 
 	--check which scrollbars are visible and actually overlapping the view.
 	--NOTE: scrollbars state must already be set here since we call `empty()`.
@@ -432,8 +443,8 @@ function scrollbox:after_sync()
 	--compute scrollbar positions.
 	vs.x = view.w - (vs_nospace and sw or 0)
 	hs.y = view.h - (hs_nospace and sh or 0)
-	vs.y = vs.margin
-	hs.x = hs.margin
+	vs.y = vs_margin
+	hs.x = hs_margin
 end
 
 --scroll API
