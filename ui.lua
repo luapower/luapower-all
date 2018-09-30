@@ -143,8 +143,8 @@ function object:track_changes(prop)
 			val = self[prop] --see if the value really changed.
 			if val ~= old_val then
 				self:fire(changed_event, val, old_val)
+				return true --useful when overriding the setter further
 			end
-			return true --useful when overriding the setter further
 		end
 	end
 end
@@ -283,7 +283,10 @@ function ui.selector:after_init(ui, sel)
 	elseif sel == nil then
 		sel = ''
 	end
-	if sel:find'>' then --parents filter
+	self.text = sel --for debugging
+
+	--parents filter.
+	if sel:find'>' then
 		self.parent_tags = {} --{{tag,...}, ...}
 		sel = sel:gsub('([^>]+)%s*>', function(s) -- tags... >
 			local tags = collect(gmatch_tags(s))
@@ -291,8 +294,20 @@ function ui.selector:after_init(ui, sel)
 			return ''
 		end)
 	end
-	self.tags = collect(gmatch_tags(sel)) --tags filter
-	self.text = sel --for debugging
+
+	--exclude tags filter.
+	local t
+	sel = sel:gsub('!([^%s]+)', function(tag)
+		t = t or {}
+		push(t, tag)
+		return ''
+	end)
+	self.exclude_tags = t
+
+	--tags filter.
+	self.tags = collect(gmatch_tags(sel))
+
+	--proc filter.
 	if filter then
 		self:filter(filter)
 	end
@@ -340,9 +355,24 @@ local function has_all_tags(needed_tags, tags)
 	return true
 end
 
+--check that none of the exclude_tags are found in tags table as keys
+local function has_no_tags(exclude_tags, tags)
+	for i,tag in ipairs(exclude_tags) do
+		if tags[tag] then
+			return false
+		end
+	end
+	return true
+end
+
 function ui.selector:selects(elem)
 	if not has_all_tags(self.tags, elem.tags) then
 		return false
+	end
+	if self.exclude_tags then
+		if not has_no_tags(self.exclude_tags, elem.tags) then
+			return false
+		end
 	end
 	if self.parent_tags then
 		local i = #self.parent_tags
@@ -431,6 +461,13 @@ end
 --attr. value to use in styles for "inherit value from parent for this attr"
 function ui.inherit(self, attr)
 	return self:parent_value(attr)
+end
+
+--attr. value to use in styles for "same as the value of this other attr"
+function ui:value_of(attr)
+	return function(self)
+		return self[attr]
+	end
 end
 
 local function cmp_sel(sel1, sel2)
@@ -917,6 +954,7 @@ end
 
 --attribute transitions
 
+--can be used as a css value.
 function element:end_value(attr)
 	local tran = self.transitions and self.transitions[attr]
 	if tran then
@@ -1327,22 +1365,22 @@ function window:override_init(inherited, ui, t)
 
 	win:on({'keydown', self}, function(win, key)
 		setcontext()
-		self:_keydown(key)
-	end)
-
-	win:on({'keyup', self}, function(win, key)
-		setcontext()
-		self:_keyup(key)
+		return self:_key_event('keydown', key)
 	end)
 
 	win:on({'keypress', self}, function(win, key)
 		setcontext()
-		self:_keypress(key)
+		return self:_key_event('keypress', key)
+	end)
+
+	win:on({'keyup', self}, function(win, key)
+		setcontext()
+		return self:_key_event('keyup', key)
 	end)
 
 	win:on({'keychar', self}, function(win, s)
 		setcontext()
-		self:_keychar(s)
+		self:_key_event('keychar', s)
 	end)
 
 	win:on({'repaint', self}, function(win)
@@ -1387,7 +1425,7 @@ function window:override_init(inherited, ui, t)
 		self:settag(':fullscreen', state.fullscreen)
 	end)
 
-	--create `window_*` events in ui (needed for ui_popup)
+	--create `window_*` events in ui.
 	self:on('event', function(self, event, ...)
 		if event == 'mousemove' then return end
 		if not self.ui then return end --window was closed
@@ -1395,6 +1433,16 @@ function window:override_init(inherited, ui, t)
 	end)
 
 	self.view = self:create_view()
+
+	--tab navigation.
+	self.view:on('keypress', function(view, key)
+		if key == 'tab' then
+			local next_widget = self:next_focusable_widget(not self.ui:key'shift')
+			if next_widget then
+				return next_widget:focus(true)
+			end
+		end
+	end)
 
 	if show_it then
 		self.visible = true
@@ -1939,50 +1987,14 @@ function window:next_focusable_widget(forward)
 	end
 end
 
-function window:_keydown(key)
-	local ret
-	if self.focused_widget then
-		ret = self.focused_widget:fire('keydown', key)
-	end
-	if ret == nil then
-		self:fire('keydown', key)
-	end
-end
-
-function window:_keyup(key)
-	local ret
-	if self.focused_widget then
-		ret = self.focused_widget:fire('keyup', key)
-	end
-	if ret == nil then
-		self:fire('keyup', key)
-	end
-end
-
-function window:_keypress(key)
-	local ret
-	if self.focused_widget then
-		ret = self.focused_widget:fire('keypress', key)
-	end
-	if ret == nil then
-		ret = self:fire('keypress', key)
-		if ret == nil and key == 'tab' then
-			local next_widget = self:next_focusable_widget(not self.ui:key'shift')
-			if next_widget then
-				next_widget:focus(true)
-			end
+function window:_key_event(event_name, key)
+	local widget = self.focused_widget or self.view
+	repeat
+		if widget:fire(event_name, key) ~= nil then
+			return true
 		end
-	end
-end
-
-function window:_keychar(s)
-	local ret
-	if self.focused_widget then
-		ret = self.focused_widget:fire('keychar', s)
-	end
-	if ret == nil then
-		self:fire('keychar', ret)
-	end
+		widget = widget.parent
+	until not widget
 end
 
 --rendering
@@ -2196,6 +2208,7 @@ function layer:after_init(ui, t)
 end
 
 function layer:before_free()
+	self:unfocus()
 	if self.hot then
 		self.ui.hot_widget = false
 		self.ui.hot_area = false
@@ -2669,25 +2682,26 @@ function layer:canfocus()
 	return self.visible and self.focusable and self.enabled
 end
 
-function window:unfocus()
-	local fw = self.focused_widget
-	if not fw then return end
-	fw:fire'lostfocus'
-	fw:settag(':focused', false)
-	self:fire('lostfocus', fw)
-	self.ui:fire('lostfocus', fw)
-	fw:invalidate()
-	self.focused_widget = false
+function window:unfocus_focused_widget()
+	if self.focused_widget then
+		self.focused_widget:unfocus()
+	end
 end
 
 function layer:unfocus()
-	return self.window:unfocus()
+	if not self.focused then return end
+	self:fire'lostfocus'
+	self:settag(':focused', false)
+	self.window:fire('lostfocus', self)
+	self.ui:fire('lostfocus', self)
+	self.window.focused_widget = false
+	self:invalidate()
 end
 
 function layer:focus(focus_children)
 	if self:canfocus() then
 		if not self.focused then
-			self.window:unfocus()
+			self.window:unfocus_focused_widget()
 			self:fire'gotfocus'
 			self:settag(':focused', true)
 			self.window.focused_widget = self

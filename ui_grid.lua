@@ -336,6 +336,7 @@ function grid:create_rows_pane(split_pane)
 	rows.rows_pane = rows_pane
 
 	rows_pane.vscrollbar.visible = not split_pane.frozen
+	rows_pane.hscrollbar.visible = not split_pane.frozen
 	rows_pane.vscrollbar.step = 1 --prevent blurry text
 
 	--synchronize vertical scrolling between split panes.
@@ -403,9 +404,21 @@ grid.col_move = true
 grid.col_h = 24
 
 function grid:create_col(col, col_index)
+
 	col = self.col_class(self.ui, self.col, col)
 	col.grid = self
 	col.value_index = col.value_index or col_index
+
+	--create a cell object for the column.
+	if col.cell then
+		col.cell = self:create_cell(col.cell)
+	else
+		if not self.cell then
+			self.cell = self:create_cell(self.cell)
+		end
+		col.cell = self.cell
+	end
+
 	return col
 end
 
@@ -644,18 +657,18 @@ ui:style('grid_col :moving, grid_cell :moving', {
 local cell = ui.layer:subclass'grid_cell'
 grid.cell_class = cell
 
-cell.visible = false
+cell.text_align = 'left'
+cell.nowrap = true
+cell.padding_left = 4
+cell.padding_right = 4
 cell.clip_content = true --for text
-cell.text_multiline = false
-cell.border_color_top = '#080808'
-cell.border_color_bottom = '#080808'
-
-ui:style('grid_cell :moving', {
-	background_color = '#000',
-})
 
 ui:style('grid_cell even', {
 	background_color = '#020202',
+})
+
+ui:style('grid_cell :moving', {
+	background_color = '#000',
 })
 
 ui:style('grid_cell :hot', {
@@ -664,127 +677,89 @@ ui:style('grid_cell :hot', {
 
 ui:style('grid_cell :selected', {
 	background_color = '#111',
-	border_color = '#333',
 })
 
 ui:style('grid_cell :grid_focused :selected', {
 	background_color = '#113',
-	border_color = '#335',
 })
 
 ui:style('grid_cell :focused :selected', {
 	background_color = '#181818',
-	border_color = '#333',
 })
 
 ui:style('grid_cell :grid_focused :focused :selected', {
 	background_color = '#181844',
-	border_color = '#669',
 })
 
-ui:style('grid_cell :focused', {
+local border_width = ui:value_of'border_width'
+
+ui:style('grid_cell first_col !last_col !multi_select !cell_select :selected', {
+	border_width_right = 0,
+})
+
+ui:style('grid_cell last_col !first_col !multi_select !cell_select :selected', {
+	border_width_left = 0,
+})
+
+ui:style('grid_cell !first_col !last_col !multi_select !cell_select :selected', {
 	border_width_left = 0,
 	border_width_right = 0,
-	border_color = '#0000', --not visibile but preserving the widths
 })
 
---[[
-ui:style('grid_cell first_col :focused', {
-	border_width_left = 1,
-})
-
-ui:style('grid_cell last_col :focused', {
-	border_width_right = 1,
-})
-]]
-
-ui:style('grid_cell :first_selected_col :focused', {
-	border_width_left = 1,
-})
-
-ui:style('grid_cell :last_selected_col :focused', {
-	border_width_right = 1,
-})
-
-ui:style('grid_cell :first_selected_row :focused', {
-	border_width_top = 1,
-})
-
-ui:style('grid_cell :last_selected_row :focused', {
-	border_width_bottom = 1,
-})
-
-function cell:sync_to_grid(grid)
-	self.grid = grid
+function grid.sync_cell_to_grid(grid, self)
 	grid._first_col_index = grid:rel_visible_col(1).index
 	grid._last_col_index = grid:rel_visible_col(-1).index
+	self:settag('grid_cell', true)
+	self:settag('standalone', false)
+	self:settag('multi_select', grid.multi_select)
 	self:settag('cell_select', grid.cell_select)
 	self:settag(':grid_focused', grid.focused)
 end
 
-function cell:sync_to_col(col)
-	self.parent = col.split_pane.rows_pane
+function grid.sync_cell_to_col(grid, self, col)
+	self.parent = col.split_pane.rows_pane.content
 	self.x = col.x
 	self.w = col.w
-	self.font = col.font
-	self.font_name = col.font_name
-	self.font_weight = col.font_weight
-	self.font_slant = col.font_slant
-	self.text_size = col.text_size
-	self.nowrap = col.nowrap
-	self.text_dir = col.text_dir
-	self.text_color = col.text_color
-	self.text_align = col.text_align
-	self.text_valign = col.text_valign
-	self.line_spacing = col.line_spacing
-	self.padding = col.padding
-	self.padding_left = col.padding_left
-	self.padding_right = col.padding_right
-	self.padding_top = col.padding_top
-	self.padding_bottom = col.padding_bottom
 	self:settag(':moving', col.moving)
 	self:settag(':resizing', col.resizing)
 	local index = col.index
-	self:settag('first_col', index == self.grid._first_col_index)
-	self:settag('last_col', index == self.grid._last_col_index)
+	self:settag('first_col', index == grid._first_col_index)
+	self:settag('last_col', index == grid._last_col_index)
 end
 
-function cell:sync_to_row(i, y, h)
+function grid.sync_cell_to_row(grid, self, i, y, h)
 	self.y = y
 	self.h = h
 	self:settag('even', i % 2 == 0)
-	if self.grid.moving_row_index == i then
+	if grid.moving_row_index == i then
 		self:settag(':moving', true)
 	end
 end
 
-function cell:display_value(i, col, val)
+function grid:display_value(i, col, val)
 	if type(val) == 'nil' or type(val) == 'boolean' then
 		return string.format('<%s>', tostring(val))
 	end
 	return tostring(val)
 end
 
-function cell:sync_to_value(i, col, val)
-	self.text = self:display_value(i, col, val)
-	self:settag(':selected', self.grid:cell_selected(i, col))
-	self:settag(':focused', self.grid:cell_focused(i, col))
+function grid.sync_cell_to_value(grid, self, i, col, val)
+	self.text = grid:display_value(i, col, val)
+	self:settag(':selected', grid:cell_selected(i, col))
+	self:settag(':focused', grid:cell_focused(i, col))
 end
 
 function cell:invalidate() end --we call draw() manually
 
-function grid:create_cell()
-	local cell = self.cell_class(self.ui, self.cell)
+function grid:create_cell(cell)
+	cell = self.cell_class(self.ui, cell)
 	cell:inherit() --speed up cell drawing
 	cell.iswidget = false
 	return cell
 end
 
 function grid:cell_at(i, col)
-	if not self.default_cell then
-		self.default_cell = self:create_cell(self.cell)
-	end
-	return self.default_cell
+	return col.cell
 end
 
 function grid:cell_value(i, col)
@@ -794,10 +769,6 @@ function grid:cell_value(i, col)
 	else
 		return row
 	end
-end
-
-function grid:sync_cell(cell, i, col, val)
-	cell:sync_to_value(i, col, val)
 end
 
 --rows -----------------------------------------------------------------------
@@ -894,17 +865,22 @@ function grid:visible_rows_range()
 end
 
 function grid:draw_row_col(cr, i, col, y, h, hot)
+	if self.editmode
+		and self.focused_row_index == i
+		and self.focused_col == col
+	then
+		return
+	end
 	local cell = self:cell_at(i, col)
 	if cell ~= self._cell then
 		self._cell = cell
-		cell:sync_to_grid(self)
-		cell:sync_to_col(col)
+		self:sync_cell_to_grid(cell)
+		self:sync_cell_to_col(cell, col)
 	end
-	cell:sync_to_row(i, y, h)
-	self:sync_cell(cell, i, col, self:cell_value(i, col))
+	self:sync_cell_to_row(cell, i, y, h)
+	self:sync_cell_to_value(cell, i, col, self:cell_value(i, col))
 	cell:settag(':hot', hot)
 	cell.visible = true
-	cell:sync()
 	cell:draw(cr)
 	cell.visible = false
 end
@@ -920,8 +896,10 @@ function grid:draw_rows_col(cr, i1, i2, col, hot_i, hot_col)
 
 	for i = i1, i2 do
 		if i ~= moving_i then
-			local hot = i == hot_i and (not self.cell_select or col == hot_col)
+
 			local y, h = self:row_yh(i)
+			local hot = i == hot_i and (not self.cell_select or col == hot_col)
+
 			if moving_y then
 				if i > moving_i then
 					--remove the space originally taken by the moving row
@@ -932,6 +910,7 @@ function grid:draw_rows_col(cr, i1, i2, col, hot_i, hot_col)
 					y = y + moving_h
 				end
 			end
+
 			self:draw_row_col(cr, i, col, y, h, hot)
 		end
 	end
@@ -955,7 +934,7 @@ function grid:draw_rows(cr, rows_pane)
 			if col.isgrid_col and not col.clipped then
 				local cell = self:cell_at(i1, col)
 				if cell == self._cell then
-					cell:sync_to_col(col)
+					self:sync_cell_to_col(cell, col)
 				end
 				self:draw_rows_col(cr, i1, i2, col, hot_i, hot_col)
 			end
@@ -1182,9 +1161,7 @@ end
 
 function grid:after_focus()
 	if not self.focused_row_index then
-		self.focused_row_index = 1
-		self.focused_col = self:rel_visible_col(1)
-		self:move'@focus reset select focus scroll pick'
+		self:move'reset select focus scroll pick'
 	else
 		self:move'@focus scroll'
 	end
@@ -1195,14 +1172,37 @@ function grid:override_canfocus(inherited)
 end
 
 function grid:focus_cell(i, col)
-	if self:canfocus() then
-		self.focused_row_index = clamp(i, 1, self.row_count)
-		self.focused_col = col
-		self:focus()
-		return true
-	else
+	if not self:canfocus() then
 		return false
 	end
+	local i = clamp(i, 1, self.row_count)
+	if self.cell_select then
+		assert(col)
+	else
+		col = nil
+	end
+	local old_i = self.focused_row_index
+	local old_col = self.focused_col
+	local changed = i ~= old_i or col ~= old_col
+	self.editmode = false
+	if changed then
+		if old_col then
+			self:fire('cell_lostfocus', old_i, old_col)
+		elseif old_i then
+			self:fire('row_lostfocus', old_i)
+		end
+	end
+	self.focused_row_index = i
+	self.focused_col = col
+	self:focus()
+	if changed then
+		if col then
+			self:fire('cell_gotfocus', i, col)
+		elseif i then
+			self:fire('row_gotfocus', i)
+		end
+	end
+	return true
 end
 
 function grid:scroll_to_view_row(i, duration)
@@ -1297,6 +1297,8 @@ function grid:move(actions, di, dj)
 			self:scroll_to_view_cell(i, col)
 		elseif action == 'scroll/instant' then
 			self:scroll_to_view_cell(i, col, 0)
+		elseif action == 'edit' then
+			self.editmode = true
 		end
 	end
 	if reset_extend then
@@ -1310,6 +1312,7 @@ end
 
 function rows:after_click()
 	if not self.grid.hot_row_index then return end
+	local fi, fcol = self.grid.focused_row_index, self.grid.focused_col
 	local shift = self.ui:key'shift'
 	local ctrl = self.ui:key'ctrl'
 	if self.grid.multi_select and (shift or ctrl) then
@@ -1321,7 +1324,15 @@ function rows:after_click()
 	else
 		self.grid:move'@hot reset select focus pick/close scroll'
 	end
+	if fi and fcol
+		and self.grid.focused_row_index == fi
+		and self.grid.focused_col == fcol
+	then
+		self.grid.editmode = true
+	end
 end
+
+--keyboard interaction
 
 --find the number of rows relative to the focused row that should move the
 --focused row on page-up/down requests. the scrolling logic is two-phase:
@@ -1388,8 +1399,6 @@ function grid:fixed_page_offset(dir, focused)
 	return row - focused
 end
 
---keyboard interaction
-
 grid.focusable = true
 
 function grid:keypress(key)
@@ -1428,9 +1437,27 @@ function grid:keypress(key)
 			self:move('select_all')
 			return true
 		end
-	elseif key == 'enter' then
+	elseif not self.editable and key == 'enter' then
 		self:move('@focus pick/close scroll')
 		return true
+	elseif self.editable and key == 'F2' or key == 'enter' then
+		local editmode = not self.editmode
+		self.editmode = editmode
+		return editmode
+	elseif key == 'esc' then
+		self.editmode = false
+		return self.editmode == false
+	end
+end
+
+function grid:keychar(s)
+	if not self.editmode then
+		if ui.editbox:filter_text(s) ~= '' then
+			self.editmode = true
+			if self.edit_cell then
+				return self.edit_cell:fire('keychar', s)
+			end
+		end
 	end
 end
 
@@ -1465,6 +1492,14 @@ ui:style('grid dropdown_picker', {
 function grid:set_dropdown(dropdown)
 	self._dropdown = dropdown
 	self:_create_dropdown_implicit_column()
+	if self._was_editable == nil then
+		self._was_editable = self.editable
+	end
+	if dropdown then
+		self.editable = false
+	else
+		self.editable = self._was_editable
+	end
 	self:settag('dropdown_picker', dropdown and true or false)
 end
 
@@ -1537,6 +1572,54 @@ function grid:pick_value(val, close)
 	self:_pick_row(i, close)
 end
 
+--editmode -------------------------------------------------------------------
+
+grid.editable = true
+
+grid:stored_property'editmode'
+grid:track_changes'editmode'
+
+function grid:get_canedit()
+	return self.editable and self.focused and self.focused_col and true or false
+end
+
+function grid:override_set_editmode(inherited, editmode)
+	if editmode and not self.canedit then
+		return
+	end
+	if inherited(self, editmode) then
+		local event = editmode and self._enter_editmode or self._exit_editmode
+		event(self, self.focused_row_index, self.focused_col)
+	end
+end
+
+function grid:_enter_editmode(i, col)
+	local cell = self:create_cell()
+	local i = self.focused_row_index
+	local col = self.focused_col
+	local y, h = self:row_yh(i)
+	self:sync_cell_to_grid(cell)
+	self:sync_cell_to_col(cell, col)
+	self:sync_cell_to_row(cell, i, y, h)
+	self:sync_cell_to_value(cell, i, col, self:cell_value(i, col))
+	self.edit_cell = cell
+	cell.visible = true
+	cell:focus()
+end
+
+function grid:_exit_editmode(i, col)
+	self.edit_cell:free()
+	self.edit_cell = false
+	self:focus()
+end
+
+function grid:sync_edit_cell()
+	local cell = self.edit_cell
+	if not cell then return end
+	local i = self.focused_row_index
+	cell.y = self:row_yh(i)
+end
+
 --grid -----------------------------------------------------------------------
 
 function grid:after_sync()
@@ -1546,6 +1629,7 @@ function grid:after_sync()
 	self.scroll_pane:sync_to_grid()
 	self.splitter:sync_to_grid()
 	self:sync_picker_col_size(2)
+	self:sync_edit_cell()
 end
 
 grid:init_ignore{freeze_col=1, dropdown=1}
@@ -1555,6 +1639,7 @@ function grid:after_init(ui, t)
 	self.rows = self.rows or {}
 
 	self._freeze_col = t.freeze_col
+
 	local cols = t.cols or self.cols or {}
 	self.cols = {}
 	if cols then
@@ -1631,14 +1716,17 @@ if not ... then require('ui_demo')(function(ui, win)
 		--row_move_ctrl = false,
 		--row_move = true,
 		cell_select = true,
+
+		cell_class = ui.editbox,
+
 	})
 
 	function g:cell_value(i, col)
 		return ''
 			.. col.text
 			.. ' '..i
-			.. ' 123456789 '
-			--.. 'abcdefghijklmnopqrstuvwxyz'
+			.. ' 123456789'
+			--.. ' abcdefghijklmnopqrstuvwxyz'
 	end
 
 	win.native_window:on('shown', function(self)

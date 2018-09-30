@@ -120,8 +120,18 @@ function ProcessMessage(msg)
 			end
 		end
 	end
-	TranslateMessage(msg) --generate WM_CHAR messages for WM_KEYDOWN messages.
-	DispatchMessage(msg) --make everything else work
+
+	--special-case: dispatch WM_KEYDOWN before calling TranslateMessage()
+	--so that a keydown handler has a chance of returning `true` and thus
+	--inhibit generating WM_CHAR messages for that key.
+	if msg.message == WM_KEYDOWN or msg.message == WM_SYSKEYDOWN then
+		if DispatchMessage(msg) == 0 then --call target window's WNDPROC.
+			TranslateMessage(msg) --generate WM_CHAR messages.
+		end
+	else
+		TranslateMessage(msg) --generate WM_CHAR messages.
+		DispatchMessage(msg) --call target window's WNDPROC.
+	end
 
 	if msg.message == WM_UNREGISTER_CLASS then --posted by Window objects
 		UnregisterClass(msg.wParam)

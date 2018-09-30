@@ -1472,14 +1472,20 @@ function segments:hit_test_cursors(line_i, x, extend_left, extend_right)
 		then
 			--find the cursor position closest to x.
 			--TODO: use binsearch here.
-			local min_d, cursor_i = 1/0
-			for i = 0, run.text_len do
-				local d = math.abs(seg.glyph_run.cursor_xs[i] - x)
-				if d < min_d then
-					min_d, cursor_i = d, i
+			if x == -1/0 then
+				return seg, 0
+			elseif x == 1/0 then
+				return seg, run.text_len
+			else
+				local min_d, cursor_i = 1/0
+				for i = 0, run.text_len do
+					local d = math.abs(seg.glyph_run.cursor_xs[i] - x)
+					if d < min_d then
+						min_d, cursor_i = d, i
+					end
 				end
+				return seg, cursor_i
 			end
-			return seg, cursor_i
 		end
 	end
 end
@@ -1826,36 +1832,32 @@ end
 
 function cursor:changed() end --event stub
 
-function cursor:set(offset, seg, cursor_i, x)
+function cursor:set(offset, seg, cursor_i)
 	local changed =
 		offset ~= self.offset
 		or seg ~= self.seg
 		or cursor_i ~= self.cursor_i
 	self.offset, self.seg, self.cursor_i = offset, seg, cursor_i
-	if x then
-		self.x = x
-	end
 	if changed then
 		self:changed()
 	end
+	return changed
 end
 
 function cursor:move_to_pos(x, y, ...) --move based on position in layout.
 	local offset, seg, cursor_i = self:hit_test(x, y, ...)
-	if offset then
-		self:set(offset, seg, cursor_i)
-	end
+	return offset and self:set(offset, seg, cursor_i) or false
 end
 
 function cursor:move_to_offset(offset) --move based on position in text.
 	local seg, cursor_i = self.segments:cursor_at_offset(offset)
 	local offset = self.segments:offset_at_cursor(seg, cursor_i)
-	self:set(offset, seg, cursor_i)
+	return self:set(offset, seg, cursor_i)
 end
 
 function cursor:move_to_cursor(cur) --sync to another cursor.
 	assert(cur.segments == self.segments)
-	self:set(cur.offset, cur.seg, cur.cursor_i)
+	return self:set(cur.offset, cur.seg, cur.cursor_i)
 end
 
 function cursor:next_cursor(delta) --move char-by-char in logical text.
@@ -1881,10 +1883,15 @@ function cursor:next_word_cursor(delta) --move word-by-word in logical text.
 	return offset, seg, cursor_i, wanted_seg_i - seg_i
 end
 
-function cursor:next_line(delta) --move vertically in layout.
+function cursor:next_line(delta, x, park_bos, park_eos) --move vertically in layout.
+	x = x or self.x
 	local offset, seg, cursor_i = self.offset, self.seg, self.cursor_i
-	local x = self.x or self:pos()
 	local wanted_line_i = seg.line_index + delta
+	if default_true(park_bos) and wanted_line_i < 1 then
+		x = -1/0
+	elseif default_true(park_eos) and wanted_line_i > #self.segments.lines then
+		x = 1/0
+	end
 	local line_i = clamp(wanted_line_i, 1, #self.segments.lines)
 	local delta = wanted_line_i - line_i
 	local line = self.segments.lines[line_i]
@@ -1894,18 +1901,19 @@ function cursor:next_line(delta) --move vertically in layout.
 		offset = self.segments:offset_at_cursor(seg, cursor_i)
 		delta = 0
 	end
-	return offset, seg, cursor_i, x, delta
+	return offset, seg, cursor_i, delta
 end
 
-function cursor:move(dir, delta) --move horizontally or vertically.
+function cursor:move(dir, delta, ...) --move horizontally or vertically.
 	if dir == 'char' then
-		self:set(self:next_cursor(delta))
 		self.x = false
+		return self:set(self:next_cursor(delta))
 	elseif dir == 'word' then
-		self:set(self:next_word_cursor(delta))
 		self.x = false
+		return self:set(self:next_word_cursor(delta))
 	elseif dir == 'vert' then
-		self:set(self:next_line(delta))
+		self.x = self.x or self:pos()
+		return self:set(self:next_line(delta, ...))
 	else
 		assert(false, 'Invalid direction: %s', dir)
 	end
@@ -1963,21 +1971,23 @@ function selection:empty()
 end
 
 function selection:select_all()
-	self.cursor1:move_to_offset(0)
-	self.cursor2:move_to_offset(1/0)
+	local changed1 = self.cursor1:move_to_offset(0)
+	local changed2 = self.cursor2:move_to_offset(1/0)
+	return changed1 or changed2
 end
 
 function selection:reset()
-	self.cursor2:move_to_cursor(self.cursor1)
+	return self.cursor2:move_to_cursor(self.cursor1)
 end
 
 function selection:select_word()
-	if self.cursor1.cursor_i > 0 then
-		self.cursor1:move('word', -1)
-	end
-	if self.cursor2.cursor_i < self.cursor2.seg.glyph_run.text_len then
-		self.cursor2:move('word', 1)
-	end
+	local changed1 =
+		self.cursor1.cursor_i > 0
+		and self.cursor1:move('word', -1)
+	local changed2 =
+		self.cursor2.cursor_i < self.cursor2.seg.glyph_run.text_len
+		and self.cursor2:move('word', 1)
+	return changed1 or changed2
 end
 
 --drawing & hit-testing

@@ -1089,20 +1089,29 @@ local norepeat = glue.index{
 	'lshift', 'rshift', 'lalt', 'ralt', 'altgr', 'lctrl', 'rctrl', 'capslock',
 }
 
+--convert any non-nil return value to `true` to signal that the key press
+--was handled and `keychar` events should not be triggered for that key.
+--winapi expects returning `true` for this (returning `false` won't work).
+local function truenil(ret)
+	return ret ~= nil or nil
+end
+
 function Window:on_key_down(vk, flags)
 	local key = self:nw_setkey(vk, flags, true)
 	if not key then return end
 	if norepeat[key] then
 		if not repeatstate[key] then
 			repeatstate[key] = true
-			self.frontend:_backend_keydown(key)
-			self.frontend:_backend_keypress(key)
+			return
+				truenil(self.frontend:_backend_keydown(key))
+				or truenil(self.frontend:_backend_keypress(key))
 		end
 	elseif not flags.prev_key_state then
-		self.frontend:_backend_keydown(key)
-		self.frontend:_backend_keypress(key)
+		return
+			truenil(self.frontend:_backend_keydown(key))
+			or truenil(self.frontend:_backend_keypress(key))
 	else
-		self.frontend:_backend_keypress(key)
+		return truenil(self.frontend:_backend_keypress(key))
 	end
 end
 
@@ -1112,7 +1121,7 @@ function Window:on_key_up(vk, flags)
 	if norepeat[key] then
 		repeatstate[key] = false
 	end
-	self.frontend:_backend_keyup(key)
+	return truenil(self.frontend:_backend_keyup(key))
 end
 
 --we get the ALT key with these messages instead
@@ -1208,14 +1217,15 @@ function Window:on_raw_input(raw)
 				keystate.shift = true
 				keystate[key] = true
 				repeatstate[key] = true
-				self.frontend:_backend_keydown(key)
-				self.frontend:_backend_keypress(key)
+				return
+					truenil(self.frontend:_backend_keydown(key))
+					or truenil(self.frontend:_backend_keypress(key))
 			end
 		else
 			keystate.shift = false
 			keystate[key] = false
 			repeatstate[key] = false
-			self.frontend:_backend_keyup(key)
+			return truenil(self.frontend:_backend_keyup(key))
 		end
 	elseif vk == winapi.VK_PAUSE then
 		if bit.band(raw.data.keyboard.Flags, winapi.RI_KEY_E1) == 0 then --Ctrl+Numlock

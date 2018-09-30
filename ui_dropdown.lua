@@ -65,7 +65,9 @@ function dropdown:open()
 end
 
 function dropdown:close()
-	self.popup:hide()
+	if not self.popup.dead then
+		self.popup:hide()
+	end
 end
 
 --editable property

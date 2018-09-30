@@ -1429,15 +1429,15 @@ local function translate_key(vkey)
 end
 
 function window:_backend_keydown(key)
-	self:fire('keydown', translate_key(key))
+	return self:fire('keydown', translate_key(key))
 end
 
 function window:_backend_keypress(key)
-	self:fire('keypress', translate_key(key))
+	return self:fire('keypress', translate_key(key))
 end
 
 function window:_backend_keyup(key)
-	self:fire('keyup', translate_key(key))
+	return self:fire('keyup', translate_key(key))
 end
 
 function window:_backend_keychar(s)

@@ -121,14 +121,7 @@ end
 --filter text by replacing newlines and ASCII control chars with spaces.
 --TODO: make `tr.multiline` option so that we don't have to do this.
 function editbox:filter_text(s)
-	return s:gsub(tr.PS, ' '):gsub(tr.LS, ' '):gsub('[%z\1-\31]', ' ')
-end
-
---validation for single utf8 chars.
-function editbox:check_char(s)
-	return
-		self.text_len < self.maxlen
-		and s:byte(1, 1) >= 32 and s ~= tr.PS and s ~= tr.LS
+	return s:gsub(tr.PS, ' '):gsub(tr.LS, ' '):gsub('[%z\1-\31\127]', '')
 end
 
 --init
@@ -249,7 +242,11 @@ end
 
 function editbox:blink_caret()
 	self.caret_visible = true
-	self:transition{attr = 'caret_color', blend = 'restart', val = ui.end_value}
+	self:transition{
+		attr = 'caret_color',
+		blend = 'restart',
+		val = self.end_value,
+	}
 	self:invalidate()
 end
 
@@ -292,18 +289,18 @@ end
 function editbox:_undo_redo(undo_stack, redo_stack)
 	if not undo_stack then return end
 	local state = pop(undo_stack)
-	if state then
-		push(redo_stack, self:save_state{type = 'undo'})
-		self:load_state(state)
-	end
+	if not state then return end
+	push(redo_stack, self:save_state{type = 'undo'})
+	self:load_state(state)
+	return true
 end
 
 function editbox:undo()
-	self:_undo_redo(self.undo_stack, self.redo_stack)
+	return self:_undo_redo(self.undo_stack, self.redo_stack)
 end
 
 function editbox:redo()
-	self:_undo_redo(self.redo_stack, self.undo_stack)
+	return self:_undo_redo(self.redo_stack, self.undo_stack)
 end
 
 function editbox:undo_group(type)
@@ -321,6 +318,10 @@ function editbox:undo_group(type)
 	end
 end
 
+function editbox:get_edited()
+	return self.undo_stack and #self.undo_stack > 0
+end
+
 --editing
 
 function editbox:replace_selection(s, preserve_screen_x, fire_event)
@@ -331,6 +332,7 @@ function editbox:replace_selection(s, preserve_screen_x, fire_event)
 	if fire_event ~= false then
 		self:fire'text_changed'
 	end
+	return true
 end
 
 --keyboard interaction
@@ -338,7 +340,8 @@ end
 editbox.focusable = true
 
 function editbox:keychar(s)
-	if not self:check_char(s) then return end
+	s = self:filter_text(s)
+	if s == '' then return end
 	self:undo_group'typing'
 	self:replace_selection(s)
 end
@@ -357,28 +360,30 @@ function editbox:keypress(key)
 		local movement = ctrl and 'word' or 'char'
 		local delta = key == 'right' and 1 or -1
 		if shift then
-			self.selection.cursor1:move(movement, delta)
+			return self.selection.cursor1:move(movement, delta)
 		else
 			local c1, c2 = self.selection:cursors()
 			if self.selection:empty() then
-				c1:move(movement, delta)
-				c2:move_to_cursor(c1)
+				if c1:move(movement, delta) then
+					c2:move_to_cursor(c1)
+					return true
+				end
 			else
 				if key == 'left' then
-					c2:move_to_cursor(c1)
+					return c2:move_to_cursor(c1)
 				else
-					c1:move_to_cursor(c2)
+					return c1:move_to_cursor(c2)
 				end
 			end
 		end
-		return true
 	elseif key == 'up' or key == 'down' then
 		self:undo_group()
-		self.selection.cursor1:move('vert', key == 'down' and 1 or -1)
-		if not shift then
-			self.selection.cursor2:move_to_cursor(self.selection.cursor1)
+		if self.selection.cursor1:move('vert', key == 'down' and 1 or -1) then
+			if not shift then
+				self.selection.cursor2:move_to_cursor(self.selection.cursor1)
+			end
+			return true
 		end
-		return true
 	elseif key_only and key == 'insert' then
 		self.insert_mode = not self.insert_mode
 		return true
@@ -391,12 +396,10 @@ function editbox:keypress(key)
 				self.selection.cursor1:move('char', -1)
 			end
 		end
-		self:replace_selection('', true)
-		return true
+		return self:replace_selection('', true)
 	elseif ctrl and key == 'A' then
 		self:undo_group()
-		self.selection:select_all()
-		return true
+		return self.selection:select_all()
 	elseif
 		(ctrl and (key == 'C' or key == 'X'))
 		or (shift_only and key == 'delete') --cut
@@ -409,22 +412,22 @@ function editbox:keypress(key)
 				self:undo_group'cut'
 				self:replace_selection('', true)
 			end
+			return true
 		end
-		return true
 	elseif (ctrl and key == 'V') or (shift_only and key == 'insert') then
 		local s = self.ui:getclipboard'text'
-		s = s and self:filter_text(s)
-		if s and s ~= '' then
-			self:undo_group'paste'
-			self:replace_selection(s)
+		if s then
+			s = self:filter_text(s)
+			if s ~= '' then
+				self:undo_group'paste'
+				self:replace_selection(s)
+				return true
+			end
 		end
-		return true
 	elseif ctrl and key == 'Z' then
-		self:undo()
-		return true
+		return self:undo()
 	elseif (ctrl and key == 'Y') or (shift_ctrl and key == 'Z') then
-		self:redo()
-		return true
+		return self:redo()
 	end
 end
 
