@@ -762,42 +762,31 @@ function grid:cell_at(i, col)
 	return col.cell
 end
 
-function grid:cell_value(i, col)
-	local row = self.rows[i]
-	if type(row) == 'table' then
-		return row[col.value_index]
-	else
-		return row
-	end
-end
-
 --rows -----------------------------------------------------------------------
 
 grid.row_h = 24
 grid.var_row_h = false
-
-function grid:get_row_count()
-	return #self.rows
-end
 
 function grid:get_rows_h()
 	local y, h = self:row_yh(self.row_count)
 	return y + h
 end
 
-function grid:row_var_h(i)
-	return self.rows[i].h or self.row_h
+function grid:_sync_row_y_table(i)
+	local h = self.row_h
+	local t = self._row_y
+	local y = i > 1 and t[i-1] + (self:row_var_h(i-1) or h) or 0
+	local n = self.row_count
+	for i = i, n do
+		t[i] = y
+		y = y + (self:row_var_h(i) or h)
+	end
+	t[n+1] = y --for computing row_h of the last row
 end
 
 function grid:_build_row_y_table()
-	local t = {}
-	self._row_y = t
-	local y = 0
-	for i = 1, self.row_count do
-		t[i] = y
-		y = y + self:row_var_h(i)
-	end
-	t[#t+1] = y --for computing row_h of the last row
+	self._row_y = {}
+	self:_sync_row_y_table(1)
 end
 
 function grid:row_yh(i)
@@ -808,6 +797,18 @@ function grid:row_yh(i)
 	else
 		return self.row_h * (i - 1), self.row_h
 	end
+end
+
+function grid:_insert_row_y(i)
+	if not self._row_y then return end
+	push(self._row_y, i, 0)
+	self:_sync_row_y_table(i)
+end
+
+function grid:_remove_row_y(i)
+	if not self._row_y then return end
+	pop(self._row_y, i)
+	self:_sync_row_y_table(i)
 end
 
 function grid:row_at_y(y, clamp_top, clamp_bottom)
@@ -1299,6 +1300,10 @@ function grid:move(actions, di, dj)
 			self:scroll_to_view_cell(i, col, 0)
 		elseif action == 'edit' then
 			self.editmode = true
+		elseif action == 'insert_row' then
+			self:insert_row(i)
+		elseif action == 'remove_row' then
+			self:remove_row(i)
 		end
 	end
 	if reset_extend then
@@ -1440,13 +1445,19 @@ function grid:keypress(key)
 	elseif not self.editable and key == 'enter' then
 		self:move('@focus pick/close scroll')
 		return true
-	elseif self.editable and key == 'F2' or key == 'enter' then
-		local editmode = not self.editmode
-		self.editmode = editmode
-		return editmode
-	elseif key == 'esc' then
-		self.editmode = false
-		return self.editmode == false
+	elseif self.editable then
+		if key == 'F2' or key == 'enter' then
+			local editmode = not self.editmode
+			self.editmode = editmode
+			return editmode
+		elseif key == 'esc' then
+			self.editmode = false
+			return self.editmode == false
+		elseif key == 'insert' and self.allow_insert_row then
+			self:move'@focus insert_row'
+		elseif key == 'delete' and self.allow_remove_row then
+			self:move'@focus remove_row'
+		end
 	end
 end
 
@@ -1575,6 +1586,8 @@ end
 --editmode -------------------------------------------------------------------
 
 grid.editable = true
+grid.allow_insert_row = true
+grid.allow_remove_row = true
 
 grid:stored_property'editmode'
 grid:track_changes'editmode'
@@ -1608,6 +1621,11 @@ function grid:_enter_editmode(i, col)
 end
 
 function grid:_exit_editmode(i, col)
+	self:update_cell_value(
+		self.focused_row_index,
+		self.focused_col,
+		self.edit_cell.value
+	)
 	self.edit_cell:free()
 	self.edit_cell = false
 	self:focus()
@@ -1618,6 +1636,76 @@ function grid:sync_edit_cell()
 	if not cell then return end
 	local i = self.focused_row_index
 	cell.y = self:row_yh(i)
+end
+
+--data model -----------------------------------------------------------------
+
+function grid:init_data_model()
+	self.rows = self.rows or {}
+end
+
+function grid:get_row_count()
+	return #self.rows
+end
+
+function grid:row_var_h(i)
+	return self.rows[i].h
+end
+
+function grid:cell_value(i, col)
+	local row = self.rows[i]
+	if type(row) == 'table' then
+		return row[col.value_index]
+	else
+		return row
+	end
+end
+
+function grid:update_cell_value(i, col, val)
+	local row = self.rows[i]
+	if row == nil then return end --virtual row?
+	if type(row) == 'table' then
+		row[col.value_index] = val
+	elseif row then
+		self.rows[i] = val
+	end
+end
+
+function grid:create_row()
+	local row = {}
+	local dt = self.default_values
+	for i,col in ipairs(self.cols) do
+		if dt and dt[i] ~= nil then
+			row[i] = dt[i]
+		elseif dt and dt[col.text] ~= nil then
+			row[i] = dt[col.text]
+		elseif col.default_value ~= nil then
+			row[i] = col.default_value
+		end
+	end
+	return row
+end
+
+function grid:insert_row(i)
+	i = clamp(i, 1, self.row_count + 1)
+	local row = self:create_row()
+	if self:fire('row_inserting', i, row) == false then
+		return false
+	end
+	push(self.rows, i, row)
+	self:_insert_row_y(i)
+	self:fire('row_inserted', i, row)
+	return true
+end
+
+function grid:remove_row(i)
+	if self:fire('row_removing', i) == false then
+		return false
+	end
+	pop(self.rows, i)
+	self:_remove_row_y(i)
+	self:fire('row_removed', i)
+	return true
 end
 
 --grid -----------------------------------------------------------------------
@@ -1636,8 +1724,6 @@ grid:init_ignore{freeze_col=1, dropdown=1}
 
 function grid:after_init(ui, t)
 
-	self.rows = self.rows or {}
-
 	self._freeze_col = t.freeze_col
 
 	local cols = t.cols or self.cols or {}
@@ -1647,6 +1733,9 @@ function grid:after_init(ui, t)
 			push(self.cols, self:create_col(col, i))
 		end
 	end
+
+	self:init_data_model()
+
 	self.dropdown = t.dropdown
 
 	self.freeze_pane = self:create_freeze_pane()
@@ -1674,13 +1763,25 @@ if not ... then require('ui_demo')(function(ui, win)
 
 	local grid = ui.grid:subclass'subgrid'
 
+	local rows = {}
+	for i = 1,1e5 do
+		local t = {}
+		push(rows, t)
+		for j = 1, 5 do
+			push(t, 'col '..j..' '..i..' 12345')
+		end
+		local n = math.random()
+		t.h = n < .1 and 200 or 34
+	end
+
 	local g = grid(ui, {
 		tags = 'g',
 		x = 20,
 		y = 20,
 		w = 860,
 		h = 460,
-		row_count = 1e6,
+		--row_count = 1e6,
+		rows = rows,
 		parent = win,
 		--clip_content = true,
 		cols = {
@@ -1708,10 +1809,12 @@ if not ... then require('ui_demo')(function(ui, win)
 			--background_color = '#0f0',
 		},
 		var_row_h = true,
+		--[[
 		row_var_h = function(self, i)
 			local n = math.random()
 			return n < .1 and 200 or 34
 		end,
+		]]
 		multi_select = true,
 		--row_move_ctrl = false,
 		--row_move = true,
@@ -1719,9 +1822,14 @@ if not ... then require('ui_demo')(function(ui, win)
 
 		cell_class = ui.editbox,
 
+		default_values = {col3 = 'Whaa!'}
 	})
 
-	function g:cell_value(i, col)
+	ui:style('grid_rows_pane > scrollbar', {
+		--transition_offset = false,
+	})
+
+	function g:Xcell_value(i, col)
 		return ''
 			.. col.text
 			.. ' '..i

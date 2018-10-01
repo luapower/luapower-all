@@ -116,6 +116,11 @@ function editbox:get_text_len()
 	return self.selection.segments.text_runs.len
 end
 
+--value property for use in editable grids.
+function editbox:get_value()
+	return self.text
+end
+
 --filtering & truncating the input text.
 
 --filter text by replacing newlines and ASCII control chars with spaces.
