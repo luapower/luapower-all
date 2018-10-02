@@ -139,11 +139,18 @@ function editbox:after_init(ui, t)
 	self.selection = self:sync_text():selection()
 	self.text = t.text
 
-	function self.selection.cursor1.changed()
+	--reset the caret blinking whenever the cursor is being acted upon,
+	--regardles of whether it changes or not.
+	local c1, c2 = self.selection:cursors()
+	local set = c1.set
+	function c1.set(...)
 		self:blink_caret()
+		return set(...)
 	end
-	function self.selection.cursor2.changed()
+	local set = c2.set
+	function c2.set(...)
 		self:blink_caret()
+		return set(...)
 	end
 end
 
@@ -199,7 +206,10 @@ function editbox:override_sync_text(inherited)
 		--apply the scroll offset.
 		segs.lines.x = sx - ax
 	else
-		segs.lines.x = 0
+		--make the cursor visible when the text is right-aligned.
+		local adjustment = self.text_align == 'right' and -w or 0
+		--reset the x-offset in order to use the default alignment from `tr`.
+		segs.lines.x = 0 + adjustment
 	end
 
 	--clip the text segments to the content rectangle to avoid drawing
@@ -374,11 +384,11 @@ function editbox:keypress(key)
 					return true
 				end
 			else
+				local c1, c2 = c1, c2
 				if key == 'left' then
-					return c2:move_to_cursor(c1)
-				else
-					return c1:move_to_cursor(c2)
+					c1, c2 = c2, c1
 				end
+				return c1:move_to_cursor(c2)
 			end
 		end
 	elseif key == 'up' or key == 'down' then

@@ -1281,17 +1281,17 @@ function grid:select_cells(i1, col1, i2, col2, selected)
 
 		if desel_i0 then
 			if self.row_was_deselected  then
-				self:row_was_deselected(self, i0)
+				self:row_was_deselected(i0)
 			end
 			if desel_col0 and self.cell_select then
 				if self.cell_was_deselected then
-					self:cell_was_deselected(self, i0, col0)
+					self:cell_was_deselected(i0, col0)
 				end
 			end
 		end
 		if sel_i1 then
 			if self.row_was_selected then
-				self:row_was_selected(self, i1)
+				self:row_was_selected(i1)
 			end
 			if sel_col1 and self.cell_select then
 				if self.cell_was_selected then
