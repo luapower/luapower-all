@@ -70,15 +70,17 @@ function ranges:select(i, len, selected)
 		return self
 	end
 	local k1, k2, ranges = self:touching_ranges(i, len)
-	if ranges == 0 then --standalone range
-		push(self.offsets, k2+1, i)
-		push(self.lengths, k2+1, len)
+	local offsets = self.offsets
+	local lengths = self.lengths
+	if ranges == 0 then --new standalone range
+		push(offsets, k2+1, i)
+		push(lengths, k2+1, len)
 	else --merge with overlapping ranges
-		local offset1 = math.min(i, self.offsets[k1])
-		local offset2 = math.max(i+len, self.offsets[k2]+self.lengths[k2])
+		local offset1 = math.min(i, offsets[k1])
+		local offset2 = math.max(i+len, offsets[k2] + lengths[k2])
 		self:_shift(k1, -(ranges-1)) --keep 1 slot for the replacement range
-		self.offsets[k1] = offset1
-		self.lengths[k1] = offset2 - offset1
+		offsets[k1] = offset1
+		lengths[k1] = offset2 - offset1
 	end
 	return self
 end
@@ -90,27 +92,29 @@ function ranges:unselect(i, len)
 	end
 	local k1, k2, ranges = self:touching_ranges(i, len)
 	if ranges == 0 then return end
+	local offsets = self.offsets
+	local lengths = self.lengths
+	local offset1_r1 = offsets[k1]
 	local offset2_r1 = i
-	local offset1_r1 = self.offsets[k1]
-	local len_r1 = offset2_r1 - offset1_r1
 	local offset1_r2 = i+len
-	local offset2_r2 = self.offsets[k2]+self.lengths[k2]
+	local offset2_r2 = offsets[k2] + lengths[k2]
+	local len_r1 = offset2_r1 - offset1_r1
 	local len_r2 = offset2_r2 - offset1_r2
 	if len_r1 > 0 and len_r2 > 0 and ranges == 1 then --split range
 		k2 = k1+1
 		self:_shift(k2, 1)
-		self.lengths[k1] = len_r1
-		self.offsets[k2] = offset1_r2
-		self.lengths[k2] = len_r2
+		lengths[k1] = len_r1
+		offsets[k2] = offset1_r2
+		lengths[k2] = len_r2
 	else
 		if len_r1 > 0 then --shorten first range
-			self.lengths[k1] = len_r1
+			lengths[k1] = len_r1
 			ranges = ranges - 1 --keep this range
 			k1 = k1 + 1
 		end
 		if len_r2 > 0 then --shorten second range
-			self.offsets[k2] = offset1_r2
-			self.lengths[k2] = len_r2
+			offsets[k2] = offset1_r2
+			lengths[k2] = len_r2
 			ranges = ranges - 1 --keep this range
 		end
 		assert(ranges >= 0)
@@ -126,27 +130,29 @@ function ranges:remove(i, len)
 	--NOTE: using len-1 to include the eventual range that starts exactly
 	--after the removed range.
 	local k = self:next_range_index(i, len-1)
-	for k = k, #self.offsets do
-		self.offsets[k] = self.offsets[k] - len
+	local offsets = self.offsets
+	local lengths = self.lengths
+	for k = k, #offsets do
+		offsets[k] = offsets[k] - len
 	end
 	--merge remaining ranges if they are exactly near each other.
-	if k > 1 and k <= #self.offsets
-		and self.offsets[k-1] + self.lengths[k-1] == self.offsets[k]
-	then
-		self.lengths[k-1] = self.lengths[k-1] + self.lengths[k]
+	if k > 1 and k <= #offsets and offsets[k-1] + lengths[k-1] == offsets[k] then
+		lengths[k-1] = lengths[k-1] + lengths[k]
 		self:_shift(k, -1)
 	end
 end
 
 --insert `(i, len)` positions, shifting the selection ranges as needed.
-function ranges:insert(i, len, selected)
+function ranges:insert(i, len)
 	local inside, k = self:hit_test(i)
+	local offsets = self.offsets
+	local lengths = self.lengths
 	if inside then --enlarge range
-		self.lengths[k] = self.lengths[k] + len
+		lengths[k] = lengths[k] + len
 	end
 	--shift all offsets of all subsequent ranges to the right.
-	for k = k + 1, #self.offsets do
-		self.offsets[k] = self.offsets[k] + len
+	for k = k + 1, #offsets do
+		offsets[k] = offsets[k] + len
 	end
 end
 
@@ -201,6 +207,19 @@ function ranges:cursor(n)
 	end
 
 	return {next = next, seek = seek, hit_test = hit_test}
+end
+
+function ranges:next_range(k)
+	k = k or 0
+	k = k + 1
+	if k > #self.offsets then
+		return nil
+	end
+	return k, self.offsets[k], self.lengths[k]
+end
+
+function ranges:ranges()
+	return self.next_range, self
 end
 
 --debugging
