@@ -194,10 +194,15 @@ end
 
 --binary search for an insert position that keeps the table sorted.
 --works with ffi arrays too if lo and hi are provided.
-local function less(t, i, b) return t[i] < b end
+local cmps = {}
+cmps['<' ] = function(t, i, v) return t[i] <  v end
+cmps['>' ] = function(t, i, v) return t[i] >  v end
+cmps['<='] = function(t, i, v) return t[i] <= v end
+cmps['>='] = function(t, i, v) return t[i] >= v end
+local less = cmps['<']
 function glue.binsearch(v, t, cmp, lo, hi)
 	lo, hi = lo or 1, hi or #t
-	cmp = cmp or less
+	cmp = cmp and cmps[cmp] or cmp or less
 	local len = hi - lo + 1
 	if len == 0 then return nil end
 	if len == 1 then return not cmp(t, lo, v) and lo or nil end

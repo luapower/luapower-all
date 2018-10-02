@@ -96,7 +96,8 @@ Implemented as `math.floor(x / p) * p`.
 
 ### `glue.clamp(x, min, max)`
 
-Clamp a value in range. Implemented as `math.min(math.max(x, min), max)`.
+Clamp a value in range. Implemented as `math.min(math.max(x, min), max)`,
+so if `max < min`, the result is `max`.
 
 ------------------------------------------------------------------------------
 
@@ -328,12 +329,13 @@ will keep `t` sorted i.e. `t[i-1] < v` and `t[i] >= v`. Return `nil` if `v`
 is larger than the largest value or if `t` is empty.
 
 The comparison function `cmp` is called as `cmp(t, i, v)` and must return
-`true` when `v < t[i]`.
+`true` when `t[i] < v`. Built-in functions are also available by passing
+one of `'<'`, `'>'`, `'<='`, `'>='`.
 
-__TIP:__ Use a `cmp` that returns `true` when `t[i] < v` to search in a
-reverse-sorted list.
+__TIP:__ Use a `cmp` that returns `true` when `t[i] > v` to search in a
+reverse-sorted list (i.e. use `'>'`).
 
-__TIP:__ Use a `cmp` that returns `true` when `v <= t[i]` to get the *largest*
+__TIP:__ Use a `cmp` that returns `true` when `t[i] <= v` to get the *largest*
 index (as opposed to the *smallest* index) that will keep `t` sorted when
 inserting `v`, i.e. `t[i-1] <= v` and `t[i] > v`.
 

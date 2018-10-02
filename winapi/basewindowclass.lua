@@ -121,10 +121,17 @@ function ProcessMessage(msg)
 		end
 	end
 
-	--special-case: dispatch WM_KEYDOWN before calling TranslateMessage()
-	--so that a keydown handler has a chance of returning `true` and thus
+	--special-case: dispatch WM_KEYDOWN/UP before calling TranslateMessage()
+	--so that the keydown/up handler has a chance of returning `true` and thus
 	--inhibit generating WM_CHAR messages for that key.
-	if msg.message == WM_KEYDOWN or msg.message == WM_SYSKEYDOWN then
+	--NOTE: returning `false` or `0` from the WM_KEYDOWN/UP handler won't work
+	--because `false`, `0` and `nil` become indistinguishable when returned
+	--by DispatchMessage().
+	if msg.message == WM_KEYDOWN
+		or msg.message == WM_SYSKEYDOWN
+		or msg.message == WM_KEYUP
+		or msg.message == WM_SYSKEYUP
+	then
 		if DispatchMessage(msg) == 0 then --call target window's WNDPROC.
 			TranslateMessage(msg) --generate WM_CHAR messages.
 		end

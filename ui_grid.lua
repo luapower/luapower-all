@@ -1,4 +1,4 @@
---go @ luajit -joff -jp=a -e io.stdout:setvbuf'no';io.stderr:setvbuf'no';require'strict';pp=require'pp' "ui_grid.lua"
+--go @ luajit -jp=a -e io.stdout:setvbuf'no';io.stderr:setvbuf'no';require'strict';pp=require'pp' "ui_grid.lua"
 
 --Grid widget.
 --Written by Cosmin Apreutesei. Public Domain.
@@ -9,10 +9,11 @@ local box2d = require'box2d'
 
 local push = table.insert
 local pop = table.remove
+
 local clamp = glue.clamp
 local indexof = glue.indexof
 local binsearch = glue.binsearch
-local attr = glue.attr
+local shift = glue.shift
 
 local function popval(t, v)
 	local i = indexof(v, t)
@@ -772,7 +773,7 @@ function grid:get_rows_h()
 	return y + h
 end
 
-function grid:_sync_row_y_table(i)
+function grid:_sync_row_y(i)
 	local h = self.row_h
 	local t = self._row_y
 	local y = i > 1 and t[i-1] + (self:row_var_h(i-1) or h) or 0
@@ -784,13 +785,18 @@ function grid:_sync_row_y_table(i)
 	t[n+1] = y --for computing row_h of the last row
 end
 
-function grid:_build_row_y_table()
+function grid:_init_row_y()
+	if not self.var_row_h then return end
 	self._row_y = {}
-	self:_sync_row_y_table(1)
+	self:_sync_row_y(1)
 end
 
 function grid:row_yh(i)
-	i = clamp(i, 1, self.row_count)
+	local n = self.row_count
+	if n == 0 then
+		return 0, 0
+	end
+	i = clamp(i, 1, n)
 	if self.var_row_h then
 		local y = self._row_y[i]
 		return y, self._row_y[i+1] - y
@@ -799,16 +805,16 @@ function grid:row_yh(i)
 	end
 end
 
-function grid:_insert_row_y(i)
+function grid:_insert_row_y_rows(i, len)
 	if not self._row_y then return end
-	push(self._row_y, i, 0)
-	self:_sync_row_y_table(i)
+	shift(self._row_y, i, len)
+	self:_sync_row_y(i)
 end
 
-function grid:_remove_row_y(i)
+function grid:_remove_row_y_rows(i, len)
 	if not self._row_y then return end
-	pop(self._row_y, i)
-	self:_sync_row_y_table(i)
+	shift(self._row_y, i, -len)
+	self:_sync_row_y(i)
 end
 
 function grid:row_at_y(y, clamp_top, clamp_bottom)
@@ -865,6 +871,8 @@ function grid:visible_rows_range()
 	return i1, i2
 end
 
+--cell drawing & hit-testing -------------------------------------------------
+
 function grid:draw_row_col(cr, i, col, y, h, hot)
 	if self.editmode
 		and self.focused_row_index == i
@@ -896,6 +904,7 @@ function grid:draw_rows_col(cr, i1, i2, col, hot_i, hot_col)
 	end
 
 	for i = i1, i2 do
+
 		if i ~= moving_i then
 
 			local y, h = self:row_yh(i)
@@ -1052,37 +1061,206 @@ function rows:after_mousemove(mx, my)
 	end
 end
 
---row & cell focus, selection, scrolling -------------------------------------
+--row & cell scrolling -------------------------------------------------------
+
+function grid:scroll_to_view_row(i, duration)
+	local y, h = self:row_yh(i)
+	self.scroll_pane.rows_pane.vscrollbar:scroll_to_view(y, h, duration)
+end
+
+function grid:scroll_to_view_col(col, duration)
+	if col and col.split_pane == self.scroll_pane then
+		col.split_pane.rows_pane.hscrollbar:scroll_to_view(col.x, col.w, duration)
+	end
+end
+
+function grid:scroll_to_view_cell(i, col, duration)
+	self:scroll_to_view_row(i, duration)
+	self:scroll_to_view_col(col, duration)
+end
+
+--row & cell focus state -----------------------------------------------------
+
+function grid:row_focused(i)
+	return self.focused_row_index == i
+end
+
+function grid:cell_focused(i, col)
+	return self:row_focused(i)
+		and (not self.cell_select or self.focused_col == col)
+end
+
+function grid:after_focus()
+	if not self.focused_row_index then
+		self:move'reset select focus scroll pick'
+	else
+		--TODO: why not 'reset select focus scroll pick' here too?
+		self:move'@focus scroll'
+	end
+end
+
+function grid:override_canfocus(inherited)
+	return inherited(self) and not self.empty
+end
+
+function grid:canfocus_row(i)
+	return self:row_attr(i, 'focusable', true)
+end
+
+function grid:canfocus_cell(i, col)
+	return self:canfocus_row(i)
+		and (col.cells_focusable == nil or col.cells_focusable)
+end
+
+function grid:unfocus_focused_cell()
+	local i = self.focused_row_index
+	local col = self.focused_col
+	if not i then
+		return
+	end
+	self.editmode = false
+	if col then
+		self:fire('cell_lostfocus', i, col)
+	elseif i then
+		self:fire('row_lostfocus', i)
+	end
+	self.focused_row_index = false
+	self.focused_col = false
+	if i and self:row_attr(i, 'appended') then
+		self:remove_rows(i)
+	end
+	return true
+end
+
+function grid:focus_cell(i, col)
+	local i = clamp(i, 1, self.row_count)
+	if not self:canfocus()
+		or (not self.cell_select and not self:canfocus_row(i))
+		or (self.cell_select and not self:canfocus_cell(i, col))
+	then
+		return false
+	end
+	local old_i = self.focused_row_index
+	local old_col = self.focused_col
+	local changed = i ~= old_i or col ~= old_col
+	if changed then
+		self:unfocus_focused_cell()
+		self.focused_row_index = i
+		self.focused_col = col
+	end
+	self:focus()
+	if changed then
+		if col then
+			self:fire('cell_gotfocus', i, col)
+		elseif i then
+			self:fire('row_gotfocus', i)
+		end
+	end
+	return true
+end
+
+--row & cell selection state -------------------------------------------------
 
 grid.cell_select = false --select individual cells or entire rows
 grid.multi_select = false --allow selecting multiple cells/rows
+grid.use_rangelist = true --use rangelist data structure for selections.
+
+local function preallocate(n)
+	local t = {}
+	for i = 1, n do
+		t[i] = false
+	end
+	return t
+end
+
+function grid:_init_selection()
+	if not self.multi_select then
+		self.selected_row_index = false
+		self.selected_col = false
+	elseif not self.cell_select then
+		if self.use_rangelist then
+			local rangelist = require'rangelist'
+			self.selected_rows = rangelist()
+			self._selrow_cursor = self.selected_rows:cursor()
+		else
+			self.selected_rows = preallocate(self.row_count)
+		end
+	else
+		self.selected_cells = {}
+		for _,col in ipairs(self.cols) do
+			self.selected_cells[col] = preallocate(self.row_count)
+		end
+	end
+end
+
+function grid:_insert_sel_rows(i, len)
+	if not self.multi_select then
+		local si = self.selected_row_index
+		if si and i >= si then
+			self.selected_row_index = si + len
+		end
+	elseif not self.cell_select then
+		if self.use_rangelist then
+			self.selected_rows:insert(i, len)
+			self._selrow_cursor:seek(1)
+		else
+			shift(self.selected_rows, i, len)
+		end
+	else
+		for _,rows in pairs(self.selected_cells) do
+			shift(rows, i, len)
+		end
+	end
+end
+
+function grid:_remove_sel_rows(i, len)
+	if not self.multi_select then
+		local si = self.selected_row_index
+		if si and si >= i then
+			if si >= i + len then
+				self.selected_row_index = si - len
+			else
+				self.selected_row_index = false
+			end
+		end
+	elseif not self.cell_select then
+		if self.use_rangelist then
+			self.selected_rows:remove(i, len)
+			self._selrow_cursor:seek(1)
+		else
+			shift(self.selected_rows, i, -len)
+		end
+	else
+		shift(self.selected_cells, i, -len)
+	end
+end
 
 function grid:cell_selected(i, col)
 	if not self.multi_select then
 		return self.selected_row_index == i
 			and (not self.cell_select or self.selected_col == col)
-	elseif self.cell_select then
-		local t = self.selected_cells[col]
-		return t and t[i] or false
+	elseif not self.cell_select then
+		if self.use_rangelist then
+			return self._selrow_cursor:hit_test(i)
+		else
+			return self.selected_rows[i]
+		end
 	else
-		return self.selected_rows[i] or false
+		return self.selected_cells[col][i]
 	end
 end
 
---NOTE: real events are too expensive here, eg. Ctrl+A wouldn't work.
+--NOTE: real events are too expensive here, eg. Ctrl+A wouldn't work on
+--large grids, so we use plain methods instead.
 grid.cell_was_deselected = nil
 grid.cell_was_selected = nil
+grid.row_was_selected = nil
+grid.row_was_deselected = nil
 
 function grid:select_cells(i1, col1, i2, col2, selected)
 	selected = selected and true or false
 
-	i2 = i2 or i1
-	i1 = clamp(i1, 1, self.row_count)
-	i2 = clamp(i2, 1, self.row_count)
-	if i2 < i1 then
-		i1, i2 = i2, i1
-	end
-
+	i1, i2 = self:valid_row_range(i1, i2)
 	local j1 = self.cell_select and col1 and col1.index or 1
 	local j2 = self.cell_select and col2 and col2.index or #self.cols
 	if j2 < j1 then
@@ -1102,159 +1280,115 @@ function grid:select_cells(i1, col1, i2, col2, selected)
 		local desel_col0 = col0 and sel_col1 or desel_col0
 
 		if desel_i0 then
-			self:fire('row_was_deselected', i0)
+			if self.row_was_deselected  then
+				self:row_was_deselected(self, i0)
+			end
 			if desel_col0 and self.cell_select then
-				self:fire('cell_was_deselected', i0, col0)
+				if self.cell_was_deselected then
+					self:cell_was_deselected(self, i0, col0)
+				end
 			end
 		end
 		if sel_i1 then
-			self:fire('row_was_selected', i1)
+			if self.row_was_selected then
+				self:row_was_selected(self, i1)
+			end
 			if sel_col1 and self.cell_select then
-				self:fire('cell_was_selected', i1, col1)
+				if self.cell_was_selected then
+					self:cell_was_selected(i1, col1)
+				end
 			end
 		end
 
 		self.selected_row_index = selected and i1
 		self.selected_col = selected and self.cell_select and col1
 
-	elseif self.cell_select then
+	elseif not self.cell_select then
+
+		if self.use_rangelist then
+			local len = i2-i1+1
+			self.selected_rows:select(i1, len, selected)
+			local event = selected and 'row_was_selected' or 'row_was_deselected'
+			local handler = self[event]
+			if handler then
+				for i = i1, i2 do
+					handler(self, i)
+				end
+			end
+		else
+			local t = self.selected_rows
+			local row_was_selected = self.row_was_selected
+			local row_was_deselected = self.row_was_deselected
+			for i = i1, i2 do
+				local was_selected = t[i]
+				t[i] = selected
+				if selected and not was_selected then
+					if row_was_selected then
+						row_was_selected(self, i)
+					end
+				elseif not selected and was_selected then
+					if row_was_deselected then
+						row_was_deselected(self, i)
+					end
+				end
+			end
+		end
+
+	else
 
 		local cell_was_selected = self.cell_was_selected
 		local cell_was_deselected = self.cell_was_deselected
 		for j = j1, j2 do
 			local col = self.cols[j]
-			local t = attr(self.selected_cells, col)
+			local t = self.selected_cells[col]
 			for i = i1, i2 do
 				local was_selected = t[i]
 				t[i] = selected
-				if selected and not was_selected and cell_was_selected then
-					self:cell_was_selected(i, col)
-				elseif not selected and was_selected and cell_was_deselected then
-					self:cell_was_deselected(i, col)
+				if selected and not was_selected then
+					if cell_was_selected then
+						cell_was_selected(self, i, col)
+					end
+				elseif not selected and was_selected then
+					if cell_was_deselected then
+						cell_was_deselected(self, i, col)
+					end
 				end
 			end
 		end
 
-	else
-
-		local t = self.selected_rows
-		for i = i1, i2 do
-			local was_selected = t[i]
-			t[i] = selected
-			if selected and not was_selected then
-				self:fire('row_was_selected', i)
-			elseif not selected and was_selected then
-				self:fire('row_was_deselected', i)
-			end
-		end
-
 	end
 end
 
-function grid:row_focused(i)
-	return self.focused_row_index == i
+function grid:select_rows(i1, i2, selected)
+	return self:select_cells(i1, nil, i2, nil, selected)
 end
 
-function grid:cell_focused(i, col)
-	return self.focused_row_index == i and
-		(not self.cell_select or self.focused_col == col)
-end
-
-function grid:after_focus()
-	if not self.focused_row_index then
-		self:move'reset select focus scroll pick'
-	else
-		self:move'@focus scroll'
-	end
-end
-
-function grid:override_canfocus(inherited)
-	return inherited(self) and self.row_count > 0 and #self.cols > 0
-end
-
-function grid:focus_cell(i, col)
-	if not self:canfocus() then
-		return false
-	end
-	local i = clamp(i, 1, self.row_count)
-	if self.cell_select then
-		assert(col)
-	else
-		col = nil
-	end
-	local old_i = self.focused_row_index
-	local old_col = self.focused_col
-	local changed = i ~= old_i or col ~= old_col
-	self.editmode = false
-	if changed then
-		if old_col then
-			self:fire('cell_lostfocus', old_i, old_col)
-		elseif old_i then
-			self:fire('row_lostfocus', old_i)
-		end
-	end
-	self.focused_row_index = i
-	self.focused_col = col
-	self:focus()
-	if changed then
-		if col then
-			self:fire('cell_gotfocus', i, col)
-		elseif i then
-			self:fire('row_gotfocus', i)
-		end
-	end
-	return true
-end
-
-function grid:scroll_to_view_row(i, duration)
-	local y, h = self:row_yh(i)
-	self.scroll_pane.rows_pane.vscrollbar:scroll_to_view(y, h, duration)
-end
-
-function grid:scroll_to_view_col(col, duration)
-	if col and col.split_pane == self.scroll_pane then
-		col.split_pane.rows_pane.hscrollbar:scroll_to_view(col.x, col.w, duration)
-	end
-end
-
-function grid:scroll_to_view_cell(i, col, duration)
-	self:scroll_to_view_row(i, duration)
-	self:scroll_to_view_col(col, duration)
+function grid:select_cell(i, col, selected)
+	return self:select_cells(i, col, i, col, selected)
 end
 
 function grid:select_none()
 	if not self.multi_select then
-		if self.selected_row_index then
-			self:select_cells(self.selected_row_index, self.selected_col, false)
+		local i, col = self.selected_row_index, self.selected_col
+		if i then
+			self:select_cell(i, col, false)
 		end
-	elseif self.cell_select then
-		local cell_was_deselected = self.cell_was_deselected
-		if self.selected_cells and cell_was_deselected then
-			for col, cells in pairs(self.selected_cells) do
-				for i in pairs(cells) do
-					self:cell_was_deselected(i, col)
-				end
-			end
-		end
-		self.selected_cells = {}
 	else
-		if self.selected_rows then
-			for i in pairs(self.selected_rows) do
-				self:fire('row_was_deselected', i)
-			end
-		end
-		self.selected_rows = {}
+		self:select_rows(1, 1/0, false)
 	end
 end
 
 function grid:select_all()
-	self:select_cells(1, nil, 1/0, nil, true)
+	self:select_rows(1, 1/0, true)
 end
+
+--interaction ----------------------------------------------------------------
 
 function grid:move(actions, di, dj)
 	di = di or 0
 	dj = dj or 0
-	local i, col = di, self:rel_visible_col(dj)
+	local i = di
+	local col = self:rel_visible_col(dj)
 	local reset_extend
 	for action in actions:gmatch'[^%s]+' do
 		if action == '@extend' then
@@ -1263,8 +1397,10 @@ function grid:move(actions, di, dj)
 				col = self:rel_visible_col(dj, self.extend_col, true)
 			end
 		elseif action == '@focus' then
-			i = self.focused_row_index + di
-			col = self:rel_visible_col(dj, self.focused_col, true)
+			if self.focused_row_index then
+				i = self.focused_row_index + di
+				col = self:rel_visible_col(dj, self.focused_col, true)
+			end
 		elseif action == '@hot' then
 			i = self.hot_row_index + di
 			col = self:rel_visible_col(dj, self.hot_col, true)
@@ -1300,10 +1436,12 @@ function grid:move(actions, di, dj)
 			self:scroll_to_view_cell(i, col, 0)
 		elseif action == 'edit' then
 			self.editmode = true
-		elseif action == 'insert_row' then
-			self:insert_row(i)
-		elseif action == 'remove_row' then
-			self:remove_row(i)
+		elseif action == '@insert_row' then
+			i = self:insert_row(i) or i
+		elseif action == '@remove_selected_rows' then
+			i = self:remove_selected_rows() or i
+		elseif action == '@append_row' then
+			i = self:append_row(1/0) or i
 		end
 	end
 	if reset_extend then
@@ -1410,6 +1548,16 @@ function grid:keypress(key)
 	local shift = self.ui:key'shift'
 	local ctrl = self.ui:key'ctrl'
 
+	local i = self.focused_row_index
+	if not ctrl and key == 'down'
+		and self.editable and self.add_row_on_down_key
+		and (i == self.row_count or self.row_count == 0)
+		and (not i or not self:row_attr(i, 'appended'))
+	then
+		self:move'reset @append_row select focus scroll'
+		return
+	end
+
 	local rows =
 		ctrl and key == 'down' and 1/0
 		or ctrl and key == 'up' and -1/0
@@ -1454,9 +1602,11 @@ function grid:keypress(key)
 			self.editmode = false
 			return self.editmode == false
 		elseif key == 'insert' and self.allow_insert_row then
-			self:move'@focus insert_row'
-		elseif key == 'delete' and self.allow_remove_row then
-			self:move'@focus remove_row'
+			self:move'@focus reset @insert_row select focus scroll'
+		elseif ctrl and key == 'delete' and self.allow_remove_row then
+			self:move'@remove_selected_rows select focus scroll'
+		elseif not ctrl and key == 'delete' and self.allow_clear_cell then
+			self:clear_selected_cells()
 		end
 	end
 end
@@ -1588,6 +1738,8 @@ end
 grid.editable = true
 grid.allow_insert_row = true
 grid.allow_remove_row = true
+grid.allow_clear_cell = true
+grid.add_row_on_down_key = true
 
 grid:stored_property'editmode'
 grid:track_changes'editmode'
@@ -1648,6 +1800,10 @@ function grid:get_row_count()
 	return #self.rows
 end
 
+function grid:get_empty()
+	return self.row_count == 0 or #self.cols == 0
+end
+
 function grid:row_var_h(i)
 	return self.rows[i].h
 end
@@ -1661,6 +1817,19 @@ function grid:cell_value(i, col)
 	end
 end
 
+function grid:default_cell_value(col)
+	local dt = self.default_values
+	if dt and dt[col.value_index] ~= nil then
+		return dt[col.value_index]
+	elseif dt and dt[col.text] ~= nil then
+		return dt[col.text]
+	elseif col.default_value ~= nil then
+		return col.default_value
+	else
+		return self.default_value
+	end
+end
+
 function grid:update_cell_value(i, col, val)
 	local row = self.rows[i]
 	if row == nil then return end --virtual row?
@@ -1671,17 +1840,25 @@ function grid:update_cell_value(i, col, val)
 	end
 end
 
+function grid:row_attr(i, attr, default)
+	local row = assert(self.rows[i])
+	local val = type(row) ~= 'string' and row[attr] or nil
+	if val == nil then
+		val = default
+	end
+	return val
+end
+
+function grid:row_attr_set(i, attr, val)
+	local row = assert(self.rows[i])
+	row[attr] = val
+end
+
 function grid:create_row()
 	local row = {}
 	local dt = self.default_values
-	for i,col in ipairs(self.cols) do
-		if dt and dt[i] ~= nil then
-			row[i] = dt[i]
-		elseif dt and dt[col.text] ~= nil then
-			row[i] = dt[col.text]
-		elseif col.default_value ~= nil then
-			row[i] = col.default_value
-		end
+	for _,col in ipairs(self.cols) do
+		row[col.value_index] = self:default_cell_value(col)
 	end
 	return row
 end
@@ -1689,23 +1866,137 @@ end
 function grid:insert_row(i)
 	i = clamp(i, 1, self.row_count + 1)
 	local row = self:create_row()
-	if self:fire('row_inserting', i, row) == false then
-		return false
+	if self:fire('inserting_row', i, row) == false then
+		return
 	end
 	push(self.rows, i, row)
-	self:_insert_row_y(i)
+	self:_insert_row_y_rows(i, 1)
+	self:_insert_sel_rows(i, 1)
 	self:fire('row_inserted', i, row)
-	return true
+	return i
 end
 
-function grid:remove_row(i)
-	if self:fire('row_removing', i) == false then
-		return false
+function grid:append_row()
+	local i = self:insert_row(1/0)
+	if not i then return end
+	self:row_attr_set(i, 'appended', true)
+	return i
+end
+
+function grid:valid_row_range(i1, i2, d)
+	i2 = i2 or i1
+	d = d or 0
+	local n = self.row_count
+	i1 = clamp(i1, 1, n + d)
+	i2 = clamp(i2, 1, n + d)
+	if i2 < i1 then
+		i1, i2 = i2, i1
 	end
-	pop(self.rows, i)
-	self:_remove_row_y(i)
-	self:fire('row_removed', i)
-	return true
+	return i1, i2
+end
+
+function grid:_remove_row_range(i1, i2)
+	local len = i2 - i1 + 1
+	self:unfocus_focused_cell()
+	self:select_rows(i1, i2, false)
+	shift(self.rows, i1, -len)
+	self:_remove_row_y_rows(i1, len)
+	self:_remove_sel_rows(i1, len)
+	local row_removed = self.row_removed
+	if row_removed then
+		for i = i1, i2 do
+			row_removed(self, i)
+		end
+	end
+	return i1
+end
+
+--remove rows in batches but run confirmations for each row.
+function grid:remove_rows(start_i, end_i, confirm)
+	start_i, end_i = self:valid_row_range(start_i, end_i)
+	local i1, i2, rem_i
+	for i = end_i, start_i, -1 do
+		local remove = not confirm or confirm(self, i)
+		if remove then
+			i1 = i
+			i2 = i2 or i
+		end
+		if i1 and (not remove or i == start_i) then
+			rem_i = self:_remove_row_range(i1, i2)
+			i1, i2 = nil
+		end
+	end
+	return rem_i
+end
+
+function grid:remove_selected_rows()
+	local removing_row = self.removing_row
+	local confirm = removing_row and function(self, i)
+		return removing_row(self, i) ~= false
+	end
+	if not self.multi_select then
+		local i = self.selected_row_index
+		if not i then return end
+		return self:remove_rows(i, 1, confirm)
+	elseif not self.cell_select then
+		if self.use_rangelist then
+			local rem_i
+			for _, i, len in self.selected_rows:ranges() do
+				rem_i = self:remove_rows(i, i+len-1, confirm)
+			end
+			return rem_i
+		else
+			local selected = self.selected_rows
+			return self:remove_rows(1, self.row_count, function(self, i)
+				return selected[i] and (not confirm or confirm(self, i))
+			end)
+		end
+	else
+		--TODO: remove rows where there are selected cells?
+	end
+end
+
+function grid:clear_selected_cells()
+	local val = self.empty_value
+	if not self.multi_select then
+		local i = self.selected_row_index
+		local col = self.selected_col
+		if col then
+			self:update_cell_value(i, col, val)
+		elseif i then
+			for _,col in ipairs(self.cols) do
+				self:update_cell_value(i, col, val)
+			end
+		end
+	elseif not self.cell_select then
+		if self.use_rangelist then
+			for _, i, len in self.selected_rows:ranges() do
+				for i = i, i+len-1 do
+					for _,col in ipairs(self.cols) do
+						self:update_cell_value(i, col, val)
+					end
+				end
+			end
+		else
+			local t = self.selected_rows
+			for i, selected in pairs(t) do
+				if selected then
+					for _,col in ipairs(self.cols) do
+						self:update_cell_value(i, col, val)
+					end
+				end
+			end
+		end
+	else
+		local t = self.selected_cells
+		for col, cells in pairs(self.selected_cells) do
+			for i, selected in pairs(cells) do
+				if selected then
+					self:update_cell_value(i, col, val)
+				end
+			end
+		end
+	end
 end
 
 --grid -----------------------------------------------------------------------
@@ -1751,10 +2042,8 @@ function grid:after_init(ui, t)
 	self.scroll_pane.clamp_right = true
 
 	self.splitter = self:create_splitter()
-	if self.var_row_h then
-		self:_build_row_y_table()
-	end
-	self:select_none()
+	self:_init_row_y()
+	self:_init_selection()
 end
 
 --demo -----------------------------------------------------------------------
@@ -1764,22 +2053,22 @@ if not ... then require('ui_demo')(function(ui, win)
 	local grid = ui.grid:subclass'subgrid'
 
 	local rows = {}
-	for i = 1,1e5 do
+	for i = 1,1e6 do
 		local t = {}
 		push(rows, t)
 		for j = 1, 5 do
-			push(t, 'col '..j..' '..i..' 12345')
+			push(t, j) --'col '..j..' '..i..' 12345')
 		end
 		local n = math.random()
-		t.h = n < .1 and 200 or 34
+		t.h = n < .1 and 200 or 24
 	end
 
 	local g = grid(ui, {
 		tags = 'g',
 		x = 20,
 		y = 20,
-		w = 860,
-		h = 460,
+		w = 1160,
+		h = 660,
 		--row_count = 1e6,
 		rows = rows,
 		parent = win,
@@ -1818,7 +2107,7 @@ if not ... then require('ui_demo')(function(ui, win)
 		multi_select = true,
 		--row_move_ctrl = false,
 		--row_move = true,
-		cell_select = true,
+		--cell_select = true,
 
 		cell_class = ui.editbox,
 

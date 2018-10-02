@@ -1,5 +1,5 @@
 
---One-dimension non-overlapping selection ranges.
+--Unidimensional non-overlapping selection ranges.
 --Written by Cosmin Apreutesei. Public Domain.
 
 local glue = require'glue'
