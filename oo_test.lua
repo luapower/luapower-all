@@ -95,47 +95,6 @@ assert(MySubClass == oo.MySubClass)
 assert(MySubClass.classname == 'MySubClass')
 assert(MySubClass.super == MyClass)
 
---events
-local MyClass = oo.MyClass()
-local obj = MyClass()
-local n = 0
-local t = {}
-local function handler_func(order)
-	return function(self, a, b, c)
-		assert(a == 3)
-		assert(b == 5)
-		assert(c == nil)
-		n = n + 1
-		table.insert(t, order)
-	end
-end
-
-obj:on('testing.ns1', handler_func(2))
-obj:on('testing.ns2', handler_func(3))
-obj:on('testing.ns3', handler_func(4))
-obj.testing = handler_func(1)
-
-obj:fire('testing', 3, 5)
-assert(#t == 4)
-assert(t[1] == 1)
-assert(t[2] == 2)
-assert(t[3] == 3)
-assert(t[4] == 4)
-
-t = {}
-obj:off'.ns2'
-obj:fire('testing', 3, 5)
-assert(#t == 3)
-assert(t[1] == 1)
-assert(t[2] == 2)
-assert(t[3] == 4)
-
-t = {}
-obj:off'testing'
-obj:fire('testing', 3, 5)
-assert(#t == 1)
-assert(t[1] == 1)
-
 --inspect
 print'-------------- (before collapsing) -----------------'
 o:inspect()
@@ -164,7 +123,6 @@ print'-------------- (all reserved fields) ---------------'
 local c = oo.TestClass()
 local o = c()
 function o:set_x() end; o.x = nil; o.set_x = nil --to create `state`
-o:on('x', function() end) --to create `observers`
 o:inspect(true)
 end
 

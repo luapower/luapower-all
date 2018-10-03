@@ -10,6 +10,7 @@ tagline: package categories
 	* [glue]
 	* [pp]
 	* [oo]
+	* [events]
 	* [lpeg]
 	* [coro]
 * Portable OS APIs

@@ -4,14 +4,6 @@
 
 if not ... then require'oo_test'; return end
 
-local function indexof(v, t) --index of element in array (from glue)
-	for i=1,#t do
-		if t[i] == v then
-			return i
-		end
-	end
-end
-
 local Object = {classname = 'Object'}
 
 local function class(super,...)
@@ -301,89 +293,6 @@ function Object:gen_properties(names, getter, setter)
 	end
 end
 
---events
-
-local function event_namespace(event) --parse 'event', 'event.ns' or '.ns'
-	if type(event) == 'table' then
-		return event[1], event[2] --event, ns
-	end
-	local ev, ns = event:match'^([^%.]*)%.(.*)$'
-	ev = ev or event
-	if ev == '' then ev = nil end
-	return ev, ns
-end
-
---register a function to be called for a specific event type
-function Object:on(event, func)
-	local ev, ns = event_namespace(event)
-	assert(ev, 'event name missing')
-	self.__observers = self.__observers or {}
-	self.__observers[ev] = self.__observers[ev] or {}
-	table.insert(self.__observers[ev], func)
-	if ns then
-		self.__observers[ev][ns] = self.__observers[ev][ns] or {}
-		table.insert(self.__observers[ev][ns], func)
-	end
-end
-
---remove a handler or all handlers of an event and/or namespace
-local function remove_all(t, v)
-	while true do
-		local i = indexof(v, t)
-		if not i then return end
-		table.remove(t, i)
-	end
-end
-local function remove_all_ns(t_ev, ns)
-	local t_ns = t_ev and t_ev[ns]
-	if not t_ns then return end
-	for _,f in ipairs(t_ns) do
-		remove_all(t_ev, f)
-	end
-	t_ev[ns] = nil
-end
-function Object:off(event)
-	if not self.__observers then return end
-	local ev, ns = event_namespace(event)
-	if ev and ns then
-		remove_all_ns(self.__observers[ev], ns)
-	elseif ev then
-		self.__observers[ev] = nil
-	elseif ns then
-		for _,t_ev in pairs(self.__observers) do
-			remove_all_ns(t_ev, ns)
-		end
-	else
-		self.__observers = nil
-	end
-end
-
---fire an event, i.e. call its handler method and all observers.
-function Object:fire(event, ...)
-	if self[event] then
-		local ret = self[event](self, ...)
-		if ret ~= nil then return ret end
-	end
-	local t = self.__observers and self.__observers[event]
-	if t then
-		local i = 1
-		while true do
-			local handler = t[i]
-			if not handler then break end --list end or handler removed
-			local ret = handler(self, ...)
-			if ret ~= nil then return ret end
-			if t[i] ~= handler then
-				--handler was removed from inside itself, stay at i
-			else
-				i = i + 1
-			end
-		end
-	end
-	if event ~= 'event' then
-		return self:fire('event', event, ...)
-	end
-end
-
 --debugging
 
 local function pad(s, n) return s..(' '):rep(n - #s) end
@@ -474,4 +383,3 @@ return setmetatable({
 		end
 	end
 })
-

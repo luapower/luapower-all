@@ -2,11 +2,12 @@
 --Cross-platform windows for Lua.
 --Written by Cosmin Apreutesei. Public domain.
 
-local ffi   = require'ffi'
-local glue  = require'glue'
-local box2d = require'box2d'
-local time  = require'time'
-local nw    = {}
+local ffi    = require'ffi'
+local glue   = require'glue'
+local box2d  = require'box2d'
+local events = require'events'
+local time   = require'time'
+local nw = {}
 local backends = {
 	Windows = 'nw_winapi',
 	OSX     = 'nw_cocoa',
@@ -67,87 +68,13 @@ end
 
 --events ---------------------------------------------------------------------
 
-local function event_namespace(event) --parse 'event', 'event.ns' or '.ns'
-	if type(event) == 'table' then
-		return event[1], event[2] --event, ns
-	end
-	local ev, ns = event:match'^([^%.]*)%.([^%.]+)$'
-	ev = ev or event
-	if ev == '' then ev = nil end
-	return ev, ns
-end
+glue.update(object, events)
 
---register a function to be called for a specific event type
-function object:on(event, func)
-	local ev, ns = event_namespace(event)
-	assert(ev, 'event name missing')
-	self._observers = self._observers or {}
-	self._observers[ev] = self._observers[ev] or {}
-	table.insert(self._observers[ev], func)
-	if ns then
-		self._observers[ev][ns] = self._observers[ev][ns] or {}
-		table.insert(self._observers[ev][ns], func)
-	end
-end
-
---remove all handlers of an event type and/or namespace
-local function remove_all(t, v)
-	while true do
-		local i = indexof(v, t)
-		if not i then return end
-		table.remove(t, i)
-	end
-end
-local function remove_all_ns(t_ev, ns)
-	local t_ns = t_ev and t_ev[ns]
-	if not t_ns then return end
-	for _,f in ipairs(t_ns) do
-		remove_all(t_ev, f)
-	end
-	t_ev[ns] = nil
-end
-function object:off(event)
-	if not self._observers then return end
-	local ev, ns = event_namespace(event)
-	if ev and ns then
-		remove_all_ns(self._observers[ev], ns)
-	elseif ev then
-		self._observers[ev] = nil
-	elseif ns then
-		for _,t_ev in pairs(self._observers) do
-			remove_all_ns(t_ev, ns)
-		end
-	else
-		self._observers = nil
-	end
-end
-
---fire an event, i.e. call its handler method and all observers.
-function object:fire(event, ...)
+local fire = object.fire
+function object:fire(...)
 	if self._dead then return end
 	if self._events_disabled then return end
-	if self[event] then
-		local ret = self[event](self, ...)
-		if ret ~= nil then return ret end
-	end
-	local t = self._observers and self._observers[event]
-	if t then
-		local i = 1
-		while true do
-			local handler = t[i]
-			if not handler then break end --list end or handler removed
-			local ret = handler(self, ...)
-			if ret ~= nil then return ret end
-			if t[i] ~= handler then
-				--handler was removed from inside itself, stay at i
-			else
-				i = i + 1
-			end
-		end
-	end
-	if event ~= 'event' then
-		return self:fire('event', event, ...)
-	end
+	return fire(self, ...)
 end
 
 --enable or disable events. returns the old state.
@@ -777,6 +704,16 @@ function window:hide()
 	self:_check()
 	if self:fullscreen() then return end
 	self.backend:hide()
+end
+
+function window:showmodal()
+	if not self:activable() then return end
+	if not self:parent() then return end
+	self:on('hidden', function(self)
+		self.parent:enabled(true)
+	end)
+	self.parent:enabled(false)
+	self:show()
 end
 
 --state/minimizing -----------------------------------------------------------

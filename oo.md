@@ -36,16 +36,6 @@ Object system with virtual properties and method overriding hooks.
 	  `Apple:pick()` and call `inherited(self, ...)`.
  * virtual classes: nested inner classes which can overriden in subclasses
  of the outer class (more below).
- * events with optional namespace tags:
-   * `apple:on('falling.ns1', function(self, args...) ... end)` - register
-	  an event handler and associate it with the `ns1` tag (aka namespace)
-   * `apple:on({'falling', obj}, function ... end)` - same but link it to `obj`
-	* `Apple:falling(args...)` - default event handler for the `falling` event
-	* `apple:fire('falling', args...)` - call all `falling` event handlers
-	* `apple:off'falling'` - remove all `falling` event handlers
-	* `apple:off'.ns1'` - remove all event handlers on the `ns1` tag
-	* `apple:off{nil, obj}` - remove all event handlers on the `obj` tag
-	* `apple:off() - remove all event handlers registered on `apple`
  * introspection:
    * `oo.is(obj|class, class|classname) -> true|false` - check instance/class ancestry
    * `oo.isinstance(obj|class[, class|classname]) -> true|false` - check instance ancestry
@@ -298,27 +288,19 @@ cool because:
     be made part of its public API without any additional wrapping, and it
     can also be overriden with a normal method in subclasses of outer.
 
-
 ## Events
 
 Events are useful for associating actions with callback functions. This
 can already be done more flexibly with plain methods and overriding, but
-events add to that the ability to revert the overidding at runtime
-(with `obj:off()`) and enforce the protocol whereby returning a value
-short-circuits the call chain.
+events have the distinct ability to revert the overidding at runtime
+(with `obj:off()`). They also differ in the fact that returning a non-nil
+value from a callback short-circuits the call chain and the value is
+returned back to the user.
 
-Events facts:
+The events functionality can be enabled by adding the [events] mixin to
+oo's base class (or to any other class):
 
-* events fire in the order in which they were added.
-* extra args passed to `fire()` are passed to each event handler.
-* if the method `obj:<event>(args...)` is found, it is called first.
-* returning a non-nil value from a handler interrupts the event handling
-  call chain and the value is returned back by `fire()`.
-* all uninterrupted events fire the `event` meta-event which inserts the
-  event name as arg#1.
-* events can be namespace-tagged with `'event.ns'` or `{event, ns}`:
-  namespsaces are useful for easy bulk event removal with `obj:off'.ns'`
-  or `obj:off({nil, ns})`.
-* multiple handlers can be added for the same event and/or namespace.
-* handlers are stored as `self.__observers[event] = {handler1, ...}`.
-
+~~~{.lua}
+local events = require'events'
+oo.Object:inherit(events)
+~~~

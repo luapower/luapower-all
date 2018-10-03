@@ -172,7 +172,7 @@ function popup:before_shown()
 	self.cw, self.ch = self.dropdown.picker:sync_dropdown()
 end
 
-function popup:override_mousedown_autohide(inherited, ...)
+function popup:override_parent_window_mousedown_autohide(inherited, ...)
 	if self.dropdown.hot then
 		--prevent autohide to avoid re-opening the popup by the dropdown.
 		return

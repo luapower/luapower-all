@@ -5,6 +5,7 @@
 if not ... then require'ui_demo'; return end
 
 local oo = require'oo'
+local events = require'events'
 local glue = require'glue'
 local box2d = require'box2d'
 local easing = require'easing'
@@ -54,6 +55,8 @@ local function decode_nil(x) if x == nilkey then return nil end; return x; end
 --object system --------------------------------------------------------------
 
 local object = oo.object()
+
+object:inherit(events)
 
 function object:before_init()
 	--Speed up class field lookup by having the final class statically inherit
@@ -1199,10 +1202,16 @@ end
 function window:override_init(inherited, ui, t)
 	local show_it
 	local win = t.native_window
+	--parent can be given as the `parent` field or in place of the `ui` arg.
 	local parent = t.parent
+	if not parent and ui and (ui.islayer or ui.iswindow) then
+		parent = ui
+		ui = ui.ui
+	end
 	if parent and parent.iswindow then
 		parent = parent.view
 	end
+
 	if not win then
 		local nt = {}
 		for k in pairs(native_fields) do
@@ -1222,6 +1231,7 @@ function window:override_init(inherited, ui, t)
 	else
 		self.native_window = t.native_window
 	end
+
 	self.ui.windows[self] = true
 	win.ui_window = self
 	self.parent = parent
@@ -1232,8 +1242,11 @@ function window:override_init(inherited, ui, t)
 			self._parent = false
 		end
 
+		--Move window to preserve its relative position to parent if the parent
+		--changed its relative position to its own window. Moving this window
+		--when the parent's window is moved is automatic (`sticky` flag).
 		local px0, py0 = parent:to_window(0, 0)
-		function parent.before_draw(cr)
+		function parent.before_sync()
 			if not self.native_window then return end --freed
 			local px1, py1 = parent:to_window(0, 0)
 			local dx = px1 - px0
@@ -1993,6 +2006,9 @@ function window:_key_event(event_name, key)
 		if widget:fire(event_name, key) ~= nil then
 			return true
 		end
+		if widget.iswindow and widget.parent then
+			break --don't forward key presses from a child window to its parent.
+		end
 		widget = widget.parent
 	until not widget
 end
@@ -2015,7 +2031,8 @@ function window:draw(cr)
 end
 
 function window:sync()
-	if self._frame_expire_clock > self.frame_clock then
+	local exp = self._frame_expire_clock
+	if exp and exp > self.frame_clock then
 		self.native_window:invalidate()
 		return
 	end

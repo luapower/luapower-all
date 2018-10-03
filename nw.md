@@ -349,7 +349,7 @@ Quit the app, i.e. close all windows and stop the loop.
 Quitting is a multi-phase process:
 
 1. the `app:quitting()` event is fired. If it returns `false`, quitting is aborted.
-2. the `win:closing()` event is fired on all non-parented windows.
+2. the `win:closing()` event is fired on all non-child windows.
    If any of them returns `false`, quitting is aborted.
 3. `win:close(true)` is called on all windows (in reverse-creation order).
    If new windows are created during this process, quitting is aborted.
@@ -1529,52 +1529,17 @@ Get/set/hide window's tooltip.
 
 ## Events
 
-Events are a way to associate an action with one or more functions
-to be called on that action. To fire an event call
-`fire(event_name, args...)`. To add one or more functions to be called when
-an event is fired use `on(event_name, handler)`. Those functions will be
-called in the order in which they were added. If there's a method on the
-target object with the same name as the event, that method will also be
-called when the event fires, before any other handlers.
+nw uses the [events] mixin to add events functionality to all `app`, `win`
+and `view` objects. This means that:
 
-Extra args passed to `fire()` will be passed on to the handlers.
-The first handler to return a non-nil value stops the call chain and that
-value is returned to the caller who fired the event.
-
-### `function app/win/view:`_`event_name`_`() ... end`
-
-Method that will be fired when `event_name` is fired, before other handlers.
-
-### `app/win/view:on(event, func)`
-
-Call `func` when `event` is fired. Multiple functions can be attached
-to the same event: they are called in the order in which they were added.
-
-`event` can be `'event_name'`, `'event_name.namespace'` or
-`{event_name, namespace}`, which tags the handler with a namespace (which is
-just a convenience to aid in bulk removal of events).
-
-### `app/win/view:off(event)`
-
-Remove all handlers associated with an event name and/or namespace.
-`event` can be `'event_name'`, `'.namespace'`, `'event_name.namespace'`,
-`{event_name, namespace}`, `{nil, namespace}` or `nil/false` which removes
-all events.
-
-### `app/win/view:fire(event, ...) -> ret`
-
-Fire an event. The `event` arg can be the name of a known event or can be
-an arbitrary name. Returns the value returned by the first event handler
-to return a non-nil value.
+  * you can add methods to these objects named after the event and they will
+  be called automatically when the event fires.
+  * `:on()`, `:off()` and `:fire()` methods are available on these objects
+  and can be used for custom events too.
 
 ### `app/win/view:events(enabled) -> prev_state`
 
 Enable/disable events.
-
-### `app/win/view:event(name, args...)`
-
-This is a meta-event fired on every other event.
-The event name and args are passed in as args.
 
 ## Version checks
 

@@ -75,7 +75,29 @@ end
 
 function split_pane:sync_to_grid()
 
-	--compute/update columns width
+	--update width of auto_w columns.
+	local flex_w, fixed_w = 0, 0
+	if not self.grid.resizing_col then
+		for _,col in ipairs(self.grid.cols) do
+			if col.split_pane == self and col.visible then
+				if col.auto_w then
+					flex_w = flex_w + col.w
+				else
+					fixed_w = fixed_w + col.w
+				end
+			end
+		end
+		local avail_flex_w = self.cw - fixed_w
+		for _,col in ipairs(self.grid.cols) do
+			if col.split_pane == self and col.visible and col.auto_w then
+				--TODO: reset this transition!
+				local w = avail_flex_w * (col.w / flex_w) - 1e-9
+				col:transition('w', w, .01)
+			end
+		end
+	end
+
+	--compute/update columns total width.
 	local cols_w = 0
 	for _,col in ipairs(self.grid.cols) do
 		if col.split_pane == self and col.visible then
@@ -388,6 +410,7 @@ grid.col_class = col
 col.text_align = 'left'
 col.nowrap = true
 col._w = 200
+col.auto_w = true --distribute pane's width among all columns
 col.min_cw = 8
 col.max_w = 1000
 col.padding_left = 4
@@ -404,9 +427,17 @@ grid.col_resize = true
 grid.col_move = true
 grid.col_h = 24
 
+local function column(col)
+	if type(col) == 'string' then
+		return {text = col}
+	else
+		return col
+	end
+end
+
 function grid:create_col(col, col_index)
 
-	col = self.col_class(self.ui, self.col, col)
+	col = self.col_class(self.ui, column(self.col), column(col))
 	col.grid = self
 	col.value_index = col.value_index or col_index
 
@@ -1671,7 +1702,7 @@ end
 function grid:_create_dropdown_implicit_column()
 	if not self.dropdown then return end
 	if #self.cols == 0 then
-		push(self.cols, self:create_col({}))
+		push(self.cols, self:create_col())
 	end
 end
 
@@ -1700,10 +1731,12 @@ function grid:sync_picker_col_size(phase)
 		local vci = self.pick_col_index
 		local tci = self.pick_text_col_index or vci
 		assert(vci == tci)
+		local col = self.cols[tci]
+		col.auto_w = false
 		if phase == 1 then
-			self.cols[tci].w = 0
+			col.w = 0
 		else
-			self.cols[tci].w = self.scroll_pane.rows_pane.view.cw
+			col.w = self.scroll_pane.rows_pane.view.cw
 		end
 	end
 end
@@ -1735,7 +1768,7 @@ end
 
 --editmode -------------------------------------------------------------------
 
-grid.editable = true
+grid.editable = false
 grid.allow_insert_row = true
 grid.allow_remove_row = true
 grid.allow_clear_cell = true
@@ -2053,11 +2086,11 @@ if not ... then require('ui_demo')(function(ui, win)
 	local grid = ui.grid:subclass'subgrid'
 
 	local rows = {}
-	for i = 1,1e6 do
+	for i = 1,1e4 do
 		local t = {}
 		push(rows, t)
 		for j = 1, 5 do
-			push(t, j) --'col '..j..' '..i..' 12345')
+			push(t, 'hello') --'col '..j..' '..i..' 12345')
 		end
 		local n = math.random()
 		t.h = n < .1 and 200 or 24
@@ -2111,7 +2144,9 @@ if not ... then require('ui_demo')(function(ui, win)
 
 		cell_class = ui.editbox,
 
-		default_values = {col3 = 'Whaa!'}
+		default_values = {col3 = 'Whaa!'},
+
+		editable = true,
 	})
 
 	ui:style('grid_rows_pane > scrollbar', {
