@@ -77,7 +77,7 @@ __the app loop__
 `app:maxfps(fps) -> fps`                     cap the window repaint rate
 __quitting__
 `app:quit()`                                 quit the app, i.e. close all windows and stop the loop
-`app:autoquit(t|f) /-> t|f`                  quit the app when the last window is closed (true)
+`app:autoquit(t|f) /-> t|f`                  quit the app when the last visible window is closed (true)
 `app:quitting() -> [false]`                  event: quitting (return false to refuse)
 `win:autoquit(t|f) /-> t|f`                  quit the app when the window is closed (false)
 __timers__
@@ -86,7 +86,7 @@ __timers__
 `app:run(func)`                              run a function on a zero-second timer once
 `app:sleep(seconds)`                         sleep without blocking an app:run() function
 __window tracking__
-`app:windows() -> {win1, ...}`               all windows in creation order
+`app:windows(['#',][filter]) -> {win1, ...}` all windows in creation order
 `app:window_created(win)`                    event: a window was created
 `app:window_closed(win)`                     event: a window was closed
 __window creation__
@@ -361,7 +361,8 @@ is in progress does nothing.
 ### `app:autoquit() -> t|f` <br> `app:autoquit(t|f)`
 
 Get/set the app autoquit flag (default: true).
-When this flag is `true`, the app quits when the last window is closed.
+When this flag is `true`, the app quits when the last visible non-child
+window is closed.
 
 ### `app:quitting() -> [false]`
 
@@ -407,12 +408,11 @@ Calling sleep() outside an app:run() function raises an error.
 
 ## Window tracking
 
-### `app:windows() -> {win1, ...}` <br> `app:windows('#'[, filter]) -> n`
+### `app:windows([filter]) -> {win1, ...}` <br> `app:windows('#'[, filter]) -> n`
 
-Get all windows in creation order.
-
-If '#' is given, get the number of windows (dead or alive) instead.
-If `filter` is 'root' the return the number of non-dead non-parented windows.
+Get all windows in creation order. If '#' is given, get the number of windows
+(dead or alive) instead. An optional `filter(self, win) -> false` function
+can be used to filter the results in both cases.
 
 ### `app:window_created(win)`
 

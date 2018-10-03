@@ -178,7 +178,7 @@ function app:_init(nw, backend_class)
 	self._running = false
 	self._windows = {} --{window1, ...}
 	self._notifyicons = {} --{icon = true}
-	self._autoquit = true --quit after the last window closes
+	self._autoquit = true --quit after the last visible window closes
 	self._ignore_numlock = false --ignore the state of the numlock key on keyboard events
 	self.backend = backend_class:init(self)
 	self._state = self:_get_state()
@@ -327,7 +327,7 @@ function app:_canquit()
 
 	local allow = self:fire'quitting' ~= false
 
-	for i,win in ipairs(self:windows()) do
+	for _,win in ipairs(self:windows()) do
 		if not win:dead() and not win:parent() then
 			allow = win:_canclose() and allow
 		end
@@ -375,16 +375,26 @@ end
 --get existing windows in creation order
 function app:windows(arg, filter)
 	if arg == '#' then
-		if filter == 'root' then
+		if filter then
 			local n = 0
-			for i,win in ipairs(self._windows) do
-				n = n + (not win:dead() and not win:parent() and 1 or 0)
+			for _,win in ipairs(self._windows) do
+				n = n + (filter(win) ~= false and 1 or 0)
 			end
 			return n
+		else
+			return #self._windows
 		end
-		return #self._windows
+	elseif type(arg) == 'function' then
+		local t = {}
+		for _,win in ipairs(self._windows) do
+			if filter(win) ~= false then
+				t[#t+1] = win
+			end
+		end
+		return t
+	else
+		return glue.extend({}, self._windows) --take a snapshot
 	end
-	return glue.update({}, self._windows) --take a snapshot
 end
 
 function app:_window_created(win)
@@ -638,6 +648,9 @@ function window:close(force)
 	end
 end
 
+local function is_alive_root_and_visible(win)
+	return not win:dead() and not win:parent() and win:visible()
+end
 function window:_backend_closing()
 	if self._closed then return false end --reject if closed
 	if self._closing then return false end --reject while closing
@@ -645,7 +658,7 @@ function window:_backend_closing()
 	if self:autoquit() or (
 		app:autoquit()
 		and not self:parent() --closing a root window
-		and app:windows('#', 'root') == 1 --the only one
+		and app:windows('#', is_alive_root_and_visible) == 1 --the only one
 	) then
 		self._quitting = true
 		return app:_canquit()
