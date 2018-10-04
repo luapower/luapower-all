@@ -1422,10 +1422,10 @@ function window:override_init(inherited, ui, t)
 		self:invalidate()
 	end)
 
-	function win.closing(win)
+	function win.closing(win, closing_win)
 		local reason = self._close_reason
 		self._close_reason = nil
-		return self:closing(reason)
+		return self:closing(reason, closing_win.ui_window)
 	end
 
 	win:on({'closed', self}, function(win)
@@ -1704,7 +1704,7 @@ for prop, writable in pairs(props) do
 end
 
 --methods
-function window:closing(reason) end --stub
+function window:closing(reason, closing_win) end --stub
 function window:close(reason)
 	--closing asynchronously so that we don't destroy the window inside an event.
 	self.ui:runafter(0, function()
@@ -1719,6 +1719,7 @@ function window:minimize()    self.native_window:minimize() end
 function window:maximize()    self.native_window:maximize() end
 function window:restore()     self.native_window:restore() end
 function window:shownormal()  self.native_window:shownormal() end
+function window:showmodal()   self.native_window:showmodal() end
 function window:raise(rel)    self.native_window:raise(rel) end
 function window:lower(rel)    self.native_window:lower(rel) end
 function window:to_screen(x, y)   return self.native_window:to_screen(x, y) end

@@ -7,7 +7,12 @@ local glue   = require'glue'
 local box2d  = require'box2d'
 local events = require'events'
 local time   = require'time'
+
+local assert = glue.assert --assert with string.format
+local indexof = glue.indexof
+
 local nw = {}
+
 local backends = {
 	Windows = 'nw_winapi',
 	OSX     = 'nw_cocoa',
@@ -18,9 +23,6 @@ nw.backend = require(bkname)
 nw.backend.frontend = nw
 
 --helpers --------------------------------------------------------------------
-
-local assert = glue.assert --assert with string.format
-local indexof = glue.indexof
 
 local function optarg(opt, true_arg, false_arg, nil_arg)
 	opt = glue.index(opt)
@@ -256,7 +258,7 @@ function app:_canquit()
 
 	for _,win in ipairs(self:windows()) do
 		if not win:dead() and not win:parent() then
-			allow = win:_canclose() and allow
+			allow = win:_canclose(win) and allow
 		end
 	end
 
@@ -553,16 +555,16 @@ end
 
 --closing --------------------------------------------------------------------
 
-function window:_canclose()
+function window:_canclose(closing_window)
 	if self._closing then return false end --reject while closing (from quit() and user quit)
 
 	self._closing = true --_backend_closing() and _canclose() barrier
 
-	local allow = self:fire'closing' ~= false
+	local allow = self:fire('closing', closing_window) ~= false
 
 	--children must agree too
 	for i,win in ipairs(self:children()) do
-		allow = win:_canclose() and allow
+		allow = win:_canclose(closing_window) and allow
 	end
 
 	self._closing = nil
@@ -590,7 +592,7 @@ function window:_backend_closing()
 		self._quitting = true
 		return app:_canquit()
 	else
-		return self:_canclose()
+		return self:_canclose(self)
 	end
 end
 
@@ -707,12 +709,12 @@ function window:hide()
 end
 
 function window:showmodal()
-	if not self:activable() then return end
-	if not self:parent() then return end
-	self:on('hidden', function(self)
-		self.parent:enabled(true)
+	assert(self:activable(), 'modal window not activable')
+	assert(self:parent(), 'modal window has no parent')
+	self:once('hidden', function(self)
+		self:parent():enabled(true)
 	end)
-	self.parent:enabled(false)
+	self:parent():enabled(false)
 	self:show()
 end
 

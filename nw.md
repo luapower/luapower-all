@@ -94,7 +94,7 @@ __window creation__
 __window closing__
 `win:close([force])`                         close the window and destroy it
 `win:dead() -> t|f`                          check if the window was destroyed
-`win:closing()`                              event: closing (return false to refuse)
+`win:closing(closing_win)`                   event: closing (return false to refuse)
 `win:closed()`                               event: closed (but not dead yet)
 `win:closeable() -> t|f`                     closeable flag
 __window & app activation__
@@ -139,6 +139,7 @@ __window state__
 `win:exited_fullscreen()`                    event: exited fullscreen mode
 `win:restore()`                              restore from minimized or maximized state
 `win:shownormal()`                           show in normal state
+`win:showmodal()`                            show as modal window
 `win:changed(old_state, new_state)`          event: window state changed
 `app:changed(old_state, new_state)`          event: app state changed
 `win:enabled(t|f) /-> t|f`                   get/set window enabled flag
@@ -348,8 +349,9 @@ Quit the app, i.e. close all windows and stop the loop.
 
 Quitting is a multi-phase process:
 
-1. the `app:quitting()` event is fired. If it returns `false`, quitting is aborted.
-2. the `win:closing()` event is fired on all non-child windows.
+1. `app:quitting()` event is fired. If it returns `false`, quitting is aborted.
+2. `win:closing(closing_win)` event is fired on all non-child windows, with
+   the initial window as arg#1.
    If any of them returns `false`, quitting is aborted.
 3. `win:close(true)` is called on all windows (in reverse-creation order).
    If new windows are created during this process, quitting is aborted.
@@ -565,9 +567,11 @@ Closing the window destroys it by default.
 You can prevent that by returning `false` in the `win:closing()` event:
 
 ~~~{.lua}
-function win:closing()
-	self:hide()
-	return false --prevent destruction
+function win:closing(closing_win)
+	if closing_win == self then --directly closed by the user
+		self:hide()
+		return false --prevent destruction
+	end
 end
 ~~~
 
@@ -814,6 +818,12 @@ The window is always activated even when it's already in normal mode.
 
 State tracking is about getting and tracking the entire user-changeable
 state of a window (of or the app) as a whole.
+
+### `win:showmodal()`
+
+Show as modal window to its parent. A modal window disables its parent while
+it is visible and enables it back when it gets hidden again. The window must
+be activable and must have a parent or an error is raised.
 
 ### `win:changed(old_state, new_state)`
 
