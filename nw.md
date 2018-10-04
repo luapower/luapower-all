@@ -78,10 +78,10 @@ __the app loop__
 __quitting__
 `app:quit()`                                 quit the app, i.e. close all windows and stop the loop
 `app:autoquit(t|f) /-> t|f`                  quit the app when the last visible window is closed (true)
-`app:quitting() -> [false]`                  event: quitting (return false to refuse)
-`win:autoquit(t|f) /-> t|f`                  quit the app when the window is closed (false)
+`app:quitting() -> [false]`                  event: quitting (return `false` to refuse)
+`win:autoquit(t|f) /-> t|f`                  quit the app when the window is closed (`false`)
 __timers__
-`app:runevery(seconds, func)`                run a function on a timer (return false to stop it)
+`app:runevery(seconds, func)`                run a function on a timer (return `false` to stop it)
 `app:runafter(seconds, func)`                run a function on a timer once
 `app:run(func)`                              run a function on a zero-second timer once
 `app:sleep(seconds)`                         sleep without blocking an app:run() function
@@ -92,10 +92,12 @@ __window tracking__
 __window creation__
 `app:window(t) -> win`                       create a window
 __window closing__
-`win:close([force])`                         close the window and destroy it
+`win:close([force])`                         close the window and hide it or destroy it
+`win:free([force])`                          close the window and destroy it
+`win:hideonclose(t|f) /-> t|f`               hide on close or destroy on close
 `win:dead() -> t|f`                          check if the window was destroyed
-`win:closing(closing_win)`                   event: closing (return false to refuse)
-`win:closed()`                               event: closed (but not dead yet)
+`win:closing(reason, closing_win)`           event: closing (return `false` to refuse)
+`win:closed()`                               event: window is about to be destroyed
 `win:closeable() -> t|f`                     closeable flag
 __window & app activation__
 `app/win:active() -> t|f`                    check if app/window is active
@@ -350,10 +352,10 @@ Quit the app, i.e. close all windows and stop the loop.
 Quitting is a multi-phase process:
 
 1. `app:quitting()` event is fired. If it returns `false`, quitting is aborted.
-2. `win:closing(closing_win)` event is fired on all non-child windows, with
-   the initial window as arg#1.
-   If any of them returns `false`, quitting is aborted.
-3. `win:close(true)` is called on all windows (in reverse-creation order).
+2. `win:closing('quit', closing_win)` event is fired on all non-child windows,
+   with the initial window as arg#2. If any of them returns `false`, quitting
+	is aborted.
+3. `win:close'force'` is called on all windows (in reverse-creation order).
    If new windows are created during this process, quitting is aborted.
 4. the app loop is stopped.
 
@@ -435,36 +437,37 @@ Create a window (fields of _`t`_ below with default value in parenthesis):
 	* `w`, `h`                   - frame size
 	* `cx`, `cy`                 - client area position
 	* `cw`, `ch`                 - client area size
-	* `min_cw`, `min_ch`         - min client rect size (1, 1)
+	* `min_cw`, `min_ch`         - min client rect size (`1, 1`)
 	* `max_cw`, `max_ch`         - max client rect size
 * __state__
-	* `visible`                  - start visible (true)
-	* `minimized`                - start minimized (false)
-	* `maximized`                - start maximized (false)
+	* `visible`                  - start visible (`true`)
+	* `minimized`                - start minimized (`false`)
+	* `maximized`                - start maximized (`false`)
 	* `enabled`                  - start enabled (true)
 * __frame__
-	* `frame`                    - frame type: 'normal', 'none', 'toolbox' ('normal')
-	* `title`                    - title ('')
-	* `transparent`              - transparent window (false)
-	* `corner_radius`            - rounded corners (0)
+	* `frame`                    - frame type: `'normal'`, `'none'`, `'toolbox'` (`'normal'`)
+	* `title`                    - title (`''`)
+	* `transparent`              - transparent window (`false`)
+	* `corner_radius`            - rounded corners (`0`)
 * __behavior__
 	* `parent`                   - parent window
-	* `sticky`                   - moves with parent (false)
-	* `topmost`                  - stays on top of other non-topmost windows (false)
-	* `minimizable`              - allow minimization (true)
-	* `maximizable`              - allow maximization (true; false if `resizeable` is false)
-	* `closeable`                - allow closing (true)
-	* `resizeable`               - allow resizing (true)
-	* `fullscreenable`           - allow fullscreen mode (true; false if `resizeable` is false)
-	* `activable`                - allow activation (true)
-	* `autoquit`                 - quit the app on closing (false)
-	* `edgesnapping`             - magnetized edges ('screen')
+	* `sticky`                   - moves with parent (`false`)
+	* `topmost`                  - stays on top of other non-topmost windows (`false`)
+	* `minimizable`              - allow minimization (`true`)
+	* `maximizable`              - allow maximization (`true`; `false` if `resizeable` is `false`)
+	* `closeable`                - allow closing (`true`)
+	* `resizeable`               - allow resizing (`true`)
+	* `fullscreenable`           - allow fullscreen mode (`true`; `false` if `resizeable` is `false`)
+	* `activable`                - allow activation (`true`)
+	* `autoquit`                 - quit the app on closing (`false`)
+	* `hideonclose`              - hide on close instead of destroying (`true`)
+	* `edgesnapping`             - magnetized edges (`'screen'`)
 * __rendering__
 	* `opengl`                   - enable and [configure OpenGL](#winviewgl---gl) on the window
 * __menu__
 	* `menu`                     - the menu bar
 * __tooltip__
-	* `tooltip`                  - tooltip text (false)
+	* `tooltip`                  - tooltip text (`false`)
 
 ### Initial size and position
 
@@ -563,45 +566,49 @@ Get the transparent flag (read-only).
 
 ## Window closing
 
-Closing the window destroys it by default.
-You can prevent that by returning `false` in the `win:closing()` event:
-
-~~~{.lua}
-function win:closing(closing_win)
-	if closing_win == self then --directly closed by the user
-		self:hide()
-		return false --prevent destruction
-	end
-end
-~~~
+Closing the window hides it or destroys it depending on the `hideonclose` flag.
+You can prevent closing by returning `false` in the `win:closing()` event:
 
 ### `win:close([force])`
 
-Close the window and destroy it. Children are closed first.
-The `force` arg allows closing the window without firing
-the `win:closing()` event.
+Close the window. Children are closed first. The `force` arg allows closing
+the window without firing the `win:closing()` event.
 
 Calling `close()` on a closed window does nothing.
-Calling any other method raises an error.
+
+Closing a window results in hiding it or freeing it, depending on the
+`hideonclose` flag.
 
 ### `win:dead() -> t|f`
 
 Check if the window was destroyed.
+Calling any other method on a dead window raises an error.
 
-### `win:closing()`
+### `win:closing(reason, [closing_win])`
 
-Event: The window is about to close.
-Return `false` from the event handler to refuse.
+Event: The window is about to close. Reason can be `'quit'` or `'close'`.
+When reason is `'close'`, `closing_win` is the window initiating the process.
+Return `false` from the event handler to refuse closing.
 
 ### `win:closed()`
 
-Event: The window was closed.
-Fired after all children are closed, but before the window itself
-is destroyed (`win:dead()` still returns `false` at this point).
+Event: The window was closed and is about to be destroyed.
+Fired after all children are closed, but before the window itself is destroyed.
+This event does not fire when `hideonclose` is `true` and the window is
+closed by the user or by calling `close()` (check the `hidden` event then).
 
 ### `win:closeable() -> t|f`
 
 Get the closeable flag (read-only).
+
+### `win:hideonclose(t|f) /-> t|f`
+
+What to do when a window is closed: hide it or destroying it.
+
+### `win:free([force])`
+
+Close and destroy the window (same as `close()` when `hideonclose` is set
+to `false`).
 
 ## Window & app activation
 

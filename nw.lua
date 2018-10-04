@@ -258,7 +258,7 @@ function app:_canquit()
 
 	for _,win in ipairs(self:windows()) do
 		if not win:dead() and not win:parent() then
-			allow = win:_canclose(win) and allow
+			allow = win:_canclose('quit', nil) and allow
 		end
 	end
 
@@ -362,6 +362,7 @@ local defaults = {
 	fullscreenable = true,
 	activable = true,
 	autoquit = false, --quit the app on closing
+	hideonclose = true, --only hide on close without freeing the window
 	edgesnapping = 'screen',
 	sticky = false, --only for child windows
 }
@@ -519,6 +520,7 @@ function window:_new(app, backend_class, useropt)
 	self._fullscreenable = opt.fullscreenable
 	self._activable = opt.activable
 	self._autoquit = opt.autoquit
+	self._hideonclose = opt.hideonclose
 	self._sticky = opt.sticky
 	self._opengl = opt.opengl
 	self:edgesnapping(opt.edgesnapping)
@@ -555,23 +557,34 @@ end
 
 --closing --------------------------------------------------------------------
 
-function window:_canclose(closing_window)
-	if self._closing then return false end --reject while closing (from quit() and user quit)
-
+function window:_canclose(reason, closing_window)
+	if self._closing then
+		return false --reject while closing (from quit() and user quit)
+	end
 	self._closing = true --_backend_closing() and _canclose() barrier
-
-	local allow = self:fire('closing', closing_window) ~= false
-
+	local allow = self:fire('closing', reason, closing_window) ~= false
 	--children must agree too
 	for i,win in ipairs(self:children()) do
-		allow = win:_canclose(closing_window) and allow
+		allow = win:_canclose(reason, closing_window) and allow
 	end
-
 	self._closing = nil
 	return allow
 end
 
 function window:close(force)
+	if self.hideonclose and not self:visible() then
+		return
+	end
+	if force or self:_backend_closing() then
+		if self.hideonclose then
+			self:hide()
+		else
+			self.backend:forceclose()
+		end
+	end
+end
+
+function window:free(force)
 	if force or self:_backend_closing() then
 		self.backend:forceclose()
 	end
@@ -584,6 +597,10 @@ function window:_backend_closing()
 	if self._closed then return false end --reject if closed
 	if self._closing then return false end --reject while closing
 
+	if not self:_canclose('close', self) then
+		return false
+	end
+
 	if self:autoquit() or (
 		app:autoquit()
 		and not self:parent() --closing a root window
@@ -591,9 +608,14 @@ function window:_backend_closing()
 	) then
 		self._quitting = true
 		return app:_canquit()
-	else
-		return self:_canclose(self)
 	end
+
+	if self:hideonclose() then
+		self:hide()
+		return false
+	end
+
+	return true
 end
 
 function window:_backend_closed()
@@ -709,8 +731,8 @@ function window:hide()
 end
 
 function window:showmodal()
-	assert(self:activable(), 'modal window not activable')
-	assert(self:parent(), 'modal window has no parent')
+	assert(self:activable(), 'window cannot be shown modal: non-activable')
+	assert(self:parent(), 'without cannot be shown modal: no parent')
 	self:once('hidden', function(self)
 		self:parent():enabled(true)
 	end)
@@ -1309,6 +1331,7 @@ function window:resizeable() self:_check(); return self._resizeable end
 function window:fullscreenable() self:_check(); return self._fullscreenable end
 function window:activable() self:_check(); return self._activable end
 function window:sticky() self:_check(); return self._sticky end
+function window:hideonclose() self:_check(); return self._hideonclose end
 
 function window:autoquit(autoquit)
 	self:_check()
