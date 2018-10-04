@@ -428,14 +428,16 @@ if jit then
 				MOVEFILE_REPLACE_EXISTING)
 			if ret == 0 then
 				local err = ffi.C.GetLastError()
-				error('WinAPI error '..err)
+				return nil, 'WinAPI error '..err
+			else
+				return true
 			end
 		end
 
 	else
 
 		function glue.replace(oldfile, newfile)
-			assert(os.rename(oldfile, newfile))
+			return os.rename(oldfile, newfile)
 		end
 
 	end
@@ -445,42 +447,46 @@ end
 --write a string, number, or table to a file (in binary mode by default).
 function glue.writefile(filename, s, mode, tmpfile)
 	if tmpfile then
-		glue.writefile(tmpfile, s, mode)
-		local ok, err = xpcall(glue.replace, debug.traceback, tmpfile, filename)
-		if ok then
-			return
-		else
+		local ok, err = glue.writefile(tmpfile, s, mode)
+		if not ok then
+			return nil, err
+		end
+		local ok, err = glue.replace(tmpfile, filename)
+		if not ok then
 			os.remove(tmpfile)
-			error(err)
+			return nil, err
+		else
+			return true
 		end
 	end
 	local f, err = io.open(filename, mode=='t' and 'w' or 'wb')
 	if not f then
-		error(err)
+		return nil, err
 	end
-	local function check(ret, err)
-		if ret then return ret, err end
-		f:close()
-		local ret, err2 = os.remove(filename)
-		if ret == nil then
-			err = err .. '\n' .. err2
-		end
-		error(err, 2)
-	end
+	local ok, err
 	if type(s) == 'table' then
 		for i = 1, #s do
-			check(f:write(s[i]))
+			ok, err = f:write(s[i])
+			if not ok then break end
 		end
 	elseif type(s) == 'function' then
+		local read = s
 		while true do
-			local _, s1 = check(xpcall(s, debug.traceback))
-			if not s1 then break end
-			check(f:write(s1))
+			ok, err = xpcall(read, debug.traceback)
+			if not ok or err == nil then break end
+			ok, err = f:write(err)
+			if not ok then break end
 		end
 	else --string or number
-		check(f:write(s))
+		ok, err = f:write(s)
 	end
 	f:close()
+	if not ok then
+		os.remove(filename)
+		return nil, err
+	else
+		return true
+	end
 end
 
 --virtualize the print function.

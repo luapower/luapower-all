@@ -635,17 +635,18 @@ on all other platforms).
 
 ------------------------------------------------------------------------------
 
-### `glue.writefile(filename,s|t|read,[format],[tmpfile])`
+### `glue.writefile(filename,s|t|read,[format],[tmpfile]) -> ok, err`
 
 Write the contents of a string, table or reader to a file.
 
+  * the contents can be given as a string, an array of strings, or a function
+  that returns a string or `nil` to signal end-of-stream.
   * `format` can be `"t"` in which case the file will be written in text mode
    (default is binary mode).
-  * `read` can be a function to draw strings or numbers from.
-  * if writing fails and `tmpfile` is not given, the file is removed and an
-  error is raised; if `tmpfile` is given then the data is written that file
-  first which is then renamed to `filename` and if writing or renaming fails
-  the temp file is removed and `filename` is not touched.
+  * if writing fails and `tmpfile` is not given, the file is removed; if
+  `tmpfile` is given then the data is written to that file first which is
+  then renamed to `filename` and if writing or renaming fails the temp file
+  is removed and `filename` is not touched.
 
 ------------------------------------------------------------------------------
 
