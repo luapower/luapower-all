@@ -10,6 +10,7 @@ NW ---------------------------------------------------------------------------
 - BUG parent doesn't get repainted right after closing a child popup.
 - FEAT get a window's children in z-order so we can forward mouse wheel events
 to non-activable children.
+- BUG background doesn't get cleared anymore when there's no repaint handler.
 
 UI ---------------------------------------------------------------------------
 
@@ -29,7 +30,7 @@ EDITBOX ----------------------------------------------------------------------
 
 - make the caret a layer so it can be styled.
 --make selection rectangles layers so they can be styled.
---drag & drop selection in/out of the editor.
+--drag & drop selection in/out of the editor and between editboxes.
 
 - IME integration.
 
@@ -59,7 +60,7 @@ CHECKBOX ---------------------------------------------------------------------
 
 SLIDER -----------------------------------------------------------------------
 
--
+- label and/or numeric editbox on the left side or right side.
 
 CALENDAR ---------------------------------------------------------------------
 

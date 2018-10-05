@@ -2277,7 +2277,7 @@ function layer:cr_abs_matrix(cr) --box matrix in cr's current space
 	end
 end
 
---convert point from own box space to parent content space
+--convert point from own box space to parent content space.
 function layer:from_box_to_parent(x, y)
 	if self.pos_parent ~= self.parent then
 		return self.parent:from_window(self:abs_matrix():point(x, y))
@@ -2286,7 +2286,7 @@ function layer:from_box_to_parent(x, y)
 	end
 end
 
---convert point from parent content space to own box space
+--convert point from parent content space to own box space.
 function layer:from_parent_to_box(x, y)
 	if self.pos_parent ~= self.parent then
 		return self:abs_matrix():invert():point(self.parent:to_window(x, y))
@@ -2295,7 +2295,7 @@ function layer:from_parent_to_box(x, y)
 	end
 end
 
---convert point from own content space to parent content space
+--convert point from own content space to parent content space.
 function layer:to_parent(x, y)
 	if self.pos_parent ~= self.parent then
 		return self.parent:from_window(
@@ -2305,7 +2305,7 @@ function layer:to_parent(x, y)
 	end
 end
 
---convert point from parent content space to own content space
+--convert point from parent content space to own content space.
 function layer:from_parent(x, y)
 	if self.pos_parent ~= self.parent then
 		return self:abs_matrix():translate(self:padding_pos()):invert()
@@ -2334,7 +2334,7 @@ function layer:from_screen(x, y)
 	return self:from_window(x, y)
 end
 
---convert point from own content space to other's content space
+--convert point from own content space to other's content space.
 function layer:to_other(widget, x, y)
 	if widget.window == self.window then
 		return widget:from_window(self:to_window(x, y))
@@ -2708,11 +2708,16 @@ end
 
 function layer:unfocus()
 	if not self.focused then return end
+	self.window.focused_widget = false
 	self:fire'lostfocus'
 	self:settag(':focused', false)
+	local parent = self.parent
+	while parent and not parent.iswindow do
+		parent:settag(':child_focused', false)
+		parent = parent.parent
+	end
 	self.window:fire('lostfocus', self)
 	self.ui:fire('lostfocus', self)
-	self.window.focused_widget = false
 	self:invalidate()
 end
 
@@ -2722,6 +2727,11 @@ function layer:focus(focus_children)
 			self.window:unfocus_focused_widget()
 			self:fire'gotfocus'
 			self:settag(':focused', true)
+			local parent = self.parent
+			while parent and not parent.iswindow do
+				parent:settag(':child_focused', true)
+				parent = parent.parent
+			end
 			self.window.focused_widget = self
 			self.window:fire('widget_gotfocus', self)
 			self.ui:fire('gotfocus', self)
@@ -3495,11 +3505,16 @@ end
 
 layer.padding = 0
 
+function layer:get_pw1() return self.padding_left or self.padding end
+function layer:get_ph1() return self.padding_top or self.padding end
+function layer:get_pw2() return self.padding_right or self.padding end
+function layer:get_ph2() return self.padding_bottom or self.padding end
+
 function layer:padding_pos() --in box space
 	local p = self.padding
-	local px1 = self.padding_left or p
-	local py1 = self.padding_top or p
-	return px1, py1
+	local px = self.padding_left or p
+	local py = self.padding_top or p
+	return px, py
 end
 
 function layer:padding_size()
@@ -3550,12 +3565,14 @@ end
 function layer:set_cw(cw) self.w = cw + (self.w - self.cw) end
 function layer:set_ch(ch) self.h = ch + (self.h - self.ch) end
 
-function layer:to_content(x, y) --box space coord in content space
+--convert point from own box space to own content space.
+function layer:to_content(x, y)
 	local px, py = self:padding_pos()
 	return x - px, y - py
 end
 
-function layer:from_content(x, y) --content space coord in box space
+--content point from own content space to own box space.
+function layer:from_content(x, y)
 	local px, py = self:padding_pos()
 	return px + x, py + y
 end

@@ -33,16 +33,24 @@ editbox.selection_color = '#66f8'
 
 editbox.tags = 'standalone'
 
-ui:style('editbox standalone', {
+ui:style('editbox standalone, editbox_scrollbox standalone', {
 	border_width = 1,
 	border_color = '#333',
 })
 
-ui:style('editbox standalone :hot', {
+ui:style('editbox_scrollbox', {
+	padding = 1, --contain scrollbars
+})
+
+ui:style('editbox_scrollbox > editbox', {
+	padding = 3,
+})
+
+ui:style('editbox :hot, editbox_scrollbox standalone :child_hot', {
 	border_color = '#999',
 })
 
-ui:style('editbox standalone :focused', {
+ui:style('editbox standalone :focused, editbox_scrollbox standalone :child_focused', {
 	border_color = '#fff',
 	shadow_blur = 2,
 	shadow_color = '#666',
@@ -66,12 +74,12 @@ ui:style('editbox :focused', {
 	transition_times_caret_color = 1/0, --blink indefinitely
 })
 
-ui:style('editbox standalone', {
+ui:style('editbox standalone, editbox_scrollbox standalone', {
 	transition_border_color = true,
 	transition_duration_border_color = .5,
 })
 
-ui:style('editbox standalone :hot', {
+ui:style('editbox standalone :hot, editbox_scrollbox standalone :hot', {
 	transition_border_color = true,
 	transition_duration_border_color = .5,
 })
@@ -138,11 +146,12 @@ end
 
 --init
 
-editbox:init_ignore{text=1}
+editbox:init_ignore{text=1, multiline=1}
 
 function editbox:after_init(ui, t)
 	--create a selection so we can add the text through the selection which
 	--obeys maxlen and triggers changed event.
+	self.multiline = t.multiline
 	self.selection = self:sync_text():selection()
 	self.text = t.text
 
@@ -166,18 +175,22 @@ end
 editbox:stored_property'multiline'
 editbox:instance_only'multiline'
 
-ui:style('editbox multiline !scrollbox', {
+function editbox:get_multiline()
+	return self._multiline and not self.password
+end
+
+ui:style('editbox multiline', {
 	text_align = 'left',
 	text_valign = 'top',
-	nowrap = false,
 })
 
 editbox.scrollbox_class = ui.scrollbox
 
 function editbox:create_scrollbox()
-	return self.scrollbox_class(self.ui, {
+	return self.scrollbox_class(self.parent, {
+		tags = 'editbox_scrollbox',
 		content = self,
-		parent = self.parent,
+		editbox = self,
 		x = self.x,
 		y = self.y,
 		w = self.w,
@@ -185,32 +198,49 @@ function editbox:create_scrollbox()
 	})
 end
 
-function editbox:after_set_multiline(set)
-	if set then
-		self:settag('multiline', true)
-		self:settag('standalone', false)
-		self.scrollbox = self:create_scrollbox()
-		self.scrollbox:settags('editbox standalone')
-	elseif self.scrollbox then
-		self:settag('multiline', false)
-		self:settag('standalone', true)
-		self.parent = self.scrollbox.parent
-		self.scrollbox:free()
-		self.scrollbox = false
+function editbox:sync_scrollbox()
+
+	--TODO: compute content size properly when word-wrapping!
+	if not self.nowrap then
+		--self.scrollbox.vscrollbar.autohide_empty = false
 	end
+
+	local segs = self:sync_text()
+	local bx, by, bw, bh = segs:bounding_box()
+	local cx, cy, cw, ch = self:caret_rect()
+
+	self.scrollbox.content.cw = bw + cw
+	self.scrollbox.content.ch = bh
+
+	if cx == 0 then cx = -1/0 end --TODO: fix right-align case too
+	self.scrollbox:scroll_to_view(cx, cy, cw, ch)
+
+	--TODO: set this only if view rect changed!
+	segs.lines.editbox_clipped = false
 end
 
-editbox:init_ignore{multiline=1}
-
-function editbox:after_init(ui, t)
-	self.multiline = t.multiline
-end
-
-function editbox:after_sync()
-	if self.multiline then
-		local x, y, w, h = self:sync_text():bounding_box()
-		self.scrollbox.content.cw = w
-		self.scrollbox.content.ch = h
+function editbox:after_set_multiline(multiline)
+	if multiline then
+		self.scrollbox = self:create_scrollbox()
+		self:settag('multiline', true)
+		if self.tags.standalone then
+			self:settag('standalone', false)
+			self.scrollbox:settag('standalone', true)
+		end
+		function self.scrollbox:after_sync()
+			self.editbox:sync_scrollbox()
+		end
+	else
+		self.nowrap = true
+		if self.scrollbox then
+			self:settag('multiline', false)
+			if self.scrollbox.tags.standalone then
+				self:settag('standalone', true)
+			end
+			self.parent = self.scrollbox.parent
+			self.scrollbox:free()
+			self.scrollbox = false
+		end
 	end
 end
 
@@ -245,41 +275,51 @@ function editbox:override_sync_text(inherited)
 	end
 
 	--move the text behind the editbox such that the caret remains visible.
-	local line_w
-	if self.password then
-		local t = segs.lines.pw_cursor_xs
-		line_w = #t * self:password_char_advance_x()
-	else
-		line_w = segs.lines[1].advance_x
-	end
-	local x, _, w = self:caret_rect()
-	local view_w = self.cw - w
-	local sx = segs.lines.x
-	if line_w > view_w then
-		local ax = segs.lines[1].x --alignment x.
-		local sx = sx + ax --text offset relative to the editbox.
-		x = x - sx
-		--scroll to make the cursor visible.
-		sx = clamp(sx, -x, -x + view_w)
-		--scroll to keep the text within the editbox bounds.
-		sx = clamp(sx, math.min(view_w - line_w, 0), 0)
-		--apply the scroll offset.
-		segs.lines.x = sx - ax
-	else
-		--make the cursor visible when the text is right-aligned.
-		local adjustment = self.text_align == 'right' and -w or 0
-		--reset the x-offset in order to use the default alignment from `tr`.
-		segs.lines.x = 0 + adjustment
-	end
+	if not self.multiline then
+		local line_w
+		if self.password then
+			local t = segs.lines.pw_cursor_xs
+			line_w = #t * self:password_char_advance_x()
+		else
+			line_w = segs.lines[1].advance_x
+		end
+		local x, _, w = self:caret_rect()
+		local view_w = self.cw - w
+		local sx = segs.lines.x
+		if line_w > view_w then
+			local ax = segs.lines[1].x --alignment x.
+			local sx = sx + ax --text offset relative to the editbox.
+			x = x - sx
+			--scroll to make the cursor visible.
+			sx = clamp(sx, -x, -x + view_w)
+			--scroll to keep the text within the editbox bounds.
+			sx = clamp(sx, math.min(view_w - line_w, 0), 0)
+			--apply the scroll offset.
+			segs.lines.x = sx - ax
+		else
+			--make the cursor visible when the text is right-aligned.
+			local adjustment = self.text_align == 'right' and -w or 0
+			--reset the x-offset in order to use the default alignment from `tr`.
+			segs.lines.x = 0 + adjustment
+		end
 
-	--clip the text segments to the content rectangle to avoid drawing
-	--any invisible text segments. mark the lines as clipped in the `lines`
-	--table because `lines` will be replaced after re-layouting.
-	if not self.password then
-		if segs.lines.x ~= sx or not segs.lines.editbox_clipped then
-			segs:clip(self:client_rect())
+		--clip the text segments to the content rectangle to avoid drawing
+		--any invisible text segments. mark the lines as clipped in the `lines`
+		--table because `lines` will be replaced after re-layouting.
+		if not self.password then
+			if segs.lines.x ~= sx or not segs.lines.editbox_clipped then
+				segs:clip(self:client_rect())
+				segs.lines.editbox_clipped = true
+			end
+		end
+	else
+
+		--clip the text segments to the scrollbox view rectangle.
+		if not segs.lines.editbox_clipped then
+			segs:clip(self.scrollbox:view_rect())
 			segs.lines.editbox_clipped = true
 		end
+
 	end
 
 	return segs
@@ -287,7 +327,6 @@ end
 
 --drawing cursor & selection
 
-editbox.nowrap = true
 editbox.clip_content = true
 
 local function draw_sel_rect(x, y, w, h, cr, self)
@@ -452,9 +491,17 @@ function editbox:keypress(key)
 				return c1:move_to_cursor(c2)
 			end
 		end
-	elseif key == 'up' or key == 'down' then
+	elseif
+		key == 'up' or key == 'down'
+		or (ctrl and (key == 'home' or key == 'end'))
+	then
 		self:undo_group()
-		if self.selection.cursor1:move('vert', key == 'down' and 1 or -1) then
+		local step =
+			key == 'down' and 1
+			or key =='up' and -1
+			or key == 'home' and -1/0
+			or key == 'end' and 1/0
+		if self.selection.cursor1:move('vert', step) then
 			if not shift then
 				self.selection.cursor2:move_to_cursor(self.selection.cursor1)
 			end
@@ -773,7 +820,11 @@ if not ... then require('ui_demo')(function(ui, win)
 		x = x, y = y, parent = win,
 		h = 200,
 		parent = win,
-		text = 'Hello World!',
+		text = [[
+Hello World! Hello World! Hello World! Hello World! Hello World!
+Hello World!
+Hello World! Hello World!
+]]		,
 		multiline = true,
 		cue = 'Type text here...',
 	}

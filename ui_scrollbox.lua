@@ -153,15 +153,15 @@ scrollbar:stored_property'content_length'
 scrollbar:stored_property'view_length'
 scrollbar:stored_property'offset'
 
-local function clamp_offset(offset, content_length, view_length, step)
-	offset = clamp(offset, 0, math.max(content_length - view_length, 0))
-	return snap_offset(offset, step)
+function scrollbar:clamp_offset(offset)
+	local max_offset = self.content_length - self.view_length
+	offset = clamp(offset, 0, math.max(max_offset, 0))
+	return snap_offset(offset, self.step)
 end
 
 function scrollbar:set_offset(offset)
 	local old_offset = self._offset
-	offset = clamp_offset(offset,
-		self.content_length, self.view_length, self.step)
+	offset = self:clamp_offset(offset)
 	self._offset = offset
 	self:settag(':empty', self:empty())
 	if offset ~= old_offset then
@@ -209,6 +209,7 @@ function scrollbar:scroll_to(offset, duration)
 		self:sync()
 		self:settag(':near', false)
 	end
+	offset = self:clamp_offset(offset) --we want to animate the clamped length!
 	self:transition('offset', offset, duration)
 end
 
@@ -449,9 +450,17 @@ end
 
 --scroll API
 
-function scrollbox:scroll_to_view(x, y, w, h)
+function scrollbox:scroll_to_view(x, y, w, h) --x, y is in content's content space.
+	x, y = self.content:from_content(x, y)
 	self.hscrollbar:scroll_to_view(x, w)
 	self.vscrollbar:scroll_to_view(y, h)
+end
+
+--clipping API
+
+function scrollbox:view_rect() --view rect in content's content space.
+	local x, y = self.view:to_other(self.content, 0, 0)
+	return x, y, self.view:client_size()
 end
 
 --demo -----------------------------------------------------------------------
@@ -461,7 +470,6 @@ if not ... then require('ui_demo')(function(ui, win)
 	ui:style('scrollbox', {
 		border_width = 1,
 		border_color = '#f00',
-		border_offset = 1,
 	})
 
 	local function mkcontent(w, h)
