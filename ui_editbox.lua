@@ -57,7 +57,7 @@ ui:style('editbox :insert_mode', {
 --animation
 
 --caret blinking
-ui:style('editbox', {
+ui:style('editbox :focused', {
 	caret_color = '#fff0', --TODO: animate opacity instead!
 	transition_caret_color = true,
 	transition_delay_caret_color = function(self)
@@ -104,7 +104,7 @@ function editbox:get_text()
 end
 
 function editbox:set_text(s)
-	s = s or '' --an editbox can never have its text property as false!
+	s = self:filter_text(s or '')
 	self:clear_undo_stack()
 	self.selection:select_all()
 	self:replace_selection(s, nil, false)
@@ -116,7 +116,7 @@ function editbox:get_text_len()
 	return self.selection.segments.text_runs.len
 end
 
---value property for use in editable grids.
+--value property when used as a grid cell.
 function editbox:get_value()
 	return self.text
 end
@@ -126,7 +126,14 @@ end
 --filter text by replacing newlines and ASCII control chars with spaces.
 --TODO: make `tr.multiline` option so that we don't have to do this.
 function editbox:filter_text(s)
-	return s:gsub(tr.PS, ' '):gsub(tr.LS, ' '):gsub('[%z\1-\31\127]', '')
+	if not self.multiline then
+		return
+			s:gsub(tr.PS, ' ')
+			 :gsub(tr.LS, ' ')
+			 :gsub('[%z\1-\31\127]', '')
+	else
+		return s:gsub('[%z\1-\9\11\12\14-\31\127]', '')
+	end
 end
 
 --init
@@ -151,6 +158,59 @@ function editbox:after_init(ui, t)
 	function c2.set(...)
 		self:blink_caret()
 		return set(...)
+	end
+end
+
+--multiline mode
+
+editbox:stored_property'multiline'
+editbox:instance_only'multiline'
+
+ui:style('editbox multiline !scrollbox', {
+	text_align = 'left',
+	text_valign = 'top',
+	nowrap = false,
+})
+
+editbox.scrollbox_class = ui.scrollbox
+
+function editbox:create_scrollbox()
+	return self.scrollbox_class(self.ui, {
+		content = self,
+		parent = self.parent,
+		x = self.x,
+		y = self.y,
+		w = self.w,
+		h = self.h,
+	})
+end
+
+function editbox:after_set_multiline(set)
+	if set then
+		self:settag('multiline', true)
+		self:settag('standalone', false)
+		self.scrollbox = self:create_scrollbox()
+		self.scrollbox:settags('editbox standalone')
+	elseif self.scrollbox then
+		self:settag('multiline', false)
+		self:settag('standalone', true)
+		self.parent = self.scrollbox.parent
+		self.scrollbox:free()
+		self.scrollbox = false
+	end
+end
+
+editbox:init_ignore{multiline=1}
+
+function editbox:after_init(ui, t)
+	self.multiline = t.multiline
+end
+
+function editbox:after_sync()
+	if self.multiline then
+		local x, y, w, h = self:sync_text():bounding_box()
+		self.scrollbox.content.cw = w
+		self.scrollbox.content.ch = h
 	end
 end
 
@@ -256,6 +316,7 @@ function editbox:draw_caret(cr)
 end
 
 function editbox:blink_caret()
+	if not self.focused then return end
 	self.caret_visible = true
 	self:transition{
 		attr = 'caret_color',
@@ -456,6 +517,7 @@ function editbox:gotfocus()
 end
 
 function editbox:lostfocus()
+	self.caret_visible = false
 	self.selection.cursor1:move_to_offset(0)
 	self.selection:reset()
 end
@@ -712,7 +774,6 @@ if not ... then require('ui_demo')(function(ui, win)
 		h = 200,
 		parent = win,
 		text = 'Hello World!',
-		text_align = 'center',
 		multiline = true,
 		cue = 'Type text here...',
 	}

@@ -19,6 +19,7 @@ button.padding_left = 8
 button.padding_right = 8
 button._default = false
 button._cancel = false
+button.tags = 'standalone'
 
 ui:style('button', {
 	transition_background_color = true,
@@ -356,6 +357,7 @@ end
 function checkbox:after_init()
 	self.button = self:create_button()
 	self.label = self:create_label()
+	self.button:settag('standalone', false)
 end
 
 --radio button ---------------------------------------------------------------

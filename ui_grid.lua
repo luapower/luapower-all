@@ -10,6 +10,7 @@ local box2d = require'box2d'
 local push = table.insert
 local pop = table.remove
 
+local round = glue.round
 local clamp = glue.clamp
 local indexof = glue.indexof
 local binsearch = glue.binsearch
@@ -75,33 +76,20 @@ end
 
 function split_pane:sync_to_grid()
 
-	--update width of auto_w columns.
-	local flex_w, fixed_w = 0, 0
-	if not self.grid.resizing_col then
-		for _,col in ipairs(self.grid.cols) do
-			if col.split_pane == self and col.visible then
-				if col.auto_w then
-					flex_w = flex_w + col.w
-				else
-					fixed_w = fixed_w + col.w
-				end
-			end
-		end
-		local avail_flex_w = self.cw - fixed_w
-		for _,col in ipairs(self.grid.cols) do
-			if col.split_pane == self and col.visible and col.auto_w then
-				--TODO: reset this transition!
-				local w = avail_flex_w * (col.w / flex_w) - 1e-9
-				col:transition('w', w, .01)
-			end
-		end
-	end
-
-	--compute/update columns total width.
 	local cols_w = 0
-	for _,col in ipairs(self.grid.cols) do
-		if col.split_pane == self and col.visible then
-			cols_w = cols_w + col.w
+	local col_h = self.grid.col_h
+	local col1 = self.grid:rel_visible_col(1).index
+	local col2 = self.grid:rel_visible_col(-1).index
+	for index, col in ipairs(self.grid.cols) do
+		if col.split_pane == self then
+			col.parent = self.header_pane.content
+			col_h = math.max(col_h, col.h or 0)
+			col.h = col_h
+			col:settag('first_col', index == col1)
+			col:settag('last_col', index == col2)
+			if col.visible then
+				cols_w = cols_w + col.w
+			end
 		end
 	end
 	self._cols_w = cols_w
@@ -115,18 +103,38 @@ function split_pane:sync_to_grid()
 		local s = self.grid.splitter
 		local sw = s.visible and s.w or 0
 		local x = fp.w + sw
-		self:transition('x', x) --moving the splitter animates this
+		self:transition('x', x) --moving the splitter animates the pane
 		self.w = self.grid.cw - fp.w - sw
 	end
 
-	--sync columns parent and height based on their pane property.
-	local col_h = self.grid.col_h
-	for _,col in ipairs(self.grid.cols) do
-		if col.split_pane == self then
-			col.parent = self.header_pane.content
-			col_h = math.max(col_h, col.h or 0)
-			col.h = col_h
+	--update width of auto_w columns.
+	if not self.frozen and not self.grid.resizing_col then
+		local flex_w, fixed_w = 0, 0
+		for _,col in ipairs(self.grid.cols) do
+			if col.split_pane == self and col.visible then
+				if col.auto_w then
+					flex_w = flex_w + col.w
+				else
+					fixed_w = fixed_w + col.w
+				end
+			end
 		end
+		local avail_flex_w = self.cw - fixed_w
+		local cols_w = 0
+		local last_col
+		for _,col in ipairs(self.grid.cols) do
+			if col.split_pane == self and col.visible then
+				if col.auto_w then
+					col.w = math.floor(avail_flex_w * (col.w / flex_w))
+					last_col = col
+				end
+				cols_w = cols_w + col.w
+			end
+		end
+		if last_col then --dump accumulated error into the last auto_w column.
+			last_col.w = last_col.w + (self.cw - cols_w)
+		end
+		self._cols_w = math.floor(cols_w)
 	end
 
 	--sync column positions.
@@ -370,6 +378,8 @@ function grid:create_rows_pane(split_pane)
 		rows_pane.split_pane.other_pane.rows_pane.vscrollbar.offset = offset
 		barrier = false
 	end)
+
+	self:create_cell_mouse_events(rows)
 
 	return rows_pane
 end
@@ -684,6 +694,10 @@ ui:style('grid_col :moving, grid_cell :moving', {
 	opacity = .7,
 })
 
+ui:style('grid_col !last_col !:moving', {
+	border_width_right = 0,
+})
+
 --cells ----------------------------------------------------------------------
 
 local cell = ui.layer:subclass'grid_cell'
@@ -739,8 +753,6 @@ ui:style('grid_cell !first_col !last_col !multi_select !cell_select :selected', 
 })
 
 function grid.sync_cell_to_grid(grid, self)
-	grid._first_col_index = grid:rel_visible_col(1).index
-	grid._last_col_index = grid:rel_visible_col(-1).index
 	self:settag('grid_cell', true)
 	self:settag('standalone', false)
 	self:settag('multi_select', grid.multi_select)
@@ -755,8 +767,8 @@ function grid.sync_cell_to_col(grid, self, col)
 	self:settag(':moving', col.moving)
 	self:settag(':resizing', col.resizing)
 	local index = col.index
-	self:settag('first_col', index == grid._first_col_index)
-	self:settag('last_col', index == grid._last_col_index)
+	self:settag('first_col', col.tags.first_col)
+	self:settag('last_col', col.tags.last_col)
 end
 
 function grid.sync_cell_to_row(grid, self, i, y, h)
@@ -790,6 +802,7 @@ function grid:create_cell(cell)
 	return cell
 end
 
+local attr = glue.attr
 function grid:cell_at(i, col)
 	return col.cell
 end
@@ -1017,6 +1030,48 @@ function grid:cell_hot()
 	return self.ui.hot_area == 'cell'
 		and (self.freeze_pane.rows_pane.content.hot
 			or self.scroll_pane.rows_pane.content.hot)
+end
+
+--cell mouse events ----------------------------------------------------------
+
+--cell_max_click_chain property
+
+function grid:get_cell_max_click_chain(mcc)
+	return self.scroll_pane.rows_pane.content.max_click_chain
+end
+
+function grid:set_cell_max_click_chain(mcc)
+	self.freeze_pane.rows_pane.content.max_click_chain = mcc
+	self.scroll_pane.rows_pane.content.max_click_chain = mcc
+end
+
+--convert rows coordinates to cell coordinates.
+function grid:to_cell(i, col, mx, my)
+	local x = col.x
+	local y = self:row_yh(i)
+	return mx - x, my - y
+end
+
+function grid:create_cell_mouse_events(rows)
+
+	function rows:click(mx, my)
+		if self.ui.hot_area == 'cell' then
+			local i = self.grid.hot_row_index
+			local col = self.grid.hot_col
+			self.grid:fire('cell_click', i, col,
+				self.grid:to_cell(i, col, mx, my))
+		end
+	end
+
+	function rows:doubleclick(mx, my)
+		if self.ui.hot_area == 'cell' then
+			local i = self.grid.hot_row_index
+			local col = self.grid.hot_col
+			self.grid:fire('cell_doubleclick', i, col,
+				self.grid:to_cell(i, col, mx, my))
+		end
+	end
+
 end
 
 --row moving -----------------------------------------------------------------
@@ -1621,7 +1676,7 @@ function grid:keypress(key)
 			self:move('select_all')
 			return true
 		end
-	elseif not self.editable and key == 'enter' then
+	elseif not self.editable and self.dropdown and key == 'enter' then
 		self:move('@focus pick/close scroll')
 		return true
 	elseif self.editable then
@@ -1684,14 +1739,6 @@ ui:style('grid dropdown_picker', {
 function grid:set_dropdown(dropdown)
 	self._dropdown = dropdown
 	self:_create_dropdown_implicit_column()
-	if self._was_editable == nil then
-		self._was_editable = self.editable
-	end
-	if dropdown then
-		self.editable = false
-	else
-		self.editable = self._was_editable
-	end
 	self:settag('dropdown_picker', dropdown and true or false)
 end
 
@@ -2140,12 +2187,10 @@ if not ... then require('ui_demo')(function(ui, win)
 		multi_select = true,
 		--row_move_ctrl = false,
 		--row_move = true,
+
 		--cell_select = true,
-
-		cell_class = ui.editbox,
-
+		--cell_class = ui.editbox,
 		default_values = {col3 = 'Whaa!'},
-
 		editable = true,
 	})
 
