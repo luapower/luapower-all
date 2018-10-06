@@ -401,7 +401,14 @@ local function checkframe(frame)
 	return frame
 end
 
-function app:window(t)
+function app:window(...)
+	local t
+	if type((...)) ~= 'table' then
+		local cw, ch, title, visible = ...
+		t = {cw = cw, ch = ch, title = title, visible = visible}
+	else
+		t = ...
+	end
 	return window:_new(self, self.backend.window, t)
 end
 
