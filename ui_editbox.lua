@@ -29,6 +29,7 @@ editbox.h = 24
 editbox.border_color = '#000'
 editbox.padding = 4
 editbox.caret_color = '#fff'
+editbox.caret_opacity = 1
 editbox.selection_color = '#66f8'
 
 editbox.tags = 'standalone'
@@ -39,14 +40,17 @@ ui:style('editbox standalone, editbox_scrollbox standalone', {
 })
 
 ui:style('editbox_scrollbox', {
-	padding = 1, --contain scrollbars
+	padding = 1,
 })
 
 ui:style('editbox_scrollbox > editbox', {
-	padding = 3,
+	padding = 30,
+	border_color = '#333',
+	border_width = 30,
 })
 
-ui:style('editbox :hot, editbox_scrollbox standalone :child_hot', {
+--TODO: :child_hot
+ui:style('editbox :hot, editbox_scrollbox :child_hot', {
 	border_color = '#999',
 })
 
@@ -59,27 +63,24 @@ ui:style('editbox standalone :focused, editbox_scrollbox standalone :child_focus
 
 ui:style('editbox :insert_mode', {
 	caret_color = '#fff8',
-	transition_caret_color = false, --no blinking
 })
 
 --animation
 
 --caret blinking
-ui:style('editbox :focused', {
-	caret_color = '#fff0', --TODO: animate opacity instead!
-	transition_caret_color = true,
-	transition_delay_caret_color = function(self)
+ui:style('editbox :focused !:insert_mode', {
+	caret_opacity = 0,
+	transition_caret_opacity = true,
+	transition_delay_caret_opacity = function(self)
 		return self.ui.caret_blink_time
 	end,
-	transition_times_caret_color = 1/0, --blink indefinitely
+	transition_times_caret_opacity = 1/0, --blink indefinitely
 })
 
-ui:style('editbox standalone, editbox_scrollbox standalone', {
-	transition_border_color = true,
-	transition_duration_border_color = .5,
-})
-
-ui:style('editbox standalone :hot, editbox_scrollbox standalone :hot', {
+ui:style([[
+	editbox standalone, editbox_scrollbox standalone,
+	editbox standalone :hot, editbox_scrollbox standalone :hot
+]], {
 	transition_border_color = true,
 	transition_duration_border_color = .5,
 })
@@ -89,20 +90,21 @@ ui:style('editbox standalone :hot, editbox_scrollbox standalone :hot', {
 editbox.insert_mode = false
 
 editbox:stored_property'insert_mode'
-editbox:track_changes'insert_mode'
 editbox:instance_only'insert_mode'
 
 function editbox:after_set_insert_mode(value)
 	self:settag(':insert_mode', value)
 end
 
---utf8 text property, computed on-demand.
-
-editbox._text = ''
+--text property, computed on-demand.
 
 --tell ui:sync_text() to stop checking the `text` property to decide
 --if the text needs reshaping. reshaping is done by selection:replace() now.
+--this is to skip utf8-encoding the entire text on every key stroke.
 editbox.text_editabe = true
+
+--NOTE: the editbox text property is never `false` like in a normal layer.
+editbox._text = ''
 
 function editbox:get_text()
 	if not self._text then
@@ -120,6 +122,7 @@ end
 
 editbox:instance_only'text'
 
+--text length in codepoints.
 function editbox:get_text_len()
 	return self.selection.segments.text_runs.len
 end
@@ -132,7 +135,6 @@ end
 --filtering & truncating the input text.
 
 --filter text by replacing newlines and ASCII control chars with spaces.
---TODO: make `tr.multiline` option so that we don't have to do this.
 function editbox:filter_text(s)
 	if not self.multiline then
 		return
@@ -140,7 +142,7 @@ function editbox:filter_text(s)
 			 :gsub(tr.LS, ' ')
 			 :gsub('[%z\1-\31\127]', '')
 	else
-		return s:gsub('[%z\1-\9\11\12\14-\31\127]', '')
+		return s:gsub('[%z\1-\8\11\12\14-\31\127]', '') --allow \t \n \r
 	end
 end
 
@@ -149,14 +151,14 @@ end
 editbox:init_ignore{text=1, multiline=1}
 
 function editbox:after_init(ui, t)
-	--create a selection so we can add the text through the selection which
-	--obeys maxlen and triggers changed event.
+	--create a selection and then set the text through the selection which
+	--obeys maxlen and triggers a changed event.
 	self.multiline = t.multiline
 	self.selection = self:sync_text():selection()
 	self.text = t.text
 
 	--reset the caret blinking whenever the cursor is being acted upon,
-	--regardles of whether it changes or not.
+	--regardles of whether it changes position or not.
 	local c1, c2 = self.selection:cursors()
 	local set = c1.set
 	function c1.set(...)
@@ -170,7 +172,7 @@ function editbox:after_init(ui, t)
 	end
 end
 
---multiline mode
+--multiline mode: wrap the editbox in a scrollbox.
 
 editbox:stored_property'multiline'
 editbox:instance_only'multiline'
@@ -191,32 +193,22 @@ function editbox:create_scrollbox()
 		tags = 'editbox_scrollbox',
 		content = self,
 		editbox = self,
+		auto_w = true,
 		x = self.x,
 		y = self.y,
 		w = self.w,
 		h = self.h,
-	})
+	}, self.scrollbox)
 end
 
-function editbox:sync_scrollbox()
-
-	--TODO: compute content size properly when word-wrapping!
-	if not self.nowrap then
-		--self.scrollbox.vscrollbar.autohide_empty = false
-	end
-
-	local segs = self:sync_text()
-	local bx, by, bw, bh = segs:bounding_box()
-	local cx, cy, cw, ch = self:caret_rect()
-
-	self.scrollbox.content.cw = bw + cw
-	self.scrollbox.content.ch = bh
-
-	if cx == 0 then cx = -1/0 end --TODO: fix right-align case too
-	self.scrollbox:scroll_to_view(cx, cy, cw, ch)
-
-	--TODO: set this only if view rect changed!
-	segs.lines.editbox_clipped = false
+--enlarge the text bounding box to include space for the caret at the end
+--of line and for the full caret height for at least one line.
+function editbox:override_text_bounding_box(inherited, ...)
+	local x, y, w, h = inherited(self, ...)
+	local _, _, cw, ch = self:caret_rect()
+	--w = w + cw
+	--h = math.max(h, ch) --TODO: use line height instead!
+	return x, y, w, h
 end
 
 function editbox:after_set_multiline(multiline)
@@ -230,8 +222,11 @@ function editbox:after_set_multiline(multiline)
 		function self.scrollbox:after_sync()
 			self.editbox:sync_scrollbox()
 		end
+		self.clip_content = false --enable real (strict) bounding box
+		self.scrollbox.vscrollbar.step = 1 --prevent blurry text
 	else
 		self.nowrap = true
+		self.clip_content = true
 		if self.scrollbox then
 			self:settag('multiline', false)
 			if self.scrollbox.tags.standalone then
@@ -246,8 +241,25 @@ end
 
 --sync'ing
 
-function editbox:text_visible()
+function editbox:sync_scrollbox()
+
+	local segs = self:sync_text()
+	local bx, by, bw, bh = segs:bounding_box()
+	local cx, cy, cw, ch = self:caret_rect()
+
+	if cx == 0 then cx = -1/0 end --TODO: fix right-align case too
+	self.scrollbox:scroll_to_view(cx, cy, cw, ch)
+
+	--TODO: set this only if view rect changed!
+	segs.lines.editbox_clipped = false
+end
+
+function editbox:get_text_visible()
 	return true --always sync, even for the empty string.
+end
+
+function editbox:get_caret_w()
+	return (self.selection.cursor1:size())
 end
 
 function editbox:caret_rect()
@@ -327,8 +339,6 @@ end
 
 --drawing cursor & selection
 
-editbox.clip_content = true
-
 local function draw_sel_rect(x, y, w, h, cr, self)
 	local x2 = x + w
 	x, y = self:text_to_mask(x, y)
@@ -348,7 +358,9 @@ function editbox:draw_caret(cr)
 	if not self.focused then return end
 	if not self.caret_visible then return end
 	local x, y, w, h, dir = self:caret_rect()
-	cr:rgba(self.ui:rgba(self.caret_color))
+	local r, g, b, a = self.ui:rgba(self.caret_color)
+	a = a * self.caret_opacity
+	cr:rgba(r, g, b, a)
 	cr:new_path()
 	cr:rectangle(x, y, w, h)
 	cr:fill()
@@ -358,7 +370,7 @@ function editbox:blink_caret()
 	if not self.focused then return end
 	self.caret_visible = true
 	self:transition{
-		attr = 'caret_color',
+		attr = 'caret_opacity',
 		blend = 'restart',
 		val = self.end_value,
 	}
@@ -724,7 +736,8 @@ function editbox:create_cue_layer()
 		parent = self,
 		editbox = self,
 		activable = false,
-	}, self.cue_layere)
+		nowrap = true,
+	}, self.cue_layer)
 end
 
 function editbox:after_init(ui, t)
@@ -733,16 +746,16 @@ function editbox:after_init(ui, t)
 end
 
 function editbox:after_sync()
-	self.cue_layer.w = self.cw
-	self.cue_layer.h = self.ch
 	self.cue_layer.text_align = self.text_align
 	self.cue_layer.visible = self.text_len == 0
-		and (self.show_cue_when_focused or not self.focused)
+		and (not self.show_cue_when_focused or self.focused)
 end
 
 --demo -----------------------------------------------------------------------
 
 if not ... then require('ui_demo')(function(ui, win)
+
+	win.w = 300
 
 	ui:add_font_file('media/fonts/FSEX300.ttf', 'fixedsys')
 	local x, y = 10, 10
@@ -755,6 +768,8 @@ if not ... then require('ui_demo')(function(ui, win)
 	end
 
 	local s = 'abcd efgh ijkl mnop qrst uvw xyz 0123 4567 8901 2345'
+
+	--[[
 
 	--defaults all-around.
 	ui:editbox{
@@ -815,8 +830,11 @@ if not ... then require('ui_demo')(function(ui, win)
 	}
 	xy()
 
+	]]
+
 	--multiline
 	ui:editbox{
+		scrollbox = {vscrollbar = {h = 50}},
 		x = x, y = y, parent = win,
 		h = 200,
 		parent = win,
@@ -825,6 +843,7 @@ Hello World! Hello World! Hello World! Hello World! Hello World!
 Hello World!
 Hello World! Hello World!
 ]]		,
+text = 'Hello',
 		multiline = true,
 		cue = 'Type text here...',
 	}

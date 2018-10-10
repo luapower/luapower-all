@@ -237,7 +237,7 @@ end
 --drawing
 
 function button:before_draw_text(cr)
-	if not self:text_visible() then return end
+	if not self.text_visible then return end
 	if not self.underline_pos then return end
 	do return end --TODO: use the future hi-level text API to draw the underline
 	--measure

@@ -368,7 +368,7 @@ end
 
 --drawing
 
---stretch content to the view size to avoid scrolling on that direction.
+--stretch content to the view size to avoid scrolling on that dimension.
 scrollbox.auto_h = false
 scrollbox.auto_w = false
 
@@ -380,28 +380,50 @@ function scrollbox:after_sync()
 	local content = self.content
 	content.parent = view
 
-	if self.auto_h then content.h = 0 end
-	if self.auto_w then content.w = 0 end
+	local w, h = self:client_size()
 
 	local vs_margin = vs.margin or 0
 	local hs_margin = hs.margin or 0
 
-	local _, _, cw, ch = content:bounding_box()
-	local w, h = self:client_size()
+	local vs_overlap = vs.autohide or vs.overlap or not vs.visible
+	local hs_overlap = hs.autohide or hs.overlap or not hs.visible
+
 	local sw = vs.h + vs_margin
 	local sh = hs.h + hs_margin
 
-	local vs_overlap = vs.autohide or vs.overlap
-	local hs_overlap = hs.autohide or hs.overlap
+	--for `auto_w`, set up a preliminary maximum-allowed content `w` then
+	--measure the actual content size with `bounding_box()`, assuming that
+	--the content reflows itself after `w`. if the content reflows such
+	--that it overflows vertically, another reflowing is ncessary, this time
+	--with a smaller `w` which makes room for the needed vertical scrollbar,
+	--under the assumption that the content will still overflow vertically
+	--with the smaller `w`. the same logic applies symmetrically for `auto_h`.
+	local cw0 = self.auto_w and w - ((vs_overlap or vs.autohide_empty) and 0 or sw)
+	local ch0 = self.auto_h and h - ((hs_overlap or hs.autohide_empty) and 0 or sh)
+
+	--auto_w and auto_h are mutually exclusive. auto_w takes priority.
+	if cw0 then ch0 = nil end
+
+	::reflow::
+
+	if cw0 or ch0 then
+		if cw0 then content.w = cw0; content.h = 0 end
+		if ch0 then content.h = ch0; content.w = 0 end
+		local _, _, cw, ch = content:text_bounding_box()
+		content.cw = cw
+		content.ch = ch
+	end
+
+	local _, _, cw, ch = content:bounding_box()
 
 	--compute view dimensions by deciding which scrollbar is either hidden
 	--or is overlapping the view box so it takes no space of its own.
 	local vs_nospace, hs_nospace
 
-	local vs_nospace = not vs.visible or vs_overlap
+	local vs_nospace = vs_overlap
 		or (vs.autohide_empty and ch <= h and (ch <= h - sh or 'depends'))
 
-	local hs_nospace = not hs.visible or hs_overlap
+	local hs_nospace = hs_overlap
 		or (hs.autohide_empty and cw <= w and (cw <= w - sw or 'depends'))
 
 	if    (vs_nospace == 'depends' and not hs_nospace)
@@ -414,8 +436,21 @@ function scrollbox:after_sync()
 	view.w = w - (vs_nospace and 0 or sw)
 	view.h = h - (hs_nospace and 0 or sh)
 
-	if self.auto_h then content.h = view.h end
-	if self.auto_w then content.w = view.w end
+	print(content.cw, content.w, cw, view.w)
+
+	--if the view's `w` is smaller than the preliminary `w` on which content
+	--reflowing was based on for `auto_w`, then do it again with the real `w`.
+	--the same applies for `h` for `auto_h`.
+	if cw0 and view.w < cw0 then
+		cw0 = view.w
+		goto reflow
+	elseif ch0 and view.h < ch0 then
+		ch0 = view.h
+		goto reflow
+	end
+
+	content.w = cw
+	content.h = ch
 
 	--reset the scrollbars state.
 	hs:reset(cw, view.w, hs.offset)

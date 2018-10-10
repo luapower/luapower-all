@@ -277,7 +277,7 @@ function slider:after_sync()
 		p.dragging and self:nearest_position(p.position) or self.position))
 
 	if self.step_labels then
-		local h = math.floor(self.h - (self:step_lines_visible() and 0 or 10))
+		local h = math.floor(self.h - (self.step_lines_visible and 0 or 10))
 		for _,l in ipairs(self.layers) do
 			if l.tags.slider_step_label then
 				if l.progress then
@@ -294,7 +294,7 @@ function slider:after_sync()
 	end
 end
 
-function slider:step_lines_visible()
+function slider:get_step_lines_visible()
 	return self.step and self.step_line_color
 		and self.cw / (self.size / self.step) >= 5
 end
@@ -305,7 +305,7 @@ function slider:step_line_path(cr, cx)
 end
 
 function slider:draw_step_lines(cr)
-	if not self:step_lines_visible() then return end
+	if not self.step_lines_visible then return end
 	cr:rgba(self.ui:rgba(self.step_line_color))
 	cr:line_width(1)
 	cr:new_path()

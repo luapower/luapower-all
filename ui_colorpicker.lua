@@ -69,7 +69,7 @@ function hue_bar:draw_bar(cr)
 	sr:free()
 end
 
-function hue_bar:background_visible()
+function hue_bar:get_background_visible()
 	return true
 end
 

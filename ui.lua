@@ -2025,10 +2025,17 @@ function window:draw(cr)
 		return
 	end
 	self._frame_expire_clock = false
-	self.cr:save()
-	self.cr:new_path()
+	cr:save()
+	cr:new_path()
+	self.view:sync()
+	cr:restore()
+	cr:save()
+	cr:new_path()
 	self.view:draw(cr)
-	self.cr:restore()
+	cr:restore()
+	if cr:status() ~= 0 then --see if cairo didn't shutdown
+		self:error(cr:status_string())
+	end
 end
 
 function window:sync()
@@ -2041,7 +2048,6 @@ function window:sync()
 	self.cr:save()
 	self.cr:new_path()
 	self.view:sync()
-	self.view:sync_children()
 	self.cr:restore()
 end
 
@@ -2208,7 +2214,10 @@ layer:init_ignore{parent=1, layer_index=1, enabled=1, layers=1, class=1}
 function layer:after_init(ui, t)
 	--setting parent after _enabled updates the `disabled` tag only once!
 	--setting layer_index before parent inserts the layer at its index directly.
-	self._enabled = t.enabled
+	local enabled = t.enabled and true or false
+	if enabled ~= self._enabled then
+		self._enabled = enabled
+	end
 	self.layer_index = t.layer_index
 	self.parent = t.parent
 
@@ -3066,7 +3075,7 @@ function layer:border_path(cr, offset, size_offset)
 	cr:close_path()
 end
 
-function layer:border_visible()
+function layer:get_border_visible()
 	return
 		self.border_width ~= 0
 		or self.border_width_left ~= 0
@@ -3076,7 +3085,7 @@ function layer:border_visible()
 end
 
 function layer:draw_border(cr)
-	if not self:border_visible() then return end
+	if not self.border_visible then return end
 
 	local border_color = self.border_color
 
@@ -3222,7 +3231,7 @@ function layer:detect_background_type()
 	end
 end
 
-function layer:background_visible()
+function layer:get_background_visible()
 	return (
 		--TODO: add 'auto' ?
 		--(self.background_type == 'auto' and self:detect_background_type())
@@ -3310,12 +3319,12 @@ layer.shadow_color = '#000'
 layer.shadow_blur = 0
 layer._shadow_blur_passes = 2
 
-function layer:shadow_visible()
+function layer:get_shadow_visible()
 	return self.shadow_blur > 0 or self.shadow_x ~= 0 or self.shadow_y ~= 0
 end
 
 function layer:shadow_rect(size)
-	if self:border_visible() then
+	if self.border_visible then
 		return self:border_rect(1, size)
 	else
 		return self:background_rect(size)
@@ -3323,7 +3332,7 @@ function layer:shadow_rect(size)
 end
 
 function layer:shadow_round_rect(size)
-	if self:border_visible() then
+	if self.border_visible then
 		return self:border_round_rect(1, size)
 	else
 		return self:background_round_rect(size)
@@ -3331,7 +3340,7 @@ function layer:shadow_round_rect(size)
 end
 
 function layer:shadow_path(cr, size)
-	if self:border_visible() then
+	if self.border_visible then
 		self:border_path(cr, 1, size)
 	else
 		self:background_path(cr, size)
@@ -3356,7 +3365,7 @@ function layer:shadow_store_key(t)
 end
 
 function layer:draw_shadow(cr)
-	if not self:shadow_visible() then return end
+	if not self.shadow_visible then return end
 	local t = self._shadow or {}
 	self._shadow = t
 	local passes = self._shadow_blur_passes
@@ -3433,7 +3442,7 @@ layer.paragraph_spacing = 2
 layer.text_dir = 'auto' --auto, rtl, ltr
 layer.nowrap = false
 
-function layer:text_visible()
+function layer:get_text_visible()
 	return self.text and self.text ~= '' and true or false
 end
 
@@ -3442,7 +3451,7 @@ end
 layer.text_editabe = false
 
 function layer:sync_text()
-	if not self:text_visible() then return end
+	if not self.text_visible then return end
 	if not self._text_tree
 		or (not self.text_editabe and self.text ~= self._text_tree[1])
 		or self.font        ~= self._text_tree.font
@@ -3596,22 +3605,9 @@ function layer:content_bounding_box(strict)
 	return box2d.bounding_box(x, y, w, h, self:text_bounding_box())
 end
 
---sync layer's children depth-first.
-function layer:sync_children()
-	if not self.layers then return end
-	for _,layer in ipairs(self.layers) do
-		layer:sync()
-		layer:sync_children()
-	end
-end
-
 function layer:draw(cr) --called in parent's content space; child intf.
 
-	--must always sync because the layer might become visible as an effect
-	--of sync'ing or from tag, style or transition changes.
-	self:sync()
 	if not self.visible or self.opacity <= 0 then
-		self:sync_children()
 		return
 	end
 
@@ -3626,7 +3622,7 @@ function layer:draw(cr) --called in parent's content space; child intf.
 	cr:matrix(self:cr_abs_matrix(cr))
 
 	local cc = self.clip_content
-	local bg = self:background_visible()
+	local bg = self.background_visible
 
 	self:draw_shadow(cr)
 
@@ -3701,7 +3697,7 @@ function layer:hit_test(x, y, reason)
 	end
 
 	--border is drawn last so hit it first
-	if self:border_visible() then
+	if self.border_visible then
 		cr:new_path()
 		self:border_path(cr, 1)
 		if cr:in_fill(x, y) then --inside border outer edge
@@ -3723,7 +3719,7 @@ function layer:hit_test(x, y, reason)
 
 	--hit background's clip area
 	local in_bg
-	if cc or self.background_hittable or self:background_visible() then
+	if cc or self.background_hittable or self.background_visible then
 		cr:new_path()
 		self:background_path(cr)
 		in_bg = cr:in_fill(x, y)
@@ -3743,7 +3739,7 @@ function layer:hit_test(x, y, reason)
 		end
 	end
 
-	--hit the content
+	--hit the content if inside the clip area.
 	if in_cc then
 		local cx, cy = self:to_content(x, y)
 		local widget, area = self:hit_test_content(cx, cy, reason)
@@ -3760,6 +3756,9 @@ function layer:hit_test(x, y, reason)
 end
 
 function layer:bounding_box(strict) --child interface
+	if not self.visible then
+		return 0, 0, 0, 0
+	end
 	local x, y, w, h = 0, 0, 0, 0
 	local cc = self.clip_content
 	if strict or not cc then
@@ -3773,11 +3772,11 @@ function layer:bounding_box(strict) --child interface
 	end
 	if (not strict and cc)
 		or self.background_hittable
-		or self:background_visible()
+		or self.background_visible
 	then
 		x, y, w, h = box2d.bounding_box(x, y, w, h, self:background_rect())
 	end
-	if self:border_visible() then
+	if self.border_visible then
 		x, y, w, h = box2d.bounding_box(x, y, w, h, self:border_rect(1))
 	end
 	return x, y, w, h
@@ -3835,7 +3834,7 @@ function layer:activate()
 	end
 end
 
---utils in content space to use from draw_content() and hit_test_content()
+--geometry in the parent's content box.
 
 function layer:get_cx() return self.x + self.w / 2 end
 function layer:get_cy() return self.y + self.h / 2 end
@@ -3850,6 +3849,32 @@ function layer:set_x2(x2) self.w = x2 - self.x end
 function layer:set_y2(y2) self.h = y2 - self.y end
 
 function layer:rect() return self.x, self.y, self.w, self.h end
+
+--layouting
+
+--layer.minw = 0
+--layer.minh = 0
+--layer.align = 'left'
+--layer.valign = 'top'
+--layer.position = 'free'
+
+--sync layer's children depth-first.
+function layer:sync_layers()
+	if self.layers then
+		for _,layer in ipairs(self.layers) do
+			layer:sync()
+		end
+	end
+end
+
+function layer:after_sync()
+	self:sync_layers()
+	if self._text_segments then
+		local _, _, w, h = self._text_segments:bounding_box()
+		--self.w = math.max(self.w, w)
+		--self.h = math.max(self.h, h)
+	end
+end
 
 --top layer ------------------------------------------------------------------
 
