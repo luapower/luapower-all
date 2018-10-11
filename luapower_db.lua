@@ -2315,7 +2315,6 @@ return {
 					cairo=true,
 					color=true,
 					glue=true,
-					path2d_line=true,
 					ui=true,
 					ui_button=true
 				}
@@ -4888,7 +4887,6 @@ return {
 					cairo=true,
 					color=true,
 					glue=true,
-					path2d_line=true,
 					ui=true,
 					ui_button=true
 				}
@@ -7464,7 +7462,6 @@ return {
 					cairo=true,
 					color=true,
 					glue=true,
-					path2d_line=true,
 					ui=true,
 					ui_button=true
 				}
@@ -10789,7 +10786,6 @@ return {
 					cairo=true,
 					color=true,
 					glue=true,
-					path2d_line=true,
 					ui=true,
 					ui_button=true
 				}
@@ -14119,7 +14115,6 @@ return {
 					cairo=true,
 					color=true,
 					glue=true,
-					path2d_line=true,
 					ui=true,
 					ui_button=true
 				}
@@ -16690,7 +16685,6 @@ return {
 					cairo=true,
 					color=true,
 					glue=true,
-					path2d_line=true,
 					ui=true,
 					ui_button=true
 				}
