@@ -7,9 +7,49 @@ local glue = require'glue'
 local bitmap = require'bitmap'
 local color = require'color'
 local cairo = require'cairo'
-local line = require'path2d_line'
 local lerp = glue.lerp
 local clamp = glue.clamp
+
+--line hit testing (from path2d) ---------------------------------------------
+
+local epsilon = 1e-10
+local function near(x, y)
+	return abs(x - y) <= epsilon * max(1, abs(x), abs(y))
+end
+
+--distance between two points squared.
+local function distance2(x1, y1, x2, y2)
+	return (x2-x1)^2 + (y2-y1)^2
+end
+
+--intersect infinite line with its perpendicular from point (x, y)
+--return the intersection point.
+local function point_line_intersection(x, y, x1, y1, x2, y2)
+	local dx = x2 - x1
+	local dy = y2 - y1
+	local k = dx^2 + dy^2
+	if near(k, 0) then return x1, y1 end --line has no length
+	local k = ((x - x1) * dy - (y - y1) * dx) / k
+	return
+		x - k * dy,
+		y + k * dx
+end
+
+--return the time in 0..1 in the line segment (x1, y1, x2, y2) where the
+--perpendicular from point (x0, y0) intersects the line.
+local function line_hit(x0, y0, x1, y1, x2, y2)
+	local x, y = point_line_intersection(x0, y0, x1, y1, x2, y2)
+	local tx = near(x2, x1) and 0 or (x - x1) / (x2 - x1)
+	local ty = near(y2, y1) and 0 or (y - y1) / (y2 - y1)
+	if tx < 0 or ty < 0 then
+		--intersection is outside the segment, closer to the first endpoint
+		return distance2(x0, y0, x1, y1), x1, y1, 0
+	elseif tx > 1 or ty > 1 then
+		--intersection is outside the segment, closer to the second endpoint
+		return distance2(x0, y0, x2, y2), x2, y2, 1
+	end
+	return max(tx, ty)
+end
 
 --hue vertical bar -----------------------------------------------------------
 
@@ -611,8 +651,8 @@ function sltr:ab(x, y)
 	local hx, hy, sx, sy, vx, vy = self:triangle_points()
 	local bx = (sx + vx) / 2
 	local by = (sy + vy) / 2
-	local _, _, _, l = line.hit(x, y, sx, sy, vx, vy)
-	local _, _, _, t = line.hit(x, y, bx, by, hx, hy)
+	local l = line_hit(x, y, sx, sy, vx, vy)
+	local t = line_hit(x, y, bx, by, hx, hy)
 	local s = clamp(t / (2 * (l <= 0.5 and l or (1 - l))), 0, 1)
 	return s, 1-l
 end
