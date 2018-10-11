@@ -121,6 +121,13 @@ return {
 					ffi=true
 				}
 			},
+			bundle_fs={
+				mdeps={
+					bundle=true,
+					ffi=true,
+					fs=true
+				}
+			},
 			bundle_loader={
 				mdeps={
 					ffi=true
@@ -356,6 +363,10 @@ return {
 			eq={
 			}
 		},
+		events={
+			events={
+			}
+		},
 		expat={
 			expat={
 				ffi_deps={
@@ -479,6 +490,7 @@ return {
 					freetype=true
 				},
 				mdeps={
+					bit=true,
 					ffi=true,
 					freetype_h=true
 				}
@@ -615,6 +627,7 @@ return {
 					harfbuzz=true
 				},
 				mdeps={
+					bit=true,
 					ffi=true,
 					harfbuzz_ft_h=true,
 					harfbuzz_h=true,
@@ -757,6 +770,10 @@ return {
 		imgui_nw_cairo={
 			imgui_nw_cairo={
 				loaderr='./xlib.lua:161: assertion failed!'
+			}
+		},
+		inspect={
+			inspect={
 			}
 		},
 		lanes={
@@ -955,6 +972,13 @@ return {
 			['lpeg.re']={
 				mdeps={
 					lpeg=true
+				}
+			}
+		},
+		lrucache={
+			lrucache={
+				mdeps={
+					dlist=true
 				}
 			}
 		},
@@ -1209,6 +1233,7 @@ return {
 			nw={
 				mdeps={
 					box2d=true,
+					events=true,
 					ffi=true,
 					glue=true,
 					nw_xlib=true,
@@ -1460,11 +1485,20 @@ return {
 			}
 		},
 		pfglab3={
+			pfglab3_bugtrack={
+				loaderr='./pfglab3_bugtrack.lua:6: attempt to index global \'win\' (a nil value)'
+			},
 			pfglab3_conf={
 				mdeps={
 					bundle=true,
 					glue=true
 				}
+			},
+			pfglab3_deviceio={
+				loaderr='./pfglab3_deviceio.lua:6: attempt to index global \'thread\' (a nil value)'
+			},
+			pfglab3_dialog_session_editor={
+				loaderr='./pfglab3_dialog_session_editor.lua:6: attempt to index global \'ui\' (a nil value)'
 			},
 			pfglab3_gen={
 				mdeps={
@@ -1482,6 +1516,39 @@ return {
 					hmac=true,
 					sha2=true
 				}
+			},
+			pfglab3_oscilloscope={
+				loaderr='./pfglab3_oscilloscope.lua:18: variable \'bundle\' is not declared'
+			},
+			pfglab3_screen_dashboard={
+				loaderr='./pfglab3_screen_dashboard.lua:4: attempt to call global \'add_screen\' (a nil value)'
+			},
+			pfglab3_screen_help={
+				loaderr='./pfglab3_screen_help.lua:6: attempt to call global \'add_screen\' (a nil value)'
+			},
+			pfglab3_screen_libraries={
+				loaderr='./pfglab3_screen_libraries.lua:4: attempt to call global \'add_screen\' (a nil value)'
+			},
+			pfglab3_screen_my_sessions={
+				loaderr='./pfglab3_screen_my_sessions.lua:6: attempt to call global \'add_screen\' (a nil value)'
+			},
+			pfglab3_screen_pro={
+				loaderr='./pfglab3_screen_pro.lua:6: attempt to call global \'add_screen\' (a nil value)'
+			},
+			pfglab3_screen_run_session={
+				loaderr='./pfglab3_screen_run_session.lua:6: attempt to call global \'add_screen\' (a nil value)'
+			},
+			pfglab3_screen_run_sweep={
+				loaderr='./pfglab3_screen_run_sweep.lua:6: attempt to call global \'add_screen\' (a nil value)'
+			},
+			pfglab3_screen_settings={
+				loaderr='./pfglab3_screen_settings.lua:6: attempt to call global \'add_screen\' (a nil value)'
+			},
+			pfglab3_sessions={
+				loaderr='./pfglab3_sessions.lua:8: variable \'glue\' is not declared'
+			},
+			pfglab3_styles={
+				loaderr='./pfglab3_styles.lua:8: attempt to index global \'ui\' (a nil value)'
 			}
 		},
 		pixman={
@@ -1508,11 +1575,6 @@ return {
 		},
 		pp={
 			pp={
-				mdeps={
-					pp_format=true
-				}
-			},
-			pp_format={
 			}
 		},
 		pthread={
@@ -1522,6 +1584,13 @@ return {
 				},
 				mdeps={
 					ffi=true
+				}
+			}
+		},
+		rangelist={
+			rangelist={
+				mdeps={
+					glue=true
 				}
 			}
 		},
@@ -2124,6 +2193,75 @@ return {
 		},
 		timewheel={
 		},
+		tr={
+			tr={
+				mdeps={
+					bit=true,
+					box2d=true,
+					ffi=true,
+					freetype=true,
+					fribidi=true,
+					glue=true,
+					harfbuzz=true,
+					['jit.zone']=true,
+					libunibreak=true,
+					lrucache=true,
+					tr_shape_lang=true,
+					tr_shape_reorder=true,
+					tr_shape_script=true,
+					utf8=true
+				}
+			},
+			tr_font_db={
+				mdeps={
+					glue=true
+				}
+			},
+			tr_markup={
+			},
+			tr_raster_cairo={
+				mdeps={
+					box2d=true,
+					cairo=true,
+					color=true,
+					ffi=true,
+					freetype=true,
+					glue=true,
+					['jit.zone']=true,
+					tr_raster_ft=true
+				}
+			},
+			tr_raster_ft={
+				mdeps={
+					bit=true,
+					ffi=true,
+					freetype=true,
+					glue=true,
+					['jit.zone']=true,
+					lrucache=true,
+					tr_font_db=true
+				}
+			},
+			tr_shape_lang={
+				mdeps={
+					ffi=true,
+					harfbuzz=true
+				}
+			},
+			tr_shape_reorder={
+				mdeps={
+					bit=true,
+					glue=true
+				}
+			},
+			tr_shape_script={
+				mdeps={
+					bit=true,
+					glue=true,
+					harfbuzz=true
+				}
+			}
+		},
 		tuple={
 			tuple={
 			}
@@ -2151,12 +2289,11 @@ return {
 					cairo=true,
 					color=true,
 					easing=true,
-					freetype=true,
-					fs=true,
+					events=true,
 					glue=true,
 					oo=true,
 					time=true,
-					tuple=true
+					tr=true
 				}
 			},
 			ui_button={
@@ -2179,35 +2316,41 @@ return {
 					color=true,
 					glue=true,
 					path2d_line=true,
-					ui=true
+					ui=true,
+					ui_button=true
 				}
 			},
 			ui_dropdown={
 				mdeps={
 					glue=true,
 					ui=true,
-					ui_button=true,
+					ui_editbox=true,
 					ui_popup=true
 				}
 			},
 			ui_editbox={
 				mdeps={
-					codedit=true,
-					ffi=true,
 					glue=true,
-					ui=true
+					tr=true,
+					ui=true,
+					ui_scrollbox=true
 				}
 			},
 			ui_grid={
 				mdeps={
 					box2d=true,
 					glue=true,
-					ui=true,
-					ui_scrollbox=true
+					ui=true
 				}
 			},
 			ui_image={
 				mdeps={
+					ui=true
+				}
+			},
+			ui_layout_editor={
+				mdeps={
+					box2d=true,
 					ui=true
 				}
 			},
@@ -2271,17 +2414,9 @@ return {
 		},
 		utf8={
 			utf8={
-				autoloads={
-					lower='utf8_case',
-					upper='utf8_case'
-				},
 				mdeps={
-					glue=true
-				}
-			},
-			utf8_case={
-				mdeps={
-					utf8=true
+					bit=true,
+					ffi=true
 				}
 			}
 		},
@@ -2557,6 +2692,13 @@ return {
 					ffi=true
 				}
 			},
+			bundle_fs={
+				mdeps={
+					bundle=true,
+					ffi=true,
+					fs=true
+				}
+			},
 			bundle_loader={
 				mdeps={
 					ffi=true
@@ -2792,6 +2934,10 @@ return {
 			eq={
 			}
 		},
+		events={
+			events={
+			}
+		},
 		expat={
 			expat={
 				ffi_deps={
@@ -2915,6 +3061,7 @@ return {
 					freetype=true
 				},
 				mdeps={
+					bit=true,
 					ffi=true,
 					freetype_h=true
 				}
@@ -3051,6 +3198,7 @@ return {
 					harfbuzz=true
 				},
 				mdeps={
+					bit=true,
 					ffi=true,
 					harfbuzz_ft_h=true,
 					harfbuzz_h=true,
@@ -3193,6 +3341,10 @@ return {
 		imgui_nw_cairo={
 			imgui_nw_cairo={
 				loaderr='./xlib.lua:161: assertion failed!'
+			}
+		},
+		inspect={
+			inspect={
 			}
 		},
 		lanes={
@@ -3391,6 +3543,13 @@ return {
 			['lpeg.re']={
 				mdeps={
 					lpeg=true
+				}
+			}
+		},
+		lrucache={
+			lrucache={
+				mdeps={
+					dlist=true
 				}
 			}
 		},
@@ -3645,6 +3804,7 @@ return {
 			nw={
 				mdeps={
 					box2d=true,
+					events=true,
 					ffi=true,
 					glue=true,
 					nw_xlib=true,
@@ -3896,11 +4056,20 @@ return {
 			}
 		},
 		pfglab3={
+			pfglab3_bugtrack={
+				loaderr='./pfglab3_bugtrack.lua:6: attempt to index global \'win\' (a nil value)'
+			},
 			pfglab3_conf={
 				mdeps={
 					bundle=true,
 					glue=true
 				}
+			},
+			pfglab3_deviceio={
+				loaderr='./pfglab3_deviceio.lua:6: attempt to index global \'thread\' (a nil value)'
+			},
+			pfglab3_dialog_session_editor={
+				loaderr='./pfglab3_dialog_session_editor.lua:6: attempt to index global \'ui\' (a nil value)'
 			},
 			pfglab3_gen={
 				mdeps={
@@ -3918,6 +4087,39 @@ return {
 					hmac=true,
 					sha2=true
 				}
+			},
+			pfglab3_oscilloscope={
+				loaderr='./pfglab3_oscilloscope.lua:18: variable \'bundle\' is not declared'
+			},
+			pfglab3_screen_dashboard={
+				loaderr='./pfglab3_screen_dashboard.lua:4: attempt to call global \'add_screen\' (a nil value)'
+			},
+			pfglab3_screen_help={
+				loaderr='./pfglab3_screen_help.lua:6: attempt to call global \'add_screen\' (a nil value)'
+			},
+			pfglab3_screen_libraries={
+				loaderr='./pfglab3_screen_libraries.lua:4: attempt to call global \'add_screen\' (a nil value)'
+			},
+			pfglab3_screen_my_sessions={
+				loaderr='./pfglab3_screen_my_sessions.lua:6: attempt to call global \'add_screen\' (a nil value)'
+			},
+			pfglab3_screen_pro={
+				loaderr='./pfglab3_screen_pro.lua:6: attempt to call global \'add_screen\' (a nil value)'
+			},
+			pfglab3_screen_run_session={
+				loaderr='./pfglab3_screen_run_session.lua:6: attempt to call global \'add_screen\' (a nil value)'
+			},
+			pfglab3_screen_run_sweep={
+				loaderr='./pfglab3_screen_run_sweep.lua:6: attempt to call global \'add_screen\' (a nil value)'
+			},
+			pfglab3_screen_settings={
+				loaderr='./pfglab3_screen_settings.lua:6: attempt to call global \'add_screen\' (a nil value)'
+			},
+			pfglab3_sessions={
+				loaderr='./pfglab3_sessions.lua:8: variable \'glue\' is not declared'
+			},
+			pfglab3_styles={
+				loaderr='./pfglab3_styles.lua:8: attempt to index global \'ui\' (a nil value)'
 			}
 		},
 		pixman={
@@ -3944,11 +4146,6 @@ return {
 		},
 		pp={
 			pp={
-				mdeps={
-					pp_format=true
-				}
-			},
-			pp_format={
 			}
 		},
 		pthread={
@@ -3958,6 +4155,13 @@ return {
 				},
 				mdeps={
 					ffi=true
+				}
+			}
+		},
+		rangelist={
+			rangelist={
+				mdeps={
+					glue=true
 				}
 			}
 		},
@@ -4562,6 +4766,75 @@ return {
 		},
 		timewheel={
 		},
+		tr={
+			tr={
+				mdeps={
+					bit=true,
+					box2d=true,
+					ffi=true,
+					freetype=true,
+					fribidi=true,
+					glue=true,
+					harfbuzz=true,
+					['jit.zone']=true,
+					libunibreak=true,
+					lrucache=true,
+					tr_shape_lang=true,
+					tr_shape_reorder=true,
+					tr_shape_script=true,
+					utf8=true
+				}
+			},
+			tr_font_db={
+				mdeps={
+					glue=true
+				}
+			},
+			tr_markup={
+			},
+			tr_raster_cairo={
+				mdeps={
+					box2d=true,
+					cairo=true,
+					color=true,
+					ffi=true,
+					freetype=true,
+					glue=true,
+					['jit.zone']=true,
+					tr_raster_ft=true
+				}
+			},
+			tr_raster_ft={
+				mdeps={
+					bit=true,
+					ffi=true,
+					freetype=true,
+					glue=true,
+					['jit.zone']=true,
+					lrucache=true,
+					tr_font_db=true
+				}
+			},
+			tr_shape_lang={
+				mdeps={
+					ffi=true,
+					harfbuzz=true
+				}
+			},
+			tr_shape_reorder={
+				mdeps={
+					bit=true,
+					glue=true
+				}
+			},
+			tr_shape_script={
+				mdeps={
+					bit=true,
+					glue=true,
+					harfbuzz=true
+				}
+			}
+		},
 		tuple={
 			tuple={
 			}
@@ -4589,12 +4862,11 @@ return {
 					cairo=true,
 					color=true,
 					easing=true,
-					freetype=true,
-					fs=true,
+					events=true,
 					glue=true,
 					oo=true,
 					time=true,
-					tuple=true
+					tr=true
 				}
 			},
 			ui_button={
@@ -4617,35 +4889,41 @@ return {
 					color=true,
 					glue=true,
 					path2d_line=true,
-					ui=true
+					ui=true,
+					ui_button=true
 				}
 			},
 			ui_dropdown={
 				mdeps={
 					glue=true,
 					ui=true,
-					ui_button=true,
+					ui_editbox=true,
 					ui_popup=true
 				}
 			},
 			ui_editbox={
 				mdeps={
-					codedit=true,
-					ffi=true,
 					glue=true,
-					ui=true
+					tr=true,
+					ui=true,
+					ui_scrollbox=true
 				}
 			},
 			ui_grid={
 				mdeps={
 					box2d=true,
 					glue=true,
-					ui=true,
-					ui_scrollbox=true
+					ui=true
 				}
 			},
 			ui_image={
 				mdeps={
+					ui=true
+				}
+			},
+			ui_layout_editor={
+				mdeps={
+					box2d=true,
 					ui=true
 				}
 			},
@@ -4709,17 +4987,9 @@ return {
 		},
 		utf8={
 			utf8={
-				autoloads={
-					lower='utf8_case',
-					upper='utf8_case'
-				},
 				mdeps={
-					glue=true
-				}
-			},
-			utf8_case={
-				mdeps={
-					utf8=true
+					bit=true,
+					ffi=true
 				}
 			}
 		},
@@ -5014,6 +5284,13 @@ return {
 				mdeps={
 					bundle_appversion=true,
 					ffi=true
+				}
+			},
+			bundle_fs={
+				mdeps={
+					bundle=true,
+					ffi=true,
+					fs=true
 				}
 			},
 			bundle_loader={
@@ -5327,8 +5604,7 @@ return {
 			['cplayer.itemlist3']={
 				mdeps={
 					box2d=true,
-					cplayer=true,
-					glue=true
+					cplayer=true
 				}
 			},
 			['cplayer.label']={
@@ -5375,8 +5651,7 @@ return {
 			['cplayer.screen']={
 				mdeps={
 					box2d=true,
-					cplayer=true,
-					glue=true
+					cplayer=true
 				}
 			},
 			['cplayer.scrollbars']={
@@ -5419,8 +5694,7 @@ return {
 			['cplayer.toolbox']={
 				mdeps={
 					box2d=true,
-					cplayer=true,
-					glue=true
+					cplayer=true
 				}
 			},
 			['cplayer.treeview']={
@@ -5529,6 +5803,10 @@ return {
 		},
 		eq={
 			eq={
+			}
+		},
+		events={
+			events={
 			}
 		},
 		expat={
@@ -5654,6 +5932,7 @@ return {
 					freetype=true
 				},
 				mdeps={
+					bit=true,
 					ffi=true,
 					freetype_h=true
 				}
@@ -5796,6 +6075,7 @@ return {
 					harfbuzz=true
 				},
 				mdeps={
+					bit=true,
 					ffi=true,
 					harfbuzz_ft_h=true,
 					harfbuzz_h=true,
@@ -5945,6 +6225,10 @@ return {
 					nw=true,
 					time=true
 				}
+			}
+		},
+		inspect={
+			inspect={
 			}
 		},
 		lanes={
@@ -6149,6 +6433,13 @@ return {
 			['lpeg.re']={
 				mdeps={
 					lpeg=true
+				}
+			}
+		},
+		lrucache={
+			lrucache={
+				mdeps={
+					dlist=true
 				}
 			}
 		},
@@ -6403,6 +6694,7 @@ return {
 			nw={
 				mdeps={
 					box2d=true,
+					events=true,
 					ffi=true,
 					glue=true,
 					nw_winapi=true,
@@ -6688,11 +6980,20 @@ return {
 			}
 		},
 		pfglab3={
+			pfglab3_bugtrack={
+				loaderr='.\\pfglab3_bugtrack.lua:6: attempt to index global \'win\' (a nil value)'
+			},
 			pfglab3_conf={
 				mdeps={
 					bundle=true,
 					glue=true
 				}
+			},
+			pfglab3_deviceio={
+				loaderr='.\\pfglab3_deviceio.lua:6: attempt to index global \'thread\' (a nil value)'
+			},
+			pfglab3_dialog_session_editor={
+				loaderr='.\\pfglab3_dialog_session_editor.lua:6: attempt to index global \'ui\' (a nil value)'
 			},
 			pfglab3_gen={
 				mdeps={
@@ -6710,6 +7011,39 @@ return {
 					hmac=true,
 					sha2=true
 				}
+			},
+			pfglab3_oscilloscope={
+				loaderr='.\\pfglab3_oscilloscope.lua:18: variable \'bundle\' is not declared'
+			},
+			pfglab3_screen_dashboard={
+				loaderr='.\\pfglab3_screen_dashboard.lua:4: attempt to call global \'add_screen\' (a nil value)'
+			},
+			pfglab3_screen_help={
+				loaderr='.\\pfglab3_screen_help.lua:6: attempt to call global \'add_screen\' (a nil value)'
+			},
+			pfglab3_screen_libraries={
+				loaderr='.\\pfglab3_screen_libraries.lua:4: attempt to call global \'add_screen\' (a nil value)'
+			},
+			pfglab3_screen_my_sessions={
+				loaderr='.\\pfglab3_screen_my_sessions.lua:6: attempt to call global \'add_screen\' (a nil value)'
+			},
+			pfglab3_screen_pro={
+				loaderr='.\\pfglab3_screen_pro.lua:6: attempt to call global \'add_screen\' (a nil value)'
+			},
+			pfglab3_screen_run_session={
+				loaderr='.\\pfglab3_screen_run_session.lua:6: attempt to call global \'add_screen\' (a nil value)'
+			},
+			pfglab3_screen_run_sweep={
+				loaderr='.\\pfglab3_screen_run_sweep.lua:6: attempt to call global \'add_screen\' (a nil value)'
+			},
+			pfglab3_screen_settings={
+				loaderr='.\\pfglab3_screen_settings.lua:6: attempt to call global \'add_screen\' (a nil value)'
+			},
+			pfglab3_sessions={
+				loaderr='.\\pfglab3_sessions.lua:8: variable \'glue\' is not declared'
+			},
+			pfglab3_styles={
+				loaderr='.\\pfglab3_styles.lua:8: attempt to index global \'ui\' (a nil value)'
 			}
 		},
 		pixman={
@@ -6742,11 +7076,6 @@ return {
 		},
 		pp={
 			pp={
-				mdeps={
-					pp_format=true
-				}
-			},
-			pp_format={
 			}
 		},
 		pthread={
@@ -6756,6 +7085,13 @@ return {
 				},
 				mdeps={
 					ffi=true
+				}
+			}
+		},
+		rangelist={
+			rangelist={
+				mdeps={
+					glue=true
 				}
 			}
 		},
@@ -6846,22 +7182,10 @@ return {
 				}
 			},
 			sg_gl_obj={
-				mdeps={
-					obj_loader=true,
-					sg_gl=true,
-					sg_gl_mesh=true
-				}
+				loaderr='.\\sg_gl_obj.lua:3: module \'obj_loader\' not found'
 			},
 			sg_gl_player={
-				mdeps={
-					glue=true,
-					sg_gl=true,
-					sg_gl_mesh=true,
-					sg_gl_obj=true,
-					winapi=true,
-					['winapi.wglpanel']=true,
-					['winapi.windowclass']=true
-				}
+				loaderr='.\\sg_gl_player.lua:8: .\\sg_gl_obj.lua:3: module \'obj_loader\' not found'
 			},
 			sg_gl_shape={
 				mdeps={
@@ -7018,6 +7342,75 @@ return {
 		},
 		timewheel={
 		},
+		tr={
+			tr={
+				mdeps={
+					bit=true,
+					box2d=true,
+					ffi=true,
+					freetype=true,
+					fribidi=true,
+					glue=true,
+					harfbuzz=true,
+					['jit.zone']=true,
+					libunibreak=true,
+					lrucache=true,
+					tr_shape_lang=true,
+					tr_shape_reorder=true,
+					tr_shape_script=true,
+					utf8=true
+				}
+			},
+			tr_font_db={
+				mdeps={
+					glue=true
+				}
+			},
+			tr_markup={
+			},
+			tr_raster_cairo={
+				mdeps={
+					box2d=true,
+					cairo=true,
+					color=true,
+					ffi=true,
+					freetype=true,
+					glue=true,
+					['jit.zone']=true,
+					tr_raster_ft=true
+				}
+			},
+			tr_raster_ft={
+				mdeps={
+					bit=true,
+					ffi=true,
+					freetype=true,
+					glue=true,
+					['jit.zone']=true,
+					lrucache=true,
+					tr_font_db=true
+				}
+			},
+			tr_shape_lang={
+				mdeps={
+					ffi=true,
+					harfbuzz=true
+				}
+			},
+			tr_shape_reorder={
+				mdeps={
+					bit=true,
+					glue=true
+				}
+			},
+			tr_shape_script={
+				mdeps={
+					bit=true,
+					glue=true,
+					harfbuzz=true
+				}
+			}
+		},
 		tuple={
 			tuple={
 			}
@@ -7045,12 +7438,11 @@ return {
 					cairo=true,
 					color=true,
 					easing=true,
-					freetype=true,
-					fs=true,
+					events=true,
 					glue=true,
 					oo=true,
 					time=true,
-					tuple=true
+					tr=true
 				}
 			},
 			ui_button={
@@ -7073,35 +7465,41 @@ return {
 					color=true,
 					glue=true,
 					path2d_line=true,
-					ui=true
+					ui=true,
+					ui_button=true
 				}
 			},
 			ui_dropdown={
 				mdeps={
 					glue=true,
 					ui=true,
-					ui_button=true,
+					ui_editbox=true,
 					ui_popup=true
 				}
 			},
 			ui_editbox={
 				mdeps={
-					codedit=true,
-					ffi=true,
 					glue=true,
-					ui=true
+					tr=true,
+					ui=true,
+					ui_scrollbox=true
 				}
 			},
 			ui_grid={
 				mdeps={
 					box2d=true,
 					glue=true,
-					ui=true,
-					ui_scrollbox=true
+					ui=true
 				}
 			},
 			ui_image={
 				mdeps={
+					ui=true
+				}
+			},
+			ui_layout_editor={
+				mdeps={
+					box2d=true,
 					ui=true
 				}
 			},
@@ -7165,17 +7563,9 @@ return {
 		},
 		utf8={
 			utf8={
-				autoloads={
-					lower='utf8_case',
-					upper='utf8_case'
-				},
 				mdeps={
-					glue=true
-				}
-			},
-			utf8_case={
-				mdeps={
-					utf8=true
+					bit=true,
+					ffi=true
 				}
 			}
 		},
@@ -7185,7 +7575,11 @@ return {
 		},
 		videoinput={
 			videoinput={
-				loaderr='.\\videoinput.lua:16: module \'videoinput_dshow\' not found'
+				mdeps={
+					ffi=true,
+					glue=true,
+					videoinput_dshow=true
+				}
 			},
 			videoinput_cocoa={
 				loaderr='.\\videoinput_cocoa.lua:7: .\\objc_dispatch.lua:144: cannot resolve symbol \'_dispatch_data_empty\': The specified procedure could not be found.'
@@ -8176,6 +8570,13 @@ return {
 					ffi=true
 				}
 			},
+			bundle_fs={
+				mdeps={
+					bundle=true,
+					ffi=true,
+					fs=true
+				}
+			},
 			bundle_loader={
 				mdeps={
 					ffi=true
@@ -8487,8 +8888,7 @@ return {
 			['cplayer.itemlist3']={
 				mdeps={
 					box2d=true,
-					cplayer=true,
-					glue=true
+					cplayer=true
 				}
 			},
 			['cplayer.label']={
@@ -8535,8 +8935,7 @@ return {
 			['cplayer.screen']={
 				mdeps={
 					box2d=true,
-					cplayer=true,
-					glue=true
+					cplayer=true
 				}
 			},
 			['cplayer.scrollbars']={
@@ -8579,8 +8978,7 @@ return {
 			['cplayer.toolbox']={
 				mdeps={
 					box2d=true,
-					cplayer=true,
-					glue=true
+					cplayer=true
 				}
 			},
 			['cplayer.treeview']={
@@ -8689,6 +9087,10 @@ return {
 		},
 		eq={
 			eq={
+			}
+		},
+		events={
+			events={
 			}
 		},
 		expat={
@@ -8814,6 +9216,7 @@ return {
 					freetype=true
 				},
 				mdeps={
+					bit=true,
 					ffi=true,
 					freetype_h=true
 				}
@@ -8956,6 +9359,7 @@ return {
 					harfbuzz=true
 				},
 				mdeps={
+					bit=true,
 					ffi=true,
 					harfbuzz_ft_h=true,
 					harfbuzz_h=true,
@@ -9105,6 +9509,10 @@ return {
 					nw=true,
 					time=true
 				}
+			}
+		},
+		inspect={
+			inspect={
 			}
 		},
 		lanes={
@@ -9339,6 +9747,13 @@ return {
 			['lpeg.re']={
 				mdeps={
 					lpeg=true
+				}
+			}
+		},
+		lrucache={
+			lrucache={
+				mdeps={
+					dlist=true
 				}
 			}
 		},
@@ -9604,6 +10019,7 @@ return {
 			nw={
 				mdeps={
 					box2d=true,
+					events=true,
 					ffi=true,
 					glue=true,
 					nw_winapi=true,
@@ -9889,11 +10305,20 @@ return {
 			}
 		},
 		pfglab3={
+			pfglab3_bugtrack={
+				loaderr='.\\pfglab3_bugtrack.lua:6: attempt to index global \'win\' (a nil value)'
+			},
 			pfglab3_conf={
 				mdeps={
 					bundle=true,
 					glue=true
 				}
+			},
+			pfglab3_deviceio={
+				loaderr='.\\pfglab3_deviceio.lua:6: attempt to index global \'thread\' (a nil value)'
+			},
+			pfglab3_dialog_session_editor={
+				loaderr='.\\pfglab3_dialog_session_editor.lua:6: attempt to index global \'ui\' (a nil value)'
 			},
 			pfglab3_gen={
 				mdeps={
@@ -9911,6 +10336,39 @@ return {
 					hmac=true,
 					sha2=true
 				}
+			},
+			pfglab3_oscilloscope={
+				loaderr='.\\pfglab3_oscilloscope.lua:18: variable \'bundle\' is not declared'
+			},
+			pfglab3_screen_dashboard={
+				loaderr='.\\pfglab3_screen_dashboard.lua:4: attempt to call global \'add_screen\' (a nil value)'
+			},
+			pfglab3_screen_help={
+				loaderr='.\\pfglab3_screen_help.lua:6: attempt to call global \'add_screen\' (a nil value)'
+			},
+			pfglab3_screen_libraries={
+				loaderr='.\\pfglab3_screen_libraries.lua:4: attempt to call global \'add_screen\' (a nil value)'
+			},
+			pfglab3_screen_my_sessions={
+				loaderr='.\\pfglab3_screen_my_sessions.lua:6: attempt to call global \'add_screen\' (a nil value)'
+			},
+			pfglab3_screen_pro={
+				loaderr='.\\pfglab3_screen_pro.lua:6: attempt to call global \'add_screen\' (a nil value)'
+			},
+			pfglab3_screen_run_session={
+				loaderr='.\\pfglab3_screen_run_session.lua:6: attempt to call global \'add_screen\' (a nil value)'
+			},
+			pfglab3_screen_run_sweep={
+				loaderr='.\\pfglab3_screen_run_sweep.lua:6: attempt to call global \'add_screen\' (a nil value)'
+			},
+			pfglab3_screen_settings={
+				loaderr='.\\pfglab3_screen_settings.lua:6: attempt to call global \'add_screen\' (a nil value)'
+			},
+			pfglab3_sessions={
+				loaderr='.\\pfglab3_sessions.lua:8: variable \'glue\' is not declared'
+			},
+			pfglab3_styles={
+				loaderr='.\\pfglab3_styles.lua:8: attempt to index global \'ui\' (a nil value)'
 			}
 		},
 		pixman={
@@ -9943,11 +10401,6 @@ return {
 		},
 		pp={
 			pp={
-				mdeps={
-					pp_format=true
-				}
-			},
-			pp_format={
 			}
 		},
 		pthread={
@@ -9957,6 +10410,13 @@ return {
 				},
 				mdeps={
 					ffi=true
+				}
+			}
+		},
+		rangelist={
+			rangelist={
+				mdeps={
+					glue=true
 				}
 			}
 		},
@@ -10047,22 +10507,10 @@ return {
 				}
 			},
 			sg_gl_obj={
-				mdeps={
-					obj_loader=true,
-					sg_gl=true,
-					sg_gl_mesh=true
-				}
+				loaderr='.\\sg_gl_obj.lua:3: module \'obj_loader\' not found'
 			},
 			sg_gl_player={
-				mdeps={
-					glue=true,
-					sg_gl=true,
-					sg_gl_mesh=true,
-					sg_gl_obj=true,
-					winapi=true,
-					['winapi.wglpanel']=true,
-					['winapi.windowclass']=true
-				}
+				loaderr='.\\sg_gl_player.lua:8: .\\sg_gl_obj.lua:3: module \'obj_loader\' not found'
 			},
 			sg_gl_shape={
 				mdeps={
@@ -10219,6 +10667,75 @@ return {
 		},
 		timewheel={
 		},
+		tr={
+			tr={
+				mdeps={
+					bit=true,
+					box2d=true,
+					ffi=true,
+					freetype=true,
+					fribidi=true,
+					glue=true,
+					harfbuzz=true,
+					['jit.zone']=true,
+					libunibreak=true,
+					lrucache=true,
+					tr_shape_lang=true,
+					tr_shape_reorder=true,
+					tr_shape_script=true,
+					utf8=true
+				}
+			},
+			tr_font_db={
+				mdeps={
+					glue=true
+				}
+			},
+			tr_markup={
+			},
+			tr_raster_cairo={
+				mdeps={
+					box2d=true,
+					cairo=true,
+					color=true,
+					ffi=true,
+					freetype=true,
+					glue=true,
+					['jit.zone']=true,
+					tr_raster_ft=true
+				}
+			},
+			tr_raster_ft={
+				mdeps={
+					bit=true,
+					ffi=true,
+					freetype=true,
+					glue=true,
+					['jit.zone']=true,
+					lrucache=true,
+					tr_font_db=true
+				}
+			},
+			tr_shape_lang={
+				mdeps={
+					ffi=true,
+					harfbuzz=true
+				}
+			},
+			tr_shape_reorder={
+				mdeps={
+					bit=true,
+					glue=true
+				}
+			},
+			tr_shape_script={
+				mdeps={
+					bit=true,
+					glue=true,
+					harfbuzz=true
+				}
+			}
+		},
 		tuple={
 			tuple={
 			}
@@ -10246,12 +10763,11 @@ return {
 					cairo=true,
 					color=true,
 					easing=true,
-					freetype=true,
-					fs=true,
+					events=true,
 					glue=true,
 					oo=true,
 					time=true,
-					tuple=true
+					tr=true
 				}
 			},
 			ui_button={
@@ -10274,35 +10790,41 @@ return {
 					color=true,
 					glue=true,
 					path2d_line=true,
-					ui=true
+					ui=true,
+					ui_button=true
 				}
 			},
 			ui_dropdown={
 				mdeps={
 					glue=true,
 					ui=true,
-					ui_button=true,
+					ui_editbox=true,
 					ui_popup=true
 				}
 			},
 			ui_editbox={
 				mdeps={
-					codedit=true,
-					ffi=true,
 					glue=true,
-					ui=true
+					tr=true,
+					ui=true,
+					ui_scrollbox=true
 				}
 			},
 			ui_grid={
 				mdeps={
 					box2d=true,
 					glue=true,
-					ui=true,
-					ui_scrollbox=true
+					ui=true
 				}
 			},
 			ui_image={
 				mdeps={
+					ui=true
+				}
+			},
+			ui_layout_editor={
+				mdeps={
+					box2d=true,
 					ui=true
 				}
 			},
@@ -10366,17 +10888,9 @@ return {
 		},
 		utf8={
 			utf8={
-				autoloads={
-					lower='utf8_case',
-					upper='utf8_case'
-				},
 				mdeps={
-					glue=true
-				}
-			},
-			utf8_case={
-				mdeps={
-					utf8=true
+					bit=true,
+					ffi=true
 				}
 			}
 		},
@@ -10386,7 +10900,11 @@ return {
 		},
 		videoinput={
 			videoinput={
-				loaderr='.\\videoinput.lua:16: module \'videoinput_dshow\' not found'
+				mdeps={
+					ffi=true,
+					glue=true,
+					videoinput_dshow=true
+				}
 			},
 			videoinput_cocoa={
 				loaderr='.\\videoinput_cocoa.lua:7: .\\objc_dispatch.lua:144: cannot resolve symbol \'_dispatch_data_empty\': The specified procedure could not be found.'
@@ -11362,6 +11880,13 @@ return {
 					ffi=true
 				}
 			},
+			bundle_fs={
+				mdeps={
+					bundle=true,
+					ffi=true,
+					fs=true
+				}
+			},
 			bundle_loader={
 				mdeps={
 					ffi=true
@@ -11605,6 +12130,10 @@ return {
 			eq={
 			}
 		},
+		events={
+			events={
+			}
+		},
 		expat={
 			expat={
 				ffi_deps={
@@ -11728,6 +12257,7 @@ return {
 					freetype=true
 				},
 				mdeps={
+					bit=true,
 					ffi=true,
 					freetype_h=true
 				}
@@ -11861,6 +12391,7 @@ return {
 					harfbuzz=true
 				},
 				mdeps={
+					bit=true,
 					ffi=true,
 					harfbuzz_ft_h=true,
 					harfbuzz_h=true,
@@ -12010,6 +12541,10 @@ return {
 					nw=true,
 					time=true
 				}
+			}
+		},
+		inspect={
+			inspect={
 			}
 		},
 		lanes={
@@ -12214,6 +12749,13 @@ return {
 			['lpeg.re']={
 				mdeps={
 					lpeg=true
+				}
+			}
+		},
+		lrucache={
+			lrucache={
+				mdeps={
+					dlist=true
 				}
 			}
 		},
@@ -12468,6 +13010,7 @@ return {
 			nw={
 				mdeps={
 					box2d=true,
+					events=true,
 					ffi=true,
 					glue=true,
 					nw_cocoa=true,
@@ -12749,11 +13292,20 @@ return {
 			}
 		},
 		pfglab3={
+			pfglab3_bugtrack={
+				loaderr='./pfglab3_bugtrack.lua:6: attempt to index global \'win\' (a nil value)'
+			},
 			pfglab3_conf={
 				mdeps={
 					bundle=true,
 					glue=true
 				}
+			},
+			pfglab3_deviceio={
+				loaderr='./pfglab3_deviceio.lua:6: attempt to index global \'thread\' (a nil value)'
+			},
+			pfglab3_dialog_session_editor={
+				loaderr='./pfglab3_dialog_session_editor.lua:6: attempt to index global \'ui\' (a nil value)'
 			},
 			pfglab3_gen={
 				mdeps={
@@ -12771,6 +13323,39 @@ return {
 					hmac=true,
 					sha2=true
 				}
+			},
+			pfglab3_oscilloscope={
+				loaderr='./pfglab3_oscilloscope.lua:18: variable \'bundle\' is not declared'
+			},
+			pfglab3_screen_dashboard={
+				loaderr='./pfglab3_screen_dashboard.lua:4: attempt to call global \'add_screen\' (a nil value)'
+			},
+			pfglab3_screen_help={
+				loaderr='./pfglab3_screen_help.lua:6: attempt to call global \'add_screen\' (a nil value)'
+			},
+			pfglab3_screen_libraries={
+				loaderr='./pfglab3_screen_libraries.lua:4: attempt to call global \'add_screen\' (a nil value)'
+			},
+			pfglab3_screen_my_sessions={
+				loaderr='./pfglab3_screen_my_sessions.lua:6: attempt to call global \'add_screen\' (a nil value)'
+			},
+			pfglab3_screen_pro={
+				loaderr='./pfglab3_screen_pro.lua:6: attempt to call global \'add_screen\' (a nil value)'
+			},
+			pfglab3_screen_run_session={
+				loaderr='./pfglab3_screen_run_session.lua:6: attempt to call global \'add_screen\' (a nil value)'
+			},
+			pfglab3_screen_run_sweep={
+				loaderr='./pfglab3_screen_run_sweep.lua:6: attempt to call global \'add_screen\' (a nil value)'
+			},
+			pfglab3_screen_settings={
+				loaderr='./pfglab3_screen_settings.lua:6: attempt to call global \'add_screen\' (a nil value)'
+			},
+			pfglab3_sessions={
+				loaderr='./pfglab3_sessions.lua:8: variable \'glue\' is not declared'
+			},
+			pfglab3_styles={
+				loaderr='./pfglab3_styles.lua:8: attempt to index global \'ui\' (a nil value)'
 			}
 		},
 		pixman={
@@ -12797,11 +13382,6 @@ return {
 		},
 		pp={
 			pp={
-				mdeps={
-					pp_format=true
-				}
-			},
-			pp_format={
 			}
 		},
 		pthread={
@@ -12811,6 +13391,13 @@ return {
 				},
 				mdeps={
 					ffi=true
+				}
+			}
+		},
+		rangelist={
+			rangelist={
+				mdeps={
+					glue=true
 				}
 			}
 		},
@@ -13410,6 +13997,75 @@ return {
 		},
 		timewheel={
 		},
+		tr={
+			tr={
+				mdeps={
+					bit=true,
+					box2d=true,
+					ffi=true,
+					freetype=true,
+					fribidi=true,
+					glue=true,
+					harfbuzz=true,
+					['jit.zone']=true,
+					libunibreak=true,
+					lrucache=true,
+					tr_shape_lang=true,
+					tr_shape_reorder=true,
+					tr_shape_script=true,
+					utf8=true
+				}
+			},
+			tr_font_db={
+				mdeps={
+					glue=true
+				}
+			},
+			tr_markup={
+			},
+			tr_raster_cairo={
+				mdeps={
+					box2d=true,
+					cairo=true,
+					color=true,
+					ffi=true,
+					freetype=true,
+					glue=true,
+					['jit.zone']=true,
+					tr_raster_ft=true
+				}
+			},
+			tr_raster_ft={
+				mdeps={
+					bit=true,
+					ffi=true,
+					freetype=true,
+					glue=true,
+					['jit.zone']=true,
+					lrucache=true,
+					tr_font_db=true
+				}
+			},
+			tr_shape_lang={
+				mdeps={
+					ffi=true,
+					harfbuzz=true
+				}
+			},
+			tr_shape_reorder={
+				mdeps={
+					bit=true,
+					glue=true
+				}
+			},
+			tr_shape_script={
+				mdeps={
+					bit=true,
+					glue=true,
+					harfbuzz=true
+				}
+			}
+		},
 		tuple={
 			tuple={
 			}
@@ -13437,12 +14093,11 @@ return {
 					cairo=true,
 					color=true,
 					easing=true,
-					freetype=true,
-					fs=true,
+					events=true,
 					glue=true,
 					oo=true,
 					time=true,
-					tuple=true
+					tr=true
 				}
 			},
 			ui_button={
@@ -13465,35 +14120,41 @@ return {
 					color=true,
 					glue=true,
 					path2d_line=true,
-					ui=true
+					ui=true,
+					ui_button=true
 				}
 			},
 			ui_dropdown={
 				mdeps={
 					glue=true,
 					ui=true,
-					ui_button=true,
+					ui_editbox=true,
 					ui_popup=true
 				}
 			},
 			ui_editbox={
 				mdeps={
-					codedit=true,
-					ffi=true,
 					glue=true,
-					ui=true
+					tr=true,
+					ui=true,
+					ui_scrollbox=true
 				}
 			},
 			ui_grid={
 				mdeps={
 					box2d=true,
 					glue=true,
-					ui=true,
-					ui_scrollbox=true
+					ui=true
 				}
 			},
 			ui_image={
 				mdeps={
+					ui=true
+				}
+			},
+			ui_layout_editor={
+				mdeps={
+					box2d=true,
 					ui=true
 				}
 			},
@@ -13557,17 +14218,9 @@ return {
 		},
 		utf8={
 			utf8={
-				autoloads={
-					lower='utf8_case',
-					upper='utf8_case'
-				},
 				mdeps={
-					glue=true
-				}
-			},
-			utf8_case={
-				mdeps={
-					utf8=true
+					bit=true,
+					ffi=true
 				}
 			}
 		},
@@ -13796,6 +14449,13 @@ return {
 				mdeps={
 					bundle_appversion=true,
 					ffi=true
+				}
+			},
+			bundle_fs={
+				mdeps={
+					bundle=true,
+					ffi=true,
+					fs=true
 				}
 			},
 			bundle_loader={
@@ -14041,6 +14701,10 @@ return {
 			eq={
 			}
 		},
+		events={
+			events={
+			}
+		},
 		expat={
 			expat={
 				ffi_deps={
@@ -14164,6 +14828,7 @@ return {
 					freetype=true
 				},
 				mdeps={
+					bit=true,
 					ffi=true,
 					freetype_h=true
 				}
@@ -14297,6 +14962,7 @@ return {
 					harfbuzz=true
 				},
 				mdeps={
+					bit=true,
 					ffi=true,
 					harfbuzz_ft_h=true,
 					harfbuzz_h=true,
@@ -14446,6 +15112,10 @@ return {
 					nw=true,
 					time=true
 				}
+			}
+		},
+		inspect={
+			inspect={
 			}
 		},
 		lanes={
@@ -14650,6 +15320,13 @@ return {
 			['lpeg.re']={
 				mdeps={
 					lpeg=true
+				}
+			}
+		},
+		lrucache={
+			lrucache={
+				mdeps={
+					dlist=true
 				}
 			}
 		},
@@ -14904,6 +15581,7 @@ return {
 			nw={
 				mdeps={
 					box2d=true,
+					events=true,
 					ffi=true,
 					glue=true,
 					nw_cocoa=true,
@@ -15185,11 +15863,20 @@ return {
 			}
 		},
 		pfglab3={
+			pfglab3_bugtrack={
+				loaderr='./pfglab3_bugtrack.lua:6: attempt to index global \'win\' (a nil value)'
+			},
 			pfglab3_conf={
 				mdeps={
 					bundle=true,
 					glue=true
 				}
+			},
+			pfglab3_deviceio={
+				loaderr='./pfglab3_deviceio.lua:6: attempt to index global \'thread\' (a nil value)'
+			},
+			pfglab3_dialog_session_editor={
+				loaderr='./pfglab3_dialog_session_editor.lua:6: attempt to index global \'ui\' (a nil value)'
 			},
 			pfglab3_gen={
 				mdeps={
@@ -15207,6 +15894,39 @@ return {
 					hmac=true,
 					sha2=true
 				}
+			},
+			pfglab3_oscilloscope={
+				loaderr='./pfglab3_oscilloscope.lua:18: variable \'bundle\' is not declared'
+			},
+			pfglab3_screen_dashboard={
+				loaderr='./pfglab3_screen_dashboard.lua:4: attempt to call global \'add_screen\' (a nil value)'
+			},
+			pfglab3_screen_help={
+				loaderr='./pfglab3_screen_help.lua:6: attempt to call global \'add_screen\' (a nil value)'
+			},
+			pfglab3_screen_libraries={
+				loaderr='./pfglab3_screen_libraries.lua:4: attempt to call global \'add_screen\' (a nil value)'
+			},
+			pfglab3_screen_my_sessions={
+				loaderr='./pfglab3_screen_my_sessions.lua:6: attempt to call global \'add_screen\' (a nil value)'
+			},
+			pfglab3_screen_pro={
+				loaderr='./pfglab3_screen_pro.lua:6: attempt to call global \'add_screen\' (a nil value)'
+			},
+			pfglab3_screen_run_session={
+				loaderr='./pfglab3_screen_run_session.lua:6: attempt to call global \'add_screen\' (a nil value)'
+			},
+			pfglab3_screen_run_sweep={
+				loaderr='./pfglab3_screen_run_sweep.lua:6: attempt to call global \'add_screen\' (a nil value)'
+			},
+			pfglab3_screen_settings={
+				loaderr='./pfglab3_screen_settings.lua:6: attempt to call global \'add_screen\' (a nil value)'
+			},
+			pfglab3_sessions={
+				loaderr='./pfglab3_sessions.lua:8: variable \'glue\' is not declared'
+			},
+			pfglab3_styles={
+				loaderr='./pfglab3_styles.lua:8: attempt to index global \'ui\' (a nil value)'
 			}
 		},
 		pixman={
@@ -15233,11 +15953,6 @@ return {
 		},
 		pp={
 			pp={
-				mdeps={
-					pp_format=true
-				}
-			},
-			pp_format={
 			}
 		},
 		pthread={
@@ -15247,6 +15962,13 @@ return {
 				},
 				mdeps={
 					ffi=true
+				}
+			}
+		},
+		rangelist={
+			rangelist={
+				mdeps={
+					glue=true
 				}
 			}
 		},
@@ -15846,6 +16568,75 @@ return {
 		},
 		timewheel={
 		},
+		tr={
+			tr={
+				mdeps={
+					bit=true,
+					box2d=true,
+					ffi=true,
+					freetype=true,
+					fribidi=true,
+					glue=true,
+					harfbuzz=true,
+					['jit.zone']=true,
+					libunibreak=true,
+					lrucache=true,
+					tr_shape_lang=true,
+					tr_shape_reorder=true,
+					tr_shape_script=true,
+					utf8=true
+				}
+			},
+			tr_font_db={
+				mdeps={
+					glue=true
+				}
+			},
+			tr_markup={
+			},
+			tr_raster_cairo={
+				mdeps={
+					box2d=true,
+					cairo=true,
+					color=true,
+					ffi=true,
+					freetype=true,
+					glue=true,
+					['jit.zone']=true,
+					tr_raster_ft=true
+				}
+			},
+			tr_raster_ft={
+				mdeps={
+					bit=true,
+					ffi=true,
+					freetype=true,
+					glue=true,
+					['jit.zone']=true,
+					lrucache=true,
+					tr_font_db=true
+				}
+			},
+			tr_shape_lang={
+				mdeps={
+					ffi=true,
+					harfbuzz=true
+				}
+			},
+			tr_shape_reorder={
+				mdeps={
+					bit=true,
+					glue=true
+				}
+			},
+			tr_shape_script={
+				mdeps={
+					bit=true,
+					glue=true,
+					harfbuzz=true
+				}
+			}
+		},
 		tuple={
 			tuple={
 			}
@@ -15873,12 +16664,11 @@ return {
 					cairo=true,
 					color=true,
 					easing=true,
-					freetype=true,
-					fs=true,
+					events=true,
 					glue=true,
 					oo=true,
 					time=true,
-					tuple=true
+					tr=true
 				}
 			},
 			ui_button={
@@ -15901,35 +16691,41 @@ return {
 					color=true,
 					glue=true,
 					path2d_line=true,
-					ui=true
+					ui=true,
+					ui_button=true
 				}
 			},
 			ui_dropdown={
 				mdeps={
 					glue=true,
 					ui=true,
-					ui_button=true,
+					ui_editbox=true,
 					ui_popup=true
 				}
 			},
 			ui_editbox={
 				mdeps={
-					codedit=true,
-					ffi=true,
 					glue=true,
-					ui=true
+					tr=true,
+					ui=true,
+					ui_scrollbox=true
 				}
 			},
 			ui_grid={
 				mdeps={
 					box2d=true,
 					glue=true,
-					ui=true,
-					ui_scrollbox=true
+					ui=true
 				}
 			},
 			ui_image={
 				mdeps={
+					ui=true
+				}
+			},
+			ui_layout_editor={
+				mdeps={
+					box2d=true,
 					ui=true
 				}
 			},
@@ -15993,17 +16789,9 @@ return {
 		},
 		utf8={
 			utf8={
-				autoloads={
-					lower='utf8_case',
-					upper='utf8_case'
-				},
 				mdeps={
-					glue=true
-				}
-			},
-			utf8_case={
-				mdeps={
-					utf8=true
+					bit=true,
+					ffi=true
 				}
 			}
 		},
