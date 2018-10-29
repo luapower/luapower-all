@@ -28,7 +28,10 @@ __font management__
 __layouting__
 `tr:flatten(text_tree) -> text_runs`                 flatten a text tree
 `tr:shape(text_tree | text_runs) -> segs`            shape a text tree / text runs
-`segs:layout(x, y, w, h, [ha], [va]) -> segs`        layout shaped text
+`segs:min_w() -> w`                                  minimum wrapping width
+`segs:wrap(w) -> segs`                               wrap shaped text
+`segs:align(x, y, [w], [h], [ha], [va]) -> segs`     align wrapped text in a box
+`segs:layout(x, y, [w], [h], [ha], [va]) -> segs`    wrap and align shaped text
 `segs:bounding_box() -> x, y, w, h`                  bounding box of laid out text
 __rendering__
 `segs:paint(cr)`                                     paint laid out text
@@ -79,8 +82,8 @@ Add a font file from a memory buffer.
 
 ### `tr:flatten(text_tree) -> text_runs`
 
-Convert a tree of nested text nodes into a flat array of codepoints and an
-accompanying flat list of *text runs* containing metadata for each piece
+Convert a tree of nested text nodes into a flat array of codepoints and
+an accompanying flat list of *text runs* containing metadata for each piece
 of text contained in the tree.
 
 The text tree is a list whose elements can be either Lua strings containing
@@ -145,18 +148,61 @@ The segments can be laid out multiple times and must be laid out at least
 once in order to be rendered. Changing the text tree in any way except
 for styling attributes (color) requires reshaping and relayouting.
 
-### `segments:layout(x, y, w, h, [halign], [valign]) -> segments`
+  * sets `text_runs` for accessing the codepoints as a flat array.
 
-Layout the shaped text using word wrapping so that it fits into the box
-described by `x, y, w, h`.
+### `segments:min_w() -> w`
 
+Get the minimum width that the text can be wrapped to, which is the width
+of longest non-breakable text sequence.
+
+### `segments:wrap(w) -> segments`
+
+Line-wrap shaped text to a maximum width. Some of the resulting lines can be
+wider than the given width because of nowrap or long non-breakable words.
+Use `min_w()` to correct for that if needed.
+
+Creates the `segments.lines` table with the following fields:
+
+  * `max_ax`: text's maximum x-advance (equivalent to text's width).
+  * `h`: text's wrapped height.
+  * `spacing_h`: text's wrapped height including line spacing.
+
+The table also contains a list of lines in its array part with the fields:
+
+  * `advance_x`: x-advance of the last segment.
+  * `ascent`: maximum ascent.
+  * `descent`: maximum descent.
+  * `spacing_ascent`: maximum ascent including line spacing.
+  * `spacing_descent`: maximum descent including line spacing.
+  * `visible`: line is not clipped (true).
+  * `paragraph_spacing`: paragraph spacing for this line.
+  * `x`: line's ualigned x-offset (0).
+  * `y`: line's y-offset relative to the first line's baseline.
+
+### `segments:align(x, y, [w], [h], [halign], [valign]) -> segments`
+
+Align wrapped text so that it fits into the box described by `x, y, w, h`.
+
+  * `w`, `h` default to wrapped text's bounding box, including line spacing.
   * `halign` can be `'left'`, `'right'`, `'center'` (defaults to `'left'`).
   * `valign` can be `'top'`, `'bottom'`, `'middle'` (defaults to `'top'`).
-  * returns `segments` for chain calling.
-  * sets `segments.lines.x` and `segments.lines.y` which can be later changed
-  without the need to call `layout()` again.
-  * sets `text_runs` for accessing the codepoints.
-  * once the text is laid out, it can be painted many times with `paint()`.
+
+Sets the following fields in `segments.lines`:
+
+  * `x`, `y`: textbox's position: can be changed freely without the need
+  to call `align()` again.
+  * `min_x`: x-offset of the leftmost line relative to the textbox's origin.
+  * `baseline`: first line's baseline relative to the textbox's origin.
+
+Also sets the following fields for each line:
+
+  * `x`: line's aligned x-offset relative to textbox's origin.
+
+Once the text is aligned, it can be painted many times with `paint()`.
+
+### `segments:layout(x, y, [w], [h], [halign], [valign]) -> segments`
+
+Layout, i.e. wrap and align shaped text.
 
 ### `segments:paint(cr)`
 

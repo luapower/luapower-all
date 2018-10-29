@@ -50,13 +50,13 @@ font_db.widths = {
 
 font_db.slants = {
 	italic  = 'italic',
-	oblique = 'italic',
+	oblique = 'oblique',
 }
 
-local function remove_suffixes(s, func)
+local function remove_suffixes(s, validate)
 	local removed
 	local function remove_suffix(s)
-		if func(s) then
+		if validate(s) then
 			removed = true
 			return ''
 		end

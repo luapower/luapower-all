@@ -1034,6 +1034,8 @@ function tr:shape(text_runs, segments)
 		segments[old_seg_count] = nil
 		old_seg_count = old_seg_count - 1
 	end
+	--remove cached min_w.
+	segments._min_w = false
 
 	return segments
 end
@@ -1043,6 +1045,8 @@ end
 local segments = {} --methods for segment list
 tr.segments_class = segments
 
+--wrap-width and advance-width of all the nowrap segments starting with the
+--segment at seg_i and the seg_i after those segments.
 function segments:nowrap_segments(seg_i)
 	local seg = self[seg_i]
 	local run = seg.glyph_run
@@ -1068,16 +1072,25 @@ function segments:nowrap_segments(seg_i)
 	end
 end
 
-function segments:layout(x, y, w, h, halign, valign)
+--minimum width that the text can wrap into without overflowing.
+function segments:min_w()
+	local min_w = self._min_w
+	if not min_w then
+		local seg_i, n = 1, #self
+		local min_w = 0
+		while seg_i <= n do
+			local segs_wx, _, next_seg_i = self:nowrap_segments(seg_i)
+			min_w = math.max(min_w, segs_wx)
+			seg_i = next_seg_i
+		end
+		self._min_w = min_w
+	end
+	return min_w
+end
 
-	halign = halign or 'left'
-	valign = valign or 'top'
-	assert(halign == 'left' or halign == 'right' or halign == 'center',
-		'Invalid halign: %s', halign)
-	assert(valign == 'top' or valign == 'bottom' or valign == 'middle',
-		'Invalid valign: %s', valign)
+function segments:wrap(w)
 
-	--NOTE: users expect this table to be re-created from scratch upon
+	--NOTE: users expect this table to be re-created from scratch on
 	--re-layouting (they will add data to this table that must only be valid
 	--for the lifetime of a single computed layout).
 	local lines = {}
@@ -1111,6 +1124,7 @@ function segments:layout(x, y, w, h, halign, valign)
 			end
 
 			line = {
+				x = 0, y = 0,
 				advance_x = 0,
 				ascent = 0, descent = 0,
 				spacing_ascent = 0, spacing_descent = 0,
@@ -1175,22 +1189,10 @@ function segments:layout(x, y, w, h, halign, valign)
 		zone()
 	end
 
-	--bounding-box horizontal dimensions.
-	lines.min_x = 1/0
-	lines.max_ax = -1/0
+	lines.max_ax = -1/0 --bounding-box width
 
 	for i,line in ipairs(lines) do
 
-		--compute line's aligned x position relative to the textbox.
-		if halign == 'left' then
-			line.x = 0
-		elseif halign == 'right' then
-			line.x = w - line.advance_x
-		elseif halign == 'center' then
-			line.x = (w - line.advance_x) / 2
-		end
-
-		lines.min_x = math.min(lines.min_x, line.x)
 		lines.max_ax = math.max(lines.max_ax, line.advance_x)
 
 		--compute line ascent and descent scaling based on paragraph spacing.
@@ -1219,37 +1221,23 @@ function segments:layout(x, y, w, h, halign, valign)
 		end
 
 		--compute line's y position relative to first line's baseline.
-		if not last_line then
-			line.y = 0
-		else
+		if last_line then
 			local baseline_h = line.spacing_ascent - last_line.spacing_descent
 			line.y = last_line.y + baseline_h
 		end
 	end
 
-	--compute first line's baseline based on vertical alignment.
-	if valign == 'top' then
-		lines.baseline = lines[1].spacing_ascent
-	else
-		if valign == 'bottom' then
-			lines.baseline = h - (lines[#lines].y - lines[#lines].spacing_descent)
-		elseif valign == 'middle' then
-			local lines_h = lines[#lines].y
-				+ lines[1].spacing_ascent
-				- lines[#lines].spacing_descent
-			lines.baseline = lines[1].spacing_ascent + (h - lines_h) / 2
-		end
-	end
-
-	--store textbox's origin, which can be changed anytime after layouting.
-	lines.x = x
-	lines.y = y
-
-	--store the other args for relayouting after reshaping.
-	lines.w = w
-	lines.h = h
-	lines.valign = valign
-	lines.halign = halign
+	--bounding-box height (including or excluding line spacing).
+	local first_line = lines[1]
+	local last_line = lines[#lines]
+	lines.h =
+		first_line.ascent
+		+ last_line.y
+		- last_line.descent
+	lines.spacing_h =
+		first_line.spacing_ascent
+		+ last_line.y
+		- last_line.spacing_descent
 
 	return self
 end
@@ -1258,13 +1246,71 @@ function segments:checklines()
 	return assert(self.lines, 'text not laid out')
 end
 
+function segments:align(px, py, w, h, halign, valign)
+
+	local lines = self:checklines()
+
+	halign = halign or 'left'
+	valign = valign or 'top'
+	assert(halign == 'left' or halign == 'right' or halign == 'center',
+		'Invalid halign: %s', halign)
+	assert(valign == 'top' or valign == 'bottom' or valign == 'middle',
+		'Invalid valign: %s', valign)
+
+	w = w or lines.max_ax
+	h = h or lines.spacing_h
+
+	lines.min_x = 1/0
+
+	for i,line in ipairs(lines) do
+
+		--compute line's aligned x position relative to the textbox origin.
+		if halign == 'right' then
+			line.x = w - line.advance_x
+		elseif halign == 'center' then
+			line.x = (w - line.advance_x) / 2
+		end
+
+		lines.min_x = math.min(lines.min_x, line.x)
+
+	end
+
+	--compute first line's baseline based on vertical alignment.
+	local first_line = lines[1]
+	local last_line = lines[#lines]
+	if valign == 'top' then
+		lines.baseline = first_line.spacing_ascent
+	else
+		if valign == 'bottom' then
+			lines.baseline = h - (last_line.y - last_line.spacing_descent)
+		elseif valign == 'middle' then
+			lines.baseline = first_line.spacing_ascent + (h - lines.spacing_h) / 2
+		end
+	end
+
+	--store textbox's origin, which can be changed anytime after layouting.
+	lines.x = px
+	lines.y = py
+
+	--store the rest of the args for automatic relayouting after reshaping.
+	self._w = w
+	self._h = h
+	self._va = valign
+	self._ha = halign
+
+	return self
+end
+
+function segments:layout(x, y, w, h, halign, valign)
+	return self:wrap(w):align(x, y, w, h, halign, valign)
+end
+
 function segments:bounding_box()
 	local lines = self:checklines()
 	local bx = lines.x + lines.min_x
 	local bw = lines.max_ax
-	local a1 = lines[1].spacing_ascent
-	local by = lines.y + lines.baseline - a1
-	local bh = a1 + lines[#lines].y - lines[#lines].spacing_descent
+	local by = lines.y + lines.baseline - lines[1].spacing_ascent
+	local bh = lines.spacing_h
 	return bx, by, bw, bh
 end
 
@@ -1776,7 +1822,7 @@ function segments:reshape()
 	local x, y, w, h, ha, va
 	local t = self.lines
 	if t then
-		x, y, w, h, ha, va = t.x, t.y, t.w, t.h, t.halign, t.valign
+		x, y, w, h, ha, va = t.x, t.y, self._w, self._h, self._ha, self._va
 	end
 	self.tr:shape(self.text_runs, self)
 	if x then
