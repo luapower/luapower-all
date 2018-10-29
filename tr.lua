@@ -1076,8 +1076,8 @@ end
 function segments:min_w()
 	local min_w = self._min_w
 	if not min_w then
+		min_w = 0
 		local seg_i, n = 1, #self
-		local min_w = 0
 		while seg_i <= n do
 			local segs_wx, _, next_seg_i = self:nowrap_segments(seg_i)
 			min_w = math.max(min_w, segs_wx)
@@ -1241,6 +1241,13 @@ function segments:wrap(w)
 
 	return self
 end
+
+--width and height of wrapped text.
+function segments:size()
+	local lines = self:checklines()
+	return lines.max_ax, lines.spacing_h
+end
+
 
 function segments:checklines()
 	return assert(self.lines, 'text not laid out')
