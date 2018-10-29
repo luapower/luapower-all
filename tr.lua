@@ -1242,13 +1242,6 @@ function segments:wrap(w)
 	return self
 end
 
---width and height of wrapped text.
-function segments:size()
-	local lines = self:checklines()
-	return lines.max_ax, lines.spacing_h
-end
-
-
 function segments:checklines()
 	return assert(self.lines, 'text not laid out')
 end

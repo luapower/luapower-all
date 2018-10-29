@@ -137,7 +137,7 @@ no text, in order to anchor the attributes to a segment and to create a
 cursor.
 
 NOTE: When flattening, each text node is set up to inherit its parent node
-(this might change in a future version since it's not cool to modify user
+(this might change in a future version since it's not ok to modify user
 input in general).
 
 ### `tr:shape(text_tree | text_runs) -> segments`
