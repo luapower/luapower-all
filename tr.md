@@ -30,14 +30,14 @@ __layouting__
 `tr:shape(text_tree | text_runs) -> segs`            shape a text tree / text runs
 `segs:min_w() -> w`                                  minimum wrapping width
 `segs:wrap(w) -> segs`                               wrap shaped text
-`segs:align(x, y, [w], [h], [ha], [va]) -> segs`     align wrapped text in a box
-`segs:layout(x, y, [w], [h], [ha], [va]) -> segs`    wrap and align shaped text
+`segs:align(x, y, [w], [h], [ax], [ay]) -> segs`     align wrapped text in a box
+`segs:layout(x, y, [w], [h], [ax], [ay]) -> segs`    wrap and align shaped text
 `segs:bounding_box() -> x, y, w, h`                  bounding box of laid out text
 __rendering__
 `segs:paint(cr)`                                     paint laid out text
 `segs:clip(x, y, w, h)`                              clip visible text to rectangle
 `segs:reset_clip()`                                  reset clipping area
-`tr:textbox(text_tree, cr, x, y, w, h, [ha], [va])`  shape, layout and paint text
+`tr:textbox(text_tree, cr, x, y, w, h, [ax], [ay])`  shape, layout and paint text
 __cursors__
 `segs:cursor([offset]) -> cursor`                    create a cursor
 `cursor:pos() -> x, y`                               cursor position
@@ -179,13 +179,13 @@ The table also contains a list of lines in its array part with the fields:
   * `x`: line's ualigned x-offset (0).
   * `y`: line's y-offset relative to the first line's baseline.
 
-### `segments:align(x, y, [w], [h], [halign], [valign]) -> segments`
+### `segments:align(x, y, [w], [h], [align_x], [align_y]) -> segments`
 
 Align wrapped text so that it fits into the box described by `x, y, w, h`.
 
   * `w`, `h` default to wrapped text's bounding box, including line spacing.
-  * `halign` can be `'left'`, `'right'`, `'center'` (defaults to `'left'`).
-  * `valign` can be `'top'`, `'bottom'`, `'middle'` (defaults to `'top'`).
+  * `align_x` can be `'left'`, `'right'`, `'center'` (defaults to `'left'`).
+  * `align_y` can be `'top'`, `'bottom'`, `'center'` (defaults to `'top'`).
 
 Sets the following fields in `segments.lines`:
 
@@ -200,7 +200,7 @@ Also sets the following fields for each line:
 
 Once the text is aligned, it can be painted many times with `paint()`.
 
-### `segments:layout(x, y, [w], [h], [halign], [valign]) -> segments`
+### `segments:layout(x, y, [w], [h], [align_x], [align_y]) -> segments`
 
 Layout, i.e. wrap and align shaped text.
 
@@ -228,7 +228,7 @@ as invisible, and everything else as visible.
 
 Mark all lines and segments as visible.
 
-### `tr:textbox(text_tree, cr, x, y, w, h, [halign], [valign]) -> segments`
+### `tr:textbox(text_tree, cr, x, y, w, h, [align_x], [align_y]) -> segments`
 
 Shape, layout and paint text in one call. Return segments so that
 layouting or painting can be done again without reshaping.

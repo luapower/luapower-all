@@ -1243,19 +1243,17 @@ function segments:wrap(w)
 end
 
 function segments:checklines()
-	return assert(self.lines, 'text not laid out')
+	return assert(self.lines, 'Text not laid out')
 end
 
-function segments:align(px, py, w, h, halign, valign)
+local aligns_x = {left = 'left', center = 'center', right = 'right'}
+local aligns_y = {top = 'top', center = 'center', bottom = 'bottom'}
+
+function segments:align(px, py, w, h, align_x, align_y)
 
 	local lines = self:checklines()
-
-	halign = halign or 'left'
-	valign = valign or 'top'
-	assert(halign == 'left' or halign == 'right' or halign == 'center',
-		'Invalid halign: %s', halign)
-	assert(valign == 'top' or valign == 'bottom' or valign == 'middle',
-		'Invalid valign: %s', valign)
+	align_x = assert(aligns_x[align_x], 'Invalid align_x: %s', align_x)
+	align_y = assert(aligns_y[align_y], 'Invalid align_y: %s', align_y)
 
 	w = w or lines.max_ax
 	h = h or lines.spacing_h
@@ -1265,9 +1263,9 @@ function segments:align(px, py, w, h, halign, valign)
 	for i,line in ipairs(lines) do
 
 		--compute line's aligned x position relative to the textbox origin.
-		if halign == 'right' then
+		if align_x == 'right' then
 			line.x = w - line.advance_x
-		elseif halign == 'center' then
+		elseif align_x == 'center' then
 			line.x = (w - line.advance_x) / 2
 		end
 
@@ -1278,12 +1276,12 @@ function segments:align(px, py, w, h, halign, valign)
 	--compute first line's baseline based on vertical alignment.
 	local first_line = lines[1]
 	local last_line = lines[#lines]
-	if valign == 'top' then
+	if align_y == 'top' then
 		lines.baseline = first_line.spacing_ascent
 	else
-		if valign == 'bottom' then
+		if align_y == 'bottom' then
 			lines.baseline = h - (last_line.y - last_line.spacing_descent)
-		elseif valign == 'middle' then
+		elseif align_y == 'center' then
 			lines.baseline = first_line.spacing_ascent + (h - lines.spacing_h) / 2
 		end
 	end
@@ -1295,14 +1293,14 @@ function segments:align(px, py, w, h, halign, valign)
 	--store the rest of the args for automatic relayouting after reshaping.
 	self._w = w
 	self._h = h
-	self._va = valign
-	self._ha = halign
+	self._ax = align_x
+	self._ay = align_y
 
 	return self
 end
 
-function segments:layout(x, y, w, h, halign, valign)
-	return self:wrap(w):align(x, y, w, h, halign, valign)
+function segments:layout(x, y, w, h, align_x, align_y)
+	return self:wrap(w):align(x, y, w, h, align_x, align_y)
 end
 
 function segments:bounding_box()
@@ -1403,10 +1401,10 @@ function segments:paint(cr)
 	return self
 end
 
-function tr:textbox(text_tree, cr, x, y, w, h, halign, valign)
+function tr:textbox(text_tree, cr, x, y, w, h, align_x, align_y)
 	return self
 		:shape(text_tree)
-		:layout(x, y, w, h, halign, valign)
+		:layout(x, y, w, h, align_x, align_y)
 		:paint(cr)
 end
 
@@ -1822,7 +1820,7 @@ function segments:reshape()
 	local x, y, w, h, ha, va
 	local t = self.lines
 	if t then
-		x, y, w, h, ha, va = t.x, t.y, self._w, self._h, self._ha, self._va
+		x, y, w, h, ha, va = t.x, t.y, self._w, self._h, self._ax, self._ay
 	end
 	self.tr:shape(self.text_runs, self)
 	if x then
