@@ -40,7 +40,7 @@ that method will also be called when the event fires, before other handlers.
   * the meta-event called `'event'` is fired on all events (the name of the
   event that was fired is received as arg#1).
   * events can be tagged with multiple tags/namespaces `'event.ns1.ns2...'`
-  or `{event, ns1, ns2, ...}`: tags/namespsaces are useful for easy bulk
+  or `{event, ns1, ns2, ...}`: tags/namespaces are useful for easy bulk
   event removal with `obj:off'.ns1'` or `obj:off({nil, ns1})`.
   * multiple handlers can be added for the same event and/or namespace.
   * handlers are stored in `self.__observers`.
