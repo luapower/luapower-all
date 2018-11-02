@@ -181,6 +181,22 @@ function Object:is(class)
 	end
 end
 
+function Object:hasproperty(k)
+	if rawget(self, k) ~= nil then return true, 'field' end
+	if type(k) == 'string' and k ~= '__getters' and k ~= '__setters' then
+		if k == 'super' then return false end
+		local getters = self.__getters
+		local get = getters and getters[k]
+		if get then return true, 'property' end
+		local setters = self.__setters
+		local set = setters and setters[k]
+		if set then return true, 'property' end
+	end
+	local super = rawget(self, 'super')
+	if not super then return false end
+	return super:hasproperty(k)
+end
+
 function Object:isinstance(class)
 	return rawget(self, 'classname') == nil and (not class or self:is(class))
 end
