@@ -4,6 +4,10 @@
 
 local events = {}
 
+--default values to speed up look-up in class systems with dynamic dispatch.
+events.event = false
+events.__observers = false
+
 local function indexof(v, t) --index of element in array (from glue)
 	for i=1,#t do
 		if t[i] == v then

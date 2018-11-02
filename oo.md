@@ -111,12 +111,12 @@ assert(obj.the_answer == 42)
 ~~~
 
 **Static inheritance** can be achieved by calling
-`self:inherit(other[,override]) -> self` which copies over the properties of
+`self:inherit([other],[override]) -> self` which copies over the properties of
 another class or instance, effectively *monkey-patching* `self`, optionally
 overriding properties with the same name. The fields `self.classname` and
 `self.super` are always preserved though, even with the `override` flag.
-
 `other` can also be a plain table, in which case it is shallow-copied.
+`other` defaults to `self.super`.
 
 ~~~{.lua}
 local other_cls = oo.class()
@@ -304,3 +304,13 @@ oo's base class (or to any other class):
 local events = require'events'
 oo.Object:inherit(events)
 ~~~
+
+## Performance Tips
+
+Instance fields are accessed directly but methods and default values
+(class fields) go through a slower dynamic dispatch function (it's the
+price you pay for virtual properties). Copying class fields to the instance
+by calling `self:inherit()` will short-circuit this lookup at the expense
+of more memory consumption. Missing fields go through the same function too
+so initializing fields that don't have a default value to `false` will also
+speed up their lookup.
