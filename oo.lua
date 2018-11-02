@@ -206,14 +206,18 @@ function Object:issubclass(class)
 end
 
 --returns iterator<k,v,source>; iterates bottom-up in the inheritance chain
-function Object:allpairs()
+function Object:allpairs(stop_super)
 	local source = self
+	if source == stop_super then
+		return function() return nil end
+	end
 	local k,v
 	return function()
 		k,v = next(source,k)
 		if k == nil then
 			source = rawget(source, 'super')
 			if source == nil then return nil end
+			if source == stop_super then return nil end
 			k,v = next(source)
 		end
 		return k,v,source
@@ -221,9 +225,9 @@ function Object:allpairs()
 end
 
 --returns all properties including the inherited ones and their current values
-function Object:properties()
+function Object:properties(stop_super)
 	local values = {}
-	for k,v,source in self:allpairs() do
+	for k,v,source in self:allpairs(stop_super) do
 		if values[k] == nil then
 			values[k] = v
 		end
@@ -253,16 +257,16 @@ local function copy_table(dst, src, k, override)
 	end
 end
 
-function Object:inherit(other, override)
+function Object:inherit(other, override, stop_super)
 	other = other or rawget(self, 'super')
 	if not is(other, Object) then --plain table, treat is as mixin
 		for k,v in pairs(other) do
-			if override or self[k] == nil then
+			if override or not self:hasproperty(k) then
 				self[k] = v --not rawsetting so that meta-methods apply
 			end
 		end
 	else --oo class or instance
-		local properties = other:properties()
+		local properties = other:properties(stop_super)
 		for k,v in pairs(properties) do
 			if (override or rawget(self, k) == nil)
 				and k ~= 'classname' --keep the classname (preserve identity)

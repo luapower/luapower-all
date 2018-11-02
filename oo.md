@@ -45,9 +45,9 @@ Object system with virtual properties and method overriding hooks.
 	* `Apple:issubclass([class|classname]) -> true|false` - check class ancestry
 	* `apple:hasproperty(name) -> false | true, 'field'|'property' - check if property
 	exists without accessing its value
-	* `self:allpairs() -> iterator() -> name, value, source` - iterate all
+	* `self:allpairs([stop_super]) -> iterator() -> name, value, source` - iterate all
 	  properties, including inherited _and overriden_ ones.
-   * `self:properties()` -> get a table of all current properties and values,
+   * `self:properties([stop_super])` -> get a table of all current properties and values,
 	  including inherited ones.
    * `self:inspect([show_oo_fields])` - inspect the class/instance structure
 	  and contents in detail (requires [glue]).
@@ -113,12 +113,16 @@ assert(obj.the_answer == 42)
 ~~~
 
 **Static inheritance** can be achieved by calling
-`self:inherit([other],[override]) -> self` which copies over the properties of
-another class or instance, effectively *monkey-patching* `self`, optionally
-overriding properties with the same name. The fields `self.classname` and
-`self.super` are always preserved though, even with the `override` flag.
-`other` can also be a plain table, in which case it is shallow-copied.
-`other` defaults to `self.super`.
+`self:inherit([other],[replace],[stop_super]) -> self` which copies over
+the properties of another class or instance, effectively *monkey-patching*
+`self`, optionally overriding properties with the same name. The fields
+`self.classname` and `self.super` are always preserved though, even with
+the `override` flag.
+
+  * `other` can also be a plain table, in which case it is shallow-copied.
+  * `other` defaults to `self.super`.
+  * `stop_super` limits how far up in the inheritance chain of `other`
+  too look for fields and properties to copy.
 
 ~~~{.lua}
 local other_cls = oo.class()
