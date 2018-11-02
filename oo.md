@@ -43,12 +43,14 @@ Object system with virtual properties and method overriding hooks.
 	* `apple:is(class|classname) -> true|false` - check instance/class ancestry
 	* `apple:isinstance([class|classname]) -> true|false` - check instance ancestry
 	* `Apple:issubclass([class|classname]) -> true|false` - check class ancestry
+	* `apple:closest_ancestor(orange) -> Fruit` - closest ancestor of `other`
+	in `self`'s hierarchy
 	* `apple:hasproperty(name) -> false | true, 'field'|'property' - check if property
 	exists without accessing its value
-	* `self:allpairs([stop_super]) -> iterator() -> name, value, source` - iterate all
-	  properties, including inherited _and overriden_ ones.
-   * `self:properties([stop_super])` -> get a table of all current properties and values,
-	  including inherited ones.
+	* `self:allpairs([super]) -> iterator() -> name, value, source` - iterate all
+	  properties, including inherited _and overriden_ ones up until `super`.
+   * `self:properties([super])` -> get a table of all current properties and values,
+	  including inherited ones up until `super`.
    * `self:inspect([show_oo_fields])` - inspect the class/instance structure
 	  and contents in detail (requires [glue]).
  * overridable subclassing and instantiation mechanisms:
@@ -123,6 +125,10 @@ the `override` flag.
   * `other` defaults to `self.super`.
   * `stop_super` limits how far up in the inheritance chain of `other`
   too look for fields and properties to copy.
+  * if `other` is not in `self`'s hierarchy, `stop_super` defaults to
+  `self:closest_ancestor(other)` in order to prevent inheriting any fields
+  from common ancestors, which would undo any overridings done in subclasses
+  of the closest ancestor.
 
 ~~~{.lua}
 local other_cls = oo.class()

@@ -171,8 +171,9 @@ function Object:override(method_name, hook)
 end
 
 function Object:is(class)
+	assert(type(class) == 'table' or type(class) == 'string')
 	local super = rawget(self, 'super')
-	if super == class or self.classname == class then
+	if super == class or self == class or self.classname == class then
 		return true
 	elseif super then
 		return super:is(class)
@@ -203,6 +204,17 @@ end
 
 function Object:issubclass(class)
 	return rawget(self, 'classname') ~= nil and (not class or self:is(class))
+end
+
+--closest ancestor that `other` has in self's hierarchy.
+function Object:closest_ancestor(other)
+	while not is(other, self) do
+		self = rawget(self, 'super')
+		if not self then
+			return nil --other is not an Object
+		end
+	end
+	return self
 end
 
 --returns iterator<k,v,source>; iterates bottom-up in the inheritance chain
@@ -258,14 +270,21 @@ local function copy_table(dst, src, k, override)
 end
 
 function Object:inherit(other, override, stop_super)
-	other = other or rawget(self, 'super')
-	if not is(other, Object) then --plain table, treat is as mixin
+	if other and not is(other, Object) then --plain table, treat as mixin
 		for k,v in pairs(other) do
 			if override or not self:hasproperty(k) then
 				self[k] = v --not rawsetting so that meta-methods apply
 			end
 		end
 	else --oo class or instance
+		if other and not is(self, other) then --mixin
+			--prevent inheriting fields from common ancestors by default!
+			if stop_super == nil then --pass false to disable this filter.
+				stop_super = self:closest_ancestor(other)
+			end
+		else --superclass
+			other = rawget(self, 'super')
+		end
 		local properties = other:properties(stop_super)
 		for k,v in pairs(properties) do
 			if (override or rawget(self, k) == nil)
@@ -296,7 +315,7 @@ function Object:inherit(other, override, stop_super)
 end
 
 function Object:detach()
-	self:inherit(rawget(self, 'super'))
+	self:inherit()
 	self.classname = self.classname --store the classname
 	rawset(self, 'super', nil)
 	return self

@@ -41,7 +41,21 @@ assert(o.unknown == nil)
 
 assert(o:is'c1')
 assert(o:is'c2')
+assert(o:is(o))
+assert(c2:is(c1))
+assert(c1:is(c1))
+assert(c1:is'c1')
 assert(o:is'o' == false)
+assert(oo.Object:is(oo.Object))
+
+local o2 = c1('o')
+assert(c1:closest_ancestor(c2) == c1) --subject is target's super
+assert( o:closest_ancestor(o2) == c1) --target's super
+assert(o2:closest_ancestor(o) == c1) --subject's super
+assert(c1:closest_ancestor(c2) == c1) --subject
+assert(o2:closest_ancestor(c1) == c1) --target
+assert(o2:closest_ancestor(oo.Object) == oo.Object) --subject's super, root
+assert(oo.Object:closest_ancestor(oo.Object) == oo.Object) --root
 
 --arg passing through hooks
 local t = {}
