@@ -579,11 +579,12 @@ function window:_canclose(reason, closing_window)
 end
 
 function window:close(force)
-	if self:hideonclose() and not self:visible() then
+	local hide = self:hideonclose() and not self:autoquit()
+	if hide and not self:visible() then
 		return
 	end
 	if force or self:_backend_closing() then
-		if self:hideonclose() then
+		if hide then
 			self:hide()
 		else
 			self.backend:forceclose()
@@ -617,7 +618,7 @@ function window:_backend_closing()
 		return app:_canquit()
 	end
 
-	if self:hideonclose() then
+	if self:hideonclose() and not self:autoquit() then
 		self:hide()
 		return false
 	end

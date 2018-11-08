@@ -366,7 +366,7 @@ is in progress does nothing.
 
 Get/set the app autoquit flag (default: true).
 When this flag is `true`, the app quits when the last visible non-child
-window is closed.
+window is closed. NOTE: `hideonclose` has no effect if this is enabled.
 
 ### `app:quitting() -> [false]`
 
