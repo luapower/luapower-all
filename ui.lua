@@ -96,7 +96,7 @@ function object:forward_events(object, event_names)
 	end
 end
 
---create a r/w property which reads/writes to a "private var".
+--create a r/w property which reads/writes to a "private field".
 function object:stored_property(prop, priv)
 	priv = priv or '_'..prop
 	self[priv] = self[prop] --transfer existing value to private var
@@ -189,7 +189,7 @@ function object:check(ret, ...)
 	self:warn(...)
 end
 
---autoloading
+--submodule autoloading
 
 function object:autoload(autoload)
 	for prop, submodule in pairs(autoload) do

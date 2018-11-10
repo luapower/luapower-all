@@ -40,7 +40,9 @@ local b = ui:button{
 ui:run()
 ~~~
 
-### The `ui` object
+## The `ui` module/singleton
+
+  * it subclasses `ui.object`
 
 -------------------------------------- ---------------------------------------
 __native properties__
@@ -69,6 +71,8 @@ __font registration__
 -------------------------------------- ---------------------------------------
 
 ## Elements
+
+  * subclass `ui.object`
 
 -------------------------------------- ---------------------------------------
 __selectors__
@@ -126,6 +130,8 @@ __attribute transitions__
 -------------------------------------- ---------------------------------------
 
 ## Windows
+
+  * they subclass `ui.element`
 
 -------------------------------------- ---------------------------------------
 `ui:window{...} -> win`
@@ -188,8 +194,11 @@ __frameless windows__
 
 ## Layers
 
+  * they subclass `ui.element`
+
 -------------------------------------- ---------------------------------------
-TODO
+__
+
 -------------------------------------- ---------------------------------------
 
 ### Box model
@@ -197,7 +206,7 @@ TODO
   * layers can be nested, which affects their painting order, clipping and
   positioning relative to each other.
   * layers have a "box" defined by their `x, y, w, h`, and a "content box"
-  which is the same box adjusted by paddings.
+  (aka "client rect") which is the "box" adjusted by paddings.
   * layers are positioned and clipped relative to their parent's content box.
   * unlike html, the content box is _not_ affected by borders.
   * borders can be drawn at an offset relative to the layer's box and the
@@ -208,7 +217,7 @@ TODO
 
 ### Mouse interaction
 
-  * layers must be `activable` in order to receive mouse events.
+  * layers must be set as `activable` in order to receive mouse events.
   * a layer is `hot` when the mouse is over it or when it's `active`.
   * a layer must set `active` on `mousedown` and must reset it on `mouseup`
   in order to have the mouse _captured_ while a mouse button is down;
@@ -220,12 +229,14 @@ TODO
 
 ### Keyboard interaction
 
-  * layers must be `focusable` in order to receive keyboard events.
+  * layers must be set as `focusable` in order to receive keyboard events.
   * keyboard events are only received by the focused layer.
-  * return `true` in a `keydown` to eat up a key stroke so that it
+  * return `true` in a `keydown` event to eat up a key stroke so that it
   isn't used by other actions: this is how key conflicts are solved.
 
 ## Widgets
+
+  * they subclass `ui.layer`
 
 -------------------------------------- ---------------------------------------
 __input__
@@ -364,16 +375,12 @@ The main topics that need to be understood in order to create new widgets are:
 	* subclassing and instantiation
 	* virtual properties
 	* method overriding
- * the [event system][events], which implements a generic pub-sub API
- * the `ui.object` class, which provides meta-programming facilities for:
-   * memoizing methods
-	* creating "stored" properties
-	* creating "live" (aka "instance-only") properties
-	* creating self-validating enum properties
- * the `ui.element` class, which provides a base non-visual vocabulary for:
+ * the [event system][events], which adds a pub-sub API.
+ * the `ui.object` class, which adds meta-programming facilities (decorators).
+ * the `ui.element` class, which adds a base non-visual vocabulary for:
    * applying multiple attribute value sets based on tag combinations (aka CSS)
 	* time-based interpolation of attribute values (aka transition animations)
- * the `ui.layer` class, which provides a base visual vocabulary:
+ * the `ui.layer` class, which adds a base visual vocabulary:
 	* layer hierarchies with relative affine transforms and clipping
 	* drawing borders, backgrounds, shadows, and aligned text
 	* hit testing borders, background and content
@@ -390,37 +397,54 @@ The main topics that need to be understood in order to create new widgets are:
 
 ## Method & property decorators
 
-Various utilities (exposed as class methods) for changing the behavior of
-specific properties and methods.
+These are meta-programming facilities exposed as class methods for creating
+or enhancing the behavior of properties and methods in specific ways.
 
-### object:memoize(method_name)
+### `object:memoize(method_name)`
 
 Memoize a method (which must be single-return-value).
 
 ### `object:forward_events(obj, events)`
 
-Forward some events (`events = {event_name1, ...}`) from `obj` to `self`,
+Forward some events (`{event_name1, ...}`) from `obj` to `self`,
 i.e. install event handlers in `obj` which forward events to `self`.
 
 ### `object:stored_property(prop, [priv])`
 
-Create a r/w property named `prop` which reads/writes from a "private field".
+Create a r/w property which reads/writes from a "private field" (`priv` which
+defaults to `_<prop>`).
 
 ### `object:nochange_barrier(prop)`
 
-Call `prop`'s setter only when setting a diff. value than current.
+Change a property so that its setter is only called when the value changes.
 
 ### `object:track_changes(prop)`
 
-Fire a `<prop>_changed` event when the property value changes.
+Change a property so that its setter is only called when the value changes
+and also `<prop>_changed` event is fired.
 
 ### `object:instance_only(prop)`
 
 Inhibit a property's getter and setter when using the property on the class.
 instead, set a private var on the class which serves as default value.
-NOTE: use this only _after_ defining the getter and setter.
+NOTE: use this decorator only _after_ defining the getter and setter.
 
 ### `object:enum_property(prop, values)`
 
 Validate a property when being set against a list of allowed values.
 
+## Error reporting
+
+### `object:warn(fmt, ...)`
+
+Issue a warning on `stderr`.
+
+### `object:check(ret, fmt, ...) -> ret|nil`
+
+Issue a warning if `ret` is falsey or return `ret`.
+
+## Submodule autoloading
+
+### `object:autoload(t)`
+
+See [glue].autoload.
