@@ -2794,10 +2794,10 @@ end
 
 layer.tabindex = 0
 layer.tabgroup = 0
-layer.taborder_algorithm = 'xy' --'xy', 'yx'
+layer._taborder_algorithm = 'xy' --'xy', 'yx'
 
-function layer:get_taborder()
-	return self:parent_value'_taborder'
+function layer:get_taborder_algorithm()
+	return self:parent_value'_taborder_algorithm'
 end
 
 function layer:focusable_widgets(t, depth)

@@ -219,7 +219,7 @@ __drawing__
 
 __frameless windows__
 
-`win.move_layer`
+`win.move_layer`                       layer which by dragging it moves the window
 -------------------------------------- ---------------------------------------
 
 ## Layers
@@ -229,7 +229,7 @@ input infrastructure necessary for implementing widgets, and can also be used
 standalone as layout containers, text labels or other presentation elements.
 Layers are elements, so all element methods and properties apply.
 
-### Configuring
+### Configuration
 
 -------------------------------- ---------------- ------------------------------------------------------------------
 __display & behavior__           __default__
@@ -256,16 +256,11 @@ __content box__
 `padding_right`                  false            padding override: right side
 `padding_top`                    false            padding override: top side
 `padding_bottom`                 false            padding override: bottom side
-__parent/child__
+__hierarchy__
 `parent`                         false            painting/clipping parent
-`self[i]`                                         `i`'th child layer
-`layer_index`                                     index in parent's array part
-`window`                                          parent's window
+`layer_index`                                     index in parent's array part (z-order)
 `pos_parent`                     false            positioning parent (false means use `parent`)
-__mouse state__
-`mouse_x, mouse_y`                                last-mouse-event mouse coords
 __focus__
-`focused`                                         has keyboard focus
 `tabindex`                       0                tab order, for tab-based navigation
 `tabgroup`                       0                tab group, for tab-based navigation
 `taborder_algorithm`             'xy'             tab order algorithm: 'xy', 'yx'
@@ -328,7 +323,7 @@ __layouting__
 `layout`                         false (none)     layout type: false (none), 'textbox', 'flexbox', 'grid'
 `min_cw, min_ch`                 0, 0             minimum content-box size for flexible layouts
 __null-layouts__
-`x, y, w, h`                                      fixed box coordinates
+`x, y, w, h`                     0, 0, 0, 0       fixed box coordinates
 __flexbox layouts__
 `flex_axis`                      'x'              main axis of flow: 'x', 'y'
 `flex_wrap`                      false            line-wrap content
@@ -353,6 +348,91 @@ __tooltips__
 `tooltip`                        false (none)     native tooltip text
 -------------------------------- ---------------- ------------------------------------------------------------------
 
+### Runtime state
+
+-------------------------------- ---------------- ------------------------------------------------------------------
+`enabled`                        r/w              enabled and all parents are enabled too
+`hot`                            r/o              mouse pointer is over the layer
+`active`                         r/w              the mouse is captured
+`focused`                        r/o              has keyboard focus
+`mouse_x, mouse_y`               r/o              mouse coords from the last mouse event
+`window`                         r/o              layer's window
+layer's array part               r/o              is where child layers are kept
+-------------------------------- ---------------- ------------------------------------------------------------------
+
+### Hierarchy
+
+------------------------------------------------- ------------------------------------------------------------------
+`to_back()`                                       set `layer_index` to 1
+`to_front()`                                      set `layer_index` to 1/0
+`each_child(func)`                                calls `func(layer)` for each child, recursively, depth-first
+`children() -> iter() -> layer`
+`add_layer(layer, [index])`                       add a child
+`remove_layer(layer)`                             remove a child
+------------------------------------------------- ------------------------------------------------------------------
+
+### Measuring tools
+
+------------------------------------------------- ------------------------------------------------------------------
+__derived geometry__
+`border_inner_x/_y/_w/_h`                         border's inner contour box
+`border_outer_x/_y/_w/_h`                         border's outer contour box
+`baseline`                                        text's baseline
+`pw, ph`                                          total horizontal and vertical paddings
+`pw1, pw2, ph1, ph2`                              paddings for each side
+`cw, ch`                                          content box size
+`cx, cy`                                          box's center coords
+`x2, y2`                                          box's bottom-right corner coords
+__coord converters__
+`abs_matrix() -> mt`                              box matrix in window space
+`from_box_to_parent(x, y) -> x, y`                convert point from own box space to parent content space.
+`from_parent_to_box(x, y) -> x, y`                convert point from parent content space to own box space.
+`to_parent(x, y) -> x, y`                         convert point from own content space to parent content space.
+`from_parent(x, y) -> x, y`                       convert point from parent content space to own content space.
+`to_window(x, y) -> x, y`
+`from_window(x, y) -> x, y`
+`to_screen(x, y) -> x, y`
+`from_screen(x, y) -> x, y`
+`to_other(widget, x, y) -> x, y`                  convert point from own content space to other's content space.
+`from_other(widget, x, y) -> x, y`                convert point from other's content space to own content space
+------------------------------------------------- ------------------------------------------------------------------
+
+### Events
+
+------------------------------------------------- ------------------------------------------------------------------
+__mouse__
+`activated()`                                     layer activated (mouse captured)
+`deactivated()`                                   layer deactivated
+`mousemove(x, y, area)`                           mouse moved
+`mouseenter(x, y, area)`                          mouse entered
+`mouseleave()`                                    mouse left
+`[right|middle]mousedown(x, y, area)`             mouse left/right/middle button pressed
+`[right|middle]mouseup(x, y, area)`               mouse left/right/middle button depressed
+`[right|middle]click(x, y, area)`                 mouse left/right/middle button clicked
+`[right|middle]doubleclick()`                     mouse left/right/middle button double-clicked
+`[right|middle]tripleclick()`                     mouse left/right/middle button triple-click
+`[right|middle]quadrupleclick()`                  mouse left/right/middle button quadruple-click
+`mousewheel(delta, x, y, area, pdelta)`           mouse wheel turned
+__keyboard__
+`gotfocus()`                                      layer focused
+`lostfocus()`                                     layer unfocused
+`keydown(key)`                                    key pressed
+`keyup(key)`                                      key released
+`keypress(key)`                                   key pressed (on repeat)
+`keychar(s)`                                      utf-8 sequence entered
+__drag & drop__
+`drag(x, y)`
+`enter_drop_target(widget, area)`
+`leave_drop_target(widget)`
+`end_drag(drag_widget)`
+`drop(widget, x, y, area)`
+`started_dragging()`
+`ended_dragging()`
+__hierarchy__
+`layer_added(layer, index)`                       a child layer was added
+`layer_removed(layer)`                            a child layer was removed
+------------------------------------------------- ------------------------------------------------------------------
+
 ### Box model
 
   * layers can be nested, which affects their painting order, clipping and
@@ -360,7 +440,7 @@ __tooltips__
   * layers have a "box" defined by their `x, y, w, h`, and a "content box"
   (aka "client rect") which is the "box" adjusted by paddings.
   * layers are positioned and clipped relative to their parent's content box.
-  * unlike html, the content box is _not_ affected by borders.
+  * unlike html, the content box is _not_ affected by the size of borders.
   * borders can be drawn at an offset relative to the layer's box and the
   border's thickness.
   * a layer's contents and background can be clipped by the padding box
@@ -605,12 +685,11 @@ The main topics that need to be understood in order to create new widgets are:
 	* routing keyboard events to the focused widget; tab-based navigation
 	* drag & drop API (event-based)
 
-## The object class
+## The `object` base class
 
-  * `ui.object`
-  * ancestor of all classes `ui.object:subclass(name)`.
-  * created with [oo]; inherits oo.Object.
+  * created with [oo]; inherits oo.Object; published as `ui.object`.
   * inherits the [events] mixin.
+  * common ancestor of all classes.
 
 ## Method & property decorators
 
