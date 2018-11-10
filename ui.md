@@ -17,7 +17,6 @@ and [milestones](https://github.com/luapower/ui/milestones).
   * cascading styles.
   * declarative transition animations.
   * flexbox and css-grid-like layouts.
-  * affine transforms.
 
 ## Example
 
@@ -40,9 +39,15 @@ local b = ui:button{
 ui:run()
 ~~~
 
+## Objects
+
+  * provide [subclassing, overriding and virtual properties][oo]
+  * provide [events]
+
 ## The `ui` module/singleton
 
-  * it subclasses `ui.object`
+The `ui` singleton is an object. API-wise it's a facade on [nw]'s app
+singleton. It manages app behavior, events and resources.
 
 -------------------------------------- ---------------------------------------
 __native properties__
@@ -61,7 +66,13 @@ __native methods__
 `opendialog, savedialog,` \
 `app_already_running,` \
 `wakeup_other_app_instances,` \
-`check_single_app_instance,` \
+`check_single_app_instance`
+
+__native events__
+
+`quitting, activated, deactivated,` \  these map directly to nw app \
+`wakeup, hidden, unhidden,` \          events, so see [nw].
+`displays_changed`
 
 __font registration__
 
@@ -72,7 +83,8 @@ __font registration__
 
 ## Elements
 
-  * subclass `ui.object`
+Elements are objects. They provide styling and transitions for windows
+and layers.
 
 -------------------------------------- ---------------------------------------
 __selectors__
@@ -131,7 +143,7 @@ __attribute transitions__
 
 ## Windows
 
-  * they subclass `ui.element`
+Windows are elements. API-wise they're a facade on [nw]'s windows.
 
 -------------------------------------- ---------------------------------------
 `ui:window{...} -> win`
@@ -169,6 +181,23 @@ __native properties__
 `sticky, dead, active, isminimized,` \
 `ismaximized, display, cursor`
 
+__native events__
+
+`activated, deactivated, wakeup,` \    these map directly to nw window \
+`shown, hidden,` \                     events, so see [nw].
+`minimized, unminimized,` \
+`maximized, unmaximized,` \
+`entered_fullscreen,` \ \
+`exited_fullscreen,` \
+`changed,` \
+`sizing,` \
+`frame_rect_changed, frame_moved,` \
+`frame_resized,` \
+`client_moved, client_resized,` \
+`magnets,` \
+`free_cairo, free_bitmap,` \
+`scalingfactor_changed`
+
 __element query interface__
 
 `win:find(sel) -> elem_list`
@@ -194,12 +223,149 @@ __frameless windows__
 
 ## Layers
 
-  * they subclass `ui.element`
+Layers are elements. Similar to HTML divs, they encapsulate all the drawing
+and input infrastructure for implementing widgets, and can also be used
+standalone as layout containers, text labels or other presentation elements.
 
--------------------------------------- ---------------------------------------
-__
+### Configuring
 
--------------------------------------- ---------------------------------------
+-------------------------------- ---------------- ------------------------------------------------------------------
+__visibility & input__           __default__
+`visible`                        true             visible and occupies space in the layout
+`enabled`                        true             looks enabled and receives input
+`activable`                      true             can be clicked and set as hot
+`vscrollable`                    false            enable mouse wheel when hot and not focused
+`hscrollable`                    false            enable mouse horiz. wheel when hot and not focused
+`scrollable`                     false            can be hit for vscroll or hscroll
+`focusable`                      false            can be focused
+`draggable`                      true             can be dragged (still needs to respond to start_drag())
+`mousedown_activate`             false            activate/deactivate on left mouse down/up
+`drag_threshold`                 0                moving distance before start dragging
+`max_click_chain`                1                2 for getting doubleclick events, etc.
+__geometry__
+`x`                              0                calculated x-coord relative to pos_parent
+`y`                              0                calculated y-coord relative to pos_parent
+`w`                              0                calculated width
+`h`                              0                calculated height
+`rotation`                       0                rotation angle (radians)
+`rotation_cx`                    0                rotation center x-coord
+`rotation_cy`                    0                rotation center y-coord
+`scale`                          1                scale factor
+`scale_x`                        false            scale x-factor
+`scale_y`                        false            scale y-factor
+`scale_cx`                       0                scaling center x-coord
+`scale_cy`                       0                scaling center y-coord
+__parent/child__
+`parent`                         false            parent
+`pos_parent`                     false            position parent
+`[i]`                            nil              `i`'th child layer
+`layer_index`                                     index in parent's array part
+`window`                                          parent's window
+__mouse__
+`mouse_x`                                         last-mouse-event x-coord
+`mouse_y`                                         last-mouse-event y-coord
+__drag & drop__
+__tooltip__
+`tooltip`
+__focus__
+`focused`
+`tabindex`
+`tabgroup`
+`taborder`
+__borders__
+`border_width`                   0 (none)         border thickness
+`border_width_left`              false            border thickness side override
+`border_width_right`             false            border thickness side override
+`border_width_top`               false            border thickness side override
+`border_width_bottom`            false            border thickness side override
+`corner_radius`                  0 (square)       border corner radius
+`corner_radius_top_left`         false            border corner radius side override
+`corner_radius_top_right`        false            border corner radius side override
+`corner_radius_bottom_left`      false            border corner radius side override
+`corner_radius_bottom_right`     false            border corner radius side override
+`border_color`                   '#fff'           border color
+`border_color_left`              false            border color side override
+`border_color_right`             false            border color side override
+`border_color_top`               false            border color side override
+`border_color_bottom`            false            border color side override
+`border_dash`                    false            border dash: `{width1, width2, ...}`
+`border_offset`                  -1 (inside)      border stroke position rel. to box edge (1=outside)
+`corner_radius_kappa`            1.2              smoother rounded corners
+__backgrounds__
+`background_type`                'color'          false, 'color', 'gradient', 'radial_gradient', 'image'
+`background_hittable`            true
+`background_x`                   0
+`background_y`                   0
+`background_rotation`            0
+`background_rotation_cx`         0
+`background_rotation_cy`         0
+`background_scale`               1
+`background_scale_cx`            0
+`background_scale_cy`            0
+`background_color`               false (none)     solid color
+`background_colors`              false            gradient: `{[offset1], color1, ...}`
+`background_x1`                  0                linear gradient: 1st endpoint x-coord
+`background_y1`                  0                linear gradient: 1st endpoint y-coord
+`background_x2`                  0                linear gradient: 2nd endpoint x-coord
+`background_y2`                  0                linear gradient: 2nd endpoint y-coord
+`background_cx1`                 0                radial gradient: 1st center x-coord
+`background_cy1`                 0                radial gradient: 1st center y-coord
+`background_r1`                  0                radial gradient: 1st radius
+`background_cx2`                 0                radial gradient: 2nd center x-coord
+`background_cy2`                 0                radial gradient: 2nd center y-coord
+`background_r2`                  0                radial gradient: 2nd radius
+`background_image`               false            image file (requires [libjpeg])
+`background_operator`            'over'           cairo blending operator
+`background_clip_border_offset`  1                like border_offset but for clipping the background
+__shadows__
+`shadow_x`                       0                shadow offset x-coord
+`shadow_y`                       0                shadow offset y-coord
+`shadow_color`                   '#000'           shadow color
+`shadow_blur`                    0 (none)         shadow blur size
+__text__
+`text`                           false (none)
+`font`                           'Open Sans,14'
+`text_color`                     '#fff'
+`line_spacing`                   1                line spacing factor
+`paragraph_spacing`              2                paragraph spacing factor
+`text_dir`                       'auto'           BiDi base direction: auto, rtl, ltr
+`nowrap`                         false            no automatic line wrapping
+`text_operator`                  'over'           cairo blending operator
+`text_align`
+`text_align_x`
+`text_align_y`
+`baseline`
+__content box__
+`padding`                        0 (none)         default padding on all sides
+`padding_left`                   false            padding side override
+`padding_right`                  false            padding side override
+`padding_top`                    false            padding side override
+`padding_bottom`                 false            padding side override
+__layouting__
+`layout`                         false (none)     false, 'textbox', 'flexbox', 'grid'
+`min_cw`                         0                minimum content-box width
+`min_ch`                         0                minimum content-box height
+__null-layouts__
+`x, y, w, h`
+__flexbox layouts__
+`flex_axis`                      'x'              flexbox main axis: 'x', 'y'
+`flex_wrap`                      false            auto-wrap content
+`align_lines/_cross/_main`       'stretch'        'stretch', 'start'/'top'/'left', 'end'/'bottom'/'right', 'center'
+`align_lines`                    'stretch'        additionally: 'space_between', 'space_around', 'space_evenly'
+`align_cross`                    'stretch'        additionally: 'baseline'
+`align_main`                     'stretch'        additionally: 'space_between', 'space_around', 'space_evenly'
+`align_cross_self`               false            overrides `parent.align_cross`
+`fr`                             1                stretch fraction
+__grid layouts__
+`grid_cols`                      {}               `{fr1, ...}`
+`grid_rows`                      {}               `{fr1, ...}`
+`col_gap`                        0 (none)         column gap
+`row_gap`                        0 (none)         row gap
+`grid_align_x`                   'stretch'        'stretch', 'start'/'top'/'left', 'end'/'bottom'/'right', 'center'
+`grid_align_y`                   'stretch'        'stretch', 'start'/'top'/'left', 'end'/'bottom'/'right', 'center'
+`align_x_self`                   false
+`align_y_self`                   false
+-------------------------------- ---------------- ------------------------------------------------------------------
 
 ### Box model
 
@@ -234,9 +400,27 @@ __
   * return `true` in a `keydown` event to eat up a key stroke so that it
   isn't used by other actions: this is how key conflicts are solved.
 
+### The top layer
+
+All windows have a top layer in their `view` field. Its size is kept in sync
+with the window's client area and it is configured to clear the window's
+bitmap on every repaint:
+
+-------------------------------- ---------------- ------------------------------------------------------------------
+`background_color`               '#040404'        a default color that works with transparent windows
+`background_operator`            'source'         clear background
+-------------------------------- ---------------- ------------------------------------------------------------------
+
+User-created layers must ultimately be atteched to the window's view (or to
+the window itself which will attach them to the window's view) in order to be
+visible and respond to user input. The view is the only layer whose `parent`
+is a window, not another layer.
+
 ## Widgets
 
-  * they subclass `ui.layer`
+Widgets are layer trees with custom styling and behavior and additional
+properties, methods and events. Widgets can be extended by subclassing and
+overriding and can be re-styled with `ui:style()`.
 
 -------------------------------------- ---------------------------------------
 __input__
@@ -392,7 +576,9 @@ The main topics that need to be understood in order to create new widgets are:
 
 ## The object class
 
-  * base class, created with [oo]; inherits oo.Object.
+  * `ui.object`
+  * ancestor of all classes `ui.object:subclass(name)`.
+  * created with [oo]; inherits oo.Object.
   * inherits the [events] mixin.
 
 ## Method & property decorators

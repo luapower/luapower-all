@@ -2384,6 +2384,8 @@ end
 
 --layer parent property & child list -----------------------------------------
 
+layer._parent = false
+
 function layer:get_parent() --child interface
 	return self._parent
 end
@@ -2502,10 +2504,6 @@ end
 
 function layer:get_mouse_x() return (select(1, self:mouse_pos())) end
 function layer:get_mouse_y() return (select(2, self:mouse_pos())) end
-
-function layer:get_mouse()
-	return self.window.mouse
-end
 
 function layer:getcursor(area)
 	return self['cursor_'..area] or self.cursor
@@ -2862,7 +2860,7 @@ function layer:next_focusable_widget(forward)
 	end
 end
 
---layers geometry, drawing and hit testing
+--layers geometry, drawing and hit testing -----------------------------------
 
 function layer:children_bounding_box(strict)
 	local x, y, w, h = 0, 0, 0, 0
