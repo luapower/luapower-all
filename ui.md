@@ -40,45 +40,6 @@ local b = ui:button{
 ui:run()
 ~~~
 
-## The `object` class
-
-  * base class, created with [oo]; inherits oo.Object.
-  * inherits the [events] mixin.
-
-### Method & property decorators
-
-#### `object:memoize(method_name)`
-
-Memoize a method (which must be single-return-value).
-
-#### `object:forward_events(obj, events)`
-
-Forward some events (`events = {event_name1, ...}`) from `obj` to `self`,
-i.e. install event handlers in `obj` which forward events to `self`.
-
-#### `object:stored_property(prop, [priv])`
-
-Create a r/w property named `prop` which reads/writes from a "private field".
-
-#### `object:nochange_barrier(prop)`
-
-Call `prop`'s setter only when setting a diff. value than current.
-
-#### `object:track_changes(prop)`
-
-Fire a `<prop>_changed` event when the property value changes.
-
-#### `object:instance_only(prop)`
-
-Inhibit a property's getter and setter when using the property on the class.
-instead, set a private var on the class which serves as default value.
-NOTE: use this only _after_ defining the getter and setter.
-
-#### `object:enum_property(prop, values)`
-
-Validate a property when being set against a list of allowed values.
-
-
 ### The `ui` object
 
 -------------------------------------- ---------------------------------------
@@ -390,35 +351,76 @@ TODO
 TODO
 -------------------------------------- ---------------------------------------
 
-## Creating new widgets
+# Creating new widgets
 
-The API for creating and extending widgets is far larger and more complex
+The API for creating and extending widgets is larger and more complex
 than the API for instantiating and using existing widgets. This is normal,
 since widgets are supposed to encapsulate complex user interaction patterns
-as well as provide customizable presentation and behavior. This API is also
-less stable than the user API and not formally documented (that's not to say
-that it's not stable at all, and it is well documented in the code IMHO).
+as well as provide customizable presentation and behavior.
 
-That being said, there are many programming features which combined enable
-short, clean, extensible implementations that don't degenerate into
-spagetti-code past a certain level of complexity.
+The main topics that need to be understood in order to create new widgets are:
 
-These are the main programming features that need to be understood for
-hacking widgets:
+ * the [object system][oo], which provides extensibility mechanisms:
+	* subclassing and instantiation
+	* virtual properties
+	* method overriding
+ * the [event system][events], which implements a generic pub-sub API
+ * the `ui.object` class, which provides meta-programming facilities for:
+   * memoizing methods
+	* creating "stored" properties
+	* creating "live" (aka "instance-only") properties
+	* creating self-validating enum properties
+ * the `ui.element` class, which provides a base non-visual vocabulary for:
+   * applying multiple attribute value sets based on tag combinations (aka CSS)
+	* time-based interpolation of attribute values (aka transition animations)
+ * the `ui.layer` class, which provides a base visual vocabulary:
+	* layer hierarchies with relative affine transforms and clipping
+	* drawing borders, backgrounds, shadows, and aligned text
+	* hit testing borders, background and content
+	* layouting, including css-flexbox and css-grid-like models
+ * the `ui.window` and `ui.layer` classes, which work together to provide an input API:
+   * routing mouse events to the hot widget; mouse capturing
+	* routing keyboard events to the focused widget; tab-based navigation
+	* drag & drop API (event-based)
 
- * the [object system][oo],
- * the layer class,
- * the drag & drop API.
+## The object class
 
-The object system provides subclassing and instantiation (of course) but also
-virtual properties and method overriding hooks which are the bread and butter
-of extensible widget programming.
+  * base class, created with [oo]; inherits oo.Object.
+  * inherits the [events] mixin.
 
-The ui layer class (the base class from which all widgets are derived)
-contains many abstractions that widgets can be built upon like relative
-positioning, hit testing and tab-based navigation.
+## Method & property decorators
 
-The drag & drop API is nothing special except that it's a litte more complex
-so I mention it because it needs a little extra effort to understand. OTOH,
-ignoring it and reinventing it in your widgets or apps could be worse,
-since it's hard to get it right.
+Various utilities (exposed as class methods) for changing the behavior of
+specific properties and methods.
+
+### object:memoize(method_name)
+
+Memoize a method (which must be single-return-value).
+
+### `object:forward_events(obj, events)`
+
+Forward some events (`events = {event_name1, ...}`) from `obj` to `self`,
+i.e. install event handlers in `obj` which forward events to `self`.
+
+### `object:stored_property(prop, [priv])`
+
+Create a r/w property named `prop` which reads/writes from a "private field".
+
+### `object:nochange_barrier(prop)`
+
+Call `prop`'s setter only when setting a diff. value than current.
+
+### `object:track_changes(prop)`
+
+Fire a `<prop>_changed` event when the property value changes.
+
+### `object:instance_only(prop)`
+
+Inhibit a property's getter and setter when using the property on the class.
+instead, set a private var on the class which serves as default value.
+NOTE: use this only _after_ defining the getter and setter.
+
+### `object:enum_property(prop, values)`
+
+Validate a property when being set against a list of allowed values.
+
