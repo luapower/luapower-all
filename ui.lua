@@ -4545,8 +4545,8 @@ layer.grid_cols = {} --{fr1, ...}
 layer.grid_rows = {} --{fr1, ...}
 layer.col_gap = 0
 layer.row_gap = 0
-layer.grid_align_x = 'stretch'
-layer.grid_align_y = 'stretch'
+layer.align_x = 'stretch'
+layer.align_y = 'stretch'
 
 --item properties
 layer.align_x_self = false
@@ -4819,9 +4819,9 @@ local function gen_funcs(X, Y, W, H, COL, LEFT, RIGHT)
 	local _MIN_W = '_min_'..W
 	local SYNC_MIN_W = 'sync_min_'..W
 	local SYNC_LAYOUT_X = 'sync_layout_'..X
-	local COL_GAP = 'grid_'..COL..'_gap'
+	local COL_GAP = COL..'_gap'
 	local COLS = 'grid_'..COL..'s'
-	local ALIGN_X = 'grid_align_'..X
+	local ALIGN_X = 'align_'..X
 	local _COLS = '_grid_'..COL..'s'
 	local _MAX_COL = '_grid_max_'..COL
 	local _COL = '_grid_'..COL

@@ -257,7 +257,7 @@ __geometry__
 `scale_cy`                       0                scaling center y-coord
 __parent/child__
 `parent`                         false            parent
-`pos_parent`                     false            position parent
+`pos_parent`                     false            position parent (if false, use `parent`)
 `[i]`                            nil              `i`'th child layer
 `layer_index`                                     index in parent's array part
 `window`                                          parent's window
@@ -331,9 +331,9 @@ __text__
 `text_dir`                       'auto'           BiDi base direction: auto, rtl, ltr
 `nowrap`                         false            no automatic line wrapping
 `text_operator`                  'over'           cairo blending operator
-`text_align`
-`text_align_x`
-`text_align_y`
+`text_align`                     'center center'  text x y align: 'l|c|r t|c|b'
+`text_align_x`                   false            text x-align override: 'l|c|r'
+`text_align_y`                   false            text y-align override: 't|c|b'
 `baseline`
 __content box__
 `padding`                        0 (none)         default padding on all sides
@@ -348,23 +348,25 @@ __layouting__
 __null-layouts__
 `x, y, w, h`
 __flexbox layouts__
-`flex_axis`                      'x'              flexbox main axis: 'x', 'y'
-`flex_wrap`                      false            auto-wrap content
-`align_lines/_cross/_main`       'stretch'        'stretch', 'start'/'top'/'left', 'end'/'bottom'/'right', 'center'
-`align_lines`                    'stretch'        additionally: 'space_between', 'space_around', 'space_evenly'
-`align_cross`                    'stretch'        additionally: 'baseline'
+`flex_axis`                      'x'              main axis of flow: 'x', 'y'
+`flex_wrap`                      false            line-wrap content
+`align_main/_cross/_lines`       'stretch'        'stretch', 'start'/'top'/'left', 'end'/'bottom'/'right', 'center'
 `align_main`                     'stretch'        additionally: 'space_between', 'space_around', 'space_evenly'
+`align_cross`                    'stretch'        additionally: 'baseline'
+`align_lines`                    'stretch'        additionally: 'space_between', 'space_around', 'space_evenly'
 `align_cross_self`               false            overrides `parent.align_cross`
 `fr`                             1                stretch fraction
 __grid layouts__
-`grid_cols`                      {}               `{fr1, ...}`
-`grid_rows`                      {}               `{fr1, ...}`
-`col_gap`                        0 (none)         column gap
-`row_gap`                        0 (none)         row gap
-`grid_align_x`                   'stretch'        'stretch', 'start'/'top'/'left', 'end'/'bottom'/'right', 'center'
-`grid_align_y`                   'stretch'        'stretch', 'start'/'top'/'left', 'end'/'bottom'/'right', 'center'
-`align_x_self`                   false
-`align_y_self`                   false
+`grid_flow`                      'x'              flow direction & main axis: 'x', 'y', 'xr', 'yr', 'xb', 'yb', 'xrb', 'yrb'
+`grid_wrap`                      1                number of rows/columns on the main axis of flow
+`grid_cols`                      {}               column size fractions `{fr1, ...}`
+`grid_rows`                      {}               row size fractions `{fr1, ...}`
+`col_gap`                        0 (none)         gap size between columns
+`row_gap`                        0 (none)         gap size between rows
+`align_x`                        'stretch'        'stretch', 'start'/'top'/'left', 'end'/'bottom'/'right', 'center', 'space_between', 'space_around', 'space_evenly'
+`align_y`                        'stretch'        'stretch', 'start'/'top'/'left', 'end'/'bottom'/'right', 'center', 'space_between', 'space_around', 'space_evenly'
+`align_x_self`                   false            item `align_x` override
+`align_y_self`                   false            item `align_y` override
 -------------------------------- ---------------- ------------------------------------------------------------------
 
 ### Box model
