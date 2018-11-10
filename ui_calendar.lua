@@ -81,7 +81,7 @@ function calendar:before_init()
 	for i = 1, 7 do
 		push(self.cols, {
 			text = ui.weekdays_short[i],
-			text_align = 'center',
+			text_align_x = 'center',
 		})
 	end
 end
@@ -91,7 +91,7 @@ function calendar:after_sync()
 	for i = 1, 7 do
 		self.cols[i].w = w
 	end
-	self.row_h = math.floor(self.scroll_pane.rows_layer.ch / self.row_count)
+	self.row_h = math.floor(self.scroll_pane.rows_pane.rows_layer.ch / self.row_count)
 end
 
 

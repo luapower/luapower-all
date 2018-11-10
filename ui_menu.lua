@@ -44,7 +44,7 @@ end
 function ui.menu:item_y(mi)
 	assert(mi.parent == self)
 	local y = 0
-	for _,item in ipairs(self.layers) do
+	for _,item in ipairs(self) do
 		if item.ismenuitem then
 			if item == mi then
 				return y
@@ -60,7 +60,7 @@ function ui.menu:after_add_layer(mi)
 	mi.x = 0
 	mi.w = self.w
 	mi.y = self:item_y(mi)
-	local prev_mi = self.layers[#self.layers - 1]
+	local prev_mi = self[#self - 1]
 	if prev_mi then
 		prev_mi.border_color_bottom = '#0000'
 		mi.border_color_top = self.border_color_top

@@ -1,9 +1,11 @@
+--go @ luajit -jp=a *
 
 local time = require'time'
 local ui = require'ui'
-local win = ui:window{x = 700, y = 100, cw = 1200, ch = 700, visible = false}
+local win = ui:window{x = 700, y = 100, cw = 1200, ch = 700, visible = false, autoquit=true}
+function win:keyup(key) if key == 'esc' then self:close() end end
 
---ui.maxfps = 1/0
+ui.maxfps = 1/0
 
 local function fps_function()
 	local count_per_sec = 2
@@ -26,7 +28,7 @@ win.native_window:on('repaint', function(self)
 	self:title(string.format('%d fps', fps()))
 end)
 
-if ... == 'ui_demo' then --loaded via require()
+if ... == 'ui_demo' and not DEMO then --loaded via require()
 	return function(test)
 		test(ui, win)
 		win:show()
@@ -231,7 +233,7 @@ local function test_css()
 
 
 	--ui:style('*', {transition_speed = 1/0})
-	--ui:style('*', {font_name = 'Roboto Condensed', font_weigt = 'bold', text_size = 24})
+	--ui:style('*', {font_name = 'Roboto Condensed', font_weigt = 'bold', font_size = 24})
 	--b1:update_styles()
 	--b2:update_styles()
 
@@ -402,10 +404,9 @@ local function test_text()
 		x = 100, y = 100,
 		w = 200, h = 200,
 		text = 'gftjim;\nqTv\nxyZ',
-		text_align = 'center',
-		text_valign = 'center',
+		text_align = 'center middle',
 		text_color = '#fff',
-		text_size = 36,
+		font_size = 36,
 		border_width = 1,
 		border_color = '#fff',
 		parent = win,
@@ -421,10 +422,188 @@ local function test_text()
 
 end
 
+local function test_flexbox_inside_null()
+
+	local parent = ui:layer{
+		parent = win,
+		x = 100, y = 100,
+		w = 200, h = 200,
+		border_width = 1,
+		border_color = '#333',
+	}
+
+	local textwrap = ui:layer{
+		parent = parent,
+		text = 'Hello World! Hello World! Hello World! Hello World! \nxxxxxxxxxxx\nxxxxxxxxx\nxxxxx\nxxxxxxxxxxxxx',
+		text_align = 'm c',
+		w = 100,
+		h = 100,
+		--align = 'b r',
+		--min_w = 100,
+		--max_w = 1000,
+		--min_h = 150,
+		--max_h = 1/0,
+		layout = 'flexbox',
+		border_width = 10,
+		padding = 10,
+	}
+end
+
+local function test_flexbox()
+
+	local flex = ui:layer{
+		parent = win,
+		layout = 'flexbox',
+		flex_wrap = true,
+		flex_axis = 'y',
+		align_main = 'stretch',
+		align_cross = 'center',
+		align_lines = 'start',
+		border_width = 20,
+		padding = 20,
+		border_color = '#333',
+		x = 40, y = 40,
+		min_cw = win.cw - 120,
+		min_ch = win.ch - 120,
+		xx = 0,
+		style = {
+			transition_duration = 1,
+			transition_times = 1/0,
+			xx = 100,
+			transition_xx = true,
+		},
+	}
+
+	flex:inherit()
+
+	for i = 1, 50 do
+		local r = math.random(10)
+		local b = ui:layer{
+			parent = flex,
+			layout = 'textbox',
+			border_width = 1,
+			min_cw = r * 12,
+			min_ch = r * 6,
+			break_after = i == 50,
+			break_before = i == 50,
+			--padding = 10,
+			--flex_align = i == 3 and 'stretch' or i == 1 and 'bottom' or 'baseline',
+			--layout = 'text_wrap',
+			--text_align = 'c m',
+			--text = ('x'):rep(r) .. ' ' .. ('x'):rep(10-r),
+			--text_align = 'r b',
+			flex_fr = r,
+			--font_size = 10 + i * 3,
+		}
+
+		b:inherit()
+	end
+
+	function win:client_resized()
+		flex.min_cw = win.cw - 120
+		flex.min_ch = win.ch - 120
+		self:invalidate()
+	end
+
+end
+
+local function test_grid_layout()
+
+	local grid = ui:layer{
+		parent = win,
+
+		layout = 'grid',
+		grid_wrap = 5,
+		grid_flow = 'yrb',
+		grid_col_gap = 10,
+		grid_row_gap = 5,
+		grid_align_x = 'space_around',
+		grid_align_y = 'space_around',
+
+		border_width = 20,
+		padding = 20,
+		border_color = '#333',
+		x = 40, y = 40,
+		min_cw = win.cw - 120,
+		min_ch = win.ch - 120,
+		xx = 0,
+		style = {
+			transition_duration = 1,
+			transition_times = 1/0,
+			xx = 100,
+			transition_xx = true,
+		},
+	}
+
+	for i = 1, 10 do
+		local r = math.random(10)
+		local b = ui:layer{
+			parent = grid,
+			layout = 'textbox',
+			border_width = 1,
+			text = i..' '..('xx'):rep(r),
+
+			grid_col_span = i % 2 + 1,
+			grid_row_span = 2 - i % 2,
+		}
+	end
+
+	function win:client_resized()
+		grid.min_cw = win.cw - 120
+		grid.min_ch = win.ch - 120
+		self:invalidate()
+	end
+
+end
+
+local function test_widgets_flex()
+
+	win.view.layout = 'grid'
+	win.view.padding = 40
+	win.view.grid_wrap = 2
+	win.view.grid_gap_x = 20
+	--win.view.flex_axis = 'y'
+	win.view.align_cross = 'center'
+
+	ui:checkbox{
+		parent = win,
+		label =  {text = 'Check me', nowrap = false},
+		checked = true,
+	}
+
+	ui:choicebutton{
+		parent = win,
+		values = {
+			'Choose me',
+			'No, me!',
+			{text = 'Me, me, me!', value = 'val3'},
+		},
+		selected = 'val3',
+	}
+
+	ui:radiobutton{
+		parent = win,
+		label =  {text = 'Radio me'},
+		checked = true,
+		radio_group = 1,
+		align = 'right',
+	}
+
+	ui:slider{
+		parent = win,
+		position = 3, size = 10,
+		step_labels = {Low = 0, Medium = 5, High = 10},
+		step = 2,
+	}
+end
+
 --test_css()
-test_layers()
+--test_layers()
 --test_drag()
 --test_text()
+--test_flexbox()
+--test_grid_layout()
+test_widgets_flex()
 win:show()
 ui:run()
 ui:free()

@@ -58,16 +58,15 @@ function editor:walk_layer(cr, layer, func, ...)
 	cr:save()
 	cr:matrix(layer:cr_abs_matrix(cr))
 	func(self, cr, layer, ...)
-	self:walk_layers(cr, layer, func, ...)
+	self:walk_children(cr, layer, func, ...)
 	cr:restore()
 end
 
-function editor:walk_layers(cr, layer, func, ...)
-	if not layer.layers then return end
+function editor:walk_children(cr, layer, func, ...)
 	local cx, cy = layer:padding_pos()
 	cr:translate(cx, cy)
-	for i = 1, #layer.layers do
-		self:walk_layer(cr, layer.layers[i], func, ...)
+	for i = 1, #layer do
+		self:walk_layer(cr, layer[i], func, ...)
 	end
 	cr:translate(-cx, -cy)
 end
@@ -100,10 +99,9 @@ end
 
 --hit testing
 
-function editor:hit_test_target_layers(cr, layer, x, y)
-	if not layer.layers then return end
-	for i = #layer.layers, 1, -1 do
-		if self:hit_test_target(cr, layer.layers[i], x, y) then
+function editor:hit_test_target_children(cr, layer, x, y)
+	for i = #layer, 1, -1 do
+		if self:hit_test_target(cr, layer[i], x, y) then
 			return true
 		end
 	end
@@ -114,7 +112,7 @@ function editor:hit_test_target(cr, layer, x, y)
 	if not layer.visible then return end
 	if not (layer.iswidget or layer == layer.window.view) then return end
 	local x, y = layer:from_parent(x, y)
-	if self:hit_test_target_layers(cr, layer, x, y) then
+	if self:hit_test_target_children(cr, layer, x, y) then
 		return true
 	elseif box2d.hit(x, y, 0, 0, layer.cw, layer.ch) then
 		self.hot_widget = layer

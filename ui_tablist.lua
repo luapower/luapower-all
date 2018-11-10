@@ -331,7 +331,7 @@ end
 local title = ui.layer:subclass'tab_title'
 tab.title_class = title
 
-title.text_align = 'left'
+title.text_align = 'middle left'
 title.padding_left = 2
 title.padding_right = 2
 title.text_color = '#ccc'
@@ -536,14 +536,14 @@ function tablist:next_tab(from_tab, mode, rotate, include_dragging)
 	end
 
 	local forward = mode:find'next'
-	local tabs = mode:find'layer' and self.layers or self.tabs
+	local tabs = mode:find'layer' and self or self.tabs
 
 	local i0, i1, step = 1, #tabs, 1
 	if not forward then
 		i0, i1, step = i1, i0, -step
 	end
 	if from_tab then
-		local index_field = tabs == self.layers and 'layer_index' or 'index'
+		local index_field = tabs == self and 'layer_index' or 'index'
 		i0 = from_tab[index_field] + (forward and 1 or -1)
 	end
 	for i = i0, i1, step do

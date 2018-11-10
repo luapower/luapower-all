@@ -8,9 +8,11 @@ local progressbar = ui.layer:subclass'progressbar'
 ui.progressbar = progressbar
 progressbar.iswidget = true
 
+--progressbar.layout = 'textbox'
+progressbar.h = 24
+progressbar.text_operator = 'xor'
 progressbar.border_width = 1
 progressbar.border_color = '#333'
-progressbar.h = 24
 
 function progressbar:format_text(progress)
 	return string.format('%d%%', progress * 100)
@@ -49,8 +51,7 @@ if not ... then require('ui_demo')(function(ui, win)
 		parent = win,
 		x = 100, y = 100, w = 200,
 		progress = .48,
-		text_operator = 'xor',
-		text_color = '#ff0',
+		text_color = '#f0f',
 		bar = {
 			background_color = '#ff0',
 		},

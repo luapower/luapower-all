@@ -18,7 +18,7 @@ editbox.iswidget = true
 
 --features
 
-editbox.text_align = 'left'
+editbox.text_align = 'left center'
 editbox.password = false
 editbox.maxlen = 4096
 
@@ -182,8 +182,7 @@ function editbox:get_multiline()
 end
 
 ui:style('editbox multiline', {
-	text_align = 'left',
-	text_valign = 'top',
+	text_align = 'top left',
 })
 
 editbox.scrollbox_class = ui.scrollbox
@@ -254,7 +253,7 @@ function editbox:sync_scrollbox()
 	segs.lines.editbox_clipped = false
 end
 
-function editbox:get_text_visible()
+function editbox:text_visible()
 	return true --always sync, even for the empty string.
 end
 
@@ -760,7 +759,7 @@ if not ... then require('ui_demo')(function(ui, win)
 	ui:add_font_file('media/fonts/FSEX300.ttf', 'fixedsys')
 	local x, y = 10, 10
 	local function xy()
-		local editbox = win.view.layers[#win.view.layers]
+		local editbox = win.view[#win.view]
 		y = y + editbox.h + 10
 		if y + editbox.h + 10 > win.ch then
 			x = x + editbox.y + 10

@@ -363,6 +363,7 @@ function grid:create_rows_pane(split_pane)
 		split_pane = split_pane,
 		grid = self,
 		content = rows,
+		rows_layer = rows,
 	}, self.rows_pane)
 	rows.rows_pane = rows_pane
 
@@ -417,7 +418,7 @@ end
 local col = ui.layer:subclass'grid_col'
 grid.col_class = col
 
-col.text_align = 'left'
+col.text_align = 'left center'
 col.nowrap = true
 col._w = 200
 col.auto_w = true --distribute pane's width among all columns
@@ -703,7 +704,7 @@ ui:style('grid_col !last_col !:moving', {
 local cell = ui.layer:subclass'grid_cell'
 grid.cell_class = cell
 
-cell.text_align = 'left'
+cell.text_align = 'left center'
 cell.nowrap = true
 cell.padding_left = 4
 cell.padding_right = 4
@@ -935,6 +936,7 @@ function grid:draw_row_col(cr, i, col, y, h, hot)
 	cell:settag(':hot', hot)
 	cell.visible = true
 	cell:sync()
+	cell:sync_layout()
 	cell:draw(cr)
 	cell.visible = false
 end
@@ -984,15 +986,13 @@ function grid:draw_rows(cr, rows_pane)
 	end
 	self._cell = false
 	local header = rows_pane.split_pane.header_pane.content
-	if header.layers then
-		for _,col in ipairs(header.layers) do
-			if col.isgrid_col and not col.clipped then
-				local cell = self:cell_at(i1, col)
-				if cell == self._cell then
-					self:sync_cell_to_col(cell, col)
-				end
-				self:draw_rows_col(cr, i1, i2, col, hot_i, hot_col)
+	for _,col in ipairs(header) do
+		if col.isgrid_col and not col.clipped then
+			local cell = self:cell_at(i1, col)
+			if cell == self._cell then
+				self:sync_cell_to_col(cell, col)
 			end
+			self:draw_rows_col(cr, i1, i2, col, hot_i, hot_col)
 		end
 	end
 end
@@ -1759,8 +1759,8 @@ end
 --called by the dropdown to resize the picker's popup window before it is
 --shown (which is why we can't just set the grid size on sync()).
 function grid:sync_dropdown()
-	--update styles first because we use self's paddings.
-	self:update_styles()
+	--sync styles first because we use self's paddings.
+	self:sync_styles()
 
 	local w = self.dropdown.w
 	local noscroll_ch = self.rows_h

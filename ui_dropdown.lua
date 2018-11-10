@@ -14,7 +14,7 @@ dropdown.iswidget = true
 dropdown.w = 180
 dropdown.h = 24
 --these must match grid's metrics.
-dropdown.text_align = 'left'
+dropdown.text_align = 'left center'
 dropdown.padding_left = 2
 dropdown.padding_right = 0
 

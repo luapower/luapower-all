@@ -29,6 +29,7 @@ slider.tip_class        = tip
 slider.step_label_class = step_label
 
 slider.focusable = true
+slider.min_ch = 24
 slider.w = 180
 slider.h = 24
 
@@ -111,7 +112,7 @@ tip.format = '%g'
 tip.border_width = 0
 tip.border_color = '#fff'
 tip.border_offset = 1
-tip.text_size = 11
+tip.font_size = 11
 
 tip.opacity = 0
 
@@ -134,7 +135,7 @@ ui:style('slider_tip :visible', {
 	transition_blend_opacity = 'replace',
 })
 
-step_label.text_size = 10
+step_label.font_size = 10
 
 --pin position
 
@@ -277,8 +278,8 @@ function slider:after_sync()
 		p.dragging and self:nearest_position(p.position) or self.position))
 
 	if self.step_labels then
-		local h = math.floor(self.h - (self.step_lines_visible and 0 or 10))
-		for _,l in ipairs(self.layers) do
+		local h = math.floor(self.h - (self:step_lines_visible() and 0 or 10))
+		for _,l in ipairs(self) do
 			if l.tags.slider_step_label then
 				if l.progress then
 					l.x = self.pin:cx_at_progress(l.progress)
@@ -294,7 +295,7 @@ function slider:after_sync()
 	end
 end
 
-function slider:get_step_lines_visible()
+function slider:step_lines_visible()
 	return self.step and self.step_line_color
 		and self.cw / (self.size / self.step) >= 5
 end
@@ -305,7 +306,7 @@ function slider:step_line_path(cr, cx)
 end
 
 function slider:draw_step_lines(cr)
-	if not self.step_lines_visible then return end
+	if not self:step_lines_visible() then return end
 	cr:rgba(self.ui:rgba(self.step_line_color))
 	cr:line_width(1)
 	cr:new_path()
@@ -433,7 +434,7 @@ function slider:keypress(key)
 		return true
 	elseif key == 'enter' or key == 'space' then
 		self.tip:settag(':visible', true)
-		self.tip:update_styles()
+		self.tip:sync_styles()
 		return true
 	end
 	self.pin.animate = false

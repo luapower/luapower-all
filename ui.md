@@ -16,7 +16,7 @@ and [milestones](https://github.com/luapower/ui/milestones).
   * consistent Unicode [text rendering][tr] and editing on all platforms.
   * cascading styles.
   * declarative transition animations.
-  * constraint-based, container-based and flow-based layouts.
+  * flexbox and css-grid-like layouts.
   * affine transforms.
 
 ## Example
@@ -39,6 +39,45 @@ local b = ui:button{
 
 ui:run()
 ~~~
+
+## The `object` class
+
+  * base class, created with [oo]; inherits oo.Object.
+  * inherits the [events] mixin.
+
+### Method & property decorators
+
+#### `object:memoize(method_name)`
+
+Memoize a method (which must be single-return-value).
+
+#### `object:forward_events(obj, events)`
+
+Forward some events (`events = {event_name1, ...}`) from `obj` to `self`,
+i.e. install event handlers in `obj` which forward events to `self`.
+
+#### `object:stored_property(prop, [priv])`
+
+Create a r/w property named `prop` which reads/writes from a "private field".
+
+#### `object:nochange_barrier(prop)`
+
+Call `prop`'s setter only when setting a diff. value than current.
+
+#### `object:track_changes(prop)`
+
+Fire a `<prop>_changed` event when the property value changes.
+
+#### `object:instance_only(prop)`
+
+Inhibit a property's getter and setter when using the property on the class.
+instead, set a private var on the class which serves as default value.
+NOTE: use this only _after_ defining the getter and setter.
+
+#### `object:enum_property(prop, values)`
+
+Validate a property when being set against a list of allowed values.
+
 
 ### The `ui` object
 

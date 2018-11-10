@@ -109,7 +109,7 @@ function hue_bar:draw_bar(cr)
 	sr:free()
 end
 
-function hue_bar:get_background_visible()
+function hue_bar:background_visible()
 	return true
 end
 
@@ -809,7 +809,7 @@ function picker:create_mode_button()
 		value_selected = function(_, mode)
 			self.mode = mode
 		end,
-		button = {h = 17, text_size = 11},
+		button = {h = 17, font_size = 11},
 		button_corner_radius = 5,
 		w = 70,
 	}, self.mode_button)
