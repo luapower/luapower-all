@@ -2794,7 +2794,7 @@ end
 
 layer.tabindex = 0
 layer.tabgroup = 0
-layer._taborder = 'vh' --simple vertical-first-horizontal-second tab order
+layer.taborder_algorithm = 'xy' --'xy', 'yx'
 
 function layer:get_taborder()
 	return self:parent_value'_taborder'
@@ -2819,7 +2819,7 @@ function layer:focusable_widgets(t, depth)
 				if t1.parent == t2.parent then
 					local ax1, ay1 = t1.parent:to_window(t1.x, t1.y)
 					local bx1, by1 = t2.parent:to_window(t2.x, t2.y)
-					if self.taborder == 'hv' then
+					if self.taborder_algorithm == 'yx' then
 						ax1, bx1, ay1, by1 = ay1, by1, ax1, bx1
 					end
 					if ax1 == bx1 then
@@ -3480,6 +3480,12 @@ end
 
 layer.text = false
 layer.font = 'Open Sans,14'
+layer.font_name   = false
+layer.font_weight = false
+layer.font_slant  = false
+layer.font_size   = false
+layer.nowrap      = false
+layer.text_dir    = false
 layer.text_color = '#fff'
 layer.line_spacing = 1
 layer.paragraph_spacing = 2

@@ -1,20 +1,20 @@
 
 ## `local ui = require'ui'`
 
-Extensible UI toolkit written in Lua featuring layouts, styles and animations.
+Extensible UI toolkit written in Lua with widgets, layouts, styles and animations.
 
 ## Status
 
 See [issues](https://github.com/luapower/ui/issues)
 and [milestones](https://github.com/luapower/ui/milestones).
 
-## Features
+## Highlights
 
-  * feature-packed editable grid that can scroll millions of rows at 60 fps.
+  * editable grid that can scroll millions of rows at 60 fps.
   * tab list with animated, moveable, draggable, dockable tabs.
-  * highly hackable code editor written in Lua.
+  * extensible rich text editor with BiDi support.
   * consistent Unicode [text rendering][tr] and editing on all platforms.
-  * cascading styles.
+  * customization with cascading styles, inheritance and composition.
   * declarative transition animations.
   * flexbox and css-grid-like layouts.
 
@@ -28,9 +28,9 @@ local win = ui:window{
 	title = 'UI Demo',
 }
 
-local b = ui:button{
-	x = win.cw - ui.button.w - 20,
-	y = win.ch - ui.button.h - 20,
+ui:button{
+	x = 100,
+	y = 100,
 	parent = win,
 	text = 'Close',
 	cancel = true,
@@ -83,8 +83,8 @@ __font registration__
 
 ## Elements
 
-Elements are objects. They provide styling and transitions for windows
-and layers.
+Elements provide styling and transitions for windows and layers.
+Elements are objects, so all object methods and properties apply.
 
 -------------------------------------- ---------------------------------------
 __selectors__
@@ -143,7 +143,9 @@ __attribute transitions__
 
 ## Windows
 
-Windows are elements. API-wise they're a facade on [nw]'s windows.
+Window objects are a thin facade over [nw]'s windows API for creating native
+top-level windows.
+Windows are elements, so all element methods and properties apply.
 
 -------------------------------------- ---------------------------------------
 `ui:window{...} -> win`
@@ -223,14 +225,15 @@ __frameless windows__
 
 ## Layers
 
-Layers are elements. Similar to HTML divs, they encapsulate all the drawing
-and input infrastructure for implementing widgets, and can also be used
+Similar to HTML divs, layers encapsulate all the positioning, drawing and
+input infrastructure necessary for implementing widgets, and can also be used
 standalone as layout containers, text labels or other presentation elements.
+Layers are elements, so all element methods and properties apply.
 
 ### Configuring
 
 -------------------------------- ---------------- ------------------------------------------------------------------
-__visibility & input__           __default__
+__display & behavior__           __default__
 `visible`                        true             visible and occupies space in the layout
 `enabled`                        true             looks enabled and receives input
 `activable`                      true             can be clicked and set as hot
@@ -243,35 +246,27 @@ __visibility & input__           __default__
 `drag_threshold`                 0                moving distance before start dragging
 `max_click_chain`                1                2 for getting doubleclick events, etc.
 __geometry__
-`x`                              0                calculated x-coord relative to pos_parent
-`y`                              0                calculated y-coord relative to pos_parent
-`w`                              0                calculated width
-`h`                              0                calculated height
+`x, y, w, h`                     0, 0, 0, 0       calculated box coordinates relative to `pos_parent`
 `rotation`                       0                rotation angle (radians)
-`rotation_cx`                    0                rotation center x-coord
-`rotation_cy`                    0                rotation center y-coord
+`rotation_cx, rotation_cy`       0, 0             rotation center coordinates
 `scale`                          1                scale factor
-`scale_x`                        false            scale x-factor
-`scale_y`                        false            scale y-factor
-`scale_cx`                       0                scaling center x-coord
-`scale_cy`                       0                scaling center y-coord
+`scale_x, scale_y`               false, false     scale factor: axis overrides
+`scale_cx, scale_cy`             0, 0             scaling center coordinates
 __parent/child__
-`parent`                         false            parent
-`pos_parent`                     false            position parent (if false, use `parent`)
-`[i]`                            nil              `i`'th child layer
+`parent`                         false            painting/clipping parent
+`pos_parent`                     false            positioning parent (false means use `parent`)
+`[i]`                                             `i`'th child layer
 `layer_index`                                     index in parent's array part
 `window`                                          parent's window
-__mouse__
-`mouse_x`                                         last-mouse-event x-coord
-`mouse_y`                                         last-mouse-event y-coord
-__drag & drop__
-__tooltip__
-`tooltip`
+__mouse state__
+`mouse_x, mouse_y`                                last-mouse-event mouse coords
+__tooltips__
+`tooltip`                        false (none)     native tooltip text
 __focus__
-`focused`
-`tabindex`
-`tabgroup`
-`taborder`
+`focused`                                         has keyboard focus
+`tabindex`                                        tab order, for tab-based navigation
+`tabgroup`                                        tab group, for tab-based navigation
+`taborder_algorithm`             'xy'             tab order algorithm: 'xy', 'yx'
 __borders__
 `border_width`                   0 (none)         border thickness
 `border_width_left`              false            border thickness side override
@@ -294,67 +289,58 @@ __borders__
 __backgrounds__
 `background_type`                'color'          false, 'color', 'gradient', 'radial_gradient', 'image'
 `background_hittable`            true
-`background_x`                   0
-`background_y`                   0
-`background_rotation`            0
-`background_rotation_cx`         0
-`background_rotation_cy`         0
-`background_scale`               1
-`background_scale_cx`            0
-`background_scale_cy`            0
+`background_x, background_y`     0, 0             background offset coords
+`background_rotation`            0                background rotation angle (rad)
+`background_rotation_cx/_cy`     0, 0             background rotation center coords
+`background_scale`               1                background scale factor
+`background_scale_cx/_cy`        0, 0             background scale factor: axis override
 `background_color`               false (none)     solid color
 `background_colors`              false            gradient: `{[offset1], color1, ...}`
-`background_x1`                  0                linear gradient: 1st endpoint x-coord
-`background_y1`                  0                linear gradient: 1st endpoint y-coord
-`background_x2`                  0                linear gradient: 2nd endpoint x-coord
-`background_y2`                  0                linear gradient: 2nd endpoint y-coord
-`background_cx1`                 0                radial gradient: 1st center x-coord
-`background_cy1`                 0                radial gradient: 1st center y-coord
-`background_r1`                  0                radial gradient: 1st radius
-`background_cx2`                 0                radial gradient: 2nd center x-coord
-`background_cy2`                 0                radial gradient: 2nd center y-coord
-`background_r2`                  0                radial gradient: 2nd radius
-`background_image`               false            image file (requires [libjpeg])
+`background_x1/_y1/_x2/_y2`      0, 0, 0, 0       linear gradient: end-point coords
+`background_cx1/_cy1/_cx2/_cy2`  0, 0, 0, 0       radial gradient: end-point coords
+`background_r1/_r2`              0, 0             radial gradient: radii
+`background_image`               false (none)     background image file (requires [libjpeg])
 `background_operator`            'over'           cairo blending operator
 `background_clip_border_offset`  1                like border_offset but for clipping the background
 __shadows__
-`shadow_x`                       0                shadow offset x-coord
-`shadow_y`                       0                shadow offset y-coord
+`shadow_x, shadow_y`             0, 0             shadow offset coords
 `shadow_color`                   '#000'           shadow color
 `shadow_blur`                    0 (none)         shadow blur size
 __text__
 `text`                           false (none)
-`font`                           'Open Sans,14'
-`text_color`                     '#fff'
-`line_spacing`                   1                line spacing factor
-`paragraph_spacing`              2                paragraph spacing factor
-`text_dir`                       'auto'           BiDi base direction: auto, rtl, ltr
-`nowrap`                         false            no automatic line wrapping
-`text_operator`                  'over'           cairo blending operator
-`text_align`                     'center center'  text x y align: 'l|c|r t|c|b'
+`font`                           'Open Sans,14'   font spec: `'name [weight] [slant], size'`
+`font_name`                      false            font override: name
+`font_weight`                    false            font override: weight (100..900, 'bold', etc.)
+`font_slant`                     false            font override: slant ('italic', 'normal')
+`font_size`                      false            font override: size
+`text_color`                     '#fff'           text color
+`line_spacing`                   1                multiply factor over line height for lines
+`paragraph_spacing`              2                multiply factor over line height for paragraphs
+`text_dir`                       'auto'           BiDi base direction: 'auto', 'rtl', 'ltr'
+`nowrap`                         false            disable automatic line wrapping
+`text_operator`                  'over'           blending operator (see [cairo])
+`text_align`                     'center center'  text x & y alignments: 'l|c|r t|c|b'
 `text_align_x`                   false            text x-align override: 'l|c|r'
 `text_align_y`                   false            text y-align override: 't|c|b'
-`baseline`
 __content box__
-`padding`                        0 (none)         default padding on all sides
-`padding_left`                   false            padding side override
-`padding_right`                  false            padding side override
-`padding_top`                    false            padding side override
-`padding_bottom`                 false            padding side override
+`padding`                        0 (none)         default padding for all sides
+`padding_left`                   false            padding override: left side
+`padding_right`                  false            padding override: right side
+`padding_top`                    false            padding override: top side
+`padding_bottom`                 false            padding override: bottom side
 __layouting__
-`layout`                         false (none)     false, 'textbox', 'flexbox', 'grid'
-`min_cw`                         0                minimum content-box width
-`min_ch`                         0                minimum content-box height
+`layout`                         false (none)     layout type: false (none), 'textbox', 'flexbox', 'grid'
+`min_cw, min_ch`                 0, 0             minimum content-box size for flexible layouts
 __null-layouts__
-`x, y, w, h`
+`x, y, w, h`                                      fixed box coordinates
 __flexbox layouts__
 `flex_axis`                      'x'              main axis of flow: 'x', 'y'
 `flex_wrap`                      false            line-wrap content
 `align_main/_cross/_lines`       'stretch'        'stretch', 'start'/'top'/'left', 'end'/'bottom'/'right', 'center'
-`align_main`                     'stretch'        additionally: 'space_between', 'space_around', 'space_evenly'
-`align_cross`                    'stretch'        additionally: 'baseline'
-`align_lines`                    'stretch'        additionally: 'space_between', 'space_around', 'space_evenly'
-`align_cross_self`               false            overrides `parent.align_cross`
+`align_main`                     'stretch'        main-axis align: additionally: 'space_between', 'space_around', 'space_evenly'
+`align_cross`                    'stretch'        cross-axis align: additionally: 'baseline'
+`align_lines`                    'stretch'        content-align: additionally: 'space_between', 'space_around', 'space_evenly'
+`align_cross_self`               false            item `align_cross` override
 `fr`                             1                stretch fraction
 __grid layouts__
 `grid_flow`                      'x'              flow direction & main axis: 'x', 'y', 'xr', 'yr', 'xb', 'yb', 'xrb', 'yrb'
@@ -401,6 +387,48 @@ __grid layouts__
   * keyboard events are only received by the focused layer.
   * return `true` in a `keydown` event to eat up a key stroke so that it
   isn't used by other actions: this is how key conflicts are solved.
+
+### Layouting
+
+Layouting deals with sizing and positioning layers on screen automatically
+to accomodate both the content size and the window size. Layers of different
+layout types and properties can be mixed freely in a layer hierarchy with
+some caveats:
+
+  * layouted children of non-layouted layers _are not_ sized by their
+  parent and must thus set their `min_cw, min_ch`, otherwise they will size
+  themselves to the minimum allowed by their children.
+  * non-layouted children of layouted layers _are_ sized by their parent
+  and must thus set their `min_cw, min_ch`, otherwise they may shrink
+  to nothing since they don't resize themselves to contain their content.
+  * layouts with wrapping content (nowrap = false, flex_wrap = true) are
+  solved on one axis completely before solving on the other axis. This only
+  works properly if all the wrappable content has either horizontal flow
+  (so the whole layout is width-in-height-out) or vertical flow (so the
+  whole layout is height-in-width out). Mixed flows are will cause the
+  contents to overflow their container (browsers behave the same here too).
+  Setting `min_cw, min_ch` on the cross-flow layers can be used to alleviate
+  the problem on a case-by-case basis.
+
+#### No layout
+
+Layers without a layout (layout = false) don't touch their box or their
+children's boxes, but instead ask their children to layout themselves.
+
+#### Textbox layouts
+
+Freestanding textbox layers (whose parent is not layouted) size themselves
+to contain their `text` property which is line-wrapped on their `min_cw`.
+
+#### Flexbox layouts
+
+Flexbox layers use an algorithm similar to the CSS flexbox algorithm
+to size themselves and to size and position their children recursively.
+
+#### Grid layouts
+
+Grid layers use an algorithm similar to the CSS grid algorithm to size
+themselves and to size and position their children recursively.
 
 ### The top layer
 
