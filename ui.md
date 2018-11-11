@@ -59,7 +59,7 @@ ui:run()
 
 The [ui] singleton is a thin facade over [nw]'s app singleton. It allows
 creating OS windows, quitting the app, creating timers, using the clipboard,
-etc.
+adding fonts, etc.
 
 -------------------------------------- ---------------------------------------
 __native properties__
@@ -107,13 +107,15 @@ are first merged into a single table and then copied over to the element in
 lexicographic order. This means that:
 
   * unknown fields are not discarded, which makes for a convenient way to
-  create elements with custom fields.
+  create layers or windows with custom fields.
   * properties are set (i.e. setters are called) in a stable
   (albeit arbitrary) order.
     * this order can be altered with the class method
-	 `:init_priority{field->priority}`.
+	 `:init_priority{field->priority}` to accomodate any dependencies between
+	 properties.
 	 * some properties can be excluded from being automatically set this way
-	 with the class method `:init_ignore{field->true}`.
+	 with the class method `:init_ignore{field->true}`, in which case they
+	 must be set manually in the constructor.
   * the constructor `:init(ui, t)` receives `ui` followed by the merged arg
   table which is also set up to inherit the class, thus providing transparent
   access to defaults.
