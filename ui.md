@@ -39,52 +39,57 @@ ui:button{
 ui:run()
 ~~~
 
-## Objects
+## Class hierarchy
 
-  * provide [subclassing, overriding and virtual properties][oo]
-  * provide [events]
+  * `oo.Object` - [oo]'s base class
+     * `ui.object` - ui's base class. includes [events]
+        * `ui` - this module, also serving as the app singleton
+	     * `ui.element` - adds css styling and transitions to objects
+           * `ui.window` - native windows: a thin layer over [nw]'s windows
+		        * `ui.popup` - frameless pop-up windows
+           * `ui.layer` - the basic UI building block
+              * any widget
 
 ## The `ui` module/singleton
 
-The `ui` singleton is a thin facade over [nw]'s app singleton.
+The [ui] singleton is a thin facade over [nw]'s app singleton.
 It manages the app's runtime settings, behavior, events and global resources.
 
 -------------------------------------- ---------------------------------------
 __native properties__
 
-`autoquit, maxfps, app_active,` \      these map directly to nw app \
-`app_visible, caret_blink_time,` \     features, so see [nw].
-`displays, main_display,` \
+`autoquit, maxfps, app_active,`        these map directly to [nw] app features
+`app_visible, caret_blink_time,`       except they are exposed as properties
+`displays, main_display,`              instead of methods like in [nw].
 `active_display, app_id`
 
 __native methods__
 
-`run, poll, stop, quit, runevery,` \   these map directly to nw app \
-`runafter, sleep, activate_app,` \     features, so see [nw].
-`hide_app, unhide_app, key,` \
-`getclipboard, setclipboard,` \
-`opendialog, savedialog,` \
-`app_already_running,` \
-`wakeup_other_app_instances,` \
+`run, poll, stop, quit, runevery,`     these map directly to [nw] app
+`runafter, sleep, activate_app,`       methods.
+`hide_app, unhide_app, key,`
+`getclipboard, setclipboard,`
+`opendialog, savedialog,`
+`app_already_running,`
+`wakeup_other_app_instances,`
 `check_single_app_instance`
 
 __native events__
 
-`quitting, activated, deactivated,` \  these map directly to nw app \
-`wakeup, hidden, unhidden,` \          events, so see [nw].
+`quitting, activated, deactivated,`    these map directly to [nw] app
+`wakeup, hidden, unhidden,`            events.
 `displays_changed`
 
 __font registration__
 
-`ui:add_font_file(...)`                see [tr:add_font_file(...)][tr]
+`ui:add_font_file(...)`                see `tr:add_font_file(...)` in [tr]
 
-`ui:add_mem_font(...)`                 see [tr:add_mem_font(...)][tr]
+`ui:add_mem_font(...)`                 see `tr:add_mem_font(...)` in [tr]
 -------------------------------------- ---------------------------------------
 
 ## Elements
 
 Elements provide styling and transitions for windows and layers.
-Elements are objects, so all object methods and properties apply.
 
 -------------------------------------- ---------------------------------------
 __selectors__
@@ -143,83 +148,82 @@ __attribute transitions__
 
 ## Windows
 
-Windows are a thin facade over [nw]'s windows.
-Windows are elements, so all element methods and properties apply.
+[ui] windows are a thin facade over [nw] windows.
 
 -------------------------------------- ---------------------------------------
-`ui:window{...} -> win`
+`ui:window{...} -> win`                create a window. see [nw] for options.
 
-`win:free()`
-
-__parent/child relationship__
-
-`win.parent`
-
-`win:to_parent(x, y)`
-
-`win:from_parent(x, y)`
-
-__native methods__
-
-`frame_rect, client_rect,` \           these map directly to nw window \
-`client_to_frame, frame_to_client,` \  methods, so see [nw].
-`closing, close, show, hide,` \
-`activate, minimize, maximize,` \
-`restore, shownormal, raise, lower,` \
-`to_screen, from_screen`
+`win:free()`                           close & free a window.
 
 __native properties__
 
-`x, y, w, h, cx, cy, cw, ch,` \        these map directly to nw window \
-`min_cw, min_ch, max_cw, max_ch,` \    methods, so see [nw].
-`autoquit, visible, fullscreen,` \
-`enabled, edgesnapping, topmost,` \
-`title, dead, closeable,` \
+`x, y, w, h, cx, cy, cw, ch,`          these map directly to [nw] window
+`min_cw, min_ch, max_cw, max_ch,`      features except they are exposed as
+`autoquit, visible, fullscreen,`       properties instead of methods like
+`enabled, edgesnapping, topmost,`      in [nw].
+`title, dead, closeable,`
 `activable, minimizable,`
-`maximizable, resizeable,` \
-`fullscreenable, frame,` \
+`maximizable, resizeable,`
+`fullscreenable, frame,`
 `transparent, corner_radius,`
-`sticky, dead, active, isminimized,` \
+`sticky, dead, active, isminimized,`
 `ismaximized, display, cursor`
+
+__native methods__
+
+`frame_rect, client_rect,`             these map directly to [nw] window
+`client_to_frame, frame_to_client,`    methods.
+`closing, close, show, hide,`
+`activate, minimize, maximize,`
+`restore, shownormal, raise, lower,`
+`to_screen, from_screen`
 
 __native events__
 
-`activated, deactivated, wakeup,` \    these map directly to nw window \
-`shown, hidden,` \                     events, so see [nw].
-`minimized, unminimized,` \
-`maximized, unmaximized,` \
-`entered_fullscreen,` \ \
-`exited_fullscreen,` \
-`changed,` \
-`sizing,` \
-`frame_rect_changed, frame_moved,` \
-`frame_resized,` \
-`client_moved, client_resized,` \
-`magnets,` \
-`free_cairo, free_bitmap,` \
+`activated, deactivated, wakeup,`      these map directly to [nw] window
+`shown, hidden,`                       events.
+`minimized, unminimized,`
+`maximized, unmaximized,`
+`entered_fullscreen,`
+`exited_fullscreen,`
+`changed, sizing,`
+`frame_rect_changed, frame_moved,`
+`frame_resized,`
+`client_moved, client_resized,`
+`magnets,`
+`free_cairo, free_bitmap,`
 `scalingfactor_changed`
 
 __element query interface__
 
-`win:find(sel) -> elem_list`
+`win:find(sel) -> elem_list`           find elements in a window based on a css selector.
 
-`win:each(sel, f)`
+`win:each(sel, f)`                     run `f(elem)` for each element selected by a selector.
 
 __mouse state__
 
-`win.mouse_x, win.mouse_y`
-
+`win.mouse_x, win.mouse_y` \           mouse position at the time of last mouse event.
 `win:mouse_pos() -> x, y`
 
 __drawing__
 
-`win:draw(cr)`
+`win:sync()`                           synchronize the window and its contents.
 
-`win:invalidate()`
+`win:draw(cr)`                         draw the window's view layer.
+
+`win:invalidate()`                     request a window repaint.
+
+__child windows__
+
+`win.parent`                           a layer on a different window which this window is positioned relative to.
+
+`win:to_parent(x, y) -> x, y`          convert coords from window's client space to its parent space
+
+`win:from_parent(x, y) -> x, y`        convert coords from window's parent space to its client space
 
 __frameless windows__
 
-`win.move_layer`                       layer which by dragging it moves the window
+`win.move_layer`                       layer which by dragging it moves the window.
 -------------------------------------- ---------------------------------------
 
 ## Layers
@@ -360,7 +364,7 @@ __tooltips__
 layer's array part               r/o              is where child layers are kept
 -------------------------------- ---------------- ------------------------------------------------------------------
 
-### Hierarchy
+### Layer hierarchy
 
 ------------------------------------------------- ------------------------------------------------------------------
 `to_back()`                                       set `layer_index` to 1
@@ -371,7 +375,7 @@ layer's array part               r/o              is where child layers are kept
 `remove_layer(layer)`                             remove a child
 ------------------------------------------------- ------------------------------------------------------------------
 
-### Measuring tools
+### Layer geometry
 
 ------------------------------------------------- ------------------------------------------------------------------
 __derived geometry__
@@ -428,7 +432,7 @@ __drag & drop__
 `drop(widget, x, y, area)`
 `started_dragging()`
 `ended_dragging()`
-__hierarchy__
+__layer hierarchy__
 `layer_added(layer, index)`                       a child layer was added
 `layer_removed(layer)`                            a child layer was removed
 ------------------------------------------------- ------------------------------------------------------------------
