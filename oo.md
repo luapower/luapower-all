@@ -282,23 +282,25 @@ use `cls:before(name, func)`, `cls:after(name, func)` and
 
 ## Virtual classes
 
-Virtual classes are a powerful mechanism for extending composite objects
-which need to instantiate other objects and need a way to allow the
-programmer to extend or replace the classes of those other objects. Virtual
-classes come for free in languages where classes are first-class entitites:
-just make the inner class a field of the outer class and instantiate it
-inside the outer's constructor or method with `self:inner_class()`. this is
-cool because:
+Virtual classes provide an additional way to extend composite objects
+(objects which need to instantiate other objects) beyond inheritance which
+doesn't by itself cover extending the classes of the sub-objects of the
+composite object. Virtual classes come for free in languages where classes
+are first-class entitites: all you have to do is to make the inner class
+a class field of the outer class and instantiate it with `self:inner_class()`.
+This simple indirection has many advantages:
 
   * it allows subclassing the inner class in subclasses of the outer class
     by just overriding the `inner_class` field.
   * using `self:inner_class()` instead of `self.inner_class()` passes the
     outer object as the second arg to the constructor of the inner object
     (the first arg is the inner object) so that you can reference the outer
-    object from inside the inner object.
-  * the`inner_class` field is seen as a method of the outer class so it can
-    be made part of its public API without any additional wrapping, and it
-    can also be overriden with a normal method in subclasses of outer.
+    object in the constructor, which is usually needed.
+  * the`inner_class` field can be used as a method of the outer class so
+    it can be made part of its public API without needing any additional
+	 wrapping, and it can also be overriden with a normal method in subclasses
+	 of the outer class (the overriding mechanism still works even if it's
+	 not overriding a real method).
 
 ## Events
 
@@ -323,6 +325,6 @@ Instance fields are accessed directly but methods and default values
 (class fields) go through a slower dynamic dispatch function (it's the
 price you pay for virtual properties). Copying class fields to the instance
 by calling `self:inherit()` will short-circuit this lookup at the expense
-of more memory consumption. Missing fields go through the same function too
-so initializing fields that don't have a default value to `false` will also
-speed up their lookup.
+of more memory consumption. Fields with a `nil` value go through the same
+function too so providing a `false` default value to those fields will
+also speed up their lookup.

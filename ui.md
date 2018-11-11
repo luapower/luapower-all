@@ -42,14 +42,14 @@ ui:run()
 ## Class hierarchy
 
   * `oo.Object` - [oo]'s base class
-     * `ui.object` - ui's base class. includes [events]
+     * `ui.object` - ui's base class. includes the [events] mixin.
         * `ui` - this module, also serving as the app singleton
         * `ui.selector` - css selectors
         * `ui.element_list` - lists of elements
         * `ui.stylesheet` - stylesheets
         * `ui.transition` - attribute transitions
         * `ui.element` - adds css styling and transitions to objects
-           * `ui.window` - native windows: a thin layer over [nw]'s windows
+           * `ui.window` - top-level windows: a thin layer over [nw]'s windows
               * `ui.popup` - frameless pop-up windows
            * `ui.layer` - the basic UI building block
               * `ui.window.view_class` - a window's top layer
@@ -57,8 +57,9 @@ ui:run()
 
 ## The ui module/singleton
 
-The [ui] singleton is a thin facade over [nw]'s app singleton.
-It manages the app's runtime settings, behavior, events and global resources.
+The [ui] singleton is a thin facade over [nw]'s app singleton. It allows
+creating OS windows, quitting the app, creating timers, using the clipboard,
+etc.
 
 -------------------------------------- ---------------------------------------
 __native properties__
@@ -94,7 +95,28 @@ __font registration__
 
 ## Elements
 
-Elements provide styling and transitions for windows and layers.
+Elements are objects with styling and transitions and a standard constructor.
+Windows and layers are both elements so everything in this section applies
+to both.
+
+### Constructing elements
+
+Unlike normal objects, elements have a standardized constructor which takes
+the `ui` singleton as arg#1 followed by any number of tables whose fields
+are first merged into a single table and then copied over to the element in
+lexicographic order. This means that:
+
+  * unknown fields are not discarded, which makes for a convenient way to
+  create elements with custom fields.
+  * properties are set (i.e. setters are called) in a stable
+  (albeit arbitrary) order.
+    * this order can be altered with the class method
+	 `:init_priority{field->priority}`.
+	 * some properties can be excluded from being automatically set this way
+	 with the class method `:init_ignore{field->true}`.
+  * the constructor `:init(ui, t)` receives `ui` followed by the merged arg
+  table which is also set up to inherit the class, thus providing transparent
+  access to defaults.
 
 -------------------------------------- ---------------------------------------
 __selectors__
