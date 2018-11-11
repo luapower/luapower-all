@@ -44,13 +44,18 @@ ui:run()
   * `oo.Object` - [oo]'s base class
      * `ui.object` - ui's base class. includes [events]
         * `ui` - this module, also serving as the app singleton
-	     * `ui.element` - adds css styling and transitions to objects
+        * `ui.selector` - css selectors
+        * `ui.element_list` - lists of elements
+        * `ui.stylesheet` - stylesheets
+        * `ui.transition` - attribute transitions
+        * `ui.element` - adds css styling and transitions to objects
            * `ui.window` - native windows: a thin layer over [nw]'s windows
-		        * `ui.popup` - frameless pop-up windows
+              * `ui.popup` - frameless pop-up windows
            * `ui.layer` - the basic UI building block
+              * `ui.window.view_class` - a window's top layer
               * any widget
 
-## The `ui` module/singleton
+## The ui module/singleton
 
 The [ui] singleton is a thin facade over [nw]'s app singleton.
 It manages the app's runtime settings, behavior, events and global resources.
