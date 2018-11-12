@@ -57,9 +57,14 @@ ui:run()
 
 ## The ui module/singleton
 
-The ui singleton is a thin facade over [nw]'s app singleton. It allows
-creating OS windows, quitting the app, creating timers, using the clipboard,
-adding fonts, etc.
+The ui singleton allows for creating OS windows, quitting the app,
+creating timers, using the clipboard, adding fonts, etc.
+
+### Forwarded properties, methods and events
+
+The ui singleton is mostly a thin facade over [nw]'s app singleton.
+Those `ui` features which map directly to nw app features are listed below
+but are not documented here again.
 
 -------------------------------------- ---------------------------------------
 __native properties__
@@ -85,16 +90,16 @@ __native events__
 `quitting, activated, deactivated,`    these map directly to [nw] app
 `wakeup, hidden, unhidden,`            events.
 `displays_changed`
+-------------------------------------- ---------------------------------------
 
-__clock__
+### Font management
 
-`ui:clock()`                           returns [time].clock()
+Fonts must be registered before they can be used. Fonts can be read from
+files or from memory buffers. See [tr] for details.
 
-__font registration__
-
-`ui:add_font_file(...)`                calls [tr]:add_font_file(...)
-
-`ui:add_mem_font(...)`                 calls [tr]:add_mem_font(...)
+-------------------------------------- ---------------------------------------
+`ui:add_font_file(...)`                calls `tr:add_font_file(...)`
+`ui:add_mem_font(...)`                 calls `tr:add_mem_font(...)`
 -------------------------------------- ---------------------------------------
 
 ## Elements
@@ -114,15 +119,6 @@ lexicographic order. This means that:
   create layers or windows with custom fields.
   * properties are set (i.e. setters are called) in a stable
   (albeit arbitrary) order.
-    * this order can be altered with the class method
-	 `:init_priority{field->priority}` to accomodate any dependencies between
-	 properties.
-	 * some properties can be excluded from being automatically set this way
-	 with the class method `:init_ignore{field->true}`, in which case they
-	 must be set manually in the constructor.
-  * the constructor `:init(ui, t)` receives `ui` followed by the merged arg
-  table which is also set up to inherit the class, thus providing transparent
-  access to defaults.
 
 ### Styling
 
@@ -131,9 +127,9 @@ to matching sets of elements based on matching tag combinations.
 
 #### Tags
 
-Selecting elements for styling is based on element tags only, which are
-equivalent to CSS classes (there is no concept of ids or other things to
-match on other than tags).
+Selecting elements is based on element tags only, which are equivalent to
+CSS classes (there is no concept of ids or other things to match on other
+than tags).
 
 Elements can be initialized with the attribute `tags = 'tag1 tag2 ...'`
 similar to the html class attribute. Tags can also be added/removed later
@@ -146,6 +142,11 @@ Tags matching the entire hierarchy of class names up to and including
 the `'element'` and `'layer'` tags, etc.
 
 #### Selectors
+
+Selectors are used in two contexts:
+
+  * creating styles with `ui:style()`.
+  * finding elements with `ui|win:find()` and `ui|win:each()`.
 
 Selector syntax differs from CSS:
 
@@ -161,11 +162,15 @@ in places where a selector is expected), but they have additional methods:
   can be added and they will be applied in order.
   * `sel:selects(elem) -> true|false` -- test a selector against an element.
 
+Selector objects pass-through the selector constructor, which is short for
+saying that the selector constructor can take a selector object as arg#1 in
+which case the selector object is simply returned and no selector is created.
+
 #### Styles
 
-Styles can be added with `ui:style(selector, attr_values)` which adds them
-to the default stylesheet `ui.element.stylesheet`. Inline styles can be
-set with the `style` attribute when creating the element.
+Selector-based styles can be created with `ui:style(selector, attr_values)`
+which adds them to the default stylesheet `ui.element.stylesheet`. Inline
+styles can be added with the `style` attribute when creating the element.
 
 Styles are updated automatically on the next repaint. They can also be
 updated manually with `elem:sync_styles()`.
@@ -191,6 +196,11 @@ This allows overriding base styles without resetting any matching state
 styles, so for instance, declaring a new style for `'mybutton'` will not
 affect the syle set previously for `'mybutton :hot'`.
 
+#### Finding elements using selectors
+
+  * `ui|win|elem_list:find(sel) -> elem_list` - find elements and return them in a list.
+  * `ui|win|elem_list:each(sel, func)` - run `func(elem)` for each element found.
+
 ### Transition animations
 
 Transitions are about gradually changing the value of an element attribute
@@ -201,7 +211,7 @@ interpolated. Currently, numbers, colors and color gradients can be
 interpolated, but more data types and interpolator functions can be added
 if needed (see the code for that).
 
-Transitions can be created manually with:
+Transitions can be created by calling:
 
 ~~~{.lua}
 	elem:transition(
@@ -244,20 +254,26 @@ on the `transition_blend` attribute, which can be:
   the new one, but do nothing if the new transition has the same end value
   as the current one.
 
-
 ## Windows
 
-Windows are a thin facade over [nw] windows.
+Windows are created with:
+
+~~~{.lua}
+	ui:window(attrs1, ...) -> win
+~~~
+
+Attributes can be pased in one or multiple tables. The values in latter
+tables will take precedence over the values in former tables.
 
 Windows are elements, so all element methods and properties apply.
 
+### Forwarded properties, methods and events
+
+Windows are a thin facade over [nw] windows. Those features which map
+directly to nw window features are listed below but are not documented here
+again.
+
 -------------------------------------- ---------------------------------------
-`ui:window{...} -> win`                create a window. see [nw] for options.
-
-`win:close()`                          close a window.
-
-`win:free()`                           close & free a window.
-
 __native properties__
 
 `x, y, w, h, cx, cy, cw, ch,`          these map directly to [nw] window
@@ -274,8 +290,9 @@ __native properties__
 
 __native methods__
 
-`frame_rect, client_rect,`             these map directly to [nw] window
-`client_to_frame, frame_to_client,`    methods.
+`close`, `free`,                       these map directly to [nw] window
+`frame_rect, client_rect,`             methods.
+`client_to_frame, frame_to_client,`
 `closing, close, show, hide,`
 `activate, minimize, maximize,`
 `restore, shownormal, raise, lower,`
@@ -296,37 +313,33 @@ __native events__
 `magnets,`
 `free_cairo, free_bitmap,`
 `scalingfactor_changed`
+-------------------------------------- ---------------------------------------
 
-__element query interface__
+### Child windows
 
-`win:find(sel) -> elem_list`           find elements in a window based on a css selector.
+A child window by [nw]'s definition is a top-level window that does not
+appear in the taskbar and by default will follow its parent window when that
+is moved. That behavior is extended here so that the child window is
+positioned _relative to a layer_ in another window so that it follows that
+layer even when the parent window itself doesn't move but the layer moves
+inside it.
 
-`win:each(sel, f)`                     run `f(elem)` for each element selected by a selector.
+-------------------------------------- ---------------------------------------
+`win.parent`                           the parent layer in another window
+`win:to_parent(x, y) -> x, y`          window's client space -> its parent space
+`win:from_parent(x, y) -> x, y`        window's parent space -> its client space
+-------------------------------------- ---------------------------------------
 
-__mouse state__
+### Frameless windows
 
+You can specify a layer to `win.move_layer` that will act as the
+drag-to-move area of the window (usually its title bar).
+
+### Window mouse state
+
+-------------------------------------- ---------------------------------------
 `win.mouse_x, win.mouse_y` \           mouse position at the time of last mouse event.
 `win:mouse_pos() -> x, y`
-
-__drawing__
-
-`win:sync()`                           synchronize the window and its contents.
-
-`win:draw(cr)`                         draw the window's view layer.
-
-`win:invalidate()`                     request a window repaint.
-
-__child windows__
-
-`win.parent`                           a layer on a different window which this window is positioned relative to.
-
-`win:to_parent(x, y) -> x, y`          convert coords from window's client space to its parent space
-
-`win:from_parent(x, y) -> x, y`        convert coords from window's parent space to its client space
-
-__frameless windows__
-
-`win.move_layer`                       layer which by dragging it moves the window.
 -------------------------------------- ---------------------------------------
 
 ## Layers
@@ -782,7 +795,7 @@ TODO
 TODO
 -------------------------------------- ---------------------------------------
 
-# Creating new widgets
+## Creating new widgets
 
 The API for creating and extending widgets is larger and more complex
 than the API for instantiating and using existing widgets. This is normal,
@@ -808,13 +821,13 @@ The main topics that need to be understood in order to create new widgets are:
 	* routing keyboard events to the focused widget; tab-based navigation
 	* the drag & drop API (event-based)
 
-## The `object` base class
+### The `object` base class
 
   * created with [oo]; inherits oo.Object; published as `ui.object`.
   * inherits the [events] mixin.
   * common ancestor of all classes.
 
-## Method & property decorators
+#### Method & property decorators
 
 These are meta-programming facilities exposed as class methods for creating
 or enhancing the behavior of properties and methods in specific ways.
@@ -852,7 +865,7 @@ NOTE: use this decorator only _after_ defining the getter and setter.
 
 Validate a property when being set against a list of allowed values.
 
-## Error reporting
+### Error reporting
 
 ### `object:warn(fmt, ...)`
 
@@ -862,8 +875,22 @@ Issue a warning on `stderr`.
 
 Issue a warning if `ret` is falsey or return `ret`.
 
-## Submodule autoloading
+### Submodule autoloading
 
 ### `object:autoload(t)`
 
 See [glue].autoload.
+
+### The element constructor
+
+  * the order in which attribute values are copied over when creating a new
+  element can be altered with the class method
+  `:init_priority{field->priority}` to accomodate any dependencies between
+  properties.
+  * some properties can be excluded from being automatically set this way
+  with the class method `:init_ignore{field->true}`, in which case they
+  must be set manually in the constructor.
+  * the constructor `:init(ui, t)` receives `ui` followed by the merged arg
+  table which is also set up to inherit the class, thus providing transparent
+  access to defaults.
+

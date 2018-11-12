@@ -731,33 +731,40 @@ end
 ui.element_list = ui.object:subclass'element_list'
 
 function ui:after_init()
-	self.elements = self:element_list()
+	self._elements = {} --{elem -> true}
 	self._element_index = self:element_index()
 end
 
 function ui:_add_element(elem)
-	push(self.elements, elem)
+	self._elements[elem] = true
 	self._element_index:add_element(elem)
 end
 
 function ui:_remove_element(elem)
-	popval(self.elements, elem)
+	self._elements[elem] = nil
 	self._element_index:remove_element(elem)
 end
 
 function ui:_find_elements(sel, elems)
-	local elems = elems or self.elements
 	local res = self:element_list()
-	for i,elem in ipairs(elems) do
-		if sel:selects(elem) then
-			push(res, elem)
+	if elems then
+		for _,elem in ipairs(elems) do
+			if sel:selects(elem) then
+				push(res, elem)
+			end
+		end
+	else
+		for elem in pairs(self._elements) do
+			if sel:selects(elem) then
+				push(res, elem)
+			end
 		end
 	end
 	return res
 end
 
 function ui.element_list:each(f)
-	for i,elem in ipairs(self) do
+	for _,elem in ipairs(self) do
 		local v = f(elem)
 		if v ~= nil then return v end
 	end
@@ -1978,7 +1985,7 @@ function ui:_window_mouseup(window, button, mx, my, click_count)
 			end
 			self.drag_widget:_ended_dragging()
 			self.drag_start_widget:_end_drag()
-			for _,elem in ipairs(self.elements) do
+			for elem in pairs(self._elements) do
 				if elem.islayer and elem.tags[':drop_target'] then
 					elem:_set_drop_target(false)
 				end
@@ -2619,7 +2626,7 @@ function layer:_start_drag(button, mx, my, area)
 	local widget, dx, dy = self:start_drag(button, mx, my, area)
 	if widget then
 		self:settag(':drag_source', true)
-		for i,elem in ipairs(self.ui.elements) do
+		for elem in pairs(self.ui._elements) do
 			if elem.islayer and self.ui:accept_drop(widget, elem) then
 				elem:_set_drop_target(true)
 			end
