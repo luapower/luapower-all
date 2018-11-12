@@ -88,9 +88,9 @@ __native events__
 
 __font registration__
 
-`ui:add_font_file(...)`                see `tr:add_font_file(...)` in [tr]
+`ui:add_font_file(...)`                see [tr] for `tr:add_font_file(...)`
 
-`ui:add_mem_font(...)`                 see `tr:add_mem_font(...)` in [tr]
+`ui:add_mem_font(...)`                 see [tr] for `tr:add_mem_font(...)`
 -------------------------------------- ---------------------------------------
 
 ## Elements
@@ -197,17 +197,17 @@ Transitions can be created manually with:
 
 or they can be defined declaratively in styles:
 
--------------------------------- ---------------- ------------------------------------------------------------------
-`transition_<attr>`              nil              set to `true` to enable transitions for an attribute
-`transition_duration`            0 (disabled)     animation duration (seconds)
-`transition_ease`                'expo out'       easing function and way (see [easing])
-`transition_delay`               0                delay before starting (seconds)
-`transition_repeat`              1                repeat times
-`transition_speed`               1                speed factor
-`transition_blend`               'replace'`       blend function: 'replace', 'restart', 'wait'
--------------------------------- ---------------- ------------------------------------------------------------------
+-------------------------------- ------------------ ------------------------------------------------------------------
+`transition_<attr>`              `nil`              set to `true` to enable transitions for an attribute
+`transition_duration`            `0` (disabled)     animation duration (seconds)
+`transition_ease`                `'expo out'`       easing function and way (see [easing])
+`transition_delay`               `0`                delay before starting (seconds)
+`transition_repeat`              `1`                repeat times
+`transition_speed`               `1`                speed factor
+`transition_blend`               `'replace'`        blend function: `'replace'`, `'restart'`, `'wait'`
+-------------------------------- ------------------ ------------------------------------------------------------------
 
-Transition parameters can also be defined on a per attribute basis with
+Transition parameters can also be specified for each attribute with
 `transition_<param>_<attr>`, eg. `transition_duration_opacity = 2`.
 
 
@@ -215,10 +215,13 @@ Transition parameters can also be defined on a per attribute basis with
 
 [ui] windows are a thin facade over [nw] windows.
 
+Windows are elements, so all element methods and properties apply.
+
 -------------------------------------- ---------------------------------------
 `ui:window{...} -> win`                create a window. see [nw] for options.
 
 `win:close()`                          close a window.
+
 `win:free()`                           close & free a window.
 
 __native properties__
@@ -294,9 +297,11 @@ __frameless windows__
 
 ## Layers
 
-Similar to HTML divs, layers encapsulate all the positioning, drawing and
-input infrastructure necessary for implementing widgets, and can also be used
-standalone as layout containers, text labels or other presentation elements.
+Similar to HTML divs, layers encapsulate all the positioning, drawing,
+clipping, hit-testing and input infrastructure necessary for implementing
+widgets, and can also be used standalone as layout containers, text labels
+or other presentation elements.
+
 Layers are elements, so all element methods and properties apply.
 
 ### Configuration
@@ -305,60 +310,81 @@ The following attributes can be used to initialize a layer and can also be
 changed freely at runtime to change its behavior or appearance.
 
 -------------------------------- ------------------ ------------------------------------------------------------------
-__display & behavior__           __default__
+__position in layer hierarchy__
+`parent`                         `false`            parent: for positioning (if pos_parent=false), painting and clipping
+`layer_index`                    `1/0`              preferred index in parent's child list: `1=backmost`, `1/0=frontmost`
+`pos_parent`                     `false`            positioning parent (`false` means use `parent`)
+__behavior__
 `visible`                        `true`             visible and occupies space in the layout
-`enabled`                        `true`             looks enabled and receives input
-`activable`                      `true`             can be clicked and set as hot
+`enabled`                        `true`             looks enabled and can receive input
+`activable`                      `true`             can be clicked and hovered (set as hot)
 `vscrollable`                    `false`            enable mouse wheel when hot and not focused
 `hscrollable`                    `false`            enable mouse horiz. wheel when hot and not focused
 `scrollable`                     `false`            can be hit for vscroll or hscroll
 `focusable`                      `false`            can be focused
 `draggable`                      `true`             can be dragged (still needs to respond to `start_drag()`)
+`background_hittable`            `true`             background area receives mouse input even when there's no background
 `mousedown_activate`             `false`            activate/deactivate on left mouse down/up
 `drag_threshold`                 `0`                moving distance before start dragging
 `max_click_chain`                `1`                2 for getting doubleclick events, etc.
-__affine transforms__
-`rotation`                       `0`                rotation angle (radians)
-`rotation_cx, rotation_cy`       `0`                rotation center coordinates
-`scale`                          `1`                scale factor
-`scale_x, scale_y`               `false`            scale factor: axis overrides
-`scale_cx, scale_cy`             `0`                scaling center coordinates
+`tabgroup`                       `0`                tab group, for tab-based navigation
+`tabindex`                       `0`                tab order in tab group, for tab-based navigation
+`taborder_algorithm`             `'xy'`             tab order algorithm: `'xy'`, `'yx'`
 __content box__
 `padding`                        `0`                default padding for all sides
 `padding_left`                   `false`            padding override: left side
 `padding_right`                  `false`            padding override: right side
 `padding_top`                    `false`            padding override: top side
 `padding_bottom`                 `false`            padding override: bottom side
-__hierarchy__
-`parent`                         `false`            painting/clipping parent
-`layer_index`                                       index in parent's array part (z-order)
-`pos_parent`                     `false`            positioning parent (false means use `parent`)
-__focus__
-`tabindex`                       `0`                tab order, for tab-based navigation
-`tabgroup`                       `0`                tab group, for tab-based navigation
-`taborder_algorithm`             `'xy'`             tab order algorithm: `'xy'`, `'yx'`
+__sizing & positioning__
+`layout`                         `false`            layout model: `false` (none), `'textbox'`, `'flexbox'`, `'grid'`
+`min_cw, min_ch`                 `0`                minimum content-box size for flexible layouts
+__layout=false__
+`x, y, w, h`                     `0`                fixed position & size
+__flexbox layout__
+`flex_axis`                      `'x'`              main axis of flow: `'x'`, `'y'`
+`flex_wrap`                      `false`            line-wrap content
+`align_main/_cross/_lines`       `'stretch'`        `'stretch'`, `'start'`/`'t[op]'`/`'l[eft]'`, `'end'`/`'b[ottom]'`/`'r[ight]'`, `'c[enter]'`
+`align_main`                     `'stretch'`        main-axis align: `'space_between'`, `'space_around'`, `'space_evenly'`
+`align_cross`                    `'stretch'`        cross-axis align: `'baseline'`
+`align_lines`                    `'stretch'`        content-align: `'space_between'`, `'space_around'`, `'space_evenly'`
+`align_cross_self`               `false`            item `align_cross` override
+`fr`                             `1`                item stretch fraction for `align_main='stretch'`
+__grid layout__
+`grid_flow`                      `'x'`              flow main axis & direction: `'x'`, `'y'`, `'xr'`, `'yr'`, `'xb'`, `'yb'`, `'xrb'`, `'yrb'`
+`grid_wrap`                      `1`                number of rows/columns on the main axis of flow
+`grid_cols`                      `{}`               column size fractions `{fr1, ...}` for `align_x='stretch'`
+`grid_rows`                      `{}`               row size fractions `{fr1, ...}` for `align_y='stretch'`
+`col_gap`                        `0`                gap size between columns
+`row_gap`                        `0`                gap size between rows
+`grid_pos`                       `nil`              element position in grid: `'[row][/span] [col][/span]'`
+`align_x`                        `'stretch'`        `'stretch'`, `'start'`/`'l[eft]'`, `'end'`/`'r[ight]'`, `'c[enter]'`, `'space_between'`, `'space_around'`, `'space_evenly'`
+`align_y`                        `'stretch'`        `'stretch'`, `'start'`/`'t[op]'`, `'end'`/`'b[ottom]'`, `'c[enter]'`, `'space_between'`, `'space_around'`, `'space_evenly'`
+`align_x_self`, `align_y_self`   `false`            item `align_x` and `align_y` overrides
+__transparency & clipping__
+`opacity`                        `1`                overall opacity (0..1)
+`clip_content`                   `false`            content clip area: `'padding'`/`true`, `'background'`, `false` (don't clip)
 __borders__
 `border_width`                   `0`                border thickness
-`border_width_left`              `false`            border thickness side override
-`border_width_right`             `false`            border thickness side override
-`border_width_top`               `false`            border thickness side override
-`border_width_bottom`            `false`            border thickness side override
+`border_width_left`              `false`            border thickness left side override
+`border_width_right`             `false`            border thickness right side override
+`border_width_top`               `false`            border thickness top side override
+`border_width_bottom`            `false`            border thickness bottom side override
 `corner_radius`                  `0`                border corner radius
-`corner_radius_top_left`         `false`            border corner radius side override
-`corner_radius_top_right`        `false`            border corner radius side override
-`corner_radius_bottom_left`      `false`            border corner radius side override
-`corner_radius_bottom_right`     `false`            border corner radius side override
+`corner_radius_top_left`         `false`            border corner radius top-left corner override
+`corner_radius_top_right`        `false`            border corner radius top-right corner override
+`corner_radius_bottom_left`      `false`            border corner radius bottom-left corner override
+`corner_radius_bottom_right`     `false`            border corner radius bottom-right corner override
 `border_color`                   `'#fff'`           border color
-`border_color_left`              `false`            border color side override
-`border_color_right`             `false`            border color side override
-`border_color_top`               `false`            border color side override
-`border_color_bottom`            `false`            border color side override
-`border_dash`                    `false`            border dash: `{width1, width2, ...}`
+`border_color_left`              `false`            border color left side override
+`border_color_right`             `false`            border color right side override
+`border_color_top`               `false`            border color top side override
+`border_color_bottom`            `false`            border color bottom side override
+`border_dash`                    `false`            border dash pattern: `{length1, ...}`
 `border_offset`                  `-1`               border stroke position rel. to box edge (-1=inside..1=outside)
-`corner_radius_kappa`            `1.2`              smoother rounded corners
-__backgrounds__
+`corner_radius_kappa`            `1.2`              smoother rounded corners (1=circle arc)
+__background__
 `background_type`                `'color'`          `false`, `'color'`, `'gradient'`, `'radial_gradient'`, `'image'`
-`background_hittable`            `true`
 `background_x, background_y`     `0`                background offset coords
 `background_rotation`            `0`                background rotation angle (radians)
 `background_rotation_cx/_cy`     `0`                background rotation center coords
@@ -372,7 +398,7 @@ __backgrounds__
 `background_image`               `false`            background image file (requires [libjpeg])
 `background_operator`            `'over'`           cairo blending operator
 `background_clip_border_offset`  `1`                like `border_offset` but for clipping the background
-__shadows__
+__shadow__
 `shadow_x, shadow_y`             `0`                shadow offset coords
 `shadow_color`                   `'#000'`           shadow color
 `shadow_blur`                    `0`                shadow blur size (0=disable)
@@ -392,34 +418,43 @@ __text__
 `text_align`                     `'c c'`            text x & y alignments: `'l[eft]|c[enter]|r[ight] t[op]|c[enter]|b[ottom]'`
 `text_align_x`                   `false`            text x-align override: `'l[eft]'`, `'c[enter]'`, `'r[ight]'`
 `text_align_y`                   `false`            text y-align override: `'t[op]'`, `'c[enter]'`, `'b[ottom]'`
-__layouting__
-`layout`                         `false`            layout type: `false` (none), `'textbox'`, `'flexbox'`, `'grid'`
-`min_cw, min_ch`                 `0`                minimum content-box size for flexible layouts
-__null-layouts__
-`x, y, w, h`                     `0`                fixed box coordinates
-__flexbox layouts__
-`flex_axis`                      `'x'`              main axis of flow: `'x'`, `'y'`
-`flex_wrap`                      `false`            line-wrap content
-`align_main/_cross/_lines`       `'stretch'`        `'stretch'`, `'start'`/`'t[op]'`/`'l[eft]'`, `'end'`/`'b[ottom]'`/`'r[ight]'`, `'c[enter]'`
-`align_main`                     `'stretch'`        main-axis align: `'space_between'`, `'space_around'`, `'space_evenly'`
-`align_cross`                    `'stretch'`        cross-axis align: `'baseline'`
-`align_lines`                    `'stretch'`        content-align: `'space_between'`, `'space_around'`, `'space_evenly'`
-`align_cross_self`               `false`            item `align_cross` override
-`fr`                             `1`                stretch fraction
-__grid layouts__
-`grid_flow`                      `'x'`              flow direction & main axis: `'x'`, `'y'`, `'xr'`, `'yr'`, `'xb'`, `'yb'`, `'xrb'`, `'yrb'`
-`grid_wrap`                      `1`                number of rows/columns on the main axis of flow
-`grid_cols`                      `{}`               column size fractions `{fr1, ...}`
-`grid_rows`                      `{}`               row size fractions `{fr1, ...}`
-`col_gap`                        `0`                gap size between columns
-`row_gap`                        `0`                gap size between rows
-`grid_pos`                       `nil`              element position in grid: `'[row][/span] [col][/span]'`
-`align_x`                        `'stretch'`        `'stretch'`, `'start'`/`'l[eft]'`, `'end'`/`'r[ight]'`, `'c[enter]'`, `'space_between'`, `'space_around'`, `'space_evenly'`
-`align_y`                        `'stretch'`        `'stretch'`, `'start'`/`'t[op]'`, `'end'`/`'b[ottom]'`, `'c[enter]'`, `'space_between'`, `'space_around'`, `'space_evenly'`
-`align_x_self`, `align_y_self`   `false`            item `align_x` and `align_y` overrided
-__tooltips__
+__tooltip__
 `tooltip`                        `false`            native tooltip text (false=none)
+__rotation & scaling__
+`rotation`                       `0`                rotation angle (radians)
+`rotation_cx, rotation_cy`       `0`                rotation center coordinates
+`scale`                          `1`                scale factor
+`scale_x, scale_y`               `false`            scale factor: axis overrides
+`scale_cx, scale_cy`             `0`                scaling center coordinates
 -------------------------------- ------------------ ------------------------------------------------------------------
+
+### Box model
+
+  * layers can be nested, which affects their painting order, clipping and
+  positioning relative to each other.
+  * layers have a "box" defined by their `x, y, w, h`, and a "content box"
+  (aka "client rect") which is the "box" adjusted by paddings.
+  * layers are positioned and clipped relative to their parent's content box.
+  * unlike HTML, the content box is _not_ affected by the size of borders.
+  * borders can be drawn at an offset relative to the layer's box and the
+  border's thickness.
+  * a layer's contents and background can be clipped by the padding box
+  of its parent, or by the border inner contour of its parent, or it can be
+  left unclipped.
+
+Layers can contain other layers: child layers are kept in the array part of the layer object. Child layers
+are positioned in their parent's content box (defined by
+
+------------------------------------------------- ------------------------------------------------------------------
+`mouse_x, mouse_y`                                mouse coords from the last mouse event
+`window`                                          layer's window
+`to_back()`                                       set `layer_index` to 1
+`to_front()`                                      set `layer_index` to 1/0
+`each_child(func)`                                calls `func(layer)` for each child, recursively, depth-first
+`children() -> iter() -> layer`
+`add_layer(layer, [index])`                       add a child
+`remove_layer(layer)`                             remove a child
+------------------------------------------------- ------------------------------------------------------------------
 
 ### Runtime state
 
@@ -428,21 +463,7 @@ __tooltips__
 `active`                         r/w              the mouse is captured
 `hot`                            r/o              mouse pointer is over the layer
 `focused`                        r/o              has keyboard focus
-`mouse_x, mouse_y`               r/o              mouse coords from the last mouse event
-`window`                         r/o              layer's window
-layer's array part               r/o              is where child layers are kept
 -------------------------------- ---------------- ------------------------------------------------------------------
-
-### Layer hierarchy
-
-------------------------------------------------- ------------------------------------------------------------------
-`to_back()`                                       set `layer_index` to 1
-`to_front()`                                      set `layer_index` to 1/0
-`each_child(func)`                                calls `func(layer)` for each child, recursively, depth-first
-`children() -> iter() -> layer`
-`add_layer(layer, [index])`                       add a child
-`remove_layer(layer)`                             remove a child
-------------------------------------------------- ------------------------------------------------------------------
 
 ### Layer geometry
 
@@ -505,20 +526,6 @@ __layer hierarchy__
 `layer_added(layer, index)`                       a child layer was added
 `layer_removed(layer)`                            a child layer was removed
 ------------------------------------------------- ------------------------------------------------------------------
-
-### Box model
-
-  * layers can be nested, which affects their painting order, clipping and
-  positioning relative to each other.
-  * layers have a "box" defined by their `x, y, w, h`, and a "content box"
-  (aka "client rect") which is the "box" adjusted by paddings.
-  * layers are positioned and clipped relative to their parent's content box.
-  * unlike html, the content box is _not_ affected by the size of borders.
-  * borders can be drawn at an offset relative to the layer's box and the
-  border's thickness.
-  * a layer's contents and background can be clipped by the padding box
-  of its parent, or by the border inner contour of its parent, or it can be
-  left unclipped.
 
 ### Mouse interaction
 
