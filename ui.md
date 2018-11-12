@@ -145,8 +145,8 @@ and `'layer'` tags, etc.
 
 Selector syntax differs from CSS:
 
-  * simple selectors: `'tag1 tag2'` -- in CSS: `'.tag1.tag2'`
-  * parent-child selectors: `'tag1 > tag2'` -- in CSS: `'tag1 tag2'`
+  * simple selectors: `'tag1 tag2'` -- in CSS: `.tag1.tag2`
+  * parent-child selectors: `'tag1 > tag2'` -- in CSS: `tag1 tag2`
 
 #### Styles
 
@@ -168,43 +168,46 @@ stylesheet.
 
 #### State tags
 
-Tags that start with `':'` are special and are only used for tagging
-states like ':hot' and ':selected'. Styles containing such tags are applied
+Tags that start with `:` are special and are only used for tagging
+states like `:hot` and `:selected`. Styles containing such tags are applied
 only after all styles containing only normal tags are applied. It's like if
 styles containing state tags were added to a second stylesheet that was
 included after the default one. This allows overriding base styles without
 resetting any matching state styles, so for instance, declaring a new style
-for 'mybutton' will not affect the syle set previously for 'mybutton :hot'.
+for `'mybutton'` will not affect the syle set previously for `'mybutton :hot'`.
 
 ### Transition animations
 
-Transitions are about gradually changing the value of an attribute from
-its current value to a new value using linear interpolation.
+Transitions are about gradually changing the value of an element attribute
+from its current value to a new value using linear interpolation. Every
+attribute can be animated like that providing it has a data type that can be
+interpolated. Currently, numbers, colors and color gradients can be
+interpolated, but more data types and interpolator functions can be added
+if needed (see the code for that).
 
--------------------------------------- ---------------------------------------
-__transition animations__
-`elem.transition_duration = 0`
+Transitions can be created manually with:
 
-`elem.transition_ease = 'expo out'`
+~~~{.lua}
+	elem:transition(
+		attr, val, [duration], [ease], [delay],
+		[times], [backval], [blend], [speed], [from]
+	)
+~~~
 
-`elem.transition_delay = 0`
+or they can be defined declaratively in styles:
 
-`elem.transition_repeat = 1`
+-------------------------------- ---------------- ------------------------------------------------------------------
+`transition_<attr>`              nil              set to `true` to enable transitions for an attribute
+`transition_duration`            0 (disabled)     animation duration (seconds)
+`transition_ease`                'expo out'       easing function and way (see [easing])
+`transition_delay`               0                delay before starting (seconds)
+`transition_repeat`              1                repeat times
+`transition_speed`               1                speed factor
+`transition_blend`               'replace'`       blend function: 'replace', 'restart', 'wait'
+-------------------------------- ---------------- ------------------------------------------------------------------
 
-`elem.transition_speed = 1`
-
-`elem.transition_blend =` \
-	`'replace_nodelay'`
-
-`elem:transition(attr, val, dt, ` \
-   `ease, duration, ease, delay,` \
-   `times, backval, blend)`
-
-`elem:transitioning(attr) -> t|f`
-__attribute types__
-
-__interpolators__
--------------------------------------- ---------------------------------------
+Transition parameters can also be defined on a per attribute basis with
+`transition_<param>_<attr>`, eg. `transition_duration_opacity = 2`.
 
 
 ## Windows
@@ -297,7 +300,7 @@ Layers are elements, so all element methods and properties apply.
 
 ### Configuration
 
-The following properties can be used to initialize a layer and can also be
+The following attributes can be used to initialize a layer and can also be
 changed freely at runtime to change its behavior or appearance.
 
 -------------------------------- ---------------- ------------------------------------------------------------------
@@ -588,7 +591,7 @@ bitmap on every repaint:
 
 -------------------------------- ---------------- ------------------------------------------------------------------
 `background_color`               '#040404'        a default color that works with transparent windows
-`background_operator`            'source'         clear background
+`background_operator`            'source'         makes it clear the background
 -------------------------------- ---------------- ------------------------------------------------------------------
 
 User-created layers must ultimately be atteched to the window's view (or to
@@ -598,9 +601,10 @@ is a window, not another layer.
 
 ## Widgets
 
-Widgets are layer trees with custom styling and behavior and additional
-properties, methods and events. Widgets can be extended by subclassing and
-overriding and can be re-styled with `ui:style()`.
+Widgets are layers (usually containing other layers) with custom styling
+and behavior and additional properties, methods and events. Widgets can be
+extended by subclassing and overriding and can be re-styled with `ui:style()`
+or by assigning them a different stylesheet.
 
 -------------------------------------- ---------------------------------------
 __input__
