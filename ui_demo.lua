@@ -561,9 +561,8 @@ local function test_widgets_flex()
 	win.view.layout = 'grid'
 	win.view.padding = 40
 	win.view.grid_wrap = 2
-	win.view.grid_gap_x = 20
-	--win.view.flex_axis = 'y'
-	win.view.align_cross = 'center'
+	win.view.row_gap = 20
+	win.view.col_gap = 20
 
 	ui:checkbox{
 		parent = win,

@@ -841,6 +841,8 @@ end
 
 --element tags & styles ------------------------------------------------------
 
+element.tags = false
+element.style = false
 element.stylesheet = ui:stylesheet()
 
 element:init_ignore{tags=1}
@@ -4210,12 +4212,12 @@ local function stretch_items_main_axis(items, i, j, total_w, X, W, _MIN_W)
 end
 
 --starting x-offset and in-between spacing metrics for aligning.
-local function align_metrics(align, container_w, items_w, item_count, LEFT, RIGHT)
+local function align_metrics(align, container_w, items_w, item_count, START, END, LEFT, RIGHT, L, R)
 	local x
 	local spacing = 0
-	if align == 'start' or align == LEFT then
+	if align == START or align == LEFT or align == L then
 		x = 0
-	elseif align == 'end' or align == RIGHT then
+	elseif align == END or align == RIGHT or align == R then
 		x = container_w - items_w
 	elseif align == 'center' then
 		x = (container_w - items_w) / 2
@@ -4267,6 +4269,11 @@ layer.fr = 1 --stretch fraction
 
 --generate pairs of methods for vertical and horizontal flexbox layouts.
 local function gen_funcs(X, Y, W, H, LEFT, RIGHT, TOP, BOTTOM)
+
+	local L = LEFT:sub(1, 1)
+	local R = RIGHT:sub(1, 1)
+	local T = TOP:sub(1, 1)
+	local B = BOTTOM:sub(1, 1)
 
 	local CW = 'c'..W
 	local CH = 'c'..H
@@ -4339,11 +4346,13 @@ local function gen_funcs(X, Y, W, H, LEFT, RIGHT, TOP, BOTTOM)
 	end
 
 	local function align_metrics_x(self, align, items_w, item_count)
-		return align_metrics(align, self[CW], items_w, item_count, LEFT, RIGHT)
+		return align_metrics(align, self[CW], items_w, item_count,
+			'start', 'end', LEFT, RIGHT, L, R)
 	end
 
 	local function align_metrics_y(self, align, items_w, item_count)
-		return align_metrics(align, self[CH], items_w, item_count, TOP, BOTTOM)
+		return align_metrics(align, self[CH], items_w, item_count,
+			'start', 'end', TOP, BOTTOM, T, B)
 	end
 
 	--align a line of items on the main axis.
@@ -4638,8 +4647,8 @@ function layer:sync_layout_grid_autopos()
 	local flow = self.grid_flow --[y][r][b]
 	local col_first = not flow:find('y', 1, true)
 	local row_first = not col_first
-	local rev_cols = flow:find('r', 1, true)
-	local rev_rows = flow:find('b', 1, true)
+	local flip_cols = flow:find('r', 1, true)
+	local flip_rows = flow:find('b', 1, true)
 	local grid_wrap = math.max(1, self.grid_wrap)
 	local max_col = col_first and grid_wrap or 0
 	local max_row = row_first and grid_wrap or 0
@@ -4779,16 +4788,16 @@ function layer:sync_layout_grid_autopos()
 	end
 
 	--reverse the order of rows and/or columns depending on grid_flow.
-	if rev_rows or rev_cols then
+	if flip_rows or flip_cols then
 		for _,layer in ipairs(self) do
 			if layer.visible then
-				if rev_rows then
+				if flip_rows then
 					layer._grid_row = max_row
 						- layer._grid_row
 						- layer._grid_row_span
 						+ 2
 				end
-				if rev_cols then
+				if flip_cols then
 					layer._grid_col = max_col
 						- layer._grid_col
 						- layer._grid_col_span
@@ -4798,6 +4807,8 @@ function layer:sync_layout_grid_autopos()
 		end
 	end
 
+	self._grid_flip_rows = flip_rows and true or false
+	self._grid_flip_cols = flip_cols and true or false
 	self._grid_max_row = max_row
 	self._grid_max_col = max_col
 end
@@ -4806,6 +4817,8 @@ end
 
 local function gen_funcs(X, Y, W, H, COL, LEFT, RIGHT)
 
+	local L = LEFT:sub(1, 1)
+	local R = RIGHT:sub(1, 1)
 	local CW = 'c'..W
 	local PW = 'p'..W
 	local MIN_CW = 'min_'..CW
@@ -4819,6 +4832,7 @@ local function gen_funcs(X, Y, W, H, COL, LEFT, RIGHT)
 	local _MAX_COL = '_grid_max_'..COL
 	local _COL = '_grid_'..COL
 	local _COL_SPAN = '_grid_'..COL..'_span'
+	local _FLIP_COLS = '_grid_flip_'..COL..'s'
 
 	grid[SYNC_MIN_W] = function(self, other_axis_synced)
 
@@ -4914,12 +4928,18 @@ local function gen_funcs(X, Y, W, H, COL, LEFT, RIGHT)
 		local container_w = self[CW]
 		local align = self[ALIGN_X]
 
+		local START, END = 'start', 'end'
+		if self[_FLIP_COLS] then
+			START, END = END, START
+		end
+
 		if align == 'stretch' then
 			stretch_items_main_axis(cols, 1, #cols, container_w, X, W, _MIN_W)
 		else
 			local items_w, item_count = items_sum(cols, 1, #cols, _MIN_W)
 			local x, spacing =
-				align_metrics(align, self[CW], items_w, item_count, LEFT, RIGHT)
+				align_metrics(align, self[CW], items_w, item_count,
+					START, END, LEFT, RIGHT, L, R)
 			align_items_main_axis(cols, 1, #cols, x, spacing, X, W, _MIN_W)
 		end
 

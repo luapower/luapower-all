@@ -129,7 +129,7 @@ to matching sets of elements based on matching tag combinations.
 
 Selecting elements for styling is based on element tags only, which are
 equivalent to CSS classes (there is no concept of ids or other things to
-match on).
+match on other than tags).
 
 Elements can be initialized with the attribute `tags = 'tag1 tag2 ...'`
 similar to the html class attribute. Tags can also be added/removed later
@@ -138,8 +138,8 @@ A class can also specify additional default tags with
 `myclass.tags = 'tag1 tag2 ...'`.
 
 Tags matching the entire hierarchy of class names up to and including
-`'element'` are created automatically, so every layer gets the `'element'`
-and `'layer'` tags, etc.
+`'element'` are created automatically for each element, so every layer gets
+the `'element'` and `'layer'` tags, etc.
 
 #### Selectors
 
@@ -151,7 +151,8 @@ Selector syntax differs from CSS:
 #### Styles
 
 Styles can be added with `ui:style(selector, attr_values)` which adds them
-to the default stylesheet `ui.element.stylesheet`.
+to the default stylesheet `ui.element.stylesheet`. Inline styles can be
+set with the `style` attribute when creating the element.
 
 Styles are updated automatically on the next repaint. They can also be
 updated manually with `elem:sync_styles()`.
@@ -303,122 +304,122 @@ Layers are elements, so all element methods and properties apply.
 The following attributes can be used to initialize a layer and can also be
 changed freely at runtime to change its behavior or appearance.
 
--------------------------------- ---------------- ------------------------------------------------------------------
+-------------------------------- ------------------ ------------------------------------------------------------------
 __display & behavior__           __default__
-`visible`                        true             visible and occupies space in the layout
-`enabled`                        true             looks enabled and receives input
-`activable`                      true             can be clicked and set as hot
-`vscrollable`                    false            enable mouse wheel when hot and not focused
-`hscrollable`                    false            enable mouse horiz. wheel when hot and not focused
-`scrollable`                     false            can be hit for vscroll or hscroll
-`focusable`                      false            can be focused
-`draggable`                      true             can be dragged (still needs to respond to start_drag())
-`mousedown_activate`             false            activate/deactivate on left mouse down/up
-`drag_threshold`                 0                moving distance before start dragging
-`max_click_chain`                1                2 for getting doubleclick events, etc.
+`visible`                        `true`             visible and occupies space in the layout
+`enabled`                        `true`             looks enabled and receives input
+`activable`                      `true`             can be clicked and set as hot
+`vscrollable`                    `false`            enable mouse wheel when hot and not focused
+`hscrollable`                    `false`            enable mouse horiz. wheel when hot and not focused
+`scrollable`                     `false`            can be hit for vscroll or hscroll
+`focusable`                      `false`            can be focused
+`draggable`                      `true`             can be dragged (still needs to respond to `start_drag()`)
+`mousedown_activate`             `false`            activate/deactivate on left mouse down/up
+`drag_threshold`                 `0`                moving distance before start dragging
+`max_click_chain`                `1`                2 for getting doubleclick events, etc.
 __affine transforms__
-`rotation`                       0                rotation angle (radians)
-`rotation_cx, rotation_cy`       0, 0             rotation center coordinates
-`scale`                          1                scale factor
-`scale_x, scale_y`               false, false     scale factor: axis overrides
-`scale_cx, scale_cy`             0, 0             scaling center coordinates
+`rotation`                       `0`                rotation angle (radians)
+`rotation_cx, rotation_cy`       `0`                rotation center coordinates
+`scale`                          `1`                scale factor
+`scale_x, scale_y`               `false`            scale factor: axis overrides
+`scale_cx, scale_cy`             `0`                scaling center coordinates
 __content box__
-`padding`                        0 (none)         default padding for all sides
-`padding_left`                   false            padding override: left side
-`padding_right`                  false            padding override: right side
-`padding_top`                    false            padding override: top side
-`padding_bottom`                 false            padding override: bottom side
+`padding`                        `0`                default padding for all sides
+`padding_left`                   `false`            padding override: left side
+`padding_right`                  `false`            padding override: right side
+`padding_top`                    `false`            padding override: top side
+`padding_bottom`                 `false`            padding override: bottom side
 __hierarchy__
-`parent`                         false            painting/clipping parent
-`layer_index`                                     index in parent's array part (z-order)
-`pos_parent`                     false            positioning parent (false means use `parent`)
+`parent`                         `false`            painting/clipping parent
+`layer_index`                                       index in parent's array part (z-order)
+`pos_parent`                     `false`            positioning parent (false means use `parent`)
 __focus__
-`tabindex`                       0                tab order, for tab-based navigation
-`tabgroup`                       0                tab group, for tab-based navigation
-`taborder_algorithm`             'xy'             tab order algorithm: 'xy', 'yx'
+`tabindex`                       `0`                tab order, for tab-based navigation
+`tabgroup`                       `0`                tab group, for tab-based navigation
+`taborder_algorithm`             `'xy'`             tab order algorithm: `'xy'`, `'yx'`
 __borders__
-`border_width`                   0 (none)         border thickness
-`border_width_left`              false            border thickness side override
-`border_width_right`             false            border thickness side override
-`border_width_top`               false            border thickness side override
-`border_width_bottom`            false            border thickness side override
-`corner_radius`                  0 (square)       border corner radius
-`corner_radius_top_left`         false            border corner radius side override
-`corner_radius_top_right`        false            border corner radius side override
-`corner_radius_bottom_left`      false            border corner radius side override
-`corner_radius_bottom_right`     false            border corner radius side override
-`border_color`                   '#fff'           border color
-`border_color_left`              false            border color side override
-`border_color_right`             false            border color side override
-`border_color_top`               false            border color side override
-`border_color_bottom`            false            border color side override
-`border_dash`                    false            border dash: `{width1, width2, ...}`
-`border_offset`                  -1 (inside)      border stroke position rel. to box edge (1=outside)
-`corner_radius_kappa`            1.2              smoother rounded corners
+`border_width`                   `0`                border thickness
+`border_width_left`              `false`            border thickness side override
+`border_width_right`             `false`            border thickness side override
+`border_width_top`               `false`            border thickness side override
+`border_width_bottom`            `false`            border thickness side override
+`corner_radius`                  `0`                border corner radius
+`corner_radius_top_left`         `false`            border corner radius side override
+`corner_radius_top_right`        `false`            border corner radius side override
+`corner_radius_bottom_left`      `false`            border corner radius side override
+`corner_radius_bottom_right`     `false`            border corner radius side override
+`border_color`                   `'#fff'`           border color
+`border_color_left`              `false`            border color side override
+`border_color_right`             `false`            border color side override
+`border_color_top`               `false`            border color side override
+`border_color_bottom`            `false`            border color side override
+`border_dash`                    `false`            border dash: `{width1, width2, ...}`
+`border_offset`                  `-1`               border stroke position rel. to box edge (-1=inside..1=outside)
+`corner_radius_kappa`            `1.2`              smoother rounded corners
 __backgrounds__
-`background_type`                'color'          false, 'color', 'gradient', 'radial_gradient', 'image'
-`background_hittable`            true
-`background_x, background_y`     0, 0             background offset coords
-`background_rotation`            0                background rotation angle (rad)
-`background_rotation_cx/_cy`     0, 0             background rotation center coords
-`background_scale`               1                background scale factor
-`background_scale_cx/_cy`        0, 0             background scale factor: axis override
-`background_color`               false (none)     solid color
-`background_colors`              false            gradient: `{[offset1], color1, ...}`
-`background_x1/_y1/_x2/_y2`      0, 0, 0, 0       linear gradient: end-point coords
-`background_cx1/_cy1/_cx2/_cy2`  0, 0, 0, 0       radial gradient: end-point coords
-`background_r1/_r2`              0, 0             radial gradient: radii
-`background_image`               false (none)     background image file (requires [libjpeg])
-`background_operator`            'over'           cairo blending operator
-`background_clip_border_offset`  1                like border_offset but for clipping the background
+`background_type`                `'color'`          `false`, `'color'`, `'gradient'`, `'radial_gradient'`, `'image'`
+`background_hittable`            `true`
+`background_x, background_y`     `0`                background offset coords
+`background_rotation`            `0`                background rotation angle (radians)
+`background_rotation_cx/_cy`     `0`                background rotation center coords
+`background_scale`               `1`                background scale factor
+`background_scale_cx/_cy`        `0`                background scale factor: axis override
+`background_color`               `false`            solid color
+`background_colors`              `false`            gradient: `{[offset1], color1, ...}`
+`background_x1/_y1/_x2/_y2`      `0`                linear gradient: end-point coords
+`background_cx1/_cy1/_cx2/_cy2`  `0`                radial gradient: end-point coords
+`background_r1/_r2`              `0`                radial gradient: radii
+`background_image`               `false`            background image file (requires [libjpeg])
+`background_operator`            `'over'`           cairo blending operator
+`background_clip_border_offset`  `1`                like `border_offset` but for clipping the background
 __shadows__
-`shadow_x, shadow_y`             0, 0             shadow offset coords
-`shadow_color`                   '#000'           shadow color
-`shadow_blur`                    0 (none)         shadow blur size
+`shadow_x, shadow_y`             `0`                shadow offset coords
+`shadow_color`                   `'#000'`           shadow color
+`shadow_blur`                    `0`                shadow blur size (0=disable)
 __text__
-`text`                           false (none)
-`font`                           'Open Sans,14'   font spec: `'name [weight] [slant], size'`
-`font_name`                      false            font override: name
-`font_weight`                    false            font override: weight (100..900, 'bold', etc.)
-`font_slant`                     false            font override: slant ('italic', 'normal')
-`font_size`                      false            font override: size
-`text_color`                     '#fff'           text color
-`line_spacing`                   1                multiply factor over line height for lines
-`paragraph_spacing`              2                multiply factor over line height for paragraphs
-`text_dir`                       'auto'           BiDi base direction: 'auto', 'rtl', 'ltr'
-`nowrap`                         false            disable automatic line wrapping
-`text_operator`                  'over'           blending operator (see [cairo])
-`text_align`                     'center center'  text x & y alignments: 'l|c|r t|c|b'
-`text_align_x`                   false            text x-align override: 'l|c|r'
-`text_align_y`                   false            text y-align override: 't|c|b'
+`text`                           `false`            text, wrapped around `cw`
+`font`                           `'Open Sans,14'`   font spec: `'name [weight] [slant], size'`
+`font_name`                      `false`            font override: name
+`font_weight`                    `false`            font override: weight (`100..900`, `'bold'`, etc.)
+`font_slant`                     `false`            font override: slant (`'italic'`, `'normal'`)
+`font_size`                      `false`            font override: size
+`text_color`                     `'#fff'`           text color
+`line_spacing`                   `1`                multiply factor over line height for lines
+`paragraph_spacing`              `2`                multiply factor over line height for paragraphs
+`text_dir`                       `'auto'`           BiDi base direction: `'auto'`, `'rtl'`, `'ltr'`
+`nowrap`                         `false`            disable automatic line wrapping
+`text_operator`                  `'over'`           blending operator (see [cairo])
+`text_align`                     `'c c'`            text x & y alignments: `'l[eft]|c[enter]|r[ight] t[op]|c[enter]|b[ottom]'`
+`text_align_x`                   `false`            text x-align override: `'l[eft]'`, `'c[enter]'`, `'r[ight]'`
+`text_align_y`                   `false`            text y-align override: `'t[op]'`, `'c[enter]'`, `'b[ottom]'`
 __layouting__
-`layout`                         false (none)     layout type: false (none), 'textbox', 'flexbox', 'grid'
-`min_cw, min_ch`                 0, 0             minimum content-box size for flexible layouts
+`layout`                         `false`            layout type: `false` (none), `'textbox'`, `'flexbox'`, `'grid'`
+`min_cw, min_ch`                 `0`                minimum content-box size for flexible layouts
 __null-layouts__
-`x, y, w, h`                     0, 0, 0, 0       fixed box coordinates
+`x, y, w, h`                     `0`                fixed box coordinates
 __flexbox layouts__
-`flex_axis`                      'x'              main axis of flow: 'x', 'y'
-`flex_wrap`                      false            line-wrap content
-`align_main/_cross/_lines`       'stretch'        'stretch', 'start'/'top'/'left', 'end'/'bottom'/'right', 'center'
-`align_main`                     'stretch'        main-axis align: additionally: 'space_between', 'space_around', 'space_evenly'
-`align_cross`                    'stretch'        cross-axis align: additionally: 'baseline'
-`align_lines`                    'stretch'        content-align: additionally: 'space_between', 'space_around', 'space_evenly'
-`align_cross_self`               false            item `align_cross` override
-`fr`                             1                stretch fraction
+`flex_axis`                      `'x'`              main axis of flow: `'x'`, `'y'`
+`flex_wrap`                      `false`            line-wrap content
+`align_main/_cross/_lines`       `'stretch'`        `'stretch'`, `'start'`/`'t[op]'`/`'l[eft]'`, `'end'`/`'b[ottom]'`/`'r[ight]'`, `'c[enter]'`
+`align_main`                     `'stretch'`        main-axis align: `'space_between'`, `'space_around'`, `'space_evenly'`
+`align_cross`                    `'stretch'`        cross-axis align: `'baseline'`
+`align_lines`                    `'stretch'`        content-align: `'space_between'`, `'space_around'`, `'space_evenly'`
+`align_cross_self`               `false`            item `align_cross` override
+`fr`                             `1`                stretch fraction
 __grid layouts__
-`grid_flow`                      'x'              flow direction & main axis: 'x', 'y', 'xr', 'yr', 'xb', 'yb', 'xrb', 'yrb'
-`grid_wrap`                      1                number of rows/columns on the main axis of flow
-`grid_cols`                      {}               column size fractions `{fr1, ...}`
-`grid_rows`                      {}               row size fractions `{fr1, ...}`
-`col_gap`                        0 (none)         gap size between columns
-`row_gap`                        0 (none)         gap size between rows
-`align_x`                        'stretch'        'stretch', 'start'/'top'/'left', 'end'/'bottom'/'right', 'center', 'space_between', 'space_around', 'space_evenly'
-`align_y`                        'stretch'        'stretch', 'start'/'top'/'left', 'end'/'bottom'/'right', 'center', 'space_between', 'space_around', 'space_evenly'
-`align_x_self`                   false            item `align_x` override
-`align_y_self`                   false            item `align_y` override
+`grid_flow`                      `'x'`              flow direction & main axis: `'x'`, `'y'`, `'xr'`, `'yr'`, `'xb'`, `'yb'`, `'xrb'`, `'yrb'`
+`grid_wrap`                      `1`                number of rows/columns on the main axis of flow
+`grid_cols`                      `{}`               column size fractions `{fr1, ...}`
+`grid_rows`                      `{}`               row size fractions `{fr1, ...}`
+`col_gap`                        `0`                gap size between columns
+`row_gap`                        `0`                gap size between rows
+`grid_pos`                       `nil`              element position in grid: `'[row][/span] [col][/span]'`
+`align_x`                        `'stretch'`        `'stretch'`, `'start'`/`'l[eft]'`, `'end'`/`'r[ight]'`, `'c[enter]'`, `'space_between'`, `'space_around'`, `'space_evenly'`
+`align_y`                        `'stretch'`        `'stretch'`, `'start'`/`'t[op]'`, `'end'`/`'b[ottom]'`, `'c[enter]'`, `'space_between'`, `'space_around'`, `'space_evenly'`
+`align_x_self`, `align_y_self`   `false`            item `align_x` and `align_y` overrided
 __tooltips__
-`tooltip`                        false (none)     native tooltip text
--------------------------------- ---------------- ------------------------------------------------------------------
+`tooltip`                        `false`            native tooltip text (false=none)
+-------------------------------- ------------------ ------------------------------------------------------------------
 
 ### Runtime state
 

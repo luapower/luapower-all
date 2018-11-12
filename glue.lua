@@ -83,7 +83,7 @@ end
 function glue.update(dt,...)
 	for i=1,select('#',...) do
 		local t=select(i,...)
-		if t ~= nil then
+		if t then
 			for k,v in pairs(t) do dt[k]=v end
 		end
 	end
@@ -94,7 +94,7 @@ end
 function glue.merge(dt,...)
 	for i=1,select('#',...) do
 		local t=select(i,...)
-		if t ~= nil then
+		if t then
 			for k,v in pairs(t) do
 				if rawget(dt, k) == nil then dt[k]=v end
 			end
@@ -107,7 +107,7 @@ end
 function glue.extend(dt,...)
 	for j=1,select('#',...) do
 		local t=select(j,...)
-		if t ~= nil then
+		if t then
 			local j = #dt
 			for i=1,#t do dt[j+i]=t[i] end
 		end
