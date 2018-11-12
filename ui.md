@@ -57,7 +57,7 @@ ui:run()
 
 ## The ui module/singleton
 
-The [ui] singleton is a thin facade over [nw]'s app singleton. It allows
+The ui singleton is a thin facade over [nw]'s app singleton. It allows
 creating OS windows, quitting the app, creating timers, using the clipboard,
 adding fonts, etc.
 
@@ -86,11 +86,15 @@ __native events__
 `wakeup, hidden, unhidden,`            events.
 `displays_changed`
 
+__clock__
+
+`ui:clock()`                           returns [time].clock()
+
 __font registration__
 
-`ui:add_font_file(...)`                see [tr] for `tr:add_font_file(...)`
+`ui:add_font_file(...)`                calls [tr]:add_font_file(...)
 
-`ui:add_mem_font(...)`                 see [tr] for `tr:add_mem_font(...)`
+`ui:add_mem_font(...)`                 calls [tr]:add_mem_font(...)
 -------------------------------------- ---------------------------------------
 
 ## Elements
@@ -148,6 +152,15 @@ Selector syntax differs from CSS:
   * simple selectors: `'tag1 tag2'` -- in CSS: `.tag1.tag2`
   * parent-child selectors: `'tag1 > tag2'` -- in CSS: `tag1 tag2`
 
+Selector objects can be created with `ui:selector(select_text)`. It's not
+normally necessary to create them explicitly (they are created automatically
+in places where a selector is expected), but they have additional methods:
+
+  * `sel:filter(func)` -- add a filter function `f(elem) -> true|false`
+  to the selector, to further filter the selected results; multiple filters
+  can be added and they will be applied in order.
+  * `sel:selects(elem) -> true|false` -- test a selector against an element.
+
 #### Styles
 
 Styles can be added with `ui:style(selector, attr_values)` which adds them
@@ -159,23 +172,24 @@ updated manually with `elem:sync_styles()`.
 
 #### Stylesheets
 
-Use `ss = ui:stylesheet()` to create a new stylesheet
-and `ss:style(selector, attr_values)` to add styles to it.
-Replace `ui.element.stylesheet` to change the styling of the entire app.
-Replace `ui.button.stylesheet` to change the styling of all buttons.
-Pass `stylesheet` when creating an element to set that element's stylesheet.
-Use `ss1:add_stylesheet(ss2)` to add the styles of a stylesheet to another
-stylesheet.
+  * use `ss = ui:stylesheet()` to create a new stylesheet.
+  * use `ss:style(selector, attr_values)` to add styles to it.
+  * replace `ui.element.stylesheet` to change the styling of the entire app.
+  * replace `ui.button.stylesheet` to change the styling of all buttons.
+  * pass `stylesheet` when creating an element to set its stylesheet.
+  * use `ss1:add_stylesheet(ss2)` to copy styles from another stylesheet.
 
 #### State tags
 
-Tags that start with `:` are special and are only used for tagging
-states like `:hot` and `:selected`. Styles containing such tags are applied
-only after all styles containing only normal tags are applied. It's like if
-styles containing state tags were added to a second stylesheet that was
-included after the default one. This allows overriding base styles without
-resetting any matching state styles, so for instance, declaring a new style
-for `'mybutton'` will not affect the syle set previously for `'mybutton :hot'`.
+Tags that start with `:` are _state tags_ and are used exclusively for
+tagging element states like `:hot` and `:selected`.
+
+Styles containing state tags are applied only after all styles containing
+only normal tags are applied. It's as if styles containing state tags
+were added to a second stylesheet that was included after the default one.
+This allows overriding base styles without resetting any matching state
+styles, so for instance, declaring a new style for `'mybutton'` will not
+affect the syle set previously for `'mybutton :hot'`.
 
 ### Transition animations
 
@@ -233,7 +247,7 @@ on the `transition_blend` attribute, which can be:
 
 ## Windows
 
-[ui] windows are a thin facade over [nw] windows.
+Windows are a thin facade over [nw] windows.
 
 Windows are elements, so all element methods and properties apply.
 
@@ -461,7 +475,7 @@ __rotation & scaling__
   * you can sort a layer's children directly with `table.sort()`.
   * `parent` can be set to a window object, in which case the window will
   change it to point to its view layer.
-  * `layer_index` reflects a preferred index when constructing a layer,
+  * `layer_index` represents a preferred index when constructing a layer,
   but at runtime it always reflects the actual index in the parent array.
 
 ----------------------------------------- ------------------------------------------------------------------
@@ -471,8 +485,6 @@ __rotation & scaling__
 `to_front()`                              set `layer_index` to 1/0
 `each_child(func)`                        calls `func(layer)` for each child, recursively, depth-first
 `children() -> iter() -> layer`           iterate children recursively, depth-first
-`add_layer(layer, [index])`               add a layer as child
-`remove_layer(layer)`                     remove a child layer
 `layer_added(layer, index)`               event: a child layer was added
 `layer_removed(layer)`                    event: a child layer was removed
 ----------------------------------------- ------------------------------------------------------------------

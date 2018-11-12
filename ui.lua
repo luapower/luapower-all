@@ -428,11 +428,11 @@ function stylesheet:after_init(ui)
 	self.first_state_sel_index = 1 --index of first selector with :state tags
 end
 
-function stylesheet:add_style(sel, attrs)
+function stylesheet:style(sel, attrs)
 
 	if type(sel) == 'string' and sel:find(',', 1, true) then
 		for sel in sel:gmatch'[^,]+' do
-			self:add_style(sel, attrs)
+			self:style(sel, attrs)
 		end
 		return
 	end
@@ -573,7 +573,7 @@ function stylesheet:update_element(elem, update_children)
 end
 
 function ui:style(sel, attrs)
-	self.element.stylesheet:add_style(sel, attrs)
+	self.element.stylesheet:style(sel, attrs)
 end
 
 --attribute types ------------------------------------------------------------
