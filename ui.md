@@ -180,8 +180,9 @@ for `'mybutton'` will not affect the syle set previously for `'mybutton :hot'`.
 ### Transition animations
 
 Transitions are about gradually changing the value of an element attribute
-from its current value to a new value using linear interpolation. Every
-attribute can be animated like that providing it has a data type that can be
+from its current value to a new value using linear interpolation.
+
+Every attribute can be animated providing it has a data type that can be
 interpolated. Currently, numbers, colors and color gradients can be
 interpolated, but more data types and interpolator functions can be added
 if needed (see the code for that).
@@ -195,20 +196,39 @@ Transitions can be created manually with:
 	)
 ~~~
 
-or they can be defined declaratively in styles:
+or they can be defined declaratively as styles:
 
--------------------------------- ------------------ ------------------------------------------------------------------
-`transition_<attr>`              `nil`              set to `true` to enable transitions for an attribute
-`transition_duration`            `0` (disabled)     animation duration (seconds)
-`transition_ease`                `'expo out'`       easing function and way (see [easing])
-`transition_delay`               `0`                delay before starting (seconds)
-`transition_repeat`              `1`                repeat times
-`transition_speed`               `1`                speed factor
-`transition_blend`               `'replace'`        blend function: `'replace'`, `'restart'`, `'wait'`
--------------------------------- ------------------ ------------------------------------------------------------------
+------------------------ ------------------ ------------------------------------------------------------------
+`transition_<attr>`                         set to `true` to enable transitions for an attribute
+`transition_duration`    `0` (disabled)     animation duration (seconds)
+`transition_ease`        `'expo out'`       easing function and way (see [easing])
+`transition_delay`       `0`                delay before starting (seconds)
+`transition_repeat`      `1`                repeat times
+`transition_speed`       `1`                speed factor
+`transition_blend`       `'replace'`        blend function: `'replace'`, `'restart'`, `'wait'`
+`transition_from`        _current value_    start value
+------------------------ ------------------ ------------------------------------------------------------------
 
 Transition parameters can also be specified for each attribute with
 `transition_<param>_<attr>`, eg. `transition_duration_opacity = 2`.
+
+Transitions are updated automatically on every repaint and are freed
+automatically when they finish. They can also be updated manually with
+`elem:sync_transitions()`.
+
+#### Transition blending
+
+Transition blending controls what happens when a transition is created
+over an attribute that is already in transition. Possible behaviors depend
+on the `transition_blend` attribute, which can be:
+
+  * `'replace'` - replace current transition with the new one, but do nothing
+  if the new transition has the same end value as the current one.
+  * `'restart'` - replace current transition with the new one, and also,
+  start from the initial value instead of from the current value.
+  * `'wait'` - wait for the current transition to terminate before starting
+  the new one, but do nothing if the new transition has the same end value
+  as the current one.
 
 
 ## Windows
@@ -341,7 +361,7 @@ __layout=false__
 __flexbox layout__
 `flex_axis`                          `'x'`              main axis of flow: `'x'`, `'y'`
 `flex_wrap`                          `false`            line-wrap content
-`align_main/_cross/_lines`           `'stretch'`        `'stretch'`, `'start'`/`'t[op]'`/`'l[eft]'`, `'end'`/`'b[ottom]'`/`'r[ight]'`, `'c[enter]'`
+`align_main/cross/lines`             `'stretch'`        `'stretch'`, `'start'`/`'t[op]'`/`'l[eft]'`, `'end'`/`'b[ottom]'`/`'r[ight]'`, `'c[enter]'`
 `align_main`                         `'stretch'`        main-axis align: `'space_between'`, `'space_around'`, `'space_evenly'`
 `align_cross`                        `'stretch'`        cross-axis align: `'baseline'`
 `align_lines`                        `'stretch'`        content-align: `'space_between'`, `'space_around'`, `'space_evenly'`
@@ -420,8 +440,8 @@ __rotation & scaling__
 
   * layers can be nested, which affects their painting order, clipping and
   positioning relative to each other.
-  * layers have a "box" defined by their `x, y, w, h`, and a "content box"
-  (aka "client rect") which is the same box adjusted by paddings.
+  * layers have a "box" defined by `x, y, w, h` and a "content box"
+  (or "client rectangle") which is the same box adjusted by paddings.
   * layers are positioned and clipped relative to their parent's content box.
   * unlike HTML, the content box is _not_ affected by the size of borders.
   * borders can be drawn at an offset relative to the layer's box and the
@@ -430,115 +450,133 @@ __rotation & scaling__
   contour of its border, or it can be left unclipped.
   * a layer's background is always clipped.
 
-### Layer hierarchy
+### Layer hierarchy and z-order
 
-  * layers keep their children in their array part which also dictates their paint order.
-  * layers can be moved around in the hierarchy by changing their `parent` property.
-  * layers can change their paint order with `:to_front()`, `:to_back()` or
-  by setting their `layer_index` property directly.
-  * painting order can also be set for all children by sorting the parent
-  layer with `table.sort()`.
+  * a layer keeps its children in its array part which also dictates their
+  paint order (first child is painted first).
+  * layers can be moved around in the hierarchy by changing their `parent`
+  property (they are always added to the end of their new parent's list).
+  * layers can change their paint order with `to_front()`, `to_back()`
+  or by setting their `layer_index` property directly.
+  * you can sort a layer's children directly with `table.sort()`.
+  * `parent` can be set to a window object, in which case the window will
+  change it to point to its view layer.
+  * `layer_index` reflects a preferred index when constructing a layer,
+  but at runtime it always reflects the actual index in the parent array.
 
-------------------------------------------------- ------------------------------------------------------------------
-`mouse_x, mouse_y`                                mouse coords from the last mouse event
-`window`                                          layer's window
-`to_back()`                                       set `layer_index` to 1
-`to_front()`                                      set `layer_index` to 1/0
-`each_child(func)`                                calls `func(layer)` for each child, recursively, depth-first
-`children() -> iter() -> layer`
-`add_layer(layer, [index])`                       add a child
-`remove_layer(layer)`                             remove a child
-------------------------------------------------- ------------------------------------------------------------------
+----------------------------------------- ------------------------------------------------------------------
+`layer_index`                             index in parent array (z-order)
+`window`                                  layer's window (r/o)
+`to_back()`                               set `layer_index` to 1
+`to_front()`                              set `layer_index` to 1/0
+`each_child(func)`                        calls `func(layer)` for each child, recursively, depth-first
+`children() -> iter() -> layer`           iterate children recursively, depth-first
+`add_layer(layer, [index])`               add a layer as child
+`remove_layer(layer)`                     remove a child layer
+`layer_added(layer, index)`               event: a child layer was added
+`layer_removed(layer)`                    event: a child layer was removed
+----------------------------------------- ------------------------------------------------------------------
 
 ### Runtime state
 
--------------------------------- ---------------- ------------------------------------------------------------------
-`enabled`                        r/w              enabled and all parents are enabled too
-`active`                         r/w              the mouse is captured
-`hot`                            r/o              mouse pointer is over the layer
-`focused`                        r/o              has keyboard focus
--------------------------------- ---------------- ------------------------------------------------------------------
+-------------------------------- -------- ------------------------------------------------------------------
+`enabled`                        r/w      enabled and all parents are enabled too
+`active`                         r/w      the mouse is captured
+`hot`                            r/o      mouse pointer is over the layer
+`focused`                        r/o      has keyboard focus
+-------------------------------- -------- ------------------------------------------------------------------
 
-### Layer geometry
+### Derived geometry
 
 ------------------------------------------------- ------------------------------------------------------------------
-__derived geometry__
-`border_inner_x/_y/_w/_h`                         border's inner contour box
-`border_outer_x/_y/_w/_h`                         border's outer contour box
+`inner_x/y/w/h`                                   border's inner contour box
+`outer_x/y/w/h`                                   border's outer contour box
 `baseline`                                        text's baseline
 `pw, ph`                                          total horizontal and vertical paddings
 `pw1, pw2, ph1, ph2`                              paddings for each side
 `cw, ch`                                          content box size
 `cx, cy`                                          box's center coords
 `x2, y2`                                          box's bottom-right corner coords
-__coord converters__
-`abs_matrix() -> mt`                              box matrix in window space
-`from_box_to_parent(x, y) -> x, y`                convert point from own box space to parent content space.
-`from_parent_to_box(x, y) -> x, y`                convert point from parent content space to own box space.
-`to_parent(x, y) -> x, y`                         convert point from own content space to parent content space.
-`from_parent(x, y) -> x, y`                       convert point from parent content space to own content space.
+------------------------------------------------- ------------------------------------------------------------------
+
+### Space conversions
+
+------------------------------------------------- ------------------------------------------------------------------
+`from_box_to_parent(x, y) -> x, y`                own box space -> parent content space
+`from_parent_to_box(x, y) -> x, y`                parent content space -> own box space
+`to_parent(x, y) -> x, y`                         own content space -> parent content space
+`from_parent(x, y) -> x, y`                       parent content space -> own content space
 `to_window(x, y) -> x, y`
 `from_window(x, y) -> x, y`
 `to_screen(x, y) -> x, y`
 `from_screen(x, y) -> x, y`
-`to_other(widget, x, y) -> x, y`                  convert point from own content space to other's content space.
-`from_other(widget, x, y) -> x, y`                convert point from other's content space to own content space
-------------------------------------------------- ------------------------------------------------------------------
-
-### Events
-
-------------------------------------------------- ------------------------------------------------------------------
-__mouse__
-`activated()`                                     layer activated (mouse captured)
-`deactivated()`                                   layer deactivated
-`mousemove(x, y, area)`                           mouse moved
-`mouseenter(x, y, area)`                          mouse entered
-`mouseleave()`                                    mouse left
-`[right|middle]mousedown(x, y, area)`             mouse left/right/middle button pressed
-`[right|middle]mouseup(x, y, area)`               mouse left/right/middle button depressed
-`[right|middle]click(x, y, area)`                 mouse left/right/middle button clicked
-`[right|middle]doubleclick()`                     mouse left/right/middle button double-clicked
-`[right|middle]tripleclick()`                     mouse left/right/middle button triple-click
-`[right|middle]quadrupleclick()`                  mouse left/right/middle button quadruple-click
-`mousewheel(delta, x, y, area, pdelta)`           mouse wheel turned
-__keyboard__
-`gotfocus()`                                      layer focused
-`lostfocus()`                                     layer unfocused
-`keydown(key)`                                    key pressed
-`keyup(key)`                                      key released
-`keypress(key)`                                   key pressed (on repeat)
-`keychar(s)`                                      utf-8 sequence entered
-__drag & drop__
-`drag(x, y)`
-`enter_drop_target(widget, area)`
-`leave_drop_target(widget)`
-`end_drag(drag_widget)`
-`drop(widget, x, y, area)`
-`started_dragging()`
-`ended_dragging()`
-__layer hierarchy__
-`layer_added(layer, index)`                       a child layer was added
-`layer_removed(layer)`                            a child layer was removed
+`to_other(widget, x, y) -> x, y`                  own content space -> other's content space
+`from_other(widget, x, y) -> x, y`                other's content space -> own content space
 ------------------------------------------------- ------------------------------------------------------------------
 
 ### Mouse interaction
 
   * layers must be set as `activable` in order to receive mouse events.
-  * a layer is `hot` when the mouse is over it or when it's `active`.
-  * a layer must set `active` on `mousedown` and must reset it on `mouseup`
-  in order to have the mouse _captured_ while a mouse button is down;
+  * a layer is `hot` when the mouse is over it and when it's `active`.
+  * a layer can capture mouse movements while a mouse button is down by
+  setting its `active` property on `mousedown` and clearing it on `mouseup`.
   this can be done automatically by statically setting `mousedown_activate`.
   * while a layer is `active`, it continues to be `hot` and receive
-  `mousemove` events even when the mouse is outside its hit test area or
+  `mousemove` events even when the mouse is outside its hit-test area or
   outside the window even (that is, the mouse is captured).
+  * `mouse_x, mouse_y` are the mouse coords from the last mouse event.
+
+------------------------------------------------- ------------------------------------------------------------------
+`hot`                                             mouse is over the layer or the layer is active
+`active`                                          mouse is captured by the layer
+`activated()`                                     event: layer activated (mouse captured)
+`deactivated()`                                   event: layer deactivated
+`mousemove(x, y, area)`                           event: mouse moved over a layer's area
+`mouseenter(x, y, area)`                          event: mouse entered a layer's area
+`mouseleave()`                                    event: mouse left the layer's area
+`[right|middle]mousedown(x, y, area)`             event: mouse left/right/middle button pressed
+`[right|middle]mouseup(x, y, area)`               event: mouse left/right/middle button depressed
+`[right|middle]click(x, y, area)`                 event: mouse left/right/middle button click
+`[right|middle]doubleclick()`                     event: mouse left/right/middle button double-click
+`[right|middle]tripleclick()`                     event: mouse left/right/middle button triple-click
+`[right|middle]quadrupleclick()`                  event: mouse left/right/middle button quadruple-click
+`mousewheel(delta, x, y, area, pdelta)`           event: mouse wheel moved `delta` notches
+------------------------------------------------- ------------------------------------------------------------------
+
+### Drag & drop
+
   * a layer must be `active` in order to receive drag & drop events.
+  * a layer must return `true`
+
+--------------------------------------------------------- ------------------------------------------------------------------
+`start_drag(button, mx, my, area) -> widget, dx, dy`      event:
+`drag(x, y)`                                              event:
+`enter_drop_target(widget, area)`                         event:
+`leave_drop_target(widget)`                               event:
+`end_drag(drag_widget)`                                   event:
+`drop(widget, x, y, area)`                                event:
+`started_dragging()`                                      event:
+`ended_dragging()`                                        event:
+--------------------------------------------------------- ------------------------------------------------------------------
 
 ### Keyboard interaction
 
   * layers must be set as `focusable` in order to receive keyboard events.
-  * keyboard events are only received by the focused layer.
+  * keyboard events are only received by the focused layer and bubble up
+  to its parents.
   * return `true` in a `keydown` event to eat up a key stroke so that it
   isn't used by other actions: this is how key conflicts are solved.
+
+------------------------------------------------- ------------------------------------------------------------------
+`focus()`                                         focus layer
+`unfocus()`                                       unfocus layer
+`gotfocus()`                                      event: layer focused
+`lostfocus()`                                     event: layer unfocused
+`keydown(key)`                                    event: key pressed
+`keyup(key)`                                      event: key released
+`keypress(key)`                                   event: key pressed (on repeat)
+`keychar(s)`                                      event: utf-8 sequence entered
+------------------------------------------------- ------------------------------------------------------------------
 
 ### Layouting
 

@@ -2934,14 +2934,14 @@ function layer:border_rect(offset, size_offset)
 	return box2d.offset(size_offset or 0, w1, h1, w, h)
 end
 
-function layer:get_border_inner_x() return (select(1, self:border_rect(-1))) end
-function layer:get_border_inner_y() return (select(2, self:border_rect(-1))) end
-function layer:get_border_inner_w() return (select(3, self:border_rect(-1))) end
-function layer:get_border_inner_h() return (select(4, self:border_rect(-1))) end
-function layer:get_border_outer_x() return (select(1, self:border_rect(1))) end
-function layer:get_border_outer_y() return (select(2, self:border_rect(1))) end
-function layer:get_border_outer_w() return (select(3, self:border_rect(1))) end
-function layer:get_border_outer_h() return (select(4, self:border_rect(1))) end
+function layer:get_inner_x() return (select(1, self:border_rect(-1))) end
+function layer:get_inner_y() return (select(2, self:border_rect(-1))) end
+function layer:get_inner_w() return (select(3, self:border_rect(-1))) end
+function layer:get_inner_h() return (select(4, self:border_rect(-1))) end
+function layer:get_outer_x() return (select(1, self:border_rect(1))) end
+function layer:get_outer_y() return (select(2, self:border_rect(1))) end
+function layer:get_outer_w() return (select(3, self:border_rect(1))) end
+function layer:get_outer_h() return (select(4, self:border_rect(1))) end
 
 --corner radius at pixel offset from the stroke's center on one dimension.
 local function offset_radius(r, o)
