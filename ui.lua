@@ -418,7 +418,7 @@ end
 --stylesheets ----------------------------------------------------------------
 
 local stylesheet = ui.object:subclass'stylesheet'
-ui.stylesheet_class = stylesheet
+ui.stylesheet = stylesheet
 
 function stylesheet:after_init(ui)
 	self.ui = ui
@@ -572,17 +572,9 @@ function stylesheet:update_element(elem, update_children)
 	end
 end
 
-function stylesheet:update_style(style)
-	for _,elem in ipairs(self.elements) do
-		--TODO:
-	end
-end
-
 function ui:style(sel, attrs)
-	self.stylesheet:add_style(sel, attrs)
+	self.element.stylesheet:add_style(sel, attrs)
 end
-
-ui.stylesheet = ui:stylesheet_class()
 
 --attribute types ------------------------------------------------------------
 
@@ -849,9 +841,9 @@ end
 
 --element tags & styles ------------------------------------------------------
 
-element.stylesheet = ui.stylesheet
+element.stylesheet = ui:stylesheet()
 
-element:init_ignore{tags=1, stylesheet=1}
+element:init_ignore{tags=1}
 
 local function add_tags(tags, s)
 	if not s then return end
@@ -877,13 +869,8 @@ function element:init_tags(t)
 		super = super.super
 	end
 
-	if t then
-		if t.stylesheet then
-			self.stylesheet = t.stylesheet
-		end
-		if t.tags then
-			add_tags(self.tags, t.tags)
-		end
+	if t and t.tags then
+		add_tags(self.tags, t.tags)
 	end
 end
 

@@ -44,11 +44,11 @@ ui:run()
   * `oo.Object` - [oo]'s base class
      * `ui.object` - ui's base class. includes the [events] mixin.
         * `ui` - this module, also serving as the app singleton
-        * `ui.selector` - css selectors
+        * `ui.selector` - element selectors
         * `ui.element_list` - lists of elements
         * `ui.stylesheet` - stylesheets
         * `ui.transition` - attribute transitions
-        * `ui.element` - adds css styling and transitions to objects
+        * `ui.element` - adds styling and transitions to objects
            * `ui.window` - top-level windows: a thin layer over [nw]'s windows
               * `ui.popup` - frameless pop-up windows
            * `ui.layer` - the basic UI building block
@@ -120,41 +120,69 @@ lexicographic order. This means that:
   table which is also set up to inherit the class, thus providing transparent
   access to defaults.
 
+### Styling
+
+Cascade styling is a mechanism for applying multiple attribute value sets
+to matching sets of elements based on matching tag combinations.
+
+#### Tags
+
+Selecting elements for styling is based on element tags only, which are
+equivalent to CSS classes (there is no concept of ids or other things to
+match on).
+
+Elements can be initialized with the attribute `tags = 'tag1 tag2 ...'`
+similar to the html class attribute. Tags can also be added/removed later
+with `elem:settag(tagname, true|false)` or `elem:settags('+tag1 -tag2 ...')`.
+A class can also specify additional default tags with
+`myclass.tags = 'tag1 tag2 ...'`.
+
+Tags matching the entire hierarchy of class names up to and including
+`'element'` are created automatically, so every layer gets the `'element'`
+and `'layer'` tags, etc.
+
+#### Selectors
+
+Selector syntax differs from CSS:
+
+  * simple selectors: `'tag1 tag2'` -- in CSS: `'.tag1.tag2'`
+  * parent-child selectors: `'tag1 > tag2'` -- in CSS: `'tag1 tag2'`
+
+#### Styles
+
+Styles can be added with `ui:style(selector, attr_values)` which adds them
+to the default stylesheet `ui.element.stylesheet`.
+
+Styles are updated automatically on the next repaint. They can also be
+updated manually with `elem:sync_styles()`.
+
+#### Stylesheets
+
+Use `ss = ui:stylesheet()` to create a new stylesheet
+and `ss:style(selector, attr_values)` to add styles to it.
+Replace `ui.element.stylesheet` to change the styling of the entire app.
+Replace `ui.button.stylesheet` to change the styling of all buttons.
+Pass `stylesheet` when creating an element to set that element's stylesheet.
+Use `ss1:add_stylesheet(ss2)` to add the styles of a stylesheet to another
+stylesheet.
+
+#### State tags
+
+Tags that start with `':'` are special and are only used for tagging
+states like ':hot' and ':selected'. Styles containing such tags are applied
+only after all styles containing only normal tags are applied. It's like if
+styles containing state tags were added to a second stylesheet that was
+included after the default one. This allows overriding base styles without
+resetting any matching state styles, so for instance, declaring a new style
+for 'mybutton' will not affect the syle set previously for 'mybutton :hot'.
+
+### Transition animations
+
+Transitions are about gradually changing the value of an attribute from
+its current value to a new value using linear interpolation.
+
 -------------------------------------- ---------------------------------------
-__selectors__
-
-TODO
-
-__stylesheets__
-
-TODO
-
-__attribute types__
-
-TODO
-
 __transition animations__
-
-TODO
-
-__interpolators__
-
-TODO
-
-__element lists__
-
-TODO
-
-__tags & styles__
-
-`elem.stylesheet`
-
-`elem:settag(tag, on)`
-
-`elem:settags('+tag1 -tag2 ...')`
-
-__attribute transitions__
-
 `elem.transition_duration = 0`
 
 `elem.transition_ease = 'expo out'`
@@ -173,7 +201,11 @@ __attribute transitions__
    `times, backval, blend)`
 
 `elem:transitioning(attr) -> t|f`
+__attribute types__
+
+__interpolators__
 -------------------------------------- ---------------------------------------
+
 
 ## Windows
 
@@ -182,6 +214,7 @@ __attribute transitions__
 -------------------------------------- ---------------------------------------
 `ui:window{...} -> win`                create a window. see [nw] for options.
 
+`win:close()`                          close a window.
 `win:free()`                           close & free a window.
 
 __native properties__
@@ -263,6 +296,9 @@ standalone as layout containers, text labels or other presentation elements.
 Layers are elements, so all element methods and properties apply.
 
 ### Configuration
+
+The following properties can be used to initialize a layer and can also be
+changed freely at runtime to change its behavior or appearance.
 
 -------------------------------- ---------------- ------------------------------------------------------------------
 __display & behavior__           __default__
@@ -385,8 +421,8 @@ __tooltips__
 
 -------------------------------- ---------------- ------------------------------------------------------------------
 `enabled`                        r/w              enabled and all parents are enabled too
-`hot`                            r/o              mouse pointer is over the layer
 `active`                         r/w              the mouse is captured
+`hot`                            r/o              mouse pointer is over the layer
 `focused`                        r/o              has keyboard focus
 `mouse_x, mouse_y`               r/o              mouse coords from the last mouse event
 `window`                         r/o              layer's window
