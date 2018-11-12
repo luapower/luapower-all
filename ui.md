@@ -739,24 +739,22 @@ as well as provide customizable presentation and behavior.
 
 The main topics that need to be understood in order to create new widgets are:
 
- * the [object system][oo], which provides extensibility mechanisms:
+ * the [object system][oo] and its extensibility mechanisms:
 	* subclassing and instantiation
 	* virtual properties
 	* method overriding
- * the [event system][events], which adds a pub-sub API.
- * the `ui.object` class, which adds meta-programming facilities (decorators).
- * the `ui.element` class, which adds a base non-visual vocabulary for:
-   * applying multiple attribute value sets based on tag combinations (aka CSS)
-	* time-based interpolation of attribute values (aka transition animations)
- * the `ui.layer` class, which adds a base visual vocabulary:
+ * the [event system][events].
+ * the `ui.object` class and its meta-programming utilities (decorators).
+ * the `ui.element` class and the way its constructor works.
+ * the `ui.layer` class and its visual model:
 	* layer hierarchies with relative affine transforms and clipping
-	* drawing borders, backgrounds, shadows, and aligned text
-	* hit testing borders, background and content
-	* layouting, including css-flexbox and css-grid-like models
- * the `ui.window` and `ui.layer` classes, which work together to provide an input API:
+	* borders, backgrounds, shadows, aligned text
+	* hit testing
+	* layouting, for making the widgets elastic
+ * the `ui.window` and `ui.layer` classes, which together provide an input API:
    * routing mouse events to the hot widget; mouse capturing
 	* routing keyboard events to the focused widget; tab-based navigation
-	* drag & drop API (event-based)
+	* the drag & drop API (event-based)
 
 ## The `object` base class
 
