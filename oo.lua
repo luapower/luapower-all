@@ -93,8 +93,8 @@ function meta:__newindex(k,v)
 		return
 	end
 	local getters = self.__getters
-	if getters and getters[k] then --replacing a read-only property
-		getters[k] = nil
+	if getters and getters[k] then --read-only property
+		error(string.format('property "%s" is read/only', k))
 	end
 	if k:find'^get_' or k:find'^set_' then --install getter or setter
 		local name = k:sub(5)

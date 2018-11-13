@@ -821,11 +821,12 @@ The main topics that need to be understood in order to create new widgets are:
 	* routing keyboard events to the focused widget; tab-based navigation
 	* the drag & drop API (event-based)
 
-### The `object` base class
+### The `ui.object` base class
 
-  * created with [oo]; inherits oo.Object; published as `ui.object`.
+  * inherits [oo].Object.
   * inherits the [events] mixin.
   * common ancestor of all classes.
+  * tweaked so that class hierarchy depth does not affect performance.
 
 #### Method & property decorators
 
@@ -885,11 +886,13 @@ See [glue].autoload.
 
   * the order in which attribute values are copied over when creating a new
   element can be altered with the class method
-  `:init_priority{field->priority}` to accomodate any dependencies between
+  `:init_priority{field->priority}` to accommodate any dependencies between
   properties.
   * some properties can be excluded from being automatically set this way
   with the class method `:init_ignore{field->true}`, in which case they
   must be set manually in the constructor.
+  * `init_priority()` and `init_ignore()` can be called multiple times on
+  the same class, adding new fields every time.
   * the constructor `:init(ui, t)` receives `ui` followed by the merged arg
   table which is also set up to inherit the class, thus providing transparent
   access to defaults.

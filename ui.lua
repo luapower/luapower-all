@@ -4,16 +4,18 @@
 
 if not ... then DEMO=true; require'ui_demo'; return end
 
+--pure-Lua libs.
 local oo = require'oo'
 local events = require'events'
 local glue = require'glue'
 local box2d = require'box2d'
 local easing = require'easing'
 local color = require'color'
-local boxblur = require'boxblur'
 local amoeba = require'amoeba'
+--C bindings.
 local time = require'time'
 local cairo = require'cairo'
+local boxblur = require'boxblur'
 local tr = require'tr'
 
 local push = table.insert
@@ -193,9 +195,14 @@ end
 
 function object:autoload(autoload)
 	for prop, submodule in pairs(autoload) do
-		self['get_'..prop] = function()
+		local getter = 'get_'..prop
+		local setter = 'set_'..prop
+		self[getter] = function(self)
 			require(submodule)
-			return self[prop]
+			return rawget(self, prop)
+		end
+		self[setter] = function(self, val)
+			rawset(self, prop, val)
 		end
 	end
 end
