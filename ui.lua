@@ -2629,8 +2629,14 @@ function layer:_start_drag(button, mx, my, area)
 	local widget, dx, dy = self:start_drag(button, mx, my, area)
 	if widget then
 		self:settag(':drag_source', true)
+		--TODO: go depth-first and stop at invisible layers!
 		for elem in pairs(self.ui._elements) do
-			if elem.islayer and self.ui:accept_drop(widget, elem) then
+			if elem.islayer
+				and elem.parent
+				and elem.visible
+				and elem.enabled
+				and self.ui:accept_drop(widget, elem)
+			then
 				elem:settag(':drop_target', true)
 			end
 		end

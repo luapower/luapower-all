@@ -360,9 +360,9 @@ The following attributes can be used to initialize a layer and can also be
 changed freely at runtime to change its behavior or appearance.
 
 ------------------------------------ ------------------ ----------------------
-__position in layer hierarchy__
-`parent`                             `false`            parent: for positioning (if pos_parent=false), painting and clipping
-`layer_index`                        `1/0`              preferred index in parent's child list: `1=backmost`, `1/0=frontmost`
+__layer hierarchy__
+`parent`                             `false`            parent: for positioning, painting and clipping
+`layer_index`                        `1/0`              preferred z-order: `1=backmost`, `1/0=frontmost`
 `pos_parent`                         `false`            positioning parent (`false` means use `parent`)
 __behavior__
 `visible`                            `true`             visible and occupies space in the layout
@@ -383,7 +383,7 @@ __behavior__
 __content box__
 `padding`                            `0`                padding for all sides
 `padding_<side>`                     `false`            `left`/`right`/`top`/`bottom` padding override
-__sizing & positioning__
+__layouting__
 `layout`                             `false`            layout model: `false` (none), `'textbox'`, `'flexbox'`, `'grid'`
 `min_cw, min_ch`                     `0`                minimum content-box size for flexible layouts
 __layout=false__
@@ -468,165 +468,189 @@ __rotation & scaling__
 
 ### Box model
 
+#### Layer hierarchy
+
   * layers can be nested, which affects their painting order, clipping and
   positioning relative to each other.
+  * layers can be moved to another parent by changing their `parent` property.
+  * `parent` can be set to a window object, in which case the window will
+  change it to point to its `view` layer.
+
+#### Size & positioning
+
   * layers have a "box" defined by `x, y, w, h` and a "content box"
   (or "client rectangle") which is the same box adjusted by paddings.
-  * layers are positioned and clipped relative to their parent's content box.
-  * unlike HTML, the content box is _not_ affected by the size of borders.
-  * borders can be drawn at an offset relative to the layer's box and the
-  border's thickness.
-  * the contents of a layer can be clipped by its padding box, by the inner
-  contour of its border, or it can be left unclipped.
-  * a layer's background is always clipped.
+  * layers are positioned relative to their parent's _content box_.
+  * `x, y, w, h` are input fields (user must set their values) only when
+  layouting is disabled on a layer and its parent. When a layout model is
+  used, those fields are controlled by the layout.
+  * `x, y, w, h` can be set indirectly by setting `cw, ch, cx, cy, x2, y2`.
 
-### Layer hierarchy and z-order
+#### Z-order
 
   * a layer keeps its children in its array part which also dictates their
-  paint order (first child is painted first).
-  * layers can be moved around in the hierarchy by changing their `parent`
-  property (they are always added to the end of their new parent's list).
+  painting order: first child is painted first.
+  * setting the `parent` property adds the layer to the end of its new
+  parent's child list.
   * layers can change their paint order with `to_front()`, `to_back()`
   or by setting their `layer_index` property directly.
-  * you can sort a layer's children directly with `table.sort()`.
-  * `parent` can be set to a window object, in which case the window will
-  change it to point to its view layer.
+  * you can sort a layer's children by sorting the layer itself with
+  `table.sort()`.
   * `layer_index` represents a preferred index when constructing a layer,
   but at runtime it always reflects the actual index in the parent array.
 
---------------------------------- ------------- --
-`layer_index`                     r/w property  index in parent array (z-order)
-`window`                          r/o property  layer's window
-`to_back()`                       method        set `layer_index` to `1`
-`to_front()`                      method        set `layer_index` to `1/0`
-`each_child(func)`                method        call `func(layer)` for each child recursively depth-first
-`children() -> iter() -> layer`   method        iterate children recursively depth-first
-`layer_added(layer, index)`       event         a child layer was added
-`layer_removed(layer)`            event         a child layer was removed
---------------------------------- ------------- --
+#### Borders
 
-### Runtime state
+  * unlike HTML, the content box is _not_ affected by borders!
+  * the offset at which the border is drawn relative to the layer's box
+  can be controlled with the `border_offset` property where `-1` draws an
+  inner border, `1` draws an outer border, and `0` draws a stroke with its
+  median line coinciding with the box (so half-in half-out).
 
------------- -------- --------------------------------------------------------
-`enabled`    r/w      enabled and all parents are enabled too
-`active`     r/w      the mouse is captured
-`hot`        r/o      mouse pointer is over the layer
-`focused`    r/o      has keyboard focus
------------- -------- --------------------------------------------------------
+#### Clipping
 
-### State tags
+  * a layer's contents can be clipped by its padding box, by the inner
+  contour of its border, or it can be left unclipped, courtesy of the
+  `clip_content` property.
+  * a layer's background is always clipped.
 
---------------------- --------------------------------------------------------
-`:disabled`           layer is disabled (`enabled` property is false)
-`:hot`                mouse pointer is over the layer, or the layer is active
-`:hot_<area>`         hot tag for a specific area
-`:active`             layer is active (mouse is captured)
-`:focused`            layer has focus
-`:child_focused`      layer is a parent of a layer that has focus
-`:dragging`           layer is being dragged
-`:dropping`           dragged layer is over a drop target
-`:drop_target`        layer should be highlighted as a potential drop target
-`:drag_source`        the dragging operation started from this layer
---------------------- --------------------------------------------------------
+### Box model API
 
-### Derived geometry
+--------------------------------------- ------------- ------------------------
+__layer hierarchy & z-order__
+`parent`                                r/w property  layer's parent
+`window`                                r/o property  layer's window
+`layer_index`                           r/w property  index in parent array (z-order)
+`to_back()`                             method        set `layer_index` to `1`
+`to_front()`                            method        set `layer_index` to `1/0`
+`each_child(func)`                      method        call `func(layer)` for each child recursively depth-first
+`children() -> iter() -> layer`         method        iterate children recursively depth-first
+`layer_added(layer, index)`             event         a child layer was added
+`layer_removed(layer)`                  event         a child layer was removed
+__size & positioning__
+`x, y, w, h`                            plain field   computed box size and position
+`cw, ch`                                r/w property  content box size
+`cx, cy`                                r/w property  box's center coords
+`x2, y2`                                r/w property  box's bottom-right corner coords
+`pw, ph`                                r/o property  total horizontal and vertical paddings
+`pw1, pw2, ph1, ph2`                    r/o property  paddings for each side
+`inner_x/y/w/h`                         r/o property  border's inner contour box
+`outer_x/y/w/h`                         r/o property  border's outer contour box
+`baseline`                              r/o property  text's baseline
+`size() -> w, h`                        method        box size
+`client_size() -> cw, ch`               method        content box size
+`padding_size() -> cw, ch`              method        content box size
+`client_rect() -> 0, 0, cw, ch`         method        content box rect in content box space
+__space conversion__
+`from_box_to_parent  (x, y) -> x, y`    method        own box space -> parent content space
+`from_parent_to_box  (x, y) -> x, y`    method        parent content space -> own box space
+`to_parent           (x, y) -> x, y`    method        own content space -> parent content space
+`from_parent         (x, y) -> x, y`    method        parent content space -> own content space
+`to_window           (x, y) -> x, y`    method        own content space -> window's content space
+`from_window         (x, y) -> x, y`    method        window's content space -> own content space
+`to_screen           (x, y) -> x, y`    method        own content space -> screen space
+`from_screen         (x, y) -> x, y`    method        screen space -> own content space
+`to_other    (widget, x, y) -> x, y`    method        own content space -> other's content space
+`from_other  (widget, x, y) -> x, y`    method        other's content space -> own content space
+--------------------------------------- ------------- ------------------------
 
-------------------------- ----------------------------------------------------
-`inner_x/y/w/h`           border's inner contour box
-`outer_x/y/w/h`           border's outer contour box
-`baseline`                text's baseline
-`pw, ph`                  total horizontal and vertical paddings
-`pw1, pw2, ph1, ph2`      paddings for each side
-`cw, ch`                  content box size
-`cx, cy`                  box's center coords
-`x2, y2`                  box's bottom-right corner coords
-------------------------- ----------------------------------------------------
+### Input model
 
-### Space conversions
+#### Mouse interaction
 
-These methods convert a point from one space to another.
-
---------------------------------------- --------------------------------------
-`from_box_to_parent  (x, y) -> x, y`    own box space -> parent content space
-`from_parent_to_box  (x, y) -> x, y`    parent content space -> own box space
-`to_parent           (x, y) -> x, y`    own content space -> parent content space
-`from_parent         (x, y) -> x, y`    parent content space -> own content space
-`to_window           (x, y) -> x, y`    own content space -> window's content space
-`from_window         (x, y) -> x, y`    window's content space -> own content space
-`to_screen           (x, y) -> x, y`    own content space -> screen space
-`from_screen         (x, y) -> x, y`    screen space -> own content space
-`to_other    (widget, x, y) -> x, y`    own content space -> other's content space
-`from_other  (widget, x, y) -> x, y`    other's content space -> own content space
---------------------------------------- --------------------------------------
-
-### Mouse interaction
-
-  * layers must be set as `activable` in order to receive mouse events.
-  * a layer is `hot` when the mouse is over it and when it's `active`.
+  * layers must be set `activable` in order to receive mouse events.
+  * an activable layer becomes `hot` when the mouse is over it.
   * a layer can capture mouse movements while a mouse button is down by
   setting its `active` property on `mousedown` and clearing it on `mouseup`.
-  this can be done automatically by statically setting `mousedown_activate`.
+  this will be done automatically if `mousedown_activate` is set.
   * while a layer is `active`, it continues to be `hot` and receive
   `mousemove` events even when the mouse is outside its hit-test area or
   outside the window even (that is, the mouse is captured).
-  * `mouse_x, mouse_y` are the mouse coords from the last mouse event.
 
-------------------------------------------------- ------------------------------------------------------------------
-`hot`                                             r/o property: mouse is over the layer or the layer is active
-`active`                                          r/w property: mouse is captured by the layer
-`activated()`                                     event: layer activated (mouse captured)
-`deactivated()`                                   event: layer deactivated
-`mousemove(x, y, area)`                           event: mouse moved over a layer's area
-`mouseenter(x, y, area)`                          event: mouse entered a layer's area
-`mouseleave()`                                    event: mouse left the layer's area
-`[right|middle]mousedown(x, y, area)`             event: mouse left/right/middle button pressed
-`[right|middle]mouseup(x, y, area)`               event: mouse left/right/middle button depressed
-`[right|middle]click(x, y, area)`                 event: mouse left/right/middle button click
-`[right|middle]doubleclick()`                     event: mouse left/right/middle button double-click
-`[right|middle]tripleclick()`                     event: mouse left/right/middle button triple-click
-`[right|middle]quadrupleclick()`                  event: mouse left/right/middle button quadruple-click
-`mousewheel(delta, x, y, area, pdelta)`           event: mouse wheel moved `delta` notches
-------------------------------------------------- ------------------------------------------------------------------
+#### Keyboard interaction
 
-### Drag & drop
-
-  * a layer must be `active` in order to receive drag & drop events.
-  * a layer must return `true`
-
---------------------------------------------------------- ------------------------------------------------------------------
-`start_drag(button, mx, my, area) -> widget, dx, dy`      event:
-`drag(x, y)`                                              event:
-`enter_drop_target(widget, area)`                         event:
-`leave_drop_target(widget)`                               event:
-`end_drag(drag_widget)`                                   event:
-`drop(widget, x, y, area)`                                event:
-`started_dragging()`                                      event:
-`ended_dragging()`                                        event:
---------------------------------------------------------- ------------------------------------------------------------------
-
-### Keyboard interaction
-
-  * layers must be set as `focusable` in order to receive keyboard events.
+  * layers must be set `focusable` in order to receive keyboard events.
   * keyboard events are only received by the focused layer and bubble up
   to its parents.
   * return `true` in a `keydown` event to eat up a key stroke so that it
   isn't used by other actions: this is how key conflicts are solved.
 
-------------------------------------------------- ------------------------------------------------------------------
-`focus()`                                         focus layer
-`unfocus()`                                       unfocus layer
-`gotfocus()`                                      event: layer focused
-`lostfocus()`                                     event: layer unfocused
-`keydown(key)`                                    event: key pressed
-`keyup(key)`                                      event: key released
-`keypress(key)`                                   event: key pressed (on repeat)
-`keychar(s)`                                      event: utf-8 sequence entered
-------------------------------------------------- ------------------------------------------------------------------
+#### Drag & drop
+
+  * a layer must be in `active` state for dragging to work.
+  * when the user starts dragging a layer, the `start_drag()` method is
+  called (which by default doesn't do anything). Draggable layers must
+  implement this method to return the layer that is to be dragged (could
+  be `self` or other layer) along with a "grab position" relative to that
+  layer. If a layer is returned, a dragging operation starts.
+  * when the dragging operation starts, all visible and enabled layers from
+  all windows are asked to `accept_drag_widget()`. Those that can be a drop
+  target for the dragged layer must return `true`. The dragged layer in turn
+  is asked to `accept_drop_widget()` for each layer that accepted the layer.
+  Then the `started_dragging()` event is fired on the dragged layer.
+  * when the layer is dragged over an accepting layer, the dragged layer
+  receives the `enter_drop_target()` event. Then when the mouse is depressed
+  the drop target receives the `drop()` event, and the dragged layer
+  receives the `ended_dragging()` event.
+
+### Input model API
+
+-------------------------------------------- ------------- -------------------
+__enabled state__
+`enabled`                                    r/w property  enabled and all parents are enabled too
+`:disabled`                                  tag           layer is disabled (`enabled` property is false)
+__mouse interaction__
+`active`                                     r/w property  mouse is captured
+`:active`                                    tag           layer is active
+`hot`                                        r/o property  mouse pointer is over the layer or the layer is active
+`:hot`                                       tag           layer is hot
+`:hot_<area>`                                tag           layer is hot and on a specific area
+`mouse_x, mouse_y`                           r/o property  mouse coords from the last mouse event
+`activated()`                                event         layer activated (mouse captured)
+`deactivated()`                              event         layer deactivated
+`mousemove(x, y, area)`                      event         mouse moved over a layer's area
+`mouseenter(x, y, area)`                     event         mouse entered a layer's area
+`mouseleave()`                               event         mouse left the layer's area
+`[right|middle]mousedown(x, y, area)`        event         mouse left/right/middle button pressed
+`[right|middle]mouseup(x, y, area)`          event         mouse left/right/middle button depressed
+`[right|middle]click(x, y, area)`            event         mouse left/right/middle button click
+`[right|middle]doubleclick()`                event         mouse left/right/middle button double-click
+`[right|middle]tripleclick()`                event         mouse left/right/middle button triple-click
+`[right|middle]quadrupleclick()`             event         mouse left/right/middle button quadruple-click
+`mousewheel(delta, x, y, area, pdelta)`      event         mouse wheel moved `delta` notches
+__keyboard interaction__
+`focused`                                    r/o property  has keyboard focus
+`:focused`                                   tag           layer has focus
+`:child_focused`                             tag           layer is a parent of a layer that has focus
+`focus()`                                    method        focus layer
+`unfocus()`                                  method        unfocus layer
+`gotfocus()`                                 event         layer focused
+`lostfocus()`                                event         layer unfocused
+`keydown(key)`                               event         key pressed
+`keyup(key)`                                 event         key released
+`keypress(key)`                              event         key pressed (on repeat)
+`keychar(s)`                                 event         utf-8 sequence entered
+__drag & drop__
+`start_drag(button, mx, my, area)`           stub method   called on dragging layer to start dragging
+`end_drag(drag_widget)`                      event         called on initiating layer after dragging ended
+`accept_drag_widget(widget, mx, my, area)`   stub method   called on drop target to accept the payload
+`accept_drop_widget(widget, area)`           stub method   called on dragged layer accept the target
+`drop(widget, x, y, area)`                   event         fired on drop target to perform the drop
+`started_dragging()`                         event         fired on dragged layer after dragging started
+`ended_dragging()`                           event         fired on dragged layer after dragging ended
+`drag(x, y)`                                 event         fired on dragged layer while dragging
+`enter_drop_target(widget, area)`            event         fired on dragged layer when entering a target
+`leave_drop_target(widget)`                  event         fired on dragged layer when leaving a target
+`:dragging`                                  tag           layer is being dragged
+`:dropping`                                  tag           dragged layer is over a drop target
+`:drop_target`                               tag           layer is a potential drop target
+`:drag_source`                               tag           dragging was initiated from this layer
+-------------------------------------------- ------------- -------------------
 
 ### Layouting
 
-Layouting deals with sizing and positioning layers on screen automatically
-to accomodate both the content size and the window size. Layers of different
+Layouting deals with sizing and positioning layers automatically to
+accommodate both the content size and the window size. Layers with different
 layout types and properties can be mixed freely in a layer hierarchy with
 some caveats:
 
