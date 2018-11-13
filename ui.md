@@ -29,11 +29,8 @@ local win = ui:window{
 }
 
 ui:button{
-	x = 100,
-	y = 100,
-	parent = win,
-	text = 'Close',
-	cancel = true,
+	parent = win, x = 100, y = 100,
+	text = 'Close', cancel = true,
 }
 
 ui:run()
