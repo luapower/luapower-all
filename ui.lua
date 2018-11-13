@@ -1994,7 +1994,7 @@ function ui:_window_mouseup(window, button, mx, my, click_count)
 			self.drag_start_widget:_end_drag()
 			for elem in pairs(self._elements) do
 				if elem.islayer and elem.tags[':drop_target'] then
-					elem:_set_drop_target(false)
+					elem:settag(':drop_target', false)
 				end
 			end
 		end
@@ -2624,10 +2624,6 @@ function layer:_ended_dragging()
 	self:invalidate()
 end
 
-function layer:_set_drop_target(set)
-	self:settag(':drop_target', set)
-end
-
 --called on drag_start_widget to initiate a drag operation.
 function layer:_start_drag(button, mx, my, area)
 	local widget, dx, dy = self:start_drag(button, mx, my, area)
@@ -2635,7 +2631,7 @@ function layer:_start_drag(button, mx, my, area)
 		self:settag(':drag_source', true)
 		for elem in pairs(self.ui._elements) do
 			if elem.islayer and self.ui:accept_drop(widget, elem) then
-				elem:_set_drop_target(true)
+				elem:settag(':drop_target', true)
 			end
 		end
 		widget:_started_dragging()

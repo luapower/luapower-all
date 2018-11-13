@@ -148,7 +148,7 @@ Selectors are used in two contexts:
 Selector syntax differs from CSS:
 
   * simple selectors: `'tag1 tag2'` -- in CSS: `.tag1.tag2`
-  * parent-child selectors: `'tag1 > tag2'` -- in CSS: `tag1 tag2`
+  * parent-child selectors: `'tag1 > tag2'` -- in CSS: `.tag1 .tag2`
 
 Selector objects can be created with `ui:selector(select_text)`. It's not
 normally necessary to create them explicitly (they are created automatically
@@ -219,7 +219,7 @@ Transitions can be created by calling:
 
 or they can be defined declaratively as styles:
 
------------------------- ------------------ ------------------------------------------------------------------
+------------------------ ------------------ ----------------------------------
 `transition_<attr>`                         set to `true` to enable transitions for an attribute
 `transition_duration`    `0` (disabled)     animation duration (seconds)
 `transition_ease`        `'expo out'`       easing function and way (see [easing])
@@ -228,7 +228,7 @@ or they can be defined declaratively as styles:
 `transition_speed`       `1`                speed factor
 `transition_blend`       `'replace'`        blend function: `'replace'`, `'restart'`, `'wait'`
 `transition_from`        _current value_    start value
------------------------- ------------------ ------------------------------------------------------------------
+------------------------ ------------------ ----------------------------------
 
 Transition parameters can also be specified for each attribute with
 `transition_<param>_<attr>`, eg. `transition_duration_opacity = 2`.
@@ -327,6 +327,13 @@ For frameless windows, a layer (usually the layer representing the title bar)
 can be assigned to `win.move_layer` which will set it up to move the window
 when dragged.
 
+## Window state tags
+
+-------------------------------------- ---------------------------------------
+`:active`                              the window is active
+`:fullscreen`                          the window is in fullscreen mode
+-------------------------------------- ---------------------------------------
+
 ### Window mouse state
 
 -------------------------------------- ---------------------------------------
@@ -352,7 +359,7 @@ Layers are elements, so all element methods and properties apply.
 The following attributes can be used to initialize a layer and can also be
 changed freely at runtime to change its behavior or appearance.
 
------------------------------------- ------------------ ------------------------------------------------------------------
+------------------------------------ ------------------ ----------------------
 __position in layer hierarchy__
 `parent`                             `false`            parent: for positioning (if pos_parent=false), painting and clipping
 `layer_index`                        `1/0`              preferred index in parent's child list: `1=backmost`, `1/0=frontmost`
@@ -457,7 +464,7 @@ __rotation & scaling__
 `scale`                              `1`                scale factor
 `scale_x, scale_y`                   `false`            scale factor: axis overrides
 `scale_cx, scale_cy`                 `0`                scaling center coordinates
------------------------------------- ------------------ ------------------------------------------------------------------
+------------------------------------ ------------------ ----------------------
 
 ### Box model
 
@@ -487,53 +494,70 @@ __rotation & scaling__
   * `layer_index` represents a preferred index when constructing a layer,
   but at runtime it always reflects the actual index in the parent array.
 
------------------------------------------ ------------------------------------------------------------------
-`layer_index`                             index in parent array (z-order)
-`window`                                  layer's window (r/o)
-`to_back()`                               set `layer_index` to 1
-`to_front()`                              set `layer_index` to 1/0
-`each_child(func)`                        calls `func(layer)` for each child, recursively, depth-first
-`children() -> iter() -> layer`           iterate children recursively, depth-first
-`layer_added(layer, index)`               event: a child layer was added
-`layer_removed(layer)`                    event: a child layer was removed
------------------------------------------ ------------------------------------------------------------------
+--------------------------------- ------------- --
+`layer_index`                     r/w property  index in parent array (z-order)
+`window`                          r/o property  layer's window
+`to_back()`                       method        set `layer_index` to `1`
+`to_front()`                      method        set `layer_index` to `1/0`
+`each_child(func)`                method        call `func(layer)` for each child recursively depth-first
+`children() -> iter() -> layer`   method        iterate children recursively depth-first
+`layer_added(layer, index)`       event         a child layer was added
+`layer_removed(layer)`            event         a child layer was removed
+--------------------------------- ------------- --
 
 ### Runtime state
 
--------------------------------- -------- ------------------------------------------------------------------
-`enabled`                        r/w      enabled and all parents are enabled too
-`active`                         r/w      the mouse is captured
-`hot`                            r/o      mouse pointer is over the layer
-`focused`                        r/o      has keyboard focus
--------------------------------- -------- ------------------------------------------------------------------
+------------ -------- --------------------------------------------------------
+`enabled`    r/w      enabled and all parents are enabled too
+`active`     r/w      the mouse is captured
+`hot`        r/o      mouse pointer is over the layer
+`focused`    r/o      has keyboard focus
+------------ -------- --------------------------------------------------------
+
+### State tags
+
+--------------------- --------------------------------------------------------
+`:disabled`           layer is disabled (`enabled` property is false)
+`:hot`                mouse pointer is over the layer, or the layer is active
+`:hot_<area>`         hot tag for a specific area
+`:active`             layer is active (mouse is captured)
+`:focused`            layer has focus
+`:child_focused`      layer is a parent of a layer that has focus
+`:dragging`           layer is being dragged
+`:dropping`           dragged layer is over a drop target
+`:drop_target`        layer should be highlighted as a potential drop target
+`:drag_source`        the dragging operation started from this layer
+--------------------- --------------------------------------------------------
 
 ### Derived geometry
 
-------------------------------------------------- ------------------------------------------------------------------
-`inner_x/y/w/h`                                   border's inner contour box
-`outer_x/y/w/h`                                   border's outer contour box
-`baseline`                                        text's baseline
-`pw, ph`                                          total horizontal and vertical paddings
-`pw1, pw2, ph1, ph2`                              paddings for each side
-`cw, ch`                                          content box size
-`cx, cy`                                          box's center coords
-`x2, y2`                                          box's bottom-right corner coords
-------------------------------------------------- ------------------------------------------------------------------
+------------------------- ----------------------------------------------------
+`inner_x/y/w/h`           border's inner contour box
+`outer_x/y/w/h`           border's outer contour box
+`baseline`                text's baseline
+`pw, ph`                  total horizontal and vertical paddings
+`pw1, pw2, ph1, ph2`      paddings for each side
+`cw, ch`                  content box size
+`cx, cy`                  box's center coords
+`x2, y2`                  box's bottom-right corner coords
+------------------------- ----------------------------------------------------
 
 ### Space conversions
 
-------------------------------------------------- ------------------------------------------------------------------
-`from_box_to_parent(x, y) -> x, y`                own box space -> parent content space
-`from_parent_to_box(x, y) -> x, y`                parent content space -> own box space
-`to_parent(x, y) -> x, y`                         own content space -> parent content space
-`from_parent(x, y) -> x, y`                       parent content space -> own content space
-`to_window(x, y) -> x, y`
-`from_window(x, y) -> x, y`
-`to_screen(x, y) -> x, y`
-`from_screen(x, y) -> x, y`
-`to_other(widget, x, y) -> x, y`                  own content space -> other's content space
-`from_other(widget, x, y) -> x, y`                other's content space -> own content space
-------------------------------------------------- ------------------------------------------------------------------
+These methods convert a point from one space to another.
+
+--------------------------------------- --------------------------------------
+`from_box_to_parent  (x, y) -> x, y`    own box space -> parent content space
+`from_parent_to_box  (x, y) -> x, y`    parent content space -> own box space
+`to_parent           (x, y) -> x, y`    own content space -> parent content space
+`from_parent         (x, y) -> x, y`    parent content space -> own content space
+`to_window           (x, y) -> x, y`    own content space -> window's content space
+`from_window         (x, y) -> x, y`    window's content space -> own content space
+`to_screen           (x, y) -> x, y`    own content space -> screen space
+`from_screen         (x, y) -> x, y`    screen space -> own content space
+`to_other    (widget, x, y) -> x, y`    own content space -> other's content space
+`from_other  (widget, x, y) -> x, y`    other's content space -> own content space
+--------------------------------------- --------------------------------------
 
 ### Mouse interaction
 
@@ -548,8 +572,8 @@ __rotation & scaling__
   * `mouse_x, mouse_y` are the mouse coords from the last mouse event.
 
 ------------------------------------------------- ------------------------------------------------------------------
-`hot`                                             mouse is over the layer or the layer is active
-`active`                                          mouse is captured by the layer
+`hot`                                             r/o property: mouse is over the layer or the layer is active
+`active`                                          r/w property: mouse is captured by the layer
 `activated()`                                     event: layer activated (mouse captured)
 `deactivated()`                                   event: layer deactivated
 `mousemove(x, y, area)`                           event: mouse moved over a layer's area
