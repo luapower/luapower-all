@@ -72,8 +72,9 @@ ui:run()
               * [`ui.editbox`](#editboxes) - editbox
               * [`ui.dropdown`](#drop-downs) - drop-down menu
               * [`ui.slider`](#sliders) - slider
-              * [`ui.checkbox`](#checkboxes) - checkbox
-              * [`ui.radiobutton`](#radio-buttons) - radio button
+                * [`ui.toggle`](#toggle-buttons) - toggle button
+				  * [`ui.checkbox`](#checkboxes) - checkbox
+                * [`ui.radiobutton`](#radio-buttons) - radio button
               * [`ui.choicebutton`](#choice-buttons) - choice button
               * [`ui.colorpicker`](#color-pickers) - color picker
               * [`ui.calendar`](#calendars) - calendar
@@ -775,6 +776,9 @@ and behavior and additional properties, methods and events. Widgets can be
 extended by subclassing and method overriding and can be over-styled with
 `ui:style()` or by assigning them a different stylesheet.
 
+The methods below are actually widget classes used as methods (see the [oo]
+section on virtual classes), so `ui.button` is the button class, etc.
+
 ----------------------------------------------- ------------------------------
 __input widgets__
 [`ui:button(...)`](#buttons)                    create a button
@@ -782,6 +786,7 @@ __input widgets__
 [`ui:editbox(...)`](#editboxes)                 create an editbox
 [`ui:dropdown(...)`](#drop-downs)               create a drop-down
 [`ui:slider(...)`](#sliders)                    create a slider
+[`ui:toggle(...)`](#toggle-buttons)             create a toggle button
 [`ui:checkbox(...)`](#checkboxes)               create a check box
 [`ui:radiobutton(...)`](#radio-buttons)         create a radio button
 [`ui:choicebutton(...)`](#choice-buttons)       create a choice button
@@ -804,122 +809,155 @@ standalone script to see a demo of the widgets implemented in the module.
 
 ## Buttons
 
------------- ----------------- ------------ ----------------------------------
-r/w property `default`         `false`      pressing Enter anywhere presses the button
-r/w property `cancel`          `false`      pressing Esc anywhere presses the button
-r/w property `profile`         `false`      style profile: `false`, `'text'`
-r/w property `key`             `false`      key shortcut (see `app:key()` in [nw])
-event        `pressed()`                    button was pressed
------------- ----------------- ------------ ----------------------------------
+------------ ---------------------- ------------ -----------------------------
+r/w property `default`              `false`      pressing Enter anywhere presses the button
+r/w property `cancel`               `false`      pressing Esc anywhere presses the button
+r/w property `profile`              `false`      style profile: `false`, `'text'`
+r/w property `key`                  `false`      key shortcut (see `app:key()` in [nw])
+event        `pressed()`                         button was pressed
+------------ ---------------------- ------------ -----------------------------
 
 ## Menus
 
------------- ---------- --------- ---------------------------------------------
+------------ ---------------------- ------------ -----------------------------
 TODO
------------- ---------- --------- ---------------------------------------------
+------------ ---------------------- ------------ -----------------------------
 
 ## Editboxes
 
------------- ---------- --------- ---------------------------------------------
+------------ ---------------------- ------------ -----------------------------
 TODO
------------- ---------- --------- ---------------------------------------------
+------------ ---------------------- ------------ -----------------------------
 
 ## Drop-downs
 
------------- ---------- --------- ---------------------------------------------
+------------ ---------------------- ------------ -----------------------------
 TODO
------------- ---------- --------- ---------------------------------------------
+------------ ---------------------- ------------ -----------------------------
 
 ## Sliders
 
------------- ---------- --------- ---------------------------------------------
-TODO
------------- ---------- --------- ---------------------------------------------
+------------ ---------------------- ------------ -----------------------------
+r/w property `min_position`         `0`          min. position
+r/w property `max_position`         `false`      max. position (overrides `size`)
+r/w property `position`             `0`          current position
+r/w property `progress`             `false`      current progress (overrides `position`)
+r/w property `step_start`           `0`          position of first step
+r/w property `step`                 `false`      no stepping
+r/w property `step_labels`          `false`      step labels: `{label = value, ...}`
+r/w property `snap_to_labels`       `true`       ...if there are any
+r/w property `step_line_h`          `5`
+r/w property `step_line_color`      `'#fff'`     `false` to disable
+r/w property `key_nav_speed`        `0.1`        constant 10% speed on left/right keys
+r/w property `smooth_dragging`      `true`       pin stays under the mouse while dragging
+r/w property `phantom_dragging`     `true`       drag a secondary translucent pin
+event        `position_changed(p)`               slider position changed
+component    `track`
+component    `fill`
+component    `pin`
+component    `marker`
+component    `tip`
+component    `step_label`
+------------ ---------------------- ------------ -----------------------------
+
+## Toggle buttons
+
+Toggle buttons are custom sliders so all slider options apply.
+
+------------ ---------------------- ------------ -----------------------------
+tag          `:on`
+event        `option_enabled()`                  button was set to "on"
+event        `option_disabled()`                 button was set to "off"
+event        `option_changed(v)`                 button was toggled
+------------ ---------------------- ------------ -----------------------------
 
 ## Checkboxes
 
 Checkboxes are implemented as a flexbox with two items: a button and a textbox.
 
------------- ----------------- ------------ ----------------------------------
-r/w property `align`           `'left'`     check button alignment vis label
-r/w property `checked`         `false`      checkbox is checked
-tag          `:checked`                     checkbox is checked
-r/o property `button`                       check button
-r/o property `label`                        checkbox label
------------- ----------------- ------------ ----------------------------------
+------------ ---------------------- ------------ -----------------------------
+r/w property `align`                `'left'`     check button alignment vis label
+r/w property `checked`              `false`      checkbox is checked
+tag          `:checked`                          checkbox is checked
+event        `was_checked()`                     checkbox was checked
+event        `was_unchecked()`                   checkbox was unchecked
+event        `checked_changed(v)`                checked state changed
+component    `button`                            check button
+component    `label`                             checkbox label
+------------ ---------------------- ------------ -----------------------------
 
 ## Radio buttons
 
 Radio buttons custom checkboxes so all checkbox options apply.
 
------------- ----------------- ------------ ----------------------------------
-r/w property `radio_group`     `'default'`  radio button's option group
-r/w property `align`           `'left'`     checkbox alignment vis its label
------------- ----------------- ------------ ----------------------------------
+------------ ---------------------- ------------ -----------------------------
+r/w property `radio_group`          `'default'`  radio button's option group
+r/w property `align`                `'left'`     checkbox alignment vis its label
+------------ ---------------------- ------------ -----------------------------
 
 ## Radio button lists
 
------------- ----------------- ------------ ----------------------------------
+------------ ---------------------- ------------ -----------------------------
 TODO
------------- ----------------- ------------ ----------------------------------
+------------ ---------------------- ------------ -----------------------------
 
 ## Choice buttons
 
 Choice buttons are functionally like radio button lists. Visually they are
 implemented as a flexbox with multiple buttons, one of which is selected.
 
------------- ----------------- ------------ ----------------------------------
+------------ ---------------------- ------------ -----------------------------
 TODO
-`event`      `value_selected()`             a button was selected
------------- ----------------- ------------ ----------------------------------
+`event`      `value_selected()`                  a button was selected
+------------ ---------------------- ------------ -----------------------------
 
 ## Color pickers
 
------------- ----------------- ------------ ----------------------------------
+------------ ---------------------- ------------ -----------------------------
 TODO
------------- ----------------- ------------ ----------------------------------
+------------ ---------------------- ------------ -----------------------------
 
 ## Calendars
 
------------- ----------------- ------------ ----------------------------------
+------------ ---------------------- ------------ -----------------------------
 TODO
------------- ----------------- ------------ ----------------------------------
+------------ ---------------------- ------------ -----------------------------
 
 ## Images
 
------------- ----------------- ------------ ----------------------------------
+------------ ---------------------- ------------ -----------------------------
 TODO
------------- ----------------- ------------ ----------------------------------
+------------ ---------------------- ------------ -----------------------------
 
 ## Progress bars
 
------------- ----------------- ------------ ----------------------------------
+------------ ---------------------- ------------ -----------------------------
 TODO
------------- ----------------- ------------ ----------------------------------
+------------ ---------------------- ------------ -----------------------------
 
 ## Editable grids
 
------------- ----------------- ------------ ----------------------------------
+------------ ---------------------- ------------ -----------------------------
 TODO
------------- ----------------- ------------ ----------------------------------
+------------ ---------------------- ------------ -----------------------------
 
 ## Scroll bars
 
------------- ----------------- ------------ ----------------------------------
+------------ ---------------------- ------------ -----------------------------
 TODO
------------- ----------------- ------------ ----------------------------------
+------------ ---------------------- ------------ -----------------------------
 
 ## Scroll boxes
 
------------- ----------------- ------------ ----------------------------------
+------------ ---------------------- ------------ -----------------------------
 TODO
------------- ----------------- ------------ ----------------------------------
+------------ ---------------------- ------------ -----------------------------
 
 ## Tab lists
 
------------- ----------------- ------------ ----------------------------------
+------------ ---------------------- ------------ -----------------------------
 TODO
------------- ----------------- ------------ ----------------------------------
+------------ ---------------------- ------------ -----------------------------
 
 ## Creating new widgets
 
@@ -1029,11 +1067,13 @@ See [glue].autoload.
 
 ## Extending the core engine
 
-Many aspects of the core engine can also be extended, by:
+Many aspects of the core engine can also be extended with:
 
   * adding new attribute types and type matches
   * adding new transition interpolators
   * adding new transition blend modes
+  * adding new ways to look-up fonts
+  * adding new image file decoders
 
 ## Changing the underlying libraries
 
