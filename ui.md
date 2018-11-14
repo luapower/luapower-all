@@ -38,19 +38,35 @@ ui:run()
 
 ## Class hierarchy
 
-  * `oo.Object` - [oo]'s base class
+  * [`oo.Object`][oo] - [oo]'s base class
      * `ui.object` - ui's base class. includes the [events] mixin.
-        * `ui` - this module, also serving as the app singleton
-        * `ui.selector` - element selectors
-        * `ui.element_list` - lists of elements
-        * `ui.stylesheet` - stylesheets
-        * `ui.transition` - attribute transitions
-        * `ui.element` - adds styling and transitions to objects
-           * `ui.window` - top-level windows: a thin layer over [nw]'s windows
-              * `ui.popup` - frameless pop-up windows
-           * `ui.layer` - the basic UI building block
-              * `ui.window.view_class` - a window's top layer
-              * any widget
+        * [`ui`][ui] - this module, also serving as the app singleton
+        * [`ui.selector`](#selectors) - element selector
+        * `ui.element_list` - list of elements
+        * [`ui.stylesheet`](#stylesheets) - stylesheet
+        * [`ui.transition`](#transition%20animations) - attribute transition
+        * [`ui.element`](#elements) - object with styles and transitions
+           * [`ui.window`](#windows) - top-level window: a thin layer over [nw]'s windows
+              * [`ui.popup`](#popup%20windows) - frameless pop-up window
+           * [`ui.layer`][#layers] - the basic UI building block
+              * [`ui.window.view_class`](#the%20top%20layer) - a window's top layer
+              * [`ui.editbox`](#editboxes) - editbox
+              * [`ui.dropdown`](#drop-downs) - drop-down menu
+              * [`ui.slider`](#sliders) - slider
+              * [`ui.checkbox`](#checkboxes) - checkbox
+              * [`ui.radiobutton`](#radio%20buttons) - radio button
+              * [`ui.choicebutton`](#multi-choice%20buttons) - multi-choice button
+              * [`ui.colorpicker`](#color%20pickers) - color picker
+              * [`ui.calendar`](#calendars) - calendar
+              * [`ui.image`](#images) - static image
+              * [`ui.progressbar`](#progress%20bars) - progress bar
+              * [`ui.grid`](#grids) - grid
+              * [`ui.button`](#buttons) - button
+              * [`ui.menu`](#menus) - menu
+              * [`ui.scrollbar`](#scrollbars) - scrollbar
+              * [`ui.scrollbox`](#scrollboxes) - scrollbox
+              * [`ui.tablist`](#tab%20lists) - tab list
+
 
 ## The ui module/singleton
 
@@ -150,7 +166,7 @@ Selector syntax differs from CSS:
   * simple selectors: `'tag1 tag2'` -- in CSS: `.tag1.tag2`
   * parent-child selectors: `'tag1 > tag2'` -- in CSS: `.tag1 .tag2`
 
-Selector objects can be created with `ui:selector(select_text)`. It's not
+Selector objects are created with `ui:selector(select_text)`. It's not
 normally necessary to create them explicitly (they are created automatically
 in places where a selector is expected), but they have additional methods:
 
@@ -165,7 +181,7 @@ which case the selector object is simply returned and no selector is created.
 
 #### Styles
 
-Selector-based styles can be created with `ui:style(selector, attr_values)`
+Selector-based styles are created with `ui:style(selector, attr_values)`
 which adds them to the default stylesheet `ui.element.stylesheet`. Inline
 styles can be added with the `style` attribute when creating the element.
 
@@ -320,6 +336,12 @@ when the parent window itself doesn't move but only the layer moves inside it.
 `win:to_parent(x, y) -> x, y`          window's client space -> its parent space
 `win:from_parent(x, y) -> x, y`        window's parent space -> its client space
 -------------------------------------- ---------------------------------------
+
+### Popup windows
+
+Popup windows are frameless, non-focusable, non-moveable child windows.
+They are created with `ui:popup(attrs1, ...)`. Clicking outside the popup
+area hides the popup, subject to the `autohide` property.
 
 ### Moving frameless windows
 
@@ -566,6 +588,9 @@ method        `from_other  (widget, x, y) -> x, y`    other's content space -> o
   * while a layer is `active`, it continues to be `hot` and receive
   `mousemove` events even when the mouse is outside its hit-test area or
   outside the window even (that is, the mouse is captured).
+  * `max_click_chain` controls how many repeated clicks are to be taken
+  as one single click chain (a double-click, triple-click or quadruple-click).
+  if set to 1 for instance, double-clicks are never received.
 
 #### Keyboard interaction
 
@@ -720,11 +745,13 @@ is a window, not another layer.
 
 Widgets are layers (usually containing other layers) with custom styling
 and behavior and additional properties, methods and events. Widgets can be
-extended by subclassing and overriding and can be re-styled with `ui:style()`
-or by assigning them a different stylesheet.
+extended by subclassing and overriding and can be over-styled with
+`ui:style()` or by assigning them a different stylesheet.
 
 -------------------------------------- ---------------------------------------
 __input__
+`ui:button(...)`                       create a button
+`ui:menu(...)`                         create a menu
 `ui:editbox(...)`                      create an editbox
 `ui:dropdown(...)`                     create a drop-down
 `ui:slider(...)`                       create a slider
@@ -738,9 +765,6 @@ __output__
 `ui:progressbar(...)`                  create a progress bar
 __input/output__
 `ui:grid(...)`                         create a grid
-__action__
-`ui:button(...)`                       create a button
-`ui:menu(...)`                         create a menu
 __containers__
 `ui:scrollbar(...)`                    create a scroll bar
 `ui:scrollbox(...)`                    create a scroll box
@@ -750,6 +774,18 @@ __containers__
 
 __TIP:__ Widgets are implemented in separate modules. Run each module
 standalone to see a demo of the widgets implemented in the module.
+
+## Buttons
+
+-------------------------------------- ---------------------------------------
+TODO
+-------------------------------------- ---------------------------------------
+
+## Menus
+
+-------------------------------------- ---------------------------------------
+TODO
+-------------------------------------- ---------------------------------------
 
 ## Editboxes
 
@@ -769,7 +805,7 @@ TODO
 TODO
 -------------------------------------- ---------------------------------------
 
-## Check boxes
+## Checkboxes
 
 -------------------------------------- ---------------------------------------
 TODO
@@ -811,18 +847,6 @@ TODO
 TODO
 -------------------------------------- ---------------------------------------
 
-## Buttons
-
--------------------------------------- ---------------------------------------
-TODO
--------------------------------------- ---------------------------------------
-
-## Menus
-
--------------------------------------- ---------------------------------------
-TODO
--------------------------------------- ---------------------------------------
-
 ## Scroll bars
 
 -------------------------------------- ---------------------------------------
@@ -830,12 +854,6 @@ TODO
 -------------------------------------- ---------------------------------------
 
 ## Scroll boxes
-
--------------------------------------- ---------------------------------------
-TODO
--------------------------------------- ---------------------------------------
-
-## Pop-up windows
 
 -------------------------------------- ---------------------------------------
 TODO
@@ -875,7 +893,7 @@ The main topics that need to be understood in order to create new widgets are:
 
 ### The `ui.object` base class
 
-  * inherits [oo].Object.
+  * inherits [`oo.Object`][oo].
   * inherits the [events] mixin.
   * common ancestor of all classes.
   * tweaked so that class hierarchy depth does not affect performance.

@@ -140,7 +140,7 @@ NOTE: When flattening, each text node is set up to inherit its parent node
 (this might change in a future version since it's not ok to modify user
 input in general).
 
-### `tr:shape(text_tree | text_runs) -> segments`
+### `tr:shape(text_tree | text_runs) -> segs`
 
 Shape a text tree (flattened or not) into a list of segments.
 
@@ -150,18 +150,18 @@ for styling attributes (color) requires reshaping and relayouting.
 
   * sets `text_runs` for accessing the codepoints as a flat array.
 
-### `segments:min_w() -> w`
+### `segs:min_w() -> w`
 
 Get the minimum width that the text can be wrapped to, which is the width
 of longest non-breakable text sequence.
 
-### `segments:wrap(w) -> segments`
+### `segs:wrap(w) -> segs`
 
 Line-wrap shaped text to a maximum width. Some of the resulting lines can be
 wider than the given width because of nowrap or long non-breakable words.
 Use `min_w()` to correct for that if needed.
 
-Creates the `segments.lines` table with the following fields:
+Creates the `segs.lines` table with the following fields:
 
   * `max_ax`: text's maximum x-advance (equivalent to text's width).
   * `h`: text's wrapped height.
@@ -179,7 +179,7 @@ The table also contains a list of lines in its array part with the fields:
   * `x`: line's ualigned x-offset (0).
   * `y`: line's y-offset relative to the first line's baseline.
 
-### `segments:align(x, y, [w], [h], [align_x], [align_y]) -> segments`
+### `segs:align(x, y, [w], [h], [align_x], [align_y]) -> segs`
 
 Align wrapped text so that it fits into the box described by `x, y, w, h`.
 
@@ -187,7 +187,7 @@ Align wrapped text so that it fits into the box described by `x, y, w, h`.
   * `align_x` can be `'left'`, `'right'`, `'center'` (defaults to `'left'`).
   * `align_y` can be `'top'`, `'bottom'`, `'center'` (defaults to `'top'`).
 
-Sets the following fields in `segments.lines`:
+Sets the following fields in `segs.lines`:
 
   * `x`, `y`: textbox's position: can be changed freely without the need
   to call `align()` again.
@@ -200,11 +200,15 @@ Also sets the following fields for each line:
 
 Once the text is aligned, it can be painted many times with `paint()`.
 
-### `segments:layout(x, y, [w], [h], [align_x], [align_y]) -> segments`
+### `segs:layout(x, y, [w], [h], [align_x], [align_y]) -> segs`
 
-Layout, i.e. wrap and align shaped text.
+Wrap and align shaped text.
 
-### `segments:paint(cr)`
+### `segs:bounding_box() -> x, y, w, h`
+
+Return the bounding-box of laid out text.
+
+### `segs:paint(cr)`
 
 Paint the shaped and laid out text into a graphics context.
 
@@ -219,16 +223,16 @@ handle blitting of (clipped portions of) 8-bit gray and 32-bit BGRA bitmaps
 and also bitmap scaling if you use bitmap fonts, since freetype doesn't handle
 that.
 
-### `segments:clip(x, y, w, h)`
+### `segs:clip(x, y, w, h)`
 
 Mark all lines and segments which are completely outside the given rectangle
 as invisible, and everything else as visible.
 
-### `segments:reset_clip()`
+### `segs:reset_clip()`
 
 Mark all lines and segments as visible.
 
-### `tr:textbox(text_tree, cr, x, y, w, h, [align_x], [align_y]) -> segments`
+### `tr:textbox(text_tree, cr, x, y, w, h, [align_x], [align_y]) -> segs`
 
 Shape, layout and paint text in one call. Return segments so that
 layouting or painting can be done again without reshaping.

@@ -207,6 +207,7 @@ function win:repaint()
 		},
 		font='open sans, 14',
 		color = '#fff',
+		--operator = 'xor',
 		require'glue'.readfile('winapi_design.md'),
 		--nowrap = true,
 	}
