@@ -395,7 +395,7 @@ latter tables will take precedence over the values in former tables.
 
 Layers are elements, so all element methods and properties apply.
 
-### Initialization
+### Configuration
 
 The following attributes can be used to initialize a layer and can also be
 changed freely at runtime to change its behavior or appearance.
@@ -814,7 +814,8 @@ r/w property `default`              `false`      pressing Enter anywhere presses
 r/w property `cancel`               `false`      pressing Esc anywhere presses the button
 r/w property `profile`              `false`      style profile: `false`, `'text'`
 r/w property `key`                  `false`      key shortcut (see `app:key()` in [nw])
-event        `pressed()`                         button was pressed
+tag          `:over`                             the button is pressed and the mouse is over the button
+event        `pressed()`                         the button was pressed
 ------------ ---------------------- ------------ -----------------------------
 
 ## Menus
@@ -864,100 +865,154 @@ component    `step_label`
 
 Toggle buttons are custom sliders so all slider options apply.
 
------------- ---------------------- ------------ -----------------------------
-tag          `:on`
-event        `option_enabled()`                  button was set to "on"
-event        `option_disabled()`                 button was set to "off"
-event        `option_changed(v)`                 button was toggled
------------- ---------------------- ------------ -----------------------------
+------------ ----------------------------------- ------------ ----------------
+r/w property `option`                            `false`      button is "on" or "off"
+tag          `:on`                                            button is "on"
+event        `option_changed(v)`                              button was toggled
+event        `option_enabled()`                               button was set to "on"
+event        `option_disabled()`                              button was set to "off"
+------------ ----------------------------------- ------------ ----------------
 
 ## Checkboxes
 
 Checkboxes are implemented as a flexbox with two items: a button and a textbox.
 
------------- ---------------------- ------------ -----------------------------
-r/w property `align`                `'left'`     check button alignment vis label
-r/w property `checked`              `false`      checkbox is checked
-tag          `:checked`                          checkbox is checked
-event        `was_checked()`                     checkbox was checked
-event        `was_unchecked()`                   checkbox was unchecked
-event        `checked_changed(v)`                checked state changed
-component    `button`                            check button
-component    `label`                             checkbox label
------------- ---------------------- ------------ -----------------------------
+------------ ----------------------------------- ------------ ----------------
+r/w property `align`                             `'left'`     check button alignment vis label
+r/w property `checked`                           `false`      checkbox is checked
+tag          `:checked`                                       checkbox is checked
+event        `was_checked()`                                  checkbox was checked
+event        `was_unchecked()`                                checkbox was unchecked
+event        `checked_changed(v)`                             checked state changed
+component    `button`                                         check button
+component    `label`                                          checkbox label
+------------ ----------------------------------- ------------ ----------------
 
 ## Radio buttons
 
 Radio buttons custom checkboxes so all checkbox options apply.
 
------------- ---------------------- ------------ -----------------------------
-r/w property `radio_group`          `'default'`  radio button's option group
-r/w property `align`                `'left'`     checkbox alignment vis its label
------------- ---------------------- ------------ -----------------------------
+------------ ----------------------------------- ------------ ----------------
+r/w property `radio_group`                       `'default'`  radio button's option group
+r/w property `align`                             `'left'`     checkbox alignment vis its label
+------------ ----------------------------------- ------------ ----------------
 
 ## Radio button lists
 
------------- ---------------------- ------------ -----------------------------
+------------ ----------------------------------- ------------ ----------------
 TODO
------------- ---------------------- ------------ -----------------------------
+------------ ----------------------------------- ------------ ----------------
 
 ## Choice buttons
 
 Choice buttons are functionally like radio button lists. Visually they are
 implemented as a flexbox with multiple buttons, one of which is selected.
 
------------- ---------------------- ------------ -----------------------------
+------------ ----------------------------------- ------------ ----------------
 TODO
-`event`      `value_selected()`                  a button was selected
------------- ---------------------- ------------ -----------------------------
+`event`      `value_selected()`                               a button was selected
+------------ ----------------------------------- ------------ ----------------
 
 ## Color pickers
 
------------- ---------------------- ------------ -----------------------------
+------------ ----------------------------------- ------------ ----------------
 TODO
------------- ---------------------- ------------ -----------------------------
+------------ ----------------------------------- ------------ ----------------
 
 ## Calendars
 
------------- ---------------------- ------------ -----------------------------
+------------ ----------------------------------- ------------ ----------------
 TODO
------------- ---------------------- ------------ -----------------------------
+------------ ----------------------------------- ------------ ----------------
 
 ## Images
 
------------- ---------------------- ------------ -----------------------------
+------------ ----------------------------------- ------------ ----------------
 TODO
------------- ---------------------- ------------ -----------------------------
+------------ ----------------------------------- ------------ ----------------
 
 ## Progress bars
 
------------- ---------------------- ------------ -----------------------------
-TODO
------------- ---------------------- ------------ -----------------------------
+------------ ----------------------------------- ------------ ----------------
+r/w property `progress`                          `0`          progress in `0..1`
+stub         `format_text(p) -> s`                            format progress text
+------------ ----------------------------------- ------------ ----------------
 
 ## Editable grids
 
------------- ---------------------- ------------ -----------------------------
+------------ ----------------------------------- ------------ ----------------
 TODO
------------- ---------------------- ------------ -----------------------------
+------------ ----------------------------------- ------------ ----------------
 
 ## Scroll bars
 
------------- ---------------------- ------------ -----------------------------
-TODO
------------- ---------------------- ------------ -----------------------------
+------------ ----------------------------------- ------------ ----------------
+r/w property `content_length`                    `0`
+r/w property `view_length`                       `0`
+r/w property `offset`                            `0`          in `0..content_length` range
+r/w property `vertical`                          `true`       rotated 90deg
+r/w property `step`                              `false`      snap
+r/w property `autohide`                          `false`      hide when mouse is not near the scrollbar
+r/w property `autohide_empty`                    `true`       hide when content is smaller than the view
+r/w property `autohide_distance`                 `20`         distance around the scrollbar for `autohide`
+r/w property `click_scroll_length`               `300`        how much to scroll when clicking on the track
+tag          `:near`                                          autohidden scrollbar is visible
+tag          `vertical`                                       scrollbar is vertical
+tag          `horizontal`                                     scrollbar is horizontal
+method       `empty()`                                        the content is smaller than the view
+method       `scroll_to(offset, [duration])`                  scroll to offset
+method       `scroll_to_view(x, w, [duration])`               scroll to position in view
+method       `scroll(delta, [duration])`                      scroll a number of pixels
+method       `scroll_pages(pages, [duration])`                scroll a number of pages
+------------ ----------------------------------- ------------ ----------------
 
 ## Scroll boxes
 
------------- ---------------------- ------------ -----------------------------
-TODO
------------- ---------------------- ------------ -----------------------------
+------------ ----------------------------------- ------------ ----------------
+r/w property `wheel_scroll_length`               `50`         how much is a mouse wheel notch
+r/w property `auto_h`                            `false`      auto-height: TODO
+r/w property `auto_w`                            `false`      auto-width: TODO
+component    `vscrollbar`                                     the vertical scrollbar
+component    `hscrollbar`                                     the horizontal scrollbar
+method       `scroll_to_view(x,y,w,h)`                        x, y is in content's content space.
+method       `scrollbox:view_rect() -> x,y,w,h`               view rect in content's content space.
+------------ ----------------------------------- ------------ ----------------
 
 ## Tab lists
 
------------- ---------------------- ------------ -----------------------------
-TODO
------------- ---------------------- ------------ -----------------------------
+### Tabs
+
+------------ ----------------------------------- ------------ ----------------
+r/w property `tablist`                                        tab list owner
+r/w property `index`                                          order in tab list
+r/w property `selected`
+method       `select()`
+method       `unselect()`
+tag          `:selected`
+event        `tab_selected()`
+event        `tab_unselected()`
+method       `close()`
+event        `closing() -> [false]`
+event        `closed()`
+r/w property `draggable_outside`                 `true`       can be dragged out of the tablist
+------------ ----------------------------------- ------------ ----------------
+
+### Tab lists
+
+------------ ----------------------------------- ------------ ----------------
+i/r property `tabs`
+i property   `selected_tab_index`
+r/w property `selected_tab`
+r/w property `main_tablist`                                   responds to Tab & Ctrl+Tab globally
+r/w property `tablist_group`
+r/w property `tab_spacing`                       `-10`
+r/w property `tab_slant_left`                    `70`         tab slant in degrees
+r/w property `tab_slant_right`                   `70`         tab slant in degrees
+r/w property `tabs_padding_left`                 `10`
+r/w property `tabs_padding_right`                `10`
+event        `tab_selected()`
+event        `tab_unselected()`
+------------ ----------------------------------- ------------ ----------------
 
 ## Creating new widgets
 

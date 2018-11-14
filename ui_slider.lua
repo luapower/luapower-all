@@ -617,13 +617,17 @@ ui:style('toggle :on > slider_fill', {
 	background_color = '#fff',
 })
 
-function toggle:after_set_position()
-	self:settag(':on', self.position == 1)
+toggle:stored_property'option'
+function toggle:after_set_option(on)
+	self.position = on and 1 or 0
+	self:settag(':on', on)
+	self:fire(on and 'option_enabled' or 'option_disabled')
 end
+toggle:track_changes'option'
+toggle:instance_only'option'
 
-function toggle:after_position_changed(new_pos)
-	self:fire(new_pos == 1 and 'option_enabled' or 'option_disabled')
-	self:fire('option_changed', new_pos == 1)
+function toggle:after_set_position()
+	self.option = self.position == 1
 end
 
 --demo -----------------------------------------------------------------------

@@ -8,6 +8,8 @@ local progressbar = ui.layer:subclass'progressbar'
 ui.progressbar = progressbar
 progressbar.iswidget = true
 
+progressbar.progress = 0
+
 --progressbar.layout = 'textbox'
 progressbar.h = 24
 progressbar.text_operator = 'xor'
