@@ -44,28 +44,28 @@ ui:run()
         * [`ui.selector`](#selectors) - element selector
         * `ui.element_list` - list of elements
         * [`ui.stylesheet`](#stylesheets) - stylesheet
-        * [`ui.transition`](#transition%20animations) - attribute transition
+        * [`ui.transition`](#transition-animations) - attribute transition
         * [`ui.element`](#elements) - object with styles and transitions
            * [`ui.window`](#windows) - top-level window: a thin layer over [nw]'s windows
-              * [`ui.popup`](#popup%20windows) - frameless pop-up window
-           * [`ui.layer`][#layers] - the basic UI building block
-              * [`ui.window.view_class`](#the%20top%20layer) - a window's top layer
+              * [`ui.popup`](#pop-up-windows) - frameless pop-up window
+           * [`ui.layer`](#layers) - the basic UI building block
+              * [`ui.window_view`](#the-top-layer) - a window's top layer
+              * [`ui.button`](#buttons) - button
+              * [`ui.menu`](#menus) - menu
               * [`ui.editbox`](#editboxes) - editbox
               * [`ui.dropdown`](#drop-downs) - drop-down menu
               * [`ui.slider`](#sliders) - slider
               * [`ui.checkbox`](#checkboxes) - checkbox
-              * [`ui.radiobutton`](#radio%20buttons) - radio button
-              * [`ui.choicebutton`](#multi-choice%20buttons) - multi-choice button
-              * [`ui.colorpicker`](#color%20pickers) - color picker
+              * [`ui.radiobutton`](#radio-buttons) - radio button
+              * [`ui.choicebutton`](#multi-choice-buttons) - multi-choice button
+              * [`ui.colorpicker`](#color-pickers) - color picker
               * [`ui.calendar`](#calendars) - calendar
               * [`ui.image`](#images) - static image
-              * [`ui.progressbar`](#progress%20bars) - progress bar
-              * [`ui.grid`](#grids) - grid
-              * [`ui.button`](#buttons) - button
-              * [`ui.menu`](#menus) - menu
-              * [`ui.scrollbar`](#scrollbars) - scrollbar
-              * [`ui.scrollbox`](#scrollboxes) - scrollbox
-              * [`ui.tablist`](#tab%20lists) - tab list
+              * [`ui.progressbar`](#progress-bars) - progress bar
+              * [`ui.grid`](#editable-grids) - editable grid
+              * [`ui.scrollbar`](#scroll-bars) - scrollbar
+              * [`ui.scrollbox`](#scroll-boxes) - scrollbox
+              * [`ui.tablist`](#tab-lists) - tab list
 
 
 ## The ui module/singleton
@@ -337,11 +337,11 @@ when the parent window itself doesn't move but only the layer moves inside it.
 `win:from_parent(x, y) -> x, y`        window's parent space -> its client space
 -------------------------------------- ---------------------------------------
 
-### Popup windows
+### Pop-up windows
 
-Popup windows are frameless, non-focusable, non-moveable child windows.
-They are created with `ui:popup(attrs1, ...)`. Clicking outside the popup
-area hides the popup, subject to the `autohide` property.
+Pop-up windows are frameless, non-focusable, non-moveable child windows.
+They are created with `ui:popup(attrs1, ...)`. Clicking outside the pop-up
+area hides the pop-up, subject to the `autohide` property.
 
 ### Moving frameless windows
 
@@ -727,7 +727,7 @@ themselves and to size and position their children recursively.
 
 ### The top layer
 
-All windows have a top layer in their `view` field. Its size is kept in sync
+Windows have a top layer in their `view` field. Its size is kept in sync
 with the window's client area and it is configured to clear the window's
 bitmap on every repaint:
 
@@ -748,29 +748,29 @@ and behavior and additional properties, methods and events. Widgets can be
 extended by subclassing and overriding and can be over-styled with
 `ui:style()` or by assigning them a different stylesheet.
 
--------------------------------------- ---------------------------------------
+----------------------------------------------- ------------------------------
 __input__
-`ui:button(...)`                       create a button
-`ui:menu(...)`                         create a menu
-`ui:editbox(...)`                      create an editbox
-`ui:dropdown(...)`                     create a drop-down
-`ui:slider(...)`                       create a slider
-`ui:checkbox(...)`                     create a check box
-`ui:radiobutton(...)`                  create a radio button
-`ui:choicebutton(...)`                 create a multi-choice button
-`ui:colorpicker(...)`                  create a calendar
-`ui:calendar(...)`
+[`ui:button(...)`](#buttons)                    create a button
+[`ui:menu(...)`](#menus)                        create a menu
+[`ui:editbox(...)`](#editboxes)                 create an editbox
+[`ui:dropdown(...)`](#drop-downs)               create a drop-down
+[`ui:slider(...)`](#sliders)                    create a slider
+[`ui:checkbox(...)`](#checkboxes)               create a check box
+[`ui:radiobutton(...)`](#radio-buttons)         create a radio button
+[`ui:choicebutton(...)`](#multi-choice-buttons) create a multi-choice button
+[`ui:colorpicker(...)`](#color-pickers)         create a color picker
+[`ui:calendar(...)`](#calendars)                create a calendar
 __output__
-`ui:image(...)`                        create an image
-`ui:progressbar(...)`                  create a progress bar
+[`ui:image(...)`](#images)                      create an image
+[`ui:progressbar(...)`](#progress-bars)         create a progress bar
 __input/output__
-`ui:grid(...)`                         create a grid
+[`ui:grid(...)`](#editable-grids)               create a grid
 __containers__
-`ui:scrollbar(...)`                    create a scroll bar
-`ui:scrollbox(...)`                    create a scroll box
-`ui:popup(...)`                        create a pop-up window
-`ui:tablist(...)`                      create a tab list
--------------------------------------- ---------------------------------------
+[`ui:scrollbar(...)`](#scroll-bars)             create a scroll bar
+[`ui:scrollbox(...)`](#scroll-boxes)            create a scroll box
+[`ui:popup(...)`](#pop-up-windows)              create a pop-up window
+[`ui:tablist(...)`](#tab-lists)                 create a tab list
+----------------------------------------------- ------------------------------
 
 __TIP:__ Widgets are implemented in separate modules. Run each module
 standalone to see a demo of the widgets implemented in the module.
@@ -823,6 +823,12 @@ TODO
 TODO
 -------------------------------------- ---------------------------------------
 
+## Color pickers
+
+-------------------------------------- ---------------------------------------
+TODO
+-------------------------------------- ---------------------------------------
+
 ## Calendars
 
 -------------------------------------- ---------------------------------------
@@ -867,12 +873,13 @@ TODO
 
 ## Creating new widgets
 
-The API for creating and extending widgets is larger and more complex
-than the API for instantiating and using existing widgets. This is normal,
-since widgets are supposed to encapsulate complex user interaction patterns
+The API for creating and extending widgets is necessarily larger and more
+complex than the API for instantiating and using existing widgets, since
+widgets are supposed to encapsulate complex user interaction patterns
 as well as provide customizable presentation and behavior.
 
-The main topics that need to be understood in order to create new widgets are:
+The main topics that need to be understood in order to create new widgets
+or extend existing ones are:
 
  * the [object system][oo] and its extensibility mechanisms:
 	* subclassing and instantiation
@@ -940,11 +947,12 @@ Validate a property when being set against a list of allowed values.
 
 ### `object:warn(fmt, ...)`
 
-Issue a warning on `stderr`.
+Issue a warning on `stderr`. Use this to report API misuses that are not
+fatal (ideally there should be no fatal errors at all).
 
 ### `object:check(ret, fmt, ...) -> ret|nil`
 
-Issue a warning if `ret` is falsey or return `ret`.
+Issue a warning if `ret` is falsey otherwise return `ret`.
 
 ### Submodule autoloading
 

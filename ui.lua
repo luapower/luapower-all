@@ -5002,6 +5002,7 @@ end
 --top layer (window.view) ----------------------------------------------------
 
 local view = layer:subclass'window_view'
+ui.window_view = view
 window.view_class = view
 
 --screen-wiping options that work with transparent windows
