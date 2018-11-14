@@ -2291,6 +2291,7 @@ return {
 					easing=true,
 					events=true,
 					glue=true,
+					nw=true,
 					oo=true,
 					time=true,
 					tr=true
@@ -4863,6 +4864,7 @@ return {
 					easing=true,
 					events=true,
 					glue=true,
+					nw=true,
 					oo=true,
 					time=true,
 					tr=true
@@ -7438,6 +7440,7 @@ return {
 					easing=true,
 					events=true,
 					glue=true,
+					nw=true,
 					oo=true,
 					time=true,
 					tr=true
@@ -10762,6 +10765,7 @@ return {
 					easing=true,
 					events=true,
 					glue=true,
+					nw=true,
 					oo=true,
 					time=true,
 					tr=true
@@ -14091,6 +14095,7 @@ return {
 					easing=true,
 					events=true,
 					glue=true,
+					nw=true,
 					oo=true,
 					time=true,
 					tr=true
@@ -16661,6 +16666,7 @@ return {
 					easing=true,
 					events=true,
 					glue=true,
+					nw=true,
 					oo=true,
 					time=true,
 					tr=true

@@ -331,7 +331,7 @@ end
 local title = ui.layer:subclass'tab_title'
 tab.title_class = title
 
-title.text_align = 'middle left'
+title.text_align = 'center left'
 title.padding_left = 2
 title.padding_right = 2
 title.text_color = '#ccc'

@@ -74,7 +74,7 @@ ui:run()
               * [`ui.slider`](#sliders) - slider
               * [`ui.checkbox`](#checkboxes) - checkbox
               * [`ui.radiobutton`](#radio-buttons) - radio button
-              * [`ui.choicebutton`](#multi-choice-buttons) - multi-choice button
+              * [`ui.choicebutton`](#choice-buttons) - choice button
               * [`ui.colorpicker`](#color-pickers) - color picker
               * [`ui.calendar`](#calendars) - calendar
               * [`ui.image`](#images) - static image
@@ -784,7 +784,7 @@ __input widgets__
 [`ui:slider(...)`](#sliders)                    create a slider
 [`ui:checkbox(...)`](#checkboxes)               create a check box
 [`ui:radiobutton(...)`](#radio-buttons)         create a radio button
-[`ui:choicebutton(...)`](#multi-choice-buttons) create a multi-choice button
+[`ui:choicebutton(...)`](#choice-buttons)       create a choice button
 [`ui:colorpicker(...)`](#color-pickers)         create a color picker
 [`ui:calendar(...)`](#calendars)                create a calendar
 __output  widgets__
@@ -838,7 +838,7 @@ TODO
 
 ## Checkboxes
 
-Checkboxes are a flexbox with two items: a button and a textbox.
+Checkboxes are implemented as a flexbox with two items: a button and a textbox.
 
 ------------ ----------------- ------------ ----------------------------------
 r/w property `align`           `'left'`     check button alignment vis label
@@ -850,63 +850,76 @@ r/o property `label`                        checkbox label
 
 ## Radio buttons
 
--------------------------------------- ---------------------------------------
-r/w property `align`    `'left'`  checkbox alignment vis its label
--------------------------------------- ---------------------------------------
+Radio buttons custom checkboxes so all checkbox options apply.
 
-## Multi-choice buttons
+------------ ----------------- ------------ ----------------------------------
+r/w property `radio_group`     `'default'`  radio button's option group
+r/w property `align`           `'left'`     checkbox alignment vis its label
+------------ ----------------- ------------ ----------------------------------
 
--------------------------------------- ---------------------------------------
+## Radio button lists
+
+------------ ----------------- ------------ ----------------------------------
 TODO
--------------------------------------- ---------------------------------------
+------------ ----------------- ------------ ----------------------------------
+
+## Choice buttons
+
+Choice buttons are functionally like radio button lists. Visually they are
+implemented as a flexbox with multiple buttons, one of which is selected.
+
+------------ ----------------- ------------ ----------------------------------
+TODO
+`event`      `value_selected()`             a button was selected
+------------ ----------------- ------------ ----------------------------------
 
 ## Color pickers
 
--------------------------------------- ---------------------------------------
+------------ ----------------- ------------ ----------------------------------
 TODO
--------------------------------------- ---------------------------------------
+------------ ----------------- ------------ ----------------------------------
 
 ## Calendars
 
--------------------------------------- ---------------------------------------
+------------ ----------------- ------------ ----------------------------------
 TODO
--------------------------------------- ---------------------------------------
+------------ ----------------- ------------ ----------------------------------
 
 ## Images
 
--------------------------------------- ---------------------------------------
+------------ ----------------- ------------ ----------------------------------
 TODO
--------------------------------------- ---------------------------------------
+------------ ----------------- ------------ ----------------------------------
 
 ## Progress bars
 
--------------------------------------- ---------------------------------------
+------------ ----------------- ------------ ----------------------------------
 TODO
--------------------------------------- ---------------------------------------
+------------ ----------------- ------------ ----------------------------------
 
 ## Editable grids
 
--------------------------------------- ---------------------------------------
+------------ ----------------- ------------ ----------------------------------
 TODO
--------------------------------------- ---------------------------------------
+------------ ----------------- ------------ ----------------------------------
 
 ## Scroll bars
 
--------------------------------------- ---------------------------------------
+------------ ----------------- ------------ ----------------------------------
 TODO
--------------------------------------- ---------------------------------------
+------------ ----------------- ------------ ----------------------------------
 
 ## Scroll boxes
 
--------------------------------------- ---------------------------------------
+------------ ----------------- ------------ ----------------------------------
 TODO
--------------------------------------- ---------------------------------------
+------------ ----------------- ------------ ----------------------------------
 
 ## Tab lists
 
--------------------------------------- ---------------------------------------
+------------ ----------------- ------------ ----------------------------------
 TODO
--------------------------------------- ---------------------------------------
+------------ ----------------- ------------ ----------------------------------
 
 ## Creating new widgets
 
@@ -918,24 +931,24 @@ as well as provide customizable presentation and behavior.
 The main topics that need to be understood in order to create new widgets
 or extend existing ones are:
 
- * the [object system][oo] and its extensibility mechanisms:
-	* subclassing and instantiation
-	* virtual properties
-	* method overriding
- * the [event system][events].
- * the `ui.object` class and its meta-programming utilities (decorators).
- * the `ui.element` class and the way its constructor works.
- * the `ui.layer` class and its visual model:
-	* layer hierarchies with relative affine transforms and clipping
-	* borders, backgrounds, shadows, aligned text
-	* hit testing
-	* layouting, for making the widgets elastic
- * the `ui.window` and `ui.layer` classes, which together provide an input model:
-   * routing mouse events to the hot widget; mouse capturing
-	* routing keyboard events to the focused widget; tab-based navigation
-	* the drag & drop API
- * drawing with [cairo], if you need procedural 2D drawing.
- * rendering text with [tr], if layers are not enough.
+  * the [object system][oo] and its extensibility mechanisms:
+    * subclassing and instantiation
+    * virtual properties
+    * method overriding
+  * the [event system][events].
+  * the `ui.object` class and its meta-programming utilities (decorators).
+  * the `ui.element` class and the way its constructor works.
+  * the `ui.layer` class and its visual model:
+    * layer hierarchies with relative affine transforms and clipping
+    * borders, backgrounds, shadows, aligned text
+    * hit testing
+    * layouting, for making the widgets elastic
+  * the `ui.window` and `ui.layer` classes, which together provide an input model:
+    * routing mouse events to the hot widget; mouse capturing
+    * routing keyboard events to the focused widget; tab-based navigation
+    * the drag & drop API
+  * drawing with [cairo], if you need procedural 2D drawing.
+  * rendering text with [tr], if layers are not enough.
 
 ### The `ui.object` base class
 
@@ -1013,4 +1026,27 @@ See [glue].autoload.
   * the constructor `:init(ui, t)` receives `ui` followed by the merged arg
   table which is also set up to inherit the class, thus providing transparent
   access to defaults.
+
+## Extending the core engine
+
+Many aspects of the core engine can also be extended, by:
+
+  * adding new attribute types and type matches
+  * adding new transition interpolators
+  * adding new transition blend modes
+
+## Changing the underlying libraries
+
+  * changing the 2D graphics library requires mostly just re-implementing
+  the various `draw_*()` methods of the layer class, since most widgets
+  don't use the graphics library directly, but use layers instead.
+  Any library that can draw on a BGRA bitmap can work.
+  * changing the text rendering engine requires re-implementing
+  `sync_text_*()` and `draw_text()`, except for the editbox widget which
+  uses [tr]'s selection and cursor objects extensively to select and edit
+  the text, so those would have to be provided too.
+  * changing the native windows library is a bit harder because [nw]'s
+  API is already very high-level and covers a lot of functionality
+  seldom found in other libraries of this type. Adding missing functionality
+  to [nw] instead would probably be easier.
 

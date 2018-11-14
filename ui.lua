@@ -13,6 +13,7 @@ local easing = require'easing'
 local color = require'color'
 local amoeba = require'amoeba'
 --C bindings.
+local nw = require'nw'
 local time = require'time'
 local cairo = require'cairo'
 local boxblur = require'boxblur'
@@ -219,7 +220,6 @@ function ui:create() --singleton class (no instance is created)
 end
 
 function ui:after_init()
-	local nw = require'nw'
 	self.app = nw:app()
 
 	self:forward_events(self.app, {
@@ -277,7 +277,7 @@ function ui:opendialog(t)          return self().app:opendialog(t) end
 function ui:savedialog(t)          return self().app:savedialog(t) end
 
 function ui:set_app_id(id)         self().app.nw.app_id = id end
-function ui:get_app_id(id)         return require'nw'.app_id end
+function ui:get_app_id(id)         return nw.app_id end
 function ui:app_already_running()  return self().app:already_running() end
 function ui:wakeup_other_app_instances()
 	return self().app:wakeup_other_instances()
