@@ -21,8 +21,8 @@ button.padding_bottom = 2
 button.background_color = '#444'
 button.border_color = '#888'
 
-button._default = false
-button._cancel = false
+button.default = false
+button.cancel = false
 button.tags = 'standalone'
 
 ui:style('button', {
@@ -45,7 +45,7 @@ ui:style('button :default :hot', {
 	background_color = '#3e3',
 })
 
-ui:style('button :disabled', {
+ui:style('button !:enabled', {
 	background_color = '#222',
 	border_color = '#444',
 	text_color = '#666',
@@ -75,6 +75,10 @@ button:init_priority{
 	text=-2, key=-1, --because text can contain a key
 }
 
+--button style profiles
+
+button.profile = false
+
 ui:style('button profile=text', {
 	background_type = false,
 	border_width = 0,
@@ -97,15 +101,12 @@ ui:style('button profile=text :active :over', {
 	shadow_color = '#111',
 })
 
-function button:get_profile()
-	return self._profile
+button:stored_property'profile'
+function button:set_profile(new_profile, old_profile)
+	if old_profile then self:settag('profile='..old_profile, false) end
+	if new_profile then self:settag('profile='..new_profile, true) end
 end
-
-function button:set_profile(profile)
-	if self._profile then self:settag('profile='..self._profile, false) end
-	self._profile = profile
-	if self._profile then self:settag('profile='..self._profile, true) end
-end
+button:nochange_barrier'profile' --gives `old_profile` arg
 
 function button:press()
 	if self:fire'pressed' ~= nil then
@@ -141,12 +142,8 @@ function button:set_text(s)
 	end
 end
 
-function button:get_key()
-	return self._key
-end
-
-function button:set_key(key)
-	self._key = key
+button:stored_property'key'
+function button:after_set_key(key)
 	self.underline_pos = false
 end
 
@@ -200,23 +197,13 @@ end
 
 --default & cancel properties/tags
 
-function button:get_default()
-	return self._default
-end
-
-function button:set_default(default)
-	default = default and true or false
-	self._default = default
+button:stored_property'default'
+function button:after_set_default(default)
 	self:settag(':default', default)
 end
 
-function button:get_cancel()
-	return self._cancel
-end
-
-function button:set_cancel(cancel)
-	cancel = cancel and true or false
-	self._cancel = cancel
+button:stored_property'cancel'
+function button:after_set_cancel(cancel)
 	self:settag(':cancel', cancel)
 end
 

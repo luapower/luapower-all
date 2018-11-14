@@ -515,10 +515,11 @@ local function test_grid_layout()
 		layout = 'grid',
 		grid_wrap = 5,
 		grid_flow = 'yrb',
+		--grid_cols = {10, 1, 1, 5, 10},
 		grid_col_gap = 10,
 		grid_row_gap = 5,
-		grid_align_x = 'space_around',
-		grid_align_y = 'space_around',
+		grid_align_cols = 'space_around',
+		grid_align_rows = 'space_around',
 
 		border_width = 20,
 		padding = 20,
@@ -526,13 +527,6 @@ local function test_grid_layout()
 		x = 40, y = 40,
 		min_cw = win.cw - 120,
 		min_ch = win.ch - 120,
-		xx = 0,
-		style = {
-			transition_duration = 1,
-			transition_times = 1/0,
-			xx = 100,
-			transition_xx = true,
-		},
 	}
 
 	for i = 1, 10 do
@@ -561,8 +555,8 @@ local function test_widgets_flex()
 	win.view.layout = 'grid'
 	win.view.padding = 40
 	win.view.grid_wrap = 2
-	win.view.row_gap = 20
-	win.view.col_gap = 20
+	win.view.grid_col_gap = 20
+	win.view.grid_row_gap = 20
 
 	ui:checkbox{
 		parent = win,

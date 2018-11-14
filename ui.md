@@ -24,14 +24,31 @@ and [milestones](https://github.com/luapower/ui/milestones).
 local ui = require'ui'
 
 local win = ui:window{
-	cw = 500, ch = 300,
-	title = 'UI Demo',
+	cw = 500, ch = 300,   --client area size
+	title = 'UI Demo',    --titlebar text
+	autoquit = true,      --quit the app on close
 }
 
-ui:button{
-	parent = win, x = 100, y = 100,
-	text = 'Close', cancel = true,
+local btn1 = ui:button{
+	parent = win,         --top-level widget
+	x = 100, y = 100,     --manually positioned by default
+	text = 'Close',       --sized to fit the text by default
+	cancel = true,        --close the window on Esc
+	tags = 'blue',        --add a tag for styling
 }
+
+--style blue buttons for mouse over when no buttons are pressed.
+ui:style('button blue :hot !:active', {
+	background_color = '#66f', --make the background blue
+})
+
+function btn1:pressed() --handle button presses
+	print'Button pressed!'
+end
+
+win:on('closed', function(self) --another way to set up an event handler
+	print'Bye!'
+end)
 
 ui:run()
 ~~~
@@ -165,6 +182,7 @@ Selector syntax differs from CSS:
 
   * simple selectors: `'tag1 tag2'` -- in CSS: `.tag1.tag2`
   * parent-child selectors: `'tag1 > tag2'` -- in CSS: `.tag1 .tag2`
+  * match missing tags: `'tag1 !tag2'` -- in CSS: `tag1:not(.tag2)`
 
 Selector objects are created with `ui:selector(select_text)`. It's not
 normally necessary to create them explicitly (they are created automatically
@@ -270,8 +288,8 @@ on the `transition_blend` attribute, which can be:
 ## Windows
 
 Like all elements, windows are created with `ui:window(attrs1, ...)`.
-Attributes can be passed in multiple tables: the values in latter tables
-will take precedence over the values in former tables.
+Attributes can be passed in multiple initialization tables: the values in
+latter tables will take precedence over the values in former tables.
 
 Windows are elements, so all element methods and properties apply.
 
@@ -371,12 +389,12 @@ widgets, and can also be used standalone as layout containers, text labels
 or other presentation elements.
 
 Like all elements, layers are created with `ui:layer(attrs1, ...)`.
-Attributes can be passed in multiple tables: the values in latter tables
-will take precedence over the values in former tables.
+Attributes can be passed in multiple initialization tables: the values in
+latter tables will take precedence over the values in former tables.
 
 Layers are elements, so all element methods and properties apply.
 
-### Configuration
+### Initialization
 
 The following attributes can be used to initialize a layer and can also be
 changed freely at runtime to change its behavior or appearance.
@@ -422,17 +440,19 @@ __flexbox layout__
 __grid layout__
 `grid_flow`                          `'x'`              main axis & direction for automatic positioning: `'x'`, `'y'`, `'xr'`, `'yr'`, `'xb'`, `'yb'`, `'xrb'`, `'yrb'`
 `grid_wrap`                          `1`                number of rows/columns on the main axis of flow
-`grid_cols`                          `{}`               column size fractions `{fr1, ...}` for `align_x='stretch'`
-`grid_rows`                          `{}`               row size fractions `{fr1, ...}` for `align_y='stretch'`
-`col_gap`                            `0`                gap size between columns
-`row_gap`                            `0`                gap size between rows
+`grid_align_cols`                    `'stretch'`        how columns as a whole are aligned: `'stretch'`, `'start'`/`'l[eft]'`, `'end'`/`'r[ight]'`, `'c[enter]'`, `'space_between'`, `'space_around'`, `'space_evenly'`
+`grid_align_rows`                    `'stretch'`        how rows as a whole are aligned: `'stretch'`, `'start'`/`'t[op]'`, `'end'`/`'b[ottom]'`, `'c[enter]'`, `'space_between'`, `'space_around'`, `'space_evenly'`
+`grid_cols`                          `{}`               column stretch fractions `{fr1, ...}`
+`grid_rows`                          `{}`               row stretch fractions `{fr1, ...}`
+`grid_col_gap`                       `0`                gap size between grid columns
+`grid_row_gap`                       `0`                gap size between grid rows
 `grid_pos`                           `nil`              element position in grid: `'[row][/span] [col][/span]'`
-`align_x`                            `'stretch'`        `'stretch'`, `'start'`/`'l[eft]'`, `'end'`/`'r[ight]'`, `'c[enter]'`, `'space_between'`, `'space_around'`, `'space_evenly'`
-`align_y`                            `'stretch'`        `'stretch'`, `'start'`/`'t[op]'`, `'end'`/`'b[ottom]'`, `'c[enter]'`, `'space_between'`, `'space_around'`, `'space_evenly'`
-`align_x_self`, `align_y_self`       `false`            item `align_x` and `align_y` overrides
+`grid_align_x`                       `'stretch'`        how each item is x-aligned: `'stretch'`, `'start'`/`'l[eft]'`, `'end'`/`'r[ight]'`, `'c[enter]'`,
+`grid_align_y`                       `'stretch'`        how each item is y-aligned: `'stretch'`, `'start'`/`'t[op]'`, `'end'`/`'b[ottom]'`, `'c[enter]'`,
+`align_x`, `align_y`                 false              item `grid_align_x` and `grid_align_y` overrides
 __transparency & clipping__
 `opacity`                            `1`                overall opacity (0..1)
-`clip_content`                       `false`            content clip area: `'padding'`/`true`, `'background'`, `false` (don't clip)
+`clip_content`                       `false`            content clipping: `false` (don't clip), `'padding'`/`true` (clip to content box), `'background'` (clip to background clip box)
 __borders__
 `border_width`                       `0`                border thickness for all sides
 `border_width_<side>`                `false`            `left`/`right`/`top`/`bottom` border thickness override
@@ -445,11 +465,11 @@ __borders__
 `corner_radius_kappa`                `1.2`              smoother rounded corners (1=circle arc)
 __background__
 `background_type`                    `'color'`          `false`, `'color'`, `'gradient'`, `'radial_gradient'`, `'image'`
-`background_x, background_y`         `0`                background offset coords
+`background_x/y`                     `0`                background offset coords
 `background_rotation`                `0`                background rotation angle (radians)
 `background_rotation_cx/cy`          `0`                background rotation center coords
 `background_scale`                   `1`                background scale factor
-`background_scale_cx/cy`             `0`                background scale factor: axis override
+`background_scale_cx/cy`             `0`                background scale center coords
 `background_color`                   `false`            solid color
 `background_colors`                  `false`            gradient: `{[offset1], color1, ...}`
 `background_x1/y1/x2/y2`             `0`                linear gradient: end-point coords
@@ -484,8 +504,7 @@ __rotation & scaling__
 `rotation`                           `0`                rotation angle (radians)
 `rotation_cx, rotation_cy`           `0`                rotation center coordinates
 `scale`                              `1`                scale factor
-`scale_x, scale_y`                   `false`            scale factor: axis overrides
-`scale_cx, scale_cy`                 `0`                scaling center coordinates
+`scale_cx, scale_cy`                 `0`                scale center coords
 ------------------------------------ ------------------ ----------------------
 
 ### Box model
@@ -494,9 +513,13 @@ __rotation & scaling__
 
   * layers can be nested, which affects their painting order, clipping and
   positioning relative to each other.
-  * layers can be moved to another parent by changing their `parent` property.
+  * layers can be atteched to a parent layer by specifying a `parent`.
   * `parent` can be set to a window object, in which case the window will
   change it to point to its `view` layer.
+  * layers can be moved to another parent after creation by changing their
+  `parent` property.
+  * child layers can be specified in the array part of the initialization
+  table either as plain tables with a `class` attribute or pre-created.
 
 #### Size & positioning
 
@@ -506,7 +529,7 @@ __rotation & scaling__
   * `x, y, w, h` are input fields (user must set their values) only when
   layouting is disabled on a layer and its parent. When a layout model is
   used, those fields are controlled by the layout.
-  * `x, y, w, h` can be set indirectly by setting `cw, ch, cx, cy, x2, y2`.
+  * setting `cw, ch, cx, cy, x2, y2` only sets `x, y, w, h` indirectly.
 
 #### Z-order
 
@@ -595,8 +618,8 @@ method        `from_other  (widget, x, y) -> x, y`    other's content space -> o
 #### Keyboard interaction
 
   * layers must be set `focusable` in order to receive keyboard events.
-  * keyboard events are only received by the focused layer and bubble up
-  to its parents.
+  * keyboard events are received by the focused layer first and bubble up
+  to all its parents up to its window.
   * return `true` in a `keydown` event to eat up a key stroke so that it
   isn't used by other actions: this is how key conflicts are solved.
 
@@ -628,41 +651,41 @@ method        `from_other  (widget, x, y) -> x, y`    other's content space -> o
 ------------- -------------------------------------------- -------------------
               __enabled state__
 r/w property  `enabled`                                    enabled and all parents are enabled too
-tag           `:disabled`                                  layer is disabled (`enabled` property is false)
+tag           `:enabled`                                   `enabled` property is set
               __hot state__
 r/o property  `hot`                                        mouse pointer is over the layer (or the layer is active)
 tag           `:hot`                                       layer is hot
-tag           `:hot_<area>`                                layer is hot and on a specific area
+tag           `:hot_<area>`                                layer is hot on a specific area
               __active state__
 r/w property  `active`                                     mouse is captured
 tag           `:active`                                    layer is active
-event         `activated()`                                layer activated (mouse captured)
-event         `deactivated()`                              layer deactivated
+event         `activated()`                                layer was activated
+event         `deactivated()`                              layer was deactivated
               __mouse events & state__
-event         `mousemove(x, y, area)`                      mouse moved over a layer's area
-event         `mouseenter(x, y, area)`                     mouse entered a layer's area
-event         `mouseleave()`                               mouse left the layer's area
+event         `mousemove(x, y, area)`                      mouse moved over a layer area
+event         `mouseenter(x, y, area)`                     mouse entered the layer area
+event         `mouseleave()`                               mouse left the layer area
 event         `[right|middle]mousedown(x, y, area)`        mouse left/right/middle button pressed
 event         `[right|middle]mouseup(x, y, area)`          mouse left/right/middle button depressed
 event         `[right|middle]click(x, y, area)`            mouse left/right/middle button click
-event         `[right|middle]doubleclick()`                mouse left/right/middle button double-click
-event         `[right|middle]tripleclick()`                mouse left/right/middle button triple-click
-event         `[right|middle]quadrupleclick()`             mouse left/right/middle button quadruple-click
+event         `[right|middle]doubleclick(x, y, area)`      mouse left/right/middle button double-click
+event         `[right|middle]tripleclick(x, y, area)`      mouse left/right/middle button triple-click
+event         `[right|middle]quadrupleclick(x, y, area)`   mouse left/right/middle button quadruple-click
 event         `mousewheel(delta, x, y, area, pdelta)`      mouse wheel moved `delta` notches
 r/o property  `mouse_x, mouse_y`                           mouse coords from the last mouse event
               __focused state__
-r/o property  `focused`                                    has keyboard focus
-tag           `:focused`                                   layer has focus
+r/o property  `focused`                                    layer has keyboard focus
+tag           `:focused`                                   layer is focused
 tag           `:child_focused`                             layer is a parent of a layer that has focus
-method        `focus()`                                    focus layer
-method        `unfocus()`                                  unfocus layer
-event         `gotfocus()`                                 layer focused
-event         `lostfocus()`                                layer unfocused
+method        `focus()`                                    focus the layer
+method        `unfocus()`                                  unfocus the layer
+event         `gotfocus()`                                 layer was focused
+event         `lostfocus()`                                layer was unfocused
               __keyboard events__
-event         `keydown(key)`                               key pressed
-event         `keyup(key)`                                 key released
-event         `keypress(key)`                              key pressed (on repeat)
-event         `keychar(s)`                                 utf-8 sequence entered
+event         `keydown(key)`                               a key was pressed
+event         `keyup(key)`                                 a key was released
+event         `keypress(key)`                              a key was pressed (on repeat)
+event         `keychar(s)`                                 an utf-8 sequence was entered
               __drag & drop__
 stub method   `start_drag(button, mx, my, area)`           called on dragging layer to start dragging
 stub method   `accept_drag_widget(widget, mx, my, area)`   called on drop target to accept the payload
@@ -683,32 +706,27 @@ tag           `:drag_source`                               dragging was initiate
 ### Layouting
 
 Layouting deals with sizing and positioning layers automatically to
-accommodate both the content size and the window size. Layers with different
-layout types and properties can be mixed freely in a layer hierarchy with
-some caveats:
-
-  * non-layouted children of non-layouted layers _are not_ sized by their
-  parent and do not size themselves either, thus these layers must be sized
-  and positioned manually by setting their `x, y, w, h`.
-  * layouted children of non-layouted layers _are not_ sized by their
-  parent and must thus set their `min_cw, min_ch`, otherwise they will size
-  themselves to the minimum allowed by their children.
-  * non-layouted children of layouted layers _are_ sized by their parent
-  and must thus set their `min_cw, min_ch`, otherwise they may shrink
-  to nothing since they don't resize themselves to contain their content.
-  * layouts with wrapping content (nowrap = false, flex_wrap = true) are
-  solved on one axis completely before solving on the other axis. This only
-  works properly if all the wrappable content has either horizontal flow
-  (so the whole layout is width-in-height-out) or vertical flow (so the
-  whole layout is height-in-width out). Mixed flows will cause the contents
-  which wrap perpendicularly to overflow their container (browsers have this
-  limitation too). Setting `min_cw, min_ch` on the cross-flow layers can be
-  used to alleviate the problem on a case-by-case basis.
+accommodate both the content size and the window size. Layouting is enabled
+via the `layout` attribute. Layers with different layout types and properties
+can be mixed freely in a layer hierarchy with some caveats, as explained below.
 
 #### No layout
 
-Layers without a layout (layout = false) don't touch their box or their
-children's boxes, but instead ask their children to layout themselves.
+Layers without a layout (`layout = false`) don't position or size
+themselves or their children, but instead ask their children to lay
+themselves out according to their own `layout` setting.
+
+No-layout children of no-layout parents _are not_ sized by their parent
+and do not size themselves either, thus these layers must be sized and
+positioned manually by setting their `x, y, w, h`.
+
+Layouted children of no-layout layers _are not_ sized by their parent
+and must thus set their `min_cw, min_ch`, otherwise they will size
+themselves to the minimum allowed by their children.
+
+No-layout children of layouted parents _are_ sized by their parent
+and must thus set their `min_cw, min_ch`, otherwise they may shrink
+to nothing since they don't size themselves to contain their content.
 
 #### Textbox layouts
 
@@ -725,31 +743,40 @@ to size themselves and to size and position their children recursively.
 Grid layers use an algorithm similar to the CSS grid algorithm to size
 themselves and to size and position their children recursively.
 
+#### Wrapping layouts
+
+Layouts with wrapping content (`nowrap = false`, `flex_wrap = true`) are
+solved on one axis completely before solving on the other axis. This only
+works properly if all the wrappable content has either horizontal flow
+(so the whole layout is _width-in-height-out_) or vertical flow (so the
+whole layout is _height-in-width-out_). Mixed flows will cause the contents
+which wrap perpendicularly to overflow their container (browsers have this
+limitation too). Setting `min_cw, min_ch` on the cross-flow layers can be
+used to alleviate the problem on a case-by-case basis.
+
 ### The top layer
 
 Windows have a top layer in their `view` field. Its size is kept in sync
-with the window's client area and it is configured to clear the window's
-bitmap on every repaint:
+with the window's client area and it's configured to clear the window's
+bitmap on every repaint with these settings:
 
--------------------------------- ---------------- ------------------------------------------------------------------
-`background_color`               '#040404'        a default color that works with transparent windows
-`background_operator`            'source'         makes it clear the background
--------------------------------- ---------------- ------------------------------------------------------------------
+  * `background_color = '#040404'`
+  * `background_operator = 'source'`
 
-User-created layers must ultimately be atteched to the window's view (or to
+User-created layers must ultimately be attached to the window's view (or to
 the window itself which will attach them to the window's view) in order to be
-visible and respond to user input. The view is the only layer whose `parent`
-is a window, not another layer.
+visible and respond to user input. The window view is the only layer whose
+`parent` is a window object, not another layer.
 
 ## Widgets
 
 Widgets are layers (usually containing other layers) with custom styling
 and behavior and additional properties, methods and events. Widgets can be
-extended by subclassing and overriding and can be over-styled with
+extended by subclassing and method overriding and can be over-styled with
 `ui:style()` or by assigning them a different stylesheet.
 
 ----------------------------------------------- ------------------------------
-__input__
+__input widgets__
 [`ui:button(...)`](#buttons)                    create a button
 [`ui:menu(...)`](#menus)                        create a menu
 [`ui:editbox(...)`](#editboxes)                 create an editbox
@@ -760,10 +787,10 @@ __input__
 [`ui:choicebutton(...)`](#multi-choice-buttons) create a multi-choice button
 [`ui:colorpicker(...)`](#color-pickers)         create a color picker
 [`ui:calendar(...)`](#calendars)                create a calendar
-__output__
+__output  widgets__
 [`ui:image(...)`](#images)                      create an image
 [`ui:progressbar(...)`](#progress-bars)         create a progress bar
-__input/output__
+__input/output  widgets__
 [`ui:grid(...)`](#editable-grids)               create a grid
 __containers__
 [`ui:scrollbar(...)`](#scroll-bars)             create a scroll bar
@@ -772,49 +799,59 @@ __containers__
 [`ui:tablist(...)`](#tab-lists)                 create a tab list
 ----------------------------------------------- ------------------------------
 
-__TIP:__ Widgets are implemented in separate modules. Run each module
-standalone to see a demo of the widgets implemented in the module.
+__TIP:__ Widgets are implemented in separate modules. Run each module as a
+standalone script to see a demo of the widgets implemented in the module.
 
 ## Buttons
 
--------------------------------------- ---------------------------------------
-TODO
--------------------------------------- ---------------------------------------
+------------ ----------------- ------------ ----------------------------------
+r/w property `default`         `false`      pressing Enter anywhere presses the button
+r/w property `cancel`          `false`      pressing Esc anywhere presses the button
+r/w property `profile`         `false`      style profile: `false`, `'text'`
+r/w property `key`             `false`      key shortcut (see `app:key()` in [nw])
+event        `pressed()`                    button was pressed
+------------ ----------------- ------------ ----------------------------------
 
 ## Menus
 
--------------------------------------- ---------------------------------------
+------------ ---------- --------- ---------------------------------------------
 TODO
--------------------------------------- ---------------------------------------
+------------ ---------- --------- ---------------------------------------------
 
 ## Editboxes
 
--------------------------------------- ---------------------------------------
+------------ ---------- --------- ---------------------------------------------
 TODO
--------------------------------------- ---------------------------------------
+------------ ---------- --------- ---------------------------------------------
 
 ## Drop-downs
 
--------------------------------------- ---------------------------------------
+------------ ---------- --------- ---------------------------------------------
 TODO
--------------------------------------- ---------------------------------------
+------------ ---------- --------- ---------------------------------------------
 
 ## Sliders
 
--------------------------------------- ---------------------------------------
+------------ ---------- --------- ---------------------------------------------
 TODO
--------------------------------------- ---------------------------------------
+------------ ---------- --------- ---------------------------------------------
 
 ## Checkboxes
 
--------------------------------------- ---------------------------------------
-TODO
--------------------------------------- ---------------------------------------
+Checkboxes are a flexbox with two items: a button and a textbox.
+
+------------ ----------------- ------------ ----------------------------------
+r/w property `align`           `'left'`     check button alignment vis label
+r/w property `checked`         `false`      checkbox is checked
+tag          `:checked`                     checkbox is checked
+r/o property `button`                       check button
+r/o property `label`                        checkbox label
+------------ ----------------- ------------ ----------------------------------
 
 ## Radio buttons
 
 -------------------------------------- ---------------------------------------
-TODO
+r/w property `align`    `'left'`  checkbox alignment vis its label
 -------------------------------------- ---------------------------------------
 
 ## Multi-choice buttons
@@ -893,10 +930,12 @@ or extend existing ones are:
 	* borders, backgrounds, shadows, aligned text
 	* hit testing
 	* layouting, for making the widgets elastic
- * the `ui.window` and `ui.layer` classes, which together provide an input API:
+ * the `ui.window` and `ui.layer` classes, which together provide an input model:
    * routing mouse events to the hot widget; mouse capturing
 	* routing keyboard events to the focused widget; tab-based navigation
-	* the drag & drop API (event-based)
+	* the drag & drop API
+ * drawing with [cairo], if you need procedural 2D drawing.
+ * rendering text with [tr], if layers are not enough.
 
 ### The `ui.object` base class
 

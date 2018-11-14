@@ -834,7 +834,9 @@ function element:init_fields(t)
 	end
 	local ignore = self._init_ignore
 	for k,v in sortedpairs(t, cmp) do
-		if not ignore[k] then
+		if type(k) == 'number' and math.floor(k) == k then
+			--skip the array part of the table.
+		elseif not ignore[k] then
 			self[k] = v
 		end
 	end
@@ -2131,14 +2133,17 @@ function ui:radial_gradient(cx1, cy1, r1, cx2, cy2, r2, ...)
 	return self:_add_color_stops(g, ...)
 end
 
+function ui:open_file(file)
+	local bundle = require'bundle'
+	return self:check(bundle.fs_open(file), 'file not found: "%s"', file)
+end
+
 function ui:image_pattern(file)
 	local ext = file:match'%.([^%.]+)$'
 	if ext == 'jpg' or ext == 'jpeg' then
 		local bundle = require'bundle'
-		local f = bundle.fs_open(file)
-		if not self:check(f, 'file not found: "%s"', file) then
-			return
-		end
+		local f = self:open_file(file)
+		if f then return end
 		local bufread = f:buffered_read()
 		local function read(buf, sz)
 			return self:check(bufread(buf, sz))
@@ -2216,7 +2221,7 @@ layer.focusable = false --can be focused
 layer.draggable = true --can be dragged (still needs to respond to start_drag())
 layer.mousedown_activate = false --activate/deactivate on left mouse down/up
 
-ui:style('layer :disabled', {
+ui:style('layer !:enabled', {
 	background_color = '#222',
 	text_color = '#666',
 })
@@ -2239,9 +2244,10 @@ function layer:override_init(inherited, ui, t)
 end
 
 layer:init_ignore{parent=1, layer_index=1, enabled=1, layers=1, class=1}
+layer.tags = ':enabled'
 
 function layer:after_init(ui, t)
-	--setting parent after _enabled updates the `disabled` tag only once!
+	--setting parent after _enabled updates the `enabled` tag only once!
 	--setting layer_index before parent inserts the layer at its index directly.
 	local enabled = t.enabled and true or false
 	if enabled ~= self._enabled then
@@ -2250,10 +2256,14 @@ function layer:after_init(ui, t)
 	self.layer_index = t.layer_index
 	self.parent = t.parent
 
-	--create and/or attach layers
-	for i,layer in ipairs(t) do
+	--create and/or attach child layers
+	for _,layer in ipairs(t) do
 		if not layer.islayer then
-			layer = layer.class(self.ui, self[layer.class], layer)
+			local class = layer.class or self.super
+			if type(class) == 'string' then --look-up a built-in class
+				class = self.ui:check(ui[class], 'invalid class: "%s"', class)
+			end
+			layer = class(self.ui, self[layer.class], layer)
 		end
 		assert(layer.islayer)
 		layer.parent = self
@@ -2285,20 +2295,21 @@ layer.rotation = 0
 layer.rotation_cx = 0
 layer.rotation_cy = 0
 layer.scale = 1
-layer.scale_x = false
-layer.scale_y = false
 layer.scale_cx = 0
 layer.scale_cy = 0
 
 local mt = cairo.matrix()
 function layer:rel_matrix() --box matrix relative to parent's content space
-	return mt:reset()
-		:translate(self.x, self.y)
-		:rotate_around(self.rotation_cx, self.rotation_cy,
-			math.rad(self.rotation))
-		:scale_around(self.scale_cx, self.scale_cy,
-			self.scale_x or self.scale,
-			self.scale_y or self.scale)
+	mt:reset():translate(self.x, self.y)
+	local rot = self.rotation
+	if rot ~= 0 then
+		mt:rotate_around(self.rotation_cx, self.rotation_cy, math.rad(rot))
+	end
+	local scale = self.scale
+	if scale ~= 1 then
+		mt:scale_around(self.scale_cx, self.scale_cy, self.scale)
+	end
+	return mt
 end
 
 function layer:abs_matrix() --box matrix in window space
@@ -2698,7 +2709,7 @@ function layer:get_enabled()
 end
 
 function layer:_update_enabled(enabled)
-	self:settag(':disabled', not enabled)
+	self:settag(':enabled', enabled)
 	for _,layer in ipairs(self) do
 		layer:_update_enabled(enabled)
 	end
@@ -4228,14 +4239,17 @@ local function stretch_items_main_axis(items, i, j, total_w, X, W, _MIN_W)
 end
 
 --starting x-offset and in-between spacing metrics for aligning.
-local function align_metrics(align, container_w, items_w, item_count, START, END, LEFT, RIGHT, L, R)
+local function align_metrics(
+	align, container_w, items_w, item_count,
+	START, END, LEFT, RIGHT, L, R
+)
 	local x
 	local spacing = 0
 	if align == START or align == LEFT or align == L then
 		x = 0
 	elseif align == END or align == RIGHT or align == R then
 		x = container_w - items_w
-	elseif align == 'center' then
+	elseif align == 'center' or align == 'c' then
 		x = (container_w - items_w) / 2
 	elseif align == 'space_evenly' then
 		spacing = (container_w - items_w) / (item_count + 1)
@@ -4404,11 +4418,11 @@ local function gen_funcs(X, Y, W, H, LEFT, RIGHT, TOP, BOTTOM)
 				else
 					local item_h = layer[_MIN_H]
 					layer[H] = item_h
-					if align == TOP or align == 'start' then
+					if align == TOP or align == T or align == 'start' then
 						layer[Y] = line_y
-					elseif align == BOTTOM or align == 'end' then
+					elseif align == BOTTOM or align == B or align == 'end' then
 						layer[Y] = line_y + line_h - item_h
-					elseif align == 'center' then
+					elseif align == 'center' or align == 'c' then
 						layer[Y] = line_y + (line_h - item_h) / 2
 					end
 					--[[
@@ -4559,16 +4573,20 @@ local grid = object:subclass'grid_layout'
 layer.layouts.grid = grid
 
 --container properties
+
 layer.grid_cols = {} --{fr1, ...}
 layer.grid_rows = {} --{fr1, ...}
-layer.col_gap = 0
-layer.row_gap = 0
-layer.align_x = 'stretch'
-layer.align_y = 'stretch'
+layer.grid_align_cols = 'stretch' --how cols as a whole are aligned
+layer.grid_align_rows = 'stretch' --how rows as a whole are aligned
+layer.grid_col_gap = 0
+layer.grid_row_gap = 0
+layer.grid_align_x = 'stretch' --how each item is x-aligned in its grid cell
+layer.grid_align_y = 'stretch' --how each item is y-aligned in its grid cell
 
 --item properties
-layer.align_x_self = false
-layer.align_y_self = false
+
+layer.align_x = false --overrides grid_align_x for this item
+layer.align_y = false --overrides grid_align_y for this item
 
 --grid_pos property parsing
 
@@ -4841,10 +4859,12 @@ local function gen_funcs(X, Y, W, H, COL, LEFT, RIGHT)
 	local _MIN_W = '_min_'..W
 	local SYNC_MIN_W = 'sync_min_'..W
 	local SYNC_LAYOUT_X = 'sync_layout_'..X
-	local COL_GAP = COL..'_gap'
 	local COLS = 'grid_'..COL..'s'
+	local COL_GAP = 'grid_'..COL..'_gap'
+	local ALIGN_COLS = 'grid_align_'..COL..'s'
+	local GRID_ALIGN_X = 'grid_align_'..X
 	local ALIGN_X = 'align_'..X
-	local _COLS = '_grid_'..COL..'s'
+	local _COLS = '_'..COLS
 	local _MAX_COL = '_grid_max_'..COL
 	local _COL = '_grid_'..COL
 	local _COL_SPAN = '_grid_'..COL..'_span'
@@ -4942,19 +4962,20 @@ local function gen_funcs(X, Y, W, H, COL, LEFT, RIGHT)
 		local cols = self[_COLS]
 		local gap_w = self[COL_GAP]
 		local container_w = self[CW]
-		local align = self[ALIGN_X]
+		local align_cols = self[ALIGN_COLS]
+		local align_x = self[GRID_ALIGN_X]
 
 		local START, END = 'start', 'end'
 		if self[_FLIP_COLS] then
 			START, END = END, START
 		end
 
-		if align == 'stretch' then
+		if align_cols == 'stretch' then
 			stretch_items_main_axis(cols, 1, #cols, container_w, X, W, _MIN_W)
 		else
 			local items_w, item_count = items_sum(cols, 1, #cols, _MIN_W)
 			local x, spacing =
-				align_metrics(align, self[CW], items_w, item_count,
+				align_metrics(align_cols, self[CW], items_w, item_count,
 					START, END, LEFT, RIGHT, L, R)
 			align_items_main_axis(cols, 1, #cols, x, spacing, X, W, _MIN_W)
 		end
@@ -4962,16 +4983,35 @@ local function gen_funcs(X, Y, W, H, COL, LEFT, RIGHT)
 		local x = 0
 		for _,layer in ipairs(self) do
 			if layer.visible then
+
 				local col1 = layer[_COL]
 				local col2 = col1 + layer[_COL_SPAN] - 1
 				local col_item1 = cols[col1]
 				local col_item2 = cols[col2]
 				local x1 = col_item1[X]
 				local x2 = col_item2[X] + col_item2[W]
+
 				local gap1 = (col1 == 1 and 0 or gap_w * .5)
 				local gap2 = (col2 == #cols and 0 or gap_w * .5)
-				layer[X] = x1 + gap1
-				layer[W] = x2 - x1 - gap2 - gap1
+				x1 = x1 + gap1
+				x2 = x2 - gap2
+
+				local align = layer[ALIGN_X] or align_x
+				local x, w
+				if align == 'stretch' then
+					x, w = x1, x2 - x1
+				elseif align == START or item_align == LEFT or item_align == L then
+					x, w = x1, layer[_MIN_W]
+				elseif align == END or item_align == RIGHT or item_align == R then
+					w = layer[_MIN_W]
+					x = x2 - w
+				elseif align == 'center' or item_align == 'c' then
+					w = layer[_MIN_W]
+					x = x1 + (x2 - x1 - w) / 2
+				end
+				layer[X] = x
+				layer[W] = w
+
 			end
 		end
 

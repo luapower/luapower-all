@@ -384,7 +384,11 @@ xbutton.border_width = 0
 xbutton.background_color = false
 xbutton.text_color = '#999'
 
-ui:style('tab_close_button, tab_close_button :hot, tab_close_button :disabled', {
+ui:style([[
+	tab_close_button,
+	tab_close_button :hot,
+	tab_close_button !:enabled
+]], {
 	background_color = false,
 	transition_background_color = false,
 })
