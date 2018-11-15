@@ -150,7 +150,8 @@ If you are on multigit, you can get them with:
 	$ mgit clone fonts-open-sans fonts-ionicons
 
 If you have them somewhere else, set `ui.default_fonts_path` after
-loading [ui] (or set that to `false` if you don't want default fonts at all).
+loading [ui]. Or set `ui.use_default_fonts` to `false` if you don't want
+default fonts at all.
 
 #### Custom fonts
 
@@ -171,8 +172,9 @@ with:
 
 	$ git clone https://github.com/google/fonts media/fonts/gfonts
 
-and set `ui.use_gfonts = true` before using [ui] (set `ui.google_fonts_path`
-too if you cloned the repo somewhere else). You also need the [gfonts] module:
+and set `ui.use_google_fonts = true` before using [ui]. Set
+`ui.google_fonts_path` too if you cloned the repo somewhere else. You also
+need the [gfonts] module:
 
 	$ mgit clone gfonts
 

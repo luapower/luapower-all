@@ -2172,24 +2172,24 @@ ui:memoize'image_pattern'
 function ui:add_font_file(...) return self.tr:add_font_file(...) end
 function ui:add_mem_font(...) return self.tr:add_mem_font(...) end
 
+ui.use_default_fonts = true
 ui.default_fonts_path = 'media/fonts'
-ui.google_fonts_path = 'media/fonts/gfonts'
-ui.use_gfonts = false
 
 function ui:add_default_fonts(dir)
 	local dir = self.default_fonts_path
-	if not dir then return end
-	dir = dir:gsub('[\\/]$', '') .. '/'
 	--$ mgit clone fonts-open-sans
-	self:add_font_file(dir..'OpenSans-Regular.ttf', 'Open Sans')
+	self:add_font_file(dir..'/OpenSans-Regular.ttf', 'Open Sans')
 	--$ mgit clone fonts-ionicons
-	self:add_font_file(dir..'ionicons.ttf', 'Ionicons')
+	self:add_font_file(dir..'/ionicons.ttf', 'Ionicons')
 end
 
---add a font searcher for the google fonts repository. to make this work, do:
+ui.use_google_fonts = false
+ui.google_fonts_path = 'media/fonts/gfonts'
+
+--add a font searcher for the google fonts repository.
+--for this to work you need to get the fonts:
 --$ git clone https://github.com/google/fonts media/fonts/gfonts
 function ui:add_gfonts_searcher()
-	if not self.use_gfonts then return end
 	local gfonts = require'gfonts'
 	gfonts.root_dir = self.google_fonts_path
 	local function find_font(font_db, name, weight, slant)
@@ -2208,8 +2208,12 @@ function ui:after_init()
 		return self:rgba(c)
 	end
 
-	self:add_default_fonts()
-	self:add_gfonts_searcher()
+	if self.use_default_fonts then
+		self:add_default_fonts()
+	end
+	if self.use_google_fonts then
+		self:add_gfonts_searcher()
+	end
 end
 
 function ui:before_free()
