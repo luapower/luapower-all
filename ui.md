@@ -1148,7 +1148,8 @@ Many aspects of the core engine can also be extended with:
 ## Porting to a new platform
 
 OS integration is done exclusively through the [nw] and [time] libraries,
-everything else being Lua code or portable C code. The [nw] library itself
-has a frontend/backend split since it already supports multiple platforms,
-so porting to a new platform is just a matter of adding a new backend to [nw].
-
+everything else being Lua code or portable C code. Even text shaping,
+a task usually delegated to the OS, is done with 100% portable code.
+The [nw] library itself has a frontend/backend split since it already
+supports multiple platforms, so porting [ui] to a new platform is ultimately
+just a matter of to adding a new backend to [nw].
