@@ -308,7 +308,7 @@ servers = {}           --{platform = {'ip|host', port}}
 auto_update_db = true  --update the db automatically when info is missing
 allow_update_db_locally = true --allow dependency tracking on this machine
 
-default_license = 'PD' --public domain
+default_license = 'Public Domain' --public domain
 
 local function plusfile(file)
 	return file and '/'..file or ''
@@ -647,7 +647,7 @@ local function parse_module_header(file)
 			if t.license then
 				t.license = t.license:gsub('%s*[Ll]icense%s*', ''):gsub('%.', '')
 				if t.license:lower() == 'public domain' then
-					t.license = 'PD'
+					t.license = 'Public Domain'
 				end
 			end
 		end
@@ -895,7 +895,7 @@ local function parse_what_file(what_file)
 		or t.license
 	t.license =
 		t.license:match('^'..glue.escape('public domain', '*i')..'$')
-		and 'PD' or t.license
+		and 'Public Domain' or t.license
 
 	--parse the second line which has the format:
 	--		'requires: <pkg1>, <pkg2> (<platform1> ...), ...'
@@ -1977,8 +1977,8 @@ local function key(key, t) return t and t[key] end
 license = memoize_package(function(package)
 	return
 		key('license', doc_tags(package, package)) or
-		key('license', module_header(package, package)) or
 		key('license', what_tags(package)) or
+		key('license', module_header(package, package)) or
 		default_license
 end)
 
