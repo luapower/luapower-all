@@ -98,7 +98,7 @@ end
 
 --text property, computed on-demand.
 
---tell ui:sync_text() to stop checking the `text` property to decide
+--tell ui:sync_text_shape() to stop checking the `text` property to decide
 --if the text needs reshaping. reshaping is done by selection:replace() now.
 --this is to skip utf8-encoding the entire text on every key stroke.
 editbox.text_editabe = true
@@ -154,7 +154,7 @@ function editbox:after_init(ui, t)
 	--create a selection and then set the text through the selection which
 	--obeys maxlen and triggers a changed event.
 	self.multiline = t.multiline
-	self.selection = self:sync_text():selection()
+	self.selection = self:sync_text_shape():selection()
 	self.text = t.text
 
 	--reset the caret blinking whenever the cursor is being acted upon,
@@ -242,7 +242,7 @@ end
 
 function editbox:sync_scrollbox()
 
-	local segs = self:sync_text()
+	local segs = self:sync_text_shape()
 	local bx, by, bw, bh = segs:bounding_box()
 	local cx, cy, cw, ch = self:caret_rect()
 
@@ -273,7 +273,7 @@ function editbox:caret_rect()
 	return x, y, w, h, dir
 end
 
-function editbox:override_sync_text(inherited)
+function editbox:override_sync_text_align(inherited)
 	if self.password then
 		self.text_align = 'left' --only left-alignment supported!
 	end
@@ -669,7 +669,7 @@ end
 --NOTE: input can be arbitrary but output is snapped to a cursor position.
 function editbox:mask_to_text(x, y)
 	if self.password then
-		local segs = self:sync_text()
+		local segs = self:sync_text_shape()
 		local line_x = segs:line_pos(1)
 		local w = self:password_char_advance_x()
 		local i = snap(x - line_x, w) / w
@@ -702,7 +702,7 @@ end
 
 function editbox:override_draw_text(inherited, cr)
 	if self.password then
-		local segs = self:sync_text()
+		local segs = self:sync_text_shape()
 		self:draw_password_mask(cr, segs)
 	else
 		inherited(self, cr)
@@ -768,8 +768,6 @@ if not ... then require('ui_demo')(function(ui, win)
 
 	local s = 'abcd efgh ijkl mnop qrst uvw xyz 0123 4567 8901 2345'
 
-	--[[
-
 	--defaults all-around.
 	ui:editbox{
 		x = x, y = y, parent = win,
@@ -796,7 +794,7 @@ if not ... then require('ui_demo')(function(ui, win)
 	ui:editbox{
 		x = x, y = y, parent = win,
 		text = s,
-		text_align = 'right',
+		text_align = 'right center',
 	}
 	xy()
 
@@ -808,6 +806,7 @@ if not ... then require('ui_demo')(function(ui, win)
 	}
 	xy()
 
+	--[[
 	local s = '0123 4567 8901 2345'
 
 	--password, scrolling, left align (the only alignment supported)
@@ -832,6 +831,7 @@ if not ... then require('ui_demo')(function(ui, win)
 	]]
 
 	--multiline
+	--[=[
 	ui:editbox{
 		scrollbox = {vscrollbar = {h = 50}},
 		x = x, y = y, parent = win,
@@ -847,6 +847,7 @@ text = 'Hello',
 		cue = 'Type text here...',
 	}
 	xy()
+	]=]
 
 	--[[
 	local t0 = require'time'.clock()
@@ -855,7 +856,7 @@ text = 'Hello',
 	ed3.selection.cursor2:move_to_offset(10)
 	assert(not ed3.selection:empty())
 	ed3:replace_selection('1234')
-	ed3:sync_text()
+	ed3:sync_text_shape()
 	require'jit.p'.stop()
 	print(require'time'.clock() - t0)
 	--win:close()

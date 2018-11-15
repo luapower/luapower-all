@@ -872,7 +872,7 @@ end
 function element:init_tags(t)
 	--custom class tags
 	local class_tags = self.tags
-	self.tags = {['*'] = true}
+	self.tags = {}
 	add_tags(self.tags, class_tags)
 
 	--classname tags
@@ -2172,6 +2172,34 @@ ui:memoize'image_pattern'
 function ui:add_font_file(...) return self.tr:add_font_file(...) end
 function ui:add_mem_font(...) return self.tr:add_mem_font(...) end
 
+ui.default_fonts_path = 'media/fonts'
+ui.google_fonts_path = 'media/fonts/gfonts'
+ui.use_gfonts = false
+
+function ui:add_default_fonts(dir)
+	local dir = self.default_fonts_path
+	if not dir then return end
+	dir = dir:gsub('[\\/]$', '') .. '/'
+	--$ mgit clone fonts-open-sans
+	self:add_font_file(dir..'OpenSans-Regular.ttf', 'Open Sans')
+	--$ mgit clone fonts-ionicons
+	self:add_font_file(dir..'ionicons.ttf', 'Ionicons')
+end
+
+--add a font searcher for the google fonts repository. to make this work, do:
+--$ git clone https://github.com/google/fonts media/fonts/gfonts
+function ui:add_gfonts_searcher()
+	if not self.use_gfonts then return end
+	local gfonts = require'gfonts'
+	gfonts.root_dir = self.google_fonts_path
+	local function find_font(font_db, name, weight, slant)
+		local file, real_weight = gfonts.font_file(name, weight, slant, true)
+		local font = file and self:add_font_file(file, name, real_weight, slant)
+		return font, real_weight
+	end
+	push(self.tr.rs.font_db.searchers, find_font)
+end
+
 function ui:after_init()
 	self.tr = tr()
 
@@ -2180,25 +2208,8 @@ function ui:after_init()
 		return self:rgba(c)
 	end
 
-	--add a font searcher for the google fonts repository.
-	--$ git clone https://github.com/google/fonts media/fonts/gfonts
-	local function find_font(font_db, name, weight, slant)
-		local gfonts = require'gfonts'
-		local file, real_weight = gfonts.font_file(name, weight, slant, true)
-		local font = file and self:add_font_file(file, name, real_weight, slant)
-		return font, real_weight
-	end
-	push(self.tr.rs.font_db.searchers, find_font)
-
-	--add default fonts.
-	--$ mgit clone fonts-awesome
-	self:add_font_file('media/fonts/fa-regular-400.ttf', 'Font Awesome')
-	self:add_font_file('media/fonts/fa-solid-900.ttf', 'Font Awesome Bold')
-	self:add_font_file('media/fonts/fa-brands-400.ttf', 'Font Awesome Brands')
-	--$ mgit clone fonts-material-icons
-	self:add_font_file('media/fonts/MaterialIcons-Regular.ttf', 'Material Icons')
-	--$ mgit clone fonts-ionicons
-	self:add_font_file('media/fonts/ionicons.ttf', 'Ionicons')
+	self:add_default_fonts()
+	self:add_gfonts_searcher()
 end
 
 function ui:before_free()

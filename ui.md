@@ -18,6 +18,17 @@ and [milestones](https://github.com/luapower/ui/milestones).
   * declarative transition animations.
   * flexbox and css-grid-like layouts.
 
+## Before using
+
+You need to get some fonts in order to see text on screen. Refer to
+[Font management](#font-management) below for that.
+
+Besides the many hard dependencies this library has, there are also a few
+runtime dependencies that are only loaded if/when certain features are used:
+
+  * [libjpeg], if jpeg images are used.
+  * [gfonts], if google fonts are used.
+
 ## Example
 
 ~~~{.lua}
@@ -37,7 +48,7 @@ local btn1 = ui:button{
 	tags = 'blue',        --add a tag for styling
 }
 
---style blue buttons for mouse over when no buttons are pressed.
+--style blue buttons for when mouse is over and no buttons are pressed.
 ui:style('button blue :hot !:active', {
 	background_color = '#66f', --make the background blue
 })
@@ -125,13 +136,45 @@ __native events__
 
 ### Font management
 
-Fonts must be registered before they can be used. Fonts can be read from
-files or from memory buffers. See [tr] for details.
+Fonts must be registered before they can be used (fonts can be loaded from
+files or from memory buffers). A few default fonts are registered
+automatically to make the default styles work.
 
--------------------------------------- ---------------------------------------
-`ui:add_font_file(...)`                calls `tr:add_font_file(...)`
-`ui:add_mem_font(...)`                 calls `tr:add_mem_font(...)`
--------------------------------------- ---------------------------------------
+#### Default fonts
+
+Default fonts are in packages
+[fonts-open-sans](/fonts-ionicons) and
+[fonts-ionicons](/fonts-ionicons).
+If you are on multigit, you can get them with:
+
+	$ mgit clone fonts-open-sans fonts-ionicons
+
+If you have them somewhere else, set `ui.default_fonts_path` after
+loading [ui] (or set that to `false` if you don't want default fonts at all).
+
+#### Custom fonts
+
+Custom fonts can be added with:
+
+  * `ui:add_font_file(...)`, which calls `tr:add_font_file(...)`, or
+  * `ui:add_mem_font(...)`, which calls `tr:add_mem_font(...)`.
+
+See [tr] for details on those methods. To change the default font used
+for text by all the layers and widgets, set `ui.layer.font` before creating
+any layers or widgets, or add a style on the `layer` tag with that.
+
+#### Fonts from google fonts
+
+Fonts from the google fonts repository can be used directly by name without
+the need to register them. To enable this, clone the google fonts repository
+with:
+
+	$ git clone https://github.com/google/fonts media/fonts/gfonts
+
+and set `ui.use_gfonts = true` before using [ui] (set `ui.google_fonts_path`
+too if you cloned the repo somewhere else). You also need the [gfonts] module:
+
+	$ mgit clone gfonts
 
 ## Elements
 
@@ -809,6 +852,8 @@ standalone script to see a demo of the widgets implemented in the module.
 
 ## Buttons
 
+Buttons are created with `ui:button(attrs1, ...)`.
+
 ------------ ---------------------- ------------ -----------------------------
 r/w property `default`              `false`      pressing Enter anywhere presses the button
 r/w property `cancel`               `false`      pressing Esc anywhere presses the button
@@ -820,11 +865,15 @@ event        `pressed()`                         the button was pressed
 
 ## Menus
 
+Menus are created with `ui:menu(attrs1, ...)`.
+
 ------------ ---------------------- ------------ -----------------------------
 TODO
 ------------ ---------------------- ------------ -----------------------------
 
 ## Editboxes
+
+Editboxes are created with `ui:editbox(attrs1, ...)`.
 
 ------------ ---------------------- ------------ -----------------------------
 TODO
@@ -832,11 +881,15 @@ TODO
 
 ## Drop-downs
 
+Drop-down menus are created with `ui:dropdown(attrs1, ...)`.
+
 ------------ ---------------------- ------------ -----------------------------
 TODO
 ------------ ---------------------- ------------ -----------------------------
 
 ## Sliders
+
+Sliders are created with `ui:slider(attrs1, ...)`.
 
 ------------ ---------------------- ------------ -----------------------------
 r/w property `min_position`         `0`          min. position
@@ -863,6 +916,8 @@ component    `step_label`
 
 ## Toggle buttons
 
+Toggle buttons are created with `ui:toggle(attrs1, ...)`.
+
 Toggle buttons are custom sliders so all slider options apply.
 
 ------------ ----------------------------------- ------------ ----------------
@@ -874,6 +929,8 @@ event        `option_disabled()`                              button was set to 
 ------------ ----------------------------------- ------------ ----------------
 
 ## Checkboxes
+
+Checkboxes are created with `ui:checkbox(attrs1, ...)`.
 
 Checkboxes are implemented as a flexbox with two items: a button and a textbox.
 
@@ -890,6 +947,8 @@ component    `label`                                          checkbox label
 
 ## Radio buttons
 
+Radio buttons are created with `ui:radiobutton(attrs1, ...)`.
+
 Radio buttons custom checkboxes so all checkbox options apply.
 
 ------------ ----------------------------------- ------------ ----------------
@@ -899,11 +958,15 @@ r/w property `align`                             `'left'`     checkbox alignment
 
 ## Radio button lists
 
+Radio button lists are created with `ui:radiobuttonlist(attrs1, ...)`.
+
 ------------ ----------------------------------- ------------ ----------------
 TODO
 ------------ ----------------------------------- ------------ ----------------
 
 ## Choice buttons
+
+Choice buttons are created with `ui:choicebutton(attrs1, ...)`.
 
 Choice buttons are functionally like radio button lists. Visually they are
 implemented as a flexbox with multiple buttons, one of which is selected.
@@ -915,11 +978,15 @@ TODO
 
 ## Color pickers
 
+Color pickers are created with `ui:colorpicker(attrs1, ...)`.
+
 ------------ ----------------------------------- ------------ ----------------
 TODO
 ------------ ----------------------------------- ------------ ----------------
 
 ## Calendars
+
+Calendars are created with `ui:calendar(attrs1, ...)`.
 
 ------------ ----------------------------------- ------------ ----------------
 TODO
@@ -927,11 +994,15 @@ TODO
 
 ## Images
 
+Images are created with `ui:image(attrs1, ...)`.
+
 ------------ ----------------------------------- ------------ ----------------
 TODO
 ------------ ----------------------------------- ------------ ----------------
 
 ## Progress bars
+
+Progress bars are created with `ui:progressbar(attrs1, ...)`.
 
 ------------ ----------------------------------- ------------ ----------------
 r/w property `progress`                          `0`          progress in `0..1`
@@ -940,11 +1011,15 @@ stub         `format_text(p) -> s`                            format progress te
 
 ## Editable grids
 
+Grids are created with `ui:grid(attrs1, ...)`.
+
 ------------ ----------------------------------- ------------ ----------------
 TODO
 ------------ ----------------------------------- ------------ ----------------
 
 ## Scroll bars
+
+Scroll bars are created with `ui:scrollbar(attrs1, ...)`.
 
 ------------ ----------------------------------- ------------ ----------------
 r/w property `content_length`                    `0`
@@ -968,6 +1043,8 @@ method       `scroll_pages(pages, [duration])`                scroll a number of
 
 ## Scroll boxes
 
+Scroll boxes are created with `ui:scrollbox(attrs1, ...)`.
+
 ------------ ----------------------------------- ------------ ----------------
 r/w property `wheel_scroll_length`               `50`         how much is a mouse wheel notch
 r/w property `auto_h`                            `false`      auto-height: TODO
@@ -981,6 +1058,8 @@ method       `scrollbox:view_rect() -> x,y,w,h`               view rect in conte
 ## Tab lists
 
 ### Tabs
+
+Tabs are created with `ui:tab(attrs1, ...)`.
 
 ------------ ----------------------------------- ------------ ----------------
 r/w property `tablist`                                        tab list owner
@@ -998,6 +1077,8 @@ r/w property `draggable_outside`                 `true`       can be dragged out
 ------------ ----------------------------------- ------------ ----------------
 
 ### Tab lists
+
+Tab lists are created with `ui:tablist(attrs1, ...)`.
 
 ------------ ----------------------------------- ------------ ----------------
 i/r property `tabs`
@@ -1147,9 +1228,11 @@ Many aspects of the core engine can also be extended with:
 
 ## Porting to a new platform
 
-OS integration is done exclusively through the [nw] and [time] libraries,
-everything else being Lua code or portable C code. Even text shaping,
+OS integration is done exclusively through the [nw], [fs] and [time] modules,
+everything else being portable Lua code or portable C code. Even text shaping,
 a task usually delegated to the OS, is done with 100% portable code.
 The [nw] library itself has a frontend/backend split since it already
-supports multiple platforms, so porting [ui] to a new platform is ultimately
-just a matter of to adding a new backend to [nw].
+supports multiple platforms, so porting [ui] to a new platform may be
+only a matter of adding a new backend to [nw] (not to imply that this
+is easy, but at least it's contained).
+
