@@ -1,6 +1,6 @@
 
 --hunspell ffi binding.
---Written by Cosmin Apreutesei. Publid Domain.
+--Written by Cosmin Apreutesei. Public Domain.
 
 --Made for hunspell 1.3.2.
 

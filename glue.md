@@ -160,7 +160,8 @@ Output
 	hour	8
 
 
-Copy-paste a bunch of defines from a C header file and create an inverse lookup table to find the name of a value at runtime.
+Copy-paste a bunch of defines from a C header file and create an inverse
+lookup table to find the name of a value at runtime.
 
 ~~~{.lua}
 --from ibase.h
@@ -187,9 +188,11 @@ Make a list of all the keys of `t`, optionally sorted.
 
 #### Examples
 
-An API expects a list of things but you have them as keys in a table because you are indexing something on them.
+An API expects a list of things but you have them as keys in a table because
+you are indexing something on them.
 
-For instance, you have a table of the form `{socket = thread}` but `socket.select` wants a list of sockets.
+For instance, you have a table of the form `{socket = thread}` but
+`socket.select` wants a list of sockets.
 
 ------------------------------------------------------------------------------
 
@@ -197,11 +200,12 @@ For instance, you have a table of the form `{socket = thread}` but `socket.selec
 
 Update a table with elements of other tables, overwriting any existing keys.
 
-  * nil arguments are skipped.
+  * falsey arguments are skipped.
 
 #### Examples
 
-Create an options table by merging the options received as an argument (if any) over the default options.
+Create an options table by merging the options received as an argument
+(if any) over the default options.
 
 ~~~{.lua}
 function f(opts)
@@ -227,7 +231,7 @@ C = glue.update({}, A, B)
 
 Update a table with elements of other tables skipping on any existing keys.
 
-  * nil arguments are skipped.
+  * falsey arguments are skipped.
 
 #### Examples
 
@@ -270,7 +274,7 @@ The optional `n` fixates the tuple to always use exactly `n` args.
 
 Extend the list with the elements of other lists.
 
-  * nil arguments are skipped.
+  * falsey arguments are skipped.
   * list elements are the ones from 1 to `#dt`.
 
 #### Uses

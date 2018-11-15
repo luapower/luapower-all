@@ -450,9 +450,9 @@ __grid layout__
 `grid_pos`                           `nil`              element position in grid: `'[row][/span] [col][/span]'`
 `grid_align_x`                       `'stretch'`        how each item is x-aligned: `'stretch'`, `'start'`/`'l[eft]'`, `'end'`/`'r[ight]'`, `'c[enter]'`,
 `grid_align_y`                       `'stretch'`        how each item is y-aligned: `'stretch'`, `'start'`/`'t[op]'`, `'end'`/`'b[ottom]'`, `'c[enter]'`,
-`align_x`, `align_y`                 false              item `grid_align_x` and `grid_align_y` overrides
+`align_x`, `align_y`                 `false`            item `grid_align_x` and `grid_align_y` overrides
 __transparency & clipping__
-`opacity`                            `1`                overall opacity (0..1)
+`opacity`                            `1`                overall opacity in `0..1`
 `clip_content`                       `false`            content clipping: `false` (don't clip), `'padding'`/`true` (clip to content box), `'background'` (clip to background clip box)
 __borders__
 `border_width`                       `0`                border thickness for all sides
@@ -486,10 +486,10 @@ __shadow__
 __text__
 `text`                               `false`            text, wrapped around `cw`
 `font`                               `'Open Sans,14'`   font spec: `'name [weight] [slant], size'`
-`font_name`                          `false`            font override: name
-`font_weight`                        `false`            font override: weight (`100..900`, `'bold'`, etc.)
-`font_slant`                         `false`            font override: slant (`'italic'`, `'normal'`)
-`font_size`                          `false`            font override: size
+`font_name`                          `false`            font name override
+`font_weight`                        `false`            font weight override: `100..900`, `'bold'`, etc.
+`font_slant`                         `false`            font slant override: `'italic'`, `'normal'`
+`font_size`                          `false`            font size override
 `text_color`                         `'#fff'`           text color
 `line_spacing`                       `1`                multiply factor over line height for lines
 `paragraph_spacing`                  `2`                multiply factor over line height for paragraphs
@@ -1144,4 +1144,11 @@ Many aspects of the core engine can also be extended with:
   API is already very high-level and covers a lot of functionality
   seldom found in other libraries of this type. Adding missing functionality
   to [nw] instead would probably be easier.
+
+## Porting to a new platform
+
+OS integration is done exclusively through the [nw] and [time] libraries,
+everything else being Lua code or portable C code. The [nw] library itself
+has a frontend/backend split since it already supports multiple platforms,
+so porting to a new platform is just a matter of adding a new backend to [nw].
 
