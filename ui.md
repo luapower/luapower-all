@@ -89,7 +89,6 @@ ui:run()
               * [`ui.choicebutton`](#choice-buttons) - choice button
               * [`ui.colorpicker`](#color-pickers) - color picker
               * [`ui.calendar`](#calendars) - calendar
-              * [`ui.image`](#images) - static image
               * [`ui.progressbar`](#progress-bars) - progress bar
               * [`ui.grid`](#editable-grids) - editable grid
               * [`ui.scrollbar`](#scroll-bars) - scrollbar
@@ -516,14 +515,15 @@ __background__
 `background_rotation_cx/cy`          `0`                background rotation center coords
 `background_scale`                   `1`                background scale factor
 `background_scale_cx/cy`             `0`                background scale center coords
-`background_color`                   `false`            solid color
+`background_operator`                `'over'`           cairo blending operator
+`background_clip_border_offset`      `1`                like `border_offset` but for clipping the background
+`background_color`                   `false`            background color
 `background_colors`                  `false`            gradient: `{[offset1], color1, ...}`
 `background_x1/y1/x2/y2`             `0`                linear gradient: end-point coords
 `background_cx1/cy1/cx2/cy2`         `0`                radial gradient: end-point coords
 `background_r1/r2`                   `0`                radial gradient: radii
 `background_image`                   `false`            background image file (requires [libjpeg])
-`background_operator`                `'over'`           cairo blending operator
-`background_clip_border_offset`      `1`                like `border_offset` but for clipping the background
+`background_image_format`            `'%s'`             string.format() template for `background_image`
 __shadow__
 `shadow_x, shadow_y`                 `0`                shadow offset coords
 `shadow_color`                       `'#000'`           shadow color
@@ -541,7 +541,6 @@ __text__
 `text_dir`                           `'auto'`           BiDi base direction: `'auto'`, `'rtl'`, `'ltr'`
 `nowrap`                             `false`            disable automatic line wrapping
 `text_operator`                      `'over'`           blending operator (see [cairo])
-`text_align`                         `'c c'`            text x & y alignments: `'l[eft]|c[enter]|r[ight] t[op]|c[enter]|b[ottom]'`
 `text_align_x`                       `false`            text x-align override: `'l[eft]'`, `'c[enter]'`, `'r[ight]'`
 `text_align_y`                       `false`            text y-align override: `'t[op]'`, `'c[enter]'`, `'b[ottom]'`
 __tooltip__
@@ -838,7 +837,6 @@ __input widgets__
 [`ui:colorpicker(...)`](#color-pickers)         create a color picker
 [`ui:calendar(...)`](#calendars)                create a calendar
 __output  widgets__
-[`ui:image(...)`](#images)                      create an image
 [`ui:progressbar(...)`](#progress-bars)         create a progress bar
 __input/output  widgets__
 [`ui:grid(...)`](#editable-grids)               create a grid
@@ -989,14 +987,6 @@ TODO
 ## Calendars
 
 Calendars are created with `ui:calendar(attrs1, ...)`.
-
------------- ----------------------------------- ------------ ----------------
-TODO
------------- ----------------------------------- ------------ ----------------
-
-## Images
-
-Images are created with `ui:image(attrs1, ...)`.
 
 ------------ ----------------------------------- ------------ ----------------
 TODO

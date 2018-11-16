@@ -404,7 +404,6 @@ local function test_text()
 		x = 100, y = 100,
 		w = 200, h = 200,
 		text = 'gftjim;\nqTv\nxyZ',
-		text_align = 'center middle',
 		text_color = '#fff',
 		font_size = 36,
 		border_width = 1,
@@ -435,7 +434,6 @@ local function test_flexbox_inside_null()
 	local textwrap = ui:layer{
 		parent = parent,
 		text = 'Hello World! Hello World! Hello World! Hello World! \nxxxxxxxxxxx\nxxxxxxxxx\nxxxxx\nxxxxxxxxxxxxx',
-		text_align = 'm c',
 		w = 100,
 		h = 100,
 		--align = 'b r',
@@ -489,9 +487,7 @@ local function test_flexbox()
 			--padding = 10,
 			--flex_align = i == 3 and 'stretch' or i == 1 and 'bottom' or 'baseline',
 			--layout = 'text_wrap',
-			--text_align = 'c m',
 			--text = ('x'):rep(r) .. ' ' .. ('x'):rep(10-r),
-			--text_align = 'r b',
 			flex_fr = r,
 			--font_size = 10 + i * 3,
 		}

@@ -418,7 +418,7 @@ end
 local col = ui.layer:subclass'grid_col'
 grid.col_class = col
 
-col.text_align = 'left center'
+col.text_align_x = 'left'
 col.nowrap = true
 col._w = 200
 col.auto_w = true --distribute pane's width among all columns
@@ -704,7 +704,7 @@ ui:style('grid_col !last_col !:moving', {
 local cell = ui.layer:subclass'grid_cell'
 grid.cell_class = cell
 
-cell.text_align = 'left center'
+cell.text_align_x = 'left'
 cell.nowrap = true
 cell.padding_left = 4
 cell.padding_right = 4

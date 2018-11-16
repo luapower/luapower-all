@@ -18,7 +18,7 @@ editbox.iswidget = true
 
 --features
 
-editbox.text_align = 'left center'
+editbox.text_align_x = 'left'
 editbox.password = false
 editbox.maxlen = 4096
 
@@ -182,7 +182,8 @@ function editbox:get_multiline()
 end
 
 ui:style('editbox multiline', {
-	text_align = 'top left',
+	text_align_x = 'left',
+	text_align_y = 'top',
 })
 
 editbox.scrollbox_class = ui.scrollbox
@@ -275,7 +276,7 @@ end
 
 function editbox:override_sync_text_align(inherited)
 	if self.password then
-		self.text_align = 'left' --only left-alignment supported!
+		self.text_align_x = 'left' --only left-alignment supported!
 	end
 	local segs = inherited(self)
 	if not self.selection then
@@ -309,7 +310,7 @@ function editbox:override_sync_text_align(inherited)
 			segs.lines.x = sx - ax
 		else
 			--make the cursor visible when the text is right-aligned.
-			local adjustment = self.text_align == 'right' and -w or 0
+			local adjustment = self.text_align_x == 'right' and -w or 0
 			--reset the x-offset in order to use the default alignment from `tr`.
 			segs.lines.x = 0 + adjustment
 		end
@@ -745,7 +746,7 @@ function editbox:after_init(ui, t)
 end
 
 function editbox:after_sync()
-	self.cue_layer.text_align = self.text_align
+	self.cue_layer.text_align_x = self.text_align_x
 	self.cue_layer.visible = self.text_len == 0
 		and (not self.show_cue_when_focused or self.focused)
 end
@@ -794,7 +795,7 @@ if not ... then require('ui_demo')(function(ui, win)
 	ui:editbox{
 		x = x, y = y, parent = win,
 		text = s,
-		text_align = 'right center',
+		text_align_x = 'right',
 	}
 	xy()
 
@@ -802,7 +803,6 @@ if not ... then require('ui_demo')(function(ui, win)
 	ui:editbox{
 		x = x, y = y, parent = win,
 		text = s,
-		text_align = 'center',
 	}
 	xy()
 
@@ -814,7 +814,7 @@ if not ... then require('ui_demo')(function(ui, win)
 		x = x, y = y, parent = win,
 		text = s,
 		password = true,
-		text_align = 'right', --overriden!
+		text_align_x = 'right', --overriden!
 	}
 	xy()
 
@@ -823,7 +823,7 @@ if not ... then require('ui_demo')(function(ui, win)
 		x = x, y = y, parent = win,
 		font = 'Amiri,20',
 		text = 'السَّلَامُ عَلَيْكُمْ',
-		text_align = 'right',
+		text_align_x = 'right',
 		text_dir = 'rtl',
 	}
 	xy()

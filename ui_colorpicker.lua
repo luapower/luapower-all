@@ -956,12 +956,12 @@ function picker:after_init(ui, t)
 	self.rgb_editbox = self:create_rgb_editbox()
 	self.hex_editbox = self:create_rgb_editbox()
 
-	self.rgb_label = self.ui:layer{text = 'RGB:', parent = self, text_align = 'left'}
-	self.hex_label = self.ui:layer{text = 'HEX:', parent = self, text_align = 'left'}
-	self.hue_label = self.ui:layer{text = 'Hue:', parent = self, text_align = 'left'}
-	self.sat_label = self.ui:layer{text = 'Sat:', parent = self, text_align = 'left'}
-	self.lum_label = self.ui:layer{text = 'Lum:', parent = self, text_align = 'left'}
-	self.val_label = self.ui:layer{text = 'Val:', parent = self, text_align = 'left'}
+	self.rgb_label = self.ui:layer{text = 'RGB:', parent = self, text_align_x = 'left'}
+	self.hex_label = self.ui:layer{text = 'HEX:', parent = self, text_align_x = 'left'}
+	self.hue_label = self.ui:layer{text = 'Hue:', parent = self, text_align_x = 'left'}
+	self.sat_label = self.ui:layer{text = 'Sat:', parent = self, text_align_x = 'left'}
+	self.lum_label = self.ui:layer{text = 'Lum:', parent = self, text_align_x = 'left'}
+	self.val_label = self.ui:layer{text = 'Val:', parent = self, text_align_x = 'left'}
 
 	self.hue_slider = self.ui:slider{
 		parent = self,

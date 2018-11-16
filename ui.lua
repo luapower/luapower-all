@@ -165,15 +165,16 @@ end
 
 --validate a property when being set against a list of allowed values.
 function object:enum_property(prop, values)
-	if type(values) == 'string' then
+	if type(values) == 'string' then --'enm_val1, ...'
 		local s = values
 		values = {}
 		for val in s:gmatch'[^%s]+' do
-			values[val] = true
+			values[val] = val
 		end
 	end
-	self:override('set_'..prop, function(self, inherited, val)
-		if self:check(values[val], 'invalid value "%s" for %s', val, prop) then
+	self:override('set_'..prop, function(self, inherited, key)
+		local val = values[key]
+		if self:check(val, 'invalid value "%s" for %s', key, prop) then
 			inherited(self, val)
 		end
 	end)
@@ -182,8 +183,7 @@ end
 --error reporting
 
 function object:warn(msg, ...)
-	msg = string.format(msg, ...)
-	io.stderr:write(msg)
+	io.stderr:write(string.format(...))
 	io.stderr:write'\n'
 end
 
@@ -3264,6 +3264,7 @@ layer.background_cy2 = 0
 layer.background_r2 = 0
 --image backgrounds
 layer.background_image = false
+layer.background_image_format = '%s'
 
 layer.background_operator = 'over'
 -- overlapping between background clipping edge and border stroke.
@@ -3338,7 +3339,11 @@ function layer:paint_background(cr)
 				unpack(self.background_colors))
 		end
 	elseif bg_type == 'image' then
-		local img = self.ui:image_pattern(self.background_image)
+		local img_file = string.format(
+			self.background_image_format,
+			self.background_image
+		)
+		local img = self.ui:image_pattern(img_file)
 		if not img then return end
 		patt = img.patt
 	else
@@ -3483,30 +3488,6 @@ function layer:draw_shadow(cr)
 	cr:translate(-sx, -sy)
 end
 
---parsing of '<align_x> <align_y>' property strings
-
-local aligns_x = {
-	left = 'left', center = 'center', right = 'right',
-	l = 'left', c = 'center', r = 'right',
-}
-local aligns_y = {
-	top = 'top', center = 'center', bottom = 'bottom',
-	t = 'top', c = 'center', b = 'bottom',
-}
-function ui:_align(s)
-	local a1, a2 = s:match'([^%s]+)%s*([^%s]*)'
-	local ax = aligns_x[a1] or aligns_x[a2]
-	local ay = aligns_y[a1] or aligns_y[a2]
-	return self:check(ax and ay, 'invalid align: "%s"', s) and {ax, ay}
-end
-ui:memoize'_align'
-
-function ui:align(s)
-	local t = self:_align(s)
-	if not t then return end
-	return t[1], t[2]
-end
-
 --text geometry and drawing --------------------------------------------------
 
 layer.text = false
@@ -3523,6 +3504,8 @@ layer.paragraph_spacing = 2
 layer.text_dir = 'auto' --auto, rtl, ltr
 layer.nowrap = false
 layer.text_operator = 'over'
+layer.text_align_x = 'center'
+layer.text_align_y = 'center'
 
 function layer:text_visible()
 	return self.text and self.text ~= '' and true or false
@@ -3532,27 +3515,18 @@ end
 --see editbox implementation for details.
 layer.text_editabe = false
 
-layer:stored_property'text_align'
-function layer:after_set_text_align(s)
-	local ax, ay = self.ui:align(s)
-	if not ax then return end
-	self._text_align_x0 = ax
-	self._text_align_y0 = ay
-end
-layer:nochange_barrier'text_align'
-layer.text_align = 'center center'
+--parsing of '<align_x> <align_y>' property strings
 
 layer:stored_property'text_align_x'
-layer:enum_property('text_align_x', aligns_x)
-
 layer:stored_property'text_align_y'
-layer:enum_property('text_align_y', aligns_y)
-
-function layer:text_aligns()
-	return
-		self._text_align_x or self._text_align_x0,
-		self._text_align_y or self._text_align_y0
-end
+layer:enum_property('text_align_x', {
+	left = 'left', center = 'center', right = 'right',
+	l = 'left', c = 'center', r = 'right',
+})
+layer:enum_property('text_align_y', {
+	top = 'top', center = 'center', bottom = 'bottom',
+	t = 'top', c = 'center', b = 'bottom',
+})
 
 layer._text_tree = false
 layer._text_segments = false
@@ -3610,7 +3584,8 @@ function layer:sync_text_align()
 	local segs = self._text_segments
 	if not segs then return nil end
 	local cw, ch = self:client_size()
-	local ha, va = self:text_aligns()
+	local ha = self._text_align_x
+	local va = self._text_align_y
 	if    ch ~= self._text_h
 		or ha ~= self._text_ha
 		or va ~= self._text_va
