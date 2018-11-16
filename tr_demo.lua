@@ -23,17 +23,18 @@ local function gfont(name)
 	font(file, name)
 end
 
-gfont'eb garamond'
-gfont'eb garamond italic'
-gfont'eb garamond bold'
-gfont'eb garamond bold italic'
-gfont'dancing script'
-gfont'open sans'
-gfont'open sans italic'
-gfont'open sans bold italic'
-gfont'open sans 300'
-gfont'open sans 300 italic'
+--gfont'eb garamond'
+--gfont'eb garamond italic'
+--gfont'eb garamond bold'
+--gfont'eb garamond bold italic'
+--gfont'dancing script'
+--gfont'open sans'
+--gfont'open sans italic'
+--gfont'open sans bold italic'
+--gfont'open sans 300'
+--gfont'open sans 300 italic'
 font'media/fonts/NotoColorEmoji.ttf'
+font('media/fonts/OpenSans-Regular.ttf', 'open sans')
 font'media/fonts/IonIcons.ttf'
 --font'media/fonts/NotoEmoji-Regular.ttf'
 --font'media/fonts/EmojiSymbols-Regular.ttf'
@@ -280,22 +281,26 @@ function win:repaint()
 	end
 
 	cursor = cursor or segs:cursor()
-	local x, y = cursor:pos()
-	local w, h, rtl = cursor:size()
-	rect(cr, '#fff', x, y, w, h)
-	local w = (rtl and 10 or -10)
-	triangle(cr, '#fff', x-w*.8, y, w, 90)
+	if cursor then
+		local x, y = cursor:pos()
+		local w, h, rtl = cursor:size()
+		rect(cr, '#fff', x, y, w, h)
+		local w = (rtl and 10 or -10)
+		triangle(cr, '#fff', x-w*.8, y, w, 90)
+	end
 
 	rect(cr, '#f00', segs:bounding_box())
 
 	sel = sel or segs:selection()
-	sel.cursor1:move_to_offset(200)
-	sel.cursor2:move_to_offset(628)
-	--sel:select_all()
+	if sel then
+		sel.cursor1:move_to_offset(200)
+		sel.cursor2:move_to_offset(628)
+		--sel:select_all()
 
-	sel:rectangles(function(x, y, w, h)
-		rect(cr, '#f008', x, y, w, h)
-	end)
+		sel:rectangles(function(x, y, w, h)
+			rect(cr, '#f008', x, y, w, h)
+		end)
+	end
 
 end
 

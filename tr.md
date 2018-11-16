@@ -25,10 +25,11 @@ and [milestones](https://github.com/luapower/tr/milestones).
 __font management__
 `tr:add_font_file(file, ...)`                        add a font file
 `tr:add_mem_font(buf, sz, ...)`                      add a font file from a buffer
-__layouting__
+__shaping & layouting__
 `tr:flatten(text_tree) -> text_runs`                 flatten a text tree
 `tr:shape(text_tree | text_runs) -> segs`            shape a text tree / text runs
-`segs:min_w() -> w`                                  minimum wrapping width
+`segs:min_w() -> min_w`                              minimum wrapping width
+`segs:max_w() -> max_w`                              maximum wrapping width
 `segs:wrap(w) -> segs`                               wrap shaped text
 `segs:align(x, y, [w], [h], [ax], [ay]) -> segs`     align wrapped text in a box
 `segs:layout(x, y, [w], [h], [ax], [ay]) -> segs`    wrap and align shaped text
@@ -65,9 +66,13 @@ __editing__
 `sel:replace(s, [len], [charset], [maxlen]) -> t|f`  replace selection with text
 ---------------------------------------------------- ------------------------------------
 
+## Font management
+
 ### `tr:add_font_file(file, name, [slant], [weight])`
 
 Register a font file, associating it with a name, slant and weight.
+The name can contain the slant and/or weight and you can add/override these
+qualifiers as separate args.
 
 Multiple combinations of (name, weight, slant) can be registered with the
 same font. See [freetype] for supported font formats.
@@ -79,6 +84,8 @@ Registering fonts is a necessary step before trying to shape anything.
 ### `tr:add_mem_font(buf, sz, [slant], [weight])`
 
 Add a font file from a memory buffer.
+
+## Shaping & layouting
 
 ### `tr:flatten(text_tree) -> text_runs`
 
@@ -132,9 +139,10 @@ and also contain the fields:
   * `len` - text run length in codepoints.
   * `font`, `font_size` - resolved font object and font size.
 
-NOTE: One text run is always created for each source table, even when there's
-no text, in order to anchor the attributes to a segment and to create a
-cursor.
+NOTE: A text run is created for each source node, even when the node has
+no text, in order to preserve the text attributes at that text position.
+Invalid text runs are discarded though, so flattening _can_ result in an
+empty array.
 
 NOTE: When flattening, each text node is set up to inherit its parent node
 (this might change in a future version since it's not ok to modify user
@@ -148,12 +156,17 @@ The segments can be laid out multiple times and must be laid out at least
 once in order to be rendered. Changing the text tree in any way except
 for styling attributes (color) requires reshaping and relayouting.
 
-  * sets `text_runs` for accessing the codepoints as a flat array.
+  * the segments keep a reference to the text runs in the `text_runs` field.
+  * segments are _not created_ for text runs for which font loading fails.
 
-### `segs:min_w() -> w`
+### `segs:min_w() -> min_w`
 
 Get the minimum width that the text can be wrapped to, which is the width
-of longest non-breakable text sequence.
+of the longest non-breakable text sequence.
+
+### `segs:max_w() -> max_w`
+
+Get the width of the unwrapped text, which is the width of its longest line.
 
 ### `segs:wrap(w) -> segs`
 
@@ -178,6 +191,9 @@ The table also contains a list of lines in its array part with the fields:
   * `paragraph_spacing`: paragraph spacing for this line.
   * `x`: line's ualigned x-offset (0).
   * `y`: line's y-offset relative to the first line's baseline.
+
+NOTE: The `lines` table _can_ contain zero lines, but only if the `segs`
+table has zero segments, which only happens when there are errors.
 
 ### `segs:align(x, y, [w], [h], [align_x], [align_y]) -> segs`
 
@@ -208,6 +224,8 @@ Wrap and align shaped text.
 
 Return the bounding-box of laid out text.
 
+## Rendering
+
 ### `segs:paint(cr)`
 
 Paint the shaped and laid out text into a graphics context.
@@ -236,6 +254,106 @@ Mark all lines and segments as visible.
 
 Shape, layout and paint text in one call. Return segments so that
 layouting or painting can be done again without reshaping.
+
+## Cursors
+
+### `segs:cursor([offset]) -> cursor`
+
+Create a cursor, optionally placing it at a text offset (which defaults to `0`).
+Returns `nil` if the segments table contain no segments.
+
+### `cursor:pos() -> x, y`
+
+Get cursor position.
+
+### `cursor:size() -> w, h, rtl`
+
+Get cursor size and direction.
+
+### `cursor:set_offset(offset)`
+
+Move cursor to text offset.
+
+### `cursor:hit_test(x, y, ...) -> off, seg, i, line_i`
+
+Hit-test for a cursor position.
+
+### `cursor:move_to_offset(offset)`
+
+Move cursor to closest offset in text.
+
+### `cursor:move_to_pos(x, y, ...)`
+
+Move cursor to closest position to point.
+
+### `cursor:next_cursor([delta]) -> off, seg, i, line_i`
+
+Next/prev `delta` cursors in text (`delta` defaults to `1`).
+
+### `cursor:move(how, [delta], ...)`
+
+Move cursor in text, vertically or horizontally.
+
+  * `how` can be `'char'`, `'word'`, or `'vert'`.
+  * `delta` defaults to `1`.
+  * for `'vert'`, extra args are expected: `x`, `park_bos`, `park_eos`.
+
+### `cursor:changed()`
+
+Stub method called when the cursor changed position.
+
+## Selections
+
+### `segs:selection() -> sel`
+
+Create a selection.
+Returns `nil` if the segments table contain no segments.
+
+### `sel:empty() -> true|false`
+
+Check if the selection is empty.
+
+### `sel.cursor1`, `sel.cursor2`
+
+Selection cursors in no order.
+
+### `sel:cursors() -> c1, c2`
+
+Selection cursors in logical text order.
+
+### `sel:select_all()`
+
+Select all.
+
+### `sel:reset()`
+
+Select none.
+
+### `sel:select_word()`
+
+Select the word around `cursor1`.
+
+### `sel:rectangles(write_func, ...)`
+
+Get the selection rectangles.
+
+### `sel:hit_test(x, y) -> true|false`
+
+Hit test the selection rectangles.
+
+## Editing
+
+### `sel:codepoints() -> buf, offset, len`
+
+Selected text in utf-32 buffer.
+
+### `sel:string() -> s`
+
+Selected text as utf-8 string.
+
+### `sel:replace(s, [len], [charset], [maxlen]) -> t|f`
+
+Replace selection with text.
 
 ## Rendering stages
 

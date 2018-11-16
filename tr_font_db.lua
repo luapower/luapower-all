@@ -8,6 +8,8 @@ local update = glue.update
 local attr = glue.attr
 local trim = glue.trim
 local index = glue.index
+local snap = glue.snap
+local clamp = glue.clamp
 
 local font_db = {}
 setmetatable(font_db, font_db)
@@ -27,6 +29,8 @@ font_db.weights = {
 	ultralight = 200,
 	extralight = 200,
 	light      = 300,
+	regular    = 400,
+	normal     = 400,
 	medium     = 500,
 	semibold   = 600,
 	bold       = 700,
@@ -70,8 +74,8 @@ end
 
 font_db.redundant_suffixes = {regular=1, normal=1}
 
---NOTE: used as class method by ui!
-function font_db:parse_font(name, weight, slant, size)
+function font_db:parse_font(name, weight, slant, size, bold)
+
 	local weight_str, slant_str, size_str
 	if type(name) == 'string' then
 		name = name:gsub(',([^,]*)$', function(s)
@@ -95,17 +99,30 @@ function font_db:parse_font(name, weight, slant, size)
 			end
 		end)
 	end
+
 	if weight then
 		weight = tonumber(weight) or self.weights[weight:lower()]
 	else
 		weight = weight_str
 	end
+
 	if slant then
 		slant = self.slants[slant:lower()]
 	else
 		slant = slant_str
 	end
 	size = size or size_str
+
+	name = name or false
+	weight = weight or 400
+	slant = slant or 'normal'
+
+	if bold then
+		weight = weight + 200
+	end
+
+	weight = clamp(snap(weight, 100), 100, 900)
+
 	return name, weight, slant, size
 end
 
@@ -124,7 +141,7 @@ end
 --NOTE: `name` doesn't have to be a string, it can be any indexable value.
 function font_db:add_font(font, name, weight, slant)
 	local name, weight, slant = self:parse_font(name, weight, slant)
-	attr(attr(self.db, name or false), slant or 'normal')[weight or 400] = font
+	attr(attr(self.db, name), slant)[weight] = font
 end
 
 local function closest_weight(t, wanted_weight)
@@ -139,20 +156,23 @@ local function closest_weight(t, wanted_weight)
 	end
 	return best_font
 end
-function font_db:find_font(name, weight, slant, size)
+function font_db:find_font(name, weight, slant, size, bold)
 	if type(name) ~= 'string' then
 		return name --font object: pass-through
 	end
+
 	local name_only = not (weight or slant or size)
 	local font = name_only and self.namecache[name] --try to skip parsing
-	if font then
-		return font
-	end
-	local name, weight, slant, size = self:parse_font(name, weight, slant, size)
+	if font then return font end
+
+	local name, weight, slant, size =
+		self:parse_font(name, weight, slant, size, bold)
+
 	--exact search in local db.
-	local t = self.db[name or false]
-	local t = t and t[slant or 'normal']
-	local font = t and t[weight or 400]
+	local t = self.db[name]
+	local t = t and t[slant]
+	local font = t and t[weight]
+
 	--loose search using installed searchers.
 	if not font then
 		local closest_weight
@@ -167,25 +187,28 @@ function font_db:find_font(name, weight, slant, size)
 			end
 		end
 	end
+
 	--loose search in local db.
 	if not font and t then
-		font = closest_weight(t, weight or 400)
+		font = closest_weight(t, weight)
 	end
+
 	--register the found font for the requested weight.
 	--NOTE: register all the searchers before looking up any fonts, otherwise
 	--later searchers won't be invoked to find fonts with closer weights.
 	if font then
 		self:add_font(font, name, weight, slant)
 	end
+
 	if font and name_only then
 		self.namecache[name] = font
 	end
+
 	return font, size
 end
 
 function font_db:dump()
 	local weight_names = index(self.weights)
-	weight_names[400] = 'regular'
 	for name,t in glue.sortedpairs(self.db) do
 		local dt = {}
 		for slant,t in glue.sortedpairs(t) do

@@ -63,22 +63,32 @@ function rs:free()
 	self.font_db = false
 end
 
+function rs:warn(...)
+	io.stderr:write(string.format(...))
+	io.stderr:write'\n'
+end
+
 --font loading ---------------------------------------------------------------
 
 local font = {}
 setmetatable(font, font)
 
 function font:__call(fields)
-	self = update({}, self, fields)
+	local self = update({}, self, fields)
 	self.refcount = 0
 	return self
 end
 
 function font:ref()
+	if self.invalid then return end
 	if self.refcount == 0 then
-		self:load()
+		if not self:load() then
+			self.invalid = true
+			return
+		end
 	end
 	self.refcount = self.refcount + 1
+	return true
 end
 
 function font:unref()
@@ -154,9 +164,14 @@ setmetatable(mem_font, mem_font)
 
 function mem_font:load()
 	assert(not self.ft_face)
-	self.ft_face = assert(self.freetype:memory_face(self.data, self.data_size))
+	self.ft_face = self.freetype:memory_face(self.data, self.data_size)
+	if not self.ft_face then
+		self.rs:warn('Font loading failed: "%s"', self.file or '[cdata]')
+		return
+	end
 	self.tuple = tuples()
 	self.tuple2 = tuples(2) --faster impl. with 2 fixed args
+	return true
 end
 
 function mem_font:unload()
@@ -175,11 +190,14 @@ function font_file:load()
 	assert(not self.mmap)
 	local bundle = require'bundle'
 	local mmap = bundle.mmap(self.file)
-	assert(mmap, 'Font file not found: %s', self.file)
+	if not mmap then
+		self.rs:warn('Font file not found: "%s"', self.file)
+		return
+	end
 	self.data = mmap.data
 	self.data_size = mmap.size
 	self.mmap = mmap --pin it
-	mem_font.load(self)
+	return mem_font.load(self)
 end
 
 function font_file:unload()
@@ -191,14 +209,14 @@ end
 --user API for adding fonts
 
 function rs:add_font_file(file, ...)
-	local font = font_file{file = file,
+	local font = font_file{rs = self, file = file,
 		freetype = self.freetype, ft_load_flags = self.ft_load_flags}
 	self.font_db:add_font(font, ...)
 	return font
 end
 
 function rs:add_mem_font(data, size, ...)
-	local font = mem_font{data = data, data_size = size,
+	local font = mem_font{rs = self, data = data, data_size = size,
 		freetype = self.freetype, ft_load_flags = self.ft_load_flags}
 	self.font_db:add_font(font, ...)
 	return font
@@ -309,7 +327,10 @@ function rs:glyph(font, font_size, glyph_index, x, y)
 	local glyph_key = font.tuple(font_size, glyph_index, offset_x, offset_y)
 	local glyph = self.glyphs:get(glyph_key)
 	if not glyph then
-		glyph = self:rasterize_glyph(font, font_size, glyph_index, offset_x, offset_y)
+		glyph = self:rasterize_glyph(
+			font, font_size, glyph_index,
+			offset_x, offset_y
+		)
 		self.glyphs:put(glyph_key, glyph)
 	end
 	local x = pixel_x + glyph.bitmap_left
