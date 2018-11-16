@@ -550,9 +550,14 @@ local function test_widgets_flex()
 
 	win.view.layout = 'grid'
 	win.view.padding = 40
-	win.view.grid_wrap = 2
+	win.view.grid_wrap = 3
 	win.view.grid_col_gap = 20
 	win.view.grid_row_gap = 20
+
+	ui:button{
+		parent = win,
+		text = 'Imma button',
+	}
 
 	ui:checkbox{
 		parent = win,
@@ -584,6 +589,27 @@ local function test_widgets_flex()
 		step_labels = {Low = 0, Medium = 5, High = 10},
 		step = 2,
 	}
+
+	ui:editbox{
+		parent = win,
+	}
+
+	ui:tablist{
+		parent = win,
+		tabs = {
+			{title = {text = 'Tab 1-1'}},
+			{title = {text = 'Tab 1-2'}},
+		},
+	}
+
+	ui:tablist{
+		parent = win,
+		tabs = {
+			{title = {text = 'Tab 2-1'}},
+			{title = {text = 'Tab 2-2'}},
+		},
+	}
+
 end
 
 --test_css()

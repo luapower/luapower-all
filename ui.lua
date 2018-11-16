@@ -3407,6 +3407,7 @@ function layer:shadow_path(cr, size)
 end
 
 function layer:shadow_valid_key(t)
+	if not t.shadow_blur then return end
 	local x, y, w, h, r1x, r1y, r2x, r2y, r3x, r3y, r4x, r4y, k =
 		self:shadow_round_rect(0)
 	return t.shadow_blur == self.shadow_blur
@@ -3434,27 +3435,19 @@ function layer:draw_shadow(cr)
 	--check if the cached shadow image is still valid
 	if not self:shadow_valid_key(t) then
 
-		local grow_blur = t.blur and t.blur.max_radius < spread
+		local blur = t.blur
+		local grow_blur = blur and blur.max_radius < spread
 		local max_radius = spread * (grow_blur and 2 or 1)
-
-		if grow_blur then --free it so we can make a larger one
-			t.blurred_surface:free()
-			t.blurred_surface = false
-			t.bx = false
-			t.by = false
-			t.blur = false
-		end
+		local bx, by, bw, bh = self:shadow_rect(max_radius)
+		local new_blur = grow_blur or not blur or bw > t.bw or bh > t.bh
 
 		--store cache invalidation keys
 		self:shadow_store_key(t)
 
-		if not t.blur then
-
-			local bx, by, bw, bh = self:shadow_rect(max_radius)
-			t.bx = bx
-			t.by = by
+		if new_blur then
 
 			t.blur = boxblur.new(bw, bh, 'g8', max_radius)
+			t.bx, t.by, t.bw, t.bh = bx, by, bw, bh
 
 			function t.blur.repaint(blur, src)
 				local ssr = cairo.image_surface(src)
@@ -3469,13 +3462,14 @@ function layer:draw_shadow(cr)
 				scr:free()
 				ssr:free()
 			end
+
+		else
+			t.blur:invalidate()
 		end
 
 		if t.blurred_surface then
 			t.blurred_surface:free()
-			t.blurred_surface = false
 		end
-
 		local dst = t.blur:blur(radius, passes)
 		t.blurred_surface = cairo.image_surface(dst)
 	end
@@ -4990,12 +4984,12 @@ local function gen_funcs(X, Y, W, H, COL, LEFT, RIGHT)
 				local x, w
 				if align == 'stretch' then
 					x, w = x1, x2 - x1
-				elseif align == START or item_align == LEFT or item_align == L then
+				elseif align == START or align == LEFT or align == L then
 					x, w = x1, layer[_MIN_W]
-				elseif align == END or item_align == RIGHT or item_align == R then
+				elseif align == END or align == RIGHT or align == R then
 					w = layer[_MIN_W]
 					x = x2 - w
-				elseif align == 'center' or item_align == 'c' then
+				elseif align == 'center' or align == 'c' then
 					w = layer[_MIN_W]
 					x = x1 + (x2 - x1 - w) / 2
 				end

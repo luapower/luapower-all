@@ -121,9 +121,6 @@ ui:style('slider_tip', {
 	transition_opacity = true,
 	transition_duration_opacity = .5,
 	transition_delay_opacity = 1.5,
-	--prevent interrupting a fade-in with a delayed fade-out.
-	--TODO: think of implementing an `start_value='end_value` option similar
-	--to CSS which would also solve this.
 	transition_blend_opacity = 'wait',
 })
 
@@ -278,7 +275,7 @@ function slider:after_sync()
 		p.dragging and self:nearest_position(p.position) or self.position))
 
 	if self.step_labels then
-		local h = math.floor(self.h - (self:step_lines_visible() and 0 or 10))
+		local h = s.y + math.floor(s.h - (self:step_lines_visible() and 0 or 10))
 		for _,l in ipairs(self) do
 			if l.tags.slider_step_label then
 				if l.progress then
@@ -300,8 +297,8 @@ function slider:step_lines_visible()
 		and self.cw / (self.size / self.step) >= 5
 end
 
-function slider:step_line_path(cr, cx)
-	cr:move_to(cx, self.h)
+function slider:step_line_path(cr, cx, h)
+	cr:move_to(cx, h)
 	cr:rel_line_to(0, self.step_line_h)
 end
 
@@ -310,19 +307,21 @@ function slider:draw_step_lines(cr)
 	cr:rgba(self.ui:rgba(self.step_line_color))
 	cr:line_width(1)
 	cr:new_path()
+	local s = self.track
+	local h = s.y + math.floor(s.h) + 4
 	local p1, p2 = self:position_range()
 	local sp1 = self:snap_position(p1 - self.step)
 	local sp2 = self:snap_position(p2 + self.step)
 	for pos = sp1, sp2, self.step do
 		pos = clamp(pos, p1, p2)
-		self:step_line_path(cr, self.pin:cx_at_position(pos))
+		self:step_line_path(cr, self.pin:cx_at_position(pos), h)
 	end
 	if self.step_labels and self.snap_to_labels then
 		for text, pos in pairs(self.step_labels) do
 			if type(text) == 'number' then
 				pos, text = text, pos
 			end
-			self:step_line_path(cr, self.pin:cx_at_position(pos))
+			self:step_line_path(cr, self.pin:cx_at_position(pos), h)
 		end
 	end
 	cr:stroke()

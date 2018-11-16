@@ -19,6 +19,8 @@ editbox.iswidget = true
 --features
 
 editbox.text_align_x = 'left'
+editbox.align_y = 'center'
+editbox.min_ch = 16
 editbox.password = false
 editbox.maxlen = 4096
 

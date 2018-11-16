@@ -13,6 +13,7 @@ button.focusable = true
 
 button.layout = 'textbox'
 button.min_ch = 20
+button.align_y = 'center'
 button.padding_left = 8
 button.padding_right = 8
 button.padding_top = 2

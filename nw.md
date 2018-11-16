@@ -236,6 +236,7 @@ __mouse__
 `app:double_click_target_area() -> w, h`     double click target area
 __rendering__
 `win/view:repaint()`                         event: window needs redrawing
+`win:sync()`                                 event: window was invalidated but it's invisible
 `win/view:invalidate()`                      request window redrawing
 `win/view:bitmap() -> bmp`                   get a bgra8 [bitmap] object to draw on
 `bmp:clear()`                                fill the bitmap with zero bytes
@@ -1306,6 +1307,11 @@ to the window/view creation function (it can be an empty table or just `true`).
 
 Event: window needs redrawing. To redraw the window, simply request
 the window's bitmap or OpenGL context and draw using that.
+
+### `win:sync()`
+
+Event. This event is fired instead of `repaint` if the window was invalidated
+but it's invisible.
 
 ### `win/view:invalidate()`
 
