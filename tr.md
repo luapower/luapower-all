@@ -64,6 +64,11 @@ __editing__
 `sel:codepoints() -> buf, offset, len`               selected text in utf-32 buffer
 `sel:string() -> s`                                  selected text as utf-8 string
 `sel:replace(s, [len], [charset], [maxlen]) -> t|f`  replace selection with text
+__rasterizer config__
+`tr.rs.glyph_cache_size`                             `10MB`
+`tr.rs.font_size_resolution`                         `1/8`
+`tr.rs.subpixel_x_resolution`                        `1/16` (max is `1/64` with Freetype)
+`tr.rs.subpixel_y_resolution`                        `1` because vertical hinting enabled
 ---------------------------------------------------- ------------------------------------
 
 ## Font management

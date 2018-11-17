@@ -28,7 +28,7 @@ setmetatable(rs, rs)
 rs.glyph_cache_size = 1024^2 * 10 --10MB net (arbitrary default)
 rs.font_size_resolution = 1/8 --in pixels
 rs.subpixel_x_resolution = 1/16 --1/64 pixels is max with freetype
-rs.subpixel_y_resolution = 1/16 --no subpixel positioning with vertical hinting
+rs.subpixel_y_resolution = 1 --no subpixel positioning with vertical hinting
 
 function rs:__call()
 	local self = update({}, self)
