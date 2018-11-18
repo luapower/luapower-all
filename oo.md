@@ -10,9 +10,11 @@ Object system with virtual properties and method overriding hooks.
 
  * single, dynamic inheritance by default:
    * `Fruit = oo.Fruit()`
-   * `Apple = oo.Apple(Fruit)`
+   * `Apple = oo.Apple(Fruit, {carpels = 5})`
+	* `Apple.carpels -> 5` (class field)
    * `apple = Apple(...)`
-   * `apple.super -> Apple`
+   * `apple.carpels -> 5` (serves as default value)
+	* `apple.super -> Apple`
    * `Apple.super -> Fruit`
    * `apple.isApple, apple.isFruit, Apple.isApple, Apple.isFruit -> true`
  * multiple, static inheritance by request:

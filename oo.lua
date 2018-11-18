@@ -22,14 +22,20 @@ local is = isfunc'is'
 local isinstance = isfunc'isinstance'
 local issubclass = isfunc'issubclass'
 
-function Object:subclass(classname, subclass)
-	local subclass = subclass or {}
+function Object:subclass(classname, overrides)
+	local subclass = {}
 	subclass.super = self
 	subclass.classname = classname or ''
 	if classname then
 		subclass['is'..classname] = true
 	end
-	return setmetatable(subclass, getmetatable(self))
+	setmetatable(subclass, getmetatable(self))
+	if overrides then
+		for k,v in pairs(overrides) do
+			self[k] = v
+		end
+	end
+	return subclass
 end
 
 function Object:init(...) return ... end
