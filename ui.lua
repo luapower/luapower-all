@@ -2160,14 +2160,13 @@ end
 function ui:image_pattern(file)
 	local ext = file:match'%.([^%.]+)$'
 	if ext == 'jpg' or ext == 'jpeg' then
-		local bundle = require'bundle'
+		local libjpeg = require'libjpeg'
 		local f = self:open_file(file)
-		if f then return end
+		if not f then return end
 		local bufread = f:buffered_read()
 		local function read(buf, sz)
 			return self:check(bufread(buf, sz))
 		end
-		local libjpeg = require'libjpeg'
 		local img = self:check(libjpeg.open({read = read}))
 		if not img then
 			f:close()

@@ -374,11 +374,15 @@ tab.close_button_class = xbutton
 
 xbutton.font = 'Ionicons,13'
 xbutton.text = '\u{f2c0}'
+xbutton.layout = false
 xbutton.w = 14
 xbutton.h = 14
-xbutton.corner_radius = 10
+xbutton.padding_left = 0
+xbutton.padding_right = 0
+xbutton.padding_top = 0
+xbutton.padding_bottom = 0
+xbutton.corner_radius = 100
 xbutton.corner_radius_kappa = 1
-xbutton.padding = 0
 xbutton.focusable = false
 xbutton.border_width = 0
 xbutton.background_color = false
