@@ -19,10 +19,14 @@ local cairo = require'cairo'
 local boxblur = require'boxblur'
 local tr = require'tr'
 
+local min = math.min
+local max = math.max
+local abs = math.abs
+local floor = math.floor
+local ceil = math.ceil
 local push = table.insert
 local pop = table.remove
 
-local round = glue.round
 local indexof = glue.indexof
 local update = glue.update
 local extend = glue.extend
@@ -42,6 +46,21 @@ end
 local nilkey = {}
 local function encode_nil(x) return x == nil and nilkey or x end
 local function decode_nil(x) if x == nilkey then return nil end; return x; end
+
+local function snap(x, enable)
+	return enable and floor(x) or x
+end
+
+local function snap_xw(x, w, enable)
+	if not enable then return x, w end
+	local x1 = floor(x + .5)
+	local x2 = floor(x + w + .5)
+	return x1, x2 - x1
+end
+
+local function snap_up(x, enable)
+	return enable and ceil(x) or x
+end
 
 --object system --------------------------------------------------------------
 
@@ -182,7 +201,7 @@ end
 
 --error reporting
 
-function object:warn(msg, ...)
+function object:warn(...)
 	io.stderr:write(string.format(...))
 	io.stderr:write'\n'
 end
@@ -834,7 +853,7 @@ function element:init_fields(t)
 	end
 	local ignore = self._init_ignore
 	for k,v in sortedpairs(t, cmp) do
-		if type(k) == 'number' and math.floor(k) == k then
+		if type(k) == 'number' and floor(k) == k then
 			--skip the array part of the table.
 		elseif not ignore[k] then
 			self[k] = v
@@ -1126,7 +1145,7 @@ function element:transition(
 	end
 	duration = duration / speed
 
-	local cur_tran = self.transitions and self.transitions[attr]
+	local cur_tran = self.transitions and self.transitions[attr] or nil
 	local cur_end_val = self:end_value(attr)
 	local cur_val = self[attr]
 
@@ -1921,8 +1940,8 @@ end
 function ui:_widget_mousemove(widget, mx, my, area)
 	if not self.drag_widget and widget == self.drag_start_widget then
 		--TODO: make this diff. in window space!
-		local dx = math.abs(self.drag_mx - mx)
-		local dy = math.abs(self.drag_my - my)
+		local dx = abs(self.drag_mx - mx)
+		local dy = abs(self.drag_my - my)
 		if dx >= widget.drag_threshold or dy >= widget.drag_threshold then
 			local dx, dy
 			self.drag_widget, dx, dy = widget:_start_drag(
@@ -2065,7 +2084,7 @@ function window:draw(cr)
 	self.view:draw(cr)
 	cr:restore()
 	if cr:status() ~= 0 then --see if cairo didn't shutdown
-		self:warn(cr:status_string())
+		self:warn(cr:status_message())
 	end
 end
 
@@ -2085,7 +2104,7 @@ end
 function window:invalidate(clock) --element interface; window intf.
 	local invalidated = self._frame_expire_clock
 	self._frame_expire_clock = clock
-		and math.min(self._frame_expire_clock or 1/0, clock) or -1/0
+		and min(self._frame_expire_clock or 1/0, clock) or -1/0
 	if not invalidated then
 		self.native_window:invalidate()
 	end
@@ -2312,10 +2331,14 @@ layer.rotation_cy = 0
 layer.scale = 1
 layer.scale_cx = 0
 layer.scale_cy = 0
+layer.snap_x = true --snap to pixels on x-axis
+layer.snap_y = true --snap to pixels on y-axis
 
 local mt = cairo.matrix()
 function layer:rel_matrix() --box matrix relative to parent's content space
-	mt:reset():translate(self.x, self.y)
+	mt:reset():translate(
+		snap(self.x, self.snap_x),
+		snap(self.y, self.snap_y))
 	local rot = self.rotation
 	if rot ~= 0 then
 		mt:rotate_around(self.rotation_cx, self.rotation_cy, math.rad(rot))
@@ -2633,6 +2656,8 @@ function layer:_leave_drop_target(widget)
 	self:settag(':dropping', false)
 	self:invalidate()
 end
+
+layer.dragging = false
 
 --called on the dragged widget when dragging starts.
 function layer:_started_dragging()
@@ -2954,7 +2979,7 @@ function layer:_border_edge_widths(offset)
 	local h2 = lerp(o, -1, 1, self.border_width_bottom or bw, 0)
 	--adjust overlapping widths by scaling them down proportionally.
 	if w1 + w2 > self.w or h1 + h2 > self.h then
-		local scale = math.min(self.w / (w1 + w2), self.h / (h1 + h2))
+		local scale = min(self.w / (w1 + w2), self.h / (h1 + h2))
 		w1 = w1 * scale
 		h1 = h1 * scale
 		w2 = w2 * scale
@@ -2987,7 +3012,7 @@ function layer:get_outer_h() return (select(4, self:border_rect(1))) end
 
 --corner radius at pixel offset from the stroke's center on one dimension.
 local function offset_radius(r, o)
-	return r > 0 and math.max(0, r + o) or 0
+	return r > 0 and max(0, r + o) or 0
 end
 
 --border rect at %-offset in border width, plus radii of rounded corners.
@@ -3023,10 +3048,10 @@ function layer:border_round_rect(offset, size_offset)
 	if r4x == 0 or r4y == 0 then r4x = 0; r4y = 0 end
 
 	--adjust overlapping radii by scaling them down proportionally.
-	local maxx = math.max(r1x + r2x, r3x + r4x)
-	local maxy = math.max(r1y + r4y, r2y + r3y)
+	local maxx = max(r1x + r2x, r3x + r4x)
+	local maxy = max(r1y + r4y, r2y + r3y)
 	if maxx > W or maxy > H then
-		local scale = math.min(W / maxx, H / maxy)
+		local scale = min(W / maxx, H / maxy)
 		r1x = r1x * scale
 		r1y = r1y * scale
 		r2x = r2x * scale
@@ -3072,17 +3097,17 @@ local function bezier_qarc(cr, cx, cy, rx, ry, q1, qlen, k)
 	cr:save()
 	cr:translate(cx, cy)
 	cr:scale(rx / ry, 1)
-	cr:rotate(math.floor(math.min(q1, q1 + qlen) - 2) * math.pi / 2)
+	cr:rotate(floor(min(q1, q1 + qlen) - 2) * math.pi / 2)
 	local r = ry
 	local k = r * kappa * k
 	local x1, y1, x2, y2, x3, y3, x4, y4 = 0, -r, k, -r, r, -k, r, 0
 	if qlen < 0 then --reverse curve
 		x1, y1, x2, y2, x3, y3, x4, y4 = x4, y4, x3, y3, x2, y2, x1, y1
-		qlen = math.abs(qlen)
+		qlen = abs(qlen)
 	end
 	if qlen ~= 1 then
 		assert(qlen == .5)
-		local first = q1 == math.floor(q1)
+		local first = q1 == floor(q1)
 		x1, y1, x2, y2, x3, y3, x4, y4 =
 			bezier_split(first, qlen, x1, y1, x2, y2, x3, y3, x4, y4)
 	end
@@ -4028,6 +4053,8 @@ end
 --called by null-layout layers to layout themselves and their children.
 function null_layout:sync_layout()
 	if not self.visible then return end
+	self.x, self.w = snap_xw(self.x, self.w)
+	self.y, self.h = snap_xw(self.y, self.h)
 	self:sync_text_shape()
 	self:sync_text_wrap()
 	self:sync_text_align()
@@ -4039,14 +4066,14 @@ end
 --called by flexible layouts to know the minimum width of their children.
 --width-in-height-out layouts call this before h and y are sync'ed.
 function null_layout:sync_min_w()
-	self._min_w = self.min_cw + self.pw
+	self._min_w = snap_up(self.min_cw + self.pw, self.snap_x)
 	return self._min_w
 end
 
 --called by flexible layouts to know the minimum height of their children.
 --width-in-height-out layouts call this only after w and x are sync'ed.
 function null_layout:sync_min_h()
-	self._min_h = self.min_ch + self.ph
+	self._min_h = snap_up(self.min_ch + self.ph, self.snap_y)
 	return self._min_h
 end
 
@@ -4081,10 +4108,12 @@ function textbox:sync_layout()
 		self.ch = 0
 		return
 	end
-	self.cw = math.max(segs:min_w(), self.min_cw)
+	self.cw = max(segs:min_w(), self.min_cw)
 	self:sync_text_wrap()
-	self.cw = math.max(segs.lines.max_ax, self.min_cw)
-	self.ch = math.max(self.min_ch, segs.lines.spacing_h)
+	self.cw = max(segs.lines.max_ax, self.min_cw)
+	self.ch = max(self.min_ch, segs.lines.spacing_h)
+	self.x, self.w = snap_xw(self.x, self.w)
+	self.y, self.h = snap_xw(self.y, self.h)
 	self:sync_text_align()
 end
 
@@ -4097,8 +4126,8 @@ function textbox:sync_min_w(other_axis_synced)
 		--height-in-width-out parent layout with wrapping text not supported
 		min_cw = 0
 	end
-	min_cw = math.max(min_cw, self.min_cw)
-	local min_w = min_cw + self.pw
+	min_cw = max(min_cw, self.min_cw)
+	local min_w = snap_up(min_cw + self.pw, self.snap_x)
 	self._min_w = min_w
 	return min_w
 end
@@ -4112,8 +4141,8 @@ function textbox:sync_min_h(other_axis_synced)
 		--height-in-width-out parent layout with wrapping text not supported
 		min_ch = 0
 	end
-	min_ch = math.max(min_ch, self.min_ch)
-	local min_h = min_ch + self.ph
+	min_ch = max(min_ch, self.min_ch)
+	local min_h = snap_up(min_ch + self.ph, self.snap_y)
 	self._min_h = min_h
 	return min_h
 end
@@ -4135,40 +4164,43 @@ end
 --flexbox & grid layout utils ------------------------------------------------
 
 local function items_sum(self, i, j, _MIN_W)
-	local sum = 0
+	local sum_w = 0
 	local item_count = 0
 	for i = i, j do
 		local layer = self[i]
-		if layer.visible then
-			sum = sum + layer[_MIN_W]
+		if layer.visible and not layer.dragging then
+			sum_w = sum_w + layer[_MIN_W]
 			item_count = item_count + 1
 		end
 	end
-	return sum, item_count
+	return sum_w, item_count
 end
 
 local function items_max(self, i, j, _MIN_W)
-	local max = 0
+	local max_w = 0
 	local item_count = 0
 	for i = i, j do
 		local layer = self[i]
-		if layer.visible then
-			max = math.max(max, layer[_MIN_W])
+		if layer.visible and not layer.dragging then
+			max_w = max(max_w, layer[_MIN_W])
 			item_count = item_count + 1
 		end
 	end
-	return max, item_count
+	return max_w, item_count
 end
 
 --stretch a line of items on the main axis.
-local function stretch_items_main_axis(items, i, j, total_w, X, W, _MIN_W)
+local function stretch_items_main_axis(
+	items, i, j, total_w, snap_x,
+	X, W, _MIN_W
+)
 
 	--compute the fraction representing the total width.
 	local total_fr = 0
 	for i = i, j do
 		local layer = items[i]
-		if layer.visible then
-			total_fr = total_fr + math.max(0, layer.fr)
+		if layer.visible and not layer.dragging then
+			total_fr = total_fr + max(0, layer.fr)
 		end
 	end
 
@@ -4177,11 +4209,11 @@ local function stretch_items_main_axis(items, i, j, total_w, X, W, _MIN_W)
 	local total_free_w = 0
 	for i = i, j do
 		local layer = items[i]
-		if layer.visible then
+		if layer.visible and not layer.dragging then
 			local min_w = layer[_MIN_W]
-			local flex_w = total_w * math.max(0, layer.fr) / total_fr
-			local overflow_w = math.max(0, min_w - flex_w)
-			local free_w = math.max(0, flex_w - min_w)
+			local flex_w = total_w * max(0, layer.fr) / total_fr
+			local overflow_w = max(0, min_w - flex_w)
+			local free_w = max(0, flex_w - min_w)
 			total_overflow_w = total_overflow_w + overflow_w
 			total_free_w = total_free_w + free_w
 		end
@@ -4194,7 +4226,7 @@ local function stretch_items_main_axis(items, i, j, total_w, X, W, _MIN_W)
 	local x = 0
 	for i = i, j do
 		local layer = items[i]
-		if layer.visible then
+		if layer.visible and not layer.dragging then
 			local min_w = layer[_MIN_W]
 			local flex_w = total_w * layer.fr / total_fr
 			local w
@@ -4209,17 +4241,11 @@ local function stretch_items_main_axis(items, i, j, total_w, X, W, _MIN_W)
 				end
 				w = flex_w - shrink_w
 			end
-			layer[X] = x
-			layer[W] = w
+			layer[X], layer[W] = snap_xw(x, w, snap_x)
 			x = x + w
 			last_layer = layer
 		end
 	end
-	--adjust last item's width for any rounding errors.
-	if last_layer then
-		last_layer[W] = total_w - last_layer[X]
-	end
-
 end
 
 --starting x-offset and in-between spacing metrics for aligning.
@@ -4249,13 +4275,15 @@ local function align_metrics(
 end
 
 --align a line of items on the main axis.
-local function align_items_main_axis(items, i, j, x, spacing, X, W, _MIN_W)
+local function align_items_main_axis(
+	items, i, j, x, spacing, snap_x,
+	X, W, _MIN_W
+)
 	for i = i, j do
 		local layer = items[i]
-		if layer.visible then
+		if layer.visible and not layer.dragging then
 			local w = layer[_MIN_W]
-			layer[X] = x
-			layer[W] = w
+			layer[X], layer[W] = snap_xw(x, w, snap_x)
 			x = x + w + spacing
 		end
 	end
@@ -4295,6 +4323,8 @@ local function gen_funcs(X, Y, W, H, LEFT, RIGHT, TOP, BOTTOM)
 	local PH = 'p'..H
 	local _MIN_W = '_min_'..W
 	local _MIN_H = '_min_'..H
+	local SNAP_X = 'snap_'..X
+	local SNAP_Y = 'snap_'..Y
 
 	local function items_min_h(self, i, j)
 		return items_max(self, i, j, _MIN_H)
@@ -4311,7 +4341,7 @@ local function gen_funcs(X, Y, W, H, LEFT, RIGHT, TOP, BOTTOM)
 		local line_w = 0
 		for j = i, #self do
 			local layer = self[j]
-			if layer.visible then
+			if layer.visible and not layer.dragging then
 				if j > i and layer.break_before then
 					return j-1, i
 				end
@@ -4356,7 +4386,7 @@ local function gen_funcs(X, Y, W, H, LEFT, RIGHT, TOP, BOTTOM)
 
 	--stretch a line of items on the main axis.
 	local function stretch_items_x(self, i, j)
-		stretch_items_main_axis(self, i, j, self[CW], X, W, _MIN_W)
+		stretch_items_main_axis(self, i, j, self[CW], self[SNAP_X], X, W, _MIN_W)
 	end
 
 	local function align_metrics_x(self, align, items_w, item_count)
@@ -4371,10 +4401,11 @@ local function gen_funcs(X, Y, W, H, LEFT, RIGHT, TOP, BOTTOM)
 
 	--align a line of items on the main axis.
 	local function align_items_x(self, i, j)
+		local snap_x = self[SNAP_X]
 		local items_w, items_count = items_sum(self, i, j, _MIN_W)
 		local x, spacing =
 			align_metrics_x(self, self.align_main, items_w, item_count)
-		align_items_main_axis(self, i, j, x, spacing, X, W, _MIN_W)
+		align_items_main_axis(self, i, j, x, spacing, snap_x, X, W, _MIN_W)
 	end
 
 	--stretch or align a flexbox's items on the main-axis.
@@ -4391,33 +4422,35 @@ local function gen_funcs(X, Y, W, H, LEFT, RIGHT, TOP, BOTTOM)
 
 	--align a line of items on the cross-axis.
 	local function align_items_y(self, i, j, line_y, line_h)
+		local snap_y = self[SNAP_Y]
 		local align = self.align_cross
 		for i = i, j do
 			local layer = self[i]
-			if layer.visible then
+			if layer.visible and not layer.dragging then
 				local align = layer.align_cross_self or align
 				if align == 'stretch' then
-					layer[Y] = line_y
-					layer[H] = line_h
+					layer[Y], layer[H] = snap_xw(line_y, line_h, snap_y)
 				else
 					local item_h = layer[_MIN_H]
-					layer[H] = item_h
 					if align == TOP or align == T or align == 'start' then
-						layer[Y] = line_y
+						layer[Y], layer[H] =
+							snap_xw(line_y, item_h, snap_y)
 					elseif align == BOTTOM or align == B or align == 'end' then
-						layer[Y] = line_y + line_h - item_h
+						layer[Y], layer[H] =
+							snap_xw(line_y + line_h - item_h, item_h, snap_y)
 					elseif align == 'center' or align == 'c' then
-						layer[Y] = line_y + (line_h - item_h) / 2
+						layer[Y], layer[H] =
+							snap_xw(line_y + (line_h - item_h) / 2, item_h, snap_y)
 					end
 					--[[
 					--TODO: baseline
 					elseif align == 'baseline' and Y == 'y' then
 						local baseline = 0
 						for _,layer in ipairs(self) do
-							if layer.visible then
+							if layer.visible and not layer.dragging then
 								local segs = layer._text_segments
 								if segs then
-									baseline = math.max(baseline, segs.lines.baseline or 0)
+									baseline = max(baseline, segs.lines.baseline or 0)
 								end
 							end
 						end
@@ -4478,7 +4511,7 @@ function flexbox:sync_min_w(other_axis_synced)
 
 	--sync all children first (bottom-up sync).
 	for _,layer in ipairs(self) do
-		if layer.visible then
+		if layer.visible and not layer.dragging then
 			layer:sync_min_w(other_axis_synced) --recurse
 		end
 	end
@@ -4487,7 +4520,7 @@ function flexbox:sync_min_w(other_axis_synced)
 		and self:min_cw_x_axis(other_axis_synced)
 		 or self:min_ch_y_axis(other_axis_synced)
 
-	min_cw = math.max(min_cw, self.min_cw)
+	min_cw = max(min_cw, self.min_cw)
 	local min_w = min_cw + self.pw
 	self._min_w = min_w
 	return min_w
@@ -4497,7 +4530,7 @@ function flexbox:sync_min_h(other_axis_synced)
 
 	--sync all children first (bottom-up sync).
 	for _,layer in ipairs(self) do
-		if layer.visible then
+		if layer.visible and not layer.dragging then
 			layer:sync_min_h(other_axis_synced) --recurse
 		end
 	end
@@ -4506,7 +4539,7 @@ function flexbox:sync_min_h(other_axis_synced)
 		and self:min_ch_x_axis(other_axis_synced)
 		 or self:min_cw_y_axis(other_axis_synced)
 
-	min_ch = math.max(min_ch, self.min_ch)
+	min_ch = max(min_ch, self.min_ch)
 	local min_h = min_ch + self.ph
 	self._min_h = min_h
 	return min_h
@@ -4521,7 +4554,7 @@ function flexbox:sync_layout_x(other_axis_synced)
 	if synced then
 		--sync all children last (top-down sync).
 		for _,layer in ipairs(self) do
-			if layer.visible then
+			if layer.visible and not layer.dragging then
 				layer:sync_layout_x(other_axis_synced) --recurse
 			end
 		end
@@ -4538,7 +4571,7 @@ function flexbox:sync_layout_y(other_axis_synced)
 	if synced then
 		--sync all children last (top-down sync).
 		for _,layer in ipairs(self) do
-			if layer.visible then
+			if layer.visible and not layer.dragging then
 				layer:sync_layout_y(other_axis_synced) --recurse
 			end
 		end
@@ -4667,7 +4700,7 @@ function layer:sync_layout_grid_autopos()
 	local row_first = not col_first
 	local flip_cols = flow:find('r', 1, true)
 	local flip_rows = flow:find('b', 1, true)
-	local grid_wrap = math.max(1, self.grid_wrap)
+	local grid_wrap = max(1, self.grid_wrap)
 	local max_col = col_first and grid_wrap or 0
 	local max_row = row_first and grid_wrap or 0
 
@@ -4677,7 +4710,7 @@ function layer:sync_layout_grid_autopos()
 	--grow the grid bounds to include layers outside wrap_row and wrap_col.
 	local missing_indices, negative_indices
 	for _,layer in ipairs(self) do
-		if layer.visible then
+		if layer.visible and not layer.dragging then
 
 			local row, col, row_span, col_span = ui:grid_pos(layer.grid_pos)
 			row = layer.grid_row or row
@@ -4694,21 +4727,21 @@ function layer:sync_layout_grid_autopos()
 
 					mark_occupied(occupied, row, col, row_span, col_span)
 
-					max_row = math.max(max_row, row + row_span - 1)
-					max_col = math.max(max_col, col + col_span - 1)
+					max_row = max(max_row, row + row_span - 1)
+					max_col = max(max_col, col + col_span - 1)
 				else
 					negative_indices = true --solve these later
 				end
 			else --auto-positioned
 				--negative spans are treated as positive.
-				row_span = math.abs(row_span)
-				col_span = math.abs(col_span)
+				row_span = abs(row_span)
+				col_span = abs(col_span)
 
 				--grow grid bounds on the main axis to fit the widest layer.
 				if col_first then
-					max_col = math.max(max_col, col_span)
+					max_col = max(max_col, col_span)
 				else
-					max_row = math.max(max_row, row_span)
+					max_row = max(max_row, row_span)
 				end
 
 				missing_indices = true --solve these later
@@ -4726,7 +4759,7 @@ function layer:sync_layout_grid_autopos()
 	--the grid bounds, but instead are clipped to it.
 	if negative_indices then
 		for _,layer in ipairs(self) do
-			if layer.visible then
+			if layer.visible and not layer.dragging then
 				local row = layer._grid_row
 				local col = layer._grid_col
 				if row < 0 or col < 0 then
@@ -4758,7 +4791,7 @@ function layer:sync_layout_grid_autopos()
 	if missing_indices then
 		local row, col = 1, 1
 		for _,layer in ipairs(self) do
-			if layer.visible and not layer._grid_row then
+			if layer.visible and not layer.dragging and not layer._grid_row then
 				local row_span = layer._grid_row_span
 				local col_span = layer._grid_col_span
 
@@ -4790,9 +4823,9 @@ function layer:sync_layout_grid_autopos()
 
 				--grow grid bounds on the cross-axis.
 				if col_first then
-					max_row = math.max(max_row, row + row_span - 1)
+					max_row = max(max_row, row + row_span - 1)
 				else
-					max_col = math.max(max_col, col + col_span - 1)
+					max_col = max(max_col, col + col_span - 1)
 				end
 
 				--advance cursor to right after the span, without wrapping.
@@ -4808,7 +4841,7 @@ function layer:sync_layout_grid_autopos()
 	--reverse the order of rows and/or columns depending on grid_flow.
 	if flip_rows or flip_cols then
 		for _,layer in ipairs(self) do
-			if layer.visible then
+			if layer.visible and not layer.dragging then
 				if flip_rows then
 					layer._grid_row = max_row
 						- layer._grid_row
@@ -4841,6 +4874,7 @@ local function gen_funcs(X, Y, W, H, COL, LEFT, RIGHT)
 	local PW = 'p'..W
 	local MIN_CW = 'min_'..CW
 	local _MIN_W = '_min_'..W
+	local SNAP_X = 'snap_'..X
 	local SYNC_MIN_W = 'sync_min_'..W
 	local SYNC_LAYOUT_X = 'sync_layout_'..X
 	local COLS = 'grid_'..COL..'s'
@@ -4858,7 +4892,7 @@ local function gen_funcs(X, Y, W, H, COL, LEFT, RIGHT)
 
 		--sync all children first (bottom-up sync).
 		for _,layer in ipairs(self) do
-			if layer.visible then
+			if layer.visible and not layer.dragging then
 				layer[SYNC_MIN_W](layer, other_axis_synced) --recurse
 			end
 		end
@@ -4870,7 +4904,7 @@ local function gen_funcs(X, Y, W, H, COL, LEFT, RIGHT)
 		--compute the fraction representing the total width.
 		local total_fr = 0
 		for _,layer in ipairs(self) do
-			if layer.visible then
+			if layer.visible and not layer.dragging then
 				local col1 = layer[_COL]
 				local col2 = col1 + layer[_COL_SPAN] - 1
 				for col = col1, col2 do
@@ -4895,7 +4929,7 @@ local function gen_funcs(X, Y, W, H, COL, LEFT, RIGHT)
 
 		--compute the minimum widths for each column.
 		for _,layer in ipairs(self) do
-			if layer.visible then
+			if layer.visible and not layer.dragging then
 				local col1 = layer[_COL]
 				local col2 = col1 + layer[_COL_SPAN] - 1
 				local span_min_w = layer[_MIN_W]
@@ -4912,7 +4946,7 @@ local function gen_funcs(X, Y, W, H, COL, LEFT, RIGHT)
 				if col1 == col2 then
 					local item = cols[col1]
 					local col_min_w = span_min_w + gap_col1 + gap_col2
-					item[_MIN_W] = math.max(item[_MIN_W], col_min_w)
+					item[_MIN_W] = max(item[_MIN_W], col_min_w)
 				else --merged columns: unmerge
 					local span_fr = 0
 					for col = col1, col2 do
@@ -4924,7 +4958,7 @@ local function gen_funcs(X, Y, W, H, COL, LEFT, RIGHT)
 						col_min_w = col_min_w
 							+ (col == col1 and gap_col1 or 0)
 							+ (col == col2 and gap_col2 or 0)
-						item[_MIN_W] = math.max(item[_MIN_W], col_min_w)
+						item[_MIN_W] = max(item[_MIN_W], col_min_w)
 					end
 				end
 			end
@@ -4935,7 +4969,7 @@ local function gen_funcs(X, Y, W, H, COL, LEFT, RIGHT)
 			min_cw = min_cw + item[_MIN_W]
 		end
 
-		min_cw = math.max(min_cw, self[MIN_CW])
+		min_cw = max(min_cw, self[MIN_CW])
 		local min_w = min_cw + self[PW]
 		self[_MIN_W] = min_w
 		return min_w
@@ -4948,6 +4982,7 @@ local function gen_funcs(X, Y, W, H, COL, LEFT, RIGHT)
 		local container_w = self[CW]
 		local align_cols = self[ALIGN_COLS]
 		local align_x = self[GRID_ALIGN_X]
+		local snap_x = self[SNAP_X]
 
 		local START, END = 'start', 'end'
 		if self[_FLIP_COLS] then
@@ -4955,18 +4990,20 @@ local function gen_funcs(X, Y, W, H, COL, LEFT, RIGHT)
 		end
 
 		if align_cols == 'stretch' then
-			stretch_items_main_axis(cols, 1, #cols, container_w, X, W, _MIN_W)
+			stretch_items_main_axis(cols, 1, #cols, container_w, snap_x,
+				X, W, _MIN_W)
 		else
 			local items_w, item_count = items_sum(cols, 1, #cols, _MIN_W)
 			local x, spacing =
 				align_metrics(align_cols, self[CW], items_w, item_count,
 					START, END, LEFT, RIGHT, L, R)
-			align_items_main_axis(cols, 1, #cols, x, spacing, X, W, _MIN_W)
+			align_items_main_axis(cols, 1, #cols, x, spacing, snap_x,
+				X, W, _MIN_W)
 		end
 
 		local x = 0
 		for _,layer in ipairs(self) do
-			if layer.visible then
+			if layer.visible and not layer.dragging then
 
 				local col1 = layer[_COL]
 				local col2 = col1 + layer[_COL_SPAN] - 1
@@ -4993,15 +5030,13 @@ local function gen_funcs(X, Y, W, H, COL, LEFT, RIGHT)
 					w = layer[_MIN_W]
 					x = x1 + (x2 - x1 - w) / 2
 				end
-				layer[X] = x
-				layer[W] = w
-
+				layer[X], layer[W] = snap_xw(x, w, snap_x)
 			end
 		end
 
 		--sync all children last (top-down sync).
 		for _,layer in ipairs(self) do
-			if layer.visible then
+			if layer.visible and not layer.dragging then
 				layer[SYNC_LAYOUT_X](layer, other_axis_synced) --recurse
 			end
 		end

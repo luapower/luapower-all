@@ -5,7 +5,7 @@ local ui = require'ui'
 local win = ui:window{x = 700, y = 100, cw = 1200, ch = 700, visible = false, autoquit=true}
 function win:keyup(key) if key == 'esc' then self:close() end end
 
-ui.maxfps = 1/0
+ui.maxfps = 60
 
 local function fps_function()
 	local count_per_sec = 2
@@ -572,6 +572,7 @@ local function test_widgets_flex()
 			'No, me!',
 			{text = 'Me, me, me!', value = 'val3'},
 		},
+		button = {nowrap = true},
 		selected = 'val3',
 	}
 
@@ -583,15 +584,15 @@ local function test_widgets_flex()
 		align = 'right',
 	}
 
+	ui:editbox{
+		parent = win,
+	}
+
 	ui:slider{
 		parent = win,
 		position = 3, size = 10,
 		step_labels = {Low = 0, Medium = 5, High = 10},
 		step = 2,
-	}
-
-	ui:editbox{
-		parent = win,
 	}
 
 	ui:tablist{

@@ -142,7 +142,7 @@ automatically to make the default styles work.
 #### Default fonts
 
 Default fonts are in packages
-[fonts-open-sans](/fonts-ionicons) and
+[fonts-open-sans](/fonts-open-sans) and
 [fonts-ionicons](/fonts-ionicons).
 If you are on multigit, you can get them with:
 
@@ -354,7 +354,7 @@ __native properties__
 `title, dead, closeable,`
 `activable, minimizable,`
 `maximizable, resizeable,`
-`fullscreenable, frame,`
+`hideonclose, fullscreenable, frame,`
 `transparent, corner_radius,`
 `sticky, dead, active, isminimized,`
 `ismaximized, display, cursor`
@@ -471,6 +471,7 @@ __content box__
 __layouting__
 `layout`                             `false`            layout model: `false` (none), `'textbox'`, `'flexbox'`, `'grid'`
 `min_cw, min_ch`                     `0`                minimum content-box size for flexible layouts
+`snap_x`, `snap_y`                   `true`             snap `x, w, min_cw` and `y, h, min_ch` to pixels
 __layout=false__
 `x, y, w, h`                         `0`                fixed position & size
 __flexbox layout__
@@ -494,7 +495,7 @@ __grid layout__
 `grid_pos`                           `nil`              element position in grid: `'[row][/span] [col][/span]'`
 `grid_align_x`                       `'stretch'`        how each item is x-aligned: `'stretch'`, `'start'`/`'l[eft]'`, `'end'`/`'r[ight]'`, `'c[enter]'`,
 `grid_align_y`                       `'stretch'`        how each item is y-aligned: `'stretch'`, `'start'`/`'t[op]'`, `'end'`/`'b[ottom]'`, `'c[enter]'`,
-`align_x`, `align_y`                 `false`            item `grid_align_x` and `grid_align_y` overrides
+`align_x`, `align_y`                 `false`            item overrides for `grid_align_x` and `grid_align_y`
 __transparency & clipping__
 `opacity`                            `1`                overall opacity in `0..1`
 `clip_content`                       `false`            content clipping: `false` (don't clip), `'padding'`/`true` (clip to content box), `'background'` (clip to background clip box)
@@ -530,7 +531,7 @@ __shadow__
 `shadow_blur`                        `0`                shadow blur size (0=disable)
 __text__
 `text`                               `false`            text, wrapped around `cw`
-`font`                               `'Open Sans,14'`   font spec: `'name [weight] [slant], size'`
+`font`                               `'Open Sans,14'`   font spec: `'name [weight] [slant][, size]'`
 `font_name`                          `false`            font name override
 `font_weight`                        `false`            font weight override: `100..900`, `'bold'`, etc.
 `font_slant`                         `false`            font slant override: `'italic'`, `'normal'`

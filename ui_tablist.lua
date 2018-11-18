@@ -355,7 +355,7 @@ function tab:after_init()
 	self.title = self:create_title()
 end
 
-function tab:after_sync()
+function tab:after_sync_layout()
 	local t = self.title
 	local wl, wr = self:slant_widths()
 	local p = self.padding
@@ -418,7 +418,7 @@ function tab:after_init()
 	self.close_button = self:create_close_button()
 end
 
-function tab:after_sync()
+function tab:after_sync_layout()
 	local xb = self.close_button
 	local wl, wr = self:slant_widths()
 	local p = self.padding
@@ -687,6 +687,10 @@ function tablist:sync_tabs(duration)
 			vi = vi + 1
 		end
 	end
+end
+
+function tablist:after_sync_layout()
+	self:sync_tabs(0)
 end
 
 --demo -----------------------------------------------------------------------

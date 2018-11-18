@@ -239,7 +239,7 @@ function slider:create_step_label(text, position)
 	}, self.step_label)
 end
 
-function slider:after_sync()
+function slider:after_sync_layout()
 	local s = self.track
 	local f = self.fill
 	local p = self.pin
@@ -271,8 +271,9 @@ function slider:after_sync()
 
 	t.x = p.w / 2
 
-	t:transition('text', string.format(t.format,
-		p.dragging and self:nearest_position(p.position) or self.position))
+	local text = string.format(t.format,
+		p.dragging and self:nearest_position(p.position) or self.position)
+	t:transition('text', text)
 
 	if self.step_labels then
 		local h = s.y + math.floor(s.h - (self:step_lines_visible() and 0 or 10))
