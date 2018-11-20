@@ -25,11 +25,12 @@ editbox.maxlen = 4096
 
 editbox.text_align_x = 'left'
 editbox.align_y = 'center'
+editbox.padding = 4
 editbox.min_ch = 16
 editbox.w = 180
 editbox.h = 24
 editbox.border_color = '#000'
-editbox.padding = 4
+--own properties
 editbox.caret_color = '#fff'
 editbox.caret_opacity = 1
 editbox.selection_color = '#66f8'
@@ -116,6 +117,7 @@ function editbox:get_text()
 end
 
 function editbox:set_text(s)
+	if not self.selection then return end
 	s = self:filter_text(s or '')
 	self:clear_undo_stack()
 	self.selection:select_all()
@@ -126,6 +128,7 @@ editbox:instance_only'text'
 
 --text length in codepoints.
 function editbox:get_text_len()
+	if not self.selection then return 0 end
 	return self.selection.segments.text_runs.len
 end
 
@@ -156,21 +159,23 @@ function editbox:after_init(ui, t)
 	--create a selection and then set the text through the selection which
 	--obeys maxlen and triggers a changed event.
 	self.multiline = t.multiline
-	self.selection = self:sync_text_shape():selection()
+	self.selection = self:sync_text_shape():selection() or false
 	self.text = t.text
 
 	--reset the caret blinking whenever the cursor is being acted upon,
 	--regardles of whether it changes position or not.
-	local c1, c2 = self.selection:cursors()
-	local set = c1.set
-	function c1.set(...)
-		self:blink_caret()
-		return set(...)
-	end
-	local set = c2.set
-	function c2.set(...)
-		self:blink_caret()
-		return set(...)
+	if self.selection then
+		local c1, c2 = self.selection:cursors()
+		local set = c1.set
+		function c1.set(...)
+			self:blink_caret()
+			return set(...)
+		end
+		local set = c2.set
+		function c2.set(...)
+			self:blink_caret()
+			return set(...)
+		end
 	end
 end
 
@@ -350,6 +355,7 @@ local function draw_sel_rect(x, y, w, h, cr, self)
 	cr:fill()
 end
 function editbox:draw_selection(cr)
+	if not self.selection then return end
 	if self.selection:empty() then return end
 	cr:rgba(self.ui:rgba(self.selection_color))
 	cr:new_path()
@@ -469,6 +475,7 @@ end
 editbox.focusable = true
 
 function editbox:keychar(s)
+	if not self.selection then return end
 	s = self:filter_text(s)
 	if s == '' then return end
 	self:undo_group'typing'
@@ -476,6 +483,7 @@ function editbox:keychar(s)
 end
 
 function editbox:keypress(key)
+	if not self.selection then return end
 
 	local shift = self.ui:key'shift'
 	local ctrl = self.ui:key'ctrl'
@@ -569,6 +577,7 @@ function editbox:keypress(key)
 end
 
 function editbox:gotfocus()
+	if not self.selection then return end
 	if not self.active then
 		self.selection:select_all()
 		self.caret_visible = self.selection:empty()
@@ -578,6 +587,7 @@ function editbox:gotfocus()
 end
 
 function editbox:lostfocus()
+	if not self.selection then return end
 	self.caret_visible = false
 	self.selection.cursor1:move_to_offset(0)
 	self.selection:reset()
@@ -589,6 +599,7 @@ editbox.cursor_text = 'text'
 editbox.cursor_selection = 'arrow'
 
 function editbox:hit_test_selection(x, y)
+	if not self.selection then return end
 	x, y = self:mask_to_text(x, y)
 	if self.selection:hit_test(x, y) then
 		return self, 'selection'
@@ -611,19 +622,23 @@ editbox.mousedown_activate = true
 editbox.max_click_chain = 3 --receive doubleclick and tripleclick events
 
 function editbox:doubleclick(x, y)
+	if not self.selection then return end
 	self.selection:select_word()
 end
 
 function editbox:tripleclick(x, y)
+	if not self.selection then return end
 	self.selection:select_all()
 end
 
 function editbox:mousedown(x, y)
+	if not self.selection then return end
 	self.selection.cursor1:move_to_pos(self:mask_to_text(x, y))
 	self.selection:reset()
 end
 
 function editbox:mousemove(x, y)
+	if not self.selection then return end
 	if not self.active then return end
 	self.selection.cursor1:move_to_pos(self:mask_to_text(x, y))
 end
@@ -808,7 +823,6 @@ if not ... then require('ui_demo')(function(ui, win)
 	}
 	xy()
 
-	--[[
 	local s = '0123 4567 8901 2345'
 
 	--password, scrolling, left align (the only alignment supported)
@@ -830,10 +844,7 @@ if not ... then require('ui_demo')(function(ui, win)
 	}
 	xy()
 
-	]]
-
 	--multiline
-	--[=[
 	ui:editbox{
 		scrollbox = {vscrollbar = {h = 50}},
 		x = x, y = y, parent = win,
@@ -849,7 +860,6 @@ text = 'Hello',
 		cue = 'Type text here...',
 	}
 	xy()
-	]=]
 
 	--[[
 	local t0 = require'time'.clock()

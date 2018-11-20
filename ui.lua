@@ -832,12 +832,28 @@ end
 element:init_priority{}
 element:init_ignore{}
 
---override element constructor so that:
--- 1) it can take multiple initialization tables as args.
--- 2) it inherits the class to get default values directly through `t`.
-function element:override_create(inherited, ui, t, ...)
-	local t = setmetatable(update({}, t, ...), {__index = self})
-	return inherited(self, ui, t)
+--override the element constructor so that it can take multiple init-table
+--args but present init() with a single init table that also inherits the
+--class for transparent access to defaults, and a single array table that
+--adds together the array parts of all the init tables.
+function element:override_create(inherited, ui, ...)
+	local dt = {}
+	local at
+	for i = 1, select('#', ...) do
+		local t = select(i, ...)
+		if t then
+			for k,v in pairs(t) do
+				if type(k) == 'number' and floor(k) == k then --array part
+					at = at or {}
+					push(at, v)
+				else
+					dt[k] = v
+				end
+			end
+		end
+	end
+	setmetatable(dt, {__index = self})
+	return inherited(self, ui, dt, at)
 end
 
 function element:init_fields(t)
@@ -853,9 +869,7 @@ function element:init_fields(t)
 	end
 	local ignore = self._init_ignore
 	for k,v in sortedpairs(t, cmp) do
-		if type(k) == 'number' and floor(k) == k then
-			--skip the array part of the table.
-		elseif not ignore[k] then
+		if not ignore[k] then
 			self[k] = v
 		end
 	end
@@ -2307,7 +2321,7 @@ end
 layer:init_ignore{parent=1, layer_index=1, enabled=1, layers=1, class=1}
 layer.tags = ':enabled'
 
-function layer:after_init(ui, t)
+function layer:after_init(ui, t, array_part)
 	--setting parent after _enabled updates the `enabled` tag only once!
 	--setting layer_index before parent inserts the layer at its index directly.
 	local enabled = t.enabled and true or false
@@ -2318,16 +2332,18 @@ function layer:after_init(ui, t)
 	self.parent = t.parent
 
 	--create and/or attach child layers
-	for _,layer in ipairs(t) do
-		if not layer.islayer then
-			local class = layer.class or self.super
-			if type(class) == 'string' then --look-up a built-in class
-				class = self.ui:check(ui[class], 'invalid class: "%s"', class)
+	if array_part then
+		for _,layer in ipairs(array_part) do
+			if not layer.islayer then
+				local class = layer.class or self.super
+				if type(class) == 'string' then --look-up a built-in class
+					class = self.ui:check(ui[class], 'invalid class: "%s"', class)
+				end
+				layer = class(self.ui, self[layer.class], layer)
 			end
-			layer = class(self.ui, self[layer.class], layer)
+			assert(layer.islayer)
+			layer.parent = self
 		end
-		assert(layer.islayer)
-		layer.parent = self
 	end
 end
 
@@ -4073,6 +4089,12 @@ function layer:sync_layout_separate_axes(axis_order, min_w, min_h)
 	assert(axis_synced and other_axis_synced)
 end
 
+function layer:sync_layout_children()
+	for _,layer in ipairs(self) do
+		layer:sync_layout() --recurse
+	end
+end
+
 --null layout ----------------------------------------------------------------
 
 local null_layout = object:subclass'null_layout'
@@ -4093,12 +4115,11 @@ function null_layout:sync_layout()
 		self.x, self.w = snap_xw(self.x, self.w)
 		self.y, self.h = snap_xw(self.y, self.h)
 	end
-	self:sync_text_shape()
-	self:sync_text_wrap()
-	self:sync_text_align()
-	for _,layer in ipairs(self) do
-		layer:sync_layout() --recurse
+	if self:sync_text_shape() then
+		self:sync_text_wrap()
+		self:sync_text_align()
 	end
+	self:sync_layout_children()
 end
 
 --called by flexible layouts to know the minimum width of their children.
@@ -4243,6 +4264,7 @@ local function stretch_items_main_axis(
 			total_fr = total_fr + max(0, layer.fr)
 		end
 	end
+	total_fr = max(1, total_fr) --treat sub-unit fractions like css flexbox
 
 	--compute the total overflow width and total free width.
 	local total_overflow_w = 0
@@ -4347,7 +4369,7 @@ layer.align_main  = 'stretch' --space_between, space_around, space_evenly
 
 --item properties
 layer.align_cross_self = false --overrides parent.align_cross
-layer.fr = 1 --stretch fraction
+layer.fr = 1 --stretch fraction: 0..inf
 
 --generate pairs of methods for vertical and horizontal flexbox layouts.
 local function gen_funcs(X, Y, W, H, LEFT, RIGHT, TOP, BOTTOM)
@@ -4426,7 +4448,8 @@ local function gen_funcs(X, Y, W, H, LEFT, RIGHT, TOP, BOTTOM)
 
 	--stretch a line of items on the main axis.
 	local function stretch_items_x(self, i, j)
-		stretch_items_main_axis(self, i, j, self[CW], self[SNAP_X], X, W, _MIN_W)
+		stretch_items_main_axis(self, i, j, self[CW], self[SNAP_X],
+			X, W, _MIN_W)
 	end
 
 	local function align_metrics_x(self, align, items_w, item_count)

@@ -551,7 +551,7 @@ local function test_widgets_flex()
 	win.view.grid_wrap = 3
 	win.view.grid_col_gap = 20
 	win.view.grid_row_gap = 20
-	win.view.grid_rows = {0, 0}
+	win.view.grid_rows = {0}
 
 	ui:button{
 		parent = win,
@@ -583,42 +583,11 @@ local function test_widgets_flex()
 		align = 'right',
 	}
 
-	--[[
-	ui:editbox{
-		parent = win,
-	}
-
-	ui:editbox{
-		parent = win,
-		multiline = true,
-	}
-	]]
-
-	ui:dropdown{
-		parent = win,
-		picker = {rows = {'Row 1', 'Row 2', 'Row 3'}},
-	}
-
 	ui:slider{
 		parent = win,
 		position = 3, size = 10,
 		step_labels = {Low = 0, Medium = 5, High = 10},
 		step = 2,
-	}
-
-
-	local s = [[
-But I must explain to you how all this mistaken idea of denouncing pleasure and praising pain was born and I will give you a complete account of the system, and expound the actual teachings of the great explorer of the truth, the master-builder of human happiness. No one rejects, dislikes, or avoids pleasure itself, because it is pleasure, but because those who do not know how to pursue pleasure rationally encounter consequences that are extremely painful. Nor again is there anyone who loves or pursues or desires to obtain pain of itself, because it is pain, but because occasionally circumstances occur in which toil and pain can procure him some great pleasure. To take a trivial example, which of us ever undertakes laborious physical exercise, except to obtain some advantage from it? But who has any right to find fault with a man who chooses to enjoy a pleasure that has no annoying consequences, or one who avoids a pain that produces no resultant pleasure?]]
-
-	local sb = ui:scrollbox{
-		parent = win,
-		auto_w = true,
-		content = {
-			layout = 'textbox',
-			text_align_x = 'left',
-			text_align_y = 'top',
-			text = s,
-		},
 	}
 
 	ui:tablist{
@@ -637,6 +606,28 @@ But I must explain to you how all this mistaken idea of denouncing pleasure and 
 		},
 	}
 
+	local s = [[
+Lorem ipsum dolor sit amet, quod oblique vivendum ex sed. Impedit nominavi maluisset sea ut. Utroque apeirian maluisset cum ut. Nihil appellantur at his, fugit noluisse eu vel, mazim mandamus ex quo.
+
+Mei malis eruditi ne. Movet volumus instructior ea nec. Vel cu minimum molestie atomorum, pro iudico facilisi et, sea elitr partiendo at. An has fugit assum accumsan.
+
+Ne mea nobis scaevola partiendo, sit ei accusamus expetendis. Omnium repudiandae intellegebat ad eos, qui ad erant luptatum, nec an wisi atqui adipiscing. Mei ad ludus semper timeam, ei quas phaedrum liberavisse his, dolorum fierent nominavi an nec. Quod summo novum eam et, ullum choro soluta nec ex. Soleat conceptam pro ut, enim audire definiebas ad nec. Vis an equidem torquatos, at erat voluptatibus eam.]]
+
+	local sb = ui:scrollbox{
+		parent = win,
+		auto_w = true,
+		content = {
+			layout = 'textbox',
+			text_align_x = 'left',
+			text_align_y = 'top',
+			text = s,
+		},
+	}
+
+	ui:editbox{
+		parent = win,
+	}
+
 	local rows = {}
 	for i = 1,20 do table.insert(rows, {i, i}) end
 	ui:grid{
@@ -646,12 +637,24 @@ But I must explain to you how all this mistaken idea of denouncing pleasure and 
 			{text = 'col1', w = 150},
 			{text = 'col2', w = 150},
 		},
-		freeze_col = 1,
+		freeze_col = 2,
 		--multi_select = true,
 		--cell_select = true,
 		--cell_class = ui.editbox,
-		editable = true,
+		--editable = true,
 	}
+
+	--[==[
+	ui:editbox{
+		parent = win,
+		multiline = true,
+	}
+
+	ui:dropdown{
+		parent = win,
+		picker = {rows = {'Row 1', 'Row 2', 'Row 3'}},
+	}
+	]==]
 
 end
 

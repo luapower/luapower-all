@@ -14,7 +14,6 @@ local rs_ft = require'tr_raster_ft'
 local zone = require'jit.zone' --glue.noop
 
 local update = glue.update
-local round = glue.round
 local memoize = glue.memoize
 local box_fit = box2d.fit
 

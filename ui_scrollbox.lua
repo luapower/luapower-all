@@ -393,19 +393,17 @@ function scrollbox:after_sync_layout()
 	local sw = vs.h + vs_margin
 	local sh = hs.h + hs_margin
 
-	--for `auto_w`, set up `max_w` on content, lay-out the content and then
-	--get its size, assuming that the content lays itself out after `max_w`.
-	--if the content overflows vertically, another layout pass is necessary,
-	--this time with a smaller `max_w`, making room for the needed vertical
-	--scrollbar, under the assumption that the content will still overflow
-	--vertically under the smaller `max_w`. the same logic applies
-	--symmetrically for `auto_h`.
+	--for `auto_w`, lay out the content with min_w set to view's cw, and then
+	--get its size. if the content overflows vertically, another layout pass
+	--is necessary, this time with a smaller `min_w`, making room for the
+	--needed vertical scrollbar, under the assumption that the content will
+	--still overflow vertically under the smaller `min_w`. the same logic
+	--applies symmetrically for `auto_h`.
 	local cw0 = self.auto_w and w - ((vs_overlap or vs.autohide_empty) and 0 or sw)
 	local ch0 = self.auto_h and h - ((hs_overlap or hs.autohide_empty) and 0 or sh)
 
-	if not self.ui:check(not (cw0 and ch0),
-		'can\'t have both auto_w and auto_h')
-	then
+	if cw0 and ch0 then
+		self.ui:warn'both auto_w and auto_h specified. auto_h ignored.'
 		ch0 = nil
 	end
 
@@ -633,6 +631,25 @@ if not ... then require('ui_demo')(function(ui, win)
 		hscrollbar = {
 			autohide = true,
 		}
+	}
+	xy()
+
+	--auto_w
+	local s = [[
+Lorem ipsum dolor sit amet, quod oblique vivendum ex sed. Impedit nominavi maluisset sea ut. Utroque apeirian maluisset cum ut. Nihil appellantur at his, fugit noluisse eu vel, mazim mandamus ex quo.
+
+Mei malis eruditi ne. Movet volumus instructior ea nec. Vel cu minimum molestie atomorum, pro iudico facilisi et, sea elitr partiendo at. An has fugit assum accumsan.]]
+
+	ui:scrollbox{
+		parent = win,
+		x = x, y = y, w = 180, h = 180,
+		auto_w = true,
+		content = {
+			layout = 'textbox',
+			text_align_x = 'left',
+			text_align_y = 'top',
+			text = s,
+		},
 	}
 	xy()
 

@@ -550,6 +550,9 @@ __text__
 `text_operator`                      `'over'`           blending operator (see [cairo])
 `text_align_x`                       `false`            text x-align override: `'l[eft]'`, `'c[enter]'`, `'r[ight]'`
 `text_align_y`                       `false`            text y-align override: `'t[op]'`, `'c[enter]'`, `'b[ottom]'`
+__cursor__
+`cursor`                             `'arrow'`          default mouse cursor (see [nw] for values)
+`cursor_<area>`                      `nil`              mouse cursor for an area
 __tooltip__
 `tooltip`                            `false`            native tooltip text (false=none)
 __rotation & scaling__
@@ -570,8 +573,8 @@ __rotation & scaling__
   change it to point to its `view` layer.
   * layers can be moved to another parent after creation by changing their
   `parent` property.
-  * child layers can be specified in the array part of the initialization
-  table either as plain tables with a `class` attribute or pre-created.
+  * child layers can be specified in the array parts of the init tables,
+  either as plain tables with a `class` attribute or pre-created.
 
 #### Size & positioning
 
@@ -884,9 +887,33 @@ TODO
 
 Editboxes are created with `ui:editbox(attrs1, ...)`.
 
------------- ---------------------- ------------ -----------------------------
-TODO
------------- ---------------------- ------------ -----------------------------
+------------ ----------------------------------- ------------ ----------------
+__behavior__
+r/w property `password`                          `false`      mask characters
+r/w property `maxlen`                            `4096`       max text length in codepoints
+r/w property `multiline`                                      multi-line scrollable editbox
+__styling__
+tag          `multiline`                                      editbox is multi-line
+tag          `:insert_mode`                                   editor is in insert mode
+r/w property `caret_color`	                      `'#fff'`     caret fill color
+r/w property `caret_opacity`                     `1           caret opacity
+r/w property `selection_color`                   `'#66f8'`    selection fill color
+__hit testing__
+hittest area `text`                                           area over unselected text
+hittest area `selection`                                      area over a selection rectangle
+__editing__
+r/o property `text_len`                                       text length in codepoints
+r/w property `insert_mode`                       `false`      insert mode (Insert key toggles)
+r/o property `edited`                            `false`      text was edited
+method       `undo()`                                         undo the last operation
+method       `redo()`                                         redo the last operation
+__drawing__
+method       `caret_rect() -> x, y, w, h`                     caret rectangle
+method       `draw_password_char(cr, i, w, h)`                draw a password hiding symbol
+__cue__
+r/w property `cue`                                            cue text
+r/w property `show_cue_when_focused`             `false`
+------------ ----------------------------------- ------------ ----------------
 
 ## Drop-downs
 

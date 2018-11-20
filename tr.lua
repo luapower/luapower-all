@@ -724,74 +724,79 @@ function tr:shape(text_runs, segments)
 	local bracket_types = alloc_bracket_types(len)
 	local levels        = alloc_levels(len)
 
-	local text_run_index = 0
-	local next_i = 0 --char offset of the next text run
-	local par_offset = 0
-	local dir --last char's paragraph's base direction
 	local reorder_segments --bidi reordering will be needed on line-wrapping.
 
-	for i = 0, len do --NOTE: going one char beyond the text!
+	if #text_runs > 0 then
 
-		--per-text-run attrs for the current char.
-		local dir1 = dir
+		local text_run_index = 0
+		local next_i = 0 --char offset of the next text run
+		local par_offset = 0
+		local dir --last char's paragraph's base direction
 
-		--change to the next text run if we're past the current text run.
-		--NOTE: the paragraph `dir` is that of the last text run which sets it.
-		--NOTE: this runs when i == 0 and when len == 0 but not when i == len.
-		if i == next_i then
-			text_run_index = text_run_index + 1
-			local t = text_runs[text_run_index]
+		for i = 0, len do --NOTE: going one char beyond the text!
 
-			dir1 = t.dir or dir
+			--per-text-run attrs for the current char.
+			local dir1 = dir
 
-			next_i = t.offset + t.len
-			next_i = next_i < len and next_i
-		end
+			--change to the next text run if we're past the current text run.
+			--NOTE: the paragraph `dir` is that of the last text run which sets it.
+			--NOTE: this runs when i == 0 and when len == 0 but not when i == len.
+			if i == next_i then
+				text_run_index = text_run_index + 1
+				local t = text_runs[text_run_index]
 
-		if i == len or (i > 0 and str[i-1] == PS) then
+				dir1 = t.dir or dir
 
-			local par_len = i - par_offset
-
-			if par_len > 0 then
-
-				local dir = (dir or 'auto'):lower()
-				local fb_dir =
-						dir == 'rtl'  and fb.C.FRIBIDI_PAR_RTL
-					or dir == 'ltr'  and fb.C.FRIBIDI_PAR_LTR
-					or dir == 'auto' and fb.C.FRIBIDI_PAR_ON
-
-				fb.bidi_types(
-					str + par_offset,
-					par_len,
-					bidi_types + par_offset
-				)
-
-				fb.bracket_types(
-					str + par_offset,
-					par_len,
-					bidi_types + par_offset,
-					bracket_types + par_offset
-				)
-
-				local max_bidi_level, fb_dir = fb.par_embedding_levels(
-					bidi_types + par_offset,
-					bracket_types + par_offset,
-					par_len,
-					fb_dir,
-					levels + par_offset
-				)
-				assert(max_bidi_level)
-
-				reorder_segments = reorder_segments
-					or max_bidi_level > (dir == 'rtl' and 1 or 0)
-
+				next_i = t.offset + t.len
+				next_i = next_i < len and next_i
 			end
 
-			par_offset = i
+			if i == len or (i > 0 and str[i-1] == PS) then
+
+				local par_len = i - par_offset
+
+				if par_len > 0 then
+
+					local dir = (dir or 'auto'):lower()
+					local fb_dir =
+							dir == 'rtl'  and fb.C.FRIBIDI_PAR_RTL
+						or dir == 'ltr'  and fb.C.FRIBIDI_PAR_LTR
+						or dir == 'auto' and fb.C.FRIBIDI_PAR_ON
+
+					fb.bidi_types(
+						str + par_offset,
+						par_len,
+						bidi_types + par_offset
+					)
+
+					fb.bracket_types(
+						str + par_offset,
+						par_len,
+						bidi_types + par_offset,
+						bracket_types + par_offset
+					)
+
+					local max_bidi_level, fb_dir = fb.par_embedding_levels(
+						bidi_types + par_offset,
+						bracket_types + par_offset,
+						par_len,
+						fb_dir,
+						levels + par_offset
+					)
+					assert(max_bidi_level)
+
+					reorder_segments = reorder_segments
+						or max_bidi_level > (dir == 'rtl' and 1 or 0)
+
+				end
+
+				par_offset = i
+			end
+
+			dir = dir1
 		end
 
-		dir = dir1
-	end
+	end --if #text_runs > 0
 	zone()
 
 	--run Unicode line breaking over each run of text with the same language.
@@ -816,68 +821,282 @@ function tr:shape(text_runs, segments)
 	segments.text_runs = text_runs --for accessing codepoints by clients
 	segments.reorder = reorder_segments --for optimization
 
-	local text_run_index = 0
-	local next_i = 0 --char offset of the next text run
-	local text_run, font, font_size, features --per-text-run attrs
-	local level, script, lang --per-char attrs
-
-	local seg_offset = 0 --curent segment's offset in text
-	local sub_offset = 0 --current sub-segment's relative text offset
 	local seg_count = 0
-	local substack
-	local substack_n = 0
 
-	for i = 0, len do --NOTE: going one char beyond the text!
+	if #text_runs > 0 then
 
-		--per-text-run attts for the current char.
-		local text_run1, font1, font_size1, features1
+		local text_run_index = 0
+		local next_i = 0 --char offset of the next text run
+		local text_run, font, font_size, features --per-text-run attrs
+		local level, script, lang --per-char attrs
 
-		--change to the next text run if we're past the current text run.
-		--NOTE: this runs when i == 0 and when len == 0 but not when i == len.
-		if i == next_i then
+		local seg_offset = 0 --curent segment's offset in text
+		local sub_offset = 0 --current sub-segment's relative text offset
+		local substack
+		local substack_n = 0
 
-			text_run_index = text_run_index + 1
-			text_run1 = text_runs[text_run_index]
+		for i = 0, len do --NOTE: going one char beyond the text!
 
-			font1 = text_run1.font
-			font_size1 = text_run1.font_size
-			features1 = text_run1.features
+			--per-text-run attts for the current char.
+			local text_run1, font1, font_size1, features1
 
-			next_i = text_run1.offset + text_run1.len
-			next_i = next_i < len and next_i
+			--change to the next text run if we're past the current text run.
+			--NOTE: this runs when i == 0 and when len == 0 but not when i == len.
+			if i == next_i then
 
-		elseif i < len then
+				text_run_index = text_run_index + 1
+				text_run1 = text_runs[text_run_index]
 
-			--use last char's attrs.
-			text_run1 = text_run
-			font1 = font
-			font_size1 = font_size
-			features1 = features
+				font1 = text_run1.font
+				font_size1 = text_run1.font_size
+				features1 = text_run1.features
 
-		end
+				next_i = text_run1.offset + text_run1.len
+				next_i = next_i < len and next_i
 
-		--per-char attrs for the current char.
-		local level1, script1, lang1
-		if len == 0 then
+			elseif i < len then
 
-			--the string is empty so init those with defaults.
-			local dir = (text_run1.dir or 'auto'):lower()
-			level1 = dir == 'rtl' and 1 or 0
-			script1 = text_run1.script or hb.C.HB_SCRIPT_COMMON
-			lang1 = text_run1.lang
+				--use last char's attrs.
+				text_run1 = text_run
+				font1 = font
+				font_size1 = font_size
+				features1 = features
 
-		elseif i < len then
+			end
 
-			level1 = levels[i]
-			script1 = scripts[i]
-			lang1 = langs[i]
+			--per-char attrs for the current char.
+			local level1, script1, lang1
+			if len == 0 then
 
-		end
+				--the string is empty so init those with defaults.
+				local dir = (text_run1.dir or 'auto'):lower()
+				level1 = dir == 'rtl' and 1 or 0
+				script1 = text_run1.script or hb.C.HB_SCRIPT_COMMON
+				lang1 = text_run1.lang
 
-		--init last char's state on first iteration. this works both to prevent
-		--making a first empty segment and to provide state for when len == 0.
-		if i == 0 then
+			elseif i < len then
 
+				level1 = levels[i]
+				script1 = scripts[i]
+				lang1 = langs[i]
+
+			end
+
+			--init last char's state on first iteration. this works both to prevent
+			--making a first empty segment and to provide state for when len == 0.
+			if i == 0 then
+
+				text_run = text_run1
+				font = font1
+				font_size = font_size1
+				features = features1
+
+				level = level1
+				script = script1
+				lang = lang1
+
+				if len == 0 then
+					font1 = nil --force making a new segment
+				end
+			end
+
+			--unicode line breaking: 0: required, 1: allowed, 2: not allowed.
+			local linebreak_code = i > 0 and linebreaks[i-1] or 2
+
+			--check if any attributes that require a new segment have changed.
+			local new_segment =
+				linebreak_code < 2
+				or font1 ~= font
+				or font_size1 ~= font_size
+				or features1 ~= features
+				or level1 ~= level
+				or script1 ~= script
+				or lang1 ~= lang
+
+			--check if any attributes that require a new sub-segment have changed.
+			local new_subsegment =
+				new_segment
+				or text_run1 ~= text_run
+
+			if new_segment then
+
+				::again::
+
+				local seg_len = i - seg_offset
+				local rtl = odd(level)
+
+				--find the segment length without trailing linebreak chars.
+				--NOTE: this can result in seg_len == 0, which is still valid.
+				for i = seg_offset + seg_len-1, seg_offset, -1 do
+					if isnewline(str[i]) then
+						seg_len = seg_len - 1
+					else
+						break
+					end
+				end
+
+				--find if the segment has a trailing space char.
+				local trailing_space = seg_len > 0
+					and fb.IS_EXPLICIT_OR_BN_OR_WS(bidi_types[seg_offset + seg_len-1])
+
+				--shape the segment excluding trailing linebreak chars.
+				local glyph_run = self:glyph_run(
+					str, seg_offset, seg_len, trailing_space,
+					font, font_size, features,
+					rtl, script, lang
+				)
+
+				local linebreak = linebreak_code == 0
+					and (str[i-1] == PS and 'paragraph' or 'line')
+
+				if glyph_run then --font loaded successfully
+
+					seg_count = seg_count + 1
+
+					local segment = {
+						glyph_run = glyph_run,
+						--for line breaking
+						linebreak = linebreak, --hard break
+						--for bidi reordering
+						bidi_level = level,
+						--for cursor positioning
+						text_run = text_run, --text run of the last sub-segment
+						offset = seg_offset,
+						index = seg_count,
+						--table slots filled by layouting
+						x = false,
+						advance_x = false,
+						line_index = false,
+						wrapped = false, --ignore trailing space
+						visible = true, --entirely clipped or not
+					}
+
+					segments[seg_count] = segment
+
+					--add sub-segments from the sub-segment stack and empty the stack.
+					if substack_n > 0 then
+						local last_sub_len = seg_len - sub_offset
+						local sub_offset = 0
+						local glyph_i = 0
+						local clip_left, clip_right = false, false --from run's origin
+						for i = 1, substack_n + 1, 2 do
+							local sub_len, sub_text_run
+							if i < substack_n  then
+								sub_len, sub_text_run = substack[i], substack[i+1]
+							else --last iteration outside the stack for last sub-segment
+								sub_len, sub_text_run = last_sub_len, text_run
+							end
+
+							--adjust `next_sub_offset` to a grapheme position.
+							local next_sub_offset = sub_offset + sub_len
+							assert(next_sub_offset >= 0)
+							assert(next_sub_offset <= seg_len)
+							local next_sub_offset = glyph_run.cursor_offsets[next_sub_offset]
+							local sub_len = next_sub_offset - sub_offset
+
+							if sub_len == 0 then
+								break
+							end
+
+							--find the last sub's glyph which is before any glyph which
+							--*starts* representing the graphemes at `next_sub_offset`,
+							--IOW the last glyph with a cluster value < `next_sub_offset`.
+
+							local last_glyph_i
+
+							if rtl then
+
+								last_glyph_i = (binsearch(
+									next_sub_offset, glyph_run.info,
+									cmp_clusters_reverse,
+									glyph_i, 0
+								) or -1) + 1
+
+								assert(last_glyph_i >= 0)
+								assert(last_glyph_i < glyph_run.len)
+
+								--check whether the last glyph represents additional graphemes
+								--beyond the current sub-segment, if so we have to clip it.
+								local next_cluster =
+									last_glyph_i > 0
+									and glyph_run.info[last_glyph_i-1].cluster
+									or 0
+
+								clip_left = next_cluster > next_sub_offset
+								clip_left = clip_left and glyph_run.cursor_xs[next_sub_offset]
+
+								push(segment, glyph_i)
+								push(segment, last_glyph_i)
+								push(segment, sub_text_run)
+								push(segment, clip_left)
+								push(segment, clip_right)
+
+								sub_offset = next_sub_offset
+								glyph_i = last_glyph_i - (clip_left and 0 or 1)
+								clip_right = clip_left
+
+							else --ltr
+
+								last_glyph_i = (binsearch(
+									next_sub_offset, glyph_run.info,
+									cmp_clusters,
+									glyph_i, glyph_run.len-1
+								) or glyph_run.len) - 1
+
+								assert(last_glyph_i >= 0)
+								assert(last_glyph_i < glyph_run.len)
+
+								--check whether the last glyph represents additional graphemes
+								--beyond the current sub-segment, if so we have to clip it.
+								local next_cluster =
+									last_glyph_i < glyph_run.len-1
+									and glyph_run.info[last_glyph_i+1].cluster
+									or seg_len
+
+								clip_right = next_cluster > next_sub_offset
+								clip_right = clip_right and glyph_run.cursor_xs[next_sub_offset]
+
+								push(segment, glyph_i)
+								push(segment, last_glyph_i)
+								push(segment, sub_text_run)
+								push(segment, clip_left)
+								push(segment, clip_right)
+
+								sub_offset = next_sub_offset
+								glyph_i = last_glyph_i + (clip_right and 0 or 1)
+								clip_left = clip_right
+
+							end
+
+						end --for each subsegment
+						substack_n = 0 --empty the stack
+					end --if subsegments
+
+				end --if glyph_run
+
+				seg_offset = i
+				sub_offset = 0
+
+				--if the last segment ended with a hard line break, add another
+				--empty segment at the end, in order to have a cursor on the last
+				--empty line.
+				if i == len and linebreak then
+					linebreak_code = 2 --prevent recursion
+					goto again
+				end
+
+			elseif new_subsegment then
+
+				local sub_len = i - (seg_offset + sub_offset)
+				substack = substack or {}
+				substack[substack_n + 1] = sub_len
+				substack[substack_n + 2] = text_run
+				substack_n = substack_n + 2
+
+				sub_offset = sub_offset + sub_len
+			end
+
+			--update last char state with current char state.
 			text_run = text_run1
 			font = font1
 			font_size = font_size1
@@ -886,219 +1105,10 @@ function tr:shape(text_runs, segments)
 			level = level1
 			script = script1
 			lang = lang1
-
-			if len == 0 then
-				font1 = nil --force making a new segment
-			end
 		end
+		zone()
 
-		--unicode line breaking: 0: required, 1: allowed, 2: not allowed.
-		local linebreak_code = i > 0 and linebreaks[i-1] or 2
-
-		--check if any attributes that require a new segment have changed.
-		local new_segment =
-			linebreak_code < 2
-			or font1 ~= font
-			or font_size1 ~= font_size
-			or features1 ~= features
-			or level1 ~= level
-			or script1 ~= script
-			or lang1 ~= lang
-
-		--check if any attributes that require a new sub-segment have changed.
-		local new_subsegment =
-			new_segment
-			or text_run1 ~= text_run
-
-		if new_segment then
-
-			::again::
-
-			local seg_len = i - seg_offset
-			local rtl = odd(level)
-
-			--find the segment length without trailing linebreak chars.
-			--NOTE: this can result in seg_len == 0, which is still valid.
-			for i = seg_offset + seg_len-1, seg_offset, -1 do
-				if isnewline(str[i]) then
-					seg_len = seg_len - 1
-				else
-					break
-				end
-			end
-
-			--find if the segment has a trailing space char.
-			local trailing_space = seg_len > 0
-				and fb.IS_EXPLICIT_OR_BN_OR_WS(bidi_types[seg_offset + seg_len-1])
-
-			--shape the segment excluding trailing linebreak chars.
-			local glyph_run = self:glyph_run(
-				str, seg_offset, seg_len, trailing_space,
-				font, font_size, features,
-				rtl, script, lang
-			)
-
-			local linebreak = linebreak_code == 0
-				and (str[i-1] == PS and 'paragraph' or 'line')
-
-			if glyph_run then --font loaded successfully
-
-				seg_count = seg_count + 1
-
-				local segment = {
-					glyph_run = glyph_run,
-					--for line breaking
-					linebreak = linebreak, --hard break
-					--for bidi reordering
-					bidi_level = level,
-					--for cursor positioning
-					text_run = text_run, --text run of the last sub-segment
-					offset = seg_offset,
-					index = seg_count,
-					--table slots filled by layouting
-					x = false,
-					advance_x = false,
-					line_index = false,
-					wrapped = false, --ignore trailing space
-					visible = true, --entirely clipped or not
-				}
-
-				segments[seg_count] = segment
-
-				--add sub-segments from the sub-segment stack and empty the stack.
-				if substack_n > 0 then
-					local last_sub_len = seg_len - sub_offset
-					local sub_offset = 0
-					local glyph_i = 0
-					local clip_left, clip_right = false, false --from run's origin
-					for i = 1, substack_n + 1, 2 do
-						local sub_len, sub_text_run
-						if i < substack_n  then
-							sub_len, sub_text_run = substack[i], substack[i+1]
-						else --last iteration outside the stack for last sub-segment
-							sub_len, sub_text_run = last_sub_len, text_run
-						end
-
-						--adjust `next_sub_offset` to a grapheme position.
-						local next_sub_offset = sub_offset + sub_len
-						assert(next_sub_offset >= 0)
-						assert(next_sub_offset <= seg_len)
-						local next_sub_offset = glyph_run.cursor_offsets[next_sub_offset]
-						local sub_len = next_sub_offset - sub_offset
-
-						if sub_len == 0 then
-							break
-						end
-
-						--find the last sub's glyph which is before any glyph which
-						--*starts* representing the graphemes at `next_sub_offset`,
-						--IOW the last glyph with a cluster value < `next_sub_offset`.
-
-						local last_glyph_i
-
-						if rtl then
-
-							last_glyph_i = (binsearch(
-								next_sub_offset, glyph_run.info,
-								cmp_clusters_reverse,
-								glyph_i, 0
-							) or -1) + 1
-
-							assert(last_glyph_i >= 0)
-							assert(last_glyph_i < glyph_run.len)
-
-							--check whether the last glyph represents additional graphemes
-							--beyond the current sub-segment, if so we have to clip it.
-							local next_cluster =
-								last_glyph_i > 0
-								and glyph_run.info[last_glyph_i-1].cluster
-								or 0
-
-							clip_left = next_cluster > next_sub_offset
-							clip_left = clip_left and glyph_run.cursor_xs[next_sub_offset]
-
-							push(segment, glyph_i)
-							push(segment, last_glyph_i)
-							push(segment, sub_text_run)
-							push(segment, clip_left)
-							push(segment, clip_right)
-
-							sub_offset = next_sub_offset
-							glyph_i = last_glyph_i - (clip_left and 0 or 1)
-							clip_right = clip_left
-
-						else --ltr
-
-							last_glyph_i = (binsearch(
-								next_sub_offset, glyph_run.info,
-								cmp_clusters,
-								glyph_i, glyph_run.len-1
-							) or glyph_run.len) - 1
-
-							assert(last_glyph_i >= 0)
-							assert(last_glyph_i < glyph_run.len)
-
-							--check whether the last glyph represents additional graphemes
-							--beyond the current sub-segment, if so we have to clip it.
-							local next_cluster =
-								last_glyph_i < glyph_run.len-1
-								and glyph_run.info[last_glyph_i+1].cluster
-								or seg_len
-
-							clip_right = next_cluster > next_sub_offset
-							clip_right = clip_right and glyph_run.cursor_xs[next_sub_offset]
-
-							push(segment, glyph_i)
-							push(segment, last_glyph_i)
-							push(segment, sub_text_run)
-							push(segment, clip_left)
-							push(segment, clip_right)
-
-							sub_offset = next_sub_offset
-							glyph_i = last_glyph_i + (clip_right and 0 or 1)
-							clip_left = clip_right
-
-						end
-
-					end --for each subsegment
-					substack_n = 0 --empty the stack
-				end --if subsegments
-
-			end --if glyph_run
-
-			seg_offset = i
-			sub_offset = 0
-
-			--if the last segment ended with a hard line break, add another
-			--empty segment at the end, in order to have a cursor on the last
-			--empty line.
-			if i == len and linebreak then
-				linebreak_code = 2 --prevent recursion
-				goto again
-			end
-
-		elseif new_subsegment then
-
-			local sub_len = i - (seg_offset + sub_offset)
-			substack = substack or {}
-			substack[substack_n + 1] = sub_len
-			substack[substack_n + 2] = text_run
-			substack_n = substack_n + 2
-
-			sub_offset = sub_offset + sub_len
-		end
-
-		--update last char state with current char state.
-		text_run = text_run1
-		font = font1
-		font_size = font_size1
-		features = features1
-
-		level = level1
-		script = script1
-		lang = lang1
-	end
-	zone()
+	end --if #text_runs > 0
 
 	--clean up excess old segments from previous segments list, if any.
 	while old_seg_count > seg_count do

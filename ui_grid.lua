@@ -1,4 +1,5 @@
---go @ luajit -jp=a -e io.stdout:setvbuf'no';io.stderr:setvbuf'no';require'strict';pp=require'pp' "ui_grid.lua"
+--go@ luajit ui_demo.lua
+-- -jp=a -e io.stdout:setvbuf'no';io.stderr:setvbuf'no';require'strict';pp=require'pp' "ui_grid.lua"
 
 --Grid widget.
 --Written by Cosmin Apreutesei. Public Domain.
@@ -10,7 +11,6 @@ local box2d = require'box2d'
 local push = table.insert
 local pop = table.remove
 
-local round = glue.round
 local clamp = glue.clamp
 local indexof = glue.indexof
 local binsearch = glue.binsearch
@@ -35,7 +35,7 @@ grid.scroll_pane_class = split_pane
 
 function grid:create_freeze_pane()
 	return self:freeze_pane_class({
-		tags = 'freeze_pane',
+		tags = 'grid_freeze_pane',
 		iswidget = false,
 		grid = self,
 		frozen = true,
@@ -44,7 +44,7 @@ end
 
 function grid:create_scroll_pane()
 	return self:scroll_pane_class({
-		tags = 'scroll_pane',
+		tags = 'grid_scroll_pane',
 		iswidget = false,
 		grid = self,
 		frozen = false,
@@ -57,7 +57,7 @@ function split_pane:after_init()
 end
 
 function split_pane:col_index_range()
-	local fc = self.grid.freeze_col or 0
+	local fc = self.grid._real_freeze_col or 0
 	if self.frozen then
 		return 1, fc
 	else
@@ -66,6 +66,7 @@ function split_pane:col_index_range()
 end
 
 --the freeze pane must be small enough so that the splitter is always visible.
+--NOTE: only valid after the grid sync'ed.
 function split_pane:get_max_w()
 	if self.frozen then
 		return self.grid.cw - self.grid.splitter.w
@@ -74,19 +75,13 @@ function split_pane:get_max_w()
 	end
 end
 
-function split_pane:sync_to_grid()
+function split_pane:before_sync_layout()
 
 	local cols_w = 0
 	local col_h = self.grid.col_h
-	local col1 = self.grid:rel_visible_col(1).index
-	local col2 = self.grid:rel_visible_col(-1).index
 	for index, col in ipairs(self.grid.cols) do
 		if col.split_pane == self then
-			col.parent = self.header_pane.content
-			col_h = math.max(col_h, col.h or 0)
 			col.h = col_h
-			col:settag('first_col', index == col1)
-			col:settag('last_col', index == col2)
 			if col.visible then
 				cols_w = cols_w + col.w
 			end
@@ -96,7 +91,7 @@ function split_pane:sync_to_grid()
 
 	self.h = self.grid.ch
 	if self.frozen then
-		self.visible = self.grid.freeze_col and true or false
+		self.visible = self.grid._real_freeze_col and true or false
 		self.cw = cols_w
 	else
 		local fp = self.freeze_pane
@@ -166,10 +161,7 @@ function split_pane:col_at_x(x, clamp_left, clamp_right)
 	end
 end
 
---freeze col property --------------------------------------------------------
-
-grid:stored_property'freeze_col'
-grid:instance_only'freeze_col'
+--freeze_col property --------------------------------------------------------
 
 --returns the largest freeze_col which satisfies freeze_pane.max_w.
 function grid:max_freeze_col()
@@ -196,21 +188,24 @@ function grid:max_freeze_col()
 	end
 end
 
-function grid:sync_freeze_col()
+function grid:sync_cols()
 
 	--limit freeze_col to the maximum allowed by geometry.
-	if self.freeze_col then
-		local max_ci = self:max_freeze_col()
-		if not max_ci or max_ci < self.freeze_col then
-			self.freeze_col = max_ci
-		end
-	end
+	local fi = self.freeze_col
+	local max_fi = fi and self:max_freeze_col()
+	local fi = max_fi and math.min(fi, max_fi)
+	self._real_freeze_col = fi or false
 
 	--assign columns to the right panes based on freeze_col.
-	local fi = self.freeze_col
+	local col1 = self:rel_visible_col(1).index
+	local col2 = self:rel_visible_col(-1).index
 	for i,col in ipairs(self.cols) do
 		local frozen = fi and i <= fi
 		col.split_pane = frozen and self.freeze_pane or self.scroll_pane
+		col.parent = col.split_pane.header_pane.content
+		col:settag('first_col', i == col1)
+		col:settag('last_col', i == col2)
+		col:sync_styles()
 	end
 end
 
@@ -240,7 +235,7 @@ function grid:create_splitter()
 end
 
 function splitter:sync_to_grid()
-	self.visible = self.grid.freeze_col and true or false
+	self.visible = self.grid._real_freeze_col and true or false
 	self:transition('x', self.grid.scroll_pane.x - self.w)
 	self.h = self.grid.ch
 end
@@ -364,12 +359,13 @@ function grid:create_rows_pane(split_pane)
 		grid = self,
 		content = rows,
 		rows_layer = rows,
+		border_width = 2,
+		padding = 2,
 	}, self.rows_pane)
 	rows.rows_pane = rows_pane
 
 	rows_pane.vscrollbar.visible = not split_pane.frozen
 	rows_pane.hscrollbar.visible = not split_pane.frozen
-	rows_pane.vscrollbar.step = 1 --prevent blurry text
 
 	--synchronize vertical scrolling between split panes.
 	local barrier
@@ -910,7 +906,7 @@ function grid:row_at_screen_bottom_y(y, ...)
 end
 
 function grid:visible_rows_range()
-	local h = self.freeze_pane.rows_pane.view.ch
+	local h = self.scroll_pane.rows_pane.view.ch
 	local i1 = self:row_at_screen_y(0)
 	local i2 = self:row_at_screen_y(h - 1)
 	return i1, i2
@@ -2082,21 +2078,17 @@ end
 
 --grid -----------------------------------------------------------------------
 
-function grid:after_sync()
+function grid:before_sync_layout_children()
 	self:sync_picker_col_size(1)
-	self:sync_freeze_col()
-	self.freeze_pane:sync_to_grid()
-	self.scroll_pane:sync_to_grid()
+	self:sync_cols()
 	self.splitter:sync_to_grid()
 	self:sync_picker_col_size(2)
 	self:sync_edit_cell()
 end
 
-grid:init_ignore{freeze_col=1, dropdown=1}
+grid:init_ignore{dropdown=1}
 
 function grid:after_init(ui, t)
-
-	self._freeze_col = t.freeze_col
 
 	local cols = t.cols or self.cols or {}
 	self.cols = {}
