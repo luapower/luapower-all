@@ -11,6 +11,8 @@ dropdown.iswidget = true
 
 --default geometry
 
+dropdown.align_y = 'center'
+dropdown.min_ch = 24
 dropdown.w = 180
 dropdown.h = 24
 --these must match grid's metrics.

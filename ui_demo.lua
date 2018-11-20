@@ -140,8 +140,6 @@ local function test_layers()
 		background_rotation_cy = 100,
 		background_rotation = 10,
 
-		background_extend = 'repeat', --'none', 'repeat', 'reflect', 'pad'
-
 		--padding = 20,
 		--padding_left = 10,
 		--padding_right = 10,
@@ -553,6 +551,7 @@ local function test_widgets_flex()
 	win.view.grid_wrap = 3
 	win.view.grid_col_gap = 20
 	win.view.grid_row_gap = 20
+	win.view.grid_rows = {0, 0}
 
 	ui:button{
 		parent = win,
@@ -584,8 +583,20 @@ local function test_widgets_flex()
 		align = 'right',
 	}
 
+	--[[
 	ui:editbox{
 		parent = win,
+	}
+
+	ui:editbox{
+		parent = win,
+		multiline = true,
+	}
+	]]
+
+	ui:dropdown{
+		parent = win,
+		picker = {rows = {'Row 1', 'Row 2', 'Row 3'}},
 	}
 
 	ui:slider{
@@ -593,6 +604,21 @@ local function test_widgets_flex()
 		position = 3, size = 10,
 		step_labels = {Low = 0, Medium = 5, High = 10},
 		step = 2,
+	}
+
+
+	local s = [[
+But I must explain to you how all this mistaken idea of denouncing pleasure and praising pain was born and I will give you a complete account of the system, and expound the actual teachings of the great explorer of the truth, the master-builder of human happiness. No one rejects, dislikes, or avoids pleasure itself, because it is pleasure, but because those who do not know how to pursue pleasure rationally encounter consequences that are extremely painful. Nor again is there anyone who loves or pursues or desires to obtain pain of itself, because it is pain, but because occasionally circumstances occur in which toil and pain can procure him some great pleasure. To take a trivial example, which of us ever undertakes laborious physical exercise, except to obtain some advantage from it? But who has any right to find fault with a man who chooses to enjoy a pleasure that has no annoying consequences, or one who avoids a pain that produces no resultant pleasure?]]
+
+	local sb = ui:scrollbox{
+		parent = win,
+		auto_w = true,
+		content = {
+			layout = 'textbox',
+			text_align_x = 'left',
+			text_align_y = 'top',
+			text = s,
+		},
 	}
 
 	ui:tablist{
@@ -609,6 +635,22 @@ local function test_widgets_flex()
 			{title = {text = 'Tab 2-1'}},
 			{title = {text = 'Tab 2-2'}},
 		},
+	}
+
+	local rows = {}
+	for i = 1,20 do table.insert(rows, {i, i}) end
+	ui:grid{
+		parent = win,
+		rows = rows,
+		cols = {
+			{text = 'col1', w = 150},
+			{text = 'col2', w = 150},
+		},
+		freeze_col = 1,
+		--multi_select = true,
+		--cell_select = true,
+		--cell_class = ui.editbox,
+		editable = true,
 	}
 
 end

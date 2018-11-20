@@ -1055,7 +1055,7 @@ end
 
 function grid:create_cell_mouse_events(rows)
 
-	function rows:click(mx, my)
+	function rows:after_click(mx, my)
 		if self.ui.hot_area == 'cell' then
 			local i = self.grid.hot_row_index
 			local col = self.grid.hot_col
@@ -1064,7 +1064,7 @@ function grid:create_cell_mouse_events(rows)
 		end
 	end
 
-	function rows:doubleclick(mx, my)
+	function rows:after_doubleclick(mx, my)
 		if self.ui.hot_area == 'cell' then
 			local i = self.grid.hot_row_index
 			local col = self.grid.hot_col
@@ -1768,7 +1768,7 @@ function grid:sync_dropdown()
 	local ch = math.min(noscroll_ch, max_ch)
 	self.w, self.ch = w, ch
 
-	self:sync() --sync so that vscrollbar is synced so that scroll works.
+	self:sync_layout() --sync so that vscrollbar is synced so that scroll works.
 	self:move'@focus scroll/instant'
 
 	return self.w, self.h

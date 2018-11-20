@@ -673,28 +673,29 @@ function tablist:tab_index_by_visual_index(vi)
 	return #self.tabs
 end
 
-function tablist:sync_tabs(duration)
+function tablist:sync_tabs(...)
 	self:sync_live_tab_w()
 	local tab_w = self.live_tab_w
 	local vi = 1
 	for i,tab in ipairs(self.tabs) do
 		if tab.visible then
 			if not tab.dragging then
-				tab:transition('tab_x', self:tab_pos_by_visual_index(vi), duration)
-				tab:transition('tab_w', tab_w, duration)
-				tab:transition('tab_h', self.tab_h, duration)
-				tab:transition('x', 0, duration)
-				tab:transition('y', self.tab_h, duration)
+				tab:transition('tab_x', self:tab_pos_by_visual_index(vi), ...)
+				tab:transition('tab_w', tab_w, ...)
+				tab:transition('tab_h', self.tab_h, ...)
+				tab:transition('x', 0, ...)
+				tab:transition('y', self.tab_h, ...)
 			end
-			tab:transition('w', self.w, duration)
-			tab:transition('h', self.h - self.tab_h, duration)
+			tab:transition('w', self.w, ...)
+			tab:transition('h', self.h - self.tab_h, ...)
 			vi = vi + 1
+			tab:sync_transitions()
 		end
 	end
 end
 
 function tablist:after_sync_layout()
-	self:sync_tabs(0)
+	self:sync_tabs(0, nil, nil, nil, nil, 'replace_value')
 end
 
 --demo -----------------------------------------------------------------------

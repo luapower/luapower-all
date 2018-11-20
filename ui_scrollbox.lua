@@ -6,6 +6,7 @@ local ui = require'ui'
 local box2d = require'box2d'
 local glue = require'glue'
 
+local noop = glue.noop
 local clamp = glue.clamp
 local lerp = glue.lerp
 
@@ -316,6 +317,7 @@ function scrollbox:after_init(ui, t)
 
 	self.view = self:view_class({
 		clip_content = true,
+		sync_layout = noop, --prevent auto-sync'ing content's layout
 	}, self.view)
 
 	if not self.content or not self.content.islayer then
@@ -372,7 +374,7 @@ end
 scrollbox.auto_h = false
 scrollbox.auto_w = false
 
-function scrollbox:after_sync()
+function scrollbox:after_sync_layout()
 
 	local vs = self.vscrollbar
 	local hs = self.hscrollbar
@@ -393,7 +395,7 @@ function scrollbox:after_sync()
 
 	--for `auto_w`, set up `max_w` on content, lay-out the content and then
 	--get its size, assuming that the content lays itself out after `max_w`.
-	--if the content overflows vertically, another layout pass is ncessary,
+	--if the content overflows vertically, another layout pass is necessary,
 	--this time with a smaller `max_w`, making room for the needed vertical
 	--scrollbar, under the assumption that the content will still overflow
 	--vertically under the smaller `max_w`. the same logic applies
@@ -410,8 +412,8 @@ function scrollbox:after_sync()
 	::reflow::
 
 	if cw0 or ch0 then
-		if cw0 then content.max_w = cw0; content.max_h = 0; end
-		if ch0 then content.max_h = ch0; content.max_w = 0; end
+		content:sync_layout_separate_axes(cw0 and 'xy' or 'yx', cw0, ch0)
+	else
 		content:sync_layout()
 	end
 

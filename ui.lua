@@ -1038,6 +1038,34 @@ function element.blend_transition:replace(
 	end
 end
 
+function element.blend_transition:replace_value(
+	tran, attr, cur_val, end_val, cur_end_val,
+	duration, ease, delay, times, backval, start_val
+)
+	if tran then
+		--update the current transition.
+		tran.end_value = end_val
+		tran.to = end_val
+		return tran
+	elseif duration <= 0 and delay <= 0 then
+		--instant transition: set the value immediately.
+		if end_val ~= cur_val then
+			self[attr] = end_val
+			self:invalidate()
+		end
+		return nil --stop the current transition if any.
+	else
+		if start_val == nil then
+			start_val = cur_val
+		end
+		return self.ui:transition{
+			elem = self, attr = attr, to = end_val,
+			duration = duration, ease = ease, delay = delay,
+			times = times, backval = backval, from = start_val,
+		}
+	end
+end
+
 function element.blend_transition:restart(
 	tran, attr, cur_val, end_val, cur_end_val,
 	duration, ease, delay, times, backval, start_val
@@ -1197,7 +1225,7 @@ function element:sync_transitions()
 end
 
 function element:transitioning(attr)
-	return self.transactions and self.transactions[attr]
+	return self.transitions and self.transitions[attr]
 end
 
 --element sync'ing -----------------------------------------------------------
@@ -2661,6 +2689,7 @@ layer.dragging = false
 --called on the dragged widget when dragging starts.
 function layer:_started_dragging()
 	self.dragging = true
+	self.ui.dragged_widget = self
 	self:settag(':dragging', true)
 	self:fire'started_dragging'
 	self:invalidate()
@@ -2669,6 +2698,7 @@ end
 --called on the dragged widget when dragging ends.
 function layer:_ended_dragging()
 	self.dragging = false
+	self.ui.dragged_widget = false
 	self:settag(':dragging', false)
 	self:fire'ended_dragging'
 	self:invalidate()
@@ -3270,6 +3300,7 @@ layer.background_rotation_cy = 0
 layer.background_scale = 1
 layer.background_scale_cx = 0
 layer.background_scale_cy = 0
+layer.background_extend = 'repeat' --false, 'repeat', 'reflect'
 --solid color backgrounds
 layer.background_color = false --no background
 --gradient backgrounds
@@ -3991,6 +4022,12 @@ function layer:set_y2(y2) self.h = y2 - self.y end
 function layer:size() return self.w, self.h end
 function layer:rect() return self.x, self.y, self.w, self.h end
 
+function layer:get_floating() --layer is floating, i.e. not part of layout
+	if self.dragging then return true end
+	local t = self.transitions
+	return t and (t.x or t.y or t.w or t.h) and true or false
+end
+
 --layouting ------------------------------------------------------------------
 
 layer.layout = false --false/'null', 'textbox', 'flexbox', 'grid'
@@ -4013,19 +4050,19 @@ layer:nochange_barrier'layout'
 --before they can solve it on the other axis. any content-based layout with
 --wrapped content is like that: can't know the height until wrapping the
 --content which needs to know the width (and viceversa for vertical flow).
-function layer:sync_layout_separate_axes()
+function layer:sync_layout_separate_axes(axis_order, min_w, min_h)
 	if not self.visible then return end
-	local sync_x = self.layout_axis_order == 'xy'
+	local sync_x = (axis_order or self.layout_axis_order) == 'xy'
 	local axis_synced, other_axis_synced
 	for phase = 1, 3 do
 		other_axis_synced = axis_synced
 		if sync_x then
 			--sync the x-axis.
-			self.w = self:sync_min_w(other_axis_synced)
+			self.w = max(self:sync_min_w(other_axis_synced), min_w or -1/0)
 			axis_synced = self:sync_layout_x(other_axis_synced)
 		else
 			--sync the y-axis.
-			self.h = self:sync_min_h(other_axis_synced)
+			self.h = max(self:sync_min_h(other_axis_synced), min_h or -1/0)
 			axis_synced = self:sync_layout_y(other_axis_synced)
 		end
 		if axis_synced and other_axis_synced then
@@ -4052,8 +4089,10 @@ end
 --called by null-layout layers to layout themselves and their children.
 function null_layout:sync_layout()
 	if not self.visible then return end
-	self.x, self.w = snap_xw(self.x, self.w)
-	self.y, self.h = snap_xw(self.y, self.h)
+	if not self.floating then
+		self.x, self.w = snap_xw(self.x, self.w)
+		self.y, self.h = snap_xw(self.y, self.h)
+	end
 	self:sync_text_shape()
 	self:sync_text_wrap()
 	self:sync_text_align()
@@ -4111,8 +4150,10 @@ function textbox:sync_layout()
 	self:sync_text_wrap()
 	self.cw = max(segs.lines.max_ax, self.min_cw)
 	self.ch = max(self.min_ch, segs.lines.spacing_h)
-	self.x, self.w = snap_xw(self.x, self.w)
-	self.y, self.h = snap_xw(self.y, self.h)
+	if not self.floating then
+		self.x, self.w = snap_xw(self.x, self.w)
+		self.y, self.h = snap_xw(self.y, self.h)
+	end
 	self:sync_text_align()
 end
 
@@ -4167,7 +4208,7 @@ local function items_sum(self, i, j, _MIN_W)
 	local item_count = 0
 	for i = i, j do
 		local layer = self[i]
-		if layer.visible and not layer.dragging then
+		if layer.visible and not layer.floating then
 			sum_w = sum_w + layer[_MIN_W]
 			item_count = item_count + 1
 		end
@@ -4180,7 +4221,7 @@ local function items_max(self, i, j, _MIN_W)
 	local item_count = 0
 	for i = i, j do
 		local layer = self[i]
-		if layer.visible and not layer.dragging then
+		if layer.visible and not layer.floating then
 			max_w = max(max_w, layer[_MIN_W])
 			item_count = item_count + 1
 		end
@@ -4198,7 +4239,7 @@ local function stretch_items_main_axis(
 	local total_fr = 0
 	for i = i, j do
 		local layer = items[i]
-		if layer.visible and not layer.dragging then
+		if layer.visible and not layer.floating then
 			total_fr = total_fr + max(0, layer.fr)
 		end
 	end
@@ -4208,7 +4249,7 @@ local function stretch_items_main_axis(
 	local total_free_w = 0
 	for i = i, j do
 		local layer = items[i]
-		if layer.visible and not layer.dragging then
+		if layer.visible and not layer.floating then
 			local min_w = layer[_MIN_W]
 			local flex_w = total_w * max(0, layer.fr) / total_fr
 			local overflow_w = max(0, min_w - flex_w)
@@ -4225,7 +4266,7 @@ local function stretch_items_main_axis(
 	local x = 0
 	for i = i, j do
 		local layer = items[i]
-		if layer.visible and not layer.dragging then
+		if layer.visible and not layer.floating then
 			local min_w = layer[_MIN_W]
 			local flex_w = total_w * layer.fr / total_fr
 			local w
@@ -4280,7 +4321,7 @@ local function align_items_main_axis(
 )
 	for i = i, j do
 		local layer = items[i]
-		if layer.visible and not layer.dragging then
+		if layer.visible and not layer.floating then
 			local w = layer[_MIN_W]
 			layer[X], layer[W] = snap_xw(x, w, snap_x)
 			x = x + w + spacing
@@ -4340,7 +4381,7 @@ local function gen_funcs(X, Y, W, H, LEFT, RIGHT, TOP, BOTTOM)
 		local line_w = 0
 		for j = i, #self do
 			local layer = self[j]
-			if layer.visible and not layer.dragging then
+			if layer.visible and not layer.floating then
 				if j > i and layer.break_before then
 					return j-1, i
 				end
@@ -4425,7 +4466,7 @@ local function gen_funcs(X, Y, W, H, LEFT, RIGHT, TOP, BOTTOM)
 		local align = self.align_cross
 		for i = i, j do
 			local layer = self[i]
-			if layer.visible and not layer.dragging then
+			if layer.visible and not layer.floating then
 				local align = layer.align_cross_self or align
 				if align == 'stretch' then
 					layer[Y], layer[H] = snap_xw(line_y, line_h, snap_y)
@@ -4446,7 +4487,7 @@ local function gen_funcs(X, Y, W, H, LEFT, RIGHT, TOP, BOTTOM)
 					elseif align == 'baseline' and Y == 'y' then
 						local baseline = 0
 						for _,layer in ipairs(self) do
-							if layer.visible and not layer.dragging then
+							if layer.visible and not layer.floating then
 								local segs = layer._text_segments
 								if segs then
 									baseline = max(baseline, segs.lines.baseline or 0)
@@ -4510,7 +4551,7 @@ function flexbox:sync_min_w(other_axis_synced)
 
 	--sync all children first (bottom-up sync).
 	for _,layer in ipairs(self) do
-		if layer.visible and not layer.dragging then
+		if layer.visible and not layer.floating then
 			layer:sync_min_w(other_axis_synced) --recurse
 		end
 	end
@@ -4529,7 +4570,7 @@ function flexbox:sync_min_h(other_axis_synced)
 
 	--sync all children first (bottom-up sync).
 	for _,layer in ipairs(self) do
-		if layer.visible and not layer.dragging then
+		if layer.visible and not layer.floating then
 			layer:sync_min_h(other_axis_synced) --recurse
 		end
 	end
@@ -4553,7 +4594,7 @@ function flexbox:sync_layout_x(other_axis_synced)
 	if synced then
 		--sync all children last (top-down sync).
 		for _,layer in ipairs(self) do
-			if layer.visible and not layer.dragging then
+			if layer.visible and not layer.floating then
 				layer:sync_layout_x(other_axis_synced) --recurse
 			end
 		end
@@ -4570,7 +4611,7 @@ function flexbox:sync_layout_y(other_axis_synced)
 	if synced then
 		--sync all children last (top-down sync).
 		for _,layer in ipairs(self) do
-			if layer.visible and not layer.dragging then
+			if layer.visible and not layer.floating then
 				layer:sync_layout_y(other_axis_synced) --recurse
 			end
 		end
@@ -4709,7 +4750,7 @@ function layer:sync_layout_grid_autopos()
 	--grow the grid bounds to include layers outside wrap_row and wrap_col.
 	local missing_indices, negative_indices
 	for _,layer in ipairs(self) do
-		if layer.visible and not layer.dragging then
+		if layer.visible and not layer.floating then
 
 			local row, col, row_span, col_span = ui:grid_pos(layer.grid_pos)
 			row = layer.grid_row or row
@@ -4758,7 +4799,7 @@ function layer:sync_layout_grid_autopos()
 	--the grid bounds, but instead are clipped to it.
 	if negative_indices then
 		for _,layer in ipairs(self) do
-			if layer.visible and not layer.dragging then
+			if layer.visible and not layer.floating then
 				local row = layer._grid_row
 				local col = layer._grid_col
 				if row < 0 or col < 0 then
@@ -4790,7 +4831,7 @@ function layer:sync_layout_grid_autopos()
 	if missing_indices then
 		local row, col = 1, 1
 		for _,layer in ipairs(self) do
-			if layer.visible and not layer.dragging and not layer._grid_row then
+			if layer.visible and not layer.floating and not layer._grid_row then
 				local row_span = layer._grid_row_span
 				local col_span = layer._grid_col_span
 
@@ -4840,7 +4881,7 @@ function layer:sync_layout_grid_autopos()
 	--reverse the order of rows and/or columns depending on grid_flow.
 	if flip_rows or flip_cols then
 		for _,layer in ipairs(self) do
-			if layer.visible and not layer.dragging then
+			if layer.visible and not layer.floating then
 				if flip_rows then
 					layer._grid_row = max_row
 						- layer._grid_row
@@ -4891,7 +4932,7 @@ local function gen_funcs(X, Y, W, H, COL, LEFT, RIGHT)
 
 		--sync all children first (bottom-up sync).
 		for _,layer in ipairs(self) do
-			if layer.visible and not layer.dragging then
+			if layer.visible and not layer.floating then
 				layer[SYNC_MIN_W](layer, other_axis_synced) --recurse
 			end
 		end
@@ -4903,7 +4944,7 @@ local function gen_funcs(X, Y, W, H, COL, LEFT, RIGHT)
 		--compute the fraction representing the total width.
 		local total_fr = 0
 		for _,layer in ipairs(self) do
-			if layer.visible and not layer.dragging then
+			if layer.visible and not layer.floating then
 				local col1 = layer[_COL]
 				local col2 = col1 + layer[_COL_SPAN] - 1
 				for col = col1, col2 do
@@ -4928,7 +4969,7 @@ local function gen_funcs(X, Y, W, H, COL, LEFT, RIGHT)
 
 		--compute the minimum widths for each column.
 		for _,layer in ipairs(self) do
-			if layer.visible and not layer.dragging then
+			if layer.visible and not layer.floating then
 				local col1 = layer[_COL]
 				local col2 = col1 + layer[_COL_SPAN] - 1
 				local span_min_w = layer[_MIN_W]
@@ -5002,7 +5043,7 @@ local function gen_funcs(X, Y, W, H, COL, LEFT, RIGHT)
 
 		local x = 0
 		for _,layer in ipairs(self) do
-			if layer.visible and not layer.dragging then
+			if layer.visible and not layer.floating then
 
 				local col1 = layer[_COL]
 				local col2 = col1 + layer[_COL_SPAN] - 1
@@ -5035,7 +5076,7 @@ local function gen_funcs(X, Y, W, H, COL, LEFT, RIGHT)
 
 		--sync all children last (top-down sync).
 		for _,layer in ipairs(self) do
-			if layer.visible and not layer.dragging then
+			if layer.visible and not layer.floating then
 				layer[SYNC_LAYOUT_X](layer, other_axis_synced) --recurse
 			end
 		end

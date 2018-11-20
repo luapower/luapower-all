@@ -324,11 +324,21 @@ on the `transition_blend` attribute, which can be:
 
   * `'replace'` - replace current transition with the new one, but do nothing
   if the new transition has the same end value as the current one.
+  * `'replace_value'` - replace current transition's end value, or create
+  a new transition.
   * `'restart'` - replace current transition with the new one, and also,
   start from the initial value instead of from the current value.
   * `'wait'` - wait for the current transition to terminate before starting
   the new one, but do nothing if the new transition has the same end value
   as the current one.
+
+### UI State
+
+------------- --------------------------------------- ------------------------
+r/o property  `hot_widget`                            currently hot widget
+r/o property  `active_widget`                         currently active widget
+r/o property  `dragged_widget`                        currently dragged widget
+------------- --------------------------------------- ------------------------
 
 ## Windows
 
@@ -412,19 +422,15 @@ For frameless windows, a layer (usually the layer representing the title bar)
 can be assigned to `win.move_layer` which will set it up to move the window
 when dragged.
 
-## Window state tags
+### Window state
 
--------------------------------------- ---------------------------------------
-`:active`                              the window is active
-`:fullscreen`                          the window is in fullscreen mode
--------------------------------------- ---------------------------------------
-
-### Window mouse state
-
--------------------------------------- ---------------------------------------
-`win.mouse_x, win.mouse_y` \           mouse position at the time of last mouse event.
-`win:mouse_pos() -> x, y`
--------------------------------------- ---------------------------------------
+------------- --------------------------------------- ------------------------
+r/o property  `win.mouse_x, win.mouse_y`              mouse position at the time of last mouse event
+method        `win:mouse_pos() -> x, y`               mouse position at the time of last mouse event
+r/o property  `focused_widget`                        currently focused widget (`false` if none)
+tag           `:active`                               the window is active
+tag           `:fullscreen`                           the window is in fullscreen mode
+------------- --------------------------------------- ------------------------
 
 ## Layers
 
@@ -743,6 +749,8 @@ event         `leave_drop_target(widget)`                  fired on dragged laye
 event         `drop(widget, x, y, area)`                   fired on drop target to perform the drop
 event         `ended_dragging()`                           fired on dragged layer after dragging ended
 event         `end_drag(drag_widget)`                      called on initiating layer after dragging ended
+r/o property  `dragging`                                   layer is being dragged
+r/o property  `floating`                                   layer is being dragged or its box is animating
 tag           `:dragging`                                  layer is being dragged
 tag           `:dropping`                                  dragged layer is over a drop target
 tag           `:drop_target`                               layer is a potential drop target

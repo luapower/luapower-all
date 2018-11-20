@@ -18,14 +18,14 @@ editbox.iswidget = true
 
 --features
 
-editbox.text_align_x = 'left'
-editbox.align_y = 'center'
-editbox.min_ch = 16
 editbox.password = false
 editbox.maxlen = 4096
 
 --metrics & colors
 
+editbox.text_align_x = 'left'
+editbox.align_y = 'center'
+editbox.min_ch = 16
 editbox.w = 180
 editbox.h = 24
 editbox.border_color = '#000'
