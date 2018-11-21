@@ -807,9 +807,10 @@ solved on one axis completely before solving on the other axis. This only
 works properly if all the wrappable content has either horizontal flow
 (so the whole layout is _width-in-height-out_) or vertical flow (so the
 whole layout is _height-in-width-out_). Mixed flows will cause the contents
-which wrap perpendicularly to overflow their container (browsers have this
-limitation too). Setting `min_cw, min_ch` on the cross-flow layers can be
-used to alleviate the problem on a case-by-case basis.
+which wrap perpendicularly to the main flow to overflow their container
+(browsers have this limitation too). Setting `min_cw, min_ch` on the
+cross-flow layers can be used to alleviate the problem on a case-by-case
+basis.
 
 ### The top layer
 
@@ -1229,6 +1230,45 @@ See [glue].autoload.
   table which is also set up to inherit the class, thus providing transparent
   access to defaults.
 
+### Synchronization
+
+Synchronization is about updating a layer's state when its writable
+properties are changed. Some parts of the state are updated directly as a
+result of updating the property (eg. changing a layer's `parent` property
+moves the layer in the layer hierarchy immediately), while others are updated
+on the next frame, in a specific order, in multiple passes through the layer
+hierarchy: on a first pass, styles are applied (if any tags were added or
+removed; this can result in new transitions being created), then transitions
+are updated (if there are any in progress) and finished transitions are
+discarded. This is done via `sync()` which also calls `sync()` recursively
+on the layer's children (hence the top-down call order).
+
+Layouts are updated on a second pass by calling `sync_layout()` on the
+window's view layer.
+
+#### Layout synchronization
+
+Every layer has a layout, which is responsible for sizing itself, as well
+as sizing and positioning its children. Layouts come in two flavors:
+wrapping and non-wrapping.
+
+Non-wrapping layouts (`false` and `'textbox'` types) are computed in a single
+top-down pass via `sync_layout()`.
+
+Wrapping layouts (types `'flexbox'` and `'grid'`) are computed in 4 passes
+as follows, assuming `layout_axis_order = 'xy'`: a bottom-up pass to compute
+the minimum width, a top-down pass to lay out all layers on the x-axis and
+line-wrap the horizontally-flowing text, another bottom-up pass to compute
+the minimum height now that the text has been wrapped, and a final top-down
+pass to lay out all layers on the y-axis. These steps are encapsulated in
+`sync_layout_separate_axes()` which call in order: `sync_min_w()`,
+`sync_layout_x()`, `sync_min_h()`, `sync_layout_y()`.
+
+Because layers with wrapping layouts can have children with non-wrapping
+layouts and viceversa, wrapping layouts must implement `sync_layout()` too
+and likewise, non-wrapping layouts must implement `sync_layout_x()`
+and `sync_layout_y()`.
+
 ## Extending the core engine
 
 Many aspects of the core engine can also be extended with:
@@ -1238,6 +1278,7 @@ Many aspects of the core engine can also be extended with:
   * adding new transition blend modes
   * adding new ways to look-up fonts
   * adding new image file decoders
+  * adding new layout systems.
 
 ## Changing the underlying libraries
 
