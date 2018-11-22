@@ -81,7 +81,6 @@ local function test_layers()
 
 		--clip_content = true,
 		--clip_content = false,
-		--clip_content = 'padding',
 		  clip_content = 'background',
 
 		border_width = 10,

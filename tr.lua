@@ -1362,7 +1362,7 @@ end
 local aligns_x = {left = 'left', center = 'center', right = 'right'}
 local aligns_y = {top = 'top', center = 'center', bottom = 'bottom'}
 
-function segments:align(px, py, w, h, align_x, align_y)
+function segments:align(x, y, w, h, align_x, align_y)
 
 	local lines = self:checklines()
 	align_x = assert(aligns_x[align_x], 'Invalid align_x: %s', align_x)
@@ -1404,14 +1404,16 @@ function segments:align(px, py, w, h, align_x, align_y)
 	end
 
 	--store textbox's origin, which can be changed anytime after layouting.
-	lines.x = px
-	lines.y = py
+	lines.x = x
+	lines.y = y
 
 	--store the rest of the args for automatic relayouting after reshaping.
 	self._w = w
 	self._h = h
 	self._ax = align_x
 	self._ay = align_y
+
+	lines.clipped = false --invalidate clipping
 
 	return self
 end
@@ -1433,8 +1435,16 @@ end
 --NOTE: doesn't take into account side bearings, so it's not 100% accurate!
 function segments:clip(x, y, w, h)
 	local lines = self:checklines()
-	x = x - self.lines.x
-	y = y - self.lines.y - self.lines.baseline
+	if not x then
+		x = lines.x
+		y = lines.y
+		w = self._w
+		h = self._h
+		lines.clipped = true
+	else
+		x = x - lines.x
+		y = y - lines.y - lines.baseline
+	end
 	for _,line in ipairs(lines) do
 		local bx = line.x
 		local bw = line.advance_x
@@ -1455,6 +1465,7 @@ function segments:reset_clip()
 	for _,seg in ipairs(self) do
 		seg.visible = true
 	end
+	self.lines.clipped = false
 end
 
 --painting -------------------------------------------------------------------
@@ -1935,14 +1946,21 @@ end
 --editing text from segments which includes reshaping and relayouting.
 
 function segments:reshape()
-	local x, y, w, h, ha, va
+	local x, y, clipped, w, h, ha, va
 	local t = self.lines
 	if t then
-		x, y, w, h, ha, va = t.x, t.y, self._w, self._h, self._ax, self._ay
+		x, y, clipped, w, h, ha, va =
+			t.x, t.y, t.clipped, self._w, self._h, self._ax, self._ay
 	end
 	self.tr:shape(self.text_runs, self)
 	if x then
-		self:layout(x, y, w, h, ha, va)
+		self:wrap(w)
+		self:align(x, y, w, h, ha, va)
+		if clipped then
+			self:reset_clip()
+			self:clip(x, y, w, h)
+			self.lines.clipped = true
+		end
 	end
 	return self
 end
@@ -1985,6 +2003,11 @@ end
 
 function cursor:size() --size in layout.
 	return self.segments:cursor_size(self.seg, self.cursor_i)
+end
+
+function cursor:line() --line in layout and the lines array.
+	local lines = self.segments.lines
+	return lines[self.seg.line_index], lines
 end
 
 function cursor:hit_test(x, y, ...) --position based on position in layout.
@@ -2067,6 +2090,17 @@ function cursor:next_line(delta, x, park_bos, park_eos) --move vertically in lay
 	return offset, seg, cursor_i, delta
 end
 
+function cursor:next_page_line_index(delta)
+	local x, y = self:pos()
+	local y = y + delta * self.segments._h
+	return self.segments:hit_test_lines(x, y)
+end
+
+function cursor:next_page(delta, ...)
+	local line_index = self:next_page_line_index(delta)
+	return self:next_line(line_index - self.seg.line_index, ...)
+end
+
 function cursor:move(how, delta, ...) --move horizontally or vertically.
 	if how == 'char' then
 		self.x = false
@@ -2074,9 +2108,13 @@ function cursor:move(how, delta, ...) --move horizontally or vertically.
 	elseif how == 'word' then
 		self.x = false
 		return self:set(self:next_word_cursor(delta))
-	elseif how == 'vert' then
+	elseif how == 'line' or how == 'page' then
 		self.x = self.x or self:pos()
-		return self:set(self:next_line(delta, ...))
+		if how == 'page' then
+			return self:set(self:next_page(delta, ...))
+		else
+			return self:set(self:next_line(delta, ...))
+		end
 	else
 		assert(false, 'Invalid arg#1: %s', how)
 	end

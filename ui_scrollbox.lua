@@ -316,13 +316,14 @@ scrollbox.hscrollbar_class = scrollbar
 function scrollbox:after_init(ui, t)
 
 	self.view = self:view_class({
-		clip_content = true,
+		tags = 'scrollbox_view',
+		clip_content = 'background', --we want to pad the content, but not clip it
 		sync_layout = noop, --prevent auto-sync'ing content's layout
 	}, self.view)
 
 	if not self.content or not self.content.islayer then
 		self.content = self.content_class(self.ui, {
-			tags = 'content',
+			tags = 'scrollbox_content',
 			parent = self.view,
 			clip_content = true, --for faster bounding box computation
 		}, self.content)
@@ -437,24 +438,24 @@ function scrollbox:after_sync_layout()
 	view.w = w - (vs_nospace and 0 or sw)
 	view.h = h - (hs_nospace and 0 or sh)
 
-	--if the view's `w` is smaller than the preliminary `w` on which content
-	--reflowing was based on for `auto_w`, then do it again with the real `w`.
-	--the same applies for `h` for `auto_h`.
-	if cw0 and view.w < cw0 then
-		cw0 = view.w
+	--if the view's `cw` is smaller than the preliminary `w` on which content
+	--reflowing was based on for `auto_w`, then do it again with the real `cw`.
+	--the same applies for `ch` for `auto_h`.
+	if cw0 and view.cw < cw0 then
+		cw0 = view.cw
 		goto reflow
-	elseif ch0 and view.h < ch0 then
-		ch0 = view.h
+	elseif ch0 and view.ch < ch0 then
+		ch0 = view.ch
 		goto reflow
 	end
 
 	--reset the scrollbars state.
-	hs:reset(cw, view.w, hs.offset)
-	vs:reset(ch, view.h, vs.offset)
+	hs:reset(cw, view.cw, hs.offset)
+	vs:reset(ch, view.ch, vs.offset)
 
 	--scroll the content layer.
-	content.y = -vs.offset
-	content.x = -hs.offset
+	content.x = -hs.offset * content.w / cw -- content.pw1
+	content.y = -vs.offset * content.h / ch -- content.ph1
 
 	--compute scrollbar dimensions.
 	vs.w = view.h - 2 * vs_margin --.w is its height!
@@ -481,7 +482,22 @@ end
 
 --scroll API
 
+scrollbox.scroll_margin = 0
+scrollbox.scroll_margin_left = false
+scrollbox.scroll_margin_right = false
+scrollbox.scroll_margin_top = false
+scrollbox.scroll_margin_bottom = false
+
 function scrollbox:scroll_to_view(x, y, w, h) --x, y is in content's content space.
+	local m = self.scroll_margin
+	local mw1 = self.scroll_margin_left or m
+	local mw2 = self.scroll_margin_right or m
+	local mh1 = self.scroll_margin_top or m
+	local mh2 = self.scroll_margin_bottom or m
+	x = x - mw1
+	y = y - mh1
+	w = w + mw1 + mw2
+	h = h + mh1 + mh2
 	x, y = self.content:from_content(x, y)
 	self.hscrollbar:scroll_to_view(x, w)
 	self.vscrollbar:scroll_to_view(y, h)

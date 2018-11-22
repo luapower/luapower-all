@@ -253,7 +253,7 @@ end
 
 --drawing
 
-tab.clip_content = 'background' --TODO: find a way to set this as 'padding'
+tab.clip_content = 'background' --TODO: find a way to set this to true
 tab.border_width = 1
 tab.border_color = '#222'
 tab.background_color = '#111'

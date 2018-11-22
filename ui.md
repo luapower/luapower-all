@@ -459,9 +459,8 @@ __behavior__
 `visible`                            `true`             visible and occupies space in the layout
 `enabled`                            `true`             looks enabled and can receive input
 `activable`                          `true`             can be clicked and hovered (set as hot)
-`vscrollable`                        `false`            enable mouse wheel when hot and not focused
-`hscrollable`                        `false`            enable mouse horiz. wheel when hot and not focused
-`scrollable`                         `false`            can be hit for vscroll or hscroll
+`vscrollable`                        `false`            enable mouse wheel when hot
+`hscrollable`                        `false`            enable mouse horiz. wheel when hot
 `focusable`                          `false`            can be focused
 `draggable`                          `true`             can be dragged (still needs to respond to `start_drag()`)
 `background_hittable`                `true`             background area receives mouse input even when there's no background
@@ -736,6 +735,9 @@ method        `focus()`                                    focus the layer
 method        `unfocus()`                                  unfocus the layer
 event         `gotfocus()`                                 layer was focused
 event         `lostfocus()`                                layer was unfocused
+tag           `:window_active`                             layer has focus and window is active
+event         `window_activated()`                         window was activated while layer has focus
+event         `window_deactivated()`                       window was deactivated while layer has focus
               __keyboard events__
 event         `keydown(key)`                               a key was pressed
 event         `keyup(key)`                                 a key was released
@@ -902,12 +904,15 @@ r/w property `selection_color`                   `'#66f8'`    selection fill col
 __hit testing__
 hittest area `text`                                           area over unselected text
 hittest area `selection`                                      area over a selection rectangle
+__moving__
+event        `caret_moved()`                                  caret moved
 __editing__
 r/o property `text_len`                                       text length in codepoints
 r/w property `insert_mode`                       `false`      insert mode (Insert key toggles)
 r/o property `edited`                            `false`      text was edited
 method       `undo()`                                         undo the last operation
 method       `redo()`                                         redo the last operation
+event        `text_changed()`                                 text changed
 __drawing__
 method       `caret_rect() -> x, y, w, h`                     caret rectangle
 method       `draw_password_char(cr, i, w, h)`                draw a password hiding symbol
@@ -1060,6 +1065,7 @@ r/w property `autohide`                          `false`      hide when mouse is
 r/w property `autohide_empty`                    `true`       hide when content is smaller than the view
 r/w property `autohide_distance`                 `20`         distance around the scrollbar for `autohide`
 r/w property `click_scroll_length`               `300`        how much to scroll when clicking on the track
+r/w property `margin`                            `nil`        margin when inside a scrollbox
 tag          `:near`                                          autohidden scrollbar is visible
 tag          `vertical`                                       scrollbar is vertical
 tag          `horizontal`                                     scrollbar is horizontal
@@ -1078,10 +1084,13 @@ Scroll boxes are created with `ui:scrollbox(attrs1, ...)`.
 r/w property `wheel_scroll_length`               `50`         how much is a mouse wheel notch
 r/w property `auto_h`                            `false`      auto-height: TODO
 r/w property `auto_w`                            `false`      auto-width: TODO
+r/w property `scroll_margin`                     `0`          `scroll_to_view()` margin
+r/w property `scroll_margin_<side>`              `false`      `scroll_margin` side overrides
 component    `vscrollbar`                                     the vertical scrollbar
 component    `hscrollbar`                                     the horizontal scrollbar
-method       `scroll_to_view(x,y,w,h)`                        x, y is in content's content space.
-method       `scrollbox:view_rect() -> x,y,w,h`               view rect in content's content space.
+component    `view`                                           content's parent layer
+method       `scroll_to_view(x, y, w, h)`                     scroll to view rect in content's content space.
+method       `view_rect() -> x,y,w,h`                         view rect in content's content space.
 ------------ ----------------------------------- ------------ ----------------
 
 ## Tab lists

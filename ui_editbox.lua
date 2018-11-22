@@ -33,7 +33,7 @@ editbox.border_color = '#000'
 --own properties
 editbox.caret_color = '#fff'
 editbox.caret_opacity = 1
-editbox.selection_color = '#66f8'
+editbox.selection_color = '#66f6'
 
 editbox.tags = 'standalone'
 
@@ -42,15 +42,10 @@ ui:style('editbox standalone, editbox_scrollbox standalone', {
 	border_color = '#333',
 })
 
-ui:style('editbox_scrollbox', {
-	padding = 1,
-})
-
-ui:style('editbox_scrollbox > editbox', {
-	padding = 30,
-	border_color = '#333',
-	border_width = 30,
-})
+--keep the same padding for the multiline editbox.
+ui:style('editbox_scrollbox > editbox', {padding = 0})
+ui:style('editbox_scrollbox', {padding = 1})
+ui:style('editbox_scrollbox > scrollbox_view', {padding = 3})
 
 --TODO: :child_hot
 ui:style('editbox :hot, editbox_scrollbox :child_hot', {
@@ -68,16 +63,22 @@ ui:style('editbox :insert_mode', {
 	caret_color = '#fff8',
 })
 
+ui:style('editbox !:window_active', {
+	caret_opacity = 0,
+	selection_color = '#66f3',
+})
+
 --animation
 
 --caret blinking
-ui:style('editbox :focused !:insert_mode', {
+ui:style('editbox :focused !:insert_mode :window_active', {
 	caret_opacity = 0,
 	transition_caret_opacity = true,
 	transition_delay_caret_opacity = function(self)
 		return self.ui.caret_blink_time
 	end,
 	transition_times_caret_opacity = 1/0, --blink indefinitely
+	transition_blend_caret_opacity = 'restart',
 })
 
 ui:style([[
@@ -162,9 +163,9 @@ function editbox:after_init(ui, t)
 	self.selection = self:sync_text_shape():selection() or false
 	self.text = t.text
 
-	--reset the caret blinking whenever the cursor is being acted upon,
-	--regardles of whether it changes position or not.
 	if self.selection then
+		--reset the caret blinking whenever the cursor is being acted upon,
+		--regardles of whether it changes position or not.
 		local c1, c2 = self.selection:cursors()
 		local set = c1.set
 		function c1.set(...)
@@ -175,6 +176,12 @@ function editbox:after_init(ui, t)
 		function c2.set(...)
 			self:blink_caret()
 			return set(...)
+		end
+
+		--scroll to view the caret and fire the `caret_moved` event.
+		function self.selection.cursor1.changed()
+			self:scroll_to_view_caret()
+			self:fire'caret_moved'
 		end
 	end
 end
@@ -201,6 +208,8 @@ function editbox:create_scrollbox()
 		content = self,
 		editbox = self,
 		auto_w = true,
+		min_cw = self.min_cw,
+		min_ch = self.min_ch,
 		x = self.x,
 		y = self.y,
 		w = self.w,
@@ -226,12 +235,10 @@ function editbox:after_set_multiline(multiline)
 			self:settag('standalone', false)
 			self.scrollbox:settag('standalone', true)
 		end
-		function self.scrollbox:after_sync()
-			self.editbox:sync_scrollbox()
-		end
 		self.clip_content = false --enable real (strict) bounding box
-		self.scrollbox.vscrollbar.step = 1 --prevent blurry text
+		self.layout = 'textbox'
 	else
+		self.layout = false
 		self.nowrap = true
 		self.clip_content = true
 		if self.scrollbox then
@@ -246,20 +253,12 @@ function editbox:after_set_multiline(multiline)
 	end
 end
 
---sync'ing
-
-function editbox:sync_scrollbox()
-
-	local segs = self:sync_text_shape()
-	local bx, by, bw, bh = segs:bounding_box()
-	local cx, cy, cw, ch = self:caret_rect()
-
-	if cx == 0 then cx = -1/0 end --TODO: fix right-align case too
-	self.scrollbox:scroll_to_view(cx, cy, cw, ch)
-
-	--TODO: set this only if view rect changed!
-	segs.lines.editbox_clipped = false
+function editbox:scroll_to_view_caret()
+	if not self.scrollbox then return end
+	self.scrollbox:scroll_to_view(self:caret_scroll_rect())
 end
+
+--sync'ing
 
 function editbox:text_visible()
 	return true --always sync, even for the empty string.
@@ -278,7 +277,17 @@ function editbox:caret_rect()
 	if not self.insert_mode then
 		w = w > 0 and 1 or -1
 	end
-	return x, y, w, h, dir
+	return snap(x), snap(y), w, h, dir
+end
+
+function editbox:caret_scroll_rect()
+	local x, y, w, h = self:caret_rect()
+	--enlarge the caret rect to contain the line spacing.
+	local c1 = self.selection.cursor1
+	local line = c1:line()
+	local y = y + line.ascent - line.spacing_ascent
+	local h = line.spacing_ascent - line.spacing_descent
+	return x, y, w, h
 end
 
 function editbox:override_sync_text_align(inherited)
@@ -321,26 +330,7 @@ function editbox:override_sync_text_align(inherited)
 			--reset the x-offset in order to use the default alignment from `tr`.
 			segs.lines.x = 0 + adjustment
 		end
-
-		--clip the text segments to the content rectangle to avoid drawing
-		--any invisible text segments. mark the lines as clipped in the `lines`
-		--table because `lines` will be replaced after re-layouting.
-		if not self.password then
-			if segs.lines.x ~= sx or not segs.lines.editbox_clipped then
-				segs:clip(self:client_rect())
-				segs.lines.editbox_clipped = true
-			end
-		end
-	else
-
-		--clip the text segments to the scrollbox view rectangle.
-		if not segs.lines.editbox_clipped then
-			segs:clip(self.scrollbox:view_rect())
-			segs.lines.editbox_clipped = true
-		end
-
 	end
-
 	return segs
 end
 
@@ -379,8 +369,7 @@ function editbox:blink_caret()
 	self.caret_visible = true
 	self:transition{
 		attr = 'caret_opacity',
-		blend = 'restart',
-		val = self.end_value,
+		val = self:end_value'caret_opacity',
 	}
 	self:invalidate()
 end
@@ -515,20 +504,29 @@ function editbox:keypress(key)
 		end
 	elseif
 		key == 'up' or key == 'down'
-		or (ctrl and (key == 'home' or key == 'end'))
+		or key == 'pageup' or key == 'pagedown'
+		or key == 'home' or key == 'end'
 	then
-		self:undo_group()
-		local step =
-			key == 'down' and 1
-			or key =='up' and -1
-			or key == 'home' and -1/0
-			or key == 'end' and 1/0
-		if self.selection.cursor1:move('vert', step) then
-			if not shift then
-				self.selection.cursor2:move_to_cursor(self.selection.cursor1)
-			end
-			return true
+		local how, by
+		if key == 'up' then
+			how, by = 'line', -1
+		elseif key == 'down' then
+			how, by = 'line', 1
+		elseif key == 'pageup' then
+			how, by = 'page', -1
+		elseif key == 'pagedown' then
+			how, by = 'page', 1
+		elseif key == 'home' then
+			how, by = 'line', -1/0
+		elseif key == 'end' then
+			how, by = 'line', 1/0
 		end
+		self:undo_group()
+		local moved = self.selection.cursor1:move(how, by)
+		if not shift then
+			self.selection.cursor2:move_to_cursor(self.selection.cursor1)
+		end
+		return moved
 	elseif key_only and key == 'insert' then
 		self.insert_mode = not self.insert_mode
 		return true
@@ -678,7 +676,6 @@ function editbox:text_to_mask(x, y)
 		local line_x = segs:line_pos(1)
 		local i = segs.lines.pw_cursor_is[snap(x - line_x, 1/256)]
 		x = line_x + i * self:password_char_advance_x()
-		x = snap(x, 1) --prevent blurry carets
 	end
 	return x, y
 end
@@ -846,16 +843,10 @@ if not ... then require('ui_demo')(function(ui, win)
 
 	--multiline
 	ui:editbox{
-		scrollbox = {vscrollbar = {h = 50}},
 		x = x, y = y, parent = win,
 		h = 200,
 		parent = win,
-		text = [[
-Hello World! Hello World! Hello World! Hello World! Hello World!
-Hello World!
-Hello World! Hello World!
-]]		,
-text = 'Hello',
+		text = ('HelloWorldHelloWorldHelloWorld! '):rep(20),
 		multiline = true,
 		cue = 'Type text here...',
 	}

@@ -36,14 +36,14 @@ __shaping & layouting__
 `segs:bounding_box() -> x, y, w, h`                  bounding box of laid out text
 __rendering__
 `segs:paint(cr)`                                     paint laid out text
-`segs:clip(x, y, w, h)`                              clip visible text to rectangle
+`segs:clip([x, y, w, h])`                            clip visible text to rectangle
 `segs:reset_clip()`                                  reset clipping area
 `tr:textbox(text_tree, cr, x, y, w, h, [ax], [ay])`  shape, layout and paint text
 __cursors__
 `segs:cursor([offset]) -> cursor`                    create a cursor
 `cursor:pos() -> x, y`                               cursor position
 `cursor:size() -> w, h, rtl`                         cursor size and direction
-`cursor:set_offset(offset)`                          move cursor to text offset
+`cursor:line() -> line, lines`                       cursor's line object and lines array
 `cursor:hit_test(x, y, ...) -> off, seg, i, line_i`  hit test for cursor position
 `cursor:move_to_offset(offset)`                      move cursor to closest offset in text
 `cursor:move_to_pos(x, y, ...)`                      move cursor to closest position
@@ -185,7 +185,7 @@ Creates the `segs.lines` table with the following fields:
   * `h`: text's wrapped height.
   * `spacing_h`: text's wrapped height including line spacing.
 
-The table also contains a list of lines in its array part with the fields:
+and with a list of lines in its array part, with the fields:
 
   * `advance_x`: x-advance of the last segment.
   * `ascent`: maximum ascent.
@@ -196,6 +196,12 @@ The table also contains a list of lines in its array part with the fields:
   * `paragraph_spacing`: paragraph spacing for this line.
   * `x`: line's ualigned x-offset (0).
   * `y`: line's y-offset relative to the first line's baseline.
+
+Also sets the following fields on each segment:
+
+  * `seg.x`: segment's x-position.
+  * `seg.advance_x`: segment's x-advance.
+  * `seg.line_index`: segment's line index.
 
 NOTE: The `lines` table _can_ contain zero lines, but only if the `segs`
 table has zero segments, which only happens when there are errors.
@@ -215,7 +221,7 @@ Sets the following fields in `segs.lines`:
   * `min_x`: x-offset of the leftmost line relative to the textbox's origin.
   * `baseline`: first line's baseline relative to the textbox's origin.
 
-Also sets the following fields for each line:
+Also sets the following fields on each line:
 
   * `x`: line's aligned x-offset relative to textbox's origin.
 
@@ -246,10 +252,13 @@ handle blitting of (clipped portions of) 8-bit gray and 32-bit BGRA bitmaps
 and also bitmap scaling if you use bitmap fonts, since freetype doesn't handle
 that.
 
-### `segs:clip(x, y, w, h)`
+### `segs:clip([x, y, w, h])`
 
 Mark all lines and segments which are completely outside the given rectangle
 as invisible, and everything else as visible.
+
+If no rectangle given, the segments are clipped to the rectangle from the
+last call to `align()`.
 
 ### `segs:reset_clip()`
 
@@ -267,6 +276,13 @@ layouting or painting can be done again without reshaping.
 Create a cursor, optionally placing it at a text offset (which defaults to `0`).
 Returns `nil` if the segments table contain no segments.
 
+Cursor state fields:
+
+  * `segments` - a reference to the segments table.
+  * `offset` - the offset in text.
+  * `seg` - the segment.
+  * `cursor_i` - position in text relative to the segment.
+
 ### `cursor:pos() -> x, y`
 
 Get cursor position.
@@ -275,9 +291,9 @@ Get cursor position.
 
 Get cursor size and direction.
 
-### `cursor:set_offset(offset)`
+### `cursor:line() -> line, lines`
 
-Move cursor to text offset.
+Get cursor line object and the lines array.
 
 ### `cursor:hit_test(x, y, ...) -> off, seg, i, line_i`
 
@@ -299,9 +315,10 @@ Next/prev `delta` cursors in text (`delta` defaults to `1`).
 
 Move cursor in text, vertically or horizontally.
 
-  * `how` can be `'char'`, `'word'`, or `'vert'`.
+  * `how` can be `'char'`, `'word'`, `'line'`, `'page'`.
   * `delta` defaults to `1`.
-  * for `'vert'`, extra args are expected: `x`, `park_bos`, `park_eos`.
+  * for `'line'` and `'page'` modes, extra args are expected:
+  `x`, `park_bos`, `park_eos`.
 
 ### `cursor:changed()`
 
@@ -358,7 +375,8 @@ Selected text as utf-8 string.
 
 ### `sel:replace(s, [len], [charset], [maxlen]) -> t|f`
 
-Replace selection with text.
+Replace selection with text. The text is re-shaped, re-wrapped, re-aligned
+and re-clipped to the align box (if it was previously clipped to it).
 
 ## Rendering stages
 
