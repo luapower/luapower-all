@@ -1512,11 +1512,10 @@ function window:override_init(inherited, ui, t)
 
 	self._cw, self._ch = win:client_size()
 
-	function win.closing(win, closing_win)
-		local reason = self._close_reason
-		self._close_reason = false
-		return self:closing(reason, closing_win.ui_window)
-	end
+	win:on({'closing', self}, function(win, reason, closing_win, ...)
+		closing_win = closing_win and closing_win.ui_window
+		return self:fire('closing', reason, closing_win, ...)
+	end)
 
 	win:on({'closed', self}, function(win)
 		self:fire('closed')
@@ -1824,14 +1823,7 @@ for prop, writable in pairs(props) do
 end
 
 --methods
-function window:closing(reason, closing_win) end --stub
-function window:close(reason)
-	--closing asynchronously so that we don't destroy the window inside an event.
-	self.ui:runafter(0, function()
-		self._close_reason = reason
-		self.native_window:close()
-	end)
-end
+function window:close(force)  self.native_window:close(force) end
 function window:show()        self.native_window:show() end
 function window:hide()        self.native_window:hide() end
 function window:activate()    self.native_window:activate() end
@@ -2370,9 +2362,7 @@ function layer:before_free()
 		self.ui.active_widget = false
 	end
 	self:_free_children()
-	if self.parent then
-		self.parent:remove_layer(self, true)
-	end
+	self.parent = false
 end
 
 --layer relative geometry & matrix -------------------------------------------
@@ -2583,13 +2573,11 @@ function layer:add_layer(layer, index) --parent interface
 	layer:_update_enabled(layer.enabled)
 end
 
-function layer:remove_layer(layer, freeing) --parent interface
+function layer:remove_layer(layer) --parent interface
 	assert(layer._parent == self)
 	self:off({nil, layer})
 	popval(self, layer)
-	if not freeing then
-		self:fire('layer_removed', layer)
-	end
+	self:fire('layer_removed', layer)
 	layer._parent = false
 	layer.window = false
 	layer:_update_enabled(layer.enabled)
@@ -4194,6 +4182,7 @@ function textbox:sync_layout()
 		self.y, self.h = snap_xw(self.y, self.h)
 	end
 	self:sync_text_align()
+	self:sync_layout_children()
 end
 
 function textbox:sync_min_w(other_axis_synced)
@@ -4236,6 +4225,7 @@ end
 function textbox:sync_layout_y(other_axis_synced)
 	if other_axis_synced then
 		self:sync_text_align()
+		self:sync_layout_children()
 		return true
 	end
 end

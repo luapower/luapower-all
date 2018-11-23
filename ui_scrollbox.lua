@@ -315,22 +315,6 @@ scrollbox.hscrollbar_class = scrollbar
 
 function scrollbox:after_init(ui, t)
 
-	self.view = self:view_class({
-		tags = 'scrollbox_view',
-		clip_content = 'background', --we want to pad the content, but not clip it
-		sync_layout = noop, --prevent auto-sync'ing content's layout
-	}, self.view)
-
-	if not self.content or not self.content.islayer then
-		self.content = self.content_class(self.ui, {
-			tags = 'scrollbox_content',
-			parent = self.view,
-			clip_content = true, --for faster bounding box computation
-		}, self.content)
-	elseif self.content then
-		self.content.parent = self.view
-	end
-
 	self.vscrollbar = self:vscrollbar_class({
 		tags = 'vscrollbar',
 		scrollbox = self,
@@ -357,6 +341,25 @@ function scrollbox:after_init(ui, t)
 		return inherited(self, mx, my)
 			or (not brk and vs.autohide and vs:check_visible(mx, my, true))
 	end
+
+	--NOTE: the view is created last so it is freed first, so that the
+	--content can still access the scrollbox on its dying breath!
+	self.view = self:view_class({
+		tags = 'scrollbox_view',
+		clip_content = 'background', --we want to pad the content, but not clip it
+		sync_layout = noop, --prevent auto-sync'ing content's layout
+	}, self.view)
+
+	if not self.content or not self.content.islayer then
+		self.content = self.content_class(self.ui, {
+			tags = 'scrollbox_content',
+			parent = self.view,
+			clip_content = true, --for faster bounding box computation
+		}, self.content)
+	elseif self.content then
+		self.content.parent = self.view
+	end
+
 end
 
 --mouse interaction: wheel scrolling

@@ -745,24 +745,32 @@ editbox.cue_layer_class = ui.layer
 editbox:init_ignore{cue=1}
 
 function editbox:create_cue_layer()
-	return self.cue_layer_class(self.ui, {
+	local cue_layer = self.cue_layer_class(self.ui, {
 		tags = 'cue_layer',
 		parent = self,
 		editbox = self,
 		activable = false,
 		nowrap = true,
 	}, self.cue_layer)
+
+	function cue_layer:before_sync_layout()
+		local ed = self.editbox
+		self.visible = ed.text_len == 0
+			and (not ed.show_cue_when_focused or ed.focused)
+		if self.visible then
+			self.text_align_x = ed.text_align_x
+			self.text_align_y = ed.text_align_y
+			self.w = ed.cw
+			self.h = ed.ch
+		end
+	end
+
+	return cue_layer
 end
 
 function editbox:after_init(ui, t)
 	self.cue_layer = self:create_cue_layer()
 	self.cue = t.cue
-end
-
-function editbox:after_sync()
-	self.cue_layer.text_align_x = self.text_align_x
-	self.cue_layer.visible = self.text_len == 0
-		and (not self.show_cue_when_focused or self.focused)
 end
 
 --demo -----------------------------------------------------------------------
@@ -787,6 +795,7 @@ if not ... then require('ui_demo')(function(ui, win)
 	ui:editbox{
 		x = x, y = y, parent = win,
 		text = 'Hello World!',
+		cue = 'Type text here...',
 	}
 	xy()
 
@@ -844,25 +853,22 @@ if not ... then require('ui_demo')(function(ui, win)
 	--multiline
 	ui:editbox{
 		x = x, y = y, parent = win,
-		h = 200,
+		h = 100,
 		parent = win,
 		text = ('HelloWorldHelloWorldHelloWorld! '):rep(20),
+		multiline = true,
+	}
+	xy()
+
+	--multiline
+	ui:editbox{
+		x = x, y = y, parent = win,
+		h = 100,
+		parent = win,
+		text = (('Hello World!  '):rep(4)..'Enter  \n'):rep(4),
 		multiline = true,
 		cue = 'Type text here...',
 	}
 	xy()
-
-	--[[
-	local t0 = require'time'.clock()
-	require'jit.p'.start()
-	ed3.selection.cursor1:move_to_offset(0)
-	ed3.selection.cursor2:move_to_offset(10)
-	assert(not ed3.selection:empty())
-	ed3:replace_selection('1234')
-	ed3:sync_text_shape()
-	require'jit.p'.stop()
-	print(require'time'.clock() - t0)
-	--win:close()
-	]]
 
 end) end

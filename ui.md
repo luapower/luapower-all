@@ -1155,6 +1155,7 @@ or extend existing ones are:
     * borders, backgrounds, shadows, aligned text
     * hit testing
     * layouting, for making the widgets elastic
+	 * freeing order
   * the `ui.window` and `ui.layer` classes, which together provide an input model:
     * routing mouse events to the hot widget; mouse capturing
     * routing keyboard events to the focused widget; tab-based navigation
@@ -1277,6 +1278,12 @@ Because layers with wrapping layouts can have children with non-wrapping
 layouts and viceversa, wrapping layouts must implement `sync_layout()` too
 and likewise, non-wrapping layouts must implement `sync_layout_x()`
 and `sync_layout_y()`.
+
+### Freeing order
+
+When a layer is freed, it is first unfocused, then its children are removed
+recursively depth-first, from the topmost to the bottommost, then the layer
+is removed from its parent.
 
 ## Extending the core engine
 

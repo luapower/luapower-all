@@ -96,7 +96,7 @@ __window closing__
 `win:free([force])`                          close the window and destroy it
 `win:hideonclose(t|f) /-> t|f`               hide on close or destroy on close
 `win:dead() -> t|f`                          check if the window was destroyed
-`win:closing(reason, closing_win)`           event: closing (return `false` to refuse)
+`win:closing(reason, [closing_win])`         event: closing (return `false` to refuse)
 `win:closed()`                               event: window is about to be destroyed
 `win:closeable() -> t|f`                     closeable flag
 __window & app activation__

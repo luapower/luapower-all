@@ -1,7 +1,7 @@
 --go @ luajit -jp=a *
 
-local time = require'time'
 local ui = require'ui'
+local time = require'time'
 local win = ui:window{x = 700, y = 100, cw = 1200, ch = 700, visible = false, autoquit=true}
 function win:keyup(key) if key == 'esc' then self:close() end end
 
@@ -643,12 +643,12 @@ Ne mea nobis scaevola partiendo, sit ei accusamus expetendis. Omnium repudiandae
 		--editable = true,
 	}
 
-	--[==[
 	ui:editbox{
 		parent = win,
 		multiline = true,
 	}
 
+	--[==[
 	ui:dropdown{
 		parent = win,
 		picker = {rows = {'Row 1', 'Row 2', 'Row 3'}},
