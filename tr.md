@@ -471,7 +471,7 @@ at *cluster* boundaries (a term which means indivisible unit of text from
 harfbuzz's point of view) but additional cursors are also created at
 *grapheme boundaries* for clusters/glyphs that cover multiple graphemes like
 ligated "fi" pairs. Some OpenType fonts contain cursor positions for such
-ligatures which are used for this case, if available.
+ligatures which are used in this case if available.
 
 Duplicate cursors are not pruned. For example, the first cursor of the glyph
 run of any segment is the same as the last cursor of the glyph run of the
@@ -505,7 +505,7 @@ approach, and only collapse the last space character and not the entire
 whitespace when doing line-wrapping.
 
 Another subtle point is that in RTL runs, this logically-trailing whitespace
-is visually at the beginning of the word, thus the glyph run (along with its
-cursor positions) must be shifted one space-character to the left. The
-segment's `x` field contains this adjustment.
+is visually at the beginning of the word, thus the glyph run that contains it
+(along with its cursor positions) must be shifted one space-character to the
+left. The segment's `x` field contains this adjustment.
 
