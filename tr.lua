@@ -1618,68 +1618,92 @@ end
 local function cmp_ys(lines, i, y)
 	return lines[i].y - lines[i].spacing_descent < y -- < < [=] = < <
 end
-function segments:hit_test_lines(x, y,
-	extend_top, extend_bottom, extend_left, extend_right
-)
+function segments:hit_test_lines(x, y)
 	local lines = self:checklines()
 	x = x - lines.x
 	y = y - (lines.y + lines.baseline)
 	if y < -lines[1].spacing_ascent then
-		return default_true(extend_top) and 1 or nil
+		return 1, 'top'
 	elseif y > lines[#lines].y - lines[#lines].spacing_descent then
-		return default_true(extend_bottom) and #lines or nil
+		return #lines, 'bottom'
 	else
 		local i = binsearch(y, lines, cmp_ys) or #lines
 		local line = lines[i]
-		return (default_true(extend_left) or x >= line.x)
-			and (default_true(extend_right) or x <= line.x + line.advance_x)
-			and i or nil
+		local x = x - line.x
+		if x < 0 then
+			return i, 'left'
+		elseif x > line.advance_x then
+			return i, 'right'
+		else
+			return i
+		end
 	end
 end
 
 --hit-test a line for a cursor position given a line number and an x-coord.
 function segments:hit_test_line(line_i, x,
-	extend_left, extend_right, park_bos, park_eos
+	extend_top, extend_bottom, extend_left, extend_right, park_bos, park_eos
 )
-	if default_true(park_bos) and line_i < 1 then
-		x = -1/0
-	elseif default_true(park_eos) and line_i > #self.lines then
-		x = 1/0
-	end
+	extend_left   = default_true(extend_left)
+	extend_right  = default_true(extend_right)
+	extend_top    = default_true(extend_top)
+	extend_bottom = default_true(extend_bottom)
+	park_bos      = default_true(park_bos)
+	park_eos      = default_true(park_eos)
+
 	local lines = self:checklines()
+	if not extend_top and line_i < 1 then
+		if park_bos then
+			return self:cursor_at_offset(0)
+		else
+			return nil, 'top'
+		end
+	elseif not extend_bottom and line_i > #lines then
+		if park_eos then
+			return self:cursor_at_offset(1/0)
+		else
+			return nil, 'bottom'
+		end
+	end
+
 	local line_i = clamp(line_i, 1, #lines)
 	local line = lines[line_i]
 	local x = x - lines.x - line.x
+	if not extend_left and x < 0 then
+		return nil, 'left'
+	elseif not extend_right and x > line.advance_x then
+		return nil, 'right'
+	end
 	--TODO: use binsearch here.
 	for seg_i, seg in ipairs(line) do
 		local run = seg.glyph_run
 		local x = x - seg.x
-		if ((default_true(extend_left) and seg_i == 1) or x >= 0)
-			and ((default_true(extend_right) and seg_i == #line) or x <= seg.advance_x)
-		then
-			--find the cursor position closest to x.
-			--TODO: use binsearch here.
-			if x == -1/0 then
-				return seg, 0
-			elseif x == 1/0 then
-				return seg, run.text_len
-			else
-				local min_d, ci = 1/0
-				for i = 0, run.text_len do
-					local d = math.abs(seg.glyph_run.cursor_xs[i] - x)
-					if d < min_d then
-						min_d, ci = d, i
-					end
+		--find the cursor position closest to x.
+		--TODO: use binsearch here.
+		if x == -1/0 then
+			return seg, 0
+		elseif x == 1/0 then
+			return seg, run.text_len
+		else
+			local min_d, ci = 1/0
+			for i = 0, run.text_len do
+				local d = math.abs(seg.glyph_run.cursor_xs[i] - x)
+				if d < min_d then
+					min_d, ci = d, i
 				end
-				return seg, ci
 			end
+			return seg, ci
 		end
 	end
 end
 
-function segments:hit_test(x, y, extend_top, extend_bottom, ...)
-	local line_i = self:hit_test_lines(x, y, extend_top, extend_bottom, ...)
-	if not line_i then return nil end
+function segments:hit_test(x, y, ...)
+	local line_i, out_side = self:hit_test_lines(x, y)
+	if out_side == 'top' then
+		line_i = -1/0
+	elseif out_side == 'bottom' then
+		line_i = 1/0
+	end
 	return self:hit_test_line(line_i, x, ...)
 end
 

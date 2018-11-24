@@ -311,23 +311,30 @@ Get cursor line object and the lines array.
 Find a cursor position based on passed args and, for some values of `what`,
 based on the current cursor position. Possible argument combinations:
 
-  * `'pos', x, y, [extend_top], [extend_bottom], [extend_left], [extend_right]`:  position at coords (hit test)
-  * `'offset'`:  position at offset in text
-  * `'next_pos', [positions_away]`:  position some visual positions away
-  * `'next_offset', [positions_away]`:  position some text positions away
-  * `'next_pos_and_offset', [positions_away]`:  position some visual/text positions away
-  * `'next_word', [words_away]`:  position some words away
-  * `'line', line_num, [x], [extend_left], [extend_right], [park_bos], [park_eos]`:  position on a specific line
-  * `'next_line', [lines_away], [x], [extend_left], [extend_right], [park_bos], [park_eos]`:  position some lines away from the cursor
-  * `'page', page_num, [x], [extend_top], [extend_bottom], [extend_left], [extend_right]`:  position at the first line of a specific page
-  * `'next_page', [pages_away], [x], [extend_top], [extend_bottom], [extend_left], [extend_right]`:  position some pages away from the cursor
+------------------------------------------------ -----------------------------
+`'offset'                                     `  position at offset in text
+`'next_pos',            [positions_away]      `  position some visual positions away
+`'next_offset',         [positions_away]      `  position some text positions away
+`'next_pos_and_offset', [positions_away]      `  position some visual/text positions away
+`'next_word',           [words_away]          `  position some words away
+`'pos', x, y,                              ...`  position at coords (hit test)
+`'line',                line_num,     [x], ...`  position on a specific line
+`'page',                page_num,     [x], ...`  position at the first line of a specific page
+`'next_line',           [lines_away], [x], ...`  position some lines away from the cursor
+`'next_page',           [pages_away], [x], ...`  position some pages away from the cursor
+------------------------------------------------ -----------------------------
 
-Some of the above arguments mean:
+In the table above:
 
-  * `*_away`: number (`1`): indicates a relative position and can be positive or negative.
-  * `extend_*`: boolean (`true`): if the point exceeds this side of the lines, consider the point inside.
-  * `park_bos`: boolean (`true`): if line number < 1, return the first visual cursor.
-  * `park_eos`: boolean (`true`): if line number > number of lines, return the last visual cursor.
+  * `*_away` describes a relative position and can be negative or positive
+  and defaults to `1`.
+  * `[x]` is an optional cursor x-coord and defaults to the current x-coord.
+  * `...` means `[extend_top], [extend_bottom], [extend_left],
+[extend_right], [park_bos], [park_eos]` which are extra optional boolean args
+which all default to `true`:
+    * `extend_<side>`: if outside this side of the text, consider the point inside.
+    * `park_bos`: if above the top side of the text, return the first logical cursor.
+    * `park_eos`: if below the bottom side of the text, return the last logical cursor.
 
 ### `cursor:move(what, ...) -> changed`
 
