@@ -26,6 +26,8 @@ editbox.maxlen = 4096
 editbox.text_align_x = 'left'
 editbox.align_y = 'center'
 editbox.padding = 4
+editbox.padding_left = 6
+editbox.padding_right = 6
 editbox.min_ch = 16
 editbox.w = 180
 editbox.h = 24
@@ -43,9 +45,19 @@ ui:style('editbox standalone, editbox_scrollbox standalone', {
 })
 
 --keep the same padding for the multiline editbox.
-ui:style('editbox_scrollbox > editbox', {padding = 0})
-ui:style('editbox_scrollbox', {padding = 1})
-ui:style('editbox_scrollbox > scrollbox_view', {padding = 3})
+ui:style('editbox_scrollbox > editbox', {
+	padding = 0,
+	padding_left = 0,
+	padding_right = 0,
+})
+ui:style('editbox_scrollbox', {
+	padding = 1,
+})
+ui:style('editbox_scrollbox > scrollbox_view', {
+	padding = 3,
+	padding_left = 5,
+	padding_right = 5,
+})
 
 --TODO: :child_hot
 ui:style('editbox :hot, editbox_scrollbox :child_hot', {
@@ -389,10 +401,8 @@ end
 function editbox:save_state(state)
 	state.cursor1_seg_i = self.selection.cursor1.seg.index
 	state.cursor2_seg_i = self.selection.cursor2.seg.index
-	state.cursor1_cursor_i = self.selection.cursor1.cursor_i
-	state.cursor2_cursor_i = self.selection.cursor2.cursor_i
-	state.cursor1_offset = self.selection.cursor1.offset
-	state.cursor2_offset = self.selection.cursor2.offset
+	state.cursor1_i = self.selection.cursor1.i
+	state.cursor2_i = self.selection.cursor2.i
 	state.text = self.text
 	return state
 end
@@ -403,10 +413,8 @@ function editbox:load_state(state)
 	local segs = self.selection.segments
 	self.selection.cursor1.seg = assert(segs[state.cursor1_seg_i])
 	self.selection.cursor2.seg = assert(segs[state.cursor2_seg_i])
-	self.selection.cursor1.cursor_i = state.cursor1_cursor_i
-	self.selection.cursor2.cursor_i = state.cursor2_cursor_i
-	self.selection.cursor1.offset = state.cursor1_offset
-	self.selection.cursor2.offset = state.cursor2_offset
+	self.selection.cursor1.i = state.cursor1_i
+	self.selection.cursor2.i = state.cursor2_i
 	self:invalidate()
 end
 
@@ -483,15 +491,15 @@ function editbox:keypress(key)
 
 	if key == 'right' or key == 'left' then
 		self:undo_group()
-		local movement = ctrl and 'word' or 'char'
+		local what = ctrl and 'next_word' or 'next_pos'
 		local delta = key == 'right' and 1 or -1
 		if shift then
-			return self.selection.cursor1:move(movement, delta)
+			return self.selection.cursor1:move(what, delta)
 		else
 			local c1, c2 = self.selection:cursors()
 			if self.selection:empty() then
-				if c1:move(movement, delta) then
-					c2:move_to_cursor(c1)
+				if c1:move(what, delta) then
+					c2:set(c1)
 					return true
 				end
 			else
@@ -499,7 +507,7 @@ function editbox:keypress(key)
 				if key == 'left' then
 					c1, c2 = c2, c1
 				end
-				return c1:move_to_cursor(c2)
+				return c1:set(c2)
 			end
 		end
 	elseif
@@ -507,24 +515,24 @@ function editbox:keypress(key)
 		or key == 'pageup' or key == 'pagedown'
 		or key == 'home' or key == 'end'
 	then
-		local how, by
+		local what, by
 		if key == 'up' then
-			how, by = 'line', -1
+			what, by = 'next_line', -1
 		elseif key == 'down' then
-			how, by = 'line', 1
+			what, by = 'next_line', 1
 		elseif key == 'pageup' then
-			how, by = 'page', -1
+			what, by = 'next_page', -1
 		elseif key == 'pagedown' then
-			how, by = 'page', 1
+			what, by = 'next_page', 1
 		elseif key == 'home' then
-			how, by = 'line', -1/0
+			what, by = 'next_line', -1/0
 		elseif key == 'end' then
-			how, by = 'line', 1/0
+			what, by = 'next_line', 1/0
 		end
 		self:undo_group()
-		local moved = self.selection.cursor1:move(how, by)
+		local moved = self.selection.cursor1:move(what, by)
 		if not shift then
-			self.selection.cursor2:move_to_cursor(self.selection.cursor1)
+			self.selection.cursor2:set(self.selection.cursor1)
 		end
 		return moved
 	elseif key_only and key == 'insert' then
@@ -534,9 +542,9 @@ function editbox:keypress(key)
 		self:undo_group'delete'
 		if self.selection:empty() then
 			if key == 'delete' then --remove the char after the cursor
-				self.selection.cursor1:move('char', 1)
+				self.selection.cursor1:move('next_offset', 1)
 			else --remove the char before the cursor
-				self.selection.cursor1:move('char', -1)
+				self.selection.cursor1:move('next_offset', -1)
 			end
 		end
 		return self:replace_selection('', true)
@@ -587,7 +595,7 @@ end
 function editbox:lostfocus()
 	if not self.selection then return end
 	self.caret_visible = false
-	self.selection.cursor1:move_to_offset(0)
+	self.selection.cursor1:move('offset', 0)
 	self.selection:reset()
 end
 
@@ -631,14 +639,14 @@ end
 
 function editbox:mousedown(x, y)
 	if not self.selection then return end
-	self.selection.cursor1:move_to_pos(self:mask_to_text(x, y))
+	self.selection.cursor1:move('pos', self:mask_to_text(x, y))
 	self.selection:reset()
 end
 
 function editbox:mousemove(x, y)
 	if not self.selection then return end
 	if not self.active then return end
-	self.selection.cursor1:move_to_pos(self:mask_to_text(x, y))
+	self.selection.cursor1:move('pos', self:mask_to_text(x, y))
 end
 
 --password mask drawing & hit testing
@@ -865,7 +873,7 @@ if not ... then require('ui_demo')(function(ui, win)
 		x = x, y = y, parent = win,
 		h = 100,
 		parent = win,
-		text = (('Hello World!  '):rep(4)..'Enter  \n'):rep(4),
+		text = 'HelloHelloHelloWorld! Enter\nLine2 Par\u{2029}NextPar', --(('Hello World!! '):rep(2)..'Enter \n'):rep(1),
 		multiline = true,
 		cue = 'Type text here...',
 	}

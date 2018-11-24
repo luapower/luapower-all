@@ -266,14 +266,14 @@ function win:repaint()
 
 				for i = 0, run.text_len do
 					local px = ax + run.cursor_xs[i]
-					local hit = hit and cursor and cursor.cursor_i == i
+					local hit = hit and cursor and cursor.i == i
 					dot(cr, '#0ff', px, ay, 1)
 				end
 
 			end
 		end
 
-		if cursor and cursor.cursor_i then
+		if cursor and cursor.i then
 			local x, y = cursor:pos()
 			local w, h, rtl = cursor:size()
 			rect(cr, '#f00', x, y, w, h)
@@ -293,8 +293,8 @@ function win:repaint()
 
 	sel = sel or segs:selection()
 	if sel then
-		sel.cursor1:move_to_offset(200)
-		sel.cursor2:move_to_offset(628)
+		sel.cursor1:move('offset', 200)
+		sel.cursor2:move('offset', 628)
 		--sel:select_all()
 
 		sel:rectangles(function(x, y, w, h)
@@ -307,7 +307,7 @@ end
 function win:mousemove(mx, my)
 	if segs then
 		if cursor then
-			cursor:move_to_pos(mx, my)
+			cursor:move('pos', mx, my)
 		end
 		self:invalidate()
 	end
@@ -335,19 +335,19 @@ function win:keypress(key)
 	end
 
 	if key == 'right' or key == 'left' then
-		cursor:move('char', key == 'right' and 1 or -1)
+		cursor:move('next_offset', key == 'right' and 1 or -1)
 		self:invalidate()
 		local t = {}
 		for i = 0, cursor.seg.glyph_run.len do
 			t[#t+1] = cursor.seg.glyph_run.cursor_xs[i]
 		end
-		print(cursor.offset, cursor.seg.index, cursor.cursor_i,
-			cursor.seg.glyph_run.cursor_xs[cursor.cursor_i], pp.format(t))
+		print(cursor.seg.index, cursor.i,
+			cursor.seg.glyph_run.cursor_xs[cursor.i], pp.format(t))
 	elseif key == 'up' then
-		cursor:move('vert', -1)
+		cursor:move('next_line', -1)
 		self:invalidate()
 	elseif key == 'down' then
-		cursor:move('vert', 1)
+		cursor:move('next_line', 1)
 		self:invalidate()
 	end
 end

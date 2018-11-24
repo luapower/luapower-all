@@ -1,3 +1,14 @@
+TR ---------------------------------------------------------------------------
+
+	--skip the last visual cursor of a soft-wrapped line.
+	if delta == 0
+		and seg.trailing_space
+		and seg.wrapped
+		and ci == (seg.glyph_run.rtl and 0 or len)
+	then
+		--return self:next_cursor(seg, ci, step)
+	end
+
 LOW-LEVEL --------------------------------------------------------------------
 
 - finish libpng

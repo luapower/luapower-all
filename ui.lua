@@ -3568,7 +3568,8 @@ layer.nowrap      = false
 layer.text_dir    = false
 layer.text_color = '#fff'
 layer.line_spacing = 1.2
-layer.paragraph_spacing = 2
+layer.hardline_spacing = 1.5
+layer.paragraph_spacing = 2.5
 layer.text_dir = 'auto' --auto, rtl, ltr
 layer.nowrap = false
 layer.text_operator = 'over'
@@ -3634,13 +3635,16 @@ function layer:sync_text_wrap()
 	if not segs then return nil end
 	local cw = self:client_size()
 	local ls = self.line_spacing
+	local hs = self.hardline_spacing
 	local ps = self.paragraph_spacing
 	if    cw ~= self._text_w
 		or ls ~= self._text_tree.line_spacing
+		or hs ~= self._text_tree.hardline_spacing
 		or ps ~= self._text_tree.paragraph_spacing
 	then
 		self._text_w = cw
 		self._text_tree.line_spacing = ls
+		self._text_tree.hardline_spacing = hs
 		self._text_tree.paragraph_spacing = ps
 		segs:wrap(cw)
 		self._text_h = false --invalidate align

@@ -21,6 +21,10 @@ local zone = require'jit.zone' --glue.noop
 
 local band = bit.band
 local push = table.insert
+local max = math.max
+local min = math.min
+local floor = math.floor
+
 local update = glue.update
 local assert = glue.assert --assert with string formatting
 local clamp = glue.clamp
@@ -30,11 +34,17 @@ local memoize = glue.memoize
 local shift = glue.shift
 local growbuffer = glue.growbuffer
 local trim = glue.trim
+
 local box_overlapping = box2d.overlapping
 local box_hit = box2d.hit
+
 local odd = function(x) return band(x, 1) == 1 end
 local PS = fb.C.FRIBIDI_CHAR_PS --paragraph separator codepoint
 local LS = fb.C.FRIBIDI_CHAR_LS --line separator codepoint
+
+local function default_true(x)
+	return x == nil or x
+end
 
 --iterate a list of values in run-length encoded form.
 local function index_it(t, i) return t[i] end
@@ -335,7 +345,7 @@ function tr:shape_word(
 						font.hb_font:get_ligature_carets(hb_dir, glyph_index)
 					if caret_count > 0 then
 						-- there shouldn't be more carets than grapheme_count-1.
-						caret_count = math.min(caret_count, grapheme_count - 1)
+						caret_count = min(caret_count, grapheme_count - 1)
 						--add the ligature carets from the font.
 						for i = 0, caret_count-1 do
 							--create a synthetic cluster at each grapheme boundary.
@@ -450,7 +460,7 @@ function tr:shape_word(
 		descent = font.descent,
 		--for lru cache
 		mem_size =
-			224 + hb_glyph_size * math.max(len, glyph_count) --hb_buffer_t[]
+			224 + hb_glyph_size * max(len, glyph_count) --hb_buffer_t[]
 			+ (8 + 8) * (len + 1) --cursor_offsets[], cursor_xs[]
 			+ 400 --this table
 		,
@@ -511,7 +521,7 @@ local const_char_ct = ffi.typeof'const char*'
 --NOTE: one text run is always created for each node, even when there's
 --no text, in order to anchor the node attributes to a text run.
 local function flatten_text_tree(parent, runs)
-	for i = 1, math.max(1, #parent) do
+	for i = 1, max(1, #parent) do
 		local run_or_text = parent[i] or ''
 		local run
 		if type(run_or_text) == 'string' then
@@ -581,7 +591,7 @@ function tr:flatten(text_tree)
 				self:warn('Text buffer size missing')
 				goto invalid
 			else
-				run.len = math.floor(size / 4)
+				run.len = floor(size / 4)
 			end
 		else
 			self:warn('Invalid charset: %s', run.charset)
@@ -967,7 +977,8 @@ function tr:shape(text_runs, segments)
 						x = false,
 						advance_x = false,
 						line_index = false,
-						wrapped = false, --ignore trailing space
+						trailing_space = trailing_space,
+						wrapped = false, --ignore the trailing space
 						visible = true, --entirely clipped or not
 					}
 
@@ -1163,7 +1174,7 @@ function segments:min_w()
 		local seg_i, n = 1, #self
 		while seg_i <= n do
 			local segs_wx, _, next_seg_i = self:nowrap_segments(seg_i)
-			min_w = math.max(min_w, segs_wx)
+			min_w = max(min_w, segs_wx)
 			seg_i = next_seg_i
 		end
 		self._min_w = min_w
@@ -1187,7 +1198,7 @@ function segments:max_w()
 			local wx = linebreak and ax or wx
 			line_w = line_w + wx
 			if linebreak then
-				max_w = math.max(max_w, line_w)
+				max_w = max(max_w, line_w)
 				line_w = 0
 			end
 		end
@@ -1209,6 +1220,9 @@ function segments:wrap(w)
 	local line_i = 0
 	local seg_i, n = 1, #self
 	local line
+	for seg_i = 1, n do --reset the wrapped flag.
+		self[seg_i].wrapped = false
+	end
 	while seg_i <= n do
 		local segs_wx, segs_ax, next_seg_i = self:nowrap_segments(seg_i)
 
@@ -1260,7 +1274,9 @@ function segments:wrap(w)
 				--we use this particular segment's `paragraph_spacing` property
 				--since this is the segment asking for a paragraph break.
 				--TODO: is there a more logical way to select this property?
-				line.paragraph_spacing = last_seg.text_run.paragraph_spacing or 2
+				line.spacing = last_seg.text_run.paragraph_spacing or 2
+			else
+				line.spacing = last_seg.text_run.hardline_spacing or 1
 			end
 			line = nil
 		end
@@ -1301,27 +1317,27 @@ function segments:wrap(w)
 
 	for i,line in ipairs(lines) do
 
-		lines.max_ax = math.max(lines.max_ax, line.advance_x)
+		lines.max_ax = max(lines.max_ax, line.advance_x)
 
 		--compute line ascent and descent scaling based on paragraph spacing.
 		local last_line = lines[i-1]
-		local ascent_factor = last_line and last_line.paragraph_spacing or 1
-		local descent_factor = line.paragraph_spacing or 1
+		local ascent_factor = last_line and last_line.spacing or 1
+		local descent_factor = line.spacing or 1
 
 		local ax = 0
 		for _,seg in ipairs(line) do
 			--compute line's vertical metrics.
 			local run = seg.glyph_run
-			line.ascent = math.max(line.ascent, run.ascent)
-			line.descent = math.min(line.descent, run.descent)
+			line.ascent = max(line.ascent, run.ascent)
+			line.descent = min(line.descent, run.descent)
 			local run_h = run.ascent - run.descent
 			local line_spacing = seg.text_run.line_spacing or 1
 			local half_line_gap = run_h * (line_spacing - 1) / 2
 			line.spacing_ascent
-				= math.max(line.spacing_ascent,
+				= max(line.spacing_ascent,
 					(run.ascent + half_line_gap) * ascent_factor)
 			line.spacing_descent
-				= math.min(line.spacing_descent,
+				= min(line.spacing_descent,
 					(run.descent - half_line_gap) * descent_factor)
 			--set segments `x` to be relative to the line's origin.
 			seg.x = ax + seg.x
@@ -1335,7 +1351,7 @@ function segments:wrap(w)
 		end
 	end
 
-	--bounding-box height (including or excluding line spacing).
+	--bounding-box height (including or excluding paragraph spacing).
 	local first_line = lines[1]
 	local last_line = lines[#lines]
 	if not first_line then
@@ -1382,7 +1398,7 @@ function segments:align(x, y, w, h, align_x, align_y)
 			line.x = (w - line.advance_x) / 2
 		end
 
-		lines.min_x = math.min(lines.min_x, line.x)
+		lines.min_x = min(lines.min_x, line.x)
 
 	end
 
@@ -1537,79 +1553,67 @@ function tr:textbox(text_tree, cr, x, y, w, h, align_x, align_y)
 		:paint(cr)
 end
 
---hit testing and cursor positions -------------------------------------------
+--cursor geometry ------------------------------------------------------------
 
-local function cmp_offsets(segments, i, offset)
-	return segments[i].offset <= offset -- < < = = [<] <
+function segments:line_pos(line_i)
+	local lines = self:checklines()
+	local line = lines[line_i]
+	local x = lines.x + line.x
+	local y = lines.y + lines.baseline + line.y - line.ascent
+	return x, y
 end
-function segments:cursor_at_offset(offset)
-	local seg_i = (binsearch(offset, self, cmp_offsets) or #self + 1) - 1
-	local seg = self[seg_i]
+
+function segments:cursor_x(seg, i)
 	local run = seg.glyph_run
-	local i = offset - seg.offset
-	assert(i >= 0)
 	local i = clamp(i, 0, run.text_len)
-	return seg, run.cursor_offsets[i]
+	return seg.x + run.cursor_xs[i]
 end
 
-function segments:offset_at_cursor(seg, i)
-	assert(i >= 0)
-	assert(i <= seg.glyph_run.text_len)
-	return seg.offset + i
+function segments:cursor_pos(seg, i)
+	local x, y = self:line_pos(seg.line_index)
+	return x + self:cursor_x(seg, i), y
 end
 
---move `delta` cursor positions from a certain cursor position.
-function segments:next_physical_cursor(seg, ci, delta)
-	delta = math.floor(delta or 0) --prevent infinite loop
-	local step = delta > 0 and 1 or -1
-	local len = seg.glyph_run.text_len
-	while delta ~= 0 do
-		local i = ci + step
-		if i < 0 or i > len then
-			local next_seg = self[seg.index + step]
-			if not next_seg then
-				break
-			end
-			seg = next_seg
-			len = seg.glyph_run.text_len
-			i = step > 0 and 0 or len
-		end
-		assert(i >= 0)
-		assert(i <= len)
-		delta = delta - step
-		ci = i
+function segments:cursor_size(seg, i)
+	local rtl = seg.glyph_run.rtl
+	local line = self.lines[seg.line_index]
+	local delta = rtl and -1 or 1
+	local w = delta
+	local h = line.ascent - line.descent
+	local seg2, i2, delta = self:next_cursor(seg, i, delta, 'pos')
+	if delta == 0 and seg2.line_index == seg.line_index then
+		local cx1 = self:cursor_x(seg, i)
+		local cx2 = self:cursor_x(seg2, i2)
+		w = cx2 - cx1
 	end
-	return seg, ci, delta
+	return w, h, rtl
 end
 
---move `delta` unique cursor positions from a certain cursor position.
-function segments:next_unique_cursor(seg, i, delta)
-	local step = (delta or 1) > 0 and 1 or -1
-	local seg0, i0 = seg, i
-	local offset0 = self:offset_at_cursor(seg, i)
-	local x0, y0
-	::again::
-	seg, i, delta = self:next_physical_cursor(seg, i, delta)
-	if delta == 0 then
-		if self:offset_at_cursor(seg, i) == offset0 then
-			local x1, y1 = self:cursor_pos(seg, i)
-			if not x0 then
-				x0, y0 = self:cursor_pos(seg0, i0)
-			end
-			if x1 == x0 and y1 == y0 then
-				--duplicate cursor (same text position and same screen position):
-				--advance further until a different one is found.
-				delta = step
-				goto again
+--iterate all visually-unique cursor positions in visual order.
+function segments:cursor_xs()
+	return coroutine.wrap(function()
+		for line_i, line in ipairs(self.lines) do
+			local last_x
+			for seg_i, seg in ipairs(line) do
+				local run = seg.glyph_run
+				local i, j, step = 0, run.text_len, 1
+				if run.rtl then
+					i, j, step = j, i, -step
+				end
+				for i = i, j, step do
+					local x = seg.x + run.cursor_xs[i]
+					if x ~= last_x then
+						coroutine.yield(line_i, x)
+					end
+					last_x = x
+				end
 			end
 		end
-	end
-	return seg, i, delta
+	end)
 end
 
-local function default_true(x)
-	return x == nil or x
-end
+--cursor hit-testing ---------------------------------------------------------
+
 local function cmp_ys(lines, i, y)
 	return lines[i].y - lines[i].spacing_descent < y -- < < [=] = < <
 end
@@ -1650,14 +1654,14 @@ function segments:hit_test_cursors(line_i, x, extend_left, extend_right)
 			elseif x == 1/0 then
 				return seg, run.text_len
 			else
-				local min_d, cursor_i = 1/0
+				local min_d, ci = 1/0
 				for i = 0, run.text_len do
 					local d = math.abs(seg.glyph_run.cursor_xs[i] - x)
 					if d < min_d then
-						min_d, cursor_i = d, i
+						min_d, ci = d, i
 					end
 				end
-				return seg, cursor_i
+				return seg, ci
 			end
 		end
 	end
@@ -1670,59 +1674,107 @@ function segments:hit_test(x, y,
 		extend_top, extend_bottom, extend_left, extend_right
 	)
 	if not line_i then return nil end
-	return line_i, self:hit_test_cursors(line_i, x, extend_left, extend_right)
+	return self:hit_test_cursors(line_i, x, extend_left, extend_right)
 end
 
-function segments:line_pos(line_i)
-	local lines = self:checklines()
-	local line = lines[line_i]
-	local x = lines.x + line.x
-	local y = lines.y + lines.baseline + line.y - line.ascent
-	return x, y
-end
-
-function segments:cursor_pos(seg, i)
-	local x, y = self:line_pos(seg.line_index)
-	local run = seg.glyph_run
-	local i = clamp(i, 0, run.text_len)
-	return x + seg.x + run.cursor_xs[i], y
-end
-
-function segments:cursor_size(seg, i)
-	local rtl = seg.glyph_run.rtl
-	local line = self.lines[seg.line_index]
-	local w = rtl and -1 or 1
-	local h = line.ascent - line.descent
-	local seg2, i2, delta = self:next_unique_cursor(seg, i)
-	if delta == 0 and seg2.line_index == seg.line_index then
-		local cx1 = self:cursor_pos(seg, i)
-		local cx2 = self:cursor_pos(seg2, i2)
-		w = cx2 - cx1
+--hybrid hit-testing given a line number and an x-coord.
+function segments:hit_test_line(line_i, x, park_bos, park_eos)
+	if default_true(park_bos) and line_i < 1 then
+		x = -1/0
+	elseif default_true(park_eos) and line_i > #self.lines then
+		x = 1/0
 	end
-	return w, h, rtl
+	local line_i = clamp(line_i, 1, #self.lines)
+	return self:hit_test_cursors(line_i, x, true, true)
 end
 
---iterate all unique cursor positions in visual order.
-function segments:cursor_xs()
-	return coroutine.wrap(function()
-		for line_i, line in ipairs(self.lines) do
-			local last_x
-			for seg_i, seg in ipairs(line) do
-				local run = seg.glyph_run
-				local i, j, step = 0, run.text_len, 1
-				if run.rtl then
-					i, j, step = j, i, -step
-				end
-				for cursor_i = i, j, step do
-					local x = seg.x + run.cursor_xs[cursor_i]
-					if x ~= last_x then
-						coroutine.yield(line_i, x)
-					end
-					last_x = x
-				end
+--cursor text hit-testing ----------------------------------------------------
+
+--TODO: there can be more than one cursor for the same offset, this function
+--returns one of them with no options to control which one.
+local function cmp_offsets(segments, i, offset)
+	return segments[i].offset <= offset -- < < = = [<] <
+end
+function segments:cursor_at_offset(offset)
+	local seg_i = (binsearch(offset, self, cmp_offsets) or #self + 1) - 1
+	local seg = self[seg_i]
+	local run = seg.glyph_run
+	local i = offset - seg.offset
+	assert(i >= 0)
+	local i = clamp(i, 0, run.text_len)
+	return seg, run.cursor_offsets[i]
+end
+
+function segments:offset_at_cursor(seg, i)
+	local run = seg.glyph_run
+	assert(i >= 0)
+	assert(i <= run.text_len)
+	return seg.offset + run.cursor_offsets[i]
+end
+
+--cursor navigation ----------------------------------------------------------
+
+segments.cmp_cursors = {} --{name->func(seg1, i1, seg2, i2)}
+
+--compare cursors for visual uniqueness.
+function segments.cmp_cursors:pos(seg1, i1, seg2, i2)
+	local x1, y1 = self:cursor_pos(seg1, i1)
+	local x2, y2 = self:cursor_pos(seg2, i2)
+	return x1 ~= x2 or y1 ~= y2
+end
+
+--compare cursors for textual uniqueness.
+function segments.cmp_cursors:offset(seg1, i1, seg2, i2)
+	return self:offset_at_cursor(seg1, i1) ~= self:offset_at_cursor(seg2, i2)
+end
+
+--compare cursors for both textual and visual uniqueness.
+function segments.cmp_cursors:pos_and_offset(seg1, i1, seg2, i2)
+	return self.cmp_cursors:pos(seg1, i1, seg2, i2)
+		and self.cmp_cursors:offset(seg1, i1, seg2, i2)
+end
+
+--the cursor that is `delta` steps away from a cursor, whereby a step is
+--defined as a distinct consecutive cursor position and distinctiveness
+--is tested using a custom comparison function.
+function segments:next_cursor(cseg, ci, delta, cmp)
+	cmp = assert(self.cmp_cursors[cmp] or cmp)
+	delta = floor(delta or 1) --prevent infinite loop with `delta ~= 0`
+	local step = delta > 0 and 1 or -1
+	local len = cseg.glyph_run.text_len
+	while delta ~= 0 do
+		local seg, i = cseg, ci + step
+		if i < 0 or i > len then
+			seg = self[seg.index + step]
+			if not seg then
+				break
 			end
+			len = seg.glyph_run.text_len
+			i = step > 0 and 0 or len
 		end
-	end)
+		assert(i >= 0)
+		assert(i <= len)
+		if cmp(self, seg, i, cseg, ci) then
+			delta = delta - step
+		end
+		cseg, ci = seg, i
+	end
+	return cseg, ci, delta
+end
+
+--the cursor that is `delta` segments away from a cursor, i.e. jump words.
+function segments:next_word(seg, i, delta)
+	delta = delta or 1
+	if i > 0 and delta < 0 then
+		delta = delta + 1 --going back from inside a word.
+	end
+	local wanted_seg_i = seg.index + delta
+	local max_seg_i = #self
+	local eos = wanted_seg_i > max_seg_i
+	local seg_i = clamp(wanted_seg_i, 1, max_seg_i)
+	local seg = self[seg_i]
+	local i = eos and seg.glyph_run.text_len or 0
+	return seg, i, wanted_seg_i - seg_i
 end
 
 --selection rectangles -------------------------------------------------------
@@ -1812,7 +1864,7 @@ function text_runs:text_range(i1, i2)
 	local len = self.len
 	local i1 = clamp(i1 or 0, 0, len)
 	local i2 = clamp(i2 or 1/0, 0, len)
-	return i1, math.max(0, i2-i1)
+	return i1, max(0, i2-i1)
 end
 
 function text_runs:string(i1, i2)
@@ -1861,7 +1913,7 @@ function text_runs:remove(i1, i2)
 	if tr_i1 > 1 then
 		local run = self[tr_i1-1]
 		local part_before_i1 = i1 - run.offset
-		local part_after_i2 = math.max(run.offset + run.len - i2, 0)
+		local part_after_i2 = max(run.offset + run.len - i2, 0)
 		local new_len = part_before_i1 + part_after_i2
 		changed = changed or run.len ~= new_len
 		run.len = new_len
@@ -1900,7 +1952,7 @@ function text_runs:insert(i, s, sz, charset, maxlen)
 	--get the length of the inserted text in codepoints.
 	local len
 	if charset == 'utf8' then
-		maxlen = maxlen and math.floor(maxlen)
+		maxlen = maxlen and floor(maxlen)
 		len = utf8.decode(s, sz, false, maxlen) or maxlen
 	elseif charset == 'utf32' then
 		len = sz
@@ -1966,25 +2018,24 @@ function segments:reshape()
 end
 
 function segments:insert(...)
-	local i1, changed = self.text_runs:insert(...)
+	local offset, changed = self.text_runs:insert(...)
 	if changed then
 		self:reshape()
 	end
-	return i1, changed
+	return offset, changed
 end
 
 function segments:remove(...)
-	local i1, changed = self.text_runs:remove(...)
+	local offset, changed = self.text_runs:remove(...)
 	if changed then
 		self:reshape()
 	end
-	return i1, changed
+	return offset, changed
 end
 
 --cursor object --------------------------------------------------------------
 
 local cursor = {}
-setmetatable(cursor, cursor)
 tr.cursor_class = cursor
 
 function segments:cursor(offset)
@@ -1993,149 +2044,110 @@ function segments:cursor(offset)
 		tr = self.tr,
 		segments = self,
 	}, self.tr.cursor_class)
-	self:move_to_offset(offset or 0)
+	self:move('offset', offset or 0)
 	return self
-end
-
-function cursor:pos() --position in layout.
-	return self.segments:cursor_pos(self.seg, self.cursor_i)
-end
-
-function cursor:size() --size in layout.
-	return self.segments:cursor_size(self.seg, self.cursor_i)
-end
-
-function cursor:line() --line in layout and the lines array.
-	local lines = self.segments.lines
-	return lines[self.seg.line_index], lines
-end
-
-function cursor:hit_test(x, y, ...) --position based on position in layout.
-	local line_i, seg, cursor_i = self.segments:hit_test(x, y, ...)
-	if not cursor_i then return nil end
-	return self.segments:offset_at_cursor(seg, cursor_i), seg, cursor_i, line_i
 end
 
 function cursor:changed() end --event stub
 
-function cursor:set(offset, seg, cursor_i)
-	local changed =
-		offset ~= self.offset
-		or seg ~= self.seg
-		or cursor_i ~= self.cursor_i
-	self.offset, self.seg, self.cursor_i = offset, seg, cursor_i
+function cursor:set(seg, i)
+	if not seg then return false end
+	if not i then --set to another cursor
+		local cur = seg
+		assert(cur.segments == self.segments)
+		seg, i = cur.seg, cur.i
+	end
+	assert(i)
+	local changed = seg ~= self.seg or i ~= self.i
 	if changed then
+		self.segments:offset_at_cursor(seg, i) --for validation
+		self.seg, self.i = seg, i
 		self:changed()
 	end
 	return changed
 end
 
-function cursor:move_to_pos(x, y, ...) --move based on position in layout.
-	local offset, seg, cursor_i = self:hit_test(x, y, ...)
-	return offset and self:set(offset, seg, cursor_i) or false
+function cursor:get()
+	return self.seg, self.i
 end
 
-function cursor:move_to_offset(offset) --move based on position in text.
-	local seg, cursor_i = self.segments:cursor_at_offset(offset)
-	local offset = self.segments:offset_at_cursor(seg, cursor_i)
-	return self:set(offset, seg, cursor_i)
+function cursor:pos() --position in layout.
+	return self.segments:cursor_pos(self.seg, self.i)
 end
 
-function cursor:move_to_cursor(cur) --sync to another cursor.
-	assert(cur.segments == self.segments)
-	return self:set(cur.offset, cur.seg, cur.cursor_i)
+function cursor:size() --size in layout.
+	return self.segments:cursor_size(self.seg, self.i)
 end
 
-function cursor:next_cursor(delta) --move char-by-char in logical text.
-	local seg, i, delta =
-		self.segments:next_unique_cursor(
-			self.seg, self.cursor_i, delta
-		)
-	local offset = self.segments:offset_at_cursor(seg, i)
-	return offset, seg, i, delta
+function cursor:line() --cursor's line object and the lines array.
+	local lines = self.segments.lines
+	return lines[self.seg.line_index], lines
 end
 
-function cursor:next_word_cursor(delta) --move word-by-word in logical text.
-	if self.cursor_i > 0 and delta < 0 then
-		delta = delta + 1 --going back from inside a word.
-	end
-	local wanted_seg_i = self.seg.index + delta
-	local max_seg_i = #self.segments
-	local eos = wanted_seg_i > max_seg_i
-	local seg_i = clamp(wanted_seg_i, 1, max_seg_i)
-	local seg = self.segments[seg_i]
-	local cursor_i = eos and seg.glyph_run.text_len or 0
-	local offset = self.segments:offset_at_cursor(seg, cursor_i)
-	return offset, seg, cursor_i, wanted_seg_i - seg_i
-end
-
-function cursor:next_line(delta, x, park_bos, park_eos) --move vertically in layout.
-	x = x or self.x
-	local offset, seg, cursor_i = self.offset, self.seg, self.cursor_i
-	local wanted_line_i = seg.line_index + delta
-	if default_true(park_bos) and wanted_line_i < 1 then
-		x = -1/0
-	elseif default_true(park_eos) and wanted_line_i > #self.segments.lines then
-		x = 1/0
-	end
-	local line_i = clamp(wanted_line_i, 1, #self.segments.lines)
-	local delta = wanted_line_i - line_i
-	local line = self.segments.lines[line_i]
-	local seg1, cursor_i1 = self.segments:hit_test_cursors(line_i, x, true, true)
-	if seg1 then
-		seg, cursor_i = seg1, cursor_i1
-		offset = self.segments:offset_at_cursor(seg, cursor_i)
-		delta = 0
-	end
-	return offset, seg, cursor_i, delta
-end
-
-function cursor:next_page_line_index(delta)
-	local x, y = self:pos()
-	local y = y + delta * self.segments._h
-	return self.segments:hit_test_lines(x, y)
-end
-
-function cursor:next_page(delta, ...)
-	local line_index = self:next_page_line_index(delta)
-	return self:next_line(line_index - self.seg.line_index, ...)
-end
-
-function cursor:move(how, delta, ...) --move horizontally or vertically.
-	if how == 'char' then
-		self.x = false
-		return self:set(self:next_cursor(delta))
-	elseif how == 'word' then
-		self.x = false
-		return self:set(self:next_word_cursor(delta))
-	elseif how == 'line' or how == 'page' then
-		self.x = self.x or self:pos()
-		if how == 'page' then
-			return self:set(self:next_page(delta, ...))
-		else
-			return self:set(self:next_line(delta, ...))
-		end
+function cursor:find(what, ...)
+	if what == 'pos' then
+		return self.segments:hit_test(...)
+	elseif what == 'offset' then
+		return self.segments:cursor_at_offset(...)
+	elseif what == 'next_pos' then
+		return self.segments:next_cursor(self.seg, self.i, ..., 'pos')
+	elseif what == 'next_offset' then
+		return self.segments:next_cursor(self.seg, self.i, ..., 'offset')
+	elseif what == 'next_pos_and_offset' then
+		return self:next_cursor(self.seg, self.i, ..., 'pos_and_offset')
+	elseif what == 'next_word' then
+		return self.segments:next_word(self.seg, self.i, ...)
+	elseif what == 'line' then
+		local line_i, x = ...
+		return self.segments:hit_test_line(line_i, x or self.x, select(3, ...))
+	elseif what == 'next_line' then
+		local delta_lines = ...
+		local line_i = self.seg.line_index + (delta_lines or 1)
+		return self:find('line', line_i, select(2, ...))
+	elseif what == 'page' then
+		local page, x = ...
+		x = x or self.x
+		local page_h = self.segments._h
+		local y = (page - 1) * page_h
+		return self.segments:hit_test(x, y, ...)
+	elseif what == 'next_page' then
+		local delta_pages, x = ... or 1
+		x = x or self.x
+		local _, y = self:pos()
+		local page_h = self.segments._h
+		local y = y + delta_pages * page_h
+		return self.segments:hit_test(x, y, ...)
 	else
-		assert(false, 'Invalid arg#1: %s', how)
+		assert(false, 'invalid arg#1: "%s"', what)
 	end
 end
 
---editing text at cursor which includes adjusting the cursor.
+function cursor:move(what, ...)
+	if    what == 'line' or what == 'next_line'
+		or what == 'page' or what == 'next_page'
+	then
+		self.x = self.x or self:pos()
+	else
+		self.x = false
+	end
+	return self:set(self:find(what, ...))
+end
 
 function cursor:insert(...) --insert text at cursor.
-	local offset, changed = self.segments:insert(self.offset, ...)
+	local offset = self.seg.offset + self.i
+	local offset, changed = self.segments:insert(offset, ...)
 	if changed then
-		self:move_to_offset(offset)
+		self:move('offset', offset)
 	end
 	return changed
 end
 
 function cursor:remove(delta) --remove delta cursor positions of text.
-	local i1 = self.offset
-	local i2 = self:next_cursor(delta)
+	local i1 = self.seg.offset + self.i
+	local i2 = self:next_cursor(delta, 'char')
 	local offset, changed = self.segments:remove(i1, i2)
 	if changed then
-		self:move_to_offset(offset)
+		self:move('offset', offset)
 	end
 	return changed
 end
@@ -2143,7 +2155,6 @@ end
 --selection object -----------------------------------------------------------
 
 local selection = {}
-setmetatable(selection, selection)
 tr.selection_class = selection
 
 function segments:selection(offset1, offset2)
@@ -2159,36 +2170,48 @@ end
 
 --manipulation
 
+function selection:offsets()
+	local c1 = self.cursor1
+	local c2 = self.cursor2
+	local o1 = c1.seg.offset + c1.i
+	local o2 = c2.seg.offset + c2.i
+	return min(o1, o2), max(o1, o2)
+end
+
 function selection:cursors()
 	local c1 = self.cursor1
 	local c2 = self.cursor2
-	if c1.offset > c2.offset then
-		c1, c2 = c2, c1
+	local o1 = c1.seg.offset + c1.i
+	local o2 = c2.seg.offset + c2.i
+	if o1 > o2 then
+		return c2, c1
+	else
+		return c1, c2
 	end
-	return c1, c2
 end
 
 function selection:empty()
-	return self.cursor1.offset == self.cursor2.offset
+	local o1, o2 = self:offsets()
+	return o1 == o2
 end
 
 function selection:select_all()
-	local changed1 = self.cursor1:move_to_offset(0)
-	local changed2 = self.cursor2:move_to_offset(1/0)
+	local changed1 = self.cursor1:move('offset', 0)
+	local changed2 = self.cursor2:move('offset', 1/0)
 	return changed1 or changed2
 end
 
 function selection:reset()
-	return self.cursor2:move_to_cursor(self.cursor1)
+	return self.cursor2:set(self.cursor1)
 end
 
 function selection:select_word()
 	local changed1 =
-		self.cursor1.cursor_i > 0
-		and self.cursor1:move('word', -1)
+		self.cursor1.i > 0
+		and self.cursor1:move('next_word', -1)
 	local changed2 =
-		self.cursor2.cursor_i < self.cursor2.seg.glyph_run.text_len
-		and self.cursor2:move('word', 1)
+		self.cursor2.i < self.cursor2.seg.glyph_run.text_len
+		and self.cursor2:move('next_word', 1)
 	return changed1 or changed2
 end
 
@@ -2197,8 +2220,9 @@ end
 function selection:rectangles(write, ...)
 	local c1, c2 = self:cursors()
 	return self.segments:selection_rectangles(
-		c1.seg, c1.cursor_i,
-		c2.seg, c2.cursor_i, write, ...)
+		c1.seg, c1.i,
+		c2.seg, c2.i,
+		write, ...)
 end
 
 local function hit_test_rect(x, y, w, h, mx, my)
@@ -2208,30 +2232,32 @@ function selection:hit_test(x, y)
 	if self:empty() then return false end
 	local c1, c2 = self:cursors()
 	return self.segments:selection_rectangles(
-		c1.seg, c1.cursor_i,
-		c2.seg, c2.cursor_i, hit_test_rect, x, y) or false
+		c1.seg, c1.i,
+		c2.seg, c2.i,
+		hit_test_rect, x, y) or false
 end
 
 --editing text from selection, which includes adjusting the selection.
 
 function selection:codepoints()
-	local c1, c2 = self:cursors()
-	local i, len = self.segments.text_runs:text_range(c1.offset, c2.offset)
+	local i1, i2 = self:offsets()
+	local i, len = self.segments.text_runs:text_range(i1, i2)
 	return self.segments.text_runs.codepoints, i, len
 end
 
 function selection:string()
-	local c1, c2 = self:cursors()
-	return self.segments.text_runs:string(c1.offset, c2.offset)
+	local i1, i2 = self:offsets()
+	return self.segments.text_runs:string(i1, i2)
 end
 
 function selection:remove() --remove selected text.
 	if self:empty() then return false end
-	local c1, c2 = self:cursors()
-	local offset, changed = self.segments:remove(c1.offset, c2.offset)
+	local i1, i2 = self:offsets()
+	local offset, changed = self.segments:remove(i1, i2)
 	if changed then
-		c1:move_to_offset(offset) --same offset, but we need to reset c1.seg!
-		c2:move_to_cursor(c1)
+		local c1, c2 = self:cursors()
+		c1:move('offset', offset) --same offset, but we need to reset c1.seg!
+		c2:set(c1)
 	end
 	return changed
 end
@@ -2240,7 +2266,7 @@ function selection:replace(...) --replace selection with text.
 	local removed = self:remove()
 	local c1, c2 = self:cursors()
 	local inserted = c1:insert(...)
-	c2:move_to_cursor(c1)
+	c2:set(c1)
 	return removed or inserted
 end
 

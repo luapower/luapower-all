@@ -39,17 +39,18 @@ __rendering__
 `segs:clip([x, y, w, h])`                            clip visible text to rectangle
 `segs:reset_clip()`                                  reset clipping area
 `tr:textbox(text_tree, cr, x, y, w, h, [ax], [ay])`  shape, layout and paint text
+__hit testing__
+`segs:hit_test(x, y, ...) -> seg, i`                 hit test the laid out text
 __cursors__
 `segs:cursor([offset]) -> cursor`                    create a cursor
+`cursor:set(cursor | seg,i) -> changed`              update a cursor
+`cursor:get() -> seg, i`                             cursor segment and offset in segment
+`cursor:changed()`                                   event: cursor changed
 `cursor:pos() -> x, y`                               cursor position
 `cursor:size() -> w, h, rtl`                         cursor size and direction
 `cursor:line() -> line, lines`                       cursor's line object and lines array
-`cursor:hit_test(x, y, ...) -> off, seg, i, line_i`  hit test for cursor position
-`cursor:move_to_offset(offset)`                      move cursor to closest offset in text
-`cursor:move_to_pos(x, y, ...)`                      move cursor to closest position
-`cursor:next_cursor([delta]) -> off, seg, i, line_i` next/prev cursor in text
-`cursor:move(dir[, delta])`                          move cursor in text
-`cursor:changed()`                                   event: cursor changed
+`cursor:find(what, ...) -> seg, i`                   find a relative cursor position
+`cursor:move(what, ...) -> changed`                  set cursor to a relative position
 __selections__
 `segs:selection() -> sel`                            create a selection
 `sel:empty() -> true|false`                          check if selection is empty
@@ -119,6 +120,8 @@ Attributes can be:
   subsequent paragraphs.
   * `line_spacing`: line spacing multiplication factor
   (defaults to `1`).
+  * `hardline_spacing`: line spacing multiplication factor for lines
+  terminated by a hard line break (defaults to `1`).
   * `paragraph_spacing`: paragraph spacing multiplication factor
   (defaults to `2`).
   * `nowrap`: disable word wrapping.
@@ -183,25 +186,26 @@ Creates the `segs.lines` table with the following fields:
 
   * `max_ax`: text's maximum x-advance (equivalent to text's width).
   * `h`: text's wrapped height.
-  * `spacing_h`: text's wrapped height including line spacing.
+  * `spacing_h`: text's wrapped height including line and paragraph spacing.
 
 and with a list of lines in its array part, with the fields:
 
   * `advance_x`: x-advance of the last segment.
   * `ascent`: maximum ascent.
   * `descent`: maximum descent.
-  * `spacing_ascent`: maximum ascent including line spacing.
-  * `spacing_descent`: maximum descent including line spacing.
+  * `spacing`: maximum line spacing factor for this line.
+  * `spacing_ascent`: maximum ascent including line or paragraph spacing.
+  * `spacing_descent`: maximum descent including line or paragraph spacing.
   * `visible`: line is not clipped (true).
-  * `paragraph_spacing`: paragraph spacing for this line.
   * `x`: line's ualigned x-offset (0).
   * `y`: line's y-offset relative to the first line's baseline.
 
-Also sets the following fields on each segment:
+Each line also contains its list of segments in visual order in its array
+part. Each segment also has the following fields set:
 
-  * `seg.x`: segment's x-position.
-  * `seg.advance_x`: segment's x-advance.
-  * `seg.line_index`: segment's line index.
+  * `x`: segment's x-position.
+  * `advance_x`: segment's x-advance.
+  * `line_index`: segment's line index.
 
 NOTE: The `lines` table _can_ contain zero lines, but only if the `segs`
 table has zero segments, which only happens when there are errors.
@@ -279,9 +283,16 @@ Returns `nil` if the segments table contain no segments.
 Cursor state fields:
 
   * `segments` - a reference to the segments table.
-  * `offset` - the offset in text.
   * `seg` - the segment.
-  * `cursor_i` - position in text relative to the segment.
+  * `i` - position in text relative to the segment.
+
+### `cursor:set(cursor | seg,i) -> changed`
+
+Update the cursor. If the cursor changed, call `changed()` and return true.
+
+### `cursor:get() -> seg, i`
+
+Get the cursor segment and offset in segment.
 
 ### `cursor:pos() -> x, y`
 
@@ -295,30 +306,27 @@ Get cursor size and direction.
 
 Get cursor line object and the lines array.
 
-### `cursor:hit_test(x, y, ...) -> off, seg, i, line_i`
+### `cursor:find(what, ...) -> seg, i`
 
-Hit-test for a cursor position.
+Find a cursor position based on passed args and, for some values of `what`
+based on the current cursor position. Possible argument combinations:
 
-### `cursor:move_to_offset(offset)`
+  * `'pos', x, y, [extend_top], [extend_bottom], [extend_left], [extend_right]` - at coords
+  * `'offset'` - at offset in text
+  * `'next_pos', [delta]` - visual positions away
+  * `'next_offset', [delta]` - text positions away
+  * `'next_pos_and_offset', [delta]` - visual and text positions away
+  * `'next_word', [delta]` - segments away
+  * `'line', line_num, [x], [park_bos], [park_eos]` - on a specific line
+  * `'next_line', [lines_away], [x], [park_bos], [park_eos]` - lines away
+  * `'page', page_num, [x], [extend_top], [extend_bottom], [extend_left], [extend_right]` - at the first line of a specific page
+  * `'next_page', [pages_away], [x], [extend_top], [extend_bottom], [extend_left], [extend_right]` - pages away
 
-Move cursor to closest offset in text.
+### `cursor:move(what, ...) -> changed`
 
-### `cursor:move_to_pos(x, y, ...)`
+Move the cursor to a new position. Implemented as:
 
-Move cursor to closest position to point.
-
-### `cursor:next_cursor([delta]) -> off, seg, i, line_i`
-
-Next/prev `delta` cursors in text (`delta` defaults to `1`).
-
-### `cursor:move(how, [delta], ...)`
-
-Move cursor in text, vertically or horizontally.
-
-  * `how` can be `'char'`, `'word'`, `'line'`, `'page'`.
-  * `delta` defaults to `1`.
-  * for `'line'` and `'page'` modes, extra args are expected:
-  `x`, `park_bos`, `park_eos`.
+	return self:set(self:find(what, ...))
 
 ### `cursor:changed()`
 
@@ -473,13 +481,14 @@ harfbuzz's point of view) but additional cursors are also created at
 ligated "fi" pairs. Some OpenType fonts contain cursor positions for such
 ligatures which are used in this case if available.
 
-Duplicate cursors are not pruned. For example, the first cursor of the glyph
-run of any segment is the same as the last cursor of the glyph run of the
-previous segment. Similarly in the case of lines with mixed LTR/RTL runs,
-there will be cursors pointing at the same offset in the logical text, but
-having different on-screen positions and direction of movement. It is left to
-the cursor navigation API to skip duplicate cursors according to various
-editing policies.
+Duplicate cursors are not pruned, and there are many of those. For example,
+the last cursor of the glyph run of any segment is the same as the first
+cursor of the glyph run of the next segment. Similarly in the case of
+lines with mixed LTR/RTL runs, there will be cursors pointing at the same
+offset in the logical text, but having different on-screen positions and
+direction of movement. Cursors are also duplicated for all the secondary
+codepoints of a grapheme. It is left to the cursor navigation API to skip
+duplicate cursors according to various options.
 
 ### Subtle points
 
