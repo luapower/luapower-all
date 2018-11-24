@@ -1614,6 +1614,7 @@ end
 
 --cursor hit-testing ---------------------------------------------------------
 
+--hit-test the lines array for a line number given a point in space.
 local function cmp_ys(lines, i, y)
 	return lines[i].y - lines[i].spacing_descent < y -- < < [=] = < <
 end
@@ -1636,8 +1637,17 @@ function segments:hit_test_lines(x, y,
 	end
 end
 
-function segments:hit_test_cursors(line_i, x, extend_left, extend_right)
+--hit-test a line for a cursor position given a line number and an x-coord.
+function segments:hit_test_line(line_i, x,
+	extend_left, extend_right, park_bos, park_eos
+)
+	if default_true(park_bos) and line_i < 1 then
+		x = -1/0
+	elseif default_true(park_eos) and line_i > #self.lines then
+		x = 1/0
+	end
 	local lines = self:checklines()
+	local line_i = clamp(line_i, 1, #lines)
 	local line = lines[line_i]
 	local x = x - lines.x - line.x
 	--TODO: use binsearch here.
@@ -1667,25 +1677,10 @@ function segments:hit_test_cursors(line_i, x, extend_left, extend_right)
 	end
 end
 
-function segments:hit_test(x, y,
-	extend_top, extend_bottom, extend_left, extend_right
-)
-	local line_i = self:hit_test_lines(x, y,
-		extend_top, extend_bottom, extend_left, extend_right
-	)
+function segments:hit_test(x, y, extend_top, extend_bottom, ...)
+	local line_i = self:hit_test_lines(x, y, extend_top, extend_bottom, ...)
 	if not line_i then return nil end
-	return self:hit_test_cursors(line_i, x, extend_left, extend_right)
-end
-
---hybrid hit-testing given a line number and an x-coord.
-function segments:hit_test_line(line_i, x, park_bos, park_eos)
-	if default_true(park_bos) and line_i < 1 then
-		x = -1/0
-	elseif default_true(park_eos) and line_i > #self.lines then
-		x = 1/0
-	end
-	local line_i = clamp(line_i, 1, #self.lines)
-	return self:hit_test_cursors(line_i, x, true, true)
+	return self:hit_test_line(line_i, x, ...)
 end
 
 --cursor text hit-testing ----------------------------------------------------
