@@ -490,7 +490,7 @@ M.open = glue.protect(function(read_bytes)
 			for j = j0, j1, step do
 				load_row(j)
 			end
-				
+
 			return dst_bmp
 		end
 
