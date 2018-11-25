@@ -55,7 +55,8 @@ __selections__
 `segs:selection() -> sel`                            create a selection
 `sel:empty() -> true|false`                          check if selection is empty
 `sel.cursor1`, `sel.cursor2`                         selection cursors
-`sel:cursors() -> c1, c2`                            selection cursors in text-order
+`sel:cursors() -> c1, c2, forward`                   selection cursors in text-order
+`sel:offsets() -> o1, o2, forward`                   selection text offsets in order
 `sel:select_all()`                                   select all
 `sel:reset()`                                        select none
 `sel:select_word()`                                  select the word around cursor1
@@ -318,12 +319,13 @@ Get cursor line object and the lines array.
 Find a cursor position. Possible argument combinations:
 
 ------------------------------------------------ -----------------------------
-`'offset'                                     `  position at offset in text
+`'offset',              ['first'|'last']      `  position at offset in text
 `'next_pos',            [positions_away]      `  position some visual positions away
 `'next_offset',         [positions_away]      `  position some text positions away
 `'next_pos_and_offset', [positions_away]      `  position some visual/text positions away
+`'next_codepoint',      [codepoints_away]     `  position some codepoints away
 `'next_word',           [words_away]          `  position some words away
-`'pos', x, y,                              ...`  position at coords (hit test)
+`'pos',                 x, y,              ...`  position at coords (hit test)
 `'line',                line_num,     [x], ...`  position on a specific line
 `'page',                page_num,     [x], ...`  position at the first line of a specific page
 `'next_line',           [lines_away], [x], ...`  position some lines away from the cursor
@@ -366,9 +368,14 @@ Check if the selection is empty.
 
 Selection cursors in no order.
 
-### `sel:cursors() -> c1, c2`
+### `sel:cursors() -> cursor1, cursor2, forward`
 
-Selection cursors in logical text order.
+Selection cursors in logical text order and whether `sel.cursor1` comes
+before `sel.cursor2` in the logical text.
+
+### `sel:offsets() -> offset1, offset2, forward`
+
+Selection text offsets in order (`forward` is the same as for `cursors()`).
 
 ### `sel:select_all()`
 
