@@ -49,8 +49,8 @@ __cursors__
 `cursor:pos() -> x, y`                               cursor position
 `cursor:size() -> w, h, rtl`                         cursor size and direction
 `cursor:line() -> line, lines`                       cursor's line object and lines array
-`cursor:find(what, ...) -> seg, i`                   find a relative cursor position
-`cursor:move(what, ...) -> changed`                  set cursor to a relative position
+`cursor:find(...) -> seg, i`                         find a relative cursor position
+`cursor:move(...) -> changed`                        set cursor to a relative position
 __selections__
 `segs:selection() -> sel`                            create a selection
 `sel:empty() -> true|false`                          check if selection is empty
@@ -273,6 +273,13 @@ Mark all lines and segments as visible.
 Shape, layout and paint text in one call. Return segments so that
 layouting or painting can be done again without reshaping.
 
+## Hit testing
+
+### `segs:hit_test(x, y, ...) -> seg, i`
+
+Hit test for a cursor position. Extra args are the same as for
+`cursor:find('pos', ...)`.
+
 ## Cursors
 
 ### `segs:cursor([offset]) -> cursor`
@@ -306,10 +313,9 @@ Get cursor size and direction.
 
 Get cursor line object and the lines array.
 
-### `cursor:find(what, ...) -> seg, i`
+### `cursor:find(...) -> seg, i`
 
-Find a cursor position based on passed args and, for some values of `what`,
-based on the current cursor position. Possible argument combinations:
+Find a cursor position. Possible argument combinations:
 
 ------------------------------------------------ -----------------------------
 `'offset'                                     `  position at offset in text
@@ -330,16 +336,16 @@ In the table above:
   and defaults to `1`.
   * `[x]` is an optional cursor x-coord and defaults to the current x-coord.
   * `...` means `[extend_top], [extend_bottom], [extend_left],
-[extend_right], [park_bos], [park_eos]` which are extra optional boolean args
-which all default to `true`:
+  [extend_right], [park_bos], [park_eos]` which are extra optional boolean
+  args which all default to `true`:
     * `extend_<side>`: if outside this side of the text, consider the point inside.
     * `park_bos`: if above the top side of the text, return the first logical cursor.
     * `park_eos`: if below the bottom side of the text, return the last logical cursor.
 
-### `cursor:move(what, ...) -> changed`
+### `cursor:move(...) -> changed`
 
 Move the cursor to a new position. Implemented as
-`return self:set(self:find(what, ...))`.
+`return self:set(self:find(...))`.
 
 ### `cursor:changed()`
 
