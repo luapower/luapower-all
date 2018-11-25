@@ -256,7 +256,9 @@ M.open = glue.protect(function(read_bytes)
 					tb[shr] = bits
 				end
 			end
-			table.sort(t, function(a, b) return a > b end)
+			--NOTE: 16bit rgb bitmap formats have their color letters named
+			--in little-endian order, so we need to reverse the color order.
+			table.sort(t, bpp == 16 and function(a, b) return a > b end or nil)
 			local tc2, tb2 = {}, {}
 			for i,shr in ipairs(t) do
 				tc2[i] = tc[shr]

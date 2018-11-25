@@ -29,7 +29,7 @@ tagline: in-memory bitmaps
 
 ## What's a bitmap?
 
-A bitmap is an interface, i.e. any table with the following fields is a bitmap:
+A bitmap is a table format, i.e. any table with the following fields is a bitmap:
 
   * `w`, `h` - bitmap dimensions, in pixels.
   * `stride` - row stride in bytes. must be at least `w * bpp / 8`
@@ -74,6 +74,10 @@ raw8                              raw8                X                  8      
 raw16                             raw16               X                  16                 16
 raw32                             raw32               X                  32                 32
 raw64                             raw64               X                  64                 64
+
+__NOTE:__ For 16-bit RGB formats the color channels are stored in
+a little-endian unsigned integer, so rgb565 actually contains the blue and
+half of the green channel in its first byte.
 
 
 ### Predefined colortypes
