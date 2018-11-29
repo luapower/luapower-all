@@ -1217,9 +1217,9 @@ function segments:wrap(w)
 	--do line wrapping and compute line advance.
 	zone'linewrap'
 	local line_i = 0
-	local seg_i, n = 1, #self
+	local seg_i, seg_count = 1, #self
 	local line
-	while seg_i <= n do
+	while seg_i <= seg_count do
 		local segs_wx, segs_ax, next_seg_i = self:nowrap_segments(seg_i)
 
 		local hardbreak = not line
@@ -1229,10 +1229,9 @@ function segments:wrap(w)
 
 		if hardbreak or softbreak then
 
-			local prev_seg = self[seg_i-1] --last segment of the previous line
-
 			--adjust last segment due to being wrapped.
 			if softbreak then
+				local prev_seg = self[seg_i-1] --last segment of the previous line
 				local prev_run = prev_seg.glyph_run
 				line.advance_x = line.advance_x - prev_seg.advance_x
 				prev_seg.advance_x = prev_run.wrap_advance_x
@@ -1240,11 +1239,6 @@ function segments:wrap(w)
 					and -(prev_run.advance_x - prev_run.wrap_advance_x) or 0
 				prev_seg.wrapped = true
 				line.advance_x = line.advance_x + prev_seg.advance_x
-			end
-
-			if prev_seg then --break the next* chain.
-				prev_seg.next = false
-				prev_seg.next_vis = false
 			end
 
 			line_i = line_i + 1
@@ -1260,19 +1254,27 @@ function segments:wrap(w)
 			}
 			self.lines[line_i] = line
 
+		else
+
+			--link last segment of previous nowrap range to this one.
+			self[seg_i-1].next = self[seg_i]
+			self[seg_i-1].next_vis = self[seg_i]
+
 		end
 
 		line.advance_x = line.advance_x + segs_ax
 
-		for i = seg_i, next_seg_i-1 do
-			local seg = self[i]
+		for seg_i = seg_i, next_seg_i-1 do
+			local seg = self[seg_i]
 			local run = seg.glyph_run
-			seg.next = self[i+1]
-			seg.next_vis = self[i+1]
 			seg.advance_x = run.advance_x
 			seg.x = 0
 			seg.line = line
 			seg.wrapped = false
+			if seg_i < next_seg_i-1 then --leave last segment alone.
+				seg.next = self[seg_i+1]
+				seg.next_vis = self[seg_i+1]
+			end
 		end
 
 		local last_seg = self[next_seg_i-1]

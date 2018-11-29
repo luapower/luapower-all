@@ -11,7 +11,7 @@
 --   {left = left_seg, right = right_seg, prev = prev_range}.
 -- A range contains the left-most and right-most segs in the range,
 -- in visual order. Following left's `next` member eventually gets us to
--- `right`. The right seg's `next_vis` member is undefined.
+-- `right`. The right seg's `next_vis` member is undefined!
 
 local bit = require'bit'
 local glue = require'glue'
@@ -20,6 +20,13 @@ local band = bit.band
 local odd = function(x) return band(x, 1) == 1 end
 
 local alloc_range, free_range = glue.freelist()
+
+local free_range = function(range)
+	range.left = false
+	range.right = false
+	range.prev = false
+	free_range(range)
+end
 
 -- Merges range with previous range and returns the previous range.
 local function merge_range_with_prev(range)
@@ -38,7 +45,7 @@ local function merge_range_with_prev(range)
 		right = range
 	end
 	--Stich them.
-	left.right.next = right.left
+	left.right.next_vis = right.left
 	prev.left = left.left
 	prev.right = right.right
 
@@ -80,7 +87,7 @@ function reorder_segs(seg)
 				range.left = seg
 			else
 				-- Even, range goes to the left of seg.
-				range.right.next = seg
+				range.right.next_vis = seg
 				range.right = seg
 			end
 			range.bidi_level = seg.bidi_level
@@ -101,10 +108,11 @@ function reorder_segs(seg)
 		range = merge_range_with_prev(range)
 	end
 
-	range.right.next = false
+	range.right.next_vis = false
 
+	local left = range.left
 	free_range(range)
-	return range.left
+	return left
 end
 
 return reorder_segs
