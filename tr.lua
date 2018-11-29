@@ -1229,9 +1229,10 @@ function segments:wrap(w)
 
 		if hardbreak or softbreak then
 
+			local prev_seg = self[seg_i-1] --last segment of the previous line
+
 			--adjust last segment due to being wrapped.
 			if softbreak then
-				local prev_seg = self[seg_i-1] --last segment of the previous line
 				local prev_run = prev_seg.glyph_run
 				line.advance_x = line.advance_x - prev_seg.advance_x
 				prev_seg.advance_x = prev_run.wrap_advance_x
@@ -1239,6 +1240,11 @@ function segments:wrap(w)
 					and -(prev_run.advance_x - prev_run.wrap_advance_x) or 0
 				prev_seg.wrapped = true
 				line.advance_x = line.advance_x + prev_seg.advance_x
+			end
+
+			if prev_seg then --break the next* chain.
+				prev_seg.next = false
+				prev_seg.next_vis = false
 			end
 
 			line_i = line_i + 1
@@ -1254,12 +1260,6 @@ function segments:wrap(w)
 			}
 			self.lines[line_i] = line
 
-		else
-
-			--link last segment of previous nowrap range to this one.
-			self[seg_i-1].next = self[seg_i]
-			self[seg_i-1].next_vis = self[seg_i]
-
 		end
 
 		line.advance_x = line.advance_x + segs_ax
@@ -1271,10 +1271,8 @@ function segments:wrap(w)
 			seg.x = 0
 			seg.line = line
 			seg.wrapped = false
-			if seg_i < next_seg_i-1 then --leave last segment alone.
-				seg.next = self[seg_i+1]
-				seg.next_vis = self[seg_i+1]
-			end
+			seg.next = self[seg_i+1]
+			seg.next_vis = self[seg_i+1]
 		end
 
 		local last_seg = self[next_seg_i-1]
