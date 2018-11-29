@@ -2051,15 +2051,12 @@ function cursor:rect(w)
 	local x0, y0 = self.segments:line_pos(self.seg.line)
 	local x, y, w, h = self.segments:cursor_rect(self.seg, self.i, w)
 	if self.insert_mode then
-		local rtl = self:rtl()
-		local seg1, i1 = self:find('rel_cursor', rtl and 'prev' or 'next')
-		if seg1.line == self.seg.line then
+		local seg1, i1 = self:find('rel_cursor', 'next')
+		if seg1 and seg1.line == self.seg.line then
 			local x1 = self.segments:cursor_rect(seg1, i1)
-			if (not rtl and x1 > x) or (rtl and x1 < x) then
-				w = x1 - x
-				if w < 0 then
-					x, w = x + w, -w
-				end
+			w = x1 - x
+			if w < 0 then
+				x, w = x + w, -w
 			end
 		end
 	end
