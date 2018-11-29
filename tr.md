@@ -35,21 +35,20 @@ __shaping & layouting__
 `segs:layout(x, y, [w], [h], [ax], [ay]) -> segs`    wrap and align shaped text
 `segs:bounding_box() -> x, y, w, h`                  bounding box of laid out text
 __rendering__
-`segs:paint(cr)`                                     paint laid out text
-`segs:clip([x, y, w, h])`                            clip visible text to rectangle
-`segs:reset_clip()`                                  reset clipping area
+`segs:paint(cr) -> segs`                             paint laid out text
+`segs:clip([x, y, w, h]) -> segs`                    clip visible text to rectangle
+`segs:reset_clip() -> segs`                          reset clipping area
 `tr:textbox(text_tree, cr, x, y, w, h, [ax], [ay])`  shape, layout and paint text
 __hit testing__
 `segs:hit_test(x, y, ...) -> seg, i`                 hit test the laid out text
 __cursors__
 `segs:cursor([offset]) -> cursor`                    create a cursor
-`cursor:set(cursor | seg,i) -> changed`              update a cursor
-`cursor:get() -> seg, i`                             cursor segment and offset in segment
+`cursor:set(cursor | seg,i[,x]) -> changed`          update a cursor
+`cursor:get() -> seg, i, x`                          cursor segment and offset in segment
 `cursor:changed()`                                   event: cursor changed
 `cursor:pos() -> x, y`                               cursor position
 `cursor:size() -> w, h, rtl`                         cursor size and direction
-`cursor:line() -> line, lines`                       cursor's line object and lines array
-`cursor:find(...) -> seg, i`                         find a relative cursor position
+`cursor:find(...) -> seg, i, [positions_left]`       find a relative cursor position
 `cursor:move(...) -> changed`                        set cursor to a relative position
 __selections__
 `segs:selection() -> sel`                            create a selection
@@ -242,7 +241,7 @@ Return the bounding-box of laid out text.
 
 ## Rendering
 
-### `segs:paint(cr)`
+### `segs:paint(cr) -> segs`
 
 Paint the shaped and laid out text into a graphics context.
 
@@ -257,7 +256,7 @@ handle blitting of (clipped portions of) 8-bit gray and 32-bit BGRA bitmaps
 and also bitmap scaling if you use bitmap fonts, since freetype doesn't handle
 that.
 
-### `segs:clip([x, y, w, h])`
+### `segs:clip([x, y, w, h]) -> segs`
 
 Mark all lines and segments which are completely outside the given rectangle
 as invisible, and everything else as visible.
@@ -265,14 +264,13 @@ as invisible, and everything else as visible.
 If no rectangle given, the segments are clipped to the rectangle from the
 last call to `align()`.
 
-### `segs:reset_clip()`
+### `segs:reset_clip() -> segs`
 
 Mark all lines and segments as visible.
 
 ### `tr:textbox(text_tree, cr, x, y, w, h, [align_x], [align_y]) -> segs`
 
-Shape, layout and paint text in one call. Return segments so that
-layouting or painting can be done again without reshaping.
+Shape, wrap, align, clip and paint text in one call.
 
 ## Hit testing
 
@@ -288,17 +286,28 @@ Hit test for a cursor position. Extra args are the same as for
 Create a cursor, optionally placing it at a text offset (which defaults to `0`).
 Returns `nil` if the segments table contain no segments.
 
+Cursor configuration fields:
+
+  * `extend_top` (true): consider any point above the topmost line as part of the line.
+  * `extend_bottom` (true): consider any point below the bottommost line as part of the line.
+  * `extend_left` (true): consider any point to the left of the text as part of that line.
+  * `extend_right` (true): consider any point to the right of the text as part of that line.
+  * `park_bos` (false): if trying to go above the topmost line, move to first offset.
+  * `park_eos` (false): if trying to go below the bottommost line, move to last offset.
+  * `skip_wrapped_char` (
+
 Cursor state fields:
 
   * `segments` - a reference to the segments table.
   * `seg` - the segment.
   * `i` - position in text relative to the segment.
+  * `x` - x-position set by horizontal movement to be recalled by vertical movement.
 
-### `cursor:set(cursor | seg,i) -> changed`
+### `cursor:set(cursor | seg,i[,x]) -> changed`
 
 Update the cursor. If the cursor changed, call `changed()` and return true.
 
-### `cursor:get() -> seg, i`
+### `cursor:get() -> seg, i, x`
 
 Get the cursor segment and offset in segment.
 
@@ -310,39 +319,26 @@ Get cursor position.
 
 Get cursor size and direction.
 
-### `cursor:line() -> line, lines`
-
-Get cursor line object and the lines array.
-
-### `cursor:find(...) -> seg, i`
+### `cursor:find(...) -> seg, i, [positions_left]`
 
 Find a cursor position. Possible argument combinations:
 
------------------------------------------------- -----------------------------
-`'offset',              ['first'|'last']      `  position at offset in text
-`'next_pos',            [positions_away]      `  position some visual positions away
-`'next_offset',         [positions_away]      `  position some text positions away
-`'next_pos_and_offset', [positions_away]      `  position some visual/text positions away
-`'next_codepoint',      [codepoints_away]     `  position some codepoints away
-`'next_word',           [words_away]          `  position some words away
-`'pos',                 x, y,              ...`  position at coords (hit test)
-`'line',                line_num,     [x], ...`  position on a specific line
-`'page',                page_num,     [x], ...`  position at the first line of a specific page
-`'next_line',           [lines_away], [x], ...`  position some lines away from the cursor
-`'next_page',           [pages_away], [x], ...`  position some pages away from the cursor
------------------------------------------------- -----------------------------
+------------------------------------------------- ----------------------------
+`'offset',              offset, ['first'|'last']` position at offset in text
+`'next_pos',            [positions_away]        ` position some visual positions away
+`'next_offset',         [positions_away]        ` position some text positions away
+`'next_pos_and_offset', [positions_away]        ` position some visual/text positions away
+`'next_codepoint',      [codepoints_away]       ` position some codepoints away
+`'next_word',           [words_away]            ` position some words away
+`'pos',                 x, y,                   ` position at coords (hit test)
+`'line',                line_num                ` position on a specific line
+`'page',                page_num                ` position at the first line of a specific page
+`'next_line',           [lines_away]            ` position some lines away from the cursor
+`'next_page',           [pages_away]            ` position some pages away from the cursor
+------------------------------------------------- ----------------------------
 
-In the table above:
-
-  * `*_away` describes a relative position and can be negative or positive
-  and defaults to `1`.
-  * `[x]` is an optional cursor x-coord and defaults to the current x-coord.
-  * `...` means `[extend_top], [extend_bottom], [extend_left],
-  [extend_right], [park_bos], [park_eos]` which are extra optional boolean
-  args which all default to `true`:
-    * `extend_<side>`: if outside this side of the text, consider the point inside.
-    * `park_bos`: if above the top side of the text, return the first logical cursor.
-    * `park_eos`: if below the bottom side of the text, return the last logical cursor.
+In the table above `*_away` describes a relative position and can be
+negative or positive and defaults to `1`.
 
 ### `cursor:move(...) -> changed`
 

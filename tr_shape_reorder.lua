@@ -5,13 +5,13 @@
 -- Derived from code by Behdad Esfahbod, Copyright (C) 2013 Google, Inc.
 -- https://github.com/fribidi/linear-reorder/blob/master/linear-reorder.c
 
--- Data structures used: `run` and `range`.
--- A run is a segment with fields: {bidi_level = level, next = next_run}.
+-- Data structures used: `seg` and `range`.
+-- A seg is a segment with fields: {bidi_level = level}.
 -- A range is an internal structure used by the algorithm with the fields:
---   {left = left_run, right = right_run, prev = prev_range}.
--- A range contains the left-most and right-most runs in the range,
+--   {left = left_seg, right = right_seg, prev = prev_range}.
+-- A range contains the left-most and right-most segs in the range,
 -- in visual order. Following left's `next` member eventually gets us to
--- `right`. The right run's `next` member is undefined.
+-- `right`. The right seg's `next_vis` member is undefined.
 
 local bit = require'bit'
 local glue = require'glue'
@@ -46,54 +46,55 @@ local function merge_range_with_prev(range)
 	return prev
 end
 
--- Takes a list of runs on the line in the logical order and
+-- Takes a list of segs on the line in the logical order and
 -- reorders the list to be in visual order, returning the
--- left-most run.
+-- left-most seg.
 --
--- Caller is responsible to reverse the run contents for any
--- run that has an odd level.
+-- Caller is responsible to reverse the seg contents for any
+-- seg that has an odd level.
 --
-function reorder_runs(run)
+function reorder_segs(seg)
 
-	-- The algorithm here is something like this: sweep runs in the
-	-- logical order, keeping a stack of ranges.  Upon seeing a run,
+	-- The algorithm here is something like this: sweep segs in the
+	-- logical order, keeping a stack of ranges.  Upon seeing a seg,
 	-- we flatten all ranges before it that have a level higher than
-	-- the run, by merging them, reordering as we go.  Then we either
-	-- merge the run with the previous range, or create a new range
-	-- for the run, depending on the level relationship.
+	-- the seg, by merging them, reordering as we go.  Then we either
+	-- merge the seg with the previous range, or create a new range
+	-- for the seg, depending on the level relationship.
 
 	local range
-	while run do
-		local next_run = run.next
+	while seg do
+		local next_seg = seg.next_vis
 
-		while range and range.bidi_level > run.bidi_level
-			and range.prev and range.prev.bidi_level >= run.bidi_level
+		while range and range.bidi_level > seg.bidi_level
+			and range.prev and range.prev.bidi_level >= seg.bidi_level
 		do
 			range = merge_range_with_prev(range)
 		end
 
-		if range and range.bidi_level >= run.bidi_level then
-			-- Attach run to the range.
-			if odd(run.bidi_level) then
-				-- Odd, range goes to the right of run.
-				run.next = range.left
-				range.left = run
+		if range and range.bidi_level >= seg.bidi_level then
+			-- Attach the seg to the range.
+			if odd(seg.bidi_level) then
+				-- Odd, range goes to the right of seg.
+				seg.next_vis = range.left
+				range.left = seg
 			else
-				-- Even, range goes to the left of run.
-				range.right.next = run
-				range.right = run
+				-- Even, range goes to the left of seg.
+				range.right.next = seg
+				range.right = seg
 			end
-			range.bidi_level = run.bidi_level
+			range.bidi_level = seg.bidi_level
 		else
-			-- Allocate new range for run and push into stack.
+			-- Allocate new range for seg and push into stack.
 			local r = alloc_range()
-			r.left = run
-			r.right = run
-			r.bidi_level = run.bidi_level
+			r.left = seg
+			r.right = seg
+			r.bidi_level = seg.bidi_level
 			r.prev = range
 			range = r
 		end
-		run = next_run
+
+		seg = next_seg
 	end
 	assert (range)
 	while range.prev do
@@ -106,4 +107,4 @@ function reorder_runs(run)
 	return range.left
 end
 
-return reorder_runs
+return reorder_segs

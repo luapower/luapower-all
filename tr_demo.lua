@@ -282,8 +282,7 @@ function win:repaint()
 
 	cursor = cursor or segs:cursor()
 	if cursor then
-		local x, y = cursor:pos()
-		local w, h, rtl = cursor:size()
+		local x, y, w, h, rtl = cursor:rect()
 		rect(cr, '#fff', x, y, w, h)
 		local w = (rtl and 10 or -10)
 		triangle(cr, '#fff', x-w*.8, y, w, 90)
@@ -335,7 +334,7 @@ function win:keypress(key)
 	end
 
 	if key == 'right' or key == 'left' then
-		cursor:move('next_offset', key == 'right' and 1 or -1)
+		cursor:move('rel_cursor', key == 'right' and 'next' or 'prev')
 		self:invalidate()
 		local t = {}
 		for i = 0, cursor.seg.glyph_run.len do
@@ -344,10 +343,10 @@ function win:keypress(key)
 		print(cursor.seg.index, cursor.i,
 			cursor.seg.glyph_run.cursor_xs[cursor.i], pp.format(t))
 	elseif key == 'up' then
-		cursor:move('next_line', -1)
+		cursor:move('rel_line', -1)
 		self:invalidate()
 	elseif key == 'down' then
-		cursor:move('next_line', 1)
+		cursor:move('rel_line', 1)
 		self:invalidate()
 	end
 end
