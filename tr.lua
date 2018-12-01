@@ -1460,10 +1460,10 @@ function segments:clip(x, y, w, h)
 		w = self.w
 		h = self.h
 	end
+	local first_visible = self:hit_test_lines(y)
+	local last_visible = self:hit_test_lines(y + h - 1/256)
 	x = x - lines.x
 	y = y - lines.y - lines.baseline
-	local first_visible = 1
-	local last_visible = #lines
 	for line_i, line in ipairs(lines) do
 		local bx = line.x
 		local bw = line.advance_x
