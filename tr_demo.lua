@@ -231,8 +231,8 @@ function win:repaint()
 			local hit = cursor and cursor.line_i == i
 			local x = x + line.x
 			local y = y + line.y
-			rect(cr, hit and '#f22' or '#222', x, y, line.advance_x, -line.spacing_ascent)
-			rect(cr, hit and '#f22' or '#022', x, y, line.advance_x, -line.spacing_descent)
+			rect(cr, hit and '#f22' or '#222', x, y, line.advance_x, -line.spaced_ascent)
+			rect(cr, hit and '#f22' or '#022', x, y, line.advance_x, -line.spaced_descent)
 			rect(cr, hit and '#fff' or '#888', x, y, line.advance_x, -line.ascent)
 			rect(cr, hit and '#0ff' or '#088', x, y, line.advance_x, -line.descent)
 			dot(cr, '#fff', x, y, 6)
@@ -274,8 +274,7 @@ function win:repaint()
 		end
 
 		if cursor and cursor.i then
-			local x, y = cursor:pos()
-			local w, h, rtl = cursor:size()
+			local x, y, w, h = cursor:rect()
 			rect(cr, '#f00', x, y, w, h)
 		end
 	end
@@ -292,7 +291,7 @@ function win:repaint()
 
 	sel = sel or segs:selection()
 	if sel then
-		sel.cursor1:move('offset', 200)
+		sel.cursor1:move('offset', 390)
 		sel.cursor2:move('offset', 628)
 		--sel:select_all()
 

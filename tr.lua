@@ -1451,6 +1451,17 @@ end
 
 --clipping -------------------------------------------------------------------
 
+--hit-test the lines array for a line number given an y-coord.
+local function cmp_ys(lines, i, y)
+	return lines[i].y - lines[i].spaced_descent < y -- < < [=] = < <
+end
+local function line_at_y(y, lines)
+	if y < -lines[1].spaced_ascent then
+		return 1
+	end
+	return binsearch(y, lines, cmp_ys) or #lines
+end
+
 --NOTE: doesn't take into account side bearings, so it's not 100% accurate!
 function segments:clip(x, y, w, h)
 	local lines = self:checklines()
@@ -1460,11 +1471,12 @@ function segments:clip(x, y, w, h)
 		w = self.w
 		h = self.h
 	end
-	local first_visible = self:hit_test_lines(y)
-	local last_visible = self:hit_test_lines(y + h - 1/256)
 	x = x - lines.x
 	y = y - lines.y - lines.baseline
-	for line_i, line in ipairs(lines) do
+	local first_visible = line_at_y(y, lines)
+	local last_visible = line_at_y(y + h - 1/256, lines)
+	for line_i = first_visible, last_visible do
+		local line = lines[line_i]
 		local bx = line.x
 		local bw = line.advance_x
 		local by = line.y - line.ascent
@@ -1690,16 +1702,10 @@ function segments:rel_cursor(seg, i, dir, which, diff, valid, obj, ...)
 end
 
 --hit-test the lines array for a line number given an y-coord.
-local function cmp_ys(lines, i, y)
-	return lines[i].y - lines[i].spaced_descent < y -- < < [=] = < <
-end
 function segments:hit_test_lines(y)
 	local lines = self:checklines()
-	y = y - (lines.y + lines.baseline)
-	if y < -lines[1].spaced_ascent then
-		return 1
-	end
-	return binsearch(y, lines, cmp_ys) or #lines
+	local y = y - (lines.y + lines.baseline)
+	return line_at_y(y, lines)
 end
 
 --hit-test a line for a cursor position given a line number and an x-coord.
@@ -2017,7 +2023,7 @@ cursor.unique_offsets = false
 --keep a cursor after the last space char on a wrapped line: this cursor can
 --be trouble because it is outside the textbox and if there's not enough room
 --on the wrap-side of the textbox it can get clipped out.
-cursor.wrapped_space = true
+cursor.wrapped_space = false
 
 cursor.insert_mode = false --full-width caret rect
 

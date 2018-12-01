@@ -212,8 +212,8 @@ Each segment also has the following fields set:
   * `wrapped`: true if the segment is the last segment on a wrapped line.
   * `visible`: true if segment is not clipped.
 
-NOTE: The `lines` table _can_ contain zero lines, but only if the `segs`
-table has zero segments, which only happens when there are errors.
+NOTE: The `lines` table _can_ contain zero lines if the `segs` table has
+zero segments, which happens when there are errors.
 
 ### `segs:align(x, y, [w], [h], [align_x], [align_y]) -> segs`
 
@@ -292,13 +292,10 @@ Returns `nil` if the segments table contain no segments.
 
 Cursor configuration fields:
 
-  * `extend_top` (true): consider any point above the topmost line as part of the line.
-  * `extend_bottom` (true): consider any point below the bottommost line as part of the line.
-  * `extend_left` (true): consider any point to the left of the text as part of that line.
-  * `extend_right` (true): consider any point to the right of the text as part of that line.
-  * `park_bos` (false): if trying to go above the topmost line, move to first offset.
-  * `park_eos` (false): if trying to go below the bottommost line, move to last offset.
-  * `skip_wrapped_char` (
+  * `park_home` (`true`): if trying to go above the topmost line, go to the first offset.
+  * `park_end` (`true`): if trying to go below the bottommost line, go to the last offset.
+  * `unique_offsets` (`false`): jump-through same-text-offset cursors like most editors do.
+  * `wrapped_space` (`false`): keep a cursor after the last space char on a wrapped line.
 
 Cursor state fields:
 
@@ -328,21 +325,26 @@ Get cursor size and direction.
 Find a cursor position. Possible argument combinations:
 
 ------------------------------------------------- ----------------------------
-`'offset',              offset, ['first'|'last']` position at offset in text
-`'next_pos',            [positions_away]        ` position some visual positions away
-`'next_offset',         [positions_away]        ` position some text positions away
-`'next_pos_and_offset', [positions_away]        ` position some visual/text positions away
-`'next_codepoint',      [codepoints_away]       ` position some codepoints away
-`'next_word',           [words_away]            ` position some words away
-`'pos',                 x, y,                   ` position at coords (hit test)
-`'line',                line_num                ` position on a specific line
-`'page',                page_num                ` position at the first line of a specific page
-`'next_line',           [lines_away]            ` position some lines away from the cursor
-`'next_page',           [pages_away]            ` position some pages away from the cursor
+`'offset', offset, [which]`                       position at offset in text
+`'cursor', seg, i, [dir], [mode], [which]`        position relative to other position
+`'rel_cursor', [dir], [mode], [which]`            position relative to cursor
+`'line', line_num, [x]`                           position on a specific line
+`'rel_line', [lines_away], [x]`                   position some lines away from the cursor
+`'pos', [x], y`                                   position at point (hit test)
+`'page', page_num, [x]`                           position at the first line of a specific page
+`'rel_page', [pages_away], [x]`                   position some pages away from the cursor
 ------------------------------------------------- ----------------------------
 
-In the table above `*_away` describes a relative position and can be
-negative or positive and defaults to `1`.
+In the table above:
+
+  * `*_away` can be negative or positive and defaults to `0`.
+  * `dir` (`'this'`): search direction `'next', 'prev', 'this'`.
+  * `mode` (`'pos'`): what to find: `'pos', 'char', 'word', 'line'`.
+  * `which` (`'first'`): what cursor to return when there are multiple
+  cursors that satisfy the search criteria: `'first', 'last'`.
+
+Example: `segs:find('rel_cursor', 'this', 'word', 'last')` returns the cursor
+position at the end of the word that the cursor is currently inside of.
 
 ### `cursor:move(...) -> changed`
 
@@ -498,7 +500,7 @@ Rendering can be performed multiple times in O(n).
 
 ### Cursors
 
-Cursor positions are stored in each glyph run in two arrays: `cursor_offsets`
+Cursor positions are stored in `seg.glyph_run` in two arrays: `cursor_offsets`
 and `cursor_xs`. Both arrays are indexed by codepoint offset (relative to the
 start of the glyph run), so a cursor position and its corresponding codepoint
 offset can be found for any text offset in O(1). Unique cursors are created
@@ -508,14 +510,20 @@ harfbuzz's point of view) but additional cursors are also created at
 ligated "fi" pairs. Some OpenType fonts contain cursor positions for such
 ligatures which are used in this case if available.
 
-Duplicate cursors are not pruned, and there are many of those. For example,
-the last cursor of the glyph run of any segment is the same as the first
-cursor of the glyph run of the next segment. Similarly in the case of
-lines with mixed LTR/RTL runs, there will be cursors pointing at the same
-offset in the logical text, but having different on-screen positions and
-direction of movement. Cursors are also duplicated for all the secondary
-codepoints of a grapheme. It is left to the cursor navigation API to skip
-duplicate cursors according to various options.
+Duplicate cursors are not pruned, and there are many of those:
+
+  * the last cursor of the glyph run of any segment is the same as the first
+  cursor of the glyph run of the next segment.
+  * the last cursor position on a wrapped line is the same as the first
+  cursor position on the next line.
+  * lines with mixed LTR/RTL contain cursors pointing at the same offset in
+  the logical text, but having different on-screen positions and direction
+  of movement.
+  * the secondary codepoints of a grapheme duplicate the cursor at the start
+  of the grapheme.
+
+It is left to the cursor navigation API to skip duplicate cursors according
+to various options and parameters.
 
 ### Subtle points
 
@@ -536,12 +544,17 @@ and browsers behave. The downside of ignoring the entire trailing whitespace
 of the last word as opposed to only the last space character is that when
 there's multiple trailing space characters, editing that whitespace will place
 the cursor beyond the text box boundaries, which depending on the context
-might even render the cursor invisible. Because of that, we take a different
-approach, and only collapse the last space character and not the entire
-whitespace when doing line-wrapping.
+might even render the cursor invisible. Because of that, I have chosen to
+only collapse the last space character and not the entire whitespace when
+doing line-wrapping.
 
 Another subtle point is that in RTL runs, this logically-trailing whitespace
 is visually at the beginning of the word, thus the glyph run that contains it
 (along with its cursor positions) must be shifted one space-character to the
 left. The segment's `x` field contains this adjustment.
+
+The cursor position following the space character on a wrapped line can be
+enabled by setting `cursor.wrapped_space = true`. If you do that, make sure
+to provide enough non-clipped margins on both sides of the text box so that
+the cursor is not clipped at that position.
 
