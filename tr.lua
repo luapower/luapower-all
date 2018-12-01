@@ -1129,6 +1129,7 @@ function tr:shape(text_runs, segments)
 	--remove cached values.
 	segments._min_w = false
 	segments._max_w = false
+	segments.lines = false
 
 	return segments
 end
@@ -1255,7 +1256,7 @@ function segments:wrap(w)
 				x = 0, y = 0,
 				advance_x = 0,
 				ascent = 0, descent = 0,
-				spacing_ascent = 0, spacing_descent = 0,
+				spaced_ascent = 0, spaced_descent = 0,
 				visible = true, --entirely clipped or not
 			}
 			self.lines[line_i] = line
@@ -1323,11 +1324,11 @@ function segments:wrap(w)
 			local run_h = run.ascent - run.descent
 			local line_spacing = seg.text_run.line_spacing or 1
 			local half_line_gap = run_h * (line_spacing - 1) / 2
-			line.spacing_ascent
-				= max(line.spacing_ascent,
+			line.spaced_ascent
+				= max(line.spaced_ascent,
 					(run.ascent + half_line_gap) * ascent_factor)
-			line.spacing_descent
-				= min(line.spacing_descent,
+			line.spaced_descent
+				= min(line.spaced_descent,
 					(run.descent - half_line_gap) * descent_factor)
 			--set segments `x` to be relative to the line's origin.
 			seg.x = ax + seg.x
@@ -1337,7 +1338,7 @@ function segments:wrap(w)
 
 		--compute line's y position relative to first line's baseline.
 		if last_line then
-			local baseline_h = line.spacing_ascent - last_line.spacing_descent
+			local baseline_h = line.spaced_ascent - last_line.spaced_descent
 			line.y = last_line.y + baseline_h
 		end
 		last_line = line
@@ -1348,17 +1349,23 @@ function segments:wrap(w)
 	local last_line = lines[#lines]
 	if not first_line then
 		lines.h = 0
-		lines.spacing_h = 0
+		lines.spaced_h = 0
 	else
 		lines.h =
 			first_line.ascent
 			+ last_line.y
 			- last_line.descent
-		lines.spacing_h =
-			first_line.spacing_ascent
+		lines.spaced_h =
+			first_line.spaced_ascent
 			+ last_line.y
-			- last_line.spacing_descent
+			- last_line.spaced_descent
 	end
+
+	--set the default visible line range.
+	lines.first_visible = 1
+	lines.last_visible = #lines
+
+	self.wrap_w = w --for reshape()
 
 	return self
 end
@@ -1377,11 +1384,11 @@ function segments:align(x, y, w, h, align_x, align_y)
 	align_y = assert(aligns_y[align_y], 'Invalid align_y: %s', align_y)
 
 	w = w or lines.max_ax
-	h = h or lines.spacing_h
+	h = h or lines.spaced_h
 
 	lines.min_x = 1/0
 
-	for _,line in ipairs(lines) do
+	for line_i, line in ipairs(lines) do
 		--compute line's aligned x position relative to the textbox origin.
 		if align_x == 'right' then
 			line.x = w - line.advance_x
@@ -1393,17 +1400,17 @@ function segments:align(x, y, w, h, align_x, align_y)
 
 	--compute first line's baseline based on vertical alignment.
 	local first_line = lines[1]
-	local last_line = lines[#lines]
+	local last_line  = lines[#lines]
 	if not first_line then
 		lines.baseline = 0
 	else
 		if align_y == 'top' then
-			lines.baseline = first_line.spacing_ascent
+			lines.baseline = first_line.spaced_ascent
 		else
 			if align_y == 'bottom' then
-				lines.baseline = h - (last_line.y - last_line.spacing_descent)
+				lines.baseline = h - (last_line.y - last_line.spaced_descent)
 			elseif align_y == 'center' then
-				lines.baseline = first_line.spacing_ascent + (h - lines.spacing_h) / 2
+				lines.baseline = first_line.spaced_ascent + (h - lines.spaced_h) / 2
 			end
 		end
 	end
@@ -1412,13 +1419,18 @@ function segments:align(x, y, w, h, align_x, align_y)
 	lines.x = x
 	lines.y = y
 
-	--store the rest of the args for automatic relayouting after reshaping.
-	self._w = w
-	self._h = h
-	self._ax = align_x
-	self._ay = align_y
+	--store args for reshape().
+	self.x = x
+	self.y = y
+	self.w = w
+	self.h = h
+	self.align_x = align_x
+	self.align_y = align_y
 
-	lines.clipped = false --invalidate clipping
+	if lines.clip_valid then
+		--must reset clip on paint() if clip() won't be called until paint().
+		lines.clip_valid = false
+	end
 
 	return self
 end
@@ -1432,8 +1444,8 @@ function segments:bounding_box()
 	local bx = lines.x + lines.min_x
 	local bw = lines.max_ax
 	local by = lines.y + lines.baseline
-		- (lines[1] and lines[1].spacing_ascent or 0)
-	local bh = lines.spacing_h
+		- (lines[1] and lines[1].spaced_ascent or 0)
+	local bh = lines.spaced_h
 	return bx, by, bw, bh
 end
 
@@ -1443,16 +1455,16 @@ end
 function segments:clip(x, y, w, h)
 	local lines = self:checklines()
 	if not x then
-		x = lines.x
-		y = lines.y
-		w = self._w
-		h = self._h
-		lines.clipped = true
-	else
-		x = x - lines.x
-		y = y - lines.y - lines.baseline
+		x = self.x
+		y = self.y
+		w = self.w
+		h = self.h
 	end
-	for _,line in ipairs(lines) do
+	x = x - lines.x
+	y = y - lines.y - lines.baseline
+	local first_visible = 1
+	local last_visible = #lines
+	for line_i, line in ipairs(lines) do
 		local bx = line.x
 		local bw = line.advance_x
 		local by = line.y - line.ascent
@@ -1466,17 +1478,18 @@ function segments:clip(x, y, w, h)
 				seg.visible = box_overlapping(x, y, w, h, bx, by, bw, bh)
 				seg = seg.next_vis
 			end
+			first_visible = first_visible or line_i
+			last_visible = line_i
 		end
 	end
+	lines.first_visible = first_visible
+	lines.last_visible = last_visible
+	lines.clip_valid = true
 	return self
 end
 
 function segments:reset_clip()
-	for _,seg in ipairs(self) do
-		seg.visible = true
-	end
-	self.lines.clipped = false
-	return self
+	return self:clip(-1/0, -1/0, 1/0, 1/0)
 end
 
 function tr:textbox(text_tree, cr, x, y, w, h, align_x, align_y)
@@ -1484,7 +1497,7 @@ function tr:textbox(text_tree, cr, x, y, w, h, align_x, align_y)
 		:shape(text_tree)
 		:wrap(w)
 		:align(x, y, w, h, align_x, align_y)
-		:clip(x, y, w, h)
+		:clip()
 		:paint(cr)
 end
 
@@ -1519,7 +1532,12 @@ function segments:paint(cr)
 	local rs = self.tr.rs
 	local lines = self:checklines()
 
-	for _,line in ipairs(lines) do
+	if self.clip_valid == false then
+		self:reset_clip()
+	end
+
+	for line_i = lines.first_visible, lines.last_visible do
+		local line = lines[line_i]
 		if line.visible then
 
 			local ax = lines.x + line.x
@@ -1673,12 +1691,12 @@ end
 
 --hit-test the lines array for a line number given an y-coord.
 local function cmp_ys(lines, i, y)
-	return lines[i].y - lines[i].spacing_descent < y -- < < [=] = < <
+	return lines[i].y - lines[i].spaced_descent < y -- < < [=] = < <
 end
 function segments:hit_test_lines(y)
 	local lines = self:checklines()
 	y = y - (lines.y + lines.baseline)
-	if y < -lines[1].spacing_ascent then
+	if y < -lines[1].spaced_ascent then
 		return 1
 	end
 	return binsearch(y, lines, cmp_ys) or #lines
@@ -1952,20 +1970,14 @@ end
 --editing text from segments which includes reshaping and relayouting.
 
 function segments:reshape()
-	local x, y, clipped, w, h, ha, va
-	local t = self.lines
-	if t then
-		x, y, clipped, w, h, ha, va =
-			t.x, t.y, t.clipped, self._w, self._h, self._ax, self._ay
-	end
+	local wrap_w = self.wrap_w
+	local x, y, w, h = self.x, self.y, self.w, self.h
+	local ax, ay = self.align_x, self.align_y
 	self.tr:shape(self.text_runs, self)
-	if x then
-		self:wrap(w)
-		self:align(x, y, w, h, ha, va)
-		if clipped then
-			self:reset_clip()
-			self:clip(x, y, w, h)
-			self.lines.clipped = true
+	if wrap_w then
+		self:wrap(wrap_w)
+		if x then
+			self:align(x, y, w, h, ax, ay)
 		end
 	end
 	return self

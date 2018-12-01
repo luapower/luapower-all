@@ -36,8 +36,8 @@ __shaping & layouting__
 `segs:bounding_box() -> x, y, w, h`                  bounding box of laid out text
 __rendering__
 `segs:paint(cr) -> segs`                             paint laid out text
-`segs:clip([x, y, w, h]) -> segs`                    clip visible text to rectangle
-`segs:reset_clip() -> segs`                          reset clipping area
+`segs:clip([x, y, w, h]) -> segs`                    mark outside segments as invisible
+`segs:reset_clip() -> segs`                          mark all segments as visible
 `tr:textbox(text_tree, cr, x, y, w, h, [ax], [ay])`  shape, layout and paint text
 __hit testing__
 `segs:hit_test(x, y, ...) -> seg, i`                 hit test the laid out text
@@ -186,7 +186,7 @@ Creates the `segs.lines` table with the following fields:
 
   * `max_ax`: text's maximum x-advance (equivalent to text's width).
   * `h`: text's wrapped height.
-  * `spacing_h`: text's wrapped height including line and paragraph spacing.
+  * `spaced_h`: text's wrapped height including line and paragraph spacing.
 
 and with a list of lines in its array part, with the fields:
 
@@ -194,18 +194,23 @@ and with a list of lines in its array part, with the fields:
   * `ascent`: maximum ascent.
   * `descent`: maximum descent.
   * `spacing`: maximum line spacing factor for this line.
-  * `spacing_ascent`: maximum ascent including line or paragraph spacing.
-  * `spacing_descent`: maximum descent including line or paragraph spacing.
-  * `visible`: line is not clipped (true).
-  * `x`: line's ualigned x-offset (0).
+  * `spaced_ascent`: maximum ascent including line or paragraph spacing.
+  * `spaced_descent`: maximum descent including line or paragraph spacing.
+  * `visible`: true if line is not clipped.
+  * `x`: line's unaligned x-offset (0).
   * `y`: line's y-offset relative to the first line's baseline.
+  * `first`: first segment in logical order.
+  * `first_vis`: first segment in visual order.
 
-Each line also contains its list of segments in visual order in its array
-part. Each segment also has the following fields set:
+Each segment also has the following fields set:
 
   * `x`: segment's x-position.
   * `advance_x`: segment's x-advance.
-  * `line_index`: segment's line index.
+  * `next`: next segment on the line, in logical order.
+  * `next_vis`: next segment on the line, in visual order.
+  * `line`: segment's line object.
+  * `wrapped`: true if the segment is the last segment on a wrapped line.
+  * `visible`: true if segment is not clipped.
 
 NOTE: The `lines` table _can_ contain zero lines, but only if the `segs`
 table has zero segments, which only happens when there are errors.
@@ -229,7 +234,8 @@ Also sets the following fields on each line:
 
   * `x`: line's aligned x-offset relative to textbox's origin.
 
-Once the text is aligned, it can be painted many times with `paint()`.
+Once the text is aligned, it can be clipped and painted multiple times
+without the need to call `align()` again.
 
 ### `segs:layout(x, y, [w], [h], [align_x], [align_y]) -> segs`
 
@@ -259,10 +265,8 @@ that.
 ### `segs:clip([x, y, w, h]) -> segs`
 
 Mark all lines and segments which are completely outside the given rectangle
-as invisible, and everything else as visible.
-
-If no rectangle given, the segments are clipped to the rectangle from the
-last call to `align()`.
+as invisible, and everything else as visible. If a rectangle is not given,
+the rectangle from the last call to `align()` is used.
 
 ### `segs:reset_clip() -> segs`
 
@@ -405,8 +409,9 @@ Selected text as utf-8 string.
 
 ### `sel:replace(s, [len], [charset], [maxlen]) -> t|f`
 
-Replace selection with text. The text is re-shaped, re-wrapped, re-aligned
-and re-clipped to the align box (if it was previously clipped to it).
+Replace selection with text. The text is re-shaped, re-wrapped (if it was
+previously wrapped), re-aligned (if it was previously aligned), and the clip
+rectangle (if any) is invalidated.
 
 ## Rendering stages
 
