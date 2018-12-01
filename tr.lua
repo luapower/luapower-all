@@ -1456,8 +1456,11 @@ local function cmp_ys(lines, i, y)
 	return lines[i].y - lines[i].spaced_descent < y -- < < [=] = < <
 end
 local function line_at_y(y, lines)
+	if not lines[1] then
+		return nil --no lines
+	end
 	if y < -lines[1].spaced_ascent then
-		return 1
+		return 1 --above first line
 	end
 	return binsearch(y, lines, cmp_ys) or #lines
 end
@@ -1473,8 +1476,8 @@ function segments:clip(x, y, w, h)
 	end
 	x = x - lines.x
 	y = y - lines.y - lines.baseline
-	local first_visible = line_at_y(y, lines)
-	local last_visible = line_at_y(y + h - 1/256, lines)
+	local first_visible = line_at_y(y, lines) or 1
+	local last_visible = line_at_y(y + h - 1/256, lines) or 0
 	for line_i = first_visible, last_visible do
 		local line = lines[line_i]
 		local bx = line.x
