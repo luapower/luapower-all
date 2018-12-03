@@ -112,43 +112,6 @@ function tr:warn(...)
 	io.stderr:write'\n'
 end
 
---unicode codepoint names to use in texts ------------------------------------
-
-local u = {} --{name -> utf8-sequence}
-tr.codepoint_names = u
-
---paragraph and line separators.
-u.PS = '\u{2029}' --paragraph separator
-u.LS = '\u{2028}' --line separator
-
---for use in bidi text.
-u.LRM = '\u{200E}' --LR mark
-u.RLM = '\u{200F}' --RL mark
-u.LRE = '\u{202A}' --LR embedding
-u.RLE = '\u{202B}' --RL embedding
-u.PDF = '\u{202C}' --close LRE or RLE
-u.LRO = '\u{202D}' --LR override
-u.RLO = '\u{202E}' --RL override
-u.LRI = '\u{2066}' --LR isolate
-u.RLI = '\u{2067}' --RL isolate
-u.FSI = '\u{2068}' --first-strong isolate
-u.PDI = '\u{2069}' --close RLI, LRI or FSI
-
---line wrapping control.
-u.NBSP   = '\u{00A0}' --non-breaking space
-u.ZWSP   = '\u{200B}' --zero-width space (i.e. soft-wrap mark)
-u.ZWNBSP = '\u{FEFF}' --zero-width non-breaking space (i.e. nowrap mark)
-
---spacing control.
-u.FIGURE_SP = '\u{2007}' --figure non-breaking space (for separating digits)
-u.THIN_SP   = '\u{2009}' --thin space
-u.HAIR_SP   = '\u{200A}' --hair space
-
-for k,v in pairs(update({}, u)) do
-	u[k:lower()] = v --add lowercase names too.
-	tr[k] = v --publish uppercase names in tr.
-end
-
 --font management ------------------------------------------------------------
 
 local function override_font(font)
