@@ -112,34 +112,42 @@ function tr:warn(...)
 	io.stderr:write'\n'
 end
 
---text snippets to use in text trees -----------------------------------------
+--unicode codepoint names to use in texts ------------------------------------
+
+local u = {} --{name -> utf8-sequence}
+tr.codepoint_names = u
 
 --paragraph and line separators.
-tr.PS = '\u{2029}' --paragraph separator
-tr.LS = '\u{2028}' --line separator
+u.PS = '\u{2029}' --paragraph separator
+u.LS = '\u{2028}' --line separator
 
 --for use in bidi text.
-tr.LRM = '\u{200E}' --LR mark
-tr.RLM = '\u{200F}' --RL mark
-tr.LRE = '\u{202A}' --LR embedding
-tr.RLE = '\u{202B}' --RL embedding
-tr.PDF = '\u{202C}' --close LRE or RLE
-tr.LRO = '\u{202D}' --LR override
-tr.RLO = '\u{202E}' --RL override
-tr.LRI = '\u{2066}' --LR isolate
-tr.RLI = '\u{2067}' --RL isolate
-tr.FSI = '\u{2068}' --first-strong isolate
-tr.PDI = '\u{2069}' --close RLI, LRI or FSI
+u.LRM = '\u{200E}' --LR mark
+u.RLM = '\u{200F}' --RL mark
+u.LRE = '\u{202A}' --LR embedding
+u.RLE = '\u{202B}' --RL embedding
+u.PDF = '\u{202C}' --close LRE or RLE
+u.LRO = '\u{202D}' --LR override
+u.RLO = '\u{202E}' --RL override
+u.LRI = '\u{2066}' --LR isolate
+u.RLI = '\u{2067}' --RL isolate
+u.FSI = '\u{2068}' --first-strong isolate
+u.PDI = '\u{2069}' --close RLI, LRI or FSI
 
 --line wrapping control.
-tr.NBSP   = '\u{00A0}' --non-breaking space
-tr.ZWSP   = '\u{200B}' --zero-width space (i.e. soft-wrap mark)
-tr.ZWNBSP = '\u{FEFF}' --zero-width non-breaking space (i.e. nowrap mark)
+u.NBSP   = '\u{00A0}' --non-breaking space
+u.ZWSP   = '\u{200B}' --zero-width space (i.e. soft-wrap mark)
+u.ZWNBSP = '\u{FEFF}' --zero-width non-breaking space (i.e. nowrap mark)
 
 --spacing control.
-tr.FIGURE_SP = '\u{2007}' --figure non-breaking space (for separating digits)
-tr.THIN_SP   = '\u{2009}' --thin space
-tr.HAIR_SP   = '\u{200A}' --hair space
+u.FIGURE_SP = '\u{2007}' --figure non-breaking space (for separating digits)
+u.THIN_SP   = '\u{2009}' --thin space
+u.HAIR_SP   = '\u{200A}' --hair space
+
+for k,v in pairs(update({}, u)) do
+	u[k:lower()] = v --add lowercase names too.
+	tr[k] = v --publish uppercase names in tr.
+end
 
 --font management ------------------------------------------------------------
 
@@ -831,6 +839,7 @@ function tr:shape(text_runs, segments)
 	segments.bidi = reorder_segments --for optimization
 
 	local seg_count = 0
+	local line_num = 1
 
 	if #text_runs > 0 then
 
@@ -977,6 +986,7 @@ function tr:shape(text_runs, segments)
 						next = false, --next segment on the same line in text order
 						next_vis = false, --next segment on the same line in visual order
 						line = false,
+						line_num = line_num, --physical line number
 						wrapped = false, --segment is the last on a wrapped line
 						visible = true, --segment is not entirely clipped
 					}
@@ -1083,6 +1093,10 @@ function tr:shape(text_runs, segments)
 					end --if subsegments
 
 				end --if glyph_run
+
+				if linebreak then
+					line_num = line_num + 1
+				end
 
 				seg_offset = i
 				sub_offset = 0
@@ -1451,7 +1465,7 @@ end
 
 --clipping -------------------------------------------------------------------
 
---hit-test the lines array for a line number given an y-coord.
+--hit-test the lines array for a line number given a relative(!) y-coord.
 local function cmp_ys(lines, i, y)
 	return lines[i].y - lines[i].spaced_descent < y -- < < [=] = < <
 end
@@ -1460,9 +1474,13 @@ local function line_at_y(y, lines)
 		return nil --no lines
 	end
 	if y < -lines[1].spaced_ascent then
-		return 1 --above first line
+		return 1, 'above' --above first line
 	end
-	return binsearch(y, lines, cmp_ys) or #lines
+	local line_i = binsearch(y, lines, cmp_ys)
+	if not line_i then
+		return #lines, 'below'
+	end
+	return line_i
 end
 
 --NOTE: doesn't take into account side bearings, so it's not 100% accurate!
@@ -1742,6 +1760,27 @@ function segments:hit_test_cursors(line_i, x, diff, valid, obj, ...)
 		end
 	end
 	return cseg, ci
+end
+
+--hit test the text boundaries.
+function segments:hit_test(x, y)
+	local lines = self:checklines()
+	local y = y - (lines.y + lines.baseline)
+	local line_i, outside_y = line_at_y(y, lines)
+	if not line_i then
+		return false
+	end
+	local line = lines[line_i]
+	local x = x - lines.x - line.x
+	if outside_y then
+		return false, line_i, outside_y
+	elseif x < 0 then
+		return false, line_i, 'left'
+	elseif x > line.advance_x then
+		return false, line_i, 'right'
+	else
+		return true, line_i
+	end
 end
 
 local function cmp_offsets(segments, i, offset)
@@ -2118,7 +2157,7 @@ function cursor:cmp(seg, i, seg0, i0, mode)
 	elseif mode == 'word' then
 		return seg ~= seg0
 	elseif mode == 'line' then
-		return seg.line ~= seg0.line
+		return seg.line_num ~= seg0.line_num
 	else
 		assert(false)
 	end
@@ -2159,6 +2198,11 @@ function cursor:find(what, ...)
 		local x, y = ...
 		local line_i = self.segments:hit_test_lines(y)
 		return self:find('line', line_i, x)
+	elseif what == 'hit' then
+		local x, y = ...
+		local line_i, outside = self.segments:hit_test_line(x, y)
+		return self.segments:hit_test_cursors(line_i, x,
+			self.cmp, self.valid, self)
 	elseif what == 'page' then
 		local page, x = ...
 		local _, line1_y = self.segments:line_pos(1)
