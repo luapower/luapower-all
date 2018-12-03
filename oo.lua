@@ -32,7 +32,7 @@ function Object:subclass(classname, overrides)
 	setmetatable(subclass, getmetatable(self))
 	if overrides then
 		for k,v in pairs(overrides) do
-			self[k] = v
+			subclass[k] = v
 		end
 	end
 	return subclass

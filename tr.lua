@@ -740,7 +740,7 @@ function tr:shape(text_runs, segments)
 		local text_run_index = 0
 		local next_i = 0 --char offset of the next text run
 		local par_offset = 0
-		local dir --last char's paragraph's base direction
+		local dir --last text run's paragraph's base direction
 
 		for i = 0, len do --NOTE: going one char beyond the text!
 
@@ -752,11 +752,11 @@ function tr:shape(text_runs, segments)
 			--NOTE: this runs when i == 0 and when len == 0 but not when i == len.
 			if i == next_i then
 				text_run_index = text_run_index + 1
-				local t = text_runs[text_run_index]
+				local text_run = text_runs[text_run_index]
 
-				dir1 = t.dir or dir
+				dir1 = text_run.dir or dir
 
-				next_i = t.offset + t.len
+				next_i = text_run.offset + text_run.len
 				next_i = next_i < len and next_i
 			end
 
@@ -1782,11 +1782,17 @@ local function segment_xw(seg, i1, i2)
 end
 
 --return the selection rectangle of an entire line.
-local function line_xywh(line, lines)
+local function line_xywh(line, lines, spaced)
+	local ascent, descent
+	if spaced then
+		ascent, descent = line.spaced_ascent, line.spaced_descent
+	else
+		ascent, descent = line.ascent, line.descent
+	end
 	local x = lines.x + line.x
-	local y = lines.y + lines.baseline + line.y - line.ascent
+	local y = lines.y + lines.baseline + line.y - ascent
 	local w = line.advance_x
-	local h = line.ascent - line.descent
+	local h = ascent - descent
 	return x, y, w, h
 end
 
@@ -1803,7 +1809,7 @@ local function merge_xw(x1, w1, x2, w2)
 	end
 end
 
-function segments:selection_rectangles(seg1, i1, seg2, i2, write, ...)
+function segments:selection_rectangles(seg1, i1, seg2, i2, spaced, write, ...)
 	if seg1.offset > seg2.offset then
 		seg1, i1, seg2, i2 = seg2, i2, seg1, i1
 	end
@@ -1813,7 +1819,7 @@ function segments:selection_rectangles(seg1, i1, seg2, i2, write, ...)
 	while seg and seg.index <= seg2.index do
 		local line = seg.line
 		if line.visible then
-			local line_x, line_y, line_w, line_h = line_xywh(line, lines)
+			local line_x, line_y, line_w, line_h = line_xywh(line, lines, spaced)
 			local x, w
 			while seg and seg.index <= seg2.index and seg.line == line do
 				local i1 = seg == seg1 and i1 or 0
@@ -2271,7 +2277,15 @@ function selection:rectangles(write, ...)
 	return self.segments:selection_rectangles(
 		c1.seg, c1.i,
 		c2.seg, c2.i,
-		write, ...)
+		false, write, ...)
+end
+
+function selection:hit_rectangles(write, ...)
+	local c1, c2 = self:cursors()
+	return self.segments:selection_rectangles(
+		c1.seg, c1.i,
+		c2.seg, c2.i,
+		true, write, ...)
 end
 
 local function hit_test_rect(x, y, w, h, mx, my)
@@ -2279,11 +2293,7 @@ local function hit_test_rect(x, y, w, h, mx, my)
 end
 function selection:hit_test(x, y)
 	if self:empty() then return false end
-	local c1, c2 = self:cursors()
-	return self.segments:selection_rectangles(
-		c1.seg, c1.i,
-		c2.seg, c2.i,
-		hit_test_rect, x, y) or false
+	return self:hit_rectangles(hit_test_rect, x, y) or false
 end
 
 --editing

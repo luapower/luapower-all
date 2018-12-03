@@ -60,6 +60,7 @@ __selections__
 `sel:reset()`                                        select none
 `sel:select_word()`                                  select the word around cursor1
 `sel:rectangles(write_func, ...)`                    get selection rectangles
+`sel:hit_rectangles(write_func, ...)`                get selection rectangles without line gaps
 `sel:hit_test(x, y) -> true|false`                   hit test the selection rectangles
 __editing__
 `sel:codepoints() -> buf, offset, len`               selected text in utf-32 buffer
@@ -394,6 +395,10 @@ Select the word around `cursor1`.
 ### `sel:rectangles(write_func, ...)`
 
 Get the selection rectangles.
+
+### `sel:hit_rectangles(write_func, ...)`
+
+Get the selection rectangles without line gaps (useful for hit-testing).
 
 ### `sel:hit_test(x, y) -> true|false`
 
