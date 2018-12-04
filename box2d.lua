@@ -328,6 +328,17 @@ local function bounding_box(x1, y1, w1, h1, x3, y3, w2, h2)
 		max(y1, y2, y3, y4))
 end
 
+--box scroll-to-view box
+
+local function scroll_to_view(x, y, w, h, pw, ph, sx, sy)
+	local min_sx = -x
+	local min_sy = -y
+	local max_sx = -(x + w - pw)
+	local max_sy = -(y + h - ph)
+	return
+		min(max(sx, min_sx), max_sx),
+		min(max(sy, min_sy), max_sy)
+end
 
 --box class ------------------------------------------------------------------
 
@@ -440,6 +451,8 @@ local box_module = {
 	clip = clip,
 	--bounding box
 	bounding_box = bounding_box,
+	--scrolling
+	scroll_to_view = scroll_to_view,
 }
 
 setmetatable(box_module, {__call = function(r, ...) return new(...) end})
