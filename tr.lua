@@ -1941,7 +1941,7 @@ function text_runs:insert(i, s, sz, charset, maxlen)
 	--get the length of the inserted text in codepoints.
 	local len
 	if charset == 'utf8' then
-		maxlen = maxlen and floor(maxlen)
+		maxlen = maxlen and max(0, floor(maxlen))
 		len = utf8.decode(s, sz, false, maxlen) or maxlen
 	elseif charset == 'utf32' then
 		len = sz
