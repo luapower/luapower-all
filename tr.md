@@ -144,7 +144,7 @@ The resulting table contains the text runs in its array part, plus:
 The text runs are set up to inherit their corresponding text tree node,
 and also contain the fields:
 
-  * `offset` - offset in the flattened text, in codepoints.
+  * `offset` - offset in the flattened text, in codepoints, __counting from 0!__.
   * `len` - text run length in codepoints.
   * `font`, `font_size` - resolved font object and font size.
 
@@ -302,7 +302,7 @@ Cursor state fields:
 
   * `segments` - a reference to the segments table.
   * `seg` - the segment.
-  * `i` - position in text relative to the segment.
+  * `i` - position in text relative to the segment, __counting from 0!__.
   * `x` - x-position set by horizontal movement to be recalled by vertical movement.
 
 ### `cursor:set(cursor | seg,i[,x]) -> changed`

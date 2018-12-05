@@ -2016,6 +2016,16 @@ function segments:remove(...)
 	return offset, changed
 end
 
+function segments:replace(i1, i2, ...)
+	local i1, removed = self.text_runs:remove(i1, i2)
+	local i2, inserted = self.text_runs:insert(i1, ...)
+	local changed = removed or inserted
+	if changed then
+		self:reshape()
+	end
+	return i2, changed
+end
+
 --cursor object --------------------------------------------------------------
 
 local cursor = {}
