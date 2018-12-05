@@ -2179,13 +2179,13 @@ function cursor:find(what, ...)
 	elseif what == 'page' then
 		local page, x = ...
 		local _, line1_y = self.segments:line_pos(1)
-		local page_h = self.segments._h
+		local page_h = self.segments.h
 		local y = line1_y + (page - 1) * page_h
 		return self:find('pos', x, y)
 	elseif what == 'rel_page' then
 		local delta_pages, x = ...
 		local _, line_y = self.segments:line_pos(self.seg.line)
-		local page_h = self.segments._h
+		local page_h = self.segments.h
 		local y = line_y + (delta_pages or 0) * page_h
 		return self:find('pos', x, y)
 	else
