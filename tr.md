@@ -45,6 +45,7 @@ __cursors__
 `segs:cursor([offset]) -> cursor`                    create a cursor
 `cursor:set(cursor | seg,i[,x]) -> changed`          update a cursor
 `cursor:get() -> seg, i, x`                          cursor segment and offset in segment
+`cursor:offset() -> offset`                          cursor offset in text
 `cursor:changed()`                                   event: cursor changed
 `cursor:pos() -> x, y`                               cursor position
 `cursor:size() -> w, h, rtl`                         cursor size and direction
@@ -144,7 +145,7 @@ The resulting table contains the text runs in its array part, plus:
 The text runs are set up to inherit their corresponding text tree node,
 and also contain the fields:
 
-  * `offset` - offset in the flattened text, in codepoints, __counting from 0!__.
+  * `offset` - offset in the flattened text, in codepoints, (__counting from 0!__).
   * `len` - text run length in codepoints.
   * `font`, `font_size` - resolved font object and font size.
 
@@ -302,7 +303,7 @@ Cursor state fields:
 
   * `segments` - a reference to the segments table.
   * `seg` - the segment.
-  * `i` - position in text relative to the segment, __counting from 0!__.
+  * `i` - position in text relative to the segment (__counting from 0!__).
   * `x` - x-position set by horizontal movement to be recalled by vertical movement.
 
 ### `cursor:set(cursor | seg,i[,x]) -> changed`
@@ -312,6 +313,10 @@ Update the cursor. If the cursor changed, call `changed()` and return true.
 ### `cursor:get() -> seg, i, x`
 
 Get the cursor segment and offset in segment.
+
+### `cursor:offset() -> offset`
+
+Get the cursor offset in text, in codepoints (__counting from 0!__).
 
 ### `cursor:pos() -> x, y`
 
@@ -416,9 +421,8 @@ Selected text as utf-8 string.
 
 ### `sel:replace(s, [len], [charset], [maxlen]) -> t|f`
 
-Replace selection with text. The text is re-shaped, re-wrapped (if it was
-previously wrapped), re-aligned (if it was previously aligned), and the clip
-rectangle (if any) is invalidated.
+Replace selection with text. The text is re-shaped and must be re-wrapped
+and re-layouted before being painted again.
 
 ## Rendering stages
 

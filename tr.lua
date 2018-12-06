@@ -1342,8 +1342,6 @@ function segments:wrap(w)
 	lines.first_visible = 1
 	lines.last_visible = #lines
 
-	self.wrap_w = w --for reshape()
-
 	return self
 end
 
@@ -1395,14 +1393,6 @@ function segments:align(x, y, w, h, align_x, align_y)
 	--store textbox's origin, which can be changed anytime after layouting.
 	lines.x = x
 	lines.y = y
-
-	--store args for reshape().
-	self.x = x
-	self.y = y
-	self.w = w
-	self.h = h
-	self.align_x = align_x
-	self.align_y = align_y
 
 	if lines.clip_valid then
 		--must reset clip on paint() if clip() won't be called until paint().
@@ -1987,16 +1977,7 @@ end
 --editing text from segments which includes reshaping and relayouting.
 
 function segments:reshape()
-	local wrap_w = self.wrap_w
-	local x, y, w, h = self.x, self.y, self.w, self.h
-	local ax, ay = self.align_x, self.align_y
 	self.tr:shape(self.text_runs, self)
-	if wrap_w then
-		self:wrap(wrap_w)
-		if x then
-			self:align(x, y, w, h, ax, ay)
-		end
-	end
 	return self
 end
 
@@ -2080,6 +2061,10 @@ end
 
 function cursor:get()
 	return self.seg, self.i, self.x
+end
+
+function cursor:offset()
+	return self.segments:offset_at_cursor(self.seg, self.i)
 end
 
 function cursor:rtl()
