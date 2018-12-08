@@ -85,7 +85,7 @@ end
 
 --message loop ---------------------------------------------------------------
 
---manual repainting of all windows based on the `_invalid` flag.
+--manual repainting of all windows based on the `_invalid_clock` flag.
 --returns the number of seconds to wait until calling this again.
 function app:_repaint_all(d)
 
@@ -116,7 +116,7 @@ function app:_repaint_all(d)
 	for i = 1, #t do
 		local win = t[i]
 		if not win:dead() then
-			win.backend:repaint()
+			win.backend:repaint(t2)
 		end
 	end
 
@@ -210,7 +210,7 @@ function window:new(app, frontend, t)
 		own_dc = t.opengl and true or nil,
 	}
 
-	self:invalidate() --prevent flicker on first WM_PAINT from WM_ERASEBKGND
+	self:invalidate()
 
 	self:_set_region()
 
@@ -1424,23 +1424,21 @@ local Rendering = {}
 
 function rendering:_repaint(hdc)
 	if not self.frontend:events() then
-		self._invalid = true
-		self._unsynced = true
+		self:invalidate()
 	else
-		self._invalid = false
-		self._unsynced = false
 		self:_paint_bitmap(hdc)
 		self:_paint_gl(hdc)
 	end
+	--draw the default Windows background next time if not custom-painting.
+	self._windows_background = not (self._bitmap or self._hrc)
 end
-
 function Rendering:on_paint(hdc)
 	self.backend:_repaint(hdc)
 end
 
 function Rendering:WM_ERASEBKGND()
-	if self.backend._bitmap or self.backend._hrc or self.backend._invalid then
-		return false --skip drawing the background to prevent flicker.
+	if not self.backend._windows_background then
+		return false
 	end
 end
 
@@ -1576,11 +1574,6 @@ function window:_update_layered()
 	self._bitmap:update_layered(self.win.hwnd, r.x, r.y)
 end
 
-function window:_repaint_layered()
-	self.frontend:_backend_repaint()
-	self:_update_layered()
-end
-
 --clear the bitmap's pixels and update the layered window.
 function window:_clear_layered()
 	if not self._bitmap or not self._layered then return end
@@ -1588,22 +1581,29 @@ function window:_clear_layered()
 	self:_update_layered()
 end
 
-function rendering:repaint() --called by the main loop, not by Windows.
-	if not self._invalid then return end
-	if self._unsynced and not self.win.visible then
-		self._unsynced = false
+function rendering:repaint(clock) --called by the main loop, not by Windows.
+	if self._invalid_clock > clock then
+		return
+	end
+	self._invalid_clock = 1/0
+	if not self.win.visible then
 		self.frontend:_backend_sync()
 	elseif self._layered then
-		self:_repaint_layered()
+		self.frontend:_backend_repaint()
+		self:_update_layered()
 	else
 		self.win:invalidate()
 		self.win:update() --force WM_PAINT
 	end
 end
 
-function window:invalidate()
-	self._invalid = true
-	self._unsynced = true
+function window:invalidate(invalid_clock)
+	self._invalid_clock =
+		math.min(invalid_clock or -1/0, self._invalid_clock or 1/0)
+end
+
+function window:invalid(at_clock)
+	return self._invalid_clock < (at_clock or time.clock())
 end
 
 window._bitmap_size = window.get_client_size

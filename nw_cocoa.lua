@@ -1837,7 +1837,7 @@ function View.drawRect(cpu)
 end
 
 function View:nw_invalidate(x, y, w, h)
-	if x then
+	if x and y then
 		self:setNeedsDisplayInRect(objc.NSMakeRect(x, y, w, h))
 	else
 		self:setNeedsDisplay(true)

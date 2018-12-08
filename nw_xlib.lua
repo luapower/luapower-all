@@ -1448,7 +1448,7 @@ function window:bitmap()
 end
 
 function window:invalidate(x, y, w, h)
-	if x then
+	if x and y then
 		xlib.clear_area(self.win, x, y, w, h)
 	else
 		xlib.clear_area(self.win, 0, 0, 2^24, 2^24)
