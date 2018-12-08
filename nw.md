@@ -237,7 +237,7 @@ __mouse__
 __rendering__
 `win/view:repaint()`                         event: window needs redrawing
 `win:sync()`                                 event: window was invalidated but it's invisible
-`win/view:invalidate()`                      request window redrawing
+`win/view:invalidate([invalid_clock])`       request repainting
 `win/view:bitmap() -> bmp`                   get a bgra8 [bitmap] object to draw on
 `bmp:clear()`                                fill the bitmap with zero bytes
 `bmp:cairo() -> cr`                          get a cairo context on the bitmap
@@ -260,7 +260,7 @@ __menus__
 __icons (common API)__
 `icon:free()`
 `icon:bitmap() -> bmp`                       get a bgra8 [bitmap] object
-`icon:invalidate()`                          request bitmap redrawing
+`icon:invalidate()`                          request repainting
 `icon:repaint()`                             event: bitmap needs redrawing
 `icon:free_bitmap(bmp)`                      event: bitmap needs freeing
 __notification icons__
@@ -1313,9 +1313,11 @@ the window's bitmap or OpenGL context and draw using that.
 Event. This event is fired instead of `repaint` if the window was invalidated
 but it's invisible.
 
-### `win/view:invalidate()`
+### `win/view:invalidate([invalid_clock])`
 
-Request redrawing.
+Request repainting. The optional `invalid_clock` (which defaults to `-inf`)
+speficies the latest `time.clock()` when the window/view must become invalid
+(this is useful for implementing delayed animations efficiently).
 
 ### `win/view:bitmap() -> bmp`
 
