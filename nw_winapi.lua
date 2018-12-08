@@ -1426,6 +1426,10 @@ function rendering:_repaint(hdc)
 	if not self.frontend:events() then
 		self:invalidate()
 	else
+		if not self._nosync and self:invalid() then
+			self.frontend:_backend_sync()
+		end
+		self._nosync = false
 		self:_paint_bitmap(hdc)
 		self:_paint_gl(hdc)
 	end
@@ -1589,9 +1593,12 @@ function rendering:repaint(clock) --called by the main loop, not by Windows.
 	if not self.win.visible then
 		self.frontend:_backend_sync()
 	elseif self._layered then
+		self.frontend:_backend_sync()
 		self.frontend:_backend_repaint()
 		self:_update_layered()
 	else
+		self.frontend:_backend_sync()
+		self._nosync = true --prevent _backend_sync() in WM_PAINT
 		self.win:invalidate()
 		self.win:update() --force WM_PAINT
 	end
@@ -1660,8 +1667,8 @@ function view:set_rect(x, y, w, h)
 	self.win.rect = pack_rect(nil, x, y, w, h)
 end
 
-function view:invalidate()
-	self.win:invalidate()
+function view:invalidate(...)
+	self.win:invalidate(...)
 end
 
 function view:_bitmap_size()
