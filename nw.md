@@ -235,9 +235,10 @@ __mouse__
 `app:double_click_time() -> time`            double click time
 `app:double_click_target_area() -> w, h`     double click target area
 __rendering__
-`win/view:repaint()`                         event: window needs redrawing
-`win:sync()`                                 event: window was invalidated but it's invisible
+`win/view:repaint()`                         event: needs repainting
+`win/view:sync()`                            event: invalidated but invisible
 `win/view:invalidate([invalid_clock])`       request repainting
+`win/view:invalid([at_clock]) -> t|f`        check if invalidated
 `win/view:bitmap() -> bmp`                   get a bgra8 [bitmap] object to draw on
 `bmp:clear()`                                fill the bitmap with zero bytes
 `bmp:cairo() -> cr`                          get a cairo context on the bitmap
@@ -1316,8 +1317,13 @@ but it's invisible.
 ### `win/view:invalidate([invalid_clock])`
 
 Request repainting. The optional `invalid_clock` (which defaults to `-inf`)
-speficies the latest `time.clock()` when the window/view must become invalid
-(this is useful for implementing delayed animations efficiently).
+speficies the earliest `time.clock()` when the window/view should be
+repainted (this is useful for implementing delayed animations efficiently).
+
+### `win/view:invalid([at_clock]) -> t|f`
+
+Check if the window/view is invalid at a specific time point (which defaults
+to `time.clock()`).
 
 ### `win/view:bitmap() -> bmp`
 

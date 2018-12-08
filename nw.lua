@@ -1554,6 +1554,11 @@ function window:invalidate(...)
 	return self.backend:invalidate(...)
 end
 
+function window:invalid(at_clock)
+	self:_check()
+	return self.backend:invalid(at_clock)
+end
+
 function window:_backend_repaint(...)
 	if not self:_can_get_rect() then return end
 	self:fire('repaint', ...)

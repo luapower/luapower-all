@@ -1394,6 +1394,9 @@ function segments:align(x, y, w, h, align_x, align_y)
 	lines.x = x
 	lines.y = y
 
+	--store textbox's heightt to be used for page up/down cursor navigation.
+	self.page_h = h
+
 	if lines.clip_valid then
 		--must reset clip on paint() if clip() won't be called until paint().
 		lines.clip_valid = false
@@ -2156,22 +2159,15 @@ function cursor:find(what, ...)
 		local x, y = ...
 		local line_i = self.segments:hit_test_lines(y)
 		return self:find('line', line_i, x)
-	elseif what == 'hit' then
-		local x, y = ...
-		local line_i, outside = self.segments:hit_test_line(x, y)
-		return self.segments:hit_test_cursors(line_i, x,
-			self.cmp, self.valid, self)
 	elseif what == 'page' then
 		local page, x = ...
 		local _, line1_y = self.segments:line_pos(1)
-		local page_h = self.segments.h
-		local y = line1_y + (page - 1) * page_h
+		local y = line1_y + (page - 1) * self.segments.page_h
 		return self:find('pos', x, y)
 	elseif what == 'rel_page' then
 		local delta_pages, x = ...
 		local _, line_y = self.segments:line_pos(self.seg.line)
-		local page_h = self.segments.h
-		local y = line_y + (delta_pages or 0) * page_h
+		local y = line_y + (delta_pages or 0) * self.segments.page_h
 		return self:find('pos', x, y)
 	else
 		assert(false, 'invalid arg#1: "%s"', what)

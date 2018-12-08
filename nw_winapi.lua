@@ -1603,7 +1603,7 @@ function window:invalidate(invalid_clock)
 end
 
 function window:invalid(at_clock)
-	return self._invalid_clock < (at_clock or time.clock())
+	return (at_clock or time.clock()) >= self._invalid_clock
 end
 
 window._bitmap_size = window.get_client_size
