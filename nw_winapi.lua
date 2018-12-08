@@ -210,8 +210,6 @@ function window:new(app, frontend, t)
 		own_dc = t.opengl and true or nil,
 	}
 
-	self:invalidate()
-
 	self:_set_region()
 
 	--init keyboard state
@@ -518,7 +516,7 @@ function window:exit_fullscreen()
 	--restore events, invalidate and show.
 	self._fullscreen = false
 	self.frontend:events(events)
-	self:invalidate()
+	self.frontend:invalidate()
 
 	--restore synchronously to avoid re-entring.
 	if self._fs.maximized then
@@ -707,9 +705,9 @@ function Window:on_resized(flag)
 			self.rect = pack_rect(nil, self.backend:display():desktop_rect())
 			self.nw_maximizing = false
 		end
-		self.backend:invalidate()
+		self.frontend:invalidate()
 	elseif flag == 'restored' then --also triggered on show and on resize
-		self.backend:invalidate()
+		self.frontend:invalidate()
 	end
 
 	self.backend:_set_region()
@@ -1424,12 +1422,13 @@ local Rendering = {}
 
 function rendering:_repaint(hdc)
 	if not self.frontend:events() then
-		self:invalidate()
+		self.frontend:invalidate()
 	else
-		if not self._nosync and self:invalid() then
-			self.frontend:_backend_sync()
+		if self._novalidate then
+			self._novalidate = false
+		else
+			self.frontend:validate()
 		end
-		self._nosync = false
 		self:_paint_bitmap(hdc)
 		self:_paint_gl(hdc)
 	end
@@ -1586,32 +1585,21 @@ function window:_clear_layered()
 end
 
 function rendering:repaint(clock) --called by the main loop, not by Windows.
-	if self._invalid_clock > clock then
-		return
-	end
-	self._invalid_clock = 1/0
-	if not self.win.visible then
-		self.frontend:_backend_sync()
-	elseif self._layered then
-		self.frontend:_backend_sync()
-		self.frontend:_backend_repaint()
-		self:_update_layered()
-	else
-		self.frontend:_backend_sync()
-		self._nosync = true --prevent _backend_sync() in WM_PAINT
-		self.win:invalidate()
-		self.win:update() --force WM_PAINT
+	if self.frontend:validate(clock) then
+		if self.win.visible then
+			if self._layered then
+				self.frontend:_backend_repaint()
+				self:_update_layered()
+			else
+				self._novalidate = true --prevent validate() in WM_PAINT
+				self.win:invalidate()
+				self.win:update() --force WM_PAINT
+			end
+		end
 	end
 end
 
-function window:invalidate(invalid_clock)
-	self._invalid_clock =
-		math.min(invalid_clock or -1/0, self._invalid_clock or 1/0)
-end
-
-function window:invalid(at_clock)
-	return (at_clock or time.clock()) >= self._invalid_clock
-end
+function rendering:invalidate() end --using own scheduling
 
 window._bitmap_size = window.get_client_size
 
@@ -1665,10 +1653,6 @@ end
 
 function view:set_rect(x, y, w, h)
 	self.win.rect = pack_rect(nil, x, y, w, h)
-end
-
-function view:invalidate(...)
-	self.win:invalidate(...)
 end
 
 function view:_bitmap_size()

@@ -1463,6 +1463,7 @@ end
 
 function window:_repaint()
 	--let the user request the bitmap and draw on it.
+	self.frontend:validate()
 	self.frontend:_backend_repaint()
 	--if it did, paint the bitmap onto the window.
 	if self._dynbitmap then
@@ -1472,6 +1473,7 @@ function window:_repaint()
 end
 
 function window:_repaint_opengl()
+	self.frontend:validate()
 	self.frontend:_backend_repaint()
 	if not self._swap then return end
 	glx.swap_buffers(self.win)

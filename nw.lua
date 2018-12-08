@@ -550,6 +550,8 @@ function window:_new(app, backend_class, useropt)
 
 	app:_window_created(self)
 
+	self:invalidate()
+
 	--windows are created hidden to allow proper setup before events start.
 	if opt.visible then
 		self:show()
@@ -1549,23 +1551,31 @@ end
 
 --rendering ------------------------------------------------------------------
 
-function window:invalidate(...)
+function window:invalidate(invalid_clock)
 	self:_check()
-	return self.backend:invalidate(...)
+	self._invalid_clock =
+		math.min(invalid_clock or -1/0, self._invalid_clock or 1/0)
+	self.backend:invalidate()
 end
 
 function window:invalid(at_clock)
 	self:_check()
-	return self.backend:invalid(at_clock)
+	return (at_clock or time.clock()) >= self._invalid_clock
 end
 
-function window:_backend_repaint(...)
+function window:validate(at_clock)
+	at_clock = at_clock or time.clock()
+	if not self:invalid(at_clock) then
+		return false
+	end
+	self._invalid_clock = 1/0
+	self:fire('sync', at_clock)
+	return true
+end
+
+function window:_backend_repaint()
 	if not self:_can_get_rect() then return end
-	self:fire('repaint', ...)
-end
-
-function window:_backend_sync()
-	self:fire'sync'
+	self:fire('repaint')
 end
 
 --bitmap
@@ -1842,6 +1852,8 @@ view.cairo = window.cairo
 view.opengl = window.opengl
 view.gl = window.gl
 view.invalidate = window.invalidate
+view.invalid = window.invalid
+view.validate = window.validate
 view._backend_repaint = window._backend_repaint
 view._backend_free_bitmap = window._backend_free_bitmap
 

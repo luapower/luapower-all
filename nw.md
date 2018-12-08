@@ -236,8 +236,9 @@ __mouse__
 `app:double_click_target_area() -> w, h`     double click target area
 __rendering__
 `win/view:repaint()`                         event: needs repainting
-`win/view:sync()`                            event: invalidated but invisible
-`win/view:invalidate([invalid_clock])`       request repainting
+`win/view:sync()`                            event: needs sync'ing
+`win/view:invalidate([invalid_clock])`       request sync'ing and repainting
+`win/view:validate([at_clock])`              request sync'ing if invalid
 `win/view:invalid([at_clock]) -> t|f`        check if invalidated
 `win/view:bitmap() -> bmp`                   get a bgra8 [bitmap] object to draw on
 `bmp:clear()`                                fill the bitmap with zero bytes
@@ -1306,24 +1307,36 @@ to the window/view creation function (it can be an empty table or just `true`).
 
 ### `win/view:repaint()`
 
-Event: window needs redrawing. To redraw the window, simply request
+Event: window needs repainting. To repaint the window, simply request
 the window's bitmap or OpenGL context and draw using that.
-
-### `win:sync()`
-
-Event. This event is fired instead of `repaint` if the window was invalidated
-but it's invisible.
 
 ### `win/view:invalidate([invalid_clock])`
 
-Request repainting. The optional `invalid_clock` (which defaults to `-inf`)
-speficies the earliest `time.clock()` when the window/view should be
-repainted (this is useful for implementing delayed animations efficiently).
+Request sync'ing and repainting. The optional `invalid_clock` (which defaults
+to `-inf`) specifies the earliest `time.clock()` when the window/view should
+be repainted (this is useful for implementing delayed animations efficiently).
 
 ### `win/view:invalid([at_clock]) -> t|f`
 
 Check if the window/view is invalid at a specific time point (which defaults
 to `time.clock()`).
+
+### `win/view:validate([at_clock])`
+
+Fire the `sync()` event if the window/view is invalid.
+
+### `win:sync()`
+
+Event: window needs sync'ing. This event is fired before `repaint()`,
+but only as a result of calling `invalidate()`.
+
+The point of this function is to separate updating the logical representation
+of a window or view (i.e. its layout) from updating its raster representation
+(i.e. its pixels), so that in some parts of the code you can signal that the
+layout was put in an inconsistent state and must be sync'ed on the next frame,
+while in other parts of the code you can ask that the layout be sync'ed
+immediately (eg. because you need to hit-test it on a `mousemove` event),
+and all this can happen between frames, independent of the repainting cycle.
 
 ### `win/view:bitmap() -> bmp`
 
