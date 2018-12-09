@@ -130,6 +130,7 @@ Attributes can be:
   * `color`: a color in format `'#rrggbb'`, `'hsv(h, s, v)'`, etc.
   (see [color] for supported formats; defaults to `tr.rs.default_color`
   which is `'#888'`).
+  * `opacity`: the opacity level in `0..1` (defaults to `1`).
   * `operator`: the cairo operator (defaults to `tr.rs.default_operator`
   which is `'over'`).
 

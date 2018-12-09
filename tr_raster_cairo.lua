@@ -102,10 +102,13 @@ function cairo_rs:rasterize_glyph(
 end
 
 cairo_rs.color = '#888' --safe default not knowing the bg color
+cairo_rs.opacity = 1
 cairo_rs.operator = 'over'
 
 function cairo_rs:setcontext(cr, text_run)
-	cr:rgba(self.rgba(text_run.color or self.color))
+	local r, g, b, a = self.rgba(text_run.color or self.color)
+	a = a * (text_run.opacity or self.opacity)
+	cr:rgba(r, g, b, a)
 	cr:operator(text_run.operator or self.operator)
 end
 
