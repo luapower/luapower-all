@@ -77,7 +77,7 @@ __the app loop__
 `app:maxfps(fps) -> fps`                     cap the window repaint rate
 __quitting__
 `app:quit()`                                 quit the app, i.e. close all windows and stop the loop
-`app:autoquit(t|f) /-> t|f`                  quit the app when the last visible window is closed (true)
+`app:autoquit(t|f) /-> t|f`                  quit the app when the last visible window is closed (`true`)
 `app:quitting() -> [false]`                  event: quitting (return `false` to refuse)
 `win:autoquit(t|f) /-> t|f`                  quit the app when the window is closed (`false`)
 __timers__
