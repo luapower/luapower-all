@@ -618,38 +618,38 @@ end
 --positioning/resizing -------------------------------------------------------
 
 function Window:on_begin_sizemove()
-	--when moving the window, we want its position relative to
-	--the mouse position to remain constant, and we're going to enforce that.
-	local m = winapi.Windows.cursor_pos
-	self.nw_dx = m.x - self.x
-	self.nw_dy = m.y - self.y
-
-	--defer the start_resize event because we don't know whether
-	--it's a move or resize event at this point.
-	self.nw_start_resize = true
+	self.nw_sizemove_how = false --don't know if it's a resize or move yet
 end
 
 function Window:on_end_sizemove()
-	self.nw_start_resize = false
 	local how = self.nw_sizemove_how
-	self.nw_sizemove_how = nil
+	self.nw_sizemove_how = false
 	self.frontend:_backend_sizing('end', how)
+end
+
+function Window:WM_NCLBUTTONDOWN(x, y, ht)
+	self.nw_mousedown_x = x
+	self.nw_mousedown_y = y
 end
 
 function Window:nw_frame_changing(how, rect)
 
-	self.nw_sizemove_how = how
-
-	--trigger the deferred start_resize event, once.
-	if self.nw_start_resize then
-		self.nw_start_resize = false
+	if not self.nw_sizemove_how then
+		if how == 'move' then
+			--when moving the window, we want its position relative to the mouse
+			--position to remain constant, and we're going to enforce that.
+			self.nw_dx = self.nw_mousedown_x - self.x
+			self.nw_dy = self.nw_mousedown_y - self.y
+		end
+		--trigger the deferred start_resize event, once.
 		self.frontend:_backend_sizing('start', how)
+		self.nw_sizemove_how = how
 	end
 
 	if how == 'move' then
-		--set window's position based on current mouse position and initial offset,
-		--regardless of how the coordinates are adjusted by the user on each event.
-		--this is consistent with OSX and it feels better.
+		--set window's position based on current mouse position and initial
+		--offset, regardless of how the coordinates are adjusted by the user
+		--on each event. this is consistent with OSX and it feels better.
 		local m = winapi.Windows.cursor_pos
 		local w, h = rect.w, rect.h
 		rect.x1 = m.x - self.nw_dx
@@ -685,7 +685,6 @@ function Window:on_moving(rect)
 end
 
 function Window:on_resizing(how, rect)
-	self.nw_how = how
 	self:nw_frame_changing(how, rect)
 end
 
