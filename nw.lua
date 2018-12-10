@@ -1552,30 +1552,33 @@ end
 --rendering ------------------------------------------------------------------
 
 function window:invalidate(invalid_clock)
-	self:_check()
 	self._invalid_clock =
 		math.min(invalid_clock or -1/0, self._invalid_clock or 1/0)
 	self.backend:invalidate()
 end
 
 function window:invalid(at_clock)
-	self:_check()
 	return (at_clock or time.clock()) >= self._invalid_clock
 end
 
 function window:validate(at_clock)
 	at_clock = at_clock or time.clock()
-	if not self:invalid(at_clock) then
-		return false
+	if self:invalid(at_clock) then
+		self._invalid_clock = 1/0
+		self._painted = false
+		self:fire'sync'
 	end
-	self._invalid_clock = 1/0
-	self:fire('sync', at_clock)
-	return true
 end
 
 function window:_backend_repaint()
 	if not self:_can_get_rect() then return end
-	self:fire('repaint')
+	self._painted = true
+	self:fire'repaint'
+end
+
+function window:_backend_needs_repaint(at_clock)
+	self:validate(at_clock)
+	return not self._painted
 end
 
 --bitmap

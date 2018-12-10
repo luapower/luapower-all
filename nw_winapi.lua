@@ -1420,23 +1420,28 @@ glue.update(Window, Mouse)
 local rendering = {}
 local Rendering = {}
 
-function rendering:_repaint(hdc)
+function Rendering:on_paint(hdc) --WM_PAINT
+	self = self.backend
+
 	if not self.frontend:events() then
 		self.frontend:invalidate()
-	else
-		if self._novalidate then
-			self._novalidate = false
-		else
-			self.frontend:validate()
-		end
-		self:_paint_bitmap(hdc)
-		self:_paint_gl(hdc)
+		return
 	end
+
+	local needs_repaint = self._needs_repaint
+		or self.frontend:_backend_needs_repaint()
+
+	if needs_repaint then
+		if self._hrc then
+			self:_repaint_gl(hdc)
+		else
+			self.frontend:_backend_repaint()
+		end
+	end
+	self:_paint_bitmap(hdc)
+
 	--draw the default Windows background next time if not custom-painting.
 	self._windows_background = not (self._bitmap or self._hrc)
-end
-function Rendering:on_paint(hdc)
-	self.backend:_repaint(hdc)
 end
 
 function Rendering:WM_ERASEBKGND()
@@ -1447,7 +1452,7 @@ end
 
 --rendering/bitmap -----------------------------------------------------------
 
-function rendering:_create_bitmap()
+function rendering:bitmap()
 	local w, h = self:_bitmap_size()
 	w = math.max(1, w)
 	h = math.max(1, h)
@@ -1455,10 +1460,6 @@ function rendering:_create_bitmap()
 		self:_free_bitmap()
 		self._bitmap = winapi.DIBitmap(w, h, self.win.hwnd)
 	end
-end
-
-function rendering:bitmap()
-	self:_create_bitmap()
 	return self._bitmap
 end
 
@@ -1470,7 +1471,6 @@ function rendering:_free_bitmap()
 end
 
 function rendering:_paint_bitmap(hdc)
-	self.frontend:_backend_repaint()
 	if not self._bitmap then return end
 	self._bitmap:paint(hdc)
 end
@@ -1553,7 +1553,7 @@ function rendering:_free_opengl()
 	self._hdc = nil
 end
 
-function rendering:_paint_gl(hdc)
+function rendering:_repaint_gl(hdc)
 	if not self._hrc then return end
 	assert(self._hdc == hdc, 'WGL need CS_OWNDC')
 	local gl = gl()
@@ -1585,21 +1585,21 @@ function window:_clear_layered()
 end
 
 function rendering:repaint(clock) --called by the main loop, not by Windows.
-	if self.frontend:validate(clock) then
-		if self.win.visible then
-			if self._layered then
-				self.frontend:_backend_repaint()
-				self:_update_layered()
-			else
-				self._novalidate = true --prevent validate() in WM_PAINT
-				self.win:invalidate()
-				self.win:update() --force WM_PAINT
-			end
-		end
+	if not self.frontend:events() then return end
+	if not self.frontend:_backend_needs_repaint(clock) then return end
+	if not self.win.visible then return end
+	if self._layered then
+		self.frontend:_backend_repaint()
+		self:_update_layered()
+	else
+		self._needs_repaint = true
+		self.win:invalidate()
+		self.win:update() --force WM_PAINT
+		self._needs_repaint = false
 	end
 end
 
-function rendering:invalidate() end --using own scheduling
+function rendering:invalidate() end --using own repaint scheduling
 
 window._bitmap_size = window.get_client_size
 

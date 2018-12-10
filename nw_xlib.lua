@@ -1463,8 +1463,9 @@ end
 
 function window:_repaint()
 	--let the user request the bitmap and draw on it.
-	self.frontend:validate()
-	self.frontend:_backend_repaint()
+	if self.frontend:_backend_needs_repaint() then
+		self.frontend:_backend_repaint()
+	end
 	--if it did, paint the bitmap onto the window.
 	if self._dynbitmap then
 		--TODO: paint subregion
@@ -1473,8 +1474,9 @@ function window:_repaint()
 end
 
 function window:_repaint_opengl()
-	self.frontend:validate()
-	self.frontend:_backend_repaint()
+	if self.frontend:_backend_needs_repaint() then
+		self.frontend:_backend_repaint()
+	end
 	if not self._swap then return end
 	glx.swap_buffers(self.win)
 	self._swap = false

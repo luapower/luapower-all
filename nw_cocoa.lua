@@ -1999,8 +1999,9 @@ local BitmapView = objc.class('BitmapView', 'NSView')
 glue.update(BitmapView, View)
 
 function BitmapView:nw_paint()
-	self.frontend:validate()
-	self.frontend:_backend_repaint()
+	if self.frontend:_backend_needs_repaint() then
+		self.frontend:_backend_repaint()
+	end
 	self.nw_dynbitmap:paint()
 end
 
@@ -2108,8 +2109,9 @@ function GLView:nw_free()
 end
 
 function GLView:nw_paint()
-	self.frontend:validate()
-	self.frontend:_backend_repaint()
+	if self.frontend:_backend_needs_repaint() then
+		self.frontend:_backend_repaint()
+	end
 	self:openGLContext():flushBuffer()
 end
 

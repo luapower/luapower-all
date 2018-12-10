@@ -57,6 +57,7 @@ __selections__
 `sel.cursor1`, `sel.cursor2`                         selection cursors
 `sel:cursors() -> c1, c2, forward`                   selection cursors in text-order
 `sel:offsets() -> o1, o2, forward`                   selection text offsets in order
+`sel:changed(changed_cursor)`                        event: selection changed
 `sel:select_all()`                                   select all
 `sel:reset()`                                        select none
 `sel:select_word()`                                  select the word around cursor1

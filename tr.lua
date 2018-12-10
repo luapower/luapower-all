@@ -2207,6 +2207,8 @@ end
 local selection = {}
 tr.selection_class = selection
 
+function selection:changed(cursor) end --event stub
+
 function segments:selection(offset1, offset2)
 	if #self == 0 then return end
 	self = update({
@@ -2215,6 +2217,10 @@ function segments:selection(offset1, offset2)
 		cursor1 = self:cursor(offset1),
 		cursor2 = self:cursor(offset2),
 	}, self.tr.selection_class)
+	function self.cursor1.changed(cursor)
+		self:changed(cursor)
+	end
+	self.cursor2.changed = self.cursor1.changed
 	return self
 end
 
