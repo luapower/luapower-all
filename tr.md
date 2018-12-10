@@ -334,7 +334,7 @@ Find a cursor position. Possible argument combinations:
 
 ------------------------------------------------- ----------------------------
 `'offset', offset, [which]`                       position at offset in text
-`'cursor', seg, i, [dir], [mode], [which]`        position relative to other position
+`'cursor', seg, i, [dir],[mode],[which],[clamp]`  position relative to other position
 `'rel_cursor', [dir], [mode], [which]`            position relative to cursor
 `'line', line_num, [x]`                           position on a specific line
 `'rel_line', [lines_away], [x]`                   position some lines away from the cursor
@@ -350,6 +350,8 @@ In the table above:
   * `mode` (`'pos'`): what to find: `'pos', 'char', 'word', 'line'`.
   * `which` (`'first'`): what cursor to return when there are multiple
   cursors that satisfy the search criteria: `'first', 'last'`.
+  * `clamp` (`false`): what to return when reaching the beginning or end
+  of text when looking for a cursor: the first/last cursor or `nil`.
 
 Example: `segs:find('rel_cursor', 'this', 'word', 'last')` returns the cursor
 position at the end of the word that the cursor is currently inside of.

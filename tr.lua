@@ -2134,11 +2134,14 @@ function cursor:find(what, ...)
 			return seg, i
 		end
 	elseif what == 'cursor' then
-		local seg, i, dir, mode, which = ...
-		local seg1, i1 = self.segments:rel_cursor(seg, i, dir, which,
+		local seg, i, dir, mode, which, clamp = ...
+		local seg, i = self.segments:rel_cursor(seg, i, dir, which,
 			self.cmp, self.valid, self, mode)
-		return self.segments:rel_cursor(seg, i, dir, which,
-			self.cmp, self.valid, self, mode)
+		if not seg and clamp then
+			local last = dir == 'next' or (dir == 'this' and which == 'last')
+			return self:find('offset', last and 1/0 or 0)
+		end
+		return seg, i
 	elseif what == 'rel_cursor' then
 		return self:find('cursor', self.seg, self.i, ...)
 	elseif what == 'line' then
@@ -2264,13 +2267,13 @@ end
 
 function selection:select_word()
 	local changed1 = self.cursor1:move('rel_cursor', 'this', 'word')
-	local changed2 = self.cursor2:move('rel_cursor', 'this', 'word', 'last')
+	local changed2 = self.cursor2:move('rel_cursor', 'this', 'word', 'last', true)
 	return changed1 or changed2
 end
 
 function selection:select_line()
-	local changed1 = self.cursor1:move('rel_cursor', 'this', 'line')
-	local changed2 = self.cursor2:move('rel_cursor', 'next', 'line')
+	local changed1 = self.cursor1:move('rel_cursor', 'this', 'line', nil, true)
+	local changed2 = self.cursor2:move('rel_cursor', 'next', 'line', nil, true)
 	return changed1 or changed2
 end
 
