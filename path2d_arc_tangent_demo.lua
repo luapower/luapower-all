@@ -1,5 +1,4 @@
 local player = require'cplayer'
-local path_cairo = require'path2d_cairo'
 local arc = require'path2d_arc'
 
 local angle = 270

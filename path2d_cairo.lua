@@ -2,6 +2,8 @@
 
 local path = require'path2d'
 
+if not ... then require'path2d_cairo_demo'; return end
+
 local b2_to_b3 = require'path2d_bezier2'.to_bezier3
 
 local function draw_function(cr)
@@ -37,8 +39,6 @@ local function draw_function(cr)
 
 	return draw
 end
-
-if not ... then require'path2d_cairo_demo' end
 
 return draw_function
 
