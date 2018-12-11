@@ -102,13 +102,19 @@ Convert a tree of nested text nodes into a flat array of codepoints and
 an accompanying flat list of *text runs* containing metadata for each piece
 of text contained in the tree.
 
-The text tree is a list whose elements can be either Lua strings containing
-utf-8 text or other text trees. Text tree nodes also contain attributes which
-describe how the text should be rendered. All attributes are automatically
-inherited from parent nodes and can be overriden in child nodes.
+The text tree is a list whose elements can be either Lua strings or cdata
+buffers containing utf-8 or utf-32 text or other text trees. Text tree nodes
+also contain attributes which describe how the text should be rendered. All
+attributes are automatically inherited from parent nodes and can be overriden
+in child nodes.
 
 Attributes can be:
 
+  * `charset`: character set: `'utf8'` or `'utf32'` (defaults to `'utf8'`).
+  * `size`: text buffer size in bytes (optional if the text is in a Lua string).
+  * `len`: text buffer size in codepoints (for `'utf32'` charset only;
+  optional if the text is in a Lua string).
+  * `maxlen`: maximum number of codepoints to decode/read.
   * `font` or `font_name`: font specified as `'family [weight] [slant][, size]'`.
   * `font_size`: font size override.
   * `font_weight`: font weight override: `'bold'`, `'thin'` etc. or a weight

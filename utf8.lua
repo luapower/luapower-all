@@ -150,7 +150,7 @@ function utf8.decode(buf, len, out, outlen, repl)
 		end
 		if c then
 			if j >= outlen then
-				return nil, 'buffer overflow', i
+				return nil, 'overflow', i
 			end
 			if out then
 				out[j] = c
@@ -231,7 +231,7 @@ function utf8.encode(buf, len, out, outlen, repl)
 	for i = 0, len-1 do
 		local n, b1, b2, b3, b4 = encode_char(buf[i], repl)
 		if n > outlen then
-			return nil, 'buffer overflow'
+			return nil, 'overflow'
 		end
 		if b1 then out[j  ] = b1 end
 		if b2 then out[j+1] = b2 end

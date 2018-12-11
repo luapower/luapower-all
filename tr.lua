@@ -552,7 +552,8 @@ function tr:flatten(text_tree)
 				self:warn('Text buffer size missing')
 				goto invalid
 			else
-				run.len = utf8.decode(run.text, size, false)
+				run.len = utf8.decode(run.text, size, false, run.maxlen)
+					or run.maxlen --buffer overflow because of run.maxlen
 			end
 		elseif charset == 'utf32' then
 			local size = run.size or (run.len and run.len * 4) or #run.text
@@ -560,7 +561,7 @@ function tr:flatten(text_tree)
 				self:warn('Text buffer size missing')
 				goto invalid
 			else
-				run.len = floor(size / 4)
+				run.len = min(floor(size / 4), run.maxlen or 1/0)
 			end
 		else
 			self:warn('Invalid charset: %s', run.charset)
@@ -606,7 +607,7 @@ function tr:flatten(text_tree)
 			local charset = run.charset or 'utf8'
 			if charset == 'utf8' then
 				local size = run.size or #run.text
-				assert(utf8.decode(run.text, size, str + offset, run.len))
+				utf8.decode(run.text, size, str + offset, run.len)
 			elseif charset == 'utf32' then
 				ffi.copy(str + offset, ffi.cast(const_char_ct, run.text), run.len * 4)
 			end
