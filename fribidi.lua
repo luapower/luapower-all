@@ -29,6 +29,8 @@ fb.bidi_types = C.fribidi_get_bidi_types
 fb.bidi_type_name = str_func(C.fribidi_get_bidi_type_name)
 
 --macros (many more at the end of fribidi_h, convert as needed)
+
+--Is explicit or BN or WS: LRE, RLE, LRO, RLO, PDF, BN, WS?
 function fb.IS_EXPLICIT_OR_BN_OR_WS(p)
 	return band(p, bor(C.FRIBIDI_MASK_EXPLICIT, C.FRIBIDI_MASK_BN, C.FRIBIDI_MASK_WS)) ~= 0
 end
@@ -67,11 +69,11 @@ fb.shape = C.fribidi_shape --just calls shape_mirroring() and shape_arabic()
 --bidi algorithm
 
 local par_type_names = {
-	[C.FRIBIDI_PAR_LTR]  = 'LTR',
-	[C.FRIBIDI_PAR_RTL]  = 'RTL',
-	[C.FRIBIDI_PAR_ON]   = 'ON',
-	[C.FRIBIDI_PAR_WLTR] = 'WLTR',
-	[C.FRIBIDI_PAR_WRTL] = 'WRTL',
+	[C.FRIBIDI_PAR_LTR]  = 'ltr',
+	[C.FRIBIDI_PAR_RTL]  = 'rtl',
+	[C.FRIBIDI_PAR_ON]   = 'on',   --other neutral
+	[C.FRIBIDI_PAR_WLTR] = 'wltr', --weak
+	[C.FRIBIDI_PAR_WRTL] = 'wrtl', --weak
 }
 function fb.par_type_name(t)
 	return par_type_names[tonumber(t)]

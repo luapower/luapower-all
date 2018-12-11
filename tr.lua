@@ -705,6 +705,8 @@ function tr:shape(text_runs, segments)
 
 	--flag indicating that bidi reordering will be needed on line-wrapping.
 	local reorder_segments = false
+	--bidi direction for the first paragraph of the text.
+	local base_dir = false
 
 	if #text_runs > 0 then
 
@@ -768,6 +770,8 @@ function tr:shape(text_runs, segments)
 					reorder_segments = reorder_segments
 						or max_bidi_level > (dir == 'rtl' and 1 or 0)
 
+					base_dir = base_dir or fb.par_type_name(fb_dir)
+
 				end
 
 				par_offset = i
@@ -800,6 +804,7 @@ function tr:shape(text_runs, segments)
 
 	segments.text_runs = text_runs --for accessing codepoints by clients
 	segments.bidi = reorder_segments --for optimization
+	segments.base_dir = base_dir
 
 	local seg_count = 0
 	local line_num = 1
@@ -1349,8 +1354,12 @@ function segments:checklines()
 	return assert(self.lines, 'Text not laid out')
 end
 
-local aligns_x = {left = 'left', center = 'center', right = 'right'}
+local aligns_x = {left = 'left', center = 'center', right = 'right', auto = 'auto'}
 local aligns_y = {top = 'top', center = 'center', bottom = 'bottom'}
+
+local dir_aligns = {
+	ltr = 'left', rtl = 'right', on = 'left',
+	wltr = 'left', wrtl = 'right'}
 
 function segments:align(x, y, w, h, align_x, align_y)
 
@@ -1363,6 +1372,9 @@ function segments:align(x, y, w, h, align_x, align_y)
 
 	lines.min_x = 1/0
 
+	if align_x == 'auto' then
+		align_x = dir_aligns[self.base_dir]
+	end
 	for line_i, line in ipairs(lines) do
 		--compute line's aligned x position relative to the textbox origin.
 		if align_x == 'right' then

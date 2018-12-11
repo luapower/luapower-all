@@ -163,13 +163,22 @@ input in general).
 ### `tr:shape(text_tree | text_runs) -> segs`
 
 Shape a text tree (flattened or not) into a list of segments.
-
 The segments can be laid out multiple times and must be laid out at least
 once in order to be rendered. Changing the text tree in any way except
 for styling attributes (color) requires reshaping and relayouting.
 
-  * the segments keep a reference to the text runs in the `text_runs` field.
-  * segments are _not created_ for text runs for which font loading fails.
+The segments table has the fields:
+
+  * `text_runs`: reference to the text runs.
+  * `bidi`: `true` if the text is bidirectional.
+  * `base_dir`: base paragraph direction of the first paragraph:
+    * `'ltr'`: left-to-right
+	 * `'rtl'`: right-to-left
+	 * `'on'`: other/neutral
+	 * `'wltr'`: weak ltr
+	 * `'wrtl'`: weak rtl
+
+__NOTE:__ Segments are _not created_ for text runs for which font loading fails.
 
 ### `segs:min_w() -> min_w`
 
