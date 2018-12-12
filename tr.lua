@@ -1195,7 +1195,14 @@ function segments:wrap(w)
 	--NOTE: users expect this table to be re-created from scratch on
 	--re-layouting (they will add data to this table that must only be valid
 	--for the lifetime of a single computed layout).
-	local lines = {}
+	local lines = {
+		h = 0,
+		spaced_h = 0,
+		baseline = 0,
+		max_ax = 0,
+		first_visible = 1,
+		last_visible = 0,
+	}
 	self.lines = lines
 
 	--do line wrapping and compute line advance.
@@ -1286,8 +1293,6 @@ function segments:wrap(w)
 		zone()
 	end
 
-	lines.max_ax = -1/0 --bounding-box width
-
 	local last_line
 	for _,line in ipairs(lines) do
 
@@ -1327,26 +1332,22 @@ function segments:wrap(w)
 		last_line = line
 	end
 
-	--bounding-box height (including or excluding paragraph spacing).
 	local first_line = lines[1]
-	local last_line = lines[#lines]
-	if not first_line then
-		lines.h = 0
-		lines.spaced_h = 0
-	else
+	if first_line then
+		local last_line = lines[#lines]
+		--compute the bounding-box height excluding paragraph spacing.
 		lines.h =
 			first_line.ascent
 			+ last_line.y
 			- last_line.descent
+		--compute the bounding-box height including paragraph spacing.
 		lines.spaced_h =
 			first_line.spaced_ascent
 			+ last_line.y
 			- last_line.spaced_descent
+		--set the default visible line range.
+		lines.last_visible = #lines
 	end
-
-	--set the default visible line range.
-	lines.first_visible = 1
-	lines.last_visible = #lines
 
 	return self
 end
