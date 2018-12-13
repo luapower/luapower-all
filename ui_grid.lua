@@ -1696,7 +1696,7 @@ end
 
 function grid:keychar(s)
 	if not self.editmode then
-		if ui.editbox:filter_text(s) ~= '' then
+		if ui.editbox:filter_input_text(s) ~= '' then
 			self.editmode = true
 			if self.edit_cell then
 				return self.edit_cell:fire('keychar', s)

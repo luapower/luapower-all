@@ -466,7 +466,7 @@ __behavior__
 `background_hittable`                `true`             background area receives mouse input even when there's no background
 `mousedown_activate`                 `false`            activate/deactivate on left mouse down/up
 `drag_threshold`                     `0`                moving distance before start dragging
-`max_click_chain`                    `1`                2 for getting doubleclick events, etc.
+`[button]click_chain`                `1`                2 for getting doubleclick events, etc.
 `tabgroup`                           `0`                tab group, for tab-based navigation
 `tabindex`                           `0`                tab order in tab group, for tab-based navigation
 `taborder_algorithm`                 `'xy'`             tab order algorithm: `'xy'`, `'yx'`
@@ -651,6 +651,7 @@ method        `to_screen           (x, y) -> x, y`    own content space -> scree
 method        `from_screen         (x, y) -> x, y`    screen space -> own content space
 method        `to_other    (widget, x, y) -> x, y`    own content space -> other's content space
 method        `from_other  (widget, x, y) -> x, y`    other's content space -> own content space
+method        `bbox_in(parent,x1,y1,...) -> x,y,w,h`  bounding box of a list of points in another layer's content box
 ------------- --------------------------------------- ------------------------
 
 ### Input model
@@ -665,7 +666,7 @@ method        `from_other  (widget, x, y) -> x, y`    other's content space -> o
   * while a layer is `active`, it continues to be `hot` and receive
   `mousemove` events even when the mouse is outside its hit-test area or
   outside the window even (that is, the mouse is captured).
-  * `max_click_chain` controls how many repeated clicks are to be taken
+  * `click_chain` controls how many repeated clicks are to be taken
   as one single click chain (a double-click, triple-click or quadruple-click).
   if set to 1 for instance, double-clicks are never received.
 
@@ -719,13 +720,14 @@ event         `deactivated()`                              layer was deactivated
 event         `mousemove(x, y, area)`                      mouse moved over a layer area
 event         `mouseenter(x, y, area)`                     mouse entered the layer area
 event         `mouseleave()`                               mouse left the layer area
-event         `[right|middle]mousedown(x, y, area)`        mouse left/right/middle button pressed
-event         `[right|middle]mouseup(x, y, area)`          mouse left/right/middle button depressed
-event         `[right|middle]click(x, y, area)`            mouse left/right/middle button click
-event         `[right|middle]doubleclick(x, y, area)`      mouse left/right/middle button double-click
-event         `[right|middle]tripleclick(x, y, area)`      mouse left/right/middle button triple-click
-event         `[right|middle]quadrupleclick(x, y, area)`   mouse left/right/middle button quadruple-click
+event         `[button]mousedown(x, y, area)`              mouse button pressed
+event         `[button]mouseup(x, y, area)`                mouse button depressed
+event         `[button]click(x, y, area)`                  mouse button click
+event         `[button]doubleclick(x, y, area)`            mouse button double-click
+event         `[button]tripleclick(x, y, area)`            mouse button triple-click
+event         `[button]quadrupleclick(x, y, area)`         mouse button quadruple-click
 event         `mousewheel(delta, x, y, area, pdelta)`      mouse wheel moved `delta` notches
+event         `<event>_<area>(...)`                        mouse event over area (all except mouseenter and mouseleave)
 r/o property  `mouse_x, mouse_y`                           mouse coords from the last mouse event
               __focused state__
 r/o property  `focused`                                    layer has keyboard focus
@@ -820,7 +822,7 @@ Windows have a top layer in their `view` field. Its size is kept in sync
 with the window's client area and it's configured to clear the window's
 bitmap on every repaint with these settings:
 
-  * `background_color = '#040404'`
+  * `background_color = '#040404f0'`
   * `background_operator = 'source'`
 
 User-created layers must ultimately be attached to the window's view (or to

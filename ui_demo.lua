@@ -1,13 +1,17 @@
 --go @ luajit -jp=a *
 
 local ui = require'ui'
+local Q = require'utf8quot'
 local time = require'time'
-local win = ui:window{x = 700, y = 100, cw = 1200, ch = 700, visible = false, autoquit=true}
+local win = ui:window{
+	x = 600, y = 100, cw = 1000, ch = 700,
+	visible = false, autoquit=true, edgesnapping=false,
+}
 function win:keyup(key) if key == 'esc' then self:close() end end
 
 ui.maxfps = 60
 
-local function fps_function()
+	local function fps_function()
 	local count_per_sec = 2
 	local frame_count, last_frame_count, last_time = 0, 0
 	return function()
@@ -26,6 +30,15 @@ local fps = fps_function()
 
 win.native_window:on('repaint', function(self)
 	self:title(string.format('%d fps', fps()))
+end)
+
+--keep showing fps in the titlebar every second.
+ui:runevery(1, function()
+	if win.dead then
+		ui:quit()
+	else
+		win:invalidate()
+	end
 end)
 
 if ... == 'ui_demo' and not DEMO then --loaded via require()
@@ -412,7 +425,7 @@ local function test_text()
 		local cr = self.window.cr
 		cr:rgb(1, 1, 1)
 		cr:line_width(1)
-		cr:rectangle(self:text_bounding_box())
+		cr:rectangle(self:text_bbox())
 		cr:stroke()
 	end
 
@@ -500,6 +513,34 @@ local function test_flexbox()
 
 end
 
+local function test_flexbox_baseline()
+
+	win.view.layout = 'flexbox'
+
+	local flex = ui:layer{
+		parent = win,
+		layout = 'flexbox',
+		flex_wrap = true,
+		align_main = 'stretch',
+		align_cross = 'baseline',
+		align_lines = 'start',
+		border_width = 20,
+		padding = 20,
+		border_color = '#333',
+	}
+
+	local c = ui.layer:subclass(nil, {
+		border_width = 1,
+		layout = 'textbox',
+		text_selectable = true,
+		text_editable = true,
+		focusable = true,
+	})
+	c(ui, {parent = flex, text = 'Hey there', font_size = 40})
+	c(ui, {parent = flex, text = 'Hey there', font_size = 16})
+
+end
+
 local function test_grid_layout()
 
 	local grid = ui:layer{
@@ -552,6 +593,9 @@ local function test_widgets_flex()
 	win.view.grid_row_gap = 20
 	win.view.grid_rows = {0}
 
+	local s = Q[[
+Lorem ipsum dolor sit amet, quod oblique vivendum ex sed. Impedit nominavi maluisset sea ut.&ps;Utroque apeirian maluisset cum ut. Nihil appellantur at his, fugit noluisse eu vel, mazim mandamus ex quo.&ls;Mei malis eruditi ne. Movet volumus instructior ea nec. Vel cu minimum molestie atomorum, pro iudico facilisi et, sea elitr partiendo at. An has fugit assum accumsan.&ps;Ne mea nobis scaevola partiendo, sit ei accusamus expetendis. Omnium repudiandae intellegebat ad eos, qui ad erant luptatum, nec an wisi atqui adipiscing. Mei ad ludus semper timeam, ei quas phaedrum liberavisse his, dolorum fierent nominavi an nec. Quod summo novum eam et, ullum choro soluta nec ex. Soleat conceptam pro ut, enim audire definiebas ad nec. Vis an equidem torquatos, at erat voluptatibus eam.]]
+
 	ui:button{
 		parent = win,
 		text = 'Imma button',
@@ -603,30 +647,86 @@ local function test_widgets_flex()
 			{title = {text = 'Tab 2-1'}},
 			{title = {text = 'Tab 2-2'}},
 		},
+		tabs_side = 'bottom',
 	}
 
-	local s = [[
-Lorem ipsum dolor sit amet, quod oblique vivendum ex sed. Impedit nominavi maluisset sea ut. Utroque apeirian maluisset cum ut. Nihil appellantur at his, fugit noluisse eu vel, mazim mandamus ex quo.
+	local fl_class = ui.layer:subclass('focusable_layer', {
+		clip_content = true,
+		text_align_x = 'left',
+		text_align_y = 'top',
+		text = s,
 
-Mei malis eruditi ne. Movet volumus instructior ea nec. Vel cu minimum molestie atomorum, pro iudico facilisi et, sea elitr partiendo at. An has fugit assum accumsan.
+		text_selectable = true,
+	})
 
-Ne mea nobis scaevola partiendo, sit ei accusamus expetendis. Omnium repudiandae intellegebat ad eos, qui ad erant luptatum, nec an wisi atqui adipiscing. Mei ad ludus semper timeam, ei quas phaedrum liberavisse his, dolorum fierent nominavi an nec. Quod summo novum eam et, ullum choro soluta nec ex. Soleat conceptam pro ut, enim audire definiebas ad nec. Vis an equidem torquatos, at erat voluptatibus eam.]]
-
-	local sb = ui:scrollbox{
+	fl_class(ui, {
 		parent = win,
-		auto_w = true,
+	})
+
+	fl_class(ui, {
+		parent = win,
+		focusable = true,
+		text_editable = true,
+		--clip_content = false,
+	})
+
+	ui:style('focusable_layer :focused', {
+		border_width = 1,
+		border_color = '#fff3',
+	})
+
+	ui:scrollbox{
+		parent = win,
+		--auto_w = true,
 		content = {
-			layout = 'textbox',
-			text_align_x = 'left',
-			text_align_y = 'top',
-			text = s,
+			w = 500,
+			h = 600,
+			{
+				x = 50,
+				y = 50,
+				w = 400,
+				h = 300,
+				focusable = true,
+				clip_content = true,
+				border_width = 1,
+				border_color = '#fff3',
+				text_align_x = 'left',
+				text_align_y = 'top',
+				text = s,
+				text_selectable = true,
+				text_editable = true,
+			},
 		},
 	}
 
+	ui:textarea{
+		parent = win,
+		value = s,
+	}
+
+	--rtl
+	ui:add_font_file('media/fonts/amiri-regular.ttf', 'Amiri')
+	local ta = ui:textarea{
+		parent = win,
+		content = {
+		},
+	}.content
+	ta.font = 'Amiri,22'
+	ta.padding_right = 1
+	ta.border_width = 1
+	ta.border_color = '#333'
+	ta.wrapped_space = false
+	ta.line_spacing = .9
+	ta.text = 'As-salāmu ʿalaykum! ال [( مف )] اتيح Hello Hello Hello Hello World! 123 السَّلَامُ عَلَيْكُمْ'
+
+	--[[
 	ui:editbox{
 		parent = win,
 	}
 
+	]]
+
+	--[[
 	local rows = {}
 	for i = 1,20 do table.insert(rows, {i, i}) end
 	ui:grid{
@@ -642,18 +742,14 @@ Ne mea nobis scaevola partiendo, sit ei accusamus expetendis. Omnium repudiandae
 		--cell_class = ui.editbox,
 		--editable = true,
 	}
+	]]
 
-	ui:editbox{
-		parent = win,
-		multiline = true,
-	}
-
-	--[==[
+	--[[
 	ui:dropdown{
 		parent = win,
 		picker = {rows = {'Row 1', 'Row 2', 'Row 3'}},
 	}
-	]==]
+	]]
 
 end
 
@@ -662,6 +758,7 @@ end
 --test_drag()
 --test_text()
 --test_flexbox()
+--test_flexbox_baseline()
 --test_grid_layout()
 test_widgets_flex()
 win:show()

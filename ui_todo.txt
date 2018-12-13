@@ -1,13 +1,7 @@
-TR ---------------------------------------------------------------------------
+PRIORITY ---------------------------------------------------------------------
 
-	--skip the last visual cursor of a soft-wrapped line.
-	if delta == 0
-		and seg.trailing_space
-		and seg.wrapped
-		and ci == (seg.glyph_run.rtl and 0 or len)
-	then
-		--return self:next_cursor(seg, ci, step)
-	end
+- REVIEW: dropdown!
+- REWRITE: colorpicker with grid/flexbox.
 
 LOW-LEVEL --------------------------------------------------------------------
 
@@ -17,11 +11,14 @@ LOW-LEVEL --------------------------------------------------------------------
 
 NW ---------------------------------------------------------------------------
 
-- BUG when dragging the title bar.
 - BUG parent doesn't get repainted right after closing a child popup.
 - FEAT get a window's children in z-order so we can forward mouse wheel events
 to non-activable children.
-- BUG background doesn't get cleared anymore when there's no repaint handler.
+
+TR ---------------------------------------------------------------------------
+
+- tr: store paragraph base direction for all paragraphs.
+	- text_run.align_x <- override for all enclosed lines/paragraphs.
 
 UI ---------------------------------------------------------------------------
 
@@ -54,7 +51,6 @@ DROPDOWN ---------------------------------------------------------------------
 
 TABLIST ----------------------------------------------------------------------
 
-- horizontal/bottom
 - vertical left/right
 
 BUTTON -----------------------------------------------------------------------

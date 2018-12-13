@@ -4,7 +4,6 @@
 
 local ui = require'ui'
 local glue = require'glue'
-local box2d = require'box2d'
 
 local snap = glue.snap
 local clamp = glue.clamp
@@ -171,9 +170,14 @@ end
 
 function pin:move(cx)
 	local duration = not self.animate and 0 or nil
-	self:transition('cx', cx, duration)
-	if self.animate then
-		self.slider.tip:settag(':visible', true)
+	--NOTE: snapx() is to prevent transition() to invalidate() because the
+	--values are not the same, x,w being snapped by the layout.
+	local cx = self:snapcx(cx)
+	if cx ~= self.cx then
+		self:transition('cx', cx, duration)
+		if self.animate then
+			self.slider.tip:settag(':visible', true, true)
+		end
 	end
 end
 
@@ -239,7 +243,7 @@ function slider:create_step_label(text, position)
 	}, self.step_label)
 end
 
-function slider:after_sync_layout()
+function slider:before_sync_layout_children()
 	local s = self.track
 	local f = self.fill
 	local p = self.pin
@@ -258,7 +262,7 @@ function slider:after_sync_layout()
 	if not p:transitioning'cx' and not dragging and not self.active then
 		p.progress = self.progress
 		if not dragging then
-			self.tip:settag(':visible', false)
+			t:settag(':visible', false, true)
 		end
 	end
 
@@ -267,13 +271,9 @@ function slider:after_sync_layout()
 
 	m.cy = self.h / 2
 	m.cx = self.pin:cx_at_position(self.position)
-	m:settag(':visible', dragging or self.active)
+	m:settag(':visible', dragging or self.active, true)
 
 	t.x = p.w / 2
-
-	local text = string.format(t.format,
-		p.dragging and self:nearest_position(p.position) or self.position)
-	t:transition('text', text)
 
 	if self.step_labels then
 		local h = s.y + math.floor(s.h - (self:step_lines_visible() and 0 or 10))
@@ -563,6 +563,8 @@ function slider:set_position(pos)
 	if self:isinstance() then
 		self._position = self:nearest_position(pos)
 		self.pin.position = self._position
+		local text = string.format(self.tip.format, self._position)
+		self.tip:transition('text', text)
 	end
 end
 slider:track_changes'position'
