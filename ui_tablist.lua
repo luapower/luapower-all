@@ -145,6 +145,14 @@ function tab:unselect()
 	self.tablist._selected_tab = false
 end
 
+function tab:get_occluded()
+	return not (
+		not self.tablist --dragging
+		or self.selected --selected
+		or self.tablist.foreground_fixed_tab == self --underneath dragging
+	)
+end
+
 --init
 
 tab:init_ignore{tablist=1, visible=1, selected=1}
@@ -324,7 +332,7 @@ end
 --TODO: rounded-corner slants
 local sides = {'top', 'right', 'bottom', 'left'}
 function tab:border_line_to(cr, x, y, q)
-	local side = sides[q]
+	local side = q and sides[q] or self.side
 	if self.side ~= side then return end
 	local w, h = self.tab_w, self.tab_h
 	local wl, wr = self:slant_widths()
@@ -362,6 +370,32 @@ function tab:override_hit_test(inherited, x, y, ...)
 		end
 	end
 	return widget, area
+end
+
+--skip drawing the hidden part of the tab (notably it's background which can
+--be large) if we know for sure that the tab contents are entirely occluded.
+function tab:override_border_path(inherited, cr, ...)
+	if not self.occluded then
+		return inherited(self, cr, ...)
+	end
+	local x1, y1, w, h = self:border_rect(...)
+	local x2, y2 = x1 + w, y1 + h
+	if self.side == 'bottom' then
+		y1 = y2
+	end
+	self:border_line_to(cr, x1, y1)
+	cr:close_path()
+end
+
+--skip drawing the tab's contents if we know that they are entirely occluded.
+function tab:draw_children(cr)
+	local occluded = self.occluded
+	for i = 1, #self do
+		local layer = self[i]
+		if not occluded or layer == self.title or layer == self.xbutton then
+			layer:draw(cr)
+		end
+	end
 end
 
 --title
@@ -563,6 +597,25 @@ function tablist:set_selected_tab(tab)
 		tab:select()
 	elseif self.selected_tab then
 		self.selected_tab:unselect()
+	end
+end
+
+--foreground tab that is either the selected tab or the tab underneath
+--the selected tab, if the selected tab is not yet in place (moving).
+function tablist:get_foreground_fixed_tab()
+	local stab = self.selected_tab
+	local moving_tab = stab
+		and (stab:end_value'x' ~= stab.x
+		  or stab:end_value'y' ~= stab.y)
+		and stab
+	if stab and not moving_tab then
+		return stab
+	end
+	for i = #self, 1, -1 do
+		local tab = self[i]
+		if tab.istab and tab.visible and tab.enabled and tab ~= moving_tab then
+			return tab
+		end
 	end
 end
 
