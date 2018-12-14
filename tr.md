@@ -416,11 +416,12 @@ Select none.
 
 Select the word around `cursor1`.
 
-### `sel:rectangles(write_func, ...)`
+### `sel:rectangles(write_func, obj, ...)`
 
-Get the selection rectangles.
+Get the selection rectangles by calling `write_func(obj, x, y, w, h, ...)`
+for each one.
 
-### `sel:hit_rectangles(write_func, ...)`
+### `sel:hit_rectangles(write_func, obj, ...)`
 
 Get the selection rectangles without line gaps (useful for hit-testing).
 

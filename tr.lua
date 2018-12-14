@@ -1818,7 +1818,7 @@ local function merge_xw(x1, w1, x2, w2)
 	end
 end
 
-function segments:selection_rectangles(seg1, i1, seg2, i2, spaced, write, ...)
+function segments:selection_rectangles(seg1, i1, seg2, i2, spaced, write, obj, ...)
 	if seg1.offset > seg2.offset then
 		seg1, i1, seg2, i2 = seg2, i2, seg1, i1
 	end
@@ -1836,13 +1836,13 @@ function segments:selection_rectangles(seg1, i1, seg2, i2, spaced, write, ...)
 				local x1, w1 = segment_xw(seg, i1, i2)
 				local x1, w1, failed = merge_xw(x, w, x1, w1)
 				if failed then
-					local ret = write(line_x + x, line_y, w, line_h, ...)
+					local ret = write(obj, line_x + x, line_y, w, line_h, ...)
 					if ret then return ret end
 				end
 				x, w = x1, w1
 				seg = self[seg.index + 1]
 			end
-			local ret = write(line_x + x, line_y, w, line_h, ...)
+			local ret = write(obj, line_x + x, line_y, w, line_h, ...)
 			if ret then return ret end
 		else
 			local next_line = lines[line.index + 1]
@@ -2293,20 +2293,20 @@ end
 
 --drawing & hit-testing
 
-function selection:rectangles(write, ...)
+function selection:rectangles(...)
 	local c1, c2 = self:cursors()
 	return self.segments:selection_rectangles(
 		c1.seg, c1.i,
 		c2.seg, c2.i,
-		false, write, ...)
+		false, ...)
 end
 
-function selection:hit_rectangles(write, ...)
+function selection:hit_rectangles(...)
 	local c1, c2 = self:cursors()
 	return self.segments:selection_rectangles(
 		c1.seg, c1.i,
 		c2.seg, c2.i,
-		true, write, ...)
+		true, ...)
 end
 
 local function hit_test_rect(x, y, w, h, mx, my)

@@ -35,14 +35,6 @@ function tab:after_set_tablist()
 end
 tab:nochange_barrier'tablist'
 
-function tab:get_current_tablist()
-	return self.tablist or self.origin_tablist
-end
-
-function tab:get_side()
-	return self.current_tablist.tabs_side
-end
-
 --index property: get/set a tab's positional index.
 
 tab._index = 1/0 --add to the tablist tail
@@ -145,14 +137,6 @@ function tab:unselect()
 	self.tablist._selected_tab = false
 end
 
-function tab:get_occluded()
-	return not (
-		not self.tablist --dragging
-		or self.selected --selected
-		or self.tablist.foreground_fixed_tab == self --underneath dragging
-	)
-end
-
 --init
 
 tab:init_ignore{tablist=1, visible=1, selected=1}
@@ -178,10 +162,10 @@ function tab:activated()
 end
 
 function tab:start_drag(button, mx, my, area)
-	if not self.tablist then return end
 	if area ~= 'header' then return end
 	self.origin_tablist = self.tablist
 	self.origin_tab_x = self.tab_x
+	self.origin_tab_h = self.tab_h
 	self.origin_index = self.index
 	return self
 end
@@ -194,7 +178,7 @@ function tab:drag(dx, dy)
 		self:transition('tab_x', self.tablist:clamp_tab_pos(x), 0)
 		self:transition('tab_w', self.tablist.live_tab_w)
 		local x, w = self:snapxw(0, self.tablist.w)
-		local y = self.side == 'top' and self.tab_h or 0
+		local y = self.tablist.tabs_side == 'top' and self.tab_h or 0
 		local y, h = self:snapyh(y, self.tablist.ch - self.tablist.tab_h)
 		self:transition('x', x, 0)
 		self:transition('y', y, 0)
@@ -204,6 +188,7 @@ function tab:drag(dx, dy)
 		local x = self:snapx(self.x + dx)
 		local y = self:snapy(self.y + dy)
 		self:transition('tab_x', self.origin_tab_x, 0)
+		self:transition('tab_h', self.origin_tab_h, 0)
 		self:transition('x', x, 0)
 		self:transition('y', y, 0)
 	end
@@ -321,55 +306,80 @@ ui:style('tab :dropping', {
 
 function tab:slant_widths()
 	local h = self.tab_h
-	local tablist = self.current_tablist
-	local sl = tablist.tab_slant_left
-	local sr = tablist.tab_slant_right
-	local wl = h / math.tan(math.rad(sl))
-	local wr = h / math.tan(math.rad(sr))
-	return wl, wr
+	local tablist = self.tablist or self.origin_tablist
+	local s = tablist.tab_slant
+	local sl = math.rad(tablist.tab_slant_left or s)
+	local sr = math.rad(tablist.tab_slant_right or s)
+	local wl = h / math.tan(sl)
+	local wr = h / math.tan(sr)
+	return wl, wr, sl, sr
 end
 
---TODO: rounded-corner slants
 local sides = {'top', 'right', 'bottom', 'left'}
-function tab:border_line_to(cr, x, y, q)
-	local side = q and sides[q] or self.side
-	if self.side ~= side then return end
+function tab:border_line_to(cr, x0, y0, q)
+	local tablist = self.tablist or self.origin_tablist
+	local side = q and sides[q] or tablist.tabs_side
+	if side ~= tablist.tabs_side then return end
 	local w, h = self.tab_w, self.tab_h
-	local wl, wr = self:slant_widths()
-	if side == 'top' or side == 'bottom' then
-		local x = self.tab_x
-		local x1 = x + wl
-		local x2 = x + w - wr
-		local x3 = x + w
-		local x4 = x + 0
-		local y1 = y - h
-		local y2 = y - h
-		local y3 = y + 0
-		local y4 = y + 0
-		if side == 'bottom' then
-			y1, y2, y3, y4 = y1 + h, y2 + h, y3 + h, y4 + h
-			x4, x1, x2, x3 = x3, x2, x1, x4
-			y4, y1, y2, y3 = y2, y3, y4, y1
-		end
+	local wl, wr, sl, sr = self:slant_widths()
+	local r = tablist.tab_corner_radius
+	local x  = self.tab_x
+	local x1 = x + wl
+	local x2 = x + w - wr
+	local x3 = x + w
+	local x4 = x + 0
+	local y = y0
+	local y1 = y - h
+	local y2 = y - h
+	local y3 = y + 0
+	local y4 = y + 0
+	cr:save()
+	if side == 'top' then
+		--nothing
+	elseif side == 'bottom' then
+		cr:rotate_around(x + w / 2, y, math.pi)
+	elseif side == 'left' then
+		--TODO:
+	elseif side == 'right' then
+		--TODO:
+	else
+		self:warn('invalid tabs_side: %s', side)
+	end
+	if r > 0 then
+		local q = math.pi/2
+		local sl = q - sl
+		local sr = q - sr
+		local xl = math.tan(sl / 2) * r
+		local xr = math.tan(sr / 2) * r
+		cr:arc_negative(x4-r+xl, y4-r, r, q*1   , q*0+sl)
+		cr:arc         (x1+r-xl, y1+r, r, q*2+sl, q*3   )
+		cr:arc         (x2-r+xr, y2+r, r, q*3   , q*4-sr)
+		cr:arc_negative(x3+r-xr, y3-r, r, q*2-sr, q*1   )
+	else
 		cr:line_to(x4, y4)
 		cr:line_to(x1, y1)
 		cr:line_to(x2, y2)
 		cr:line_to(x3, y3)
-	elseif side == 'left' or side == 'right' then
-		--
-	else
-		self.ui:warn('invalid tabs_side: %s', side)
 	end
+	cr:restore()
 end
 
 function tab:override_hit_test(inherited, x, y, ...)
 	local widget, area = inherited(self, x, y, ...)
-	if widget == self and area == 'background' then
-		if box2d.hit(x, y, self.current_tablist:header_rect()) then
+	if widget == self and area == 'background' and self.tablist then
+		if box2d.hit(x, y, self.tablist:header_rect()) then
 			return self, 'header'
 		end
 	end
 	return widget, area
+end
+
+function tab:get_occluded()
+	return not (
+		not self.tablist --dragging
+		or self.selected --selected
+		or self.tablist.foreground_fixed_tab == self --underneath dragging
+	)
 end
 
 --skip drawing the hidden part of the tab (notably it's background which can
@@ -380,8 +390,13 @@ function tab:override_border_path(inherited, cr, ...)
 	end
 	local x1, y1, w, h = self:border_rect(...)
 	local x2, y2 = x1 + w, y1 + h
-	if self.side == 'bottom' then
+	local side = (self.tablist or self.origin_tablist).tabs_side
+	if side == 'bottom' then
 		y1 = y2
+	elseif side == 'right' then
+		--TODO:
+	elseif side == 'left' then
+		--TODO:
 	end
 	self:border_line_to(cr, x1, y1)
 	cr:close_path()
@@ -392,7 +407,7 @@ function tab:draw_children(cr)
 	local occluded = self.occluded
 	for i = 1, #self do
 		local layer = self[i]
-		if not occluded or layer == self.title or layer == self.xbutton then
+		if not occluded or layer == self.title or layer == self.close_button then
 			layer:draw(cr)
 		end
 	end
@@ -428,14 +443,14 @@ function tab:after_init()
 end
 
 function tab:before_sync_layout_children()
+	local tablist = self.tablist or self.origin_tablist
 	local t = self.title
 	local wl, wr = self:slant_widths()
 	local p = self.padding
-	t.x = self.tab_x - (self.padding_left or p) + wl
-	local side = self.side
-	if side == 'top' then
+	t.x = self.tab_x - (self.padding_left or p) + wl + tablist.title_margin
+	if tablist.tabs_side == 'top' then
 		t.y = self:snapy(-self.tab_h - (self.padding_top or p))
-	elseif side == 'bottom' then
+	elseif tablist.tabs_side == 'bottom' then
 		t.y = self:snapy(self.h - (self.padding_bottom or p))
 	end
 	t.w = self.close_button.x - t.x
@@ -503,8 +518,10 @@ function tab:before_sync_layout_children()
 	local xb = self.close_button
 	local wl, wr = self:slant_widths()
 	local p = self.padding
-	xb.x = self.tab_x + self.tab_w - xb.w - wr - (self.padding_left or p)
-	local side = self.side
+	xb.x = self.tab_x + self.tab_w - xb.w - wr
+		- (self.padding_left or p)
+		- (self.tablist or self.origin_tablist).close_button_margin
+	local side = (self.tablist or self.origin_tablist).tabs_side
 	if side == 'top' then
 		xb.cy = -math.ceil(self.tab_h / 2) - (self.padding_top or p)
 	elseif side == 'bottom' then
@@ -613,7 +630,7 @@ function tablist:get_foreground_fixed_tab()
 	end
 	for i = #self, 1, -1 do
 		local tab = self[i]
-		if tab.istab and tab.visible and tab.enabled and tab ~= moving_tab then
+		if tab.istab and tab.visible and tab ~= moving_tab then
 			return tab
 		end
 	end
@@ -727,24 +744,35 @@ tablist.tab_h = 26
 tablist.tab_w = 150
 tablist.min_tab_w = 10
 tablist.tab_spacing = -10
-tablist.tab_slant_left = 70 --degrees
-tablist.tab_slant_right = 70 --degrees
-tablist.tabs_padding_left = 10
-tablist.tabs_padding_right = 10
+tablist.tab_slant = 70 --degrees
+tablist.tab_slant_left = false
+tablist.tab_slant_right = false
+tablist.tab_corner_radius = 0
+tablist.tabs_padding = 10
+tablist.tabs_padding_left = false
+tablist.tabs_padding_right = false
 tablist.tabs_side = 'top' --top, bottom, left, right
 
+tablist.title_margin = 4
+tablist.close_button_margin = 4
+
 function tablist:clamp_tab_pos(x)
+	local p = self.tabs_padding
 	return clamp(x,
-		self.tabs_padding_left,
-		self.w - self.live_tab_w - self.tabs_padding_right)
+		self.tabs_padding_left or p,
+		self.w - self.live_tab_w - (self.tabs_padding_right or p))
 end
 
 function tablist:sync_live_tab_w()
 	local n = self:visible_tab_count()
-	local w = self.w - self.tabs_padding_left + self.tab_spacing * n
+	local w = self.w
+		- (self.tabs_padding_left or self.tabs_padding)
+		- (self.tabs_padding_right or self.tabs_padding)
+		+ self.tab_spacing * n
 	local tw = math.min(self.tab_w + self.tab_spacing, math.floor(w / n))
-	local sl = self.tab_slant_left
-	local sr = self.tab_slant_right
+	local s = self.tab_slant
+	local sl = self.tab_slant_left or s
+	local sr = self.tab_slant_right or s
 	local wl = self.tab_h / math.tan(math.rad(sl))
 	local wr = self.tab_h / math.tan(math.rad(sr))
 	local min_tw = wl + wr + self.min_tab_w
@@ -752,12 +780,12 @@ function tablist:sync_live_tab_w()
 end
 
 function tablist:tab_pos_by_visual_index(index)
-	return self.tabs_padding_left +
+	return (self.tabs_padding_left or self.tabs_padding) +
 		(index - 1) * (self.live_tab_w + self.tab_spacing)
 end
 
 function tablist:tab_visual_index_by_pos(x)
-	local x = x - self.tabs_padding_left
+	local x = x - (self.tabs_padding_left or self.tabs_padding)
 	return round(x / (self.live_tab_w + self.tab_spacing)) + 1
 end
 
@@ -789,12 +817,12 @@ function tablist:sync_tabs(...)
 			if not tab.dragging then
 				tab:transition('tab_x', self:tab_pos_by_visual_index(vi), ...)
 				tab:transition('tab_w', tab_w, ...)
-				tab:transition('tab_h', self.tab_h, ...)
 				tab:transition('x', x, ...)
 				tab:transition('y', y, ...)
 			end
 			tab:transition('w', w, ...)
 			tab:transition('h', h, ...)
+			tab:transition('tab_h', self.tab_h, ...)
 			vi = vi + 1
 			tab:sync_transitions()
 		end
@@ -832,14 +860,20 @@ if not ... then require('ui_demo')(function(ui, win)
 
 	local color = require'color'
 
-	win.view.padding = 50
+	win.view.layout = 'grid'
+	win.view.padding = 20
+	win.view.grid_row_gap = 10
+	win.view.grid_col_gap = 10
+	win.view.grid_wrap = 2
 
 	local w = (win.view.cw - 10) / 2
 	local h = win.view.ch
 
 	local tl1 = {
-		tab_slant_left = 80,
-		--tab_slant_right = 90,
+		tab_slant = 80,
+		tab_corner_radius = 10,
+		tabs_padding = 20,
+		tab_h = 36,
 		w = w, h = h,
 		parent = win,
 		tabs = {},
@@ -847,10 +881,10 @@ if not ... then require('ui_demo')(function(ui, win)
 
 	local tl2 = {
 		x = w + 10, w = w, h = h / 2,
+		tab_slant_right = 80,
 		parent = win,
 		tabs = {},
 		tabs_side = 'bottom',
-		tab_slant_left = 80,
 	}
 
 	for i = 1, 10 do

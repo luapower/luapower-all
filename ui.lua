@@ -3220,9 +3220,9 @@ local function bezier_qarc(cr, cx, cy, rx, ry, q1, qlen, k)
 	cr:restore()
 end
 
---draw an eliptic arc: q1 is the quadrant starting top-left going clockwise.
+--draw a rounded corner: q1 is the quadrant starting top-left going clockwise.
 --qlen is in 90deg units and can only be +/- .5 or 1 if k ~= 1.
-local function qarc(cr, cx, cy, rx, ry, q1, qlen, k)
+function layer:corner_path(cr, cx, cy, rx, ry, q1, qlen, k)
 	if rx == 0 or ry == 0 then --null arcs need a line to the first endpoint
 		assert(rx == 0 and ry == 0)
 		cr:line_to(cx, cy)
@@ -3247,13 +3247,14 @@ function layer:border_path(cr, offset, size_offset)
 	local x2, y2 = x1 + w, y1 + h
 	cr:move_to(x1, y1+r1y)
 	local line = self.border_line_to
-	qarc(cr, x1+r1x, y1+r1y, r1x, r1y, 1, 1, k) --tl
+	local qarc = self.corner_path
+	qarc(self, cr, x1+r1x, y1+r1y, r1x, r1y, 1, 1, k) --tl
 	line(self, cr, x2-r2x, y1, 1)
-	qarc(cr, x2-r2x, y1+r2y, r2x, r2y, 2, 1, k) --tr
+	qarc(self, cr, x2-r2x, y1+r2y, r2x, r2y, 2, 1, k) --tr
 	line(self, cr, x2, y2-r3y, 2)
-	qarc(cr, x2-r3x, y2-r3y, r3x, r3y, 3, 1, k) --br
+	qarc(self, cr, x2-r3x, y2-r3y, r3x, r3y, 3, 1, k) --br
 	line(self, cr, x1+r4x, y2, 3)
-	qarc(cr, x1+r4x, y2-r4y, r4x, r4y, 4, 1, k) --bl
+	qarc(self, cr, x1+r4x, y2-r4y, r4x, r4y, 4, 1, k) --bl
 	line(self, cr, x1, y1+r1y, 4)
 	cr:close_path()
 end
@@ -3307,15 +3308,16 @@ function layer:draw_border(cr)
 
 	local x2, y2 = x1 + w, y1 + h
 	local X2, Y2 = X1 + W, Y1 + H
+	local qarc = self.corner_path
 
 	if border_color or self.border_color_left then
 		cr:new_path()
 		cr:move_to(x1, y1+r1y)
-		qarc(cr, x1+r1x, y1+r1y, r1x, r1y, 1, .5, k)
-		qarc(cr, X1+R1X, Y1+R1Y, R1X, R1Y, 1.5, -.5, K)
+		qarc(self, cr, x1+r1x, y1+r1y, r1x, r1y, 1, .5, k)
+		qarc(self, cr, X1+R1X, Y1+R1Y, R1X, R1Y, 1.5, -.5, K)
 		cr:line_to(X1, Y2-R4Y)
-		qarc(cr, X1+R4X, Y2-R4Y, R4X, R4Y, 5, -.5, K)
-		qarc(cr, x1+r4x, y2-r4y, r4x, r4y, 4.5, .5, k)
+		qarc(self, cr, X1+R4X, Y2-R4Y, R4X, R4Y, 5, -.5, K)
+		qarc(self, cr, x1+r4x, y2-r4y, r4x, r4y, 4.5, .5, k)
 		cr:close_path()
 		cr:rgba(self.ui:rgba(self.border_color_left or border_color))
 		cr:fill()
@@ -3324,11 +3326,11 @@ function layer:draw_border(cr)
 	if border_color or self.border_color_top then
 		cr:new_path()
 		cr:move_to(x2-r2x, y1)
-		qarc(cr, x2-r2x, y1+r2y, r2x, r2y, 2, .5, k)
-		qarc(cr, X2-R2X, Y1+R2Y, R2X, R2Y, 2.5, -.5, K)
+		qarc(self, cr, x2-r2x, y1+r2y, r2x, r2y, 2, .5, k)
+		qarc(self, cr, X2-R2X, Y1+R2Y, R2X, R2Y, 2.5, -.5, K)
 		cr:line_to(X1+R1X, Y1)
-		qarc(cr, X1+R1X, Y1+R1Y, R1X, R1Y, 2, -.5, K)
-		qarc(cr, x1+r1x, y1+r1y, r1x, r1y, 1.5, .5, k)
+		qarc(self, cr, X1+R1X, Y1+R1Y, R1X, R1Y, 2, -.5, K)
+		qarc(self, cr, x1+r1x, y1+r1y, r1x, r1y, 1.5, .5, k)
 		cr:close_path()
 		cr:rgba(self.ui:rgba(self.border_color_top or border_color))
 		cr:fill()
@@ -3337,11 +3339,11 @@ function layer:draw_border(cr)
 	if border_color or self.border_color_right then
 		cr:new_path()
 		cr:move_to(x2, y2-r3y)
-		qarc(cr, x2-r3x, y2-r3y, r3x, r3y, 3, .5, k)
-		qarc(cr, X2-R3X, Y2-R3Y, R3X, R3Y, 3.5, -.5, K)
+		qarc(self, cr, x2-r3x, y2-r3y, r3x, r3y, 3, .5, k)
+		qarc(self, cr, X2-R3X, Y2-R3Y, R3X, R3Y, 3.5, -.5, K)
 		cr:line_to(X2, Y1+R2Y)
-		qarc(cr, X2-R2X, Y1+R2Y, R2X, R2Y, 3, -.5, K)
-		qarc(cr, x2-r2x, y1+r2y, r2x, r2y, 2.5, .5, k)
+		qarc(self, cr, X2-R2X, Y1+R2Y, R2X, R2Y, 3, -.5, K)
+		qarc(self, cr, x2-r2x, y1+r2y, r2x, r2y, 2.5, .5, k)
 		cr:close_path()
 		cr:rgba(self.ui:rgba(self.border_color_right or border_color))
 		cr:fill()
@@ -3350,11 +3352,11 @@ function layer:draw_border(cr)
 	if border_color or self.border_color_bottom then
 		cr:new_path()
 		cr:move_to(x1+r4x, y2)
-		qarc(cr, x1+r4x, y2-r4y, r4x, r4y, 4, .5, k)
-		qarc(cr, X1+R4X, Y2-R4Y, R4X, R4Y, 4.5, -.5, K)
+		qarc(self, cr, x1+r4x, y2-r4y, r4x, r4y, 4, .5, k)
+		qarc(self, cr, X1+R4X, Y2-R4Y, R4X, R4Y, 4.5, -.5, K)
 		cr:line_to(X2-R3X, Y2)
-		qarc(cr, X2-R3X, Y2-R3Y, R3X, R3Y, 4, -.5, K)
-		qarc(cr, x2-r3x, y2-r3y, r3x, r3y, 3.5, .5, k)
+		qarc(self, cr, X2-R3X, Y2-R3Y, R3X, R3Y, 4, -.5, K)
+		qarc(self, cr, x2-r3x, y2-r3y, r3x, r3y, 3.5, .5, k)
 		cr:close_path()
 		cr:rgba(self.ui:rgba(self.border_color_bottom or border_color))
 		cr:fill()
@@ -3707,6 +3709,8 @@ layer.clip_content = false --true, 'background', false
 
 function layer:draw_content(cr) --called in own content space
 	self:draw_text(cr)
+	self:draw_text_selection(cr)
+	self:draw_caret(cr)
 	self:draw_children(cr)
 end
 
@@ -3996,10 +4000,10 @@ layer.maxlen = 4096
 
 function layer:get_text()
 	if not self._text_valid then
-		if not self._text_segments then
+		if not self.text_segments then
 			assert(self:sync_text_shape()) --truncate _text
 		end
-		self._text = self._text_segments.text_runs:string()
+		self._text = self.text_segments.text_runs:string()
 		self._text_valid = true
 	end
 	return self._text
@@ -4007,7 +4011,7 @@ end
 
 function layer:set_text(s)
 	s = s or false
-	if self._text_valid or self._text_segments then
+	if self._text_valid or self.text_segments then
 		if s == self.text then
 			return false
 		end
@@ -4019,17 +4023,17 @@ function layer:set_text(s)
 		self._text = false
 		self._text_valid = true
 		self._text_tree = false
-		self._text_segments = false
+		self.text_segments = false
 		self.text_selection = false
 	elseif self.text_selection then
 		self._text = ''
 		self._text_valid = false
 		self.text_selection:select_all()
 		self.text_selection:replace(s, nil, nil, self.maxlen)
-	elseif self._text_segments then
+	elseif self.text_segments then
 		self._text = ''
 		self._text_valid = false
-		self._text_segments:replace(0, 1/0, s, nil, nil, self.maxlen)
+		self.text_segments:replace(0, 1/0, s, nil, nil, self.maxlen)
 	else
 		self._text = s
 		self._text_valid = false --because we're not truncating it here
@@ -4112,7 +4116,7 @@ layer:enum_property('text_align_y', {
 })
 
 layer._text_tree = false
-layer._text_segments = false
+layer.text_segments = false
 
 function layer:sync_text_shape()
 	if not self:text_visible() then
@@ -4133,7 +4137,7 @@ function layer:sync_text_shape()
 			t = {}
 			self._text_tree = t
 		end
-		t[1] = self._text_segments
+		t[1] = self.text_segments
 			and self.text --truncated
 			or self._text --raw
 		t.maxlen      = self.maxlen
@@ -4144,16 +4148,16 @@ function layer:sync_text_shape()
 		t.font_size   = self.font_size
 		t.nowrap      = self.nowrap
 		t.text_dir    = self.text_dir
-		self._text_segments = self.ui.tr:shape(t)
+		self.text_segments = self.ui.tr:shape(t)
 		self._text_w = false --invalidate wrap
 		self._text_h = false --invalidate align
 		self.text_selection = false --invalidate selection
 	end
-	return self._text_segments
+	return self.text_segments
 end
 
 function layer:sync_text_wrap()
-	local segs = self._text_segments
+	local segs = self.text_segments
 	if not segs then return nil end
 	local cw = self:client_size()
 	local ls = self.line_spacing
@@ -4175,7 +4179,7 @@ function layer:sync_text_wrap()
 end
 
 function layer:sync_text_align()
-	local segs = self._text_segments
+	local segs = self.text_segments
 	if not segs then return nil end
 	local cw, ch = self:client_size()
 	local ha = self._text_align_x
@@ -4198,11 +4202,11 @@ end
 
 function layer:get_baseline()
 	if not self:text_visible() then return end
-	return self._text_segments.lines.baseline
+	return self.text_segments.lines.baseline
 end
 
 function layer:draw_text(cr)
-	local segs = self._text_segments
+	local segs = self.text_segments
 	if not segs then return end
 	self._text_tree.color    = self.text_color
 	self._text_tree.opacity  = self.text_opacity
@@ -4210,15 +4214,13 @@ function layer:draw_text(cr)
 	local x1, y1, x2, y2 = cr:clip_extents()
 	segs:clip(x1, y1, x2-x1, y2-y1)
 	segs:paint(cr)
-	self:draw_text_selection(cr)
-	self:draw_caret(cr)
 end
 
 function layer:text_bbox()
 	if not self:text_visible() then
 		return 0, 0, 0, 0
 	end
-	return self._text_segments:bbox()
+	return self.text_segments:bbox()
 end
 
 --text caret & selection drawing ---------------------------------------------
@@ -4256,6 +4258,7 @@ ui:style('layer :focused !:insert_mode :window_active', {
 
 function layer:create_text_selection(segs)
 	local sel = segs:selection()
+	if not sel then return end --invalid font
 
 	--reset the caret blinking whenever a cursor is being acted upon,
 	--regardles of whether it changes position or not.
@@ -4328,7 +4331,7 @@ function layer:draw_caret(cr)
 	cr:fill()
 end
 
-local function draw_sel_rect(x, y, w, h, cr, self)
+function layer:draw_selection_rect(x, y, w, h, cr)
 	cr:rectangle(x, y, w, h)
 	cr:fill()
 end
@@ -4338,18 +4341,16 @@ function layer:draw_text_selection(cr)
 	if sel:empty() then return end
 	cr:rgba(self.ui:rgba(self.text_selection_color))
 	cr:new_path()
-	sel:rectangles(draw_sel_rect, cr, self)
+	sel:rectangles(self.draw_selection_rect, self, cr)
 end
 
 function layer:make_visible_caret()
-	local segs = self._text_segments
+	local segs = self.text_segments
 	local lines = segs.lines
 	local sx, sy = lines.x, lines.y
 	local cw, ch = self:client_size()
 	local x, y, w, h = self:caret_visibility_rect()
-	if self.clip_content then
-		lines.x, lines.y = box2d.scroll_to_view(x-sx, y-sy, w, h, cw, ch, sx, sy)
-	end
+	lines.x, lines.y = box2d.scroll_to_view(x-sx, y-sy, w, h, cw, ch, sx, sy)
 	self:make_visible(self:caret_visibility_rect())
 end
 
@@ -4377,10 +4378,10 @@ function layer:hit_test_text(x, y, reason)
 				return self, 'text_selection'
 			elseif self.text_editable then
 				return self, 'text'
-			elseif self._text_segments:hit_test(x, y) then
+			elseif self.text_segments:hit_test(x, y) then
 				return self, 'text'
 			end
-		elseif self._text_segments and self._text_segments:hit_test(x, y) then
+		elseif self.text_segments and self.text_segments:hit_test(x, y) then
 			return self, 'static_text'
 		end
 	end
@@ -4426,11 +4427,18 @@ layer.mouseup_text_selection     = layer.mouseup_text
 
 layer.text_editable = false
 
+layer.text_multiline = true
 layer.paragraph_first = true --enter for paragraph, ctrl+enter for newline
 layer.paragraph_separator = '\u{2029}' --PS
 layer.line_separator = false --use OS default from keychar()
 
 function layer:filter_input_text(s)
+	if self.text_multiline then
+		return
+			s:gsub('\u{2029}', '') --PS
+				:gsub('\u{2028}', '') --LS
+				:gsub('[%z\1-\31\127]', '')
+	end
 	return s:gsub('[%z\1-\8\11\12\14-\31\127]', '') --allow \t \n \r
 end
 
@@ -4484,11 +4492,11 @@ function layer:keypress_text(key)
 		local dir = key == 'right' and 'next' or 'prev'
 		local mode = ctrl and 'word' or nil
 		if shift then
-			return sel.cursor2:move('rel_cursor', dir, mode)
+			return sel.cursor2:move('rel_cursor', dir, mode, nil, true)
 		else
 			local c1, c2 = sel:cursors()
 			if sel:empty() then
-				if c1:move('rel_cursor', dir, mode) then
+				if c1:move('rel_cursor', dir, mode, nil, true) then
 					c2:set(c1)
 					return true
 				end
@@ -4538,7 +4546,7 @@ function layer:keypress_text(key)
 			return self:type_text''
 		end
 	elseif key == 'enter' and (key_only or ctrl_only or shift_only) then
-		if self.text_editable then
+		if self.text_editable and self.text_multiline then
 			local sep = self.paragraph_first == key_only
 				and self.paragraph_separator
 				or self.line_separator
@@ -4847,7 +4855,7 @@ end
 function textbox:sync_min_h(other_axis_synced)
 	local min_ch
 	if other_axis_synced or self.nowrap then
-		local segs = self._text_segments
+		local segs = self.text_segments
 		min_ch = segs and segs.lines.spaced_h or 0
 	else
 		--height-in-width-out parent layout with wrapping text not supported
@@ -5257,13 +5265,17 @@ function flexbox:sync_min_h(other_axis_synced)
 
 	--sync all children first (bottom-up sync).
 	for _,layer in ipairs(self) do
-		if layer.visible and not layer.floating then
-			local item_h = layer:sync_min_h(other_axis_synced) --recurse
-			--for baseline align also layout the children because we need their
-			--baseline. we can do this here because we already know we won't
-			--stretch them beyond their min_h in this case.
-			if align_baseline then
-				layer.h = snap(item_h, self.snap_y)
+		if layer.visible then
+			if not layer.floating then
+				local item_h = layer:sync_min_h(other_axis_synced) --recurse
+				--for baseline align also layout the children because we need
+				--their baseline. we can do this here because we already know
+				--we won't stretch them beyond their min_h in this case.
+				if align_baseline then
+					layer.h = snap(item_h, self.snap_y)
+					layer:sync_layout_y(other_axis_synced)
+				end
+			elseif align_baseline then --need to sync floating layers too.
 				layer:sync_layout_y(other_axis_synced)
 			end
 		end
@@ -5288,7 +5300,7 @@ function flexbox:sync_layout_x(other_axis_synced)
 	if synced then
 		--sync all children last (top-down sync).
 		for _,layer in ipairs(self) do
-			if layer.visible and not layer.floating then
+			if layer.visible then
 				layer:sync_layout_x(other_axis_synced) --recurse
 			end
 		end
@@ -5299,7 +5311,7 @@ end
 function flexbox:sync_layout_y(other_axis_synced)
 
 	if self.flex_axis == 'x' and self.align_cross == 'baseline' then
-		--chilren already sync'ed in sync_min_ch().
+		--chilren already sync'ed in sync_min_h().
 		return self:sync_layout_x_axis_y(other_axis_synced, true)
 	end
 
@@ -5310,7 +5322,7 @@ function flexbox:sync_layout_y(other_axis_synced)
 	if synced then
 		--sync all children last (top-down sync).
 		for _,layer in ipairs(self) do
-			if layer.visible and not layer.floating then
+			if layer.visible then
 				layer:sync_layout_y(other_axis_synced) --recurse
 			end
 		end
@@ -5775,7 +5787,7 @@ local function gen_funcs(X, Y, W, H, COL, LEFT, RIGHT)
 
 		--sync all children last (top-down sync).
 		for _,layer in ipairs(self) do
-			if layer.visible and not layer.floating then
+			if layer.visible then
 				layer[SYNC_LAYOUT_X](layer, other_axis_synced) --recurse
 			end
 		end

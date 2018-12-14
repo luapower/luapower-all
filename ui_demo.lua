@@ -648,6 +648,8 @@ Lorem ipsum dolor sit amet, quod oblique vivendum ex sed. Impedit nominavi malui
 			{title = {text = 'Tab 2-2'}},
 		},
 		tabs_side = 'bottom',
+		tab_corner_radius = 6,
+		tab_slant = 80,
 	}
 
 	local fl_class = ui.layer:subclass('focusable_layer', {

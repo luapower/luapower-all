@@ -295,7 +295,7 @@ function win:repaint()
 		sel.cursor2:move('offset', 628)
 		--sel:select_all()
 
-		sel:rectangles(function(x, y, w, h)
+		sel:rectangles(function(_, x, y, w, h)
 			rect(cr, '#f008', x, y, w, h)
 		end)
 	end
