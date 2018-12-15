@@ -1593,13 +1593,11 @@ function segments:cursor_x(seg, i) --relative to line_pos().
 	return seg.x + run.cursor_xs[i]
 end
 
-function segments:cursor_rect(seg, i, w, insert_mode) --relative to line_pos().
+function segments:cursor_rect(seg, i, w, forward) --relative to line_pos().
 	local line = seg.line
 	local x = self:cursor_x(seg, i)
 	local y = -line.ascent
-	local reverse = seg.glyph_run.rtl
-		or (not insert_mode and self.lines.align_x == 'right')
-	local w = (reverse and -1 or 1) * (w or 1)
+	local w = (forward ~= false and 1 or -1) * (w or 1)
 	local h = line.ascent - line.descent
 	if w < 0 then
 		x, w = x + w, -w
@@ -2094,19 +2092,26 @@ function cursor:rtl()
 end
 
 function cursor:rect(w)
-	local x0, y0 = self.segments:line_pos(self.seg.line)
-	local x, y, w, h = self.segments:cursor_rect(
-		self.seg, self.i, w, self.insert_mode)
+	--wide caret (spanning two adjacent cursor positions).
 	if self.insert_mode then
 		local seg1, i1 = self:find('rel_cursor', 'next')
 		if seg1 and seg1.line == self.seg.line then
-			local x1 = self.segments:cursor_rect(seg1, i1, nil, true)
-			w = x1 - x
+			local x, y, _, h = self.segments:cursor_rect(self.seg, self.i)
+			local x1 = self.segments:cursor_rect(seg1, i1)
+			local w = x1 - x
 			if w < 0 then
 				x, w = x + w, -w
 			end
+			local x0, y0 = self.segments:line_pos(self.seg.line)
+			return x0 + x, y0 + y, w, h
 		end
 	end
+	--normal caret, `w`-wide to the left or right of a cursor position.
+	local forward =
+		not self.seg.glyph_run.rtl
+		and self.segments.lines.align_x ~= 'right'
+	local x, y, w, h = self.segments:cursor_rect(self.seg, self.i, w, forward)
+	local x0, y0 = self.segments:line_pos(self.seg.line)
 	return x0 + x, y0 + y, w, h
 end
 

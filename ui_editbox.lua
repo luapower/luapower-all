@@ -219,14 +219,54 @@ function editbox:after_sync_text_align()
 	end
 end
 
+--password eye button
+
+ui:style('editbox_eye_button', {
+	text_color = '#aaa',
+})
+ui:style('editbox_eye_button :hot', {
+	text_color = '#fff',
+})
+
+function editbox:after_init()
+	if self.password then
+		local no_eye = '\u{f2e8}'
+		local eye = '\u{f2e9}'
+		self.eye_button = self.ui:layer({
+			parent = self,
+			tags = 'editbox_eye_button',
+			font = 'Ionicons,16',
+			text = no_eye,
+			cursor = 'hand',
+			click = function(btn)
+				self.password = not self.password
+				btn.text = self.password and no_eye or eye
+				self:invalidate()
+			end,
+		}, self.eye_button)
+		self.padding_right = 20
+	end
+end
+
+function editbox:before_sync_layout_children()
+	if self.password then
+		local eye = self.eye_button
+		eye.x = self.w - 10
+		eye.y = self.h / 2
+	end
+end
+
 --clip the left & right sides of the box without clipping the top & bottom.
 
-function editbox:override_draw_text(inherited, cr)
+function editbox:override_draw_content(inherited, cr)
 	cr:save()
 	cr:rectangle(0, -1000, self.cw, 2000)
 	cr:clip()
-	inherited(self, cr)
+	self:draw_text(cr)
+	self:draw_text_selection(cr)
+	self:draw_caret(cr)
 	cr:restore()
+	self:draw_children(cr)
 end
 
 function editbox:override_hit_test_text(inherited, x, y, reason)
@@ -253,108 +293,92 @@ if not ... then require('ui_demo')(function(ui, win)
 	win.w = 300
 	win.h = 900
 
+	win.view.layout = 'grid'
+	win.view.flex_axis = 'y'
+	win.view.align_cross = 'top'
+	--win.view.align_lines = 'top'
+
 	ui:add_font_file('media/fonts/FSEX300.ttf', 'fixedsys')
-	local x, y = 10, 10
-	local function xy()
-		local editbox = win.view[#win.view]
-		y = y + 30 + 10
-		if y + 30 + 10 > win.ch then
-			x = x + editbox.y + 10
-		end
-	end
+	ui:add_font_file('media/fonts/amiri-regular.ttf', 'Amiri')
 
 	local cue = 'Type text here...'
 	local s = 'abcd efgh ijkl mnop qrst uvw xyz 0123 4567 8901 2345'
 
 	--defaults all-around.
 	ui:editbox{
-		x = x, y = y, parent = win,
+		parent = win,
 		text = 'Hello World!',
 		cue = cue,
 	}
-	xy()
 
 	--maxlen: truncate initial text. prevent editing past maxlen.
 	ui:editbox{
-		x = x, y = y, parent = win,
+		parent = win,
 		text = 'Hello World!',
 		maxlen = 5,
 		cue = cue,
 	}
-	xy()
 
 	--right align
 	ui:editbox{
-		x = x, y = y, parent = win,
+		parent = win,
 		text = 'Hello World!',
 		text_align_x = 'right',
 		cue = cue,
 	}
-	xy()
 
 	--center align
 	ui:editbox{
-		x = x, y = y, parent = win,
+		parent = win,
 		text = 'Hello World!',
 		text_align_x = 'center',
 		cue = cue,
 	}
-	xy()
 
 	--scrolling, left align
 	ui:editbox{
-		x = x, y = y, parent = win,
+		parent = win,
 		text = s,
 		cue = cue,
 	}
-	xy()
 
 	--scrolling, right align
 	ui:editbox{
-		x = x, y = y, parent = win,
+		parent = win,
 		text = s,
 		text_align_x = 'right',
 		cue = cue,
 	}
-	xy()
 
 	--scrolling, center align
 	ui:editbox{
-		x = x, y = y, parent = win,
+		parent = win,
 		text = s,
 		text_align_x = 'center',
 		cue = cue,
 	}
-	xy()
 
 	--invalid font
 	ui:editbox{
-		x = x, y = y, parent = win,
+		parent = win,
 		font = 'Invalid Font,20',
 		text = s,
 		cue = cue,
 	}
-	xy()
-
-	ui:add_font_file('media/fonts/amiri-regular.ttf', 'Amiri')
 
 	--rtl, align=auto
 	ui:editbox{
-		x = x, y = y, parent = win,
+		parent = win,
 		font = 'Amiri,20',
 		text = 'السَّلَامُ عَلَيْكُمْ',
 		cue = cue,
 	}
-	xy()
-
-	local s = 'peekaboo'
 
 	--password, scrolling, left align (the only alignment supported)
 	ui:editbox{
-		x = x, y = y, parent = win,
-		text = s,
+		parent = win,
+		text = 'peekaboo',
 		password = true,
 	}
-	xy()
 
 end) end
