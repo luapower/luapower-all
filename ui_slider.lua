@@ -571,7 +571,7 @@ slider:track_changes'position'
 
 slider:init_ignore{min_position=1, max_position=1, size=1, position=1, progress=1}
 
-function slider:after_init(ui, t)
+function slider:after_init(t)
 	local pin_fields = self.pin
 	self.track    = self:create_track()
 	self.fill     = self:create_fill()
@@ -606,7 +606,8 @@ ui.toggle = toggle
 
 toggle.step = 1
 toggle.size = 1
-toggle.w = 30
+toggle.w = 26
+toggle.min_cw = 26
 toggle.step_line_color = false
 toggle.tip = {visible = false}
 toggle.marker = {visible = false}
@@ -619,25 +620,38 @@ ui:style('toggle :on > slider_fill', {
 	background_color = '#fff',
 })
 
-toggle:stored_property'option'
-function toggle:after_set_option(on)
+toggle:stored_property'value'
+function toggle:after_set_value(on)
 	self.position = on and 1 or 0
 	self:settag(':on', on)
 	self:fire(on and 'option_enabled' or 'option_disabled')
 end
-toggle:track_changes'option'
-toggle:instance_only'option'
+toggle:track_changes'value'
+toggle:instance_only'value'
 
 function toggle:after_set_position()
-	self.option = self.position == 1
+	self.value = self.position == 1
+end
+
+function toggle:after_init()
+	self.pin.drag_threshold = 1 --don't grab the pin right away
+	self.pin:on('mouseup', function(pin)
+		if pin.dragging then return end
+		pin.animate = true
+		self.position = 1 - self.position
+		pin.animate = false
+	end)
 end
 
 --demo -----------------------------------------------------------------------
 
 if not ... then require('ui_demo')(function(ui, win)
 
+	print(win.view.layout)
+	win.view.item_align_x = 'left'
+
 	ui:slider{
-		x = 100, y = 100, w = 600, parent = win,
+		min_cw = 600, parent = win,
 		position = 3, size = 10,
 		step_labels = {Low = 0, Medium = 5, High = 10},
 		--pin = {style = {transition_duration = 2}},
@@ -646,7 +660,7 @@ if not ... then require('ui_demo')(function(ui, win)
 	}
 
 	ui:slider{
-		x = 100, y = 200, w = 200, parent = win,
+		min_cw = 200, parent = win,
 		position = 0,
 		min_position = 1.3,
 		max_position = 8.3,
@@ -655,13 +669,13 @@ if not ... then require('ui_demo')(function(ui, win)
 	}
 
 	ui:slider{
-		x = 100, y = 300, w = 200, parent = win,
+		min_cw = 200, parent = win,
 		progress = .3,
 		size = 1,
 	}
 
 	ui:toggle{
-		x = 100, y = 400, parent = win,
+		parent = win,
 		option_changed = function(self, enabled)
 			print(enabled and 'enabled' or 'disabled')
 		end,

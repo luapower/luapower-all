@@ -141,7 +141,7 @@ end
 
 tab:init_ignore{tablist=1, visible=1, selected=1}
 
-function tab:after_init(ui, t)
+function tab:after_init(t)
 	if t.tablist then
 		self.tablist = t.tablist
 	end
@@ -584,7 +584,7 @@ end
 
 tablist:init_ignore{tabs = 1}
 
-function tablist:after_init(ui, t)
+function tablist:after_init(t)
 	self.tabs = {} --{tab1,...}
 	if t.tabs then
 		for _,tab in ipairs(t.tabs) do
@@ -860,11 +860,8 @@ if not ... then require('ui_demo')(function(ui, win)
 
 	local color = require'color'
 
-	win.view.layout = 'grid'
-	win.view.padding = 20
-	win.view.grid_row_gap = 10
-	win.view.grid_col_gap = 10
 	win.view.grid_wrap = 2
+	win.view.grid_min_lines = 2
 
 	local w = (win.view.cw - 10) / 2
 	local h = win.view.ch

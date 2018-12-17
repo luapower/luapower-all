@@ -479,28 +479,23 @@ __layouting__
 `snap_x`, `snap_y`                   `true`             snap `x, w, min_cw` and `y, h, min_ch` to pixels
 __layout=false__
 `x, y, w, h`                         `0`                fixed position & size
+__flexbox & grid layouts__
+`align_items_x`, `align_items_y`     `'stretch'`        `'stretch'`, `'start'`/`'top'`/`'left'`, `'end'`/`'bottom'`/`'right'`, `'center'`, `'space_between'`, `'space_around'`, `'space_evenly'`
+`item_align_x`, `item_align_y`       `'stretch'`        `'stretch'`, `'start'`/`'top'`/`'left'`, `'end'`/`'bottom'`/`'right'`, `'center'`, `'baseline'`
+`align_x`, `align_y`                 `false`            item override for `item_align_x` and `item_align_y`
 __flexbox layout__
-`flex_axis`                          `'x'`              main axis of flow: `'x'`, `'y'`
-`flex_wrap`                          `false`            line-wrap content
-`align_main/cross/lines`             `'stretch'`        `'stretch'`, `'start'`/`'t[op]'`/`'l[eft]'`, `'end'`/`'b[ottom]'`/`'r[ight]'`, `'c[enter]'`
-`align_main`                         `'stretch'`        main-axis align: `'space_between'`, `'space_around'`, `'space_evenly'`
-`align_cross`                        `'stretch'`        cross-axis align: `'baseline'`
-`align_lines`                        `'stretch'`        content-align: `'space_between'`, `'space_around'`, `'space_evenly'`
-`align_cross_self`                   `false`            item `align_cross` override
-`fr`                                 `1`                item stretch fraction for `align_main='stretch'`
+`flex_flow`                          `'x'`              main axis of flow: `'x'`, `'y'`
+`flex_wrap`                          `false`            line-wrap child layers
+`fr`                                 `1`                item stretch fraction for `'stretch'` alignments.
 __grid layout__
 `grid_flow`                          `'x'`              main axis & direction for automatic positioning: `'x'`, `'y'`, `'xr'`, `'yr'`, `'xb'`, `'yb'`, `'xrb'`, `'yrb'`
 `grid_wrap`                          `1`                number of rows/columns on the main axis of flow
-`grid_align_cols`                    `'stretch'`        how columns as a whole are aligned: `'stretch'`, `'start'`/`'l[eft]'`, `'end'`/`'r[ight]'`, `'c[enter]'`, `'space_between'`, `'space_around'`, `'space_evenly'`
-`grid_align_rows`                    `'stretch'`        how rows as a whole are aligned: `'stretch'`, `'start'`/`'t[op]'`, `'end'`/`'b[ottom]'`, `'c[enter]'`, `'space_between'`, `'space_around'`, `'space_evenly'`
 `grid_cols`                          `{}`               column stretch fractions `{fr1, ...}`
 `grid_rows`                          `{}`               row stretch fractions `{fr1, ...}`
-`grid_col_gap`                       `0`                gap size between grid columns
-`grid_row_gap`                       `0`                gap size between grid rows
+`grid_gap`                           `0`                gap size between grid rows & columns
+`grid_col_gap`                       `false`            override gap size for grid columns
+`grid_row_gap`                       `false`            override gap size for grid rows
 `grid_pos`                           `nil`              element position in grid: `'[row][/span] [col][/span]'`
-`grid_align_x`                       `'stretch'`        how each item is x-aligned: `'stretch'`, `'start'`/`'l[eft]'`, `'end'`/`'r[ight]'`, `'c[enter]'`,
-`grid_align_y`                       `'stretch'`        how each item is y-aligned: `'stretch'`, `'start'`/`'t[op]'`, `'end'`/`'b[ottom]'`, `'c[enter]'`,
-`align_x`, `align_y`                 `false`            item overrides for `grid_align_x` and `grid_align_y`
 __transparency & clipping__
 `opacity`                            `1`                overall opacity in `0..1`
 `clip_content`                       `false`            content clipping: `false` (don't clip), `'padding'`/`true` (clip to content box), `'background'` (clip to background clip box)
@@ -547,8 +542,8 @@ __text__
 `text_dir`                           `'auto'`           BiDi base direction: `'auto'`, `'rtl'`, `'ltr'`
 `nowrap`                             `false`            disable automatic line wrapping
 `text_operator`                      `'over'`           blending operator (see [cairo])
-`text_align_x`                       `false`            text x-align override: `'l[eft]'`, `'c[enter]'`, `'r[ight]'`
-`text_align_y`                       `false`            text y-align override: `'t[op]'`, `'c[enter]'`, `'b[ottom]'`
+`text_align_x`                       `'center'`         text x-align: `'left'`, `'center'`, `'right'`, `'auto'`
+`text_align_y`                       `'center'`         text y-align: `'top'`, `'center'`, `'bottom'`
 __cursor__
 `cursor`                             `'arrow'`          default mouse cursor (see [nw] for values)
 `cursor_<area>`                      `nil`              mouse cursor for an area

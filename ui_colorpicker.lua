@@ -78,7 +78,7 @@ hue_bar.hue = 0
 
 hue_bar:init_ignore{hue=1}
 
-function hue_bar:after_init(ui, t)
+function hue_bar:after_init(t)
 	self._hue = t.hue
 end
 
@@ -459,7 +459,7 @@ function slrect:b_range() return 0, 1 end
 
 slrect:init_ignore{hue=1, sat=1, lum=1}
 
-function slrect:after_init(ui, t)
+function slrect:after_init(t)
 	self._hue = t.hue
 	self._sat = t.sat
 	self._lum = t.lum
@@ -563,7 +563,7 @@ function svrect:b_range() return 0, 1 end
 
 svrect:init_ignore{hue=1, sat=1, val=1}
 
-function svrect:after_init(ui, t)
+function svrect:after_init(t)
 	self._hue = t.hue
 	self._sat = t.sat
 	self._val = t.val
@@ -944,7 +944,7 @@ end
 
 picker:init_ignore{mode=1}
 
-function picker:after_init(ui, t)
+function picker:after_init(t)
 
 	self.hue_bar = self:create_hue_bar()
 

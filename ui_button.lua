@@ -4,7 +4,6 @@
 
 local ui = require'ui'
 local glue = require'glue'
-local lerp = glue.lerp
 
 local button = ui.layer:subclass'button'
 ui.button = button
@@ -13,6 +12,7 @@ button.focusable = true
 
 button.layout = 'textbox'
 button.min_ch = 20
+button.align_x = 'start'
 button.align_y = 'center'
 button.padding_left = 8
 button.padding_right = 8
@@ -252,9 +252,9 @@ local checkbox = ui.layer:subclass'checkbox'
 ui.checkbox = checkbox
 
 checkbox.layout = 'flexbox'
-checkbox.min_ch = 16
-checkbox.align_cross = 'baseline'
-checkbox.align_lines = 'center'
+checkbox.item_align_y = 'baseline'
+checkbox.align_items_y = 'center'
+checkbox.align_y = 'center'
 
 --checked property
 
@@ -267,11 +267,47 @@ function checkbox:after_set_checked(checked)
 	self:settag(':checked', checked)
 	self:fire(checked and 'was_checked' or 'was_unchecked')
 end
+function checkbox:override_set_checked(inherited, checked)
+	if self:canset_checked(checked) then
+		return inherited(self, checked)
+	end
+end
 checkbox:track_changes'checked'
 checkbox:instance_only'checked'
 
+function checkbox:canset_checked(checked)
+	return
+		self:fire(checked and 'checking' or 'unchecking') ~= false
+		and self:fire('value_changing', self:value_for(checked), self.value) ~= false
+end
+
 function checkbox:toggle()
 	self.checked = not self.checked
+end
+
+--value property
+
+checkbox.checked_value = true
+checkbox.unchecked_value = false
+
+function checkbox:value_for(checked)
+	if checked then
+		return self.checked_value
+	else
+		return self.unchecked_value
+	end
+end
+
+function checkbox:checked_for(val)
+	return val == self.checked_value
+end
+
+function checkbox:get_value()
+	return self:value_for(self.checked)
+end
+
+function checkbox:set_value(val)
+	self.checked = self:checked_for(val)
 end
 
 --align property
@@ -299,7 +335,8 @@ cbutton.text_unchecked = ''
 
 cbutton.fr = 0
 cbutton.layout = false
-cbutton.min_cw = 20
+cbutton.min_cw = 16
+cbutton.min_ch = 16
 cbutton.padding_top = 0
 cbutton.padding_bottom = 0
 cbutton.padding_left = 0
@@ -307,7 +344,7 @@ cbutton.padding_right = 0
 
 ui:style('checkbox_button :hot', {
 	text_color = '#fff',
-	background_color = '#555',
+	background_color = '#777',
 })
 
 ui:style('checkbox_button :active :over', {
@@ -371,7 +408,7 @@ end
 
 checkbox:init_ignore{align=1, checked=1}
 
-function checkbox:after_init(ui, t)
+function checkbox:after_init(t)
 	self.button = self:create_button()
 	self.label = self:create_label()
 	self.align = t.align
@@ -382,35 +419,40 @@ end
 
 --radio button ---------------------------------------------------------------
 
-local radiobutton = ui.checkbox:subclass'radiobutton'
-ui.radiobutton = radiobutton
+local radio = ui.checkbox:subclass'radio'
+ui.radio = radio
 
-radiobutton.radio_group = 'default'
+radio.radio_group = 'default'
+radio.item_align_y = 'center'
 
-radiobutton:init_ignore{checked=1}
+radio:init_ignore{checked=1}
 
-function radiobutton:after_init(ui, t)
-	self.label.text_align_y = 'center'
-end
-
-function radiobutton:override_set_checked(inherited, checked)
-	local was_checked = self.checked
-	inherited(self, checked)
-	if self.checked and not was_checked then
-		self.window.view:each_child(function(rb)
-			if rb.isradiobutton
-				and rb ~= self
-				and rb.radio_group == self.radio_group
-				and rb.checked
-			then
-				rb.checked = false
-			end
-		end)
+function radio:override_canset_checked(inherited, checked)
+	if not inherited(self, checked) then --refused
+		return
 	end
+	if not checked then
+		return true
+	end
+	--find the first radio button with the same group and uncheck it.
+	local unchecked = self.window.view:each_child(function(rb)
+		if rb.isradio
+			and rb ~= self
+			and rb.radio_group == self.radio_group
+			and rb.checked
+		then
+			rb.checked = false
+			return not rb.checked --unchecking allowed or refused
+		end
+	end)
+	if unchecked == nil then --none found to uncheck
+		unchecked = true
+	end
+	return unchecked
 end
 
-local rbutton = ui.checkbox.button_class:subclass'radiobutton_button'
-radiobutton.button_class = rbutton
+local rbutton = ui.checkbox.button_class:subclass'radio_button'
+radio.button_class = rbutton
 
 rbutton.padding_left = 0
 rbutton.padding_right = 0
@@ -423,18 +465,18 @@ function rbutton:draw_text() end
 
 rbutton.circle_radius = 0
 
-ui:style('radiobutton_button', {
+ui:style('radio_button', {
 	transition_circle_radius = true,
 	transition_duration_circle_radius = .2,
 })
 
-ui:style('radiobutton :checked > radiobutton_button', {
+ui:style('radio :checked > radio_button', {
 	circle_radius = .45,
 	transition_duration_circle_radius = .2,
 })
 
 function rbutton:before_draw_content(cr)
-	local r = lerp(self.circle_radius, 0, 1, 0, self.cw / 2)
+	local r = glue.lerp(self.circle_radius, 0, 1, 0, self.cw / 2)
 	if r <= 0 then return end
 	cr:circle(self.cw / 2, self.ch / 2, r)
 	cr:rgba(self.ui:rgba(self.text_color))
@@ -447,36 +489,95 @@ end
 
 --radio button list ----------------------------------------------------------
 
-local rblist = ui.layer:subclass'radiobutton_list'
-ui.radiobuttonlist = rblist
+local rblist = ui.layer:subclass'radio_list'
+ui.radiolist = rblist
 
-rblist.radiobutton_class = ui.radiobutton
+--config
+rblist.radio_class = ui.radio
+rblist.align_x = 'stretch'
+rblist.layout = 'flexbox'
+rblist.flex_flow = 'y'
 
-rblist:init_ignore{values=1}
+--features
+rblist.option_list = false --{{value=, text=}, ...}
+rblist.options = false --{value->text}
+rblist.none_checked_value = false
 
-function rblist:create_radiobutton(i, v)
-	local t = type(v) == 'table' and v or nil
-	local text = t and t.text or v
-	local y = i * 36
-	self.radiobutton_class(self.ui, {
-		y = y,
-		w = self.w,
-		parent = self,
+--value property
+
+function rblist:get_checked_button()
+	return self.radios[self.value]
+end
+
+rblist:stored_property'value'
+function rblist:set_value(val)
+	local rb = self.radios[val]
+	if rb then
+		rb.checked = true
+	else
+		if self.checked_button then
+			self.checked_button.checked = false
+		end
+	end
+end
+rblist:track_changes'value'
+
+--init
+
+rblist:init_ignore{options=1, value=1}
+
+function rblist:create_radio(index, value, text, radio)
+	local rb = self:radio_class({
 		iswidget = false,
+		checked_value = value,
 		button = glue.update({
 			tabgroup = self.tabgroup or self,
-			tabindex = i,
+			tabindex = index,
 		}),
 		label = glue.update({
 			text = text,
 		}),
 		radio_group = self,
-	}, self.radiobutton, t)
+	}, self.radio, radio)
+
+	self.radios[value] = rb
+
+	rb:on('checked_changed', function(rb, checked)
+		if checked then
+			self._value = rb.value
+		else
+			self._value = self.none_checked_value
+		end
+	end)
 end
 
-function rblist:after_init(ui, t)
-	for i,v in ipairs(t.values) do
-		self:create_radiobutton(i, v)
+function rblist:after_init(t)
+	self.radios = {} --{value -> button}
+	if t.option_list then
+		for i,v in ipairs(t.option_list) do
+			local value, text, radio
+			if type(v) == 'table' then
+				value = v.value
+				text = v.text
+				radio = v.radio
+			else
+				value = v
+				text = v
+			end
+			self:create_radio(i, value, text, radio)
+		end
+	end
+	if t.options then
+		local i = 1
+		for value, text in glue.sortedpairs(t.options) do
+			self:create_radio(i, value, text)
+			i = i + 1
+		end
+	end
+	if t.value ~= nil then
+		self.value = t.value
+	else
+		self.value = self.none_checked_value
 	end
 end
 
@@ -486,18 +587,18 @@ local choicebutton = ui.layer:subclass'choicebutton'
 ui.choicebutton = choicebutton
 
 choicebutton.layout = 'flexbox'
-choicebutton.align_cross = 'center'
+choicebutton.align_items_y = 'center'
 
 --model
 
-choicebutton.values = {} --{{index=, text=, value=, ...}, ...}
+choicebutton.option_list = {} --{{index=, text=, value=, ...}, ...}
 
-function choicebutton:get_selected()
+function choicebutton:get_value()
 	local btn = self.selected_button
-	return btn and btn.value
+	return btn and btn.choicebutton_value
 end
 
-function choicebutton:set_selected(value)
+function choicebutton:set_value(value)
 	self:select_button(self:button_by_value(value))
 end
 
@@ -517,7 +618,7 @@ function choicebutton:find_button(selects)
 end
 
 function choicebutton:button_by_value(value)
-	return self:find_button(function(btn) return btn.value == value end)
+	return self:find_button(function(btn) return btn.choicebutton_value == value end)
 end
 
 function choicebutton:button_by_index(index)
@@ -547,7 +648,7 @@ function choicebutton:select_button(btn, focus)
 		btn:focus()
 	end
 	btn:settag(':selected', true)
-	self:fire('value_selected', btn.value)
+	self:fire('value_changed', btn.choicebutton_value)
 end
 
 --drawing
@@ -558,27 +659,27 @@ function choicebutton:sync_layout_for_button(b)
 	local r = self.button_corner_radius
 	b.corner_radius_top_left = b.index == 1 and r or 0
 	b.corner_radius_bottom_left = b.index == 1 and r or 0
-	b.corner_radius_top_right = b.index == #self.values and r or 0
-	b.corner_radius_bottom_right = b.index == #self.values and r or 0
+	b.corner_radius_top_right = b.index == #self.option_list and r or 0
+	b.corner_radius_bottom_right = b.index == #self.option_list and r or 0
 end
 
 --init
 
 choicebutton.button_class = ui.button
 
-choicebutton:init_ignore{selected=1}
+choicebutton:init_ignore{value=1}
 
 function choicebutton:create_button(index, value)
 
-	local btn = self.button_class(self.ui, {
+	local btn = self:button_class({
 		tags = 'choicebutton_button',
 		choicebutton = self,
 		parent = self,
 		iswidget = false,
 		index = index,
 		text = type(value) == 'table' and value.text or value,
-		value = type(value) == 'table' and value.value or value,
-	}, self.button, type(value) == 'table' and value or nil)
+		choicebutton_value = type(value) == 'table' and value.value or value,
+	}, self.button, type(value) == 'table' and value.button or nil)
 
 	function btn:after_sync()
 		self.choicebutton:sync_layout_for_button(self)
@@ -603,18 +704,23 @@ function choicebutton:create_button(index, value)
 	return btn
 end
 
-function choicebutton:after_init(ui, t)
-	for i,val in ipairs(t.values) do
-		local btn = self:create_button(type(val) == 'table' and val.index or i, val)
+function choicebutton:after_init(t)
+	for i,v in ipairs(t.option_list) do
+		local btn = self:create_button(type(v) == 'table' and v.index or i, v)
 	end
-	if t.selected then
-		self:select_button(self:button_by_value(t.selected), false)
+	if t.value ~= nil then
+		self:select_button(self:button_by_value(t.value), false)
 	end
 end
 
 --demo -----------------------------------------------------------------------
 
 if not ... then require('ui_demo')(function(ui, win)
+
+	win.view.grid_wrap = 10
+	win.view.grid_flow = 'y'
+	win.view.item_align_x = 'left'
+	win.view.grid_min_lines = 2
 
 	local b1 = ui:button{
 		id = 'OK',
@@ -670,7 +776,7 @@ if not ... then require('ui_demo')(function(ui, win)
 		--enabled = false,
 	}
 
-	local rb1 = ui:radiobutton{
+	local rb1 = ui:radio{
 		id = 'RB1',
 		parent = win,
 		x = 300, y = 220,
@@ -680,7 +786,7 @@ if not ... then require('ui_demo')(function(ui, win)
 		--enabled = false,
 	}
 
-	local rb2 = ui:radiobutton{
+	local rb2 = ui:radio{
 		id = 'RB2',
 		parent = win,
 		x = 300, y = 240,
@@ -690,16 +796,26 @@ if not ... then require('ui_demo')(function(ui, win)
 		--enabled = false,
 	}
 
+	ui.radiolist{
+		parent = win,
+		option_list = {
+			'Option 1',
+			'Option 2',
+			'Option 3',
+		},
+		value = 'Option 2',
+	}
+
 	local cb1 = ui:choicebutton{
 		id = 'CHOICE',
 		parent = win,
 		x = 100, y = 300, min_cw = 400,
-		values = {
+		option_list = {
 			'Choose me',
 			'No, me!',
 			{text = 'Me, me, me!', value = 'val3'},
 		},
-		selected = 'val3',
+		value = 'val3',
 	}
 	for i,b in ipairs(cb1) do
 		if b.isbutton then

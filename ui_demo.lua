@@ -4,8 +4,14 @@ local ui = require'ui'
 local Q = require'utf8quot'
 local time = require'time'
 local win = ui:window{
-	x = 600, y = 100, cw = 1000, ch = 700,
+	x = 600, y = 100, cw = 1200, ch = 800,
 	visible = false, autoquit=true, edgesnapping=false,
+	view = {
+		layout = 'grid',
+		grid_wrap = 5,
+		grid_flow = 'y',
+		padding = 20,
+	},
 }
 function win:keyup(key) if key == 'esc' then self:close() end end
 
@@ -446,11 +452,6 @@ local function test_flexbox_inside_null()
 		text = 'Hello World! Hello World! Hello World! Hello World! \nxxxxxxxxxxx\nxxxxxxxxx\nxxxxx\nxxxxxxxxxxxxx',
 		w = 100,
 		h = 100,
-		--align = 'b r',
-		--min_w = 100,
-		--max_w = 1000,
-		--min_h = 150,
-		--max_h = 1/0,
 		layout = 'flexbox',
 		border_width = 10,
 		padding = 10,
@@ -463,10 +464,9 @@ local function test_flexbox()
 		parent = win,
 		layout = 'flexbox',
 		flex_wrap = true,
-		flex_axis = 'y',
-		align_main = 'stretch',
-		align_cross = 'center',
-		align_lines = 'start',
+		flex_flow = 'y',
+		item_align_y = 'center',
+		align_items_y = 'start',
 		border_width = 20,
 		padding = 20,
 		border_color = '#333',
@@ -494,10 +494,6 @@ local function test_flexbox()
 			min_ch = r * 6,
 			break_after = i == 50,
 			break_before = i == 50,
-			--padding = 10,
-			--flex_align = i == 3 and 'stretch' or i == 1 and 'bottom' or 'baseline',
-			--layout = 'text_wrap',
-			--text = ('x'):rep(r) .. ' ' .. ('x'):rep(10-r),
 			flex_fr = r,
 			--font_size = 10 + i * 3,
 		}
@@ -521,9 +517,8 @@ local function test_flexbox_baseline()
 		parent = win,
 		layout = 'flexbox',
 		flex_wrap = true,
-		align_main = 'stretch',
-		align_cross = 'baseline',
-		align_lines = 'start',
+		item_align_y = 'baseline',
+		align_items_y = 'start',
 		border_width = 20,
 		padding = 20,
 		border_color = '#333',
@@ -552,8 +547,8 @@ local function test_grid_layout()
 		--grid_cols = {10, 1, 1, 5, 10},
 		grid_col_gap = 10,
 		grid_row_gap = 5,
-		grid_align_cols = 'space_around',
-		grid_align_rows = 'space_around',
+		align_items_x = 'space_around',
+		align_items_y = 'space_around',
 
 		border_width = 20,
 		padding = 20,
@@ -587,11 +582,11 @@ end
 local function test_widgets_flex()
 
 	win.view.layout = 'grid'
+	win.view.grid_flow = 'y'
 	win.view.padding = 40
 	win.view.grid_wrap = 3
 	win.view.grid_col_gap = 20
 	win.view.grid_row_gap = 20
-	win.view.grid_rows = {0}
 
 	local s = Q[[
 Lorem ipsum dolor sit amet, quod oblique vivendum ex sed. Impedit nominavi maluisset sea ut.&ps;Utroque apeirian maluisset cum ut. Nihil appellantur at his, fugit noluisse eu vel, mazim mandamus ex quo.&ls;Mei malis eruditi ne. Movet volumus instructior ea nec. Vel cu minimum molestie atomorum, pro iudico facilisi et, sea elitr partiendo at. An has fugit assum accumsan.&ps;Ne mea nobis scaevola partiendo, sit ei accusamus expetendis. Omnium repudiandae intellegebat ad eos, qui ad erant luptatum, nec an wisi atqui adipiscing. Mei ad ludus semper timeam, ei quas phaedrum liberavisse his, dolorum fierent nominavi an nec. Quod summo novum eam et, ullum choro soluta nec ex. Soleat conceptam pro ut, enim audire definiebas ad nec. Vis an equidem torquatos, at erat voluptatibus eam.]]
@@ -618,7 +613,7 @@ Lorem ipsum dolor sit amet, quod oblique vivendum ex sed. Impedit nominavi malui
 		selected = 'val3',
 	}
 
-	ui:radiobutton{
+	ui:radio{
 		parent = win,
 		label =  {text = 'Radio me'},
 		checked = true,

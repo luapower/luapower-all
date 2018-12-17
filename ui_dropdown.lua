@@ -199,7 +199,7 @@ end
 
 dropdown:init_ignore{editable=1, value=1}
 
-function dropdown:after_init(ui, t)
+function dropdown:after_init(t)
 	self.editbox = self:create_editbox()
 	self.button = self:create_button()
 	self.popup = self:create_popup()
@@ -261,7 +261,7 @@ end
 --state styles
 
 dropdown.border_color = '#333'
-dropdown.border_width = 1
+dropdown.border_width_bottom = 1
 
 ui:style('dropdown', {
 	transition_border_color = true,
@@ -275,10 +275,7 @@ ui:style('dropdown :hot', {
 })
 
 ui:style('dropdown :focused', {
-	border_color = '#ccc',
-	shadow_blur = 2,
-	shadow_color = '#666',
-	background_color = '#080808', --to cover the shadow
+	border_color = '#fff',
 })
 
 ui:style('dropdown_button :hot, dropdown_button :focused', {

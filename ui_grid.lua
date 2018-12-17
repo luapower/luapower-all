@@ -2088,7 +2088,7 @@ end
 
 grid:init_ignore{dropdown=1}
 
-function grid:after_init(ui, t)
+function grid:after_init(t)
 
 	local cols = t.cols or self.cols or {}
 	self.cols = {}

@@ -133,7 +133,7 @@ function object:forward_properties(component_name, prefix, props)
 		self:instance_only(self_prop)
 	end
 	--copy default values over to the component.
-	function self:after_init(ui, t)
+	function self:after_init(t)
 		for prop, writable in pairs(props) do
 			if writable == 1 and rawget(t, prop) == nil then
 				local self_prop = prefix and prefix..prop or prop
@@ -859,11 +859,25 @@ element:init_ignore{}
 --override the element constructor so that it can take multiple init-table
 --args but present init() with a single init table that also inherits the
 --class for transparent access to defaults, and a single array table that
---adds together the array parts of all the init tables.
-function element:override_create(inherited, ui, ...)
-	local dt = {}
-	local at
-	for i = 1, select('#', ...) do
+--adds together the array parts of all the init tables. also, make the
+--constructor work with different call styles, see below.
+function element:override_create(inherited, ...)
+	local ui = ...
+	local parent
+	local arg1
+	if ui.isui then --called as `ui:element{}`
+		arg1 = 2
+	elseif ui.iselement then --called as `parent:element{}`
+		arg1 = 2
+		parent = ui
+		ui = parent.ui
+	else --called as `element{}`, infer `ui` from the `parent` field.
+		arg1 = 1
+		ui = nil
+	end
+	local dt = {} --hash part
+	local at --array part
+	for i = arg1, select('#', ...) do
 		local t = select(i, ...)
 		if t then
 			for k,v in pairs(t) do
@@ -876,8 +890,15 @@ function element:override_create(inherited, ui, ...)
 			end
 		end
 	end
+	parent = dt.parent or parent
+	if not ui and parent then
+		ui = parent.ui
+	end
+	dt.ui = ui
+	dt.parent = parent
+	assert(ui, 'ui arg missing')
 	setmetatable(dt, {__index = self})
-	return inherited(self, ui, dt, at)
+	return inherited(self, dt, at)
 end
 
 function element:init_fields(t)
@@ -899,8 +920,8 @@ function element:init_fields(t)
 	end
 end
 
-function element:after_init(ui, t)
-	self.ui = ui()
+function element:after_init(t)
+	self.ui = self.ui()
 	self:init_tags(t)
 	self:init_fields(t)
 	self.ui:_add_element(self)
@@ -1316,15 +1337,10 @@ function window:create_native_window(t)
 	return self.ui:native_window(t)
 end
 
-function window:override_init(inherited, ui, t)
+function window:override_init(inherited, t)
 	local show_it
 	local win = t.native_window
-	--parent can be given as the `parent` field or in place of the `ui` arg.
 	local parent = t.parent
-	if not parent and ui and (ui.islayer or ui.iswindow) then
-		parent = ui
-		ui = ui.ui
-	end
 	if parent and parent.iswindow then
 		parent = parent.view
 	end
@@ -1377,7 +1393,7 @@ function window:override_init(inherited, ui, t)
 
 	end
 
-	inherited(self, ui, t)
+	inherited(self, t)
 
 	self:forward_events(win, {
 		activated=1, deactivated=1, wakeup=1,
@@ -1830,23 +1846,16 @@ local props = {
 for prop, writable in pairs(props) do
 	local priv = '_'..prop
 	window['get_'..prop] = function(self)
-		if self:isinstance() then
-			local nwin = self.native_window
-			return nwin[prop](nwin)
-		else
-			return self[priv]
-		end
+		local nwin = self.native_window
+		return nwin[prop](nwin)
 	end
 	if writable == 1 then
 		window['set_'..prop] = function(self, value)
-			if self:isinstance() then
-				local nwin = self.native_window
-				nwin[prop](nwin, value)
-			else
-				self[priv] = value
-			end
+			local nwin = self.native_window
+			nwin[prop](nwin, value)
 		end
 	end
+	window:instance_only(prop)
 end
 
 --methods
@@ -1893,7 +1902,7 @@ end
 --element query interface ----------------------------------------------------
 
 function window:find(sel)
-	local sel = ui:selector(sel):filter(function(elem)
+	local sel = self.ui:selector(sel):filter(function(elem)
 		return elem.window == self
 	end)
 	return self.ui:find(sel)
@@ -2082,6 +2091,13 @@ function ui:_window_mouseup(window, button, mx, my, click_count)
 
 	if click_count > 1 then return end
 
+	--trigger mouseup before finishing dragging so that self.dragging is
+	--available for differentiating a drag from a click.
+	local widget = self.active_widget or self.hot_widget
+	if widget then
+		widget:_mouseup(button, mx, my, self.hot_area)
+	end
+
 	if self.drag_button == button then
 		if self.drag_widget then
 			if self.drop_widget then
@@ -2097,11 +2113,6 @@ function ui:_window_mouseup(window, button, mx, my, click_count)
 			end
 		end
 		self:_reset_drag_state()
-	end
-
-	local widget = self.active_widget or self.hot_widget
-	if widget then
-		widget:_mouseup(button, mx, my, self.hot_area)
 	end
 end
 
@@ -2350,21 +2361,10 @@ layer.click_chain       = 1 --2 for doubleclick events, etc.
 layer.rightclick_chain  = 1 --2 for rightdoubleclick events, etc.
 layer.middleclick_chain = 1 --2 for middledoubleclick events, etc.
 
-function layer:override_init(inherited, ui, t)
-	if ui and (ui.islayer or ui.iswindow) then --ui is actually the parent
-		t.parent = ui
-		ui = ui.ui
-	end
-	if t.parent then
-		ui = t.parent.ui
-	end
-	return inherited(self, ui, t)
-end
-
 layer:init_ignore{parent=1, layer_index=1, enabled=1, layers=1, class=1}
 layer.tags = ':enabled'
 
-function layer:after_init(ui, t, array_part)
+function layer:after_init(t, array_part)
 	--setting parent after _enabled updates the `enabled` tag only once!
 	--setting layer_index before parent inserts the layer at its index directly.
 	local enabled = t.enabled and true or false
@@ -2380,7 +2380,7 @@ function layer:after_init(ui, t, array_part)
 			if not layer.islayer then
 				local class = layer.class or self.super
 				if type(class) == 'string' then --look-up a built-in class
-					class = self.ui:check(ui[class], 'invalid class: "%s"', class)
+					class = self.ui:check(self.ui[class], 'invalid class: "%s"', class)
 				end
 				layer = class(self.ui, self[layer.class], layer)
 			end
@@ -3708,16 +3708,16 @@ layer.opacity = 1
 layer.clip_content = false --true, 'background', false
 
 function layer:draw_content(cr) --called in own content space
+	self:draw_children(cr)
 	self:draw_text(cr)
 	self:draw_text_selection(cr)
 	self:draw_caret(cr)
-	self:draw_children(cr)
 end
 
 function layer:hit_test_content(x, y, reason) --called in own content space
-	local widget, area = self:hit_test_children(x, y, reason)
+	local widget, area = self:hit_test_text(x, y, reason)
 	if not widget then
-		return self:hit_test_text(x, y, reason)
+		return self:hit_test_children(x, y, reason)
 	end
 	return widget, area
 end
@@ -4108,11 +4108,9 @@ layer:stored_property'text_align_x'
 layer:stored_property'text_align_y'
 layer:enum_property('text_align_x', {
 	left = 'left', center = 'center', right = 'right', auto = 'auto',
-	l = 'left', c = 'center', r = 'right',
 })
 layer:enum_property('text_align_y', {
 	top = 'top', center = 'center', bottom = 'bottom',
-	t = 'top', c = 'center', b = 'bottom',
 })
 
 layer._text_tree = false
@@ -4536,7 +4534,7 @@ function layer:keypress_text(key)
 	elseif key_only and key == 'insert' then
 		self.insert_mode = not self.insert_mode
 		return true
-	elseif key_only and (key == 'delete' or key == 'backspace') then
+	elseif (key_only and key == 'delete') or key == 'backspace' then
 		if self.text_editable then
 			self:undo_group'delete'
 			if sel:empty() then
@@ -4559,7 +4557,7 @@ function layer:keypress_text(key)
 	elseif ctrl and key == 'A' then
 		self:undo_group()
 		return sel:select_all()
-	elseif (ctrl and key == 'C' ) or (ctrl_only and key == 'insert') then
+	elseif (ctrl and key == 'C') or (ctrl_only and key == 'insert') then
 		local s = sel:string()
 		if s ~= '' then
 			self.ui:setclipboard(s, 'text')
@@ -4882,7 +4880,17 @@ function textbox:sync_layout_y(other_axis_synced)
 	end
 end
 
---flexbox & grid layout utils ------------------------------------------------
+--stuff common to flexbox & grid layouts -------------------------------------
+
+layer.align_items_x = 'stretch' --how all items as a group are x-aligned
+layer.align_items_y = 'stretch' --how all items as a group are y-aligned
+layer.item_align_x = 'stretch' --how each item is x-aligned in its stretch
+layer.item_align_y = 'stretch' --how each item is y-aligned in its stretch
+layer.align_x = false --override item_align_x for this item
+layer.align_y = false --override item_align_y for this item
+	--^all: stretch, start/top/left, end/bottom/right, center
+	--^+main axis: space_between, space_around, space_evenly
+	--^+cross axis: baseline
 
 local function items_sum(self, i, j, _MIN_W)
 	local sum_w = 0
@@ -4970,18 +4978,18 @@ local function stretch_items_main_axis(
 	end
 end
 
---starting x-offset and in-between spacing metrics for aligning.
+--start offset and inter-item spacing for aligning items on the main-axis.
 local function align_metrics(
 	align, container_w, items_w, item_count,
-	START, END, LEFT, RIGHT, L, R
+	START, END, LEFT, RIGHT
 )
 	local x
 	local spacing = 0
-	if align == START or align == LEFT or align == L then
+	if align == START or align == LEFT then
 		x = 0
-	elseif align == END or align == RIGHT or align == R then
+	elseif align == END or align == RIGHT then
 		x = container_w - items_w
-	elseif align == 'center' or align == 'c' then
+	elseif align == 'center' then
 		x = (container_w - items_w) / 2
 	elseif align == 'space_evenly' then
 		spacing = (container_w - items_w) / (item_count + 1)
@@ -5020,24 +5028,14 @@ flexbox.sync_layout = layer.sync_layout_separate_axes
 flexbox.layout_axis_order = 'xy'
 
 --container properties
-layer.flex_axis = 'x' --'x', 'y'
+layer.flex_flow = 'x' --'x', 'y'
 layer.flex_wrap = false -- true, false
-layer.align_lines = 'stretch' --space_between, space_around, space_evenly
-layer.align_cross = 'stretch' --baseline
-layer.align_main  = 'stretch' --space_between, space_around, space_evenly
-	--^align_*: stretch, start/top/left, end/bottom/right, center
 
 --item properties
-layer.align_cross_self = false --overrides parent.align_cross
 layer.fr = 1 --stretch fraction: 0..inf
 
 --generate pairs of methods for vertical and horizontal flexbox layouts.
 local function gen_funcs(X, Y, W, H, LEFT, RIGHT, TOP, BOTTOM)
-
-	local L = LEFT:sub(1, 1)
-	local R = RIGHT:sub(1, 1)
-	local T = TOP:sub(1, 1)
-	local B = BOTTOM:sub(1, 1)
 
 	local CW = 'c'..W
 	local CH = 'c'..H
@@ -5047,6 +5045,15 @@ local function gen_funcs(X, Y, W, H, LEFT, RIGHT, TOP, BOTTOM)
 	local _MIN_H = '_min_'..H
 	local SNAP_X = 'snap_'..X
 	local SNAP_Y = 'snap_'..Y
+
+	local ALIGN_ITEMS_X = 'align_items_'..X
+	local ALIGN_ITEMS_Y = 'align_items_'..Y
+	local ITEM_ALIGN_X = 'item_align_'..X
+	local ITEM_ALIGN_Y = 'item_align_'..Y
+	local ALIGN_X = 'align_'..X
+	local ALIGN_Y = 'align_'..Y
+	local START = LEFT
+	local END = RIGHT
 
 	--special items_min_h() for baseline align.
 	--requires that the children are already sync'ed on y-axis.
@@ -5133,28 +5140,58 @@ local function gen_funcs(X, Y, W, H, LEFT, RIGHT, TOP, BOTTOM)
 
 	local function align_metrics_x(self, align, items_w, item_count)
 		return align_metrics(align, self[CW], items_w, item_count,
-			'start', 'end', LEFT, RIGHT, L, R)
+			'start', 'end', LEFT, RIGHT)
 	end
 
 	local function align_metrics_y(self, align, items_w, item_count)
 		return align_metrics(align, self[CH], items_w, item_count,
-			'start', 'end', TOP, BOTTOM, T, B)
+			'start', 'end', TOP, BOTTOM)
 	end
 
 	--align a line of items on the main axis.
 	local function align_items_x(self, i, j)
 		local snap_x = self[SNAP_X]
-		local items_w, items_count = items_sum(self, i, j, _MIN_W)
+		local items_w, item_count = items_sum(self, i, j, _MIN_W)
 		local x, spacing =
-			align_metrics_x(self, self.align_main, items_w, item_count)
+			align_metrics_x(self, self[ALIGN_ITEMS_X], items_w, item_count)
 		align_items_main_axis(self, i, j, x, spacing, snap_x, X, W, _MIN_W)
+	end
+
+	local function align_stretched_items_x(self, i, j)
+		local align = self[ITEM_ALIGN_X]
+		if align == 'stretch' then
+			return --already stretched
+		end
+		local snap_x = self[SNAP_X]
+		for i = i, j do
+			local layer = self[i]
+			if layer.visible and not layer.floating then
+				local align = layer[ALIGN_X] or align
+				local x, w = layer[X], layer[W]
+				if align == 'stretch' then
+					--already stretched
+				elseif align == START or align == LEFT then
+					w = layer[_MIN_W]
+				elseif align == END or align == RIGHT then
+					local x2 = x + w
+					w = layer[_MIN_W]
+					x = x2 - w
+				elseif align == 'center' then
+					local x2 = x + w
+					w = layer[_MIN_W]
+					x = x + (x2 - x - w) / 2
+				end
+				layer[X], layer[W] = snap_xw(x, w, snap_x)
+			end
+		end
 	end
 
 	--stretch or align a flexbox's items on the main-axis.
 	local function align_x(self)
 		for j, i in linewrap(self) do
-			if self.align_main == 'stretch' then
+			if self[ALIGN_ITEMS_X] == 'stretch' then
 				stretch_items_x(self, i, j)
+				align_stretched_items_x(self, i, j)
 			else
 				align_items_x(self, i, j)
 			end
@@ -5165,21 +5202,21 @@ local function gen_funcs(X, Y, W, H, LEFT, RIGHT, TOP, BOTTOM)
 	--align a line of items on the cross-axis.
 	local function align_items_y(self, i, j, line_y, line_h, line_baseline)
 		local snap_y = self[SNAP_Y]
-		local align = self.align_cross
+		local align = self[ITEM_ALIGN_Y]
 		for i = i, j do
 			local layer = self[i]
 			if layer.visible and not layer.floating then
-				local align = layer.align_cross_self or align
+				local align = layer[ALIGN_Y] or align
 				if align == 'stretch' then
 					layer[Y], layer[H] = snap_xw(line_y, line_h, snap_y)
 				else
 					local item_h = layer[_MIN_H]
-					if align == TOP or align == T or align == 'start' then
+					if align == TOP or align == 'start' then
 						layer[Y], layer[H] = snap_xw(line_y, item_h, snap_y)
-					elseif align == BOTTOM or align == B or align == 'end' then
+					elseif align == BOTTOM or align == 'end' then
 						local item_y = line_y + line_h - item_h
 						layer[Y], layer[H] = snap_xw(item_y, item_h, snap_y)
-					elseif align == 'center' or align == 'c' then
+					elseif align == 'center' then
 						local item_y = line_y + (line_h - item_h) / 2
 						layer[Y], layer[H] = snap_xw(item_y, item_h, snap_y)
 					elseif line_baseline then
@@ -5199,7 +5236,8 @@ local function gen_funcs(X, Y, W, H, LEFT, RIGHT, TOP, BOTTOM)
 			return
 		end
 		local lines_y, line_spacing, line_h
-		if self.align_lines == 'stretch' then
+		local align = self[ALIGN_ITEMS_Y]
+		if align == 'stretch' then
 			local lines_h = self[CH]
 			local line_count = 0
 			for _ in linewrap(self) do
@@ -5217,7 +5255,7 @@ local function gen_funcs(X, Y, W, H, LEFT, RIGHT, TOP, BOTTOM)
 				line_count = line_count + 1
 			end
 			lines_y, line_spacing =
-				align_metrics_y(self, self.align_lines, lines_h, line_count)
+				align_metrics_y(self, align, lines_h, line_count)
 		end
 		local y = lines_y
 		for j, i in linewrap(self) do
@@ -5248,7 +5286,7 @@ function flexbox:sync_min_w(other_axis_synced)
 		end
 	end
 
-	local min_cw = self.flex_axis == 'x'
+	local min_cw = self.flex_flow == 'x'
 		and self:min_cw_x_axis(other_axis_synced)
 		 or self:min_ch_y_axis(other_axis_synced)
 
@@ -5260,8 +5298,8 @@ end
 
 function flexbox:sync_min_h(other_axis_synced)
 
-	local align_baseline = self.flex_axis == 'x'
-		and self.align_cross == 'baseline'
+	local align_baseline = self.flex_flow == 'x'
+		and self.item_align_y == 'baseline'
 
 	--sync all children first (bottom-up sync).
 	for _,layer in ipairs(self) do
@@ -5281,7 +5319,7 @@ function flexbox:sync_min_h(other_axis_synced)
 		end
 	end
 
-	local min_ch = self.flex_axis == 'x'
+	local min_ch = self.flex_flow == 'x'
 		and self:min_ch_x_axis(other_axis_synced, align_baseline)
 		 or self:min_cw_y_axis(other_axis_synced)
 
@@ -5293,7 +5331,7 @@ end
 
 function flexbox:sync_layout_x(other_axis_synced)
 
-	local synced = self.flex_axis == 'x'
+	local synced = self.flex_flow == 'x'
 			and self:sync_layout_x_axis_x(other_axis_synced)
 			 or self:sync_layout_y_axis_y(other_axis_synced)
 
@@ -5310,12 +5348,12 @@ end
 
 function flexbox:sync_layout_y(other_axis_synced)
 
-	if self.flex_axis == 'x' and self.align_cross == 'baseline' then
+	if self.flex_flow == 'x' and self.item_align_y == 'baseline' then
 		--chilren already sync'ed in sync_min_h().
 		return self:sync_layout_x_axis_y(other_axis_synced, true)
 	end
 
-	local synced = self.flex_axis == 'y'
+	local synced = self.flex_flow == 'y'
 		and self:sync_layout_y_axis_x(other_axis_synced)
 		 or self:sync_layout_x_axis_y(other_axis_synced)
 
@@ -5344,17 +5382,9 @@ layer.layouts.grid = grid
 
 layer.grid_cols = {} --{fr1, ...}
 layer.grid_rows = {} --{fr1, ...}
-layer.grid_align_cols = 'stretch' --how cols as a whole are aligned
-layer.grid_align_rows = 'stretch' --how rows as a whole are aligned
-layer.grid_col_gap = 0
-layer.grid_row_gap = 0
-layer.grid_align_x = 'stretch' --how each item is x-aligned in its grid cell
-layer.grid_align_y = 'stretch' --how each item is y-aligned in its grid cell
-
---item properties
-
-layer.align_x = false --overrides grid_align_x for this item
-layer.align_y = false --overrides grid_align_y for this item
+layer.grid_gap = 0
+layer.grid_col_gap = false
+layer.grid_row_gap = false
 
 --grid_pos property parsing
 
@@ -5390,6 +5420,7 @@ end
 --container properties
 layer.grid_flow = 'x' --x, y, xr, yr, xb, yb, xrb, yrb
 layer.grid_wrap = 1
+layer.grid_min_lines = 0
 
 --item properties
 layer.grid_pos = false --'[row][/span] [col][/span]'
@@ -5452,8 +5483,8 @@ function layer:sync_layout_grid_autopos()
 	local flip_cols = flow:find('r', 1, true)
 	local flip_rows = flow:find('b', 1, true)
 	local grid_wrap = max(1, self.grid_wrap)
-	local max_col = col_first and grid_wrap or 0
-	local max_row = row_first and grid_wrap or 0
+	local max_col = col_first and grid_wrap or self.grid_min_lines
+	local max_row = row_first and grid_wrap or self.grid_min_lines
 
 	local occupied = {}
 
@@ -5463,7 +5494,7 @@ function layer:sync_layout_grid_autopos()
 	for _,layer in ipairs(self) do
 		if layer.visible and not layer.floating then
 
-			local row, col, row_span, col_span = ui:grid_pos(layer.grid_pos)
+			local row, col, row_span, col_span = self.ui:grid_pos(layer.grid_pos)
 			row = layer.grid_row or row
 			col = layer.grid_col or col
 			row_span = layer.grid_row_span or row_span or 1
@@ -5619,8 +5650,6 @@ end
 
 local function gen_funcs(X, Y, W, H, COL, LEFT, RIGHT)
 
-	local L = LEFT:sub(1, 1)
-	local R = RIGHT:sub(1, 1)
 	local CW = 'c'..W
 	local PW = 'p'..W
 	local MIN_CW = 'min_'..CW
@@ -5630,8 +5659,8 @@ local function gen_funcs(X, Y, W, H, COL, LEFT, RIGHT)
 	local SYNC_LAYOUT_X = 'sync_layout_'..X
 	local COLS = 'grid_'..COL..'s'
 	local COL_GAP = 'grid_'..COL..'_gap'
-	local ALIGN_COLS = 'grid_align_'..COL..'s'
-	local GRID_ALIGN_X = 'grid_align_'..X
+	local ALIGN_ITEMS_X = 'align_items_'..X
+	local ITEM_ALIGN_X = 'item_align_'..X
 	local ALIGN_X = 'align_'..X
 	local _COLS = '_'..COLS
 	local _MAX_COL = '_grid_max_'..COL
@@ -5648,7 +5677,7 @@ local function gen_funcs(X, Y, W, H, COL, LEFT, RIGHT)
 			end
 		end
 
-		local gap_w = self[COL_GAP]
+		local gap_w = self[COL_GAP] or self.grid_gap
 		local max_col = self[_MAX_COL]
 		local fr = self[COLS] --{fr1, ...}
 
@@ -5729,10 +5758,10 @@ local function gen_funcs(X, Y, W, H, COL, LEFT, RIGHT)
 	grid[SYNC_LAYOUT_X] = function(self, other_axis_synced)
 
 		local cols = self[_COLS]
-		local gap_w = self[COL_GAP]
+		local gap_w = self[COL_GAP] or self.grid_gap
 		local container_w = self[CW]
-		local align_cols = self[ALIGN_COLS]
-		local align_x = self[GRID_ALIGN_X]
+		local align_items_x = self[ALIGN_ITEMS_X]
+		local item_align_x = self[ITEM_ALIGN_X]
 		local snap_x = self[SNAP_X]
 
 		local START, END = 'start', 'end'
@@ -5740,14 +5769,14 @@ local function gen_funcs(X, Y, W, H, COL, LEFT, RIGHT)
 			START, END = END, START
 		end
 
-		if align_cols == 'stretch' then
+		if align_items_x == 'stretch' then
 			stretch_items_main_axis(cols, 1, #cols, container_w, snap_x,
 				X, W, _MIN_W)
 		else
 			local items_w, item_count = items_sum(cols, 1, #cols, _MIN_W)
 			local x, spacing =
-				align_metrics(align_cols, self[CW], items_w, item_count,
-					START, END, LEFT, RIGHT, L, R)
+				align_metrics(align_items_x, self[CW], items_w, item_count,
+					START, END, LEFT, RIGHT)
 			align_items_main_axis(cols, 1, #cols, x, spacing, snap_x,
 				X, W, _MIN_W)
 		end
@@ -5768,16 +5797,16 @@ local function gen_funcs(X, Y, W, H, COL, LEFT, RIGHT)
 				x1 = x1 + gap1
 				x2 = x2 - gap2
 
-				local align = layer[ALIGN_X] or align_x
+				local align = layer[ALIGN_X] or item_align_x
 				local x, w
 				if align == 'stretch' then
 					x, w = x1, x2 - x1
-				elseif align == START or align == LEFT or align == L then
+				elseif align == START or align == LEFT then
 					x, w = x1, layer[_MIN_W]
-				elseif align == END or align == RIGHT or align == R then
+				elseif align == END or align == RIGHT then
 					w = layer[_MIN_W]
 					x = x2 - w
-				elseif align == 'center' or align == 'c' then
+				elseif align == 'center' then
 					w = layer[_MIN_W]
 					x = x1 + (x2 - x1 - w) / 2
 				end
@@ -5857,7 +5886,8 @@ ui:autoload{
 	editbox      = 'ui_editbox',
 	button       = 'ui_button',
 	checkbox     = 'ui_button',
-	radiobutton  = 'ui_button',
+	radio        = 'ui_button',
+	radiolist    = 'ui_button',
 	choicebutton = 'ui_button',
 	slider       = 'ui_slider',
 	toggle       = 'ui_slider',

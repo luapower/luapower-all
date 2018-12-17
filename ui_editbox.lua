@@ -26,6 +26,7 @@ editbox.nowrap = true
 editbox.text_multiline = false
 
 --config / geometry
+
 editbox.text_align_x = 'auto'
 editbox.align_y = 'center'
 editbox.min_ch = 24
@@ -96,7 +97,7 @@ function editbox:create_cue_layer()
 	return cue_layer
 end
 
-function editbox:after_init(ui, t)
+function editbox:after_init(t)
 	self.cue_layer = self:create_cue_layer()
 	self.cue = t.cue
 end
@@ -262,11 +263,11 @@ function editbox:override_draw_content(inherited, cr)
 	cr:save()
 	cr:rectangle(0, -1000, self.cw, 2000)
 	cr:clip()
+	self:draw_children(cr)
 	self:draw_text(cr)
 	self:draw_text_selection(cr)
 	self:draw_caret(cr)
 	cr:restore()
-	self:draw_children(cr)
 end
 
 function editbox:override_hit_test_text(inherited, x, y, reason)
@@ -293,10 +294,9 @@ if not ... then require('ui_demo')(function(ui, win)
 	win.w = 300
 	win.h = 900
 
-	win.view.layout = 'grid'
-	win.view.flex_axis = 'y'
-	win.view.align_cross = 'top'
-	--win.view.align_lines = 'top'
+	win.view.layout = 'flexbox'
+	win.view.flex_flow = 'y'
+	win.view.item_align_y = 'top'
 
 	ui:add_font_file('media/fonts/FSEX300.ttf', 'fixedsys')
 	ui:add_font_file('media/fonts/amiri-regular.ttf', 'Amiri')

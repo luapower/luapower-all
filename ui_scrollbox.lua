@@ -189,7 +189,7 @@ end
 
 scrollbar:init_ignore{content_length=1, view_length=1, offset=1}
 
-function scrollbar:after_init(ui, t)
+function scrollbar:after_init(t)
 	self:reset(t.content_length, t.view_length, t.offset)
 	self.grip = self:create_grip()
 end
@@ -314,7 +314,7 @@ scrollbox.content_class = ui.layer
 scrollbox.vscrollbar_class = scrollbar
 scrollbox.hscrollbar_class = scrollbar
 
-function scrollbox:after_init(ui, t)
+function scrollbox:after_init(t)
 
 	self.vscrollbar = self:vscrollbar_class({
 		tags = 'vscrollbar',
@@ -540,7 +540,7 @@ textarea:instance_only'value'
 
 textarea:init_ignore{value=1}
 
-function textarea:after_init(ui, t)
+function textarea:after_init(t)
 	self.editbox = self.content
 	self.value = t.value
 end
@@ -549,11 +549,12 @@ end
 
 if not ... then require('ui_demo')(function(ui, win)
 
-	win.w = 240
+	win.view.item_align_x = 'center'
+	win.view.item_align_y = 'center'
 
 	ui:style('scrollbox', {
-		--border_width = 1,
-		--border_color = '#f00',
+		border_width = 1,
+		border_color = '#f00',
 	})
 
 	local function mkcontent(w, h)
@@ -570,134 +571,112 @@ if not ... then require('ui_demo')(function(ui, win)
 		}
 	end
 
-	local x, y = 10, 10
-	local function xy()
-		x = x + 200
-		if x + 190 > win.cw then
-			x = 10
-			y = y + 200
-		end
-	end
-
 	local s = [[
 Lorem ipsum dolor sit amet, quod oblique vivendum ex sed. Impedit nominavi maluisset sea ut. Utroque apeirian maluisset cum ut. Nihil appellantur at his, fugit noluisse eu vel, mazim mandamus ex quo.
 
 Mei malis eruditi ne. Movet volumus instructior ea nec. Vel cu minimum molestie atomorum, pro iudico facilisi et, sea elitr partiendo at. An has fugit assum accumsan.]]
 
-	--[==[
-
 	--not autohide, custom bar metrics
 	ui:scrollbox{
 		parent = win,
-		x = x, y = y, w = 180, h = 180,
+		min_cw = 180, min_ch = 180,
 		content = mkcontent(),
 		vscrollbar = {h = 20, margin = 20},
 		hscrollbar = {h = 30, margin = 10},
 	}
-	xy()
 
 	--overlap, custom bar metrics
 	ui:scrollbox{
 		parent = win,
-		x = x, y = y, w = 180, h = 180,
+		min_cw = 180, min_ch = 180,
 		content = mkcontent(),
 		vscrollbar = {h = 20, margin = 20},
 		hscrollbar = {h = 30, margin = 10},
 		scrollbar = {overlap = true},
 	}
-	xy()
 
 	--not autohide, autohide_empty vertical
 	ui:scrollbox{
 		parent = win,
-		x = x, y = y, w = 180, h = 180,
+		min_cw = 180, min_ch = 180,
 		content = mkcontent(nil, 165),
 	}
-	xy()
 
 	--not autohide, autohide_empty horizontal
 	ui:scrollbox{
 		parent = win,
-		x = x, y = y, w = 180, h = 180,
+		min_cw = 180, min_ch = 180,
 		content = mkcontent(165),
 		autohide = true,
 	}
-	xy()
 
 	--not autohide, autohide_empty horizontal -> vertical
 	ui:scrollbox{
 		parent = win,
-		x = x, y = y, w = 180, h = 180,
+		min_cw = 180, min_ch = 180,
 		content = mkcontent(185, 175),
 		autohide = true,
 	}
-	xy()
 
 	--not autohide, autohide_empty vertical -> horizontal
 	ui:scrollbox{
 		parent = win,
-		x = x, y = y, w = 180, h = 180,
+		min_cw = 180, min_ch = 180,
 		content = mkcontent(175, 185),
 		autohide = true,
 	}
-	xy()
 
 	--autohide_empty case
 	ui:scrollbox{
 		parent = win,
-		x = x, y = y, w = 180, h = 180,
+		min_cw = 180, min_ch = 180,
 		content = mkcontent(180, 180),
 	}
-	xy()
 
 	--autohide
 	ui:scrollbox{
 		parent = win,
-		x = x, y = y, w = 180, h = 180,
+		min_cw = 180, min_ch = 180,
 		content = mkcontent(),
 		scrollbar = {
 			autohide = true,
 		},
 	}
-	xy()
 
 	--autohide, autohide_empty vertical
 	ui:scrollbox{
 		parent = win,
-		x = x, y = y, w = 180, h = 180,
+		min_cw = 180, min_ch = 180,
 		content = mkcontent(nil, 175),
 		scrollbar = {
 			autohide = true,
 		}
 	}
-	xy()
 
 	--autohide, autohide_empty horizontal
 	ui:scrollbox{
 		parent = win,
-		x = x, y = y, w = 180, h = 180,
+		min_cw = 180, min_ch = 180,
 		content = mkcontent(175),
 		scrollbar = {
 			autohide = true,
 		}
 	}
-	xy()
 
 	--autohide horizontal only
 	ui:scrollbox{
 		parent = win,
-		x = x, y = y, w = 180, h = 180,
+		min_cw = 180, min_ch = 180,
 		content = mkcontent(175),
 		hscrollbar = {
 			autohide = true,
 		}
 	}
-	xy()
 
 	--auto_w
 	ui:scrollbox{
 		parent = win,
-		x = x, y = y, w = 180, h = 180,
+		min_cw = 180, min_ch = 180,
 		auto_w = true,
 		content = {
 			layout = 'textbox',
@@ -706,15 +685,11 @@ Mei malis eruditi ne. Movet volumus instructior ea nec. Vel cu minimum molestie 
 			text = s,
 		},
 	}
-	xy()
-
-	]==]
 
 	ui:textarea{
 		parent = win,
-		x = x, y = y, w = 180, h = 180,
+		min_cw = 180, min_ch = 180,
 		value = s,
 	}
-	xy()
 
 end) end
