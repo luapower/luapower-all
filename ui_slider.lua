@@ -341,6 +341,7 @@ end
 
 
 pin.mousedown_activate = true
+pin.draggable = true
 
 function pin:mousedown()
 	self.slider:focus()
@@ -379,6 +380,7 @@ end
 
 slider.drag_threshold = 1 --don't grab the pin right away
 slider.mousedown_activate = true
+slider.draggable = true
 
 function slider:mousedown(mx)
 	local position = self:nearest_position(self.pin:position_at_cx(mx))

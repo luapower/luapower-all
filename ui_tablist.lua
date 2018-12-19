@@ -156,6 +156,7 @@ end
 --mouse interaction: drag & drop
 
 tab.mousedown_activate = true
+tab.draggable = true
 
 function tab:activated()
 	self:select()
@@ -860,6 +861,8 @@ if not ... then require('ui_demo')(function(ui, win)
 
 	local color = require'color'
 
+	win.view.grid_flow = 'x'
+	win.view.grid_gap = 10
 	win.view.grid_wrap = 2
 	win.view.grid_min_lines = 2
 

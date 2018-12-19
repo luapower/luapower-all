@@ -3,6 +3,8 @@
 local ui = require'ui'
 local Q = require'utf8quot'
 local time = require'time'
+local glue = require'glue'
+
 local win = ui:window{
 	x = 600, y = 100, cw = 1200, ch = 800,
 	visible = false, autoquit=true, edgesnapping=false,
@@ -350,11 +352,10 @@ local function test_drag()
 	for _,layer in ipairs{layer1, layer2, layer} do
 
 		layer.drag_threshold = 0
+		layer.draggable = true
 
 		function layer:start_drag(button, mx, my, area)
 			print('start_drag          ', button, mx, my, area)
-			--self.parent = self.window
-			self:to_front()
 			return self
 		end
 
@@ -750,6 +751,56 @@ Lorem ipsum dolor sit amet, quod oblique vivendum ex sed. Impedit nominavi malui
 
 end
 
+local function test_drag_flexbox()
+	win.view.grid_flow = 'x'
+	win.view.grid_gap = 10
+	local function T(t)
+		return glue.update({
+			layout = 'textbox',
+			min_ch = math.random(200),
+			mousedown_activate = true,
+			draggable = true,
+			border_width = 1,
+			background_color = '#111',
+			tags = 'movable',
+		}, t)
+	end
+	local fb1 = ui:layer{
+		tags = 'fb fb1',
+		parent = win,
+		layout = 'flexbox',
+		flex_flow = 'y',
+		item_align_y = 'center',
+		border_width = 1,
+		accept_drag_groups = {[1]=true},
+		T{drag_group=1, fr=2, text='1 Hello'},
+		T{drag_group=1, fr=1, text='2 Hello again'},
+		T{drag_group=1, fr=3, text='3 I am another layer'},
+	}
+	local fb2 = ui:layer{
+		tags = 'fb fb2',
+		parent = win,
+		layout = 'flexbox',
+		align_items_y = 'center',
+		flex_flow = 'y',
+		border_width = 1,
+		draggable = true,
+		drag_group = 2,
+		accept_drag_groups = {[2]=true},
+		T{drag_group=2, fr=1, text='4 Hello'},
+		T{drag_group=2, fr=5, text='5 Hello again'},
+		T{drag_group=2, fr=2, text='6 Hello'},
+		T{drag_group=2, fr=3, text='7 Hello again'},
+	}
+
+	ui:style('fb :item_moving > movable', {
+		transition_y = true,
+		transition_duration = .5,
+		--background_color = '#222',
+	})
+
+end
+
 --test_css()
 --test_layers()
 --test_drag()
@@ -757,7 +808,8 @@ end
 --test_flexbox()
 --test_flexbox_baseline()
 --test_grid_layout()
-test_widgets_flex()
+--test_widgets_flex()
+test_drag_flexbox()
 win:show()
 ui:run()
 ui:free()

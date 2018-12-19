@@ -241,6 +241,7 @@ function splitter:sync_to_grid()
 end
 
 splitter.mousedown_activate = true
+splitter.draggable = true
 
 local drag_splitter = ui.layer:subclass'grid_drag_splitter'
 grid.drag_splitter_class = drag_splitter
@@ -541,6 +542,7 @@ end
 
 --column drag & drop ---------------------------------------------------------
 
+col.draggable = true
 col.drag_threshold = 10
 
 function col:mousedown(mx, my, area)
@@ -1075,6 +1077,7 @@ end
 
 grid.row_move = true
 grid.row_move_ctrl = true
+rows.draggable = true
 rows.drag_threshold = 4 --TODO: fix conflict between row-move and drag-select
 
 function rows:mousedown(mx, my, area)

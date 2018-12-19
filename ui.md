@@ -462,7 +462,7 @@ __behavior__
 `vscrollable`                        `false`            enable mouse wheel when hot
 `hscrollable`                        `false`            enable mouse horiz. wheel when hot
 `focusable`                          `false`            can be focused
-`draggable`                          `true`             can be dragged (still needs to respond to `start_drag()`)
+`draggable`                          `false`            can be dragged
 `background_hittable`                `true`             background area receives mouse input even when there's no background
 `mousedown_activate`                 `false`            activate/deactivate on left mouse down/up
 `drag_threshold`                     `0`                moving distance before start dragging
@@ -675,9 +675,10 @@ method        `bbox_in(parent,x1,y1,...) -> x,y,w,h`  bounding box of a list of 
 
 #### Drag & drop
 
+  * a layer must set the `draggable` flag to enable dragging.
   * a layer must be in `active` state for dragging to work.
   * when the user starts dragging a layer, the `start_drag()` method is
-  called on the layer (which by default doesn't do anything). Draggable
+  called on the layer (which by default returns `self`). Draggable
   layers must implement this method to return the layer that is to be dragged
   (could be `self` or other layer) and an optional "grab position" inside
   that layer. If a layer is returned, a dragging operation starts and the

@@ -13,6 +13,7 @@ local easing = require'easing'
 local color = require'color'
 local amoeba = require'amoeba'
 --C bindings.
+local ffi = require'ffi'
 local nw = require'nw'
 local time = require'time'
 local cairo = require'cairo'
@@ -1057,15 +1058,26 @@ end
 --element attribute transitions ----------------------------------------------
 
 --can be used as a css value.
-function element:end_value(attr)
-	local tran = self.transitions and self.transitions[attr]
+function element:end_value(attr, val)
+	local tr = self.transitions
+	local tran = tr and tr[attr]
 	if tran then
 		while tran.next_transition do
 			tran = tran.next_transition
 		end
-		return tran.end_value
-	else
-		return self[attr]
+	end
+	if val == nil then --get
+		if tran then
+			return tran.end_value
+		else
+			return self[attr]
+		end
+	else --set
+		if tran then
+			tran.end_value = val
+		else
+			self[attr] = val
+		end
 	end
 end
 
@@ -1177,6 +1189,9 @@ element.transition_delay = tran.delay
 element.transition_times = tran.times
 element.transition_blend = 'replace'
 element.transition_speed = 1
+
+element.transition_x = false
+element.transition_y = false
 
 local function transition_args(t,
 	attr, val, duration, ease, delay,
@@ -1996,11 +2011,13 @@ function ui:_window_mousemove(window, mx, my)
 		if self.drop_widget ~= (widget or false) then
 			if self.drop_widget then
 				self.drag_widget:_leave_drop_target(self.drop_widget)
+				self.drop_widget:_drag_leave(self.drag_widget)
 				self.drop_widget = false
 				self.drop_area = false
 			end
 			if widget then
 				self.drag_widget:_enter_drop_target(widget, area)
+				widget:_drag_enter(self.drag_widget, area)
 				self.drop_widget = widget
 				self.drop_area = area
 			end
@@ -2047,10 +2064,9 @@ function ui:_window_mousedown(window, button, mx, my, click_count)
 
 	if click_count > 1 then return end
 
-	if self.active_widget then
-		self.active_widget:_mousedown(button, mx, my)
-	elseif self.hot_widget then
-		self.hot_widget:_mousedown(button, mx, my, self.hot_area)
+	local widget = self.active_widget or self.hot_widget
+	if widget then
+		widget:_mousedown(button, mx, my, self.hot_area)
 	end
 end
 
@@ -2078,6 +2094,7 @@ function ui:_widget_mousedown(widget, button, mx, my, area)
 	if self.drag_start_widget then return end --already dragging on other button
 	if self.active_widget ~= widget then return end --widget not activated
 	if not widget.draggable then return end --widget not draggable
+	if widget.draggable_area and widget.draggable_area ~= area then return end
 	self.drag_start_widget = widget
 	self.drag_button = button
 	self.drag_mx = mx
@@ -2247,6 +2264,16 @@ function ui:radial_gradient(cx1, cy1, r1, cx2, cy2, r2, ...)
 	return self:_add_color_stops(g, ...)
 end
 
+local double_array = ffi.typeof'double[?]'
+function ui:_dash(dashes)
+	return double_array(#dashes, dashes)
+end
+ui:memoize'_dash'
+function ui:dash(dashes, offset)
+	if not dashes then return false, 0 end
+	return self:_dash(dashes), #dashes, offset
+end
+
 function ui:open_file(file)
 	local bundle = require'bundle'
 	return self:check(bundle.fs_open(file), 'file not found: "%s"', file)
@@ -2345,13 +2372,23 @@ layer.activable = true --can be clicked and set as hot
 layer.vscrollable = false --enable mouse wheel when hot
 layer.hscrollable = false --enable mouse horiz. wheel when hot
 layer.focusable = false --can be focused
-layer.draggable = true --can be dragged (still needs to respond to start_drag())
+layer.draggable = false --can be dragged
+layer.draggable_area = false --area that dragging can be initiated from
+layer.drag_group = false
+layer.accept_drag_groups = {} --{drag_group->true|area}
 layer.mousedown_activate = false --activate/deactivate on left mouse down/up
 
 ui:style('layer !:enabled', {
 	background_color = '#222',
 	text_color = '#666',
 	text_selection_color = '#6663',
+})
+
+ui:style('layer :drop_target', {
+	border_width = 1,
+	background_color = '#1028',
+	border_color = '#90f',
+	border_dash = {4, 2},
 })
 
 layer.cursor = false  --false or cursor name from nw
@@ -2377,6 +2414,9 @@ function layer:after_init(t, array_part)
 	--create and/or attach child layers
 	if array_part then
 		for _,layer in ipairs(array_part) do
+			if type(layer) == 'string' then
+				layer = {text = layer}
+			end
 			if not layer.islayer then
 				local class = layer.class or self.super
 				if type(class) == 'string' then --look-up a built-in class
@@ -2593,7 +2633,6 @@ function layer:move_layer(layer, index)
 	if old_index == new_index then return end
 	table.remove(self, old_index)
 	table.insert(self, new_index, layer)
-	self:invalidate()
 end
 
 function layer:set_layer_index(index)
@@ -2744,8 +2783,11 @@ function layer:_accept_drag_widget(widget, mx, my, area)
 end
 
 --return true to accept a dragged widget. if mx/my/area are nil
---then return true if there's _any_ area which would accept the widget.
-function layer:accept_drag_widget(widget, mx, my, area) end
+--then return true if there's at least one area that would accept the widget.
+function layer:accept_drag_widget(widget, mx, my, area)
+	local accept_area = self.accept_drag_groups[widget.drag_group]
+	return accept_area and (accept_area == true or accept_area == area)
+end
 
 --called on the dragged widget to accept a potential drop target widget.
 function layer:accept_drop_widget(widget, area) return true; end
@@ -2760,6 +2802,16 @@ end
 function layer:_leave_drop_target(widget)
 	self:fire('leave_drop_target', widget)
 	self:settag(':dropping', false)
+end
+
+--called on the drop target when the dragged widget enters it.
+function layer:_drag_enter(widget, area)
+	self:fire('drag_enter', widget, area)
+end
+
+--called on the drop target when the dragged widget leaves it.
+function layer:_drag_leave(widget)
+	self:fire('drag_leave', widget)
 end
 
 layer.dragging = false
@@ -2801,8 +2853,10 @@ function layer:_start_drag(button, mx, my, area)
 	return widget, dx, dy
 end
 
---stub: return a widget to drag (self works too).
-function layer:start_drag(button, mx, my, area) end
+--stub: return a widget to drag.
+function layer:start_drag(button, mx, my, area)
+	return self
+end
 
 function layer:_end_drag() --called on the drag_start_widget
 	self:settag(':drag_source', false)
@@ -2823,9 +2877,14 @@ end
 
 --default behavior: drag the widget from the initial grabbing point.
 function layer:drag(dx, dy)
-	self.x = self.x + dx
-	self.y = self.y + dy
-	self:invalidate()
+	local x0, y0 = self.x, self.y
+	local x1 = x0 + dx
+	local y1 = y0 + dy
+	if x1 ~= x0 or y1 ~= y0 then
+		self.x = x1
+		self.y = y1
+		self:invalidate()
+	end
 end
 
 --layer.window property ------------------------------------------------------
@@ -3063,7 +3122,8 @@ layer.border_color_left   = false
 layer.border_color_right  = false
 layer.border_color_top    = false
 layer.border_color_bottom = false
-layer.border_dash = false
+layer.border_dash = false --true, false, {on_width1, off_width1, ...}
+layer.border_dash_offset = 0
 -- border stroke positioning relative to box edge.
 -- -1..1 goes from inside to outside of box edge.
 layer.border_offset = -1
@@ -3286,9 +3346,7 @@ function layer:draw_border(cr)
 		then --stroke-based method (doesn't require path offseting; supports dashing)
 			self:border_path(cr, 0)
 			cr:line_width(self.border_width_left or self.border_width)
-			if self.border_dash then
-				cr:dash{self.border_dash}
-			end
+			cr:dash(self.ui:dash(self.border_dash, self.border_dash_offset))
 			cr:stroke()
 		else --fill-based method (requires path offsetting; supports patterns)
 			cr:fill_rule'even_odd'
@@ -3709,8 +3767,8 @@ layer.clip_content = false --true, 'background', false
 
 function layer:draw_content(cr) --called in own content space
 	self:draw_children(cr)
-	self:draw_text(cr)
 	self:draw_text_selection(cr)
+	self:draw_text(cr)
 	self:draw_caret(cr)
 end
 
@@ -3920,6 +3978,11 @@ function layer:validate()
 	self.window:validate()
 end
 
+function layer:revalidate(invalid_clock)
+	self:invalidate(invalid_clock)
+	self:validate()
+end
+
 --layer.hot property which is managed by the window
 
 function layer:get_hot()
@@ -3975,12 +4038,6 @@ function layer:set_y2(y2) self.h = y2 - self.y end
 
 function layer:size() return self.w, self.h end
 function layer:rect() return self.x, self.y, self.w, self.h end
-
-function layer:get_floating() --layer is floating, i.e. not part of layout
-	if self.dragging then return true end
-	local t = self.transitions
-	return t and (t.x or t.y or t.w or t.h) and true or false
-end
 
 --layer scrolling.
 
@@ -4751,6 +4808,17 @@ function layer:sync_layout_children()
 	end
 end
 
+layer.moving = false
+layer.moving_layer = false
+layer.moving_x = false
+layer.moving_y = false
+
+function layer:get_floating() --layer is floating, i.e. not part of layout
+	if self.dragging and not self.moving then return true end
+	local t = self.transitions
+	return t and (t.x or t.y or t.w or t.h) and true or false
+end
+
 --null layout ----------------------------------------------------------------
 
 local null_layout = object:subclass'null_layout'
@@ -4767,10 +4835,8 @@ end
 --called by null-layout layers to layout themselves and their children.
 function null_layout:sync_layout()
 	if not self.visible then return end
-	if not self.floating then
-		self.x, self.w = self:snapxw(self.x, self.w)
-		self.y, self.h = self:snapyh(self.y, self.h)
-	end
+	self.x, self.w = self:snapxw(self.x, self.w)
+	self.y, self.h = self:snapyh(self.y, self.h)
 	if self:sync_text_shape() then
 		self:sync_text_wrap()
 		self:sync_text_align()
@@ -4827,10 +4893,8 @@ function textbox:sync_layout()
 	self:sync_text_wrap()
 	self.cw = max(segs.lines.max_ax, self.min_cw)
 	self.ch = max(self.min_ch, segs.lines.spaced_h)
-	if not self.floating then
-		self.x, self.w = self:snapxw(self.x, self.w)
-		self.y, self.h = self:snapyh(self.y, self.h)
-	end
+	self.x, self.w = self:snapxw(self.x, self.w)
+	self.y, self.h = self:snapyh(self.y, self.h)
 	self:sync_text_align()
 	self:sync_layout_children()
 end
@@ -4897,7 +4961,7 @@ local function items_sum(self, i, j, _MIN_W)
 	local item_count = 0
 	for i = i, j do
 		local layer = self[i]
-		if layer.visible and not layer.floating then
+		if layer.visible then
 			sum_w = sum_w + layer[_MIN_W]
 			item_count = item_count + 1
 		end
@@ -4910,7 +4974,7 @@ local function items_max(self, i, j, _MIN_W)
 	local item_count = 0
 	for i = i, j do
 		local layer = self[i]
-		if layer.visible and not layer.floating then
+		if layer.visible then
 			max_w = max(max_w, layer[_MIN_W])
 			item_count = item_count + 1
 		end
@@ -4918,17 +4982,39 @@ local function items_max(self, i, j, _MIN_W)
 	return max_w, item_count
 end
 
+--compute a single item's stretched width and aligned width.
+local function stretched_item_widths(
+	layer, total_w, total_fr, total_overflow_w, total_free_w, align,
+	_MIN_W
+)
+	local min_w = layer[_MIN_W]
+	local flex_w = total_w * layer.fr / total_fr
+	local sw --stretched width
+	if min_w > flex_w then --overflow
+		sw = min_w
+	else
+		local free_w = flex_w - min_w
+		local free_p = free_w / total_free_w
+		local shrink_w = total_overflow_w * free_p
+		if shrink_w ~= shrink_w then --total_free_w == 0
+			shrink_w = 0
+		end
+		sw = flex_w - shrink_w
+	end
+	return sw, align == 'stretch' and sw or min_w
+end
+
 --stretch a line of items on the main axis.
 local function stretch_items_main_axis(
-	items, i, j, total_w, snap_x,
-	X, W, _MIN_W
+	items, i, j, total_w, item_align_x, moving,
+	set_item_x, set_moving_item_x,
+	X, W, _MIN_W, ALIGN_X, END, RIGHT
 )
-
 	--compute the fraction representing the total width.
 	local total_fr = 0
 	for i = i, j do
 		local layer = items[i]
-		if layer.visible and not layer.floating then
+		if layer.visible then
 			total_fr = total_fr + max(0, layer.fr)
 		end
 	end
@@ -4939,7 +5025,7 @@ local function stretch_items_main_axis(
 	local total_free_w = 0
 	for i = i, j do
 		local layer = items[i]
-		if layer.visible and not layer.floating then
+		if layer.visible then
 			local min_w = layer[_MIN_W]
 			local flex_w = total_w * max(0, layer.fr) / total_fr
 			local overflow_w = max(0, min_w - flex_w)
@@ -4949,31 +5035,58 @@ local function stretch_items_main_axis(
 		end
 	end
 
+	--compute the stretched width of the moving layer to make room for it.
+	local moving_layer, moving_x, moving_w, moving_sw
+	if moving then
+		local layer = items[j]
+		assert(layer.moving)
+		local align = layer[ALIGN_X] or item_align_x
+		local sw, w = stretched_item_widths(
+			layer, total_w, total_fr, total_overflow_w, total_free_w, align,
+			_MIN_W
+		)
+
+		moving_layer = layer
+		moving_x = layer[X]
+		moving_w = w
+		moving_sw = sw
+		j = j-1
+	end
+
 	--distribute the overflow to children which have free space to
 	--take it. each child shrinks to take in a part of the overflow
 	--proportional to its percent of free space.
-	local last_layer
-	local x = 0
+	local sx = 0 --stretched x-coord
 	for i = i, j do
 		local layer = items[i]
-		if layer.visible and not layer.floating then
-			local min_w = layer[_MIN_W]
-			local flex_w = total_w * layer.fr / total_fr
-			local w
-			if min_w > flex_w then --overflow
-				w = min_w
-			else
-				local free_w = flex_w - min_w
-				local free_p = free_w / total_free_w
-				local shrink_w = total_overflow_w * free_p
-				if shrink_w ~= shrink_w then --total_free_w == 0
-					shrink_w = 0
-				end
-				w = flex_w - shrink_w
+		if layer.visible then
+
+			--compute item's stretched width.
+			local align = layer[ALIGN_X] or item_align_x
+			local sw, w = stretched_item_widths(
+				layer, total_w, total_fr, total_overflow_w, total_free_w, align,
+				_MIN_W
+			)
+
+			--align item inside the stretched segment defined by (sx, sw).
+			local x = sx
+			if align == END or align == RIGHT then
+				x = sx + sw - w
+			elseif align == 'center' then
+				x = sx + (sw - w) / 2
 			end
-			layer[X], layer[W] = snap_xw(x, w, snap_x)
-			x = x + w
-			last_layer = layer
+
+			if moving_x and moving_x < x + w / 2 then
+				set_moving_item_x(moving_layer, i, x, moving_w)
+
+				--reserve space for the moving layer.
+				sx = sx + moving_sw
+				x = x + moving_sw
+				moving_x = false
+			end
+
+			set_item_x(layer, x, w, moving)
+			sx = sx + sw
 		end
 	end
 end
@@ -4981,13 +5094,11 @@ end
 --start offset and inter-item spacing for aligning items on the main-axis.
 local function align_metrics(
 	align, container_w, items_w, item_count,
-	START, END, LEFT, RIGHT
+	END, RIGHT
 )
-	local x
+	local x = 0
 	local spacing = 0
-	if align == START or align == LEFT then
-		x = 0
-	elseif align == END or align == RIGHT then
+	if align == END or align == RIGHT then
 		x = container_w - items_w
 	elseif align == 'center' then
 		x = (container_w - items_w) / 2
@@ -4999,22 +5110,48 @@ local function align_metrics(
 		x = spacing / 2
 	elseif align == 'space_between' then
 		spacing = (container_w - items_w) / (item_count - 1)
-		x = 0
 	end
 	return x, spacing
 end
 
 --align a line of items on the main axis.
 local function align_items_main_axis(
-	items, i, j, x, spacing, snap_x,
+	items, i, j, sx, spacing, moving,
+	set_item_x, set_moving_item_x,
 	X, W, _MIN_W
 )
+	--compute the spaced width of the moving layer to make room for it.
+	local moving_layer, moving_x, moving_w, moving_sw
+	if moving then
+		local layer = items[j]
+		assert(layer.moving)
+		local w = layer[_MIN_W]
+
+		moving_layer = layer
+		moving_x = layer[X]
+		moving_w = w
+		moving_sw = w + spacing
+		j = j-1
+	end
+
 	for i = i, j do
 		local layer = items[i]
-		if layer.visible and not layer.floating then
-			local w = layer[_MIN_W]
-			layer[X], layer[W] = snap_xw(x, w, snap_x)
-			x = x + w + spacing
+		if layer.visible then
+			local x, w = sx, layer[_MIN_W]
+			local sw = w + spacing
+
+			if moving_x and moving_x < x + w / 2 then
+				set_moving_item_x(moving_layer, i, x, moving_w)
+
+				--reserve space for the moving layer.
+				sx = sx + moving_sw
+				x = x + moving_sw
+				moving_x = false
+			end
+
+			set_item_x(layer, x, w, moving)
+
+			sx = sx + sw
 		end
 	end
 end
@@ -5052,8 +5189,10 @@ local function gen_funcs(X, Y, W, H, LEFT, RIGHT, TOP, BOTTOM)
 	local ITEM_ALIGN_Y = 'item_align_'..Y
 	local ALIGN_X = 'align_'..X
 	local ALIGN_Y = 'align_'..Y
-	local START = LEFT
-	local END = RIGHT
+	local START_X = 'start'
+	local START_Y = 'start'
+	local END_X = 'end'
+	local END_Y = 'end'
 
 	--special items_min_h() for baseline align.
 	--requires that the children are already sync'ed on y-axis.
@@ -5062,7 +5201,7 @@ local function gen_funcs(X, Y, W, H, LEFT, RIGHT, TOP, BOTTOM)
 		local max_descent = -1/0
 		for i = i, j do
 			local layer = self[i]
-			if layer.visible and not layer.floating then
+			if layer.visible then
 				local baseline = layer.baseline or layer.h
 				max_ascent = max(max_ascent, baseline)
 				max_descent = max(max_descent, layer._min_h - baseline)
@@ -5089,7 +5228,7 @@ local function gen_funcs(X, Y, W, H, LEFT, RIGHT, TOP, BOTTOM)
 		local line_w = 0
 		for j = i, #self do
 			local layer = self[j]
-			if layer.visible and not layer.floating then
+			if layer.visible then
 				if j > i and layer.break_before then
 					return j-1, i
 				end
@@ -5132,69 +5271,61 @@ local function gen_funcs(X, Y, W, H, LEFT, RIGHT, TOP, BOTTOM)
 		return lines_h
 	end
 
-	--stretch a line of items on the main axis.
-	local function stretch_items_x(self, i, j)
-		stretch_items_main_axis(self, i, j, self[CW], self[SNAP_X],
-			X, W, _MIN_W)
+	local function set_item_x(layer, x, w, moving)
+		x, w = snap_xw(x, w, layer[SNAP_X])
+		local set = moving and layer.transition or layer.end_value
+		set(layer, X, x)
+		set(layer, W, w)
+	end
+
+	local function set_moving_item_x(layer, i, x, w)
+		--layer[X] = x
+		--layer[W] = w
+	end
+
+	--stretch and align a line of items on the main axis.
+	local function stretch_items_x(self, i, j, moving)
+		stretch_items_main_axis(
+			self, i, j, self[CW], self[ITEM_ALIGN_X], moving,
+			set_item_x, set_moving_item_x,
+			X, W, _MIN_W, ALIGN_X, END_X, RIGHT)
 	end
 
 	local function align_metrics_x(self, align, items_w, item_count)
 		return align_metrics(align, self[CW], items_w, item_count,
-			'start', 'end', LEFT, RIGHT)
+			END_X, RIGHT)
 	end
 
-	local function align_metrics_y(self, align, items_w, item_count)
-		return align_metrics(align, self[CH], items_w, item_count,
-			'start', 'end', TOP, BOTTOM)
+	local function align_metrics_y(self, align, items_h, item_count)
+		return align_metrics(align, self[CH], items_h, item_count,
+			END_Y, BOTTOM)
 	end
 
 	--align a line of items on the main axis.
-	local function align_items_x(self, i, j)
-		local snap_x = self[SNAP_X]
-		local items_w, item_count = items_sum(self, i, j, _MIN_W)
-		local x, spacing =
-			align_metrics_x(self, self[ALIGN_ITEMS_X], items_w, item_count)
-		align_items_main_axis(self, i, j, x, spacing, snap_x, X, W, _MIN_W)
-	end
-
-	local function align_stretched_items_x(self, i, j)
-		local align = self[ITEM_ALIGN_X]
+	local function align_items_x(self, i, j, align, moving)
 		if align == 'stretch' then
-			return --already stretched
-		end
-		local snap_x = self[SNAP_X]
-		for i = i, j do
-			local layer = self[i]
-			if layer.visible and not layer.floating then
-				local align = layer[ALIGN_X] or align
-				local x, w = layer[X], layer[W]
-				if align == 'stretch' then
-					--already stretched
-				elseif align == START or align == LEFT then
-					w = layer[_MIN_W]
-				elseif align == END or align == RIGHT then
-					local x2 = x + w
-					w = layer[_MIN_W]
-					x = x2 - w
-				elseif align == 'center' then
-					local x2 = x + w
-					w = layer[_MIN_W]
-					x = x + (x2 - x - w) / 2
-				end
-				layer[X], layer[W] = snap_xw(x, w, snap_x)
+			stretch_items_x(self, i, j, moving)
+		else
+			local x, spacing
+			if align == START_X or align == LEFT then
+				x, spacing = 0, 0
+			else
+				local items_w, item_count = items_sum(self, i, j, _MIN_W)
+				x, spacing = align_metrics_x(self, align, items_w, item_count)
 			end
+			align_items_main_axis(
+				self, i, j, x, spacing, moving,
+				set_item_x, set_moving_item_x,
+				X, W, _MIN_W)
 		end
 	end
 
 	--stretch or align a flexbox's items on the main-axis.
 	local function align_x(self)
+		local align = self[ALIGN_ITEMS_X]
+		local moving_layer = self.moving_layer
 		for j, i in linewrap(self) do
-			if self[ALIGN_ITEMS_X] == 'stretch' then
-				stretch_items_x(self, i, j)
-				align_stretched_items_x(self, i, j)
-			else
-				align_items_x(self, i, j)
-			end
+			align_items_x(self, i, j, align, moving_layer)
 		end
 		return true
 	end
@@ -5205,24 +5336,37 @@ local function gen_funcs(X, Y, W, H, LEFT, RIGHT, TOP, BOTTOM)
 		local align = self[ITEM_ALIGN_Y]
 		for i = i, j do
 			local layer = self[i]
-			if layer.visible and not layer.floating then
+			if layer.visible then
 				local align = layer[ALIGN_Y] or align
+				local y, h
 				if align == 'stretch' then
-					layer[Y], layer[H] = snap_xw(line_y, line_h, snap_y)
+					y = line_y
+					h = line_h
 				else
 					local item_h = layer[_MIN_H]
-					if align == TOP or align == 'start' then
-						layer[Y], layer[H] = snap_xw(line_y, item_h, snap_y)
-					elseif align == BOTTOM or align == 'end' then
-						local item_y = line_y + line_h - item_h
-						layer[Y], layer[H] = snap_xw(item_y, item_h, snap_y)
+					if align == TOP or align == START_Y then
+						y = line_y
+						h = item_h
+					elseif align == BOTTOM or align == END_Y then
+						y = line_y + line_h - item_h
+						h = item_h
 					elseif align == 'center' then
-						local item_y = line_y + (line_h - item_h) / 2
-						layer[Y], layer[H] = snap_xw(item_y, item_h, snap_y)
+						y = line_y + (line_h - item_h) / 2
+						h = item_h
 					elseif line_baseline then
-						local item_y = line_baseline - (layer.baseline or layer.h)
-						layer.y = snap(item_y, snap_y)
+						y = line_baseline - (layer.baseline or layer.h)
 					end
+				end
+				if line_baseline then
+					y = snap(y, snap_y)
+				else
+					y, h = snap_xw(y, h, layer[SNAP_Y])
+					layer:end_value(H, h)
+				end
+				if not layer.moving then
+					layer:end_value(Y, y)
+				else
+					--TODO: layer[_DEST_Y] = y
 				end
 			end
 		end
@@ -5235,6 +5379,7 @@ local function gen_funcs(X, Y, W, H, LEFT, RIGHT, TOP, BOTTOM)
 			--dismiss and wait for the 3rd pass.
 			return
 		end
+
 		local lines_y, line_spacing, line_h
 		local align = self[ALIGN_ITEMS_Y]
 		if align == 'stretch' then
@@ -5246,6 +5391,8 @@ local function gen_funcs(X, Y, W, H, LEFT, RIGHT, TOP, BOTTOM)
 			line_h = lines_h / line_count
 			lines_y = 0
 			line_spacing = 0
+		elseif align == TOP or align == START_Y then
+			lines_y, line_spacing = 0, 0
 		else
 			local lines_h = 0
 			local line_count = 0
@@ -5266,6 +5413,7 @@ local function gen_funcs(X, Y, W, H, LEFT, RIGHT, TOP, BOTTOM)
 			align_items_y(self, i, j, y, line_h, line_baseline)
 			y = y + line_h + line_spacing
 		end
+
 		return true
 	end
 
@@ -5281,7 +5429,7 @@ function flexbox:sync_min_w(other_axis_synced)
 
 	--sync all children first (bottom-up sync).
 	for _,layer in ipairs(self) do
-		if layer.visible and not layer.floating then
+		if layer.visible then
 			layer:sync_min_w(other_axis_synced) --recurse
 		end
 	end
@@ -5304,16 +5452,12 @@ function flexbox:sync_min_h(other_axis_synced)
 	--sync all children first (bottom-up sync).
 	for _,layer in ipairs(self) do
 		if layer.visible then
-			if not layer.floating then
-				local item_h = layer:sync_min_h(other_axis_synced) --recurse
-				--for baseline align also layout the children because we need
-				--their baseline. we can do this here because we already know
-				--we won't stretch them beyond their min_h in this case.
-				if align_baseline then
-					layer.h = snap(item_h, self.snap_y)
-					layer:sync_layout_y(other_axis_synced)
-				end
-			elseif align_baseline then --need to sync floating layers too.
+			local item_h = layer:sync_min_h(other_axis_synced) --recurse
+			--for baseline align also layout the children because we need
+			--their baseline. we can do this here because we already know
+			--we won't stretch them beyond their min_h in this case.
+			if align_baseline then
+				layer.h = snap(item_h, self.snap_y)
 				layer:sync_layout_y(other_axis_synced)
 			end
 		end
@@ -5492,7 +5636,7 @@ function layer:sync_layout_grid_autopos()
 	--grow the grid bounds to include layers outside wrap_row and wrap_col.
 	local missing_indices, negative_indices
 	for _,layer in ipairs(self) do
-		if layer.visible and not layer.floating then
+		if layer.visible then
 
 			local row, col, row_span, col_span = self.ui:grid_pos(layer.grid_pos)
 			row = layer.grid_row or row
@@ -5541,7 +5685,7 @@ function layer:sync_layout_grid_autopos()
 	--the grid bounds, but instead are clipped to it.
 	if negative_indices then
 		for _,layer in ipairs(self) do
-			if layer.visible and not layer.floating then
+			if layer.visible then
 				local row = layer._grid_row
 				local col = layer._grid_col
 				if row < 0 or col < 0 then
@@ -5573,7 +5717,7 @@ function layer:sync_layout_grid_autopos()
 	if missing_indices then
 		local row, col = 1, 1
 		for _,layer in ipairs(self) do
-			if layer.visible and not layer.floating and not layer._grid_row then
+			if layer.visible and not layer._grid_row then
 				local row_span = layer._grid_row_span
 				local col_span = layer._grid_col_span
 
@@ -5623,7 +5767,7 @@ function layer:sync_layout_grid_autopos()
 	--reverse the order of rows and/or columns depending on grid_flow.
 	if flip_rows or flip_cols then
 		for _,layer in ipairs(self) do
-			if layer.visible and not layer.floating then
+			if layer.visible then
 				if flip_rows then
 					layer._grid_row = max_row
 						- layer._grid_row
@@ -5672,7 +5816,7 @@ local function gen_funcs(X, Y, W, H, COL, LEFT, RIGHT)
 
 		--sync all children first (bottom-up sync).
 		for _,layer in ipairs(self) do
-			if layer.visible and not layer.floating then
+			if layer.visible then
 				layer[SYNC_MIN_W](layer, other_axis_synced) --recurse
 			end
 		end
@@ -5684,7 +5828,7 @@ local function gen_funcs(X, Y, W, H, COL, LEFT, RIGHT)
 		--compute the fraction representing the total width.
 		local total_fr = 0
 		for _,layer in ipairs(self) do
-			if layer.visible and not layer.floating then
+			if layer.visible then
 				local col1 = layer[_COL]
 				local col2 = col1 + layer[_COL_SPAN] - 1
 				for col = col1, col2 do
@@ -5703,13 +5847,15 @@ local function gen_funcs(X, Y, W, H, COL, LEFT, RIGHT)
 				[_MIN_W] = 0,
 				[X] = false,
 				[W] = false,
+				[SNAP_X] = self[SNAP_X],
+				end_value = function(self,k,v) self[k] = v end,
 			}
 		end
 		self[_COLS] = cols
 
 		--compute the minimum widths for each column.
 		for _,layer in ipairs(self) do
-			if layer.visible and not layer.floating then
+			if layer.visible then
 				local col1 = layer[_COL]
 				local col2 = col1 + layer[_COL_SPAN] - 1
 				local span_min_w = layer[_MIN_W]
@@ -5755,6 +5901,17 @@ local function gen_funcs(X, Y, W, H, COL, LEFT, RIGHT)
 		return min_w
 	end
 
+	local function set_item_x(layer, x, w, moving)
+		x, w = snap_xw(x, w, layer[SNAP_X])
+		local set = moving and layer.transition or layer.end_value
+		set(layer, X, x)
+		set(layer, W, w)
+	end
+
+	local function set_moving_item_x(layer, i, x, w)
+		--moving NYI
+	end
+
 	grid[SYNC_LAYOUT_X] = function(self, other_axis_synced)
 
 		local cols = self[_COLS]
@@ -5770,20 +5927,28 @@ local function gen_funcs(X, Y, W, H, COL, LEFT, RIGHT)
 		end
 
 		if align_items_x == 'stretch' then
-			stretch_items_main_axis(cols, 1, #cols, container_w, snap_x,
-				X, W, _MIN_W)
+			stretch_items_main_axis(
+				cols, 1, #cols, container_w, 'stretch', false,
+				set_item_x, set_moving_item_x,
+				X, W, _MIN_W, ALIGN_X, END, RIGHT)
 		else
 			local items_w, item_count = items_sum(cols, 1, #cols, _MIN_W)
-			local x, spacing =
-				align_metrics(align_items_x, self[CW], items_w, item_count,
-					START, END, LEFT, RIGHT)
-			align_items_main_axis(cols, 1, #cols, x, spacing, snap_x,
+			local x, spacing
+			if align_items_x == START or align_items_x == LEFT then
+				x, spacing = 0, 0
+			else
+				x, spacing = align_metrics(
+					align_items_x, self[CW], items_w, item_count,
+					END, RIGHT)
+			end
+			align_items_main_axis(cols, 1, #cols, x, spacing, false,
+				set_item_x, set_moving_item_x,
 				X, W, _MIN_W)
 		end
 
 		local x = 0
 		for _,layer in ipairs(self) do
-			if layer.visible and not layer.floating then
+			if layer.visible then
 
 				local col1 = layer[_COL]
 				local col2 = col1 + layer[_COL_SPAN] - 1
@@ -5837,6 +6002,110 @@ function grid:sync_window_view(w, h)
 	self.min_cw = w - self.pw
 	self.min_ch = h - self.ph
 end
+
+--flexbox drop target --------------------------------------------------------
+
+local placeholder = ui.layer:subclass'placeholder'
+
+function layer:flexbox_drop_index(x, y, w, h)
+	if self.flex_flow ~= 'y' then return end
+	local index = 1
+	local y = y + h / 2
+	local p = self.isplaceholder
+	if p then
+		p.visible = false
+		self:revalidate()
+	end
+	print()
+	for i=1,#self do
+		local layer = self[i]
+		if layer.visible then
+			local dy = (layer.y) + layer.h / 2
+			print(y, dy)
+			if dy < y then
+				index = i
+			elseif index and y < dy then
+				break
+			end
+		end
+	end
+	if p then
+		p.visible = true
+		self:revalidate()
+	end
+	print(index)
+	return index
+end
+
+function layer:setup_placeholder(widget, index)
+	local p = self.placeholder
+	if not p then
+		p = placeholder{
+			parent = self,
+			background_color = '#333',
+		}
+		self.placeholder = p
+	else
+		p.visible = true
+	end
+	p.padding        = widget.padding
+	p.padding_left   = widget.padding_left
+	p.padding_right  = widget.padding_right
+	p.padding_top    = widget.padding_top
+	p.padding_bottom = widget.padding_bottom
+	p.min_cw = widget.min_cw
+	p.min_ch = widget.min_ch
+	p.layer_index = index
+	self:invalidate()
+end
+
+function layer:override_accept_drag_widget(inherited, widget, mx, my, area)
+	if not inherited(self, widget, mx, my, area) then return end
+	if self.layout ~= 'flexbox' then return end
+	if self.flex_wrap then return end
+	if widget.parent ~= self then return end
+	widget.moving = true
+	self.moving_layer = widget
+	widget:to_front()
+	self:settag(':item_moving', true)
+	--local x, y = widget:to_other(self.parent, 0, 0)
+	--local w, h = widget:size()
+	--local i = mx and self:flexbox_drop_index(x, y, w, h)
+	--if i then
+	--	self:setup_placeholder(widget, i)
+	--end
+	return true
+end
+
+function layer:drag_leave()
+	local p = self.placeholder
+	if p then
+		p.visible = false
+		self:invalidate()
+	end
+end
+
+function layer:drop(layer)
+	self:settag(':item_moving', false)
+	self.moving_layer.moving = false
+	self.moving_layer = false
+	--local p = self.placeholder
+	--p.visible = false
+	--local i = p.layer_index
+	--if layer.parent == self then --moving
+	--	--
+	--end
+	--self:add_layer(layer, p.layer_index)
+end
+
+--[[
+function layer:override_hit_test_content(inherited, x, y, reason)
+	if reason == 'drop' and self.layout == 'flexbox' then
+		print(self:flexbox_drop_index(self.drag_widget:rect())
+	end
+	return inherited(self, x, y, reason)
+end
+]]
 
 --top layer (window.view) ----------------------------------------------------
 

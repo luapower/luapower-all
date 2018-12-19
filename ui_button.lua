@@ -333,6 +333,7 @@ cbutton.font = 'Ionicons,16'
 cbutton.text_checked = '\u{f2bc}'
 cbutton.text_unchecked = ''
 
+cbutton.align_y = false
 cbutton.fr = 0
 cbutton.layout = false
 cbutton.min_cw = 16
@@ -725,7 +726,7 @@ if not ... then require('ui_demo')(function(ui, win)
 	local b1 = ui:button{
 		id = 'OK',
 		parent = win,
-		x = 100, y = 100, min_cw = 120,
+		min_cw = 120,
 		text = '&OK',
 		default = true,
 	}
@@ -735,7 +736,6 @@ if not ... then require('ui_demo')(function(ui, win)
 	local b2 = btn(ui, {
 		id = 'Disabled',
 		parent = win,
-		x = 100, y = 150,
 		text = 'Disabled',
 		enabled = false,
 		text_align_x = 'right',
@@ -744,7 +744,6 @@ if not ... then require('ui_demo')(function(ui, win)
 	local b3 = btn(ui, {
 		id = 'Cancel',
 		parent = win,
-		x = 100, y = 200,
 		text = '&Cancel',
 		cancel = true,
 		text_align_x = 'left',
@@ -761,7 +760,7 @@ if not ... then require('ui_demo')(function(ui, win)
 	local cb1 = ui:checkbox{
 		id = 'CB1',
 		parent = win,
-		x = 300, y = 100, min_cw = 200,
+		min_cw = 200,
 		label =  {text = 'Check me.\nI\'m multiline.'},
 		checked = true,
 		--enabled = false,
@@ -770,7 +769,6 @@ if not ... then require('ui_demo')(function(ui, win)
 	local cb2 = ui:checkbox{
 		id = 'CB2',
 		parent = win,
-		x = 300, y = 180,
 		label =  {text = 'Check me too', nowrap = true},
 		align = 'right',
 		--enabled = false,
@@ -779,7 +777,6 @@ if not ... then require('ui_demo')(function(ui, win)
 	local rb1 = ui:radio{
 		id = 'RB1',
 		parent = win,
-		x = 300, y = 220,
 		label =  {text = 'Radio me', nowrap = true},
 		checked = true,
 		radio_group = 1,
@@ -789,7 +786,6 @@ if not ... then require('ui_demo')(function(ui, win)
 	local rb2 = ui:radio{
 		id = 'RB2',
 		parent = win,
-		x = 300, y = 240,
 		label =  {text = 'Radio me too', nowrap = true},
 		radio_group = 1,
 		align = 'right',
@@ -809,7 +805,7 @@ if not ... then require('ui_demo')(function(ui, win)
 	local cb1 = ui:choicebutton{
 		id = 'CHOICE',
 		parent = win,
-		x = 100, y = 300, min_cw = 400,
+		min_cw = 400,
 		option_list = {
 			'Choose me',
 			'No, me!',

@@ -232,10 +232,7 @@ end
 --mouse interaction: grip dragging
 
 grip.mousedown_activate = true
-
-function grip:start_drag()
-	return self
-end
+grip.draggable = true
 
 --mouse interaction: clicking on the track
 

@@ -52,7 +52,7 @@ ui:style('editbox standalone, editbox standalone :hot', {
 	transition_duration_border_color = .5,
 })
 
---cue layer
+--cue layer ------------------------------------------------------------------
 
 editbox.show_cue_when_focused = false
 
@@ -102,7 +102,7 @@ function editbox:after_init(t)
 	self.cue = t.cue
 end
 
---password masking
+--password masking -----------------------------------------------------------
 
 --Password masking works by drawing fixed-width dots in place of actual
 --characters. Because cursor placement and hit-testing must continue
@@ -220,7 +220,7 @@ function editbox:after_sync_text_align()
 	end
 end
 
---password eye button
+--password eye button --------------------------------------------------------
 
 ui:style('editbox_eye_button', {
 	text_color = '#aaa',
@@ -257,6 +257,7 @@ function editbox:before_sync_layout_children()
 	end
 end
 
+--special text clipping ------------------------------------------------------
 --clip the left & right sides of the box without clipping the top & bottom.
 
 function editbox:override_draw_content(inherited, cr)
@@ -264,8 +265,8 @@ function editbox:override_draw_content(inherited, cr)
 	cr:rectangle(0, -1000, self.cw, 2000)
 	cr:clip()
 	self:draw_children(cr)
-	self:draw_text(cr)
 	self:draw_text_selection(cr)
+	self:draw_text(cr)
 	self:draw_caret(cr)
 	cr:restore()
 end
@@ -304,11 +305,14 @@ if not ... then require('ui_demo')(function(ui, win)
 	local cue = 'Type text here...'
 	local s = 'abcd efgh ijkl mnop qrst uvw xyz 0123 4567 8901 2345'
 
+	win.view.accepts_drag_groups = {true}
+
 	--defaults all-around.
 	ui:editbox{
 		parent = win,
 		text = 'Hello World!',
 		cue = cue,
+		--mousedown_activate = true,
 	}
 
 	--maxlen: truncate initial text. prevent editing past maxlen.
