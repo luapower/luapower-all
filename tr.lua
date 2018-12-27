@@ -1459,12 +1459,6 @@ end
 --NOTE: doesn't take into account side bearings, so it's not 100% accurate!
 function segments:clip(x, y, w, h)
 	local lines = self:checklines()
-	if not x then
-		x = self.x
-		y = self.y
-		w = self.w
-		h = self.h
-	end
 	x = x - lines.x
 	y = y - lines.y - lines.baseline
 	local first_visible = line_at_y(y, lines) or 1

@@ -36,7 +36,7 @@ __shaping & layouting__
 `segs:bounding_box() -> x, y, w, h`                  bounding box of laid out text
 __rendering__
 `segs:paint(cr) -> segs`                             paint laid out text
-`segs:clip([x, y, w, h]) -> segs`                    mark outside segments as invisible
+`segs:clip(x, y, w, h) -> segs`                      mark outside segments as invisible
 `segs:reset_clip() -> segs`                          mark all segments as visible
 `tr:textbox(text_tree, cr, x, y, w, h, [ax], [ay])`  shape, layout and paint text
 __hit testing__
@@ -281,11 +281,10 @@ handle blitting of (clipped portions of) 8-bit gray and 32-bit BGRA bitmaps
 and also bitmap scaling if you use bitmap fonts, since freetype doesn't handle
 that.
 
-### `segs:clip([x, y, w, h]) -> segs`
+### `segs:clip(x, y, w, h) -> segs`
 
 Mark all lines and segments which are completely outside the given rectangle
-as invisible, and everything else as visible. If a rectangle is not given,
-the rectangle from the last call to `align()` is used.
+as invisible, and everything else as visible.
 
 ### `segs:reset_clip() -> segs`
 
