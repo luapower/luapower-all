@@ -504,11 +504,11 @@ cr.dash = function(cr, dashes, num_dashes, offset)
 			end
 			return t, d1[0]
 		end
-	elseif type(dashes) == 'table' then --dash(cr, t) -> set from table
+	elseif type(dashes) == 'table' then --dash(cr, t[, offset]) -> set from table
 		num_dashes, offset = #dashes, num_dashes
 		dashes = ffi.new('double[?]', num_dashes, dashes)
 		C.cairo_set_dash(cr, dashes, num_dashes, offset or 0)
-	else --dash(cr, double*, number) -> set from array
+	else --dash(cr, dashes*, num_dashes[, offset]) -> set from array
 		if dashes == false then --for when num_dashes == 0
 			dashes = nil
 			assert(num_dashes == 0)

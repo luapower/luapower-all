@@ -8,6 +8,7 @@ local glue = require'glue'
 local win = ui:window{
 	x = 600, y = 100, cw = 1200, ch = 800,
 	visible = false, autoquit=true, edgesnapping=false,
+	--frame=false, transparent=true,
 	view = {
 		layout = 'grid',
 		grid_wrap = 5,
@@ -769,7 +770,7 @@ local function test_drag_flexbox()
 		tags = 'fb fb1',
 		parent = win,
 		layout = 'flexbox',
-		flex_flow = 'y',
+		flex_flow = 'x',
 		item_align_y = 'center',
 		border_width = 1,
 		accept_drag_groups = {[1]=true},

@@ -142,7 +142,7 @@ Split a path's last component into the name and extension parts like so:
 
   * `a.txt'` -> `'a', 'txt'`
   * `'.bashrc'` -> `'.bashrc', nil`
-  * `a'` -> `'a', nil`
+  * `'a'` -> `'a', nil`
   * `'a.'` -> `'a', ''`
 
 ### `path.ext(s, [pl]) -> s|nil`

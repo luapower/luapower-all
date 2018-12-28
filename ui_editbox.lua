@@ -258,13 +258,17 @@ function editbox:before_sync_layout_children()
 end
 
 --special text clipping ------------------------------------------------------
+
 --clip the left & right sides of the box without clipping the top & bottom.
+function editbox:text_clip_rect()
+	return 0, -1000, self.cw, 2000
+end
 
 function editbox:override_draw_content(inherited, cr)
-	cr:save()
-	cr:rectangle(0, -1000, self.cw, 2000)
-	cr:clip()
 	self:draw_children(cr)
+	cr:save()
+	cr:rectangle(self:text_clip_rect())
+	cr:clip()
 	self:draw_text_selection(cr)
 	self:draw_text(cr)
 	self:draw_caret(cr)
@@ -272,7 +276,7 @@ function editbox:override_draw_content(inherited, cr)
 end
 
 function editbox:override_hit_test_text(inherited, x, y, reason)
-	if not box2d.hit(x, y, 0, 0, self:size()) then --pretend clipping
+	if not box2d.hit(x, y, self:text_clip_rect()) then
 		return
 	end
 	return inherited(self, x, y, reason)

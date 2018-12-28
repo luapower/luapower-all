@@ -2002,6 +2002,7 @@ function ui:_window_mousemove(window, mx, my)
 	end
 
 	if self.drag_widget then
+		self.drag_widget:_drag(mx, my)
 		local widget, area = window:hit_test(mx, my, 'drop')
 		if widget then
 			if not self:accept_drop(self.drag_widget, widget, mx, my, area) then
@@ -2022,9 +2023,6 @@ function ui:_window_mousemove(window, mx, my)
 				self.drop_area = area
 			end
 		end
-	end
-	if self.drag_widget then
-		self.drag_widget:_drag(mx, my)
 	end
 end
 
@@ -2376,6 +2374,7 @@ layer.draggable = false --can be dragged
 layer.draggable_area = false --area that dragging can be initiated from
 layer.drag_group = false
 layer.accept_drag_groups = {} --{drag_group->true|area}
+layer.drag_hit_mode = 'bbox' --'bbox', 'shape', 'pointer'
 layer.mousedown_activate = false --activate/deactivate on left mouse down/up
 
 ui:style('layer !:enabled', {
@@ -2385,8 +2384,11 @@ ui:style('layer !:enabled', {
 })
 
 ui:style('layer :drop_target', {
+	background_color = '#2048',
+})
+
+ui:style('layer :drag_over', {
 	border_width = 1,
-	background_color = '#1028',
 	border_color = '#90f',
 	border_dash = {4, 2},
 })
@@ -2563,13 +2565,26 @@ function layer:from_other(widget, x, y)
 	return widget:to_other(self, x, y)
 end
 
+--bounding box of a rectangle in another layer's content box.
+function layer:rect_bbox_in(other, x, y, w, h)
+	local x1, y1 = self:to_other(other, x,     y)
+	local x2, y2 = self:to_other(other, x + w, y)
+	local x3, y3 = self:to_other(other, x,     y + h)
+	local x4, y4 = self:to_other(other, x + w, y + h)
+	local bx1 = min(x1, x2, x3, x4)
+	local bx2 = max(x1, x2, x3, x4)
+	local by1 = min(y1, y2, y3, y4)
+	local by2 = max(y1, y2, y3, y4)
+	return bx1, by1, bx2 - bx1, by2 - by1
+end
+
 --bounding box of a list of points in another layer's content box.
-function layer:bbox_in(other, ...)
-	local n = select('#', ...)
+function layer:points_bbox_in(other, t) --t: {x1, y1, x2, y2, ...}
+	local n = #t
 	assert(n >= 2 and n % 2 == 0)
 	local x1, y1, x2, y2 = 1/0, 1/0, -1/0, -1/0
 	for i = 1, n, 2 do
-		local x, y = select(i, ...)
+		local x, y = t[i], t[i+1]
 		local x, y = self:to_other(other, x, y)
 		x1 = min(x1, x)
 		y1 = min(y1, y)
@@ -2806,11 +2821,13 @@ end
 
 --called on the drop target when the dragged widget enters it.
 function layer:_drag_enter(widget, area)
+	self:settag(':drag_over', true)
 	self:fire('drag_enter', widget, area)
 end
 
 --called on the drop target when the dragged widget leaves it.
 function layer:_drag_leave(widget)
+	self:settag(':drag_over', false)
 	self:fire('drag_leave', widget)
 end
 
@@ -2832,20 +2849,25 @@ function layer:_ended_dragging()
 	self:fire'ended_dragging'
 end
 
+function layer:_set_drop_target(drag_widget)
+	if self.visible and self.enabled then
+		if self.ui:accept_drop(drag_widget, self) then
+			self:settag(':drop_target', true)
+		end
+		for _,layer in ipairs(self) do
+			layer:_set_drop_target(drag_widget)
+		end
+	end
+end
+
 --called on drag_start_widget to initiate a drag operation.
 function layer:_start_drag(button, mx, my, area)
 	local widget, dx, dy = self:start_drag(button, mx, my, area)
 	if widget then
 		self:settag(':drag_source', true)
-		--TODO: go depth-first and stop at invisible layers!
-		for elem in pairs(self.ui._elements) do
-			if elem.islayer
-				and elem.parent
-				and elem.visible
-				and elem.enabled
-				and self.ui:accept_drop(widget, elem)
-			then
-				elem:settag(':drop_target', true)
+		for win in pairs(self.ui.windows) do
+			if win.visible then
+				win.view:_set_drop_target(widget)
 			end
 		end
 		widget:_started_dragging()
@@ -2865,6 +2887,7 @@ end
 
 function layer:_drop(widget, mx, my, area) --called on the drop target
 	local mx, my = self:from_window(mx, my)
+	self:settag(':drag_over', false)
 	self:fire('drop', widget, mx, my, area)
 end
 
@@ -4045,7 +4068,7 @@ function window:make_visible(x, y, w, h) end --not asking window's parent
 
 function layer:make_visible(x, y, w, h)
 	if not self.parent then return end
-	local bx, by, bw, bh = self:bbox_in(self.parent, x, y, x + w, y + h)
+	local bx, by, bw, bh = self:rect_bbox_in(self.parent, x, y, w, h)
 	self.parent:fire('make_visible', bx, by, bw, bh)
 end
 
@@ -4808,17 +4831,6 @@ function layer:sync_layout_children()
 	end
 end
 
-layer.moving = false
-layer.moving_layer = false
-layer.moving_x = false
-layer.moving_y = false
-
-function layer:get_floating() --layer is floating, i.e. not part of layout
-	if self.dragging and not self.moving then return true end
-	local t = self.transitions
-	return t and (t.x or t.y or t.w or t.h) and true or false
-end
-
 --null layout ----------------------------------------------------------------
 
 local null_layout = object:subclass'null_layout'
@@ -4956,6 +4968,15 @@ layer.align_y = false --override item_align_y for this item
 	--^+main axis: space_between, space_around, space_evenly
 	--^+cross axis: baseline
 
+layer.moving = false
+layer.moving_layer = false
+layer.moving_x = false
+layer.moving_y = false
+
+function layer:get_inlayout()
+	return self.visible and (not self.dragging or self.moving)
+end
+
 local function items_sum(self, i, j, _MIN_W)
 	local sum_w = 0
 	local item_count = 0
@@ -5014,7 +5035,7 @@ local function stretch_items_main_axis(
 	local total_fr = 0
 	for i = i, j do
 		local layer = items[i]
-		if layer.visible then
+		if layer.inlayout then
 			total_fr = total_fr + max(0, layer.fr)
 		end
 	end
@@ -5025,7 +5046,7 @@ local function stretch_items_main_axis(
 	local total_free_w = 0
 	for i = i, j do
 		local layer = items[i]
-		if layer.visible then
+		if layer.inlayout then
 			local min_w = layer[_MIN_W]
 			local flex_w = total_w * max(0, layer.fr) / total_fr
 			local overflow_w = max(0, min_w - flex_w)
@@ -5059,7 +5080,7 @@ local function stretch_items_main_axis(
 	local sx = 0 --stretched x-coord
 	for i = i, j do
 		local layer = items[i]
-		if layer.visible then
+		if layer.inlayout then
 
 			--compute item's stretched width.
 			local align = layer[ALIGN_X] or item_align_x
@@ -5136,7 +5157,7 @@ local function align_items_main_axis(
 
 	for i = i, j do
 		local layer = items[i]
-		if layer.visible then
+		if layer.inlayout then
 			local x, w = sx, layer[_MIN_W]
 			local sw = w + spacing
 
@@ -5323,9 +5344,9 @@ local function gen_funcs(X, Y, W, H, LEFT, RIGHT, TOP, BOTTOM)
 	--stretch or align a flexbox's items on the main-axis.
 	local function align_x(self)
 		local align = self[ALIGN_ITEMS_X]
-		local moving_layer = self.moving_layer
+		local moving = self.moving_layer and true or false
 		for j, i in linewrap(self) do
-			align_items_x(self, i, j, align, moving_layer)
+			align_items_x(self, i, j, align, moving)
 		end
 		return true
 	end
@@ -5828,7 +5849,7 @@ local function gen_funcs(X, Y, W, H, COL, LEFT, RIGHT)
 		--compute the fraction representing the total width.
 		local total_fr = 0
 		for _,layer in ipairs(self) do
-			if layer.visible then
+			if layer.inlayout then
 				local col1 = layer[_COL]
 				local col2 = col1 + layer[_COL_SPAN] - 1
 				for col = col1, col2 do
@@ -5842,7 +5863,7 @@ local function gen_funcs(X, Y, W, H, COL, LEFT, RIGHT)
 		local cols = {}
 		for col = 1, max_col do
 			cols[col] = {
-				visible = true,
+				inlayout = true,
 				fr = fr[col] or 1,
 				[_MIN_W] = 0,
 				[X] = false,
@@ -5855,7 +5876,7 @@ local function gen_funcs(X, Y, W, H, COL, LEFT, RIGHT)
 
 		--compute the minimum widths for each column.
 		for _,layer in ipairs(self) do
-			if layer.visible then
+			if layer.inlayout then
 				local col1 = layer[_COL]
 				local col2 = col1 + layer[_COL_SPAN] - 1
 				local span_min_w = layer[_MIN_W]
@@ -5948,7 +5969,7 @@ local function gen_funcs(X, Y, W, H, COL, LEFT, RIGHT)
 
 		local x = 0
 		for _,layer in ipairs(self) do
-			if layer.visible then
+			if layer.inlayout then
 
 				local col1 = layer[_COL]
 				local col2 = col1 + layer[_COL_SPAN] - 1
@@ -6007,36 +6028,6 @@ end
 
 local placeholder = ui.layer:subclass'placeholder'
 
-function layer:flexbox_drop_index(x, y, w, h)
-	if self.flex_flow ~= 'y' then return end
-	local index = 1
-	local y = y + h / 2
-	local p = self.isplaceholder
-	if p then
-		p.visible = false
-		self:revalidate()
-	end
-	print()
-	for i=1,#self do
-		local layer = self[i]
-		if layer.visible then
-			local dy = (layer.y) + layer.h / 2
-			print(y, dy)
-			if dy < y then
-				index = i
-			elseif index and y < dy then
-				break
-			end
-		end
-	end
-	if p then
-		p.visible = true
-		self:revalidate()
-	end
-	print(index)
-	return index
-end
-
 function layer:setup_placeholder(widget, index)
 	local p = self.placeholder
 	if not p then
@@ -6086,6 +6077,7 @@ function layer:drag_leave()
 end
 
 function layer:drop(layer)
+	if not layer.moving then return end
 	self:settag(':item_moving', false)
 	self.moving_layer.moving = false
 	self.moving_layer = false
