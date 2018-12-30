@@ -1180,7 +1180,7 @@ function window:_backend_sizing(when, how, x, y, w, h)
 	end
 
 	local t = {x = x1, y = y1, w = w1, h = h1}
-	local ret = self:fire('sizing', when, how, t)
+	self:fire('sizing', when, how, t)
 	return override_rect(x1, y1, w1, h1, t.x, t.y, t.w, t.h)
 end
 

@@ -639,8 +639,10 @@ end
 
 function Window:on_end_sizemove()
 	local how = self.nw_sizemove_how
-	self.nw_sizemove_how = false
-	self.frontend:_backend_sizing('end', how)
+	if how then
+		self.nw_sizemove_how = false
+		self.frontend:_backend_sizing('end', how)
+	end
 end
 
 function Window:WM_NCLBUTTONDOWN(x, y, ht)
@@ -1465,7 +1467,6 @@ function Rendering:on_paint(hdc) --WM_PAINT
 			self.win:invalidate()
 		end
 	end
-
 
 end
 

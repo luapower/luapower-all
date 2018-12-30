@@ -902,8 +902,7 @@ mode afterwards).
 
 Event: window size/position is about to change. The `rect` arg is a table
 with the fields _x, y, w, h_. Change these values in the table to affect
-the window's final size and position (and optionally return `true` to stop
-calling the following event handlers).
+the window's final size and position.
 
 __NOTE:__ This event does not fire in Linux.
 
