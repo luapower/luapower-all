@@ -85,62 +85,72 @@ end
 
 --message loop ---------------------------------------------------------------
 
---manual repainting of all windows based on the `_invalid_clock` flag.
---returns the number of seconds to wait until calling this again.
-function app:_repaint_all(d)
-
-	local t0 = self._first_frame_time
-	local t1 = self._last_frame_time
-	local t2 = time.clock()
-	local n = d > 0 and t0 and (t2 - t0) / d or 0 --quantity of frame markers
-	local i0 = self._last_frame or 1
-	local i1 = math.floor(n) + 1
-	local dt = (math.ceil(n) - n) * d --how much time till next frame mark
-	local eps = 1/1000 --how much time is close enough to the next frame mark
-
-	if t1 and t2 - t1 < d - eps and dt > eps then
-		return dt
-	end
-
-	local lost_count = i1 - i0 - 1
-	if lost_count > 0 then
-		--TODO: we're still losing one frame every now and then
-		--print('lost frames:', lost_count)
-	end
-
-	self._first_frame_time = t0 or t2
-	self._last_frame_time = t2
-	self._last_frame = i1
-
-	local t = self.frontend._windows
-	for i = 1, #t do
-		local win = t[i]
+function app:_repaint_all_at(clock)
+	local windows = self.frontend._windows
+	for i = 1, #windows do
+		local win = windows[i]
 		if not win:dead() then
-			win.backend:repaint(t2)
+			win.backend:repaint(clock)
 		end
 	end
+end
 
-	local repaint_time = time.clock() - t2
-	local wait_time = math.max(0, d - dt - repaint_time)
+--manual repainting of all windows based on the `_invalid_clock` flag.
+--returns the number of seconds to wait until calling this again.
+function app:_repaint_all()
 
-	return wait_time
+	local clock = time.clock()
+	local frame_duration = 1 / self.frontend:maxfps()
+
+	--unthrottled painting.
+	if frame_duration <= 0 then
+		self:_repaint_all_at(clock)
+		return
+	end
+
+	--get the time relative to the time of the first frame.
+	local clock0 = self._first_frame_clock
+	if not clock0 then
+		clock0 = clock
+		self._first_frame_clock = clock0
+	end
+	local t = clock - clock0
+
+	--skip painting if called too early.
+	local last_frame = self._last_frame or -1
+	local frame_pos = t / frame_duration
+	local behind = frame_pos >= last_frame + 1
+	local current_frame = math.floor(frame_pos + .5)
+	if not behind then
+		local next_frame = current_frame + (current_frame > last_frame and 0 or 1)
+		return (next_frame - frame_pos) * frame_duration
+	end
+	self._last_frame = current_frame
+
+	self:_repaint_all_at(clock)
+
+	--compute wait time until the next frame.
+	local t = time.clock() - clock0
+	local frame_pos = t / frame_duration
+	local next_frame = math.max(current_frame + 1, math.floor(frame_pos + .5))
+	return (next_frame - frame_pos) * frame_duration
 end
 
 function app:poll(timeout)
-	self:_repaint_all(0)
+	local repaint_timeout = self:_repaint_all()
+	timeout = math.min(timeout, repaint_timeout)
 	return winapi.ProcessNextMessage(timeout)
 end
 
 function app:run()
 	while true do
-		local d = 1 / self.frontend:maxfps()
-		local wait_time = self:_repaint_all(d)
+		local timeout = self:_repaint_all()
 		repeat
-			local more, exit_code = winapi.ProcessNextMessage(wait_time)
+			local more, exit_code = winapi.ProcessNextMessage(timeout)
 			if not more and exit_code then
 				return exit_code
 			end
-			wait_time = 0
+			timeout = 0
 		until not more
 	end
 end
@@ -1449,6 +1459,8 @@ function Rendering:on_paint(hdc) --WM_PAINT
 			self.win:invalidate()
 		end
 	end
+
+
 end
 
 function Rendering:WM_ERASEBKGND()
