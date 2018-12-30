@@ -5,29 +5,179 @@
 local ui = require'ui'
 local glue = require'glue'
 
-local dropdown = ui.layer:subclass'dropdown'
+local dropdown = ui.editbox:subclass'dropdown'
 ui.dropdown = dropdown
-dropdown.iswidget = true
 
---default geometry
+function dropdown:after_init(t)
+	self.button = self:create_button()
+	self.popup = self:create_popup()
+	self.picker = self:create_picker()
+end
 
-dropdown.align_y = 'center'
-dropdown.min_ch = 24
-dropdown.w = 180
-dropdown.h = 24
---these must match grid's metrics.
-dropdown.text_align_x = 'left'
-dropdown.padding_left = 2
-dropdown.padding_right = 0
+--open/close state -----------------------------------------------------------
+
+function dropdown:get_isopen()
+	return self.popup.visible
+end
+
+function dropdown:set_isopen(open)
+	if open then
+		self:open()
+	else
+		self:close()
+	end
+end
+dropdown:track_changes'isopen'
+
+function dropdown:open()
+	self:focus(true)
+	self.popup:sync()
+	self.popup:client_size(self.picker:size())
+	self.popup:show()
+end
+
+function dropdown:close()
+	if not self.popup.dead then
+		self.popup:hide()
+	end
+end
+
+function dropdown:toggle()
+	self.isopen = not self.isopen
+end
+
+--open/close button ----------------------------------------------------------
+
+local button = ui.layer:subclass'dropdown_button'
+dropdown.button_class = button
+
+function dropdown:create_button()
+	return self.button_class(self.ui, {
+		parent = self,
+		dropdown = self,
+		iswidget = false,
+	}, self.button)
+end
+
+button.font = 'IonIcons,16'
+button.open_text = '\u{f280}'
+button.close_text = '\u{f286}'
+button.text_color = '#aaa'
+button.text = button.open_text
+
+ui:style('dropdown_button :hot', {
+	text_color = '#fff',
+})
+
+function dropdown:after_sync_styles()
+	self.padding_right = math.floor(self.h * .8)
+end
+
+function dropdown:before_sync_layout_children()
+	local btn = self.button
+	btn.h = self.ch
+	btn.x = self.cw
+	btn.w = self.pw2
+end
+
+function dropdown:_opened()
+	self.button.text = self.button.close_text
+	self:fire'popup_opened'
+end
+
+function dropdown:_closed()
+	self.button.text = self.button.open_text
+	self:fire'popup_closed'
+end
+
+button.activable = true
+
+function button:click()
+	self.dropdown:toggle()
+end
+
+--popup window ---------------------------------------------------------------
+
+local popup = ui.popup:subclass'dropdown_popup'
+dropdown.popup_class = popup
+
+popup.activable = false
+
+function dropdown:create_popup(ui, t)
+	return self.popup_class(self.ui, {
+		w = 200, h = 200, --required; sync'ed layer
+		parent = self,
+		visible = false,
+		dropdown = self,
+	}, self.popup)
+end
+
+function popup:before_shown()
+	self.x, self.y = self.dropdown:to_content(0, self.dropdown.h)
+end
+
+function popup:after_shown()
+	self.dropdown:_opened()
+end
+
+function popup:after_hidden()
+	self.dropdown:_closed()
+end
+
+function popup:override_parent_window_mousedown_autohide(inherited, ...)
+	if self.dropdown.button.hot then
+		--prevent autohide to avoid re-opening the popup by the dropdown.
+		return
+	end
+	inherited(self, ...)
+end
+
+--default value picker -------------------------------------------------------
+
+local list = ui.layer:subclass'dropdown_list'
+ui.dropdown_list = list
+
+list.w = 200
+list.h = 300
+list.background_color = '#f00'
+
+function list:sync_dropdown()
+	--sync styles first because we use self's paddings.
+	self:sync_styles()
+
+	local w = self.dropdown.w
+	local noscroll_ch = self.rows_h
+	local max_ch = w * 1.4
+	local ch = math.min(noscroll_ch, max_ch)
+	self.w, self.ch = w, ch
+
+	self:sync_layout() --sync so that vscrollbar is synced so that scroll works.
+	self:move'@focus scroll/instant'
+
+	return self.w, self.h
+end
+
+--picker widget --------------------------------------------------------------
+
+dropdown.picker_class = list
+dropdown.picker_classname = false --by-name override
+
+function dropdown:create_picker()
+	local class = self.picker_class or self.ui[self.picker_classname]
+	local picker = class(self.ui, {
+		parent = self.popup,
+		dropdown = self,
+	}, self.picker)
+	return picker
+end
+
+
+--[==[
 
 --value property/state
 
 --allow setting and typing values outside of the picker's range.
 dropdown.allow_any_value = false
-
-function dropdown:get_value()
-	return self._value
-end
 
 --display value for free-edited values where the picker is not involved.
 function dropdown:display_value(val)
@@ -54,43 +204,6 @@ function dropdown:value_picked(val, text, close)
 		self:close()
 	end
 end
-
---open/close state
-
-function dropdown:get_isopen()
-	return self.popup.visible
-end
-
-function dropdown:open()
-	self:focus(true)
-	self.popup:show()
-end
-
-function dropdown:close()
-	if not self.popup.dead then
-		self.popup:hide()
-	end
-end
-
---editable property
-
-function dropdown:get_editable()
-	return self.editbox.focusable
-end
-
-function dropdown:set_editable(editable)
-	self.editbox.focusable = editable
-	self.editbox.activable = editable
-	self.focusable = not editable
-end
-
-dropdown:instance_only'editable'
-dropdown.editable = false
-
---editbox
-
-local editbox = ui.editbox:subclass'dropdown_editbox'
-dropdown.editbox_class = editbox
 
 editbox.tags = '-standalone'
 
@@ -151,48 +264,6 @@ function button:sync_dropdown()
 	self.w = math.floor(self.h * .9)
 	self.x = self.dropdown.cw - self.w
 	self.text = self.dropdown.isopen and self.close_text or self.open_text
-end
-
---popup window
-
-local popup = ui.popup:subclass'dropdown_popup'
-dropdown.popup_class = popup
-
-popup.activable = false
-
-function dropdown:create_popup(ui, t)
-	return self.popup_class(self.ui, {
-		w = 200, h = 200, --required; sync'ed layer
-		parent = self,
-		visible = false,
-		dropdown = self,
-	}, self.popup)
-end
-
-function popup:before_shown()
-	self.x, self.y = self.dropdown:to_content(0, self.dropdown.h)
-	self.cw, self.ch = self.dropdown.picker:sync_dropdown()
-end
-
-function popup:override_parent_window_mousedown_autohide(inherited, ...)
-	if self.dropdown.hot then
-		--prevent autohide to avoid re-opening the popup by the dropdown.
-		return
-	end
-	inherited(self, ...)
-end
-
---value picker widget
-
-dropdown.picker_classname = 'grid'
-
-function dropdown:create_picker()
-	local class = self.picker_class or self.ui[self.picker_classname]
-	local picker = class(self.ui, {
-		parent = self.popup,
-		dropdown = self,
-	}, self.picker)
-	return picker
 end
 
 --init & free
@@ -288,18 +359,26 @@ ui:style('dropdown :hot > dropdown_button, dropdown_button :focused', {
 	text_color = '#fff',
 })
 
+]==]
+
 --demo -----------------------------------------------------------------------
 
 if not ... then require('ui_demo')(function(ui, win)
 
+	win.x = 500
+	win.w = 300
+	win.h = 900
+
 	local dropdown1 = ui:dropdown{
 		x = 10, y = 10,
 		parent = win,
-		picker = {rows = {'Row 1', 'Row 2', 'Row 3', {}}},
+		options = {'Apples', 'Oranges', 'Bannanas'},
+		--picker = {rows = {'Row 1', 'Row 2', 'Row 3', {}}},
 		value = 'some invalid value',
 		allow_any_value = true,
 	}
 
+	--[[
 	local t = {}
 	for i = 1, 10000 do
 		t[i] = 'Row '..i
@@ -311,5 +390,6 @@ if not ... then require('ui_demo')(function(ui, win)
 		value = 'Row 592',
 		editable = true,
 	}
+	]]
 
 end) end

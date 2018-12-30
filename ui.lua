@@ -1548,10 +1548,27 @@ function window:override_init(inherited, t)
 		self:_key_event('keychar', s)
 	end)
 
+	self._user_cw = false
+	self._user_ch = false
 	self.sync_count = 0
 	win:on({'sync', self}, function(win)
 		setcontext()
-		self:sync()
+		local cw = self._user_cw
+		local ch = self._user_ch
+		if not cw then
+			cw, ch = self:client_size()
+		end
+		setcontext()
+		self:sync(cw, ch)
+		--enlarge the window to contain the view.
+		local vw, vh = self.view:size()
+		if vw > cw or vh > ch then
+			self._user_cw = cw
+			self._user_ch = ch
+			cw = math.max(cw, vw)
+			ch = math.max(ch, vh)
+			self:client_size(cw, ch)
+		end
 	end)
 
 	win:on({'repaint', self}, function(win)
@@ -1569,6 +1586,23 @@ function window:override_init(inherited, t)
 	end)
 
 	self._cw, self._ch = win:client_size()
+
+	win:on({'sizing', self}, function(win, when, how, t)
+		if how == 'move' then return end
+		if not t then return end
+		local cw, ch = win:client_size()
+		local _, _, w, h = win:frame_rect()
+		local dw = w - cw
+		local dh = h - ch
+		setcontext()
+		local cw, ch = t.w - dw, t.h - dh
+		self._user_cw = false
+		self._user_ch = false
+		self:sync(cw, ch)
+		local cw, ch = self.view:size()
+		t.w = math.max(t.w, cw + dw)
+		t.h = math.max(t.h, ch + dh)
+	end)
 
 	win:on({'closing', self}, function(win, reason, closing_win, ...)
 		closing_win = closing_win and closing_win.ui_window
@@ -1722,6 +1756,20 @@ function window:frame_to_client(x1, y1)
 		y1 - (cy - y)
 end
 
+function window:client_size(cw, ch)
+	if cw or ch then
+		if self:isinstance() then
+			self.native_window:client_size(cw or self._cw, ch or self._ch)
+			self._cw, self._ch = self.native_window:client_size()
+		else
+			if cw then self._cw = cw end
+			if ch then self._ch = ch end
+		end
+	else
+		return self._cw, self._ch
+	end
+end
+
 function window:client_rect(cx, cy, cw, ch)
 	if self:isinstance() then
 		if self.parent then
@@ -1733,7 +1781,6 @@ function window:client_rect(cx, cy, cw, ch)
 						cy = cy or cy0
 					end
 					cx, cy = self.parent:to_screen(cx, cy)
-					self:client_rect(cx, cy, cw, ch)
 				end
 				self.native_window:client_rect(cx, cy, cw, ch)
 			else
@@ -1754,10 +1801,6 @@ function window:client_rect(cx, cy, cw, ch)
 	end
 end
 
-function window:client_size()
-	return self._cw, self._ch
-end
-
 function window:get_x() return (select(1, self:frame_rect())) end
 function window:get_y() return (select(2, self:frame_rect())) end
 function window:get_w() return (select(3, self:frame_rect())) end
@@ -1775,6 +1818,9 @@ function window:set_cx(cx) self:client_rect(cx, nil, nil, nil) end
 function window:set_cy(cy) self:client_rect(nil, cy, nil, nil) end
 function window:set_cw(cw) self:client_rect(nil, nil, cw, nil) end
 function window:set_ch(ch) self:client_rect(nil, nil, nil, ch) end
+
+function window:minsize(...) return self.native_window:minsize(...) end
+function window:maxsize(...) return self.native_window:maxsize(...) end
 
 function window:get_min_cw() return (select(1, self.native_window:minsize())) end
 function window:get_min_ch() return (select(2, self.native_window:minsize())) end
@@ -2178,12 +2224,12 @@ end
 
 --window sync'ing & rendering ------------------------------------------------
 
-function window:sync()
+function window:sync(cw, ch)
 	self.syncing = true
 	self.sync_count = self.sync_count + 1
 	self.cr:save()
 	self.cr:new_path()
-	self.view:sync()
+	self.view:sync_with_window(cw, ch)
 	self.cr:restore()
 	self.syncing = false
 	self:check(not self:invalid(), 'invalid after sync()')
@@ -2606,6 +2652,12 @@ function layer:set_parent(parent)
 	if parent then
 		parent:add_layer(self, self._layer_index)
 	elseif self._parent then
+		if self.hot then
+			self.ui.hot_widget = false
+		end
+		if self.active then
+			self.ui.active_widget = false
+		end
 		self._parent:remove_layer(self)
 	end
 end
@@ -4154,9 +4206,24 @@ function layer:set_selected_text(s)
 	return self:type_text(s)
 end
 
---value property when used as a grid cell.
-function layer:get_value() return self.text end
-function layer:set_value(val) self.text = val end
+--data binding ---------------------------------------------------------------
+
+function layer:get_value() return self.text end --stub
+function layer:validate_value(val) return val end --stub
+
+function layer:set_value(val)
+	local old_val = self.value
+	if val ~= old_val then
+		if self:fire('value_changing', val, old_val) == false then
+			return
+		end
+	end
+	val = self:validate_value(val)
+	self.text = val
+	self:fire('value_changed', val, old_val)
+end
+
+layer:instance_only'value'
 
 --text geometry & drawing ----------------------------------------------------
 
@@ -6114,9 +6181,9 @@ view.background_operator = 'source'
 view.to_window = view.to_parent
 view.from_window = view.from_parent
 
---sync the layout recursively after all children are sync'ed.
-function view:after_sync()
-	self:sync_window_view(self.window:client_size())
+function view:sync_with_window(w, h)
+	self:sync()
+	self:sync_window_view(w, h)
 	self:sync_layout()
 	self:run_after_layout_funcs()
 end

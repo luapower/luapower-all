@@ -259,9 +259,13 @@ end
 
 --special text clipping ------------------------------------------------------
 
+--allow fonts with long stems to overflow the text box on the y-axis.
+editbox.text_overflow_y = 4
+
 --clip the left & right sides of the box without clipping the top & bottom.
 function editbox:text_clip_rect()
-	return 0, -1000, self.cw, 2000
+	local ph = self.text_overflow_y
+	return 0, -ph, self.cw, self.ch + 2 * ph
 end
 
 function editbox:override_draw_content(inherited, cr)

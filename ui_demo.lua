@@ -20,7 +20,7 @@ function win:keyup(key) if key == 'esc' then self:close() end end
 
 ui.maxfps = 60
 
-	local function fps_function()
+local function fps_function()
 	local count_per_sec = 2
 	local frame_count, last_frame_count, last_time = 0, 0
 	return function()
@@ -764,6 +764,7 @@ local function test_drag_flexbox()
 			border_width = 1,
 			background_color = '#111',
 			tags = 'movable',
+			mouseup = function(self) self.parent = false end,
 		}, t)
 	end
 	local fb1 = ui:layer{
@@ -802,6 +803,12 @@ local function test_drag_flexbox()
 
 end
 
+local function test_resize_window()
+	win.cw = 200
+	win.ch = 100
+	test_drag_flexbox()
+end
+
 --test_css()
 --test_layers()
 --test_drag()
@@ -810,7 +817,8 @@ end
 --test_flexbox_baseline()
 --test_grid_layout()
 --test_widgets_flex()
-test_drag_flexbox()
+--test_drag_flexbox()
+--test_resize_window()
 win:show()
 ui:run()
 ui:free()
