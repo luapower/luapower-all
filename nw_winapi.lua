@@ -126,6 +126,11 @@ function app:_repaint_all()
 		return (next_frame - frame_pos) * frame_duration
 	end
 	self._last_frame = current_frame
+	if current_frame > last_frame + 1 then
+		--TODO: still losing a few frames each second when the event queue
+		--is empty due to the innacuracy of MsgWaitForMultipleObjectsEx().
+		--print('lost frames', current_frame - last_frame - 1)
+	end
 
 	self:_repaint_all_at(clock)
 
@@ -145,6 +150,7 @@ end
 function app:run()
 	while true do
 		local timeout = self:_repaint_all()
+		local timeout = math.max(1/1000, timeout) --prevent spin-lock at < 1ms
 		repeat
 			local more, exit_code = winapi.ProcessNextMessage(timeout)
 			if not more and exit_code then
