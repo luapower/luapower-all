@@ -1401,7 +1401,7 @@ function window:override_init(inherited, t)
 			local dy = py1 - py0
 			if dx ~= 0 or dy ~= 0 then
 				local x0, y0 = self.native_window:frame_rect()
-				self:frame_rect(x0 + dx, y0 + dy)
+				self.native_window:frame_rect(x0 + dx, y0 + dy)
 				px0, py0 = px1, py1
 			end
 		end
@@ -1436,6 +1436,8 @@ function window:override_init(inherited, t)
 		self.bitmap = win:bitmap()
 		self.cr = self.bitmap:cairo()
 	end
+
+	self.setcontext = setcontext
 
 	local function setmouse(mx, my)
 		setcontext()
@@ -1552,23 +1554,7 @@ function window:override_init(inherited, t)
 	self._user_ch = false
 	self.sync_count = 0
 	win:on({'sync', self}, function(win)
-		setcontext()
-		local cw = self._user_cw
-		local ch = self._user_ch
-		if not cw then
-			cw, ch = self:client_size()
-		end
-		setcontext()
-		self:sync(cw, ch)
-		--enlarge the window to contain the view.
-		local vw, vh = self.view:size()
-		if vw > cw or vh > ch then
-			self._user_cw = cw
-			self._user_ch = ch
-			cw = math.max(cw, vw)
-			ch = math.max(ch, vh)
-			self:client_size(cw, ch)
-		end
+		self:sync()
 	end)
 
 	win:on({'repaint', self}, function(win)
@@ -1594,11 +1580,10 @@ function window:override_init(inherited, t)
 		local _, _, w, h = win:frame_rect()
 		local dw = w - cw
 		local dh = h - ch
-		setcontext()
 		local cw, ch = t.w - dw, t.h - dh
 		self._user_cw = false
 		self._user_ch = false
-		self:sync(cw, ch)
+		self:sync_size(cw, ch)
 		local cw, ch = self.view:size()
 		t.w = math.max(t.w, cw + dw)
 		t.h = math.max(t.h, ch + dh)
@@ -2224,7 +2209,26 @@ end
 
 --window sync'ing & rendering ------------------------------------------------
 
-function window:sync(cw, ch)
+function window:sync()
+	local cw = self._user_cw
+	local ch = self._user_ch
+	if not cw then
+		cw, ch = self:client_size()
+	end
+	self:sync_size(cw, ch)
+	--enlarge the window to contain the view.
+	local vw, vh = self.view:size()
+	if vw > cw or vh > ch then
+		self._user_cw = cw
+		self._user_ch = ch
+		cw = math.max(cw, vw)
+		ch = math.max(ch, vh)
+		self:client_size(cw, ch)
+	end
+end
+
+function window:sync_size(cw, ch)
+	self:setcontext()
 	self.syncing = true
 	self.sync_count = self.sync_count + 1
 	self.cr:save()
@@ -2700,6 +2704,8 @@ function layer:move_layer(layer, index)
 	if old_index == new_index then return end
 	table.remove(self, old_index)
 	table.insert(self, new_index, layer)
+	self:fire('layer_moved', new_index, old_index)
+	layer:_set_layout_tags(new_index)
 end
 
 function layer:set_layer_index(index)
@@ -4120,6 +4126,10 @@ function window:make_visible(x, y, w, h) end --not asking window's parent
 
 function layer:make_visible(x, y, w, h)
 	if not self.parent then return end
+	if not x then --make visible self's outer rectangle.
+		x, y, w, h = self:border_rect(1)
+		x, y = self:to_content(x, y)
+	end
 	local bx, by, bw, bh = self:rect_bbox_in(self.parent, x, y, w, h)
 	self.parent:fire('make_visible', bx, by, bw, bh)
 end
@@ -4211,6 +4221,13 @@ end
 function layer:get_value() return self.text end --stub
 function layer:validate_value(val) return val end --stub
 
+function layer:display_value(val)
+	if type(val) == 'nil' or type(val) == 'boolean' then
+		return string.format('<%s>', tostring(val))
+	end
+	return tostring(val)
+end
+
 function layer:set_value(val)
 	local old_val = self.value
 	if val ~= old_val then
@@ -4219,7 +4236,7 @@ function layer:set_value(val)
 		end
 	end
 	val = self:validate_value(val)
-	self.text = val
+	self.text = self:display_value(val)
 	self:fire('value_changed', val, old_val)
 end
 

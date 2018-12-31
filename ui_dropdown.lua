@@ -8,6 +8,9 @@ local glue = require'glue'
 local dropdown = ui.editbox:subclass'dropdown'
 ui.dropdown = dropdown
 
+dropdown.text_editable = false
+dropdown.text_selectable = false
+
 function dropdown:after_init(t)
 	self.button = self:create_button()
 	self.popup = self:create_popup()
@@ -31,8 +34,6 @@ dropdown:track_changes'isopen'
 
 function dropdown:open()
 	self:focus(true)
-	self.popup:sync()
-	self.popup:client_size(self.picker:size())
 	self.popup:show()
 end
 
@@ -44,6 +45,42 @@ end
 
 function dropdown:toggle()
 	self.isopen = not self.isopen
+end
+
+function dropdown:_opened()
+	self.button.text = self.button.close_text
+	self:fire'opened'
+end
+
+function dropdown:_closed()
+	self.button.text = self.button.open_text
+	self:fire'closed'
+end
+
+--keyboard interaction
+
+function dropdown:lostfocus()
+	self:close()
+end
+
+function dropdown:keypress(key)
+	if key == 'enter' and not self.isopen then
+		self:open()
+		return true
+	elseif key == 'esc' then
+		self:close()
+		return true
+	else
+		return self.picker:fire('keypress', key)
+	end
+end
+
+--mouse interaction
+
+dropdown.mousedown_activate = true
+
+function dropdown:click()
+	self:toggle()
 end
 
 --open/close button ----------------------------------------------------------
@@ -59,13 +96,15 @@ function dropdown:create_button()
 	}, self.button)
 end
 
+button.activable = false
+
 button.font = 'IonIcons,16'
 button.open_text = '\u{f280}'
 button.close_text = '\u{f286}'
 button.text_color = '#aaa'
 button.text = button.open_text
 
-ui:style('dropdown_button :hot', {
+ui:style('dropdown :hot > dropdown_button', {
 	text_color = '#fff',
 })
 
@@ -78,22 +117,6 @@ function dropdown:before_sync_layout_children()
 	btn.h = self.ch
 	btn.x = self.cw
 	btn.w = self.pw2
-end
-
-function dropdown:_opened()
-	self.button.text = self.button.close_text
-	self:fire'popup_opened'
-end
-
-function dropdown:_closed()
-	self.button.text = self.button.open_text
-	self:fire'popup_closed'
-end
-
-button.activable = true
-
-function button:click()
-	self.dropdown:toggle()
 end
 
 --popup window ---------------------------------------------------------------
@@ -112,20 +135,20 @@ function dropdown:create_popup(ui, t)
 	}, self.popup)
 end
 
-function popup:before_shown()
-	self.x, self.y = self.dropdown:to_content(0, self.dropdown.h)
+function popup:after_init()
+	self:frame_rect(0, self.dropdown.h)
 end
 
-function popup:after_shown()
+function popup:shown()
 	self.dropdown:_opened()
 end
 
-function popup:after_hidden()
+function popup:hidden()
 	self.dropdown:_closed()
 end
 
 function popup:override_parent_window_mousedown_autohide(inherited, ...)
-	if self.dropdown.button.hot then
+	if self.dropdown.button.hot or self.dropdown.hot then
 		--prevent autohide to avoid re-opening the popup by the dropdown.
 		return
 	end
@@ -134,27 +157,102 @@ end
 
 --default value picker -------------------------------------------------------
 
-local list = ui.layer:subclass'dropdown_list'
+local list = ui.scrollbox:subclass'dropdown_list'
 ui.dropdown_list = list
 
-list.w = 200
-list.h = 300
-list.background_color = '#f00'
+list.auto_w = true
 
-function list:sync_dropdown()
-	--sync styles first because we use self's paddings.
-	self:sync_styles()
+list.border_color = '#333'
+list.padding_left = 1
+list.border_width_left = 1
+list.border_width_right = 1
+list.border_width_bottom = 1
 
-	local w = self.dropdown.w
-	local noscroll_ch = self.rows_h
-	local max_ch = w * 1.4
-	local ch = math.min(noscroll_ch, max_ch)
-	self.w, self.ch = w, ch
+local item = ui.layer:subclass'dropdown_item'
+list.item_class = item
 
-	self:sync_layout() --sync so that vscrollbar is synced so that scroll works.
-	self:move'@focus scroll/instant'
+item.layout = 'textbox'
+item.text_align_x = 'auto'
 
-	return self.w, self.h
+item.padding_left = 6
+
+ui:style('dropdown_item :hot', {
+	background_color = '#222',
+})
+
+ui:style('dropdown_item :selected', {
+	background_color = '#226',
+})
+
+function list:set_options(t)
+	if not t then return end
+	for i,t in ipairs(t) do
+		self.item_class{
+			parent = self.content,
+			text = t,
+			index = i,
+			dropdown = self.dropdown,
+		}
+	end
+end
+
+list:init_ignore{options=1}
+
+function list:after_init(t)
+	local ct = self.content
+	ct.layout = 'flexbox'
+	ct.flex_flow = 'y'
+	ct.dropdown = self.dropdown
+	function ct:mouseup()
+		self.active = false
+		local item = self.selected_item
+		if item then
+			self.dropdown:value_picked(item.index, item.text, true)
+		end
+	end
+	function ct:mousemove(mx, my)
+		local item = self:hit_test_children(mx, my, 'activate')
+		if item and item.index then
+			item:select()
+		end
+	end
+	self.options = t.options
+end
+
+function dropdown:before_sync_layout_children()
+	if self.picker.w ~= self.w then
+		self.picker.w = self.w
+		self.popup:sync()
+		self.picker.ch = math.min(self.picker.content.h, self.w * 1.5)
+		self.popup:client_size(self.picker:size())
+		self.popup:invalidate()
+	end
+end
+
+function item:mousedown()
+	self.parent.active = true
+end
+
+function item:select()
+	if self.parent.selected_item then
+		self.parent.selected_item:unselect()
+	end
+	self:make_visible()
+	self:settag(':selected', true)
+	self.parent.selected_item = self
+end
+
+function item:unselect()
+	self.parent.selected_item = false
+	self:settag(':selected', false)
+end
+
+function list:pick_value(val)
+	local item = self.content[val]
+	if item then
+		item:select()
+		return true
+	end
 end
 
 --picker widget --------------------------------------------------------------
@@ -163,37 +261,50 @@ dropdown.picker_class = list
 dropdown.picker_classname = false --by-name override
 
 function dropdown:create_picker()
-	local class = self.picker_class or self.ui[self.picker_classname]
+
+	local class =
+		self.picker and (self.picker.class or self.picker.classname)
+		or self.picker_class
+		or self.ui[self.picker_classname]
+
 	local picker = class(self.ui, {
 		parent = self.popup,
 		dropdown = self,
 	}, self.picker)
+
 	return picker
 end
+
+function dropdown:value_picked(val, text, close)
+	self.text = text or self:display_value(val)
+	if close then
+		self:close()
+	end
+end
+
+--allow setting and typing values outside of the picker's range.
+dropdown.allow_any_value = false
+
+dropdown:init_ignore{value=1}
+
+function dropdown:after_init(t)
+	self.value = t.value
+end
+
+function dropdown:value_changing(val)
+	return self.picker:pick_value(val) or self.allow_any_value
+end
+
+function dropdown:validate_value(val)
+
+--if self.allow_any_value then
+--	self:value_picked(val, nil, true)
+--end
 
 
 --[==[
 
 --value property/state
-
---allow setting and typing values outside of the picker's range.
-dropdown.allow_any_value = false
-
---display value for free-edited values where the picker is not involved.
-function dropdown:display_value(val)
-	if type(val) == 'nil' or type(val) == 'boolean' then
-		return string.format('<%s>', tostring(val))
-	end
-	return tostring(val)
-end
-
-function dropdown:set_value(val)
-	if not self.picker:pick_value(val, true) then
-		if self.allow_any_value then
-			self:value_picked(val, nil, true)
-		end
-	end
-end
 
 --called by the picker to signal that a value was picked.
 function dropdown:value_picked(val, text, close)
@@ -295,40 +406,6 @@ function dropdown:after_sync()
 	self.editbox:sync_dropdown()
 end
 
---keyboard interaction
-
-function dropdown:lostfocus()
-	self:close()
-end
-
-function dropdown:keypress(key)
-	if key == 'enter' and not self.isopen then
-		self:open()
-		return true
-	elseif key == 'esc' then
-		self:close()
-		return true
-	else
-		return self.picker:fire('keypress', key)
-	end
-end
-
---mouse interaction
-
-dropdown.mousedown_activate = true
-
-function dropdown:click()
-	if self._mousedown_autohidden then
-		self._mousedown_autohidden = false
-		return
-	end
-	if self.isopen then
-		self:close()
-	else
-		self:open()
-	end
-end
-
 --state styles
 
 dropdown.border_color = '#333'
@@ -372,9 +449,21 @@ if not ... then require('ui_demo')(function(ui, win)
 	local dropdown1 = ui:dropdown{
 		x = 10, y = 10,
 		parent = win,
-		options = {'Apples', 'Oranges', 'Bannanas'},
+		picker = {
+			options = {
+				'Apples', 'Oranges', 'Bananas',
+				'Burgers', 'Cheese', 'Fries',
+				'Peppers', 'Onions', 'Olives',
+				'Pumpkins', 'Eggplants', 'Cauliflower',
+				'Butter', 'Coconut Oil', 'Olive Oil', 'Sunflower Oil',
+				'Zucchinis', 'Squash',
+				'Lettuce', 'Spinach',
+				'I\'m hungry',
+			}
+		},
 		--picker = {rows = {'Row 1', 'Row 2', 'Row 3', {}}},
-		value = 'some invalid value',
+		--value = 'some invalid value',
+		value = 5,
 		allow_any_value = true,
 	}
 

@@ -45,6 +45,10 @@ ui:style('editbox standalone :focused', {
 	border_color = '#fff',
 })
 
+ui:style('editbox standalone :hot', {
+	border_color_bottom = '#fff',
+})
+
 --animation
 
 ui:style('editbox standalone, editbox standalone :hot', {

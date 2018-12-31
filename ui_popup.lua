@@ -43,6 +43,8 @@ function popup:after_set_parent(parent)
 			end)
 		end
 	end)
+	local x, y = self:frame_rect()
+	self:frame_rect(x, y)
 end
 
 if not ... then require('ui_demo')(function(ui, win)
