@@ -105,7 +105,7 @@ function app:_repaint_all()
 	--unthrottled painting.
 	if frame_duration <= 0 then
 		self:_repaint_all_at(clock)
-		return
+		return 0
 	end
 
 	--get the time relative to the time of the first frame.
@@ -150,7 +150,9 @@ end
 function app:run()
 	while true do
 		local timeout = self:_repaint_all()
-		local timeout = math.max(1/1000, timeout) --prevent spin-lock at < 1ms
+		if timeout > 0 then
+			timeout = math.max(1/1000, timeout) --prevent spin-lock at < 1ms
+		end
 		repeat
 			local more, exit_code = winapi.ProcessNextMessage(timeout)
 			if not more and exit_code then
@@ -1187,7 +1189,9 @@ end
 
 --TODO: finish this API
 local exclude_keystate = glue.index{
-	VK_SHIFT, VK_CONTROL, VK_MENU,  --we have L/R variants on those
+	winapi.VK_SHIFT,
+	winapi.VK_CONTROL,
+	winapi.VK_MENU,  --we have L/R variants on those
 }
 local sort_first = glue.index{
 	'lshift', 'rshift', 'lalt', 'ralt', 'altgr', 'lctrl', 'rctrl',
