@@ -146,8 +146,9 @@ test(glue.trim('  a  d '), 'a  d')
 test(glue.escape'^{(.-)}$', '%^{%(%.%-%)}%$')
 test(glue.escape'%\0%', '%%%z%%')
 
-test(glue.tohex(0xdeadbeef01), 'deadbeef01')
-test(glue.tohex(0xdeadbeef02, true), 'DEADBEEF02')
+print(_VERSION)
+test(glue.tohex(0xdeadbeef01), 'deadbeef01')       --LuaJIT 2.1+
+test(glue.tohex(0xdeadbeef02, true), 'DEADBEEF02') --LuaJIT 2.1+
 test(glue.tohex'\xde\xad\xbe\xef\x01', 'deadbeef01')
 test(glue.tohex('\xde\xad\xbe\xef\x02', true), 'DEADBEEF02')
 test(glue.fromhex'deadbeef01', '\xde\xad\xbe\xef\x01')
