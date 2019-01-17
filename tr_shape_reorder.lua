@@ -8,7 +8,7 @@
 -- Data structures used: `seg` and `range`.
 -- A seg is a segment with fields: {bidi_level = level}.
 -- A range is an internal structure used by the algorithm with the fields:
---   {left = left_seg, right = right_seg, prev = prev_range}.
+--   {left = left_seg, right = right_seg, prev = prev_range, bidi_level =}.
 -- A range contains the left-most and right-most segs in the range,
 -- in visual order. Following left's `next` member eventually gets us to
 -- `right`. The right seg's `next_vis` member is undefined!
@@ -60,7 +60,7 @@ end
 -- Caller is responsible to reverse the seg contents for any
 -- seg that has an odd level.
 --
-function reorder_segs(seg)
+local function reorder_segs(seg)
 
 	-- The algorithm here is something like this: sweep segs in the
 	-- logical order, keeping a stack of ranges.  Upon seeing a seg,
