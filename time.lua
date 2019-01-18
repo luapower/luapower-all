@@ -25,7 +25,7 @@ if ffi.os == 'Windows' then
 	end
 
 	assert(C.time_QueryPerformanceFrequency(t) ~= 0)
-	local inv_qpf = 1 / tonumber(t[0]) --precission loss in e-10
+	local inv_qpf = 1 / tonumber(t[0]) --precision loss in e-10
 
 	function M.clock()
 		assert(C.time_QueryPerformanceCounter(t) ~= 0)

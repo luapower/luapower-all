@@ -1,5 +1,5 @@
 
---Doubly linked lists.
+--Doubly-linked lists in Lua.
 --Written by Cosmin Apreutesei. Public Domain.
 
 if not ... then require'dlist_test'; return end

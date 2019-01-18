@@ -1,5 +1,5 @@
 
---glue: everyday Lua functions.
+--Lua extended vocabulary of tools.
 --Written by Cosmin Apreutesei. Public domain.
 
 if not ... then require'glue_test'; return end
