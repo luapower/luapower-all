@@ -185,7 +185,7 @@ local function isnewline(c)
 		or c == 0x85 --NEL
 end
 
---for harfbuzz, language is a ISO-639 language code + country code,
+--for harfbuzz, language is a IETF BCP 47 language code + country code,
 --but libunibreak only uses the language code part.
 local function ub_lang(hb_lang)
 	local s = hb.language_tostring(hb_lang)

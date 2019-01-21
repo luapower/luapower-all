@@ -103,7 +103,7 @@ local Error_Names = {
 	[0xBA] = 'Corrupted Font Glyphs',
 }
 
-local function checknz(result)
+local function checkz(result)
 	if result == 0 then return end
 	error(string.format('freetype error %d: %s', result,
 		Error_Names[result] or '<unknown error>'), 2)
@@ -138,7 +138,7 @@ end
 
 function freetype.new()
 	local library = ffi.new'FT_Library[1]'
-	checknz(C.FT_Init_FreeType(library))
+	checkz(C.FT_Init_FreeType(library))
 	return library[0]
 end
 freetype.__call = freetype.new
@@ -152,30 +152,30 @@ function lib.version(library)
 end
 
 function lib.free(library)
-	checknz(C.FT_Done_FreeType(library))
+	checkz(C.FT_Done_FreeType(library))
 end
 
 function lib.face(library, filename, face_index)
 	local face = ffi.new'FT_Face[1]'
-	checknz(C.FT_New_Face(library, filename, face_index or 0, face))
+	checkz(C.FT_New_Face(library, filename, face_index or 0, face))
 	return face[0]
 end
 
 function lib.memory_face(library, data, size, face_index)
 	local face = ffi.new'FT_Face[1]'
-	checknz(C.FT_New_Memory_Face(library, data, size, face_index or 0, face))
+	checkz(C.FT_New_Memory_Face(library, data, size, face_index or 0, face))
 	return face[0]
 end
 
 --TODO: construct FT_Args
 function lib.open_face(library, args, face_index)
 	local face = ffi.new'FT_Face[1]'
-	checknz(C.FT_Open_Face(library, args, face_index or 0, face))
+	checkz(C.FT_Open_Face(library, args, face_index or 0, face))
 	return face[0]
 end
 
 function lib.ref(lib)
-	checknz(C.FT_Reference_Library(lib))
+	checkz(C.FT_Reference_Library(lib))
 end
 
 local face = {} --FT_Face methods
@@ -185,58 +185,58 @@ face.char_index = C.FT_Get_Char_Index
 --face.fstype_flags = C.FT_Get_FSType_Flags --fstype stripped (needs type1)
 
 function face.ref(face)
-	checknz(C.FT_Reference_Face(face))
+	checkz(C.FT_Reference_Face(face))
 end
 
 function face.attach_file(face, filepathname)
-	checknz(C.FT_Attach_File(face, filepathname))
+	checkz(C.FT_Attach_File(face, filepathname))
 end
 
 --TODO: construct FT_Args
 function face.attach_stream(face, parameters)
-	checknz(C.FT_Attach_Stream(face, parameters))
+	checkz(C.FT_Attach_Stream(face, parameters))
 end
 
 function face.free(face)
 	ffi.gc(face, nil)
-	checknz(C.FT_Done_Face(face))
+	checkz(C.FT_Done_Face(face))
 end
 
 function face.select_size(face, strike_index)
-	checknz(C.FT_Select_Size(face, strike_index))
+	checkz(C.FT_Select_Size(face, strike_index))
 end
 
 function face.request_size(face, req)
 	req = req or ffi.new'FT_Size_Request'
-	checknz(C.FT_Request_Size(face, req))
+	checkz(C.FT_Request_Size(face, req))
 	return req
 end
 
 function face.set_char_size(face, char_width, char_height, horz_resolution, vert_resolution)
-	checknz(C.FT_Set_Char_Size(face, char_width, char_height or 0, horz_resolution or 0, vert_resolution or 0))
+	checkz(C.FT_Set_Char_Size(face, char_width, char_height or 0, horz_resolution or 0, vert_resolution or 0))
 end
 
 function face.set_pixel_sizes(face, pixel_width, pixel_height)
-	checknz(C.FT_Set_Pixel_Sizes(face, pixel_width, pixel_height or 0))
+	checkz(C.FT_Set_Pixel_Sizes(face, pixel_width, pixel_height or 0))
 end
 
 function face.load_glyph(face, glyph_index, load_flags) --FT_LOAD_*
-	checknz(C.FT_Load_Glyph(face, glyph_index, load_flags or 0))
+	checkz(C.FT_Load_Glyph(face, glyph_index, load_flags or 0))
 end
 
 function face.load_char(face, char_code, load_flags) --FT_LOAD_*
-	checknz(C.FT_Load_Char(face, char_code, load_flags))
+	checkz(C.FT_Load_Char(face, char_code, load_flags))
 end
 
 function face.kerning(face, left_glyph, right_glyph, kern_mode, kerning) --FT_KERNING_*
 	kerning = kerning or ffi.new'FT_Vector'
-	checknz(C.FT_Get_Kerning(face, left_glyph, right_glyph, kern_mode, kerning))
+	checkz(C.FT_Get_Kerning(face, left_glyph, right_glyph, kern_mode, kerning))
 	return kerning
 end
 
 function face.track_kerning(face, point_size, degree, kerning)
 	kerning = kerning or ffi.new'FT_Vector'
-	checknz(C.FT_Get_Track_Kerning(face, point_size, degree, kerning))
+	checkz(C.FT_Get_Track_Kerning(face, point_size, degree, kerning))
 	return kerning
 end
 
@@ -259,11 +259,11 @@ function face.select_charmap(face, encoding)
 			+ (encoding:byte(3) or 32) * 2^8
 			+ (encoding:byte(4) or 32)
 	end
-	checknz(C.FT_Select_Charmap(face, encoding))
+	checkz(C.FT_Select_Charmap(face, encoding))
 end
 
 function face.set_charmap(face, charmap)
-	checknz(C.FT_Set_Charmap(face, charmap))
+	checkz(C.FT_Set_Charmap(face, charmap))
 end
 
 local charmap = {}
@@ -340,25 +340,25 @@ function lib.bitmap(library)
 end
 
 function lib.free_bitmap(library, bitmap)
-	checknz(C.FT_Bitmap_Done(library, bitmap))
+	checkz(C.FT_Bitmap_Done(library, bitmap))
 end
 
 function lib.copy_bitmap(library, source, target)
-	checknz(C.FT_Bitmap_Copy(library, source, target))
+	checkz(C.FT_Bitmap_Copy(library, source, target))
 end
 
 function lib.embolden_bitmap(library, bitmap, xStrength, yStrength)
-	checknz(C.FT_Bitmap_Embolden(library, bitmap, xStrength, yStrength))
+	checkz(C.FT_Bitmap_Embolden(library, bitmap, xStrength, yStrength))
 end
 
 function lib.convert_bitmap(library, source, target, alignment)
-	checknz(C.FT_Bitmap_Convert(library, source, target, alignment))
+	checkz(C.FT_Bitmap_Convert(library, source, target, alignment))
 end
 
 local slot = {} --FT_GlyphSlot methods
 
 function slot.render(slot, render_mode) --FT_RENDER_*
-	checknz(C.FT_Render_Glyph(slot, render_mode or 0))
+	checkz(C.FT_Render_Glyph(slot, render_mode or 0))
 end
 
 function slot.subglyph_info(glyph, sub_index, p_index, p_flags, p_arg1, p_arg2, p_transform)
@@ -367,20 +367,20 @@ function slot.subglyph_info(glyph, sub_index, p_index, p_flags, p_arg1, p_arg2, 
 	p_arg1  = p_arg1  or ffi.new'FT_Int[1]'
 	p_arg2  = p_arg2  or ffi.new'FT_Int[1]'
 	p_transform = p_transform or ffi.new'FT_Matrix'
-	checknz(C.FT_Get_SubGlyph_Info(glyph, sub_index, p_index, p_flags, p_arg1, p_arg2, p_transform))
+	checkz(C.FT_Get_SubGlyph_Info(glyph, sub_index, p_index, p_flags, p_arg1, p_arg2, p_transform))
 	return
 		p_index[0], p_flags[0], p_arg1[0], p_arg2[0], p_transform
 end
 
 function slot.own_bitmap(slot)
-	checknz(C.FT_GlyphSlot_Own_Bitmap(slot))
+	checkz(C.FT_GlyphSlot_Own_Bitmap(slot))
 end
 
 --ftglyph.h
 
 function slot.glyph(slot, glyph)
 	glyph = glyph or ffi.new'FT_Glyph[1]'
-	checknz(C.FT_Get_Glyph(slot, glyph))
+	checkz(C.FT_Get_Glyph(slot, glyph))
 	return glyph[0]
 end
 
@@ -388,19 +388,19 @@ local glyph = {}
 
 function glyph.copy(source, target)
 	target = target or ffi.new'FT_Glyph[1]'
-	checknz(C.FT_Glyph_Copy(source, target))
+	checkz(C.FT_Glyph_Copy(source, target))
 	return target[0]
 end
 
 function glyph.transform(glyph, matrix, delta)
-	checknz(C.FT_Glyph_Transform(glyph, matrix, delta))
+	checkz(C.FT_Glyph_Transform(glyph, matrix, delta))
 	return glyph
 end
 
 function glyph.to_bitmap(glyph, render_mode, origin, destroy)
 	if destroy == nil then destroy = true end
 	local pglyph = ffi.new('FT_Glyph[1]', glyph)
-	checknz(C.FT_Glyph_To_Bitmap(pglyph, render_mode or 0, origin, destroy))
+	checkz(C.FT_Glyph_To_Bitmap(pglyph, render_mode or 0, origin, destroy))
 	return pglyph[0]
 end
 
@@ -423,7 +423,7 @@ function lib.outline(library, numPoints, numContours)
 	numPoints = numPoints or 0xFFFF
 	numContours = math.min(math.max(numContours or numPoints, 0), 0xFFFF)
 	local outline = ffi.new'FT_Outline[1]'
-	checknz(C.FT_Outline_New(library, numPoints, numContours, outline))
+	checkz(C.FT_Outline_New(library, numPoints, numContours, outline))
 	return outline[0]
 end
 
@@ -434,47 +434,47 @@ outline.transform = C.FT_Outline_Transform
 outline.orientation = C.FT_Outline_Get_Orientation
 
 function lib.free_outline(library, outline)
-	checknz(C.FT_Outline_Done(library, outline))
+	checkz(C.FT_Outline_Done(library, outline))
 end
 
 function outline.decompose(outline, func_interface, userdata)
-	checknz(C.FT_Outline_Decompose(outline, func_interface, userdata))
+	checkz(C.FT_Outline_Decompose(outline, func_interface, userdata))
 end
 
 function outline.check(outline)
-	checknz(C.FT_Outline_Check(outline))
+	checkz(C.FT_Outline_Check(outline))
 end
 
 function outline.cbox(outline, cbox)
 	cbox = cbox or ffi.new'FT_BBox'
-	checknz(C.FT_Outline_Get_CBox(outline, cbox))
+	checkz(C.FT_Outline_Get_CBox(outline, cbox))
 	return cbox
 end
 
 function outline.copy(source, target)
-	checknz(C.FT_Outline_Copy(source, target))
+	checkz(C.FT_Outline_Copy(source, target))
 	return target
 end
 
 function outline.embolden(outline, xstrength, ystrength)
 	if ystrength then
-		checknz(C.FT_Outline_EmboldenXY(outline, xstrength, ystrength))
+		checkz(C.FT_Outline_EmboldenXY(outline, xstrength, ystrength))
 	else
-		checknz(C.FT_Outline_Embolden(outline, xstrength))
+		checkz(C.FT_Outline_Embolden(outline, xstrength))
 	end
 end
 
 function outline.reverse(outline)
-	checknz(C.FT_Outline_Reverse(outline))
+	checkz(C.FT_Outline_Reverse(outline))
 end
 
 function lib.get_outline_bitmap(library, outline, bitmap)
-	checknz(C.FT_Outline_Get_Bitmap(library, outline, bitmap))
+	checkz(C.FT_Outline_Get_Bitmap(library, outline, bitmap))
 	return bitmap
 end
 
 function lib.render_outline(library, outline, params)
-	checknz(C.FT_Outline_Render(library, outline, params))
+	checkz(C.FT_Outline_Render(library, outline, params))
 end
 
 --matrix methods not included in freetype
