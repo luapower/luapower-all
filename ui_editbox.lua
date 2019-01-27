@@ -39,6 +39,8 @@ editbox.tags = 'standalone'
 
 ui:style('editbox standalone', {
 	border_width_bottom = 1,
+	transition_border_color = true,
+	transition_duration_border_color = .5,
 })
 
 ui:style('editbox standalone :focused', {
@@ -46,7 +48,7 @@ ui:style('editbox standalone :focused', {
 })
 
 ui:style('editbox standalone :hot', {
-	border_color_bottom = '#fff',
+	border_color = '#fff',
 })
 
 --animation

@@ -1,3 +1,6 @@
+--go@ luajit -jp=fi1m1 ui_dropdown.lua
+io.stdout:setvbuf'no'
+io.stderr:setvbuf'no'
 
 --Drop-down widget.
 --Written by Cosmin Apreutesei. Public Domain.
@@ -49,11 +52,13 @@ end
 
 function dropdown:_opened()
 	self.button.text = self.button.close_text
+	self.picker:fire'opened'
 	self:fire'opened'
 end
 
 function dropdown:_closed()
 	self.button.text = self.button.open_text
+	self.picker:fire'closed'
 	self:fire'closed'
 end
 
@@ -63,16 +68,24 @@ function dropdown:lostfocus()
 	self:close()
 end
 
+function dropdown:keydown(key)
+	return self.picker:fire('keydown', key)
+end
+
+function dropdown:keyup(key)
+	if key == 'esc' and self.isopen then
+		self:close()
+		return true
+	end
+	return self.picker:fire('keyup', key)
+end
+
 function dropdown:keypress(key)
 	if key == 'enter' and not self.isopen then
 		self:open()
 		return true
-	elseif key == 'esc' then
-		self:close()
-		return true
-	else
-		return self.picker:fire('keypress', key)
 	end
+	return self.picker:fire('keypress', key)
 end
 
 --mouse interaction
@@ -144,7 +157,10 @@ function popup:shown()
 end
 
 function popup:hidden()
-	self.dropdown:_closed()
+	--TODO: bug: parent window does not repaint synchronously after child is closed.
+	self.ui:runafter(0, function()
+		self.dropdown:_closed()
+	end)
 end
 
 function popup:override_parent_window_mousedown_autohide(inherited, ...)
@@ -155,12 +171,13 @@ function popup:override_parent_window_mousedown_autohide(inherited, ...)
 	inherited(self, ...)
 end
 
---default value picker -------------------------------------------------------
+--list picker widget ---------------------------------------------------------
 
 local list = ui.scrollbox:subclass'dropdown_list'
 ui.dropdown_list = list
 
 list.auto_w = true
+list.vscrollbar = {autohide_empty = false}
 
 list.border_color = '#333'
 list.padding_left = 1
@@ -184,16 +201,36 @@ ui:style('dropdown_item :selected', {
 	background_color = '#226',
 })
 
+--init
+
+function list:create_item(i, t)
+	local value = type(t) == 'string' and i or t.value
+	local text = type(t) == 'string' and t or t.text or value
+	local t = type(t) == 'table' and t or nil
+	local item = self.item_class({
+		parent = self.content,
+		text = text,
+		index = i,
+		item_value = value,
+		picker = self,
+		dropdown = self.dropdown,
+		select = self.item_select,
+		unselect = self.item_unselect,
+	}, t)
+	item:inherit()
+	self.by_value[value] = i
+	item:on('mousedown', self.item_mousedown)
+	return item
+end
+local time = require'time'
 function list:set_options(t)
 	if not t then return end
+	self.by_value = {} --{value -> item_index}
+	local t0 = time.clock()
 	for i,t in ipairs(t) do
-		self.item_class{
-			parent = self.content,
-			text = t,
-			index = i,
-			dropdown = self.dropdown,
-		}
+		self:create_item(i, t)
 	end
+	print((time.clock() - t0) * 1000)
 end
 
 list:init_ignore{options=1}
@@ -203,21 +240,25 @@ function list:after_init(t)
 	ct.layout = 'flexbox'
 	ct.flex_flow = 'y'
 	ct.dropdown = self.dropdown
+	ct.picker = self
 	function ct:mouseup()
 		self.active = false
-		local item = self.selected_item
+		local item = self.picker.selected_item
 		if item then
-			self.dropdown:value_picked(item.index, item.text, true)
+			self.dropdown.value = item.item_value
+			self.dropdown:close()
 		end
 	end
 	function ct:mousemove(mx, my)
 		local item = self:hit_test_children(mx, my, 'activate')
-		if item and item.index then
+		if item and item.item_value then
 			item:select()
 		end
 	end
 	self.options = t.options
 end
+
+--sync'ing
 
 function dropdown:before_sync_layout_children()
 	if self.picker.w ~= self.w then
@@ -229,29 +270,102 @@ function dropdown:before_sync_layout_children()
 	end
 end
 
-function item:mousedown()
-	self.parent.active = true
-end
+--item selection
 
-function item:select()
-	if self.parent.selected_item then
-		self.parent.selected_item:unselect()
+function list.item_select(self) --self is the item!
+	local sel_item = self.picker.selected_item
+	if sel_item == self then return end
+	if sel_item then
+		sel_item:unselect()
 	end
 	self:make_visible()
 	self:settag(':selected', true)
-	self.parent.selected_item = self
+	self.picker.selected_item = self
 end
 
-function item:unselect()
-	self.parent.selected_item = false
+function list.item_unselect(self) --self is the item!
+	self.picker.selected_item = false
 	self:settag(':selected', false)
 end
 
-function list:pick_value(val)
-	local item = self.content[val]
-	if item then
-		item:select()
-		return true
+--mouse interaction
+
+function list.item_mousedown(self) --self is the item!
+	self.parent.active = true
+end
+
+--keyboard interaction
+
+function list:next_page_item(from_item, pages)
+	local ct = self.content
+	local last_index = pages > 0 and #ct or 1
+	local step = pages > 0 and 1 or -1
+	local h = self.view.ch
+	local y = 0
+	local from_index = from_item and from_item.index or last_index
+	for i = from_index, last_index, step do
+		y = y + ct[i].h
+		if y > h then
+			return ct[i]
+		end
+	end
+	return ct[last_index]
+end
+
+function list:keypress(key)
+	if key == 'up' or key == 'down'
+		or key == 'pageup' or key == 'pagedown'
+		or key == 'home' or key == 'end'
+		or key == 'enter'
+	then
+		local hot_item = self.ui.hot_widget
+		local item = self.selected_item
+			or (hot_item and hot_item.picker and hot_item.index and hot_item)
+		local ct = self.content
+		if key == 'down' then
+			if not item then
+				item = ct[1]
+			else
+				item = ct[item.index + 1]
+			end
+		elseif key == 'up' then
+			item = item and ct[item.index - 1] or ct[1]
+		elseif key:find'page' then
+			item = self:next_page_item(item, key == 'pagedown' and 1 or -1)
+		elseif key == 'home' then
+			item = ct[1]
+		elseif key == 'end' then
+			item = ct[#ct]
+		end
+		if item then
+			item:select()
+			if key == 'enter' or not self.dropdown.isopen then
+				self.dropdown.value = item.item_value
+				self.dropdown:close()
+			end
+			return true
+		end
+	end
+end
+
+--dropdown interface
+
+function list:pick_value(value)
+	local index = self.by_value[value]
+	if not index then return end
+	local item = self.content[index]
+	item:select()
+	return true, index
+end
+
+function list:picked_value_text()
+	local item = self.selected_item
+	return item and item.text
+end
+
+function list:opened()
+	if self.selected_item then
+		self.selected_item:make_visible()
 	end
 end
 
@@ -275,12 +389,7 @@ function dropdown:create_picker()
 	return picker
 end
 
-function dropdown:value_picked(val, text, close)
-	self.text = text or self:display_value(val)
-	if close then
-		self:close()
-	end
-end
+--data binding ---------------------------------------------------------------
 
 --allow setting and typing values outside of the picker's range.
 dropdown.allow_any_value = false
@@ -291,152 +400,20 @@ function dropdown:after_init(t)
 	self.value = t.value
 end
 
-function dropdown:value_changing(val)
-	return self.picker:pick_value(val) or self.allow_any_value
+function dropdown:value_changed(val)
+	self.text = self.picker:picked_value_text() or self:value_text(val)
 end
 
-function dropdown:validate_value(val)
-
---if self.allow_any_value then
---	self:value_picked(val, nil, true)
---end
-
-
---[==[
-
---value property/state
-
---called by the picker to signal that a value was picked.
-function dropdown:value_picked(val, text, close)
-	self._value = val
-	self.editbox.text = text or self:display_value(val)
-	self.editbox:invalidate()
-	if close then
-		self:close()
+function dropdown:validate_value(val, old_val)
+	local picked, picked_val = self.picker:pick_value(val)
+	if picked then
+		return picked_val
+	elseif self.allow_any_value then
+		return val
+	else
+		return old_val
 	end
 end
-
-editbox.tags = '-standalone'
-
-function dropdown:create_editbox()
-	return self.editbox_class(self.ui, {
-		parent = self,
-		dropdown = self,
-		iswidget = false,
-	}, self.editbox)
-end
-
-function editbox:sync_dropdown()
-	local b = self.dropdown.button
-	self.w = self.dropdown.cw - (b.visible and b.w or 0)
-	self.h = self.dropdown.ch
-end
-
-function editbox:gotfocus()
-	self.dropdown:settag(':focused', true)
-end
-
-function editbox:lostfocus()
-	self.dropdown:settag(':focused', false)
-	self.dropdown:close()
-end
-
---keys that we steal from the editbox and forward to the dropdown.
-local fw_keys = {enter=1, esc=1, up=1, down=1}
-
-function editbox:override_keypress(inherited, key)
-	if fw_keys[key] then
-		return self.dropdown:keypress(key)
-	end
-	return inherited(self, key)
-end
-
---open/close button
-
-local button = ui.layer:subclass'dropdown_button'
-dropdown.button_class = button
-
-button.activable = false
-
-function dropdown:create_button()
-	return self.button_class(self.ui, {
-		parent = self,
-		dropdown = self,
-		iswidget = false,
-	}, self.button)
-end
-
-button.font = 'IonIcons,16'
-button.open_text = '\u{f280}'
-button.close_text = '\u{f286}'
-
-function button:sync_dropdown()
-	self.h = self.dropdown.ch
-	self.w = math.floor(self.h * .9)
-	self.x = self.dropdown.cw - self.w
-	self.text = self.dropdown.isopen and self.close_text or self.open_text
-end
-
---init & free
-
-dropdown:init_ignore{editable=1, value=1}
-
-function dropdown:after_init(t)
-	self.editbox = self:create_editbox()
-	self.button = self:create_button()
-	self.popup = self:create_popup()
-	self.picker = self:create_picker()
-	self.editable = t.editable
-	self.picker:focus() --picks the first value from the picker!
-	self.picker:sync_dropdown() --sync to dropdown so that scroll works.
-	self.value = t.value
-end
-
-function dropdown:before_free()
-	if not self.popup.dead then
-		self.popup:free()
-		self.popup = false
-	end
-end
-
---sync'ing
-
-function dropdown:after_sync()
-	self.button:sync_dropdown()
-	self.editbox:sync_dropdown()
-end
-
---state styles
-
-dropdown.border_color = '#333'
-dropdown.border_width_bottom = 1
-
-ui:style('dropdown', {
-	transition_border_color = true,
-	transition_duration = .5,
-})
-
-ui:style('dropdown :hot', {
-	border_color = '#999',
-	transition_border_color = true,
-	transition_duration = .5,
-})
-
-ui:style('dropdown :focused', {
-	border_color = '#fff',
-})
-
-ui:style('dropdown_button :hot, dropdown_button :focused', {
-	text_color = '#fff',
-})
-
-button.text_color = '#999'
-
-ui:style('dropdown :hot > dropdown_button, dropdown_button :focused', {
-	text_color = '#fff',
-})
-
-]==]
 
 --demo -----------------------------------------------------------------------
 
@@ -446,8 +423,8 @@ if not ... then require('ui_demo')(function(ui, win)
 	win.w = 300
 	win.h = 900
 
+	--[[
 	local dropdown1 = ui:dropdown{
-		x = 10, y = 10,
 		parent = win,
 		picker = {
 			options = {
@@ -462,23 +439,24 @@ if not ... then require('ui_demo')(function(ui, win)
 			}
 		},
 		--picker = {rows = {'Row 1', 'Row 2', 'Row 3', {}}},
-		--value = 'some invalid value',
-		value = 5,
+		value = 20,
+		--value = 'Some invalid value',
 		allow_any_value = true,
 	}
+	]]
 
-	--[[
 	local t = {}
-	for i = 1, 10000 do
-		t[i] = 'Row '..i
+	for i = 1, 1000 do
+		t[i] = 'Row' --'Row '..i
 	end
 	local dropdown2 = ui:dropdown{
-		x = 10 + dropdown1.w + 10, y = 10,
 		parent = win,
-		picker = {rows = t},
-		value = 'Row 592',
-		editable = true,
+		picker = {options = t},
+		value = 2,
 	}
-	]]
+
+	function win:after_sync()
+		self:invalidate()
+	end
 
 end) end

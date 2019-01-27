@@ -11,7 +11,6 @@ local glue = require'glue'
 local box2d = require'box2d'
 local easing = require'easing'
 local color = require'color'
-local amoeba = require'amoeba'
 --C bindings.
 local ffi = require'ffi'
 local nw = require'nw'
@@ -19,6 +18,9 @@ local time = require'time'
 local cairo = require'cairo'
 local boxblur = require'boxblur'
 local tr = require'tr'
+
+local zone = glue.noop
+local zone = require'jit.zone' --enable for profiling
 
 local min = math.min
 local max = math.max
@@ -38,6 +40,7 @@ local assert = glue.assert
 local collect = glue.collect
 local sortedpairs = glue.sortedpairs
 local memoize = glue.memoize
+local binsearch = glue.binsearch
 
 local function popval(t, v)
 	local i = indexof(v, t)
@@ -1387,7 +1390,7 @@ function window:override_init(inherited, t)
 	if parent then
 
 		function parent.before_free()
-			self._parent = false
+			self:free()
 		end
 
 		--Move window to preserve its relative position to parent if the parent
@@ -1395,7 +1398,7 @@ function window:override_init(inherited, t)
 		--when the parent's window is moved is automatic (`sticky` flag).
 		local px0, py0 = parent:to_window(0, 0)
 		function parent.before_sync()
-			if not self.native_window then return end --freed
+			if self.dead then return end
 			local px1, py1 = parent:to_window(0, 0)
 			local dx = px1 - px0
 			local dy = py1 - py0
@@ -1649,16 +1652,20 @@ function window:create_view()
 	}, self.view)
 end
 
-function window:before_free()
-	self.native_window:off{nil, self}
-	self.native_window.ui_window = false
+function window:override_free(inherited)
+	if self.dead then return end
+	local win = self.native_window
+	win:off{nil, self}
+	win.ui_window = false
 	self.view:free()
 	self.view = false
-	if self.own_native_window then
-		self.native_window:close()
-	end
 	self.native_window = false
+	if self.own_native_window then
+		win:close()
+	end
+	self._parent = false
 	self.ui.windows[self] = nil
+	inherited(self)
 end
 
 --move frameless window by dragging it ---------------------------------------
@@ -4218,26 +4225,28 @@ end
 
 --data binding ---------------------------------------------------------------
 
-function layer:get_value() return self.text end --stub
+layer:stored_property'value'
+
 function layer:validate_value(val) return val end --stub
 
-function layer:display_value(val)
+function layer:value_text(val) --stub
 	if type(val) == 'nil' or type(val) == 'boolean' then
 		return string.format('<%s>', tostring(val))
 	end
 	return tostring(val)
 end
 
+function layer:value_changed(val) --stub
+	self.text = self:value_text(val)
+end
+
 function layer:set_value(val)
 	local old_val = self.value
-	if val ~= old_val then
-		if self:fire('value_changing', val, old_val) == false then
-			return
-		end
-	end
-	val = self:validate_value(val)
-	self.text = self:display_value(val)
+	if val == old_val then return end
+	val = self:validate_value(val, old_val)
+	if val == old_val then return end
 	self:fire('value_changed', val, old_val)
+	return true
 end
 
 layer:instance_only'value'
@@ -5617,9 +5626,38 @@ function flexbox:sync_layout_y(other_axis_synced)
 	return synced
 end
 
-function flexbox:sync_window_view(w, h)
-	self.min_cw = w - self.pw
-	self.min_ch = h - self.ph
+--faster hit-testing for non-wrapped flexboxes.
+local function cmp_ys(items, i, y)
+	return items[i].visible and items[i].y < y -- < < [=] = < <
+end
+local function cmp_xs(items, i, x)
+	return items[i].visible and items[i].x < x -- < < [=] = < <
+end
+function flexbox:hit_test_flexbox_item(x, y)
+	local cmp = self.flex_flow == 'y' and cmp_ys or cmp_xs
+	local coord = self.flex_flow == 'y' and y or x
+	return max(1, (binsearch(coord, self, cmp) or #self + 1) - 1)
+end
+
+function flexbox:override_hit_test_children(inherited, x, y, reason)
+	if #self < 2 or self.flex_wrap then
+		return inherited(self, x, y, reason)
+	end
+	local i = self:hit_test_flexbox_item(x, y)
+	return self[i]:hit_test(x, y, reason)
+end
+
+--faster clipped drawing for non-wrapped flexboxes.
+function flexbox:override_draw_children(inherited, cr)
+	if #self < 1 or self.flex_wrap then
+		return inherited(self, cr)
+	end
+	local x1, y1, x2, y2 = cr:clip_extents()
+	local i = self:hit_test_flexbox_item(x1, y1)
+	local j = self:hit_test_flexbox_item(x2, y2)
+	for i = i, j do
+		self[i]:draw(cr)
+	end
 end
 
 --grid layout ----------------------------------------------------------------
@@ -6201,7 +6239,9 @@ view.from_window = view.from_parent
 function view:sync_with_window(w, h)
 	self:sync()
 	self:sync_window_view(w, h)
+	zone'sync_layout'
 	self:sync_layout()
+	zone()
 	self:run_after_layout_funcs()
 end
 

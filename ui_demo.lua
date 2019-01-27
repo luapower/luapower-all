@@ -1,5 +1,5 @@
---go @ luajit -jp=a *
-
+--go@ luajit -jp=2fi1m1 *
+print(package.cpath)
 local ui = require'ui'
 local Q = require'utf8quot'
 local time = require'time'
@@ -18,7 +18,7 @@ local win = ui:window{
 }
 function win:keyup(key) if key == 'esc' then self:close() end end
 
-ui.maxfps = 60
+ui.maxfps = 1/0
 
 local function fps_function()
 	local count_per_sec = 2
@@ -809,6 +809,40 @@ local function test_resize_window()
 	test_drag_flexbox()
 end
 
+local function test_flexbox_speed()
+	win.cw = 400
+	win.ch = 800
+	win.view.layout = false
+	win.view.padding = 0
+
+	local sb = ui.scrollbox{
+		parent = win,
+		w = 400, h = 800,
+		auto_w = true,
+		vscrollbar = {autohide_empty = false},
+		hscrollbar = {autohide_empty = false},
+		content = {
+			layout = 'flexbox',
+			flex_flow = 'y',
+			align_items_y = 'top',
+		},
+	}
+	for i=1,1000 do
+		ui.layer{
+			parent = sb.content,
+			--layout = 'textbox',
+			border_width_bottom = 1,
+			min_ch = 20,
+			--text = 'Row ',
+			text_align_x = 'auto',
+		}:inherit()
+	end
+
+	function win:after_sync()
+		self:invalidate()
+	end
+end
+
 --test_css()
 --test_layers()
 --test_drag()
@@ -819,6 +853,7 @@ end
 --test_widgets_flex()
 --test_drag_flexbox()
 --test_resize_window()
+test_flexbox_speed()
 win:show()
 ui:run()
 ui:free()
