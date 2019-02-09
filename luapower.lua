@@ -891,10 +891,10 @@ local function parse_what_file(what_file)
 		error('invalid WHAT file '.. what_file)
 	end
 	t.license = t.license and
-		t.license:match('^(.-)%s+'..glue.escape('license', '*i')..'$')
+		t.license:match('^(.-)%s+'..glue.esc('license', '*i')..'$')
 		or t.license
 	t.license =
-		t.license:match('^'..glue.escape('public domain', '*i')..'$')
+		t.license:match('^'..glue.esc('public domain', '*i')..'$')
 		and 'Public Domain' or t.license
 
 	--parse the second line which has the format:
@@ -932,7 +932,7 @@ end
 
 --"key <separator> value" -> key, value
 local function split_kv(s, sep)
-	sep = glue.escape(sep)
+	sep = glue.esc(sep)
 	local k,v = s:match('^([^'..sep..']*)'..sep..'(.*)$')
 	k = k and glue.trim(k)
 	if not k then return end
@@ -1414,7 +1414,7 @@ build_platforms = memoize_opt_package(function(package)
 	local t = {}
 	if csrc_dir(package) then
 		for path in pairs(tracked_files(package)) do
-			local s = glue.escape(csrc_dir(package)..'/build-')
+			local s = glue.esc(csrc_dir(package)..'/build-')
 			local platform =
 				path:match('^'..s..'(.-)%.sh$') or
 				path:match('^'..s..'(.-)%.cmd$')

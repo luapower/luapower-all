@@ -143,12 +143,13 @@ assert_lines('\n\n\r', {'\n','\n','\r',''})
 
 test(glue.trim('  a  d '), 'a  d')
 
-test(glue.escape'^{(.-)}$', '%^{%(%.%-%)}%$')
-test(glue.escape'%\0%', '%%%z%%')
+test(glue.esc'^{(.-)}$', '%^{%(%.%-%)}%$')
+test(glue.esc'%\0%', '%%%z%%')
 
-print(_VERSION)
-test(glue.tohex(0xdeadbeef01), 'deadbeef01')       --LuaJIT 2.1+
-test(glue.tohex(0xdeadbeef02, true), 'DEADBEEF02') --LuaJIT 2.1+
+if jit and jit.version:find'2%.1' then
+	test(glue.tohex(0xdeadbeef01), 'deadbeef01')       --LuaJIT 2.1+
+	test(glue.tohex(0xdeadbeef02, true), 'DEADBEEF02') --LuaJIT 2.1+
+end
 test(glue.tohex'\xde\xad\xbe\xef\x01', 'deadbeef01')
 test(glue.tohex('\xde\xad\xbe\xef\x02', true), 'DEADBEEF02')
 test(glue.fromhex'deadbeef01', '\xde\xad\xbe\xef\x01')
@@ -268,10 +269,10 @@ glue.luapath('baz', 'after')
 glue.cpath('zab', 'after')
 local so = package.cpath:match'%.dll' and 'dll' or 'so'
 local norm = function(s) return s:gsub('/', package.config:sub(1,1)) end
-assert(package.path:match('^'..glue.escape(norm'foo/?.lua;')))
-assert(package.cpath:match('^'..glue.escape(norm'bar/?.'..so..';')))
-assert(package.path:match(glue.escape(norm'baz/?.lua;baz/?/init.lua')..'$'))
-assert(package.cpath:match(glue.escape(norm'zab/?.'..so)..'$'))
+assert(package.path:match('^'..glue.esc(norm'foo/?.lua;')))
+assert(package.cpath:match('^'..glue.esc(norm'bar/?.'..so..';')))
+assert(package.path:match(glue.esc(norm'baz/?.lua;baz/?/init.lua')..'$'))
+assert(package.cpath:match(glue.esc(norm'zab/?.'..so)..'$'))
 
 assert(glue.writefile('glue_test.tmp', 'abc', nil, 'glue_test.tmp.tmp'))
 assert(glue.readfile('glue_test.tmp') == 'abc')

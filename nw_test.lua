@@ -2689,7 +2689,7 @@ if not name then
 		print('', name)
 	end
 elseif name:match'%*$' then
-	run_all_matching('^'..glue.escape(name:gsub('%*', ''))..'.*')
+	run_all_matching('^'..glue.esc(name:gsub('%*', ''))..'.*')
 elseif tests[name] then
 	run_test(name)
 else

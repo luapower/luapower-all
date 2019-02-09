@@ -16,10 +16,10 @@ local backend = setmetatable({}, {__index = _G})
 setfenv(1, backend)
 
 cdef = ffi.cdef
-x64 = ffi.arch == 'x64' or nil
-osx = ffi.os == 'OSX' or nil
-linux = ffi.os == 'Linux' or nil
-win = ffi.abi'win' or nil
+x64 = ffi.arch == 'x64' or false
+osx = ffi.os == 'OSX' or false
+linux = ffi.os == 'Linux' or false
+win = ffi.abi'win' or false
 
 --namespaces in which backends can add methods directly.
 fs = {} --fs module namespace

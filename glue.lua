@@ -19,6 +19,11 @@ function glue.floor(x, p)
 	return floor(x / p) * p
 end
 
+function glue.ceil(x, p)
+	p = p or 1
+	return floor(x / p) * p
+end
+
 glue.snap = glue.round
 
 function glue.clamp(x, x0, x1)
@@ -163,6 +168,26 @@ function glue.shift(t, i, n)
 	return t
 end
 
+--map f over t or extract a column from a list of records.
+function glue.map(t, f, ...)
+	local dt = {}
+	if type(f) == 'function' then
+		for i,v in ipairs(t) do
+			dt[i] = f(v, ...)
+		end
+	else
+		for i,v in ipairs(t) do
+			local sel = v[f]
+			if type(sel) == 'function' then
+				dt[i] = sel(v, ...)
+			else
+				dt[i] = sel
+			end
+		end
+	end
+	return dt
+end
+
 --scan list for value. works with ffi arrays too.
 function glue.indexof(v, t, eq, i, j)
 	i = i or 1
@@ -278,7 +303,7 @@ end
 local function format_ci_pat(c)
 	return ('[%s%s]'):format(c:lower(), c:upper())
 end
-function glue.string.escape(s, mode)
+function glue.string.esc(s, mode) --escape is a reserved word in Terra
 	s = s:gsub('%%','%%%%'):gsub('%z','%%z')
 		:gsub('([%^%$%(%)%.%[%]%*%+%-%?])', '%%%1')
 	if mode == '*i' then s = s:gsub('[%a]', format_ci_pat) end
@@ -661,12 +686,6 @@ function glue.memoize(func, narg)
 			return glue.memoize(func, info.nparams)
 		end
 	end
-end
-
-function glue.tuples(n)
-	return glue.memoize(function(...)
-		return {}
-	end, n)
 end
 
 --setup a module to load sub-modules when accessing specific keys.

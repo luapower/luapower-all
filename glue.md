@@ -10,6 +10,7 @@ __math__
 `glue.round(x[, p]) -> y`                                          round x to nearest integer or multiple of `p` (half up)
 `glue.snap(x[, p]) -> y`                                           synonym for glue.round
 `glue.floor(x[, p]) -> y`                                          round x down to nearest integer or multiple of `p`
+`glue.ceil(x[, p]) -> y`                                           round x up to nearest integer or multiple of `p`
 `glue.clamp(x, min, max) -> y`                                     clamp x in range
 `glue.lerp(x, x0, x1, y0, y1) -> y`                                linear interpolation
 __varargs__
@@ -23,11 +24,11 @@ __tables__
 `glue.merge(dt, t1, ...) -> dt`                                    merge tables - no overwriting
 `glue.sortedpairs(t [,cmp]) -> iter() -> k, v`                     like pairs() but in key order
 `glue.attr(t, k1 [,v])[k2] = v`                                    autofield pattern
-`glue.tuples([n]) -> tuple(...) -> t`                              create a tuple space
 __lists__
 `glue.extend(dt, t1, ...) -> dt`                                   extend a list
 `glue.append(dt, v1, ...) -> dt`                                   append non-nil values to a list
 `glue.shift(t, i, n) -> t`                                         shift list elements
+`glue.map(t, field|f,...) -> t`                                    map f over t or select a column from a list of records
 __arrays__
 `glue.indexof(v, t, [i], [j]) -> i`                                scan array for value
 `glue.binsearch(v, t, [cmp], [i], [j]) -> i`                       binary search in sorted list
@@ -36,7 +37,7 @@ __strings__
 `glue.gsplit(s,sep[,start[,plain]]) -> iter() -> e[,captures...]`  split a string by a pattern
 `glue.lines(s[, opt]) -> iter() -> s`                              iterate the lines of a string
 `glue.trim(s) -> s`                                                remove padding
-`glue.escape(s [,mode]) -> pat`                                    escape magic pattern characters
+`glue.esc(s [,mode]) -> pat`                                       escape magic pattern characters
 `glue.tohex(s|n [,upper]) -> s`                                    string to hex
 `glue.fromhex(s) -> s`                                             hex to string
 `glue.starts(s, p) -> t|f`                                         find if string `s` starts with string `p`
@@ -93,6 +94,11 @@ for `0.49999999999999997` (the number right before `0.5`) which is < `0.5`.
 
 Round a number towards nearest smaller integer or multiple of `p`.
 Implemented as `math.floor(x / p) * p`.
+
+## `glue.ceil(x[, p]) -> y`
+
+Round a number towards nearest larger integer or multiple of `p`.
+Implemented as `math.ceil(x / p) * p`.
 
 ### `glue.clamp(x, min, max)`
 
@@ -257,17 +263,6 @@ Idiom for `t[k1][k2] = v` with auto-creating of `t[k1]` if not present.
 
 ------------------------------------------------------------------------------
 
-### `glue.tuples([n]) -> tuple(...) -> t`
-
-Create a tuple space for generating unique keys for multiple-key indexing.
-Calling `tuple()` twice with the same arguments returns the same empty table
-`t`, which can be further used as a key representing those arguments in any
-Lua table, effectively enabling multiple-key indexing.
-
-The optional `n` fixates the tuple to always use exactly `n` args.
-
-------------------------------------------------------------------------------
-
 ## Lists
 
 ### `glue.extend(dt,t1,...) -> dt`
@@ -314,9 +309,14 @@ Removing a portion of a list or making room for more elements inside the list.
 
 ------------------------------------------------------------------------------
 
-## Arrays
+### `glue.map(t, field|f,...) -> t`
+
+Map function `f(v) -> r` over the array elements of `t` or pluck a field
+from a list of tables that have it.
 
 ------------------------------------------------------------------------------
+
+## Arrays
 
 ### `glue.indexof(v, t, [i], [j]) -> i`
 
@@ -403,7 +403,7 @@ Remove whitespace (defined as Lua pattern `"%s"`) from the beginning and end of 
 
 ------------------------------------------------------------------------------
 
-### `glue.escape(s[,mode]) -> pat`
+### `glue.esc(s[,mode]) -> pat`
 
 Escape magic characters of the string `s` so that it can be used as a pattern
 to string matching functions.

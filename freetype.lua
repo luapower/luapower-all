@@ -504,7 +504,6 @@ ffi.metatype('struct FT_FaceRec_', {__index = face})
 ffi.metatype('struct FT_GlyphSlotRec_', {__index = slot})
 ffi.metatype('struct FT_GlyphRec_', {__index = glyph})
 ffi.metatype('struct FT_CharMapRec_', {__index = charmap})
-ffi.metatype('struct FT_Bitmap_', {__index = bitmap})
 ffi.metatype('struct FT_Outline_', {__index = outline})
 ffi.metatype('struct FT_Matrix_', {__index = matrix})
 
