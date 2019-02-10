@@ -18,7 +18,10 @@ local assert = glue.assert --assert with string formatting
 local snap = glue.snap
 local pass = glue.pass
 local round = glue.round
-local tuples = glue.tuples
+
+local function tuples(n)
+	return glue.memoize(function(...) return {} end, n)
+end
 
 --glyph rasterizer -----------------------------------------------------------
 
