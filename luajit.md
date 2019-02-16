@@ -94,6 +94,11 @@ higher priority).
 
 ### Finding [terra] modules
 
+The luajit executable was modified to call `require'terra'` before trying
+to run `.t` files at the command line. It also loads the file by calling the
+global `loadfile` instead of the C function `lua_loadfile`. `loadfile` is
+overriden in `terralib.lua` to load `.t` files as Terra source code.
+
 #### Windows
 
 TODO

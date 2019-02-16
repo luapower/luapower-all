@@ -1,6 +1,6 @@
 /*
 ** FFI library.
-** Copyright (C) 2005-2016 Mike Pall. See Copyright Notice in luajit.h
+** Copyright (C) 2005-2017 Mike Pall. See Copyright Notice in luajit.h
 */
 
 #define lib_ffi_c
@@ -194,7 +194,7 @@ LJLIB_CF(ffi_meta___eq)		LJLIB_REC(cdata_arith MM_eq)
 
 LJLIB_CF(ffi_meta___len)	LJLIB_REC(cdata_arith MM_len)
 {
-  return ffi_arith(L);
+  return lj_carith_len(L);
 }
 
 LJLIB_CF(ffi_meta___lt)		LJLIB_REC(cdata_arith MM_lt)
@@ -747,6 +747,9 @@ LJLIB_CF(ffi_abi)	LJLIB_REC(.)
 #if LJ_ABI_WIN
   case H_(4ab624a8,4ab624a8): b = 1; break;  /* win */
 #endif
+#if LJ_TARGET_UWP
+  case H_(a40f0bcb,a40f0bcb): b = 1; break;  /* uwp */
+#endif
   case H_(3af93066,1f001464): b = 1; break;  /* le/be */
 #if LJ_GC64
   case H_(9e89d2c9,13c83c92): b = 1; break;  /* gc64 */
@@ -829,7 +832,7 @@ static GCtab *ffi_finalizer(lua_State *L)
   settabV(L, L->top++, t);
   setgcref(t->metatable, obj2gco(t));
   setstrV(L, lj_tab_setstr(L, t, lj_str_newlit(L, "__mode")),
-	  lj_str_newlit(L, "K"));
+	  lj_str_newlit(L, "k"));
   t->nomm = (uint8_t)(~(1u<<MM_mode));
   return t;
 }
