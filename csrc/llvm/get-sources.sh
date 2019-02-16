@@ -1,9 +1,9 @@
 #!/bin/sh
 
-VER=3.5.0
+VER=6.0.1
 
 download() {
-	which wget >/dev/null || { 
+	which wget >/dev/null || {
 		echo "wget not found."
 		echo "download this yourself: $1"
 		exit 1

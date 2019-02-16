@@ -3,8 +3,6 @@ setlocal EnableDelayedExpansion
 
 if [%1] == [] echo don't call this directly. & exit
 
-cat AddLLVM.cmake.patch | patch -N llvm.src/cmake/modules/AddLLVM.cmake
-
 REM remove MSYS from PATH because CMAKE is dumb.
 set $line=%path%
 for %%a in ("%path:;=";"%") do (
