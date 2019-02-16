@@ -11,7 +11,7 @@ local exif = {
 
 local meta_exif_data = {}
 meta_exif_data.__index = meta_exif_data
-meta_exif_data.__tostring = function() return "ExifData" end
+ffi.metatype("ExifData", meta_exif_data)
 
 function meta_exif_data:get_tags()
 	local tags = {}
@@ -29,6 +29,7 @@ function meta_exif_data:get_tags()
 			if tag_value == "Internal error (unknown value 0)" then
 				tag_value = nil
 			end -- Exception
+			
 			tags[tag_name] = tag_value
 		end)
 
@@ -36,14 +37,14 @@ function meta_exif_data:get_tags()
 		for_entry:free()
 	end)
 
-	C.exif_data_foreach_content(self.raw, for_content, nil)
+	C.exif_data_foreach_content(self, for_content, nil)
 	for_content:free()
 
 	return tags
 end
 
 function meta_exif_data:free()
-	return C.exif_data_free(self.raw)
+	return C.exif_data_free(self)
 end
 
 function exif.read(data)
@@ -57,14 +58,10 @@ function exif.read(data)
 	C.exif_loader_unref(loader)
 
 	if edata == nil then
-		C.exif_data_free(edata)
-
 		return false
 	end
 
-	return setmetatable({
-		raw = edata
-	}, meta_exif_data)
+	return edata
 end
 
 return exif

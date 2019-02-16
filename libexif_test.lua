@@ -22,7 +22,7 @@ for k, v in pairs(compare_table) do
 	compare_check[k] = false
 end
 
-if exif_data ~= nil then
+if exif_data then
 	local tags = exif_data:get_tags()
 	local ok = true
 

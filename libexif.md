@@ -11,28 +11,27 @@ EXIF information from/to image files.
 
 ------------------------------------ -----------------------------------------
 `exif.C`                             the libexif ffi clib object/namespace
-`exif.read(data) -> exif_data`       open file and get EXIF information
-`exif_data:get_tags() -> table`      return table of written tags
-`exif_data:free()`                   free the exif_data
-`exif_data.raw -> cdata`             return cdata of exif_data
+`exif.read_file(path) -> exit_data`  read data and get EXIF information
+`exit_data:get_tags() -> table`      return table of written tags
+`exit_data:free()`                   free the exit_data
 ------------------------------------ -----------------------------------------
 
-### `exif.read(data) -> exif_data`
+### `exif.read(data) -> exit_data`
 
 Read data and parse EXIF data from it.
 `data` is byte-data of file.
-Will return `false` if `data` is not a string, not valid path or no EXIF data was found.
-Return exif_data as an lua object. The cdata object stored in `exif_data.raw`.
+Will return `false` if `data` is not a string or no EXIF data was found.
+Return `exit_data` as an cdata object with lua metatable.
 
-### `exif_data:get_tags() -> table`
+### `exit_data:get_tags() -> table`
 
-Return table of tags from exif_data.
-Internally calls a foreach for all ExifContent in `exif_data`, fixes them then calls a foreach for all ExifEntry in ExifContent, fixes them and converts tags names and values to printable strings.
-Fixing ExifContent and ExifEntry allows you to get at least some EXIF tags if JPEG was corrupted.
+Return table of tags from `exit_data`.
+Internally calls a foreach for all ExifContent in `exit_data`, fixes them then calls a foreach for all ExifEntry in ExifContent, fixes them and converts tags names and values to printable strings.
+Fixing ExifContent and ExifEntry allows you to get at least some EXIF tags if file was corrupted.
 
-### `exif_data:free()`
+### `exit_data:free()`
 
-Free the exif_data.
+Free the exit_data.
 
 ## Help needed
 
