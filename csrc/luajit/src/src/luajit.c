@@ -276,17 +276,22 @@ static int handle_script(lua_State *L, char **argx)
 #ifdef LUAPOWER_BUILD
   // call require('terra') before running a *.t file.
   if (fname) {
-	  int len = strlen(fname);
-	  if (len >= 3 && fname[len - 1] == 't' && fname[len - 2] == '.') {
-		  lua_getglobal(L, "require");
-		  lua_pushliteral(L, "terra");
-		  lua_call(L, 1, 0);
-	  }
+    int len = strlen(fname);
+    if (len >= 3 && fname[len - 1] == 't' && fname[len - 2] == '.') {
+      lua_getglobal(L, "require");
+      lua_pushliteral(L, "terra");
+      lua_call(L, 1, 0);
+    }
   }
   // use terra-overriden _G.loadfile instead of luaL_loadfile.
+  int top = lua_gettop(L);
   lua_getglobal(L, "loadfile");
   lua_pushstring(L, fname);
-  status = lua_pcall(L, 1, 1, 0);    // pushes the chunk or an error message
+  lua_call(L, 1, LUA_MULTRET); // pushes the chunk or nil + error message
+  int nresults = lua_gettop(L) - top;
+  status = nresults == 2 && lua_isnil(L, -2);
+  if (status)
+    lua_remove(L, -2); // remove the nil, leave the error message
 #else
   status = luaL_loadfile(L, fname);  // pushes the chunk or an error message
 #endif
