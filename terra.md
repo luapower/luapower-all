@@ -51,5 +51,5 @@ Anyway, the changelist:
   * the system include paths are set for [mingw64-headers].
   * the location of clang's resource dir is set for [clang-resource-dir].
 
-[source code changes]: https://github.com/luapower/terra_fork/compare/aa9501...luapower:master
-[upstream changes]:    https://github.com/luapower/terra_fork/compare/aa9501...zdevito:master
+[source code changes]: https://github.com/luapower/terra_fork/compare/0a11f98...luapower:master
+[upstream changes]:    https://github.com/luapower/terra_fork/compare/0a11f98...zdevito:master
