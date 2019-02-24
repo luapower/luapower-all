@@ -670,21 +670,37 @@ local function memoize_vararg(fn, minarg, maxarg)
 	end
 end
 local memoize_narg = {[0] = memoize0, memoize1, memoize2}
-function glue.memoize(func, narg)
+local function choose_memoize_func(func, narg)
 	if narg then
 		local memoize_narg = memoize_narg[narg]
 		if memoize_narg then
-			return memoize_narg(func)
+			return memoize_narg
 		else
-			return memoize_vararg(func, narg, narg)
+			return memoize_vararg, narg, narg
 		end
 	else
 		local info = debug.getinfo(func, 'u')
 		if info.isvararg then
-			return memoize_vararg(func, info.nparams, 1/0)
+			return memoize_vararg, info.nparams, 1/0
 		else
-			return glue.memoize(func, info.nparams)
+			return choose_memoize_func(func, info.nparams)
 		end
+	end
+end
+function glue.memoize(func, narg)
+	local memoize, minarg, maxarg = choose_memoize_func(func, narg)
+	return memoize(func, minarg, maxarg)
+end
+
+--memoize a function with multiple return values.
+function glue.memoize_multiret(func, narg)
+	local memoize, minarg, maxarg = choose_memoize_func(func, narg)
+	local function wrapper(...)
+		return glue.pack(func(...))
+	end
+	local func = memoize(wrapper, minarg, maxarg)
+	return function(...)
+		return glue.unpack(func(...))
 	end
 end
 
