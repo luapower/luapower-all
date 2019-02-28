@@ -178,9 +178,9 @@ function glue.map(t, f, ...)
 	else
 		for i,v in ipairs(t) do
 			local sel = v[f]
-			if type(sel) == 'function' then
+			if type(sel) == 'function' then --method to apply
 				dt[i] = sel(v, ...)
-			else
+			else --field to pluck
 				dt[i] = sel
 			end
 		end

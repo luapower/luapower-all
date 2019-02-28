@@ -1299,7 +1299,7 @@ do
                 parts:insert(": ")
                 indent() parts:insert("parameters: ")
                 print(types.tuple(unpack(self.parameters)),d+1)
-                indent() parts:insert("returntype:")
+                indent() parts:insert("returntype: ")
                 print(self.returntype,d+1)
             end
         end
