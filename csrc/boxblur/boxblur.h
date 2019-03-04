@@ -1,15 +1,20 @@
 #ifndef BOXBLUR_H
 #define BOXBLUR_H
 
-void boxblur_g8(void *src, void *dst,
-	int32_t width, int32_t height, int32_t src_stride, int32_t dst_stride,
-	int32_t radius, int32_t passes, void* blurx, void* sumx);
+#include <stdint.h>
+typedef uint8_t u8;
+typedef int16_t i16;
+typedef int32_t i32;
 
-void boxblur_8888(void *src, void *dst,
-	int32_t width, int32_t height, int32_t src_stride, int32_t dst_stride,
-	int32_t radius, int32_t passes, void* blurx, void* sumx);
+void boxblur_g8(u8 *src, u8 *dst, i32 width, i32 height,
+	i32 src_stride, i32 dst_stride, i32 radius, i32 passes,
+	i16* blurx, i16* sumx);
 
-void boxblur_extend(void *src, int32_t width, int32_t height,
-	int32_t src_stride, int32_t bpp, int32_t radius);
+void boxblur_8888(u8 *src, u8 *dst, i32 width, i32 height,
+	i32 src_stride, i32 dst_stride, i32 radius, i32 passes,
+	i16* blurx, i16* sumx);
+
+void boxblur_extend(u8 *src, i32 width, i32 height,
+	i32 src_stride, i32 bpp, i32 radius);
 
 #endif
