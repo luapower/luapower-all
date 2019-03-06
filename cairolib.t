@@ -39,6 +39,20 @@ local struct cairo_color_t {
 }
 C.cairo_color_t = cairo_color_t
 
+cairo_color_t.metamethods.__cast = function(from, to, exp)
+	if from == cairo_argb32_color_t then
+		local f = 1 / 255
+		return `cairo_color_t {
+			exp.channels.red   * f,
+			exp.channels.green * f,
+			exp.channels.blue  * f,
+			exp.channels.alpha * f
+		}
+	else
+		error'invalid conversion'
+	end
+end
+
 cairo_color_t.metamethods.__eq = macro(function(c1, c2)
 	return `
 		    c1.red   == c2.red
@@ -71,15 +85,6 @@ cr.rgb:adddefinition(terra(self: &cairo_t, c: cairo_color_t)
 end)
 cr.rgba:adddefinition(terra(self: &cairo_t, c: cairo_color_t)
 	return self:rgba(unpackstruct(c))
-end)
-cr.rgba:adddefinition(terra(self: &cairo_t, c: cairo_argb32_color_t)
-	var f = 1.0 / 255
-	return self:rgba(
-		c.channels.red   * f,
-		c.channels.green * f,
-		c.channels.blue  * f,
-		c.channels.alpha * f
-	)
 end)
 cr.tolerance   = overload('tolerance',   {cairo_set_tolerance,   cairo_get_tolerance})
 cr.antialias   = overload('antialias',   {cairo_set_antialias,   cairo_get_antialias})
@@ -340,8 +345,20 @@ p.type = cairo_pattern_get_type
 p.color_stop_rgb       = cairo_pattern_get_color_stop_rgb
 p.color_stop_rgba      = cairo_pattern_get_color_stop_rgba
 p.color_stop_count     = cairo_pattern_get_color_stop_count
-p.add_color_stop_rgb   = cairo_pattern_add_color_stop_rgb
-p.add_color_stop_rgba  = cairo_pattern_add_color_stop_rgba
+p.add_color_stop_rgb   = overload('add_color_stop_rgb', {cairo_pattern_add_color_stop_rgb})
+p.add_color_stop_rgb:adddefinition(terra(self: &cairo_pattern_t, offset: double, color: cairo_color_t)
+	return self:add_color_stop_rgb(offset, unpackstruct(color, 1, 3))
+end)
+p.add_color_stop_rgb:adddefinition(terra(self: &cairo_pattern_t, offset: double, color: cairo_argb32_color_t)
+	return self:add_color_stop_rgb(offset, [cairo_color_t](color))
+end)
+p.add_color_stop_rgba  = overload('add_color_stop_rgba', {cairo_pattern_add_color_stop_rgba})
+p.add_color_stop_rgba:adddefinition(terra(self: &cairo_pattern_t, offset: double, color: cairo_color_t)
+	return self:add_color_stop_rgba(offset, unpackstruct(color))
+end)
+p.add_color_stop_rgba:adddefinition(terra(self: &cairo_pattern_t, offset: double, color: cairo_argb32_color_t)
+	return self:add_color_stop_rgba(offset, [cairo_color_t](color))
+end)
 p.linear_points        = cairo_pattern_get_linear_points
 p.radial_circles       = cairo_pattern_get_radial_circles
 p.surface              = cairo_pattern_get_surface
