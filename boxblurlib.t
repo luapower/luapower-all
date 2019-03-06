@@ -9,15 +9,17 @@ includepath'$L/csrc/boxblur'
 include'boxblur.h'
 linklibrary'boxblur'
 
-RepaintFunc = {&Bitmap} -> {}
+RepaintFunc = {&opaque, &Bitmap} -> {}
 
 struct Blur {
 	--config
 	w: int;
 	h: int;
 	format: enum; --BITMAP_FORMAT_*
-	repaint: RepaintFunc;
+	repaint: RepaintFunc; repaint_self: &opaque;
 	--buffers
+	max_w: int;
+	max_h: int;
 	max_radius: int;
 	bmp1  : Bitmap; bmp1_parent: Bitmap;
 	bmp2  : Bitmap; bmp2_parent: Bitmap;
@@ -31,16 +33,23 @@ struct Blur {
 	valid  : bool;
 }
 
+terra Blur:init(format: enum, repaint: RepaintFunc, repaint_self: &opaque)
+	fill(&self)
+	self.format = format
+	self.repaint = repaint
+	self.repaint_self = repaint_self
+end
+
 terra Blur:_alloc()
 	--compute side paddings needed for both source and dest. bitmaps.
 	--we set max padding since we're swapping src with dst for multiple passes.
-	var w = self.w
-	var h = self.h
-	var max_radius = [int](self.max_radius)
-	var w1 = max_radius
-	var h1 = 2 * max_radius
-	var w2 = max_radius + 16 / pixelsize(self.format)
-	var h2 = max_radius
+	var w = self.max_w
+	var h = self.max_h
+	var r = self.max_radius
+	var w1 = r
+	var h1 = 2 * r
+	var w2 = r + 16 / pixelsize(self.format)
+	var h2 = r
 	var bw = w + w1 + w2
 	var bh = w + w1 + w2
 
@@ -48,7 +57,7 @@ terra Blur:_alloc()
 	self.bmp2_parent = bitmap(bw, bh, self.format, aligned_stride(bw, 16))
 	self.blurx_parent = bitmap(
 		w * 2, --16bit samples so double the width.
-		h + 4 * max_radius + 1,
+		h + 4 * r + 1,
 		self.format, aligned_stride(self.src.stride * 2, 16))
 
 	self.sumx_size = self.src.stride + 8
@@ -63,9 +72,9 @@ terra Blur:_alloc()
 		return
 	end
 
-	self.bmp1 = self.bmp1_parent:sub(w1, h1, w, h)
-	self.bmp2 = self.bmp2_parent:sub(w1, h1, w, h)
-	self.blurx = self.blurx_parent:sub(0, 3 * max_radius + 1, maxint, maxint)
+	self.bmp1 = self.bmp1_parent:sub(w1, h1, self.w, self.h)
+	self.bmp2 = self.bmp2_parent:sub(w1, h1, self.w, self.h)
+	self.blurx = self.blurx_parent:sub(0, 3 * r + 1, maxint, maxint)
 	self.src = &self.bmp1
 	self.dst = &self.bmp2
 	self.valid = false
@@ -76,29 +85,31 @@ terra Blur:free()
 	self.bmp2_parent:free()
 	self.blurx_parent:free()
 	free(self.sumx); self.sumx = nil
-	self.max_radius = -1
+	self.max_radius = 0
+	self.max_w = 0
+	self.max_h = 0
+	self.w = 0
+	self.h = 0
 	self.src = nil
 	self.dst = nil
 end
 
-terra Blur:grow(radius: uint8)
-	if radius > self.max_radius then
-		self:free()
-		while self.max_radius < radius do
-			self.max_radius = max(8, self.max_radius) * 2
-		end
-		self:_alloc()
-	end
+local terra grow(x: num, newx: num, factor: num)
+	if x == 0 then return newx end
+	while x < newx do x = x * factor end
+	return x
 end
 
-terra boxblurlib.boxblur(w: int, h: int, format: enum, repaint: RepaintFunc)
-	var self: Blur; fill(&self)
-	self.w = w
-	self.h = h
-	self.format = format
-	self.repaint = repaint
-	self.max_radius = -1
-	return self
+terra Blur:grow(w: int, h: int, radius: uint8)
+	if w > self.max_w or h > self.max_h or radius > self.max_radius then
+		self:free()
+		self.max_radius = clamp(grow(self.max_radius, max(8, radius), 2), 0, 255)
+		self.max_w = grow(self.max_w, w, sqrt(2))
+		self.max_h = grow(self.max_h, h, sqrt(2))
+		self.w = w
+		self.h = h
+		self:_alloc()
+	end
 end
 
 terra Blur:_blur(src: &Bitmap, dst: &Bitmap)
@@ -136,12 +147,12 @@ end
 
 terra Blur:_repaint()
 	if self.valid then return end
-	self.repaint(self.src)
+	self.repaint(self.repaint_self, self.src)
 	self.valid = true
 end
 
-terra Blur:blur(radius: uint8, passes: uint8)
-	self:grow(radius)
+terra Blur:blur(w: int, h: int, radius: uint8, passes: uint8)
+	self:grow(w, h, radius)
 	passes = clamp(passes, 0, 10)
 	if self.valid and radius == self.radius and passes == self.passes then
 		--nothing changed

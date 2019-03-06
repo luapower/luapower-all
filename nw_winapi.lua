@@ -584,8 +584,9 @@ end
 
 --positioning/rectangles -----------------------------------------------------
 
+local r = winapi.RECT()
 function window:get_client_size()
-	local r = self.win.client_rect
+	local r = self.win:get_client_rect(r)
 	return r.w, r.h
 end
 
@@ -2431,7 +2432,7 @@ function window:set_tooltip(text)
 			}
 		else
 			self._tooltip.text = text --NOTE: this invalidates the window
-			self._tooltip.rect = self.win.client_rect
+			self._tooltip.rect = {unpack_rect(self.win.client_rect)}
 			self._tooltip.active = true
 		end
 	elseif self._tooltip then

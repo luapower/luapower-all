@@ -15,6 +15,22 @@ local function retbool(t, name, f)
 	end)
 end
 
+local struct cairo_argb32_color_channels_t {
+	alpha : uint8;
+	blue  : uint8;
+	green : uint8;
+	red   : uint8;
+}
+
+local struct cairo_argb32_color_t {
+	union {
+		uint: uint32;
+		channels: cairo_argb32_color_channels_t;
+	}
+}
+C.cairo_argb32_color_t = cairo_argb32_color_t
+forwardproperties('channels')(cairo_argb32_color_t)
+
 local struct cairo_color_t {
 	red:   double;
 	green: double;
@@ -55,6 +71,15 @@ cr.rgb:adddefinition(terra(self: &cairo_t, c: cairo_color_t)
 end)
 cr.rgba:adddefinition(terra(self: &cairo_t, c: cairo_color_t)
 	return self:rgba(unpackstruct(c))
+end)
+cr.rgba:adddefinition(terra(self: &cairo_t, c: cairo_argb32_color_t)
+	var f = 1.0 / 255
+	return self:rgba(
+		c.channels.red   * f,
+		c.channels.green * f,
+		c.channels.blue  * f,
+		c.channels.alpha * f
+	)
 end)
 cr.tolerance   = overload('tolerance',   {cairo_set_tolerance,   cairo_get_tolerance})
 cr.antialias   = overload('antialias',   {cairo_set_antialias,   cairo_get_antialias})
@@ -182,6 +207,11 @@ end
 
 local p = cairo_path_t.methods
 p.free = cr.cairo_path_destroy
+
+p.equal = terra(p1: &cairo_path_t, p2: &cairo_path_t)
+	if p1.num_data ~= p2.num_data then return false end
+	return equal(p1.data, p2.data, p1.num_data)
+end
 
 cr.circle = terra(self: &cairo_t, cx: double, cy: double, r: double)
 	self:new_sub_path()
