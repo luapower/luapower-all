@@ -745,11 +745,14 @@ end, ...)
 
 ### `glue.autoload(t, submodules) -> t` <br> `glue.autoload(t, key, module|loader) -> t`
 
-Assign a metatable to `t` such that when a missing key is accessed, the module said to contain that key is require'd automatically.
+Assign a metatable to `t` (or override an existing metatable's `__index`) such
+that when a missing key is accessed, the module said to contain that key is
+require'd automatically.
 
-The `submodules` argument is a table of form `{key = module_name | load_function}` specifying the corresponding
-Lua module (or load function) that make each key available to `t`. The alternative syntax allows specifying
-the key - submodule associations one by one.
+The `submodules` argument is table of form `{key = module_name | load_function}`
+specifying the corresponding Lua module (or load function) that make each key
+available to `t`. The alternative syntax allows specifying the key - submodule
+associations one by one.
 
 #### Motivation
 

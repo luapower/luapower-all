@@ -725,10 +725,18 @@ end
 function glue.autoload(t, k, v)
 	local mt = getmetatable(t) or {}
 	if not mt.__autoload then
-		assert(not mt.__index, '__index already assigned')
-		local submodules = {}
+		local old_index = mt.__index
+	 	local submodules = {}
 		mt.__autoload = submodules
 		mt.__index = function(t, k)
+			--overriding __index...
+			if type(old_index) == 'function' then
+				local v = old_index(t, k)
+				if v ~= nil then return v end
+			elseif type(old_index) == 'table' then
+				local v = old_index[k]
+				if v ~= nil then return v end
+			end
 			if submodules[k] then
 				if type(submodules[k]) == 'string' then
 					require(submodules[k]) --module
@@ -736,8 +744,8 @@ function glue.autoload(t, k, v)
 					submodules[k](k) --custom loader
 				end
 				submodules[k] = nil --prevent loading twice
+				return rawget(t, k)
 			end
-			return rawget(t, k)
 		end
 		setmetatable(t, mt)
 	end

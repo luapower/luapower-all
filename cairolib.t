@@ -374,3 +374,5 @@ p.matrix = overload('matrix', {
 
 p.extend = overload('extend', {cairo_pattern_set_extend, cairo_pattern_get_extend})
 p.filter = overload('filter', {cairo_pattern_set_filter, cairo_pattern_get_filter})
+
+return C
