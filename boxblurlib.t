@@ -84,7 +84,7 @@ terra Blur:free()
 	self.bmp1_parent:free()
 	self.bmp2_parent:free()
 	self.blurx_parent:free()
-	free(self.sumx); self.sumx = nil
+	free(self.sumx)
 	self.max_radius = 0
 	self.max_w = 0
 	self.max_h = 0
