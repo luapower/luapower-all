@@ -6,8 +6,8 @@ local bitmaplib = {__index = require'low'}
 setfenv(1, setmetatable(bitmaplib, bitmaplib))
 public = publish'bitmaplib'
 
-BITMAP_FORMAT_G8    = 1
-BITMAP_FORMAT_BGRA8 = 2
+BITMAP_FORMAT_G8     = 1
+BITMAP_FORMAT_ARGB32 = 2
 
 terra pixelsize(format: enum)
 	return iif(format == BITMAP_FORMAT_G8, 1, 4)
