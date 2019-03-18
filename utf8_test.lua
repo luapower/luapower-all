@@ -44,7 +44,7 @@ local n2, p2 = utf8.decode(s, nil, false, nil, 0)
 assert(n2 == n1 + p1)
 assert(p2 == p1)
 
-local rep = math.floor(5 * 1024^2 / #s)
+local rep = math.floor(50 * 1024^2 / #s)
 s = s:rep(rep)
 local outbuf, n, p = utf8.decode(s)
 assert(n == rep * n1)
@@ -52,7 +52,7 @@ assert(p == rep * p1)
 
 local t0 = time.clock()
 local bytes = 0
-for i = 1, 10 do
+for i = 1, 2 do
 	local outbuf, len = utf8.decode(s, #s, outbuf, n)
 	assert(len == n)
 	bytes = bytes + #s
@@ -65,7 +65,7 @@ assert(slen == #valid * rep)
 local sbuf = ffi.new('uint8_t[?]', slen)
 local t0 = time.clock()
 local bytes = 0
-for i = 1, 10 do
+for i = 1, 5 do
 	local outbuf, len = utf8.encode(outbuf, n, sbuf, slen)
 	assert(len == #valid * rep)
 	bytes = bytes + len
@@ -76,7 +76,7 @@ print(string.format('encode: %.2f Mchars -> %.2f Mbytes, %d MB/s',
 
 local t0 = time.clock()
 local bytes = 0
-for i = 1, 1 do
+for i = 1, 2 do
 	local len = 0
 	local i = slen
 	while true do
@@ -109,7 +109,7 @@ local outbuf, len = fb.charset_to_unicode('utf-8', s, #s)
 assert(len == n + p / 4 + 3)
 local t0 = time.clock()
 local bytes = 0
-for i = 1, 20 do
+for i = 1, 2 do
 	local _, len = fb.charset_to_unicode('utf-8', s, #s, outbuf, len)
 	assert(len == n + p / 4 + 3)
 	bytes = bytes + #s

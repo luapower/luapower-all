@@ -1,139 +1,164 @@
 setfenv(1, require'low')
 local utf8 = require'utf8lib'
 
-local s1 = ''
+local strings = {
+	{'empty', ''},
+	{'smallest', '\0'},
+	{'largest', '\xF4\x8F\xBF\xBF'},
+	{'valid', 'Hello!'},
+	{'valid', 'هذه هي بعض النصوص العربي'},
+	{'valid', 'ᚠᛇᚻ᛫ᛒᛦᚦ᛫ᚠᚱᚩᚠᚢᚱ᛫ᚠᛁᚱᚪ᛫ᚷᛖᚻᚹᛦᛚᚳᚢᛗ'},
+	{'valid', 'Sîne klâwen durh die wolken sint geslagen'},
+	{'valid', 'Τη γλώσσα μου έδωσαν ελληνική'},
+	{'valid', 'На берегу пустынных волн'},
+	{'valid', 'ვეპხის ტყაოსანი შოთა რუსთაველი'},
+	{'valid', 'யாமறிந்த மொழிகளிலே தமிழ்மொழி போல் இனிதாவது எங்கும் காணோம்,'},
+	{'valid', '我能吞下玻璃而不伤身体'},
+	{'valid', '나는 유리를 먹을 수 있어요. 그래도 아프지 않아요'},
+	{'invalid', '-\x80='},
+	{'partial2', '-\xC2='},
+	{'partial3', '-\xE0='},
+	{'partial3', '-\xE0\xA0='},
+	{'partial3', '-\xE0\xBF='},
+	{'partial3', '-\xE1='},
+	{'partial3', '-\xE1\x80='},
+	{'partial3', '-\xEC\xBF='},
+	{'partial3', '-\xED='},
+	{'partial3', '-\xED\x80='},
+	{'partial3', '-\xED\x9F='},
+	{'partial3', '-\xEE='},
+	{'partial3', '-\xEE\x80='},
+	{'partial3', '-\xEF\xBF='},
+	{'partial4', '-\xF0='},
+	{'partial4', '-\xF0\x90='},
+	{'partial4', '-\xF0\x90\x80='},
+	{'partial4', '-\xF0\xBF\xBF='},
+	{'partial4', '-\xF1='},
+	{'partial4', '-\xF1\x80='},
+	{'partial4', '-\xF1\x80\x80='},
+	{'partial4', '-\xF3\xBF\xBF='},
+	{'partial4', '-\xF4='},
+	{'partial4', '-\xF1\x80='},
+	{'partial4', '-\xF1\x80\x80='},
+	{'partial4', '-\xF4\x8F\xBF='},
+}
 
-local terra test_decode_counts()
-	utf8.decode(s1, strlen(s1), out, out.len, utf8.REPLACE, -1)
+local text = concat(glue.map(strings, 2))
+
+local valid_text = {}
+for i,t in ipairs(strings) do
+	if t[1] == 'valid' then add(valid_text, t[2]) end
 end
-test_decode_counts()
+valid_text = concat(valid_text)
 
-terra f()
-	print'here'
-	var a: arr(int8) = 'Hello'
-	print(utf8.count(a.elements, a.len))
-	--var c: uint32
-	--i, c = utf8.next(a.elements, a.len, 100)
-	--print(i, c)
-	a:free()
+local terra test_decode(msg: rawstring, s: rawstring, opt: enum)
+	var sn = strlen(s)
+	var n, i, q = utf8.decode.count(s, sn, maxint, opt, 0xFFFD)
+	pfn('%-10s in: %3d  out: %3d  invalid: %3d  "%s"', msg, sn, n, q, s)
+	var out = arr(codepoint); defer out:free(); out.len = n
+	var n1, i1, q1 = utf8.decode.tobuffer(s, sn, out.elements, out.len, opt, 0xFFFD)
+	assert(n1 == n)
+	assert(i1 == i)
+	assert(q1 == q)
 end
-f()
-
-
---[==[
---add some invalid chars
-local s = ''
-s = s .. '\xC2\xC0'
-s = s .. '\xE0\x80'
-s = s .. '\xED\xA0'
-s = s .. '\xF0\x80'
-s = s .. '\xF4\x90'
-s = s .. '\xFF\xFF'
-local invalid = s
-
-local valid = [[
-
-
-هذه هي بعض النصوص العربي
-Hello there!
-ᚠᛇᚻ᛫ᛒᛦᚦ᛫ᚠᚱᚩᚠᚢᚱ᛫ᚠᛁᚱᚪ᛫ᚷᛖᚻᚹᛦᛚᚳᚢᛗ
-Sîne klâwen durh die wolken sint geslagen,
-Τη γλώσσα μου έδωσαν ελληνική
-На берегу пустынных волн
-ვეპხის ტყაოსანი შოთა რუსთაველი
-யாமறிந்த மொழிகளிலே தமிழ்மொழி போல் இனிதாவது எங்கும் காணோம்,
-我能吞下玻璃而不伤身体
-나는 유리를 먹을 수 있어요. 그래도 아프지 않아요
-
-]]
-
-local n, p = utf8.decode(valid, nil, false)
-assert(n == 300)
-assert(p == 0)
-
-local n1, p = utf8.decode(invalid, nil, false)
-assert(n1 == 0)
-assert(p == #invalid)
-
-local s = valid .. invalid
-local n1, p1 = utf8.decode(s, nil, false)
-assert(n1 == n)
-assert(p1 == p)
-local n2, p2 = utf8.decode(s, nil, false, nil, 0)
-assert(n2 == n1 + p1)
-assert(p2 == p1)
-
-local rep = math.floor(5 * 1024^2 / #s)
-s = s:rep(rep)
-local outbuf, n, p = utf8.decode(s)
-assert(n == rep * n1)
-assert(p == rep * p1)
-
-local t0 = time.clock()
-local bytes = 0
-for i = 1, 10 do
-	local outbuf, len = utf8.decode(s, #s, outbuf, n)
-	assert(len == n)
-	bytes = bytes + #s
+for i,t in ipairs(strings) do
+	test_decode(t[1], t[2], utf8.REPLACE)
 end
-print(string.format('decode: %.2f Mbytes -> %.2f Mchars, %d MB/s',
-	#s / 1024^2, n / 1024^2, bytes / (time.clock() - t0) / 1024^2))
 
-local slen = utf8.encode(outbuf, n, false)
-assert(slen == #valid * rep)
-local sbuf = ffi.new('uint8_t[?]', slen)
-local t0 = time.clock()
-local bytes = 0
-for i = 1, 10 do
-	local outbuf, len = utf8.encode(outbuf, n, sbuf, slen)
-	assert(len == #valid * rep)
-	bytes = bytes + len
-end
-print(string.format('encode: %.2f Mchars -> %.2f Mbytes, %d MB/s',
-	n / 1024^2, slen / 1024^2, bytes / (time.clock() - t0) / 1024^2))
-
-
-local t0 = time.clock()
-local bytes = 0
-for i = 1, 1 do
-	local len = 0
-	local i = slen
-	while true do
-		i = utf8.prev(sbuf, slen, i)
-		if not i then break end
-		len = len + 1
+local s = '-\xE0\xA0\xE0\xA0\x80\0'
+local terra test_iter()
+	print('for: ', [#s])
+	for valid, i, c in utf8.decode.codepoints(s, [#s]) do
+		print('', valid, i, c)
 	end
-	assert(len == n)
-	bytes = bytes + slen
 end
-print(string.format('prev:   %.2f Mbytes -> %.2f Mchars, %d MB/s',
-	#s / 1024^2, n / 1024^2, bytes / (time.clock() - t0) / 1024^2))
+test_iter()
 
-
---test the string API
-local ts = '我能吞下玻璃而不伤身体'
-local t = {}
-for _,c,b in utf8.chars(ts) do
-	t[#t+1] = c or b
+local terra create_text_arr(text: rawstring, sn: int)
+	var s = arr(int8)
+	var rep = 20 * 1024 * 1024 / sn
+	for i:int = 0, rep do
+		s:add(text, sn)
+	end
+	return s
 end
-assert(utf8.encode_chars(unpack(t)) == ts)
-assert(utf8.encode_chars(t) == ts)
 
---compare speed to fribidi's implementation.
---the Lua variant is 5x slower but still pretty fast at 200M/s.
+local terra test_decode_speed(msg: rawstring, opt: enum)
 
-local fb = require'fribidi'
+	var t0: double
+	var mb = 1024.0 * 1024.0
+	var s = create_text_arr(text, [#text]); defer s:free()
 
-local outbuf, len = fb.charset_to_unicode('utf-8', s, #s)
-assert(len == n + p / 4 + 3)
-local t0 = time.clock()
-local bytes = 0
-for i = 1, 20 do
-	local _, len = fb.charset_to_unicode('utf-8', s, #s, outbuf, len)
-	assert(len == n + p / 4 + 3)
-	bytes = bytes + #s
+	t0 = clock()
+	var n0, i0, q0 = utf8.decode.count(s.elements, s.len, maxint, opt, utf8.INVALID)
+	var count_mbs = s.len / (clock() - t0) / mb
+
+	var a = [arr(codepoint)](nil); defer a:free()
+
+	t0 = clock()
+	var n1, i1, q1 = utf8.decode.toarr(s.elements, s.len, &a, maxint, opt, utf8.INVALID)
+	var toarr_mbs = s.len / (clock() - t0) / mb
+
+	assert(n1 == n0)
+	assert(i1 == i0)
+	assert(q1 == q0)
+
+	a.len = s.len --overallocate
+	t0 = clock()
+	var n2, i2, q2 = utf8.decode.tobuffer(s.elements, s.len, a.elements, a.len, opt, utf8.INVALID)
+	var tobuffer_mbs = s.len / (clock() - t0) / mb
+	a.len = n2
+
+	assert(n1 == n0)
+	assert(i1 == i0)
+	assert(q1 == q0)
+
+	pfn('decode (%s): %.2f Mbytes -> %.2f Mchars, %.f / %.f / %.f MB/s',
+		msg, s.len / mb, n0 / mb, toarr_mbs, tobuffer_mbs, count_mbs)
+
 end
-print(string.format('fb-dec: %.2f Mbytes -> %.2f Mchars, %d MB/s',
-	#s / 1024^2, n / 1024^2, bytes / (time.clock() - t0) / 1024^2))
+test_decode_speed('replace', utf8.REPLACE)
+test_decode_speed(' skip  ', utf8.SKIP)
+test_decode_speed(' keep  ', utf8.KEEP)
 
-]==]
+local terra test_encode_speed(msg: rawstring, opt: enum)
+
+	var t0: double
+	var mb = 1024.0 * 1024.0
+	var s = create_text_arr(valid_text, [#valid_text]); defer s:free()
+	var a = [arr(codepoint)](nil); defer a:free()
+	utf8.decode.toarr(s.elements, s.len, &a, maxint, utf8.SKIP, utf8.INVALID)
+
+	t0 = clock()
+	var n0, i0, q0 = utf8.encode.count(a.elements, a.len, maxint, opt, utf8.INVALID)
+	var count_mbs = a.len / (clock() - t0) / mb
+
+	var s2 = [arr(int8)](nil); defer s2:free()
+
+	t0 = clock()
+	var n1, i1, q1 = utf8.encode.toarr(a.elements, a.len, &s2, maxint, opt, utf8.INVALID)
+	var toarr_mbs = a.len / (clock() - t0) / mb
+
+	assert(n1 == n0)
+	assert(i1 == i0)
+	assert(q1 == q0)
+	assert(equal(&s, &s2))
+
+	s2.len = a.len * 4 --overallocate
+	t0 = clock()
+	var n2, i2, q2 = utf8.encode.tobuffer(
+		a.elements, a.len, s2.elements, s2.len, opt, utf8.INVALID)
+	var tobuffer_mbs = a.len / (clock() - t0) / mb
+	s2.len = n2
+
+	assert(n2 == n0)
+	assert(i2 == i0)
+	assert(q2 == q0)
+	assert(equal(&s, &s2))
+
+	pfn('encode (%s): %.2f Mchars -> %.2f Mbytes, %.f / %.f / %.f MB/s',
+		msg, a.len / mb, n0 / mb, toarr_mbs, tobuffer_mbs, count_mbs)
+end
+test_encode_speed('replace', utf8.REPLACE)
+test_encode_speed(' skip  ', utf8.SKIP)
+test_encode_speed(' stop  ', utf8.STOP)

@@ -1,203 +1,183 @@
+--[[
 
---UTF-8 encoding and decoding in Terra.
---Written by Cosmin Apreutesei. Public Domain.
+	UTF-8 encoding and decoding in Terra.
+	Written by Cosmin Apreutesei. Public Domain.
+
+	NOTE: An unfinished sequence gets replaced with a single codepoint.
+	NOTE: An invalid byte gets replaced with one codepoint.
+
+	utf8.decode.count    (s,len,    outlen,on_reject,repl_c) -> n, i, q
+	utf8.decode.tobuffer (s,len,out,outlen,on_reject,repl_c) -> n, i, q
+	utf8.decode.toarr    (s,len,out,outlen,on_reject,repl_c) -> n, i, q
+
+	for valid,i,c in utf8.decode.codepoints(s,len) do ... end
+
+	utf8.encode.count    (s,len,    outlen,on_reject,repl_c) -> n, i, q
+	utf8.encode.tobuffer (s,len,out,outlen,on_reject,repl_c) -> n, i, q
+	utf8.encode.toarr    (s,len,out,outlen,on_reject,repl_c) -> n, i, q
+
+	on_reject : utf8.REPLACE | utf8.KEEP | utf8.SKIP | utf8.STOP
+	repl_c    : utf8.INVALID | any-codepoint
+
+]]
 
 if not ... then require'utf8lib_test'; return end
 
 setfenv(1, require'low')
 
-local utf8 = {}
+local utf8 = {decode = {}, encode = {}}
 
--- byte 1     byte 2      byte 3     byte 4
---------------------------------------------
--- 00 - 7F
--- C2 - DF    80 - BF
--- E0         A0 - BF     80 - BF
--- E1 - EC    80 - BF     80 - BF
--- ED         80 - 9F     80 - BF
--- EE - EF    80 - BF     80 - BF
--- F0         90 - BF     80 - BF    80 - BF
--- F1 - F3    80 - BF     80 - BF    80 - BF
--- F4         80 - 8F     80 - BF    80 - BF
+--decoding -------------------------------------------------------------------
 
-local terra decode_counts(p: rawstring, len: intptr, stop_on_invalid: bool): {intptr, intptr}
-	var p = [&uint8](p)
-	var eof = p+len
-	var n: intptr = 0 --valid codepoint count
- 	var q: intptr = 0 --invalid byte count
-	while p < eof do
-		if p[0] <= 0x7F then --ASCII
-			inc(p); inc(n); goto continue
-		elseif p[0] < 0xC2 then --invalid
-		elseif p[0] <= 0xDF then --2-byte
-			if p + 1 < eof and p[1] >= 0x80 and p[1] <= 0xBF then
-				inc(p, 2); inc(n); goto continue
-			end
-		elseif p[0] <= 0xEF then --3-byte
-			if p + 2 < eof and not (
-				   p[1] < 0x80 or p[1] > 0xBF
-				or p[2] < 0x80 or p[2] > 0xBF
-				or (p[0] == 0xE0 and p[1] < 0xA0)
-				or (p[0] == 0xED and p[1] > 0x9F)
-			) then
-				inc(p, 3); inc(n); goto continue
-			end
-		elseif p[0] <= 0xF4 then --4-byte
-			if p + 3 < eof and not (
-					 p[1] < 0x80 or p[1] > 0xBF
-				or  p[2] < 0x80 or p[2] > 0xBF
-				or  p[2] < 0x80 or p[2] > 0xBF
-				or  p[3] < 0x80 or p[3] > 0xBF
-				or (p[0] == 0xF0 and p[1] < 0x90)
-				or (p[0] == 0xF4 and p[1] > 0x8F)
-			) then
-				inc(p, 4); inc(n); goto continue
-			end
-		end
-		if stop_on_invalid then
-			return n, eof-p-1
-		end
-		inc(p); inc(q)
-		::continue::
-	end
-	return n, q
-end
+local C = includecstring[[
+typedef unsigned char uint8_t;
+typedef unsigned int uint32_t;
 
-terra utf8.next(buf: rawstring, len: intptr, i: intptr): {intptr, codepoint}
-	var buf = [&uint8](buf)
-	if i >= len then
-		return -1, 0 --EOF
-	end
-	var c1 = buf[i]
-	i = i + 1
-	if c1 <= 0x7F then
-		return i, c1 --ASCII
-	elseif c1 < 0xC2 then
-		--invalid
-	elseif c1 <= 0xDF then --2-byte
-		if i < len then
-			var c2 = buf[i]
-			if c2 >= 0x80 and c2 <= 0xBF then
-				return i + 1,
-					  ((c1 and 0x1F) << 6)
-					+  (c2 and 0x3F)
-			end
-		end
-	elseif c1 <= 0xEF then --3-byte
-		if i < len + 1 then
-			var c2, c3 = buf[i], buf[i+1]
-			if not (
-				   c2 < 0x80 or c2 > 0xBF
-				or c3 < 0x80 or c3 > 0xBF
-				or (c1 == 0xE0 and c2 < 0xA0)
-				or (c1 == 0xED and c2 > 0x9F)
-			) then
-				return i + 2,
-					  ((c1 and 0x0F) << 12)
-					+ ((c2 and 0x3F) << 6)
-					+  (c3 and 0x3F)
-			end
-		end
-	elseif c1 <= 0xF4 then --4-byte
-		if i < len + 2 then
-			var c2, c3, c4 = buf[i], buf[i+1], buf[i+2]
-			if not (
-				   c2 < 0x80 or c2 > 0xBF
-				or c3 < 0x80 or c3 > 0xBF
-				or c3 < 0x80 or c3 > 0xBF
-				or c4 < 0x80 or c4 > 0xBF
-				or (c1 == 0xF0 and c2 < 0x90)
-				or (c1 == 0xF4 and c2 > 0x8F)
-			) then
-				return i + 3,
-					  ((c1 and 0x07) << 18)
-					+ ((c2 and 0x3F) << 12)
-				   + ((c3 and 0x3F) << 6)
-				   +  (c4 and 0x3F)
-			end
-		end
-	end
-	return -2, c1 --invalid
-end
+// Copyright (c) 2008-2010 Bjoern Hoehrmann <bjoern@hoehrmann.de>
+// See http://bjoern.hoehrmann.de/utf-8/decoder/dfa/ for details.
 
-struct utf8.codepoints {
-	buf: rawstring;
-	len: intptr;
+#define UTF8_ACCEPT 0
+#define UTF8_REJECT 12
+
+static const uint8_t utf8d[] = {
+  // The first part of the table maps bytes to character classes that
+  // to reduce the size of the transition table and create bitmasks.
+   0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+   0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+   0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+   0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+   1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,  9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,
+   7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,  7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,
+   8,8,2,2,2,2,2,2,2,2,2,2,2,2,2,2,  2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,
+  10,3,3,3,3,3,3,3,3,3,3,3,3,4,3,3, 11,6,6,6,5,8,8,8,8,8,8,8,8,8,8,8,
+
+  // The second part is a transition table that maps a combination
+  // of a state of the automaton and a character class to a state.
+   0,12,24,36,60,96,84,12,12,12,48,72, 12,12,12,12,12,12,12,12,12,12,12,12,
+  12, 0,12,12,12,12,12, 0,12, 0,12,12, 12,24,12,12,12,12,12,24,12,24,12,12,
+  12,12,12,12,12,12,12,24,12,12,12,12, 12,24,12,12,12,12,12,12,12,24,12,12,
+  12,12,12,12,12,12,12,36,12,36,12,12, 12,36,12,12,12,12,12,36,12,36,12,12,
+  12,36,12,12,12,12,12,12,12,12,12,12,
+};
+
+uint32_t inline
+decode(uint32_t* state, uint32_t* codep, uint32_t byte) {
+  uint32_t type = utf8d[byte];
+
+  *codep = (*state != UTF8_ACCEPT) ?
+    (byte & 0x3fu) | (*codep << 6) :
+    (0xff >> type) & (byte);
+
+  *state = utf8d[256 + *state + type];
+  return *state;
 }
-utf8.codepoints.metamethods.__for = function(self, body)
-	return quote
-		var i: intptr = 0
-		while true do
-			var i1, cp = utf8.next(self.buf, self.len, i)
-			if i1 == -1 then break end
-			[ body(i1, cp) ]
-			i = i1
-		end
-	end
-end
+]]
+local ACCEPT = C.UTF8_ACCEPT
+local REJECT = C.UTF8_REJECT
 
+utf8.INVALID = 0xFFFD --to use for repl_cp
+
+--invalid_action enum:
 utf8.REPLACE = 1 --replace each invalid byte with a specific codepoint
-utf8.KEEP    = 2 --interpret invalid bytes as iso-8859-1 chars like browsers do
+utf8.KEEP    = 2 --keep invalid bytes like browsers do (like it's iso-8859-1)
 utf8.SKIP    = 3 --skip invalid bytes
 utf8.STOP    = 4 --stop processing on first invalid byte
 
-terra utf8.decode(
-	buf: rawstring, len: intptr, out: &codepoint, outlen: intptr,
-	invalid_action: enum, repl_cp: codepoint
-): {intptr, intptr}
-	if out == nil then --requesting counts
-		var n, q = decode_counts(buf, len, invalid_action == utf8.STOP)
-		if invalid_action == utf8.REPLACE then
-			return n + q, q
-		elseif invalid_action == utf8.KEEP then
-			return n + q, q
-		elseif invalid_action == utf8.SKIP then
-			return n, q
-		elseif invalid_action == utf8.STOP then
-			return n, q
-		else
-			assert(false)
-		end
-	end
-	var i: intptr = 0
-	var j: intptr = 0
-	while true do
-		var i1, cp = utf8.next(buf, len, i)
-		if i1 == -1 then --EOF
-			break
-		elseif i1 == -2 then --invalid sequence, c is the next byte
-			i1 = i + 1
-			if invalid_action == utf8.REPLACE then
-				cp = repl_cp
-				goto set
-			elseif invalid_action == utf8.KEEP then
-				goto set
-			elseif invalid_action == utf8.SKIP then
-				--
-			elseif invalid_action == utf8.STOP then
-				return j, eof-j
-			else
-				assert(false)
+local decode = macro(function(s, len, add_c, outlen, on_reject, repl_c)
+	return quote
+		var s = [&uint8](s)
+		var curr: uint = 0
+		var prev: uint = 0
+		var c: codepoint
+		var n = 0 --number of output codepoints
+		var i = 0 --number of decoded bytes
+		var q = 0 --number of invalid sequences
+		while i < len do
+			var r = C.decode(&curr, &c, s[i])
+			var valid = r == ACCEPT
+			if r == ACCEPT then goto accept end
+			if r == REJECT then
+				curr = ACCEPT
+				inc(q)
+				if on_reject == utf8.REPLACE then
+					c = repl_c
+				elseif on_reject == utf8.KEEP then
+					--
+				elseif on_reject == utf8.SKIP then
+					goto continue
+				elseif on_reject == utf8.STOP then
+					q = i
+					break
+				else
+					assert(false)
+				end
+				if prev ~= ACCEPT then
+					dec(i)
+				end
+				::accept::
+				if n < outlen then
+					add_c(c, n, i, valid)
+					inc(n)
+				else
+					break
+				end
+				::continue::
 			end
-		else
-			::set::
-			if j < outlen then
-				out[j] = cp
-				inc(j)
-			else
-				break
-			end
+			prev = curr
+			inc(i)
 		end
-		i = i1
+		in n, i, q
 	end
-	return j, i
+end)
+
+terra utf8.decode.count(s: rawstring, len: int,
+	outlen: int, on_reject: enum, repl_c: codepoint)
+	return decode(s, len, noop, outlen, on_reject, repl_c)
 end
 
-terra utf8.isvalid(c: codepoint)
+terra utf8.decode.tobuffer(s: rawstring, len: int, out: &codepoint,
+	outlen: int, on_reject: enum, repl_c: codepoint)
+	return escape
+		local add_c = macro(function(c, i)
+			return quote out[i] = c end
+		end)
+		emit `decode(s, len, add_c, outlen, on_reject, repl_c)
+	end
+end
+
+terra utf8.decode.toarr(s: rawstring, len: int, out: &arr(codepoint),
+	outlen: int, on_reject: enum, repl_c: codepoint)
+	out.min_capacity = min(len / 4, outlen)
+	out.len = 0
+	return escape
+		local add_c = macro(function(c, i)
+			return quote out:set(i, c) end
+		end)
+		emit `decode(s, len, add_c, outlen, on_reject, repl_c)
+	end
+end
+
+local struct utf8_iter { s: rawstring; len: int; }
+utf8_iter.metamethods.__for = function(self, body)
+	local iter_c = macro(function(c, n, i, valid)
+		return body(valid, i, c)
+	end)
+	return quote
+		decode(self.s, self.len, iter_c, maxint, utf8.KEEP, 0)
+	end
+end
+terra utf8.decode.codepoints(s: rawstring, len: int)
+	return utf8_iter{s = s, len = len}
+end
+
+--encoding -------------------------------------------------------------------
+
+terra utf8.encode.isvalid(c: codepoint)
 	return c <= 0x10FFFF and (c < 0xD800 or c > 0xDFFF)
 end
+utf8.encode.isvalid:setinlined(true)
 
-local terra utf8len(c: codepoint)
+terra utf8.encode.size(c: codepoint)
 	if c <= 0x7F then
 		return 1
 	elseif c <= 0x7FF then
@@ -208,91 +188,141 @@ local terra utf8len(c: codepoint)
 		return 4
 	end
 end
+utf8.encode.size:setinlined(true)
 
-local terra encode_counts(
-	buf: &codepoint, len: intptr,
-	invalid_action: enum, repl_cp: codepoint
-): {intptr, intptr}
-	var b: intptr = 0 --number of output bytes needed to encode the buffer
-	var q: intptr = 0 --number of invalid codepoints
-	var repl_len: int8 = 0
-	if invalid_action == utf8.REPLACE then
-		assert(utf8.isvalid(repl_cp))
-		repl_len = utf8len(repl_cp)
-	elseif invalid_action == utf8.SKIP then
-	elseif invalid_action == utf8.STOP then
+terra utf8.encode.count(
+	buf: &codepoint, len: int, outlen: int,
+	on_reject: enum, repl_cp: codepoint
+)
+	var n = 0 --number of output bytes
+	var i = 0 --number of encoded codepoints
+	var q = 0 --number of invalid codepoints
+	var repl_len: int
+	if on_reject == utf8.REPLACE then
+		assert(utf8.encode.isvalid(repl_cp))
+		repl_len = utf8.encode.size(repl_cp)
+	elseif on_reject == utf8.SKIP then
+	elseif on_reject == utf8.STOP then
 	else
 		assert(false)
 	end
-	for i: intptr = 0, len do
-		if utf8.isvalid(buf[i]) then
-			inc(b, utf8len(buf[i]))
-		elseif invalid_action == utf8.REPLACE then
-			inc(b, repl_len)
+	while i < len do
+		if utf8.encode.isvalid(buf[i]) then
+			var b = utf8.encode.size(buf[i])
+			if n + b < outlen then
+				inc(n, b)
+			else
+				break
+			end
+		elseif on_reject == utf8.REPLACE then
+			inc(n, repl_len)
 			inc(q)
-		elseif invalid_action == utf8.SKIP then
+		elseif on_reject == utf8.SKIP then
 			inc(q)
-		elseif invalid_action == utf8.STOP then
+		elseif on_reject == utf8.STOP then
 			q = i
 			break
 		else
 			assert(false)
 		end
+		inc(i)
 	end
-	return b, q
+	return n, i, q
 end
 
-terra utf8.encode(
-	buf: &codepoint, len: intptr, out: rawstring, outlen: intptr,
-	invalid_action: enum, repl_cp: codepoint
-): {intptr, intptr}
-	if out == nil then
-		return encode_counts(buf, len, invalid_action, repl_cp)
-	end
-	if invalid_action == utf8.REPLACE then
-		assert(utf8.isvalid(repl_cp))
-	end
-	var j: intptr = 0
-	var eof = out + outlen
-	for i: intptr = 0, len do
-		var c = buf[i]
-		if (c >= 0xD800 and c <= 0xDFFF) or c > 0x10FFFF then --invalid
-			if invalid_action == utf8.REPLACE then
-				c = repl_cp
-			elseif invalid_action == utf8.SKIP then
-				goto continue
-			elseif invalid_action == utf8.STOP then
-				break
-			else
-				assert(false)
+local encode = macro(function(buf, len, add_bytes, outlen, on_reject, repl_cp)
+	return quote
+		if on_reject == utf8.REPLACE then
+			assert(utf8.encode.isvalid(repl_cp))
+		end
+		var n = 0 --number of output bytes
+		var i = 0 --number of encoded codepoints
+		var q = 0 --number of invalid codepoints
+		while i < len do
+			var c = buf[i]
+			if not utf8.encode.isvalid(c) then
+				if on_reject == utf8.REPLACE then
+					inc(q)
+					c = repl_cp
+				elseif on_reject == utf8.SKIP then
+					inc(q)
+					goto continue
+				elseif on_reject == utf8.STOP then
+					q = i
+					break
+				else
+					assert(false)
+				end
 			end
+			if c <= 0x7F then
+				if n >= outlen then break end
+				add_bytes(n, c)
+				inc(n, 1)
+			elseif c <= 0x7FF then
+				if n + 1 >= outlen then break end
+				add_bytes(n,
+					0xC0 + ((c >>  6)         ),
+					0x80 + ((c      ) and 0x3F))
+				inc(n, 2)
+			elseif c <= 0xFFFF then
+				if n + 2 >= outlen then break end
+				add_bytes(n,
+					0xE0 + ((c >> 12)         ),
+					0x80 + ((c >>  6) and 0x3F),
+					0x80 + ((c      ) and 0x3F))
+				inc(n, 3)
+			else
+				if n + 3 >= outlen then break end
+				add_bytes(n,
+					0xF0 + ((c >> 18)         ),
+					0x80 + ((c >> 12) and 0x3F),
+					0x80 + ((c >>  6) and 0x3F),
+					0x80 + ((c      ) and 0x3F))
+				inc(n, 4)
+			end
+			::continue::
+			inc(i)
 		end
-		if c <= 0x7F then
-			if out >= eof then break end
-			out[0] = c
-			inc(out, 1)
-		elseif c <= 0x7FF then
-			if out + 1 >= eof then break end
-			out[1] = 0x80 + ((c      ) and 0x3F)
-			out[0] = 0xC0 + ((c >>  6)         )
-			inc(out, 2)
-		elseif c <= 0xFFFF then
-			if out + 2 >= eof then break end
-			out[2] = 0x80 + ((c      ) and 0x3F)
-			out[1] = 0x80 + ((c >>  6) and 0x3F)
-			out[0] = 0xE0 + ((c >> 12)         )
-			inc(out, 3)
-		else
-			if out + 3 >= eof then break end
-			out[3] = 0x80 + ((c      ) and 0x3F)
-			out[2] = 0x80 + ((c >>  6) and 0x3F)
-			out[1] = 0x80 + ((c >> 12) and 0x3F)
-			out[0] = 0xF0 + ((c >> 18)         )
-			inc(out, 4)
-		end
-		::continue::
+		in n, i, q
 	end
-	return outlen-(eof-out)
+end)
+
+terra utf8.encode.tobuffer(
+	buf: &codepoint, len: int, out: rawstring, outlen: int,
+	on_reject: enum, repl_cp: codepoint
+)
+	return escape
+		local add_bytes = macro(function(n, ...)
+			local t = {}
+			for i=1,select('#',...) do
+				local exp = select(i,...)
+				add(t, quote [&uint8](out)[n+i-1] = exp end)
+			end
+			return t
+		end)
+		emit `encode(buf, len, add_bytes, outlen, on_reject, repl_cp)
+	end
+end
+
+terra utf8.encode.toarr(
+	buf: &codepoint, len: int, out: &arr(int8), outlen: int,
+	on_reject: enum, repl_cp: codepoint
+)
+	out.min_capacity = min(len, outlen)
+	out.len = 0
+	return escape
+		local add_bytes = macro(function(n, ...)
+			local b = select('#',...)
+			local t = {}
+			add(t, quote out.len = n + b end)
+			for i=1,b do
+				local exp = select(i,...)
+				add(t, quote [&uint8](out.elements)[n+i-1] = exp end)
+			end
+			return t
+		end)
+		emit `encode(buf, len, add_bytes, outlen, on_reject, repl_cp)
+	end
 end
 
 return utf8
