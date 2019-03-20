@@ -1,6 +1,5 @@
 --freetype/*.h from freetype 2.9.1
-local ffi = require'ffi'
-ffi.cdef[[
+require'ffi'.cdef[[
 
 // config/ftconfig.h ---------------------------------------------------------
 
@@ -1061,5 +1060,4 @@ FT_Error FT_Glyph_StrokeBorder(
 	FT_Stroker stroker,
 	FT_Bool inside,
 	FT_Bool destroy );
-
 ]]

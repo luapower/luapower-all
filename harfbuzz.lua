@@ -7,8 +7,6 @@ if not ... then require'harfbuzz_demo'; return end
 local ffi = require'ffi'
 local bit = require'bit'
 require'harfbuzz_h'
-require'harfbuzz_ot_h'
-require'harfbuzz_ft_h'
 local C = ffi.load'harfbuzz'
 local hb = {C = C}
 

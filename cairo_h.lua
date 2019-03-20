@@ -1,10 +1,12 @@
-
---cairo.h from cairo 1.12.3 (native extensions in separate files)
-
---NOTE: enum types are replaced with cairo_enum_t which is an int32_t so that
---functions returning an enum will not create an enum object on the heap!
-
 require'ffi'.cdef[[
+
+// cairo.h from cairo 1.12.3 (native extensions in separate files)
+
+// NOTE: enum types are replaced with cairo_enum_t which is an int32_t so that
+// functions returning an enum will not create an enum object on the heap!
+
+typedef int       int32_t;
+typedef long long int64_t;
 
 typedef int32_t cairo_enum_t;
 

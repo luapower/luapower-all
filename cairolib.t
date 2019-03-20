@@ -3,8 +3,7 @@
 
 setfenv(1, require'low')
 
-includepath'$L/csrc/cairo/src'
-include'cairo.h'
+require_h'cairo_h'
 linklibrary'cairo'
 
 local function retbool(t, name, f)
@@ -31,6 +30,15 @@ local struct cairo_argb32_color_t {
 C.cairo_argb32_color_t = cairo_argb32_color_t
 forwardproperties('channels')(cairo_argb32_color_t)
 
+cairo_argb32_color_t.metamethods.__cast = function(from, to, exp)
+	if to == cairo_argb32_color_t then
+		if from == uint32 or from == int32 then
+			return `cairo_argb32_color_t {uint = exp}
+		end
+	end
+	assert(false, 'invalid conversion from ', from, ' to ', to, ': ', exp)
+end
+
 local struct cairo_color_t {
 	red:   double;
 	green: double;
@@ -40,17 +48,18 @@ local struct cairo_color_t {
 C.cairo_color_t = cairo_color_t
 
 cairo_color_t.metamethods.__cast = function(from, to, exp)
-	if from == cairo_argb32_color_t then
-		local f = 1 / 255
-		return `cairo_color_t {
-			exp.channels.red   * f,
-			exp.channels.green * f,
-			exp.channels.blue  * f,
-			exp.channels.alpha * f
-		}
-	else
-		error'invalid conversion'
+	if to == cairo_color_t then
+		if from == cairo_argb32_color_t then
+			local f = 1 / 255
+			return `cairo_color_t {
+				exp.channels.red   * f,
+				exp.channels.green * f,
+				exp.channels.blue  * f,
+				exp.channels.alpha * f
+			}
+		end
 	end
+	assert(false, 'invalid conversion from ', from, ' to ', to, ': ', exp)
 end
 
 cairo_color_t.metamethods.__eq = macro(function(c1, c2)
@@ -323,6 +332,10 @@ s.format = cairo_image_surface_get_format
 s.width  = cairo_image_surface_get_width
 s.height = cairo_image_surface_get_height
 s.stride = cairo_image_surface_get_stride
+
+extern('cairo_surface_create_from_png', {rawstring} -> {&cairo_surface_t})
+extern('cairo_surface_write_to_png', {&cairo_surface_t, rawstring} -> {cairo_status_t})
+s.save_png = cairo_surface_write_to_png
 
 s.apply_alpha = terra(self: &cairo_surface_t, alpha: double)
 	if alpha >= 1 then return end
