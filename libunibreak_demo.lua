@@ -17,7 +17,7 @@ print()
 local str = ffi.new('uint32_t[?]', len)
 for j, c, i in ub.chars_utf8(s) do
 	str[j-1] = c
-	print(j, i, c < 256 and string.char(c) or '', string.format('0x%04X', c))
+	print(j, i, c > 31 and c < 256 and string.char(c) or '', string.format('0x%04X', c))
 end
 print()
 
@@ -27,7 +27,7 @@ local grap_brks = ub.graphemebreaks(str, len)
 for i=0,len-1 do
 	print(
 		string.format('0x%04X', str[i]),
-		str[i] > 32 and str[i] < 128 and string.char(str[i]) or '',
+		str[i] > 31 and str[i] < 128 and string.char(str[i]) or '',
 		line_break_names[line_brks[i]],
 		word_break_names[word_brks[i]],
 		grap_break_names[grap_brks[i]])

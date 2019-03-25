@@ -84,6 +84,8 @@ cr.restore       = cairo_restore
 cr.push_group    = overload('push_group', {cairo_push_group, cairo_push_group_with_content})
 cr.pop_group     = cairo_pop_group
 cr.pop_group_to_source = cairo_pop_group_to_source
+cr.target        = cairo_get_target
+cr.group_target  = cairo_get_group_target
 
 cr.operator    = overload('operator', {cairo_set_operator, cairo_get_operator})
 cr.source      = overload('source',   {cairo_set_source, cairo_set_source_surface, cairo_get_source})
@@ -344,6 +346,44 @@ s.apply_alpha = terra(self: &cairo_surface_t, alpha: double)
 	cr:operator(CAIRO_OPERATOR_DEST_IN) --alphas are multiplied, dest. color is preserved
 	cr:paint()
 	cr:free()
+end
+
+--bitmap utils
+require'bitmaplib'
+terra C.cairo_bitmap_format(fmt: cairo_format_t)
+	return [enum](iif(fmt == CAIRO_FORMAT_A8,
+		BITMAP_G8, iif(fmt == CAIRO_FORMAT_ARGB32,
+			BITMAP_ARGB32, BITMAP_INVALID)))
+end
+terra C.cairo_format_for_bitmap_format(fmt: enum)
+	return [cairo_format_t](iif(fmt == BITMAP_G8,
+		CAIRO_FORMAT_A8, iif(fmt == BITMAP_ARGB32,
+			CAIRO_FORMAT_ARGB32, CAIRO_FORMAT_INVALID)))
+end
+
+--copy surface to bitmap
+s.bitmap_format = terra(self: &cairo_surface_t)
+	return cairo_bitmap_format(self:format())
+end
+s.copy = terra(self: &cairo_surface_t)
+	var b: Bitmap; b:init()
+	b:alloc(self:width(), self:height(), self:bitmap_format(), self:stride())
+	self:flush()
+	copy(b.pixels, [&uint8](self:data()), self:stride() * self:height())
+	return b
+end
+terra C.cairo_image_surface_create_for_bitmap(b: &Bitmap)
+	var fmt = cairo_format_for_bitmap_format(b.format)
+	return cairo_image_surface_create_for_data(b.pixels, fmt, b.w, b.h, b.stride)
+end
+s.asbitmap = terra(self: &cairo_surface_t)
+	var b: Bitmap
+	b.format = bitmap.valid_format(cairo_bitmap_format(self:format()))
+	b.w = self:width()
+	b.h = self:height()
+	b.stride = self:stride()
+	b.pixels = [&uint8](self:data())
+	return b
 end
 
 local p = wrapopaque(cairo_pattern_t).methods

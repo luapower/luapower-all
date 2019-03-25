@@ -2,19 +2,34 @@
 --Bitmaps for Terra.
 --Written by Cosmin Apreutesei. Public Domain.
 
-local bitmaplib = {__index = require'low'}
-setfenv(1, setmetatable(bitmaplib, bitmaplib))
-public = publish'bitmaplib'
+if not ... then require'bitmaplib_test'; return end
 
-BITMAP_FORMAT_G8     = 1
-BITMAP_FORMAT_ARGB32 = 2
+setfenv(1, require'low')
 
-terra pixelsize(format: enum)
-	return iif(format == BITMAP_FORMAT_G8, 1, 4)
+BITMAP_INVALID = 0
+BITMAP_G8      = 1
+BITMAP_ARGB32  = 2
+
+bitmap = {}
+
+bitmap.valid_format = macro(function(format)
+	return quote
+		assert(format == BITMAP_G8 or format == BITMAP_ARGB32)
+		in format
+	end
+end)
+
+terra bitmap.pixelsize(format: enum)
+	return iif(bitmap.valid_format(format) == BITMAP_G8, 1, 4)
 end
 
-terra aligned_stride(w: int, align: uint8) --assuming align is 2^n
+terra bitmap.aligned_stride(w: int, align: uint8) --assuming align is 2^n
 	return (w + align - 1) and not (align - 1)
+end
+
+terra bitmap.min_aligned_stride(w: int, format: enum)
+	var bpp = iif(bitmap.valid_format(format) == BITMAP_G8, 1, 4)
+	return bitmap.aligned_stride(w * bpp, bpp)
 end
 
 --intersect two positive 1D segments
@@ -22,7 +37,7 @@ local terra intersect_segs(ax1: int, ax2: int, bx1: int, bx2: int)
 	return max(ax1, bx1), min(ax2, bx2)
 end
 
-local terra clip(x1: int, y1: int, w1: int, h1: int, x2: int, y2: int, w2: int, h2: int)
+local terra intersect(x1: int, y1: int, w1: int, h1: int, x2: int, y2: int, w2: int, h2: int)
 	--intersect on each dimension
 	var x1, x2 = intersect_segs(x1, x1+w1, x2, x2+w2)
 	var y1, y2 = intersect_segs(y1, y1+h1, y2, y2+h2)
@@ -32,36 +47,44 @@ local terra clip(x1: int, y1: int, w1: int, h1: int, x2: int, y2: int, w2: int, 
 	return x1, y1, w, h
 end
 
-struct Bitmap (public) {
+struct Bitmap {
 	w: int;
 	h: int;
-	stride: int;
-	format: enum; --BITMAP_FORMAT_*
 	pixels: &uint8;
-	parent: &Bitmap;
+	stride: int;  --in bytes!
+	format: enum; --BITMAP_*
+}
+
+Bitmap.empty = `Bitmap {
+	w = 0;
+	h = 0;
+	stride = 0;
+	format = BITMAP_INVALID;
+	pixels = nil;
 }
 
 terra Bitmap:rowsize()
-	return self.w * pixelsize(self.format)
+	return self.w * bitmap.pixelsize(self.format)
 end
 
 terra Bitmap:size()
-	return self.h * self.stride * pixelsize(self.format)
+	return self.h * self.stride
 end
 
 terra Bitmap:init()
-	fill(self)
+	@self = [Bitmap.empty]
 end
 
 terra Bitmap:free()
-	if self.parent == nil then
-		free(self.pixels)
-	end
+	free(self.pixels)
 	self.pixels = nil
-	self.parent = nil
 end
 
 terra Bitmap:alloc(w: int, h: int, format: enum, stride: int)
+	format = bitmap.valid_format(format)
+	if stride == -1 then
+		stride = bitmap.min_aligned_stride(w, format)
+	end
 	self:free()
 	self.w = w
 	self.h = h
@@ -77,32 +100,42 @@ end
 --create a bitmap representing a rectangular region of another bitmap.
 --no pixels are copied: the bitmap references the same data buffer as the original.
 terra Bitmap:sub(x: int, y: int, w: int, h: int)
-	x, y, w, h = clip(x, y, w, h, 0, 0, self.w, self.h)
-	var offset = y * self.stride + x * pixelsize(self.format)
+	x, y, w, h = intersect(x, y, w, h, 0, 0, self.w, self.h)
+	var offset = y * self.stride + x * bitmap.pixelsize(self.format)
 	return Bitmap {
 		w = w, h = h,
 		stride = self.stride,
 		format = self.format,
 		pixels = self.pixels + offset,
-		parent = self,
 	}
 end
 
-terra Bitmap:paint(dst: &Bitmap, dstx: int, dsty: int)
+--intersect self with a bitmap at a position and return the result the
+--two sub-bitmaps that perfectly overlap each other.
+terra Bitmap:intersect(dst: &Bitmap, px: int, py: int)
 	var src = self
-	assert(src.format == dst.format)
-
-	--find the clip rectangle and make sub-bitmaps
 	var src_sub: Bitmap
 	var dst_sub: Bitmap
-	if not (dstx == 0 and dsty == 0 and src.w == dst.w and src.h == dst.h) then
-		var x, y, w, h = clip(dstx, dsty, dst.w-dstx, dst.h-dsty, dstx, dsty, src.w, src.h)
-		if w == 0 or h == 0 then return end
-		src_sub = src:sub(0, 0, w, h); src = &src_sub
-		dst_sub = dst:sub(x, y, w, h); dst = &dst_sub
+	var x, y, w, h = intersect(px, py, src.w, src.h, 0, 0, dst.w, dst.h)
+	src_sub = src:sub(x-px, y-py, w, h)
+	dst_sub = dst:sub(x, y, w, h)
+	return src_sub, dst_sub
+end
+
+Bitmap.methods.each_row = macro(function(src, dst, func)
+	return quote
+		var dj = 0
+		for sj = 0, src.h * src.stride, src.stride do
+			func(dst.pixels + dj, src.pixels + sj, src:rowsize())
+			dj = dj + dst.stride
+		end
 	end
-	assert(src.h == dst.h)
-	assert(src.w == dst.w)
+end)
+
+terra Bitmap:paint(dst: &Bitmap, dstx: int, dsty: int)
+
+	--find the clip rectangle and make sub-bitmaps
+	var src, dst = self:intersect(dst, dstx, dsty)
 
 	--try to copy the bitmap whole
 	if src.format == dst.format and src.stride == dst.stride then
@@ -117,17 +150,81 @@ terra Bitmap:paint(dst: &Bitmap, dstx: int, dsty: int)
 	assert(src.pixels ~= dst.pixels or dst.stride <= src.stride)
 
 	--copy the bitmap row-by-row
-	var dj = 0
-	for sj = 0, src.h * src.stride, src.stride do
-		copy(dst.pixels + dj, src.pixels + sj, src:rowsize())
-		dj = dj + dst.stride
+	if src.format == dst.format then
+		src:each_row(dst, copy)
+	else
+		assert(false, 'NYI')
 	end
 end
 
-terra bitmap(w: int, h: int, format: enum, stride: int)
+BITMAP_COPY = 0
+BITMAP_OVER = 1
+
+local blend_copy_g8_rgba32 = macro(function(d, s, n)
+	return quote
+		for i=0,n do
+			@[&vector(uint8, 4)](d+i*4) = s[i]
+		end
+	end
+end)
+
+local blend_copy_rgba32_rgba32 = copy
+
+local blend_over_g8_rgba32 = macro(function(d, s, n)
+	return quote
+		for i=0,n do
+			--TODO:
+			--var da = d[i*4+0]
+			--d[i*4+1] = 1 + (1 - sa) * d[i*4+1]
+			--d[i*4+2] = 1 + (1 - sa) * d[i*4+2]
+			--d[i*4+3] = 1 + (1 - sa) * d[i*4+3]
+			--d[i*4+0] = sa + da - sa * da
+		end
+	end
+end)
+
+local blend_over_rgba32_rgba32 = macro(function(d, s, n)
+	return quote
+		for i=0,n/4 do
+			--TODO:
+			--var sa = s[i*4+0]
+			--d[i*4+1] = s[i*4+1] + (1 - s[i*4+1]) * d[i*4+1]
+			--d[i*4+2] = s[i*4+2] + (1 - s[i*4+2]) * d[i*4+2]
+			--d[i*4+3] = s[i*4+3] + (1 - s[i*4+3]) * d[i*4+3]
+			--d[i*4+0] = sa + d[i*4+0] - sa * d[i*4+0]
+		end
+	end
+end)
+
+terra Bitmap:blend(dst: &Bitmap, dstx: int, dsty: int, op: enum)
+
+	--find the clip rectangle and make sub-bitmaps
+	var src, dst = self:intersect(dst, dstx, dsty)
+
+	if op == BITMAP_COPY then
+		if src.format == BITMAP_G8 and dst.format == BITMAP_ARGB32 then
+			src:each_row(dst, blend_copy_g8_rgba32)
+		elseif src.format == BITMAP_ARGB32 and dst.format == BITMAP_ARGB32 then
+			src:each_row(dst, blend_copy_rgba32_rgba32)
+		else
+			assert(false)
+		end
+	elseif op == BITMAP_OVER then
+		if src.format == BITMAP_G8 and dst.format == BITMAP_ARGB32 then
+			src:each_row(dst, blend_over_g8_rgba32)
+		elseif src.format == BITMAP_ARGB32 and dst.format == BITMAP_ARGB32 then
+			src:each_row(dst, blend_over_rgba32_rgba32)
+		else
+			assert(false)
+		end
+	else
+		assert(false)
+	end
+end
+
+terra bitmap.new(w: int, h: int, format: enum, stride: int)
 	var bmp: Bitmap; bmp:init(); bmp:alloc(w, h, format, stride); return bmp
 end
 
-public:getenums(bitmaplib)
+bitmap.blend = blend
 
-return bitmaplib

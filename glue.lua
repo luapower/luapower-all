@@ -6,8 +6,8 @@ if not ... then require'glue_test'; return end
 
 local glue = {}
 
-local min, max, floor, select, unpack, pairs, rawget =
-	math.min, math.max, math.floor, select, unpack, pairs, rawget
+local min, max, floor, ceil, log, select, unpack, pairs, rawget =
+	math.min, math.max, math.floor, math.ceil, math.log, select, unpack, pairs, rawget
 
 function glue.round(x, p)
 	p = p or 1
@@ -32,6 +32,10 @@ end
 
 function glue.lerp(x, x0, x1, y0, y1)
 	return y0 + (x-x0) * ((y1-y0) / (x1 - x0))
+end
+
+function glue.nextpow2(x)
+	return ceil(log(x) / log(2))
 end
 
 function glue.pack(...)

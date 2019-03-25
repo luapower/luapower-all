@@ -13,6 +13,7 @@ __math__
 `glue.ceil(x[, p]) -> y`                                           round x up to nearest integer or multiple of `p`
 `glue.clamp(x, min, max) -> y`                                     clamp x in range
 `glue.lerp(x, x0, x1, y0, y1) -> y`                                linear interpolation
+`glue.nextpow2(x) -> y`                                            next power-of-2 number
 __varargs__
 `glue.pack(...) -> t`                                              pack varargs
 `glue.unpack(t, [i] [,j]) -> ...`                                  unpack varargs
@@ -104,6 +105,15 @@ Implemented as `math.ceil(x / p) * p`.
 
 Clamp a value in range. Implemented as `math.min(math.max(x, min), max)`,
 so if `max < min`, the result is `max`.
+
+### `glue.lerp(x, x0, x1, y0, y1) -> y`
+
+Linear interpolation, i.e. linearly project `x` in `x0..x1` range to
+the `y0..y1` range.
+
+### `glue.nextpow2(x) -> y`
+
+Find the smallest `n` for which `x <= 2^n`.
 
 ------------------------------------------------------------------------------
 
