@@ -8,7 +8,6 @@ local pthread = require'pthread'
 local luastate = require'luastate'
 local glue = require'glue'
 local ffi = require'ffi'
-local cast = ffi.cast
 local addr = glue.addr
 local ptr = glue.ptr
 
@@ -28,10 +27,10 @@ local function pointer_class(in_ctype, out_ctype)
 		return ffi.istype(in_ctype, p)
 	end
 	function class.encode(p)
-		return {addr = glue.addr(p)}
+		return {addr = addr(p)}
 	end
 	function class.decode(t)
-		return glue.ptr(out_ctype or in_ctype, t.addr)
+		return ptr(out_ctype or in_ctype, t.addr)
 	end
 	return class
 end
@@ -282,20 +281,20 @@ end
 
 function queue:encode()
 	return {
-		state_addr          = glue.addr(self.state),
-		mutex_addr          = glue.addr(self.mutex),
-		cond_not_full_addr  = glue.addr(self.cond_not_full),
-		cond_not_empty_addr = glue.addr(self.cond_not_empty),
+		state_addr          = addr(self.state),
+		mutex_addr          = addr(self.mutex),
+		cond_not_full_addr  = addr(self.cond_not_full),
+		cond_not_empty_addr = addr(self.cond_not_empty),
 		maxlen              = self.maxlen,
 	}
 end
 
 function queue.decode(t)
 	return setmetatable({
-		state          = glue.ptr('lua_State*',       t.state_addr),
-		mutex          = glue.ptr('pthread_mutex_t*', t.mutex_addr),
-		cond_not_full  = glue.ptr('pthread_cond_t*',  t.cond_not_full_addr),
-		cond_not_empty = glue.ptr('pthread_cond_t*',  t.cond_not_empty_addr),
+		state          = ptr('lua_State*',       t.state_addr),
+		mutex          = ptr('pthread_mutex_t*', t.mutex_addr),
+		cond_not_full  = ptr('pthread_cond_t*',  t.cond_not_full_addr),
+		cond_not_empty = ptr('pthread_cond_t*',  t.cond_not_empty_addr),
 		maxlen         = t.maxlen,
 	}, queue)
 end
@@ -376,15 +375,15 @@ end
 
 function thread:encode()
 	return {
-		pthread_addr = glue.addr(self.pthread),
-		state_addr   = glue.addr(self.state),
+		pthread_addr = addr(self.pthread),
+		state_addr   = addr(self.state),
 	}
 end
 
 function thread.decode(t)
 	return setmetatable({
-		pthread = glue.ptr('pthread_t*', t.thread_addr),
-		state   = glue.ptr('lua_State*', t.state_addr),
+		pthread = ptr('pthread_t*', t.thread_addr),
+		state   = ptr('lua_State*', t.state_addr),
 	}, thread)
 end
 
