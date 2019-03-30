@@ -10,13 +10,8 @@ constant time for any blur radius, making it suitable for full-screen
 animated blurs.
 
 Speed is 70 fps @ full HD per pass for the color variant, and 300 fps per
-<<<<<<< HEAD
-pass for the grayscale variant, measured on a CPU with a single-thread
-passmark value of around 2000.
-=======
-pass for the grayscale variant, measured on a CPU with a single-threaded 
+pass for the grayscale variant, measured on a CPU with a single-threaded
 passmark score of around 2000.
->>>>>>> cdfb98e9552a8168fe0753266fb713809b8fa0b4
 
 ## API
 
