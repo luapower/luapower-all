@@ -93,7 +93,7 @@ local terra test_decode_speed(msg: rawstring, opt: enum)
 	var n0, i0, q0 = utf8.decode.count(s.elements, s.len, maxint, opt, utf8.INVALID)
 	var count_mbs = s.len / (clock() - t0) / mb
 
-	var a = [arr(codepoint)](nil); defer a:free()
+	var a = arr(codepoint); defer a:free()
 
 	t0 = clock()
 	var n1, i1, q1 = utf8.decode.toarr(s.elements, s.len, &a, maxint, opt, utf8.INVALID)
@@ -126,14 +126,14 @@ local terra test_encode_speed(msg: rawstring, opt: enum)
 	var t0: double
 	var mb = 1024.0 * 1024.0
 	var s = create_text_arr(valid_text, [#valid_text]); defer s:free()
-	var a = [arr(codepoint)](nil); defer a:free()
+	var a = arr(codepoint); defer a:free()
 	utf8.decode.toarr(s.elements, s.len, &a, maxint, utf8.SKIP, utf8.INVALID)
 
 	t0 = clock()
 	var n0, i0, q0 = utf8.encode.count(a.elements, a.len, maxint, opt, utf8.INVALID)
 	var count_mbs = a.len / (clock() - t0) / mb
 
-	var s2 = [arr(int8)](nil); defer s2:free()
+	var s2 = arr(int8); defer s2:free()
 
 	t0 = clock()
 	var n1, i1, q1 = utf8.encode.toarr(a.elements, a.len, &s2, maxint, opt, utf8.INVALID)

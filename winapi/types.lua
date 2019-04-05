@@ -1,5 +1,5 @@
 
---types/types: types and macros from multiple headers
+--types/types: types from multiple headers
 --Written by Cosmin Apreutesei. Public Domain.
 
 --NOTE: Don't define time_t because it's 64bit in windows but 32bit in mingw: use explicit types!
@@ -25,6 +25,9 @@ else
 end
 
 ffi.cdef[[
+// defining this for compat. with terra which doesn't grok `unsigned __int64`
+typedef uint64_t        __uint64;
+
 typedef size_t          rsize_t;
 typedef unsigned short  wctype_t;
 typedef int             errno_t;
@@ -66,11 +69,11 @@ typedef unsigned long   POINTER_64_INT;
 typedef signed char     INT8, *PINT8;
 typedef signed short    INT16, *PINT16;
 typedef signed int      INT32, *PINT32;
-typedef signed __int64  INT64, *PINT64;
+typedef __int64         INT64, *PINT64;
 typedef unsigned char   UINT8, *PUINT8;
 typedef unsigned short  UINT16, *PUINT16;
 typedef unsigned int    UINT32, *PUINT32;
-typedef unsigned __int64 UINT64, *PUINT64;
+typedef __uint64        UINT64, *PUINT64;
 typedef signed int      LONG32, *PLONG32;
 typedef unsigned int    ULONG32, *PULONG32;
 typedef unsigned int    DWORD32, *PDWORD32;
@@ -86,10 +89,10 @@ typedef ULONG_PTR       SIZE_T, *PSIZE_T;
 typedef LONG_PTR        SSIZE_T, *PSSIZE_T;
 typedef ULONG_PTR       DWORD_PTR, *PDWORD_PTR;
 typedef __int64         LONG64, *PLONG64;
-typedef unsigned __int64 ULONG64, *PULONG64;
-typedef unsigned __int64 DWORD64, *PDWORD64;
+typedef __uint64        ULONG64, *PULONG64;
+typedef __uint64        DWORD64, *PDWORD64;
 typedef VOID            *PVOID;
-typedef VOID* __ptr64   PVOID64;
+// typedef VOID* __ptr64   PVOID64; // disabled for compat with terra (not used anyway).
 typedef char            CHAR;
 typedef short           SHORT;
 typedef long            LONG;
@@ -129,7 +132,7 @@ typedef DWORD           LCID;
 typedef PDWORD          PLCID;
 typedef WORD            LANGID;
 typedef __int64         LONGLONG;
-typedef unsigned __int64 ULONGLONG;
+typedef __uint64        ULONGLONG;
 typedef LONGLONG        *PLONGLONG;
 typedef ULONGLONG       *PULONGLONG;
 typedef LONGLONG        USN;
