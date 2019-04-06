@@ -21,7 +21,7 @@ end
 
 function glue.ceil(x, p)
 	p = p or 1
-	return floor(x / p) * p
+	return ceil(x / p) * p
 end
 
 glue.snap = glue.round
