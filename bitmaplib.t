@@ -23,8 +23,9 @@ terra bitmap.pixelsize(format: enum)
 	return iif(bitmap.valid_format(format) == BITMAP_G8, 1, 4)
 end
 
-terra bitmap.aligned_stride(w: int, align: uint8) --assuming align is 2^n
-	return (w + align - 1) and not (align - 1)
+terra bitmap.aligned_stride(w: int, align: uint8)
+	assert(align == nextpow2(align))
+	return ceil(w, align)
 end
 
 terra bitmap.min_aligned_stride(w: int, format: enum)
