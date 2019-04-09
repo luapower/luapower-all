@@ -164,9 +164,7 @@ function player:on_render(cr)
 
 		local bmp = load_bmp(file)
 
-		if bmp.format ~= self.format then
-			bmp = bitmap.copy(bmp, self.format, false, true)
-		end
+		bmp = bitmap.copy(bmp, self.format, false, true)
 
 		if self.method == 'fs' then
 			bitmap.dither.fs(bmp, self.rbits, self.gbits, self.bbits, self.abits)

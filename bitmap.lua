@@ -479,13 +479,16 @@ local function aligned_address(addr, align)
 	end
 	assert(align >= 2)
 	assert(band(align, align - 1) == 0) --must be power-of-two
+	if ffi.istype('uint64_t', addr) then
+		align = ffi.cast('uint64_t', align) --so that bnot() works
+	end
 	return band(addr + align - 1, bnot(align - 1)), align
 end
 
 local voidp_ct = ffi.typeof'void*'
 local function aligned_pointer(ptr, align)
 	local addr = ffi.cast('uintptr_t', ptr)
-	return ffi.cast(voidp_ct, aligned_address(addr, align))
+	return ffi.cast(voidp_ct, (aligned_address(addr, align)))
 end
 
 --next stride that is a multiple of `align` bytes

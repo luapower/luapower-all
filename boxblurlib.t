@@ -2,20 +2,25 @@
 --Fast bgra8 and g8 box blurs for Terra.
 --Written by Cosmin Apreutesei. Public Domain.
 
-local boxblurlib = {__index = require'bitmaplib'}
-setfenv(1, setmetatable(boxblurlib, boxblurlib))
+setfenv(1, require'low')
+
+require'bitmaplib'
 
 includepath'$L/csrc/boxblur'
 include'boxblur.h'
 linklibrary'boxblur'
 
+local pixelsize = bitmap.pixelsize
+local aligned_stride = bitmap.aligned_stride
+local bitmap = bitmap.new
+
 RepaintFunc = {&opaque, &Bitmap} -> {}
 
-struct Blur {
+struct low.Blur {
 	--config
 	w: int;
 	h: int;
-	format: enum; --BITMAP_FORMAT_*
+	format: enum; --BITMAP_*
 	repaint: RepaintFunc; repaint_self: &opaque;
 	--buffers
 	max_w: int;
@@ -113,9 +118,9 @@ terra Blur:grow(w: int, h: int, radius: uint8)
 end
 
 terra Blur:_blur(src: &Bitmap, dst: &Bitmap)
-	var g8 = self.format == BITMAP_FORMAT_G8
+	var g8 = self.format == BITMAP_G8
 	var blur = iif(g8, boxblur_g8, boxblur_8888)
-	self.blurx.parent:clear()
+	self.blurx_parent:clear()
 	--clear sumx because blur needs to read some 0es from it.
 	fill(self.sumx, self.sumx_size)
 	blur(
@@ -188,5 +193,3 @@ terra Blur:blur(w: int, h: int, radius: uint8, passes: uint8)
 	end
 	return self.dst
 end
-
-return boxblurlib

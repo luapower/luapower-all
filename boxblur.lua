@@ -7,21 +7,28 @@ if not ... then require'boxblur_demo'; return end
 
 local ffi = require'ffi'
 local C = ffi.load'boxblur'
+local glue = require'glue'
 local bitmap = require'bitmap'
+local round = glue.round
+local clamp = glue.clamp
 local boxblur = {C = C}
 
 ffi.cdef[[
 
-void boxblur_g8(void *src, void *dst,
-	int32_t width, int32_t height, int32_t src_stride, int32_t dst_stride,
-	int32_t radius, int32_t passes, void* blurx, void* sumx);
+typedef unsigned char u8;
+typedef short i16;
+typedef int i32;
 
-void boxblur_8888(void *src, void *dst,
-	int32_t width, int32_t height, int32_t src_stride, int32_t dst_stride,
-	int32_t radius, int32_t passes, void* blurx, void* sumx);
+void boxblur_g8(u8 *src, u8 *dst, i32 width, i32 height,
+	i32 src_stride, i32 dst_stride, i32 radius, i32 passes,
+	void* blurx, void* sumx);
 
-void boxblur_extend(void *src, int32_t width, int32_t height,
-	int32_t src_stride, int32_t bpp, int32_t radius);
+void boxblur_8888(u8 *src, u8 *dst, i32 width, i32 height,
+	i32 src_stride, i32 dst_stride, i32 radius, i32 passes,
+	void* blurx, void* sumx);
+
+void boxblur_extend(u8 *src, i32 width, i32 height,
+	i32 src_stride, i32 bpp, i32 radius);
 
 ]]
 
@@ -29,14 +36,6 @@ local blur_func = {
 	[ 8] = C.boxblur_g8;
 	[32] = C.boxblur_8888;
 }
-
-local function round(x)
-	return math.floor(x + 0.5)
-end
-
-local function clamp(x, x0, x1)
-	return math.min(math.max(x, x0), x1)
-end
 
 local blur = {}
 

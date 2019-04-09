@@ -228,4 +228,3 @@ terra bitmap.new(w: int, h: int, format: enum, stride: int)
 end
 
 bitmap.blend = blend
-
