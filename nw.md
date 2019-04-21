@@ -358,7 +358,7 @@ Quitting is a multi-phase process:
 2. `win:closing('quit', closing_win)` event is fired on all non-child windows,
    with the initial window as arg#2. If any of them returns `false`, quitting
 	is aborted.
-3. `win:close'force'` is called on all windows (in reverse-creation order).
+3. `win:free'force'` is called on all windows (in reverse-creation order).
 4. the app loop is stopped.
 
 Calling `quit()` when the loop is not running or while quitting
@@ -611,6 +611,13 @@ What to do when a window is closed: hide it or destroying it.
 
 Close and destroy the window (same as `close()` when `hideonclose` is set
 to `false`).
+
+__NOTE:__ Ensure that all the windows are freed before the process exits
+(which is why the `autoquit` option calls `free()` on the windows instead
+of `close()` which might just hide them). Don't leave it to the gc to free
+window objects because a window object contains other gc'ed objects that
+need to be freed in a specific order but the order in which `ffi.gc`
+destructors are called is undefined when the window object is gc'ed.
 
 ## Window & app activation
 

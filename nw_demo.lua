@@ -12,7 +12,8 @@ if not ... then
 		transparent = false,
 		corner_radius = 6,
 		topmost = false,
-		visible = false}
+		visible = false,
+	}
 
 	local function reload()
 		package.loaded.nw_demo = nil
@@ -33,6 +34,12 @@ if not ... then
 		reload()
 		win:invalidate()
 	end)
+	function app:event(...)
+		print('app', ...)
+	end
+	function win:event(...)
+		print('win', ...)
+	end
 	app:run()
 	return
 end

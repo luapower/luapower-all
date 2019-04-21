@@ -273,7 +273,7 @@ function app:_forcequit()
 	for i = #t, 1, -1 do
 		local win = t[i]
 		if not win:dead() and not win:parent() then
-			win:close'force'
+			win:free'force'
 		end
 	end
 
@@ -565,10 +565,8 @@ end
 --closing --------------------------------------------------------------------
 
 function window:_canclose(reason, closing_window)
-	if self._closing then
-		return false --reject while closing (from quit() and user quit)
-	end
-	self._closing = true --_backend_closing() and _canclose() barrier
+	if self._closing then return false end --reject while closing
+	self._closing = true --_canclose() barrier
 	local allow = self:fire('closing', reason, closing_window) ~= false
 	--children must agree too
 	for i,win in ipairs(self:children()) do
@@ -578,13 +576,12 @@ function window:_canclose(reason, closing_window)
 	return allow
 end
 
-function window:close(force)
-	local hide = self:hideonclose() and not self:autoquit()
-	if hide and not self:visible() then
+function window:close(dontask)
+	if self:hideonclose() and not self:visible() then
 		return
 	end
-	if force or self:_backend_closing() then
-		if hide then
+	if dontask or self:_backend_closing() then
+		if not self._quitapp and self:hideonclose() then
 			self:hide()
 		else
 			self.backend:forceclose()
@@ -592,8 +589,8 @@ function window:close(force)
 	end
 end
 
-function window:free(force)
-	if force or self:_backend_closing() then
+function window:free(dontask)
+	if dontask or self:_backend_closing(true) then
 		self.backend:forceclose()
 	end
 end
@@ -601,9 +598,8 @@ end
 local function is_alive_root_and_visible(win)
 	return not win:dead() and not win:parent() and win:visible()
 end
-function window:_backend_closing()
+function window:_backend_closing(donthide)
 	if self._closed then return false end --reject if closed
-	if self._closing then return false end --reject while closing
 
 	if not self:_canclose('close', self) then
 		return false
@@ -614,11 +610,10 @@ function window:_backend_closing()
 		and not self:parent() --closing a root window
 		and app:windows('#', is_alive_root_and_visible) == 1 --the only one
 	) then
-		self._quitting = true
-		return app:_canquit()
+		self._quitapp = app:_canquit() or nil
 	end
 
-	if self:hideonclose() and not self:autoquit() then
+	if not donthide and not self._quitapp and self:hideonclose() then
 		self:hide()
 		return false
 	end
@@ -636,8 +631,9 @@ function window:_backend_closed()
 	self:_free_views()
 	self._dead = true
 
-	if self._quitting then
+	if self._quitapp then
 		app:_forcequit()
+		self._quitapp = nil
 	end
 end
 
@@ -1339,14 +1335,22 @@ function window:resizeable() self:_check(); return self._resizeable end
 function window:fullscreenable() self:_check(); return self._fullscreenable end
 function window:activable() self:_check(); return self._activable end
 function window:sticky() self:_check(); return self._sticky end
-function window:hideonclose() self:_check(); return self._hideonclose end
+
+function window:hideonclose(hideonclose)
+	self:_check()
+	if hideonclose == nil then
+		return self._hideonclose
+	else
+		self._hideonclose = hideonclose and true or false
+	end
+end
 
 function window:autoquit(autoquit)
 	self:_check()
 	if autoquit == nil then
 		return self._autoquit
 	else
-		self._autoquit = autoquit
+		self._autoquit = autoquit and true or false
 	end
 end
 
@@ -1607,8 +1611,8 @@ end
 function window:_backend_free_bitmap(bitmap)
 	if bitmap.cairo_context then
 		self:fire('free_cairo', bitmap.cairo_context)
-		bitmap.cairo_context:free()
-		bitmap.cairo_surface:free()
+		bitmap.cairo_context:free(); bitmap.cairo_context = nil
+		bitmap.cairo_surface:free(); bitmap.cairo_surface = nil
 	end
 	self:fire('free_bitmap', bitmap)
 end
