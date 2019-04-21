@@ -277,12 +277,10 @@ function app:_forcequit()
 		end
 	end
 
-	if self:windows'#' == 0 then --no windows created while closing
-		--free notify icons otherwise they hang around (both in XP and in OSX).
-		self:_free_notifyicons()
-		self:_free_dockicon()
-		self:stop()
-	end
+	--free notify icons otherwise they hang around (both in XP and in OSX).
+	self:_free_notifyicons()
+	self:_free_dockicon()
+	self:stop()
 
 	self._quitting = nil
 end

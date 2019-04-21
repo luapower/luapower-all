@@ -359,7 +359,6 @@ Quitting is a multi-phase process:
    with the initial window as arg#2. If any of them returns `false`, quitting
 	is aborted.
 3. `win:close'force'` is called on all windows (in reverse-creation order).
-   If new windows are created during this process, quitting is aborted.
 4. the app loop is stopped.
 
 Calling `quit()` when the loop is not running or while quitting
@@ -367,9 +366,9 @@ is in progress does nothing.
 
 ### `app:autoquit() -> t|f` <br> `app:autoquit(t|f)`
 
-Get/set the app autoquit flag (default: true).
-When this flag is `true`, the app quits when the last visible non-child
-window is closed. NOTE: `hideonclose` has no effect if this is enabled.
+Get/set the app autoquit flag (default: `true`).
+When this flag is `true`, the app loop exists when the last visible non-child
+window is closed.
 
 ### `app:quitting() -> [false]`
 
@@ -379,7 +378,7 @@ Return `false` from this event to cancel the process.
 ### `win:autoquit() -> t|f` <br> `win:autoquit(t|f)`
 
 Get/set the window autoquit flag (default: `false`).
-When this flag is `true`, the app quits when the window is closed.
+When this flag is `true`, the app loop exists when the window is closed.
 This flag can be used on the app's main window if there is such a thing.
 
 ## Timers
@@ -570,7 +569,7 @@ Get the transparent flag (read-only).
 ## Window closing
 
 Closing the window hides it or destroys it depending on the `hideonclose` flag.
-You can prevent closing by returning `false` in the `win:closing()` event:
+You can prevent closing by returning `false` in the `win:closing()` event.
 
 ### `win:close([force])`
 
