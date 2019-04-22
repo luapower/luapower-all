@@ -14,14 +14,14 @@ local pixelsize = bitmap.pixelsize
 local aligned_stride = bitmap.aligned_stride
 local bitmap = bitmap.new
 
-RepaintFunc = {&opaque, &Bitmap} -> {}
+BlurRepaintFunc = {&opaque, &Bitmap} -> {}
 
 struct low.Blur {
 	--config
 	w: int;
 	h: int;
 	format: enum; --BITMAP_*
-	repaint: RepaintFunc; repaint_self: &opaque;
+	repaint: BlurRepaintFunc; repaint_self: &opaque;
 	--buffers
 	max_w: int;
 	max_h: int;
@@ -38,7 +38,7 @@ struct low.Blur {
 	valid  : bool;
 }
 
-terra Blur:init(format: enum, repaint: RepaintFunc, repaint_self: &opaque)
+terra Blur:init(format: enum, repaint: BlurRepaintFunc, repaint_self: &opaque)
 	fill(&self)
 	self.format = format
 	self.repaint = repaint

@@ -1,5 +1,5 @@
 setfenv(1, require'low')
-local utf8 = require'utf8lib'
+require'utf8lib'
 
 local strings = {
 	{'empty', ''},
