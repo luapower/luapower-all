@@ -151,7 +151,7 @@ terra utf8.decode.toarr(s: rawstring, len: int, out: &arr(codepoint),
 	out.len = 0
 	return escape
 		local add_c = macro(function(c, i)
-			return quote out:set(i, c) end
+			return quote out:add(c) end
 		end)
 		emit `decode(s, len, add_c, outlen, on_reject, repl_c)
 	end
