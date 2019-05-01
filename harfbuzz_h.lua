@@ -50,10 +50,6 @@ typedef const struct hb_language_impl_t *hb_language_t;
 hb_language_t hb_language_from_string (const char *str, int len);
 const char *hb_language_to_string (hb_language_t language);
 
-enum {
-	HB_LANGUAGE_INVALID = 0,
-};
-
 hb_language_t hb_language_get_default (void);
 
 typedef enum {

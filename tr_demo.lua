@@ -103,8 +103,6 @@ local function dot(cr, col, x, y, size)
 	cr:restore()
 end
 
-local text = require'glue'.readfile('winapi_history.md')
-
 local segs, cursor, sel
 
 function win:repaint()
@@ -206,19 +204,19 @@ function win:repaint()
 			('\xF0\x9F\x98\x81'):rep(2), '\n',
 			font = 'NotoColorEmoji,32',
 		},
-		font='open sans, 14',
+		font = 'open sans, 14',
 		color = '#fff',
 		--operator = 'xor',
-		require'glue'.readfile('winapi_design.md'),
+		require'glue'.readfile('lorem_ipsum.txt'), --winapi_design.md'),
 		--nowrap = true,
 	}
 
 	segs = segs or tr:shape(t)
-	segs:layout(x, y, w, h, 'left', 'top')
+	segs:layout(x, y, w, h, 'center', 'top')
 
 	local cw, ch = win:client_size()
 	local cx, cy, cw, ch = cw / 2 - 300, ch / 2 - 200, 200, 300
-	segs:clip(cx, cy, cw, ch)
+	--segs:clip(cx, cy, cw, ch)
 	rect(cr, '#ff0', cx, cy, cw, ch)
 
 	segs:paint(cr)
@@ -340,7 +338,7 @@ function win:keypress(key)
 			t[#t+1] = cursor.seg.glyph_run.cursor_xs[i]
 		end
 		print(cursor.seg.index, cursor.i,
-			cursor.seg.glyph_run.cursor_xs[cursor.i], pp.format(t))
+			cursor.seg.glyph_run.cursor_xs[cursor.i], require'pp'.format(t))
 	elseif key == 'up' then
 		cursor:move('rel_line', -1)
 		self:invalidate()

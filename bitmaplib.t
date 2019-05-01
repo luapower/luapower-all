@@ -78,7 +78,6 @@ end
 
 terra Bitmap:free()
 	free(self.pixels)
-	self.pixels = nil
 end
 
 terra Bitmap:alloc(w: int, h: int, format: enum, stride: int)

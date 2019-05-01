@@ -20,7 +20,7 @@ tr:add_font_file('media/fonts/gfonts/apache/opensans/OpenSans-Regular.ttf ', 'op
 
 local t0 = time.clock()
 local n = 100
-local s = glue.readfile('winapi_history.md')
+local s = glue.readfile('lorem_ipsum.txt')
 local t = tr:flatten{
 	font_name = 'open_sans,16',
 	--font_name = 'amiri,13',
