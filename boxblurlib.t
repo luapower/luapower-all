@@ -160,7 +160,9 @@ end
 terra Blur:blur(w: int, h: int, radius: uint8, passes: uint8)
 	self:grow(w, h, radius)
 	passes = clamp(passes, 0, 10)
-	if self.valid and radius == self.radius and passes == self.passes then
+	if self.valid and w == self.w and h == self.h
+		and radius == self.radius and passes == self.passes
+	then
 		--nothing changed
 	elseif radius == 0 or passes == 0 then --no blur
 		if self.radius > 0 then --src blurred, repaint

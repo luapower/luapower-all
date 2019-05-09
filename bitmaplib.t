@@ -55,6 +55,7 @@ struct Bitmap {
 	stride: int;  --in bytes!
 	format: enum; --BITMAP_*
 }
+bitmap.Bitmap = Bitmap
 
 Bitmap.empty = `Bitmap {
 	w = 0;
