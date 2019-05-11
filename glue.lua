@@ -742,12 +742,17 @@ function glue.autoload(t, k, v)
 				if v ~= nil then return v end
 			end
 			if submodules[k] then
+				local mod
 				if type(submodules[k]) == 'string' then
-					require(submodules[k]) --module
+					mod = require(submodules[k]) --module
 				else
-					submodules[k](k) --custom loader
+					mod = submodules[k](k) --custom loader
 				end
 				submodules[k] = nil --prevent loading twice
+				if type(mod) == 'table' then --submodule returned its module table
+					assert(mod[k] ~= nil) --submodule has our symbol
+					t[k] = mod[k]
+				end
 				return rawget(t, k)
 			end
 		end
