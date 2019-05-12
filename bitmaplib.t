@@ -12,12 +12,10 @@ BITMAP_ARGB32  = 2
 
 bitmap = {}
 
-bitmap.valid_format = macro(function(format)
-	return quote
-		assert(format == BITMAP_G8 or format == BITMAP_ARGB32)
-		in format
-	end
-end)
+terra bitmap.valid_format(format: enum)
+	assert(format == BITMAP_G8 or format == BITMAP_ARGB32)
+	return format
+end
 
 terra bitmap.pixelsize(format: enum)
 	return iif(bitmap.valid_format(format) == BITMAP_G8, 1, 4)
@@ -48,7 +46,7 @@ local terra intersect(x1: int, y1: int, w1: int, h1: int, x2: int, y2: int, w2: 
 	return x1, y1, w, h
 end
 
-struct Bitmap {
+struct Bitmap (gettersandsetters) {
 	w: int;
 	h: int;
 	pixels: &uint8;
@@ -65,11 +63,11 @@ Bitmap.empty = `Bitmap {
 	pixels = nil;
 }
 
-terra Bitmap:rowsize()
+terra Bitmap:get_rowsize()
 	return self.w * bitmap.pixelsize(self.format)
 end
 
-terra Bitmap:size()
+terra Bitmap:get_size()
 	return self.h * self.stride
 end
 
@@ -79,23 +77,28 @@ end
 
 terra Bitmap:free()
 	free(self.pixels)
+	self:init()
 end
 
-terra Bitmap:alloc(w: int, h: int, format: enum, stride: int)
+terra Bitmap:realloc(w: int, h: int, format: enum, stride: int)
 	format = bitmap.valid_format(format)
 	if stride == -1 then
 		stride = bitmap.min_aligned_stride(w, format)
 	end
-	self:free()
+	var old_size = self.size
 	self.w = w
 	self.h = h
 	self.format = format
 	self.stride = stride
-	self.pixels = alloc(uint8, self:size())
+	var new_size = self.size
+	if new_size ~= old_size then
+		free(self.pixels) --free pixels to avoid copying them
+		self.pixels = realloc(self.pixels, new_size)
+	end
 end
 
 terra Bitmap:clear()
-	fill(self.pixels, self:size())
+	fill(self.pixels, self.size)
 end
 
 --create a bitmap representing a rectangular region of another bitmap.
@@ -127,7 +130,7 @@ Bitmap.methods.each_row = macro(function(src, dst, func)
 	return quote
 		var dj = 0
 		for sj = 0, src.h * src.stride, src.stride do
-			func(dst.pixels + dj, src.pixels + sj, src:rowsize())
+			func(dst.pixels + dj, src.pixels + sj, src.rowsize)
 			dj = dj + dst.stride
 		end
 	end
@@ -141,8 +144,8 @@ terra Bitmap:paint(dst: &Bitmap, dstx: int, dsty: int)
 	--try to copy the bitmap whole
 	if src.format == dst.format and src.stride == dst.stride then
 		if src.pixels ~= dst.pixels then
-			assert(dst:size() >= src:size())
-			copy(dst.pixels, src.pixels, src:size())
+			assert(dst.size >= src.size)
+			copy(dst.pixels, src.pixels, src.size)
 		end
 		return
 	end
@@ -224,7 +227,7 @@ terra Bitmap:blend(dst: &Bitmap, dstx: int, dsty: int, op: enum)
 end
 
 terra bitmap.new(w: int, h: int, format: enum, stride: int)
-	var bmp: Bitmap; bmp:init(); bmp:alloc(w, h, format, stride); return bmp
+	var bmp: Bitmap; bmp:init(); bmp:realloc(w, h, format, stride); return bmp
 end
 
 bitmap.blend = blend

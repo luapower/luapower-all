@@ -49,19 +49,12 @@ terra Blur:free()
 	self.bmp2_parent:free()
 	self.blurx_parent:free()
 	free(self.sumx)
-	self.max_radius = 0
-	self.max_w = 0
-	self.max_h = 0
-	self.w = 0
-	self.h = 0
-	self.src = nil
-	self.dst = nil
-	self.valid = false
+	self:init(self.format, self.repaint, self.context)
 end
 
-terra Blur:_alloc()
-	--compute side paddings needed for both source and dest. bitmaps.
-	--we set max padding since we're swapping src with dst for multiple passes.
+terra Blur:_realloc()
+	--compute side paddings needed for both src and dst bitmaps.
+	--both get padding because src gets swapped with dst on multiple passes.
 	var w = self.max_w
 	var h = self.max_h
 	var r = self.max_radius
@@ -70,22 +63,23 @@ terra Blur:_alloc()
 	var w2 = r + 16 / pixelsize(self.format)
 	var h2 = r
 	var bw = w + w1 + w2
-	var bh = w + w1 + w2
+	var bh = h + h1 + h2
+	var stride = aligned_stride(bw, 16)
 
-	self.bmp1_parent = bitmap.new(bw, bh, self.format, aligned_stride(bw, 16))
-	self.bmp2_parent = bitmap.new(bw, bh, self.format, aligned_stride(bw, 16))
+	self.bmp1_parent:realloc(bw, bh, self.format, stride)
+	self.bmp2_parent:realloc(bw, bh, self.format, stride)
 	self.bmp1 = self.bmp1_parent:sub(w1, h1, self.w, self.h)
 	self.bmp2 = self.bmp2_parent:sub(w1, h1, self.w, self.h)
 	self.src = &self.bmp1
 	self.dst = &self.bmp2
 
-	self.sumx_size = self.src.stride + 8
-	self.sumx = alloc(int16, self.sumx_size)
+	self.sumx_size = stride + 8
+	self.sumx = realloc(self.sumx, self.sumx_size)
 
-	self.blurx_parent = bitmap.new(
+	self.blurx_parent:realloc(
 		w * 2, --16bit samples so double the width.
 		h + 4 * r + 1,
-		self.format, aligned_stride(self.src.stride * 2, 16))
+		self.format, stride * 2)
 	self.blurx = self.blurx_parent:sub(0, 3 * r + 1, maxint, maxint)
 
 	if self.sumx == nil
@@ -100,21 +94,20 @@ terra Blur:_alloc()
 	self.valid = false
 end
 
-local terra grow(x: num, newx: num, factor: num)
-	if x == 0 then return newx end
-	while x < newx do x = x * factor end
+local terra grow(x: num, new_x: num, factor: num)
+	if x == 0 then return new_x end
+	while x < new_x do x = x * factor end
 	return x
 end
 
-terra Blur:grow(w: int, h: int, radius: uint8)
-	if w > self.max_w or h > self.max_h or radius > self.max_radius then
-		self:free()
+terra Blur:setsize(w: int, h: int, radius: uint8)
+	if w ~= self.w or h ~= self.h or radius > self.max_radius then
 		self.max_radius = clamp(grow(self.max_radius, max(8, radius), 2), 0, 255)
 		self.max_w = grow(self.max_w, w, sqrt(2))
 		self.max_h = grow(self.max_h, h, sqrt(2))
 		self.w = w
 		self.h = h
-		self:_alloc()
+		self:_realloc()
 	end
 end
 
@@ -158,41 +151,43 @@ terra Blur:_repaint()
 end
 
 terra Blur:blur(w: int, h: int, radius: uint8, passes: uint8)
-	self:grow(w, h, radius)
 	passes = clamp(passes, 0, 10)
-	if self.valid and w == self.w and h == self.h
-		and radius == self.radius and passes == self.passes
+	if self.valid and radius == self.radius and passes == self.passes
+		and w == self.w and h == self.h
 	then
 		--nothing changed
-	elseif radius == 0 or passes == 0 then --no blur
-		if self.radius > 0 then --src blurred, repaint
-			self.valid = false
-			self:_repaint()
-		end
-		self.radius = 0
-		self.passes = 0
-		self.src:paint(self.dst, 0, 0)
-	elseif passes == 1 then
-		if self.passes > 1 then --src blurred, repaint
-			self.valid = false
-		end
-		self:_repaint()
-		self.radius = radius
-		self.passes = 1
-		self:_extend(self.src)
-		self:_blur(self.src, self.dst)
 	else
-		self.valid = false
-		self:_repaint()
-		self.radius = radius
-		self.passes = passes
-		var src, dst = self.dst, self.src
-		for i=1,passes do
-			src, dst = dst, src
-			self:_extend(src)
-			self:_blur(src, dst)
+		self:setsize(w, h, radius)
+		if radius == 0 or passes == 0 then --no blur
+			if self.radius > 0 then --src blurred, repaint
+				self.valid = false
+			end
+			self.radius = radius
+			self.passes = passes
+			self:_repaint()
+			self.src:paint(self.dst, 0, 0)
+		elseif passes == 1 then
+			if self.passes > 1 then --src blurred, repaint
+				self.valid = false
+			end
+			self.radius = radius
+			self.passes = passes
+			self:_repaint()
+			self:_extend(self.src)
+			self:_blur(self.src, self.dst)
+		else
+			self.valid = false
+			self.radius = radius
+			self.passes = passes
+			self:_repaint()
+			var src, dst = self.dst, self.src
+			for i=1,passes do
+				src, dst = dst, src
+				self:_extend(src)
+				self:_blur(src, dst)
+			end
+			self.src, self.dst = src, dst
 		end
-		self.src, self.dst = src, dst
 	end
 	return self.dst
 end
@@ -207,7 +202,7 @@ function Blur:build()
 		--
 	})
 	public(bitmap.new, 'bitmap')
-	public:getenums(low, '^BITMAP_')
+	public:getenums(_M, '^BITMAP_')
 	public(Blur, {
 		free_and_deallocate='free',
 		blur=1,
@@ -218,7 +213,6 @@ function Blur:build()
 		return b
 	end
 	public(blur)
-	public:getenums(Blur)
 	public:build{
 		linkto = {'boxblur'},
 	}
@@ -230,4 +224,4 @@ if not ... then
 	pfn'OK'
 end
 
-return low
+return _M
