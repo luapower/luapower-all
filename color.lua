@@ -322,6 +322,7 @@ local format_spaces = {
 	['#rgba'] = 'rgb', ['#rgb'] = 'rgb', rgba = 'rgb', rgb = 'rgb',
 	hsla = 'hsl', hsl = 'hsl', ['hsla%'] = 'hsl', ['hsl%'] = 'hsl',
 	hsva = 'hsv', hsv = 'hsv', ['hsva%'] = 'hsv', ['hsv%'] = 'hsv',
+	rgba32 = 'rgb', argb32 = 'rgb',
 }
 
 local function loss(x) --...of precision when converting to #rgb
@@ -376,6 +377,18 @@ local function format(fmt, space, x, y, z, a)
 				round(y * 100),
 				round(z * 100),
 				a)
+	elseif fmt == 'rgba32' then
+		return
+			  x *  0xff000000
+			+ y *    0xff0000
+			+ z *      0xff00
+			+ a *        0xff
+	elseif fmt == 'argb32' then
+		return
+			  a *  0xff000000
+			+ x *    0xff0000
+			+ y *      0xff00
+			+ b *        0xff
 	else --hsl|v(a)
 		return string.format(
 			#fmt == 4 and '%s(%d,%.2g,%.2g,%.2g)' or '%s(%d,%.2g,%.2g)',
