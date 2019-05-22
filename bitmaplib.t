@@ -28,7 +28,7 @@ end
 
 terra bitmap.min_aligned_stride(w: int, format: enum)
 	var bpp = iif(bitmap.valid_format(format) == BITMAP_G8, 1, 4)
-	return bitmap.aligned_stride(w * bpp, bpp)
+	return bitmap.aligned_stride(w * bpp, 4) --always 4 for compat. with cairo
 end
 
 --intersect two positive 1D segments
@@ -159,6 +159,16 @@ terra Bitmap:paint(dst: &Bitmap, dstx: int, dsty: int)
 	else
 		assert(false, 'NYI')
 	end
+end
+
+terra Bitmap:copy()
+	var dst: Bitmap
+	dst:init()
+	dst:realloc(self.w, self.h, self.format, -1)
+	if dst.pixels ~= nil then
+		self:paint(&dst, 0, 0)
+	end
+	return dst
 end
 
 BITMAP_COPY = 0

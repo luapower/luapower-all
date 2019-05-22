@@ -20,7 +20,6 @@ struct Blur {
 	w: int;
 	h: int;
 	format: enum; --BITMAP_*
-	repaint: BlurRepaintFunc; context: &opaque;
 	--buffers
 	max_w: int;
 	max_h: int;
@@ -37,11 +36,9 @@ struct Blur {
 	valid  : bool;
 }
 
-terra Blur:init(format: enum, repaint: BlurRepaintFunc, context: &opaque)
+terra Blur:init(format: enum)
 	fill(self)
 	self.format = format
-	self.repaint = repaint
-	self.context = context
 end
 
 terra Blur:free()
@@ -49,7 +46,7 @@ terra Blur:free()
 	self.bmp2_parent:free()
 	self.blurx_parent:free()
 	free(self.sumx)
-	self:init(self.format, self.repaint, self.context)
+	self:init(self.format)
 end
 
 terra Blur:_realloc()
@@ -130,10 +127,6 @@ terra Blur:_blur(src: &Bitmap, dst: &Bitmap)
 		self.sumx)
 end
 
-terra Blur:invalidate()
-	self.valid = false
-end
-
 terra Blur:_extend(src: &Bitmap)
 	boxblur_extend(
 		src.pixels,
@@ -144,44 +137,51 @@ terra Blur:_extend(src: &Bitmap)
 		self.radius)
 end
 
-terra Blur:_repaint()
-	if self.valid then return end
-	self.repaint(self.context, self.src)
-	self.valid = true
-end
+Blur.methods.invalidate = overload'invalidate'
 
-terra Blur:blur(w: int, h: int, radius: uint8, passes: uint8)
-	passes = clamp(passes, 0, 10)
-	if self.valid and radius == self.radius and passes == self.passes
-		and w == self.w and h == self.h
-	then
-		--nothing changed
-	else
-		self:setsize(w, h, radius)
-		if radius == 0 or passes == 0 then --no blur
-			if self.radius > 0 then --src blurred, repaint
+Blur.methods.invalidate:adddefinition(
+	terra(self: &Blur)
+		self.valid = false
+	end
+)
+
+Blur.methods.invalidate:adddefinition(
+	terra(self: &Blur, w: int, h: int, radius: uint8, passes: uint8)
+		passes = clamp(passes, 0, 10)
+		if self.valid and radius == self.radius and passes == self.passes
+			and w == self.w and h == self.h
+		then
+			--nothing changed
+		else
+			self:setsize(w, h, radius)
+			if radius == 0 or passes == 0 then --no blur
+				if self.radius > 0 then --src blurred
+					self.valid = false
+				end
+			elseif passes == 1 then
+				if self.passes > 1 then --src blurred
+					self.valid = false
+				end
+			else
 				self.valid = false
 			end
 			self.radius = radius
 			self.passes = passes
-			self:_repaint()
+		end
+		return iif(not self.valid, self.src, nil)
+	end
+)
+
+terra Blur:blur()
+	if not self.valid then
+		if self.radius == 0 or self.passes == 0 then --no blur
 			self.src:paint(self.dst, 0, 0)
-		elseif passes == 1 then
-			if self.passes > 1 then --src blurred, repaint
-				self.valid = false
-			end
-			self.radius = radius
-			self.passes = passes
-			self:_repaint()
+		elseif self.passes == 1 then
 			self:_extend(self.src)
 			self:_blur(self.src, self.dst)
 		else
-			self.valid = false
-			self.radius = radius
-			self.passes = passes
-			self:_repaint()
 			var src, dst = self.dst, self.src
-			for i=1,passes do
+			for i=1,self.passes do
 				src, dst = dst, src
 				self:_extend(src)
 				self:_blur(src, dst)
@@ -205,11 +205,13 @@ function Blur:build()
 	public:getenums(_M, '^BITMAP_')
 	public(Blur, {
 		free_and_deallocate='free',
+		invalidate = {'invalidate', 'invalidate_rect'},
 		blur=1,
 	}, true)
 
-	local terra blur(format: enum, repaint: BlurRepaintFunc, context: &opaque)
-		var b = alloc(Blur); b:init(format, repaint, context)
+	local terra blur(format: enum)
+		var b = alloc(Blur)
+		b:init(format)
 		return b
 	end
 	public(blur)

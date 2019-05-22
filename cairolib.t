@@ -156,6 +156,9 @@ m.skew = terra(self: &cairo_matrix_t, ax: double, ay: double)
 	m.yx = tan(ay)
 	self:transform(&m)
 end
+m.copy = terra(self: &cairo_matrix_t)
+	var m = @self; return m
+end
 
 cr.translate   = cairo_translate
 cr.scale       = cairo_scale
@@ -306,7 +309,11 @@ cr.fill_extents   = cairo_fill_extents
 cr.reset_clip    = cairo_reset_clip
 cr.clip          = cairo_clip
 cr.clip_preserve = cairo_clip_preserve
-cr.clip_extents  = cairo_clip_extents
+cr.clip_extents  = terra(self: &cairo_t)
+	var x1: double, y1: double, x2: double, y2: double
+	cairo_clip_extents(self, &x1, &y1, &x2, &y2)
+	return x1, y1, x2, y2
+end
 
 cr.copy_clip_rectangle_list = cairo_copy_clip_rectangle_list
 
@@ -366,8 +373,7 @@ s.bitmap_format = terra(self: &cairo_surface_t)
 	return cairo_bitmap_format(self:format())
 end
 s.copy = terra(self: &cairo_surface_t)
-	var b: Bitmap; b:init()
-	b:alloc(self:width(), self:height(), self:bitmap_format(), self:stride())
+	var b = bitmap.new(self:width(), self:height(), self:bitmap_format(), self:stride())
 	self:flush()
 	copy(b.pixels, [&uint8](self:data()), self:stride() * self:height())
 	return b

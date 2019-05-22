@@ -3,7 +3,6 @@ local C = ffi.load'boxblurlib'
 ffi.cdef[[
 typedef struct Bitmap Bitmap;
 typedef struct Blur Blur;
-typedef void (*pvoid_pBitmap_to_void) (void*, Bitmap*);
 struct Bitmap {
 	int32_t w;
 	int32_t h;
@@ -12,13 +11,17 @@ struct Bitmap {
 	int8_t format;
 };
 Bitmap bitmap(int32_t, int32_t, int8_t, int32_t);
-Bitmap* Blur_blur(Blur*, int32_t, int32_t, uint8_t, uint8_t);
+void Blur_invalidate(Blur*);
+Bitmap* Blur_invalidate_rect(Blur*, int32_t, int32_t, uint8_t, uint8_t);
+Bitmap* Blur_blur(Blur*);
 void Blur_free(Blur*);
-Blur* blur(int8_t, pvoid_pBitmap_to_void, void*);
+Blur* blur(int8_t);
 ]]
 ffi.metatype('Bitmap', {__index = {
 }})
 ffi.metatype('Blur', {__index = {
+	invalidate = C.Blur_invalidate,
+	invalidate_rect = C.Blur_invalidate_rect,
 	blur = C.Blur_blur,
 	free = C.Blur_free,
 }})
