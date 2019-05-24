@@ -36,7 +36,7 @@ Object system with virtual properties and method overriding hooks.
 	code inside `after_pick()` last.
    * `function Apple:override_pick(inherited, ...)` lets you override
 	  `Apple:pick()` and call `inherited(self, ...)`.
- * virtual classes: nested inner classes which can overriden in subclasses
+ * virtual classes: nested inner classes that can be overriden in subclasses
  of the outer class (more below).
  * introspection:
    * `oo.is(obj|class, class|classname) -> true|false` - check instance/class ancestry

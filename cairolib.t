@@ -50,12 +50,11 @@ C.cairo_color_t = cairo_color_t
 cairo_color_t.metamethods.__cast = function(from, to, exp)
 	if to == cairo_color_t then
 		if from == cairo_argb32_color_t then
-			local f = 1 / 255
 			return `cairo_color_t {
-				exp.channels.red   * f,
-				exp.channels.green * f,
-				exp.channels.blue  * f,
-				exp.channels.alpha * f
+				exp.channels.red   / 255.0,
+				exp.channels.green / 255.0,
+				exp.channels.blue  / 255.0,
+				exp.channels.alpha / 255.0
 			}
 		end
 	end
