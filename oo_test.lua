@@ -78,8 +78,8 @@ assert(t[5] == 'override2')
 
 --virtual properties
 local getter_called, setter_called
-function o:get_x() getter_called = true; return self.__x end
-function o:set_x(x) setter_called = true; self.__x = x end
+function c2:get_x() getter_called = true; return self.__x end
+function c2:set_x(x) setter_called = true; self.__x = x end
 o.x = 42
 assert(setter_called)
 assert(o.x == 42)
@@ -136,7 +136,7 @@ do
 print'-------------- (all reserved fields) ---------------'
 local c = oo.TestClass()
 local o = c()
-function o:set_x() end; o.x = nil; o.set_x = nil --to create `state`
+function c:set_x() end
 o:inspect(true)
 end
 
@@ -292,4 +292,4 @@ print'I      : interpreter mode'
 print'J      : JIT mode'
 print'0_d    : called detach() on instance'
 print'N+1    : N+1-level deep dynamic inheritance'
-print'_p     : copied __getters, __setters to instance'
+print'_p     : copied __getters and __setters to instance'

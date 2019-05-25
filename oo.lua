@@ -26,6 +26,7 @@ function Object:subclass(classname, overrides)
 	local subclass = {}
 	subclass.super = self
 	subclass.classname = classname or ''
+	subclass.isclass = true
 	if classname then
 		subclass['is'..classname] = true
 	end
@@ -61,7 +62,8 @@ function meta:__index(k)
 			if k == 'super' then --'super' is not even inheritable
 				return nil
 			end
-			local getters = self.__getters
+			local isinstance = rawget(self, 'isclass') == nil
+			local getters = isinstance and self.__getters
 			local get = getters and getters[k]
 			if get then --virtual property
 				return get(self, k)
@@ -87,26 +89,36 @@ local function create_table(t, k)
 	return v
 end
 
+--This check is to allow the optimization of copying __setters and __getters
+--on the instance (see tests) which, if applied, then overriding getters and
+--setters through the instance is not allowed anymore, since that would not
+--patch the instance, but it would patch the class instead.
+--TODO: find a way to remove this limitation in order to allow overriding
+--of getters/setters on instances (no use case for it yet).
+local function check_not_instance(self)
+	local isinstance = rawget(self, 'isclass') == nil
+	assert(not isinstance, 'NYI: trying to define a getter/setter on an instance.')
+end
+
 function meta:__newindex(k,v)
 	if type(k) ~= 'string' then
 		rawset(self, k, v)
 		return
 	end
-	local setters = self.__setters
+	local isinstance = rawget(self, 'isclass') == nil
+	local setters = isinstance and self.__setters
 	local set = setters and setters[k]
 	if set then --r/w property
 		set(self, v)
 		return
 	end
-	local getters = self.__getters
+	local getters = isinstance and self.__getters
 	if getters and getters[k] then --read-only property
 		error(string.format('property "%s" is read/only', k))
 	end
 	if k:find'^get_' or k:find'^set_' then --install getter or setter
+		check_not_instance(self)
 		local name = k:sub(5)
-		if rawget(self, name) ~= nil then
-			error(string.format('attribute "%s" already exists', name))
-		end
 		local tname = k:find'^get_' and '__getters' or '__setters'
 		create_table(self, tname)[name] = v
 	elseif k:find'^before_' then --install before hook
@@ -125,10 +137,12 @@ end
 
 local function install(self, combine, method_name, hook)
 	if method_name:find'^get_' then
+		check_not_instance(self)
 		local prop = method_name:sub(5)
 		local method = combine(self.__getters and self.__getters[prop], hook)
 		self[method_name] = method
 	elseif method_name:find'^set_' then
+		check_not_instance(self)
 		local prop = method_name:sub(5)
 		local method = combine(self.__setters and self.__setters[prop], hook)
 		self[method_name] = method
@@ -205,11 +219,11 @@ function Object:hasproperty(k)
 end
 
 function Object:isinstance(class)
-	return rawget(self, 'classname') == nil and (not class or self:is(class))
+	return rawget(self, 'isclass') == nil and (not class or self:is(class))
 end
 
 function Object:issubclass(class)
-	return rawget(self, 'classname') ~= nil and (not class or self:is(class))
+	return rawget(self, 'isclass') and (not class or self:is(class))
 end
 
 --closest ancestor that `other` has in self's hierarchy.
@@ -294,6 +308,7 @@ function Object:inherit(other, override, stop_super)
 		local properties = other:properties(stop_super)
 		for k,v in pairs(properties) do
 			if (override or rawget(self, k) == nil)
+				and k ~= 'isclass'   --don't set the isclass flag
 				and k ~= 'classname' --keep the classname (preserve identity)
 				and k ~= 'super' --keep super (preserve dynamic inheritance)
 				and k ~= '__getters' --getters are deep-copied

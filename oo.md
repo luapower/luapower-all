@@ -190,10 +190,16 @@ override `self:properties()`.
 
 **Virtual properties** are created by defining a getter and a setter. Once
 you have defined `self:get_foo()` and `self:set_foo(value)` you can read and
-write to `self.foo` and the getter and setter will be called to fulfill
-the indexing. The setter is optional. Assigning a value to a property without
-a setter removes the getter and sets the value. This can be used for
-implementing autoloading of component classes (see [glue].autoload).
+write to `self.foo` and the getter and setter will be called instead.
+The setter is optional. Assigning a value to a property that doesn't have
+a setter results in an error.
+
+Getters and setters are only called on instances. This allows setting default
+values for properties on the class as plain fields with the same name as the
+property, following that those defaults will be applied manually in the
+constructor with `self.foo = self.super.foo`.
+
+There are no virtual properties for classes. Use singleton instances instead.
 
 ~~~{.lua}
 function cls:get_answer_to_life() return deep_thought:get_answer() end
