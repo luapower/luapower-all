@@ -74,6 +74,8 @@ function meta:__index(k)
 	return super and super[k] --inherited property
 end
 
+--create a table in t[k] that inherits dynamically from t.super[k],
+--recursively creating all the t.super[k] tables if they're missing.
 local function create_table(t, k)
 	local v = rawget(t, k)
 	if v ~= nil then
