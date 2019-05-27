@@ -28,8 +28,7 @@ local function parse_metadata_file(dir, file, fonts)
 		if s:find'^fonts {' then
 			assert(not font)
 			font = {}
-		elseif s:find'^}' then
-			assert(font)
+		elseif font and s:find'^}' then
 			local name = normal_name(font.name)
 			local fname = normal_name(font.full_name)
 			local style = font.style:lower()
