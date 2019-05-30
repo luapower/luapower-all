@@ -388,7 +388,7 @@ local function format(fmt, space, x, y, z, a)
 			  a *  0xff000000
 			+ x *    0xff0000
 			+ y *      0xff00
-			+ b *        0xff
+			+ z *        0xff
 	else --hsl|v(a)
 		return string.format(
 			#fmt == 4 and '%s(%d,%.2g,%.2g,%.2g)' or '%s(%d,%.2g,%.2g)',
