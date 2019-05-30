@@ -193,6 +193,13 @@ function window:new(app, frontend, t)
 	local framed = t.frame == 'normal' or t.frame == 'toolbox'
 	self._layered = t.transparent
 
+	self._bg_brush = t.background_color
+		and winapi.CreateSolidBrush(t.background_color) or nil
+
+	if self._bg_brush then
+		self._windows_background = true
+	end
+
 	--NOTE: resizeable flag (WS_SIZEBOX) needs the frame flag (WS_DLGFRAME),
 	--which means we can't have frameless windows that are also resizeable.
 	self.win = Window{
@@ -217,6 +224,7 @@ function window:new(app, frontend, t)
 		layered = self._layered,
 		tool_window = t.frame == 'toolbox',
 		owner = t.parent and t.parent.backend.win,
+		background = self._bg_brush,
 		--behavior
 		topmost = t.topmost,
 		minimizable = t.minimizable,
@@ -306,6 +314,10 @@ function Window:on_destroy()
 		self.backend:_free_opengl()
 		self.backend:_free_icon()
 		self.backend:_free_drop_target()
+		if self.backend._bg_brush then
+			winapi.DeleteObject(self.backend._bg_brush)
+			self.backend._bg_brush = false
+		end
 		winmap[self] = nil
 
 		--register another random window as the last active window so that
@@ -1471,6 +1483,8 @@ function Rendering:on_paint(hdc) --WM_PAINT
 			self._windows_background = true
 			self.win:invalidate()
 		end
+	else
+		self._windows_background = false
 	end
 
 end

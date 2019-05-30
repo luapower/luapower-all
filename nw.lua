@@ -351,6 +351,7 @@ local defaults = {
 	title = '',
 	transparent = false,
 	corner_radius = 0,
+	background_color = false,
 	--behavior
 	topmost = false,
 	minimizable = true,
@@ -518,6 +519,7 @@ function window:_new(app, backend_class, useropt)
 	self._frame = opt.frame
 	self._transparent = opt.transparent
 	self._corner_radius = opt.corner_radius
+	self._background_color = opt.background_color
 	self._minimizable = opt.minimizable
 	self._maximizable = opt.maximizable
 	self._closeable = opt.closeable
@@ -1328,6 +1330,7 @@ end
 function window:frame() self:_check(); return self._frame end
 function window:transparent() self:_check(); return self._transparent end
 function window:corner_radius() self:_check(); return self._corner_radius end
+function window:background_color() self:_check(); return self._background_color end
 function window:minimizable() self:_check(); return self._minimizable end
 function window:maximizable() self:_check(); return self._maximizable end
 function window:closeable() self:_check(); return self._closeable end
