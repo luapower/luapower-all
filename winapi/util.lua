@@ -26,6 +26,8 @@ pass         = glue.pass
 pcall        = glue.pcall
 trim         = glue.trim
 update       = glue.update
+setbit       = glue.setbit
+getbit       = glue.getbit
 
 --error reporting -------------------------------------------------------------
 
@@ -272,16 +274,6 @@ function split_uint64(x)
 end
 
 --bitmask utils --------------------------------------------------------------
-
---extract the bool value of a bitmask from a value.
-function getbit(from, mask)
-	return band(from, mask) == mask
-end
-
---set a single bit of a value without affecting other bits.
-function setbit(over, mask, yes)
-	return bor(yes and mask or 0, band(over, bnot(mask)))
-end
 
 --set one or more bits of a value without affecting other bits.
 function setbits(over, mask, bits)

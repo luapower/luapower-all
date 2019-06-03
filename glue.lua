@@ -924,5 +924,21 @@ glue.ptr = ffi.abi'64bit' and ptr64 or ptr32
 
 end --if jit
 
+if bit then
+
+	local band, bor, bnot = bit.band, bit.bor, bit.bnot
+
+	--extract the bool value of a bitmask from a value.
+	function glue.getbit(from, mask)
+		return band(from, mask) == mask
+	end
+
+	--set a single bit of a value without affecting other bits.
+	function glue.setbit(over, mask, yes)
+		return bor(yes and mask or 0, band(over, bnot(mask)))
+	end
+
+end
+
 return glue
 

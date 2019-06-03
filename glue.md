@@ -78,6 +78,8 @@ __ffi__
 `glue.free(cdata)`                                                 free malloc'ed memory
 `glue.addr(ptr) -> number | string`                                store pointer address in Lua value
 `glue.ptr([ctype, ]number|string) -> ptr`                          convert address to pointer
+`glue.getbit(val, mask) -> true|false`                             get the value of a single bit from an integer
+`glue.setbit(val, mask, bitval)`                                   set the value of a single bit from an integer
 ------------------------------------------------------------------ ---------------------------------------------------------
 
 ## Math
