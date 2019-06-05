@@ -92,7 +92,7 @@ __window tracking__
 __window creation__
 `app:window(t|cw,ch,[title],[vis]) -> win`   create a window
 __window closing__
-`win:close([reason], [force])`               close the window and hide it or destroy it
+`win:close([reason|force])`                  close the window and hide it or destroy it
 `win:free([force])`                          close the window and destroy it
 `win:hideonclose(t|f) /-> t|f`               hide on close or destroy on close
 `win:dead() -> t|f`                          check if the window was destroyed
@@ -589,7 +589,7 @@ Calling any other method on a dead window raises an error.
 ### `win:closing(reason, [closing_win])`
 
 Event: The window is about to close. Reason can be `'quit'`, `'close'`,
-`'free'`, or the first argument passed to `close()`.
+or the first argument passed to `close()`.
 When reason is `'close'`, `closing_win` is the window initiating the process.
 Return `false` from the event handler to refuse closing.
 

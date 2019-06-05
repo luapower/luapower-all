@@ -567,6 +567,7 @@ end
 --closing --------------------------------------------------------------------
 
 function window:_canclose(reason, closing_window)
+	if reason == true then return true end --force
 	if self._closing then return false end --reject while closing
 	self._closing = true --_canclose() barrier
 	local allow = self:fire('closing', reason, closing_window) ~= false
@@ -578,11 +579,11 @@ function window:_canclose(reason, closing_window)
 	return allow
 end
 
-function window:close(reason, dontask)
+function window:close(reason)
 	if self:hideonclose() and not self:visible() then
 		return
 	end
-	if self:_backend_closing(reason, nil, dontask) then
+	if self:_backend_closing(reason) then
 		if not self._quitapp and self:hideonclose() then
 			self:hide()
 		else
@@ -592,7 +593,7 @@ function window:close(reason, dontask)
 end
 
 function window:free(dontask)
-	if self:_backend_closing('free', true, dontask) then
+	if self:_backend_closing(dontask == true or 'free', true) then
 		self.backend:forceclose()
 	end
 end
@@ -600,10 +601,10 @@ end
 local function is_alive_root_and_visible(win)
 	return not win:dead() and not win:parent() and win:visible()
 end
-function window:_backend_closing(reason, donthide, dontask)
+function window:_backend_closing(reason, donthide)
 	if self._closed then return false end --reject if closed
 
-	if not dontask and not self:_canclose(reason or 'close', self) then
+	if not self:_canclose(reason or 'close', self) then
 		return false
 	end
 

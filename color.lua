@@ -379,16 +379,16 @@ local function format(fmt, space, x, y, z, a)
 				a)
 	elseif fmt == 'rgba32' then
 		return
-			  x *  0xff000000
-			+ y *    0xff0000
-			+ z *      0xff00
-			+ a *        0xff
+			  round(x * 255) * 2^24
+			+ round(y * 255) * 2^16
+			+ round(z * 255) * 2^8
+			+ round(a * 255)
 	elseif fmt == 'argb32' then
 		return
-			  a *  0xff000000
-			+ x *    0xff0000
-			+ y *      0xff00
-			+ z *        0xff
+			  round(a * 255) * 2^24
+			+ round(x * 255) * 2^16
+			+ round(y * 255) * 2^8
+			+ round(z * 255)
 	else --hsl|v(a)
 		return string.format(
 			#fmt == 4 and '%s(%d,%.2g,%.2g,%.2g)' or '%s(%d,%.2g,%.2g)',
