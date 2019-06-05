@@ -428,8 +428,11 @@ local function invokeuserfunction(anchor, what, speculate, userfn,  ...)
 end
 terra.fulltrace = false
 -- override the lua traceback function to be aware of Terra compilation contexts
-function debug.traceback(msg,level)
-    level = level or 1
+function debug.traceback(thread,msg,level)
+    if type(thread) ~= 'thread' then
+      thread,msg,level = nil,thread,msg
+    end
+	 level = level or 1
     level = level + 1 -- don't count ourselves
     local lim = terra.fulltrace and math.huge or TRACEBACK_LEVELS1 + 1
     local lines = List()
@@ -3374,7 +3377,7 @@ local function getinternalizedfile(path)
     return cur
 end
 
-local clangresourcedirectory = "../../csrc/clang-resource-dir"
+local clangresourcedirectory = "$CLANG_RESOURCE$"
 local function headerprovider(path)
     if path:sub(1,#clangresourcedirectory) == clangresourcedirectory then
         return getinternalizedfile(path)
@@ -4061,7 +4064,7 @@ terra.systemincludes = List()
 if ffi.os == "Windows" then
     -- this is the reason we can't have nice things
     local function registrystring(key,value,default)
-    	local F = io.popen( ([[reg query "%s" /v "%s"]]):format(key,value) )
+		local F = io.popen( ([[reg query "%s" /v "%s" 2>nul]]):format(key,value) )
 		local result = F and F:read("*all"):match("REG_SZ%W*([^\n]*)\n")
 		return result or default
 	end
@@ -4507,5 +4510,4 @@ function terra.initdebugfns(traceback,backtrace,lookupsymbol,lookupline,disas)
 end
 
 _G["terralib"] = terra --terra code can't use "terra" because it is a keyword
-
 require'terralib_luapower'
