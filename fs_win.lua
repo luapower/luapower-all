@@ -120,18 +120,17 @@ local error_classes = {
 
 }
 
-local function check(ret, errcode)
+local function check(ret, err)
 	if ret then return ret end
-	errcode = errcode or C.GetLastError()
-	local buf, bufsz = errbuf(256)
-	local sz = C.FormatMessageA(
-		FORMAT_MESSAGE_FROM_SYSTEM, nil, errcode, 0, buf, bufsz, nil)
-	local err =
-		error_classes[errcode]
-		or (sz > 0
-			and ffi.string(buf, sz):gsub('[\r\n]+$', '')
-			or 'Error '..errcode)
-	return ret, err, errcode
+	err = err or C.GetLastError()
+	local msg = error_classes[err]
+	if not msg then
+		local buf, bufsz = errbuf(256)
+		local sz = C.FormatMessageA(
+			FORMAT_MESSAGE_FROM_SYSTEM, nil, err, 0, buf, bufsz, nil)
+		err = sz > 0 and ffi.string(buf, sz):gsub('[\r\n]+$', '') or 'Error '..err
+	end
+	return ret, msg, err
 end
 
 --utf16/utf8 conversion ------------------------------------------------------
