@@ -1,5 +1,5 @@
 
---luasocket-based scheduler for Lua coroutines.
+--Coroutine-based scheduler for LuaSocket and LuaSec sockets.
 --Written by Cosmin Apreutesei. Public domain.
 
 if not ... then require'socketloop_test'; return end
@@ -64,7 +64,7 @@ local function new(coro)
 	loop.suspend = suspend
 
 	--internal suspend/resume API
-	local function wait(rwt,skt)
+	local function wait(rwt, skt)
 		rwt[skt] = current()
 		suspend()
 		rwt[skt] = nil
@@ -78,12 +78,12 @@ local function new(coro)
 
 	--async socket API
 	local function accept(skt,...)
-		wait(read,skt)
+		wait(read, skt)
 		return assert(skt:accept(...))
 	end
 
 	local function receive(skt, patt, prefix)
-		wait(read,skt)
+		wait(read, skt)
 		local s, err, partial = skt:receive(patt, prefix)
 		if not s and err == 'timeout' then
 			return receive(skt, patt, partial)
@@ -93,7 +93,7 @@ local function new(coro)
 	end
 
 	local function send(skt,...)
-		wait(write,skt)
+		wait(write, skt)
 		return skt:send(...)
 	end
 
@@ -103,12 +103,42 @@ local function new(coro)
 		return assert(skt:close(...))
 	end
 
-	local function connect(skt, ...)
+	local function connect_tls(self, skt, tls)
+		if not tls then return skt end
+		local ssl = require'ssl'
+		local opt = {
+			protocol = 'any',
+			options  = {'all', 'no_sslv2', 'no_sslv3', 'no_tlsv1'},
+			verify   = 'none',
+			mode = 'client',
+		}
+		if type(tls) == 'table' then
+			for k,v in pairs(tls) do
+				opt[k] = v
+			end
+		end
+		local skt = ssl.wrap(skt, opt)
+		while true do
+			local ok, err = skt:dohandshake()
+			if ok then return skt end
+			if err == 'wantread' then
+				wait(read, skt)
+			elseif err == 'wantwrite' then
+				wait(write, skt)
+			else
+				self:close()
+				return nil, err
+			end
+		end
+		return skt
+	end
+
+	local function connect(self, skt, tls, ...)
 		assert(coroutine.running(), 'attempting to connect from the main thread')
 		assert(skt:settimeout(0,'b'))
 		assert(skt:settimeout(0,'t'))
-		local res, err = skt:connect(...)
-		while res == nil do
+		local ok, err = skt:connect(...)
+		while not ok do
 			if err == 'already connected' then
 				break
 			end
@@ -116,39 +146,47 @@ local function new(coro)
 				return nil, err
 			end
 			wait(write, skt)
-			res, err = skt:connect(...)
+			ok, err = skt:connect(...)
 		end
-		return loop.wrap(skt)
+		return connect_tls(self, skt, tls)
 	end
 
 	--wrap a luasocket socket object into an object that performs socket
 	--operations asynchronously.
-	function loop.wrap(skt)
-		local o = {socket = skt}
+	function loop.wrap(skt, tls)
+		local o = {}
 		--set async methods
 		function o:accept(...) return loop.wrap(accept(skt,...)) end
 		function o:receive(...) return receive(skt,...) end
 		function o:send(...) return send(skt,...) end
 		function o:close(...) return close(skt,...) end
-		function o:connect(...) return connect(skt,...) end
-		--forward other methods to skt
-		local mt = getmetatable(skt).__index
-		for name, method in pairs(mt) do
-			if type(method) == 'function' and not o[name] then
-				o[name] = function(self, ...)
-					return method(skt, ...)
+		function o:connect(...)
+			local new_skt, err = connect(self, skt, tls, ...)
+			if new_skt then
+				skt = new_skt
+				return skt
+			end
+			return nil, err
+		end
+		--install method forwarders for other methods on first access.
+		setmetatable(o, o)
+		function o:__index(k)
+			if type(skt[k]) == 'function' then
+				o[k] = function(self, ...)
+					return skt[k](skt, ...)
 				end
+				return o[k]
 			end
 		end
 		return o
 	end
 
-	function loop.connect(address, port, locaddr, locport)
-		local skt = assert(socket.tcp())
+	function loop.connect(address, port, locaddr, locport, tls)
+		local skt = socket.try(socket.tcp())
 		if locaddr or locport then
 			assert(skt:bind(locaddr, locport or 0))
 		end
-		skt = loop.wrap(skt)
+		skt = loop.wrap(skt, tls)
 		return skt:connect(address, port)
 	end
 
