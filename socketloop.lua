@@ -165,7 +165,7 @@ local function new(coro)
 		function o:close(...) return close(skt,...) end
 		function o:connect(...)
 			local new_skt, err = connect(self, skt, tls, ...)
-			if new_skt then
+			if new_skt then --socket was ssl-wrapped
 				skt = new_skt
 				return skt
 			end
