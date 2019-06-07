@@ -85,25 +85,25 @@ local function new(coro)
 	local function receive(skt, patt, prefix)
 		wait(read, skt)
 		local s, err, partial = skt:receive(patt, prefix)
-		if not s and err == 'timeout' then
+		if not s and (err == 'timeout' or err == 'wantread') then
 			return receive(skt, patt, partial)
 		else
 			return s, err, partial
 		end
 	end
 
-	local function send(skt,...)
+	local function send(skt, data, ...)
 		wait(write, skt)
-		return skt:send(...)
+		return skt:send(data, ...)
 	end
 
 	local function close(skt,...)
 		write[skt] = nil
 		read[skt] = nil
-		return assert(skt:close(...))
+		return skt:close(...)
 	end
 
-	local function connect_tls(self, skt, tls)
+	local function connect_tls(self, skt, tls, host)
 		if not tls then return skt end
 		local ssl = require'ssl'
 		local opt = {
@@ -118,6 +118,9 @@ local function new(coro)
 			end
 		end
 		local skt = ssl.wrap(skt, opt)
+		skt:sni(host)
+		assert(skt:settimeout(0, 'b'))
+		assert(skt:settimeout(0, 't'))
 		while true do
 			local ok, err = skt:dohandshake()
 			if ok then return skt end
@@ -133,11 +136,11 @@ local function new(coro)
 		return skt
 	end
 
-	local function connect(self, skt, tls, ...)
+	local function connect(self, skt, tls, host, port)
 		assert(coroutine.running(), 'attempting to connect from the main thread')
-		assert(skt:settimeout(0,'b'))
-		assert(skt:settimeout(0,'t'))
-		local ok, err = skt:connect(...)
+		assert(skt:settimeout(0, 'b'))
+		assert(skt:settimeout(0, 't'))
+		local ok, err = skt:connect(host, port)
 		while not ok do
 			if err == 'already connected' then
 				break
@@ -146,9 +149,9 @@ local function new(coro)
 				return nil, err
 			end
 			wait(write, skt)
-			ok, err = skt:connect(...)
+			ok, err = skt:connect(host, port)
 		end
-		return connect_tls(self, skt, tls)
+		return connect_tls(self, skt, tls, host)
 	end
 
 	--wrap a luasocket socket object into an object that performs socket
@@ -181,13 +184,13 @@ local function new(coro)
 		return o
 	end
 
-	function loop.connect(address, port, locaddr, locport, tls)
+	function loop.connect(host, port, locaddr, locport, tls)
 		local skt = socket.try(socket.tcp())
 		if locaddr or locport then
 			assert(skt:bind(locaddr, locport or 0))
 		end
 		skt = loop.wrap(skt, tls)
-		return skt:connect(address, port)
+		return skt:connect(host, port)
 	end
 
 	--call select() and resume the calling threads of the sockets that get loaded.
