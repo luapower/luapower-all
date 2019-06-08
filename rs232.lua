@@ -8,6 +8,8 @@ local C = ffi.C
 
 local rs = {}
 
+rs.default_baud_rate = 9600
+
 if ffi.abi'win' then
 
 	ffi.cdef[[
@@ -52,7 +54,10 @@ if ffi.abi'win' then
 		 uint16_t wReserved1;
 	} DCB;
 
-	uint32_t QueryDosDeviceA(const char * lpDeviceName, char * lpTargetPath, uint32_t ucchMax);
+	uint32_t QueryDosDeviceA(
+		const char *lpDeviceName,
+		char       *lpTargetPath,
+		uint32_t    ucchMax);
 
 	int GetCommState(void *hFile, DCB *lpDCB);
 	int GetCommTimeouts(void *hFile, COMMTIMEOUTS *lpCommTimeouts);
@@ -83,16 +88,19 @@ if ffi.abi'win' then
 			return nil, 'QueryDosDevice() error '.. err, err
 		end
 		local t = {}
-		for s in ffi.string(buf, n):gmatch'COM([^%z]+)' do
-			t[#t+1] = tonumber(s)
+		for s in ffi.string(buf, n):gmatch'(COM[^%z]+)' do
+			t[#t+1] = s
 		end
 		return t
 	end
 
-	function rs.open(port, baudrate)
-		local f = fs.open('//./COM'..port, 'w')
+	function rs.open(devname, baud_rate)
+		baud_rate = baud_rate or rs.default_baud_rate
 
-		C.SetupComm(f.handle, 64, 64)
+		local f, err, errcode = fs.open('//./'..devname, 'r+')
+		if not f then return nil, err, errcode end
+
+		C.SetupComm(f.handle, 1200, 1200)
 
 		local timeouts = ffi.new'COMMTIMEOUTS'
 		timeouts.ReadIntervalTimeout = 0xffffffff
@@ -100,7 +108,7 @@ if ffi.abi'win' then
 
 		local config = ffi.new'DCB'
 		C.GetCommState(f.handle, config)
-		config.BaudRate = baudrate or 9600
+		config.BaudRate = baud_rate
 		config.fBinary = -1
 		config.fParity = 0
 		config.fErrorChar = 0
@@ -122,24 +130,151 @@ if ffi.abi'win' then
 
 else
 
-	function rs.ports()
-
+	local names = {'^ttyACM', '^ttyUSB', '^rfcomm', '^ttyS'}
+	local function iscom(name)
+		for _,s in ipairs(names) do
+			if name:find(s) then
+				return true
+			end
+		end
 	end
 
-	function rs.open(port, baudrate)
+	function rs.ports()
+		local t = {}
+		for name, d in fs.dir'/dev' do
+			if iscom(name) then
+				t[#t+1] = name
+			end
+		end
+		return t
+	end
 
+	ffi.cdef[[
+	typedef unsigned char cc_t;
+	typedef unsigned int speed_t;
+	typedef unsigned int tcflag_t;
+	struct termios {
+		tcflag_t c_iflag;
+		tcflag_t c_oflag;
+		tcflag_t c_cflag;
+		tcflag_t c_lflag;
+		cc_t c_line;
+		cc_t c_cc[32];
+		speed_t c_ispeed;
+		speed_t c_ospeed;
+	};
+
+	int tcgetattr (int fd, struct termios *);
+	int tcsetattr (int fd, int optional_actions, const struct termios *);
+	int cfsetospeed (struct termios*, speed_t);
+	int cfsetispeed (struct termios*, speed_t);
+	]]
+
+	local function oct(s)
+		return assert(tonumber(s, 8))
+	end
+
+	local baud_flags = {
+		[0      ] = oct'0000000',
+		[50     ] = oct'0000001',
+		[75     ] = oct'0000002',
+		[110    ] = oct'0000003',
+		[134    ] = oct'0000004',
+		[150    ] = oct'0000005',
+		[200    ] = oct'0000006',
+		[300    ] = oct'0000007',
+		[600    ] = oct'0000010',
+		[1200   ] = oct'0000011',
+		[1800   ] = oct'0000012',
+		[2400   ] = oct'0000013',
+		[4800   ] = oct'0000014',
+		[9600   ] = oct'0000015',
+		[19200  ] = oct'0000016',
+		[38400  ] = oct'0000017',
+		[57600  ] = oct'0010001',
+		[115200 ] = oct'0010002',
+		[230400 ] = oct'0010003',
+		[460800 ] = oct'0010004',
+		[500000 ] = oct'0010005',
+		[576000 ] = oct'0010006',
+		[921600 ] = oct'0010007',
+		[1000000] = oct'0010010',
+		[1152000] = oct'0010011',
+		[1500000] = oct'0010012',
+		[2000000] = oct'0010013',
+		[2500000] = oct'0010014',
+		[3000000] = oct'0010015',
+		[3500000] = oct'0010016',
+		[4000000] = oct'0010017',
+	}
+
+	local INLCR   = oct'0000100'
+	local ICRNL   = oct'0000400'
+	local IGNPAR  = oct'0000004'
+	local IGNBRK  = oct'0000001'
+	local OPOST   = oct'0000001'
+	local ONLCR   = oct'0000004'
+	local OCRNL   = oct'0000010'
+	local PARENB  = oct'0000400'
+	local PARODD  = oct'0001000'
+	local CSTOPB  = oct'0000100'
+	local CSIZE   = oct'0000060'
+	local CRTSCTS = oct'020000000000'
+	local CLOCAL  = oct'0004000'
+	local CREAD   = oct'0000200'
+	local CS8     = oct'0000060'
+	local ICANON  = oct'0000002'
+	local ISIG    = oct'0000001'
+	local ECHO    = oct'0000010'
+	local VTIME   = 5
+	local VMIN    = 6
+	local TCSANOW = 0
+
+	function rs.open(devname, baud_rate)
+		baud_rate = baud_rate or rs.default_baud_rate
+
+		local f, err, errcode = fs.open('/dev/'..devname,
+			{flags='rdwr noctty ndelay'})
+		if not f then return nil, err, errcode end
+
+		local config = ffi.new'struct termios'
+		C.tcgetattr(f.fd, config)
+
+		local iflag = bit.bor(bit.bnot(bit.bor(INLCR, ICRNL)), IGNPAR, IGNBRK)
+		local oflag = bit.bnot(bit.bor(OPOST, ONLCR, OCRNL))
+		local cflag = bit.bor(
+			bit.bnot(bit.bor(PARENB, PARODD, CSTOPB, CSIZE, CRTSCTS)),
+			CLOCAL, CREAD, CS8)
+		local lflag = bit.bnot(bit.bor(ICANON, ISIG, ECHO))
+		config.c_iflag = iflag
+		config.c_oflag = oflag
+		config.c_cflag = cflag
+		config.c_lflag = lflag
+		config.c_cc[VTIME] = 1
+		config.c_cc[VMIN]  = 0
+
+		local speed = assert(baud_flags[baud_rate], 'invalid baud rate')
+		C.cfsetospeed(config, speed)
+		C.cfsetispeed(config, speed)
+
+		if C.tcsetattr(f.fd, TCSANOW, config) < 0 then
+			f:close()
+			return nil, 'tcsetattr() error'
+		end
+
+		return f
 	end
 
 end
+
 
 if not ... then
-
-	pp(rs.ports())
-
-	local f = assert(rs.open(4))
-
+	require'pp'(rs.ports())
+	local dev = ffi.abi'win' and 'COM4' or 'ttyUSB0'
+	local f = assert(rs.open(dev))
+	print('opened '..dev)
 	f:close()
-
-	return rs
-
 end
+
+
+return rs
