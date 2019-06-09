@@ -4,7 +4,9 @@
 local ffi = require'ffi'
 local List = require'asdl'.List
 
-terralib.clangresourcedirectory = '../../csrc/clang-resource-dir'
+local bindir = terralib.terrahome
+
+terralib.clangresourcedirectory = ('%s/../../csrc/clang-resource-dir'):format(bindir)
 
 --reset include paths (terralib looks for Visual Studio ones by default).
 terra.systemincludes = List()
@@ -13,13 +15,16 @@ terra.systemincludes = List()
 if ffi.os == 'Windows' then
 	terra.systemincludes:insertall {
 		'-internal-isystem',
-		('%s/../../csrc/mingw64-headers/mingw64/include'):format(terra.terrahome),
+		('%s/../../csrc/mingw64-headers/mingw64/include'):format(bindir),
 		'-internal-isystem',
-		('%s/../../csrc/mingw64-headers/mingw64/include-fixed'):format(terra.terrahome),
+		('%s/../../csrc/mingw64-headers/mingw64/include-fixed'):format(bindir),
 		'-internal-isystem',
-		('%s/../../csrc/mingw64-headers/mingw32'):format(terra.terrahome),
+		('%s/../../csrc/mingw64-headers/mingw32'):format(bindir),
 	}
 end
+
+--load Terra files from the same locations as Lua files.
+package.terrapath = package.path:gsub('%.lua', '%.t')
 
 --overload loadfile() to interpret *.t files as Terra code.
 local lua_loadfile = loadfile

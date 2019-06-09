@@ -2,7 +2,7 @@
 --Size-limited LRU cache in Lua.
 --Written by Cosmin Apreutesei. Public Domain.
 
-local dlist = require'dlist'
+local list = require'linkedlist'
 
 local cache = {}
 cache.__index = cache
@@ -15,7 +15,7 @@ function cache:clear()
 			self:free_value(val)
 		end
 	end
-	self.lru = dlist()
+	self.lru = list()
 	self.values = {} --{key -> val}
 	self.keys = {} --{val -> key}
 	self.total_size = 0
