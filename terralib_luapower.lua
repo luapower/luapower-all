@@ -4,22 +4,21 @@
 local ffi = require'ffi'
 local List = require'asdl'.List
 
-local bindir = terralib.terrahome
+--$ mgit clone clang-resource-dir
+local clang_resource_dir = terralib.terrahome..'/../../csrc/clang-resource-dir'
+--$ mgit clone mingw64-headers
+local mingw64_headers_dir = terralib.terrahome..'/../../csrc/mingw64-headers'
 
-terralib.clangresourcedirectory = ('%s/../../csrc/clang-resource-dir'):format(bindir)
+terralib.clangresourcedirectory = clang_resource_dir
 
---reset include paths (terralib looks for Visual Studio ones by default).
-terra.systemincludes = List()
-
---using mingw64 headers from `mingw64-headers` package.
 if ffi.os == 'Windows' then
+	--Terra looks for Visual Studio headers by default but we use mingw64.
+	terra.systemincludes = List()
 	terra.systemincludes:insertall {
-		'-internal-isystem',
-		('%s/../../csrc/mingw64-headers/mingw64/include'):format(bindir),
-		'-internal-isystem',
-		('%s/../../csrc/mingw64-headers/mingw64/include-fixed'):format(bindir),
-		'-internal-isystem',
-		('%s/../../csrc/mingw64-headers/mingw32'):format(bindir),
+		('%s/include'):format(clang_resource_dir),
+		('%s/mingw64/include'):format(mingw64_headers_dir),
+		('%s/mingw64/include-fixed'):format(mingw64_headers_dir),
+		('%s/mingw32'):format(mingw64_headers_dir),
 	}
 end
 
