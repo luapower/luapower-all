@@ -102,7 +102,6 @@ function scrollbar:after_set_vertical(vertical)
 	self:settag('vertical', vertical)
 	self:settag('horizontal', not vertical)
 end
-scrollbar:instance_only'vertical'
 
 --grip geometry
 
@@ -139,7 +138,6 @@ end
 
 function scrollbar:create_grip()
 	local grip = self:grip_class(self.grip)
-
 	function grip.drag(grip, dx, dy)
 		grip.x = clamp(0, grip.x + dx, self.cw - grip.w)
 		self:transition('offset', self:grip_offset(), 0)
@@ -172,10 +170,6 @@ end
 
 function scrollbar:after_set_content_length() self.offset = self.offset end
 function scrollbar:after_set_view_length() self.offset = self.offset end
-
-scrollbar:instance_only'content_length'
-scrollbar:instance_only'view_length'
-scrollbar:instance_only'offset'
 
 function scrollbar:reset(content_length, view_length, offset)
 	self._content_length = content_length
@@ -250,7 +244,6 @@ scrollbar:stored_property'autohide'
 function scrollbar:after_set_autohide(autohide)
 	self:settag('autohide', autohide)
 end
-scrollbar:instance_only'autohide'
 
 function scrollbar:hit_test_near(mx, my) --mx,my in window space
 	if not mx then
@@ -293,7 +286,6 @@ end
 function scrollbar:before_sync_layout_children()
 	local g = self.grip
 	g.x, g.y, g.w, g.h = self:grip_rect()
-
 	local visible = self:check_visible()
 	if visible ~= 'hit_test' then
 		self:settag(':near', visible, true)
@@ -533,7 +525,6 @@ editbox.clip_content = false
 
 function textarea:get_value() return self.editbox.value end
 function textarea:set_value(val) self.editbox.value = val end
-textarea:instance_only'value'
 
 textarea:init_ignore{value=1}
 

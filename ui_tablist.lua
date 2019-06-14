@@ -5,6 +5,7 @@
 local ui = require'ui'
 local glue = require'glue'
 local box2d = require'box2d'
+require'ui_button'
 
 local indexof = glue.indexof
 local clamp = glue.clamp

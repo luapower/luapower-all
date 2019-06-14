@@ -58,6 +58,13 @@ local function list_tree(t)
 	end)
 end
 
+local function list_deps(t)
+	for k,deps in glue.sortedpairs(t) do
+		print(string.format('%-18s -> %s', k,
+			table.concat(glue.keys(deps, true), ' ')))
+	end
+end
+
 local function lister(lister)
 	return function(handler, cmp)
 		return function(...)
@@ -69,6 +76,7 @@ local values_lister = lister(list_values)
 local keys_lister = lister(list_keys)
 local kv_lister = lister(list_kv)
 local tree_lister = lister(list_tree)
+local dep_tree_lister = lister(list_deps)
 
 local function list_errors(title, t, lister)
 	if not next(t) then return end
@@ -607,9 +615,13 @@ local function init_actions()
 		'direct + indirect binary dependencies',
 		package_arg(package_lister(lp.rev_bin_deps_all, list_keys, enum_keys)))
 
-	add_action('build-order',    '[PACKAGE1,...] [PLATFORM]',
+	add_action('build-order', '  [PACKAGE1,...] [PLATFORM]',
 		'build order',
 		package_arg(values_lister(lp.build_order), nil, true))
+
+	add_action('circular-deps', '[PACKAGE1,...] [PLATFORM]',
+		'circular build dependencies',
+		package_arg(dep_tree_lister(lp.build_circular_deps), nil, true))
 
 	add_section'RPC'
 

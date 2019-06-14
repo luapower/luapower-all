@@ -39,7 +39,7 @@ public interface TJCustomFilter {
   /**
    * A callback function that can be used to modify the DCT coefficients after
    * they are losslessly transformed but before they are transcoded to a new
-   * JPEG file.  This allows for custom filters or other transformations to be
+   * JPEG image.  This allows for custom filters or other transformations to be
    * applied in the frequency domain.
    *
    * @param coeffBuffer a buffer containing transformed DCT coefficients.
@@ -58,8 +58,8 @@ public interface TJCustomFilter {
    * component plane to which <code>coeffBuffer</code> belongs
    *
    * @param componentID ID number of the component plane to which
-   * <code>coeffBuffer</code> belongs (Y, U, and V have, respectively, ID's of
-   * 0, 1, and 2 in typical JPEG images.)
+   * <code>coeffBuffer</code> belongs (Y, Cb, and Cr have, respectively, ID's
+   * of 0, 1, and 2 in typical JPEG images.)
    *
    * @param transformID ID number of the transformed image to which
    * <code>coeffBuffer</code> belongs.  This is the same as the index of the
@@ -72,5 +72,5 @@ public interface TJCustomFilter {
   void customFilter(ShortBuffer coeffBuffer, Rectangle bufferRegion,
                     Rectangle planeRegion, int componentID, int transformID,
                     TJTransform transform)
-    throws Exception;
+    throws TJException;
 }

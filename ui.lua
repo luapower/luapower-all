@@ -41,6 +41,7 @@ local collect = glue.collect
 local sortedpairs = glue.sortedpairs
 local memoize = glue.memoize
 local binsearch = glue.binsearch
+local index = glue.index
 
 local function popval(t, v)
 	local i = indexof(v, t)
@@ -83,16 +84,27 @@ function object:before_init()
 		self.super.isfinalclass = true
 	end
 	--Speed up virtual property lookup without detaching/fattening the instance.
-	--with this change, adding or overriding getters and setters through the
-	--instance is not allowed anymore, that would patch the class instead!
-	--TODO: remove this limitation somehow!
+	--This optimization prevents overriding of getters/setters on instances.
 	self.__setters = self.__setters
 	self.__getters = self.__getters
 end
 
+--error reporting ------------------------------------------------------------
+
+function object:warn(...)
+	io.stderr:write(string.format(...))
+	io.stderr:write(debug.traceback())
+	io.stderr:write'\n'
+end
+
+function object:check(ret, ...)
+	if ret then return ret end
+	self:warn(...)
+end
+
 --method and property decorators ---------------------------------------------
 
---generic method memoizer
+--generic method memoizer that can memoize getters and setters too.
 function object:memoize(method_name)
 	function self:after_init()
 		local method =
@@ -108,7 +120,7 @@ function object:memoize(method_name)
 	end
 end
 
---install event handlers in object which forward events to self.
+--install event handlers in `object` that forward events to self.
 function object:forward_events(object, event_names)
 	for event in pairs(event_names) do
 		object:on({event, self}, function(object, ...)
@@ -122,41 +134,61 @@ function object:forward_events(object, event_names)
 	end
 end
 
---create properties in self which read/write properties from/to a sub-component.
-function object:forward_properties(component_name, prefix, props)
-	for prop, writable in pairs(props) do
-		local self_prop = prefix and prefix..prop or prop
-		self['get_'..self_prop] = function(self)
-			return self[component_name][prop]
-		end
-		if writable == 1 then
-			self['set_'..self_prop] = function(self, value)
-				self[component_name][prop] = value
-			end
-		end
-		self:instance_only(self_prop)
-	end
-	--copy default values over to the component.
-	function self:after_init(t)
-		for prop, writable in pairs(props) do
-			if writable == 1 and rawget(t, prop) == nil then
-				local self_prop = prefix and prefix..prop or prop
-				self[component_name][prop] = t[self_prop]
-			end
+--forward method calls to a sub-component.
+function object:forward_methods(component_name, methods)
+	for method, wrap in pairs(methods) do
+		self[method] = function(self,...)
+			local e = self[component_name]
+			return wrap(e[method](e, ...))
 		end
 	end
 end
 
---create a r/w property which reads/writes to a "private field".
-function object:stored_property(prop, priv)
-	priv = priv or '_'..prop
-	self[priv] = self[prop] --transfer existing value to private var
-	self[prop] = nil
+--create a property which reads/writes to/from a sub-component's property.
+function object:forward_property(prop, sub, readonly)
+	assert(not self.__getters[prop])
+	local sub, sub_prop = sub:match'^(.-)%.(.*)$'
+	self['get_'..prop] = function(self)
+		return self[sub][sub_prop]
+	end
+	if not readonly then
+		self['set_'..prop] = function(self, value)
+			self[sub][sub_prop] = value
+		end
+	end
+end
+
+function object:forward_properties(sub, prefix, t)
+	if not t then sub, prefix, t = sub, '', prefix end
+	for prop, sub_prop in pairs(t) do
+		sub_prop = type(sub_prop) == 'string' and sub_prop or prop
+		self:forward_property(prefix..prop, sub..'.'..sub_prop)
+	end
+end
+
+--create a r/w property which reads/writes to/from a private field.
+function object:stored_property(prop, after_set)
+	assert(not self.__getters[prop])
+	local priv = '_'..prop
 	self['get_'..prop] = function(self)
 		return self[priv]
 	end
-	self['set_'..prop] = function(self, val)
-		self[priv] = val or false
+	if after_set then
+		self['set_'..prop] = function(self, val)
+			local val = val or false
+			self[priv] = val
+			after_set(self, val)
+		end
+	else
+		self['set_'..prop] = function(self, val)
+			self[priv] = val or false
+		end
+	end
+end
+
+function object:stored_properties(t, after_set)
+	for k in pairs(t) do
+		self:stored_property(k, after_set and after_set(k))
 	end
 end
 
@@ -190,68 +222,38 @@ function object:track_changes(prop)
 	end)
 end
 
---inhibit a property's getter and setter when using the property on the class.
---instead, set a private var on the class which serves as default value.
---NOTE: use this only _after_ defining the getter and setter.
-function object:instance_only(prop)
-	local priv = '_'..prop
-	self:override('get_'..prop, function(self, inherited)
-		if self:isinstance() then
-			return inherited(self)
-		else
-			return self[priv] --get the default value
-		end
-	end)
-	self:override('set_'..prop, function(self, inherited, val)
-		if self:isinstance() then
-			return inherited(self, val)
-		else
-			self[priv] = val --set the default value
-		end
-	end)
-end
-
 --validate a property when being set against a list of allowed values.
 function object:enum_property(prop, values)
-	if type(values) == 'string' then --'enm_val1, ...'
+	if type(values) == 'string' then --'val1 ...'
 		local s = values
 		values = {}
 		for val in s:gmatch'[^%s]+' do
 			values[val] = val
 		end
 	end
+	local keys = index(values)
 	self:override('set_'..prop, function(self, inherited, key)
 		local val = values[key]
 		if self:check(val, 'invalid value "%s" for %s', key, prop) then
 			inherited(self, val)
 		end
 	end)
+	self:override('get_'..prop, function(self, inherited)
+		return keys[inherited(self)]
+	end)
 end
 
---error reporting
-
-function object:warn(...)
-	io.stderr:write(string.format(...))
-	io.stderr:write'\n'
-end
-
-function object:check(ret, ...)
-	if ret then return ret end
-	self:warn(...)
-end
-
---submodule autoloading
+--submodule autoloading ------------------------------------------------------
 
 function object:autoload(autoload)
 	for prop, submodule in pairs(autoload) do
 		local getter = 'get_'..prop
 		local setter = 'set_'..prop
 		self[getter] = function(self)
+			self.super[getter] = nil
+			--^remove getter to allow a class default to be set instead.
 			require(submodule)
-			return rawget(self, prop)
-		end
-		self[setter] = function(self, val)
-			rawset(self, prop, val)
+			return self[prop]
 		end
 	end
 end
@@ -261,10 +263,10 @@ end
 local ui = object:subclass'ui'
 ui.object = object
 
-function ui:create() --singleton class (no instance is created)
-	self:init()
-	function self:create() return self end
-	return self
+function ui:override_create(inherited, ...) --singleton
+	local instance = inherited(self, ...)
+	function self:create() return instance end
+	return instance
 end
 
 function ui:after_init()
@@ -533,7 +535,7 @@ function ui.initial(self, attr)
 end
 
 --attr. value to use in styles for "inherit value from parent for this attr"
-function ui.inherit(self, attr)
+function ui.inherited(self, attr)
 	return self:parent_value(attr)
 end
 
@@ -861,26 +863,52 @@ element:init_priority{}
 element:init_ignore{}
 
 --override the element constructor so that it can take multiple init-table
---args but present init() with a single init table that also inherits the
---class for transparent access to defaults, and a single array table that
+--args but present init() with a single init table that also contains
+--class defaults for virtual properties, and a single array table that
 --adds together the array parts of all the init tables. also, make the
 --constructor work with different call styles, see below.
 function element:override_create(inherited, ...)
+
 	local ui = ...
 	local parent
 	local arg1
-	if ui.isui then --called as `ui:element{}`
+	if ui.isui then --called as `ui:<element>{}`
 		arg1 = 2
-	elseif ui.iselement then --called as `parent:element{}`
+	elseif ui.iselement then --called as `parent:<element>{}`
 		arg1 = 2
 		parent = ui
 		ui = parent.ui
-	else --called as `element{}`, infer `ui` from the `parent` field.
+	else --called as `<element>{}`, infer `ui` from the `parent` field.
 		arg1 = 1
 		ui = nil
 	end
+
 	local dt = {} --hash part
 	local at --array part
+
+	--statically inherit class defaults for writable properties, to be set by
+	--init_fields() if if they were user-supplied.
+	--NOTE: adding more default values to the class after the first
+	--instantiation has no effect on further instantiations because we make
+	--a shortlist of only the properties that have defaults.
+	local wt = rawget(self, '__writable_props_with_defaults')
+	if not wt then
+		wt = {}
+		self.__writable_props_with_defaults = wt --make a shortlist
+		local setters = self.__setters
+		while setters do
+			for k in pairs(setters) do --prop has a setter
+				if self[k] ~= nil then --prop has a class default
+					push(wt, k)
+				end
+			end
+			setters = setters.__index
+		end
+	end
+	for _,k in ipairs(wt) do
+		dt[k] = self[k]
+	end
+
 	for i = arg1, select('#', ...) do
 		local t = select(i, ...)
 		if t then
@@ -888,12 +916,13 @@ function element:override_create(inherited, ...)
 				if type(k) == 'number' and floor(k) == k then --array part
 					at = at or {}
 					push(at, v)
-				else
+				else --hash part
 					dt[k] = v
 				end
 			end
 		end
 	end
+
 	parent = dt.parent or parent
 	if not ui and parent then
 		ui = parent.ui
@@ -901,7 +930,11 @@ function element:override_create(inherited, ...)
 	dt.ui = ui
 	dt.parent = parent
 	assert(ui, 'ui arg missing')
+
+	--dynamically inherit class defaults for plain fields, to be applied
+	--manually in overrides of init().
 	setmetatable(dt, {__index = self})
+
 	return inherited(self, dt, at)
 end
 
@@ -925,7 +958,7 @@ function element:init_fields(t)
 end
 
 function element:after_init(t)
-	self.ui = self.ui()
+	self.ui = t.ui
 	self:init_tags(t)
 	self:init_fields(t)
 	self.ui:_add_element(self)
@@ -1362,7 +1395,7 @@ function window:override_init(inherited, t)
 	if parent and parent.iswindow then
 		parent = parent.view
 	end
-
+	self.ui = t.ui
 	if not win then
 		local nt = {}
 		for k in pairs(native_fields) do
@@ -1823,11 +1856,6 @@ function window:set_min_ch(ch) self.native_window:minsize(nil, ch) end
 function window:set_max_cw(cw) self.native_window:maxsize(cw, nil) end
 function window:set_max_ch(ch) self.native_window:maxsize(nil, ch) end
 
-window:instance_only'min_cw'
-window:instance_only'min_ch'
-window:instance_only'max_cw'
-window:instance_only'max_ch'
-
 --window as a layer's parent -------------------------------------------------
 
 function window:get_parent()
@@ -1908,7 +1936,6 @@ for prop, writable in pairs(props) do
 			nwin[prop](nwin, value)
 		end
 	end
-	window:instance_only(prop)
 end
 
 --methods
@@ -2422,7 +2449,7 @@ local layer = element:subclass'layer'
 ui.layer = layer
 
 layer.visible = true
-layer._enabled = true
+layer.enabled = true
 layer.activable = true --can be clicked and set as hot
 layer.vscrollable = false --enable mouse wheel when hot
 layer.hscrollable = false --enable mouse horiz. wheel when hot
@@ -2712,7 +2739,6 @@ function layer:move_layer(layer, index)
 	table.remove(self, old_index)
 	table.insert(self, new_index, layer)
 	self:fire('layer_moved', new_index, old_index)
-	layer:_set_layout_tags(new_index)
 end
 
 function layer:set_layer_index(index)
@@ -3654,7 +3680,7 @@ layer.shadow_x = 0
 layer.shadow_y = 0
 layer.shadow_color = '#000'
 layer.shadow_blur = 0
-layer._shadow_blur_passes = 2
+layer.shadow_blur_passes = 2
 
 function layer:shadow_visible()
 	return self.shadow_blur > 0 or self.shadow_x ~= 0 or self.shadow_y ~= 0
@@ -3706,7 +3732,7 @@ function layer:draw_shadow(cr)
 	if not self:shadow_visible() then return end
 	local t = self._shadow or {}
 	self._shadow = t
-	local passes = self._shadow_blur_passes
+	local passes = self.shadow_blur_passes
 	local radius = self.shadow_blur
 	local spread = radius * passes
 
@@ -4193,8 +4219,6 @@ function layer:set_text(s)
 	self:fire'text_changed'
 end
 
-layer:instance_only'text'
-
 layer:init_priority{text=1/0}
 
 --text typing
@@ -4248,8 +4272,6 @@ function layer:set_value(val)
 	self:fire('value_changed', val, old_val)
 	return true
 end
-
-layer:instance_only'value'
 
 --text geometry & drawing ----------------------------------------------------
 
@@ -4353,8 +4375,8 @@ function layer:sync_text_align()
 	local segs = self.text_segments
 	if not segs then return nil end
 	local cw, ch = self:client_size()
-	local ha = self._text_align_x
-	local va = self._text_align_y
+	local ha = self.text_align_x
+	local va = self.text_align_y
 	if    ch ~= self._text_h
 		or ha ~= self._text_ha
 		or va ~= self._text_va
@@ -4367,6 +4389,7 @@ function layer:sync_text_align()
 	end
 	if self.text_selectable and not self.text_selection then
 		self.text_selection = self:create_text_selection(segs)
+		self.text_selection.cursor2.insert_mode = self.insert_mode
 	end
 	return segs
 end
@@ -4529,10 +4552,11 @@ end
 
 layer.insert_mode = false
 layer:stored_property'insert_mode'
-layer:instance_only'insert_mode'
 
 function layer:after_set_insert_mode(value)
-	self.text_selection.cursor2.insert_mode = value
+	if self.text_selection then
+		self.text_selection.cursor2.insert_mode = value
+	end
 	self:settag(':insert_mode', value)
 end
 
@@ -4883,12 +4907,11 @@ layer.min_ch = 0
 
 layer.layouts = {} --{layout_name -> layout_mixin}
 
-layer:stored_property'layout'
-function layer:after_set_layout(layout)
+layer:stored_property('layout', function(self, layout)
 	local mixin = self.layouts[layout or 'null']
 	if not self.ui:check(mixin, 'invalid layout "%s"', layout) then return end
 	self:inherit(mixin, true)
-end
+end)
 layer:nochange_barrier'layout'
 
 --used by layers that need to solve their layout on one axis completely
@@ -5328,7 +5351,7 @@ local function gen_funcs(X, Y, W, H, LEFT, RIGHT, TOP, BOTTOM)
 		if align_baseline then
 			return items_min_h_baseline(self, i, j)
 		end
-		return items_max(self, i, j, _MIN_H)
+		return (items_max(self, i, j, _MIN_H))
 	end
 
 	local function linewrap_next(self, i)
@@ -5365,9 +5388,9 @@ local function gen_funcs(X, Y, W, H, LEFT, RIGHT, TOP, BOTTOM)
 
 	local function min_cw(self, other_axis_synced)
 		if self.flex_wrap then
-			return items_max(self, 1, #self, _MIN_W)
+			return (items_max(self, 1, #self, _MIN_W))
 		else
-			return items_sum(self, 1, #self, _MIN_W)
+			return (items_sum(self, 1, #self, _MIN_W))
 		end
 	end
 

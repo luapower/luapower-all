@@ -35,7 +35,7 @@ function glue.lerp(x, x0, x1, y0, y1)
 end
 
 function glue.nextpow2(x)
-	return ceil(log(x) / log(2))
+	return max(0, 2^(ceil(log(x) / log(2))))
 end
 
 function glue.pack(...)

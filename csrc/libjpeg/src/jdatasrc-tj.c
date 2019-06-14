@@ -4,9 +4,10 @@
  * This file was part of the Independent JPEG Group's software:
  * Copyright (C) 1994-1996, Thomas G. Lane.
  * Modified 2009-2011 by Guido Vollbeding.
- * Modifications:
- * Copyright (C) 2011, D. R. Commander.
- * For conditions of distribution and use, see the accompanying README file.
+ * libjpeg-turbo Modifications:
+ * Copyright (C) 2011, 2016, D. R. Commander.
+ * For conditions of distribution and use, see the accompanying README.ijg
+ * file.
  *
  * This file contains decompression data source routines for the case of
  * reading JPEG data from memory or from a file (or any stdio stream).
@@ -29,7 +30,7 @@
  */
 
 METHODDEF(void)
-init_mem_source (j_decompress_ptr cinfo)
+init_mem_source(j_decompress_ptr cinfo)
 {
   /* no work necessary here */
 }
@@ -69,10 +70,10 @@ init_mem_source (j_decompress_ptr cinfo)
  */
 
 METHODDEF(boolean)
-fill_mem_input_buffer (j_decompress_ptr cinfo)
+fill_mem_input_buffer(j_decompress_ptr cinfo)
 {
   static const JOCTET mybuffer[4] = {
-    (JOCTET) 0xFF, (JOCTET) JPEG_EOI, 0, 0
+    (JOCTET)0xFF, (JOCTET)JPEG_EOI, 0, 0
   };
 
   /* The whole JPEG data is expected to reside in the supplied memory
@@ -103,24 +104,24 @@ fill_mem_input_buffer (j_decompress_ptr cinfo)
  */
 
 METHODDEF(void)
-skip_input_data (j_decompress_ptr cinfo, long num_bytes)
+skip_input_data(j_decompress_ptr cinfo, long num_bytes)
 {
-  struct jpeg_source_mgr * src = cinfo->src;
+  struct jpeg_source_mgr *src = cinfo->src;
 
   /* Just a dumb implementation for now.  Could use fseek() except
    * it doesn't work on pipes.  Not clear that being smart is worth
    * any trouble anyway --- large skips are infrequent.
    */
   if (num_bytes > 0) {
-    while (num_bytes > (long) src->bytes_in_buffer) {
-      num_bytes -= (long) src->bytes_in_buffer;
-      (void) (*src->fill_input_buffer) (cinfo);
+    while (num_bytes > (long)src->bytes_in_buffer) {
+      num_bytes -= (long)src->bytes_in_buffer;
+      (void)(*src->fill_input_buffer) (cinfo);
       /* note we assume that fill_input_buffer will never return FALSE,
        * so suspension need not be handled.
        */
     }
-    src->next_input_byte += (size_t) num_bytes;
-    src->bytes_in_buffer -= (size_t) num_bytes;
+    src->next_input_byte += (size_t)num_bytes;
+    src->bytes_in_buffer -= (size_t)num_bytes;
   }
 }
 
@@ -144,7 +145,7 @@ skip_input_data (j_decompress_ptr cinfo, long num_bytes)
  */
 
 METHODDEF(void)
-term_source (j_decompress_ptr cinfo)
+term_source(j_decompress_ptr cinfo)
 {
   /* no work necessary here */
 }
@@ -156,22 +157,27 @@ term_source (j_decompress_ptr cinfo)
  */
 
 GLOBAL(void)
-jpeg_mem_src_tj (j_decompress_ptr cinfo,
-	      unsigned char * inbuffer, unsigned long insize)
+jpeg_mem_src_tj(j_decompress_ptr cinfo, const unsigned char *inbuffer,
+                unsigned long insize)
 {
-  struct jpeg_source_mgr * src;
+  struct jpeg_source_mgr *src;
 
-  if (inbuffer == NULL || insize == 0)	/* Treat empty input as fatal error */
+  if (inbuffer == NULL || insize == 0)  /* Treat empty input as fatal error */
     ERREXIT(cinfo, JERR_INPUT_EMPTY);
 
   /* The source object is made permanent so that a series of JPEG images
    * can be read from the same buffer by calling jpeg_mem_src only before
    * the first one.
    */
-  if (cinfo->src == NULL) {	/* first time for this JPEG object? */
+  if (cinfo->src == NULL) {     /* first time for this JPEG object? */
     cinfo->src = (struct jpeg_source_mgr *)
-      (*cinfo->mem->alloc_small) ((j_common_ptr) cinfo, JPOOL_PERMANENT,
-				  SIZEOF(struct jpeg_source_mgr));
+      (*cinfo->mem->alloc_small) ((j_common_ptr)cinfo, JPOOL_PERMANENT,
+                                  sizeof(struct jpeg_source_mgr));
+  } else if (cinfo->src->init_source != init_mem_source) {
+    /* It is unsafe to reuse the existing source manager unless it was created
+     * by this function.
+     */
+    ERREXIT(cinfo, JERR_BUFFER_SIZE);
   }
 
   src = cinfo->src;
@@ -180,6 +186,6 @@ jpeg_mem_src_tj (j_decompress_ptr cinfo,
   src->skip_input_data = skip_input_data;
   src->resync_to_restart = jpeg_resync_to_restart; /* use default method */
   src->term_source = term_source;
-  src->bytes_in_buffer = (size_t) insize;
-  src->next_input_byte = (JOCTET *) inbuffer;
+  src->bytes_in_buffer = (size_t)insize;
+  src->next_input_byte = (const JOCTET *)inbuffer;
 }

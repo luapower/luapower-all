@@ -432,7 +432,7 @@ function debug.traceback(thread,msg,level)
     if type(thread) ~= 'thread' then
       thread,msg,level = nil,thread,msg
     end
-	 level = level or 1
+    level = level or 1
     level = level + 1 -- don't count ourselves
     local lim = terra.fulltrace and math.huge or TRACEBACK_LEVELS1 + 1
     local lines = List()

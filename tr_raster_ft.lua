@@ -7,7 +7,7 @@ if not ... then require'tr_demo'; return end
 local bit = require'bit'
 local ffi = require'ffi'
 local glue = require'glue'
-local lrucache = require'lrucache_lua'
+local lrucache = require'lrucache'
 local ft = require'freetype'
 local font_db = require'font_db'
 local zone = require'jit.zone' --glue.noop

@@ -888,7 +888,7 @@ local function parse_what_file(what_file)
 	t.realname, t.version, t.url, t.license =
 		s:match('^%s*(.-)%s+(.-)%s+from%s+(.-)%s+%((.*)%)')
 	if not t.realname then
-		error('invalid WHAT file '.. what_file)
+		error('invalid WHAT file '..what_file)
 	end
 	t.license = t.license and
 		t.license:match('^(.-)%s+'..glue.esc('license', '*i')..'$')
@@ -897,25 +897,49 @@ local function parse_what_file(what_file)
 		t.license:match('^'..glue.esc('public domain', '*i')..'$')
 		and 'Public Domain' or t.license
 
-	--parse the second line which has the format:
-	--		'requires: <pkg1>, <pkg2> (<platform1> ...), ...'
+	--parse next lines if they have the format:
+	-- 'modules: lib1 (mod1 mod2 ...), ...'
+	-- 'requires: <pkg1>, <pkg2> (<platform1> ...), ...'
 	t.dependencies = {} -- {platform = {dep = true}}
-	local s = more()
-	s = s and s:match'^[^:]*:(.*)'
-	if s then
-		for s in glue.gsplit(s, ',') do
-			s = glue.trim(s)
-			if s ~= '' then
-				local s1, ps =
-					s:match'^([^%(]+)%s*%(%s*([^%)]+)%s*%)' --'pkg (platform1 ...)'
-				if ps then
-					s = glue.trim(s1)
-					for platform in glue.gsplit(ps, '%s+') do
-						glue.attr(t.dependencies, platform)[s] = true
+	while true do
+		local s = more()
+		if not s then break end
+		local directive, values = s:match'^([^:]*):(.*)' --requires:, modules:
+		if directive then
+			if directive == 'requires' then
+				for s in glue.gsplit(values, ',') do
+					s = glue.trim(s)
+					if s ~= '' then
+						local s1, ps =
+							s:match'^([^%(]+)%s*%(%s*([^%)]+)%s*%)' --'pkg (platform1 ...)'
+						if ps then
+							s = glue.trim(s1)
+							for platform in glue.gsplit(ps, '%s+') do
+								glue.attr(t.dependencies, platform)[s] = true
+							end
+						else
+							for platform in pairs(supported_platforms) do
+								glue.attr(t.dependencies, platform)[s] = true
+							end
+						end
 					end
-				else
-					for platform in pairs(supported_platforms) do
-						glue.attr(t.dependencies, platform)[s] = true
+				end
+			elseif directive == 'modules' then
+				t.modules = {} --{lib->{module->true}}
+				for s in glue.gsplit(values, ',') do
+					s = glue.trim(s)
+					if s ~= '' then
+						local s, ps =
+							s:match'^([^%(]+)%s*%(%s*([^%)]+)%s*%)' --'lib (mod1 ...)'
+						if ps then
+							s = glue.trim(s)
+							t.modules[s] = {}
+							for mod in glue.gsplit(ps, '%s+') do
+								t.modules[s][mod] = true
+							end
+						else
+							error('Invalid WHAT file '..what_file)
+						end
 					end
 				end
 			end
@@ -1147,22 +1171,36 @@ end)
 
 local function modules_(package, platform, should_be_module)
 	local t = {}
+	local function add_module(mod, plat, path)
+		if is_module(mod) == should_be_module then
+			if plat and not platform then
+				if not t[mod] then
+					local pt = {}
+					t[mod] = pt
+					--sometimes we don't care about which path it is...
+					setmetatable(pt, {__tostring = function() return path end})
+				end
+				t[mod][plat] = path
+			else
+				t[mod] = path
+			end
+		end
+	end
 	for path in pairs(tracked_files(package)) do
 		local found = is_module_path(path)
 		local plat = not found and module_platform_path(path, platform)
 		if found or plat then
 			local mod = module_name(path)
-			if mod and is_module(mod) == should_be_module then
-				if plat and not platform then
-					if not t[mod] then
-						local pt = {}
-						t[mod] = pt
-						--sometimes we don't care about which path it is...
-						setmetatable(pt, {__tostring = function() return path end})
+			if mod then
+				if c_module_name(path) then --can contain submodules
+					local mods = what_tags(package).modules
+					if mods and mods[mod] then
+						for mod in pairs(mods[mod]) do
+							add_module(mod, plat, path)
+						end
+					else
+						add_module(mod, plat, path)
 					end
-					t[mod][plat] = path
-				else
-					t[mod] = path
 				end
 			end
 		end
@@ -2064,13 +2102,16 @@ build_order = memoize(function(packages, platform)
 			end
 		end
 		if guard then
-			dt.circular = true --circular dependencies found
+			dt.circular_deps = t --circular dependencies found
 			break
 		end
 	end
 	return dt
 end)
 
+build_circular_deps = function(...)
+	return build_order(...).circular_deps
+end
 
 --consistency checks
 --============================================================================

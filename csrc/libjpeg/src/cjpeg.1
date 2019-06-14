@@ -1,4 +1,4 @@
-.TH CJPEG 1 "18 January 2013"
+.TH CJPEG 1 "18 March 2017"
 .SH NAME
 cjpeg \- compress an image file to a JPEG file
 .SH SYNOPSIS
@@ -16,7 +16,7 @@ cjpeg \- compress an image file to a JPEG file
 compresses the named image file, or the standard input if no file is
 named, and produces a JPEG/JFIF file on the standard output.
 The currently supported input file formats are: PPM (PBMPLUS color
-format), PGM (PBMPLUS gray-scale format), BMP, Targa, and RLE (Utah Raster
+format), PGM (PBMPLUS grayscale format), BMP, Targa, and RLE (Utah Raster
 Toolkit format).  (RLE is supported only if the URT library is available.)
 .SH OPTIONS
 All switch names may be abbreviated; for example,
@@ -46,7 +46,7 @@ compressing a grayscale BMP file, because
 .B cjpeg
 isn't bright enough to notice whether a BMP file uses only shades of gray.
 By saying
-.BR \-grayscale ,
+.BR \-grayscale,
 you'll get a smaller JPEG file that takes less time to process.
 .TP
 .B \-rgb
@@ -85,8 +85,8 @@ reconstructed image: the higher the quality setting, the larger the JPEG file,
 and the closer the output image will be to the original input.  Normally you
 want to use the lowest quality setting (smallest file) that decompresses into
 something visually indistinguishable from the original image.  For this
-purpose the quality setting should be between 50 and 95; the default of 75 is
-often about right.  If you see defects at
+purpose the quality setting should generally be between 50 and 95 (the default
+is 75) for photographic images.  If you see defects at
 .B \-quality
 75, then go up 5 or 10 counts at a time until you are happy with the output
 image.  (The optimal setting will vary from one image to another.)
@@ -94,11 +94,10 @@ image.  (The optimal setting will vary from one image to another.)
 .B \-quality
 100 will generate a quantization table of all 1's, minimizing loss in the
 quantization step (but there is still information loss in subsampling, as well
-as roundoff error).  This setting is mainly of interest for experimental
-purposes.  Quality values above about 95 are
-.B not
-recommended for normal use; the compressed file size goes up dramatically for
-hardly any gain in output image quality.
+as roundoff error.)  For most images, specifying a quality value above
+about 95 will increase the size of the compressed file dramatically, and while
+the quality gain from these higher quality values is measurable (using metrics
+such as PSNR or SSIM), it is rarely perceivable by human vision.
 .PP
 In the other direction, quality values below 50 will produce very small files
 of low image quality.  Settings around 5 to 10 might be useful in preparing an
@@ -166,14 +165,30 @@ Use integer DCT method (default).
 .TP
 .B \-dct fast
 Use fast integer DCT (less accurate).
+In libjpeg-turbo, the fast method is generally about 5-15% faster than the int
+method when using the x86/x86-64 SIMD extensions (results may vary with other
+SIMD implementations, or when using libjpeg-turbo without SIMD extensions.)
+For quality levels of 90 and below, there should be little or no perceptible
+difference between the two algorithms.  For quality levels above 90, however,
+the difference between the fast and the int methods becomes more pronounced.
+With quality=97, for instance, the fast method incurs generally about a 1-3 dB
+loss (in PSNR) relative to the int method, but this can be larger for some
+images.  Do not use the fast method with quality levels above 97.  The
+algorithm often degenerates at quality=98 and above and can actually produce a
+more lossy image than if lower quality levels had been used.  Also, in
+libjpeg-turbo, the fast method is not fully accelerated for quality levels
+above 97, so it will be slower than the int method.
 .TP
 .B \-dct float
 Use floating-point DCT method.
-The float method is very slightly more accurate than the int method, but is
-much slower unless your machine has very fast floating-point hardware.  Also
-note that results of the floating-point method may vary slightly across
-machines, while the integer methods should give the same results everywhere.
-The fast integer method is much less accurate than the other two.
+The float method is mainly a legacy feature.  It does not produce significantly
+more accurate results than the int method, and it is much slower.  The float
+method may also give different results on different machines due to varying
+roundoff behavior, whereas the integer methods should give the same results on
+all machines.
+.TP
+.BI \-icc " file"
+Embed ICC color management profile contained in the specified file.
 .TP
 .BI \-restart " N"
 Emit a JPEG restart marker every N MCU rows, or every N MCU blocks if "B" is
@@ -190,7 +205,7 @@ Set limit for amount of memory to use in processing large images.  Value is
 in thousands of bytes, or millions of bytes if "M" is attached to the
 number.  For example,
 .B \-max 4m
-selects 4000000 bytes.  If more space is needed, temporary files will be used.
+selects 4000000 bytes.  If more space is needed, an error will occur.
 .TP
 .BI \-outfile " name"
 Send output image to the named file, not to standard output.
@@ -208,6 +223,9 @@ give more output.  Also, version information is printed at startup.
 .B \-debug
 Same as
 .BR \-verbose .
+.TP
+.B \-version
+Print version information and exit.
 .PP
 The
 .B \-restart
@@ -322,11 +340,11 @@ Independent JPEG Group
 This file was modified by The libjpeg-turbo Project to include only information
 relevant to libjpeg-turbo, to wordsmith certain sections, and to describe
 features not present in libjpeg.
-.SH BUGS
+.SH ISSUES
 Support for GIF input files was removed in cjpeg v6b due to concerns over
 the Unisys LZW patent.  Although this patent expired in 2006, cjpeg still
 lacks GIF support, for these historical reasons.  (Conversion of GIF files to
-JPEG is usually a bad idea anyway.)
+JPEG is usually a bad idea anyway, since GIF is a 256-color format.)
 .PP
 Not all variants of BMP and Targa file formats are supported.
 .PP

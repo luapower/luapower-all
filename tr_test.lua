@@ -1,4 +1,4 @@
---go@ luajit -jp=zf tr_test.lua
+--go @ luajit -jp=zf tr_test.lua
 
 io.stdout:setvbuf'no'
 io.stderr:setvbuf'no'
@@ -16,11 +16,12 @@ local cr = sr:context()
 
 local tr = tr()
 tr:add_font_file('media/fonts/amiri-regular.ttf', 'amiri')
-tr:add_font_file('media/fonts/gfonts/apache/opensans/OpenSans-Regular.ttf ', 'open sans')
+tr:add_font_file('media/fonts/OpenSans-Regular.ttf ', 'open sans')
 
 local t0 = time.clock()
 local n = 100
-local s = glue.readfile('lorem_ipsum.txt')
+--local s = glue.readfile('lorem_ipsum.txt')
+local s = 'Hello'
 local t = tr:flatten{
 	font_name = 'open_sans,16',
 	--font_name = 'amiri,13',

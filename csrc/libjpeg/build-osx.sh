@@ -1,4 +1,3 @@
-./get-it.sh
 cd src
 FLAGS=""
 make clean

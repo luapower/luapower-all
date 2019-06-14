@@ -14,5 +14,9 @@ The included freetype binary is a *stripped* build of freetype.
 Only CFF/OpenType, TrueType and SFNT fonts are supported. Also, it depends
 on [libpng] for embedded bitmaps and on [harfbuzz] for the autohinter.
 
+## Building
+
+Refer to `csrc/freetype/WHAT` for how to build it.
+
 [FreeType 2]:    http://freetype.org/freetype2/
 [screenshot]:    /files/luapower/media/www/freetype_demo.png

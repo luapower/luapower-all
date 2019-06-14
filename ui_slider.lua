@@ -622,14 +622,12 @@ ui:style('toggle :on > slider_fill', {
 	background_color = '#fff',
 })
 
-toggle:stored_property'value'
 function toggle:after_set_value(on)
 	self.position = on and 1 or 0
 	self:settag(':on', on)
 	self:fire(on and 'option_enabled' or 'option_disabled')
 end
 toggle:track_changes'value'
-toggle:instance_only'value'
 
 function toggle:after_set_position()
 	self.value = self.position == 1

@@ -1,4 +1,3 @@
-#./get-it.sh
 [ "$P" ] || exit 1
 cd src || exit 1
 make clean

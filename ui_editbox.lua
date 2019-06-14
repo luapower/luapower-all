@@ -1,4 +1,4 @@
---go @ luajit ui_editbox.lua
+	--go @ luajit ui_editbox.lua
 
 --Edit Box widget based on tr.
 --Written by Cosmin Apreutesei. Public Domain.
@@ -72,7 +72,6 @@ end
 function editbox:set_cue(s)
 	self.cue_layer.text = s
 end
-editbox:instance_only'cue'
 
 editbox.cue_layer_class = ui.layer
 

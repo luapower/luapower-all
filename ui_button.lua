@@ -273,7 +273,6 @@ function checkbox:override_set_checked(inherited, checked)
 	end
 end
 checkbox:track_changes'checked'
-checkbox:instance_only'checked'
 
 function checkbox:canset_checked(checked)
 	return
@@ -322,7 +321,6 @@ function checkbox:after_set_align(align)
 		self.button:to_back()
 	end
 end
-checkbox:instance_only'align'
 
 --check button
 
@@ -389,7 +387,12 @@ checkbox.label_class = clabel
 clabel.layout = 'textbox'
 clabel.line_spacing = .6
 
-function clabel:hit_test(mx, my, reason) end --cbutton does it for us
+function clabel:override_hit_test(inherited, mx, my, reason)
+	local widget, area = inherited(self, mx, my, reason)
+	if widget then
+		return self.checkbox.button, area
+	end
+end
 
 function clabel:after_sync_styles()
 	local align = self.checkbox.align
@@ -510,7 +513,6 @@ function rblist:get_checked_button()
 	return self.radios[self.value]
 end
 
-rblist:stored_property'value'
 function rblist:set_value(val)
 	local rb = self.radios[val]
 	if rb then
@@ -680,6 +682,7 @@ function choicebutton:create_button(index, value)
 		index = index,
 		text = type(value) == 'table' and value.text or value,
 		choicebutton_value = type(value) == 'table' and value.value or value,
+		align_x = 'stretch',
 	}, self.button, type(value) == 'table' and value.button or nil)
 
 	function btn:after_sync()

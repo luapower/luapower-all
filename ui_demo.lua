@@ -1,6 +1,6 @@
---go@ luajit -jp=2fi1m1 *
-print(package.cpath)
-local ui = require'ui'
+--go @ luajit -jp=2fi1m1 *
+
+local ui = require'ui'()
 local Q = require'utf8quot'
 local time = require'time'
 local glue = require'glue'

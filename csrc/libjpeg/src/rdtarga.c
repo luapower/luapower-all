@@ -1,9 +1,13 @@
 /*
  * rdtarga.c
  *
+ * This file was part of the Independent JPEG Group's software:
  * Copyright (C) 1991-1996, Thomas G. Lane.
- * This file is part of the Independent JPEG Group's software.
- * For conditions of distribution and use, see the accompanying README file.
+ * Modified 2017 by Guido Vollbeding.
+ * libjpeg-turbo Modifications:
+ * Copyright (C) 2018, D. R. Commander.
+ * For conditions of distribution and use, see the accompanying README.ijg
+ * file.
  *
  * This file contains routines to read input images in Targa format.
  *
@@ -17,7 +21,7 @@
  * Based on code contributed by Lee Daniel Crocker.
  */
 
-#include "cdjpeg.h"		/* Common decls for cjpeg/djpeg applications */
+#include "cdjpeg.h"             /* Common decls for cjpeg/djpeg applications */
 
 #ifdef TARGA_SUPPORTED
 
@@ -26,50 +30,51 @@
 
 #ifdef HAVE_UNSIGNED_CHAR
 typedef unsigned char U_CHAR;
-#define UCH(x)	((int) (x))
+#define UCH(x)  ((int)(x))
 #else /* !HAVE_UNSIGNED_CHAR */
-#ifdef CHAR_IS_UNSIGNED
+#ifdef __CHAR_UNSIGNED__
 typedef char U_CHAR;
-#define UCH(x)	((int) (x))
+#define UCH(x)  ((int)(x))
 #else
 typedef char U_CHAR;
-#define UCH(x)	((int) (x) & 0xFF)
+#define UCH(x)  ((int)(x) & 0xFF)
 #endif
 #endif /* HAVE_UNSIGNED_CHAR */
 
 
-#define	ReadOK(file,buffer,len)	(JFREAD(file,buffer,len) == ((size_t) (len)))
+#define ReadOK(file, buffer, len) \
+  (JFREAD(file, buffer, len) == ((size_t)(len)))
 
 
 /* Private version of data source object */
 
-typedef struct _tga_source_struct * tga_source_ptr;
+typedef struct _tga_source_struct *tga_source_ptr;
 
 typedef struct _tga_source_struct {
   struct cjpeg_source_struct pub; /* public fields */
 
-  j_compress_ptr cinfo;		/* back link saves passing separate parm */
+  j_compress_ptr cinfo;         /* back link saves passing separate parm */
 
-  JSAMPARRAY colormap;		/* Targa colormap (converted to my format) */
+  JSAMPARRAY colormap;          /* Targa colormap (converted to my format) */
 
-  jvirt_sarray_ptr whole_image;	/* Needed if funny input row order */
-  JDIMENSION current_row;	/* Current logical row number to read */
+  jvirt_sarray_ptr whole_image; /* Needed if funny input row order */
+  JDIMENSION current_row;       /* Current logical row number to read */
 
   /* Pointer to routine to extract next Targa pixel from input file */
-  JMETHOD(void, read_pixel, (tga_source_ptr sinfo));
+  void (*read_pixel) (tga_source_ptr sinfo);
 
   /* Result of read_pixel is delivered here: */
   U_CHAR tga_pixel[4];
 
-  int pixel_size;		/* Bytes per Targa pixel (1 to 4) */
+  int pixel_size;               /* Bytes per Targa pixel (1 to 4) */
+  int cmap_length;              /* colormap length */
 
   /* State info for reading RLE-coded pixels; both counts must be init to 0 */
-  int block_count;		/* # of pixels remaining in RLE block */
-  int dup_pixel_count;		/* # of times to duplicate previous pixel */
+  int block_count;              /* # of pixels remaining in RLE block */
+  int dup_pixel_count;          /* # of times to duplicate previous pixel */
 
   /* This saves the correct pixel-row-expansion method for preload_image */
-  JMETHOD(JDIMENSION, get_pixel_rows, (j_compress_ptr cinfo,
-				       cjpeg_source_ptr sinfo));
+  JDIMENSION (*get_pixel_rows) (j_compress_ptr cinfo, cjpeg_source_ptr sinfo);
 } tga_source_struct;
 
 
@@ -85,7 +90,7 @@ static const UINT8 c5to8bits[32] = {
 
 
 LOCAL(int)
-read_byte (tga_source_ptr sinfo)
+read_byte(tga_source_ptr sinfo)
 /* Read next byte from Targa file */
 {
   register FILE *infile = sinfo->pub.input_file;
@@ -98,7 +103,7 @@ read_byte (tga_source_ptr sinfo)
 
 
 LOCAL(void)
-read_colormap (tga_source_ptr sinfo, int cmaplen, int mapentrysize)
+read_colormap(tga_source_ptr sinfo, int cmaplen, int mapentrysize)
 /* Read the colormap from a Targa file */
 {
   int i;
@@ -108,9 +113,9 @@ read_colormap (tga_source_ptr sinfo, int cmaplen, int mapentrysize)
     ERREXIT(sinfo->cinfo, JERR_TGA_BADCMAP);
 
   for (i = 0; i < cmaplen; i++) {
-    sinfo->colormap[2][i] = (JSAMPLE) read_byte(sinfo);
-    sinfo->colormap[1][i] = (JSAMPLE) read_byte(sinfo);
-    sinfo->colormap[0][i] = (JSAMPLE) read_byte(sinfo);
+    sinfo->colormap[2][i] = (JSAMPLE)read_byte(sinfo);
+    sinfo->colormap[1][i] = (JSAMPLE)read_byte(sinfo);
+    sinfo->colormap[0][i] = (JSAMPLE)read_byte(sinfo);
   }
 }
 
@@ -120,23 +125,21 @@ read_colormap (tga_source_ptr sinfo, int cmaplen, int mapentrysize)
  */
 
 METHODDEF(void)
-read_non_rle_pixel (tga_source_ptr sinfo)
+read_non_rle_pixel(tga_source_ptr sinfo)
 /* Read one Targa pixel from the input file; no RLE expansion */
 {
-  register FILE *infile = sinfo->pub.input_file;
   register int i;
 
   for (i = 0; i < sinfo->pixel_size; i++) {
-    sinfo->tga_pixel[i] = (U_CHAR) getc(infile);
+    sinfo->tga_pixel[i] = (U_CHAR)read_byte(sinfo);
   }
 }
 
 
 METHODDEF(void)
-read_rle_pixel (tga_source_ptr sinfo)
+read_rle_pixel(tga_source_ptr sinfo)
 /* Read one Targa pixel from the input file, expanding RLE data as needed */
 {
-  register FILE *infile = sinfo->pub.input_file;
   register int i;
 
   /* Duplicate previously read pixel? */
@@ -148,9 +151,9 @@ read_rle_pixel (tga_source_ptr sinfo)
   /* Time to read RLE block header? */
   if (--sinfo->block_count < 0) { /* decrement pixels remaining in block */
     i = read_byte(sinfo);
-    if (i & 0x80) {		/* Start of duplicate-pixel block? */
+    if (i & 0x80) {             /* Start of duplicate-pixel block? */
       sinfo->dup_pixel_count = i & 0x7F; /* number of dups after this one */
-      sinfo->block_count = 0;	/* then read new block header */
+      sinfo->block_count = 0;   /* then read new block header */
     } else {
       sinfo->block_count = i & 0x7F; /* number of pixels after this one */
     }
@@ -158,7 +161,7 @@ read_rle_pixel (tga_source_ptr sinfo)
 
   /* Read next pixel */
   for (i = 0; i < sinfo->pixel_size; i++) {
-    sinfo->tga_pixel[i] = (U_CHAR) getc(infile);
+    sinfo->tga_pixel[i] = (U_CHAR)read_byte(sinfo);
   }
 }
 
@@ -171,35 +174,38 @@ read_rle_pixel (tga_source_ptr sinfo)
 
 
 METHODDEF(JDIMENSION)
-get_8bit_gray_row (j_compress_ptr cinfo, cjpeg_source_ptr sinfo)
+get_8bit_gray_row(j_compress_ptr cinfo, cjpeg_source_ptr sinfo)
 /* This version is for reading 8-bit grayscale pixels */
 {
-  tga_source_ptr source = (tga_source_ptr) sinfo;
+  tga_source_ptr source = (tga_source_ptr)sinfo;
   register JSAMPROW ptr;
   register JDIMENSION col;
-  
+
   ptr = source->pub.buffer[0];
   for (col = cinfo->image_width; col > 0; col--) {
     (*source->read_pixel) (source); /* Load next pixel into tga_pixel */
-    *ptr++ = (JSAMPLE) UCH(source->tga_pixel[0]);
+    *ptr++ = (JSAMPLE)UCH(source->tga_pixel[0]);
   }
   return 1;
 }
 
 METHODDEF(JDIMENSION)
-get_8bit_row (j_compress_ptr cinfo, cjpeg_source_ptr sinfo)
+get_8bit_row(j_compress_ptr cinfo, cjpeg_source_ptr sinfo)
 /* This version is for reading 8-bit colormap indexes */
 {
-  tga_source_ptr source = (tga_source_ptr) sinfo;
+  tga_source_ptr source = (tga_source_ptr)sinfo;
   register int t;
   register JSAMPROW ptr;
   register JDIMENSION col;
   register JSAMPARRAY colormap = source->colormap;
+  int cmaplen = source->cmap_length;
 
   ptr = source->pub.buffer[0];
   for (col = cinfo->image_width; col > 0; col--) {
     (*source->read_pixel) (source); /* Load next pixel into tga_pixel */
     t = UCH(source->tga_pixel[0]);
+    if (t >= cmaplen)
+      ERREXIT(cinfo, JERR_TGA_BADPARMS);
     *ptr++ = colormap[0][t];
     *ptr++ = colormap[1][t];
     *ptr++ = colormap[2][t];
@@ -208,14 +214,14 @@ get_8bit_row (j_compress_ptr cinfo, cjpeg_source_ptr sinfo)
 }
 
 METHODDEF(JDIMENSION)
-get_16bit_row (j_compress_ptr cinfo, cjpeg_source_ptr sinfo)
+get_16bit_row(j_compress_ptr cinfo, cjpeg_source_ptr sinfo)
 /* This version is for reading 16-bit pixels */
 {
-  tga_source_ptr source = (tga_source_ptr) sinfo;
+  tga_source_ptr source = (tga_source_ptr)sinfo;
   register int t;
   register JSAMPROW ptr;
   register JDIMENSION col;
-  
+
   ptr = source->pub.buffer[0];
   for (col = cinfo->image_width; col > 0; col--) {
     (*source->read_pixel) (source); /* Load next pixel into tga_pixel */
@@ -225,30 +231,30 @@ get_16bit_row (j_compress_ptr cinfo, cjpeg_source_ptr sinfo)
      * The format of the 16-bit (LSB first) input word is
      *     xRRRRRGGGGGBBBBB
      */
-    ptr[2] = (JSAMPLE) c5to8bits[t & 0x1F];
+    ptr[2] = (JSAMPLE)c5to8bits[t & 0x1F];
     t >>= 5;
-    ptr[1] = (JSAMPLE) c5to8bits[t & 0x1F];
+    ptr[1] = (JSAMPLE)c5to8bits[t & 0x1F];
     t >>= 5;
-    ptr[0] = (JSAMPLE) c5to8bits[t & 0x1F];
+    ptr[0] = (JSAMPLE)c5to8bits[t & 0x1F];
     ptr += 3;
   }
   return 1;
 }
 
 METHODDEF(JDIMENSION)
-get_24bit_row (j_compress_ptr cinfo, cjpeg_source_ptr sinfo)
+get_24bit_row(j_compress_ptr cinfo, cjpeg_source_ptr sinfo)
 /* This version is for reading 24-bit pixels */
 {
-  tga_source_ptr source = (tga_source_ptr) sinfo;
+  tga_source_ptr source = (tga_source_ptr)sinfo;
   register JSAMPROW ptr;
   register JDIMENSION col;
-  
+
   ptr = source->pub.buffer[0];
   for (col = cinfo->image_width; col > 0; col--) {
     (*source->read_pixel) (source); /* Load next pixel into tga_pixel */
-    *ptr++ = (JSAMPLE) UCH(source->tga_pixel[2]); /* change BGR to RGB order */
-    *ptr++ = (JSAMPLE) UCH(source->tga_pixel[1]);
-    *ptr++ = (JSAMPLE) UCH(source->tga_pixel[0]);
+    *ptr++ = (JSAMPLE)UCH(source->tga_pixel[2]); /* change BGR to RGB order */
+    *ptr++ = (JSAMPLE)UCH(source->tga_pixel[1]);
+    *ptr++ = (JSAMPLE)UCH(source->tga_pixel[0]);
   }
   return 1;
 }
@@ -270,9 +276,9 @@ get_24bit_row (j_compress_ptr cinfo, cjpeg_source_ptr sinfo)
  */
 
 METHODDEF(JDIMENSION)
-get_memory_row (j_compress_ptr cinfo, cjpeg_source_ptr sinfo)
+get_memory_row(j_compress_ptr cinfo, cjpeg_source_ptr sinfo)
 {
-  tga_source_ptr source = (tga_source_ptr) sinfo;
+  tga_source_ptr source = (tga_source_ptr)sinfo;
   JDIMENSION source_row;
 
   /* Compute row of source that maps to current_row of normal order */
@@ -282,8 +288,8 @@ get_memory_row (j_compress_ptr cinfo, cjpeg_source_ptr sinfo)
 
   /* Fetch that row from virtual array */
   source->pub.buffer = (*cinfo->mem->access_virt_sarray)
-    ((j_common_ptr) cinfo, source->whole_image,
-     source_row, (JDIMENSION) 1, FALSE);
+    ((j_common_ptr)cinfo, source->whole_image,
+     source_row, (JDIMENSION)1, FALSE);
 
   source->current_row++;
   return 1;
@@ -297,21 +303,21 @@ get_memory_row (j_compress_ptr cinfo, cjpeg_source_ptr sinfo)
  */
 
 METHODDEF(JDIMENSION)
-preload_image (j_compress_ptr cinfo, cjpeg_source_ptr sinfo)
+preload_image(j_compress_ptr cinfo, cjpeg_source_ptr sinfo)
 {
-  tga_source_ptr source = (tga_source_ptr) sinfo;
+  tga_source_ptr source = (tga_source_ptr)sinfo;
   JDIMENSION row;
-  cd_progress_ptr progress = (cd_progress_ptr) cinfo->progress;
+  cd_progress_ptr progress = (cd_progress_ptr)cinfo->progress;
 
   /* Read the data into a virtual array in input-file row order. */
   for (row = 0; row < cinfo->image_height; row++) {
     if (progress != NULL) {
-      progress->pub.pass_counter = (long) row;
-      progress->pub.pass_limit = (long) cinfo->image_height;
-      (*progress->pub.progress_monitor) ((j_common_ptr) cinfo);
+      progress->pub.pass_counter = (long)row;
+      progress->pub.pass_limit = (long)cinfo->image_height;
+      (*progress->pub.progress_monitor) ((j_common_ptr)cinfo);
     }
     source->pub.buffer = (*cinfo->mem->access_virt_sarray)
-      ((j_common_ptr) cinfo, source->whole_image, row, (JDIMENSION) 1, TRUE);
+      ((j_common_ptr)cinfo, source->whole_image, row, (JDIMENSION)1, TRUE);
     (*source->get_pixel_rows) (cinfo, sinfo);
   }
   if (progress != NULL)
@@ -330,18 +336,18 @@ preload_image (j_compress_ptr cinfo, cjpeg_source_ptr sinfo)
  */
 
 METHODDEF(void)
-start_input_tga (j_compress_ptr cinfo, cjpeg_source_ptr sinfo)
+start_input_tga(j_compress_ptr cinfo, cjpeg_source_ptr sinfo)
 {
-  tga_source_ptr source = (tga_source_ptr) sinfo;
+  tga_source_ptr source = (tga_source_ptr)sinfo;
   U_CHAR targaheader[18];
   int idlen, cmaptype, subtype, flags, interlace_type, components;
   unsigned int width, height, maplen;
   boolean is_bottom_up;
 
-#define GET_2B(offset)	((unsigned int) UCH(targaheader[offset]) + \
-			 (((unsigned int) UCH(targaheader[offset+1])) << 8))
+#define GET_2B(offset)  ((unsigned int)UCH(targaheader[offset]) + \
+                         (((unsigned int)UCH(targaheader[offset + 1])) << 8))
 
-  if (! ReadOK(source->pub.input_file, targaheader, 18))
+  if (!ReadOK(source->pub.input_file, targaheader, 18))
     ERREXIT(cinfo, JERR_INPUT_EOF);
 
   /* Pretend "15-bit" pixels are 16-bit --- we ignore attribute bit anyway */
@@ -355,17 +361,18 @@ start_input_tga (j_compress_ptr cinfo, cjpeg_source_ptr sinfo)
   width = GET_2B(12);
   height = GET_2B(14);
   source->pixel_size = UCH(targaheader[16]) >> 3;
-  flags = UCH(targaheader[17]);	/* Image Descriptor byte */
+  flags = UCH(targaheader[17]); /* Image Descriptor byte */
 
-  is_bottom_up = ((flags & 0x20) == 0);	/* bit 5 set => top-down */
-  interlace_type = flags >> 6;	/* bits 6/7 are interlace code */
+  is_bottom_up = ((flags & 0x20) == 0); /* bit 5 set => top-down */
+  interlace_type = flags >> 6;  /* bits 6/7 are interlace code */
 
-  if (cmaptype > 1 ||		/* cmaptype must be 0 or 1 */
+  if (cmaptype > 1 ||           /* cmaptype must be 0 or 1 */
       source->pixel_size < 1 || source->pixel_size > 4 ||
       (UCH(targaheader[16]) & 7) != 0 || /* bits/pixel must be multiple of 8 */
-      interlace_type != 0)	/* currently don't allow interlaced image */
+      interlace_type != 0 ||      /* currently don't allow interlaced image */
+      width == 0 || height == 0)  /* image width/height must be non-zero */
     ERREXIT(cinfo, JERR_TGA_BADPARMS);
-  
+
   if (subtype > 8) {
     /* It's an RLE-coded file */
     source->read_pixel = read_rle_pixel;
@@ -377,18 +384,18 @@ start_input_tga (j_compress_ptr cinfo, cjpeg_source_ptr sinfo)
   }
 
   /* Now should have subtype 1, 2, or 3 */
-  components = 3;		/* until proven different */
+  components = 3;               /* until proven different */
   cinfo->in_color_space = JCS_RGB;
 
   switch (subtype) {
-  case 1:			/* Colormapped image */
+  case 1:                       /* Colormapped image */
     if (source->pixel_size == 1 && cmaptype == 1)
       source->get_pixel_rows = get_8bit_row;
     else
       ERREXIT(cinfo, JERR_TGA_BADPARMS);
     TRACEMS2(cinfo, 1, JTRC_TGA_MAPPED, width, height);
     break;
-  case 2:			/* RGB image */
+  case 2:                       /* RGB image */
     switch (source->pixel_size) {
     case 2:
       source->get_pixel_rows = get_16bit_row;
@@ -405,7 +412,7 @@ start_input_tga (j_compress_ptr cinfo, cjpeg_source_ptr sinfo)
     }
     TRACEMS2(cinfo, 1, JTRC_TGA, width, height);
     break;
-  case 3:			/* Grayscale image */
+  case 3:                       /* Grayscale image */
     components = 1;
     cinfo->in_color_space = JCS_GRAYSCALE;
     if (source->pixel_size == 1)
@@ -422,10 +429,10 @@ start_input_tga (j_compress_ptr cinfo, cjpeg_source_ptr sinfo)
   if (is_bottom_up) {
     /* Create a virtual array to buffer the upside-down image. */
     source->whole_image = (*cinfo->mem->request_virt_sarray)
-      ((j_common_ptr) cinfo, JPOOL_IMAGE, FALSE,
-       (JDIMENSION) width * components, (JDIMENSION) height, (JDIMENSION) 1);
+      ((j_common_ptr)cinfo, JPOOL_IMAGE, FALSE,
+       (JDIMENSION)width * components, (JDIMENSION)height, (JDIMENSION)1);
     if (cinfo->progress != NULL) {
-      cd_progress_ptr progress = (cd_progress_ptr) cinfo->progress;
+      cd_progress_ptr progress = (cd_progress_ptr)cinfo->progress;
       progress->total_extra_passes++; /* count file input as separate pass */
     }
     /* source->pub.buffer will point to the virtual array. */
@@ -435,27 +442,29 @@ start_input_tga (j_compress_ptr cinfo, cjpeg_source_ptr sinfo)
     /* Don't need a virtual array, but do need a one-row input buffer. */
     source->whole_image = NULL;
     source->pub.buffer = (*cinfo->mem->alloc_sarray)
-      ((j_common_ptr) cinfo, JPOOL_IMAGE,
-       (JDIMENSION) width * components, (JDIMENSION) 1);
+      ((j_common_ptr)cinfo, JPOOL_IMAGE,
+       (JDIMENSION)width * components, (JDIMENSION)1);
     source->pub.buffer_height = 1;
     source->pub.get_pixel_rows = source->get_pixel_rows;
   }
-  
-  while (idlen--)		/* Throw away ID field */
-    (void) read_byte(source);
+
+  while (idlen--)               /* Throw away ID field */
+    (void)read_byte(source);
 
   if (maplen > 0) {
     if (maplen > 256 || GET_2B(3) != 0)
       ERREXIT(cinfo, JERR_TGA_BADCMAP);
     /* Allocate space to store the colormap */
     source->colormap = (*cinfo->mem->alloc_sarray)
-      ((j_common_ptr) cinfo, JPOOL_IMAGE, (JDIMENSION) maplen, (JDIMENSION) 3);
+      ((j_common_ptr)cinfo, JPOOL_IMAGE, (JDIMENSION)maplen, (JDIMENSION)3);
+    source->cmap_length = (int)maplen;
     /* and read it from the file */
-    read_colormap(source, (int) maplen, UCH(targaheader[7]));
+    read_colormap(source, (int)maplen, UCH(targaheader[7]));
   } else {
-    if (cmaptype)		/* but you promised a cmap! */
+    if (cmaptype)               /* but you promised a cmap! */
       ERREXIT(cinfo, JERR_TGA_BADPARMS);
     source->colormap = NULL;
+    source->cmap_length = 0;
   }
 
   cinfo->input_components = components;
@@ -470,7 +479,7 @@ start_input_tga (j_compress_ptr cinfo, cjpeg_source_ptr sinfo)
  */
 
 METHODDEF(void)
-finish_input_tga (j_compress_ptr cinfo, cjpeg_source_ptr sinfo)
+finish_input_tga(j_compress_ptr cinfo, cjpeg_source_ptr sinfo)
 {
   /* no work */
 }
@@ -481,20 +490,20 @@ finish_input_tga (j_compress_ptr cinfo, cjpeg_source_ptr sinfo)
  */
 
 GLOBAL(cjpeg_source_ptr)
-jinit_read_targa (j_compress_ptr cinfo)
+jinit_read_targa(j_compress_ptr cinfo)
 {
   tga_source_ptr source;
 
   /* Create module interface object */
   source = (tga_source_ptr)
-      (*cinfo->mem->alloc_small) ((j_common_ptr) cinfo, JPOOL_IMAGE,
-				  SIZEOF(tga_source_struct));
-  source->cinfo = cinfo;	/* make back link for subroutines */
+    (*cinfo->mem->alloc_small) ((j_common_ptr)cinfo, JPOOL_IMAGE,
+                                sizeof(tga_source_struct));
+  source->cinfo = cinfo;        /* make back link for subroutines */
   /* Fill in method ptrs, except get_pixel_rows which start_input sets */
   source->pub.start_input = start_input_tga;
   source->pub.finish_input = finish_input_tga;
 
-  return (cjpeg_source_ptr) source;
+  return (cjpeg_source_ptr)source;
 }
 
 #endif /* TARGA_SUPPORTED */

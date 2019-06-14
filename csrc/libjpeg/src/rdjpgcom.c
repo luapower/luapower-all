@@ -1,10 +1,13 @@
 /*
  * rdjpgcom.c
  *
+ * This file was part of the Independent JPEG Group's software:
  * Copyright (C) 1994-1997, Thomas G. Lane.
  * Modified 2009 by Bill Allombert, Guido Vollbeding.
- * This file is part of the Independent JPEG Group's software.
- * For conditions of distribution and use, see the accompanying README file.
+ * It was modified by The libjpeg-turbo Project to include only code relevant
+ * to libjpeg-turbo.
+ * For conditions of distribution and use, see the accompanying README.ijg
+ * file.
  *
  * This file contains a very simple stand-alone application that displays
  * the text in COM (comment) markers in a JFIF file.
@@ -12,48 +15,40 @@
  * JPEG markers.
  */
 
-#define JPEG_CJPEG_DJPEG	/* to get the command-line config symbols */
-#include "jinclude.h"		/* get auto-config symbols, <stdio.h> */
+#define JPEG_CJPEG_DJPEG        /* to get the command-line config symbols */
+#include "jinclude.h"           /* get auto-config symbols, <stdio.h> */
 
 #ifdef HAVE_LOCALE_H
-#include <locale.h>		/* Bill Allombert: use locale for isprint */
+#include <locale.h>             /* Bill Allombert: use locale for isprint */
 #endif
-#include <ctype.h>		/* to declare isupper(), tolower() */
+#include <ctype.h>              /* to declare isupper(), tolower() */
 #ifdef USE_SETMODE
-#include <fcntl.h>		/* to declare setmode()'s parameter macros */
+#include <fcntl.h>              /* to declare setmode()'s parameter macros */
 /* If you have setmode() but not <io.h>, just delete this line: */
-#include <io.h>			/* to declare setmode() */
+#include <io.h>                 /* to declare setmode() */
 #endif
 
-#ifdef USE_CCOMMAND		/* command-line reader for Macintosh */
+#ifdef USE_CCOMMAND             /* command-line reader for Macintosh */
 #ifdef __MWERKS__
 #include <SIOUX.h>              /* Metrowerks needs this */
-#include <console.h>		/* ... and this */
+#include <console.h>            /* ... and this */
 #endif
 #ifdef THINK_C
-#include <console.h>		/* Think declares it here */
+#include <console.h>            /* Think declares it here */
 #endif
 #endif
 
-#ifdef DONT_USE_B_MODE		/* define mode parameters for fopen() */
-#define READ_BINARY	"r"
+#ifdef DONT_USE_B_MODE          /* define mode parameters for fopen() */
+#define READ_BINARY     "r"
 #else
-#ifdef VMS			/* VMS is very nonstandard */
-#define READ_BINARY	"rb", "ctx=stm"
-#else				/* standard ANSI-compliant case */
-#define READ_BINARY	"rb"
-#endif
+#define READ_BINARY     "rb"
 #endif
 
-#ifndef EXIT_FAILURE		/* define exit() codes if not provided */
+#ifndef EXIT_FAILURE            /* define exit() codes if not provided */
 #define EXIT_FAILURE  1
 #endif
 #ifndef EXIT_SUCCESS
-#ifdef VMS
-#define EXIT_SUCCESS  1		/* VMS is very nonstandard */
-#else
 #define EXIT_SUCCESS  0
-#endif
 #endif
 
 
@@ -62,7 +57,7 @@
  * To reuse this code in another application, you might need to change these.
  */
 
-static FILE * infile;		/* input JPEG file */
+static FILE *infile;            /* input JPEG file */
 
 /* Return next input byte, or EOF if no more */
 #define NEXTBYTE()  getc(infile)
@@ -74,7 +69,7 @@ static FILE * infile;		/* input JPEG file */
 
 /* Read one byte, testing for EOF */
 static int
-read_1_byte (void)
+read_1_byte(void)
 {
   int c;
 
@@ -87,7 +82,7 @@ read_1_byte (void)
 /* Read 2 bytes, convert to unsigned int */
 /* All 2-byte quantities in JPEG markers are MSB first */
 static unsigned int
-read_2_bytes (void)
+read_2_bytes(void)
 {
   int c1, c2;
 
@@ -97,7 +92,7 @@ read_2_bytes (void)
   c2 = NEXTBYTE();
   if (c2 == EOF)
     ERREXIT("Premature EOF in JPEG file");
-  return (((unsigned int) c1) << 8) + ((unsigned int) c2);
+  return (((unsigned int)c1) << 8) + ((unsigned int)c2);
 }
 
 
@@ -107,25 +102,25 @@ read_2_bytes (void)
  * in this program.  (See jdmarker.c for a more complete list.)
  */
 
-#define M_SOF0  0xC0		/* Start Of Frame N */
-#define M_SOF1  0xC1		/* N indicates which compression process */
-#define M_SOF2  0xC2		/* Only SOF0-SOF2 are now in common use */
-#define M_SOF3  0xC3
-#define M_SOF5  0xC5		/* NB: codes C4 and CC are NOT SOF markers */
-#define M_SOF6  0xC6
-#define M_SOF7  0xC7
-#define M_SOF9  0xC9
-#define M_SOF10 0xCA
-#define M_SOF11 0xCB
-#define M_SOF13 0xCD
-#define M_SOF14 0xCE
-#define M_SOF15 0xCF
-#define M_SOI   0xD8		/* Start Of Image (beginning of datastream) */
-#define M_EOI   0xD9		/* End Of Image (end of datastream) */
-#define M_SOS   0xDA		/* Start Of Scan (begins compressed data) */
-#define M_APP0	0xE0		/* Application-specific marker, type N */
-#define M_APP12	0xEC		/* (we don't bother to list all 16 APPn's) */
-#define M_COM   0xFE		/* COMment */
+#define M_SOF0   0xC0           /* Start Of Frame N */
+#define M_SOF1   0xC1           /* N indicates which compression process */
+#define M_SOF2   0xC2           /* Only SOF0-SOF2 are now in common use */
+#define M_SOF3   0xC3
+#define M_SOF5   0xC5           /* NB: codes C4 and CC are NOT SOF markers */
+#define M_SOF6   0xC6
+#define M_SOF7   0xC7
+#define M_SOF9   0xC9
+#define M_SOF10  0xCA
+#define M_SOF11  0xCB
+#define M_SOF13  0xCD
+#define M_SOF14  0xCE
+#define M_SOF15  0xCF
+#define M_SOI    0xD8           /* Start Of Image (beginning of datastream) */
+#define M_EOI    0xD9           /* End Of Image (end of datastream) */
+#define M_SOS    0xDA           /* Start Of Scan (begins compressed data) */
+#define M_APP0   0xE0           /* Application-specific marker, type N */
+#define M_APP12  0xEC           /* (we don't bother to list all 16 APPn's) */
+#define M_COM    0xFE           /* COMment */
 
 
 /*
@@ -139,7 +134,7 @@ read_2_bytes (void)
  */
 
 static int
-next_marker (void)
+next_marker(void)
 {
   int c;
   int discarded_bytes = 0;
@@ -174,7 +169,7 @@ next_marker (void)
  */
 
 static int
-first_marker (void)
+first_marker(void)
 {
   int c1, c2;
 
@@ -196,7 +191,7 @@ first_marker (void)
  */
 
 static void
-skip_variable (void)
+skip_variable(void)
 /* Skip over an unknown or uninteresting variable-length marker */
 {
   unsigned int length;
@@ -209,7 +204,7 @@ skip_variable (void)
   length -= 2;
   /* Skip over the remaining bytes */
   while (length > 0) {
-    (void) read_1_byte();
+    (void)read_1_byte();
     length--;
   }
 }
@@ -222,7 +217,7 @@ skip_variable (void)
  */
 
 static void
-process_COM (int raw)
+process_COM(int raw)
 {
   unsigned int length;
   int ch;
@@ -253,7 +248,7 @@ process_COM (int raw)
       printf("\n");
     } else if (ch == '\n') {
       if (lastch != '\r')
-	printf("\n");
+        printf("\n");
     } else if (ch == '\\') {
       printf("\\\\");
     } else if (isprint(ch)) {
@@ -279,15 +274,15 @@ process_COM (int raw)
  */
 
 static void
-process_SOFn (int marker)
+process_SOFn(int marker)
 {
   unsigned int length;
   unsigned int image_height, image_width;
   int data_precision, num_components;
-  const char * process;
+  const char *process;
   int ci;
 
-  length = read_2_bytes();	/* usual parameter length count */
+  length = read_2_bytes();      /* usual parameter length count */
 
   data_precision = read_1_byte();
   image_height = read_2_bytes();
@@ -295,33 +290,34 @@ process_SOFn (int marker)
   num_components = read_1_byte();
 
   switch (marker) {
-  case M_SOF0:	process = "Baseline";  break;
-  case M_SOF1:	process = "Extended sequential";  break;
-  case M_SOF2:	process = "Progressive";  break;
-  case M_SOF3:	process = "Lossless";  break;
-  case M_SOF5:	process = "Differential sequential";  break;
-  case M_SOF6:	process = "Differential progressive";  break;
-  case M_SOF7:	process = "Differential lossless";  break;
-  case M_SOF9:	process = "Extended sequential, arithmetic coding";  break;
-  case M_SOF10:	process = "Progressive, arithmetic coding";  break;
-  case M_SOF11:	process = "Lossless, arithmetic coding";  break;
-  case M_SOF13:	process = "Differential sequential, arithmetic coding";  break;
-  case M_SOF14:	process = "Differential progressive, arithmetic coding"; break;
-  case M_SOF15:	process = "Differential lossless, arithmetic coding";  break;
-  default:	process = "Unknown";  break;
+  case M_SOF0:  process = "Baseline";  break;
+  case M_SOF1:  process = "Extended sequential";  break;
+  case M_SOF2:  process = "Progressive";  break;
+  case M_SOF3:  process = "Lossless";  break;
+  case M_SOF5:  process = "Differential sequential";  break;
+  case M_SOF6:  process = "Differential progressive";  break;
+  case M_SOF7:  process = "Differential lossless";  break;
+  case M_SOF9:  process = "Extended sequential, arithmetic coding";  break;
+  case M_SOF10: process = "Progressive, arithmetic coding";  break;
+  case M_SOF11: process = "Lossless, arithmetic coding";  break;
+  case M_SOF13: process = "Differential sequential, arithmetic coding";  break;
+  case M_SOF14:
+    process = "Differential progressive, arithmetic coding";  break;
+  case M_SOF15: process = "Differential lossless, arithmetic coding";  break;
+  default:      process = "Unknown";  break;
   }
 
   printf("JPEG image is %uw * %uh, %d color components, %d bits per sample\n",
-	 image_width, image_height, num_components, data_precision);
+         image_width, image_height, num_components, data_precision);
   printf("JPEG process: %s\n", process);
 
-  if (length != (unsigned int) (8 + num_components * 3))
+  if (length != (unsigned int)(8 + num_components * 3))
     ERREXIT("Bogus SOF marker length");
 
   for (ci = 0; ci < num_components; ci++) {
-    (void) read_1_byte();	/* Component ID code */
-    (void) read_1_byte();	/* H, V sampling factors */
-    (void) read_1_byte();	/* Quantization table number */
+    (void)read_1_byte();        /* Component ID code */
+    (void)read_1_byte();        /* H, V sampling factors */
+    (void)read_1_byte();        /* Quantization table number */
   }
 }
 
@@ -337,7 +333,7 @@ process_SOFn (int marker)
  */
 
 static int
-scan_JPEG_header (int verbose, int raw)
+scan_JPEG_header(int verbose, int raw)
 {
   int marker;
 
@@ -352,29 +348,29 @@ scan_JPEG_header (int verbose, int raw)
       /* Note that marker codes 0xC4, 0xC8, 0xCC are not, and must not be,
        * treated as SOFn.  C4 in particular is actually DHT.
        */
-    case M_SOF0:		/* Baseline */
-    case M_SOF1:		/* Extended sequential, Huffman */
-    case M_SOF2:		/* Progressive, Huffman */
-    case M_SOF3:		/* Lossless, Huffman */
-    case M_SOF5:		/* Differential sequential, Huffman */
-    case M_SOF6:		/* Differential progressive, Huffman */
-    case M_SOF7:		/* Differential lossless, Huffman */
-    case M_SOF9:		/* Extended sequential, arithmetic */
-    case M_SOF10:		/* Progressive, arithmetic */
-    case M_SOF11:		/* Lossless, arithmetic */
-    case M_SOF13:		/* Differential sequential, arithmetic */
-    case M_SOF14:		/* Differential progressive, arithmetic */
-    case M_SOF15:		/* Differential lossless, arithmetic */
+    case M_SOF0:                /* Baseline */
+    case M_SOF1:                /* Extended sequential, Huffman */
+    case M_SOF2:                /* Progressive, Huffman */
+    case M_SOF3:                /* Lossless, Huffman */
+    case M_SOF5:                /* Differential sequential, Huffman */
+    case M_SOF6:                /* Differential progressive, Huffman */
+    case M_SOF7:                /* Differential lossless, Huffman */
+    case M_SOF9:                /* Extended sequential, arithmetic */
+    case M_SOF10:               /* Progressive, arithmetic */
+    case M_SOF11:               /* Lossless, arithmetic */
+    case M_SOF13:               /* Differential sequential, arithmetic */
+    case M_SOF14:               /* Differential progressive, arithmetic */
+    case M_SOF15:               /* Differential lossless, arithmetic */
       if (verbose)
-	process_SOFn(marker);
+        process_SOFn(marker);
       else
-	skip_variable();
+        skip_variable();
       break;
 
-    case M_SOS:			/* stop before hitting compressed data */
+    case M_SOS:                 /* stop before hitting compressed data */
       return marker;
 
-    case M_EOI:			/* in case it's a tables-only JPEG stream */
+    case M_EOI:                 /* in case it's a tables-only JPEG stream */
       return marker;
 
     case M_COM:
@@ -386,14 +382,14 @@ scan_JPEG_header (int verbose, int raw)
        * APP12 markers, so we print those out too when in -verbose mode.
        */
       if (verbose) {
-	printf("APP12 contains:\n");
-	process_COM(raw);
+        printf("APP12 contains:\n");
+        process_COM(raw);
       } else
-	skip_variable();
+        skip_variable();
       break;
 
-    default:			/* Anything else just gets skipped */
-      skip_variable();		/* we assume it has a parameter count... */
+    default:                    /* Anything else just gets skipped */
+      skip_variable();          /* we assume it has a parameter count... */
       break;
     }
   } /* end loop */
@@ -402,11 +398,11 @@ scan_JPEG_header (int verbose, int raw)
 
 /* Command line parsing code */
 
-static const char * progname;	/* program name for error messages */
+static const char *progname;    /* program name for error messages */
 
 
 static void
-usage (void)
+usage(void)
 /* complain about bad command line */
 {
   fprintf(stderr, "rdjpgcom displays any textual comments in a JPEG file.\n");
@@ -422,7 +418,7 @@ usage (void)
 
 
 static int
-keymatch (char * arg, const char * keyword, int minchars)
+keymatch(char *arg, const char *keyword, int minchars)
 /* Case-insensitive matching of (possibly abbreviated) keyword switches. */
 /* keyword is the constant keyword (must be lower case already), */
 /* minchars is length of minimum legal abbreviation. */
@@ -432,17 +428,17 @@ keymatch (char * arg, const char * keyword, int minchars)
 
   while ((ca = *arg++) != '\0') {
     if ((ck = *keyword++) == '\0')
-      return 0;			/* arg longer than keyword, no good */
-    if (isupper(ca))		/* force arg to lcase (assume ck is already) */
+      return 0;                 /* arg longer than keyword, no good */
+    if (isupper(ca))            /* force arg to lcase (assume ck is already) */
       ca = tolower(ca);
     if (ca != ck)
-      return 0;			/* no good */
-    nmatched++;			/* count matched characters */
+      return 0;                 /* no good */
+    nmatched++;                 /* count matched characters */
   }
   /* reached end of argument; fail if it's too short for unique abbrev */
   if (nmatched < minchars)
     return 0;
-  return 1;			/* A-OK */
+  return 1;                     /* A-OK */
 }
 
 
@@ -451,10 +447,10 @@ keymatch (char * arg, const char * keyword, int minchars)
  */
 
 int
-main (int argc, char **argv)
+main(int argc, char **argv)
 {
   int argn;
-  char * arg;
+  char *arg;
   int verbose = 0, raw = 0;
 
   /* On Mac, fetch a command line. */
@@ -464,14 +460,14 @@ main (int argc, char **argv)
 
   progname = argv[0];
   if (progname == NULL || progname[0] == 0)
-    progname = "rdjpgcom";	/* in case C library doesn't provide it */
+    progname = "rdjpgcom";      /* in case C library doesn't provide it */
 
   /* Parse switches, if any */
   for (argn = 1; argn < argc; argn++) {
     arg = argv[argn];
     if (arg[0] != '-')
-      break;			/* not switch, must be file name */
-    arg++;			/* advance over '-' */
+      break;                    /* not switch, must be file name */
+    arg++;                      /* advance over '-' */
     if (keymatch(arg, "verbose", 1)) {
       verbose++;
     } else if (keymatch(arg, "raw", 1)) {
@@ -482,7 +478,7 @@ main (int argc, char **argv)
 
   /* Open the input file. */
   /* Unix style: expect zero or one file name */
-  if (argn < argc-1) {
+  if (argn < argc - 1) {
     fprintf(stderr, "%s: only one input file\n", progname);
     usage();
   }
@@ -493,10 +489,10 @@ main (int argc, char **argv)
     }
   } else {
     /* default input file is stdin */
-#ifdef USE_SETMODE		/* need to hack file mode? */
+#ifdef USE_SETMODE              /* need to hack file mode? */
     setmode(fileno(stdin), O_BINARY);
 #endif
-#ifdef USE_FDOPEN		/* need to re-open in binary mode? */
+#ifdef USE_FDOPEN               /* need to re-open in binary mode? */
     if ((infile = fdopen(fileno(stdin), READ_BINARY)) == NULL) {
       fprintf(stderr, "%s: can't open stdin\n", progname);
       exit(EXIT_FAILURE);
@@ -507,9 +503,9 @@ main (int argc, char **argv)
   }
 
   /* Scan the JPEG headers. */
-  (void) scan_JPEG_header(verbose, raw);
+  (void)scan_JPEG_header(verbose, raw);
 
   /* All done. */
   exit(EXIT_SUCCESS);
-  return 0;			/* suppress no-return-value warnings */
+  return 0;                     /* suppress no-return-value warnings */
 }
