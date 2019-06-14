@@ -3,6 +3,8 @@
 --Written by Cosmin Apreutesei. Public Domain.
 
 local ui = require'ui'
+require'ui_button'
+require'ui_editbox'
 local glue = require'glue'
 local bitmap = require'bitmap'
 local color = require'color'

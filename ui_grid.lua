@@ -5,6 +5,8 @@
 --Written by Cosmin Apreutesei. Public Domain.
 
 local ui = require'ui'
+require'ui_scrollbox'
+require'ui_editbox'
 local glue = require'glue'
 local box2d = require'box2d'
 
@@ -2143,8 +2145,8 @@ if not ... then require('ui_demo')(function(ui, win)
 		tags = 'g',
 		x = 20,
 		y = 20,
-		w = 1160,
-		h = 660,
+		min_cw = 1160,
+		min_ch = 660,
 		--row_count = 1e6,
 		rows = rows,
 		parent = win,

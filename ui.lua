@@ -2270,7 +2270,7 @@ function window:sync_size(cw, ch)
 	self.view:sync_with_window(cw, ch)
 	self.cr:restore()
 	self.syncing = false
-	self:check(not self:invalid(), 'invalid after sync()')
+	--self:check(not self:invalid(), 'invalid after sync()')
 end
 
 function window:draw(cr)
@@ -2289,8 +2289,8 @@ function window:invalidate(invalid_clock) --element interface; window intf.
 	end
 	if self.syncing then
 		if (invalid_clock or -1/0) < self.clock then
-			self:warn'invalidate() called inside sync()'
-			print(debug.traceback())
+			--TODO:
+			--self:warn'invalidate() called inside sync()'
 		end
 	end
 	self.native_window:invalidate(invalid_clock)
@@ -4389,7 +4389,9 @@ function layer:sync_text_align()
 	end
 	if self.text_selectable and not self.text_selection then
 		self.text_selection = self:create_text_selection(segs)
-		self.text_selection.cursor2.insert_mode = self.insert_mode
+		if self.text_selection then
+			self.text_selection.cursor2.insert_mode = self.insert_mode
+		end
 	end
 	return segs
 end

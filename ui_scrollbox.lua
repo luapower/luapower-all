@@ -674,10 +674,12 @@ Mei malis eruditi ne. Movet volumus instructior ea nec. Vel cu minimum molestie 
 		},
 	}
 
+	--[[
 	ui:textarea{
 		parent = win,
 		min_cw = 180, min_ch = 180,
 		value = s,
 	}
+	]]
 
 end) end

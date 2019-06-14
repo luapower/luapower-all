@@ -123,22 +123,22 @@ function button:press()
 end
 
 function button:override_set_text(inherited, s)
-	if not inherited(self, s) then return end
 	if s == '' or not s then s = false end
 	if not s then
-		self._text = false
+		s = false
 		self.underline_pos = false
 		self.underline_text = false
 	else
 		s = s:gsub('&&', '\0') --TODO: hack
 		local pos, key = s:match'()&(.)'
-		self._text = s:gsub('&', ''):gsub('%z', '&')
+		s = s:gsub('&', ''):gsub('%z', '&')
 		if key then
 			self.key = key:upper()
 			self.underline_pos = pos
 			self.underline_text = key
 		end
 	end
+	if not inherited(self, s) then return end
 end
 
 button:stored_property'key'
