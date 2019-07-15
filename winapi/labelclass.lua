@@ -41,8 +41,7 @@ Label = subclass({
 	},
 }, Control)
 
-function Label:__before_create(info, args)
-	Label.__index.__before_create(self, info, args)
+function Label:after___before_create(info, args)
 	args.text = info.text
 	args.class = WC_STATIC
 end

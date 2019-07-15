@@ -222,20 +222,17 @@ end
 
 subclass(ListView, Control)
 
-function ListView:__before_create(info, args)
-	ListView.__index.__before_create(self, info, args)
+function ListView:after___before_create(info, args)
 	args.class = WC_LISTVIEW
 	args.style = bit.bor(args.style, LVS_SHAREIMAGELISTS)
 	args.style_ex = bit.bor(args.style_ex, LVS_EX_DOUBLEBUFFER) --less flicker
 end
 
-function ListView:__after_create(info, args)
-	ListView.__index.__after_create(self, info, args)
+function ListView:after___after_create(info, args)
 	ListView_SetExtendedListViewStyle(self.hwnd, self.__style_ex_bitmask:compute_mask(), args.style_ex)
 end
 
-function ListView:__init(info)
-	ListView.__index.__init(self, info)
+function ListView:after___init(info)
 	self.columns = LVColumnList(self)
 	self.items = LVItemList(self)
 	self.columns:add_items(info.columns)
@@ -271,8 +268,7 @@ ReportListView = subclass({
 	},
 }, ListView)
 
-function ReportListView:__before_create(info, args)
-	ReportListView.__index.__before_create(self, info, args)
+function ReportListView:after___before_create(info, args)
 	args.style = bit.bor(args.style, LVS_REPORT)
 end
 

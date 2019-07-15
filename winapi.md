@@ -71,30 +71,29 @@ showcase their functionality, so there's lots of little demos there too.
 
 ### Classes
 
-* [Object][winapi.object] - objects
-	* [VObject][winapi.vobject] - objects with virtual properties
-		* [BaseWindow][winapi.basewindowclass] - base class for top-level windows and controls
-			* [Window][winapi.windowclass] - final class for top level windows
-			* [Control][winapi.controlclass] - base class for controls
-				* [Panel][winapi.panelclass] - custom-painted child windows
-					* [BitmapPanel][winapi.bitmappanel] - RGBA [bitmap] panels
-						* [CairoPanel][winapi.cairopanel] - [cairo] panels
-					* [WGLPanel][winapi.wglpanel] - [OpenGL][opengl] panels
-				* [Label][winapi.labelclass] - labels
-				* [BaseButton][winapi.basebuttonclass] - base class for buttons
-					* [Button][winapi.buttonclass] - push-buttons
-					* [CheckBox][winapi.checkboxclass] - checkboxes
-					* [RadioButton][winapi.radiobuttonclass] - radio buttons
-					* [GroupBox][winapi.groupboxclass] - group boxes
-				* [Edit][winapi.editclass] - edit boxes
-				* [ComboBox][winapi.comboboxclass] - combo boxes and drop-down lists
-				* [ListBox][winapi.listboxclass] - list boxes
-				* [ListView][winapi.listviewclass] - list views
-				* [TabControl][winapi.tabcontrolclass] - tab bars
-				* [Toolbar][winapi.toolbarclass] - toolbars
-			* [Tooltip][winapi.tooltipclass] - tooltips
-		* [Menu][winapi.menuclass] - menus and menu bars
-		* [NotifyIcon][winapi.notifyiconclass] - system tray icons
+* [VObject][winapi.vobject] - objects with virtual properties
+	* [BaseWindow][winapi.basewindowclass] - base class for top-level windows and controls
+		* [Window][winapi.windowclass] - final class for top level windows
+		* [Control][winapi.controlclass] - base class for controls
+			* [Panel][winapi.panelclass] - custom-painted child windows
+				* [BitmapPanel][winapi.bitmappanel] - RGBA [bitmap] panels
+					* [CairoPanel][winapi.cairopanel] - [cairo] panels
+				* [WGLPanel][winapi.wglpanel] - [OpenGL][opengl] panels
+			* [Label][winapi.labelclass] - labels
+			* [BaseButton][winapi.basebuttonclass] - base class for buttons
+				* [Button][winapi.buttonclass] - push-buttons
+				* [CheckBox][winapi.checkboxclass] - checkboxes
+				* [RadioButton][winapi.radiobuttonclass] - radio buttons
+				* [GroupBox][winapi.groupboxclass] - group boxes
+			* [Edit][winapi.editclass] - edit boxes
+			* [ComboBox][winapi.comboboxclass] - combo boxes and drop-down lists
+			* [ListBox][winapi.listboxclass] - list boxes
+			* [ListView][winapi.listviewclass] - list views
+			* [TabControl][winapi.tabcontrolclass] - tab bars
+			* [Toolbar][winapi.toolbarclass] - toolbars
+		* [Tooltip][winapi.tooltipclass] - tooltips
+	* [Menu][winapi.menuclass] - menus and menu bars
+	* [NotifyIcon][winapi.notifyiconclass] - system tray icons
 
 ### Functions
 
@@ -104,5 +103,4 @@ and empirical knowledge, so do check out the source code.
 ## Modules
 
 {{{module_list}}}
-
 

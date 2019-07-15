@@ -68,14 +68,12 @@ TabControl = subclass({
 	}
 }, Control)
 
-function TabControl:__before_create(info, args)
-	TabControl.__index.__before_create(self, info, args)
+function TabControl:after___before_create(info, args)
 	args.class = WC_TABCONTROL
 	--args.style_ex = bit.bor(args.style_ex, WS_EX_COMPOSITED)
 end
 
-function TabControl:__init(info)
-	TabControl.__index.__init(self, info)
+function TabControl:after___init(info)
 	self.items = TabItemList(self, info.items)
 end
 

@@ -38,8 +38,7 @@ BaseButton = subclass({
 	},
 }, Control)
 
-function BaseButton:__before_create(info, args)
-	BaseButton.__index.__before_create(self, info, args)
+function BaseButton:after___before_create(info, args)
 	args.class = WC_BUTTON
 	args.text = info.text
 end
@@ -87,8 +86,7 @@ function BaseButton:set_bitmap(bitmap)
 end
 function BaseButton:get_bitmap() return Button_GetBitmap(self.hwnd) end
 
-function BaseButton:set_text(text)
-	BaseButton.__index.set_text(self, text)
+function BaseButton:after_set_text(text)
 	self:__checksize()
 end
 

@@ -90,15 +90,13 @@ ListBox = subclass({
 	},
 }, Control)
 
-function ListBox:__before_create(info, args)
-	ListBox.__index.__before_create(self, info, args)
+function ListBox:after___before_create(info, args)
 	args.class = WC_LISTBOX
 	args.style = bit.bor(args.style, LBS_NOTIFY, LBS_HASSTRINGS, LBS_WANTKEYBOARDINPUT)
 	args.text = info.text
 end
 
-function ListBox:__init(info)
-	ListBox.__index.__init(self, info)
+function ListBox:after___init(info)
 	self.items = LBItemList(self)
 end
 

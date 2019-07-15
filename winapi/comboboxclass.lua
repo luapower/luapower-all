@@ -101,15 +101,13 @@ ComboBox = subclass({
 	},
 }, Control)
 
-function ComboBox:__before_create(info, args)
-	ComboBox.__index.__before_create(self, info, args)
+function ComboBox:after___before_create(info, args)
 	args.class = WC_COMBOBOXEX
 	args.text = info.text --ignored by CreateWindowEx; solved with __init_properies.
 	--args.style_ex = bit.bor(args.style_ex, WS_EX_COMPOSITED)
 end
 
-function ComboBox:__after_create(info, args)
-	ComboBox.__index.__after_create(self, info, args)
+function ComboBox:after___after_create(info, args)
 	self.items = CBItemList(self, info.items)
 end
 

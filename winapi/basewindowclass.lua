@@ -62,7 +62,7 @@ Windows = Windows'hwnd' --singleton
 --__handle_message() method will be called for each message destined to your
 --window. This way only one ffi callback object is used for all windows.
 
-MessageRouter = class(Object)
+MessageRouter = class(VObject)
 
 function MessageRouter:__init()
 	local function dispatch(hwnd, WM, wParam, lParam)
@@ -302,8 +302,7 @@ local function inherit(self, super)
 	return setmetatable(self, {__index = super})
 end
 
-function BaseWindow:__subclass(class)
-	BaseWindow.__index.__subclass(self, class)
+function BaseWindow:after___subclass(class)
 
 	--generate style virtual properties from additional style bitmask fields,
 	--if any, and inherit the bitmask fields of the superclass.
@@ -496,16 +495,16 @@ function BaseWindow:__handle_message(WM, wParam, lParam)
 	--print(os.time(), self, WM_NAMES[WM], wParam, lParam)
 
 	--look for a low-level handler self:WM_*()
-	local handler = self[WM_NAMES[WM]]
-	if handler then
-		local ret = handler(self, DecodeMessage(WM, wParam, lParam))
+	local event = WM_NAMES[WM]
+	if event then
+		local ret = self:fire(event, DecodeMessage(WM, wParam, lParam))
 		if ret ~= nil then return ret end
 	end
 
 	--look for a hi-level handler self:on_*()
-	local handler = self[self.__wm_handler_names[WM]]
-	if handler then
-		local ret = handler(self, DecodeMessage(WM, wParam, lParam))
+	local event = self.__wm_handler_names[WM]
+	if event then
+		local ret = self:fire(event, DecodeMessage(WM, wParam, lParam))
 		if ret ~= nil then return ret end
 	end
 

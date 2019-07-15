@@ -145,16 +145,16 @@ function Menu:free()
 	self.items.hmenu = nil
 end
 
-function Menu.__get_vproperty(class, self, k)
+function Menu.override___get_vproperty(class, inherited, self, k)
 	if MENUINFO.fields[k] then --publish info fields individually
 		return GetMenuInfo(self.hmenu)[k]
 	elseif style_bitmask.fields[k] then --publish style fields individually
 		return style_bitmask:get(GetMenuInfo(self.hmenu).style)
 	end
-	return Menu.__index.__get_vproperty(class, self, k)
+	return inherited(class, self, k)
 end
 
-function Menu.__set_vproperty(class, self, k, v)
+function Menu.override___set_vproperty(class, inherited, self, k, v)
 	if MENUINFO.fields[k] then --publish info fields individually
 		info = MENUINFO()
 		info[k] = v
@@ -164,7 +164,7 @@ function Menu.__set_vproperty(class, self, k, v)
 		info.style = style_bitmask:setbit(info.style, k, v)
 		SetMenuInfo(self.hmenu, info)
 	else
-		Menu.__index.__set_vproperty(class, self, k, v)
+		inherited(class, self, k, v)
 	end
 end
 

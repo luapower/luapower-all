@@ -89,13 +89,11 @@ Toolbar = subclass({
 	},
 }, Control)
 
-function Toolbar:__before_create(info, args)
-	Toolbar.__index.__before_create(self, info, args)
+function Toolbar:after___before_create(info, args)
 	args.class = TOOLBARCLASSNAME
 end
 
-function Toolbar:__init(info)
-	Toolbar.__index.__init(self, info)
+function Toolbar:after___init(info)
 	self.items = TBItemList(self, info.items)
 end
 

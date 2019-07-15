@@ -23,8 +23,7 @@ GroupBox = subclass({
 	},
 }, BaseButton)
 
-function GroupBox:__before_create(info, args)
-	GroupBox.__index.__before_create(self, info, args)
+function GroupBox:after___before_create(info, args)
 	--BS_NOTIFY gives us focus/blur events; WS_EX_TRANSPARENT avoids incompatibility with parent having WS_CLIPCHILDREN
 	args.style = bit.bor(args.style, BS_GROUPBOX, BS_NOTIFY)
 	args.style_ex = bit.bor(args.style_ex, WS_EX_TRANSPARENT)

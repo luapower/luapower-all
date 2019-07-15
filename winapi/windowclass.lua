@@ -123,8 +123,8 @@ local function gen_classname()
 	return 'Window'..n
 end
 
-function Window:__info_style(info)
-	local style = Window.__index.__info_style(self, info)
+function Window:override___info_style(inherited, info)
+	local style = inherited(self, info)
 	--NOTE: WS_MINIMIZE and WS_MAXIMIZE flags don't work together: combining
 	--them makes ShowWindow(SW_RESTORE) have no effect. Instead, when both are
 	--needed, we set WS_MINIMIZE only and then set self.restore_to_maximized.
@@ -133,8 +133,7 @@ function Window:__info_style(info)
 		info.maximized and not info.minimized and WS_MAXIMIZE or 0)
 end
 
-function Window:__before_create(info, args)
-	Window.__index.__before_create(self, info, args)
+function Window:after___before_create(info, args)
 
 	local class_args = {}
 	class_args.name = gen_classname()
@@ -182,8 +181,7 @@ function Window:close()
 	CloseWindow(self.hwnd)
 end
 
-function Window:WM_NCDESTROY()
-	Window.__index.WM_NCDESTROY(self)
+function Window:after_WM_NCDESTROY()
 
 	--free the menu bar, if any.
 	if self.menu then
@@ -482,11 +480,10 @@ end
 
 --accelerators ---------------------------------------------------------------
 
-function Window:WM_COMMAND(kind, id, ...)
+function Window:before_WM_COMMAND(kind, id, ...)
 	if kind == 'accelerator' then
 		self.accelerators:WM_COMMAND(id) --route message to individual accelerators
 	end
-	Window.__index.WM_COMMAND(self, kind, id, ...)
 end
 
 --showcase -------------------------------------------------------------------

@@ -39,8 +39,7 @@ local function gen_classname()
 	return string.format('Panel_%d_%d', GetCurrentThreadId(), i)
 end
 
-function Panel:__before_create(info, args)
-	Panel.__index.__before_create(self, info, args)
+function Panel:after___before_create(info, args)
 	self.__winclass = RegisterClass{
 		name = gen_classname(),
 		style = self.__class_style_bitmask:set(0, info),
@@ -53,8 +52,7 @@ end
 
 Panel.__default_proc = BaseWindow.__default_proc
 
-function Panel:WM_NCDESTROY()
-	Panel.__index.WM_NCDESTROY(self)
+function Panel:after_WM_NCDESTROY()
 	PostMessage(nil, WM_UNREGISTER_CLASS, self.__winclass)
 end
 

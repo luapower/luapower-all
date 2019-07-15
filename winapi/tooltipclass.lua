@@ -88,8 +88,7 @@ Tooltip = subclass({
 	__init_properties = {},
 }, BaseWindow)
 
-function Tooltip:__before_create(info, args)
-	Tooltip.__index.__before_create(self, info, args)
+function Tooltip:after___before_create(info, args)
 	args.class = TOOLTIPS_CLASS
 	args.parent = info.parent and info.parent.hwnd
 end

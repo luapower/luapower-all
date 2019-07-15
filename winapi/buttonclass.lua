@@ -21,8 +21,7 @@ Button = {
 
 subclass(Button, BaseButton)
 
-function Button:__before_create(info, args)
-	Button.__index.__before_create(self, info, args)
+function Button:after___before_create(info, args)
 	args.style = bit.bor(args.style, BS_PUSHBUTTON)
 end
 

@@ -37,16 +37,14 @@ function format_anchors(t)
 		(t.bottom and 'b')
 end
 
-function Control:__before_create(info, args)
-	Control.__index.__before_create(self, info, args)
+function Control:after___before_create(info, args)
 	self.anchors = info.anc and parse_anchors(info.anc) or info.anchors
 	--parent is either a window object or a handle. if it's a handle, self.parent will return nil.
 	args.parent = info.parent and info.parent.hwnd or info.parent
 	args.style = bit.bor(args.style, args.parent and WS_CHILD or WS_POPUP, WS_CLIPSIBLINGS, WS_CLIPCHILDREN)
 end
 
-function Control:__init(info)
-	Control.__index.__init(self, info)
+function Control:after___init(info)
 	--subclass the control to intercept the messages sent to it.
 	self.__prev_proc = ffi.cast('WNDPROC', SetWindowLong(self.hwnd, GWL_WNDPROC, MessageRouter.proc))
 end
@@ -131,8 +129,7 @@ local function anchor_dim(self, left, right, enlargement, x, w, adjustment)
 end
 
 --resize when parent is resized based on anchors.
-function Control:__parent_resizing(wp)
-	Control.__index.__parent_resizing(self, wp)
+function Control:after___parent_resizing(wp)
 
 	local pr, r = self.parent.screen_rect, self.rect
 

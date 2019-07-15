@@ -59,8 +59,7 @@ Edit = subclass({
 	},
 }, Control)
 
-function Edit:__before_create(info, args)
-	Edit.__index.__before_create(self, info, args)
+function Edit:after___before_create(info, args)
 	args.class = WC_EDIT
 end
 

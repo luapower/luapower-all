@@ -33,8 +33,7 @@ end
 
 WAItemList = class(ItemList)
 
-function WAItemList:__init(window)
-	WAItemList.__index.__init(self, window)
+function WAItemList:after___init(window)
 	self.__items = {}
 end
 
