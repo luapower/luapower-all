@@ -1,5 +1,3 @@
---go @ luajit ui_demo.lua
--- -jp=a -e io.stdout:setvbuf'no';io.stderr:setvbuf'no';require'strict';pp=require'pp' "ui_grid.lua"
 
 --Grid widget.
 --Written by Cosmin Apreutesei. Public Domain.

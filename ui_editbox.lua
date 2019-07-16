@@ -1,4 +1,4 @@
-	--go @ luajit ui_editbox.lua
+--go @ luajit ui_editbox.lua
 
 --Edit Box widget based on tr.
 --Written by Cosmin Apreutesei. Public Domain.

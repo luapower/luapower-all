@@ -2,9 +2,9 @@ local pp = require'pp'
 
 if jit then
 	local ffi = require'ffi'
-	local n = ffi.new('int64_t', -1)
+	local n = ffi.cast('int64_t', -1LL)
 	assert(pp.format(n) == '-1LL')
-	local un = ffi.new('uint64_t', -1)
+	local un = ffi.cast('uint64_t', -1LL)
 	assert(pp.format(un) == '18446744073709551615ULL')
 end
 

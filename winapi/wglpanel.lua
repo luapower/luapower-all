@@ -11,13 +11,11 @@ require'winapi.wglext'
 
 WGLPanel = class(Panel)
 
-function WGLPanel:__before_create(info, args)
+function WGLPanel:before___before_create(info, args)
 	info.own_dc = true
-	WGLPanel.__index.__before_create(self, info, args)
 end
 
-function WGLPanel:__init(...)
-	WGLPanel.__index.__init(self,...)
+function WGLPanel:after___init(...)
 	self:invalidate()
 end
 

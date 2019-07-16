@@ -5653,10 +5653,10 @@ end
 
 --faster hit-testing for non-wrapped flexboxes.
 local function cmp_ys(items, i, y)
-	return items[i].visible and items[i].y < y -- < < [=] = < <
+	return items[i].visible and items[i].y < y -- < < [=] = > >
 end
 local function cmp_xs(items, i, x)
-	return items[i].visible and items[i].x < x -- < < [=] = < <
+	return items[i].visible and items[i].x < x -- < < [=] = > >
 end
 function flexbox:hit_test_flexbox_item(x, y)
 	local cmp = self.flex_flow == 'y' and cmp_ys or cmp_xs

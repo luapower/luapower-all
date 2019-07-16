@@ -69,7 +69,7 @@ The options can be given in a table or as separate args:
   error(err_type..': '..tostring(v)) end`
   * `sort_keys` - sort keys to get deterministic output.
   * `filter` - filter keys, values or key/value combinations:
-  `filter(v[, k]) -> true|false`
+  `filter(v[, k]) -> v|nil`
 
 __Example:__
 
