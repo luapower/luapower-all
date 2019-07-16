@@ -152,38 +152,22 @@ local VObject_subclass = VObject.__subclass
 function VObject:__subclass(c) --class constructor
 	VObject_subclass(self,c)
 	c.__meta.__index = function(o,k)
-		if c[k] ~= nil then return c[k] end --class property or method
-		return c:__get_vproperty(o,k)
+		local v = c[k]
+		if v ~= nil then return v end --class property or method
+		if type(k) == 'string' then
+			local get = c['get_'..k]
+			if get then return get(o) end --virtual property
+		end
 	end
 	c.__meta.__newindex = function(o,k,v)
-		c:__set_vproperty(o,k,v)
-	end
-end
-
-function VObject:__get_vproperty(o,k)
-	if type(k) == 'string' and self['get_'..k] then
-		return self['get_'..k](o)
-	elseif rawget(o, '__state') then
-		return o.__state[k]
-	end
-end
-
-function VObject:__set_vproperty(o,k,v)
-	if type(k) == 'string' then
-		if self['get_'..k] then
-			if self['set_'..k] then --r/w property
-				self['set_'..k](o,v)
-			else --r/o property
+		if type(k) == 'string' then
+			local set = c['set_'..k]
+			if set then --r/w or w/o property
+				set(o,v)
+			elseif c['get_'..k] then --r/o property
 				error(string.format('trying to set read only property "%s"', k), 2)
 			end
-		elseif self['set_'..k] then --stored property
-			if not rawget(o, '__state') then rawset(o, '__state', {}) end
-			o.__state[k] = v
-			self['set_'..k](o,v)
-		else
-			rawset(o,k,v)
 		end
-	else
 		rawset(o,k,v)
 	end
 end

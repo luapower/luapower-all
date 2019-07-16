@@ -56,12 +56,8 @@ Virtual properties means that:
   * `x = foo.bar` calls `foo:get_bar() -> x`, and
   * `foo.bar = x` calls `foo:set_bar(x)`.
 
-If there's a `set_bar` but no `get_bar` defined, setting `foo.bar = x`
-sets `foo.__state.bar = x` and later `x = foo.bar` returns the value
-of `foo._state.bar`. These are called "stored properties".
-
 If there's a `get_bar` but no `set_bar`, doing `foo.bar = x` raises an error.
-These are called "read-only properties".
+These are "read-only properties".
 
 ### Generating properties in bulk
 

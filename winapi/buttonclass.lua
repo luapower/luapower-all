@@ -40,7 +40,12 @@ function Button:__checksize()
 	end
 end
 
+function Button:get_autosize(yes)
+	return self._autosize
+end
+
 function Button:set_autosize(yes)
+	self._autosize = yes
 	self:__checksize()
 end
 

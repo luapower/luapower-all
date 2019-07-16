@@ -391,7 +391,7 @@ function BaseWindow:__info_style_ex(info)
 	return self.__style_ex_bitmask:set(0, info)
 end
 
-function BaseWindow:__init(info)
+function BaseWindow:after___init(info)
 
 	--given a window handle, wrap it in a window object, ignoring info completely.
 	if info.hwnd then
@@ -842,8 +842,13 @@ end
 
 --rendering ------------------------------------------------------------------
 
+function BaseWindow:get_updating()
+	return self._updating
+end
+
 function BaseWindow:set_updating(updating)
 	if not self.visible then return end
+	self._updating = updating
 	SetRedraw(self.hwnd, not updating)
 end
 
