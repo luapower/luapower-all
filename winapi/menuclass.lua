@@ -145,28 +145,23 @@ function Menu:free()
 	self.items.hmenu = nil
 end
 
-function Menu.override___get_vproperty(class, inherited, self, k)
-	if MENUINFO.fields[k] then --publish info fields individually
-		return GetMenuInfo(self.hmenu)[k]
-	elseif style_bitmask.fields[k] then --publish style fields individually
-		return style_bitmask:get(GetMenuInfo(self.hmenu).style)
-	end
-	return inherited(class, self, k)
-end
+--publish info fields individually.
+Menu:__gen_vproperties(MENUINFO.fields, function(self, k)
+	return GetMenuInfo(self.hmenu)[k]
+end, function(self, k, v)
+	info = MENUINFO()
+	info[k] = v
+	SetMenuInfo(self.hmenu, info)
+end)
 
-function Menu.override___set_vproperty(class, inherited, self, k, v)
-	if MENUINFO.fields[k] then --publish info fields individually
-		info = MENUINFO()
-		info[k] = v
-		SetMenuInfo(self.hmenu, info)
-	elseif style_bitmask.fields[k] then --publish style fields individually
-		info = GetMenuInfo(self.hmenu)
-		info.style = style_bitmask:setbit(info.style, k, v)
-		SetMenuInfo(self.hmenu, info)
-	else
-		inherited(class, self, k, v)
-	end
-end
+--publish style fields individually.
+Menu:__gen_vproperties(style_bitmask.fields, function(self, k)
+	return style_bitmask:get(GetMenuInfo(self.hmenu).style)
+end, function(self, k, v)
+	info = GetMenuInfo(self.hmenu)
+	info.style = style_bitmask:setbit(info.style, k, v)
+	SetMenuInfo(self.hmenu, info)
+end)
 
 function Menu:__redraw() end --stub; used by MenuItemList methods
 
