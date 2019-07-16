@@ -20,7 +20,6 @@ local function isfunc(test)
 end
 local is = isfunc'is'
 local isinstance = isfunc'isinstance'
-local issubclass = isfunc'issubclass'
 
 function Object:subclass(classname, overrides)
 	local subclass = {}
@@ -224,12 +223,8 @@ function Object:isinstance(class)
 	return rawget(self, 'isclass') == nil and (not class or self:is(class))
 end
 
-function Object:issubclass(class)
-	return rawget(self, 'isclass') and (not class or self:is(class))
-end
-
 --closest ancestor that `other` has in self's hierarchy.
-function Object:closest_ancestor(other)
+local function closest_ancestor(self, other)
 	while not is(other, self) do
 		self = rawget(self, 'super')
 		if not self then
@@ -256,17 +251,6 @@ function Object:allpairs(stop_super)
 		end
 		return k,v,source
 	end
-end
-
---returns all properties including the inherited ones and their current values
-function Object:properties(stop_super)
-	local values = {}
-	for k,v,source in self:allpairs(stop_super) do
-		if values[k] == nil then
-			values[k] = v
-		end
-	end
-	return values
 end
 
 local function copy_table(dst, src, k, override)
@@ -302,15 +286,21 @@ function Object:inherit(other, override, stop_super)
 		if other and not is(self, other) then --mixin
 			--prevent inheriting fields from common ancestors by default!
 			if stop_super == nil then --pass false to disable this filter.
-				stop_super = self:closest_ancestor(other)
+				stop_super = closest_ancestor(self, other)
 			end
 		else --superclass
 			other = rawget(self, 'super')
 		end
-		local properties = other:properties(stop_super)
+		local properties = {}
+		for k,v in other:allpairs(stop_super) do
+			if properties[k] == nil then
+				properties[k] = v
+			end
+		end
+		local isclass = rawget(self, 'isclass')
 		for k,v in pairs(properties) do
 			if (override or rawget(self, k) == nil)
-				and k ~= 'isclass'   --don't set the isclass flag
+				and (k ~= 'isclass' or isclass) --set `isclass` if it's a class
 				and k ~= 'classname' --keep the classname (preserve identity)
 				and k ~= 'super' --keep super (preserve dynamic inheritance)
 				and k ~= '__getters' --getters are deep-copied
@@ -363,7 +353,7 @@ local props_conv = {g = 'r', s = 'w', gs = 'rw', sg = 'rw'}
 local oo_state_fields = {super=1, __getters=1, __setters=1, __observers=1}
 
 function Object:inspect(show_oo)
-	local glue = require'glue'
+	local sortedpairs = require'glue'.sortedpairs
 	--collect data
 	local supers = {} --{super1,...}
 	local keys = {} --{super = {key1 = true,...}}
@@ -409,11 +399,11 @@ function Object:inspect(show_oo)
 					or 'super #'..tostring(i-1)..(super.classname ~= ''
 						and ' ('..super.classname..')' or '')
 					)..':')
-			for k,v in glue.sortedpairs(props[super]) do
+			for k,v in sortedpairs(props[super]) do
 				print('    '..pad(k..' ('..props_conv[v]..')', 16),
 					tostring(super[k]))
 			end
-			for k in glue.sortedpairs(keys[super]) do
+			for k in sortedpairs(keys[super]) do
 				local oo = oo_state_fields[k] or Object[k] ~= nil
 				if show_oo or not oo then
 					print('  '..(oo and '* ' or '  ')..pad(k, 16),
@@ -430,7 +420,7 @@ return setmetatable({
 	class = class,
 	is = is,
 	isinstance = isinstance,
-	issubclass = issubclass,
+	closest_ancestor = closest_ancestor,
 	Object = Object,
 }, {
 	__index = function(t,k)

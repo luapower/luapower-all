@@ -49,13 +49,13 @@ assert(o:is'o' == false)
 assert(oo.Object:is(oo.Object))
 
 local o2 = c1('o')
-assert(c1:closest_ancestor(c2) == c1) --subject is target's super
-assert( o:closest_ancestor(o2) == c1) --target's super
-assert(o2:closest_ancestor(o) == c1) --subject's super
-assert(c1:closest_ancestor(c2) == c1) --subject
-assert(o2:closest_ancestor(c1) == c1) --target
-assert(o2:closest_ancestor(oo.Object) == oo.Object) --subject's super, root
-assert(oo.Object:closest_ancestor(oo.Object) == oo.Object) --root
+assert(oo.closest_ancestor(c1, c2) == c1) --subject is target's super
+assert(oo.closest_ancestor(o, o2) == c1) --target's super
+assert(oo.closest_ancestor(o2, o) == c1) --subject's super
+assert(oo.closest_ancestor(c1, c2) == c1) --subject
+assert(oo.closest_ancestor(o2, c1) == c1) --target
+assert(oo.closest_ancestor(o2, oo.Object) == oo.Object) --subject's super, root
+assert(oo.closest_ancestor(oo.Object, oo.Object) == oo.Object) --root
 
 --arg passing through hooks
 local t = {}

@@ -213,11 +213,11 @@ end
 local alloc_grapheme_breaks = growbuffer'char[?]'
 
 local function cmp_clusters(glyph_info, i, cluster)
-	return glyph_info[i].cluster < cluster -- < < [=] = < <
+	return glyph_info[i].cluster < cluster -- < < [=] = > >
 end
 
 local function cmp_clusters_reverse(glyph_info, i, cluster)
-	return cluster < glyph_info[i].cluster -- < < [=] = < <
+	return cluster < glyph_info[i].cluster -- < < [=] = > >
 end
 
 local alloc_int_array = ffi.typeof'int[?]'
@@ -1440,7 +1440,7 @@ end
 
 --hit-test the lines array for a line number given a relative(!) y-coord.
 local function cmp_ys(lines, i, y)
-	return lines[i].y - lines[i].spaced_descent < y -- < < [=] = < <
+	return lines[i].y - lines[i].spaced_descent < y -- < < [=] = > >
 end
 local function line_at_y(y, lines)
 	if not lines[1] then
@@ -1751,7 +1751,7 @@ function segments:hit_test(x, y)
 end
 
 local function cmp_offsets(segments, i, offset)
-	return segments[i].offset <= offset -- < < = = [<] <
+	return segments[i].offset <= offset -- < < = = [>] >
 end
 function segments:cursor_at_offset(offset)
 	local seg_i = (binsearch(offset, self, cmp_offsets) or #self + 1) - 1
@@ -1867,10 +1867,10 @@ end
 
 --remove text between two offsets. return offset at removal point.
 local function cmp_remove_first(text_runs, i, offset)
-	return text_runs[i].offset < offset -- < < [=] = < <
+	return text_runs[i].offset < offset -- < < [=] = > >
 end
 local function cmp_remove_last(text_runs, i, offset)
-	return text_runs[i].offset + text_runs[i].len <= offset  -- < < = = [<] <
+	return text_runs[i].offset + text_runs[i].len <= offset  -- < < = = [>] >
 end
 function text_runs:remove(i1, i2)
 
@@ -1935,7 +1935,7 @@ end
 
 --insert text at offset. return offset after inserted text.
 local function cmp_insert(text_runs, i, offset)
-	return text_runs[i].offset <= offset -- < < = = [<] <
+	return text_runs[i].offset <= offset -- < < = = [>] >
 end
 function text_runs:insert(i, s, sz, charset, maxlen)
 	sz = sz or #s
