@@ -164,6 +164,7 @@ function VObject:__subclass(c) --class constructor
 			local set = c['set_'..k]
 			if set then --r/w or w/o property
 				set(o,v)
+				return
 			elseif c['get_'..k] then --r/o property
 				error(string.format('trying to set read only property "%s"', k), 2)
 			end
