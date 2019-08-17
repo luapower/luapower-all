@@ -14,8 +14,9 @@ OpenType-assisted auto-hinter.
 
 ## Status
 
-See [issues](https://github.com/luapower/tr/issues)
-and [milestones](https://github.com/luapower/tr/milestones).
+This module was [reimplemented in Terra](https://github.com/luapower/terra-tr)
+and thus all [missing features and bugs](https://github.com/luapower/tr/issues)
+will be fixed in that implementation.
 
 ### API
 
