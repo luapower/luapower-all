@@ -4,11 +4,11 @@
 
 if not ... then require'terra/tr_test'; return end
 
-setfenv(1, require'terra/tr_env')
+setfenv(1, require'terra/low'.module'terra/tr_module')
 require'terra/cairo'
 color = cairo_argb32_color_t
-GraphicsSurface = cairo_surface_t
-GraphicsContext = cairo_t
+surface = cairo_surface_t
+context = cairo_t
 setfenv(1, require'terra/tr_types')
 
 terra Renderer:wrap_glyph(glyph: &Glyph, bmp: &FT_Bitmap)
@@ -56,7 +56,7 @@ end
 
 --NOTE: clip_left and clip_right are relative to bitmap's left edge.
 terra Renderer:paint_surface(
-	cr: &GraphicsContext, sr: &GraphicsSurface,
+	cr: &context, sr: &surface,
 	x: num, y: num, clip: bool, clip_left: num, clip_right: num
 )
 	if clip then
@@ -73,7 +73,7 @@ terra Renderer:paint_surface(
 	end
 end
 
-terra Renderer:setcontext(cr: &GraphicsContext, span: &Span)
+terra Renderer:setcontext(cr: &context, span: &Span)
 	var c: cairo_color_t = span.color --implicit cast
 	c.alpha = c.alpha * span.opacity
 	cr:rgba(c)

@@ -54,7 +54,7 @@ end
 
 --fills a buffer with the Script property for each char in a utf32 buffer.
 --uses UAX#24 Section 5.1 and 5.2 to resolve chars with implicit scripts.
-local terra detect_scripts(r: &Renderer, s: &codepoint, len: int, outbuf: &hb_script_t)
+terra detect_scripts(r: &Renderer, s: &codepoint, len: int, outbuf: &hb_script_t)
 	var stack = r.cpstack
 	stack.len = 0
 	var unicode_funcs = hb_unicode_funcs_get_default()
@@ -116,5 +116,3 @@ local terra detect_scripts(r: &Renderer, s: &codepoint, len: int, outbuf: &hb_sc
 		outbuf[i] = script
 	end
 end
-
-return detect_scripts

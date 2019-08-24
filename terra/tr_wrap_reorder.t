@@ -54,7 +54,7 @@ local terra reorder_segs(seg: &Seg, ranges: &RangesFreelist)
 	-- merge the seg with the previous range, or create a new range
 	-- for the seg, depending on the level relationship.
 
-	var range: &SegRange
+	var range: &SegRange = nil
 	while seg ~= nil do
 		var next_seg = seg.next_vis
 

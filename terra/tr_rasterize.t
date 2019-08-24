@@ -8,7 +8,6 @@ setfenv(1, require'terra/tr_types')
 require'terra/tr_font'
 
 terra Font:load_glyph(font_size: num, glyph_index: uint)
-	self:setsize(font_size)
 	if FT_Load_Glyph(self.ft_face, glyph_index, self.ft_load_flags) ~= 0 then
 		return nil
 	end
@@ -24,7 +23,6 @@ end
 terra Glyph:free(r: &Renderer)
 	if self.image.surface == nil then return end
 	self.image:free(r)
-	r.fonts:at(self.font_id):unref()
 end
 
 terra Glyph:rasterize(r: &Renderer)
@@ -36,8 +34,6 @@ terra Glyph:rasterize(r: &Renderer)
 		self.image.surface = nil
 		return
 	end
-
-	font:ref()
 
 	if glyph.format == FT_GLYPH_FORMAT_OUTLINE then
 		FT_Outline_Translate(&glyph.outline, self.subpixel_offset_x_8_6, 0)
@@ -79,7 +75,7 @@ end
 local empty_glyph = constant(Glyph.empty)
 
 terra Renderer:rasterize_glyph(
-	font_id: font_id, font_size: num,
+	font_id: font_id_t, font_size: num,
 	glyph_index: uint, ax: num, ay: num
 )
 	if glyph_index == 0 then --freetype code for "missing glyph"
@@ -120,7 +116,10 @@ local struct glyph_surfaces {
 }
 glyph_surfaces.metamethods.__for = function(self, body)
 	return quote
+		var self = self --workaround for terra issue #368
 		var gr = self.gr
+		var font = self.r.fonts:at(gr.font_id)
+		font:setsize(gr.font_size)
 		for i = self.i, self.j do
 			var g = gr.glyphs:at(i)
 			var glyph, sx, sy = self.r:rasterize_glyph(

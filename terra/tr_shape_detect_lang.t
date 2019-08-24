@@ -5,7 +5,7 @@
 
 setfenv(1, require'terra/tr_types')
 
-local lang_maps = {
+local lang_map = {
 	[HB_SCRIPT_ARABIC] = 'ar',
 	[HB_SCRIPT_ARMENIAN] = 'hy',
 	[HB_SCRIPT_BENGALI] = 'bn',
@@ -50,8 +50,31 @@ local lang_maps = {
 	[HB_SCRIPT_OLD_PERSIAN] = 'peo',
 	[HB_SCRIPT_NKO] = 'nqo',
 }
-for script, lang in pairs(lang_maps) do
-	lang_maps[script] = assert(hb_language_from_string(lang, #lang))
+
+local lang_idx_map = {}
+local lang_names = {}
+local lang_count = 0
+for script, lang_name in sortedpairs(lang_map) do
+	add(lang_names, lang_name)
+	lang_count = lang_count + 1
+	lang_idx_map[script] = lang_count
 end
 
-return phf(lang_maps, hb_script_t, hb_language_t, `nil)
+local lang_names = constant(`arrayof(rawstring, lang_names))
+local langs = global(hb_language_t[lang_count + 1]) --[0] = null (reserved)
+
+terra init_script_lang_map()
+	langs[0] = nil --because lookup_lang() returns 0 for missing value.
+	for i = 0, lang_count do
+		var lang = hb_language_from_string(lang_names[i], -1)
+		assert(lang ~= nil)
+		langs[i+1] = lang
+	end
+end
+
+local lookup_lang = phf(lang_idx_map, hb_script_t, int8)
+
+terra lang_for_script(script: hb_script_t)
+	return langs[lookup_lang(script)]
+end
+

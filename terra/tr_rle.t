@@ -18,6 +18,7 @@ function rle_iterator(iter)
 		local continue    = label()
 		local done        = label()
 		return quote
+				var self = self --workaround for terra issue #368
 				var i = self.i
 				var j = self.j
 				if i >= j then goto [done] end
@@ -84,7 +85,8 @@ if not ... then --self-test
 		a:add(7)
 		a:add(7)
 		a:add(8)
-		for i, len, v in iter {a, 0, a.len} do
+		var it = iter {a, 0, a.len}
+		for i, len, v in it do
 			print(i, len, v)
 		end
 	end
