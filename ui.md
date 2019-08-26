@@ -32,7 +32,7 @@ runtime dependencies that are only loaded if/when certain features are used:
 ## Example
 
 ~~~{.lua}
-local ui = require'ui'
+local ui = require'ui'()
 
 local win = ui:window{
 	cw = 500, ch = 300,   --client area size

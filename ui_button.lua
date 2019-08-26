@@ -14,6 +14,7 @@ button.layout = 'textbox'
 button.min_ch = 20
 button.align_x = 'start'
 button.align_y = 'center'
+button.text_align_x = 'center'
 button.padding_left = 8
 button.padding_right = 8
 button.padding_top = 2
@@ -722,7 +723,6 @@ end
 if not ... then require('ui_demo')(function(ui, win)
 
 	win.view.grid_wrap = 10
-	win.view.grid_flow = 'y'
 	win.view.item_align_x = 'left'
 	win.view.grid_min_lines = 2
 
