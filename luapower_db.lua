@@ -2681,8 +2681,12 @@ return {
 				},
 				mdeps={
 					bitmap=true,
-					ffi=true
+					ffi=true,
+					glue=true
 				}
+			},
+			boxblurlib_h={
+				loaderr='./boxblurlib_h.lua:2: libboxblurlib.so: cannot open shared object file: No such file or directory'
 			}
 		},
 		bundle={
@@ -2801,6 +2805,8 @@ return {
 		cjson={
 			cjson={
 			}
+		},
+		['clang-resource-dir']={
 		},
 		clipper={
 			clipper={
@@ -3049,11 +3055,30 @@ return {
 				}
 			}
 		},
+		font_db={
+			font_db={
+				mdeps={
+					glue=true
+				}
+			}
+		},
+		['fonts-amiri']={
+		},
 		['fonts-awesome']={
+		},
+		['fonts-dejavuserif']={
+		},
+		['fonts-fireflysung']={
+		},
+		['fonts-fixedsys']={
 		},
 		['fonts-ionicons']={
 		},
 		['fonts-material-icons']={
+		},
+		['fonts-noto-emoji']={
+		},
+		['fonts-open-sans']={
 		},
 		freetype={
 			freetype={
@@ -3194,33 +3219,11 @@ return {
 		},
 		harfbuzz={
 			harfbuzz={
-				ffi_deps={
-					harfbuzz=true
-				},
-				mdeps={
-					bit=true,
-					ffi=true,
-					harfbuzz_ft_h=true,
-					harfbuzz_h=true,
-					harfbuzz_ot_h=true
-				}
-			},
-			harfbuzz_ft_h={
-				mdeps={
-					ffi=true,
-					freetype_h=true,
-					harfbuzz_h=true
-				}
+				loaderr='./harfbuzz.lua:362: /media/sf_luapower/bin/linux64/libharfbuzz.so: undefined symbol: hb_buffer_set_invisible_glyph'
 			},
 			harfbuzz_h={
 				mdeps={
 					ffi=true
-				}
-			},
-			harfbuzz_ot_h={
-				mdeps={
-					ffi=true,
-					harfbuzz_h=true
 				}
 			}
 		},
@@ -3475,7 +3478,13 @@ return {
 		},
 		libsoundio={
 			libsoundio={
-				loaderr='./libsoundio.lua:10: libsoundio.so: cannot open shared object file: No such file or directory'
+				ffi_deps={
+					soundio=true
+				},
+				mdeps={
+					ffi=true,
+					libsoundio_h=true
+				}
 			},
 			libsoundio_h={
 				mdeps={
@@ -3492,6 +3501,12 @@ return {
 				ffi_deps={
 					unibreak=true
 				},
+				mdeps={
+					ffi=true,
+					libunibreak_h=true
+				}
+			},
+			libunibreak_h={
 				mdeps={
 					ffi=true
 				}
@@ -3533,6 +3548,10 @@ return {
 				}
 			}
 		},
+		linkedlist={
+			linkedlist={
+			}
+		},
 		ljstr={
 		},
 		llvm={
@@ -3549,7 +3568,7 @@ return {
 		lrucache={
 			lrucache={
 				mdeps={
-					dlist=true
+					linkedlist=true
 				}
 			}
 		},
@@ -3589,9 +3608,29 @@ return {
 					bit=true
 				}
 			},
+			['jit.dis_arm64']={
+				mdeps={
+					bit=true
+				}
+			},
+			['jit.dis_arm64be']={
+				mdeps={
+					['jit.dis_arm64']=true
+				}
+			},
 			['jit.dis_mips']={
 				mdeps={
 					bit=true
+				}
+			},
+			['jit.dis_mips64']={
+				mdeps={
+					['jit.dis_mips']=true
+				}
+			},
+			['jit.dis_mips64el']={
+				mdeps={
+					['jit.dis_mips']=true
 				}
 			},
 			['jit.dis_mipsel']={
@@ -3694,6 +3733,8 @@ return {
 			luapower_db={
 			}
 		},
+		luasec={
+		},
 		luastate={
 			lua_h={
 				mdeps={
@@ -3711,6 +3752,11 @@ return {
 					ffi=true,
 					luajit_h=true
 				}
+			}
+		},
+		lx={
+			lx={
+				loaderr='./lx.lua:8: liblx.so: cannot open shared object file: No such file or directory'
 			}
 		},
 		lz4={
@@ -3737,6 +3783,8 @@ return {
 					ffi=true
 				}
 			}
+		},
+		['mingw64-headers']={
 		},
 		minizip={
 			minizip={
@@ -4733,16 +4781,63 @@ return {
 			}
 		},
 		terra={
+			asdl={
+			},
 			terra={
 				mdeps={
 					terralib=true
 				}
 			},
 			terralib={
-				mdeps={
-					ffi=true
-				}
+				loaderr='./terralib.lua:36: attempt to index global \'terra\' (a nil value)'
+			},
+			terralib_luapower={
+				loaderr='./terralib_luapower.lua:8: attempt to index global \'terralib\' (a nil value)'
 			}
+		},
+		['terra-arrayfreelist']={
+		},
+		['terra-arrayview']={
+		},
+		['terra-bitarray']={
+		},
+		['terra-bitmap']={
+		},
+		['terra-box2d']={
+		},
+		['terra-boxblur']={
+		},
+		['terra-cairo']={
+		},
+		['terra-dynarray']={
+		},
+		['terra-fixedfreelist']={
+		},
+		['terra-hashmap']={
+		},
+		['terra-layer']={
+			layer={
+				loaderr='./layer.lua:2: ./layer_h.lua:2: liblayer.so: cannot open shared object file: No such file or directory'
+			},
+			layer_h={
+				loaderr='./layer_h.lua:2: liblayer.so: cannot open shared object file: No such file or directory'
+			}
+		},
+		['terra-linkedlist']={
+		},
+		['terra-low']={
+		},
+		['terra-lrucache']={
+		},
+		['terra-oo']={
+		},
+		['terra-phf']={
+		},
+		['terra-random']={
+		},
+		['terra-tr']={
+		},
+		['terra-utf8']={
 		},
 		thread={
 			thread={
@@ -4768,29 +4863,7 @@ return {
 		},
 		tr={
 			tr={
-				mdeps={
-					bit=true,
-					box2d=true,
-					ffi=true,
-					freetype=true,
-					fribidi=true,
-					glue=true,
-					harfbuzz=true,
-					['jit.zone']=true,
-					libunibreak=true,
-					lrucache=true,
-					tr_shape_lang=true,
-					tr_shape_reorder=true,
-					tr_shape_script=true,
-					utf8=true
-				}
-			},
-			tr_font_db={
-				mdeps={
-					glue=true
-				}
-			},
-			tr_markup={
+				loaderr='./tr.lua:10: ./harfbuzz.lua:362: /media/sf_luapower/bin/linux64/libharfbuzz.so: undefined symbol: hb_buffer_set_invisible_glyph'
 			},
 			tr_raster_cairo={
 				mdeps={
@@ -4808,18 +4881,15 @@ return {
 				mdeps={
 					bit=true,
 					ffi=true,
+					font_db=true,
 					freetype=true,
 					glue=true,
 					['jit.zone']=true,
-					lrucache=true,
-					tr_font_db=true
+					lrucache=true
 				}
 			},
 			tr_shape_lang={
-				mdeps={
-					ffi=true,
-					harfbuzz=true
-				}
+				loaderr='./tr_shape_lang.lua:7: ./harfbuzz.lua:362: /media/sf_luapower/bin/linux64/libharfbuzz.so: undefined symbol: hb_buffer_set_invisible_glyph'
 			},
 			tr_shape_reorder={
 				mdeps={
@@ -4828,11 +4898,7 @@ return {
 				}
 			},
 			tr_shape_script={
-				mdeps={
-					bit=true,
-					glue=true,
-					harfbuzz=true
-				}
+				loaderr='./tr_shape_script.lua:8: ./harfbuzz.lua:362: /media/sf_luapower/bin/linux64/libharfbuzz.so: undefined symbol: hb_buffer_set_invisible_glyph'
 			}
 		},
 		tuple={
@@ -4855,119 +4921,52 @@ return {
 		},
 		ui={
 			ui={
-				mdeps={
-					amoeba=true,
-					box2d=true,
-					boxblur=true,
-					cairo=true,
-					color=true,
-					easing=true,
-					events=true,
-					glue=true,
-					nw=true,
-					oo=true,
-					time=true,
-					tr=true
-				}
+				loaderr='./ui.lua:20: ./tr.lua:10: ./harfbuzz.lua:362: /media/sf_luapower/bin/linux64/libharfbuzz.so: undefined symbol: hb_buffer_set_invisible_glyph'
 			},
 			ui_button={
-				mdeps={
-					glue=true,
-					ui=true
-				}
+				loaderr='./ui_button.lua:5: ./ui.lua:20: ./tr.lua:10: ./harfbuzz.lua:362: /media/sf_luapower/bin/linux64/libharfbuzz.so: undefined symbol: hb_buffer_set_invisible_glyph'
 			},
 			ui_calendar={
-				mdeps={
-					glue=true,
-					ui=true,
-					ui_grid=true
-				}
+				loaderr='./ui_calendar.lua:5: ./ui.lua:20: ./tr.lua:10: ./harfbuzz.lua:362: /media/sf_luapower/bin/linux64/libharfbuzz.so: undefined symbol: hb_buffer_set_invisible_glyph'
 			},
 			ui_colorpicker={
-				mdeps={
-					bitmap=true,
-					cairo=true,
-					color=true,
-					glue=true,
-					ui=true,
-					ui_button=true
-				}
+				loaderr='./ui_colorpicker.lua:5: ./ui.lua:20: ./tr.lua:10: ./harfbuzz.lua:362: /media/sf_luapower/bin/linux64/libharfbuzz.so: undefined symbol: hb_buffer_set_invisible_glyph'
 			},
 			ui_dropdown={
-				mdeps={
-					glue=true,
-					ui=true,
-					ui_editbox=true,
-					ui_popup=true
-				}
+				loaderr='./ui_dropdown.lua:8: ./ui.lua:20: ./tr.lua:10: ./harfbuzz.lua:362: /media/sf_luapower/bin/linux64/libharfbuzz.so: undefined symbol: hb_buffer_set_invisible_glyph'
 			},
 			ui_editbox={
-				mdeps={
-					glue=true,
-					tr=true,
-					ui=true,
-					ui_scrollbox=true
-				}
+				loaderr='./ui_editbox.lua:6: ./ui.lua:20: ./tr.lua:10: ./harfbuzz.lua:362: /media/sf_luapower/bin/linux64/libharfbuzz.so: undefined symbol: hb_buffer_set_invisible_glyph'
 			},
 			ui_grid={
-				mdeps={
-					box2d=true,
-					glue=true,
-					ui=true
-				}
-			},
-			ui_image={
-				mdeps={
-					ui=true
-				}
+				loaderr='./ui_grid.lua:5: ./ui.lua:20: ./tr.lua:10: ./harfbuzz.lua:362: /media/sf_luapower/bin/linux64/libharfbuzz.so: undefined symbol: hb_buffer_set_invisible_glyph'
 			},
 			ui_layout_editor={
-				mdeps={
-					box2d=true,
-					ui=true
-				}
+				loaderr='./ui_layout_editor.lua:7: ./ui.lua:20: ./tr.lua:10: ./harfbuzz.lua:362: /media/sf_luapower/bin/linux64/libharfbuzz.so: undefined symbol: hb_buffer_set_invisible_glyph'
+			},
+			ui_list={
+				loaderr='./ui_list.lua:5: ./ui.lua:20: ./tr.lua:10: ./harfbuzz.lua:362: /media/sf_luapower/bin/linux64/libharfbuzz.so: undefined symbol: hb_buffer_set_invisible_glyph'
 			},
 			ui_menu={
-				mdeps={
-					ui=true
-				}
+				loaderr='./ui_menu.lua:5: ./ui.lua:20: ./tr.lua:10: ./harfbuzz.lua:362: /media/sf_luapower/bin/linux64/libharfbuzz.so: undefined symbol: hb_buffer_set_invisible_glyph'
 			},
 			ui_popup={
-				mdeps={
-					glue=true,
-					ui=true
-				}
+				loaderr='./ui_popup.lua:5: ./ui.lua:20: ./tr.lua:10: ./harfbuzz.lua:362: /media/sf_luapower/bin/linux64/libharfbuzz.so: undefined symbol: hb_buffer_set_invisible_glyph'
 			},
 			ui_progressbar={
-				mdeps={
-					ui=true
-				}
+				loaderr='./ui_progressbar.lua:5: ./ui.lua:20: ./tr.lua:10: ./harfbuzz.lua:362: /media/sf_luapower/bin/linux64/libharfbuzz.so: undefined symbol: hb_buffer_set_invisible_glyph'
 			},
 			ui_scrollbox={
-				mdeps={
-					box2d=true,
-					glue=true,
-					ui=true
-				}
+				loaderr='./ui_scrollbox.lua:5: ./ui.lua:20: ./tr.lua:10: ./harfbuzz.lua:362: /media/sf_luapower/bin/linux64/libharfbuzz.so: undefined symbol: hb_buffer_set_invisible_glyph'
 			},
 			ui_slider={
-				mdeps={
-					box2d=true,
-					glue=true,
-					ui=true
-				}
+				loaderr='./ui_slider.lua:5: ./ui.lua:20: ./tr.lua:10: ./harfbuzz.lua:362: /media/sf_luapower/bin/linux64/libharfbuzz.so: undefined symbol: hb_buffer_set_invisible_glyph'
 			},
 			ui_tablist={
-				mdeps={
-					glue=true,
-					ui=true
-				}
+				loaderr='./ui_tablist.lua:5: ./ui.lua:20: ./tr.lua:10: ./harfbuzz.lua:362: /media/sf_luapower/bin/linux64/libharfbuzz.so: undefined symbol: hb_buffer_set_invisible_glyph'
 			},
 			ui_zoomcalendar={
-				mdeps={
-					glue=true,
-					ui=true
-				}
+				loaderr='./ui_zoomcalendar.lua:5: ./ui.lua:20: ./tr.lua:10: ./harfbuzz.lua:362: /media/sf_luapower/bin/linux64/libharfbuzz.so: undefined symbol: hb_buffer_set_invisible_glyph'
 			}
 		},
 		unit={
@@ -4993,6 +4992,10 @@ return {
 				}
 			}
 		},
+		utf8quot={
+			utf8quot={
+			}
+		},
 		vararg={
 			vararg={
 			}
@@ -5003,6 +5006,8 @@ return {
 			},
 			videoinput_cocoa={
 				loaderr='./videoinput_cocoa.lua:7: ./objc_dispatch.lua:144: /home/cosmin/luapower/bin/linux64/luajit-bin: undefined symbol: _dispatch_data_empty'
+			},
+			videoinput_dshow={
 			}
 		},
 		wglpanel={
@@ -5127,6 +5132,12 @@ return {
 				ffi_deps={
 					xxhash=true
 				},
+				mdeps={
+					ffi=true,
+					xxhash_h=true
+				}
+			},
+			xxhash_h={
 				mdeps={
 					ffi=true
 				}
@@ -8559,8 +8570,12 @@ return {
 				},
 				mdeps={
 					bitmap=true,
-					ffi=true
+					ffi=true,
+					glue=true
 				}
+			},
+			boxblurlib_h={
+				loaderr='.\\boxblurlib_h.lua:2: cannot load module \'boxblurlib\': The specified module could not be found.'
 			}
 		},
 		bundle={
@@ -8694,6 +8709,8 @@ return {
 		cjson={
 			cjson={
 			}
+		},
+		['clang-resource-dir']={
 		},
 		clipper={
 			clipper={
@@ -9204,11 +9221,30 @@ return {
 				}
 			}
 		},
+		font_db={
+			font_db={
+				mdeps={
+					glue=true
+				}
+			}
+		},
+		['fonts-amiri']={
+		},
 		['fonts-awesome']={
+		},
+		['fonts-dejavuserif']={
+		},
+		['fonts-fireflysung']={
+		},
+		['fonts-fixedsys']={
 		},
 		['fonts-ionicons']={
 		},
 		['fonts-material-icons']={
+		},
+		['fonts-noto-emoji']={
+		},
+		['fonts-open-sans']={
 		},
 		freetype={
 			freetype={
@@ -9361,27 +9397,12 @@ return {
 				mdeps={
 					bit=true,
 					ffi=true,
-					harfbuzz_ft_h=true,
-					harfbuzz_h=true,
-					harfbuzz_ot_h=true
-				}
-			},
-			harfbuzz_ft_h={
-				mdeps={
-					ffi=true,
-					freetype_h=true,
 					harfbuzz_h=true
 				}
 			},
 			harfbuzz_h={
 				mdeps={
 					ffi=true
-				}
-			},
-			harfbuzz_ot_h={
-				mdeps={
-					ffi=true,
-					harfbuzz_h=true
 				}
 			}
 		},
@@ -9689,6 +9710,12 @@ return {
 					unibreak=true
 				},
 				mdeps={
+					ffi=true,
+					libunibreak_h=true
+				}
+			},
+			libunibreak_h={
+				mdeps={
 					ffi=true
 				}
 			}
@@ -9729,6 +9756,10 @@ return {
 				}
 			}
 		},
+		linkedlist={
+			linkedlist={
+			}
+		},
 		ljstr={
 			ljstr={
 				ffi_deps={
@@ -9753,7 +9784,7 @@ return {
 		lrucache={
 			lrucache={
 				mdeps={
-					dlist=true
+					linkedlist=true
 				}
 			}
 		},
@@ -9793,9 +9824,29 @@ return {
 					bit=true
 				}
 			},
+			['jit.dis_arm64']={
+				mdeps={
+					bit=true
+				}
+			},
+			['jit.dis_arm64be']={
+				mdeps={
+					['jit.dis_arm64']=true
+				}
+			},
 			['jit.dis_mips']={
 				mdeps={
 					bit=true
+				}
+			},
+			['jit.dis_mips64']={
+				mdeps={
+					['jit.dis_mips']=true
+				}
+			},
+			['jit.dis_mips64el']={
+				mdeps={
+					['jit.dis_mips']=true
 				}
 			},
 			['jit.dis_mipsel']={
@@ -9904,6 +9955,16 @@ return {
 			luapower_db={
 			}
 		},
+		luasec={
+			ssl={
+				mdeps={
+					['ssl.config']=true,
+					['ssl.context']=true,
+					['ssl.core']=true,
+					['ssl.x509']=true
+				}
+			}
+		},
 		luastate={
 			lua_h={
 				mdeps={
@@ -9920,6 +9981,16 @@ return {
 				mdeps={
 					ffi=true,
 					luajit_h=true
+				}
+			}
+		},
+		lx={
+			lx={
+				ffi_deps={
+					lx=true
+				},
+				mdeps={
+					ffi=true
 				}
 			}
 		},
@@ -9952,6 +10023,8 @@ return {
 					ffi=true
 				}
 			}
+		},
+		['mingw64-headers']={
 		},
 		minizip={
 			minizip={
@@ -10637,16 +10710,61 @@ return {
 		syscall={
 		},
 		terra={
+			asdl={
+			},
 			terra={
-				mdeps={
-					terralib=true
-				}
+				loaderr='.\\terralib.lua:36: attempt to index global \'terra\' (a nil value)'
 			},
 			terralib={
-				mdeps={
-					ffi=true
-				}
+				loaderr='.\\terralib.lua:36: attempt to index global \'terra\' (a nil value)'
+			},
+			terralib_luapower={
+				loaderr='.\\terralib_luapower.lua:8: attempt to index global \'terralib\' (a nil value)'
 			}
+		},
+		['terra-arrayfreelist']={
+		},
+		['terra-arrayview']={
+		},
+		['terra-bitarray']={
+		},
+		['terra-bitmap']={
+		},
+		['terra-box2d']={
+		},
+		['terra-boxblur']={
+		},
+		['terra-cairo']={
+		},
+		['terra-dynarray']={
+		},
+		['terra-fixedfreelist']={
+		},
+		['terra-hashmap']={
+		},
+		['terra-layer']={
+			layer={
+				loaderr='.\\layer.lua:2: .\\layer_h.lua:2: cannot load module \'layer\': The specified module could not be found.'
+			},
+			layer_h={
+				loaderr='.\\layer_h.lua:2: cannot load module \'layer\': The specified module could not be found.'
+			}
+		},
+		['terra-linkedlist']={
+		},
+		['terra-low']={
+		},
+		['terra-lrucache']={
+		},
+		['terra-oo']={
+		},
+		['terra-phf']={
+		},
+		['terra-random']={
+		},
+		['terra-tr']={
+		},
+		['terra-utf8']={
 		},
 		thread={
 			thread={
@@ -10677,7 +10795,6 @@ return {
 					fribidi=true,
 					glue=true,
 					harfbuzz=true,
-					['jit.zone']=true,
 					libunibreak=true,
 					lrucache=true,
 					tr_shape_lang=true,
@@ -10685,13 +10802,6 @@ return {
 					tr_shape_script=true,
 					utf8=true
 				}
-			},
-			tr_font_db={
-				mdeps={
-					glue=true
-				}
-			},
-			tr_markup={
 			},
 			tr_raster_cairo={
 				mdeps={
@@ -10709,11 +10819,11 @@ return {
 				mdeps={
 					bit=true,
 					ffi=true,
+					font_db=true,
 					freetype=true,
 					glue=true,
 					['jit.zone']=true,
-					lrucache=true,
-					tr_font_db=true
+					lrucache=true
 				}
 			},
 			tr_shape_lang={
@@ -10757,14 +10867,15 @@ return {
 		ui={
 			ui={
 				mdeps={
-					amoeba=true,
 					box2d=true,
 					boxblur=true,
 					cairo=true,
 					color=true,
 					easing=true,
 					events=true,
+					ffi=true,
 					glue=true,
+					['jit.zone']=true,
 					nw=true,
 					oo=true,
 					time=true,
@@ -10778,11 +10889,7 @@ return {
 				}
 			},
 			ui_calendar={
-				mdeps={
-					glue=true,
-					ui=true,
-					ui_grid=true
-				}
+				loaderr='.\\ui_calendar.lua:9: attempt to index field \'grid\' (a nil value)'
 			},
 			ui_colorpicker={
 				mdeps={
@@ -10791,40 +10898,46 @@ return {
 					color=true,
 					glue=true,
 					ui=true,
-					ui_button=true
+					ui_button=true,
+					ui_editbox=true
 				}
 			},
 			ui_dropdown={
 				mdeps={
 					glue=true,
+					time=true,
 					ui=true,
 					ui_editbox=true,
-					ui_popup=true
+					ui_popup=true,
+					ui_scrollbox=true
 				}
 			},
 			ui_editbox={
 				mdeps={
+					box2d=true,
 					glue=true,
 					tr=true,
-					ui=true,
-					ui_scrollbox=true
+					ui=true
 				}
 			},
 			ui_grid={
 				mdeps={
 					box2d=true,
 					glue=true,
-					ui=true
-				}
-			},
-			ui_image={
-				mdeps={
-					ui=true
+					ui=true,
+					ui_editbox=true,
+					ui_scrollbox=true
 				}
 			},
 			ui_layout_editor={
 				mdeps={
 					box2d=true,
+					ui=true
+				}
+			},
+			ui_list={
+				mdeps={
+					glue=true,
 					ui=true
 				}
 			},
@@ -10853,15 +10966,16 @@ return {
 			},
 			ui_slider={
 				mdeps={
-					box2d=true,
 					glue=true,
 					ui=true
 				}
 			},
 			ui_tablist={
 				mdeps={
+					box2d=true,
 					glue=true,
-					ui=true
+					ui=true,
+					ui_button=true
 				}
 			},
 			ui_zoomcalendar={
@@ -10894,6 +11008,10 @@ return {
 				}
 			}
 		},
+		utf8quot={
+			utf8quot={
+			}
+		},
 		vararg={
 			vararg={
 			}
@@ -10908,6 +11026,8 @@ return {
 			},
 			videoinput_cocoa={
 				loaderr='.\\videoinput_cocoa.lua:7: .\\objc_dispatch.lua:144: cannot resolve symbol \'_dispatch_data_empty\': The specified procedure could not be found.'
+			},
+			videoinput_dshow={
 			}
 		},
 		wglpanel={
@@ -11029,11 +11149,6 @@ return {
 				mdeps={
 					winapi=true,
 					['winapi.basebuttonclass']=true
-				}
-			},
-			['winapi.class']={
-				mdeps={
-					winapi=true
 				}
 			},
 			['winapi.clipboard']={
@@ -11393,12 +11508,6 @@ return {
 					['winapi.window']=true
 				}
 			},
-			['winapi.object']={
-				mdeps={
-					winapi=true,
-					['winapi.class']=true
-				}
-			},
 			['winapi.ole']={
 				ffi_deps={
 					ole32=true
@@ -11601,8 +11710,8 @@ return {
 			},
 			['winapi.vobject']={
 				mdeps={
-					winapi=true,
-					['winapi.object']=true
+					events=true,
+					winapi=true
 				}
 			},
 			['winapi.volman']={
@@ -11736,6 +11845,12 @@ return {
 				ffi_deps={
 					xxhash=true
 				},
+				mdeps={
+					ffi=true,
+					xxhash_h=true
+				}
+			},
+			xxhash_h={
 				mdeps={
 					ffi=true
 				}
@@ -14440,8 +14555,12 @@ return {
 				},
 				mdeps={
 					bitmap=true,
-					ffi=true
+					ffi=true,
+					glue=true
 				}
+			},
+			boxblurlib_h={
+				loaderr='./boxblurlib_h.lua:2: dlopen(libboxblurlib.dylib, 5): image not found'
 			}
 		},
 		bundle={
@@ -14572,6 +14691,8 @@ return {
 		cjson={
 			cjson={
 			}
+		},
+		['clang-resource-dir']={
 		},
 		clipper={
 			clipper={
@@ -14816,11 +14937,30 @@ return {
 				}
 			}
 		},
+		font_db={
+			font_db={
+				mdeps={
+					glue=true
+				}
+			}
+		},
+		['fonts-amiri']={
+		},
 		['fonts-awesome']={
+		},
+		['fonts-dejavuserif']={
+		},
+		['fonts-fireflysung']={
+		},
+		['fonts-fixedsys']={
 		},
 		['fonts-ionicons']={
 		},
 		['fonts-material-icons']={
+		},
+		['fonts-noto-emoji']={
+		},
+		['fonts-open-sans']={
 		},
 		freetype={
 			freetype={
@@ -14958,33 +15098,11 @@ return {
 		},
 		harfbuzz={
 			harfbuzz={
-				ffi_deps={
-					harfbuzz=true
-				},
-				mdeps={
-					bit=true,
-					ffi=true,
-					harfbuzz_ft_h=true,
-					harfbuzz_h=true,
-					harfbuzz_ot_h=true
-				}
-			},
-			harfbuzz_ft_h={
-				mdeps={
-					ffi=true,
-					freetype_h=true,
-					harfbuzz_h=true
-				}
+				loaderr='./harfbuzz.lua:362: dlsym(0x2003f0, hb_buffer_set_invisible_glyph): symbol not found'
 			},
 			harfbuzz_h={
 				mdeps={
 					ffi=true
-				}
-			},
-			harfbuzz_ot_h={
-				mdeps={
-					ffi=true,
-					harfbuzz_h=true
 				}
 			}
 		},
@@ -15270,6 +15388,12 @@ return {
 					unibreak=true
 				},
 				mdeps={
+					ffi=true,
+					libunibreak_h=true
+				}
+			},
+			libunibreak_h={
+				mdeps={
 					ffi=true
 				}
 			}
@@ -15310,6 +15434,10 @@ return {
 				}
 			}
 		},
+		linkedlist={
+			linkedlist={
+			}
+		},
 		ljstr={
 		},
 		llvm={
@@ -15326,7 +15454,7 @@ return {
 		lrucache={
 			lrucache={
 				mdeps={
-					dlist=true
+					linkedlist=true
 				}
 			}
 		},
@@ -15366,9 +15494,29 @@ return {
 					bit=true
 				}
 			},
+			['jit.dis_arm64']={
+				mdeps={
+					bit=true
+				}
+			},
+			['jit.dis_arm64be']={
+				mdeps={
+					['jit.dis_arm64']=true
+				}
+			},
 			['jit.dis_mips']={
 				mdeps={
 					bit=true
+				}
+			},
+			['jit.dis_mips64']={
+				mdeps={
+					['jit.dis_mips']=true
+				}
+			},
+			['jit.dis_mips64el']={
+				mdeps={
+					['jit.dis_mips']=true
 				}
 			},
 			['jit.dis_mipsel']={
@@ -15471,6 +15619,8 @@ return {
 			luapower_db={
 			}
 		},
+		luasec={
+		},
 		luastate={
 			lua_h={
 				mdeps={
@@ -15488,6 +15638,11 @@ return {
 					ffi=true,
 					luajit_h=true
 				}
+			}
+		},
+		lx={
+			lx={
+				loaderr='./lx.lua:8: dlopen(liblx.dylib, 5): image not found'
 			}
 		},
 		lz4={
@@ -15514,6 +15669,8 @@ return {
 					ffi=true
 				}
 			}
+		},
+		['mingw64-headers']={
 		},
 		minizip={
 			minizip={
@@ -15595,6 +15752,8 @@ return {
 					['/System/Library/Frameworks/ApplicationServices.framework/Versions/Current/Frameworks/CoreGraphics.framework/CoreGraphics']=true,
 					['/System/Library/Frameworks/ApplicationServices.framework/Versions/Current/Frameworks/CoreGraphics.framework/Resources/BridgeSupport/CoreGraphics.dylib']=true,
 					['/System/Library/Frameworks/Carbon.framework/Versions/Current/Frameworks/HIToolbox.framework/HIToolbox']=true,
+					['/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation']=true,
+					['/System/Library/Frameworks/CoreFoundation.framework/Resources/BridgeSupport/CoreFoundation.dylib']=true,
 					['/System/Library/Frameworks/Foundation.framework/Foundation']=true,
 					['/System/Library/Frameworks/Foundation.framework/Resources/BridgeSupport/Foundation.dylib']=true
 				},
@@ -16538,16 +16697,63 @@ return {
 			}
 		},
 		terra={
+			asdl={
+			},
 			terra={
 				mdeps={
 					terralib=true
 				}
 			},
 			terralib={
-				mdeps={
-					ffi=true
-				}
+				loaderr='./terralib.lua:36: attempt to index global \'terra\' (a nil value)'
+			},
+			terralib_luapower={
+				loaderr='./terralib_luapower.lua:8: attempt to index global \'terralib\' (a nil value)'
 			}
+		},
+		['terra-arrayfreelist']={
+		},
+		['terra-arrayview']={
+		},
+		['terra-bitarray']={
+		},
+		['terra-bitmap']={
+		},
+		['terra-box2d']={
+		},
+		['terra-boxblur']={
+		},
+		['terra-cairo']={
+		},
+		['terra-dynarray']={
+		},
+		['terra-fixedfreelist']={
+		},
+		['terra-hashmap']={
+		},
+		['terra-layer']={
+			layer={
+				loaderr='./layer.lua:2: ./layer_h.lua:2: dlopen(liblayer.dylib, 5): image not found'
+			},
+			layer_h={
+				loaderr='./layer_h.lua:2: dlopen(liblayer.dylib, 5): image not found'
+			}
+		},
+		['terra-linkedlist']={
+		},
+		['terra-low']={
+		},
+		['terra-lrucache']={
+		},
+		['terra-oo']={
+		},
+		['terra-phf']={
+		},
+		['terra-random']={
+		},
+		['terra-tr']={
+		},
+		['terra-utf8']={
 		},
 		thread={
 			thread={
@@ -16570,29 +16776,7 @@ return {
 		},
 		tr={
 			tr={
-				mdeps={
-					bit=true,
-					box2d=true,
-					ffi=true,
-					freetype=true,
-					fribidi=true,
-					glue=true,
-					harfbuzz=true,
-					['jit.zone']=true,
-					libunibreak=true,
-					lrucache=true,
-					tr_shape_lang=true,
-					tr_shape_reorder=true,
-					tr_shape_script=true,
-					utf8=true
-				}
-			},
-			tr_font_db={
-				mdeps={
-					glue=true
-				}
-			},
-			tr_markup={
+				loaderr='./tr.lua:10: ./harfbuzz.lua:362: dlsym(0x2003f0, hb_buffer_set_invisible_glyph): symbol not found'
 			},
 			tr_raster_cairo={
 				mdeps={
@@ -16610,18 +16794,15 @@ return {
 				mdeps={
 					bit=true,
 					ffi=true,
+					font_db=true,
 					freetype=true,
 					glue=true,
 					['jit.zone']=true,
-					lrucache=true,
-					tr_font_db=true
+					lrucache=true
 				}
 			},
 			tr_shape_lang={
-				mdeps={
-					ffi=true,
-					harfbuzz=true
-				}
+				loaderr='./tr_shape_lang.lua:7: ./harfbuzz.lua:362: dlsym(0x2003f0, hb_buffer_set_invisible_glyph): symbol not found'
 			},
 			tr_shape_reorder={
 				mdeps={
@@ -16630,11 +16811,7 @@ return {
 				}
 			},
 			tr_shape_script={
-				mdeps={
-					bit=true,
-					glue=true,
-					harfbuzz=true
-				}
+				loaderr='./tr_shape_script.lua:8: ./harfbuzz.lua:362: dlsym(0x2003f0, hb_buffer_set_invisible_glyph): symbol not found'
 			}
 		},
 		tuple={
@@ -16657,119 +16834,52 @@ return {
 		},
 		ui={
 			ui={
-				mdeps={
-					amoeba=true,
-					box2d=true,
-					boxblur=true,
-					cairo=true,
-					color=true,
-					easing=true,
-					events=true,
-					glue=true,
-					nw=true,
-					oo=true,
-					time=true,
-					tr=true
-				}
+				loaderr='./ui.lua:20: ./tr.lua:10: ./harfbuzz.lua:362: dlsym(0x2003f0, hb_buffer_set_invisible_glyph): symbol not found'
 			},
 			ui_button={
-				mdeps={
-					glue=true,
-					ui=true
-				}
+				loaderr='./ui_button.lua:5: ./ui.lua:20: ./tr.lua:10: ./harfbuzz.lua:362: dlsym(0x2003f0, hb_buffer_set_invisible_glyph): symbol not found'
 			},
 			ui_calendar={
-				mdeps={
-					glue=true,
-					ui=true,
-					ui_grid=true
-				}
+				loaderr='./ui_calendar.lua:5: ./ui.lua:20: ./tr.lua:10: ./harfbuzz.lua:362: dlsym(0x2003f0, hb_buffer_set_invisible_glyph): symbol not found'
 			},
 			ui_colorpicker={
-				mdeps={
-					bitmap=true,
-					cairo=true,
-					color=true,
-					glue=true,
-					ui=true,
-					ui_button=true
-				}
+				loaderr='./ui_colorpicker.lua:5: ./ui.lua:20: ./tr.lua:10: ./harfbuzz.lua:362: dlsym(0x2003f0, hb_buffer_set_invisible_glyph): symbol not found'
 			},
 			ui_dropdown={
-				mdeps={
-					glue=true,
-					ui=true,
-					ui_editbox=true,
-					ui_popup=true
-				}
+				loaderr='./ui_dropdown.lua:8: ./ui.lua:20: ./tr.lua:10: ./harfbuzz.lua:362: dlsym(0x2003f0, hb_buffer_set_invisible_glyph): symbol not found'
 			},
 			ui_editbox={
-				mdeps={
-					glue=true,
-					tr=true,
-					ui=true,
-					ui_scrollbox=true
-				}
+				loaderr='./ui_editbox.lua:6: ./ui.lua:20: ./tr.lua:10: ./harfbuzz.lua:362: dlsym(0x2003f0, hb_buffer_set_invisible_glyph): symbol not found'
 			},
 			ui_grid={
-				mdeps={
-					box2d=true,
-					glue=true,
-					ui=true
-				}
-			},
-			ui_image={
-				mdeps={
-					ui=true
-				}
+				loaderr='./ui_grid.lua:5: ./ui.lua:20: ./tr.lua:10: ./harfbuzz.lua:362: dlsym(0x2003f0, hb_buffer_set_invisible_glyph): symbol not found'
 			},
 			ui_layout_editor={
-				mdeps={
-					box2d=true,
-					ui=true
-				}
+				loaderr='./ui_layout_editor.lua:7: ./ui.lua:20: ./tr.lua:10: ./harfbuzz.lua:362: dlsym(0x2003f0, hb_buffer_set_invisible_glyph): symbol not found'
+			},
+			ui_list={
+				loaderr='./ui_list.lua:5: ./ui.lua:20: ./tr.lua:10: ./harfbuzz.lua:362: dlsym(0x2003f0, hb_buffer_set_invisible_glyph): symbol not found'
 			},
 			ui_menu={
-				mdeps={
-					ui=true
-				}
+				loaderr='./ui_menu.lua:5: ./ui.lua:20: ./tr.lua:10: ./harfbuzz.lua:362: dlsym(0x2003f0, hb_buffer_set_invisible_glyph): symbol not found'
 			},
 			ui_popup={
-				mdeps={
-					glue=true,
-					ui=true
-				}
+				loaderr='./ui_popup.lua:5: ./ui.lua:20: ./tr.lua:10: ./harfbuzz.lua:362: dlsym(0x2003f0, hb_buffer_set_invisible_glyph): symbol not found'
 			},
 			ui_progressbar={
-				mdeps={
-					ui=true
-				}
+				loaderr='./ui_progressbar.lua:5: ./ui.lua:20: ./tr.lua:10: ./harfbuzz.lua:362: dlsym(0x2003f0, hb_buffer_set_invisible_glyph): symbol not found'
 			},
 			ui_scrollbox={
-				mdeps={
-					box2d=true,
-					glue=true,
-					ui=true
-				}
+				loaderr='./ui_scrollbox.lua:5: ./ui.lua:20: ./tr.lua:10: ./harfbuzz.lua:362: dlsym(0x2003f0, hb_buffer_set_invisible_glyph): symbol not found'
 			},
 			ui_slider={
-				mdeps={
-					box2d=true,
-					glue=true,
-					ui=true
-				}
+				loaderr='./ui_slider.lua:5: ./ui.lua:20: ./tr.lua:10: ./harfbuzz.lua:362: dlsym(0x2003f0, hb_buffer_set_invisible_glyph): symbol not found'
 			},
 			ui_tablist={
-				mdeps={
-					glue=true,
-					ui=true
-				}
+				loaderr='./ui_tablist.lua:5: ./ui.lua:20: ./tr.lua:10: ./harfbuzz.lua:362: dlsym(0x2003f0, hb_buffer_set_invisible_glyph): symbol not found'
 			},
 			ui_zoomcalendar={
-				mdeps={
-					glue=true,
-					ui=true
-				}
+				loaderr='./ui_zoomcalendar.lua:5: ./ui.lua:20: ./tr.lua:10: ./harfbuzz.lua:362: dlsym(0x2003f0, hb_buffer_set_invisible_glyph): symbol not found'
 			}
 		},
 		unit={
@@ -16795,6 +16905,10 @@ return {
 				}
 			}
 		},
+		utf8quot={
+			utf8quot={
+			}
+		},
 		vararg={
 			vararg={
 			}
@@ -16810,8 +16924,6 @@ return {
 			videoinput_cocoa={
 				ffi_deps={
 					['/System/Library/Frameworks/AVFoundation.framework/AVFoundation']=true,
-					['/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation']=true,
-					['/System/Library/Frameworks/CoreFoundation.framework/Resources/BridgeSupport/CoreFoundation.dylib']=true,
 					['/System/Library/Frameworks/CoreMedia.framework/CoreMedia']=true,
 					['/System/Library/Frameworks/CoreVideo.framework/CoreVideo']=true
 				},
@@ -16822,6 +16934,8 @@ return {
 					objc=true,
 					objc_dispatch=true
 				}
+			},
+			videoinput_dshow={
 			}
 		},
 		wglpanel={
@@ -16878,6 +16992,12 @@ return {
 				ffi_deps={
 					xxhash=true
 				},
+				mdeps={
+					ffi=true,
+					xxhash_h=true
+				}
+			},
+			xxhash_h={
 				mdeps={
 					ffi=true
 				}
