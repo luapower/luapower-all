@@ -164,7 +164,7 @@ PARSING MD FILES:
 
 PARSING LUA FILES:
 
-	module_requires_parsed(module) -> t   {module=true}
+	module_requires_runtime(module) -> t  {module=true}
 
 	modulefile_header(file) -> t          {name=, descr=, author=, license=}
 	module_header([package], mod) -> t    {name=, descr=, author=, license=}
@@ -524,6 +524,8 @@ local function install_trackers(builtin_modules, filter)
 	--loader_m is an optional "loader" module that needs to be loaded
 	--before m can be loaded (eg. for loading .dasl files, see dynasm).
 	function track_module(m, loader_m)
+		--TODO: LuaSec clib modules crash if not loaded in specific order.
+		if m:find'^ssl%.' then return end
 		if loader_m then
 			local ok, err = pcall(require, loader_m)
 			if not ok then --put the error on the account of mod
@@ -568,7 +570,7 @@ luajit_builtin_modules = {
 	['jit.util'] = true, ['jit.profile'] = true,
 }
 
-module_requires_parsed = memoize(function(m) --direct dependencies
+module_requires_runtime_parsed = memoize(function(m) --direct dependencies
 	local t = {}
 	if builtin_modules[m] or luajit_builtin_modules[m] then
 		return t
@@ -590,16 +592,16 @@ module_requires_parsed = memoize(function(m) --direct dependencies
 	s = s:gsub('%-%-[^\n\r]*', '')
 	--delete the demo section (horrible parsing)
 	s = s:gsub('[\r\n]if not %.%.%. then%s+.-%s+end', '')
-	--require'xxx'
-	for m in s:gmatch'require%s*(%b\'\')' do
+	--local xxx = require'xxx'
+	for m in s:gmatch'[ \t]+local %w+[ \t]+=[ \t]+require%s*(%b\'\')' do
 		t[m:sub(2,-2)] = true
 	end
-	--require"xxx"
-	for m in s:gmatch'require%s*(%b"")' do
+	--local xxx = require"xxx"
+	for m in s:gmatch'[ \t]+local %w+[ \t]+=[ \t]+require%s*(%b"")' do
 		t[m:sub(2,-2)] = true
 	end
-	--require("xxx") or require('xxx')
-	for m in s:gmatch'require%s*(%b())' do
+	--local xxx = require("xxx") or local xxx = require('xxx')
+	for m in s:gmatch'[ \t]+local %w+[ \t]+=[ \t]+require%s*(%b())' do
 		m = glue.trim(m:sub(2,-2))
 		if m:find'^%b\'\'$' or m:find'^%b""$' then
 			m = m:sub(2,-2)
@@ -1201,6 +1203,8 @@ local function modules_(package, platform, should_be_module)
 					else
 						add_module(mod, plat, path)
 					end
+				else
+					add_module(mod, plat, path)
 				end
 			end
 		end
@@ -1779,9 +1783,7 @@ module_requires_runtime = memoize(function(mod, package, platform)
 	local err = module_load_error(mod, package, platform)
 	--if module doesn't load, hide its runtime deps.
 	if err then return {} end
-	local loadtime = module_requires_loadtime(mod, package, platform)
-	return filter(module_requires_parsed(mod),
-			function(mod) return not loadtime or not loadtime[mod] end)
+	return module_requires_runtime_parsed(mod)
 end)
 
 --list of auto-loaded modules on the target module.
