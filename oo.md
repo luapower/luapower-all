@@ -36,8 +36,7 @@ Object system with virtual properties and method overriding hooks.
 	code inside `after_pick()` last.
    * `function Apple:override_pick(inherited, ...)` lets you override
 	  `Apple:pick()` and call `inherited(self, ...)`.
- * virtual classes: nested inner classes that can be overriden in subclasses
- of the outer class (more below).
+ * virtual classes (aka dependency injection, described below).
  * introspection:
    * `oo.is(obj|class, class|classname) -> true|false` - check instance/class ancestry
    * `oo.isinstance(obj|class[, class|classname]) -> true|false` - check instance ancestry
@@ -286,7 +285,7 @@ If you don't know the name of the method you want to override until runtime,
 use `cls:before(name, func)`, `cls:after(name, func)` and
 `cls:override(name, func)` instead.
 
-## Virtual classes
+## Virtual classes (aka dependency injection)
 
 Virtual classes provide an additional way to extend composite objects
 (objects which need to instantiate other objects) beyond inheritance which
