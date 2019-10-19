@@ -309,7 +309,7 @@ function getcwd()
 				buf, sz = cbuf(sz * 2)
 			end
 		end
-		return ffi.string(buf, sz)
+		return ffi.string(buf)
 	end
 end
 
@@ -379,7 +379,7 @@ if osx then
 	int proc_pidpath(int pid, void* buffer, uint32_t buffersize);
 	]]
 
-	function fs.exedir()
+	function fs.exepath()
 		local pid = C.getpid()
 		if pid == -1 then return check() end
 		local proc = ffi.load'proc'
@@ -391,7 +391,7 @@ if osx then
 
 else
 
-	function fs.exedir()
+	function fs.exepath()
 		--
 	end
 

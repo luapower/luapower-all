@@ -64,6 +64,7 @@ __symlinks & hardlinks__
 __common paths__
 `fs.homedir() -> path`                            get current user's home directory
 `fs.tmpdir() -> path`                             get temporary directory
+`fs.exepath() -> path`                            get the full path of the running executable
 `fs.exedir() -> path`                             get the directory of the running executable
 __low level__
 `fs.wrap_handle(HANDLE) -> f`                     wrap opened HANDLE (Windows)

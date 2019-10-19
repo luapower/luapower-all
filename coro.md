@@ -4,9 +4,9 @@ tagline: symmetric coroutines
 
 ## `local coro = require'coro'`
 
-Symmetric coroutines are coroutines that can transfer control to any specific
-coroutine, unlike Lua's standard coroutines which can only yield back to the
-thread which resumed them (also called asymmetric coroutines or generators).
+Symmetric coroutines are coroutines that can transfer control to any other
+coroutine, unlike Lua's standard coroutines which can only yield back to
+their parent coroutine (and are called asymmetric coroutines or generators).
 
 Rationale: writing coroutine-based generators over scheduled async callbacks
 (like the `read()` and `write()` methods of [socketloop] sockets) in Lua is

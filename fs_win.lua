@@ -713,8 +713,21 @@ function fs.appdir(appname)
 	return dir and string.format('%s\\%s', dir, appname)
 end
 
-function fs.exedir()
-	--C.GetModuleFileNameW(nil, ...)
+local ERROR_INSUFFICIENT_BUFFER = 122
+
+function fs.exepath()
+	local buf, bufsz = wbuf()
+	::again::
+	local sz = C.GetModuleFileNameW(hmodule, buf, bufsz)
+	if sz < 0 then
+		if GetLastError() == ERROR_INSUFFICIENT_BUFFER then
+			buf, bufsz = wbuf(bufsz * 2)
+			goto again
+		else
+			return check(false)
+		end
+	end
+	return mbs(buf, sz)
 end
 
 --file attributes ------------------------------------------------------------

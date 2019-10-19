@@ -417,6 +417,12 @@ function fs.readlink(link)
 	return readlink_recursive(link, 32)
 end
 
+--common paths ---------------------------------------------------------------
+
+function fs.exedir()
+	return path.dir(fs.exepath())
+end
+
 --file attributes ------------------------------------------------------------
 
 function file.attr(f, attr)

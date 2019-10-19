@@ -190,4 +190,6 @@ to see which). LGPL does not normally allow static linking on closed-source
 projects, but because a bundled executable will always load the dynamic
 version of a bundled library if one is found in the directory of the exe,
 this behavior complies with the requirement of LGPL to provide a way for
-the end-user to use the app with a different version of the LGPL library.
+the end-user to use the app with a different version of the LGPL library
+without requiring you to ship the dynamic version of the library along
+with the executable.

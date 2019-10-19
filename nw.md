@@ -223,7 +223,8 @@ __keyboard__
 `win:keypress(key)`                          event: sent after each keydown, including repeats
 `win:keychar(s)`                             event: input char pressed; _s_ is utf-8
 __mouse__
-`app/win/view:mouse(var) -> val`             mouse state: _x, y, pos, inside, left, right, middle, x1, x2_
+`app:mouse(var) -> val`                      mouse state: _x, y, pos_
+`win/view:mouse(var) -> val`                 mouse state: _x, y, pos, inside, left, right, middle, x1, x2_
 `win/view:mouseenter(x, y)`                  event: mouse entered the client area of the window
 `win/view:mouseleave()`                      event: mouse left the client area of the window
 `win/view:mousemove(x, y)`                   event: mouse was moved
