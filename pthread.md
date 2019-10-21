@@ -26,6 +26,7 @@ __threads__
 `th:priority() -> priority`                     get thread priority
 `pthread.min_priority() -> priority`            get min. priority
 `pthread.max_priority() -> priority`            get max. priority
+`pthread.yield()`                               relinquish control to the scheduler
 __mutexes__
 `pthread.mutex([mattrs]) -> mutex`              create a mutex
 `mutex:free()`                                  free a mutex
@@ -46,8 +47,6 @@ __read/write locks__
 `rwlock:trywritelock() -> true | false`         try to lock for writing
 `rwlock:tryreadlock() -> true | false`          try to lock for reading
 `rwlock:unlock()`                               unlock the r/w lock
-__scheduler__
-`pthread.yield()`                               relinquish control to the scheduler
 ----------------------------------------------- ----------------------------------
 
 > (*) timeout is an os.time() or [time].time() timestamp, not a time period.
@@ -74,12 +73,12 @@ state:openlibs()
 --create a callback into the Lua state to be called from a different thread
 state:push(function()
 
-	--up-values are not copied unless we ask, so we have to require ffi again
+	--up-values are not copied, so we have to require ffi again.
 	local ffi = require'ffi'
 
-	--this is our worker function that will run in a different thread
+	--this is our worker function that will run in a different thread.
 	local function worker()
-		--print() is thread-safe so no need to guard it
+		--print() is thread-safe so no need to guard it.
 		print'Hello from thread!'
 	end
 
@@ -97,16 +96,16 @@ state:push(function()
 end)
 
 --call the function that we just pushed into the Lua state
---to get the callback pointer
+--to get the callback pointer.
 local worker_cb_ptr = ffi.cast('void*', state:call())
 
---create a thread which will start running automatically
+--create a thread which will start running automatically.
 local thread = pthread.new(worker_cb_ptr)
 
---wait for the thread to finish
+--wait for the thread to finish.
 thread:join()
 
---close the Lua state
+--close the Lua state.
 state:close()
 ~~~
 
