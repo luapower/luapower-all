@@ -16,16 +16,21 @@ local backend = setmetatable({}, {__index = _G})
 setfenv(1, backend)
 
 cdef = ffi.cdef
-x64 = ffi.arch == 'x64' or false
-osx = ffi.os == 'OSX' or false
-linux = ffi.os == 'Linux' or false
-win = ffi.abi'win' or false
+x64 = ffi.arch == 'x64' or nil
+osx = ffi.os == 'OSX' or nil
+linux = ffi.os == 'Linux' or nil
+win = ffi.abi'win' or nil
 
 --namespaces in which backends can add methods directly.
 fs = {} --fs module namespace
 file = {} --file object methods
 stream = {} --FILE methods
 dir = {} --dir listing object methods
+
+function update(dt, t)
+	for k,v in pairs(t) do dt[k]=v end
+	return dt
+end
 
 --binding tools --------------------------------------------------------------
 
@@ -132,7 +137,8 @@ local function table_flags(t, masks, strict)
 		local bitmask = masks[flag]
 		if strict then
 			assert(bitmask, 'invalid flag: "%s"', tostring(flag))
-		elseif bitmask then
+		end
+		if bitmask then
 			mask = bit.bor(mask, bitmask)
 			if flag then
 				bits = bit.bor(bits, bitmask)
@@ -398,7 +404,9 @@ local function readlink_recursive(link, maxdepth)
 		return nil, 'not_found'
 	end
 	local target, err, errcode = readlink(link)
-	if not target then return nil, err, errcode end
+	if not target then
+		return nil, err, errcode
+	end
 	if path.isabs(target) then
 		link = target
 	else --relative symlinks are relative to their own dir

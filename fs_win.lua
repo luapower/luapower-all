@@ -22,7 +22,7 @@ end
 
 cdef[[
 typedef void           VOID, *PVOID, *LPVOID;
-typedef VOID*          HANDLE;
+typedef VOID*          HANDLE, *PHANDLE;
 typedef unsigned short WORD;
 typedef unsigned long  DWORD, *PDWORD, *LPDWORD;
 typedef unsigned int   UINT;
@@ -335,11 +335,12 @@ local str_opt = {
 }
 
 --expose this because the frontend will set its metatype at the end.
-file_ct = ffi.typeof[[
-	struct {
-		HANDLE handle;
-	}
+cdef[[
+struct file_t {
+	HANDLE handle;
+};
 ]]
+file_ct = ffi.typeof'struct file_t'
 
 function fs.open(path, opt)
 	opt = opt or 'r'
@@ -396,6 +397,85 @@ function fs.wrap_file(file)
 	local fd, err, errno = fs.fileno(file)
 	if not fd then return nil, err, errno end
 	return fs.wrap_fd(fd)
+end
+
+--pipes ----------------------------------------------------------------------
+
+cdef[[
+BOOL CreatePipe(
+	PHANDLE               hReadPipe,
+	PHANDLE               hWritePipe,
+	LPSECURITY_ATTRIBUTES lpPipeAttributes,
+	DWORD                 nSize
+);
+BOOL SetHandleInformation(
+	HANDLE hObject,
+	DWORD  dwMask,
+	DWORD  dwFlags
+);
+HANDLE CreateNamedPipeW(
+  LPWSTR                lpName,
+  DWORD                 dwOpenMode,
+  DWORD                 dwPipeMode,
+  DWORD                 nMaxInstances,
+  DWORD                 nOutBufferSize,
+  DWORD                 nInBufferSize,
+  DWORD                 nDefaultTimeOut,
+  LPSECURITY_ATTRIBUTES lpSecurityAttributes
+);
+]]
+
+local HANDLE_FLAG_INHERIT = 1
+
+local access = {
+}
+
+--NOTE: FILE_FLAG_FIRST_PIPE_INSTANCE == WRITE_OWNER wtf?
+local pipe_flag_bits = update({
+	r               = 0x00000001, --PIPE_ACCESS_INBOUND
+	w               = 0x00000002, --PIPE_ACCESS_OUTBOUND
+	rw              = 0x00000003, --PIPE_ACCESS_DUPLEX
+	single_instance = 0x00080000, --FILE_FLAG_FIRST_PIPE_INSTANCE
+	write_through   = 0x80000000, --FILE_FLAG_WRITE_THROUGH
+	overlapped      = 0x40000000, --FILE_FLAG_OVERLAPPED
+	write_dac       = 0x00040000, --WRITE_DAC
+	write_owner     = 0x00080000, --WRITE_OWNER
+	system_security = 0x01000000, --ACCESS_SYSTEM_SECURITY
+}, flag_bits)
+
+function fs.pipe(name, opt)
+	local sa = ffi.new'SECURITY_ATTRIBUTES'
+	sa.nLength = ffi.sizeof(sa)
+	sa.bInheritHandle = true
+	local hs = ffi.new'HANDLE[2]'
+	if type(name) == 'table' then
+		name, opt = name.name, name
+	end
+	opt = opt or {}
+	if name then --named pipe
+		local h = C.CreateNamedPipeW(
+			wcs(name),
+			flags(opt, pipe_flag_bits, 0, true),
+			0, --nothing interesting here
+			opt.max_instances or 255,
+			opt.write_buffer_size or 8192,
+			opt.read_buffer_size or 8192,
+			opt.timeout or 0,
+			sa)
+		if h == INVALID_HANDLE_VALUE then
+			return check()
+		end
+		return ffi.gc(fs.wrap_handle(h), file.close)
+	else --unnamed pipe, return both ends
+		if C.CreatePipe(hs, hs+1, sa, 0) == 0 then
+			return check()
+		end
+		C.SetHandleInformation(hs[0], HANDLE_FLAG_INHERIT, 0)
+		C.SetHandleInformation(hs[1], HANDLE_FLAG_INHERIT, 0)
+		local rf = ffi.gc(fs.wrap_handle(hs[0]), file.close)
+		local wf = ffi.gc(fs.wrap_handle(hs[1]), file.close)
+		return rf, wf
+	end
 end
 
 --stdio streams --------------------------------------------------------------
@@ -705,12 +785,12 @@ function fs.tmpdir()
 		assert(sz <= bufsz)
 		if sz == 0 then return check() end
 	end
-	return ffi.string(buf, sz-1) --strip trailing '\'
+	return mbs(buf, sz-1) --strip trailing '\'
 end
 
 function fs.appdir(appname)
 	local dir = os.getenv'LOCALAPPDATA'
-	return dir and string.format('%s\\%s', dir, appname)
+	return dir and dir..'\\'..appname
 end
 
 local ERROR_INSUFFICIENT_BUFFER = 122

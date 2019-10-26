@@ -92,16 +92,17 @@ local str_opt = {
 }
 
 --expose this because the frontend will set its metatype on it at the end.
-file_ct = ffi.typeof[[
-	struct {
-		int fd;
-	}
+cdef[[
+struct file_t {
+	int fd;
+};
 ]]
+file_ct = ffi.typeof'struct file_t'
 
 function fs.open(path, opt)
 	opt = opt or 'r'
 	if type(opt) == 'string' then
-		opt = assert(str_opt[opt], 'invalid option %s', opt)
+		opt = assert(str_opt[opt], 'invalid mode %s', opt)
 	end
 	local flags = flags(opt.flags or 'rdonly', o_bits)
 	local mode = parse_perms(opt.perms or '0666')
@@ -139,6 +140,32 @@ function fs.wrap_file(file)
 	local fd = C.fileno(file)
 	if fd == -1 then return check() end
 	return fs.wrap_fd(fd)
+end
+
+--pipes ----------------------------------------------------------------------
+
+cdef[[
+int pipe(int[2]);
+int fcntl(int fd, int cmd, ...);
+int mkfifo(const char *pathname, mode_t mode);
+]]
+
+function fs.pipe(path, mode)
+	if type(path) == 'table' then
+		path, mode = path.path, path
+	end
+	mode = parse_perms(mode or 0666)
+	if path then
+		return check(C.mkfifo(path, mode) ~= 0)
+	else --unnamed pipe
+		local fds = ffi.new'int[2]'
+		if C.pipe(fds) ~= 0 then
+			return check()
+		end
+		return
+			ffi.gc(fs.wrap_fd(fds[0]), file.close),
+			ffi.gc(fs.wrap_fd(fds[1]), file.close)
+	end
 end
 
 --stdio streams --------------------------------------------------------------
@@ -373,26 +400,23 @@ end
 
 if osx then
 
-	--cdef'_NSGetExecutablePath(char* buf, uint32_t* bufsize);'
-	cdef[[
-	int32_t getpid(void);
-	int proc_pidpath(int pid, void* buffer, uint32_t buffersize);
-	]]
+	cdef'int _NSGetExecutablePath(char* buf, uint32_t* bufsize);'
 
 	function fs.exepath()
-		local pid = C.getpid()
-		if pid == -1 then return check() end
-		local proc = ffi.load'proc'
 		local buf, sz = cbuf()
-		local sz = proc.proc_pidpath(pid, buf, sz)
-		if sz <= 0 then return check() end
-		return ffi.string(buf, sz)
+		local out_sz = ffi.new('uint32_t[1]', sz)
+		::again::
+		if C._NSGetExecutablePath(buf, out_sz) ~= 0 then
+			buf, sz = cbuf(out_sz)
+			goto again
+		end
+		return (ffi.string(buf, sz):gsub('//', '/'))
 	end
 
 else
 
 	function fs.exepath()
-		--
+		return readlink'/proc/self/exe'
 	end
 
 end

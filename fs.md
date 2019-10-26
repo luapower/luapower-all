@@ -25,6 +25,10 @@ __file objects__
 `fs.isfile(f) -> true|false`                      check if `f` is a file object
 `f.handle -> HANDLE`                              Windows HANDLE (Windows platforms)
 `f.fd -> fd`                                      POSIX file descriptor (POSIX platforms)
+__pipes__
+`fs.pipe() -> rf, wf`                             create an anonymous pipe
+`fs.pipe({path=,<opt>=} | path[,options]) -> pf`  create a named pipe (Windows)
+`fs.pipe({path=,mode=} | path[,mode]) -> true`    create a named pipe (POSIX)
 __stdio streams__
 `f:stream(mode) -> fs`                            open a `FILE*` object from a file
 `fs:close()`                                      close the `FILE*` object
@@ -208,6 +212,30 @@ Check if file is closed.
 
 Check if `f` is a file object.
 
+## Pipes
+
+### `fs.pipe() -> rf, wf`
+
+Create an anonymous (unnamed) pipe. Return two files corresponding to the
+read and write ends of the pipe. These files can be used to redirect
+stdin, stdout and stderr in [proc].exec().
+
+### `fs.pipe({path=,<opt>=} | path[,options]) -> pf`
+
+Create a named pipe (Windows). Named pipes on Windows cannot be created in
+any directory like on POSIX systems, instead they must be created in the
+special directory called `\\.\pipe`. After creation, named pipes can be
+opened for reading and writing like normal files.
+
+Named pipes on Windows cannot be removed and are not persistent. They are
+destroyed automatically when the process that created them exits.
+
+### `fs.waitpipe(path)`
+
+### `fs.pipe({path=,mode=} | path[,mode]) -> true`
+
+Create a named pipe (POSIX). Named pipes on POSIX are persistent and can be
+created in any directory as they are just a type of file.
 
 ## Stdio Streams
 
@@ -260,9 +288,9 @@ The default is `'fallocate emulate'` which should never create a sparse file.
 
 ### `f:buffered_read([ctype], [bufsize]) -> read()`
 
-Returns a `read(buf, sz) -> sz` function which reads ahead from file. The
-optional `ctype` and `bufsize` specify the buffer's C type and size and
-default to `char` and `4096` respectively.
+Returns a `read(buf, sz) -> sz` function which reads ahead from file in order
+to lower the number of syscalls. The optional `ctype` and `bufsize` specify
+the buffer's C type and size and default to `char` and `4096` respectively.
 
 ## Open file attributes
 
