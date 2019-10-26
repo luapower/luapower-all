@@ -1,0 +1,71 @@
+--- src/src/lib_package.c	2019-10-26 19:05:28.000000000 +0300
++++ lib_package.c	2019-10-26 19:04:03.000000000 +0300
+@@ -17,6 +17,15 @@
+ #include "lj_err.h"
+ #include "lj_lib.h"
+ 
++#if LJ_TARGET_LINUX
++#include <unistd.h>
++#endif
++
++#if LJ_TARGET_OSX
++#include <stdlib.h>
++#include <mach-o/dyld.h>
++#endif
++
+ /* ------------------------------------------------------------------------ */
+ 
+ /* Error codes for ll_loadfunc. */
+@@ -65,6 +74,52 @@
+   return (const char *)dlsym(lib, sym);
+ }
+ 
++#if LJ_TARGET_LINUX
++
++#undef setprogdir
++
++static void setprogdir(lua_State *L)
++{
++  char path[PATH_MAX+2];
++  char *ls;
++  int n = readlink("/proc/self/exe", path, PATH_MAX+1);
++  if (n > 0 && n <= PATH_MAX) {
++    path[n] = '\0'; /* readlink doesn't null-terminate */
++    if ((ls = strrchr(path, '/'))) {  /* find position of last slash */
++      *ls = '\0';
++      luaL_gsub(L, lua_tostring(L, -1), LUA_EXECDIR, path);
++      lua_remove(L, -2);  /* remove original string */
++      return;
++    }
++  }
++  luaL_error(L, "unable to get the path of the executable");
++}
++
++#elif LJ_TARGET_OSX
++
++#undef setprogdir
++
++static void setprogdir(lua_State *L)
++{
++  char path1[PATH_MAX+1];
++  char path2[PATH_MAX+1];
++  char *ls;
++  uint32_t n = PATH_MAX;
++  if (_NSGetExecutablePath(path1, &n) == 0) {
++    if (realpath(path1, path2)) { /* resolve symlinks and `..` */
++      if ((ls = strrchr(path2, '/'))) {  /* find position of last slash */
++        *ls = '\0';
++        luaL_gsub(L, lua_tostring(L, -1), LUA_EXECDIR, path2);
++        lua_remove(L, -2);  /* remove original string */
++        return;
++      }
++    }
++  }
++  luaL_error(L, "unable to get the path of the executable");
++}
++
++#endif
++
+ #elif LJ_TARGET_WINDOWS
+ 
+ #define WIN32_LEAN_AND_MEAN

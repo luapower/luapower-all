@@ -619,6 +619,7 @@ typedef struct global_State {
   BCIns bc_cfunc_ext;	/* Bytecode for external C function calls. */
   GCRef cur_L;		/* Currently executing lua_State. */
   MRef jit_base;	/* Current JIT code L->base or NULL. */
+  MRef saved_jit_base;  /* saved jit_base for lj_err_throw */
   MRef ctype_state;	/* Pointer to C type state. */
   GCRef gcroot[GCROOT_MAX];  /* GC roots. */
 } global_State;
@@ -660,6 +661,11 @@ struct lua_State {
   GCRef env;		/* Thread environment (table of globals). */
   void *cframe;		/* End of C stack frame chain. */
   MSize stacksize;	/* True stack size (incl. LJ_STACK_EXTRA). */
+  void *exdata;	        /* user extra data pointer. added by OpenResty */
+#if LJ_TARGET_ARM
+  uint32_t unused1;
+  uint32_t unused2;
+#endif
 };
 
 #define G(L)			(mref(L->glref, global_State))

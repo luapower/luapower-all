@@ -2,29 +2,32 @@
 tagline: LuaJIT binary
 ---
 
-## What
+## What Lua dialiect is this?
+
+This is OpenResty's LuaJIT 2.1 fork, which means the base language is
+[Lua 5.1](http://www.lua.org/manual/5.1/manual.html) plus the following
+extensions:
+
+  * [LuaJIT's bit, ffi and jit modules](http://luajit.org/extensions.html#modules)
+  * [LuaJIT's extensions from Lua 5.2](http://luajit.org/extensions.html#lua52),
+    including those enabled with `DLUAJIT_ENABLE_LUA52COMPAT`
+  * [OpenResty's extensions](https://github.com/openresty/luajit2#openresty-extensions)
+
+## What is included
 
 LuaJIT binaries (frontend, static library, dynamic library).
 
-Comes bundled with the `luajit` and `luajit32` commands, which are simple
-shell scripts that find and load the appropriate luajit executable for
-your platform/arch, so that typing `./luajit` or `./luajit32`
-(that's `luajit` and `luajit32` on Windows) always works.
+Comes bundled with the `luajit` command, which is a simple shell script that
+finds and loads the appropriate luajit executable for your platform/arch so
+that typing `./luajit` (that's `luajit` on Windows) always works.
 
 LuaJIT was compiled using its original makefile.
 
-__NEW!__ You can now browse the [LuaJIT source code](/files/htags/luajit)
-and the [DynASM source code](/files/htags/dynasm) online.
-The html is updated daily from the
-[github mirror](https://github.com/capr/luajit)
-which is updated hourly.
-
 ## Making portable apps
 
-To make a portable app that can run from any directory without needing
-Installing, every subsystem of the app that needs to open a file must
-look for that file in a location relative to the app's directory. This
-means at least three things:
+To make a portable app that can run from any directory out of the box, every
+subsystem of the app that needs to open a file must look for that file in
+a location relative to the app's directory. This means at least three things:
 
  * Lua's require() must look in exe-relative dirs first,
  * the OS's shared library loader must look in exe-relative dirs first,
@@ -33,39 +36,37 @@ means at least three things:
 
 The solutions for the first two problems are platform-specific and
 are described below. As for the third problem, you can extract the exe's
-path from arg[-1]. To get the location of the _running script_,
-as opposed to that of the executable, use [glue.bin]. To add more paths
-to package.path and package.cpath at runtime, use [glue.luapath]
-and [glue.cpath].
+path from `arg[-1]` or use the more reliable [fs.exedir]. To get the location
+of the _running script_, as opposed to that of the executable, use [glue.bin].
+To add more paths to package.path and package.cpath at runtime, use
+[glue.luapath] and [glue.cpath] respectively.
 
 ### Finding Lua modules
 
-#### Windows
-
-`!\..\..\?.lua;!\..\..\?\init.lua` was added to the default package.path
-in luaconf.h. This allows luapower modules to be found regardless of what
+`!\..\..\?.lua;!\..\..\?\init.lua` was added to the default `package.path`
+in `luaconf.h`. This allows luapower modules to be found regardless of what
 the current directory is, making the distribution portable.
 
 The default `package.cpath` was also modified from `!\?.dll` to `!\clib\?.dll`.
-This is to distinguish between Lua/C modules and other binary dependencies.
+This is to distinguish between Lua/C modules and other binary dependencies
+and avoid name clashes on Windows where shared libraries are not prefixed
+with `lib`.
 
-#### Linux and OSX
-
-In Linux and OSX, luajit is a shell wrapper script that sets LUA_PATH
-and LUA_CPATH to acheive the same effect and assure isolation from
-system libraries.
+The `!` symbol was implemented for Linux and OSX too.
 
 #### The current directory
 
-Lua modules (including Lua/C modules) are searched for in the current directory
-___first___ (on any platform), so the isolation from the host system
-is not absolute.
+Lua modules (including Lua/C modules) are searched for in the current
+directory ___first___ (on any platform), so the isolation from the host
+system is not absolute.
 
 This is the Lua's default setting and although it's arguably a security risk,
 it's convenient for when you want to have a single luapower tree, possibly
 added to the system PATH, to be shared between many apps. In this case,
 starting luajit in the directory of the app makes the app's modules
 accessible automatically.
+
+Static builds of LuaJIT don't look into the current directory at all.
 
 ### Finding shared libraries
 
@@ -89,14 +90,13 @@ dynamic loader look for dylibs in the directory of the exe first.
 
 The current directory is _not used_ for finding shared libraries
 on Linux and OSX. It's only used on Windows, but has lower priority
-than the exe's directory (except on WinXP before SP2 where it has
-higher priority).
+than the exe's directory.
 
 ### Finding [terra] modules
 
 The luajit executable was modified to call `require'terra'` before trying
 to run `.t` files at the command line. It also loads the file by calling the
-global `loadfile` instead of the C function `lua_loadfile`. `loadfile` is
+`_G.loadfile` instead of the C function `lua_loadfile`. `loadfile` is
 overriden in `terralib.lua` to load `.t` files as Terra source code.
 
 #### Windows
@@ -105,11 +105,11 @@ TODO
 
 #### Linux and OSX
 
-The luajit wrapper sets TERRA_PATH just like it sets LUA_PATH,
+The luajit wrapper sets TERRA_PATH similar to how it sets LUA_PATH,
 so terra files are searched for in the same directories as Lua files.
 
 
 [glue.bin]:     glue#bin
 [glue.luapath]: glue#luapath
 [glue.cpath]:   glue#cpath
-
+[fs.exedir]:    fs#exedir

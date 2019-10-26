@@ -581,7 +581,7 @@ static void rec_loop_interp(jit_State *J, const BCIns *pc, LoopEvent ev)
       if (bc_j(*pc) != -1 && !innerloopleft(J, pc))
 	lj_trace_err(J, LJ_TRERR_LINNER);  /* Root trace hit an inner loop. */
       if ((ev != LOOPEV_ENTERLO &&
-	   J->loopref && J->cur.nins - J->loopref > 24) || --J->loopunroll < 0)
+	   J->loopref && J->cur.nins - J->loopref > 100) || --J->loopunroll < 0)
 	lj_trace_err(J, LJ_TRERR_LUNROLL);  /* Limit loop unrolling. */
       J->loopref = J->cur.nins;
     }
@@ -1860,6 +1860,8 @@ static void rec_varg(jit_State *J, BCReg dst, ptrdiff_t nresults)
       lj_trace_err_info(J, LJ_TRERR_NYIBC);
     }
   }
+  if (J->baseslot + J->maxslot >= LJ_MAX_JSLOTS)
+    lj_trace_err(J, LJ_TRERR_STACKOV);
 }
 
 /* -- Record allocations -------------------------------------------------- */

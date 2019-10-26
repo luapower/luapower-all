@@ -1,17 +1,4 @@
-luajit 2.1.0-beta3 from https://github.com/LuaJIT/LuaJIT (MIT license)
+luajit v2.1-20190912 from https://github.com/openresty/luajit2 (MIT license)
 
 
-For the Windows platform, LUA_PATH and LUA_CPATH were changed from the default
-in luaconf.h as follows:
-
-	`..\..\?.lua;..\..\?\init.lua` was added to LUA_PATH.
-	This makes `require()` work independent of the current directory.
-
-	LUA_CPATH was changed from '!\?.dll' to `!\clib\?.dll`.
-	This is done to separate Lua/C modules from other binary dependencies,
-	which prevents name clashes and allows the luapower script
-	to distinguish Lua/C modules from other library files.
-
-__NOTE__: These changes to LUA_PATH allow an app to be run from any
-directory, providing that the luapower directory structure is used, i.e.
-place Lua modules 2 directories up from the LuaJIT binary.
+See luajit.md for how this distribution was built and modified.

@@ -1,15 +1,31 @@
---- luaconf.h	2014-11-08 01:43:16 +0200
-+++ ../../luaconf-2.0.3.h	2014-11-08 01:19:15 +0200
-@@ -21,9 +21,10 @@
+--- src/src/luaconf.h	2019-10-26 13:00:52 +0300
++++ luaconf-modified.h	2019-10-26 13:03:37 +0300
+@@ -20,10 +20,14 @@
+ */
  #define LUA_LDIR	"!\\lua\\"
  #define LUA_CDIR	"!\\"
++#ifndef LUA_PATH_DEFAULT
  #define LUA_PATH_DEFAULT \
--  ".\\?.lua;" LUA_LDIR"?.lua;" LUA_LDIR"?\\init.lua;"
-+  ".\\?.lua;" LUA_LDIR"?.lua;" LUA_LDIR"?\\init.lua;" \
-+  "!\\..\\..\\?.lua;" "!\\..\\..\\?\\init.lua;"
+   ".\\?.lua;" LUA_LDIR"?.lua;" LUA_LDIR"?\\init.lua;"
++#endif
++#ifndef LUA_CPATH_DEFAULT
  #define LUA_CPATH_DEFAULT \
--  ".\\?.dll;" LUA_CDIR"?.dll;" LUA_CDIR"loadall.dll"
-+  ".\\?.dll;" LUA_CDIR"clib\\?.dll;" LUA_CDIR"loadall.dll"
+   ".\\?.dll;" LUA_CDIR"?.dll;" LUA_CDIR"loadall.dll"
++#endif
  #else
  /*
  ** Note to distribution maintainers: do NOT patch the following lines!
+@@ -58,9 +62,13 @@
+ #define LUA_LCPATH1	";" LUA_LCDIR "?.so"
+ #define LUA_LCPATH2	";" LUA_LCDIR "loadall.so"
+
++#ifndef LUA_PATH_DEFAULT
+ #define LUA_PATH_DEFAULT	"./?.lua" LUA_JPATH LUA_LLPATH LUA_RLPATH
++#endif
++#ifndef LUA_CPATH_DEFAULT
+ #define LUA_CPATH_DEFAULT	"./?.so" LUA_LCPATH1 LUA_RCPATH LUA_LCPATH2
+ #endif
++#endif
+
+ /* Environment variable names for path overrides and initialization code. */
+ #define LUA_PATH	"LUA_PATH"
