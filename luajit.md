@@ -66,7 +66,8 @@ added to the system PATH, to be shared between many apps. In this case,
 starting luajit in the directory of the app makes the app's modules
 accessible automatically.
 
-Static builds of LuaJIT don't look into the current directory at all.
+TODO: Make it so that static builds of LuaJIT don't look into the current
+directory at all.
 
 ### Finding shared libraries
 
@@ -99,17 +100,8 @@ to run `.t` files at the command line. It also loads the file by calling the
 `_G.loadfile` instead of the C function `lua_loadfile`. `loadfile` is
 overriden in `terralib.lua` to load `.t` files as Terra source code.
 
-#### Windows
 
-TODO
-
-#### Linux and OSX
-
-The luajit wrapper sets TERRA_PATH similar to how it sets LUA_PATH,
-so terra files are searched for in the same directories as Lua files.
-
-
-[glue.bin]:     glue#bin
-[glue.luapath]: glue#luapath
-[glue.cpath]:   glue#cpath
-[fs.exedir]:    fs#exedir
+[glue.bin]:     glue#glue.bin
+[glue.luapath]: glue#glue.luapath
+[glue.cpath]:   glue#glue.cpath
+[fs.exedir]:    fs#fs.exedir

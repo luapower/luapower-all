@@ -1,9 +1,6 @@
 #!/bin/sh
 # luajit wrapper that can be called from Windows, Linux or OSX.
 [ "$PROCESSOR_ARCHITECTURE" = "AMD64" -o "$PROCESSOR_ARCHITEW6432" = "AMD64" ] && platform=mingw64 || {
-	[ "$OSTYPE" = "msys" ] && platform=mingw32 || {
-		[ "$(uname -m)" = "x86_64" ] && a=64 || a=32
-		[ "${OSTYPE#darwin}" != "$OSTYPE" ] && platform=osx$a || platform=linux$a
-	}
+	[ "${OSTYPE#darwin}" != "$OSTYPE" ] && platform=osx64 || platform=linux64
 }
 exec "${0%luajit}/bin/$platform/luajit" "$@"
