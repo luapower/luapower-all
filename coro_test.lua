@@ -243,7 +243,7 @@ test('transfer() inside wrap()/yield()-based iterator', function()
 	end)
 
 	local function read()
-		return coroutine.transfer(scheduler, coroutine.running())
+		return coroutine.transfer(scheduler, (coroutine.running()))
 	end
 
 	local thread = coroutine.wrap(function(...)
