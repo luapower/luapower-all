@@ -44,7 +44,7 @@ MB_COMPOSITE              = 0x00000002  -- use composite chars
 MB_USEGLYPHCHARS          = 0x00000004  -- use glyph chars, not ctrl chars
 MB_ERR_INVALID_CHARS      = 0x00000008  -- error for invalid chars
 
-ERROR_INSUFFICIENT_BUFFER = 122
+local ERROR_INSUFFICIENT_BUFFER = 122
 
 local checknz = checknz
 local WCS_ctype = ffi.typeof'WCHAR[?]'

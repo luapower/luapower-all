@@ -1,8 +1,8 @@
 
---types/types: types from multiple headers
+--types/types: C types from multiple headers.
 --Written by Cosmin Apreutesei. Public Domain.
 
---NOTE: Don't define time_t because it's 64bit in windows but 32bit in mingw: use explicit types!
+--NOTE: Don't define time_t because it's 64bit in Windows but 32bit in mingw: use explicit types!
 --NOTE: SIZE has w and h unioned to cx and cy and these are the ones used throughout.
 --NOTE: RECT has x1, y1, x2, y2 unioned to left, right, top, bottom and these are the ones used throughout.
 

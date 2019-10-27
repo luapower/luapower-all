@@ -8,17 +8,22 @@ local ffi = require'ffi'
 
 return function(...)
 
+	local function S(s)
+		return ffi.abi'win' and s:gsub('/', '\\') or s
+	end
+
+	--remove current directory and luapower's dir (../..) from search paths.
+	--keep only $exedir/lua and $exedir/clib.
 	local function strip(s)
 		return s
-			:gsub('^%.[\\/][^;]+;', '') --remove current dir
-			:gsub(';%.[\\/][^;]+', '') --remove current dir
-			:gsub('[^;]-[\\/]%.%.[\\/]%.%.[^;]+;', '') --remove luapower dir
-			:gsub(';[^;]-[\\/]%.%.[\\/]%.%.[^;]+', '') --remove luapower dir
+			:gsub(S'^%./[^;]+;', '') --remove current dir
+			:gsub(S';[^;]-/%.%./%.%.[^;]+', '') --remove luapower dir
 	end
 	package.path = strip(package.path)
 	package.cpath = strip(package.cpath)
-	print(package.path)
-	print(package.cpath)
+
+	local exedir = package.path:match(S'^(.-)/lua/%?%.lua;')
+	local so_ext = package.cpath:match'%.([%w]+);'
 
 	local rel_path
 	if ffi.os == 'Windows' then
@@ -33,8 +38,8 @@ return function(...)
 
 	local function in_exe_dir(name)
 		if rel_path(name) then
-			local filename = name:find('%.'..ext..'$') and name or name..'.'..ext
-			local filepath = dir..'/'..filename
+			local filename = name:find('%.'..so_ext..'$') and name or name..'.'..so_ext
+			local filepath = exedir..'/'..filename
 			local f = io.open(filepath, 'rb')
 			if f then
 				f:close()
@@ -49,21 +54,18 @@ return function(...)
 	for lib in libs_str:gmatch'[^%s]+' do
 		libs[lib] = true
 	end
-	local function bundled(name)
-		return libs[name] or false
-	end
 
 	--overload ffi.load to fallback to ffi.C for bundled libs.
 	local ffi_load = ffi.load
 	function ffi.load(name, ...)
 		local ok, C = xpcall(ffi_load, debug.traceback, name, ...)
 		if not ok then
-			if bundled(name) then
+			if libs[name] then
 				return ffi.C
 			else
 				error(C, 2)
 			end
-		elseif bundled(name) and not in_exe_dir(name) then
+		elseif libs[name] and not in_exe_dir(name) then
 			--prevent loading bundled libs from system paths
 			return ffi.C
 		else

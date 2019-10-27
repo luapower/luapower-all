@@ -94,7 +94,7 @@ function retwith(valid) --nil,err-returning variant
 			--discard NULL pointers
 			ret = nil
 		end
-		local valid, err = valid(ret)
+		local valid, ret, err = valid(ret)
 		if not valid then
 			local code = GetLastError()
 			if code ~= 0 then
@@ -117,23 +117,26 @@ function checkwith(valid) --error raising variant
 	end
 end
 
-local function valid(ret) return ret, 'error' end
-local function validz(ret) return ret == 0, 'zero expected, got non-zero' end
-local function validnz(ret) return ret ~= 0, 'non-zero expected, got zero' end
-local function validtrue(ret) return ret == 1, '1 (TRUE) expected, got 0 (FALSE)' end
-local function validh(ret) return ret ~= nil, 'non NULL value expected, got NULL' end
-local function validpoz(ret) return ret >= 0, 'positive number expected, got negative' end
+local function valid(ret) return ret, ret, 'error' end
+local function validz(ret) return ret == 0, true, 'zero expected, got non-zero' end
+local function validnz(ret) return ret ~= 0, ret, 'non-zero expected, got zero' end
+local function validnzb(ret) return ret ~= 0, true, 'non-zero expected, got zero' end
+local function validtrue(ret) return ret == 1, true, '1 (TRUE) expected, got 0 (FALSE)' end
+local function validh(ret) return ret ~= nil, ret, 'non NULL value expected, got NULL' end
+local function validpoz(ret) return ret >= 0, ret, 'positive number expected, got negative' end
 
 --common return-value nil,err-returning checkers.
 retz    = retwith(validz)     --a not-zero is an error
 retnz   = retwith(validnz)    --a zero is an error
+retnzb  = retwith(validnzb)   --a zero is an error, otherwise means true
 rettrue = retwith(validtrue)  --non-TRUE is an error
 reth    = retwith(validh)     --a null pointer is an error (also converts NULL->nil)
 retpoz  = retwith(validpoz)   --a (strictly) negative number is an error
 
 --common return-value error-raising checkers.
-checkz    = checkwith(validz)     --a not-zero is an error
+checkz    = checkwith(validz)     --a not-zero is an error, a zero is true
 checknz   = checkwith(validnz)    --a zero is an error
+checknzb  = checkwith(validnzb)   --a zero is an error, a non-zero is true
 checktrue = checkwith(validtrue)  --non-TRUE is an error
 checkh    = checkwith(validh)     --a null pointer is an error (also converts NULL->nil)
 checkpoz  = checkwith(validpoz)   --a (strictly) negative number is an error

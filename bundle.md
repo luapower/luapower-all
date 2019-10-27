@@ -125,22 +125,30 @@ The standard LuaJIT frontend, slightly modified to run stuff from `bundle.c`.
 
 The bundle loader (C part):
 
-  * installs require() loaders on startup for loading embedded Lua
+  * installs `require()` loaders on startup for loading embedded Lua
   and C modules
-  * fills `_G.arg` with command-line args
+  * fills `_G.arg` with the command-line args
   * sets `_G.arg[-1]` to the name of the main script (`-M` option)
-  * calls `require'bundle_loader'`
-    * (which means bundle_loader itself can be upgraded without a rebuild)
+  * calls `require'bundle_loader'`, which means bundle_loader itself can be
+  upgraded without a rebuild.
 
 #### bundle_loader.lua
 
 The bundle loader (Lua part):
 
-  * sets `package.path` and `package.cpath` to load modules relative
-  to the exe's dir
-  * overrides `ffi.load` to return `ffi.C` when a library is not found
+  * sets `package.path` and `package.cpath` to only load modules relative
+  to the exe's dir and not look into the current directory.
+  * overrides `ffi.load` to return `ffi.C` when a library is not found.
   * loads the main module, if any, per `arg[-1]`
-  * falls back to LuaJIT REPL if there's no main module
+  * falls back to LuaJIT REPL if there's no main module.
+
+One subtle point about `ffi.load` is that if a library was found in a system
+path but that library is also bundled, the bundled one will be used instead.
+So the search order is:
+
+  1. external shared library in the directory of the executable.
+  2. bundled library inside the executable.
+  3. external shared library in the system's search path.
 
 #### bundle.lua
 
