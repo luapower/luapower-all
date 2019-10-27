@@ -146,7 +146,7 @@ compile_dir_module() {
 	name=$f f=$o.dir compile_bin_module "$@"
 }
 
-sayt() { [ "$VERBOSE" ] && printf "  %-15s %s\n" "$1" "$2"; }
+sayt() { [ "$VERBOSE" ] && printf "  %-16s %s\n" "$1" "$2"; }
 
 # usage: mtype=type [osuffix=] $0 file[.lua]|.c|.dasl|.* CFLAGS... -> file.o
 compile_module() {
@@ -300,6 +300,9 @@ compile_all() {
 	local copt
 	[ "$MAIN" ] && copt=-DBUNDLE_MAIN=$MAIN
 	osuffix=_$MAIN compile_bundle_module bundle.c $copt
+
+	(cd csrc/luajit/src/src && \
+		patch -o ../../../bundle/luajit.c < ../../../bundle/luajit.c.patch)
 
 	# compile our custom luajit frontend which calls bundle_add_loaders()
 	# and bundle_main() on startup.
