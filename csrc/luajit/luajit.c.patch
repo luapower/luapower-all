@@ -1,6 +1,6 @@
---- luajit.c	2019-02-16 21:51:55 +0200
-+++ ../../luajit-modified.c	2019-02-16 21:50:54 +0200
-@@ -273,7 +273,23 @@
+--- src/src/luajit.c	2019-10-27 09:46:26 +0200
++++ luajit.c	2019-10-27 09:42:31 +0200
+@@ -273,7 +273,28 @@
    const char *fname = argx[0];
    if (strcmp(fname, "-") == 0 && strcmp(argx[-1], "--") != 0)
      fname = NULL;  /* stdin */
@@ -18,7 +18,12 @@
 +  // use terra-overriden _G.loadfile instead of luaL_loadfile.
 +  lua_getglobal(L, "loadfile");
 +  lua_pushstring(L, fname);
-+  status = lua_pcall(L, 1, 1, 0);    // pushes the chunk or an error message
++  lua_call(L, 1, 2); // pushes (chunk, nil) or (nil, err)
++  status = lua_isnil(L, -2);
++  if (status)
++    lua_remove(L, -2); // remove nil, leave the error
++  else
++    lua_pop(L, 1); // remove nil, leave the chunk
 +#else
 +  status = luaL_loadfile(L, fname);  // pushes the chunk or an error message
 +#endif

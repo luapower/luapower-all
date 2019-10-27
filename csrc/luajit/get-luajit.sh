@@ -1,4 +1,4 @@
-[ -d src ] || git clone ssh://git@github.com/openresty/luajit2 src
+[ -d src ] || git clone https://github.com/openresty/luajit2 src
 (cd src && git checkout -f v2.1-agentzh && git pull)
 
 # make LUA_PATH_DEFAULT and LUA_CPATH_DEFAULT overridable with -D gcc option.

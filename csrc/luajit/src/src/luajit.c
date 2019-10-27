@@ -286,7 +286,12 @@ static int handle_script(lua_State *L, char **argx)
   // use terra-overriden _G.loadfile instead of luaL_loadfile.
   lua_getglobal(L, "loadfile");
   lua_pushstring(L, fname);
-  status = lua_pcall(L, 1, 1, 0);    // pushes the chunk or an error message
+  lua_call(L, 1, 2); // pushes (chunk, nil) or (nil, err)
+  status = lua_isnil(L, -2);
+  if (status)
+    lua_remove(L, -2); // remove nil, leave the error
+  else
+    lua_pop(L, 1); // remove nil, leave the chunk
 #else
   status = luaL_loadfile(L, fname);  // pushes the chunk or an error message
 #endif
