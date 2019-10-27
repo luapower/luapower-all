@@ -10,11 +10,15 @@ return function(...)
 
 	local function strip(s)
 		return s
-			:gsub('^%.[\\/][^;]+;', '')
-			:gsub('[\\/]..[\\/]..', '')
+			:gsub('^%.[\\/][^;]+;', '') --remove current dir
+			:gsub(';%.[\\/][^;]+', '') --remove current dir
+			:gsub('[^;]-[\\/]%.%.[\\/]%.%.[^;]+;', '') --remove luapower dir
+			:gsub(';[^;]-[\\/]%.%.[\\/]%.%.[^;]+', '') --remove luapower dir
 	end
 	package.path = strip(package.path)
 	package.cpath = strip(package.cpath)
+	print(package.path)
+	print(package.cpath)
 
 	local rel_path
 	if ffi.os == 'Windows' then
