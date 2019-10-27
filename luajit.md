@@ -66,9 +66,6 @@ added to the system PATH, to be shared between many apps. In this case,
 starting luajit in the directory of the app makes the app's modules
 accessible automatically.
 
-TODO: Make it so that static builds of LuaJIT don't look into the current
-directory at all.
-
 ### Finding shared libraries
 
 #### Windows

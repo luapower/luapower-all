@@ -122,7 +122,6 @@ static int bundle_loader_lua(lua_State *L)
 	}
 	lua_pop(L, 1); /* remove bcname */
 	if (luaL_loadbuffer(L, bcdata+4, *((unsigned int*)bcdata), bcname) != 0) {
-		lua_pushfstring(L, "error loading chunk");
 		loaderror(L);
 	}
 	return 1;

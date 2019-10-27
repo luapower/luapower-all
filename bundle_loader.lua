@@ -8,18 +8,13 @@ local ffi = require'ffi'
 
 return function(...)
 
-	--portable way to get exe's directory, based on arg[0].
-	--the resulted directory is relative to the current directory.
-	local dir = arg[0]:gsub('[/\\]?[^/\\]+$', '') or '' --remove file name
-	dir = dir == '' and '.' or dir
-
-	--set package paths relative to the exe dir.
-	--NOTE: this only works as long as the current dir doesn't change,
-	--but unlike the '!' symbol in package paths, it's portable.
-	local slash = package.config:sub(1,1)
-	package.path = string.format('%s/?.lua;%s/?/init.lua', dir, dir):gsub('/', slash)
-	local ext = ffi.os == 'Windows' and 'dll' or 'so'
-	package.cpath = string.format('%s/clib/?.%s', dir, ext):gsub('/', slash)
+	local function strip(s)
+		return s
+			:gsub('^%.[\\/][^;]+;', '')
+			:gsub('[\\/]..[\\/]..', '')
+	end
+	package.path = strip(package.path)
+	package.cpath = strip(package.cpath)
 
 	local rel_path
 	if ffi.os == 'Windows' then
