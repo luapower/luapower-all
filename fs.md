@@ -607,3 +607,10 @@ no power loss protection there either, even when the hardware works right.
 
 File locking APIs only work right on disk mounts and are buggy or non-existent
 on network mounts (NFS, Samba).
+
+### Async disk I/O
+
+Async disk I/O is a complete afterthought on all major Operating Systems.
+If your app is I/O-bound just bite the bullet and make a thread pool.
+Read [Arvid Norberg's article](https://blog.libtorrent.org/2012/10/asynchronous-disk-io/)
+for more info.
