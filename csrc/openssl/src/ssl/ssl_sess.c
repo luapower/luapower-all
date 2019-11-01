@@ -16,8 +16,6 @@
 #include "ssl_locl.h"
 #include "statem/statem_locl.h"
 
-static const char g_pending_session_magic = 0;
-
 static void SSL_SESSION_list_remove(SSL_CTX *ctx, SSL_SESSION *s);
 static void SSL_SESSION_list_add(SSL_CTX *ctx, SSL_SESSION *s);
 static int remove_session_lock(SSL_CTX *ctx, SSL_SESSION *c, int lck);
@@ -450,10 +448,6 @@ SSL_SESSION *lookup_sess_in_cache(SSL *s, const unsigned char *sess_id,
 
         ret = s->session_ctx->get_session_cb(s, sess_id, sess_id_len, &copy);
 
-        if (ret == SSL_magic_pending_session_ptr()) {
-            return ret; /* Retry later */
-        }
-
         if (ret != NULL) {
             tsan_counter(&s->session_ctx->stats.sess_cb_hit);
 
@@ -542,9 +536,6 @@ int ssl_get_prev_session(SSL *s, CLIENTHELLO_MSG *hello)
                 try_session_cache = 1;
                 ret = lookup_sess_in_cache(s, hello->session_id,
                                            hello->session_id_len);
-                if (ret == SSL_magic_pending_session_ptr()) {
-                    return -2; /* Retry later */
-                }
             }
             break;
         case SSL_TICKET_NO_DECRYPT:
@@ -959,11 +950,6 @@ int SSL_SESSION_set1_alpn_selected(SSL_SESSION *s, const unsigned char *alpn,
 X509 *SSL_SESSION_get0_peer(SSL_SESSION *s)
 {
     return s->peer;
-}
-
-SSL_SESSION *SSL_magic_pending_session_ptr(void)
-{
-    return (SSL_SESSION *) &g_pending_session_magic;
 }
 
 int SSL_SESSION_set1_id_context(SSL_SESSION *s, const unsigned char *sid_ctx,

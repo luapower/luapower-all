@@ -1598,7 +1598,6 @@ static int tls_early_post_process_client_hello(SSL *s)
     STACK_OF(SSL_CIPHER) *scsvs = NULL;
     CLIENTHELLO_MSG *clienthello = s->clienthello;
     DOWNGRADE dgrd = DOWNGRADE_NONE;
-    PACKET saved_ciphers;
 
     /* Finished parsing the ClientHello, now we can start processing it */
     /* Give the ClientHello callback a crack at things */
@@ -1706,7 +1705,6 @@ static int tls_early_post_process_client_hello(SSL *s)
     }
 
     s->hit = 0;
-    saved_ciphers = clienthello->ciphersuites;
 
     if (!ssl_cache_cipherlist(s, &clienthello->ciphersuites,
                               clienthello->isv2) ||
@@ -1812,10 +1810,6 @@ static int tls_early_post_process_client_hello(SSL *s)
         } else if (i == -1) {
             /* SSLfatal() already called */
             goto err;
-        } else if (i == -2) {
-            clienthello->ciphersuites = saved_ciphers;
-            s->rwstate = SSL_SESS_LOOKUP;
-            return -1;
         } else {
             /* i == 0 */
             if (!ssl_get_new_session(s, 1)) {
@@ -1823,7 +1817,6 @@ static int tls_early_post_process_client_hello(SSL *s)
                 goto err;
             }
         }
-        s->rwstate = SSL_NOTHING;
     }
 
     if (SSL_IS_TLS13(s)) {

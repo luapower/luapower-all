@@ -896,7 +896,6 @@ __owur int SSL_extension_supported(unsigned int ext_type);
 # define SSL_ASYNC_PAUSED       5
 # define SSL_ASYNC_NO_JOBS      6
 # define SSL_CLIENT_HELLO_CB    7
-# define SSL_SESS_LOOKUP        99
 
 /* These will only be used when doing non-blocking IO */
 # define SSL_want_nothing(s)         (SSL_want(s) == SSL_NOTHING)
@@ -906,7 +905,6 @@ __owur int SSL_extension_supported(unsigned int ext_type);
 # define SSL_want_async(s)           (SSL_want(s) == SSL_ASYNC_PAUSED)
 # define SSL_want_async_job(s)       (SSL_want(s) == SSL_ASYNC_NO_JOBS)
 # define SSL_want_client_hello_cb(s) (SSL_want(s) == SSL_CLIENT_HELLO_CB)
-# define SSL_want_sess_lookup(s)     (SSL_want(s) == SSL_SESS_LOOKUP)
 
 # define SSL_MAC_FLAG_READ_MAC_STREAM 1
 # define SSL_MAC_FLAG_WRITE_MAC_STREAM 2
@@ -1192,8 +1190,6 @@ DECLARE_PEM_rw(SSL_SESSION, SSL_SESSION)
 # define SSL_ERROR_WANT_ASYNC            9
 # define SSL_ERROR_WANT_ASYNC_JOB       10
 # define SSL_ERROR_WANT_CLIENT_HELLO_CB 11
-# define SSL_ERROR_WANT_SESSION_LOOKUP  99
-# define SSL_ERROR_PENDING_SESSION      99 /* BoringSSL compatibility */
 # define SSL_CTRL_SET_TMP_DH                     3
 # define SSL_CTRL_SET_TMP_ECDH                   4
 # define SSL_CTRL_SET_TMP_DH_CB                  6
@@ -1666,7 +1662,6 @@ int SSL_SESSION_print(BIO *fp, const SSL_SESSION *ses);
 int SSL_SESSION_print_keylog(BIO *bp, const SSL_SESSION *x);
 int SSL_SESSION_up_ref(SSL_SESSION *ses);
 void SSL_SESSION_free(SSL_SESSION *ses);
-SSL_SESSION *SSL_magic_pending_session_ptr(void);
 __owur int i2d_SSL_SESSION(SSL_SESSION *in, unsigned char **pp);
 __owur int SSL_set_session(SSL *to, SSL_SESSION *session);
 int SSL_CTX_add_session(SSL_CTX *ctx, SSL_SESSION *session);

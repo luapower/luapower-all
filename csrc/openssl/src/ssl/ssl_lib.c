@@ -3564,8 +3564,6 @@ int SSL_get_error(const SSL *s, int i)
         return SSL_ERROR_WANT_ASYNC_JOB;
     if (SSL_want_client_hello_cb(s))
         return SSL_ERROR_WANT_CLIENT_HELLO_CB;
-    if (SSL_want_sess_lookup(s))
-        return SSL_ERROR_WANT_SESSION_LOOKUP;
 
     if ((s->shutdown & SSL_RECEIVED_SHUTDOWN) &&
         (s->s3->warn_alert == SSL_AD_CLOSE_NOTIFY))
