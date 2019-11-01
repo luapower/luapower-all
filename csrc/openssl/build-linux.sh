@@ -12,5 +12,8 @@ cp -f libcrypto.a         $d/
 cp -f libssl.so.1.1       $d/libssl.so
 cp -f libssl.a            $d/
 
+cp -f include/openssl/opensslconf.h ../
+
 make clean
-rm src/Makefile src/configdata.pm
+rm Makefile configdata.pm
+cp -f ../opensslconf.h include/openssl/
