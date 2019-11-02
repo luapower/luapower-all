@@ -1,5 +1,6 @@
---- src/src/luajit.c	2019-10-27 09:46:26 +0200
-+++ luajit.c	2019-10-27 09:42:31 +0200
+Patch to require'terra' when running .t files from the command line.
+--- luajit.c	2019-10-27 09:46:26 +0200
++++ src/src/luajit.c	2019-10-27 09:42:31 +0200
 @@ -273,7 +273,28 @@
    const char *fname = argx[0];
    if (strcmp(fname, "-") == 0 && strcmp(argx[-1], "--") != 0)

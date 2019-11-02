@@ -1,5 +1,6 @@
---- src/src/lib_package.c	2019-10-26 19:05:28.000000000 +0300
-+++ lib_package.c	2019-10-26 19:04:03.000000000 +0300
+Patch to make '!' work in LUA_PATH and LUA_CPATH on Linux and OSX too.
+--- lib_package.c	2019-10-26 19:05:28.000000000 +0300
++++ src/src/lib_package.c	2019-10-26 19:04:03.000000000 +0300
 @@ -17,6 +17,15 @@
  #include "lj_err.h"
  #include "lj_lib.h"
