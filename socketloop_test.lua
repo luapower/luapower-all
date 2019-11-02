@@ -1,4 +1,7 @@
 local lanes = require'lanes'
+local time = require'time'
+io.stdout:setvbuf'no'
+io.stderr:setvbuf'no'
 lanes.configure()
 
 local linda = lanes.linda()
@@ -25,18 +28,21 @@ local function reverse_echo_server(port, coro)
 		hcount = hcount - 1
 		skt:close()
 	end
-	loop.newserver('localhost', port, handler)
+	local srv_skt = loop.newserver('127.0.0.1', port, handler)
 	print'server started'
+	linda:set('server_started', true)
 	while loop.step(1) do
 		if stop_loop and hcount == 0 then break end
 	end
+	srv_skt:close()
+	linda:set('server_started', false)
 end
 
 local function client_multi_conn(server_port, coro)
 	local loop = require'socketloop'
 	if coro then loop = loop.coro end
 	local function client()
-		local skt = assert(loop.connect('localhost', server_port))
+		local skt = assert(loop.connect('127.0.0.1', server_port))
 		local function say(s)
 			assert(skt:send(s .. '\n'))
 			local ss, err = skt:receive'*l'
@@ -60,7 +66,7 @@ local function stop_conn(server_port, coro)
 	local loop = require'socketloop'
 	if coro then loop = loop.coro end
 	loop.newthread(function()
-		local skt = assert(loop.connect('localhost', server_port))
+		local skt = assert(loop.connect('127.0.0.1', server_port))
 		assert(skt:send'stop\n')
 	end)
 	loop.start(1)
@@ -75,6 +81,7 @@ local function test(coro)
 	local port = 12355
 	local server_lane_gen = lanes.gen('*', reverse_echo_server)
 	local server_lane = server_lane_gen(port, coro)
+	time.sleep(.1)
 
 	local client_lane_gen = lanes.gen('*', client_multi_conn)
 	local client_lanes = {}
@@ -82,6 +89,10 @@ local function test(coro)
 		client_lanes[i] = client_lane_gen(port, coro)
 	end
 
+	print('waiting for server to start...')
+	while not linda:get'server_started' do
+		time.sleep(0.1)
+	end
 	print('waiting for clients')
 	for i=#client_lanes,1,-1 do
 		local _ = client_lanes[i][1]
@@ -90,6 +101,10 @@ local function test(coro)
 
 	print('stopping the server')
 	stop_conn(port, coro)
+	print('waiting for server to stop...')
+	while linda:get'server_started' do
+		time.sleep(0.1)
+	end
 	print('server stopped')
 
 	print('waiting for server to finish')
@@ -99,6 +114,6 @@ local function test(coro)
 	print('messages served', linda:get('messages_served'))
 end
 
-test()
 test(true)
+test()
 
