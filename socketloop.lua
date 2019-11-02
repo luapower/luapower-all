@@ -103,40 +103,7 @@ local function new(coro)
 		return skt:close(...)
 	end
 
-	local function connect_tls(self, skt, tls, host)
-		if not tls then return skt end
-		local ssl = require'ssl'
-		local opt = {
-			protocol = 'any',
-			options  = {'all', 'no_sslv2', 'no_sslv3', 'no_tlsv1'},
-			verify   = 'none',
-			mode = 'client',
-		}
-		if type(tls) == 'table' then
-			for k,v in pairs(tls) do
-				opt[k] = v
-			end
-		end
-		local skt = ssl.wrap(skt, opt)
-		skt:sni(host)
-		assert(skt:settimeout(0, 'b'))
-		assert(skt:settimeout(0, 't'))
-		while true do
-			local ok, err = skt:dohandshake()
-			if ok then return skt end
-			if err == 'wantread' then
-				wait(read, skt)
-			elseif err == 'wantwrite' then
-				wait(write, skt)
-			else
-				self:close()
-				return nil, err
-			end
-		end
-		return skt
-	end
-
-	local function connect(self, skt, tls, host, port)
+	local function connect(skt, host, port)
 		assert(coroutine.running(), 'attempting to connect from the main thread')
 		assert(skt:settimeout(0, 'b'))
 		assert(skt:settimeout(0, 't'))
@@ -151,46 +118,77 @@ local function new(coro)
 			wait(write, skt)
 			ok, err = skt:connect(host, port)
 		end
-		return connect_tls(self, skt, tls, host)
+		return true
+	end
+
+	local function call_async(skt, func, ...)
+		while true do
+			local ret, err = func(...)
+			if not ret then
+				if err == 'wantread' then
+					wait(read, skt)
+				elseif err == 'wantwrite' then
+					wait(write, skt)
+				else
+					return nil, err
+				end
+			else
+				return ret
+			end
+		end
 	end
 
 	--wrap a luasocket socket object into an object that performs socket
 	--operations asynchronously.
-	function loop.wrap(skt, tls)
+	function loop.wrap(skt, skt_type)
+
+		if type(skt) == 'number' then --fd or handle
+			local fd, skt_type = skt, skt_type or 'tcp'
+			skt = skt_type == 'tcp'  and socket.try(socket.tcp ())
+				or skt_type == 'tcp6' and socket.try(socket.tcp6())
+				or skt_type == 'udp'  and socket.try(socket.udp ())
+				or skt_type == 'udp6' and socket.try(socket.udp6())
+				or skt_type == 'unix' and socket.try(socket.unix())
+			socket:close() --luasocket should take a fd on its own constructors.
+			socket:setfd(fd)
+		end
+
 		local o = {}
+
 		--set async methods
 		function o:accept(...) return loop.wrap(accept(skt,...)) end
 		function o:receive(...) return receive(skt,...) end
 		function o:send(...) return send(skt,...) end
 		function o:close(...) return close(skt,...) end
-		function o:connect(...)
-			local new_skt, err = connect(self, skt, tls, ...)
-			if new_skt then --socket was ssl-wrapped
-				skt = new_skt
-				return skt
-			end
-			return nil, err
-		end
-		--install method forwarders for other methods on first access.
-		setmetatable(o, o)
+		function o:connect(...) return connect(skt, ...) end
+		function o:call_async(func, ...) return call_async(skt, func, ...) end
+
+		function o:setsocket(new_skt) skt = new_skt end
+		function o:getsocket() return skt end
+
+		--forward methods to skt
 		function o:__index(k)
-			if type(skt[k]) == 'function' then
-				o[k] = function(self, ...)
+			if type(k) == 'string' and type(skt[k]) == 'function' then
+				local function method(self, ...)
 					return skt[k](skt, ...)
 				end
-				return o[k]
+				self[k] = method
+				return method
 			end
+			return skt[k]
 		end
-		return o
+
+		return setmetatable(o, o)
 	end
 
-	function loop.connect(host, port, locaddr, locport, tls)
+	function loop.connect(host, port, locaddr, locport)
 		local skt = socket.try(socket.tcp())
 		if locaddr or locport then
 			assert(skt:bind(locaddr, locport or 0))
 		end
-		skt = loop.wrap(skt, tls)
-		return skt:connect(host, port)
+		skt = loop.wrap(skt)
+		local ok, err = skt:connect(host, port)
+		if ok then return skt else return nil, err end
 	end
 
 	--call select() and resume the calling threads of the sockets that get loaded.

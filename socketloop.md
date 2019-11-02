@@ -13,19 +13,22 @@ coroutines.
 
 ## API
 
--------------------------------------------- ----------------------------------------
-`loop.wrap(socket) -> asocket`					wrap a TCP socket to an async socket
-`loop.connect(ip, port) -> asocket`				make an async TCP connection
-`loop.newthread(handler, arg)`					create a thread for one connection
-`loop.current() -> thread`							current thread
-`loop.suspend()`										suspend current thread
-`loop.resume(thread, arg)`							resume a suspended thread
-`loop.newserver(ip, port, handler) -> skt`	dispatch inbound connections to a function
-`loop.start([timeout])`								start the loop
-`loop.stop()`											stop the loop (if started)
-`loop.step([timeout]) -> true|false`			dispatch pending reads and writes
-`loop.coro -> loop`									[coro]-based loop
--------------------------------------------- ----------------------------------------
+-------------------------------------------- ---------------------------------
+`loop.wrap(socket|fd) -> asocket`            wrap a TCP socket or a fd to an async socket
+`loop.connect(ip, port, ...) -> asocket`     make an async TCP connection
+`loop.newthread(handler, arg)`               create a thread for one connection
+`loop.current() -> thread`                   current thread
+`loop.suspend()`                             suspend current thread
+`loop.resume(thread, arg)`                   resume a suspended thread
+`loop.newserver(ip, port, handler) -> skt`   dispatch inbound connections to a function
+`loop.start([timeout])`                      start the loop
+`loop.stop()`                                stop the loop (if started)
+`loop.step([timeout]) -> true|false`         dispatch pending reads and writes
+`loop.coro -> loop`                          [coro]-based loop
+`asocket:call_async(func, ...) -> ret, err`  call a multi-step async function
+`asocket:getsocket() -> socket`              get the wrapped LuaSocket
+`asocket:setsocket(socket)`                  set the wrapped LuaSocket
+-------------------------------------------- ---------------------------------
 
 ### `loop.wrap(socket) -> asocket`
 
@@ -120,3 +123,11 @@ end)
 
 loop.start()
 ~~~
+
+### `asocket:call_async(func, ...) -> ret, err`
+
+Call `func(...)` repeatedly until it doesn't signal the need to wait for
+data to read or write anymore. The function performs I/O on `asocket`
+and returns `nil|false, 'wantread'` when it needs to poll for more bytes
+to read and `nil|false, 'wantwrite'` when it needs to wait for the write
+buffer to become accessible for writing.

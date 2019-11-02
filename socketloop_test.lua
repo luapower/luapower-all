@@ -39,7 +39,7 @@ local function client_multi_conn(server_port, coro)
 		local skt = assert(loop.connect('localhost', server_port))
 		local function say(s)
 			assert(skt:send(s .. '\n'))
-			local ss = assert(skt:receive'*l')
+			local ss, err = skt:receive'*l'
 			assert(ss == s:reverse())
 		end
 		for i = 1,10 do
