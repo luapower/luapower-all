@@ -1,0 +1,93 @@
+--- schannel.h	2019-11-03 12:25:23 +0200
++++ x86_64-w64-mingw32/include/schannel.h	2019-11-03 12:23:11 +0200
+@@ -51,6 +51,14 @@
+ #define SECPKG_ATTR_MAPPED_CRED_ATTR 0x5c
+ #define SECPKG_ATTR_SESSION_INFO 0x5d
+ #define SECPKG_ATTR_APP_DATA 0x5e
++#define SECPKG_ATTR_REMOTE_CERTIFICATES  0x5F   // returns SecPkgContext_Certificates
++#define SECPKG_ATTR_CLIENT_CERT_POLICY   0x60   // sets    SecPkgCred_ClientCertCtlPolicy
++#define SECPKG_ATTR_CC_POLICY_RESULT     0x61   // returns SecPkgContext_ClientCertPolicyResult
++#define SECPKG_ATTR_USE_NCRYPT           0x62   // Sets the CRED_FLAG_USE_NCRYPT_PROVIDER FLAG on cred group
++#define SECPKG_ATTR_LOCAL_CERT_INFO      0x63   // returns SecPkgContext_CertInfo
++#define SECPKG_ATTR_CIPHER_INFO          0x64   // returns new CNG SecPkgContext_CipherInfo
++#define SECPKG_ATTR_EAP_PRF_INFO         0x65   // sets    SecPkgContext_EapPrfInfo
++#define SECPKG_ATTR_SUPPORTED_SIGNATURES 0x66   // returns SecPkgContext_SupportedSignatures
+
+ typedef struct _SecPkgContext_IssuerListInfo {
+   DWORD cbIssuerList;
+@@ -273,6 +281,48 @@
+ #define SP_PROT_CLIENTS (SP_PROT_PCT1_CLIENT | SP_PROT_SSL2_CLIENT | SP_PROT_SSL3_CLIENT | SP_PROT_UNI_CLIENT | SP_PROT_TLS1_CLIENT)
+ #define SP_PROT_SERVERS (SP_PROT_PCT1_SERVER | SP_PROT_SSL2_SERVER | SP_PROT_SSL3_SERVER | SP_PROT_UNI_SERVER | SP_PROT_TLS1_SERVER)
+
++#define SP_PROT_TLS1_0_SERVER           SP_PROT_TLS1_SERVER
++#define SP_PROT_TLS1_0_CLIENT           SP_PROT_TLS1_CLIENT
++#define SP_PROT_TLS1_0                  (SP_PROT_TLS1_0_SERVER | \
++                                         SP_PROT_TLS1_0_CLIENT)
++
++#define SP_PROT_TLS1_1_SERVER           0x00000100
++#define SP_PROT_TLS1_1_CLIENT           0x00000200
++#define SP_PROT_TLS1_1                  (SP_PROT_TLS1_1_SERVER | \
++                                         SP_PROT_TLS1_1_CLIENT)
++
++#define SP_PROT_TLS1_2_SERVER           0x00000400
++#define SP_PROT_TLS1_2_CLIENT           0x00000800
++#define SP_PROT_TLS1_2                  (SP_PROT_TLS1_2_SERVER | \
++                                         SP_PROT_TLS1_2_CLIENT)
++
++#define SP_PROT_TLS1_1PLUS_SERVER       (SP_PROT_TLS1_1_SERVER | \
++                                         SP_PROT_TLS1_2_SERVER)
++#define SP_PROT_TLS1_1PLUS_CLIENT       (SP_PROT_TLS1_1_CLIENT | \
++                                         SP_PROT_TLS1_2_CLIENT)
++#define SP_PROT_TLS1_1PLUS              (SP_PROT_TLS1_1PLUS_SERVER | \
++                                         SP_PROT_TLS1_1PLUS_CLIENT)
++
++#define SP_PROT_TLS1_X_SERVER           (SP_PROT_TLS1_0_SERVER | \
++                                         SP_PROT_TLS1_1_SERVER | \
++                                         SP_PROT_TLS1_2_SERVER)
++#define SP_PROT_TLS1_X_CLIENT           (SP_PROT_TLS1_0_CLIENT | \
++                                         SP_PROT_TLS1_1_CLIENT | \
++                                         SP_PROT_TLS1_2_CLIENT)
++#define SP_PROT_TLS1_X                  (SP_PROT_TLS1_X_SERVER | \
++                                         SP_PROT_TLS1_X_CLIENT)
++
++#define SP_PROT_SSL3TLS1_X_CLIENTS      (SP_PROT_TLS1_X_CLIENT | \
++                                         SP_PROT_SSL3_CLIENT)
++#define SP_PROT_SSL3TLS1_X_SERVERS      (SP_PROT_TLS1_X_SERVER | \
++                                         SP_PROT_SSL3_SERVER)
++#define SP_PROT_SSL3TLS1_X              (SP_PROT_SSL3 | SP_PROT_TLS1_X)
++
++#define SP_PROT_X_CLIENTS               (SP_PROT_CLIENTS | \
++                                         SP_PROT_TLS1_X_CLIENT)
++#define SP_PROT_X_SERVERS               (SP_PROT_SERVERS | \
++                                         SP_PROT_TLS1_X_SERVER)
++
+ typedef WINBOOL (*SSL_EMPTY_CACHE_FN_A)(LPSTR pszTargetName,DWORD dwFlags);
+
+ WINBOOL SslEmptyCacheA(LPSTR pszTargetName,DWORD dwFlags);
+@@ -374,3 +424,26 @@
+ } SecPkgContext_SupportedSignatures, *PSecPkgContext_SupportedSignatures;
+ #endif /*(_WIN32_WINNT >= 0x0601)*/
+ #endif
++
++#define SZ_ALG_MAX_SIZE 64
++#define SECPKGCONTEXT_CIPHERINFO_V1 1
++
++typedef struct _SecPkgContext_CipherInfo
++{
++
++    DWORD dwVersion;
++    DWORD dwProtocol;
++    DWORD dwCipherSuite;
++    DWORD dwBaseCipherSuite;
++    WCHAR szCipherSuite[SZ_ALG_MAX_SIZE];
++    WCHAR szCipher[SZ_ALG_MAX_SIZE];
++    DWORD dwCipherLen;
++    DWORD dwCipherBlockLen;    // in bytes
++    WCHAR szHash[SZ_ALG_MAX_SIZE];
++    DWORD dwHashLen;
++    WCHAR szExchange[SZ_ALG_MAX_SIZE];
++    DWORD dwMinExchangeLen;
++    DWORD dwMaxExchangeLen;
++    WCHAR szCertificate[SZ_ALG_MAX_SIZE];
++    DWORD dwKeyType;
++} SecPkgContext_CipherInfo, *PSecPkgContext_CipherInfo;
