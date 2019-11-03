@@ -1,4 +1,2 @@
-MariaDB-Client 2.0.0 from https://downloads.mariadb.org/client-native/ (LGPL License)
+MariaDB-Client 3.1.4 from https://github.com/MariaDB/mariadb-connector-c.git (LGPL License)
 
-
-Note: libmariadb wasn't built from source, so there's no OSX version yet.
