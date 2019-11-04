@@ -13,9 +13,5 @@ check() {
 	)
 }
 
-check bin/linux32 *.so luajit-bin
-check bin/linux32/clib *.so
-[ "$(uname -m)" = "x86_64" ] && {
-check bin/linux64 *.so luajit-bin
+check bin/linux64 *.so luajit
 check bin/linux64/clib *.so
-}
