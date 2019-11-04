@@ -1,2 +1,2 @@
 MariaDB-Client 3.1.4 from https://github.com/MariaDB/mariadb-connector-c.git (LGPL License)
-
+requires: openssl (linux)

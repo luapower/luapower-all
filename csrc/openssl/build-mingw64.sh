@@ -12,4 +12,4 @@ cp -f libcrypto.dll.a  $d/libcrypto.a
 cp -f libssl.dll       $d/
 cp -f libssl.dll.a     $d/libssl.a
 
-cp -f include/openssl/opensslconf.h ../opensslconf.h.mingw64
+cp -f include/openssl/opensslconf.h ../include-mingw64/openssl/opensslconf.h
