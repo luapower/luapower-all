@@ -1,3 +1,28 @@
+diff --git a/auto/lib/openssl/conf b/auto/lib/openssl/conf
+index 4fb52df..f9f42c8 100644
+--- a/auto/lib/openssl/conf
++++ b/auto/lib/openssl/conf
+@@ -36,12 +36,14 @@ if [ $OPENSSL != NONE ]; then
+             have=NGX_OPENSSL . auto/have
+             have=NGX_SSL . auto/have
+ 
+-            CORE_INCS="$CORE_INCS $OPENSSL/.openssl/include"
+-            CORE_DEPS="$CORE_DEPS $OPENSSL/.openssl/include/openssl/ssl.h"
+-            CORE_LIBS="$CORE_LIBS $OPENSSL/.openssl/lib/libssl.a"
+-            CORE_LIBS="$CORE_LIBS $OPENSSL/.openssl/lib/libcrypto.a"
+-            CORE_LIBS="$CORE_LIBS $NGX_LIBDL"
+-            CORE_LIBS="$CORE_LIBS $NGX_LIBPTHREAD"
++            #CORE_INCS="$CORE_INCS $OPENSSL/.openssl/include"
++            #CORE_DEPS="$CORE_DEPS $OPENSSL/.openssl/include/openssl/ssl.h"
++            #CORE_LIBS="$CORE_LIBS $OPENSSL/.openssl/lib/libssl.a"
++            #CORE_LIBS="$CORE_LIBS $OPENSSL/.openssl/lib/libcrypto.a"
++            #CORE_LIBS="$CORE_LIBS $NGX_LIBDL"
++            #CORE_LIBS="$CORE_LIBS $NGX_LIBPTHREAD"
++				CORE_INCS="$CORE_INCS $OPENSSL/include $OPENSSL_PLATFORM_INCLUDE"
++				CORE_LIBS="$CORE_LIBS -L$OPENSSL_BIN -lssl -lcrypto"
+ 
+             if [ "$NGX_PLATFORM" = win32 ]; then
+                 CORE_LIBS="$CORE_LIBS -lgdi32 -lcrypt32 -lws2_32"
 diff --git a/auto/lib/pcre/conf b/auto/lib/pcre/conf
 index 5e3960f..e32dfa5 100644
 --- a/auto/lib/pcre/conf

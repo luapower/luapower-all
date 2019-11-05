@@ -1,2 +1,2 @@
 nginx 1.17.4 from https://github.com/nginx/nginx (BSD License)
-requires: zlib pcre
+requires: zlib pcre openssl
