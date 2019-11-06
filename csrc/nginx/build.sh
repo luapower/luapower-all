@@ -1,10 +1,14 @@
 [ "$P" ] || exit 1
 cd src || exit 1
+
 BIN=../../../bin/$P
 export ZLIB_BIN=$BIN
 export PCRE_BIN=$BIN
 export OPENSSL_BIN=$BIN
 export OPENSSL_PLATFORM_INCLUDE=../include-mingw64
+export LUAJIT_INC=../../luajit/src/src
+export LUAJIT_LIB=$BIN
+
 C="$C
 --prefix=.
 --sbin-path=$E
@@ -36,6 +40,10 @@ C="$C
 --with-mail_ssl_module
 --with-stream_ssl_module
 --with-stream_ssl_preread_module
+
+--with-compat
+--add-module=../ndk
+--add-module=../lua
 "
 auto/configure $C \
 	--with-cc=gcc \

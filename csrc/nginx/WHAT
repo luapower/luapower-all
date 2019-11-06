@@ -1,2 +1,7 @@
 nginx 1.17.4 from https://github.com/nginx/nginx (BSD License)
-requires: zlib pcre openssl
+requires: zlib pcre openssl luajit
+
+
+Nginx Developement Kit 0.3.1  from https://github.com/simplresty/ngx_devel_kit (BSD License)
+Lua Nginx Module       3.7    from https://github.com/openresty/lua-nginx-module (BSD License)
+OpenResty              master from https://github.com/openresty/openresty (BSD License)
