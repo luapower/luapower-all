@@ -5,6 +5,7 @@ tagline: package categories
 * Runtimes
 	* [luajit]
 	* [terra]
+	* [nginx]
 * Deployment
 	* [bundle]
 * Standard Libraries
@@ -24,17 +25,14 @@ tagline: package categories
 	* [socketloop]
 	* [thread]
 	* [pthread]
+	* [proc]
 	* [time]
 	* [rs232]
+	* [hidapi]
 * Portable UI
-   * [ui]
-	* [codedit]
-* Portable Text Rendering
-	* [tr]
-   * [freetype]
-	* [harfbuzz]
-	* [fribidi]
-	* [libunibreak]
+	* [ui]
+	* [terra-layer]
+	* [terra-tr]
 * Portable 2D Graphics
 	* [cairo]
 	* [bitmap]
@@ -59,10 +57,11 @@ tagline: package categories
 	* [libexif]
 * Unicode
 	* [utf8]
+	* [utf8quot]
 	* [ucdn]
 * Hashing
 	* [xxhash]
-   * [blake2]
+	* [blake2]
 	* [sha2]
 	* [md5]
 	* [hmac]
@@ -82,7 +81,7 @@ tagline: package categories
 * Databases
 	* [mysql]
 * Templating
-   * [mustache]
+	* [mustache]
 * Motion
 	* [tweening]
 	* [easing]
@@ -93,7 +92,7 @@ tagline: package categories
 	* [linkedlist]
 	* [lrucache]
 	* [lfrb]
-* Support APIs
+* Lua Support Libs
 	* [amoeba]
 	* [eq]
 	* [opengl]
@@ -103,32 +102,59 @@ tagline: package categories
 	* [unixperms]
 	* [lexer]
 	* [dynasm]
-* Support Libs
+	* [rangelist]
+* C Support Libs
 	* [libstdcxx]
 	* [pixman]
 	* [libmariadb]
-	* [libmysql]
 	* [openssl]
-   * [libogg]
+	* [libogg]
 	* [lua-headers]
 	* [shm]
+	* [llvm]
+	* [freetype]
+	* [harfbuzz]
+	* [fribidi]
+	* [libunibreak]
+	* [pcre]
 * Development Tools
 	* [inspect]
 	* [cplayer]
 	* [gfonts]
 	* [hash_benchmark]
-   * [unit]
+	* [unit]
+* Terra Standard Libraries
+   * [terra-low]
+   * [terra-arrayview]
+   * [terra-dynarray]
+	* [terra-hashmap]
+	* [terra-phf]
+	* [terra-linkedlist]
+	* [terra-fixedfreelist]
+	* [terra-arrayfreelist]
+	* [terra-lrucache]
+	* [terra-bitarray]
+	* [terra-utf8]
+	* [terra-random]
+* Terra Support Libs
+	* [terra-bitmap]
+	* [terra-cairo]
+	* [terra-box2d]
+	* [terra-boxblur]
+	* [mingw64-headers]
+	* [clang-resource-dir]
 * Package Management
 	* [luapower]
 	* [luapower_db]
 	* [luapower-repos]
 	* [luapower-ci]
-* Unsupported
+* Unmaintained
+	* [tr]
+	* [codedit]
 	* [bnet]
 	* [lfs]
 	* [lanes]
 	* [ffi_reflect]
 	* [struct]
 	* [minizip]
-	* [llvm]
 	* [tuple]
