@@ -39,7 +39,40 @@ return glue.autoload({
 	compute = compute,
 }, {
 	md5 = 'hmac_md5',
+	sha1 = 'hmac_sha1',
 	sha256 = 'hmac_sha2',
 	sha384 = 'hmac_sha2',
 	sha512 = 'hmac_sha2',
 })
+
+--[[
+
+--TODO: check if this implementation from sha1.lua is faster.
+
+-- Precalculate replacement tables.
+local xor_with_0x5c = {}
+local xor_with_0x36 = {}
+
+for i = 0, 0xff do
+   xor_with_0x5c[schar(i)] = schar(byte_xor(0x5c, i))
+   xor_with_0x36[schar(i)] = schar(byte_xor(0x36, i))
+end
+
+-- 512 bits.
+local BLOCK_SIZE = 64
+
+function sha1.hmac(key, text)
+   if #key > BLOCK_SIZE then
+      key = sha1.binary(key)
+   end
+
+   local key_xord_with_0x36 = key:gsub('.', xor_with_0x36) .. srep(schar(0x36), BLOCK_SIZE - #key)
+   local key_xord_with_0x5c = key:gsub('.', xor_with_0x5c) .. srep(schar(0x5c), BLOCK_SIZE - #key)
+
+   return sha1.sha1(key_xord_with_0x5c .. sha1.binary(key_xord_with_0x36 .. text))
+end
+
+function sha1.hmac_binary(key, text)
+   return hex_to_binary(sha1.hmac(key, text))
+end
+]]
