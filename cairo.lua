@@ -812,7 +812,8 @@ function path.dump(p)
 		print('', path_node_types[tonumber(d.header.type)])
 		i = i + 1
 		for j = 1, d.header.length-1 do
-			print('', '', string.format('%g, %g', d.points[j].x, d.points[j].y))
+			local d = p.data[i]
+			print('', '', string.format('%g, %g', d.point.x, d.point.y))
 			i = i + 1
 		end
 	end

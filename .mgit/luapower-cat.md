@@ -124,6 +124,7 @@ tagline: package categories
 	* [gfonts]
 	* [hash_benchmark]
 	* [unit]
+	* [testui]
 * Web Development
 	* [webb]
 * Terra Standard Libraries

@@ -8,7 +8,7 @@
 if not ... then require'terra/tr_test'; return end
 
 setfenv(1, require'terra/tr_types')
-require'terra/tr_hit_test'
+require'terra/tr_align'
 
 local overlap_seg = macro(function(ax1, ax2, bx1, bx2) --1D segments overlap test
 	return `not (ax2 < bx1 or bx2 < ax1)
@@ -19,7 +19,7 @@ local box_overlapping = macro(function(x1, y1, w1, h1, x2, y2, w2, h2)
 	    and overlap_seg(y1, y1+h1, y2, y2+h2)
 end)
 
-terra Layout:get_clipped()
+terra Layout:get_has_clip_rect()
 	return not (
 		    self.clip_x == -inf
 		and self.clip_y == -inf
@@ -29,11 +29,7 @@ end
 
 --NOTE: doesn't take into account side bearings, so it's not 100% accurate!
 terra Layout:clip()
-	assert(self.state >= STATE_ALIGNED)
-	if self.clip_valid then
-		return
-	end
-	if not self.clipped then
+	if not self.has_clip_rect then
 		self.first_visible_line = 0
 		self.last_visible_line = self.lines.len-1
 		for _,seg in self.segs do
@@ -44,9 +40,8 @@ terra Layout:clip()
 		var y = self.clip_y - self.y - self.baseline
 		var w = self.clip_w
 		var h = self.clip_h
-		var first_visible = max(self:line_at_y(y), 0)
-		var last_visible = iif(h == inf, self.lines.len-1,
-			min(self.lines.len-1, self:line_at_y(y + h - 1.0/256)))
+		var first_visible = self:line_at_y(y)
+		var last_visible  = self:line_at_y(y + h - 1.0/256)
 		var first = false
 		for line_i = first_visible, last_visible + 1 do
 			var line = self.lines:at(line_i)
@@ -72,6 +67,9 @@ terra Layout:clip()
 		end
 		self.first_visible_line = first_visible
 		self.last_visible_line = last_visible
-		self.clip_valid = true
 	end
+end
+
+terra Layout:visible_lines()
+	return self.lines:sub(self.first_visible_line, self.last_visible_line + 1)
 end

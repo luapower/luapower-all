@@ -1444,7 +1444,8 @@ function app:key(keys, key_pressed_now)
 	if keys:find(' ', 1, true) then --it's a sequence, eg. 'alt f3'
 		local found
 		for _not, key in keys:gmatch'(!?)([^%s]+)' do
-			if self.backend:key(key) == (_not == '') then
+			local wanted_response = _not == ''
+			if self.backend:key(key) ~= wanted_response then
 				return false
 			end
 			found = true
@@ -1493,7 +1494,7 @@ function window:mouse(var)
 		or self._mouse.x1
 		or self._mouse.x2
 	) then
-		return
+		return --can only get mouse state when inside or captured
 	elseif var == 'pos' then
 		return self._mouse.x, self._mouse.y
 	else
@@ -1556,6 +1557,19 @@ function window:_backend_mousehwheel(delta, x, y, pixeldelta)
 end
 
 --rendering ------------------------------------------------------------------
+
+local count_per_sec = 2
+local frame_count, last_frame_count, last_time = 0, 0
+function app:fps()
+	last_time = last_time or time.clock()
+	frame_count = frame_count + 1
+	local time = time.clock()
+	if time - last_time > 1 / count_per_sec then
+		last_frame_count, frame_count = frame_count, 0
+		last_time = time
+	end
+	return last_frame_count * count_per_sec
+end
 
 function window:invalidate(invalid_clock)
 	self._invalid_clock =

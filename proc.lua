@@ -34,7 +34,7 @@ function M.setenv(k, v)
 	winapi.SetEnvironmentVariable(k, v)
 end
 
-function M.exec(cmd, args, env, cur_dir, stdin, stdout, stderr)
+function M.exec(cmd, args, env, dir, stdin, stdout, stderr, autokill)
 	if args then
 		local t = {'"'..cmd..'"'}
 		for i,s in ipairs(args) do
@@ -52,7 +52,7 @@ function M.exec(cmd, args, env, cur_dir, stdin, stdout, stderr)
 		inherit_handles = true
 	end
 	local proc_info, err, code = winapi.CreateProcess(
-		cmd, env, cur_dir,
+		cmd, env, dir,
 		si, inherit_handles
 	)
 	if not proc_info then
@@ -116,11 +116,11 @@ extern char **environ;
 int setenv(const char *name, const char *value, int overwrite);
 int unsetenv(const char *name);
 int execve(const char *file, char *const argv[], char *const envp[]);
-typedef int32_t pid_t;
+typedef int pid_t;
 pid_t fork(void);
 int kill(pid_t pid, int sig);
-typedef int32_t idtype_t;
-typedef int32_t id_t;
+typedef int idtype_t;
+typedef int id_t;
 pid_t waitpid(pid_t pid, int *status, int options);
 void _exit(int status);
 int pipe(int[2]);
@@ -131,7 +131,22 @@ ssize_t read(int fd, void *buf, size_t count);
 int chdir(const char *path);
 char *getcwd(char *buf, size_t size);
 int dup2(int oldfd, int newfd);
+pid_t getpid(void);
+pid_t getppid(void);
+int prctl(int option, unsigned long arg2, unsigned long arg3,
+	unsigned long arg4, unsigned long arg5);
 ]]
+
+local F_GETFD = 1
+local F_SETFD = 2
+local FD_CLOEXEC = 1
+local PR_SET_PDEATHSIG = 1
+local SIGTERM = 15
+local SIGKILL = 9
+local WNOHANG = 1
+local EAGAIN = 11
+local EINTR  = 4
+local ERANGE = 34
 
 local C = ffi.C
 
@@ -173,14 +188,6 @@ function M.setenv(k, v)
 	end
 end
 
-local F_GETFD = 1
-local F_SETFD = 2
-local FD_CLOEXEC = 1
-
-local EAGAIN = 11
-local EINTR  = 4
-local ERANGE = 34
-
 function getcwd()
 	local sz = 256
 	local buf = char(sz)
@@ -197,9 +204,9 @@ function getcwd()
 	end
 end
 
-function M.exec(cmd, args, env, cur_dir, stdin, stdout, stderr)
+function M.exec(cmd, args, env, dir, stdin, stdout, stderr, autokill)
 
-	if cur_dir and cmd:sub(1, 1) ~= '/' then
+	if dir and cmd:sub(1, 1) ~= '/' then
 		cmd = getcwd() .. '/' .. cmd
 	end
 
@@ -263,6 +270,7 @@ function M.exec(cmd, args, env, cur_dir, stdin, stdout, stderr)
 		return err'fcnt'
  	end
 
+	local ppid_before_fork = autokill and C.getpid()
 	local pid = C.fork()
 
 	if pid == -1 then --in parent process
@@ -271,10 +279,21 @@ function M.exec(cmd, args, env, cur_dir, stdin, stdout, stderr)
 
 	elseif pid == 0 then --in child process
 
+		--see https://stackoverflow.com/questions/284325/how-to-make-child-process-die-after-parent-exits/36945270#36945270
+		if autokill then
+			if C.prctl(PR_SET_PDEATHSIG, SIGTERM) == -1 then
+				return err'prctl'
+			end
+			-- test if the original parent exited just before the prctl() call.
+			if C.getppid() ~= ppid_before_fork then
+				C._exit(0)
+			end
+		end
+
 		C.close(pipefds[0])
 
-		if cur_dir and C.chdir(cur_dir) ~= 0 then
-			--chdir failed: put the errno on the pipe.
+		if dir and C.chdir(dir) ~= 0 then
+			--chdir failed: put errno on the pipe and exit.
 			local err = int(1, ffi.errno())
 			C.write(pipefds[1], err, ffi.sizeof(err))
 			C._exit(0)
@@ -286,7 +305,7 @@ function M.exec(cmd, args, env, cur_dir, stdin, stdout, stderr)
 
 		C.execve(cmd, arg_ptr, env_ptr)
 
-		--exec failed: put the errno on the pipe.
+		--exec failed: put errno on the pipe and exit.
 		local err = int(1, ffi.errno())
 		C.write(pipefds[1], err, ffi.sizeof(err))
 		C._exit(0)
@@ -313,9 +332,6 @@ end
 function proc:forget()
 	self.id = false
 end
-
-local SIGKILL = 9
-local WNOHANG = 1
 
 function proc:kill()
 	if not self.id then
@@ -358,12 +374,38 @@ else
 	error('unsupported OS '..ffi.os)
 end
 
-function M.exec_luafile(script, args, env, cur_dir, ...)
-	assert(script)
-	local fs = require'fs'
-	local exe = assert(fs.exepath())
-	local args = glue.extend({script}, args)
-	return M.exec(exe, args, env, cur_dir, ...)
+local function exec_args(cmd_field,
+	cmd, args, env, dir, stdin, stdout, stderr, autokill
+)
+	if type(cmd) == 'table' then
+		local t = cmd
+		cmd      = t[cmd_field]
+		args     = t.args
+		env      = t.env
+		dir      = t.dir
+		stdin    = t.stdin
+		stdout   = t.stdout
+		stderr   = t.stderr
+		autokill = t.autokill
+	end
+	assert(cmd)
+	return cmd, args, env, dir, stdin, stdout, stderr, autokill
+end
+
+local exec = M.exec
+function M.exec(...)
+	return exec(exec_args('command', ...))
+end
+
+function M.exec_luafile(...)
+	local function pass(script, args, ...)
+		local fs = require'fs'
+		local cmd, err, errcode = fs.exepath()
+		if not cmd then return nil, err, errcode end
+		local args = glue.extend({script}, args)
+		return M.exec(cmd, args, ...)
+	end
+	return pass(exec_args('script', ...))
 end
 
 return M

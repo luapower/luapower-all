@@ -1,409 +1,290 @@
+--[[
 
---Itemizing and shaping rich text into an array of segments.
+	Shaping a piece of text into an array of glyphs called a glyph run.
+
+	A glyph run contains enough info for both rasterization and positioning
+	of each glyph. It also contains cursor position info for each codepoint
+	(not glyph!). See below for the logic on computing these.
+
+]]
 
 if not ... then require'terra/tr_test'; return end
 
 setfenv(1, require'terra/tr_types')
-require'terra/tr_shape_word'
+require'terra/tr_font'
 require'terra/tr_rle'
 
-require'terra/tr_shape_detect_script'
-require'terra/tr_shape_detect_lang'
+terra GlyphRun.methods.compute_cursors :: {&GlyphRun, &Renderer, &FontFace} -> {}
 
-local PS = FRIBIDI_CHAR_PS --paragraph separator codepoint
-local LS = FRIBIDI_CHAR_LS --line separator codepoint
+terra GlyphRun:shape(r: &Renderer, face: &FontFace)
+	self.text = self.text:copy()
+	self.features = self.features:copy()
 
-local terra isnewline(c: codepoint)
-	return
-		(c >= 10 and c <= 13) --LF, VT, FF, CR
-		or c == PS
-		or c == LS
-		or c == 0x85 --NEL
-end
+	var hb_dir = iif(self.rtl, HB_DIRECTION_RTL, HB_DIRECTION_LTR)
+	var hb_buf = hb_buffer_create()
 
---Is explicit or BN or WS: LRE, RLE, LRO, RLO, PDF, BN, WS?
-local FRIBIDI_IS_EXPLICIT_OR_BN_OR_WS = macro(function(p)
-	return `(p and (FRIBIDI_MASK_EXPLICIT or FRIBIDI_MASK_BN or FRIBIDI_MASK_WS)) ~= 0
-end)
+	--see https://harfbuzz.github.io/clusters.html
+	hb_buffer_set_cluster_level(hb_buf,
+		HB_BUFFER_CLUSTER_LEVEL_MONOTONE_GRAPHEMES) --old Harfbuzz behavior
+		--HB_BUFFER_CLUSTER_LEVEL_MONOTONE_CHARACTERS)
 
---iterate text segments with the same language.
+	hb_buffer_set_direction(hb_buf, hb_dir)
+	hb_buffer_set_script(hb_buf, self.script)
+	hb_buffer_set_language(hb_buf, self.lang)
+	hb_buffer_add_codepoints(hb_buf, self.text.elements, self.text.len, 0, self.text.len)
+	hb_shape(face.hb_font, hb_buf, self.features.elements, self.features.len)
 
-local lang1 = symbol(hb_language_t)
-local lang0 = symbol(hb_language_t)
+	var len: uint32
+	var info = hb_buffer_get_glyph_infos(hb_buf, &len)
+	var pos  = hb_buffer_get_glyph_positions(hb_buf, &len)
 
-local langs_iter = rle_iterator{
-	state = arrview(hb_language_t),
-	for_variables = {lang0},
-	declare_variables = function()        return quote var [lang1], [lang0] end end,
-	save_values       = function()        return quote lang0 = lang1 end end,
-	load_values       = function(self, i) return quote lang1 = self(i) end end,
-	values_different  = function()        return `lang0 ~= lang1 end,
-}
-
-Renderer.methods.lang_spans = macro(function(self, len)
-	return `langs_iter{self.langs.view, 0, len}
-end)
-
---iterate paragraphs (empty paragraphs are kept separate).
-
-local c0 = symbol(codepoint)
-local c1 = symbol(codepoint)
-
-local para_iter = rle_iterator{
-	state = &Layout,
-	for_variables = {},
-	declare_variables = function()        return quote var [c0], [c1] end end,
-	save_values       = function()        return quote c0 = c1 end end,
-	load_values       = function(self, i) return quote c1 = self.text(i) end end,
-	values_different  = function()        return `c0 == PS end,
-}
-
-Layout.methods.paragraphs = macro(function(self)
-	return `para_iter{&self, 0, self.text.len}
-end)
-
---iterate text segments having the same shaping-relevant properties.
-
-local word_iter_state = struct {
-	layout: &Layout;
-	levels: arrview(FriBidiLevel);
-	scripts: arrview(hb_script_t);
-	langs: arrview(hb_language_t);
-	linebreaks: arrview(char);
-}
-
-local iter = {state = word_iter_state}
-
-local span_index = symbol(int)
-local span_eof   = symbol(int)
-local span_diff  = symbol(bool)
-local span0      = symbol(&Span)
-local span1      = symbol(&Span)
-local level0     = symbol(FriBidiLevel)
-local level1     = symbol(FriBidiLevel)
-local script0    = symbol(hb_script_t)
-local script1    = symbol(hb_script_t)
-local lang0      = symbol(hb_language_t)
-local lang1      = symbol(hb_language_t)
-
-iter.for_variables = {span0, level0, script0, lang0}
-
-iter.declare_variables = function(self)
-	return quote
-		var [span_index] = -1
-		var [span_eof] = 0
-		var [span_diff] = false
-		var [span0], [level0], [script0], [lang0]
-		var [span1], [level1], [script1], [lang1]
-		span0 = nil
+	--1. scale advances and offsets based on `face.scale` (for bitmap fonts).
+	--2. make the advance of each glyph relative to the start of the run
+	--   so that x() is O(1) for any index.
+	--3. compute the run's total advance.
+	self.glyphs:init()
+	self.glyphs.len = len
+	var ax: num = 0.0
+	for i,g in self.glyphs do
+		g.glyph_index = info[i].codepoint
+		g.cluster = info[i].cluster
+		g.x = ax
+		g.image_x_16_6 =  pos[i].x_offset * face.scale
+		g.image_y_16_6 = -pos[i].y_offset * face.scale
+		ax = (ax + pos[i].x_advance / 64.0) * face.scale
 	end
+	self.metrics.advance_x = ax --for positioning in horizontal flow
+	self.metrics.ascent = face.ascent
+	self.metrics.descent = face.descent
+
+	hb_buffer_destroy(hb_buf)
+
+	self.images:init()
+	self.images_memsize = 0
+
+	self:compute_cursors(r, face)
 end
 
-iter.save_values = function()
-	return quote
-		span0, level0, script0, lang0 =
-		span1, level1, script1, lang1
+terra Renderer:shape(run: GlyphRun, face: &FontFace)
+	--get the shaped run from cache or shape it and cache it.
+	var run_id, pair = self.glyph_runs:get(run)
+	if pair == nil then
+		run:shape(self, face)
+		run_id, pair = self.glyph_runs:put(run, {})
+		assert(pair ~= nil)
 	end
+	return run_id, &pair.key
 end
 
-iter.load_values = function(self, i)
+--computing cursor positions -------------------------------------------------
+
+do --iterate clusters in RLE-compressed form.
+
+	local c1 = symbol(uint32)
+	local c0 = symbol(uint32)
+
+	local clusters_iter = rle_iterator{
+		state_t = &GlyphRun,
+		for_variables = {c0},
+		declare_variables = function()        return quote var [c1], [c0] end end,
+		save_values       = function()        return quote c0 = c1 end end,
+		load_values       = function(self, i) return quote c1 = self.glyphs:at(i).cluster end end,
+		values_different  = function()        return `c0 ~= c1 end,
+	}
+
+	GlyphRun.methods.cluster_runs = macro(function(self)
+		return `clusters_iter{&self, 0, self.glyphs.len}
+	end)
+
+end
+
+local terra count_graphemes(grapheme_breaks: arrview(char), start: int, len: int)
+	var n = 0
+	for i = start, start + len do
+		if grapheme_breaks(i) == 0 then
+			n = n + 1
+		end
+	end
+	return n
+end
+
+local terra next_grapheme(grapheme_breaks: arrview(char), i: int, len: int)
+	while grapheme_breaks(i) ~= 0 do
+		i = i + 1
+	end
+	i = i + 1
+	assert(i < len)
+	return i
+end
+
+local get_ligature_carets = macro(function(
+	r, hb_font, direction, glyph_index
+)
 	return quote
-		level1     = self.levels(i)
-		script1    = self.scripts(i)
-		lang1      = self.langs(i)
-		if i >= span_eof then --time to load a new span
-			inc(span_index)
-			span_eof = self.layout:span_end_offset(span_index)
-			span1 = self.layout.spans:at(span_index)
-			span_diff = span0 == nil
-				or span1.font_id         ~= span0.font_id
-				or span1.font_size_16_6  ~= span0.font_size_16_6
-				or span1.features        ~= span0.features
+		var count = hb_ot_layout_get_ligature_carets(hb_font, direction,
+			glyph_index, 0, nil, nil)
+		r.carets_buffer.len = count
+		var count_buf: uint
+		hb_ot_layout_get_ligature_carets(hb_font, direction, glyph_index,
+			0, &count_buf, r.carets_buffer.elements)
+	in
+		r.carets_buffer.elements, count_buf
+	end
+end)
+
+terra GlyphRun:x(i: int)
+	return iif(i == self.glyphs.len, self.metrics.advance_x, self.glyphs:at(i).x)
+end
+
+terra GlyphRun:add_cursors(
+	r: &Renderer,
+	face: &FontFace,
+	glyph_offset: int,
+	glyph_len: int,
+	cluster: int,
+	cluster_len: int,
+	cluster_x: num
+)
+	self.cursors.offsets:set(cluster, cluster)
+	self.cursors.xs:set(cluster, cluster_x)
+	if cluster_len <= 1 then return end
+
+	var str = self.text.elements
+	var str_len = self.text.len
+
+	--the cluster is made of multiple codepoints. check how many
+	--graphemes it contains since we need to add additional cursor
+	--positions at each grapheme boundary.
+	r.grapheme_breaks.len = str_len
+	var lang: &char = nil --not used in current libunibreak impl.
+	set_graphemebreaks_utf32(str, str_len, lang, r.grapheme_breaks.elements)
+	var grapheme_count = count_graphemes(r.grapheme_breaks.view, cluster, cluster_len)
+	if grapheme_count <= 1 then return end
+
+	--the cluster is made of multiple graphemes, which can be the
+	--result of forming ligatures, which the font can provide carets
+	--for. missing ligature carets, we divide the combined x-advance
+	--of the glyphs evenly between graphemes.
+	for i = glyph_offset, glyph_offset + glyph_len do
+		var glyph_index = self.glyphs:at(i).glyph_index
+		var cluster_x = self:x(i)
+		var carets, caret_count =
+			get_ligature_carets(
+				r,
+				face.hb_font,
+				iif(self.rtl, HB_DIRECTION_RTL, HB_DIRECTION_LTR),
+				glyph_index)
+		if caret_count > 0 then
+			-- there shouldn't be more carets than grapheme_count-1.
+			caret_count = min(caret_count, grapheme_count - 1)
+			--add the ligature carets from the font.
+			for i = 0, caret_count do
+				--create a synthetic cluster at each grapheme boundary.
+				cluster = next_grapheme(r.grapheme_breaks.view, cluster, str_len)
+				var lig_x = carets[i] / 64.0
+				self.cursors.offsets:set(cluster, cluster)
+				self.cursors.xs:set(cluster, cluster_x + lig_x)
+			end
+			--infer the number of graphemes in the glyph as being
+			--the number of ligature carets in the glyph + 1.
+			grapheme_count = grapheme_count - (caret_count + 1)
 		else
-			span_diff = false
+			--font doesn't provide carets: add synthetic carets by
+			--dividing the total x-advance of the remaining glyphs
+			--evenly between remaining graphemes.
+			var next_i = glyph_offset + glyph_len
+			var total_advance_x = self:x(next_i) - self:x(i)
+			var w = total_advance_x / grapheme_count
+			for i = 1, grapheme_count do
+				--create a synthetic cluster at each grapheme boundary.
+				cluster = next_grapheme(r.grapheme_breaks.view, cluster, str_len)
+				var lig_x = i * w
+				self.cursors.offsets:set(cluster, cluster)
+				self.cursors.xs:set(cluster, cluster_x + lig_x)
+			end
+			grapheme_count = 0
+		end
+		if grapheme_count == 0 then
+			break --all graphemes have carets
 		end
 	end
 end
 
-iter.values_different = function(self, i)
-	return `
-		span_diff
-		or self.linebreaks(i-1) < 2 --0: required, 1: allowed, 2: not allowed
-		or level1  ~= level0
-		or script1 ~= script0
-		or lang1   ~= lang0
-end
+terra GlyphRun:compute_cursors(r: &Renderer, f: &FontFace)
 
-local word_iter = rle_iterator(iter)
+	--NOTE: cursors are kept in logical order.
+	self.cursors:init()
+	self.cursors.offsets.len = self.text.len + 1
+	self.cursors.xs:init()
+	self.cursors.xs.len = self.text.len + 1
+	self.cursors.offsets:fill(-1) --set all to invalid offset, fixed later
+	r.grapheme_breaks.len = 0
 
-Layout.methods.word_spans = macro(function(self, levels, scripts, langs, linebreaks)
-	return `word_iter{
-		word_iter_state{
-			layout = &self,
-			levels = levels,
-			scripts = scripts,
-			langs = langs,
-			linebreaks = linebreaks
-		}, 0, self.text.len}
-end)
-
---for harfbuzz, language is a BCP 47 language code + country code,
---but libunibreak only uses the language code part for a few languages.
-
-local HB_LANGUAGE_EN = global(hb_language_t)
-local HB_LANGUAGE_DE = global(hb_language_t)
-local HB_LANGUAGE_ES = global(hb_language_t)
-local HB_LANGUAGE_FR = global(hb_language_t)
-local HB_LANGUAGE_RU = global(hb_language_t)
-local HB_LANGUAGE_ZH = global(hb_language_t)
-
-terra init_ub_lang()
-	HB_LANGUAGE_EN = hb_language_from_string('en', 2)
-	HB_LANGUAGE_DE = hb_language_from_string('de', 2)
-	HB_LANGUAGE_ES = hb_language_from_string('es', 2)
-	HB_LANGUAGE_FR = hb_language_from_string('fr', 2)
-	HB_LANGUAGE_RU = hb_language_from_string('ru', 2)
-	HB_LANGUAGE_ZH = hb_language_from_string('zh', 2)
-end
-
-terra ub_lang(hb_lang: hb_language_t): rawstring
-	    if hb_lang == HB_LANGUAGE_EN then return 'en'
-	elseif hb_lang == HB_LANGUAGE_DE then return 'de'
-	elseif hb_lang == HB_LANGUAGE_ES then return 'es'
-	elseif hb_lang == HB_LANGUAGE_FR then return 'fr'
-	elseif hb_lang == HB_LANGUAGE_RU then return 'ru'
-	elseif hb_lang == HB_LANGUAGE_ZH then return 'zh'
-	else return nil end
-end
-
---search for the span that covers a specific text position.
-terra Layout:_span_index_at_offset(offset: int, i0: int)
-	for i = i0 + 1, self.spans.len do
-		if self.spans:at(i).offset > offset then
-			return i-1
+	if self.rtl then
+		--add last logical (first visual), after-the-text cursor
+		self.cursors.offsets:set(self.text.len, self.text.len)
+		self.cursors.xs:set(self.text.len, 0)
+		var i: int = -1 --index in glyph_info
+		var n: int --glyph count
+		var c: int --cluster
+		var cn: int --cluster len
+		var cx: num --cluster x
+		c = self.text.len
+		for i1, n1, c1 in self:cluster_runs() do
+			cx = self:x(i1)
+			if i ~= -1 then
+				self:add_cursors(r, f, i, n, c, cn, cx)
+			end
+			var cn1 = c - c1
+			i, n, c, cn = i1, n1, c1, cn1
 		end
-	end
-	return self.spans.len-1
-end
-
---the span that starts exactly where the paragraph starts can
---set the paragraph base direction otherwise the layout's dir is used.
-terra Layout:span_dir(span: &Span, paragraph_offset: int)
-	return iif(span.offset == paragraph_offset and span.paragraph_dir ~= 0,
-		span.paragraph_dir, self.dir)
-end
-
-terra Layout:invalidate_min_w()
-	if self.text.len == 0 then
-		self._min_w = 0
+		if i ~= -1 then
+			cx = self.metrics.advance_x
+			self:add_cursors(r, f, i, n, c, cn, cx)
+		end
 	else
-		self._min_w = -inf
-	end
-end
-
-terra Layout:invalidate_max_w()
-	if self.text.len == 0 then
-		self._max_w = 0
-	else
-		self._max_w =  inf
-	end
-end
-
-terra Layout:_shape()
-
-	var r = self.r
-	var segs = &self.segs
-
-	--reset output
-	segs.len = 0
-	self.lines.len = 0
-	self:invalidate_min_w()
-	self:invalidate_max_w()
-
-	--special-case empty text: we still want to set valid shaping output
-	--in order to properly display a cursor.
-	if self.text.len == 0 then
-		self.bidi = false
-		return
+		var i: int = -1 --index in glyph_info
+		var n: int --glyph count
+		var c: int = -1 --cluster
+		var cx: num --cluster x
+		for i1, n1, c1 in self:cluster_runs() do
+			if c ~= -1 then
+				var cn = c1 - c
+				self:add_cursors(r, f, i, n, c, cn, cx)
+			end
+			var cx1 = self:x(i1)
+			i, n, c, cx = i1, n1, c1, cx1
+		end
+		if i ~= -1 then
+			var cn = self.text.len - c
+			self:add_cursors(r, f, i, n, c, cn, cx)
+		end
+		--add last logical (last visual), after-the-text cursor
+		self.cursors.offsets:set(self.text.len, self.text.len)
+		self.cursors.xs:set(self.text.len, self.metrics.advance_x)
 	end
 
-	--script and language detection and assignment
-	r.scripts.len = self.text.len
-	r.langs.len = self.text.len
-
-	--script/lang detection is expensive: see if we can avoid it.
-	var do_detect_scripts = false
-	var do_detect_langs = false
-	for i, span in self.spans do
-		if span.script == HB_SCRIPT_INVALID then do_detect_scripts = true end
-		if span.lang == nil then do_detect_langs = true end
-		if do_detect_scripts and do_detect_langs then break end
-	end
-
-	--detect the script property for each char of the entire text.
-	if do_detect_scripts then
-		detect_scripts(r, self.text.elements, self.text.len, r.scripts.elements)
-	end
-
-	--override scripts with user-provided values.
-	for span_index, span in self.spans do
-		if span.script ~= HB_SCRIPT_INVALID then
-			for i = span.offset, self:span_end_offset(span_index) do
-				r.scripts:set(i, span.script)
+	--add cursor offsets for all codepoints which are missing one.
+	if r.grapheme_breaks.len > 0 then --there are clusters with multiple codepoints.
+		var c: int --cluster
+		var x: num --cluster x
+		for i = 0, self.text.len + 1 do
+			if self.cursors.offsets(i) == -1 then
+				self.cursors.offsets:set(i, c)
+				self.cursors.xs:set(i, x)
+			else
+				c = self.cursors.offsets(i)
+				x = self.cursors.xs(i)
 			end
 		end
 	end
 
-	--detect the lang property based on the script property.
-	if do_detect_langs then
-		for i = 0, self.text.len do
-			r.langs:set(i, lang_for_script(r.scripts(i)))
-		end
+	--compute `wrap_advance_x` by removing the advance of the trailing space.
+	var wx = self.metrics.advance_x
+	if self.trailing_space then
+		var i = iif(self.rtl, 0, self.glyphs.len-1)
+		assert(self.glyphs:at(i).cluster == self.text.len-1)
+		wx = wx - (self:x(i+1) - self:x(i))
 	end
-
-	--override langs with user-provided values.
-	for span_index, span in self.spans do
-		if span.lang ~= nil then
-			for i = span.offset, self:span_end_offset(span_index) do
-				r.langs:set(i, span.lang)
-			end
-		end
-	end
-
-	--Split text into paragraphs and run fribidi over each paragraph as follows:
-	--Skip mirroring since harfbuzz also does that.
-	--Skip arabic shaping since harfbuzz does that better with font assistance.
-	--Skip RTL reordering because 1) fribidi also reverses the _contents_ of
-	--the RTL runs, which harfbuzz also does, and 2) because bidi reordering
-	--needs to be done after line breaking and so it's part of layouting.
-
-	r.bidi_types    .len = self.text.len
-	r.bracket_types .len = self.text.len
-	r.levels        .len = self.text.len
-
-	self.bidi = false --is bidi reordering needed on line-wrapping or not?
-	r.paragraph_dirs.len = 0
-
-	var span_index = 0
-	for offset, len in self:paragraphs() do
-		var str = self.text:at(offset)
-
-		span_index = self:_span_index_at_offset(offset, span_index)
-		var span = self.spans:at(span_index)
-		var dir = self:span_dir(span, offset)
-
-		fribidi_get_bidi_types(str, len, r.bidi_types:at(offset))
-
-		fribidi_get_bracket_types(str, len,
-			r.bidi_types:at(offset),
-			r.bracket_types:at(offset))
-
-		var max_bidi_level = fribidi_get_par_embedding_levels_ex(
-			r.bidi_types:at(offset),
-			r.bracket_types:at(offset),
-			len,
-			&dir,
-			r.levels:at(offset)) - 1
-
-		assert(max_bidi_level >= 0)
-
-		self.bidi = self.bidi or max_bidi_level > iif(dir == DIR_RTL, 1, 0)
-
-		r.paragraph_dirs:add(dir)
-	end
-
-	--Run Unicode line breaking over each span of text with the same language.
-	--NOTE: libunibreak always puts a hard break at the end of the text.
-	--We don't want that so we're passing it one codepoint beyond length.
-
-	var len0 = self.text.len
-	self.text.len = len0 + 1
-	self.text:set(len0, @('.'))
-	r.linebreaks.len = len0 + 1
-	for offset, len, lang in r:lang_spans(len0) do
-		self.text:at(offset + len) --upper-boundary check
-		set_linebreaks_utf32(self.text:at(offset), len + 1,
-			ub_lang(lang), r.linebreaks:at(offset))
-	end
-	self.text.len = len0
-	r.linebreaks.len = len0
-
-	--Split the text into segs of characters with the same properties,
-	--shape the segs individually and cache the shaped results.
-	--The splitting is two-level: each text seg that requires separate
-	--shaping can contain sub-segs that require separate styling.
-	--NOTE: Empty segs (len=0) are valid.
-
-	var line_num = 0
-	var para_num = 0
-	var para_dir = r.paragraph_dirs(0)
-
-	for offset, len, span, level, script, lang in self:word_spans(
-		r.levels.view,
-		r.scripts.view,
-		r.langs.view,
-		r.linebreaks.view
-	) do
-
-		--UBA codes: 0: required, 1: allowed, 2: not allowed.
-		var linebreak_code = r.linebreaks(offset + len - 1)
-		--user codes: 2: paragraph, 1: line, 0: softbreak.
-		var linebreak = iif(linebreak_code == 0,
-			iif(self.text(offset + len - 1) == PS, BREAK_PARA, BREAK_LINE), BREAK_NONE)
-
-		--find the seg length without trailing linebreak chars.
-		while len > 0 and isnewline(self.text(offset + len - 1)) do
-			dec(len)
-		end
-
-		--find if the seg has a trailing space char (before any linebreak chars).
-		var trailing_space = len > 0
-			and FRIBIDI_IS_EXPLICIT_OR_BN_OR_WS(r.bidi_types(offset + len - 1))
-
-		--shape the seg excluding trailing linebreak chars.
-		var gr = GlyphRun {
-			--cache key
-			text            = arr(codepoint);
-			features        = span.features;
-			lang            = lang;
-			script          = script;
-			font_id         = span.font_id;
-			font_size_16_6  = span.font_size_16_6;
-			rtl             = isodd(level);
-			--info for shaping a new glyph run
-			trailing_space  = trailing_space;
-		}
-		gr.text.view = self.text:sub(offset, offset + len)
-		--^^fake a dynarray to avoid copying.
-
-		var glyph_run_id, glyph_run = r:shape_word(gr)
-
-		if glyph_run ~= nil then --font loaded successfully
-			var seg = segs:add()
-			seg.glyph_run_id = glyph_run_id
-			seg.line_num = line_num --physical line number (for code editors)
-			seg.linebreak = linebreak --means this segment _ends_ a line
-			seg.bidi_level = level --for bidi reordering
-			seg.paragraph_dir = para_dir --for ALIGN_AUTO
-			--for cursor positioning
-			seg.span = span --span of the first sub-seg
-			seg.offset = offset
-			--slots filled by layouting
-			seg.x = 0; seg.advance_x = 0 --seg's x-axis boundaries
-			seg.next_vis = nil --next seg on the same line in visual order
-			seg.wrapped = false --seg is the last on a wrapped line
-			seg.visible = true --seg is not entirely clipped
-			seg.subsegs:init()
-		end
-
-		if linebreak ~= BREAK_NONE then
-			inc(line_num)
-			if linebreak == BREAK_PARA then
-				inc(para_num)
-				para_dir = r.paragraph_dirs(para_num, 0)
-			end
-		end
-
-	end
-
+	self.metrics.wrap_advance_x = wx
 end

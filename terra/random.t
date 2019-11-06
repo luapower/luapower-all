@@ -3,6 +3,8 @@
 --Written by Cosmin Apreutesei. Public Domain.
 --Translated from LuaJIT's lib_math.c Copyright (C) 2005-2017 Mike Pall.
 
+--TODO: how to use thread-load vars in Terra for the global RandomState?
+
 -- This implements a Tausworthe PRNG with period 2^223. Based on:
 --   Tables of maximally-equidistributed combined LFSR generators,
 --   Pierre L'Ecuyer, 1991, table 3, 1st entry.
@@ -70,12 +72,15 @@ local terra random(): double
 end
 
 _M.random = macro(function(n, m)
-	if n and m then
-		return `floor(random()*(m-n+1.0)) + n -- range [n, m]
-	elseif n then
-		return `floor(random()*n) + 1.0 -- range [1, n]
-	else
-		return `random() -- range [0, 1]
+	if n and m then -- integer range [n, m]
+		return quote
+			var n = n
+			in floor(random()*(m-n+1.0)) + n
+		end
+	elseif n then -- integer range [1, n-1]
+		return `floor(random()*n)
+	else -- double range [0, 1)
+		return `random()
 	end
 end, math.random)
 

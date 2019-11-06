@@ -6,7 +6,6 @@ local ffi = require'ffi'
 local bit = require'bit'
 local glue = require'glue'
 local box2d = require'box2d'
-local cbframe = require'cbframe' --for drag&drop on x64
 local bitmap = require'bitmap' --for clipboard
 local winapi = require'winapi'
 local time = require'time'

@@ -21,6 +21,7 @@ local terra test_terra(n: int64)
 	var x = 0.0
 	for i=0,n do
 		var r = random()
+		assert(r < 1)
 		x = x + r
 	end
 	print('time:', clock() - t0, 'checksum:', x)

@@ -838,15 +838,20 @@ if jit then
 local ffi = require'ffi'
 
 --static, auto-growing buffer allocation pattern.
-function glue.growbuffer(ctype)
+function glue.growbuffer(ctype, keep_contents)
 	local ctype = ffi.typeof(ctype or 'char[?]')
+	local elem_size = keep_contents and ffi.sizeof(ctype, 1)
 	local buf, len = nil, -1
 	return function(newlen)
 		if not newlen then
 			buf, len = nil, -1
 		elseif newlen > len then
+			local buf0, len0 = buf, len
 			len = glue.nextpow2(newlen)
 			buf = ctype(len)
+			if keep_contents and buf0 then
+				ffi.copy(buf, buf0, len0 * elem_size)
+			end
 		end
 		return buf, newlen
 	end

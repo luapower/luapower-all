@@ -3,8 +3,6 @@ setfenv(1, require'terra/low'.module())
 require'terra/memcheck'
 require'terra/tr_paint_cairo'
 setfenv(1, require'terra/tr_api')
-local strlen = includecstring'unsigned long long strlen (const char *str);'.strlen
-local sprintf = includecstring'int sprintf(char* str, const char* format, ...);'.sprintf
 
 local font_paths_list = {
 	'../media/fonts/OpenSans-Regular.ttf',
@@ -14,13 +12,14 @@ local font_paths_list = {
 }
 local font_paths = constant(`array([font_paths_list]))
 
-terra load_font(font_id: int, file_data: &&opaque, file_size: &size_t)
-	var font_path = font_paths[font_id]
+terra load_font(font_id: int, file_data: &&opaque, file_size: &size_t, mmapped: &bool)
+	var font_path = font_paths[font_id-1]
 	@file_data, @file_size = readfile(font_path)
+	@mmapped = false
 end
 
-terra unload_font(font_id: int, file_data: &&opaque, file_size: &size_t)
-	dealloc(@file_data)
+terra unload_font(font_id: int, file_data: &opaque, file_size: size_t, mmaped: bool)
+	dealloc(file_data)
 end
 
 local numbers = {}
@@ -46,17 +45,15 @@ local paint_times = 1
 terra test()
 	var sr = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, 1920, 1080)
 	var cr = sr:context()
-	var r = tr_renderer_new(load_font, unload_font)
+	var r = tr_renderer(load_font, unload_font)
 
 	r.glyph_cache_max_size = 1024*1024
 	r.glyph_run_cache_max_size = 1024*1024
 
-	var layouts: arr(&Layout)
+	var layouts: arr{T = &Layout, own_elements = false}
 	layouts:init()
 
-	for font_i = 0, font_paths_count do --go through all fonts
-
-		var font_id = r:font()
+	for font_id = 1, font_paths_count + 1 do --go through all fonts
 
 		for text_i = 0, texts_count do --go through all sample texts
 
@@ -107,7 +104,7 @@ terra test()
 				for frame_i = 0, paint_times do
 					--cr:rgb(0, 0, 0)
 					--cr:paint()
-					layout:paint(cr)
+					layout:paint(cr, false)
 					if glyphs_per_frame == -1 then
 						glyphs_per_frame = r.paint_glyph_num
 					end
@@ -121,12 +118,10 @@ terra test()
 				100 * glyphs_per_frame * wanted_fps * dt / r.paint_glyph_num)
 
 			var s: char[200]
-			sprintf(s, 'out%d.png', layouts.len)
+			snprintf(s, 200, 'out%d.png', layouts.len)
 			--sr:save_png(s)
 
 		end
-
-		--layouts.len = 0
 
 	end
 
@@ -136,10 +131,13 @@ terra test()
 	end
 	layouts:free()
 
-	pfn('Glyph cache size     : %7.2fmB', r.glyphs.size / 1024.0 / 1024.0)
-	pfn('Glyph cache count    : %7d', r.glyphs.count)
-	pfn('GlyphRun cache size  : %7.2fmB', r.glyph_runs.size / 1024.0 / 1024.0)
-	pfn('GlyphRun cache count : %7d', r.glyph_runs.count)
+pfn('Glyph cache size     : %7.2fmB', r.glyph_cache_size / 1024.0 / 1024.0)
+pfn('Glyph cache count    : %7.0f',   r.glyph_cache_count)
+pfn('GlyphRun cache size  : %7.2fmB', r.glyph_run_cache_size / 1024.0 / 1024.0)
+pfn('GlyphRun cache count : %7.0f',   r.glyph_run_cache_count)
+pfn('Mem Font cache size  : %7.2fmB', r.mem_font_cache_size / 1024.0 / 1024.0)
+pfn('Mem Font cache count : %7.0f',   r.mem_font_cache_count)
+pfn('MMap Font cache count: %7.0f',   r.mmapped_font_cache_count)
 
 	r:release()
 	cr:free()

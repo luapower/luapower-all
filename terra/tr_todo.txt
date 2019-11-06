@@ -1,0 +1,170 @@
+Bugs
+==============================================================================
+
+- test script modifier.
+
+- test BIDI:
+	- BIDI justify (last line also)
+	* BIDI reorder
+	* BIDI keyboard navigation
+	* BIDI mouse drag-selection
+
+- cursor back-one-word from last position steps back 2 steps.
+
+- span-at-cursor.
+
+- fixed line height: per-layout or per-paragraph font_id/font_size.
+
+- mixed argb/alpha segments: argb part pre-rendered into alpha bitmap.
+
+High priority
+==============================================================================
+
+- follow tabstops
+
+- strikethrough
+
+- partial reshaping on text editing
+
+- tofu box with hex codepoint for missing glyphs.
+	see: https://lists.freedesktop.org/archives/harfbuzz/2015-May/004859.html
+
+Low priority
+==============================================================================
+
+- more underline/strikethrough types:
+	double, dotted, dashed, double_dotted, double_dashed.
+
+- better line wrapping
+	implement SMAWK or binary search from here: https://xxyxyz.org/line-breaking/
+
+- underline to skip descendants
+	Needs fast outline-to-horizontal-line intersection algorithm + caching the results.
+
+- vertical layouts
+	gravity, gravity_hint?
+
+- hyphenation
+	- mandatory for word-wrapping of east-asian scripts with no spaces
+	between words (Thai, Lao, Khmer, Burmese, etc.)
+	- see: http://w3c.github.io/i18n-drafts/articles/typography/linebreak.en
+
+- floating shapes inside text or text inside shapes
+	- line-to-poly intersection with winding rule to cover both inside/outside cases.
+
+- word wrapping inside words (css word-break: break-all).
+
+- letter-spacing (see https://github.com/luapower/tr/issues/20)
+	- disable letter-spacing for cursive scripts
+	- disable ligatures (-liga) for letter-spaced scripts
+
+- Unicode debugging / visual editing aids
+	mark invisible characters positions:
+		ZW-NBSP: prevents ligatures
+		NBSP: prevents word-wrapping
+		SOFT HYPHEN: hyphenate if word-wrapping
+		ZWJ: force joining
+		ZWNJ: prevent joining
+		WORD JOINER: ZW-NBSP-like
+		LTR/RTL modifiers
+		variation selectors
+		hangul fillers
+	mark look-alike characters:   ; ꓸ ꓹ ꓽ (called "confusables" in Unicode, see confusables.txt)
+	mark runs by script and language
+	at cursor:
+		show direction
+		show all codepoints individually between cursor and next cursor
+		shape/show all graphemes individually between cursor and next cursor
+
+Very-low priority
+==============================================================================
+
+Allow varying the formatting attributes within a single grapheme
+	IOW allow coloring the diacritical marks differently than the base glyph.
+
+Flag to apply opacity to an entire span:
+	Currently the opacity attribute is applied to individual glyphs, not
+	whole runs, which results in visible seams when glyphs overlap in
+	cursive fonts. What we want is a flag that paints a whole run on a temp
+	surface with opacity 1 and then paints that surface at specified opacity.
+	This is a rare use case when a text using a cursive font has only
+	certain parts translucent.
+
+Glyph substitution:
+	- font_override text attribute for manual override.
+	- register fallback fonts for script/language and try them in order.
+	- match original font's size, weight, slant, stretch.
+	- cache the substitutions.
+	- custom paint_glyph() callback for missing glyphs
+
+Font hinting option for when registering a font:
+	'no-hinting', 'auto-hinting', 'bytecode-hinting', 'auto-bytecode-hinting', 'bytecode-auto-hinting'
+
+`multiline` option
+	Make a multiline option to be used by ui_editbox, which currently uses
+	nowrap but in addition it has to filter newline characters in order to
+	avoid multiple line rendering.
+	The idea is to have a single-line editbox which can accept any unicode
+	character. This needs the custom glyph substitution feature so that
+	newline chars can be drawn.
+
+Implement rule L1 from UBA?
+	This is a thing which we don't yet implement. It's a very subtle point
+	which will probably not even be visible to most people.
+	This rule1 makes it so that trailing whitespace will appear at the visual
+	end of the line (in paragraph direction). This rule is only visible in a
+	mixed RTL/LTR line (soft or hard wrapped) with multiple space characters
+	after the last word. In current implementation, that trailing whitespace
+	stays with the last word instead of moving to the end of the line.
+	This also means that the last cursor position on the line is not at the
+	end of the line either.
+	We might want to change this in the future, but only if it becomes a
+	problem as it complicates the implementation a bit.
+
+Bounding-box API
+	Not useful for now, but maybe in the future.
+
+Spell-checking
+	Features: highlighting, autocompletion, autocorrection, autoignore, manual ignore.
+	Probably tr is NOT the right place to implement this: from tr's pov this
+	is just text with funky underlines.
+
+Vertical alignment top/bottom margin option:
+	- spacing_ascent/spacing_descent (what we use now)
+	- ascent/descent (tighter)
+	- paragraph_ascent/paragraph_descent (looser)
+
+Horizontal alignment left/right margin option
+	* advance: current solution, works with mixed-dir lines.
+	* bounding-box: exclude side bearings eg. so that a trailing "f" doesn't
+	overflow the enclosing box. I don't know how to implement for mixed-dir
+	lines because of bidi reordering.
+
+Arbitrary path baseline
+	This can be useful eg. for names on maps.
+	General idea: use the same breaking points as for letter-spacing.
+	translate & rotate glyphs to match path's normals at glyph's center.
+
+Advanced arbitrary path baseline
+	- extract glyphs outlines
+	- break outlines into polygons
+	- distort points based on path's normal vectors
+	- rasterize new distorted outline
+
+Text rotation at arbitrary angles using rotated outlines
+	One idea is to convert glyph runs to cairo path objects and rasterize
+	with cairo instead of freetype.
+
+Shaping words separately breaks contextual ligatures
+	* see: https://github.com/luapower/tr/issues/15
+	* see: https://bugzilla.mozilla.org/show_bug.cgi?id=761442
+	* there's talk about a harfbuzz "context" option but I can't see it.
+	* this also disables some advanced features such as word kerning and collision avoidance.
+
+- cache poisoning for font ids
+	use case: reaching the 2G font_id limit, i.e. 2,000 million custom fonts
+	were loaded in a single run of the app but the font cache still holds
+	a few ref-counted fonts (eg. the fonts that show the main menu which
+	never goes away). now we have to restart the app. honestly if your app
+	could last that long, you're in business.
+

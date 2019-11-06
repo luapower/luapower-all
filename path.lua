@@ -1,5 +1,5 @@
 
---path manipulation for Windows and UNIX paths
+--Path manipulation for Windows and UNIX paths.
 --Written by Cosmin Apreutesei. Public Domain.
 
 if not ... then require'path_test'; return end

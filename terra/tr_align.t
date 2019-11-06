@@ -4,27 +4,30 @@
 if not ... then require'terra/tr_test'; return end
 
 setfenv(1, require'terra/tr_types')
+require'terra/tr_font'
+require'terra/tr_wrap'
 
 terra Line:_update_vertical_metrics(
 	line_spacing: num,
+	baseline: num,
 	run_ascent: num,
 	run_descent: num,
 	ascent_factor: num,
 	descent_factor: num
 )
-	self.ascent = max(self.ascent, run_ascent)
-	self.descent = min(self.descent, run_descent)
+	self.ascent = max(self.ascent, baseline + run_ascent)
+	self.descent = min(self.descent, baseline + run_descent)
 	var run_h = run_ascent - run_descent
 	var half_line_gap = run_h * (line_spacing - 1) / 2
 	self.spaced_ascent
 		= max(self.spaced_ascent,
-			(run_ascent + half_line_gap) * ascent_factor)
+			(baseline + run_ascent + half_line_gap) * ascent_factor)
 	self.spaced_descent
 		= min(self.spaced_descent,
-			(run_descent - half_line_gap) * descent_factor)
+			(baseline + run_descent - half_line_gap) * descent_factor)
 end
 
-terra Layout:_spaceout()
+terra Layout:spaceout()
 
 	self.h = 0
 	self.spaced_h = 0
@@ -53,25 +56,27 @@ terra Layout:_spaceout()
 
 		var seg = line.first_vis
 		if seg == nil then --special case for empty text: use font's metrics.
-			var span = self.spans:at(0)
-			var font = self.r.fonts:at(span.font_id, nil)
-			var line = self.lines:at(0)
-			if font ~= nil then
+			assert(line_i == 0)
+			var span = self.spans:at(0, nil)
+			var face = iif(span ~= nil, span.face, nil)
+			if face ~= nil then
 				line:_update_vertical_metrics(
 					self.line_spacing,
-					font.ascent,
-					font.descent,
+					span.baseline * face.ascent,
+					face.ascent,
+					face.descent,
 					ascent_factor,
 					descent_factor
 				)
 			end
 		else
 			repeat
-				var run = self:glyph_run(seg)
+				var m = self:seg_metrics(seg)
 				line:_update_vertical_metrics(
 					self.line_spacing,
-					run.ascent,
-					run.descent,
+					seg.span.baseline * m.ascent,
+					m.ascent,
+					m.descent,
 					ascent_factor,
 					descent_factor
 				)
@@ -107,13 +112,36 @@ terra Layout:_spaceout()
 
 end
 
+local struct line_nowrap_segments_iter { layout: &Layout; line: &Line; }
+
+line_nowrap_segments_iter.metamethods.__for = function(self, body)
+	if self:islvalue() then self = &self end
+	return quote
+		var iter = self --workaround for terra issue #368
+		var line = iter.line
+		var self = iter.layout
+		var seg_i = self.segs:index(line.first_vis)
+		var line_i = self.lines:index(line)
+		repeat
+			var segs_wx, segs_ax, next_seg_i = self:nowrap_segments(seg_i)
+			var next_seg = self.segs:at(next_seg_i, nil)
+			var last = next_seg == nil or next_seg.line_index ~= line_i
+			[ body(seg_i, next_seg_i, segs_wx, segs_ax, last) ]
+			seg_i = next_seg_i
+		until last
+	end
+end
+
+terra Layout:line_nowrap_segments(line: &Line)
+	return line_nowrap_segments_iter {layout = self, line = line}
+end
+
 terra Layout:justify(line: &Line)
-	var w: num = 0 --total width of between-segments whitespace
-	var n = 0 --total number of between-segments places
-	for seg in line do
-		if seg.next_vis ~= nil then
-			var gr = self:glyph_run(seg)
-			inc(w, gr.advance_x - gr.wrap_advance_x)
+	var w: num = 0 --width of total justifiable whitespace
+	var n = 0 --total number of gaps
+	for _, __, segs_wx, segs_ax, last in self:line_nowrap_segments(line) do
+		if not last then
+			inc(w, segs_ax - segs_wx)
 			inc(n)
 		else
 			inc(w, self.align_w - line.advance_x)
@@ -121,25 +149,27 @@ terra Layout:justify(line: &Line)
 	end
 	var sp = w / n
 	var ax: num = 0
-	for seg in line do
-		var gr = self:glyph_run(seg)
-		seg.x = ax
-		ax = ax + gr.wrap_advance_x + sp
+	for seg_i, next_seg_i, segs_wx, _, last in self:line_nowrap_segments(line) do
+		var ax1 = ax
+		for i = seg_i, next_seg_i do
+			var seg = self.segs:at(i)
+			seg.x = ax1
+			ax1 = ax1 + seg.advance_x
+		end
+		ax = ax + segs_wx + sp
 	end
 end
 
 --set segments `x` to be relative to the line's origin.
 terra Layout:unjustify(line: &Line)
 	var ax: num = 0
-	var seg = line.first_vis
-	while seg ~= nil do
-		seg.x = ax + 0 --TODO: seg.x
+	for seg in line do
+		seg.x = ax
 		ax = ax + seg.advance_x
-		seg = seg.next_vis
 	end
 end
 
-terra Layout:_align()
+terra Layout:align()
 
 	self.min_x = inf
 	for line_i, line in self.lines do
@@ -149,7 +179,7 @@ terra Layout:_align()
 			var dir = iif(line.first ~= nil, line.first.paragraph_dir, ALIGN_LEFT)
 			var left  = iif(align_x == ALIGN_START, ALIGN_LEFT, ALIGN_RIGHT)
 			var right = iif(align_x == ALIGN_START, ALIGN_RIGHT, ALIGN_LEFT)
-				 if dir == DIR_AUTO then align_x = left
+			    if dir == DIR_AUTO then align_x = left
 			elseif dir == DIR_LTR  then align_x = left
 			elseif dir == DIR_RTL  then align_x = right
 			elseif dir == DIR_WLTR then align_x = left
@@ -160,7 +190,7 @@ terra Layout:_align()
 		--compute line's aligned x position relative to the textbox origin.
 		if align_x == ALIGN_JUSTIFY then
 			line.x = 0
-			if line.linebreak == BREAK_NONE and line_i < self.lines.len-1 then
+			if line.linebreak < BREAK_LINE and line_i < self.lines.len-1 then
 				self:justify(line)
 			else
 				self:unjustify(line)
@@ -189,8 +219,6 @@ terra Layout:_align()
 		var first_line = self.lines:at(0)
 		self.baseline = first_line.spaced_ascent + (self.align_h - self.spaced_h) / 2
 	end
-
-	self.clip_valid = false
 end
 
 terra Layout:bbox()
@@ -201,3 +229,25 @@ terra Layout:bbox()
 	var bh = self.spaced_h
 	return bx, by, bw, bh
 end
+
+terra Layout:line_pos(line: &Line)
+	self.lines:index(line)
+	var x = self.x + line.x
+	var y = self.y + self.baseline + line.y
+	return x, y
+end
+
+--hit-test lines vertically given a relative(!) y-coord.
+local terra cmp_ys(line1: &Line, line2: &Line)
+	return line1.y - line1.spaced_descent < line2.y -- < < [=] = < <
+end
+terra Layout:line_at_y(y: num)
+	return self.lines:clamp(self.lines:binsearch(Line{y = y}, cmp_ys))
+end
+
+--hit-test the text vertical boundaries for a line index given an y-coord.
+terra Layout:hit_test_lines(y: num)
+	var y = y - (self.y + self.baseline)
+	return self:line_at_y(y)
+end
+

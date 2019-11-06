@@ -3,6 +3,9 @@
 --Written by Cosmin Apreutesei. Public Domain.
 --HSL-RGB conversions from Sputnik by Yuri Takhteyev (MIT/X License).
 
+local bit = require'bit'
+local band, shr = bit.band, bit.rshift
+
 local function clamp01(x)
 	return math.min(math.max(x, 0), 1)
 end
@@ -314,6 +317,22 @@ local function parse(s, dest_space)
 	end
 end
 
+local function parse_argb32(x)
+	local b = band(shr(x,  0), 0xff) / 0xff
+	local g = band(shr(x,  8), 0xff) / 0xff
+	local r = band(shr(x, 16), 0xff) / 0xff
+	local a = band(shr(x, 24), 0xff) / 0xff
+	return r, g, b, a
+end
+
+local function parse_rgba32(x)
+	local a = band(shr(x,  0), 0xff) / 0xff
+	local b = band(shr(x,  8), 0xff) / 0xff
+	local g = band(shr(x, 16), 0xff) / 0xff
+	local r = band(shr(x, 24), 0xff) / 0xff
+	return r, g, b, a
+end
+
 --formatting -----------------------------------------------------------------
 
 local format_spaces = {
@@ -521,6 +540,8 @@ local color_module = {
 	clamp = clamp,
 	convert = convert,
 	parse = parse,
+	parse_rgba32 = parse_rgba32,
+	parse_argb32 = parse_argb32,
 	format = format,
 	hsl = new_with'hsl',
 	hsv = new_with'hsv',
@@ -576,6 +597,14 @@ if not ... then
 	print(color_module('rgb', 1, 0, 0, .8))
 	print(color_module('rgb', 0, 0, 0, .8))
 	print(color_module('rgb', 1, 0, .3))
+
+	local r, g, b, a = parse_rgba32(0xffffffff)
+	local h, s, l = convert('hsl', 'rgb', r, g, b)
+	print(h, s, l)
+	l = 0
+	local r, g, b = convert('rgb', 'hsl', h, s, l)
+	local c = format('rgba32', 'rgb', r, g, b, a)
+	print(string.format('%x', c))
 end
 
 return color_module

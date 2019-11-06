@@ -163,6 +163,7 @@ utf8_iter.metamethods.__for = function(self, body)
 		return body(valid, i, c)
 	end)
 	return quote
+		var self = self --workaround for terra issue #368
 		decode(self.s, self.len, iter_c, maxint, utf8.KEEP, 0)
 	end
 end

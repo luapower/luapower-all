@@ -5,82 +5,75 @@ if not ... then require'terra/tr_test'; return end
 
 setfenv(1, require'terra/tr_types')
 require'terra/tr_rasterize'
+require'terra/tr_clip'
 
---NOTE: clip_left and clip_right are relative to glyph run's origin.
-terra Renderer:paint_glyph_run(
-	cr: &context, gr: &GlyphRun, i: int, j: int,
-	ax: num, ay: num, clip: bool, clip_left: num, clip_right: num
-): {}
-
-	if not clip and j > 2 and gr.font_size < 50 then
-		var sr, sx, sy = self:rasterize_glyph_run(gr, ax, ay)
-		self:paint_surface(cr, sr, sx, sy, false, 0, 0)
-		inc(self.paint_glyph_num, j)
-		return
-	end
-
-	var surfaces = self:glyph_surfaces(gr, i, j, ax, ay)
-	for sr, sx, sy in surfaces do
-		if clip then
-			--make clip_left and clip_right relative to bitmap's left edge.
-			clip_left  = clip_left + ax - sx
-			clip_right = clip_right + ax - sy
+terra Renderer:paint_glyph_run(cr: &context, run: &GlyphRun, face: &FontFace, ax: num, ay: num)
+	if run.glyphs.len > 1 and run.font_size < 50 then
+		var sr, sx, sy = self:rasterize_glyph_run(run, face, ax, ay)
+		self:paint_surface(cr, sr, sx, sy)
+	else
+		for sr, sx, sy in self:glyph_surfaces(run, 0, run.glyphs.len, face, ax, ay) do
+			self:paint_surface(cr, sr, sx, sy)
 		end
-		self:paint_surface(cr, sr, sx, sy, clip, clip_left, clip_right)
-		inc(self.paint_glyph_num, j-i)
 	end
-
+	inc(self.paint_glyph_num, run.glyphs.len)
 end
 
-terra Layout:paint_text(cr: &context)
+terra Renderer:paint_glyph_run_subseg(cr: &context, run: &GlyphRun, sub: &SubSeg, ax: num, ay: num)
+	var surfaces = self:glyph_surfaces(run, sub.glyph_index1, sub.glyph_index2, sub.span.face, ax, ay)
+	if sub.clip_left or sub.clip_right then
+		var clip_x1 = iif(sub.clip_left , ax + sub.x1, -1e6)
+		var clip_x2 = iif(sub.clip_right, ax + sub.x2,  1e6)
+		for sr, sx, sy in surfaces do
+			self:paint_surface_clipped(cr, sr, sx, sy, clip_x1, clip_x2)
+		end
+	else
+		for sr, sx, sy in surfaces do
+			self:paint_surface(cr, sr, sx, sy)
+		end
+	end
+	inc(self.paint_glyph_num, run.glyphs.len)
+end
 
-	assert(self.state >= STATE_ALIGNED)
-	assert(self.clip_valid)
+terra Layout:draw_embed(cr: &context, x: num, y: num, embed_i: int, embed: &Embed, span: &Span, for_shadow: bool)
+	if self.r.embed_draw_function ~= nil then
+		self.r.embed_draw_function(cr, x, y, self, embed_i, embed, span, for_shadow)
+	end
+end
+
+terra Layout:paint_text(cr: &context, for_shadow: bool)
 
 	var segs = &self.segs
 	var lines = &self.lines
 
-	for line_i = self.first_visible_line, self.last_visible_line + 1 do
-		var line = lines:at(line_i)
+	for _,line in self:visible_lines() do
 
 		var ax = self.x + line.x
 		var ay = self.y + self.baseline + line.y
 
-		var seg = line.first_vis --can be nil
-		while seg ~= nil do
+		for seg in line do
 			if seg.visible then
-
-				var gr = self:glyph_run(seg)
 				var x, y = ax + seg.x, ay
-
-				--[[
-				--TODO: subsegments
-				if #seg > 0 then --has sub-segments, paint them separately
-					for i = 1, #seg, 5 do
-						var i, j, text_run, clip_left, clip_right = unpack(seg, i, i + 4)
-						rs:setcontext(cr, text_run)
-						paint_glyph_run(cr, rs, run, i, j, x, y, true, clip_left, clip_right)
+				if seg.is_embed then
+					var embed_index = seg.embed_index
+					var embed = self.embeds:at(embed_index, nil)
+					if embed ~= nil then
+						self:draw_embed(cr, x, y, embed_index, embed, seg.span, for_shadow)
 					end
 				else
-				]]
-
-				self.r:setcontext(cr, seg.span)
-				self.r:paint_glyph_run(cr, gr, 0, gr.glyphs.len, x, y, false, 0, 0)
-				--end
-
+					var run = self:seg_glyph_run(seg)
+					var y = y - seg.span.baseline * run.metrics.ascent
+					if seg.subsegs.len > 0 then --has sub-segments, paint those instead.
+						for i, sub in seg.subsegs do
+							self.r:setcontext(cr, sub.span)
+							self.r:paint_glyph_run_subseg(cr, run, sub, x, y)
+						end
+					else
+						self.r:setcontext(cr, seg.span)
+						self.r:paint_glyph_run(cr, run, seg.span.face, x, y)
+					end
+				end
 			end
-			seg = seg.next_vis
 		end
 	end
 end
-
-terra Layout:paint_rect(cr: &context,
-	x: num, y: num, w: num, h: num,
-	color: color, opacity: num
-)
-	cr:rgba(color:apply_alpha(opacity))
-	cr:new_path()
-	cr:rectangle(x, y, w, h)
-	cr:fill()
-end
-

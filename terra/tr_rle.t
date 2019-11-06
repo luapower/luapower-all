@@ -9,42 +9,42 @@ setfenv(1, require'terra/low')
 --sure to handle 0, 1 and n-length sequences correctly as this version does.
 
 function rle_iterator(iter)
-	local struct rle_iter { state: iter.state; i: int; j: int }
+	local struct rle_iter { state: iter.state_t; i: int; j: int }
 	function rle_iter.metamethods.__for(self, body)
-		local save_values = label()
-		local advance     = label()
-		local load_values = label()
-		local iterate     = label()
-		local continue    = label()
-		local done        = label()
+		local save     = label()
+		local advance  = label()
+		local iterate  = label()
+		local continue = label()
+		local done     = label()
+		declare_variables = iter.declare_variables or noop
+		load_values       = iter.load_values       or noop
+		save_values       = iter.save_values       or noop
+		for_variables     = iter.for_variables     or empty
 		return quote
 				var self = self --workaround for terra issue #368
 				var i = self.i
 				var j = self.j
 				if i >= j then goto [done] end
 				var i0: int
-				[ iter.declare_variables(`self.state) ]
-				var first_time = true
-				goto [load_values]
-			::[save_values]::
-				[ iter.save_values(`self.state) ]
+				[ declare_variables(`self.state) ]
+				[ load_values(`self.state, i) ]
+			::[save]::
+				[ save_values(`self.state) ]
 				i0 = i
 			::[advance]::
 				i = i + 1
 				if i == j then goto [iterate] end
-			::[load_values]::
-				[ iter.load_values(`self.state, i) ]
-				if first_time then first_time = false; goto [save_values] end
+				[ load_values(`self.state, i) ]
 				if not [ iter.values_different(`self.state, i) ] then goto [advance] end
 			::[iterate]::
-				while true do --this loop is only to allow `break` to be used in body
-					[ body(i0, `i - i0, unpack(iter.for_variables)) ]
+				while true do --fake loop to allow `break` to be used in body.
+					[ body(i0, `i - i0, unpack(for_variables)) ]
 					goto [continue]
 				end
 				goto [done] --break in body
 			::[continue]::
 				if i == j then goto [done] end
-				goto [save_values]
+				goto [save]
 			::[done]::
 		end
 	end
@@ -54,7 +54,7 @@ end
 if not ... then --self-test
 
 	local iter = {}
-	iter.state = arr(int)
+	iter.state_t = arr(int)
 	local v0 = symbol(int, 'v0')
 	local v1 = symbol(int, 'v1')
 	iter.for_variables = {v0}

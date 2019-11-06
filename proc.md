@@ -21,13 +21,6 @@ Works on Windows, Linux and OSX.
 `proc.env() -> env`                              get all env. vars
 ------------------------------------------------ -----------------------------
 
-## Portability notes:
-
-* only use uppercase env. var names because like file names, env. vars
-  are case-sensitive on POSIX, but case-insensitive on Windows.
-* only use exit status codes in the 0..255 range because Windows exit
-  codes are int32 but POSIX codes are limited to a byte.
-
 ### `proc.exec(cmd,[args],[env],[cur_dir]) -> p`
 
 Spawn a child process and return a process object to query and control the
@@ -39,3 +32,11 @@ process.
   environment is inherited).
   * `cur_dir` is the directory to start the process in.
 
+## Programming Notes
+
+* only use uppercase env. var names because like file names, env. vars
+  are case-sensitive on POSIX, but case-insensitive on Windows.
+* only use exit status codes in the 0..255 range because Windows exit
+  codes are int32 but POSIX codes are limited to a byte.
+* if using `proc.setenv()`, use `proc.env()` to read back variables instead
+of `os.getenv()` because the latter won't see the changes.

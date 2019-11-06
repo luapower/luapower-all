@@ -52,7 +52,7 @@ end
 valid_text = concat(valid_text)
 
 local terra test_decode(msg: rawstring, s: rawstring, opt: enum)
-	var sn = strlen(s)
+	var sn = strnlen(s, maxint)
 	var n, i, q = utf8.decode.count(s, sn, maxint, opt, 0xFFFD)
 	pfn('%-10s in: %3d  out: %3d  invalid: %3d  "%s"', msg, sn, n, q, s)
 	var out = arr(codepoint); defer out:free(); out.len = n

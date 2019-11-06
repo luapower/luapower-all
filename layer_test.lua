@@ -1,6 +1,7 @@
 
 local ffi = require'ffi'
 local time = require'time'
+local fs = require'fs'
 local testui = require'testui'
 local glue = require'glue'
 local bundle = require'bundle'
@@ -25,58 +26,87 @@ end
 
 --const state ----------------------------------------------------------------
 
+local font_dir = 'media/fonts'
 local fonts = {}
-fonts[1] = assert(bundle.load'media/fonts/OpenSans-Regular.ttf')
-fonts[2] = assert(bundle.load'media/fonts/Amiri-Regular.ttf')
+for _,s in ipairs{
+	'OpenSans-Regular.ttf',
+	'Amiri-Regular.ttf',
+	'NotoNaskhArabic-Regular.ttf',
+	'SourceHanSans.ttc',
+	'SourceHanSerif.ttc',
+	'ionicons.ttf',
+	'Font Awesome 5 Free-Solid-900.otf',
+	'NotoColorEmoji.ttf',
+	'Sacramento-Regular.ttf',
+	'Tangerine-Regular.ttf',
+} do if glue.canopen(font_dir..'/'..s) then
+	table.insert(fonts, s)
+end end
 
-local function load_font(font_id, file_data_buf, file_size_buf)
-	local s = assert(fonts[font_id+1])
-	file_data_buf[0] = ffi.cast('void*', s)
-	file_size_buf[0] = #s
+local font_ids = glue.index(fonts)
+
+local font_names = {}
+for i,s in ipairs(fonts) do
+	s = s:match'([^/]+)%....$'
+	font_names[i] = s:sub(1, 5)..s:sub(-1)
+end
+local font_map = glue.update({}, font_names, glue.index(font_names))
+
+local function load_font(font_id, file_data_buf, file_size_buf, mmapped_buf)
+	local font_name = assert(fonts[font_id])
+	local font_data = assert(bundle.load(font_dir..'/'..font_name))
+	local buf = glue.malloc('char', #font_data)
+	ffi.gc(buf, nil)
+	ffi.copy(buf, font_data, #font_data)
+	file_data_buf[0] = buf
+	file_size_buf[0] = #font_data
+	mmapped_buf[0] = false
 end
 
-local function unload_font(font_id, file_data_buf, file_size_buf)
-	--nothing
+local function unload_font(font_id, file_data, file_size)
+	glue.free(file_data)
 end
 
 assert(layer.memtotal() == 0)
 
 local lib = layer.layerlib(load_font, unload_font)
-
-local opensans = lib:font()
-local amiri    = lib:font()
+lib.mem_font_cache_max_size = 1/0
 
 local default_e = lib:layer()
 
 local lorem_ipsum = bundle.load('lorem_ipsum.txt')
 local test_texts = {
 	[''] = '',
-	lorem_ipsum = lorem_ipsum,
-	hello = 'Hello World!',
-	parbreak = u'Hey\nYou&ps;New Paragraph',
+	dia = 's\u{0320}a\u{0300}',
+	ipsum = lorem_ipsum,
+	ffi = 'aaa ffi bbb',
+	ar = 'السَّلَامُ عَلَيْكُمْ‎',
+	ch = '这是一些中文文本',
+	par = u'Hey\nYou&ps;New Paragraph',
+	embed = u'a\u{100000}\u{100001}b',
+	ico = '\xF0\x9F\x98\x81'
 }
 local test_text_names = glue.index(test_texts)
 
-local outlen = 65535
-local out = ffi.new('char[?]', outlen)
-local function utf8_text(e)
-	local n = e:get_text_utf8(out, outlen)
-	return n > 0 and ffi.string(out, n) or nil
-end
-
 --global state ---------------------------------------------------------------
 
-local top_e
+local top_e, sel_e
 local selected_layer_path = {}
 local e, hit_e, hit_area
 
 local sessions = {}
-local session_number
-local continuous_repaint
+local session = '1'
+local tab = 'Position'
 local layer_changed = false
 local draw_changed_dt = 0
 local draw_fps_t, draw_fps_dt = 0, 0
 local repaint_fps_t, repaint_fps_dt = 0, 0
+
+sel_e = lib:layer()
+--sel_e.background_color = 0xffffff22
+sel_e.border_width = 2
+sel_e:set_border_dash(0, 10)
+sel_e.border_offset = 1
 
 --layer tree (de)serialization -----------------------------------------------
 
@@ -88,13 +118,10 @@ local function serialize_layer(e)
 		local dt = {}
 		for i = 0, n-1 do
 			local t = {}
-			for k, convert in glue.sortedpairs(fields) do
-				local v = e['get_'..k](e, i)
-				local v0 = default_e['get_'..k](default_e, 0)
-				if type(convert) == 'function' then
-					v = convert(v)
-					v0 = convert(v0)
-				end
+			for k, get in glue.sortedpairs(fields) do
+				get = type(get) == 'function' and get or e['get_'..k]
+				local v = get(e, i)
+				local v0 = get(default_e, 0)
 				if v ~= v0 then
 					t[k] = v
 				end
@@ -107,10 +134,6 @@ local function serialize_layer(e)
 		end
 		if #dt == 0 then return end
 		return dt
-	end
-
-	local function cstring(p, len)
-		return p ~= nil and ffi.string(p, len) or nil
 	end
 
 	--serialize layer properties.
@@ -158,7 +181,7 @@ local function serialize_layer(e)
 	t.border_dash_offset  = e.border_dash_offset
 	t.border_offset = e.border_offset
 	t.background_type = e.background_type
-	t.background_color = e.background_color_set and e.background_color or nil
+	t.background_color = e.background_color
 	t.background_x1 = e.background_x1
 	t.background_y1 = e.background_y1
 	t.background_x2 = e.background_x2
@@ -173,6 +196,7 @@ local function serialize_layer(e)
 	--TODO: background_image = e.background_image
 	t.background_hittable            = e.background_hittable
 	t.background_operator            = e.background_operator
+	t.background_opacity             = e.background_opacity
 	t.background_clip_border_offset  = e.background_clip_border_offset
 	t.background_x                   = e.background_x
 	t.background_y                   = e.background_y
@@ -193,7 +217,7 @@ local function serialize_layer(e)
 		shadow_inset   =1,
 		shadow_content =1,
 	})
-	t.text_utf8 = utf8_text(e)
+	t.text = e.text
 	t.text_maxlen = e.text_maxlen
 	t.text_dir = e.text_dir
 	t.text_align_x = e.text_align_x
@@ -204,22 +228,37 @@ local function serialize_layer(e)
 	t.span_count = e.span_count
 	t.text_spans = list(e, e.span_count, {
 		span_offset            =1,
-		span_font_id           =1,
+		span_font              =function(e, i)
+			return fonts[e:get_span_font_id(i)]
+		end,
+		span_font_face_index   =1,
 		span_font_size         =1,
-		span_features          =cstring,
-		span_script            =cstring,
-		span_lang              =cstring,
+		span_features          =1,
+		span_script            =1,
+		span_lang              =1,
 		span_paragraph_dir     =1,
-		span_nowrap            =1,
+		span_wrap              =1,
 		span_text_color        =1,
 		span_text_opacity      =1,
 		span_text_operator     =1,
+		span_underline         =1,
+		span_underline_color   =1,
+		span_underline_opacity =1,
+		span_baseline          =1,
 	})
-	t.text_selectable   = e.text_selectable
-	--TODO:
-	-- text_caret_width
-	-- text_caret_color
-	-- text_caret_insert_mode
+	t.text_cursor_count = e.text_cursor_count
+	t.text_cursors      = list(e, e.text_cursor_count, {
+		text_cursor_offset     =1,
+		text_cursor_which      =1,
+		text_cursor_sel_offset =1,
+		text_cursor_sel_which  =1,
+		text_cursor_x          =1,
+		text_insert_mode       =1,
+		text_caret_opacity     =1,
+		text_caret_thickness   =1,
+		text_selection_color   =1,
+		text_selection_opacity =1,
+	})
 	t.in_transition     = e.in_transition
 	t.layout_type       = e.layout_type
 	t.align_items_x     = e.align_items_x
@@ -276,11 +315,14 @@ local function deserialize_layer(e, t)
 			for i,t in ipairs(v) do
 				deserialize_layer(e:child(i-1), t)
 			end
-		elseif k == 'text_utf8' then
-			e:set_text_utf8(v, #v)
 		elseif type(v) == 'table' then
+			local kk = k
 			for i,t in ipairs(v) do
 				for k,v in glue.sortedpairs(t) do
+					if k == 'span_font' then
+						k = 'span_font_id'
+						v = font_ids[v] or -1
+					end
 					local set = e['set_'..k]
 					set(e, i-1, v)
 				end
@@ -296,7 +338,10 @@ local function create_top_e()
 		top_e:free()
 	end
 	top_e = lib:layer()
-	top_e.x = 1100
+end
+
+local function init_top_e()
+	top_e.x = 100
 	top_e.y = 100
 	top_e.w = 500
 	top_e.h = 300
@@ -305,55 +350,65 @@ end
 
 --session management ---------------------------------------------------------
 
-local function session_file(i)
-	return string.format('layer_test_state_%d.lua', i)
+local function session_file(sn)
+	return string.format('layer_test_state_%s.lua', sn)
 end
 
 local function state_file()
 	return 'layer_test_state.lua'
 end
 
-local function save_session()
-	if not session_number then return end
-	local t = serialize_layer(top_e)
-	local file = session_file(session_number)
-	save_table(file, {root = t, selected_layer_path = selected_layer_path})
+local function session_list()
+	local t = {}
+	for s,d in fs.dir'.' do
+		if s then
+			local sn = d:is'file' and s:match'^layer_test_state_(.-)%.lua'
+			if sn then
+				push(t, sn)
+			end
+		end
+	end
+	table.sort(t)
+	if #t == 0 then t[1] = '1' end
+	return t
 end
 
-local function load_session(sn)
+local function save_session()
+	local t = serialize_layer(top_e)
+	local file = session_file(session)
+	save_table(file, {
+		root = t,
+		selected_layer_path = selected_layer_path,
+		tab = tab,
+	})
+end
+
+local function load_session(name)
 	create_top_e()
-	local t = load_table(session_file(sn))
+	local t = load_table(session_file(name))
 	if t then
 		selected_layer_path = t.selected_layer_path
+		tab = t.tab
 		deserialize_layer(top_e, t.root)
+	else
+		init_top_e()
 	end
-	session_number = sn
+	session = name
 end
 
 local function load_sessions()
-	sessions = {}
-	local i = 1
-	while glue.canopen(session_file(i)) do
-		sessions[i] = i
-		i = i + 1
-	end
+	sessions = session_list()
 end
 
 local function load_state()
 	local state = load_table(state_file())
-	if state then
-		load_session(state.session_number)
-		testui:continuous_repaint(state.continuous_repaint)
-		continuous_repaint = state.continuous_repaint
-	else
-		create_top_e()
-	end
+	local sn = state and state.session or '1'
+	load_session(glue.indexof(sn, sessions) and sn or '1')
 end
 
 local function save_state()
 	save_table(state_file(), {
-		session_number = session_number,
-		continuous_repaint = continuous_repaint,
+		session = session,
 	})
 end
 
@@ -364,18 +419,26 @@ local function get_prop(e, prop) return e[prop] end
 local function set_prop(e, prop, v) e[prop] = v; layer_changed = true end
 local function get_prop_i(e, prop, i) return e['get_'..prop](e, i) end
 local function set_prop_i(e, prop, v, i) e['set_'..prop](e, i, v); layer_changed = true end
-local function get_prop_ij(e, prop, i, j) return e['get_'..prop](e, i, j) end
-local function set_prop_ij(e, prop, v, i, j) e['set_'..prop](e, i, j, v); layer_changed = true end
-local function getset(prop, i, j)
+local function get_prop_if(e, prop, _, is_set)
+	if not e[is_set](e) then return nil end
+	return e[prop]
+end
+local function get_prop_if_i(e, prop, i, is_set)
+	if not e[is_set](e, i) then return nil end
+	return e['get_'..prop](e, i)
+end
+local function getset(prop, i, is_set)
 	local id = i and prop..'['..i..']' or prop
-	get = j and get_prop_ij or i and get_prop_i or get_prop
-	set = j and set_prop_ij or i and set_prop_i or set_prop
+	get = is_set ~= nil and (i ~= nil and get_prop_if_i or get_prop_if) or i and get_prop_i or get_prop
+	set = i and set_prop_i or set_prop
 	return id, get, set
 end
 local function slide(prop, min, max, step, ...)
 	local id, get, set = getset(prop, ...)
 	local v = get(e, prop, ...)
-	local v = testui:slide(id, nil, v, min, max, step, get(default_e, prop, 0))
+	local _, get_default = getset(prop, (...))
+	local default_v = get_default(default_e, prop, 0)
+	local v = testui:slide(id, nil, v, min, max, step, default_v)
 	if v then
 		set(e, prop, v, ...)
 		return v
@@ -389,7 +452,7 @@ local function sliden(prop, ...) return slide(prop, -10, 10, .1, ...) end
 local function slideo(prop, ...) return slide(prop, -2, 2, .001, ...) end
 local function pickcolor(prop, ...)
 	local id, get, set = getset(prop, ...)
-	local r, g, b, a = color.parse_rgba32(get(e, prop, ...))
+	local r, g, b, a = color.parse_rgba32(get(e, prop, ...) or 0)
 	local h, s, l = color.convert('hsl', 'rgb', r, g, b)
 
 	testui:pushgroup'down'
@@ -417,23 +480,28 @@ local map_t = glue.memoize(function(prop) return {} end)
 local function enum_map(prop, prefix, options)
 	local t = map_t(prop)
 	if not next(t) then
-		if type(prefix) == 'string' then
+		if type(prefix) == 'string' then --enum mapping
 			for i,s in ipairs(options) do
 				local enum = layer[prefix:upper()..s:upper()]
 				t[s] = enum
 				t[enum] = s
 			end
-		else
+		elseif prefix then --user-specified mapping
 			glue.update(t, prefix)
 			glue.update(t, glue.index(prefix))
+		else --null mapping
+			for i,v in ipairs(options) do
+				t[v] = v
+			end
 		end
 	end
 	return t
 end
 local function choose(prop, prefix, options, ...)
 	local id, get, set = getset(prop, ...)
+	local v = get(e, prop, ...)
 	local t = enum_map(prop, prefix, options)
-	local v = t[get(e, prop, ...)]
+	local v = t[v]
 	testui:pushgroup'down'
 	testui.margin_h = -2
 	testui:label(prop)
@@ -485,6 +553,22 @@ local function toggle(prop, ...)
 	end
 end
 
+local function parent_map(e)
+	void = ffi.cast('layer_t*', nil)
+	local m = {[void] = 'nil', ['nil'] = void}
+	local n = {'nil'}
+	local i = 2
+	while e ~= nil do
+		local s = 'parent '..i
+		m[e.parent] = s
+		m[s] = e.parent
+		n[i] = s
+		i = i + 1
+		e = e.parent
+	end
+	return m, n
+end
+
 --test UI window -------------------------------------------------------------
 
 function testui:layer_line(id, sel_child_i)
@@ -518,33 +602,28 @@ function testui:repaint()
 
 	local y = self.y
 	self:pushgroup'right'
-	self.x = self.win_w - 80 * #sessions - 20 - 30 * 2 - 80
-	self.min_w = 80
-	local sn = self:choose('session', sessions, session_number, 'session %d')
+	self.x = self.win_w - 40 * #sessions - 20 - 30 * 2
+	self.min_w = 40
+	local sn = self:choose('session', sessions, session)
 	if sn then
 		save_session()
 		load_session(sn)
 	end
 	self.min_w = 30
 	if self:button'+' then
-		push(sessions, #sessions + 1)
+		push(sessions, tostring(#sessions + 1))
 	end
 	if self:button'-' then
-		os.remove(session_file(pop(sessions)))
-	end
-
-	self.x = self.x + 20
-	if self:button('CRP', nil, continuous_repaint) then
-		continuous_repaint = not continuous_repaint
-		testui:continuous_repaint(continuous_repaint)
+		local i = glue.indexof(session, sessions)
+		os.remove(session_file(table.remove(sessions, i)))
+		if #sessions == 0 then sessions[1] = '1' end
+		load_session(sessions[math.min(i, #sessions)] or '1')
 	end
 
 	self:popgroup()
 	self.y = y
 
 	--layer tree editor / layer selector --------------------------------------
-
-	local e0 = e
 
 	e = top_e
 	local path_i = 1
@@ -577,389 +656,431 @@ function testui:repaint()
 		id = id..'/'..child_i
 	end
 
-	if e0 then e0.background_color_set = false end
-	if e then e.background_color = 0xffffff11 end
+	if sel_e then
+		sel_e.pos_parent = e.parent
+		sel_e.x = e.x
+		sel_e.y = e.y
+		sel_e.w = e.w
+		sel_e.h = e.h
+		sel_e.rotation = e.rotation
+		sel_e.rotation_cx = e.rotation_cx
+		sel_e.rotation_cy = e.rotation_cy
+		sel_e.scale    = e.scale
+		sel_e.scale_cx = e.scale_cx
+		sel_e.scale_cy = e.scale_cy
+	end
 
 	--layer property editors --------------------------------------------------
+
+	self:pushgroup('right')
+
+	self.min_w = 80
+
+	tab = self:choose('tab', {
+		'Position', 'Border & Padding', 'Background', 'Shadows', 'Text', 'Layout',
+	}, tab) or tab
+
+	self:popgroup()
 
 	self:pushgroup'right'
 
 	self:pushgroup'down'
 
-	self:heading'Position'
+	if tab == 'Position' then
 
-	if sliden('index') then
-		selected_layer_path[#selected_layer_path] = e.index
-	end
-	self:pushgroup('right', 1/2)
-	slidex('x')
-	slidey('y')
-	self:nextgroup()
-	slidex('w')
-	slidey('h')
-	self:popgroup()
+		self:heading'Z-Index'
 
-	self:heading'Drawing'
+		if sliden('index') then
+			selected_layer_path[#selected_layer_path] = e.index
+		end
 
-	choose('operator', 'operator_', {'clear', 'source', 'over', 'in', 'out', 'xor'})
+		self:heading'Position & Size'
 
-	self:pushgroup('right', 1/3)
-	toggle'clip_content'
-	toggle'snap_x'
-	toggle'snap_y'
-	self:popgroup()
-
-	slideo'opacity'
-
-	self:heading'Border'
-
-	slidew('border_width'       )
-	self:pushgroup('right', 1/2)
-	slidew('border_width_left'  )
-	slidew('border_width_right' )
-	self:nextgroup()
-	slidew('border_width_top'   )
-	slidew('border_width_bottom')
-	self:popgroup()
-
-	slidew('corner_radius')
-	self:pushgroup('right', 1/2)
-	slidew('corner_radius_top_left')
-	slidew('corner_radius_top_right')
-	self:nextgroup()
-	slidew('corner_radius_bottom_left')
-	slidew('corner_radius_bottom_right')
-	self:popgroup()
-
-	pickcolor('border_color')
-	pickcolor('border_color_left')
-	pickcolor('border_color_right')
-	pickcolor('border_color_top')
-	pickcolor('border_color_bottom')
-
-	slideo('border_offset')
-
-	sliden('border_dash_count')
-	for i = 0, e.border_dash_count-1 do
-		slide('border_dash', -100, 100, .1, i)
-	end
-	slide('border_dash_offset', -100, 100, .1)
-
-	self:heading'Padding'
-
-	slidew('padding'       )
-	self:pushgroup('right', 1/2)
-	slidew('padding_left'  )
-	slidew('padding_right' )
-	self:nextgroup()
-	slidew('padding_top'   )
-	slidew('padding_bottom')
-	self:popgroup()
-
-	self:heading'Transforms'
-
-	slidea('rotation')
-	self:pushgroup('right', 1/2)
-	slidex('rotation_cx')
-	slidey('rotation_cy')
-	self:popgroup()
-
-	slideo('scale')
-	self:pushgroup('right', 1/2)
-	slidex('scale_cx')
-	slidey('scale_cy')
-	self:popgroup()
-
-	self:heading'Shadows'
-
-	slide('shadow_count', -10, 10, 1)
-	for i = 0, e.shadow_count-1 do
-		pickcolor('shadow_color', i)
 		self:pushgroup('right', 1/2)
-		slidew('shadow_x', i)
-		slidew('shadow_y', i)
-		self:popgroup()
-		self:pushgroup('right', 1/2)
-		slide ('shadow_blur',   -300, 300, 1, i)
-		slide ('shadow_passes',  -20,  20, 1, i)
+		slidex('x')
+		slidey('y')
 		self:nextgroup()
-		toggle('shadow_inset', i)
-		toggle('shadow_content', i)
+		slidex('w')
+		slidey('h')
 		self:popgroup()
-	end
 
-	self:nextgroup(10)
+		local parent_map, parent_names = parent_map(e)
+		choose('pos_parent', parent_map, parent_names)
 
-	self:heading'Background'
+		self:heading'Drawing'
 
-	choose('background_type', 'background_', {'color', 'linear_gradient', 'radial_gradient', 'image'})
-	pickcolor('background_color')
-	toggle('background_color_set')
+		choose('operator', 'operator_', {'clear', 'source', 'over', 'in', 'out', 'xor'})
 
-	self:pushgroup('right', 1/2)
-	slidex('background_x1')
-	slidey('background_y1')
-	self:nextgroup()
-	slidex('background_x2')
-	slidey('background_y2')
-	self:nextgroup()
-	slidex('background_r1')
-	slidey('background_r2')
-	self:popgroup()
+		self:pushgroup('right', 1/2)
+		toggle'visible'
+		toggle'clip_content'
+		self:nextgroup()
+		toggle'snap_x'
+		toggle'snap_y'
+		self:popgroup()
 
-	sliden('background_color_stop_count')
+		slideo'opacity'
 
-	for i = 0, e.background_color_stop_count-1 do
-		pickcolor('background_color_stop_color', i)
-		slideo('background_color_stop_offset', i)
-	end
+		self:heading'Transform'
 
-	--[[
-		set_background_image=1,
-		get_background_image_w=1,
-		get_background_image_h=1,
-		get_background_image_stride=1,
-		get_background_image_pixels=1,
-		get_background_image_format=1,
-		background_image_invalidate=1,
-		background_image_invalidate_rect=1,
-	]]
+		slidea('rotation')
+		self:pushgroup('right', 1/2)
+		slidex('rotation_cx')
+		slidey('rotation_cy')
+		self:popgroup()
 
-	toggle('background_hittable')
-	choose('background_operator', 'operator_', {'clear', 'source', 'over', 'in', 'out', 'xor'})
-	slideo('background_clip_border_offset')
+		slideo('scale')
+		self:pushgroup('right', 1/2)
+		slidex('scale_cx')
+		slidey('scale_cy')
+		self:popgroup()
 
-	self:pushgroup('right', 1/2)
-	slidex('background_x')
-	slidex('background_y')
-	self:popgroup()
-	slidea('background_rotation')
-	self:pushgroup('right', 1/2)
-	slidex('background_rotation_cx')
-	slidey('background_rotation_cy')
-	self:popgroup()
-	slideo('background_scale')
-	self:pushgroup('right', 1/2)
-	slidex('background_scale_cx')
-	slidey('background_scale_cy')
-	self:popgroup()
+	elseif tab == 'Border & Padding' then
 
-	choose('background_extend', 'background_extend_', {'none', 'pad', 'reflect', 'repeat'})
+		self:heading'Border Width'
 
-	self:heading'Text'
+		slidew('border_width'       )
+		self:pushgroup('right', 1/2)
+		slidew('border_width_left'  )
+		slidew('border_width_right' )
+		self:nextgroup()
+		slidew('border_width_top'   )
+		slidew('border_width_bottom')
+		self:popgroup()
 
-	self:pushgroup'right'
-	self.min_w = 0
-	local text = utf8_text(e)
-	local text_name = test_text_names[text]
-	local sel_text_name = self:choose('text_utf8', glue.keys(test_texts, true), text_name)
-	if sel_text_name then
-		local sel_text = test_texts[sel_text_name]
-		e:set_text_utf8(sel_text, #sel_text)
-		layer_changed = true
-	end
-	self:popgroup()
+		self:heading'Border Offset'
 
-	slide ('text_maxlen', -10, 9999, 1)
-	choose('text_dir', 'dir_', {'auto', 'ltr', 'rtl', 'wltr', 'wrtl'})
-	choose('text_align_x', 'align_', {'left', 'right', 'center', 'justify', 'start', 'end'})
-	choose('text_align_y', 'align_', {'top', 'bottom', 'center'})
-	slideo('line_spacing')
-	slideo('hardline_spacing')
-	slideo('paragraph_spacing')
+		slideo('border_offset')
 
-	self:heading'Text Spans'
+		self:heading'Corner Radius'
 
-	sliden('span_count')
-	for i = 0, e.span_count-1 do
-		choose('span_font_id', {OpenSans=0, Amiri=1}, {'OpenSans', 'Amiri'}, i)
-		slide ('span_font_size', -10, 100, 1, i)
-		--TODO: slide ('features',
-		--TODO: choose('script', i)
-		--TODO: choose('lang'             , i)
-		choose('span_paragraph_dir', 'dir_', {'auto', 'ltr', 'rtl', 'wltr', 'wrtl'}, i)
-		toggle('span_nowrap'          , i)
-		pickcolor('span_text_color'   , i)
-		slideo('span_text_opacity'    , i)
-		choose('span_text_operator', 'operator_', {'clear', 'source', 'over', 'in', 'out', 'xor'}, i)
-	end
+		slidew('corner_radius')
+		self:pushgroup('right', 1/2)
+		slidew('corner_radius_top_left')
+		slidew('corner_radius_top_right')
+		self:nextgroup()
+		slidew('corner_radius_bottom_left')
+		slidew('corner_radius_bottom_right')
+		self:popgroup()
 
-	self:heading'Text Cursor & Selection'
+		self:heading'Border Color'
 
-	toggle'text_selectable'
-	slide('cursor_offset', -1, e.text_len + 1, 1)
+		pickcolor('border_color')
+		pickcolor('border_color_left')
+		pickcolor('border_color_right')
+		pickcolor('border_color_top')
+		pickcolor('border_color_bottom')
 
-	self:nextgroup(10)
+		self:heading'Border Dash'
 
-	self:heading'Layouting'
+		sliden('border_dash_count')
+		for i = 0, e.border_dash_count-1 do
+			slide('border_dash', -100, 100, .1, i)
+		end
+		slide('border_dash_offset', -100, 100, .1)
 
-	self.x = self.x + 40
-	choose('layout_type', 'layout_', {'null', 'textbox', 'flexbox', 'grid'})
-	self.x = self.x - 40
+		self:heading'Padding'
 
-	self:pushgroup('right', 1/2)
-	slidex('min_cw')
-	slidey('min_ch')
-	self:popgroup()
+		slidew('padding'       )
+		self:pushgroup('right', 1/2)
+		slidew('padding_left'  )
+		slidew('padding_right' )
+		self:nextgroup()
+		slidew('padding_top'   )
+		slidew('padding_bottom')
+		self:popgroup()
 
-	toggle('in_transition')
+	elseif tab == 'Background' then
 
-	self:heading'Flex & Grid Layout'
+		self:heading'Background'
 
-	choose('align_items_x', 'align_', {
-		'left', 'right', 'center', 'stretch', 'start', 'end',
-		'space_evenly', 'space_around', 'space_between',
-	})
-	choose('align_items_y', 'align_', {
-		'top', 'bottom', 'center', 'stretch', 'start', 'end',
-		'space_evenly', 'space_around', 'space_between',
-	})
-	choose('item_align_x', 'align_', {
-		'left', 'right', 'center', 'stretch', 'start', 'end',
-	})
-	choose('item_align_y', 'align_', {
-		'top', 'bottom', 'center', 'stretch', 'start', 'end',
-		'baseline',
-	})
+		choose('background_type', 'background_type_', {'none', 'color', 'linear_gradient', 'radial_gradient', 'image'})
 
-	self:heading'Child / Flex & Grid Layout'
+		toggle('background_hittable')
+		choose('background_operator', 'operator_', {'clear', 'source', 'over', 'in', 'out', 'xor'})
+		slideo'background_opacity'
+		slideo('background_clip_border_offset')
 
-	slideo('fr')
+		if e.background_type == layer.BACKGROUND_TYPE_COLOR then
 
-	choose('align_x', 'align_', {
-		'default',
-		'left', 'right', 'center', 'stretch', 'start', 'end',
-	})
-	choose('align_y', 'align_', {
-		'default',
-		'top', 'bottom', 'center', 'stretch', 'start', 'end',
-	})
+			self:heading'Background Color'
 
-	self:heading'Flex Layout'
+			pickcolor('background_color')
 
-	choose('flex_flow', 'flex_flow_', {'x', 'y'})
+		elseif
+			   e.background_type == layer.BACKGROUND_TYPE_LINEAR_GRADIENT
+			or e.background_type == layer.BACKGROUND_TYPE_RADIAL_GRADIENT
+		then
 
-	toggle('flex_wrap')
+			self:heading'Background Gradient'
 
-	self:heading'Child / Flex Layout'
+			self:pushgroup('right', 1/2)
+			slidex('background_x1')
+			slidey('background_y1')
+			self:nextgroup()
+			slidex('background_x2')
+			slidey('background_y2')
+			if e.background_type == layer.BACKGROUND_TYPE_RADIAL_GRADIENT then
+				self:nextgroup()
+				slidex('background_r1')
+				slidey('background_r2')
+			end
+			self:popgroup()
 
-	self:pushgroup('right', 1/2)
-	toggle('break_before')
-	toggle('break_after')
-	self:popgroup()
+			sliden('background_color_stop_count')
 
-	self:heading'Grid Layout'
-
-	mchoose('grid_flow', 'grid_flow_', {'y', 'r', 'b'})
-
-	sliden('grid_col_fr_count')
-	for i = 0, e.grid_col_fr_count-1 do
-		slideo('grid_col_fr', i)
-	end
-	sliden('grid_row_fr_count')
-	for i = 0, e.grid_row_fr_count-1 do
-		slideo('grid_row_fr', i)
-	end
-
-	self:pushgroup('right', 1/2)
-	slidew('grid_col_gap')
-	slidew('grid_row_gap')
-	self:popgroup()
-
-	sliden('grid_wrap')
-
-	sliden('grid_min_lines')
-
-	self:heading'Child / Grid Layout'
-
-	self:pushgroup('right', 1/2)
-	sliden('grid_col')
-	sliden('grid_col_span')
-	self:nextgroup()
-	sliden('grid_row')
-	sliden('grid_row_span')
-	self:popgroup()
-
-	self:popgroup()
-	self:popgroup()
-	self:popgroup()
-
-	--sync'ing, drawing and hit-testing ---------------------------------------
-
-	local repaint
-
-	if not self.ewindow then
-
-		local d = self.app:active_display()
-		self.ewindow = self.app:window{
-			x = d.cw - 1000,
-			y = 100,
-			w = 1000,
-			h = d.ch - 100,
-			parent = self.window,
-		}
-
-		function self.ewindow:repaint()
-			local cr = self:bitmap():cairo()
-			local repaint_t0 = time.clock()
-			cr:operator'source'
-			cr:rgba(0, 0, 0, 0)
-			cr:paint()
-			cr:operator'over'
-			local draw_t0 = time.clock()
-			top_e:draw(cr)
-			local draw_t = time.clock()
-			local repaint_t = draw_t
-			local draw_dt    = draw_t    - draw_t0
-			local repaint_dt = repaint_t - repaint_t0
-
-			if layer_changed then
-				draw_changed_dt = draw_dt
-				draw_changed = false
+			for i = 0, e.background_color_stop_count-1 do
+				pickcolor('background_color_stop_color', i)
+				slideo('background_color_stop_offset', i)
 			end
 
-			if draw_t - (draw_fps_t or 0) > 0.5 then
-				draw_fps_t  = t
-				draw_fps_dt = draw_dt
-			end
-			if draw_t - (repaint_fps_t or 0) > 0.5 then
-				repaint_fps_t = t
-				repaint_fps_dt = repaint_dt
+		elseif e.background_type == layer.BACKGROUND_TYPE_IMAGE then
+
+			self:heading'Background Image'
+
+			--[[
+				set_background_image=1,
+				get_background_image_w=1,
+				get_background_image_h=1,
+				get_background_image_stride=1,
+				get_background_image_pixels=1,
+				get_background_image_format=1,
+				background_image_invalidate=1,
+				background_image_invalidate_rect=1,
+			]]
+
+		end
+
+		self:heading'Background Extend'
+
+		choose('background_extend', 'background_extend_', {'none', 'pad', 'reflect', 'repeat'})
+
+		self:heading'Background Transforms'
+
+		self:pushgroup('right', 1/2)
+		slidex('background_x')
+		slidex('background_y')
+		self:popgroup()
+		slidea('background_rotation')
+		self:pushgroup('right', 1/2)
+		slidex('background_rotation_cx')
+		slidey('background_rotation_cy')
+		self:popgroup()
+		slideo('background_scale')
+		self:pushgroup('right', 1/2)
+		slidex('background_scale_cx')
+		slidey('background_scale_cy')
+		self:popgroup()
+
+	elseif tab == 'Shadows' then
+
+		self:heading'Shadows'
+
+		slide('shadow_count', -10, 10, 1)
+		for i = 0, e.shadow_count-1 do
+			self:heading('Shadow '..i)
+			pickcolor('shadow_color', i)
+			self:pushgroup('right', 1/2)
+			slidew('shadow_x', i)
+			slidew('shadow_y', i)
+			self:popgroup()
+			self:pushgroup('right', 1/2)
+			slide ('shadow_blur',   -300, 300, 1, i)
+			slide ('shadow_passes',  -20,  20, 1, i)
+			self:nextgroup()
+			toggle('shadow_inset', i)
+			toggle('shadow_content', i)
+			self:popgroup()
+		end
+
+	elseif tab == 'Text' then
+
+		self:heading'Text'
+
+		self:pushgroup'right'
+		self.min_w = 0
+		local text = e.text
+		local text_name = test_text_names[text]
+		local sel_text_name = self:choose('text', glue.keys(test_texts, true), text_name)
+		if sel_text_name then
+			local sel_text = test_texts[sel_text_name]
+			e.text = sel_text
+			layer_changed = true
+		end
+		self:popgroup()
+
+		slide ('text_maxlen', -10, 9999, 1)
+		choose('text_dir', 'dir_', {'auto', 'ltr', 'rtl', 'wltr', 'wrtl'})
+		choose('text_align_x', 'align_', {'left', 'right', 'center', 'justify', 'start', 'end'})
+		choose('text_align_y', 'align_', {'top', 'bottom', 'center'})
+		slideo('line_spacing')
+		slideo('hardline_spacing')
+		slideo('paragraph_spacing')
+
+		self:heading'Text Cursors'
+		slide('text_cursor_count', -10, 10, 1)
+		for i = 0, e.text_cursor_count-1 do
+			self:heading('Cursor '..i)
+
+			slide('text_cursor_offset', -1, e.text_utf32_len + 1, 1, i)
+			slide('text_cursor_which', -1, 2, 1, i)
+			slide('text_cursor_sel_offset', -1, e.text_utf32_len + 1, 1, i)
+			slide('text_cursor_sel_which', -1, 2, 1, i)
+
+			toggle('text_insert_mode', i)
+			slideo('text_caret_opacity', i)
+			slideo('text_caret_thickness', i)
+			pickcolor('text_selection_color', i)
+			slideo('text_selection_opacity', i)
+
+			if e.text_valid then
+				self:heading('Selected Text '..i..' ('..e:get_selected_text_utf32_len(i)..' codepoints)')
+				choose('selected_text_font_id', font_map, font_names, i, 'selected_text_has_font_id')
+				slide ('selected_text_font_size', -10, 100, 1, i, 'selected_text_has_font_size')
+				slide ('selected_text_font_face_index', -1,
+					lib:font_face_num(e:get_span_font_id(i)), 1, i, 'selected_text_has_font_face_index')
+				----TODO: slide ('features',
+				----TODO: choose('script', i)
+				----TODO: choose('lang'             , i)
+				choose('selected_text_paragraph_dir', 'dir_',
+					{'auto', 'ltr', 'rtl', 'wltr', 'wrtl'}, i, 'selected_text_has_paragraph_dir')
+				choose('selected_text_wrap'    , 'wrap_', {'word', 'char', 'none'}, i, 'selected_text_has_wrap')
+				pickcolor('selected_text_color', i, 'selected_text_has_color')
+				slideo('selected_text_opacity' , i, 'selected_text_has_opacity')
+				choose('selected_text_operator', 'operator_',
+					{'clear', 'source', 'over', 'in', 'out', 'xor'}, i, 'selected_text_has_operator')
+				choose('selected_text_underline', 'underline_',
+					{'none', 'solid', 'zigzag'}, i, 'selected_text_has_underline')
+				pickcolor('selected_text_underline_color', i, 'selected_text_has_underline_color')
+				slideo('selected_text_underline_opacity' , i, 'selected_text_has_underline_opacity')
+				slideo('selected_text_baseline' , i, 'selected_text_has_baseline')
+			else
+				self:heading'SPANS ARE INVALID'
 			end
 		end
 
-		function self.ewindow:keyup(key)
-			if key == 'esc' then
-				self:parent():close()
-			end
+		self:nextgroup()
+
+		self:heading'Text Spans'
+
+		sliden('span_count')
+		for i = 0, e.span_count-1 do
+
+			--self:pushgroup('right', 1/2)
+			self:heading('Span '..i)
+			slide ('span_offset', -1, 100, 1, i)
+			--self:popgroup()
+
+			choose('span_font_id', font_map, font_names, i)
+			slide ('span_font_face_index', -1, lib:font_face_num(e:get_span_font_id(i)), 1, i)
+			slide ('span_font_size', -10, 100, 1, i)
+			--TODO: slide ('features',
+			--TODO: choose('span_script', nil, {'Zyyy', 'Latn', 'Arab'}, i)
+			choose('span_lang', nil, {'', 'en-us', 'ar-sa', 'trk'}, i)
+			choose('span_paragraph_dir', 'dir_', {'auto', 'ltr', 'rtl', 'wltr', 'wrtl'}, i)
+			choose('span_wrap'            , 'wrap_', {'word', 'char', 'none'}, i)
+			pickcolor('span_text_color'   , i)
+			slideo('span_text_opacity'    , i)
+			choose('span_text_operator', 'operator_', {'clear', 'source', 'over', 'in', 'out', 'xor'}, i)
+			choose('span_underline'    , 'underline_', {'none', 'solid', 'zigzag'}, i)
+			pickcolor('span_underline_color' , i)
+			slideo('span_underline_opacity'  , i)
+			slideo('span_baseline'           , i)
 		end
 
-		--hit-testing
+	elseif tab == 'Layout' then
 
-		local lbuf = ffi.new'layer_t*[1]'
-		function self.ewindow:mousemove(mx, my)
-			local cr = self:bitmap():cairo()
-			hit_area = top_e:hit_test(cr, mx, my, 0, lbuf)
-			hit_e = lbuf[0]
-			if hit_e == nil then hit_e = nil end
-			if hit_area == 0 then hit_area = nil end
+		self:heading'Layout'
+
+		choose('layout_type', 'layout_type_', {'null', 'textbox', 'flexbox', 'grid'})
+
+		self:pushgroup('right', 1/2)
+		slidex('min_cw')
+		slidey('min_ch')
+		self:popgroup()
+
+		toggle('in_transition')
+
+		self:heading'Flex & Grid Layout'
+
+		choose('align_items_x', 'align_', {
+			'left', 'right', 'center', 'stretch', 'start', 'end',
+			'space_evenly', 'space_around', 'space_between',
+		})
+		choose('align_items_y', 'align_', {
+			'top', 'bottom', 'center', 'stretch', 'start', 'end',
+			'space_evenly', 'space_around', 'space_between',
+		})
+		choose('item_align_x', 'align_', {
+			'left', 'right', 'center', 'stretch', 'start', 'end',
+		})
+		choose('item_align_y', 'align_', {
+			'top', 'bottom', 'center', 'stretch', 'start', 'end',
+			'baseline',
+		})
+
+		self:heading'Child / Flex & Grid Layout'
+
+		slideo('fr')
+
+		choose('align_x', 'align_', {
+			'default',
+			'left', 'right', 'center', 'stretch', 'start', 'end',
+		})
+		choose('align_y', 'align_', {
+			'default',
+			'top', 'bottom', 'center', 'stretch', 'start', 'end',
+		})
+
+		self:heading'Flex Layout'
+
+		choose('flex_flow', 'flex_flow_', {'x', 'y'})
+
+		toggle('flex_wrap')
+
+		self:heading'Child / Flex Layout'
+
+		self:pushgroup('right', 1/2)
+		toggle('break_before')
+		toggle('break_after')
+		self:popgroup()
+
+		self:heading'Grid Layout'
+
+		mchoose('grid_flow', 'grid_flow_', {'y', 'r', 'b'})
+
+		sliden('grid_col_fr_count')
+		for i = 0, e.grid_col_fr_count-1 do
+			slideo('grid_col_fr', i)
+		end
+		sliden('grid_row_fr_count')
+		for i = 0, e.grid_row_fr_count-1 do
+			slideo('grid_row_fr', i)
 		end
 
-		function self.ewindow:mousedown(button)
-			if hit_e and button == 'left' then
-				selected_layer_path = {}
-				local e = hit_e
-				while e ~= top_e do
-					table.insert(selected_layer_path, 1, e.index)
-					e = e.parent
-				end
-			end
-		end
+		self:pushgroup('right', 1/2)
+		slidew('grid_col_gap')
+		slidew('grid_row_gap')
+		self:popgroup()
 
-	end
+		sliden('grid_wrap')
 
-	if top_e:sync() then
-		self.ewindow:invalidate()
+		sliden('grid_min_lines')
+
+		self:heading'Child / Grid Layout'
+
+		self:pushgroup('right', 1/2)
+		sliden('grid_col')
+		sliden('grid_col_span')
+		self:nextgroup()
+		sliden('grid_row')
+		sliden('grid_row_span')
+		self:popgroup()
+
+		self:popgroup()
+		self:popgroup()
+		self:popgroup()
+
 	end
 
 	self.x = self.win_w - 1200
@@ -974,7 +1095,174 @@ function testui:repaint()
 		'Repaint:                                      %.1f fps, %.1f ms',
 		1 / repaint_fps_dt, repaint_fps_dt * 1000))
 
+	ewindow:checkvalid()
+
 end
+
+function testui:keypress(key)
+	if self.app:key'ctrl' and tonumber(key) then
+		--TODO: change demo
+	end
+end
+
+--layer window ---------------------------------------------------------------
+
+local app = testui.app
+local testui_win = testui.window
+local d = app:active_display()
+
+ewindow = app:window{
+	x = d.cw - 1000,
+	y = 100,
+	w = 1000,
+	h = d.ch - 100,
+	parent = testui_win,
+}
+
+function ewindow:checkvalid(update_testui)
+	if not top_e.pixels_valid then self:invalidate() end
+	if sel_e and not sel_e.pixels_valid then self:invalidate() end
+	if update_testui then
+		testui_win:invalidate()
+	end
+end
+
+function ewindow:repaint()
+	local cr = self:bitmap():cairo()
+	local repaint_t0 = time.clock()
+	cr:identity_matrix()
+	cr:operator'source'
+	cr:rgba(0, 0, 0, 0)
+	cr:paint()
+	cr:operator'over'
+	local draw_t0 = time.clock()
+	top_e:draw(cr)
+	assert(top_e.pixels_valid)
+	local draw_t = time.clock()
+	if sel_e then
+		sel_e:draw(cr)
+		assert(sel_e.pixels_valid)
+	end
+	local repaint_t = draw_t
+	local draw_dt    = draw_t    - draw_t0
+	local repaint_dt = repaint_t - repaint_t0
+
+	if layer_changed then
+		draw_changed_dt = draw_dt
+		draw_changed = false
+	end
+
+	if draw_t - (draw_fps_t or 0) > 0.5 then
+		draw_fps_t  = t
+		draw_fps_dt = draw_dt
+	end
+	if draw_t - (repaint_fps_t or 0) > 0.5 then
+		repaint_fps_t = t
+		repaint_fps_dt = repaint_dt
+	end
+end
+
+function ewindow:keypress(key)
+	local shift = self.app:key'shift'
+	local ctrl = self.app:key'ctrl'
+	if key == 'right' or key == 'left' then
+		assert(e ~= nil)
+		e:text_cursor_move_near(0,
+			key == 'right' and layer.CURSOR_DIR_NEXT or layer.CURSOR_DIR_PREV,
+			ctrl and layer.CURSOR_MODE_WORD or layer.CURSOR_MODE_CHAR,
+			0,
+			shift)
+	elseif key == 'up' or key == 'down' then
+		assert(e ~= nil)
+		e:text_cursor_move_near_line(0, key == 'up' and -1 or 1, 0/0, shift)
+	elseif key == 'pageup' or key == 'pagedown' then
+		assert(e ~= nil)
+		e:text_cursor_move_near_page(0, key == 'pageup' and -1 or 1, 0/0, shift)
+	elseif key == 'home' or key == 'end' then
+		assert(e ~= nil)
+		e:text_cursor_move_near_page(0, key == 'home' and -1/0 or 1/0, 0/0, shift)
+	elseif key == 'backspace' or key == 'delete' then
+		if e:get_selected_text_utf32_len(0) == 0 then
+			e:text_cursor_move_near(0,
+				key == 'backspace'
+					and layer.CURSOR_DIR_PREV
+					 or layer.CURSOR_DIR_NEXT,
+				layer.CURSOR_MODE_CHAR, 0, true)
+		end
+		e:remove_selected_text(0)
+	elseif key == 'insert' then
+		e:set_text_insert_mode(0, not e:get_text_insert_mode(0))
+	elseif ctrl and key == 'V' then
+		local s = self.app:getclipboard'text'
+		if s then
+			e:insert_text_at_cursor(0, s)
+		end
+	elseif ctrl and (key == 'C' or key == 'X') then
+		self.app:setclipboard(e:get_selected_text(0))
+		if key == 'X' then
+			e:remove_selected_text(0)
+		end
+	end
+	self:checkvalid(true)
+end
+
+function ewindow:keychar(c)
+	if c:byte(1, 1) > 31 or c:find'[\n\r\t]' then
+		e:insert_text_at_cursor(0, c)
+		self:checkvalid(true)
+	end
+end
+
+function ewindow:keyup(key)
+	if key == 'esc' then
+		self:parent():close()
+	end
+end
+
+--hit-testing
+
+local active_e, active_area
+
+function ewindow:mousemove(mx, my)
+	local cr = self:bitmap():cairo()
+	if active_e then
+		if active_area == layer.HIT_TEXT and hit_e.text_cursor_count > 0 then
+			local x, y = active_e:from_window(mx, my)
+			active_e:text_cursor_move_to_point(0, x, y, true)
+		end
+	elseif top_e:hit_test(cr, mx, my, 0) then
+		hit_e = top_e.hit_test_layer
+		hit_area = top_e.hit_test_area
+	else
+		hit_e, hit_area = nil
+	end
+	self:checkvalid()
+end
+
+function ewindow:mousedown(button)
+	if hit_e and button == 'left' then
+		selected_layer_path = {}
+		local e = hit_e
+		while e ~= top_e do
+			table.insert(selected_layer_path, 1, e.index)
+			e = e.parent
+		end
+		if hit_area == layer.HIT_TEXT and hit_e.text_cursor_count > 0 then
+			hit_e:text_cursor_move_to_point(0, top_e.hit_test_x, top_e.hit_test_y, false)
+		end
+		active_e, active_area = hit_e, hit_area
+	end
+	self:checkvalid(true)
+end
+
+function ewindow:mouseup(button)
+	if hit_e and button == 'left' then
+		active_e, active_area = nil
+		self:checkvalid(true)
+	end
+end
+
+--main -----------------------------------------------------------------------
 
 load_sessions()
 load_state()
@@ -984,7 +1272,18 @@ save_state()
 
 --free everything and check for leaks.
 top_e:release()
+if sel_e then sel_e:release() end
 default_e:release()
+
+local function pfn(...) return print(string.format(...)) end
+pfn('Glyph cache size     : %7.2fmB', lib.glyph_cache_size / 1024.0 / 1024.0)
+pfn('Glyph cache count    : %7.0f',   lib.glyph_cache_count)
+pfn('GlyphRun cache size  : %7.2fmB', lib.glyph_run_cache_size / 1024.0 / 1024.0)
+pfn('GlyphRun cache count : %7.0f',   lib.glyph_run_cache_count)
+pfn('Mem Font cache size  : %7.2fmB', lib.mem_font_cache_size / 1024.0 / 1024.0)
+pfn('Mem Font cache count : %7.0f',   lib.mem_font_cache_count)
+pfn('MMap Font cache count: %7.0f',   lib.mmapped_font_cache_count)
+
 lib:release()
 layer.memreport()
 

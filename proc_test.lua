@@ -67,9 +67,18 @@ function test.pipe()
 	local in_rf , in_wf  = fs.pipe()
 	local out_rf, out_wf = fs.pipe()
 	local err_rf, err_wf = fs.pipe()
-	assert(proc.exec_luafile(
-		'test.lua', nil, nil, nil,
-		in_rf, out_wf, err_wf))
+
+	assert(glue.writefile('proc_test_pipe.lua', [[
+io.stdout:write(io.stdin:read('*n'))
+print'Hello'
+]]))
+
+	assert(proc.exec_luafile({
+		script = 'proc_test_pipe.lua',
+		stdin = in_rf,
+		stdout = out_wf,
+		stderr = err_wf
+	}))
 
 	local s = '1234\n'
 	in_wf:write(s, #s)
@@ -78,11 +87,17 @@ function test.pipe()
 	while out_rf:read(cb, ffi.sizeof(cb)) > 0 do
 		local c = string.char(cb[0])
 		io.stdout:write(c, ' ')
-		if c == 'T' then
+		if c == '\n' then
 			print()
 			break
 		end
 	end
+
+	assert(os.remove('proc_test_pipe.lua'))
+end
+
+function test.autokill()
+	--
 end
 
 function test_all()
@@ -94,6 +109,8 @@ function test_all()
 	end
 end
 
-test.pipe()
+--test.pipe()
+
+test.autokill()
 
 --test_all()
