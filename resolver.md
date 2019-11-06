@@ -5,14 +5,7 @@ tagline: DNS resolver in Lua
 ## `local resolver = require'resolver'`
 
 DNS resolver in Lua [from OpenResty](https://github.com/openresty/lua-resty-dns) (BSD License).
-Modified to work with the LuaSocket API.
-
-IMPORTANT: to be able generate unique ids, the random generator must be
-properly seeded using `math.randomseed` prior to using this module.
-
-## Status
-
-This library is considered production ready.
+Modified to work with any LuaSocket-like API.
 
 ## API
 
@@ -25,36 +18,28 @@ This library is considered production ready.
 `r:reverse_query(address) -> answers, err`
 ------------------------------------------------------------- ----------------
 
-## Usage
+IMPORTANT: to be able generate unique ids, the random generator must be
+properly seeded using `math.randomseed` prior to using this module.
+
+## Example
 
 ```lua
-local r, err = resolver:new{
-	 nameservers = {"8.8.8.8", {"8.8.4.4", 53} },
-	 retrans = 5,  -- 5 retransmissions on receive timeout
-	 timeout = 2000,  -- 2 sec
-}
-
-if not r then
-	 ngx.say("failed to instantiate the resolver: ", err)
-	 return
-end
-
-local answers, err, tries = r:query("www.google.com", nil, {})
+local r, err = assert(resolver.new{
+	nameservers = {'8.8.8.8', {'8.8.4.4', 53} },
+	retrans = 5,  -- 5 retransmissions on receive timeout
+	timeout = 2000,  -- 2 sec
+})
+local answers, err, tries = r:query('www.google.com', nil, {})
 if not answers then
-	 ngx.say("failed to query the DNS server: ", err)
-	 ngx.say("retry historie:\n  ", table.concat(tries, "\n  "))
-	 return
+	 print('failed to query the DNS server: ' .. err)
+	 print('retries: ' .. table.concat(tries, '\n'))
+elseif answers.errcode then
+	 print('server returned error code: ' ..
+		answers.errcode .. ': ' .. answers.errstr)
 end
-
-if answers.errcode then
-	 ngx.say("server returned error code: ", answers.errcode,
-				": ", answers.errstr)
-end
-
 for i, ans in ipairs(answers) do
-	 ngx.say(ans.name, " ", ans.address or ans.cname,
-				" type:", ans.type, " class:", ans.class,
-				" ttl:", ans.ttl)
+	 print(ans.name .. ' ' .. (ans.address or ans.cname) ..
+		' type:' .. ans.type .. ' class: ' .. ans.class .. ' ttl: ' .. ans.ttl)
 end
 ```
 
@@ -68,22 +53,42 @@ It accepts a `opts` table argument. The following options are supported:
 
 * `nameservers`
 
-	a list of nameservers to be used. Each nameserver entry can be either a single hostname string or a table holding both the hostname string and the port number. The nameserver is picked up by a simple round-robin algorithm for each `query` method call. This option is required.
+	a list of nameservers to be used. Each nameserver entry can be either a
+	single hostname string or a table holding both the hostname string and
+	the port number. The nameserver is picked up by a simple round-robin
+	algorithm for each `query` method call. This option is required.
 * `retrans`
 
-	the total number of times of retransmitting the DNS request when receiving a DNS response times out according to the `timeout` setting. Defaults to `5` times. When trying to retransmit the query, the next nameserver according to the round-robin algorithm will be picked up.
+	the total number of times of retransmitting the DNS request when receiving
+	a DNS response times out according to the `timeout` setting.
+	Defaults to `5` times. When trying to retransmit the query, the next
+	nameserver according to the round-robin algorithm will be picked up.
 * `timeout`
 
-	the time in milliseconds for waiting for the respond for a single attempt of request transmition. note that this is ''not'' the maximal total waiting time before giving up, the maximal total waiting time can be calculated by the expression `timeout x retrans`. The `timeout` setting can also be changed by calling the `set_timeout` method. The default `timeout` setting is 2000 milliseconds, or 2 seconds.
+	the time in milliseconds for waiting for the respond for a single attempt
+	of request transmition. note that this is ''not'' the maximal total
+	waiting time before giving up, the maximal total waiting time can be
+	calculated by the expression `timeout x retrans`. The `timeout` setting
+	can also be changed by calling the `set_timeout` method. The default
+	`timeout` setting is 2000 milliseconds, or 2 seconds.
 * `no_recurse`
 
-	a boolean flag controls whether to disable the "recursion desired" (RD) flag in the UDP request. Defaults to `false`.
+	a boolean flag controls whether to disable the "recursion desired" (RD)
+	flag in the UDP request. Defaults to `false`.
+
+* `async`
+
+	a boolean flag indicating that sockets shoud be wrapped by [socketloop].
+* `tcp`, `udp`, `tcp_async`, `udp_async`
+
+	alternative socket constructors, defaulting to [socket] tcp and udp
+	constructors. Can also be set at module level.
 
 ### `r:query(name, [options], [tries]) -> answers, err, tries`
 
 Perform a DNS standard query to the nameservers specified by the `new` method,
-and returns all the answer records in an array-like Lua table. In case of errors, it will
-return `nil` and a string describing the error instead.
+and returns all the answer records in an array-like Lua table. In case of
+errors, it will return `nil` and a string describing the error instead.
 
 If the server returns a non-zero error code, the fields `errcode` and `errstr`
 will be set accordingly in the Lua table returned.
@@ -96,59 +101,80 @@ which usually takes some of the following fields:
 	The resource record name.
 * `type`
 
-	The current resource record type, possible values are `1` (`TYPE_A`), `5` (`TYPE_CNAME`), `28` (`TYPE_AAAA`), and any other values allowed by RFC 1035.
+	The current resource record type, possible values are `1` (`TYPE_A`),
+	`5` (`TYPE_CNAME`), `28` (`TYPE_AAAA`), and any other values allowed by RFC 1035.
 * `address`
 
-	The IPv4 or IPv6 address in their textual representations when the resource record type is either `1` (`TYPE_A`) or `28` (`TYPE_AAAA`), respectively. Secussesive 16-bit zero groups in IPv6 addresses will not be compressed by default, if you want that, you need to call the `compress_ipv6_addr` static method instead.
+	The IPv4 or IPv6 address in their textual representations when the
+	resource record type is either `1` (`TYPE_A`) or `28` (`TYPE_AAAA`),
+	respectively. Secussesive 16-bit zero groups in IPv6 addresses will not
+	be compressed by default, if you want that, you need to call the
+	`compress_ipv6_addr` static method instead.
 * `section`
 
-	The identifier of the section that the current answer record belongs to. Possible values are `1` (`SECTION_AN`), `2` (`SECTION_NS`), and `3` (`SECTION_AR`).
+	The identifier of the section that the current answer record belongs to.
+	Possible values are `1` (`SECTION_AN`), `2` (`SECTION_NS`), and `3`
+	(`SECTION_AR`).
 * `cname`
 
-	The (decoded) record data value for `CNAME` resource records. Only present for `CNAME` records.
+	The (decoded) record data value for `CNAME` resource records.
+	Only present for `CNAME` records.
 * `ttl`
 
-	The time-to-live (TTL) value in seconds for the current resource record.
+	The time-to-live (TTL) value in seconds for the current resource
+	record.
 * `class`
 
-	The current resource record class, possible values are `1` (`CLASS_IN`) or any other values allowed by RFC 1035.
+	The current resource record class, possible values are `1` (`CLASS_IN`)
+	or any other values allowed by RFC 1035.
 * `preference`
 
-	The preference integer number for `MX` resource records. Only present for `MX` type records.
+	The preference integer number for `MX` resource records. Only present for
+	`MX` type records.
 * `exchange`
 
-	The exchange domain name for `MX` resource records. Only present for `MX` type records.
+	The exchange domain name for `MX` resource records. Only present for
+	`MX` type records.
 * `nsdname`
 
-	A domain-name which specifies a host which should be authoritative for the specified class and domain. Usually present for `NS` type records.
+	A domain-name which specifies a host which should be authoritative for
+	the specified class and domain. Usually present for `NS` type records.
 * `rdata`
 
 	The raw resource data (RDATA) for resource records that are not recognized.
 * `txt`
 
-	The record value for `TXT` records. When there is only one character string in this record, then this field takes a single Lua string. Otherwise this field takes a Lua table holding all the strings.
+	The record value for `TXT` records. When there is only one character
+	string in this record, then this field takes a single Lua string.
+	Otherwise this field takes a Lua table holding all the strings.
 * `ptrdname`
 
 	The record value for `PTR` records.
 
-This method also takes an optional `options` argument table, which takes the following fields:
+This method also takes an optional `options` argument table, which takes
+the following fields:
 
 * `qtype`
 
-	The type of the question. Possible values are `1` (`TYPE_A`), `5` (`TYPE_CNAME`), `28` (`TYPE_AAAA`), or any other QTYPE value specified by RFC 1035 and RFC 3596. Default to `1` (`TYPE_A`).
+	The type of the question. Possible values are `1` (`TYPE_A`),
+	`5` (`TYPE_CNAME`), `28` (`TYPE_AAAA`), or any other QTYPE value specified
+	by RFC 1035 and RFC 3596. Default to `1` (`TYPE_A`).
 * `authority_section`
 
-	When set to a true value, the `answers` return value includes the `Authority` section of the DNS response. Default to `false`.
+	When set to a true value, the `answers` return value includes the
+	`Authority` section of the DNS response. Default to `false`.
 * `additional_section`
 
-	When set to a true value, the `answers` return value includes the `Additional` section of the DNS response. Default to `false`.
+	When set to a true value, the `answers` return value includes the
+	`Additional` section of the DNS response. Default to `false`.
 
 The optional parameter `tries` can be provided as an empty table, and will be
 returned as a third result. The table will be an array with the error message
 for each (if any) failed try.
 
-When data truncation happens, the resolver will automatically retry using the TCP transport mode
-to query the current nameserver. All TCP connections are short lived.
+When data truncation happens, the resolver will automatically retry using
+the TCP transport mode to query the current nameserver. All TCP connections
+are short lived.
 
 ### `r:tcp_query(name, [options]) -> answers, err`
 
@@ -159,12 +185,12 @@ All TCP connections are short lived.
 Here is an example:
 
 ```lua
-local r, err = assert(resolver:new{
+local r, err = assert(resolver.new{
 	nameservers = { '8.8.8.8' }
 })
 local ans, err = r:tcp_query('www.google.com', { qtype = r.TYPE_A })
 if not ans then
-	ngx.say("failed to query: ", err)
+	print('failed to query: ' .. err)
 	return
 end
 ```
@@ -186,8 +212,9 @@ local ptr4 = resolver.arpa_str'1.2.3.4'
 local ptr6 = resolver.arpa_str'FF01::101'
 ```
 
-will yield `4.3.2.1.in-addr.arpa` for `ptr4` and
-`1.0.1.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.1.0.F.F.ip6.arpa` for `ptr6`.
+will yield `4.3.2.1.in-addr.arpa` for `ptr4`
+and `1.0.1.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.1.0.F.F.ip6.arpa`
+for `ptr6`.
 
 ### `r:reverse_query(address) -> answers, err`
 

@@ -21,7 +21,6 @@ tagline: package categories
 	* [libsoundio]
 	* [videoinput]
 	* [socket]
-	* [luasec]
 	* [socketloop]
 	* [thread]
 	* [pthread]
@@ -76,6 +75,8 @@ tagline: package categories
 	* [genx]
 	* [libb64]
 * Networking
+	* [luasec]
+	* [resolver]
 	* [libcurl]
 	* [rsync]
 * Databases

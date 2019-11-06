@@ -1,10 +1,9 @@
 
--- Copyright (C) Yichun Zhang (agentzh). BSD License.
+-- DNS Resolver in Lua.
+-- Written by Yichun Zhang (agentzh). BSD License.
 -- Modified by Cosmin Apreutesei. Public Domain.
 
-local socket = require "socket"
 local bit = require "bit"
-local udp = socket.udp
 local rand = math.random
 local char = string.char
 local byte = string.byte
@@ -18,12 +17,10 @@ local rshift = bit.rshift
 local lshift = bit.lshift
 local insert = table.insert
 local concat = table.concat
-local tcp = socket.tcp
 local unpack = unpack
 local setmetatable = setmetatable
 local type = type
 local ipairs = ipairs
-
 
 local ok, new_tab = pcall(require, "table.new")
 if not ok then
@@ -97,8 +94,13 @@ for i = 2, 64, 2 do
     arpa_tmpl[i] = DOT_CHAR
 end
 
+function _M.udp() return require'socket'.udp() end
+function _M.tcp() return require'socket'.tcp() end
+function _M.udp_async() return require'socketloop'.wrap(_M.udp()) end
+function _M.tcp_async() return require'socketloop'.wrap(_M.tcp()) end
 
-function _M.new(class, opts)
+
+function _M.new(opts)
     if not opts then
         return nil, "no options table specified"
     end
@@ -113,6 +115,9 @@ function _M.new(class, opts)
     local n = #servers
 
     local socks = {}
+
+    local udp = opts.udp or opts.async and _M.udp_async or _M.udp
+    local tcp = opts.tcp or opts.async and _M.tcp_async or _M.tcp
 
     for i = 1, n do
         local server = servers[i]
@@ -149,13 +154,14 @@ function _M.new(class, opts)
 
     tcp_sock:settimeout(timeout)
 
-    return setmetatable(
-                { cur = rand(1, n), socks = socks,
-                  tcp_sock = tcp_sock,
-                  servers = servers,
-                  retrans = opts.retrans or 5,
-                  no_recurse = opts.no_recurse,
-                }, mt)
+    return setmetatable({
+        cur = rand(1, n),
+        socks = socks,
+        tcp_sock = tcp_sock,
+        servers = servers,
+        retrans = opts.retrans or 5,
+        no_recurse = opts.no_recurse,
+    }, mt)
 end
 
 
@@ -221,8 +227,6 @@ local function _decode_name(buf, pos)
             return nil, 'truncated';
         end
 
-        -- print("fst at ", p, ": ", fst)
-
         if fst == 0 then
             if nptrs == 0 then
                 pos = pos + 1
@@ -245,14 +249,10 @@ local function _decode_name(buf, pos)
 
             p = lshift(band(fst, 0x3f), 8) + snd + 1
 
-            -- print("resolving ptr ", p, ": ", byte(buf, p))
-
         else
             -- being a label
             local label = sub(buf, p + 1, p + fst)
             insert(labels, label)
-
-            -- print("resolved label ", label)
 
             p = p + fst + 1
 
@@ -282,7 +282,6 @@ local function _build_request(qname, id, no_recurse, opts)
 
     local flags
     if no_recurse then
-        -- print("found no recurse")
         flags = "\0\0"
     else
         flags = "\1\0"
@@ -313,7 +312,6 @@ local function parse_section(answers, section, buf, start_pos, size,
     local pos = start_pos
 
     for _ = 1, size do
-        -- print(format("ans %d: qtype:%d qclass:%d", i, qtype, qclass))
         local ans = {}
 
         if not should_skip then
@@ -330,15 +328,11 @@ local function parse_section(answers, section, buf, start_pos, size,
 
         ans.name = name
 
-        -- print("name: ", name)
-
         local type_hi = byte(buf, pos)
         local type_lo = byte(buf, pos + 1)
         local typ = lshift(type_hi, 8) + type_lo
 
         ans.type = typ
-
-        -- print("type: ", typ)
 
         local class_hi = byte(buf, pos + 2)
         local class_lo = byte(buf, pos + 3)
@@ -346,22 +340,16 @@ local function parse_section(answers, section, buf, start_pos, size,
 
         ans.class = class
 
-        -- print("class: ", class)
-
         local byte_1, byte_2, byte_3, byte_4 = byte(buf, pos + 4, pos + 7)
 
         local ttl = lshift(byte_1, 24) + lshift(byte_2, 16)
                     + lshift(byte_3, 8) + byte_4
-
-        -- print("ttl: ", ttl)
 
         ans.ttl = ttl
 
         local len_hi = byte(buf, pos + 8)
         local len_lo = byte(buf, pos + 9)
         local len = lshift(len_hi, 8) + len_lo
-
-        -- print("record len: ", len)
 
         pos = pos + 10
 
@@ -373,7 +361,6 @@ local function parse_section(answers, section, buf, start_pos, size,
 
             local addr_bytes = { byte(buf, pos, pos + 3) }
             local addr = concat(addr_bytes, ".")
-            -- print("ipv4 address: ", addr)
 
             ans.address = addr
 
@@ -392,8 +379,6 @@ local function parse_section(answers, section, buf, start_pos, size,
             end
 
             pos = p
-
-            -- print("cname: ", cname)
 
             ans.cname = cname
 
@@ -417,15 +402,13 @@ local function parse_section(answers, section, buf, start_pos, size,
             end
 
             -- we do not compress the IPv6 addresses by default
-            --  due to performance considerations
+            -- due to performance considerations.
 
             ans.address = concat(flds, ":")
 
             pos = pos + 16
 
         elseif typ == TYPE_MX then
-
-            -- print("len = ", len)
 
             if len < 3 then
                 return nil, "bad MX record value length: " .. len
@@ -495,8 +478,6 @@ local function parse_section(answers, section, buf, start_pos, size,
 
             pos = p
 
-            -- print("name: ", name)
-
             ans.nsdname = name
 
         elseif typ == TYPE_TXT or typ == TYPE_SPF then
@@ -508,8 +489,6 @@ local function parse_section(answers, section, buf, start_pos, size,
                 -- truncate the over-run TXT record data
                 slen = len
             end
-
-            -- print("slen: ", len)
 
             local val = sub(buf, pos + 1, pos + slen)
             local last = pos + len
@@ -552,8 +531,6 @@ local function parse_section(answers, section, buf, start_pos, size,
             end
 
             pos = p
-
-            -- print("name: ", name)
 
             ans.ptrdname = name
 
@@ -604,8 +581,6 @@ local function parse_response(buf, id, opts)
     local ident_lo = byte(buf, 2)
     local ans_id = lshift(ident_hi, 8) + ident_lo
 
-    -- print("id: ", id, ", ans id: ", ans_id)
-
     if ans_id ~= id then
         -- identifier mismatch and throw it away
         return nil, "id mismatch in the DNS reply: " .. ans_id .. " ~= " .. id
@@ -614,8 +589,6 @@ local function parse_response(buf, id, opts)
     local flags_hi = byte(buf, 3)
     local flags_lo = byte(buf, 4)
     local flags = lshift(flags_hi, 8) + flags_lo
-
-    -- print(format("flags: 0x%x", flags))
 
     if band(flags, 0x8000) == 0 then
         return nil, format("bad QR flag in the DNS response")
@@ -627,13 +600,9 @@ local function parse_response(buf, id, opts)
 
     local code = band(flags, 0xf)
 
-    -- print(format("code: %d", code))
-
     local nqs_hi = byte(buf, 5)
     local nqs_lo = byte(buf, 6)
     local nqs = lshift(nqs_hi, 8) + nqs_lo
-
-    -- print("nqs: ", nqs)
 
     if nqs ~= 1 then
         return nil, format("bad number of questions in DNS response: %d", nqs)
@@ -642,8 +611,6 @@ local function parse_response(buf, id, opts)
     local nan_hi = byte(buf, 7)
     local nan_lo = byte(buf, 8)
     local nan = lshift(nan_hi, 8) + nan_lo
-
-    -- print("nan: ", nan)
 
     local nns_hi = byte(buf, 9)
     local nns_lo = byte(buf, 10)
@@ -660,10 +627,6 @@ local function parse_response(buf, id, opts)
         return nil, pos
     end
 
-    -- print("qname in reply: ", ans_qname)
-
-    -- print("question: ", sub(buf, 13, pos))
-
     if pos + 3 + nan * 12 > n then
         -- print(format("%d > %d", pos + 3 + nan * 12, n))
         return nil, 'truncated';
@@ -671,19 +634,9 @@ local function parse_response(buf, id, opts)
 
     -- question section layout: qname qtype(2) qclass(2)
 
-    --[[
-    local type_hi = byte(buf, pos)
-    local type_lo = byte(buf, pos + 1)
-    local ans_type = lshift(type_hi, 8) + type_lo
-    ]]
-
-    -- print("ans qtype: ", ans_type)
-
     local class_hi = byte(buf, pos + 2)
     local class_lo = byte(buf, pos + 3)
     local qclass = lshift(class_hi, 8) + class_lo
-
-    -- print("ans qclass: ", qclass)
 
     if qclass ~= 1 then
         return nil, format("unknown query class %d in DNS response", qclass)
@@ -770,7 +723,7 @@ local function _tcp_query(self, query, id, opts)
     local len_hi = char(rshift(len, 8))
     local len_lo = char(band(len, 0xff))
 
-    local bytes, err = sock:send({len_hi, len_lo, query})
+    local bytes, err = sock:send(table.concat{len_hi, len_lo, query})
     if not bytes then
         return nil, "failed to send query to TCP server "
             .. concat(server, ":") .. ": " .. err
@@ -785,8 +738,6 @@ local function _tcp_query(self, query, id, opts)
     len_hi = byte(buf, 1)
     len_lo = byte(buf, 2)
     len = lshift(len_hi, 8) + len_lo
-
-    -- print("tcp message len: ", len)
 
     buf, err = sock:receive(len)
     if not buf then
@@ -838,21 +789,16 @@ function _M.query(self, qname, opts, tries)
         return nil, err
     end
 
-    -- local cjson = require "cjson"
-    -- print("query: ", cjson.encode(concat(query, "")))
-
     local retrans = self.retrans
     if tries then
         tries[1] = nil
     end
 
-    -- print("retrans: ", retrans)
-
     for i = 1, retrans do
         local sock = pick_sock(self, socks)
 
         local ok
-        ok, err = sock:send(query)
+        ok, err = sock:send(table.concat(query))
         if not ok then
             local server = _get_cur_server(self)
             err = "failed to send request to UDP server "
@@ -899,22 +845,8 @@ function _M.query(self, qname, opts, tries)
 end
 
 
-function _M.compress_ipv6_addr(addr)
-    return addr --TODO
-end
-
-
-local function _expand_ipv6_addr(addr)
-    return addr --TODO
-end
-
-
-_M.expand_ipv6_addr = _expand_ipv6_addr
-
-
 function _M.arpa_str(addr)
     if find(addr, ":", 1, true) then
-        addr = _expand_ipv6_addr(addr)
         local idx, hidx, addrlen = 1, 1, #addr
 
         for i = addrlen, 0, -1 do
@@ -947,10 +879,48 @@ function _M.reverse_query(self, addr)
 end
 
 
+--self-test ------------------------------------------------------------------
+
 if not ... then
 
     local resolver = _M
-    resolver.
+
+    local function resolve(hostname)
+        local r, err = assert(resolver.new{
+           nameservers = {'8.8.8.8', {'8.8.4.4', 53} },
+           retrans = 5,  -- 5 retransmissions on receive timeout
+           timeout = 2000,  -- 2 sec
+           async = true,
+        })
+        local answers, err, tries = r:query(hostname, nil, {}, {})
+        if not answers then
+            print('failed to query the DNS server: ' .. err)
+            print('retries: ' .. table.concat(tries, '\n'))
+        elseif answers.errcode then
+            print('server returned error code: ' ..
+              answers.errcode .. ': ' .. answers.errstr)
+        end
+        for i, ans in ipairs(answers) do
+            print(string.format('%-16s %-16s type: %d  class %d  ttl: %3d  retries: %d',
+                ans.name,
+                ans.address or ans.cname,
+                ans.type,
+                ans.class,
+                ans.ttl,
+                #tries))
+        end
+    end
+
+    local loop = require'socketloop'
+    for _,s in ipairs{
+        'www.google.com',
+        'luapower.com',
+        'lua.org',
+        'openresty.org',
+    } do
+        loop.newthread(resolve, s)
+    end
+    loop.start()
 
 end
 

@@ -645,7 +645,7 @@ local function parse_module_header(file)
 		end
 		if s2 then
 			t.author, t.license =
-				s2:match'^%-%-[Ww]ritten [Bb]y%:? ([^%.]+)%.%s*([^%.]+)%.'
+				s2:match'^%-%-%s*[Ww]ritten [Bb]y%:? ([^%.]+)%.%s*([^%.]+)%.'
 			if t.license then
 				t.license = t.license:gsub('%s*[Ll]icense%s*', ''):gsub('%.', '')
 				if t.license:lower() == 'public domain' then
@@ -2010,6 +2010,13 @@ package_type = memoize_package(function(package)
 end)
 
 local function key(key, t) return t and t[key] end
+
+--author can be specified in the header of the main module file or in the .md file.
+author = memoize_package(function(package)
+	return
+		key('author', doc_tags(package, package)) or
+		key('author', module_header(package, package))
+end)
 
 --license can be specified in the header of the main module file
 --or in the .md file, otherwise the WHAT-file license is assumed,

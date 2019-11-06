@@ -50,16 +50,19 @@ Callbacks are not allowed to yield but they can use [coro] for control inversion
 
 ## HOWTO
 
-To update file1 on machine1 from the updated file1 on machine2, first call
-`rsync:gen_sigs_file()` on machine1 with a `read` function that reads file1
-and with a `write` function that sends its bytes to machine2. On machine2
-call `rsync:load_sigs_file()` with a `read` function that reads the bytes
-sent through the network from machine1. Then (still on machine2) call
-`rsync:gen_deltas_file()` with the signatures got from the previous step and
-a `read` function that reads file1 and a `write` function that sends its
-bytes to machine1. Finally on machine1, call `rsync:patch_file()` with
-a `read_delta` function that reads the bytes sent through the network from
-machine1, a `seek(offset)` function that seeks in file1, a `read` function
-that reads from file1, and a `write` function that writes the resulting bytes
-to a new file. The optional arg `block_len`, if given, should be identical
-on all calls.
+To update file1 on machine1 from the updated file1 on machine2,
+
+  * First call `rsync:gen_sigs_file()` on machine1 with a `read` function
+  that reads file1 and with a `write` function that sends its bytes to
+  machine2.
+  * On machine2 call `rsync:load_sigs_file()` with a `read` function that
+  reads the bytes sent through the network from machine1.
+  * Then (still on machine2) call `rsync:gen_deltas_file()` with the
+  signatures got from the previous step and a `read` function that reads
+  file1 and a `write` function that sends its bytes to machine1.
+  * Finally on machine1, call `rsync:patch_file()` with a `read_delta`
+  function that reads the bytes sent through the network from machine1,
+  a `seek(offset)` function that seeks in file1, a `read` function that
+  reads from file1, and a `write` function that writes the resulting bytes
+  to a new file. The optional arg `block_len`, if given, should be identical
+  on all calls.
