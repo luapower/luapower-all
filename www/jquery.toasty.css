@@ -1,0 +1,75 @@
+.toasty_msgMask {
+    position: fixed;
+    height: 100%;
+    width: 100%;
+    background: #000;
+    opacity: 0.5;
+    top: 0;
+    left: 0;
+    display: none;
+    z-index: 995;
+}
+.toasty_msgMeasureBox {
+     display:inline-block;
+     position: fixed;
+     left: 100%
+}
+.toasty_msgContainer{
+    display:inline-block;
+    position:fixed;
+    text-align:left;
+    z-index: 1000;
+    text-align: left;
+}
+.toasty_msgContainer.br{ right: 0px; bottom: 0; }
+.toasty_msgContainer.bl{ left: 0px; bottom: 0; }
+.toasty_msgContainer.tr{ right: 0px; top: 0; }
+.toasty_msgContainer.tl{ left: 0px; top: 0; }
+.toasty_msgContainer.tc{ left: 50%; top: 0; }
+.toasty_msgContainer.bc{ left: 50%; bottom: 0; }
+.toasty_msgContainer.tc .toasty_subContainer{ position: absolute; left: -150px; top: 0px; }
+.toasty_msgContainer.bc .toasty_subContainer{ position: absolute; left: -150px; bottom: 0px; }
+.toasty_msgContainer.tl .toasty_toastMsg, .toasty_msgContainer.tc .toasty_toastMsg, .toasty_msgContainer.tr .toasty_toastMsg {
+    position: absolute;
+    bottom: 0;
+}
+.toasty_msgContainer.tl .toasty_toastHolder, .toasty_msgContainer.tc .toasty_toastHolder, .toasty_msgContainer.tr .toasty_toastHolder {
+    position: relative;
+    width: 310px;
+}
+.toasty_toastMsg {
+    width: 300px;
+    display: inline-block;
+    background: #ff9;
+    border: 1px solid #AAA;
+    margin: 5px;
+}
+.toasty_toastMsg .toasty_closeBtn {
+    cursor: pointer;
+    display: inline-block;
+    float: right;
+    margin-right: 5px;
+	 display: none;
+}
+.toasty_toastMsg .toasty_title{
+    text-decoration: underline;
+    text-align: center;
+    padding: 2px;
+}
+.toasty_toastMsg .toasty_message{
+    margin: 10px;
+}
+.toasty_toastMsg .toasty_head {
+    position: relative;
+}
+.toasty_toastMsg .toasty_autoHideTimer {
+    background-color: #FAA;
+    height: 0px;
+    position: absolute;
+    width: 100%;
+}
+
+.toasty_toastMsg.error {
+	background-color: #c00;
+	color: #fff;
+}

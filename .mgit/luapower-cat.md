@@ -124,6 +124,8 @@ tagline: package categories
 	* [gfonts]
 	* [hash_benchmark]
 	* [unit]
+* Web Development
+	* [webb]
 * Terra Standard Libraries
    * [terra-low]
    * [terra-arrayview]
