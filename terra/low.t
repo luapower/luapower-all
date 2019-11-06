@@ -1,21 +1,49 @@
+--[[
 
---Lua+Terra standard library & flat vocabulary of tools.
---Written by Cosmin Apreutesei. Public domain.
+	Lua+Terra standard library & flat vocabulary of tools.
+	Written by Cosmin Apreutesei. Public domain.
 
---Intended to be used as global environment: setfenv(1, require'terra/low').
+	Intended to be used as global environment:
+
+		setfenv(1, require'terra/low')
+
+	Allocation and initialization vocabulary:
+
+		alloc(T[, len])  --> dealloc(p)          allocate   --> deallocate
+		obj:init(...)    --> obj:free()          initialize --> release contents
+		new(T, ...)      --> release(p[, len])   alloc+init --> free+dealloc
+		container:elem() --> elem:release()      alloc+init --> free+dealloc
+
+]]
 
 if not ... then require'terra/low_test'; return; end
+
+--remove current directory from package path to avoid duplicate requires.
+--eg require'low' and require'terra/low' is a common mistake I make.
+package.path = package.path:gsub('^%.[/\\]%?%.lua%;', '')
 
 --dependencies ---------------------------------------------------------------
 
 local _M --this module, set below
 
---create a module table that dynamically inherits from _M.
-local function module(parent)
+--create a module table that dynamically inherits from other module or _M.
+--naming the module returns the same module table for the same name which is
+--useful for making shared namespaces without creating those one-line Lua files.
+local function module(name, parent)
+	if type(name) ~= 'string' then
+		name, parent = nil, name
+	end
 	parent = parent or _M
-	local M = {__index = parent}
-	M._M = M
-	return setmetatable(M, M)
+	local M = package.loaded[name]
+	if not M then
+		M = {__index = parent}
+		M._M = M
+		setmetatable(M, M)
+		if name then
+			package.loaded[name] = M
+		end
+	end
+	return M
 end
 
 local C = module(_G) --the C namespace: include() and extern() dump symbols here.
@@ -330,10 +358,14 @@ end
 
 --terralib extensions
 
+function gettype(t)
+	return type(t) == 'terratype' and t or t:istype() and t:astype() or t:gettype()
+end
+
 --make sizeof work with values too
 local terra_sizeof = sizeof
 sizeof = macro(function(t)
-	local T = t:istype() and t:astype() or t:gettype()
+	local T = gettype(t)
 	return `terra_sizeof(T)
 end, terra_sizeof)
 
@@ -358,6 +390,20 @@ function offsetafter(T, field)
 	return offsetof(T, field) + sizeof(T:getfield(field).type)
 end
 
+--given that `self` is `&e.field` where `e` is of type `T`, return `&e'.
+structptr = macro(function(self, T, field)
+	field = field:asvalue()
+	local T = gettype(T)
+	assert(self:gettype():ispointer())
+	return `[&T]([&char](self) - [offsetof(T, field)])
+end)
+
+--empty table to use for `opt = opt or empty; if opt.foo then ...`
+empty = {}
+
+--args packing that don't allocate a table for zero args.
+function args(...) return select('#',...) > 0 and {...} or empty end
+
 --ternary operator -----------------------------------------------------------
 
 --NOTE: terralib.select() can also be used but it's not short-circuiting.
@@ -368,10 +414,19 @@ end)
 --getmethod that works on primitive types and pointers too -------------------
 
 function getmethod(t, name)
-	local T = type(t) == 'terratype' and t or t:istype() and t:astype() or t:gettype()
+	local T = gettype(t)
 	if T:ispointer() then T = T.type end
 	return T.getmethod and T:getmethod(name) or nil
 end
+
+local function cancall_lua(T, method)
+	return getmethod(T, method) and true or false
+end
+cancall = macro(function(t, method)
+	method = method:asvalue()
+	local T = gettype(t)
+	return cancall_lua(T, method)
+end, cancall_lua)
 
 --struct packing constructor -------------------------------------------------
 
@@ -406,7 +461,6 @@ function packstruct(T, first_field, last_field)
 		return entry_size(e1) > entry_size(e2)
 	end)
 	if i1 then
-		print(#entries, i1, i2, i2-i1, first_field, last_field)
 		assert(#entries == i2-i1+1)
 		for i = i1, i2 do
 			T.entries[i] = entries[i-i1+1]
@@ -416,11 +470,16 @@ end
 
 --extensible struct metamethods ----------------------------------------------
 
+local default_mm = {
+	__getmethod = function(self, name)
+		return self.methods and self.methods[name]
+	end,
+}
 local function override(mm, T, f, ismacro)
 	local f0 = T.metamethods[mm]
-	local f0 = f0 and ismacro and f0.fromterra or f0 or noop
+	local f0 = f0 and ismacro and f0.fromterra or f0 or default_mm[mm] or noop
 	--TODO: see why errors are lost in recursive calls to __getmethod
-	--and remove this whole hack with pcall and pass.
+	--and remove this whole hack of pcall/pass.
 	local function pass(ok, ...)
 		if not ok then
 			print(...)
@@ -482,11 +541,39 @@ function addproperties(T, props)
 end
 
 --forward t.name to t.sub.name (for anonymous structs and such).
-function forwardproperties(sub)
+function forwardproperties(sub, sub_T)
 	return function(T)
 		return after_entrymissing(T, function(k, self)
 			return `self.[sub].[k]
 		end)
+	end
+end
+
+--forward t:name() to t.sub:name().
+function forwardmethods(sub, sub_T)
+	return function(T)
+		return after_getmethod(T, function(self, name)
+			if cancall(sub_T, name) then
+				return macro(function(self, ...)
+					local args = args(...)
+					return `self.[sub]:[name]([args])
+				end)
+			end
+		end)
+	end
+end
+
+--C-style class extension without vtables: forward field accesses and method
+--calls to a struct member of type super_T. Multiple inheritance is allowed.
+function extends(super_T, FIELD)
+	return function(T)
+		FIELD = FIELD or '__'..tostring(super_T)
+		insert(T.entries, 1, {field = FIELD, type = super_T})
+		if super_T.gettersandsetters then
+			gettersandsetters(T)
+		end
+		forwardmethods(FIELD, super_T)(T)
+		forwardproperties(FIELD, super_T)(T)
 	end
 end
 
@@ -496,13 +583,13 @@ function gettersandsetters(T)
 	T.gettersandsetters = true
 	after_entrymissing(T, function(name, obj)
 		if T.addmethods then T.addmethods() end
-		if T.methods['get_'..name] then
+		if cancall(T, 'get_'..name) then
 			return `obj:['get_'..name]()
 		end
 	end)
 	after_setentry(T, function(name, obj, rhs)
 		if T.addmethods then T.addmethods() end
-		if T.methods['set_'..name] then
+		if cancall(T, 'set_'..name) then
 			return quote obj:['set_'..name](rhs) end
 		end
 	end)
@@ -634,9 +721,9 @@ function C:__call(cstring, ...)
 	return update(self, terralib.includecstring(cstring, ...))
 end
 
---forward ffi.cdef() calls to includecstring() so that Terra can use ffi
---cdefs from LuaJIT C bindings instead of loading original header files
---which can load up to 10x slower.
+--forward ffi.cdef() calls to includecstring() so that Terra can use
+--preprocessed ffi cdefs from LuaJIT ffi bindings instead of loading
+--original header files which can load up to 10x slower.
 builtin_ctypes = [[
 typedef          char      int8_t;
 typedef unsigned char      uint8_t;
@@ -682,21 +769,92 @@ function require_h(...)
 	--LuaJIT, but Clang complains about that hence -Wno-missing-declarations.
 end
 
---stdlib dependencies --------------------------------------------------------
+--clib dependencies ----------------------------------------------------------
 
---loading these takes 0.1s on Windows.
-include'stdio.h'
-include'stdlib.h'
-include'string.h'
-include'math.h'
+local common_cdef = [[
+enum {
+	SEEK_CUR = 1,
+	SEEK_END = 2,
+	SEEK_SET = 0,
+};
+
+int    printf   (const char*, ...);
+int    fprintf  (FILE*, const char*, ...);
+
+int    fflush  (FILE*);
+FILE*  fopen   (const char*, const char*);
+int    fclose  (FILE*);
+int    fseek   (FILE*, long, int);
+long   ftell   (FILE*);
+void   rewind  (FILE*);
+size_t fread   (void*, size_t, size_t, FILE*);
+
+void*  realloc (void*, size_t);
+void   free    (void*);
+
+void* memset  (void*, int, size_t);
+int   memcmp  (const void*, const void*, size_t);
+void* memmove (void*, const void *, size_t);
+
+void abort(void);
+
+double floor (double);
+double ceil  (double);
+double sqrt  (double);
+double sin   (double);
+double cos   (double);
+double tan   (double);
+double asin  (double);
+double acos  (double);
+double atan  (double);
+double atan2 (double, double);
+
+void qsort(void*, size_t, size_t, int (*)(const void *, const void *));
+
+size_t strnlen(const char*, size_t);
+]]
+
+if Windows then
+C([[
+typedef unsigned long long int size_t;
+
+int    _snprintf (char*, size_t, const char*, ...);
+
+struct _iobuf {
+	char *_ptr;
+	int _cnt;
+	char *_base;
+	int _flag;
+	int _file;
+	int _charbuf;
+	int _bufsiz;
+	char *_tmpfname;
+};
+typedef struct _iobuf FILE ;
+
+FILE* __iob_func();
+FILE* stdin  (void) { return &__iob_func()[0]; }
+FILE* stdout (void) { return &__iob_func()[1]; }
+FILE* stderr (void) { return &__iob_func()[2]; }
+]] .. common_cdef)
+else
+C([[
+typedef unsigned long int size_t;
+
+int    snprintf (char*, size_t, const char*, ...);
+
+// TODO: stdio...
+
+]] .. common_cdef)
+end
 
 --math module ----------------------------------------------------------------
 
 --Lua compat
 PI     = math.pi
-min    = macro(function(a, b) return `iif(a < b, a, b) end, math.min)
-max    = macro(function(a, b) return `iif(a > b, a, b) end, math.max)
-abs    = macro(function(x) return `iif(x < 0, -x, x) end, math.abs)
+min    = macro(function(a, b) return quote var a = a; var b = b in iif(a < b, a, b) end end, math.min)
+max    = macro(function(a, b) return quote var a = a; var b = b in iif(a > b, a, b) end end, math.max)
+abs    = macro(function(x) return quote var x = x in iif(x < 0, -x, x) end end, math.abs)
 sqrt   = macro(function(x) return `C.sqrt(x) end, math.sqrt)
 pow    = C.pow --beacause ^ means xor in terra
 log    = macro(function(x) return `C.log(x) end, math.log)
@@ -716,13 +874,18 @@ dec    = macro(function(x, i) i=i or 1; return quote x = x - i in x end end)
 swap   = macro(function(a, b) return quote var c = a; a = b; b = c end end)
 isodd  = macro(function(x) return `x % 2 == 1 end)
 iseven = macro(function(x) return `x % 2 == 0 end)
-isnan  = macro(function(x) return `x ~= x end)
+isnan  = macro(function(x) return quote var x = x in x ~= x end end)
 inf    = 1/0
 nan    = 0/0
 maxint = int:max()
 minint = int:min()
+maxint64 = int64:max()
+minint64 = int64:min()
 
---find the smallest n for which x <= 2^n.
+minmax = macro(function(x, y) return `iif(x < y, {x, y}, {y, x}) end)
+between = macro(function(x, min, max) return `x >= min and x <= max end)
+
+--find the next power-of-two number that is >= x.
 nextpow2 = macro(function(x)
 	local T = x:gettype()
 	if T:isintegral() then
@@ -740,7 +903,7 @@ nextpow2 = macro(function(x)
 			in x
 		end
 	end
-	error('unsupported type ', x:gettype())
+	error('unsupported type '..tostring(T))
 end, glue.nextpow2)
 
 --get the value of x's i'th bit as a bool.
@@ -763,22 +926,34 @@ end)
 
 div_up = macro(function(x, p)
 	if x:gettype():isintegral() and p:gettype():isintegral() then
-		return `x / p + iif(x % p ~= 0, [int]((x > 0) == (p > 0)), 0)
+		return quote
+			var x = x; var p = p
+			in x / p + iif(x % p ~= 0, [int]((x > 0) == (p > 0)), 0)
+		end
 	end
 	return `C.ceil(x / p)
 end)
 
 div_down = macro(function(x, p)
 	if x:gettype():isfloat() or p:gettype():isfloat() then
-		return `C.floor(x / p) * p
+		return quote
+			var x = x; var p = p
+			in C.floor(x / p) * p
+		end
 	else
-		return `(x / p) * p
+		return quote
+			var x = x; var p = p
+			in (x / p) * p
+		end
 	end
 end)
 
 div_nearest = macro(function(x, p)
 	if x:gettype():isintegral() and p:gettype():isintegral() then
-		return `(2*x - p + 2*([int]((x < 0) ~= (p > 0))*p)) / (2*p)
+		return quote
+			var x = x; var p = p
+			in (2*x - p + 2*([int]((x < 0) ~= (p > 0))*p)) / (2*p)
+		end
 	end
 	return `C.floor(x / p + .5)
 end)
@@ -787,18 +962,27 @@ end)
 
 round = macro(function(x, p)
 	p = p or 1
-	return `div_nearest(x, p) * p
+	return quote
+		var x = x; var p = p
+		in div_nearest(x, p) * p
+	end
 end, glue.round)
 snap = round
 
 floor = macro(function(x, p)
 	p = p or 1
-	return `div_down(x, p) * p
+	return quote
+		var x = x; var p = p
+		in div_down(x, p) * p
+	end
 end, glue.floor)
 
 ceil = macro(function(x, p)
 	p = p or 1
-	return `div_up(x, p) * p
+	return quote
+		var x = x; var p = p
+		in div_up(x, p) * p
+	end
 end, glue.ceil)
 
 clamp = macro(function(x, m, M)
@@ -806,11 +990,17 @@ clamp = macro(function(x, m, M)
 end, glue.clamp)
 
 lerp = macro(function(x, x0, x1, y0, y1)
-	return `[double](y0) + ([double](x)-[double](x0))
-		* (([double](y1)-[double](y0)) / ([double](x1) - [double](x0)))
+	return quote
+		var x: double = x
+		var x0: double = x0
+		var x1: double = x1
+		var y0: double = y0
+		var y1: double = y1
+		in y0 + (x - x0) * ((y1 - y0) / (x1 - x0))
+	end
 end, glue.lerp)
 
---binary search for an insert position that keeps the array sorted.
+--binary search for the first insert position that keeps the array sorted.
 local less = macro(function(t, i, v) return `t[i] <  v end)
 binsearch = macro(function(v, t, lo, hi, cmp)
 	cmp = cmp or less
@@ -840,21 +1030,6 @@ end, glue.binsearch)
 --other from glue...
 pass = macro(glue.pass, glue.pass)
 noop = macro(function() return quote end end, glue.noop)
-
---stdin/out/err --------------------------------------------------------------
-
-if Windows then
-	stdin  = terra() return C.__iob_func()+0 end
-	stdout = terra() return C.__iob_func()+1 end
-	stderr = terra() return C.__iob_func()+2 end
-else
-	C[[
-	#include <stdio.h>
-	FILE* stdin  (void) { return stdin;  }
-	FILE* stdout (void) { return stdout; }
-	FILE* stderr (void) { return stderr; }
-	]]
-end
 
 --tostring -------------------------------------------------------------------
 
@@ -903,11 +1078,12 @@ local function format_arg(arg, fmt, args, freelist, indent)
 	end
 end
 
+snprintf = Windows and _snprintf or snprintf
+
 tostring = macro(function(arg, outbuf, maxlen)
 	local fmt, args, freelist = {}, {}, {}
 	format_arg(arg, fmt, args, freelist, 0)
 	fmt = concat(fmt)
-	local snprintf = Windows and _snprintf or snprintf
 	if outbuf then
 		return quote
 			snprintf(outbuf, maxlen, fmt, [args])
@@ -939,12 +1115,18 @@ end, tostring)
 
 --flushed printf -------------------------------------------------------------
 
+local fprintf = macro(function(_, ...)
+	local args = args(...)
+	return quote printf([args]) end
+end)
+local fflush = macro(function(_) return quote end end)
+
 pfn = macro(function(...)
-	local args = {...}
+	local args = args(...)
 	return quote
 		var stdout = stdout()
 		fprintf(stdout, [args])
-		fprintf(stdout, '\n')
+		fprintf(stdout, '%s', '\n')
 		fflush(stdout)
 	end
 end, function(...)
@@ -953,7 +1135,7 @@ end, function(...)
 end)
 
 pf = macro(function(...)
-	local args = {...}
+	local args = args(...)
 	return quote
 		var stdout = stdout()
 		fprintf(stdout, [args])
@@ -978,7 +1160,7 @@ print = macro(function(...)
 	return quote
 		var stdout = stdout()
 		fprintf(stdout, fmt, [args])
-		fprintf(stdout, '\n')
+		fprintf(stdout, '%s', '\n')
 		fflush(stdout)
 		[ freelist ]
 	end
@@ -994,13 +1176,11 @@ assert = macro(function(expr, msg)
 	return quote
 		if not expr then
 			var stderr = stderr()
-			fprintf(stderr, [
-				'assertion failed '
-				.. (msg and '('..msg:asvalue()..') ' or '')
-				.. tostring(expr.filename)
-				.. ':' .. tostring(expr.linenumber)
-				.. ': ' .. tostring(expr) .. '\n'
-			])
+			fprintf(stderr, '%s at %s:%d',
+				[(msg and msg:asvalue() or 'assertion failed')],
+				[tostring(expr.filename):match'[^\\/]+$'],
+				[tonumber(expr.linenumber)]
+			)
 			fflush(stderr)
 			abort()
 		end
@@ -1053,7 +1233,7 @@ clock = macro(function() return `tclock() end, terralib.currenttimeinseconds)
 
 local t0 = global(double, 0.0)
 local function probe_terra(...)
-	local args = {...}
+	local args = args(...)
 	return quote
 		var t = clock()
 		if t0 == 0 then t0 = t end
@@ -1066,33 +1246,27 @@ probe = macro(probe_terra, probe_lua)
 
 --call a method on each element of an array ----------------------------------
 
-local empty = {}
-local function args(...) return select('#',...) > 0 and {...} or empty end
-
-local function cancall_lua(T, method)
-	return getmethod(T, method) and true or false
-end
-cancall = macro(function(t, method)
-	method = method:asvalue()
-	local T = type(t) == 'terratype' and t or t:istype() and t:astype() or t:gettype()
-	return cancall_lua(T, method)
-end, cancall_lua)
-
 call = macro(function(t, method, len, ...)
 	len = len and len:isliteral() and len:asvalue() or len or 1
 	method = method:asvalue()
-	if cancall(t, method) then
-		local args = args(...)
-		if len == 1 then
-			return quote t:[method]([args]) in t end
-		else
-			return quote
-				for i=0,len do
-					(t+i):[method]([args])
-				end
-				in t
+	local args = args(...)
+	if len == 1 then
+		return quote t:[method]([args]) end
+	else
+		return quote
+			for i=0,len do
+				t[i]:[method]([args])
 			end
 		end
+	end
+end)
+
+optcall = macro(function(t, method, len, ...)
+	len = len or `1
+	local T = type(t) == 'terratype' and t or t:istype() and t:astype() or t:gettype()
+	if cancall(T, method:asvalue()) then
+		local args = args(...)
+		return quote call(t, method, len, [args]) end
 	else
 		return quote end
 	end
@@ -1115,7 +1289,10 @@ alloc = macro(function(T, len, oldp, label)
 	len = len or 1
 	label = label or ''
 	T = T:astype()
-	local sz = (T == opaque) and 1 or sizeof(T)
+	local sz = T == opaque and 1 or sizeof(T)
+	if T == opaque then --can only use the 0 literal with opaque pointers
+		assert(len:asvalue() == 0)
+	end
 	return quote
 		var p: &T
 		if len > 0 then
@@ -1123,30 +1300,25 @@ alloc = macro(function(T, len, oldp, label)
 		else
 			assert(len >= 0)
 			C_free(oldp)
+			--nil'ing the pointer as a poorman's use-after-free protection.
+			--don't use this as API.
 			p = nil
 		end
 		in p
 	end
 end)
 
-realloc = macro(function(p, len, label) --works as free() when len = 0
+realloc = macro(function(p, len, label) --works as dealloc() when len = 0
 	label = label or ''
 	local T = p:getpointertype()
 	return `alloc(T, len, p, label)
 end)
 
---Note the necessity to pass a `len` if freeing an array of objects that have
---a free() method otherwise only the first element of the array will be freed!
-free = macro(function(p, len, nilvalue)
-	nilvalue = nilvalue or `nil
-	len = len or 1
-	return quote
-		if p ~= nil then
-			call(p, 'free', len)
-			realloc(p, 0)
-			p = nilvalue
-		end
-	end
+dealloc = macro(function(p, len, label)
+	label = label or ''
+	return p:islvalue()
+		and quote p = realloc(p, 0, label) end
+		or `realloc(p, 0, label)
 end)
 
 new = macro(function(T, ...)
@@ -1158,14 +1330,23 @@ new = macro(function(T, ...)
 	end
 end)
 
+--Note the necessity to pass a `len` if freeing an array of objects that have
+--a free() method otherwise only the first element of the array will be freed!
+release = macro(function(p, len)
+	len = len or 1
+	return quote
+		if p ~= nil then
+			call(p, 'free', len)
+			dealloc(p)
+		end
+	end
+end)
+
 --typed memset ---------------------------------------------------------------
 
 local C_memset = C.memset; C.memset = nil
 
-fill = macro(function(p, val, len)
-	if len == nil then --fill(p, len)
-		val, len = nil, val
-	end
+fill = macro(function(p, len, val)
 	val = val or 0
 	len = len or 1
 	local T = p:getpointertype()
@@ -1227,17 +1408,20 @@ equal = macro(function(p1, p2, len)
 			return `eq(p1, p2)
 		else
 			return quote
-				var equal = false
+				var equal = true
 				for i=0,len do
-					if eq(p1, p2) then
-						equal = true
+					if not eq(&p1[i], &p2[i]) then
+						equal = false
 						break
 					end
 				end
 				in equal
 			end
 		end
-	else --fallback to memcmp
+	else --fallback to memcmp.
+		--TODO: check that T is not an union (can't compare unions).
+		--TODO: check that T does not have alignment holes (can't memcmp with alignment holes).
+		--TODO: if T has alignment holes, generate code for element-by-element equality.
 		return `bitequal(p1, p2, len)
 	end
 end)
@@ -1297,25 +1481,31 @@ end)
 
 --readfile -------------------------------------------------------------------
 
-local terra treadfile(name: rawstring): {&opaque, int64}
-	var f = fopen(name, 'rb')
-	defer fclose(f)
-	if f ~= nil then
-		if fseek(f, 0, SEEK_END) == 0 then
-			var filesize = ftell(f)
-			if filesize > 0 then
-				rewind(f)
-				var out = [&opaque](alloc(uint8, filesize))
-				if out ~= nil and fread(out, 1, filesize, f) == filesize then
-					return out, filesize
+local treadfile
+readfile = macro(function(name)
+	--creating treadfile on first call to readfile() in order to allow alloc()
+	--to be replace before the treadfile is compiled.
+	--eager type checking getting in our way yet again...
+	treadfile = terra(name: rawstring): {&opaque, int64}
+		var f = fopen(name, 'rb')
+		defer fclose(f)
+		if f ~= nil then
+			if fseek(f, 0, SEEK_END) == 0 then
+				var filesize = ftell(f)
+				if filesize > 0 then
+					rewind(f)
+					var out = [&opaque](alloc(uint8, filesize))
+					if out ~= nil and fread(out, 1, filesize, f) == filesize then
+						return out, filesize
+					end
+					realloc(out, 0)
 				end
-				realloc(out, 0)
 			end
 		end
+		return nil, 0
 	end
-	return nil, 0
-end
-readfile = macro(function(name) return `treadfile(name) end, glue.readfile)
+	return `treadfile(name)
+end, glue.readfile)
 
 --freelist -------------------------------------------------------------------
 
@@ -1352,417 +1542,5 @@ freelist = memoize(function(T)
 	end)
 	return freelist
 end)
-
---building to dll for LuaJIT ffi consumption ---------------------------------
-
---Features:
--- * supports publishing terra functions and named terra structs with methods.
--- * tuples and function pointers are typedef'ed with friendly unique names.
--- * the same tuple definition can appear in multiple modules without error.
--- * auto-assign methods to types via ffi.metatype.
--- * enable getters and setters via ffi.metatype.
--- * type name override with `__typename_ffi` metamethod.
--- * deciding which methods to publish via `public_methods` table.
--- * publishing enum and bitmask values.
--- * diff-friendly deterministic output.
-
-function publish(modulename)
-
-	local self = {}
-	setmetatable(self, self)
-
-	local objects = {}
-	local enums = {}
-
-	function self:__call(T, public_methods, opaque)
-		if type(T) == 'terrafunction'
-			or (type(T) == 'terratype' and T:isstruct() and not T:istuple())
-		then
-			T.opaque = opaque
-			if type(T) == 'terrafunction' or type(T) == 'overloadedterrafunction' then
-				T.ffi_name = public_methods
-			else
-				T.public_methods = public_methods or T.methods
-				if public_methods then
-					for method in pairs(public_methods) do
-						if not getmethod(T, method) then
-							print('Warning: method missing for publishing '..tostring(T)..':'..method..'()')
-						end
-					end
-				end
-			end
-			add(objects, T)
-		elseif type(T) == 'table' and not getmetatable(T) then --plain table: enums
-			update(enums, T)
-		else
-			assert(false, 'expected terra function, struct or enum table, got ', T)
-		end
-		return T
-	end
-
-	function self:getenums(moduletable, match)
-		for k,v in pairs(moduletable) do
-			if type(k) == 'string' and type(v) == 'number' and k:upper() == k
-				and (not match or k:find(match))
-			then
-				enums[k] = v
-			end
-		end
-	end
-
-	local saveobj_table = {}
-
-	function self:bindingcode()
-		local tdefs = {} --typedefs
-		local pdefs = {} --function pointer typedefs
-		local xdefs = {} --shared struct defs (pcalled)
-		local cdefs = {} --function defs
-		local mdefs = {} --metatype defs
-
-		add(tdefs, "local ffi = require'ffi'\n")
-		add(tdefs, "local C = ffi.load'"..modulename.."'\n")
-		add(tdefs, 'ffi.cdef[[\n')
-
-		local ctype --fw. decl.
-
-		local function cdef_tuple(T, name)
-			add(xdefs, 'pcall(ffi.cdef, \'')
-			append(xdefs, 'struct ', name, ' { ')
-			for i,e in ipairs(T.entries) do
-				local name, type = e[1], e[2]
-				append(xdefs, ctype(type), ' ', name, '; ')
-			end
-			add(xdefs, '};\')\n')
-		end
-
-		local function typedef_struct(name)
-			append(tdefs, 'typedef struct ', name, ' ', name, ';\n')
-		end
-
-		local function typedef_functionpointer(T, name)
-			append(pdefs, 'typedef ', ctype(T.returntype), ' (*', name, ') (')
-			for i,arg in ipairs(T.parameters) do
-				add(pdefs, ctype(arg))
-				if i < #T.parameters then
-					add(pdefs, ', ')
-				end
-				if T.isvararg then
-					add(pdefs, ',...')
-				end
-			end
-			add(pdefs, ');\n')
-		end
-
-		local function append_typename_fragment(s, T, n)
-			if not T then return s end
-			local ct = T:isintegral() and tostring(T):gsub('32$', '')
-				or T:ispointer() and 'p' .. ctype(T.type)
-				or ctype(T)
-			return s .. (s ~= '' and  '_' or '') .. ct .. (n > 1 and n or '')
-		end
-		local function unique_typename(types)
-			local type0, n = nil, 0
-			local s = ''
-			for i,type in ipairs(types) do
-				if type ~= type0 then
-					s = append_typename_fragment(s, type0, n)
-					type0, n = type, 1
-				else
-					n = n + 1
-				end
-			end
-			return append_typename_fragment(s, type0, n)
-		end
-
-		local function tuple_typename(T)
-			--each tuple entry is the array {name, type}, hence plucking index 2.
-			return unique_typename(glue.map(T.entries, 2))
-		end
-
-		local function function_typename(T)
-			local s = unique_typename(T.parameters)
-			s = s .. (s ~= '' and '_' or '') .. 'to'
-			return append_typename_fragment(s, T.returntype, 1)
-		end
-
-		local function clean_typename(s)
-			return (s:gsub('[%${},()]', '_'))
-		end
-
-		local function typename(T, name)
-			local typename = T.metamethods and T.metamethods.__typename_ffi
-			local typename = typename
-				and (type(typename) == 'string' and typename or typename(T))
-			if T:istuple() then
-				typename = typename or clean_typename(tuple_typename(T))
-				cdef_tuple(T, typename)
-				typedef_struct(typename)
-			elseif T:isstruct() then
-				typename = typename or clean_typename(tostring(T))
-				typedef_struct(typename)
-			elseif T:isfunction() then
-				typename = typename or clean_typename(name or function_typename(T))
-				typedef_functionpointer(T, typename)
-			else
-				typename = clean_typename(tostring(T))
-			end
-			return typename
-		end
-		typename = memoize(typename)
-
-		function ctype(T)
-			if T:isintegral() then
-				return tostring(T)..'_t'
-			elseif T:isfloat() or T:islogical() then
-				return tostring(T)
-			elseif T == rawstring then
-				return 'const char *'
-			elseif T:ispointer() then
-				if T:ispointertofunction() then
-					return typename(T.type, T.__typename_ffi)
-				else
-					return ctype(T.type)..'*'
-				end
-			elseif T == terralib.types.opaque or T:isunit() then
-				return 'void'
-			elseif T:isstruct() then
-				return typename(T)
-			elseif T:isarray() then --TODO: this is invalid syntax
-				return ctype(T.type)..'['..T.N..']'
-			else
-				assert(false, 'NYI: ', tostring(T))
-			end
-		end
-
-		local function cdef_function(func, name)
-			local T = func:gettype()
-			append(cdefs, ctype(T.returntype), ' ', name, '(')
-			for i,arg in ipairs(T.parameters) do
-				add(cdefs, ctype(arg))
-				if i < #T.parameters then
-					add(cdefs, ', ')
-				end
-				if T.isvararg then
-					add(cdefs, ',...')
-				end
-			end
-			add(cdefs, ');\n')
-			saveobj_table[name] = func
-		end
-
-		local function cdef_entries(cdefs, entries, indent)
-			for i,e in ipairs(entries) do
-				for i=1,indent do add(cdefs, '\t') end
-				if #e > 0 and type(e[1]) == 'table' then --union
-					add(cdefs, 'union {\n')
-					cdef_entries(cdefs, e, indent + 1)
-					for i=1,indent do add(cdefs, '\t') end
-					add(cdefs, '};\n')
-				else
-					append(cdefs, ctype(e.type), ' ', e.field, ';\n')
-				end
-			end
-		end
-		local function cdef_struct(T)
-			name = typename(T)
-			if not T.opaque then
-				append(cdefs, 'struct ', name, ' {\n')
-				cdef_entries(cdefs, T.entries, 1)
-				add(cdefs, '};\n')
-			end
-		end
-
-		local function overloadname(fname, name, i)
-			if type(name) == 'table' and name[i] then return name[i] end
-			return (type(name) == 'string' and name or fname)..(i ~= 1 and i or '')
-		end
-
-		local function publicname(T, fname, i)
-			local name = not T.public_methods or T.public_methods[fname]
-			return name and overloadname(fname, name, i)
-		end
-
-		local function cdef_methods(T)
-			local name = typename(T)
-			local methods = {}
-			local getters = {}
-			local setters = {}
-
-			--unpack overloads.
-			local m = {}
-			for fname, func in pairs(T.methods) do
-				if type(func) == 'overloadedterrafunction' then
-					for i,func in ipairs(func.definitions) do
-						local name = publicname(T, fname, i)
-						if name then
-							m[name] = func
-						end
-					end
-				elseif type(func) == 'terrafunction' then
-					local name = publicname(T, fname)
-					if name then
-						m[name] = func
-					end
-				end
-			end
-
-			--declare methods in source code order.
-			local function cmp(k1, k2)
-				local m1 = m[k1]
-				local m2 = m[k2]
-				local d1 = m1.definition
-				local d2 = m2.definition
-				assert(d1, 'method '..tostring(T)..':'..k1..' has no body')
-				assert(d2, 'method '..tostring(T)..':'..k2..' has no body')
-				if d1.filename == d2.filename then
-					return d1.linenumber < d2.linenumber
-				else
-					return d1.filename < d2.filename
-				end
-			end
-
-			for fname, func in sortedpairs(m, cmp) do
-				if fname then
-					local cname = name..'_'..fname
-					cdef_function(func, cname)
-					local t
-					if T.gettersandsetters then
-						if fname:starts'get_' and #func.type.parameters == 1 then
-							t, fname = getters, fname:gsub('^get_', '')
-						elseif fname:starts'set_' and #func.type.parameters == 2 then
-							t, fname = setters, fname:gsub('^set_', '')
-						else
-							t = methods
-						end
-					else
-						t = methods
-					end
-					add(t, '\t'..fname..' = C.'..cname..',\n')
-				end
-			end
-			if T.gettersandsetters and (#getters > 0 or #setters > 0) then
-				add(mdefs, 'local getters = {\n'); extend(mdefs, getters); add(mdefs, '}\n')
-				add(mdefs, 'local setters = {\n'); extend(mdefs, setters); add(mdefs, '}\n')
-				add(mdefs, 'local methods = {\n'); extend(mdefs, methods); add(mdefs, '}\n')
-				add(mdefs, [[
-ffi.metatype(']]..name..[[', {
-	__index = function(self, k)
-		local getter = getters[k]
-		if getter then return getter(self) end
-		return methods[k]
-	end,
-	__newindex = function(self, k, v)
-		local setter = setters[k]
-		if not setter then
-			error(('field not found: %s'):format(tostring(k)), 2)
-		end
-		setter(self, v)
-	end,
-})
-]])
-			else
-				append(mdefs, 'ffi.metatype(\'', name, '\', {__index = {\n')
-				extend(mdefs, methods)
-				add(mdefs, '}})\n')
-			end
-		end
-
-		for i,obj in ipairs(objects) do
-			if type(obj) == 'terrafunction' then
-				cdef_function(obj, obj.ffi_name or obj.name:gsub('%.', '_'))
-			elseif type(obj) == 'overloadedterrafunction' then
-				local name = obj.ffi_name or obj.name:gsub('%.', '_')
-				for i,obj in ipairs(obj.definitions) do
-					cdef_function(obj, type(name) == 'table' and name[i] or overloadname(name, i))
-				end
-			elseif obj:isstruct() then
-				cdef_struct(obj)
-				cdef_methods(obj)
-			end
-		end
-
-		add(cdefs, ']]\n')
-
-		local enums_code = ''
-		if next(enums) then
-			local t = {'ffi.cdef[[\nenum {\n'}
-			local function addt(s) add(t, s) end
-			for k,v in sortedpairs(enums) do
-				add(t, '\t'); add(t, k); add(t, ' = '); pp.write(addt, v); add(t, ',\n')
-			end
-			enums_code = concat(t) .. '}]]\n'
-		end
-
-		return concat(tdefs) .. concat(pdefs) .. concat(cdefs)
-			.. concat(xdefs) .. concat(mdefs) .. enums_code
-			.. 'return C\n'
-
-	end
-
-	function self:savebinding(filename)
-		zone'savebinding'
-		local filename = self:luapath(filename or modulename .. '_h.lua')
-		writefile(filename, self:bindingcode(), nil, filename..'.tmp')
-		zone()
-	end
-
-	function self:binpath(filename)
-		return terralib.terrahome..(filename and '/'..filename or '')
-	end
-
-	function self:luapath(filename)
-		return terralib.terrahome..'/../..'..(filename and '/'..filename or '')
-	end
-
-	function self:objfile()
-		return self:binpath(modulename..'.o')
-	end
-
-	function self:sofile()
-		local soext = {Windows = 'dll', OSX = 'dylib', Linux = 'so'}
-		return self:binpath(modulename..'.'..soext[ffi.os])
-	end
-
-	function self:saveobj()
-		zone'saveobj'
-		terralib.saveobj(self:objfile(), 'object', saveobj_table)
-		zone()
-	end
-
-	function self:removeobj()
-		os.remove(self:objfile())
-	end
-
-	function self:linkobj(linkto)
-		zone'linkobj'
-		local linkargs = linkto and '-l'..concat(linkto, ' -l') or ''
-		local cmd = 'gcc '..self:objfile()..' -shared '..'-o '..self:sofile()
-			..' -L'..self:binpath()..' '..linkargs
-		os.execute(cmd)
-		zone()
-	end
-
-	--TODO: make this work. Doesn't export symbols on Windows.
-	function self:savelibrary(linkto)
-		zone'savelibrary'
-		local linkargs = linkto and '-l'..concat(linkto, ' -l') or ''
-		terralib.saveobj(self:sofile(), 'sharedlibrary', saveobj_table, linkargs)
-		zone()
-	end
-
-	function self:build(opt)
-		opt = opt or {}
-		self:savebinding()
-		if true then
-			self:saveobj()
-			self:linkobj(opt.linkto)
-			self:removeobj()
-		else
-			self:savelibrary(opt.linkto)
-		end
-	end
-
-	return self
-end
 
 return _M

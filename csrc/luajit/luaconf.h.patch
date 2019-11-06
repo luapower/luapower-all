@@ -1,6 +1,6 @@
 Patch to allow LUA_PATH and LUA_CPATH to be overriden from the outside.
 --- luaconf.h	2019-10-26 13:00:52 +0300
-+++ src/src/luaconf-modified.h	2019-10-26 13:03:37 +0300
++++ src/src/luaconf.h	2019-10-26 13:03:37 +0300
 @@ -20,10 +20,14 @@
  */
  #define LUA_LDIR	"!\\lua\\"

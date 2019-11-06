@@ -3,11 +3,17 @@
 	HTML-like box-model layouting and rendering engine in Terra with a C API.
 	Written by Cosmin Apreutesei. Public Domain.
 
-	Uses cairo for path filling, stroking, clipping, masking and blending.
-	Uses terra-tr for text shaping and rendering.
-	Uses terra-boxblur and boxblur for shadows.
+	Discuss at luapower.com/forum or at github.com/luapower/terra-layer/issues.
 
-	How this box model works (and how it differs from the web's box model):
+	Uses `cairo` for path filling, stroking, clipping, masking and blending.
+	Uses `terra-tr` for text shaping and rendering.
+	Uses `terra-boxblur` and `boxblur` for shadows.
+
+	NOTE: This is the implementation module. In here, invalid input data is
+	undefined behavior and changing layer properties does not keep the internal
+	state consistent. Use `layer_api` instead which takes care of all of that.
+
+	Box model:
 
 	* the "layer box" is defined by (x, y, w, h).
 	* paddings are applied to the layer box, creating the "content box".
@@ -19,18 +25,37 @@
 	* background can be clipped to the inside or outside of the border outline,
 	  subject to `background_clip_border_offset`.
 
-]]
+	Layout types:
 
-if not ... then require'terra/layer_api'.build(); return end
+	* none (default): manual positioning via x, y, w, h properties.
+	* textbox: content box grows to contain the text.
+	* flexbox: "css flexbox"-like layout type.
+	* grid: "css grid"-like layout type.
+
+	Content-wrapping in layout systems:
+
+	The presence of auto-wrapped content (text or wrapped flexbox items) in
+	content-based layout systems (i.e. layouts that expand based on the
+	content's minimum size) imposes that the layout be computed on the
+	content's main flow axis before being computed on the cross-axis. This is
+	because the minimum height of the content (assuming the main axis is the
+	x-axis) cannot be known until wrapping the content, but wrapping requires
+	knowing the final width of the container. This means that a layout that
+	contains a mix of both horizontally and vertically flowing wrapped content
+	cannot be computed correctly because such layout doesn't have a single
+	solution. The current implementation simply favors one axis over another
+	via `axis_order = AXIS_ORDER_XY` which means that vertically flowing
+	wrapped flexboxes aren't able to impose a minimum size on their container.
+
+]]
 
 setfenv(1, require'terra/low'.module())
 require'terra/memcheck'
 require'terra/cairo'
 require'terra/tr_paint_cairo'
-tr = require'terra/tr'
+tr = require'terra/tr_api'
 bitmap = require'terra/bitmap'
 require'terra/boxblur'
-require'terra/utf8'
 require'terra/box2d'
 
 --external types -------------------------------------------------------------
@@ -42,7 +67,9 @@ context = cairo_t
 surface = cairo_surface_t
 rect = rect(num)
 Bitmap = bitmap.Bitmap
-FontLoadFunc = tr.FontLoadFunc
+FontLoadFunc   = tr.FontLoadFunc
+FontUnloadFunc = tr.FontUnloadFunc
+ErrorFunc      = tr.ErrorFunc
 
 --common enums ---------------------------------------------------------------
 
@@ -69,8 +96,10 @@ local function map_enum(C, src_prefix, dst_prefix)
 	end
 end
 map_enum(C, 'CAIRO_OPERATOR_', 'OPERATOR_')
-map_enum(tr, 'DIR_')
-map_enum(tr, 'CURSOR_')
+map_enum(tr.__index, 'DIR_')
+map_enum(tr.__index, 'CURSOR_')
+map_enum(tr.__index, 'UNDERLINE_')
+map_enum(tr.__index, 'WRAP_')
 map_enum(bitmap, 'FORMAT_', 'BITMAP_FORMAT_')
 map_enum(C, 'CAIRO_EXTEND_', 'BACKGROUND_EXTEND_')
 
@@ -80,7 +109,7 @@ OPERATOR_MAX = OPERATOR_HSL_LUMINOSITY
 BACKGROUND_EXTEND_MIN = BACKGROUND_EXTEND_NONE
 BACKGROUND_EXTEND_MAX = BACKGROUND_EXTEND_PAD
 
-HIT_NONE           = 0
+HIT_NONE           = 0 --this must be zero
 HIT_BORDER         = 1
 HIT_BACKGROUND     = 2
 HIT_TEXT           = 3
@@ -91,12 +120,12 @@ HIT_TEXT_SELECTION = 4
 DEFAULT_BORDER_COLOR = DEFAULT_BORDER_COLOR or `color {0xffffffff}
 DEFAULT_SHADOW_COLOR = DEFAULT_SHADOW_COLOR or `color {0x000000ff}
 
---utils ----------------------------------------------------------------------
+--macros for updating field values -------------------------------------------
 
 change = macro(function(self, FIELD, v)
-	FIELD = type(FIELD) == 'terraquote' and FIELD:asvalue() or FIELD
+	FIELD = FIELD:asvalue()
 	return quote
-		var changed = self.[FIELD] ~= v
+		var changed = (self.[FIELD] ~= v)
 		if changed then
 			self.[FIELD] = v
 		end
@@ -105,23 +134,50 @@ change = macro(function(self, FIELD, v)
 end)
 
 struct Layer;
+struct Lib;
 
-Layer.methods.change = macro(function(self, target, FIELD, v, WHAT)
-	if WHAT then
-		if type(WHAT) == 'terraquote' then WHAT = WHAT:asvalue() end
-		return quote
-			var changed = change(target, FIELD, v)
-			if changed then
-				escape
-					local s = WHAT
-					for s in s:gmatch'[^%s]+' do
-						emit quote self:[s..'_changed']() end
-					end
-				end
+Layer.methods.invalidate = macro(function(self, WHAT)
+	WHAT = WHAT:asvalue() or ''
+	return quote
+		escape
+			for s in WHAT:gmatch'[^%s]+' do
+				emit quote self:['invalidate_'..s]() end
 			end
 		end
-	else
-		return quote change(target, FIELD, v) end
+	end
+end)
+
+Layer.methods.change = macro(function(self, target, FIELD, v, WHAT)
+	WHAT = WHAT or ''
+	return quote
+		var changed = change(target, FIELD, v)
+		if changed then
+			self:invalidate(WHAT)
+		end
+		in changed
+	end
+end)
+
+Layer.methods.changelen = macro(function(self, arr, len, init, WHAT)
+	WHAT = WHAT or ''
+	return quote
+		var changed = arr.len ~= len
+		if changed then
+			escape
+				if type(init:asvalue()) == 'terramacro' then
+					emit quote
+						var new_elements = arr:setlen(len)
+						for _,e in new_elements do
+							init(&self, e)
+						end
+					end
+				else --init is actually the default value
+					emit quote arr:setlen(len, init) end
+				end
+			end
+			self:invalidate(WHAT)
+		end
+		in changed
 	end
 end)
 
@@ -214,15 +270,14 @@ end
 
 --background -----------------------------------------------------------------
 
-BACKGROUND_COLOR           = 0
-BACKGROUND_PATTERN         = 4     --mask for LINEAR|RADIAL|IMAGE
-BACKGROUND_GRADIENT        = 4+2   --mask for LINEAR|RADIAL
-BACKGROUND_LINEAR_GRADIENT = 4+2
-BACKGROUND_RADIAL_GRADIENT = 4+2+1
-BACKGROUND_IMAGE           = 8
+BACKGROUND_TYPE_NONE            =  0
+BACKGROUND_TYPE_COLOR           =  1
+BACKGROUND_TYPE_LINEAR_GRADIENT =  2
+BACKGROUND_TYPE_RADIAL_GRADIENT =  3
+BACKGROUND_TYPE_IMAGE           =  4
 
-BACKGROUND_TYPE_MIN = BACKGROUND_COLOR
-BACKGROUND_TYPE_MAX = BACKGROUND_IMAGE
+BACKGROUND_TYPE_MIN = 0
+BACKGROUND_TYPE_MAX = BACKGROUND_TYPE_IMAGE
 
 struct ColorStop {
 	offset: num;
@@ -292,10 +347,10 @@ terra BackgroundPattern:free()
 end
 
 struct Background (gettersandsetters) {
-	type: enum; --BACKGROUND_*
+	type: enum; --BACKGROUND_TYPE_*
 	hittable: bool;
 	operator: enum; --OPERATOR_*
-	color_set: bool;
+	opacity: num;
 	-- overlapping between background clipping edge and border stroke.
 	-- -1..1 goes from inside to outside of border edge.
 	clip_border_offset: num;
@@ -306,12 +361,19 @@ struct Background (gettersandsetters) {
 terra Background:init()
 	self.hittable = true
 	self.operator = OPERATOR_OVER
+	self.opacity = 1
 	self.clip_border_offset = 1 --border fully overlaps the background
 	self.pattern:init()
 end
 
 terra Background:free()
 	self.pattern:free()
+end
+
+terra Background:get_is_gradient()
+	return
+		   self.type == BACKGROUND_TYPE_LINEAR_GRADIENT
+		or self.type == BACKGROUND_TYPE_RADIAL_GRADIENT
 end
 
 --shadow ---------------------------------------------------------------------
@@ -333,34 +395,12 @@ struct Shadow (gettersandsetters) {
 	surface_y: num;
 }
 
-terra Shadow.methods.invalidate :: {&Shadow} -> {}
-terra Shadow.methods.content_flag_changed :: {&Shadow} -> {}
-
-terra Shadow:get_blur_radius() return self._blur_radius end
-terra Shadow:get_blur_passes() return self._blur_passes end
-terra Shadow:get_inset      () return self._inset end
-terra Shadow:get_content    () return self._content end
-
-terra Shadow:set_blur_radius(v: uint8) if change(self, '_blur_radius', v) then self:invalidate() end end
-terra Shadow:set_blur_passes(v: uint8) if change(self, '_blur_passes', v) then self:invalidate() end end
-terra Shadow:set_inset      (v: bool)  if change(self, '_inset', v) then self:invalidate() end end
-terra Shadow:set_content    (v: bool)
-	if change(self, '_content', v) then
-		self:invalidate()
-		self:content_flag_changed()
-	end
-end
-
 terra Shadow:init(layer: &Layer)
 	fill(self)
 	self.layer = layer
 	self.color = DEFAULT_SHADOW_COLOR
 	self._blur_passes = 3
 	self.blur:init(BITMAP_FORMAT_G8)
-end
-
-terra Shadow:invalidate()
-	self.blur:invalidate()
 end
 
 terra Shadow:free()
@@ -370,6 +410,24 @@ terra Shadow:free()
 		self.surface = nil
 	end
 end
+
+terra Shadow:invalidate_blur()
+	self.blur:invalidate()
+end
+Shadow.methods.invalidate_blur:setinlined(true)
+
+Shadow.methods.invalidate = Layer.methods.invalidate
+Shadow.methods.change = Layer.methods.change
+
+terra Shadow:get_blur_radius() return self._blur_radius end
+terra Shadow:get_blur_passes() return self._blur_passes end
+terra Shadow:get_inset      () return self._inset       end
+terra Shadow:get_content    () return self._content     end
+
+terra Shadow:set_blur_radius(v: int)  self:change(self, '_blur_radius', v, 'blur') end
+terra Shadow:set_blur_passes(v: int)  self:change(self, '_blur_passes', v, 'blur') end
+terra Shadow:set_inset      (v: bool) self:change(self, '_inset'      , v, 'blur') end
+terra Shadow:set_content    (v: bool) self:change(self, '_content'    , v, 'blur') end
 
 terra Shadow:visible()
 	return self.blur_radius > 0
@@ -393,13 +451,13 @@ end
 
 struct Text (gettersandsetters) {
 	layout: tr.Layout;
-	selectable: bool;
+	embeds_valid: bool;
 }
 
 terra Text:init(r: &tr.Renderer)
 	self.layout:init(r)
+	self.embeds_valid = false
 	self.layout.maxlen = 4096
-	self.selectable = false
 end
 
 terra Text:free()
@@ -409,8 +467,9 @@ end
 --layouting ------------------------------------------------------------------
 
 struct LayoutSolver {
-	type       : enum; --LAYOUT_*
+	type       : enum; --LAYOUT_TYPE_*
 	axis_order : enum; --AXIS_ORDER_*
+	show_text  : bool;
 	sync       : {&Layer} -> {};
 	sync_min_w : {&Layer, bool} -> num;
 	sync_min_h : {&Layer, bool} -> num;
@@ -421,20 +480,22 @@ struct LayoutSolver {
 FLEX_FLOW_X = 0
 FLEX_FLOW_Y = 1
 
+FLEX_FLOW_MIN = FLEX_FLOW_X
+FLEX_FLOW_MAX = FLEX_FLOW_Y
+
 struct FlexLayout {
 	flow: enum; --FLEX_FLOW_*
 	wrap: bool;
 }
 
-struct GridLayoutCol {
+struct GridLayoutCol (gettersandsetters) {
 	x: num;
 	w: num;
 	fr: num;
 	align_x: enum;
 	_min_w: num;
-	snap_x: bool;
-	inlayout: bool;
 }
+terra GridLayoutCol:get_inlayout() return true end
 
 struct GridLayout {
 	col_frs: arr(num);
@@ -466,13 +527,31 @@ terra GridLayout:free()
 	self._rows:free()
 end
 
+--hit testing ----------------------------------------------------------------
+
+struct HitTestResult {
+	layer: &Layer;
+	area: enum;
+	x: num;
+	y: num;
+	text_offset: int;
+	text_cursor_which: enum;
+};
+
+terra HitTestResult:set(layer: &Layer, area: enum, x: num, y: num)
+	self.layer = layer
+	self.area = area
+	self.x = x
+	self.y = y
+end
+
 --lib ------------------------------------------------------------------------
 
 struct Lib (gettersandsetters) {
 	text_renderer: tr.Renderer;
 	grid_occupied: BoolBitmap;
 	default_shadow: Shadow;
-	default_layout_solver: &LayoutSolver;
+	hit_test_result: HitTestResult;
 }
 
 --layer ----------------------------------------------------------------------
@@ -483,6 +562,7 @@ struct Layer (gettersandsetters) {
 
 	lib: &Lib;
 	_parent: &Layer;
+	_pos_parent: &Layer;
 	top_layer: &Layer;
 	children: arr{T = &Layer, own_elements = true};
 
@@ -490,6 +570,7 @@ struct Layer (gettersandsetters) {
 	_y: num;
 	_w: num;
 	_h: num;
+	_baseline: num;
 
 	visible      : bool;
 	operator     : enum;
@@ -497,7 +578,7 @@ struct Layer (gettersandsetters) {
 	snap_x       : bool; --snap to pixels on x-axis
 	snap_y       : bool; --snap to pixels on y-axis
 
-	parent_has_content_shadow: bool;
+	parent_has_content_shadow: bool; --one of the parents has a content shadow
 
 	opacity: num;
 
@@ -525,9 +606,6 @@ struct Layer (gettersandsetters) {
 	--which allows the client to animate x,y,w,h towards final_x,y,w,h after
 	--layouting and before redrawing.
 	in_transition: bool;
-
-	--clearing this flag makes this layer invisible as far as layouting goes.
-	in_layout: bool;
 
 	layout_valid: bool;
 	pixels_valid: bool;
@@ -569,17 +647,25 @@ struct Layer (gettersandsetters) {
 	hit_test_mask: enum;
 }
 
-terra Layer.methods.content_shape_changed :: {&Layer} -> {}
-terra Layer.methods.layout_changed :: {&Layer} -> {}
-terra Layer.methods.size_changed :: {&Layer} -> {}
-terra Layer.methods.border_shape_changed :: {&Layer} -> {}
-terra Layer.methods.background_changed :: {&Layer} -> {}
-terra Layer.methods.pixels_changed :: {&Layer} -> {}
-terra Layer.methods.text_layout_changed :: {&Layer} -> {}
+terra Layer.methods.invalidate_layout                          :: {&Layer} -> {}
+terra Layer.methods.invalidate_parent_layout                   :: {&Layer} -> {}
+terra Layer.methods.invalidate_parent_layout_ignore_pos_parent :: {&Layer} -> {}
+terra Layer.methods.invalidate_parent_layout_ignore_visible    :: {&Layer} -> {}
+terra Layer.methods.invalidate_pixels                          :: {&Layer} -> {}
+terra Layer.methods.invalidate_background                      :: {&Layer} -> {}
+terra Layer.methods.invalidate_text                            :: {&Layer} -> {}
+terra Layer.methods.invalidate_box_shadows                     :: {&Layer} -> {}
+terra Layer.methods.invalidate_content_shadows                 :: {&Layer} -> {}
+terra Layer.methods.invalidate_parent_content_shadows          :: {&Layer} -> {}
+terra Layer.methods.invalidate_parent_content_shadows_force    :: {&Layer} -> {}
+terra Layer.methods.invalidate_embeds                          :: {&Layer} -> {}
+terra Layer.methods.invalidate_parent_embeds                   :: {&Layer} -> {}
+terra Layer.methods.invalidate_parent_embeds_ignore_pos_parent :: {&Layer} -> {}
+terra Layer.methods.invalidate_parent_embeds_ignore_visible    :: {&Layer} -> {}
 
-terra Layer.methods.init_layout :: {&Layer} -> {}
+terra Layer.methods.init_layout  :: {&Layer} -> {}
 terra Layer.methods.content_bbox :: {&Layer, bool} -> {num, num, num, num}
-terra Layer.methods.draw_content :: {&Layer, &context} -> {}
+terra Layer.methods.draw_content :: {&Layer, &context, bool} -> {}
 
 terra Layer:init(lib: &Lib, parent: &Layer)
 	fill(self)
@@ -598,7 +684,6 @@ terra Layer:init(lib: &Lib, parent: &Layer)
 	self.background:init()
 	self.text:init(&lib.text_renderer)
 
-	self.in_layout = true
 	self.align_items_x = ALIGN_STRETCH
 	self.align_items_y = ALIGN_STRETCH
  	self.item_align_x  = ALIGN_STRETCH
@@ -625,49 +710,74 @@ terra Layer:free()
 end
 
 terra Layer:get_parent() return self._parent end
-terra Layer:get_top_layer() return self.top_layer end
+terra Layer:get_pos_parent() return self._pos_parent end
 
 terra Layer:get_index()
 	return iif(self.parent ~= nil, self.parent.children:find(self), 0)
 end
 
+terra Layer:is_child_of(e: &Layer)
+	while self.parent ~= e do
+		self = self.parent
+		if self == nil then
+			return false
+		end
+	end
+	return true
+end
+
+terra Layer:is_pos_child_of(e: &Layer)
+	while self.pos_parent ~= e do
+		self = self.pos_parent
+		if self == nil then
+			return false
+		end
+	end
+	return true
+end
+
 terra Layer:move(parent: &Layer, i: int)
 	if parent == self.parent then
-		if parent ~= nil then
-			i = parent.children:clamp(i)
-			var i0 = self.index
-			if i0 == i then
-				return
-			end
-			parent.children:move(i0, i)
+		if parent == nil then
+			return false
 		end
+		i = parent.children:clamp(i)
+		var i0 = self.index
+		if i0 == i then
+			return false
+		end
+		parent.children:move(i0, i)
+		self:invalidate'pixels parent_layout parent_embeds parent_content_shadows'
 	else
+		if parent ~= nil and (parent == self or parent:is_child_of(self)) then
+			return false
+		end
+		--invalidate things in the old hierarchy...
+		self:invalidate'pixels parent_layout parent_embeds parent_content_shadows'
 		if self.parent ~= nil then
 			self.parent.children:leak(self.index)
-			self._parent = nil
-			self.top_layer = self
 		end
 		if parent ~= nil then
 			i = clamp(i, 0, parent.children.len)
 			parent.children:insert(i, self)
-			self._parent = parent
-			self.top_layer = parent.top_layer
 		end
+		self._parent = parent
+		self.top_layer = iif(parent ~= nil, parent.top_layer, self)
+		--invalidate things in the new hierarchy...
+		self:invalidate'pixels parent_layout parent_embeds parent_content_shadows_force'
 	end
-	if self.visible then
-		if self.in_layout then
-			self:layout_changed()
-		end
-		self:pixels_changed()
-	end
+	return true
 end
 
-terra Layer:set_parent(parent: &Layer)
-	self:move(parent, maxint)
-end
-
-terra Layer:set_index(i: int)
-	self:move(self.parent, i)
+terra Layer:set_pos_parent(pos_parent: &Layer)
+	if pos_parent == self.pos_parent then return end
+	if pos_parent == self then return end
+	if pos_parent ~= nil and pos_parent:is_pos_child_of(self) then return end
+	if self.pos_parent == nil or pos_parent == nil then --got in or out of layout
+		self:invalidate'parent_layout_ignore_pos_parent parent_embeds_ignore_pos_parent'
+	end
+	self._pos_parent = pos_parent
+	self:invalidate'pixels parent_content_shadows'
 end
 
 Layer.metamethods.__for = function(self, body)
@@ -699,14 +809,14 @@ terra Layer:set_x(x: num)
 	if self.in_transition then
 		self.final_x = x
 	else
-		self:change(self, '_x', x, 'pixels')
+		self:change(self, '_x', x, 'pixels parent_content_shadows')
 	end
 end
 terra Layer:set_y(y: num)
 	if self.in_transition then
 		self.final_y = y
 	else
-		self:change(self, '_y', y, 'pixels')
+		self:change(self, '_y', y, 'pixels parent_content_shadows')
 	end
 end
 
@@ -715,7 +825,7 @@ terra Layer:set_w(w: num)
 	if self.in_transition then
 		self.final_w = w
 	else
-		self:change(self, '_w', w, 'size pixels')
+		self:change(self, '_w', w, 'pixels box_shadows parent_embeds parent_content_shadows')
 	end
 end
 terra Layer:set_h(h: num)
@@ -723,7 +833,7 @@ terra Layer:set_h(h: num)
 	if self.in_transition then
 		self.final_h = h
 	else
-		self:change(self, '_h', h, 'size pixels')
+		self:change(self, '_h', h, 'pixels box_shadows parent_embeds parent_content_shadows')
 	end
 end
 
@@ -747,44 +857,82 @@ terra Layer:rel_matrix() --box matrix relative to parent's content space
 end
 
 terra Layer:abs_matrix(): matrix --box matrix in window space
-	var am = iif(self.parent ~= nil, self.parent:abs_matrix(), [matrix.identity])
+	var parent = iif(self.pos_parent ~= nil, self.pos_parent, self.parent)
+	var am: matrix
+	if parent ~= nil then
+		am = parent:abs_matrix()
+		am:translate(parent.px, parent.py)
+	else
+		am = [matrix.identity]
+	end
 	var rm = self:rel_matrix()
 	am:transform(&rm)
 	return am
 end
 
-terra Layer:cr_abs_matrix(cr: &context) --box matrix in cr's current space
-	var cm = cr:matrix()
-	var rm = self:rel_matrix()
-	cm:transform(&rm)
-	return cm
+terra Layer:abs_matrix_from(m: matrix)
+	if self.pos_parent ~= nil then
+		return self:abs_matrix()
+	else
+		var m = m:copy()
+		var r = self:rel_matrix()
+		m:transform(&r)
+		return m
+	end
 end
 
 --convert point from own box space to parent content space.
 terra Layer:from_box_to_parent(x: num, y: num)
-	var m = self:rel_matrix()
-	return m:point(x, y)
+	if self.pos_parent ~= nil then
+		var x, y = self:abs_matrix():point(x, y)
+		return self.parent:from_window(x, y)
+	else
+		var m = self:rel_matrix()
+		return m:point(x, y)
+	end
 end
 
 --convert point from parent content space to own box space.
 terra Layer:from_parent_to_box(x: num, y: num)
-	var m = self:rel_matrix(); m:invert()
-	return m:point(x, y)
+	if self.pos_parent ~= nil then
+		var m = self:abs_matrix()
+		m:invert()
+		var x, y = self.parent:to_window(x, y)
+		return m:point(x, y)
+	else
+		var m = self:rel_matrix(); m:invert()
+		return m:point(x, y)
+	end
 end
 
 --convert point from own content space to parent content space.
 terra Layer:to_parent(x: num, y: num)
-	var m = self:rel_matrix()
-	m:translate(self.px, self.py)
-	return m:point(x, y)
+	if self.pos_parent ~= nil then
+		var m = self:abs_matrix()
+		m:translate(self.px, self.py)
+		var x, y = m:point(x, y)
+		return self.parent:from_window(x, y)
+	else
+		var m = self:rel_matrix()
+		m:translate(self.px, self.py)
+		return m:point(x, y)
+	end
 end
 
 --convert point from parent content space to own content space.
 terra Layer:from_parent(x: num, y: num)
-	var m = self:rel_matrix()
-	m:translate(self.px, self.py)
-	m:invert()
-	return m:point(x, y)
+	if self.pos_parent ~= nil then
+		var m = self:abs_matrix()
+		m:translate(self.px, self.py)
+		m:invert()
+		var x, y = self.parent:to_window(x, y)
+		return m:point(x, y)
+	else
+		var m = self:rel_matrix()
+		m:translate(self.px, self.py)
+		m:invert()
+		return m:point(x, y)
+	end
 end
 
 terra Layer:to_window(x: num, y: num): {num, num} --parent & child interface
@@ -1009,6 +1157,18 @@ terra Layer:border_visible()
 		or self.border.width_bottom ~= 0
 end
 
+terra Layer:border_opaque()
+	return
+		    self.border.width_left   ~= 0
+		and self.border.width_top    ~= 0
+		and self.border.width_right  ~= 0
+		and self.border.width_bottom ~= 0
+		and self.border.color_left  .alpha == 255
+		and self.border.color_top   .alpha == 255
+		and self.border.color_right .alpha == 255
+		and self.border.color_bottom.alpha == 255
+end
+
 terra Layer:draw_border(cr: &context)
 	if not self:border_visible() then return end
 
@@ -1107,7 +1267,19 @@ end
 --background drawing ---------------------------------------------------------
 
 terra Layer:background_visible()
-	return not (self.background.type == BACKGROUND_COLOR and not self.background.color_set)
+	return self.background.type ~= BACKGROUND_TYPE_NONE
+		and self.background.opacity > 0
+end
+
+terra Layer:background_opaque()
+	if self.background.type == BACKGROUND_TYPE_NONE then
+		return false
+	end
+	if self.background.type == BACKGROUND_TYPE_COLOR then
+		return self.background.opacity >= 1
+			and self.background.color.alpha == 255
+	end
+	return false --hard to check transparency on gradients and images.
 end
 
 terra Layer:background_rect(size_offset: num)
@@ -1129,9 +1301,11 @@ end
 terra Background:pattern()
 	var p = &self.pattern
 	if p.pattern == nil then
-		if (self.type and BACKGROUND_GRADIENT) ~= 0 then
+		if    self.type == BACKGROUND_TYPE_LINEAR_GRADIENT
+			or self.type == BACKGROUND_TYPE_RADIAL_GRADIENT
+		then
 			var g = p.gradient
-			if self.type == BACKGROUND_LINEAR_GRADIENT then
+			if self.type == BACKGROUND_TYPE_LINEAR_GRADIENT then
 				p.pattern = cairo_pattern_create_linear(g.x1, g.y1, g.x2, g.y2)
 			else
 				p.pattern = cairo_pattern_create_radial(g.x1, g.y1, g.r1, g.x2, g.y2, g.r2)
@@ -1139,7 +1313,7 @@ terra Background:pattern()
 			for _,c in g.color_stops do
 				p.pattern:add_color_stop_rgba(c.offset, c.color)
 			end
-		elseif self.type == BACKGROUND_IMAGE then
+		elseif self.type == BACKGROUND_TYPE_IMAGE then
 			if p.bitmap.format ~= BITMAP_FORMAT_INVALID then
 				if p.bitmap_surface == nil then
 					p.bitmap_surface = p.bitmap:surface()
@@ -1153,9 +1327,9 @@ end
 
 terra Background:paint(cr: &context)
 	cr:operator(self.operator)
-	if self.type == BACKGROUND_COLOR then
+	if self.type == BACKGROUND_TYPE_COLOR then
 		cr:rgba(self.color)
-		cr:paint()
+		cr:paint_with_alpha(self.opacity)
 	else
 		var m: matrix; m:init()
 		m:translate(self.pattern.x, self.pattern.y)
@@ -1166,7 +1340,7 @@ terra Background:paint(cr: &context)
 			patt:matrix(&m)
 			patt:extend(self.pattern.extend)
 			cr:source(patt)
-			cr:paint()
+			cr:paint_with_alpha(self.opacity)
 			cr:rgb(0, 0, 0) --release source
 		end
 	end
@@ -1199,29 +1373,53 @@ terra Shadow:path(cr: &context)
 	end
 end
 
-terra Shadow:clip_path(cr: &context)
-	if self.content then
-		return false --TODO
-	else
-		self:path(cr)
-		if not self.inset then
-			cr:fill_rule(CAIRO_FILL_RULE_EVEN_ODD)
-			var m = cr:matrix()
-			cr:identity_matrix()
-			cr:rectangle(0, 0, cr:target():width(), cr:target():height())
-			cr:matrix(&m)
+--check if the layer has a closed path inside which no pixel is transparent
+--and if it does, generate that path and return true.
+terra Layer:opaque_path(cr: &context)
+	if self:background_opaque() then
+		if self:border_opaque() then
+			self:border_path(cr, 1, 0)
+			return true
+		else
+			self:background_path(cr, 0)
 			return true
 		end
 	end
+	return false
+end
+
+--the content-shadow of a layer with an opaque background and with clipped
+--content is equivalent to the content-shadow of a layer with no content
+--so there's no point drawing the content in this case to make the shadow.
+terra Layer:content_casts_own_shadow()
+	return not (self.clip_content and self:background_opaque())
+end
+
+local terra invert_path(cr: &context)
+	cr:fill_rule(CAIRO_FILL_RULE_EVEN_ODD)
+	var m = cr:matrix()
+	cr:identity_matrix()
+	cr:rectangle(0, 0, cr:target():width(), cr:target():height())
+	cr:matrix(&m)
+end
+
+terra Shadow:clip_path(cr: &context)
+	if not (self.content or self.inset) then
+		--if the layer has an opaque path, clip the shadow by that path
+		--to speed up painting it, since that's the bulk of it.
+		if self.layer:opaque_path(cr) then
+			invert_path(cr)
+			return true
+		end
+	end
+	return false
 end
 
 terra Shadow:draw_shape(cr: &context)
 	cr:new_path()
 	self:path(cr)
 	if self.inset then
-		cr:fill_rule(CAIRO_FILL_RULE_EVEN_ODD)
-		cr:identity_matrix()
-		cr:rectangle(0, 0, cr:target():width(), cr:target():height())
+		invert_path(cr)
 	end
 	cr:operator(CAIRO_OPERATOR_SOURCE)
 	cr:rgba(0, 0, 0, 1)
@@ -1229,6 +1427,7 @@ terra Shadow:draw_shape(cr: &context)
 end
 
 terra Shadow:draw(cr: &context)
+	var content_shadow_updated = false
 	if not self.blur.valid then
 		if not self:visible() then return end
 		var bx, by, bw, bh = self:bitmap_rect()
@@ -1246,7 +1445,7 @@ terra Shadow:draw(cr: &context)
 			cr:rgba(0, 0, 0, 0)
 			cr:paint()
 			if self.content then
-				self.layer:draw_content(cr)
+				self.layer:draw_content(cr, true)
 				if self.inset then
 					sr:flush()
 					mask_bmp = src_bmp:copy()
@@ -1255,6 +1454,7 @@ terra Shadow:draw(cr: &context)
 					cr:rgba(1, 1, 1, 1)
 					cr:paint()
 				end
+				content_shadow_updated = true
 			else
 				self:draw_shape(cr)
 			end
@@ -1291,6 +1491,10 @@ terra Shadow:draw(cr: &context)
 	cr:operator(self.layer.operator)
 	cr:mask(self.surface, sx, sy)
 	cr:restore()
+
+	if content_shadow_updated then
+		self.layer:update_parent_has_content_shadow_flag(true)
+	end
 end
 
 terra Layer:draw_shadows(cr: &context, inset: bool, content: bool)
@@ -1319,22 +1523,11 @@ terra Layer:update_parent_has_content_shadow_flag(v: bool): {}
 		e:update_parent_has_content_shadow_flag(v)
 	end
 end
-terra Layer:get_has_content_shadow()
-	for _,s in self.shadows do
-		if s.content then
-			return true
-		end
-	end
-	return false
-end
-terra Shadow:content_flag_changed()
-	self.layer:update_parent_has_content_shadow_flag(self.layer.has_content_shadow)
-end
 
 terra Layer:invalidate_box_shadows()
 	for _,s in self.shadows do
 		if not s.content then
-			s:invalidate()
+			s:invalidate_blur()
 		end
 	end
 end
@@ -1342,128 +1535,173 @@ end
 terra Layer:invalidate_content_shadows()
 	for _,s in self.shadows do
 		if s.content then
-			s:invalidate()
+			s:invalidate_blur()
 		end
 	end
 end
 
-terra Layer:invalidate_parent_content_shadows()
-	if self.parent_has_content_shadow then
-		var parent = self.parent
-		while parent ~= nil do
-			parent:invalidate_content_shadows()
-			parent = parent.parent
-		end
+terra Layer:invalidate_pcs(force: bool)
+	if self.visible and (force or self.parent_has_content_shadow) then
+		repeat
+			self.parent:invalidate_content_shadows()
+			self = self.parent
+		until not self.parent_has_content_shadow
+		--all content shadows up the tree were invalidated so we can
+		--relieve children from having to check their parents again.
+		--this should speed up deserialization of large hierarchies.
+		self:update_parent_has_content_shadow_flag(false)
 	end
 end
+
+terra Layer:invalidate_parent_content_shadows      () self:invalidate_pcs(false) end
+terra Layer:invalidate_parent_content_shadows_force() self:invalidate_pcs(true) end
 
 --text drawing & hit testing -------------------------------------------------
 
-terra Layer:text_layout_changed()
+terra Layer:get_show_text()
+	return self.layout_solver.show_text
+end
+
+terra Layer:invalidate_text()
 	if not self.text.layout.min_size_valid then
-		self:layout_changed()
-	elseif self.text.layout.state == tr.STATE_ALIGNED-1 then
+		self:invalidate'parent_layout'
+	elseif not self.text.layout.align_valid then
 		self.text.layout:align()
 	end
-end
-
-terra Layer:get_caret_created()
-	return self.text.layout.cursors.len > 0
-end
-
-terra Layer:get_caret()
-	return self.text.layout.cursors(0)
-end
-
-terra Layer:get_text_selection()
-	return self.text.layout.selections(0)
-end
-
-terra Layer:get_text_selectable()
-	return self.text.selectable
-end
-
-terra Layer:set_text_selectable(v: bool)
-	if change(self.text, 'selectable', v) then
-		if self.caret_created and not v then
-			self.caret:release()
-			self.text_selection:release()
-		end
+	if not self.text.layout.pixels_valid then
+		self:invalidate'pixels content_shadows parent_content_shadows'
 	end
 end
 
 terra Layer:sync_text_shape()
 	self.text.layout:shape()
-	if not self.caret_created and self.text.selectable then
-		self.text.layout:cursor()
-		self.text.layout:selection()
-	end
 end
 
 terra Layer:sync_text_wrap()
 	self.text.layout.align_w = self.cw
 	self.text.layout:wrap()
-	self.text.layout:spaceout()
 end
+
+terra Layer.methods.set_baseline :: {&Layer, num} -> {}
 
 terra Layer:sync_text_align()
 	self.text.layout.align_h = self.ch
 	self.text.layout:align()
+	self.baseline = self.text.layout.baseline
 end
 
-terra Layer:get_baseline()
-	return iif(self.text.layout.visible, self.text.layout.baseline, self.h)
+terra Layer:get_text_laid_out()
+	return self.text.layout.align_valid
 end
 
-terra Layer:draw_text(cr: &context)
-	if not self.text.layout.visible then return end
-	var x1, y1, x2, y2 = cr:clip_extents()
-	self.text.layout:set_clip_extents(x1, y1, x2, y2)
-	self.text.layout:clip()
-	self.text.layout:paint(cr)
-end
-
-terra Layer:text_bbox()
-	if not self.text.layout.visible then
-		return num(0), num(0), num(0), num(0)
+terra Layer:draw_text(cr: &context, for_shadow: bool)
+	if self.show_text and self.text.layout.visible then
+		var x1, y1, x2, y2 = cr:clip_extents()
+		self.text.layout:set_clip_extents(x1, y1, x2, y2)
+		self.text.layout:clip()
+		self.text.layout:paint(cr, for_shadow)
 	end
-	return self.text.layout:bbox() --float->double conversion!
+end
+
+terra Layer:text_bbox(): {num, num, num, num} --for float->double conversion!
+	return iif(self.show_text, self.text.layout:bbox(), {0.0, 0.0, 0.0, 0.0})
 end
 
 terra Layer:hit_test_text(cr: &context, x: num, y: num)
-	if self.text.layout.visible then
-		var line_i, x_flag = self.text.layout:hit_test(x, y)
-		if line_i >= 0 and line_i < self.text.layout.lines.len and x_flag == 0 then
-			return HIT_TEXT
-		end
+	if self.show_text and self.text.layout.visible then
+		self.lib.hit_test_result:set(self, HIT_TEXT, x, y)
+		return true
+	else
+		return false
 	end
-	return HIT_NONE
-end
-
-terra Layer:caret_rect()
-	return self.caret:rect()
-end
-
-terra Layer:caret_visibility_rect()
-	var x, y, w, h = self:caret_rect()
-	--enlarge the caret rect to contain the line spacing.
-	var line = self.caret.p.line
-	y = y + line.ascent - line.spaced_ascent
-	h = line.spaced_ascent - line.spaced_descent
-	return x, y, w, h
 end
 
 --[[
-terra Layer:make_visible_caret()
+terra Layer:make_visible_text_cursor()
 	local segs = self.text.segments
 	local lines = segs.lines
 	local sx, sy = lines.x, lines.y
 	local cw, ch = self:client_size()
-	local x, y, w, h = self:caret_visibility_rect()
+	local x, y, w, h = self:text_cursor_visibility_rect()
 	lines.x, lines.y = box2d.scroll_to_view(x-sx, y-sy, w, h, cw, ch, sx, sy)
-	self:make_visible(self:caret_visibility_rect())
+	self:make_visible(self:text_cursor_visibility_rect())
 end
 ]]
+
+--embed geometry, drawing and invalidation -----------------------------------
+
+terra Layer:get_baseline()
+	return self._baseline
+end
+
+terra Layer:set_baseline(v: num)
+	self:change(self, '_baseline', v, 'parent_embeds')
+end
+
+terra Layer:get_ascent()
+	return -self.baseline
+end
+
+terra Layer:get_descent()
+	return -(self.h - self.baseline)
+end
+
+terra Layer:get_advance_x()
+	return self.w
+end
+
+local terra text_embed_draw(cr: &context, x: num, y: num, layout: &tr.Layout,
+	embed_index: int, embed: &tr.Embed, span: &tr.Span, for_shadow: bool
+)
+	var text = structptr(layout, Text, 'layout')
+	var self = structptr(text, Layer, 'text')
+	var layer = self.children(embed_index, nil)
+	if layer == nil then return end
+	cr:save()
+	cr:translate(x, y - layer.baseline - layer.py)
+	layer:draw(cr, for_shadow)
+	cr:restore()
+end
+
+terra Layer:get_inlayout()
+	return self.visible and self.pos_parent == nil
+end
+
+terra Layer:invalidate_embeds()
+	self.text.embeds_valid = false
+end
+
+terra Layer:invalidate_parent_embeds()
+	if self.parent ~= nil and self.parent.show_text and self.inlayout then
+		self.parent.text.embeds_valid = false
+	end
+end
+
+terra Layer:invalidate_parent_embeds_ignore_pos_parent()
+	if self.parent ~= nil and self.parent.show_text and self.visible then
+		self.parent.text.embeds_valid = false
+	end
+end
+
+terra Layer:invalidate_parent_embeds_ignore_visible()
+	if self.parent ~= nil and self.parent.show_text and self.pos_parent == nil then
+		self.parent.text.embeds_valid = false
+	end
+end
+
+terra Layer:sync_text_embeds()
+	if not self.text.embeds_valid then
+		self.text.layout.embed_count = self.children.len
+		for i,layer in self.children do
+			var layer = @layer
+			var inlayout = layer.inlayout
+			self.text.layout:set_embed_advance_x(i, iif(inlayout, layer.advance_x, 0))
+			self.text.layout:set_embed_ascent   (i, iif(inlayout, layer.ascent   , 0))
+			self.text.layout:set_embed_descent  (i, iif(inlayout, layer.descent  , 0))
+		end
+		self.text.embeds_valid = true
+	end
+end
 
 --layer bbox -----------------------------------------------------------------
 
@@ -1497,46 +1735,45 @@ terra Layer:bbox(strict: bool) --in parent's content space
 		if self:border_visible() then
 			bb:bbox(rect(self:border_rect(1, 0)))
 		end
+		inc(bb.x, self.x)
+		inc(bb.y, self.y)
 	end
-	inc(bb.x, self.x)
-	inc(bb.y, self.y)
 	return bb()
 end
 
 --children drawing & hit testing ---------------------------------------------
 
-terra Layer.methods.draw :: {&Layer, &context} -> {}
-terra Layer.methods.hit_test :: {&Layer, &context, num, num, enum} -> {&Layer, enum}
+terra Layer.methods.draw :: {&Layer, &context, bool} -> {}
+terra Layer.methods.hit_test :: {&Layer, &context, num, num, enum} -> bool
 
-terra Layer:draw_children(cr: &context) --called in own content space
+terra Layer:draw_children(cr: &context, for_shadow: bool) --called in own content space
 	for e in self do
-		e:draw(cr)
+		e:draw(cr, for_shadow)
 	end
 end
 
 terra Layer:hit_test_children(cr: &context, x: num, y: num, reason: enum) --called in content space
 	for i = self.children.len-1, -1, -1 do
-		var e, area = self.children(i):hit_test(cr, x, y, reason)
-		if area ~= HIT_NONE then
-			return e, area
+		if self.children(i):hit_test(cr, x, y, reason) then
+			return true
 		end
 	end
-	return nil, HIT_NONE
+	return false
 end
 
 --content drawing & hit testing ----------------------------------------------
 
-terra Layer:draw_content(cr: &context) --called in own content space
-	self:draw_children(cr)
-	if self.layout_solver.type < 2 then
-		self:draw_text(cr)
+terra Layer:draw_content(cr: &context, for_shadow: bool) --called in own content space
+	if self.layout_solver.show_text then
+		self:draw_text(cr, for_shadow)
+	else
+		self:draw_children(cr, for_shadow)
 	end
 end
 
 terra Layer:hit_test_content(cr: &context, x: num, y: num, reason: enum)
-	var area = self:hit_test_text(cr, x, y)
-	if area ~= HIT_NONE then
-		return self, area
+	if self:hit_test_text(cr, x, y) then
+		return true
 	else
 		return self:hit_test_children(cr, x, y, reason)
 	end
@@ -1554,7 +1791,7 @@ terra Layer:snap_matrix(m: &matrix)
 	end
 end
 
-terra Layer:draw(cr: &context) --called in parent's content space
+terra Layer:draw(cr: &context, for_shadow: bool) --called in parent's content space
 
 	if not self.visible or self.opacity <= 0 then
 		return
@@ -1567,7 +1804,7 @@ terra Layer:draw(cr: &context) --called in parent's content space
 		cr:save()
 	end
 
-	var bm = self:cr_abs_matrix(cr)
+	var bm = self:abs_matrix_from(cr:matrix())
 	var cm = bm:copy()
 	cm:translate(self.px, self.py)
 
@@ -1604,7 +1841,9 @@ terra Layer:draw(cr: &context) --called in parent's content space
 	end
 
 	cr:matrix(&cm)
-	self:draw_content(cr)
+	if not for_shadow or self:content_casts_own_shadow() then
+		self:draw_content(cr, for_shadow)
+	end
 	self:draw_inset_content_shadows(cr)
 
 	if self.clip_content then
@@ -1625,10 +1864,10 @@ terra Layer:draw(cr: &context) --called in parent's content space
 end
 
 --called in parent's content space; child interface.
-terra Layer:hit_test(cr: &context, x: num, y: num, reason: enum): {&Layer, enum}
+terra Layer:hit_test(cr: &context, x: num, y: num, reason: enum)
 
 	if not self.visible or self.opacity <= 0 then
-		return nil, HIT_NONE
+		return false
 	end
 
 	var self_allowed = self.hit_test_mask == 0
@@ -1641,10 +1880,9 @@ terra Layer:hit_test(cr: &context, x: num, y: num, reason: enum): {&Layer, enum}
 	--hit the content first if it's not clipped
 	if not self.clip_content then
 		var cx, cy = self:to_content(x, y)
-		var e, area = self:hit_test_content(cr, cx, cy, reason)
-		if e ~= nil then
+		if self:hit_test_content(cr, cx, cy, reason) then
 			cr:restore()
-			return e, area
+			return true
 		end
 	end
 
@@ -1658,14 +1896,15 @@ terra Layer:hit_test(cr: &context, x: num, y: num, reason: enum): {&Layer, enum}
 			if not cr:in_fill(x, y) then --outside border inner edge
 				cr:restore()
 				if self_allowed then
-					return self, HIT_BORDER
+					self.lib.hit_test_result:set(self, HIT_BORDER, x, y)
+					return true
 				else
-					return nil, HIT_NONE
+					return false
 				end
 			end
 		elseif self.clip_content then --outside border outer edge when clipped
 			cr:restore()
-			return nil, HIT_NONE
+			return false
 		end
 	end
 
@@ -1680,25 +1919,45 @@ terra Layer:hit_test(cr: &context, x: num, y: num, reason: enum): {&Layer, enum}
 	--hit the content if inside the clip area.
 	if self.clip_content and in_bg then
 		var cx, cy = self:to_content(x, y)
-		var e, area = self:hit_test_content(cr, cx, cy, reason)
-		if e ~= nil then
+		if self:hit_test_content(cr, cx, cy, reason) then
 			cr:restore()
-			return e, area
+			return true
 		end
 	end
 
 	--hit the background if any
 	if self_allowed and in_bg then
-		return self, HIT_BACKGROUND
+		self.lib.hit_test_result:set(self, HIT_BACKGROUND, x, y)
+		return true
 	end
 
-	return nil, HIT_NONE
+	return false
 end
 
 --layouts --------------------------------------------------------------------
 
 terra Layer:invalidate_layout()
-	self.top_layer.layout_valid = false
+	if self.visible then
+		self.top_layer.layout_valid = false
+	end
+end
+
+terra Layer:invalidate_parent_layout()
+	if self.inlayout then
+		self:invalidate_layout()
+	end
+end
+
+terra Layer:invalidate_parent_layout_ignore_pos_parent()
+	if self.visible then
+		self.top_layer.layout_valid = false
+	end
+end
+
+terra Layer:invalidate_parent_layout_ignore_visible()
+	if self.pos_parent == nil then
+		self.top_layer.layout_valid = false
+	end
 end
 
 terra Layer:invalidate_pixels()
@@ -1707,12 +1966,19 @@ terra Layer:invalidate_pixels()
 	end
 end
 
+terra Layer:invalidate_pixels_ignore_visible()
+	self.top_layer.pixels_valid = false
+end
+
 --layout plugin interface ----------------------------------------------------
 
-LAYOUT_NULL    = 0
-LAYOUT_TEXTBOX = 1
-LAYOUT_FLEXBOX = 2
-LAYOUT_GRID    = 2+1
+LAYOUT_TYPE_NULL    = 0
+LAYOUT_TYPE_TEXTBOX = 1
+LAYOUT_TYPE_FLEXBOX = 2
+LAYOUT_TYPE_GRID    = 3
+
+LAYOUT_TYPE_MIN     = 0
+LAYOUT_TYPE_MAX     = LAYOUT_TYPE_GRID
 
 terra Layer:sync_layout() self.layout_solver.sync(self) end
 terra Layer:sync_min_w(b: bool) return self.layout_solver.sync_min_w(self, b) end
@@ -1725,10 +1991,8 @@ terra Layer:sync_layout_y(b: bool) return self.layout_solver.sync_y(self, b) end
 AXIS_ORDER_XY = 1
 AXIS_ORDER_YX = 2
 
---used by layers that need to solve their layout on one axis completely
---before they can solve it on the other axis. any content-based layout with
---wrapped content is like that: can't know the height until wrapping the
---content which needs to know the width (and viceversa for vertical flow).
+--used by layout types that need to solve their layout on one axis completely
+--before they can solve it on the other axis.
 terra Layer:sync_layout_separate_axes(axis_order: enum, min_w: num, min_h: num)
 	axis_order = iif(axis_order ~= 0, axis_order, self.layout_solver.axis_order)
 	var sync_x = axis_order == AXIS_ORDER_XY
@@ -1764,10 +2028,11 @@ end
 --layouting system entry point: called on the top layer.
 --called by null-layout layers to layout themselves and their children.
 local terra null_sync(self: &Layer)
+	self:sync_layout_children() --used as text embeds.
 	self:sync_text_shape()
+	self:sync_text_embeds()
 	self:sync_text_wrap()
 	self:sync_text_align()
-	self:sync_layout_children()
 end
 
 --called by flexible layouts to know the minimum width of their children.
@@ -1795,8 +2060,9 @@ local terra null_sync_x(self: &Layer, other_axis_synced: bool)
 end
 
 local null_layout = constant(`LayoutSolver {
-	type       = LAYOUT_NULL;
+	type       = LAYOUT_TYPE_NULL;
 	axis_order = 0;
+	show_text  = true,
 	sync       = null_sync;
 	sync_min_w = null_sync_min_w;
 	sync_min_h = null_sync_min_h;
@@ -1807,21 +2073,18 @@ local null_layout = constant(`LayoutSolver {
 --textbox layout -------------------------------------------------------------
 
 local terra text_sync(self: &Layer)
+	self:sync_layout_children() --used as text embeds.
 	self:sync_text_shape()
+	self:sync_text_embeds()
 	self.cw = max(self.text.layout.min_w, self.min_cw)
 	self:sync_text_wrap()
 	self.ch = max(self.min_ch, self.text.layout.spaced_h)
 	self:sync_text_align()
-	self:sync_layout_children()
 end
 
 terra Layer:get_nowrap()
-	var nowrap: bool
-	if self.text.layout:get_nowrap(0, -1, &nowrap) then
-		return nowrap
-	else
-		return false
-	end
+	return self.text.layout:get_span_wrap(0) == tr.WRAP_NONE
+		and self.text.layout:has_wrap(0, -1)
 end
 
 local terra text_sync_min_w(self: &Layer, other_axis_synced: bool)
@@ -1869,8 +2132,9 @@ local terra text_sync_y(self: &Layer, other_axis_synced: bool)
 end
 
 local text_layout = constant(`LayoutSolver {
-	type       = LAYOUT_TEXTBOX;
+	type       = LAYOUT_TYPE_TEXTBOX;
 	axis_order = 0;
+	show_text  = true,
 	sync       = text_sync;
 	sync_min_w = text_sync_min_w;
 	sync_min_h = text_sync_min_h;
@@ -1879,10 +2143,6 @@ local text_layout = constant(`LayoutSolver {
 })
 
 --stuff common to flex & grid layouts ----------------------------------------
-
-terra Layer:get_inlayout()
-	return self.visible and self.in_layout
-end
 
 local function stretch_items_main_axis_func(items_T, GET_ITEM, T, X, W)
 
@@ -2067,7 +2327,7 @@ local function gen_funcs(X, Y, W, H)
 		var max_descent = num(-inf)
 		for i = i, j do
 			var layer = self.children(i)
-			if layer.visible then
+			if layer.inlayout then
 				var baseline = layer.baseline
 				max_ascent = max(max_ascent, baseline)
 				max_descent = max(max_descent, layer._min_h - baseline)
@@ -2094,7 +2354,7 @@ local function gen_funcs(X, Y, W, H)
 		var line_w = num(0)
 		for j = i, self.children.len do
 			var layer = self.children(j)
-			if layer.visible then
+			if layer.inlayout then
 				if j > i and layer.break_before then
 					return i, j
 				end
@@ -2181,7 +2441,7 @@ local function gen_funcs(X, Y, W, H)
 		var align = self.[ITEM_ALIGN_Y]
 		for i = i, j do
 			var layer = self.children(i)
-			if layer.visible then
+			if layer.inlayout then
 				var align = iif(layer.[ALIGN_Y] ~= 0, layer.[ALIGN_Y], align)
 				var y: num
 				var h: num
@@ -2361,8 +2621,9 @@ local terra flex_sync(self: &Layer)
 end
 
 local flex_layout = constant(`LayoutSolver {
-	type       = LAYOUT_FLEXBOX;
+	type       = LAYOUT_TYPE_FLEXBOX;
 	axis_order = AXIS_ORDER_XY;
+	show_text  = false;
 	sync       = flex_sync;
 	sync_min_w = flex_sync_min_w;
 	sync_min_h = flex_sync_min_h;
@@ -2512,7 +2773,7 @@ terra Layer:sync_layout_grid_autopos()
 	var missing_indices = false
 	var negative_indices = false
 	for layer in self do
-		if layer.visible then
+		if layer.inlayout then
 			var row = layer.grid_row
 			var col = layer.grid_col
 			var row_span = max(1, layer.grid_row_span)
@@ -2559,7 +2820,7 @@ terra Layer:sync_layout_grid_autopos()
 	--the grid bounds, but instead are clipped to it.
 	if negative_indices then
 		for layer in self do
-			if layer.visible then
+			if layer.inlayout then
 				var row = layer._grid_row
 				var col = layer._grid_col
 				if row < 0 or col < 0 then
@@ -2591,7 +2852,7 @@ terra Layer:sync_layout_grid_autopos()
 	if missing_indices then
 		var row, col = 1, 1
 		for layer in self do
-			if layer.visible and layer._grid_row == 0 then
+			if layer.inlayout and layer._grid_row == 0 then
 				var row_span = layer._grid_row_span
 				var col_span = layer._grid_col_span
 
@@ -2643,7 +2904,7 @@ terra Layer:sync_layout_grid_autopos()
 	--reverse the order of rows and/or columns depending on grid_flow.
 	if flip_rows or flip_cols then
 		for layer in self do
-			if layer.visible then
+			if layer.inlayout then
 				if flip_rows then
 					layer._grid_row = max_row
 						- layer._grid_row
@@ -2723,7 +2984,6 @@ local function gen_funcs(X, Y, W, H, COL)
 
 		for col = 0, max_col do
 			cols:set(col, GridLayoutCol{
-				inlayout = true,
 				fr = frs(col, 1),
 				_min_w = 0,
 				x = 0,
@@ -2864,8 +3124,9 @@ local terra grid_sync(self: &Layer)
 end
 
 local grid_layout = constant(`LayoutSolver {
-	type       = LAYOUT_GRID;
+	type       = LAYOUT_TYPE_GRID;
 	axis_order = AXIS_ORDER_XY;
+	show_text  = false;
 	sync       = grid_sync;
 	sync_min_w = grid_sync_min_w;
 	sync_min_h = grid_sync_min_h;
@@ -2875,7 +3136,7 @@ local grid_layout = constant(`LayoutSolver {
 
 --layout plugin vtable -------------------------------------------------------
 
---NOTE: layouts must be added in the order of LAYOUT_* constants.
+--NOTE: layouts must be added in the order of LAYOUT_TYPE_* constants.
 local layouts = constant(`arrayof(LayoutSolver,
 	null_layout,
 	text_layout,
@@ -2893,38 +3154,12 @@ terra Layer:init_layout()
 	self.layout_solver = &null_layout
 end
 
---invalidation ---------------------------------------------------------------
-
-terra Layer:size_changed()
-	self:invalidate_box_shadows()
-end
-
-terra Layer:border_shape_changed()
-	self:invalidate_box_shadows()
-end
-
-terra Layer:background_changed()
-	self:invalidate_background()
-end
-
-terra Layer:content_shape_changed()
-	self:invalidate_parent_content_shadows()
-end
-
-terra Layer:layout_changed()
-	self:invalidate_layout()
-end
-
-terra Layer:pixels_changed()
-	self:invalidate_pixels()
-end
-
 --lib ------------------------------------------------------------------------
 
-terra Lib:init(load_font: FontLoadFunc, unload_font: FontLoadFunc)
+terra Lib:init(load_font: FontLoadFunc, unload_font: FontUnloadFunc)
 	self.text_renderer:init(load_font, unload_font)
+	self.text_renderer.embed_draw_function = text_embed_draw
 	self.grid_occupied:init()
-	self.default_layout_solver = &null_layout
 	self.default_shadow:init(nil)
 end
 
@@ -2933,13 +3168,7 @@ terra Lib:free()
 	self.grid_occupied:free()
 end
 
---debugging stuff
-
-terra Lib:dump_stats()
-	pfn('Glyph cache size     : %d', self.text_renderer.glyphs.size)
-	pfn('Glyph cache count    : %d', self.text_renderer.glyphs.count)
-	pfn('GlyphRun cache size  : %d', self.text_renderer.glyph_runs.size)
-	pfn('GlyphRun cache count : %d', self.text_renderer.glyph_runs.count)
-end
+--inlining invalidation one-liners just in case the compiler won't.
+setinlined(Layer.methods, function(s) return (s:find'^invalidate_') end)
 
 return _M

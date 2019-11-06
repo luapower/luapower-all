@@ -22,9 +22,6 @@
 	a:free()                                    free the elements and free the array
 	a:setcapacity(n) -> ok?                     `a.capacity = n` with error checking
 
-	var a = A(rawstring|'string constant')      cast from C string
-	a:fromrawstring(rawstring)                  init with C string
-
 	a.view                                      (read/only) arr's arrayview
 	a.elements                                  (read/only) array elements
 	a.len                                       (read/write) array length
@@ -43,7 +40,7 @@
 	a:push|add() -> &t                          a:insert(self.len)
 	a:push|add(t) -> i                          a:insert(self.len, t)
 	a:push|add(&t,n) -> i                       a:insert(self.len, &t, n)
-	a:push|add(&v) -> i                         a:insert(self.len, &v)
+	a:push|add(v) -> i                          a:insert(self.len, &v)
 	a:push|add(&a) -> i                         a:insert(self.len, &a)
 	a:pop() -> t                                remove top value and return a copy
 
@@ -52,11 +49,11 @@
 	a:insert(i) -> &t                           make room at i and return address
 	a:insert(i,t)                               insert element at i
 	a:insert(i,&t,n)                            insert buffer at i
-	a:insert(i,&v)                              insert arrayview at i
+	a:insert(i,v)                               insert arrayview at i
 	a:insert(i,&a)                              insert dynarray at i
-	a:remove() -> i                             free & remove top element
-	a:remove(i,[n])                             free & remove n elements starting at i
-	a:remove(&t) -> i                           free & remove element at address
+	a:remove|leak() -> i                        (free and) remove top element
+	a:remove|leak(i[,n]) -> n                   (free and) remove n elements starting at i
+	a:remove|leak(&t) -> i                      (free and) remove element at address
 
 	a:copy() -> &a                              copy to new array
 	a:move(i0,i1)                               move element to new position
@@ -88,9 +85,8 @@ local arr_type = memoize(function(T, size_t, context_t, cmp, own_elements)
 
 	function arr.metamethods.__cast(from, to, exp)
 		if to == arr then
-			if T == int8 and from == rawstring then
-				return quote var a = arr(nil); a:fromrawstring(exp) in a end
-			elseif from == niltype then
+			if from == niltype then
+				arr:getmethod'' --force creation of methods
 				return arr.empty
 			elseif from == view then
 				return quote var a = arr(nil); a:add(v) in a end
@@ -117,28 +113,41 @@ local arr_type = memoize(function(T, size_t, context_t, cmp, own_elements)
 
 	addmethods(arr, function()
 
-		own_elements = own_elements and cancall(T, 'free')
+		local has_free = cancall(T, 'free')
+		own_elements = own_elements and has_free
 
 		if context_t ~= tuple() then
 			terra arr:init(context: context_t)
 				@self = [arr.empty]
 				self.context = context
 			end
-			terra arr:free_element(i: size_t)
-				call(self.elements[i], 'free', 1, self.context)
+			if not cancall(arr, 'free_element') then
+				if has_free then
+					terra arr:free_element(e: &T)
+						call(@e, 'free', 1, self.context)
+					end
+				else
+					arr.methods.free_element = noop
+				end
 			end
 		else
 			terra arr:init()
 				@self = [arr.empty]
 			end
-			terra arr:free_element(i: size_t)
-				call(self.elements[i], 'free')
+			if not cancall(arr, 'free_element') then
+				if has_free then
+					terra arr:free_element(e: &T)
+						call(@e, 'free')
+					end
+				else
+					arr.methods.free_element = noop
+				end
 			end
 		end
 
 		terra arr:free_elements()
 			for i = 0, self.len do
-				self:free_element(i)
+				self:free_element(self:at(i))
 			end
 		end
 
@@ -148,8 +157,7 @@ local arr_type = memoize(function(T, size_t, context_t, cmp, own_elements)
 			if own_elements then
 				self:free_elements()
 			end
-			realloc(self.view.elements, 0)
-			self.view.elements = nil
+			dealloc(self.view.elements)
 			self.view.len = 0
 			self._capacity = 0
 		end
@@ -168,21 +176,21 @@ local arr_type = memoize(function(T, size_t, context_t, cmp, own_elements)
 		end
 
 		terra arr:set_capacity(capacity: size_t)
-			assert(self:setcapacity(max(self.len, capacity)))
+			assert(self:setcapacity(max(self.len, capacity)), 'out of memory')
 		end
 
 		terra arr:set_min_capacity(capacity: size_t)
 			capacity = nextpow2(capacity)
-			assert(self:setcapacity(max(self.capacity, capacity)))
+			assert(self:setcapacity(max(self.capacity, capacity)), 'out of memory')
 		end
 
 		terra arr:set_len(len: size_t)
-			assert(len >= 0)
+			len = max(0, len)
 			self.min_capacity = len
 			if own_elements then
 				if len < self.len then --shrink
 					for i = len, self.len do
-						self:free_element(i)
+						self:free_element(self:at(i))
 					end
 				end
 			end
@@ -196,8 +204,7 @@ local arr_type = memoize(function(T, size_t, context_t, cmp, own_elements)
 			return self.view:sub(len0)
 		end)
 		arr.methods.setlen:adddefinition(terra(self: &arr, len: size_t, empty_val: T)
-			var new_elems = self:setlen(len)
-			for _,e in new_elems do
+			for _,e in self:setlen(len) do
 				@e = empty_val
 			end
 		end)
@@ -206,22 +213,13 @@ local arr_type = memoize(function(T, size_t, context_t, cmp, own_elements)
 			self.len = max(len, self.len)
 		end
 
-		if view:getmethod'onrawstring' then
-			terra arr:fromrawstring(s: rawstring)
-				var v = view(s)
-				self.len = v.len
-				v:copy(self.elements)
-				return self
-			end
-		end
-
 		--setting, pushing and popping elements
 
 		arr.methods.set = overload'set'
 		arr.methods.set:adddefinition(terra(self: &arr, i: size_t)
-			assert(i >= 0 and i < self.len)
+			self:index(i)
 			if own_elements then
-				self:free_element(i)
+				self:free_element(self:at(i))
 			end
 			return &self.elements[i]
 		end)
@@ -235,7 +233,7 @@ local arr_type = memoize(function(T, size_t, context_t, cmp, own_elements)
 			if i >= self.len then --fill the gap
 				var j = self.len
 				self.len = i+1
-				for j = j, i do
+				for j = j, self.len do
 					self.elements[j] = empty_val
 				end
 				var e = &self.elements[i]
@@ -249,6 +247,7 @@ local arr_type = memoize(function(T, size_t, context_t, cmp, own_elements)
 		--TODO: find a better name for this pattern
 		arr.methods.getat = overload'getat'
 		arr.methods.getat:adddefinition(terra(self: &arr, i: size_t)
+			assert(i >= 0)
 			var new_elems = self:setlen(max(self.len, i+1))
 			return &self.elements[i], new_elems
 		end)
@@ -257,7 +256,7 @@ local arr_type = memoize(function(T, size_t, context_t, cmp, own_elements)
 			for _,e in new_elems do
 				@e = empty_val
 			end
-			return &self.elements[i]
+			return elem
 		end)
 
 		arr.methods.push = overload'push'
@@ -276,7 +275,7 @@ local arr_type = memoize(function(T, size_t, context_t, cmp, own_elements)
 
 		terra arr:pop()
 			var i = self.len-1
-			assert(i >= 0)
+			assert(i >= 0, 'pop: array empty')
 			var val = self.elements[i]
 			self.view.len = i
 			return val
@@ -288,8 +287,8 @@ local arr_type = memoize(function(T, size_t, context_t, cmp, own_elements)
 		arr.methods.insertn = overload'insertn'
 		arr.methods.insertn:adddefinition(terra(self: &arr, i: size_t, n: size_t)
 			var len = self.len
-			assert(i >= 0 and i <= len) --no gaps allowed
-			assert(n >= 0)
+			assert(i >= 0 and i <= len, 'index out of range') --no gaps allowed
+			if n <= 0 then return end
 			self.len = len + n
 			var move_n = len - i
 			if move_n > 0 then --move trailing elements if any
@@ -298,7 +297,7 @@ local arr_type = memoize(function(T, size_t, context_t, cmp, own_elements)
 		end)
 		arr.methods.insertn:adddefinition(terra(self: &arr, i: size_t, n: size_t, empty_val: T)
 			assert(i >= 0)
-			assert(n >= 0)
+			if n <= 0 then return end
 			var len = self.len
 			self.len = len + n
 			for i = len, i do --fill the gap, if any
@@ -319,11 +318,15 @@ local arr_type = memoize(function(T, size_t, context_t, cmp, own_elements)
 			self:insertn(i, 1)
 			self.elements[i] = val
 		end)
+		arr.methods.insert:adddefinition(terra(self: &arr, i: size_t, val: T, empty_val: T)
+			self:insertn(i, 1, empty_val)
+			self.elements[i] = val
+		end)
 		arr.methods.insert:adddefinition(terra(self: &arr, i: size_t, p: &T, n: size_t)
 			self:insertn(i, n)
 			copy(self.elements + i, p, n)
 		end)
-		arr.methods.insert:adddefinition(terra(self: &arr, i: size_t, v: &view)
+		arr.methods.insert:adddefinition(terra(self: &arr, i: size_t, v: view)
 			self:insertn(i, v.len)
 			v:copy(self.elements + i)
 		end)
@@ -335,30 +338,48 @@ local arr_type = memoize(function(T, size_t, context_t, cmp, own_elements)
 		arr.methods.add:adddefinition(terra(self: &arr, p: &T, n: size_t)
 			var i = self.len; self:insert(i, p, n); return i
 		end)
-		arr.methods.add:adddefinition(terra(self: &arr, v: &view)
+		arr.methods.add:adddefinition(terra(self: &arr, v: view)
 			var i = self.len; self:insert(i, v); return i
 		end)
 		arr.methods.add:adddefinition(terra(self: &arr, a: &arr)
 			var i = self.len; self:insert(i, a); return i
 		end)
 
+		arr.methods.leak = overload'leak'
+		arr.methods.leak:adddefinition(terra(self: &arr, i: size_t, n: size_t)
+			assert(i >= 0)
+			if n <= 0 then return 0 end
+			var move_n = self.len - i - n --how many elements must be moved
+			if move_n > 0 then
+				copy(self:at(i), self:at(i + n), move_n)
+			end
+			var n = min(n, self.len - i)
+			self.view.len = self.len - n
+			return n
+		end)
+		arr.methods.leak:adddefinition(terra(self: &arr, i: size_t)
+			return self:leak(i, 1)
+		end)
+		arr.methods.leak:adddefinition(terra(self: &arr)
+			var i = self.len-1; self:leak(i, 1); return i
+		end)
+		arr.methods.leak:adddefinition(terra(self: &arr, e: &T)
+			var i = self.view:index(e); self:leak(i); return i
+		end)
+
 		arr.methods.remove = overload'remove'
 		arr.methods.remove:adddefinition(terra(self: &arr, i: size_t, n: size_t)
 			assert(i >= 0)
-			assert(n >= 0)
+			if n <= 0 then return 0 end
 			if own_elements then
 				for i = i, min(self.len, i+n) do
-					self:free_element(i)
+					self:free_element(self:at(i))
 				end
 			end
-			var move_n = self.len - i - n --how many elements must be moved
-			if move_n > 0 then
-				copy(self.elements + i, self.elements + i + n, move_n)
-			end
-			self.view.len = self.len - min(n, self.len-i)
+			return self:leak(i, n)
 		end)
 		arr.methods.remove:adddefinition(terra(self: &arr, i: size_t)
-			self:remove(i, 1)
+			return self:remove(i, 1)
 		end)
 		arr.methods.remove:adddefinition(terra(self: &arr)
 			var i = self.len-1; self:remove(i, 1); return i
@@ -371,12 +392,12 @@ local arr_type = memoize(function(T, size_t, context_t, cmp, own_elements)
 		arr.methods.copy:adddefinition(terra(self: &arr, dst: &T)
 			return self.view:copy(dst)
 		end)
-		arr.methods.copy:adddefinition(terra(self: &arr, dst: &view)
+		arr.methods.copy:adddefinition(terra(self: &arr, dst: view)
 			return self.view:copy(dst)
 		end)
 		arr.methods.copy:adddefinition(terra(self: &arr)
 			var a = arr(nil)
-			a:add(&self.view)
+			a:add(self.view)
 			return a
 		end)
 
@@ -390,9 +411,9 @@ local arr_type = memoize(function(T, size_t, context_t, cmp, own_elements)
 					copy(self.elements + i0, self.elements + i0 + 1, move_n)
 					self.elements[i1] = e0
 				else --move in-between elements to the right
-					var e1 = self.elements[i1]
-					copy(self.elements + i0 + 1, self.elements + i0, move_n)
-					self.elements[i0] = e1
+					var e0 = self.elements[i0]
+					copy(self.elements + i1 + 1, self.elements + i1, move_n)
+					self.elements[i1] = e0
 				end
 			end
 		end
@@ -414,7 +435,7 @@ local arr_type = memoize(function(T, size_t, context_t, cmp, own_elements)
 			end
 			arr.metamethods.__eq = arr.methods.__eq
 			arr.metamethods.__ne = macro(function(self, other)
-				return not (self == other)
+				return `not (self == other)
 			end)
 		end
 
@@ -451,6 +472,9 @@ local arr_type = function(T, size_t)
 	size_t = size_t or int
 	context_t = context_t or tuple()
 	cmp = cmp or getmethod(T, '__cmp')
+	if own_elements then
+		assert(cancall(T, 'free'), 'own_elements specified but ', T, ' has no free method')
+	end
 	own_elements = own_elements ~= false
 	return arr_type(T, size_t, context_t, cmp, own_elements)
 end

@@ -14,23 +14,25 @@
 	var v = V{elements,len}                     field order is part of the API
 	var v = V{elements=,len=}                   fields are part of the API
 
-	var s = V(rawstring|'string constant')      cast from C string
-	v:onrawstring(rawstring) -> &v              init with C string
 	v.elements, v.len                           fields are part of the API
 
+	v:clamp(i) -> i                             clamp i to valid index
 	v:index(i[,default]) -> i|default           valid positive index
 	v(i[,default]) -> t|default                 get element at index
 	v:at(i[,default]) -> &t|default             get element address at index
 	v:set(i,t)                                  set element at index
-	for i,&t in v[:backwards()] do ... end      iterate elements
+	for i,&t in v do ... end                    iterate elements
+	for i,&t in v:ipairs([forward],[step]) do.. iterate elements with iterator
+	for i,&t in v:backwards([step]) do..        iterate elements backwards
 
 	v:range(i,j) -> start,len                   v:range(5, 5) -> 5, 0
 	v:sub(i,j) -> v                             create a sub-view
 	v:copy(&t) -> &t                            copy to buffer
-	v:copy(&v) -> &v                            copy to view
+	v:copy(v) -> v                              copy to view
+	v:fill(t)                                   set all elements to value
 
+	v1 == v2                                    equality test
 	v:__cmp(&v) -> -1,0,1                       comparison function
-	v:__eq(&v) -> equal?                        equality function
 	v:__hash32(seed) -> h                       32bit hash function
 	v:__hash64(seed) -> h                       64bit hash function
 
@@ -39,7 +41,7 @@
 	cmp = {&T, &T} -> int32                     type of element comparison function
 	v:sort([cmp])                               sort elements
 	v:sort_desc()                               sort descending
-	v:find(t[,default]) -> i|-1                 find element
+	v:find(t[,default]) -> i                    find element
 	v:count(t) -> n                             element occurences
 	v:binsearch(t, [cmp]) -> i                  binsearch (sort the view first!)
 	v:binsearch(t, v.lt|v.lte|v.gt|v.gte) -> i  binsearch with built-in cmp
@@ -48,8 +50,8 @@
 	v:call(method, args...)                     call method on each element
 
 	v:index(&t[,default]) -> i|default          element index by address
-	v:next(&t,[default]) -> &t|default          next element
-	v:prev(&t,[default]) -> &t|default          previous element
+	v:next(&t,[&default]) -> &t|&default        next element
+	v:prev(&t,[&default]) -> &t|&default        previous element
 
 ]]
 
@@ -57,7 +59,9 @@ if not ... then require'terra/arrayview_test'; return end
 
 setfenv(1, require'terra/low')
 
-local either = macro(function(v, a, b) return `v == a or v == b end)
+local either = macro(function(v, a, b)
+	return quote var v = v in v == a or v == b end
+end)
 
 local function view_type(T, size_t, cmp)
 
@@ -72,16 +76,10 @@ local function view_type(T, size_t, cmp)
 	view.T = T
 	view.empty = `view{elements = nil, len = 0}
 
-	function view.metamethods.__cast(from, to, exp)
-		if to == view then
-			if from == niltype then
-				return view.empty
-			elseif T == int8 and from == rawstring then
-				return quote var v = view(nil); v:onrawstring(exp) in v end
-			end
-		end
-		assert(false, 'invalid cast from ', from, ' to ', to, ': ', exp)
-	end
+	newcast(view, niltype, function(exp)
+		view:getmethod'' --force creation of methods
+		return view.empty
+	end)
 
 	--debugging
 
@@ -106,42 +104,53 @@ local function view_type(T, size_t, cmp)
 
 	view.metamethods.__for = function(self, body)
 		return quote
+			var self = self --workaround for terra issue #368
 			for i = 0, self.len do
 				[ body(i, `&self.elements[i]) ]
 			end
 		end
 	end
 
-	local struct backwards_iter { view: &view; }
-	backwards_iter.metamethods.__for = function(self, body)
+	local struct iter { view: view; forward: bool; step: size_t; }
+	iter.metamethods.__for = function(self, body)
 		return quote
-			for i = self.view.len-1, -1, -1 do
-				[ body(i, `&self.view.elements[i]) ]
+			var self = self --workaround for terra issue #368
+			if self.forward then
+				for i = 0, self.view.len, self.step do
+					[ body(i, `&self.view.elements[i]) ]
+				end
+			else
+				for i = self.view.len-1, -1, -self.step do
+					[ body(i, `&self.view.elements[i]) ]
+				end
 			end
 		end
 	end
+	view.methods.ipairs = macro(function(self, forward, step)
+		forward = forward or true
+		step = step or 1
+		return `iter {self, forward, step}
+	end)
+
+	view.methods.backwards = macro(function(self, step)
+		step = step or 1
+		return `iter {self, false, step}
+	end)
 
 	addmethods(view, function()
 
-		--storage
-
-		--initialize with a null-terminated string
-		if &T == rawstring then
-			terra view:onrawstring(s: rawstring)
-				self.len = strnlen(s, [size_t:max()]-1)
-				self.elements = s
-				return self
-			end
-		end
-
 		--bounds-checked access
+
+		terra view:clamp(i: size_t)
+			return clamp(i, 0, self.len-1)
+		end
 
 		view.methods.index = overload'index'
 		view.methods.index:adddefinition(terra(self: &view, i: size_t, default: size_t)
 			return iif(i >= 0 and i < self.len, i, default)
 		end)
 		view.methods.index:adddefinition(terra(self: &view, i: size_t)
-			assert(i >= 0 and i < self.len)
+			assert(i >= 0 and i < self.len, 'index out of range')
 			return i
 		end)
 
@@ -167,9 +176,19 @@ local function view_type(T, size_t, cmp)
 			self.elements[self:index(i)] = val
 		end
 
-		--iteration
+		view.methods.get_first = macro(function(self) --returns a lvalue
+			return quote
+				assert(self.len > 0, 'first: array empty')
+				in self.elements[0]
+			end
+		end)
 
-		terra view:backwards() return backwards_iter {self} end
+		view.methods.get_last = macro(function(self) --returns a lvalue
+			return quote
+				assert(self.len > 0, 'last: array empty')
+				in self.elements[self.len-1]
+			end
+		end)
 
 		--sub-views
 
@@ -199,10 +218,16 @@ local function view_type(T, size_t, cmp)
 			copy(dst, self.elements, self.len)
 			return dst
 		end)
-		view.methods.copy:adddefinition(terra(self: &view, dst: &view)
+		view.methods.copy:adddefinition(terra(self: &view, dst: view)
 			copy(dst.elements, self.elements, min(dst.len, self.len))
 			return dst
 		end)
+
+		terra view:fill(v: T)
+			for i,e in self do
+				@e = v
+			end
+		end
 
 		--comparing views for inequality
 
@@ -270,9 +295,10 @@ local function view_type(T, size_t, cmp)
 
 		--make `==` and `~=` operators work too.
 		view.metamethods.__eq = view.methods.__eq
+
 		if view.metamethods.__eq then
 			view.metamethods.__ne = macro(function(self, other)
-				return not (self == other)
+				return `not (self == other)
 			end)
 		end
 
@@ -369,6 +395,7 @@ local function view_type(T, size_t, cmp)
 			view.properties.ge = ge
 		end
 
+		--binary search for the first insert position that keeps the array sorted.
 		view.methods.binsearch = overload'binsearch'
 		view.methods.binsearch:adddefinition(
 		terra(self: &view, v: T, cmp: {&T, &T} -> bool): size_t
@@ -429,7 +456,7 @@ local function view_type(T, size_t, cmp)
 		end)
 		view.methods.next:adddefinition(terra(self: &view, pv: &T)
 			var i = pv - self.elements
-			assert(i >= 0 and i < self.len-1)
+			assert(i >= 0 and i < self.len-1, 'next: eoa')
 			return self.elements + i + 1
 		end)
 
@@ -440,7 +467,7 @@ local function view_type(T, size_t, cmp)
 		end)
 		view.methods.prev:adddefinition(terra(self: &view, pv: &T)
 			var i = pv - self.elements
-			assert(i > 0 and i < self.len)
+			assert(i > 0 and i < self.len, 'prev: boa')
 			return self.elements + i - 1
 		end)
 

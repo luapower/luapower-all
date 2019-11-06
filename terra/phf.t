@@ -65,7 +65,7 @@ local function phf_fp(t, ktype, vtype, invalid_value, thash)
 	--we enable the strength reduction compiler optimization that transforms
 	--the 10x slower modulo into bit shifting. NOTE: this only works when
 	--dividing an unsigned type by a literal!
-	n = 2^nextpow2(n)
+	n = nextpow2(n)
 
 	local G = terralib.new(int32[n]) --{slot -> d|-d-1}
 	local V = terralib.new(vtype[n], invalid_value) --{d|-d-1 -> val}

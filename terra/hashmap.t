@@ -83,7 +83,7 @@ local fsize = macro(function(m) return `iif(m < 16, 1, m >> 4) end)
 local UPPER = 0.77
 
 local realloc = macro(function(p, len)
-	return `_M.realloc(p, len, 'khash')
+	return `_M.realloc(p, len, 'hashmap')
 end)
 
 local map_type = memoize(function(
@@ -157,8 +157,10 @@ local map_type = memoize(function(
 	end)
 
 	function map.metamethods.__for(h, body)
+		if h:islvalue() then h = `&h end
 		if is_map then
 			return quote
+				var h = h --workaround for terra issue #368
 				for i = 0, h.n_buckets do
 					if h:has_at_index(i) then
 						[ body(`&h.keys[i], `&h.vals[i]) ]
@@ -167,6 +169,7 @@ local map_type = memoize(function(
 			end
 		else
 			return quote
+				var h = h --workaround for terra issue #368
 				for i = 0, h.n_buckets do
 					if h:has_at_index(i) then
 						[ body(`&h.keys[i]) ]
@@ -214,7 +217,7 @@ local map_type = memoize(function(
 
 		terra map.methods.clear(h: &map)
 			if h.flags == nil then return end
-			fill(h.flags, 0xaa, fsize(h.n_buckets))
+			fill(h.flags, fsize(h.n_buckets), 0xaa)
 			h.count = 0
 			h.n_occupied = 0
 		end
@@ -266,7 +269,7 @@ local map_type = memoize(function(
 				if new_flags == nil then
 					return false
 				end
-				fill(new_flags, 0xaa, fsize(new_n_buckets))
+				fill(new_flags, fsize(new_n_buckets), 0xaa)
 				if h.n_buckets < new_n_buckets then -- expand
 					var new_keys = realloc(h.keys, new_n_buckets)
 					if new_keys == nil then
@@ -413,12 +416,12 @@ local map_type = memoize(function(
 			return false
 		end
 
-		map.methods.has_at_index = macro(function(h, i)
-			return `i >= 0 and i < h.n_buckets and not iseither(h.flags, i)
-		end)
-		map.methods.key_at_index = macro(function(h, i) return `@deref(h, &h.keys[i]) end)
-		map.methods.val_at_index = macro(function(h, i) return `h.vals[i] end)
-		map.methods.noderef_key_at_index = macro(function(h, i) return `h.keys[i] end)
+		map.methods.has_at_index = terra(h: &map, i: size_t)
+			return i >= 0 and i < h.n_buckets and not iseither(h.flags, i)
+		end
+		map.methods.key_at_index = terra(h: &map, i: size_t) return @deref(h, &h.keys[i]) end
+		map.methods.val_at_index = terra(h: &map, i: size_t) return h.vals[i] end
+		map.methods.noderef_key_at_index = terra(h: &map, i: size_t) return h.keys[i] end
 
 		--returns -1 on eof, which is also the start index which can be omitted.
 		map.methods.next_index = macro(function(h, i)
@@ -586,7 +589,7 @@ keytype[int64] = {
 }
 keytype[uint64] = keytype[int64]
 
-local pass_through = macro(function(self, k) return k end)
+local deref_pass = macro(function(self, k) return k end)
 
 local map_type = function(key_t, val_t, size_t)
 	local hash, equal, deref, deref_key_t, state_t, context_t, own_keys, own_vals
@@ -594,15 +597,17 @@ local map_type = function(key_t, val_t, size_t)
 		local t = key_t
 		key_t, val_t, size_t = t.key_t, t.val_t, t.size_t
 		hash, equal, deref, deref_key_t, state_t, context_t, own_keys, own_vals =
-			t.hash, t.equal, t.deref, t.deref_key_t, t.state_t, t.context_t, t.own_keys, t.own_vals
+			t.hash, t.equal, t.deref, t.deref_key_t, t.state_t, t.context_t, t.own_keys, t.own_values
 	end
 	assert(key_t, 'key type missing')
 	val_t = val_t or tuple()
-	deref = deref or pass_through
+	deref = deref or deref_pass
 	deref_key_t = deref_key_t or key_t
 	size_t = size_t or int --it's faster to use 64bit hashes for 64bit keys
 	state_t = state_t or tuple()
 	context_t = context_t or tuple()
+	if own_keys then assert(cancall(T, 'free'), 'own_keys specified but ', T, ' has no free method') end
+	if own_vals then assert(cancall(T, 'free'), 'own_values specified but ', T, ' has no free method') end
 	own_keys = own_keys ~= false
 	own_vals = own_vals ~= false
 	return map_type(

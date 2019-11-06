@@ -12,7 +12,7 @@ A complete, lightweight ffi binding of the mysql client library.
 
 -------------------------------------------------------------------------------- --------------------------------------------------------------------------------
 **[Initialization]**
-`mysql.config(['mysql'|'mariadb'|libname|clib]) -> mysql`
+`mysql.bind(['mysql'|'mariadb'|libname|clib]) -> mysql`
 **[Connections]**
 `mysql.connect(host, [user], [pass], [db], [charset], [port]) -> conn`           connect to a mysql server
 `mysql.connect(options_t) -> conn`                                               connect to a mysql server

@@ -50,10 +50,11 @@ local list_type = memoize(function(T, size_t, context_t, own_elements)
 		prev: size_t;
 	}
 
-	local links_arr   = arr{T = link, size_t = size_t,
-									context_t = context_t,
-									own_elements = false,
-									}
+	local links_arr = arr{
+		T = link, size_t = size_t,
+		context_t = context_t,
+		own_elements = false,
+	}
 	local indices_arr = arr{T = size_t, size_t = size_t}
 
 	local struct list (gettersandsetters) {
@@ -79,6 +80,13 @@ local list_type = memoize(function(T, size_t, context_t, own_elements)
 	newcast(list, niltype, list.empty)
 
 	addmethods(list, function()
+
+		if cancall(list, 'free_element') then
+			terra links_arr:free_element(e: &link)
+				var list = structptr(self, list, 'links')
+				list:free_element(&e.item)
+			end
+		end
 
 		if context_t then
 			terra list:init(context: context_t)
@@ -121,7 +129,9 @@ local list_type = memoize(function(T, size_t, context_t, own_elements)
 		end
 
 		list.metamethods.__for = function(self, body)
+			if self:islvalue() then self = `&self end
 			return quote
+				var self = self --workaround for terra issue #368
 				var i = self.first
 				while i ~= -1 do
 					var e = self.links:at(i)
@@ -134,7 +144,9 @@ local list_type = memoize(function(T, size_t, context_t, own_elements)
 
 		local struct backwards {list: &list}
 		backwards.metamethods.__for = function(self, body)
+			if self:islvalue() then self = `&self end
 			return quote
+				var self = self --workaround for terra issue #368
 				var i = self.list.last
 				while i ~= -1 do
 					var e = self.list.links:at(i)
@@ -194,7 +206,7 @@ local list_type = memoize(function(T, size_t, context_t, own_elements)
 
 		terra	list:_freelink(i: size_t)
 			if own_elements then
-				self.links:free_element(i)
+				self.links:free_element(self.links:at(i))
 			end
 			self.count = self.count - 1
 			self.free_indices:push(i)
@@ -299,6 +311,9 @@ local list_type = function(T, size_t)
 			T.T, T.size_t, T.context_t, T.own_elements
 	end
 	assert(T)
+	if own_elements then
+		assert(cancall(T, 'free'), 'own_elements specified but ', T, ' has no free method')
+	end
 	return list_type(T, size_t or int, context_t or nil, own_elements ~= false)
 end
 

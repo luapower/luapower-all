@@ -45,6 +45,10 @@ end
 test_print()
 
 local terra test_nextpow2()
+	assert(nextpow2(0) == 0)
+	assert(nextpow2(1) == 1)
+	assert(nextpow2(2) == 2)
+	assert(nextpow2(5) == 8)
 	assert(nextpow2([uint64]([int32:max()]/2+2)) - [int32:max()] == 1)
 	assert(nextpow2([uint64]([int64:max()]/2+2)) - [int64:max()] == 1)
 end
@@ -86,52 +90,3 @@ local terra test_clock()
 	print('clock accuracy', clock() - clock())
 end
 test_clock()
-
-local function test_publish()
-	local public = publish'publish_test'
-
-	local anon = struct {
-		c: rawstring;
-		d: float;
-	};
-	anon.metamethods.__typename_ffi = function() return 'ANON' end
-	public(anon)
-	struct S (public) {
-		x: int;
-		union {
-			a: &&&S;
-			union {
-				b: &opaque;
-				s1: anon;
-				s2: anon;
-			};
-		};
-		y: double;
-	}
-	gettersandsetters(S)
-
-	terra f(x: anon): S end; public(f)
-	terra g(x: &opaque, s: rawstring, b: bool) end; public(g)
-
-	local bool2 = tuple(bool, bool)
-	terra S:f(x: {int, int}, y: {int8, int8, bool2}): {num, num, bool}
-		return
-			x._0 + x._1,
-			y._0 + y._1,
-			y._2._0 and y._2._1
-	end
-	local whoa = {bool, int} -> {bool2, int, S}
-	terra S:g(z: whoa): S end
-
-	public:build()
-
-	--print(public:bindingcode())
-
-	local p = require'publish_test_h'
-	local s = ffi.new'S'
-	local r = s:f({3, 4}, {5, 6, {true, true}})
-	assert(r._0 == 7)
-	assert(r._1 == 11)
-	assert(r._2 == true)
-end
-test_publish()

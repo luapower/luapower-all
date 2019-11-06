@@ -94,7 +94,7 @@ local function view_type(size_t)
 			var v = iif(val, 0xff, 0)
 			setbits(self.bits[i1], v, m1)
 			if bytes > 0 then
-				fill(self.bits + i1 + 1, v, bytes)
+				fill(self.bits + i1 + 1, bytes, v)
 			end
 			setbits(self.bits[i2], v, m2)
 		end)

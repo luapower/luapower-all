@@ -6,6 +6,8 @@ local pp = require'pp'
 local myprint = require'mysql_print'
 local ffi = require'ffi'
 
+mysql.bind'mariadb'
+
 --helpers
 
 local print_table = myprint.table

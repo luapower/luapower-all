@@ -5,7 +5,7 @@ tagline: DNS resolver in Lua
 ## `local resolver = require'resolver'`
 
 DNS resolver in Lua [from OpenResty](https://github.com/openresty/lua-resty-dns) (BSD License).
-Modified to work with any LuaSocket-like API.
+Modified to work with any LuaSocket-like API, including [socketloop].
 
 ## API
 

@@ -1,5 +1,7 @@
 --mysql table pretty printing
 
+if not ... then require'mysql_test'; return end
+
 local function ellipsis(s,n)
 	return #s > n and (s:sub(1,n-3) .. '...') or s
 end
@@ -131,8 +133,6 @@ local function print_statement(stmt, minsize, print)
 	stmt:close()
 	print_table(fields, rows, aligns, minsize, print)
 end
-
-if not ... then require'mysql_test' end
 
 return {
 	fit = fit,

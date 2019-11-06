@@ -5,6 +5,7 @@ setfenv(1, require'terra/low')
 
 require_h'cairo_h'
 linklibrary'cairo'
+local bitmap = require'terra/bitmap'
 
 local function retbool(t, name, f)
 	t['_'..name] = f
@@ -35,8 +36,26 @@ cairo_argb32_color_t.metamethods.__cast = function(from, to, exp)
 		if from == uint32 or from == int32 then
 			return `cairo_argb32_color_t {uint = exp}
 		end
+	elseif to == uint32 then
+		if from == cairo_argb32_color_t then
+			return `exp.uint
+		end
 	end
 	assert(false, 'invalid conversion from ', from, ' to ', to, ': ', exp)
+end
+
+cairo_argb32_color_t.metamethods.__eq = macro(function(c1, c2)
+	return `c1.uint == c2.uint
+end)
+
+cairo_argb32_color_t.metamethods.__ne = macro(function(c1, c2)
+	return `not (c1 == c2)
+end)
+
+terra cairo_argb32_color_t:apply_alpha(a: num)
+	var c = @self
+	c.channels.alpha = c.channels.alpha * clamp(a, 0, 1)
+	return c
 end
 
 local struct cairo_color_t {
@@ -69,6 +88,12 @@ cairo_color_t.metamethods.__eq = macro(function(c1, c2)
 		and c1.alpha == c2.alpha
 end)
 
+cairo_color_t.metamethods.__ne = macro(function(c1, c2)
+	return not (c1 == c2)
+end)
+
+status_message = cairo_status_to_string
+
 local cr = wrapopaque(cairo_t).methods
 
 cr.ref           = cairo_reference
@@ -77,7 +102,7 @@ cr.refcount      = cairo_get_reference_count
 cr.get_user_data = cairo_get_user_data
 cr.set_user_data = cairo_set_user_data
 cr.status        = cairo_status
-cr.status_to_string = cairo_status_to_string
+cr.status_message = terra(self: &cairo_t) return status_message(self:status()) end
 cr.save          = cairo_save
 cr.restore       = cairo_restore
 cr.push_group    = overload('push_group', {cairo_push_group, cairo_push_group_with_content})
@@ -104,6 +129,8 @@ cr.line_cap    = overload('line_cap',    {cairo_set_line_cap,    cairo_get_line_
 cr.line_join   = overload('line_join',   {cairo_set_line_join,   cairo_get_line_join})
 cr.dash        = overload('dash',        {cairo_set_dash,        cairo_get_dash, cairo_get_dash_count})
 cr.miter_limit = overload('miter_limit', {cairo_set_miter_limit, cairo_get_miter_limit})
+
+cairo_matrix_t.identity = `cairo_matrix_t {1, 0, 0, 1, 0, 0}
 
 local m = cairo_matrix_t.methods
 m.init = overload('init', {
@@ -224,11 +251,33 @@ cr.current_point = terra(self: &cairo_t)
 end
 
 local p = cairo_path_t.methods
-p.free = cr.cairo_path_destroy
+p.free = cairo_path_destroy
 
 p.equal = terra(p1: &cairo_path_t, p2: &cairo_path_t)
 	if p1.num_data ~= p2.num_data then return false end
 	return equal(p1.data, p2.data, p1.num_data)
+end
+
+local path_node_type_names = {'move_to', 'line_to', 'curve_to', 'close_path'}
+local path_node_types = constant(`arrayof(rawstring, path_node_type_names))
+
+p.dump = terra(p: &cairo_path_t)
+	pfn('cairo_path_t length: %d, status: %s',
+		p.num_data,
+		iif(p.status ~= CAIRO_STATUS_SUCCESS, status_message(p.status), 'ok'))
+	var i = 0
+	while i < p.num_data do
+		var d = p.data[i]
+		pf('\t%-12s', path_node_types[d.header.type])
+		i = i + 1
+		for j = 1, d.header.length do
+			var d = p.data[i]
+			pf('%g,%g ', d.point.x, d.point.y)
+			i = i + 1
+		end
+		print()
+	end
+	return p
 end
 
 cr.circle = terra(self: &cairo_t, cx: double, cy: double, r: double)
@@ -355,40 +404,40 @@ s.apply_alpha = terra(self: &cairo_surface_t, alpha: double)
 end
 
 --bitmap utils
-require'terra/bitmap'
 terra C.cairo_bitmap_format(fmt: cairo_format_t)
 	return [enum](iif(fmt == CAIRO_FORMAT_A8,
-		BITMAP_G8, iif(fmt == CAIRO_FORMAT_ARGB32,
-			BITMAP_ARGB32, BITMAP_INVALID)))
+		bitmap.FORMAT_G8, iif(fmt == CAIRO_FORMAT_ARGB32,
+			bitmap.FORMAT_ARGB32, bitmap.FORMAT_INVALID)))
 end
 terra C.cairo_format_for_bitmap_format(fmt: enum)
-	return [cairo_format_t](iif(fmt == BITMAP_G8,
-		CAIRO_FORMAT_A8, iif(fmt == BITMAP_ARGB32,
+	return [cairo_format_t](iif(fmt == bitmap.FORMAT_G8,
+		CAIRO_FORMAT_A8, iif(fmt == bitmap.FORMAT_ARGB32,
 			CAIRO_FORMAT_ARGB32, CAIRO_FORMAT_INVALID)))
 end
-
---copy surface to bitmap
 s.bitmap_format = terra(self: &cairo_surface_t)
 	return cairo_bitmap_format(self:format())
 end
-s.copy = terra(self: &cairo_surface_t)
+s.copy = terra(self: &cairo_surface_t) --copy surface to bitmap
 	var b = bitmap.new(self:width(), self:height(), self:bitmap_format(), self:stride())
 	self:flush()
 	copy(b.pixels, [&uint8](self:data()), self:stride() * self:height())
 	return b
 end
-terra C.cairo_image_surface_create_for_bitmap(b: &Bitmap)
+terra C.cairo_image_surface_create_for_bitmap(b: &bitmap.Bitmap)
 	var fmt = cairo_format_for_bitmap_format(b.format)
 	return cairo_image_surface_create_for_data(b.pixels, fmt, b.w, b.h, b.stride)
 end
 s.asbitmap = terra(self: &cairo_surface_t)
-	var b: Bitmap
+	var b: bitmap.Bitmap
 	b.format = bitmap.valid_format(cairo_bitmap_format(self:format()))
 	b.w = self:width()
 	b.h = self:height()
 	b.stride = self:stride()
 	b.pixels = [&uint8](self:data())
 	return b
+end
+terra bitmap.Bitmap:surface()
+	return cairo_image_surface_create_for_bitmap(self)
 end
 
 local p = wrapopaque(cairo_pattern_t).methods

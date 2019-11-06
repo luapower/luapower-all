@@ -29,6 +29,7 @@ local terra checkalloc(p: &opaque, oldp: &opaque, len: int64, sz: size_t, elemen
 		var m = memmap:at(oldp) --reports double-free
 		if len > 0 then --realloc
 			if p ~= oldp then --rellocated
+				--pfn('realloc %s %d', element_type, len)
 				dec(total, m:size())
 				memmap:remove(oldp)
 				goto new
@@ -78,7 +79,7 @@ terra memreport()
 		pfn('%8x %8d %s', k, mem.len, mem.element_type)
 	end
 	print('------------------------------------------------------------------')
-	pfn('TOTAL: %d bytes.', total)
+	pfn('LEAK: %d bytes.', total)
 end
 
 dp = macro(function(p, sz)
@@ -104,3 +105,5 @@ end
 test()
 
 end
+
+return _M

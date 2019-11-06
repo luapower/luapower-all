@@ -1,11 +1,11 @@
 
---mySQL client library ffi binding.
+--MySQL client library ffi binding.
 --Written by Cosmin Apreutesei. Public domain.
 
---Supports mysql Connector/C 6.1.
---Based on mySQL 5.7 manual.
+--Supports MySQL Connector/C 6.1.
+--Based on MySQL 5.7 manual.
 
-if not ... then require'mysql_test' end
+if not ... then require'mysql_test'; return end
 
 local ffi = require'ffi'
 local bit = require'bit'
@@ -15,12 +15,12 @@ local C
 local M = {}
 
 --select a mysql client library implementation.
-local function config(lib)
+local function bind(lib)
 	if not C then
 		if not lib or lib == 'mysql' then
 			C = ffi.load(ffi.abi'win' and 'libmysql' or 'mysqlclient')
 		elseif lib == 'mariadb' then
-			C = ffi.load(ffi.abi'win' and 'libmariadb' or 'mariadb')
+			C = ffi.load'mariadb'
 		elseif type(lib) == 'string' then
 			C = ffi.load(lib)
 		else
@@ -31,7 +31,7 @@ local function config(lib)
 	return M
 end
 
-M.config = config
+M.bind = bind
 
 --we compare NULL pointers against NULL instead of nil for compatibility with luaffi.
 local NULL = ffi.cast('void*', nil)
@@ -72,17 +72,17 @@ end
 --client library info
 
 function M.thread_safe()
-	config()
+	bind()
 	return C.mysql_thread_safe() == 1
 end
 
 function M.client_info()
-	config()
+	bind()
 	return cstring(C.mysql_get_client_info())
 end
 
 function M.client_version()
-	config()
+	bind()
 	return tonumber(C.mysql_get_client_version())
 end
 
@@ -126,7 +126,7 @@ local option_encoders = {
 }
 
 function M.connect(t, ...)
-	config()
+	bind()
 	local host, user, pass, db, charset, port
 	local unix_socket, flags, options, attrs
 	local key, cert, ca, capath, cipher

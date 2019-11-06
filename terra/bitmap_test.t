@@ -1,12 +1,13 @@
 setfenv(1, require'terra/low')
-require'terra/bitmap'
+local bitmap = require'terra/bitmap'
 require'terra/cairo'
 
 terra test_blend()
 	var sr1 = cairo_image_surface_create_from_png'trlib_test.png'
-	var b1 = sr1:copy() --TODO: this comes as RGB24
-	var b2 = bitmap.new(1000, 1000, BITMAP_ARGB32, -1)
-	b1:blend(&b2, 0, 0, BITMAP_COPY)
+	assert(sr1:status() == 0) --file loaded
+	var b1 = sr1:copy()
+	var b2 = bitmap.new(1000, 1000, bitmap.FORMAT_ARGB32, -1)
+	b1:blend(&b2, 0, 0, bitmap.BLEND_SOURCE)
 	var sr = cairo_image_surface_create_for_bitmap(&b2)
 	sr:save_png'bitmaplib_test.png'
 	sr:free()

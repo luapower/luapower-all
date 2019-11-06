@@ -20,7 +20,7 @@ local j = assert(jpeg.open(f:buffered_read()))
 local img = assert(j:load{accept = {g8 = true}})
 j:free()
 f:close()
-local blur = bb.blur(bb.BITMAP_G8)
+local blur = bb.blur(bb.BLUR_FORMAT_G8)
 
 local function repaint(b)
 	if b == nil then return end

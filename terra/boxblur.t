@@ -4,11 +4,13 @@
 
 setfenv(1, require'terra/low')
 
-require'terra/bitmap'
+local bitmap = require'terra/bitmap'
 
 includepath(terralib.terrahome..'/../../csrc/boxblur')
-include'boxblur.c'
+include'boxblur.h'
+linklibrary'boxblur'
 
+local Bitmap = bitmap.Bitmap
 local pixelsize = bitmap.pixelsize
 local aligned_stride = bitmap.aligned_stride
 
@@ -18,7 +20,7 @@ struct Blur {
 	--config
 	w: int;
 	h: int;
-	format: enum; --BITMAP_*
+	format: enum; --bitmap.FORMAT_*
 	--buffers
 	max_w: int;
 	max_h: int;
@@ -44,7 +46,7 @@ terra Blur:free()
 	self.bmp1_parent:free()
 	self.bmp2_parent:free()
 	self.blurx_parent:free()
-	free(self.sumx)
+	dealloc(self.sumx)
 	self:init(self.format)
 end
 
@@ -62,8 +64,8 @@ terra Blur:_realloc()
 	var bh = h + h1 + h2
 	var stride = aligned_stride(bw, 16)
 
-	self.bmp1_parent:realloc(bw, bh, self.format, stride)
-	self.bmp2_parent:realloc(bw, bh, self.format, stride)
+	self.bmp1_parent:realloc(bw, bh, self.format, stride, 0)
+	self.bmp2_parent:realloc(bw, bh, self.format, stride, 0)
 	self.bmp1 = self.bmp1_parent:sub(w1, h1, self.w, self.h)
 	self.bmp2 = self.bmp2_parent:sub(w1, h1, self.w, self.h)
 	self.src = &self.bmp1
@@ -75,7 +77,7 @@ terra Blur:_realloc()
 	self.blurx_parent:realloc(
 		w * 2, --16bit samples so double the width.
 		h + 4 * r + 1,
-		self.format, stride * 2)
+		self.format, stride * 2, 0)
 	self.blurx = self.blurx_parent:sub(0, 3 * r + 1, maxint, maxint)
 
 	if self.sumx == nil
@@ -108,7 +110,7 @@ terra Blur:setsize(w: int, h: int, radius: uint8)
 end
 
 terra Blur:_blur(src: &Bitmap, dst: &Bitmap)
-	var g8 = self.format == BITMAP_G8
+	var g8 = self.format == bitmap.FORMAT_G8
 	var blur = iif(g8, boxblur_g8, boxblur_8888)
 	self.blurx_parent:clear()
 	--clear sumx because blur needs to read some 0es from it.
@@ -174,7 +176,7 @@ Blur.methods.invalidate:adddefinition(
 terra Blur:blur()
 	if not self.valid then
 		if self.radius == 0 or self.passes == 0 then --no blur
-			self.src:paint(self.dst, 0, 0)
+			self.src:blend(self.dst, 0, 0, bitmap.BLEND_SOURCE)
 		elseif self.passes == 1 then
 			self:_extend(self.src)
 			self:_blur(self.src, self.dst)
@@ -187,34 +189,35 @@ terra Blur:blur()
 			end
 			self.src, self.dst = src, dst
 		end
+		self.valid = true
 	end
 	return self.dst
 end
 
-terra Blur:free_and_deallocate()
-	free(self)
+terra Blur:release()
+	release(self)
 end
 
 function Blur:build()
-	local public = publish'boxblurlib'
-	public(Bitmap, {
+	local lib = publish'boxblurlib'
+	lib(Bitmap, {
 		--
 	})
-	public(bitmap.new, 'bitmap')
-	public:getenums(_M, '^BITMAP_')
-	public(Blur, {
-		free_and_deallocate='free',
+	lib(bitmap.new, 'bitmap')
+	lib(bitmap, '^FORMAT_', 'BLUR_')
+	lib(Blur, {
+		release='free',
 		invalidate = {'invalidate', 'invalidate_rect'},
 		blur=1,
-	}, true)
+	}, {opaque = true})
 
 	local terra blur(format: enum)
 		var b = alloc(Blur)
 		b:init(format)
 		return b
 	end
-	public(blur)
-	public:build{
+	lib(blur)
+	lib:build{
 		linkto = {'boxblur'},
 	}
 end
