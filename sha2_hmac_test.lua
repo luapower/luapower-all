@@ -1,4 +1,7 @@
-local hmac = require'hmac'
+local sha2 = require'sha2'
+local hmac256 = sha2.sha256_hmac
+local hmac384 = sha2.sha384_hmac
+local hmac512 = sha2.sha512_hmac
 local glue = require'glue'
 
 --from http://tools.ietf.org/html/rfc4231
@@ -47,16 +50,15 @@ end
 for k,test in ipairs(tests) do
 	print('test '..k)
 	assert(#test.hmac256 == 32)
-	asserteq(256, hmac.sha256(test.data, test.key), test.hmac256)
+	asserteq(256, hmac256(test.data, test.key), test.hmac256)
 	assert(#test.hmac384 == 48)
-	asserteq(384, hmac.sha384(test.data, test.key), test.hmac384)
+	asserteq(384, hmac384(test.data, test.key), test.hmac384)
 	assert(#test.hmac512 == 64)
-	asserteq(512, hmac.sha512(test.data, test.key), test.hmac512)
+	asserteq(512, hmac512(test.data, test.key), test.hmac512)
 end
 
 
 local b64 = require'libb64'
-local sha2 = require'sha2'
 
 --per amazon aws example
 local message = 'GET\nwebservices.amazon.com\n/onca/xml\nAWSAccessKeyId=00000000000000000000&ItemId=0679722769&Operation=ItemLookup&ResponseGroup=ItemAttributes%2COffers%2CImages%2CReviews&Service=AWSECommerceService&Timestamp=2009-01-01T12%3A00%3A00Z&Version=2009-01-06'
@@ -69,6 +71,6 @@ assert(b64.encode(mac) == b64_mac) --so our base64 encoder is good compared to H
 assert(b64.decode(b64_mac) == mac) --so our base64 decoder is good compared to HashCalc's hmac and sha
 assert(sha2.sha256(message) == sha) --so our sha256 is good
 
-assert(hmac.sha256(message, key) == mac) --so our hmac is good
-assert(b64.encode(hmac.sha256(message, key)) == b64_mac) --so our hmac is good
+assert(hmac256(message, key) == mac) --so our hmac is good
+assert(b64.encode(hmac256(message, key)) == b64_mac) --so our hmac is good
 

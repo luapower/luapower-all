@@ -2,6 +2,12 @@
 local ffi = require'ffi'
 local C = ffi.load'sha2'
 
+if not ... then
+	require'sha2_test'
+	require'sha2_hmac_test'
+	return
+end
+
 ffi.cdef[[
 enum {
 	SHA256_BLOCK_LENGTH  = 64,
@@ -67,6 +73,17 @@ M.sha256 = hash_function(M.sha256_digest)
 M.sha384 = hash_function(M.sha384_digest)
 M.sha512 = hash_function(M.sha512_digest)
 
-if not ... then require'sha2_test' end
+local function mkhmac(SHA, keysize)
+	local HMAC = SHA..'_hmac'
+	local SHA = M[SHA]
+	M[HMAC] = function(message, key)
+		local hmac = require'hmac'
+		M[HMAC] = hmac.new(SHA, keysize)
+		return M[HMAC](message, key)
+	end
+end
+mkhmac('sha256',  64)
+mkhmac('sha384', 128)
+mkhmac('sha512', 128)
 
 return M

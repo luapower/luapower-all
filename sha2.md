@@ -23,6 +23,9 @@ A ffi binding of Aaron Gifford's [SHA-2 implementation][sha2 lib].
 `digest(cdata, size)`            \
 `digest() -> s`
 
+`sha2.sha256_hmac(s, key) -> s`     compute the HMAC-SHA256 of a string.
+`sha2.sha384_hmac(s, key) -> s`     compute the HMAC-SHA384 of a string.
+`sha2.sha512_hmac(s, key) -> s`     compute the HMAC-SHA512 of a string.
 ----------------------------------- -----------------------------------
 
 [glue.tohex]: glue.html#tohex

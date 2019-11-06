@@ -34,15 +34,17 @@ end
 
 local glue = require'glue'
 
-return glue.autoload({
+local hmac = {
 	new = new,
 	compute = compute,
-}, {
-	md5 = 'hmac_md5',
-	sha1 = 'hmac_sha1',
-	sha256 = 'hmac_sha2',
-	sha384 = 'hmac_sha2',
-	sha512 = 'hmac_sha2',
+}
+
+return glue.autoload(hmac, {
+	md5    = function() hmac.md5    = require'md5'.hmac end,
+	sha1   = function() hmac.sha1   = require'sha1'.hmac end,
+	sha256 = function() hmac.sha256 = require'sha2'.sha256_hmac end,
+	sha384 = function() hmac.sha384 = require'sha2'.sha384_hmac end,
+	sha512 = function() hmac.sha512 = require'sha2'.sha512_hmac end,
 })
 
 --[[
