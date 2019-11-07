@@ -444,6 +444,8 @@ local function install_trackers(builtin_modules, filter)
 
 	function require(m)
 
+		m = m:gsub('/', '.')
+
 		--create the module's tracking table
 		dt[m] = dt[m] or {}
 
@@ -833,6 +835,14 @@ local function c_module_name(path)
 	return name and name:gsub('/', '.')
 end
 
+--path/*.t -> Terra module name
+local function terra_module_name(path)
+	if path:find'^bin/[^/]+/lua/' then --platform-specific module
+		path = path:gsub('^bin/[^/]+/lua/', '')
+	end
+	return path:gsub('/', '.'):match('(.-)%.t$')
+end
+
 --check if a file is a module and if it is, return the module name
 local function module_name(path)
 	path = tostring(path)
@@ -840,6 +850,7 @@ local function module_name(path)
 		lua_module_name(path)
 		or dasl_module_name(path)
 		or c_module_name(path)
+		or terra_module_name(path)
 end
 
 --'module_submodule' -> 'module'
@@ -2000,6 +2011,7 @@ module_tags = memoize(function(package, mod)
 		or lua_module_name(tostring(mod_path)) and 'Lua'
 		or dasl_module_name(tostring(mod_path)) and 'Lua/ASM'
 		or c_module_name(tostring(mod_path)) and 'C'
+		or terra_module_name(tostring(mod_path)) and 'Terra'
 	t.demo_module = scripts(package)[mod..'_demo'] and mod..'_demo'
 	t.test_module = scripts(package)[mod..'_test'] and mod..'_test'
 	return t
@@ -2009,16 +2021,16 @@ end)
 package_type = memoize_package(function(package)
 	local has_c = csrc_dir(package) and true or false
 	local has_mod = next(modules(package)) and true or false
-	local has_mod_lua = false
 	local has_mod_c = false
 	local has_ffi = false
 	local has_bit = false
+	local has_terra = false
 	for mod in pairs(modules(package)) do
 		local lang = module_tags(package, mod).lang
 		if lang == 'C' then
 			has_mod_c = mod
-		else
-			has_mod_lua = mod
+		elseif lang == 'Terra' then
+			has_terra = true
 		end
 		for platform in pairs(module_platforms(mod, package)) do
 			local t = module_requires_loadtime_all(mod, package, platform)
@@ -2041,8 +2053,8 @@ package_type = memoize_package(function(package)
 	end
 	assert(not has_mod_c or has_c) --Lua/C modules without source?
 	return
-		has_ffi and 'Lua+ffi'
-		or has_mod and (has_mod_c and 'Lua/C' or 'Lua')
+		has_ffi and (has_terra and 'Terra' or 'Lua+ffi')
+		or has_mod and (has_mod_c and 'Lua/C' or (has_terra and 'Terra' or 'Lua'))
 		or has_c and 'C' or 'other'
 end)
 
