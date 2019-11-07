@@ -115,6 +115,8 @@ end
 
 local lib = ft:new()
 
+print(string.format('Freetype version: %d.%d.%d', lib:version()))
+
 inspect_face(lib, 'media/fonts/DejaVuSerif.ttf')
 inspect_face(lib, 'media/fonts/amiri-regular.ttf')
 inspect_face(lib, 'media/fonts/fireflysung.ttf')

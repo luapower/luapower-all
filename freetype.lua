@@ -146,7 +146,7 @@ freetype.__call = freetype.new
 local lib = {} --FT_Library methods
 
 function lib.version(library)
-	local v = 'FT_Int[3]'
+	local v = ffi.new'FT_Int[3]'
 	C.FT_Library_Version(library, v, v+1, v+2)
 	return v[0], v[1], v[2]
 end
