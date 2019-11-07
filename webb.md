@@ -1,8 +1,11 @@
 ---
-tagline: procedural web framework for OpenResty
+tagline: Procedural web framework for OpenResty
+requires: nginx
 ---
 
-Webb is a procedural web framework for [openresty].
+## What is this?
+
+Webb is a procedural web framework for OpenResty.
 
 ## HowTO
 
