@@ -879,6 +879,51 @@ end
 --WHAT file parser
 ------------------------------------------------------------------------------
 
+--parse '<pkg1>, <pkg2> (<platform1> ...), ...' -> {platform->{pkg->true}}
+local function parse_requires_list(values, deps)
+	deps = deps or {}
+	for s in glue.gsplit(values, ',') do
+		s = glue.trim(s)
+		if s ~= '' then
+			local s1, ps =
+				s:match'^([^%(]+)%s*%(%s*([^%)]+)%s*%)' --'pkg (platform1 ...)'
+			if ps then
+				s = glue.trim(s1)
+				for platform in glue.gsplit(ps, '%s+') do
+					glue.attr(deps, platform)[s] = true
+				end
+			else
+				for platform in pairs(supported_platforms) do
+					glue.attr(deps, platform)[s] = true
+				end
+			end
+		end
+	end
+	return deps
+end
+
+--parse 'lib (mod1 ...)' -> {lib->{module->true}}
+local function parse_modules_list(values, modules)
+	modules = modules or {} --{lib->{module->true}}
+	for s in glue.gsplit(values, ',') do
+		s = glue.trim(s)
+		if s ~= '' then
+			local s, ps =
+				s:match'^([^%(]+)%s*%(%s*([^%)]+)%s*%)' --'lib (mod1 ...)'
+			if ps then
+				s = glue.trim(s)
+				modules[s] = {}
+				for mod in glue.gsplit(ps, '%s+') do
+					modules[s][mod] = true
+				end
+			else
+				error('Invalid WHAT file '..what_file)
+			end
+		end
+	end
+	return modules
+end
+
 --WHAT file -> {realname=, version=, url=, license=, dependencies={d1,...}}
 local function parse_what_file(what_file)
 	local t = {}
@@ -902,48 +947,17 @@ local function parse_what_file(what_file)
 	--parse next lines if they have the format:
 	-- 'modules: lib1 (mod1 mod2 ...), ...'
 	-- 'requires: <pkg1>, <pkg2> (<platform1> ...), ...'
-	t.dependencies = {} -- {platform = {dep = true}}
+	t.dependencies = {} -- {platform -> {dep -> true}}
+	t.modules = {} -- {platform -> {mod -> true}}
 	while true do
 		local s = more()
 		if not s then break end
 		local directive, values = s:match'^([^:]*):(.*)' --requires:, modules:
 		if directive then
 			if directive == 'requires' then
-				for s in glue.gsplit(values, ',') do
-					s = glue.trim(s)
-					if s ~= '' then
-						local s1, ps =
-							s:match'^([^%(]+)%s*%(%s*([^%)]+)%s*%)' --'pkg (platform1 ...)'
-						if ps then
-							s = glue.trim(s1)
-							for platform in glue.gsplit(ps, '%s+') do
-								glue.attr(t.dependencies, platform)[s] = true
-							end
-						else
-							for platform in pairs(supported_platforms) do
-								glue.attr(t.dependencies, platform)[s] = true
-							end
-						end
-					end
-				end
+				parse_requires_list(values, t.dependencies)
 			elseif directive == 'modules' then
-				t.modules = {} --{lib->{module->true}}
-				for s in glue.gsplit(values, ',') do
-					s = glue.trim(s)
-					if s ~= '' then
-						local s, ps =
-							s:match'^([^%(]+)%s*%(%s*([^%)]+)%s*%)' --'lib (mod1 ...)'
-						if ps then
-							s = glue.trim(s)
-							t.modules[s] = {}
-							for mod in glue.gsplit(ps, '%s+') do
-								t.modules[s][mod] = true
-							end
-						else
-							error('Invalid WHAT file '..what_file)
-						end
-					end
-				end
+				parse_modules_list(values, t.modules)
 			end
 		end
 	end
@@ -984,10 +998,14 @@ local function parse_md_file(md_file)
 		local k,v = split_kv(s, ':')
 		if not k then
 			error('invalid tag '..s)
-		elseif t[k] then
-			error('duplicate tag '..k)
 		else
-			t[k] = v
+			if k == 'requires' then
+				t.dependencies = parse_requires_list(v)
+			elseif k == 'modules' then
+				t.modules = parse_modules_list(v)
+			else
+				t[k] = v
+			end
 		end
 	end
 	t.title = t.title or docname --set default title
@@ -1438,10 +1456,12 @@ local has_luac_modules = memoize_package(function(package)
 end)
 
 --package dependencies as declared in the WHAT file.
+--they can also be declared in the header section of the package doc file.
 bin_deps = memoize_package(function(package, platform)
 	platform = check_platform(platform)
-	local t = what_tags(package) and what_tags(package).dependencies
-	t = t and t[platform] or {}
+	local t1 = what_tags(package) and what_tags(package).dependencies
+	local t2 = doc_tags(package, package) and doc_tags(package, package).dependencies
+	local t = glue.update({}, t1 and t1[platform], t2 and t2[platform])
 	--packages containing Lua/C modules have an _implicit_ binary
 	--dependency on luajit on Windows because they link against lua51.dll.
 	if platform:find'^mingw' and has_luac_modules(package) then
