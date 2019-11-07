@@ -125,7 +125,6 @@ return {
 				layout_type=2,
 				min_ch=47,
 				min_cw=145.5,
-				snap_y=false,
 				span_count=1,
 				text_maxlen=50041,
 				text_spans={

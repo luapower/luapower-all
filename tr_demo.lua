@@ -43,7 +43,7 @@ font'media/fonts/IonIcons.ttf'
 --font'media/fonts/ss-emoji-microsoft.ttf'
 --font'media/fonts/Hand Faces St.ttf'
 --font'media/fonts/FSEX300.ttf'
-font'media/fonts/amiri-regular.ttf'
+font'media/fonts/Amiri-Regular.ttf'
 
 --tr.rs.font_db:dump()
 

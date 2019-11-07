@@ -470,13 +470,15 @@ local function install_trackers(builtin_modules, filter)
 			ok, ret = nil, err
 		else
 			ok, ret = pcall(lua_require, m)
-
 			if not ok then
 			   --cache the error for future calls.
 				local err = ret:gsub(':?%s*[\n\r].*', '')
+				err = err:gsub('^.-[\\/]%.%.[\\/]%.%.[\\/]', '')
 				--remove source info for platform and arch load errors
-				if err:find'platform not ' and not err:find'arch not ' then
-					err = err:gsub('[^:]*:%d+: ', '')
+				local perr = err:match'platform not .*' or err:match'arch not .*'
+				err = perr or err
+				if not perr then
+					print(string.format('%-20s: %s', m, err))
 				end
 				dt[m] = {loaderr = err}
 			end
@@ -548,6 +550,8 @@ local tracking_state = memoize(function()
 	state:openlibs()
 	state:push{[0] = arg[0]} --used by some modules to get the exe dir
 	state:setglobal'arg'
+	state:getglobal'require'
+	state:call'terra'
 	state:push(install_trackers)
 	state:call(builtin_modules, filter)
 	return state
@@ -576,7 +580,6 @@ luajit_builtin_modules = {
 	['table.isarray'] = true,
 	['table.nkeys'] = true,
 	['table.clone'] = true,
-	['jit.prngstate'] = true,
 	['thread.exdata'] = true,
 }
 

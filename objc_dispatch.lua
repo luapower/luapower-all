@@ -139,6 +139,9 @@ dispatch.once_                           = ffi.typeof'dispatch_once_t'
 dispatch.data_t                          = ffi.typeof'dispatch_data_t'
 dispatch.fd_t                            = ffi.typeof'dispatch_fd_t'
 
+if ffi.os ~= 'OSX' then
+	error('platform not OSX', 2)
+end
 
 -- Contants
 dispatch.emptyData                       = ffi.cast(dispatch.data_t, C._dispatch_data_empty)

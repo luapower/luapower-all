@@ -351,16 +351,16 @@ end
 --session management ---------------------------------------------------------
 
 local function session_file(sn)
-	return string.format('layer_test_state_%s.lua', sn)
+	return string.format('layer_test/layer_test_state_%s.lua', sn)
 end
 
 local function state_file()
-	return 'layer_test_state.lua'
+	return 'layer_test/layer_test_state.lua'
 end
 
 local function session_list()
 	local t = {}
-	for s,d in fs.dir'.' do
+	for s,d in fs.dir'layer_test' do
 		if s then
 			local sn = d:is'file' and s:match'^layer_test_state_(.-)%.lua'
 			if sn then
