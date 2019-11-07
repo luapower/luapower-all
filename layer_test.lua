@@ -1107,6 +1107,7 @@ end
 
 --layer window ---------------------------------------------------------------
 
+testui:init()
 local app = testui.app
 local testui_win = testui.window
 local d = app:active_display()

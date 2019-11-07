@@ -30,8 +30,9 @@ CONVENTIONS:
 	* name, description, author and license of a Lua module can be provided
 	on the first two line-comments written as:
 
-		--[<name>:] <description>.
-		--Written By: <author>. <license> [license].
+		-- [<name>:] <description>.
+		-- Written By: <author>. <license> [license].
+		-- Copyright (C) <author>. <license> [license].
 
 	* submodules can be put in folders or named `<module>_<submodule>.lua`.
 
@@ -280,7 +281,7 @@ setfenv(1, luapower)
 local lfs = require'lfs'
 local glue = require'glue'
 local ffi = require'ffi'
-
+require'terra'
 
 --config
 ------------------------------------------------------------------------------
@@ -564,10 +565,19 @@ end
 --dependency tracking based on parsing
 ------------------------------------------------------------------------------
 
---luajit built-in modules that don't have parsable source code.
+--built-in modules that don't have parsable source code.
 luajit_builtin_modules = {
+	--luajit built-ins.
 	ffi = true, bit = true, jit = true,
 	['jit.util'] = true, ['jit.profile'] = true,
+	--openresty built-ins.
+	['table.new'] = true,
+	['table.isempty'] = true,
+	['table.isarray'] = true,
+	['table.nkeys'] = true,
+	['table.clone'] = true,
+	['jit.prngstate'] = true,
+	['thread.exdata'] = true,
 }
 
 module_requires_runtime_parsed = memoize(function(m) --direct dependencies
@@ -636,16 +646,20 @@ local function parse_module_header(file)
 		local s2 = f:read'*l'
 		f:close()
 		if s1 then
-			t.name, t.descr = s1:match'^%-%-%s*([^%:]+)%:%s*(.*)'
+			t.name, t.descr = s1:match'^%s*%-%-%s*([^%:]+)%:%s*(.*)'
 			if not t.name then
+				--ffi_reflect.lua style header: --[[ descr ]]--
 				t.descr = s1:match'^%s*%-%-%[%[%s*(.-)%]%]%[%-%s]*$'
-					--ffi_reflect.lua style header
-				t.descr = t.descr or s1:match'^%-%-%s*(.*)'
+				t.descr = t.descr or s1:match'^%s*%-%-%s*(.*)'
 			end
 		end
 		if s2 then
 			t.author, t.license =
-				s2:match'^%-%-%s*[Ww]ritten [Bb]y%:? ([^%.]+)%.%s*([^%.]+)%.'
+				s2:match'^%s*%-%-%s*[Ww]ritten [Bb]y%:? ([^%.]+)%.%s*([^%.]+)%.'
+			if not t.license then
+				t.author, t.license =
+					s2:match'^%s*%-%-%s*[Cc]opyright %([Cc]%)%s*([^%.]+)%.%s*([^%.]+)%.'
+			end
 			if t.license then
 				t.license = t.license:gsub('%s*[Ll]icense%s*', ''):gsub('%.', '')
 				if t.license:lower() == 'public domain' then

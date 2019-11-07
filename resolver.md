@@ -1,6 +1,3 @@
----
-tagline: DNS resolver in Lua
----
 
 ## `local resolver = require'resolver'`
 
