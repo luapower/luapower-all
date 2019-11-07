@@ -1386,12 +1386,8 @@ module_package = memoize(function(mod)
 	--prefixes (which is a possible parent module).
 	local mod1 = mod
 	while mod1 do
-		if installed_packages()[mod1] then
-			if modules(mod1)[mod1] then --the module is indeed in the package
-				return mod1
-			end
-		elseif known_module_packages[mod1] then
-			return known_module_packages[mod1]
+		if installed_packages()[mod1] and modules(mod1)[mod] then
+			return mod1 --the module is indeed in the package
 		end
 		mod1 = parent_module_name(mod1)
 	end
