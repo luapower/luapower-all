@@ -153,7 +153,7 @@ tagline: package categories
 	* [luapower-repos]
 	* [luapower-ci]
 * Unmaintained
-	* [tr]
+	* [tr0]
 	* [codedit]
 	* [bnet]
 	* [lfs]

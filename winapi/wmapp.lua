@@ -7,6 +7,8 @@
 --and allows you to acquire and release them as needed.
 setfenv(1, require'winapi')
 
+assert(WM_APP, 'winapi.window not loaded')
+
 local codes = {} --sparse array of codes
 local min_code = WM_APP + 1
 local max_code = min_code - 1 --start with no slots

@@ -1,3 +1,4 @@
+assert(terra, 'terra not loaded')
 -- See Copyright Notice in ../LICENSE.txt
 local ffi = require("ffi")
 local asdl = require("asdl")

@@ -1,6 +1,8 @@
 
 --terralib luapower extensions.
 
+assert(terra, 'terra not loaded')
+
 local ffi = require'ffi'
 local List = require'asdl'.List
 
