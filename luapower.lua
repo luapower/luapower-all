@@ -163,6 +163,7 @@ TRACKED FILES BREAKDOWN:
 
 	tracked_files([package]) -> t         {path=package}
 	docs([package]) -> t                  {name=path}
+	headerdocs([package]) -> t            {name=contents}
 	modules([package]) -> t               {name=path}
 	scripts([package]) -> t               {name=path}
 	file_types([package]) -> t            {path='module'|'script'|...}
@@ -644,6 +645,37 @@ end)
 --module header parsing
 ------------------------------------------------------------------------------
 
+local function parse_author_license_line(s, c)
+	local c = c and '%s*%-%-' or ''
+	local author, license =
+		s:match('^'..c..'%s*[Ww]ritten%s+[Bb]y%:?%s*([^%.]+)%.%s*([^%.]+)')
+	if not license then
+		author, license =
+			s:match('^'..c..'%s*[Cc]opyright%s*%([Cc]%)%s*([^%.]+)%.%s*([^%.]+)')
+	end
+	if license then
+		license = license:gsub('%s*[Ll]icense:?%s*', '')
+		if license:lower() == 'public domain' then
+			license = 'Public Domain'
+		end
+	end
+	return author, license
+end
+
+local function parse_name_descr_line(s, c)
+	local c = c and '%s*%-%-' or ''
+	local name, descr =
+		s:match('^'..c..'%s*([^%:]+)%:%s*(.*)') -- '--name: descr'
+	if not name then
+		descr = c ~= ''
+			and s:match'^%s*%-%-%[%[%s*(.-)%s*%]%]%[%-]+%s*$'
+			or nil -- '--[[ descr ]]--' (ffi_reflect.lua)
+		descr = descr or s:match('^'..c..'%s*([^%[].*)') -- '--descr'
+	end
+	descr = descr and descr:gsub('%.$', '')
+	return name, descr
+end
+
 local function parse_module_header(file)
 	local t = {}
 	local f = io.open(file, 'r')
@@ -660,30 +692,46 @@ local function parse_module_header(file)
 		) do
 			s1 = f:read'*l'
 		end
-		local s2 = f:read'*l'
-		f:close()
 		if s1 then
-			t.name, t.descr = s1:match'^%s*%-%-%s*([^%:]+)%:%s*(.*)'
-			if not t.name then
-				--ffi_reflect.lua style header: --[[ descr ]]--
-				t.descr = s1:match'^%s*%-%-%[%[%s*(.-)%]%]%[%-%s]*$'
-				t.descr = t.descr or s1:match'^%s*%-%-%s*(.*)'
-			end
-		end
-		if s2 then
-			t.author, t.license =
-				s2:match'^%s*%-%-%s*[Ww]ritten [Bb]y%:? ([^%.]+)%.%s*([^%.]+)%.'
-			if not t.license then
-				t.author, t.license =
-					s2:match'^%s*%-%-%s*[Cc]opyright %([Cc]%)%s*([^%.]+)%.%s*([^%.]+)%.'
-			end
-			if t.license then
-				t.license = t.license:gsub('%s*[Ll]icense%s*', ''):gsub('%.', '')
-				if t.license:lower() == 'public domain' then
-					t.license = 'Public Domain'
+			t.name, t.descr = parse_name_descr_line(s1, true)
+			if t.descr then
+				local s2 = f:read'*l'
+				if s2 then
+					t.author, t.license = parse_author_license_line(s2, true)
+				end
+			else
+				local sep = s1:match'%s*%-%-%[([=]*)%[%s*$' -- '--[==['
+				if sep then --in-header doc (terra/dynarray.lua).
+					local dt = {}
+					while true do
+						s1 = f:read'*l'
+						if not s1 then
+							break
+						end
+						local s2 = s1:match('^(.-)%s*%]'..sep..'%]%s*$')  -- 's2 ]==]'
+						if s2 then
+							table.insert(dt, s2)
+							break
+						else
+							local parsed
+							if not t.descr then
+								t.name, t.descr = parse_name_descr_line(s1)
+								parsed = t.descr
+							end
+							if not t.license then
+								t.author, t.license = parse_author_license_line(s1)
+								parsed = t.license
+							end
+							if not parsed then
+								table.insert(dt, s1)
+							end
+						end
+					end
+					t.doc = table.concat(dt, '\n')
 				end
 			end
 		end
+		f:close()
 	end
 	return t
 end
@@ -1304,7 +1352,6 @@ file_types = memoize_opt_package(function(package)
 	return t
 end)
 
-
 --module logical (name-wise) tree
 ------------------------------------------------------------------------------
 
@@ -1346,7 +1393,7 @@ modulefile_header = memoize(parse_module_header)
 
 module_header = memoize_package(function(package, mod)
 	local path = modules(package)[mod]
-	return type(path) == 'string' and modulefile_header(powerpath(path))
+	return type(path) == 'string' and modulefile_header(powerpath(path)) or {}
 end)
 
 module_headers = memoize_package(function(package)
@@ -1364,6 +1411,13 @@ module_headers = memoize_package(function(package)
 	return t
 end)
 
+local docheaders = memoize_opt_package(function(package)
+	local t = {}
+	for i,h in ipairs(module_headers(package)) do
+		t[m] = h.doc
+	end
+	return t
+end)
 
 --reverse lookups
 ------------------------------------------------------------------------------
