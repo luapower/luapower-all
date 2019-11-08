@@ -1,5 +1,5 @@
 
-## `local tr = require'tr'`
+## `local tr = require'tr0'`
 
 Text shaping and rendering engine for Unicode text using portable technologies
 exclusively for pixel-perfect consistent output across platforms. Uses
@@ -14,9 +14,9 @@ OpenType-assisted auto-hinter.
 
 ## Status
 
-This module was [reimplemented in Terra](https://github.com/luapower/terra-tr)
-and thus all [missing features and bugs](https://github.com/luapower/tr/issues)
-will be fixed in that implementation.
+This module is a Lua prototype for [tr] which made in Terra.
+Its [missing features and bugs](https://github.com/luapower/tr0/issues) will
+not be fixed here.
 
 ### API
 

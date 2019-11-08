@@ -1,4 +1,4 @@
-local tr = require'tr'
+local tr = require'tr0'
 local nw = require'nw'
 local gfonts = require'gfonts'
 local time = require'time'

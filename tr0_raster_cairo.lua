@@ -2,7 +2,7 @@
 --glyph drawing to cairo contexts.
 --Written by Cosmin Apreutesei. Public Domain.
 
-if not ... then require'tr_demo'; return end
+if not ... then require'tr0_demo'; return end
 
 local ffi = require'ffi'
 local glue = require'glue'
@@ -10,7 +10,7 @@ local box2d = require'box2d'
 local color = require'color'
 local ft = require'freetype'
 local cairo = require'cairo'
-local rs_ft = require'tr_raster_ft'
+local rs_ft = require'tr0_raster_ft'
 local zone = require'jit.zone' --glue.noop
 
 local update = glue.update

@@ -2,7 +2,7 @@
 --glyph caching & rasterization based on freetype's rasterizer.
 --Written by Cosmin Apreutesei. Public Domain.
 
-if not ... then require'tr_demo'; return end
+if not ... then require'tr0_demo'; return end
 
 local bit = require'bit'
 local ffi = require'ffi'

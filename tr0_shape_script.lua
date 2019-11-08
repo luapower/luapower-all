@@ -2,7 +2,7 @@
 --Unicode UAX#24 algorithm for detecting the script property of text runs.
 --Written by Cosmin Apreutesei. Public Domain.
 
-if not ... then require'tr_demo'; return end
+if not ... then require'tr0_demo'; return end
 
 local bit = require'bit'
 local hb = require'harfbuzz'

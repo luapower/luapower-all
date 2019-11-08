@@ -4,7 +4,7 @@ io.stdout:setvbuf'no'
 io.stderr:setvbuf'no'
 require'strict'
 
-local tr = require'tr'
+local tr = require'tr0'
 local time = require'time'
 local bitmap = require'bitmap'
 local cairo = require'cairo'

@@ -2,7 +2,7 @@
 --Unicode text shaping and rendering.
 --Written by Cosmin Apreutesei. Public Domain.
 
-if not ... then require'tr_demo'; return end
+if not ... then require'tr0_demo'; return end
 
 local bit = require'bit'
 local ffi = require'ffi'
@@ -14,9 +14,9 @@ local ft = require'freetype'
 local glue = require'glue'
 local box2d = require'box2d'
 local lrucache = require'lrucache'
-local detect_scripts = require'tr_shape_script'
-local lang_for_script = require'tr_shape_lang'
-local reorder_segs = require'tr_shape_reorder'
+local detect_scripts = require'tr0_shape_script'
+local lang_for_script = require'tr0_shape_lang'
+local reorder_segs = require'tr0_shape_reorder'
 local zone = glue.noop
 --local zone = require'jit.zone' --enable for profiling
 
@@ -73,7 +73,7 @@ setmetatable(tr, tr)
 
 tr.glyph_run_cache_size = 1024^2 * 10 --10MB net (arbitrary default)
 
-tr.rasterizer_module = 'tr_raster_cairo' --who does rs:paint_glyph()
+tr.rasterizer_module = 'tr0_raster_cairo' --who does rs:paint_glyph()
 
 function tr:create_rasterizer()
 	return require(self.rasterizer_module)()
