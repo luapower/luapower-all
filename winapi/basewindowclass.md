@@ -17,9 +17,8 @@ and controls which are documented here.
 
 ### Hierarchy
 
-* [Object][winapi.object]
-	* [VObject][winapi.vobject]
-		* BaseWindow
+* [VObject][winapi.vobject]
+	* BaseWindow
 
 ### Initial fields and properties
 

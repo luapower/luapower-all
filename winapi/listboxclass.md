@@ -10,11 +10,10 @@ This module implements the `ListBox` class for creating list boxes.
 
 ### Hierarchy
 
-* [Object][winapi.object]
-	* [VObject][winapi.vobject]
-		* [BaseWindow][winapi.basewindowclass]
-			* [Control][winapi.controlclass]
-				* ListBox
+* [VObject][winapi.vobject]
+	* [BaseWindow][winapi.basewindowclass]
+		* [Control][winapi.controlclass]
+			* ListBox
 
 ### Initial fields and properties
 

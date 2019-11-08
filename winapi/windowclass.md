@@ -10,10 +10,9 @@ This module implements the `Window` class for creating top-level windows.
 
 ### Hierarchy
 
-* [Object][winapi.object]
-	* [VObject][winapi.vobject]
-		* [BaseWindow][winapi.basewindowclass]
-			* Window
+* [VObject][winapi.vobject]
+	* [BaseWindow][winapi.basewindowclass]
+		* Window
 
 ### Initial fields and properties
 

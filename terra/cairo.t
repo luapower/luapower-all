@@ -1,7 +1,8 @@
 
 --Cairo binding for Terra based on cairo 1.12.3.
+--Written by Cosmin Apreutesei. Public Domain.
 
-setfenv(1, require'terra.low')
+setfenv(1, require'terra.low'.module())
 
 require_h'cairo_h'
 linklibrary'cairo'

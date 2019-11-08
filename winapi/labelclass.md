@@ -10,11 +10,10 @@ This module implements the `Label` class for creating text labels.
 
 ### Hierarchy
 
-* [Object][winapi.object]
-	* [VObject][winapi.vobject]
-		* [BaseWindow][winapi.basewindowclass]
-			* [Control][winapi.controlclass]
-				* Label
+* [VObject][winapi.vobject]
+	* [BaseWindow][winapi.basewindowclass]
+		* [Control][winapi.controlclass]
+			* Label
 
 ### Initial fields and properties
 

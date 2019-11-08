@@ -703,28 +703,21 @@ local function parse_module_header(file)
 				local sep = s1:match'%s*%-%-%[([=]*)%[%s*$' -- '--[==['
 				if sep then --in-header doc (terra/dynarray.lua).
 					local dt = {}
+					table.insert(dt, s1)
 					while true do
 						s1 = f:read'*l'
 						if not s1 then
 							break
 						end
-						local s2 = s1:match('^(.-)%s*%]'..sep..'%]%s*$')  -- 's2 ]==]'
-						if s2 then
-							table.insert(dt, s2)
+						if not t.descr then
+							t.name, t.descr = parse_name_descr_line(s1)
+						end
+						if not t.license then
+							t.author, t.license = parse_author_license_line(s1)
+						end
+						table.insert(dt, s1)
+						if s1:match('^(.-)%s*%]'..sep..'%]%s*$') then -- ']==]'
 							break
-						else
-							local parsed
-							if not t.descr then
-								t.name, t.descr = parse_name_descr_line(s1)
-								parsed = t.descr
-							end
-							if not t.license then
-								t.author, t.license = parse_author_license_line(s1)
-								parsed = t.license
-							end
-							if not parsed then
-								table.insert(dt, s1)
-							end
 						end
 					end
 					t.doc = table.concat(dt, '\n')
@@ -1399,9 +1392,9 @@ end)
 module_headers = memoize_package(function(package)
 	local t = {}
 	for mod in pairs(modules(package)) do
-		local dt = module_header(package, mod)
-		dt.module = mod
-		t[#t+1] = dt
+		local h = module_header(package, mod)
+		h.module = mod
+		t[#t+1] = h
 	end
 	table.sort(t, function(t1, t2)
 		local s1 = t1.name or t1.module
@@ -1411,10 +1404,10 @@ module_headers = memoize_package(function(package)
 	return t
 end)
 
-local docheaders = memoize_opt_package(function(package)
+docheaders = memoize_opt_package(function(package)
 	local t = {}
-	for i,h in ipairs(module_headers(package)) do
-		t[m] = h.doc
+	for mod in pairs(modules(package)) do
+		t[mod] = module_header(package, mod)
 	end
 	return t
 end)
@@ -2494,6 +2487,5 @@ end
 --these stubs are implemented only in RPC luapower namespaces.
 function restart() error'not connected' end
 function stop() error'not connected' end
-
 
 return luapower

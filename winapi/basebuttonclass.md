@@ -14,11 +14,10 @@ documented here.
 
 ### Hierarchy
 
-* [Object][winapi.object]
-	* [VObject][winapi.vobject]
-		* [BaseWindow][winapi.basewindowclass]
-			* [Control][winapi.controlclass]
-				* BaseButton
+* [VObject][winapi.vobject]
+	* [BaseWindow][winapi.basewindowclass]
+		* [Control][winapi.controlclass]
+			* BaseButton
 
 ### Initial fields and properties
 

@@ -10,12 +10,11 @@ This module implements the `Button` class for creating buttons.
 
 ### Hierarchy
 
-* [Object][winapi.object]
-	* [VObject][winapi.vobject]
-		* [BaseWindow][winapi.basewindowclass]
-			* [Control][winapi.controlclass]
-				* [BaseButton][winapi.basebuttonclass]
-					* Button
+* [VObject][winapi.vobject]
+	* [BaseWindow][winapi.basewindowclass]
+		* [Control][winapi.controlclass]
+			* [BaseButton][winapi.basebuttonclass]
+				* Button
 
 ### Initial fields and properties
 

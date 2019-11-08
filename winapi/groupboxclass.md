@@ -10,12 +10,11 @@ This module implements the `GroupBox` class for creating group boxes.
 
 ### Hierarchy
 
-* [Object][winapi.object]
-	* [VObject][winapi.vobject]
-		* [BaseWindow][winapi.basewindowclass]
-			* [Control][winapi.controlclass]
-				* [BaseButton][winapi.basebuttonclass]
-					* GroupBox
+* [VObject][winapi.vobject]
+	* [BaseWindow][winapi.basewindowclass]
+		* [Control][winapi.controlclass]
+			* [BaseButton][winapi.basebuttonclass]
+				* GroupBox
 
 ### Initial fields and properties
 

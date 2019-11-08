@@ -1,19 +1,22 @@
+--[[
 
---Minimal Perfect Hash Function Generator for Lua/Terra.
---Written by Cosmin Apreutesei. Public Domain.
+	Minimal Perfect Hash Function Generator for Lua/Terra.
+	Written by Cosmin Apreutesei. Public Domain.
 
---Generation at compile-time in Lua, lookup at runtime in Terra.
---Supports Lua string keys and any-fixed-size-type keys and values.
---It's particularly fast with (u)int32 keys.
---Algorithm from http://stevehanov.ca/blog/index.php?id=119.
+	Generation at compile-time in Lua, lookup at runtime in Terra.
+	Supports Lua string keys and any-fixed-size-type keys and values.
+	It's particularly fast with (u)int32 keys.
+	Algorithm from http://stevehanov.ca/blog/index.php?id=119.
 
---TODO: generate C switch code see if LLVM converts it to phf and check speed.
---TODO: generate Terra if/else code and see if LLVM can see it as a switch.
---TODO: test/compare all with binsearch and linear-search-with-a-sentinel.
+	TODO: generate C switch code see if LLVM converts it to phf and check speed.
+	TODO: generate Terra if/else code and see if LLVM can see it as a switch.
+	TODO: test/compare all with binsearch and linear-search-with-a-sentinel.
+
+]]
 
 if not ... then require'terra.phf_test'; return end
 
-setfenv(1, require'terra.low')
+setfenv(1, require'terra.low'.module())
 
 local hash = {} --{name->hash(data: &opaque, len: int32, d: uint32)}
 

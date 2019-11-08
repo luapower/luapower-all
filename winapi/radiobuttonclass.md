@@ -10,12 +10,11 @@ This module implements the `RadioButton` class for creating radio buttons.
 
 ### Hierarchy
 
-* [Object][winapi.object]
-	* [VObject][winapi.vobject]
-		* [BaseWindow][winapi.basewindowclass]
-			* [Control][winapi.controlclass]
-				* [BaseButton][winapi.basebuttonclass]
-					* RadioButton
+* [VObject][winapi.vobject]
+	* [BaseWindow][winapi.basewindowclass]
+		* [Control][winapi.controlclass]
+			* [BaseButton][winapi.basebuttonclass]
+				* RadioButton
 
 ### Initial fields and properties
 

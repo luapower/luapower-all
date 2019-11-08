@@ -1,18 +1,21 @@
+--[[
 
---Tausworthe PRNG in Terra.
---Written by Cosmin Apreutesei. Public Domain.
---Translated from LuaJIT's lib_math.c Copyright (C) 2005-2017 Mike Pall.
+	Tausworthe PRNG in Terra.
+	Written by Cosmin Apreutesei. Public Domain.
+	Translated from LuaJIT's lib_math.c Copyright (C) 2005-2017 Mike Pall.
 
---TODO: how to use thread-load vars in Terra for the global RandomState?
+	TODO: how to use thread-load vars in Terra for the global RandomState?
 
--- This implements a Tausworthe PRNG with period 2^223. Based on:
---   Tables of maximally-equidistributed combined LFSR generators,
---   Pierre L'Ecuyer, 1991, table 3, 1st entry.
--- Full-period ME-CF generator with L=64, J=4, k=223, N1=49.
+	This implements a Tausworthe PRNG with period 2^223. Based on:
+		Tables of maximally-equidistributed combined LFSR generators,
+		Pierre L'Ecuyer, 1991, table 3, 1st entry.
+	Full-period ME-CF generator with L=64, J=4, k=223, N1=49.
+
+]]
 
 if not ... then require'terra.random_test'; return end
 
-setfenv(1, require'terra.low')
+setfenv(1, require'terra.low'.module())
 
 -- PRNG state.
 local struct RandomState {

@@ -10,12 +10,11 @@ This module implements the `CheckBox` class for creating checkboxes.
 
 ### Hierarchy
 
-* [Object][winapi.object]
-	* [VObject][winapi.vobject]
-		* [BaseWindow][winapi.basewindowclass]
-			* [Control][winapi.controlclass]
-				* [BaseButton][winapi.basebuttonclass]
-					* CheckBox
+* [VObject][winapi.vobject]
+	* [BaseWindow][winapi.basewindowclass]
+		* [Control][winapi.controlclass]
+			* [BaseButton][winapi.basebuttonclass]
+				* CheckBox
 
 ### Initial fields and properties
 
