@@ -1,11 +1,11 @@
 
 --Painting text underlines.
 
-if not ... then require'terra/tr_test'; return end
+if not ... then require'terra.tr_test'; return end
 
-setfenv(1, require'terra/tr_types')
-require'terra/tr_cursor'
-require'terra/tr_clip'
+setfenv(1, require'terra.tr_types')
+require'terra.tr_cursor'
+require'terra.tr_clip'
 
 terra Layout:draw_underline(cr: &context, line: &Line,
 	seg1: &Seg, sub1: &SubSeg,

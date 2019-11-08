@@ -4,20 +4,20 @@
 
 ]]
 
-if not ... then require'terra/tr_test'; return end
+if not ... then require'terra.tr_test'; return end
 
-setfenv(1, require'terra/low'.module'terra/tr_module')
+setfenv(1, require'terra.low'.module'terra.tr_module')
 
 --dependencies ---------------------------------------------------------------
 
-assert(color, 'require the graphics adapter first, eg. terra/tr_paint_cairo')
+assert(color, 'terra.tr_paint_cairo not loaded')
 
-low = require'terra/low'
-require'terra/phf'
-require'terra/fixedfreelist'
-require'terra/lrucache'
-require'terra/arrayfreelist'
-require'terra/box2d'
+low = require'terra.low'
+require'terra.phf'
+require'terra.fixedfreelist'
+require'terra.lrucache'
+require'terra.arrayfreelist'
+require'terra.box2d'
 require_h'freetype_h'
 require_h'harfbuzz_h'
 require_h'fribidi_h'

@@ -1,6 +1,6 @@
-setfenv(1, require'terra/low')
-local bitmap = require'terra/bitmap'
-require'terra/cairo'
+setfenv(1, require'terra.low')
+local bitmap = require'terra.bitmap'
+require'terra.cairo'
 
 terra test_blend()
 	var sr1 = cairo_image_surface_create_from_png'trlib_test.png'

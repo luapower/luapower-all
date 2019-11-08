@@ -53,14 +53,14 @@
 
 ]]
 
-if not ... then require'terra/tr_test'; return end
+if not ... then require'terra.tr_test'; return end
 
-setfenv(1, require'terra/tr_types')
-require'terra/tr_itemize'
-require'terra/tr_wrap'
-require'terra/tr_align'
-require'terra/tr_clip'
-require'terra/tr_paint'
+setfenv(1, require'terra.tr_types')
+require'terra.tr_itemize'
+require'terra.tr_wrap'
+require'terra.tr_align'
+require'terra.tr_clip'
+require'terra.tr_paint'
 
 terra Renderer:init(load_font: FontLoadFunc, unload_font: FontUnloadFunc)
 	fill(self) --this initializes all arr() types.

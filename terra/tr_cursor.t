@@ -37,11 +37,11 @@
 
 ]]
 
-if not ... then require'terra/tr_test'; return end
+if not ... then require'terra.tr_test'; return end
 
-setfenv(1, require'terra/tr_types')
-require'terra/tr_align'
-require'terra/tr_paint'
+setfenv(1, require'terra.tr_types')
+require'terra.tr_align'
+require'terra.tr_paint'
 
 --get offset in logical text for a valid cursor position ---------------------
 

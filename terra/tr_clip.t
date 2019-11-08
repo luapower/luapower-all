@@ -5,10 +5,10 @@
 --NOTE: This is only an optimization. Clipping of partially-clipped segments
 --is out-of-scope. Actual clipping should be done by the blitting library.
 
-if not ... then require'terra/tr_test'; return end
+if not ... then require'terra.tr_test'; return end
 
-setfenv(1, require'terra/tr_types')
-require'terra/tr_align'
+setfenv(1, require'terra.tr_types')
+require'terra.tr_align'
 
 local overlap_seg = macro(function(ax1, ax2, bx1, bx2) --1D segments overlap test
 	return `not (ax2 < bx1 or bx2 < ax1)

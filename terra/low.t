@@ -5,7 +5,7 @@
 
 	Intended to be used as global environment:
 
-		setfenv(1, require'low')
+		setfenv(1, require'terra.low')
 
 	Allocation and initialization vocabulary:
 
@@ -16,10 +16,10 @@
 
 ]]
 
-if not ... then require'low_test'; return; end
+if not ... then require'terra.low_test'; return; end
 
 --remove current directory from package path to avoid duplicate requires.
---eg require'low' and require'low' is a common mistake I make.
+--eg require'terra.low' and require'low' is a common mistake I make.
 package.path = package.path:gsub('^%.[/\\]%?%.lua%;', '')
 
 --dependencies ---------------------------------------------------------------
@@ -59,12 +59,12 @@ glue = require'glue'
 pp   = require'pp'
 
 glue.autoload(_M, {
-	arrview    = 'arrayview',
-	arr        = 'dynarray',
-	map        = 'khash',
-	set        = 'khash',
-	random     = 'trandom',
-	randomseed = 'trandom',
+	arrview    = 'terra.arrayview',
+	arr        = 'terra.dynarray',
+	map        = 'terra.hashmap',
+	set        = 'terra.hashmap',
+	random     = 'terra.random',
+	randomseed = 'terra.random',
 })
 
 require = function(mod)
@@ -746,10 +746,14 @@ typedef int64_t __int64;
 ]]
 local load_cdefs = memoize(function(m)
 	local cdef = ffi.cdef
+	local metatype = ffi.metatype
 	local t = {}
 	ffi.cdef = function(s) add(t, s) end
+	ffi.metatype = noop
 	require(m)
+	package.loaded[m] = nil
 	ffi.cdef = cdef
+	ffi.metatype = metatype
 	return t
 end)
 function require_h(...)
@@ -764,9 +768,9 @@ function require_h(...)
 	end
 	local s = concat(t)
 	C(builtin_ctypes..s, {'-Wno-missing-declarations'})
-	--ffi.cdef(s)
 	--^^enums are anonymized in some headers because they are boxed in
 	--LuaJIT, but Clang complains about that hence -Wno-missing-declarations.
+	--ffi.cdef(s) --let Terra do the cdefs through its own type system.
 end
 
 --clib dependencies ----------------------------------------------------------

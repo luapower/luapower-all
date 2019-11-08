@@ -3,7 +3,7 @@
 --Written by Cosmin Apreutesei. Public Domain.
 --List of language-script associations taken from pango-language.c.
 
-setfenv(1, require'terra/tr_types')
+setfenv(1, require'terra.tr_types')
 
 local lang_map = {
 	[HB_SCRIPT_ARABIC] = 'ar',

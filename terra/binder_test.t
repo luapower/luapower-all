@@ -1,5 +1,5 @@
-setfenv(1, require'terra/low'.module())
-local binder = require'terra/binder'
+setfenv(1, require'terra.low'.module())
+local binder = require'terra.binder'
 
 local function test_cdefs()
 	local h = binder.cdefs()
@@ -98,7 +98,7 @@ local function test_cdefs()
 end
 
 local function test_lib()
-	setfenv(1, require'terra/low'.module())
+	setfenv(1, require'terra.low'.module())
 	local mylib = binder.lib'publish_test'
 
 	struct S (gettersandsetters) {

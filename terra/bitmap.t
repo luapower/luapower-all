@@ -2,9 +2,9 @@
 --Bitmaps for Terra.
 --Written by Cosmin Apreutesei. Public Domain.
 
-if not ... then require'terra/bitmap_test'; return end
+if not ... then require'terra.bitmap_test'; return end
 
-setfenv(1, require'terra/low'.module())
+setfenv(1, require'terra.low'.module())
 
 FORMAT_INVALID = 0
 FORMAT_G8      = 1

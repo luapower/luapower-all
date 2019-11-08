@@ -1,11 +1,11 @@
 
 --Painting rasterized glyph runs into a cairo surface.
 
-if not ... then require'terra/tr_test'; return end
+if not ... then require'terra.tr_test'; return end
 
-setfenv(1, require'terra/tr_types')
-require'terra/tr_rasterize'
-require'terra/tr_clip'
+setfenv(1, require'terra.tr_types')
+require'terra.tr_rasterize'
+require'terra.tr_clip'
 
 terra Renderer:paint_glyph_run(cr: &context, run: &GlyphRun, face: &FontFace, ax: num, ay: num)
 	if run.glyphs.len > 1 and run.font_size < 50 then

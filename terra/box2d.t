@@ -2,7 +2,7 @@
 --math for 2D rectangles defined as (x, y, w, h) where w >= 0 and h >= 0.
 --Written by Cosmin Apreutesei. Public Domain.
 
-setfenv(1, require'terra/low')
+setfenv(1, require'terra.low')
 
 local rect_type = memoize(function(num)
 

@@ -1,5 +1,5 @@
-setfenv(1, require'terra/low')
-import'terra/oo'
+setfenv(1, require'terra.low')
+import'terra.oo'
 
 function test_private_fields()
 	local class C1

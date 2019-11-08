@@ -1,14 +1,14 @@
 --[[
 
-	Cairo graphics adapter for terra/tr.
+	Cairo graphics adapter for tr.
 	Paints (and scales) rasterized glyph runs into a cairo surface.
 
 ]]
 
-if not ... then require'terra/tr_test'; return end
+if not ... then require'terra.tr_test'; return end
 
-setfenv(1, require'terra/low'.module'terra/tr_module')
-require'terra/cairo'
+setfenv(1, require'terra.low'.module'terra.tr_module')
+require'terra.cairo'
 color = cairo_argb32_color_t
 surface = cairo_surface_t
 context = cairo_t
@@ -28,7 +28,7 @@ terra create_surface(w: int, h: int, format: enum)
 	return cairo_image_surface_create(format, w, h)
 end
 
-setfenv(1, require'terra/tr_types')
+setfenv(1, require'terra.tr_types')
 
 terra Renderer:create_glyph_surface(glyph: &Glyph, bmp: &FT_Bitmap, scale: num, font_size: num)
 

@@ -2,6 +2,7 @@
 --Line wrapping based on SMAWK algorithm from https://xxyxyz.org/line-breaking/
 --Written by Cosmin Apreutesei. Public Domain.
 
+--[==[
 def linear(text, width):
     words = text.split()
     count = len(words)
@@ -82,3 +83,4 @@ def linear(text, width):
     lines.reverse()
     return lines
 
+]==]

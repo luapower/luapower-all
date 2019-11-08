@@ -5,9 +5,9 @@
 
 ]]
 
-if not ... then require'terra/oo_test'; return end
+if not ... then require'terra.oo_test'; return end
 
-setfenv(1, require'terra/low')
+setfenv(1, require'terra.low')
 
 --parser/compiler for `class <C>[:<S>] ... end` decls.
 local class = {}; setmetatable(class, class)

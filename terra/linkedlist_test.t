@@ -1,6 +1,6 @@
 
-setfenv(1, require'terra/low')
-require'terra/linkedlist'
+setfenv(1, require'terra.low')
+require'terra.linkedlist'
 
 local struct S {x: int}
 terra test()

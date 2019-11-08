@@ -1,5 +1,5 @@
 
-setfenv(1, require'terra/low')
+setfenv(1, require'terra.low')
 
 local struct mem {
 	len: uint64;

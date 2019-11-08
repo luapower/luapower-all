@@ -1,5 +1,5 @@
-setfenv(1, require'terra/low')
-require'terra/utf8'
+setfenv(1, require'terra.low')
+require'terra.utf8'
 
 local strings = {
 	{'empty', ''},

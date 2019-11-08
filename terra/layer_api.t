@@ -39,8 +39,8 @@
 ]]
 
 
-local layer = require'terra/layer'
-setfenv(1, require'terra/low'.module(layer))
+local layer = require'terra.layer'
+setfenv(1, require'terra.low'.module(layer))
 
 struct Layer;
 struct Lib;
@@ -1154,7 +1154,7 @@ Layer.cname = 'layer_t'
 Layer.opaque = true
 
 function build(optimize)
-	local binder = require'terra/binder'
+	local binder = require'terra.binder'
 	local layerlib = binder.lib'layer'
 
 	if memtotal then

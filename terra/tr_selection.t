@@ -1,11 +1,11 @@
 
 --Text selection.
 
-if not ... then require'terra/tr_test'; return end
+if not ... then require'terra.tr_test'; return end
 
-setfenv(1, require'terra/tr_types')
-require'terra/tr_paint'
-require'terra/tr_cursor'
+setfenv(1, require'terra.tr_types')
+require'terra.tr_paint'
+require'terra.tr_cursor'
 
 terra Selection:init(layout: &Layout)
 	self.layout = layout

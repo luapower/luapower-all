@@ -1,12 +1,12 @@
 
 --get/set Layout attributes with minimal invalidation of state.
 
-if not ... then require'terra/tr_test'; return end
+if not ... then require'terra.tr_test'; return end
 
-setfenv(1, require'terra/tr_types')
-require'terra/tr_cursor'
-require'terra/tr_selection'
-require'terra/utf8'
+setfenv(1, require'terra.tr_types')
+require'terra.tr_cursor'
+require'terra.tr_selection'
+require'terra.utf8'
 
 terra Layout:text_changed()
 	var spans_bk = self.spans:backwards()

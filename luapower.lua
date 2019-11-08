@@ -24,8 +24,12 @@ CONVENTIONS:
 	* a module can signal that it's not a module but actually an app by
 	asserting it with assert(... ~= <module_name>, 'not a module').
 
-	* a module's runtime dependencies can be declared in its `__autoload`
-	metatable field (see glue.autoload).
+	* a module can signal that it requires a global variable that is set
+	by loading another module by raising an error ending with the string
+		'<module_name> not loaded'.
+
+	* a module's runtime dependencies that are bound to module keys can be
+	declared in its `__autoload` metatable field (see glue.autoload).
 
 	* name, description, author and license of a Lua module can be provided
 	on the first two line-comments written as:
@@ -36,8 +40,8 @@ CONVENTIONS:
 
 	* submodules can be put in folders or named `<module>_<submodule>.lua`.
 
-	* platform-specific Lua modules are found in `bin/<platform>/<module>.lua`.
-	currently only luajit's `vmdef.lua` file is there.
+	* platform-specific Lua modules are found in `bin/<platform>/lua/<module>.lua`.
+	currently only luajit's `vmdef.lua` file is in there.
 
 	* Lua/C modules are found in `bin/<platform>/clib/<module>.dll|.so`
 
@@ -60,18 +64,18 @@ CONVENTIONS:
 	* a package is installed if it has a `.mgit/<package>` directory.
 	* not installed packages are those known but not installed.
 
-	* Lua and Lua/C modules can be anywhere in the tree except in `csrc`,
-	`media`, `.mgit` and `bin` (but they can be in `bin/<platform>/clib`
-	and `bin/<platform>/lua`).
+	* modules can be anywhere in the tree except in `csrc`, `media`, `.mgit`,
+	`bin`, `tmp` (but they can be in `bin/<platform>/clib` and
+	`bin/<platform>/lua`).
 
 	* docs are `*.md` files in Pandoc Markdown format and can be anywhere in
-	the tree except in `bin`, `csrc` and `media`.
+	the tree where modules can be.
 
-	* modules that end in `_test`, `_demo`, `demo_<arch>`, `_benchmark`
+	* modules that end in `_test`, `_demo`, `_demo_<arch>`, `_benchmark`
 	or `_app` are considered standalone scripts.
 
-	* packages containing Lua/C modules have an _implicit_ binary
-	dependency on luajit on Windows because they link against lua51.dll.
+	* packages containing Lua/C modules have an _implicit_ binary dependency
+	on the luajit package because they link against the LuaJIT library.
 
 	* packages with a C component must contain a build script named
 	`csrc/*/build-<platform>.sh` for each platform that it supports.
@@ -81,9 +85,14 @@ CONVENTIONS:
 	* platforms can be specified in the `platforms` tag of the package's main
 	doc file as comma-separated values.
 
-	* .dasl files are listed as Lua/ASM modules and they can be tracked
-	for dependency like Lua modules (the `dynasm` module is loaded first).
+	* binary dependencies can be specified in the `requires` tag of the
+	package's main doc file just like in the WHAT file.
 
+	* .dasl files are listed as Lua/ASM modules and are tracked like Lua
+	modules and the `dynasm` module is loaded first.
+
+	* .t files are listed as Terra modules and are tracked like Terra modules
+	and the `terra` module is loaded first.
 
 STATIC INFO:
 
@@ -93,7 +102,8 @@ STATIC INFO:
 	* supported_platforms -> t              {platform = true}
 	* builtin_modules -> t                  {module = true}
 	* luajit_builtin_modules -> t           {module = true}
-	* loader_modules -> t                   {file_ext = module}
+	* loader_modules -> t                   {file_ext = loader_module_name}
+	* enviornments -> t                     {loader_module_name = env_name}
 	* default_license -> s                  default license
 
 SOURCES OF INFORMATION:
@@ -281,7 +291,6 @@ setfenv(1, luapower)
 local lfs = require'lfs'
 local glue = require'glue'
 local ffi = require'ffi'
-require'terra'
 
 --config
 ------------------------------------------------------------------------------
@@ -444,8 +453,6 @@ local function install_trackers(builtin_modules, filter)
 
 	function require(m)
 
-		m = m:gsub('/', '.')
-
 		--create the module's tracking table
 		dt[m] = dt[m] or {}
 
@@ -477,10 +484,15 @@ local function install_trackers(builtin_modules, filter)
 				local err = ret:gsub(':?%s*[\n\r].*', '')
 				err = err:gsub('^.-[\\/]%.%.[\\/]%.%.[\\/]', '')
 				--remove source info for platform and arch load errors
-				local perr = err:match'platform not .*' or err:match'arch not .*'
+				local perr =
+					   err:match'platform not .*'
+					or err:match'arch not .*'
+					--TODO: pre-load these modules...
+					--or err:match'[^%s]+ not loaded$'
 				err = perr or err
 				if not perr then
-					print(string.format('%-20s: %s', m, err))
+					--TODO: remove this
+					--print(string.format('%-20s: %s', m, err))
 				end
 				dt[m] = {loaderr = err}
 			end
@@ -533,7 +545,8 @@ local function install_trackers(builtin_modules, filter)
 		if m:find'^ssl%.' then return end
 		if loader_m then
 			local ok, err = pcall(require, loader_m)
-			if not ok then --put the error on the account of mod
+			if not ok then
+				--put the error on the account of mod
 				dt[m] = {loaderr = err} --clear deps
 				return dt[m]
 			end
@@ -546,23 +559,22 @@ end
 
 --make a Lua state for loading modules in a clean environment for tracking.
 --the tracker function is installed in the state as the global 'track_module'.
-local tracking_state = memoize(function()
+local tracking_state = function(env)
 	local luastate = require'luastate'
 	local state = luastate.open()
 	state:openlibs()
 	state:push{[0] = arg[0]} --used by some modules to get the exe dir
 	state:setglobal'arg'
-	state:getglobal'require'
-	state:call'terra'
 	state:push(install_trackers)
 	state:call(builtin_modules, filter)
 	return state
-end)
+end
 
---track a module in the tracking Lua state (which is reused on future calls).
-local function track_module(m, loader_m)
+--track a module in the tracking Lua state which is reused on future calls.
+--different states are created for different environments.
+local function track_module(m, loader_m, env)
 	assert(m, 'module required')
-	local state = tracking_state()
+	local state = tracking_state(env)
 	state:getglobal'track_module'
 	return state:call(m, loader_m)
 end
@@ -1486,9 +1498,9 @@ bin_deps = memoize_package(function(package, platform)
 	local t1 = what_tags(package) and what_tags(package).dependencies
 	local t2 = doc_tags(package, package) and doc_tags(package, package).dependencies
 	local t = glue.update({}, t1 and t1[platform], t2 and t2[platform])
-	--packages containing Lua/C modules have an _implicit_ binary
-	--dependency on luajit on Windows because they link against lua51.dll.
-	if platform:find'^mingw' and has_luac_modules(package) then
+	--packages containing Lua/C modules have an _implicit_ binary dependency
+	--on the luajit package because they link against the LuaJIT library.
+	if has_luac_modules(package) then
 		t.luajit = true
 	end
 	return t
@@ -1605,7 +1617,18 @@ end)
 
 --modules with extensions other than Lua need a require() loader to be
 --installed first. that loader is usually installed by loading another module.
-loader_modules = {dasl = 'dynasm'}
+loader_modules = {
+	dasl = 'dynasm',
+	t    = 'terra',
+}
+
+--environments are used to load Terra modules in a separate Lua state than
+--the state used to load Lua modules because LuaJIT ffi bindings are
+--incompatible with Terra bindings because both try to create the same ffi
+--ctypes and set a different ffi.metatype on those types.
+environments = {
+	terra = 'terra',
+}
 
 function module_loader(mod, package)
 	package = package or module_package(mod)
@@ -1623,7 +1646,8 @@ local track_module_ = track_module
 luapower.track_module = memoize_mod_package(function(mod, package)
 	package = package or module_package(mod)
 	local loader_mod = module_loader(mod, package)
-	return track_module_(mod, loader_mod)
+	local env = environments[loader_mod]
+	return track_module_(mod, loader_mod, env)
 end)
 
 

@@ -4,7 +4,7 @@
 --Written by Cosmin Apreutesei. Public Domain.
 
 local ui = require'ui'
-local tr = require'tr'
+local tr = require'tr0'
 local glue = require'glue'
 local box2d = require'box2d'
 

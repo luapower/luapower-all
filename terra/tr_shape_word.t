@@ -1,11 +1,11 @@
 
 --Shaping a single word into a cached array of glyphs called a glyph run.
 
-if not ... then require'terra/tr_test'; return end
+if not ... then require'terra.tr_test'; return end
 
-setfenv(1, require'terra/tr_types')
-require'terra/tr_font'
-require'terra/tr_rle'
+setfenv(1, require'terra.tr_types')
+require'terra.tr_font'
+require'terra.tr_rle'
 
 terra GlyphImage:free(r: &Renderer)
 	if self.surface == nil then return end

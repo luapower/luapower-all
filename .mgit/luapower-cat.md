@@ -8,6 +8,7 @@ tagline: package categories
 	* [nginx]
 * Deployment
 	* [bundle]
+	* [terra.binder]
 * Standard Libraries
 	* [glue]
 	* [pp]
@@ -30,8 +31,8 @@ tagline: package categories
 	* [hidapi]
 * Portable UI
 	* [ui]
-	* [terra-layer]
-	* [terra-tr]
+	* [terra.layer]
+	* [terra.tr]
 * Portable 2D Graphics
 	* [cairo]
 	* [bitmap]
@@ -128,23 +129,23 @@ tagline: package categories
 * Web Development
 	* [webb]
 * Terra Standard Libraries
-   * [terra-low]
-   * [terra-arrayview]
-   * [terra-dynarray]
-	* [terra-hashmap]
-	* [terra-phf]
-	* [terra-linkedlist]
-	* [terra-fixedfreelist]
-	* [terra-arrayfreelist]
-	* [terra-lrucache]
-	* [terra-bitarray]
-	* [terra-utf8]
-	* [terra-random]
+   * [terra.low]
+   * [terra.arrayview]
+   * [terra.dynarray]
+	* [terra.hashmap]
+	* [terra.phf]
+	* [terra.linkedlist]
+	* [terra.fixedfreelist]
+	* [terra.arrayfreelist]
+	* [terra.lrucache]
+	* [terra.bitarray]
+	* [terra.utf8]
+	* [terra.random]
 * Terra Support Libs
-	* [terra-bitmap]
-	* [terra-cairo]
-	* [terra-box2d]
-	* [terra-boxblur]
+	* [terra.bitmap]
+	* [terra.cairo]
+	* [terra.box2d]
+	* [terra.boxblur]
 	* [mingw64-headers]
 	* [clang-resource-dir]
 * Package Management

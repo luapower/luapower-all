@@ -1,4 +1,4 @@
-setfenv(1, require'terra/low')
+setfenv(1, require'terra.low')
 
 local S = arr(int8)
 local struct V {x: int}

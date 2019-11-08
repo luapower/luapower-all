@@ -1,5 +1,5 @@
 
-setfenv(1, require'terra/low')
+setfenv(1, require'terra.low')
 
 local n = 1e8
 local seed = 543

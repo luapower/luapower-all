@@ -1,9 +1,9 @@
 
 --Hit testing entire lines of text.
 
-if not ... then require'terra/tr_test'; return end
+if not ... then require'terra.tr_test'; return end
 
-setfenv(1, require'terra/tr_types')
+setfenv(1, require'terra.tr_types')
 
 --hit-test lines vertically given a relative(!) y-coord.
 local terra cmp_ys(line1: &Line, line2: &Line)

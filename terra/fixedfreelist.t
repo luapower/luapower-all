@@ -8,7 +8,7 @@
 
 ]]
 
-setfenv(1, require'terra/low')
+setfenv(1, require'terra.low')
 
 local freelist_type = function(T, size_t, C)
 

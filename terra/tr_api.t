@@ -45,14 +45,14 @@
 
 ]]
 
-require'terra/memcheck'
-require'terra/tr_paint_cairo'
-require'terra/utf8'
-require'terra/rawstringview'
-require'terra/tr_cursor'
-require'terra/tr_underline'
-local tr = require'terra/tr'
-setfenv(1, require'terra/low'.module(tr))
+require'terra.memcheck'
+require'terra.tr_paint_cairo'
+require'terra.utf8'
+require'terra.rawstringview'
+require'terra.tr_cursor'
+require'terra.tr_underline'
+local tr = require'terra.tr'
+setfenv(1, require'terra.low'.module(tr))
 
 num = double
 MAX_SPAN_COUNT = 10^9
@@ -1418,7 +1418,7 @@ Layout.cname = 'layout_t'
 Layout.opaque = true
 
 function build(optimize)
-	local binder = require'terra/binder'
+	local binder = require'terra.binder'
 	local trlib = binder.lib'tr'
 
 	if memtotal then

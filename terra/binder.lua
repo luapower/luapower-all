@@ -33,7 +33,7 @@ Conventions:
 
 Usage:
 
-	local lib = require'terra/binder'.lib
+	local lib = require'terra.binder'.lib
 
 	MyStruct.cname = 'my_struct_t'
 	MyStruct.opaque = true
@@ -67,9 +67,11 @@ Note:
 
 ]]
 
-if not ... then require'terra/binder_test'; return end
+assert(terra, 'terra not loaded')
 
-setfenv(1, require'terra/low'.module())
+if not ... then require'terra.binder_test'; return end
+
+setfenv(1, require'terra.low'.module())
 
 --C defs generator -----------------------------------------------------------
 

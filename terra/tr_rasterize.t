@@ -5,10 +5,10 @@
 
 ]]
 
-if not ... then require'terra/tr_test'; return end
+if not ... then require'terra.tr_test'; return end
 
-setfenv(1, require'terra/tr_types')
-require'terra/tr_font'
+setfenv(1, require'terra.tr_types')
+require'terra.tr_font'
 
 terra FontFace:load_glyph(glyph_index: uint)
 	if FT_Load_Glyph(self.ft_face, glyph_index, self.ft_load_flags) ~= 0 then

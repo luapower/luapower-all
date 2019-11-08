@@ -2,12 +2,12 @@
 --get/set individual Span attributes between any two text offsets
 --with minimal invalidation of state and minimum number of spans.
 
-if not ... then require'terra/tr_test'; return end
+if not ... then require'terra.tr_test'; return end
 
-setfenv(1, require'terra/tr_types')
-require'terra/tr_font'
-require'terra/tr_shape'
-require'terra/rawstringview'
+setfenv(1, require'terra.tr_types')
+require'terra.tr_font'
+require'terra.tr_shape'
+require'terra.rawstringview'
 
 local FIELDS = {
 	'font_id',

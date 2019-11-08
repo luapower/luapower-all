@@ -1,5 +1,5 @@
 require'terra'
-local low = require'terra/boxblur'
+local low = require'terra.boxblur'
 low.Blur:build()
 print'built'
 

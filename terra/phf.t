@@ -11,9 +11,9 @@
 --TODO: generate Terra if/else code and see if LLVM can see it as a switch.
 --TODO: test/compare all with binsearch and linear-search-with-a-sentinel.
 
-if not ... then require'terra/phf_test'; return end
+if not ... then require'terra.phf_test'; return end
 
-setfenv(1, require'terra/low')
+setfenv(1, require'terra.low')
 
 local hash = {} --{name->hash(data: &opaque, len: int32, d: uint32)}
 

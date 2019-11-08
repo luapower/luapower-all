@@ -1,7 +1,7 @@
 
 --Abstract run-length-encoding iterator for any indexable object.
 
-setfenv(1, require'terra/low')
+setfenv(1, require'terra.low')
 
 --NOTE: this could probably be achieved with a simple for loop and even less
 --conditionals in the loop if you are willing to have some code generated twice.

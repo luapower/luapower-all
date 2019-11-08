@@ -1,8 +1,8 @@
 
-setfenv(1, require'terra/low'.module())
-require'terra/memcheck'
-require'terra/tr_paint_cairo'
-setfenv(1, require'terra/tr_api')
+setfenv(1, require'terra.low'.module())
+require'terra.memcheck'
+require'terra.tr_paint_cairo'
+setfenv(1, require'terra.tr_api')
 
 local font_paths_list = {
 	'../media/fonts/OpenSans-Regular.ttf',

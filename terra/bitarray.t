@@ -7,10 +7,10 @@
 
 ]]
 
-if not ... then require'terra/bitarray_test'; return end
+if not ... then require'terra.bitarray_test'; return end
 
-setfenv(1, require'terra/low')
-require'terra/box2d'
+setfenv(1, require'terra.low')
+require'terra.box2d'
 local rect = rect(num)
 
 local function view_type(size_t)

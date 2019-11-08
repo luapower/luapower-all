@@ -1,6 +1,6 @@
 
-setfenv(1, require'terra/low')
-require'terra/bitarray'
+setfenv(1, require'terra.low')
+require'terra.bitarray'
 
 local terra draw(a: bitarrview2d())
 	for y=0,a.h do

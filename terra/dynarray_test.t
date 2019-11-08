@@ -1,5 +1,5 @@
 
-setfenv(1, require'terra/low')
+setfenv(1, require'terra.low')
 
 local struct S {x: int}
 local p = global(int, 0)

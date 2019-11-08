@@ -49,14 +49,14 @@
 
 ]]
 
-setfenv(1, require'terra/low'.module())
-require'terra/memcheck'
-require'terra/cairo'
-require'terra/tr_paint_cairo'
-tr = require'terra/tr_api'
-bitmap = require'terra/bitmap'
-require'terra/boxblur'
-require'terra/box2d'
+setfenv(1, require'terra.low'.module())
+require'terra.memcheck'
+require'terra.cairo'
+require'terra.tr_paint_cairo'
+tr = require'terra.tr_api'
+bitmap = require'terra.bitmap'
+require'terra.boxblur'
+require'terra.box2d'
 
 --external types -------------------------------------------------------------
 

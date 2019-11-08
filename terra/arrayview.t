@@ -56,9 +56,9 @@
 
 ]]
 
-if not ... then require'arrayview_test'; return end
+if not ... then require'terra.arrayview_test'; return end
 
-setfenv(1, require'low')
+setfenv(1, require'terra.low')
 
 local either = macro(function(v, a, b)
 	return quote var v = v in v == a or v == b end

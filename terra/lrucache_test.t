@@ -1,7 +1,7 @@
 
 --NOASSERTS=1
-setfenv(1, require'terra/low')
-require'terra/lrucache'
+setfenv(1, require'terra.low')
+require'terra.lrucache'
 
 local S = struct {
 	size: intptr;

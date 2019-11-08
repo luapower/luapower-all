@@ -21,9 +21,9 @@
 
 ]]
 
-if not ... then require'terra/utf8_test'; return end
+if not ... then require'terra.utf8_test'; return end
 
-setfenv(1, require'terra/low')
+setfenv(1, require'terra.low')
 
 utf8 = {decode = {}, encode = {}}
 

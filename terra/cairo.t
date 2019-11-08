@@ -1,11 +1,11 @@
 
 --Cairo binding for Terra based on cairo 1.12.3.
 
-setfenv(1, require'terra/low')
+setfenv(1, require'terra.low')
 
 require_h'cairo_h'
 linklibrary'cairo'
-local bitmap = require'terra/bitmap'
+local bitmap = require'terra.bitmap'
 
 local function retbool(t, name, f)
 	t['_'..name] = f

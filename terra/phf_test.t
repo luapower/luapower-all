@@ -1,6 +1,6 @@
 
-setfenv(1, require'terra/low')
-require'terra/phf'
+setfenv(1, require'terra.low')
+require'terra.phf'
 
 local function read_words(file)
 	local t = {}

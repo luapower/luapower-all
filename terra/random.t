@@ -10,9 +10,9 @@
 --   Pierre L'Ecuyer, 1991, table 3, 1st entry.
 -- Full-period ME-CF generator with L=64, J=4, k=223, N1=49.
 
-if not ... then require'terra/random_test'; return end
+if not ... then require'terra.random_test'; return end
 
-setfenv(1, require'terra/low')
+setfenv(1, require'terra.low')
 
 -- PRNG state.
 local struct RandomState {

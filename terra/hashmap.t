@@ -51,9 +51,9 @@
 
 ]]
 
-if not ... then require'terra/hashmap_test'; return end
+if not ... then require'terra.hashmap_test'; return end
 
-setfenv(1, require'terra/low')
+setfenv(1, require'terra.low')
 
 --interface to the 2-bit flags bitmap
 

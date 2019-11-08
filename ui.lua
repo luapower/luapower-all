@@ -17,7 +17,7 @@ local nw = require'nw'
 local time = require'time'
 local cairo = require'cairo'
 local boxblur = require'boxblur'
-local tr = require'tr'
+local tr = require'tr0'
 
 local zone = glue.noop
 local zone = require'jit.zone' --enable for profiling

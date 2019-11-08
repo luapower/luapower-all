@@ -1,11 +1,11 @@
 
 --Fit line-wrapped text inside a box.
 
-if not ... then require'terra/tr_test'; return end
+if not ... then require'terra.tr_test'; return end
 
-setfenv(1, require'terra/tr_types')
-require'terra/tr_font'
-require'terra/tr_wrap'
+setfenv(1, require'terra.tr_types')
+require'terra.tr_font'
+require'terra.tr_wrap'
 
 terra Line:_update_vertical_metrics(
 	line_spacing: num,
