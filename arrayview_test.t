@@ -1,5 +1,5 @@
 
-setfenv(1, require'terra/low')
+setfenv(1, require'low')
 
 --TODO: test failed asserts
 
