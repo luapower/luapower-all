@@ -5,7 +5,7 @@
 
 	Intended to be used as global environment:
 
-		setfenv(1, require'terra/low')
+		setfenv(1, require'low')
 
 	Allocation and initialization vocabulary:
 
@@ -16,10 +16,10 @@
 
 ]]
 
-if not ... then require'terra/low_test'; return; end
+if not ... then require'low_test'; return; end
 
 --remove current directory from package path to avoid duplicate requires.
---eg require'low' and require'terra/low' is a common mistake I make.
+--eg require'low' and require'low' is a common mistake I make.
 package.path = package.path:gsub('^%.[/\\]%?%.lua%;', '')
 
 --dependencies ---------------------------------------------------------------
@@ -59,12 +59,12 @@ glue = require'glue'
 pp   = require'pp'
 
 glue.autoload(_M, {
-	arrview    = 'terra/arrayview',
-	arr        = 'terra/dynarray',
-	map        = 'terra/hashmap',
-	set        = 'terra/hashmap',
-	random     = 'terra/random',
-	randomseed = 'terra/random',
+	arrview    = 'arrayview',
+	arr        = 'dynarray',
+	map        = 'khash',
+	set        = 'khash',
+	random     = 'trandom',
+	randomseed = 'trandom',
 })
 
 require = function(mod)

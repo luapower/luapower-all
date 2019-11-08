@@ -1,5 +1,5 @@
 
-setfenv(1, require'terra/low')
+setfenv(1, require'low')
 
 local terra test_math()
 	print('floor', floor(5.5), floor([float](5.3f)))
