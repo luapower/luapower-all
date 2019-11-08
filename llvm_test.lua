@@ -64,7 +64,7 @@ local mod2 = assert(llvm.parse_ir[[
 local orc = assert(llvm.orc(machine))
 assert(orc:add_module(mod2))
 local p = ffi.cast('int(*)(int)', orc:sym_addr'f')
-print(p())
+print(p(1))
 
 builder:free()
 engine:free() --frees the module
