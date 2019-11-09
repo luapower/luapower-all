@@ -19,7 +19,7 @@
 
 ]]
 
-setfenv(1, require'terra.low')
+setfenv(1, require'terra.low'.module())
 
 local arrayfreelist_type = memoize(function(T, size_t, context_t)
 

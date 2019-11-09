@@ -40,7 +40,7 @@
 
 if not ... then require'terra.linkedlist_test'; return end
 
-setfenv(1, require'terra.low')
+setfenv(1, require'terra.low'.module())
 
 local list_type = memoize(function(T, size_t, context_t, own_elements)
 

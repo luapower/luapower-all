@@ -9,7 +9,7 @@
 
 if not ... then require'terra.bitarray_test'; return end
 
-setfenv(1, require'terra.low')
+setfenv(1, require'terra.low'.module())
 require'terra.box2d'
 local rect = rect(num)
 

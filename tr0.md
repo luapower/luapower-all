@@ -14,7 +14,7 @@ OpenType-assisted auto-hinter.
 
 ## Status
 
-This module is a Lua prototype for [tr] which made in Terra.
+This module is a Lua prototype for [terra.tr].
 Its [missing features and bugs](https://github.com/luapower/tr0/issues) will
 not be fixed here.
 

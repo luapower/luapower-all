@@ -6,6 +6,7 @@ local ui = require'ui'
 local glue = require'glue'
 local push = table.insert
 
+ui = ui()
 local calendar = ui.grid:subclass'calendar'
 ui.calendar = calendar
 

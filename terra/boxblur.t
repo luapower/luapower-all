@@ -2,7 +2,7 @@
 --Fast bgra8 and g8 box blurs for Terra.
 --Written by Cosmin Apreutesei. Public Domain.
 
-setfenv(1, require'terra.low')
+setfenv(1, require'terra.low'.module())
 
 local bitmap = require'terra.bitmap'
 

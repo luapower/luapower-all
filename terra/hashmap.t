@@ -53,7 +53,7 @@
 
 if not ... then require'terra.hashmap_test'; return end
 
-setfenv(1, require'terra.low')
+setfenv(1, require'terra.low'.module())
 
 --interface to the 2-bit flags bitmap
 

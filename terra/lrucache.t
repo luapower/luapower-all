@@ -30,7 +30,7 @@
 
 if not ... then require'terra.lrucache_test'; return end
 
-setfenv(1, require'terra.low')
+setfenv(1, require'terra.low'.module())
 require'terra.linkedlist'
 
 local function cache_type(key_t, val_t, size_t, context_t, hash, equal, own_keys, own_vals)

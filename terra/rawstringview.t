@@ -12,7 +12,7 @@
 
 ]]
 
-setfenv(1, require'terra.low')
+setfenv(1, require'terra.low'.module())
 
 rawstringview = arrview(char)
 

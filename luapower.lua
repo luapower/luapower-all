@@ -1214,10 +1214,12 @@ end)
 --check if a path is valid for containing (non-platform-specific) modules.
 local function is_module_path(p)
 	return not p or not (
-		p:find'^bin/'     --can't have modules in bin
-		or p:find'^csrc/'  --can't have modules in csrc
-		or p:find'^media/' --can't have modules in media
-		or p:find'^.mgit/' --can't have modules in .mgit
+		   p:find'^bin/'    --can't have modules in bin
+		or p:find'^csrc/'   --can't have modules in csrc
+		or p:find'^media/'  --can't have modules in media
+		or p:find'^tmp/'    --can't have modules in tmp
+		or p:find'^logs/'   --can't have modules in logs
+		or p:find'^%.mgit/' --can't have modules in .mgit
 	)
 end
 
@@ -1232,12 +1234,7 @@ end
 --check if a path is valid for containing docs.
 --docs can be anywhere except in a few "reserved" places.
 local function is_doc_path(p)
-	return not p or not (
-		p:find'^bin/'
-		or p:find'^csrc/'
-		or p:find'^media/'
-		or p:find'^.mgit/'
-	)
+	return is_module_path(p)
 end
 
 --check if a name is a loadable module as opposed to a script or app.
