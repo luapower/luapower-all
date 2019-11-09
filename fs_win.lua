@@ -63,7 +63,7 @@ typedef struct {
 
 local INVALID_HANDLE_VALUE = ffi.cast('HANDLE', -1)
 
-local wbuf = mkbuf'WCHAR'
+local wbuf = growbuffer'WCHAR[?]'
 local libuf = ffi.new'LARGE_INTEGER[1]'
 
 local m = ffi.new[[
@@ -99,7 +99,7 @@ DWORD FormatMessageA(
 
 local FORMAT_MESSAGE_FROM_SYSTEM = 0x00001000
 
-local errbuf = mkbuf'char'
+local errbuf = growbuffer'char[?]'
 
 local error_classes = {
 	[0x002] = 'not_found', --ERROR_FILE_NOT_FOUND, CreateFileW
@@ -125,7 +125,7 @@ local function check(ret, err)
 	err = err or C.GetLastError()
 	local msg = error_classes[err]
 	if not msg then
-		local buf, bufsz = errbuf(256)
+		local buf, bufsz = errbuf(512)
 		local sz = C.FormatMessageA(
 			FORMAT_MESSAGE_FROM_SYSTEM, nil, err, 0, buf, bufsz, nil)
 		err = sz > 0 and ffi.string(buf, sz):gsub('[\r\n]+$', '') or 'Error '..err
@@ -158,7 +158,7 @@ int WideCharToMultiByte(
 
 local CP_UTF8 = 65001
 
-local wcsbuf = mkbuf'WCHAR'
+local wcsbuf = growbuffer'WCHAR[?]'
 
 local function wcs(s, msz, wbuf) --string -> WCHAR[?]
 	msz = msz and msz + 1 or #s + 1
@@ -171,7 +171,7 @@ local function wcs(s, msz, wbuf) --string -> WCHAR[?]
 	return buf
 end
 
-local mbsbuf = mkbuf'char'
+local mbsbuf = growbuffer'char[?]'
 
 local function mbs(ws, wsz, mbuf) --WCHAR* -> string
 	wsz = wsz and wsz + 1 or -1
@@ -776,7 +776,7 @@ function fs.homedir()
 end
 
 function fs.tmpdir()
-	local buf, bufsz = wbuf()
+	local buf, bufsz = wbuf(256)
 	local sz = C.GetTempPathW(bufsz, buf)
 	if sz == 0 then return check() end
 	if sz > bufsz then
@@ -796,7 +796,7 @@ end
 local ERROR_INSUFFICIENT_BUFFER = 122
 
 function fs.exepath()
-	local buf, bufsz = wbuf()
+	local buf, bufsz = wbuf(256)
 	::again::
 	local sz = C.GetModuleFileNameW(hmodule, buf, bufsz)
 	if sz < 0 then

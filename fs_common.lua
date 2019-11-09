@@ -49,19 +49,22 @@ function assert(v, err, ...)
 	error(err, 2)
 end
 
---return a function which reuses and returns an ever-increasing buffer.
-function mkbuf(ctype, min_sz)
-	ctype = ffi.typeof('$[?]', ffi.typeof(ctype))
-	min_sz = min_sz or 256
-	assert(min_sz > 0)
-	local buf, bufsz
-	return function(sz)
-		sz = sz or bufsz or min_sz
-		assert(sz > 0)
-		if not bufsz or sz > bufsz then
-			buf, bufsz = ctype(sz), sz
+--next power of two (from glue).
+local function nextpow2(x)
+	return math.max(0, 2^(math.ceil(math.log(x) / math.log(2))))
+end
+
+--static, auto-growing buffer allocation pattern (from glue, modified).
+function growbuffer(ctype)
+	local ctype = ffi.typeof(ctype or 'char[?]')
+	local buf, len = nil, -1
+	return function(minlen)
+		if minlen > len then
+			local buf0, len0 = buf, len
+			len = nextpow2(minlen)
+			buf = ctype(len)
 		end
-		return buf, bufsz
+		return buf, len
 	end
 end
 

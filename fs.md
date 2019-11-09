@@ -431,6 +431,10 @@ Get current user's home directory.
 
 Get temporary directory.
 
+### `fs.exepath() -> path`
+
+Get the full path of the running executable.
+
 ### `fs.exedir() -> path`
 
 Get the directory of the running executable.

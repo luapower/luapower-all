@@ -34,7 +34,7 @@ end
 
 check = check_errno
 
-local cbuf = mkbuf'char'
+local cbuf = growbuffer'char[?]'
 
 local function parse_perms(s)
 	if type(s) == 'string' then
@@ -328,7 +328,7 @@ local ERANGE = 34
 
 function getcwd()
 	while true do
-		local buf, sz = cbuf()
+		local buf, sz = cbuf(256)
 		if C.getcwd(buf, sz) == nil then
 			if ffi.errno() ~= ERANGE then
 				return check()
@@ -367,7 +367,7 @@ end
 local EINVAL = 22
 
 function readlink(link_path)
-	local buf, sz = cbuf()
+	local buf, sz = cbuf(256)
 	::again::
 	local len = C.readlink(link_path, buf, sz)
 	if len == -1 then
@@ -390,7 +390,7 @@ function fs.homedir()
 end
 
 function fs.tmpdir()
-	return os.getenv'TMPDIR'
+	return os.getenv'TMPDIR' or '/tmp'
 end
 
 function fs.appdir(appname)
@@ -403,11 +403,11 @@ if osx then
 	cdef'int _NSGetExecutablePath(char* buf, uint32_t* bufsize);'
 
 	function fs.exepath()
-		local buf, sz = cbuf()
+		local buf, sz = cbuf(256)
 		local out_sz = ffi.new('uint32_t[1]', sz)
 		::again::
 		if C._NSGetExecutablePath(buf, out_sz) ~= 0 then
-			buf, sz = cbuf(out_sz)
+			buf, sz = cbuf(out_sz[0])
 			goto again
 		end
 		return (ffi.string(buf, sz):gsub('//', '/'))
