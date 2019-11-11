@@ -7,7 +7,6 @@ struct Bitmap {
 	int32_t w;
 	int32_t h;
 	uint8_t* pixels;
-	int64_t capacity;
 	int32_t stride;
 	int8_t format;
 };
@@ -28,8 +27,10 @@ ffi.metatype('Blur', {__index = {
 }})
 ffi.cdef[[
 enum {
-	BLUR_FORMAT_ARGB32 = 2,
-	BLUR_FORMAT_G8 = 1,
-	BLUR_FORMAT_INVALID = 0,
+	BITMAP_ARGB32 = 2,
+	BITMAP_COPY = 0,
+	BITMAP_G8 = 1,
+	BITMAP_INVALID = 0,
+	BITMAP_OVER = 1,
 }]]
 return C
