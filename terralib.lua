@@ -429,10 +429,7 @@ local function invokeuserfunction(anchor, what, speculate, userfn,  ...)
 end
 terra.fulltrace = false
 -- override the lua traceback function to be aware of Terra compilation contexts
-function debug.traceback(thread,msg,level)
-    if type(thread) ~= 'thread' then
-      thread,msg,level = nil,thread,msg
-    end
+function debug.traceback(msg,level)
     level = level or 1
     level = level + 1 -- don't count ourselves
     local lim = terra.fulltrace and math.huge or TRACEBACK_LEVELS1 + 1
@@ -556,11 +553,16 @@ function T.terrafunction:setoptimized(v)
     assert(not (self.definition.alwaysinline and self.definition.dontoptimize),
            "setinlined(true) and setoptimized(false) are incompatible")
 end
+function T.terrafunction:setnoreturn(v)
+    assert(self:isdefined(), "attempting to set the noreturn state of an undefined function")
+    self.definition.noreturn = not not v
+end
 function T.terrafunction:disas()
     print("definition ", self:gettype())
     terra.disassemble(terra.jitcompilationunit:addvalue(self),self:compile())
 end
 function T.terrafunction:printstats()
+    self:compile()
     print("definition ", self:gettype())
     for k,v in pairs(self.stats) do
         print("",k,v)
@@ -1303,7 +1305,7 @@ do
                 parts:insert(": ")
                 indent() parts:insert("parameters: ")
                 print(types.tuple(unpack(self.parameters)),d+1)
-                indent() parts:insert("returntype: ")
+                indent() parts:insert("returntype:")
                 print(self.returntype,d+1)
             end
         end
@@ -4038,56 +4040,6 @@ function terra.saveobj(filename,filekind,env,arguments,target,optimize)
     local r = cu:saveobj(filename,filekind,arguments,optimize)
     cu:free()
     return r
-end
-
-
--- configure path variables
-terra.cudahome = os.getenv("CUDA_HOME") or (ffi.os == "Windows" and os.getenv("CUDA_PATH")) or "/usr/local/cuda"
-terra.cudalibpaths = ({ OSX = {driver = "/usr/local/cuda/lib/libcuda.dylib", runtime = "$CUDA_HOME/lib/libcudart.dylib", nvvm =  "$CUDA_HOME/nvvm/lib/libnvvm.dylib"};
-                       Linux =  {driver = "libcuda.so", runtime = "$CUDA_HOME/lib64/libcudart.so", nvvm = "$CUDA_HOME/nvvm/lib64/libnvvm.so"};
-                       Windows = {driver = "nvcuda.dll", runtime = "$CUDA_HOME\\bin\\cudart64_*.dll", nvvm = "$CUDA_HOME\\nvvm\\bin\\nvvm64_*.dll"}; })[ffi.os]
--- OS's that are not supported by CUDA will have an undefined value here
-if terra.cudalibpaths then
-	for name,path in pairs(terra.cudalibpaths) do
-		path = path:gsub("%$CUDA_HOME",terra.cudahome)
-		if path:match("%*") and ffi.os == "Windows" then
-			local F = io.popen(('dir /b /s "%s" 2> nul'):format(path))
-			if F then
-				path = F:read("*line") or path
-				F:close()
-			end
-		end
-		terra.cudalibpaths[name] = path
-	end
-end
-
-terra.systemincludes = List()
-if ffi.os == "Windows" then
-    -- this is the reason we can't have nice things
-    local function registrystring(key,value,default)
-		local F = io.popen( ([[reg query "%s" /v "%s" 2>nul]]):format(key,value) )
-		local result = F and F:read("*all"):match("REG_SZ%W*([^\n]*)\n")
-		return result or default
-	end
-	terra.vshome = registrystring([[HKLM\Software\WOW6432Node\Microsoft\VisualStudio\12.0]],"ShellFolder",[[C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\]])
-	local windowsdk = registrystring([[HKLM\SOFTWARE\Wow6432Node\Microsoft\Microsoft SDKs\Windows\v8.1]],"InstallationFolder",[[C:\Program Files (x86)\Windows Kits\8.1\]])
-
-	terra.systemincludes:insertall {
-		("%sVC/INCLUDE"):format(terra.vshome),
-		("%sVC/ATLMFC/INCLUDE"):format(terra.vshome),
-		("%sinclude/shared"):format(windowsdk),
-		("%sinclude/um"):format(windowsdk),
-		("%sinclude/winrt"):format(windowsdk),
-		("%s/include"):format(terra.cudahome)
-	}
-
-    function terra.getvclinker() --get the linker, and guess the needed environment variables for Windows if they are not set ...
-        local linker = terra.vshome..[[VC\BIN\x86_amd64\link.exe]]
-        local vclib = terra.vclib or string.gsub([[%VC\LIB\amd64;%VC\ATLMFC\LIB\amd64;C:\Program Files (x86)\Windows Kits\8.1\lib\winv6.3\um\x64;]],"%%",terra.vshome)
-        local vcpath = terra.vcpath or (os.getenv("Path") or "")..";"..terra.vshome..[[VC\BIN;]]
-        vclib,vcpath = "LIB="..vclib,"Path="..vcpath
-        return linker,vclib,vcpath
-    end
 end
 
 
