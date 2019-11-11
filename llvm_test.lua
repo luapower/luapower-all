@@ -2,6 +2,7 @@
 local ffi = require'ffi'
 local llvm = require'llvm'
 
+--print('lto_get_version:', ffi.string(llvm.lto_get_version()))
 print('default_target_triple:', llvm.default_target_triple())
 local target1 = assert(llvm.target_from_triple'x86_64')
 local target = assert(llvm.target())
