@@ -40,7 +40,7 @@
 
 if not ... then require'terra.linkedlist_test'; return end
 
-setfenv(1, require'terra.low'.module())
+setfenv(1, require'terra.low')
 
 local list_type = memoize(function(T, size_t, context_t, own_elements)
 
@@ -321,5 +321,3 @@ arraylinkedlist = macro(function(T, size_t)
 	local list = list_type(T:astype(), size_t)
 	return `list(nil)
 end, list_type)
-
-return _M

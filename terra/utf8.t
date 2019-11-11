@@ -23,9 +23,11 @@
 
 if not ... then require'terra.utf8_test'; return end
 
-setfenv(1, require'terra.low')
+local utf8 = require'terra.low'
+setfenv(1, utf8)
 
-utf8 = {decode = {}, encode = {}}
+utf8.decode = {}
+utf8.encode = {}
 
 --decoding -------------------------------------------------------------------
 
@@ -325,3 +327,5 @@ terra utf8.encode.toarr(
 		emit `encode(buf, len, add_bytes, outlen, on_reject, repl_cp)
 	end
 end
+
+return utf8

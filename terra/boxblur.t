@@ -6,7 +6,7 @@ setfenv(1, require'terra.low'.module())
 
 local bitmap = require'terra.bitmap'
 
-includepath(terralib.terrahome..'/../../csrc/boxblur')
+includepath('../csrc/boxblur')
 include'boxblur.h'
 linklibrary'boxblur'
 
@@ -199,7 +199,7 @@ terra Blur:release()
 end
 
 function Blur:build()
-	local lib = publish'boxblurlib'
+	local lib = require'terra.binder'.lib'boxblurlib'
 	lib(Bitmap, {
 		--
 	})

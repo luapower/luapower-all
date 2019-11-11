@@ -17,7 +17,7 @@ require'terra.phf'
 require'terra.fixedfreelist'
 require'terra.lrucache'
 require'terra.arrayfreelist'
-require'terra.box2d'
+box2d = require'terra.box2d'
 require_h'freetype_h'
 require_h'harfbuzz_h'
 require_h'fribidi_h'
@@ -103,7 +103,7 @@ UNDERLINE_MAX = UNDERLINE_ZIGZAG
 --base types -----------------------------------------------------------------
 
 num = float --using floats on the glyph runs saves 25% memory.
-rect = rect(num)
+rect = box2d.rect(num)
 
 struct Renderer;
 struct Font;

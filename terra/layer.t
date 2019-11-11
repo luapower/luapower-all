@@ -55,8 +55,8 @@ require'terra.cairo'
 require'terra.tr_paint_cairo'
 tr = require'terra.tr_api'
 bitmap = require'terra.bitmap'
-require'terra.boxblur'
-require'terra.box2d'
+blur = require'terra.boxblur'
+box2d = require'terra.box2d'
 
 --external types -------------------------------------------------------------
 
@@ -65,7 +65,7 @@ matrix = cairo_matrix_t
 pattern = cairo_pattern_t
 context = cairo_t
 surface = cairo_surface_t
-rect = rect(num)
+rect = box2d.rect(num)
 Bitmap = bitmap.Bitmap
 FontLoadFunc   = tr.FontLoadFunc
 FontUnloadFunc = tr.FontUnloadFunc
@@ -389,7 +389,7 @@ struct Shadow (gettersandsetters) {
 	_inset: bool;
 	_content: bool;  --shadow the layer content vs its box
 	--state
-	blur: Blur;
+	blur: blur.Blur;
 	surface: &surface;
 	surface_x: num; --relative to the origin of the shadow shape
 	surface_y: num;

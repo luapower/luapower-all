@@ -64,7 +64,7 @@
 
 if not ... then require'terra.dynarray_test'; return end
 
-setfenv(1, require'terra.low'.module())
+setfenv(1, require'terra.low')
 require'terra.arrayview'
 
 local arr_type = memoize(function(T, size_t, context_t, cmp, own_elements)
@@ -505,5 +505,3 @@ arr = macro(
 	--just the type, and you can also pass a custom C namespace.
 	arr_type
 )
-
-return _M

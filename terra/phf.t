@@ -16,7 +16,7 @@
 
 if not ... then require'terra.phf_test'; return end
 
-setfenv(1, require'terra.low'.module())
+setfenv(1, require'terra.low')
 
 local hash = {} --{name->hash(data: &opaque, len: int32, d: uint32)}
 
@@ -213,5 +213,3 @@ phf = function(t, ktype, vtype, invalid_value, complete_set, thash)
 	local phf = complete_set and phf_fp or phf_nofp
 	return phf(t, ktype, vtype, invalid_value, thash)
 end
-
-return _M

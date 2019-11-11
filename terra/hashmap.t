@@ -53,7 +53,7 @@
 
 if not ... then require'terra.hashmap_test'; return end
 
-setfenv(1, require'terra.low'.module())
+setfenv(1, require'terra.low')
 
 --interface to the 2-bit flags bitmap
 
@@ -634,5 +634,3 @@ set = macro(function(key_t, size_t)
 end, function(key_t, size_t)
 	return map.fromlua(key_t, nil, size_t)
 end)
-
-return _M

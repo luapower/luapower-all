@@ -15,7 +15,7 @@
 
 if not ... then require'terra.random_test'; return end
 
-setfenv(1, require'terra.low'.module())
+setfenv(1, require'terra.low')
 
 -- PRNG state.
 local struct RandomState {
@@ -91,5 +91,3 @@ _M.randomseed = macro(function(n)
 	n = n or 0
 	return `randomseed(n)
 end, math.randomseed)
-
-return _M

@@ -30,7 +30,7 @@
 
 if not ... then require'terra.lrucache_test'; return end
 
-setfenv(1, require'terra.low'.module())
+setfenv(1, require'terra.low')
 require'terra.linkedlist'
 
 local function cache_type(key_t, val_t, size_t, context_t, hash, equal, own_keys, own_vals)
@@ -275,5 +275,3 @@ lrucache = macro(
 	--just the type, and you can also pass a custom C namespace.
 	cache_type
 )
-
-return _M

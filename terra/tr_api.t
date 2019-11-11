@@ -47,7 +47,7 @@
 
 require'terra.memcheck'
 require'terra.tr_paint_cairo'
-require'terra.utf8'
+local utf8 = require'terra.utf8'
 require'terra.rawstringview'
 require'terra.tr_cursor'
 require'terra.tr_underline'

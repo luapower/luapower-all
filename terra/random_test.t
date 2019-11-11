@@ -15,6 +15,8 @@ local function test_lua(n)
 	print('time:', clock() - t0, 'checksum:', x)
 end
 
+require'terra.random'
+
 local terra test_terra(n: int64)
 	var t0 = clock()
 	randomseed(seed)

@@ -8,7 +8,7 @@
 
 ]]
 
-setfenv(1, require'terra.low'.module())
+setfenv(1, require'terra.low')
 
 local freelist_type = function(T, size_t, C)
 
@@ -108,5 +108,3 @@ if not ... then --self-test
 	end
 	test()
 end
-
-return _M

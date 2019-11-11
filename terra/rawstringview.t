@@ -12,7 +12,7 @@
 
 ]]
 
-setfenv(1, require'terra.low'.module())
+setfenv(1, require'terra.low')
 
 rawstringview = arrview(char)
 
@@ -98,5 +98,3 @@ end
 test_gsplit()
 
 end
-
-return _M
