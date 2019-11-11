@@ -83,8 +83,9 @@ install() {
 	cp -f terralib.lua                 ../../../../
 	cp -f terralist.lua                ../../../../
 	cp -f cudalib.lua                  ../../../../
-	cp -f ../lib/parsing.t ../../../../terra_parsing.t
-	cp -f ../lib/std.t     ../../../../terra_std.t
+	mkdir -p ../../../../terra
+	cp -f ../lib/parsing.t ../../../../terra/parsing.t
+	cp -f ../lib/std.t     ../../../../terra/std.t
 }
 
 libfiles() {
