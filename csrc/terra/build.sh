@@ -11,7 +11,6 @@ llvm_config() { "../../$LLVM_CONFIG" "$@"; }
 [ "$P" ] || die "don't run this directly."
 [ -d terra ] || die "get terra sources."
 [ -f "$LLVM_CONFIG" ] || die "get llvm binaries."
-
 cd terra/src || die "run this from csrc/terra."
 
 echo "LLVM PREFIX    : $(llvm_config --prefix)"

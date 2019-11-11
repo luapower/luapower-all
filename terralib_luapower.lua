@@ -11,13 +11,23 @@ local mingw64_headers_dir = terralib.terrahome..'/../../csrc/mingw64-headers'
 
 terralib.clangresourcedirectory = clang_resource_dir
 
+terra.systemincludes = List()
+
 if ffi.os == 'Windows' then
 	--Terra looks for Visual Studio headers by default but we use mingw64.
-	terra.systemincludes = List()
 	terra.systemincludes:insertall {
 		('%s/mingw64/include'):format(mingw64_headers_dir),
 		('%s/mingw64/include-fixed'):format(mingw64_headers_dir),
 		('%s/mingw32'):format(mingw64_headers_dir),
+	}
+elseif ffi.os == 'Linux' then
+	terra.systemincludes = List()
+	terra.systemincludes:insertall {
+		 '/usr/lib/gcc/x86_64-linux-gnu/7/include',
+		 '/usr/local/include',
+		 '/usr/lib/gcc/x86_64-linux-gnu/7/include-fixed',
+		 '/usr/include/x86_64-linux-gnu',
+		 '/usr/include',
 	}
 end
 
