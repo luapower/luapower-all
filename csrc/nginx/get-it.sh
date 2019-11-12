@@ -9,9 +9,12 @@ LUA_NGINX_MODULE=v0.10.15
 
 (cd src && {
 	git reset --hard $NGINX
-	git apply ../*.patch
+	git apply ../src-*.patch
 	cat ../openresty/patches/nginx-1.17.4-ssl_*.patch | patch -N -p1
 })
 (cd openresty && git reset --hard)
 (cd ndk && git reset --hard $NGX_DEVEL_KIT)
-(cd lua && git reset --hard $LUA_NGINX_MODULE)
+(cd lua && {
+    git reset --hard $LUA_NGINX_MODULE
+    git apply ../lua-*.patch
+})

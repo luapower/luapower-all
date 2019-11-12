@@ -1,3 +1,1 @@
-P=linux64 E=nginx C="
-	--with-thread
-" ./build.sh
+P=linux64 E=nginx L="-Wl,-rpath,'\$\$ORIGIN'" ./build.sh

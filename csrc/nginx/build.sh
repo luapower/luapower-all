@@ -1,3 +1,4 @@
+#!/bin/bash
 [ "$P" ] || exit 1
 cd src || exit 1
 
@@ -5,11 +6,11 @@ BIN=../../../bin/$P
 export ZLIB_BIN=$BIN
 export PCRE_BIN=$BIN
 export OPENSSL_BIN=$BIN
-export OPENSSL_PLATFORM_INCLUDE=../include-mingw64
+export OPENSSL_PLATFORM_INCLUDE=../../openssl/include-$P
 export LUAJIT_INC=../../luajit/src/src
 export LUAJIT_LIB=$BIN
 
-C="$C
+O="$O
 --prefix=.
 --sbin-path=$E
 --modules-path=bin/$P
@@ -45,10 +46,10 @@ C="$C
 --add-module=../ndk
 --add-module=../lua
 "
-auto/configure $C \
+auto/configure $O \
 	--with-cc=gcc \
-	--with-cc-opt='-Wno-cast-function-type -s -O2 -fno-strict-aliasing -pipe' \
-	--with-ld-opt='-s -Wl,--build-id=none'
+	--with-cc-opt="-Wno-cast-function-type -s -O2 -fno-strict-aliasing -pipe -I$OPENSSL_PLATFORM_INCLUDE" \
+	--with-ld-opt="$L -s -Wl,--build-id=none"
 
 make
 cp objs/$E $BIN/
