@@ -398,7 +398,7 @@ end
 --create a new thread with a C callback. to use with a Lua callback,
 --create a Lua state and a ffi callback pointing to a function inside
 --the state, and use that as func_cb.
-function M.new(func_cb, attrs)
+function M.new(func_cb, attrs, ud)
 	local thread = ffi.new'pthread_t'
 	local attr
 	if attrs then
@@ -420,7 +420,7 @@ function M.new(func_cb, attrs)
 			checkz(C.pthread_attr_setstacksize(attr, attrs.stacksize))
 		end
 	end
-	local ret = C.pthread_create(thread, attr, func_cb, nil)
+	local ret = C.pthread_create(thread, attr, func_cb, ud)
 	if attr then
 		C.pthread_attr_destroy(attr)
 	end
