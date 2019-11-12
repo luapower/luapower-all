@@ -10,5 +10,4 @@ check() {
     )
 }
 
-check osx32
 check osx64

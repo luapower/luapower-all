@@ -49,7 +49,8 @@ O="$O
 auto/configure $O \
 	--with-cc=gcc \
 	--with-cc-opt="-Wno-cast-function-type -s -O2 -fno-strict-aliasing -pipe -I$OPENSSL_PLATFORM_INCLUDE" \
-	--with-ld-opt="$L -s -Wl,--build-id=none"
+	--with-cc-opt="$C" \
+	--with-ld-opt="$L"
 
 make
 cp objs/$E $BIN/
