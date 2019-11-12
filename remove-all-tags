@@ -1,0 +1,6 @@
+for r in `mgit ls`; do
+    for t in `mgit - $r tag`; do
+        mgit - $r tag -d $t
+        mgit - $r push --delete origin $t
+    done
+done
