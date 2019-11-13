@@ -289,7 +289,7 @@ RPC API:
 local luapower = setmetatable({}, {__index = _G})
 setfenv(1, luapower)
 
-local lfs = require'lfs'
+local fs = require'fs'
 local glue = require'glue'
 local ffi = require'ffi'
 
@@ -748,17 +748,17 @@ end
 --filesystem reader
 ------------------------------------------------------------------------------
 
---recursive lfs.dir() -> iter() -> filename, path, mode
+--recursive dir() -> iter() -> filename, path, mode
 local function dir(p0, recurse)
 	assert(p0)
 	local t = {}
 	local function rec(p)
 		local dp = p0 .. (p and '/' .. p or '')
-		for f in lfs.dir(dp) do
-			if f ~= '.' and f ~= '..' then
-				local mode = lfs.attributes(dp .. '/' .. f, 'mode')
-				table.insert(t, {f, p, mode})
-				if recurse and mode == 'directory' then
+		for f,d in fs.dir(dp) do
+			if f then
+				local ftype = d:attr'type'
+				table.insert(t, {f, p, ftype})
+				if recurse and ftype == 'dir' then
 					rec((p and p .. '/' .. f or f))
 				end
 			end
@@ -846,10 +846,10 @@ end
 
 --execute function in a different current-directory.
 local function in_dir(dir, func, ...)
-	local pwd = assert(lfs.currentdir())
-	assert(lfs.chdir(dir))
+	local pwd = assert(fs.cd())
+	assert(fs.cd(dir))
 	local function pass(ok, ...)
-		lfs.chdir(pwd)
+		fs.cd(pwd)
 		assert(ok, ...)
 		return ...
 	end
@@ -1157,9 +1157,8 @@ end)
 --.mgit/<name>/ -> {name = true}
 installed_packages = memoize(function()
 	local t = {}
-	for f, _, mode in dir(powerpath(mgitpath())) do
-		if mode == 'directory'
-			and lfs.attributes(powerpath(git_dir(f)), 'mode') == 'directory'
+	for f, _, ftype in dir(powerpath(mgitpath())) do
+		if ftype == 'dir' and fs.is(powerpath(git_dir(f)), 'dir')
 		then
 			t[f] = true
 		end
@@ -1513,7 +1512,7 @@ end)
 
 --check if the package has a dir named `csrc/PACKAGE`, and return that path.
 local csrc_dir = memoize_package(function(package)
-	if lfs.attributes(powerpath('csrc/'..package), 'mode') == 'directory' then
+	if fs.is(powerpath('csrc/'..package), 'dir') then
 		return 'csrc/'..package
 	end
 end)

@@ -156,5 +156,4 @@ tagline: package categories
 	* [ffi_reflect]
 	* [struct]
 	* [minizip]
-	* [lfs]
 	* [lanes]
