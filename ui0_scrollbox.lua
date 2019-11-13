@@ -2,7 +2,7 @@
 --Scrollbar and Scrollbox Widgets.
 --Written by Cosmin Apreutesei. Public Domain.
 
-local ui = require'ui'()
+local ui = require'ui0'
 local box2d = require'box2d'
 local glue = require'glue'
 
@@ -138,7 +138,6 @@ end
 
 function scrollbar:create_grip()
 	local grip = self:grip_class(self.grip)
-
 	function grip.drag(grip, dx, dy)
 		grip.x = clamp(0, grip.x + dx, self.cw - grip.w)
 		self:transition('offset', self:grip_offset(), 0)
@@ -287,7 +286,6 @@ end
 function scrollbar:before_sync_layout_children()
 	local g = self.grip
 	g.x, g.y, g.w, g.h = self:grip_rect()
-
 	local visible = self:check_visible()
 	if visible ~= 'hit_test' then
 		self:settag(':near', visible, true)
@@ -338,7 +336,7 @@ function scrollbox:after_init(t)
 	--content can still access the scrollbox on its dying breath!
 	self.view = self:view_class({
 		tags = 'scrollbox_view',
-		clip_content = true, --we want to pad the content, but not clip it
+		clip_content = 'background', --we want to pad the content, but not clip it
 		sync_layout = noop, --prevent auto-sync'ing content's layout
 	}, self.view)
 
@@ -372,14 +370,6 @@ scrollbox:forward_properties('view', 'view_', {
 	padding_top=1,
 	padding_bottom=1,
 })
-
-function scrollbox:after_init(t)
-	if t.padding        ~= nil then self.view.padding        = t.padding        end
-	if t.padding_left   ~= nil then self.view.padding_left   = t.padding_left   end
-	if t.padding_right  ~= nil then self.view.padding_right  = t.padding_right  end
-	if t.padding_top    ~= nil then self.view.padding_top    = t.padding_top    end
-	if t.padding_bottom ~= nil then self.view.padding_bottom = t.padding_bottom end
-end
 
 --stretch content to the view size to avoid scrolling on that dimension.
 scrollbox.auto_h = false
@@ -545,7 +535,7 @@ end
 
 --demo -----------------------------------------------------------------------
 
-if not ... then require('ui_demo')(function(ui, win)
+if not ... then require('ui0_demo')(function(ui, win)
 
 	win.view.item_align_x = 'center'
 	win.view.item_align_y = 'center'
@@ -684,10 +674,12 @@ Mei malis eruditi ne. Movet volumus instructior ea nec. Vel cu minimum molestie 
 		},
 	}
 
+	--[[
 	ui:textarea{
 		parent = win,
 		min_cw = 180, min_ch = 180,
 		value = s,
 	}
+	]]
 
 end) end

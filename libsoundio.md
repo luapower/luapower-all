@@ -7,6 +7,10 @@ tagline: audio input and output
 A binding of [libsoundio](http://libsound.io/), a library for cross-platform
 audio input and output.
 
+## Status
+
+<warn>Needs updating and re-testing. Not currently maintained.</warn>
+
 ## Backends
 
 ------------ -----------------------------------------------------------------

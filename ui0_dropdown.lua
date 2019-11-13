@@ -1,11 +1,14 @@
---go@ luajit -jp=fi1m1 ui_dropdown.lua
+--go @ luajit -jp=fi1m1 ui_dropdown.lua
 io.stdout:setvbuf'no'
 io.stderr:setvbuf'no'
 
 --Drop-down widget.
 --Written by Cosmin Apreutesei. Public Domain.
 
-local ui = require'ui'
+local ui = require'ui0'
+require'ui0_editbox'
+require'ui0_popup'
+require'ui0_scrollbox'
 local glue = require'glue'
 
 local dropdown = ui.editbox:subclass'dropdown'
@@ -230,7 +233,7 @@ function list:set_options(t)
 	for i,t in ipairs(t) do
 		self:create_item(i, t)
 	end
-	print((time.clock() - t0) * 1000)
+	print((time.clock() - t0) * 1000, 'ms to create', #t, 'items')
 end
 
 list:init_ignore{options=1}
@@ -417,13 +420,12 @@ end
 
 --demo -----------------------------------------------------------------------
 
-if not ... then require('ui_demo')(function(ui, win)
+if not ... then require('ui0_demo')(function(ui, win)
 
 	win.x = 500
 	win.w = 300
 	win.h = 900
 
-	--[[
 	local dropdown1 = ui:dropdown{
 		parent = win,
 		picker = {
@@ -443,7 +445,6 @@ if not ... then require('ui_demo')(function(ui, win)
 		--value = 'Some invalid value',
 		allow_any_value = true,
 	}
-	]]
 
 	local t = {}
 	for i = 1, 1000 do

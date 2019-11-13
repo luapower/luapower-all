@@ -1,10 +1,10 @@
---go @ luajit ui_demo.lua
--- -jp=a -e io.stdout:setvbuf'no';io.stderr:setvbuf'no';require'strict';pp=require'pp' "ui_grid.lua"
 
 --Grid widget.
 --Written by Cosmin Apreutesei. Public Domain.
 
-local ui = require'ui'
+local ui = require'ui0'
+require'ui0_scrollbox'
+require'ui0_editbox'
 local glue = require'glue'
 local box2d = require'box2d'
 
@@ -2124,7 +2124,7 @@ end
 
 --demo -----------------------------------------------------------------------
 
-if not ... then require('ui_demo')(function(ui, win)
+if not ... then require('ui0_demo')(function(ui, win)
 
 	local grid = ui.grid:subclass'subgrid'
 
@@ -2143,8 +2143,8 @@ if not ... then require('ui_demo')(function(ui, win)
 		tags = 'g',
 		x = 20,
 		y = 20,
-		w = 1160,
-		h = 660,
+		min_cw = 1160,
+		min_ch = 660,
 		--row_count = 1e6,
 		rows = rows,
 		parent = win,

@@ -26,7 +26,7 @@ tagline: package categories
 	* [proc]
 	* [time]
 	* [hidapi]
-* Portable UI
+* Portable UI (WIP)
 	* [ui]
 	* [terra.layer]
 	* [terra.tr]
@@ -148,6 +148,7 @@ tagline: package categories
 	* [libogg]
 	* [rs232]
 * Unmaintained
+	* [ui0]
 	* [tr0]
 	* [linkedlist]
 	* [lrucache]

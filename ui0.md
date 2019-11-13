@@ -1,27 +1,20 @@
 
-## `local ui = require'ui'`
+## `local ui = require'ui0'`
 
 Extensible UI toolkit written in Lua with widgets, layouts, styles and animations.
-Uses [terra.layer] for layouting, drawing and hit-testing, and through that
-it uses [terra.tr] for text rendeding.
-
-See [ui0] for a working prototype in pure Lua.
 
 ## Status
 
-<warn>In active development.</warn>
-
-Still has a few good months of development ahead. You can track the progress
-in the [luapower trello board](https://trello.com/b/xde8hdAZ/luapower).
-Once the API and codebase stabilizes, further progress will be tracked via
-github issues.
+This module based on [tr0]. It is currently being
+[rewritten](https://github.com/luapower/ui) based on [terra.layer].
+It's [issues](https://github.com/luapower/ui0/issues) will not be fixed anymore.
 
 ## Highlights
 
   * editable grid that can scroll millions of rows at 60 fps.
   * tab list with animated, moveable, draggable, dockable tabs.
   * extensible rich text editor with BiDi support.
-  * consistent Unicode [text rendering][tr] and editing on all platforms.
+  * consistent Unicode [text rendering][tr0] and editing on all platforms.
   * customization with cascading styles, inheritance and composition.
   * declarative transition animations.
   * flexbox and css-grid-like layouts.
@@ -40,7 +33,7 @@ runtime dependencies that are only loaded if/when certain features are used:
 ## Example
 
 ~~~{.lua}
-local ui = require'ui'
+local ui = require'ui0'()
 
 local win = ui:window{
 	cw = 500, ch = 300,   --client area size
@@ -157,7 +150,7 @@ If you are on multigit, you can get them with:
 	$ mgit clone fonts-open-sans fonts-ionicons
 
 If you have them somewhere else, set `ui.default_fonts_path` after
-loading [ui]. Or set `ui.use_default_fonts` to `false` if you don't want
+loading ui0. Or set `ui.use_default_fonts` to `false` if you don't want
 default fonts at all.
 
 #### Custom fonts
@@ -167,7 +160,7 @@ Custom fonts can be added with:
   * `ui:add_font_file(...)`, which calls `tr:add_font_file(...)`, or
   * `ui:add_mem_font(...)`, which calls `tr:add_mem_font(...)`.
 
-See [tr] for details on those methods. To change the default font used
+See [tr0] for details on those methods. To change the default font used
 for text by all the layers and widgets, set `ui.layer.font` before creating
 any layers or widgets, or add a style on the `layer` tag with that.
 
@@ -179,7 +172,7 @@ with:
 
 	$ git clone https://github.com/google/fonts media/fonts/gfonts
 
-and set `ui.use_google_fonts = true` before using [ui]. Set
+and set `ui.use_google_fonts = true` before using ui0. Set
 `ui.google_fonts_path` too if you cloned the repo somewhere else. You also
 need the [gfonts] module:
 
@@ -1167,7 +1160,7 @@ or extend existing ones are:
     * routing keyboard events to the focused widget; tab-based navigation
     * the drag & drop API
   * drawing with [cairo], if you need procedural 2D drawing.
-  * rendering text with [tr], if layers are not enough.
+  * rendering text with [tr0], if layers are not enough.
 
 ### The `ui.object` base class
 
@@ -1310,7 +1303,7 @@ Many aspects of the core engine can also be extended with:
   Any library that can draw on a BGRA bitmap can work.
   * changing the text rendering engine requires re-implementing
   `sync_text_*()` and `draw_text()`, except for the editbox widget which
-  uses [tr]'s selection and cursor objects extensively to select and edit
+  uses [tr0]'s selection and cursor objects extensively to select and edit
   the text, so those would have to be provided too.
   * changing the native windows library is a bit harder because [nw]'s
   API is already very high-level and covers a lot of functionality
@@ -1323,7 +1316,7 @@ OS integration is done exclusively through the [nw], [fs] and [time] modules,
 everything else being portable Lua code or portable C code. Even text shaping,
 a task usually delegated to the OS, is done with 100% portable code.
 The [nw] library itself has a frontend/backend split since it already
-supports multiple platforms, so porting [ui] to a new platform may be
+supports multiple platforms, so porting ui0 to a new platform may be
 only a matter of adding a new backend to [nw] (not to imply that this
 is easy, but at least it's contained).
 

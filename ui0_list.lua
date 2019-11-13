@@ -2,7 +2,7 @@
 --Editable flexbox widget.
 --Written by Cosmin Apreutesei. Public Domain.
 
-local ui = require'ui'
+local ui = require'ui0'
 local glue = require'glue'
 
 local list = ui.layer:subclass'list'
@@ -11,9 +11,8 @@ list.iswidget = true
 
 list.layout = 'flexbox'
 
-function list:
 
-if not ... then require('ui_demo')(function(ui, win)
+if not ... then require('ui0_demo')(function(ui, win)
 
 	ui:list{
 		parent = win,

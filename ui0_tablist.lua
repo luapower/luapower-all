@@ -2,9 +2,10 @@
 --Tab and Tablist widgets.
 --Written by Cosmin Apreutesei. Public Domain.
 
-local ui = require'ui'
+local ui = require'ui0'
 local glue = require'glue'
 local box2d = require'box2d'
+require'ui0_button'
 
 local indexof = glue.indexof
 local clamp = glue.clamp
@@ -857,7 +858,7 @@ end
 
 --demo -----------------------------------------------------------------------
 
-if not ... then require('ui_demo')(function(ui, win)
+if not ... then require('ui0_demo')(function(ui, win)
 
 	local color = require'color'
 

@@ -7,6 +7,8 @@ tagline: video capturing
 A cross-cross-platform library for capturing video frames from webcams
 and other devices in real-time as bgra8 [bitmap]s.
 
+## Status
+
 <warn>Work in progress.</warn>
 
 ## API

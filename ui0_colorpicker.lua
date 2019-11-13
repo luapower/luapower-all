@@ -2,7 +2,9 @@
 --Color Picker widget.
 --Written by Cosmin Apreutesei. Public Domain.
 
-local ui = require'ui'
+local ui = require'ui0'
+require'ui0_button'
+require'ui0_editbox'
 local glue = require'glue'
 local bitmap = require'bitmap'
 local color = require'color'
@@ -1005,7 +1007,7 @@ end
 
 --demo -----------------------------------------------------------------------
 
-if not ... then require('ui_demo')(function(ui, win)
+if not ... then require('ui0_demo')(function(ui, win)
 
 	win.view.background_color = '#222'
 

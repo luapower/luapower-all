@@ -1,6 +1,6 @@
---go@ luajit -jp=2fi1m1 *
-print(package.cpath)
-local ui = require'ui'()
+--go @ luajit -jp=2fi1m1 *
+
+local ui = require'ui0'()
 local Q = require'utf8quot'
 local time = require'time'
 local glue = require'glue'
@@ -50,7 +50,7 @@ ui:runevery(1, function()
 	end
 end)
 
-if ... == 'ui_demo' and not DEMO then --loaded via require()
+if ... == 'ui0_demo' and not DEMO then --loaded via require()
 	return function(test)
 		test(ui, win)
 		win:show()
@@ -101,9 +101,9 @@ local function test_layers()
 		tags = 'layer1',
 		parent = win,
 
-		--clip = true,
-		--clip = false,
-		  clip = 'background',
+		--clip_content = true,
+		--clip_content = false,
+		  clip_content = 'background',
 
 		border_width = 10,
 		border_color = '#fff2',
@@ -854,7 +854,6 @@ end
 --test_drag_flexbox()
 --test_resize_window()
 test_flexbox_speed()
-
 win:show()
 ui:run()
 ui:free()

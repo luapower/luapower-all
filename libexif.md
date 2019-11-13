@@ -7,6 +7,13 @@ tagline: EXIF reader & writer
 A ffi binding of [libexif][libexif site], the library for reading and writing
 EXIF information from/to image files.
 
+## Status
+
+Currently there's the binary, sanitized header and the module stub that
+returns the `clib` object so the library is usable at ffi level with the aid
+of [libexif docs]. A Lua-ized API is made only for reading EXIF tags, but
+the library is otherwise usable without it.
+
 ## API
 
 ------------------------------------ -----------------------------------------
@@ -32,12 +39,6 @@ Fixing ExifContent and ExifEntry allows you to get at least some EXIF tags if fi
 ### `exit_data:free()`
 
 Free the exit_data.
-
-## Help needed
-
-Currently there's the binary, sanitized header and the module stub that
-returns the `clib` object so the library is usable at ffi level with the aid
-of [libexif docs]. A Lua-ized API is made only for reading EXIF tags, but the library is otherwise usable without it.
 
 [libexif site]:   http://libexif.sourceforge.net/
 [libexif docs]:   http://libexif.sourceforge.net/api/

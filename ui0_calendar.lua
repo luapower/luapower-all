@@ -2,10 +2,11 @@
 --Calendar widget.
 --Written by Cosmin Apreutesei. Public Domain.
 
-local ui = require'ui'
+local ui = require'ui0'
 local glue = require'glue'
 local push = table.insert
 
+ui = ui()
 local calendar = ui.grid:subclass'calendar'
 ui.calendar = calendar
 
@@ -97,7 +98,7 @@ end
 
 --demo -----------------------------------------------------------------------
 
-if not ... then require('ui_demo')(function(ui, win)
+if not ... then require('ui0_demo')(function(ui, win)
 
 	local c = ui:calendar{
 		x = 10, y = 10,

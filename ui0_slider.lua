@@ -2,7 +2,7 @@
 --Slider widget.
 --Written by Cosmin Apreutesei. Public Domain.
 
-local ui = require'ui'
+local ui = require'ui0'
 local glue = require'glue'
 
 local snap = glue.snap
@@ -622,14 +622,12 @@ ui:style('toggle :on > slider_fill', {
 	background_color = '#fff',
 })
 
-toggle:stored_property'value'
 function toggle:after_set_value(on)
 	self.position = on and 1 or 0
 	self:settag(':on', on)
 	self:fire(on and 'option_enabled' or 'option_disabled')
 end
 toggle:track_changes'value'
-toggle:instance_only'value'
 
 function toggle:after_set_position()
 	self.value = self.position == 1
@@ -647,7 +645,7 @@ end
 
 --demo -----------------------------------------------------------------------
 
-if not ... then require('ui_demo')(function(ui, win)
+if not ... then require('ui0_demo')(function(ui, win)
 
 	print(win.view.layout)
 	win.view.item_align_x = 'left'
