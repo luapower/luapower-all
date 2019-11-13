@@ -14,16 +14,16 @@ terralib.terrahome = package.path
 --$ mgit clone mingw64-headers
 local mingw64_headers_dir = '../../csrc/mingw64-headers'
 
+terra.systemincludes = List()
 if ffi.os == 'Windows' then
 	--Terra looks for Visual Studio headers by default but we use mingw64.
-	terra.systemincludes = List()
 	terra.systemincludes:insertall {
 		('%s/mingw64/include'):format(mingw64_headers_dir),
 		('%s/mingw64/include-fixed'):format(mingw64_headers_dir),
 		('%s/mingw32'):format(mingw64_headers_dir),
 	}
 elseif ffi.os == 'Linux' then
-	terra.systemincludes = List()
+	--TODO:
 	terra.systemincludes:insertall {
 		 '/usr/lib/gcc/x86_64-linux-gnu/7/include',
 		 '/usr/local/include',
@@ -31,6 +31,8 @@ elseif ffi.os == 'Linux' then
 		 '/usr/include/x86_64-linux-gnu',
 		 '/usr/include',
 	}
+elseif ffi.os == 'OSX' then
+	--TODO:
 end
 
 --load Terra files from the same locations as Lua files.

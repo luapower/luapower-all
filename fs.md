@@ -2,8 +2,6 @@
 tagline: portable filesystem support
 ---
 
-<warn>Memory mapping is not finished yet!</warn>
-
 ## `local fs = require'fs'`
 
 Filesystem API for Windows, Linux and OSX. Features:
@@ -14,6 +12,10 @@ Filesystem API for Windows, Linux and OSX. Features:
   * unified error codes for recoverable error cases
   * cdata buffer-based I/O
   * platform-specific extra-functionality fully exposed
+
+## Status
+
+<warn>Memory mapping is not finished yet!</warn>
 
 ## API
 

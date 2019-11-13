@@ -16,6 +16,8 @@ __NOTE:__ On Windows Terra is compiled with luapower's mingw64 toolchain
 so there's no need to install Visual Studio to use standard C headers.
 Instead, mingw64 headers are provided in the [mingw64-headers] package.
 
+__NOTE:__ The CUDA backend is not available in this build.
+
 [terralang]: http://terralang.org
 
 ## Building

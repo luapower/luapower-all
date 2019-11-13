@@ -1,5 +1,5 @@
 
---hidapi ffi binding.
+--signall11/hidapi ffi binding.
 --Written by Cosmin Apreutesei. Public Domain.
 
 local ffi = require'ffi'

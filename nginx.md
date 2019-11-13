@@ -14,6 +14,10 @@ get them too for nginx to run.
 
 Other OpenResty modules are provided as separate packages as well.
 
+## Status
+
+<warn>Currently in testing. Not ready for use yet.</warn>
+
 ## HowTo
 
 Like with [LuaJIT], a wrapper script is provided to run the right nginx
