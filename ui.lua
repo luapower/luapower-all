@@ -1,5 +1,5 @@
 
---UI toolkit with styles and animations based on layerlib's box model.
+--UI toolkit with styles and animations.
 --Written by Cosmin Apreutesei. Public Domain.
 
 if not ... then DEMO=true; require'ui_demo1'; return end

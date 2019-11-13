@@ -7,6 +7,10 @@ requires: nginx
 
 Webb is a procedural web framework for OpenResty.
 
+## Status
+
+<warn>In active development.</warn>
+
 ## HowTO
 
 Here's a very basic website sketch that uses some webb features.
