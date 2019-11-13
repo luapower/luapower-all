@@ -429,7 +429,10 @@ local function invokeuserfunction(anchor, what, speculate, userfn,  ...)
 end
 terra.fulltrace = false
 -- override the lua traceback function to be aware of Terra compilation contexts
-function debug.traceback(msg,level)
+function debug.traceback(thread,msg,level)
+    if type(thread) ~= 'thread' then
+        thread,msg,level = nil,thread,msg
+    end
     level = level or 1
     level = level + 1 -- don't count ourselves
     local lim = terra.fulltrace and math.huge or TRACEBACK_LEVELS1 + 1
