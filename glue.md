@@ -75,6 +75,7 @@ __allocation__
 __ffi__
 `glue.malloc([ctype, ]size) -> cdata`                              allocate an array using system's malloc
 `glue.malloc(ctype) -> cdata`                                      allocate a C type using system's malloc
+`glue.gcmalloc(...) -> cdata`                                      garbage collected malloc
 `glue.free(cdata)`                                                 free malloc'ed memory
 `glue.addr(ptr) -> number | string`                                store pointer address in Lua value
 `glue.ptr([ctype, ]number|string) -> ptr`                          convert address to pointer
@@ -909,6 +910,10 @@ Allocate a `ctype` with system's malloc. The result has the type `ctype&`.
 
 > __CAVEAT__: For primitive types, you must specify a size,
 or glue.free() will not work!
+
+### `glue.gcmalloc([ctype,]size) -> cdata` {#gcmalloc}
+
+Calls `ffi.gc(glue.malloc(), glue.free)`.
 
 ### `glue.free(cdata)`
 

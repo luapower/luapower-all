@@ -284,7 +284,7 @@ if jit then
 	local ffi = require'ffi'
 
 	local function malloc(bytes, ctype, size)
-		local data = glue.malloc(ctype, size)
+		local data = glue.gcmalloc(ctype, size)
 		assert(ffi.sizeof(data) == bytes)
 		if size then
 			assert(ffi.typeof(data) == ffi.typeof('$(&)[$]', ffi.typeof(ctype or 'char'), size))

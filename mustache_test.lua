@@ -2,7 +2,7 @@
 local mustache = require'mustache'
 local glue = require'glue'
 local cjson = require'cjson'
-local lfs = require'lfs'
+local fs = require'fs'
 local pp = require'pp'
 
 local function test_spec(t)
@@ -43,7 +43,7 @@ local function test_specs()
 	local failed = 0
 	local total = 0
 	local dir = 'media/mustache'
-	for file in lfs.dir(dir) do
+	for file in fs.dir(dir) do
 		local path = dir..'/'..file
 		local doc
 		if file:find'%.json$' then

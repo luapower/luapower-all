@@ -873,13 +873,16 @@ function glue.malloc(ctype, size)
 	local bytes = ffi.sizeof(ctype)
 	local data  = ffi.cast(ctype, ffi.C.malloc(bytes))
 	assert(data ~= nil, 'out of memory')
-	ffi.gc(data, glue.free)
 	return data
 end
 
 function glue.free(cdata)
 	ffi.gc(cdata, nil)
 	ffi.C.free(cdata)
+end
+
+function glue.gcmalloc(ctype, size)
+	return ffi.gc(glue.malloc(ctype, size), glue.free)
 end
 
 local intptr_ct = ffi.typeof'intptr_t'

@@ -1693,7 +1693,7 @@ local function make_bitmap(w, h)
 
 	local stride = w * 4
 	local size = stride * h
-	local data = glue.malloc(size)
+	local data = glue.gcmalloc(size)
 
 	local bitmap = {
 		w = w,
@@ -2622,7 +2622,7 @@ local function nsimage_to_bitmap(nsimage)
 	local stride = w * 4
 	local size = stride * h
 
-	local data = glue.malloc(size)
+	local data = glue.gcmalloc(size)
 
 	local bitmap = {
 		w = w,

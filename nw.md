@@ -15,11 +15,11 @@ and [milestones](https://github.com/luapower/nw/milestones).
 
 ## Backends
 
-API        Library     Supported Platforms     Developed On
----------- ----------- ----------------------- ------------------------
-WinAPI     [winapi]    Windows XP/2000+        Windows 7 x64
-Cocoa      [objc]      OSX 10.7+               OSX 10.9
-Xlib       [xlib]      Ubuntu/Unity 10.04+     Ubuntu/Unity 10.04 x64
+API        Library     Developed & Tested On    Probably Runs On
+---------- ----------- ------------------------ -----------------------
+WinAPI     [winapi]    Windows 7 x64            Windows XP/2000
+Cocoa      [objc]      OSX 10.12                OSX 10.9
+Xlib       [xlib]      Ubuntu/Unity 18.04 x64   Ubuntu/Unity 10.04
 
 ## Example
 

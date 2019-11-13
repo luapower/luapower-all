@@ -56,7 +56,6 @@ local function load_font(font_id, file_data_buf, file_size_buf, mmapped_buf)
 	local font_name = assert(fonts[font_id])
 	local font_data = assert(bundle.load(font_dir..'/'..font_name))
 	local buf = glue.malloc('char', #font_data)
-	ffi.gc(buf, nil)
 	ffi.copy(buf, font_data, #font_data)
 	file_data_buf[0] = buf
 	file_size_buf[0] = #font_data
