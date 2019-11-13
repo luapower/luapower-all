@@ -7,6 +7,17 @@ tagline: processes and IPC
 A library for creating, controlling and communicating with child processes.
 Works on Windows, Linux and OSX.
 
+## Status
+
+<warn>Needs more testing.</warn>
+
+Missing features:
+
+  * named mutexes, semaphores and events.
+  * kill child process automatically when the parent process exits.
+  * setting CPU and RAM limits.
+  * CPU and RAM monitoring.
+
 ## API
 
 ------------------------------------------------ -----------------------------

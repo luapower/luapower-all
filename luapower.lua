@@ -1077,9 +1077,7 @@ local function parse_md_file(md_file)
 	for s in more do
 		if s:find'^---' then break end
 		local k,v = split_kv(s, ':')
-		if not k then
-			error('invalid tag '..s)
-		else
+		if k then
 			if k == 'requires' then
 				t.dependencies = parse_requires_list(v)
 			elseif k == 'modules' then

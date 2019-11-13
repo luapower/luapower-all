@@ -19,15 +19,12 @@ tagline: package categories
 * Portable OS APIs
 	* [fs]
 	* [nw]
-	* [libsoundio]
-	* [videoinput]
 	* [socket]
 	* [socketloop]
 	* [thread]
 	* [pthread]
 	* [proc]
 	* [time]
-	* [rs232]
 	* [hidapi]
 * Portable UI
 	* [ui]
@@ -54,7 +51,6 @@ tagline: package categories
 	* [libjpeg]
 	* [libpng]
 	* [bmp]
-	* [libexif]
 * Unicode
 	* [utf8]
 	* [utf8quot]
@@ -67,9 +63,6 @@ tagline: package categories
 	* [hmac]
 * Compression
 	* [zlib]
-	* [lz4]
-* Encryption
-	* [libsodium]
 * Serialization
 	* [cjson]
 	* [expat]
@@ -91,9 +84,6 @@ tagline: package categories
 	* [hunspell]
 * Data Structures
 	* [heap]
-	* [linkedlist]
-	* [lrucache]
-	* [lfrb]
 * Lua Support Libs
 	* [amoeba]
 	* [eq]
@@ -102,15 +92,12 @@ tagline: package categories
 	* [cbframe]
 	* [path]
 	* [unixperms]
-	* [lexer]
 	* [dynasm]
 	* [rangelist]
 * C Support Libs
-	* [libstdcxx]
 	* [pixman]
 	* [libmariadb]
 	* [openssl]
-	* [libogg]
 	* [lua-headers]
 	* [shm]
 	* [llvm]
@@ -147,19 +134,26 @@ tagline: package categories
 	* [terra.box2d]
 	* [terra.boxblur]
 	* [mingw64-headers]
-	* [clang-resource-dir]
 * Package Management
 	* [luapower]
 	* [luapower_db]
 	* [luapower-repos]
 	* [luapower-ci]
+* Help needed
+	* [libsoundio]
+	* [videoinput]
+	* [libexif]
+	* [lz4]
+	* [libsodium]
+	* [libogg]
+	* [rs232]
 * Unmaintained
 	* [tr0]
-	* [codedit]
+	* [linkedlist]
+	* [lrucache]
 	* [bnet]
-	* [lfs]
-	* [lanes]
 	* [ffi_reflect]
 	* [struct]
 	* [minizip]
-	* [tuple]
+	* [lfs]
+	* [lanes]

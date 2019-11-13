@@ -1,12 +1,9 @@
----
-tagline: mysql database client
----
 
 ## `local mysql = require'mysql'`
 
 A complete, lightweight ffi binding of the mysql client library.
 
-> NOTE: binaries are in separate packages [libmysql] and [libmariadb].
+Works with both libmysql and [libmariadb].
 
 ## Summary
 
