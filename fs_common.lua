@@ -316,6 +316,7 @@ function fs.mkdir(dir, recursive, ...)
 			local ok, err, errcode = mkdir(dir, ...)
 			if ok then break end
 			if err ~= 'not_found' then --other problem
+				ok = err == 'already_exists' and #t == 0
 				return ok, err, errcode
 			end
 			table.insert(t, dir)

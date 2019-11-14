@@ -725,6 +725,10 @@ function glue.memoize_multiret(func, narg)
 	end
 end
 
+function glue.tuple(narg)
+	return glue.memoize(function(...) return glue.pack(...) end)
+end
+
 --setup a module to load sub-modules when accessing specific keys.
 function glue.autoload(t, k, v)
 	local mt = getmetatable(t) or {}
@@ -837,13 +841,14 @@ if jit then
 
 local ffi = require'ffi'
 
---static, auto-growing buffer allocation pattern.
+--static, auto-growing buffer allocation pattern aka grow-only dynamic array.
+--TODO: reimplement keep_contents in terms of realloc().
 function glue.growbuffer(ctype, keep_contents)
 	local ctype = ffi.typeof(ctype or 'char[?]')
 	local elem_size = keep_contents and ffi.sizeof(ctype, 1)
 	local buf, len = nil, -1
 	return function(newlen)
-		if not newlen then
+		if newlen == false then
 			buf, len = nil, -1
 		elseif newlen > len then
 			local buf0, len0 = buf, len

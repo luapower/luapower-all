@@ -48,6 +48,7 @@ __closures__
 `glue.pass(...) -> ...`                                            does nothing, returns back all arguments
 `glue.noop(...)`                                                   does nothing, returns nothing
 `glue.memoize(f[, n]) -> f`                                        memoize pattern
+`glue.tuples([n]) -> f(...) -> t`                                  tuple pattern
 __metatables__
 `glue.inherit(t, parent) -> t`                                     set or clear inheritance
 `glue.object([super][, t], ...) -> t`                              create a class or object (see description)
@@ -71,7 +72,7 @@ __modules__
 `glue.cpath(path [,index])`                                        insert a path in package.cpath
 __allocation__
 `glue.freelist([create], [destroy]) -> alloc, free`                freelist allocation pattern
-`glue.growbuffer([ctype][, factor]) -> alloc(len) -> buf, len`     static auto-growing buffer
+`glue.growbuffer([ctype],[keep_data]) -> alloc(len) -> buf,len`    static auto-growing buffer
 __ffi__
 `glue.malloc([ctype, ]size) -> cdata`                              allocate an array using system's malloc
 `glue.malloc(ctype) -> cdata`                                      allocate a C type using system's malloc
@@ -529,6 +530,17 @@ the same as calling `f(1, nil, nil)`.
 
 The optional `n` fixates the function to always take exactly `n` args.
 
+### `glue.tuples([n]) -> f(...) -> t`
+
+Create a tuple space, which is a function that returns the same identity `t`
+for the same list of arguments. It is implemented as:
+
+```lua
+function glue.tuple(narg)
+	return glue.memoize(function(...) return glue.pack(...) end)
+end
+```
+
 ------------------------------------------------------------------------------
 
 ## Metatables
@@ -871,15 +883,13 @@ Lua objects. The allocator returns the last freed object or calls `create()`
 to create a new one if the freelist is empty. `create` defaults to
 `function() return {} end`; `destroy` defaults to `glue.noop`.
 
-### `glue.growbuffer([ctype][, growth_factor]) -> alloc(len|false) -> buf, len`
+### `glue.growbuffer([ctype], [keep_data]) -> alloc(len|false) -> buf, len`
 
-Return an allocation function which reallocates or reuses an internal static
-buffer. Good for allocating small but otherwise var-sized temporary buffers
-without stressing the garbage collector. Calling `alloc(false)` frees the
+Return an allocation function that reuses or reallocates (optionally
+preserving the contents of) an internal static buffer. Good for allocating
+small but otherwise var-sized temporary buffers without stressing the garbage
+collector or fragmenting the memory much. Calling `alloc(false)` frees the
 internal buffer (alloc can still be used afterwards).
-
-Set `growth_factor` to 2 or larger if there's a pattern of continuously
-growing allocations (at least at first).
 
 > __NOTE__: LuaJIT only.
 

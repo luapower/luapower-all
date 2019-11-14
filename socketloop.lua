@@ -11,7 +11,7 @@ local glue = require'glue'
 --traceback of the not-yet unwound stack.
 local function assert_resume(thread, ok, ...)
 	if ok then return ... end
-	error(debug.traceback(thread, ...), 3)
+	error((...)..'\n'..debug.traceback(thread), 3)
 end
 
 --create a new socket loop, dispatching to Lua coroutines or,
