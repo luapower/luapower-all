@@ -390,6 +390,9 @@ Check if file exists or if it is of a certain type.
 Make directory. `perms` can be a number or a string passed to
 [unixperms.parse()][unixperms].
 
+__Note:__ In recursive mode, if the directory already exists this function
+returns `true, 'already_exists', errcode`.
+
 ### `fs.cd([path]) -> path`
 
 Get/set current directory.

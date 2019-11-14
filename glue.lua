@@ -842,7 +842,6 @@ if jit then
 local ffi = require'ffi'
 
 --static, auto-growing buffer allocation pattern aka grow-only dynamic array.
---TODO: reimplement keep_contents in terms of realloc().
 function glue.growbuffer(ctype, keep_contents)
 	local ctype = ffi.typeof(ctype or 'char[?]')
 	local elem_size = keep_contents and ffi.sizeof(ctype, 1)

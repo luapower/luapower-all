@@ -319,7 +319,7 @@ servers = {}           --{platform = {'ip|host', port}}
 auto_update_db = true  --update the db automatically when info is missing
 allow_update_db_locally = true --allow dependency tracking on this machine
 
-default_license = 'Public Domain' --public domain
+default_license = 'Public Domain'
 
 local function plusfile(file)
 	return file and '/'..file or ''

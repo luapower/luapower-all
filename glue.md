@@ -47,8 +47,8 @@ __iterators__
 __closures__
 `glue.pass(...) -> ...`                                            does nothing, returns back all arguments
 `glue.noop(...)`                                                   does nothing, returns nothing
-`glue.memoize(f[, n]) -> f`                                        memoize pattern
-`glue.tuples([n]) -> f(...) -> t`                                  tuple pattern
+`glue.memoize(f[, narg]) -> f`                                     memoize pattern
+`glue.tuples([narg]) -> f(...) -> t`                               tuple pattern
 __metatables__
 `glue.inherit(t, parent) -> t`                                     set or clear inheritance
 `glue.object([super][, t], ...) -> t`                              create a class or object (see description)
@@ -73,11 +73,11 @@ __modules__
 __allocation__
 `glue.freelist([create], [destroy]) -> alloc, free`                freelist allocation pattern
 `glue.growbuffer([ctype],[keep_data]) -> alloc(len) -> buf,len`    static auto-growing buffer
-__ffi__
 `glue.malloc([ctype, ]size) -> cdata`                              allocate an array using system's malloc
 `glue.malloc(ctype) -> cdata`                                      allocate a C type using system's malloc
 `glue.gcmalloc(...) -> cdata`                                      garbage collected malloc
 `glue.free(cdata)`                                                 free malloc'ed memory
+__ffi__
 `glue.addr(ptr) -> number | string`                                store pointer address in Lua value
 `glue.ptr([ctype, ]number|string) -> ptr`                          convert address to pointer
 `glue.getbit(val, mask) -> true|false`                             get the value of a single bit from an integer
@@ -517,7 +517,7 @@ Does nothing. Returns nothing.
 
 ------------------------------------------------------------------------------
 
-### `glue.memoize(f[, n]) -> f`
+### `glue.memoize(f[, narg]) -> f`
 
 Memoization for functions with any number of arguments and _one return value_.
 Supports `nil` and `NaN` args and retvals.
@@ -528,15 +528,15 @@ if any. For instance, for a function `f(x, y, ...)`, calling `f(1)` is
 considered the same as calling `f(1, nil)`, but calling `f(1, nil)` is not
 the same as calling `f(1, nil, nil)`.
 
-The optional `n` fixates the function to always take exactly `n` args.
+The optional `narg` fixates the function to always take exactly `narg` args.
 
-### `glue.tuples([n]) -> f(...) -> t`
+### `glue.tuples([narg]) -> f(...) -> t`
 
 Create a tuple space, which is a function that returns the same identity `t`
 for the same list of arguments. It is implemented as:
 
 ```lua
-function glue.tuple(narg)
+function glue.tuples(narg)
 	return glue.memoize(function(...) return glue.pack(...) end)
 end
 ```
@@ -893,24 +893,16 @@ internal buffer (alloc can still be used afterwards).
 
 > __NOTE__: LuaJIT only.
 
-------------------------------------------------------------------------------
-
-## FFI
-
 ### `glue.malloc([ctype,]size) -> cdata` {#malloc-array}
 
 Allocate a `ctype[size]` array with system's malloc. Useful for allocating
-larger chunks of memory without hitting the default allocator's 2 GB limit.
+memory without hitting the default allocator's 2 GB limit.
 
   * the returned cdata has the type `ctype(&)[size]` so ffi.sizeof(cdata)
   returns the correct size (the downside is that size cannot exceed 2 GB).
   * `ctype` defaults to `char`.
   * failure to allocate results in error.
-  * the memory is freed when the cdata gets collected or with `glue.free()`.
-
-__REMEMBER!__ Just like with `ffi.new`, casting the result cdata further will
-get you _weak references_ to the allocated memory. To transfer ownership
-of the memory, use `ffi.gc(original, nil); ffi.gc(pointer, glue.free)`.
+  * the memory must be freed manually by calling `glue.free()`.
 
 > __NOTE__: LuaJIT only.
 
@@ -924,6 +916,10 @@ or glue.free() will not work!
 ### `glue.gcmalloc([ctype,]size) -> cdata` {#gcmalloc}
 
 Calls `ffi.gc(glue.malloc(), glue.free)`.
+
+__REMEMBER!__ Just like with `ffi.new`, casting the result cdata further will
+get you _weak references_ to the allocated memory. To transfer ownership
+of the memory, use `ffi.gc(original, nil); ffi.gc(pointer, glue.free)`.
 
 ### `glue.free(cdata)`
 
@@ -945,6 +941,10 @@ assert(ffi.sizeof(data) == ffi.sizeof'struct S')
 glue.free(data)
 
 ~~~
+
+------------------------------------------------------------------------------
+
+## FFI
 
 ### `glue.addr(ptr) -> number | string`
 
