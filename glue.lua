@@ -841,6 +841,63 @@ if jit then
 
 local ffi = require'ffi'
 
+ffi.cdef[[
+	void* realloc (void*, size_t size);
+	void* malloc  (size_t size);
+	void  free    (void*);
+]]
+
+local char_t = ffi.typeof'char'
+local char_ptr_t = ffi.typeof'char*'
+
+local function elem_t_args(elem_t)
+	if not elem_t then
+		return char_ptr_t, 1
+	else
+		local elem_t = ffi.ctype(elem_t)
+		local elem_ptr_t = ffi.typeof('$*', elem_t)
+		local elem_size = ffi.sizeof(elem_t)
+		return elem_ptr_t, elem_size
+	end
+end
+
+--static, auto-growing buffer allocation pattern.
+function glue.buffer(elem_t)
+	local elem_ptr_t, elem_size = elem_t_args(elem_t)
+	local buf, len = nil, 0
+	return function(newlen)
+		if newlen > len then
+			len = glue.nextpow2(newlen)
+			if buf ~= nil then
+				ffi.C.free(ffi.gc(buf, nil))
+			end
+			buf = ffi.cast(elem_ptr_t, ffi.C.malloc(len * elem_size))
+			assert(buf ~= nil, 'out of memory')
+			ffi.gc(buf, ffi.C.free)
+		end
+		return buf, len
+	end
+end
+
+--like a growing buffer but preserves the data on resize and returns the
+--asked-for length instead of the current capacity.
+function glue.dynarray(ctype)
+	local elem_ptr_t, elem_size = elem_t_args(elem_t)
+	local buf, len = nil, 0
+	return function(newlen)
+		if newlen > len then
+			len = glue.nextpow2(newlen)
+			if buf ~= nil then
+				ffi.gc(buf, nil)
+			end
+			buf = ffi.cast(elem_ptr_t, ffi.C.realloc(buf, len * elem_size))
+			assert(buf ~= nil, 'out of memory')
+			ffi.gc(buf, ffi.C.free)
+		end
+		return buf, newlen
+	end
+end
+
 --static, auto-growing buffer allocation pattern aka grow-only dynamic array.
 function glue.growbuffer(ctype, keep_contents)
 	local ctype = ffi.typeof(ctype or 'char[?]')
@@ -860,11 +917,6 @@ function glue.growbuffer(ctype, keep_contents)
 		return buf, newlen
 	end
 end
-
-ffi.cdef[[
-	void* malloc (size_t size);
-	void  free   (void*);
-]]
 
 function glue.malloc(ctype, size)
 	if type(ctype) == 'number' then
