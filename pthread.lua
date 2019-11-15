@@ -8,7 +8,7 @@ local ffi = require'ffi'
 local lib = ffi.os == 'Windows' and 'libwinpthread-1' or 'pthread'
 local C = ffi.load(lib)
 local H = {} --header namespace
-local M = {C = C}
+local M = {C = C, H = H}
 
 if ffi.os == 'Linux' then
 
