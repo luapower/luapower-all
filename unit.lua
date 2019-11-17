@@ -15,7 +15,7 @@ declare'fps'
 declare'dir'
 
 local function tostr(s)
-	return pp.format(tostring(s))
+	return pp.format(s)
 end
 
 local function _test(t1, t2, prefix, level)

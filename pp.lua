@@ -227,8 +227,7 @@ end
 local function pretty(v, write, depth, wwrapper, indent,
 	parents, quote, line_term, onerror, sort_keys, filter)
 
-	v = filter(v)
-	if v == nil then return end
+	if not filter(v) then return end
 
 	if is_serializable(v) then
 
@@ -319,7 +318,7 @@ local function pretty(v, write, depth, wwrapper, indent,
 	end
 end
 
-local function nofilter(v) return v end
+local function nofilter(v) return true end
 
 local function args(opt, ...)
 	local
@@ -367,8 +366,7 @@ local function to_stdout(v, ...)
 end
 
 local function filter(v, k)
-	if type(v) == 'function' then return nil end
-	return v
+	return type(v) ~= 'function'
 end
 local function pp(...)
 	local t = {}
