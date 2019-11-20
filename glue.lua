@@ -725,7 +725,7 @@ function glue.memoize_multiret(func, narg)
 	end
 end
 
-function glue.tuple(narg)
+function glue.tuples(narg)
 	return glue.memoize(function(...) return glue.pack(...) end)
 end
 
