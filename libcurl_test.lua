@@ -167,8 +167,7 @@ function test.download()
 			dns_use_global_cache = true,
 			dns_cache_timeout = 999999,
 			followlocation = true,
-			writefunction = function(data, size, n)
-				local size = tonumber(size * n)
+			writefunction = function(data, size)
 				if size == 0 then return end
 				table.insert(t, ffi.string(data, size))
 				t.sz = t.sz + size
