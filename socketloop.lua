@@ -85,7 +85,7 @@ local function new(coro)
 	local function receive(skt, patt, prefix)
 		wait(read, skt)
 		local s, err, partial = skt:receive(patt, prefix)
-		if not s and (err == 'timeout' or err == 'wantread') then
+		if not s and err == 'wantread' then
 			return receive(skt, patt, partial)
 		else
 			return s, err, partial
@@ -163,7 +163,11 @@ local function new(coro)
 		function o:connect(...) return connect(skt, ...) end
 		function o:call_async(func, ...) return call_async(skt, func, ...) end
 
-		function o:setsocket(new_skt) skt = new_skt end
+		function o:setsocket(new_skt)
+			skt = new_skt
+			assert(skt:settimeout(0, 'b'))
+			assert(skt:settimeout(0, 't'))
+		end
 		function o:getsocket() return skt end
 
 		--forward methods to skt
