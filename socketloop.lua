@@ -185,12 +185,16 @@ local function new(coro)
 		return setmetatable(o, o)
 	end
 
-	function loop.connect(host, port, locaddr, locport)
+	function loop.create_connection(locaddr, locport)
 		local skt = socket.try(socket.tcp())
 		if locaddr or locport then
 			assert(skt:bind(locaddr, locport or 0))
 		end
-		skt = loop.wrap(skt)
+		return loop.wrap(skt)
+	end
+
+	function loop.connect(host, port, locaddr, locport)
+		local skt = loop.create_connection(locaddr)
 		local ok, err = skt:connect(host, port)
 		if ok then return skt else return nil, err end
 	end
