@@ -76,3 +76,10 @@ Behaves like standard `coroutine.current()`.
 Behaves like standard `coroutine.status()`.
 
 __NOTE:__ In this implementation `type(thread) == 'thread'`.
+
+## Why it works
+
+This works because calling `resume()` from a thread is a lie: instead of
+resuming the thread it actually suspends the calling thread giving back
+control to the main thread which does the resuming. Since the calling
+thread is now suspended, it can later be resumed from any other thread.
