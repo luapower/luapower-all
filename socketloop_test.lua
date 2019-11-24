@@ -6,27 +6,18 @@ lanes.configure()
 
 local linda = lanes.linda()
 
-local function wrap(f)
-	local function pass(ok, ...)
-		if ok then return ... end
-		print(...)
-	end
-	return function(...)
-		return pass(xpcall(f, debug.traceback, ...))
-	end
-end
-
 local function reverse_echo_server(port, coro)
 	local loop = require'socketloop'
 	if coro then loop = loop.coro end
 	local hcount = 0
+	local stop_loop
 	local function handler(skt)
 		hcount = hcount + 1
 		while true do
 			local line = assert(skt:receive'*l')
 			if line == 'close' or line == 'stop' then
 				if line == 'stop' then
-					loop.stop()
+					stop_loop = true
 				end
 				linda:set('clients_served', linda:get('clients_served') + 1)
 				break
@@ -37,11 +28,13 @@ local function reverse_echo_server(port, coro)
 		hcount = hcount - 1
 		skt:close()
 	end
-	local srv_skt = loop.server('127.0.0.1', port, handler)
+	local srv_skt = loop.newserver('127.0.0.1', port, handler)
 	print'server started'
 	linda:set('server_started', true)
-	loop.start(1)
-	srv_skt:close_client_sockets()
+	while loop.step(1) do
+		if stop_loop and hcount == 0 then break end
+	end
+	srv_skt:close()
 	linda:set('server_started', false)
 end
 
@@ -49,8 +42,7 @@ local function client_multi_conn(server_port, coro)
 	local loop = require'socketloop'
 	if coro then loop = loop.coro end
 	local function client()
-		local skt = loop.tcp()
-		assert(loop.connect(skt, '127.0.0.1', server_port))
+		local skt = assert(loop.connect('127.0.0.1', server_port))
 		local function say(s)
 			assert(skt:send(s .. '\n'))
 			local ss, err = skt:receive'*l'
@@ -74,10 +66,8 @@ local function stop_conn(server_port, coro)
 	local loop = require'socketloop'
 	if coro then loop = loop.coro end
 	loop.newthread(function()
-		local skt = loop.tcp()
-		assert(loop.connect(skt, '127.0.0.1', server_port))
+		local skt = assert(loop.connect('127.0.0.1', server_port))
 		assert(skt:send'stop\n')
-		skt:close()
 	end)
 	loop.start(1)
 end
@@ -89,11 +79,11 @@ local function test(coro)
 	linda:set('clients_served', 0)
 
 	local port = 12355
-	local server_lane_gen = lanes.gen('*', wrap(reverse_echo_server))
+	local server_lane_gen = lanes.gen('*', reverse_echo_server)
 	local server_lane = server_lane_gen(port, coro)
 	time.sleep(.1)
 
-	local client_lane_gen = lanes.gen('*', wrap(client_multi_conn))
+	local client_lane_gen = lanes.gen('*', client_multi_conn)
 	local client_lanes = {}
 	for i=1,10 do
 		client_lanes[i] = client_lane_gen(port, coro)
@@ -122,9 +112,8 @@ local function test(coro)
 	print('server finished')
 	print('clients served', linda:get('clients_served'))
 	print('messages served', linda:get('messages_served'))
-	print()
 end
 
-test()
 test(true)
+test()
 

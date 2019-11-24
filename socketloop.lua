@@ -6,54 +6,105 @@ if not ... then require'socketloop_test'; return end
 
 local socket = require'socket'
 local glue = require'glue'
-local add = table.insert
 
 --assert the result of coroutine.resume(). on error, raise an error with the
 --traceback of the not-yet unwound stack.
 local function assert_resume(thread, ok, ...)
 	if ok then return ... end
-	error('\n'..(...)..'\n'..debug.traceback(thread), 3)
+	error((...)..'\n'..debug.traceback(thread), 3)
 end
 
+--create a new socket loop, dispatching to Lua coroutines or,
+--to symmetric coroutines, if coro module given (coro = require'coro').
 local function new(coro)
 
-	coro = coro or coroutine
 	local loop = {}
 
-	function loop.resume(thread, ...)
-		return coro.yield('resume', thread, ...)
+	local read, write = {}, {} --{skt: thread}
+
+	--thread API, based on coro or coroutine module.
+	local newthread, current, suspend, resume
+	if coro then
+		function newthread(handler, args)
+			--wrap handler so that it terminates in current loop.thread.
+			local handler = function(args)
+				handler(args)
+				coro.transfer(loop.thread)
+			end
+			local thread = coro.create(handler)
+			loop.resume(thread, args)
+			return thread
+		end
+		current = coro.running
+		function suspend()
+			return coro.transfer(loop.thread)
+		end
+		resume = coro.transfer
+		function loop.resume(thread, args)
+			local loop_thread = loop.thread
+			--change loop.thread temporarily so that we get back here.
+			loop.thread = current()
+			resume(thread, args)
+			loop.thread = loop_thread
+		end
+	else
+		function newthread(handler, args)
+			local thread = coroutine.create(handler)
+			resume(thread, args)
+			return thread
+		end
+		current = coroutine.running
+		suspend = coroutine.yield
+		function resume(thread, args)
+			assert_resume(thread, coroutine.resume(thread, args))
+		end
+		loop.resume = resume
+	end
+	loop.current = current
+	loop.suspend = suspend
+
+	--internal suspend/resume API
+	local function wait(rwt, skt)
+		rwt[skt] = current()
+		suspend()
+		rwt[skt] = nil
 	end
 
-	function loop.suspend()
-		coro.yield()
+	local function wake(skt,rwt)
+		local thread = rwt[skt]
+		if not thread then return end
+		resume(thread)
 	end
 
-	function loop.current()
-		return coro.running()
-	end
-
-	function loop.accept(skt, ...)
-		coro.yield('wantread', skt)
+	--async socket API
+	local function accept(skt,...)
+		wait(read, skt)
 		return assert(skt:accept(...))
 	end
 
-	function loop.receive(skt, patt, prefix)
-		coro.yield('wantread', skt)
+	local function receive(skt, patt, prefix)
+		wait(read, skt)
 		local s, err, partial = skt:receive(patt, prefix)
 		if not s and err == 'wantread' then
-			return loop.receive(skt, patt, partial)
+			return receive(skt, patt, partial)
 		else
 			return s, err, partial
 		end
 	end
 
-	function loop.send(skt, data, ...)
-		coro.yield('wantwrite', skt)
+	local function send(skt, data, ...)
+		wait(write, skt)
 		return skt:send(data, ...)
 	end
 
-	function loop.connect(skt, host, port)
-		assert(coro.running(), 'attempting to connect from the main thread')
+	local function close(skt,...)
+		write[skt] = nil
+		read[skt] = nil
+		return skt:close(...)
+	end
+
+	local function connect(skt, host, port)
+		assert(coroutine.running(), 'attempting to connect from the main thread')
 		assert(skt:settimeout(0, 'b'))
 		assert(skt:settimeout(0, 't'))
 		local ok, err = skt:connect(host, port)
@@ -64,18 +115,20 @@ local function new(coro)
 			if err ~= 'timeout' and not err:find'in progress$' then
 				return nil, err
 			end
-			coro.yield('wantwrite', skt)
+			wait(write, skt)
 			ok, err = skt:connect(host, port)
 		end
 		return true
 	end
 
-	function loop.call_async(skt, func, ...)
+	local function call_async(skt, func, ...)
 		while true do
 			local ret, err = func(...)
 			if not ret then
-				if err == 'wantread' or err == 'wantwrite' then
-					coro.yield(err, skt)
+				if err == 'wantread' then
+					wait(read, skt)
+				elseif err == 'wantwrite' then
+					wait(write, skt)
 				else
 					return nil, err
 				end
@@ -84,57 +137,6 @@ local function new(coro)
 			end
 		end
 	end
-
-	local read, write = {}, {} --{skt: thread}
-
-	function loop.close(skt)
-		read[skt] = nil
-		write[skt] = nil
-		skt:close()
-	end
-
-	local wake
-	local function exec(return_thread, cmd, arg, ...)
-		if cmd == 'wantread' then
-			read[arg] = return_thread
-		elseif cmd == 'wantwrite' then
-			write[arg] = return_thread
-		elseif cmd == 'resume' then
-			return wake(arg, ...) --tail call
-		else --just suspend
-			assert(not cmd)
-		end
-	end
-
-	function wake(thread, ...)
-		exec(thread, assert_resume(thread, coro.resume(thread, ...)))
-	end
-
-	local function wakesocket(skt, threadmap)
-		local thread = threadmap[skt]
-		threadmap[skt] = nil
-		wake(thread)
-	end
-
-	function loop.step(timeout)
-		if next(read) or next(write) then
-			local reads, writes = glue.keys(read), glue.keys(write)
-			local reads, writes = socket.select(reads, writes, timeout or 0.1)
-			for i=1,#reads do wakesocket(reads[i], read) end
-			for i=1,#writes do wakesocket(writes[i], write) end
-			return true
-		end
-	end
-
-	local stop = false
-	function loop.stop() stop = true end
-	function loop.start(timeout)
-		while loop.step(timeout) do
-			if stop then break end
-		end
-	end
-
-	--wrappers for sockets and threads ----------------------------------------
 
 	--wrap a luasocket socket object into an object that performs socket
 	--operations asynchronously.
@@ -154,12 +156,12 @@ local function new(coro)
 		local o = {}
 
 		--set async methods
-		function o:accept(...) return loop.wrap(loop.accept(skt,...)) end
-		function o:receive(...) return loop.receive(skt,...) end
-		function o:send(...) return loop.send(skt,...) end
-		function o:close(...) return loop.close(skt,...) end
-		function o:connect(...) return loop.connect(skt, ...) end
-		function o:call_async(func, ...) return loop.call_async(skt, func, ...) end
+		function o:accept(...) return loop.wrap(accept(skt,...)) end
+		function o:receive(...) return receive(skt,...) end
+		function o:send(...) return send(skt,...) end
+		function o:close(...) return close(skt,...) end
+		function o:connect(...) return connect(skt, ...) end
+		function o:call_async(func, ...) return call_async(skt, func, ...) end
 
 		function o:setsocket(new_skt)
 			skt = new_skt
@@ -183,7 +185,7 @@ local function new(coro)
 		return setmetatable(o, o)
 	end
 
-	function loop.tcp(locaddr, locport)
+	function loop.create_connection(locaddr, locport)
 		local skt = socket.try(socket.tcp())
 		if locaddr or locport then
 			assert(skt:bind(locaddr, locport or 0))
@@ -191,43 +193,63 @@ local function new(coro)
 		return loop.wrap(skt)
 	end
 
-	function loop.newthread(handler, ...)
-		local thread = coro.create(handler)
-		wake(thread, ...)
-		return thread
+	function loop.connect(host, port, locaddr, locport)
+		local skt = loop.create_connection(locaddr)
+		local ok, err = skt:connect(host, port)
+		if ok then return skt else return nil, err end
 	end
 
-	function loop.server(ip, port, handler)
-		local server_skt = loop.tcp()
+	--call select() and resume the calling threads of the sockets that get loaded.
+	function loop.step(timeout)
+		if not next(read) and not next(write) then return end
+		local reads, writes, err = glue.keys(read), glue.keys(write)
+		reads, writes, err = socket.select(reads, writes, timeout)
+		loop.thread = current()
+		for i=1,#reads do wake(reads[i], read) end
+		for i=1,#writes do wake(writes[i], write) end
+		return true
+	end
+
+	local stop = false
+	function loop.stop() stop = true end
+	function loop.start(timeout)
+		while loop.step(timeout) do
+			if stop then break end
+		end
+	end
+
+	--create a thread set up to transfer control to the loop thread on finish,
+	--and run it. return it while suspended in the first async socket call.
+	--step() will resume it afterwards.
+	function loop.newthread(handler, args)
+		--wrap handler to get full traceback from coroutine
+		local handler = function(args)
+			local ok, err = glue.pcall(handler, args)
+			if ok then return ok end
+			error(err, 2)
+		end
+		return newthread(handler, args)
+	end
+
+	function loop.newserver(ip, port, handler, accept)
+		local server_skt = socket.tcp()
 		server_skt:settimeout(0)
 		server_skt:setoption('reuseaddr', true)
 		assert(server_skt:bind(ip or '*', port or 0))
 		assert(server_skt:listen(16384))
-
+		server_skt = loop.wrap(server_skt)
 		accept = accept or function() return true end
-
-		server_skt.client_sockets = {}
-		local function client_close(client_skt)
-			server_skt.client_sockets[client_skt] = nil
-		end
-
-		function server_skt:close_client_sockets()
-			for client_skt in pairs(self.client_sockets) do
-				client_skt:close()
-			end
-			assert(not next(self.client_sockets))
-		end
-
-		loop.newthread(function()
-			while true do
+		local function server()
+			while accept() do
 				local client_skt = server_skt:accept()
-				server_skt.client_sockets[client_skt] = true
-				glue.after(client_skt, 'close', client_close)
 				loop.newthread(handler, client_skt)
 			end
-			server_skt:close_client_sockets()
-		end)
-
+		end
+		if coro then
+			coro.transfer(coro.create(server))
+		else
+			loop.newthread(server)
+		end
 		return server_skt
 	end
 
