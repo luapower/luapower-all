@@ -414,6 +414,45 @@ function glue.object(super, o, ...)
 	return setmetatable(o, o)
 end
 
+local function install(self, combine, method_name, hook)
+	rawset(self, method_name, combine(self[method_name], hook))
+end
+local function before(method, hook)
+	if method then
+		return function(self, ...)
+			hook(self, ...)
+			return method(self, ...)
+		end
+	else
+		return hook
+	end
+end
+function glue.before(self, method_name, hook)
+	install(self, before, method_name, hook)
+end
+local function after(method, hook)
+	if method then
+		return function(self, ...)
+			method(self, ...)
+			return hook(self, ...)
+		end
+	else
+		return hook
+	end
+end
+function glue.after(self, method_name, hook)
+	install(self, after, method_name, hook)
+end
+local function override(method, hook)
+	local method = method or glue.noop
+	return function(self, ...)
+		return hook(self, method, ...)
+	end
+end
+function glue.override(self, method_name, hook)
+	install(self, override, method_name, hook)
+end
+
 --get the value of a table field, and if the field is not present in the
 --table, create it as an empty table, and return it.
 function glue.attr(t, k, v0)
@@ -725,8 +764,11 @@ function glue.memoize_multiret(func, narg)
 	end
 end
 
+local tuple_mt = {__call = glue.unpack}
 function glue.tuples(narg)
-	return glue.memoize(function(...) return glue.pack(...) end)
+	return glue.memoize(function(...)
+		return setmetatable(glue.pack(...), tuple_mt)
+	end)
 end
 
 --setup a module to load sub-modules when accessing specific keys.

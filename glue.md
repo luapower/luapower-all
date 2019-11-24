@@ -49,9 +49,12 @@ __closures__
 `glue.noop(...)`                                                   does nothing, returns nothing
 `glue.memoize(f[, narg]) -> f`                                     memoize pattern
 `glue.tuples([narg]) -> f(...) -> t`                               tuple pattern
-__metatables__
+__objects__
 `glue.inherit(t, parent) -> t`                                     set or clear inheritance
 `glue.object([super][, t], ...) -> t`                              create a class or object (see description)
+`glue.before(class, method_name, f)`                               call f at the beginning of a method
+`glue.after(class, method_name, f)`                                call f at the end of a method
+`glue.override(class, method_name, f)`                             override a method
 __i/o__
 `glue.canopen(filename[, mode]) -> filename | nil`                 check if a file exists and can be opened
 `glue.readfile(filename[, format][, open]) -> s | nil, err`        read the contents of a file into a string
@@ -620,6 +623,77 @@ There are also some limitations:
 
   * when overriding, the super class must be referenced explicitly:
     * `<super_class>.<method>(self, ...)`.
+
+### `glue.before(class, method_name, f)`
+
+Modify a method such that it calls `f` at the beginning. `f` receives all
+the arguments passed to the method. `f`'s results are discarded.
+
+Usage:
+
+```lua
+glue.before(foo, 'bar', function(self, ...)
+    ...
+end)
+```
+
+Alternatively,
+
+```lua
+foo.before = glue.before
+foo:before('bar', function(self, ...)
+  ...
+end)
+```
+
+### `glue.after(class, method_name, f)`
+
+Modify a method such that it calls `f` at the end. `f` receives all the
+arguments passed to the method. The modified method returns what `f` returns.
+
+Usage:
+
+```lua
+glue.after(foo, 'bar', function(self, ...)
+    ...
+end)
+```
+
+Alternatively,
+
+```lua
+foo.after = glue.after
+foo:after('bar', function(self, ...)
+  ...
+end)
+```
+
+### `glue.override(class, method_name, f)`
+
+Override a method such that the new implementation only calls `f` as
+`f(self, inherited, ...)` where `inherited` is the old implementation.
+`f` receives all the method arguments and the method returns what `f` returns.
+
+Usage:
+
+```lua
+glue.override(foo, 'bar', function(self, inherited, ...)
+  ...
+  local ret = inherited(self, ...)
+  ...
+end)
+```
+
+Alternatively,
+
+```lua
+foo.override = glue.override
+foo:override('bar', function(self, inherited, ...)
+  ...
+  local ret = inherited(self, ...)
+  ...
+end)
+```
 
 ------------------------------------------------------------------------------
 

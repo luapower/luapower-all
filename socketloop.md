@@ -14,41 +14,42 @@ coroutines.
 ## API
 
 -------------------------------------------- ---------------------------------
+`loop.tcp([locaddr], [locport]) -> asocket`  make an async TCP socket
 `loop.wrap(socket|fd) -> asocket`            wrap a TCP socket or a fd to an async socket
-`loop.connect(ip, port, ...) -> asocket`     make an async TCP connection
-`loop.newthread(handler, arg)`               create a thread for one connection
-`loop.current() -> thread`                   current thread
-`loop.suspend()`                             suspend current thread
-`loop.resume(thread, arg)`                   resume a suspended thread
-`loop.newserver(ip, port, handler) -> skt`   dispatch inbound connections to a function
-`loop.start([timeout])`                      start the loop
+`loop.thread(handler, ...) -> thread`        create and start an async I/O thread
+`loop.suspend() -> ...`                      suspend thread to be transfered into later
+`loop.resume(thread, ...)`                   resume a suspended thread without waiting on it
+`loop.current() -> thread`                   return the current thread
+`loop.server(host, port, handler)-> ssocket` dispatch inbound connections to a function
+`loop.start()`                               start the select loop
 `loop.stop()`                                stop the loop (if started)
-`loop.step([timeout]) -> true|false`         dispatch pending reads and writes
-`loop.coro -> loop`                          [coro]-based loop
+`loop.step() -> true|false`                  dispatch pending reads and writes
+`loop.coro -> loop`                          alternative [coro]-based loop
 `asocket:call_async(func, ...) -> ret, err`  call a multi-step async function
 `asocket:getsocket() -> socket`              get the wrapped LuaSocket
 `asocket:setsocket(socket)`                  set the wrapped LuaSocket
+`ssocket:close_client_sockets()`             close all client sockets
 -------------------------------------------- ---------------------------------
+
+### `loop.tcp([locaddr], [locport]) -> asocket`
+
+Create an async [TCP socket].
+
+Being asynchronous means that when different sockets are used from different
+coroutines they don't block each other as long as the loop is doing the
+dispatching via `loop.start()` or `loop.step()`.
+The asynchronous methods are: `connect()`, `accept()`, `receive()`, `send()`.
+
+An async socket should only be used inside a loop thread.
+
+[TCP socket]: http://w3.impa.br/~diego/software/luasocket/tcp.html
 
 ### `loop.wrap(socket) -> asocket`
 
 Wrap a [TCP socket] into an asynchronous socket with the same API
-as the original, which btw is kept as `asocket.socket`.
+as the original (which is kept in `asocket.socket`).
 
-Being asynchronous means that if each socket is used from its own coroutine,
-different sockets won't block each other waiting for reads and writes,
-as long as the loop is doing the dispatching. The asynchronous methods are:
-`connect()`, `accept()`, `receive()`, `send()`, `close()`.
-
-An async socket should only be used inside a loop thread.
-
-### `loop.connect(ip, port [,local_ip] [,local_port]) -> asocket`
-
-Make a TCP connection and return an async socket.
-
-[TCP socket]: http://w3.impa.br/~diego/software/luasocket/tcp.html
-
-### `loop.newthread(handler, arg) -> thread`
+### `loop.thread(handler, ...) -> thread`
 
 Create and resume a thead (either a coroutine or a coro thread).
 The thread is suspended and control returns to the caller as soon as:
@@ -57,28 +58,29 @@ The thread is suspended and control returns to the caller as soon as:
   * `loop.suspend()` is called,
   * the thread finishes.
 
+### `loop.suspend() -> ...`
 
-### `loop.current() -> thread`
+Suspend the current thread. To resume a suspended thread, call `loop.resume()`
+from another thread. `loop.suspend()` returns the arguments passed to
+`loop.resume()`.
 
-Return the current thread (either a coroutine or a coro thread).
+### `loop.resume(thread, ...)`
 
-### `loop.suspend()`
+Resume a previously suspended thread without waiting on it, i.e. the call
+returns as soon as the thread is suspended again in I/O or in `suspend()`.
 
-Suspend the current thread. To resume a suspended thread,
-call `loop.resume()` from another thread.
+Only resume a thread that is waiting on `loop.suspend()`. Resuming a thread
+that is waiting in an async I/O call is undefined behavior.
 
-### `loop.resume(thread, arg)`
-
-Resume a previously suspended thread. Only resume threads that were
-previously suspended by calling `loop.suspend()`. Resuming a thread
-that is suspended in an async call is undefined behavior.
-
-### `loop.newserver(ip, port, handler)`
+### `loop.server(ip, port, handler) -> ssocket`
 
 Create a TCP socket and start accepting connections on it, and call
 `handler(client_skt)` on a separate coroutine for each accepted connection.
 
-### `loop.start([timeout])`
+The preferred way to stop a server immediately is to call `loop.stop()`
+and then call `ssocket:close_client_sockets()` after `loop.start()` returns.
+
+### `loop.start()`
 
 Start dispatching reads and writes continuously in a loop.
 The loop should be started only if there's at least one thread suspended in
@@ -88,41 +90,15 @@ an async socket call.
 
 Stop the dispatch loop (if started).
 
-### `loop.step([timeout]) -> true|false`
+### `loop.step() -> true|false`
 
 Dispatch currently pending reads and writes to their respective threads.
 
 ### `loop = require'socketloop'.coro`
 
 An alternative loop that dispatches to [symmetric coroutines][coro] instead
-of Lua coroutines.
-
-## Example
-
-~~~{.lua}
-local loop = require'socketloop'
-local http = require'socket.http'
-
-local function getpage(url)
-	local t = {}
-	local ok, code, headers = http.request{
-		url = url,
-		sink = ltn12.sink.table(t),
-		create = function()
-			return loop.wrap(socket.try(socket.tcp()))
-		end,
-	}
-	assert(ok, code)
-	return table.concat(t), headers, code
-end
-
-loop.newthread(function()
-	local body = getpage'http://google.com/'
-	print('got ' .. #body .. ' bytes')
-end)
-
-loop.start()
-~~~
+of Lua coroutines. Another way of enabling coro coroutines is to install
+them with `coro.install()` and continue to use the default loop.
 
 ### `asocket:call_async(func, ...) -> ret, err`
 
@@ -131,3 +107,7 @@ data to read or write anymore. The function performs I/O on `asocket`
 and returns `nil|false, 'wantread'` when it needs to poll for more bytes
 to read and `nil|false, 'wantwrite'` when it needs to wait for the write
 buffer to become accessible for writing.
+
+### `ssocket:close_client_sockets()`
+
+Close all client sockets on a server socket.
