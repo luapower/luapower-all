@@ -36,7 +36,8 @@ need to be wrapped first.
 ### Write in Lua
 
 String lambdas, callable strings, list comprehensions are all fun, but they
-they add syntax and and a learning curve.
+they add syntax and and a learning curve and should be generally avoided in
+contexts where their use is spare.
 
 ### Sugar
 
@@ -46,9 +47,10 @@ the intent clearer than when reading the equivalent Lua code.
 If something is an [idiom][lua-tricks], don't add a function for it, use it
 directly. Chances are its syntax will be more popular than its name. Eg. it's
 harder to recall and trust semantic equivalence of `isnan(x)` to the odd
-looking but mnemonic idiom `x ~= x`. That doesn't mean `a < b and a or b` is
-a good idiom for `min` though, `min` itself is the idiom as we know it from
-math (`sign()`, `clamp()`, etc. are idioms too).
+looking but mnemonic idiom `x ~= x` (eg. does `isnan` raise an error when `x`
+is not a number?). That doesn't mean `a < b and a or b` is a good idiom for
+`math.min(a, b)` though, `min()` itself is the idiom as we know it from math
+(`sign()`, `clamp()`, etc. are idioms too).
 
 Functional programming sugars like `compose` and `bind` makes code harder to
 read because brains are slow to switch between abstraction levels unless it's
