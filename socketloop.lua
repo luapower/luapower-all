@@ -11,7 +11,7 @@ local glue = require'glue'
 --traceback of the not-yet unwound stack.
 local function assert_resume(thread, ok, ...)
 	if ok then return ... end
-	error((...)..'\n'..debug.traceback(thread), 3)
+	error('\n'..debug.traceback(thread, ...), 3)
 end
 
 --create a new socket loop, dispatching to Lua coroutines or,
@@ -25,14 +25,14 @@ local function new(coro)
 	--thread API, based on coro or coroutine module.
 	local newthread, current, suspend, resume
 	if coro then
-		function newthread(handler, args)
+		function newthread(handler, ...)
 			--wrap handler so that it terminates in current loop.thread.
-			local handler = function(args)
-				handler(args)
+			local handler = function(...)
+				handler(...)
 				coro.transfer(loop.thread)
 			end
 			local thread = coro.create(handler)
-			loop.resume(thread, args)
+			loop.resume(thread, ...)
 			return thread
 		end
 		current = coro.running
@@ -40,23 +40,24 @@ local function new(coro)
 			return coro.transfer(loop.thread)
 		end
 		resume = coro.transfer
-		function loop.resume(thread, args)
+		function loop.resume(thread, ...)
 			local loop_thread = loop.thread
-			--change loop.thread temporarily so that we get back here.
+			--change loop.thread temporarily so that we get back here
+			--on the first call to suspend().
 			loop.thread = current()
-			resume(thread, args)
+			resume(thread, ...)
 			loop.thread = loop_thread
 		end
 	else
-		function newthread(handler, args)
+		function newthread(handler, ...)
 			local thread = coroutine.create(handler)
-			resume(thread, args)
+			resume(thread, ...)
 			return thread
 		end
 		current = coroutine.running
 		suspend = coroutine.yield
-		function resume(thread, args)
-			assert_resume(thread, coroutine.resume(thread, args))
+		function resume(thread, ...)
+			assert_resume(thread, coroutine.resume(thread, ...))
 		end
 		loop.resume = resume
 	end
@@ -82,19 +83,39 @@ local function new(coro)
 		return assert(skt:accept(...))
 	end
 
-	local function receive(skt, patt, prefix)
+	--NOTE: less_is_ok is needed by stream.linebuffer() which wants to specify
+	--a max size not an exact size, but LuaSec returns 'wantread' when there's
+	--no more data.
+	local function receive(skt, patt, prefix, less_is_ok)
 		wait(read, skt)
-		local s, err, partial = skt:receive(patt, prefix)
-		if not s and err == 'wantread' then
-			return receive(skt, patt, partial)
-		else
-			return s, err, partial
+		while true do
+			local s, err, partial = skt:receive(patt, prefix)
+			if not s and (err == 'wantread' or err == 'wantwrite' or err == 'timeout') then
+				if err == 'timeout' then err = 'wantread' end
+				if less_is_ok and partial and #partial > 0 then
+					return partial
+				else
+					wait(err == 'wantread' and read or write, skt)
+					prefix = partial
+				end
+			else
+				return s, err, partial
+			end
 		end
 	end
 
-	local function send(skt, data, ...)
+	local function send(skt, data, i, j)
 		wait(write, skt)
-		return skt:send(data, ...)
+		while true do
+			local i1, err, pi = skt:send(data, i, j)
+			if not i1 and (err == 'wantread' or err == 'wantwrite' or err == 'timeout') then
+				if err == 'timeout' then err = 'wantwrite' end
+				wait(err == 'wantread' and read or write, skt)
+				i = pi + 1
+			else
+				return i1, err, pi
+			end
+		end
 	end
 
 	local function close(skt,...)
@@ -185,7 +206,7 @@ local function new(coro)
 		return setmetatable(o, o)
 	end
 
-	function loop.create_connection(locaddr, locport)
+	function loop.tcp(locaddr, locport)
 		local skt = socket.try(socket.tcp())
 		if locaddr or locport then
 			assert(skt:bind(locaddr, locport or 0))
@@ -194,7 +215,7 @@ local function new(coro)
 	end
 
 	function loop.connect(host, port, locaddr, locport)
-		local skt = loop.create_connection(locaddr)
+		local skt = loop.tcp(locaddr)
 		local ok, err = skt:connect(host, port)
 		if ok then return skt else return nil, err end
 	end
@@ -221,26 +242,25 @@ local function new(coro)
 	--create a thread set up to transfer control to the loop thread on finish,
 	--and run it. return it while suspended in the first async socket call.
 	--step() will resume it afterwards.
-	function loop.newthread(handler, args)
-		--wrap handler to get full traceback from coroutine
-		local handler = function(args)
-			local ok, err = glue.pcall(handler, args)
+	function loop.newthread(handler, ...)
+		--wrap handler to get full traceback from coroutine.
+		local handler = function(...)
+			local ok, err = glue.pcall(handler, ...)
 			if ok then return ok end
 			error(err, 2)
 		end
-		return newthread(handler, args)
+		return newthread(handler, ...)
 	end
 
-	function loop.newserver(ip, port, handler, accept)
+	function loop.newserver(ip, port, handler)
 		local server_skt = socket.tcp()
 		server_skt:settimeout(0)
 		server_skt:setoption('reuseaddr', true)
 		assert(server_skt:bind(ip or '*', port or 0))
 		assert(server_skt:listen(16384))
 		server_skt = loop.wrap(server_skt)
-		accept = accept or function() return true end
 		local function server()
-			while accept() do
+			while true do
 				local client_skt = server_skt:accept()
 				loop.newthread(handler, client_skt)
 			end

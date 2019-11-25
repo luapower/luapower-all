@@ -13,22 +13,23 @@ coroutines.
 
 ## API
 
--------------------------------------------- ---------------------------------
-`loop.wrap(socket|fd) -> asocket`            wrap a TCP socket or a fd to an async socket
-`loop.connect(ip, port, ...) -> asocket`     make an async TCP connection
-`loop.newthread(handler, arg)`               create a thread for one connection
-`loop.current() -> thread`                   current thread
-`loop.suspend()`                             suspend current thread
-`loop.resume(thread, arg)`                   resume a suspended thread
-`loop.newserver(ip, port, handler) -> skt`   dispatch inbound connections to a function
-`loop.start([timeout])`                      start the loop
-`loop.stop()`                                stop the loop (if started)
-`loop.step([timeout]) -> true|false`         dispatch pending reads and writes
-`loop.coro -> loop`                          [coro]-based loop
-`asocket:call_async(func, ...) -> ret, err`  call a multi-step async function
-`asocket:getsocket() -> socket`              get the wrapped LuaSocket
-`asocket:setsocket(socket)`                  set the wrapped LuaSocket
--------------------------------------------- ---------------------------------
+----------------------------------------------------------------- ---------------------------------
+`loop.wrap(socket|fd) -> asocket`                                 wrap a TCP socket or a fd to an async socket
+`loop.connect(host, port, [local_ip], [local_port]) -> asocket`   make an async TCP connection
+`loop.tcp([local_ip], [local_port]) -> asocket`                   create an async TCP socket
+`loop.newthread(handler, arg)`                                    create a thread for one connection
+`loop.current() -> thread`                                        current thread
+`loop.suspend()`                                                  suspend current thread
+`loop.resume(thread, arg)`                                        resume a suspended thread
+`loop.newserver(ip, port, handler) -> skt`                        dispatch inbound connections to a function
+`loop.start([timeout])`                                           start the loop
+`loop.stop()`                                                     stop the loop (if started)
+`loop.step([timeout]) -> true|false`                              dispatch pending reads and writes
+`loop.coro -> loop`                                               [coro]-based loop
+`asocket:call_async(func, ...) -> ret, err`                       call a multi-step async function
+`asocket:getsocket() -> socket`                                   get the wrapped LuaSocket
+`asocket:setsocket(socket)`                                       set the wrapped LuaSocket
+----------------------------------------------------------------- ---------------------------------
 
 ### `loop.wrap(socket) -> asocket`
 
@@ -42,11 +43,15 @@ as long as the loop is doing the dispatching. The asynchronous methods are:
 
 An async socket should only be used inside a loop thread.
 
-### `loop.connect(ip, port [,local_ip] [,local_port]) -> asocket`
+### `loop.connect(host, port, [local_ip], [local_port]) -> asocket`
 
 Make a TCP connection and return an async socket.
 
 [TCP socket]: http://w3.impa.br/~diego/software/luasocket/tcp.html
+
+### `loop.tcp([local_ip], [local_port]) -> asocket`
+
+Create an async TCP socket optionally binding it to a specific local IP and port.
 
 ### `loop.newthread(handler, arg) -> thread`
 
@@ -69,9 +74,12 @@ call `loop.resume()` from another thread.
 
 ### `loop.resume(thread, arg)`
 
-Resume a previously suspended thread. Only resume threads that were
-previously suspended by calling `loop.suspend()`. Resuming a thread
-that is suspended in an async call is undefined behavior.
+Resume a suspended thread without blocking the current thread. The call
+returns as soon as the thread gets suspended again in an async I/O call
+or in `loop.suspend()`.
+
+Only resume threads that were previously suspended by calling `loop.suspend()`.
+Resuming a thread that is suspended in an async call is undefined behavior.
 
 ### `loop.newserver(ip, port, handler)`
 
