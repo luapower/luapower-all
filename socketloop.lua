@@ -90,11 +90,12 @@ local function new(coro)
 		wait(read, skt)
 		while true do
 			local s, err, partial = skt:receive(patt, prefix)
-			if not s and (err == 'wantread' or err == 'wantwrite' or err == 'timeout') then
-				if err == 'timeout' then err = 'wantread' end
+			if not s then
 				if less_is_ok and partial and #partial > 0 then
 					return partial
-				else
+				end
+				if err == 'wantread' or err == 'wantwrite' or err == 'timeout' then
+					if err == 'timeout' then err = 'wantread' end
 					wait(err == 'wantread' and read or write, skt)
 					prefix = partial
 				end
