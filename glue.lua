@@ -9,6 +9,8 @@ local glue = {}
 local min, max, floor, ceil, log, select, unpack, pairs, rawget =
 	math.min, math.max, math.floor, math.ceil, math.log, select, unpack, pairs, rawget
 
+--math -----------------------------------------------------------------------
+
 function glue.round(x, p)
 	p = p or 1
 	return floor(x / p + .5) * p
@@ -38,6 +40,8 @@ function glue.nextpow2(x)
 	return max(0, 2^(ceil(log(x) / log(2))))
 end
 
+--varargs --------------------------------------------------------------------
+
 function glue.pack(...)
 	return {n = select('#', ...), ...}
 end
@@ -45,6 +49,8 @@ end
 function glue.unpack(t, i, j)
 	return unpack(t, i or 1, j or t.n or #t)
 end
+
+--tables ---------------------------------------------------------------------
 
 --count the keys in a table with an optional upper limit.
 function glue.count(t, maxn)
@@ -111,6 +117,22 @@ function glue.merge(dt,...)
 	end
 	return dt
 end
+
+--get the value of a table field, and if the field is not present in the
+--table, create it as an empty table, and return it.
+function glue.attr(t, k, v0)
+	local v = t[k]
+	if v == nil then
+		if v0 == nil then
+			v0 = {}
+		end
+		v = v0
+		t[k] = v
+	end
+	return v
+end
+
+--lists ----------------------------------------------------------------------
 
 --extend a list with the elements of other lists.
 function glue.extend(dt,...)
@@ -209,6 +231,8 @@ function glue.map(t, f, ...)
 	return dt
 end
 
+--arrays ---------------------------------------------------------------------
+
 --scan list for value. works with ffi arrays too.
 function glue.indexof(v, t, eq, i, j)
 	i = i or 1
@@ -265,6 +289,8 @@ function glue.binsearch(v, t, cmp, lo, hi)
 	end
 	return lo
 end
+
+--strings --------------------------------------------------------------------
 
 --string submodule. has its own namespace which can be merged with _G.string.
 glue.string = {}
@@ -347,7 +373,7 @@ function glue.string.tohex(s, upper)
 	end
 end
 
---hex to string.
+--hex to binary string.
 function glue.string.fromhex(s)
 	if #s % 2 == 1 then
 		return glue.string.fromhex('0'..s)
@@ -363,6 +389,8 @@ end
 
 --publish the string submodule in the glue namespace.
 glue.update(glue, glue.string)
+
+--iterators ------------------------------------------------------------------
 
 --run an iterator and collect the n-th return value into a list.
 local function select_at(i,...)
@@ -390,9 +418,123 @@ function glue.collect(n,...)
 	end
 end
 
---no-op filter.
+--closures -------------------------------------------------------------------
+
+--no-op filters.
 function glue.pass(...) return ... end
 function glue.noop() return end
+
+--memoize for 0, 1, 2-arg and vararg and 1 retval functions.
+local function memoize0(fn) --for strict no-arg functions
+	local v, stored
+	return function()
+		if not stored then
+			v = fn(); stored = true
+		end
+		return v
+	end
+end
+local nilkey = {}
+local nankey = {}
+local function memoize1(fn) --for strict single-arg functions
+	local cache = {}
+	return function(arg)
+		local k = arg == nil and nilkey or arg ~= arg and nankey or arg
+		local v = cache[k]
+		if v == nil then
+			v = fn(arg); cache[k] = v == nil and nilkey or v
+		else
+			if v == nilkey then v = nil end
+		end
+		return v
+	end
+end
+local function memoize2(fn) --for strict two-arg functions
+	local cache = {}
+	return function(a1, a2)
+		local k1 = a1 ~= a1 and nankey or a1 == nil and nilkey or a1
+		local cache2 = cache[k1]
+		if cache2 == nil then
+			cache2 = {}
+			cache[k1] = cache2
+		end
+		local k2 = a2 ~= a2 and nankey or a2 == nil and nilkey or a2
+		local v = cache2[k2]
+		if v == nil then
+			v = fn(a1, a2)
+			cache2[k2] = v == nil and nilkey or v
+		else
+			if v == nilkey then v = nil end
+		end
+		return v
+	end
+end
+local function memoize_vararg(fn, minarg, maxarg)
+	local cache = {}
+	local values = {}
+	return function(...)
+		local key = cache
+		local narg = min(max(select('#',...), minarg), maxarg)
+		for i = 1, narg do
+			local a = select(i,...)
+			local k = a ~= a and nankey or a == nil and nilkey or a
+			local t = key[k]
+			if not t then
+				t = {}; key[k] = t
+			end
+			key = t
+		end
+		local v = values[key]
+		if v == nil then
+			v = fn(...); values[key] = v == nil and nilkey or v
+		end
+		if v == nilkey then v = nil end
+		return v
+	end
+end
+local memoize_narg = {[0] = memoize0, memoize1, memoize2}
+local function choose_memoize_func(func, narg)
+	if narg then
+		local memoize_narg = memoize_narg[narg]
+		if memoize_narg then
+			return memoize_narg
+		else
+			return memoize_vararg, narg, narg
+		end
+	else
+		local info = debug.getinfo(func, 'u')
+		if info.isvararg then
+			return memoize_vararg, info.nparams, 1/0
+		else
+			return choose_memoize_func(func, info.nparams)
+		end
+	end
+end
+function glue.memoize(func, narg)
+	local memoize, minarg, maxarg = choose_memoize_func(func, narg)
+	return memoize(func, minarg, maxarg)
+end
+
+--memoize a function with multiple return values.
+function glue.memoize_multiret(func, narg)
+	local memoize, minarg, maxarg = choose_memoize_func(func, narg)
+	local function wrapper(...)
+		return glue.pack(func(...))
+	end
+	local func = memoize(wrapper, minarg, maxarg)
+	return function(...)
+		return glue.unpack(func(...))
+	end
+end
+
+local tuple_mt = {__call = glue.unpack}
+function glue.tuples(narg)
+	return glue.memoize(function(...)
+		return setmetatable(glue.pack(...), tuple_mt)
+	end)
+end
+
+--objects --------------------------------------------------------------------
 
 --set up dynamic inheritance by creating or updating a table's metatable.
 function glue.inherit(t, parent)
@@ -453,19 +595,7 @@ function glue.override(self, method_name, hook)
 	install(self, override, method_name, hook)
 end
 
---get the value of a table field, and if the field is not present in the
---table, create it as an empty table, and return it.
-function glue.attr(t, k, v0)
-	local v = t[k]
-	if v == nil then
-		if v0 == nil then
-			v0 = {}
-		end
-		v = v0
-		t[k] = v
-	end
-	return v
-end
+--i/o ------------------------------------------------------------------------
 
 --check if a file exists and can be opened for reading or writing.
 function glue.canopen(name, mode)
@@ -589,6 +719,8 @@ function glue.printer(out, format)
 	end
 end
 
+--error handling -------------------------------------------------------------
+
 --assert() with string formatting (this should be a Lua built-in).
 --NOTE: unlike standard assert(), this only returns the first argument
 --to avoid returning the error message and it's args along with it.
@@ -603,7 +735,7 @@ end
 
 --pcall with traceback. LuaJIT and Lua 5.2 only.
 local function pcall_error(e)
-	return tostring(e) .. '\n' .. debug.traceback()
+	return debug.traceback('\n'..tostring(e))
 end
 function glue.pcall(f, ...)
 	return xpcall(f, pcall_error, ...)
@@ -661,115 +793,7 @@ function glue.fcall(...)
 	return assert_fpcall(fpcall(...))
 end
 
---memoize for 1 and 2-arg and vararg and 1 retval functions.
-local function memoize0(fn) --for strict no-arg functions
-	local v, stored
-	return function()
-		if not stored then
-			v = fn(); stored = true
-		end
-		return v
-	end
-end
-local nilkey = {}
-local nankey = {}
-local function memoize1(fn) --for strict single-arg functions
-	local cache = {}
-	return function(arg)
-		local k = arg == nil and nilkey or arg ~= arg and nankey or arg
-		local v = cache[k]
-		if v == nil then
-			v = fn(arg); cache[k] = v == nil and nilkey or v
-		else
-			if v == nilkey then v = nil end
-		end
-		return v
-	end
-end
-local function memoize2(fn) --for strict two-arg functions
-	local cache = {}
-	return function(a1, a2)
-		local k1 = a1 ~= a1 and nankey or a1 == nil and nilkey or a1
-		local cache2 = cache[k1]
-		if cache2 == nil then
-			cache2 = {}
-			cache[k1] = cache2
-		end
-		local k2 = a2 ~= a2 and nankey or a2 == nil and nilkey or a2
-		local v = cache2[k2]
-		if v == nil then
-			v = fn(a1, a2)
-			cache2[k2] = v == nil and nilkey or v
-		else
-			if v == nilkey then v = nil end
-		end
-		return v
-	end
-end
-local function memoize_vararg(fn, minarg, maxarg)
-	local cache = {}
-	local values = {}
-	return function(...)
-		local key = cache
-		local narg = min(max(select('#',...), minarg), maxarg)
-		for i = 1, narg do
-			local a = select(i,...)
-			local k = a ~= a and nankey or a == nil and nilkey or a
-			local t = key[k]
-			if not t then
-				t = {}; key[k] = t
-			end
-			key = t
-		end
-		local v = values[key]
-		if v == nil then
-			v = fn(...); values[key] = v == nil and nilkey or v
-		end
-		if v == nilkey then v = nil end
-		return v
-	end
-end
-local memoize_narg = {[0] = memoize0, memoize1, memoize2}
-local function choose_memoize_func(func, narg)
-	if narg then
-		local memoize_narg = memoize_narg[narg]
-		if memoize_narg then
-			return memoize_narg
-		else
-			return memoize_vararg, narg, narg
-		end
-	else
-		local info = debug.getinfo(func, 'u')
-		if info.isvararg then
-			return memoize_vararg, info.nparams, 1/0
-		else
-			return choose_memoize_func(func, info.nparams)
-		end
-	end
-end
-function glue.memoize(func, narg)
-	local memoize, minarg, maxarg = choose_memoize_func(func, narg)
-	return memoize(func, minarg, maxarg)
-end
-
---memoize a function with multiple return values.
-function glue.memoize_multiret(func, narg)
-	local memoize, minarg, maxarg = choose_memoize_func(func, narg)
-	local function wrapper(...)
-		return glue.pack(func(...))
-	end
-	local func = memoize(wrapper, minarg, maxarg)
-	return function(...)
-		return glue.unpack(func(...))
-	end
-end
-
-local tuple_mt = {__call = glue.unpack}
-function glue.tuples(narg)
-	return glue.memoize(function(...)
-		return setmetatable(glue.pack(...), tuple_mt)
-	end)
-end
+--modules --------------------------------------------------------------------
 
 --setup a module to load sub-modules when accessing specific keys.
 function glue.autoload(t, k, v)
@@ -854,7 +878,9 @@ function glue.cpath(path, index)
 	package.cpath = table.concat(paths, tsep)
 end
 
---freelist for Lua tables, providing the fields .
+--allocation -----------------------------------------------------------------
+
+--freelist for Lua tables.
 local function create_table()
 	return {}
 end
@@ -923,7 +949,7 @@ end
 
 --like a growing buffer but preserves the data on resize and returns the
 --asked-for length instead of the current capacity.
-function glue.dynarray(ctype)
+function glue.dynarray(elem_t)
 	local elem_ptr_t, elem_size = elem_t_args(elem_t)
 	local buf, len = nil, 0
 	return function(newlen)
@@ -982,6 +1008,8 @@ end
 function glue.gcmalloc(ctype, size)
 	return ffi.gc(glue.malloc(ctype, size), glue.free)
 end
+
+--ffi ------------------------------------------------------------------------
 
 local intptr_ct = ffi.typeof'intptr_t'
 local intptrptr_ct = ffi.typeof'const intptr_t*'

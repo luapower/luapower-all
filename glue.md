@@ -21,9 +21,9 @@ __tables__
 `glue.count(t) -> n`                                               number of keys in table
 `glue.index(t) -> dt`                                              switch keys with values
 `glue.keys(t[,sorted|cmp]) -> dt`                                  make a list of all the keys
+`glue.sortedpairs(t [,cmp]) -> iter() -> k, v`                     like pairs() but in key order
 `glue.update(dt, t1, ...) -> dt`                                   merge tables - overwrites keys
 `glue.merge(dt, t1, ...) -> dt`                                    merge tables - no overwriting
-`glue.sortedpairs(t [,cmp]) -> iter() -> k, v`                     like pairs() but in key order
 `glue.attr(t, k1 [,v])[k2] = v`                                    autofield pattern
 __lists__
 `glue.extend(dt, t1, ...) -> dt`                                   extend a list
@@ -48,6 +48,7 @@ __closures__
 `glue.pass(...) -> ...`                                            does nothing, returns back all arguments
 `glue.noop(...)`                                                   does nothing, returns nothing
 `glue.memoize(f[, narg]) -> f`                                     memoize pattern
+`glue.memoize_multiret(f[, narg]) -> f`                            memoize for multiple-return-value functions
 `glue.tuples([narg]) -> f(...) -> t`                               tuple pattern
 __objects__
 `glue.inherit(t, parent) -> t`                                     set or clear inheritance
@@ -75,7 +76,8 @@ __modules__
 `glue.cpath(path [,index])`                                        insert a path in package.cpath
 __allocation__
 `glue.freelist([create], [destroy]) -> alloc, free`                freelist allocation pattern
-`glue.growbuffer([ctype],[keep_data]) -> alloc(len) -> buf,len`    static auto-growing buffer
+`glue.buffer([ctype]) -> alloc(len) -> buf,len`                    static auto-growing buffer
+`glue.dynarray([ctype]) -> alloc(len) -> buf,len`                  static auto-growing cdata array
 `glue.malloc([ctype, ]size) -> cdata`                              allocate an array using system's malloc
 `glue.malloc(ctype) -> cdata`                                      allocate a C type using system's malloc
 `glue.gcmalloc(...) -> cdata`                                      garbage collected malloc
@@ -219,6 +221,14 @@ For instance, you have a table of the form `{socket = thread}` but
 
 ------------------------------------------------------------------------------
 
+### `glue.sortedpairs(t[,cmp]) -> iter() -> k,v`
+
+Like pairs() but in key order.
+
+The implementation creates a temporary table to sort the keys in.
+
+------------------------------------------------------------------------------
+
 ### `glue.update(dt,t1,...) -> dt`
 
 Update a table with elements of other tables, overwriting any existing keys.
@@ -263,14 +273,6 @@ Normalize a data object with default values:
 ~~~{.lua}
 glue.merge(t, defaults)
 ~~~
-
-------------------------------------------------------------------------------
-
-### `glue.sortedpairs(t[,cmp]) -> iter() -> k,v`
-
-Like pairs() but in key order.
-
-The implementation creates a temporary table to sort the keys in.
 
 ------------------------------------------------------------------------------
 
@@ -522,16 +524,22 @@ Does nothing. Returns nothing.
 
 ### `glue.memoize(f[, narg]) -> f`
 
-Memoization for functions with any number of arguments and _one return value_.
-Supports `nil` and `NaN` args and retvals.
+### `glue.memoize_multiret(f[, narg]) -> f`
 
-Guarantees to only call the original function _once_ for the same combination
-of arguments, with special attention to the vararg part of the function,
-if any. For instance, for a function `f(x, y, ...)`, calling `f(1)` is
-considered the same as calling `f(1, nil)`, but calling `f(1, nil)` is not
-the same as calling `f(1, nil, nil)`.
+Memoization for functions with any number of arguments. `memoize()` supports
+functions with _one return value_. `memoize_multiret()` supports any function.
+Both support `nil` and `NaN` args and retvals.
 
-The optional `narg` fixates the function to always take exactly `narg` args.
+Memoization guarantees to only call the original function _once_ for the same
+combination of arguments.
+
+Special attention is given to the vararg part of the function, if any. For
+instance, for a function `f(x, y, ...)`, calling `f(1)` is considered to be
+the same as calling `f(1, nil)`, but calling `f(1, nil)` is not the same as
+calling `f(1, nil, nil)`.
+
+The optional `narg` fixates the function to always take exactly `narg` args
+regardless of how the function was defined.
 
 ### `glue.tuples([narg]) -> f(...) -> t`
 
@@ -539,20 +547,26 @@ Create a tuple space, which is a function that returns the same identity `t`
 for the same list of arguments. It is implemented as:
 
 ```lua
+local tuple_mt = {__call = glue.unpack}
 function glue.tuples(narg)
-	return glue.memoize(function(...) return glue.pack(...) end)
+	return glue.memoize(function(...)
+		return setmetatable(glue.pack(...), tuple_mt)
+	end)
 end
 ```
 
+The result tuple can be expanded back by calling it: `t() -> args...`.
+
 ------------------------------------------------------------------------------
 
-## Metatables
+## Objects
 
 ### `glue.inherit(t, parent) -> t` <br> `glue.inherit(t, nil) -> t`
 
 Set a table to inherit attributes from a parent table, or clear inheritance.
 
-If the table has no metatable (and inheritance has to be set, not cleared) make it one.
+If the table has no metatable and inheritance has to be set, not cleared,
+then make it one.
 
 #### Examples
 
@@ -584,11 +598,11 @@ _ENV = glue.inherit({},_G)
 ...
 ~~~
 
-Hints:
+To get the effect of static (single or multiple) inheritance, use `glue.update`.
 
-  * to get the effect of static (single or multiple) inheritance, use `glue.update`.
+When setting inheritance, you can pass in a function.
 
-* when setting inheritance, you can pass in a function.
+Unlike `glue.object`, this doesn't add any keys to the object.
 
 ------------------------------------------------------------------------------
 
@@ -731,14 +745,13 @@ in different filesystems or if `oldpath` is missing or locked, etc.
 For consistent behavior across OSes, both paths should be absolute paths
 or just filenames.
 
-> __NOTE__: LuaJIT only (uses `MoveFileExA` on Windows and `os.rename()`
-on all other platforms).
+On LuaJIT, this is implemented based on `MoveFileExA` on Windows.
 
 ------------------------------------------------------------------------------
 
 ### `glue.writefile(filename,s|t|read,[format],[tmpfile]) -> ok, err`
 
-Write the contents of a string, table or reader to a file.
+Write the contents of a string, table or iterator to a file.
 
   * the contents can be given as a string, an array of strings, or a function
   that returns a string or `nil` to signal end-of-stream.
@@ -770,9 +783,10 @@ Like `assert` but supports formatting of the error message using
 This is better than `assert(v, string.format(message, format_args...))`
 because it avoids creating the message string when the assertion is true.
 
-__NOTE__: Unlike standard `assert()`, this only returns its first argument
+__CAVEAT__: Unlike standard `assert()`, this only returns its first argument
 even when no message is given, to avoid returning the error message and its
-args when a message is given and the assertion is true.
+args when a message is given and the assertion is true. So the pattern
+`a, b = glue.assert(f())` doesn't work.
 
 #### Example
 
