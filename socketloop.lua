@@ -175,7 +175,7 @@ local function new(coro)
 			socket:setfd(fd)
 		end
 
-		local o = {}
+		local o = {type = 'socketloop_socket'}
 
 		--set async methods
 		function o:accept(...) return loop.wrap(accept(skt,...)) end

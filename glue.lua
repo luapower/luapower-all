@@ -528,6 +528,13 @@ function glue.memoize_multiret(func, narg)
 end
 
 local tuple_mt = {__call = glue.unpack}
+function tuple_mt:__tostring()
+	local t = {}
+	for i=1,self.n do
+		t[i] = tostring(self[i])
+	end
+	return string.format('(%s)', table.concat(t, ', '))
+end
 function glue.tuples(narg)
 	return glue.memoize(function(...)
 		return setmetatable(glue.pack(...), tuple_mt)
