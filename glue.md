@@ -608,21 +608,19 @@ This simple object model has the following qualities:
   `t.__call = glue.object`.
   * a separate constructor to be used only for subclassing can be made with
   the same pattern: `t.subclass = glue.object`.
-  * virtual classes (i.e. nested inner classes whose fields and methods can
-  be overridden by subclasses of the outer class): composite objects which
-  need to instantiate other objects can be made extendable easily by exposing
-  those objects' classes as fields of the container class with
-  `container_class.inner_class = inner_class` and instantiating with
-  `self.inner_class(...)` so that replacing `inner_class` in a sub-class of
-  `container_class` is possible. Moreso, instantiation with
+  * virtual classes (aka dependency injection, aka nested inner classes
+  whose fields and methods can be overridden by subclasses of the outer
+  class): composite objects which need to instantiate other objects can be
+  made extensible by exposing those objects' classes as fields of the
+  container class with `container_class.inner_class = inner_class` and
+  instantiating with `self.inner_class(...)` so that replacing `inner_class`
+  in a sub-class of `container_class` is possible. Moreso, instantiation with
   `self:inner_class(...)` (so with a colon) passes the container object to
   `inner_class`'s constructor automatically which allows referencing the
   container object from the inner object.
-
-There are also some limitations:
-
-  * when overriding, the super class must be referenced explicitly:
-    * `<super_class>.<method>(self, ...)`.
+  * overriding syntax sugar so that the super class need not be referenced
+  explicitly when overriding can be incorporated into the base class with
+  `base.override = glue.override`.
 
 ### `glue.before(class, method_name, f)`
 
@@ -917,6 +915,9 @@ local foobar = glue.readfile(glue.bin .. '/' .. file_near_this_script)
 This only works if glue itself can already be found and required
 (chicken/egg problem). Also, the path is relative to the current directory,
 so this stops working as soon as the current directory is changed.
+Also, depending on how the process was started, this information might be
+missing or wrong since it's set by the parent process. Better use
+[fs].exedir which has none of these problems.
 
 ------------------------------------------------------------------------------
 
