@@ -929,7 +929,7 @@ local function elem_t_args(elem_t)
 	end
 end
 
---static, auto-growing buffer allocation pattern.
+--auto-growing buffer allocation pattern.
 function glue.buffer(elem_t)
 	local elem_ptr_t, elem_size = elem_t_args(elem_t)
 	local buf, len = nil, 0
@@ -947,13 +947,13 @@ function glue.buffer(elem_t)
 	end
 end
 
---like a growing buffer but preserves the data on resize and returns the
---asked-for length instead of the current capacity.
+--like a buffer but also shrinks, preserves the data on resize and returns
+--the asked-for length instead of the current capacity.
 function glue.dynarray(elem_t)
 	local elem_ptr_t, elem_size = elem_t_args(elem_t)
 	local buf, len = nil, 0
 	return function(newlen)
-		if newlen > len then
+		if newlen ~= len then
 			len = glue.nextpow2(newlen)
 			if buf ~= nil then
 				ffi.gc(buf, nil)
