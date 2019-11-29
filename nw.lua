@@ -1578,7 +1578,7 @@ function window:invalidate(invalid_clock)
 end
 
 function window:invalid(at_clock)
-	return (at_clock or time.clock()) >= self._invalid_clock
+	return (at_clock or time.clock()) >= (self._invalid_clock or 1/0)
 end
 
 function window:validate(at_clock)
@@ -1878,6 +1878,7 @@ view.invalidate = window.invalidate
 view.invalid = window.invalid
 view.validate = window.validate
 view._backend_repaint = window._backend_repaint
+view._backend_needs_repaint = window._backend_needs_repaint
 view._backend_free_bitmap = window._backend_free_bitmap
 
 --menus ----------------------------------------------------------------------

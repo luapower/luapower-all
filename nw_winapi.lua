@@ -90,6 +90,11 @@ function app:_repaint_all_at(clock)
 		local win = windows[i]
 		if not win:dead() then
 			win.backend:repaint(clock)
+			local views = win._views
+			for i = 1, #views do
+				local view = views[i]
+				view.backend:repaint(clock)
+			end
 		end
 	end
 end
