@@ -615,11 +615,11 @@ This simple object model has the following qualities:
 
   * the implementation is only 4 LOC (14 LOC if extra args are used) and can
   thus be copy-pasted into any module to avoid a dependency on the glue library.
-  * procedural instantiation with `t(...)` which calls `t:__call(...)`.
+  * funcall-style instantiation with `t(...)` which calls `t:__call(...)`.
   * small memory footprint (3 table slots and no additional tables).
   * subclassing from instances is allowed (prototype-based inheritance).
   * `glue.object` can serve as a stub class/instance constructor:
-  `t.__call = glue.object`.
+  `t.__call = glue.object` (`t.new = glue.object` works too).
   * a separate constructor to be used only for subclassing can be made with
   the same pattern: `t.subclass = glue.object`.
   * virtual classes (aka dependency injection, aka nested inner classes
