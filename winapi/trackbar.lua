@@ -1,0 +1,100 @@
+
+--proc/controls/trackbar: trackbar control
+--Written by Cosmin Apreutesei. Public Domain.
+
+setfenv(1, require'winapi')
+require'winapi.window'
+require'winapi.comctl'
+
+--creation
+
+TRACKBAR_CLASS = 'msctls_trackbar32'
+
+TBS_AUTOTICKS        = 0x0001
+TBS_VERT             = 0x0002
+TBS_HORZ             = 0x0000
+TBS_TOP              = 0x0004
+TBS_BOTTOM           = 0x0000
+TBS_LEFT             = 0x0004
+TBS_RIGHT            = 0x0000
+TBS_BOTH             = 0x0008
+TBS_NOTICKS          = 0x0010
+TBS_ENABLESELRANGE   = 0x0020
+TBS_FIXEDLENGTH      = 0x0040
+TBS_NOTHUMB          = 0x0080
+TBS_TOOLTIPS         = 0x0100
+TBS_REVERSED         = 0x0200
+TBS_DOWNISLEFT       = 0x0400
+TBS_NOTIFYBEFOREMOVE = 0x0800
+TBS_TRANSPARENTBKGND = 0x1000
+
+TBM_GETPOS           = (WM_USER)
+TBM_GETRANGEMIN      = (WM_USER+1)
+TBM_GETRANGEMAX      = (WM_USER+2)
+TBM_GETTIC           = (WM_USER+3)
+TBM_SETTIC           = (WM_USER+4)
+TBM_SETPOS           = (WM_USER+5)
+TBM_SETRANGE         = (WM_USER+6)
+TBM_SETRANGEMIN      = (WM_USER+7)
+TBM_SETRANGEMAX      = (WM_USER+8)
+TBM_CLEARTICS        = (WM_USER+9)
+TBM_SETSEL           = (WM_USER+10)
+TBM_SETSELSTART      = (WM_USER+11)
+TBM_SETSELEND        = (WM_USER+12)
+TBM_GETPTICS         = (WM_USER+14)
+TBM_GETTICPOS        = (WM_USER+15)
+TBM_GETNUMTICS       = (WM_USER+16)
+TBM_GETSELSTART      = (WM_USER+17)
+TBM_GETSELEND        = (WM_USER+18)
+TBM_CLEARSEL         = (WM_USER+19)
+TBM_SETTICFREQ       = (WM_USER+20)
+TBM_SETPAGESIZE      = (WM_USER+21)
+TBM_GETPAGESIZE      = (WM_USER+22)
+TBM_SETLINESIZE      = (WM_USER+23)
+TBM_GETLINESIZE      = (WM_USER+24)
+TBM_GETTHUMBRECT     = (WM_USER+25)
+TBM_GETCHANNELRECT   = (WM_USER+26)
+TBM_SETTHUMBLENGTH   = (WM_USER+27)
+TBM_GETTHUMBLENGTH   = (WM_USER+28)
+TBM_SETTOOLTIPS      = (WM_USER+29)
+TBM_GETTOOLTIPS      = (WM_USER+30)
+TBM_SETTIPSIDE       = (WM_USER+31)
+
+TBTS_TOP    = 0
+TBTS_LEFT   = 1
+TBTS_BOTTOM = 2
+TBTS_RIGHT  = 3
+
+TBM_SETBUDDY         = (WM_USER+32) -- wparam = BOOL fLeft; (or right)
+TBM_GETBUDDY         = (WM_USER+33) -- wparam = BOOL fLeft; (or right)
+TBM_SETPOSNOTIFY     = (WM_USER+34)
+
+TBM_SETUNICODEFORMAT = CCM_SETUNICODEFORMAT
+TBM_GETUNICODEFORMAT = CCM_GETUNICODEFORMAT
+
+TB_LINEUP        = 0
+TB_LINEDOWN      = 1
+TB_PAGEUP        = 2
+TB_PAGEDOWN      = 3
+TB_THUMBPOSITION = 4
+TB_THUMBTRACK    = 5
+TB_TOP           = 6
+TB_BOTTOM        = 7
+TB_ENDTRACK      = 8
+
+TBCD_TICS    = 0x0001
+TBCD_THUMB   = 0x0002
+TBCD_CHANNEL = 0x0003
+
+TRBN_FIRST            = (0ULL-1501ULL)
+TRBN_THUMBPOSCHANGING = (TRBN_FIRST-1)
+
+-- Structure for Trackbar's TRBN_THUMBPOSCHANGING notification
+ffi.cdef[[
+typedef struct tagTRBTHUMBPOSCHANGING
+{
+    NMHDR hdr;
+    DWORD dwPos;
+    int nReason;
+} NMTRBTHUMBPOSCHANGING;
+]]
