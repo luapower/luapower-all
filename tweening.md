@@ -5,7 +5,7 @@ tagline: tweening & timelines for animation
 ## `local tw = require'tweening'`
 
 A library for the management of gradual value changes for the purposes of
-animation.
+animation, inspired by [GSAP](https://greensock.com/gsap).
 
 ## Features
 
@@ -200,7 +200,7 @@ __method__                  __description__
 `each(func, ...)`           iterate tweens recursively
 `remove(tween|attr|target)` remove matching tweens recursively
 `clear()`                   remove all tweens (non-recursively)
-`status()`                  adds `'empty'`
+`status([t])`               adds `'empty'` status
 
 ### `tl:add(tween|opt[, start]) -> tl`
 
@@ -218,6 +218,7 @@ table of from/to attribute -> value pairs. `cycle_from`, `cycle_to`, `cycle`
 specifies a table of from/to attribute -> list-of-values pairs such that
 values will be distributed to each target in a round-robin fashion. The
 values can also be functions.
+More on cylcling [here](https://greensock.com/cycle/).
 
 __NOTE:__ `start` can be a relative value relative to the timeline's current
 total duration, eg. `'+=500ms'` means half a second after the last tween,

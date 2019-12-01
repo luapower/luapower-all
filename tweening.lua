@@ -517,7 +517,7 @@ function timeline:_add_tweens(t, start)
 		local c_to   = t.cycle_to   or (t.to   and t.cycle)
 		c_from = c_from and c_from[attr]
 		c_to   = c_to   and c_to  [attr]
-		for i,target in ipairs(t.targets) do
+		for i,target in ipairs(targets) do
 			local tt = copy(t)
 			tt.attr = attr
 			tt.from = c_from and c_from[(i - 1) % #c_from + 1] or from
@@ -593,11 +593,11 @@ end
 
 --timing model
 
-function timeline:status()
+function timeline:status(clock)
 	if #self.tweens == 0 then
 		return 'empty'
 	end
-	return tween.status(self)
+	return tween.status(self, clock)
 end
 
 --animation model
