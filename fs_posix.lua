@@ -36,12 +36,12 @@ check = check_errno
 
 local cbuf = growbuffer'char[?]'
 
-local function parse_perms(s)
+local function parse_perms(s, base)
 	if type(s) == 'string' then
 		local unixperms = require'unixperms'
-		return unixperms.parse(s)
+		return unixperms.parse(s, base)
 	else --pass-through
-		return s, false
+		return s or tonumber(666, 8), false
 	end
 end
 
@@ -105,7 +105,7 @@ function fs.open(path, opt)
 		opt = assert(str_opt[opt], 'invalid mode %s', opt)
 	end
 	local flags = flags(opt.flags or 'rdonly', o_bits)
-	local mode = parse_perms(opt.perms or '0666')
+	local mode = parse_perms(opt.perms)
 	local fd = C.open(path, flags, mode)
 	if fd == -1 then return check() end
 	return ffi.gc(file_ct(fd), file.close)
@@ -154,7 +154,7 @@ function fs.pipe(path, mode)
 	if type(path) == 'table' then
 		path, mode = path.path, path
 	end
-	mode = parse_perms(mode or 0666)
+	mode = parse_perms(mode)
 	if path then
 		return check(C.mkfifo(path, mode) ~= 0)
 	else --unnamed pipe
