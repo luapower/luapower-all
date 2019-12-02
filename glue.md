@@ -62,6 +62,8 @@ __i/o__
 `glue.readpipe(cmd[,format][, open]) -> s | nil, err`              read the output of a command into a string
 `glue.writefile(filename, s|t|read, [format], [tmpfile])`          write data to file safely
 `glue.printer(out[, format]) -> f`                                 virtualize the print() function
+__time__
+`glue.utctime([t]) -> timestamp`                                   like `os.time()` but in UTC
 __errors__
 `glue.assert(v [,message [,format_args...]]) -> v`                 assert with error message formatting
 `glue.protect(func) -> protected_func`                             wrap an error-raising function
@@ -770,6 +772,12 @@ Create a `print()`-like function which uses the function `out` to output
 its values and uses the optional `format` to format each value. For instance
 `glue.printer(io.write, tostring)` returns a function which behaves like
 the standard `print()` function.
+
+------------------------------------------------------------------------------
+
+`glue.utctime([t]) -> timestamp`
+
+Like `os.time()` but in UTC.
 
 ------------------------------------------------------------------------------
 

@@ -726,6 +726,26 @@ function glue.printer(out, format)
 	end
 end
 
+--time -----------------------------------------------------------------------
+
+--compute timestamp diff. to UTC because os.time() has no option for UTC.
+local function utc_diff()
+   local d1 = os.date( '*t', 3600 * 24 * 10)
+   local d2 = os.date('!*t', 3600 * 24 * 10)
+	d1.isdst = false
+	return os.difftime(os.time(d1), os.time(d2))
+end
+
+function glue.utctime(t)
+	if t then
+		t = glue.update({}, t)
+		t.sec = t.sec + utc_diff()
+		return os.time(t)
+	else
+		return os.time() + utc.diff()
+	end
+end
+
 --error handling -------------------------------------------------------------
 
 --assert() with string formatting (this should be a Lua built-in).
