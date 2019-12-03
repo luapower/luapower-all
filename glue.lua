@@ -736,13 +736,16 @@ local function utc_diff()
 	return os.difftime(os.time(d1), os.time(d2))
 end
 
-function glue.utctime(t)
+function glue.time(t, utc)
+	if not (utc or t.utc) then
+		return os.time(t)
+	end
 	if t then
 		t = glue.update({}, t)
 		t.sec = t.sec + utc_diff()
 		return os.time(t)
 	else
-		return os.time() + utc.diff()
+		return os.time() + utc_diff()
 	end
 end
 

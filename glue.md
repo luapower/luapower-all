@@ -63,7 +63,7 @@ __i/o__
 `glue.writefile(filename, s|t|read, [format], [tmpfile])`          write data to file safely
 `glue.printer(out[, format]) -> f`                                 virtualize the print() function
 __time__
-`glue.utctime([t]) -> timestamp`                                   like `os.time()` but in UTC
+`glue.time([t, [utc]]) -> timestamp`                               like `os.time()` but can do UTC
 __errors__
 `glue.assert(v [,message [,format_args...]]) -> v`                 assert with error message formatting
 `glue.protect(func) -> protected_func`                             wrap an error-raising function
@@ -775,9 +775,10 @@ the standard `print()` function.
 
 ------------------------------------------------------------------------------
 
-`glue.utctime([t]) -> timestamp`
+`glue.time([t, [utc]]) -> timestamp`
 
-Like `os.time()` but in UTC.
+Like `os.time()` but considers the time to be in UTC if either `utc`
+or `t.utc` is `true`.
 
 ------------------------------------------------------------------------------
 
