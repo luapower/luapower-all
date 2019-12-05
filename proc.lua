@@ -6,9 +6,18 @@ if not ... then require'proc_test'; return end
 
 local ffi = require'ffi'
 local bit = require'bit'
-local glue = require'glue'
 local M = {}
 local proc = {}
+
+local function inherit(t, super)
+	return setmetatable(t, {__index = super})
+end
+
+local function extend(dt, t)
+	if not t then return dt end
+	local j = #dt
+	for i=1,#t do dt[j+i]=t[i] end
+end
 
 if ffi.os == 'Windows' then --------------------------------------------------
 
@@ -58,7 +67,7 @@ function M.exec(cmd, args, env, dir, stdin, stdout, stderr, autokill)
 	if not proc_info then
 		return nil, err, code
 	end
-	local proc = glue.inherit({}, proc)
+	local proc = inherit({}, proc)
 	proc.handle = proc_info.hProcess
 	proc.main_thread_handle = proc_info.hThread
 	proc.id = proc_info.dwProcessId
@@ -324,7 +333,7 @@ function M.exec(cmd, args, env, dir, stdin, stdout, stderr, autokill)
 			return nil, 'exec() failed', err[0]
 		end
 
-		return glue.inherit({id = pid}, proc)
+		return inherit({id = pid}, proc)
 
 	end
 end
@@ -402,7 +411,7 @@ function M.exec_luafile(...)
 		local fs = require'fs'
 		local cmd, err, errcode = fs.exepath()
 		if not cmd then return nil, err, errcode end
-		local args = glue.extend({script}, args)
+		local args = extend({script}, args)
 		return M.exec(cmd, args, ...)
 	end
 	return pass(exec_args('script', ...))
