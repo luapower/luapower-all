@@ -5,7 +5,8 @@
 require'libcrypto_h'
 local ffi = require'ffi'
 --TODO: rename libcrypto.dll to crypto.dll on Windows.
-local C = pcall(ffi.load, 'crypto') or ffi.load'libcrypto'
+local ok, C = pcall(ffi.load, 'crypto')
+local C = ok and C or ffi.load'libcrypto'
 local M = {C = C}
 setmetatable(M, {__index = C})
 
