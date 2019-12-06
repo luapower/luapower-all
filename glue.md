@@ -685,13 +685,13 @@ end)
 ### `glue.override(class, method_name, f)`
 
 Override a method such that the new implementation only calls `f` as
-`f(self, inherited, ...)` where `inherited` is the old implementation.
+`f(inherited, self, ...)` where `inherited` is the old implementation.
 `f` receives all the method arguments and the method returns what `f` returns.
 
 Usage:
 
 ```lua
-glue.override(foo, 'bar', function(self, inherited, ...)
+glue.override(foo, 'bar', function(inherited, self, ...)
   ...
   local ret = inherited(self, ...)
   ...
@@ -702,7 +702,7 @@ Alternatively,
 
 ```lua
 foo.override = glue.override
-foo:override('bar', function(self, inherited, ...)
+foo:override('bar', function(inherited, self, ...)
   ...
   local ret = inherited(self, ...)
   ...

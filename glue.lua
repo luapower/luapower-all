@@ -594,8 +594,8 @@ function glue.after(self, method_name, hook)
 end
 local function override(method, hook)
 	local method = method or glue.noop
-	return function(self, ...)
-		return hook(self, method, ...)
+	return function(...)
+		return hook(method, ...)
 	end
 end
 function glue.override(self, method_name, hook)
