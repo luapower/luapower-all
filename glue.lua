@@ -952,7 +952,7 @@ local function elem_t_args(elem_t)
 	if not elem_t then
 		return char_ptr_t, 1
 	else
-		local elem_t = ffi.ctype(elem_t)
+		local elem_t = ffi.typeof(elem_t)
 		local elem_ptr_t = ffi.typeof('$*', elem_t)
 		local elem_size = ffi.sizeof(elem_t)
 		return elem_ptr_t, elem_size
@@ -985,58 +985,23 @@ function glue.dynarray(elem_t)
 	return function(newlen)
 		if newlen ~= len then
 			len = glue.nextpow2(newlen)
-			if buf ~= nil then
-				ffi.gc(buf, nil)
-			end
+			local buf0 = buf
 			buf = ffi.cast(elem_ptr_t, ffi.C.realloc(buf, len * elem_size))
 			assert(buf ~= nil, 'out of memory')
-			ffi.gc(buf, ffi.C.free)
-		end
-		return buf, newlen
-	end
-end
-
---static, auto-growing buffer allocation pattern aka grow-only dynamic array.
-function glue.growbuffer(ctype, keep_contents)
-	local ctype = ffi.typeof(ctype or 'char[?]')
-	local elem_size = keep_contents and ffi.sizeof(ctype, 1)
-	local buf, len = nil, -1
-	return function(newlen)
-		if newlen == false then
-			buf, len = nil, -1
-		elseif newlen > len then
-			local buf0, len0 = buf, len
-			len = glue.nextpow2(newlen)
-			buf = ctype(len)
-			if keep_contents and buf0 then
-				ffi.copy(buf, buf0, len0 * elem_size)
+			if buf ~= buf0 then
+				if buf0 ~= nil then
+					ffi.gc(buf0, nil)
+				end
+				ffi.gc(buf, ffi.C.free)
 			end
 		end
 		return buf, newlen
 	end
-end
-
-function glue.malloc(ctype, size)
-	if type(ctype) == 'number' then
-		ctype, size = 'char', ctype
-	end
-	local ctype = ffi.typeof(ctype or 'char')
-	local ctype = size
-		and ffi.typeof('$(&)[$]', ctype, size)
-		or ffi.typeof('$&', ctype)
-	local bytes = ffi.sizeof(ctype)
-	local data  = ffi.cast(ctype, ffi.C.malloc(bytes))
-	assert(data ~= nil, 'out of memory')
-	return data
 end
 
 function glue.free(cdata)
 	ffi.gc(cdata, nil)
 	ffi.C.free(cdata)
-end
-
-function glue.gcmalloc(ctype, size)
-	return ffi.gc(glue.malloc(ctype, size), glue.free)
 end
 
 --ffi ------------------------------------------------------------------------

@@ -63,7 +63,7 @@ typedef struct {
 
 local INVALID_HANDLE_VALUE = ffi.cast('HANDLE', -1)
 
-local wbuf = growbuffer'WCHAR[?]'
+local wbuf = buffer'WCHAR[?]'
 local libuf = ffi.new'LARGE_INTEGER[1]'
 
 local m = ffi.new[[
@@ -99,7 +99,7 @@ DWORD FormatMessageA(
 
 local FORMAT_MESSAGE_FROM_SYSTEM = 0x00001000
 
-local errbuf = growbuffer'char[?]'
+local errbuf = buffer'char[?]'
 
 local error_classes = {
 	[0x002] = 'not_found', --ERROR_FILE_NOT_FOUND, CreateFileW
@@ -158,7 +158,7 @@ int WideCharToMultiByte(
 
 local CP_UTF8 = 65001
 
-local wcsbuf = growbuffer'WCHAR[?]'
+local wcsbuf = buffer'WCHAR[?]'
 
 local function wcs(s, msz, wbuf) --string -> WCHAR[?]
 	msz = msz and msz + 1 or #s + 1
@@ -171,7 +171,7 @@ local function wcs(s, msz, wbuf) --string -> WCHAR[?]
 	return buf
 end
 
-local mbsbuf = growbuffer'char[?]'
+local mbsbuf = buffer'char[?]'
 
 local function mbs(ws, wsz, mbuf) --WCHAR* -> string
 	wsz = wsz and wsz + 1 or -1

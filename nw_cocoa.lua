@@ -1688,12 +1688,14 @@ end
 
 --rendering/bitmap -----------------------------------------------------------
 
+local buffer = ffi.typeof'char[?]'
+
 --make a bitmap that can be painted on the current NSGraphicsContext.
 local function make_bitmap(w, h)
 
 	local stride = w * 4
 	local size = stride * h
-	local data = glue.gcmalloc(size)
+	local data = buffer(size)
 
 	local bitmap = {
 		w = w,
@@ -2622,7 +2624,7 @@ local function nsimage_to_bitmap(nsimage)
 	local stride = w * 4
 	local size = stride * h
 
-	local data = glue.gcmalloc(size)
+	local data = buffer(size)
 
 	local bitmap = {
 		w = w,

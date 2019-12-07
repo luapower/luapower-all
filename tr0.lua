@@ -33,7 +33,7 @@ local snap = glue.snap
 local binsearch = glue.binsearch
 local memoize = glue.memoize
 local shift = glue.shift
-local growbuffer = glue.growbuffer
+local buffer = glue.buffer
 local trim = glue.trim
 
 local box_overlapping = box2d.overlapping
@@ -210,7 +210,7 @@ local function next_grapheme(grapheme_breaks, i, len)
 	return i < len and i or nil
 end
 
-local alloc_grapheme_breaks = growbuffer'char[?]'
+local alloc_grapheme_breaks = buffer'char'
 
 local function cmp_clusters(glyph_info, i, cluster)
 	return glyph_info[i].cluster < cluster -- < < [=] = > >
@@ -482,7 +482,7 @@ end
 
 --flattening a text tree into a utf32 string + metadata ----------------------
 
-local uint32_ct = ffi.typeof'uint32_t[?]'
+local uint32_ct = ffi.typeof'uint32_t'
 local const_char_ct = ffi.typeof'const char*'
 
 --convert a tree of nested text runs into a flat list of runs with properties
@@ -597,7 +597,7 @@ function tr:flatten(text_tree)
 		::continue::
 	end
 
-	text_runs.alloc_codepoints = growbuffer(uint32_ct, 2)
+	text_runs.alloc_codepoints = buffer(uint32_ct)
 	local str = text_runs.alloc_codepoints(len + 1) -- +1 for linebreaks
 
 	--resolve `offset` and convert/place text into a linear utf32 buffer.
@@ -631,22 +631,21 @@ end
 
 --itemizing and shaping a flat text into array of segments -------------------
 
-local alloc_scripts = growbuffer'hb_script_t[?]'
-local alloc_langs = growbuffer'hb_language_t[?]'
-local alloc_bidi_types = growbuffer'FriBidiCharType[?]'
-local alloc_bracket_types = growbuffer'FriBidiBracketType[?]'
-local alloc_levels = growbuffer'FriBidiLevel[?]'
-local alloc_linebreaks = growbuffer'char[?]'
+local alloc_scripts       = buffer'hb_script_t'
+local alloc_langs         = buffer'hb_language_t'
+local alloc_bidi_types    = buffer'FriBidiCharType'
+local alloc_bracket_types = buffer'FriBidiBracketType'
+local alloc_levels        = buffer'FriBidiLevel'
+local alloc_linebreaks    = buffer'char'
 
 local tr_free = tr.free
 function tr:free()
-	alloc_scripts(false)
-	alloc_langs(false)
-	alloc_bidi_types(false)
-	alloc_bracket_types(false)
-	alloc_levels(false)
-	alloc_linebreaks(false)
-	alloc_grapheme_breaks(false)
+	alloc_scripts       = nil
+	alloc_langs         = nil
+	alloc_bidi_types    = nil
+	alloc_bracket_types = nil
+	alloc_levels        = nil
+	alloc_linebreaks    = nil
 	tr_free(self)
 end
 

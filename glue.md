@@ -80,9 +80,6 @@ __allocation__
 `glue.freelist([create], [destroy]) -> alloc, free`                freelist allocation pattern
 `glue.buffer([ctype]) -> alloc(minlen) -> buf,capacity`            auto-growing buffer
 `glue.dynarray([ctype]) -> alloc(len) -> buf,len`                  dynamic cdata array
-`glue.malloc([ctype, ]size) -> cdata`                              allocate an array using system's malloc
-`glue.malloc(ctype) -> cdata`                                      allocate a C type using system's malloc
-`glue.gcmalloc(...) -> cdata`                                      garbage collected malloc
 `glue.free(cdata)`                                                 free malloc'ed memory
 __ffi__
 `glue.addr(ptr) -> number | string`                                store pointer address in Lua value
@@ -1009,37 +1006,9 @@ based on the `len` argument.
 
 > __NOTE__: LuaJIT only.
 
-### `glue.malloc([ctype,]size) -> cdata` {#malloc-array}
-
-Allocate a `ctype[size]` array with system's malloc. Useful for allocating
-memory without hitting the default allocator's 2 GB limit.
-
-  * the returned cdata has the type `ctype(&)[size]` so ffi.sizeof(cdata)
-  returns the correct size (the downside is that size cannot exceed 2 GB).
-  * `ctype` defaults to `char`.
-  * failure to allocate results in error.
-  * the memory must be freed manually by calling `glue.free()`.
-
-> __NOTE__: LuaJIT only.
-
-### `glue.malloc(ctype) -> cdata` {#malloc-ctype}
-
-Allocate a `ctype` with system's malloc. The result has the type `ctype&`.
-
-> __CAVEAT__: For primitive types, you must specify a size,
-or glue.free() will not work!
-
-### `glue.gcmalloc([ctype,]size) -> cdata` {#gcmalloc}
-
-Calls `ffi.gc(glue.malloc(), glue.free)`.
-
-__REMEMBER!__ Just like with `ffi.new`, casting the result cdata further
-will get you _weak references_ to the allocated memory. To transfer ownership
-of the memory, use `ffi.gc(original, nil); ffi.gc(pointer, glue.free)`.
-
 ### `glue.free(cdata)`
 
-Free malloc'ed memory. Also works on buffer and dynarray pointers for
+Free malloc'ed memory. Works on buffer and dynarray pointers for
 deterministic deallocation.
 
 #### Example

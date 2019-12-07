@@ -283,24 +283,6 @@ os.remove('glue_test.tmp')
 if jit then
 	local ffi = require'ffi'
 
-	local function malloc(bytes, ctype, size)
-		local data = glue.gcmalloc(ctype, size)
-		assert(ffi.sizeof(data) == bytes)
-		if size then
-			assert(ffi.typeof(data) == ffi.typeof('$(&)[$]', ffi.typeof(ctype or 'char'), size))
-		else
-			assert(ffi.typeof(data) == ffi.typeof('$&', ffi.typeof(ctype or 'char')))
-		end
-		glue.free(data)
-	end
-	malloc(400, 'int32_t', 100)
-	malloc(200, 'int16_t', 100)
-	malloc(100, nil, 100)
-	ffi.cdef'typedef struct { char c; } S'
-	malloc(1, 'S')
-	--malloc(1) --NOTE: doesn't work for primitive types
-	malloc(4, 'int32_t', 1)
-
 	assert(glue.addr(ffi.cast('void*', 0x55555555)) == 0x55555555)
 	assert(glue.ptr('int*', 0x55555555) == ffi.cast('void*', 0x55555555))
 

@@ -1319,13 +1319,15 @@ Things you need to know:
 - a window with alpha needs CWColormap which needs CWBorderPixel.
 ]]
 
+local buffer = ffi.typeof'char[?]'
+
 local function slow_resize_buffer(ctype, shrink_factor, reserve_factor)
 	local buf, sz
 	return function(size)
 		if not buf or sz < size or sz > math.floor(size * shrink_factor) then
 			if buf then glue.free(buf) end
 			sz = math.floor(size * reserve_factor)
-			buf = glue.gcmalloc(ctype, sz)
+			buf = buffer(ctype, sz)
 		end
 		return buf
 	end

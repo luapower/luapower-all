@@ -8,7 +8,8 @@ local ffi = require'ffi'
 local bit = require'bit'
 local path = require'path'
 
-local min, max, floor = math.min, math.max, math.floor
+local min, max, floor, ceil, log =
+	math.min, math.max, math.floor, math.ceil, math.log
 
 local C = ffi.C
 
@@ -51,16 +52,15 @@ end
 
 --next power of two (from glue).
 local function nextpow2(x)
-	return math.max(0, 2^(math.ceil(math.log(x) / math.log(2))))
+	return max(0, 2^(ceil(log(x) / log(2))))
 end
 
---static, auto-growing buffer allocation pattern (from glue, modified).
-function growbuffer(ctype)
-	local ctype = ffi.typeof(ctype or 'char[?]')
+--static, auto-growing buffer allocation pattern (from glue, simplified).
+function buffer(ctype)
+	local ctype = ffi.typeof(ctype)
 	local buf, len = nil, -1
 	return function(minlen)
 		if minlen > len then
-			local buf0, len0 = buf, len
 			len = nextpow2(minlen)
 			buf = ctype(len)
 		end
@@ -204,7 +204,7 @@ function fs.isfile(f)
 	return ffi.istype(file_ct, f)
 end
 
---returns a read(buf, sz) -> sz function which reads ahead from file
+--returns a read(buf, maxsz) -> sz function which reads ahead from file.
 function file.buffered_read(f, ctype, bufsize)
 	local elem_ct = ffi.typeof(ctype or 'char')
 	local ptr_ct = ffi.typeof('$*', elem_ct)
@@ -237,6 +237,7 @@ function file.buffered_read(f, ctype, bufsize)
 					return rsz
 				end
 			end
+			--TODO: don't copy, read less.
 			local n = min(sz, len)
 			ffi.copy(ffi.cast(ptr_ct, dst) + rsz, buf + ofs, n)
 			ofs = ofs + n

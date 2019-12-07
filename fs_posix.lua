@@ -34,7 +34,7 @@ end
 
 check = check_errno
 
-local cbuf = growbuffer'char[?]'
+local cbuf = buffer'char[?]'
 
 local function parse_perms(s, base)
 	if type(s) == 'string' then

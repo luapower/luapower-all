@@ -278,21 +278,24 @@ ffi.metatype('hb_face_t', {__index = {
 	get_size_params     = C.hb_ot_layout_get_size_params,
 }})
 
---static, auto-growing buffer allocation pattern (from glue).
-local function growbuffer(ctype)
-	local ctype = ffi.typeof(ctype or 'char[?]')
-	local buf
-	local len = -1
-	return function(newlen)
-		if newlen > len then
-			len = newlen
+local function nextpow2(x) --from glue.
+	return math.max(0, 2^(math.ceil(math.log(x) / math.log(2))))
+end
+
+--auto-growing buffer allocation pattern (from glue, simplified).
+local function buffer(ctype)
+	local ctype = ffi.typeof(ctype)
+	local buf, len = nil, -1
+	return function(minlen)
+		if minlen > len then
+			len = nextpow2(minlen)
 			buf = ctype(len)
 		end
-		return buf, newlen
+		return buf, len
 	end
 end
 
-local carets_buffer = growbuffer'hb_position_t[?]'
+local carets_buffer = buffer'hb_position_t[?]'
 local count_buf = ffi.new'unsigned int[1]'
 local function get_ligature_carets(hb_font, direction, glyph_index, start_offset)
 	start_offset = start_offset or 0
