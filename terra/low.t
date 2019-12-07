@@ -202,11 +202,10 @@ Used:
 	glue.pcall glue.fcall glue.fpcall glue.protect
 	glue.gsplit
 	glue.inherit glue.object
-	glue.malloc glue.free
 	glue.printer
 	glue.replacefile
 	glue.fromhex glue.tohex
-	glue.freelist glue.growbuffer
+	glue.freelist glue.buffer
 
 Not used:
 	glue.readpipe

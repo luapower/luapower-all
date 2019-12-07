@@ -1749,7 +1749,6 @@ local function make_bitmap(w, h)
 		objc.CGDataProviderRelease(provider)
 
 		--free the bitmap
-		glue.free(data)
 		bitmap.data = nil
 		bitmap = nil
 	end

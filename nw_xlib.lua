@@ -13,7 +13,6 @@ require'xlib_keysym_h'
 local time  = require'time' --for timers
 local heap  = require'heap' --for timers
 local cast  = ffi.cast
-local free  = glue.free
 local xid   = xlib.xid
 local C     = xlib.C
 local glx --runtime dependency
@@ -1319,17 +1318,18 @@ Things you need to know:
 - a window with alpha needs CWColormap which needs CWBorderPixel.
 ]]
 
-local buffer = ffi.typeof'char[?]'
-
-local function slow_resize_buffer(ctype, shrink_factor, reserve_factor)
-	local buf, sz
-	return function(size)
-		if not buf or sz < size or sz > math.floor(size * shrink_factor) then
-			if buf then glue.free(buf) end
-			sz = math.floor(size * reserve_factor)
-			buf = buffer(ctype, sz)
+--static, auto-growing buffer allocation pattern (from glue).
+local function buffer(ctype)
+	local vla = ffi.typeof(ctype)
+	local buf, len = nil, -1
+	return function(minlen)
+		if minlen == false then
+			buf, len = nil, -1
+		elseif minlen > len then
+			len = glue.nextpow2(minlen)
+			buf = vla(len)
 		end
-		return buf
+		return buf, len
 	end
 end
 
@@ -1396,7 +1396,7 @@ local function dynbitmap(api, win, depth, visual)
 	api = api or {}
 
 	local w, h, bitmap, free, paint
-	local ssbuf = slow_resize_buffer('char', 2, 1.2)
+	local ssbuf = buffer'char[?]'
 
 	function api:get()
 		local w1, h1 = api:size()

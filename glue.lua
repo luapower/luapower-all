@@ -935,76 +935,26 @@ function glue.freelist(create, destroy)
 	return alloc, free
 end
 
+--ffi ------------------------------------------------------------------------
+
 if jit then
 
 local ffi = require'ffi'
 
-ffi.cdef[[
-	void* realloc (void*, size_t size);
-	void* malloc  (size_t size);
-	void  free    (void*);
-]]
-
-local char_t = ffi.typeof'char'
-local char_ptr_t = ffi.typeof'char*'
-
-local function elem_t_args(elem_t)
-	if not elem_t then
-		return char_ptr_t, 1
-	else
-		local elem_t = ffi.typeof(elem_t)
-		local elem_ptr_t = ffi.typeof('$*', elem_t)
-		local elem_size = ffi.sizeof(elem_t)
-		return elem_ptr_t, elem_size
-	end
-end
-
---auto-growing buffer allocation pattern.
-function glue.buffer(elem_t)
-	local elem_ptr_t, elem_size = elem_t_args(elem_t)
-	local buf, len = nil, 0
-	return function(newlen)
-		if newlen > len then
-			len = glue.nextpow2(newlen)
-			if buf ~= nil then
-				ffi.C.free(ffi.gc(buf, nil))
-			end
-			buf = ffi.cast(elem_ptr_t, ffi.C.malloc(len * elem_size))
-			assert(buf ~= nil, 'out of memory')
-			ffi.gc(buf, ffi.C.free)
+--static, auto-growing buffer allocation pattern (ctype must be vla).
+function glue.buffer(ctype)
+	local vla = ffi.typeof(ctype)
+	local buf, len = nil, -1
+	return function(minlen)
+		if minlen == false then
+			buf, len = nil, -1
+		elseif minlen > len then
+			len = glue.nextpow2(minlen)
+			buf = vla(len)
 		end
 		return buf, len
 	end
 end
-
---like a buffer but also shrinks, preserves the data on resize and returns
---the asked-for length instead of the current capacity.
-function glue.dynarray(elem_t)
-	local elem_ptr_t, elem_size = elem_t_args(elem_t)
-	local buf, len = nil, 0
-	return function(newlen)
-		if newlen ~= len then
-			len = glue.nextpow2(newlen)
-			local buf0 = buf
-			buf = ffi.cast(elem_ptr_t, ffi.C.realloc(buf, len * elem_size))
-			assert(buf ~= nil, 'out of memory')
-			if buf ~= buf0 then
-				if buf0 ~= nil then
-					ffi.gc(buf0, nil)
-				end
-				ffi.gc(buf, ffi.C.free)
-			end
-		end
-		return buf, newlen
-	end
-end
-
-function glue.free(cdata)
-	ffi.gc(cdata, nil)
-	ffi.C.free(cdata)
-end
-
---ffi ------------------------------------------------------------------------
 
 local intptr_ct = ffi.typeof'intptr_t'
 local intptrptr_ct = ffi.typeof'const intptr_t*'

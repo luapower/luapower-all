@@ -135,7 +135,6 @@ function M.connect(...)
 	local require, pcall, tonumber, setmetatable, rawget, glue, math =
 	      require, pcall, tonumber, setmetatable, rawget, glue, math
 	local cast = ffi.cast
-	local free = glue.free
 
 	local xlib = glue.update({}, M)
 	setfenv(1, xlib)
@@ -149,7 +148,7 @@ function M.connect(...)
 	local cleanup = {} --disconnect handlers
 
 	local errbuf
-	local onerr = ffi.cast('XErrorHandler', function(c, e)
+	local onerr = cast('XErrorHandler', function(c, e)
 		local errbuf_sz = 256
 		errbuf = errbuf or ffi.new('char[?]', errbuf_sz)
 		C.XGetErrorText(c, e.error_code, errbuf, errbuf_sz)
@@ -422,7 +421,7 @@ function M.connect(...)
 
 	function set_prop(win, prop, type, val, sz, format)
 		C.XChangeProperty(c, win, atom(prop), atom(type), format or 32,
-			C.PropModeReplace, ffi.cast('const unsigned char*', val), sz)
+			C.PropModeReplace, cast('const unsigned char*', val), sz)
 	end
 
 	local reply_type = ffi.new'Atom[1]'
@@ -801,7 +800,7 @@ function M.connect(...)
 
 	local function decode_wm_state(val, len)
 		assert(len >= 2)
-		val = ffi.cast('int32_t*', val)
+		val = cast('int32_t*', val)
 		return {val[0], val[1]} --ICCCM_WM_STATE_*, icon_window_id
 	end
 	function get_wm_state(win)
@@ -917,7 +916,7 @@ function M.connect(...)
 
 	--respond to a _NET_WM_PING event
 	function pong(e)
-		local reply = ffi.new('XEvent', ffi.cast('XEvent*', e)[0])
+		local reply = ffi.new('XEvent', cast('XEvent*', e)[0])
 		reply.type = C.ClientMessage
 		reply.xclient.window = screen.root
 		send_message_to_root(reply) --pong!

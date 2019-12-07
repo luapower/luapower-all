@@ -78,9 +78,7 @@ __modules__
 `glue.cpath(path [,index])`                                        insert a path in package.cpath
 __allocation__
 `glue.freelist([create], [destroy]) -> alloc, free`                freelist allocation pattern
-`glue.buffer([ctype]) -> alloc(minlen) -> buf,capacity`            auto-growing buffer
-`glue.dynarray([ctype]) -> alloc(len) -> buf,len`                  dynamic cdata array
-`glue.free(cdata)`                                                 free malloc'ed memory
+`glue.buffer(ctype) -> alloc(minlen) -> buf,capacity`              auto-growing buffer
 __ffi__
 `glue.addr(ptr) -> number | string`                                store pointer address in Lua value
 `glue.ptr([ctype, ]number|string) -> ptr`                          convert address to pointer
@@ -978,55 +976,22 @@ Lua objects. The allocator returns the last freed object or calls `create()`
 to create a new one if the freelist is empty. `create` defaults to
 `function() return {} end`; `destroy` defaults to `glue.noop`.
 
-### `glue.buffer([ctype]) -> alloc(minlen|false) -> buf, capacity`
+### `glue.buffer(ctype) -> alloc(minlen|false) -> buf, capacity`
 
-Return an allocation function that reuses or reallocates an internal buffer
-based on the `len` argument.
+(LuaJIT only) Return an allocation function that reuses or reallocates
+an internal buffer based on the `len` argument.
 
-  * `ctype` is the type of one element and it defaults to `char`.
+  * `ctype` must be a VLA: the returned buffer will have that type.
+    this makes `glue.buffer(ctype)` compatible with `ffi.typeof(ctype)`.
   * the buffer only grows, it never shrinks and it only grows in
     powers of two steps.
-  * the contents of the buffer _are not preserved_ between allocations.
   * the allocation function returns the buffer's current capacity which
     can be equal or greater than the requested length.
-  * the returned pointer is garbage collected: for faster deallocation
-    use `glue.free()` and don't use the allocation function afterwards.
-
-### `glue.dynarray([ctype]) -> alloc(len|false) -> buf, len`
-
-Return an allocation function that reuses or reallocates an internal buffer
-based on the `len` argument.
-
-  * `ctype` is the type of one element and it defaults to `char`.
-  * the internal buffer grows and shrinks in powers of two steps.
-  * the contents of the buffer are preserved between allocations.
-  * the allocation function always returns the buffer's requested length.
-  * the returned pointer is garbage collected: for faster deallocation
-    use `glue.free()` and don't use the allocation function afterwards.
-
-> __NOTE__: LuaJIT only.
-
-### `glue.free(cdata)`
-
-Free malloc'ed memory. Works on buffer and dynarray pointers for
-deterministic deallocation.
-
-#### Example
-
-~~~{.lua}
-local data = glue.malloc(100)
-assert(ffi.sizeof(data) == 100)
-glue.free(data)
-
-local data = glue.malloc('int', 100)
-assert(ffi.sizeof(data) == 100 * ffi.sizeof'int')
-glue.free(data)
-
-local data = glue.malloc('struct S')
-assert(ffi.sizeof(data) == ffi.sizeof'struct S')
-glue.free(data)
-
-~~~
+  * the returned buffer is anchored by the allocation function. calling
+    `alloc(false)` unanchores the buffer.
+  * the contents of the buffer _are not preserved_ between allocations
+    but you _are allowed_ to access both buffers between two consecutive
+    allocations in order to do that yourself.
 
 ------------------------------------------------------------------------------
 
