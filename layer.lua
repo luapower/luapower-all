@@ -48,7 +48,7 @@ M.wrap('layer_t', 'methods', 'from_window', unpack_tuple2)
 --Make utf8 the default encoding in Lua-land: remove `_utf8` from method
 --names and add `_utf32` to methods that work in codepoints.
 
-local outbuf = glue.growbuffer()
+local outbuf = glue.buffer()
 local t = M.types.layer_t
 
 t.getters.text_utf32_len = t.getters.text_len

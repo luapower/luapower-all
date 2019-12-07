@@ -51,19 +51,19 @@ for i,s in ipairs(fonts) do
 	font_names[i] = s:sub(1, 5)..s:sub(-1)
 end
 local font_map = glue.update({}, font_names, glue.index(font_names))
+local font_anchors = {} --{id->data}
 
 local function load_font(font_id, file_data_buf, file_size_buf, mmapped_buf)
 	local font_name = assert(fonts[font_id])
 	local font_data = assert(bundle.load(font_dir..'/'..font_name))
-	local buf = glue.malloc('char', #font_data)
-	ffi.copy(buf, font_data, #font_data)
-	file_data_buf[0] = buf
+	font_anchors[font_id] = font_data
+	file_data_buf[0] = ffi.cast('void*', font_data)
 	file_size_buf[0] = #font_data
 	mmapped_buf[0] = false
 end
 
 local function unload_font(font_id, file_data, file_size)
-	glue.free(file_data)
+	font_anchors[font_id] = nil
 end
 
 assert(layer.memtotal() == 0)
