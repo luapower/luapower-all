@@ -16,6 +16,7 @@ require'winapi.listboxclass'
 require'winapi.comboboxclass'
 require'winapi.labelclass'
 require'winapi.listviewclass'
+require'winapi.trackbarclass'
 --panels
 require'winapi.bitmappanel'
 local have_wgl   = pcall(require, 'winapi.wglpanel')
@@ -183,7 +184,7 @@ local tabs = TabControl{
 	y = 70,
 	w = 100,
 	h = 100,
-	anc = 'ltr',
+	anchors = 'ltr',
 	items = {
 		{text = 'Tab1',},
 		{text = 'Tab2',},
@@ -194,7 +195,7 @@ local tablabel = Label{
 	parent = tabs,
 	x = 10, y = 30,
 	w = 50, h = 50,
-	anc = 'ltr',
+	anchors = 'ltr',
 }
 
 function tabs:on_tab_change()
@@ -350,7 +351,7 @@ local closebtn = Button{
 	w = 100,
 	text = '&Close',
 	parent = win,
-	anc = 'rb',
+	anchors = 'rb',
 }
 
 function closebtn:on_click()
@@ -388,6 +389,15 @@ local combo = ComboBox{
 for i = 1, 10 do
 	combo.items:add{text = 'Item '..i}
 end
+
+--create a slider ------------------------------------------------------------
+
+local slider = Trackbar{
+	parent = win,
+	x = 370,
+	y = 260,
+	w = 120,
+}
 
 --create some labels ---------------------------------------------------------
 

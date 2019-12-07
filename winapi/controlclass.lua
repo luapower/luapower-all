@@ -6,9 +6,14 @@ setfenv(1, require'winapi')
 require'winapi.basewindowclass'
 require'winapi.comctl'
 
+local anchors_mt = {__tostring = format_anchors}
+local function anchors(t)
+	return setmetatable(t, amchors_mt)
+end
+
 Control = subclass({
 	__defaults = {
-		anchors = {
+		anchors = anchors{
 			left = true,
 			top = true,
 			right = false,
@@ -16,18 +21,6 @@ Control = subclass({
 		},
 	},
 }, BaseWindow)
-
-function parse_anchors(s)
-	if type(s) == 'string' then
-		return {
-			left   = s:find('l', 1, true) and true or nil,
-			top    = s:find('t', 1, true) and true or nil,
-			right  = s:find('r', 1, true) and true or nil,
-			bottom = s:find('b', 1, true) and true or nil,
-		}
-	end
-	return s
-end
 
 function format_anchors(t)
 	return
@@ -37,8 +30,28 @@ function format_anchors(t)
 		(t.bottom and 'b')
 end
 
+function parse_anchors(s)
+	if type(s) == 'string' then
+		return anchors{
+			left   = s:find('l', 1, true) and true or nil,
+			top    = s:find('t', 1, true) and true or nil,
+			right  = s:find('r', 1, true) and true or nil,
+			bottom = s:find('b', 1, true) and true or nil,
+		}
+	elseif type(s) == 'table' then
+		return anchors{
+			left   = s.left,
+			top    = s.top,
+			right  = s.right,
+			bottom = s.bottom,
+		}
+	else
+		assert(s == nil)
+	end
+end
+
 function Control:after___before_create(info, args)
-	self.anchors = info.anc and parse_anchors(info.anc) or info.anchors
+	self.anchors = info.anchors
 	--parent is either a window object or a handle. if it's a handle, self.parent will return nil.
 	args.parent = info.parent and info.parent.hwnd or info.parent
 	args.style = bit.bor(args.style, args.parent and WS_CHILD or WS_POPUP, WS_CLIPSIBLINGS, WS_CLIPCHILDREN)
@@ -155,10 +168,10 @@ function Control:after___parent_resizing(wp)
 	if h and rh ~= h then self.__anchor_h = h - rh else self.__anchor_h = nil end
 end
 
-function Control:get_anc()
-	return format_anchors(self.anchors)
+function Control:get_anchors()
+	return self._anchors
 end
 
-function Control:set_anc(s)
-	self.anchors = parse_anchors(s)
+function Control:set_anchors(anchors)
+	self._anchors = parse_anchors(anchors)
 end

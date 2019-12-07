@@ -1813,35 +1813,30 @@ end
 function view:_init_anchors()
 	self._rect = {self:rect()}
 
-	local function anchor(left, right, x1, x2, w, dw)
+	local function anchor(left, right, w, dx1, dx2, pw)
 		if left then
-			if right then --resize
-				return x1, w + dw, x1, x2 + dw
+			if right then --resize to preserve the right margin
+				return dx1, pw - dx2 - dx1
 			end
-		elseif right then --move
-			return x1 + dw, w, x1 + dw, x2
+		elseif right then --move to preserve right margin
+			return pw - w - dx2, w
 		end
-		return x1, w, x1, x2
+		return dx1, w
 	end
 
-	local x1, y1, w0, h0 = self:rect()
-	local pw0, ph0
-	local x2, y2
+	local function has(s)
+		return self._anchors:find(s, 1, true)
+	end
 
-	self.window:on('client_resized', function(window, pw, ph, oldpw, oldph)
-		if not pw then return end
-		if not pw0 then
-			pw0, ph0 = self.window:client_size()
-			x2, y2 = pw0-w0, ph0-h0
-		end
-		local a = self._anchors
-		local x, y, w, h
-		x, w, x1, x2 = anchor(a:find('l', 1, true), a:find('r', 1, true), x1, x2, w0, pw-pw0)
-		y, h, y1, y2 = anchor(a:find('t', 1, true), a:find('b', 1, true), y1, y2, h0, ph-ph0)
-		self:rect(x, y, w, h)
-		pw0, ph0 = pw, ph
-		w0, h0 = w, h
-	end)
+	self.window:on('client_resized',
+		function(window, cw, ch, cw0, ch0)
+			local dx1, dy1, w, h = unpack(self._rect)
+			local dx2 = cw0 - w - dx1
+			local dy2 = ch0 - h - dy1
+			local x, w = anchor(has'l', has'r', w, dx1, dx2, cw)
+			local y, h = anchor(has't', has'b', h, dy1, dy2, ch)
+			self:rect(x, y, w, h)
+		end)
 end
 
 --events
