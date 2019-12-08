@@ -220,10 +220,6 @@ end
 
 --run all tests in order
 
-curl.init{sslbackend = 'schannel'}
-test.version_info()
-os.exit()
-
 for i,name in ipairs(test) do
 	print(name .. ' ' .. ('-'):rep(78 - #name))
 	test[name]()
