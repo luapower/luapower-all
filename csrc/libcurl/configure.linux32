@@ -1,4 +1,0 @@
-cd curl || exit 1 # assuming source code was unzipped in ./curl
-./configure --with-ssl --enable-threaded-resolver --without-libssh2
-cp -f include/curl/curlbuild.h ../curlbuild.h.linux32
-cp -f lib/curl_config.h ../curl_config.h.linux32

@@ -12,7 +12,7 @@
  *
  * This software is licensed as described in the file COPYING, which
  * you should have received as part of this distribution. The terms
- * are also available at http://curl.haxx.se/docs/copyright.html.
+ * are also available at https://curl.haxx.se/docs/copyright.html.
  *
  * You may opt to use, copy, modify, merge, publish, distribute and/or sell
  * copies of the Software, and permit persons to whom the Software is
@@ -26,13 +26,8 @@
 
 #if (defined USE_POLARSSL) || (defined USE_MBEDTLS)
 
-#if defined(USE_THREADS_POSIX)
-#  define POLARSSL_MUTEX_T       pthread_mutex_t
-#elif defined(USE_THREADS_WIN32)
-#  define POLARSSL_MUTEX_T       HANDLE
-#endif
-
-#if defined(USE_THREADS_POSIX) || defined(USE_THREADS_WIN32)
+#if (defined(USE_THREADS_POSIX) && defined(HAVE_PTHREAD_H)) || \
+    (defined(USE_THREADS_WIN32) && defined(HAVE_PROCESS_H))
 
 int Curl_polarsslthreadlock_thread_setup(void);
 int Curl_polarsslthreadlock_thread_cleanup(void);

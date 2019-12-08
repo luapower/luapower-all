@@ -16,10 +16,19 @@ end
 function test.version_info()
 	local info = curl.version_info()
 	for k,v in pairs(info) do
-		if type(v) == 'table' then v = '{'..table.concat(v, ', ')..'}' end
+		if k == 'protocols' then
+		elseif k == 'features' then
+			local t = {'{'}
+			for k,v in pairs(v) do
+				if v then
+					t[#t+1] = k..','
+				end
+			end
+			t[#t+1] = '}'
+			v = table.concat(t)
+		end
 		print(string.format('%-20s %s', k, v))
 	end
-	print('async?', bit.band(info.features, curl.C.CURL_VERSION_ASYNCHDNS) ~= 0)
 end
 
 function make_easy()
@@ -210,6 +219,10 @@ function test.form()
 end
 
 --run all tests in order
+
+curl.init{sslbackend = 'schannel'}
+test.version_info()
+os.exit()
 
 for i,name in ipairs(test) do
 	print(name .. ' ' .. ('-'):rep(78 - #name))

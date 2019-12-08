@@ -7,11 +7,11 @@
  *                            | (__| |_| |  _ <| |___
  *                             \___|\___/|_| \_\_____|
  *
- * Copyright (C) 1998 - 2014, Daniel Stenberg, <daniel@haxx.se>, et al.
+ * Copyright (C) 1998 - 2019, Daniel Stenberg, <daniel@haxx.se>, et al.
  *
  * This software is licensed as described in the file COPYING, which
  * you should have received as part of this distribution. The terms
- * are also available at http://curl.haxx.se/docs/copyright.html.
+ * are also available at https://curl.haxx.se/docs/copyright.html.
  *
  * You may opt to use, copy, modify, merge, publish, distribute and/or sell
  * copies of the Software, and permit persons to whom the Software is
@@ -25,6 +25,9 @@
 #ifdef USE_WINSOCK
 #include <curl/curl.h> /* for curl_socket_t */
 #endif
+
+#define CURLX_FUNCTION_CAST(target_type, func) \
+  (target_type)(void (*) (void))(func)
 
 unsigned short curlx_ultous(unsigned long ulnum);
 
@@ -51,6 +54,8 @@ ssize_t curlx_uztosz(size_t uznum);
 size_t curlx_sotouz(curl_off_t sonum);
 
 int curlx_sztosi(ssize_t sznum);
+
+unsigned short curlx_uitous(unsigned int uinum);
 
 size_t curlx_sitouz(int sinum);
 

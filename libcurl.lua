@@ -39,20 +39,29 @@ local function check(code)
 end
 
 function curl.init(opt)
-	if type(opt) == 'table' then
-		local function validate(cb) --must set all callbacks or none
-			return assert(ptr(cb))
-		end
-		check(C.curl_global_init_mem(MX('CURL_GLOBAL_', opt.flags or 'all'),
-			validate(opt.malloc),
-			validate(opt.free),
-			validate(opt.realloc),
-			validate(opt.strdup),
-			validate(opt.calloc)))
-	else
-		check(C.curl_global_init(MX('CURL_GLOBAL_', opt or 'all')))
+	if opt and opt.sslbackend then
+		check(C.curl_global_sslset(X('CURLSSLBACKEND_', opt.sslbackend), nil, nil))
 	end
-	return M
+	local flags = opt and opt.flags and MX('CURL_GLOBAL_', opt.flags)
+		or C.CURL_GLOBAL_ALL
+	if opt then
+		local malloc  = ptr(opt.malloc)
+		local free    = ptr(opt.free)
+		local realloc = ptr(opt.realloc)
+		local strdup  = ptr(opt.strdup)
+		local calloc  = ptr(opt.calloc)
+		if malloc or free or realloc or strdup or calloc then
+			assert(malloc and free and realloc and strdup and calloc)
+			check(C.curl_global_init_mem(flags,
+				opt.malloc,
+				opt.free,
+				opt.realloc,
+				opt.strdup,
+				opt.calloc))
+			return
+		end
+	end
+	check(C.curl_global_init(flags))
 end
 
 curl.free = C.curl_global_cleanup
@@ -72,6 +81,38 @@ function curl.version_info(ver)
 	local function str(s)
 		return s ~= nil and ffi.string(s) or nil
 	end
+	local features = {}
+	for _,s in ipairs{
+		'ipv6',
+		'kerberos4',
+		'ssl',
+		'libz',
+		'ntlm',
+		'gssnegotiate',
+		'debug',
+		'asynchdns',
+		'spnego',
+		'largefile',
+		'idn',
+		'sspi',
+		'conv',
+		'curldebug',
+		'tlsauth_srp',
+		'ntlm_wb',
+		'http2',
+		'gssapi',
+		'kerberos5',
+		'unix_sockets',
+		'psl',
+		'https_proxy',
+		'multi_ssl',
+		'brotli',
+		'altsvc',
+		'http3',
+		'esni',
+	} do
+		features[s] = bit.band(info.features, X('CURL_VERSION_', s)) ~= 0
+	end
 	return {
 		age = info.age,
 		version = str(info.version),
@@ -80,7 +121,7 @@ function curl.version_info(ver)
 		version_min = bit.band(bit.rshift(info.version_num,  8), 0xff),
 		version_patch = bit.band(info.version_num, 0xff),
 		host = str(info.host),
-		features = info.features,
+		features = features,
 		ssl_version = str(info.ssl_version),
 		ssl_version_num = info.ssl_version_num,
 		libz_version = str(info.libz_version),
@@ -587,6 +628,12 @@ local function longbuf(buf)
 		return n ~= -1 and n or nil
 	end
 end
+local function offbuf(buf)
+	return ffi.new'curl_off_t[1]', function(buf)
+		local n = tonumber(buf[0])
+		return n ~= -1 and n or nil
+	end
+end
 local function longboolbuf(buf)
 	return ffi.new'long[1]', function(buf)
 		return buf[0] ~= 0
@@ -630,50 +677,71 @@ local function socketbuf(buf)
 end
 
 local info_buffers = {
-	[C.CURLINFO_EFFECTIVE_URL] = strbuf,
-	[C.CURLINFO_RESPONSE_CODE] = longbuf,
-	[C.CURLINFO_TOTAL_TIME] = doublebuf,
-	[C.CURLINFO_NAMELOOKUP_TIME] = doublebuf,
-	[C.CURLINFO_CONNECT_TIME] = doublebuf,
-	[C.CURLINFO_PRETRANSFER_TIME] = doublebuf,
-	[C.CURLINFO_SIZE_UPLOAD] = doublebuf,
-	[C.CURLINFO_SIZE_DOWNLOAD] = doublebuf,
-	[C.CURLINFO_SPEED_DOWNLOAD] = doublebuf,
-	[C.CURLINFO_SPEED_UPLOAD] = doublebuf,
-	[C.CURLINFO_HEADER_SIZE] = longbuf,
-	[C.CURLINFO_REQUEST_SIZE] = longbuf,
-	[C.CURLINFO_SSL_VERIFYRESULT] = longboolbuf,
-	[C.CURLINFO_FILETIME] = longbuf,
-	[C.CURLINFO_CONTENT_LENGTH_DOWNLOAD] = doublebuf,
-	[C.CURLINFO_CONTENT_LENGTH_UPLOAD] = doublebuf,
-	[C.CURLINFO_STARTTRANSFER_TIME] = doublebuf,
-	[C.CURLINFO_CONTENT_TYPE] = strbuf,
-	[C.CURLINFO_REDIRECT_TIME] = doublebuf,
-	[C.CURLINFO_REDIRECT_COUNT] = longbuf,
-	[C.CURLINFO_PRIVATE] = strbuf,
-	[C.CURLINFO_HTTP_CONNECTCODE] = longbuf,
-	[C.CURLINFO_HTTPAUTH_AVAIL] = longbuf,
-	[C.CURLINFO_PROXYAUTH_AVAIL] = longbuf,
-	[C.CURLINFO_OS_ERRNO] = longbuf,
-	[C.CURLINFO_NUM_CONNECTS] = longbuf,
-	[C.CURLINFO_SSL_ENGINES] = slistbuf,
-	[C.CURLINFO_COOKIELIST] = slistbuf,
-	[C.CURLINFO_LASTSOCKET] = longbuf,
-	[C.CURLINFO_FTP_ENTRY_PATH] = strbuf,
-	[C.CURLINFO_REDIRECT_URL] = strbuf,
-	[C.CURLINFO_PRIMARY_IP] = strbuf,
-	[C.CURLINFO_APPCONNECT_TIME] = doublebuf,
-	[C.CURLINFO_CERTINFO] = certinfobuf,
-	[C.CURLINFO_CONDITION_UNMET] = longboolbuf,
-	[C.CURLINFO_RTSP_SESSION_ID] = strbuf,
-	[C.CURLINFO_RTSP_CLIENT_CSEQ] = longbuf,
-	[C.CURLINFO_RTSP_SERVER_CSEQ] = longbuf,
-	[C.CURLINFO_RTSP_CSEQ_RECV] = longbuf,
-	[C.CURLINFO_PRIMARY_PORT] = longbuf,
-	[C.CURLINFO_LOCAL_IP] = strbuf,
-	[C.CURLINFO_LOCAL_PORT] = longbuf,
-	[C.CURLINFO_TLS_SESSION] = tlssessioninfobuf,
-	[C.CURLINFO_ACTIVESOCKET] = socketbuf,
+	[C.CURLINFO_EFFECTIVE_URL            ] = strbuf,
+	[C.CURLINFO_RESPONSE_CODE            ] = longbuf,
+	[C.CURLINFO_TOTAL_TIME               ] = doublebuf,
+	[C.CURLINFO_NAMELOOKUP_TIME          ] = doublebuf,
+	[C.CURLINFO_CONNECT_TIME             ] = doublebuf,
+	[C.CURLINFO_PRETRANSFER_TIME         ] = doublebuf,
+	[C.CURLINFO_SIZE_UPLOAD              ] = doublebuf,
+	[C.CURLINFO_SIZE_UPLOAD_T            ] = offbuf,
+	[C.CURLINFO_SIZE_DOWNLOAD            ] = doublebuf,
+	[C.CURLINFO_SIZE_DOWNLOAD_T          ] = offbuf,
+	[C.CURLINFO_SPEED_DOWNLOAD           ] = doublebuf,
+	[C.CURLINFO_SPEED_DOWNLOAD_T         ] = offbuf,
+	[C.CURLINFO_SPEED_UPLOAD             ] = doublebuf,
+	[C.CURLINFO_SPEED_UPLOAD_T           ] = offbuf,
+	[C.CURLINFO_HEADER_SIZE              ] = longbuf,
+	[C.CURLINFO_REQUEST_SIZE             ] = longbuf,
+	[C.CURLINFO_SSL_VERIFYRESULT         ] = longboolbuf,
+	[C.CURLINFO_FILETIME                 ] = longbuf,
+	[C.CURLINFO_FILETIME_T               ] = offbuf,
+	[C.CURLINFO_CONTENT_LENGTH_DOWNLOAD  ] = doublebuf,
+	[C.CURLINFO_CONTENT_LENGTH_DOWNLOAD_T] = offbuf,
+	[C.CURLINFO_CONTENT_LENGTH_UPLOAD    ] = doublebuf,
+	[C.CURLINFO_CONTENT_LENGTH_UPLOAD_T  ] = offbuf,
+	[C.CURLINFO_STARTTRANSFER_TIME       ] = doublebuf,
+	[C.CURLINFO_CONTENT_TYPE             ] = strbuf,
+	[C.CURLINFO_REDIRECT_TIME            ] = doublebuf,
+	[C.CURLINFO_REDIRECT_COUNT           ] = longbuf,
+	[C.CURLINFO_PRIVATE                  ] = strbuf,
+	[C.CURLINFO_HTTP_CONNECTCODE         ] = longbuf,
+	[C.CURLINFO_HTTPAUTH_AVAIL           ] = longbuf,
+	[C.CURLINFO_PROXYAUTH_AVAIL          ] = longbuf,
+	[C.CURLINFO_OS_ERRNO                 ] = longbuf,
+	[C.CURLINFO_NUM_CONNECTS             ] = longbuf,
+	[C.CURLINFO_SSL_ENGINES              ] = slistbuf,
+	[C.CURLINFO_COOKIELIST               ] = slistbuf,
+	[C.CURLINFO_LASTSOCKET               ] = longbuf,
+	[C.CURLINFO_FTP_ENTRY_PATH           ] = strbuf,
+	[C.CURLINFO_REDIRECT_URL             ] = strbuf,
+	[C.CURLINFO_PRIMARY_IP               ] = strbuf,
+	[C.CURLINFO_APPCONNECT_TIME          ] = doublebuf,
+	[C.CURLINFO_CERTINFO                 ] = certinfobuf,
+	[C.CURLINFO_CONDITION_UNMET          ] = longboolbuf,
+	[C.CURLINFO_RTSP_SESSION_ID          ] = strbuf,
+	[C.CURLINFO_RTSP_CLIENT_CSEQ         ] = longbuf,
+	[C.CURLINFO_RTSP_SERVER_CSEQ         ] = longbuf,
+	[C.CURLINFO_RTSP_CSEQ_RECV           ] = longbuf,
+	[C.CURLINFO_PRIMARY_PORT             ] = longbuf,
+	[C.CURLINFO_LOCAL_IP                 ] = strbuf,
+	[C.CURLINFO_LOCAL_PORT               ] = longbuf,
+	[C.CURLINFO_TLS_SESSION              ] = tlssessioninfobuf,
+	[C.CURLINFO_ACTIVESOCKET             ] = socketbuf,
+	[C.CURLINFO_TLS_SSL_PTR              ] = tlssessioninfobuf,
+	[C.CURLINFO_HTTP_VERSION             ] = longbuf,
+	[C.CURLINFO_PROXY_SSL_VERIFYRESULT   ] = longbuf,
+	[C.CURLINFO_PROTOCOL                 ] = longbuf,
+	[C.CURLINFO_SCHEME                   ] = strbuf,
+	[C.CURLINFO_TOTAL_TIME_T             ] = offbuf,
+	[C.CURLINFO_NAMELOOKUP_TIME_T        ] = offbuf,
+	[C.CURLINFO_CONNECT_TIME_T           ] = offbuf,
+	[C.CURLINFO_PRETRANSFER_TIME_T       ] = offbuf,
+	[C.CURLINFO_STARTTRANSFER_TIME_T     ] = offbuf,
+	[C.CURLINFO_REDIRECT_TIME_T          ] = offbuf,
+	[C.CURLINFO_APPCONNECT_TIME_T        ] = offbuf,
+	[C.CURLINFO_RETRY_AFTER              ] = offbuf,
+
 }
 
 function easy:info(k)

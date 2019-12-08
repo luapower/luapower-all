@@ -93,9 +93,9 @@ __misc.__
 
 `curl.C`                                                 the libcurl ffi clib object/namespace
 
-`curl.init(flags) -> curl`                               [global init][curl_global_init]
+`curl.init([opt])`													[global init][curl_global_init]
 
-`curl.init{opt=val} -> curl`                             [global init with custom allocators][curl_global_init_mem]
+`curl.init{malloc=,free=,realloc=...}`							[global init with custom allocators][curl_global_init_mem]
 
 `curl.free()`                                            [global cleanup][curl_global_cleanup]
 
@@ -739,12 +739,13 @@ form:add('array', {
 ## Binaries
 
 The included libcurl binaries are compiled to use the SSL/TLS APIs
-provided by the OS and do not include binaries for OpenSSL or other
-SSL library, except for Linux, where [openssl] is used (*).
+provided by the host OS by default but can also use luapower's [openssl]
+as SSL backend provided libcurl is initalized manually with
+`curl.init{sslbackend='openssl'}`.
 
-> (*) The decision to ship OpenSSL on Linux is because OpenSSL
-is not ABI-compatible between versions and distros don't usually
-ship multiple versions of it (sigh, Linux).
+The decision to ship OpenSSL even on Linux is because OpenSSL is not
+ABI-compatible between versions and distros don't usually ship multiple
+versions of it (sigh, Linux).
 
 DNS resolving is asynchronous using the multi-threaded resolver.
 

@@ -1,4 +1,4 @@
---curl.h from libcurl 7.46.0
+--curl.h from libcurl 7.46.0 with 7.67.0 additions.
 local ffi = require'ffi'
 
 if ffi.abi'win' then
@@ -246,7 +246,13 @@ typedef enum {
 	CURLOPT_SERVICE_NAME = 10000 + 236,
 	CURLOPT_PIPEWAIT = 0 + 237,
 	CURLOPT_DEFAULT_PROTOCOL = 10000 + 238,
-	CURLOPT_LASTENTRY
+	CURLOPT_LASTENTRY,
+	CURLOPT_FILE         = CURLOPT_WRITEDATA,
+	CURLOPT_INFILE       = CURLOPT_READDATA,
+	CURLOPT_WRITEHEADER  = CURLOPT_HEADERDATA,
+	CURLOPT_WRITEINFO    = CURLOPT_OBSOLETE40,
+	CURLOPT_CLOSEPOLICY  = CURLOPT_OBSOLETE72,
+	CURLOPT_ENCODING     = CURLOPT_ACCEPT_ENCODING,
 } CURLoption;
 enum {
 	CURLOPT_POST301      = CURLOPT_POSTREDIR,
@@ -280,7 +286,7 @@ struct curl_httppost {
 	char *buffer;
 	long bufferlength;
 	char *contenttype;
-	struct curl_slist* contentheader;
+	struct curl_slist *contentheader;
 	struct curl_httppost *more;
 	long flags;
 	char *showfilename;
@@ -344,7 +350,7 @@ struct curl_fileinfo {
 	 char *target;
   } strings;
   unsigned int flags;
-  char * b_data;
+  char  *b_data;
   size_t b_size;
   size_t b_used;
 };
@@ -416,11 +422,11 @@ typedef enum {
 	CURLIOE_FAILRESTART,
 	CURLIOE_LAST
 } curlioerr;
-typedef enum {
+enum {
 	CURLIOCMD_NOP,
 	CURLIOCMD_RESTARTREAD,
 	CURLIOCMD_LAST
-} curliocmd;
+};
 typedef curlioerr (*curl_ioctl_callback)(CURL *handle,
 													  int cmd,
 													  void *clientp);
@@ -454,7 +460,7 @@ typedef enum {
 	CURLE_COULDNT_RESOLVE_PROXY,
 	CURLE_COULDNT_RESOLVE_HOST,
 	CURLE_COULDNT_CONNECT,
-	CURLE_FTP_WEIRD_SERVER_REPLY,
+	CURLE_WEIRD_SERVER_REPLY,
 	CURLE_REMOTE_ACCESS_DENIED,
 	CURLE_FTP_ACCEPT_FAILED,
 	CURLE_FTP_WEIRD_PASS_REPLY,
@@ -493,11 +499,11 @@ typedef enum {
 	CURLE_OBSOLETE44,
 	CURLE_INTERFACE_FAILED,
 	CURLE_OBSOLETE46,
-	CURLE_TOO_MANY_REDIRECTS ,
+	CURLE_TOO_MANY_REDIRECTS,
 	CURLE_UNKNOWN_OPTION,
-	CURLE_TELNET_OPTION_SYNTAX ,
+	CURLE_TELNET_OPTION_SYNTAX,
 	CURLE_OBSOLETE50,
-	CURLE_PEER_FAILED_VERIFICATION,
+	CURLE_OBSOLETE51,
 	CURLE_GOT_NOTHING,
 	CURLE_SSL_ENGINE_NOTFOUND,
 	CURLE_SSL_ENGINE_SETFAILED,
@@ -538,15 +544,14 @@ typedef enum {
 	CURLE_NO_CONNECTION_AVAILABLE,
 	CURLE_SSL_PINNEDPUBKEYNOTMATCH,
 	CURLE_SSL_INVALIDCERTSTATUS,
-	CURL_LAST
-} CURLcode;
-enum {
-	CURLE_OBSOLETE16     = CURLE_HTTP2,
-	CURLE_OBSOLETE10     = CURLE_FTP_ACCEPT_FAILED,
-	CURLE_OBSOLETE12     = CURLE_FTP_ACCEPT_TIMEOUT,
-	CURLOPT_ENCODING     = CURLOPT_ACCEPT_ENCODING,
+	CURLE_HTTP2_STREAM,
+	CURLE_RECURSIVE_API_CALL,
+	CURLE_AUTH_ERROR,
+	CURL_LAST,
+	CURLE_OBSOLETE16 = CURLE_HTTP2,
+	CURLE_OBSOLETE10 = CURLE_FTP_ACCEPT_FAILED,
+	CURLE_OBSOLETE12 = CURLE_FTP_ACCEPT_TIMEOUT,
 	CURLE_UNKNOWN_TELNET_OPTION = CURLE_UNKNOWN_OPTION,
-	CURLE_SSL_PEER_CERTIFICATE = CURLE_PEER_FAILED_VERIFICATION,
 	CURLE_OBSOLETE       = CURLE_OBSOLETE50,
 	CURLE_BAD_PASSWORD_ENTERED = CURLE_OBSOLETE46,
 	CURLE_BAD_CALLING_ORDER = CURLE_OBSOLETE44,
@@ -574,24 +579,20 @@ enum {
 	CURLE_FTP_PARTIAL_FILE = CURLE_PARTIAL_FILE,
 	CURLE_FTP_BAD_DOWNLOAD_RESUME = CURLE_BAD_DOWNLOAD_RESUME,
 	CURLE_ALREADY_COMPLETE = 99999,
-	CURLOPT_FILE         = CURLOPT_WRITEDATA,
-	CURLOPT_INFILE       = CURLOPT_READDATA,
-	CURLOPT_WRITEHEADER  = CURLOPT_HEADERDATA,
-	CURLOPT_WRITEINFO    = CURLOPT_OBSOLETE40,
-	CURLOPT_CLOSEPOLICY  = CURLOPT_OBSOLETE72,
-};
+} CURLcode;
 typedef CURLcode (*curl_conv_callback)(char *buffer, size_t length);
 typedef CURLcode (*curl_ssl_ctx_callback)(CURL *curl,
 														void *ssl_ctx,
 														void *userptr);
-typedef enum {
+enum {
 	CURLPROXY_HTTP = 0,
 	CURLPROXY_HTTP_1_0 = 1,
+	CURLPROXY_HTTPS = 2,
 	CURLPROXY_SOCKS4 = 4,
 	CURLPROXY_SOCKS5 = 5,
 	CURLPROXY_SOCKS4A = 6,
 	CURLPROXY_SOCKS5_HOSTNAME = 7
-} curl_proxytype;
+};
 enum {
 	CURLAUTH_NONE        = ((unsigned long)0),
 	CURLAUTH_BASIC       = (((unsigned long)1)<<0),
@@ -601,6 +602,7 @@ enum {
 	CURLAUTH_NTLM        = (((unsigned long)1)<<3),
 	CURLAUTH_DIGEST_IE   = (((unsigned long)1)<<4),
 	CURLAUTH_NTLM_WB     = (((unsigned long)1)<<5),
+	CURLAUTH_BEARER      = (((unsigned long)1)<<6),
 	CURLAUTH_ONLY        = (((unsigned long)1)<<31),
 	CURLAUTH_ANY         = (~CURLAUTH_DIGEST_IE),
 	CURLAUTH_ANYSAFE     = (~(CURLAUTH_BASIC|CURLAUTH_DIGEST_IE)),
@@ -613,6 +615,7 @@ enum {
 	CURLSSH_AUTH_HOST      = (1<<2),
 	CURLSSH_AUTH_KEYBOARD  = (1<<3),
 	CURLSSH_AUTH_AGENT     = (1<<4),
+	CURLSSH_AUTH_GSSAPI    = (1<<5),
 	CURLSSH_AUTH_DEFAULT   = CURLSSH_AUTH_ANY,
 };
 enum {
@@ -625,7 +628,9 @@ enum curl_khtype {
 	CURLKHTYPE_UNKNOWN,
 	CURLKHTYPE_RSA1,
 	CURLKHTYPE_RSA,
-	CURLKHTYPE_DSS
+	CURLKHTYPE_DSS,
+	CURLKHTYPE_ECDSA,
+	CURLKHTYPE_ED25519
 };
 struct curl_khkey {
   const char *key;
@@ -651,13 +656,13 @@ typedef int
 								  const struct curl_khkey *foundkey,
 								  enum curl_khmatch,
 								  void *clientp);
-typedef enum {
+enum {
 	CURLUSESSL_NONE,
 	CURLUSESSL_TRY,
 	CURLUSESSL_CONTROL,
 	CURLUSESSL_ALL,
 	CURLUSESSL_LAST
-} curl_usessl;
+};
 enum {
 	CURLSSLOPT_ALLOW_BEAST = (1<<0),
 	CURLSSLOPT_NO_REVOKE = (1<<1),
@@ -667,34 +672,41 @@ enum {
 	CURLFTPSSL_ALL       = CURLUSESSL_ALL,
 	CURLFTPSSL_LAST      = CURLUSESSL_LAST,
 };
-typedef enum {
+enum {
 	CURLFTPSSL_CCC_NONE,
 	CURLFTPSSL_CCC_PASSIVE,
 	CURLFTPSSL_CCC_ACTIVE,
 	CURLFTPSSL_CCC_LAST
-} curl_ftpccc;
-typedef enum {
+};
+enum {
 	CURLFTPAUTH_DEFAULT,
 	CURLFTPAUTH_SSL,
 	CURLFTPAUTH_TLS,
 	CURLFTPAUTH_LAST
-} curl_ftpauth;
-typedef enum {
+};
+enum {
 	CURLFTP_CREATE_DIR_NONE,
 	CURLFTP_CREATE_DIR,
 	CURLFTP_CREATE_DIR_RETRY,
 	CURLFTP_CREATE_DIR_LAST
-} curl_ftpcreatedir;
-typedef enum {
+};
+enum {
 	CURLFTPMETHOD_DEFAULT,
 	CURLFTPMETHOD_MULTICWD,
 	CURLFTPMETHOD_NOCWD,
 	CURLFTPMETHOD_SINGLECWD,
 	CURLFTPMETHOD_LAST
-} curl_ftpmethod;
+};
 enum {
 	CURLHEADER_UNIFIED   = 0,
 	CURLHEADER_SEPARATE  = (1<<0),
+};
+enum {
+	CURLALTSVC_IMMEDIATELY  = (1<<0),
+	CURLALTSVC_READONLYFILE = (1<<2),
+	CURLALTSVC_H1           = (1<<3),
+	CURLALTSVC_H2           = (1<<4),
+	CURLALTSVC_H3           = (1<<5)
 };
 enum {
 	CURLPROTO_HTTP       = (1<<0),
@@ -737,6 +749,9 @@ enum {
 	CURL_HTTP_VERSION_1_0,
 	CURL_HTTP_VERSION_1_1,
 	CURL_HTTP_VERSION_2_0,
+	CURL_HTTP_VERSION_2TLS,
+	CURL_HTTP_VERSION_2_PRIOR_KNOWLEDGE,
+	CURL_HTTP_VERSION_3 = 30,
 	CURL_HTTP_VERSION_LAST
 };
 enum {
@@ -768,7 +783,17 @@ enum {
 	CURL_SSLVERSION_TLSv1_0,
 	CURL_SSLVERSION_TLSv1_1,
 	CURL_SSLVERSION_TLSv1_2,
+	CURL_SSLVERSION_TLSv1_3,
 	CURL_SSLVERSION_LAST
+};
+enum {
+	CURL_SSLVERSION_MAX_NONE =     0,
+	CURL_SSLVERSION_MAX_DEFAULT =  (CURL_SSLVERSION_TLSv1   << 16),
+	CURL_SSLVERSION_MAX_TLSv1_0 =  (CURL_SSLVERSION_TLSv1_0 << 16),
+	CURL_SSLVERSION_MAX_TLSv1_1 =  (CURL_SSLVERSION_TLSv1_1 << 16),
+	CURL_SSLVERSION_MAX_TLSv1_2 =  (CURL_SSLVERSION_TLSv1_2 << 16),
+	CURL_SSLVERSION_MAX_TLSv1_3 =  (CURL_SSLVERSION_TLSv1_3 << 16),
+	CURL_SSLVERSION_MAX_LAST =     (CURL_SSLVERSION_LAST    << 16)
 };
 enum CURL_TLSAUTH {
 	CURL_TLSAUTH_NONE,
@@ -782,13 +807,13 @@ enum {
 	CURL_REDIR_POST_303  = 4,
 	CURL_REDIR_POST_ALL  = (CURL_REDIR_POST_301|CURL_REDIR_POST_302|CURL_REDIR_POST_303),
 };
-typedef enum {
+enum {
 	CURL_TIMECOND_NONE,
 	CURL_TIMECOND_IFMODSINCE,
 	CURL_TIMECOND_IFUNMODSINCE,
 	CURL_TIMECOND_LASTMOD,
 	CURL_TIMECOND_LAST
-} curl_TimeCond;
+};
 int (curl_strequal)(const char *s1, const char *s2);
 int (curl_strnequal)(const char *s1, const char *s2, size_t n);
 typedef enum {
@@ -842,22 +867,22 @@ char *curl_unescape(const char *string, int length);
 void curl_free(void *p);
 CURLcode curl_global_init(long flags);
 CURLcode curl_global_init_mem(long flags,
-										curl_malloc_callback m,
-										curl_free_callback f,
-										curl_realloc_callback r,
-										curl_strdup_callback s,
-										curl_calloc_callback c);
+	curl_malloc_callback m,
+	curl_free_callback f,
+	curl_realloc_callback r,
+	curl_strdup_callback s,
+	curl_calloc_callback c);
 void curl_global_cleanup(void);
 struct curl_slist {
-  char *data;
-  struct curl_slist *next;
+	char *data;
+	struct curl_slist *next;
 };
 struct curl_slist *curl_slist_append(struct curl_slist *, const char *);
 void curl_slist_free_all(struct curl_slist *);
 time_t curl_getdate(const char *p, const time_t *unused);
 struct curl_certinfo {
-  int num_of_certs;
-  struct curl_slist **certinfo;
+	int num_of_certs;
+	struct curl_slist **certinfo;
 };
 typedef enum {
 	CURLSSLBACKEND_NONE = 0,
@@ -871,7 +896,8 @@ typedef enum {
 	CURLSSLBACKEND_SCHANNEL = 8,
 	CURLSSLBACKEND_DARWINSSL = 9,
 	CURLSSLBACKEND_AXTLS = 10,
-	CURLSSLBACKEND_MBEDTLS = 11
+	CURLSSLBACKEND_MBEDTLS = 11,
+	CURLSSLBACKEND_MESALINK = 12
 } curl_sslbackend;
 struct curl_tlssessioninfo {
   curl_sslbackend backend;
@@ -882,62 +908,82 @@ enum {
 	CURLINFO_LONG        = 0x200000,
 	CURLINFO_DOUBLE      = 0x300000,
 	CURLINFO_SLIST       = 0x400000,
+	CURLINFO_PTR         = 0x400000,
 	CURLINFO_SOCKET      = 0x500000,
+	CURLINFO_OFF_T       = 0x600000,
 	CURLINFO_MASK        = 0x0fffff,
 	CURLINFO_TYPEMASK    = 0xf00000,
 };
 typedef enum {
 	CURLINFO_NONE,
-	CURLINFO_EFFECTIVE_URL = 0x100000 + 1,
-	CURLINFO_RESPONSE_CODE = 0x200000 + 2,
-	CURLINFO_TOTAL_TIME = 0x300000 + 3,
-	CURLINFO_NAMELOOKUP_TIME = 0x300000 + 4,
-	CURLINFO_CONNECT_TIME = 0x300000 + 5,
-	CURLINFO_PRETRANSFER_TIME = 0x300000 + 6,
-	CURLINFO_SIZE_UPLOAD = 0x300000 + 7,
-	CURLINFO_SIZE_DOWNLOAD = 0x300000 + 8,
-	CURLINFO_SPEED_DOWNLOAD = 0x300000 + 9,
-	CURLINFO_SPEED_UPLOAD = 0x300000 + 10,
-	CURLINFO_HEADER_SIZE = 0x200000 + 11,
-	CURLINFO_REQUEST_SIZE = 0x200000 + 12,
-	CURLINFO_SSL_VERIFYRESULT = 0x200000 + 13,
-	CURLINFO_FILETIME = 0x200000 + 14,
-	CURLINFO_CONTENT_LENGTH_DOWNLOAD = 0x300000 + 15,
-	CURLINFO_CONTENT_LENGTH_UPLOAD = 0x300000 + 16,
-	CURLINFO_STARTTRANSFER_TIME = 0x300000 + 17,
-	CURLINFO_CONTENT_TYPE = 0x100000 + 18,
-	CURLINFO_REDIRECT_TIME = 0x300000 + 19,
-	CURLINFO_REDIRECT_COUNT = 0x200000 + 20,
-	CURLINFO_PRIVATE = 0x100000 + 21,
-	CURLINFO_HTTP_CONNECTCODE = 0x200000 + 22,
-	CURLINFO_HTTPAUTH_AVAIL = 0x200000 + 23,
-	CURLINFO_PROXYAUTH_AVAIL = 0x200000 + 24,
-	CURLINFO_OS_ERRNO = 0x200000 + 25,
-	CURLINFO_NUM_CONNECTS = 0x200000 + 26,
-	CURLINFO_SSL_ENGINES = 0x400000 + 27,
-	CURLINFO_COOKIELIST = 0x400000 + 28,
-	CURLINFO_LASTSOCKET = 0x200000 + 29,
-	CURLINFO_FTP_ENTRY_PATH = 0x100000 + 30,
-	CURLINFO_REDIRECT_URL = 0x100000 + 31,
-	CURLINFO_PRIMARY_IP = 0x100000 + 32,
-	CURLINFO_APPCONNECT_TIME = 0x300000 + 33,
-	CURLINFO_CERTINFO = 0x400000 + 34,
-	CURLINFO_CONDITION_UNMET = 0x200000 + 35,
-	CURLINFO_RTSP_SESSION_ID = 0x100000 + 36,
-	CURLINFO_RTSP_CLIENT_CSEQ = 0x200000 + 37,
-	CURLINFO_RTSP_SERVER_CSEQ = 0x200000 + 38,
-	CURLINFO_RTSP_CSEQ_RECV = 0x200000 + 39,
-	CURLINFO_PRIMARY_PORT = 0x200000 + 40,
-	CURLINFO_LOCAL_IP = 0x100000 + 41,
-	CURLINFO_LOCAL_PORT = 0x200000 + 42,
-	CURLINFO_TLS_SESSION = 0x400000 + 43,
-	CURLINFO_ACTIVESOCKET = 0x500000 + 44,
-	CURLINFO_LASTONE = 44
+	CURLINFO_EFFECTIVE_URL             = CURLINFO_STRING + 1,
+	CURLINFO_RESPONSE_CODE             = CURLINFO_LONG   + 2,
+	CURLINFO_TOTAL_TIME                = CURLINFO_DOUBLE + 3,
+	CURLINFO_NAMELOOKUP_TIME           = CURLINFO_DOUBLE + 4,
+	CURLINFO_CONNECT_TIME              = CURLINFO_DOUBLE + 5,
+	CURLINFO_PRETRANSFER_TIME          = CURLINFO_DOUBLE + 6,
+	CURLINFO_SIZE_UPLOAD               = CURLINFO_DOUBLE + 7,
+	CURLINFO_SIZE_UPLOAD_T             = CURLINFO_OFF_T  + 7,
+	CURLINFO_SIZE_DOWNLOAD             = CURLINFO_DOUBLE + 8,
+	CURLINFO_SIZE_DOWNLOAD_T           = CURLINFO_OFF_T  + 8,
+	CURLINFO_SPEED_DOWNLOAD            = CURLINFO_DOUBLE + 9,
+	CURLINFO_SPEED_DOWNLOAD_T          = CURLINFO_OFF_T  + 9,
+	CURLINFO_SPEED_UPLOAD              = CURLINFO_DOUBLE + 10,
+	CURLINFO_SPEED_UPLOAD_T            = CURLINFO_OFF_T  + 10,
+	CURLINFO_HEADER_SIZE               = CURLINFO_LONG   + 11,
+	CURLINFO_REQUEST_SIZE              = CURLINFO_LONG   + 12,
+	CURLINFO_SSL_VERIFYRESULT          = CURLINFO_LONG   + 13,
+	CURLINFO_FILETIME                  = CURLINFO_LONG   + 14,
+	CURLINFO_FILETIME_T                = CURLINFO_OFF_T  + 14,
+	CURLINFO_CONTENT_LENGTH_DOWNLOAD   = CURLINFO_DOUBLE + 15,
+	CURLINFO_CONTENT_LENGTH_DOWNLOAD_T = CURLINFO_OFF_T  + 15,
+	CURLINFO_CONTENT_LENGTH_UPLOAD     = CURLINFO_DOUBLE + 16,
+	CURLINFO_CONTENT_LENGTH_UPLOAD_T   = CURLINFO_OFF_T  + 16,
+	CURLINFO_STARTTRANSFER_TIME        = CURLINFO_DOUBLE + 17,
+	CURLINFO_CONTENT_TYPE              = CURLINFO_STRING + 18,
+	CURLINFO_REDIRECT_TIME             = CURLINFO_DOUBLE + 19,
+	CURLINFO_REDIRECT_COUNT            = CURLINFO_LONG   + 20,
+	CURLINFO_PRIVATE                   = CURLINFO_STRING + 21,
+	CURLINFO_HTTP_CONNECTCODE          = CURLINFO_LONG   + 22,
+	CURLINFO_HTTPAUTH_AVAIL            = CURLINFO_LONG   + 23,
+	CURLINFO_PROXYAUTH_AVAIL           = CURLINFO_LONG   + 24,
+	CURLINFO_OS_ERRNO                  = CURLINFO_LONG   + 25,
+	CURLINFO_NUM_CONNECTS              = CURLINFO_LONG   + 26,
+	CURLINFO_SSL_ENGINES               = CURLINFO_PTR    + 27,
+	CURLINFO_COOKIELIST                = CURLINFO_PTR    + 28,
+	CURLINFO_LASTSOCKET                = CURLINFO_LONG   + 29,
+	CURLINFO_FTP_ENTRY_PATH            = CURLINFO_STRING + 30,
+	CURLINFO_REDIRECT_URL              = CURLINFO_STRING + 31,
+	CURLINFO_PRIMARY_IP                = CURLINFO_STRING + 32,
+	CURLINFO_APPCONNECT_TIME           = CURLINFO_DOUBLE + 33,
+	CURLINFO_CERTINFO                  = CURLINFO_PTR    + 34,
+	CURLINFO_CONDITION_UNMET           = CURLINFO_LONG   + 35,
+	CURLINFO_RTSP_SESSION_ID           = CURLINFO_STRING + 36,
+	CURLINFO_RTSP_CLIENT_CSEQ          = CURLINFO_LONG   + 37,
+	CURLINFO_RTSP_SERVER_CSEQ          = CURLINFO_LONG   + 38,
+	CURLINFO_RTSP_CSEQ_RECV            = CURLINFO_LONG   + 39,
+	CURLINFO_PRIMARY_PORT              = CURLINFO_LONG   + 40,
+	CURLINFO_LOCAL_IP                  = CURLINFO_STRING + 41,
+	CURLINFO_LOCAL_PORT                = CURLINFO_LONG   + 42,
+	CURLINFO_TLS_SESSION               = CURLINFO_PTR    + 43,
+	CURLINFO_ACTIVESOCKET              = CURLINFO_SOCKET + 44,
+	CURLINFO_TLS_SSL_PTR               = CURLINFO_PTR    + 45,
+	CURLINFO_HTTP_VERSION              = CURLINFO_LONG   + 46,
+	CURLINFO_PROXY_SSL_VERIFYRESULT    = CURLINFO_LONG   + 47,
+	CURLINFO_PROTOCOL                  = CURLINFO_LONG   + 48,
+	CURLINFO_SCHEME                    = CURLINFO_STRING + 49,
+	CURLINFO_TOTAL_TIME_T              = CURLINFO_OFF_T  + 50,
+	CURLINFO_NAMELOOKUP_TIME_T         = CURLINFO_OFF_T  + 51,
+	CURLINFO_CONNECT_TIME_T            = CURLINFO_OFF_T  + 52,
+	CURLINFO_PRETRANSFER_TIME_T        = CURLINFO_OFF_T  + 53,
+	CURLINFO_STARTTRANSFER_TIME_T      = CURLINFO_OFF_T  + 54,
+	CURLINFO_REDIRECT_TIME_T           = CURLINFO_OFF_T  + 55,
+	CURLINFO_APPCONNECT_TIME_T         = CURLINFO_OFF_T  + 56,
+	CURLINFO_RETRY_AFTER               = CURLINFO_OFF_T  + 57,
+	CURLINFO_HTTP_CODE                 = CURLINFO_RESPONSE_CODE,
+	CURLINFO_LASTONE = 57,
 } CURLINFO;
 enum {
-	CURLINFO_HTTP_CODE   = CURLINFO_RESPONSE_CODE,
-};
-typedef enum {
 	CURLCLOSEPOLICY_NONE,
 	CURLCLOSEPOLICY_OLDEST,
 	CURLCLOSEPOLICY_LEAST_RECENTLY_USED,
@@ -945,7 +991,7 @@ typedef enum {
 	CURLCLOSEPOLICY_SLOWEST,
 	CURLCLOSEPOLICY_CALLBACK,
 	CURLCLOSEPOLICY_LAST
-} curl_closepolicy;
+};
 enum {
 	CURL_GLOBAL_SSL      = (1<<0),
 	CURL_GLOBAL_WIN32    = (1<<1),
@@ -961,6 +1007,7 @@ typedef enum {
 	CURL_LOCK_DATA_DNS,
 	CURL_LOCK_DATA_SSL_SESSION,
 	CURL_LOCK_DATA_CONNECT,
+	CURL_LOCK_DATA_PSL,
 	CURL_LOCK_DATA_LAST
 } curl_lock_data;
 typedef enum {
@@ -1003,48 +1050,60 @@ typedef enum {
 	CURLVERSION_SECOND,
 	CURLVERSION_THIRD,
 	CURLVERSION_FOURTH,
-	CURLVERSION_LAST
+	CURLVERSION_FIFTH,
+	CURLVERSION_SIXTH,
+	CURLVERSION_LAST,
+	CURLVERSION_NOW = CURLVERSION_SIXTH,
 } CURLversion;
-enum {
-	CURLVERSION_NOW      = CURLVERSION_FOURTH,
-};
 typedef struct {
-  CURLversion age;
-  const char *version;
-  unsigned int version_num;
-  const char *host;
-  int features;
-  const char *ssl_version;
-  long ssl_version_num;
-  const char *libz_version;
-  const char * const *protocols;
-  const char *ares;
-  int ares_num;
-  const char *libidn;
-  int iconv_ver_num;
-  const char *libssh_version;
+	CURLversion   age;
+	const char*   version;
+	unsigned int  version_num;
+	const char*   host;
+	int           features;
+	const char*   ssl_version;
+	long          ssl_version_num;
+	const char*   libz_version;
+	const char*   const *protocols;
+	const char*   ares;
+	int           ares_num;
+	const char*   libidn;
+	int           iconv_ver_num;
+	const char*   libssh_version;
+	unsigned int  brotli_ver_num;
+	const char*   brotli_version;
+	unsigned int  nghttp2_ver_num;
+	const char*   nghttp2_version;
+	const char*   quic_version;
 } curl_version_info_data;
 enum {
-	CURL_VERSION_IPV6    = (1<<0),
-	CURL_VERSION_KERBEROS4 = (1<<1),
-	CURL_VERSION_SSL     = (1<<2),
-	CURL_VERSION_LIBZ    = (1<<3),
-	CURL_VERSION_NTLM    = (1<<4),
+	CURL_VERSION_IPV6         = (1<<0),
+	CURL_VERSION_KERBEROS4    = (1<<1),
+	CURL_VERSION_SSL          = (1<<2),
+	CURL_VERSION_LIBZ         = (1<<3),
+	CURL_VERSION_NTLM         = (1<<4),
 	CURL_VERSION_GSSNEGOTIATE = (1<<5),
-	CURL_VERSION_DEBUG   = (1<<6),
-	CURL_VERSION_ASYNCHDNS = (1<<7),
-	CURL_VERSION_SPNEGO  = (1<<8),
-	CURL_VERSION_LARGEFILE = (1<<9),
-	CURL_VERSION_IDN     = (1<<10),
-	CURL_VERSION_SSPI    = (1<<11),
-	CURL_VERSION_CONV    = (1<<12),
-	CURL_VERSION_CURLDEBUG = (1<<13),
-	CURL_VERSION_TLSAUTH_SRP = (1<<14),
-	CURL_VERSION_NTLM_WB = (1<<15),
-	CURL_VERSION_HTTP2   = (1<<16),
-	CURL_VERSION_GSSAPI  = (1<<17),
-	CURL_VERSION_KERBEROS5 = (1<<18),
+	CURL_VERSION_DEBUG        = (1<<6),
+	CURL_VERSION_ASYNCHDNS    = (1<<7),
+	CURL_VERSION_SPNEGO       = (1<<8),
+	CURL_VERSION_LARGEFILE    = (1<<9),
+	CURL_VERSION_IDN          = (1<<10),
+	CURL_VERSION_SSPI         = (1<<11),
+	CURL_VERSION_CONV         = (1<<12),
+	CURL_VERSION_CURLDEBUG    = (1<<13),
+	CURL_VERSION_TLSAUTH_SRP  = (1<<14),
+	CURL_VERSION_NTLM_WB      = (1<<15),
+	CURL_VERSION_HTTP2        = (1<<16),
+	CURL_VERSION_GSSAPI       = (1<<17),
+	CURL_VERSION_KERBEROS5    = (1<<18),
 	CURL_VERSION_UNIX_SOCKETS = (1<<19),
+	CURL_VERSION_PSL          = (1<<20),
+	CURL_VERSION_HTTPS_PROXY  = (1<<21),
+	CURL_VERSION_MULTI_SSL    = (1<<22),
+	CURL_VERSION_BROTLI       = (1<<23),
+	CURL_VERSION_ALTSVC       = (1<<24),
+	CURL_VERSION_HTTP3        = (1<<25),
+	CURL_VERSION_ESNI         = (1<<26),
 };
 curl_version_info_data *curl_version_info(CURLversion);
 
@@ -1123,15 +1182,15 @@ CURLM *curl_multi_init(void);
 CURLMcode curl_multi_add_handle(CURLM *multi_handle, CURL *curl_handle);
 CURLMcode curl_multi_remove_handle(CURLM *multi_handle, CURL *curl_handle);
 CURLMcode curl_multi_fdset(CURLM *multi_handle,
-													curl_fd_set *read_fd_set,
-													curl_fd_set *write_fd_set,
-													curl_fd_set *exc_fd_set,
-													int *max_fd);
+	curl_fd_set *read_fd_set,
+	curl_fd_set *write_fd_set,
+	curl_fd_set *exc_fd_set,
+	int *max_fd);
 CURLMcode curl_multi_wait(CURLM *multi_handle,
-												  struct curl_waitfd extra_fds[],
-												  unsigned int extra_nfds,
-												  int timeout_ms,
-												  int *ret);
+	struct curl_waitfd extra_fds[],
+	unsigned int extra_nfds,
+	int timeout_ms,
+	int *ret);
 CURLMcode curl_multi_perform(CURLM *multi_handle, int *running_handles);
 CURLMcode curl_multi_cleanup(CURLM *multi_handle);
 CURLMsg *curl_multi_info_read(CURLM *multi_handle, int *msgs_in_queue);
@@ -1180,8 +1239,106 @@ struct curl_pushheaders;
 char *curl_pushheader_bynum(struct curl_pushheaders *h, size_t num);
 char *curl_pushheader_byname(struct curl_pushheaders *h, const char *name);
 typedef int (*curl_push_callback)(CURL *parent,
-											 CURL *easy,
-											 size_t num_headers,
-											 struct curl_pushheaders *headers,
-											 void *userp);
+	CURL *easy,
+	size_t num_headers,
+	struct curl_pushheaders *headers,
+	void *userp);
+
+// urlapi.h ------------------------------------------------------------------
+
+typedef enum {
+	CURLUE_OK,
+	CURLUE_BAD_HANDLE,
+	CURLUE_BAD_PARTPOINTER,
+	CURLUE_MALFORMED_INPUT,
+	CURLUE_BAD_PORT_NUMBER,
+	CURLUE_UNSUPPORTED_SCHEME,
+	CURLUE_URLDECODE,
+	CURLUE_OUT_OF_MEMORY,
+	CURLUE_USER_NOT_ALLOWED,
+	CURLUE_UNKNOWN_PART,
+	CURLUE_NO_SCHEME,
+	CURLUE_NO_USER,
+	CURLUE_NO_PASSWORD,
+	CURLUE_NO_OPTIONS,
+	CURLUE_NO_HOST,
+	CURLUE_NO_PORT,
+	CURLUE_NO_QUERY,
+	CURLUE_NO_FRAGMENT
+} CURLUcode;
+typedef enum {
+	CURLUPART_URL,
+	CURLUPART_SCHEME,
+	CURLUPART_USER,
+	CURLUPART_PASSWORD,
+	CURLUPART_OPTIONS,
+	CURLUPART_HOST,
+	CURLUPART_PORT,
+	CURLUPART_PATH,
+	CURLUPART_QUERY,
+	CURLUPART_FRAGMENT,
+	CURLUPART_ZONEID /* added in 7.65.0 */
+} CURLUPart;
+enum {
+	CURLU_DEFAULT_PORT       = (1<<0),
+	CURLU_NO_DEFAULT_PORT    = (1<<1),
+	CURLU_DEFAULT_SCHEME     = (1<<2),
+	CURLU_NON_SUPPORT_SCHEME = (1<<3),
+	CURLU_PATH_AS_IS         = (1<<4),
+	CURLU_DISALLOW_USER      = (1<<5),
+	CURLU_URLDECODE          = (1<<6),
+	CURLU_URLENCODE          = (1<<7),
+	CURLU_APPENDQUERY        = (1<<8),
+	CURLU_GUESS_SCHEME       = (1<<9),
+	CURLU_NO_AUTHORITY       = (1<<10),
+};
+
+typedef struct Curl_URL CURLU;
+
+CURLU *curl_url(void);
+void curl_url_cleanup(CURLU *handle);
+CURLU *curl_url_dup(CURLU *in);
+CURLUcode curl_url_get(CURLU *handle, CURLUPart what, char **part, unsigned int flags);
+CURLUcode curl_url_set(CURLU *handle, CURLUPart what, const char *part, unsigned int flags);
+
+// 7.67.0 additions ----------------------------------------------------------
+
+typedef int (*curl_resolver_start_callback)(void *resolver_state, void *reserved, void *userdata);
+typedef int (*curl_trailer_callback)(struct curl_slist **list, void *userdata);
+
+typedef struct curl_mime_s      curl_mime;
+typedef struct curl_mimepart_s  curl_mimepart;
+
+curl_mime *curl_mime_init(CURL *easy);
+void curl_mime_free(curl_mime *mime);
+curl_mimepart *curl_mime_addpart(curl_mime *mime);
+CURLcode curl_mime_name(curl_mimepart *part, const char *name);
+CURLcode curl_mime_filename(curl_mimepart *part, const char *filename);
+CURLcode curl_mime_type(curl_mimepart *part, const char *mimetype);
+CURLcode curl_mime_encoder(curl_mimepart *part, const char *encoding);
+CURLcode curl_mime_data(curl_mimepart *part, const char *data, size_t datasize);
+CURLcode curl_mime_filedata(curl_mimepart *part, const char *filename);
+CURLcode curl_mime_data_cb(
+	curl_mimepart *part,
+	curl_off_t datasize,
+	curl_read_callback readfunc,
+	curl_seek_callback seekfunc,
+	curl_free_callback freefunc,
+	void *arg);
+CURLcode curl_mime_subparts(curl_mimepart *part, curl_mime *subparts);
+CURLcode curl_mime_headers(curl_mimepart *part, struct curl_slist *headers, int take_ownership);
+
+typedef struct {
+	curl_sslbackend id;
+	const char *name;
+} curl_ssl_backend;
+
+typedef enum {
+	CURLSSLSET_OK = 0,
+	CURLSSLSET_UNKNOWN_BACKEND,
+	CURLSSLSET_TOO_LATE,
+	CURLSSLSET_NO_BACKENDS /* libcurl was built without any SSL support */
+} CURLsslset;
+
+CURLsslset curl_global_sslset(curl_sslbackend id, const char *name, const curl_ssl_backend ***avail);
 ]]

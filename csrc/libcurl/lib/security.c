@@ -7,10 +7,10 @@
  * rewrite to work around the paragraph 2 in the BSD licenses as explained
  * below.
  *
- * Copyright (c) 1998, 1999 Kungliga Tekniska Högskolan
+ * Copyright (c) 1998, 1999, 2017 Kungliga Tekniska HÃ¶gskolan
  * (Royal Institute of Technology, Stockholm, Sweden).
  *
- * Copyright (C) 2001 - 2015, Daniel Stenberg, <daniel@haxx.se>, et al.
+ * Copyright (C) 2001 - 2019, Daniel Stenberg, <daniel@haxx.se>, et al.
  *
  * All rights reserved.
  *
@@ -50,9 +50,7 @@
 #include <netdb.h>
 #endif
 
-#ifdef HAVE_LIMITS_H
 #include <limits.h>
-#endif
 
 #include "urldata.h"
 #include "curl_base64.h"
@@ -60,10 +58,12 @@
 #include "curl_sec.h"
 #include "ftp.h"
 #include "sendf.h"
-#include "rawstr.h"
+#include "strcase.h"
 #include "warnless.h"
-
-/* The last #include file should be: */
+#include "strdup.h"
+/* The last 3 #include files should be in this order */
+#include "curl_printf.h"
+#include "curl_memory.h"
 #include "memdebug.h"
 
 static const struct {
@@ -88,7 +88,8 @@ name_to_level(const char *name)
 
 /* Convert a protocol |level| to its char representation.
    We take an int to catch programming mistakes. */
-static char level_to_char(int level) {
+static char level_to_char(int level)
+{
   switch(level) {
   case PROT_CLEAR:
     return 'C';
@@ -114,15 +115,15 @@ static char level_to_char(int level) {
 static int ftp_send_command(struct connectdata *conn, const char *message, ...)
 {
   int ftp_code;
-  ssize_t nread=0;
+  ssize_t nread = 0;
   va_list args;
   char print_buffer[50];
 
   va_start(args, message);
-  vsnprintf(print_buffer, sizeof(print_buffer), message, args);
+  mvsnprintf(print_buffer, sizeof(print_buffer), message, args);
   va_end(args);
 
-  if(Curl_ftpsendf(conn, print_buffer)) {
+  if(Curl_ftpsend(conn, print_buffer)) {
     ftp_code = -1;
   }
   else {
@@ -141,7 +142,7 @@ socket_read(curl_socket_t fd, void *to, size_t len)
 {
   char *to_p = to;
   CURLcode result;
-  ssize_t nread;
+  ssize_t nread = 0;
 
   while(len > 0) {
     result = Curl_read_plain(fd, to_p, len, &nread);
@@ -150,7 +151,6 @@ socket_read(curl_socket_t fd, void *to, size_t len)
       to_p += nread;
     }
     else {
-      /* FIXME: We are doing a busy wait */
       if(result == CURLE_AGAIN)
         continue;
       return result;
@@ -178,7 +178,6 @@ socket_write(struct connectdata *conn, curl_socket_t fd, const void *to,
       to_p += written;
     }
     else {
-      /* FIXME: We are doing a busy wait */
       if(result == CURLE_AGAIN)
         continue;
       return result;
@@ -192,19 +191,20 @@ static CURLcode read_data(struct connectdata *conn,
                           struct krb5buffer *buf)
 {
   int len;
-  void* tmp;
   CURLcode result;
 
   result = socket_read(fd, &len, sizeof(len));
   if(result)
     return result;
 
-  len = ntohl(len);
-  tmp = realloc(buf->data, len);
-  if(tmp == NULL)
+  if(len) {
+    /* only realloc if there was a length */
+    len = ntohl(len);
+    buf->data = Curl_saferealloc(buf->data, len);
+  }
+  if(!len || !buf->data)
     return CURLE_OUT_OF_MEMORY;
 
-  buf->data = tmp;
   result = socket_read(fd, buf->data, len);
   if(result)
     return result;
@@ -219,7 +219,7 @@ buffer_read(struct krb5buffer *buf, void *data, size_t len)
 {
   if(buf->size - buf->index < len)
     len = buf->size - buf->index;
-  memcpy(data, (char*)buf->data + buf->index, len);
+  memcpy(data, (char *)buf->data + buf->index, len);
   buf->index += len;
   return len;
 }
@@ -236,7 +236,7 @@ static ssize_t sec_recv(struct connectdata *conn, int sockindex,
 
   /* Handle clear text response. */
   if(conn->sec_complete == 0 || conn->data_prot == PROT_CLEAR)
-      return read(fd, buffer, len);
+      return sread(fd, buffer, len);
 
   if(conn->in_buffer.eof_flag) {
     conn->in_buffer.eof_flag = 0;
@@ -261,13 +261,11 @@ static ssize_t sec_recv(struct connectdata *conn, int sockindex,
     total_read += bytes_read;
     buffer += bytes_read;
   }
-  /* FIXME: Check for overflow */
   return total_read;
 }
 
 /* Send |length| bytes from |from| to the |fd| socket taking care of encoding
-   and negociating with the server. |from| can be NULL. */
-/* FIXME: We don't check for errors nor report any! */
+   and negotiating with the server. |from| can be NULL. */
 static void do_sec_send(struct connectdata *conn, curl_socket_t fd,
                         const char *from, int length)
 {
@@ -288,7 +286,7 @@ static void do_sec_send(struct connectdata *conn, curl_socket_t fd,
       prot_level = conn->command_prot;
   }
   bytes = conn->mech->encode(conn->app_data, from, length, prot_level,
-                             (void**)&buffer);
+                             (void **)&buffer);
   if(!buffer || bytes <= 0)
     return; /* error */
 
@@ -363,6 +361,10 @@ int Curl_sec_read_msg(struct connectdata *conn, char *buffer,
   size_t decoded_sz = 0;
   CURLcode error;
 
+  if(!conn->mech)
+    /* not inititalized, return error */
+    return -1;
+
   DEBUGASSERT(level > PROT_NONE && level < PROT_LAST);
 
   error = Curl_base64_decode(buffer + 4, (unsigned char **)&buf, &decoded_sz);
@@ -384,7 +386,7 @@ int Curl_sec_read_msg(struct connectdata *conn, char *buffer,
 
   if(conn->data->set.verbose) {
     buf[decoded_len] = '\n';
-    Curl_debug(conn->data, CURLINFO_HEADER_IN, buf, decoded_len + 1, conn);
+    Curl_debug(conn->data, CURLINFO_HEADER_IN, buf, decoded_len + 1);
   }
 
   buf[decoded_len] = '\0';
@@ -398,25 +400,21 @@ int Curl_sec_read_msg(struct connectdata *conn, char *buffer,
 
   if(buf[decoded_len - 1] == '\n')
     buf[decoded_len - 1] = '\0';
-  /* FIXME: Is |buffer| length always greater than |decoded_len|? */
   strcpy(buffer, buf);
   free(buf);
   return ret_code;
 }
 
-/* FIXME: The error code returned here is never checked. */
 static int sec_set_protection_level(struct connectdata *conn)
 {
   int code;
-  char* pbsz;
-  static unsigned int buffer_size = 1 << 20; /* 1048576 */
   enum protection_level level = conn->request_data_prot;
 
   DEBUGASSERT(level > PROT_NONE && level < PROT_LAST);
 
   if(!conn->sec_complete) {
     infof(conn->data, "Trying to change the protection level after the"
-                      "completion of the data exchange.\n");
+                      " completion of the data exchange.\n");
     return -1;
   }
 
@@ -425,6 +423,9 @@ static int sec_set_protection_level(struct connectdata *conn)
     return 0;
 
   if(level) {
+    char *pbsz;
+    static unsigned int buffer_size = 1 << 20; /* 1048576 */
+
     code = ftp_send_command(conn, "PBSZ %u", buffer_size);
     if(code < 0)
       return -1;
@@ -476,13 +477,13 @@ Curl_sec_request_prot(struct connectdata *conn, const char *level)
 static CURLcode choose_mech(struct connectdata *conn)
 {
   int ret;
-  struct SessionHandle *data = conn->data;
+  struct Curl_easy *data = conn->data;
   void *tmp_allocation;
   const struct Curl_sec_client_mech *mech = &Curl_krb5_client_mech;
 
   tmp_allocation = realloc(conn->app_data, mech->size);
   if(tmp_allocation == NULL) {
-    failf(data, "Failed realloc of size %u", mech->size);
+    failf(data, "Failed realloc of size %zu", mech->size);
     mech = NULL;
     return CURLE_OUT_OF_MEMORY;
   }
@@ -500,7 +501,6 @@ static CURLcode choose_mech(struct connectdata *conn)
   infof(data, "Trying mechanism %s...\n", mech->name);
   ret = ftp_send_command(conn, "AUTH %s", mech->name);
   if(ret < 0)
-    /* FIXME: This error is too generic but it is OK for now. */
     return CURLE_COULDNT_CONNECT;
 
   if(ret/100 != 3) {
@@ -567,7 +567,6 @@ Curl_sec_end(struct connectdata *conn)
     conn->in_buffer.data = NULL;
     conn->in_buffer.size = 0;
     conn->in_buffer.index = 0;
-    /* FIXME: Is this really needed? */
     conn->in_buffer.eof_flag = 0;
   }
   conn->sec_complete = 0;
