@@ -11,12 +11,10 @@ setmetatable(M, {__index = C})
 if not ... then
 
 local crypto = M
+
+--TODO: make loading the default conf file work (might need a rebuild).
 require'libcrypto_conf_h'
-print(crypto.CONF_modules_load_file(nil, nil,
-	bit.bor(
-		crypto.CONF_MFLAGS_DEFAULT_SECTION,
-		crypto.CONF_MFLAGS_IGNORE_MISSING_FILE)))
-os.exit()
+print(crypto.CONF_modules_load_file(nil, nil, crypto.CONF_MFLAGS_DEFAULT_SECTION) == 1)
 
 end
 
