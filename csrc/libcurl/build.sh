@@ -11,6 +11,7 @@ vauth/*.c
 -DCURL_DISABLE_LDAP
 -DCURL_WITH_MULTI_SSL
 -DUSE_OPENSSL vtls/openssl.c
+-DCURL_DISABLE_OPENSSL_AUTO_LOAD_CONFIG
 -I../../openssl/src/include
 -I../../openssl/include-$P
 "

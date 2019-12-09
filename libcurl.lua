@@ -75,7 +75,7 @@ function curl.version_info(ver)
 	local protocols = {}
 	local p = info.protocols
 	while p ~= nil and p[0] ~= nil do
-		table.insert(protocols, ffi.string(p[0]))
+		protocols[ffi.string(p[0])] = true
 		p = p + 1
 	end
 	local function str(s)
