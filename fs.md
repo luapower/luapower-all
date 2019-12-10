@@ -318,6 +318,7 @@ Usage:
 for name, d in fs.dir() do
 	if not name then
 		print('error: ', d)
+		d:close()
 		break
 	end
 	print(d:attr'type', name)
