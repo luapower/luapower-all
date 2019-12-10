@@ -215,9 +215,10 @@ function test.mime()
 	local m = e:mime()
 	local p = m:part()
 	p:headers{'Some-Header: foo', 'Other-Header: bar'}
-	p:data'hello'
+	p:file[[x:\openresty\openssl-1.1.1d.tar.gz]]
 	assert(e:perform())
 	e:close()
+	print'\nDone'
 end
 
 --run all tests in order
