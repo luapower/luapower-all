@@ -208,27 +208,22 @@ function test.download()
 	sh:free()
 end
 
-function test.form()
-	local form = curl.form()
-	form:add('ptrname', 'name1', 'ptrcontents', 'yy')
-	form:add('ptrname', 'name2', 'file', 'luajit', 'file', 'luajit.cmd')
-	form:add('ptrname', 'name3', 'bufferptr', '@@@@@@@@@@@@@', 'contenttype', 'text/plain')
-	form:add('array', {'ptrname', 'name4', 'bufferptr', 'aa', 'contentheader', {'H1: V1', 'H2: V2'}})
-
-	print('>>> form get as string')
-	local s = form:get()
-	print(s)
-	print('>>> form get as chunks')
-	for i,s in ipairs(form:get{}) do
-		print(i, s)
-	end
-	print('>>> form get to callback')
-	form:get(function(buf, len)
-		print(len, ffi.string(buf, len))
-	end)
+function test.mime()
+	local e = curl.easy{
+		url = 'http://speedtest.tele2.net/upload.php',
+	}
+	local m = e:mime()
+	local p = m:part()
+	p:headers{'Some-Header: foo', 'Other-Header: bar'}
+	p:data'hello'
+	assert(e:perform())
+	e:close()
 end
 
 --run all tests in order
+
+test.mime()
+os.exit()
 
 for i,name in ipairs(test) do
 	print(name .. ' ' .. ('-'):rep(78 - #name))

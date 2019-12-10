@@ -840,25 +840,6 @@ typedef enum {
 	CURLFORM_CONTENTLEN,
 	CURLFORM_LASTENTRY
 } CURLformoption;
-struct curl_forms {
-  CURLformoption option;
-  const char *value;
-};
-typedef enum {
-	CURL_FORMADD_OK,
-	CURL_FORMADD_MEMORY,
-	CURL_FORMADD_OPTION_TWICE,
-	CURL_FORMADD_NULL,
-	CURL_FORMADD_UNKNOWN_OPTION,
-	CURL_FORMADD_INCOMPLETE,
-	CURL_FORMADD_ILLEGAL_ARRAY,
-	CURL_FORMADD_DISABLED,
-	CURL_FORMADD_LAST
-} CURLFORMcode;
-CURLFORMcode curl_formadd(struct curl_httppost **httppost, struct curl_httppost **last_post, ...);
-typedef size_t (*curl_formget_callback)(void *arg, const char *buf, size_t len);
-int curl_formget(struct curl_httppost *form, void *arg, curl_formget_callback append);
-void curl_formfree(struct curl_httppost *form);
 char *curl_version(void);
 char *curl_easy_escape(CURL *handle, const char *string, int length);
 char *curl_escape(const char *string, int length);

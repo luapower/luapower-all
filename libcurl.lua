@@ -204,7 +204,7 @@ local function slist(t)
 		dt = {slist}
 		for i=1,#t do
 			local s = t[i]
-			slist[i-1].data = ffi.cast('char*', s)
+			slist[i-1].data = ffi.cast('const char*', s)
 			slist[i-1].next = i < #t and slist[i] or nil
 			table.insert(dt, s)
 		end
@@ -927,133 +927,39 @@ share._free_pinned_vals = easy._free_pinned_vals
 
 ffi.metatype('CURLSH', share_mt)
 
---HTTP multipart/formdata POST -----------------------------------------------
---TODO: remove this C API from hell when we add a multipart lib written in Lua.
+--new mime API ---------------------------------------------------------------
 
-local form = {}
-setmetatable(form, form) --for __call
-curl.form = form
-local form_mt = {__index = form}
+local mime = {}
+local mimepart = {}
 
-local strerr = {
-	[C.CURL_FORMADD_MEMORY] = 'Out of memory',
-	[C.CURL_FORMADD_OPTION_TWICE] = 'Duplicate option',
-	[C.CURL_FORMADD_NULL] = 'Null value',
-	[C.CURL_FORMADD_UNKNOWN_OPTION] = 'Unknown option',
-	[C.CURL_FORMADD_INCOMPLETE] = 'Missing options',
-	[C.CURL_FORMADD_ILLEGAL_ARRAY] = 'Illegal array',
-	[C.CURL_FORMADD_DISABLED] = 'Form module disabled',
-}
-function form_strerror(code)
-	return strerr[tonumber(code)] or 'Unknown error '..code
+function easy:mime() return assert(ptr(C.curl_mime_init(self))) end
+function mime:free() C.curl_mime_free(self) end
+function mime:part() return assert(ptr(C.curl_mime_addpart(self))) end
+
+function mimepart:name      (v) check(C.curl_mime_name(self, v)) end
+function mimepart:filename  (v) check(C.curl_mime_filename(self, v)) end
+function mimepart:mime_type (v) check(C.curl_mime_type(self, v)) end
+function mimepart:encoder   (v) check(C.curl_mime_encoder(self, v)) end
+function mimepart:data      (s, sz) check(C.curl_mime_data(self, s, sz or #s)) end
+function mimepart:file      (v) check(C.curl_mime_filedata(self, v)) end
+function mimepart:data_cb(sz, read, seek, free, arg)
+	check(C.curl_mime_data_cb(self, v, read, seek, free, arg))
+end
+function mimepart:subparts(mimes)
+	local p = ffi.new('curl_mime[?]', #mimes + 1, mimes)
+	p[#mimes] = 0
+	check(C.curl_mime_subparts(self, p))
+end
+function mimepart:headers(headers)
+	local sl0 = ffi.new'struct curl_slist'
+	local sl = sl0
+	for i = 1, #headers do
+		sl0 = C.curl_slist_append(sl0, headers[i])
+	end
+	check(C.curl_mime_headers(self, sl0, true))
 end
 
-local convert_option --fw. decl.
-
-local function formarray(t)
-	assert(#t % 2 == 0)
-	local array = ffi.new('struct curl_forms[?]', #t+1)
-	local pins = {array}
-	local j = 0
-	for i=1,#t,2 do
-		local option, value = convert_option(t[i], t[i+1], pins)
-		array[j].option = option
-		array[j].value = ffi.cast('char*', value)
-		j = j + 1
-	end
-	array[j].option = ffi.cast('long', C.CURLFORM_END)
-	return array, pins
-end
-
-local formopt_options = {
-	[C.CURLFORM_COPYNAME] = str,
-	[C.CURLFORM_PTRNAME] = str,
-	[C.CURLFORM_NAMELENGTH] = long,
-	[C.CURLFORM_COPYCONTENTS] = str,
-	[C.CURLFORM_PTRCONTENTS] = str,
-	[C.CURLFORM_CONTENTSLENGTH] = long,
-	[C.CURLFORM_FILECONTENT] = str,
-	[C.CURLFORM_ARRAY] = formarray,
-	[C.CURLFORM_FILE] = str,
-	[C.CURLFORM_BUFFER] = str,
-	[C.CURLFORM_BUFFERPTR] = voidp,
-	[C.CURLFORM_BUFFERLENGTH] = long,
-	[C.CURLFORM_CONTENTTYPE] = str,
-	[C.CURLFORM_CONTENTHEADER] = slist,
-	[C.CURLFORM_FILENAME] = str,
-	[C.CURLFORM_STREAM] = voidp,
-	[C.CURLFORM_CONTENTLEN] = off_t, --new in 7.46.0
-}
-function convert_option(option, value, pins)
-	local optnum = X('CURLFORM_', option)
-	local convert = assert(formopt_options[optnum])
-	local cval, pinval = convert(value)
-	table.insert(pins, pinval)
-	return ffi.cast('long', optnum), cval
-end
-
-function curl.form()
-	local first_item_buf = ffi.new'struct curl_httppost*[1]'
-	local last_item_buf  = ffi.new'struct curl_httppost*[1]'
-
-	ffi.gc(first_item_buf, function()
-		if first_item_buf[0] == nil then return end --nothing was yet added
-		C.curl_formfree(first_item_buf[0])
-	end)
-
-	local pins = {}
-	local form = {}
-
-	function form:add(...) --add a section
-		local n = select('#', ...)
-		assert(n % 2 == 0)
-		local newpins = {}
-		local args = {}
-		for i=1,n,2 do
-			local option = select(i, ...)
-			local value = select(i+1, ...)
-			local option, value = convert_option(option, value, newpins)
-			table.insert(args, option)
-			table.insert(args, value)
-		end
-		table.insert(args, ffi.cast('long', C.CURLFORM_END))
-		local ret = C.curl_formadd(first_item_buf, last_item_buf, unpack(args))
-		if ret ~= 0 then error(form_strerror(ret)) end
-		--adding new pins only if the add was successful.
-		table.insert(pins, newpins)
-		return self
-	end
-
-	local function get(callback)
-		local function append(_, buf, len)
-			if callback(buf, tonumber(len)) ~= false then
-				return len
-			else
-				return 0
-			end
-		end
-		local append_cb = ffi.cast('curl_formget_callback', append)
-		local ret = C.curl_formget(first_item_buf[0], nil, append_cb)
-		append_cb:free()
-		assert(ret == 0, 'curl_formget failed')
-	end
-	function form:get(arg)
-		assert(first_item_buf[0] ~= nil, 'form empty')
-		if not arg then
-			local t = {}
-			get(function(buf, len) table.insert(t, ffi.string(buf, len)) end)
-			return table.concat(t)
-		elseif type(arg) == 'table' then
-			get(function(buf, len) table.insert(arg, ffi.string(buf, len)) end)
-			return arg
-		elseif type(arg) == 'function' then
-			get(arg)
-		else
-			error('invalid arg')
-		end
-	end
-
-	return form
-end
+ffi.metatype('curl_mime', {__index = mime})
+ffi.metatype('curl_mimepart', {__index = mimepart})
 
 return curl

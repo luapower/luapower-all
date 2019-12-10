@@ -79,15 +79,29 @@ __share interface__
 
 __multipart forms__
 
-`curl.form() -> frm`                                     [create a multipart form][curl_formadd]
+`etr:mime() -> mime`                                     [create a mime object][curl_mime_init]
 
-`frm:add(opt1, val1, ...) -> frm`                        [add a section to a multipart form][curl_formadd]
+`mime:free()`                                            [free a mime object][curl_mime_free]
 
-`frm:get() -> s`                                         [get a multipart form as string][curl_formget]
+`mime:part() -> mimepart`                                [add a mime part to a mime object][curl_mime_addpart]
 
-`frm:get(out_t) -> out_t`                                [get a multipart form as an array of strings][curl_formget]
+`mimepart:name(name)`                                    [set mime part's name][curl_mime_name]
 
-`frm:get(function(buf, len) end)`                        [get a multipart form to a callback][curl_formget]
+`mimepart:filename(filename)`                            [set mime part's filename][curl_mime_filename]
+
+`mimepart:mime_type(mimetype)`                           [set mime part's content type][curl_mime_type]
+
+`mimepart:encoder(encoder)`                              [set mime part's transfer encoding][curl_mime_encoder]
+
+`mimepart:data(s[, sz])`                                 [get mime part's data from string or cdata buffer][curl_mime_data]
+
+`mimepart:file(file)`                                    [get mime part's data from file][curl_mime_filedata]
+
+`mimepart:data_cb(sz, read, seek, free, arg)`            [get mime part's data with callbacks][curl_mime_data_cb]
+
+`mimepart:subparts({mime1,...})`                         [set mime part's subparts][curl_mime_subparts]
+
+`mimepart:headers({header=value})`                       [set mime part's headers][curl_mime_headers]
 
 __misc.__
 
@@ -149,8 +163,18 @@ __misc.__
 [curl_share_cleanup]:       http://curl.haxx.se/libcurl/c/curl_share_cleanup.html
 [curl_share_setopt]:        http://curl.haxx.se/libcurl/c/curl_share_setopt.html
 
-[curl_formadd]:             http://curl.haxx.se/libcurl/c/curl_formadd.html
-[curl_formget]:             http://curl.haxx.se/libcurl/c/curl_formget.html
+[curl_mime_init]:           http://curl.haxx.se/libcurl/c/curl_mime_init.html
+[curl_mime_free]:           http://curl.haxx.se/libcurl/c/curl_mime_free.html
+[curl_mime_addpart]:        http://curl.haxx.se/libcurl/c/curl_mime_addpart.html
+[curl_mime_name]:           http://curl.haxx.se/libcurl/c/curl_mime_name.html
+[curl_mime_filename]:       http://curl.haxx.se/libcurl/c/curl_mime_filename.html
+[curl_mime_type]:           http://curl.haxx.se/libcurl/c/curl_mime_type.html
+[curl_mime_encoder]:        http://curl.haxx.se/libcurl/c/curl_mime_encoder.html
+[curl_mime_data]:           http://curl.haxx.se/libcurl/c/curl_mime_data.html
+[curl_mime_filedata]:       http://curl.haxx.se/libcurl/c/curl_mime_filedata.html
+[curl_mime_data_cb]:        http://curl.haxx.se/libcurl/c/curl_mime_data_cb.html
+[curl_mime_subparts]:       http://curl.haxx.se/libcurl/c/curl_mime_subparts.html
+[curl_mime_headers]:        http://curl.haxx.se/libcurl/c/curl_mime_headers.html
 
 [curl_global_init]:         http://curl.haxx.se/libcurl/c/curl_global_init.html
 [curl_global_init_mem]:     http://curl.haxx.se/libcurl/c/curl_global_init_mem.html
