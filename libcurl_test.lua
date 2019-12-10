@@ -225,9 +225,6 @@ end
 
 --run all tests in order
 
-test.mime()
-os.exit()
-
 for i,name in ipairs(test) do
 	print(name .. ' ' .. ('-'):rep(78 - #name))
 	test[name]()
