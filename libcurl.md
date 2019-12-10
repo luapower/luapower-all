@@ -89,7 +89,7 @@ __multipart forms__
 
 `mimepart:filename(filename)`                            [set mime part's filename][curl_mime_filename]
 
-`mimepart:mime_type(mimetype)`                           [set mime part's content type][curl_mime_type]
+`mimepart:type(mimetype)`                                [set mime part's content type][curl_mime_type]
 
 `mimepart:encoder(encoder)`                              [set mime part's transfer encoding][curl_mime_encoder]
 
@@ -220,6 +220,7 @@ deterministic, which is important since their number is hard-limited.
 ----------------------------- --------------------------------------------------------------------
 __Main options__
 `url`                         [URL to work on.][curlopt_url]
+`curlu`                       [set URL with CURLU object][curlopt_curlu]
 `protocols`                   [Allowed protocols.][curlopt_protocols]
 `redir_protocols`             [Protocols to allow redirects to.][curlopt_redir_protocols]
 `default_protocol`            [Default protocol.][curlopt_default_protocol]
@@ -231,10 +232,10 @@ __Main options__
 `upload`                      [Enable data upload.][curlopt_upload]
 `infilesize`                  [Size of file to send.][curlopt_infilesize_large]
 `timecondition`               [Make a time-conditional request.][curlopt_timecondition]
-`timevalue`                   [Timestamp for conditional request.][curlopt_timevalue]
+`timevalue`                   [Timestamp for conditional request.][curlopt_timevalue_large]
 __Progress Tracking__
 `noprogress`                  [Shut off the progress meter.][curlopt_noprogress]
-`progressfunction`            [OBSOLETE callback for progress meter.][curlopt_progressfunction]
+`progressfunction`            [Callback for progress meter.][curlopt_progressfunction]
 `progressdata`                [Data pointer to pass to the progress meter callback.][curlopt_progressdata]
 `xferinfofunction`            [Callback for progress meter.][curlopt_xferinfofunction]
 `xferinfodata`                [Data pointer to pass to the progress meter callback.][curlopt_xferinfodata]
@@ -251,7 +252,29 @@ __Proxies__
 `httpproxytunnel`             [Tunnel through the HTTP proxy.][curlopt_httpproxytunnel]
 `socks5_gssapi_service`       [Socks5 GSSAPI service name.][curlopt_socks5_gssapi_service]
 `socks5_gssapi_nec`           [Socks5 GSSAPI NEC mode.][curlopt_socks5_gssapi_nec]
+`socks5_auth`                 [set allowed methods for SOCKS5 proxy authentication][curlopt_socks5_auth]
 `proxy_service_name`          [Proxy service name.][curlopt_proxy_service_name]
+`proxy_cainfo`                [path to proxy Certificate Authority (CA) bundle][curlopt_proxy_cainfo]
+`proxy_capath`                [directory holding proxy CA certificates][curlopt_proxy_capath]
+`proxy_ssl_verifypeer`        [verify the proxy's SSL certificate][curlopt_proxy_ssl_verifypeer]
+`proxy_ssl_verifyhost`        [verify the proxy certificate's name against host][curlopt_proxy_ssl_verifyhost]
+`proxy_sslversion`            [set preferred proxy TLS/SSL version][curlopt_proxy_sslversion]
+`proxy_tlsauth_username`      [user name to use for proxy TLS authentication][curlopt_proxy_tlsauth_username]
+`proxy_tlsauth_password`      [password to use for proxy TLS authentication][curlopt_proxy_tlsauth_password]
+`proxy_tlsauth_type`          [set proxy TLS authentication methods][curlopt_proxy_tlsauth_type]
+`proxy_sslcert`               [set SSL proxy client certificate][curlopt_proxy_sslcert]
+`proxy_sslcerttype`           [specify type of the proxy client SSL certificate][curlopt_proxy_sslcerttype]
+`proxy_sslkey`                [specify private keyfile for TLS and SSL proxy client cert][curlopt_proxy_sslkey]
+`proxy_sslkeytype`            [set type of the proxy private key file][curlopt_proxy_sslkeytype]
+`proxy_keypasswd`             [set passphrase to proxy private key][curlopt_proxy_keypasswd]
+`proxy_ssl_cipher_list`       [specify ciphers to use for proxy TLS][curlopt_proxy_ssl_cipher_list]
+`proxy_crlfile`               [specify a proxy Certificate Revocation List file][curlopt_proxy_crlfile]
+`proxy_ssl_options`           [set proxy SSL behavior options][curlopt_proxy_ssl_options]
+`pre_proxy`                   [set pre-proxy to use][curlopt_pre_proxy]
+`proxy_pinnedpublickey`       [set pinned public key for https proxy][curlopt_proxy_pinnedpublickey]
+`suppress_connect_headers`    [Suppress proxy CONNECT response headers from user callbacks][curlopt_suppress_connect_headers]
+`haproxyprotocol`             [send HAProxy PROXY protocol v1 header][curlopt_haproxyprotocol]
+`proxy_tls13_ciphers`         [Ciphers suites for proxy TLS 1.3][curlopt_proxy_tls13_ciphers]
 __I/O Callbacks__
 `writefunction`               [Callback for writing data.][curlopt_writefunction]
 `writedata`                   [Data pointer to pass to the write callback.][curlopt_writedata]
@@ -281,6 +304,7 @@ __Authentication__
 `proxyauth`                   [HTTP proxy authentication methods.][curlopt_proxyauth]
 `sasl_ir`                     [Enable SASL initial response.][curlopt_sasl_ir]
 `xoauth2_bearer`              [OAuth2 bearer token.][curlopt_xoauth2_bearer]
+`sasl_authzid`                [Authorisation identity (identity to act as)][curlopt_sasl_authzid]
 __HTTP Protocol__
 `autoreferer`                 [Automatically set Referer: header.][curlopt_autoreferer]
 `accept_encoding`             [Accept-Encoding and automatic decompressing data.][curlopt_accept_encoding]
@@ -313,6 +337,17 @@ __HTTP Protocol__
 `http_transfer_decoding`      [Disable Transfer decoding.][curlopt_http_transfer_decoding]
 `expect_100_timeout_ms`       [100-continue timeout in ms.][curlopt_expect_100_timeout_ms]
 `pipewait`                    [Wait on connection to pipeline on it.][curlopt_pipewait]
+`keep_sending_on_error`       [Keep sending on early HTTP response >= 300][curlopt_keep_sending_on_error]
+`request_target`              [Specify an alternative target for this request][curlopt_request_target]
+`mimepost`                    [Set post/send data from mime structure][curlopt_mimepost]
+`disallow_username_in_url`    [Disallow specifying username in the url][curlopt_disallow_username_in_url]
+`trailerfunction`             [Set callback for sending trailing headers][curlopt_trailerfunction]
+`trailerdata`                 [Custom pointer passed to the trailing headers callback][curlopt_trailerdata]
+`http09_allowed`              [Allow HTTP/0.9 response][curlopt_http09_allowed]
+__HTTP/2 Protocol__
+`stream_weight`               [Set numerical stream weight][curlopt_stream_weight]
+`stream_depends`              [Set stream this transfer depends on][curlopt_stream_depends]
+`stream_depends_e`            [Set stream this transfer depends on exclusively][curlopt_stream_depends_e]
 __Connection__
 `interface`                   [Bind connection locally to this.][curlopt_interface]
 `localport`                   [Bind connection locally to this port.][curlopt_localport]
@@ -321,8 +356,10 @@ __Connection__
 `tcp_keepalive`               [Enable TCP keep-alive.][curlopt_tcp_keepalive]
 `tcp_keepidle`                [Idle time before sending keep-alive.][curlopt_tcp_keepidle]
 `tcp_keepintvl`               [Interval between keep-alive probes.][curlopt_tcp_keepintvl]
+`tcp_fastopen`                [enable TCP Fast Open][curlopt_tcp_fastopen]
 `address_scope`               [IPv6 scope for local addresses.][curlopt_address_scope]
 `unix_socket_path`            [Path to a Unix domain socket.][curlopt_unix_socket_path]
+`abstract_unix_socket`        [Set an abstract Unix domain socket][curlopt_abstract_unix_socket]
 `dns_interface`               [Bind name resolves to an interface.][curlopt_dns_interface]
 `dns_cache_timeout`           [Timeout for DNS cache.][curlopt_dns_cache_timeout]
 `dns_local_ip4`               [Bind name resolves to an IP4 address.][curlopt_dns_local_ip4]
@@ -348,6 +385,14 @@ __Connection__
 `closesocketdata`             [][curlopt_closesocketdata]
 `sockoptfunction`             [Callback for sockopt operations.][curlopt_sockoptfunction]
 `sockoptdata`                 [Data pointer to pass to the sockopt callback.][curlopt_sockoptdata]
+`connect_to`                  [Connect to a specific host and port instead of the URL's host and port][curlopt_connect_to]
+`happy_eyeballs_timeout_ms`   [Head start for ipv6 for happy eyeballs][curlopt_happy_eyeballs_timeout_ms]
+`resolver_start_function`     [Set callback to be called before a new resolve request is started][curlopt_resolver_start_function]
+`resolver_start_data`         [Custom pointer passed to the resolver start callback][curlopt_resolver_start_data]
+`dns_shuffle_addresses`       [Shuffle addresses when a hostname returns more than one][curlopt_dns_shuffle_addresses]
+`doh_url`                     [Provide the DNS-over-HTTPS URL][curlopt_doh_url]
+`upkeep_interval_ms`          [Connection upkeep interval][curlopt_upkeep_interval_ms]
+`maxage_conn`                 [Max idle time allowed for reusing a connection][curlopt_maxage_conn]
 __SSH Protocol__
 `ssh_auth_types`              [SSH authentication types.][curlopt_ssh_auth_types]
 `ssh_public_keyfile`          [File name of public key.][curlopt_ssh_public_keyfile]
@@ -356,12 +401,14 @@ __SSH Protocol__
 `ssh_keyfunction`             [Callback for known hosts handling.][curlopt_ssh_keyfunction]
 `ssh_keydata`                 [Custom pointer to pass to ssh key callback.][curlopt_ssh_keydata]
 `ssh_host_public_key_md5`     [MD5 of host's public key.][curlopt_ssh_host_public_key_md5]
+`ssh_compression`             [enables compression / decompression of SSH traffic][curlopt_ssh_compression]
 __SMTP Protocol__
 `mail_from`                   [Address of the sender.][curlopt_mail_from]
 `mail_rcpt`                   [Address of the recipients.][curlopt_mail_rcpt]
 `mail_auth`                   [Authentication address.][curlopt_mail_auth]
 __TFTP Protocol__
 `tftp_blksize`                [TFTP block size.][curlopt_tftp_blksize]
+`tftp_no_options`             [Do not send TFTP options requests.][curlopt_tftp_no_options]
 __SSL__
 `use_ssl`                     [Use TLS/SSL.][curlopt_use_ssl]
 `sslcert`                     [Client cert.][curlopt_sslcert]
@@ -393,6 +440,9 @@ __SSL__
 `random_file`                 [Provide source for entropy random data.][curlopt_random_file]
 `egdsocket`                   [Identify EGD socket for entropy.][curlopt_egdsocket]
 `gssapi_delegation`           [Disable GSS-API delegation. ][curlopt_gssapi_delegation]
+`tls13_ciphers`               [Specify ciphers suites to use for TLS 1.3][curlopt_tls13_ciphers]
+`altsvc_ctrl`                 [Control alt-svc behavior][curlopt_altsvc_ctrl]
+`altsvc`                      [Set alt-svc cache file name][curlopt_altsvc]
 __FTP Protocol__
 `ftpport`                     [Use active FTP.][curlopt_ftpport]
 `quote`                       [Commands to run before transfer.][curlopt_quote]
@@ -448,6 +498,7 @@ __Misc. Options__
 `maxconnects`                 [Maximum number of connections in the connection pool.][curlopt_maxconnects]
 `headerfunction`              [Callback for writing received headers.][curlopt_headerfunction]
 `headerdata`                  [Data pointer to pass to the header callback.][curlopt_headerdata]
+`upload_buffersize`           [Set preferred upload buffer size][curlopt_upload_buffersize]
 __Debugging__
 `debugfunction`               [Callback for debug information.][curlopt_debugfunction]
 `debugdata`                   [Data pointer to pass to the debug callback.][curlopt_debugdata]
@@ -495,6 +546,24 @@ __Debugging__
 [curlopt_proxypassword]:               http://curl.haxx.se/libcurl/c/CURLOPT_PROXYPASSWORD.html
 [curlopt_proxyheader]:                 http://curl.haxx.se/libcurl/c/CURLOPT_PROXYHEADER.html
 [curlopt_noproxy]:                     http://curl.haxx.se/libcurl/c/CURLOPT_NOPROXY.html
+[curlopt_proxy_cainfo]:                http://curl.haxx.se/libcurl/c/CURLOPT_PROXY_CAINFO.html
+[curlopt_proxy_capath]:                http://curl.haxx.se/libcurl/c/CURLOPT_PROXY_CAPATH.html
+[curlopt_proxy_ssl_verifypeer]:        http://curl.haxx.se/libcurl/c/CURLOPT_PROXY_SSL_VERIFYPEER.html
+[curlopt_proxy_ssl_verifyhost]:        http://curl.haxx.se/libcurl/c/CURLOPT_PROXY_SSL_VERIFYHOST.html
+[curlopt_proxy_sslversion]:            http://curl.haxx.se/libcurl/c/CURLOPT_PROXY_SSLVERSION.html
+[curlopt_proxy_tlsauth_username]:      http://curl.haxx.se/libcurl/c/CURLOPT_PROXY_TLSAUTH_USERNAME.html
+[curlopt_proxy_tlsauth_password]:      http://curl.haxx.se/libcurl/c/CURLOPT_PROXY_TLSAUTH_PASSWORD.html
+[curlopt_proxy_tlsauth_type]:          http://curl.haxx.se/libcurl/c/CURLOPT_PROXY_TLSAUTH_TYPE.html
+[curlopt_proxy_sslcert]:               http://curl.haxx.se/libcurl/c/CURLOPT_PROXY_SSLCERT.html
+[curlopt_proxy_sslcerttype]:           http://curl.haxx.se/libcurl/c/CURLOPT_PROXY_SSLCERTTYPE.html
+[curlopt_proxy_sslkey]:                http://curl.haxx.se/libcurl/c/CURLOPT_PROXY_SSLKEY.html
+[curlopt_proxy_sslkeytype]:            http://curl.haxx.se/libcurl/c/CURLOPT_PROXY_SSLKEYTYPE.html
+[curlopt_proxy_keypasswd]:             http://curl.haxx.se/libcurl/c/CURLOPT_PROXY_KEYPASSWD.html
+[curlopt_proxy_ssl_cipher_list]:       http://curl.haxx.se/libcurl/c/CURLOPT_PROXY_SSL_CIPHER_LIST.html
+[curlopt_proxy_crlfile]:               http://curl.haxx.se/libcurl/c/CURLOPT_PROXY_CRLFILE.html
+[curlopt_proxy_ssl_options]:           http://curl.haxx.se/libcurl/c/CURLOPT_PROXY_SSL_OPTIONS.html
+[curlopt_pre_proxy]:                   http://curl.haxx.se/libcurl/c/CURLOPT_PRE_PROXY.html
+[curlopt_proxy_pinnedpublickey]:       http://curl.haxx.se/libcurl/c/CURLOPT_PROXY_PINNEDPUBLICKEY.html
 [curlopt_writefunction]:               http://curl.haxx.se/libcurl/c/CURLOPT_WRITEFUNCTION.html
 [curlopt_writedata]:                   http://curl.haxx.se/libcurl/c/CURLOPT_WRITEDATA.html
 [curlopt_readfunction]:                http://curl.haxx.se/libcurl/c/CURLOPT_READFUNCTION.html
@@ -511,7 +580,7 @@ __Debugging__
 [curlopt_crlf]:                        http://curl.haxx.se/libcurl/c/CURLOPT_CRLF.html
 [curlopt_quote]:                       http://curl.haxx.se/libcurl/c/CURLOPT_QUOTE.html
 [curlopt_timecondition]:               http://curl.haxx.se/libcurl/c/CURLOPT_TIMECONDITION.html
-[curlopt_timevalue]:                   http://curl.haxx.se/libcurl/c/CURLOPT_TIMEVALUE.html
+[curlopt_timevalue_large]:             http://curl.haxx.se/libcurl/c/CURLOPT_TIMEVALUE_LARGE.html
 [curlopt_customrequest]:               http://curl.haxx.se/libcurl/c/CURLOPT_CUSTOMREQUEST.html
 [curlopt_postquote]:                   http://curl.haxx.se/libcurl/c/CURLOPT_POSTQUOTE.html
 [curlopt_upload]:                      http://curl.haxx.se/libcurl/c/CURLOPT_UPLOAD.html
@@ -673,6 +742,39 @@ __Debugging__
 [curlopt_xoauth2_bearer]:              http://curl.haxx.se/libcurl/c/CURLOPT_XOAUTH2_BEARER.html
 [curlopt_xferinfofunction]:            http://curl.haxx.se/libcurl/c/CURLOPT_XFERINFOFUNCTION.html
 [curlopt_xferinfodata]:                http://curl.haxx.se/libcurl/c/CURLOPT_XFERINFODATA.html
+
+[curlopt_stream_weight]:               http://curl.haxx.se/libcurl/c/CURLOPT_STREAM_WEIGHT.html
+[curlopt_stream_depends]:              http://curl.haxx.se/libcurl/c/CURLOPT_STREAM_DEPENDS.html
+[curlopt_stream_depends_e]:            http://curl.haxx.se/libcurl/c/CURLOPT_STREAM_DEPENDS_E.html
+[curlopt_tftp_no_options]:             http://curl.haxx.se/libcurl/c/CURLOPT_TFTP_NO_OPTIONS.html
+[curlopt_connect_to]:                  http://curl.haxx.se/libcurl/c/CURLOPT_CONNECT_TO.html
+[curlopt_tcp_fastopen]:                http://curl.haxx.se/libcurl/c/CURLOPT_TCP_FASTOPEN.html
+[curlopt_keep_sending_on_error]:       http://curl.haxx.se/libcurl/c/CURLOPT_KEEP_SENDING_ON_ERROR.html
+[curlopt_abstract_unix_socket]:        http://curl.haxx.se/libcurl/c/CURLOPT_ABSTRACT_UNIX_SOCKET.html
+[curlopt_suppress_connect_headers]:    http://curl.haxx.se/libcurl/c/CURLOPT_SUPPRESS_CONNECT_HEADERS.html
+[curlopt_request_target]:              http://curl.haxx.se/libcurl/c/CURLOPT_REQUEST_TARGET.html
+[curlopt_socks5_auth]:                 http://curl.haxx.se/libcurl/c/CURLOPT_SOCKS5_AUTH.html
+[curlopt_ssh_compression]:             http://curl.haxx.se/libcurl/c/CURLOPT_SSH_COMPRESSION.html
+[curlopt_mimepost]:                    http://curl.haxx.se/libcurl/c/CURLOPT_MIMEPOST.html
+[curlopt_happy_eyeballs_timeout_ms]:   http://curl.haxx.se/libcurl/c/CURLOPT_HAPPY_EYEBALLS_TIMEOUT_MS.html
+[curlopt_resolver_start_function]:     http://curl.haxx.se/libcurl/c/CURLOPT_RESOLVER_START_FUNCTION.html
+[curlopt_resolver_start_data]:         http://curl.haxx.se/libcurl/c/CURLOPT_RESOLVER_START_DATA.html
+[curlopt_haproxyprotocol]:             http://curl.haxx.se/libcurl/c/CURLOPT_HAPROXYPROTOCOL.html
+[curlopt_dns_shuffle_addresses]:       http://curl.haxx.se/libcurl/c/CURLOPT_DNS_SHUFFLE_ADDRESSES.html
+[curlopt_tls13_ciphers]:               http://curl.haxx.se/libcurl/c/CURLOPT_TLS13_CIPHERS.html
+[curlopt_proxy_tls13_ciphers]:         http://curl.haxx.se/libcurl/c/CURLOPT_PROXY_TLS13_CIPHERS.html
+[curlopt_disallow_username_in_url]:    http://curl.haxx.se/libcurl/c/CURLOPT_DISALLOW_USERNAME_IN_URL.html
+[curlopt_doh_url]:                     http://curl.haxx.se/libcurl/c/CURLOPT_DOH_URL.html
+[curlopt_upload_buffersize]:           http://curl.haxx.se/libcurl/c/CURLOPT_UPLOAD_BUFFERSIZE.html
+[curlopt_upkeep_interval_ms]:          http://curl.haxx.se/libcurl/c/CURLOPT_UPKEEP_INTERVAL_MS.html
+[curlopt_curlu]:                       http://curl.haxx.se/libcurl/c/CURLOPT_CURLU.html
+[curlopt_trailerfunction]:             http://curl.haxx.se/libcurl/c/CURLOPT_TRAILERFUNCTION.html
+[curlopt_trailerdata]:                 http://curl.haxx.se/libcurl/c/CURLOPT_TRAILERDATA.html
+[curlopt_http09_allowed]:              http://curl.haxx.se/libcurl/c/CURLOPT_HTTP09_ALLOWED.html
+[curlopt_altsvc_ctrl]:                 http://curl.haxx.se/libcurl/c/CURLOPT_ALTSVC_CTRL.html
+[curlopt_altsvc]:                      http://curl.haxx.se/libcurl/c/CURLOPT_ALTSVC.html
+[curlopt_maxage_conn]:                 http://curl.haxx.se/libcurl/c/CURLOPT_MAXAGE_CONN.html
+[curlopt_sasl_authzid]:                http://curl.haxx.se/libcurl/c/CURLOPT_SASL_AUTHZID.html
 
 ## Multi interface
 

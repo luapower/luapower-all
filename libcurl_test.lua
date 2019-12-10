@@ -209,13 +209,15 @@ function test.download()
 end
 
 function test.mime()
-	local e = curl.easy{
-		url = 'http://speedtest.tele2.net/upload.php',
-	}
+	local e = curl.easy()
 	local m = e:mime()
 	local p = m:part()
 	p:headers{'Some-Header: foo', 'Other-Header: bar'}
-	p:file[[x:\openresty\openssl-1.1.1d.tar.gz]]
+	p:name'openssl-file'
+	p:filename'openssl-1.1.1d.tar.gz'
+	p:data(('hello\n'):rep(10)..'\nEND')
+	e:set('mimepost', m)
+	e:set('url', 'http://ptsv2.com/t/capr/post')
 	assert(e:perform())
 	e:close()
 	print'\nDone'
