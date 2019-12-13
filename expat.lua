@@ -8,6 +8,8 @@
 --    spec_t = {read= | string= | cdata=,size= | path=}
 --  	root_node = {tag=, attrs={<k>=v}, children={node1,...}, tags={<tag> = node}, cdata=}
 
+if not ... then require'expat_test'; return end
+
 local glue = require'glue'
 local ffi = require'ffi'
 require'expat_h'
@@ -184,7 +186,7 @@ local function parse(t, callbacks)
 			return
 		end
 	end
-	error('unspecified data source: '..table.concat(glue.keys(parser), ', ')..' expected')
+	error'source missing'
 end
 
 local function maketree_callbacks(known_tags)
@@ -233,8 +235,6 @@ local function children(t,tag) --iterate a node's children of a specific tag
 		return v
 	end
 end
-
-if not ... then require'expat_test' end
 
 return {
 	parse = parse,
