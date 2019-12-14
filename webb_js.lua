@@ -59,7 +59,7 @@ LOADS
 ]==]
 
 require'webb'
-require'action'
+require'webb_action'
 
 --pass required config values to the client
 action['config.js'] = function()

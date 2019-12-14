@@ -1,6 +1,6 @@
 --[==[
 
-	webb framework | mail sending module
+	webb | sending email
 	Written by Cosmin Apreutesei. Public Domain.
 
 MAIL
@@ -9,6 +9,7 @@ MAIL
 
 ]==]
 
+require'webb'
 require'resty.socket'
 local smtp = require'socket.smtp'
 smtp.TIMEOUT = 6000

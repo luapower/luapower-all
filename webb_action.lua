@@ -1,6 +1,6 @@
 --[==[
 
-	webb | action-based routing module
+	webb | action-based routing
 	Written by Cosmin Apreutesei. Public Domain.
 
 ACTION ALIASES
@@ -34,6 +34,8 @@ TODO
 	* css & js minifying filters
 
 ]==]
+
+require'webb'
 
 --action aliases -------------------------------------------------------------
 

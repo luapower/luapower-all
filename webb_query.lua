@@ -1,6 +1,6 @@
 --[==[
 
-	webb | mysql query module
+	webb | mysql query function
 	Written by Cosmin Apreutesei. Public Domain.
 
 QUERY
@@ -26,7 +26,8 @@ QUERY/DDL
 
 ]==]
 
-local mysql = require'resty.mysql'
+require'webb'
+local mysql = require'webb_mysql'
 
 --db connection --------------------------------------------------------------
 
@@ -39,7 +40,7 @@ local function assert_db(ret, ...)
 end
 
 local function connect()
-	if conn then return end
+	if db then return end
 	db = assert(mysql:new())
 	db:set_timeout(config('db_conn_timeout', 3) * 1000)
 	assert_db(db:connect{

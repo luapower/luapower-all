@@ -1,7 +1,11 @@
+--[[
 
---overwrite these because they are only appended to package.c/path by default.
-package.path = os.getenv'LUA_PATH'
-package.cpath = os.getenv'LUA_CPATH'
+	webb | nginx main entry point
+	Written by Cosmin Apreutesei. Public Domain.
+
+]]
+
+assert(ngx, 'runtime not nginx')
 
 --global error handler: log and print the error and exit with 500.
 --http error objects coming from webb are handled separately.
@@ -31,7 +35,7 @@ local function try_call(func, ...)
 end
 
 try_call(function()
-	local main_module = ngx.var.main_module or 'main'
+	local main_module = ngx.var.main_module
 	local handle_request = require(main_module)
 	handle_request()
 end)

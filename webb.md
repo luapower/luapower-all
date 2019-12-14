@@ -3,10 +3,6 @@ tagline: Procedural web framework for OpenResty
 requires: nginx
 ---
 
-## What is this?
-
-Webb is a procedural web framework for OpenResty.
-
 ## Status
 
 <warn>In active development.</warn>
@@ -15,32 +11,39 @@ Webb is a procedural web framework for OpenResty.
 
 Here's a very basic website sketch that uses some webb features.
 
-Create a file `nginx-server-foo.conf` and type in it:
+Create a file `foo-nginx.conf` and type in it:
 
 ```
-server {
-	listen 127.0.0.1:8000;     # default is *:8000;
-	set $main_module "main";   # runs main.lua for every url.
-	set $hide_errors true;     # hide errors when crashing (for production).
-	include nginx-webb.conf;   # hook up webb to nginx.
+error_log logs/foo-error.log;  # default is logs/error.log.
+events {}
+http {
+	lua_code_cache off;           # auto-reload Lua modules (for development).
+	server {
+		listen 127.0.0.1:8000;     # default is *:8000;
+		set $main_module "foo";    # runs foo.lua for every url.
+		set $hide_errors true;     # hide errors when crashing (for production).
+		access_log logs/foo-access.log;  # default is logs/access.log.
+		include webb-nginx.conf;   # hook up webb to nginx.
+	}
 }
 ```
 
 Type `./nginx -s start` then check `http://127.0.0.1:8000`.
 
-You should get a 500 error because `main.lua` (our main file) is missing.
+You should get a 500 error because `foo.lua` (our main file) is missing.
 Below is an example on how to set up this file.
 
-### `main.lua`
+### `foo.lua`
 
 ```
-require'webb'      -- base webb API, see webb.lua.
-require'webbjs'    -- webbjs support API, see www/webb.js and webbjs.lua.
-require'query'     -- if using mysql.
-require'sendmail'  -- if sending mail.
-require'session'   -- if needing session tracking and/or user accounts.
-require'config'    -- config.lua file, see below.
-require'secrets'   -- secrets.lua file, see below.
+require'webb'           -- base API.
+require'webb_js'        -- support API for www/webb.js.
+require'webb_query'     -- if using mysql.
+require'webb_sendmail'  -- if sending mail.
+require'webb_session'   -- if needing session tracking and/or user accounts.
+require'webb_session'   -- if needing session tracking and/or user accounts.
+require'foo_config'     -- foo_config.lua file, see below.
+require'foo_secrets'    -- foo_secrets.lua file, see below.
 
 cssfile[[
 	font-awesome.css    --if using font awesome
@@ -57,7 +60,7 @@ jsfile[[
 	google.js           --if using g+ authentication
 	account.js          --if using the standard account widget TODO
 	resetpass.js        --if using the sandard reset password widget TODO
-	config.js           --auto-generated with some values from config.lua
+	config.js           --auto-generated with some values from foo_config.lua
 ]]
 
 function action.home()
@@ -73,11 +76,11 @@ return function()  --called for every URL. make your routing strategy here.
 end
 ```
 
-### `config.lua`
+### `foo_config.lua`
 
 Note: only need to add the lines for which the value is different than below.
-Also note: these can also be set as environment variables as well as nginx
-variables (`set` directive).
+Also note: these can also be set as nginx variables (`set` directive) or as
+environment variables.
 
 ```
 config('lang', 'en') --the default language
@@ -112,7 +115,7 @@ config('google_client_id', '<google client id>')  --google client id for g+ auth
 config('analytics_ua',     '<analytics UA code>') --google analytics UA code for analytics
 ```
 
-### `secrets.lua`, not to be added to git
+### `foo_secrets.lua`, not to be added to git
 
 ```
 config('pass_salt',      '<any random string>') --for encrypting passwords in the database
@@ -124,11 +127,12 @@ config('db_pass',        nil)                   --the mysql password
 
 ------------------------------ -----------------------------------------------
 webb.lua                       main module
-action.lua                     routing module
-query.lua                      mysql query module
-session.lua                    session and authentication module
-sendmail.lua                   sending emails
-webbjs.lua                     webb.js support module
+webb_action.lua                routing module
+webb_query.lua                 mysql query module
+webb_sendmail.lua              email sending
+webb_js.lua                    webb.js support module
+webb_session.lua               cookie-based sessions
+webb_auth.lua                  session authentication
 www/webb.js                    client-side main module
 www/webb.ajax.js               ajax module
 www/webb.timeago.js            time formatting
@@ -140,16 +144,17 @@ www/webb.content-tools.js      contenteditable library
 ## Third-party modules
 
 ----------------------- ------ -----------------------------------------------
-resty/session.lua       1.1    bungle/lua-resty-session
 resty/socket.lua        0.0.4  thibaultcha/lua-resty-socket
-resty/mysql.lua         ?      built-in, db:read_result() modified for query.lua!
+webb_mysql.lua          ?      lua-resty-mysql; db:read_result() modified for query.lua!
 lp.lua                  1.15
-jquery.js               3.4.1
-jquery.history.js       1.8.0
-jquery.validate.js      1.19.1
-jquery.easing.js        1.3
-mustache.js             3.1.0
-normalize.css           8.0.1
+www/jquery.js           3.4.1
+www/jquery.history.js   1.8.0
+www/jquery.validate.js  1.19.1
+www/jquery.easing.js    1.3
+www/jquery.toasty.js    ?
+www/jwuery.unslider.js  ?
+www/mustache.js         3.1.0
+www/normalize.css       8.0.1
 ----------------------- ------ -----------------------------------------------
 
 ### Reset MySQL root password
