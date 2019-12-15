@@ -86,7 +86,6 @@ environment variables.
 config('lang', 'en') --the default language
 
 config('base_url', nil)   --website's base url: optional, for absurl().
-config('www_dir' , 'www') --the static files dir, relative to luapower's dir.
 
 config('root_action'      , 'home') --the action to run for the '/' path
 config('templates_action' , '_templates')

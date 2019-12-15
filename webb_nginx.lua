@@ -35,7 +35,10 @@ local function try_call(func, ...)
 end
 
 try_call(function()
-	local main_module = ngx.var.main_module
-	local handle_request = require(main_module)
-	handle_request()
+	local main = ngx.var.main_module
+	local main = require(main)
+	if type(main) == 'table' then
+		main = main.respond
+	end
+	main()
 end)
