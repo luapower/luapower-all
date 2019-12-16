@@ -50,6 +50,7 @@ OUTPUT
 	record(f) -> s                          run f and collect out() calls
 	out_buffering() -> t | f                check if we're buffering output
 	setheader(name, val)                    set a header (unless we're buffering)
+	setmime(ext)                            set content-type based on file extension
 	print(...)                              like Lua's print but uses out()
 
 HTML ENCODING
@@ -70,6 +71,11 @@ RESPONSE
 	allow(ret[, err]) -> ret                exit with "403 forbidden"
 	check_etag(s)                           exit with "304 not modified"
 
+SCHEDULER
+
+sleep(n)                                   sleep n seconds
+connect(ip, port) -> sock                  connect to a server
+
 JSON ENCODING/DECODING
 
 	json(s) -> t                            decode json
@@ -77,10 +83,9 @@ JSON ENCODING/DECODING
 
 FILESYSTEM
 
-	basepath([file]) -> path                get filesystem path (unchecked)
-	filepath(file) -> path                  get filesystem path (must exist)
-	readfile(file) -> s                     get file contents
-	readfile.filename <- s|f(filename)      set virtual file contents
+	wwwpath([file], [type]) -> path|nil     get www subpath (and check if exists)
+	wwwfile(file) -> s                      get file contents
+	wwwfile.filename <- s|f(filename)       set virtual file contents
 
 MUSTACHE TEMPLATES
 
@@ -417,6 +422,22 @@ function setheader(name, val)
 	ngx.header[name] = val
 end
 
+mime_types = {
+	html = 'text/html',
+	txt  = 'text/plain',
+	css  = 'text/css',
+	json = 'application/json',
+	js   = 'application/javascript',
+	jpg  = 'image/jpeg',
+	jpeg = 'image/jpeg',
+	png  = 'image/png',
+	ico  = 'image/ico',
+}
+
+function setmime(ext)
+	setheader('content-type', assert(mime_types[ext]))
+end
+
 local function print_wrapper(print)
 	return function(...)
 		if not ngx.headers_sent then
@@ -441,6 +462,20 @@ pp = print_wrapper(glue.printer(function(v)
 	end
 end)
 )
+
+--scheduler ------------------------------------------------------------------
+
+sleep = ngx.sleep
+
+function connect(ip, port)
+	local skt = ngx.socket.tcp()
+	skt:settimeout(5000)
+	skt:setkeepalive()
+	local ok, err = skt:connect(ip, port)
+	if not ok then return nil, err end
+	return skt
+end
+
 --html encoding --------------------------------------------------------------
 
 function html(s)
@@ -520,21 +555,21 @@ function url(path, params)
 end
 
 --[[
-ngx.say(require'pp'.format(url('a/b?a&b=1')))
+ngx.say(pp.format(url('a/b?a&b=1')))
 ngx.say(url{'a', 'b', a=true, b=1})
 ngx.say()
-ngx.say(require'pp'.format(url('?a&b=1')))
+ngx.say(pp.format(url('?a&b=1')))
 ngx.say(url{'', a=true, b=1})
 ngx.say()
-ngx.say(require'pp'.format(url('a/b?')))
+ngx.say(pp.format(url('a/b?')))
 ngx.say(url{'a', 'b', ['']=true})
 ngx.say()
-ngx.say(require'pp'.format(url('a/b')))
+ngx.say(pp.format(url('a/b')))
 ngx.say(url{'a', 'b'})
 ngx.say()
 ngx.say(url('a/b?a&b=1', {'c', b=2}))
 ngx.say()
-ngx.say(require'pp'.format(url(nil, 'a&b=1')))
+ngx.say(pp.format(url(nil, 'a&b=1')))
 ngx.say(url(nil, {a=true, b=1}))
 ngx.say()
 ]]
@@ -621,33 +656,30 @@ end
 
 --filesystem API -------------------------------------------------------------
 
-function basepath(file)
-	return 'www'..(file and '/'..file or '')
-end
-
 local fs = require'fs'
 
-function filepath(file) --file -> path (if exists)
-	if file:find('..', 1, true) then return end --trying to escape
-	local path = basepath(file)
-	if not fs.is(path) then return end
+function wwwpath(file, type)
+	if file and file:find('..', 1, true) then return end --trying to escape
+	local path = config'www_dir'
+	if file then path = path..'/'..file end
+	if type and not fs.is(path, type) then return end
 	return path
 end
 
-local function readfile_call(files, file)
+local function wwwfile_call(files, file)
 	local f = files[file]
 	if type(f) == 'function' then
 		return f()
 	elseif f then
 		return f
 	else
-		local s = glue.readfile(basepath(file))
+		local s = glue.readfile(wwwpath(file))
 		return glue.assert(s, 'file not found: %s', file)
 	end
 end
 
-readfile = {} --{filename -> content | handler(filename)}
-setmetatable(readfile, {__call = readfile_call})
+wwwfile = {} --{filename -> content | handler(filename)}
+setmetatable(wwwfile, {__call = wwwfile_call})
 
 --mustache html templates ----------------------------------------------------
 
@@ -662,7 +694,7 @@ function render_string(s, data, partials)
 end
 
 function render_file(file, data, partials)
-	return render_string(readfile(file), data, partials)
+	return render_string(wwwfile(file), data, partials)
 end
 
 function mustache_wrap(s, name)
@@ -702,15 +734,15 @@ end
 --gather all the templates from the filesystem
 local load_templates = glue.memoize(function()
 	local t = {}
-	for file, d in fs.dir(basepath()) do
+	for file, d in fs.dir(wwwpath()) do
 		assert(file)
-		if file:find'%.html%.mu$' and fs.is(basepath(file), 'file') then
+		if file:find'%.html%.mu$' and d:is'file' then
 			t[#t+1] = file
 		end
 	end
 	table.sort(t)
 	for i,file in ipairs(t) do
-		local s = readfile(file)
+		local s = wwwfile(file)
 		local _, i = mustache_unwrap(s, template, file)
 		if i == 0 then --must be without the <script> tag
 			local name = file:gsub('%.html%.mu$', '')
@@ -762,7 +794,7 @@ local function compile_string(s, chunkname)
 end
 
 local compile = glue.memoize(function(file)
-	return compile_string(readfile(file), '@'..file)
+	return compile_string(wwwfile(file), '@'..file)
 end)
 
 function include_string(s, env, chunkname, ...)
@@ -784,7 +816,7 @@ local function compile_lua_string(s, chunkname)
 end
 
 local compile_lua = glue.memoize(function(file)
-	return compile_lua_string(readfile(file), file)
+	return compile_lua_string(wwwfile(file), file)
 end)
 
 function run_string(s, env, ...)
@@ -850,16 +882,16 @@ function catlist(listfile, ...)
 	local t = {} --etag seeds
 	local c = {} --output generators
 
-	for i,file in ipairs(catlist_files(readfile(listfile))) do
-		if readfile[file] then --virtual file
-			table.insert(t, readfile(file))
-			table.insert(c, function() out(readfile(file)) end)
+	for i,file in ipairs(catlist_files(wwwfile(listfile))) do
+		if wwwfile[file] then --virtual file
+			table.insert(t, wwwfile(file))
+			table.insert(c, function() out(wwwfile(file)) end)
 		else
-			local path = filepath(file)
+			local path = wwwfile(file)
 			if path then --plain file, get its mtime
 				local mtime = fs.attr(path, 'mtime')
 				table.insert(t, tostring(mtime))
-				table.insert(c, function() out(readfile(file)) end)
+				table.insert(c, function() out(wwwfile(file)) end)
 			elseif action then --file not found, try an action
 				local s, found = record(action, file, ...)
 				if found then

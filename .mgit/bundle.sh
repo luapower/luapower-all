@@ -442,8 +442,7 @@ make_osx_app() {
 compress_exe() {
 	[ "$COMPRESS_EXE" ] || return
 	say "Compressing $EXE..."
-	which upx >/dev/null 2>/dev/null || { say "UPX not found."; return; }
-	upx -qqq "$EXE"
+	bin/mingw64/upx -qqq "$EXE"
 }
 
 # usage: P=platform MODULES='mod1 ...' ALIBS='lib1 ...' DLIBS='lib1 ...'

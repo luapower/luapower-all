@@ -387,6 +387,10 @@ function glue.string.starts(s, p) --5x faster than s:find'^...' in LuaJIT 2.1
 	return s:sub(1, #p) == p
 end
 
+function glue.string.ends(s, p)
+	return p == '' or s:sub(-#p) == p
+end
+
 --publish the string submodule in the glue namespace.
 glue.update(glue, glue.string)
 

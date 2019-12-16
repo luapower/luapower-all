@@ -1,6 +1,6 @@
 --[==[
 
-	webb | action-based routing
+	webb | action-based routing with multi-language support
 	Written by Cosmin Apreutesei. Public Domain.
 
 ACTION ALIASES
@@ -14,6 +14,8 @@ ACTIONS
 
 	action(name, args...) -> t|f          execute action (false if not found)
 	exec(name, args...) -> ret...|true    execute action internally
+
+	function action.NAME(args...) end     set an inline action handler
 
 CONFIG
 
@@ -186,12 +188,12 @@ local function plain_file_allowed(file)
 end
 
 local function plain_file_handler(file)
-	out(readfile(file))
+	out(wwwfile(file))
 end
 
 local actionfile = glue.memoize(function(action)
 	local ret_file, ret_handler
-	if readfile[action] or filepath(action) then --action is a plain file
+	if wwwfile[action] or wwwpath(action) then --action is a plain file
 		if plain_file_allowed(action) then
 			ret_file = action
 			ret_handler = plain_file_handler
@@ -199,7 +201,7 @@ local actionfile = glue.memoize(function(action)
 	else
 		for i,ext in ipairs(actions_list) do
 			local file = action..'.'..ext
-			if readfile[file] or filepath(file) then
+			if wwwfile[file] or wwwpath(file) then
 				assert(not ret_file, 'multiple action files for action '..action)
 				ret_file = file
 				ret_handler = file_handlers[ext]
@@ -210,20 +212,6 @@ local actionfile = glue.memoize(function(action)
 		return ret_handler(ret_file, ...)
 	end
 end)
-
---mime type inferrence
-
-local mime_types = {
-	html = 'text/html',
-	txt  = 'text/plain',
-	css  = 'text/css',
-	json = 'application/json',
-	js   = 'application/javascript',
-	jpg  = 'image/jpeg',
-	jpeg = 'image/jpeg',
-	png  = 'image/png',
-	ico  = 'image/ico',
-}
 
 --output filters
 

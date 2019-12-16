@@ -163,6 +163,14 @@ test(glue.starts('', ''), true)
 test(glue.starts('abc', ''), true)
 test(glue.starts('', 'a'), false)
 
+test(glue.ends('', ''), true)
+test(glue.ends('x', ''), true)
+test(glue.ends('x', 'x'), true)
+test(glue.ends('', 'x'), false)
+test(glue.ends('x', 'y'), false)
+test(glue.ends('ax', 'x'), true)
+test(glue.ends('ax', 'a'), false)
+
 test(glue.collect(('abc'):gmatch('.')), {'a','b','c'})
 test(glue.collect(2,ipairs{5,7,2}), {5,7,2})
 

@@ -321,18 +321,19 @@ allow_update_db_locally = true --allow dependency tracking on this machine
 
 default_license = 'Public Domain'
 
-local function plusfile(file)
-	return file and '/'..file or ''
+local function plusfile(dir, file)
+	if dir == '.' then dir = nil end
+	return dir and file and dir..'/'..file or file or dir or '.'
 end
 
 --make a path given a luapower_dir-relative path
 function powerpath(file)
-	return luapower_dir..plusfile(file)
+	return plusfile(luapower_dir, file)
 end
 
 --make an abs path given a mgit-dir relative path
 function mgitpath(file)
-	return mgit_dir..plusfile(file)
+	return plusfile(mgit_dir, file)
 end
 
 

@@ -6,6 +6,7 @@
 !/.mgit/*.release
 !/.mgit/luapower-repos.help
 !/.mgit/*.sh
+/.mgit/luapower-website*.sh
 !/.mgit/luapower-cat.md
 /.mgit/luapower-repos.origin
 /.mgit/bundle*.sh
