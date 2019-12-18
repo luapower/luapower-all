@@ -65,10 +65,10 @@ URL ENCODING & DECODING
 
 RESPONSE
 
-	http_error(code[, msg])                 raise a http error
+	http_error(code[, fmt...])              raise a http error
 	redirect(url[, status])                 exit with "302 moved temporarily"
-	check(ret[, err]) -> ret                exit with "404 file not found"
-	allow(ret[, err]) -> ret                exit with "403 forbidden"
+	check(ret[, err...]) -> ret             exit with "404 file not found"
+	allow(ret[, err...]) -> ret             exit with "403 forbidden"
 	check_etag(s)                           exit with "304 not modified"
 
 SCHEDULER
@@ -594,7 +594,8 @@ end
 
 --response API ---------------------------------------------------------------
 
-function http_error(code, msg)
+function http_error(code, ...)
+	local msg = ... and string.format(...)
 	local t = {type = 'http', http_code = code, message = msg}
 	function t:__tostring()
 		return tostring(code)..(msg ~= nil and ' '..tostring(msg) or '')
@@ -605,14 +606,14 @@ end
 
 redirect = ngx.redirect
 
-function check(ret, err)
+function check(ret, ...)
 	if ret then return ret end
-	http_error(404, err)
+	http_error(404, ...)
 end
 
-function allow(ret, err)
-	if ret then return ret, err end
-	http_error(403, err)
+function allow(ret, ...)
+	if ret then return ret end
+	http_error(403, ...)
 end
 
 function check_etag(s)
