@@ -440,25 +440,29 @@ end
 
 local function print_wrapper(print)
 	return function(...)
-		if not ngx.headers_sent then
-			ngx.header.content_type = 'text/plain'
+		if not out_buffering() then
+			if not ngx.headers_sent then
+				ngx.header.content_type = 'text/plain'
+			end
+			print(...)
+			ngx.flush()
+		else
+			print(...)
 		end
-		print(...)
-		ngx.flush()
 	end
 end
 
 --print functions for debugging with no output buffering and flushing.
 
-print = print_wrapper(glue.printer(ngx.print, tostring))
+print = print_wrapper(glue.printer(out, tostring))
 
 local pp_ = require'pp'
 
 pp = print_wrapper(glue.printer(function(v)
 	if type(v) == 'table' then
-		pp_.write(ngx.print, v, '   ', {})
+		pp_.write(out, v, '   ', {})
 	else
-		ngx.print(v)
+		out(v)
 	end
 end)
 )
