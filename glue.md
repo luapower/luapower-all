@@ -328,8 +328,14 @@ Removing a portion of a list or making room for more elements inside the list.
 
 ### `glue.map(t, field|f,...) -> t`
 
-Map function `f(v) -> r` over the array elements of `t` or pluck a field
-from a list of tables that have it.
+Map function `f(v, ...) -> v1` over the array elements of `t` or, if the array
+part is empty, map `f(k, v, ...) -> v1` over the pairs of `t`.
+
+If `f` is not a function, then the values of `t` must be themselves tables,
+in which case `f` is a key to pluck from those tables. Plucked functions
+are called as methods and their result is selected instead (this allows eg.
+calling a method for each element in a list or map of objects and collecting
+the results in a list/map).
 
 ------------------------------------------------------------------------------
 

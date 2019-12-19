@@ -42,10 +42,15 @@ end
 
 --varargs --------------------------------------------------------------------
 
-function glue.pack(...)
-	return {n = select('#', ...), ...}
+if table.pack then
+	glue.pack = table.pack
+else
+	function glue.pack(...)
+		return {n = select('#', ...), ...}
+	end
 end
 
+--always use this because table.unpack's default j is #t not t.n.
 function glue.unpack(t, i, j)
 	return unpack(t, i or 1, j or t.n or #t)
 end
@@ -70,7 +75,7 @@ function glue.index(t)
 	return dt
 end
 
---list of keys, optionally sorted.
+--put keys in a list, optionally sorted.
 function glue.keys(t, cmp)
 	local dt={}
 	for k in pairs(t) do
@@ -233,7 +238,7 @@ end
 
 --arrays ---------------------------------------------------------------------
 
---scan list for value. works with ffi arrays too.
+--scan list for value. works with ffi arrays too given i and j.
 function glue.indexof(v, t, eq, i, j)
 	i = i or 1
 	j = j or #t
@@ -252,7 +257,7 @@ function glue.indexof(v, t, eq, i, j)
 	end
 end
 
---reverse elements of a list in place. works with ffi arrays too.
+--reverse elements of a list in place. works with ffi arrays too given i and j.
 function glue.reverse(t, i, j)
 	i = i or 1
 	j = (j or #t) + 1
@@ -670,7 +675,8 @@ if jit then
 
 end
 
---write a string, number, or table to a file (in binary mode by default).
+--write a string, number, table or the results of a read function to a file.
+--uses binary mode by default.
 function glue.writefile(filename, s, mode, tmpfile)
 	if tmpfile then
 		local ok, err = glue.writefile(tmpfile, s, mode)
@@ -717,7 +723,7 @@ end
 
 --virtualize the print function.
 function glue.printer(out, format)
-	format = format or glue.pass
+	format = format or tostring
 	return function(...)
 		local n = select('#', ...)
 		for i=1,n do
@@ -755,9 +761,10 @@ end
 
 --error handling -------------------------------------------------------------
 
---assert() with string formatting (this should be a Lua built-in).
+--allocation-free assert() with string formatting.
 --NOTE: unlike standard assert(), this only returns the first argument
---to avoid returning the error message and it's args along with it.
+--to avoid returning the error message and it's args along with it so don't
+--use it with functions returning multiple values when you want those values.
 function glue.assert(v, err, ...)
 	if v then return v end
 	err = err or 'assertion failed!'

@@ -64,6 +64,7 @@ function Trackbar:set_tick      (pos)  return SNDMSG(self.hwnd, TBM_SETTIC     ,
 function Trackbar:set_tick_freq (freq)        SNDMSG(self.hwnd, TBM_SETTICFREQ , freq, 0) end
 function Trackbar:clear_sel     (redraw)      SNDMSG(self.hwnd, TBM_CLEARSEL   , redraw ~= false, 0) end
 function Trackbar:remove_ticks  (redraw)      SNDMSG(self.hwnd, TBM_CLEARTICS  , redraw ~= false, 0) end
+function Trackbar:set_buddy     (p, win)      SNDMSG(self.hwnd, TBM_SETBUDDY   , p=='l' or p=='t', win.hwnd) end
 
 function Trackbar:get_pos        ()  return SNDMSG(self.hwnd, TBM_GETPOS     , 0, 0) end
 function Trackbar:get_sel_start  ()  return SNDMSG(self.hwnd, TBM_GETSELSTART, 0, 0) end
@@ -74,6 +75,7 @@ function Trackbar:get_line_size  ()  return SNDMSG(self.hwnd, TBM_GETLINESIZE, 0
 function Trackbar:get_page_size  ()  return SNDMSG(self.hwnd, TBM_GETPAGESIZE, 0, 0) end
 function Trackbar:get_tick_count ()  return SNDMSG(self.hwnd, TBM_GETNUMTICS , 0, 0) end
 function Trackbar:get_tick       (i) return SNDMSG(self.hwnd, TBM_GETTIC, countfrom0(i), 0) end
+function Trackbar:get_buddy      (p) return SNDMSG(self.hwnd, TBM_GETBUDDY, p=='l' or p=='t', 0) end
 
 --[[
 TBM_GETPTICS         = (WM_USER+14)

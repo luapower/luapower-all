@@ -235,6 +235,8 @@ BaseWindow = {
 		on_xbutton_up = WM_XBUTTONUP,
 		on_mouse_wheel = WM_MOUSEWHEEL,
 		on_mouse_hwheel = WM_MOUSEHWHEEL,
+		on_hscroll = WM_HSCROLL,
+		on_vscroll = WM_VSCROLL,
 		--keyboard events
 		on_key_down = WM_KEYDOWN,
 		on_key_up = WM_KEYUP,
