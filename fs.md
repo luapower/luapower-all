@@ -318,7 +318,6 @@ Usage:
 for name, d in fs.dir() do
 	if not name then
 		print('error: ', d)
-		d:close()
 		break
 	end
 	print(d:attr'type', name)
@@ -337,7 +336,8 @@ Call the iterator explicitly.
 
 ### `d:close()`
 
-Close the iterator. Always call `d:close()` before breaking the for loop!
+Close the iterator. Always call `d:close()` before breaking the for loop
+except when it's an error (in which case `d` holds the error message).
 
 ### `d:closed() -> true|false`
 
