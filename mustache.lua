@@ -1,5 +1,5 @@
 
---full-spec mustache parser and bytecode-based renderer.
+--Full-spec mustache parser and bytecode-based renderer.
 --Written by Cosmin Apreutesei. Public Domain.
 
 local push = table.insert
