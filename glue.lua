@@ -653,16 +653,24 @@ if jit then
 		]]
 
 		local MOVEFILE_REPLACE_EXISTING = 1
+		local MOVEFILE_WRITE_THROUGH    = 8
+		local ERROR_FILE_EXISTS         = 80
+		local ERROR_ALREADY_EXISTS      = 183
 
 		function glue.replacefile(oldfile, newfile)
-			local ret = ffi.C.MoveFileExA(oldfile, newfile,
-				MOVEFILE_REPLACE_EXISTING)
-			if ret == 0 then
-				local err = ffi.C.GetLastError()
-				return nil, 'WinAPI error '..err
-			else
+			if ffi.C.MoveFileExA(oldfile, newfile, 0) ~= 0 then
 				return true
 			end
+			local err = ffi.C.GetLastError()
+			if err == ERROR_FILE_EXISTS or err == ERROR_ALREADY_EXISTS then
+				if ffi.C.MoveFileExA(oldfile, newfile,
+					bit.bor(MOVEFILE_WRITE_THROUGH, MOVEFILE_REPLACE_EXISTING)) ~= 0
+				then
+					return true
+				end
+				err = ffi.C.GetLastError()
+			end
+			return nil, 'WinAPI error '..err
 		end
 
 	else
