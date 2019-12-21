@@ -72,7 +72,8 @@ __errors__
 `glue.fpcall(f, ...) -> result | nil, traceback`                   coding with finally and except
 `glue.fcall(f, ...) -> result`
 __modules__
-`glue.autoload(t, submodules) -> t`                                autoload table keys from submodules
+`glue.module([name, ][parent]) -> M`                               create a module
+`glue.autoload(t, submodules) -> M`                                autoload table keys from submodules
 `glue.autoload(t, key, module|loader) -> t`                        autoload table keys from submodules
 `glue.bin`                                                         get the script's directory
 `glue.luapath(path [,index [,ext]])`                               insert a path in package.path
@@ -207,7 +208,8 @@ Output
 
 ### `glue.keys(t[,sorted|cmp]) -> dt`
 
-Make a list of all the keys of `t`, optionally sorted.
+Make a list of all the keys of `t`, optionally sorted. The second arg
+can be `true`, `'asc'`, `'desc'` or a comparison function.
 
 #### Examples
 
@@ -870,6 +872,34 @@ end, ...)
 ------------------------------------------------------------------------------
 
 ## Modules
+
+### `glue.module([name, ][parent]) -> M, P`
+
+### `glue.module([parent, ][name]) -> M, P`
+
+Create a module with a public and private namespace and set the environment
+of the calling function (not the global one!) to the module's private
+namespace and return the namespaces. Cross-references between the namespaces
+are also created at `M._P`, `P._M`, `P._P` and `M._M`, so both `_P` and `_M`
+can be accessed directly from the new environment.
+
+`parent` controls what the namespaces will inherit and it can be either
+another module, in which case `M` inherits `parent` and `P` inherits
+`parent._P`, or it can be a string in which case the module to inherit is
+first required. `parent` defaults to `_M` so that calling `glue.module()`
+creates a submodule of the current module. If there's no `_M` in the current
+environment then `P` inherits `_G` and `M` inherits nothing.
+
+Specifying a `name` for the module either returns `package.loaded[name]`
+if it is set or creates a module, sets `package.loaded[name]` to it and
+returns that. This is useful for creating and referencing shared namespaces
+without having to make a Lua file and require that.
+
+Naming the module also sets `P[name] = M` so that public symbols can be
+declared in `foo.bar` style instead of `_M.bar`.
+
+Setting `foo.module = glue.module` makes module `foo` directly extensible
+by calling `foo:module'bar'` or `require'foo':module'bar'`.
 
 ### `glue.autoload(t, submodules) -> t` <br> `glue.autoload(t, key, module|loader) -> t`
 

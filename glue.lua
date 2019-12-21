@@ -6,8 +6,9 @@ if not ... then require'glue_test'; return end
 
 local glue = {}
 
-local min, max, floor, ceil, log, select, unpack, pairs, rawget =
-	math.min, math.max, math.floor, math.ceil, math.log, select, unpack, pairs, rawget
+local min, max, floor, ceil, log =
+	math.min, math.max, math.floor, math.ceil, math.log
+local select, unpack, pairs, rawget = select, unpack, pairs, rawget
 
 --math -----------------------------------------------------------------------
 
@@ -76,13 +77,16 @@ function glue.index(t)
 end
 
 --put keys in a list, optionally sorted.
+local function desc_cmp(a, b) return a > b end
 function glue.keys(t, cmp)
 	local dt={}
 	for k in pairs(t) do
 		dt[#dt+1]=k
 	end
-	if cmp == true then
+	if cmp == true or cmp == 'asc' then
 		table.sort(dt)
+	elseif cmp == 'desc' then
+		table.sort(dt, desc_cmp)
 	elseif cmp then
 		table.sort(dt, cmp)
 	end
@@ -843,6 +847,36 @@ function glue.fcall(...)
 end
 
 --modules --------------------------------------------------------------------
+
+--create a module table that dynamically inherits another module.
+--naming the module returns the same module table for the same name.
+function glue.module(name, parent)
+	if type(name) ~= 'string' then
+		name, parent = parent, name
+	end
+	if type(parent) == 'string' then
+		parent = require(parent)
+	end
+	parent = parent or _M
+	local parent_P = parent and assert(parent._P, 'parent module has no _P') or _G
+	local M = package.loaded[name]
+	if M then
+		return M, M._P
+	end
+	local P = {__index = parent_P}
+	M = {__index = parent, _P = P}
+	P._M = M
+	M._M = M
+	P._P = P
+	setmetatable(P, P)
+	setmetatable(M, M)
+	if name then
+		package.loaded[name] = M
+		P[name] = M
+	end
+	setfenv(2, P)
+	return M, P
+end
 
 --setup a module to load sub-modules when accessing specific keys.
 function glue.autoload(t, k, v)

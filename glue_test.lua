@@ -1,6 +1,8 @@
 local glue = require'glue'
 require'unit'
 
+--math -----------------------------------------------------------------------
+
 test(glue.round(1.2), 1)
 test(glue.round(-1.2), -1)
 test(glue.round(1.5), 2) --half-up
@@ -14,6 +16,8 @@ test(glue.snap(-7.5, 5), -5) --half-up
 test(glue.clamp(3, 2, 5), 3)
 test(glue.clamp(1, 2, 5), 2)
 test(glue.clamp(6, 2, 5), 5)
+
+--tables ---------------------------------------------------------------------
 
 test(glue.count({[0] = 1, 2, 3, a = 4}), 4)
 test(glue.count{}, 0)
@@ -37,6 +41,15 @@ test(t2, {3,7,5})
 test(glue.update({a=1,b=2,c=3}, {d='add',b='overwrite'}, {b='over2'}), {a=1,b='over2',c=3,d='add'})
 
 test(glue.merge({a=1,b=2,c=3}, {d='add',b='overwrite'}, {b='over2'}), {a=1,b=2,c=3,d='add'})
+
+local t = {k0 = {v0 = 1}}
+test(glue.attr(t, 'k0').v0, 1) --existing key
+glue.attr(t, 'k').v = 1
+test(t.k, {v = 1}) --created key
+glue.attr(t, 'k2', 'v2')
+test(t.k2, 'v2') --custom value
+
+--lists ----------------------------------------------------------------------
 
 test(glue.extend({5,6,8}, {1,2}, {'b','x'}), {5,6,8,1,2,'b','x'})
 
@@ -87,6 +100,8 @@ test(glue.binsearch(14, {11, 13, 15}), 3)
 test(glue.binsearch(12, {11, 13, 15}), 2)
 test(glue.binsearch(10, {11, 13, 15}), 1)
 test(glue.binsearch(16, {11, 13, 15}), nil)
+
+--strings --------------------------------------------------------------------
 
 local function test1(s,sep,expect)
 	local t={} for c in glue.gsplit(s,sep) do t[#t+1]=c end
@@ -171,10 +186,12 @@ test(glue.ends('x', 'y'), false)
 test(glue.ends('ax', 'x'), true)
 test(glue.ends('ax', 'a'), false)
 
+--iterators ------------------------------------------------------------------
+
 test(glue.collect(('abc'):gmatch('.')), {'a','b','c'})
 test(glue.collect(2,ipairs{5,7,2}), {5,7,2})
 
-test(glue.pass(32), 32)
+--metamethods ----------------------------------------------------------------
 
 local t0 = {a = 1, b = 2}
 local t1 = glue.inherit({}, t0)
@@ -186,12 +203,7 @@ assert(t2.b == 3)
 glue.inherit(t1)
 assert(not t2.a)
 
-local t = {k0 = {v0 = 1}}
-test(glue.attr(t, 'k0').v0, 1) --existing key
-glue.attr(t, 'k').v = 1
-test(t.k, {v = 1}) --created key
-glue.attr(t, 'k2', 'v2')
-test(t.k2, 'v2') --custom value
+--i/o ------------------------------------------------------------------------
 
 assert(glue.canopen('glue.lua'))
 assert(glue.readfile(glue.bin..'/glue.lua'):match'glue', 'glue')
@@ -204,7 +216,19 @@ test({pcall(glue.assert,false)}, {false, 'assertion failed!'})
 test({pcall(glue.assert,false,123)}, {false, '123'})
 test({pcall(glue.assert,false,123,456)}, {false, '123'})
 
+assert(glue.writefile('glue_test.tmp', 'abc', nil, 'glue_test.tmp.tmp'))
+assert(glue.readfile('glue_test.tmp') == 'abc')
+assert(glue.writefile('glue_test.tmp', 'def', nil, 'glue_test.tmp.tmp'))
+assert(glue.readfile('glue_test.tmp') == 'def')
+os.remove('glue_test.tmp')
+
+--errors ---------------------------------------------------------------------
+
 --TODO: assert, protect, pcall, fpcall, fcall
+
+--closures -------------------------------------------------------------------
+
+test(glue.pass(32), 32)
 
 local n = 0
 local f = glue.memoize(function() n = n + 1; return 6; end)
@@ -260,6 +284,44 @@ local f = glue.memoize(function(x, y, z) n = n + 1; return x + y + z + n end)
 test(f(1, 1, 1), 4)
 test(f(1, 1, 1, 1), 4) --arg#4 ignored even though using memoize_vararg()
 
+--modules --------------------------------------------------------------------
+
+--module
+
+local function test_module()
+	local foo_mod, foo_priv = glue.module'foo'
+
+	assert(getfenv() == foo_priv)
+	assert(foo_mod._P == foo_priv)
+	assert(foo_mod ~= foo_priv)
+	assert(_M == foo_mod)
+	assert(_P == _M._P)
+	assert(__index == _G)
+	assert(_P._M == _M)
+	a = 123
+	assert(a == 123)
+	assert(_P.a == 123)
+	_M.a = 321
+	assert(_M.a == 321) --P and M are diff namespaces
+
+	foo.module = glue.module --make submodule api for foo
+
+	local bar_mod = require'foo':module'bar' --submodule api
+	local bar_mod2 = foo:module'bar' --submodule alt. api
+	assert(bar_mod == bar_mod2) --using package.loaded works
+	assert(__index == foo_mod._P) --inheriting works
+	assert(bar_mod.print == nil) --public namespace not polluted
+	b = 123
+	assert(b == 123)
+	assert(_P.b == 123)
+	assert(bar_mod.a == 321) --inheriting the public namespace
+
+end
+test_module()
+assert(getfenv() == _G) --not chainging the global scope
+
+--autoload
+
 local M = {}
 local x, y, z, p = 0, 0, 0, 0
 glue.autoload(M, 'x', function() x = x + 1 end)
@@ -282,11 +344,7 @@ assert(package.cpath:match('^'..glue.esc(norm'bar/?.'..so..';')))
 assert(package.path:match(glue.esc(norm'baz/?.lua;baz/?/init.lua')..'$'))
 assert(package.cpath:match(glue.esc(norm'zab/?.'..so)..'$'))
 
-assert(glue.writefile('glue_test.tmp', 'abc', nil, 'glue_test.tmp.tmp'))
-assert(glue.readfile('glue_test.tmp') == 'abc')
-assert(glue.writefile('glue_test.tmp', 'def', nil, 'glue_test.tmp.tmp'))
-assert(glue.readfile('glue_test.tmp') == 'def')
-os.remove('glue_test.tmp')
+--ffi
 
 if jit then
 	local ffi = require'ffi'
@@ -305,9 +363,11 @@ if jit then
 	end
 end
 
---list the namespace
+--list the namespace ---------------------------------------------------------
+
 for k,v in glue.sortedpairs(glue) do
 	print(string.format('glue.%-20s %s', k, v))
 end
 
---TODO: freelist
+--TODO: freelist, buffer
+
