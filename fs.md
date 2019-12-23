@@ -302,7 +302,7 @@ Get/set attribute(s) of open file. `attr` can be:
 
   * nothing/nil: get the values of all attributes in a table.
   * string: get the value of a single attribute.
-  * table: set some attributes.
+  * table: set one or more attributes.
 
 
 ## Directory listing
