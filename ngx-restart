@@ -1,0 +1,3 @@
+cd "$(dirname "$0")" || exit 1
+./ngx-stop
+./ngx-start

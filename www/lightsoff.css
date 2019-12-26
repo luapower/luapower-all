@@ -1,0 +1,79 @@
+
+body { background: #151515; color: #bbb; }
+
+strong { font-weight: 600; }
+
+a, h1, h2, h3, h4 { color: #fff; } #docnav a { color: #bbb; }
+a:visited { color: #eee; }
+a:hover { color: #fff; }
+a.external_link { color: #e4741f; }
+a.external_link:visited { color: #e4741f; }
+a.external_link:hover { color: #fff; }
+
+hr { border-top-color: #666; }
+
+input { border-color: #666; }
+input:hover { border-color: #ccc; }
+
+.disabled { color: #666; }
+
+.tooltipsy { border-color: #666; background-color: #000; }
+
+.featherlight .featherlight-content { background: #000; }
+
+.topbar { box-shadow: 0px 0px 15px #111; }
+
+.package_list a, .package_list a:visited { color: #999; } .package_list a:hover { color: #ccc; }
+.package_cat_name, .package_cat_name:visited { color: #0c0; }
+a .package_cat_name:hover, a .package_cat_name:visited:hover { color: #fff; }
+.package_card { border-color: #333; }
+
+.download_link { color: #0f0 !important; }
+.download_link:visited { color: #0f0 !important; }
+
+.infobar tr + tr { border-top-color: #444; }
+
+#docnav .selected a { color: #fff !important; }
+
+.indirect { color: #888 !important; }
+.internal { color: #666 !important; }
+.error_line { background-color: #900 !important; color: #fff !important; }
+
+.grep .result.active { border-color: #f00; }
+.grep pre { border-color: #333; }
+.grep .line { color: #888; border-color: #ccc; }
+.grep .hl { background-color: #660; }
+
+.doc th { border-bottom-color: #666; }
+.doc tbody tr {
+	border-top-color: #333;
+	border-bottom-color: #333;
+}
+.doc code { color: #ff8; }
+.doc h2 code, .doc h3 code { color: inherit; }
+.doc pre { background-color: #000; }
+.doc th, .doc td strong { color: #fff; }
+
+.doc .sourceCode     { color: #fff; }
+.doc .sourceCode .kw { color: #ff0; }    /*  KeyWordTok */
+.doc .sourceCode .dt { color: #ffc; }    /*  DataTypeTok */
+.doc .sourceCode .dv { color: #99f; }    /*  DecValTok */
+.doc .sourceCode .bn { color: #99f; }    /*  BaseNTok */
+.doc .sourceCode .fl { color: #99f; }    /*  FloatTok */
+.doc .sourceCode .ch { color: #FF6666; } /*  CharTok */
+.doc .sourceCode .st { color: #FF6666; } /*  StringTok */
+.doc .sourceCode .co { color: #99CC99; } /*  CommentTok */
+.doc .sourceCode .ot { color: #CCCCCC; } /*  OtherTok */
+.doc .sourceCode .al { color: #FF0000; } /*  AlertTok */
+.doc .sourceCode .fu { color: #FFFFFF; } /*  FunctionTok */
+.doc .sourceCode .re { }                 /*  RegionMarkerTok */
+.doc .sourceCode .er { color: #FF0000; } /*  ErrorTok */
+
+#tree .dir .filename { color: white; }
+#tree .empty_dir .filename { color: white; }
+#tree .show_package  { border-color: #444; }
+#tree .fa            { color: #ccc; }
+#tree .selected      { background-color: #444; }
+#tree .filter_btn, #tree .filter_btn i { color: #9999ff; }
+#tree .description   { color: #ccc; }
+#tree .important     { color: yellow; }

@@ -1,0 +1,79 @@
+
+body { background-color: #fff; color: #000; }
+
+strong { font-weight: 800; }
+
+a { color: #339; }
+a:visited { color: #939; }
+a:hover { color: #000; }
+a.external_link { color: #900; }
+a.external_link:visited { color: #c00; }
+a.external_link:hover { color: #f66; }
+
+hr { border-top-color: #ccc; }
+
+input { border-color: #ccc; }
+input:hover { border-color: #999; }
+
+.disabled { color: #aaa; }
+
+.tooltipsy { border-color: #999; background-color: #eee; }
+
+.featherlight .featherlight-content { background: #fff; }
+
+.topbar { box-shadow: 0px 0px 15px #666; }
+
+.package_list a, .package_list a:visited { color: #444; }
+.package_cat_name, .package_cat_name:visited { color: #0a0; }
+a .package_cat_name:hover, a .package_cat_name:visited:hover { color: #000; }
+.package_card { border-color: #ddd; }
+
+.download_link { color: #090 !important; }
+.download_link:visited { color: #090 !important; }
+
+.infobar tr + tr { border-top-color: #ccc; }
+
+#docnav .selected a { color: #000 !important; }
+
+.indirect { color: #aaa !important; }
+.internal { color: #ccc !important; }
+.error_line { background-color: #900 !important; color: #fff !important; }
+
+.grep .result.active { border-color: #f00; }
+.grep pre { border-color: #ccc; }
+.grep .line { color: #888; border-color: #ccc; }
+.grep .hl { background-color: #ff0; }
+
+.doc th { border-bottom-color: #666; }
+.doc tbody tr {
+	border-top-color: #ccc;
+	border-bottom-color: #ccc;
+}
+.doc code { background-color: #eee; }
+.doc h2 code, .doc h3 code { background-color: inherit; }
+.doc pre { background-color: #eee; }
+.doc th, .doc td strong { color: #000; }
+
+.doc .sourceCode     { color: #000; }
+.doc .sourceCode .kw { color: #909; } /*  KeyWordTok */
+.doc .sourceCode .dt { color: #003; } /*  DataTypeTok */
+.doc .sourceCode .dv { color: #00f; } /*  DecValTok */
+.doc .sourceCode .bn { color: #00f; } /*  BaseNTok */
+.doc .sourceCode .fl { color: #00f; } /*  FloatTok */
+.doc .sourceCode .ch { color: #006; } /*  CharTok */
+.doc .sourceCode .st { color: #006; } /*  StringTok */
+.doc .sourceCode .co { color: #090; } /*  CommentTok */
+.doc .sourceCode .ot { color: #333; } /*  OtherTok */
+.doc .sourceCode .al { color: #f00; } /*  AlertTok */
+.doc .sourceCode .fu { color: #000; } /*  FunctionTok */
+.doc .sourceCode .re { }              /*  RegionMarkerTok */
+.doc .sourceCode .er { color: #f00; } /*  ErrorTok */
+
+#tree .dir .filename { color: black; }
+#tree .empty_dir .filename { color: black; }
+#tree .show_package  { border-color: #ccc; }
+#tree .fa            { color: #333; }
+#tree .selected      { background-color: #ccc; }
+#tree .filter_btn, #tree .filter_btn i { color: #9999ff; }
+#tree .description   { color: #333; }
+#tree .important     { color: red; }
