@@ -1,0 +1,50 @@
+<h2 id="requirewinapi.cairopanel"><code>require'winapi.cairopanel'</code></h2>
+<p>This module implements the <code>CairoPanel</code> class which allows drawing on the panel’s surface using <a href="/cairo">cairo</a>.</p>
+<h2 id="cairopanel">CairoPanel</h2>
+<h3 id="hierarchy">Hierarchy</h3>
+<ul>
+<li>[Object][winapi.object]
+<ul>
+<li><a href="/winapi.vobject">VObject</a>
+<ul>
+<li><a href="/winapi.basewindowclass">BaseWindow</a>
+<ul>
+<li><a href="/winapi.controlclass">Control</a>
+<ul>
+<li><a href="/winapi.panelclass">Panel</a>
+<ul>
+<li><a href="/winapi.bitmappanel">BitmapPanel</a>
+<ul>
+<li>CairoPanel</li>
+</ul></li>
+</ul></li>
+</ul></li>
+</ul></li>
+</ul></li>
+</ul></li>
+</ul>
+<h3 id="events">Events</h3>
+<table>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;"><strong>painting</strong></td>
+<td style="text-align: left;"><strong>description</strong></td>
+<td style="text-align: left;"><strong>reference</strong></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">on_cairo_create_surface(surface)</td>
+<td style="text-align: left;">cairo surface was created</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">on_cairo_free_surface(surface)</td>
+<td style="text-align: left;">cairo surface will be freed</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">on_cairo_paint(context)</td>
+<td style="text-align: left;">panel needs repainting</td>
+<td style="text-align: left;">WM_PAINT</td>
+</tr>
+</tbody>
+</table>

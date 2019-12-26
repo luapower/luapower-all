@@ -1,0 +1,109 @@
+<p>This is a collection of Lua idioms and tricks that may not be immediately apparent to the casual code reader.</p>
+<table>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;"><strong>logic</strong></td>
+<td></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>not a == not b</code></td>
+<td>both or none</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><strong>numbers</strong></td>
+<td></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">math.min(math.max(x, min), max)</td>
+<td>clamp x (upper limit takes precedence)</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>x ~= x</code></td>
+<td>number is NaN</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>1/0</code></td>
+<td>inf</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>-1/0</code></td>
+<td>-inf</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>math.huge == math.huge-1</code></td>
+<td>check if inf is available without dividing by zero</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>x % 1</code></td>
+<td>fractional part (always positive)</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>x % 1 == 0</code></td>
+<td>number is integer; <code>math.floor(x) == x</code></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>x - x % 1</code></td>
+<td>integer part; but better use <code>math.floor(x)</code></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>x - x % 0.01</code></td>
+<td>x floored to two decimal digits</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>x - x % n</code></td>
+<td>closest to <code>x</code> smaller than <code>x</code> multiple of <code>n</code></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>math.modf(x)</code></td>
+<td>integer part and fractional part</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>math.floor(x+.5)</code></td>
+<td>round</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>(x &gt;= 0 and 1 or -1)</code></td>
+<td>sign</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>y0 + (x-x0) * ((y1-y0) / (x1 - x0))</code></td>
+<td>linear interpolation</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>math.fmod(angle, 2*math.pi)</code></td>
+<td>normalize an angle</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><strong>tables</strong></td>
+<td></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>next(t) == nil</code></td>
+<td>table is empty</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><strong>strings</strong></td>
+<td></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>s:match'^something'</code></td>
+<td>starts with</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>s:match'something$'</code></td>
+<td>ends with</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>s:match'["\'](.-)%1'</code></td>
+<td>match pairs of single or double quotes</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><strong>i/o</strong></td>
+<td></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>f:read(4096, '*l')</code></td>
+<td>read lines efficiently</td>
+</tr>
+</tbody>
+</table>

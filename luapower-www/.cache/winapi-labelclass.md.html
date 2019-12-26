@@ -1,0 +1,122 @@
+<h2 id="requirewinapi.labelclass"><code>require'winapi.labelclass'</code></h2>
+<p>This module implements the <code>Label</code> class for creating text labels.</p>
+<h2 id="label">Label</h2>
+<h3 id="hierarchy">Hierarchy</h3>
+<ul>
+<li><a href="/winapi.vobject">VObject</a>
+<ul>
+<li><a href="/winapi.basewindowclass">BaseWindow</a>
+<ul>
+<li><a href="/winapi.controlclass">Control</a>
+<ul>
+<li>Label</li>
+</ul></li>
+</ul></li>
+</ul></li>
+</ul>
+<h3 id="initial-fields-and-properties">Initial fields and properties</h3>
+<p><strong>NOTE:</strong> in the table below <code>i</code> means initial field, <code>r</code> means property which can be read, <code>w</code> means property which can be set.</p>
+<table>
+<colgroup>
+<col style="width: 21%" />
+<col style="width: 8%" />
+<col style="width: 37%" />
+<col style="width: 13%" />
+<col style="width: 19%" />
+</colgroup>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;"><strong>field/property</strong></td>
+<td style="text-align: left;"><strong>irw</strong></td>
+<td style="text-align: left;"><strong>description</strong></td>
+<td style="text-align: left;"><strong>default</strong></td>
+<td style="text-align: left;"><strong>reference</strong></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">align</td>
+<td style="text-align: left;">irw</td>
+<td style="text-align: left;">‘left’, ‘center’, ‘right’, ‘simple’, ‘left_nowrap’</td>
+<td style="text-align: left;">‘left’</td>
+<td style="text-align: left;">SS_LEFT, SS_CENTER, SS_RIGHT, SS_SIMPLE, SS_LEFTNOWORDWRAP</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">accelerator_prefix</td>
+<td style="text-align: left;">irw</td>
+<td style="text-align: left;">don’t do “&amp;” character translation</td>
+<td style="text-align: left;">true</td>
+<td style="text-align: left;">SS_NOPREFIX</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">events</td>
+<td style="text-align: left;">irw</td>
+<td style="text-align: left;">enable events</td>
+<td style="text-align: left;">true</td>
+<td style="text-align: left;">SS_NOTIFY</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">owner_draw</td>
+<td style="text-align: left;">irw</td>
+<td style="text-align: left;">owner drawn</td>
+<td style="text-align: left;">false</td>
+<td style="text-align: left;">SS_OWNERDRAW</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">simulate_edit</td>
+<td style="text-align: left;">irw</td>
+<td style="text-align: left;">display text like an edit would</td>
+<td style="text-align: left;">false</td>
+<td style="text-align: left;">SS_EDITCONTROL</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">ellipsis</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">false, ‘char’, ‘path’, ‘word’</td>
+<td style="text-align: left;">false</td>
+<td style="text-align: left;">SS_ENDELLIPSIS, SS_PATHELLIPSIS, SS_WORDELLIPSIS</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">text</td>
+<td style="text-align: left;">irw</td>
+<td style="text-align: left;">the text to display</td>
+<td style="text-align: left;">‘Text’</td>
+<td style="text-align: left;">Get/SetWindowText</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">w, h</td>
+<td style="text-align: left;">irw</td>
+<td style="text-align: left;">size</td>
+<td style="text-align: left;">100, 21</td>
+<td style="text-align: left;"></td>
+</tr>
+</tbody>
+</table>
+<h3 id="events">Events</h3>
+<table>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;"><strong>event</strong></td>
+<td style="text-align: left;"><strong>description</strong></td>
+<td style="text-align: left;"><strong>reference</strong></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">on_click()</td>
+<td style="text-align: left;">clicked</td>
+<td style="text-align: left;">STN_CLICKED</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">on_double_click()</td>
+<td style="text-align: left;">double-clicked</td>
+<td style="text-align: left;">STN_DBLCLK</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">on_enable()</td>
+<td style="text-align: left;">was enabled</td>
+<td style="text-align: left;">STN_ENABLE</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">on_disable()</td>
+<td style="text-align: left;">was disabled</td>
+<td style="text-align: left;">STN_DISABLE</td>
+</tr>
+</tbody>
+</table>

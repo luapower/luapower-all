@@ -1,0 +1,23 @@
+<h2 id="local-md5-requiremd5"><code>local md5 = require'md5'</code></h2>
+<p>A ffi binding of the popular <a href="http://openwall.info/wiki/people/solar/software/public-domain-source-code/md5">MD5 implementation</a> by Alexander Peslyak.</p>
+<h2 id="api">API</h2>
+<table>
+<colgroup>
+<col style="width: 50%" />
+<col style="width: 50%" />
+</colgroup>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;"><code>md5.sum(s[, #s]) -&gt; s</code><br />
+</td>
+<td>Compute the MD5 hash of a string or a cdata buffer.</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>md5.digest() -&gt; digest</code><br />
+<code>digest(s[, #s])</code><br />
+<code>digest() -&gt; s</code> <code>md5.hmac(s, key) -&gt; s</code></td>
+<td>Get a function that can consume multiple data chunks until called with no arguments to return the final hash. compute the HMAC-MD5 of a string.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>NOTE</strong>: All functions return the binary representation of the hash. To get the hex representation, use <a href="/glue">glue</a>.tohex().</p>

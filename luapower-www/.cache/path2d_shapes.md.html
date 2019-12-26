@@ -1,0 +1,41 @@
+<h2 id="local-shapes-requirepath2d_shapes">local shapes = require’path2d_shapes’</h2>
+<p>Drawing and other math for 2D closed shapes. All construction routines take a <code>write</code> consumer function which will be called as: <code>write(command, args...)</code>.</p>
+<h2 id="ellipses">Ellipses</h2>
+<h3 id="shapes.ellipse_to_bezier3write-cx-cy-rx-ry"><code>shapes.ellipse_to_bezier3(write, cx, cy, rx, ry)</code></h3>
+<h3 id="shapes.ellipse_bboxcx-cy-rx-ry---left-top-width-height"><code>shapes.ellipse_bbox(cx, cy, rx, ry) -&gt; left, top, width, height</code></h3>
+<h2 id="circles">Circles</h2>
+<h3 id="shapes.circle_to_bezier3write-cx-cy-r"><code>shapes.circle_to_bezier3(write, cx, cy, r)</code></h3>
+<h3 id="shapes.circle_to_bezier2write-cx-cy-r-segments"><code>shapes.circle_to_bezier2(write, cx, cy, r[, segments])</code></h3>
+<h3 id="shapes.circle_bboxcx-cy-r---left-top-width-height"><code>shapes.circle_bbox(cx, cy, r) -&gt; left, top, width, height</code></h3>
+<h3 id="shapes.circle_lengthcx-cy-r---length"><code>shapes.circle_length(cx, cy, r) -&gt; length</code></h3>
+<h3 id="shapes.circle_3p_to_bezier3write-x1-y1-x2-y2-x3-y3"><code>shapes.circle_3p_to_bezier3(write, x1, y1, x2, y2, x3, y3)</code></h3>
+<h2 id="rectangles">Rectangles</h2>
+<h3 id="shapes.rect_to_lineswrite-x-y-w-h"><code>shapes.rect_to_lines(write, x, y, w, h)</code></h3>
+<h3 id="shapes.rect_to_straight_lineswrite-x-y-w-h"><code>shapes.rect_to_straight_lines(write, x, y, w, h)</code></h3>
+<h3 id="shapes.rect_bboxx-y-w-h---left-top-width-height"><code>shapes.rect_bbox(x, y, w, h) -&gt; left, top, width, height</code></h3>
+<h3 id="shapes.rect_lengthx-y-w-h---length"><code>shapes.rect_length(x, y, w, h) -&gt; length</code></h3>
+<h2 id="rectangles-with-rounded-corners">Rectangles with rounded corners</h2>
+<h3 id="shapes.round_rect_to_bezier3write-x-y-w-h-r"><code>shapes.round_rect_to_bezier3(write, x, y, w, h, r)</code></h3>
+<h3 id="shapes.round_rect_to_arcswrite-x-y-w-h-r"><code>shapes.round_rect_to_arcs(write, x, y, w, h, r)</code></h3>
+<h3 id="shapes.round_rect_bboxwrite-x-y-w-h-r"><code>shapes.round_rect_bbox(write, x, y, w, h, r)</code></h3>
+<h3 id="shapes.round_rect_lengthx-y-w-h-r---length"><code>shapes.round_rect_length(x, y, w, h, r) -&gt; length</code></h3>
+<h2 id="rectangles-with-elliptic-arc-corners">Rectangles with elliptic arc corners</h2>
+<h3 id="shapes.elliptic_rect_to_bezier3write-x-y-w-h-rx-ry"><code>shapes.elliptic_rect_to_bezier3(write, x, y, w, h, rx, ry)</code></h3>
+<h3 id="shapes.elliptic_rect_to_elliptic_arcswrite-x-y-w-h-rx-ry"><code>shapes.elliptic_rect_to_elliptic_arcs(write, x, y, w, h, rx, ry)</code></h3>
+<h3 id="shapes.elliptic_rect_bboxx-y-w-h-rx-ry---left-top-width-height"><code>shapes.elliptic_rect_bbox(x, y, w, h, rx, ry) -&gt; left, top, width, height</code></h3>
+<h2 id="stars-and-regular-polygons">Stars and Regular Polygons</h2>
+<h3 id="shapes.rpoly_to_lineswrite-cx-cy-x1-y1-n"><code>shapes.rpoly_to_lines(write, cx, cy, x1, y1, n)</code></h3>
+<p>Construct a regular polygon with line segments. A regular polygon has a center, an anchor point and a number of segments.</p>
+<h3 id="shapes.star_to_star_2pcx-cy-x1-y1-r2-n---cx-cy-x1-y1-x2-y2-n"><code>shapes.star_to_star_2p(cx, cy, x1, y1, r2, n) -&gt; cx, cy, x1, y1, x2, y2, n</code></h3>
+<p>Convert a simple star to a 2-anchor-point star. A simple star has a center, an anchor point, a secondary radius and a number of leafs. A 2-anchor-point star has a center, two anchor points and a number of leafs.</p>
+<h3 id="shapes.star_to_lineswrite-cx-cy-x1-y1-r2-n"><code>shapes.star_to_lines(write, cx, cy, x1, y1, r2, n)</code></h3>
+<p>Construct a star with line segments.</p>
+<h3 id="shapes.star_2p_to_lineswrite-cx-cy-x1-y1-x2-y2-n"><code>shapes.star_2p_to_lines(write, cx, cy, x1, y1, x2, y2, n)</code></h3>
+<p>Construct a 2-anchor-point star using line segments.</p>
+<h2 id="formulas-and-the-superformula">Formulas and the Superformula</h2>
+<h3 id="shapes.formula_to_lineswrite-formula-steps-..."><code>shapes.formula_to_lines(write, formula, steps, ...)</code></h3>
+<p>Linearly interpolate a shape defined by a custom formula, and unite the points with line segments.</p>
+<h3 id="shapes.superformulat-cx-cy-size-a-b-m-n1-n2-n3"><code>shapes.superformula(t, cx, cy, size, a, b, m, n1, n2, n3)</code></h3>
+<p>Return the point at time t (t covers the entire shape in the 0..1 range) on a <a href="http://en.wikipedia.org/wiki/Superformula">superformula</a>.</p>
+<h3 id="shapes.superformula_to_lineswrite-cx-cy-size-steps-a-b-m-n1-n2-n3"><code>shapes.superformula_to_lines(write, cx, cy, size, steps, a, b, m, n1, n2, n3)</code></h3>
+<p>Construct a superformula by linear interpolation using <code>steps</code> number of line segments.</p>

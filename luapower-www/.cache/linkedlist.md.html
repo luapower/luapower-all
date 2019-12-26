@@ -1,0 +1,63 @@
+<h2 id="local-list-requirelinkedlist"><code>local list = require'linkedlist'</code></h2>
+<p>Doubly linked lists in Lua. Doubly linked lists make insert, remove and move operations fast, and access by index slow. In this particular implementation items must be Lua tables for which fields <code>_prev</code> and <code>_next</code> must be reserved for linking.</p>
+<h2 id="api">API</h2>
+<table>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;"><code>list() -&gt; list</code></td>
+<td style="text-align: left;">create a new list</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>list:clear()</code></td>
+<td style="text-align: left;">clear the list</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>list:insert_first(t)</code></td>
+<td style="text-align: left;">add an item at beginning of the list</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>list:insert_last(t)</code></td>
+<td style="text-align: left;">add an item at the end of the list</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>list:insert_after([anchor, ]t)</code></td>
+<td style="text-align: left;">add an item after another item (or at the end)</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>list:insert_before([anchor, ]t)</code></td>
+<td style="text-align: left;">add an item before another item (or at the beginning)</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>list:remove(t) -&gt; t</code></td>
+<td style="text-align: left;">remove a specific item (and return it)</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>list:removel_last() -&gt; t</code></td>
+<td style="text-align: left;">remove and return the last item, if any</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>list:remove_first() -&gt; t</code></td>
+<td style="text-align: left;">remove and return the first item, if any</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>list:next([current]) -&gt; t</code></td>
+<td style="text-align: left;">next item after some item (or first item)</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>list:prev([current]) -&gt; t</code></td>
+<td style="text-align: left;">previous item after some item (or last item)</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>list:items() -&gt; iterator&lt;item&gt;</code></td>
+<td style="text-align: left;">iterate items</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>list:reverse_items() -&gt; iterator&lt;item&gt;</code></td>
+<td style="text-align: left;">iterate items in reverse</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>list:copy() -&gt; new_list</code></td>
+<td style="text-align: left;">copy the list</td>
+</tr>
+</tbody>
+</table>

@@ -1,0 +1,207 @@
+<h2 id="local-box2d-requirebox2d"><code>local box2d = require'box2d'</code></h2>
+<p>Math for 2D rectangles defined as <code>(x, y, w, h)</code> where w &gt; 0 and h &gt; 0.</p>
+<h2 id="api">API</h2>
+<table>
+<colgroup>
+<col style="width: 56%" />
+<col style="width: 43%" />
+</colgroup>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;"><strong>representation forms</strong></td>
+<td></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>box2d.corners(x, y, w, h) -&gt; x1, y1, x2, y2</code></td>
+<td>left,top and right,bottom corners</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>box2d.rect(x1, y1, x2, y2) -&gt; x, y, w, h</code></td>
+<td>box given left,top and right,bottom corners</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><strong>normalization</strong></td>
+<td></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>box2d.normalize(x, y, w, h) -&gt; x, y, w, h</code></td>
+<td>return the same box with positive width and height</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><strong>layouting</strong></td>
+<td></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>box2d.align(w, h, halign, valign,</code><br />
+<code>bx, by, bw, bh) -&gt; x, y, w, h</code></td>
+<td>align a box in another box</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>box2d.vsplit(i, sh, x, y, w, h) -&gt; x, y, w, h</code></td>
+<td>slice a box horizontally at a certain height and return the i’th box2d. if sh is negative, slicing is done from the bottom side.</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>box2d.hsplit(i, sw, x, y, w, h) -&gt; x, y, w, h</code></td>
+<td>slice a box vertically at a certain width and return the i’th box2d. if sw is negative, slicing is done from the right side.</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>box2d.nsplit(i, n, direction, x, y, w, h) -&gt; x, y, w, h</code></td>
+<td>slice a box in n equal slices, vertically or horizontally, and return the i’th box2d. direction = ‘v’ or ‘h’</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>box2d.translate(x0, y0, x, y, w, h) -&gt; x, y, w, h</code></td>
+<td>move a box</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>box2d.offset(d, x, y, w, h) -&gt; x, y, w, h</code></td>
+<td>offset a box by d, outward if d is positive</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>box2d.fit(w, h, bw, bh) -&gt; w, h</code></td>
+<td>fit a box into another box preserving aspect ratio. use align() to position the box</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><strong>hit testing</strong></td>
+<td></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>box2d.hit(x0, y0, x, y, w, h) -&gt; true | false</code></td>
+<td>check if a point (x0, y0) is inside rect (x, y, w, h)</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>box2d.hit_edges(x0, y0, d, x, y, w, h)</code><br />
+<code>-&gt; hit, left, top, right, bottom</code></td>
+<td>hit test for edges and corners</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><strong>edge snapping</strong></td>
+<td></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>box2d.snap_edges(d, x, y, w, h, rectangles[, opaque])</code><br />
+<code>-&gt; x, y, w, h</code></td>
+<td>snap the sides of a rectangle against a list of rectangles of form <code>{{x=,y=,w=,h=},...}</code>. if <code>opaque = true</code>, the rectangles are considered opaque, in which case they must be sorted front-to-back.</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>box2d.snap_pos(d, x, y, w, h, rectangles[, opaque])</code><br />
+<code>-&gt; x, y, w, h</code></td>
+<td>snap the position of a rectangle against a list of rectangles.</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>box2d.snapped_edges(d, x1, y1, w1, h1, x2, y2, w2, h2[, opaque])</code><br />
+<code>-&gt; snapped, left, top, right, bottom</code></td>
+<td>check if two boxes are snapped and on which edges.</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><strong>overlapping test</strong></td>
+<td></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>box2d.overlapping(x1, y1, w1, h1, x2, y2, w2, h2) -&gt; true | false</code></td>
+<td>check if two boxes overlap.</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><strong>clipping</strong></td>
+<td></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>box2d.clip(x, y, w, h, x0, y0, w0, h0) -&gt; x1, y1, w1, h1</code></td>
+<td>intersect two normalized boxes</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><strong>bounding box</strong></td>
+<td></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>box2d.bounding_box(x1, y1, w1, h1, x2, y2, w2, h2)</code><br />
+<code>-&gt; x, y, w, h</code></td>
+<td>join two normalized boxes</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><strong>scrolling</strong></td>
+<td></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>box2d.scroll_to_view(x, y, w, h, pw, ph, sx, sy) -&gt; sx, sy</code></td>
+<td>move a box from (sx, sy) inside (pw, ph) so that it becomes completely visible.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="oop-api">OOP API</h2>
+<p>Operations never mutate the object, instead they return a new one.</p>
+<table>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;"><code>box2d(x, y, w, h) -&gt; box</code></td>
+<td style="text-align: left;">create a new box object</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>box.x, box.y, box.w, box.h</code></td>
+<td style="text-align: left;">box coordinates (for reading and writing)</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>box:rect() -&gt; x, y, w, h</code> <br> <code>box() -&gt; x, y, w, h</code></td>
+<td style="text-align: left;">coordinates unpacked</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>box:corners() -&gt; x1, y1, x2, y2</code></td>
+<td style="text-align: left;">left,top and right,bottom corners</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>box:align(halign, valign, parent_box) -&gt; box</code></td>
+<td style="text-align: left;">align</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>box:vsplit(i, sh) -&gt; box</code></td>
+<td style="text-align: left;">split vertically</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>box:hsplit(i, sw) -&gt; box</code></td>
+<td style="text-align: left;">split horizontally</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>box:nsplit(i, n, direction) -&gt; box</code></td>
+<td style="text-align: left;">split in equal parts</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>box:translate(x0, y0) -&gt; box</code></td>
+<td style="text-align: left;">translate</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>box:offset(d) -&gt; box</code></td>
+<td style="text-align: left;">offset by d (outward if d is positive)</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>box:fit(parent_box, halign, valign) -&gt; box</code></td>
+<td style="text-align: left;">enlarge/shrink-to-fit and align</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>box:hit(x0, y0) -&gt; true | false</code></td>
+<td style="text-align: left;">hit test</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>box:hit_edges(x0, y0, d) -&gt; hit, left, top, right, bottom</code></td>
+<td style="text-align: left;">hit test for edges</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>box:snap_edges(d, boxes) -&gt; box</code></td>
+<td style="text-align: left;">snap the edges to a list of boxes</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>box:snap_pos(d, boxes) -&gt; box</code></td>
+<td style="text-align: left;">snap the position</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>box:overlapping(box) -&gt; true | false</code></td>
+<td style="text-align: left;">overlapping test</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>box:clip(box) -&gt; box</code></td>
+<td style="text-align: left;">clip box to fit inside another box</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>box:join(box)</code></td>
+<td style="text-align: left;">make box the bounding box of itself and another box</td>
+</tr>
+</tbody>
+</table>

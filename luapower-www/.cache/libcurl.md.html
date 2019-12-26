@@ -1,0 +1,1501 @@
+<h2 id="local-curl-requirelibcurl"><code>local curl = require'libcurl'</code></h2>
+<p><a href="http://curl.haxx.se/libcurl/">libcurl</a> is a client-side URL transfer library, supporting DICT, FILE, FTP, FTPS, Gopher, HTTP, HTTPS, IMAP, IMAPS, LDAP, LDAPS, POP3, POP3S, RTMP, RTSP, SCP, SFTP, SMTP, SMTPS, Telnet and TFTP. libcurl supports SSL certificates, HTTP POST, HTTP PUT, FTP uploading, HTTP form based upload, proxies, cookies, user+password authentication (Basic, Digest, NTLM, Negotiate, Kerberos), file transfer resume, http proxy tunneling and more!</p>
+<h2 id="api">API</h2>
+<table>
+<colgroup>
+<col style="width: 50%" />
+<col style="width: 50%" />
+</colgroup>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;"><strong>easy interface</strong></td>
+<td></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>curl.easy(url | {opt=val}) -&gt; etr</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/curl_easy_init.html">create</a> an <a href="http://curl.haxx.se/libcurl/c/libcurl-easy.html">easy transfer</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>etr:set(opt,val | {opt=val}) -&gt; etr</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/curl_easy_setopt.html">set option(s)</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>etr:perform() -&gt; etr | nil,err,ecode</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/curl_easy_perform.html">perform the transfer</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>etr:close()</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/curl_easy_cleanup.html">close the transfer</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>etr:clone([url | {opt=val}]) -&gt; etr</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/curl_easy_duphandle.html">clone a transfer</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>etr:reset([{opt=val}]) -&gt; etr</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/curl_easy_reset.html">reset all options to their default values</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>etr:info(opt) -&gt; val</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/curl_easy_getinfo.html">get info about the transfer</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>etr:recv(buf, bufsize) -&gt; n | nil,err,errcode</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/curl_easy_recv.html">receive raw data</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>etr:send(buf, bufsize) -&gt; n | nil,err,errcode</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/curl_easy_send.html">send raw data</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>etr:escape(s) -&gt; s|nil</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/curl_easy_escape.html">escape URL</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>etr:unescape(s) -&gt; s|nil</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/curl_easy_unescape.html">unescape URL</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>etr:pause([flags])</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/curl_easy_pause.html">pause transfer</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><strong>multi interface</strong></td>
+<td></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>curl.multi([{opt=val}]) -&gt; mtr</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/curl_multi_init.html">create</a> a <a href="http://curl.haxx.se/libcurl/c/libcurl-multi.html">multi transfer</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>mtr:set(opt,val | {opt=val}) -&gt; mtr</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/curl_multi_setopt.html">set option(s)</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>mtr:add(etr) -&gt; mtr</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/curl_multi_add_handle.html">add an easy transfer to the queue</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>mtr:remove(etr) -&gt; mtr</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/curl_multi_remove_handle.html">remove an easy transfer to the queue</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>mtr:perform() -&gt; transfers_left | nil,err,ecode</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/curl_multi_perform.html">start/keep transfering</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>mtr:close()</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/curl_multi_cleanup.html">close the transfer</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>mtr:wait([timeout_seconds], [extra_fds, extra_nfds]) -&gt; numfds | nil,err,errcode</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/curl_multi_wait.html">poll on all handles</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>mtr:fdset(read_fd_set, write_fd_set, exc_fd_set) -&gt; max_fd | nil,err,errcode</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/curl_multi_fdset.html">get file descriptors</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>mtr:timeout() -&gt; seconds | nil</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/curl_multi_timeout.html">how long to wait for socket actions</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>mtr:info_read() -&gt; CURLMsg*|nil, msgs_in_queue</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/curl_multi_info_read.html">read multi stack info</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>mtr:socket_action()</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/curl_multi_socket_action.html">read/write available data given an action</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>mtr:assign(sockfd, p) -&gt; mtr</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/curl_multi_assign.html">set data to associate with an internal socket</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><strong>share interface</strong></td>
+<td></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>curl.share([{opt=val}]) -&gt; shr</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/curl_share_init.html">create</a> a <a href="http://curl.haxx.se/libcurl/c/libcurl-share.html">share object</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>shr:set(opt,val | {opt=val}) -&gt; shr</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/curl_share_setopt.html">set option(s)</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>shr:free()</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/curl_share_cleanup.html">free the share object</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><strong>multipart forms</strong></td>
+<td></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>etr:mime() -&gt; mime</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/curl_mime_init.html">create a mime object</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>mime:free()</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/curl_mime_free.html">free a mime object</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>mime:part() -&gt; mimepart</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/curl_mime_addpart.html">add a mime part to a mime object</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>mimepart:name(name)</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/curl_mime_name.html">set mime part’s name</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>mimepart:filename(filename)</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/curl_mime_filename.html">set mime part’s filename</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>mimepart:type(mimetype)</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/curl_mime_type.html">set mime part’s content type</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>mimepart:encoder(encoder)</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/curl_mime_encoder.html">set mime part’s transfer encoding</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>mimepart:data(s[, sz])</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/curl_mime_data.html">get mime part’s data from string or cdata buffer</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>mimepart:file(file)</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/curl_mime_filedata.html">get mime part’s data from file</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>mimepart:data_cb(sz, read, seek, free, arg)</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/curl_mime_data_cb.html">get mime part’s data with callbacks</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>mimepart:subparts({mime1,...})</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/curl_mime_subparts.html">set mime part’s subparts</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>mimepart:headers({header=value})</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/curl_mime_headers.html">set mime part’s headers</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><strong>misc.</strong></td>
+<td></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>curl.C</code></td>
+<td>the libcurl ffi clib object/namespace</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>curl.init([opt])</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/curl_global_init.html">global init</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>curl.init{malloc=,free=,realloc=...}</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/curl_global_init_mem.html">global init with custom allocators</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>curl.free()</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/curl_global_cleanup.html">global cleanup</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>curl.version() -&gt; s</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/curl_version.html">get version info as a string</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>curl.version_info([ver]) -&gt; t</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/curl_version_info.html">get detailed version info as a table</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>curl.checkver(maj[, min[, patch]]) -&gt; true|false</code></td>
+<td>check if CURL version is &gt;= maj.min.patch</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>curl.getdate(s) -&gt; timestamp</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/curl_getdate.html">parse a date/time to a Unix timestamp</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>curl.easy.strerror(errcode) -&gt; errmsg</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/curl_easy_strerror.html">look-up an easy interface error code</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>curl.multi.strerror(errcode) -&gt; errmsg</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/curl_multi_strerror.html">look-up a multi interface error code</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>curl.share.strerror(errcode) -&gt; errmsg</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/curl_share_strerror.html">look-up a share interface error code</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>curl.type(x) -&gt; 'easy'|'multi'|'share'|nil</code></td>
+<td>get curl object type</td>
+</tr>
+</tbody>
+</table>
+<h2 id="easy-vs-multi-interface">Easy vs multi interface</h2>
+<p>The <a href="http://curl.haxx.se/libcurl/c/libcurl-easy.html">easy interface</a> is synchronous while the <a href="http://curl.haxx.se/libcurl/c/libcurl-multi.html">multi interface</a> can do multiple transfers asynchronously. A multi transfer is set up as a list of easy transfers.</p>
+<h2 id="easy-interface">Easy interface</h2>
+<h3 id="curl.easyurl-optval---etr"><code>curl.easy(url | {opt=val}) -&gt; etr</code></h3>
+<p>Create a transfer using the <a href="http://curl.haxx.se/libcurl/c/libcurl-easy.html">easy interface</a>. Options are below (they also go for <code>etr:set()</code>). All options are assumed immutable and the option values are anchored internally for the lifetime of the transfer object.</p>
+<p>How option values are converted:</p>
+<ul>
+<li><code>long</code> options can be given as Lua numbers.</li>
+<li><code>char*</code> options can be given as Lua strings (anchored).</li>
+<li><code>off_t</code> options can be given as Lua numbers (no need for the <code>_long</code> suffix).</li>
+<li>Enum options can be given as strings (case-insensitive, no prefix).</li>
+<li>Bitmask options can be given as tables of form <code>{mask_name = true|false}</code> (again, the mask name follows the C name but case-insensitive and without the prefix).</li>
+<li><code>curl_slist</code> options can be given as lists of strings (anchored).</li>
+<li>Callbacks can be given as Lua functions (anchored). The ffi callback objects are freed on <code>etr:free()</code> (*).</li>
+</ul>
+<blockquote>
+<p>(*) Callback objects are ref-counted which means that replacing them on cloned transfers does not result in double-frees, and freeing them is deterministic, which is important since their number is hard-limited.</p>
+</blockquote>
+<table>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;"><strong>Main options</strong></td>
+<td></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>url</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_URL.html">URL to work on.</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>curlu</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_CURLU.html">set URL with CURLU object</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>protocols</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_PROTOCOLS.html">Allowed protocols.</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>redir_protocols</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_REDIR_PROTOCOLS.html">Protocols to allow redirects to.</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>default_protocol</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_DEFAULT_PROTOCOL.html">Default protocol.</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>port</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_PORT.html">Port number to connect to.</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>range</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_RANGE.html">Request range: “X-Y,N-M,…”.</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>resume_from</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_RESUME_FROM_LARGE.html">Resume transfer from offset.</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>header</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_HEADER.html">Include the header in the body output.</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>maxfilesize</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_MAXFILESIZE_LARGE.html">Max. file size to get.</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>upload</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_UPLOAD.html">Enable data upload.</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>infilesize</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_INFILESIZE_LARGE.html">Size of file to send.</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>timecondition</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_TIMECONDITION.html">Make a time-conditional request.</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>timevalue</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_TIMEVALUE_LARGE.html">Timestamp for conditional request.</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><strong>Progress Tracking</strong></td>
+<td></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>noprogress</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_NOPROGRESS.html">Shut off the progress meter.</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>progressfunction</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_PROGRESSFUNCTION.html">Callback for progress meter.</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>progressdata</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_PROGRESSDATA.html">Data pointer to pass to the progress meter callback.</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>xferinfofunction</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_XFERINFOFUNCTION.html">Callback for progress meter.</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>xferinfodata</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_XFERINFODATA.html">Data pointer to pass to the progress meter callback.</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><strong>Error Handling</strong></td>
+<td></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>verbose</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_VERBOSE.html">Display verbose information.</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>stderr</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_STDERR.html">stderr replacement stream.</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>errorbuffer</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_ERRORBUFFER.html">Error message buffer.</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>failonerror</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_FAILONERROR.html">Fail on HTTP 4xx errors.</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><strong>Proxies</strong></td>
+<td></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>proxy</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_PROXY.html">Proxy to use.</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>proxyport</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_PROXYPORT.html">Proxy port to use.</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>proxytype</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_PROXYTYPE.html">Proxy type.</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>noproxy</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_NOPROXY.html">Filter out hosts from proxy use.</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>httpproxytunnel</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_HTTPPROXYTUNNEL.html">Tunnel through the HTTP proxy.</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>socks5_gssapi_service</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_SOCKS5_GSSAPI_SERVICE.html">Socks5 GSSAPI service name.</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>socks5_gssapi_nec</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_SOCKS5_GSSAPI_NEC.html">Socks5 GSSAPI NEC mode.</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>socks5_auth</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_SOCKS5_AUTH.html">set allowed methods for SOCKS5 proxy authentication</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>proxy_service_name</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_PROXY_SERVICE_NAME.html">Proxy service name.</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>proxy_cainfo</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_PROXY_CAINFO.html">path to proxy Certificate Authority (CA) bundle</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>proxy_capath</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_PROXY_CAPATH.html">directory holding proxy CA certificates</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>proxy_ssl_verifypeer</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_PROXY_SSL_VERIFYPEER.html">verify the proxy’s SSL certificate</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>proxy_ssl_verifyhost</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_PROXY_SSL_VERIFYHOST.html">verify the proxy certificate’s name against host</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>proxy_sslversion</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_PROXY_SSLVERSION.html">set preferred proxy TLS/SSL version</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>proxy_tlsauth_username</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_PROXY_TLSAUTH_USERNAME.html">user name to use for proxy TLS authentication</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>proxy_tlsauth_password</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_PROXY_TLSAUTH_PASSWORD.html">password to use for proxy TLS authentication</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>proxy_tlsauth_type</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_PROXY_TLSAUTH_TYPE.html">set proxy TLS authentication methods</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>proxy_sslcert</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_PROXY_SSLCERT.html">set SSL proxy client certificate</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>proxy_sslcerttype</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_PROXY_SSLCERTTYPE.html">specify type of the proxy client SSL certificate</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>proxy_sslkey</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_PROXY_SSLKEY.html">specify private keyfile for TLS and SSL proxy client cert</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>proxy_sslkeytype</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_PROXY_SSLKEYTYPE.html">set type of the proxy private key file</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>proxy_keypasswd</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_PROXY_KEYPASSWD.html">set passphrase to proxy private key</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>proxy_ssl_cipher_list</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_PROXY_SSL_CIPHER_LIST.html">specify ciphers to use for proxy TLS</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>proxy_crlfile</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_PROXY_CRLFILE.html">specify a proxy Certificate Revocation List file</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>proxy_ssl_options</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_PROXY_SSL_OPTIONS.html">set proxy SSL behavior options</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>pre_proxy</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_PRE_PROXY.html">set pre-proxy to use</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>proxy_pinnedpublickey</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_PROXY_PINNEDPUBLICKEY.html">set pinned public key for https proxy</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>suppress_connect_headers</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_SUPPRESS_CONNECT_HEADERS.html">Suppress proxy CONNECT response headers from user callbacks</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>haproxyprotocol</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_HAPROXYPROTOCOL.html">send HAProxy PROXY protocol v1 header</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>proxy_tls13_ciphers</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_PROXY_TLS13_CIPHERS.html">Ciphers suites for proxy TLS 1.3</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><strong>I/O Callbacks</strong></td>
+<td></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>writefunction</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_WRITEFUNCTION.html">Callback for writing data.</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>writedata</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_WRITEDATA.html">Data pointer to pass to the write callback.</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>readfunction</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_READFUNCTION.html">Callback for reading data.</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>readdata</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_READDATA.html">Data pointer to pass to the read callback.</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>seekfunction</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_SEEKFUNCTION.html">Callback for seek operations.</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>seekdata</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_SEEKDATA.html">Data pointer to pass to the seek callback.</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><strong>Speed Limits</strong></td>
+<td></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>low_speed_limit</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_LOW_SPEED_LIMIT.html">Low speed limit to abort transfer.</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>low_speed_time</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_LOW_SPEED_TIME.html">Time to be below the speed to trigger low speed abort.</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>max_send_speed</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_MAX_SEND_SPEED_LARGE.html">Cap the upload speed.</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>max_recv_speed</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_MAX_RECV_SPEED_LARGE.html">Cap the download speed.</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><strong>Authentication</strong></td>
+<td></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>netrc</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_NETRC.html">Enable .netrc parsing.</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>netrc_file</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_NETRC_FILE.html">.netrc file name.</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>userpwd</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_USERPWD.html">User name and password.</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>proxyuserpwd</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_PROXYUSERPWD.html">Proxy user name and password.</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>username</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_USERNAME.html">User name.</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>password</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_PASSWORD.html">Password.</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>login_options</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_LOGIN_OPTIONS.html">Login options.</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>proxyusername</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_PROXYUSERNAME.html">Proxy user name.</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>proxypassword</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_PROXYPASSWORD.html">Proxy password.</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>httpauth</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_HTTPAUTH.html">HTTP server authentication methods.</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>tlsauth_username</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_TLSAUTH_USERNAME.html">TLS authentication user name.</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>tlsauth_password</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_TLSAUTH_PASSWORD.html">TLS authentication password.</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>tlsauth_type</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_TLSAUTH_TYPE.html">TLS authentication methods.</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>proxyauth</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_PROXYAUTH.html">HTTP proxy authentication methods.</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>sasl_ir</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_SASL_IR.html">Enable SASL initial response.</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>xoauth2_bearer</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_XOAUTH2_BEARER.html">OAuth2 bearer token.</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>sasl_authzid</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_SASL_AUTHZID.html">Authorisation identity (identity to act as)</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><strong>HTTP Protocol</strong></td>
+<td></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>autoreferer</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_AUTOREFERER.html">Automatically set Referer: header.</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>accept_encoding</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_ACCEPT_ENCODING.html">Accept-Encoding and automatic decompressing data.</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>transfer_encoding</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_TRANSFER_ENCODING.html">Request Transfer-Encoding.</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>followlocation</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_FOLLOWLOCATION.html">Follow HTTP redirects.</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>unrestricted_auth</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_UNRESTRICTED_AUTH.html">Do not restrict authentication to original host.</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>maxredirs</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_MAXREDIRS.html">Maximum number of redirects to follow.</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>postredir</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_POSTREDIR.html">How to act on redirects after POST.</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>put</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_PUT.html">Issue a HTTP PUT request.</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>post</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_POST.html">Issue a HTTP POST request.</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>httpget</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_HTTPGET.html">Do a HTTP GET request.</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>postfields</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_POSTFIELDS.html">Send a POST with this data.</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>postfieldsize</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_POSTFIELDSIZE_LARGE.html">The POST data is this big.</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>copypostfields</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_COPYPOSTFIELDS.html">Send a POST with this data - and copy it.</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>httppost</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_HTTPPOST.html">Multipart formpost HTTP POST.</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>referer</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_REFERER.html">Referer: header.</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>useragent</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_USERAGENT.html">User-Agent: header.</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>httpheader</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_HTTPHEADER.html">Custom HTTP headers.</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>headeropt</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_HEADEROPT.html">Control custom headers.</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>proxyheader</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_PROXYHEADER.html">Custom HTTP headers sent to proxy.</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>http200aliases</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_HTTP200ALIASES.html">Alternative versions of 200 OK.</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>cookie</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_COOKIE.html">Cookie(s) to send.</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>cookiefile</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_COOKIEFILE.html">File to read cookies from.</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>cookiejar</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_COOKIEJAR.html">File to write cookies to.</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>cookiesession</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_COOKIESESSION.html">Start a new cookie session.</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>cookielist</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_COOKIELIST.html">Add or control cookies.</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>http_version</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_HTTP_VERSION.html">HTTP version to use.</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>ignore_content_length</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_IGNORE_CONTENT_LENGTH.html">Ignore Content-Length.</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>http_content_decoding</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_HTTP_CONTENT_DECODING.html">Disable Content decoding.</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>http_transfer_decoding</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_HTTP_TRANSFER_DECODING.html">Disable Transfer decoding.</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>expect_100_timeout_ms</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_EXPECT_100_TIMEOUT_MS.html">100-continue timeout in ms.</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>pipewait</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_PIPEWAIT.html">Wait on connection to pipeline on it.</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>keep_sending_on_error</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_KEEP_SENDING_ON_ERROR.html">Keep sending on early HTTP response &gt;= 300</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>request_target</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_REQUEST_TARGET.html">Specify an alternative target for this request</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>mimepost</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_MIMEPOST.html">Set post/send data from mime structure</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>disallow_username_in_url</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_DISALLOW_USERNAME_IN_URL.html">Disallow specifying username in the url</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>trailerfunction</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_TRAILERFUNCTION.html">Set callback for sending trailing headers</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>trailerdata</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_TRAILERDATA.html">Custom pointer passed to the trailing headers callback</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>http09_allowed</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_HTTP09_ALLOWED.html">Allow HTTP/0.9 response</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><strong>HTTP/2 Protocol</strong></td>
+<td></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>stream_weight</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_STREAM_WEIGHT.html">Set numerical stream weight</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>stream_depends</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_STREAM_DEPENDS.html">Set stream this transfer depends on</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>stream_depends_e</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_STREAM_DEPENDS_E.html">Set stream this transfer depends on exclusively</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><strong>Connection</strong></td>
+<td></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>interface</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_INTERFACE.html">Bind connection locally to this.</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>localport</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_LOCALPORT.html">Bind connection locally to this port.</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>localportrange</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_LOCALPORTRANGE.html">Bind connection locally to port range.</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>tcp_nodelay</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_TCP_NODELAY.html">Disable the Nagle algorithm.</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>tcp_keepalive</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_TCP_KEEPALIVE.html">Enable TCP keep-alive.</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>tcp_keepidle</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_TCP_KEEPIDLE.html">Idle time before sending keep-alive.</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>tcp_keepintvl</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_TCP_KEEPINTVL.html">Interval between keep-alive probes.</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>tcp_fastopen</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_TCP_FASTOPEN.html">enable TCP Fast Open</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>address_scope</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_ADDRESS_SCOPE.html">IPv6 scope for local addresses.</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>unix_socket_path</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_UNIX_SOCKET_PATH.html">Path to a Unix domain socket.</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>abstract_unix_socket</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_ABSTRACT_UNIX_SOCKET.html">Set an abstract Unix domain socket</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>dns_interface</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_DNS_INTERFACE.html">Bind name resolves to an interface.</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>dns_cache_timeout</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_DNS_CACHE_TIMEOUT.html">Timeout for DNS cache.</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>dns_local_ip4</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_DNS_LOCAL_IP4.html">Bind name resolves to an IP4 address.</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>dns_local_ip6</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_DNS_LOCAL_IP6.html">Bind name resolves to an IP6 address.</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>dns_servers</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_DNS_SERVERS.html">Preferred DNS servers.</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>dns_use_global_cache</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_DNS_USE_GLOBAL_CACHE.html">OBSOLETE Enable global DNS cache.</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>timeout</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_TIMEOUT.html">Timeout for the entire request in seconds.</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>timeout_ms</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_TIMEOUT_MS.html">Timeout for the entire request in ms.</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>connecttimeout</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_CONNECTTIMEOUT.html">Timeout for the connection phase in seconds.</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>connecttimeout_ms</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_CONNECTTIMEOUT_MS.html">Timeout for the connection phase in ms.</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>accepttimeout_ms</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_ACCEPTTIMEOUT_MS.html">Timeout for a connection be accepted.</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>server_response_timeout</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_SERVER_RESPONSE_TIMEOUT.html"></a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>fresh_connect</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_FRESH_CONNECT.html">Use a new connection.</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>forbid_reuse</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_FORBID_REUSE.html">Prevent subsequent connections from re-using this connection.</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>connect_only</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_CONNECT_ONLY.html">Only connect, nothing else.</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>resolve</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_RESOLVE.html">Provide fixed/fake name resolves.</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>conv_from_network_function</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_CONV_FROM_NETWORK_FUNCTION.html">Callback for code base conversion.</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>conv_to_network_function</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_CONV_TO_NETWORK_FUNCTION.html">Callback for code base conversion.</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>conv_from_utf8_function</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_CONV_FROM_UTF8_FUNCTION.html">Callback for code base conversion.</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>opensocketfunction</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_OPENSOCKETFUNCTION.html"></a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>opensocketdata</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_OPENSOCKETDATA.html"></a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>closesocketfunction</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_CLOSESOCKETFUNCTION.html"></a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>closesocketdata</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_CLOSESOCKETDATA.html"></a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>sockoptfunction</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_SOCKOPTFUNCTION.html">Callback for sockopt operations.</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>sockoptdata</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_SOCKOPTDATA.html">Data pointer to pass to the sockopt callback.</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>connect_to</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_CONNECT_TO.html">Connect to a specific host and port instead of the URL’s host and port</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>happy_eyeballs_timeout_ms</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_HAPPY_EYEBALLS_TIMEOUT_MS.html">Head start for ipv6 for happy eyeballs</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>resolver_start_function</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_RESOLVER_START_FUNCTION.html">Set callback to be called before a new resolve request is started</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>resolver_start_data</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_RESOLVER_START_DATA.html">Custom pointer passed to the resolver start callback</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>dns_shuffle_addresses</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_DNS_SHUFFLE_ADDRESSES.html">Shuffle addresses when a hostname returns more than one</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>doh_url</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_DOH_URL.html">Provide the DNS-over-HTTPS URL</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>upkeep_interval_ms</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_UPKEEP_INTERVAL_MS.html">Connection upkeep interval</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>maxage_conn</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_MAXAGE_CONN.html">Max idle time allowed for reusing a connection</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><strong>SSH Protocol</strong></td>
+<td></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>ssh_auth_types</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_SSH_AUTH_TYPES.html">SSH authentication types.</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>ssh_public_keyfile</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_SSH_PUBLIC_KEYFILE.html">File name of public key.</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>ssh_private_keyfile</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_SSH_PRIVATE_KEYFILE.html">File name of private key.</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>ssh_knownhosts</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_SSH_KNOWNHOSTS.html">File name with known hosts.</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>ssh_keyfunction</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_SSH_KEYFUNCTION.html">Callback for known hosts handling.</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>ssh_keydata</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_SSH_KEYDATA.html">Custom pointer to pass to ssh key callback.</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>ssh_host_public_key_md5</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_SSH_HOST_PUBLIC_KEY_MD5.html">MD5 of host’s public key.</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>ssh_compression</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_SSH_COMPRESSION.html">enables compression / decompression of SSH traffic</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><strong>SMTP Protocol</strong></td>
+<td></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>mail_from</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_MAIL_FROM.html">Address of the sender.</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>mail_rcpt</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_MAIL_RCPT.html">Address of the recipients.</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>mail_auth</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_MAIL_AUTH.html">Authentication address.</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><strong>TFTP Protocol</strong></td>
+<td></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>tftp_blksize</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_TFTP_BLKSIZE.html">TFTP block size.</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>tftp_no_options</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_TFTP_NO_OPTIONS.html">Do not send TFTP options requests.</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><strong>SSL</strong></td>
+<td></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>use_ssl</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_USE_SSL.html">Use TLS/SSL.</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>sslcert</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_SSLCERT.html">Client cert.</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>sslversion</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_SSLVERSION.html">SSL version to use.</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>sslcerttype</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_SSLCERTTYPE.html">Client cert type.</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>sslkey</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_SSLKEY.html">Client key.</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>sslkeytype</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_SSLKEYTYPE.html">Client key type.</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>keypasswd</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_KEYPASSWD.html">Client key password.</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>sslengine</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_SSLENGINE.html">Use identifier with SSL engine.</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>sslengine_default</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_SSLENGINE_DEFAULT.html">Default SSL engine.</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>ssl_options</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_SSL_OPTIONS.html">Control SSL behavior.</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>ssl_falsestart</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_SSL_FALSESTART.html">Enable TLS False Start.</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>ssl_cipher_list</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_SSL_CIPHER_LIST.html">Ciphers to use.</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>ssl_verifyhost</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_SSL_VERIFYHOST.html">Verify the host name in the SSL certificate.</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>ssl_verifypeer</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_SSL_VERIFYPEER.html">Verify the SSL certificate.</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>ssl_verifystatus</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_SSL_VERIFYSTATUS.html">Verify the SSL certificate’s status.</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>ssl_ctx_function</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_SSL_CTX_FUNCTION.html">Callback for SSL context logic.</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>ssl_ctx_data</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_SSL_CTX_DATA.html">Data pointer to pass to the SSL context callback.</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>ssl_sessionid_cache</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_SSL_SESSIONID_CACHE.html">Disable SSL session-id cache.</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>ssl_enable_npn</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_SSL_ENABLE_NPN.html"></a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>ssl_enable_alpn</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_SSL_ENABLE_ALPN.html"></a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>cainfo</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_CAINFO.html">CA cert bundle.</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>capath</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_CAPATH.html">Path to CA cert bundle.</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>crlfile</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_CRLFILE.html">Certificate Revocation List.</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>issuercert</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_ISSUERCERT.html">Issuer certificate.</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>certinfo</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_CERTINFO.html">Extract certificate info.</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>pinnedpublickey</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_PINNEDPUBLICKEY.html">Set pinned SSL public key.</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>krblevel</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_KRBLEVEL.html">Kerberos security level.</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>random_file</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_RANDOM_FILE.html">Provide source for entropy random data.</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>egdsocket</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_EGDSOCKET.html">Identify EGD socket for entropy.</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>gssapi_delegation</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_GSSAPI_DELEGATION.html">Disable GSS-API delegation.</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>tls13_ciphers</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_TLS13_CIPHERS.html">Specify ciphers suites to use for TLS 1.3</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>altsvc_ctrl</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_ALTSVC_CTRL.html">Control alt-svc behavior</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>altsvc</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_ALTSVC.html">Set alt-svc cache file name</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><strong>FTP Protocol</strong></td>
+<td></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>ftpport</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_FTPPORT.html">Use active FTP.</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>quote</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_QUOTE.html">Commands to run before transfer.</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>postquote</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_POSTQUOTE.html">Commands to run after transfer.</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>prequote</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_PREQUOTE.html">Commands to run just before transfer.</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>append</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_APPEND.html">Append to remote file.</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>ftp_use_eprt</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_FTP_USE_EPRT.html">Use EPTR.</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>ftp_use_epsv</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_FTP_USE_EPSV.html">Use EPSV.</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>ftp_use_pret</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_FTP_USE_PRET.html">Use PRET.</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>ftp_create_missing_dirs</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_FTP_CREATE_MISSING_DIRS.html">Create missing directories on the remote server.</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>ftp_response_timeout</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_FTP_RESPONSE_TIMEOUT.html">Timeout for FTP responses.</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>ftp_alternative_to_user</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_FTP_ALTERNATIVE_TO_USER.html">Alternative to USER.</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>ftp_skip_pasv_ip</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_FTP_SKIP_PASV_IP.html">Ignore the IP address in the PASV response.</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>ftpsslauth</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_FTPSSLAUTH.html">Control how to do TLS.</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>ftp_ssl_ccc</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_FTP_SSL_CCC.html">Back to non-TLS again after authentication.</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>ftp_account</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_FTP_ACCOUNT.html">Send ACCT command.</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>ftp_filemethod</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_FTP_FILEMETHOD.html">Specify how to reach files.</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>transfertext</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_TRANSFERTEXT.html">Use text transfer.</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>proxy_transfer_mode</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_PROXY_TRANSFER_MODE.html">Add transfer mode to URL over proxy.</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><strong>RTSP Protocol</strong></td>
+<td></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>rtsp_request</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_RTSP_REQUEST.html">RTSP request.</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>rtsp_session_id</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_RTSP_SESSION_ID.html">RTSP session-id.</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>rtsp_stream_uri</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_RTSP_STREAM_URI.html">RTSP stream URI.</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>rtsp_transport</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_RTSP_TRANSPORT.html">RTSP Transport:</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>rtsp_client_cseq</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_RTSP_CLIENT_CSEQ.html">Client CSEQ number.</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>rtsp_server_cseq</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_RTSP_SERVER_CSEQ.html">CSEQ number for RTSP Server-&gt;Client request.</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>interleavefunction</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_INTERLEAVEFUNCTION.html">Callback for RTSP interleaved data.</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>interleavedata</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_INTERLEAVEDATA.html">Data pointer to pass to the RTSP interleave callback.</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><strong>Misc. Options</strong></td>
+<td></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>path_as_is</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_PATH_AS_IS.html">Disable squashing /../ and /./ sequences in the path.</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>buffersize</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_BUFFERSIZE.html">Ask for smaller buffer size.</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>nosignal</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_NOSIGNAL.html">Do not install signal handlers.</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>share</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_SHARE.html">Share object to use.</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>private</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_PRIVATE.html">Private pointer to store.</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>ipresolve</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_IPRESOLVE.html">IP version to resolve to.</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>ioctlfunction</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_IOCTLFUNCTION.html">Callback for I/O operations.</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>ioctldata</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_IOCTLDATA.html">Data pointer to pass to the I/O callback.</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>service_name</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_SERVICE_NAME.html">SPNEGO service name.</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>crlf</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_CRLF.html">Convert newlines.</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>customrequest</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_CUSTOMREQUEST.html">Custom request/method.</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>filetime</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_FILETIME.html">Request file modification date and time.</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>dirlistonly</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_DIRLISTONLY.html">List only.</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>nobody</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_NOBODY.html">Do not get the body contents.</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>new_file_perms</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_NEW_FILE_PERMS.html">Mode for creating new remote files.</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>new_directory_perms</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_NEW_DIRECTORY_PERMS.html">Mode for creating new remote directories.</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>chunk_bgn_function</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_CHUNK_BGN_FUNCTION.html">Callback for wildcard download start of chunk.</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>chunk_end_function</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_CHUNK_END_FUNCTION.html">Callback for wildcard download end of chunk.</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>chunk_data</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_CHUNK_DATA.html">Data pointer to pass to the chunk callbacks.</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>fnmatch_function</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_FNMATCH_FUNCTION.html">Callback for wildcard matching.</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>fnmatch_data</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_FNMATCH_DATA.html">Data pointer to pass to the wildcard matching callback.</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>wildcardmatch</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_WILDCARDMATCH.html">Transfer multiple files according to a file name pattern.</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>telnetoptions</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_TELNETOPTIONS.html">TELNET options.</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>maxconnects</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_MAXCONNECTS.html">Maximum number of connections in the connection pool.</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>headerfunction</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_HEADERFUNCTION.html">Callback for writing received headers.</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>headerdata</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_HEADERDATA.html">Data pointer to pass to the header callback.</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>upload_buffersize</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_UPLOAD_BUFFERSIZE.html">Set preferred upload buffer size</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><strong>Debugging</strong></td>
+<td></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>debugfunction</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_DEBUGFUNCTION.html">Callback for debug information.</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>debugdata</code></td>
+<td><a href="http://curl.haxx.se/libcurl/c/CURLOPT_DEBUGDATA.html">Data pointer to pass to the debug callback.</a></td>
+</tr>
+</tbody>
+</table>
+<h2 id="multi-interface">Multi interface</h2>
+<h3 id="curl.multietr1...-optval---mtr"><code>curl.multi([{etr1,..., opt=val}]) -&gt; mtr</code></h3>
+<p>Create a transfer using the <a href="http://curl.haxx.se/libcurl/c/libcurl-multi.html">multi interface</a>. The details are the same as with the easy interface except that the list of options is different (see below). Also, if the options table has any elements in the array part, <code>mtr:add()</code> is called for/with each element.</p>
+<p>There’s a section on the <a href="http://curl.haxx.se/libcurl/c/libcurl-tutorial.html">libcurl tutorial</a> on how to use the multi interface.</p>
+<table>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;"><code>socketfunction</code></td>
+<td style="text-align: left;"><a href="http://curl.haxx.se/libcurl/c/CURLMOPT_SOCKETFUNCTION.html">Callback about what to wait for</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>socketdata</code></td>
+<td style="text-align: left;"><a href="http://curl.haxx.se/libcurl/c/CURLMOPT_SOCKETDATA.html">Custom pointer passed to the socket callback</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>pipelining</code></td>
+<td style="text-align: left;"><a href="http://curl.haxx.se/libcurl/c/CURLMOPT_PIPELINING.html">enable/disable HTTP pipelining</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>timerfunction</code></td>
+<td style="text-align: left;"><a href="http://curl.haxx.se/libcurl/c/CURLMOPT_TIMERFUNCTION.html">Set callback to receive timeout values</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>timerdata</code></td>
+<td style="text-align: left;"><a href="http://curl.haxx.se/libcurl/c/CURLMOPT_TIMERDATA.html">Custom pointer to pass to timer callback</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>maxconnects</code></td>
+<td style="text-align: left;"><a href="http://curl.haxx.se/libcurl/c/CURLMOPT_MAXCONNECTS.html">Set size of connection cache</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>max_host_connections</code></td>
+<td style="text-align: left;"><a href="http://curl.haxx.se/libcurl/c/CURLMOPT_MAX_HOST_CONNECTIONS.html">Set max number of connections to a single host</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>max_pipeline_length</code></td>
+<td style="text-align: left;"><a href="http://curl.haxx.se/libcurl/c/CURLMOPT_MAX_PIPELINE_LENGTH.html">Maximum number of requests in a pipeline</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>content_length_penalty_size</code></td>
+<td style="text-align: left;"><a href="http://curl.haxx.se/libcurl/c/CURLMOPT_CONTENT_LENGTH_PENALTY_SIZE.html">Size threshold for pipelining penalty</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>chunk_length_penalty_size</code></td>
+<td style="text-align: left;"><a href="http://curl.haxx.se/libcurl/c/CURLMOPT_CHUNK_LENGTH_PENALTY_SIZE.html">Chunk length threshold for pipelining</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>pipelining_site_bl</code></td>
+<td style="text-align: left;"><a href="http://curl.haxx.se/libcurl/c/CURLMOPT_PIPELINING_SITE_BL.html">Pipelining host blacklist (list of strings)</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>pipelining_server_bl</code></td>
+<td style="text-align: left;"><a href="http://curl.haxx.se/libcurl/c/CURLMOPT_PIPELINING_SERVER_BL.html">Pipelining server blacklist (list of strings)</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>max_total_connections</code></td>
+<td style="text-align: left;"><a href="http://curl.haxx.se/libcurl/c/CURLMOPT_MAX_TOTAL_CONNECTIONS.html">Max simultaneously open connections</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>pushfunction</code></td>
+<td style="text-align: left;"><a href="http://curl.haxx.se/libcurl/c/CURLMOPT_PUSHFUNCTION.html">Callback that approves or denies server pushes</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>pushdata</code></td>
+<td style="text-align: left;"><a href="http://curl.haxx.se/libcurl/c/CURLMOPT_PUSHDATA.html">Pointer to pass to push callback</a></td>
+</tr>
+</tbody>
+</table>
+<h2 id="share-interface">Share interface</h2>
+<h3 id="curl.shareoptval---shr"><code>curl.share([{opt=val}]) -&gt; shr</code></h3>
+<p>Create a <a href="http://curl.haxx.se/libcurl/c/libcurl-share.html">share object</a>. Options below (also for <code>shr:set()</code>):</p>
+<table>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;"><code>lockfunc</code></td>
+<td style="text-align: left;"><a href="http://curl.haxx.se/libcurl/c/curl_share_setopt.html">lock data callback</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>unlockfunc</code></td>
+<td style="text-align: left;"><a href="http://curl.haxx.se/libcurl/c/curl_share_setopt.html">unlock data callback</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>share</code></td>
+<td style="text-align: left;"><a href="http://curl.haxx.se/libcurl/c/curl_share_setopt.html">what tyoe of data to share</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>unshare</code></td>
+<td style="text-align: left;"><a href="http://curl.haxx.se/libcurl/c/curl_share_setopt.html">what type of data <em>not</em> to share</a></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>userdata</code></td>
+<td style="text-align: left;"><a href="http://curl.haxx.se/libcurl/c/curl_share_setopt.html">pointer to pass to lock and unlock functions</a></td>
+</tr>
+</tbody>
+</table>
+<h2 id="binaries">Binaries</h2>
+<p>The included libcurl binaries are compiled to use the SSL/TLS APIs provided by the host OS by default but can also use luapower’s <a href="/openssl">openssl</a> as SSL backend provided libcurl is initalized manually with <code>curl.init{sslbackend='openssl'}</code>.</p>
+<p>The decision to ship OpenSSL even on Linux is because OpenSSL is not ABI-compatible between versions and distros don’t usually ship multiple versions of it (sigh, Linux).</p>
+<p>DNS resolving is asynchronous using the multi-threaded resolver.</p>
+<p>Features that were <em>not</em> compiled in:</p>
+<ul>
+<li>SFTP and SCP (requires libssh2).</li>
+<li>HTTP2 (requires ng-http2).</li>
+<li>IDN (requires libidn).</li>
+<li>RTMP (requires librtmp).</li>
+<li>PSL (requires libpsl).</li>
+<li>LDAP.</li>
+</ul>

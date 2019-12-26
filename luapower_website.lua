@@ -1172,7 +1172,7 @@ local function action_home()
 		table.insert(data.cats, {cat = cat.name, packages = t})
 	end
 
-	local file = 'files/luapower-all.zip'
+	local file = wwwpath'files/luapower-all.zip'
 	local size = fs.attr(file, 'size')
 	local size = size and string.format('%d MB', size / 1024 / 1024) or '&nbsp;'
 	data.all_download_size = size

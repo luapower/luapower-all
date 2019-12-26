@@ -1,0 +1,29 @@
+<h2 id="local-boxblur-requireboxblur"><code>local boxblur = require'boxblur'</code></h2>
+<p>Fast box blur algorithm for <code>bgra8</code> and <code>g8</code> pixel formats. The implementation is based on the moving-average technique, resulting in constant time for any blur radius, making it suitable for full-screen animated blurs.</p>
+<p>Speed is 70 fps @ full HD per pass for the color variant, and 300 fps per pass for the grayscale variant, measured on a CPU with a single-threaded passmark score of around 2000.</p>
+<h2 id="api">API</h2>
+<table>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;"><code>boxblur.new(img, max_radius, [passes], [format]) -&gt; blur</code></td>
+<td style="text-align: left;">create a blur object for a <a href="/bitmap">bitmap</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>boxblur.new(w, h, format, max_radius, [passes]) -&gt; blur</code></td>
+<td style="text-align: left;">create a blur object for painting on</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>blur:blur([radius], [passes]) -&gt; bmp</code></td>
+<td style="text-align: left;">blur <code>img</code> (returns a <a href="/bitmap">bitmap</a>)</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>blur:repaint()</code></td>
+<td style="text-align: left;">override with painting code</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>blur:invalidate()</code></td>
+<td style="text-align: left;">tell blur that the source image changed</td>
+</tr>
+</tbody>
+</table>
+<p>A blur object holds all the temporary buffers necessary for blurring the same image multiple times using a different radius without allocating new memory each time. Each call to <code>blur()</code> returns a potentially different <a href="/bitmap">bitmap</a> object which contains the blurred image.</p>

@@ -1,0 +1,30 @@
+<h2 id="local-easing-requireeasing"><code>local easing = require'easing'</code></h2>
+<p>Robert Penner’s easing functions.</p>
+<h2 id="animation-api">Animation API</h2>
+<h3 id="easing.easenamefunc-way-t1---t0-dt-...---d"><code>easing.ease(name|func, way, (t1 - t0) / dt, ...) -&gt; d</code></h3>
+<ul>
+<li><code>name|func</code> is (the name of) an ease function (see below)</li>
+<li><code>way</code> can be ‘in’ (default), ‘out’, ‘inout’ or ‘outin’</li>
+<li><code>t1</code> is the animation’s current time</li>
+<li><code>t0</code> is the animation’s start time</li>
+<li><code>dt</code> is the total animation duration</li>
+<li><code>d</code> is the value in <code>0..1</code> corresponding to the current time</li>
+<li><code>...</code> are extra args to be passed to the ease function.</li>
+</ul>
+<h2 id="easing-functions">Easing functions</h2>
+<h3 id="easing.name---ft-...---d"><code>easing.&lt;name&gt; -&gt; f(t, ...) -&gt; d</code></h3>
+<p>These functions map a number in <code>0..1</code> into a number in <code>0..1</code>.</p>
+<p>Currently implemented functions: <code>linear</code>, <code>quad</code>, <code>cubic</code>, <code>quart</code>, <code>quint</code>, <code>expo</code>, <code>sine</code>, <code>circ</code>, <code>back</code>, <code>elastic</code>, <code>bounce</code>, <code>slowmo</code>.</p>
+<p><strong>Note:</strong></p>
+<ul>
+<li><code>elastic</code> takes additional args <code>amplitude</code>, <code>period</code>.</li>
+<li><code>slowmo</code> takes additional args <code>power</code>, <code>ratio</code>, <code>yoyo</code>.</li>
+</ul>
+<h3 id="easing.reversef-t-...---d"><code>easing.reverse(f, t, ...) -&gt; d</code></h3>
+<p>Turn an <code>in</code> function into an <code>out</code> function or viceversa.</p>
+<h3 id="easing.inoutf-t-...---d"><code>easing.inout(f, t, ...) -&gt; d</code></h3>
+<p>Turn an <code>in</code> function into an <code>inout</code> function, or an <code>out</code> function into an <code>outin</code> function.</p>
+<h3 id="easing.outinf-t-...---d"><code>easing.outin(f, t, ...) -&gt; d</code></h3>
+<p>Turn an <code>in</code> function into an <code>outin</code> function, or an <code>out</code> function into an <code>inout</code> function. Same as <code>easing.inout(function(t) return easing.reverse(f, t) end, t)</code>.</p>
+<h3 id="easing.names---name1-..."><code>easing.names -&gt; {name1, ...}</code></h3>
+<p>The list of easing function names in insert order. Extending the module namespace automatically adds the names to this list.</p>

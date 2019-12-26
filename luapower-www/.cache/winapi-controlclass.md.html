@@ -1,0 +1,51 @@
+<h2 id="requirewinapi.controlclass"><code>require'winapi.controlclass'</code></h2>
+<p>This module implements the <code>Control</code> class which is the base class for controls. <code>Control</code> is for subclassing, not for instantiation. Nevertheless, it contains properties that are common to all controls which are documented here.</p>
+<h2 id="control">Control</h2>
+<h3 id="hierarchy">Hierarchy</h3>
+<ul>
+<li><a href="/winapi.vobject">VObject</a>
+<ul>
+<li><a href="/winapi.basewindowclass">BaseWindow</a>
+<ul>
+<li>Control</li>
+</ul></li>
+</ul></li>
+</ul>
+<h3 id="initial-fields-and-properties">Initial fields and properties</h3>
+<p><strong>NOTE:</strong> in the table below <code>i</code> means initial field, <code>r</code> means property which can be read, <code>w</code> means property which can be set.</p>
+<table>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;"><strong>field/property</strong></td>
+<td style="text-align: left;"><strong>irw</strong></td>
+<td style="text-align: left;"><strong>description</strong></td>
+<td style="text-align: left;"><strong>default</strong></td>
+<td style="text-align: left;"><strong>reference</strong></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">anchors</td>
+<td style="text-align: left;">irw</td>
+<td style="text-align: left;">anchors</td>
+<td style="text-align: left;">see below</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">anc</td>
+<td style="text-align: left;">irw</td>
+<td style="text-align: left;">anchors (string form)</td>
+<td style="text-align: left;">see below</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">parent</td>
+<td style="text-align: left;">irw</td>
+<td style="text-align: left;">control’s parent</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">Get/SetParent</td>
+</tr>
+</tbody>
+</table>
+<h3 id="anchors">Anchors</h3>
+<p>Anchors are a simple but very powerful way of doing layouting. This is how they work: there’s four possible anchors, one for each side of a control. Setting an anchor on one side fixates the distance between that side and the same side of the parent control, so that when the parent is moved/resized, the child is also moved/resized in order to preserve the initial distance. With anchors alone you can define pretty much every elastic layout that you see in typical desktop apps and you can do that without having to be explicit about the relationships between controls or having to specify percentages.</p>
+<p>The default value of <code>anchors</code> is <code>{left = true, top = true}</code>.</p>
+<p>Anchors can also be set and read in short form using the <code>anc</code> property: each anchored side is represented by one of the letters ‘ltrb’ (the default value of <code>anc</code> is thus ‘lt’: <code>anc</code> always reflects the value of <code>anchors</code>).</p>

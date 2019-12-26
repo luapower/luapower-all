@@ -1,0 +1,229 @@
+<h2 id="requirewinapi.editclass"><code>require'winapi.editclass'</code></h2>
+<p>This module implements the <code>Edit</code> class for creating edit boxes.</p>
+<h2 id="edit">Edit</h2>
+<h3 id="hierarchy">Hierarchy</h3>
+<ul>
+<li><a href="/winapi.vobject">VObject</a>
+<ul>
+<li><a href="/winapi.basewindowclass">BaseWindow</a>
+<ul>
+<li><a href="/winapi.controlclass">Control</a>
+<ul>
+<li>Edit</li>
+</ul></li>
+</ul></li>
+</ul></li>
+</ul>
+<h3 id="initial-fields-and-properties">Initial fields and properties</h3>
+<p><strong>NOTE:</strong> in the table below <code>i</code> means initial field, <code>r</code> means property which can be read, <code>w</code> means property which can be set.</p>
+<table>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;"><strong>field/property</strong></td>
+<td style="text-align: left;"><strong>irw</strong></td>
+<td style="text-align: left;"><strong>description</strong></td>
+<td style="text-align: left;"><strong>default</strong></td>
+<td style="text-align: left;"><strong>reference</strong></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">text</td>
+<td style="text-align: left;">irw</td>
+<td style="text-align: left;">text to edit</td>
+<td style="text-align: left;">’’</td>
+<td style="text-align: left;">Get/SetWindowText</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">w, h</td>
+<td style="text-align: left;">irw</td>
+<td style="text-align: left;">size</td>
+<td style="text-align: left;">100, 21</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">tabstop</td>
+<td style="text-align: left;">irw</td>
+<td style="text-align: left;">focus on tab</td>
+<td style="text-align: left;">true</td>
+<td style="text-align: left;">WS_TABSTOP</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">border</td>
+<td style="text-align: left;">irw</td>
+<td style="text-align: left;">TODO</td>
+<td style="text-align: left;">false</td>
+<td style="text-align: left;">WS_BORDER</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">readonly</td>
+<td style="text-align: left;">irw</td>
+<td style="text-align: left;">TODO</td>
+<td style="text-align: left;">false</td>
+<td style="text-align: left;">ES_READONLY</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">multiline</td>
+<td style="text-align: left;">irw</td>
+<td style="text-align: left;">TODO</td>
+<td style="text-align: left;">false</td>
+<td style="text-align: left;">ES_MULTILINE</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">password</td>
+<td style="text-align: left;">irw</td>
+<td style="text-align: left;">TODO</td>
+<td style="text-align: left;">false</td>
+<td style="text-align: left;">ES_PASSWORD</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">autovscroll</td>
+<td style="text-align: left;">irw</td>
+<td style="text-align: left;">TODO</td>
+<td style="text-align: left;">false</td>
+<td style="text-align: left;">ES_AUTOVSCROLL</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">autohscroll</td>
+<td style="text-align: left;">irw</td>
+<td style="text-align: left;">TODO</td>
+<td style="text-align: left;">false</td>
+<td style="text-align: left;">ES_AUTOHSCROLL</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">number</td>
+<td style="text-align: left;">irw</td>
+<td style="text-align: left;">TODO</td>
+<td style="text-align: left;">false</td>
+<td style="text-align: left;">ES_NUMBER</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">dont_hide_selection</td>
+<td style="text-align: left;">irw</td>
+<td style="text-align: left;">TODO</td>
+<td style="text-align: left;">false</td>
+<td style="text-align: left;">ES_NOHIDESEL</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">want_return</td>
+<td style="text-align: left;">irw</td>
+<td style="text-align: left;">TODO</td>
+<td style="text-align: left;">false</td>
+<td style="text-align: left;">ES_WANTRETURN</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">align</td>
+<td style="text-align: left;">irw</td>
+<td style="text-align: left;">‘left’, ‘right’, ‘center’</td>
+<td style="text-align: left;">‘left’</td>
+<td style="text-align: left;">ES_LEFT/RIGHT/CENTER</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">case</td>
+<td style="text-align: left;">irw</td>
+<td style="text-align: left;">‘normal’, ‘uppwer’, ‘lower’</td>
+<td style="text-align: left;">‘normal’</td>
+<td style="text-align: left;">ES_UPPER/LOWERCASE</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">client_edge</td>
+<td style="text-align: left;">irw</td>
+<td style="text-align: left;">double-border</td>
+<td style="text-align: left;">true</td>
+<td style="text-align: left;">WS_EX_CLIENTEDGE</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">limit</td>
+<td style="text-align: left;">irw</td>
+<td style="text-align: left;">TODO</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">password_char</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">TODO</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">tabstops</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">TODO</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">margins</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">TODO</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">cue</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">TODO</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+</tr>
+</tbody>
+</table>
+<h3 id="events">Events</h3>
+<table>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;"><strong>event</strong></td>
+<td style="text-align: left;"><strong>description</strong></td>
+<td style="text-align: left;"><strong>reference</strong></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">on_setfocus()</td>
+<td style="text-align: left;">TODO</td>
+<td style="text-align: left;">EN_SETFOCUS</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">on_killfocus()</td>
+<td style="text-align: left;">TODO</td>
+<td style="text-align: left;">EN_KILLFOCUS</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">on_change()</td>
+<td style="text-align: left;">TODO</td>
+<td style="text-align: left;">EN_CHANGE</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">on_update()</td>
+<td style="text-align: left;">TODO</td>
+<td style="text-align: left;">EN_UPDATE</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">on_errspace()</td>
+<td style="text-align: left;">TODO</td>
+<td style="text-align: left;">EN_ERRSPACE</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">on_maxtext()</td>
+<td style="text-align: left;">TODO</td>
+<td style="text-align: left;">EN_MAXTEXT</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">on_hscroll()</td>
+<td style="text-align: left;">TODO</td>
+<td style="text-align: left;">EN_HSCROLL</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">on_vscroll()</td>
+<td style="text-align: left;">TODO</td>
+<td style="text-align: left;">EN_VSCROLL</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">on_align_ltr_ec()</td>
+<td style="text-align: left;">TODO</td>
+<td style="text-align: left;">EN_ALIGN_LTR_EC</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">on_align_rtl_ec()</td>
+<td style="text-align: left;">TODO</td>
+<td style="text-align: left;">EN_ALIGN_RTL_EC</td>
+</tr>
+</tbody>
+</table>

@@ -1,0 +1,105 @@
+<h2 id="local-genx-requiregenx"><code>local genx = require'genx'</code></h2>
+<p>A ffi binding of <a href="http://www.tbray.org/ongoing/When/200x/2004/02/20/GenxStatus">genx</a>, a library for generating well-formed canonical XML documents, written by Tim Bray.</p>
+<h2 id="features">Features</h2>
+<ul>
+<li>does all necessary XML escaping.</li>
+<li>prevents generating text that isn’t well-formed.</li>
+<li>generates namespace prefixes.</li>
+<li>produces Canonical XML, suitable for use with digital signatures.</li>
+</ul>
+<h2 id="limitations">Limitations</h2>
+<ul>
+<li>only UTF8 encoding supported</li>
+<li>no empty element tags</li>
+<li>no <code>&lt;!DOCTYPE&gt;</code> declarations (write it yourself before calling <code>w:start_doc()</code>)</li>
+<li>no pretty-printing (add linebreaks and indentation yourself with <code>w:text()</code> where needed)</li>
+</ul>
+<h2 id="example">Example</h2>
+<div class="sourceCode" id="cb1"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb1-1"><a href="#cb1-1"></a><span class="kw">local</span> w <span class="op">=</span> genx<span class="op">.</span>new<span class="op">()</span></span>
+<span id="cb1-2"><a href="#cb1-2"></a>w<span class="op">:</span>start_doc<span class="op">(</span><span class="fu">io.stdout</span><span class="op">)</span></span>
+<span id="cb1-3"><a href="#cb1-3"></a>w<span class="op">:</span>start_element<span class="st">&#39;root&#39;</span></span>
+<span id="cb1-4"><a href="#cb1-4"></a>w<span class="op">:</span>text<span class="st">&#39;hello&#39;</span></span>
+<span id="cb1-5"><a href="#cb1-5"></a>w<span class="op">:</span><span class="cf">end</span>_element<span class="op">()</span></span>
+<span id="cb1-6"><a href="#cb1-6"></a>w<span class="op">:</span><span class="cf">end</span>_doc<span class="op">()</span></span>
+<span id="cb1-7"><a href="#cb1-7"></a>w<span class="op">:</span>free<span class="op">()</span></span></code></pre></div>
+<table>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;"><code>genx.new() -&gt; w</code></td>
+<td style="text-align: left;">Create a new genx writer.</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>w:free()</code></td>
+<td style="text-align: left;">Free the genx writer.</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>w:start_doc(file)</code></td>
+<td style="text-align: left;">Start an XML document on a <code>FILE *</code> or Lua file object</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>w:start_doc(write)</code></td>
+<td style="text-align: left;">Start an XML document on a write function to be called as <code>write([s[, size]])</code></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>w:end_doc()</code></td>
+<td style="text-align: left;">Flush pending updates and release the file handle</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>w:ns(uri[, prefix]) -&gt; ns</code></td>
+<td style="text-align: left;">Declare a namespace for reuse. The same namespace can be declared multiple times.</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>w:element(name[, ns | uri,prefix]) -&gt; elem</code></td>
+<td style="text-align: left;">Declare an element for reuse. The same element can be declared multiple times.</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>w:attr(name[, ns | uri,prefix]) -&gt; attr</code></td>
+<td style="text-align: left;">Declare an attribute for reuse. The same attribute can be declared multiple times.</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>w:comment(s)</code></td>
+<td style="text-align: left;">Add a comment to the current XML stream.</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>w:pi(target, text)</code></td>
+<td style="text-align: left;">Add a PI to the current XML stream.</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>w:start_element(elem | name [, ns | uri,prefix])</code></td>
+<td style="text-align: left;">Start a new XML element.</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>w:end_element()</code></td>
+<td style="text-align: left;">End the current element.</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>w:add_attr(attr, val[, ns | uri,prefix])</code></td>
+<td style="text-align: left;">Add an attribute to the current element. Attributes are sorted by name in the output stream.</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>w:add_ns(ns | [uri,prefix])</code></td>
+<td style="text-align: left;">Add a namespace to the current element.</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>w:unset_default_namespace()</code></td>
+<td style="text-align: left;">Add a <code>xmlns=""</code> declaration to unset the default namespace declaration. This is a no-op if no default namespace is in effect.</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>w:text(s[, size])</code></td>
+<td style="text-align: left;">Add utf-8 text.</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>w:char(char)</code></td>
+<td style="text-align: left;">Add an unicode code point.</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>w:check_text(s) -&gt; genxStatus</code></td>
+<td style="text-align: left;">Check utf-8 text.</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>w:scrub_text(s) -&gt; s</code></td>
+<td style="text-align: left;">Scrub utf-8 text of invalid characters.</td>
+</tr>
+</tbody>
+</table>
+<p>See the <a href="http://www.tbray.org/ongoing/genx/docs/Guide.html">genx manual</a> for more info.</p>

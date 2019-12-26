@@ -1,0 +1,64 @@
+<h2 id="requirewinapi.wglpanel"><code>require'winapi.wglpanel'</code></h2>
+<p>This module implements the <code>WGLPanel</code> class which allows drawing on a panel using <a href="/opengl">OpenGL</a>.</p>
+<h2 id="wglpanel">WGLPanel</h2>
+<h3 id="hierarchy">Hierarchy</h3>
+<ul>
+<li>[Object][winapi.object]
+<ul>
+<li><a href="/winapi.vobject">VObject</a>
+<ul>
+<li><a href="/winapi.basewindowclass">BaseWindow</a>
+<ul>
+<li><a href="/winapi.controlclass">Control</a>
+<ul>
+<li><a href="/winapi.panelclass">Panel</a>
+<ul>
+<li>WGLPanel</li>
+</ul></li>
+</ul></li>
+</ul></li>
+</ul></li>
+</ul></li>
+</ul>
+<h3 id="events">Events</h3>
+<table>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;"><strong>painting</strong></td>
+<td style="text-align: left;"><strong>description</strong></td>
+<td style="text-align: left;"><strong>reference</strong></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">on_render()</td>
+<td style="text-align: left;">panel needs repainting</td>
+<td style="text-align: left;">WM_PAINT</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">on_set_viewport()</td>
+<td style="text-align: left;">window was resized</td>
+<td style="text-align: left;"></td>
+</tr>
+</tbody>
+</table>
+<h3 id="usage">Usage</h3>
+<div class="sourceCode" id="cb1"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb1-1"><a href="#cb1-1"></a><span class="kw">local</span> winapi <span class="op">=</span> <span class="fu">require</span><span class="st">&#39;winapi&#39;</span></span>
+<span id="cb1-2"><a href="#cb1-2"></a><span class="fu">require</span><span class="st">&#39;winapi.wglpanel&#39;</span></span>
+<span id="cb1-3"><a href="#cb1-3"></a></span>
+<span id="cb1-4"><a href="#cb1-4"></a><span class="kw">local</span> main <span class="op">=</span> winapi<span class="op">.</span>Window<span class="op">{</span></span>
+<span id="cb1-5"><a href="#cb1-5"></a>  autoquit <span class="op">=</span> <span class="kw">true</span><span class="op">,</span></span>
+<span id="cb1-6"><a href="#cb1-6"></a><span class="op">}</span></span>
+<span id="cb1-7"><a href="#cb1-7"></a></span>
+<span id="cb1-8"><a href="#cb1-8"></a><span class="kw">local</span> panel <span class="op">=</span> winapi<span class="op">.</span>WGLPanel<span class="op">{</span></span>
+<span id="cb1-9"><a href="#cb1-9"></a>  anchors <span class="op">=</span> <span class="op">{</span>left <span class="op">=</span> <span class="kw">true</span><span class="op">,</span> top <span class="op">=</span> <span class="kw">true</span><span class="op">,</span> right <span class="op">=</span> <span class="kw">true</span><span class="op">,</span> bottom <span class="op">=</span> <span class="kw">true</span><span class="op">},</span></span>
+<span id="cb1-10"><a href="#cb1-10"></a>  w <span class="op">=</span> main<span class="op">.</span>client_w<span class="op">,</span></span>
+<span id="cb1-11"><a href="#cb1-11"></a>  h <span class="op">=</span> main<span class="op">.</span>client_h<span class="op">,</span></span>
+<span id="cb1-12"><a href="#cb1-12"></a>  parent <span class="op">=</span> main<span class="op">,</span></span>
+<span id="cb1-13"><a href="#cb1-13"></a><span class="op">}</span></span>
+<span id="cb1-14"><a href="#cb1-14"></a></span>
+<span id="cb1-15"><a href="#cb1-15"></a><span class="kw">local</span> gl <span class="op">=</span> <span class="fu">require</span><span class="st">&#39;winapi.gl21&#39;</span></span>
+<span id="cb1-16"><a href="#cb1-16"></a></span>
+<span id="cb1-17"><a href="#cb1-17"></a><span class="kw">function</span> panel<span class="op">:</span>on_render<span class="op">()</span></span>
+<span id="cb1-18"><a href="#cb1-18"></a>  gl<span class="op">.</span>glMatrixMode<span class="op">(</span>gl<span class="op">.</span><span class="cn">GL_MODELVIEW</span><span class="op">)</span></span>
+<span id="cb1-19"><a href="#cb1-19"></a>  gl<span class="op">.</span>glLoadIdentity<span class="op">()</span></span>
+<span id="cb1-20"><a href="#cb1-20"></a>  <span class="co">--render model...</span></span>
+<span id="cb1-21"><a href="#cb1-21"></a><span class="cf">end</span></span></code></pre></div>

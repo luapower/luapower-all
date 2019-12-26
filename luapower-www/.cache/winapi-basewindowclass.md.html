@@ -1,0 +1,678 @@
+<h2 id="requirewinapi.basewindowclass"><code>require'winapi.basewindowclass'</code></h2>
+<p>This module implements the <code>BaseWindow</code> class which is the base class for both top-level windows and controls. The module also contains the message loop and the <code>Windows</code> singleton which deals with windows (top-level or not) as a collection.</p>
+<p><code>BaseWindow</code> is for subclassing, not for instantiation. Nevertheless, it contains properties and methods that are common to both windows and controls which are documented here.</p>
+<h2 id="basewindow">BaseWindow</h2>
+<h3 id="hierarchy">Hierarchy</h3>
+<ul>
+<li><a href="/winapi.vobject">VObject</a>
+<ul>
+<li>BaseWindow</li>
+</ul></li>
+</ul>
+<h3 id="initial-fields-and-properties">Initial fields and properties</h3>
+<p><strong>NOTE:</strong> in the table below <code>i</code> means initial field, <code>r</code> means property which can be read, <code>w</code> means property which can be set.</p>
+<table>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;"><strong>state</strong></td>
+<td style="text-align: left;"><strong>irw</strong></td>
+<td style="text-align: left;"><strong>description</strong></td>
+<td style="text-align: left;"><strong>default</strong></td>
+<td style="text-align: left;"><strong>reference</strong></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">visible</td>
+<td style="text-align: left;">irw</td>
+<td style="text-align: left;">visibility</td>
+<td style="text-align: left;">true</td>
+<td style="text-align: left;">WS_VISIBLE</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">is_visible</td>
+<td style="text-align: left;">r</td>
+<td style="text-align: left;">is actually visible?</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">IsWindowVisible</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">enabled</td>
+<td style="text-align: left;">irw</td>
+<td style="text-align: left;">focusability</td>
+<td style="text-align: left;">true</td>
+<td style="text-align: left;">WS_DISABLED</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">focused</td>
+<td style="text-align: left;">rw</td>
+<td style="text-align: left;">focused state</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">GetFocus</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">dead</td>
+<td style="text-align: left;">r</td>
+<td style="text-align: left;">was it destroyed?</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">WM_NCDESTROY</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><strong>positioning</strong></td>
+<td style="text-align: left;"><strong>irw</strong></td>
+<td style="text-align: left;"><strong>description</strong></td>
+<td style="text-align: left;"><strong>default</strong></td>
+<td style="text-align: left;"><strong>reference</strong></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">x, y</td>
+<td style="text-align: left;">irw</td>
+<td style="text-align: left;">position</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">SetWindowPos</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">w, h</td>
+<td style="text-align: left;">irw</td>
+<td style="text-align: left;">size</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">SetWindowPos</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">rect</td>
+<td style="text-align: left;">rw</td>
+<td style="text-align: left;">outer rect (RECT)</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">SetWindowPos</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">client_w, client_h</td>
+<td style="text-align: left;">r</td>
+<td style="text-align: left;">inner size</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">GetClientRect</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">client_rect</td>
+<td style="text-align: left;">r</td>
+<td style="text-align: left;">inner rect (RECT)</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">GetClientRect</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">screen_rect</td>
+<td style="text-align: left;">r</td>
+<td style="text-align: left;">outer rect in screen space</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">GetWindowRect</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">min_w, min_h</td>
+<td style="text-align: left;">irw</td>
+<td style="text-align: left;">minimum size</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">WM_WINDOWPOSCHANGING</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">max_w, max_h</td>
+<td style="text-align: left;">irw</td>
+<td style="text-align: left;">maximum size</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">WM_WINDOWPOSCHANGING</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">monitor</td>
+<td style="text-align: left;">r</td>
+<td style="text-align: left;">monitor (HMONITOR)</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">MonitorFromWindow</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><strong>painting</strong></td>
+<td style="text-align: left;"><strong>irw</strong></td>
+<td style="text-align: left;"><strong>description</strong></td>
+<td style="text-align: left;"><strong>default</strong></td>
+<td style="text-align: left;"><strong>reference</strong></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">updating</td>
+<td style="text-align: left;">w</td>
+<td style="text-align: left;">control automatic redraw</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">SetRedraw</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><strong>other</strong></td>
+<td style="text-align: left;"><strong>irw</strong></td>
+<td style="text-align: left;"><strong>description</strong></td>
+<td style="text-align: left;"><strong>default</strong></td>
+<td style="text-align: left;"><strong>reference</strong></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">font</td>
+<td style="text-align: left;">irw</td>
+<td style="text-align: left;">default font</td>
+<td style="text-align: left;">DEFAULT_GUI_FONT</td>
+<td style="text-align: left;">Get/SetWindowFont</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">text</td>
+<td style="text-align: left;">rw</td>
+<td style="text-align: left;">depends on control</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">Get/SetWindowText</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">cursor_pos</td>
+<td style="text-align: left;">r</td>
+<td style="text-align: left;">mouse position (POINT)</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">GetCursorPos</td>
+</tr>
+</tbody>
+</table>
+<h3 id="methods">Methods</h3>
+<table>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;"><strong>state</strong></td>
+<td style="text-align: left;"><strong>description</strong></td>
+<td style="text-align: left;"><strong>reference</strong></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">enable()</td>
+<td style="text-align: left;">enable</td>
+<td style="text-align: left;">EnableWindow</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">disable()</td>
+<td style="text-align: left;">disable</td>
+<td style="text-align: left;">EnableWindow</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">focus()</td>
+<td style="text-align: left;">focus</td>
+<td style="text-align: left;">SetFocus</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">show([async])</td>
+<td style="text-align: left;">show</td>
+<td style="text-align: left;">ShowWindow</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">hide()</td>
+<td style="text-align: left;">hide</td>
+<td style="text-align: left;">ShowWindow</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><strong>positioning</strong></td>
+<td style="text-align: left;"><strong>description</strong></td>
+<td style="text-align: left;"><strong>reference</strong></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">move(x, y)</td>
+<td style="text-align: left;">move</td>
+<td style="text-align: left;">SetWindowPos</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">resize(w, h)</td>
+<td style="text-align: left;">resize</td>
+<td style="text-align: left;">SetWindowPos</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">map_point(to_win, POINT) -&gt; POINT</td>
+<td style="text-align: left;">map a POINT to a window’s space</td>
+<td style="text-align: left;">MapWindowPoint</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">map_rect(to_win, RECT) -&gt; RECT</td>
+<td style="text-align: left;">map a RECT to a window’s space</td>
+<td style="text-align: left;">MapWindowRect</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">client_to_frame(nil, RECT) -&gt; RECT</td>
+<td style="text-align: left;">inner-&gt;outer frame space conversion</td>
+<td style="text-align: left;">AdjustWindowRect</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">frame_to_client(nil, RECT) -&gt; RECT</td>
+<td style="text-align: left;">outer-&gt;inner frame space conversion</td>
+<td style="text-align: left;">AdjustWindowRect</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><strong>children</strong></td>
+<td style="text-align: left;"><strong>description</strong></td>
+<td style="text-align: left;"><strong>reference</strong></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">children([all]) -&gt; iter() -&gt; win</td>
+<td style="text-align: left;">iterate children</td>
+<td style="text-align: left;">Get/EnumChildWindows</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">child_at(POINT) -&gt; win</td>
+<td style="text-align: left;">direct child window at position</td>
+<td style="text-align: left;">ChildWindowFromPoint</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">real_child_at(POINT) -&gt; win</td>
+<td style="text-align: left;">same but ignore transparent ones</td>
+<td style="text-align: left;">RealChildWindowFromPoint</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><strong>z-order</strong></td>
+<td style="text-align: left;"><strong>description</strong></td>
+<td style="text-align: left;"><strong>reference</strong></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">send_to_back([rel_to_win])</td>
+<td style="text-align: left;">move below of other windows</td>
+<td style="text-align: left;">SetWindowPos</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">bring_to_front([rel_to_win])</td>
+<td style="text-align: left;">bring in front of other windows</td>
+<td style="text-align: left;">SetWindowPos</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><strong>painting</strong></td>
+<td style="text-align: left;"><strong>description</strong></td>
+<td style="text-align: left;"><strong>reference</strong></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">redraw()</td>
+<td style="text-align: left;">redraw the window immediately</td>
+<td style="text-align: left;">RedrawWindow</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">invalidate([RECT], [erase_bg])</td>
+<td style="text-align: left;">invalidate the window or a subregion</td>
+<td style="text-align: left;">InvalidateRect</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">batch_update(func, args…)</td>
+<td style="text-align: left;">run func() with redrawing disabled</td>
+<td style="text-align: left;">SetRedraw/RedrawWindow</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><strong>drag &amp; drop</strong></td>
+<td style="text-align: left;"><strong>description</strong></td>
+<td style="text-align: left;"><strong>reference</strong></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">dragging(POINT) -&gt; true|false</td>
+<td style="text-align: left;">check if dragging</td>
+<td style="text-align: left;">DragDetect</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><strong>timers</strong></td>
+<td style="text-align: left;"><strong>description</strong></td>
+<td style="text-align: left;"><strong>reference</strong></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">settimer(seconds, handler, id)</td>
+<td style="text-align: left;">set/reset a timer</td>
+<td style="text-align: left;">SetTimer</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">stoptimer(id)</td>
+<td style="text-align: left;">cancel a timer</td>
+<td style="text-align: left;">KillTimer</td>
+</tr>
+</tbody>
+</table>
+<h3 id="events">Events</h3>
+<table>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;"><strong>lifetime</strong></td>
+<td style="text-align: left;"><strong>description</strong></td>
+<td style="text-align: left;"><strong>reference</strong></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">on_destroy()</td>
+<td style="text-align: left;">before destroying</td>
+<td style="text-align: left;">WM_DESTROY</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">on_destroyed()</td>
+<td style="text-align: left;">after being destroyed</td>
+<td style="text-align: left;">WM_NCDESTROY</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><strong>state</strong></td>
+<td style="text-align: left;"><strong>description</strong></td>
+<td style="text-align: left;"><strong>reference</strong></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">on_pos_changing(WINDOWPOS)</td>
+<td style="text-align: left;">resizing (or changing state)</td>
+<td style="text-align: left;">WM_WINDOWPOSCHANGING</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">on_parent_resizing(WINDOWPOS)</td>
+<td style="text-align: left;">parent is resizing</td>
+<td style="text-align: left;">WM_WINDOWPOSCHANGING</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">on_pos_changed()</td>
+<td style="text-align: left;">resized or state changed</td>
+<td style="text-align: left;">WM_WINDOWPOSCHANGED</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">on_moving()</td>
+<td style="text-align: left;">moving</td>
+<td style="text-align: left;">WM_MOVING</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">on_moved()</td>
+<td style="text-align: left;">was moved</td>
+<td style="text-align: left;">WM_MOVE</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">on_resizing()</td>
+<td style="text-align: left;">resizing</td>
+<td style="text-align: left;">WM_SIZING</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">on_resized()</td>
+<td style="text-align: left;">was resized</td>
+<td style="text-align: left;">WM_SIZE</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">on_begin_sizemove()</td>
+<td style="text-align: left;">moving or resizing started</td>
+<td style="text-align: left;">WM_ENTERSIZEMOVE</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">on_end_sizemove()</td>
+<td style="text-align: left;">moving or resizing ended</td>
+<td style="text-align: left;">WM_EXITSIZEMOVE</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">on_focus()</td>
+<td style="text-align: left;">was focused</td>
+<td style="text-align: left;">WM_SETFOCUS</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">on_blur()</td>
+<td style="text-align: left;">was unfocused</td>
+<td style="text-align: left;">WM_KILLFOCUS</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">on_enable(enabled)</td>
+<td style="text-align: left;">was enabled or disabled</td>
+<td style="text-align: left;">WM_ENABLE</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">on_show()</td>
+<td style="text-align: left;">was shown</td>
+<td style="text-align: left;">WM_SHOWWINDOW</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><strong>mouse</strong></td>
+<td style="text-align: left;"><strong>description</strong></td>
+<td style="text-align: left;"><strong>reference</strong></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">on_mouse_move(x, y, btns)</td>
+<td style="text-align: left;">mouse moved</td>
+<td style="text-align: left;">WM_MOUSEMOVE</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">on_mouse_over(x, y, btns)</td>
+<td style="text-align: left;">mouse entered the client area (*)</td>
+<td style="text-align: left;">WM_MOUSEHOVER</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">on_mouse_leave()</td>
+<td style="text-align: left;">mouse left the client area (*)</td>
+<td style="text-align: left;">WM_MOUSELEAVE</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">on_lbutton_double_click(x, y, btns)</td>
+<td style="text-align: left;">left mouse button double-click</td>
+<td style="text-align: left;">WM_LBUTTONDBLCLK</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">on_lbutton_down(x, y, btns)</td>
+<td style="text-align: left;">left mouse button down</td>
+<td style="text-align: left;">WM_LBUTTONDOWN</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">on_lbutton_up(x, y, btns)</td>
+<td style="text-align: left;">left mouse button up</td>
+<td style="text-align: left;">WM_LBUTTONUP</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">on_mbutton_double_click(x, y, btns)</td>
+<td style="text-align: left;">middle mouse button double-click</td>
+<td style="text-align: left;">WM_MBUTTONDBLCLK</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">on_mbutton_down(x, y, btns)</td>
+<td style="text-align: left;">middle mouse button down</td>
+<td style="text-align: left;">WM_MBUTTONDOWN</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">on_mbutton_up(x, y, btns)</td>
+<td style="text-align: left;">middle mouse button up</td>
+<td style="text-align: left;">WM_MBUTTONUP</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">on_rbutton_double_click(x, y, btns)</td>
+<td style="text-align: left;">right mouse button double-click</td>
+<td style="text-align: left;">WM_RBUTTONDBLCLK</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">on_rbutton_down(x, y, btns)</td>
+<td style="text-align: left;">right mouse button down</td>
+<td style="text-align: left;">WM_RBUTTONDOWN</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">on_rbutton_up(x, y, btns)</td>
+<td style="text-align: left;">right mouse button up</td>
+<td style="text-align: left;">WM_RBUTTONUP</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">on_xbutton_double_click(x, y, btns, which)</td>
+<td style="text-align: left;">other mouse button double-click</td>
+<td style="text-align: left;">WM_XBUTTONDBLCLK</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">on_xbutton_down(x, y, btns, which)</td>
+<td style="text-align: left;">other mouse button down</td>
+<td style="text-align: left;">WM_XBUTTONDOWN</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">on_xbutton_up(x, y, btns, which)</td>
+<td style="text-align: left;">other mouse button up</td>
+<td style="text-align: left;">WM_XBUTTONUP</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">on_mouse_wheel(x, y, btns, delta)</td>
+<td style="text-align: left;">mouse wheel roll</td>
+<td style="text-align: left;">WM_MOUSEWHEEL</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">on_mouse_hwheel(x, y, btns, delta)</td>
+<td style="text-align: left;">mouse horizontal wheel roll</td>
+<td style="text-align: left;">WM_MOUSEHWHEEL</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">on_set_cursor()</td>
+<td style="text-align: left;">cursor changed</td>
+<td style="text-align: left;">WM_SETCURSOR</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><strong>keyboard</strong></td>
+<td style="text-align: left;"><strong>description</strong></td>
+<td style="text-align: left;"><strong>reference</strong></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">on_key_down(VK_code, flags)</td>
+<td style="text-align: left;">key down</td>
+<td style="text-align: left;">WM_KEYDOWN</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">on_key_up(VK_code, flags)</td>
+<td style="text-align: left;">key up</td>
+<td style="text-align: left;">WM_KEYUP</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">on_syskey_down(VK_code, flags)</td>
+<td style="text-align: left;">syskey down</td>
+<td style="text-align: left;">WM_SYSKEYDOWN</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">on_syskey_up(VK_code, flags)</td>
+<td style="text-align: left;">syskey up</td>
+<td style="text-align: left;">WM_SYSKEYUP</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">on_key_down_char(utf8_char, flags)</td>
+<td style="text-align: left;">key down char</td>
+<td style="text-align: left;">WM_CHAR</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">on_syskey_down_char(utf8_char, flags)</td>
+<td style="text-align: left;">syskey down char</td>
+<td style="text-align: left;">WM_SYSCHAR</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">on_dead_key_up_char(VK_code, flags)</td>
+<td style="text-align: left;">dead key up char</td>
+<td style="text-align: left;">WM_DEADCHAR</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">on_dead_syskey_down_char(VK_code, flags)</td>
+<td style="text-align: left;">dead syskey down char</td>
+<td style="text-align: left;">WM_SYSDEADCHAR</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">on_help()</td>
+<td style="text-align: left;">user pressed F1</td>
+<td style="text-align: left;">WM_HELP</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><strong>raw input</strong></td>
+<td style="text-align: left;"><strong>description</strong></td>
+<td style="text-align: left;"><strong>reference</strong></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">on_raw_input(RAWINPUT)</td>
+<td style="text-align: left;">raw input event</td>
+<td style="text-align: left;">WM_INPUT</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">on_device_change(how, HRAWINPUT)</td>
+<td style="text-align: left;">input device added/removed</td>
+<td style="text-align: left;">WM_INPUT_DEVICE_CHANGE</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><strong>system events</strong></td>
+<td style="text-align: left;"><strong>description</strong></td>
+<td style="text-align: left;"><strong>reference</strong></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">on_dpi_changed()</td>
+<td style="text-align: left;">monitor’s DPI changed</td>
+<td style="text-align: left;">WM_DPICHANGED</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><strong>painting</strong></td>
+<td style="text-align: left;"><strong>description</strong></td>
+<td style="text-align: left;"><strong>reference</strong></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">on_paint(hdc)</td>
+<td style="text-align: left;">window needs repainting</td>
+<td style="text-align: left;">WM_PAINT</td>
+</tr>
+</tbody>
+</table>
+<p>(*) call <code>TrackMouseEvent()</code> to receive these messages.</p>
+<h2 id="windows">Windows</h2>
+<h3 id="hierarchy-1">Hierarchy</h3>
+<ul>
+<li>[Object][winapi.object]
+<ul>
+<li><a href="/winapi.vobject">VObject</a>
+<ul>
+<li>[HandleList][winapi.handlelist]
+<ul>
+<li>Windows</li>
+</ul></li>
+</ul></li>
+</ul></li>
+</ul>
+<h3 id="properties-and-methods">Properties and methods</h3>
+<table>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;"><strong>field/method</strong></td>
+<td style="text-align: left;"><strong>description</strong></td>
+<td style="text-align: left;"><strong>reference</strong></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Windows.items -&gt; {HWND -&gt; win}</td>
+<td style="text-align: left;">the HWND-&gt;window map</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Windows.active_window -&gt; win</td>
+<td style="text-align: left;">get the active window</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Windows.foreground_window -&gt; win | nil</td>
+<td style="text-align: left;">get the active window if the app is active</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Windows:window_at(POINT) -&gt; win | nil</td>
+<td style="text-align: left;">get the window at a point</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Windows:map_point(to_win, POINT) -&gt; POINT</td>
+<td style="text-align: left;">map a POINT to a window’s space</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Windows:map_rect(to_win, RECT) -&gt; RECT</td>
+<td style="text-align: left;">map a RECT to a window’s space</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Windows.cursor_pos -&gt; POINT</td>
+<td style="text-align: left;">current mouse position outside of events</td>
+<td style="text-align: left;"></td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>NOTE:</strong> The active window goes nil when the app is deactivated, but if activate() is called on a window while the app is inactive, the window’s active state will be set immediately, even if the window will not be activated (because the app is inactive). OTOH, the foreground window is always nil while the app is inactive, even after calling activate() on a window.</p>
+</blockquote>
+<h2 id="the-message-loop">The message loop</h2>
+<table>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;"><code>MessageLoop()</code></td>
+<td style="text-align: left;">start the message loop</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>ProcessNextMessage() -&gt; true|false</code></td>
+<td style="text-align: left;">process the next pending message (return true if there even was one)</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>ProcessMessages()</code></td>
+<td style="text-align: left;">process all pending messages (if any) and return</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>PostQuitMessage()</code></td>
+<td style="text-align: left;">post a quit message to the message loop to stop it</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>NOTE:</strong> The message loop returns an exit code, so you can call it like this: <code>os.exit(MessageLoop())</code>.</p>
+</blockquote>

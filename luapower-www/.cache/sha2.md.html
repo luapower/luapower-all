@@ -1,0 +1,32 @@
+<h2 id="local-sha2-requiresha2"><code>local sha2 = require'sha2'</code></h2>
+<p>A ffi binding of Aaron Gifford’s <a href="http://www.aarongifford.com/computers/sha.html">SHA-2 implementation</a>.</p>
+<table>
+<colgroup>
+<col style="width: 50%" />
+<col style="width: 50%" />
+</colgroup>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;"><code>sha2.sha256(s[, size]) -&gt; s</code><br />
+<code>sha2.sha256(cdata, size) -&gt; s</code><br />
+<code>sha2.sha384(s[, size]) -&gt; s</code><br />
+<code>sha2.sha384(cdata, size) -&gt; s</code><br />
+<code>sha2.sha512(s[, size]) -&gt; s</code><br />
+<code>sha2.sha512(cdata, size) -&gt; s</code></td>
+<td>Compute the SHA-2 hash of a string or a cdata buffer. Return the binary representation of the hash. To get the hex representation, use <a href="glue.html#tohex">glue.tohex</a>.</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>sha2.sha256_digest() -&gt; digest</code><br />
+<code>sha2.sha384_digest() -&gt; digest</code><br />
+<code>sha2.sha512_digest() -&gt; digest</code><br />
+<code>digest(s[, size])</code><br />
+<code>digest(cdata, size)</code><br />
+<code>digest() -&gt; s</code></td>
+<td>Get a SHA-2 digest function that can consume multiple data chunks until called with no arguments when it returns the final SHA hash.</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>sha2.sha256_hmac(s, key) -&gt; s</code> <code>sha2.sha384_hmac(s, key) -&gt; s</code> <code>sha2.sha512_hmac(s, key) -&gt; s</code></td>
+<td>compute the HMAC-SHA256 of a string. compute the HMAC-SHA384 of a string. compute the HMAC-SHA512 of a string.</td>
+</tr>
+</tbody>
+</table>

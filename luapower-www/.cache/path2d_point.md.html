@@ -1,0 +1,18 @@
+<h2 id="local-point-requirepath2d_point">local point = require’path2d_point’</h2>
+<p>Basic math functions for the cartesian plane. Angles are expressed in degrees, not radians.</p>
+<h3 id="point.hypota-b---c"><code>point.hypot(a, b) -&gt; c</code></h3>
+<p>Hypotenuse function: computes <code>sqrt(a^2 + b^2)</code> without underflow / overflow problems.</p>
+<h3 id="point.distancex1-y1-x2-y2---d"><code>point.distance(x1, y1, x2, y2) -&gt; d</code></h3>
+<p>Dstance between two points.</p>
+<h3 id="point.distance2x1-y1-x2-y2---d2"><code>point.distance2(x1, y1, x2, y2) -&gt; d2</code></h3>
+<p>Distance between two points squared.</p>
+<h3 id="point.point_aroundcx-cy-r-angle---x-y"><code>point.point_around(cx, cy, r, angle) -&gt; x, y</code></h3>
+<p>Point at a specified angle on a circle.</p>
+<h3 id="point.rotate_pointx-y-cx-cy-angle---x-y"><code>point.rotate_point(x, y, cx, cy, angle) -&gt; x, y</code></h3>
+<p>Eotate point (x,y) around origin (cx,cy) by angle.</p>
+<h3 id="point.point_anglex-y-cx-cy---angle"><code>point.point_angle(x, y, cx, cy) -&gt; angle</code></h3>
+<p>Angle between two points in -180..180 degree range.</p>
+<h3 id="point.reflect_pointx-y-cx-cy---x-y"><code>point.reflect_point(x, y, cx, cy) -&gt; x, y</code></h3>
+<p>Reflect point through origin (i.e. rotate point 180deg around another point).</p>
+<h3 id="point.reflect_point_distancex-y-cx-cy-length---x-y"><code>point.reflect_point_distance(x, y, cx, cy, length) -&gt; x, y</code></h3>
+<p>Reflect point through origin at a specified distance.</p>

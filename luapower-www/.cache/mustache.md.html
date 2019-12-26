@@ -1,0 +1,70 @@
+<p>{{=&lt;%% %%&gt;=}}</p>
+<h2 id="local-mustache-requiremustache"><code>local mustache = require'mustache'</code></h2>
+<p>A mustache parser and renderer written in Lua with the aim of producing the exact same output as mustache.js on the same template + cjson-encoded view. For full syntax of mustache see the <a href="https://mustache.github.io/mustache.5.html">mustache manual</a>.</p>
+<h2 id="features">Features</h2>
+<ul>
+<li>syntax:
+<ul>
+<li>html-escaped values: <code>{{var}}</code></li>
+<li>unescaped values: <code>{{{var}}}</code> or <code>{{&amp; var}}</code></li>
+<li>sections: <code>{{#var}} ... {{/var}}</code></li>
+<li>inverted sections: <code>{{^var}} ... {{/var}}</code></li>
+<li>comments: <code>{{! ... }}</code></li>
+<li>partials: <code>{{&gt;name}}</code></li>
+<li>set delimiters: <code>{{=&lt;% %&gt;=}}</code></li>
+<li>scoped vars: <code>a.b.c</code> wherever <code>var</code> is expected.</li>
+</ul></li>
+<li>semantics:
+<ul>
+<li>compatible with mustache.js as to what constitutes a non-false value, in particular <code>''</code>, <code>0</code> and <code>'0'</code> are considered false.</li>
+<li>compatibile with <a href="/cjson">cjson</a> as to what is considered an array and what is a hashmap, in particular sparse arrays that contain no other keys are seen as lists and their non-nil elements are iterated.</li>
+<li>section lambdas <code>f(text, render)</code> and value lambdas <code>f()</code> are supported.</li>
+</ul></li>
+<li>rendering:
+<ul>
+<li><strong>passes all mustache.js tests.</strong></li>
+<li>preserves the indentation of standalone partials.</li>
+<li>escapes <code>&amp;</code>, <code>&gt;</code>, <code>&lt;</code>, <code>"</code>, <code>'</code>, <code>/</code>, <code></code> <code>,</code>=` like mustache.js.</li>
+</ul></li>
+<li>other:
+<ul>
+<li>error reporting with line and column number information.</li>
+<li>dump tool for debugging compiled templates.</li>
+<li>text position info for all tokens (can be used for syntax highlighting).</li>
+</ul></li>
+</ul>
+<h2 id="api">API</h2>
+<table>
+<colgroup>
+<col style="width: 49%" />
+<col style="width: 50%" />
+</colgroup>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;"><code>mustache.render(template, [view], [partials], [write], [d1, d2], [escape_func]) -&gt; s</code></td>
+<td style="text-align: left;">(compile and) render a template</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>mustache.compile(template, [d1, d2]) -&gt; template</code></td>
+<td style="text-align: left;">compile a template to bytecode</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>mustache.dump(template, [d1, d2], [print])</code></td>
+<td style="text-align: left;">dump bytecode (for debugging)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="mustache.rendertemplate-data-partials-write-d1-d2-escape_func---s"><code>mustache.render(template, [data], [partials], [write], [d1, d2], [escape_func]) -&gt; s</code></h3>
+<p>(Compile and) render a template. Args:</p>
+<ul>
+<li><code>template</code> - the template, in compiled or in string form.</li>
+<li><code>view</code> - the template view.</li>
+<li><code>partials</code> - either <code>{name -&gt; template}</code> or <code>function(name) -&gt; template</code></li>
+<li><code>write</code> - a <code>function(s)</code> to output the rendered pieces to.</li>
+<li><code>d1, d2</code> - initial set delimiters.</li>
+<li><code>escape_func</code> - the escape function for <code>{{var}}</code> substitutions.</li>
+</ul>
+<h3 id="mustache.compiletemplate-d1-d2---template"><code>mustache.compile(template[, d1, d2]) -&gt; template</code></h3>
+<p>Compile a template to bytecode (if not already compiled).</p>
+<h3 id="mustache.dumpprogram-d1-d2-print"><code>mustache.dump(program, [d1, d2], [print])</code></h3>
+<p>Dump the template bytecode (for debugging).</p>

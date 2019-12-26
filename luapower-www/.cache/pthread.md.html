@@ -1,0 +1,237 @@
+<h2 id="local-pthread-requirepthread"><code>local pthread = require'pthread'</code></h2>
+<p>A lightweight ffi binding of POSIX threads. Includes <a href="http://sourceforge.net/p/mingw-w64/mingw-w64/ci/master/tree/mingw-w64-libraries/winpthreads/">winpthreads</a> from MinGW-w64 for Windows support (uses the pthread library found on the system otherwise).</p>
+<p><strong>NOTE:</strong> pthread only works on a luajit binary that was compiled with <code>-pthread</code>. The <a href="/luajit">luajit</a> binary from luapower was compiled this way.</p>
+<h2 id="api">API</h2>
+<table>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;"><strong>threads</strong></td>
+<td></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>pthread.new(func_ptr[, attrs]) -&gt; th</code></td>
+<td>create and start a new thread</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>th:equal(other_th) -&gt; true | false</code></td>
+<td>check if two threads are equal</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>th:join() -&gt; status</code></td>
+<td>wait for a thread to finish</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>th:detach()</code></td>
+<td>detach a thread</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>th:priority(new_priority)</code></td>
+<td>set thread priority</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>th:priority() -&gt; priority</code></td>
+<td>get thread priority</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>pthread.min_priority() -&gt; priority</code></td>
+<td>get min. priority</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>pthread.max_priority() -&gt; priority</code></td>
+<td>get max. priority</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>pthread.yield()</code></td>
+<td>relinquish control to the scheduler</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><strong>mutexes</strong></td>
+<td></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>pthread.mutex([mattrs]) -&gt; mutex</code></td>
+<td>create a mutex</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>mutex:free()</code></td>
+<td>free a mutex</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>mutex:lock()</code></td>
+<td>lock a mutex</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>mutex:unlock()</code></td>
+<td>unlock a mutex</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>mutex:trylock() -&gt; true | false</code></td>
+<td>lock a mutex or return false</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><strong>condition variables</strong></td>
+<td></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>pthread.cond() -&gt; cond</code></td>
+<td>create a condition variable</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>cond:free()</code></td>
+<td>free the condition variable</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>cond:broadcast()</code></td>
+<td>broadcast</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>cond:signal()</code></td>
+<td>signal</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>cond:wait(mutex[, timeout]) -&gt; true | false</code></td>
+<td>wait with optional timeout (*)</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><strong>read/write locks</strong></td>
+<td></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>pthread.rwlock() -&gt; rwlock</code></td>
+<td>create a r/w lock</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>rwlock:free()</code></td>
+<td>free a r/w lock</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>rwlock:writelock()</code></td>
+<td>lock for writing</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>rwlock:readlock()</code></td>
+<td>lock for reading</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>rwlock:trywritelock() -&gt; true | false</code></td>
+<td>try to lock for writing</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>rwlock:tryreadlock() -&gt; true | false</code></td>
+<td>try to lock for reading</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>rwlock:unlock()</code></td>
+<td>unlock the r/w lock</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>(*) timeout is an os.time() or <a href="/time">time</a>.time() timestamp, not a time period.</p>
+</blockquote>
+<p><strong>NOTE:</strong> All functions raise errors but error messages are not included and error codes are platform specific. Use <code>mgit precompile errno.h | grep CODE</code> to search for specific codes.</p>
+<h2 id="howto">Howto</h2>
+<p>Use it with <a href="/luastate">luastate</a>:</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb1-1"><a href="#cb1-1"></a><span class="kw">local</span> ffi <span class="op">=</span> <span class="fu">require</span><span class="st">&#39;ffi&#39;</span></span>
+<span id="cb1-2"><a href="#cb1-2"></a><span class="kw">local</span> pthread <span class="op">=</span> <span class="fu">require</span><span class="st">&#39;pthread&#39;</span></span>
+<span id="cb1-3"><a href="#cb1-3"></a><span class="kw">local</span> luastate <span class="op">=</span> <span class="fu">require</span><span class="st">&#39;luastate&#39;</span></span>
+<span id="cb1-4"><a href="#cb1-4"></a></span>
+<span id="cb1-5"><a href="#cb1-5"></a><span class="co">--make a new Lua state</span></span>
+<span id="cb1-6"><a href="#cb1-6"></a><span class="kw">local</span> state <span class="op">=</span> luastate<span class="op">.</span>open<span class="op">()</span></span>
+<span id="cb1-7"><a href="#cb1-7"></a></span>
+<span id="cb1-8"><a href="#cb1-8"></a><span class="co">--load the standard libraries into the Lua state</span></span>
+<span id="cb1-9"><a href="#cb1-9"></a>state<span class="op">:</span>openlibs<span class="op">()</span></span>
+<span id="cb1-10"><a href="#cb1-10"></a></span>
+<span id="cb1-11"><a href="#cb1-11"></a><span class="co">--create a callback into the Lua state to be called from a different thread</span></span>
+<span id="cb1-12"><a href="#cb1-12"></a>state<span class="op">:</span>push<span class="op">(</span><span class="kw">function</span><span class="op">()</span></span>
+<span id="cb1-13"><a href="#cb1-13"></a></span>
+<span id="cb1-14"><a href="#cb1-14"></a>   <span class="co">--up-values are not copied, so we have to require ffi again.</span></span>
+<span id="cb1-15"><a href="#cb1-15"></a>   <span class="kw">local</span> ffi <span class="op">=</span> <span class="fu">require</span><span class="st">&#39;ffi&#39;</span></span>
+<span id="cb1-16"><a href="#cb1-16"></a></span>
+<span id="cb1-17"><a href="#cb1-17"></a>   <span class="co">--this is our worker function that will run in a different thread.</span></span>
+<span id="cb1-18"><a href="#cb1-18"></a>   <span class="kw">local</span> <span class="kw">function</span> worker<span class="op">()</span></span>
+<span id="cb1-19"><a href="#cb1-19"></a>      <span class="co">--print() is thread-safe so no need to guard it.</span></span>
+<span id="cb1-20"><a href="#cb1-20"></a>      <span class="fu">print</span><span class="st">&#39;Hello from thread!&#39;</span></span>
+<span id="cb1-21"><a href="#cb1-21"></a>   <span class="cf">end</span></span>
+<span id="cb1-22"><a href="#cb1-22"></a></span>
+<span id="cb1-23"><a href="#cb1-23"></a>   <span class="co">--make a ffi callback frame to call into our worker function.</span></span>
+<span id="cb1-24"><a href="#cb1-24"></a>   <span class="co">--luajit anchors both the callback object and its function</span></span>
+<span id="cb1-25"><a href="#cb1-25"></a>   <span class="co">--so we don&#39;t care about them getting garbage collected.</span></span>
+<span id="cb1-26"><a href="#cb1-26"></a>   <span class="kw">local</span> worker_cb <span class="op">=</span> ffi<span class="op">.</span>cast<span class="op">(</span><span class="st">&#39;void *(*)(void *)&#39;</span><span class="op">,</span> worker<span class="op">)</span></span>
+<span id="cb1-27"><a href="#cb1-27"></a></span>
+<span id="cb1-28"><a href="#cb1-28"></a>   <span class="co">--get the callback pointer out of the Lua state as a number,</span></span>
+<span id="cb1-29"><a href="#cb1-29"></a>   <span class="co">--because we can&#39;t pass cdata between Lua states.</span></span>
+<span id="cb1-30"><a href="#cb1-30"></a>   <span class="co">--tonumber() works on x64 too in this case because the Lua state</span></span>
+<span id="cb1-31"><a href="#cb1-31"></a>   <span class="co">--was allocated by LuaJIT which can only allocate stuff in the</span></span>
+<span id="cb1-32"><a href="#cb1-32"></a>   <span class="co">--lowest 4GB of the address space.</span></span>
+<span id="cb1-33"><a href="#cb1-33"></a>   <span class="cf">return</span> <span class="fu">tonumber</span><span class="op">(</span>ffi<span class="op">.</span>cast<span class="op">(</span><span class="st">&#39;intptr_t&#39;</span><span class="op">,</span> worker_cb<span class="op">))</span></span>
+<span id="cb1-34"><a href="#cb1-34"></a><span class="cf">end</span><span class="op">)</span></span>
+<span id="cb1-35"><a href="#cb1-35"></a></span>
+<span id="cb1-36"><a href="#cb1-36"></a><span class="co">--call the function that we just pushed into the Lua state</span></span>
+<span id="cb1-37"><a href="#cb1-37"></a><span class="co">--to get the callback pointer.</span></span>
+<span id="cb1-38"><a href="#cb1-38"></a><span class="kw">local</span> worker_cb_ptr <span class="op">=</span> ffi<span class="op">.</span>cast<span class="op">(</span><span class="st">&#39;void*&#39;</span><span class="op">,</span> state<span class="op">:</span>call<span class="op">())</span></span>
+<span id="cb1-39"><a href="#cb1-39"></a></span>
+<span id="cb1-40"><a href="#cb1-40"></a><span class="co">--create a thread which will start running automatically.</span></span>
+<span id="cb1-41"><a href="#cb1-41"></a><span class="kw">local</span> thread <span class="op">=</span> pthread<span class="op">.</span>new<span class="op">(</span>worker_cb_ptr<span class="op">)</span></span>
+<span id="cb1-42"><a href="#cb1-42"></a></span>
+<span id="cb1-43"><a href="#cb1-43"></a><span class="co">--wait for the thread to finish.</span></span>
+<span id="cb1-44"><a href="#cb1-44"></a>thread<span class="op">:</span>join<span class="op">()</span></span>
+<span id="cb1-45"><a href="#cb1-45"></a></span>
+<span id="cb1-46"><a href="#cb1-46"></a><span class="co">--close the Lua state.</span></span>
+<span id="cb1-47"><a href="#cb1-47"></a>state<span class="op">:</span><span class="fu">close</span><span class="op">()</span></span></code></pre></div>
+<h2 id="reference">Reference</h2>
+<h3 id="pthread.newfunc_ptr-attrs---th"><code>pthread.new(func_ptr[, attrs]) -&gt; th</code></h3>
+<p>Create and start a new thread and return the thread object.</p>
+<p><code>func_ptr</code> is a C callback declared as: <code>void *(*func_ptr)(void *arg)</code>. Its return value is returned by <code>th:join()</code>.</p>
+<p>The optional attrs table can have the fields:</p>
+<ul>
+<li><code>detached = true</code> - start detached (not very useful with Lua states)</li>
+<li><code>priority = n</code> - thread priority; must be between pthread.min_priority() and pthread.max_priority() – in Linux these are both 0.</li>
+<li><code>stackaddr = n</code> - stack address.</li>
+<li><code>stacksize = n</code> - stack size in bytes (OS restrictions apply).</li>
+</ul>
+<h3 id="pthread.mutexmattrs---mutex"><code>pthread.mutex([mattrs]) -&gt; mutex</code></h3>
+<p>Create a mutex. The optional mattrs table can have the fields:</p>
+<ul>
+<li><code>type = 'normal' | 'recursive' | 'errorcheck'</code>:
+<ul>
+<li>‘normal’ (default) - non-recursive mutex: locks are not counted and not owned, so double-locking as well as unlocking by a different thread results in undefined behavior.</li>
+<li>‘recursive’ - recursive mutex: locks are counted and owned, so double-locking is allowed as long as done by the same thread.</li>
+<li>‘errorcheck’ - non-recursive mutex with error checking, so double-locking and unlocking by a different thread results in an error being raised.</li>
+</ul></li>
+</ul>
+<h2 id="portability-notes">Portability notes</h2>
+<p>POSIX is a standard indifferent to binary compatibility, resulting in each implementation having a different ABI. Moreso, different implementations cover different parts of the API.</p>
+<p>The list of currently supported pthreads implementations are:</p>
+<ul>
+<li>winpthreads 0.5.0 from Mingw-w64 4.9.2 (tested on WinXP 32bit and 64bit)</li>
+<li>libpthread from GNU libc (tested on Ubuntu 10.04, x86 and x64)</li>
+<li>libpthread from OSX (tested on OSX 10.9 with 32bit and 64bit binaries)</li>
+</ul>
+<p>Only functionality that is common <em>to all</em> of the above is available. Winpthreads dumbs down the API the most (no process-shared objects, no real-time extensions, etc.), but OSX too (no timed waits, no semaphores, no barriers, etc.) and even Linux (setting priority levels needs root access). Functions that don’t make sense with Lua (pthread_once) or are stubs in one or more implementations (pthread_setconcurrency) or are unsafe to use with Lua states (killing, cancelation) were also dropped. All in all you get a pretty thin library with just the basics covered. The good news is that this is really all you need for most apps. A more comprehensive but still portable threading library would have to be implemented on top of native synchronization primitives. In any case, I cannot personally support extra functionality, but patches welcome.</p>
+<p>Next are a few tips to get a rough idea of the portability situation.</p>
+<p>To find out (part of) the truth about API coverage, you can start by checking the exported symbols on the pthreads library on each platform and compare them:</p>
+<pre><code>On Linux:
+
+   mgit syms /lib/libpthread.so.0 | \
+      grep &#39;^pthread&#39; &gt; pthread_syms_linux.txt
+
+On OSX:
+
+   (mgit syms /usr/lib/libpthread.dylib
+   mgit syms /usr/lib/system/libsystem_pthread.dylib) | \
+      grep &#39;^pthread&#39; &gt; pthread_syms_osx.txt
+
+On Windows:
+
+   mgit syms bin\mingw64\libwinpthread-1.dll | \
+      grep ^^pthread &gt; pthread_syms_mingw.txt
+
+Compare the results (the first column tells the number of platforms
+that a symbol was found on):
+
+   sort pthread_syms_* | uniq -c | sort -nr</code></pre>
+<p>To find out the differences in ABI and supported flags, you can preprocess the headers on different platforms and compare them:</p>
+<pre><code>mgit preprocess pthread.h sched.h semaphore.h &gt; pthread_h_&lt;platform&gt;.lua</code></pre>
+<p>The above will use gcc to preprocess the headers and generate a (very crude, mind you) Lua cdef template file that you can use as a starting point for a binding and/or to check ABI differences.</p>
+<p>Next step is to look at the source code for winpthreads and find out what is really implemented (and how).</p>

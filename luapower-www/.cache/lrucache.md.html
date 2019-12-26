@@ -1,0 +1,55 @@
+<h2 id="local-lrucache-requirelrucache"><code>local lrucache = require'lrucache'</code></h2>
+<p>LRU cache limited by an abstract size. Values can have different sizes. When a new value is put in the cache and the cache is full, just enough old values are removed to make room for the new value and not exceed the cache max size.</p>
+<h2 id="api">API</h2>
+<table>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;"><code>lrucache([options]) -&gt; cache</code></td>
+<td style="text-align: left;">create a new cache</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>cache.max_size &lt;- size</code></td>
+<td style="text-align: left;">set the cache size limit</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>cache:clear()</code></td>
+<td style="text-align: left;">clear the cache</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>cache:free()</code></td>
+<td style="text-align: left;">destroy the cache</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>cache:free_value(val)</code></td>
+<td style="text-align: left;">value destructor (to be overriden)</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>cache:value_size(val) -&gt; size</code></td>
+<td style="text-align: left;">get value size (to be overriden; returns 1)</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>cache:free_size() -&gt; size</code></td>
+<td style="text-align: left;">size left until <code>max_size</code></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>cache:get(key) -&gt; val</code></td>
+<td style="text-align: left;">get a value from the cache by key</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>cache:remove(key) -&gt; val</code></td>
+<td style="text-align: left;">remove a value from the cache by key</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>cache:remove_val(val) -&gt; key</code></td>
+<td style="text-align: left;">remove a value from the cache</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>cache:remove_last() -&gt; val</code></td>
+<td style="text-align: left;">remove the last value from the cache</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>cache:put(key, val)</code></td>
+<td style="text-align: left;">put a value in the cache, making room as needed</td>
+</tr>
+</tbody>
+</table>

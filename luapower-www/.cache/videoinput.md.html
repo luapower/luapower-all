@@ -1,0 +1,52 @@
+<h2 id="local-vi-requirevideoinput"><code>local vi = require'videoinput'</code></h2>
+<p>A cross-cross-platform library for capturing video frames from webcams and other devices in real-time as bgra8 <a href="/bitmap">bitmap</a>s.</p>
+<h2 id="status">Status</h2>
+<p><warn>Work in progress.</warn></p>
+<h2 id="api">API</h2>
+<table>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;"><code>vi.devices() -&gt; {dev1, ...}</code></td>
+<td style="text-align: left;">enumerate available devices</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>vi.devices'#' -&gt; n</code></td>
+<td style="text-align: left;">device count</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>vi.devices'*' -&gt; dev|nil</code></td>
+<td style="text-align: left;">default device</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>vi.open([dev|id|'*'|t]) -&gt; session</code></td>
+<td style="text-align: left;">open a capture session on a device</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>session:start()</code></td>
+<td style="text-align: left;">start the session (switch on the camera)</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>session:stop()</code></td>
+<td style="text-align: left;">stop the session (switch off the camera)</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>session:running([t|f]) /-&gt; t|f</code></td>
+<td style="text-align: left;">get/set running status</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>session:close()</code></td>
+<td style="text-align: left;">(stop and) close the session</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>session:newframe(bmp)</code></td>
+<td style="text-align: left;">event: a new frame was captured</td>
+</tr>
+</tbody>
+</table>
+<h3 id="vi.devices---dev1-..."><code>vi.devices() -&gt; {dev1, ...}</code></h3>
+<p>Enumerate available devices. Devices are plain tables with the fields <code>id</code>, <code>name</code>, <code>isdefault</code>.</p>
+<h3 id="vi.opendevidt---session"><code>vi.open([dev|id|'*'|t]) -&gt; session</code></h3>
+<p>Open a capture session on a device. The argument can be a device object, a device id, nil/nothing/’*’ which will open the default device, or an options table with the fields:</p>
+<ul>
+<li><code>device</code> - the device to open: device object, device id, nil or ’*’</li>
+</ul>

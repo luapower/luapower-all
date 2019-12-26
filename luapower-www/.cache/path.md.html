@@ -1,0 +1,176 @@
+<h2 id="local-path-requirepath"><code>local path = require'path'</code></h2>
+<p>Path manipulation library for Windows and UNIX paths. Parses all Windows path formats including long paths (<code>\\?\</code>), device paths (<code>\\.\</code>) and UNC paths.</p>
+<h2 id="api">API</h2>
+<table>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;"><code>path.platform -&gt; s</code></td>
+<td style="text-align: left;">get the current platform</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>path.default_sep([pl]) -&gt; s</code></td>
+<td style="text-align: left;">get the default separator for a platform</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>path.dev_alias(s) -&gt; s|nil</code></td>
+<td style="text-align: left;">check if a path is a Windows device alias</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>path.type(s, [pl]) -&gt; type</code></td>
+<td style="text-align: left;">get the path type</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>path.parse(s, [pl]) -&gt; type, path[, drv|srv]</code></td>
+<td style="text-align: left;">break down a path to its basic parts</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>path.format(type, path, [drv|srv], pl) -&gt; s</code></td>
+<td style="text-align: left;">put together a path from parsed parts</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>path.isabs(s, [pl]) -&gt; is_abs, is_empty</code></td>
+<td style="text-align: left;">check if path is absolute, empty and valid</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>path.endsep(s, [pl], [sep], [dsep]) -&gt; s, ok</code></td>
+<td style="text-align: left;">get/add/remove the ending separator</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>path.sep(s, [pl], [sep], ...) -&gt; s</code></td>
+<td style="text-align: left;">detect/set the path separator</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>path.long(s, [pl], [long]) -&gt; s|nil</code></td>
+<td style="text-align: left;">get/set a Windows long absolute path</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>path.file(s, [pl]) -&gt; s</code></td>
+<td style="text-align: left;">get the last component of a path</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>path.nameext(s, [pl]) -&gt; name, ext</code></td>
+<td style="text-align: left;">split <code>path.file()</code> into name and extension</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>path.ext(s, [pl]) -&gt; s</code></td>
+<td style="text-align: left;">return only the extension from <code>path.nameext()</code></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>path.dir(s, [pl]) -&gt; s|nil</code></td>
+<td style="text-align: left;">get the path without the last component</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>path.gsplit(s, [pl], [full]) -&gt;iter() -&gt; s, sep</code></td>
+<td style="text-align: left;">iterate over path’s components</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>path.normalize(s, [pl], [opt]) -&gt; s</code></td>
+<td style="text-align: left;">normalize a path in various ways</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>path.commonpath(s1, s2, [pl]) -&gt; s|nil</code></td>
+<td style="text-align: left;">get the common prefix of two paths</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>path.depth(s, [pl]) -&gt; n</code></td>
+<td style="text-align: left;">get the number of non-empty path components</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>path.combine(p1, p2, [pl], [sep], [dsep]) -&gt; s|nil</code></td>
+<td style="text-align: left;">combine two paths if possible</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>path.abs(s, pwd, [pl], [sep], [dsep]) -&gt; s|nil,err</code></td>
+<td style="text-align: left;">convert relative path to absolute</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>path.rel(s, pwd, [pl], [sep], [dsep]) -&gt; s|nil</code></td>
+<td style="text-align: left;">convert absolute path to relative</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>path.filename(s, [pl], [repl]) -&gt; s|nil,err,code</code></td>
+<td style="text-align: left;">validate/make-valid filename</td>
+</tr>
+</tbody>
+</table>
+<p>In the table above, <code>pl</code> is for platform and can be <code>'win'</code> or <code>'unix'</code> and defaults to the current platform.</p>
+<h3 id="path.platform---s"><code>path.platform -&gt; s</code></h3>
+<p>Get the current platform which can be <code>'win'</code> or <code>'unix'</code>.</p>
+<h3 id="path.default_seppl---s"><code>path.default_sep([pl]) -&gt; s</code></h3>
+<p>Get the default separator for a platform which can be <code>\</code> or <code>/</code>.</p>
+<h3 id="path.dev_aliass---snil"><code>path.dev_alias(s) -&gt; s|nil</code></h3>
+<p>Check if a path is a Windows device alias and if it is, return that alias.</p>
+<h3 id="path.types-pl---type"><code>path.type(s, [pl]) -&gt; type</code></h3>
+<p>Get the path type which can be:</p>
+<ul>
+<li><code>'abs'</code> - <code>C:\path</code> (Windows) or <code>/path</code> (UNIX)</li>
+<li><code>'rel'</code> - <code>a/b</code> (Windows, UNIX)</li>
+<li><code>'abs_long'</code> - <code>\\?\C:\path</code> (Windows)</li>
+<li><code>'abs_nodrive'</code> - <code>\path</code> (Windows)</li>
+<li><code>'rel_drive'</code> - <code>C:a\b</code> (Windows)</li>
+<li><code>'unc'</code> - <code>\\server\share\path</code> (Windows)</li>
+<li><code>'unc_long'</code> - <code>\\?\UNC\server\share\path</code> (Windows)</li>
+<li><code>'global'</code> - <code>\\?\path</code> (Windows)</li>
+<li><code>'dev'</code> - <code>\\.\path</code> (Windows)</li>
+<li><code>'dev_alias'</code>: <code>CON</code>, <code>c:\path\nul.txt</code>, etc. (Windows)</li>
+</ul>
+<p>The empty path (<code>''</code>, which is technically invalid) comes off as type <code>'rel'</code>.</p>
+<p>The only paths that are portable between Windows and UNIX (Linux, OSX) without translation are type <code>'rel'</code> paths using forward slashes only which are no longer than 259 bytes and which don’t contain any control characters (code 0-31) or the symbols <code>&lt;&gt;:"|%?*\</code>.</p>
+<h3 id="path.parses-pl---type-path-driveserver"><code>path.parse(s, [pl]) -&gt; type, path[, drive|server]</code></h3>
+<p>Split a path into its <em>local path</em> component (i.e. the part containing only directories and files, eg. <code>\path</code> for <code>C:\path</code> or for <code>\\server\path</code>) and, depending on the path type, the drive letter or server name.</p>
+<p>UNC paths are not validated and can have an empty server or share path.</p>
+<h3 id="path.formattype-path-driveserver-pl---s"><code>path.format(type, path, [drive|server], [pl]) -&gt; s</code></h3>
+<p>Put together a path from its broken-down components. No validation is done.</p>
+<h3 id="path.isabss-pl---is_abs-is_empty-is_valid"><code>path.isabs(s, [pl]) -&gt; is_abs, is_empty, is_valid</code></h3>
+<p>Check if a path is an absolute path or not, if it’s empty (i.e. root) or not, and if it’s valid or not.</p>
+<p>Absolute paths for which their <em>local path</em> is <code>''</code> are actually invalid (currently only incomplete UNC paths like <code>\\server</code> or <code>\\?</code> can be like that). For those paths <code>is_valid</code> is <code>false</code>.</p>
+<h3 id="path.endseps-pl-sep-dsep---s-success"><code>path.endsep(s, [pl], [sep], [dsep]) -&gt; s, success</code></h3>
+<p>Get/add/remove an ending separator of a path. If <code>sep</code> is <code>nil</code> or missing, the ending separator is returned (<code>nil</code> is returned if the path has no ending separator). If <code>sep</code> is <code>true</code>, <code>'\\'</code>, <code>'/'</code>, the path is returned with an ending separator added (<code>true</code> means use path’s own separator if it has one and failing that, use <code>dsep</code> or the default platform separator). If <code>sep</code> is <code>false</code> or <code>''</code> the path without its ending separator is returned. <code>success</code> is <code>false</code> if trying to add or remove the ending separator from an empty path (note that even when that happens, the path can still be concatenated directly to a relative path and result in a valid path).</p>
+<p>Multiple consecutive separators are treated as one in that they are returned together and are replaced together.</p>
+<h3 id="path.seps-pl-sep-default_sep-empty_names---s"><code>path.sep(s, [pl], [sep], [default_sep], [empty_names]) -&gt; s</code></h3>
+<p>Detect or set the a path’s separator (for Windows paths only).</p>
+<p>The arg <code>sep</code> can be <code>nil</code> (detect), <code>true</code> (set to <code>default_sep</code>), <code>false</code> (set to <code>default_sep</code> but only if both <code>\</code> and <code>/</code> are found in the path, i.e. unify), <code>'\\'</code> or <code>'/'</code> (set specifically), or <code>nil</code> when <code>empty_names</code> is explicitly <code>false</code> (collapse duplicate separators only). <code>default_sep</code> defaults to the platform separator. Unless <code>empty_names</code> is <code>true</code>, consecutive separators are collapsed into the first one.</p>
+<p><strong>NOTE:</strong> Setting the separator as <code>\</code> on a UNIX path may result in an invalid path because <code>\</code> is a valid character in UNIX filenames.</p>
+<h3 id="path.longs-pl-long---snil"><code>path.long(s, [pl], [long]) -&gt; s|nil</code></h3>
+<p>Get/set a Windows long absolute path (one starting with <code>\\?\C:\</code>). If <code>long</code> is <code>nil</code>, returns whether the path is a long or short Windows absolute path (returns <code>nil</code> for all other kinds of paths). Otherwise it converts the path, in which case <code>long</code> can be <code>true</code> (convert to long path), <code>false</code> (convert to short path) or <code>'auto'</code> (convert to long style if too long, or to short style if short enough).</p>
+<h3 id="path.files-pl---s"><code>path.file(s, [pl]) -&gt; s</code></h3>
+<p>Get the last component of a path. Returns <code>''</code> if the path is empty or ends with a separator.</p>
+<h3 id="path.nameexts-pl---name-ext"><code>path.nameext(s, [pl]) -&gt; name, ext</code></h3>
+<p>Split a path’s last component into the name and extension parts like so:</p>
+<ul>
+<li><code>a.txt'</code> -&gt; <code>'a', 'txt'</code></li>
+<li><code>'.bashrc'</code> -&gt; <code>'.bashrc', nil</code></li>
+<li><code>'a'</code> -&gt; <code>'a', nil</code></li>
+<li><code>'a.'</code> -&gt; <code>'a', ''</code></li>
+</ul>
+<h3 id="path.exts-pl---snil"><code>path.ext(s, [pl]) -&gt; s|nil</code></h3>
+<p>Return only the extension from <code>path.nameext()</code>.</p>
+<h3 id="path.dirs-pl---s"><code>path.dir(s, [pl]) -&gt; s</code></h3>
+<p>Get the path without the last component and separator. If the path ends with a separator then the whole path without the separator is returned. Multiple consecutive separators are treated as one. Returns <code>nil</code> for <code>''</code>, <code>'.'</code>, <code>'C:'</code>, <code>'/'</code>, <code>'C:\\'</code> and <code>\\server\</code>. Returns <code>'.'</code> for simple filenames.</p>
+<h3 id="path.gsplits-pl-full---iter---s-sep"><code>path.gsplit(s, [pl], [full]) -&gt; iter() -&gt; s, sep</code></h3>
+<p>Iterate over a path’s <em>local components</em> (that is excluding prefixes like <code>\\server</code> or <code>C:</code>). Pass <code>true</code> to the <code>full</code> arg to iterate over the whole unparsed path. For absolute paths, the first iteration is <code>'', &lt;root_separator&gt;</code>. Empty names are not iterated. Instead, consecutive separators are returned together. Concatenating all the iterated path components and separators always results in the exact original path.</p>
+<h3 id="path.normalizes-pl-opt---s"><code>path.normalize(s, [pl], [opt]) -&gt; s</code></h3>
+<p>Normalize a path by removing <code>.</code> dirs, removing unnecessary <code>..</code> dirs (careful: this changes where the path points to if there are symlinks on the path!), collapsing, normalizing or changing the separator (for Windows paths), converting between Windows long (<code>\\?\</code>, <code>\\?\UNC\</code>) and normal paths.</p>
+<p>The <code>opt</code> arg controls the normalization:</p>
+<ul>
+<li><code>dot_dirs</code> - use <code>true</code> to keep <code>.</code> dirs.</li>
+<li><code>dot_dot_dirs</code> - use <code>true</code> to keep the <code>..</code> dirs.</li>
+<li><code>sep</code>, <code>default_sep</code>, <code>empty_names</code> - args to pass to <code>path.sep()</code> (<code>sep</code> defaults to <code>false</code>, use <code>'leave'</code> to avoid normalizing the separators)</li>
+<li><code>endsep</code> - <code>sep</code> arg to pass to <code>path.endsep()</code> (defaults to <code>false</code>, use <code>'leave'</code> to avoid removing any end separator)</li>
+<li><code>long</code> - <code>long</code> arg to pass to <code>path.long()</code> (defaults to <code>'auto'</code>, use <code>'leave'</code> to avoid converting between short and long paths)</li>
+</ul>
+<p><strong>NOTE:</strong> If normalization results in the empty relative path <code>''</code>, then <code>'.'</code> is returned instead.</p>
+<h3 id="path.commonpaths1-s2-pl---snil"><code>path.commonpath(s1, s2, [pl]) -&gt; s|nil</code></h3>
+<p>Get the common path prefix of two paths, including the end separator if both paths share it, or <code>nil</code> if the paths don’t have anything in common.</p>
+<p>Note that <code>path.commonpath('C:', 'C:\\', 'win') == nil</code> because the paths are of different type even if they look like they share a common prefix.</p>
+<p><strong>BUG:</strong> The case-insensitive comparison for Windows doesn’t work with paths with non-ASCII characters because it’s made with <code>string.lower()</code>. Proper lowercase your paths before using this function, or patch <code>string.lower()</code> to support utf8 lowercasing. This is not an issue if both paths are in the original letter case (eg. they come from the same API).</p>
+<h3 id="path.depths-pl---n"><code>path.depth(s, [pl]) -&gt; n</code></h3>
+<p>Get the number of non-empty path components, excluding prefixes like <code>C:\</code>, <code>\\server\</code>, etc.</p>
+<h3 id="path.combines1-s2-pl-sep-dsep---snilerr"><code>path.combine(s1, s2, [pl], [sep], [dsep]) -&gt; s|nil,err</code></h3>
+<p>Combine two paths if possible (return <code>nil, err</code> if not). Supported combinations are between anything except <code>dev_alias</code> and <code>rel</code> paths, between <code>abs_nodrive</code> and <code>rel_drive</code>, and between <code>rel_drive</code> and <code>abs</code> or <code>abs_long</code>. When the paths can only be combined in one way, paths can be given in any order. The separator with which paths are combined is either <code>sep</code> or if <code>sep</code> is nil it’s detected and if that fails <code>dsep</code> or the default separator is used.</p>
+<h3 id="path.abss-pwd-pl-sep-dsep---snilerr"><code>path.abs(s, pwd, [pl], [sep], [dsep]) -&gt; s|nil,err</code></h3>
+<p>Convert a relative path to an absolute path given a base dir (this is currently an alias of <code>path.combine()</code>).</p>
+<h3 id="path.rels-pwd-pl-sep-dsep---snil"><code>path.rel(s, pwd, [pl], [sep], [dsep]) -&gt; s|nil</code></h3>
+<p>Convert an absolute path into a relative path which is relative to <code>pwd</code>. Returns <code>nil</code> if the paths are of different types or don’t have a base path in common. The ending (back)slash is preserved if present.</p>
+<h3 id="path.filenames-pl-repl---snilerrerrcode"><code>path.filename(s, [pl], [repl]) -&gt; s|nil,err,errcode</code></h3>
+<p>Validate a filename or apply a replacement function on it in order to make it valid. The <code>repl</code> function receives the problematic match and an error code indicating the problem which can be one of ’‘,’.’, ‘..’, ‘dev_alias’, ‘char’, ‘length’, ‘evil’ and it should return a replacement string or <code>false/nil</code> if it cannot do the replacement (<code>'evil'</code> errors should generally be replaced with <code>''</code>).</p>

@@ -1,1 +1,4 @@
-@call "%~dp0nginx.cmd" -c luapower-nginx.conf %*
+@pushd "%~dp0"
+@call nginx -c luapower-nginx.conf %*
+
+@popd

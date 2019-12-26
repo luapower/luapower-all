@@ -1,0 +1,74 @@
+<h2 id="requirewinapi.buttonclass"><code>require'winapi.buttonclass'</code></h2>
+<p>This module implements the <code>Button</code> class for creating buttons.</p>
+<h2 id="button">Button</h2>
+<h3 id="hierarchy">Hierarchy</h3>
+<ul>
+<li><a href="/winapi.vobject">VObject</a>
+<ul>
+<li><a href="/winapi.basewindowclass">BaseWindow</a>
+<ul>
+<li><a href="/winapi.controlclass">Control</a>
+<ul>
+<li><a href="/winapi.basebuttonclass">BaseButton</a>
+<ul>
+<li>Button</li>
+</ul></li>
+</ul></li>
+</ul></li>
+</ul></li>
+</ul>
+<h3 id="initial-fields-and-properties">Initial fields and properties</h3>
+<p><strong>NOTE:</strong> in the table below <code>i</code> means initial field, <code>r</code> means property which can be read, <code>w</code> means property which can be set.</p>
+<table>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;"><strong>field/property</strong></td>
+<td style="text-align: left;"><strong>irw</strong></td>
+<td style="text-align: left;"><strong>description</strong></td>
+<td style="text-align: left;"><strong>default</strong></td>
+<td style="text-align: left;"><strong>reference</strong></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">text</td>
+<td style="text-align: left;">irw</td>
+<td style="text-align: left;">button’s label</td>
+<td style="text-align: left;">‘&amp;OK’</td>
+<td style="text-align: left;">Get/SetWindowText</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">w, h</td>
+<td style="text-align: left;">irw</td>
+<td style="text-align: left;">size</td>
+<td style="text-align: left;">100, 24</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">text_margin</td>
+<td style="text-align: left;">irw</td>
+<td style="text-align: left;">margins that go with <code>autosize</code></td>
+<td style="text-align: left;">{20,5}</td>
+<td style="text-align: left;">BCM_GET/SETTEXTMARGIN</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">autosize</td>
+<td style="text-align: left;">irw</td>
+<td style="text-align: left;">set size based on text</td>
+<td style="text-align: left;">false</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">pushed</td>
+<td style="text-align: left;">irw</td>
+<td style="text-align: left;">pushed state</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">BM_GET/SETSTATE</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">ideal_size</td>
+<td style="text-align: left;">r</td>
+<td style="text-align: left;">get ideal size for text (<code>{w=, h=}</code>)</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">BCM_GETIDEALSIZE</td>
+</tr>
+</tbody>
+</table>

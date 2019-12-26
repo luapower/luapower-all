@@ -1,0 +1,59 @@
+<h2 id="local-pp-requirepp"><code>local pp = require'pp'</code></h2>
+<p>Fast, compact serialization producing portable Lua source code.</p>
+<h2 id="input">Input</h2>
+<ul>
+<li>all Lua types except coroutines, userdata, cdata and C functions.</li>
+<li>the ffi <code>int64_t</code> and <code>uint64_t</code> types.</li>
+<li>values featuring <code>__tostring</code> or <code>__pwrite</code> metamethods (eg. <a href="/tuple">tuple</a>s).</li>
+</ul>
+<h2 id="output">Output</h2>
+<ul>
+<li><strong>compact</strong>: no spaces, dot notation for identifier keys, minimal quoting of strings, implicit keys for the array part of tables.</li>
+<li><strong>portable</strong> between LuaJIT 2, Lua 5.1, Lua 5.2: dot key notation only for ascii identifiers, numbers are in decimal, NaN and ±Inf are written as 0/0, 1/0 and -1/0 respectively.</li>
+<li><strong>portable</strong> between Windows, Linux, Mac: quoting of <code>\n</code> and <code>\r</code> protects binary integrity when opening in text mode.</li>
+<li><strong>embeddable</strong>: can be copy-pasted into Lua source code: quoting of <code>\0</code> and <code>\t</code> and all other control characters protects binary integrity with code editors.</li>
+<li><strong>human readable</strong>: indentation (optional, configurable); array part printed separately with implicit keys.</li>
+<li><strong>stream-based</strong>: the string bits are written with a writer function to minimize the amount of string concatenation and memory footprint.</li>
+<li><strong>deterministic</strong>: table keys can be optionally sorted, so that the output is usable with diff and checksum.</li>
+<li><strong>non-identical</strong>: object identity is not tracked and is not preserved (table references are dereferenced).</li>
+</ul>
+<h2 id="limitations">Limitations</h2>
+<ul>
+<li>object identity is not preserved.</li>
+<li>recursive: table nesting depth is stack-bound.</li>
+<li>some fractions are not compact eg. the fraction 5/6 takes 19 bytes vs 8 bytes in its native double format.</li>
+<li>strings need escaping which could become noticeable with large strings featuring many newlines, tabs, zero bytes, apostrophes, backslashes or control characters.</li>
+<li>loading back the output with the Lua interpreter is not safe.</li>
+</ul>
+<h2 id="api">API</h2>
+<h3 id="ppv1-..."><code>pp(v1, ...)</code></h3>
+<p>Print the arguments to standard output. Only tables are pretty-printed, everything else gets printed raw. Cycle detection, indentation and sorting of keys are enabled in this mode. Unserializable values get a comment in place. Functions are skipped entirely.</p>
+<h3 id="pp.writewrite-v-options..."><code>pp.write(write, v, options...)</code></h3>
+<p>Pretty-print a value using a supplied write function that takes a string. The options can be given in a table or as separate args:</p>
+<ul>
+<li><code>indent</code> - enable indentation eg. <code>'\t'</code> indents by one tab (default is compact output with no whitespace)</li>
+<li><code>parents</code> - enable cycle detection by passing <code>{}</code> or true</li>
+<li><code>quote</code> - string quoting to use eg. <code>'"'</code> (default is “’”)</li>
+<li><code>line_term</code> - line terminator to use (default is <code>'\n'</code>)</li>
+<li><code>onerror</code> - enable error handling eg. <code>function(err_type, v, depth)   error(err_type..': '..tostring(v)) end</code></li>
+<li><code>sort_keys</code> - sort keys to get deterministic output.</li>
+<li><code>filter</code> - filter keys, values or key/value combinations: <code>filter(v[, k]) -&gt; true|false</code></li>
+</ul>
+<p><strong>Example:</strong></p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb1-1"><a href="#cb1-1"></a><span class="kw">local</span> <span class="kw">function</span> chunks<span class="op">(</span>t<span class="op">)</span></span>
+<span id="cb1-2"><a href="#cb1-2"></a>   <span class="cf">return</span> <span class="fu">coroutine.wrap</span><span class="op">(</span><span class="kw">function</span><span class="op">()</span></span>
+<span id="cb1-3"><a href="#cb1-3"></a>      <span class="cf">return</span> pp<span class="op">.</span>write<span class="op">(</span><span class="fu">coroutine.yield</span><span class="op">,</span> t<span class="op">)</span></span>
+<span id="cb1-4"><a href="#cb1-4"></a>   <span class="cf">end</span><span class="op">)</span></span>
+<span id="cb1-5"><a href="#cb1-5"></a><span class="cf">end</span></span>
+<span id="cb1-6"><a href="#cb1-6"></a></span>
+<span id="cb1-7"><a href="#cb1-7"></a><span class="cf">for</span> s <span class="kw">in</span> chunks<span class="op">(</span>t<span class="op">)</span> <span class="cf">do</span></span>
+<span id="cb1-8"><a href="#cb1-8"></a>   socket<span class="op">:</span>send<span class="op">(</span>s<span class="op">)</span></span>
+<span id="cb1-9"><a href="#cb1-9"></a><span class="cf">end</span></span></code></pre></div>
+<h3 id="pp.savepath-v-options..."><code>pp.save(path, v, options...)</code></h3>
+<p>Pretty-print a value to a file.</p>
+<h3 id="pp.streamf-v-options..."><code>pp.stream(f, v, options...)</code></h3>
+<p>Pretty-print a value to an opened file.</p>
+<h3 id="pp.printv-options..."><code>pp.print(v, options...)</code></h3>
+<p>Pretty-print a value to <code>io.stdout</code>.</p>
+<h3 id="pp.formatv-options...---s"><code>pp.format(v, options...) -&gt; s</code></h3>
+<p>Pretty-print a value to a string.</p>

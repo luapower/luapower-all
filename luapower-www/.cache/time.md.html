@@ -1,0 +1,22 @@
+<h2 id="local-time-requiretime"><code>local time = require'time'</code></h2>
+<h2 id="api">API</h2>
+<table>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;"><code>time.time() -&gt; n</code></td>
+<td style="text-align: left;">wall clock time with ~100us precision</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>time.clock() -&gt; n</code></td>
+<td style="text-align: left;">monotonic time in seconds with ~1us precision</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>time.sleep(s)</code></td>
+<td style="text-align: left;">sleep with sub-second precision (~10-100ms)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="time.time---n"><code>time.time() -&gt; n</code></h3>
+<p>Reads the wall-clock time as a UNIX timestamp. It is the same as the time returned by <code>os.time()</code> on all platforms, except it has sub-second precision. It is affected by drifting, leap seconds and time adjustments by the user. It is not affected by timezones. It can be used to synchronize time between different boxes on a network regardless of platform.</p>
+<h3 id="time.clock---n"><code>time.clock() -&gt; n</code></h3>
+<p>Reads a monotonic performance counter, and is thus more accurate than <code>time.time()</code>, it should never go back or drift, but it doesn’t have a fixed time base between program executions. It can be used for measuring short time intervals for thread synchronization, etc.</p>

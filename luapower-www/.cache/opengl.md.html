@@ -1,0 +1,30 @@
+<p>The OpenGL API is not usually found in a OS as a straight C library, or at least not all of it is. Instead, the OS supplies a loader API (called WGL in Windows, GLX in Linux, CGL in MacOS X) through which you retrieve pointers to actual OpenGL functions. So while the OpenGL functions and constants themselves are standard, you can only get access to a working OpenGL namespace through a platform-specific API.</p>
+<h3 id="local-gl-requirewinapi.gl11"><code>local gl = require'winapi.gl11'</code></h3>
+<p>Get an OpenGL 1.1 namespace via WGL.</p>
+<h3 id="local-gl-requirewinapi.gl21"><code>local gl = require'winapi.gl21'</code></h3>
+<p>Get an OpenGL 2.1 namespace via WGL.</p>
+<p>Functions are discovered automatically through WGL and their pointers memoized for later calls. Below are the function prototypes and constants that are accessible in the <code>gl</code> namespace depending on which OpenGL version you loaded:</p>
+<ul>
+<li><a href="https://github.com/luapower/opengl/blob/master/gl_types.lua">common OpenGL C types</a></li>
+<li><a href="https://github.com/luapower/opengl/blob/master/gl_consts11.lua">OpenGL 1.1 constants</a></li>
+<li><a href="https://github.com/luapower/opengl/blob/master/gl_funcs11.lua">OpenGL 1.1 function prototypes</a></li>
+<li><a href="https://github.com/luapower/opengl/blob/master/gl_consts21.lua">OpenGL 2.1 constants</a></li>
+<li><a href="https://github.com/luapower/opengl/blob/master/gl_funcs21.lua">OpenGL 2.1 function pointer prototypes</a></li>
+</ul>
+<p>Pointer types like eg. <code>PFNGLDRAWARRAYSINDIRECTPROC</code> will be accessible as <code>gl.glDrawArraysIndirect()</code>.</p>
+<h3 id="local-glu-requireglu"><code>local glu = require'glu'</code></h3>
+<p>The <a href="https://github.com/luapower/opengl/blob/master/glu_lua.lua">GLU API</a> contains auxiliary utilities that let you set a perspective transform or an orthogonal transform or move the camera, among other things. <a href="https://github.com/luapower/opengl/blob/master/glu_lua.lua">glu_lua</a> implements a few of these for environments that don’t have a GLU implementation.</p>
+<h3 id="local-glut-requireglut"><code>local glut = require'glut'</code></h3>
+<p>The <a href="https://github.com/luapower/glut/blob/master/glut.lua">GLUT API</a> lets you render the Utah Teapot (other stuff not included).</p>
+<h3 id="local-wgl-requirewinapi"><code>local wgl = require'winapi'</code></h3>
+<h3 id="requirewinapi.wgl"><code>require'winapi.wgl'</code></h3>
+<p>The <a href="https://github.com/luapower/winapi/blob/master/winapi/wgl.lua">WGL API</a> provides <code>wglCreateContext</code> for creating an OpenGL context on a HDC. It also provides <code>wglGetProcAddress</code> for discovery of OpenGL functions.</p>
+<p>For a straight application of the WGL API see module <a href="/winapi.wglpanel">winapi.wglpanel</a>.</p>
+<h3 id="local-wglex-requirewinapi"><code>local wglex = require'winapi'</code></h3>
+<h3 id="requirewinapi.wglext"><code>require'winapi.wglext'</code></h3>
+<p>The <a href="https://github.com/luapower/winapi/blob/master/winapi/wglext.lua">WGLEXT API</a> provides various Windows-specific OpenGL extensions.</p>
+<h2 id="todo">TODO</h2>
+<ul>
+<li>make OpenGL constants C enums and access them through a proxy table into ffi.C.</li>
+<li>make a binding to regal?</li>
+</ul>

@@ -1,0 +1,66 @@
+<h2 id="local-proc-requireproc"><code>local proc = require'proc'</code></h2>
+<p>A library for creating, controlling and communicating with child processes. Works on Windows, Linux and OSX.</p>
+<h2 id="status">Status</h2>
+<p><warn>Needs more testing.</warn></p>
+<p>Missing features:</p>
+<ul>
+<li>named mutexes, semaphores and events.</li>
+<li>kill child process automatically when the parent process exits.</li>
+<li>setting CPU and RAM limits.</li>
+<li>CPU and RAM monitoring.</li>
+</ul>
+<h2 id="api">API</h2>
+<table>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;"><code>proc.exec(cmd,[args],[env],[cur_dir]) -&gt; p</code></td>
+<td style="text-align: left;">spawn a child process</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>proc.exec_luafile(file,[args],...) -&gt; p</code></td>
+<td style="text-align: left;">spawn a process running a Lua script</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>p:kill()</code></td>
+<td style="text-align: left;">kill process</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>p:exit_code() -&gt; code | nil,'active'|'killed'</code></td>
+<td style="text-align: left;">get process status or exit code</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>p:forget()</code></td>
+<td style="text-align: left;">close process handles</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>proc.env(k) -&gt; v</code></td>
+<td style="text-align: left;">get env. var</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>proc.setenv(k, v)</code></td>
+<td style="text-align: left;">set env. var</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>proc.setenv(k)</code></td>
+<td style="text-align: left;">delete env. var</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>proc.env() -&gt; env</code></td>
+<td style="text-align: left;">get all env. vars</td>
+</tr>
+</tbody>
+</table>
+<h3 id="proc.execcmdargsenvcur_dir---p"><code>proc.exec(cmd,[args],[env],[cur_dir]) -&gt; p</code></h3>
+<p>Spawn a child process and return a process object to query and control the process.</p>
+<ul>
+<li><code>cmd</code> is the filepath of the executable to run.</li>
+<li><code>args</code> is an array of strings representing command-line arguments.</li>
+<li><code>env</code> is a table of environment variables (if not given, the current environment is inherited).</li>
+<li><code>cur_dir</code> is the directory to start the process in.</li>
+</ul>
+<h2 id="programming-notes">Programming Notes</h2>
+<ul>
+<li>only use uppercase env. var names because like file names, env. vars are case-sensitive on POSIX, but case-insensitive on Windows.</li>
+<li>only use exit status codes in the 0..255 range because Windows exit codes are int32 but POSIX codes are limited to a byte.</li>
+<li>if using <code>proc.setenv()</code>, use <code>proc.env()</code> to read back variables instead of <code>os.getenv()</code> because the latter won’t see the changes.</li>
+</ul>

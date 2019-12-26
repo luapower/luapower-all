@@ -1,1 +1,1 @@
-@call luapower-nginx -s stop
+@call "%~dp0luapower-nginx" -s stop

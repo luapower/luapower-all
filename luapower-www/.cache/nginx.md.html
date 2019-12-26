@@ -1,0 +1,9 @@
+<h2 id="what-is-this">What is this?</h2>
+<p>This is the nginx server built with <a href="https://github.com/openresty/lua-nginx-module">lua-nginx-module</a> i.e. OpenResty core.</p>
+<p>Unlike standard Nginx or OpenResty binaries, this build links dynamically to its dependencies which are provided as separate packages so you must get them too for nginx to run.</p>
+<p>Other OpenResty modules are provided as separate packages as well.</p>
+<h2 id="status">Status</h2>
+<p><warn>Currently in testing. Not ready for use yet.</warn></p>
+<h2 id="howto">HowTo</h2>
+<p>Like with <a href="/luajit">LuaJIT</a>, a wrapper script is provided to run the right nginx binary for the platform you’re on. The nginx <code>prefix</code> directory is <code>.</code> (i.e. the current directory) which, if you use the wrapper script, is the directory of the script itself i.e. the luapower directory. <code>nginx.conf</code> is also searched for in here (eg. see <a href="/webb">webb</a>), logs go in <code>logs</code> and temp files go in <code>tmp</code>.</p>
+<p>Consult the build scripts for more info on how this was built.</p>

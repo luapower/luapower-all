@@ -1,0 +1,47 @@
+<h2 id="requirewinapi.bitmappanel"><code>require'winapi.bitmappanel'</code></h2>
+<p>This module implements the <code>BitmapPanel</code> class which allows accessing a panel’s pixels as an bgra8-type <a href="/bitmap">bitmap</a> with pre-multiplied alpha.</p>
+<h2 id="bitmappanel">BitmapPanel</h2>
+<h3 id="hierarchy">Hierarchy</h3>
+<ul>
+<li>[Object][winapi.object]
+<ul>
+<li><a href="/winapi.vobject">VObject</a>
+<ul>
+<li><a href="/winapi.basewindowclass">BaseWindow</a>
+<ul>
+<li><a href="/winapi.controlclass">Control</a>
+<ul>
+<li><a href="/winapi.panelclass">Panel</a>
+<ul>
+<li>BitmapPanel</li>
+</ul></li>
+</ul></li>
+</ul></li>
+</ul></li>
+</ul></li>
+</ul>
+<h3 id="events">Events</h3>
+<table>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;"><strong>painting</strong></td>
+<td style="text-align: left;"><strong>description</strong></td>
+<td style="text-align: left;"><strong>reference</strong></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">on_bitmap_create(bitmap)</td>
+<td style="text-align: left;">bitmap was created</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">on_bitmap_free(bitmap)</td>
+<td style="text-align: left;">bitmap will be freed</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">on_bitmap_paint(bitmap)</td>
+<td style="text-align: left;">panel needs repainting</td>
+<td style="text-align: left;">WM_PAINT</td>
+</tr>
+</tbody>
+</table>

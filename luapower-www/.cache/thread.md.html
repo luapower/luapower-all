@@ -1,0 +1,111 @@
+<h2 id="local-thread-requirethread"><code>local thread = require'thread'</code></h2>
+<p>Threads and threaded primitives based on <a href="/pthread">pthread</a> and <a href="/luastate">luastate</a>.</p>
+<h2 id="api">API</h2>
+<table>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;"><strong>threads</strong></td>
+<td></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>thread.new(func, args...) -&gt; th</code></td>
+<td>create and start a thread</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>th:join() -&gt; retvals...</code></td>
+<td>wait on a thread to finish</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><strong>queues</strong></td>
+<td></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>thread.queue([maxlength]) -&gt; q</code></td>
+<td>create a synchronized queue</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>q:length() -&gt; n</code></td>
+<td>queue length</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>q:maxlength() -&gt; n</code></td>
+<td>queue max. length</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>q:push(val[, timeout]) -&gt; true, len</code></td>
+<td>add value to the top (*)</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>q:shift([timeout]) -&gt; true, val, len</code></td>
+<td>remove bottom value (*)</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>q:pop([timeout]) -&gt; true, val, len</code></td>
+<td>remove top value (*)</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>q:peek([index]) -&gt; true, val | false</code></td>
+<td>peek into the list without removing (**)</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>q:free()</code></td>
+<td>free queue and its resources</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><strong>events</strong></td>
+<td></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>thread.event([initially_set]) -&gt; e</code></td>
+<td>create an event</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>e:set()</code></td>
+<td>set the flag</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>e:clear()</code></td>
+<td>reset the flag</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>e:isset() -&gt; true | false</code></td>
+<td>check if the flag is set</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>e:wait([timeout]) -&gt; true | false</code></td>
+<td>wait until the flag is set</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>e:free()</code></td>
+<td>free event</td>
+</tr>
+</tbody>
+</table>
+<p>(*) the <code>timeout</code> arg is an os.time() or <a href="/time">time</a>.time() timestamp, not a time period; when a timeout is passed, the function can return <code>false, 'timeout'</code> if the specified timeout expires before the underlying mutex is locked.</p>
+<p>(**) default index is 1 (bottom element); negative indices count from top, -1 being the top element; returns false if the index is out of range.</p>
+<h2 id="threads">Threads</h2>
+<h3 id="thread.newfunc-args...---th"><code>thread.new(func, args...) -&gt; th</code></h3>
+<p>Create a new thread and Lua state, push <code>func</code> and <code>args</code> to the Lua state and execute <code>func(args...)</code> in the context of the thread. The return values of func can be retreived by calling <code>th:join()</code> (see below).</p>
+<ul>
+<li>the function’s upvalues are not copied to the Lua state along with it.</li>
+<li>args can be of two kinds: copiable types and shareable types.</li>
+<li>copiable types are: nils, booleans, strings, functions without upvalues, tables without cyclic references or multiple references to the same table inside.</li>
+<li>shareable types are: pthread threads, mutexes, cond vars and rwlocks, top level Lua states, threads, queues and events.</li>
+</ul>
+<p>Copiable objects are copied over to the Lua state, while shareable objects are only shared with the thread. All args are kept from being garbage-collected up until the thread is joined.</p>
+<p>The returned thread object must not be discarded and <code>th:join()</code> must be called on it to release the thread resources.</p>
+<h3 id="thjoin---retvals..."><code>th:join() -&gt; retvals...</code></h3>
+<p>Wait on a thread to finish and return the return values of its worker function. Same rules apply for copying return values as for args. Errors are propagated to the calling thread.</p>
+<h2 id="queues">Queues</h2>
+<h3 id="thread.queuemaxlength---q"><code>thread.queue([maxlength]) -&gt; q</code></h3>
+<p>Create a queue that can be safely shared and used between threads. Elements can be popped from both ends, so it can act as both a LIFO or a FIFO queue, as needed. When the queue is empty, attempts to pop from it blocks until new elements are pushed again. When a bounded queue (i.e. with maxlength) is full, attempts to push to it blocks until elements are consumed. The order in which multiple blocked threads wake up is arbitrary.</p>
+<p>The queue can be locked and operated upon manually too. Use <code>q.mutex</code> to lock/unlock it, <code>q.state</code> to access the elements (they occupy the Lua stack starting at index 1), and <code>q.cond_not_empty</code>, <code>q.cond_not_full</code> to wait/broadcast on the not-empty and not-full events.</p>
+<p>Vales are transferred between states according to the rules of <a href="/luastate">luastate</a>.</p>
+<h2 id="events">Events</h2>
+<h3 id="thread.eventinitially_set---e"><code>thread.event([initially_set]) -&gt; e</code></h3>
+<p>Events are a simple way to make multiple threads block on a flag. Setting the flag unblocks any threads that are blocking on <code>e:wait()</code>.</p>
+<h2 id="programming-notes">Programming Notes</h2>
+<h3 id="threads-are-slow">Threads are slow</h3>
+<p>Creating hi-level threads is slow because Lua modules must be loaded every time for each thread. For best results, use a thread pool.</p>
+<h3 id="environment">Environment</h3>
+<p>On Windows, the current directory is per thread! Same goes for env vars.</p>

@@ -1,0 +1,89 @@
+<h2 id="requirewinapi.vobject"><code>require'winapi.vobject'</code></h2>
+<p>This module defines a single-inheritance object model with virtual properties, method-overriding hooks and <a href="/events">events</a>.</p>
+<h2 id="subclassing-and-instantiation-protocol">Subclassing and instantiation protocol</h2>
+<p>At the core there’s on an user API and an implementation protocol for implementing a single-inheritance object model.</p>
+<p>The user API is comprised of 2 functions:</p>
+<ul>
+<li><code>subclass(derived[, super]) -&gt; derived</code></li>
+<li><code>isinstance(object, class) -&gt; true|false</code></li>
+</ul>
+<p><code>subclass()</code> calls <code>super:__subclass(derived)</code> to perform the actual subclassing and returns <code>derived</code>. This means that each class is free to define how subclassing should be performed (copy all members to the derived class aka static inheritance, assign an <code>__index</code> metamethod aka dynamic inheritance, etc.). If the super class doesn’t define a <code>__subclass</code> method, nothing gets inherited and <code>derived</code> is returned untouched.</p>
+<p><code>isinstance()</code> calls <code>object:__super()</code> recursively until it matches the wanted class. Classes must implement <code>__super()</code> for this to work.</p>
+<p>Note that there’s no API or implementation protocol for instantiation. The root class will define these.</p>
+<h2 id="the-root-object">The root object</h2>
+<p>The <code>VObject</code> class is the base class of every other class in winapi.</p>
+<p>VObject implements the single-inheritance object model. This means that you can use <code>subclass()</code> to subclass from <code>VObject</code> and <code>isinstance()</code> on every instance or subclass of <code>VObject</code>.</p>
+<p>VObject It also defines how instantiation works: calling <code>Foo(args...)</code> creates an instance of <code>Foo</code>, calls <code>__init(self, args...)</code> on it, and returns it.</p>
+<p>VObject instances:</p>
+<ul>
+<li>inhert class fields dynamically</li>
+<li>inherit instance metamethods statically</li>
+<li>inherit super class fields dynamically</li>
+<li>inherit super class metamethods statically</li>
+</ul>
+<h2 id="virtual-properties">Virtual properties</h2>
+<p>Virtual properties means that:</p>
+<ul>
+<li><code>x = foo.bar</code> calls <code>foo:get_bar() -&gt; x</code>, and</li>
+<li><code>foo.bar = x</code> calls <code>foo:set_bar(x)</code>.</li>
+</ul>
+<p>If there’s a <code>get_bar</code> but no <code>set_bar</code>, doing <code>foo.bar = x</code> raises an error. These are “read-only properties”.</p>
+<h3 id="generating-properties-in-bulk">Generating properties in bulk</h3>
+<p>Calling <code>Foo:__gen_vproperties({foo = true, bar = true}, getter, setter)</code> generates getters and setters for <code>foo</code> and <code>bar</code> properties based on <code>getter</code> and <code>setter</code> such that:</p>
+<pre><code>get_foo(self)           calls getter(self, &#39;foo&#39;)
+get_bar(self)           calls getter(self, &#39;bar&#39;)
+set_foo(self, val)      calls setter(self, &#39;foo&#39;, val)
+set_bar(self, val)      calls setter(self, &#39;bar&#39;, val)</code></pre>
+<h3 id="api">API</h3>
+<table>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;"><strong>subclassing</strong></td>
+<td></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>__subclass(class) -&gt; class</code></td>
+<td>subclassing constructor</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>__gen_vproperties(names, getter, setter)</code></td>
+<td>generate virtual properties in bulk</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><strong>instantiation</strong></td>
+<td></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>__init(...)</code></td>
+<td>stub object constructor (implemented in concrete classes)</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><strong>introspection</strong></td>
+<td></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>__super() -&gt; class</code></td>
+<td>access the super class</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>__supers() -&gt; iter() -&gt; class</code></td>
+<td>iterate over the class hierarchy</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>__allpairs() -&gt; iter() -&gt; k, v, class</code></td>
+<td>iterate instance and class members recursively</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>__pairs() -&gt; iter() -&gt; k, v</code></td>
+<td>iterate the flattened map of instance and class members</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>__properties() -&gt; iter() -&gt; k, class</code></td>
+<td>iterate the flattened map of instance and class members</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>__vproperties() -&gt; iter() -&gt; prop, info</code></td>
+<td>iterate all virtual properties</td>
+</tr>
+</tbody>
+</table>

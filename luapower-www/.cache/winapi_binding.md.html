@@ -1,0 +1,116 @@
+<h2 id="overview">Overview</h2>
+<p>To bind new “chapters” of the Windows API first identify which chapter it is and check to see if there isn’t already a module for that. Module names should match msdn documentation as much as possible. After you decided on a module name, start adding in all the necessary ffi cdefs, defines and functions. The function names and args should match WinAPI as much as possible. This is the “procedural layer” of the binding. The OOP layer (if any) will be based on it.</p>
+<h2 id="binding-winapi-functions">Binding WinAPI functions</h2>
+<h3 id="error-checking">Error checking</h3>
+<p>Pass the result of winapi calls to <code>checknz</code>, <code>checkh</code> and friends according to what constitutes an error in the result: you get automatic error handling and clear code.</p>
+<h3 id="memory-management">Memory management</h3>
+<p>Use <code>own(object, finalizer)</code> on all newly created objects but call <code>disown(object)</code> right after any successful api call that assigns that object an owner responsible for freeing it, and use <code>own()</code> again every time a call leaves an object without an owner. Doing this consistently will complicate the implementation sometimes but it prevents leaks and you get automatic object lifetime management (for what is worth given the non-deterministic nature of the gc).</p>
+<p>Avoid surfacing ABI boilerplate like buffers, buffer sizes and internal data structures. Sometimes you may want to reuse a buffer to avoid heap trashing especially on a function you know it could be called repeatedly many times. In this case add the buffer as an optional trailing argument - if given it will be used, if not, an internal buffer will be created. If there’s a need to pass state around beyond this, make a class (that is, do it in the object layer).</p>
+<h3 id="strings">Strings</h3>
+<p>Use <code>wcs(arg)</code> on all string args: if arg is a Lua string, it will be interpreted as an utf8 encoded string and converted to wcs, otherwise it will be passed through untouched. This allows passing both Lua strings and wcs buffers transparently.</p>
+<h3 id="flags">Flags</h3>
+<p>Use <code>flags(arg)</code> on all flag args so that you can pass a string of the form <code>'FLAG1 FLAG2 ...'</code> as an alternative to <code>bit.bor(FLAG1, FLAG2, ...)</code>. It also changes nil into 0 to allow for optional flag args to be passed where winapi expects an int.</p>
+<h3 id="indices">Indices</h3>
+<p>Count from 1! Use <code>countfrom0</code> on all positional args: this will decrement the arg but only if it’s strictly &gt; 0 so that negative numbers are passed through as they are since we want to preserve values with special meaning like -1.</p>
+<h3 id="simple-structs">Simple structs</h3>
+<p>Use <code>arg = types.FOO(arg)</code> instead of <code>arg = ffi.new('FOO', arg)</code>. This allows passing a pre-allocated FOO as argument.</p>
+<p>Publish common types in the winapi namespace: <code>FOO = types.FOO</code> and then use <code>FOO</code> instead of <code>types.FOO</code>.</p>
+<h3 id="arrays">Arrays</h3>
+<p>Use <code>arg = arrays.FOO(arg)</code> instead of <code>arg = ffi.new('FOO[?]', #arg, arg)</code>. This allows passing in a pre-allocated array as argument, and when passing in a table, the array size will be #arg.</p>
+<h3 id="complex-structs">Complex structs</h3>
+<p>Don’t allocate structs with <code>ffi.new('FOO', arg)</code>. Instead, make a struct constructor <code>FOO = struct{...}</code>, and pass all <code>FOO</code>’s args through it: <code>arg = FOO(arg)</code>.</p>
+<p>This can enable some magic, depending on how much you add to your definition:</p>
+<ul>
+<li>the user can pass in a pre-allocated <code>FOO</code> which will be passed through.</li>
+<li>if passing in a table, as it’s usually the case,
+<ul>
+<li>the size (usually <code>cbSize</code>) field (if any) can be set automatically.</li>
+<li>the struct’s mask field (if any) can be set automatically to reflect that only certain fields (those present in the table) need to be set.</li>
+<li>default values (eg. a version field) can be set automatically.</li>
+</ul></li>
+<li>virtual fields with a getter and setter can be added which will be available alongside the cdata fields.</li>
+</ul>
+<h4 id="virtual-fields">Virtual fields</h4>
+<p>Making a struct definition sets a metatable on the underlying ctype (using ffi.metatype()), making any virtual fields available to all cdata of that ctype. Accessing a struct through the virtual fields instead of the C fields has some advantages:</p>
+<ul>
+<li><p>the struct’s mask field, if any, will be set based on which fields are set, provided a bitmask is specified in the struct’s definition of that field. Setting a masked field to nil will clear its bitmask in the mask field. Getting the value of a field with its mask cleared returns nil, regardless of its data type.</p></li>
+<li><p>bits of masked bitfields can be read and set individually, provided you define the data field, the mask field, and the prefix for the mask constants in the struct definition.</p></li>
+<li><p>an <code>init</code> function can be provided in which any output buffers that the struct references can be allocated and anchored to the struct (i.e. they become part of the struct).</p></li>
+<li><p>getters/setters can be conversion functions such as <code>mbs</code>/<code>wcs</code>. if the setter function returns a cdata, that cdata is anchored automatically to the struct’s field.</p></li>
+</ul>
+<h4 id="example">Example:</h4>
+<div class="sourceCode" id="cb1"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb1-1"><a href="#cb1-1"></a><span class="cn">FOO</span> <span class="op">=</span> struct<span class="op">{</span></span>
+<span id="cb1-2"><a href="#cb1-2"></a>   ctype <span class="op">=</span> <span class="st">&#39;FOO&#39;</span><span class="op">,</span>    <span class="co">--the C struct that is to be created.</span></span>
+<span id="cb1-3"><a href="#cb1-3"></a>   size <span class="op">=</span> <span class="st">&#39;cbSize&#39;</span><span class="op">,</span>  <span class="co">--the field that must be set to sizeof(FOO), if any.</span></span>
+<span id="cb1-4"><a href="#cb1-4"></a>   mask <span class="op">=</span> <span class="st">&#39;fMask&#39;</span><span class="op">,</span>   <span class="co">--the field that masks other fields, if any.</span></span>
+<span id="cb1-5"><a href="#cb1-5"></a>   defaults <span class="op">=</span> <span class="op">{</span></span>
+<span id="cb1-6"><a href="#cb1-6"></a>      nVersion <span class="op">=</span> <span class="dv">1</span><span class="op">,</span>  <span class="co">--set on creation.</span></span>
+<span id="cb1-7"><a href="#cb1-7"></a>      <span class="op">...</span></span>
+<span id="cb1-8"><a href="#cb1-8"></a>   <span class="op">},</span></span>
+<span id="cb1-9"><a href="#cb1-9"></a>   fields <span class="op">=</span> mfields<span class="op">{</span> <span class="co">--mfields is the field def constructor for masked fields.</span></span>
+<span id="cb1-10"><a href="#cb1-10"></a>      <span class="st">&#39;bar_field&#39;</span><span class="op">,</span>    <span class="st">&#39;barField&#39;</span><span class="op">,</span>    <span class="cn">MASK_BAR</span><span class="op">,</span> setter<span class="op">,</span> getter<span class="op">,</span></span>
+<span id="cb1-11"><a href="#cb1-11"></a>      <span class="st">&#39;baz_field&#39;</span><span class="op">,</span>    <span class="st">&#39;bazField&#39;</span><span class="op">,</span>    <span class="cn">MASK_BAZ</span><span class="op">,</span> pass<span class="op">,</span>   pass<span class="op">,</span>     <span class="co">-- setting baz_field sets MASK_BAZ in fMask.</span></span>
+<span id="cb1-12"><a href="#cb1-12"></a>      <span class="st">&#39;zup_field&#39;</span><span class="op">,</span>    <span class="st">&#39;zupField&#39;</span><span class="op">,</span>    <span class="cn">MASK_ZUP</span><span class="op">,</span> wcs<span class="op">,</span>    mbs<span class="op">,</span>      <span class="co">-- zup_field works with Lua strings.</span></span>
+<span id="cb1-13"><a href="#cb1-13"></a>      <span class="op">...</span></span>
+<span id="cb1-14"><a href="#cb1-14"></a>      <span class="st">&#39;__state&#39;</span><span class="op">,</span>      <span class="st">&#39;stateField&#39;</span><span class="op">,</span>     <span class="cn">MASK_STATE</span><span class="op">,</span> pass<span class="op">,</span> pass<span class="op">,</span>  <span class="co">-- bitfield, see below</span></span>
+<span id="cb1-15"><a href="#cb1-15"></a>      <span class="st">&#39;__stateMask&#39;</span><span class="op">,</span>  <span class="st">&#39;stateMaskField&#39;</span><span class="op">,</span> <span class="cn">MASK_STATE</span><span class="op">,</span> pass<span class="op">,</span> pass<span class="op">,</span></span>
+<span id="cb1-16"><a href="#cb1-16"></a>   <span class="op">},</span></span>
+<span id="cb1-17"><a href="#cb1-17"></a>   bitfields <span class="op">=</span> <span class="op">{</span></span>
+<span id="cb1-18"><a href="#cb1-18"></a>      <span class="co">-- setting state_FOO sets or clears the mask PREFIX_FOO in __state,</span></span>
+<span id="cb1-19"><a href="#cb1-19"></a>      <span class="co">-- and sets PREFIX_FOO to __stateMask (and sets MASK_STATE in fMask).</span></span>
+<span id="cb1-20"><a href="#cb1-20"></a>      <span class="co">-- getting state_FOO checks the mask PREFIX_FOO in __stateMask,</span></span>
+<span id="cb1-21"><a href="#cb1-21"></a>      <span class="co">-- and if set, checks the mask PREFIX_FOO in __state.</span></span>
+<span id="cb1-22"><a href="#cb1-22"></a>      state <span class="op">=</span> <span class="op">{</span><span class="st">&#39;__state&#39;</span><span class="op">,</span> <span class="st">&#39;__stateMask&#39;</span><span class="op">,</span> <span class="st">&#39;PREFIX&#39;</span><span class="op">},</span></span>
+<span id="cb1-23"><a href="#cb1-23"></a>   <span class="op">},</span></span>
+<span id="cb1-24"><a href="#cb1-24"></a><span class="op">}</span></span></code></pre></div>
+<h4 id="naming-virtual-fields">Naming virtual fields</h4>
+<p>Use the “lowercase with underscores” naming convention for virtual field names. Use names like caption, x, y, w, h, pos, parent, etc. consistently throughout.</p>
+<h3 id="messages">Messages</h3>
+<p>Write message decoders for all WM_* and messages specific to your module. (eg. mouse.lua contains message decoders for WM_MOUSE* messages).</p>
+<p>Only write decoders for messages for which wParam and lParam mean something.</p>
+<p>WM_* decoders go into the <code>WM</code> global table.</p>
+<p>WM_NOTIFY decoders go into the <code>NM</code> global table.</p>
+<p>All message names must be added into the global <code>WM_NAMES</code> and <code>WM_NOTIFY_NAMES</code> tables respectively too, regardless whether there are decoders for them or not. Examples:</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb2-1"><a href="#cb2-1"></a>update<span class="op">(</span><span class="cn">WM_NAMES</span><span class="op">,</span> constants<span class="op">{</span></span>
+<span id="cb2-2"><a href="#cb2-2"></a>   <span class="cn">LB_ADDSTRING</span>             <span class="op">=</span> <span class="dv">0x0180</span><span class="op">,</span></span>
+<span id="cb2-3"><a href="#cb2-3"></a>   <span class="cn">LB_INSERTSTRING</span>          <span class="op">=</span> <span class="dv">0x0181</span><span class="op">,</span></span>
+<span id="cb2-4"><a href="#cb2-4"></a>   <span class="op">...</span></span>
+<span id="cb2-5"><a href="#cb2-5"></a><span class="op">})</span></span>
+<span id="cb2-6"><a href="#cb2-6"></a></span>
+<span id="cb2-7"><a href="#cb2-7"></a>update<span class="op">(</span><span class="cn">WM_NOTIFY_NAMES</span><span class="op">,</span> constants<span class="op">{</span></span>
+<span id="cb2-8"><a href="#cb2-8"></a>   <span class="cn">TBN_GETBUTTONINFOA</span>       <span class="op">=</span> <span class="cn">TBN_FIRST</span><span class="op">-</span><span class="dv">0</span><span class="op">,</span></span>
+<span id="cb2-9"><a href="#cb2-9"></a>   <span class="cn">TBN_BEGINDRAG</span>            <span class="op">=</span> <span class="cn">TBN_FIRST</span><span class="op">-</span><span class="dv">1</span><span class="op">,</span></span>
+<span id="cb2-10"><a href="#cb2-10"></a>   <span class="op">...</span></span>
+<span id="cb2-11"><a href="#cb2-11"></a><span class="op">})</span></span></code></pre></div>
+<h2 id="making-new-classes">Making new classes</h2>
+<h3 id="subclassing">Subclassing</h3>
+<p>The easiest way to create a new class is to use the code of an existing class as a template. There are base classes for almost everything, so:</p>
+<ul>
+<li>subclass from <code>Control</code> if you are creating a new kind of control.</li>
+<li>subclass from <code>Window</code> if you are creating a new kind of top-level window.</li>
+<li>subclass from <code>VObject</code> if it’s a non-visual class.</li>
+<li>subclass from <code>ItemList</code> if your class represents a list of objects.</li>
+</ul>
+<h3 id="initialization">Initialization</h3>
+<p>Initialization is done by overriding the <code>__init</code> constructor. <code>BaseWindow</code> also provides pre- and post-window-creation hooks which you can override:</p>
+<pre><code>__before_create(self, info, args)
+__after_create(self, info, args)</code></pre>
+<h3 id="auto-generation-of-properties-and-events">Auto-generation of properties and events</h3>
+<p><code>BaseWindow</code> contains extensive automation to help with binding of HWND-based classes, so that binding a new window or control is mainly an issue of filling up the following tables:</p>
+<pre><code>__class_style_bitmask = bitmask{}  --for windows that own their WNDCLASS
+__style_bitmask = bitmask{}        --style bits
+__style_ex_bitmask = bitmask{}     --extended style bits
+__defaults = {}
+__init_properties = {}  --properties to be set after window creation
+__wm_handler_names = {} --message name -&gt; event name mapping
+__wm_syscommand_handler_names = {} --WM_SYSCOMMAND code -&gt; event name map
+__wm_command_handler_names = {}    --WM_COMMAND code -&gt; event name map
+__wm_notify_handler_names = {}     --WM_NOTIFY code -&gt; event name map</code></pre>
+<p>The <code>__*_bitmask</code> tables map property names to class style, window style and extended window style constants respectively so that individual properties can be created automatically based on those definitions.</p>
+<p>Windows messages as well as WM_SYSCOMMAND, WM_COMMAND and WM_NOTIFY messages are routed automatically to their respective windows and decoded and individual events are generated per <code>__wm_*</code> tables.</p>
+<h3 id="item-lists">Item lists</h3>
+<p>Some controls (eg. listbox) need to manage a list of items. To add this you need to:</p>
+<ul>
+<li><p>subclass <code>ItemList</code> for the list itself and implement at least add() and remove() methods (plus other properties and methods that apply to the items or to the item list as a whole).</p></li>
+<li><p>instantiate your custom list class in the control’s constructor (i.e. <code>__init</code>, which you override).</p></li>
+</ul>

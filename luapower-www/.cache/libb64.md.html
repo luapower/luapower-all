@@ -1,0 +1,19 @@
+<h2 id="local-b64-requirelibb64"><code>local b64 = require'libb64'</code></h2>
+<p>FFI binding of <a href="http://libb64.sourceforge.net/">libb64</a>, a fast base64 encoder and decoder by Chris Venter.</p>
+<pre><code>b64.encode(s[, size]) -&gt; s
+b64.decode(s[, size]) -&gt; s
+b64.encode(cdata, size) -&gt; s
+b64.decode(cdata, size) -&gt; s</code></pre>
+<p>Encode/decode a string or cdata to a string.</p>
+<pre><code>b64.encode_tobuffer(s, [size], out_buf, out_size) -&gt; bytes_written
+b64.decode_tobuffer(s, [size], out_buf, out_size) -&gt; bytes_written
+b64.encode_tobuffer(cdata, size, out_buf, out_size) -&gt; bytes_written
+b64.decode_tobuffer(cdata, size, out_buf, out_size) -&gt; bytes_written</code></pre>
+<p>Encode/decode a string or cdata to a buffer.</p>
+<ul>
+<li>encoding needs a buffer of at least <code>size * 2 + 3</code> bytes</li>
+<li>decoding needs a buffer of at least <code>math.floor(size * 3 / 4)</code> bytes</li>
+</ul>
+<h2 id="todo">TODO</h2>
+<p>Stream-like interface similar to zlib’s inflate/deflate.<br />
+Benchmark against this pure ffi implementation<a href="https://github.com/kengonakajima/luvit-base64/issues/1">1</a>.</p>

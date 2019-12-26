@@ -1,0 +1,217 @@
+<h2 id="status">Status</h2>
+<p><warn>In active development.</warn></p>
+<h2 id="howto">HowTO</h2>
+<p>Here’s a very basic website sketch that uses some webb features.</p>
+<p>Create a file <code>foo-nginx.conf</code> and type in it:</p>
+<pre><code>error_log logs/foo-error.log;  # default is logs/error.log.
+events {}
+http {
+   lua_code_cache off;           # auto-reload Lua modules (for development).
+   server {
+      listen 127.0.0.1:8000;     # default is *:8000;
+      set $main_module &quot;foo&quot;;    # runs foo.lua for every url.
+      set $hide_errors true;     # hide errors when crashing (for production).
+      access_log logs/foo-access.log;  # default is logs/access.log.
+      include webb-nginx.conf;   # hook up webb to nginx.
+   }
+}</code></pre>
+<p>Type <code>./nginx -s start</code> then check <code>http://127.0.0.1:8000</code>.</p>
+<p>You should get a 500 error because <code>foo.lua</code> (our main file) is missing. Below is an example on how to set up this file.</p>
+<h3 id="foo.lua"><code>foo.lua</code></h3>
+<pre><code>require&#39;webb&#39;           -- base API.
+require&#39;webb_js&#39;        -- support API for www/webb.js.
+require&#39;webb_query&#39;     -- if using mysql.
+require&#39;webb_sendmail&#39;  -- if sending mail.
+require&#39;webb_session&#39;   -- if needing session tracking and/or user accounts.
+require&#39;webb_session&#39;   -- if needing session tracking and/or user accounts.
+require&#39;foo_config&#39;     -- foo_config.lua file, see below.
+require&#39;foo_secrets&#39;    -- foo_secrets.lua file, see below.
+
+cssfile[[
+   font-awesome.css    --if using font awesome
+   jquery.toasty.css   --if using toasty
+]]
+
+jsfile[[
+   jquery.toasty.js    --if using toasty notifications
+   jquery.easing.js    --if using easing transitions
+   jquery.validate.js  --if using client-side validation
+   jquery.unslider.js  --if using unslider
+   analytics.js        --if using analytics
+   facebook.js         --if using facebook authentication
+   google.js           --if using g+ authentication
+   account.js          --if using the standard account widget TODO
+   resetpass.js        --if using the sandard reset password widget TODO
+   config.js           --auto-generated with some values from foo_config.lua
+]]
+
+function action.home()
+   webbjs {
+      title = &#39;...&#39;,
+      body = &#39;...&#39;,
+   }
+end
+
+return function()  --called for every URL. make your routing strategy here.
+   touch_usr() --update usr.atime on all requests, except image requests.
+   check(action(find_action(unpack(args()))))
+end</code></pre>
+<h3 id="foo_config.lua"><code>foo_config.lua</code></h3>
+<p>Note: only need to add the lines for which the value is different than below. Also note: these can also be set as nginx variables (<code>set</code> directive) or as environment variables.</p>
+<pre><code>config(&#39;lang&#39;, &#39;en&#39;) --the default language
+
+config(&#39;base_url&#39;, nil)   --website&#39;s base url: optional, for absurl().
+
+config(&#39;root_action&#39;      , &#39;home&#39;) --the action to run for the &#39;/&#39; path
+config(&#39;templates_action&#39; , &#39;_templates&#39;)
+config(&#39;404_html_action&#39;  , &#39;404.html&#39;)
+config(&#39;404_png_action&#39;   , &#39;404.png&#39;)
+config(&#39;404_jpeg_action&#39;  , &#39;404.jpg&#39;)
+
+config(&#39;separate_js_refs&#39; , false) --concatenate all js files into all.js
+config(&#39;separate_css_refs&#39;, false) --concatenate all css files into all.css
+
+config(&#39;db_host&#39;, &#39;127.0.0.1&#39;)    --the ip address of the local mysql server
+config(&#39;db_port&#39;, 3306)           --the port of the local mysql server
+config(&#39;db_name&#39;, &#39;&lt;db name&gt;&#39;)    --the mysql database name
+config(&#39;db_user&#39;, &#39;root&#39;)         --the mysql user
+config(&#39;db_conn_timeout&#39; , 3)     --connection timeout in seconds
+config(&#39;db_query_timeout&#39;, 30)    --query timeout in seconds
+
+config(&#39;pass_token_lifetime&#39;, 3600) --remember-password token lifetime
+config(&#39;pass_token_maxcount&#39;, 2)  --max remember-password tokens allowed
+
+config(&#39;smtp_host&#39;, &#39;127.0.0.1&#39;)  --the ip address of the local smtp server
+config(&#39;smtp_port&#39;, 25)           --the port address of the local smtp server
+
+config(&#39;facebook_app_id&#39;,  &#39;&lt;fb app id&gt;&#39;)         --fb app id for fb authentication
+config(&#39;google_client_id&#39;, &#39;&lt;google client id&gt;&#39;)  --google client id for g+ authentication
+config(&#39;analytics_ua&#39;,     &#39;&lt;analytics UA code&gt;&#39;) --google analytics UA code for analytics</code></pre>
+<h3 id="foo_secrets.lua-not-to-be-added-to-git"><code>foo_secrets.lua</code>, not to be added to git</h3>
+<pre><code>config(&#39;pass_salt&#39;,      &#39;&lt;any random string&gt;&#39;) --for encrypting passwords in the database
+config(&#39;session_secret&#39;, &#39;&lt;any random string&gt;&#39;) --for encrypting cookies
+config(&#39;db_pass&#39;,        nil)                   --the mysql password</code></pre>
+<h2 id="webb-modules">Webb modules</h2>
+<table>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">webb.lua</td>
+<td style="text-align: left;">main module</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">webb_action.lua</td>
+<td style="text-align: left;">routing module</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">webb_query.lua</td>
+<td style="text-align: left;">mysql query module</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">webb_sendmail.lua</td>
+<td style="text-align: left;">email sending</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">webb_js.lua</td>
+<td style="text-align: left;">webb.js support module</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">webb_session.lua</td>
+<td style="text-align: left;">cookie-based sessions</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">webb_auth.lua</td>
+<td style="text-align: left;">session authentication</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">www/webb.js</td>
+<td style="text-align: left;">client-side main module</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">www/webb.ajax.js</td>
+<td style="text-align: left;">ajax module</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">www/webb.timeago.js</td>
+<td style="text-align: left;">time formatting</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">www/webb.util.js</td>
+<td style="text-align: left;">misc.</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">www/webb.back-to-top.js</td>
+<td style="text-align: left;">back-to-top button</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">www/webb.content-tools.js</td>
+<td style="text-align: left;">contenteditable library</td>
+</tr>
+</tbody>
+</table>
+<h2 id="third-party-modules">Third-party modules</h2>
+<table>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">resty/socket.lua</td>
+<td style="text-align: left;">0.0.4</td>
+<td style="text-align: center;">thibaultcha/lua-resty-socket</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">webb_mysql.lua</td>
+<td style="text-align: left;">?</td>
+<td style="text-align: center;">lua-resty-mysql; db:read_result() modified for query.lua!</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">lp.lua</td>
+<td style="text-align: left;">1.15</td>
+<td style="text-align: center;"></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">www/jquery.js</td>
+<td style="text-align: left;">3.4.1</td>
+<td style="text-align: center;"></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">www/jquery.history.js</td>
+<td style="text-align: left;">1.8.0</td>
+<td style="text-align: center;"></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">www/jquery.validate.js</td>
+<td style="text-align: left;">1.19.1</td>
+<td style="text-align: center;"></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">www/jquery.easing.js</td>
+<td style="text-align: left;">1.3</td>
+<td style="text-align: center;"></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">www/jquery.toasty.js</td>
+<td style="text-align: left;">?</td>
+<td style="text-align: center;"></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">www/jwuery.unslider.js</td>
+<td style="text-align: left;">?</td>
+<td style="text-align: center;"></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">www/mustache.js</td>
+<td style="text-align: left;">3.1.0</td>
+<td style="text-align: center;"></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">www/normalize.css</td>
+<td style="text-align: left;">8.0.1</td>
+<td style="text-align: center;"></td>
+</tr>
+</tbody>
+</table>
+<h3 id="reset-mysql-root-password">Reset MySQL root password</h3>
+<pre><code>sudo mysql -u root
+
+DROP USER &#39;root&#39;@&#39;localhost&#39;;
+CREATE USER &#39;root&#39;@&#39;%&#39; IDENTIFIED BY &#39;&#39;;
+GRANT ALL PRIVILEGES ON *.* TO &#39;root&#39;@&#39;%&#39;;
+FLUSH PRIVILEGES;</code></pre>

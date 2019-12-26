@@ -1,0 +1,501 @@
+<h2 id="local-tr-requiretr0"><code>local tr = require'tr0'</code></h2>
+<p>Text shaping and rendering engine for Unicode text using portable technologies exclusively for pixel-perfect consistent output across platforms. Uses <a href="/harfbuzz">harfbuzz</a> for complex text shaping, <a href="/fribidi">fribidi</a> for bidirectional text, <a href="/libunibreak">libunibreak</a> for line breaking and <a href="/freetype">freetype</a> for glyph rasterization. Used by <a href="/ui">ui</a> for all text rendering.</p>
+<p>Supports subpixel positioning, color bitmap fonts (emoticons!), word wrapping, alignments, hit testing, clipping, cursors, selections, editing, control over OpenType features, moving, coloring and editing inside ligatures, OpenType-assisted auto-hinter.</p>
+<h2 id="status">Status</h2>
+<p>This module is a Lua prototype for <a href="/terra.tr">terra.tr</a>. Its <a href="https://github.com/luapower/tr0/issues">missing features and bugs</a> will not be fixed here.</p>
+<h3 id="api">API</h3>
+<table>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;"><code>tr() -&gt; tr</code></td>
+<td style="text-align: left;">create a render object</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>tr:free()</code></td>
+<td style="text-align: left;">free the render object</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><strong>font management</strong></td>
+<td style="text-align: left;"></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>tr:add_font_file(file, ...)</code></td>
+<td style="text-align: left;">add a font file</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>tr:add_mem_font(buf, sz, ...)</code></td>
+<td style="text-align: left;">add a font file from a buffer</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><strong>shaping &amp; layouting</strong></td>
+<td style="text-align: left;"></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>tr:flatten(text_tree) -&gt; text_runs</code></td>
+<td style="text-align: left;">flatten a text tree</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>tr:shape(text_tree | text_runs) -&gt; segs</code></td>
+<td style="text-align: left;">shape a text tree / text runs</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>segs:min_w() -&gt; min_w</code></td>
+<td style="text-align: left;">minimum wrapping width</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>segs:max_w() -&gt; max_w</code></td>
+<td style="text-align: left;">maximum wrapping width</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>segs:wrap(w) -&gt; segs</code></td>
+<td style="text-align: left;">wrap shaped text</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>segs:align(x, y, [w], [h], [ax], [ay]) -&gt; segs</code></td>
+<td style="text-align: left;">align wrapped text in a box</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>segs:layout(x, y, [w], [h], [ax], [ay]) -&gt; segs</code></td>
+<td style="text-align: left;">wrap and align shaped text</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>segs:bounding_box() -&gt; x, y, w, h</code></td>
+<td style="text-align: left;">bounding box of laid out text</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><strong>rendering</strong></td>
+<td style="text-align: left;"></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>segs:paint(cr) -&gt; segs</code></td>
+<td style="text-align: left;">paint laid out text</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>segs:clip(x, y, w, h) -&gt; segs</code></td>
+<td style="text-align: left;">mark outside segments as invisible</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>segs:reset_clip() -&gt; segs</code></td>
+<td style="text-align: left;">mark all segments as visible</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>tr:textbox(text_tree, cr, x, y, w, h, [ax], [ay])</code></td>
+<td style="text-align: left;">shape, layout and paint text</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><strong>hit testing</strong></td>
+<td style="text-align: left;"></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>segs:hit_test(x, y, ...) -&gt; seg, i</code></td>
+<td style="text-align: left;">hit test the laid out text</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><strong>cursors</strong></td>
+<td style="text-align: left;"></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>segs:cursor([offset]) -&gt; cursor</code></td>
+<td style="text-align: left;">create a cursor</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>cursor:set(cursor | seg,i[,x]) -&gt; changed</code></td>
+<td style="text-align: left;">update a cursor</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>cursor:get() -&gt; seg, i, x</code></td>
+<td style="text-align: left;">cursor segment and offset in segment</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>cursor:offset() -&gt; offset</code></td>
+<td style="text-align: left;">cursor offset in text</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>cursor:changed()</code></td>
+<td style="text-align: left;">event: cursor changed</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>cursor:pos() -&gt; x, y</code></td>
+<td style="text-align: left;">cursor position</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>cursor:size() -&gt; w, h, rtl</code></td>
+<td style="text-align: left;">cursor size and direction</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>cursor:find(...) -&gt; seg, i, [positions_left]</code></td>
+<td style="text-align: left;">find a relative cursor position</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>cursor:move(...) -&gt; changed</code></td>
+<td style="text-align: left;">set cursor to a relative position</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><strong>selections</strong></td>
+<td style="text-align: left;"></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>segs:selection() -&gt; sel</code></td>
+<td style="text-align: left;">create a selection</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>sel:empty() -&gt; true|false</code></td>
+<td style="text-align: left;">check if selection is empty</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>sel.cursor1</code>, <code>sel.cursor2</code></td>
+<td style="text-align: left;">selection cursors</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>sel:cursors() -&gt; c1, c2, forward</code></td>
+<td style="text-align: left;">selection cursors in text-order</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>sel:offsets() -&gt; o1, o2, forward</code></td>
+<td style="text-align: left;">selection text offsets in order</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>sel:changed(changed_cursor)</code></td>
+<td style="text-align: left;">event: selection changed</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>sel:select_all()</code></td>
+<td style="text-align: left;">select all</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>sel:reset()</code></td>
+<td style="text-align: left;">select none</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>sel:select_word()</code></td>
+<td style="text-align: left;">select the word around cursor1</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>sel:rectangles(write_func, ...)</code></td>
+<td style="text-align: left;">get selection rectangles</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>sel:hit_rectangles(write_func, ...)</code></td>
+<td style="text-align: left;">get selection rectangles without line gaps</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>sel:hit_test(x, y) -&gt; true|false</code></td>
+<td style="text-align: left;">hit test the selection rectangles</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><strong>editing</strong></td>
+<td style="text-align: left;"></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>sel:codepoints() -&gt; buf, offset, len</code></td>
+<td style="text-align: left;">selected text in utf-32 buffer</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>sel:string() -&gt; s</code></td>
+<td style="text-align: left;">selected text as utf-8 string</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>sel:replace(s, [len], [charset], [maxlen]) -&gt; t|f</code></td>
+<td style="text-align: left;">replace selection with text</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><strong>rasterizer config</strong></td>
+<td style="text-align: left;"></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>tr.rs.glyph_cache_size</code></td>
+<td style="text-align: left;"><code>10MB</code></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>tr.rs.font_size_resolution</code></td>
+<td style="text-align: left;"><code>1/8</code></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>tr.rs.subpixel_x_resolution</code></td>
+<td style="text-align: left;"><code>1/16</code> (max is <code>1/64</code> with Freetype)</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>tr.rs.subpixel_y_resolution</code></td>
+<td style="text-align: left;"><code>1</code> because vertical hinting enabled</td>
+</tr>
+</tbody>
+</table>
+<h2 id="font-management">Font management</h2>
+<h3 id="tradd_font_filefile-name-slant-weight"><code>tr:add_font_file(file, name, [slant], [weight])</code></h3>
+<p>Register a font file, associating it with a name, slant and weight. The name can contain the slant and/or weight and you can add/override these qualifiers as separate args.</p>
+<p>Multiple combinations of (name, weight, slant) can be registered with the same font. See <a href="/freetype">freetype</a> for supported font formats.</p>
+<p>The font is not loaded immediately, but it’s loaded and unloaded on demand.</p>
+<p>Registering fonts is a necessary step before trying to shape anything.</p>
+<h3 id="tradd_mem_fontbuf-sz-slant-weight"><code>tr:add_mem_font(buf, sz, [slant], [weight])</code></h3>
+<p>Add a font file from a memory buffer.</p>
+<h2 id="shaping-layouting">Shaping &amp; layouting</h2>
+<h3 id="trflattentext_tree---text_runs"><code>tr:flatten(text_tree) -&gt; text_runs</code></h3>
+<p>Convert a tree of nested text nodes into a flat array of codepoints and an accompanying flat list of <em>text runs</em> containing metadata for each piece of text contained in the tree.</p>
+<p>The text tree is a list whose elements can be either Lua strings or cdata buffers containing utf-8 or utf-32 text or other text trees. Text tree nodes also contain attributes which describe how the text should be rendered. All attributes are automatically inherited from parent nodes and can be overriden in child nodes.</p>
+<p>Attributes can be:</p>
+<ul>
+<li><code>charset</code>: character set: <code>'utf8'</code> or <code>'utf32'</code> (defaults to <code>'utf8'</code>).</li>
+<li><code>size</code>: text buffer size in bytes (optional if the text is in a Lua string).</li>
+<li><code>len</code>: text buffer size in codepoints (for <code>'utf32'</code> charset only; optional if the text is in a Lua string).</li>
+<li><code>maxlen</code>: maximum number of codepoints to decode/read.</li>
+<li><code>font</code> or <code>font_name</code>: font specified as <code>'family [weight] [slant][, size]'</code>.</li>
+<li><code>font_size</code>: font size override.</li>
+<li><code>font_weight</code>: font weight override: <code>'bold'</code>, <code>'thin'</code> etc. or a weight number between <code>100</code> and <code>900</code>.</li>
+<li><code>font_slant</code>: font slant override: <code>'italic'</code>, <code>'normal'</code>.</li>
+<li><code>bold</code>, <code>b</code>, <code>italic</code>, <code>i</code>: boolean <code>font_weight</code> and <code>font_slant</code> overrides.</li>
+<li><code>features</code>: OpenType features specified as <code>'[+|-]feat[=val] ...'</code>, eg. <code>'+kern -liga smcp'</code>.</li>
+<li><code>script</code>: an <a href="https://www.unicode.org/iso15924/iso15924-codes.html">ISO-15924</a> script tag (the default is auto-detected).</li>
+<li><code>lang</code>: a <a href="https://www.iana.org/assignments/language-subtag-registry/language-subtag-registry">BCP-47</a> language-country code (the default is auto-detected).</li>
+<li><code>dir</code>: <code>'ltr'</code>, <code>'rtl'</code>, <code>'auto'</code>: bidi direction for current and subsequent paragraphs.</li>
+<li><code>line_spacing</code>: line spacing multiplication factor (defaults to <code>1</code>).</li>
+<li><code>hardline_spacing</code>: line spacing multiplication factor for lines terminated by a hard line break (defaults to <code>1</code>).</li>
+<li><code>paragraph_spacing</code>: paragraph spacing multiplication factor (defaults to <code>2</code>).</li>
+<li><code>nowrap</code>: disable word wrapping.</li>
+<li><code>color</code>: a color in format <code>'#rrggbb'</code>, <code>'hsv(h, s, v)'</code>, etc. (see <a href="/color">color</a> for supported formats; defaults to <code>tr.rs.default_color</code> which is <code>'#888'</code>).</li>
+<li><code>opacity</code>: the opacity level in <code>0..1</code> (defaults to <code>1</code>).</li>
+<li><code>operator</code>: the cairo operator (defaults to <code>tr.rs.default_operator</code> which is <code>'over'</code>).</li>
+</ul>
+<p>The resulting table contains the text runs in its array part, plus:</p>
+<ul>
+<li><code>codepoints</code> - the <code>uint32_t[?]</code> array of codepoints.</li>
+<li><code>len</code> - text length in codepoints.</li>
+</ul>
+<p>The text runs are set up to inherit their corresponding text tree node, and also contain the fields:</p>
+<ul>
+<li><code>offset</code> - offset in the flattened text, in codepoints, (<strong>counting from 0!</strong>).</li>
+<li><code>len</code> - text run length in codepoints.</li>
+<li><code>font</code>, <code>font_size</code> - resolved font object and font size.</li>
+</ul>
+<p>NOTE: A text run is created for each source node, even when the node has no text, in order to preserve the text attributes at that text position. Invalid text runs are discarded though, so flattening <em>can</em> result in an empty array.</p>
+<p>NOTE: When flattening, each text node is set up to inherit its parent node (this might change in a future version since it’s not ok to modify user input in general).</p>
+<h3 id="trshapetext_tree-text_runs---segs"><code>tr:shape(text_tree | text_runs) -&gt; segs</code></h3>
+<p>Shape a text tree (flattened or not) into a list of segments. The segments can be laid out multiple times and must be laid out at least once in order to be rendered. Changing the text tree in any way except for styling attributes (color) requires reshaping and relayouting.</p>
+<p>The segments table has the fields:</p>
+<ul>
+<li><code>text_runs</code>: reference to the text runs.</li>
+<li><code>bidi</code>: <code>true</code> if the text is bidirectional.</li>
+<li><code>base_dir</code>: base paragraph direction of the first paragraph:
+<ul>
+<li><code>'ltr'</code>: left-to-right</li>
+<li><code>'rtl'</code>: right-to-left</li>
+<li><code>'on'</code>: other/neutral</li>
+<li><code>'wltr'</code>: weak ltr</li>
+<li><code>'wrtl'</code>: weak rtl</li>
+</ul></li>
+</ul>
+<p><strong>NOTE:</strong> Segments are <em>not created</em> for text runs for which font loading fails.</p>
+<h3 id="segsmin_w---min_w"><code>segs:min_w() -&gt; min_w</code></h3>
+<p>Get the minimum width that the text can be wrapped to, which is the width of the longest non-breakable text sequence.</p>
+<h3 id="segsmax_w---max_w"><code>segs:max_w() -&gt; max_w</code></h3>
+<p>Get the width of the unwrapped text, which is the width of its longest line.</p>
+<h3 id="segswrapw---segs"><code>segs:wrap(w) -&gt; segs</code></h3>
+<p>Line-wrap shaped text to a maximum width. Some of the resulting lines can be wider than the given width because of nowrap or long non-breakable words. Use <code>min_w()</code> to correct for that if needed.</p>
+<p>Creates the <code>segs.lines</code> table with the following fields:</p>
+<ul>
+<li><code>max_ax</code>: text’s maximum x-advance (equivalent to text’s width).</li>
+<li><code>h</code>: text’s wrapped height.</li>
+<li><code>spaced_h</code>: text’s wrapped height including line and paragraph spacing.</li>
+</ul>
+<p>and with a list of lines in its array part, with the fields:</p>
+<ul>
+<li><code>advance_x</code>: x-advance of the last segment.</li>
+<li><code>ascent</code>: maximum ascent.</li>
+<li><code>descent</code>: maximum descent.</li>
+<li><code>spacing</code>: maximum line spacing factor for this line.</li>
+<li><code>spaced_ascent</code>: maximum ascent including line or paragraph spacing.</li>
+<li><code>spaced_descent</code>: maximum descent including line or paragraph spacing.</li>
+<li><code>visible</code>: true if line is not clipped.</li>
+<li><code>x</code>: line’s unaligned x-offset (0).</li>
+<li><code>y</code>: line’s y-offset relative to the first line’s baseline.</li>
+<li><code>first</code>: first segment in logical order.</li>
+<li><code>first_vis</code>: first segment in visual order.</li>
+</ul>
+<p>Each segment also has the following fields set:</p>
+<ul>
+<li><code>x</code>: segment’s x-position.</li>
+<li><code>advance_x</code>: segment’s x-advance.</li>
+<li><code>next</code>: next segment on the line, in logical order.</li>
+<li><code>next_vis</code>: next segment on the line, in visual order.</li>
+<li><code>line</code>: segment’s line object.</li>
+<li><code>wrapped</code>: true if the segment is the last segment on a wrapped line.</li>
+<li><code>visible</code>: true if segment is not clipped.</li>
+</ul>
+<p>NOTE: The <code>lines</code> table <em>can</em> contain zero lines if the <code>segs</code> table has zero segments, which happens when there are errors.</p>
+<h3 id="segsalignx-y-w-h-align_x-align_y---segs"><code>segs:align(x, y, [w], [h], [align_x], [align_y]) -&gt; segs</code></h3>
+<p>Align wrapped text so that it fits into the box described by <code>x, y, w, h</code>.</p>
+<ul>
+<li><code>w</code>, <code>h</code> default to wrapped text’s bounding box, including line spacing.</li>
+<li><code>align_x</code> can be <code>'left'</code>, <code>'right'</code>, <code>'center'</code> (defaults to <code>'left'</code>).</li>
+<li><code>align_y</code> can be <code>'top'</code>, <code>'bottom'</code>, <code>'center'</code> (defaults to <code>'top'</code>).</li>
+</ul>
+<p>Sets the following fields in <code>segs.lines</code>:</p>
+<ul>
+<li><code>x</code>, <code>y</code>: textbox’s position: can be changed freely without the need to call <code>align()</code> again.</li>
+<li><code>min_x</code>: x-offset of the leftmost line relative to the textbox’s origin.</li>
+<li><code>baseline</code>: first line’s baseline relative to the textbox’s origin.</li>
+</ul>
+<p>Also sets the following fields on each line:</p>
+<ul>
+<li><code>x</code>: line’s aligned x-offset relative to textbox’s origin.</li>
+</ul>
+<p>Once the text is aligned, it can be clipped and painted multiple times without the need to call <code>align()</code> again.</p>
+<h3 id="segslayoutx-y-w-h-align_x-align_y---segs"><code>segs:layout(x, y, [w], [h], [align_x], [align_y]) -&gt; segs</code></h3>
+<p>Wrap and align shaped text.</p>
+<h3 id="segsbounding_box---x-y-w-h"><code>segs:bounding_box() -&gt; x, y, w, h</code></h3>
+<p>Return the bounding-box of laid out text.</p>
+<h2 id="rendering">Rendering</h2>
+<h3 id="segspaintcr---segs"><code>segs:paint(cr) -&gt; segs</code></h3>
+<p>Paint the shaped and laid out text into a graphics context.</p>
+<p>When the <code>tr</code> object is created, a rasterizer object is created by calling <code>tr:create_rasterizer()</code> which loads the module pointed out by <code>tr.rasterizer_module</code> which defaults to <code>tr_raster_cairo</code> which implements a simple rasterizer which can paint glyphs into a <a href="/cairo">cairo</a> context. To paint glyphs using other graphics APIs you need to implement a new rasterizer. Glyph caching and the actual rasterization is done in <code>tr_raster_ft</code> using <a href="/freetype">freetype</a>, so your rasterizer can subclass that and then it only needs to handle blitting of (clipped portions of) 8-bit gray and 32-bit BGRA bitmaps and also bitmap scaling if you use bitmap fonts, since freetype doesn’t handle that.</p>
+<h3 id="segsclipx-y-w-h---segs"><code>segs:clip(x, y, w, h) -&gt; segs</code></h3>
+<p>Mark all lines and segments which are completely outside the given rectangle as invisible, and everything else as visible.</p>
+<h3 id="segsreset_clip---segs"><code>segs:reset_clip() -&gt; segs</code></h3>
+<p>Mark all lines and segments as visible.</p>
+<h3 id="trtextboxtext_tree-cr-x-y-w-h-align_x-align_y---segs"><code>tr:textbox(text_tree, cr, x, y, w, h, [align_x], [align_y]) -&gt; segs</code></h3>
+<p>Shape, wrap, align, clip and paint text in one call.</p>
+<h2 id="hit-testing">Hit testing</h2>
+<h3 id="segshit_testx-y-...---seg-i"><code>segs:hit_test(x, y, ...) -&gt; seg, i</code></h3>
+<p>Hit test for a cursor position. Extra args are the same as for <code>cursor:find('pos', ...)</code>.</p>
+<h2 id="cursors">Cursors</h2>
+<h3 id="segscursoroffset---cursor"><code>segs:cursor([offset]) -&gt; cursor</code></h3>
+<p>Create a cursor, optionally placing it at a text offset (which defaults to <code>0</code>). Returns <code>nil</code> if the segments table contain no segments.</p>
+<p>Cursor configuration fields:</p>
+<ul>
+<li><code>park_home</code> (<code>true</code>): if trying to go above the topmost line, go to the first offset.</li>
+<li><code>park_end</code> (<code>true</code>): if trying to go below the bottommost line, go to the last offset.</li>
+<li><code>unique_offsets</code> (<code>false</code>): jump-through same-text-offset cursors like most editors do.</li>
+<li><code>wrapped_space</code> (<code>false</code>): keep a cursor after the last space char on a wrapped line.</li>
+</ul>
+<p>Cursor state fields:</p>
+<ul>
+<li><code>segments</code> - a reference to the segments table.</li>
+<li><code>seg</code> - the segment.</li>
+<li><code>i</code> - position in text relative to the segment (<strong>counting from 0!</strong>).</li>
+<li><code>x</code> - x-position set by horizontal movement to be recalled by vertical movement.</li>
+</ul>
+<h3 id="cursorsetcursor-segix---changed"><code>cursor:set(cursor | seg,i[,x]) -&gt; changed</code></h3>
+<p>Update the cursor. If the cursor changed, call <code>changed()</code> and return true.</p>
+<h3 id="cursorget---seg-i-x"><code>cursor:get() -&gt; seg, i, x</code></h3>
+<p>Get the cursor segment and offset in segment.</p>
+<h3 id="cursoroffset---offset"><code>cursor:offset() -&gt; offset</code></h3>
+<p>Get the cursor offset in text, in codepoints (<strong>counting from 0!</strong>).</p>
+<h3 id="cursorpos---x-y"><code>cursor:pos() -&gt; x, y</code></h3>
+<p>Get cursor position.</p>
+<h3 id="cursorsize---w-h-rtl"><code>cursor:size() -&gt; w, h, rtl</code></h3>
+<p>Get cursor size and direction.</p>
+<h3 id="cursorfind...---seg-i-positions_left"><code>cursor:find(...) -&gt; seg, i, [positions_left]</code></h3>
+<p>Find a cursor position. Possible argument combinations:</p>
+<table>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;"><code>'offset', offset, [which]</code></td>
+<td style="text-align: left;">position at offset in text</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>'cursor', seg, i, [dir],[mode],[which],[clamp]</code></td>
+<td style="text-align: left;">position relative to other position</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>'rel_cursor', [dir], [mode], [which]</code></td>
+<td style="text-align: left;">position relative to cursor</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>'line', line_num, [x]</code></td>
+<td style="text-align: left;">position on a specific line</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>'rel_line', [lines_away], [x]</code></td>
+<td style="text-align: left;">position some lines away from the cursor</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>'pos', [x], y</code></td>
+<td style="text-align: left;">position at point (hit test)</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>'page', page_num, [x]</code></td>
+<td style="text-align: left;">position at the first line of a specific page</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>'rel_page', [pages_away], [x]</code></td>
+<td style="text-align: left;">position some pages away from the cursor</td>
+</tr>
+</tbody>
+</table>
+<p>In the table above:</p>
+<ul>
+<li><code>*_away</code> can be negative or positive and defaults to <code>0</code>.</li>
+<li><code>dir</code> (<code>'this'</code>): search direction <code>'next', 'prev', 'this'</code>.</li>
+<li><code>mode</code> (<code>'pos'</code>): what to find: <code>'pos', 'char', 'word', 'line'</code>.</li>
+<li><code>which</code> (<code>'first'</code>): what cursor to return when there are multiple cursors that satisfy the search criteria: <code>'first', 'last'</code>.</li>
+<li><code>clamp</code> (<code>false</code>): what to return when reaching the beginning or end of text when looking for a cursor: the first/last cursor or <code>nil</code>.</li>
+</ul>
+<p>Example: <code>segs:find('rel_cursor', 'this', 'word', 'last')</code> returns the cursor position at the end of the word that the cursor is currently inside of.</p>
+<h3 id="cursormove...---changed"><code>cursor:move(...) -&gt; changed</code></h3>
+<p>Move the cursor to a new position. Implemented as <code>return self:set(self:find(...))</code>.</p>
+<h3 id="cursorchanged"><code>cursor:changed()</code></h3>
+<p>Stub method called when the cursor changed position.</p>
+<h2 id="selections">Selections</h2>
+<h3 id="segsselection---sel"><code>segs:selection() -&gt; sel</code></h3>
+<p>Create a selection. Returns <code>nil</code> if the segments table contain no segments.</p>
+<h3 id="selempty---truefalse"><code>sel:empty() -&gt; true|false</code></h3>
+<p>Check if the selection is empty.</p>
+<h3 id="sel.cursor1-sel.cursor2"><code>sel.cursor1</code>, <code>sel.cursor2</code></h3>
+<p>Selection cursors in no order.</p>
+<h3 id="selcursors---cursor1-cursor2-forward"><code>sel:cursors() -&gt; cursor1, cursor2, forward</code></h3>
+<p>Selection cursors in logical text order and whether <code>sel.cursor1</code> comes before <code>sel.cursor2</code> in the logical text.</p>
+<h3 id="seloffsets---offset1-offset2-forward"><code>sel:offsets() -&gt; offset1, offset2, forward</code></h3>
+<p>Selection text offsets in order (<code>forward</code> is the same as for <code>cursors()</code>).</p>
+<h3 id="selselect_all"><code>sel:select_all()</code></h3>
+<p>Select all.</p>
+<h3 id="selreset"><code>sel:reset()</code></h3>
+<p>Select none.</p>
+<h3 id="selselect_word"><code>sel:select_word()</code></h3>
+<p>Select the word around <code>cursor1</code>.</p>
+<h3 id="selrectangleswrite_func-obj-..."><code>sel:rectangles(write_func, obj, ...)</code></h3>
+<p>Get the selection rectangles by calling <code>write_func(obj, x, y, w, h, ...)</code> for each one.</p>
+<h3 id="selhit_rectangleswrite_func-obj-..."><code>sel:hit_rectangles(write_func, obj, ...)</code></h3>
+<p>Get the selection rectangles without line gaps (useful for hit-testing).</p>
+<h3 id="selhit_testx-y---truefalse"><code>sel:hit_test(x, y) -&gt; true|false</code></h3>
+<p>Hit test the selection rectangles.</p>
+<h2 id="editing">Editing</h2>
+<h3 id="selcodepoints---buf-offset-len"><code>sel:codepoints() -&gt; buf, offset, len</code></h3>
+<p>Selected text in utf-32 buffer.</p>
+<h3 id="selstring---s"><code>sel:string() -&gt; s</code></h3>
+<p>Selected text as utf-8 string.</p>
+<h3 id="selreplaces-len-charset-maxlen---tf"><code>sel:replace(s, [len], [charset], [maxlen]) -&gt; t|f</code></h3>
+<p>Replace selection with text. The text is re-shaped and must be re-wrapped and re-layouted before being painted again.</p>
+<h2 id="rendering-stages">Rendering stages</h2>
+<h4 id="text-tree-flattening">1. Text tree flattening</h4>
+<p>The text comes into the engine in the most convenient form for the user, which is a tree of nested text nodes, similar to HTML. It is first converted into a flat array of codepoints and an accompanying list of <em>text runs</em> containing metadata for each piece of text contained in the tree.</p>
+<h4 id="itemization-and-shaping">2. Itemization and shaping</h4>
+<p>The flattened text is broken into paragraphs following the <code>U+2029</code> Paragraph Separator marker. The Unicode Bidirectional Algorithm (UBA) is run for each paragraph, resulting in a series of segments with different bidirectional <em>embedding levels</em> with alternating directionality.</p>
+<p>The text is also analyzed for <em>script</em> and <em>language</em>. The script is auto-detected from the Unicode General Category class of each character and the language is auto-detected from the script property of each character. In addition, text nodes can override these properties for arbitrary portions of the text using the <code>script</code> and <code>lang</code> attributes.</p>
+<p>The Unicode Line Breaking Algorithm is run for each segment with a different language (because the algorithm depends on language), resulting in a series of segments which end at each soft wrap opportunity (whitespace, newline, etc.).</p>
+<p>Segments also break whenever the font, font size or OpenType feature list change.</p>
+<p>In the end, segments are formed at the boundaries that result from all of the above segmentation rules and each segment is shaped separately with harfbuzz resulting in a <em>glyph run</em>.</p>
+<p>A glyph run is a list of glyph indices, positions and advances from a single font which can be passed directly to a glyph rasterizer for display. Glyph runs also contain cursor positions (more on that later).</p>
+<p>Glyph runs are cached so that the same word with the same combination of font, size, script, language, direction and OpenType feature list is not shaped multiple times unnecessarily because shaping is expensive.</p>
+<p>The segments can also contain sub-segments. Segments are formed at the boundaries of property combinations which require separate shaping. But text nodes don’t necessarily create new segments all by themselves. In fact it’s possible to have two adjacent text nodes together forming a single word but with a different color for each part of the word. In this case a single segment with two sub-segments are created. Sub-segments are created whenever the text node changes, regardless of whether any relevant attributes actually change.</p>
+<p>The end result of segmentation is thus a list of segments, each with its own glyph run (which may be reused across multiple segments) and its own list of sub-segments.</p>
+<h4 id="layouting">3. Layouting</h4>
+<p>Layouting is the process of fitting and aligning the list of shaped segments inside a box. First word wrapping is performed on the segments, in logical order, resulting in a list of <em>lines</em>, each containing a list of segments. Then BiDi reordering (the last part of the UBA) is performed on each line based on each segment’s embedding level, resulting in the segments to possibly change their order in the line. The last step is horizontal and vertical alignment of lines as a whole.</p>
+<p>A list of segments can be laid out multiple times for different box dimensions and alignments in O(n). Changing <code>segments.lines.x</code> and <code>segments.lines.y</code> can also be done without re-layouting.</p>
+<h4 id="rendering-1">4. Rendering</h4>
+<p>Rendering is the process of rasterizing the glyphs of the glyph runs individually and then blitting the resulting bitmaps onto a raster surface at the right positions. The parsing of font files for glyph outlines and the actual rasterization is done by freetype, with the caveat that bitmap fonts (emoticons) must be scaled separately because freetype doesn’t handle that. Rasterized/scaled glyphs are cached using a global LRU cache with a configurable byte-size limit. Scaling and blitting depends on the target surface and it’s thus separated in a subclass of the freetype rasterizer so that blitters can be created with minimum effort (the current cairo-based blitter is under 200 LOC).</p>
+<p>Rendering can be performed multiple times in O(n).</p>
+<h3 id="cursors-1">Cursors</h3>
+<p>Cursor positions are stored in <code>seg.glyph_run</code> in two arrays: <code>cursor_offsets</code> and <code>cursor_xs</code>. Both arrays are indexed by codepoint offset (relative to the start of the glyph run), so a cursor position and its corresponding codepoint offset can be found for any text offset in O(1). Unique cursors are created at <em>cluster</em> boundaries (a term which means indivisible unit of text from harfbuzz’s point of view) but additional cursors are also created at <em>grapheme boundaries</em> for clusters/glyphs that cover multiple graphemes like ligated “fi” pairs. Some OpenType fonts contain cursor positions for such ligatures which are used in this case if available.</p>
+<p>Duplicate cursors are not pruned, and there are many of those:</p>
+<ul>
+<li>the last cursor of the glyph run of any segment is the same as the first cursor of the glyph run of the next segment.</li>
+<li>the last cursor position on a wrapped line is the same as the first cursor position on the next line.</li>
+<li>lines with mixed LTR/RTL contain cursors pointing at the same offset in the logical text, but having different on-screen positions and direction of movement.</li>
+<li>the secondary codepoints of a grapheme duplicate the cursor at the start of the grapheme.</li>
+</ul>
+<p>It is left to the cursor navigation API to skip duplicate cursors according to various options and parameters.</p>
+<h3 id="subtle-points">Subtle points</h3>
+<h4 id="word-wrapping-and-whitespace">Word wrapping and whitespace</h4>
+<p>The Unicode Line Breaking algorithm breaks the text into words such that the whitespace between two words is always considered to be part of the first word and not the second word. Thus whitespace is always trailing and never leading. Even whitespace at the beginning of the text is standalone and not tied to the first word.</p>
+<p>When word-wrapping, the whitespace at the end of the last word on a line must be ignored when computing the width of that line (another subtle point is that this ignoring must happen only if the line is to be soft-wrapped, i.e. only if a hard break like a newline character or end-of-text doesn’t directly follow the word’s trailing whitespace). This is how most rich text editors and browsers behave. The downside of ignoring the entire trailing whitespace of the last word as opposed to only the last space character is that when there’s multiple trailing space characters, editing that whitespace will place the cursor beyond the text box boundaries, which depending on the context might even render the cursor invisible. Because of that, I have chosen to only collapse the last space character and not the entire whitespace when doing line-wrapping.</p>
+<p>Another subtle point is that in RTL runs, this logically-trailing whitespace is visually at the beginning of the word, thus the glyph run that contains it (along with its cursor positions) must be shifted one space-character to the left. The segment’s <code>x</code> field contains this adjustment.</p>
+<p>The cursor position following the space character on a wrapped line can be enabled by setting <code>cursor.wrapped_space = true</code>. If you do that, make sure to provide enough non-clipped margins on both sides of the text box so that the cursor is not clipped at that position.</p>

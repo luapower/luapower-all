@@ -1,0 +1,90 @@
+<h2 id="local-bmp-requirebmp"><code>local bmp = require'bmp'</code></h2>
+<p>BMP file loading and saving module. Supports all file header versions, color depths and pixel formats and encodings except very rare ones (embedded JPEGs, embedded PNGs, OS/2 headers, RLE deltas). Supports progressive loading, yielding from the reader and writer functions and saving in bgra8 format.</p>
+<h2 id="api">API</h2>
+<table>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;"><code>bmp.open(read) -&gt; b|nil,err</code></td>
+<td style="text-align: left;">open a BMP file and read it’s header</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>b.w</code></td>
+<td style="text-align: left;">width</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>b.h</code></td>
+<td style="text-align: left;">height</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>b.bpp</code></td>
+<td style="text-align: left;">bits per pixel</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>b:load(bmp[, x, y]) -&gt; bmp | nil,err</code></td>
+<td style="text-align: left;">load/paint the pixels into a given <a href="/bitmap">bitmap</a></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>b:load(format, ...) -&gt; bmp | nil,err</code></td>
+<td style="text-align: left;">load the pixels into a new bitmap</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>b:rows(bmp | format,...) -&gt; iter() -&gt; i, bmp</code></td>
+<td style="text-align: left;">iterate the rows over a 1-row bitmap</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>bmp.save(bmp, write) -&gt; ok | nil,err</code></td>
+<td style="text-align: left;">save a bitmap using a write function</td>
+</tr>
+</tbody>
+</table>
+<h3 id="bmp.openread---bnilerr"><code>bmp.open(read) -&gt; b|nil,err</code></h3>
+<p>Open a BMP file using a <code>read(buf, size) -&gt; readsize</code> function to get the bytes. The read function should accept any size &gt; 0 and it should raise an error if it can’t read all the bytes, except on EOF when it should return 0.</p>
+<h3 id="bloadbmp-x-y---bmp-nilerr"><code>b:load(bmp[, x, y]) -&gt; bmp | nil,err</code></h3>
+<p>Load and paint the bmp’s pixels into a given <a href="/bitmap">bitmap</a>, optionally at a specified position within the bitmap. All necessary format conversions and clipping are done via the <a href="/bitmap">bitmap</a> module.</p>
+<h3 id="bloadformat-...---bmp-nilerr"><code>b:load(format, ...) -&gt; bmp | nil,err</code></h3>
+<p>Load the bmp’s pixels into a new bitmap of a specified format. Extra arguments are passed to <code>bitmap.new()</code>.</p>
+<h3 id="browsbmp-format...---iter---i-bmp"><code>b:rows(bmp | format,...) -&gt; iter() -&gt; i, bmp</code></h3>
+<p>Iterate the bmp’s rows over a new or provided 1-row bitmap. The row index is decreasing if the bitmap is bottom-up. Unlike <code>b:load()</code>, this method and the returned iterator are not protected (they raise errors).</p>
+<h3 id="bmp.savebmp-write---true-nil-err"><code>bmp.save(bmp, write) -&gt; true | nil, err</code></h3>
+<p>Save bmp file using a <code>write(buf, size)</code> function to write the bytes. The write function should accept any size &gt;= 0 and it should raise an error if it can’t write all the bytes.</p>
+<h2 id="low-level-api">Low-level API</h2>
+<table>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;"><code>b.bottom_up</code></td>
+<td style="text-align: left;">are the rows stored bottom up?</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>b.compression</code></td>
+<td style="text-align: left;">encoding type</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>b.transparent</code></td>
+<td style="text-align: left;">does it use the alpha channel?</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>b.palettized</code></td>
+<td style="text-align: left;">does it use a palette?</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>b.bitmasks</code></td>
+<td style="text-align: left;">RGBA bitmasks (BITFIELDS encoding)</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>b.rle</code></td>
+<td style="text-align: left;">is it RLE-encoded?</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>b:load_pal() -&gt; ok|nil,err</code></td>
+<td style="text-align: left;">load the palette</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>b:pal_entry(index) -&gt; r, g, b, a</code></td>
+<td style="text-align: left;">palette lookup (loads the palette)</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>b.pal_count -&gt; n</code></td>
+<td style="text-align: left;">palette color count</td>
+</tr>
+</tbody>
+</table>

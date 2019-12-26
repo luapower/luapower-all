@@ -1,0 +1,126 @@
+<h2 id="local-amoeba-requireamoeba"><code>local amoeba = require'amoeba'</code></h2>
+<p>A fork of <a href="https://github.com/starwing/amoeba">amoeba</a> (Lua implementation only), an implementation of the Cassowary constraint solving algorithm based on <a href="https://github.com/nucleic/kiwi">kiwi</a> and the original <a href="http://constraints.cs.washington.edu/solvers/uist97.html">Cassowary paper</a>.</p>
+<h2 id="api">API</h2>
+<table>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;"><code>amoeba.new() -&gt; S</code></td>
+<td style="text-align: left;">create a solver</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>S:var(name) -&gt; var</code></td>
+<td style="text-align: left;">create a variable</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>var.value -&gt; n</code></td>
+<td style="text-align: left;">variable’s value</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>expr + expr -&gt; expr</code></td>
+<td style="text-align: left;">build expression (add an addition)</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>expr - expr -&gt; expr</code></td>
+<td style="text-align: left;">build expression (add an addition)</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>expr * expr -&gt; expr</code></td>
+<td style="text-align: left;">build expression (add a multiplication)</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>expr / expr -&gt; expr</code></td>
+<td style="text-align: left;">build expression (add a multiplication)</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>expr:le(expr) -&gt; expr</code></td>
+<td style="text-align: left;">build expression (set the <code>'&lt;='</code> operator)</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>expr:ge(expr) -&gt; expr</code></td>
+<td style="text-align: left;">build expression (set the <code>'&gt;='</code> operator)</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>expr:eq(expr) -&gt; expr</code></td>
+<td style="text-align: left;">build expression (set the <code>'=='</code> operator)</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>S:constraint([op, [expr1], [expr2], [strength]]) -&gt; cons</code></td>
+<td style="text-align: left;">create a constraint</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>cons:relation(op) -&gt; cons</code></td>
+<td style="text-align: left;">set operator (<code>'&gt;='</code>, <code>'&lt;='</code>, <code>'=='</code>)</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>cons:add(op|expr|expr_args...) -&gt; cons</code></td>
+<td style="text-align: left;">add expression or set operator</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>cons(...) -&gt; cons</code></td>
+<td style="text-align: left;">sugar for <code>cons:add(...) -&gt; cons</code></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>cons:strength(strength) -&gt; cons</code></td>
+<td style="text-align: left;">set constraint strength</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>cons.weight -&gt; n</code></td>
+<td style="text-align: left;">get constraint strength</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>cons.op -&gt; op</code></td>
+<td style="text-align: left;">get constraint operator</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>cons.expression -&gt; expr</code></td>
+<td style="text-align: left;">get constraint expression</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>S:addconstraint(cons|cons_args...) -&gt; cons</code></td>
+<td style="text-align: left;">create/add a constraint</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>S:delconstraint(cons) -&gt; cons</code></td>
+<td style="text-align: left;">remove a constraint</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>S:addedit(var[, strength]) -&gt; S</code></td>
+<td style="text-align: left;">make variable editable</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>S:deledit(var)</code></td>
+<td style="text-align: left;">make variable non-editable</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>S:suggest(var, value)</code></td>
+<td style="text-align: left;">(make var editable and) set its value</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>S:setstrength(cons, strength) -&gt; S</code></td>
+<td style="text-align: left;">set constraint strength</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>S:set_constant(cons, constant)</code></td>
+<td style="text-align: left;">set constant</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>S.vars -&gt; {var -&gt; true}</code></td>
+<td style="text-align: left;">solver’s variables</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>S.constraints -&gt; {cons -&gt; true}</code></td>
+<td style="text-align: left;">solver’s constraints</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>S.edits -&gt; {edit -&gt; true}</code></td>
+<td style="text-align: left;">solver’s edits</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Notes:</strong></p>
+<ul>
+<li><code>op</code> can be <code>'&gt;='</code> <code>'&lt;='</code>, <code>'=='</code>, <code>'ge'</code>, <code>'le'</code> or <code>'eq'</code>.</li>
+<li><code>expr</code> can be a number (treated as constant), a <code>var</code> or an <code>expr</code> object.</li>
+<li><code>strength</code> can be a number or <code>'WEAK'</code> (1), <code>'MEDIUM'</code> (1e3; default), <code>'STRONG'</code> (1e6) or <code>'REQUIRED'</code> (1e9).</li>
+<li>all objects have a <code>__tostring</code> metamethod for inspection.</li>
+</ul>

@@ -1,0 +1,160 @@
+<h2 id="requirewinapi.listboxclass"><code>require'winapi.listboxclass'</code></h2>
+<p>This module implements the <code>ListBox</code> class for creating list boxes.</p>
+<h2 id="listbox">ListBox</h2>
+<h3 id="hierarchy">Hierarchy</h3>
+<ul>
+<li><a href="/winapi.vobject">VObject</a>
+<ul>
+<li><a href="/winapi.basewindowclass">BaseWindow</a>
+<ul>
+<li><a href="/winapi.controlclass">Control</a>
+<ul>
+<li>ListBox</li>
+</ul></li>
+</ul></li>
+</ul></li>
+</ul>
+<h3 id="initial-fields-and-properties">Initial fields and properties</h3>
+<p><strong>NOTE:</strong> in the table below <code>i</code> means initial field, <code>r</code> means property which can be read, <code>w</code> means property which can be set.</p>
+<table>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;"><strong>field/property</strong></td>
+<td style="text-align: left;"><strong>irw</strong></td>
+<td style="text-align: left;"><strong>description</strong></td>
+<td style="text-align: left;"><strong>default</strong></td>
+<td style="text-align: left;"><strong>reference</strong></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">w, h</td>
+<td style="text-align: left;">irw</td>
+<td style="text-align: left;">size</td>
+<td style="text-align: left;">100, 100</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">border</td>
+<td style="text-align: left;">irw</td>
+<td style="text-align: left;">TODO</td>
+<td style="text-align: left;">false</td>
+<td style="text-align: left;">WS_BORDER</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">sort</td>
+<td style="text-align: left;">irw</td>
+<td style="text-align: left;">sort items</td>
+<td style="text-align: left;">false</td>
+<td style="text-align: left;">LBS_SORT</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">select</td>
+<td style="text-align: left;">irw</td>
+<td style="text-align: left;">‘single’, ‘multiple’, ‘extended’</td>
+<td style="text-align: left;">‘single’</td>
+<td style="text-align: left;">LBS_MULTIPLE/EXTENDEDSEL</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">tabstops</td>
+<td style="text-align: left;">irw</td>
+<td style="text-align: left;">focus on tab</td>
+<td style="text-align: left;">false</td>
+<td style="text-align: left;">LBS_USETABSTOPS</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">free_height</td>
+<td style="text-align: left;">irw</td>
+<td style="text-align: left;">TODO</td>
+<td style="text-align: left;">true</td>
+<td style="text-align: left;">LBS_NOINTEGRALHEIGHT</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">multicolumn</td>
+<td style="text-align: left;">irw</td>
+<td style="text-align: left;">TODO</td>
+<td style="text-align: left;">false</td>
+<td style="text-align: left;">LBS_MULTICOLUMN</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">vscroll</td>
+<td style="text-align: left;">irw</td>
+<td style="text-align: left;">show vertical scrollbar</td>
+<td style="text-align: left;">true</td>
+<td style="text-align: left;">WS_VSCROLL</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">hscroll</td>
+<td style="text-align: left;">irw</td>
+<td style="text-align: left;">show horizontal scrollbar</td>
+<td style="text-align: left;">true</td>
+<td style="text-align: left;">WS_HSCROLL</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">always_show_scrollbars</td>
+<td style="text-align: left;">irw</td>
+<td style="text-align: left;">always show scrollbars</td>
+<td style="text-align: left;">true</td>
+<td style="text-align: left;">LBS_DISABLENOSCROLL</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">hextent</td>
+<td style="text-align: left;">irw</td>
+<td style="text-align: left;">horizontal extent</td>
+<td style="text-align: left;">0</td>
+<td style="text-align: left;">LB_GET/SETHORIZONTALEXTENT</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">allow_select</td>
+<td style="text-align: left;">irw</td>
+<td style="text-align: left;">allow select</td>
+<td style="text-align: left;">true</td>
+<td style="text-align: left;">LBS_NOSEL</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">client_edge</td>
+<td style="text-align: left;">irw</td>
+<td style="text-align: left;">bordered</td>
+<td style="text-align: left;">true</td>
+<td style="text-align: left;">WS_EX_CLIENTEDGE</td>
+</tr>
+</tbody>
+</table>
+<h3 id="events">Events</h3>
+<table>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;"><strong>event</strong></td>
+<td style="text-align: left;"><strong>description</strong></td>
+<td style="text-align: left;"><strong>reference</strong></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">on_memory_error()</td>
+<td style="text-align: left;">TODO</td>
+<td style="text-align: left;">LBN_ERRSPACE</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">on_select()</td>
+<td style="text-align: left;">TODO</td>
+<td style="text-align: left;">LBN_SELCHANGE</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">on_double_click()</td>
+<td style="text-align: left;">TODO</td>
+<td style="text-align: left;">LBN_DBLCLK</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">on_cancel()</td>
+<td style="text-align: left;">TODO</td>
+<td style="text-align: left;">LBN_SELCANCEL</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">on_focus()</td>
+<td style="text-align: left;">TODO</td>
+<td style="text-align: left;">LBN_SETFOCUS</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">on_blur()</td>
+<td style="text-align: left;">TODO</td>
+<td style="text-align: left;">LBN_KILLFOCUS</td>
+</tr>
+</tbody>
+</table>

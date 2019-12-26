@@ -1,0 +1,98 @@
+<h2 id="local-libjpeg-requirelibjpeg"><code>local libjpeg = require'libjpeg'</code></h2>
+<p>A ffi binding for the <a href="http://libjpeg.sourceforge.net/">libjpeg</a> 6.2 API. Supports progressive loading, yielding from the reader function, partial loading, fractional scaling and multiple pixel formats. Comes with <a href="http://www.libjpeg-turbo.org/">libjpeg-turbo</a> binaries.</p>
+<h2 id="api">API</h2>
+<table>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;"><code>libjpeg.open(opt | read) -&gt; img</code></td>
+<td style="text-align: left;">open a JPEG image for decoding</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>img:load([opt]) -&gt; bmp</code></td>
+<td style="text-align: left;">load the image into a bitmap</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>img:free()</code></td>
+<td style="text-align: left;">free the image</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>libjpeg.save(opt)</code></td>
+<td style="text-align: left;">compress a bitmap into a JPEG image</td>
+</tr>
+</tbody>
+</table>
+<h3 id="libjpeg.openopt-read---img"><code>libjpeg.open(opt | read) -&gt; img</code></h3>
+<p>Open a JPEG image and read its header. <code>opt</code> is a table containing at least the read function and possibly other options.</p>
+<p>The read function has the form <code>read(buf, size) -&gt; readsize</code>, it can yield and it must signal I/O errors by raising an error. It must accept <code>nil</code> for <code>buf</code> which means skip bytes (i.e. seek). It will only be asked to read a positive number of bytes and it can return less bytes than asked, including zero which signals EOF.</p>
+<p>The <code>opt</code> table has the fields:</p>
+<ul>
+<li><code>read</code>: the read function (required).</li>
+<li><code>partial_loading</code>: <code>true/false</code> (default is <code>true</code>); display broken images partially or break with an error.</li>
+<li><code>warning</code>: a function to be called as <code>warning(msg, level)</code> on non-fatal errors.</li>
+<li><code>read_buffer</code>: optional, the read buffer to use.</li>
+<li><code>read_buffer_size</code>: the read buffer size.</li>
+<li><code>suspended_io</code>: use suspended I/O, i.e. yieldable callbacks (default is <code>true</code>). note that arithmetic decoding doesn’t work with suspended I/O (browsers don’t support arithmetic decoding either for the same reason).</li>
+</ul>
+<p>The return value is an image object which gives information about the file and can be used to load and decode the actual pixels. It has the fields:</p>
+<ul>
+<li><code>w</code>, <code>h</code>: width and height of the image.</li>
+<li><code>format</code>: the format in which the image is stored.</li>
+<li><code>progressive</code>: <code>true</code> if it’s a progressive image.</li>
+<li><code>jfif</code>: JFIF marker (see code).</li>
+<li><code>adobe</code>: Adobe marker (see code).</li>
+<li><code>partial</code>: true if the image was found to be truncated and it was partially loaded (this may become <code>true</code> after loading the image).</li>
+</ul>
+<p><strong>NOTE:</strong> Unknown JPEG formats are opened but the <code>format</code> field is missing.</p>
+<h3 id="imgloadopt---bmp"><code>img:load([opt]) -&gt; bmp</code></h3>
+<p>Load the image, returning a <a href="/bitmap">bitmap</a> object. <code>opt</code> is an options table which can have the fields:</p>
+<ul>
+<li><code>accept.&lt;pixel_format&gt;</code>: <code>true/false</code> specify one or more accepted pixel formats (see conversion table below).</li>
+<li><code>accept.bottom_up</code>: <code>true/false</code> (default is <code>false</code>) - specify that the output bitmap should have its rows upside-down.</li>
+<li><code>accept.stride_aligned</code>: <code>true/false</code> (default is <code>false</code>) - specify that the row stride should be a multiple of 4.</li>
+<li><code>scale_num</code>, <code>scale_denom</code>: scale down the image by the fraction scale_num/scale_denom. Currently, the only supported scaling ratios are M/8 with all M from 1 to 16, or any reduced fraction thereof (such as 1/2, 3/4, etc.) Smaller scaling ratios permit significantly faster decoding since fewer pixels need be processed and a simpler IDCT method can be used.</li>
+<li><code>dct_method</code>: <code>'accurate'</code>, <code>'fast'</code>, <code>'float'</code> (default is <code>'accurate'</code>)</li>
+<li><code>fancy_upsampling</code>: <code>true/false</code> (default is <code>false</code>); use a fancier upsampling method.</li>
+<li><code>block_smoothing</code>: <code>true/false</code> (default is <code>false</code>); smooth out large pixels of early progression stages for progressive JPEGs.</li>
+</ul>
+<h4 id="format-conversions">Format Conversions</h4>
+<table>
+<colgroup>
+<col style="width: 25%" />
+<col style="width: 74%" />
+</colgroup>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;"><strong>source formats</strong></td>
+<td style="text-align: left;"><strong>destination formats</strong></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>ycc8</code>, <code>g8</code></td>
+<td style="text-align: left;"><code>rgb8</code>, <code>bgr8</code>, <code>rgba8</code>, <code>bgra8</code>, <code>argb8</code>, <code>abgr8</code>, <code>rgbx8</code>, <code>bgrx8</code>, <code>xrgb8</code>, <code>xbgr8</code>, <code>g8</code></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>ycck8</code></td>
+<td style="text-align: left;"><code>cmyk8</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>NOTE</strong>: As can be seen, not all conversions are possible with libjpeg-turbo, so always check the image’s <code>format</code> field to get the actual format. Use <a href="/bitmap">bitmap</a> to further convert the image if necessary.</p>
+<p>For more info on the decoding process and options read the <a href="http://sourceforge.net/p/libjpeg-turbo/code/HEAD/tree/trunk/libjpeg.txt">libjpeg-turbo doc</a>.</p>
+<p><strong>NOTE:</strong> the number of bits per channel in the output bitmap is always 8.</p>
+<h3 id="imgfree"><code>img:free()</code></h3>
+<p>Free the image and associated resources.</p>
+<h3 id="libjpeg.saveopt---string-chunks_t-nil"><code>libjpeg.save(opt) -&gt; string | chunks_t | nil</code></h3>
+<p>Save a <a href="/bitmap">bitmap</a> as JPEG. <code>opt</code> is a table containing at least the source bitmap and destination, and possibly other options:</p>
+<ul>
+<li><code>bitmap</code>: a <a href="/bitmap">bitmap</a> in an accepted format.</li>
+<li><code>write</code>: write data to a sink of the form <code>write(buf, size)</code>.</li>
+<li><code>finish</code>: optional function to be called after all the data is written.</li>
+<li><code>format</code>: output format (see list of supported formats above).</li>
+<li><code>quality</code>: <code>0..100</code> range. you know what that is.</li>
+<li><code>progressive</code>: <code>true/false</code> (default is <code>false</code>). make it progressive.</li>
+<li><code>dct_method</code>: <code>'accurate'</code>, <code>'fast'</code>, <code>'float'</code> (default is <code>'accurate'</code>).</li>
+<li><code>optimize_coding</code>: optimize huffmann tables.</li>
+<li><code>smoothing</code>: <code>0..100</code> range. smoothing factor.</li>
+<li><code>bufsize</code>: internal buffer size (default is 4096).</li>
+</ul>
+<hr />
+<p>See also: [nanojpeg]</p>

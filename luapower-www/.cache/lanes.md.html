@@ -1,0 +1,8 @@
+<blockquote>
+<p><strong>NOTE:</strong> This is just a distribution of Lanes. Lanes is developed <a href="http://github.com/LuaLanes/lanes">here</a>.</p>
+</blockquote>
+<h2 id="local-lanes-requirelanes"><code>local lanes = require'lanes'</code></h2>
+<h2 id="documentation">Documentation</h2>
+<p>There’s up-to-date Lanes documentation <a href="https://rawgithub.com/LuaLanes/lanes/master/docs/index.html">here</a>. Ignore the <a href="http://kotisivu.dnainternet.net/askok/bin/lanes/">old site</a>.</p>
+<h2 id="luajit-notes">LuaJIT notes</h2>
+<p>To use ffi inside lanes you have to require the ffi module inside the lane, since the ffi module cannot be transferred as an upvalue to your lane (you will get an error about “destination transfer database”). This also means that <em>other modules</em> that depend on ffi cannot be upvalues and must be required explicitly inside the lane or luajit will crash.</p>

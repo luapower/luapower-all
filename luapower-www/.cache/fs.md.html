@@ -1,0 +1,929 @@
+<h2 id="local-fs-requirefs"><code>local fs = require'fs'</code></h2>
+<p>Filesystem API for Windows, Linux and OSX. Features:</p>
+<ul>
+<li>utf8 filenames on all platforms</li>
+<li>symlinks and hard links on all platforms</li>
+<li>memory mapping on all platforms</li>
+<li>unified error codes for recoverable error cases</li>
+<li>cdata buffer-based I/O</li>
+<li>platform-specific extra-functionality fully exposed</li>
+</ul>
+<h2 id="status">Status</h2>
+<p><warn>Memory mapping is not finished yet!</warn></p>
+<h2 id="api">API</h2>
+<table>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;"><strong>file objects</strong></td>
+<td></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>fs.open(path[, mode|opt]) -&gt; f</code></td>
+<td>open file</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>f:close()</code></td>
+<td>close file</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>f:closed() -&gt; true|false</code></td>
+<td>check if file is closed</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>fs.isfile(f) -&gt; true|false</code></td>
+<td>check if <code>f</code> is a file object</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>f.handle -&gt; HANDLE</code></td>
+<td>Windows HANDLE (Windows platforms)</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>f.fd -&gt; fd</code></td>
+<td>POSIX file descriptor (POSIX platforms)</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><strong>pipes</strong></td>
+<td></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>fs.pipe() -&gt; rf, wf</code></td>
+<td>create an anonymous pipe</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>fs.pipe({path=,&lt;opt&gt;=} | path[,options]) -&gt; pf</code></td>
+<td>create a named pipe (Windows)</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>fs.pipe({path=,mode=} | path[,mode]) -&gt; true</code></td>
+<td>create a named pipe (POSIX)</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><strong>stdio streams</strong></td>
+<td></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>f:stream(mode) -&gt; fs</code></td>
+<td>open a <code>FILE*</code> object from a file</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>fs:close()</code></td>
+<td>close the <code>FILE*</code> object</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><strong>memory streams</strong></td>
+<td></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>fs.open_buffer(buf, [size], [mode]) -&gt; f</code></td>
+<td>create a memory stream</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><strong>file i/o</strong></td>
+<td></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>f:read(buf, len) -&gt; readlen</code></td>
+<td>read data from file</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>f:write(buf, len) -&gt; writelen</code></td>
+<td>write data to file</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>f:flush()</code></td>
+<td>flush buffers</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>f:seek([whence] [, offset]) -&gt; pos</code></td>
+<td>get/set the file pointer</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>f:truncate([opt])</code></td>
+<td>truncate file to current file pointer</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>f:buffered_read([ctype], [bufsize]) -&gt; read()</code></td>
+<td>get a buffered read function</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><strong>open file attributes</strong></td>
+<td></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>f:attr([attr]) -&gt; val|t</code></td>
+<td>get/set attribute(s) of open file</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><strong>directory listing</strong></td>
+<td></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>fs.dir(dir, [dot_dirs]) -&gt; d, next</code></td>
+<td>directory contents iterator</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>d:next() -&gt; name, d</code></td>
+<td>call the iterator explicitly</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>d:close()</code></td>
+<td>close iterator</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>d:closed() -&gt; true|false</code></td>
+<td>check if iterator is closed</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>d:name() -&gt; s</code></td>
+<td>dir entry’s name</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>d:dir() -&gt; s</code></td>
+<td>dir that was passed to <code>fs.dir()</code></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>d:path() -&gt; s</code></td>
+<td>full path of the dir entry</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>d:attr([attr, ][deref]) -&gt; t|val</code></td>
+<td>get/set dir entry attribute(s)</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>d:is(type, [deref]) -&gt; true|false</code></td>
+<td>check if dir entry is of type</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><strong>file attributes</strong></td>
+<td></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>fs.attr(path, [attr, ][deref]) -&gt; t|val</code></td>
+<td>get/set file attribute(s)</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>fs.is(path, [type], [deref]) -&gt; true|false</code></td>
+<td>check if file exists or is of a certain type</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><strong>filesystem operations</strong></td>
+<td></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>fs.mkdir(path, [recursive], [perms])</code></td>
+<td>make directory</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>fs.cd([path]) -&gt; path</code></td>
+<td>get/set current directory</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>fs.remove(path, [recursive])</code></td>
+<td>remove file or directory (recursively)</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>fs.move(path, newpath, [opt])</code></td>
+<td>rename/move file on the same filesystem</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><strong>symlinks &amp; hardlinks</strong></td>
+<td></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>fs.mksymlink(symlink, path, is_dir)</code></td>
+<td>create a symbolic link for a file or dir</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>fs.mkhardlink(hardlink, path)</code></td>
+<td>create a hard link for a file</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>fs.readlink(path) -&gt; path</code></td>
+<td>dereference a symlink recursively</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><strong>common paths</strong></td>
+<td></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>fs.homedir() -&gt; path</code></td>
+<td>get current user’s home directory</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>fs.tmpdir() -&gt; path</code></td>
+<td>get temporary directory</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>fs.exepath() -&gt; path</code></td>
+<td>get the full path of the running executable</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>fs.exedir() -&gt; path</code></td>
+<td>get the directory of the running executable</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><strong>low level</strong></td>
+<td></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>fs.wrap_handle(HANDLE) -&gt; f</code></td>
+<td>wrap opened HANDLE (Windows)</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>fs.wrap_fd(fd) -&gt; f</code></td>
+<td>wrap opened file descriptor</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>fs.wrap_file(FILE*) -&gt; f</code></td>
+<td>wrap opened <code>FILE*</code> object</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>fs.fileno(FILE*) -&gt; fd</code></td>
+<td>get stream’s file descriptor</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><strong>memory mapping</strong></td>
+<td></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>fs.map(...) -&gt; map</code></td>
+<td>create a memory mapping</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>map.addr</code></td>
+<td>a <code>void*</code> pointer to the mapped memory</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>map.size</code></td>
+<td>size of the mapped memory in bytes</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>map:flush([async, ][addr, size])</code></td>
+<td>flush (parts of) the mapping to disk</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>map:free()</code></td>
+<td>release the memory and associated resources</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>fs.unlink_mapfile(tagname)</code> \</td>
+<td>remove the shared memory file from disk (Linux, OSX)</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>map:unlink()</code></td>
+<td></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>fs.mirror_map(...) -&gt; map</code></td>
+<td>create a mirrored memory mapping</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>fs.pagesize() -&gt; bytes</code></td>
+<td>get allocation granularity</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>fs.aligned_size(bytes[, dir]) -&gt; bytes</code></td>
+<td>next/prev page-aligned size</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>fs.aligned_addr(ptr[, dir]) -&gt; ptr</code></td>
+<td>next/prev page-aligned address</td>
+</tr>
+</tbody>
+</table>
+<p><strong>NOTE:</strong> The <code>deref</code> arg is <code>true</code> by default, meaning that by default, symlinks are followed recursively and transparently where this option is available.</p>
+<p><strong>NOTE:</strong> All functions can fail, in which case they return <code>nil, error_message, error_code</code>. Functions which are listed as having no return value actually return <code>true</code> for indicating success. Some error messages are normalized, eg. <code>not_found</code> (see full list below).</p>
+<h2 id="file-attributes">File attributes</h2>
+<table>
+<thead>
+<tr class="header">
+<th style="text-align: left;"><strong>name</strong></th>
+<th><strong>win</strong></th>
+<th><strong>osx</strong></th>
+<th><strong>linux</strong></th>
+<th style="text-align: left;"><strong>description</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;"><code>type</code></td>
+<td>r</td>
+<td>r</td>
+<td>r</td>
+<td style="text-align: left;">file type (see below)</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>size</code></td>
+<td>r</td>
+<td>r</td>
+<td>r</td>
+<td style="text-align: left;">file size</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>atime</code></td>
+<td>rw</td>
+<td>rw</td>
+<td>rw</td>
+<td style="text-align: left;">last access time (seldom correct)</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>mtime</code></td>
+<td>rw</td>
+<td>rw</td>
+<td>rw</td>
+<td style="text-align: left;">last contents-change time</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>btime</code></td>
+<td>rw</td>
+<td>r</td>
+<td></td>
+<td style="text-align: left;">creation (aka “birth”) time</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>ctime</code></td>
+<td>rw</td>
+<td>r</td>
+<td>r</td>
+<td style="text-align: left;">last metadata-or-contents-change time</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>target</code></td>
+<td>r</td>
+<td>r</td>
+<td>r</td>
+<td style="text-align: left;">symlink’s target (nil if not symlink)</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>dosname</code></td>
+<td>r</td>
+<td></td>
+<td></td>
+<td style="text-align: left;">8.3 filename (Windows)</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>archive</code></td>
+<td>rw</td>
+<td></td>
+<td></td>
+<td style="text-align: left;">archive bit (for backup programs)</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>hidden</code></td>
+<td>rw</td>
+<td></td>
+<td></td>
+<td style="text-align: left;">hidden bit (don’t show in Explorer)</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>readonly</code></td>
+<td>rw</td>
+<td></td>
+<td></td>
+<td style="text-align: left;">read-only bit (can’t open in write mode)</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>system</code></td>
+<td>rw</td>
+<td></td>
+<td></td>
+<td style="text-align: left;">system bit</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>temporary</code></td>
+<td>rw</td>
+<td></td>
+<td></td>
+<td style="text-align: left;">writes need not be commited to storage</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>not_indexed</code></td>
+<td>rw</td>
+<td></td>
+<td></td>
+<td style="text-align: left;">exclude from indexing</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>sparse_file</code></td>
+<td>r</td>
+<td></td>
+<td></td>
+<td style="text-align: left;">file is sparse</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>reparse_point</code></td>
+<td>r</td>
+<td></td>
+<td></td>
+<td style="text-align: left;">has a reparse point or is a symlink</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>compressed</code></td>
+<td>r</td>
+<td></td>
+<td></td>
+<td style="text-align: left;">file is compressed</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>encrypted</code></td>
+<td>r</td>
+<td></td>
+<td></td>
+<td style="text-align: left;">file is encrypted</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>perms</code></td>
+<td></td>
+<td>rw</td>
+<td>rw</td>
+<td style="text-align: left;">permissions</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>uid</code></td>
+<td></td>
+<td>rw</td>
+<td>rw</td>
+<td style="text-align: left;">user id</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>gid</code></td>
+<td></td>
+<td>rw</td>
+<td>rw</td>
+<td style="text-align: left;">group id</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>dev</code></td>
+<td></td>
+<td>r</td>
+<td>r</td>
+<td style="text-align: left;">device id containing the file</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>inode</code></td>
+<td></td>
+<td>r</td>
+<td>r</td>
+<td style="text-align: left;">inode number (int64_t)</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>volume</code></td>
+<td>r</td>
+<td></td>
+<td></td>
+<td style="text-align: left;">volume serial number</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>id</code></td>
+<td>r</td>
+<td></td>
+<td></td>
+<td style="text-align: left;">file id (int64_t)</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>nlink</code></td>
+<td>r</td>
+<td>r</td>
+<td>r</td>
+<td style="text-align: left;">number of hard links</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>rdev</code></td>
+<td></td>
+<td>r</td>
+<td>r</td>
+<td style="text-align: left;">device id (if special file)</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>blksize</code></td>
+<td></td>
+<td>r</td>
+<td>r</td>
+<td style="text-align: left;">block size for I/O</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>blocks</code></td>
+<td></td>
+<td>r</td>
+<td>r</td>
+<td style="text-align: left;">number of 512B blocks allocated</td>
+</tr>
+</tbody>
+</table>
+<p>On the table above, <code>r</code> means that the attribute is read/only and <code>rw</code> means that the attribute can be changed. Attributes can be queried and changed from different contexts via <code>f:attr()</code>, <code>fs.attr()</code> and <code>d:attr()</code>.</p>
+<p><strong>NOTE</strong>: File sizes and offsets are Lua numbers not 64bit ints, so they can hold at most 8KTB. This will change when that becomes a problem.</p>
+<h2 id="file-types">File types</h2>
+<table>
+<thead>
+<tr class="header">
+<th style="text-align: left;"><strong>name</strong></th>
+<th><strong>win</strong></th>
+<th><strong>osx</strong></th>
+<th><strong>linux</strong></th>
+<th style="text-align: left;"><strong>description</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;"><code>file</code></td>
+<td>*</td>
+<td>*</td>
+<td>*</td>
+<td style="text-align: left;">file is a regular file</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>dir</code></td>
+<td>*</td>
+<td>*</td>
+<td>*</td>
+<td style="text-align: left;">file is a directory</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>symlink</code></td>
+<td>*</td>
+<td>*</td>
+<td>*</td>
+<td style="text-align: left;">file is a symlink</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>dev</code></td>
+<td>*</td>
+<td></td>
+<td></td>
+<td style="text-align: left;">file is a Windows device</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>blockdev</code></td>
+<td></td>
+<td>*</td>
+<td>*</td>
+<td style="text-align: left;">file is a block device</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>chardev</code></td>
+<td></td>
+<td>*</td>
+<td>*</td>
+<td style="text-align: left;">file is a character device</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>pipe</code></td>
+<td></td>
+<td>*</td>
+<td>*</td>
+<td style="text-align: left;">file is a pipe</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>socket</code></td>
+<td></td>
+<td>*</td>
+<td>*</td>
+<td style="text-align: left;">file is a socket</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>unknown</code></td>
+<td></td>
+<td>*</td>
+<td>*</td>
+<td style="text-align: left;">file type unknown</td>
+</tr>
+</tbody>
+</table>
+<h2 id="normalized-error-messages">Normalized error messages</h2>
+<table>
+<thead>
+<tr class="header">
+<th style="text-align: left;"><strong>message</strong></th>
+<th style="text-align: left;"><strong>description</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;"><code>not_found</code></td>
+<td style="text-align: left;">file/dir/path not found</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>access_denied</code></td>
+<td style="text-align: left;">access denied</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>already_exists</code></td>
+<td style="text-align: left;">file/dir already exists</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>not_empty</code></td>
+<td style="text-align: left;">dir not empty (eg. for remove())</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>io_error</code></td>
+<td style="text-align: left;">I/O error</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>disk_full</code></td>
+<td style="text-align: left;">no space left on device</td>
+</tr>
+</tbody>
+</table>
+<h2 id="file-objects">File Objects</h2>
+<h3 id="fs.openpath-modeopt---f"><code>fs.open(path[, mode|opt]) -&gt; f</code></h3>
+<p>Open/create a file for reading and/or writing. The second arg can be a string:</p>
+<table>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;"><code>r</code></td>
+<td style="text-align: left;">open; allow reading only (default)</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>w</code></td>
+<td style="text-align: left;">open and truncate or create; allow writing only</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>r+</code></td>
+<td style="text-align: left;">open or create; allow reading and writing</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>w+</code></td>
+<td style="text-align: left;">open and trucate or create; allow reading and writing</td>
+</tr>
+</tbody>
+</table>
+<p>… or an options table with platform-specific options which represent OR-ed bitmask flags which must be given either as <code>'foo bar ...'</code>, <code>{foo=true, bar=true}</code> or <code>{'foo', 'bar'}</code>, eg. <code>{sharing = 'read write'}</code> sets the <code>dwShareMode</code> argument of <code>CreateFile()</code> to <code>FILE_SHARE_READ | FILE_SHARE_WRITE</code> on Windows. All fields and flags are documented in the code.</p>
+<table>
+<thead>
+<tr class="header">
+<th style="text-align: left;"><strong>field</strong></th>
+<th style="text-align: left;"><strong>OS</strong></th>
+<th style="text-align: left;"><strong>reference</strong></th>
+<th style="text-align: left;"><strong>default</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;"><code>access</code></td>
+<td style="text-align: left;">Windows</td>
+<td style="text-align: left;"><code>CreateFile() / dwDesiredAccess</code></td>
+<td style="text-align: left;"><code>'file_read'</code></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>sharing</code></td>
+<td style="text-align: left;">Windows</td>
+<td style="text-align: left;"><code>CreateFile() / dwShareMode</code></td>
+<td style="text-align: left;"><code>'file_read'</code></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>creation</code></td>
+<td style="text-align: left;">Windows</td>
+<td style="text-align: left;"><code>CreateFile() / dwCreationDisposition</code></td>
+<td style="text-align: left;"><code>'open_existing'</code></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>attrs</code></td>
+<td style="text-align: left;">Windows</td>
+<td style="text-align: left;"><code>CreateFile() / dwFlagsAndAttributes</code></td>
+<td style="text-align: left;"><code>''</code></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>flags</code></td>
+<td style="text-align: left;">Windows</td>
+<td style="text-align: left;"><code>CreateFile() / dwFlagsAndAttributes</code></td>
+<td style="text-align: left;"><code>''</code></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>flags</code></td>
+<td style="text-align: left;">Linux, OSX</td>
+<td style="text-align: left;"><code>open() / flags</code></td>
+<td style="text-align: left;"><code>'rdonly'</code></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>mode</code></td>
+<td style="text-align: left;">Linux, OSX</td>
+<td style="text-align: left;"><code>octal or symbolic perms</code></td>
+<td style="text-align: left;"><code>'0666'</code> / <code>'rwx'</code></td>
+</tr>
+</tbody>
+</table>
+<p>The <code>mode</code> arg is passed to <a href="/unixperms">unixperms.parse()</a>.</p>
+<h3 id="fclose"><code>f:close()</code></h3>
+<p>Close file.</p>
+<h3 id="fclosed---truefalse"><code>f:closed() -&gt; true|false</code></h3>
+<p>Check if file is closed.</p>
+<h3 id="fs.isfilef---truefalse"><code>fs.isfile(f) -&gt; true|false</code></h3>
+<p>Check if <code>f</code> is a file object.</p>
+<h2 id="pipes">Pipes</h2>
+<h3 id="fs.pipe---rf-wf"><code>fs.pipe() -&gt; rf, wf</code></h3>
+<p>Create an anonymous (unnamed) pipe. Return two files corresponding to the read and write ends of the pipe. These files can be used to redirect stdin, stdout and stderr in <a href="/proc">proc</a>.exec().</p>
+<h3 id="fs.pipepathopt-pathoptions---pf"><code>fs.pipe({path=,&lt;opt&gt;=} | path[,options]) -&gt; pf</code></h3>
+<p>Create a named pipe (Windows). Named pipes on Windows cannot be created in any directory like on POSIX systems, instead they must be created in the special directory called <code>\\.\pipe</code>. After creation, named pipes can be opened for reading and writing like normal files.</p>
+<p>Named pipes on Windows cannot be removed and are not persistent. They are destroyed automatically when the process that created them exits.</p>
+<h3 id="fs.waitpipepath"><code>fs.waitpipe(path)</code></h3>
+<h3 id="fs.pipepathmode-pathmode---true"><code>fs.pipe({path=,mode=} | path[,mode]) -&gt; true</code></h3>
+<p>Create a named pipe (POSIX). Named pipes on POSIX are persistent and can be created in any directory as they are just a type of file.</p>
+<h2 id="stdio-streams">Stdio Streams</h2>
+<h3 id="fstreammode---fs"><code>f:stream(mode) -&gt; fs</code></h3>
+<p>Open a <code>FILE*</code> object from a file. The file should not be used anymore and <code>fs:close()</code> should be called to close the file.</p>
+<h3 id="fsclose"><code>fs:close()</code></h3>
+<p>Close the <code>FILE*</code> object and the underlying file object.</p>
+<h2 id="memory-streams">Memory Streams</h2>
+<h3 id="fs.open_bufferbuf-size-mode---f"><code>fs.open_buffer(buf, [size], [mode]) -&gt; f</code></h3>
+<p>Create a memory stream for reading and writing data from and into a buffer using the file API. Only opening modes <code>'r'</code> and <code>'w'</code> are supported.</p>
+<h2 id="file-io">File I/O</h2>
+<h3 id="freadbuf-len---readlen"><code>f:read(buf, len) -&gt; readlen</code></h3>
+<p>Read data from file.</p>
+<h3 id="fwritebuf-len---writelen"><code>f:write(buf, len) -&gt; writelen</code></h3>
+<p>Write data to file.</p>
+<h3 id="fflush"><code>f:flush()</code></h3>
+<p>Flush buffers.</p>
+<h3 id="fseekwhence-offset---pos"><code>f:seek([whence] [, offset]) -&gt; pos</code></h3>
+<p>Get/set the file pointer. Same semantics as standard <code>io</code> module seek i.e. <code>whence</code> defaults to <code>'cur'</code> and <code>offset</code> defaults to <code>0</code>.</p>
+<h3 id="ftruncateopt"><code>f:truncate([opt])</code></h3>
+<p>Truncate file to current file pointer.</p>
+<p><code>opt</code> is an optional string for Linux which can contain any combination of the words <code>fallocate</code> (call <code>fallocate()</code>), <code>emulate</code> (fill the file with zeroes if the filesystem doesn’t support <code>fallocate()</code>), and <code>fail</code> (do not call <code>ftruncate()</code> if <code>fallocate()</code> fails: return the error <code>'not_supported'</code> instead). The problem with calling <code>ftruncate()</code> if <code>fallocate()</code> fails is that on most filesystems that creates a sparse file, hence the <code>fail</code> option. The default is <code>'fallocate emulate'</code> which should never create a sparse file.</p>
+<h3 id="fbuffered_readctype-bufsize---read"><code>f:buffered_read([ctype], [bufsize]) -&gt; read()</code></h3>
+<p>Returns a <code>read(buf, sz) -&gt; sz</code> function which reads ahead from file in order to lower the number of syscalls. The optional <code>ctype</code> and <code>bufsize</code> specify the buffer’s C type and size and default to <code>char</code> and <code>4096</code> respectively.</p>
+<h2 id="open-file-attributes">Open file attributes</h2>
+<h3 id="fattrattr---valt"><code>f:attr([attr]) -&gt; val|t</code></h3>
+<p>Get/set attribute(s) of open file. <code>attr</code> can be:</p>
+<ul>
+<li>nothing/nil: get the values of all attributes in a table.</li>
+<li>string: get the value of a single attribute.</li>
+<li>table: set one or more attributes.</li>
+</ul>
+<h2 id="directory-listing">Directory listing</h2>
+<h3 id="fs.dirdir-dot_dirs---d-next"><code>fs.dir([dir], [dot_dirs]) -&gt; d, next</code></h3>
+<p>Directory contents iterator. <code>dir</code> defaults to <code>'.'</code>. <code>dot_dirs=true</code> means include <code>.</code> and <code>..</code> entries (default is to exclude them).</p>
+<p>Usage:</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb1-1"><a href="#cb1-1"></a><span class="cf">for</span> name<span class="op">,</span> d <span class="kw">in</span> fs<span class="op">.</span>dir<span class="op">()</span> <span class="cf">do</span></span>
+<span id="cb1-2"><a href="#cb1-2"></a>   <span class="cf">if</span> <span class="kw">not</span> name <span class="cf">then</span></span>
+<span id="cb1-3"><a href="#cb1-3"></a>      <span class="fu">print</span><span class="op">(</span><span class="st">&#39;error: &#39;</span><span class="op">,</span> d<span class="op">)</span></span>
+<span id="cb1-4"><a href="#cb1-4"></a>      <span class="cf">break</span></span>
+<span id="cb1-5"><a href="#cb1-5"></a>   <span class="cf">end</span></span>
+<span id="cb1-6"><a href="#cb1-6"></a>   <span class="fu">print</span><span class="op">(</span>d<span class="op">:</span>attr<span class="st">&#39;type&#39;</span><span class="op">,</span> name<span class="op">)</span></span>
+<span id="cb1-7"><a href="#cb1-7"></a><span class="cf">end</span></span></code></pre></div>
+<p>Always include the <code>if not name</code> condition when iterating. The iterator doesn’t raise any errors. Instead it returns <code>false, err, errcode</code> as the last iteration when encountering an error. Initial errors from calling <code>fs.dir()</code> (eg. <code>'not_found'</code>) are passed to the iterator also, so the iterator must be called at least once to see them.</p>
+<h3 id="dnext---name-d-false-err-errcode-nil"><code>d:next() -&gt; name, d | false, err, errcode | nil</code></h3>
+<p>Call the iterator explicitly.</p>
+<h3 id="dclose"><code>d:close()</code></h3>
+<p>Close the iterator. Always call <code>d:close()</code> before breaking the for loop except when it’s an error (in which case <code>d</code> holds the error message).</p>
+<h3 id="dclosed---truefalse"><code>d:closed() -&gt; true|false</code></h3>
+<p>Check if the iterator is closed.</p>
+<h3 id="dname---s"><code>d:name() -&gt; s</code></h3>
+<p>The name of the current file or directory being iterated.</p>
+<h3 id="ddir---s"><code>d:dir() -&gt; s</code></h3>
+<p>The directory that was passed to <code>fs.dir()</code>.</p>
+<h3 id="dpath---s"><code>d:path() -&gt; s</code></h3>
+<p>The full path of the current dir entry (<code>d:dir()</code> combined with <code>d:name()</code>).</p>
+<h3 id="dattrattr-deref---tval"><code>d:attr([attr, ][deref]) -&gt; t|val</code></h3>
+<p>Get/set dir entry attribute(s).</p>
+<p><code>deref</code> means return the attribute(s) of the symlink’s target if the file is a symlink (<code>deref</code> defaults to <code>true</code>!). When <code>deref=true</code>, even the <code>'type'</code> attribute is the type of the target, so it will never be <code>'symlink'</code>.</p>
+<p>Some attributes for directory entries are free to get (but not for symlinks when <code>deref=true</code>) meaning that they don’t require a system call for each file, notably <code>type</code> on all platforms, <code>atime</code>, <code>mtime</code>, <code>btime</code>, <code>size</code> and <code>dosname</code> on Windows and <code>inode</code> on Linux and OSX.</p>
+<h3 id="distype-deref---truefalse"><code>d:is(type, [deref]) -&gt; true|false</code></h3>
+<p>Check if dir entry is of type.</p>
+<h2 id="file-attributes-1">File attributes</h2>
+<h3 id="fs.attrpath-attr-deref---tval"><code>fs.attr(path, [attr, ][deref]) -&gt; t|val</code></h3>
+<p>Get/set a file’s attribute(s) given its path in utf8.</p>
+<h3 id="fs.ispath-type-deref---truefalse"><code>fs.is(path, [type], [deref]) -&gt; true|false</code></h3>
+<p>Check if file exists or if it is of a certain type.</p>
+<h2 id="filesystem-operations">Filesystem operations</h2>
+<h3 id="fs.mkdirpath-recursive-perms"><code>fs.mkdir(path, [recursive], [perms])</code></h3>
+<p>Make directory. <code>perms</code> can be a number or a string passed to <a href="/unixperms">unixperms.parse()</a>.</p>
+<p><strong>Note:</strong> In recursive mode, if the directory already exists this function returns <code>true, 'already_exists', errcode</code>.</p>
+<h3 id="fs.cdpath---path"><code>fs.cd([path]) -&gt; path</code></h3>
+<p>Get/set current directory.</p>
+<h3 id="fs.removepath-recursive"><code>fs.remove(path, [recursive])</code></h3>
+<p>Remove a file or directory (recursively if <code>recursive=true</code>).</p>
+<h3 id="fs.movepath-newpath-opt"><code>fs.move(path, newpath, [opt])</code></h3>
+<p>Rename/move a file on the same filesystem. On Windows, <code>opt</code> represents the <code>MOVEFILE_*</code> flags and defaults to <code>'replace_existing write_through'</code>.</p>
+<p>This operation is atomic on all platforms.</p>
+<h2 id="symlinks-hardlinks">Symlinks &amp; hardlinks</h2>
+<h3 id="fs.mksymlinksymlink-path-is_dir"><code>fs.mksymlink(symlink, path, is_dir)</code></h3>
+<p>Create a symbolic link for a file or dir. The <code>is_dir</code> arg is required for Windows for creating symlinks to directories. It’s ignored on Linux and OSX.</p>
+<h3 id="fs.mkhardlinkhardlink-path"><code>fs.mkhardlink(hardlink, path)</code></h3>
+<p>Create a hard link for a file.</p>
+<h3 id="fs.readlinkpath---path"><code>fs.readlink(path) -&gt; path</code></h3>
+<p>Dereference a symlink recursively. The result can be an absolute or relative path which can be valid or not.</p>
+<h2 id="common-paths">Common paths</h2>
+<h3 id="fs.homedir---path"><code>fs.homedir() -&gt; path</code></h3>
+<p>Get current user’s home directory.</p>
+<h3 id="fs.tmpdir---path"><code>fs.tmpdir() -&gt; path</code></h3>
+<p>Get temporary directory.</p>
+<h3 id="fs.exepath---path"><code>fs.exepath() -&gt; path</code></h3>
+<p>Get the full path of the running executable.</p>
+<h3 id="fs.exedir---path"><code>fs.exedir() -&gt; path</code></h3>
+<p>Get the directory of the running executable.</p>
+<h2 id="low-level">Low level</h2>
+<h3 id="fs.wrap_handlehandle---f"><code>fs.wrap_handle(HANDLE) -&gt; f</code></h3>
+<p>Wrap opened HANDLE (Windows) (not tied to gc).</p>
+<h3 id="fs.wrap_fdfd---f"><code>fs.wrap_fd(fd) -&gt; f</code></h3>
+<p>Wrap opened file descriptor (not tied to gc).</p>
+<h3 id="fs.wrap_filefile---f"><code>fs.wrap_file(FILE*) -&gt; f</code></h3>
+<p>Wrap opened <code>FILE*</code> object (not tied to gc).</p>
+<h3 id="fs.filenofile---fd"><code>fs.fileno(FILE*) -&gt; fd</code></h3>
+<p>Get a stdio stream’s file descriptor.</p>
+<h2 id="memory-mapping">Memory Mapping</h2>
+<p>Features:</p>
+<ul>
+<li>file-backed and pagefile-backed (anonymous) memory maps</li>
+<li>read-only, read/write and copy-on-write access modes plus executable flag</li>
+<li>name-tagged memory maps for sharing memory between processes</li>
+<li>mirrored memory maps for using with <a href="/lfrb">lock-free ring buffers</a></li>
+<li>synchronous and asynchronous flushing</li>
+</ul>
+<p>Limitations:</p>
+<ul>
+<li>I/O errors from accessing mmapped memory cause a crash.</li>
+</ul>
+<h3 id="fs.mapargs_t---map-fs.mappath-access-size-offset-addr-tagname---map-fmapaccess-size-offset-addr"><code>fs.map(args_t) -&gt; map</code> <br> <code>fs.map(path, [access], [size], [offset], [addr], [tagname]) -&gt; map</code> <br> <code>f:map([access], [size], [offset], [addr])</code></h3>
+<p>Create a memory map object. Args:</p>
+<ul>
+<li><code>path</code>: the file to map: optional; if nil, a portion of the system pagefile will be mapped instead.</li>
+<li><code>access</code>: can be either:
+<ul>
+<li>’’ (read-only, default)</li>
+<li>‘w’ (read + write)</li>
+<li>‘c’ (read + copy-on-write)</li>
+<li>‘x’ (read + execute)</li>
+<li>‘wx’ (read + write + execute)</li>
+<li>‘cx’ (read + copy-on-write + execute)</li>
+</ul></li>
+<li><code>size</code>: the size of the memory segment (optional, defaults to file size).
+<ul>
+<li>if given it must be &gt; 0 or an error is raised.</li>
+<li>if not given, file size is assumed.
+<ul>
+<li>if the file size is zero the mapping fails with <code>'file_too_short'</code>.</li>
+</ul></li>
+<li>if the file doesn’t exist:
+<ul>
+<li>if write access is given, the file is created.</li>
+<li>if write access is not given, the mapping fails with <code>'no_file'</code> error.</li>
+</ul></li>
+<li>if the file is shorter than the required offset + size:
+<ul>
+<li>if write access is not given (or the file is the pagefile which can’t be resized), the mapping fails with <code>'file_too_short'</code> error.</li>
+<li>if write access is given, the file is extended.
+<ul>
+<li>if the disk is full, the mapping fails with <code>'disk_full'</code> error.</li>
+</ul></li>
+</ul></li>
+</ul></li>
+<li><code>offset</code>: offset in the file (optional, defaults to 0).
+<ul>
+<li>if given, must be &gt;= 0 or an error is raised.</li>
+<li>must be aligned to a page boundary or an error is raised.</li>
+<li>ignored when mapping the pagefile.</li>
+</ul></li>
+<li><code>addr</code>: address to use (optional; an error is raised if zero).</li>
+<li><code>tagname</code>: name of the memory map (optional; cannot be used with <code>file</code>; must not contain slashes or backslashes): using the same name in two different processes (or in the same process) gives access to the same memory.</li>
+</ul>
+<p>Returns an object with the fields:</p>
+<ul>
+<li><code>addr</code> - a <code>void*</code> pointer to the mapped memory</li>
+<li><code>size</code> - the actual size of the memory block</li>
+</ul>
+<p>If the mapping fails, returns <code>nil,err,errcode</code> where <code>errcode</code> can be:</p>
+<ul>
+<li><code>'no_file'</code> - file not found.</li>
+<li><code>'file_too_short'</code> - the file is shorter than the required size.</li>
+<li><code>'disk_full'</code> - the file cannot be extended because the disk is full.</li>
+<li><code>'out_of_mem'</code> - size or address too large or specified address in use.</li>
+<li>an OS-specific numeric error code.</li>
+</ul>
+<h4 id="note">NOTE:</h4>
+<ul>
+<li>when mapping or resizing a <code>FILE</code> that was written to, the write buffers should be flushed first.</li>
+<li>after mapping an opened file handle of any kind, that file handle should not be used anymore except to close it after the mapping is freed.</li>
+<li>attempting to write to a memory block that wasn’t mapped with write or copy-on-write access results in a crash.</li>
+<li>changes done externally to a mapped file may not be visible immediately (or at all) to the mapped memory.</li>
+<li>access to shared memory from multiple processes must be synchronized.</li>
+</ul>
+<h3 id="mapfree"><code>map:free()</code></h3>
+<p>Free the memory and all associated resources and close the file if it was opened by <code>fs.map()</code>.</p>
+<h3 id="mapflushasync-addr-size---true-nilerrerrcode"><code>map:flush([async, ][addr, size]) -&gt; true | nil,err,errcode</code></h3>
+<p>Flush (part of) the memory to disk. If the address is not aligned, it will be automatically aligned to the left. If <code>async</code> is true, perform the operation asynchronously and return immediately.</p>
+<h3 id="fs.unlink_mapfiletagname-mapunlink"><code>fs.unlink_mapfile(tagname)</code> <br> <code>map:unlink()</code></h3>
+<p>Remove a (the) shared memory file from disk. When creating a shared memory mapping using a tagname, a file is created on the filesystem on Linux and OS X (not so on Windows). That file must be removed manually when it is no longer needed. This can be done anytime, even while mappings are open and will not affect said mappings.</p>
+<h3 id="fs.mirror_mapargs_t---map-fs.mirror_mapfile-size-times-addr---map"><code>fs.mirror_map(args_t) -&gt; map</code> <br> <code>fs.mirror_map(file, size[, times[, addr]]) -&gt; map</code></h3>
+<p>Create a mirrored memory mapping to use with a <a href="/lfrb">lock-free ring buffer</a>.</p>
+<p>Args:</p>
+<ul>
+<li><code>file</code>: the file to map: required (the access is ‘w’).</li>
+<li><code>size</code>: the size of the memory segment: required, automatically aligned to the next page size.</li>
+<li><code>times</code>: how many times to mirror the segment (optional, default: 2)</li>
+<li><code>addr</code>: address to use (optional; can be anything convertible to <code>void*</code>).</li>
+</ul>
+<p>The result is a table with <code>addr</code> and <code>size</code> fields and all the mirror map objects in its array part (freeing the mirror will free all the maps). The memory block at <code>addr</code> is mirrored such that <code>(char*)addr[o1*i] == (char*)addr[o2*i]</code> for any <code>o1</code> and <code>o2</code> in <code>0..times-1</code> and for any <code>i</code> in <code>0..size-1</code>.</p>
+<h3 id="fs.aligned_sizebytes-dir---bytes"><code>fs.aligned_size(bytes[, dir]) -&gt; bytes</code></h3>
+<p>Get the next larger (dir = ‘right’, default) or smaller (dir = ‘left’) size that is aligned to a page boundary. It can be used to align offsets and sizes.</p>
+<h3 id="fs.aligned_addrptr-dir---ptr"><code>fs.aligned_addr(ptr[, dir]) -&gt; ptr</code></h3>
+<p>Get the next (dir = ‘right’, default) or previous (dir = ‘left’) address that is aligned to a page boundary. It can be used to align pointers.</p>
+<h3 id="fs.pagesize---bytes"><code>fs.pagesize() -&gt; bytes</code></h3>
+<p>Get the current page size. Memory will always be allocated in multiples of this size and file offsets must be aligned to this size too.</p>
+<h2 id="programming-notes">Programming Notes</h2>
+<h3 id="filesystem-operations-are-non-atomic">Filesystem operations are non-atomic</h3>
+<p>Most filesystem operations are non-atomic (unless otherwise specified) and thus prone to race conditions. This library makes no attempt at fixing that and in fact it ignores the issue entirely in order to provide a simpler API. For instance, in order to change <em>only</em> the “archive” bit of a file on Windows, the file attribute bits need to be read first (because WinAPI doesn’t take a mask there). That’s a TOCTTOU. Resolving a symlink or removing a directory recursively in userspace has similar issues. So never work on the (same part of the) filesystem from multiple processes without proper locking (watch Niall Douglas’s “Racing The File System” presentation for more info).</p>
+<h3 id="flushing-does-not-protect-against-power-loss">Flushing does not protect against power loss</h3>
+<p>Flushing does not protect against power loss on consumer hard drives because they usually don’t have non-volatile write caches (and disabling the write cache is generally not possible nor feasible). Also, most Linux distros do not mount ext3 filesystems with the “barrier=1” option by default which means no power loss protection there either, even when the hardware works right.</p>
+<h3 id="file-locking-doesnt-always-work">File locking doesn’t always work</h3>
+<p>File locking APIs only work right on disk mounts and are buggy or non-existent on network mounts (NFS, Samba).</p>
+<h3 id="async-disk-io">Async disk I/O</h3>
+<p>Async disk I/O is a complete afterthought on all major Operating Systems. If your app is I/O-bound just bite the bullet and make a thread pool. Read <a href="https://blog.libtorrent.org/2012/10/asynchronous-disk-io/">Arvid Norberg’s article</a> for more info.</p>
