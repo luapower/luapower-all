@@ -14,8 +14,9 @@ tagline: package categories
 	* [pp]
 	* [oo]
 	* [events]
-	* [lpeg]
 	* [coro]
+	* [errors]
+	* [lpeg]
 * Portable OS APIs
 	* [fs]
 	* [nw]
