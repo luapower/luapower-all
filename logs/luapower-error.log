@@ -1,0 +1,410 @@
+2019/12/26 13:32:42 [emerg] 2862#0: bind() to 127.0.0.1:8000 failed (98: Address already in use)
+2019/12/26 13:32:42 [emerg] 2862#0: bind() to 127.0.0.1:8000 failed (98: Address already in use)
+2019/12/26 13:32:42 [emerg] 2862#0: bind() to 127.0.0.1:8000 failed (98: Address already in use)
+2019/12/26 13:32:42 [emerg] 2862#0: bind() to 127.0.0.1:8000 failed (98: Address already in use)
+2019/12/26 13:32:42 [emerg] 2862#0: bind() to 127.0.0.1:8000 failed (98: Address already in use)
+2019/12/26 13:33:34 [error] 2925#0: *2 open() "./html/files/luapower/csrc/libsodium/crypto_stream/xsalsa20/checksum" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/luapower/csrc/libsodium/crypto_stream/xsalsa20/checksum HTTP/1.1", host: "www.luapower.com"
+sh: 1: cannot create luapower-www/.cache/ngx-balancer.md.html: Directory nonexistent
+2019/12/26 13:33:42 [error] 2925#0: *10 [lua] webb_nginx.lua:17: try_call(): ./luapower_website.lua:1113: file not found: .cache/ngx-balancer.md.html
+stack traceback:
+	[C]: in function 'error'
+	./glue.lua:786: in function 'render_docfile'
+	./luapower_website.lua:1113: in function 'action_'
+	./luapower_website.lua:1730: in function 'main'
+	./webb_nginx.lua:43: in function <./webb_nginx.lua:37>
+	[C]: in function 'xpcall'
+	./webb_nginx.lua:34: in function 'try_call'
+	./webb_nginx.lua:37: in main chunk, client: 127.0.0.1, server: , request: "GET /ngx.balancer HTTP/1.1", host: "luapower.com", referrer: "https://luapower.com/resty-core"
+2019/12/26 13:33:57 [error] 2925#0: *11 [lua] webb_nginx.lua:17: try_call(): 404 Not found, client: 127.0.0.1, server: , request: "GET /robots.txt HTTP/1.1", host: "luapower.com"
+2019/12/26 13:33:57 [error] 2925#0: *12 open() "./html/files/htags/luajit-2.0/S/73.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.0/S/73.html HTTP/1.1", host: "luapower.com"
+sh: 1: bin/linux64/pandoc: not found
+sh: 1: bin/linux64/pandoc: not found
+sh: 1: bin/linux64/pandoc: not found
+sh: 1: bin/linux64/pandoc: not found
+sh: 1: bin/linux64/pandoc: not found
+sh: 1: bin/linux64/pandoc: not found
+sh: 1: bin/linux64/pandoc: not found
+sh: 1: bin/linux64/pandoc: not found
+sh: 1: bin/linux64/pandoc: not found
+sh: 1: bin/linux64/pandoc: not found
+sh: 1: bin/linux64/pandoc: not found
+sh: 1: bin/linux64/pandoc: not found
+sh: 1: bin/linux64/pandoc: not found
+sh: 1: bin/linux64/pandoc: not found
+sh: 1: bin/linux64/pandoc: not found
+sh: 1: bin/linux64/pandoc: not found
+2019/12/26 13:35:44 [error] 2925#0: *34 open() "./html/files/htags/luajit-2.0/D/350.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.0/D/350.html HTTP/1.1", host: "luapower.com"
+2019/12/26 13:35:45 [error] 2925#0: *36 open() "./html/files/htags/luajit-2.0/J/118.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.0/J/118.html HTTP/1.1", host: "luapower.com"
+2019/12/26 13:35:45 [error] 2925#0: *37 open() "./html/files/htags/luajit-2.0/J/143.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.0/J/143.html HTTP/1.1", host: "luapower.com"
+2019/12/26 13:35:46 [error] 2925#0: *38 open() "./html/files/htags/luajit-2.0/R/1020.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.0/R/1020.html HTTP/1.1", host: "luapower.com"
+2019/12/26 13:35:47 [error] 2925#0: *39 open() "./html/files/htags/luajit-2.0/J/91.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.0/J/91.html HTTP/1.1", host: "luapower.com"
+2019/12/26 13:35:47 [error] 2925#0: *40 open() "./html/files/htags/luajit-2.0/R/1048.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.0/R/1048.html HTTP/1.1", host: "luapower.com"
+2019/12/26 13:35:48 [error] 2925#0: *41 open() "./html/files/htags/luajit-2.0/R/1064.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.0/R/1064.html HTTP/1.1", host: "luapower.com"
+2019/12/26 13:35:48 [error] 2925#0: *42 open() "./html/files/htags/luajit-2.0/R/1021.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.0/R/1021.html HTTP/1.1", host: "luapower.com"
+2019/12/26 13:35:48 [error] 2925#0: *43 open() "./html/files/htags/luajit-2.0/R/1149.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.0/R/1149.html HTTP/1.1", host: "luapower.com"
+2019/12/26 13:35:49 [error] 2925#0: *44 open() "./html/files/htags/luajit-2.0/R/1347.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.0/R/1347.html HTTP/1.1", host: "luapower.com"
+2019/12/26 13:35:50 [error] 2925#0: *45 open() "./html/files/htags/luajit-2.0/R/1642.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.0/R/1642.html HTTP/1.1", host: "luapower.com"
+2019/12/26 13:35:50 [error] 2925#0: *46 open() "./html/files/htags/luajit-2.0/R/1434.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.0/R/1434.html HTTP/1.1", host: "luapower.com"
+2019/12/26 13:35:51 [error] 2925#0: *47 open() "./html/files/htags/luajit-2.0/R/1707.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.0/R/1707.html HTTP/1.1", host: "luapower.com"
+2019/12/26 13:35:52 [error] 2925#0: *48 open() "./html/files/htags/luajit-2.0/R/2036.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.0/R/2036.html HTTP/1.1", host: "luapower.com"
+2019/12/26 13:35:52 [error] 2925#0: *49 open() "./html/files/htags/luajit-2.0/R/1947.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.0/R/1947.html HTTP/1.1", host: "luapower.com"
+2019/12/26 13:35:53 [error] 2925#0: *50 open() "./html/files/htags/luajit-2.0/R/2695.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.0/R/2695.html HTTP/1.1", host: "luapower.com"
+2019/12/26 13:35:53 [error] 2925#0: *51 open() "./html/files/htags/luajit-2.0/R/2496.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.0/R/2496.html HTTP/1.1", host: "luapower.com"
+2019/12/26 13:35:54 [error] 2925#0: *52 open() "./html/files/htags/luajit-2.0/R/2803.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.0/R/2803.html HTTP/1.1", host: "luapower.com"
+2019/12/26 13:35:54 [error] 2925#0: *53 open() "./html/files/htags/luajit-2.0/R/2833.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.0/R/2833.html HTTP/1.1", host: "luapower.com"
+2019/12/26 13:35:55 [error] 2925#0: *54 open() "./html/files/htags/luajit-2.0/R/2854.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.0/R/2854.html HTTP/1.1", host: "luapower.com"
+2019/12/26 13:35:55 [error] 2925#0: *55 open() "./html/files/htags/luajit-2.0/R/2952.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.0/R/2952.html HTTP/1.1", host: "luapower.com"
+2019/12/26 13:35:56 [error] 2925#0: *56 open() "./html/files/htags/luajit-2.0/R/3326.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.0/R/3326.html HTTP/1.1", host: "luapower.com"
+2019/12/26 13:35:57 [error] 2925#0: *57 open() "./html/files/htags/luajit-2.0/R/3409.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.0/R/3409.html HTTP/1.1", host: "luapower.com"
+2019/12/26 13:35:57 [error] 2925#0: *58 open() "./html/files/htags/luajit-2.0/R/3424.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.0/R/3424.html HTTP/1.1", host: "luapower.com"
+2019/12/26 13:35:58 [error] 2925#0: *59 open() "./html/files/htags/luajit-2.0/R/3952.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.0/R/3952.html HTTP/1.1", host: "luapower.com"
+2019/12/26 13:35:58 [error] 2925#0: *60 open() "./html/files/htags/luajit-2.0/R/4154.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.0/R/4154.html HTTP/1.1", host: "luapower.com"
+2019/12/26 13:35:59 [error] 2925#0: *61 open() "./html/files/htags/luajit-2.0/R/4363.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.0/R/4363.html HTTP/1.1", host: "luapower.com"
+2019/12/26 13:35:59 [error] 2925#0: *62 open() "./html/files/htags/luajit-2.0/R/4414.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.0/R/4414.html HTTP/1.1", host: "luapower.com"
+2019/12/26 13:36:00 [error] 2925#0: *63 open() "./html/files/htags/luajit-2.0/R/4696.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.0/R/4696.html HTTP/1.1", host: "luapower.com"
+2019/12/26 13:36:00 [error] 2925#0: *64 open() "./html/files/htags/luajit-2.0/R/4759.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.0/R/4759.html HTTP/1.1", host: "luapower.com"
+2019/12/26 13:36:01 [error] 2925#0: *65 open() "./html/files/htags/luajit-2.0/R/910.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.0/R/910.html HTTP/1.1", host: "luapower.com"
+2019/12/26 13:36:02 [error] 2925#0: *66 open() "./html/files/htags/luajit-2.0/R/995.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.0/R/995.html HTTP/1.1", host: "luapower.com"
+2019/12/26 13:36:02 [error] 2925#0: *67 open() "./html/files/htags/luajit-2.1/D/1245.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.1/D/1245.html HTTP/1.1", host: "luapower.com"
+2019/12/26 13:36:03 [error] 2925#0: *68 open() "./html/files/htags/luajit-2.1/D/1246.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.1/D/1246.html HTTP/1.1", host: "luapower.com"
+2019/12/26 13:36:03 [error] 2925#0: *69 open() "./html/files/htags/luajit-2.0/R/704.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.0/R/704.html HTTP/1.1", host: "luapower.com"
+2019/12/26 13:36:03 [error] 2925#0: *70 open() "./html/files/htags/luajit-2.1/D/1538.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.1/D/1538.html HTTP/1.1", host: "luapower.com"
+2019/12/26 13:36:04 [error] 2925#0: *71 open() "./html/files/htags/luajit-2.1/D/491.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.1/D/491.html HTTP/1.1", host: "luapower.com"
+2019/12/26 13:36:05 [error] 2925#0: *72 open() "./html/files/htags/luajit-2.1/D/5559.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.1/D/5559.html HTTP/1.1", host: "luapower.com"
+2019/12/26 13:36:05 [error] 2925#0: *73 open() "./html/files/htags/luajit-2.1/D/5042.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.1/D/5042.html HTTP/1.1", host: "luapower.com"
+2019/12/26 13:36:06 [error] 2925#0: *74 open() "./html/files/htags/luajit-2.1/J/62.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.1/J/62.html HTTP/1.1", host: "luapower.com"
+2019/12/26 13:36:06 [error] 2925#0: *75 open() "./html/files/htags/luajit-2.1/R/141.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.1/R/141.html HTTP/1.1", host: "luapower.com"
+2019/12/26 13:36:07 [error] 2925#0: *76 open() "./html/files/htags/luajit-2.1/R/1451.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.1/R/1451.html HTTP/1.1", host: "luapower.com"
+2019/12/26 13:36:07 [error] 2925#0: *77 open() "./html/files/htags/luajit-2.1/R/1625.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.1/R/1625.html HTTP/1.1", host: "luapower.com"
+2019/12/26 13:36:08 [error] 2925#0: *78 open() "./html/files/htags/luajit-2.1/R/1820.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.1/R/1820.html HTTP/1.1", host: "luapower.com"
+2019/12/26 13:36:09 [error] 2925#0: *79 open() "./html/files/htags/luajit-2.1/R/2368.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.1/R/2368.html HTTP/1.1", host: "luapower.com"
+2019/12/26 13:36:09 [error] 2925#0: *80 open() "./html/files/htags/luajit-2.1/R/1706.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.1/R/1706.html HTTP/1.1", host: "luapower.com"
+2019/12/26 13:36:09 [error] 2925#0: *81 open() "./html/files/htags/luajit-2.1/R/1988.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.1/R/1988.html HTTP/1.1", host: "luapower.com"
+2019/12/26 13:36:11 [error] 2925#0: *82 open() "./html/files/htags/luajit-2.1/R/2705.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.1/R/2705.html HTTP/1.1", host: "luapower.com"
+2019/12/26 13:36:12 [error] 2925#0: *83 open() "./html/files/htags/luajit-2.1/R/3044.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.1/R/3044.html HTTP/1.1", host: "luapower.com"
+2019/12/26 13:36:12 [error] 2925#0: *84 open() "./html/files/htags/luajit-2.1/R/3451.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.1/R/3451.html HTTP/1.1", host: "luapower.com"
+2019/12/26 13:36:13 [error] 2925#0: *85 open() "./html/files/htags/luajit-2.1/R/3584.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.1/R/3584.html HTTP/1.1", host: "luapower.com"
+2019/12/26 13:36:13 [error] 2925#0: *86 open() "./html/files/htags/luajit-2.1/R/3802.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.1/R/3802.html HTTP/1.1", host: "luapower.com"
+2019/12/26 13:36:14 [error] 2925#0: *87 open() "./html/files/htags/luajit-2.1/R/3877.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.1/R/3877.html HTTP/1.1", host: "luapower.com"
+2019/12/26 13:36:15 [error] 2925#0: *88 open() "./html/files/htags/luajit-2.1/R/3882.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.1/R/3882.html HTTP/1.1", host: "luapower.com"
+2019/12/26 13:36:15 [error] 2925#0: *89 open() "./html/files/htags/luajit-2.1/R/4021.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.1/R/4021.html HTTP/1.1", host: "luapower.com"
+2019/12/26 13:36:16 [error] 2925#0: *90 open() "./html/files/htags/luajit-2.1/R/3974.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.1/R/3974.html HTTP/1.1", host: "luapower.com"
+2019/12/26 13:36:16 [error] 2925#0: *91 open() "./html/files/htags/luajit-2.1/R/4041.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.1/R/4041.html HTTP/1.1", host: "luapower.com"
+2019/12/26 13:36:18 [error] 2925#0: *92 open() "./html/files/htags/luajit-2.1/R/4081.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.1/R/4081.html HTTP/1.1", host: "luapower.com"
+2019/12/26 13:36:19 [error] 2925#0: *93 open() "./html/files/htags/luajit-2.1/R/4490.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.1/R/4490.html HTTP/1.1", host: "luapower.com"
+2019/12/26 13:36:19 [error] 2925#0: *94 open() "./html/files/htags/luajit-2.1/R/4522.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.1/R/4522.html HTTP/1.1", host: "luapower.com"
+2019/12/26 13:36:20 [error] 2925#0: *95 open() "./html/files/htags/luajit-2.1/R/509.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.1/R/509.html HTTP/1.1", host: "luapower.com"
+2019/12/26 13:36:21 [error] 2925#0: *96 open() "./html/files/htags/luajit-2.1/R/919.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.1/R/919.html HTTP/1.1", host: "luapower.com"
+2019/12/26 13:36:21 [error] 2925#0: *97 open() "./html/files/htags/luajit-2.1/R/5008.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.1/R/5008.html HTTP/1.1", host: "luapower.com"
+2019/12/26 13:36:23 [error] 2925#0: *98 open() "./html/files/htags/luajit-2.1/R/990.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.1/R/990.html HTTP/1.1", host: "luapower.com"
+2019/12/26 13:36:24 [error] 2925#0: *99 open() "./html/files/htags/luajit/D/2466.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit/D/2466.html HTTP/1.1", host: "luapower.com"
+2019/12/26 13:36:24 [error] 2925#0: *100 open() "./html/files/htags/luajit/D/2594.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit/D/2594.html HTTP/1.1", host: "luapower.com"
+2019/12/26 13:36:25 [error] 2925#0: *101 open() "./html/files/htags/luajit/R/1335.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit/R/1335.html HTTP/1.1", host: "luapower.com"
+2019/12/26 13:36:25 [error] 2925#0: *102 open() "./html/files/htags/luajit/R/1345.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit/R/1345.html HTTP/1.1", host: "luapower.com"
+2019/12/26 13:36:26 [error] 2925#0: *103 open() "./html/files/htags/luajit/R/1459.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit/R/1459.html HTTP/1.1", host: "luapower.com"
+2019/12/26 13:36:26 [error] 2925#0: *104 open() "./html/files/htags/luajit/R/1701.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit/R/1701.html HTTP/1.1", host: "luapower.com"
+2019/12/26 13:36:28 [error] 2925#0: *105 open() "./html/files/htags/luajit/R/1754.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit/R/1754.html HTTP/1.1", host: "luapower.com"
+2019/12/26 13:36:28 [error] 2925#0: *106 open() "./html/files/htags/luajit/R/1854.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit/R/1854.html HTTP/1.1", host: "luapower.com"
+2019/12/26 13:36:28 [error] 2925#0: *107 open() "./html/files/htags/luajit/R/3114.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit/R/3114.html HTTP/1.1", host: "luapower.com"
+2019/12/26 13:36:31 [error] 2925#0: *108 open() "./html/files/htags/luajit/R/3249.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit/R/3249.html HTTP/1.1", host: "luapower.com"
+2019/12/26 13:36:32 [error] 2925#0: *109 open() "./html/files/htags/luajit/R/3413.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit/R/3413.html HTTP/1.1", host: "luapower.com"
+2019/12/26 13:36:33 [error] 2925#0: *110 open() "./html/files/htags/luajit/R/3562.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit/R/3562.html HTTP/1.1", host: "luapower.com"
+2019/12/26 13:36:33 [error] 2925#0: *111 open() "./html/files/htags/luajit/R/3714.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit/R/3714.html HTTP/1.1", host: "luapower.com"
+2019/12/26 13:36:34 [error] 2925#0: *112 open() "./html/files/htags/luajit/R/3659.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit/R/3659.html HTTP/1.1", host: "luapower.com"
+2019/12/26 13:36:36 [error] 2925#0: *113 open() "./html/files/htags/luajit/R/3723.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit/R/3723.html HTTP/1.1", host: "luapower.com"
+2019/12/26 13:36:36 [error] 2925#0: *114 open() "./html/files/htags/luajit/R/3843.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit/R/3843.html HTTP/1.1", host: "luapower.com"
+2019/12/26 13:36:37 [error] 2925#0: *115 open() "./html/files/htags/luajit/R/3887.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit/R/3887.html HTTP/1.1", host: "luapower.com"
+2019/12/26 13:36:37 [error] 2925#0: *116 open() "./html/files/htags/luajit/R/401.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit/R/401.html HTTP/1.1", host: "luapower.com"
+2019/12/26 13:36:37 [error] 2925#0: *117 open() "./html/files/htags/luajit/R/4054.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit/R/4054.html HTTP/1.1", host: "luapower.com"
+2019/12/26 13:36:38 [error] 2925#0: *118 open() "./html/files/htags/luajit/R/4114.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit/R/4114.html HTTP/1.1", host: "luapower.com"
+2019/12/26 13:36:39 [error] 2925#0: *119 open() "./html/files/htags/luajit/R/4282.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit/R/4282.html HTTP/1.1", host: "luapower.com"
+2019/12/26 13:36:39 [error] 2925#0: *120 open() "./html/files/htags/luajit/R/4132.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit/R/4132.html HTTP/1.1", host: "luapower.com"
+2019/12/26 13:36:40 [error] 2925#0: *121 open() "./html/files/htags/luajit/R/4550.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit/R/4550.html HTTP/1.1", host: "luapower.com"
+2019/12/26 13:36:40 [error] 2925#0: *122 open() "./html/files/htags/luajit/R/4548.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit/R/4548.html HTTP/1.1", host: "luapower.com"
+2019/12/26 13:36:41 [error] 2925#0: *123 open() "./html/files/htags/luajit/R/4647.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit/R/4647.html HTTP/1.1", host: "luapower.com"
+2019/12/26 13:36:42 [error] 2925#0: *125 open() "./html/files/htags/luajit/R/741.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit/R/741.html HTTP/1.1", host: "luapower.com"
+2019/12/26 13:36:43 [error] 2925#0: *126 open() "./html/files/htags/luajit/R/769.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit/R/769.html HTTP/1.1", host: "luapower.com"
+2019/12/26 13:36:43 [error] 2925#0: *127 open() "./html/files/htags/luajit/R/5042.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit/R/5042.html HTTP/1.1", host: "luapower.com"
+2019/12/26 13:36:45 [error] 2925#0: *128 open() "./html/files/htags/luajit/R/793.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit/R/793.html HTTP/1.1", host: "luapower.com"
+2019/12/26 13:36:46 [error] 2925#0: *130 open() "./html/files/htags/luajit/R/960.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit/R/960.html HTTP/1.1", host: "luapower.com"
+2019/12/26 13:36:46 [error] 2925#0: *131 open() "./html/files/luapower/csrc/blake2/blake2s-load-xop.h" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/luapower/csrc/blake2/blake2s-load-xop.h HTTP/1.1", host: "luapower.com"
+2019/12/26 13:36:47 [error] 2925#0: *132 open() "./html/files/luapower/csrc/libcurl/configure.osx32" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/luapower/csrc/libcurl/configure.osx32 HTTP/1.1", host: "luapower.com"
+2019/12/26 13:36:48 [error] 2925#0: *133 open() "./html/files/luapower/csrc/cairo/WHAT" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/luapower/csrc/cairo/WHAT HTTP/1.1", host: "luapower.com"
+2019/12/26 13:36:48 [error] 2925#0: *135 open() "./html/files/luapower/csrc/cjson/strbuf.h" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/luapower/csrc/cjson/strbuf.h HTTP/1.1", host: "luapower.com"
+2019/12/26 13:36:49 [error] 2925#0: *134 [lua] webb_nginx.lua:17: try_call(): ./luapower_website.lua:1454: bad argument #1 to 'lines' (boxblurlib_h.lua: No such file or directory)
+stack traceback:
+	[C]: in function 'lines'
+	./luapower_website.lua:1454: in function 'filelines'
+	./luapower_website.lua:1461: in function 'grepfile'
+	./luapower_website.lua:1552: in function 'grep'
+	./luapower_website.lua:1585: in function 'action_'
+	./luapower_website.lua:1730: in function 'main'
+	./webb_nginx.lua:43: in function <./webb_nginx.lua:37>
+	[C]: in function 'xpcall'
+	./webb_nginx.lua:34: in function 'try_call'
+	./webb_nginx.lua:37: in main chunk, client: 127.0.0.1, server: , request: "GET /grep/hey HTTP/1.1", host: "luapower.com", referrer: "https://luapower.com/"
+2019/12/26 13:36:49 [error] 2925#0: *136 open() "./html/files/luapower/csrc/libpng/WHAT" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/luapower/csrc/libpng/WHAT HTTP/1.1", host: "luapower.com"
+2019/12/26 13:36:50 [error] 2925#0: *137 open() "./html/files/luapower/csrc/md5/_memcpy.h" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/luapower/csrc/md5/_memcpy.h HTTP/1.1", host: "luapower.com"
+sh: 1: bin/linux64/pandoc: not found
+sh: 1: bin/linux64/pandoc: not found
+sh: 1: bin/linux64/pandoc: not found
+sh: 1: bin/linux64/pandoc: not found
+sh: 1: bin/linux64/pandoc: not found
+sh: 1: bin/linux64/pandoc: not found
+sh: 1: bin/linux64/pandoc: not found
+2019/12/26 13:38:25 [error] 2925#0: *153 open() "./html/files/luapower/csrc/libjpeg/src/simd/nasm/jcolsamp.inc" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/luapower/csrc/libjpeg/src/simd/nasm/jcolsamp.inc HTTP/1.1", host: "www.luapower.com"
+sh: 1: bin/linux64/pandoc: not found
+sh: 1: bin/linux64/pandoc: not found
+2019/12/26 13:38:47 [error] 2925#0: *158 open() "./html/files/htags/luajit-2.0/R/604.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.0/R/604.html HTTP/1.1", host: "luapower.com"
+2019/12/26 13:39:30 [error] 2925#0: *159 open() "./html/files/htags/luajit-2.1/D/3924.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.1/D/3924.html HTTP/1.1", host: "luapower.com"
+2019/12/26 13:40:23 [error] 2925#0: *162 open() "./html/files/luapower/csrc/lanes/src/keeper.c" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/luapower/csrc/lanes/src/keeper.c HTTP/1.1", host: "www.luapower.com"
+sh: 1: bin/linux64/pandoc: not found
+2019/12/26 13:42:38 [error] 2925#0: *165 [lua] webb_nginx.lua:17: try_call(): ./luapower.lua:2185: unknown package "lfrb"
+stack traceback:
+	[C]: in function 'error'
+	./glue.lua:786: in function 'assert'
+	./luapower.lua:2185: in function 'add_pkg'
+	./luapower.lua:2202: in function 'dep_maps'
+	./luapower.lua:2209: in function 'fn'
+	./glue.lua:477: in function 'build_order'
+	./luapower_website.lua:934: in function 'package_info'
+	./luapower_website.lua:1102: in function 'action_'
+	./luapower_website.lua:1730: in function 'main'
+	./webb_nginx.lua:43: in function <./webb_nginx.lua:37>
+	[C]: in function 'xpcall'
+	./webb_nginx.lua:34: in function 'try_call'
+	./webb_nginx.lua:37: in main chunk, client: 127.0.0.1, server: , request: "GET /lfrb/info HTTP/1.1", host: "luapower.com"
+2019/12/26 13:43:12 [error] 2925#0: *166 open() "./html/files/htags/luajit-2.0/D/1555.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.0/D/1555.html HTTP/1.1", host: "luapower.com"
+2019/12/26 13:43:48 [error] 2925#0: *167 [lua] webb_nginx.lua:17: try_call(): 404 Not found, client: 127.0.0.1, server: , request: "GET /router.php HTTP/1.1", host: "luapower.com"
+2019/12/26 13:45:14 [error] 2925#0: *168 open() "./html/files/htags/luajit/D/476.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit/D/476.html HTTP/1.1", host: "luapower.com"
+sh: 1: bin/linux64/pandoc: not found
+2019/12/26 13:46:42 [error] 2925#0: *170 open() "./html/files/htags/luajit-2.1/R/4660.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.1/R/4660.html HTTP/1.1", host: "luapower.com"
+2019/12/26 13:49:19 [error] 2925#0: *171 [lua] webb_nginx.lua:17: try_call(): 404 Not found, client: 127.0.0.1, server: , request: "GET /robots.txt HTTP/1.1", host: "www.luapower.com"
+2019/12/26 13:49:19 [error] 2925#0: *172 open() "./html/files/luapower/csrc/libsodium/crypto_sign/ed25519/ref10/fe_tobytes.c" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/luapower/csrc/libsodium/crypto_sign/ed25519/ref10/fe_tobytes.c HTTP/1.1", host: "www.luapower.com"
+sh: 1: bin/linux64/pandoc: not found
+sh: 1: bin/linux64/pandoc: not found
+2019/12/26 13:50:25 [error] 4552#0: *5 open() "./html/files/htags/luajit-2.0/R/525.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.0/R/525.html HTTP/1.1", host: "luapower.com"
+2019/12/26 13:50:32 [error] 4552#0: *6 open() "./html/files/htags/luajit-2.1/D/365.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.1/D/365.html HTTP/1.1", host: "www.luapower.com"
+2019/12/26 13:51:25 [error] 4552#0: *7 open() "./html/files/ppa.launchpad.net/ubuntu-toolchain-r/test/ubuntu/pool/main/m/mpfr4/lib32mpfr4_3.1.0-3~ppa1_amd64.deb" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/ppa.launchpad.net/ubuntu-toolchain-r/test/ubuntu/pool/main/m/mpfr4/lib32mpfr4_3.1.0-3~ppa1_amd64.deb HTTP/1.1", host: "luapower.com"
+2019/12/26 13:51:32 [error] 4552#0: *8 [lua] webb_nginx.lua:17: try_call(): ./luapower_website.lua:160: attempt to concatenate local 's1' (a nil value)
+stack traceback:
+	./luapower_website.lua:160: in function 'render_docfile'
+	./luapower_website.lua:1109: in function 'action_'
+	./luapower_website.lua:1726: in function 'main'
+	./webb_nginx.lua:43: in function <./webb_nginx.lua:37>
+	[C]: in function 'xpcall'
+	./webb_nginx.lua:34: in function 'try_call'
+	./webb_nginx.lua:37: in main chunk, client: 127.0.0.1, server: , request: "GET /easing HTTP/1.1", host: "luapower.com"
+2019/12/26 13:51:43 [error] 4552#0: *9 [lua] webb_nginx.lua:17: try_call(): 404 Not found, client: 127.0.0.1, server: , request: "GET /robots.txt HTTP/1.1", host: "www.luapower.com"
+2019/12/26 13:51:56 [error] 4552#0: *11 [lua] webb_nginx.lua:17: try_call(): 404 Not found, client: 127.0.0.1, server: , request: "GET /robots.txt HTTP/1.1", host: "luapower.com"
+2019/12/26 13:51:57 [error] 4552#0: *12 open() "./html/files/luapower/media/svg/Mr_Pipo_muzik.svg" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/luapower/media/svg/Mr_Pipo_muzik.svg HTTP/1.1", host: "luapower.com"
+2019/12/26 13:52:30 [error] 4552#0: *14 [lua] webb_nginx.lua:17: try_call(): 404 Not found, client: 127.0.0.1, server: , request: "GET /robots.txt HTTP/1.1", host: "luapower.com"
+2019/12/26 13:54:16 [error] 4552#0: *16 open() "./html/files/luapower/csrc/openssl/src/test/testp7.pem" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/luapower/csrc/openssl/src/test/testp7.pem HTTP/1.1", host: "luapower.com"
+2019/12/26 13:54:19 [error] 4552#0: *17 open() "./html/files/htags/luajit/D/1530.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit/D/1530.html HTTP/1.1", host: "luapower.com"
+2019/12/26 13:54:33 [error] 4552#0: *18 open() "./html/files/luapower/csrc/openssl/src/Configurations/windows-checker.pm" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/luapower/csrc/openssl/src/Configurations/windows-checker.pm HTTP/1.1", host: "luapower.com"
+2019/12/26 13:54:36 [error] 4552#0: *19 open() "./html/files/luapower/csrc/openssl/src/apps/vms_term_sock.h" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/luapower/csrc/openssl/src/apps/vms_term_sock.h HTTP/1.1", host: "luapower.com"
+2019/12/26 13:54:37 [error] 4552#0: *20 open() "./html/files/luapower/csrc/openssl/src/test/recordlentest.c" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/luapower/csrc/openssl/src/test/recordlentest.c HTTP/1.1", host: "luapower.com"
+2019/12/26 13:55:04 [error] 4552#0: *21 open() "./html/files/htags/luajit-2.1/R/585.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.1/R/585.html HTTP/1.1", host: "www.luapower.com"
+2019/12/26 13:55:05 [error] 4552#0: *22 open() "./html/files/luapower/csrc/openssl/src/demos/evp/aesgcm.c" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/luapower/csrc/openssl/src/demos/evp/aesgcm.c HTTP/1.1", host: "www.luapower.com"
+2019/12/26 13:55:06 [error] 4552#0: *23 open() "./html/files/luapower/csrc/openssl/src/crypto/aes/aes_ige.c" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/luapower/csrc/openssl/src/crypto/aes/aes_ige.c HTTP/1.1", host: "www.luapower.com"
+2019/12/26 13:55:08 [error] 4552#0: *24 open() "./html/files/luapower/csrc/openssl/src/doc/man1/req.pod" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/luapower/csrc/openssl/src/doc/man1/req.pod HTTP/1.1", host: "www.luapower.com"
+2019/12/26 13:55:11 [error] 4552#0: *25 open() "./html/files/luapower/csrc/openssl/src/doc/man7/crypto.pod" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/luapower/csrc/openssl/src/doc/man7/crypto.pod HTTP/1.1", host: "www.luapower.com"
+2019/12/26 13:55:29 [error] 4552#0: *26 open() "./html/files/luapower/csrc/openssl/src/crypto/evp/pbe_scrypt.c" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/luapower/csrc/openssl/src/crypto/evp/pbe_scrypt.c HTTP/1.1", host: "www.luapower.com"
+2019/12/26 13:55:29 [error] 4552#0: *27 "./html/files/luapower/csrc/openssl/src/crypto/rc4/asm/index.html" is not found (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/luapower/csrc/openssl/src/crypto/rc4/asm/ HTTP/1.1", host: "www.luapower.com"
+2019/12/26 13:55:30 [error] 4552#0: *28 open() "./html/files/luapower/csrc/openssl/src/demos/bio/connect.cnf" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/luapower/csrc/openssl/src/demos/bio/connect.cnf HTTP/1.1", host: "www.luapower.com"
+2019/12/26 13:55:31 [error] 4552#0: *29 open() "./html/files/luapower/csrc/openssl/src/test/certs/ca-cert2.pem" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/luapower/csrc/openssl/src/test/certs/ca-cert2.pem HTTP/1.1", host: "www.luapower.com"
+2019/12/26 13:55:33 [error] 4552#0: *30 open() "./html/files/luapower/csrc/openssl/src/test/certs/ee+clientAuth.pem" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/luapower/csrc/openssl/src/test/certs/ee%2BclientAuth.pem HTTP/1.1", host: "www.luapower.com"
+2019/12/26 13:56:01 [error] 4552#0: *31 [lua] webb_nginx.lua:17: try_call(): ./luapower_website.lua:160: attempt to concatenate local 's1' (a nil value)
+stack traceback:
+	./luapower_website.lua:160: in function 'render_docfile'
+	./luapower_website.lua:1109: in function 'action_'
+	./luapower_website.lua:1726: in function 'main'
+	./webb_nginx.lua:43: in function <./webb_nginx.lua:37>
+	[C]: in function 'xpcall'
+	./webb_nginx.lua:34: in function 'try_call'
+	./webb_nginx.lua:37: in main chunk, client: 127.0.0.1, server: , request: "GET /easing HTTP/1.1", host: "luapower.com"
+2019/12/26 13:56:11 [error] 4552#0: *32 [lua] webb_nginx.lua:17: try_call(): 404 Not found, client: 127.0.0.1, server: , request: "GET /robots.txt HTTP/1.1", host: "luapower.com"
+2019/12/26 13:56:15 [error] 4552#0: *33 open() "./html/files/htags/luajit/R/4602.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit/R/4602.html HTTP/1.1", host: "luapower.com"
+2019/12/26 13:56:18 [error] 4552#0: *34 "./html/files/luapower/media/gif/index.html" is not found (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/luapower/media/gif/ HTTP/1.1", host: "luapower.com", referrer: "http://go.mail.ru/search_images"
+2019/12/26 13:57:15 [error] 4552#0: *37 open() "./html/files/luapower/csrc/luajit/src/doc/faq.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/luapower/csrc/luajit/src/doc/faq.html HTTP/1.1", host: "www.luapower.com"
+2019/12/26 13:57:32 [error] 4552#0: *40 open() "./html/files/htags/luajit-2.1/R/2697.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.1/R/2697.html HTTP/1.1", host: "luapower.com"
+sh: 1: bin/linux64/pandoc: not found
+sh: 1: bin/linux64/pandoc: not found
+sh: 1: bin/linux64/pandoc: not found
+sh: 1: bin/linux64/pandoc: not found
+2019/12/26 13:58:23 [error] 5104#0: *11 [lua] webb_nginx.lua:17: try_call(): 404 Not found, client: 127.0.0.1, server: , request: "GET /robots.txt HTTP/1.1", host: "luapower.com"
+2019/12/26 13:58:27 [error] 5104#0: *12 open() "./html/files/luapower/media/sha2/vector015.info" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/luapower/media/sha2/vector015.info HTTP/1.1", host: "luapower.com"
+2019/12/26 13:58:52 [error] 5104#0: *13 [lua] webb_nginx.lua:17: try_call(): 404 Not found, client: 127.0.0.1, server: , request: "GET /robots.txt HTTP/1.1", host: "www.luapower.com"
+2019/12/26 13:58:52 [error] 5104#0: *14 [lua] webb_nginx.lua:17: try_call(): 404 Not found, client: 127.0.0.1, server: , request: "GET /files/luapower/luastate_test.lua HTTP/1.1", host: "luapower.com"
+2019/12/26 13:58:56 [error] 5104#0: *15 [lua] webb_nginx.lua:17: try_call(): 404 Not found, client: 127.0.0.1, server: , request: "GET /files/luapower/winapi/bitmask.lua HTTP/1.1", host: "www.luapower.com"
+2019/12/26 14:00:01 [error] 5104#0: *16 open() "./html/files/htags/luajit-2.1/R/2176.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.1/R/2176.html HTTP/1.1", host: "luapower.com"
+2019/12/26 14:01:01 [error] 5104#0: *19 open() "./html/files/luapower/csrc/libjpeg/src/sharedlib/CMakeFiles/jpeg.dir/__/jdmerge.c.obj" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/luapower/csrc/libjpeg/src/sharedlib/CMakeFiles/jpeg.dir/__/jdmerge.c.obj HTTP/1.1", host: "luapower.com"
+2019/12/26 14:01:16 [error] 5104#0: *20 open() "./html/files/htags/luajit-2.1/R/1172.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.1/R/1172.html HTTP/1.1", host: "www.luapower.com"
+2019/12/26 14:01:32 [error] 5104#0: *21 [lua] webb_nginx.lua:17: try_call(): 404 Not found, client: 127.0.0.1, server: , request: "GET /vararg/info HTTP/1.1", host: "luapower.com"
+sh: 1: bin/linux64/pandoc: Permission denied
+2019/12/26 14:01:59 [error] 5104#0: *24 open() "./html/files/luapower/csrc/openssl/src/crypto/asn1/asn_moid.c" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/luapower/csrc/openssl/src/crypto/asn1/asn_moid.c HTTP/1.1", host: "luapower.com"
+2019/12/26 14:02:07 [error] 5104#0: *27 "./html/files/luapower/csrc/libsodium/crypto_pwhash/scryptsalsa208sha256/sse/index.html" is not found (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/luapower/csrc/libsodium/crypto_pwhash/scryptsalsa208sha256/sse/ HTTP/1.1", host: "www.luapower.com"
+sh: 1: bin/linux64/pandoc: Permission denied
+2019/12/26 14:03:53 [error] 5104#0: *35 open() "./html/files/htags/luajit-2.0/D/2582.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.0/D/2582.html HTTP/1.1", host: "luapower.com"
+2019/12/26 14:03:53 [error] 5104#0: *36 open() "./html/files/htags/luajit-2.0/J/151.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.0/J/151.html HTTP/1.1", host: "luapower.com"
+2019/12/26 14:03:54 [error] 5104#0: *37 open() "./html/files/htags/luajit-2.0/R/1022.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.0/R/1022.html HTTP/1.1", host: "luapower.com"
+2019/12/26 14:03:54 [error] 5104#0: *38 open() "./html/files/htags/luajit-2.0/R/1147.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.0/R/1147.html HTTP/1.1", host: "luapower.com"
+2019/12/26 14:03:55 [error] 5104#0: *39 open() "./html/files/htags/luajit-2.0/R/1358.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.0/R/1358.html HTTP/1.1", host: "luapower.com"
+2019/12/26 14:03:55 [error] 5104#0: *40 open() "./html/files/htags/luajit-2.0/R/1674.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.0/R/1674.html HTTP/1.1", host: "luapower.com"
+2019/12/26 14:03:56 [error] 5104#0: *41 open() "./html/files/htags/luajit-2.0/R/1844.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.0/R/1844.html HTTP/1.1", host: "luapower.com"
+2019/12/26 14:03:57 [error] 5104#0: *42 open() "./html/files/htags/luajit-2.0/R/1377.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.0/R/1377.html HTTP/1.1", host: "luapower.com"
+2019/12/26 14:03:57 [error] 5104#0: *43 open() "./html/files/htags/luajit-2.0/R/1926.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.0/R/1926.html HTTP/1.1", host: "luapower.com"
+2019/12/26 14:03:58 [error] 5104#0: *44 open() "./html/files/htags/luajit-2.0/R/196.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.0/R/196.html HTTP/1.1", host: "luapower.com"
+2019/12/26 14:03:58 [error] 5104#0: *45 open() "./html/files/htags/luajit-2.0/R/2001.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.0/R/2001.html HTTP/1.1", host: "luapower.com"
+2019/12/26 14:03:59 [error] 5104#0: *46 open() "./html/files/htags/luajit-2.0/R/2585.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.0/R/2585.html HTTP/1.1", host: "luapower.com"
+2019/12/26 14:03:59 [error] 5104#0: *47 open() "./html/files/htags/luajit-2.0/R/260.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.0/R/260.html HTTP/1.1", host: "luapower.com"
+2019/12/26 14:04:00 [error] 5104#0: *48 open() "./html/files/htags/luajit-2.0/R/2612.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.0/R/2612.html HTTP/1.1", host: "luapower.com"
+2019/12/26 14:04:00 [error] 5104#0: *49 open() "./html/files/htags/luajit-2.0/R/2818.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.0/R/2818.html HTTP/1.1", host: "luapower.com"
+2019/12/26 14:04:00 [error] 5104#0: *50 open() "./html/files/htags/luajit-2.0/R/2676.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.0/R/2676.html HTTP/1.1", host: "luapower.com"
+2019/12/26 14:04:01 [error] 5104#0: *51 open() "./html/files/htags/luajit-2.0/R/3091.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.0/R/3091.html HTTP/1.1", host: "luapower.com"
+2019/12/26 14:04:02 [error] 5104#0: *52 open() "./html/files/htags/luajit-2.0/R/3223.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.0/R/3223.html HTTP/1.1", host: "luapower.com"
+2019/12/26 14:04:03 [error] 5104#0: *53 open() "./html/files/htags/luajit-2.0/R/3250.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.0/R/3250.html HTTP/1.1", host: "luapower.com"
+2019/12/26 14:04:03 [error] 5104#0: *54 open() "./html/files/htags/luajit-2.0/R/330.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.0/R/330.html HTTP/1.1", host: "luapower.com"
+2019/12/26 14:04:03 [error] 5104#0: *55 open() "./html/files/htags/luajit-2.0/R/3315.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.0/R/3315.html HTTP/1.1", host: "luapower.com"
+2019/12/26 14:04:03 [error] 5104#0: *56 open() "./html/files/htags/luajit-2.0/R/3319.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.0/R/3319.html HTTP/1.1", host: "luapower.com"
+2019/12/26 14:04:04 [error] 5104#0: *57 open() "./html/files/htags/luajit-2.0/R/3377.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.0/R/3377.html HTTP/1.1", host: "luapower.com"
+2019/12/26 14:04:04 [error] 5104#0: *58 open() "./html/files/htags/luajit-2.0/R/3657.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.0/R/3657.html HTTP/1.1", host: "luapower.com"
+2019/12/26 14:04:05 [error] 5104#0: *59 open() "./html/files/htags/luajit-2.0/R/3673.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.0/R/3673.html HTTP/1.1", host: "luapower.com"
+2019/12/26 14:04:06 [error] 5104#0: *60 open() "./html/files/htags/luajit-2.0/R/4036.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.0/R/4036.html HTTP/1.1", host: "luapower.com"
+2019/12/26 14:04:06 [error] 5104#0: *61 open() "./html/files/htags/luajit-2.0/R/3927.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.0/R/3927.html HTTP/1.1", host: "luapower.com"
+2019/12/26 14:04:06 [error] 5104#0: *62 open() "./html/files/htags/luajit-2.0/R/4058.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.0/R/4058.html HTTP/1.1", host: "luapower.com"
+2019/12/26 14:04:07 [error] 5104#0: *63 open() "./html/files/htags/luajit-2.0/R/4103.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.0/R/4103.html HTTP/1.1", host: "luapower.com"
+2019/12/26 14:04:07 [error] 5104#0: *64 open() "./html/files/htags/luajit-2.0/R/4338.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.0/R/4338.html HTTP/1.1", host: "luapower.com"
+2019/12/26 14:04:07 [error] 5104#0: *65 open() "./html/files/htags/luajit-2.0/R/4272.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.0/R/4272.html HTTP/1.1", host: "luapower.com"
+2019/12/26 14:04:08 [error] 5104#0: *66 open() "./html/files/htags/luajit-2.0/R/4344.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.0/R/4344.html HTTP/1.1", host: "luapower.com"
+2019/12/26 14:04:09 [error] 5104#0: *67 open() "./html/files/htags/luajit-2.0/R/4519.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.0/R/4519.html HTTP/1.1", host: "luapower.com"
+2019/12/26 14:04:09 [error] 5104#0: *68 open() "./html/files/htags/luajit-2.0/R/4528.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.0/R/4528.html HTTP/1.1", host: "luapower.com"
+2019/12/26 14:04:10 [error] 5104#0: *69 open() "./html/files/htags/luajit-2.0/R/4550.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.0/R/4550.html HTTP/1.1", host: "luapower.com"
+2019/12/26 14:04:10 [error] 5104#0: *70 open() "./html/files/htags/luajit-2.0/R/4745.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.0/R/4745.html HTTP/1.1", host: "luapower.com"
+2019/12/26 14:04:11 [error] 5104#0: *71 open() "./html/files/htags/luajit-2.1/D/2443.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.1/D/2443.html HTTP/1.1", host: "luapower.com"
+2019/12/26 14:04:11 [error] 5104#0: *72 open() "./html/files/htags/luajit-2.1/R/1108.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.1/R/1108.html HTTP/1.1", host: "luapower.com"
+2019/12/26 14:04:12 [error] 5104#0: *73 open() "./html/files/htags/luajit-2.1/R/1113.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.1/R/1113.html HTTP/1.1", host: "luapower.com"
+2019/12/26 14:04:12 [error] 5104#0: *74 open() "./html/files/htags/luajit-2.1/R/1202.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.1/R/1202.html HTTP/1.1", host: "luapower.com"
+2019/12/26 14:04:13 [error] 5104#0: *75 open() "./html/files/htags/luajit-2.1/R/1279.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.1/R/1279.html HTTP/1.1", host: "luapower.com"
+2019/12/26 14:04:13 [error] 5104#0: *76 open() "./html/files/htags/luajit-2.1/R/1221.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.1/R/1221.html HTTP/1.1", host: "luapower.com"
+2019/12/26 14:04:14 [error] 5104#0: *77 open() "./html/files/htags/luajit-2.1/R/13.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.1/R/13.html HTTP/1.1", host: "luapower.com"
+2019/12/26 14:04:15 [error] 5104#0: *78 open() "./html/files/htags/luajit-2.1/R/1317.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.1/R/1317.html HTTP/1.1", host: "luapower.com"
+2019/12/26 14:04:16 [error] 5104#0: *79 open() "./html/files/htags/luajit-2.1/R/1545.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.1/R/1545.html HTTP/1.1", host: "luapower.com"
+2019/12/26 14:04:16 [error] 5104#0: *80 open() "./html/files/htags/luajit-2.1/R/1388.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.1/R/1388.html HTTP/1.1", host: "luapower.com"
+2019/12/26 14:04:17 [error] 5104#0: *81 open() "./html/files/htags/luajit-2.1/R/1736.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.1/R/1736.html HTTP/1.1", host: "luapower.com"
+2019/12/26 14:04:17 [error] 5104#0: *82 open() "./html/files/htags/luajit-2.1/R/1747.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.1/R/1747.html HTTP/1.1", host: "luapower.com"
+2019/12/26 14:04:18 [error] 5104#0: *83 open() "./html/files/htags/luajit-2.1/R/1915.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.1/R/1915.html HTTP/1.1", host: "luapower.com"
+2019/12/26 14:04:18 [error] 5104#0: *84 open() "./html/files/htags/luajit-2.1/R/193.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.1/R/193.html HTTP/1.1", host: "luapower.com"
+2019/12/26 14:04:19 [error] 5104#0: *85 open() "./html/files/htags/luajit-2.1/R/1943.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.1/R/1943.html HTTP/1.1", host: "luapower.com"
+2019/12/26 14:04:19 [error] 5104#0: *86 open() "./html/files/htags/luajit-2.1/R/2149.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.1/R/2149.html HTTP/1.1", host: "luapower.com"
+2019/12/26 14:04:20 [error] 5104#0: *87 open() "./html/files/htags/luajit-2.1/R/2347.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.1/R/2347.html HTTP/1.1", host: "luapower.com"
+2019/12/26 14:04:20 [error] 5104#0: *88 open() "./html/files/htags/luajit-2.1/R/2350.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.1/R/2350.html HTTP/1.1", host: "luapower.com"
+2019/12/26 14:04:21 [error] 5104#0: *89 open() "./html/files/htags/luajit-2.1/R/2353.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.1/R/2353.html HTTP/1.1", host: "luapower.com"
+2019/12/26 14:04:21 [error] 5104#0: *90 open() "./html/files/htags/luajit-2.1/R/2373.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.1/R/2373.html HTTP/1.1", host: "luapower.com"
+2019/12/26 14:04:22 [error] 5104#0: *91 open() "./html/files/htags/luajit-2.1/R/25.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.1/R/25.html HTTP/1.1", host: "luapower.com"
+2019/12/26 14:04:22 [error] 5104#0: *92 open() "./html/files/htags/luajit-2.1/R/2832.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.1/R/2832.html HTTP/1.1", host: "luapower.com"
+2019/12/26 14:04:23 [error] 5104#0: *93 open() "./html/files/htags/luajit-2.1/R/2457.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.1/R/2457.html HTTP/1.1", host: "luapower.com"
+2019/12/26 14:04:23 [error] 5104#0: *94 open() "./html/files/htags/luajit-2.1/R/2932.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.1/R/2932.html HTTP/1.1", host: "luapower.com"
+2019/12/26 14:04:24 [error] 5104#0: *95 open() "./html/files/htags/luajit-2.1/R/3151.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.1/R/3151.html HTTP/1.1", host: "luapower.com"
+2019/12/26 14:04:24 [error] 5104#0: *96 open() "./html/files/htags/luajit-2.1/R/3780.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.1/R/3780.html HTTP/1.1", host: "luapower.com"
+2019/12/26 14:04:25 [error] 5104#0: *97 open() "./html/files/htags/luajit-2.1/R/3809.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.1/R/3809.html HTTP/1.1", host: "luapower.com"
+2019/12/26 14:04:26 [error] 5104#0: *98 open() "./html/files/htags/luajit-2.1/R/3920.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.1/R/3920.html HTTP/1.1", host: "luapower.com"
+2019/12/26 14:04:26 [error] 5104#0: *99 open() "./html/files/htags/luajit-2.1/R/3945.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.1/R/3945.html HTTP/1.1", host: "luapower.com"
+2019/12/26 14:04:27 [error] 5104#0: *100 open() "./html/files/htags/luajit-2.1/R/4159.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.1/R/4159.html HTTP/1.1", host: "luapower.com"
+2019/12/26 14:04:27 [error] 5104#0: *101 open() "./html/files/htags/luajit-2.1/R/4220.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.1/R/4220.html HTTP/1.1", host: "luapower.com"
+2019/12/26 14:04:28 [error] 5104#0: *102 open() "./html/files/htags/luajit-2.1/R/4841.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.1/R/4841.html HTTP/1.1", host: "luapower.com"
+2019/12/26 14:04:29 [error] 5104#0: *103 open() "./html/files/htags/luajit-2.1/R/4361.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.1/R/4361.html HTTP/1.1", host: "luapower.com"
+2019/12/26 14:04:29 [error] 5104#0: *104 open() "./html/files/htags/luajit-2.1/R/4503.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.1/R/4503.html HTTP/1.1", host: "luapower.com"
+2019/12/26 14:04:29 [error] 5104#0: *105 open() "./html/files/htags/luajit-2.1/R/4915.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.1/R/4915.html HTTP/1.1", host: "luapower.com"
+2019/12/26 14:04:29 [error] 5104#0: *106 open() "./html/files/htags/luajit-2.1/R/4924.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.1/R/4924.html HTTP/1.1", host: "luapower.com"
+2019/12/26 14:04:30 [error] 5104#0: *107 open() "./html/files/htags/luajit-2.1/R/4953.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.1/R/4953.html HTTP/1.1", host: "luapower.com"
+2019/12/26 14:04:30 [error] 5104#0: *108 open() "./html/files/htags/luajit-2.1/R/5163.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.1/R/5163.html HTTP/1.1", host: "luapower.com"
+2019/12/26 14:04:31 [error] 5104#0: *109 open() "./html/files/htags/luajit-2.1/R/5356.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.1/R/5356.html HTTP/1.1", host: "luapower.com"
+2019/12/26 14:04:31 [error] 5104#0: *110 open() "./html/files/htags/luajit-2.1/R/694.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.1/R/694.html HTTP/1.1", host: "luapower.com"
+2019/12/26 14:04:32 [error] 5104#0: *111 open() "./html/files/htags/luajit-2.1/R/985.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.1/R/985.html HTTP/1.1", host: "luapower.com"
+2019/12/26 14:04:32 [error] 5104#0: *112 open() "./html/files/htags/luajit/D/627.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit/D/627.html HTTP/1.1", host: "luapower.com"
+2019/12/26 14:04:33 [error] 5104#0: *113 open() "./html/files/htags/luajit/R/1015.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit/R/1015.html HTTP/1.1", host: "luapower.com"
+2019/12/26 14:04:33 [error] 5104#0: *114 open() "./html/files/htags/luajit/R/1082.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit/R/1082.html HTTP/1.1", host: "luapower.com"
+2019/12/26 14:04:33 [error] 5104#0: *115 open() "./html/files/htags/luajit/R/1344.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit/R/1344.html HTTP/1.1", host: "luapower.com"
+2019/12/26 14:04:34 [error] 5104#0: *116 open() "./html/files/htags/luajit/R/173.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit/R/173.html HTTP/1.1", host: "luapower.com"
+2019/12/26 14:04:35 [error] 5104#0: *117 open() "./html/files/htags/luajit/R/1790.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit/R/1790.html HTTP/1.1", host: "luapower.com"
+2019/12/26 14:04:35 [error] 5104#0: *118 open() "./html/files/htags/luajit/R/1872.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit/R/1872.html HTTP/1.1", host: "luapower.com"
+2019/12/26 14:04:35 [error] 5104#0: *119 open() "./html/files/htags/luajit/R/199.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit/R/199.html HTTP/1.1", host: "luapower.com"
+2019/12/26 14:04:36 [error] 5104#0: *120 open() "./html/files/htags/luajit/R/2248.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit/R/2248.html HTTP/1.1", host: "luapower.com"
+2019/12/26 14:04:36 [error] 5104#0: *121 open() "./html/files/htags/luajit/R/237.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit/R/237.html HTTP/1.1", host: "luapower.com"
+2019/12/26 14:04:37 [error] 5104#0: *122 open() "./html/files/htags/luajit/R/2802.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit/R/2802.html HTTP/1.1", host: "luapower.com"
+2019/12/26 14:04:37 [error] 5104#0: *123 open() "./html/files/htags/luajit/R/2899.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit/R/2899.html HTTP/1.1", host: "luapower.com"
+2019/12/26 14:04:38 [error] 5104#0: *124 open() "./html/files/htags/luajit/R/3263.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit/R/3263.html HTTP/1.1", host: "luapower.com"
+2019/12/26 14:04:39 [error] 5104#0: *125 open() "./html/files/htags/luajit/R/3432.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit/R/3432.html HTTP/1.1", host: "luapower.com"
+2019/12/26 14:04:39 [error] 5104#0: *126 open() "./html/files/htags/luajit/R/36.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit/R/36.html HTTP/1.1", host: "luapower.com"
+2019/12/26 14:04:39 [error] 5104#0: *127 open() "./html/files/htags/luajit/R/2999.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit/R/2999.html HTTP/1.1", host: "luapower.com"
+2019/12/26 14:04:39 [error] 5104#0: *128 open() "./html/files/htags/luajit/R/3632.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit/R/3632.html HTTP/1.1", host: "luapower.com"
+2019/12/26 14:04:40 [error] 5104#0: *129 open() "./html/files/htags/luajit/R/3666.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit/R/3666.html HTTP/1.1", host: "luapower.com"
+2019/12/26 14:04:40 [error] 5104#0: *130 open() "./html/files/htags/luajit/R/3691.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit/R/3691.html HTTP/1.1", host: "luapower.com"
+2019/12/26 14:04:41 [error] 5104#0: *131 open() "./html/files/htags/luajit/R/3838.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit/R/3838.html HTTP/1.1", host: "luapower.com"
+2019/12/26 14:04:41 [error] 5104#0: *132 open() "./html/files/htags/luajit/R/4026.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit/R/4026.html HTTP/1.1", host: "luapower.com"
+2019/12/26 14:04:42 [error] 5104#0: *133 open() "./html/files/htags/luajit/R/3701.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit/R/3701.html HTTP/1.1", host: "luapower.com"
+2019/12/26 14:04:42 [error] 5104#0: *134 open() "./html/files/htags/luajit/R/4173.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit/R/4173.html HTTP/1.1", host: "luapower.com"
+2019/12/26 14:04:43 [error] 5104#0: *135 open() "./html/files/htags/luajit/R/4549.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit/R/4549.html HTTP/1.1", host: "luapower.com"
+2019/12/26 14:04:43 [error] 5104#0: *136 open() "./html/files/htags/luajit/R/475.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit/R/475.html HTTP/1.1", host: "luapower.com"
+2019/12/26 14:04:44 [error] 5104#0: *137 open() "./html/files/htags/luajit/R/4782.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit/R/4782.html HTTP/1.1", host: "luapower.com"
+2019/12/26 14:04:44 [error] 5104#0: *138 open() "./html/files/htags/luajit/R/5007.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit/R/5007.html HTTP/1.1", host: "luapower.com"
+2019/12/26 14:04:44 [error] 5104#0: *139 open() "./html/files/htags/luajit/R/4779.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit/R/4779.html HTTP/1.1", host: "luapower.com"
+2019/12/26 14:04:46 [error] 5104#0: *140 open() "./html/files/htags/luajit/R/5182.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit/R/5182.html HTTP/1.1", host: "luapower.com"
+2019/12/26 14:04:47 [error] 5104#0: *141 open() "./html/files/htags/luajit/R/527.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit/R/527.html HTTP/1.1", host: "luapower.com"
+2019/12/26 14:04:47 [error] 5104#0: *142 open() "./html/files/htags/luajit/R/600.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit/R/600.html HTTP/1.1", host: "luapower.com"
+2019/12/26 14:04:48 [error] 5104#0: *143 open() "./html/files/htags/luajit/R/5311.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit/R/5311.html HTTP/1.1", host: "luapower.com"
+2019/12/26 14:04:48 [error] 5104#0: *144 open() "./html/files/htags/luajit/R/664.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit/R/664.html HTTP/1.1", host: "luapower.com"
+2019/12/26 14:04:49 [error] 5104#0: *145 open() "./html/files/htags/luajit/R/729.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit/R/729.html HTTP/1.1", host: "luapower.com"
+2019/12/26 14:04:49 [error] 5104#0: *146 open() "./html/files/htags/luajit/R/858.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit/R/858.html HTTP/1.1", host: "luapower.com"
+2019/12/26 14:04:50 [error] 5104#0: *147 open() "./html/files/htags/luajit/R/859.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit/R/859.html HTTP/1.1", host: "luapower.com"
+2019/12/26 14:04:51 [error] 5104#0: *148 open() "./html/files/luapower/csrc/cjson/fpconv.c" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/luapower/csrc/cjson/fpconv.c HTTP/1.1", host: "luapower.com"
+2019/12/26 14:04:52 [error] 5104#0: *149 open() "./html/files/luapower/csrc/xxhash/build-osx64.sh" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/luapower/csrc/xxhash/build-osx64.sh HTTP/1.1", host: "luapower.com"
+[WARNING] Duplicate link reference '[unit]' at line 128 column 1
+2019/12/26 14:05:45 [error] 5104#0: *158 [lua] webb_nginx.lua:17: try_call(): 404 Not found, client: 127.0.0.1, server: , request: "GET /robots.txt HTTP/1.1", host: "luapower.com"
+2019/12/26 14:06:23 [error] 5104#0: *177 [lua] webb_nginx.lua:17: try_call(): 404 Not found, client: 127.0.0.1, server: , request: "GET /static/.gitignore HTTP/1.1", host: "luapower.com"
+2019/12/26 14:06:50 [error] 5104#0: *178 open() "./html/files/luapower/csrc/libsodium/crypto_sign/ed25519/ref10/fe_isnonzero.c" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/luapower/csrc/libsodium/crypto_sign/ed25519/ref10/fe_isnonzero.c HTTP/1.1", host: "luapower.com"
+2019/12/26 14:07:11 [error] 5104#0: *179 [lua] webb_nginx.lua:17: try_call(): 404 Not found, client: 127.0.0.1, server: , request: "GET /files/luapower/glu_lua.lua HTTP/1.1", host: "luapower.com"
+2019/12/26 14:07:48 [error] 5104#0: *180 [lua] webb_nginx.lua:17: try_call(): 404 Not found, client: 127.0.0.1, server: , request: "GET /robots.txt HTTP/1.1", host: "www.luapower.com"
+2019/12/26 14:07:49 [error] 5104#0: *181 open() "./html/files/luapower/csrc/libsoundio/WHAT" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/luapower/csrc/libsoundio/WHAT HTTP/1.1", host: "www.luapower.com"
+2019/12/26 14:09:14 [error] 5104#0: *183 open() "./html/files/htags/luajit-2.1/S/35.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.1/S/35.html HTTP/1.1", host: "luapower.com"
+2019/12/26 14:11:24 [error] 5104#0: *207 open() "./html/files/htags/luajit-2.1/D/5062.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.1/D/5062.html HTTP/1.1", host: "www.luapower.com"
+2019/12/26 14:12:04 [error] 5104#0: *208 [lua] webb_nginx.lua:17: try_call(): 404 Not found, client: 127.0.0.1, server: , request: "GET /files/luapower/cplayer/analog_clock.lua HTTP/1.1", host: "www.luapower.com"
+2019/12/26 14:12:06 [error] 5104#0: *209 [lua] webb_nginx.lua:17: try_call(): 404 Not found, client: 127.0.0.1, server: , request: "GET /files/luapower/cplayer/label.lua HTTP/1.1", host: "www.luapower.com"
+2019/12/26 14:12:06 [error] 5104#0: *210 [lua] webb_nginx.lua:17: try_call(): 404 Not found, client: 127.0.0.1, server: , request: "GET /files/luapower/winapi/sstorage.lua HTTP/1.1", host: "www.luapower.com"
+2019/12/26 14:12:08 [error] 5104#0: *211 [lua] webb_nginx.lua:17: try_call(): 404 Not found, client: 127.0.0.1, server: , request: "GET /files/luapower/cplayer/tablist_demo.lua HTTP/1.1", host: "www.luapower.com"
+2019/12/26 14:12:50 [error] 5104#0: *214 [lua] webb_nginx.lua:17: try_call(): 404 Not found, client: 127.0.0.1, server: , request: "GET /robots.txt HTTP/1.1", host: "luapower.com"
+2019/12/26 14:12:51 [error] 5104#0: *215 open() "./html/files/htags/luajit-2.1/J/101.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.1/J/101.html HTTP/1.1", host: "luapower.com"
+2019/12/26 14:12:51 [error] 5104#0: *216 open() "./html/files/htags/luajit-2.1/R/401.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.1/R/401.html HTTP/1.1", host: "www.luapower.com"
+2019/12/26 14:13:18 [error] 5104#0: *224 open() "./html/files/htags/luajit/S/35.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit/S/35.html HTTP/1.1", host: "luapower.com"
+2019/12/26 14:15:46 [error] 5104#0: *228 [lua] webb_nginx.lua:17: try_call(): 404 Not found, client: 127.0.0.1, server: , request: "GET /robots.txt HTTP/1.1", host: "luapower.com"
+2019/12/26 14:17:25 [error] 5104#0: *236 open() "./html/files/luapower/csrc/openssl/src/crypto/evp/evp_cnf.c" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/luapower/csrc/openssl/src/crypto/evp/evp_cnf.c HTTP/1.1", host: "www.luapower.com"
+2019/12/26 14:18:00 [error] 5104#0: *237 open() "./html/files/htags/luajit/D/1990.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit/D/1990.html HTTP/1.1", host: "luapower.com"
+2019/12/26 14:18:09 [error] 5104#0: *238 [lua] webb_nginx.lua:17: try_call(): 404 Not found, client: 127.0.0.1, server: , request: "GET /files/luapower/winapi/uuid.lua HTTP/1.1", host: "www.luapower.com"
+2019/12/26 14:18:15 [error] 5104#0: *239 [lua] webb_nginx.lua:17: try_call(): 404 Not found, client: 127.0.0.1, server: , request: "GET /files/luapower/winapi/tabcontrolclass.lua HTTP/1.1", host: "www.luapower.com"
+2019/12/26 14:18:19 [error] 5104#0: *240 "./html/files/luapower/csrc/harfbuzz/index.html" is not found (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/luapower/csrc/harfbuzz/ HTTP/1.1", host: "luapower.com"
+2019/12/26 14:20:37 [error] 5104#0: *242 open() "./html/files/htags/luajit-2.1/R/3587.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.1/R/3587.html HTTP/1.1", host: "www.luapower.com"
+2019/12/26 14:21:50 [error] 5104#0: *243 open() "./html/files/htags/luajit/D/624.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit/D/624.html HTTP/1.1", host: "luapower.com"
+2019/12/26 14:23:00 [error] 5104#0: *265 open() "./html/files/htags/luajit-2.1/R/2242.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.1/R/2242.html HTTP/1.1", host: "www.luapower.com"
+2019/12/26 14:23:51 [error] 5104#0: *267 open() "./html/files/htags/luajit-2.0/R/679.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.0/R/679.html HTTP/1.1", host: "luapower.com"
+2019/12/26 14:25:39 [error] 5104#0: *268 open() "./html/files/luapower/csrc/sha2/WHAT" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/luapower/csrc/sha2/WHAT HTTP/1.1", host: "www.luapower.com"
+2019/12/26 14:27:11 [error] 5104#0: *269 [lua] webb_nginx.lua:17: try_call(): 404 Not found, client: 127.0.0.1, server: , request: "GET /robots.txt HTTP/1.1", host: "www.luapower.com"
+2019/12/26 14:27:11 [error] 5104#0: *270 open() "./html/files/luapower/csrc/openssl/src/demos/certs/ocspquery.sh" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/luapower/csrc/openssl/src/demos/certs/ocspquery.sh HTTP/1.1", host: "www.luapower.com"
+2019/12/26 14:27:26 [error] 5104#0: *273 [lua] webb_nginx.lua:17: try_call(): 404 Not found, client: 127.0.0.1, server: , request: "GET /index.php HTTP/1.1", host: "luapower.com"
+2019/12/26 14:28:47 [error] 5104#0: *276 open() "./html/files/luapower/csrc/libjpeg/src/simd/x86_64/jidctint-sse2.asm" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/luapower/csrc/libjpeg/src/simd/x86_64/jidctint-sse2.asm HTTP/1.1", host: "www.luapower.com"
+2019/12/26 14:29:23 [error] 5104#0: *277 [lua] webb_nginx.lua:17: try_call(): ./luapower.lua:2185: unknown package "codedit"
+stack traceback:
+	[C]: in function 'error'
+	./glue.lua:786: in function 'assert'
+	./luapower.lua:2185: in function 'add_pkg'
+	./luapower.lua:2202: in function 'dep_maps'
+	./luapower.lua:2209: in function 'fn'
+	./glue.lua:477: in function 'build_order'
+	./luapower_website.lua:930: in function 'package_info'
+	./luapower_website.lua:1098: in function 'action_'
+	./luapower_website.lua:1726: in function 'main'
+	./webb_nginx.lua:43: in function <./webb_nginx.lua:37>
+	[C]: in function 'xpcall'
+	./webb_nginx.lua:34: in function 'try_call'
+	./webb_nginx.lua:37: in main chunk, client: 127.0.0.1, server: , request: "GET /codedit/download HTTP/1.1", host: "luapower.com"
+2019/12/26 14:29:55 [error] 5104#0: *278 open() "./html/files/htags/luajit-2.1/R/875.html" failed (2: No such file or directory), client: 127.0.0.1, server: , request: "GET /files/htags/luajit-2.1/R/875.html HTTP/1.1", host: "www.luapower.com"

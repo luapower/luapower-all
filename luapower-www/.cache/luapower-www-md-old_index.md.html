@@ -1,0 +1,55 @@
+<p><img src="luapower.png" /></p>
+<h2 id="news">News</h2>
+<div id="news_table">
+loading…
+</div>
+<h2 id="modules">Modules</h2>
+<div id="package_table">
+loading…
+</div>
+<div style="width: 100%; text-align: right; font-size: 80%">
+manifest file: <a href="packages.lua">Lua</a> | <a href="packages.json">JSON</a>
+</div>
+<h2 id="lua-power-is">LUA POWER IS</h2>
+<ul>
+<li>a binary + source distribution of LuaJIT and Lua modules</li>
+<li>a platform for publishing Lua modules</li>
+</ul>
+<h2 id="features">FEATURES</h2>
+<ul>
+<li><strong>LOW-TECH</strong>: based on http, zip, and git</li>
+<li><strong>PORTABLE</strong>: no install, no deploy, just run</li>
+<li><strong>MODULAR</strong>: each module is a separate git project</li>
+<li><strong>ON GITHUB</strong>: fork/pull-request-based collaboration</li>
+<li><strong>NO DIRECTORIES</strong>: all modules in a single directory</li>
+<li><strong>BINARIES</strong> for all platforms: get code running in minutes</li>
+<li><strong>SOURCES &amp; BUILD SCRIPTS</strong>: upgrade it yourself, don’t wait for others</li>
+<li><strong>PACKAGE DATABASE</strong>: self-maintaining, auto-generated</li>
+<li><strong>DOCUMENTED</strong>: online browsing or offline grepping; powered by pandoc</li>
+<li><strong>FREE</strong>: no-strings attached</li>
+</ul>
+<blockquote>
+<p>Read [more][problem-solution] about the motivations behind these choices.</p>
+</blockquote>
+<h2 id="get-started">Get Started</h2>
+<ol type="1">
+<li>download <a href="/luajit">luajit</a></li>
+<li>choose/download wanted packages along with their listed dependencies</li>
+<li>unzip all <em>over the same directory</em></li>
+<li>(optional) <a href="/building">rebuild</a> binaries</li>
+<li>run a demo: <code>luajit ..._demo.lua</code></li>
+</ol>
+<p>This will give you an instantly <strong>portable luajit distro</strong> that will work reagardless of where you run it from. The luajit binary is in <code>bin/&lt;your-platform&gt;/</code> (cross-platform shell wrappers are in the root dir).</p>
+<h2 id="get-started-git-way">Get Started / Git Way</h2>
+<p>Alternatively you can go the git way with <a href="/luapower-git">luapower-git</a> which allows you to:</p>
+<ul>
+<li>clone/build everything in one shot</li>
+<li>keep your modules up-to-date by pulling</li>
+<li><a href="/get-involved">create your own modules</a> and publish them</li>
+</ul>
+<blockquote>
+<p>NOTE: The listed dependencies for a package are for the modules of that package only. Associated demos and test units can sometimes have additional dependencies which are not listed, so I better tell you now: some test units need <a href="/unit">unit</a>, and most demos need <a href="/cplayer">cplayer</a> and <a href="/glue">glue</a>.</p>
+</blockquote>
+<blockquote>
+<p>NOTE: Packages marked <code>dev</code> are either in active development or are planned for more development in the future. In any case, they are not yet ready for public consumption. Poke around of course, just don’t expect stability.</p>
+</blockquote>

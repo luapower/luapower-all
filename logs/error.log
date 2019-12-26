@@ -1,0 +1,19 @@
+2019/12/26 13:31:47 [error] 1931#0: lua_load_resty_core failed to load the resty.core module from https://github.com/openresty/lua-resty-core; ensure you are using an OpenResty release from https://openresty.org/en/download.html (rc: 2, reason: module 'resty.core' not found:
+	no field package.preload['resty.core']
+	no file './resty/core.lua'
+	no file '/home/cosmin/luapower/bin/linux64/lua/resty/core.lua'
+	no file '/home/cosmin/luapower/bin/linux64/lua/resty/core/init.lua'
+	no file '/home/cosmin/luapower/bin/linux64/../../resty/core.lua'
+	no file '/home/cosmin/luapower/bin/linux64/../../resty/core/init.lua'
+	no file './resty/core.so'
+	no file '/home/cosmin/luapower/bin/linux64/clib/resty/core.so'
+	no file '/home/cosmin/luapower/bin/linux64/loadall.so'
+	no file './resty.so'
+	no file '/home/cosmin/luapower/bin/linux64/clib/resty.so'
+	no file '/home/cosmin/luapower/bin/linux64/loadall.so')
+2019/12/26 13:32:51 [notice] 2872#0: signal process started
+2019/12/26 13:33:28 [notice] 2915#0: signal process started
+2019/12/26 13:49:22 [notice] 4496#0: signal process started
+2019/12/26 13:50:01 [notice] 4542#0: signal process started
+2019/12/26 13:50:01 [error] 4542#0: open() "./logs/nginx.pid" failed (2: No such file or directory)
+2019/12/26 13:57:37 [notice] 5094#0: signal process started

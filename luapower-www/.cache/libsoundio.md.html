@@ -1,0 +1,536 @@
+<h2 id="local-soundio-requirelibsoundio"><code>local soundio = require'libsoundio'</code></h2>
+<p>A binding of <a href="http://libsound.io/">libsoundio</a>, a library for cross-platform audio input and output.</p>
+<h2 id="status">Status</h2>
+<p><warn>Needs updating and re-testing. Not currently maintained.</warn></p>
+<h2 id="backends">Backends</h2>
+<table>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;"><strong>name</strong></td>
+<td style="text-align: left;"><strong>platforms</strong></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">alsa</td>
+<td style="text-align: left;">Linux/ALSA 1.0.27+ (Ubuntu 14, Debian 8)</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">coreaudio</td>
+<td style="text-align: left;">OSX 10.9+</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">wasapi</td>
+<td style="text-align: left;">Windows 7+</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">dummy</td>
+<td style="text-align: left;">all</td>
+</tr>
+</tbody>
+</table>
+<h2 id="api">API</h2>
+<table>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;"><code>soundio.new() -&gt; sio</code></td>
+<td style="text-align: left;">create a libsoundio state</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><strong>backends</strong></td>
+<td style="text-align: left;"></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>sio:connect([backend])</code></td>
+<td style="text-align: left;">connect to a/the default backend</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>sio:disconnect()</code></td>
+<td style="text-align: left;">disconnect the backend</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>sio:backends() -&gt; iter() -&gt; name</code></td>
+<td style="text-align: left;">iterate backends</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>sio:backends'#' -&gt; n</code></td>
+<td style="text-align: left;">number of available backends</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>sio:backends(name) -&gt; t|f</code></td>
+<td style="text-align: left;">check if a backend is available</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><strong>devices</strong></td>
+<td style="text-align: left;"></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>sio:devices([nil,raw])-&gt;iter()-&gt;dev</code></td>
+<td style="text-align: left;">iterate devices</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>sio:devices('#'|'#i'|'#o'[, raw])-&gt;n</code></td>
+<td style="text-align: left;">number of all|input|output devices</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>sio:devices('*i'|'*o'[,raw])-&gt;dev|nil</code></td>
+<td style="text-align: left;">the default input or output device</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>dev.id -&gt; s</code></td>
+<td style="text-align: left;">device unique id</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>dev.name -&gt; s</code></td>
+<td style="text-align: left;">device name</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>dev.aim -&gt; 'i'|'o'</code></td>
+<td style="text-align: left;">device aim: input or output</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>dev.soundio -&gt; sio</code></td>
+<td style="text-align: left;">weak back-reference to the libsoundio state</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>dev.is_raw -&gt; t|f</code></td>
+<td style="text-align: left;">raw device</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>dev.probe_error -&gt; error_code|nil</code></td>
+<td style="text-align: left;">device probe error code (C.SoundError enum)</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>dev:print([print])</code></td>
+<td style="text-align: left;">print device info</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><strong>sample rates</strong></td>
+<td style="text-align: left;"></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>dev.sample_rates -&gt; ranges[]</code></td>
+<td style="text-align: left;">0-based array of C.SoundIoSampleRateRange</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>dev.sample_rate_count -&gt; n</code></td>
+<td style="text-align: left;">number of sample rate ranges</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>dev.sample_rate_current -&gt; i</code></td>
+<td style="text-align: left;">index of current sample rate range</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>dev:supports_sample_rate(rate) -&gt; t|f</code></td>
+<td style="text-align: left;">check if a sample rate is supported</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>dev:nearest_sample_rate(rate) -&gt; rate</code></td>
+<td style="text-align: left;">nearest supported sample rate</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><strong>sample formats</strong></td>
+<td style="text-align: left;"></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>dev.formats -&gt; format[]</code></td>
+<td style="text-align: left;">0-based array of C.SoundIoFormat</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>dev.format_count -&gt; n</code></td>
+<td style="text-align: left;">number of formats</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>dev.current_format -&gt; format</code></td>
+<td style="text-align: left;">current format as C.SoundIoFormat</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>dev:supports_format(format) -&gt; t|f</code></td>
+<td style="text-align: left;">check if device supports a format</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>soundio.format_string(format) -&gt; s</code></td>
+<td style="text-align: left;">string representation of a format</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>soundio.bytes_per_sample(format) -&gt; n</code></td>
+<td style="text-align: left;">format bytes per sample</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>soundio.bytes_per_frame(format, cc) -&gt; n</code></td>
+<td style="text-align: left;">bytes per frame for a format and channel count</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>soundio.bytes_per_second(format, cc, sr) -&gt; n</code></td>
+<td style="text-align: left;">bytes per second for a format, channel count and sample rate</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>soundio.sample_range(format) -&gt; min, max</code></td>
+<td style="text-align: left;">min and max sample values</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><strong>channels</strong></td>
+<td style="text-align: left;"></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>soundio.channel_id(name) -&gt; channel</code></td>
+<td style="text-align: left;">“front-left” -&gt; C.SoundIoChannelIdFrontLeft</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>soundio.channel_name(channel) -&gt; name</code></td>
+<td style="text-align: left;">C.SoundIoChannelIdFrontLeft -&gt; “Front Left”</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><strong>channel layouts</strong></td>
+<td style="text-align: left;"></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>dev.layouts -&gt; layout[]</code></td>
+<td style="text-align: left;">0-based array of C.SoundIoChannelLayout</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>dev.layout_count -&gt; n</code></td>
+<td style="text-align: left;">number of channel layouts</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>dev.current_layout -&gt; layout</code></td>
+<td style="text-align: left;">current layout as C.SoundIoChannelLayout</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>layout:find_channel(channel) -&gt; i|nil</code></td>
+<td style="text-align: left;">index of channel (by name or id) in layout</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>layout:detect_builtin() -&gt; t|f</code></td>
+<td style="text-align: left;">set layout.name if it matches a builtin one</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>dev:sort_layouts()</code></td>
+<td style="text-align: left;">sort layouts by channel count, descending</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>dev:supports_layout(layout) -&gt; t|f</code></td>
+<td style="text-align: left;">check if a channel layout is supported</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>soundio.builtin_layouts() -&gt; iter() -&gt; layout</code></td>
+<td style="text-align: left;">iterate built-in channel layouts</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>soundio.builtin_layouts'#' -&gt; n</code></td>
+<td style="text-align: left;">number of built-in channel layouts</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>soundio.builtin_layouts('*', cc) -&gt; layout</code></td>
+<td style="text-align: left;">default layout for a certain channel count</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><strong>streams</strong></td>
+<td style="text-align: left;"></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>dev:stream() -&gt; sin|sout</code></td>
+<td style="text-align: left;">create an input|output stream</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>sin|sout:open()</code></td>
+<td style="text-align: left;">open the stream</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>sin|sout:start()</code></td>
+<td style="text-align: left;">start the stream</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>sin|sout:pause(t|f|)</code></td>
+<td style="text-align: left;">pause/unpause the stream</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>sin|sout.device -&gt; dev</code></td>
+<td style="text-align: left;">weak back-reference to the device</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>sin|sout.format &lt;- format</code></td>
+<td style="text-align: left;">sample format as C.SoundIoFormat (set before opening)</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>sin|sout.sample_rate &lt;- n</code></td>
+<td style="text-align: left;">sample rate in frames per second (set before opening)</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>sin|sout.layout -&gt; layout</code></td>
+<td style="text-align: left;">channel layout as C.SoundIoChannelLayout</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>sin|sout.software_latency -&gt; seconds</code></td>
+<td style="text-align: left;">software latency in seconds</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>sin|sout.name</code></td>
+<td style="text-align: left;">stream/client/session name</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>sin|sout.non_terminal_hint -&gt; t|f</code></td>
+<td style="text-align: left;">JACK hint for nonterminal output streams</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>sin|sout.bytes_per_frame -&gt; n</code></td>
+<td style="text-align: left;">bytes per frame</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>sin|sout.bytes_per_sample -&gt; n</code></td>
+<td style="text-align: left;">bytes per sample</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>sio|sout.bytes_per_second -&gt; n</code></td>
+<td style="text-align: left;">bytes per second</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>sin|sout.layout_error -&gt; errcode|nil</code></td>
+<td style="text-align: left;">error setting the channel layout</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>sin.read_callback &lt;- f(sin, minfc, maxfc)</code></td>
+<td style="text-align: left;">read callback (1)</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>sin.overflow_callback &lt;- f(sin)</code></td>
+<td style="text-align: left;">buffer full callback (1)</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>sout.write_callback &lt;- f(sout, minfc, maxfc)</code></td>
+<td style="text-align: left;">write callback (1)</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>sout.underflow_callback &lt;- f(sout)</code></td>
+<td style="text-align: left;">buffer empty callback (1)</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>sin|sout.error_callback &lt;- f(sin, err)</code></td>
+<td style="text-align: left;">error callback (1)</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>sin|sout:latency() -&gt; seconds</code></td>
+<td style="text-align: left;">get the actual latency</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>sout:begin_write(n) -&gt; areas, n</code></td>
+<td style="text-align: left;">start writing <code>n</code> frames to the stream</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>sout:end_write() -&gt; true|nil</code></td>
+<td style="text-align: left;">say that frames were written (returns true for underflow)</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>sout:clear_buffer()</code></td>
+<td style="text-align: left;">clear the buffer</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>sin:begin_read(n) -&gt; areas, n</code></td>
+<td style="text-align: left;">start reading <code>n</code> frames from the stream</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>sin:end_read()</code></td>
+<td style="text-align: left;">say that the frames were read</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><strong>stream buffers</strong></td>
+<td style="text-align: left;"></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>sin|sout:buffer() -&gt; buf</code></td>
+<td style="text-align: left;">create &amp; setup a stream buffer</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>buf:capacity() -&gt; frames</code></td>
+<td style="text-align: left;">buffer’s capacity</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>buf:fill_count() -&gt; frames</code></td>
+<td style="text-align: left;">how many occupied frames</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>buf:free_count() -&gt; frames</code></td>
+<td style="text-align: left;">how many free frames</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>buf:write_ptr() -&gt; fptr</code></td>
+<td style="text-align: left;">the write pointer</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>buf:write_buf() -&gt; fptr, frames</code></td>
+<td style="text-align: left;">the write pointer and free frame count</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>buf:advance_write_ptr(frames)</code></td>
+<td style="text-align: left;">advance the write pointer</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>buf:read_ptr() -&gt; fptr</code></td>
+<td style="text-align: left;">the read pointer</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>buf:read_buf() -&gt; fptr, frames</code></td>
+<td style="text-align: left;">the read pointer and filled frame count</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>buf:advance_read_ptr(frames)</code></td>
+<td style="text-align: left;">advance the read pointer</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>fptr[frame_index][channel_index] &lt;-&gt; sample</code></td>
+<td style="text-align: left;">read/write samples from/into the buffer</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><strong>ring buffers</strong></td>
+<td style="text-align: left;"></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>rb:capacity() -&gt; bytes</code></td>
+<td style="text-align: left;">buffer’s capacity</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>rb:fill_count() -&gt; bytes</code></td>
+<td style="text-align: left;">how many occupied bytes</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>rb:free_count() -&gt; bytes</code></td>
+<td style="text-align: left;">how many free bytes</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>rb:write_ptr() -&gt; ptr</code></td>
+<td style="text-align: left;">the write pointer as <code>char*</code></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>rb:write_buf() -&gt; ptr, bytes</code></td>
+<td style="text-align: left;">the write pointer and free bytes count</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>rb:advance_write_ptr(bytes)</code></td>
+<td style="text-align: left;">advance the write pointer</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>rb:read_ptr() -&gt; ptr</code></td>
+<td style="text-align: left;">the read pointer as <code>char*</code></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>rb:read_buf() -&gt; ptr, bytes</code></td>
+<td style="text-align: left;">the read pointer and filled bytes count</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>rb:advance_read_ptr(bytes)</code></td>
+<td style="text-align: left;">advance the read pointer</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>rb:clear()</code></td>
+<td style="text-align: left;">clear the buffer</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><strong>latencies</strong></td>
+<td style="text-align: left;"></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>dev.software_latency_min -&gt; s</code></td>
+<td style="text-align: left;">min. software latency</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>dev.software_latency_max -&gt; s</code></td>
+<td style="text-align: left;">max. software latency</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>dev.software_latency_current -&gt; s</code></td>
+<td style="text-align: left;">current software latency (0 if unknown)</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><strong>events</strong></td>
+<td style="text-align: left;"></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>sio:flush_events()</code></td>
+<td style="text-align: left;">update info on all devices</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>sio:wait_events()</code></td>
+<td style="text-align: left;">flush events and wait for more events</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>sio:wakeup()</code></td>
+<td style="text-align: left;">stop waiting for events</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><strong>memory management</strong></td>
+<td style="text-align: left;"></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>sio|sin|sout|rb:free()</code></td>
+<td style="text-align: left;">free the object and detach it from gc</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>dev.ref_count -&gt; n</code></td>
+<td style="text-align: left;">current reference count</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>dev:ref|unref() -&gt; dev</code></td>
+<td style="text-align: left;">increment/decrement device ref count</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><strong>C</strong></td>
+<td style="text-align: left;"></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>soundio.C -&gt; clib</code></td>
+<td style="text-align: left;">the C namespace</td>
+</tr>
+</tbody>
+</table>
+<p><strong>(1)</strong> Stream callbacks are called from other threads, thus cannot be assigned to functions from the caller interpreter state. Instead, separate <a href="/luastate">luastate</a>s must be created for each thread and the callbacks must be assigned to functions from those states.</p>
+<h2 id="example">Example</h2>
+<div class="sourceCode" id="cb1"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb1-1"><a href="#cb1-1"></a><span class="kw">local</span> soundio <span class="op">=</span> <span class="fu">require</span><span class="st">&#39;libsoundio&#39;</span></span>
+<span id="cb1-2"><a href="#cb1-2"></a><span class="kw">local</span> time <span class="op">=</span> <span class="fu">require</span><span class="st">&#39;time&#39;</span></span>
+<span id="cb1-3"><a href="#cb1-3"></a></span>
+<span id="cb1-4"><a href="#cb1-4"></a><span class="kw">local</span> sio <span class="op">=</span> soundio<span class="op">.</span>new<span class="op">()</span></span>
+<span id="cb1-5"><a href="#cb1-5"></a><span class="fu">assert</span><span class="op">(</span>sio<span class="op">:</span>backends<span class="st">&#39;#&#39;</span> <span class="op">&gt;</span> <span class="dv">0</span><span class="op">,</span> <span class="st">&#39;no backends&#39;</span><span class="op">)</span></span>
+<span id="cb1-6"><a href="#cb1-6"></a>sio<span class="op">:</span><span class="fu">connect</span><span class="op">()</span></span>
+<span id="cb1-7"><a href="#cb1-7"></a></span>
+<span id="cb1-8"><a href="#cb1-8"></a><span class="kw">local</span> dev <span class="op">=</span> <span class="fu">assert</span><span class="op">(</span>sio<span class="op">:</span>devices<span class="st">&#39;*o&#39;</span><span class="op">,</span> <span class="st">&#39;no output devices&#39;</span><span class="op">)</span></span>
+<span id="cb1-9"><a href="#cb1-9"></a><span class="fu">assert</span><span class="op">(</span><span class="kw">not</span> dev<span class="op">.</span>probe_error<span class="op">,</span> <span class="st">&#39;device probing error&#39;</span><span class="op">)</span></span>
+<span id="cb1-10"><a href="#cb1-10"></a></span>
+<span id="cb1-11"><a href="#cb1-11"></a><span class="kw">local</span> str <span class="op">=</span> dev<span class="op">:</span>stream<span class="op">()</span></span>
+<span id="cb1-12"><a href="#cb1-12"></a>str<span class="op">:</span>open<span class="op">()</span></span>
+<span id="cb1-13"><a href="#cb1-13"></a><span class="fu">assert</span><span class="op">(</span><span class="kw">not</span> str<span class="op">.</span>layout_error<span class="op">,</span> <span class="st">&#39;unable to set channel layout&#39;</span><span class="op">)</span></span>
+<span id="cb1-14"><a href="#cb1-14"></a></span>
+<span id="cb1-15"><a href="#cb1-15"></a><span class="kw">local</span> buf <span class="op">=</span> str<span class="op">:</span>buffer<span class="op">(</span><span class="dv">0.1</span><span class="op">)</span> <span class="co">--make a 0.1s buffer</span></span>
+<span id="cb1-16"><a href="#cb1-16"></a>str<span class="op">:</span>clear_buffer<span class="op">()</span></span>
+<span id="cb1-17"><a href="#cb1-17"></a></span>
+<span id="cb1-18"><a href="#cb1-18"></a>str<span class="op">:</span>start<span class="op">()</span></span>
+<span id="cb1-19"><a href="#cb1-19"></a></span>
+<span id="cb1-20"><a href="#cb1-20"></a><span class="kw">local</span> pitch <span class="op">=</span> <span class="dv">440</span></span>
+<span id="cb1-21"><a href="#cb1-21"></a><span class="kw">local</span> volume <span class="op">=</span> <span class="dv">0.1</span></span>
+<span id="cb1-22"><a href="#cb1-22"></a><span class="kw">local</span> sin_factor <span class="op">=</span> <span class="dv">2</span> <span class="op">*</span> <span class="va">math.pi</span> <span class="op">/</span> str<span class="op">.</span>sample_rate <span class="op">*</span> pitch</span>
+<span id="cb1-23"><a href="#cb1-23"></a><span class="kw">local</span> frame0 <span class="op">=</span> <span class="dv">0</span></span>
+<span id="cb1-24"><a href="#cb1-24"></a><span class="kw">local</span> <span class="kw">function</span> sample<span class="op">(</span>frame<span class="op">,</span> channel<span class="op">)</span></span>
+<span id="cb1-25"><a href="#cb1-25"></a>   <span class="kw">local</span> octave <span class="op">=</span> channel <span class="op">+</span> <span class="dv">1</span></span>
+<span id="cb1-26"><a href="#cb1-26"></a>   <span class="cf">return</span> volume <span class="op">*</span> <span class="fu">math.sin</span><span class="op">((</span>frame0 <span class="op">+</span> frame<span class="op">)</span> <span class="op">*</span> sin_factor <span class="op">*</span> octave<span class="op">)</span></span>
+<span id="cb1-27"><a href="#cb1-27"></a><span class="cf">end</span></span>
+<span id="cb1-28"><a href="#cb1-28"></a></span>
+<span id="cb1-29"><a href="#cb1-29"></a><span class="kw">local</span> duration<span class="op">,</span> interval <span class="op">=</span> <span class="dv">1</span><span class="op">,</span> <span class="dv">0.05</span></span>
+<span id="cb1-30"><a href="#cb1-30"></a><span class="fu">print</span><span class="op">(</span><span class="fu">string.format</span><span class="op">(</span><span class="st">&#39;Playing L=%dHz R=%dHz for %ds...&#39;</span><span class="op">,</span> pitch<span class="op">,</span> pitch <span class="op">*</span> <span class="dv">2</span><span class="op">,</span> duration<span class="op">))</span></span>
+<span id="cb1-31"><a href="#cb1-31"></a></span>
+<span id="cb1-32"><a href="#cb1-32"></a><span class="cf">for</span> i <span class="op">=</span> <span class="dv">1</span><span class="op">,</span> duration <span class="op">/</span> interval <span class="cf">do</span></span>
+<span id="cb1-33"><a href="#cb1-33"></a>   <span class="kw">local</span> p<span class="op">,</span> n <span class="op">=</span> buf<span class="op">:</span>write_buf<span class="op">()</span></span>
+<span id="cb1-34"><a href="#cb1-34"></a>   <span class="cf">if</span> n <span class="op">&gt;</span> <span class="dv">0</span> <span class="cf">then</span></span>
+<span id="cb1-35"><a href="#cb1-35"></a>      <span class="fu">print</span><span class="op">(</span><span class="fu">string.format</span><span class="op">(</span><span class="st">&#39;latency: %-.2fs, empty: %3d%%&#39;</span><span class="op">,</span></span>
+<span id="cb1-36"><a href="#cb1-36"></a>         str<span class="op">:</span>latency<span class="op">(),</span> n <span class="op">/</span> buf<span class="op">:</span>capacity<span class="op">()</span> <span class="op">*</span> <span class="dv">100</span><span class="op">))</span></span>
+<span id="cb1-37"><a href="#cb1-37"></a>      <span class="cf">for</span> channel <span class="op">=</span> <span class="dv">0</span><span class="op">,</span> str<span class="op">.</span>layout<span class="op">.</span>channel_count<span class="op">-</span><span class="dv">1</span> <span class="cf">do</span></span>
+<span id="cb1-38"><a href="#cb1-38"></a>         <span class="cf">for</span> i <span class="op">=</span> <span class="dv">0</span><span class="op">,</span> n<span class="op">-</span><span class="dv">1</span> <span class="cf">do</span></span>
+<span id="cb1-39"><a href="#cb1-39"></a>            p<span class="op">[</span>i<span class="op">][</span>channel<span class="op">]</span> <span class="op">=</span> sample<span class="op">(</span>i<span class="op">,</span> channel<span class="op">)</span></span>
+<span id="cb1-40"><a href="#cb1-40"></a>         <span class="cf">end</span></span>
+<span id="cb1-41"><a href="#cb1-41"></a>      <span class="cf">end</span></span>
+<span id="cb1-42"><a href="#cb1-42"></a>      buf<span class="op">:</span>advance_write_ptr<span class="op">(</span>n<span class="op">)</span></span>
+<span id="cb1-43"><a href="#cb1-43"></a>      frame0 <span class="op">=</span> frame0 <span class="op">+</span> n</span>
+<span id="cb1-44"><a href="#cb1-44"></a>   <span class="cf">end</span></span>
+<span id="cb1-45"><a href="#cb1-45"></a>   time<span class="op">.</span>sleep<span class="op">(</span>interval<span class="op">)</span></span>
+<span id="cb1-46"><a href="#cb1-46"></a><span class="cf">end</span></span>
+<span id="cb1-47"><a href="#cb1-47"></a></span>
+<span id="cb1-48"><a href="#cb1-48"></a>buf<span class="op">:</span>free<span class="op">()</span></span>
+<span id="cb1-49"><a href="#cb1-49"></a>str<span class="op">:</span>free<span class="op">()</span></span>
+<span id="cb1-50"><a href="#cb1-50"></a>sio<span class="op">:</span>free<span class="op">()</span></span></code></pre></div>
+<h2 id="api-notes">API Notes</h2>
+<p>By default, output streams are created with float32 format and 44100 sample rate, the only portable settings.</p>

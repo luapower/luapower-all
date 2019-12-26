@@ -1,0 +1,105 @@
+<h2 id="what">What</h2>
+<p>Managing luapower with <a href="https://github.com/capr/multigit">multigit</a>, the tool for working with overlaid git repositories.</p>
+<h2 id="how">How</h2>
+<p>First, clone multigit. Then clone the luapower-repos meta-package which contains the current list of packages. Finally, clone the packages:</p>
+<div class="shell_btn">
+
+</div>
+<div class="unix_shell">
+<pre><code>git clone https://github.com/capr/multigit luapower
+cd luapower
+./mgit clone https://github.com/luapower/luapower-repos
+./mgit clone-all</code></pre>
+</div>
+<div class="windows_shell">
+<pre><code>git clone https://github.com/capr/multigit luapower
+cd luapower
+mgit clone https://github.com/luapower/luapower-repos
+mgit clone-all</code></pre>
+</div>
+<blockquote>
+<p><strong>Tip:</strong> To clone packages via ssh instead, you can either: a) change luapower’s base url in multigit with <code>mgit baseurl luapower ssh://git@github.com/luapower/</code>, or b) configure git to replace urls on-the-fly with <code>git config --global url."ssh://git@github.com/luapower/".insteadOf https://github.com/luapower/</code></p>
+</blockquote>
+<blockquote>
+<p><strong>Tip:</strong> Add multigit to your PATH so you can type <code>mgit</code> instead of <code>./mgit</code>. Then you won’t have to clone luapower into the same directory where you cloned multigit and you will be able to use multigit for other things too. On Linux and OSX you can do this with: <code>sudo ln -s /path/to/multigit/mgit /usr/local/bin/</code>.</p>
+</blockquote>
+<p>After all the packages are cloned, your luapower directory should look like <a href="/files/luapower/">this</a>.</p>
+<h2 id="why-not-use-plain-git">Why not use plain git?</h2>
+<p>Because luapower packages need to be overlaid over the same directory, and there’s just no git-clone option to do that - you need to type in a few more git commands, and multigit does just that. Another reason is keeping <a href="https://github.com/luapower/luapower-repos/tree/master/.mgit">a list of all known packages</a> so that they can be managed as a collection (i.e. clone all, pull all, etc.). And then, there’s a handy set of git commands for working with overlaid repos (show modified files across all repos, etc.).</p>
+<h2 id="managing-packages">Managing packages</h2>
+<div class="shell_btn">
+
+</div>
+<div class="unix_shell">
+<pre><code>./mgit luajit pull               # update a single package
+./mgit --all pull                # update all packages
+./mgit glue                      # enter a git subshell for package glue
+[glue] $ git pull                # use git to update glue
+[glue] $ exit                    # exit the subshell
+./mgit remove glue               # remove glue
+./mgit --all make-hardlinks      # make hard links in .mgit for all packages</code></pre>
+</div>
+<div class="windows_shell">
+<pre><code>mgit luajit pull                 # update a single package
+mgit --all pull                  # update all packages
+mgit glue                        # enter a git subshell for package glue
+[glue]&gt; git pull                 # use git to update glue
+[glue]&gt; exit                     # exit the subshell
+mgit remove glue                 # remove glue</code></pre>
+</div>
+<h2 id="getting-packages-from-other-sources">Getting packages from other sources</h2>
+<p>Say you want to clone <code>foo</code> and <code>bar</code> from <code>https://github.com/bob/</code> into your tree:</p>
+<div class="shell_btn">
+
+</div>
+<div class="unix_shell">
+<pre><code>./mgit clone https://github.com/bob/foo https://github.com/bob/bar</code></pre>
+</div>
+<div class="windows_shell">
+<pre><code>mgit clone https://github.com/bob/foo https://github.com/bob/bar</code></pre>
+</div>
+<p>You don’t have to type the full url all the time:</p>
+<div class="shell_btn">
+
+</div>
+<div class="unix_shell">
+<pre><code>./mgit baseurl bob https://github.com/bob/
+./mgit clone bob/foo bob/bar</code></pre>
+</div>
+<div class="windows_shell">
+<pre><code>mgit baseurl bob https://github.com/bob/
+mgit clone bob/foo bob/bar</code></pre>
+</div>
+<h2 id="creating-a-new-package">Creating a new package</h2>
+<p>Say you created a new module locally, and now you want to turn it into a package named <code>foo</code>, hosted at <code>https://github.com/bob/foo</code>.</p>
+<p>Create the repo <code>bob/foo</code> on github, make it known to multigit so it can clone it, clone it, add in your files, commit and push:</p>
+<pre><code>mgit baseurl bob https://github.com/bob/    # add bob&#39;s base url
+mgit origin foo bob                         # add foo&#39;s origin, which is bob
+mgit clone foo                              # clone it
+mgit foo add -f ...                         # add your files to git
+mgit foo commit -m &quot;init&quot;                   # commit
+mgit foo push                               # push</code></pre>
+<p>Once commited, the package is “registered” into your local tree and you can use the <a href="/luapower">luapower</a> command on it.</p>
+<p>Once pushed, you can share it to the world. Tell your users to clone it using:</p>
+<pre><code>mgit clone https://github.com/bob/foo</code></pre>
+<h2 id="publishing-a-package-on-luapower.com">Publishing a package on luapower.com</h2>
+<p>Before you start, make sure to read <a href="/get-involved">get-involved</a>, and check your package with the <a href="/luapower">luapower</a> command.</p>
+<p>Publishing your package to luapower.com is just a matter of sending a pull request on the <a href="https://github.com/luapower/luapower-repos">luapower-repos</a> package with your additions. So you have to fork luapower-repos, clone it again, add your package origins to it, push, then send a pull request:</p>
+<pre><code>$ mgit remove luapower-repos
+$ mgit clone https://github.com/you/luapower-repos
+$ mgit luapower-repos                          # enter a git subshell
+[luapower-repos]$ git remote add upstream https://github.com/luapower/luapower-repos
+[luapower-repos]$ git status                   # see your additions
+[luapower-repos]$ git add ...                  # add them
+[luapower-repos]$ git commit -m &quot;new stuff&quot;    # commit
+[luapower-repos]$ git push                     # push
+[luapower-repos]$ exit                         # exit the git subshell
+$ _</code></pre>
+<p>All that jazz just to add two files to a repository on github is pretty ridiculous, I know. We programmers have such low standards. So just click on the “+” sign <a href="https://github.com/luapower/luapower-repos/tree/master/.mgit">here</a> (which will automatically make a fork of luapower-repos to your account) and (continuing to assume that your github username is “bob” and your package is called “foo”), add a new file called <code>bob.baseurl</code> in which you write <em><code>https://github.com/bob/</code></em> and a file called <code>foo.origin</code> in which you write <em><code>bob</code></em> and send a pull request.</p>
+<p>Note that luapower users will always pull the package directly from your repository, so it’s important that your repository remains accessible at its url, and that you don’t destroy its history, in case users might need an older version of the package <em>in the future</em>.</p>
+<p>Repos are git-pulled every hour for updating the website.</p>
+<h2 id="creating-package-collections">Creating package collections</h2>
+<p>Remember that you don’t have to use the luapower-repos meta-package if you don’t want to. You can create your own meta-package with an entirely different module collection, which users will then be able to clone wholesale with:</p>
+<pre><code>mgit clone https://github.com/you/your-repos
+mgit clone-all</code></pre>
+<p>The procedure for that is exactly the same as before, except you’ll be adding the .origin and .baseurl files to a different package instead of luapower-repos.</p>

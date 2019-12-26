@@ -1,0 +1,108 @@
+<p>The build scripts assume the <a href="/building">luapower toolchain</a>. This means that the same gcc/g++ frontend is used on every platform, which greatly reduces what you need to know for writing them.</p>
+<h2 id="build-scripts">Build scripts</h2>
+<p>Create a separate script for each supported platform:</p>
+<pre><code>csrc/foo/build-mingw64.sh
+csrc/foo/build-linux64.sh
+csrc/foo/build-osx64.sh</code></pre>
+<p>Use only relative paths in the scripts. Build scripts must be run from their own directory so use <code>../../bin/&lt;platform&gt;</code> to reference the output directory.</p>
+<h2 id="build-output">Build output</h2>
+<p>The build scripts must generate binaries as follows:</p>
+<pre><code>bin/mingw64/foo.dll               C library, Windows
+bin/mingw64/foo.a                 C library, Windows, static version
+bin/mingw64/clib/foo.dll          Lua/C library, Windows
+bin/mingw64/foo.a                 Lua/C library, Windows, static version
+bin/linux64/libfoo.so             C library, Linux
+bin/linux64/libfoo.a              C library, Linux, static version
+bin/linux64/clib/foo.so           Lua/C library, Linux
+bin/linux64/libfoo.a              Lua/C library, Linux, static version
+bin/osx64/libfoo.dylib            C library, OSX
+bin/osx64/libfoo.a                C library, OSX, static version
+bin/osx64/clib/foo.so             Lua/C library, OSX
+bin/osx64/libfoo.a                Lua/C library, OSX, static version</code></pre>
+<blockquote>
+<p>So prefix everything with <code>lib</code> except for Windows and except for dynamic Lua/C libs; on OSX use <code>.dylib</code> for C libs but use <code>.so</code> for dynamic Lua/C libs; put dynamic Lua/C libs in the <code>clib</code> subdirectory but put static Lua/C libs in the platform directory along with the normal C libs.</p>
+</blockquote>
+<h2 id="building-with-gcc">Building with GCC</h2>
+<p>Building with gcc is a 2-step process, compilation and linking, because we want to build both static and dynamic versions the libraries.</p>
+<h3 id="compiling-with-gccg">Compiling with gcc/g++</h3>
+<pre><code>gcc -c options... files...
+g++ -c options... files...</code></pre>
+<ul>
+<li><code>-c</code> : compile only (don’t link; produce .o files)</li>
+<li><code>-O2</code> : enable code optimizations</li>
+<li><code>-I&lt;dir&gt;</code> : search path for headers (eg. <code>-I../lua</code>)</li>
+<li><code>-D&lt;name&gt;</code> : set a <code>#define</code></li>
+<li><code>-D&lt;name&gt;=&lt;value&gt;</code> : set a <code>#define</code> with a value</li>
+<li><code>-U&lt;name&gt;</code> : unset <code>#define</code></li>
+<li><code>-fpic</code> or <code>-fPIC</code> : generate position-independent code (required for linux64)</li>
+<li><code>-D_WIN32_WINNT=0x601</code> : Windows: set API level to Windows 7 (set WINVER too)</li>
+<li><code>-DWINVER=0x601</code> : Windows: set API level to Windows 7</li>
+<li><code>-mmacosx-version-min=10.7</code> : OSX: set API level to 10.7</li>
+<li><code>-D_XOPEN_SOURCE=700</code> : Linux: set API level to X/Open 7 (POSIX 2008)</li>
+<li><code>-arch x86_64</code> : OSX: create 64bit x86 binaries</li>
+<li><code>-include _memcpy.h</code> : Linux on x64: fix the memcpy@GLIBC_2.14 disaster (*)</li>
+<li><code>-U_FORTIFY_SOURCE</code> : Linux: preserve compatibility with GLIBC 2.7</li>
+<li><code>-std=c++11</code> : for C++11 libraries</li>
+<li><code>-stdlib=libc++ -mmacosx-version-min=10.7</code> : for all C++ libraries on OSX</li>
+</ul>
+<p>(*) put the line <code>__asm__(".symver memcpy,memcpy@GLIBC_2.2.5");</code> in _memcpy.h. This is <em>not needed</em> if building on Ubuntu 10 or older.</p>
+<h3 id="dynamic-linking-with-gccg">Dynamic linking with gcc/g++</h3>
+<pre><code>gcc -shared options... files...
+g++ -shared options... files...</code></pre>
+<ul>
+<li><code>-shared</code> : create a shared library</li>
+<li><code>-s</code> : strip debug and private symbols (not for OSX)</li>
+<li><code>-o &lt;output-file&gt;</code> : output file path (eg. <code>-o ../../bin/mingw64/z.dll</code>)</li>
+<li><code>-L&lt;dir&gt;</code> : search path for library dependencies (eg. <code>-L../../bin/mingw64</code>)</li>
+<li><code>-l&lt;libname&gt;</code> : library dependency (eg. <code>-lz</code> looks for <code>z.dll</code>/<code>libz.so</code>/<code>libz.dylib</code> or <code>libz.a</code>)</li>
+<li><code>-Wl,--no-undefined</code> : do not allow unresolved symbols in the output library.</li>
+<li><code>-static-libstdc++</code> : link libstdc++ statically (for C++ libraries; not for OSX)</li>
+<li><code>-static-libgcc</code> : link the GCC runtime library statically (for C and C++ libraries; not for OSX)</li>
+<li><code>-pthread</code> : enable pthread support (not for Windows)</li>
+<li><code>-arch x86_64</code> : OSX: create 64bit x86 binaries</li>
+<li><code>-undefined dynamic_lookup</code> : for Lua/C modules on OSX (don’t link them to luajit!)</li>
+<li><code>-mmacosx-version-min=10.9</code> : set OSX 10.9 API level</li>
+<li><code>-install_name @rpath/&lt;libname&gt;.dylib</code> : for OSX, to help the dynamic linker find the library near the exe</li>
+<li><code>-stdlib=libc++ -mmacosx-version-min=10.7</code> : for all C++ libraries on OSX</li>
+<li><code>-Wl,-Bstatic -lstdc++ -lpthread -Wl,-Bdynamic</code> : statically link the winpthread library (for C++ libraries on mingw64)</li>
+<li><code>-fno-exceptions</code> : avoid linking to libstdc++ if the code doesn’t use exceptions</li>
+<li><code>-fno-rtti</code> : make the binary smaller if the code doesn’t use dynamic_cast or typeid</li>
+<li><code>-fvisibility=hidden</code> : make the symbol table smaller if the code is explicit about exports</li>
+</ul>
+<p><strong>IMPORTANT</strong>: The order in which <code>-l</code> options appear is significant! Always place all object files <em>and</em> all dependent libraries <em>before</em> all dependency libraries.</p>
+<h3 id="static-linking-with-ar">Static linking with ar</h3>
+<pre><code>ar rcs ../../bin/&lt;platform&gt;/static/&lt;libname&gt;.a *.o</code></pre>
+<h3 id="stripping-private-symbols-on-osx">Stripping private symbols on OSX</h3>
+<p>Huge libraries bloat the symbol table with private symbols that you don’t need at runtime. The OSX linker doesn’t support <code>-s</code>, but you can use <code>strip</code>:</p>
+<pre><code>strip -x foo.dylib</code></pre>
+<h3 id="example-compile-and-link-lpeg-0.10-for-linux64">Example: compile and link lpeg 0.10 for linux64</h3>
+<pre><code>gcc -c -O2 lpeg.c -fPIC -I. -I../lua
+gcc -shared -s -static-libgcc -o ../../bin/linux64/clib/lpeg.so
+ar rcs ../../bin/linux64/static/liblpeg.so</code></pre>
+<p>In some cases it’s going to be more complicated than that.</p>
+<ul>
+<li>sometimes you won’t get away with specifying <code>*.c</code> – some libraries rely on the makefile to choose which .c files need to be compiled for a specific platform or set of options as opposed to using platform defines (eg. <a href="/socket">socket</a>)</li>
+<li>some libraries actually do use one or two of the myriad of defines generated by the <code>./configure</code> script – you might have to grep for those and add appropriate <code>-D</code> switches to the command line.</li>
+<li>some libraries have parts written in assembler or other language. At that point, maybe a simple makefile is a better alternative, YMMV (if the package has a clean and simple makefile that doesn’t add more dependencies to the toolchain, use that instead)</li>
+</ul>
+<p>After compilation, check your builds against the minimum supported platforms. Also, you may want to check the following:</p>
+<ul>
+<li>on Linux, run <code>mgit check-glibc-symvers</code> to check that you don’t have any symbols that require GLIBC &gt; 2.7. Also run <code>mgit check-other-symvers</code> to check for other dependencies that contain versioned symbols.</li>
+<li>on OSX, run <code>mgit check-osx-rpath</code> to check that all library paths contain the <code>@rpath/</code> prefix.</li>
+</ul>
+<h2 id="backwards-compatibility">Backwards compatibility</h2>
+<h3 id="windows">Windows</h3>
+<p>WinXP compatibility is the default with MinGW-w64 which links against msvcrt.dll and doesn’t use newer WinAPIs itself.</p>
+<h3 id="linux">Linux</h3>
+<p>GLIBC has multiple implementations of its functions inside, which can be selected in the C code using a pragma (.symver). Of course nobody uses that pragma, and the default behavior is to to link against the latest versions of the symbols that you happen to have on your machine at the time of linking, and those will be the <em>minimum</em> versions that your binary will require on <em>any</em> machine, which makes that binary potentially incompatible with an older Linux. Because whoever introduced that insanity didn’t bother to make a linker option to select the minimum GLIBC version when linking, the only option left is to build on the <em>oldest</em> Linux which can still run a <em>recent enough gcc</em> (good luck), and check the symvers on the compiled binaries with <code>mgit check-glibc-symvers</code>.</p>
+<h3 id="osx">OSX</h3>
+<p>Backwards compatibility on OSX is entirely in the hands of the <code>-mmacosx-version-min</code> option, which is actually a much better deal than with gcc/Linux (of course, for actually testing the binary you still need the hardware, because running OSX in a VM is hard and painful and illegal).</p>
+<h2 id="the-c-situation">The C++ situation</h2>
+<p>Because there doesn’t seem to be any hope of getting rid of this language yet, we have to address the problem of the standard C++ library. The luapower answer to that is to bundle it (i.e. link it statically in every C++ library) as opposed to linking it dynamically and shipping it (or linking it dynamically and not shipping it), except on OSX which doesn’t (and will not) support that. Here’s why:</p>
+<h3 id="windows-1">Windows</h3>
+<p>Shipping libstdc++ on Windows could work, but it would drag along libwinpthread and libgcc with it, and libwinpthread is already shipped with the <a href="/pthread">pthread</a> package because it has a binding.</p>
+<h3 id="linux-1">Linux</h3>
+<p>Shipping libstdc++ (and its dependency libgcc) with your app on Linux is not a good idea if the app is using other external libraries that happen to dlopen libstdc++ themselves and expect to get a different version of it than the one that the app just loaded. Such is the case with OpenGL with Radeon drivers (google “steam libstdc++” to see the drama). In that case it’s better to either a) link libstdc++ statically to each C++ library (the luapower way), or b) link it dynamically, but check at runtime which libstdc++ is newer (the one that you ship or the one on the host), and then ffi.load the newer one <em>before</em> loading that external C library so that <em>it</em> doesn’t load the older one.</p>
+<h3 id="osx-1">OSX</h3>
+<p>OSX has two stdc++es: GNU’s libstdc++ and the newer libc++ from LLVM. Only libc++ implements C++11 but it comes with OSX 10.7+.</p>
+<p>On OSX 10.8+, libc++ is pulled in by libSystem (via libdispatch) anyway, so linking against libstdc++ on these platforms is a net loss when libc++ is already loaded, and C++11 libs (eg. terra) need to link to libc++ anyway. OTOH, libc++ is 10.7+, so this means leaving 10.6 users in the cold, unless you ship libc++ for them (and only load it for them). Because the <a href="/objc">objc</a> binding requires OSX 10.7+ anyway (for reasons unrelated to C++), I chose to drop 10.6 support altogether and stick with libc++.</p>

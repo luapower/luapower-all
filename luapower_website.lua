@@ -22,8 +22,8 @@ local action = {} --{name->handler}
 --filesystem
 
 local function older(file1, file2)
-	local mtime1 = fs.attr(wwwpath(file1), 'mtime')
-	local mtime2 = fs.attr(wwwpath(file2), 'mtime')
+	local mtime1 = fs.attr(file1, 'mtime')
+	local mtime2 = fs.attr(file2, 'mtime')
 	if not mtime1 then return true end
 	if not mtime2 then return false end
 	return mtime1 < mtime2
@@ -147,23 +147,23 @@ local function md_refs()
 			addref(file:match'^(.-)%.md$')
 		end
 	end
-	table.insert(t, wwwfile'ext-links.md')
+	table.insert(t, assert(glue.readfile(wwwpath'ext-links.md')))
 	return table.concat(t, '\n')
 end
 
 local function render_docfile(infile)
-	local outfile = '.cache/'..escape_filename(infile)..'.html'
+	local outfile = wwwpath('.cache/'..escape_filename(infile)..'.html')
 	if older(outfile, infile) then
 		local s1 = glue.readfile(infile)
 		local s2 = md_refs()
 		local tmpfile = os.tmpname()
-		glue.writefile(tmpfile, s1..'\n\n'..s2)
+		assert(glue.writefile(tmpfile, s1..'\n\n'..s2))
 		local cmd = pandoc_cmd..' --tab-stop=3 -r markdown+definition_lists -w html '..
-			tmpfile..' > '..wwwpath(outfile)
+			tmpfile..' > '..outfile
 		os.execute(cmd)
 		os.remove(tmpfile)
 	end
-	return wwwfile(outfile)
+	return assert(glue.readfile(outfile))
 end
 
 local function render_docheader(pkg, mod, h)
@@ -175,12 +175,8 @@ local function render_docheader(pkg, mod, h)
 		..' for more info.</p>'
 end
 
-local function www_docdir(doc)
-	return wwwpath'md'
-end
-
 local function www_docfile(doc)
-	local docfile = www_docdir()..'/'..doc..'.md'
+	local docfile = wwwpath('md/'..doc..'.md')
 	if not fs.is(docfile) then return end
 	return docfile
 end
@@ -197,19 +193,19 @@ local function action_docfile(doc)
 	t.doc_mtime_ago = mtime and timeago(mtime)
 	t.edit_link = string.format('https://github.com/luapower/website/edit/master/luapower-www/md/%s.md', doc)
 	t.docs = {}
-	for file in fs.dir(www_docdir()) do
+	for file in fs.dir(wwwpath'md') do
 		if not file then break end
 		local name = file:match'(.-)%.md$'
 		if name then
 			table.insert(t.docs, {
 				shortname = name,
 				name = name,
-				path = www_docdir()..'/'..file,
 				source_url = string.format('https://github.com/luapower/website/blob/master/luapower-www/md/%s.md?ts=3', doc),
 				selected = name == doc,
 			})
 		end
 	end
+	table.sort(t.docs, function(a, b) return a.name < b.name end)
 	out(render_main('doc', t))
 end
 

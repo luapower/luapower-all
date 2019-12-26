@@ -1,0 +1,90 @@
+<h2 id="what-you-need-to-know-first">What you need to know first</h2>
+<ul>
+<li>Building is based on trivial <a href="/build-scripts">shell scripts</a> that invoke gcc directly (no makefiles).</li>
+<li>Each supported package/platform/arch combination has a separate build script in <code>csrc/&lt;package&gt;/build-&lt;platform&gt;.sh</code>.</li>
+<li>C sources are included so you can start right away.</li>
+<li>Dependent packages are listed on the website (under the section “Binary Dependencies”) and in <code>csrc/&lt;package&gt;/WHAT</code>. Build those first.</li>
+<li>The only sure way to get a binary on the first try is to use the exact toolchain as described here for each platform. The good news is that you <em>will</em> get a binary.</li>
+<li>For building Lua/C modules you need <a href="/lua-headers">lua-headers</a>.</li>
+<li>For building Lua/C modules on Windows you also need <a href="/luajit">luajit</a>.</li>
+<li>You will get both dynamic libraries (stripped) and static libraries.</li>
+<li>libgcc and libstdc++ will be statically linked, except on OSX which doesn’t support that and where libc++ is used.</li>
+<li>Binaries on Windows are linked to msvcrt.dll.</li>
+<li>Lua/C modules on Windows are linked to lua51.dll (which is why you need luajit).</li>
+<li>OSX libs set their install_name to <code>@rpath/&lt;libname&gt;.dylib</code></li>
+<li>the luajit exe on OSX sets <code>@rpath</code> to <code>@loader_path</code></li>
+<li>the luajit exe on Linux sets <code>rpath</code> to <code>$ORIGIN</code></li>
+<li>all listed tools are mirrored at <a href="http://luapower.com/files">luapower.com/files</a> (but please report broken links anyway)</li>
+</ul>
+<h2 id="building-on-windows-for-windows">Building on Windows for Windows</h2>
+<pre><code>cd csrc/&lt;package&gt;
+sh build-mingw64.sh</code></pre>
+<p>These scripts assume that both MSYS and MinGW-w64 bin dirs (in this order) are in your PATH.</p>
+<p>Here’s MSYS:</p>
+<p><a href="https://sourceforge.net/projects/msys2/files/Base/x86_64/msys2-base-x86_64-20190524.tar.xz/download">MSYS-2019-05-24</a></p>
+<p>You also need to install make, nasm and cmake: from the msys2 shell, type: <code>pacman -S make nasm cmake</code>.</p>
+<p>Here’s the MinGW-w64 package used to build the current luapower stack:</p>
+<table>
+<tbody>
+<tr class="odd">
+<td><a href="https://sourceforge.net/projects/mingw-w64/files/Toolchains%20targetting%20Win64/Personal%20Builds/mingw-builds/8.1.0/threads-posix/seh/x86_64-8.1.0-release-posix-seh-rt_v6-rev0.7z">MinGW-W64 GCC-8.1.0 (64bit, posix threads, SEH exception model)</a></td>
+</tr>
+</tbody>
+</table>
+<p>The resulted binaries are linked to msvcrt.dll and should be compatible down to Windows 7.</p>
+<h2 id="building-on-linux-for-linux">Building on Linux for Linux</h2>
+<pre><code>cd csrc/&lt;package&gt;
+sh build-linux64.sh</code></pre>
+<p>The current luapower stack is built on an <strong>Ubuntu 18.04 x64 Desktop</strong> and it’s the only supported way to build it. If you need binaries for older Linuxes, keep reading.</p>
+<h2 id="building-for-older-linuxes">Building for older Linuxes</h2>
+<p>In general, to get binaries that will work on older Linuxes, you want to build on the <em>oldest</em> Linux that you care to support, but use the <em>newest</em> GCC that you can install on that system. In particular, if you link against GLIBC 2.14+ your binary will not be backwards compatible with an older GLIBC (google “memcpy glibc 2.14” to see the drama).</p>
+<p>Here’s a fast and easy way to build binaries that are compatible down to GLIBC 2.7:</p>
+<ul>
+<li>install an Ubuntu 10.04 in a VM</li>
+<li>add the “test toolchain” PPA to aptitude</li>
+<li>install the newest gcc and g++ from it</li>
+</ul>
+<p>Here’s the complete procedure on a fresh Ubuntu 10.04:</p>
+<pre><code>sudo sed -i -re &#39;s/([a-z]{2}\.)?archive.ubuntu.com|security.ubuntu.com/old-releases.ubuntu.com/g&#39; /etc/apt/sources.list
+sudo apt-get update
+sudo apt-get install -y python-software-properties
+sudo add-apt-repository ppa:ubuntu-toolchain-r/test
+sudo apt-get update
+sudo apt-get install -y gcc-4.8 g++-4.8
+sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-4.8 20
+sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-4.8 20
+sudo apt-get install -y nasm cmake</code></pre>
+<p>Note that the above setup contains EGLIBC 2.11 so it’s not guaranteed that <em>anything</em> you compile on it will be compatible down to GLIBC 2.7. It just so happens that the <em>current</em> luapower libraries don’t use any symbols that have a newer implementation on that version of glibc. Compiling on Ubuntu 8.04 might solve the issue but the newest gcc that can run on that system is too old.</p>
+<h3 id="running-ubuntu-10-on-ubuntu-14">Running Ubuntu 10 on Ubuntu 14</h3>
+<p>An easy and runtime-cheap way to get Ubuntu 10 environments on an Ubuntu 14 machine is with LXC:</p>
+<pre><code>sudo apt-get update
+sudo apt-get install -y lxc
+export MIRROR=&quot;http://old-releases.ubuntu.com/ubuntu&quot;
+export SECURITY_MIRROR=&quot;$MIRROR&quot;
+sudo -E lxc-create -n u10_64 -t ubuntu -- -r lucid
+sudo rm /var/lib/lxc/u10_64/rootfs/dev/shm    # hack to make it work
+sudo lxc-start -n u10_64 -d
+sudo lxc-ls --running         # should print: u10_64</code></pre>
+<p>To get a shell into a container, type:</p>
+<pre><code>sudo lxc-attach -n u10_64</code></pre>
+<p>Once inside, use the same instructions for Ubuntu 10 above. To get the compiled binaries out of the VMs check out <code>/var/lib/lxc/u10_XX/rootfs</code> which is where the containers’ root filesystems are.</p>
+<h2 id="building-on-osx-for-osx">Building on OSX for OSX</h2>
+<pre><code>cd csrc/&lt;package&gt;
+sh build-osx64.sh</code></pre>
+<p>Current OSX builds are based are done on an OSX 10.2 using OSX SDK 10.12.</p>
+<p>The generated binaries are compatible down to OSX 10.9.</p>
+<h2 id="building-on-linux-for-osx">Building on Linux for OSX</h2>
+<p><strong>NOTE:</strong> This is experimental, lightly tested and not available for all packages (but available for most).</p>
+<p>You can build for OSX on a Linux box using the <a href="https://github.com/tpoechtrager/osxcross">osxcross</a> cross-compiler. You can build osxcross (both clang and gcc) yourself (you need the OSX 10.7 SDK for that) or you can use a <a href="http://luapower.com/files/osxcross.tgz">pre-built osxcross</a> that was compiled on and is known to work on an x64 Ubuntu 14.04 LTS.</p>
+<p>To use the cross-compiler, just add the <code>osxcross/target/bin</code> dir to your PATH and run the same <code>build-osxXX.sh</code> scripts that you would run for a native OSX build. Remember: not all packages support cross-compilation. If you get errors, check the scripts to see if they are written to invoke <code>x86_64-apple-darwin11-gcc</code> and family.</p>
+<h2 id="building-with-multigit">Building with multigit</h2>
+<pre><code>./mgit build &lt;package&gt;</code></pre>
+<p>which is implemented as:</p>
+<pre><code>cd csrc/&lt;package&gt; &amp;&amp; ./build-&lt;current-platform&gt;.sh</code></pre>
+<h2 id="building-packages-in-order">Building packages in order</h2>
+<p>You can use <a href="/luapower">luapower</a> so that for any package or list of packages (or for all installed packages) you will get the full list of packages that need to be compiled <em>in the right order</em>, including all the dependencies:</p>
+<pre><code>./luapower build-order pkg1,...|--all [platform]</code></pre>
+<p>Again, you can use mgit to leverage that and actually build the packages:</p>
+<pre><code>./mgit build-all pkg1,...|--all [platform]</code></pre>
+<p>To build all installed packages on the current platform, run:</p>
+<pre><code>./mgit build-all --all</code></pre>
