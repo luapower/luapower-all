@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
-<svg xmlns="http://www.w3.org/2000/svg" xml:space="preserve" width="2000px" height="2000px" version="1.1" shape-rendering="geometricPrecision" text-rendering="geometricPrecision" image-rendering="optimizeQuality" fill-rule="evenodd" clip-rule="evenodd"
-viewBox="0 0 415 415"
- xmlns:xlink="http://www.w3.org/1999/xlink">
- <g id="Layer_x0020_1">
-  <path fill="currentColor" d="M362 235c0,-101 -81,-182 -180,-182 -101,0 -182,81 -182,182 0,99 81,180 182,180 99,0 180,-81 180,-180zm-53 -76c0,-29 -24,-53 -53,-53 -29,0 -53,24 -53,53 0,29 24,53 53,53 29,0 53,-24 53,-53zm106 -106c0,-29 -24,-53 -53,-53 -29,0 -53,24 -53,53 0,29 24,53 53,53 29,0 53,-24 53,-53z"/>
- </g>
-</svg>
