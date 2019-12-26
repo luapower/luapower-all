@@ -34,7 +34,7 @@ Object system with virtual properties and method overriding hooks.
 	code inside `before_pick()` first.
    * `function Apple:after_pick(args...) end` makes `apple:pick()` call the
 	code inside `after_pick()` last.
-   * `function Apple:override_pick(inherited, ...)` lets you override
+   * `function Apple:override_pick(inherited, ...) end` lets you override
 	  `Apple:pick()` and call `inherited(self, ...)`.
  * virtual classes (aka dependency injection, described below).
  * introspection:
