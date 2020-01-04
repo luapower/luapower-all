@@ -16,6 +16,9 @@ There are 6 types of luapower packages:
 
 (*) binaries and C source code included.
 
+NOTE: modules that only work in an OpenResty environment are typed "Resty"
+even though the language is Lua.
+
 ### TL;dr: Template packages
 
   * [Lua module](https://github.com/luapower/template-lua)

@@ -1,3 +1,5 @@
+local ffi = require'ffi'
+--[[
 // csrc/openssl/src/include/openssl/buffer.h
 #define BUF_strdup(s) OPENSSL_strdup(s)
 #define BUF_strndup(s,size) OPENSSL_strndup(s, size)
@@ -28,3 +30,4 @@ enum {
 	BUF_F_BUF_MEM_GROW_CLEAN = 105,
 	BUF_F_BUF_MEM_NEW    = 101,
 };
+]]

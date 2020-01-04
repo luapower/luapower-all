@@ -1,6 +1,6 @@
 ---
 tagline: procedural graphics & IMGUI toolkit
-platforms: mingw32, mingw64
+platforms: mingw64
 ---
 
 ## `local player = require'cplayer'`

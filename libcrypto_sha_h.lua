@@ -1,3 +1,5 @@
+local ffi = require'ffi'
+--[[
 // csrc/openssl/src/include/openssl/sha.h
 enum {
 	SHA_LONG             = unsigned int,
@@ -62,3 +64,4 @@ int SHA512_Update(SHA512_CTX *c, const void *data, size_t len);
 int SHA512_Final(unsigned char *md, SHA512_CTX *c);
 unsigned char *SHA512(const unsigned char *d, size_t n, unsigned char *md);
 void SHA512_Transform(SHA512_CTX *c, const unsigned char *data);
+]]

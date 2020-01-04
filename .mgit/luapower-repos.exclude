@@ -14,3 +14,4 @@
 /.mgit/luapower-ci.*
 /.mgit/egr.*
 /.mgit/bf.*
+/.mgit/resty.sh

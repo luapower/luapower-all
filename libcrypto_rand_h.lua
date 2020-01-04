@@ -1,3 +1,5 @@
+local ffi = require'ffi'
+--[[
 // csrc/openssl/src/include/openssl/rand.h
 struct rand_meth_st {
     int (*seed) (const void *buf, int num);
@@ -91,3 +93,4 @@ enum {
 	RAND_R_UNSUPPORTED_DRBG_FLAGS = 132,
 	RAND_R_UNSUPPORTED_DRBG_TYPE = 120,
 };
+]]

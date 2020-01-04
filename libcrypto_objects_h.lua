@@ -1,3 +1,5 @@
+local ffi = require'ffi'
+--[[
 // csrc/openssl/src/include/openssl/objects.h
 enum {
 	OBJ_NAME_TYPE_UNDEF  = 0x00,
@@ -4059,3 +4061,4 @@ enum {
 	OBJ_R_OID_EXISTS     = 102,
 	OBJ_R_UNKNOWN_NID    = 101,
 };
+]]

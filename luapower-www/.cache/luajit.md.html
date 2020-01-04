@@ -4,6 +4,8 @@
 <li><a href="http://luajit.org/extensions.html#modules">LuaJIT’s bit, ffi and jit modules</a></li>
 <li><a href="http://luajit.org/extensions.html#lua52">LuaJIT’s extensions from Lua 5.2</a>, including those enabled with <code>DLUAJIT_ENABLE_LUA52COMPAT</code></li>
 <li><a href="https://github.com/openresty/luajit2#openresty-extensions">OpenResty’s extensions</a></li>
+<li><code>package.exedir</code> module which returns the full path of the directory of the executable.</li>
+<li><code>package.exepath</code> module which returns the full path of the executable.</li>
 <li><code>LUA_PATH</code> and <code>LUA_CPATH</code> supports <code>'!'</code> in Linux and OSX too.</li>
 <li><code>LUA_CPATH_DEFAULT</code> and <code>LUA_PATH_DEFAULT</code> were modified as described below.</li>
 <li>the <code>terra</code> module is loaded when running <code>.t</code> files from the command line.</li>
@@ -33,12 +35,13 @@
 <p>Windows looks for dlls in the directory of the executable first by default, and that’s where the luapower dlls are, so isolation from system libraries is acheived automatically in this case.</p>
 <h4 id="linux">Linux</h4>
 <p>Linux binaries are built with <code>rpath=$ORIGIN</code> which makes ldd look for shared objects in the directory of the exe first.</p>
+<p><code>-Wl,--disable-new-dtags</code> was also used so that it’s <code>RPATH</code> not <code>RUNPATH</code> that is being set, which makes <code>dlopen()</code> work the same from dynamically loaded code too (this enables eg. <code>terralib.linklibrary</code> to link against luapower libraries by name alone). I’m biting my tongue so hard here…</p>
 <h4 id="osx">OSX</h4>
 <p>OSX binaries are built with <code>rpath=@loader_path</code> which makes the dynamic loader look for dylibs in the directory of the exe first.</p>
 <h4 id="the-current-directory-1">The current directory</h4>
 <p>The current directory is <em>not used</em> for finding shared libraries on Linux and OSX. It’s only used on Windows, but has lower priority than the exe’s directory.</p>
 <h3 id="finding-terra-modules">Finding <a href="/terra">terra</a> modules</h3>
-<p>The luajit executable was modified to call <code>require'terra'</code> before trying to run <code>.t</code> files at the command line. Also, it loads the file by calling <code>_G.loadfile</code> instead of the C function <code>lua_loadfile</code>.</p>
+<p>The luajit executable was modified to call <code>require'terra'</code> before trying to run <code>.t</code> files at the command line. Also, it loads <code>.t</code> files by calling <code>_G.loadfile</code> instead of the C function <code>lua_loadfile</code>.</p>
 <p><code>_G.loadfile</code> is overriden in <code>terralib_luapower.lua</code> to load <code>.t</code> files as Terra source code.</p>
 <p><code>terralib.lua</code> was changed to load <code>terralib_luapower.lua</code> at the end of the file.</p>
-<p><code>package.terrapath</code> is set to match <code>package.luapath</code> in <code>terralib_luapower.lua</code>.</p>
+<p><code>package.terrapath</code> is set to match <code>package.path</code> in <code>terralib_luapower.lua</code>.</p>

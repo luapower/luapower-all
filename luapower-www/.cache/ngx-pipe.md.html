@@ -1,0 +1,285 @@
+<h1 id="name">Name</h1>
+<p><code>ngx.pipe</code> - spawn and communicate with OS processes via stdin/stdout/stderr in a non-blocking fashion.</p>
+<h1 id="table-of-contents">Table of Contents</h1>
+<ul>
+<li><a href="#name">Name</a></li>
+<li><a href="#status">Status</a></li>
+<li><a href="#synopsis">Synopsis</a></li>
+<li><a href="#description">Description</a></li>
+<li><a href="#methods">Methods</a>
+<ul>
+<li><a href="#spawn">spawn</a></li>
+<li><a href="#set_timeouts">set_timeouts</a></li>
+<li><a href="#wait">wait</a></li>
+<li><a href="#pid">pid</a></li>
+<li><a href="#kill">kill</a></li>
+<li><a href="#shutdown">shutdown</a></li>
+<li><a href="#write">write</a></li>
+<li><a href="#stderr_read_all">stderr_read_all</a></li>
+<li><a href="#stdout_read_all">stdout_read_all</a></li>
+<li><a href="#stderr_read_line">stderr_read_line</a></li>
+<li><a href="#stdout_read_line">stdout_read_line</a></li>
+<li><a href="#stderr_read_bytes">stderr_read_bytes</a></li>
+<li><a href="#stdout_read_bytes">stdout_read_bytes</a></li>
+<li><a href="#stderr_read_any">stderr_read_any</a></li>
+<li><a href="#stdout_read_any">stdout_read_any</a></li>
+</ul></li>
+<li><a href="#community">Community</a>
+<ul>
+<li><a href="#english-mailing-list">English Mailing List</a></li>
+<li><a href="#chinese-mailing-list">Chinese Mailing List</a></li>
+</ul></li>
+<li><a href="#bugs-and-patches">Bugs and Patches</a></li>
+<li><a href="#copyright-and-license">Copyright and License</a></li>
+<li><a href="#see-also">See Also</a></li>
+</ul>
+<h1 id="status">Status</h1>
+<p>This Lua module is currently considered experimental.</p>
+<h1 id="synopsis">Synopsis</h1>
+<pre class="nginx"><code>location = /t {
+    content_by_lua_block {
+        local ngx_pipe = require &quot;ngx.pipe&quot;
+        local select = select
+
+        local function count_char(...)
+            local proc = ngx_pipe.spawn({&#39;wc&#39;, &#39;-c&#39;})
+            local n = select(&#39;#&#39;, ...)
+            for i = 1, n do
+                local arg = select(i, ...)
+                local bytes, err = proc:write(arg)
+                if not bytes then
+                    ngx.say(err)
+                    return
+                end
+            end
+
+            local ok, err = proc:shutdown(&#39;stdin&#39;)
+            if not ok then
+                ngx.say(err)
+                return
+            end
+
+            local data, err = proc:stdout_read_line()
+            if not data then
+                ngx.say(err)
+                return
+            end
+
+            ngx.say(data)
+        end
+
+        count_char((&quot;1234&quot;):rep(2048))
+    }
+}</code></pre>
+<p>This example counts characters (bytes) directly fed by OpenResty to the UNIX command <code>wc</code>.</p>
+<p>You could not do this with either <code>io.popen</code> or <code>os.execute</code> because <code>wc</code> will not output the result until its stdin is closed.</p>
+<p><a href="#table-of-contents">Back to TOC</a></p>
+<h1 id="description">Description</h1>
+<p>This module does not support non-POSIX operating systems like Windows yet.</p>
+<p>If you are not using the Nginx core shipped with OpenResty, you will need to apply the <code>socket_cloexec</code> patch to the standard Nginx core.</p>
+<p>Under the hood, this module uses <code>fork</code> and <code>execvp</code> with the user-specified command, and communicate with such spawned processes via the POSIX <code>pipe</code> API, which contributes to the name of this module.</p>
+<p>A signal handler for <code>SIGCHLD</code> is registered so that we can receive a notification once the spawned processes exited.</p>
+<p>We combine the above implementation with Nginx’s event mechanism and OpenResty’s Lua coroutine scheduler, in order to ensure communication with the spawned processes is non-blocking.</p>
+<p>The communication APIs do not work in phases which do not support yielding, such as <code>init_worker_by_lua*</code> or <code>log_by_lua*</code>, because there is no way to yield the current light thread to avoid blocking the OS thread when communicating with processes in those phases.</p>
+<p><a href="#table-of-contents">Back to TOC</a></p>
+<h1 id="methods">Methods</h1>
+<h2 id="spawn">spawn</h2>
+<p><strong>syntax:</strong> <em>proc, err = pipe_module.spawn(args, opts?)</em></p>
+<p><strong>context:</strong> <em>all phases except init_by_lua*</em></p>
+<p>Creates and returns a new sub-process instance we can communicate with later.</p>
+<p>For example:</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb2-1"><a href="#cb2-1"></a><span class="kw">local</span> ngx_pipe <span class="op">=</span> <span class="fu">require</span> <span class="st">&quot;ngx.pipe&quot;</span></span>
+<span id="cb2-2"><a href="#cb2-2"></a><span class="kw">local</span> proc<span class="op">,</span> err <span class="op">=</span> ngx_pipe<span class="op">.</span>spawn<span class="op">({</span><span class="st">&quot;sh&quot;</span><span class="op">,</span> <span class="st">&quot;-c&quot;</span><span class="op">,</span> <span class="st">&quot;sleep 0.1 &amp;&amp; exit 2&quot;</span><span class="op">})</span></span>
+<span id="cb2-3"><a href="#cb2-3"></a><span class="cf">if</span> <span class="kw">not</span> proc <span class="cf">then</span></span>
+<span id="cb2-4"><a href="#cb2-4"></a>    ngx<span class="op">.</span>say<span class="op">(</span>err<span class="op">)</span></span>
+<span id="cb2-5"><a href="#cb2-5"></a>    <span class="cf">return</span></span>
+<span id="cb2-6"><a href="#cb2-6"></a><span class="cf">end</span></span></code></pre></div>
+<p>In case of failure, this function returns <code>nil</code> and a string describing the error.</p>
+<p>The sub-process will be killed via <code>SIGKILL</code> if it is still alive when the instance is collected by the garbage collector.</p>
+<p>Note that <code>args</code> should either be a single level array-like Lua table with string values, or just a single string.</p>
+<p>Some more examples:</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb3-1"><a href="#cb3-1"></a><span class="kw">local</span> proc<span class="op">,</span> err <span class="op">=</span> ngx_pipe<span class="op">.</span>spawn<span class="op">({</span><span class="st">&quot;ls&quot;</span><span class="op">,</span> <span class="st">&quot;-l&quot;</span><span class="op">})</span></span>
+<span id="cb3-2"><a href="#cb3-2"></a></span>
+<span id="cb3-3"><a href="#cb3-3"></a><span class="kw">local</span> proc<span class="op">,</span> err <span class="op">=</span> ngx_pipe<span class="op">.</span>spawn<span class="op">({</span><span class="st">&quot;perl&quot;</span><span class="op">,</span> <span class="st">&quot;-e&quot;</span><span class="op">,</span> <span class="st">&quot;print &#39;hello, wolrd&#39;&quot;</span><span class="op">})</span></span></code></pre></div>
+<p>If <code>args</code> is specified as a string, it will be executed by the operating system shell, just like <code>os.execute</code>. The above example could thus be rewritten as:</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb4-1"><a href="#cb4-1"></a><span class="kw">local</span> ngx_pipe <span class="op">=</span> <span class="fu">require</span> <span class="st">&quot;ngx.pipe&quot;</span></span>
+<span id="cb4-2"><a href="#cb4-2"></a><span class="kw">local</span> proc<span class="op">,</span> err <span class="op">=</span> ngx_pipe<span class="op">.</span>spawn<span class="op">(</span><span class="st">&quot;sleep 0.1 &amp;&amp; exit 2&quot;</span><span class="op">)</span></span>
+<span id="cb4-3"><a href="#cb4-3"></a><span class="cf">if</span> <span class="kw">not</span> proc <span class="cf">then</span></span>
+<span id="cb4-4"><a href="#cb4-4"></a>    ngx<span class="op">.</span>say<span class="op">(</span>err<span class="op">)</span></span>
+<span id="cb4-5"><a href="#cb4-5"></a>    <span class="cf">return</span></span>
+<span id="cb4-6"><a href="#cb4-6"></a><span class="cf">end</span></span></code></pre></div>
+<p>In the shell mode, you should be very careful about shell injection attacks when interpolating variables into command string, especially variables from untrusted sources. Please make sure that you escape those variables while assembling the command string. For this reason, it is highly recommended to use the multi-arguments form (<code>args</code> as a table) to specify each command-line argument explicitly.</p>
+<p>Since by default, Nginx does not pass along the <code>PATH</code> system environment variable, you will need to configure the <code>env PATH</code> directive if you wish for it to be respected during the searching of sub-processes:</p>
+<pre class="nginx"><code>env PATH;
+...
+content_by_lua_block {
+    local ngx_pipe = require &quot;ngx.pipe&quot;
+
+    local proc = ngx_pipe.spawn({&#39;ls&#39;})
+}</code></pre>
+<p>The optional table argument <code>opts</code> can be used to control the behavior of spawned processes. For instance:</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb6-1"><a href="#cb6-1"></a><span class="kw">local</span> opts <span class="op">=</span> <span class="op">{</span>merge_stderr <span class="op">=</span> <span class="kw">true</span><span class="op">,</span> buffer_size <span class="op">=</span> <span class="dv">256</span><span class="op">}</span></span>
+<span id="cb6-2"><a href="#cb6-2"></a><span class="kw">local</span> proc<span class="op">,</span> err <span class="op">=</span> ngx_pipe<span class="op">.</span>spawn<span class="op">({</span><span class="st">&quot;sh&quot;</span><span class="op">,</span> <span class="st">&quot;-c&quot;</span><span class="op">,</span> <span class="st">&quot;&gt;&amp;2 echo data&quot;</span><span class="op">},</span> opts<span class="op">)</span></span>
+<span id="cb6-3"><a href="#cb6-3"></a><span class="cf">if</span> <span class="kw">not</span> proc <span class="cf">then</span></span>
+<span id="cb6-4"><a href="#cb6-4"></a>    ngx<span class="op">.</span>say<span class="op">(</span>err<span class="op">)</span></span>
+<span id="cb6-5"><a href="#cb6-5"></a>    <span class="cf">return</span></span>
+<span id="cb6-6"><a href="#cb6-6"></a><span class="cf">end</span></span></code></pre></div>
+<p>The following options are supported:</p>
+<ul>
+<li><code>merge_stderr</code>: when set to <code>true</code>, the output to stderr will be redirected to stdout in the spawned process. This is similar to doing <code>&gt;&amp;1</code> in a shell.</li>
+<li><code>buffer_size</code>: specifies the buffer size used by reading operations, in bytes. The default buffer size is <code>4096</code>.</li>
+</ul>
+<p><a href="#table-of-contents">Back to TOC</a></p>
+<h2 id="set_timeouts">set_timeouts</h2>
+<p><strong>syntax:</strong> <em>proc:set_timeouts(write_timeout?, stdout_read_timeout?, stderr_read_timeout?, wait_timeout?)</em></p>
+<p>Respectively sets: the write timeout threshold, stdout read timeout threshold, stderr read timeout threshold, and wait timeout threshold. All timeouts are in milliseconds.</p>
+<p>The default threshold for each timeout is 10 seconds.</p>
+<p>If a specified timeout argument is <code>nil</code>, the corresponding timeout threshold will not be changed. For example:</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb7-1"><a href="#cb7-1"></a><span class="kw">local</span> proc<span class="op">,</span> err <span class="op">=</span> ngx_pipe<span class="op">.</span>spawn<span class="op">({</span><span class="st">&quot;sleep&quot;</span><span class="op">,</span> <span class="st">&quot;10s&quot;</span><span class="op">})</span></span>
+<span id="cb7-2"><a href="#cb7-2"></a></span>
+<span id="cb7-3"><a href="#cb7-3"></a><span class="co">-- only change the wait_timeout to 0.1 second.</span></span>
+<span id="cb7-4"><a href="#cb7-4"></a>proc<span class="op">:</span>set_timeouts<span class="op">(</span><span class="kw">nil</span><span class="op">,</span> <span class="kw">nil</span><span class="op">,</span> <span class="kw">nil</span><span class="op">,</span> <span class="dv">100</span><span class="op">)</span></span>
+<span id="cb7-5"><a href="#cb7-5"></a></span>
+<span id="cb7-6"><a href="#cb7-6"></a><span class="co">-- only change the send_timeout to 0.1 second.</span></span>
+<span id="cb7-7"><a href="#cb7-7"></a>proc<span class="op">:</span>set_timeouts<span class="op">(</span><span class="dv">100</span><span class="op">)</span></span></code></pre></div>
+<p>If a specified timeout argument is <code>0</code>, the corresponding operation will never time out.</p>
+<p><a href="#table-of-contents">Back to TOC</a></p>
+<h2 id="wait">wait</h2>
+<p><strong>syntax:</strong> <em>ok, reason, status = proc:wait()</em></p>
+<p><strong>context:</strong> <em>phases that support yielding</em></p>
+<p>Waits until the current sub-process exits.</p>
+<p>It is possible to control how long to wait via <a href="#set_timeouts">set_timeouts</a>. The default timeout is 10 seconds.</p>
+<p>If process exited with status code zero, the <code>ok</code> return value will be <code>true</code>.</p>
+<p>If process exited abnormally, the <code>ok</code> return value will be <code>false</code>.</p>
+<p>The second return value, <code>reason</code>, will be a string. Its values may be:</p>
+<ul>
+<li><code>exit</code>: the process exited by calling <code>exit(3)</code>, <code>_exit(2)</code>, or by returning from <code>main()</code>. In this case, <code>status</code> will be the exit code.</li>
+<li><code>signal</code>: the process was terminated by a signal. In this case, <code>status</code> will be the signal number.</li>
+</ul>
+<p>Note that only one light thread can wait on a process at a time. If another light thread tries to wait on a process, the return values will be <code>nil</code> and the error string <code>"pipe busy waiting"</code>.</p>
+<p>If a thread tries to wait an exited process, the return values will be <code>nil</code> and the error string <code>"exited"</code>.</p>
+<p><a href="#table-of-contents">Back to TOC</a></p>
+<h2 id="pid">pid</h2>
+<p><strong>syntax:</strong> <em>pid = proc:pid()</em></p>
+<p>Returns the pid number of the sub-process.</p>
+<p><a href="#table-of-contents">Back to TOC</a></p>
+<h2 id="kill">kill</h2>
+<p><strong>syntax:</strong> <em>ok, err = proc:kill(signum)</em></p>
+<p>Sends a signal to the sub-process.</p>
+<p>Note that the <code>signum</code> argument should be signal’s numerical value. If the specified <code>signum</code> is not a number, an error will be thrown.</p>
+<p>You should use <a href="https://github.com/openresty/lua-resty-signal#signum">lua-resty-signal’s signum() function</a> to convert signal names to signal numbers in order to ensure portability of your application.</p>
+<p>In case of success, this method returns <code>true</code>. Otherwise, it returns <code>nil</code> and a string describing the error.</p>
+<p>Killing an exited sub-process will return <code>nil</code> and the error string <code>"exited"</code>.</p>
+<p>Sending an invalid signal to the process will return <code>nil</code> and the error string <code>"invalid signal"</code>.</p>
+<p><a href="#table-of-contents">Back to TOC</a></p>
+<h2 id="shutdown">shutdown</h2>
+<p><strong>syntax:</strong> <em>ok, err = proc:shutdown(direction)</em></p>
+<p>Closes the specified direction of the current sub-process.</p>
+<p>The <code>direction</code> argument should be one of these three values: <code>stdin</code>, <code>stdout</code> and <code>stderr</code>.</p>
+<p>In case of success, this method returns <code>true</code>. Otherwise, it returns <code>nil</code> and a string describing the error.</p>
+<p>If the <code>merge_stderr</code> option is specified in <a href="#spawn">spawn</a>, closing the <code>stderr</code> direction will return <code>nil</code> and the error string <code>"merged to stdout"</code>.</p>
+<p>Shutting down a direction when a light thread is waiting on it (such as during reading or writing) will return <code>nil</code> and the error string <code>"pipe busy writing"</code> (for stdin) or <code>"pipe busy reading"</code> (for the others).</p>
+<p>Shutting down directions of an exited process will return <code>nil</code> and the error string <code>"closed"</code>.</p>
+<p>It is fine to shut down the same direction of the same stream multiple times; no side effects are to be expected.</p>
+<p><a href="#table-of-contents">Back to TOC</a></p>
+<h2 id="write">write</h2>
+<p><strong>syntax:</strong> <em>nbytes, err = proc:write(data)</em></p>
+<p><strong>context:</strong> <em>phases that support yielding</em></p>
+<p>Writes data to the current sub-process’s stdin stream.</p>
+<p>The <code>data</code> argument can be a string or a single level array-like Lua table with string values.</p>
+<p>This method is a synchronous and non-blocking operation that will not return until <em>all</em> the data has been flushed to the sub-process’s stdin buffer, or an error occurs.</p>
+<p>In case of success, it returns the total number of bytes that have been sent. Otherwise, it returns <code>nil</code> and a string describing the error.</p>
+<p>The timeout threshold of this <code>write</code> operation can be controlled by the <a href="#set_timeouts">set_timeouts</a> method. The default timeout threshold is 10 seconds.</p>
+<p>When a timeout occurs, the data may be partially written into the sub-process’s stdin buffer and read by the sub-process.</p>
+<p>Only one light thread is allowed to write to the sub-process at a time. If another light thread tries to write to it, this method will return <code>nil</code> and the error string <code>"pipe busy writing"</code>.</p>
+<p>Writing to an exited sub-process will return <code>nil</code> and the error string <code>"closed"</code>.</p>
+<p><a href="#table-of-contents">Back to TOC</a></p>
+<h2 id="stderr_read_all">stderr_read_all</h2>
+<p><strong>syntax:</strong> <em>data, err, partial = proc:stderr_read_all()</em></p>
+<p><strong>context:</strong> <em>phases that support yielding</em></p>
+<p>Reads all data from the current sub-process’s stderr stream until it is closed.</p>
+<p>This method is a synchronous and non-blocking operation, just like the <a href="#write">write</a> method.</p>
+<p>The timeout threshold of this reading operation can be controlled by <a href="#set_timeouts">set_timeouts</a>. The default timeout is 10 seconds.</p>
+<p>In case of success, it returns the data received. Otherwise, it returns three values: <code>nil</code>, a string describing the error, and, optionally, the partial data received so far.</p>
+<p>When <code>merge_stderr</code> is specified in <a href="#spawn">spawn</a>, calling <code>stderr_read_all</code> will return <code>nil</code> and the error string <code>"merged to stdout"</code>.</p>
+<p>Only one light thread is allowed to read from a sub-process’s stderr or stdout stream at a time. If another thread tries to read from the same stream, this method will return <code>nil</code> and the error string <code>"pipe busy reading"</code>.</p>
+<p>Streams for stdout and stderr are separated, so at most two light threads may be reading from a sub-process at a time (one for each stream).</p>
+<p>The same way, a light thread may read from a stream while another light thread is writing to the sub-process stdin stream.</p>
+<p>Reading from an exited process’s stream will return <code>nil</code> and the error string <code>"closed"</code>.</p>
+<p><a href="#table-of-contents">Back to TOC</a></p>
+<h2 id="stdout_read_all">stdout_read_all</h2>
+<p><strong>syntax:</strong> <em>data, err, partial = proc:stdout_read_all()</em></p>
+<p><strong>context:</strong> <em>phases that support yielding</em></p>
+<p>Similar to the <a href="#stderr_read_all">stderr_read_all</a> method, but reading from the stdout stream of the sub-process.</p>
+<p><a href="#table-of-contents">Back to TOC</a></p>
+<h2 id="stderr_read_line">stderr_read_line</h2>
+<p><strong>syntax:</strong> <em>data, err, partial = proc:stderr_read_line()</em></p>
+<p><strong>context:</strong> <em>phases that support yielding</em></p>
+<p>Reads from stderr like <a href="#stderr_read_all">stderr_read_all</a>, but only reads a single line of data.</p>
+<p>When <code>merge_stderr</code> is specified in <a href="#spawn">spawn</a>, calling <code>stderr_read_line</code> will return <code>nil</code> plus the error string <code>"merged to stdout"</code>.</p>
+<p>When the data stream is truncated without a new-line character, it returns 3 values: <code>nil</code>, the error string <code>"closed"</code>, and the partial data received so far.</p>
+<p>The line should be terminated by a <code>Line Feed</code> (LF) character (ASCII 10), optionally preceded by a <code>Carriage Return</code> (CR) character (ASCII 13). The CR and LF characters are not included in the returned line data.</p>
+<p><a href="#table-of-contents">Back to TOC</a></p>
+<h2 id="stdout_read_line">stdout_read_line</h2>
+<p><strong>syntax:</strong> <em>data, err, partial = proc:stdout_read_line()</em></p>
+<p><strong>context:</strong> <em>phases that support yielding</em></p>
+<p>Similar to <a href="#stderr_read_line">stderr_read_line</a>, but reading from the stdout stream of the sub-process.</p>
+<p><a href="#table-of-contents">Back to TOC</a></p>
+<h2 id="stderr_read_bytes">stderr_read_bytes</h2>
+<p><strong>syntax:</strong> <em>data, err, partial = proc:stderr_read_bytes(len)</em></p>
+<p><strong>context:</strong> <em>phases that support yielding</em></p>
+<p>Reads from stderr like <a href="#stderr_read_all">stderr_read_all</a>, but only reads the specified number of bytes.</p>
+<p>If <code>merge_stderr</code> is specified in <a href="#spawn">spawn</a>, calling <code>stderr_read_bytes</code> will return <code>nil</code> plus the error string <code>"merged to stdout"</code>.</p>
+<p>If the data stream is truncated (fewer bytes of data available than requested), this method returns 3 values: <code>nil</code>, the error string <code>"closed"</code>, and the partial data string received so far.</p>
+<p><a href="#table-of-contents">Back to TOC</a></p>
+<h2 id="stdout_read_bytes">stdout_read_bytes</h2>
+<p><strong>syntax:</strong> <em>data, err, partial = proc:stdout_read_bytes(len)</em></p>
+<p><strong>context:</strong> <em>phases that support yielding</em></p>
+<p>Similar to <a href="#stderr_read_bytes">stderr_read_bytes</a>, but reading from the stdout stream of the sub-process.</p>
+<p><a href="#table-of-contents">Back to TOC</a></p>
+<h2 id="stderr_read_any">stderr_read_any</h2>
+<p><strong>syntax:</strong> <em>data, err = proc:stderr_read_any(max)</em></p>
+<p><strong>context:</strong> <em>phases that support yielding</em></p>
+<p>Reads from stderr like <a href="#stderr_read_all">stderr_read_all</a>, but returns immediately when any amount of data is received.</p>
+<p>At most <code>max</code> bytes are received.</p>
+<p>If <code>merge_stderr</code> is specified in <a href="#spawn">spawn</a>, calling <code>stderr_read_any</code> will return <code>nil</code> plus the error string <code>"merged to stdout"</code>.</p>
+<p>If the received data is more than <code>max</code> bytes, this method will return with exactly <code>max</code> bytes of data. The remaining data in the underlying receive buffer can be fetched with a subsequent reading operation.</p>
+<p><a href="#table-of-contents">Back to TOC</a></p>
+<h2 id="stdout_read_any">stdout_read_any</h2>
+<p><strong>syntax:</strong> <em>data, err = proc:stdout_read_any(max)</em></p>
+<p><strong>context:</strong> <em>phases that support yielding</em></p>
+<p>Similar to <a href="#stderr_read_any">stderr_read_any</a>, but reading from the stdout stream of the sub-process.</p>
+<p><a href="#table-of-contents">Back to TOC</a></p>
+<h1 id="community">Community</h1>
+<p><a href="#table-of-contents">Back to TOC</a></p>
+<h2 id="english-mailing-list">English Mailing List</h2>
+<p>The <a href="https://groups.google.com/group/openresty-en">openresty-en</a> mailing list is for English speakers.</p>
+<p><a href="#table-of-contents">Back to TOC</a></p>
+<h2 id="chinese-mailing-list">Chinese Mailing List</h2>
+<p>The <a href="https://groups.google.com/group/openresty">openresty</a> mailing list is for Chinese speakers.</p>
+<p><a href="#table-of-contents">Back to TOC</a></p>
+<h1 id="bugs-and-patches">Bugs and Patches</h1>
+<p>Please report bugs or submit patches by</p>
+<ol type="1">
+<li>creating a ticket on the <a href="https://github.com/openresty/lua-resty-core/issues">GitHub Issue Tracker</a>,</li>
+<li>or posting to the <a href="#community">OpenResty community</a>.</li>
+</ol>
+<p><a href="#table-of-contents">Back to TOC</a></p>
+<h1 id="copyright-and-license">Copyright and License</h1>
+<p>This module is licensed under the BSD license.</p>
+<p>Copyright (C) 2018, by OpenResty Inc.</p>
+<p>All rights reserved.</p>
+<p>Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:</p>
+<ul>
+<li><p>Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.</p></li>
+<li><p>Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.</p></li>
+</ul>
+<p>THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS “AS IS” AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.</p>
+<p><a href="#table-of-contents">Back to TOC</a></p>
+<h1 id="see-also">See Also</h1>
+<ul>
+<li>the <a href="https://github.com/openresty/lua-resty-core">lua-resty-core</a> library.</li>
+<li>the ngx_lua module: https://github.com/openresty/lua-nginx-module</li>
+<li>OpenResty: https://openresty.org</li>
+</ul>
+<p><a href="#table-of-contents">Back to TOC</a></p>

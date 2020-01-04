@@ -24,10 +24,10 @@ lp.modules(package) -&gt; {module = path}           get a package&#39;s modules<
 <p>The result is a full luapower API with the additional functions <code>close()</code>, <code>restart()</code>, and <code>stop()</code> to control the connection and/or the server.</p>
 <p>Each connection gets its own separate Lua state to do stuff in, so the remote cache is lost when the connection is closed.</p>
 <h4 id="configuring-luapower-to-use-rpc-servers">Configuring luapower to use RPC servers:</h4>
-<pre><code>lp.servers = {linux32 = &#39;10.1.1.1&#39;, ...}</code></pre>
+<pre><code>lp.servers = {linux64 = &#39;10.1.1.1&#39;, ...}</code></pre>
 <p>To use the luapower command line with RPC servers, change the servers table in luapower.lua directly.</p>
 <h4 id="updating-the-dependency-database">Updating the dependency database:</h4>
 <pre><code>lp.update_db([package], [platform])
 
-./luapower update-db [PACKAGE] [PLATFORM]</code></pre>
+./lp update-db [PACKAGE] [PLATFORM]</code></pre>
 <p>Passing nil (i.e. ‘–all’ in the cmdline version) as package updates all the packages, same with the platform (so not passing any args updates the whole db).</p>

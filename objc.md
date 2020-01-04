@@ -1,6 +1,6 @@
 ---
-platforms: osx32, osx64
 tagline:   Obj-C & Cocoa bridge
+platforms: osx64
 ---
 
 ## `local objc = require'objc'`

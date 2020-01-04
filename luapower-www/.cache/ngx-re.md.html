@@ -1,0 +1,144 @@
+<h1 id="name">Name</h1>
+<p>ngx.re - Lua API for convenience utilities for <code>ngx.re</code>.</p>
+<h1 id="table-of-contents">Table of Contents</h1>
+<ul>
+<li><a href="#name">Name</a></li>
+<li><a href="#status">Status</a></li>
+<li><a href="#synopsis">Synopsis</a></li>
+<li><a href="#description">Description</a></li>
+<li><a href="#methods">Methods</a>
+<ul>
+<li><a href="#split">split</a></li>
+<li><a href="#opt">opt</a></li>
+</ul></li>
+<li><a href="#community">Community</a>
+<ul>
+<li><a href="#english-mailing-list">English Mailing List</a></li>
+<li><a href="#chinese-mailing-list">Chinese Mailing List</a></li>
+</ul></li>
+<li><a href="#bugs-and-patches">Bugs and Patches</a></li>
+<li><a href="#author">Author</a></li>
+<li><a href="#copyright-and-license">Copyright and License</a></li>
+<li><a href="#see-also">See Also</a></li>
+</ul>
+<h1 id="status">Status</h1>
+<p>This Lua module is currently considered experimental.</p>
+<h1 id="synopsis">Synopsis</h1>
+<div class="sourceCode" id="cb1"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb1-1"><a href="#cb1-1"></a><span class="kw">local</span> ngx_re <span class="op">=</span> <span class="fu">require</span> <span class="st">&quot;ngx.re&quot;</span></span>
+<span id="cb1-2"><a href="#cb1-2"></a></span>
+<span id="cb1-3"><a href="#cb1-3"></a><span class="co">-- split</span></span>
+<span id="cb1-4"><a href="#cb1-4"></a><span class="kw">local</span> res<span class="op">,</span> err <span class="op">=</span> ngx_re<span class="op">.</span>split<span class="op">(</span><span class="st">&quot;a,b,c,d&quot;</span><span class="op">,</span> <span class="st">&quot;,&quot;</span><span class="op">)</span></span>
+<span id="cb1-5"><a href="#cb1-5"></a><span class="co">--&gt; res is now {&quot;a&quot;, &quot;b&quot;, &quot;c&quot;, &quot;d&quot;}</span></span>
+<span id="cb1-6"><a href="#cb1-6"></a></span>
+<span id="cb1-7"><a href="#cb1-7"></a><span class="co">-- opt</span></span>
+<span id="cb1-8"><a href="#cb1-8"></a>ngx_re<span class="op">.</span>opt<span class="op">(</span><span class="st">&quot;jit_stack_size&quot;</span><span class="op">,</span> <span class="dv">128</span> <span class="op">*</span> <span class="dv">1024</span><span class="op">)</span></span>
+<span id="cb1-9"><a href="#cb1-9"></a><span class="co">--&gt; the PCRE jit stack can now handle more complex regular expressions</span></span></code></pre></div>
+<p><a href="#table-of-contents">Back to TOC</a></p>
+<h1 id="description">Description</h1>
+<p>This Lua module provides a Lua API which implements convenience utilities for the <code>ngx.re</code> API.</p>
+<p><a href="#table-of-contents">Back to TOC</a></p>
+<h1 id="methods">Methods</h1>
+<p>All the methods of this module are static (or module-level). That is, you do not need an object (or instance) to call these methods.</p>
+<p><a href="#table-of-contents">Back to TOC</a></p>
+<h2 id="split">split</h2>
+<p><strong>syntax:</strong> <em>res, err = ngx_re.split(subject, regex, options?, ctx?, max?, res?)</em></p>
+<p>Splits the <code>subject</code> string using the Perl compatible regular expression <code>regex</code> with the optional <code>options</code>.</p>
+<p>This function returns a Lua (array) table (with integer keys) containing the split values.</p>
+<p>In case of error, <code>nil</code> will be returned as well as a string describing the error.</p>
+<p>When <code>regex</code> contains a sub-match capturing group, and when such a match is found, the first submatch capture will be inserted in between each split value, like so:</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb2-1"><a href="#cb2-1"></a><span class="kw">local</span> ngx_re <span class="op">=</span> <span class="fu">require</span> <span class="st">&quot;ngx.re&quot;</span></span>
+<span id="cb2-2"><a href="#cb2-2"></a></span>
+<span id="cb2-3"><a href="#cb2-3"></a><span class="kw">local</span> res<span class="op">,</span> err <span class="op">=</span> ngx_re<span class="op">.</span>split<span class="op">(</span><span class="st">&quot;a,b,c,d&quot;</span><span class="op">,</span> <span class="st">&quot;(,)&quot;</span><span class="op">)</span></span>
+<span id="cb2-4"><a href="#cb2-4"></a><span class="co">-- res is now {&quot;a&quot;, &quot;,&quot;, &quot;b&quot;, &quot;,&quot;, &quot;c&quot;, &quot;,&quot;, &quot;d&quot;}</span></span></code></pre></div>
+<p>When <code>regex</code> is empty string <code>""</code>, the <code>subject</code> will be split into chars, like so:</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb3-1"><a href="#cb3-1"></a><span class="kw">local</span> ngx_re <span class="op">=</span> <span class="fu">require</span> <span class="st">&quot;ngx.re&quot;</span></span>
+<span id="cb3-2"><a href="#cb3-2"></a></span>
+<span id="cb3-3"><a href="#cb3-3"></a><span class="kw">local</span> res<span class="op">,</span> err <span class="op">=</span> ngx_re<span class="op">.</span>split<span class="op">(</span><span class="st">&quot;abcd&quot;</span><span class="op">,</span> <span class="st">&quot;&quot;</span><span class="op">)</span></span>
+<span id="cb3-4"><a href="#cb3-4"></a><span class="co">-- res is now {&quot;a&quot;, &quot;b&quot;, &quot;c&quot;, &quot;d&quot;}</span></span></code></pre></div>
+<p>The optional <code>ctx</code> table argument can be a Lua table holding an optional <code>pos</code> field. When the <code>pos</code> field in the <code>ctx</code> table argument is specified, <code>ngx_re.split</code> will start splitting the <code>subject</code> from that index:</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb4-1"><a href="#cb4-1"></a><span class="kw">local</span> ngx_re <span class="op">=</span> <span class="fu">require</span> <span class="st">&quot;ngx.re&quot;</span></span>
+<span id="cb4-2"><a href="#cb4-2"></a></span>
+<span id="cb4-3"><a href="#cb4-3"></a><span class="kw">local</span> res<span class="op">,</span> err <span class="op">=</span> ngx_re<span class="op">.</span>split<span class="op">(</span><span class="st">&quot;a,b,c,d&quot;</span><span class="op">,</span> <span class="st">&quot;,&quot;</span><span class="op">,</span> <span class="kw">nil</span><span class="op">,</span> <span class="op">{</span>pos <span class="op">=</span> <span class="dv">5</span><span class="op">})</span></span>
+<span id="cb4-4"><a href="#cb4-4"></a><span class="co">-- res is now {&quot;c&quot;, &quot;d&quot;}</span></span></code></pre></div>
+<p>The optional <code>max</code> argument is a number that when specified, will prevent <code>ngx_re.split</code> from adding more than <code>max</code> matches to the <code>res</code> array:</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb5-1"><a href="#cb5-1"></a><span class="kw">local</span> ngx_re <span class="op">=</span> <span class="fu">require</span> <span class="st">&quot;ngx.re&quot;</span></span>
+<span id="cb5-2"><a href="#cb5-2"></a></span>
+<span id="cb5-3"><a href="#cb5-3"></a><span class="kw">local</span> res<span class="op">,</span> err <span class="op">=</span> ngx_re<span class="op">.</span>split<span class="op">(</span><span class="st">&quot;a,b,c,d&quot;</span><span class="op">,</span> <span class="st">&quot;,&quot;</span><span class="op">,</span> <span class="kw">nil</span><span class="op">,</span> <span class="kw">nil</span><span class="op">,</span> <span class="dv">3</span><span class="op">)</span></span>
+<span id="cb5-4"><a href="#cb5-4"></a><span class="co">-- res is now {&quot;a&quot;, &quot;b&quot;, &quot;c,d&quot;}</span></span></code></pre></div>
+<p>Specifying <code>max &lt;= 0</code> disables this behavior, meaning that the number of results won’t be limited.</p>
+<p>The optional 6th argument <code>res</code> can be a table that <code>ngx_re.split</code> will re-use to hold the results instead of creating a new one, which can improve performance in hot code paths. It is used like so:</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb6-1"><a href="#cb6-1"></a><span class="kw">local</span> ngx_re <span class="op">=</span> <span class="fu">require</span> <span class="st">&quot;ngx.re&quot;</span></span>
+<span id="cb6-2"><a href="#cb6-2"></a></span>
+<span id="cb6-3"><a href="#cb6-3"></a><span class="kw">local</span> my_table <span class="op">=</span> <span class="op">{</span><span class="st">&quot;hello world&quot;</span><span class="op">}</span></span>
+<span id="cb6-4"><a href="#cb6-4"></a></span>
+<span id="cb6-5"><a href="#cb6-5"></a><span class="kw">local</span> res<span class="op">,</span> err <span class="op">=</span> ngx_re<span class="op">.</span>split<span class="op">(</span><span class="st">&quot;a,b,c,d&quot;</span><span class="op">,</span> <span class="st">&quot;,&quot;</span><span class="op">,</span> <span class="kw">nil</span><span class="op">,</span> <span class="kw">nil</span><span class="op">,</span> <span class="kw">nil</span><span class="op">,</span> my_table<span class="op">)</span></span>
+<span id="cb6-6"><a href="#cb6-6"></a><span class="co">-- res/my_table is now {&quot;a&quot;, &quot;b&quot;, &quot;c&quot;, &quot;d&quot;}</span></span></code></pre></div>
+<p>When provided with a <code>res</code> table, <code>ngx_re.split</code> won’t clear the table for performance reasons, but will rather insert a trailing <code>nil</code> value when the split is completed:</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb7-1"><a href="#cb7-1"></a><span class="kw">local</span> ngx_re <span class="op">=</span> <span class="fu">require</span> <span class="st">&quot;ngx.re&quot;</span></span>
+<span id="cb7-2"><a href="#cb7-2"></a></span>
+<span id="cb7-3"><a href="#cb7-3"></a><span class="kw">local</span> my_table <span class="op">=</span> <span class="op">{</span><span class="st">&quot;W&quot;</span><span class="op">,</span> <span class="st">&quot;X&quot;</span><span class="op">,</span> <span class="st">&quot;Y&quot;</span><span class="op">,</span> <span class="st">&quot;Z&quot;</span><span class="op">}</span></span>
+<span id="cb7-4"><a href="#cb7-4"></a></span>
+<span id="cb7-5"><a href="#cb7-5"></a><span class="kw">local</span> res<span class="op">,</span> err <span class="op">=</span> ngx_re<span class="op">.</span>split<span class="op">(</span><span class="st">&quot;a,b&quot;</span><span class="op">,</span> <span class="st">&quot;,&quot;</span><span class="op">,</span> <span class="kw">nil</span><span class="op">,</span> <span class="kw">nil</span><span class="op">,</span> <span class="kw">nil</span><span class="op">,</span> my_table<span class="op">)</span></span>
+<span id="cb7-6"><a href="#cb7-6"></a><span class="co">-- res/my_table is now {&quot;a&quot;, &quot;b&quot;, nil, &quot;Z&quot;}</span></span></code></pre></div>
+<p>When the trailing <code>nil</code> is not enough for your purpose, you should clear the table yourself before feeding it into the <code>split</code> function.</p>
+<p><a href="#table-of-contents">Back to TOC</a></p>
+<h2 id="opt">opt</h2>
+<p><strong>syntax:</strong> <em>ngx_re.opt(option, value)</em></p>
+<p>Allows changing of regex settings. Currently, it can only change the <code>jit_stack_size</code> of the PCRE engine, like so:</p>
+<pre class="nginx"><code>
+ init_by_lua_block { require &quot;ngx.re&quot;.opt(&quot;jit_stack_size&quot;, 200 * 1024) }
+
+ server {
+     location /re {
+         content_by_lua_block {
+             -- full regex and string are taken from https://github.com/JuliaLang/julia/issues/8278
+             local very_long_string = [[71.163.72.113 - - [30/Jul/2014:16:40:55 -0700] ...]]
+             local very_complicated_regex = [[([\d\.]+) ([\w.-]+) ([\w.-]+) (\[.+\]) ...]]
+             local from, to, err = ngx.re.find(very_long_string, very_complicated_regex, &quot;jo&quot;)
+
+             -- with the regular jit_stack_size, we would get the error &#39;pcre_exec() failed: -27&#39;
+             -- instead, we get a match
+             ngx.print(from .. &quot;-&quot; .. to) -- prints &#39;1-1563&#39;
+         }
+     }
+ }</code></pre>
+<p>The <code>jit_stack_size</code> cannot be set to a value lower than PCRE’s default of 32K.</p>
+<p>This method requires the PCRE library enabled in Nginx.</p>
+<p>This feature was first introduced in the <code>v0.1.12</code> release.</p>
+<p><a href="#table-of-contents">Back to TOC</a></p>
+<h1 id="community">Community</h1>
+<p><a href="#table-of-contents">Back to TOC</a></p>
+<h2 id="english-mailing-list">English Mailing List</h2>
+<p>The <a href="https://groups.google.com/group/openresty-en">openresty-en</a> mailing list is for English speakers.</p>
+<p><a href="#table-of-contents">Back to TOC</a></p>
+<h2 id="chinese-mailing-list">Chinese Mailing List</h2>
+<p>The <a href="https://groups.google.com/group/openresty">openresty</a> mailing list is for Chinese speakers.</p>
+<p><a href="#table-of-contents">Back to TOC</a></p>
+<h1 id="bugs-and-patches">Bugs and Patches</h1>
+<p>Please report bugs or submit patches by</p>
+<ol type="1">
+<li>creating a ticket on the <a href="https://github.com/openresty/lua-resty-core/issues">GitHub Issue Tracker</a>,</li>
+<li>or posting to the <a href="#community">OpenResty community</a>.</li>
+</ol>
+<p><a href="#table-of-contents">Back to TOC</a></p>
+<h1 id="author">Author</h1>
+<p>Thibault Charbonnier - (<span class="citation" data-cites="thibaultcha">[@thibaultcha]</span>(https://github.com/thibaultcha))</p>
+<p><a href="#table-of-contents">Back to TOC</a></p>
+<h1 id="copyright-and-license">Copyright and License</h1>
+<p>This module is licensed under the BSD license.</p>
+<p>Copyright (C) 2016-2017, by Yichun “agentzh” Zhang, OpenResty Inc.</p>
+<p>All rights reserved.</p>
+<p>Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:</p>
+<ul>
+<li><p>Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.</p></li>
+<li><p>Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.</p></li>
+</ul>
+<p>THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS “AS IS” AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.</p>
+<p><a href="#table-of-contents">Back to TOC</a></p>
+<h1 id="see-also">See Also</h1>
+<ul>
+<li>the <a href="https://github.com/openresty/lua-resty-core">lua-resty-core</a> library.</li>
+<li>the ngx_lua module: https://github.com/openresty/lua-nginx-module</li>
+<li>OpenResty: https://openresty.org</li>
+</ul>
+<p><a href="#table-of-contents">Back to TOC</a></p>

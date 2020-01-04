@@ -18,9 +18,9 @@
 
 if not ... then require'terra.low_test'; return; end
 
---remove current directory from package path to avoid duplicate requires.
+--remove current directory from package.terrapath to avoid duplicate requires.
 --eg require'terra.low' and require'low' is a common mistake I make.
-package.path = package.path:gsub('^%.[/\\]%?%.lua%;', '')
+package.terrapath = package.terrapath:gsub('^%.[/\\]%?%.t;', '')
 
 --dependencies ---------------------------------------------------------------
 
@@ -694,6 +694,9 @@ end
 --C include system -----------------------------------------------------------
 
 function includepath(path)
+	if terralib.low_includepath then
+		path = terralib.low_includepath..'/'..path
+	end
 	terralib.includepath = terralib.includepath .. ';' .. path
 end
 

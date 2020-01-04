@@ -83,7 +83,7 @@ sh build-osx64.sh</code></pre>
 <pre><code>cd csrc/&lt;package&gt; &amp;&amp; ./build-&lt;current-platform&gt;.sh</code></pre>
 <h2 id="building-packages-in-order">Building packages in order</h2>
 <p>You can use <a href="/luapower">luapower</a> so that for any package or list of packages (or for all installed packages) you will get the full list of packages that need to be compiled <em>in the right order</em>, including all the dependencies:</p>
-<pre><code>./luapower build-order pkg1,...|--all [platform]</code></pre>
+<pre><code>./lp build-order pkg1,...|--all [platform]</code></pre>
 <p>Again, you can use mgit to leverage that and actually build the packages:</p>
 <pre><code>./mgit build-all pkg1,...|--all [platform]</code></pre>
 <p>To build all installed packages on the current platform, run:</p>

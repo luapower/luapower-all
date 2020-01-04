@@ -65,6 +65,9 @@ hr {
 .gray a, .gray a:visited { color: #ccc; }
 .smallnote { color: #999; }
 
+body::-webkit-scrollbar { width: 12px; }
+body::-webkit-scrollbar-thumb { border-radius: 6px; }
+
 /* fonts and line spacings ------------------------------------------------ */
 
 body {
@@ -191,6 +194,8 @@ warn {
 .icon-osx:before { content: "\e609"; }
 .icon-osx32:before { content: "\e60a"; }
 .icon-osx64:before { content: "\e60b"; }
+.icon-resty:before { content: "\e60c"; }
+.icon-terra:before { content: "\e60d"; }
 
 /* main template ---------------------------------------------------------- */
 
@@ -595,6 +600,34 @@ warn {
 	position: absolute;
 	content: '\00bb';
 	left: -1em;
+}
+
+.deps_sidebar_container input {
+	opacity: 0;
+	position: absolute;
+	pointer-events: none;
+}
+.deps_sidebar_container p {
+	display: -webkit-box;
+	-webkit-line-clamp: 3;
+	-webkit-box-orient: vertical;
+	overflow: hidden;
+}
+.deps_sidebar_container input:checked + p {
+	-webkit-line-clamp: unset;
+}
+.deps_sidebar_container input:checked ~ label,
+.deps_sidebar_container p:not(.truncated) ~ label {
+	display: none;
+}
+.deps_sidebar_container p {
+	margin: 0;
+}
+.deps_sidebar_container label {
+	border-radius: 4px;
+	padding: 0.2em 0.6em;
+	border: 1px solid #666;
+	font-size: 0.8em;
 }
 
 /* grep page -------------------------------------------------------------- */

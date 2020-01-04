@@ -1,3 +1,5 @@
+local ffi = require'ffi'
+--[[
 // csrc/openssl/src/include/openssl/evp.h
 enum {
 	EVP_MAX_MD_SIZE      = 64,
@@ -1395,3 +1397,4 @@ enum {
 	EVP_R_WRONG_FINAL_BLOCK_LENGTH = 109,
 	EVP_R_XTS_DUPLICATED_KEYS = 183,
 };
+]]

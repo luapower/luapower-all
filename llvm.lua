@@ -9,6 +9,7 @@ local glue = require'glue'
 local require, type, select, print =
       require, type, select, print
 local add, concat = table.insert, table.concat
+ffi.cdef'void free(void*);'
 local free = ffi.C.free
 local memoize = glue.memoize
 require'llvm_h'

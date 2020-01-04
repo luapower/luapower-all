@@ -1,6 +1,6 @@
 ---
 tagline: libX11 binding
-platforms: linux32, linux64
+platforms: linux64
 ---
 
 ## `local xlib = require'xlib'`

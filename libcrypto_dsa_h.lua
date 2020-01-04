@@ -1,3 +1,5 @@
+local ffi = require'ffi'
+--[[
 // csrc/openssl/src/include/openssl/dsa.h
 enum {
 	OPENSSL_DSA_MAX_MODULUS_BITS = 10000,
@@ -172,4 +174,4 @@ enum {
 	DSA_R_Q_NOT_PRIME    = 113,
 	DSA_R_SEED_LEN_SMALL = 110,
 };
-
+]]

@@ -219,6 +219,7 @@ luarocks install --server=http://rocks.moonscript.org/m/luapower {{package}}
 					This is a combined list of packages required by <b><i>all modules</i></b> of this<br>
 					package on each supported platform, plus <b><i>binary dependencies</i></b> if any.<br>
 					Darker names, if present, represent indirect dependencies.<br>
+					Purlpe names, if present, represent packages that contain modules that must be already be loaded.<br>
 					<br>
 					<b>Note:</b> These are only the dependencies required for the modules to <i>load</i>.<br>
 					Runtime dependencies, if any, are shown separately below.<br>
@@ -293,7 +294,8 @@ luarocks install --server=http://rocks.moonscript.org/m/luapower {{package}}
 					<a class="infotip">
 						This is the list of modules for this package.<br>
 						On the right column you have the required packages for each module.<br>
-						Darker names, if present, represent indirect dependencies.
+						Darker names, if present, represent indirect dependencies.<br>
+						Purlpe names, if present, represent dependencies that must already be loaded before loading the respective module.
 					</a>
 				</span>
 				<span class="module_deps module_deps_modules hidden">
@@ -302,6 +304,7 @@ luarocks install --server=http://rocks.moonscript.org/m/luapower {{package}}
 						On the right column you have the required modules for each module.<br>
 						Darker names, if present, represent indirect dependencies.<br>
 						Even darker names are internal dependencies.<br>
+						Purlpe names are modules that must already be loaded before loading the respective module.<br>
 					</a>
 				</span>
 				&nbsp;
@@ -440,12 +443,12 @@ luarocks install --server=http://rocks.moonscript.org/m/luapower {{package}}
 					only if and when accessing those APIs. See <a href="/glue#autoload">glue.autoload</a> for how this works.
 				</div>
 			</h2>
-			{{#modules}}{{#module_has_autoloads}}
 			<table>
+			{{#modules}}{{#module_has_autoloads}}
 				<tr>
 					<th></th>
-					<th align=left valign=top style="padding-bottom: 1em">module.field</th>
-					<th align=left valign=top>implementation module</th>
+					<th align=left valign=bottom style="padding-top: 1em">{{module}}</th>
+					<th align=left valign=bottom>implementation module</th>
 				</tr>
 				{{#autoloads}}
 				<tr>
@@ -460,8 +463,8 @@ luarocks install --server=http://rocks.moonscript.org/m/luapower {{package}}
 					</td>
 				</tr>
 				{{/autoloads}}
-			</table>
 			{{/module_has_autoloads}}{{/modules}}
+			</table>
 			{{/has_autoloads}}
 
 			{{#has_runtime_deps}}
@@ -680,33 +683,45 @@ luarocks install --server=http://rocks.moonscript.org/m/luapower {{package}}
 				{{/c_version}}
 				<tr>
 					<td align=left valign=top colspan=2>
-						<span class="gray requires_label">Requires:</span>
-						<span style="white-space: normal" class=deps_sidebar>
-						{{#package_deps}}
-							{{#icon}}<span class="gray platform_icon icon-{{icon}}"></span>{{/icon}}
-							{{#packages}}
-								{{#icon}}<span class=gray>&#43;</span>{{/icon}}<a href="/{{dep_package}}" class="{{kind}}">{{dep_package}}</a>&nbsp;
-							{{/packages}}
-						{{/package_deps}}
-						{{^package_deps}}
-						<span class=smallnote>none</span>
-						{{/package_deps}}
+						<div class=deps_sidebar_container>
+						<input type="checkbox" id="expanded1">
+						<p>
+							<span class="gray requires_label">Requires:</span>
+							<span style="white-space: normal" class=deps_sidebar>
+							{{#package_deps}}
+								{{#icon}}<span class="gray platform_icon icon-{{icon}}"></span>{{/icon}}
+								{{#packages}}
+									{{#icon}}<span class=gray>&#43;</span>{{/icon}}<a href="/{{dep_package}}" class="{{kind}}">{{dep_package}}</a>&nbsp;
+								{{/packages}}
+							{{/package_deps}}
+							{{^package_deps}}
+							<span class=smallnote>none</span>
+							{{/package_deps}}
+						</p>
+						<label for="expanded1" role="button">more...</label>
+						</div>
 					</td>
 				</tr>
 				<tr>
 					<td align=left valign=top colspan=2>
-						<span class="gray requires_label">Required by: </span>
-						<span style="white-space: normal" class=deps_sidebar>
-						{{#package_rdeps}}
-							{{#icon}}<span class="gray platform_icon icon-{{icon}}"></span>{{/icon}}
-							{{#packages}}
-								<span></span><a href="/{{dep_package}}" class="{{kind}}">{{dep_package}}</a>&nbsp;
-							{{/packages}}
-						{{/package_rdeps}}
-						</span>
-						{{^package_rdeps}}
-						<span class=smallnote>none</span>
-						{{/package_rdeps}}
+						<div class=deps_sidebar_container>
+						<input type="checkbox" id="expanded2">
+						<p>
+							<span class="gray requires_label">Required by: </span>
+							<span style="white-space: normal" class=deps_sidebar>
+							{{#package_rdeps}}
+								{{#icon}}<span class="gray platform_icon icon-{{icon}}"></span>{{/icon}}
+								{{#packages}}
+									<span></span><a href="/{{dep_package}}" class="{{kind}}">{{dep_package}}</a>&nbsp;
+								{{/packages}}
+							{{/package_rdeps}}
+							</span>
+							{{^package_rdeps}}
+							<span class=smallnote>none</span>
+							{{/package_rdeps}}
+						</p>
+						<label for="expanded2" role="button">more...</label>
+						</div>
 					</td>
 					<script>
 						// prevent icons from showing up alone at the end of the line.
@@ -717,10 +732,23 @@ luarocks install --server=http://rocks.moonscript.org/m/luapower {{package}}
 								.add($(this).next().next()) // first text
 								.wrapAll('<span class=nowrap></span>')
 						})
+
+						// truncate text and add "more..." button.
+						const ps = document.querySelectorAll('.deps_sidebar_container p')
+						const observer = new ResizeObserver(entries => {
+							for (let entry of entries) {
+								entry.target.classList[entry.target.scrollHeight > entry.contentRect.height ? 'add' : 'remove']('truncated')
+							}
+							$(window).scroll()
+						})
+						ps.forEach(p => {
+						  observer.observe(p)
+						})
 					</script>
 				</tr>
 			</table>
 			<br>
+			<div></div><!-- docnav's y is this div's y -->
 			<div id=docnav></div>
 		</td>
 	</tr>

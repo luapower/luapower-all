@@ -1,6 +1,9 @@
 
 body { background-color: #fff; color: #000; }
 
+body::-webkit-scrollbar-track { background: #eee; }
+body::-webkit-scrollbar-thumb { background-color: #aaa; border: 3px solid #eee; }
+
 strong { font-weight: 800; }
 
 a { color: #339; }
@@ -35,6 +38,7 @@ a .package_cat_name:hover, a .package_cat_name:visited:hover { color: #000; }
 
 #docnav .selected a { color: #000 !important; }
 
+.environment { color: #88c !important; }
 .indirect { color: #aaa !important; }
 .internal { color: #ccc !important; }
 .error_line { background-color: #900 !important; color: #fff !important; }

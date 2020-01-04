@@ -1,3 +1,5 @@
+local ffi = require'ffi'
+--[[
 // csrc/openssl/src/include/openssl/ec.h
 enum {
 	OPENSSL_ECC_MAX_FIELD_BITS = 661,
@@ -608,3 +610,4 @@ enum {
 	EC_R_WRONG_CURVE_PARAMETERS = 145,
 	EC_R_WRONG_ORDER     = 130,
 };
+]]

@@ -1,3 +1,5 @@
+local ffi = require'ffi'
+--[[
 // csrc/openssl/src/include/openssl/ui.h
 UI *UI_new(void);
 UI *UI_new_method(const UI_METHOD *method);
@@ -145,3 +147,4 @@ enum {
 	UI_R_UNKNOWN_TTYGET_ERRNO_VALUE = 108,
 	UI_R_USER_DATA_DUPLICATION_UNSUPPORTED = 112,
 };
+]]

@@ -10,7 +10,7 @@ platform="$2"
 	exit 1
 }
 
-[ -f "luapower" ] || {
+[ -f "lp" ] || {
 	echo
 	echo "ERROR: luapower package is needed to get the build order."
 	echo "To get it, run:"
@@ -20,8 +20,8 @@ platform="$2"
 	exit 1
 }
 
-[ "$platform" ] || platform="$(./luapower platform)" || exit 1
-packages="$(./luapower build-order $packages $platform)"
+[ "$platform" ] || platform="$(./lp platform)" || exit 1
+packages="$(./lp build-order $packages $platform)"
 
 echo "Will build: ${packages//$'\n'/, }."
 echo "Press any key to continue, Ctrl+C to quit."

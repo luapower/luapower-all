@@ -416,7 +416,7 @@ function lib(modulename)
 	local symbols = {} --{cname->func}; for saveobj().
 	local objects = {} --{{obj=,cname=}|{obj=,cname=,methods|getters|setters={name->cname},...}
 
-	local function publish_func(func)
+	local function add_func(func)
 		local cname = cdefs:cdef(func)
 		if type(cname) == 'table' then --overloaded
 			for i,cname in ipairs(cname) do
@@ -425,6 +425,11 @@ function lib(modulename)
 		else
 			symbols[cname] = func
 		end
+		return cname
+	end
+
+	local function publish_func(func)
+		local cname = add_func(func)
 		add(objects, {obj = func, cname = cname})
 	end
 
@@ -433,12 +438,15 @@ function lib(modulename)
 		return name:find'^_' and true or false
 	end
 
-	local function publish_struct(T)
-		local pub = T.public_methods
+	local function publish_struct(T, public_methods)
+		local pub = public_methods or T.public_methods
 		if pub then
 			for method in sortedpairs(pub) do
-				if not getmethod(T, method) then
+				local func = getmethod(T, method)
+				if not func then
 					print('Warning: method missing '..tostring(T)..':'..method..'()')
+				elseif not type(func):find'terrafunction$' then
+					print('Warning: method is not a function '..tostring(T)..':'..method..'()')
 				end
 			end
 		end
@@ -448,28 +456,44 @@ function lib(modulename)
 		local st = {obj = T, cname = struct_cname, methods = {}, getters = {}, setters = {}}
 		add(objects, st)
 		for name, func in sortedpairs(T.methods) do
-			local valid = type(func) == 'terrafunction'
-			local public = pub and pub[name]
-			if public then
-				assert(valid, 'Cannot publish ', type(func), ' ', T, ':', name, '()')
-			else
-				public = not pub and not method_is_private(func, name)
+			local public
+			if pub then --explicitly public
+				public = pub[name]
+			else --implicitly public
+				public = not method_is_private(func, name)
 			end
-			if valid and public then
-				func.cname = func.cname or cprefix .. name
-				local cname = cdefs:cdef(func)
-				symbols[cname] = func
-				if T.gettersandsetters then
-					if name:starts'get_' and #func.type.parameters == 1 then
-						st.getters[name:gsub('^get_', '')] = cname
-					elseif name:starts'set_' and #func.type.parameters == 2 then
-						st.setters[name:gsub('^set_', '')] = cname
+			if public and not type(func):find'terrafunction$' then
+				public = false
+			end
+			if public then
+				if type(func) == 'overloadedterrafunction' then
+					local cname = type(public) == 'table' and public or func.cname
+					assert(type(cname) == 'table',
+						'Overloaded function ', T, ':', name, '() needs explicit cname list')
+					--prefix the cnames of each overloaded implementation.
+					--add separate methods for each overloaded implementation.
+					func.cname = {}
+					for i,cname in ipairs(cname) do
+						func.cname[i] = cprefix .. cname
+						st.methods[cname] = cprefix .. cname
+					end
+				else
+					local name = type(public) == 'string' and public or name
+					local cname = cprefix .. (func.cname or name)
+					func.cname = cname
+					if T.gettersandsetters then
+						if name:starts'get_' and #func.type.parameters == 1 then
+							st.getters[name:gsub('^get_', '')] = cname
+						elseif name:starts'set_' and #func.type.parameters == 2 then
+							st.setters[name:gsub('^set_', '')] = cname
+						else
+							st.methods[name] = cname
+						end
 					else
 						st.methods[name] = cname
 					end
-				else
-					st.methods[name] = cname
 				end
+				add_func(func)
 			end
 		end
 	end
@@ -478,7 +502,7 @@ function lib(modulename)
 		if type(v) == 'terrafunction' or type(v) == 'overloadedterrafunction' then
 			publish_func(v)
 		elseif type(v) == 'terratype' and v:isstruct() then
-			publish_struct(v)
+			publish_struct(v, ...) --struct, [public_methods]
 		elseif type(v) == 'table' then --enums
 			cdefs:enum(v, ...) --match, prefix
 		else
@@ -499,6 +523,12 @@ function lib(modulename)
 
 	--generating LuaJIT ffi binding -------------------------------------------
 
+	local function defmap(t, rs)
+		for name, cname in sortedpairs(rs) do
+			append(t, '\t', name, ' = C.', cname, ',\n')
+		end
+	end
+
 	function self:ffi_binding()
 		local t = {}
 		add(t, '-- This file was auto-generated. Modify at your own risk.\n\n')
@@ -507,18 +537,11 @@ function lib(modulename)
 		add(t, 'ffi.cdef[[\n')
 		add(t, cdefs:dump())
 		add(t, ']]\n')
-		local function defmap(rs)
-			for name, cname in sortedpairs(rs) do
-				if type(cname) == 'string' then --not overloaded
-					append(t, '\t', name, ' = C.', cname, ',\n')
-				end
-			end
-		end
 		for i,o in ipairs(objects) do
 			if next(o.getters or empty) or next(o.setters or empty) then
-				add(t, 'local getters = {\n'); defmap(o.getters); add(t, '}\n')
-				add(t, 'local setters = {\n'); defmap(o.setters); add(t, '}\n')
-				add(t, 'local methods = {\n'); defmap(o.methods); add(t, '}\n')
+				add(t, 'local getters = {\n'); defmap(t, o.getters); add(t, '}\n')
+				add(t, 'local setters = {\n'); defmap(t, o.setters); add(t, '}\n')
+				add(t, 'local methods = {\n'); defmap(t, o.methods); add(t, '}\n')
 				append(t, [[
 ffi.metatype(']], o.cname, [[', {
 	__index = function(self, k)
@@ -537,7 +560,7 @@ ffi.metatype(']], o.cname, [[', {
 ]])
 			elseif next(o.methods or empty) then
 				append(t, 'ffi.metatype(\'', o.cname, '\', {__index = {\n')
-				defmap(o.methods)
+				defmap(t, o.methods)
 				add(t, '}})\n')
 			end
 		end
@@ -550,17 +573,11 @@ ffi.metatype(']], o.cname, [[', {
 		add(t, '-- This file was auto-generated. Modify at your own risk.\n')
 		add(t, "local ffi = require'ffi'\n")
 		append(t, "local C = ffi.load'", modulename, "'\n")
-		add(t, 'local M = {C = C, types = {}}\n')
+		add(t, 'local M = {C = C, types = {}, __index = C}\n')
+		add(t, 'setmetatable(M, M)')
 		add(t, 'ffi.cdef[[\n')
 		add(t, cdefs:dump())
 		add(t, ']]\n')
-		local function defmap(rs)
-			for name, cname in sortedpairs(rs) do
-				if type(cname) == 'string' then --not overloaded
-					append(t, '\t', name, ' = C.', cname, ',\n')
-				end
-			end
-		end
 		for i,o in ipairs(objects) do
 			local g = next(o.getters or empty)
 			local s = next(o.setters or empty)
@@ -568,9 +585,9 @@ ffi.metatype(']], o.cname, [[', {
 			if g or s or m then
 				append(t, 'local t = {}\n')
 				append(t, 'M.types.', o.cname, ' = t\n')
-				if g then add(t, 't.getters = {\n'); defmap(o.getters); add(t, '}\n') end
-				if s then add(t, 't.setters = {\n'); defmap(o.setters); add(t, '}\n') end
-				if m then add(t, 't.methods = {\n'); defmap(o.methods); add(t, '}\n') end
+				if g then add(t, 't.getters = {\n'); defmap(t, o.getters); add(t, '}\n') end
+				if s then add(t, 't.setters = {\n'); defmap(t, o.setters); add(t, '}\n') end
+				if m then add(t, 't.methods = {\n'); defmap(t, o.methods); add(t, '}\n') end
 			end
 		end
 		add(t, [[

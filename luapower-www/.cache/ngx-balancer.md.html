@@ -1,0 +1,186 @@
+<h1 id="name">Name</h1>
+<p>ngx.balancer - Lua API for defining dynamic upstream balancers in Lua</p>
+<h1 id="table-of-contents">Table of Contents</h1>
+<ul>
+<li><a href="#name">Name</a></li>
+<li><a href="#status">Status</a></li>
+<li><a href="#synopsis">Synopsis</a></li>
+<li><a href="#description">Description</a></li>
+<li><a href="#methods">Methods</a>
+<ul>
+<li><a href="#set_current_peer">set_current_peer</a></li>
+<li><a href="#set_more_tries">set_more_tries</a></li>
+<li><a href="#get_last_failure">get_last_failure</a></li>
+<li><a href="#set_timeouts">set_timeouts</a></li>
+</ul></li>
+<li><a href="#community">Community</a>
+<ul>
+<li><a href="#english-mailing-list">English Mailing List</a></li>
+<li><a href="#chinese-mailing-list">Chinese Mailing List</a></li>
+</ul></li>
+<li><a href="#bugs-and-patches">Bugs and Patches</a></li>
+<li><a href="#author">Author</a></li>
+<li><a href="#copyright-and-license">Copyright and License</a></li>
+<li><a href="#see-also">See Also</a></li>
+</ul>
+<h1 id="status">Status</h1>
+<p>This Lua module is currently considered experimental.</p>
+<h1 id="synopsis">Synopsis</h1>
+<h2 id="http-subsystem">http subsystem</h2>
+<pre class="nginx"><code>http {
+    upstream backend {
+        server 0.0.0.1;   # just an invalid address as a place holder
+
+        balancer_by_lua_block {
+            local balancer = require &quot;ngx.balancer&quot;
+
+            -- well, usually we calculate the peer&#39;s host and port
+            -- according to some balancing policies instead of using
+            -- hard-coded values like below
+            local host = &quot;127.0.0.2&quot;
+            local port = 8080
+
+            local ok, err = balancer.set_current_peer(host, port)
+            if not ok then
+                ngx.log(ngx.ERR, &quot;failed to set the current peer: &quot;, err)
+                return ngx.exit(500)
+            end
+        }
+
+        keepalive 10;  # connection pool
+    }
+
+    server {
+        # this is the real entry point
+        listen 80;
+
+        location / {
+            # make use of the upstream named &quot;backend&quot; defined above:
+            proxy_pass http://backend/fake;
+        }
+    }
+
+    server {
+        # this server is just for mocking up a backend peer here...
+        listen 127.0.0.2:8080;
+
+        location = /fake {
+            echo &quot;this is the fake backend peer...&quot;;
+        }
+    }
+}</code></pre>
+<h2 id="stream-subsystem">stream subsystem</h2>
+<pre class="nginx"><code>stream {
+    upstream backend {
+        server 0.0.0.1:1234;   # just an invalid address as a place holder
+
+        balancer_by_lua_block {
+            local balancer = require &quot;ngx.balancer&quot;
+
+            -- well, usually we calculate the peer&#39;s host and port
+            -- according to some balancing policies instead of using
+            -- hard-coded values like below
+            local host = &quot;127.0.0.2&quot;
+            local port = 8080
+
+            local ok, err = balancer.set_current_peer(host, port)
+            if not ok then
+                ngx.log(ngx.ERR, &quot;failed to set the current peer: &quot;, err)
+                return ngx.exit(ngx.ERROR)
+            end
+        }
+    }
+
+    server {
+        # this is the real entry point
+        listen 10000;
+
+        # make use of the upstream named &quot;backend&quot; defined above:
+        proxy_pass backend;
+    }
+
+    server {
+        # this server is just for mocking up a backend peer here...
+        listen 127.0.0.2:8080;
+
+        echo &quot;this is the fake backend peer...&quot;;
+    }
+}</code></pre>
+<h1 id="description">Description</h1>
+<p>This Lua module provides API functions to allow defining highly dynamic NGINX load balancers for any existing nginx upstream modules like <a href="http://nginx.org/en/docs/http/ngx_http_proxy_module.html">ngx_http_proxy_module</a>, <a href="http://nginx.org/en/docs/http/ngx_http_fastcgi_module.html">ngx_http_fastcgi_module</a> and <a href="https://nginx.org/en/docs/stream/ngx_stream_proxy_module.html">ngx_stream_proxy_module</a>.</p>
+<p>It allows you to dynamically select a backend peer to connect to (or retry) on a per-request basis from a list of backend peers which may also be dynamic.</p>
+<p><a href="#table-of-contents">Back to TOC</a></p>
+<h1 id="methods">Methods</h1>
+<p>All the methods of this module are static (or module-level). That is, you do not need an object (or instance) to call these methods.</p>
+<p><a href="#table-of-contents">Back to TOC</a></p>
+<h2 id="set_current_peer">set_current_peer</h2>
+<p><strong>syntax:</strong> <em>ok, err = balancer.set_current_peer(host, port)</em></p>
+<p><strong>context:</strong> <em>balancer_by_lua*</em></p>
+<p>Sets the peer address (host and port) for the current backend query (which may be a retry).</p>
+<p>Domain names in <code>host</code> do not make sense. You need to use OpenResty libraries like <a href="https://github.com/openresty/lua-resty-dns">lua-resty-dns</a> to obtain IP address(es) from all the domain names before entering the <code>balancer_by_lua*</code> handler (for example, you can perform DNS lookups in an earlier phase like <a href="https://github.com/openresty/lua-nginx-module#access_by_lua">access_by_lua*</a> and pass the results to the <code>balancer_by_lua*</code> handler via <a href="https://github.com/openresty/lua-nginx-module#ngxctx">ngx.ctx</a>.</p>
+<p><a href="#table-of-contents">Back to TOC</a></p>
+<h2 id="set_more_tries">set_more_tries</h2>
+<p><strong>syntax:</strong> <em>ok, err = balancer.set_more_tries(count)</em></p>
+<p><strong>context:</strong> <em>balancer_by_lua*</em></p>
+<p>Sets the tries performed when the current attempt (which may be a retry) fails (as determined by directives like <a href="http://nginx.org/en/docs/http/ngx_http_proxy_module.html#proxy_next_upstream">proxy_next_upstream</a>, depending on what particular nginx uptream module you are currently using). Note that the current attempt is <em>excluded</em> in the <code>count</code> number set here.</p>
+<p>Please note that, the total number of tries in a single downstream request cannot exceed the hard limit configured by directives like <a href="http://nginx.org/en/docs/http/ngx_http_proxy_module.html#proxy_next_upstream_tries">proxy_next_upstream_tries</a>, depending on what concrete nginx upstream module you are using. When exceeding this limit, the <code>count</code> value will get reduced to meet the limit and the second return value will be the string <code>"reduced tries due to limit"</code>, which is a warning, while the first return value is still a <code>true</code> value.</p>
+<p><a href="#table-of-contents">Back to TOC</a></p>
+<h2 id="get_last_failure">get_last_failure</h2>
+<p><strong>syntax:</strong> <em>state_name, status_code = balancer.get_last_failure()</em></p>
+<p><strong>context:</strong> <em>balancer_by_lua*</em></p>
+<p>Retrieves the failure details about the previous failed attempt (if any) when the <code>next_upstream</code> retrying mechanism is in action. When there was indeed a failed previous attempt, it returned a string describing that attempt’s state name, as well as an integer describing the status code of that attempt.</p>
+<p>Possible state names are as follows: * <code>"next"</code> Failures due to bad status codes sent from the backend server. The origin’s response is sane though, which means the backend connection can still be reused for future requests. * <code>"failed"</code> Fatal errors while communicating to the backend server (like connection timeouts, connection resets, and etc). In this case, the backend connection must be aborted and cannot get reused.</p>
+<p>Possible status codes are those HTTP error status codes like <code>502</code> and <code>504</code>.</p>
+<p>For stream module, <code>status_code</code> will always be 0 (ngx.OK) and is provided for compatibility reasons.</p>
+<p>When the current attempt is the first attempt for the current downstream request (which means there is no previous attempts at all), this method always returns a single <code>nil</code> value.</p>
+<p><a href="#table-of-contents">Back to TOC</a></p>
+<h2 id="set_timeouts">set_timeouts</h2>
+<p><strong>syntax:</strong> <code>ok, err = balancer.set_timeouts(connect_timeout, send_timeout, read_timeout)</code></p>
+<p><strong>context:</strong> <em>balancer_by_lua*</em></p>
+<p>Sets the upstream timeout (connect, send and read) in seconds for the current and any subsequent backend requests (which might be a retry).</p>
+<p>If you want to inherit the timeout value of the global <code>nginx.conf</code> configuration (like <code>proxy_connect_timeout</code>), then just specify the <code>nil</code> value for the corresponding argument (like the <code>connect_timeout</code> argument).</p>
+<p>Zero and negative timeout values are not allowed.</p>
+<p>You can specify millisecond precision in the timeout values by using floating point numbers like 0.001 (which means 1ms).</p>
+<p><strong>Note:</strong> <code>send_timeout</code> and <code>read_timeout</code> are controlled by the same config <a href="https://nginx.org/en/docs/stream/ngx_stream_proxy_module.html#proxy_timeout"><code>proxy_timeout</code></a> for <code>ngx_stream_proxy_module</code>. To keep API compatibility, this function will use <code>max(send_timeout, read_timeout)</code> as the value for setting <code>proxy_timeout</code>.</p>
+<p>Returns <code>true</code> when the operation is successful; returns <code>nil</code> and a string describing the error otherwise.</p>
+<p>This only affects the current downstream request. It is not a global change.</p>
+<p>For the best performance, you should use the <a href="https://openresty.org/">OpenResty</a> bundle.</p>
+<p>This function was first added in the <code>0.1.7</code> version of this library.</p>
+<p><a href="#table-of-contents">Back to TOC</a></p>
+<h1 id="community">Community</h1>
+<p><a href="#table-of-contents">Back to TOC</a></p>
+<h2 id="english-mailing-list">English Mailing List</h2>
+<p>The <a href="https://groups.google.com/group/openresty-en">openresty-en</a> mailing list is for English speakers.</p>
+<p><a href="#table-of-contents">Back to TOC</a></p>
+<h2 id="chinese-mailing-list">Chinese Mailing List</h2>
+<p>The <a href="https://groups.google.com/group/openresty">openresty</a> mailing list is for Chinese speakers.</p>
+<p><a href="#table-of-contents">Back to TOC</a></p>
+<h1 id="bugs-and-patches">Bugs and Patches</h1>
+<p>Please report bugs or submit patches by</p>
+<ol type="1">
+<li>creating a ticket on the <a href="https://github.com/openresty/lua-resty-core/issues">GitHub Issue Tracker</a>,</li>
+<li>or posting to the <a href="#community">OpenResty community</a>.</li>
+</ol>
+<p><a href="#table-of-contents">Back to TOC</a></p>
+<h1 id="author">Author</h1>
+<p>Yichun Zhang &lt;agentzh@gmail.com&gt; (agentzh), OpenResty Inc.</p>
+<p><a href="#table-of-contents">Back to TOC</a></p>
+<h1 id="copyright-and-license">Copyright and License</h1>
+<p>This module is licensed under the BSD license.</p>
+<p>Copyright (C) 2015-2017, by Yichun “agentzh” Zhang, OpenResty Inc.</p>
+<p>All rights reserved.</p>
+<p>Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:</p>
+<ul>
+<li><p>Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.</p></li>
+<li><p>Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.</p></li>
+</ul>
+<p>THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS “AS IS” AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.</p>
+<p><a href="#table-of-contents">Back to TOC</a></p>
+<h1 id="see-also">See Also</h1>
+<ul>
+<li>the ngx_lua module: https://github.com/openresty/lua-nginx-module</li>
+<li>the <a href="https://github.com/openresty/lua-nginx-module#balancer_by_lua_block">balancer_by_lua*</a> directive.</li>
+<li>the <a href="https://github.com/openresty/lua-resty-core">lua-resty-core</a> library.</li>
+<li>OpenResty: https://openresty.org</li>
+</ul>
+<p><a href="#table-of-contents">Back to TOC</a></p>

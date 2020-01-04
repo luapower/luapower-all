@@ -73,7 +73,7 @@ remote cache is lost when the connection is closed.
 
 #### Configuring luapower to use RPC servers:
 
-	lp.servers = {linux32 = '10.1.1.1', ...}
+	lp.servers = {linux64 = '10.1.1.1', ...}
 
 To use the luapower command line with RPC servers, change the servers table
 in luapower.lua directly.
@@ -82,7 +82,7 @@ in luapower.lua directly.
 
 	lp.update_db([package], [platform])
 
-	./luapower update-db [PACKAGE] [PLATFORM]
+	./lp update-db [PACKAGE] [PLATFORM]
 
 Passing nil (i.e. '--all' in the cmdline version) as package updates
 all the packages, same with the platform (so not passing any args updates

@@ -15,18 +15,13 @@ CONVENTIONS:
 	* the git work-dir is shared between all packages and it's the current
 	directory by default and is configured in luapower.luapower_dir.
 
-	* the currently supported platforms are in the luapower.platforms table.
+	* the currently supported platforms are in luapower.supported_platforms table.
 
-	* a module can signal that it doesn't support a platform by raising
-	an error containing the string 'platform not ' or 'arch not ' when it's
-	loaded.
+	* a module can signal that it doesn't support the current platform by
+	raising an error containing the 'platform not ' or 'arch not ' upon loading.
 
-	* a module can signal that it's not a module but actually an app by
-	asserting it with assert(... ~= <module_name>, 'not a module').
-
-	* a module can signal that it requires a global variable that is set
-	by loading another module by raising an error ending with the string
-		'<module_name> not loaded'.
+	* a module can signal that it requires another module to be already loaded
+	by raising the error '<module_name> not loaded'.
 
 	* a module's runtime dependencies that are bound to module keys can be
 	declared in its `__autoload` metatable field (see glue.autoload).
@@ -38,41 +33,43 @@ CONVENTIONS:
 		-- Written By: <author>. <license> [license].
 		-- Copyright (C) <author>. <license> [license].
 
-	* submodules can be put in folders or named `<module>_<submodule>.lua`.
+	* submodules can be put in fulders as `<module>/<submodule>.lua`
+	(the Lua way) or can be named `<module>_<submodule>.lua` (the luapower way).
 
-	* platform-specific Lua modules are found in `bin/<platform>/lua/<module>.lua`.
-	currently only luajit's `vmdef.lua` file is in there.
+	* Lua/C modules are found in `bin/<platform>/clib/<module>.dll|.so`.
 
-	* Lua/C modules are found in `bin/<platform>/clib/<module>.dll|.so`
-
-	* C sources can be described in the metafile `csrc/<package>/WHAT` which
-	must look like this (the second line is optional and should only list
-	the binary dependencies of the library if any):
+	* C sources can be described in the meta file `csrc/<package>/WHAT` which
+	must look like this:
 
 		<libname> <version> from <browse-url> (<license> license)
 		requires: package1, package2 (platform1 platform2 ...), ...
 
-	* The WHAT file can also be used to describe Lua modules that are
-	developed outside of luapower (eg. `lexer`).
+	the second line is optional and should only list the binary dependencies
+	of the library, if any.
 
-	* packages can be organized into categories in the markdown file
-	`.mgit/luapower-cat.md` which must contain a two-level deep bullet list.
+	* The WHAT file can also be used to describe Lua modules that are
+	developed outside of luapower.
+
+	* packages can be organized into categories in the markdown files
+	`.mgit/*-cat.md` which must contain a two-level deep bullet list.
 	Any packages that are not listed there will be added automatically to the
 	`Misc` category.
 
 	* a package is known if it has a `.mgit/<package>.origin` file.
+
 	* a package is installed if it has a `.mgit/<package>` directory.
+
 	* not installed packages are those known but not installed.
 
 	* modules can be anywhere in the tree except in `csrc`, `media`, `.mgit`,
-	`bin`, `tmp` (but they can be in `bin/<platform>/clib` and
-	`bin/<platform>/lua`).
+	`bin`, `tmp`, `logs`, `*-www` and they can be in `bin/<platform>/clib`.
 
 	* docs are `*.md` files in Pandoc Markdown format and can be anywhere in
 	the tree where modules can be.
 
 	* modules that end in `_test`, `_demo`, `_demo_<arch>`, `_benchmark`
-	or `_app` are considered standalone scripts.
+	or `_app` are considered standalone scripts and are never loaded for
+	tracking dependencies.
 
 	* packages containing Lua/C modules have an _implicit_ binary dependency
 	on the luajit package because they link against the LuaJIT library.
@@ -80,7 +77,8 @@ CONVENTIONS:
 	* packages with a C component must contain a build script named
 	`csrc/*/build-<platform>.sh` for each platform that it supports.
 
-	* the main doc file is `<package>.md`.
+	* the main doc file of a package must be named `<package>.md`, but if
+	there's only one doc file in the repo, that will be used as main doc file.
 
 	* platforms can be specified in the `platforms` tag of the package's main
 	doc file as comma-separated values.
@@ -94,16 +92,21 @@ CONVENTIONS:
 	* .t files are listed as Terra modules and are tracked like Terra modules
 	and the `terra` module is loaded first.
 
+	* Lua modules in `ngx` and `resty` dirs are tracked as Lua/Resty modules.
+
+	* Lua files that raise 'ngx not loaded' are tracked as Lua/Resty modules.
+
 STATIC INFO:
 
 	* luapower_dir -> s                     luapower dir
 	* mgit_dir -> s                         .mgit dir relative to luapower dir
-	* supported_os_platforms -> t           {os = {platform = true}}
-	* supported_platforms -> t              {platform = true}
-	* builtin_modules -> t                  {module = true}
-	* luajit_builtin_modules -> t           {module = true}
-	* loader_modules -> t                   {file_ext = loader_module_name}
-	* enviornments -> t                     {loader_module_name = env_name}
+	* supported_os_platforms -> t           {os -> {platform -> true}}
+	* supported_platforms -> t              {platform -> true}
+	* builtin_modules -> t                  {module -> true}
+	* luajit_builtin_modules -> t           {module -> true}
+	* nginx_builtin_modules -> t            {module -> true}
+	* loader_modules -> t                   {file_ext -> loader_module_name}
+	* enviornments -> t                     {loader_module_name -> env_name}
 	* default_license -> s                  default license
 
 SOURCES OF INFORMATION:
@@ -117,7 +120,7 @@ SOURCES OF INFORMATION:
 	* the list of `.mgit/<package>` directories
 	* the parsing of `csrc/<package>/WHAT` file
 	* tags parsed from *.md files
-	* package category associations parsed from `.mgit/luapower-cat.md`
+	* package category associations parsed from `.mgit/*-cat.md`
 	* the output of `git ls-files` (tracked files)
 	* the output of `git describe --tags --long --always` (package version)
 	* the output of `git --tags --simplify-by-decoration --pretty=%d` (tags)
@@ -138,8 +141,8 @@ UTILS:
 
 CACHING:
 
-	memoize_package(f) -> f               memoize a f(pkg[, arg2]) func
-	memoize(f) -> f                       memoize any func
+	memoize_package(fname, f) -> f        memoize a f(pkg[, arg2]) func
+	memoize(fname, f) -> f                memoize any func
 	clear_cache([pkg])                    clear memoize cache for a pkg or all
 
 PLATFORM:
@@ -149,38 +152,38 @@ PLATFORM:
 
 MGIT DIRECTORY INFO:
 
-	known_packages() -> t                 {name=true}
-	installed_packages() -> t             {name=true}
-	not_installed_packages() -> t         {name=true}
+	known_packages() -> t                 {name -> true}
+	installed_packages() -> t             {name -> true}
+	not_installed_packages() -> t         {name -> true}
 
-PARSING luapower-cat.md:
+PARSING *-cat.md:
 
 	cats() -> t                           {name=, packages={{name=,note=},...}}
-	packages_cats() -> t                  {pkg=cat}
+	packages_cats() -> t                  {pkg -> cat}
 	package_cat(pkg) -> s                 package's category
 
 TRACKED FILES BREAKDOWN:
 
-	tracked_files([package]) -> t         {path=package}
-	docs([package]) -> t                  {name=path}
-	headerdocs([package]) -> t            {name=contents}
-	modules([package]) -> t               {name=path}
-	scripts([package]) -> t               {name=path}
-	file_types([package]) -> t            {path='module'|'script'|...}
+	tracked_files([package]) -> t         {path -> package}
+	docs([package]) -> t                  {name -> path}
+	headerdocs([package]) -> t            {name -> contents}
+	modules([package]) -> t               {name -> path}
+	scripts([package]) -> t               {name -> path}
+	file_types([package]) -> t            {path -> 'module'|'script'|...}
 	module_tree(package) -> t             {name=, children=}
 
 PARSING MD FILES:
 
-	docfile_tags(path) -> t               {tag=val}
-	doc_tags([package], doc) -> t         {tag=val}
+	docfile_tags(path) -> t               {tag -> val}
+	doc_tags([package], doc) -> t         {tag -> val}
 
 PARSING LUA FILES:
 
-	module_requires_runtime(module) -> t  {module=true}
+	module_requires_runtime(module) -> t  {module -> true}
 
 	modulefile_header(file) -> t          {name=, descr=, author=, license=}
 	module_header([package], mod) -> t    {name=, descr=, author=, license=}
-	module_headers(package) -> t          {module=header_table}
+	module_headers(package) -> t          {module -> header_table}
 
 PACKAGE REVERSE LOOKUP:
 
@@ -192,11 +195,11 @@ CSRC DIRECTORY:
 
 	what_tags(package) -> t               {realname=,version=,url=,license=,
 	                                        dependencies={platf={dep=true}}}
-	bin_deps(package, platform) -> t      {platform={package=}}
-	build_platforms(package) -> t         {platform=true}
-	bin_platforms(package) -> t           {platform=true}
-	declared_platforms(package) -> t      {platform=true}
-	platforms(package) -> t               {platform=true}
+	bin_deps(package, platform) -> t      {platform -> {package=}}
+	build_platforms(package) -> t         {platform -> true}
+	bin_platforms(package) -> t           {platform -> true}
+	declared_platforms(package) -> t      {platform -> true}
+	platforms(package) -> t               {platform -> true}
 
 GIT INFO:
 
@@ -211,8 +214,10 @@ GIT INFO:
 MODULE DEPENDENCY TRACKING:
 
 	module_loader(mod[, package]) -> s    find a module's loader module if any
-	track_module(mod[, package]) -> t     {loaderr=s | mdeps={mod=true},
-	                                        ffi_deps={mod=true}}
+	track_module(mod[, package]) -> t     {loaderr=s | mdeps={mod -> true},
+	                                        ffi_deps={mod -> true},
+	                                        loaders = {mod1, ...}}
+
 UPDATING THE DEPENDENCY DB:
 
 	load_db()                             load luapower_db.lua
@@ -221,7 +226,7 @@ UPDATING THE DEPENDENCY DB:
 	update_db_on_current_platform([pkg])  update db with local trackings
 	update_db(package, [platform], [mod]) update db with local or rpc trackings
 	track_module_platform(mod, [package], [platform])
-	server_status([platform]) -> t        {platform = {os=, arch=}}
+	server_status([platform]) -> t        {platform -> {os=, arch=}}
 
 DEPENDENCY INFO BREAKDOWN:
 
@@ -270,7 +275,7 @@ CONSISTENCY CHECKS:
 
 	duplicate_docs()
 	undocumented_package(package)
-	load_errors([package], [platform])->t {mod=err}
+	load_errors([package], [platform])->t {mod -> err}
 
 GENERATING MGIT DEPS FILES:
 
@@ -278,7 +283,7 @@ GENERATING MGIT DEPS FILES:
 
 RPC API:
 
-	connect(ip, port[, connect])->lp   connect to a RPC server
+	connect(ip, port[, connect]) -> lp    connect to a RPC server
 	lp.osarch() -> os, arch
 	lp.exec(func, ...) -> ...
 	lp.restart()
@@ -289,9 +294,10 @@ RPC API:
 local luapower = setmetatable({}, {__index = _G})
 setfenv(1, luapower)
 
-local fs = require'fs'
-local glue = require'glue'
 local ffi = require'ffi'
+local glue = require'glue'
+local pp = require'pp'
+local fs = require'fs'
 
 --config
 ------------------------------------------------------------------------------
@@ -302,15 +308,22 @@ mgit_dir = '.mgit'     --relative to luapower_dir
 
 --platforms
 supported_os_list = {'mingw', 'linux', 'osx'}
+supported_os_platform_list = {
+	mingw = {'mingw64'},
+	linux = {'linux64'},
+	osx   = {'osx64'},
+}
+supported_platform_list = {'mingw64', 'linux64', 'osx64'}
+
 supported_os_platforms = {
-	mingw = {mingw32 = true, mingw64 = true},
-	linux = {linux32 = true, linux64 = true},
-	osx   = {osx32 = true, osx64 = true},
+	mingw = {mingw64 = true},
+	linux = {linux64 = true},
+	osx   = {osx64 = true},
 }
 supported_platforms = {
-	mingw32 = true, mingw64 = true,
-	linux32 = true, linux64 = true,
-	osx32 = true, osx64 = true,
+	mingw64 = true,
+	linux64 = true,
+	osx64 = true,
 }
 
 servers = {}           --{platform = {'ip|host', port}}
@@ -318,6 +331,7 @@ servers = {}           --{platform = {'ip|host', port}}
 --behavior
 auto_update_db = true  --update the db automatically when info is missing
 allow_update_db_locally = true --allow dependency tracking on this machine
+persistent_cache = false --save memoized results to cache files
 
 default_license = 'Public Domain'
 
@@ -337,63 +351,96 @@ function mgitpath(file)
 end
 
 
---memoize pattern with total and partial cache invalidation
+--persistent memoization with per-package cache invalidation.
 ------------------------------------------------------------------------------
 
---memoize function that cannot have its cache cleared.
-local memoize_permanent = glue.memoize
-
---memoize for functions where the first arg is an optional package name.
---cache on those functions can be cleared for individual packages.
-local pkg_caches = {} --{func -> {pkg -> val}}
-local nilkey = {}
-function memoize_package(func)
-	local cache = {}
-	pkg_caches[func] = cache
-	return function(pkg, ...)
-		local k = pkg == nil and nilkey or pkg
-		local fn = cache[k]
-		if not fn then
-			fn = glue.memoize(function(...)
-				return func(pkg, ...)
-			end)
-			cache[k] = fn
+local nilval = setmetatable({}, {__pwrite = function(_, write) write'nilval' end})
+local caches = {} --{fname -> cache_t}
+local cache_dir
+local function get_cache_dir()
+	if not cache_dir then
+		if ffi.os == 'Linux' then
+			local s = assert(glue.readfile'/proc/self/status')
+			local uid = assert(tonumber((s:match'Uid:%s*(%d+)')))
+			if fs.is('/run/user/'..uid, 'dir') then --have tmpfs
+				cache_dir = '/run/user/'..uid..'/luapower'
+			end
 		end
-		return fn(...)
-	end
-end
-
---generic memoize that can only have its entire cache cleared.
-local rememoizers = {}
-function memoize(func)
-	local memfunc
-	local function rememoize()
-		memfunc = glue.memoize(func)
-	end
-	rememoize()
-	rememoizers[func] = rememoize
-	return function(...)
-		return memfunc(...)
-	end
-end
-
---clear memoization caches for a specific package or for all packages.
-function clear_cache(pkg)
-	if pkg then
-		for _, cache in pairs(pkg_caches) do
-			cache[pkg] = nil
+		if not cache_dir then
+			cache_dir = powerpath'tmp/luapower'
 		end
-	else
-		for _, cache in pairs(pkg_caches) do
-			for pkg in pairs(cache) do
-				cache[pkg] = nil
+		assert(fs.mkdir(cache_dir, true))
+	end
+	return cache_dir
+end
+local function get_cache(fname)
+	local cache = caches[fname]
+	if not cache then
+		cache = {}
+		caches[fname] = cache
+		cache_dir = get_cache_dir()
+		local cache_file = plusfile(cache_dir, fname)
+		cache.args = glue.tuples()
+		cache.file = cache_file
+		cache.retvals = {}
+		if persistent_cache and fs.is(cache_file, 'file') then
+			local s = assert(glue.readfile(cache_file))
+			local pnilval, pcache = loadstring('local nilval={};return nilval,'..s)()
+			for args, ret in pairs(pcache) do
+				if ret == pnilval then ret = nilval end
+				local args = setmetatable(cache.args(glue.unpack(args)), nil)
+				cache.retvals[args] = ret
 			end
 		end
 	end
-	for _, rememoize in pairs(rememoizers) do
-		rememoize()
+	return cache
+end
+function memoize(fname, func)
+	return function(...)
+		local cache = get_cache(fname)
+		local args = setmetatable(cache.args(...), nil)
+		local ret = cache.retvals[args]
+		if ret == nil then
+			ret = func(...)
+			cache.retvals[args] = ret == nil and nilval or ret
+			if persistent_cache then
+				glue.writefile(cache.file, pp.format(cache.retvals))
+			end
+		elseif ret == nilval then
+			ret = nil
+		end
+		return ret
 	end
-	collectgarbage() --unload modules from the tracking Lua state
+end
+
+--memoize for functions where the first arg is an optional package name.
+--cache on those functions can be cleared for individual packages.
+function memoize_package(fname, func)
+	local funcs = {}
+	return function(pkg, ...)
+		local fname = (pkg and pkg..'-' or '')..fname
+		funcs[fname] = funcs[fname] or memoize(fname, func)
+		return funcs[fname](pkg, ...)
+	end
+end
+
+local free_tracking_states --fw. decl.
+
+--clear memoization caches for a specific package or for all packages.
+function clear_cache(pkg)
+	local cache_dir = get_cache_dir()
+	for fname in fs.dir(cache_dir) do
+		if not fname then break end
+		if not pkg or glue.starts(fname, pkg..'-') or not fname:find('-', 1, true) then
+			if caches[fname] then
+				caches[fname].retvals = {}
+			end
+			if persistent_cache then
+				assert(fs.remove(plusfile(cache_dir, fname)))
+			end
+		end
+	end
+	free_tracking_states()
 end
 
 --other helpers
@@ -417,7 +464,7 @@ end
 --detect current platform
 
 local platos = {Windows = 'mingw', Linux = 'linux', OSX = 'osx'}
-current_platform = memoize_permanent(function()
+current_platform = memoize('current_platform', function()
 	return glue.assert(platos[ffi.os], 'unknown OS %s', ffi.os)
 		..(ffi.abi'32bit' and '32' or '64')
 end)
@@ -445,63 +492,65 @@ builtin_modules = {
 }
 
 --install `require` and `ffi.load` trackers -- to be run in a new Lua state.
-local function install_trackers(builtin_modules, filter)
+local function install_trackers(env, builtin_modules, filter, attr)
+
+	local function strip_error(err)
+		return err:gsub(':?%s*[\n\r].*', ''):gsub('^.-[\\/]%.%.[\\/]%.%.[\\/]', '')
+	end
 
 	--find Lua dependencies of a module by tracing its `require` calls.
 
-	local parents = {} --{module1, ...}
-	local dt = {} --{module = dep_table}
+	local parent
+	local tracks = {} --{module -> {mdeps=, ffi_deps=, autoloads=, loaders=, error=}}
+	local new_loader
 	local lua_require = require
 
 	function require(m)
 
-		--create the module's tracking table
-		dt[m] = dt[m] or {}
+		--register the module as a dependency for its parent, if any.
+		if parent then
+			attr(tracks[parent], 'mdeps')[m] = true
+		end
 
 		--require the module directly if it doesn't need tracking.
 		if builtin_modules[m] then
 			return lua_require(m)
 		end
 
-		--register the module as a dependency for the parent at the top of
-		--the stack.
-		local parent = parents[#parents]
-		if parent then
-			dt[parent].mdeps = dt[parent].mdeps or {}
-			dt[parent].mdeps[m] = true
-		end
+		--save the parent and replace it with this module for re-entry.
+		local parent0 = parent
+		parent = m
 
-		--push the module into the parents stack
-		table.insert(parents, m)
+		--get/create this module's tracking table.
+		local track = attr(tracks, m)
 
-		--check the error cache before loading the module
+		--check the error cache before loading the module.
 		local ok, ret
-		local err = dt[m].loaderr
+		local err = track.loaderr
 		if err then
-			ok, ret = nil, err
+			ok, ret = false, err
+			if track.loader then
+				new_loader = track.loader
+			end
 		else
 			ok, ret = pcall(lua_require, m)
 			if not ok then
-			   --cache the error for future calls.
-				local err = ret:gsub(':?%s*[\n\r].*', '')
-				err = err:gsub('^.-[\\/]%.%.[\\/]%.%.[\\/]', '')
-				--remove source info for platform and arch load errors
-				local perr =
-					   err:match'platform not .*'
+				err = strip_error(ret)
+				err = err:match'platform not .*'
 					or err:match'arch not .*'
-					--TODO: pre-load these modules...
-					--or err:match'[^%s]+ not loaded$'
-				err = perr or err
-				if not perr then
-					--TODO: remove this
-					--print(string.format('%-20s: %s', m, err))
+					or err:match'[^%s]+ not loaded$'
+					or err
+				ret = err
+			   track.loaderr = err --cache the error for future calls.
+				track.loader = err:match'([^%s]+) not loaded$' or nil
+				if track.loader then
+					new_loader = track.loader
 				end
-				dt[m] = {loaderr = err}
 			end
 		end
 
-		--pop the module from the parents stack
-		table.remove(parents)
+		--restore the parent.
+		parent = parent0
 
 		if not ok then
 			error(ret, 2)
@@ -513,7 +562,7 @@ local function install_trackers(builtin_modules, filter)
 		local mt = getmetatable(ret)
 		local auto = mt and rawget(mt, '__autoload')
 		if auto then
-			dt[m].autoloads = filter(auto, function(key, mod)
+			track.autoloads = filter(auto, function(key, mod)
 				return type(key) == 'string' and type(mod) == 'string'
 			end)
 		end
@@ -528,10 +577,7 @@ local function install_trackers(builtin_modules, filter)
 
 	function ffi.load(clib, ...)
 		local ok, ret = xpcall(ffi_load, debug.traceback, clib, ...)
-		local m = parents[#parents]
-		local t = dt[m]
-		t.ffi_deps = t.ffi_deps or {}
-		t.ffi_deps[clib] = ok
+		attr(tracks[parent], 'ffi_deps')[clib] = ok
 		if not ok then
 			error(ret, 2)
 		else
@@ -540,47 +586,90 @@ local function install_trackers(builtin_modules, filter)
 	end
 
 	--track a module, tracing its require and ffi.load calls.
-	--loader_m is an optional "loader" module that needs to be loaded
-	--before m can be loaded (eg. for loading .dasl files, see dynasm).
-	function track_module(m, loader_m)
-		--TODO: LuaSec clib modules crash if not loaded in specific order.
+	function track_module(m)
+		parent = nil
+		new_loader = nil
+		--LuaSec clib modules crash if not loaded in specific order.
 		if m:find'^ssl%.' then return end
-		if loader_m then
-			local ok, err = pcall(require, loader_m)
-			if not ok then
-				--put the error on the account of mod
-				dt[m] = {loaderr = err} --clear deps
-				return dt[m]
-			end
-		end
 		pcall(require, m)
-		return dt[m]
+		return tracks[m], new_loader
 	end
 
+	--load env modules.
+	if env then
+		local errors
+		for m in env:gmatch'[^%s]+' do
+			local ok, err = pcall(require, m)
+			if not ok then
+				errors = errors or {}
+				errors[#errors+1] = strip_error(err)
+			end
+		end
+		if errors then
+			return nil, table.concat(errors, '\n')
+		end
+	end
+
+	return true
 end
 
---make a Lua state for loading modules in a clean environment for tracking.
---the tracker function is installed in the state as the global 'track_module'.
-local tracking_state = function(env)
-	local luastate = require'luastate'
-	local state = luastate.open()
-	state:openlibs()
-	state:push{[0] = arg[0]} --used by some modules to get the exe dir
-	state:setglobal'arg'
-	state:push(install_trackers)
-	state:call(builtin_modules, filter)
+--make or reuse a Lua state for loading modules in a clean environment for
+--tracking. the tracker function is installed in the state as the global
+--'track_module'. different states are created for each env, mainly because
+--terra modules cannot be loaded alongside ffi modules, but also because
+--a module raising 'xxx not loaded' cannot be reloaded in the same state.
+local states = {} --{env -> state | error}
+local function tracking_state(env)
+	env = env or false
+	local state = states[env]
+	if not state then
+		local luastate = require'luastate'
+		state = luastate.open()
+		state:openlibs()
+		state:push{[0] = package.exedir} --used by some modules to get the exe dir
+		state:setglobal'arg'
+		state:push(install_trackers)
+		local ok, err = state:call(env, builtin_modules, filter, glue.attr)
+		if not ok then
+			state:close()
+			state = err
+		end
+		states[env] = state
+	end
 	return state
 end
 
---track a module in the tracking Lua state which is reused on future calls.
---different states are created for different environments.
-local function track_module(m, loader_m, env)
-	assert(m, 'module required')
-	local state = tracking_state(env)
-	state:getglobal'track_module'
-	return state:call(m, loader_m)
+function free_tracking_states() --fw. decl.
+	for _,state in pairs(states) do
+		if type(state) ~= 'string' then
+			state:close()
+		end
+	end
+	states = {}
 end
 
+local function track_module_in_state(state, ...)
+	if type(state) == 'string' then
+		return {loaderr = 'could not create tracking environment: '..state}
+	end
+	state:getglobal'track_module'
+	return state:call(...)
+end
+
+--track a module in a Lua state which is reused on future calls.
+--if new loaders are found, tracking is retried with the loaders loaded first.
+local function track_module(m, env)
+	assert(m, 'module required')
+	local state = tracking_state(env)
+	local track, new_loader = track_module_in_state(state, m)
+	if new_loader then
+		return track_module(m, env and env..' '..new_loader or new_loader)
+	end
+	if track then
+		track.env = env
+	end
+	return track
+end
 
 --dependency tracking based on parsing
 ------------------------------------------------------------------------------
@@ -597,11 +686,20 @@ luajit_builtin_modules = {
 	['table.nkeys'] = true,
 	['table.clone'] = true,
 	['thread.exdata'] = true,
+	--luapower built-ins.
+	['package.exedir'] = true,
+	['package.exepath'] = true,
 }
 
-module_requires_runtime_parsed = memoize(function(m) --direct dependencies
+nginx_builtin_modules = {
+}
+
+module_requires_runtime_parsed = memoize('module_requires_runtime_parsed', function(m) --direct dependencies
 	local t = {}
-	if builtin_modules[m] or luajit_builtin_modules[m] then
+	if    builtin_modules[m]
+		or luajit_builtin_modules[m]
+		or nginx_builtin_modules[m]
+	then
 		return t
 	end
 	local path =
@@ -871,9 +969,6 @@ end
 
 --path/*.lua -> Lua module name
 local function lua_module_name(path)
-	if path:find'^bin/[^/]+/lua/' then --platform-specific module
-		path = path:gsub('^bin/[^/]+/lua/', '')
-	end
 	return path:gsub('/', '.'):match('(.-)%.lua$')
 end
 
@@ -891,9 +986,6 @@ end
 
 --path/*.t -> Terra module name
 local function terra_module_name(path)
-	if path:find'^bin/[^/]+/lua/' then --platform-specific module
-		path = path:gsub('^bin/[^/]+/lua/', '')
-	end
 	return path:gsub('/', '.'):match('(.-)%.t$')
 end
 
@@ -1098,42 +1190,47 @@ end
 ------------------------------------------------------------------------------
 
 --parse the table of contents file into a list of categories and docs.
-cats = memoize_package(function(package)
-	local more, close = assert(more(powerpath(mgitpath'luapower-cat.md')))
+cats = memoize_package('cats', function(package)
 	local cats = {}
-	local lastcat
-	local misc
 	local pkgs = filter(installed_packages(),
 		function(pkg) return known_packages()[pkg] end)
 	local uncat = glue.update({}, pkgs)
-	for s in more do
-		local pkg, note =
-			s:match'^%s*%*%s*%[([^%]]+)%]%s*(.-)%s*$' -- " * [name]"
-		if pkg then
-			if pkgs[pkg] then --skip unknown packages (typos, etc.)
-				note = note ~= '' and note or nil
-				table.insert(lastcat.packages, {name = pkg, note = note})
-				uncat[pkg] = nil
-			end
-		else
-			local cat = s:match'^%s*%*%s*(.-)%s*$' -- " * name"
-			if cat then
-				lastcat = {name = cat, packages = {}}
-				table.insert(cats, lastcat)
-				if cat == 'Misc' then
-					misc = lastcat
+	for file in fs.dir(mgitpath()) do
+		if not file then break end
+		if file:find'%-cat%.md$' then
+			local more, close = assert(more(powerpath(mgitpath(file))))
+			local lastcat
+			for s in more do
+				local pkg, note =
+					s:match'^%s*%*%s*%[([^%]]+)%]%s*(.-)%s*$' -- " * [name]"
+				if pkg then
+					if pkgs[pkg] then --skip unknown packages (typos, etc.)
+						note = note ~= '' and note or nil
+						table.insert(lastcat.packages, {name = pkg, note = note})
+						uncat[pkg] = nil
+					end
+				else
+					local cat = s:match'^%s*%*%s*(.-)%s*$' -- " * name"
+					if cat then
+						lastcat = cats[cat]
+						if not lastcat then
+							lastcat = {name = cat, packages = {}}
+							table.insert(cats, lastcat)
+							cats[cat] = lastcat
+						end
+					end
 				end
 			end
+			close()
 		end
 	end
-	if not misc and next(uncat) then
+	if next(uncat) then
 		local misc = {}
 		for i, pkg in ipairs(glue.keys(uncat, true)) do
 			table.insert(misc, {name = pkg})
 		end
 		table.insert(cats, {name = 'Misc', packages = misc})
 	end
-	close()
 	return cats
 end)
 
@@ -1146,7 +1243,7 @@ end)
 ------------------------------------------------------------------------------
 
 --.mgit/<name>.origin -> {name = true}
-known_packages = memoize(function()
+known_packages = memoize('known_packages', function()
 	local t = {}
 	for f in dir(powerpath(mgitpath())) do
 		local s = f:match'^(.-)%.origin$'
@@ -1156,7 +1253,7 @@ known_packages = memoize(function()
 end)
 
 --.mgit/<name>/ -> {name = true}
-installed_packages = memoize(function()
+installed_packages = memoize('installed_packages', function()
 	local t = {}
 	for f, _, ftype in dir(powerpath(mgitpath())) do
 		if ftype == 'dir' and fs.is(powerpath(git_dir(f)), 'dir')
@@ -1168,7 +1265,7 @@ installed_packages = memoize(function()
 end)
 
 --(known - installed) -> not installed
-not_installed_packages = memoize(function()
+not_installed_packages = memoize('not_installed_packages', function()
 	local installed = installed_packages()
 	return filter(known_packages(),
 		function(pkg) return not installed[pkg] end)
@@ -1192,12 +1289,12 @@ local function opt_package(func)
 end
 
 --memoize for functions where the first arg, package, is optional.
-local function memoize_opt_package(func)
-	return memoize(opt_package(memoize_package(func)))
+local function memoize_opt_package(fname, func)
+	return memoize(fname..'_opt_package', opt_package(memoize_package(fname, func)))
 end
 
 --git ls-files -> {path = package}
-tracked_files = memoize_opt_package(function(package)
+tracked_files = memoize_opt_package('tracked_files', function(package)
 	local t = {}
 	for path in gitlines(package, 'ls-files') do
 		t[path] = package
@@ -1209,24 +1306,30 @@ end)
 --tracked files breakdown: modules, scripts, docs
 ------------------------------------------------------------------------------
 
---check if a path is valid for containing (non-platform-specific) modules.
+--check if a path is valid for containing Lua or Terra modules.
 local function is_module_path(p)
-	return not p or not (
-		   p:find'^bin/'    --can't have modules in bin
-		or p:find'^csrc/'   --can't have modules in csrc
-		or p:find'^media/'  --can't have modules in media
-		or p:find'^tmp/'    --can't have modules in tmp
-		or p:find'^logs/'   --can't have modules in logs
-		or p:find'^%.mgit/' --can't have modules in .mgit
+	if not p then return true end
+	return not (
+		   p:find'^bin/'     --can't have modules in bin
+		or p:find'^csrc/'    --can't have modules in csrc
+		or p:find'^media/'   --can't have modules in media
+		or p:find'^tmp/'     --can't have modules in tmp
+		or p:find'^logs/'    --can't have modules in logs
+		or p:find'^.-%-www/' --can't have modules in www dirs
+		or p:find'^%.mgit/'  --can't have modules in .mgit
 	)
+end
+
+--check if a path is valid for containing OpenResty modules.
+local function is_resty_module_path(p)
+	return not p or (p:find'^resty/' or p:find'^ngx/') and true or false
 end
 
 --check if a path is valid for containing platform-specific modules
 --(optionally test for a specific platform) and return that platform.
 local function module_platform_path(p, platform)
 	platform = platform and check_platform(platform) or '[^/]+'
-	local plat = p:match('^bin/('..platform..')/clib/') --Lua/C modules
-	return plat or p:match('^bin/('..platform..')/lua/') --platform Lua modules
+	return p:match('^bin/('..platform..')/clib/') --Lua/C modules
 end
 
 --check if a path is valid for containing docs.
@@ -1252,7 +1355,7 @@ local function doc_name(path)
 end
 
 --tracked <doc>.md -> {doc = path}
-docs = memoize_opt_package(function(package)
+docs = memoize_opt_package('docs', function(package)
 	local t = {}
 	for path in pairs(tracked_files(package)) do
 		if is_doc_path(path) then
@@ -1313,17 +1416,17 @@ end
 --tracked <mod>.lua | bin/<platform>/clib|lua/<mod>.so|.lua -> {mod=path}
 --note: platform is optional: if not given, for the platform-specific modules
 --all the paths are returned in a table {platform = path}.
-modules = memoize_opt_package(function(package, platform)
+modules = memoize_opt_package('modules', function(package, platform)
 	return modules_(package, platform, true)
 end)
 
 --tracked <script>.lua -> {script = path}
-scripts = memoize_opt_package(function(package)
+scripts = memoize_opt_package('scripts', function(package)
 	return modules_(package, nil, false)
 end)
 
 --tracked file -> {path = 'module'|'script'|'doc'|'unknown'}
-file_types = memoize_opt_package(function(package)
+file_types = memoize_opt_package('file_types', function(package)
 	local t = {}
 	for path in pairs(tracked_files(package)) do
 		if is_module_path(path) then
@@ -1353,10 +1456,10 @@ local function module_parent_(package, mod)
 	return modules(package)[parent] and parent
 		or module_parent_(package, parent)
 end
-local module_parent = memoize_package(module_parent_)
+local module_parent = memoize_package('module_parent', module_parent_)
 
 --build a module tree for a package (or for all packages)
-module_tree = memoize_package(function(package, platform)
+module_tree = memoize_package('module_tree', function(package, platform)
 	local function get_names() return pairs(modules(package, platform)) end
 	local function get_parent(mod) return module_parent(package, mod) end
 	return build_tree(get_names, get_parent)
@@ -1365,10 +1468,10 @@ end)
 --doc tags
 ------------------------------------------------------------------------------
 
-docfile_tags = memoize(parse_md_file)
+docfile_tags = memoize('docfile_tags', parse_md_file)
 
 --tracked <doc>.md -> {title='', other yaml tags...}
-doc_tags = memoize_package(function(package, doc)
+doc_tags = memoize_package('doc_tags', function(package, doc)
 	local path = docs(package)[doc]
 	return path and docfile_tags(powerpath(path))
 end)
@@ -1377,14 +1480,14 @@ end)
 --module header tags
 ------------------------------------------------------------------------------
 
-modulefile_header = memoize(parse_module_header)
+modulefile_header = memoize('modulefile_header', parse_module_header)
 
-module_header = memoize_package(function(package, mod)
+module_header = memoize_package('module_header', function(package, mod)
 	local path = modules(package)[mod]
 	return type(path) == 'string' and modulefile_header(powerpath(path)) or {}
 end)
 
-module_headers = memoize_package(function(package)
+module_headers = memoize_package('module_headers', function(package)
 	local t = {}
 	for mod in pairs(modules(package)) do
 		local h = module_header(package, mod)
@@ -1399,7 +1502,7 @@ module_headers = memoize_package(function(package)
 	return t
 end)
 
-docheaders = memoize_opt_package(function(package)
+docheaders = memoize_opt_package('docheaders', function(package)
 	local t = {}
 	for mod in pairs(modules(package)) do
 		t[mod] = module_header(package, mod)
@@ -1431,11 +1534,12 @@ local known_module_packages = {
 }
 
 --find the pacakge which contains a specific module.
-module_package = memoize(function(mod)
+module_package = memoize('module_package', function(mod)
 	assert(mod, 'module required')
 	--shortcut: builtin module
 	if builtin_modules[mod] then return end --no reporting for Lua built-ins
 	if luajit_builtin_modules[mod] then return 'luajit' end
+	if nginx_builtin_modules[mod] then return 'nginx' end
 	--shortcut: find the package that matches the module name or one of its
 	--prefixes (which is a possible parent module).
 	local mod1 = mod
@@ -1453,8 +1557,8 @@ end)
 
 --memoize for functions of type f(mod, package) where package is optional.
 --like memoize_package() but for when the package arg is the second arg.
-local function memoize_mod_package(func)
-	local memfunc = memoize_package(function(package, mod)
+local function memoize_mod_package(fname, func)
+	local memfunc = memoize_package(fname, function(package, mod)
 		return func(mod, package)
 	end)
 	return function(mod, package)
@@ -1487,7 +1591,7 @@ local function ffi_module_in_package(mod, package, platform)
 	return tracked_files(package)[path] and true or false
 end
 
-ffi_module_package = memoize(function(mod, package, platform, ...)
+ffi_module_package = memoize('ffi_module_package', function(mod, package, platform, ...)
 	platform = check_platform(platform)
 	--shortcut: try current package.
 	if package and ffi_module_in_package(mod, package, platform) then
@@ -1512,20 +1616,20 @@ end)
 ------------------------------------------------------------------------------
 
 --check if the package has a dir named `csrc/PACKAGE`, and return that path.
-local csrc_dir = memoize_package(function(package)
+local csrc_dir = memoize_package('csrc_dir', function(package)
 	if fs.is(powerpath('csrc/'..package), 'dir') then
 		return 'csrc/'..package
 	end
 end)
 
 --csrc/*/WHAT -> {tag=val,...}
-what_tags = memoize_package(function(package)
+what_tags = memoize_package('what_tags', function(package)
 	if not csrc_dir(package) then return end
 	local what_file = powerpath(csrc_dir(package) .. '/WHAT')
 	return glue.canopen(what_file) and parse_what_file(what_file)
 end)
 
-local has_luac_modules = memoize_package(function(package)
+local has_luac_modules = memoize_package('has_luac_modules', function(package)
 	for mod, path in pairs(modules(package)) do
 		if c_module_name(tostring(path)) then
 			return true
@@ -1535,7 +1639,7 @@ end)
 
 --package dependencies as declared in the WHAT file.
 --they can also be declared in the header section of the package doc file.
-bin_deps = memoize_package(function(package, platform)
+bin_deps = memoize_package('bin_deps', function(package, platform)
 	platform = check_platform(platform)
 	local t1 = what_tags(package) and what_tags(package).dependencies
 	local t2 = doc_tags(package, package) and doc_tags(package, package).dependencies
@@ -1550,7 +1654,7 @@ end)
 
 --supported platforms can be inferred from the name of the build script:
 --csrc/*/build-<platform>.sh -> {platform = true,...}
-build_platforms = memoize_opt_package(function(package)
+build_platforms = memoize_opt_package('build_platforms', function(package)
 	local t = {}
 	if csrc_dir(package) then
 		for path in pairs(tracked_files(package)) do
@@ -1567,7 +1671,7 @@ build_platforms = memoize_opt_package(function(package)
 end)
 
 --platforms can also be inferred from the presence of files in bin/<platform>.
-bin_platforms = memoize_opt_package(function(package)
+bin_platforms = memoize_opt_package('bin_platforms', function(package)
 	local t = {}
 	for path in pairs(tracked_files(package)) do
 		local platform = path:match('^bin/([^/]+)/.')
@@ -1580,7 +1684,7 @@ end)
 
 --platforms can be specified in the 'platforms' tag of the package doc file:
 --<package>.md:platforms -> {platform = true,...}
-declared_platforms = memoize_opt_package(function(package)
+declared_platforms = memoize_opt_package('declared_platforms', function(package)
 	local t = {}
 	local tags = doc_tags(package, package)
 	if tags and tags.platforms then
@@ -1599,7 +1703,7 @@ declared_platforms = memoize_opt_package(function(package)
 	return t
 end)
 
-platforms = memoize_opt_package(function(package)
+platforms = memoize_opt_package('platforms', function(package)
 	return glue.update({},
 		build_platforms(package),
 		bin_platforms(package),
@@ -1611,12 +1715,12 @@ end)
 ------------------------------------------------------------------------------
 
 --current git version
-git_version = memoize_package(function(package)
+git_version = memoize_package('git_version', function(package)
 	return git(package, 'describe --tags --long --always')
 end)
 
 --list of tags in order
-git_tags = memoize_package(function(package)
+git_tags = memoize_package('git_tags', function(package)
 	local t = {}
 	local opt = 'log --tags --simplify-by-decoration --pretty=%d'
 	for s in gitlines(package, opt) do
@@ -1629,11 +1733,11 @@ git_tags = memoize_package(function(package)
 end)
 
 --current tag
-git_tag = memoize_package(function(package)
+git_tag = memoize_package('git_tag', function(package)
 	return git(package, 'describe --tags --abbrev=0')
 end)
 
-git_origin_url = memoize_package(function(package)
+git_origin_url = memoize_package('git_origin_url', function(package)
 	return git(package, 'config --get remote.origin.url')
 end)
 
@@ -1641,15 +1745,15 @@ local function git_log_time(package, args)
 	return tonumber(glue.trim(git(package, 'log -1 --format=%at '..args)))
 end
 
-git_master_time = memoize_package(function(package)
+git_master_time = memoize_package('git_master_time', function(package)
 	return git_log_time(package, '')
 end)
 
-git_file_time = memoize_package(function(package, file)
+git_file_time = memoize_package('git_file_time', function(package, file)
 	return git_log_time(package, '--follow \''..file..'\'')
 end)
 
-git_tag_time = memoize_package(function(package, tag)
+git_tag_time = memoize_package('git_tag_time', function(package, tag)
 	return git_log_time(package, tag)
 end)
 
@@ -1664,14 +1768,6 @@ loader_modules = {
 	t    = 'terra',
 }
 
---environments are used to load Terra modules in a separate Lua state than
---the state used to load Lua modules because LuaJIT ffi bindings are
---incompatible with Terra bindings because both try to create the same ffi
---ctypes and set a different ffi.metatype on those types.
-environments = {
-	terra = 'terra',
-}
-
 function module_loader(mod, package)
 	package = package or module_package(mod)
 	local path = modules(package)[mod]
@@ -1679,16 +1775,18 @@ function module_loader(mod, package)
 	if type(path) == 'table' then
 		path = path[current_platform()]
 	end
+	if is_resty_module_path(path) then
+		return 'ngx'
+	end
 	local ext = path:match'%.(.*)$'
 	if not ext then return end
 	return loader_modules[ext]
 end
 
 local track_module_ = track_module
-luapower.track_module = memoize_mod_package(function(mod, package)
+luapower.track_module = memoize_mod_package('track_module', function(mod, package)
 	package = package or module_package(mod)
 	local loader_mod = module_loader(mod, package)
-	local env = environments[loader_mod]
 	return track_module_(mod, loader_mod, env)
 end)
 
@@ -1729,7 +1827,7 @@ end
 
 --NOTE: this function has no upvalues so that it can be uploaded and run
 --on a RPC server. the `package` arg is an optional filter.
-local function get_tracking_data(package)
+local function get_tracking_data(package, mod)
 	local lp = require'luapower'
 	local glue = require'glue'
 	local t = {}
@@ -1738,8 +1836,10 @@ local function get_tracking_data(package)
 		local plt = platforms(package)
 		--only track if the package itself supports this platform
 		if not next(plt) or plt[current_platform()] then
-			for mod in pairs(lp.modules(package)) do
-				t[mod] = lp.track_module(mod, package)
+			for m in pairs(lp.modules(package)) do
+				if not mod or m == mod then
+					t[m] = lp.track_module(m, package)
+				end
 			end
 		end
 	end
@@ -1754,10 +1854,11 @@ local function get_tracking_data(package)
 end
 
 --the `package` arg is an optional filter.
-function update_db_on_current_platform(package)
+function update_db_on_current_platform(package, mod)
 	load_db()
 	local platform = current_platform()
-	local data = get_tracking_data(package)
+	local platform = current_platform()
+	local data = get_tracking_data(package, mod)
 	glue.update(glue.attr(db, platform), data)
 end
 
@@ -1776,7 +1877,7 @@ function update_db(package, platform0, mod)
 				and not servers[platforms] --servers are preferred
 				and allow_update_db_locally --allowed updating natively
 			then
-				update_db_on_current_platform(package)
+				update_db_on_current_platform(package, mod)
 			elseif servers[platform] then
 				local loop = require'socketloop'
 				loop.newthread(function()
@@ -1849,6 +1950,23 @@ function module_requires_loadtime(mod, package, platform)
 	return track_module_platform(mod, package, platform).mdeps or empty
 end
 
+--list of modules that the user needs to load before loading the target module.
+function module_environment(mod, package, platform)
+	local env = track_module_platform(mod, package, platform).env
+	local t = {}
+	if env then
+		for m in env:gmatch'[^%s]+' do
+			t[m] = true
+		end
+	end
+	return t
+end
+
+--return the module runtime.
+function module_runtime(mod, package, platform)
+	return {[track_module_platform(mod, package, platform).runtime or 'luajit'] = true}
+end
+
 --if loading the module resulted in an error, return that error.
 function module_load_error(mod, package, platform)
 	return track_module_platform(mod, package, platform).loaderr
@@ -1856,9 +1974,8 @@ end
 
 --list of a module's supported platforms, which is a subset of it's package's
 --supported platforms. a module can signal that it doesn't support a specific
---platform by raising an error containing 'platform not ' or 'arch not ',
---and can signal that it's not a module by raising 'not a module'.
-module_platforms = memoize_mod_package(function(mod, package)
+--platform by raising an error containing 'platform not ' or 'arch not '.
+module_platforms = memoize_mod_package('module_platforms', function(mod, package)
 	package = package or module_package(mod)
 	local t = {}
 	local platforms = platforms(package)
@@ -1868,9 +1985,8 @@ module_platforms = memoize_mod_package(function(mod, package)
 	for platform in pairs(platforms) do
 		local err = module_load_error(mod, package, platform)
 		if not err or not (
-			err:find'platform not '
+			   err:find'platform not '
 			or err:find'arch not '
-			or err:find'not a module'
 		) then
 			t[platform] = true
 		end
@@ -1889,7 +2005,7 @@ function module_autoloads(mod, package, platform)
 end
 
 --list of modules possibly required at runtime (detected through parsing).
-module_requires_runtime = memoize(function(mod, package, platform)
+module_requires_runtime = memoize('module_requires_runtime', function(mod, package, platform)
 	local err = module_load_error(mod, package, platform)
 	--if module doesn't load, hide its runtime deps.
 	if err then return {} end
@@ -1897,7 +2013,7 @@ module_requires_runtime = memoize(function(mod, package, platform)
 end)
 
 --list of auto-loaded modules on the target module.
-module_autoloaded = memoize(function(mod, package, platform)
+module_autoloaded = memoize('module_autoloaded', function(mod, package, platform)
 	local t = {}
 	for _,mod in pairs(module_autoloads(mod, package, platform)) do
 		t[mod] = true
@@ -1906,7 +2022,7 @@ module_autoloaded = memoize(function(mod, package, platform)
 end)
 
 --alltime means loadtime + runtime + autoloaded.
-module_requires_alltime = memoize(function(mod, package, platform)
+module_requires_alltime = memoize('module_requires_alltime', function(mod, package, platform)
 	return glue.update({},
 		module_requires_loadtime(mod, package, platform),
 		module_autoloaded(mod, package, platform),
@@ -1919,8 +2035,8 @@ end)
 
 --given a dependency-getting function, get a module's dependencies
 --recursively, as a table's keys.
-local function module_requires_recursive_keys_for(deps_func)
-	return memoize(function(mod, package, platform)
+local function module_requires_recursive_keys_for(deps_fname, deps_func)
+	return memoize('module_requires_recursive_keys_for_'..deps_fname, function(mod, package, platform)
 		local t = {}
 		local function add_deps(mod, package, platform)
 			for dep in pairs(deps_func(mod, package, platform)) do
@@ -1938,8 +2054,8 @@ end
 
 --given a dependency-getting function, get a module's dependencies
 --recursively, as a tree.
-local function module_requires_recursive_tree_for(deps_func)
-	return memoize(function(mod, package, platform)
+local function module_requires_recursive_tree_for(deps_fname, deps_func)
+	return memoize('module_requires_recursive_tree_for_'..deps_fname, function(mod, package, platform)
 		local function add_deps(pnode, package, platform)
 			for dep in pairs(deps_func(pnode.name, package, plaform)) do
 				local node = {name = dep}
@@ -1954,14 +2070,14 @@ local function module_requires_recursive_tree_for(deps_func)
 end
 
 module_requires_loadtime_tree =
-	module_requires_recursive_tree_for(module_requires_loadtime)
+	module_requires_recursive_tree_for('module_requires_loadtime', module_requires_loadtime)
 module_requires_loadtime_all  =
-	module_requires_recursive_keys_for(module_requires_loadtime)
+	module_requires_recursive_keys_for('module_requires_loadtime', module_requires_loadtime)
 module_requires_alltime_all   =
-	module_requires_recursive_keys_for(module_requires_alltime)
+	module_requires_recursive_keys_for('module_requires_alltime', module_requires_alltime)
 
 --direct and indirect internal (i.e. same package) module deps of a module
-module_requires_loadtime_int = memoize(function(mod, package, platform)
+module_requires_loadtime_int = memoize('module_requires_loadtime_int', function(mod, package, platform)
 	package = package or module_package(mod)
 	local internal = modules(package)
 	return filter(module_requires_loadtime_all(mod, package, platform),
@@ -1969,7 +2085,7 @@ module_requires_loadtime_int = memoize(function(mod, package, platform)
 end)
 
 --direct external module deps of a module and its internal deps
-module_requires_loadtime_ext = memoize(function(mod, package, platform)
+module_requires_loadtime_ext = memoize('module_requires_loadtime_ext', function(mod, package, platform)
 	local t = {}
 	package = package or module_package(mod)
 	--direct deps of mod
@@ -1988,7 +2104,7 @@ end)
 ------------------------------------------------------------------------------
 
 --direct and indirect binary dependencies of a package
-bin_deps_all = memoize_opt_package(function(package, platform)
+bin_deps_all = memoize_opt_package('bin_deps_all', function(package, platform)
 	local t = {}
 	local function add_deps(package)
 		for dep in pairs(bin_deps(package, platform)) do
@@ -2008,8 +2124,8 @@ end)
 
 --get the modules and packages that depend on a module,
 --given a dependency-getting function.
-local function module_required_for(deps_func, add_rev_bin_deps)
-	return memoize(function(mod, package0, platform)
+local function module_required_for(deps_fname, deps_func, add_rev_bin_deps)
+	return memoize('module_required_for_'..deps_fname, function(mod, package0, platform)
 		local t = {}
 		local pt = {}
 		package0 = package0 or module_package(mod)
@@ -2031,15 +2147,16 @@ local function module_required_for(deps_func, add_rev_bin_deps)
 end
 
 --all modules and packages that depend on a module, directly and indirectly.
-module_required_loadtime     = module_required_for(module_requires_loadtime)
-module_required_alltime      = module_required_for(module_requires_alltime)
-module_required_loadtime_all = module_required_for(module_requires_loadtime_all)
-module_required_alltime_all  = module_required_for(module_requires_alltime_all)
+module_required_loadtime     = module_required_for('module_requires_loadtime'    , module_requires_loadtime)
+module_required_environment  = module_required_for('module_environment'          , module_environment)
+module_required_alltime      = module_required_for('module_requires_alltime'     , module_requires_alltime)
+module_required_loadtime_all = module_required_for('module_requires_loadtime_all', module_requires_loadtime_all)
+module_required_alltime_all  = module_required_for('module_requires_alltime_all' , module_requires_alltime_all)
 
 --given a package dependency-getting function, get packages that depend on a
 --package.
-local function package_required_for(deps_func)
-	return memoize(function(package0, platform)
+local function package_required_for(deps_fname, deps_func)
+	return memoize('package_required_for_'..deps_fname, function(package0, platform)
 		local t = {}
 		for package in pairs(installed_packages()) do
 			if package ~= package0 then --not of self
@@ -2057,15 +2174,15 @@ end
 ------------------------------------------------------------------------------
 
 --which packages is a package a binary dependency of.
-rev_bin_deps     = package_required_for(bin_deps)
-rev_bin_deps_all = package_required_for(bin_deps_all)
+rev_bin_deps     = package_required_for('bin_deps'    , bin_deps)
+rev_bin_deps_all = package_required_for('bin_deps_all', bin_deps_all)
 
 
 --analytic info
 ------------------------------------------------------------------------------
 
 --analytic info for a module
-module_tags = memoize(function(package, mod)
+module_tags = memoize('module_tags', function(package, mod)
 	local mod_path = modules(package)[mod]
 	local t = {}
 	t.lang =
@@ -2080,13 +2197,14 @@ module_tags = memoize(function(package, mod)
 end)
 
 --analytic info for a package
-package_type = memoize_package(function(package)
+package_type = memoize_package('package_type', function(package)
 	local has_c = csrc_dir(package) and true or false
 	local has_mod = next(modules(package)) and true or false
 	local has_mod_c = false
 	local has_ffi = false
 	local has_bit = false
 	local has_terra = false
+	local has_ngx = false
 	for mod in pairs(modules(package)) do
 		local lang = module_tags(package, mod).lang
 		if lang == 'C' then
@@ -2102,6 +2220,10 @@ package_type = memoize_package(function(package)
 			if t.has_bit then
 				has_bit = mod
 			end
+			local env = module_environment(mod, package, platform)
+			if env.ngx then
+				has_ngx = true
+			end
 		end
 	end
 	--disambiguate: package has both Lua/C and Lua+ffi modules.
@@ -2115,7 +2237,8 @@ package_type = memoize_package(function(package)
 	end
 	assert(not has_mod_c or has_c) --Lua/C modules without source?
 	return
-		has_ffi and (has_terra and 'Terra' or 'Lua+ffi')
+		has_ngx and 'Resty'
+		or has_ffi and (has_terra and 'Terra' or 'Lua+ffi')
 		or has_mod and (has_mod_c and 'Lua/C' or (has_terra and 'Terra' or 'Lua'))
 		or has_c and 'C' or 'other'
 end)
@@ -2123,7 +2246,7 @@ end)
 local function key(key, t) return t and t[key] end
 
 --author can be specified in the header of the main module file or in the .md file.
-author = memoize_package(function(package)
+author = memoize_package('author', function(package)
 	return
 		key('author', doc_tags(package, package)) or
 		key('author', module_header(package, package))
@@ -2132,7 +2255,7 @@ end)
 --license can be specified in the header of the main module file
 --or in the .md file, otherwise the WHAT-file license is assumed,
 --and finally the default license is used as a fallback.
-license = memoize_package(function(package)
+license = memoize_package('license', function(package)
 	return
 		key('license', doc_tags(package, package)) or
 		key('license', what_tags(package)) or
@@ -2142,7 +2265,7 @@ end)
 
 --a module's tagline can be specified in the header of the module file
 --or in the .md of the module.
-module_tagline = memoize_package(function(package, mod)
+module_tagline = memoize_package('module_tagline', function(package, mod)
 	local s =
 		   key('tagline', doc_tags(package, mod))
 		or key('descr', module_header(package, mod))
@@ -2150,7 +2273,7 @@ module_tagline = memoize_package(function(package, mod)
 end)
 
 --pkg -> cat map
-packages_cats = memoize(function()
+packages_cats = memoize('packages_cats', function()
 	local t = {}
 	for i,cat in ipairs(cats()) do
 		for i,pkg in ipairs(cat.packages) do
@@ -2166,7 +2289,7 @@ end
 
 --given a list of packages as a comma-separated string, return a possible
 --build order that assures that all the dependencies are built first.
-build_order = memoize(function(packages, platform)
+build_order = memoize('build_order', function(packages, platform)
 	platform = check_platform(platform)
 	local function input_packages()
 		if not packages then
@@ -2238,7 +2361,7 @@ end
 
 --check for the same doc in a different path.
 --since all docs share the same namespace on the website, this is not allowed.
-duplicate_docs = memoize(function()
+duplicate_docs = memoize('duplicate_docs', function()
 	local dt = {} --{doc = package}
 	local dupes = {}
 	for package in pairs(installed_packages()) do
@@ -2252,7 +2375,7 @@ duplicate_docs = memoize(function()
 end)
 
 --check for undocumented packages
-undocumented_package = memoize_opt_package(function(package)
+undocumented_package = memoize_opt_package('undocumented_package', function(package)
 	local t = {}
 	local docs = docs(package)
 	if not docs[package] then
@@ -2262,11 +2385,15 @@ undocumented_package = memoize_opt_package(function(package)
 end)
 
 --module load errors for each module of a package
-load_errors = memoize_opt_package(function(package, platform)
+load_errors = memoize_opt_package('load_errors', function(package, platform)
 	local errs = {}
 	for mod in pairs(modules(package)) do
 		local err = module_load_error(mod, package, platform)
-		if err and not err:find'platform not ' and not err:find'arch not ' then
+		if err and not (
+			   err:find'platform not '
+			or err:find'arch not '
+		)
+		then
 			errs[mod] = err
 		end
 	end

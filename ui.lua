@@ -18,7 +18,7 @@ local bit = require'bit'
 local nw = require'nw'
 local time = require'time'
 local cairo = require'cairo'
-local C = require'layerlib_h'
+local C = require'layer_h'
 
 local zone = glue.noop
 local zone = require'jit.zone' --enable for profiling
@@ -411,7 +411,7 @@ function ui:after_init()
 
 	self.fonts = {} --{font_id->font}
 
-	self.load_font = ffi.cast('FontLoadFunc', function(font_id, data_ptr, size_ptr)
+	self.load_font = ffi.cast('tr_font_load_func_t', function(font_id, data_ptr, size_ptr)
 		local font = self.fonts[font_id]
 		if font.file then
 			font.data = self:load_file(font.file)
@@ -421,7 +421,7 @@ function ui:after_init()
 		size_ptr[0] = font.size
 	end)
 
-	self.unload_font = ffi.cast('FontLoadFunc', function(font_id, data_ptr, size_ptr)
+	self.unload_font = ffi.cast('tr_font_unload_func_t', function(font_id, data, size)
 		local font = self.fonts[font_id]
 		if font.file then
 			font.data = false
@@ -2707,12 +2707,6 @@ layer:forward_properties('l', {
 
 })
 
-layer:enum_property('clip_content', {
-	[false] = C.CLIP_NONE,
-	[true]  = C.CLIP_BACKGROUND,
-	padding = C.CLIP_PADDING,
-})
-
 layer:enum_property('operator', operators)
 
 local function retpoint(p)
@@ -2879,10 +2873,10 @@ layer:forward_properties('l', {
 })
 
 layer:enum_property('background_type', {
-	color           = C.BACKGROUND_COLOR,
-	gradient        = C.BACKGROUND_LINEAR_GRADIENT,
-	radial_gradient = C.BACKGROUND_RADIAL_GRADIENT,
-	image           = C.BACKGROUND_IMAGE,
+	color           = C.BACKGROUND_TYPE_COLOR,
+	gradient        = C.BACKGROUND_TYPE_LINEAR_GRADIENT,
+	radial_gradient = C.BACKGROUND_TYPE_RADIAL_GRADIENT,
+	image           = C.BACKGROUND_TYPE_IMAGE,
 })
 
 layer:enum_property('background_extend', {
@@ -3050,10 +3044,12 @@ end
 layer:enum_property('text_operator', operators)
 
 layer:enum_property('text_align_x', {
-	auto   = C.ALIGN_AUTO,
-	left   = C.ALIGN_LEFT,
-	right  = C.ALIGN_RIGHT,
-	center = C.ALIGN_CENTER,
+	left    = C.ALIGN_LEFT,
+	right   = C.ALIGN_RIGHT,
+	center  = C.ALIGN_CENTER,
+	justify = C.ALIGN_JUSTIFY,
+	start   = C.ALIGN_START,
+	['end'] = C.ALIGN_END,
 })
 
 layer:enum_property('text_align_y', {
@@ -3087,10 +3083,10 @@ layer:forward_properties('l', {
 })
 
 layer:enum_property('layout', {
-	[false] = C.LAYOUT_NULL,
-	textbox = C.LAYOUT_TEXTBOX,
-	flexbox = C.LAYOUT_FLEXBOX,
-	grid    = C.LAYOUT_GRID,
+	[false] = C.LAYOUT_TYPE_NULL,
+	textbox = C.LAYOUT_TYPE_TEXTBOX,
+	flexbox = C.LAYOUT_TYPE_FLEXBOX,
+	grid    = C.LAYOUT_TYPE_GRID,
 })
 
 layer:enum_property('flex_flow', {
@@ -4415,7 +4411,7 @@ local hit_test_areas = index{
 	text_selection = C.HIT_TEXT_SELECTION,
 }
 
-local layer_buf = ffi.new'Layer*[1]'
+local layer_buf = ffi.new'layer_t*[1]'
 function view:hit_test(x, y, reason)
 	local area = self.l:hit_test(self.window.cr, x, y, hit_test_bits[reason], layer_buf)
 	local layer = self.ui.layers[addr(layer_buf[0])]

@@ -1,4 +1,5 @@
-
+local ffi = require'ffi'
+--[[
 // csrc/openssl/src/include/openssl/safestack.h
 typedef char *OPENSSL_STRING;
 typedef const char *OPENSSL_CSTRING;
@@ -64,3 +65,4 @@ enum {
 	sk_sort              = OPENSSL_sk_sort,
 	sk_is_sorted         = OPENSSL_sk_is_sorted,
 };
+]]

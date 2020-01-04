@@ -1,3 +1,5 @@
+local ffi = require'ffi'
+--[[
 // csrc/openssl/src/include/openssl/x509.h
 enum {
 	X509_SIG_INFO_VALID  = 0x1,
@@ -849,4 +851,4 @@ enum {
 	X509_R_WRONG_LOOKUP_TYPE = 112,
 	X509_R_WRONG_TYPE    = 122,
 };
-
+]]

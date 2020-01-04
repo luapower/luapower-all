@@ -1,4 +1,2598 @@
 return {
+	linux64={
+		affine2d={
+			affine2d={
+			}
+		},
+		amoeba={
+			amoeba={
+			}
+		},
+		anaf={
+		},
+		bitmap={
+			bitmap={
+				autoloads={
+					blend='bitmap_blend',
+					blend_op='bitmap_blend',
+					convolve='bitmap_effects',
+					dither='bitmap_dither',
+					grayscale='bitmap_effects',
+					invert='bitmap_effects',
+					mirror='bitmap_effects',
+					resize='bitmap_resize',
+					sharpen='bitmap_effects'
+				},
+				mdeps={
+					bit=true,
+					box2d=true,
+					ffi=true,
+					glue=true
+				}
+			},
+			bitmap_blend={
+				mdeps={
+					bitmap=true,
+					box2d=true
+				}
+			},
+			bitmap_dither={
+				mdeps={
+					bitmap=true
+				}
+			},
+			bitmap_effects={
+				mdeps={
+					bitmap=true
+				}
+			},
+			bitmap_resize={
+				mdeps={
+					bitmap=true
+				}
+			},
+			bitmap_rgbaf={
+				mdeps={
+					bitmap=true,
+					ffi=true,
+					glue=true
+				}
+			}
+		},
+		blake2={
+			blake2={
+				ffi_deps={
+					blake2=true
+				},
+				mdeps={
+					ffi=true
+				}
+			}
+		},
+		bmp={
+			bmp={
+				mdeps={
+					bit=true,
+					bitmap=true,
+					ffi=true,
+					glue=true
+				}
+			}
+		},
+		bnet={
+			bnet={
+				mdeps={
+					bit=true,
+					bnet_h=true,
+					ffi=true
+				}
+			},
+			bnet_h={
+				mdeps={
+					ffi=true
+				}
+			}
+		},
+		box2d={
+			box2d={
+			}
+		},
+		boxblur={
+			boxblur={
+				ffi_deps={
+					boxblur=true
+				},
+				mdeps={
+					bitmap=true,
+					ffi=true,
+					glue=true
+				}
+			}
+		},
+		bundle={
+		},
+		cairo={
+			cairo={
+				ffi_deps={
+					cairo=true
+				},
+				mdeps={
+					bit=true,
+					cairo_h=true,
+					ffi=true
+				}
+			},
+			cairo_h={
+				mdeps={
+					ffi=true
+				}
+			},
+			cairo_quartz={
+				loaderr='platform not OSX',
+				mdeps={
+					cairo=true,
+					cairo_quartz_h=true,
+					ffi=true
+				}
+			},
+			cairo_quartz_h={
+				loaderr='platform not OSX',
+				mdeps={
+					ffi=true
+				}
+			},
+			cairo_win32={
+				loaderr='platform not Windows',
+				mdeps={
+					cairo=true,
+					cairo_win32_h=true,
+					ffi=true
+				}
+			},
+			cairo_win32_h={
+				loaderr='platform not Windows',
+				mdeps={
+					ffi=true
+				}
+			}
+		},
+		cbframe={
+			cbframe={
+				mdeps={
+					cbframe_x86=true,
+					dynasm=true
+				}
+			},
+			cbframe_dump={
+				mdeps={
+					cbframe=true,
+					ffi=true
+				}
+			},
+			cbframe_x86={
+				env='dynasm',
+				mdeps={
+					cbframe_x86_h=true,
+					dasm=true,
+					dasm_mm=true,
+					dasm_x64=true,
+					ffi=true
+				}
+			},
+			cbframe_x86_h={
+				mdeps={
+					ffi=true
+				}
+			}
+		},
+		cjson={
+			cjson={
+			}
+		},
+		clipper={
+			clipper={
+				ffi_deps={
+					clipper=true
+				},
+				mdeps={
+					ffi=true
+				}
+			}
+		},
+		codedit={
+			codedit={
+			}
+		},
+		color={
+			color={
+				mdeps={
+					bit=true
+				}
+			}
+		},
+		coro={
+			coro={
+			}
+		},
+		cplayer={
+		},
+		dollar={
+			['$']={
+				mdeps={
+					bit=true,
+					ffi=true,
+					glue=true,
+					pp=true,
+					time=true
+				}
+			}
+		},
+		dynasm={
+			dasm={
+				ffi_deps={
+					dasm_x86=true
+				},
+				mdeps={
+					bit=true,
+					ffi=true
+				}
+			},
+			dasm_mm={
+				mdeps={
+					ffi=true
+				}
+			},
+			dasm_x64={
+				mdeps={
+					dasm_x86x64=true
+				}
+			},
+			dasm_x86={
+				mdeps={
+					dasm_x86x64=true
+				}
+			},
+			dasm_x86x64={
+			},
+			dynasm={
+			}
+		},
+		easing={
+			easing={
+			}
+		},
+		eq={
+			eq={
+			}
+		},
+		errors={
+			errors={
+			}
+		},
+		events={
+			events={
+			}
+		},
+		expat={
+			expat={
+				ffi_deps={
+					expat=true
+				},
+				mdeps={
+					expat_h=true,
+					ffi=true,
+					glue=true
+				}
+			},
+			expat_h={
+				mdeps={
+					ffi=true
+				}
+			}
+		},
+		ffi_reflect={
+			ffi_reflect={
+				mdeps={
+					bit=true,
+					ffi=true
+				}
+			}
+		},
+		font_db={
+			font_db={
+				mdeps={
+					glue=true
+				}
+			}
+		},
+		['fonts-amiri']={
+		},
+		['fonts-awesome']={
+		},
+		['fonts-dejavuserif']={
+		},
+		['fonts-fireflysung']={
+		},
+		['fonts-fixedsys']={
+		},
+		['fonts-ionicons']={
+		},
+		['fonts-material-icons']={
+		},
+		['fonts-noto-emoji']={
+		},
+		['fonts-open-sans']={
+		},
+		freetype={
+			freetype={
+				ffi_deps={
+					freetype=true
+				},
+				mdeps={
+					bit=true,
+					ffi=true,
+					freetype_h=true
+				}
+			},
+			freetype_h={
+				mdeps={
+					ffi=true
+				}
+			}
+		},
+		fribidi={
+			fribidi={
+				ffi_deps={
+					fribidi=true
+				},
+				mdeps={
+					bit=true,
+					ffi=true,
+					fribidi_h=true
+				}
+			},
+			fribidi_h={
+				mdeps={
+					ffi=true
+				}
+			}
+		},
+		fs={
+			fs={
+				mdeps={
+					ffi=true,
+					fs_common=true,
+					fs_posix=true
+				}
+			},
+			fs_common={
+				mdeps={
+					bit=true,
+					ffi=true,
+					path=true
+				}
+			},
+			fs_posix={
+				ffi_deps={
+					rt=true
+				},
+				mdeps={
+					bit=true,
+					ffi=true,
+					fs_common=true
+				}
+			},
+			fs_win={
+				loaderr='platform not Windows',
+				mdeps={
+					bit=true,
+					ffi=true,
+					fs_common=true
+				}
+			}
+		},
+		genx={
+			genx={
+				ffi_deps={
+					genx=true
+				},
+				mdeps={
+					ffi=true,
+					genx_h=true
+				}
+			},
+			genx_h={
+				mdeps={
+					ffi=true
+				}
+			}
+		},
+		gfonts={
+			gfonts={
+				mdeps={
+					fs=true,
+					glue=true,
+					pp=true
+				}
+			}
+		},
+		giflib={
+			giflib={
+				ffi_deps={
+					gif=true
+				},
+				mdeps={
+					ffi=true,
+					giflib_h=true,
+					glue=true
+				}
+			},
+			giflib_h={
+				mdeps={
+					ffi=true
+				}
+			}
+		},
+		glue={
+			glue={
+				mdeps={
+					ffi=true
+				}
+			}
+		},
+		harfbuzz={
+			harfbuzz={
+				ffi_deps={
+					harfbuzz=true
+				},
+				mdeps={
+					bit=true,
+					ffi=true,
+					harfbuzz_h=true
+				}
+			},
+			harfbuzz_h={
+				mdeps={
+					ffi=true
+				}
+			}
+		},
+		hash_benchmark={
+		},
+		heap={
+			heap={
+			}
+		},
+		hid_app={
+		},
+		hidapi={
+			hidapi={
+				ffi_deps={
+					hidapi=false
+				},
+				loaderr='./hidapi.lua:6: libhidapi.so: cannot open shared object file: No such file or directory',
+				mdeps={
+					ffi=true
+				}
+			}
+		},
+		hmac={
+			hmac={
+				autoloads={
+				},
+				mdeps={
+					bit=true,
+					ffi=true,
+					glue=true
+				}
+			}
+		},
+		http={
+			http={
+				mdeps={
+					ffi=true,
+					glue=true,
+					http_headers=true,
+					stream=true
+				}
+			},
+			http_client={
+				mdeps={
+					glue=true,
+					http=true,
+					socketloop=true,
+					time=true,
+					uri=true
+				}
+			},
+			http_date={
+				mdeps={
+					glue=true
+				}
+			},
+			http_debug={
+				mdeps={
+					ffi=true,
+					glue=true,
+					socketloop=true,
+					time=true
+				}
+			},
+			http_headers={
+				mdeps={
+					glue=true,
+					http_date=true,
+					libb64=true,
+					['lpeg.re']=true,
+					uri=true
+				}
+			},
+			http_server={
+				mdeps={
+					glue=true,
+					http=true,
+					socketloop=true,
+					time=true,
+					uri=true
+				}
+			},
+			url={
+				mdeps={
+					socket=true,
+					string=true,
+					table=true
+				}
+			}
+		},
+		hunspell={
+			hunspell={
+				ffi_deps={
+					hunspell=true
+				},
+				mdeps={
+					ffi=true
+				}
+			}
+		},
+		inspect={
+			inspect={
+			}
+		},
+		lanes={
+			lanes={
+				mdeps={
+					['lanes.core']=true
+				}
+			},
+			['lanes.core']={
+			}
+		},
+		lexer={
+			lexer={
+				mdeps={
+					lpeg=true
+				}
+			}
+		},
+		lfrb={
+		},
+		lfs={
+			lfs={
+			}
+		},
+		libb64={
+			libb64={
+				ffi_deps={
+					b64=true
+				},
+				mdeps={
+					ffi=true
+				}
+			}
+		},
+		libcurl={
+			libcurl={
+				ffi_deps={
+					curl=true
+				},
+				mdeps={
+					bit=true,
+					ffi=true,
+					libcurl_h=true
+				}
+			},
+			libcurl_h={
+				mdeps={
+					ffi=true
+				}
+			}
+		},
+		libexif={
+			libexif={
+				ffi_deps={
+					exif=true
+				},
+				mdeps={
+					ffi=true,
+					libexif_h=true
+				}
+			},
+			libexif_h={
+				mdeps={
+					ffi=true
+				}
+			}
+		},
+		libjpeg={
+			libjpeg={
+				ffi_deps={
+					jpeg=true
+				},
+				mdeps={
+					bit=true,
+					ffi=true,
+					glue=true,
+					jit=true,
+					libjpeg_h=true
+				}
+			},
+			libjpeg_h={
+				mdeps={
+					ffi=true
+				}
+			}
+		},
+		libmariadb={
+		},
+		libogg={
+			libogg_h={
+				mdeps={
+					ffi=true
+				}
+			}
+		},
+		libp11={
+		},
+		libpng={
+			libpng={
+				ffi_deps={
+					png=true
+				},
+				mdeps={
+					bit=true,
+					ffi=true,
+					glue=true,
+					jit=true,
+					libpng_h=true
+				}
+			},
+			libpng_h={
+				mdeps={
+					ffi=true
+				}
+			}
+		},
+		libsodium={
+		},
+		libsoundio={
+			libsoundio={
+				ffi_deps={
+					soundio=true
+				},
+				mdeps={
+					ffi=true,
+					libsoundio_h=true
+				}
+			},
+			libsoundio_h={
+				mdeps={
+					ffi=true
+				}
+			}
+		},
+		libunibreak={
+			libunibreak={
+				ffi_deps={
+					unibreak=true
+				},
+				mdeps={
+					ffi=true,
+					libunibreak_h=true
+				}
+			},
+			libunibreak_h={
+				mdeps={
+					ffi=true
+				}
+			}
+		},
+		linkedlist={
+			linkedlist={
+			}
+		},
+		llvm={
+			llvm={
+				ffi_deps={
+					llvm=false
+				},
+				loaderr='./llvm.lua:16: libllvm.so: cannot open shared object file: No such file or directory',
+				mdeps={
+					ffi=true,
+					glue=true,
+					llvm_h=true
+				}
+			},
+			llvm_h={
+				mdeps={
+					ffi=true
+				}
+			}
+		},
+		lpeg={
+			lpeg={
+			},
+			['lpeg.re']={
+				mdeps={
+					lpeg=true
+				}
+			}
+		},
+		lrucache={
+			lrucache={
+				mdeps={
+					linkedlist=true
+				}
+			}
+		},
+		['lua-headers']={
+		},
+		luajit={
+			bit={
+			},
+			ffi={
+			},
+			jit={
+			},
+			['jit.bc']={
+				mdeps={
+					bit=true,
+					jit=true,
+					['jit.util']=true,
+					['jit.vmdef']=true
+				}
+			},
+			['jit.bcsave']={
+				mdeps={
+					bit=true,
+					jit=true
+				}
+			},
+			['jit.dis_x64']={
+				mdeps={
+					['jit.dis_x86']=true
+				}
+			},
+			['jit.dis_x86']={
+				mdeps={
+					bit=true
+				}
+			},
+			['jit.dump']={
+				mdeps={
+					bit=true,
+					jit=true,
+					['jit.util']=true,
+					['jit.vmdef']=true
+				}
+			},
+			['jit.p']={
+				mdeps={
+					jit=true,
+					['jit.profile']=true,
+					['jit.vmdef']=true
+				}
+			},
+			['jit.profile']={
+			},
+			['jit.util']={
+			},
+			['jit.v']={
+				mdeps={
+					jit=true,
+					['jit.util']=true,
+					['jit.vmdef']=true
+				}
+			},
+			['jit.zone']={
+			},
+			['package.exedir']={
+			},
+			['package.exepath']={
+			},
+			strict={
+			},
+			['table.clone']={
+			},
+			['table.isarray']={
+			},
+			['table.isempty']={
+			},
+			['table.new']={
+			},
+			['table.nkeys']={
+			},
+			['thread.exdata']={
+			}
+		},
+		luapower={
+			luapower={
+				mdeps={
+					ffi=true,
+					fs=true,
+					glue=true,
+					luapower_rpc=true,
+					pp=true
+				}
+			},
+			luapower_cli={
+			},
+			luapower_rpc={
+				mdeps={
+					glue=true,
+					luastate=true,
+					pp=true
+				}
+			}
+		},
+		['luapower-ci']={
+		},
+		['luapower-repos']={
+		},
+		luapower_db={
+			luapower_db={
+			}
+		},
+		luasec={
+			['socket.https']={
+				mdeps={
+					ltn12=true,
+					socket=true,
+					['socket.http']=true,
+					['socket.url']=true,
+					ssl=true
+				}
+			},
+			ssl={
+				mdeps={
+					['ssl.config']=true,
+					['ssl.context']=true,
+					['ssl.core']=true,
+					['ssl.x509']=true
+				}
+			}
+		},
+		luastate={
+			lua_h={
+				mdeps={
+					ffi=true
+				}
+			},
+			luajit_h={
+				mdeps={
+					ffi=true,
+					lua_h=true
+				}
+			},
+			luastate={
+				mdeps={
+					ffi=true,
+					luajit_h=true
+				}
+			}
+		},
+		lx={
+			lx={
+				ffi_deps={
+					lx=false
+				},
+				loaderr='./lx.lua:8: liblx.so: cannot open shared object file: No such file or directory',
+				mdeps={
+					ffi=true
+				}
+			}
+		},
+		lz4={
+			lz4={
+				ffi_deps={
+					lz4=false
+				},
+				loaderr='./lz4.lua:149: liblz4.so: cannot open shared object file: No such file or directory',
+				mdeps={
+					ffi=true
+				}
+			}
+		},
+		md5={
+			md5={
+				ffi_deps={
+					md5=true
+				},
+				mdeps={
+					ffi=true
+				}
+			}
+		},
+		['mingw64-headers']={
+		},
+		minizip={
+			minizip={
+				ffi_deps={
+					minizip=true
+				},
+				mdeps={
+					bit=true,
+					ffi=true,
+					glue=true,
+					minizip_h=true
+				}
+			},
+			minizip_h={
+				mdeps={
+					ffi=true
+				}
+			}
+		},
+		mustache={
+			mustache={
+			}
+		},
+		mysql={
+			mysql={
+				mdeps={
+					bit=true,
+					ffi=true,
+					mysql_h=true
+				}
+			},
+			mysql_h={
+				mdeps={
+					ffi=true
+				}
+			},
+			mysql_print={
+			}
+		},
+		nginx={
+		},
+		nw={
+			nw={
+				mdeps={
+					box2d=true,
+					events=true,
+					ffi=true,
+					glue=true,
+					nw_xlib=true,
+					time=true
+				}
+			},
+			nw_cocoa={
+				loaderr='platform not OSX',
+				mdeps={
+					bit=true,
+					box2d=true,
+					cbframe=true,
+					ffi=true,
+					glue=true,
+					objc=true
+				}
+			},
+			nw_winapi={
+				loaderr='platform not Windows',
+				mdeps={
+					bit=true,
+					bitmap=true,
+					box2d=true,
+					ffi=true,
+					glue=true,
+					winapi=true
+				}
+			},
+			nw_xlib={
+				mdeps={
+					bit=true,
+					box2d=true,
+					ffi=true,
+					glue=true,
+					heap=true,
+					time=true,
+					xlib=true,
+					xlib_keysym_h=true
+				}
+			}
+		},
+		objc={
+		},
+		oo={
+			oo={
+			}
+		},
+		opengl={
+			gl11={
+				mdeps={
+					ffi=true,
+					gl_types=true
+				}
+			},
+			gl_consts11={
+			},
+			gl_consts21={
+			},
+			gl_funcs11={
+				mdeps={
+					ffi=true,
+					gl_types=true
+				}
+			},
+			gl_funcs21={
+				mdeps={
+					ffi=true,
+					gl_types=true
+				}
+			},
+			gl_types={
+				mdeps={
+					ffi=true
+				}
+			},
+			glu={
+				loaderr='platform not Windows',
+				mdeps={
+					ffi=true
+				}
+			},
+			glu_h={
+				mdeps={
+					ffi=true,
+					gl_types=true
+				}
+			},
+			glu_lua={
+				loaderr='platform not Windows',
+				mdeps={
+					ffi=true,
+					['winapi.gl21']=true
+				}
+			}
+		},
+		openssl={
+			libcrypto={
+				ffi_deps={
+					crypto=true
+				},
+				mdeps={
+					ffi=true,
+					libcrypto_h=true
+				}
+			},
+			libcrypto_asn1_h={
+				mdeps={
+					ffi=true
+				}
+			},
+			libcrypto_bio_h={
+				mdeps={
+					ffi=true
+				}
+			},
+			libcrypto_bn_h={
+				mdeps={
+					ffi=true
+				}
+			},
+			libcrypto_buffer_h={
+				mdeps={
+					ffi=true
+				}
+			},
+			libcrypto_conf_h={
+				mdeps={
+					ffi=true,
+					libcrypto_types_h=true
+				}
+			},
+			libcrypto_dh_h={
+				mdeps={
+					ffi=true
+				}
+			},
+			libcrypto_dsa_h={
+				mdeps={
+					ffi=true
+				}
+			},
+			libcrypto_ec_h={
+				mdeps={
+					ffi=true
+				}
+			},
+			libcrypto_engine={
+				mdeps={
+					libcrypto=true,
+					libcrypto_engine_h=true
+				}
+			},
+			libcrypto_engine_h={
+				mdeps={
+					ffi=true,
+					libcrypto_types_h=true
+				}
+			},
+			libcrypto_err_h={
+				mdeps={
+					ffi=true
+				}
+			},
+			libcrypto_evp_h={
+				mdeps={
+					ffi=true
+				}
+			},
+			libcrypto_h={
+				mdeps={
+					ffi=true,
+					libcrypto_types_h=true
+				}
+			},
+			libcrypto_lhash_h={
+				mdeps={
+					ffi=true
+				}
+			},
+			libcrypto_objects_h={
+				mdeps={
+					ffi=true
+				}
+			},
+			libcrypto_pem_h={
+				mdeps={
+					ffi=true
+				}
+			},
+			libcrypto_pkcs7_h={
+				mdeps={
+					ffi=true
+				}
+			},
+			libcrypto_rand_h={
+				mdeps={
+					ffi=true
+				}
+			},
+			libcrypto_rsa_h={
+				mdeps={
+					ffi=true
+				}
+			},
+			libcrypto_safestack_h={
+				mdeps={
+					ffi=true
+				}
+			},
+			libcrypto_sha_h={
+				mdeps={
+					ffi=true
+				}
+			},
+			libcrypto_types_h={
+				mdeps={
+					ffi=true
+				}
+			},
+			libcrypto_ui_h={
+				mdeps={
+					ffi=true
+				}
+			},
+			libcrypto_x509_h={
+				mdeps={
+					ffi=true
+				}
+			},
+			libcrypto_x509_vfy_h={
+				mdeps={
+					ffi=true
+				}
+			},
+			openssl={
+			},
+			openssl_h={
+				mdeps={
+					ffi=true
+				}
+			}
+		},
+		path={
+			path={
+			}
+		},
+		path2d={
+			path2d={
+				mdeps={
+					glue=true,
+					path2d_arc=true,
+					path2d_arc_3p=true,
+					path2d_bezier2=true,
+					path2d_bezier2_hit=true,
+					path2d_bezier3=true,
+					path2d_bezier3_hit=true,
+					path2d_circle_3p=true,
+					path2d_line=true,
+					path2d_point=true,
+					path2d_shapes=true,
+					path2d_svgarc=true,
+					path2d_text=true,
+					pp=true
+				}
+			},
+			path2d_arc={
+				mdeps={
+					path2d_bezier3=true,
+					path2d_line=true,
+					path2d_point=true
+				}
+			},
+			path2d_arc_3p={
+				mdeps={
+					path2d_arc=true,
+					path2d_circle_3p=true,
+					path2d_point=true
+				}
+			},
+			path2d_bezier2={
+				autoloads={
+					interpolate='path2d_bezier2_ai'
+				},
+				mdeps={
+					glue=true,
+					path2d_bezier_length=true,
+					path2d_point=true
+				}
+			},
+			path2d_bezier2_ai={
+				mdeps={
+					path2d_bezier2=true
+				}
+			},
+			path2d_bezier2_hit={
+				mdeps={
+					eq=true,
+					path2d_bezier2=true,
+					path2d_point=true
+				}
+			},
+			path2d_bezier3={
+				autoloads={
+					interpolate='path2d_bezier3_ai'
+				},
+				mdeps={
+					glue=true,
+					path2d_bezier_length=true
+				}
+			},
+			path2d_bezier3_ai={
+				mdeps={
+					path2d_bezier3=true,
+					path2d_point=true
+				}
+			},
+			path2d_bezier3_hit={
+				mdeps={
+					path2d_bezier3=true,
+					path2d_point=true
+				}
+			},
+			path2d_bezier_length={
+				mdeps={
+					path2d_point=true
+				}
+			},
+			path2d_cairo={
+				mdeps={
+					path2d=true,
+					path2d_bezier2=true
+				}
+			},
+			path2d_catmullrom={
+			},
+			path2d_circle_3p={
+				mdeps={
+					path2d_point=true
+				}
+			},
+			path2d_editor={
+				mdeps={
+					glue=true,
+					path2d=true,
+					path2d_arc=true,
+					path2d_arc_3p=true,
+					path2d_circle_3p=true,
+					path2d_line=true,
+					path2d_point=true,
+					path2d_shapes=true,
+					path2d_svgarc=true
+				}
+			},
+			path2d_line={
+				mdeps={
+					path2d_point=true
+				}
+			},
+			path2d_point={
+			},
+			path2d_polyline={
+				mdeps={
+					path2d_line=true
+				}
+			},
+			path2d_shapes={
+				mdeps={
+					path2d_circle_3p=true,
+					path2d_point=true
+				}
+			},
+			path2d_svgarc={
+				mdeps={
+					path2d_arc=true,
+					path2d_line=true
+				}
+			},
+			path2d_text={
+			}
+		},
+		pcre={
+		},
+		pixman={
+		},
+		pkcs11={
+			pkcs11={
+				loaderr='./pkcs11.lua:2272: malformed number near \'0UL\' at line 19',
+				mdeps={
+					ffi=true
+				}
+			}
+		},
+		pp={
+			pp={
+			}
+		},
+		proc={
+			proc={
+				mdeps={
+					bit=true,
+					ffi=true
+				}
+			}
+		},
+		pthread={
+			pthread={
+				ffi_deps={
+					pthread=true
+				},
+				mdeps={
+					ffi=true
+				}
+			}
+		},
+		rangelist={
+			rangelist={
+				mdeps={
+					glue=true
+				}
+			}
+		},
+		resolver={
+			resolver={
+				mdeps={
+					bit=true,
+					['table.new']=true
+				}
+			}
+		},
+		['resty-core']={
+			['ngx.balancer']={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
+			},
+			['ngx.base64']={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
+			},
+			['ngx.errlog']={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
+			},
+			['ngx.ocsp']={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
+			},
+			['ngx.pipe']={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
+			},
+			['ngx.process']={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
+			},
+			['ngx.re']={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
+			},
+			['ngx.resp']={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
+			},
+			['ngx.semaphore']={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
+			},
+			['ngx.ssl']={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
+			},
+			['ngx.ssl.session']={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
+			},
+			['resty.core']={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
+			},
+			['resty.core.base']={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
+			},
+			['resty.core.base64']={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
+			},
+			['resty.core.ctx']={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
+			},
+			['resty.core.exit']={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
+			},
+			['resty.core.hash']={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
+			},
+			['resty.core.misc']={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
+			},
+			['resty.core.ndk']={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
+			},
+			['resty.core.phase']={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
+			},
+			['resty.core.regex']={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
+			},
+			['resty.core.request']={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
+			},
+			['resty.core.response']={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
+			},
+			['resty.core.shdict']={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
+			},
+			['resty.core.time']={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
+			},
+			['resty.core.uri']={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
+			},
+			['resty.core.utils']={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
+			},
+			['resty.core.var']={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
+			},
+			['resty.core.worker']={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
+			}
+		},
+		['resty-lrucache']={
+			['resty.lrucache']={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
+			},
+			['resty.lrucache.pureffi']={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
+			}
+		},
+		rs232={
+			rs232={
+				mdeps={
+					ffi=true,
+					fs=true
+				}
+			}
+		},
+		rsync={
+			rsync={
+				mdeps={
+					bit=true,
+					ffi=true
+				}
+			}
+		},
+		sha2={
+			sha2={
+				ffi_deps={
+					sha2=true
+				},
+				mdeps={
+					ffi=true
+				}
+			}
+		},
+		shm={
+			shm={
+				mdeps={
+					ffi=true
+				}
+			}
+		},
+		socket={
+			ltn12={
+				mdeps={
+					string=true,
+					table=true
+				}
+			},
+			mime={
+			},
+			['mime.core']={
+			},
+			socket={
+				mdeps={
+					math=true,
+					['socket.core']=true,
+					string=true
+				}
+			},
+			['socket.core']={
+			},
+			['socket.ftp']={
+				mdeps={
+					ltn12=true,
+					math=true,
+					socket=true,
+					['socket.tp']=true,
+					['socket.url']=true,
+					string=true,
+					table=true
+				}
+			},
+			['socket.headers']={
+				mdeps={
+					socket=true
+				}
+			},
+			['socket.http']={
+				mdeps={
+					ltn12=true,
+					mime=true,
+					socket=true,
+					['socket.headers']=true,
+					['socket.url']=true,
+					string=true,
+					table=true
+				}
+			},
+			['socket.mbox']={
+			},
+			['socket.smtp']={
+				mdeps={
+					coroutine=true,
+					ltn12=true,
+					math=true,
+					mime=true,
+					os=true,
+					socket=true,
+					['socket.headers']=true,
+					['socket.tp']=true,
+					string=true
+				}
+			},
+			['socket.tftp']={
+				mdeps={
+					ltn12=true,
+					math=true,
+					socket=true,
+					['socket.url']=true,
+					string=true,
+					table=true
+				}
+			},
+			['socket.tp']={
+				mdeps={
+					ltn12=true,
+					socket=true,
+					string=true
+				}
+			},
+			['socket.url']={
+				mdeps={
+					socket=true,
+					string=true,
+					table=true
+				}
+			}
+		},
+		socketloop={
+			socketloop={
+				autoloads={
+				},
+				mdeps={
+					glue=true,
+					socket=true
+				}
+			}
+		},
+		stream={
+			stream={
+				mdeps={
+					ffi=true,
+					glue=true
+				}
+			}
+		},
+		struct={
+			struct={
+			}
+		},
+		terra={
+			asdl={
+				mdeps={
+					terralist=true
+				}
+			},
+			terra={
+				env='terra',
+				mdeps={
+					asdl=true,
+					terralib=true,
+					terralist=true
+				}
+			},
+			['terra.parsing']={
+				env='terra'
+			},
+			['terra.std']={
+				env='terra'
+			},
+			terralib={
+				env='terra',
+				mdeps={
+					asdl=true,
+					ffi=true,
+					terralib_luapower=true
+				}
+			},
+			terralib_luapower={
+				env='terra',
+				mdeps={
+					asdl=true,
+					ffi=true,
+					['package.exedir']=true
+				}
+			},
+			terralist={
+			}
+		},
+		['terra.arrayfreelist']={
+			['terra.arrayfreelist']={
+				env='terra',
+				mdeps={
+					['terra.low']=true
+				}
+			}
+		},
+		['terra.arrayview']={
+			['terra.arrayview']={
+				env='terra',
+				mdeps={
+					['terra.low']=true
+				}
+			},
+			['terra.rawstringview']={
+				env='terra',
+				mdeps={
+					['terra.low']=true
+				}
+			}
+		},
+		['terra.binder']={
+			['terra.binder']={
+				env='terra',
+				mdeps={
+					['terra.low']=true
+				}
+			}
+		},
+		['terra.bitarray']={
+			['terra.bitarray']={
+				env='terra',
+				mdeps={
+					['terra.box2d']=true,
+					['terra.low']=true
+				}
+			}
+		},
+		['terra.bitmap']={
+			['terra.bitmap']={
+				env='terra',
+				mdeps={
+					['terra.low']=true
+				}
+			}
+		},
+		['terra.box2d']={
+			['terra.box2d']={
+				env='terra',
+				mdeps={
+					['terra.low']=true
+				}
+			}
+		},
+		['terra.boxblur']={
+			boxblurlib_h={
+				ffi_deps={
+					boxblurlib=false
+				},
+				loaderr='./boxblurlib_h.lua:4: libboxblurlib.so: cannot open shared object file: No such file or directory',
+				mdeps={
+					ffi=true
+				}
+			},
+			['terra.boxblur']={
+				env='terra',
+				mdeps={
+					['terra.bitmap']=true,
+					['terra.low']=true
+				}
+			}
+		},
+		['terra.cairo']={
+			['terra.cairo']={
+				env='terra',
+				mdeps={
+					cairo_h=true,
+					['terra.bitmap']=true,
+					['terra.low']=true
+				}
+			}
+		},
+		['terra.dynarray']={
+			['terra.dynarray']={
+				env='terra',
+				mdeps={
+					['terra.arrayview']=true,
+					['terra.low']=true
+				}
+			}
+		},
+		['terra.fixedfreelist']={
+			['terra.fixedfreelist']={
+				env='terra',
+				mdeps={
+					['terra.low']=true
+				}
+			}
+		},
+		['terra.hashmap']={
+			['terra.hashmap']={
+				env='terra',
+				mdeps={
+					['terra.low']=true
+				}
+			}
+		},
+		['terra.layer']={
+		},
+		['terra.linkedlist']={
+			['terra.linkedlist']={
+				env='terra',
+				mdeps={
+					['terra.low']=true
+				}
+			}
+		},
+		['terra.low']={
+			['terra.low']={
+				autoloads={
+					arr='terra.dynarray',
+					arrview='terra.arrayview',
+					random='terra.random',
+					randomseed='terra.random',
+					set='terra.hashmap'
+				},
+				env='terra',
+				mdeps={
+					ffi=true,
+					glue=true,
+					['jit.zone']=true,
+					pp=true
+				}
+			},
+			['terra.memcheck']={
+				autoloads={
+					arr='terra.dynarray',
+					arrview='terra.arrayview',
+					random='terra.random',
+					randomseed='terra.random',
+					set='terra.hashmap'
+				},
+				env='terra',
+				mdeps={
+					['terra.hashmap']=true,
+					['terra.low']=true
+				}
+			}
+		},
+		['terra.lrucache']={
+			['terra.lrucache']={
+				env='terra',
+				mdeps={
+					['terra.linkedlist']=true,
+					['terra.low']=true
+				}
+			}
+		},
+		['terra.oo']={
+			['terra.oo']={
+				env='terra',
+				mdeps={
+					['terra.low']=true
+				}
+			}
+		},
+		['terra.phf']={
+			['terra.phf']={
+				env='terra',
+				mdeps={
+					['terra.low']=true
+				}
+			}
+		},
+		['terra.random']={
+			['terra.random']={
+				env='terra',
+				mdeps={
+					['terra.low']=true
+				}
+			}
+		},
+		['terra.tr']={
+			['terra.tr']={
+				env='terra terra.tr_paint_cairo',
+				mdeps={
+					['terra.tr_align']=true,
+					['terra.tr_clip']=true,
+					['terra.tr_itemize']=true,
+					['terra.tr_paint']=true,
+					['terra.tr_types']=true,
+					['terra.tr_wrap']=true
+				}
+			},
+			['terra.tr_align']={
+				env='terra terra.tr_paint_cairo',
+				mdeps={
+					['terra.tr_font']=true,
+					['terra.tr_types']=true,
+					['terra.tr_wrap']=true
+				}
+			},
+			['terra.tr_api']={
+				env='terra terra.tr_paint_cairo',
+				mdeps={
+					['terra.low']=true,
+					['terra.memcheck']=true,
+					['terra.rawstringview']=true,
+					['terra.tr']=true,
+					['terra.tr_cursor']=true,
+					['terra.tr_paint_cairo']=true,
+					['terra.tr_underline']=true,
+					['terra.utf8']=true
+				}
+			},
+			['terra.tr_clip']={
+				env='terra terra.tr_paint_cairo',
+				mdeps={
+					['terra.tr_align']=true,
+					['terra.tr_types']=true
+				}
+			},
+			['terra.tr_cursor']={
+				env='terra terra.tr_paint_cairo',
+				mdeps={
+					['terra.tr_align']=true,
+					['terra.tr_paint']=true,
+					['terra.tr_types']=true
+				}
+			},
+			['terra.tr_font']={
+				env='terra terra.tr_paint_cairo',
+				mdeps={
+					['terra.tr_types']=true
+				}
+			},
+			['terra.tr_itemize']={
+				env='terra terra.tr_paint_cairo',
+				mdeps={
+					['terra.tr_font']=true,
+					['terra.tr_itemize_detect_lang']=true,
+					['terra.tr_itemize_detect_script']=true,
+					['terra.tr_rle']=true,
+					['terra.tr_shape']=true,
+					['terra.tr_types']=true
+				}
+			},
+			['terra.tr_itemize_detect_lang']={
+				env='terra terra.tr_paint_cairo',
+				mdeps={
+					['terra.tr_types']=true
+				}
+			},
+			['terra.tr_itemize_detect_script']={
+				env='terra terra.tr_paint_cairo',
+				mdeps={
+					['terra.tr_types']=true
+				}
+			},
+			['terra.tr_layoutedit']={
+				env='terra terra.tr_paint_cairo',
+				loaderr='./terra/low.t:73: terra/tr_selection.t:10: expected a struct but found nil when attempting to add method Selection.init',
+				mdeps={
+					['terra.tr_cursor']=true,
+					['terra.tr_selection']=true,
+					['terra.tr_types']=true
+				}
+			},
+			['terra.tr_paint']={
+				env='terra terra.tr_paint_cairo',
+				mdeps={
+					['terra.tr_clip']=true,
+					['terra.tr_rasterize']=true,
+					['terra.tr_types']=true
+				}
+			},
+			['terra.tr_paint_cairo']={
+				env='terra terra.tr_paint_cairo',
+				mdeps={
+					['terra.cairo']=true,
+					['terra.low']=true,
+					['terra.tr_types']=true
+				}
+			},
+			['terra.tr_rasterize']={
+				env='terra terra.tr_paint_cairo',
+				mdeps={
+					['terra.tr_font']=true,
+					['terra.tr_types']=true
+				}
+			},
+			['terra.tr_rle']={
+				env='terra',
+				mdeps={
+					['terra.low']=true
+				}
+			},
+			['terra.tr_selection']={
+				env='terra terra.tr_paint_cairo',
+				loaderr='terra/tr_selection.t:10: expected a struct but found nil when attempting to add method Selection.init',
+				mdeps={
+					['terra.tr_cursor']=true,
+					['terra.tr_paint']=true,
+					['terra.tr_types']=true
+				}
+			},
+			['terra.tr_shape']={
+				env='terra terra.tr_paint_cairo',
+				mdeps={
+					['terra.tr_font']=true,
+					['terra.tr_rle']=true,
+					['terra.tr_types']=true
+				}
+			},
+			['terra.tr_shape_detect_lang']={
+				env='terra terra.tr_paint_cairo',
+				mdeps={
+					['terra.tr_types']=true
+				}
+			},
+			['terra.tr_shape_detect_script']={
+				env='terra terra.tr_paint_cairo',
+				mdeps={
+					['terra.tr_types']=true
+				}
+			},
+			['terra.tr_shape_word']={
+				env='terra terra.tr_paint_cairo',
+				loaderr='./terralib.lua:2817: Errors reported during typechecking.',
+				mdeps={
+					['terra.tr_font']=true,
+					['terra.tr_rle']=true,
+					['terra.tr_types']=true
+				}
+			},
+			['terra.tr_spanedit']={
+				env='terra terra.tr_paint_cairo',
+				loaderr='terra/tr_spanedit.t:37: Errors reported during function declaration.',
+				mdeps={
+					['terra.rawstringview']=true,
+					['terra.tr_font']=true,
+					['terra.tr_shape']=true,
+					['terra.tr_types']=true
+				}
+			},
+			['terra.tr_types']={
+				env='terra terra.tr_paint_cairo',
+				mdeps={
+					freetype_h=true,
+					fribidi_h=true,
+					harfbuzz_h=true,
+					libunibreak_h=true,
+					['terra.arrayfreelist']=true,
+					['terra.box2d']=true,
+					['terra.dynarray']=true,
+					['terra.fixedfreelist']=true,
+					['terra.hashmap']=true,
+					['terra.low']=true,
+					['terra.lrucache']=true,
+					['terra.phf']=true,
+					xxhash_h=true
+				}
+			},
+			['terra.tr_underline']={
+				env='terra terra.tr_paint_cairo',
+				mdeps={
+					['terra.tr_clip']=true,
+					['terra.tr_cursor']=true,
+					['terra.tr_types']=true
+				}
+			},
+			['terra.tr_wrap']={
+				env='terra terra.tr_paint_cairo',
+				mdeps={
+					['terra.tr_types']=true,
+					['terra.tr_wrap_reorder']=true
+				}
+			},
+			['terra.tr_wrap_reorder']={
+				env='terra terra.tr_paint_cairo',
+				mdeps={
+					['terra.tr_types']=true
+				}
+			},
+			['terra.tr_wrap_smawk']={
+				env='terra'
+			}
+		},
+		['terra.utf8']={
+			['terra.utf8']={
+				autoloads={
+					arr='terra.dynarray',
+					arrview='terra.arrayview',
+					random='terra.random',
+					randomseed='terra.random',
+					set='terra.hashmap'
+				},
+				env='terra',
+				mdeps={
+					['terra.low']=true
+				}
+			}
+		},
+		testui={
+			testui={
+				mdeps={
+					color=true,
+					ffi=true,
+					glue=true,
+					nw=true
+				}
+			}
+		},
+		thread={
+			thread={
+				mdeps={
+					ffi=true,
+					glue=true,
+					luastate=true,
+					pthread=true
+				}
+			}
+		},
+		time={
+			time={
+				ffi_deps={
+					rt=true
+				},
+				mdeps={
+					ffi=true
+				}
+			}
+		},
+		tr0={
+			tr0={
+				mdeps={
+					bit=true,
+					box2d=true,
+					ffi=true,
+					freetype=true,
+					fribidi=true,
+					glue=true,
+					harfbuzz=true,
+					libunibreak=true,
+					lrucache=true,
+					tr0_shape_lang=true,
+					tr0_shape_reorder=true,
+					tr0_shape_script=true,
+					utf8=true
+				}
+			},
+			tr0_raster_cairo={
+				mdeps={
+					box2d=true,
+					cairo=true,
+					color=true,
+					ffi=true,
+					freetype=true,
+					glue=true,
+					['jit.zone']=true,
+					tr0_raster_ft=true
+				}
+			},
+			tr0_raster_ft={
+				mdeps={
+					bit=true,
+					ffi=true,
+					font_db=true,
+					freetype=true,
+					glue=true,
+					['jit.zone']=true,
+					lrucache=true
+				}
+			},
+			tr0_shape_lang={
+				mdeps={
+					ffi=true,
+					harfbuzz=true
+				}
+			},
+			tr0_shape_reorder={
+				mdeps={
+					bit=true,
+					glue=true
+				}
+			},
+			tr0_shape_script={
+				mdeps={
+					bit=true,
+					glue=true,
+					harfbuzz=true
+				}
+			}
+		},
+		tuple={
+			tuple={
+			}
+		},
+		tweening={
+			tweening={
+			}
+		},
+		ucdn={
+			ucdn={
+				ffi_deps={
+					ucdn=true
+				},
+				mdeps={
+					ffi=true
+				}
+			}
+		},
+		ui={
+			ui={
+				loaderr='./ui.lua:21: ./layer_h.lua:3: liblayer.so: cannot open shared object file: No such file or directory',
+				mdeps={
+					bit=true,
+					box2d=true,
+					cairo=true,
+					color=true,
+					easing=true,
+					events=true,
+					ffi=true,
+					font_db=true,
+					glue=true,
+					layer_h=true,
+					nw=true,
+					oo=true,
+					time=true
+				}
+			},
+			ui_button={
+				loaderr='./ui_button.lua:5: ./ui.lua:21: ./layer_h.lua:3: liblayer.so: cannot open shared object file: No such file or directory',
+				mdeps={
+					ui=true
+				}
+			},
+			ui_calendar={
+				loaderr='./ui_calendar.lua:5: ./ui.lua:21: ./layer_h.lua:3: liblayer.so: cannot open shared object file: No such file or directory',
+				mdeps={
+					ui=true
+				}
+			},
+			ui_colorpicker={
+				loaderr='./ui_colorpicker.lua:5: ./ui.lua:21: ./layer_h.lua:3: liblayer.so: cannot open shared object file: No such file or directory',
+				mdeps={
+					ui=true
+				}
+			},
+			ui_demo1={
+				loaderr='./ui_demo1.lua:3: ./ui.lua:21: ./layer_h.lua:3: liblayer.so: cannot open shared object file: No such file or directory',
+				mdeps={
+					time=true,
+					ui=true
+				}
+			},
+			ui_dropdown={
+				loaderr='./ui_dropdown.lua:8: ./ui.lua:21: ./layer_h.lua:3: liblayer.so: cannot open shared object file: No such file or directory',
+				mdeps={
+					ui=true
+				}
+			},
+			ui_editbox={
+				loaderr='./ui_editbox.lua:6: ./ui.lua:21: ./layer_h.lua:3: liblayer.so: cannot open shared object file: No such file or directory',
+				mdeps={
+					ui=true
+				}
+			},
+			ui_grid={
+				loaderr='./ui_grid.lua:7: ./ui.lua:21: ./layer_h.lua:3: liblayer.so: cannot open shared object file: No such file or directory',
+				mdeps={
+					ui=true
+				}
+			},
+			ui_layout_editor={
+				loaderr='./ui_layout_editor.lua:7: ./ui.lua:21: ./layer_h.lua:3: liblayer.so: cannot open shared object file: No such file or directory',
+				mdeps={
+					ui=true
+				}
+			},
+			ui_list={
+				loaderr='error loading module \'ui_list\' from file \'./ui_list.lua\''
+			},
+			ui_menu={
+				loaderr='./ui_menu.lua:5: ./ui.lua:21: ./layer_h.lua:3: liblayer.so: cannot open shared object file: No such file or directory',
+				mdeps={
+					ui=true
+				}
+			},
+			ui_popup={
+				loaderr='./ui_popup.lua:5: ./ui.lua:21: ./layer_h.lua:3: liblayer.so: cannot open shared object file: No such file or directory',
+				mdeps={
+					ui=true
+				}
+			},
+			ui_progressbar={
+				loaderr='./ui_progressbar.lua:5: ./ui.lua:21: ./layer_h.lua:3: liblayer.so: cannot open shared object file: No such file or directory',
+				mdeps={
+					ui=true
+				}
+			},
+			ui_scrollbox={
+				loaderr='./ui_scrollbox.lua:5: ./ui.lua:21: ./layer_h.lua:3: liblayer.so: cannot open shared object file: No such file or directory',
+				mdeps={
+					ui=true
+				}
+			},
+			ui_slider={
+				loaderr='./ui_slider.lua:5: ./ui.lua:21: ./layer_h.lua:3: liblayer.so: cannot open shared object file: No such file or directory',
+				mdeps={
+					ui=true
+				}
+			},
+			ui_tablist={
+				loaderr='./ui_tablist.lua:5: ./ui.lua:21: ./layer_h.lua:3: liblayer.so: cannot open shared object file: No such file or directory',
+				mdeps={
+					ui=true
+				}
+			},
+			ui_zoomcalendar={
+				loaderr='./ui_zoomcalendar.lua:5: ./ui.lua:21: ./layer_h.lua:3: liblayer.so: cannot open shared object file: No such file or directory',
+				mdeps={
+					ui=true
+				}
+			}
+		},
+		unit={
+			unit={
+				mdeps={
+					glue=true,
+					pp=true
+				}
+			}
+		},
+		unixperms={
+			unixperms={
+				mdeps={
+					bit=true
+				}
+			}
+		},
+		uri={
+			uri={
+				mdeps={
+					glue=true
+				}
+			}
+		},
+		utf8={
+			utf8={
+				mdeps={
+					bit=true,
+					ffi=true
+				}
+			}
+		},
+		utf8quot={
+			utf8quot={
+			}
+		},
+		videoinput={
+			videoinput={
+				mdeps={
+					ffi=true,
+					glue=true,
+					videoinput_v4l=true
+				}
+			},
+			videoinput_cocoa={
+				loaderr='platform not OSX',
+				mdeps={
+					ffi=true,
+					objc=true,
+					objc_dispatch=true
+				}
+			},
+			videoinput_dshow={
+			}
+		},
+		webb={
+			lp={
+			},
+			['resty.socket']={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
+			},
+			webb={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
+			},
+			webb_action={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
+			},
+			webb_js={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
+			},
+			webb_mysql={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
+			},
+			webb_nginx={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
+			},
+			webb_query={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
+			},
+			webb_sendmail={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
+			}
+		},
+		webb_auth={
+			webb_auth={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
+			},
+			webb_session={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
+			}
+		},
+		website={
+			luapower_website={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
+			}
+		},
+		winapi={
+		},
+		['winapi.cairopanel']={
+			['winapi.cairopanel']={
+				loaderr='platform not Windows',
+				mdeps={
+					bit=true,
+					cairo=true,
+					ffi=true,
+					winapi=true
+				}
+			}
+		},
+		['winapi.wglpanel']={
+			['winapi.gl']={
+				loaderr='platform not Windows',
+				mdeps={
+					winapi=true
+				}
+			},
+			['winapi.gl11']={
+				loaderr='platform not Windows',
+				mdeps={
+					winapi=true
+				}
+			},
+			['winapi.gl21']={
+				loaderr='platform not Windows',
+				mdeps={
+					winapi=true
+				}
+			},
+			['winapi.wgl']={
+				loaderr='platform not Windows',
+				mdeps={
+					winapi=true
+				}
+			},
+			['winapi.wglext']={
+				loaderr='platform not Windows',
+				mdeps={
+					winapi=true
+				}
+			},
+			['winapi.wglpanel']={
+				loaderr='platform not Windows',
+				mdeps={
+					winapi=true
+				}
+			}
+		},
+		xlib={
+			glx={
+				ffi_deps={
+					['libGL.so.1']=true
+				},
+				mdeps={
+					ffi=true,
+					glx_h=true
+				}
+			},
+			glx_h={
+				mdeps={
+					ffi=true,
+					xlib_h=true
+				}
+			},
+			xlib={
+				ffi_deps={
+					['X11.so.6']=true,
+					['Xcursor.so.1']=true,
+					['Xext.so.6']=true
+				},
+				mdeps={
+					bit=true,
+					ffi=true,
+					glue=true,
+					xlib_h=true,
+					xlib_xkblib_h=true
+				}
+			},
+			xlib_debug={
+				mdeps={
+					ffi=true,
+					ffi_reflect=true,
+					glue=true,
+					pp=true,
+					time=true,
+					xlib=true
+				}
+			},
+			xlib_h={
+				mdeps={
+					ffi=true
+				}
+			},
+			xlib_keysym_h={
+				mdeps={
+					ffi=true,
+					xlib_h=true
+				}
+			},
+			xlib_xcursor_h={
+				mdeps={
+					ffi=true,
+					xlib_h=true
+				}
+			},
+			xlib_xkblib_h={
+				mdeps={
+					ffi=true,
+					xlib_h=true
+				}
+			},
+			xlib_xsettings={
+				mdeps={
+					bit=true,
+					ffi=true
+				}
+			}
+		},
+		xxhash={
+			xxhash={
+				ffi_deps={
+					xxhash=true
+				},
+				mdeps={
+					ffi=true,
+					xxhash_h=true
+				}
+			},
+			xxhash_h={
+				mdeps={
+					ffi=true
+				}
+			}
+		},
+		zlib={
+			zlib={
+				ffi_deps={
+					z=true
+				},
+				mdeps={
+					ffi=true,
+					zlib_h=true
+				}
+			},
+			zlib_h={
+				mdeps={
+					ffi=true
+				}
+			}
+		}
+	},
 	mingw64={
 		affine2d={
 			affine2d={
@@ -6,6 +2600,22 @@ return {
 		},
 		amoeba={
 			amoeba={
+			}
+		},
+		anaf={
+			anaf={
+				mdeps={
+					['$']=true,
+					anaf_conf=true,
+					cjson=true,
+					errors=true,
+					expat=true,
+					fs=true,
+					libcrypto_engine=true,
+					libcurl=true
+				}
+			},
+			anaf_conf_prod={
 			}
 		},
 		bitmap={
@@ -114,7 +2724,8 @@ return {
 			bundle={
 				mdeps={
 					bundle_appversion=true,
-					ffi=true
+					ffi=true,
+					['package.exedir']=true
 				}
 			},
 			bundle_fs={
@@ -153,10 +2764,18 @@ return {
 				}
 			},
 			cairo_quartz={
-				loaderr='platform not OSX'
+				loaderr='platform not OSX',
+				mdeps={
+					cairo=true,
+					cairo_quartz_h=true,
+					ffi=true
+				}
 			},
 			cairo_quartz_h={
-				loaderr='platform not OSX'
+				loaderr='platform not OSX',
+				mdeps={
+					ffi=true
+				}
 			},
 			cairo_win32={
 				mdeps={
@@ -188,6 +2807,7 @@ return {
 				}
 			},
 			cbframe_x86={
+				env='dynasm',
 				mdeps={
 					cbframe_x86_h=true,
 					dasm=true,
@@ -205,8 +2825,6 @@ return {
 		cjson={
 			cjson={
 			}
-		},
-		['clang-resource-dir']={
 		},
 		clipper={
 			clipper={
@@ -501,6 +3119,17 @@ return {
 				}
 			}
 		},
+		dollar={
+			['$']={
+				mdeps={
+					bit=true,
+					ffi=true,
+					glue=true,
+					pp=true,
+					time=true
+				}
+			}
+		},
 		dynasm={
 			dasm={
 				ffi_deps={
@@ -537,6 +3166,10 @@ return {
 		},
 		eq={
 			eq={
+			}
+		},
+		errors={
+			errors={
 			}
 		},
 		events={
@@ -643,7 +3276,12 @@ return {
 				}
 			},
 			fs_posix={
-				loaderr='platform not Linux or OSX'
+				loaderr='platform not Linux or OSX',
+				mdeps={
+					bit=true,
+					ffi=true,
+					fs_common=true
+				}
 			},
 			fs_win={
 				mdeps={
@@ -725,6 +3363,8 @@ return {
 			heap={
 			}
 		},
+		hid_app={
+		},
 		hidapi={
 			hidapi={
 				ffi_deps={
@@ -744,6 +3384,63 @@ return {
 					bit=true,
 					ffi=true,
 					glue=true
+				}
+			}
+		},
+		http={
+			http={
+				mdeps={
+					ffi=true,
+					glue=true,
+					http_headers=true,
+					stream=true
+				}
+			},
+			http_client={
+				mdeps={
+					glue=true,
+					http=true,
+					socketloop=true,
+					time=true,
+					uri=true
+				}
+			},
+			http_date={
+				mdeps={
+					glue=true
+				}
+			},
+			http_debug={
+				mdeps={
+					ffi=true,
+					glue=true,
+					socketloop=true,
+					time=true
+				}
+			},
+			http_headers={
+				mdeps={
+					glue=true,
+					http_date=true,
+					libb64=true,
+					['lpeg.re']=true,
+					uri=true
+				}
+			},
+			http_server={
+				mdeps={
+					glue=true,
+					http=true,
+					socketloop=true,
+					time=true,
+					uri=true
+				}
+			},
+			url={
+				mdeps={
+					socket=true,
+					string=true,
+					table=true
 				}
 			}
 		},
@@ -855,14 +3552,14 @@ return {
 		},
 		libmariadb={
 		},
-		libmysql={
-		},
 		libogg={
 			libogg_h={
 				mdeps={
 					ffi=true
 				}
 			}
+		},
+		libp11={
 		},
 		libpng={
 			libpng={
@@ -914,8 +3611,6 @@ return {
 					ffi=true
 				}
 			}
-		},
-		libstdcxx={
 		},
 		libunibreak={
 			libunibreak={
@@ -973,17 +3668,9 @@ return {
 		['lua-headers']={
 		},
 		luajit={
-			_G={
-			},
 			bit={
 			},
-			coroutine={
-			},
-			debug={
-			},
 			ffi={
-			},
-			io={
 			},
 			jit={
 			},
@@ -1037,21 +3724,13 @@ return {
 					['jit.vmdef']=true
 				}
 			},
-			['jit.vmdef']={
-			},
 			['jit.zone']={
 			},
-			math={
+			['package.exedir']={
 			},
-			os={
-			},
-			package={
+			['package.exepath']={
 			},
 			strict={
-			},
-			string={
-			},
-			table={
 			},
 			['table.clone']={
 			},
@@ -1070,9 +3749,10 @@ return {
 			luapower={
 				mdeps={
 					ffi=true,
+					fs=true,
 					glue=true,
-					lfs=true,
-					luapower_rpc=true
+					luapower_rpc=true,
+					pp=true
 				}
 			},
 			luapower_cli={
@@ -1088,8 +3768,6 @@ return {
 		['luapower-ci']={
 		},
 		['luapower-repos']={
-		},
-		['luapower-repos-dev']={
 		},
 		luapower_db={
 			luapower_db={
@@ -1217,7 +3895,15 @@ return {
 				}
 			},
 			nw_cocoa={
-				loaderr='platform not OSX'
+				loaderr='platform not OSX',
+				mdeps={
+					bit=true,
+					box2d=true,
+					cbframe=true,
+					ffi=true,
+					glue=true,
+					objc=true
+				}
 			},
 			nw_winapi={
 				mdeps={
@@ -1256,7 +3942,14 @@ return {
 				}
 			},
 			nw_xlib={
-				loaderr='platform not Linux'
+				loaderr='platform not Linux',
+				mdeps={
+					bit=true,
+					box2d=true,
+					ffi=true,
+					glue=true,
+					xlib=true
+				}
 			}
 		},
 		objc={
@@ -1316,6 +4009,151 @@ return {
 			}
 		},
 		openssl={
+			libcrypto={
+				ffi_deps={
+					libcrypto=true
+				},
+				mdeps={
+					ffi=true,
+					libcrypto_h=true
+				}
+			},
+			libcrypto_asn1_h={
+				mdeps={
+					ffi=true
+				}
+			},
+			libcrypto_bio_h={
+				mdeps={
+					ffi=true
+				}
+			},
+			libcrypto_bn_h={
+				mdeps={
+					ffi=true
+				}
+			},
+			libcrypto_buffer_h={
+				mdeps={
+					ffi=true
+				}
+			},
+			libcrypto_conf_h={
+				mdeps={
+					ffi=true,
+					libcrypto_types_h=true
+				}
+			},
+			libcrypto_dh_h={
+				mdeps={
+					ffi=true
+				}
+			},
+			libcrypto_dsa_h={
+				mdeps={
+					ffi=true
+				}
+			},
+			libcrypto_ec_h={
+				mdeps={
+					ffi=true
+				}
+			},
+			libcrypto_engine={
+				mdeps={
+					libcrypto=true,
+					libcrypto_engine_h=true
+				}
+			},
+			libcrypto_engine_h={
+				mdeps={
+					ffi=true,
+					libcrypto_types_h=true
+				}
+			},
+			libcrypto_err_h={
+				mdeps={
+					ffi=true
+				}
+			},
+			libcrypto_evp_h={
+				mdeps={
+					ffi=true
+				}
+			},
+			libcrypto_h={
+				mdeps={
+					ffi=true,
+					libcrypto_types_h=true
+				}
+			},
+			libcrypto_lhash_h={
+				mdeps={
+					ffi=true
+				}
+			},
+			libcrypto_objects_h={
+				mdeps={
+					ffi=true
+				}
+			},
+			libcrypto_pem_h={
+				mdeps={
+					ffi=true
+				}
+			},
+			libcrypto_pkcs7_h={
+				mdeps={
+					ffi=true
+				}
+			},
+			libcrypto_rand_h={
+				mdeps={
+					ffi=true
+				}
+			},
+			libcrypto_rsa_h={
+				mdeps={
+					ffi=true
+				}
+			},
+			libcrypto_safestack_h={
+				mdeps={
+					ffi=true
+				}
+			},
+			libcrypto_sha_h={
+				mdeps={
+					ffi=true
+				}
+			},
+			libcrypto_types_h={
+				mdeps={
+					ffi=true
+				}
+			},
+			libcrypto_ui_h={
+				mdeps={
+					ffi=true
+				}
+			},
+			libcrypto_x509_h={
+				mdeps={
+					ffi=true
+				}
+			},
+			libcrypto_x509_vfy_h={
+				mdeps={
+					ffi=true
+				}
+			},
+			openssl={
+			},
+			openssl_h={
+				mdeps={
+					ffi=true
+				}
+			}
 		},
 		path={
 			path={
@@ -1356,7 +4194,6 @@ return {
 			},
 			path2d_bezier2={
 				autoloads={
-					hit='path2d_bezier2_hit',
 					interpolate='path2d_bezier2_ai'
 				},
 				mdeps={
@@ -1379,7 +4216,6 @@ return {
 			},
 			path2d_bezier3={
 				autoloads={
-					hit='path2d_bezier3_hit',
 					interpolate='path2d_bezier3_ai'
 				},
 				mdeps={
@@ -1459,9 +4295,18 @@ return {
 		},
 		pcre={
 		},
-		pcre2={
-		},
 		pixman={
+		},
+		pkcs11={
+			pkcs11={
+				ffi_deps={
+					['eTPKCS11.dll']=true
+				},
+				mdeps={
+					ffi=true,
+					pp=true
+				}
+			}
 		},
 		pp={
 			pp={
@@ -1472,7 +4317,6 @@ return {
 				mdeps={
 					bit=true,
 					ffi=true,
-					glue=true,
 					winapi=true,
 					['winapi.process']=true
 				}
@@ -1503,6 +4347,134 @@ return {
 				}
 			}
 		},
+		['resty-core']={
+			['ngx.balancer']={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
+			},
+			['ngx.base64']={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
+			},
+			['ngx.errlog']={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
+			},
+			['ngx.ocsp']={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
+			},
+			['ngx.pipe']={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
+			},
+			['ngx.process']={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
+			},
+			['ngx.re']={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
+			},
+			['ngx.resp']={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
+			},
+			['ngx.semaphore']={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
+			},
+			['ngx.ssl']={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
+			},
+			['ngx.ssl.session']={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
+			},
+			['resty.core']={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
+			},
+			['resty.core.base']={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
+			},
+			['resty.core.base64']={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
+			},
+			['resty.core.ctx']={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
+			},
+			['resty.core.exit']={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
+			},
+			['resty.core.hash']={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
+			},
+			['resty.core.misc']={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
+			},
+			['resty.core.ndk']={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
+			},
+			['resty.core.phase']={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
+			},
+			['resty.core.regex']={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
+			},
+			['resty.core.request']={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
+			},
+			['resty.core.response']={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
+			},
+			['resty.core.shdict']={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
+			},
+			['resty.core.time']={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
+			},
+			['resty.core.uri']={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
+			},
+			['resty.core.utils']={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
+			},
+			['resty.core.var']={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
+			},
+			['resty.core.worker']={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
+			}
+		},
+		['resty-lrucache']={
+			['resty.lrucache']={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
+			},
+			['resty.lrucache.pureffi']={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
+			}
+		},
 		rs232={
 			rs232={
 				mdeps={
@@ -1519,10 +4491,6 @@ return {
 				}
 			}
 		},
-		sha1={
-			sha1={
-			}
-		},
 		sha2={
 			sha2={
 				ffi_deps={
@@ -1535,23 +4503,28 @@ return {
 		},
 		shm={
 			shm={
-				loaderr='platform not Linux'
+				loaderr='platform not Linux',
+				mdeps={
+					ffi=true
+				}
 			}
 		},
 		socket={
 			ltn12={
+				mdeps={
+					string=true,
+					table=true
+				}
 			},
 			mime={
-				mdeps={
-					ltn12=true,
-					['mime.core']=true
-				}
 			},
 			['mime.core']={
 			},
 			socket={
 				mdeps={
-					['socket.core']=true
+					math=true,
+					['socket.core']=true,
+					string=true
 				}
 			},
 			['socket.core']={
@@ -1559,9 +4532,12 @@ return {
 			['socket.ftp']={
 				mdeps={
 					ltn12=true,
+					math=true,
 					socket=true,
 					['socket.tp']=true,
-					['socket.url']=true
+					['socket.url']=true,
+					string=true,
+					table=true
 				}
 			},
 			['socket.headers']={
@@ -1575,36 +4551,48 @@ return {
 					mime=true,
 					socket=true,
 					['socket.headers']=true,
-					['socket.url']=true
+					['socket.url']=true,
+					string=true,
+					table=true
 				}
 			},
 			['socket.mbox']={
 			},
 			['socket.smtp']={
 				mdeps={
+					coroutine=true,
 					ltn12=true,
+					math=true,
 					mime=true,
+					os=true,
 					socket=true,
 					['socket.headers']=true,
-					['socket.tp']=true
+					['socket.tp']=true,
+					string=true
 				}
 			},
 			['socket.tftp']={
 				mdeps={
 					ltn12=true,
+					math=true,
 					socket=true,
-					['socket.url']=true
+					['socket.url']=true,
+					string=true,
+					table=true
 				}
 			},
 			['socket.tp']={
 				mdeps={
 					ltn12=true,
-					socket=true
+					socket=true,
+					string=true
 				}
 			},
 			['socket.url']={
 				mdeps={
-					socket=true
+					socket=true,
+					string=true,
+					table=true
 				}
 			}
 		},
@@ -1618,107 +4606,113 @@ return {
 				}
 			}
 		},
+		stream={
+			stream={
+				mdeps={
+					ffi=true,
+					glue=true
+				}
+			}
+		},
 		struct={
 			struct={
 			}
 		},
 		terra={
 			asdl={
+				mdeps={
+					terralist=true
+				}
 			},
 			terra={
+				env='terra',
 				mdeps={
 					asdl=true,
-					terralib=true
+					terralib=true,
+					terralist=true
 				}
 			},
 			['terra.parsing']={
+				env='terra'
 			},
 			['terra.std']={
+				env='terra'
 			},
 			terralib={
-				loaderr='.\\terralib.lua:1: terra not loaded'
+				env='terra',
+				mdeps={
+					asdl=true,
+					ffi=true,
+					terralib_luapower=true
+				}
 			},
 			terralib_luapower={
-				loaderr='.\\terralib_luapower.lua:4: terra not loaded'
+				env='terra',
+				mdeps={
+					asdl=true,
+					ffi=true,
+					['package.exedir']=true
+				}
+			},
+			terralist={
 			}
 		},
-		['terra-arrayfreelist']={
+		['terra.arrayfreelist']={
 			['terra.arrayfreelist']={
-				autoloads={
-					arr='terra/dynarray',
-					arrview='terra/arrayview',
-					random='terra/random',
-					randomseed='terra/random',
-					set='terra/hashmap'
-				},
+				env='terra',
 				mdeps={
 					['terra.low']=true
 				}
 			}
 		},
-		['terra-arrayview']={
+		['terra.arrayview']={
 			['terra.arrayview']={
-				autoloads={
-					arr='terra/dynarray',
-					arrview='terra/arrayview',
-					random='terra/random',
-					randomseed='terra/random',
-					set='terra/hashmap'
-				},
+				env='terra',
 				mdeps={
 					['terra.low']=true
 				}
 			},
 			['terra.rawstringview']={
-				autoloads={
-					arrview='terra/arrayview',
-					random='terra/random',
-					randomseed='terra/random',
-					set='terra/hashmap'
-				},
+				env='terra',
 				mdeps={
-					['terra.dynarray']=true,
 					['terra.low']=true
 				}
 			}
 		},
-		['terra-binder']={
+		['terra.binder']={
 			['terra.binder']={
+				env='terra',
 				mdeps={
 					['terra.low']=true
 				}
 			}
 		},
-		['terra-bitarray']={
+		['terra.bitarray']={
 			['terra.bitarray']={
+				env='terra',
 				mdeps={
 					['terra.box2d']=true,
 					['terra.low']=true
 				}
 			}
 		},
-		['terra-bitmap']={
+		['terra.bitmap']={
 			['terra.bitmap']={
+				env='terra',
 				mdeps={
 					['terra.low']=true
 				}
 			}
 		},
-		['terra-box2d']={
+		['terra.box2d']={
 			['terra.box2d']={
-				autoloads={
-					arr='terra/dynarray',
-					arrview='terra/arrayview',
-					random='terra/random',
-					randomseed='terra/random',
-					set='terra/hashmap'
-				},
+				env='terra',
 				mdeps={
 					['terra.low']=true
 				}
 			}
 		},
-		['terra-boxblur']={
+		['terra.boxblur']={
 			boxblurlib_h={
 				ffi_deps={
 					boxblurlib=true
@@ -1728,330 +4722,7 @@ return {
 				}
 			},
 			['terra.boxblur']={
-				autoloads={
-					arrview='terra/arrayview',
-					random='terra/random',
-					randomseed='terra/random',
-					set='terra/hashmap'
-				},
-				mdeps={
-					['terra.bitmap']=true,
-					['terra.low']=true
-				}
-			}
-		},
-		['terra-cairo']={
-			['terra.cairo']={
-				loaderr='.\\terra/low.t:479: attempt to index local \'T\' (a nil value)'
-			}
-		},
-		['terra-dynarray']={
-			['terra.dynarray']={
-				autoloads={
-					arrview='terra/arrayview',
-					random='terra/random',
-					randomseed='terra/random',
-					set='terra/hashmap'
-				},
-				mdeps={
-					['terra.arrayview']=true,
-					['terra.low']=true
-				}
-			}
-		},
-		['terra-fixedfreelist']={
-			['terra.fixedfreelist']={
-				autoloads={
-					arr='terra/dynarray',
-					arrview='terra/arrayview',
-					random='terra/random',
-					randomseed='terra/random',
-					set='terra/hashmap'
-				},
-				mdeps={
-					['terra.low']=true
-				}
-			}
-		},
-		['terra-hashmap']={
-			['terra.hashmap']={
-				autoloads={
-					arrview='terra/arrayview',
-					random='terra/random',
-					randomseed='terra/random',
-					set='terra/hashmap'
-				},
-				mdeps={
-					['terra.low']=true
-				}
-			}
-		},
-		['terra-layer']={
-			layer={
-				mdeps={
-					ffi=true,
-					glue=true,
-					layer_h=true
-				}
-			},
-			layer_h={
-				ffi_deps={
-					layer=true
-				},
-				mdeps={
-					ffi=true
-				}
-			},
-			['layer_test.layer_test_state']={
-			},
-			['layer_test.layer_test_state_1']={
-			},
-			['layer_test.layer_test_state_10']={
-			},
-			['layer_test.layer_test_state_11']={
-			},
-			['layer_test.layer_test_state_2']={
-			},
-			['layer_test.layer_test_state_3']={
-			},
-			['layer_test.layer_test_state_4']={
-			},
-			['layer_test.layer_test_state_5']={
-			},
-			['layer_test.layer_test_state_7']={
-			},
-			['layer_test.layer_test_state_8']={
-			},
-			['layer_test.layer_test_state_subsegs']={
-			},
-			['layer_test.layer_test_state_todo']={
-			},
-			layer_test_state={
-			},
-			['terra.layer']={
-				loaderr='.\\terra/low.t:73: .\\terra/low.t:479: attempt to index local \'T\' (a nil value)'
-			},
-			['terra.layer_api']={
-				loaderr='.\\terra/layer_api.t:42: .\\terra/low.t:73: .\\terra/low.t:479: attempt to index local \'T\' (a nil value)'
-			}
-		},
-		['terra-linkedlist']={
-			['terra.linkedlist']={
-				autoloads={
-					arrview='terra/arrayview',
-					random='terra/random',
-					randomseed='terra/random',
-					set='terra/hashmap'
-				},
-				mdeps={
-					['terra.low']=true
-				}
-			}
-		},
-		['terra-low']={
-			['terra.low']={
-				autoloads={
-					arr='terra/dynarray',
-					arrview='terra/arrayview',
-					random='terra/random',
-					randomseed='terra/random',
-					set='terra/hashmap'
-				},
-				mdeps={
-					ffi=true,
-					glue=true,
-					['jit.zone']=true,
-					pp=true
-				}
-			},
-			['terra.memcheck']={
-				autoloads={
-					arr='terra/dynarray',
-					arrview='terra/arrayview',
-					random='terra/random',
-					randomseed='terra/random',
-					set='terra/hashmap'
-				},
-				mdeps={
-					['terra.hashmap']=true,
-					['terra.low']=true
-				}
-			}
-		},
-		['terra-lrucache']={
-			['terra.lrucache']={
-				autoloads={
-					arrview='terra/arrayview',
-					random='terra/random',
-					randomseed='terra/random',
-					set='terra/hashmap'
-				},
-				mdeps={
-					['terra.linkedlist']=true,
-					['terra.low']=true
-				}
-			}
-		},
-		['terra-oo']={
-			['terra.oo']={
-				mdeps={
-					['terra.low']=true
-				}
-			}
-		},
-		['terra-phf']={
-			['terra.phf']={
-				autoloads={
-					arr='terra/dynarray',
-					arrview='terra/arrayview',
-					random='terra/random',
-					randomseed='terra/random',
-					set='terra/hashmap'
-				},
-				mdeps={
-					['terra.low']=true
-				}
-			}
-		},
-		['terra-random']={
-			['terra.random']={
-				loaderr='.\\terralib.lua:4139: variable \'Strict\' is not declared'
-			}
-		},
-		['terra-tr']={
-			['terra.tr']={
-				loaderr='.\\terra/tr.t:58: glue.lua:741: variable \'color\' is not declared'
-			},
-			['terra.tr_align']={
-				loaderr='.\\terra/tr_align.t:6: glue.lua:741: variable \'color\' is not declared'
-			},
-			['terra.tr_api']={
-				loaderr='.\\terra/tr_api.t:49: .\\terra/low.t:73: .\\terra/low.t:479: attempt to index local \'T\' (a nil value)'
-			},
-			['terra.tr_clip']={
-				loaderr='glue.lua:741: variable \'color\' is not declared'
-			},
-			['terra.tr_cursor']={
-				loaderr='.\\terra/tr_cursor.t:42: glue.lua:741: variable \'color\' is not declared'
-			},
-			['terra.tr_font']={
-				loaderr='.\\terra/tr_font.t:12: glue.lua:741: variable \'color\' is not declared'
-			},
-			['terra.tr_itemize']={
-				loaderr='.\\terra/tr_itemize.t:15: glue.lua:741: variable \'color\' is not declared'
-			},
-			['terra.tr_itemize_detect_lang']={
-				loaderr='.\\terra/tr_itemize_detect_lang.t:6: glue.lua:741: variable \'color\' is not declared'
-			},
-			['terra.tr_itemize_detect_script']={
-				loaderr='.\\terra/tr_itemize_detect_script.t:5: glue.lua:741: variable \'color\' is not declared'
-			},
-			['terra.tr_layoutedit']={
-				loaderr='.\\terra/tr_layoutedit.t:6: glue.lua:741: variable \'color\' is not declared'
-			},
-			['terra.tr_paint']={
-				loaderr='.\\terra/tr_paint.t:6: glue.lua:741: variable \'color\' is not declared'
-			},
-			['terra.tr_paint_cairo']={
-				loaderr='.\\terra/low.t:73: .\\terra/low.t:479: attempt to index local \'T\' (a nil value)'
-			},
-			['terra.tr_rasterize']={
-				loaderr='.\\terra/tr_rasterize.t:10: glue.lua:741: variable \'color\' is not declared'
-			},
-			['terra.tr_rle']={
-				mdeps={
-					['terra.low']=true
-				}
-			},
-			['terra.tr_selection']={
-				loaderr='.\\terra/tr_selection.t:6: glue.lua:741: variable \'color\' is not declared'
-			},
-			['terra.tr_shape']={
-				loaderr='.\\terra/tr_shape.t:13: glue.lua:741: variable \'color\' is not declared'
-			},
-			['terra.tr_shape_detect_lang']={
-				loaderr='.\\terra/tr_shape_detect_lang.t:6: glue.lua:741: variable \'color\' is not declared'
-			},
-			['terra.tr_shape_detect_script']={
-				loaderr='.\\terra/tr_shape_detect_script.t:5: glue.lua:741: variable \'color\' is not declared'
-			},
-			['terra.tr_shape_word']={
-				loaderr='.\\terra/tr_shape_word.t:6: glue.lua:741: variable \'color\' is not declared'
-			},
-			['terra.tr_spanedit']={
-				loaderr='.\\terra/tr_spanedit.t:7: glue.lua:741: variable \'color\' is not declared'
-			},
-			['terra.tr_types']={
-				loaderr='glue.lua:741: variable \'color\' is not declared'
-			},
-			['terra.tr_underline']={
-				loaderr='.\\terra/tr_underline.t:6: glue.lua:741: variable \'color\' is not declared'
-			},
-			['terra.tr_wrap']={
-				loaderr='.\\terra/tr_wrap.t:6: glue.lua:741: variable \'color\' is not declared'
-			},
-			['terra.tr_wrap_reorder']={
-				loaderr='.\\terra/tr_wrap_reorder.t:14: glue.lua:741: variable \'color\' is not declared'
-			},
-			['terra.tr_wrap_smawk']={
-				loaderr='.\\terralib.lua:4115: error loading terra module terra.tr_wrap_smawk from file .\\terra/tr_wrap_smawk.t'
-			}
-		},
-		['terra-utf8']={
-			['terra.utf8']={
-				loaderr='.\\terra/utf8.t:133: failed attempting to index field \'utf8\' in name \'utf8.decode.count\' (expected a table but found table)'
-			}
-		},
-		['terra.arrayfreelist']={
-			['terra.arrayfreelist']={
-				mdeps={
-					['terra.low']=true
-				}
-			}
-		},
-		['terra.arrayview']={
-			['terra.arrayview']={
-				mdeps={
-					['terra.low']=true
-				}
-			},
-			['terra.rawstringview']={
-				mdeps={
-					['terra.arrayview']=true,
-					['terra.dynarray']=true,
-					['terra.low']=true
-				}
-			}
-		},
-		['terra.binder']={
-			['terra.binder']={
-				loaderr='.\\terra\\binder.lua:70: terra not loaded'
-			}
-		},
-		['terra.bitarray']={
-			['terra.bitarray']={
-				loaderr='.\\terra/bitarray.t:14: attempt to call global \'rect\' (a nil value)'
-			}
-		},
-		['terra.bitmap']={
-			['terra.bitmap']={
-				mdeps={
-					['terra.low']=true
-				}
-			}
-		},
-		['terra.box2d']={
-			['terra.box2d']={
-				mdeps={
-					['terra.low']=true
-				}
-			}
-		},
-		['terra.boxblur']={
-			boxblurlib_h={
-				loaderr='.\\boxblurlib_h.lua:2: cannot load module \'boxblurlib\': The specified module could not be found.'
-			},
-			['terra.boxblur']={
+				env='terra',
 				mdeps={
 					['terra.bitmap']=true,
 					['terra.low']=true
@@ -2060,6 +4731,7 @@ return {
 		},
 		['terra.cairo']={
 			['terra.cairo']={
+				env='terra',
 				mdeps={
 					cairo_h=true,
 					['terra.bitmap']=true,
@@ -2069,6 +4741,7 @@ return {
 		},
 		['terra.dynarray']={
 			['terra.dynarray']={
+				env='terra',
 				mdeps={
 					['terra.arrayview']=true,
 					['terra.low']=true
@@ -2077,6 +4750,7 @@ return {
 		},
 		['terra.fixedfreelist']={
 			['terra.fixedfreelist']={
+				env='terra',
 				mdeps={
 					['terra.low']=true
 				}
@@ -2084,6 +4758,7 @@ return {
 		},
 		['terra.hashmap']={
 			['terra.hashmap']={
+				env='terra',
 				mdeps={
 					['terra.low']=true
 				}
@@ -2132,14 +4807,29 @@ return {
 			layer_test_state={
 			},
 			['terra.layer']={
-				loaderr='.\\terra/low.t:73: .\\terra/low.t:73: .\\terra/tr_types.t:106: attempt to call global \'rect\' (a nil value)'
+				env='terra',
+				mdeps={
+					['terra.bitmap']=true,
+					['terra.box2d']=true,
+					['terra.boxblur']=true,
+					['terra.cairo']=true,
+					['terra.low']=true,
+					['terra.memcheck']=true,
+					['terra.tr_api']=true,
+					['terra.tr_paint_cairo']=true
+				}
 			},
 			['terra.layer_api']={
-				loaderr='.\\terra/layer_api.t:42: .\\terra/low.t:73: .\\terra/low.t:73: .\\terra/tr_types.t:106: attempt to call global \'rect\' (a nil value)'
+				env='terra',
+				mdeps={
+					['terra.layer']=true,
+					['terra.low']=true
+				}
 			}
 		},
 		['terra.linkedlist']={
 			['terra.linkedlist']={
+				env='terra',
 				mdeps={
 					['terra.low']=true
 				}
@@ -2150,11 +4840,11 @@ return {
 				autoloads={
 					arr='terra.dynarray',
 					arrview='terra.arrayview',
-					map='terra.hashmap',
 					random='terra.random',
 					randomseed='terra.random',
 					set='terra.hashmap'
 				},
+				env='terra',
 				mdeps={
 					ffi=true,
 					glue=true,
@@ -2170,6 +4860,7 @@ return {
 					randomseed='terra.random',
 					set='terra.hashmap'
 				},
+				env='terra',
 				mdeps={
 					['terra.hashmap']=true,
 					['terra.low']=true
@@ -2178,6 +4869,7 @@ return {
 		},
 		['terra.lrucache']={
 			['terra.lrucache']={
+				env='terra',
 				mdeps={
 					['terra.linkedlist']=true,
 					['terra.low']=true
@@ -2186,6 +4878,7 @@ return {
 		},
 		['terra.oo']={
 			['terra.oo']={
+				env='terra',
 				mdeps={
 					['terra.low']=true
 				}
@@ -2193,6 +4886,7 @@ return {
 		},
 		['terra.phf']={
 			['terra.phf']={
+				env='terra',
 				mdeps={
 					['terra.low']=true
 				}
@@ -2200,6 +4894,7 @@ return {
 		},
 		['terra.random']={
 			['terra.random']={
+				env='terra',
 				mdeps={
 					['terra.low']=true
 				}
@@ -2207,87 +4902,219 @@ return {
 		},
 		['terra.tr']={
 			['terra.tr']={
-				loaderr='.\\terra/tr.t:58: .\\terra/tr_types.t:13: terra.tr_paint_cairo not loaded'
+				env='terra',
+				mdeps={
+					['terra.tr_align']=true,
+					['terra.tr_clip']=true,
+					['terra.tr_itemize']=true,
+					['terra.tr_paint']=true,
+					['terra.tr_types']=true,
+					['terra.tr_wrap']=true
+				}
 			},
 			['terra.tr_align']={
-				loaderr='.\\terra/tr_align.t:6: .\\terra/tr_types.t:13: terra.tr_paint_cairo not loaded'
+				env='terra',
+				mdeps={
+					['terra.tr_font']=true,
+					['terra.tr_types']=true,
+					['terra.tr_wrap']=true
+				}
 			},
 			['terra.tr_api']={
-				loaderr='.\\terra/tr_api.t:49: .\\terra/low.t:73: .\\terra/tr_types.t:106: attempt to call global \'rect\' (a nil value)'
+				env='terra',
+				mdeps={
+					['terra.low']=true,
+					['terra.memcheck']=true,
+					['terra.rawstringview']=true,
+					['terra.tr']=true,
+					['terra.tr_cursor']=true,
+					['terra.tr_paint_cairo']=true,
+					['terra.tr_underline']=true,
+					['terra.utf8']=true
+				}
 			},
 			['terra.tr_clip']={
-				loaderr='.\\terra/tr_clip.t:10: .\\terra/tr_types.t:13: terra.tr_paint_cairo not loaded'
+				env='terra',
+				mdeps={
+					['terra.tr_align']=true,
+					['terra.tr_types']=true
+				}
 			},
 			['terra.tr_cursor']={
-				loaderr='.\\terra/tr_cursor.t:42: .\\terra/tr_types.t:13: terra.tr_paint_cairo not loaded'
+				env='terra',
+				mdeps={
+					['terra.tr_align']=true,
+					['terra.tr_paint']=true,
+					['terra.tr_types']=true
+				}
 			},
 			['terra.tr_font']={
-				loaderr='.\\terra/tr_font.t:12: .\\terra/tr_types.t:13: terra.tr_paint_cairo not loaded'
+				env='terra',
+				mdeps={
+					['terra.tr_types']=true
+				}
 			},
 			['terra.tr_itemize']={
-				loaderr='.\\terra/tr_itemize.t:15: .\\terra/tr_types.t:13: terra.tr_paint_cairo not loaded'
+				env='terra',
+				mdeps={
+					['terra.tr_font']=true,
+					['terra.tr_itemize_detect_lang']=true,
+					['terra.tr_itemize_detect_script']=true,
+					['terra.tr_rle']=true,
+					['terra.tr_shape']=true,
+					['terra.tr_types']=true
+				}
 			},
 			['terra.tr_itemize_detect_lang']={
-				loaderr='.\\terra/tr_itemize_detect_lang.t:6: .\\terra/tr_types.t:13: terra.tr_paint_cairo not loaded'
+				env='terra',
+				mdeps={
+					['terra.tr_types']=true
+				}
 			},
 			['terra.tr_itemize_detect_script']={
-				loaderr='.\\terra/tr_itemize_detect_script.t:5: .\\terra/tr_types.t:13: terra.tr_paint_cairo not loaded'
+				env='terra',
+				mdeps={
+					['terra.tr_types']=true
+				}
 			},
 			['terra.tr_layoutedit']={
-				loaderr='.\\terra/tr_layoutedit.t:6: .\\terra/tr_types.t:13: terra.tr_paint_cairo not loaded'
+				env='terra',
+				loaderr='.\\terra/low.t:73: terra/tr_selection.t:10: expected a struct but found nil when attempting to add method Selection.init',
+				mdeps={
+					['terra.tr_cursor']=true,
+					['terra.tr_selection']=true,
+					['terra.tr_types']=true
+				}
 			},
 			['terra.tr_paint']={
-				loaderr='.\\terra/tr_paint.t:6: .\\terra/tr_types.t:13: terra.tr_paint_cairo not loaded'
+				env='terra',
+				mdeps={
+					['terra.tr_clip']=true,
+					['terra.tr_rasterize']=true,
+					['terra.tr_types']=true
+				}
 			},
 			['terra.tr_paint_cairo']={
-				loaderr='.\\terra/low.t:73: .\\terra/tr_types.t:106: attempt to call global \'rect\' (a nil value)'
+				env='terra',
+				mdeps={
+					['terra.cairo']=true,
+					['terra.low']=true,
+					['terra.tr_types']=true
+				}
 			},
 			['terra.tr_rasterize']={
-				loaderr='.\\terra/tr_rasterize.t:10: .\\terra/tr_types.t:13: terra.tr_paint_cairo not loaded'
+				env='terra',
+				mdeps={
+					['terra.tr_font']=true,
+					['terra.tr_types']=true
+				}
 			},
 			['terra.tr_rle']={
+				env='terra',
 				mdeps={
 					['terra.low']=true
 				}
 			},
 			['terra.tr_selection']={
-				loaderr='.\\terra/tr_selection.t:6: .\\terra/tr_types.t:13: terra.tr_paint_cairo not loaded'
+				env='terra',
+				loaderr='terra/tr_selection.t:10: expected a struct but found nil when attempting to add method Selection.init',
+				mdeps={
+					['terra.tr_cursor']=true,
+					['terra.tr_paint']=true,
+					['terra.tr_types']=true
+				}
 			},
 			['terra.tr_shape']={
-				loaderr='.\\terra/tr_shape.t:13: .\\terra/tr_types.t:13: terra.tr_paint_cairo not loaded'
+				env='terra',
+				mdeps={
+					['terra.tr_font']=true,
+					['terra.tr_rle']=true,
+					['terra.tr_types']=true
+				}
 			},
 			['terra.tr_shape_detect_lang']={
-				loaderr='.\\terra/tr_shape_detect_lang.t:6: .\\terra/tr_types.t:13: terra.tr_paint_cairo not loaded'
+				env='terra',
+				mdeps={
+					['terra.tr_types']=true
+				}
 			},
 			['terra.tr_shape_detect_script']={
-				loaderr='.\\terra/tr_shape_detect_script.t:5: .\\terra/tr_types.t:13: terra.tr_paint_cairo not loaded'
+				env='terra',
+				mdeps={
+					['terra.tr_types']=true
+				}
 			},
 			['terra.tr_shape_word']={
-				loaderr='.\\terra/tr_shape_word.t:6: .\\terra/tr_types.t:13: terra.tr_paint_cairo not loaded'
+				env='terra',
+				loaderr='.\\terralib.lua:2817: Errors reported during typechecking.',
+				mdeps={
+					['terra.tr_font']=true,
+					['terra.tr_rle']=true,
+					['terra.tr_types']=true
+				}
 			},
 			['terra.tr_spanedit']={
-				loaderr='.\\terra/tr_spanedit.t:7: .\\terra/tr_types.t:13: terra.tr_paint_cairo not loaded'
+				env='terra',
+				loaderr='terra/tr_spanedit.t:37: Errors reported during function declaration.',
+				mdeps={
+					['terra.rawstringview']=true,
+					['terra.tr_font']=true,
+					['terra.tr_shape']=true,
+					['terra.tr_types']=true
+				}
 			},
 			['terra.tr_types']={
-				loaderr='.\\terra/tr_types.t:13: terra.tr_paint_cairo not loaded'
+				env='terra',
+				mdeps={
+					freetype_h=true,
+					fribidi_h=true,
+					harfbuzz_h=true,
+					libunibreak_h=true,
+					['terra.arrayfreelist']=true,
+					['terra.box2d']=true,
+					['terra.fixedfreelist']=true,
+					['terra.low']=true,
+					['terra.lrucache']=true,
+					['terra.phf']=true,
+					xxhash_h=true
+				}
 			},
 			['terra.tr_underline']={
-				loaderr='.\\terra/tr_underline.t:6: .\\terra/tr_types.t:13: terra.tr_paint_cairo not loaded'
+				env='terra',
+				mdeps={
+					['terra.tr_clip']=true,
+					['terra.tr_cursor']=true,
+					['terra.tr_types']=true
+				}
 			},
 			['terra.tr_wrap']={
-				loaderr='.\\terra/tr_wrap.t:6: .\\terra/tr_types.t:13: terra.tr_paint_cairo not loaded'
+				env='terra',
+				mdeps={
+					['terra.tr_types']=true,
+					['terra.tr_wrap_reorder']=true
+				}
 			},
 			['terra.tr_wrap_reorder']={
-				loaderr='.\\terra/tr_wrap_reorder.t:14: .\\terra/tr_types.t:13: terra.tr_paint_cairo not loaded'
+				env='terra',
+				mdeps={
+					['terra.tr_types']=true
+				}
 			},
 			['terra.tr_wrap_smawk']={
+				env='terra'
 			}
 		},
 		['terra.utf8']={
 			['terra.utf8']={
+				autoloads={
+					arr='terra.dynarray',
+					arrview='terra.arrayview',
+					random='terra.random',
+					randomseed='terra.random',
+					set='terra.hashmap'
+				},
+				env='terra',
 				mdeps={
-					['terra.arrayview']=true,
-					['terra.dynarray']=true,
 					['terra.low']=true
 				}
 			}
@@ -2316,67 +5143,6 @@ return {
 			time={
 				mdeps={
 					ffi=true
-				}
-			}
-		},
-		tr={
-			tr={
-				mdeps={
-					bit=true,
-					box2d=true,
-					ffi=true,
-					freetype=true,
-					fribidi=true,
-					glue=true,
-					harfbuzz=true,
-					libunibreak=true,
-					lrucache=true,
-					tr_shape_lang=true,
-					tr_shape_reorder=true,
-					tr_shape_script=true,
-					utf8=true
-				}
-			},
-			tr_raster_cairo={
-				mdeps={
-					box2d=true,
-					cairo=true,
-					color=true,
-					ffi=true,
-					freetype=true,
-					glue=true,
-					['jit.zone']=true,
-					tr_raster_ft=true
-				}
-			},
-			tr_raster_ft={
-				mdeps={
-					bit=true,
-					ffi=true,
-					font_db=true,
-					freetype=true,
-					glue=true,
-					['jit.zone']=true,
-					lrucache=true
-				}
-			},
-			tr_shape_lang={
-				mdeps={
-					ffi=true,
-					harfbuzz=true
-				}
-			},
-			tr_shape_reorder={
-				mdeps={
-					bit=true,
-					glue=true
-				}
-			},
-			tr_shape_script={
-				mdeps={
-					bit=true,
-					glue=true,
-					harfbuzz=true
 				}
 			}
 		},
@@ -2462,19 +5228,20 @@ return {
 		ui={
 			ui={
 				mdeps={
+					bit=true,
 					box2d=true,
-					boxblur=true,
 					cairo=true,
 					color=true,
 					easing=true,
 					events=true,
 					ffi=true,
+					font_db=true,
 					glue=true,
 					['jit.zone']=true,
+					layer_h=true,
 					nw=true,
 					oo=true,
-					time=true,
-					tr0=true
+					time=true
 				}
 			},
 			ui_button={
@@ -2484,11 +5251,10 @@ return {
 				}
 			},
 			ui_calendar={
+				loaderr='.\\ui_calendar.lua:9: attempt to index field \'grid\' (a nil value)',
 				mdeps={
 					glue=true,
-					tr0_raster_cairo=true,
-					ui=true,
-					ui_grid=true
+					ui=true
 				}
 			},
 			ui_colorpicker={
@@ -2497,36 +5263,37 @@ return {
 					cairo=true,
 					color=true,
 					glue=true,
-					ui=true,
-					ui_button=true,
-					ui_editbox=true
+					ui=true
+				}
+			},
+			ui_demo1={
+				loaderr='.\\ui.lua:376: attempt to call method \'font\' (a nil value)',
+				mdeps={
+					color=true,
+					time=true,
+					ui=true
 				}
 			},
 			ui_dropdown={
+				loaderr='.\\ui_dropdown.lua:11: attempt to index field \'editbox\' (a nil value)',
 				mdeps={
 					glue=true,
-					time=true,
-					ui=true,
-					ui_editbox=true,
-					ui_popup=true,
-					ui_scrollbox=true
+					ui=true
 				}
 			},
 			ui_editbox={
+				loaderr='.\\ui_editbox.lua:7: module \'tr\' not found',
 				mdeps={
-					box2d=true,
-					glue=true,
-					tr0=true,
+					tr=true,
 					ui=true
 				}
 			},
 			ui_grid={
+				loaderr='.\\ui_grid.lua:311: attempt to index field \'scrollbox\' (a nil value)',
 				mdeps={
 					box2d=true,
 					glue=true,
-					ui=true,
-					ui_editbox=true,
-					ui_scrollbox=true
+					ui=true
 				}
 			},
 			ui_layout_editor={
@@ -2536,10 +5303,7 @@ return {
 				}
 			},
 			ui_list={
-				mdeps={
-					glue=true,
-					ui=true
-				}
+				loaderr='error loading module \'ui_list\' from file \'.\\ui_list.lua\''
 			},
 			ui_menu={
 				mdeps={
@@ -2558,13 +5322,13 @@ return {
 				}
 			},
 			ui_scrollbox={
+				loaderr='.\\ui.lua:376: attempt to call method \'font\' (a nil value)',
 				mdeps={
-					box2d=true,
-					glue=true,
 					ui=true
 				}
 			},
 			ui_slider={
+				loaderr='.\\ui.lua:178: assertion failed!',
 				mdeps={
 					glue=true,
 					ui=true
@@ -2574,8 +5338,7 @@ return {
 				mdeps={
 					box2d=true,
 					glue=true,
-					ui=true,
-					ui_button=true
+					ui=true
 				}
 			},
 			ui_zoomcalendar={
@@ -2600,6 +5363,13 @@ return {
 				}
 			}
 		},
+		uri={
+			uri={
+				mdeps={
+					glue=true
+				}
+			}
+		},
 		utf8={
 			utf8={
 				mdeps={
@@ -2621,47 +5391,66 @@ return {
 				}
 			},
 			videoinput_cocoa={
-				loaderr='platform not OSX'
+				loaderr='platform not OSX',
+				mdeps={
+					ffi=true,
+					objc=true,
+					objc_dispatch=true
+				}
 			},
 			videoinput_dshow={
 			}
 		},
 		webb={
-			action={
-				loaderr='.\\action.lua:60: attempt to call global \'config\' (a nil value)'
-			},
-			auth={
-				loaderr='.\\auth.lua:118: module \'resty.random\' not found'
-			},
 			lp={
 			},
-			ngx={
-				loaderr='.\\ngx.lua:13: attempt to index global \'ngx\' (a nil value)'
-			},
-			query={
-				loaderr='.\\query.lua:29: module \'resty.mysql\' not found'
-			},
 			['resty.socket']={
-				mdeps={
-					socket=true
-				}
-			},
-			sendmail={
-				mdeps={
-					ltn12=true,
-					mime=true,
-					['resty.socket']=true,
-					['socket.smtp']=true
-				}
-			},
-			session={
-				loaderr='.\\session.lua:1: attempt to index global \'ngx\' (a nil value)'
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
 			},
 			webb={
-				loaderr='.\\webb.lua:430: attempt to index global \'ngx\' (a nil value)'
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
 			},
-			webbjs={
-				loaderr='.\\webbjs.lua:61: .\\webb.lua:430: attempt to index global \'ngx\' (a nil value)'
+			webb_action={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
+			},
+			webb_js={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
+			},
+			webb_mysql={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
+			},
+			webb_nginx={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
+			},
+			webb_query={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
+			},
+			webb_sendmail={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
+			}
+		},
+		webb_auth={
+			webb_auth={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
+			},
+			webb_session={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
+			}
+		},
+		website={
+			luapower_website={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
 			}
 		},
 		winapi={
@@ -3279,6 +6068,20 @@ return {
 					['winapi.tooltip']=true
 				}
 			},
+			['winapi.trackbar']={
+				mdeps={
+					winapi=true,
+					['winapi.comctl']=true,
+					['winapi.window']=true
+				}
+			},
+			['winapi.trackbarclass']={
+				mdeps={
+					winapi=true,
+					['winapi.controlclass']=true,
+					['winapi.trackbar']=true
+				}
+			},
 			['winapi.treeview']={
 				mdeps={
 					winapi=true,
@@ -3372,7 +6175,9 @@ return {
 				}
 			},
 			['winapi.wmapp']={
-				loaderr='.\\winapi\\wmapp.lua:10: winapi.window not loaded'
+				mdeps={
+					winapi=true
+				}
 			}
 		},
 		['winapi.cairopanel']={
@@ -3431,6 +6236,2549 @@ return {
 					['winapi.gl11']=true,
 					['winapi.panelclass']=true,
 					['winapi.wglext']=true
+				}
+			}
+		},
+		xlib={
+		},
+		xxhash={
+			xxhash={
+				ffi_deps={
+					xxhash=true
+				},
+				mdeps={
+					ffi=true,
+					xxhash_h=true
+				}
+			},
+			xxhash_h={
+				mdeps={
+					ffi=true
+				}
+			}
+		},
+		zlib={
+			zlib={
+				ffi_deps={
+					z=true
+				},
+				mdeps={
+					ffi=true,
+					zlib_h=true
+				}
+			},
+			zlib_h={
+				mdeps={
+					ffi=true
+				}
+			}
+		}
+	},
+	osx64={
+		affine2d={
+			affine2d={
+			}
+		},
+		amoeba={
+			amoeba={
+			}
+		},
+		anaf={
+		},
+		bitmap={
+			bitmap={
+				autoloads={
+					blend='bitmap_blend',
+					blend_op='bitmap_blend',
+					convolve='bitmap_effects',
+					dither='bitmap_dither',
+					grayscale='bitmap_effects',
+					invert='bitmap_effects',
+					mirror='bitmap_effects',
+					resize='bitmap_resize',
+					sharpen='bitmap_effects'
+				},
+				mdeps={
+					bit=true,
+					box2d=true,
+					ffi=true,
+					glue=true
+				}
+			},
+			bitmap_blend={
+				mdeps={
+					bitmap=true,
+					box2d=true
+				}
+			},
+			bitmap_dither={
+				mdeps={
+					bitmap=true
+				}
+			},
+			bitmap_effects={
+				mdeps={
+					bitmap=true
+				}
+			},
+			bitmap_resize={
+				mdeps={
+					bitmap=true
+				}
+			},
+			bitmap_rgbaf={
+				mdeps={
+					bitmap=true,
+					ffi=true,
+					glue=true
+				}
+			}
+		},
+		blake2={
+			blake2={
+				ffi_deps={
+					blake2=true
+				},
+				mdeps={
+					ffi=true
+				}
+			}
+		},
+		bmp={
+			bmp={
+				mdeps={
+					bit=true,
+					bitmap=true,
+					ffi=true,
+					glue=true
+				}
+			}
+		},
+		bnet={
+			bnet={
+				loaderr='./bnet.lua:7: ./bnet_h.lua:208: attempt to redefine \'timeval\' at line 26',
+				mdeps={
+					bit=true,
+					bnet_h=true,
+					ffi=true
+				}
+			},
+			bnet_h={
+				loaderr='./bnet_h.lua:208: attempt to redefine \'timeval\' at line 26',
+				mdeps={
+					ffi=true
+				}
+			}
+		},
+		box2d={
+			box2d={
+			}
+		},
+		boxblur={
+			boxblur={
+				ffi_deps={
+					boxblur=true
+				},
+				mdeps={
+					bitmap=true,
+					ffi=true,
+					glue=true
+				}
+			}
+		},
+		bundle={
+		},
+		cairo={
+			cairo={
+				ffi_deps={
+					cairo=true
+				},
+				mdeps={
+					bit=true,
+					cairo_h=true,
+					ffi=true
+				}
+			},
+			cairo_h={
+				mdeps={
+					ffi=true
+				}
+			},
+			cairo_quartz={
+				mdeps={
+					cairo=true,
+					cairo_quartz_h=true,
+					ffi=true
+				}
+			},
+			cairo_quartz_h={
+				ffi_deps={
+					['/System/Library/Frameworks/CoreGraphics.framework/CoreGraphics']=true,
+					['/System/Library/Frameworks/CoreGraphics.framework/Resources/BridgeSupport/CoreGraphics.dylib']=true
+				},
+				mdeps={
+					cairo_h=true,
+					ffi=true,
+					objc=true
+				}
+			},
+			cairo_win32={
+				loaderr='platform not Windows',
+				mdeps={
+					cairo=true,
+					cairo_win32_h=true,
+					ffi=true
+				}
+			},
+			cairo_win32_h={
+				loaderr='platform not Windows',
+				mdeps={
+					ffi=true
+				}
+			}
+		},
+		cbframe={
+			cbframe={
+				mdeps={
+					cbframe_x86=true,
+					dynasm=true
+				}
+			},
+			cbframe_dump={
+				mdeps={
+					cbframe=true,
+					ffi=true
+				}
+			},
+			cbframe_x86={
+				env='dynasm',
+				mdeps={
+					cbframe_x86_h=true,
+					dasm=true,
+					dasm_mm=true,
+					dasm_x64=true,
+					ffi=true
+				}
+			},
+			cbframe_x86_h={
+				mdeps={
+					ffi=true
+				}
+			}
+		},
+		cjson={
+			cjson={
+			}
+		},
+		clipper={
+			clipper={
+				ffi_deps={
+					clipper=true
+				},
+				mdeps={
+					ffi=true
+				}
+			}
+		},
+		codedit={
+			codedit={
+			}
+		},
+		color={
+			color={
+				mdeps={
+					bit=true
+				}
+			}
+		},
+		coro={
+			coro={
+			}
+		},
+		cplayer={
+		},
+		dollar={
+			['$']={
+				mdeps={
+					bit=true,
+					ffi=true,
+					glue=true,
+					pp=true,
+					time=true
+				}
+			}
+		},
+		dynasm={
+			dasm={
+				ffi_deps={
+					dasm_x86=true
+				},
+				mdeps={
+					bit=true,
+					ffi=true
+				}
+			},
+			dasm_mm={
+				mdeps={
+					ffi=true
+				}
+			},
+			dasm_x64={
+				mdeps={
+					dasm_x86x64=true
+				}
+			},
+			dasm_x86={
+				mdeps={
+					dasm_x86x64=true
+				}
+			},
+			dasm_x86x64={
+			},
+			dynasm={
+			}
+		},
+		easing={
+			easing={
+			}
+		},
+		eq={
+			eq={
+			}
+		},
+		errors={
+			errors={
+			}
+		},
+		events={
+			events={
+			}
+		},
+		expat={
+			expat={
+				ffi_deps={
+					expat=true
+				},
+				mdeps={
+					expat_h=true,
+					ffi=true,
+					glue=true
+				}
+			},
+			expat_h={
+				mdeps={
+					ffi=true
+				}
+			}
+		},
+		ffi_reflect={
+			ffi_reflect={
+				mdeps={
+					bit=true,
+					ffi=true
+				}
+			}
+		},
+		font_db={
+			font_db={
+				mdeps={
+					glue=true
+				}
+			}
+		},
+		['fonts-amiri']={
+		},
+		['fonts-awesome']={
+		},
+		['fonts-dejavuserif']={
+		},
+		['fonts-fireflysung']={
+		},
+		['fonts-fixedsys']={
+		},
+		['fonts-ionicons']={
+		},
+		['fonts-material-icons']={
+		},
+		['fonts-noto-emoji']={
+		},
+		['fonts-open-sans']={
+		},
+		freetype={
+			freetype={
+				ffi_deps={
+					freetype=true
+				},
+				mdeps={
+					bit=true,
+					ffi=true,
+					freetype_h=true
+				}
+			},
+			freetype_h={
+				mdeps={
+					ffi=true
+				}
+			}
+		},
+		fribidi={
+			fribidi={
+				ffi_deps={
+					fribidi=true
+				},
+				mdeps={
+					bit=true,
+					ffi=true,
+					fribidi_h=true
+				}
+			},
+			fribidi_h={
+				mdeps={
+					ffi=true
+				}
+			}
+		},
+		fs={
+			fs={
+				mdeps={
+					ffi=true,
+					fs_common=true,
+					fs_posix=true
+				}
+			},
+			fs_common={
+				mdeps={
+					bit=true,
+					ffi=true,
+					path=true
+				}
+			},
+			fs_posix={
+				mdeps={
+					bit=true,
+					ffi=true,
+					fs_common=true
+				}
+			},
+			fs_win={
+				loaderr='platform not Windows',
+				mdeps={
+					bit=true,
+					ffi=true,
+					fs_common=true
+				}
+			}
+		},
+		genx={
+			genx={
+				ffi_deps={
+					genx=true
+				},
+				mdeps={
+					ffi=true,
+					genx_h=true
+				}
+			},
+			genx_h={
+				mdeps={
+					ffi=true
+				}
+			}
+		},
+		gfonts={
+			gfonts={
+				mdeps={
+					fs=true,
+					glue=true,
+					pp=true
+				}
+			}
+		},
+		giflib={
+			giflib={
+				ffi_deps={
+					gif=true
+				},
+				mdeps={
+					ffi=true,
+					giflib_h=true,
+					glue=true
+				}
+			},
+			giflib_h={
+				mdeps={
+					ffi=true
+				}
+			}
+		},
+		glue={
+			glue={
+				mdeps={
+					ffi=true
+				}
+			}
+		},
+		harfbuzz={
+			harfbuzz={
+				ffi_deps={
+					harfbuzz=true
+				},
+				mdeps={
+					bit=true,
+					ffi=true,
+					harfbuzz_h=true
+				}
+			},
+			harfbuzz_h={
+				mdeps={
+					ffi=true
+				}
+			}
+		},
+		hash_benchmark={
+		},
+		heap={
+			heap={
+			}
+		},
+		hid_app={
+		},
+		hidapi={
+			hidapi={
+				ffi_deps={
+					hidapi=false
+				},
+				loaderr='./hidapi.lua:6: dlopen(libhidapi.dylib, 5): image not found',
+				mdeps={
+					ffi=true
+				}
+			}
+		},
+		hmac={
+			hmac={
+				autoloads={
+				},
+				mdeps={
+					bit=true,
+					ffi=true,
+					glue=true
+				}
+			}
+		},
+		http={
+			http={
+				mdeps={
+					ffi=true,
+					glue=true,
+					http_headers=true,
+					stream=true
+				}
+			},
+			http_client={
+				mdeps={
+					glue=true,
+					http=true,
+					socketloop=true,
+					time=true,
+					uri=true
+				}
+			},
+			http_date={
+				mdeps={
+					glue=true
+				}
+			},
+			http_debug={
+				mdeps={
+					ffi=true,
+					glue=true,
+					socketloop=true,
+					time=true
+				}
+			},
+			http_headers={
+				mdeps={
+					glue=true,
+					http_date=true,
+					libb64=true,
+					['lpeg.re']=true,
+					uri=true
+				}
+			},
+			http_server={
+				mdeps={
+					glue=true,
+					http=true,
+					socketloop=true,
+					time=true,
+					uri=true
+				}
+			},
+			url={
+				mdeps={
+					socket=true,
+					string=true,
+					table=true
+				}
+			}
+		},
+		hunspell={
+			hunspell={
+				ffi_deps={
+					hunspell=true
+				},
+				mdeps={
+					ffi=true
+				}
+			}
+		},
+		inspect={
+			inspect={
+			}
+		},
+		lanes={
+			lanes={
+				mdeps={
+					['lanes.core']=true
+				}
+			},
+			['lanes.core']={
+			}
+		},
+		lexer={
+			lexer={
+				mdeps={
+					lpeg=true
+				}
+			}
+		},
+		lfrb={
+		},
+		lfs={
+			lfs={
+			}
+		},
+		libb64={
+			libb64={
+				ffi_deps={
+					b64=true
+				},
+				mdeps={
+					ffi=true
+				}
+			}
+		},
+		libcurl={
+			libcurl={
+				ffi_deps={
+					curl=true
+				},
+				mdeps={
+					bit=true,
+					ffi=true,
+					libcurl_h=true
+				}
+			},
+			libcurl_h={
+				mdeps={
+					ffi=true
+				}
+			}
+		},
+		libexif={
+			libexif={
+				ffi_deps={
+					exif=true
+				},
+				mdeps={
+					ffi=true,
+					libexif_h=true
+				}
+			},
+			libexif_h={
+				mdeps={
+					ffi=true
+				}
+			}
+		},
+		libjpeg={
+			libjpeg={
+				ffi_deps={
+					jpeg=true
+				},
+				mdeps={
+					bit=true,
+					ffi=true,
+					glue=true,
+					jit=true,
+					libjpeg_h=true
+				}
+			},
+			libjpeg_h={
+				mdeps={
+					ffi=true
+				}
+			}
+		},
+		libmariadb={
+		},
+		libogg={
+			libogg_h={
+				mdeps={
+					ffi=true
+				}
+			}
+		},
+		libp11={
+		},
+		libpng={
+			libpng={
+				ffi_deps={
+					png=true
+				},
+				mdeps={
+					bit=true,
+					ffi=true,
+					glue=true,
+					jit=true,
+					libpng_h=true
+				}
+			},
+			libpng_h={
+				mdeps={
+					ffi=true
+				}
+			}
+		},
+		libsodium={
+		},
+		libsoundio={
+			libsoundio={
+				ffi_deps={
+					soundio=true
+				},
+				mdeps={
+					ffi=true,
+					libsoundio_h=true
+				}
+			},
+			libsoundio_h={
+				mdeps={
+					ffi=true
+				}
+			}
+		},
+		libunibreak={
+			libunibreak={
+				ffi_deps={
+					unibreak=true
+				},
+				mdeps={
+					ffi=true,
+					libunibreak_h=true
+				}
+			},
+			libunibreak_h={
+				mdeps={
+					ffi=true
+				}
+			}
+		},
+		linkedlist={
+			linkedlist={
+			}
+		},
+		llvm={
+			llvm={
+				ffi_deps={
+					llvm=false
+				},
+				loaderr='./llvm.lua:16: dlopen(libllvm.dylib, 5): image not found',
+				mdeps={
+					ffi=true,
+					glue=true,
+					llvm_h=true
+				}
+			},
+			llvm_h={
+				mdeps={
+					ffi=true
+				}
+			}
+		},
+		lpeg={
+			lpeg={
+			},
+			['lpeg.re']={
+				mdeps={
+					lpeg=true
+				}
+			}
+		},
+		lrucache={
+			lrucache={
+				mdeps={
+					linkedlist=true
+				}
+			}
+		},
+		['lua-headers']={
+		},
+		luajit={
+			bit={
+			},
+			ffi={
+			},
+			jit={
+			},
+			['jit.bc']={
+				mdeps={
+					bit=true,
+					jit=true,
+					['jit.util']=true,
+					['jit.vmdef']=true
+				}
+			},
+			['jit.bcsave']={
+				mdeps={
+					bit=true,
+					jit=true
+				}
+			},
+			['jit.dis_x64']={
+				mdeps={
+					['jit.dis_x86']=true
+				}
+			},
+			['jit.dis_x86']={
+				mdeps={
+					bit=true
+				}
+			},
+			['jit.dump']={
+				mdeps={
+					bit=true,
+					jit=true,
+					['jit.util']=true,
+					['jit.vmdef']=true
+				}
+			},
+			['jit.p']={
+				mdeps={
+					jit=true,
+					['jit.profile']=true,
+					['jit.vmdef']=true
+				}
+			},
+			['jit.profile']={
+			},
+			['jit.util']={
+			},
+			['jit.v']={
+				mdeps={
+					jit=true,
+					['jit.util']=true,
+					['jit.vmdef']=true
+				}
+			},
+			['jit.zone']={
+			},
+			['package.exedir']={
+			},
+			['package.exepath']={
+			},
+			strict={
+			},
+			['table.clone']={
+			},
+			['table.isarray']={
+			},
+			['table.isempty']={
+			},
+			['table.new']={
+			},
+			['table.nkeys']={
+			},
+			['thread.exdata']={
+			}
+		},
+		luapower={
+			luapower={
+				mdeps={
+					ffi=true,
+					fs=true,
+					glue=true,
+					luapower_rpc=true,
+					pp=true
+				}
+			},
+			luapower_cli={
+			},
+			luapower_rpc={
+				mdeps={
+					glue=true,
+					luastate=true,
+					pp=true
+				}
+			}
+		},
+		['luapower-ci']={
+		},
+		['luapower-repos']={
+		},
+		luapower_db={
+			luapower_db={
+			}
+		},
+		luasec={
+		},
+		luastate={
+			lua_h={
+				mdeps={
+					ffi=true
+				}
+			},
+			luajit_h={
+				mdeps={
+					ffi=true,
+					lua_h=true
+				}
+			},
+			luastate={
+				mdeps={
+					ffi=true,
+					luajit_h=true
+				}
+			}
+		},
+		lx={
+			lx={
+				ffi_deps={
+					lx=false
+				},
+				loaderr='./lx.lua:8: dlopen(liblx.dylib, 5): image not found',
+				mdeps={
+					ffi=true
+				}
+			}
+		},
+		lz4={
+			lz4={
+				ffi_deps={
+					lz4=false
+				},
+				loaderr='./lz4.lua:149: dlopen(liblz4.dylib, 5): image not found',
+				mdeps={
+					ffi=true
+				}
+			}
+		},
+		md5={
+			md5={
+				ffi_deps={
+					md5=true
+				},
+				mdeps={
+					ffi=true
+				}
+			}
+		},
+		['mingw64-headers']={
+		},
+		minizip={
+			minizip={
+				ffi_deps={
+					minizip=true
+				},
+				mdeps={
+					bit=true,
+					ffi=true,
+					glue=true,
+					minizip_h=true
+				}
+			},
+			minizip_h={
+				mdeps={
+					ffi=true
+				}
+			}
+		},
+		mustache={
+			mustache={
+			}
+		},
+		mysql={
+			mysql={
+				mdeps={
+					bit=true,
+					ffi=true,
+					mysql_h=true
+				}
+			},
+			mysql_h={
+				mdeps={
+					ffi=true
+				}
+			},
+			mysql_print={
+			}
+		},
+		nginx={
+		},
+		nw={
+			nw={
+				mdeps={
+					box2d=true,
+					events=true,
+					ffi=true,
+					glue=true,
+					nw_cocoa=true,
+					time=true
+				}
+			},
+			nw_cocoa={
+				ffi_deps={
+					['/System/Library/Frameworks/AppKit.framework/AppKit']=true,
+					['/System/Library/Frameworks/AppKit.framework/Resources/BridgeSupport/AppKit.dylib']=true,
+					['/System/Library/Frameworks/ApplicationServices.framework/Versions/Current/Frameworks/CoreGraphics.framework/CoreGraphics']=true,
+					['/System/Library/Frameworks/ApplicationServices.framework/Versions/Current/Frameworks/CoreGraphics.framework/Resources/BridgeSupport/CoreGraphics.dylib']=true,
+					['/System/Library/Frameworks/Carbon.framework/Versions/Current/Frameworks/HIToolbox.framework/HIToolbox']=true,
+					['/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation']=true,
+					['/System/Library/Frameworks/CoreFoundation.framework/Resources/BridgeSupport/CoreFoundation.dylib']=true,
+					['/System/Library/Frameworks/Foundation.framework/Foundation']=true,
+					['/System/Library/Frameworks/Foundation.framework/Resources/BridgeSupport/Foundation.dylib']=true
+				},
+				mdeps={
+					bit=true,
+					box2d=true,
+					cbframe=true,
+					ffi=true,
+					glue=true,
+					objc=true
+				}
+			},
+			nw_winapi={
+				loaderr='platform not Windows',
+				mdeps={
+					bit=true,
+					bitmap=true,
+					box2d=true,
+					ffi=true,
+					glue=true,
+					winapi=true
+				}
+			},
+			nw_xlib={
+				loaderr='platform not Linux',
+				mdeps={
+					bit=true,
+					box2d=true,
+					ffi=true,
+					glue=true,
+					xlib=true
+				}
+			}
+		},
+		objc={
+			objc={
+				autoloads={
+					dispatch='objc_dispatch',
+					inspect='objc_inspect'
+				},
+				ffi_deps={
+					['libobjc.A.dylib']=true
+				},
+				mdeps={
+					ffi=true
+				}
+			},
+			objc_dispatch={
+				mdeps={
+					ffi=true,
+					objc=true
+				}
+			},
+			objc_inspect={
+				mdeps={
+					objc=true
+				}
+			}
+		},
+		oo={
+			oo={
+			}
+		},
+		opengl={
+			gl11={
+				mdeps={
+					ffi=true,
+					gl_types=true
+				}
+			},
+			gl_consts11={
+			},
+			gl_consts21={
+			},
+			gl_funcs11={
+				mdeps={
+					ffi=true,
+					gl_types=true
+				}
+			},
+			gl_funcs21={
+				mdeps={
+					ffi=true,
+					gl_types=true
+				}
+			},
+			gl_types={
+				mdeps={
+					ffi=true
+				}
+			},
+			glu={
+				loaderr='platform not Windows',
+				mdeps={
+					ffi=true
+				}
+			},
+			glu_h={
+				mdeps={
+					ffi=true,
+					gl_types=true
+				}
+			},
+			glu_lua={
+				loaderr='platform not Windows',
+				mdeps={
+					ffi=true,
+					['winapi.gl21']=true
+				}
+			}
+		},
+		openssl={
+			libcrypto={
+				ffi_deps={
+					crypto=true
+				},
+				mdeps={
+					ffi=true,
+					libcrypto_h=true
+				}
+			},
+			libcrypto_asn1_h={
+				mdeps={
+					ffi=true
+				}
+			},
+			libcrypto_bio_h={
+				mdeps={
+					ffi=true
+				}
+			},
+			libcrypto_bn_h={
+				mdeps={
+					ffi=true
+				}
+			},
+			libcrypto_buffer_h={
+				mdeps={
+					ffi=true
+				}
+			},
+			libcrypto_conf_h={
+				mdeps={
+					ffi=true,
+					libcrypto_types_h=true
+				}
+			},
+			libcrypto_dh_h={
+				mdeps={
+					ffi=true
+				}
+			},
+			libcrypto_dsa_h={
+				mdeps={
+					ffi=true
+				}
+			},
+			libcrypto_ec_h={
+				mdeps={
+					ffi=true
+				}
+			},
+			libcrypto_engine={
+				mdeps={
+					libcrypto=true,
+					libcrypto_engine_h=true
+				}
+			},
+			libcrypto_engine_h={
+				mdeps={
+					ffi=true,
+					libcrypto_types_h=true
+				}
+			},
+			libcrypto_err_h={
+				mdeps={
+					ffi=true
+				}
+			},
+			libcrypto_evp_h={
+				mdeps={
+					ffi=true
+				}
+			},
+			libcrypto_h={
+				mdeps={
+					ffi=true,
+					libcrypto_types_h=true
+				}
+			},
+			libcrypto_lhash_h={
+				mdeps={
+					ffi=true
+				}
+			},
+			libcrypto_objects_h={
+				mdeps={
+					ffi=true
+				}
+			},
+			libcrypto_pem_h={
+				mdeps={
+					ffi=true
+				}
+			},
+			libcrypto_pkcs7_h={
+				mdeps={
+					ffi=true
+				}
+			},
+			libcrypto_rand_h={
+				mdeps={
+					ffi=true
+				}
+			},
+			libcrypto_rsa_h={
+				mdeps={
+					ffi=true
+				}
+			},
+			libcrypto_safestack_h={
+				mdeps={
+					ffi=true
+				}
+			},
+			libcrypto_sha_h={
+				mdeps={
+					ffi=true
+				}
+			},
+			libcrypto_types_h={
+				mdeps={
+					ffi=true
+				}
+			},
+			libcrypto_ui_h={
+				mdeps={
+					ffi=true
+				}
+			},
+			libcrypto_x509_h={
+				mdeps={
+					ffi=true
+				}
+			},
+			libcrypto_x509_vfy_h={
+				mdeps={
+					ffi=true
+				}
+			},
+			openssl={
+			},
+			openssl_h={
+				mdeps={
+					ffi=true
+				}
+			}
+		},
+		path={
+			path={
+			}
+		},
+		path2d={
+			path2d={
+				mdeps={
+					glue=true,
+					path2d_arc=true,
+					path2d_arc_3p=true,
+					path2d_bezier2=true,
+					path2d_bezier2_hit=true,
+					path2d_bezier3=true,
+					path2d_bezier3_hit=true,
+					path2d_circle_3p=true,
+					path2d_line=true,
+					path2d_point=true,
+					path2d_shapes=true,
+					path2d_svgarc=true,
+					path2d_text=true,
+					pp=true
+				}
+			},
+			path2d_arc={
+				mdeps={
+					path2d_bezier3=true,
+					path2d_line=true,
+					path2d_point=true
+				}
+			},
+			path2d_arc_3p={
+				mdeps={
+					path2d_arc=true,
+					path2d_circle_3p=true,
+					path2d_point=true
+				}
+			},
+			path2d_bezier2={
+				autoloads={
+					interpolate='path2d_bezier2_ai'
+				},
+				mdeps={
+					glue=true,
+					path2d_bezier_length=true,
+					path2d_point=true
+				}
+			},
+			path2d_bezier2_ai={
+				mdeps={
+					path2d_bezier2=true
+				}
+			},
+			path2d_bezier2_hit={
+				mdeps={
+					eq=true,
+					path2d_bezier2=true,
+					path2d_point=true
+				}
+			},
+			path2d_bezier3={
+				autoloads={
+					interpolate='path2d_bezier3_ai'
+				},
+				mdeps={
+					glue=true,
+					path2d_bezier_length=true
+				}
+			},
+			path2d_bezier3_ai={
+				mdeps={
+					path2d_bezier3=true,
+					path2d_point=true
+				}
+			},
+			path2d_bezier3_hit={
+				mdeps={
+					path2d_bezier3=true,
+					path2d_point=true
+				}
+			},
+			path2d_bezier_length={
+				mdeps={
+					path2d_point=true
+				}
+			},
+			path2d_cairo={
+				mdeps={
+					path2d=true,
+					path2d_bezier2=true
+				}
+			},
+			path2d_catmullrom={
+			},
+			path2d_circle_3p={
+				mdeps={
+					path2d_point=true
+				}
+			},
+			path2d_editor={
+				mdeps={
+					glue=true,
+					path2d=true,
+					path2d_arc=true,
+					path2d_arc_3p=true,
+					path2d_circle_3p=true,
+					path2d_line=true,
+					path2d_point=true,
+					path2d_shapes=true,
+					path2d_svgarc=true
+				}
+			},
+			path2d_line={
+				mdeps={
+					path2d_point=true
+				}
+			},
+			path2d_point={
+			},
+			path2d_polyline={
+				mdeps={
+					path2d_line=true
+				}
+			},
+			path2d_shapes={
+				mdeps={
+					path2d_circle_3p=true,
+					path2d_point=true
+				}
+			},
+			path2d_svgarc={
+				mdeps={
+					path2d_arc=true,
+					path2d_line=true
+				}
+			},
+			path2d_text={
+			}
+		},
+		pcre={
+		},
+		pixman={
+		},
+		pkcs11={
+			pkcs11={
+				loaderr='./pkcs11.lua:2272: malformed number near \'0UL\' at line 19',
+				mdeps={
+					ffi=true
+				}
+			}
+		},
+		pp={
+			pp={
+			}
+		},
+		proc={
+			proc={
+				mdeps={
+					bit=true,
+					ffi=true
+				}
+			}
+		},
+		pthread={
+			pthread={
+				ffi_deps={
+					pthread=true
+				},
+				mdeps={
+					ffi=true
+				}
+			}
+		},
+		rangelist={
+			rangelist={
+				mdeps={
+					glue=true
+				}
+			}
+		},
+		resolver={
+			resolver={
+				mdeps={
+					bit=true,
+					['table.new']=true
+				}
+			}
+		},
+		['resty-core']={
+			['ngx.balancer']={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
+			},
+			['ngx.base64']={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
+			},
+			['ngx.errlog']={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
+			},
+			['ngx.ocsp']={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
+			},
+			['ngx.pipe']={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
+			},
+			['ngx.process']={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
+			},
+			['ngx.re']={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
+			},
+			['ngx.resp']={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
+			},
+			['ngx.semaphore']={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
+			},
+			['ngx.ssl']={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
+			},
+			['ngx.ssl.session']={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
+			},
+			['resty.core']={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
+			},
+			['resty.core.base']={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
+			},
+			['resty.core.base64']={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
+			},
+			['resty.core.ctx']={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
+			},
+			['resty.core.exit']={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
+			},
+			['resty.core.hash']={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
+			},
+			['resty.core.misc']={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
+			},
+			['resty.core.ndk']={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
+			},
+			['resty.core.phase']={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
+			},
+			['resty.core.regex']={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
+			},
+			['resty.core.request']={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
+			},
+			['resty.core.response']={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
+			},
+			['resty.core.shdict']={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
+			},
+			['resty.core.time']={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
+			},
+			['resty.core.uri']={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
+			},
+			['resty.core.utils']={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
+			},
+			['resty.core.var']={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
+			},
+			['resty.core.worker']={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
+			}
+		},
+		['resty-lrucache']={
+			['resty.lrucache']={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
+			},
+			['resty.lrucache.pureffi']={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
+			}
+		},
+		rs232={
+			rs232={
+				mdeps={
+					ffi=true,
+					fs=true
+				}
+			}
+		},
+		rsync={
+			rsync={
+				mdeps={
+					bit=true,
+					ffi=true
+				}
+			}
+		},
+		sha2={
+			sha2={
+				ffi_deps={
+					sha2=true
+				},
+				mdeps={
+					ffi=true
+				}
+			}
+		},
+		shm={
+			shm={
+				loaderr='platform not Linux',
+				mdeps={
+					ffi=true
+				}
+			}
+		},
+		socket={
+			ltn12={
+				mdeps={
+					string=true,
+					table=true
+				}
+			},
+			mime={
+			},
+			['mime.core']={
+			},
+			socket={
+				mdeps={
+					math=true,
+					['socket.core']=true,
+					string=true
+				}
+			},
+			['socket.core']={
+			},
+			['socket.ftp']={
+				mdeps={
+					ltn12=true,
+					math=true,
+					socket=true,
+					['socket.tp']=true,
+					['socket.url']=true,
+					string=true,
+					table=true
+				}
+			},
+			['socket.headers']={
+				mdeps={
+					socket=true
+				}
+			},
+			['socket.http']={
+				mdeps={
+					ltn12=true,
+					mime=true,
+					socket=true,
+					['socket.headers']=true,
+					['socket.url']=true,
+					string=true,
+					table=true
+				}
+			},
+			['socket.mbox']={
+			},
+			['socket.smtp']={
+				mdeps={
+					coroutine=true,
+					ltn12=true,
+					math=true,
+					mime=true,
+					os=true,
+					socket=true,
+					['socket.headers']=true,
+					['socket.tp']=true,
+					string=true
+				}
+			},
+			['socket.tftp']={
+				mdeps={
+					ltn12=true,
+					math=true,
+					socket=true,
+					['socket.url']=true,
+					string=true,
+					table=true
+				}
+			},
+			['socket.tp']={
+				mdeps={
+					ltn12=true,
+					socket=true,
+					string=true
+				}
+			},
+			['socket.url']={
+				mdeps={
+					socket=true,
+					string=true,
+					table=true
+				}
+			}
+		},
+		socketloop={
+			socketloop={
+				autoloads={
+				},
+				mdeps={
+					glue=true,
+					socket=true
+				}
+			}
+		},
+		stream={
+			stream={
+				mdeps={
+					ffi=true,
+					glue=true
+				}
+			}
+		},
+		struct={
+			struct={
+			}
+		},
+		terra={
+			asdl={
+				mdeps={
+					terralist=true
+				}
+			},
+			terra={
+				env='terra',
+				mdeps={
+					asdl=true,
+					terralib=true,
+					terralist=true
+				}
+			},
+			['terra.parsing']={
+				env='terra'
+			},
+			['terra.std']={
+				env='terra'
+			},
+			terralib={
+				env='terra',
+				mdeps={
+					asdl=true,
+					ffi=true,
+					terralib_luapower=true
+				}
+			},
+			terralib_luapower={
+				env='terra',
+				mdeps={
+					asdl=true,
+					ffi=true,
+					['package.exedir']=true
+				}
+			},
+			terralist={
+			}
+		},
+		['terra.arrayfreelist']={
+			['terra.arrayfreelist']={
+				env='terra',
+				mdeps={
+					['terra.low']=true
+				}
+			}
+		},
+		['terra.arrayview']={
+			['terra.arrayview']={
+				env='terra',
+				mdeps={
+					['terra.low']=true
+				}
+			},
+			['terra.rawstringview']={
+				env='terra',
+				mdeps={
+					['terra.low']=true
+				}
+			}
+		},
+		['terra.binder']={
+			['terra.binder']={
+				env='terra',
+				mdeps={
+					['terra.low']=true
+				}
+			}
+		},
+		['terra.bitarray']={
+			['terra.bitarray']={
+				env='terra',
+				mdeps={
+					['terra.box2d']=true,
+					['terra.low']=true
+				}
+			}
+		},
+		['terra.bitmap']={
+			['terra.bitmap']={
+				env='terra',
+				mdeps={
+					['terra.low']=true
+				}
+			}
+		},
+		['terra.box2d']={
+			['terra.box2d']={
+				env='terra',
+				mdeps={
+					['terra.low']=true
+				}
+			}
+		},
+		['terra.boxblur']={
+			boxblurlib_h={
+				ffi_deps={
+					boxblurlib=false
+				},
+				loaderr='./boxblurlib_h.lua:4: dlopen(libboxblurlib.dylib, 5): image not found',
+				mdeps={
+					ffi=true
+				}
+			},
+			['terra.boxblur']={
+				env='terra',
+				mdeps={
+					['terra.bitmap']=true,
+					['terra.low']=true
+				}
+			}
+		},
+		['terra.cairo']={
+			['terra.cairo']={
+				env='terra',
+				mdeps={
+					cairo_h=true,
+					['terra.bitmap']=true,
+					['terra.low']=true
+				}
+			}
+		},
+		['terra.dynarray']={
+			['terra.dynarray']={
+				env='terra',
+				mdeps={
+					['terra.arrayview']=true,
+					['terra.low']=true
+				}
+			}
+		},
+		['terra.fixedfreelist']={
+			['terra.fixedfreelist']={
+				env='terra',
+				mdeps={
+					['terra.low']=true
+				}
+			}
+		},
+		['terra.hashmap']={
+			['terra.hashmap']={
+				env='terra',
+				mdeps={
+					['terra.low']=true
+				}
+			}
+		},
+		['terra.layer']={
+		},
+		['terra.linkedlist']={
+			['terra.linkedlist']={
+				env='terra',
+				mdeps={
+					['terra.low']=true
+				}
+			}
+		},
+		['terra.low']={
+			['terra.low']={
+				autoloads={
+					arr='terra.dynarray',
+					arrview='terra.arrayview',
+					random='terra.random',
+					randomseed='terra.random',
+					set='terra.hashmap'
+				},
+				env='terra',
+				mdeps={
+					ffi=true,
+					glue=true,
+					['jit.zone']=true,
+					pp=true
+				}
+			},
+			['terra.memcheck']={
+				autoloads={
+					arr='terra.dynarray',
+					arrview='terra.arrayview',
+					random='terra.random',
+					randomseed='terra.random',
+					set='terra.hashmap'
+				},
+				env='terra',
+				mdeps={
+					['terra.hashmap']=true,
+					['terra.low']=true
+				}
+			}
+		},
+		['terra.lrucache']={
+			['terra.lrucache']={
+				env='terra',
+				mdeps={
+					['terra.linkedlist']=true,
+					['terra.low']=true
+				}
+			}
+		},
+		['terra.oo']={
+			['terra.oo']={
+				env='terra',
+				mdeps={
+					['terra.low']=true
+				}
+			}
+		},
+		['terra.phf']={
+			['terra.phf']={
+				env='terra',
+				mdeps={
+					['terra.low']=true
+				}
+			}
+		},
+		['terra.random']={
+			['terra.random']={
+				env='terra',
+				mdeps={
+					['terra.low']=true
+				}
+			}
+		},
+		['terra.tr']={
+			['terra.tr']={
+				env='terra terra.tr_paint_cairo',
+				mdeps={
+					['terra.tr_align']=true,
+					['terra.tr_clip']=true,
+					['terra.tr_itemize']=true,
+					['terra.tr_paint']=true,
+					['terra.tr_types']=true,
+					['terra.tr_wrap']=true
+				}
+			},
+			['terra.tr_align']={
+				env='terra terra.tr_paint_cairo',
+				mdeps={
+					['terra.tr_font']=true,
+					['terra.tr_types']=true,
+					['terra.tr_wrap']=true
+				}
+			},
+			['terra.tr_api']={
+				env='terra terra.tr_paint_cairo',
+				mdeps={
+					['terra.low']=true,
+					['terra.memcheck']=true,
+					['terra.rawstringview']=true,
+					['terra.tr']=true,
+					['terra.tr_cursor']=true,
+					['terra.tr_paint_cairo']=true,
+					['terra.tr_underline']=true,
+					['terra.utf8']=true
+				}
+			},
+			['terra.tr_clip']={
+				env='terra terra.tr_paint_cairo',
+				mdeps={
+					['terra.tr_align']=true,
+					['terra.tr_types']=true
+				}
+			},
+			['terra.tr_cursor']={
+				env='terra terra.tr_paint_cairo',
+				mdeps={
+					['terra.tr_align']=true,
+					['terra.tr_paint']=true,
+					['terra.tr_types']=true
+				}
+			},
+			['terra.tr_font']={
+				env='terra terra.tr_paint_cairo',
+				mdeps={
+					['terra.tr_types']=true
+				}
+			},
+			['terra.tr_itemize']={
+				env='terra terra.tr_paint_cairo',
+				mdeps={
+					['terra.tr_font']=true,
+					['terra.tr_itemize_detect_lang']=true,
+					['terra.tr_itemize_detect_script']=true,
+					['terra.tr_rle']=true,
+					['terra.tr_shape']=true,
+					['terra.tr_types']=true
+				}
+			},
+			['terra.tr_itemize_detect_lang']={
+				env='terra terra.tr_paint_cairo',
+				mdeps={
+					['terra.tr_types']=true
+				}
+			},
+			['terra.tr_itemize_detect_script']={
+				env='terra terra.tr_paint_cairo',
+				mdeps={
+					['terra.tr_types']=true
+				}
+			},
+			['terra.tr_layoutedit']={
+				env='terra terra.tr_paint_cairo',
+				loaderr='./terra/low.t:73: terra/tr_selection.t:10: expected a struct but found nil when attempting to add method Selection.init',
+				mdeps={
+					['terra.tr_cursor']=true,
+					['terra.tr_selection']=true,
+					['terra.tr_types']=true
+				}
+			},
+			['terra.tr_paint']={
+				env='terra terra.tr_paint_cairo',
+				mdeps={
+					['terra.tr_clip']=true,
+					['terra.tr_rasterize']=true,
+					['terra.tr_types']=true
+				}
+			},
+			['terra.tr_paint_cairo']={
+				env='terra terra.tr_paint_cairo',
+				mdeps={
+					['terra.cairo']=true,
+					['terra.low']=true,
+					['terra.tr_types']=true
+				}
+			},
+			['terra.tr_rasterize']={
+				env='terra terra.tr_paint_cairo',
+				mdeps={
+					['terra.tr_font']=true,
+					['terra.tr_types']=true
+				}
+			},
+			['terra.tr_rle']={
+				env='terra',
+				mdeps={
+					['terra.low']=true
+				}
+			},
+			['terra.tr_selection']={
+				env='terra terra.tr_paint_cairo',
+				loaderr='terra/tr_selection.t:10: expected a struct but found nil when attempting to add method Selection.init',
+				mdeps={
+					['terra.tr_cursor']=true,
+					['terra.tr_paint']=true,
+					['terra.tr_types']=true
+				}
+			},
+			['terra.tr_shape']={
+				env='terra terra.tr_paint_cairo',
+				mdeps={
+					['terra.tr_font']=true,
+					['terra.tr_rle']=true,
+					['terra.tr_types']=true
+				}
+			},
+			['terra.tr_shape_detect_lang']={
+				env='terra terra.tr_paint_cairo',
+				mdeps={
+					['terra.tr_types']=true
+				}
+			},
+			['terra.tr_shape_detect_script']={
+				env='terra terra.tr_paint_cairo',
+				mdeps={
+					['terra.tr_types']=true
+				}
+			},
+			['terra.tr_shape_word']={
+				env='terra terra.tr_paint_cairo',
+				loaderr='./terralib.lua:2817: Errors reported during typechecking.',
+				mdeps={
+					['terra.tr_font']=true,
+					['terra.tr_rle']=true,
+					['terra.tr_types']=true
+				}
+			},
+			['terra.tr_spanedit']={
+				env='terra terra.tr_paint_cairo',
+				loaderr='terra/tr_spanedit.t:37: Errors reported during function declaration.',
+				mdeps={
+					['terra.rawstringview']=true,
+					['terra.tr_font']=true,
+					['terra.tr_shape']=true,
+					['terra.tr_types']=true
+				}
+			},
+			['terra.tr_types']={
+				env='terra terra.tr_paint_cairo',
+				mdeps={
+					freetype_h=true,
+					fribidi_h=true,
+					harfbuzz_h=true,
+					libunibreak_h=true,
+					['terra.arrayfreelist']=true,
+					['terra.box2d']=true,
+					['terra.dynarray']=true,
+					['terra.fixedfreelist']=true,
+					['terra.hashmap']=true,
+					['terra.low']=true,
+					['terra.lrucache']=true,
+					['terra.phf']=true,
+					xxhash_h=true
+				}
+			},
+			['terra.tr_underline']={
+				env='terra terra.tr_paint_cairo',
+				mdeps={
+					['terra.tr_clip']=true,
+					['terra.tr_cursor']=true,
+					['terra.tr_types']=true
+				}
+			},
+			['terra.tr_wrap']={
+				env='terra terra.tr_paint_cairo',
+				mdeps={
+					['terra.tr_types']=true,
+					['terra.tr_wrap_reorder']=true
+				}
+			},
+			['terra.tr_wrap_reorder']={
+				env='terra terra.tr_paint_cairo',
+				mdeps={
+					['terra.tr_types']=true
+				}
+			},
+			['terra.tr_wrap_smawk']={
+				env='terra'
+			}
+		},
+		['terra.utf8']={
+			['terra.utf8']={
+				autoloads={
+					arr='terra.dynarray',
+					arrview='terra.arrayview',
+					random='terra.random',
+					randomseed='terra.random',
+					set='terra.hashmap'
+				},
+				env='terra',
+				mdeps={
+					['terra.low']=true
+				}
+			}
+		},
+		testui={
+			testui={
+				mdeps={
+					color=true,
+					ffi=true,
+					glue=true,
+					nw=true
+				}
+			}
+		},
+		thread={
+			thread={
+				mdeps={
+					ffi=true,
+					glue=true,
+					luastate=true,
+					pthread=true
+				}
+			}
+		},
+		time={
+			time={
+				mdeps={
+					ffi=true
+				}
+			}
+		},
+		tr0={
+			tr0={
+				mdeps={
+					bit=true,
+					box2d=true,
+					ffi=true,
+					freetype=true,
+					fribidi=true,
+					glue=true,
+					harfbuzz=true,
+					libunibreak=true,
+					lrucache=true,
+					tr0_shape_lang=true,
+					tr0_shape_reorder=true,
+					tr0_shape_script=true,
+					utf8=true
+				}
+			},
+			tr0_raster_cairo={
+				mdeps={
+					box2d=true,
+					cairo=true,
+					color=true,
+					ffi=true,
+					freetype=true,
+					glue=true,
+					['jit.zone']=true,
+					tr0_raster_ft=true
+				}
+			},
+			tr0_raster_ft={
+				mdeps={
+					bit=true,
+					ffi=true,
+					font_db=true,
+					freetype=true,
+					glue=true,
+					['jit.zone']=true,
+					lrucache=true
+				}
+			},
+			tr0_shape_lang={
+				mdeps={
+					ffi=true,
+					harfbuzz=true
+				}
+			},
+			tr0_shape_reorder={
+				mdeps={
+					bit=true,
+					glue=true
+				}
+			},
+			tr0_shape_script={
+				mdeps={
+					bit=true,
+					glue=true,
+					harfbuzz=true
+				}
+			}
+		},
+		tuple={
+			tuple={
+			}
+		},
+		tweening={
+			tweening={
+			}
+		},
+		ucdn={
+			ucdn={
+				ffi_deps={
+					ucdn=true
+				},
+				mdeps={
+					ffi=true
+				}
+			}
+		},
+		ui={
+			ui={
+				loaderr='./ui.lua:21: ./layer_h.lua:3: dlopen(liblayer.dylib, 5): image not found',
+				mdeps={
+					bit=true,
+					box2d=true,
+					cairo=true,
+					color=true,
+					easing=true,
+					events=true,
+					ffi=true,
+					font_db=true,
+					glue=true,
+					layer_h=true,
+					nw=true,
+					oo=true,
+					time=true
+				}
+			},
+			ui_button={
+				loaderr='./ui_button.lua:5: ./ui.lua:21: ./layer_h.lua:3: dlopen(liblayer.dylib, 5): image not found',
+				mdeps={
+					ui=true
+				}
+			},
+			ui_calendar={
+				loaderr='./ui_calendar.lua:5: ./ui.lua:21: ./layer_h.lua:3: dlopen(liblayer.dylib, 5): image not found',
+				mdeps={
+					ui=true
+				}
+			},
+			ui_colorpicker={
+				loaderr='./ui_colorpicker.lua:5: ./ui.lua:21: ./layer_h.lua:3: dlopen(liblayer.dylib, 5): image not found',
+				mdeps={
+					ui=true
+				}
+			},
+			ui_demo1={
+				loaderr='./ui_demo1.lua:3: ./ui.lua:21: ./layer_h.lua:3: dlopen(liblayer.dylib, 5): image not found',
+				mdeps={
+					time=true,
+					ui=true
+				}
+			},
+			ui_dropdown={
+				loaderr='./ui_dropdown.lua:8: ./ui.lua:21: ./layer_h.lua:3: dlopen(liblayer.dylib, 5): image not found',
+				mdeps={
+					ui=true
+				}
+			},
+			ui_editbox={
+				loaderr='./ui_editbox.lua:6: ./ui.lua:21: ./layer_h.lua:3: dlopen(liblayer.dylib, 5): image not found',
+				mdeps={
+					ui=true
+				}
+			},
+			ui_grid={
+				loaderr='./ui_grid.lua:7: ./ui.lua:21: ./layer_h.lua:3: dlopen(liblayer.dylib, 5): image not found',
+				mdeps={
+					ui=true
+				}
+			},
+			ui_layout_editor={
+				loaderr='./ui_layout_editor.lua:7: ./ui.lua:21: ./layer_h.lua:3: dlopen(liblayer.dylib, 5): image not found',
+				mdeps={
+					ui=true
+				}
+			},
+			ui_list={
+				loaderr='error loading module \'ui_list\' from file \'./ui_list.lua\''
+			},
+			ui_menu={
+				loaderr='./ui_menu.lua:5: ./ui.lua:21: ./layer_h.lua:3: dlopen(liblayer.dylib, 5): image not found',
+				mdeps={
+					ui=true
+				}
+			},
+			ui_popup={
+				loaderr='./ui_popup.lua:5: ./ui.lua:21: ./layer_h.lua:3: dlopen(liblayer.dylib, 5): image not found',
+				mdeps={
+					ui=true
+				}
+			},
+			ui_progressbar={
+				loaderr='./ui_progressbar.lua:5: ./ui.lua:21: ./layer_h.lua:3: dlopen(liblayer.dylib, 5): image not found',
+				mdeps={
+					ui=true
+				}
+			},
+			ui_scrollbox={
+				loaderr='./ui_scrollbox.lua:5: ./ui.lua:21: ./layer_h.lua:3: dlopen(liblayer.dylib, 5): image not found',
+				mdeps={
+					ui=true
+				}
+			},
+			ui_slider={
+				loaderr='./ui_slider.lua:5: ./ui.lua:21: ./layer_h.lua:3: dlopen(liblayer.dylib, 5): image not found',
+				mdeps={
+					ui=true
+				}
+			},
+			ui_tablist={
+				loaderr='./ui_tablist.lua:5: ./ui.lua:21: ./layer_h.lua:3: dlopen(liblayer.dylib, 5): image not found',
+				mdeps={
+					ui=true
+				}
+			},
+			ui_zoomcalendar={
+				loaderr='./ui_zoomcalendar.lua:5: ./ui.lua:21: ./layer_h.lua:3: dlopen(liblayer.dylib, 5): image not found',
+				mdeps={
+					ui=true
+				}
+			}
+		},
+		unit={
+			unit={
+				mdeps={
+					glue=true,
+					pp=true
+				}
+			}
+		},
+		unixperms={
+			unixperms={
+				mdeps={
+					bit=true
+				}
+			}
+		},
+		uri={
+			uri={
+				mdeps={
+					glue=true
+				}
+			}
+		},
+		utf8={
+			utf8={
+				mdeps={
+					bit=true,
+					ffi=true
+				}
+			}
+		},
+		utf8quot={
+			utf8quot={
+			}
+		},
+		videoinput={
+			videoinput={
+				mdeps={
+					ffi=true,
+					glue=true,
+					videoinput_cocoa=true
+				}
+			},
+			videoinput_cocoa={
+				ffi_deps={
+					['/System/Library/Frameworks/AVFoundation.framework/AVFoundation']=true,
+					['/System/Library/Frameworks/CoreMedia.framework/CoreMedia']=true,
+					['/System/Library/Frameworks/CoreVideo.framework/CoreVideo']=true
+				},
+				mdeps={
+					bitmap=true,
+					ffi=true,
+					glue=true,
+					objc=true,
+					objc_dispatch=true
+				}
+			},
+			videoinput_dshow={
+			}
+		},
+		webb={
+			lp={
+			},
+			['resty.socket']={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
+			},
+			webb={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
+			},
+			webb_action={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
+			},
+			webb_js={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
+			},
+			webb_mysql={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
+			},
+			webb_nginx={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
+			},
+			webb_query={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
+			},
+			webb_sendmail={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
+			}
+		},
+		webb_auth={
+			webb_auth={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
+			},
+			webb_session={
+				env='ngx',
+				loaderr='could not create tracking environment: module \'ngx\' not found'
+			}
+		},
+		website={
+		},
+		winapi={
+		},
+		['winapi.cairopanel']={
+			['winapi.cairopanel']={
+				loaderr='platform not Windows',
+				mdeps={
+					bit=true,
+					cairo=true,
+					ffi=true,
+					winapi=true
+				}
+			}
+		},
+		['winapi.wglpanel']={
+			['winapi.gl']={
+				loaderr='platform not Windows',
+				mdeps={
+					winapi=true
+				}
+			},
+			['winapi.gl11']={
+				loaderr='platform not Windows',
+				mdeps={
+					winapi=true
+				}
+			},
+			['winapi.gl21']={
+				loaderr='platform not Windows',
+				mdeps={
+					winapi=true
+				}
+			},
+			['winapi.wgl']={
+				loaderr='platform not Windows',
+				mdeps={
+					winapi=true
+				}
+			},
+			['winapi.wglext']={
+				loaderr='platform not Windows',
+				mdeps={
+					winapi=true
+				}
+			},
+			['winapi.wglpanel']={
+				loaderr='platform not Windows',
+				mdeps={
+					winapi=true
 				}
 			}
 		},

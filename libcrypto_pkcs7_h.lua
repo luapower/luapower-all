@@ -1,3 +1,5 @@
+local ffi = require'ffi'
+--[[
 // csrc/openssl/src/include/openssl/pkcs7.h
 typedef struct pkcs7_issuer_and_serial_st {
     X509_NAME *issuer;
@@ -296,4 +298,4 @@ enum {
 	PKCS7_R_WRONG_CONTENT_TYPE = 113,
 	PKCS7_R_WRONG_PKCS7_TYPE = 114,
 };
-
+]]

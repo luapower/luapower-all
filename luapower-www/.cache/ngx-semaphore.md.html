@@ -1,0 +1,232 @@
+<h1 id="name">Name</h1>
+<p>ngx.semaphore - light thread semaphore for OpenResty/ngx_lua.</p>
+<h1 id="table-of-contents">Table of Contents</h1>
+<ul>
+<li><a href="#name">Name</a></li>
+<li><a href="#status">Status</a></li>
+<li><a href="#synopsis">Synopsis</a>
+<ul>
+<li><a href="#synchronizing-threads-in-the-same-context">Synchronizing threads in the same context</a></li>
+<li><a href="#synchronizing-threads-in-different-contexts">Synchronizing threads in different contexts</a></li>
+</ul></li>
+<li><a href="#description">Description</a></li>
+<li><a href="#methods">Methods</a>
+<ul>
+<li><a href="#new">new</a></li>
+<li><a href="#post">post</a></li>
+<li><a href="#wait">wait</a></li>
+<li><a href="#count">count</a></li>
+</ul></li>
+<li><a href="#community">Community</a>
+<ul>
+<li><a href="#english-mailing-list">English Mailing List</a></li>
+<li><a href="#chinese-mailing-list">Chinese Mailing List</a></li>
+</ul></li>
+<li><a href="#bugs-and-patches">Bugs and Patches</a></li>
+<li><a href="#author">Author</a></li>
+<li><a href="#copyright-and-license">Copyright and License</a></li>
+<li><a href="#see-also">See Also</a></li>
+</ul>
+<h1 id="status">Status</h1>
+<p>This Lua module is production ready.</p>
+<h1 id="synopsis">Synopsis</h1>
+<h2 id="synchronizing-threads-in-the-same-context">Synchronizing threads in the same context</h2>
+<pre class="nginx"><code>location = /t {
+    content_by_lua_block {
+        local semaphore = require &quot;ngx.semaphore&quot;
+        local sema = semaphore.new()
+
+        local function handler()
+            ngx.say(&quot;sub thread: waiting on sema...&quot;)
+
+            local ok, err = sema:wait(1)  -- wait for a second at most
+            if not ok then
+                ngx.say(&quot;sub thread: failed to wait on sema: &quot;, err)
+            else
+                ngx.say(&quot;sub thread: waited successfully.&quot;)
+            end
+        end
+
+        local co = ngx.thread.spawn(handler)
+
+        ngx.say(&quot;main thread: sleeping for a little while...&quot;)
+
+        ngx.sleep(0.1)  -- wait a bit
+
+        ngx.say(&quot;main thread: posting to sema...&quot;)
+
+        sema:post(1)
+
+        ngx.say(&quot;main thread: end.&quot;)
+    }
+}</code></pre>
+<p>The example location above produces a response output like this:</p>
+<pre><code>sub thread: waiting on sema...
+main thread: sleeping for a little while...
+main thread: posting to sema...
+main thread: end.
+sub thread: waited successfully.</code></pre>
+<p><a href="#table-of-contents">Back to TOC</a></p>
+<h2 id="synchronizing-threads-in-different-contexts">Synchronizing threads in different contexts</h2>
+<pre class="nginx"><code>location = /t {
+    content_by_lua_block {
+        local semaphore = require &quot;ngx.semaphore&quot;
+        local sema = semaphore.new()
+
+        local outputs = {}
+        local i = 1
+
+        local function out(s)
+            outputs[i] = s
+            i = i + 1
+        end
+
+        local function handler()
+            out(&quot;timer thread: sleeping for a little while...&quot;)
+
+            ngx.sleep(0.1)  -- wait a bit
+
+            out(&quot;timer thread: posting on sema...&quot;)
+
+            sema:post(1)
+        end
+
+        assert(ngx.timer.at(0, handler))
+
+        out(&quot;main thread: waiting on sema...&quot;)
+
+        local ok, err = sema:wait(1)  -- wait for a second at most
+        if not ok then
+            out(&quot;main thread: failed to wait on sema: &quot;, err)
+        else
+            out(&quot;main thread: waited successfully.&quot;)
+        end
+
+        out(&quot;main thread: end.&quot;)
+
+        ngx.say(table.concat(outputs, &quot;\n&quot;))
+    }
+}</code></pre>
+<p>The example location above produces a response body like this</p>
+<pre><code>main thread: waiting on sema...
+timer thread: sleeping for a little while...
+timer thread: posting on sema...
+main thread: waited successfully.
+main thread: end.</code></pre>
+<p>The same applies to different request contexts as long as these requests are served by the same nginx worker process.</p>
+<p><a href="#table-of-contents">Back to TOC</a></p>
+<h1 id="description">Description</h1>
+<p>This module provides an efficient semaphore API for the OpenResty/ngx_lua module. With semaphores, “light threads” (created by <a href="https://github.com/openresty/lua-nginx-module#ngxthreadspawn">ngx.thread.spawn</a>, <a href="https://github.com/openresty/lua-nginx-module#ngxtimerat">ngx.timer.at</a>, and etc.) can synchronize among each other very efficiently without constant polling and sleeping.</p>
+<p>“Light threads” in different contexts (like in different requests) can share the same semaphore instance as long as these “light threads” reside in the same NGINX worker process and the <a href="https://github.com/openresty/lua-nginx-module#lua_code_cache">lua_code_cache</a> directive is turned on (which is the default). For inter-process “light thread” synchronization, it is recommended to use the <a href="https://github.com/openresty/lua-resty-lock">lua-resty-lock</a> library instead (which is a bit less efficient than this semaphore API though).</p>
+<p>This semaphore API has a pure userland implementation which does not involve any system calls nor block any operating system threads. It works closely with the event model of NGINX without introducing any extra delay.</p>
+<p>Like other APIs provided by this <code>lua-resty-core</code> library, the LuaJIT FFI feature is required.</p>
+<p><a href="#table-of-contents">Back to TOC</a></p>
+<h1 id="methods">Methods</h1>
+<p><a href="#table-of-contents">Back to TOC</a></p>
+<h2 id="new">new</h2>
+<p><strong>syntax:</strong> <em>sema, err = semaphore_module.new(n?)</em></p>
+<p><strong>context:</strong> <em>init_by_lua*, init_worker_by_lua*, set_by_lua*, rewrite_by_lua*, access_by_lua*, content_by_lua*, header_filter_by_lua*, body_filter_by_lua*, log_by_lua*, ngx.timer.*</em></p>
+<p>Creates and returns a new semaphore instance that has <code>n</code> (default to <code>0</code>) resources.</p>
+<p>For example,</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb5-1"><a href="#cb5-1"></a> <span class="kw">local</span> semaphore <span class="op">=</span> <span class="fu">require</span> <span class="st">&quot;ngx.semaphore&quot;</span></span>
+<span id="cb5-2"><a href="#cb5-2"></a> <span class="kw">local</span> sema<span class="op">,</span> err <span class="op">=</span> semaphore<span class="op">.</span>new<span class="op">()</span></span>
+<span id="cb5-3"><a href="#cb5-3"></a> <span class="cf">if</span> <span class="kw">not</span> sema <span class="cf">then</span></span>
+<span id="cb5-4"><a href="#cb5-4"></a>     ngx<span class="op">.</span>say<span class="op">(</span><span class="st">&quot;create semaphore failed: &quot;</span><span class="op">,</span> err<span class="op">)</span></span>
+<span id="cb5-5"><a href="#cb5-5"></a> <span class="cf">end</span></span></code></pre></div>
+<p>Often the semaphore object created is shared on the NGINX worker process by mounting in a custom Lua module, as documented below:</p>
+<p>https://github.com/openresty/lua-nginx-module#data-sharing-within-an-nginx-worker</p>
+<p><a href="#table-of-contents">Back to TOC</a></p>
+<h2 id="post">post</h2>
+<p><strong>syntax:</strong> <em>sema:post(n?)</em></p>
+<p><strong>context:</strong> <em>init_by_lua*, init_worker_by_lua*, set_by_lua*, rewrite_by_lua*, access_by_lua*, content_by_lua*, header_filter_by_lua*, body_filter_by_lua*, log_by_lua*, ngx.timer.*</em></p>
+<p>Releases <code>n</code> (default to <code>1</code>) “resources” to the semaphore instance.</p>
+<p>This will not yield the current running “light thread”.</p>
+<p>At most <code>n</code> “light threads” will be waken up when the current running “light thread” later yields (or terminates).</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb6-1"><a href="#cb6-1"></a><span class="co">-- typically, we get the semaphore instance from upvalue or globally shared data</span></span>
+<span id="cb6-2"><a href="#cb6-2"></a><span class="co">-- See https://github.com/openresty/lua-nginx-module#data-sharing-within-an-nginx-worker</span></span>
+<span id="cb6-3"><a href="#cb6-3"></a></span>
+<span id="cb6-4"><a href="#cb6-4"></a><span class="kw">local</span> semaphore <span class="op">=</span> <span class="fu">require</span> <span class="st">&quot;ngx.semaphore&quot;</span></span>
+<span id="cb6-5"><a href="#cb6-5"></a><span class="kw">local</span> sema <span class="op">=</span> semaphore<span class="op">.</span>new<span class="op">()</span></span>
+<span id="cb6-6"><a href="#cb6-6"></a></span>
+<span id="cb6-7"><a href="#cb6-7"></a>sema<span class="op">:</span>post<span class="op">(</span><span class="dv">2</span><span class="op">)</span>  <span class="co">-- releases 2 resources</span></span></code></pre></div>
+<p><a href="#table-of-contents">Back to TOC</a></p>
+<h2 id="wait">wait</h2>
+<p><strong>syntax:</strong> <em>ok, err = sema:wait(timeout)</em></p>
+<p><strong>context:</strong> <em>rewrite_by_lua*, access_by_lua*, content_by_lua*, ngx.timer.*</em></p>
+<p>Requests a resource from the semaphore instance.</p>
+<p>Returns <code>true</code> immediately when there is resources available for the current running “light thread”. Otherwise the current “light thread” will enter the waiting queue and yield execution. The current “light thread” will be automatically waken up and the <code>wait</code> function call will return <code>true</code> when there is resources available for it, or return <code>nil</code> and a string describing the error in case of failure (like <code>"timeout"</code>).</p>
+<p>The <code>timeout</code> argument specifies the maximum time this function call should wait for (in seconds).</p>
+<p>When the <code>timeout</code> argument is 0, it means “no wait”, that is, when there is no readily available “resources” for the current running “light thread”, this <code>wait</code> function call returns immediately <code>nil</code> and the error string <code>"timeout"</code>.</p>
+<p>You can specify millisecond precision in the timeout value by using floating point numbers like 0.001 (which means 1ms).</p>
+<p>“Light threads” created by different contexts (like request handlers) can wait on the same semaphore instance without problem.</p>
+<p>See <a href="#synopsis">Synopsis</a> for code examples.</p>
+<p><a href="#table-of-contents">Back to TOC</a></p>
+<h2 id="count">count</h2>
+<p><strong>syntax:</strong> <em>count = sema:count()</em></p>
+<p><strong>context:</strong> <em>init_by_lua*, init_worker_by_lua*, set_by_lua*, rewrite_by_lua*, access_by_lua*, content_by_lua*, header_filter_by_lua*, body_filter_by_lua*, log_by_lua*, ngx.timer.*</em></p>
+<p>Returns the number of resources readily available in the <code>sema</code> semaphore instance (if any).</p>
+<p>When the returned number is negative, it means the number of “light threads” waiting on this semaphore.</p>
+<p>Consider the following example,</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb7-1"><a href="#cb7-1"></a><span class="kw">local</span> semaphore <span class="op">=</span> <span class="fu">require</span> <span class="st">&quot;ngx.semaphore&quot;</span></span>
+<span id="cb7-2"><a href="#cb7-2"></a><span class="kw">local</span> sema <span class="op">=</span> semaphore<span class="op">.</span>new<span class="op">(</span><span class="dv">0</span><span class="op">)</span></span>
+<span id="cb7-3"><a href="#cb7-3"></a></span>
+<span id="cb7-4"><a href="#cb7-4"></a>ngx<span class="op">.</span>say<span class="op">(</span><span class="st">&quot;count: &quot;</span><span class="op">,</span> sema<span class="op">:</span>count<span class="op">())</span>  <span class="co">-- count: 0</span></span>
+<span id="cb7-5"><a href="#cb7-5"></a></span>
+<span id="cb7-6"><a href="#cb7-6"></a><span class="kw">local</span> <span class="kw">function</span> handler<span class="op">(</span>id<span class="op">)</span></span>
+<span id="cb7-7"><a href="#cb7-7"></a>    <span class="kw">local</span> ok<span class="op">,</span> err <span class="op">=</span> sema<span class="op">:</span>wait<span class="op">(</span><span class="dv">1</span><span class="op">)</span></span>
+<span id="cb7-8"><a href="#cb7-8"></a>    <span class="cf">if</span> <span class="kw">not</span> ok <span class="cf">then</span></span>
+<span id="cb7-9"><a href="#cb7-9"></a>        ngx<span class="op">.</span>say<span class="op">(</span><span class="st">&quot;err: &quot;</span><span class="op">,</span> err<span class="op">)</span></span>
+<span id="cb7-10"><a href="#cb7-10"></a>    <span class="cf">else</span></span>
+<span id="cb7-11"><a href="#cb7-11"></a>        ngx<span class="op">.</span>say<span class="op">(</span><span class="st">&quot;wait success&quot;</span><span class="op">)</span></span>
+<span id="cb7-12"><a href="#cb7-12"></a>    <span class="cf">end</span></span>
+<span id="cb7-13"><a href="#cb7-13"></a><span class="cf">end</span></span>
+<span id="cb7-14"><a href="#cb7-14"></a></span>
+<span id="cb7-15"><a href="#cb7-15"></a><span class="kw">local</span> co1 <span class="op">=</span> ngx<span class="op">.</span>thread<span class="op">.</span>spawn<span class="op">(</span>handler<span class="op">)</span></span>
+<span id="cb7-16"><a href="#cb7-16"></a><span class="kw">local</span> co2 <span class="op">=</span> ngx<span class="op">.</span>thread<span class="op">.</span>spawn<span class="op">(</span>handler<span class="op">)</span></span>
+<span id="cb7-17"><a href="#cb7-17"></a></span>
+<span id="cb7-18"><a href="#cb7-18"></a>ngx<span class="op">.</span>say<span class="op">(</span><span class="st">&quot;count: &quot;</span><span class="op">,</span> sema<span class="op">:</span>count<span class="op">())</span>  <span class="co">-- count: -2</span></span>
+<span id="cb7-19"><a href="#cb7-19"></a></span>
+<span id="cb7-20"><a href="#cb7-20"></a>sema<span class="op">:</span>post<span class="op">(</span><span class="dv">1</span><span class="op">)</span></span>
+<span id="cb7-21"><a href="#cb7-21"></a></span>
+<span id="cb7-22"><a href="#cb7-22"></a>ngx<span class="op">.</span>say<span class="op">(</span><span class="st">&quot;count: &quot;</span><span class="op">,</span> sema<span class="op">:</span>count<span class="op">())</span>  <span class="co">-- count: -1</span></span>
+<span id="cb7-23"><a href="#cb7-23"></a></span>
+<span id="cb7-24"><a href="#cb7-24"></a>sema<span class="op">:</span>post<span class="op">(</span><span class="dv">2</span><span class="op">)</span></span>
+<span id="cb7-25"><a href="#cb7-25"></a></span>
+<span id="cb7-26"><a href="#cb7-26"></a>ngx<span class="op">.</span>say<span class="op">(</span><span class="st">&quot;count: &quot;</span><span class="op">,</span> sema<span class="op">:</span>count<span class="op">())</span>  <span class="co">-- count: 1</span></span></code></pre></div>
+<p><a href="#table-of-contents">Back to TOC</a></p>
+<h1 id="community">Community</h1>
+<p><a href="#table-of-contents">Back to TOC</a></p>
+<h2 id="english-mailing-list">English Mailing List</h2>
+<p>The <a href="https://groups.google.com/group/openresty-en">openresty-en</a> mailing list is for English speakers.</p>
+<p><a href="#table-of-contents">Back to TOC</a></p>
+<h2 id="chinese-mailing-list">Chinese Mailing List</h2>
+<p>The <a href="https://groups.google.com/group/openresty">openresty</a> mailing list is for Chinese speakers.</p>
+<p><a href="#table-of-contents">Back to TOC</a></p>
+<h1 id="bugs-and-patches">Bugs and Patches</h1>
+<p>Please report bugs or submit patches by</p>
+<ol type="1">
+<li>creating a ticket on the <a href="https://github.com/openresty/lua-resty-core/issues">GitHub Issue Tracker</a>,</li>
+<li>or posting to the <a href="#community">OpenResty community</a>.</li>
+</ol>
+<p><a href="#table-of-contents">Back to TOC</a></p>
+<h1 id="author">Author</h1>
+<p>Weixie Cui, Kugou Inc.</p>
+<p><a href="#table-of-contents">Back to TOC</a></p>
+<h1 id="copyright-and-license">Copyright and License</h1>
+<p>This module is licensed under the BSD license.</p>
+<p>Copyright (C) 2015-2017, by Yichun “agentzh” Zhang, OpenResty Inc.</p>
+<p>All rights reserved.</p>
+<p>Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:</p>
+<ul>
+<li><p>Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.</p></li>
+<li><p>Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.</p></li>
+</ul>
+<p>THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS “AS IS” AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.</p>
+<p><a href="#table-of-contents">Back to TOC</a></p>
+<h1 id="see-also">See Also</h1>
+<ul>
+<li>the <a href="https://github.com/openresty/lua-resty-core">lua-resty-core</a> library.</li>
+<li>the ngx_lua module: https://github.com/openresty/lua-nginx-module</li>
+<li>OpenResty: https://openresty.org</li>
+</ul>
+<p><a href="#table-of-contents">Back to TOC</a></p>

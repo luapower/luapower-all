@@ -14,5 +14,4 @@ check() {
 	)
 }
 
-check linux32
-[ "$(uname -m)" = "x86_64" ] && check linux64
+check linux64

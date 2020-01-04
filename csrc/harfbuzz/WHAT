@@ -2,11 +2,6 @@ harfbuzz 1.8.2 from http://www.freedesktop.org/software/harfbuzz/release/ (MIT L
 requires: ucdn, freetype
 
 
-NOTE: mingw32 has a MemoryBarrier() definition that harfbuzz can't work with,
-so I changed harfbuzz (hb-atomic-private.hh line 50) to use its own definition
-in that case. Mingw-w64 works fine.
-
-
 NOTE: After upgrading harfbuzz, building it requires removing the included
 .hh files and recreating them with Ragel.
 

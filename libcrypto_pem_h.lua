@@ -1,3 +1,5 @@
+local ffi = require'ffi'
+--[[
 // csrc/openssl/src/include/openssl/pem.h
 enum {
 	PEM_BUFSIZE          = 1024,
@@ -254,4 +256,4 @@ enum {
 	PEM_R_UNSUPPORTED_ENCRYPTION = 114,
 	PEM_R_UNSUPPORTED_KEY_COMPONENTS = 126,
 };
-
+]]

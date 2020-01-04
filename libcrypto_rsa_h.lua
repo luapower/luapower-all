@@ -1,4 +1,5 @@
-
+local ffi = require'ffi'
+--[[
 // csrc/openssl/src/include/openssl/rsa.h
 enum {
 	OPENSSL_RSA_MAX_MODULUS_BITS = 16384,
@@ -452,3 +453,4 @@ enum {
 	RSA_R_VALUE_MISSING  = 147,
 	RSA_R_WRONG_SIGNATURE_LENGTH = 119,
 };
+]]

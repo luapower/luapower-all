@@ -8,9 +8,11 @@ local lp = require'luapower'
 local fs = require'fs'
 local tuple = require'tuple'
 
+lp.persistent_cache = config('luapower_persistent_cache', false)
+
 --in our current setup, the dependency db must be updated manually.
-lp.auto_update_db = false
-lp.allow_update_db_locally = false
+lp.auto_update_db          = config('luapower_allow_update_db_locally', false)
+lp.allow_update_db_locally = config('luapower_allow_update_db_locally', false)
 
 local pandoc_cmd = 'bin/'..lp.current_platform()..'/pandoc'
 if ffi.abi'win' then pandoc_cmd = pandoc_cmd:gsub('/', '\\') end
@@ -68,11 +70,11 @@ local function timeago(time)
 end
 
 local function format_time(time)
-	return os.date('%b %e \'%y %H:%M', time)
+	return time and os.date('%b %m \'%y %H:%M', time) or ''
 end
 
 local function format_date(time)
-	return os.date('%b %e \'%y', time)
+	return time and os.date('%b %m \'%y', time) or ''
 end
 
 --widgets --------------------------------------------------------------------
@@ -244,34 +246,23 @@ local function source_url(pkg, path, mod)
 	end
 end
 
-local os_list = {'mingw', 'linux', 'osx'}
-local platform_list = {
-	'mingw32', 'mingw64',
-	'linux32', 'linux64',
-	'osx32'  , 'osx64'  ,
-}
-local os_platforms = {
-	mingw = {'mingw32', 'mingw64'},
-	linux = {'linux32', 'linux64'},
-	osx   = {'osx32'  , 'osx64'  },
-}
+local os_list          = lp.supported_os_list
+local os_platform_list = lp.supported_os_platform_list
+local platform_list    = lp.supported_platform_list
 
 --create a custom-ordered list of possible platforms.
 local ext_platform_list = {'all', 'common'}
 for _,os in ipairs(os_list) do
 	table.insert(ext_platform_list, os)
-	glue.extend(ext_platform_list, os_platforms[os])
+	glue.extend(ext_platform_list, os_platform_list[os])
 end
 
 local platform_icon_titles = {
 	mingw   = 'Windows',
-	mingw32 = '32bit Windows',
 	mingw64 = '64bit Windows',
 	linux   = 'Linux',
-	linux32 = '32bit Linux',
 	linux64 = '64bit Linux',
 	osx     = 'OS X',
-	osx32   = '32bit OS X',
 	osx64   = '64bit OS X',
 }
 
@@ -381,7 +372,7 @@ local function platform_maps(maps, all_key, aot)
 	--combine platforms per OS
 	for _,os in ipairs(os_list) do
 		local t = {}
-		for _,platform in ipairs(os_platforms[os]) do
+		for _,platform in ipairs(os_platform_list[os]) do
 			t[platform] = maps[platform]
 			maps[platform] = nil
 		end
@@ -398,8 +389,17 @@ local function package_icons(ptype, platforms, small)
 
 	local t = {}
 
-	--add Lua/LuaJIT icon
-	if has_ffi then
+	if ptype == 'Terra' then
+		table.insert(t, {
+			name = 'terra',
+			title = 'written in Terra',
+		})
+	elseif ptype == 'Resty' then
+		table.insert(t, {
+			name = 'resty',
+			title = 'written in Lua for OpenResty',
+		})
+	elseif has_ffi then
 		table.insert(t, {
 			name = 'luajit',
 			title = 'written in Lua with ffi extension',
@@ -506,10 +506,13 @@ local function package_dep_maps(pkg, platforms)
 			nil, pkg, platform)
 		local pall = packages_of_all(lp.module_requires_loadtime_all,
 			nil, pkg, platform)
+		local penv = packages_of_all(lp.module_environment,
+			nil, pkg, platform)
 		glue.update(pext, lp.bin_deps(pkg, platform))
 		glue.update(pall, lp.bin_deps_all(pkg, platform))
+		glue.update(pall, penv)
 		for p in pairs(pall) do
-			pt[p] = {kind = pext[p] and 'external' or 'indirect'}
+			pt[p] = {kind = pext[p] and 'external' or penv[p] and 'environment' or 'indirect'}
 		end
 	end
 	return pts
@@ -565,13 +568,16 @@ local function module_package_dep_maps(pkg, mod, platforms)
 			lp.module_requires_loadtime_ext, mod, pkg, platform)
 		local pall = packages_of(
 			lp.module_requires_loadtime_all, mod, pkg, platform)
+		local penv = packages_of(
+			lp.module_environment, mod, pkg, platform)
 		glue.update(pext, filter(lp.bin_deps(pkg, platform),
 			lp.module_platforms(mod, pkg)))
 		glue.update(pall, filter(lp.bin_deps_all(pkg, platform),
 			lp.module_platforms(mod, pkg)))
+		glue.update(pall, penv)
 		local pt = {}
 		for p in pairs(pall) do
-			pt[p] = {kind = pext[p] and 'direct' or 'indirect'}
+			pt[p] = {kind = pext[p] and 'direct' or penv[p] and 'environment' or 'indirect'}
 		end
 		pts[platform] = pt
 	end
@@ -598,13 +604,15 @@ local function module_module_dep_maps(pkg, mod, platforms)
 	for platform in pairs(platforms) do
 		local mext = lp.module_requires_loadtime_ext(mod, pkg, platform)
 		local mall = lp.module_requires_loadtime_all(mod, pkg, platform)
+		local menv = lp.module_environment(mod, pkg, platform)
+		glue.update(mall, menv)
 		local mt = {}
 		for m in pairs(mall) do
 			local pkg = lp.module_package(m)
 			local path = lp.modules(pkg)[m]
 			mt[m] = {
 				kind = mext[m] and 'external'
-					or mint[m] and 'internal' or 'indirect',
+					or mint[m] and 'internal' or menv[m] and 'environment' or 'indirect',
 				dep_package = pkg,
 				dep_source_url = source_url(pkg, path, m),
 			}
@@ -795,9 +803,7 @@ local function package_info(pkg, doc)
 		end
 	end
 	if not next(t.platforms) then
-		local runtime =
-			package_type == 'Lua+ffi' and 'LuaJIT'
-			or package_type == 'Lua' and 'Lua'
+		local runtime = package_type == 'Lua+ffi' and 'LuaJIT' or package_type
 		table.insert(t.platforms,
 			{name = runtime and 'all '..runtime..' platforms'})
 	end
@@ -1172,7 +1178,7 @@ local function action_home()
 		table.insert(data.cats, {cat = cat.name, packages = t})
 	end
 
-	local file = wwwpath'files/luapower-all.zip'
+	local file = config'www_dir'..'/../../files/luapower-all.zip'
 	local size = fs.attr(file, 'size')
 	local size = size and string.format('%d MB', size / 1024 / 1024) or '&nbsp;'
 	data.all_download_size = size
@@ -1264,7 +1270,7 @@ local function pass(format, ...)
 		return t[tonumber(n)]:gsub('^csrc/', ''):gsub('/', '.')
 	end)
 end
-local path_description = lp.memoize(function(path, package)
+local path_description = lp.memoize('path_description', function(path, package)
 	for i=1,#path_match,2 do
 		local patt, format = path_match[i], path_match[i+1]
 		patt = patt:gsub('MGIT_DIR', lp.mgitpath())
@@ -1303,7 +1309,7 @@ local function ls_dir(p0, each)
 	rec()
 end
 
-local tree_json = lp.memoize(function()
+local tree_json = lp.memoize('tree_json', function()
 	local root = {
 		file = 'luapower',
 		descr = 'The luapower tree',
@@ -1590,13 +1596,11 @@ end
 
 function action.github(...)
 	if not method'post' then return end
-	local repo = post'repository' and json(post'repository').name
+	local repo = post'repository' and post'repository'.name
 	if not repo then return end
-	if repo == 'website' then
-		os.execute'git pull'
-	elseif lp.installed_packages()[repo] then
-		os.execute(lp.git(repo, 'pull')) --TODO: this is blocking the server!!!
-		os.execute(lp.git(repo, 'pull --tags')) --TODO: this is blocking the server!!!
+	if lp.installed_packages()[repo] then
+		lp.git(repo, 'pull') --TODO: this is blocking the server!!!
+		lp.git(repo, 'pull --tags') --TODO: this is blocking the server!!!
 		lp.clear_cache(repo)
 	end
 end
@@ -1632,9 +1636,9 @@ local function action_rockspec(pkg)
 	end
 	local plat = {}
 	local plats = {
-		mingw32 = 'windows', mingw64 = 'windows',
-		linux32 = 'linux', linux64 = 'linux',
-		osx32 = 'macosx', osx64 = 'macosx',
+		mingw64 = 'windows',
+		linux64 = 'linux',
+		osx64 = 'macosx',
 	}
 	for pl in pairs(lp.platforms(pkg)) do
 		plat[plats[pl]] = true

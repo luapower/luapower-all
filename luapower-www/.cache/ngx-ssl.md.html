@@ -1,0 +1,346 @@
+<h1 id="name">Name</h1>
+<p>ngx.ssl - Lua API for controlling NGINX downstream SSL handshakes</p>
+<h1 id="table-of-contents">Table of Contents</h1>
+<ul>
+<li><a href="#name">Name</a></li>
+<li><a href="#status">Status</a></li>
+<li><a href="#synopsis">Synopsis</a></li>
+<li><a href="#description">Description</a></li>
+<li><a href="#methods">Methods</a>
+<ul>
+<li><a href="#clear_certs">clear_certs</a></li>
+<li><a href="#cert_pem_to_der">cert_pem_to_der</a></li>
+<li><a href="#set_der_cert">set_der_cert</a></li>
+<li><a href="#priv_key_pem_to_der">priv_key_pem_to_der</a></li>
+<li><a href="#set_der_priv_key">set_der_priv_key</a></li>
+<li><a href="#server_name">server_name</a></li>
+<li><a href="#raw_server_addr">raw_server_addr</a></li>
+<li><a href="#raw_client_addr">raw_client_addr</a></li>
+<li><a href="#get_tls1_version">get_tls1_version</a></li>
+<li><a href="#get_tls1_version_str">get_tls1_version_str</a></li>
+<li><a href="#parse_pem_cert">parse_pem_cert</a></li>
+<li><a href="#parse_pem_priv_key">parse_pem_priv_key</a></li>
+<li><a href="#set_cert">set_cert</a></li>
+<li><a href="#set_priv_key">set_priv_key</a></li>
+</ul></li>
+<li><a href="#community">Community</a>
+<ul>
+<li><a href="#english-mailing-list">English Mailing List</a></li>
+<li><a href="#chinese-mailing-list">Chinese Mailing List</a></li>
+</ul></li>
+<li><a href="#bugs-and-patches">Bugs and Patches</a></li>
+<li><a href="#author">Author</a></li>
+<li><a href="#copyright-and-license">Copyright and License</a></li>
+<li><a href="#see-also">See Also</a></li>
+</ul>
+<h1 id="status">Status</h1>
+<p>This Lua module is production ready.</p>
+<h1 id="synopsis">Synopsis</h1>
+<pre class="nginx"><code># Note: you do not need the following line if you are using
+# OpenResty 1.9.7.2+.
+lua_package_path &quot;/path/to/lua-resty-core/lib/?.lua;;&quot;;
+
+server {
+    listen 443 ssl;
+    server_name   test.com;
+
+    # useless placeholders: just to shut up NGINX configuration
+    # loader errors:
+    ssl_certificate /path/to/fallback.crt;
+    ssl_certificate_key /path/to/fallback.key;
+
+    ssl_certificate_by_lua_block {
+        local ssl = require &quot;ngx.ssl&quot;
+
+        -- clear the fallback certificates and private keys
+        -- set by the ssl_certificate and ssl_certificate_key
+        -- directives above:
+        local ok, err = ssl.clear_certs()
+        if not ok then
+            ngx.log(ngx.ERR, &quot;failed to clear existing (fallback) certificates&quot;)
+            return ngx.exit(ngx.ERROR)
+        end
+
+        -- assuming the user already defines the my_load_certificate_chain()
+        -- herself.
+        local pem_cert_chain = assert(my_load_certificate_chain())
+
+        local der_cert_chain, err = ssl.cert_pem_to_der(pem_cert_chain)
+        if not der_cert_chain then
+            ngx.log(ngx.ERR, &quot;failed to convert certificate chain &quot;,
+                    &quot;from PEM to DER: &quot;, err)
+            return ngx.exit(ngx.ERROR)
+        end
+
+        local ok, err = ssl.set_der_cert(der_cert_chain)
+        if not ok then
+            ngx.log(ngx.ERR, &quot;failed to set DER cert: &quot;, err)
+            return ngx.exit(ngx.ERROR)
+        end
+
+        -- assuming the user already defines the my_load_private_key()
+        -- function herself.
+        local pem_pkey = assert(my_load_private_key())
+
+        local der_pkey, err = ssl.priv_key_pem_to_der(pem_pkey)
+        if not der_pkey then
+            ngx.log(ngx.ERR, &quot;failed to convert private key &quot;,
+                    &quot;from PEM to DER: &quot;, err)
+            return ngx.exit(ngx.ERROR)
+        end
+
+        local ok, err = ssl.set_der_priv_key(der_pkey)
+        if not ok then
+            ngx.log(ngx.ERR, &quot;failed to set DER private key: &quot;, err)
+            return ngx.exit(ngx.ERROR)
+        end
+    }
+
+    location / {
+        root html;
+    }
+}</code></pre>
+<h1 id="description">Description</h1>
+<p>This Lua module provides API functions to control the SSL handshake process in contexts like <a href="https://github.com/openresty/lua-nginx-module/#ssl_certificate_by_lua_block">ssl_certificate_by_lua*</a> (of the <a href="https://github.com/openresty/lua-nginx-module#readme">ngx_lua</a> module).</p>
+<p>For web servers serving many (like millions of) https sites, it is often desired to lazily load and cache the SSL certificate chain and private key data for the https sites actually being served by a particular server. This Lua module provides API to support such use cases in the context of the <a href="https://github.com/openresty/lua-nginx-module/#ssl_certificate_by_lua_block">ssl_certificate_by_lua*</a> directive.</p>
+<p>To load the <code>ngx.ssl</code> module in Lua, just write</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb2-1"><a href="#cb2-1"></a><span class="kw">local</span> ssl <span class="op">=</span> <span class="fu">require</span> <span class="st">&quot;ngx.ssl&quot;</span></span></code></pre></div>
+<p><a href="#table-of-contents">Back to TOC</a></p>
+<h1 id="methods">Methods</h1>
+<h2 id="clear_certs">clear_certs</h2>
+<p><strong>syntax:</strong> <em>ok, err = ssl.clear_certs()</em></p>
+<p><strong>context:</strong> <em>ssl_certificate_by_lua*</em></p>
+<p>Clears any existing SSL certificates and/or private keys set on the current SSL connection.</p>
+<p>Returns <code>true</code> on success, or a <code>nil</code> value and a string describing the error otherwise.</p>
+<p><a href="#table-of-contents">Back to TOC</a></p>
+<h2 id="cert_pem_to_der">cert_pem_to_der</h2>
+<p><strong>syntax:</strong> <em>der_cert_chain, err = ssl.cert_pem_to_der(pem_cert_chain)</em></p>
+<p><strong>context:</strong> <em>any</em></p>
+<p>Converts the PEM-formatted SSL certificate chain data into the DER format (for later uses in the <a href="#set_der_cert">set_der_cert</a> function, for example).</p>
+<p>In case of failures, returns <code>nil</code> and a string describing the error.</p>
+<p>It is known that the <code>openssl</code> command-line utility may not convert the whole SSL certificate chain from PEM to DER correctly. So always use this Lua function to do the conversion. You can always use libraries like <a href="https://github.com/openresty/lua-resty-lrucache#readme">lua-resty-lrucache</a> and/or ngx_lua APIs like <a href="https://github.com/openresty/lua-nginx-module#lua_shared_dict">lua_shared_dict</a> to do the caching of the DER-formatted results, for example.</p>
+<p>This function can be called in whatever contexts.</p>
+<p><a href="#table-of-contents">Back to TOC</a></p>
+<h2 id="set_der_cert">set_der_cert</h2>
+<p><strong>syntax:</strong> <em>ok, err = ssl.set_der_cert(der_cert_chain)</em></p>
+<p><strong>context:</strong> <em>ssl_certificate_by_lua*</em></p>
+<p>Sets the DER-formatted SSL certificate chain data for the current SSL connection. Note that the DER data is directly in the Lua string argument. <em>No</em> external file names are supported here.</p>
+<p>Returns <code>true</code> on success, or a <code>nil</code> value and a string describing the error otherwise.</p>
+<p>Note that, the SSL certificate chain is usually encoded in the PEM format. So you need to use the <a href="#cert_pem_to_der">cert_pem_to_der</a> function to do the conversion first.</p>
+<p><a href="#table-of-contents">Back to TOC</a></p>
+<h2 id="priv_key_pem_to_der">priv_key_pem_to_der</h2>
+<p><strong>syntax:</strong> <em>der_priv_key, err = ssl.priv_key_pem_to_der(pem_priv_key)</em></p>
+<p><strong>context:</strong> <em>any</em></p>
+<p>Converts the PEM-formatted SSL private key data into the DER format (for later uses in the <a href="#set_der_priv_key">set_der_priv_key</a> function, for example).</p>
+<p>In case of failures, returns <code>nil</code> and a string describing the error.</p>
+<p>Alternatively, you can do the PEM to DER conversion <em>offline</em> with the <code>openssl</code> command-line utility, like below</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1"></a><span class="ex">openssl</span> rsa -in key.pem -outform DER -out key.der</span></code></pre></div>
+<p>This function can be called in whatever contexts.</p>
+<p><a href="#table-of-contents">Back to TOC</a></p>
+<h2 id="set_der_priv_key">set_der_priv_key</h2>
+<p><strong>syntax:</strong> <em>ok, err = ssl.set_der_priv_key(der_priv_key)</em></p>
+<p><strong>context:</strong> <em>ssl_certificate_by_lua*</em></p>
+<p>Sets the DER-formatted prviate key for the current SSL connection.</p>
+<p>Returns <code>true</code> on success, or a <code>nil</code> value and a string describing the error otherwise.</p>
+<p>Usually, the private keys are encoded in the PEM format. You can either use the <a href="#priv_key_pem_to_der">priv_key_pem_to_der</a> function to do the PEM to DER conversion or just use the <code>openssl</code> command-line utility offline, like below</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb4-1"><a href="#cb4-1"></a><span class="ex">openssl</span> rsa -in key.pem -outform DER -out key.der</span></code></pre></div>
+<p><a href="#table-of-contents">Back to TOC</a></p>
+<h2 id="server_name">server_name</h2>
+<p><strong>syntax:</strong> <em>name, err = ssl.server_name()</em></p>
+<p><strong>context:</strong> <em>any</em></p>
+<p>Returns the TLS SNI (Server Name Indication) name set by the client. Returns <code>nil</code> when the client does not set it.</p>
+<p>In case of failures, it returns <code>nil</code> <em>and</em> a string describing the error.</p>
+<p>Usually we use this SNI name as the domain name (like <code>www.openresty.org</code>) to identify the current web site while loading the corresponding SSL certificate chain and private key for the site.</p>
+<p>Please note that not all https clients set the SNI name, so when the SNI name is missing from the client handshake request, we use the server IP address accessed by the client to identify the site. See the <a href="#raw_server_addr">raw_server_addr</a> method for more details.</p>
+<p>This function can be called in whatever contexts where downstream https is used.</p>
+<p><a href="#table-of-contents">Back to TOC</a></p>
+<h2 id="raw_server_addr">raw_server_addr</h2>
+<p><strong>syntax:</strong> <em>addr_data, addr_type, err = ssl.raw_server_addr()</em></p>
+<p><strong>context:</strong> <em>any</em></p>
+<p>Returns the raw server address actually accessed by the client in the current SSL connection.</p>
+<p>The first two return values are strings representing the address data and the address type, respectively. The address values are interpreted differently according to the address type values:</p>
+<ul>
+<li><dl>
+<dt><code>unix</code></dt>
+<dd>The address data is a file path for the UNIX domain socket.
+</dd>
+</dl></li>
+<li><dl>
+<dt><code>inet</code></dt>
+<dd>The address data is a binary IPv4 address of 4 bytes long.
+</dd>
+</dl></li>
+<li><dl>
+<dt><code>inet6</code></dt>
+<dd>The address data is a binary IPv6 address of 16 bytes long.
+</dd>
+</dl></li>
+</ul>
+<p>Returns two <code>nil</code> values and a Lua string describing the error.</p>
+<p>The following code snippet shows how to print out the UNIX domain socket address and the IPv4 address as human-readable strings:</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb5-1"><a href="#cb5-1"></a><span class="kw">local</span> ssl <span class="op">=</span> <span class="fu">require</span> <span class="st">&quot;ngx.ssl&quot;</span></span>
+<span id="cb5-2"><a href="#cb5-2"></a><span class="kw">local</span> <span class="fu">byte</span> <span class="op">=</span> <span class="fu">string.byte</span></span>
+<span id="cb5-3"><a href="#cb5-3"></a></span>
+<span id="cb5-4"><a href="#cb5-4"></a><span class="kw">local</span> addr<span class="op">,</span> addrtyp<span class="op">,</span> err <span class="op">=</span> ssl<span class="op">.</span>raw_server_addr<span class="op">()</span></span>
+<span id="cb5-5"><a href="#cb5-5"></a><span class="cf">if</span> <span class="kw">not</span> addr <span class="cf">then</span></span>
+<span id="cb5-6"><a href="#cb5-6"></a>    ngx<span class="op">.</span>log<span class="op">(</span>ngx<span class="op">.</span><span class="cn">ERR</span><span class="op">,</span> <span class="st">&quot;failed to fetch raw server addr: &quot;</span><span class="op">,</span> err<span class="op">)</span></span>
+<span id="cb5-7"><a href="#cb5-7"></a>    <span class="cf">return</span></span>
+<span id="cb5-8"><a href="#cb5-8"></a><span class="cf">end</span></span>
+<span id="cb5-9"><a href="#cb5-9"></a></span>
+<span id="cb5-10"><a href="#cb5-10"></a><span class="cf">if</span> addrtyp <span class="op">==</span> <span class="st">&quot;inet&quot;</span> <span class="cf">then</span>  <span class="co">-- IPv4</span></span>
+<span id="cb5-11"><a href="#cb5-11"></a>    ip <span class="op">=</span> <span class="fu">string.format</span><span class="op">(</span><span class="st">&quot;%d.%d.%d.%d&quot;</span><span class="op">,</span> <span class="fu">byte</span><span class="op">(</span>addr<span class="op">,</span> <span class="dv">1</span><span class="op">),</span> <span class="fu">byte</span><span class="op">(</span>addr<span class="op">,</span> <span class="dv">2</span><span class="op">),</span></span>
+<span id="cb5-12"><a href="#cb5-12"></a>                       <span class="fu">byte</span><span class="op">(</span>addr<span class="op">,</span> <span class="dv">3</span><span class="op">),</span> <span class="fu">byte</span><span class="op">(</span>addr<span class="op">,</span> <span class="dv">4</span><span class="op">))</span></span>
+<span id="cb5-13"><a href="#cb5-13"></a>    <span class="fu">print</span><span class="op">(</span><span class="st">&quot;Using IPv4 address: &quot;</span><span class="op">,</span> ip<span class="op">)</span></span>
+<span id="cb5-14"><a href="#cb5-14"></a></span>
+<span id="cb5-15"><a href="#cb5-15"></a><span class="cf">elseif</span> addrtyp <span class="op">==</span> <span class="st">&quot;unix&quot;</span> <span class="cf">then</span>  <span class="co">-- UNIX</span></span>
+<span id="cb5-16"><a href="#cb5-16"></a>    <span class="fu">print</span><span class="op">(</span><span class="st">&quot;Using unix socket file &quot;</span><span class="op">,</span> addr<span class="op">)</span></span>
+<span id="cb5-17"><a href="#cb5-17"></a></span>
+<span id="cb5-18"><a href="#cb5-18"></a><span class="cf">else</span>  <span class="co">-- IPv6</span></span>
+<span id="cb5-19"><a href="#cb5-19"></a>    <span class="co">-- leave as an exercise for the readers</span></span>
+<span id="cb5-20"><a href="#cb5-20"></a><span class="cf">end</span></span></code></pre></div>
+<p>This function can be called in whatever contexts where downstream https is used.</p>
+<p><a href="#table-of-contents">Back to TOC</a></p>
+<h2 id="raw_client_addr">raw_client_addr</h2>
+<p><strong>syntax:</strong> <em>addr_data, addr_type, err = ssl.raw_client_addr()</em></p>
+<p><strong>context:</strong> <em>any</em></p>
+<p>Returns the raw client address of the current SSL connection.</p>
+<p>The first two return values are strings representing the address data and the address type, respectively. The address values are interpreted differently according to the address type values:</p>
+<ul>
+<li><dl>
+<dt><code>unix</code></dt>
+<dd>The address data is a file path for the UNIX domain socket.
+</dd>
+</dl></li>
+<li><dl>
+<dt><code>inet</code></dt>
+<dd>The address data is a binary IPv4 address of 4 bytes long.
+</dd>
+</dl></li>
+<li><dl>
+<dt><code>inet6</code></dt>
+<dd>The address data is a binary IPv6 address of 16 bytes long.
+</dd>
+</dl></li>
+</ul>
+<p>Returns two <code>nil</code> values and a Lua string describing the error.</p>
+<p>The following code snippet shows how to print out the UNIX domain socket address and the IPv4 address as human-readable strings:</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb6-1"><a href="#cb6-1"></a><span class="kw">local</span> ssl <span class="op">=</span> <span class="fu">require</span> <span class="st">&quot;ngx.ssl&quot;</span></span>
+<span id="cb6-2"><a href="#cb6-2"></a><span class="kw">local</span> <span class="fu">byte</span> <span class="op">=</span> <span class="fu">string.byte</span></span>
+<span id="cb6-3"><a href="#cb6-3"></a></span>
+<span id="cb6-4"><a href="#cb6-4"></a><span class="kw">local</span> addr<span class="op">,</span> addrtyp<span class="op">,</span> err <span class="op">=</span> ssl<span class="op">.</span>raw_client_addr<span class="op">()</span></span>
+<span id="cb6-5"><a href="#cb6-5"></a><span class="cf">if</span> <span class="kw">not</span> addr <span class="cf">then</span></span>
+<span id="cb6-6"><a href="#cb6-6"></a>    ngx<span class="op">.</span>log<span class="op">(</span>ngx<span class="op">.</span><span class="cn">ERR</span><span class="op">,</span> <span class="st">&quot;failed to fetch raw client addr: &quot;</span><span class="op">,</span> err<span class="op">)</span></span>
+<span id="cb6-7"><a href="#cb6-7"></a>    <span class="cf">return</span></span>
+<span id="cb6-8"><a href="#cb6-8"></a><span class="cf">end</span></span>
+<span id="cb6-9"><a href="#cb6-9"></a></span>
+<span id="cb6-10"><a href="#cb6-10"></a><span class="cf">if</span> addrtyp <span class="op">==</span> <span class="st">&quot;inet&quot;</span> <span class="cf">then</span>  <span class="co">-- IPv4</span></span>
+<span id="cb6-11"><a href="#cb6-11"></a>    ip <span class="op">=</span> <span class="fu">string.format</span><span class="op">(</span><span class="st">&quot;%d.%d.%d.%d&quot;</span><span class="op">,</span> <span class="fu">byte</span><span class="op">(</span>addr<span class="op">,</span> <span class="dv">1</span><span class="op">),</span> <span class="fu">byte</span><span class="op">(</span>addr<span class="op">,</span> <span class="dv">2</span><span class="op">),</span></span>
+<span id="cb6-12"><a href="#cb6-12"></a>                       <span class="fu">byte</span><span class="op">(</span>addr<span class="op">,</span> <span class="dv">3</span><span class="op">),</span> <span class="fu">byte</span><span class="op">(</span>addr<span class="op">,</span> <span class="dv">4</span><span class="op">))</span></span>
+<span id="cb6-13"><a href="#cb6-13"></a>    <span class="fu">print</span><span class="op">(</span><span class="st">&quot;Client IPv4 address: &quot;</span><span class="op">,</span> ip<span class="op">)</span></span>
+<span id="cb6-14"><a href="#cb6-14"></a></span>
+<span id="cb6-15"><a href="#cb6-15"></a><span class="cf">elseif</span> addrtyp <span class="op">==</span> <span class="st">&quot;unix&quot;</span> <span class="cf">then</span>  <span class="co">-- UNIX</span></span>
+<span id="cb6-16"><a href="#cb6-16"></a>    <span class="fu">print</span><span class="op">(</span><span class="st">&quot;Client unix socket file &quot;</span><span class="op">,</span> addr<span class="op">)</span></span>
+<span id="cb6-17"><a href="#cb6-17"></a></span>
+<span id="cb6-18"><a href="#cb6-18"></a><span class="cf">else</span>  <span class="co">-- IPv6</span></span>
+<span id="cb6-19"><a href="#cb6-19"></a>    <span class="co">-- leave as an exercise for the readers</span></span>
+<span id="cb6-20"><a href="#cb6-20"></a><span class="cf">end</span></span></code></pre></div>
+<p>This function can be called in whatever contexts where downstream https is used.</p>
+<p>This function was first introduced in lua-resty-core 0.1.14.</p>
+<p><a href="#table-of-contents">Back to TOC</a></p>
+<h2 id="get_tls1_version">get_tls1_version</h2>
+<p><strong>syntax:</strong> <em>ver, err = ssl.get_tls1_version()</em></p>
+<p><strong>context:</strong> <em>any</em></p>
+<p>Returns the TLS 1.x version number used by the current SSL connection. Returns <code>nil</code> and a string describing the error otherwise.</p>
+<p>Typical return values are</p>
+<ul>
+<li><code>0x0300</code>(SSLv3)</li>
+<li><code>0x0301</code>(TLSv1)</li>
+<li><code>0x0302</code>(TLSv1.1)</li>
+<li><code>0x0303</code>(TLSv1.2)</li>
+</ul>
+<p>This function can be called in whatever contexts where downstream https is used.</p>
+<p><a href="#table-of-contents">Back to TOC</a></p>
+<h2 id="get_tls1_version_str">get_tls1_version_str</h2>
+<p><strong>syntax:</strong> <em>ver, err = ssl.get_tls1_version_str()</em></p>
+<p><strong>context:</strong> <em>any</em></p>
+<p>Returns the TLS 1.x version string used by the current SSL connection. Returns <code>nil</code> and a string describing the error otherwise.</p>
+<p>Typical return values are</p>
+<ul>
+<li><code>SSLv3</code></li>
+<li><code>TLSv1</code></li>
+<li><code>TLSv1.1</code></li>
+<li><code>TLSv1.2</code></li>
+</ul>
+<p>This function can be called in whatever contexts where downstream https is used.</p>
+<p><a href="#table-of-contents">Back to TOC</a></p>
+<h2 id="parse_pem_cert">parse_pem_cert</h2>
+<p><strong>syntax:</strong> <em>cert_chain, err = ssl.parse_pem_cert(pem_cert_chain)</em></p>
+<p><strong>context:</strong> <em>any</em></p>
+<p>Converts the PEM-formated SSL certificate chain data into an opaque cdata pointer (for later uses in the <a href="#set_cert">set_cert</a> function, for example).</p>
+<p>In case of failures, returns <code>nil</code> and a string describing the error.</p>
+<p>You can always use libraries like <a href="https://github.com/openresty/lua-resty-lrucache#readme">lua-resty-lrucache</a> to cache the cdata result.</p>
+<p>This function can be called in whatever contexts.</p>
+<p>This function was first added in version <code>0.1.7</code>.</p>
+<p><a href="#table-of-contents">Back to TOC</a></p>
+<h2 id="parse_pem_priv_key">parse_pem_priv_key</h2>
+<p><strong>syntax:</strong> <em>priv_key, err = ssl.parse_pem_priv_key(pem_priv_key)</em></p>
+<p><strong>context:</strong> <em>any</em></p>
+<p>Converts the PEM-formatted SSL private key data into an opaque cdata pointer (for later uses in the <a href="#set_priv_key">set_priv_key</a> function, for example).</p>
+<p>In case of failures, returns <code>nil</code> and a string describing the error.</p>
+<p>This function can be called in whatever contexts.</p>
+<p>This function was first added in version <code>0.1.7</code>.</p>
+<p><a href="#table-of-contents">Back to TOC</a></p>
+<h2 id="set_cert">set_cert</h2>
+<p><strong>syntax:</strong> <em>ok, err = ssl.set_cert(cert_chain)</em></p>
+<p><strong>context:</strong> <em>ssl_certificate_by_lua*</em></p>
+<p>Sets the SSL certificate chain opaque pointer returned by the <a href="#parse_pem_cert">parse_pem_cert</a> function for the current SSL connection.</p>
+<p>Returns <code>true</code> on success, or a <code>nil</code> value and a string describing the error otherwise.</p>
+<p>Note that this <code>set_cert</code> function will run slightly faster, in terms of CPU cycles wasted, than the <a href="#set_der_cert">set_der_cert</a> variant, since the first function uses opaque cdata pointers which do not require any additional conversion needed to be performed by the SSL library during the SSL handshake.</p>
+<p>This function was first added in version <code>0.1.7</code>.</p>
+<p><a href="#table-of-contents">Back to TOC</a></p>
+<h2 id="set_priv_key">set_priv_key</h2>
+<p><strong>syntax:</strong> <em>ok, err = ssl.set_priv_key(priv_key)</em></p>
+<p><strong>context:</strong> <em>ssl_certificate_by_lua*</em></p>
+<p>Sets the SSL private key opaque pointer returned by the <a href="#parse_pem_priv_key">parse_pem_priv_key</a> function for the current SSL connection.</p>
+<p>Returns <code>true</code> on success, or a <code>nil</code> value and a string describing the error otherwise.</p>
+<p>Note that this <code>set_priv_key</code> function will run slightly faster, in terms of CPU cycles wasted, than the <a href="#set_der_priv_key">set_der_priv_key</a> variant, since the first function uses opaque cdata pointers which do not require any additional conversion needed to be performed by the SSL library during the SSL handshake.</p>
+<p>This function was first added in version <code>0.1.7</code>.</p>
+<p><a href="#table-of-contents">Back to TOC</a></p>
+<h1 id="community">Community</h1>
+<p><a href="#table-of-contents">Back to TOC</a></p>
+<h2 id="english-mailing-list">English Mailing List</h2>
+<p>The <a href="https://groups.google.com/group/openresty-en">openresty-en</a> mailing list is for English speakers.</p>
+<p><a href="#table-of-contents">Back to TOC</a></p>
+<h2 id="chinese-mailing-list">Chinese Mailing List</h2>
+<p>The <a href="https://groups.google.com/group/openresty">openresty</a> mailing list is for Chinese speakers.</p>
+<p><a href="#table-of-contents">Back to TOC</a></p>
+<h1 id="bugs-and-patches">Bugs and Patches</h1>
+<p>Please report bugs or submit patches by</p>
+<ol type="1">
+<li>creating a ticket on the <a href="https://github.com/openresty/lua-resty-core/issues">GitHub Issue Tracker</a>,</li>
+<li>or posting to the <a href="#community">OpenResty community</a>.</li>
+</ol>
+<p><a href="#table-of-contents">Back to TOC</a></p>
+<h1 id="author">Author</h1>
+<p>Yichun Zhang &lt;agentzh@gmail.com&gt; (agentzh), OpenResty Inc.</p>
+<p><a href="#table-of-contents">Back to TOC</a></p>
+<h1 id="copyright-and-license">Copyright and License</h1>
+<p>This module is licensed under the BSD license.</p>
+<p>Copyright (C) 2015-2017, by Yichun “agentzh” Zhang, OpenResty Inc.</p>
+<p>All rights reserved.</p>
+<p>Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:</p>
+<ul>
+<li><p>Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.</p></li>
+<li><p>Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.</p></li>
+</ul>
+<p>THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS “AS IS” AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.</p>
+<p><a href="#table-of-contents">Back to TOC</a></p>
+<h1 id="see-also">See Also</h1>
+<ul>
+<li>the ngx_lua module: https://github.com/openresty/lua-nginx-module</li>
+<li>the <a href="ocsp.md">ngx.ocsp</a> module.</li>
+<li>the <a href="https://github.com/openresty/lua-nginx-module/#ssl_certificate_by_lua_block">ssl_certificate_by_lua*</a> directive.</li>
+<li>the <a href="https://github.com/openresty/lua-resty-core">lua-resty-core</a> library.</li>
+<li>OpenResty: https://openresty.org</li>
+</ul>
+<p><a href="#table-of-contents">Back to TOC</a></p>

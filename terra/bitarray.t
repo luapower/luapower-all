@@ -10,8 +10,8 @@
 if not ... then require'terra.bitarray_test'; return end
 
 setfenv(1, require'terra.low'.module())
-require'terra.box2d'
-local rect = rect(num)
+local box2d = require'terra.box2d'
+local rect = box2d.rect(num)
 
 local function view_type(size_t)
 
@@ -313,3 +313,5 @@ bitarrview2d = macro(
 bitarr2d = macro(function()
 
 end)
+
+return _M

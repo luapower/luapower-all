@@ -13,10 +13,15 @@
 <ul>
 <li>the <code>terra</code> dynamic lib does not bundle luajit and is instead exposed as a normal Lua/C module that must be included with <code>require'terra'</code> from Lua.</li>
 <li>LuaJIT was modified to <code>require'terra'</code> if loading a <code>*.t</code> file, and to load the file via <code>_G.loadfile</code> instead of <code>lua_loadfile</code>.</li>
-<li><code>loadfile</code> was overloaded to interpret <code>*.t</code> files as Terra source code.</li>
-<li><code>terralib.lua</code> and <code>cudalib.lua</code> are not bundled into the binary, and are provided separately.</li>
+<li><code>terralib.lua</code> was changed to load <code>terralib_luapower.lua</code> at the end of the file, which changes the following:
+<ul>
+<li><code>loadfile</code> is overloaded to call <code>terra.loadfile</code> for <code>*.t</code> files.</li>
+<li><code>terralib.terrahome</code> is set to <code>package.exedir</code>.</li>
+<li><code>package.terrapath</code> is set to match <code>package.path</code>.</li>
+<li><code>terralib.linklibrary</code> is modified to also accept <code>foo</code> for <code>libfoo.so</code> and <code>libfoo.dylib</code> respectively, just like <code>ffi.load</code> does.</li>
+</ul></li>
+<li><code>terralib.lua</code>, <code>asdl.lua</code> and <code>terralist.lua</code> are not bundled into the binary and are provided separately.</li>
 <li><code>strict.lua</code> is not loaded and not included (it’s included with <a href="/luajit">luajit</a> and must be loaded manually as needed).</li>
-<li><code>std.t</code> and <code>parsing.t</code> were renamed <code>terra_std.t</code> and <code>terra_parsint.t</code>. respectively and are now in the luapower dir along with all Lua files.</li>
-<li>the system include paths are set for <a href="/mingw64-headers">mingw64-headers</a>.</li>
-<li>the location of clang’s resource dir is set for [clang-resource-dir].</li>
+<li><code>std.t</code> and <code>parsing.t</code> were renamed <code>terra/std.t</code> and <code>terra/parsing.t</code> respectively and are now in the luapower dir along with all Lua files.</li>
+<li>the system include paths for Windows are set for <a href="/mingw64-headers">mingw64-headers</a> so building binaries with Terra’s API works out-of-the-box providing the <a href="/building">luapower toolchain</a> is installed (needed for linking).</li>
 </ul>

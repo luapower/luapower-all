@@ -1,5 +1,5 @@
 
---lx ffi binding.
+--Lua lexer in C with extensible Lua parser.
 --Written by Cosmin Apreutesei. Public Domain.
 
 if not ... then require'lx_test'; return end

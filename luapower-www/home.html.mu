@@ -8,7 +8,10 @@
 		<td>
 			<h3>What is luapower?</h3>
 
-			Luapower is a binary+source module distribution for LuaJIT and a way of
+			Luapower is a binary+source module distribution for
+			<a href="http://luajit.org/luajit.html">LuaJIT</a>,
+			<a href="http://terralang.org">Terra</a> and
+			<a href="http://openresty.org">OpenResty</a> and a way of
 			deploying and sharing Lua modules. <a href="/faq">Learn more...</a>
 
 			<h3>How do I get started?</h3>
@@ -186,7 +189,7 @@ cd luapower
 				<span class=time time="{{mtime}}" reltime="{{mtime_ago}}"></span></td>
 			<td class=nowrap>
 				<span class=hidden>{{platform_string}}</span>
-				{{#icons}}<span class="icon icon-{{name}} {{disabled}} {{invisible}}"></span>{{/icons}}
+				{{#icons}}<span class="icon icon-{{name}} {{disabled}} {{invisible}}"></span>&nbsp;{{/icons}}
 			</td>
 			<td nowrap>{{license_short}}</td>
 		</tr>
@@ -209,17 +212,18 @@ cd luapower
 								{{#hot}} <i class="fa fa-star hot" title="updated in the last 7 days"></i>{{/hot}}
 							</h3>
 							{{tagline}}
+							<div style="font-size: 120%">
+							{{#icons}}
+								<span class="icon icon-{{name}} {{disabled}}"></span>
+							{{/icons}}
+							</div>
 						</td>
 					</tr>
 					<tr>
 						<td valign=bottom class="small gray">
 							Version: {{version}}<br>
 							Updated: <span class=time time="{{mtime}}" reltime="{{mtime_ago}}"></span><br>
-							Type: {{type}} &nbsp;
-							{{#icons}}
-								<span class="icon icon-{{name}} {{disabled}} {{invisible}}"></span>
-							{{/icons}}
-							<br>
+							Type: {{type}}<br>
 							License: {{license}}
 						</td>
 					</tr>

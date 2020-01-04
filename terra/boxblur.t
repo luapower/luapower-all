@@ -6,7 +6,7 @@ setfenv(1, require'terra.low'.module())
 
 local bitmap = require'terra.bitmap'
 
-includepath('../csrc/boxblur')
+includepath'boxblur'
 include'boxblur.h'
 linklibrary'boxblur'
 
@@ -204,11 +204,11 @@ function Blur:build()
 		--
 	})
 	lib(bitmap.new, 'bitmap')
-	lib(bitmap, '^FORMAT_', 'BLUR_')
+	lib(bitmap, 'FORMAT_', 'BLUR_FORMAT_')
 	lib(Blur, {
-		release='free',
+		release = 'free',
 		invalidate = {'invalidate', 'invalidate_rect'},
-		blur=1,
+		blur = 1,
 	}, {opaque = true})
 
 	local terra blur(format: enum)
@@ -220,6 +220,8 @@ function Blur:build()
 	lib:build{
 		linkto = {'boxblur'},
 	}
+	lib:gen_ffi_binding()
+
 end
 
 if not ... then

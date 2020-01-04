@@ -1,6 +1,7 @@
 
 setfenv(1, require'terra.low')
-require'terra.bitarray'
+local ba = require'terra.bitarray'
+local bitarrview2d = ba.bitarrview2d
 
 local terra draw(a: bitarrview2d())
 	for y=0,a.h do

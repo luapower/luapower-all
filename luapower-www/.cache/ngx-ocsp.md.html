@@ -1,0 +1,200 @@
+<h1 id="name">Name</h1>
+<p>ngx.ocsp - Lua API for implementing OCSP stapling in ssl_certificate_by_lua*</p>
+<h1 id="table-of-contents">Table of Contents</h1>
+<ul>
+<li><a href="#name">Name</a></li>
+<li><a href="#status">Status</a></li>
+<li><a href="#synopsis">Synopsis</a></li>
+<li><a href="#description">Description</a></li>
+<li><a href="#methods">Methods</a>
+<ul>
+<li><a href="#get_ocsp_responder_from_der_chain">get_ocsp_responder_from_der_chain</a></li>
+<li><a href="#create_ocsp_request">create_ocsp_request</a></li>
+<li><a href="#validate_ocsp_response">validate_ocsp_response</a></li>
+<li><a href="#set_ocsp_status_resp">set_ocsp_status_resp</a></li>
+</ul></li>
+<li><a href="#community">Community</a>
+<ul>
+<li><a href="#english-mailing-list">English Mailing List</a></li>
+<li><a href="#chinese-mailing-list">Chinese Mailing List</a></li>
+</ul></li>
+<li><a href="#bugs-and-patches">Bugs and Patches</a></li>
+<li><a href="#author">Author</a></li>
+<li><a href="#copyright-and-license">Copyright and License</a></li>
+<li><a href="#see-also">See Also</a></li>
+</ul>
+<h1 id="status">Status</h1>
+<p>This Lua module is currently considered experimental.</p>
+<h1 id="synopsis">Synopsis</h1>
+<pre class="nginx"><code># Note: you do not need the following line if you are using
+# OpenResty 1.9.7.2+.
+lua_package_path &quot;/path/to/lua-resty-core/lib/?.lua;;&quot;;
+
+server {
+    listen 443 ssl;
+    server_name   test.com;
+
+    # useless placeholders: just to shut up NGINX configuration
+    # loader errors:
+    ssl_certificate /path/to/fallback.crt;
+    ssl_certificate_key /path/to/fallback.key;
+
+    ssl_certificate_by_lua_block {
+        local ssl = require &quot;ngx.ssl&quot;
+        local ocsp = require &quot;ngx.ocsp&quot;
+        local http = require &quot;resty.http.simple&quot;
+
+        -- assuming the user already defines the my_load_certificate_chain()
+        -- herself.
+        local pem_cert_chain = assert(my_load_certificate_chain())
+
+        local der_cert_chain, err = ssl.cert_pem_to_der(pem_cert_chain)
+        if not der_cert_chain then
+            ngx.log(ngx.ERR, &quot;failed to convert certificate chain &quot;,
+                    &quot;from PEM to DER: &quot;, err)
+            return ngx.exit(ngx.ERROR)
+        end
+
+        local ocsp_url, err = ocsp.get_ocsp_responder_from_der_chain(der_cert_chain)
+        if not ocsp_url then
+            ngx.log(ngx.ERR, &quot;failed to get OCSP responder: &quot;, err)
+            return ngx.exit(ngx.ERROR)
+        end
+
+        print(&quot;ocsp_url: &quot;, ocsp_url)
+
+        -- use cosocket-based HTTP client libraries like lua-resty-http-simple
+        -- to send the request (url + ocsp_req as POST params or URL args) to
+        -- CA&#39;s OCSP server. assuming the server returns the OCSP response
+        -- in the Lua variable, resp.
+
+        local schema, host, port, ocsp_uri, err = parse_url(ocsp_url)
+
+        local ocsp_req, err = ocsp.create_ocsp_request(der_cert_chain)
+        if not ocsp_req then
+            ngx.log(ngx.ERR, &quot;failed to create OCSP request: &quot;, err)
+            return ngx.exit(ngx.ERROR)
+        end
+
+        local res, err = http.request(host, port, {
+            path = ocsp_uri,
+            headers = { Host = host,
+                        [&quot;Content-Type&quot;] = &quot;application/ocsp-request&quot; },
+            timeout = 10000,  -- 10 sec
+            method = &quot;POST&quot;,
+            body = ocsp_req,
+            maxsize = 102400,  -- 100KB
+        })
+
+        if not res then
+            ngx.log(ngx.ERR, &quot;OCSP responder query failed: &quot;, err)
+            return ngx.exit(ngx.ERROR)
+        end
+
+        local http_status = res.status
+
+        if http_status ~= 200 then
+            ngx.log(ngx.ERR, &quot;OCSP responder returns bad HTTP status code &quot;,
+                    http_status)
+            return ngx.exit(ngx.ERROR)
+        end
+
+        local ocsp_resp = res.body
+
+        if ocsp_resp and #ocsp_resp &gt; 0 then
+            local ok, err = ocsp.validate_ocsp_response(ocsp_resp, der_cert_chain)
+            if not ok then
+                ngx.log(ngx.ERR, &quot;failed to validate OCSP response: &quot;, err)
+                return ngx.exit(ngx.ERROR)
+            end
+
+            -- set the OCSP stapling
+            ok, err = ocsp.set_ocsp_status_resp(ocsp_resp)
+            if not ok then
+                ngx.log(ngx.ERR, &quot;failed to set ocsp status resp: &quot;, err)
+                return ngx.exit(ngx.ERROR)
+            end
+        end
+    }
+
+    location / {
+        root html;
+    }
+}
+</code></pre>
+<h1 id="description">Description</h1>
+<p>This Lua module provides API to perform OCSP queries, OCSP response validations, and OCSP stapling planting.</p>
+<p>Usually, this module is used together with the <a href="ssl.md">ngx.ssl</a> module in the context of <a href="https://github.com/openresty/lua-nginx-module/#ssl_certificate_by_lua_block">ssl_certificate_by_lua*</a> (of the <a href="https://github.com/openresty/lua-nginx-module#readme">ngx_lua</a> module).</p>
+<p>To load the <code>ngx.ocsp</code> module in Lua, just write</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb2-1"><a href="#cb2-1"></a><span class="kw">local</span> ocsp <span class="op">=</span> <span class="fu">require</span> <span class="st">&quot;ngx.ocsp&quot;</span></span></code></pre></div>
+<p><a href="#table-of-contents">Back to TOC</a></p>
+<h1 id="methods">Methods</h1>
+<h2 id="get_ocsp_responder_from_der_chain">get_ocsp_responder_from_der_chain</h2>
+<p><strong>syntax:</strong> <em>ocsp_url, err = ocsp.get_ocsp_responder_from_der_chain(der_cert_chain, max_len)</em></p>
+<p><strong>context:</strong> <em>any</em></p>
+<p>Extracts the OCSP responder URL (like <code>"http://test.com/ocsp/"</code>) from the SSL server certificate chain in the DER format.</p>
+<p>Usually the SSL server certificate chain is originally formatted in PEM. You can use the Lua API provided by the <a href="ssl.md">ngx.ssl</a> module to do the PEM to DER conversion.</p>
+<p>The optional <code>max_len</code> argument specifies the maximum length of OCSP URL allowed. This determines the buffer size; so do not specify an unnecessarily large value here. It defaults to the internal string buffer size used throughout this <code>lua-resty-core</code> library (usually default to 4KB).</p>
+<p>In case of failures, returns <code>nil</code> and a string describing the error.</p>
+<p><a href="#table-of-contents">Back to TOC</a></p>
+<h2 id="create_ocsp_request">create_ocsp_request</h2>
+<p><strong>syntax:</strong> <em>ocsp_req, err = ocsp.create_ocsp_request(der_cert_chain, max_len)</em></p>
+<p><strong>context:</strong> <em>any</em></p>
+<p>Builds an OCSP request from the SSL server certificate chain in the DER format, which can be used to send to the OCSP server for validation.</p>
+<p>The optional <code>max_len</code> argument specifies the maximum length of the OCSP request allowed. This value determines the size of the internal buffer allocated, so do not specify an unnecessarily large value here. It defaults to the internal string buffer size used throughout this <code>lua-resty-core</code> library (usually defaults to 4KB).</p>
+<p>In case of failures, returns <code>nil</code> and a string describing the error.</p>
+<p>The raw OCSP response data can be used as the request body directly if the POST method is used for the OCSP request. But for GET requests, you need to do base64 encoding and then URL encoding on the data yourself before appending it to the OCSP URL obtained by the <a href="#get_ocsp_responder_from_der_chain">get_ocsp_responder_from_der_chain</a> function.</p>
+<p><a href="#table-of-contents">Back to TOC</a></p>
+<h2 id="validate_ocsp_response">validate_ocsp_response</h2>
+<p><strong>syntax:</strong> <em>ok, err = ocsp.validate_ocsp_response(ocsp_resp, der_cert_chain, max_err_msg_len)</em></p>
+<p><strong>context:</strong> <em>any</em></p>
+<p>Validates the raw OCSP response data specified by the <code>ocsp_resp</code> argument using the SSL server certificate chain in DER format as specified in the <code>der_cert_chain</code> argument.</p>
+<p>Returns true when the validation is successful.</p>
+<p>In case of failures, returns <code>nil</code> and a string describing the failure. The maximum length of the error string is controlled by the optional <code>max_err_msg</code> argument (which defaults to the default internal string buffer size used throughout this <code>lua-resty-core</code> library, usually being 4KB).</p>
+<p><a href="#table-of-contents">Back to TOC</a></p>
+<h2 id="set_ocsp_status_resp">set_ocsp_status_resp</h2>
+<p><strong>syntax:</strong> <em>ok, err = ocsp.set_ocsp_status_resp(ocsp_resp)</em></p>
+<p><strong>context:</strong> <em>ssl_certificate_by_lua*</em></p>
+<p>Sets the OCSP response as the OCSP stapling for the current SSL connection.</p>
+<p>Returns <code>true</code> in case of successes. If the SSL client does not send a “status request” at all, then this method still returns <code>true</code> but also with a string as the warning <code>"no status req"</code>.</p>
+<p>In case of failures, returns <code>nil</code> and a string describing the error.</p>
+<p>The OCSP response is returned from CA’s OCSP server. See the <a href="#create_ocsp_request">create_ocsp_request</a> function for how to create an OCSP request and also <a href="#validate_ocsp_response">validate_ocsp_response</a> for how to validate the OCSP response.</p>
+<p><a href="#table-of-contents">Back to TOC</a></p>
+<h1 id="community">Community</h1>
+<p><a href="#table-of-contents">Back to TOC</a></p>
+<h2 id="english-mailing-list">English Mailing List</h2>
+<p>The <a href="https://groups.google.com/group/openresty-en">openresty-en</a> mailing list is for English speakers.</p>
+<p><a href="#table-of-contents">Back to TOC</a></p>
+<h2 id="chinese-mailing-list">Chinese Mailing List</h2>
+<p>The <a href="https://groups.google.com/group/openresty">openresty</a> mailing list is for Chinese speakers.</p>
+<p><a href="#table-of-contents">Back to TOC</a></p>
+<h1 id="bugs-and-patches">Bugs and Patches</h1>
+<p>Please report bugs or submit patches by</p>
+<ol type="1">
+<li>creating a ticket on the <a href="https://github.com/openresty/lua-resty-core/issues">GitHub Issue Tracker</a>,</li>
+<li>or posting to the <a href="#community">OpenResty community</a>.</li>
+</ol>
+<p><a href="#table-of-contents">Back to TOC</a></p>
+<h1 id="author">Author</h1>
+<p>Yichun Zhang &lt;agentzh@gmail.com&gt; (agentzh), OpenResty Inc.</p>
+<p><a href="#table-of-contents">Back to TOC</a></p>
+<h1 id="copyright-and-license">Copyright and License</h1>
+<p>This module is licensed under the BSD license.</p>
+<p>Copyright (C) 2015-2017, by Yichun “agentzh” Zhang, OpenResty Inc.</p>
+<p>All rights reserved.</p>
+<p>Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:</p>
+<ul>
+<li><p>Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.</p></li>
+<li><p>Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.</p></li>
+</ul>
+<p>THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS “AS IS” AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.</p>
+<p><a href="#table-of-contents">Back to TOC</a></p>
+<h1 id="see-also">See Also</h1>
+<ul>
+<li>the ngx_lua module: https://github.com/openresty/lua-nginx-module</li>
+<li>the <a href="ssl.md">ngx.ssl</a> module.</li>
+<li>the <a href="https://github.com/openresty/lua-nginx-module/#ssl_certificate_by_lua_block">ssl_certificate_by_lua*</a> directive.</li>
+<li>the <a href="https://github.com/openresty/lua-resty-core">lua-resty-core</a> library.</li>
+<li>OpenResty: https://openresty.org</li>
+</ul>
+<p><a href="#table-of-contents">Back to TOC</a></p>

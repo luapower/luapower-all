@@ -1,5 +1,5 @@
 
---rs232 serial communication library for LuaJIT.
+--RS232 serial communication library for LuaJIT.
 --Written by Cosmin Apreutesei. Public Domain.
 
 local ffi = require'ffi'

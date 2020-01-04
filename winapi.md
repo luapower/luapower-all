@@ -1,6 +1,6 @@
 ---
 tagline: win32 windows & controls
-platforms: mingw32, mingw64
+platforms: mingw64
 ---
 
 ## Scope

@@ -1,3 +1,5 @@
+local ffi = require'ffi'
+--[[
 // csrc/openssl/src/include/openssl/bn.h
 enum {
 	BN_ULONG             = unsigned long long,
@@ -357,4 +359,4 @@ enum {
 	BN_R_TOO_MANY_ITERATIONS = 113,
 	BN_R_TOO_MANY_TEMPORARY_VARIABLES = 109,
 };
-
+]]

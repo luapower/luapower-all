@@ -1,6 +1,6 @@
 -- Copyright (C) Yichun Zhang (agentzh)
 
-assert(ngx, 'runtime not nginx')
+assert(ngx, 'ngx not loaded')
 local bit = require "bit"
 local sub = string.sub
 local tcp = ngx.socket.tcp

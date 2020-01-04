@@ -1,3 +1,5 @@
+local ffi = require'ffi'
+--[[
 // csrc/openssl/src/include/openssl/err.h
 #define ERR_PUT_error(a,b,c,d,e) ERR_put_error(a,b,c,d,e)
 enum {
@@ -197,4 +199,4 @@ int ERR_get_next_error_library(void);
 int ERR_set_mark(void);
 int ERR_pop_to_mark(void);
 int ERR_clear_last_mark(void);
-
+]]

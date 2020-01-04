@@ -1,6 +1,5 @@
 ---
 tagline: networking library
-platforms: mingw32, mingw64
 ---
 
 ## `local socket = require'bnet'`

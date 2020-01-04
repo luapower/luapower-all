@@ -6,13 +6,12 @@ assert(terra, 'terra not loaded')
 local ffi = require'ffi'
 local List = require'asdl'.List
 
---TODO: expose '!' to Lua as package.exedir.
-terralib.terrahome = package.path
-	:gsub('^.[\\/].-;', '')
-	:match'(.-)[\\/]lua[\\/]%?%.lua'
+terralib.terrahome = require'package.exedir'
+
+terralib.low_includepath = terralib.terrahome..'/../../csrc'
 
 --$ mgit clone mingw64-headers
-local mingw64_headers_dir = '../../csrc/mingw64-headers'
+local mingw64_headers_dir = terralib.low_includepath..'/mingw64-headers'
 
 terra.systemincludes = List()
 if ffi.os == 'Windows' then
@@ -40,7 +39,26 @@ package.terrapath = package.path:gsub('%.lua', '%.t')
 
 --overload loadfile() to interpret *.t files as Terra code.
 local lua_loadfile = loadfile
-_G.loadfile = function(file)
+function loadfile(file)
 	local loadfile = file:find'%.t$' and terra.loadfile or lua_loadfile
 	return loadfile(file)
+end
+
+--make linklibrary work more portably like ffi.load() does.
+local linklibrary = terralib.linklibrary
+
+if ffi.os == 'Linux' then
+	function terralib.linklibrary(filename)
+		if not (filename:find'%.so$' or filename:find'/') then
+			filename = 'lib'..filename..'.so'
+		end
+		return linklibrary(filename)
+	end
+elseif ffi.os == 'OSX' then
+	function terralib.linklibrary(filename)
+		if not (filename:find'%.dylib$' or filename:find'/') then
+			filename = 'lib'..filename..'.dylib'
+		end
+		return linklibrary(filename)
+	end
 end

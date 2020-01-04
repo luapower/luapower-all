@@ -137,7 +137,7 @@ is given, an inherited environment is created.
 
 ]==]
 
-assert(ngx, 'runtime not nginx')
+assert(ngx, 'ngx not loaded')
 
 glue = require'glue'
 

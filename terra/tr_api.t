@@ -1426,9 +1426,9 @@ function build(optimize)
 		trlib(memreport)
 	end
 
-	trlib(tr, '^ALIGN_')
-	trlib(tr, '^DIR_')
-	trlib(tr, '^CURSOR_')
+	trlib(tr, 'ALIGN_')
+	trlib(tr, 'DIR_')
+	trlib(tr, 'CURSOR_')
 
 	trlib(tr_renderer_sizeof)
 	trlib(tr_layout_sizeof)

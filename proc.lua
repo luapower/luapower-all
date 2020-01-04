@@ -408,11 +408,9 @@ end
 
 function M.exec_luafile(...)
 	local function pass(script, args, ...)
-		local fs = require'fs'
-		local cmd, err, errcode = fs.exepath()
-		if not cmd then return nil, err, errcode end
+		local exepath = require'package.exepath'
 		local args = extend({script}, args)
-		return M.exec(cmd, args, ...)
+		return M.exec(exepath, args, ...)
 	end
 	return pass(exec_args('script', ...))
 end

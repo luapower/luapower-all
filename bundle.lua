@@ -3,14 +3,10 @@
 -- Written by Cosmin Apreutesei. Public Domain.
 
 local ffi = require'ffi'
+local exedir = require'package.exedir'
 local BBIN_PREFIX = 'Bbin_'
 
 local bundle = {}
-
---portable way to get exe's directory, based on arg[0].
---the resulted directory is relative to the current directory.
-local dir = arg[0]:gsub('[/\\]?[^/\\]+$', '') or '' --remove file name
-dir = dir == '' and '.' or dir
 
 --reading embedded blobs
 
@@ -101,7 +97,7 @@ end
 --reading the filesystem
 
 local function load_file(file)
-	file = dir..'/'..file
+	file = exedir..'/'..file
 	local f = io.open(file, 'rb')
 	if not f then return nil end
 	local s = f:read'*a'

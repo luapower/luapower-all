@@ -161,7 +161,7 @@ You can use [luapower] so that for any package or list of packages
 that need to be compiled _in the right order_, including
 all the dependencies:
 
-	./luapower build-order pkg1,...|--all [platform]
+	./lp build-order pkg1,...|--all [platform]
 
 Again, you can use mgit to leverage that and actually build the packages:
 

@@ -1,3 +1,5 @@
+local ffi = require'ffi'
+--[[
 // csrc/openssl/src/include/openssl/x509_vfy.h
 typedef enum {
     X509_LU_NONE = 0,
@@ -455,3 +457,4 @@ struct stack_st_POLICYQUALINFO *X509_policy_node_get0_qualifiers(const
                                                            *node);
 const X509_POLICY_NODE *X509_policy_node_get0_parent(const X509_POLICY_NODE
                                                      *node);
+]]

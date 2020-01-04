@@ -1,3 +1,5 @@
+local ffi = require'ffi'
+--[[
 // csrc/openssl/src/include/openssl/asn1.h
 enum {
 	V_ASN1_UNIVERSAL     = 0x00,
@@ -686,3 +688,4 @@ enum {
 	ASN1_R_WRONG_PUBLIC_KEY_TYPE = 200,
 	ASN1_R_WRONG_TAG     = 168,
 };
+]]

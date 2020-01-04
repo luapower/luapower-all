@@ -1,0 +1,140 @@
+<h1 id="name">Name</h1>
+<p><code>ngx.process</code> - manage the nginx processes for OpenResty/ngx_lua.</p>
+<h1 id="table-of-contents">Table of Contents</h1>
+<ul>
+<li><a href="#name">Name</a></li>
+<li><a href="#status">Status</a></li>
+<li><a href="#synopsis">Synopsis</a></li>
+<li><a href="#functions">Functions</a>
+<ul>
+<li><a href="#type">type</a></li>
+<li><a href="#enable_privileged_agent">enable_privileged_agent</a></li>
+<li><a href="#signal_graceful_exit">signal_graceful_exit</a></li>
+<li><a href="#get_master_pid">get_master_pid</a></li>
+</ul></li>
+<li><a href="#community">Community</a>
+<ul>
+<li><a href="#english-mailing-list">English Mailing List</a></li>
+<li><a href="#chinese-mailing-list">Chinese Mailing List</a></li>
+</ul></li>
+<li><a href="#bugs-and-patches">Bugs and Patches</a></li>
+<li><a href="#author">Author</a></li>
+<li><a href="#copyright-and-license">Copyright and License</a></li>
+<li><a href="#see-also">See Also</a></li>
+</ul>
+<h1 id="status">Status</h1>
+<p>This Lua module is currently considered experimental. The API is still in flux and may change in the future without notice.</p>
+<h1 id="synopsis">Synopsis</h1>
+<p>Enables privileged agent process, gets process type, and then gets the master process PID:</p>
+<pre class="nginx"><code># http config
+init_by_lua_block {
+    local process = require &quot;ngx.process&quot;
+
+    -- enables privileged agent process
+    local ok, err = process.enable_privileged_agent()
+    if not ok then
+        ngx.log(ngx.ERR, &quot;enables privileged agent failed error:&quot;, err)
+    end
+
+    -- output process type
+    ngx.log(ngx.INFO, &quot;process type: &quot;, process.type())
+}
+
+init_worker_by_lua_block {
+    local process = require &quot;ngx.process&quot;
+    ngx.log(ngx.INFO, &quot;process type: &quot;, process.type())
+}
+
+server {
+    # ...
+    location = /t {
+        content_by_lua_block {
+            local process = require &quot;ngx.process&quot;
+            ngx.say(&quot;process type: &quot;, process.type())
+            ngx.say(&quot;master process pid: &quot;, process.get_master_pid() or &quot;-&quot;)
+        }
+    }
+}
+</code></pre>
+<p>The example config above produces an output to <code>error.log</code> when server starts:</p>
+<pre><code>[lua] init_by_lua:11: process type: master
+[lua] init_worker_by_lua:3: process type: privileged agent
+[lua] init_worker_by_lua:3: process type: worker</code></pre>
+<p>The example location above produces the following response body:</p>
+<pre><code>process type: worker
+master process pid: 8261</code></pre>
+<p><a href="#table-of-contents">Back to TOC</a></p>
+<h1 id="functions">Functions</h1>
+<h2 id="type">type</h2>
+<p><strong>syntax:</strong> <em>type_name = process_module.type()</em></p>
+<p><strong>context:</strong> <em>any</em></p>
+<p>Returns the type of the current Nginx process. Depending on the calling context and current process, the type can be one of:</p>
+<ul>
+<li><code>master</code>: returned when this function is called from within the master process</li>
+<li><code>worker</code>: returned when this function is called from within a worker process</li>
+<li><code>single</code>: returned when Nginx is running in the single process mode</li>
+<li><code>signaller</code>: returned when Nginx is running as a signaller process</li>
+<li><code>privileged agent</code>: returned when this funtion is called from within a privileged agent process</li>
+</ul>
+<p>For example:</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb4-1"><a href="#cb4-1"></a><span class="kw">local</span> process <span class="op">=</span> <span class="fu">require</span> <span class="st">&quot;ngx.process&quot;</span></span>
+<span id="cb4-2"><a href="#cb4-2"></a>ngx<span class="op">.</span>say<span class="op">(</span><span class="st">&quot;process type:&quot;</span><span class="op">,</span> process<span class="op">.</span>type<span class="op">())</span>   <span class="co">-- RESPONSE: worker</span></span></code></pre></div>
+<p><a href="#table-of-contents">Back to TOC</a></p>
+<h2 id="enable_privileged_agent">enable_privileged_agent</h2>
+<p><strong>syntax:</strong> <em>ok, err = process_module.enable_privileged_agent()</em></p>
+<p><strong>context:</strong> <em>init_by_lua*</em></p>
+<p>Enables the privileged agent process in Nginx.</p>
+<p>The privileged agent process does not listen on any virtual server ports like those worker processes. And it uses the same system account as the nginx master process, which is usually a privileged account like <code>root</code>.</p>
+<p>The <code>init_worker_by_lua*</code> directive handler still runs in the privileged agent process. And one can use the <a href="#type">type</a> function provided by this module to check if the current process is a privileged agent.</p>
+<p>In case of failures, returns <code>nil</code> and a string describing the error.</p>
+<p><a href="#table-of-contents">Back to TOC</a></p>
+<h2 id="signal_graceful_exit">signal_graceful_exit</h2>
+<p><strong>syntax:</strong> <em>process_module.signal_graceful_exit()</em></p>
+<p><strong>context:</strong> <em>any</em></p>
+<p>Signals the <em>current</em> nginx (worker) process to quit gracefully, i.e., after all the timers have expired (in time or expired prematurely).</p>
+<p>Note that this API function simply sets the nginx global C variable <code>ngx_quit</code> to signal the nginx event loop directly. No UNIX signals or IPC are involved here.</p>
+<p>WARNING: the official NGINX core does not perform the graceful exiting procedure when the <a href="http://nginx.org/r/master_process">master_process</a> directive is turned <code>off</code>. The OpenResty’s NGINX core has a <a href="https://github.com/openresty/openresty/blob/master/patches/nginx-1.11.2-single_process_graceful_exit.patch">custom patch</a> applied, which fixes this issue.</p>
+<p><a href="#table-of-contents">Back to TOC</a></p>
+<h2 id="get_master_pid">get_master_pid</h2>
+<p><strong>syntax:</strong> <em>pid = process_module.get_master_pid()</em></p>
+<p><strong>context:</strong> <em>any</em></p>
+<p>Returns a number value for the nginx master process’s process ID (or PID).</p>
+<p>This function requires NGINX 1.13.8+ cores to work properly. Otherwise it returns <code>nil</code>.</p>
+<p>This feature first appeared in lua-resty-core v0.1.14.</p>
+<p><a href="#table-of-contents">Back to TOC</a></p>
+<h1 id="community">Community</h1>
+<p><a href="#table-of-contents">Back to TOC</a></p>
+<h2 id="english-mailing-list">English Mailing List</h2>
+<p>The <a href="https://groups.google.com/group/openresty-en">openresty-en</a> mailing list is for English speakers.</p>
+<p><a href="#table-of-contents">Back to TOC</a></p>
+<h2 id="chinese-mailing-list">Chinese Mailing List</h2>
+<p>The <a href="https://groups.google.com/group/openresty">openresty</a> mailing list is for Chinese speakers.</p>
+<p><a href="#table-of-contents">Back to TOC</a></p>
+<h1 id="bugs-and-patches">Bugs and Patches</h1>
+<p>Please report bugs or submit patches by</p>
+<ol type="1">
+<li>creating a ticket on the <a href="https://github.com/openresty/lua-resty-core/issues">GitHub Issue Tracker</a>,</li>
+<li>or posting to the <a href="#community">OpenResty community</a>.</li>
+</ol>
+<p><a href="#table-of-contents">Back to TOC</a></p>
+<h1 id="author">Author</h1>
+<p>Yuansheng Wang &lt;membphis@gmail.com&gt; (membphis), OpenResty Inc.</p>
+<p><a href="#table-of-contents">Back to TOC</a></p>
+<h1 id="copyright-and-license">Copyright and License</h1>
+<p>This module is licensed under the BSD license.</p>
+<p>Copyright (C) 2017, by Yichun “agentzh” Zhang, OpenResty Inc.</p>
+<p>All rights reserved.</p>
+<p>Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:</p>
+<ul>
+<li><p>Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.</p></li>
+<li><p>Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.</p></li>
+</ul>
+<p>THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS “AS IS” AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.</p>
+<p><a href="#table-of-contents">Back to TOC</a></p>
+<h1 id="see-also">See Also</h1>
+<ul>
+<li>the <a href="https://github.com/openresty/lua-resty-core">lua-resty-core</a> library.</li>
+<li>the ngx_lua module: https://github.com/openresty/lua-nginx-module</li>
+<li>OpenResty: https://openresty.org</li>
+</ul>
+<p><a href="#table-of-contents">Back to TOC</a></p>

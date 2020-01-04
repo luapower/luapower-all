@@ -1,3 +1,5 @@
+local ffi = require'ffi'
+--[[
 // csrc/openssl/src/include/openssl/bio.h
 enum {
 	BIO_TYPE_DESCRIPTOR  = 0x0100,
@@ -585,5 +587,4 @@ enum {
 	BIO_R_WRITE_TO_READ_ONLY_BIO = 126,
 	BIO_R_WSASTARTUP     = 122,
 };
-
-
+]]

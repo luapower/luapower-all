@@ -1,3 +1,5 @@
+local ffi = require'ffi'
+--[[
 // csrc/openssl/src/include/openssl/dh.h
 enum {
 	OPENSSL_DH_MAX_MODULUS_BITS = 10000,
@@ -214,3 +216,5 @@ enum {
 	DH_R_SHARED_INFO_ERROR = 113,
 	DH_R_UNABLE_TO_CHECK_GENERATOR = 121,
 };
+]]
+

@@ -22,9 +22,6 @@ return function(...)
 	package.path = strip(package.path)
 	package.cpath = strip(package.cpath)
 
-	local exedir = package.path:match(S'^(.-)/lua/%?%.lua;')
-	local so_ext = package.cpath:match'%.([%w]+);'
-
 	local rel_path
 	if ffi.os == 'Windows' then
 		function rel_path(s)
@@ -35,6 +32,9 @@ return function(...)
 			return not s:find'^/'
 		end
 	end
+
+	local exedir = require'package.exedir'
+	local so_ext = package.cpath:match'%.([%w]+);'
 
 	local function in_exe_dir(name)
 		if rel_path(name) then
