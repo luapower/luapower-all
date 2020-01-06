@@ -820,6 +820,8 @@ void qsort(void*, size_t, size_t, int (*)(const void *, const void *));
 size_t strnlen(const char*, size_t);
 ]]
 
+--peeling away all that preprocessor band-aid does not look pretty...
+
 if Windows then
 C([[
 typedef unsigned long long int size_t;
@@ -843,7 +845,7 @@ FILE* get_stdin  (void) { return &__iob_func()[0]; }
 FILE* get_stdout (void) { return &__iob_func()[1]; }
 FILE* get_stderr (void) { return &__iob_func()[2]; }
 ]] .. common_cdef)
-else
+elseif Linux then
 C([[
 typedef unsigned long int size_t;
 
@@ -858,6 +860,22 @@ extern FILE* stderr;
 FILE* get_stdin  (void) { return stdin; }
 FILE* get_stdout (void) { return stdout; }
 FILE* get_stderr (void) { return stderr; }
+]] .. common_cdef)
+elseif OSX then
+C([[
+typedef unsigned long int size_t;
+
+int    snprintf (char*, size_t, const char*, ...);
+
+typedef struct FILE FILE;
+
+extern FILE* __stdinp;
+extern FILE* __stdoutp;
+extern FILE* __stderrp;
+
+FILE* get_stdin  (void) { return __stdinp; }
+FILE* get_stdout (void) { return __stdoutp; }
+FILE* get_stderr (void) { return __stderrp; }
 ]] .. common_cdef)
 end
 

@@ -140,9 +140,11 @@ cd luapower
 	persistent=1>
 	Packages
 	&nbsp;
-	<a class="hastip" switch_for=".package_list" title="view condensed package list"><i class="fa fa-align-justify"></i></a>
+	<a class="hastip" switch_for=".package_list" title="view condensed package list"><i class="fa fa-align-left"></i></a>
 	<a class="hastip" switch_for=".package_table" title="view full package table"><i class="fa fa-table"></i></a>
 	<a class="hastip" switch_for=".package_cards" title="view info cards"><i class="fa fa-th"></i></a>
+	<span style="padding-right: 20px"></span>
+	<a class="hastip" switch_for=".load_errors" title="view module loading errors"><i class="fa fa-warning"></i></a>
 </h3>
 
 <div class="package package_list hidden">
@@ -165,7 +167,7 @@ cd luapower
 	<i class="fa fa-star hot"></i> <span class=smallnote>updated in the last 7 days</span>
 </div>
 
-<table width=100% class="package package_table doc hidden">
+<table width=100% class="package table package_table doc hidden">
 	<thead>
 		<tr>
 			<th align=left title="Hold Shift to sort by multiple columns" class=hastip>Type</th>
@@ -235,6 +237,25 @@ cd luapower
 	{{/cats}}
 </table>
 
+<table width=100% class="package doc table load_errors hidden">
+	<thead>
+		<tr>
+			<th title="Hold Shift to sort by multiple columns" class=hastip align=left>Platf.</th>
+			<th title="Hold Shift to sort by multiple columns" class=hastip align=left>Package</th>
+			<th title="Hold Shift to sort by multiple columns" class=hastip align=left>Module</th>
+			<th title="Hold Shift to sort by multiple columns" class=hastip align=left>Error</th>
+		</tr>
+	</thead>
+	{{#load_errors}}
+	<tr>
+		<td><span class="icon icon-{{platform}}"></span></td>
+		<td><a href="/{{package}}">{{package}}</a></td>
+		<td>{{module}}</td>
+		<td>{{error}}</td>
+	</tr>
+	{{/load_errors}}
+</table>
+
 <div class=news_table></div>
 
 <script src="/github.js"></script>
@@ -249,6 +270,14 @@ $(function() {
 	}).bind("sortEnd", function(sorter) {
 		var sl = sorter.target.config.sortList
 		setcookie('pt_sortlist', JSON.stringify(sl))
+	})
+
+	$('.load_errors').tablesorter({
+		cancelSelection: true,
+		sortList: JSON.parse(getcookie('le_sortlist', '[[1,0]]')), //initially sort by platform, package
+	}).bind("sortEnd", function(sorter) {
+		var sl = sorter.target.config.sortList
+		setcookie('le_sortlist', JSON.stringify(sl))
 	})
 
 	load_github_events({

@@ -2384,16 +2384,13 @@ undocumented_package = memoize_opt_package('undocumented_package', function(pack
 	return t
 end)
 
---module load errors for each module of a package
+--module load errors for each module of a package for one platform.
 load_errors = memoize_opt_package('load_errors', function(package, platform)
 	local errs = {}
+	local platform = check_platform(platform)
 	for mod in pairs(modules(package)) do
-		local err = module_load_error(mod, package, platform)
-		if err and not (
-			   err:find'platform not '
-			or err:find'arch not '
-		)
-		then
+		if module_platforms(mod, package)[platform] then
+			local err = module_load_error(mod, package, platform)
 			errs[mod] = err
 		end
 	end

@@ -2222,7 +2222,6 @@ return {
 		},
 		ui={
 			ui={
-				loaderr='./ui.lua:21: ./layer_h.lua:3: liblayer.so: cannot open shared object file: No such file or directory',
 				mdeps={
 					bit=true,
 					box2d=true,
@@ -2233,6 +2232,7 @@ return {
 					ffi=true,
 					font_db=true,
 					glue=true,
+					['jit.zone']=true,
 					layer_h=true,
 					nw=true,
 					oo=true,
@@ -2240,51 +2240,60 @@ return {
 				}
 			},
 			ui_button={
-				loaderr='./ui_button.lua:5: ./ui.lua:21: ./layer_h.lua:3: liblayer.so: cannot open shared object file: No such file or directory',
 				mdeps={
+					glue=true,
 					ui=true
 				}
 			},
 			ui_calendar={
-				loaderr='./ui_calendar.lua:5: ./ui.lua:21: ./layer_h.lua:3: liblayer.so: cannot open shared object file: No such file or directory',
+				loaderr='./ui_calendar.lua:9: attempt to index field \'grid\' (a nil value)',
 				mdeps={
+					glue=true,
 					ui=true
 				}
 			},
 			ui_colorpicker={
-				loaderr='./ui_colorpicker.lua:5: ./ui.lua:21: ./layer_h.lua:3: liblayer.so: cannot open shared object file: No such file or directory',
 				mdeps={
+					bitmap=true,
+					cairo=true,
+					color=true,
+					glue=true,
 					ui=true
 				}
 			},
 			ui_demo1={
-				loaderr='./ui_demo1.lua:3: ./ui.lua:21: ./layer_h.lua:3: liblayer.so: cannot open shared object file: No such file or directory',
+				loaderr='./xlib.lua:160: assertion failed!',
 				mdeps={
+					color=true,
 					time=true,
 					ui=true
 				}
 			},
 			ui_dropdown={
-				loaderr='./ui_dropdown.lua:8: ./ui.lua:21: ./layer_h.lua:3: liblayer.so: cannot open shared object file: No such file or directory',
+				loaderr='./ui_dropdown.lua:11: attempt to index field \'editbox\' (a nil value)',
 				mdeps={
+					glue=true,
 					ui=true
 				}
 			},
 			ui_editbox={
-				loaderr='./ui_editbox.lua:6: ./ui.lua:21: ./layer_h.lua:3: liblayer.so: cannot open shared object file: No such file or directory',
+				loaderr='./ui_editbox.lua:7: module \'tr\' not found',
 				mdeps={
+					tr=true,
 					ui=true
 				}
 			},
 			ui_grid={
-				loaderr='./ui_grid.lua:7: ./ui.lua:21: ./layer_h.lua:3: liblayer.so: cannot open shared object file: No such file or directory',
+				loaderr='./ui_grid.lua:311: attempt to index field \'scrollbox\' (a nil value)',
 				mdeps={
+					box2d=true,
+					glue=true,
 					ui=true
 				}
 			},
 			ui_layout_editor={
-				loaderr='./ui_layout_editor.lua:7: ./ui.lua:21: ./layer_h.lua:3: liblayer.so: cannot open shared object file: No such file or directory',
 				mdeps={
+					box2d=true,
 					ui=true
 				}
 			},
@@ -2292,44 +2301,44 @@ return {
 				loaderr='error loading module \'ui_list\' from file \'./ui_list.lua\''
 			},
 			ui_menu={
-				loaderr='./ui_menu.lua:5: ./ui.lua:21: ./layer_h.lua:3: liblayer.so: cannot open shared object file: No such file or directory',
 				mdeps={
 					ui=true
 				}
 			},
 			ui_popup={
-				loaderr='./ui_popup.lua:5: ./ui.lua:21: ./layer_h.lua:3: liblayer.so: cannot open shared object file: No such file or directory',
 				mdeps={
+					glue=true,
 					ui=true
 				}
 			},
 			ui_progressbar={
-				loaderr='./ui_progressbar.lua:5: ./ui.lua:21: ./layer_h.lua:3: liblayer.so: cannot open shared object file: No such file or directory',
 				mdeps={
 					ui=true
 				}
 			},
 			ui_scrollbox={
-				loaderr='./ui_scrollbox.lua:5: ./ui.lua:21: ./layer_h.lua:3: liblayer.so: cannot open shared object file: No such file or directory',
+				loaderr='./xlib.lua:140: attempt to call global \'setfenv\' (a nil value)',
 				mdeps={
 					ui=true
 				}
 			},
 			ui_slider={
-				loaderr='./ui_slider.lua:5: ./ui.lua:21: ./layer_h.lua:3: liblayer.so: cannot open shared object file: No such file or directory',
+				loaderr='./ui.lua:178: assertion failed!',
 				mdeps={
+					glue=true,
 					ui=true
 				}
 			},
 			ui_tablist={
-				loaderr='./ui_tablist.lua:5: ./ui.lua:21: ./layer_h.lua:3: liblayer.so: cannot open shared object file: No such file or directory',
 				mdeps={
+					box2d=true,
+					glue=true,
 					ui=true
 				}
 			},
 			ui_zoomcalendar={
-				loaderr='./ui_zoomcalendar.lua:5: ./ui.lua:21: ./layer_h.lua:3: liblayer.so: cannot open shared object file: No such file or directory',
 				mdeps={
+					glue=true,
 					ui=true
 				}
 			}
@@ -8512,7 +8521,6 @@ return {
 		},
 		ui={
 			ui={
-				loaderr='./ui.lua:21: ./layer_h.lua:3: dlopen(liblayer.dylib, 5): image not found',
 				mdeps={
 					bit=true,
 					box2d=true,
@@ -8523,6 +8531,7 @@ return {
 					ffi=true,
 					font_db=true,
 					glue=true,
+					['jit.zone']=true,
 					layer_h=true,
 					nw=true,
 					oo=true,
@@ -8530,51 +8539,60 @@ return {
 				}
 			},
 			ui_button={
-				loaderr='./ui_button.lua:5: ./ui.lua:21: ./layer_h.lua:3: dlopen(liblayer.dylib, 5): image not found',
 				mdeps={
+					glue=true,
 					ui=true
 				}
 			},
 			ui_calendar={
-				loaderr='./ui_calendar.lua:5: ./ui.lua:21: ./layer_h.lua:3: dlopen(liblayer.dylib, 5): image not found',
+				loaderr='./ui_calendar.lua:9: attempt to index field \'grid\' (a nil value)',
 				mdeps={
+					glue=true,
 					ui=true
 				}
 			},
 			ui_colorpicker={
-				loaderr='./ui_colorpicker.lua:5: ./ui.lua:21: ./layer_h.lua:3: dlopen(liblayer.dylib, 5): image not found',
 				mdeps={
+					bitmap=true,
+					cairo=true,
+					color=true,
+					glue=true,
 					ui=true
 				}
 			},
 			ui_demo1={
-				loaderr='./ui_demo1.lua:3: ./ui.lua:21: ./layer_h.lua:3: dlopen(liblayer.dylib, 5): image not found',
+				loaderr='./ui.lua:376: \'struct layerlib_t\' has no member named \'font\'',
 				mdeps={
+					color=true,
 					time=true,
 					ui=true
 				}
 			},
 			ui_dropdown={
-				loaderr='./ui_dropdown.lua:8: ./ui.lua:21: ./layer_h.lua:3: dlopen(liblayer.dylib, 5): image not found',
+				loaderr='./ui_dropdown.lua:11: attempt to index field \'editbox\' (a nil value)',
 				mdeps={
+					glue=true,
 					ui=true
 				}
 			},
 			ui_editbox={
-				loaderr='./ui_editbox.lua:6: ./ui.lua:21: ./layer_h.lua:3: dlopen(liblayer.dylib, 5): image not found',
+				loaderr='./ui_editbox.lua:7: module \'tr\' not found',
 				mdeps={
+					tr=true,
 					ui=true
 				}
 			},
 			ui_grid={
-				loaderr='./ui_grid.lua:7: ./ui.lua:21: ./layer_h.lua:3: dlopen(liblayer.dylib, 5): image not found',
+				loaderr='./ui_grid.lua:311: attempt to index field \'scrollbox\' (a nil value)',
 				mdeps={
+					box2d=true,
+					glue=true,
 					ui=true
 				}
 			},
 			ui_layout_editor={
-				loaderr='./ui_layout_editor.lua:7: ./ui.lua:21: ./layer_h.lua:3: dlopen(liblayer.dylib, 5): image not found',
 				mdeps={
+					box2d=true,
 					ui=true
 				}
 			},
@@ -8582,44 +8600,44 @@ return {
 				loaderr='error loading module \'ui_list\' from file \'./ui_list.lua\''
 			},
 			ui_menu={
-				loaderr='./ui_menu.lua:5: ./ui.lua:21: ./layer_h.lua:3: dlopen(liblayer.dylib, 5): image not found',
 				mdeps={
 					ui=true
 				}
 			},
 			ui_popup={
-				loaderr='./ui_popup.lua:5: ./ui.lua:21: ./layer_h.lua:3: dlopen(liblayer.dylib, 5): image not found',
 				mdeps={
+					glue=true,
 					ui=true
 				}
 			},
 			ui_progressbar={
-				loaderr='./ui_progressbar.lua:5: ./ui.lua:21: ./layer_h.lua:3: dlopen(liblayer.dylib, 5): image not found',
 				mdeps={
 					ui=true
 				}
 			},
 			ui_scrollbox={
-				loaderr='./ui_scrollbox.lua:5: ./ui.lua:21: ./layer_h.lua:3: dlopen(liblayer.dylib, 5): image not found',
+				loaderr='./ui.lua:376: \'struct layerlib_t\' has no member named \'font\'',
 				mdeps={
 					ui=true
 				}
 			},
 			ui_slider={
-				loaderr='./ui_slider.lua:5: ./ui.lua:21: ./layer_h.lua:3: dlopen(liblayer.dylib, 5): image not found',
+				loaderr='./ui.lua:178: assertion failed!',
 				mdeps={
+					glue=true,
 					ui=true
 				}
 			},
 			ui_tablist={
-				loaderr='./ui_tablist.lua:5: ./ui.lua:21: ./layer_h.lua:3: dlopen(liblayer.dylib, 5): image not found',
 				mdeps={
+					box2d=true,
+					glue=true,
 					ui=true
 				}
 			},
 			ui_zoomcalendar={
-				loaderr='./ui_zoomcalendar.lua:5: ./ui.lua:21: ./layer_h.lua:3: dlopen(liblayer.dylib, 5): image not found',
 				mdeps={
+					glue=true,
 					ui=true
 				}
 			}

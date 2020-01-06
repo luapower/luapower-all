@@ -637,12 +637,15 @@ end
 	end
 
 	function self:sofile()
-		local soext = {Windows = 'dll', OSX = 'dylib', Linux = 'so'}
-		return self:binpath(modulename..'.'..soext[ffi.os])
+		local fmt = {Windows = '%s.dll', OSX = 'lib%s.dylib', Linux = 'lib%s.so'}
+		local fmt = assert(fmt[ffi.os])
+		return self:binpath(fmt:format(modulename))
 	end
 
 	function self:afile()
-		return self:binpath(modulename..'.a')
+		local fmt = {Windows = '%s.a', OSX = 'lib%s.a', Linux = 'lib%s.a'}
+		local fmt = assert(fmt[ffi.os])
+		return self:binpath(fmt:format(modulename))
 	end
 
 	function self:saveobj(optimize)

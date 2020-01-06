@@ -420,38 +420,6 @@ warn {
 	font-size: 80%;
 }
 
-.package_table td {
-	padding: 3px;
-}
-
-.package_table .icon {
-	font-size: 140%;
-	width: 22px;
-	display: inline-block;
-	text-align: right;
-}
-
-.package_table th {
-	cursor: pointer;
-	position: relative;
-}
-
-.package_table th.tablesorter-headerAsc:after,
-.package_table th.tablesorter-headerDesc:after {
-	font-family: FontAwesome;
-	position: absolute;
-	top: 10px;
-	right: 8px;
-	display: block;
-}
-
-.package_table th.tablesorter-headerAsc:after { content: '\f077'; }
-.package_table th.tablesorter-headerDesc:after { content: '\f078'; }
-
-.package_table th:hover {
-	text-decoration: underline;
-}
-
 .package_card {
 	display: inline-block;
 	border: 1px solid;
@@ -470,6 +438,38 @@ warn {
 .news_table table {
 	line-height: 160%;
 	font-size: 90%;
+}
+
+.table td {
+	padding: 3px;
+}
+
+.table .icon {
+	font-size: 140%;
+	width: 22px;
+	display: inline-block;
+	text-align: right;
+}
+
+.table th.tablesorter-headerAsc:after,
+.table th.tablesorter-headerDesc:after {
+	font-family: FontAwesome;
+	position: absolute;
+	top: 10px;
+	right: 8px;
+	display: block;
+}
+
+.table th.tablesorter-headerAsc:after { content: '\f077'; }
+.table th.tablesorter-headerDesc:after { content: '\f078'; }
+
+.table th:hover {
+	text-decoration: underline;
+}
+
+.table th {
+	cursor: pointer;
+	position: relative;
 }
 
 /* package page ----------------------------------------------------------- */

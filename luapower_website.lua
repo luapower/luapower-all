@@ -1136,10 +1136,33 @@ local function action_package(pkg, doc, what)
 	out(render_main('package', t))
 end
 
+local function load_errors()
+	local t = {}
+	for _,platform in ipairs(lp.supported_platform_list) do
+		for pkg in glue.sortedpairs(lp.installed_packages()) do
+			for mod in glue.sortedpairs(lp.modules(pkg)) do
+				if lp.module_platforms(mod, pkg)[platform] then
+					local err = lp.module_load_error(mod, pkg, platform)
+					if err and not err:find'^could not create tracking environment' then
+						t[#t+1] = {
+							platform = platform,
+							package = pkg,
+							module = mod,
+							error = err,
+						}
+					end
+				end
+			end
+		end
+	end
+	return t
+end
+
 local function action_home()
 	local data = {}
+
 	local pt = {}
-	data.packages = pt
+	data.packages = pt --{pkg:{type=, platforms=, ...},...}
 	for pkg in glue.sortedpairs(lp.installed_packages()) do
 		if lp.known_packages()[pkg] then --exclude "luapower-repos"
 			local t = {name = pkg}
@@ -1160,6 +1183,9 @@ local function action_home()
 			table.insert(pt, t)
 		end
 	end
+
+	data.load_errors = load_errors()
+
 	data.github_title = 'github.com/luapower'
 	data.github_url = 'https://'..data.github_title
 
