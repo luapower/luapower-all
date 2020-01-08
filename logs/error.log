@@ -48,3 +48,14 @@
 2020/01/04 23:36:47 [notice] 27337#0: signal process started
 2020/01/05 17:37:06 [notice] 2302#0: signal process started
 2020/01/05 21:51:21 [notice] 5281#0: signal process started
+2020/01/06 16:16:08 [notice] 13095#0: signal process started
+2020/01/06 16:17:06 [emerg] 13523#0: invalid number of arguments in "try_files" directive in ./luapower-nginx.conf:18
+2020/01/06 16:17:07 [emerg] 13529#0: invalid number of arguments in "try_files" directive in ./luapower-nginx.conf:18
+2020/01/06 16:19:43 [notice] 13680#0: signal process started
+2020/01/06 16:21:08 [notice] 14089#0: signal process started
+2020/01/06 16:22:34 [notice] 14418#0: signal process started
+2020/01/06 16:24:39 [notice] 14787#0: signal process started
+2020/01/06 16:25:00 [notice] 14816#0: signal process started
+2020/01/06 16:26:17 [notice] 15758#0: signal process started
+2020/01/06 16:27:23 [notice] 16681#0: signal process started
+2020/01/06 16:44:09 [notice] 17774#0: signal process started

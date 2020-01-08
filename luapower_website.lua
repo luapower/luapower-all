@@ -1240,10 +1240,6 @@ local path_match = {
 	'^bin/([^/]+)/clib/(.-)/$', 'Submodules of Lua/C module <b>{2}</b> compiled for <b>{1}</b>',
 	'^bin/([^/]+)/clib/(.-)%.so$', 'Lua/C module <b>{2}</b> compiled dynamically for <b>{1}</b>',
 
-	'^bin/([^/]+)/lua/$', 'All pure-Lua modules that are <b>{1}</b>-specific',
-	'^bin/([^/]+)/lua/(.-)/$', 'Submodules of <b>{2}</b> that are <b>{1}</b>-specific',
-	'^bin/([^/]+)/lua/(.-)%.lua', 'Lua module <b>{2}</b> (<b>{1}</b>-specific)',
-
 	'^bin/([^/]+)/lib(.-)%.a$', 'C library <b>{2}</b> compiled statically for <b>{1}</b>',
 	'^bin/([^/]+)/(.-)%.a$', 'C library <b>{2}</b> compiled statically for <b>{1}</b>',
 
@@ -1267,12 +1263,6 @@ local path_match = {
 
 	'^media/$', 'All input data for tests and demos for all packages',
 
-	'^media/www/$', 'Web asserts (screenshots, etc.) for all packages',
-	'^media/www/.-/', 'Web asserts for <b>PACKAGE</b>',
-	'^media/www/', 'Some web asset for <b>PACKAGE</b>',
-	'^media/www/.-/', 'Some web asserts',
-	'^media/www/', 'Some web asset',
-
 	'^media/.-/$', 'Data files for package <b>PACKAGE</b>',
 	'^media/.-', 'Data file for package <b>PACKAGE</b>',
 	'^media/.-/$', 'Some data files',
@@ -1281,14 +1271,19 @@ local path_match = {
 	'^([^%.]+)/$', 'Submodules of <b>{1}</b>',
 	'(.-)_h%.lua$', 'FFI cdefs for <b>{1}</b>',
 	'(.-)_test%.lua$', 'Test script for <b>{1}</b>',
+	'(.-)_test%.t$', 'Test script for <b>{1}</b>',
 	'(.-)_demo%.lua$', 'Demo app for <b>{1}</b>',
+	'(.-)_demo%.t$', 'Demo app for <b>{1}</b>',
 	'(.-)_app%.lua$', 'Lua app called <b>{1}</b>',
+	'(.-)_app%.t$', 'Terra app called <b>{1}</b>',
 	'(.-)%.lua$', 'Lua module <b>{1}</b>',
+	'(.-)%.t$', 'Terra module <b>{1}</b>',
 	'(.-)%.dasl$', 'Lua/DynASM module <b>{1}</b>',
 	'(.-)%.md$', 'Documentation for <b>{1}</b>',
 	'%.sh$', 'Some shell script needed for <b>PACKAGE</b>',
 
 }
+
 local function pass(format, ...)
 	if not ... then return end
 	local t = glue.pack(...)

@@ -19,9 +19,9 @@ most useful in network I/O contexts.
 ---------------------------------------------------- -------------------------
 `error.error`                                        base class for errors
 `error.errortype(classname[, super]) -> eclass`      create an error class
-`error.new(class|classname, ...) -> e`               create an error object
+`error.new(class|classname, [e], ...) -> e`          create/wrap an error object
 `error.is(v[, classes]) -> t|f`                      check an error object type
-`error.raise(class|classname, ...)`                  raise an error
+`error.raise(class|classname,... | e)`               (create and) raise an error
 `error.catch(classes, f, ...) -> t,... | f,e`        pcall `f` and catch errors
 `error.pcall(f, ...) -> ...`                         pcall that stores traceback in `e.traceback`
 `error.check(class, v, ...) -> v | raise(class,...)` assert with specifying an error class

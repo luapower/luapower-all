@@ -11,28 +11,20 @@ local function object(super, o)
 	return setmetatable(o, o)
 end
 
-local function memoize1(f) --for single-arg functions (from glue).
-	local cache = {}
-	return function(arg)
-		local k = arg
-		local v = cache[k]
-		if v == nil then
-			v = f(arg); cache[k] = v
-		end
-		return v
-	end
-end
-
 local lua_error = error
 
-local error_classes = {} --{name->class}
-
-local error
+local classes = {} --{name -> class}
+local class_sets = {} --{'name1 name2 ...' -> {class->true}}
+local error --base error class, defined below.
 
 local function error_type(classname, super)
-	super = type(super) == 'string' and assert(error_classes[super]) or super or error
+	super = type(super) == 'string' and assert(classes[super]) or super or error
 	local class = object(super, {classname = classname, is_error = true})
-	error_classes[classname] = class
+	if classname then
+		assert(not classes[classname], 'error class name already defined')
+		classes[classname] = class
+		class_sets = {}
+	end
 	return class
 end
 
@@ -44,39 +36,46 @@ end
 
 local function error_object(arg, ...)
 	if type(arg) == 'string' then
-		local class = error_classes[arg] or error_type(arg)
+		local class = classes[arg] or error_type(arg)
 		return class(...)
 	end
 	return arg
 end
 
-local class_table_from_string = memoize1(function(s)
-	local t = {}
-	for s in s:gmatch'[^%s,]+' do
-		local class = error_classes[s]
-		if not class then error('invalid error class '..s) end
-		while class do
-			t[class] = true
-			class = class.__index
+local function class_table(s)
+	if type(s) == 'string' then
+		local t = class_sets[s]
+		if not t then
+			t = {}
+			class_sets[s] = t
+			for s in s:gmatch'[^%s,]+' do
+				local class = classes[s]
+				while class do
+					t[class] = true
+					class = class.__index
+				end
+			end
 		end
-	end
-	return t
-end)
-
-local function class_table(classes)
-	if type(classes) == 'string' then
-		return class_table_from_string(classes)
+		return t
 	else
-		return classes --if given as table, must contain superclasses too!
+		assert(type(s) == 'table')
+		return s --if given as table, must contain superclasses too!
 	end
 end
 
 local function is_error_of(e, classes)
-	return is_error(e) and (not classes or class_table(classes)[e.__index])
+	return is_error(e) and (not classes or class_table(classes)[e.__index] or false)
 end
 
-function error:__call(...)
-	return object(self, {message = ... and string.format(...) or nil})
+function error:__call(arg1, ...)
+	if type(arg1) == 'table' then
+		local message = ... and string.format(...) or nil
+		local e = object(self, arg1)
+		e.message = message
+		return e
+	else
+		return object(self, {message = arg1 and string.format(arg1, ...) or nil})
+	end
 end
 
 function error:__tostring()
@@ -94,7 +93,7 @@ local function pass(classes, ok, ...)
 	if is_error_of(e, classes) then
 		return false, e
 	end
-	lua_error(e, 3)
+	lua_error(e, 2)
 end
 local function onerror(e)
 	if is_error(e) then
