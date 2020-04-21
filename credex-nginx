@@ -1,0 +1,2 @@
+#!/bin/bash
+cd "${0%credex-nginx}" && ./nginx -c credex-nginx.conf "$@"
