@@ -592,7 +592,7 @@ if linux then
 		long   tv_nsec;
 	};
 	int futimens(int fd, const struct timespec times[2]);
-	int utimensat(const char *path, const struct timespec times[2], int flags);
+	int utimensat(int dirfd, const char *path, const struct timespec times[2], int flags);
 	]]
 
 	local UTIME_OMIT = bit.lshift(1,30)-2
@@ -607,6 +607,8 @@ if linux then
 		end
 	end
 
+	local AT_FDCWD = -100
+
 	local ts_ct = ffi.typeof'struct timespec[2]'
 	local ts
 	function futimes(f, atime, mtime)
@@ -620,7 +622,7 @@ if linux then
 		ts = ts or ts_ct()
 		set_timespec(atime, ts[0])
 		set_timespec(mtime, ts[1])
-		return check(C.utimensat(path, ts, 0) == 0)
+		return check(C.utimensat(AT_FDCWD, path, ts, 0) == 0)
 	end
 
 	local AT_SYMLINK_NOFOLLOW = 0x100
@@ -629,7 +631,7 @@ if linux then
 		ts = ts or ts_ct()
 		set_timespec(atime, ts[0])
 		set_timespec(mtime, ts[1])
-		return check(C.utimensat(path, ts, AT_SYMLINK_NOFOLLOW) == 0)
+		return check(C.utimensat(AT_FDCWD, path, ts, AT_SYMLINK_NOFOLLOW) == 0)
 	end
 
 elseif osx then
@@ -730,6 +732,7 @@ local function wrap(chmod_func, chown_func, utimes_func)
 		end
 		if t.atime or t.mtime then
 			ok, err, errno = utimes_func(arg, t.atime, t.mtime)
+			if not ok then return nil, err, errno end
 		end
 		return ok --returns nil without err if no attr was set
 	end
@@ -906,7 +909,11 @@ int shm_open(const char *name, int oflag, mode_t mode);
 int shm_unlink(const char *name);
 ]]
 
-local librt = linux and ffi.load'rt' or C
+local librt = C
+if linux then
+	local ok, rt = pcall(ffi.load, 'rt')
+	if ok then librt = rt end
+end
 
 local function open(path, write, exec, shm)
 	local oflags = write and bit.bor(O_RDWR, O_CREAT) or O_RDONLY

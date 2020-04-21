@@ -51,7 +51,7 @@
 <td></td>
 </tr>
 <tr class="odd">
-<td style="text-align: left;"><code>glue.count(t) -&gt; n</code></td>
+<td style="text-align: left;"><code>glue.count(t[, maxn]) -&gt; n</code></td>
 <td>number of keys in table</td>
 </tr>
 <tr class="even">
@@ -79,76 +79,76 @@
 <td>autofield pattern</td>
 </tr>
 <tr class="even">
-<td style="text-align: left;"><strong>lists</strong></td>
+<td style="text-align: left;"><strong>arrays</strong></td>
 <td></td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;"><code>glue.extend(dt, t1, ...) -&gt; dt</code></td>
-<td>extend a list</td>
+<td>extend an array</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;"><code>glue.append(dt, v1, ...) -&gt; dt</code></td>
-<td>append non-nil values to a list</td>
+<td>append non-nil values to an array</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;"><code>glue.shift(t, i, n) -&gt; t</code></td>
-<td>shift list elements</td>
+<td>shift array elements</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;"><code>glue.map(t, field|f,...) -&gt; t</code></td>
-<td>map f over t or select a column from a list of records</td>
+<td>map f over t or select a column from an array of records</td>
 </tr>
 <tr class="odd">
-<td style="text-align: left;"><strong>arrays</strong></td>
-<td></td>
-</tr>
-<tr class="even">
 <td style="text-align: left;"><code>glue.indexof(v, t, [i], [j]) -&gt; i</code></td>
 <td>scan array for value</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td style="text-align: left;"><code>glue.binsearch(v, t, [cmp], [i], [j]) -&gt; i</code></td>
-<td>binary search in sorted list</td>
+<td>binary search in sorted array</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>glue.reverse(t, [i], [j]) -&gt; t</code></td>
+<td>reverse array in place</td>
 </tr>
 <tr class="even">
-<td style="text-align: left;"><code>glue.reverse(t, [i], [j]) -&gt; t</code></td>
-<td>reverse list in place</td>
-</tr>
-<tr class="odd">
 <td style="text-align: left;"><strong>strings</strong></td>
 <td></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td style="text-align: left;"><code>glue.gsplit(s,sep[,start[,plain]]) -&gt; iter() -&gt; e[,captures...]</code></td>
 <td>split a string by a pattern</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td style="text-align: left;"><code>glue.lines(s[, opt]) -&gt; iter() -&gt; s</code></td>
 <td>iterate the lines of a string</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td style="text-align: left;"><code>glue.trim(s) -&gt; s</code></td>
 <td>remove padding</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td style="text-align: left;"><code>glue.esc(s [,mode]) -&gt; pat</code></td>
 <td>escape magic pattern characters</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td style="text-align: left;"><code>glue.tohex(s|n [,upper]) -&gt; s</code></td>
 <td>string to hex</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td style="text-align: left;"><code>glue.fromhex(s) -&gt; s</code></td>
 <td>hex to string</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td style="text-align: left;"><code>glue.starts(s, prefix) -&gt; t|f</code></td>
 <td>find if string <code>s</code> starts with string <code>prefix</code></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td style="text-align: left;"><code>glue.ends(s, suffix) -&gt; t|f</code></td>
 <td>find if string <code>s</code> ends with string <code>suffix</code></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>glue.subst(s, t) -&gt; s</code></td>
+<td>string interpolation of <code>{foo}</code> occurences</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;"><strong>iterators</strong></td>
@@ -156,10 +156,10 @@
 </tr>
 <tr class="odd">
 <td style="text-align: left;"><code>glue.collect([i,] iterator) -&gt; t</code></td>
-<td>collect iterated values into a list</td>
+<td>collect iterated values into an array</td>
 </tr>
 <tr class="even">
-<td style="text-align: left;"><strong>closures</strong></td>
+<td style="text-align: left;"><strong>stubs</strong></td>
 <td></td>
 </tr>
 <tr class="odd">
@@ -171,40 +171,48 @@
 <td>does nothing, returns nothing</td>
 </tr>
 <tr class="odd">
+<td style="text-align: left;"><strong>caching</strong></td>
+<td></td>
+</tr>
+<tr class="even">
 <td style="text-align: left;"><code>glue.memoize(f[, narg]) -&gt; f</code></td>
 <td>memoize pattern</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td style="text-align: left;"><code>glue.memoize_multiret(f[, narg]) -&gt; f</code></td>
 <td>memoize for multiple-return-value functions</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td style="text-align: left;"><code>glue.tuples([narg]) -&gt; f(...) -&gt; t</code></td>
 <td>tuple pattern</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td style="text-align: left;"><strong>objects</strong></td>
 <td></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td style="text-align: left;"><code>glue.inherit(t, parent) -&gt; t</code></td>
 <td>set or clear inheritance</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td style="text-align: left;"><code>glue.object([super][, t], ...) -&gt; t</code></td>
 <td>create a class or object (see description)</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td style="text-align: left;"><code>glue.before(class, method_name, f)</code></td>
 <td>call f at the beginning of a method</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td style="text-align: left;"><code>glue.after(class, method_name, f)</code></td>
 <td>call f at the end of a method</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td style="text-align: left;"><code>glue.override(class, method_name, f)</code></td>
 <td>override a method</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>glue.gettersandsetters([getters], [setters], [super]) -&gt; mt</code></td>
+<td>create a metatable that supports virtual properties</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;"><strong>i/o</strong></td>
@@ -235,72 +243,96 @@
 <td></td>
 </tr>
 <tr class="odd">
-<td style="text-align: left;"><code>glue.time([t, [utc]]) -&gt; timestamp</code></td>
-<td>like <code>os.time()</code> but can do UTC</td>
+<td style="text-align: left;"><code>glue.time([utc, ][t]) -&gt; ts</code></td>
+<td>like <code>os.time()</code> with optional UTC and date args</td>
 </tr>
 <tr class="even">
+<td style="text-align: left;"><code>glue.time([utc, ][y, [m], [d], [h], [min], [s], [isdst]]) -&gt; ts</code></td>
+<td>like <code>os.time()</code> with optional UTC and date args</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>glue.utc_diff() -&gt; seconds</code></td>
+<td>seconds to UTC</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>glue.day([utc, ][ts], [plus_days]) -&gt; ts</code></td>
+<td>timestamp at day’s beginning from <code>ts</code></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>glue.month([utc, ][ts], [plus_months]) -&gt; ts</code></td>
+<td>timestamp at month’s beginning from <code>ts</code></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>glue.year([utc, ][ts], [plus_years]) -&gt; ts</code></td>
+<td>timestamp at year’s beginning from <code>ts</code></td>
+</tr>
+<tr class="odd">
 <td style="text-align: left;"><strong>errors</strong></td>
 <td></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td style="text-align: left;"><code>glue.assert(v [,message [,format_args...]]) -&gt; v</code></td>
 <td>assert with error message formatting</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td style="text-align: left;"><code>glue.protect(func) -&gt; protected_func</code></td>
 <td>wrap an error-raising function</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td style="text-align: left;"><code>glue.pcall(f, ...) -&gt; true, ... | false, traceback</code></td>
 <td>pcall with traceback</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td style="text-align: left;"><code>glue.fpcall(f, ...) -&gt; result | nil, traceback</code></td>
 <td>coding with finally and except</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td style="text-align: left;"><code>glue.fcall(f, ...) -&gt; result</code></td>
 <td></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td style="text-align: left;"><strong>modules</strong></td>
 <td></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td style="text-align: left;"><code>glue.module([name, ][parent]) -&gt; M</code></td>
 <td>create a module</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td style="text-align: left;"><code>glue.autoload(t, submodules) -&gt; M</code></td>
 <td>autoload table keys from submodules</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td style="text-align: left;"><code>glue.autoload(t, key, module|loader) -&gt; t</code></td>
 <td>autoload table keys from submodules</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td style="text-align: left;"><code>glue.bin</code></td>
 <td>get the script’s directory</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td style="text-align: left;"><code>glue.luapath(path [,index [,ext]])</code></td>
 <td>insert a path in package.path</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td style="text-align: left;"><code>glue.cpath(path [,index])</code></td>
 <td>insert a path in package.cpath</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td style="text-align: left;"><strong>allocation</strong></td>
 <td></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td style="text-align: left;"><code>glue.freelist([create], [destroy]) -&gt; alloc, free</code></td>
 <td>freelist allocation pattern</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td style="text-align: left;"><code>glue.buffer(ctype) -&gt; alloc(minlen) -&gt; buf,capacity</code></td>
 <td>auto-growing buffer</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>glue.dynarray(ctype) -&gt; alloc(minlen|false) -&gt; buf, minlen</code></td>
+<td>auto-growing buffer that preserves data</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;"><strong>ffi</strong></td>
@@ -319,8 +351,12 @@
 <td>get the value of a single bit from an integer</td>
 </tr>
 <tr class="even">
-<td style="text-align: left;"><code>glue.setbit(val, mask, bitval)</code></td>
+<td style="text-align: left;"><code>glue.setbit(val, mask, bitval) -&gt; val</code></td>
 <td>set the value of a single bit from an integer</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>glue.bor(flags, bits, [strict]) -&gt; mask</code></td>
+<td><code>bit.bor()</code> that takes a string or table</td>
 </tr>
 </tbody>
 </table>
@@ -345,8 +381,8 @@
 <p>Unpack varargs. Implemented as <code>unpack(t, i or 1, j or t.n or #t)</code>.</p>
 <hr />
 <h2 id="tables">Tables</h2>
-<h3 id="glue.countt---n"><code>glue.count(t) -&gt; n</code></h3>
-<p>Count all the keys in a table.</p>
+<h3 id="glue.countt-maxn---n"><code>glue.count(t[, maxn]) -&gt; n</code></h3>
+<p>Count the keys in a table, optionally up to <code>maxn</code>.</p>
 <hr />
 <h3 id="glue.indext---dt"><code>glue.index(t) -&gt; dt</code></h3>
 <p>Switch table keys with values.</p>
@@ -392,10 +428,10 @@ hour  8</code></pre>
 <pre><code>isc_info_svc_timeout</code></pre>
 <hr />
 <h3 id="glue.keystsortedcmp---dt"><code>glue.keys(t[,sorted|cmp]) -&gt; dt</code></h3>
-<p>Make a list of all the keys of <code>t</code>, optionally sorted. The second arg can be <code>true</code>, <code>'asc'</code>, <code>'desc'</code> or a comparison function.</p>
+<p>Make an array of all the keys of <code>t</code>, optionally sorted. The second arg can be <code>true</code>, <code>'asc'</code>, <code>'desc'</code> or a comparison function.</p>
 <h4 id="examples-1">Examples</h4>
-<p>An API expects a list of things but you have them as keys in a table because you are indexing something on them.</p>
-<p>For instance, you have a table of the form <code>{socket = thread}</code> but <code>socket.select</code> wants a list of sockets.</p>
+<p>An API expects an array of things but you have them as keys in a table because you are indexing something on them.</p>
+<p>For instance, you have a table of the form <code>{socket = thread}</code> but <code>socket.select</code> wants an array of sockets.</p>
 <hr />
 <h3 id="glue.sortedpairstcmp---iter---kv"><code>glue.sortedpairs(t[,cmp]) -&gt; iter() -&gt; k,v</code></h3>
 <p>Like pairs() but in key order.</p>
@@ -428,46 +464,45 @@ hour  8</code></pre>
 <h3 id="glue.attrtk1vk2-v"><code>glue.attr(t,k1[,v])[k2] = v</code></h3>
 <p>Idiom for <code>t[k1][k2] = v</code> with auto-creating of <code>t[k1]</code> if not present.</p>
 <hr />
-<h2 id="lists">Lists</h2>
+<h2 id="arrays">Arrays</h2>
 <h3 id="glue.extenddtt1...---dt"><code>glue.extend(dt,t1,...) -&gt; dt</code></h3>
-<p>Extend the list with the elements of other lists.</p>
+<p>Extend an array with the elements of other arrays.</p>
 <ul>
 <li>falsey arguments are skipped.</li>
-<li>list elements are the ones from 1 to <code>#dt</code>.</li>
+<li>array elements are the ones from 1 to <code>#dt</code>.</li>
 </ul>
 <h4 id="uses">Uses</h4>
-<p>Accumulating values from multiple list sources.</p>
+<p>Accumulating values from multiple array sources.</p>
 <hr />
 <h3 id="glue.appenddtv1...---dt"><code>glue.append(dt,v1,...) -&gt; dt</code></h3>
-<p>Append non-nil arguments to a list.</p>
+<p>Append non-nil arguments to an array.</p>
 <h4 id="uses-1">Uses</h4>
-<p>Appending an object to a flattened list of lists (eg. appending a path element to a 2d path).</p>
+<p>Appending an object to a flattened array of arrays (eg. appending a path element to a 2d path).</p>
 <hr />
 <h3 id="glue.shifttin---t"><code>glue.shift(t,i,n) -&gt; t</code></h3>
-<p>Shift all the list elements starting at index <code>i</code>, <code>n</code> positions to the left or further to the right.</p>
+<p>Shift all the array elements starting at index <code>i</code>, <code>n</code> positions to the left or further to the right.</p>
 <p>For a positive <code>n</code>, shift the elements further to the right, effectively creating room for <code>n</code> new elements at index <code>i</code>. When <code>n</code> is 1, the effect is the same as for <code>table.insert(t, i, t[i])</code>. The old values at index <code>i</code> to <code>i+n-1</code> are preserved, so <code>#t</code> still works after the shifting.</p>
 <p>For a negative <code>n</code>, shift the elements to the left, effectively removing <code>n</code> elements at index <code>i</code>. When <code>n</code> is -1, the effect is the same as for <code>table.remove(t, i)</code>.</p>
 <h4 id="uses-2">Uses</h4>
-<p>Removing a portion of a list or making room for more elements inside the list.</p>
+<p>Removing a portion of an array or making room for more elements inside the array.</p>
 <hr />
 <h3 id="glue.mapt-fieldf...---t"><code>glue.map(t, field|f,...) -&gt; t</code></h3>
 <p>Map function <code>f(v, ...) -&gt; v1</code> over the array elements of <code>t</code> or, if the array part is empty, map <code>f(k, v, ...) -&gt; v1</code> over the pairs of <code>t</code>.</p>
-<p>If <code>f</code> is not a function, then the values of <code>t</code> must be themselves tables, in which case <code>f</code> is a key to pluck from those tables. Plucked functions are called as methods and their result is selected instead (this allows eg. calling a method for each element in a list or map of objects and collecting the results in a list/map).</p>
+<p>If <code>f</code> is not a function, then the values of <code>t</code> must be themselves tables, in which case <code>f</code> is a key to pluck from those tables. Plucked functions are called as methods and their result is selected instead (this allows eg. calling a method for each element in an array or map of objects and collecting the results in an array/map).</p>
 <hr />
-<h2 id="arrays">Arrays</h2>
 <h3 id="glue.indexofv-t-i-j---i"><code>glue.indexof(v, t, [i], [j]) -&gt; i</code></h3>
 <p>Scan an array for a value and if found, return the index.</p>
 <p><strong>NOTE:</strong> Works on ffi arrays too if <code>i</code> and <code>j</code> are provided.</p>
 <hr />
 <h3 id="glue.binsearchv-t-cmp-i-j---i"><code>glue.binsearch(v, t, [cmp], [i], [j]) -&gt; i</code></h3>
-<p>Return the smallest index whereby inserting the value <code>v</code> in sorted list <code>t</code> will keep <code>t</code> sorted i.e. <code>t[i-1] &lt; v</code> and <code>t[i] &gt;= v</code>. Return <code>nil</code> if <code>v</code> is larger than the largest value or if <code>t</code> is empty.</p>
+<p>Return the smallest index whereby inserting the value <code>v</code> in sorted array <code>t</code> will keep <code>t</code> sorted i.e. <code>t[i-1] &lt; v</code> and <code>t[i] &gt;= v</code>. Return <code>nil</code> if <code>v</code> is larger than the largest value or if <code>t</code> is empty.</p>
 <p>The comparison function <code>cmp</code> is called as <code>cmp(t, i, v)</code> and must return <code>true</code> when <code>t[i] &lt; v</code>. Built-in functions are also available by passing one of <code>'&lt;'</code>, <code>'&gt;'</code>, <code>'&lt;='</code>, <code>'&gt;='</code>.</p>
-<p><strong>TIP:</strong> Use a <code>cmp</code> that returns <code>true</code> when <code>t[i] &gt; v</code> to search in a reverse-sorted list (i.e. use <code>'&gt;'</code>).</p>
+<p><strong>TIP:</strong> Use a <code>cmp</code> that returns <code>true</code> when <code>t[i] &gt; v</code> to search in a reverse-sorted array (i.e. use <code>'&gt;'</code>).</p>
 <p><strong>TIP:</strong> Use a <code>cmp</code> that returns <code>true</code> when <code>t[i] &lt;= v</code> to get the <em>largest</em> index (as opposed to the <em>smallest</em> index) that will keep <code>t</code> sorted when inserting <code>v</code>, i.e. <code>t[i-1] &lt;= v</code> and <code>t[i] &gt; v</code>.</p>
 <p><strong>NOTE:</strong> Works on ffi arrays too if <code>i</code> and <code>j</code> are provided.</p>
 <hr />
 <h3 id="glue.reverset-i-j---t"><code>glue.reverse(t, [i], [j]) -&gt; t</code></h3>
-<p>Reverse a list in-place and return the input arg.</p>
+<p>Reverse an array in-place and return the input arg.</p>
 <p><strong>NOTE:</strong> Works on ffi arrays too if <code>i</code> and <code>j</code> are provided.</p>
 <hr />
 <h2 id="strings">Strings</h2>
@@ -529,9 +564,12 @@ hour  8</code></pre>
 <h3 id="glue.endss-suffix---tf"><code>glue.ends(s, suffix) -&gt; t|f</code></h3>
 <p>Find if string <code>s</code> ends with <code>suffix</code>.</p>
 <hr />
+<h3 id="glue.substs-t---s"><code>glue.subst(s, t) -&gt; s</code></h3>
+<p>Replace all <code>{foo}</code> occurences within <code>s</code> with <code>t.foo</code>.</p>
+<hr />
 <h2 id="iterators">Iterators</h2>
 <h3 id="glue.collectiiterator---t"><code>glue.collect([i,]iterator) -&gt; t</code></h3>
-<p>Iterate an iterator and collect its i’th return value of every step into a list.</p>
+<p>Iterate an iterator and collect its i’th return value of every step into an array.</p>
 <ul>
 <li>i defaults to 1</li>
 </ul>
@@ -548,7 +586,7 @@ hour  8</code></pre>
 <span id="cb11-6"><a href="#cb11-6"></a><span class="op">&gt;</span> b</span>
 <span id="cb11-7"><a href="#cb11-7"></a><span class="op">&gt;</span> c</span></code></pre></div>
 <hr />
-<h2 id="closures">Closures</h2>
+<h2 id="stubs">Stubs</h2>
 <h3 id="glue.pass...---..."><code>glue.pass(...) -&gt; ...</code></h3>
 <p>The identity function. Does nothing, returns back all arguments.</p>
 <h4 id="uses-4">Uses</h4>
@@ -562,6 +600,7 @@ hour  8</code></pre>
 <h3 id="glue.noop"><code>glue.noop()</code></h3>
 <p>Does nothing. Returns nothing.</p>
 <hr />
+<h2 id="caching">Caching</h2>
 <h3 id="glue.memoizef-narg---f"><code>glue.memoize(f[, narg]) -&gt; f</code></h3>
 <h3 id="glue.memoize_multiretf-narg---f"><code>glue.memoize_multiret(f[, narg]) -&gt; f</code></h3>
 <p>Memoization for functions with any number of arguments. <code>memoize()</code> supports functions with <em>one return value</em>. <code>memoize_multiret()</code> supports any function. Both support <code>nil</code> and <code>NaN</code> args and retvals.</p>
@@ -619,6 +658,7 @@ hour  8</code></pre>
 <li>virtual classes (aka dependency injection, aka nested inner classes whose fields and methods can be overridden by subclasses of the outer class): composite objects which need to instantiate other objects can be made extensible by exposing those objects’ classes as fields of the container class with <code>container_class.inner_class = inner_class</code> and instantiating with <code>self.inner_class(...)</code> so that replacing <code>inner_class</code> in a sub-class of <code>container_class</code> is possible. Moreso, instantiation with <code>self:inner_class(...)</code> (so with a colon) passes the container object to <code>inner_class</code>’s constructor automatically which allows referencing the container object from the inner object.</li>
 <li>overriding syntax sugar so that the super class need not be referenced explicitly when overriding can be incorporated into the base class with <code>base.override = glue.override</code>.</li>
 </ul>
+<hr />
 <h3 id="glue.beforeclass-method_name-f"><code>glue.before(class, method_name, f)</code></h3>
 <p>Modify a method such that it calls <code>f</code> at the beginning. <code>f</code> receives all the arguments passed to the method. <code>f</code>’s results are discarded.</p>
 <p>Usage:</p>
@@ -630,6 +670,7 @@ hour  8</code></pre>
 <span id="cb17-2"><a href="#cb17-2"></a>foo<span class="op">:</span>before<span class="op">(</span><span class="st">&#39;bar&#39;</span><span class="op">,</span> <span class="kw">function</span><span class="op">(</span>self<span class="op">,</span> <span class="op">...)</span></span>
 <span id="cb17-3"><a href="#cb17-3"></a>  <span class="op">...</span></span>
 <span id="cb17-4"><a href="#cb17-4"></a><span class="cf">end</span><span class="op">)</span></span></code></pre></div>
+<hr />
 <h3 id="glue.afterclass-method_name-f"><code>glue.after(class, method_name, f)</code></h3>
 <p>Modify a method such that it calls <code>f</code> at the end. <code>f</code> receives all the arguments passed to the method. The modified method returns what <code>f</code> returns.</p>
 <p>Usage:</p>
@@ -641,6 +682,7 @@ hour  8</code></pre>
 <span id="cb19-2"><a href="#cb19-2"></a>foo<span class="op">:</span>after<span class="op">(</span><span class="st">&#39;bar&#39;</span><span class="op">,</span> <span class="kw">function</span><span class="op">(</span>self<span class="op">,</span> <span class="op">...)</span></span>
 <span id="cb19-3"><a href="#cb19-3"></a>  <span class="op">...</span></span>
 <span id="cb19-4"><a href="#cb19-4"></a><span class="cf">end</span><span class="op">)</span></span></code></pre></div>
+<hr />
 <h3 id="glue.overrideclass-method_name-f"><code>glue.override(class, method_name, f)</code></h3>
 <p>Override a method such that the new implementation only calls <code>f</code> as <code>f(inherited, self, ...)</code> where <code>inherited</code> is the old implementation. <code>f</code> receives all the method arguments and the method returns what <code>f</code> returns.</p>
 <p>Usage:</p>
@@ -656,6 +698,9 @@ hour  8</code></pre>
 <span id="cb21-4"><a href="#cb21-4"></a>  <span class="kw">local</span> ret <span class="op">=</span> inherited<span class="op">(</span>self<span class="op">,</span> <span class="op">...)</span></span>
 <span id="cb21-5"><a href="#cb21-5"></a>  <span class="op">...</span></span>
 <span id="cb21-6"><a href="#cb21-6"></a><span class="cf">end</span><span class="op">)</span></span></code></pre></div>
+<hr />
+<h3 id="glue.gettersandsettersgetters-setters-super---mt"><code>glue.gettersandsetters([getters], [setters], [super]) -&gt; mt</code></h3>
+<p>Return a metatable that supports virtual properties with getters and setters. Can be used with setmetatable() and ffi.metatype(). <code>super</code> is for preserving the functionality of <code>__index</code> while <code>__index</code> is being used for getters.</p>
 <hr />
 <h2 id="io">I/O</h2>
 <h3 id="glue.canopenfile-mode---filename-nil"><code>glue.canopen(file[, mode]) -&gt; filename | nil</code></h3>
@@ -687,8 +732,22 @@ hour  8</code></pre>
 <h3 id="glue.printerout-format---f"><code>glue.printer(out[, format]) -&gt; f</code></h3>
 <p>Create a <code>print()</code>-like function which uses the function <code>out</code> to output its values and uses the optional <code>format</code> to format each value. For instance <code>glue.printer(io.write, tostring)</code> returns a function which behaves like the standard <code>print()</code> function.</p>
 <hr />
-<p><code>glue.time([t, [utc]]) -&gt; timestamp</code></p>
+<h3 id="glue.timeutc-t---ts-glue.timeutc-year-month-day-hour-min-sec-isdst---ts"><code>glue.time([utc, ][t]) -&gt; ts</code> <br> <code>glue.time([utc, ][year, [month], [day], [hour], [min], [sec], [isdst]]) -&gt; ts</code></h3>
 <p>Like <code>os.time()</code> but considers the time to be in UTC if either <code>utc</code> or <code>t.utc</code> is <code>true</code>.</p>
+<p><strong>NOTE:</strong> You should only use <code>os.date()</code> and <code>os.time()</code> and therefore <code>glue.time()</code> for current dates and use something else for historical dates because these functions don’t work with negative timestamps because apparently time didn’t exist before UNIX. At least they don’t suffer from Y2038 so that’s that.</p>
+<p><strong>NOTE:</strong> <code>os.time()</code> has second accuracy (so those timestamps are integers). For sub-second accuracy use the <a href="/time">time</a> module.</p>
+<hr />
+<h3 id="glue.utc_diff---seconds"><code>glue.utc_diff() -&gt; seconds</code></h3>
+<p>Difference between local time and UTC in seconds.</p>
+<hr />
+<h3 id="glue.dayutc-ts-plus_days---ts"><code>glue.day([utc, ][ts], [plus_days]) -&gt; ts</code></h3>
+<p>Timestamp at day’s beginning from <code>ts</code>, plus/minus some days.</p>
+<hr />
+<h3 id="glue.monthutc-ts-plus_months---ts"><code>glue.month([utc, ][ts], [plus_months]) -&gt; ts</code></h3>
+<p>Timestamp at month’s beginning from <code>ts</code>, plus/minus some months.</p>
+<hr />
+<h3 id="glue.yearutc-ts-plus_years---ts"><code>glue.year([utc, ][ts], [plus_years]) -&gt; ts</code></h3>
+<p>Timestamp at year’s beginning from <code>ts</code>, plus/minus some years.</p>
 <hr />
 <h2 id="errors">Errors</h2>
 <h3 id="glue.assertvmessageformat_args..."><code>glue.assert(v[,message[,format_args...]])</code></h3>
@@ -739,6 +798,7 @@ hour  8</code></pre>
 <p>Specifying a <code>name</code> for the module either returns <code>package.loaded[name]</code> if it is set or creates a module, sets <code>package.loaded[name]</code> to it and returns that. This is useful for creating and referencing shared namespaces without having to make a Lua file and require that.</p>
 <p>Naming the module also sets <code>P[name] = M</code> so that public symbols can be declared in <code>foo.bar</code> style instead of <code>_M.bar</code>.</p>
 <p>Setting <code>foo.module = glue.module</code> makes module <code>foo</code> directly extensible by calling <code>foo:module'bar'</code> or <code>require'foo':module'bar'</code>.</p>
+<p><em>This function is 27 LOC.</em></p>
 <h3 id="glue.autoloadt-submodules---t-glue.autoloadt-key-moduleloader---t"><code>glue.autoload(t, submodules) -&gt; t</code> <br> <code>glue.autoload(t, key, module|loader) -&gt; t</code></h3>
 <p>Assign a metatable to <code>t</code> (or override an existing metatable’s <code>__index</code>) such that when a missing key is accessed, the module said to contain that key is require’d automatically.</p>
 <p>The <code>submodules</code> argument is table of form <code>{key = module_name | load_function}</code> specifying the corresponding Lua module (or load function) that make each key available to <code>t</code>. The alternative syntax allows specifying the key - submodule associations one by one.</p>
@@ -790,6 +850,7 @@ hour  8</code></pre>
 <h2 id="allocation">Allocation</h2>
 <h3 id="glue.freelistcreate-destroy---alloc-free"><code>glue.freelist([create], [destroy]) -&gt; alloc, free</code></h3>
 <p>Returns <code>alloc() -&gt; e</code> and <code>free(e)</code> functions to allocate and deallocate Lua objects. The allocator returns the last freed object or calls <code>create()</code> to create a new one if the freelist is empty. <code>create</code> defaults to <code>function() return {} end</code>; <code>destroy</code> defaults to <code>glue.noop</code>.</p>
+<hr />
 <h3 id="glue.bufferctype---allocminlenfalse---buf-capacity"><code>glue.buffer(ctype) -&gt; alloc(minlen|false) -&gt; buf, capacity</code></h3>
 <p>(LuaJIT only) Return an allocation function that reuses or reallocates an internal buffer based on the <code>len</code> argument.</p>
 <ul>
@@ -800,6 +861,9 @@ hour  8</code></pre>
 <li>the contents of the buffer <em>are not preserved</em> between allocations but you <em>are allowed</em> to access both buffers between two consecutive allocations in order to do that yourself.</li>
 </ul>
 <hr />
+<h3 id="glue.dynarrayctype---allocminlenfalse---buf-minlen"><code>glue.dynarray(ctype) -&gt; alloc(minlen|false) -&gt; buf, minlen</code></h3>
+<p>Like <code>glue.buffer()</code> but preserves data between reallocations, and always returns <code>minlen</code> instead of capacity.</p>
+<hr />
 <h2 id="ffi">FFI</h2>
 <h3 id="glue.addrptr---number-string"><code>glue.addr(ptr) -&gt; number | string</code></h3>
 <p>Convert the address of a pointer into a Lua number (or possibly string on 64bit platforms). This is useful for:</p>
@@ -809,6 +873,15 @@ hour  8</code></pre>
 </ul>
 <h3 id="glue.ptrctypenumberstring---ptr"><code>glue.ptr([ctype,]number|string) -&gt; ptr</code></h3>
 <p>Convert an address value stored as a Lua number or string to a cdata pointer, optionally specifying a ctype for the pointer (defaults to <code>void*</code>).</p>
+<hr />
+<h3 id="glue.getbitval-mask---truefalse"><code>glue.getbit(val, mask) -&gt; true|false</code></h3>
+<p>Get the value of a single bit from an integer.</p>
+<h3 id="glue.setbitval-mask-bitval---val"><code>glue.setbit(val, mask, bitval) -&gt; val</code></h3>
+<p>Set the value of a single bit from an integer.</p>
+<h3 id="glue.borflags-bits-strict---mask"><code>glue.bor(flags, bits, [strict]) -&gt; mask</code></h3>
+<p><code>bit.bor()</code> that takes its arguments as a string of form <code>'opt1 opt2 ...'</code>, a list of form <code>{'opt1', 'opt2', ...}</code> or a map of form <code>{opt-&gt;true}</code> and performs <code>bit.bor()</code> on the numeric values of those arguments where the numeric values are given as the <code>bits</code> table of form <code>{opt-&gt;bitvalue}</code>.</p>
+<p>Useful for Luaizing C functions that take bitmask flags.</p>
+<p>Example: <code>glue.bor('a c', {a=1, b=2, c=4}) -&gt; 5</code>.</p>
 <hr />
 <h2 id="tips">Tips</h2>
 <p>String functions are also in the <code>glue.string</code> table. You can extend the Lua <code>string</code> namespace:</p>

@@ -17,21 +17,21 @@ return {
 		},
 		text_spans={
 			{
+				span_color=2492765439,
 				span_font='Amiri-Regular.ttf',
-				span_font_size=91,
-				span_text_color=2492765439
+				span_font_size=91
 			},
 			{
+				span_color=132441343,
 				span_font='Amiri-Regular.ttf',
 				span_font_size=91,
-				span_offset=1,
-				span_text_color=132441343
+				span_offset=1
 			},
 			{
+				span_color=1499027967,
 				span_font='Amiri-Regular.ttf',
 				span_font_size=91,
-				span_offset=2,
-				span_text_color=1499027967
+				span_offset=2
 			}
 		},
 		w=500,

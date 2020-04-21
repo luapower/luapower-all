@@ -1,0 +1,3 @@
+minizip 2.9.1 from https://github.com/nmoinvaz/minizip/releases (MIT License)
+
+requires: zlib

@@ -29,8 +29,8 @@ and UNC paths.
 `path.normalize(s, [pl], [opt]) -> s`                normalize a path in various ways
 `path.commonpath(s1, s2, [pl]) -> s|nil`             get the common prefix of two paths
 `path.depth(s, [pl]) -> n`                           get the number of non-empty path components
-`path.combine(p1, p2, [pl], [sep], [dsep]) -> s|nil` combine two paths if possible
-`path.abs(s, pwd, [pl], [sep], [dsep]) -> s|nil,err` convert relative path to absolute
+`path.combine(s1, s2, [pl], [sep], [dsep]) -> s|nil` combine two paths if possible
+`path.abs(dir, s, [pl], [sep], [dsep]) -> s|nil,err` convert relative path to absolute
 `path.rel(s, pwd, [pl], [sep], [dsep]) -> s|nil`     convert absolute path to relative
 `path.filename(s, [pl], [repl]) -> s|nil,err,code`   validate/make-valid filename
 ---------------------------------------------------- ------------------------------------------------
@@ -217,7 +217,7 @@ given in any order. The separator with which paths are combined is either
 `sep` or if `sep` is nil it's detected and if that fails `dsep` or the
 default separator is used.
 
-### `path.abs(s, pwd, [pl], [sep], [dsep]) -> s|nil,err`
+### `path.abs(dir, s, [pl], [sep], [dsep]) -> s|nil,err`
 
 Convert a relative path to an absolute path given a base dir
 (this is currently an alias of `path.combine()`).

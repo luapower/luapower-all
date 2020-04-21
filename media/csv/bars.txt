@@ -1,0 +1,7 @@
+there's a comma in this field, but no newline|"embedded
+newline"|"embedded
+newline"
+"embedded
+newline"|"embedded
+newline"|"embedded
+newline"

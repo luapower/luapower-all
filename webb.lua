@@ -40,6 +40,7 @@ ARG PARSING
 	str_arg(s) -> s | nil                   validate/trim non-empty string arg
 	enum_arg(s, values...) -> s | nil       validate enum arg
 	list_arg(s[, arg_f]) -> t               validate comma-separated list arg
+	checkbox_arg(s) -> 'checked' | nil      validate checkbox value from html form
 
 OUTPUT
 
@@ -51,6 +52,7 @@ OUTPUT
 	out_buffering() -> t | f                check if we're buffering output
 	setheader(name, val)                    set a header (unless we're buffering)
 	setmime(ext)                            set content-type based on file extension
+	flush()                                 ngx.flush()
 	print(...)                              like Lua's print but uses out()
 
 HTML ENCODING
@@ -80,18 +82,19 @@ JSON ENCODING/DECODING
 
 	json(s) -> t                            decode json
 	json(t) -> s                            encode json
+	null                                    value to encode json `null`
 
 FILESYSTEM
 
-	wwwpath([file], [type]) -> path|nil     get www subpath (and check if exists)
+	wwwpath(file, [type]) -> path|nil       get www subpath (and check if exists)
 	wwwfile(file) -> s                      get file contents
 	wwwfile.filename <- s|f(filename)       set virtual file contents
 
 MUSTACHE TEMPLATES
 
-	render_string(s[, env]) -> s            render a template from a string
-	render_file(file[, env]) -> s           render a template from a file
-	mustache_wrap(s) -> s                   wrap a template in <script> tag
+	render_string(s, [env], [part]) -> s    render a template from a string
+	render_file(file, [env], [part]) -> s   render a template from a file
+	mustache_wrap(s, name) -> s             wrap a template in <script> tag
 	template(name) -> s                     get template contents
 	template.name <- s|f(name)              set template contents or handler
 	render(name[, env]) -> s                render template
@@ -130,9 +133,9 @@ true, then clear the cache (either for the entire function or for arg `k`).
 
 	env([t]) -> t
 
-Per-request shared environment. Scripts run with `render()`,
-`include()`, `run()` run in this environment by default. If the `t` argument
-is given, an inherited environment is created.
+Per-request shared environment. Inherits _G. Scripts run with `include()`
+and `run()` run in this environment by default. If the `t` argument is given,
+an inherited environment is created.
 
 
 ]==]
@@ -260,10 +263,8 @@ end
 
 local _args = once(function()
 	local t = {}
-	if ngx.var.uri ~= '/' then
-		for s in glue.gsplit(ngx.var.uri, '/', 2, true) do
-			t[#t+1] = ngx.unescape_uri(s)
-		end
+	for s in glue.gsplit(ngx.var.uri, '/', 2, true) do
+		t[#t+1] = ngx.unescape_uri(s)
 	end
 	glue.update(t, ngx.req.get_uri_args()) --add in the query args
 	return t
@@ -281,13 +282,15 @@ local _post_args = once(function()
 	if not method'post' then return end
 	ngx.req.read_body()
 	local ct = headers'Content-Type'
-	if ct:find'^application/x%-www%-form%-urlencoded' then
-		return ngx.req.get_post_args()
-	elseif ct:find'^application/json' then
-		return json(ngx.req.get_body_data())
-	else
-		return ngx.req.get_body_data()
+	if ct then
+		if ct:find'^application/x%-www%-form%-urlencoded' then
+			return ngx.req.get_post_args()
+		elseif ct:find'^application/json' then
+			local s = ngx.req.get_body_data()
+			return s and json(s)
+		end
 	end
+	return ngx.req.get_body_data()
 end)
 
 function post(v)
@@ -359,6 +362,10 @@ function list_arg(s, arg_f)
 		table.insert(t, arg_f(s))
 	end
 	return t
+end
+
+function checkbox_arg(s)
+	return s == 'on' and 'checked' or nil
 end
 
 --output API -----------------------------------------------------------------
@@ -454,20 +461,12 @@ local function print_wrapper(print)
 	end
 end
 
+flush = ngx.flush
+
 --print functions for debugging with no output buffering and flushing.
 
 print = print_wrapper(glue.printer(out, tostring))
-
-local pp_ = require'pp'
-
-pp = print_wrapper(glue.printer(function(v)
-	if type(v) == 'table' then
-		pp_.write(out, v, '   ', {})
-	else
-		out(v)
-	end
-end)
-)
+pp = require'pp'
 
 --scheduler ------------------------------------------------------------------
 
@@ -600,9 +599,9 @@ end
 
 --response API ---------------------------------------------------------------
 
-function http_error(code, ...)
-	local msg = ... and string.format(...)
-	local t = {type = 'http', http_code = code, message = msg}
+function http_error(code, fmt, ...)
+	local msg = type(fmt) == 'string' and string.format(fmt, ...) or fmt
+	local t = {type = 'http', http_code = code, message = msg and tostring(msg)}
 	function t:__tostring()
 		return tostring(code)..(msg ~= nil and ' '..tostring(msg) or '')
 	end
@@ -661,16 +660,28 @@ function json(v)
 	end
 end
 
+null = cjson.null
+
+function out_json(v)
+	local s = cjson.encode(v)
+	setheader('content-length', #s)
+	setmime'json'
+	out(s)
+end
+
 --filesystem API -------------------------------------------------------------
 
 local fs = require'fs'
+local path = require'path'
 
 function wwwpath(file, type)
-	if file and file:find('..', 1, true) then return end --trying to escape
-	local path = config'www_dir'
-	if file then path = path..'/'..file end
-	if type and not fs.is(path, type) then return end
-	return path
+	assert(file)
+	if file:find('..', 1, true) then return end --trying to escape
+	local abs_path = assert(path.combine(config'www_dir', file))
+	if fs.is(abs_path, type) then return abs_path end
+	local abs_path = assert(path.combine('webb-www', file))
+	if fs.is(abs_path, type) then return abs_path end
+	return nil, file..' not found'
 end
 
 local function wwwfile_call(files, file)
@@ -680,8 +691,8 @@ local function wwwfile_call(files, file)
 	elseif f then
 		return f
 	else
-		local s = glue.readfile(wwwpath(file))
-		return glue.assert(s, 'file not found: %s', file)
+		local file = wwwpath(file)
+		return file and glue.readfile(file)
 	end
 end
 
@@ -697,7 +708,7 @@ end
 local mustache = require'mustache'
 
 function render_string(s, data, partials)
-	return (mustache.render(s, data or env(), partials))
+	return (mustache.render(s, data, partials))
 end
 
 function render_file(file, data, partials)
@@ -741,7 +752,7 @@ end
 --gather all the templates from the filesystem
 local load_templates = glue.memoize(function()
 	local t = {}
-	for file, d in fs.dir(wwwpath()) do
+	for file, d in fs.dir(wwwpath'.') do
 		assert(file)
 		if file:find'%.html%.mu$' and d:is'file' then
 			t[#t+1] = file

@@ -295,9 +295,7 @@ end
 
 do end --space helpers
 
-terra Layer:from_window(x: num, y: num)
-	return self.l:from_window(x, y)
-end
+terra Layer:from_window(x: num, y: num) return self.l:from_window(x, y) end
 
 do end --drawing
 
@@ -754,23 +752,15 @@ terra Layer:set_span_count(n: int)
 	self.l:invalidate'text'
 end
 
-local prefixed = {
-	offset  =1,
-	color   =1,
-	opacity =1,
-	operator=1,
-}
-
 for _,FIELD in ipairs(tr.SPAN_FIELDS) do
 
 	local T = tr.SPAN_FIELD_TYPES[FIELD]
-	local PFIELD = prefixed[FIELD] and 'text_'..FIELD or FIELD
 
-	Layer.methods['get_span_'..PFIELD] = terra(self: &Layer, span_i: int): T
+	Layer.methods['get_span_'..FIELD] = terra(self: &Layer, span_i: int): T
 		return self.l.text.layout:['get_span_'..FIELD](span_i)
 	end
 
-	Layer.methods['set_span_'..PFIELD] = terra(self: &Layer, span_i: int, v: T)
+	Layer.methods['set_span_'..FIELD] = terra(self: &Layer, span_i: int, v: T)
 		self.l.text.layout:['set_span_'..FIELD](span_i, v)
 		self.l:invalidate'text'
 	end

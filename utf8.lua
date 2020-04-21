@@ -214,7 +214,7 @@ local function encode_char(c, repl)
 		b1 = 0xF0 + c
 		n = 4
 	elseif repl then
-		return enncode_char(repl)
+		return encode_char(repl)
 	end
 	return n, b1, b2, b3, b4
 end

@@ -665,6 +665,7 @@ function res.fetch(res, mode, t)
 	local field_count = C.mysql_num_fields(res)
 	local fields = fetch_fields and C.mysql_fetch_fields(res)
 	local row = fetch_row(res, numeric, assoc, decode, field_count, fields, t or {})
+	if not row then return nil end
 	if packed then
 		return row
 	else
@@ -680,7 +681,7 @@ function res.rows(res, mode, t)
 	res:seek(1)
 	return function()
 		local row = fetch_row(res, numeric, assoc, decode, field_count, fields, t or {})
-		if not row then return end
+		if not row then return nil end
 		i = i + 1
 		if packed then
 			return i, row

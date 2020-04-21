@@ -1,0 +1,213 @@
+<h2 id="local-socket-requiresocket2"><code>local socket = require'socket2'</code></h2>
+<p>Portable coroutine-based async socket API. For scheduling it uses IOCP on Windows, epoll on Linux and kqueue on OSX.</p>
+<h2 id="status">Status</h2>
+<p><warn>Work in progress</warn></p>
+<p>The plan here is to create a new ffi-based networking stack for LuaJIT based on <a href="/socket2">socket2</a>, <a href="/coro">coro</a>, [http] and a TLS module binding to <a href="/openssl">openssl</a> that will replace <a href="/socket">socket</a>, <a href="/luasec">luasec</a>, <a href="/socketloop">socketloop</a>, <a href="/nginx">nginx</a>, <a href="/libcurl">libcurl</a>.</p>
+<h2 id="api">API</h2>
+<table>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;"><strong>address lookup</strong></td>
+<td></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>socket.addr(...) -&gt; ai</code></td>
+<td>look-up a hostname</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>ai:free()</code></td>
+<td>free the address list</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>ai:next() -&gt; ai|nil</code></td>
+<td>get next address in list</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>ai:addrs() -&gt; iter() -&gt; ai</code></td>
+<td>iterate addresses</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>ai:type() -&gt; s</code></td>
+<td>socket type: ‘tcp’, …</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>ai:family() -&gt; s</code></td>
+<td>address family: ‘inet’, …</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>ai:protocol() -&gt; s</code></td>
+<td>protocol: ‘tcp’, ‘icmp’, …</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>ai:name() -&gt; s</code></td>
+<td>cannonical name</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>ai:tostring() -&gt; s</code></td>
+<td>formatted address</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><strong>sockets</strong></td>
+<td></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>socket.tcp([family][, protocol]) -&gt; tcp</code></td>
+<td>make a TCP socket</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>socket.udp([family][, protocol]) -&gt; udp</code></td>
+<td>make a UDP socket</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>socket.raw([family][, protocol]) -&gt; raw</code></td>
+<td>make a RAW socket</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>s:type() -&gt; s</code></td>
+<td>socket type</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>s:family() -&gt; s</code></td>
+<td>address family</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>s:protocol() -&gt; s</code></td>
+<td>protocol</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>s:close()</code></td>
+<td>close connection and free socket</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>s:bind(addr | host,port)</code></td>
+<td>bind socket to IP/port</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><strong>TCP sockets</strong></td>
+<td></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>tcp:listen(host, port, [backlog])</code></td>
+<td>put socket in listening mode</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>tcp:connect(addr | host,port)</code></td>
+<td>connect</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>tcp:send(buf, maxlen) -&gt; len</code></td>
+<td>send bytes</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>tcp:recv(buf, maxlen) -&gt; len</code></td>
+<td>receive bytes</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><strong>UDP sockets</strong></td>
+<td></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>udp:send(buf, maxlen, addr | host,port) -&gt; len</code></td>
+<td>send a datagram to an address</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>udp:recv(buf, maxlen, addr | host,port) -&gt; len</code></td>
+<td>receive a datagram from an adress</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><strong>scheduling</strong></td>
+<td></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>socket.newthread(func) -&gt; co</code></td>
+<td>create a coroutine for async I/O</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>socket.poll(timeout) -&gt; true | false,'timeout'</code></td>
+<td>poll for I/O</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>socket.start(timeout)</code></td>
+<td>keep polling until timeout</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>socket.stop()</code></td>
+<td>stop polling</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><strong>multi-threading</strong></td>
+<td></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>socket.iocp([iocp_h]) -&gt; iocp_h</code></td>
+<td>get/set IOCP handle (Windows)</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>socket.epoll_fd([epfd]) -&gt; epfd</code></td>
+<td>get/set epoll fd (Linux)</td>
+</tr>
+</tbody>
+</table>
+<p>All function return <code>nil, err, errcode</code> on error.</p>
+<p>I/O functions only work inside threads created with <code>socket.newthread()</code>.</p>
+<h2 id="address-lookup">Address lookup</h2>
+<h3 id="socket.addr...---ai"><code>socket.addr(...) -&gt; ai</code></h3>
+<p>The args can be either an existing <code>ai</code> object which is passed through, or:</p>
+<ul>
+<li><code>[host], [port], socket_type, [family], [protocol], [flags]</code></li>
+</ul>
+<p>where</p>
+<ul>
+<li><code>host</code> can be a hostname, ip address, <code>'*'</code> (the default) which means <code>'0.0.0.0'</code> aka “all interfaces” or <code>false</code> which means <code>'127.0.0.1'</code>.</li>
+<li><code>port</code> can be a port number or a service name and defaults to <code>0</code> which means “any available port”.</li>
+<li><code>socket_type</code> must be <code>'tcp'</code>, <code>'udp'</code> or <code>'raw'</code>.</li>
+<li><code>family</code> can be <code>'inet'</code>, <code>'inet6'</code> or <code>'unix'</code> (defaults to <code>'inet'</code>).</li>
+<li><code>protocol</code> can be <code>'ip'</code>, <code>'ipv6'</code>, <code>'tcp'</code>, <code>'udp'</code>, <code>'raw'</code>, <code>'icmp'</code>, <code>'igmp'</code> or <code>'icmpv6'</code> (default is based on socket type).</li>
+<li>flags are a <a href="/glue">glue.bor()</a> list of <code>passive</code>, <code>cannonname</code>, <code>numerichost</code>, <code>numericserv</code>, <code>all</code>, <code>v4mapped</code>, <code>addrconfig</code> which map to <code>getaddrinfo()</code> flags.</li>
+</ul>
+<h2 id="sockets">Sockets</h2>
+<h3 id="socket.tcpfamily-protocol---tcp"><code>socket.tcp([family][, protocol]) -&gt; tcp</code></h3>
+<p>Make a TCP socket.</p>
+<h3 id="socket.udpfamily-protocol---udp"><code>socket.udp([family][, protocol]) -&gt; udp</code></h3>
+<p>Make an UDP socket.</p>
+<h3 id="socket.rawfamily-protocol---raw"><code>socket.raw([family][, protocol]) -&gt; raw</code></h3>
+<p>Make a RAW socket.</p>
+<h3 id="sclose"><code>s:close()</code></h3>
+<p>Close the connection and free the socket.</p>
+<h3 id="sbindaddr-hostport"><code>s:bind(addr | [host],[port])</code></h3>
+<p>Bind socket to an interface/port.</p>
+<h2 id="tcp-sockets">TCP sockets</h2>
+<h3 id="tcplistenbacklog-addr-hostport"><code>tcp:listen([backlog, ]addr | [host],[port])</code></h3>
+<p>Put the socket in listening mode, binding the socket if not bound already (in which case <code>host</code> and <code>port</code> args are ignored). The <code>backlog</code> defaults to <code>1/0</code> which means “use the maximum allowed”.</p>
+<h3 id="tcpconnectaddr-hostport"><code>tcp:connect(addr | host,port)</code></h3>
+<p>Connect to an address, binding the socket to <code>'*'</code> if not bound already.</p>
+<h3 id="tcpsendbuf-maxlen---len"><code>tcp:send(buf, maxlen) -&gt; len</code></h3>
+<p>Send bytes.</p>
+<h3 id="tcprecvbuf-maxlen---len"><code>tcp:recv(buf, maxlen) -&gt; len</code></h3>
+<p>Receive bytes.</p>
+<h2 id="udp-sockets">UDP sockets</h2>
+<h3 id="udpsendbuf-maxlen-addr-hostport---len"><code>udp:send(buf, maxlen, addr | host,port) -&gt; len</code></h3>
+<p>Send a datagram.</p>
+<h3 id="udprecvbuf-maxlen-addr-hostport---len"><code>udp:recv(buf, maxlen, addr | host,port) -&gt; len</code></h3>
+<p>Receive a datagram.</p>
+<h2 id="scheduling">Scheduling</h2>
+<p>Scheduling is based on synchronous coroutines provided by <a href="/coro">coro</a> which allows coroutine-based iterators that perform socket I/O to be written.</p>
+<h3 id="socket.newthreadfunc---co"><code>socket.newthread(func) -&gt; co</code></h3>
+<p>Create a coroutine for performing async I/O. The coroutine starts immediately and transfers control back to the <em>parent thread</em> inside the first async I/O operation. When the coroutine finishes, the control is transfered to the loop thread.</p>
+<p>Full-duplex I/O on a socket can be achieved by performing reads in one thread and all writes in another.</p>
+<h3 id="socket.polltimeout---true-falsetimeout"><code>socket.poll(timeout) -&gt; true | false,'timeout'</code></h3>
+<p>Poll for the next I/O event and resume the coroutine that waits for it.</p>
+<p>Timeout is in seconds with anything beyond 2^31-1 taken as infinte and defaults to infinite.</p>
+<h3 id="socket.starttimeout"><code>socket.start(timeout)</code></h3>
+<p>Start polling. Stops after the timeout expires and there’s no more I/O or <code>stop()</code> was called.</p>
+<h3 id="socket.stop"><code>socket.stop()</code></h3>
+<p>Tell the loop to stop dequeuing and return.</p>
+<h2 id="multi-threading">Multi-threading</h2>
+<h3 id="socket.iocpiocp_handle---iocp_handle"><code>socket.iocp([iocp_handle]) -&gt; iocp_handle</code></h3>
+<p>Get/set the global IOCP handle (Windows).</p>
+<p>IOCPs can be shared between OS threads and having a single IOCP for all threads (as opposed to having one IOCP per thread/Lua state) enables the kernel to better distribute the completion events between threads.</p>
+<p>To share the IOCP with another Lua state running on a different thread, get the IOCP handle with <code>socket.iocp()</code>, copy it over to the other state, then set it with <code>socket.iocp(copied_iocp)</code>.</p>
+<h3 id="socket.epoll_fdepfd---epfd"><code>socket.epoll_fd([epfd]) -&gt; epfd</code></h3>
+<p>Get/set the global epoll fd (Linux).</p>
+<p>Epoll fds can be shared between OS threads and having a single epfd for all threads is more efficient for the kernel than having one epfd per thread.</p>
+<p>To share the epfd with another Lua state running on a different thread, get the epfd with <code>socket.epoll_fd()</code>, copy it over to the other state, then set it with <code>socket.epoll_fd(copied_epfd)</code>.</p>

@@ -1,0 +1,78 @@
+<h1 id="tutorial1">Tutorial 1: Create a simple XLSX file</h1>
+<p>Let's start by creating a simple spreadsheet using Lua and the <code>xlsxwriter</code> module.</p>
+<p>Say that we have some data on monthly outgoings that we want to convert into an Excel XLSX file:</p>
+<pre><code> expenses = {
+   {&quot;Rent&quot;, 1000},
+   {&quot;Gas&quot;,   100},
+   {&quot;Food&quot;,  300},
+   {&quot;Gym&quot;,    50},
+ }</code></pre>
+<p>To do that we can start with a small program like the following:</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb2-1"><a href="#cb2-1"></a><span class="kw">local</span> Workbook <span class="op">=</span> <span class="fu">require</span> <span class="st">&quot;xlsxwriter.workbook&quot;</span></span>
+<span id="cb2-2"><a href="#cb2-2"></a></span>
+<span id="cb2-3"><a href="#cb2-3"></a></span>
+<span id="cb2-4"><a href="#cb2-4"></a><span class="co">-- Create a workbook and add a worksheet.</span></span>
+<span id="cb2-5"><a href="#cb2-5"></a><span class="kw">local</span> workbook  <span class="op">=</span> Workbook<span class="op">:</span>new<span class="op">(</span><span class="st">&quot;Expensese01.xlsx&quot;</span><span class="op">)</span></span>
+<span id="cb2-6"><a href="#cb2-6"></a><span class="kw">local</span> worksheet <span class="op">=</span> workbook<span class="op">:</span>add_worksheet<span class="op">()</span></span>
+<span id="cb2-7"><a href="#cb2-7"></a></span>
+<span id="cb2-8"><a href="#cb2-8"></a><span class="co">-- Some data we want to write to the worksheet.</span></span>
+<span id="cb2-9"><a href="#cb2-9"></a><span class="kw">local</span> expenses <span class="op">=</span> <span class="op">{</span></span>
+<span id="cb2-10"><a href="#cb2-10"></a>  <span class="op">{</span><span class="st">&quot;Rent&quot;</span><span class="op">,</span> <span class="dv">1000</span><span class="op">},</span></span>
+<span id="cb2-11"><a href="#cb2-11"></a>  <span class="op">{</span><span class="st">&quot;Gas&quot;</span><span class="op">,</span>   <span class="dv">100</span><span class="op">},</span></span>
+<span id="cb2-12"><a href="#cb2-12"></a>  <span class="op">{</span><span class="st">&quot;Food&quot;</span><span class="op">,</span>  <span class="dv">300</span><span class="op">},</span></span>
+<span id="cb2-13"><a href="#cb2-13"></a>  <span class="op">{</span><span class="st">&quot;Gym&quot;</span><span class="op">,</span>    <span class="dv">50</span><span class="op">},</span></span>
+<span id="cb2-14"><a href="#cb2-14"></a><span class="op">}</span></span>
+<span id="cb2-15"><a href="#cb2-15"></a></span>
+<span id="cb2-16"><a href="#cb2-16"></a><span class="co">-- Start from the first cell. Rows and columns are zero indexed.</span></span>
+<span id="cb2-17"><a href="#cb2-17"></a><span class="kw">local</span> row <span class="op">=</span> <span class="dv">0</span></span>
+<span id="cb2-18"><a href="#cb2-18"></a><span class="kw">local</span> col <span class="op">=</span> <span class="dv">0</span></span>
+<span id="cb2-19"><a href="#cb2-19"></a></span>
+<span id="cb2-20"><a href="#cb2-20"></a><span class="co">-- Iterate over the data and write it out element by element.</span></span>
+<span id="cb2-21"><a href="#cb2-21"></a><span class="cf">for</span> <span class="cn">_</span><span class="op">,</span> expense <span class="kw">in</span> <span class="fu">ipairs</span><span class="op">(</span>expenses<span class="op">)</span> <span class="cf">do</span></span>
+<span id="cb2-22"><a href="#cb2-22"></a>  <span class="kw">local</span> item<span class="op">,</span> cost <span class="op">=</span> <span class="fu">unpack</span><span class="op">(</span>expense<span class="op">)</span></span>
+<span id="cb2-23"><a href="#cb2-23"></a>  worksheet<span class="op">:</span><span class="fu">write</span><span class="op">(</span>row<span class="op">,</span> col<span class="op">,</span>     item<span class="op">)</span></span>
+<span id="cb2-24"><a href="#cb2-24"></a>  worksheet<span class="op">:</span><span class="fu">write</span><span class="op">(</span>row<span class="op">,</span> col <span class="op">+</span> <span class="dv">1</span><span class="op">,</span> cost<span class="op">)</span></span>
+<span id="cb2-25"><a href="#cb2-25"></a>  row <span class="op">=</span> row <span class="op">+</span> <span class="dv">1</span></span>
+<span id="cb2-26"><a href="#cb2-26"></a><span class="cf">end</span></span>
+<span id="cb2-27"><a href="#cb2-27"></a></span>
+<span id="cb2-28"><a href="#cb2-28"></a><span class="co">-- Write a total using a formula.</span></span>
+<span id="cb2-29"><a href="#cb2-29"></a>worksheet<span class="op">:</span><span class="fu">write</span><span class="op">(</span>row<span class="op">,</span> <span class="dv">0</span><span class="op">,</span> <span class="st">&quot;Total&quot;</span><span class="op">)</span></span>
+<span id="cb2-30"><a href="#cb2-30"></a>worksheet<span class="op">:</span><span class="fu">write</span><span class="op">(</span>row<span class="op">,</span> <span class="dv">1</span><span class="op">,</span> <span class="st">&quot;=SUM(B1:B4)&quot;</span><span class="op">)</span></span>
+<span id="cb2-31"><a href="#cb2-31"></a></span>
+<span id="cb2-32"><a href="#cb2-32"></a>workbook<span class="op">:</span><span class="fu">close</span><span class="op">()</span></span></code></pre></div>
+<p>If we run this program we should get a spreadsheet that looks like this:</p>
+<p><img src="/files/luapower/xlsxwriter/_images/tutorial01.png" /></p>
+<p>This is a simple example but the steps involved are representative of all programs that use xlsxwriter, so let's break it down into separate parts.</p>
+<p>The first step is to import the module:</p>
+<pre><code> local Workbook = require &quot;xlsxwriter.workbook&quot;</code></pre>
+<p>The next step is to create a new workbook object using the <code>Workbook:new()</code> constructor.</p>
+<p><code class="interpreted-text" role="ref">Workbook:new() &lt;constructor&gt;</code> takes one, non-optional, argument which is the filename that we want to create:</p>
+<pre><code> local workbook = Workbook:new(&quot;Expensese01.xlsx&quot;)</code></pre>
+<p>The workbook object is then used to add a new worksheet via the <code class="interpreted-text" role="func">add_worksheet</code> method:</p>
+<pre><code> local worksheet = workbook:add_worksheet()</code></pre>
+<p>By default worksheet names in the spreadsheet will be <span class="title-ref">Sheet1</span>, <span class="title-ref">Sheet2</span> etc., but we can also specify a name:</p>
+<pre><code> worksheet1 = workbook:add_worksheet()        -- Defaults to Sheet1.
+ worksheet2 = workbook:add_worksheet(&quot;Data&quot;)  -- Data.
+ worksheet3 = workbook:add_worksheet()        -- Defaults to Sheet3.</code></pre>
+<p>We can then use the worksheet object to write data via the <code class="interpreted-text" role="func">write</code> method:</p>
+<pre><code> worksheet:write(row, col, some_data)</code></pre>
+<div class="note">
+<div class="title">
+<p>Note</p>
+</div>
+<p>Throughout the <code>xlsxwriter</code> API <em>rows</em> and <em>columns</em> are zero indexed. Thus, the first cell in a worksheet, <code>A1</code>, is <code>(0, 0)</code>.</p>
+</div>
+<p>So in our example we iterate over our data and write it out as follows:</p>
+<pre><code> -- Iterate over the data and write it out element by element.
+ for _, expense in ipairs(expenses) do
+   local item, cost = unpack(expense)
+   worksheet:write(row, col,     item)
+   worksheet:write(row, col + 1, cost)
+   row = row + 1
+ end</code></pre>
+<p>We then add a formula to calculate the total of the items in the second column:</p>
+<pre><code> worksheet:write(row, 1, &quot;=SUM(B1:B4)&quot;)</code></pre>
+<p>Finally, we close the Excel file via the <code class="interpreted-text" role="func">close</code> method:</p>
+<pre><code> workbook:close()</code></pre>
+<p>And that's it. We now have a file that can be read by Excel and other spreadsheet applications.</p>
+<p>In the next sections we will see how we can use the <code>xlsxwriter</code> module to add formatting and other Excel features.</p>

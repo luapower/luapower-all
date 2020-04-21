@@ -1,0 +1,1059 @@
+<!DOCTYPE html>
+<html>
+<head>
+<script src="https://pagecdn.io/lib/ace/1.4.8/ace.js"
+	crossorigin="anonymous"
+	integrity="sha256-+svOVB1WmhKhTy7N21gWvtyXn91qF0r52P2hIArRRug=">
+</script>
+<style>
+
+* { box-sizing: border-box; }
+
+@font-face {
+	font-family: "x-widget";
+	src: url("/OpenSans-Regular.ttf");
+}
+
+@font-face {
+	font-family: "x-widget";
+	src: url("/OpenSans-SemiBold.ttf");
+	font-weight: bold;
+}
+
+body {
+	padding: 1em;
+}
+
+button {
+	white-space: nowrap;
+}
+
+a > button {
+	font-family: widget, sans-serif;
+	font-size: 100%;
+	text-decoration: none;
+	color: black;
+}
+
+h2 {
+	font-weight: normal;
+	margin-bottom: -4px;
+}
+
+/* main layout */
+
+#layout {
+	border-top: 1px solid #ccc;
+	border-bottom: 1px solid #ccc;
+	border-collapse: collapse;
+}
+
+.lb { border-left: 1px solid #ccc; }
+.lp { padding-left: 20px; }
+
+#code_td {
+	position: relative;
+}
+
+#help {
+	tab-size: 3;
+	-moz-tab-size: 3;
+}
+
+#main {
+	height: 100%;
+	overflow: auto;
+}
+
+#code {
+	position: absolute;
+	width: 100%;
+	height: 100%;
+	border: 1px solid #ccc;
+	border-left: 0;
+}
+
+#code:focus {
+	outline: none;
+}
+
+#demo_list {
+	display: flex;
+	height: 520px;
+	overflow: auto;
+}
+
+.x-dark #layout, .x-dark #code, .x-dark .lb { border-color: #333; }
+
+</style>
+
+<link rel="stylesheet" type="text/css" href="fontawesome.css">
+<link rel="stylesheet" type="text/css" href="x-widgets.css">
+
+<script src="glue.js"></script>
+<script src="divs.js"></script>
+<script src="x-rowset-widget.js"></script>
+<script src="x-widgets.js"></script>
+<script src="x-grid.js"></script>
+<script src="x-listbox.js"></script>
+<script src="ajax.js"></script>
+
+</head>
+
+<body class=x-widget>
+
+<h2>X-WIDGETS DEMO</h2>
+<table id=layout width=100% height=600 cellspacing=0>
+	<tr>
+		<td height=1>
+			<a href="https://github.com/luapower/x-widgets" target=_blank>
+				<button>
+					<span class="fa fa-code-branch"></span> Code
+				</button>
+			</a>
+		</td>
+		<td class="main_td lb lp">
+			<table width=100%>
+				<tr>
+					<td width=100%><h3>#main</h3></td>
+					<td><button id=lights_button>Lights</button></td>
+				</tr>
+			</table>
+		</td>
+		<td class="code_td lb">
+			<table width=100%>
+				<tr>
+					<td width=100%><h3>#code</h3></td>
+					<td><button id=run_button>Run Code</button></td>
+					<td><button id=reload_button>Reload</button></td>
+				</tr>
+			</table>
+		</td>
+		<td class="lp lb"><h3>#help</h3></td>
+	</tr>
+	<tr>
+		<td valign=top width=160 id=demo_list_ct>
+		</td>
+		<td class="main_td lb lp" valign=top width=34% height=100%>
+			<div id=main></div>
+		</td>
+		<td valign=top class="lb" id=code_td>
+			<aceeditor id=code></aceeditor>
+		</td>
+		<td class="lb lp" valign=top width=25%>
+			<pre id=help></pre>
+		</td>
+	</tr>
+</table>
+<div id=debugDiv></div>
+
+<!--------------------------------------------------------------------------->
+
+<template id=button_demo>
+<help>
+
+button({
+	text: 'html text',
+	icon_classes: 'class1 class2',
+	primary: true,
+})
+
+</help>
+
+<script>
+
+main.add(
+	button({
+		text: 'Click me!',
+		primary: true,
+		onclick: function() { print('clicked') },
+	}),
+	button({
+		text: 'Click&nbsp;<i>me</i>&nbsp;too!',
+		icon_classes: 'fa fa-biohazard',
+		onclick: function() { print('clicked') },
+	}),
+	button({
+		text: 'Multiline text<br>works too!',
+		icon_classes: 'fa fa-folder-open',
+		onclick: function() { print('clicked') },
+	})
+)
+
+</script>
+</template>
+
+<!--------------------------------------------------------------------------->
+
+<template id=tooltip_demo>
+<help>
+
+</help>
+
+<script>
+
+b1 = button({text: 'aaa ^ aaa<br>aaa aaa aaa v aaa aaa aaa'})
+b2 = button({text: 'aaa ^ aaa<br>aaa aaa aaa v aaa aaa aaa'})
+b3 = button({text: 'aaa ^ aaa<br>aaa aaa aaa v aaa aaa aaa'})
+main.add(H.div({style: 'text-align: center'}, H.div({}, b1), H.div({}, b2), H.div({}, b3)))
+
+b1.style['margin-bottom'] = '10em'
+b2.style['margin-bottom'] = '10em'
+
+let s = 'aaa v aaa<br>aaa aaa v aaa aaa'
+
+function check(e) { return e.hovered }
+
+t1 = tooltip({text: s, side: 'right' , align: 'center', target: b1, type: 'info', check: check})
+t2 = tooltip({text: s, side: 'top'   , align: 'center', target: b1, type: 'info', check: check})
+t3 = tooltip({text: s, side: 'bottom', align: 'center', target: b1, type: 'info', check: check})
+t4 = tooltip({text: s, side: 'left'  , align: 'center', target: b1, type: 'info', check: check})
+
+t1 = tooltip({text: s, side: 'right' , align: 'start', target: b2})
+t2 = tooltip({text: s, side: 'top'   , align: 'start', target: b2})
+t3 = tooltip({text: s, side: 'bottom', align: 'start', target: b2})
+t4 = tooltip({text: s, side: 'left'  , align: 'start', target: b2})
+
+t1 = tooltip({text: s, side: 'right' , align: 'end', target: b3, type: 'error'})
+t2 = tooltip({text: s, side: 'top'   , align: 'end', target: b3, type: 'error'})
+t3 = tooltip({text: s, side: 'bottom', align: 'end', target: b3, type: 'error'})
+t4 = tooltip({text: s, side: 'left'  , align: 'end', target: b3, type: 'error'})
+
+</script>
+</template>
+
+<!--------------------------------------------------------------------------->
+
+<template id=notifystack_demo>
+<help>
+
+</help>
+<script>
+
+ns = notifystack({
+	//
+})
+
+main.add(ns)
+
+ns.notify('Hello there')
+
+</script>
+</template>
+
+<!--------------------------------------------------------------------------->
+
+<template id=checkbox_demo>
+<help>
+
+</help>
+
+<script>
+
+main.add(checkbox({
+	text: 'Wassup homie',
+	value: 'wrong',
+	validate: function(v) { return typeof(v) == 'boolean' || 'Value not a boolean' }
+}))
+
+c2 = checkbox({
+	text: 'Yo wasup<br>I am multiline and right-aligned.',
+	align: 'right',
+	checked: true,
+})
+
+c2.on('value_changed', function(v) { print(v, this.checked) })
+
+main.add(c2)
+
+</script>
+</template>
+
+<!--------------------------------------------------------------------------->
+
+<template id=radiogroup_demo>
+<help>
+
+</help>
+
+<script>
+
+main.add(
+	radiogroup({
+		items: [
+			'Option 1',
+			'Option 2',
+			'Option 3<br>Multiple lines',
+		],
+		value: 1,
+	}),
+	radiogroup({
+		align: 'right',
+		items: [
+			'Option 1',
+			'Option 2',
+			'Option 3<br>Multiple lines long text',
+		],
+		value: 1/0,
+		validate: function(v) { return v >= 0 && v < 3 || 'Selected option out of range' },
+	})
+)
+
+
+</script>
+</template>
+
+<!--------------------------------------------------------------------------->
+
+<template id=menu_demo>
+<help>
+
+</help>
+<script>
+
+function act(a) { print(a.text) }
+
+m = menu({
+	items: [
+		{text: 'Open', action: act, key: 'Ctrl+B', icon_class: 'fa fa-folder-open'},
+		{text: 'Close', enabled: false, icon_class: 'fa fa-window-close', action: act, separator: true},
+		{text: 'More', items: [
+			{text: 'Check', checked: true},
+			{text: 'Check No Close', checked: true,
+				action: function(a) { print(a.checked); return false } },
+			{text: 'More Stuff', items: [
+				{text: 'More Stuff 1 this is a very long item text'},
+				{text: 'More Stuff 2', action: act},
+			]},
+		]},
+		{text: 'Even More', items: [
+			{text: 'Even More Stuff 1'},
+			{text: 'Even More Stuff 2'},
+		]},
+	],
+})
+
+b = button({
+	text: 'Click for menu',
+	primary: true,
+	onclick: function() { m.popup(b, 'bottom', 'left', 0, 2) },
+})
+
+main.add(b)
+
+</script>
+</template>
+
+<!--------------------------------------------------------------------------->
+
+<template id=input_demo>
+<help>
+
+</help>
+<script>
+
+function say_my_name(v) {
+	return v == null || v == 'Klaus' || 'You have to type in "Klaus" or leave empty.'
+}
+
+main.add(H.div({}, 'type in "Klaus" to validate: ', input({
+	value: 'wrong',
+	validate: say_my_name,
+})))
+
+main.add(H.div({}, 'type in "Klaus" to validate: ', input({
+	validate: function(v) {
+		return v == null || v == 'Klaus'
+			|| ('You have to type in "Klaus" or leave empty. <br>' +
+				'This error message is purposefully long to show that the default error box ' +
+				'wraps decently and stays centered.')
+	},
+})))
+
+main.add(
+	H.div({style: 'padding-top: 2em'},
+		'Check out these inner labels:',
+		H.div({},
+			input({
+				field_name: "santa's_name",
+				validate: say_my_name,
+			}),
+			input({
+				field_name: "devil's name",
+			})
+		)
+	)
+)
+
+</script>
+</template>
+
+<!--------------------------------------------------------------------------->
+
+<template id=spin_input_demo>
+<help>
+
+</help>
+<script>
+
+main.add(H.div({},
+	spin_input({value: 42}),
+	spin_input({value: 42, label: 'Heeey'})
+))
+main.add(H.div({},
+	spin_input({button_style: 'up-down', value: 42}),
+	spin_input({button_style: 'up-down', label: 'Hey hey'})
+))
+main.add(H.div({},
+	spin_input({button_style: 'left-right', value: 42}),
+	spin_input({button_style: 'left-right', label: 'Dis look good?'})
+))
+main.add(H.div({},
+	spin_input({min: -2, max: 5, step: 1.5, button_placement: 'right', value: 1}),
+	spin_input({min: -2, max: 5, step: 1.5, button_placement: 'right', label: 'How bout dis?'}),
+))
+
+</script>
+</template>
+
+<!--------------------------------------------------------------------------->
+
+<template id=slider_demo>
+<help>
+
+</help>
+<script>
+
+main.add(H.div({},
+	'Slider 1',
+	slider({
+		validate: function(v) { return v >= .2 && v <= .8 || 'Value not between .2 and .8' },
+		value: .5,
+	})))
+
+main.add(H.div({},
+	'Slider 2',
+	slider({value: 1500, from: 1000, to: 2000, step: 200, min: 1300, max: 1700}))
+)
+
+</script>
+</template>
+
+<!--------------------------------------------------------------------------->
+
+<template id=listbox_demo>
+<help>
+
+</help>
+<script>
+
+main.add(
+	listbox({
+		items: [
+			'Apples',
+			'Bananas',
+			'Something Else Entirely',
+		],
+		value: 1,
+	})
+)
+
+main.add(
+	listbox({
+		items: [
+			'Works',
+			'Horizontally',
+			'Too',
+		],
+		value: 2,
+		flow: 'horizontal',
+	})
+)
+
+</script>
+</template>
+
+<!--------------------------------------------------------------------------->
+
+<template id=pagelist_demo>
+<help>
+
+</help>
+<script>
+
+pages = H.div({style: 'margin-top: 1em'})
+pages.console = H.div({}, 'Console page. Contains focusble element. ', input())
+pages.source = H.div({}, 'Source page contents.')
+
+main.add(
+	pagelist({
+		items: [
+			'Elements',
+			{text: 'Console', page: pages.console},
+			{text: 'Sources', page: pages.source},
+			'Network',
+			'Performance',
+		],
+		selected_index: 3,
+		page_container: pages,
+	})
+)
+
+main.add(pages)
+
+</script>
+</template>
+
+<!--------------------------------------------------------------------------->
+
+<template id=split_demo>
+<help>
+
+</help>
+<script>
+
+sidebar = H.div({style: 'max-width: 300px; width: 200px'}, 'Sidebar')
+header  = H.div({style: 'min-height: 100px; height: 200px'}, 'Header')
+content = H.div({style: 'min-height: 100px;'}, 'Content')
+
+main.add(
+	hsplit({
+		2: sidebar,
+		1: vsplit({
+			1: header, 2: content,
+		}),
+	})
+)
+
+</script>
+</template>
+
+<!--------------------------------------------------------------------------->
+
+<template id=calendar_demo>
+<help>
+
+</help>
+<script>
+
+main.add(calendar())
+main.add(calendar({value: day(now(), 2)}))
+
+</script>
+</template>
+
+<!--------------------------------------------------------------------------->
+
+<template id=grid_demo>
+<help>
+
+</help>
+<script>
+
+var checked = '<div class="fa fa-check"></div>'
+
+function starts_with_a(s) {
+	return s.lower().starts('a') || 'Name must start with "A"'
+}
+
+var data = {
+	fields: [
+		{name: 'id'        , w:  60, min_w:  30, type: 'number', editable: false},
+		{name: 'X'         , w:  30, type: 'bool', true_text: checked, false_text: ''},
+		{name: 'name'      , w:  70, min_w:  50, max_w: 200, validate: starts_with_a},
+		{name: 'parent_id' , w:  60, min_w:  50, type: 'number', allow_null: true, editable: false, focusable: false},
+		{name: 'random_num', w: 130, allow_null: true, type: 'number', text: 'Random<br>Number'},
+		{name: 'date'      , w: 140, allow_null: true, type: 'date'},
+	],
+	pk: 'id',
+	rows: [],
+}
+
+for (let i = 1; i <= 1e5; i++) {
+	let id         = i
+	let name       = 'record '+i
+	let parent_id  = floor((random() * i))
+	let random_num = floor(random() * 1e9)
+	let random_date = day(i * 24 * 3600 * 1000)
+	data.rows.push({
+		focusable: i % 10 >= 2,
+		values: [id, i % 5 == 0, name, parent_id, random_num, random_date]
+	})
+}
+
+d = rowset(data)
+
+g = grid({
+	rowset: d,
+	w: 500,
+	h: 200,
+	//row_border_h: 1,
+	//row_h: 40,
+	//row_border_h: 1,
+	//order_by: 'parent_id, name desc',
+})
+
+g.style.resize = 'both'
+
+main.add(g)
+
+log = tag('pre')
+main.add(log)
+
+d.on('row_changed', function() {
+	log.html = json(d.pack_changeset(), null, 3)
+})
+
+</script>
+</template>
+
+<!--------------------------------------------------------------------------->
+
+<template id=dropdown_listbox_demo>
+<help>
+
+</help>
+<script>
+
+function thousand_items() {
+	let a = []
+	for (let i = 1; i <= 1000; i++)
+		a.push('Record '+i)
+	return a
+}
+
+main.add(
+	dropdown({
+		field_name: 'Here we are',
+		picker: listbox({
+			items: [
+				'Apples',
+				'Mananas',
+				'Bangos',
+				'Something Else Entirely',
+			],
+		}),
+		validate: function(v) { return v != 1 || 'Can\'t have mananas.' },
+		value: 1,
+	}),
+
+	dropdown({
+		field_name: 'Here we are again',
+		picker: listbox({
+			items: thousand_items(),
+		}),
+		value: 'not-in-list',
+	}),
+)
+
+</script>
+</template>
+
+<!--------------------------------------------------------------------------->
+
+<template id=dropdown_calendar_demo>
+<help>
+
+</help>
+<script>
+
+main.add(
+	dropdown({
+		picker: calendar(),
+		value: now(),
+		validate: function(v) {
+			if (day(v) == day(now()))
+				return 'Can\'t have today.'
+			if (day(v) == day(now(), 1))
+				return 'Can\'t have tomorrow.'
+		}
+	})
+)
+
+</script>
+</template>
+
+<!--------------------------------------------------------------------------->
+
+<template id=dropdown_grid_demo>
+<help>
+
+</help>
+<script>
+
+r1 = rowset({
+	fields: [
+		{w:  50, name: 'id', type: 'number', visible: false},
+		{w: 150, name: 'name'},
+		{w: 150, name: 'date', type: 'date'},
+	],
+	rows: [
+		{values: [1, 'Hey Dude', day(now())]},
+		{values: [2, 'Wasup'   , month(now())]},
+		{values: [3, 'Nuthin'  , year(now())]},
+	],
+})
+
+g1 = grid({
+	w: 302,
+	pick_value_col: 'id',
+	pick_display_col: 'name',
+	rowset: r1,
+})
+
+main.add(
+	dropdown({
+		value: 2,
+		picker: g1,
+	})
+)
+
+rows2 = []
+for (let i = 1; i <= 1e5; i++)
+	rows2.push({values: [i, 'Hey Dude #'+i]})
+
+r2 = rowset({
+	fields: [
+		{w:  50, name: 'id', type: 'number', visible: false},
+		{w: 200, name: 'name'},
+	],
+	rows: rows2,
+})
+
+g2 = grid({
+	w: 210,
+	pick_value_col: 'id',
+	pick_display_col: 'name',
+	rowset: r2,
+})
+
+main.add(
+	dropdown({
+		value: 42,
+		picker: g2,
+	})
+)
+
+</script>
+</template>
+
+<!--------------------------------------------------------------------------->
+
+<template id=dropdown_modes_demo>
+<help>
+
+</help>
+<script>
+
+function list() {
+	return listbox({
+		items: [
+			'Apples',
+			'Bananas',
+			'Something Else Entirely',
+		],
+	})
+}
+
+function p(mode, ...args) {
+	return H.div({style: 'margin-top: 1em'}, H('<b>'+mode+'</b> mode:<br>'), ...args)
+}
+
+main.add(
+	p('default', 'variable-width, no-wrap with min-width aligned with other inputs'),
+	dropdown({picker: calendar(), value: now()}),
+	H.div(),
+	dropdown({picker: list()}),
+
+	p('inline', 'variable-width, no-wrap, with no min-width (shrink-wrapped), baseline-aligned'),
+	dropdown({mode: 'inline', picker: calendar(), value: now()}),
+	H.div(),
+	dropdown({mode: 'inline', picker: list()}),
+
+	p('wrap', 'fixed-width, auto-wrap'),
+	dropdown({mode: 'wrap', picker: calendar(), value: now()}),
+	H.div(),
+	dropdown({classes: 'wrap', picker: list()}),
+
+	p('fixed', 'fixed-width, no-wrap, overflow hidden'),
+	dropdown({mode: 'fixed', picker: calendar(), value: now()}),
+	H.div(),
+	dropdown({mode: 'fixed', picker: list()})
+)
+
+</script>
+</template>
+
+<!--------------------------------------------------------------------------->
+
+<template id=inline_inputs_demo>
+<help>
+
+</help>
+<script>
+
+main.add(H.div({style: 'line-height: 3'},
+	'All ',
+	input({
+		style: 'min-width: 4em',
+		label: 'imma input',
+		mode: 'inline',
+		value: 'inputs',
+	}),
+	'are baseline-aligned',
+	spin_input({
+		label: 'imma spinner',
+		style: 'min-width: 6em',
+		mode: 'inline',
+		value: 42,
+	}),
+	', including dropdowns ',
+	dropdown({
+		label: 'imma date',
+		mode: 'inline',
+		picker: calendar(),
+	}),
+	', which can be made to wrap-to-fit or grow-to-fit, and even',
+	button({
+		text: 'buttons.',
+		primary: true,
+		onclick: function() { print('clicked') },
+	}),
+	'This stays true under different fonts, font sizes and line heights.'
+))
+
+</script>
+</template>
+
+<!--------------------------------------------------------------------------->
+
+<template id=rowset_form_demo>
+<help>
+
+</help>
+<script>
+
+r = rowset({
+	fields: [
+		{w: 100, name: 'id', type: 'number'},
+		{w: 100, name: 'name'},
+	],
+	rows: [
+		{values: [1, 'apples']},
+		{values: [2, 'bananas']},
+	],
+})
+
+g = grid({w: 200, h: 200, rowset: r})
+
+i1 = input({rowset: r, navigator: g, field: 'name'})
+
+// nav = navigator({rowset: r, value: 1})
+
+main.add(H.div({}, g), i1)
+
+</script>
+</template>
+
+<!--------------------------------------------------------------------------->
+
+<template id=lookup_field_demo>
+<help>
+
+</help>
+<script>
+
+fruits = rowset({
+	fields: [
+		{w:  50, name: 'id', type: 'number'},
+		{w: 150, name: 'name'},
+	],
+	rows: [
+		{values: [1, 'apples']},
+		{values: [2, 'bananas']},
+	],
+})
+
+main.add(grid({w: 200, h: 200, rowset: fruits}))
+
+r = rowset({
+	fields: [
+		{w: 100, name: 'fruit_id', type: 'number', align: 'left', text: 'fruit',
+			lookup_rowset: fruits,
+			lookup_col: 'id',
+			display_field: 'name',
+		},
+	],
+	rows: [
+		{values: [1]},
+		{values: [2]},
+		{values: [1]},
+	],
+})
+
+main.add(grid({w: 200, h: 200, rowset: r}))
+
+</script>
+</template>
+
+<!--------------------------------------------------------------------------->
+
+<template id=ajax_demo>
+<help>
+
+</help>
+<script>
+
+pre = tag('pre')
+main.add(pre)
+function log(...args) { pre.add(args.join(' '), '\n') }
+
+let req = ajax({
+	url: '/ajax-test.txt',
+	// timeout: 2,
+	slow_timeout: .5,
+	slow     : function(...args) { log('slow'       , ...args) },
+	progress : function(...args) { log('progress'   , ...args) },
+	done     : function(...args) { log('done'       , ...args) },
+}).send()
+
+</script>
+</template>
+
+<!--------------------------------------------------------------------------->
+
+<template id=ajax_json_demo>
+<help>
+
+</help>
+<script>
+
+pre = tag('pre')
+main.add(pre)
+function log(...args) { pre.add(args.join(' '), '\n') }
+
+let req = ajax({
+	url: '/ajax-test.json',
+	upload: {a: 5, b: 7},
+	slow     : function(...args) { log('slow'       , ...args) },
+	progress : function(...args) { log('progress'   , ...args) },
+	fail     : function(...args) { log('fail'       , ...args) },
+	success  : function(j)       { log('success'    , json(j)) },
+}).send()
+
+</script>
+</template>
+
+<!--------------------------------------------------------------------------->
+
+<template id=data_grid_demo>
+<help>
+
+</help>
+<script>
+
+function starts_with_a(s) {
+	return s.lower().starts('a') || 'Name must start with "A"'
+}
+
+var data = {
+	fields: [
+		{name: 'id'        , w:  60, min_w:  30, type: 'number', editable: false},
+		{name: 'name'      , w:  70, min_w:  50, max_w: 200, validate: starts_with_a},
+		{name: 'date'      , w: 140, allow_null: true, type: 'date'},
+	],
+	pk: 'id',
+	url: 'rowset-test.json',
+}
+
+d = rowset(data)
+
+g = grid({
+	rowset: d,
+	w: 500,
+	h: 200,
+})
+
+main.add(g)
+
+log = tag('pre')
+main.add(log)
+
+d.on('row_changed', function() {
+	log.html = json(d.pack_changeset(), null, 3)
+})
+
+d.load()
+
+</script>
+</template>
+
+<!--------------------------------------------------------------------------->
+
+<script>
+
+ace_editor = ace.edit(code, {
+	mode: 'ace/mode/javascript',
+	highlightActiveLine: false,
+	showGutter: false,
+	printMargin: false,
+	displayIndentGuides: false,
+	tabSize: 3,
+})
+
+// disable Tab in the editor since we need to demo tab navigation.
+ace_editor.commands.removeCommand(ace_editor.commands.byName.indent)
+ace_editor.commands.removeCommand(ace_editor.commands.byName.outdent)
+
+function run_script() {
+	let s = ace_editor.getSession().getValue()
+	main.innerHTML = ''
+	let f = eval('let f = function() {\n' + s + '}; f')
+	f()
+}
+
+let demos = []
+
+$('template').forEach(function(e) {
+	let id = e.attr('id')
+	if (!id.ends('_demo'))
+		return
+	let name = id.replace('_demo', '')
+	let t = window[name+'_demo'].content
+	let h = t.$('help')[0]; h = h && h.innerHTML.trim() || ''
+	let s = t.$('script')[0]; s = s && s.innerHTML.trim() || ''
+	demos.push({text: name, help: h, code: s})
+})
+
+demo_list = listbox({items: demos, attrs: {id: 'demo_list'}})
+
+demo_list.on('focused_row_changed', function() {
+	let demo = this.focused_item
+	ace_editor.getSession().setValue(demo.code)
+	ace_editor.initial_script = demo.code
+	run_script()
+	help.innerHTML = demo.help
+})
+
+run_button.on('click', function() {
+	run_script()
+})
+
+reload_button.on('click', function() {
+	acec_editor.getSession().setValue(editor.initial_script)
+	run_script()
+})
+
+demo_list_ct.add(demo_list)
+
+demo_list.value = 23
+
+lights_button.on('click', function() {
+	let dark = !document.body.hasclass('x-dark')
+	document.body.class('x-dark', dark)
+	ace_editor.setTheme(dark ? 'ace/theme/tomorrow_night' : null)
+})
+
+</script>
+</body>
+</html>

@@ -237,9 +237,9 @@ local function serialize_layer(e)
 		span_lang              =1,
 		span_paragraph_dir     =1,
 		span_wrap              =1,
-		span_text_color        =1,
-		span_text_opacity      =1,
-		span_text_operator     =1,
+		span_color             =1,
+		span_opacity           =1,
+		span_operator          =1,
 		span_underline         =1,
 		span_underline_color   =1,
 		span_underline_opacity =1,
@@ -978,9 +978,9 @@ function testui:repaint()
 			choose('span_lang', nil, {'', 'en-us', 'ar-sa', 'trk'}, i)
 			choose('span_paragraph_dir', 'dir_', {'auto', 'ltr', 'rtl', 'wltr', 'wrtl'}, i)
 			choose('span_wrap'            , 'wrap_', {'word', 'char', 'none'}, i)
-			pickcolor('span_text_color'   , i)
-			slideo('span_text_opacity'    , i)
-			choose('span_text_operator', 'operator_', {'clear', 'source', 'over', 'in', 'out', 'xor'}, i)
+			pickcolor('span_color'   , i)
+			slideo('span_opacity'    , i)
+			choose('span_operator', 'operator_', {'clear', 'source', 'over', 'in', 'out', 'xor'}, i)
 			choose('span_underline'    , 'underline_', {'none', 'solid', 'zigzag'}, i)
 			pickcolor('span_underline_color' , i)
 			slideo('span_underline_opacity'  , i)

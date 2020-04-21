@@ -129,9 +129,9 @@ return {
 				text_maxlen=50041,
 				text_spans={
 					{
+						span_color=2952731391,
 						span_font='OpenSans-Regular.ttf',
-						span_font_size=27.59375,
-						span_text_color=2952731391
+						span_font_size=27.59375
 					}
 				},
 				w=155.953125,

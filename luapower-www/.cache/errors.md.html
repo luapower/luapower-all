@@ -12,44 +12,56 @@
 <td style="text-align: left;">base class for errors</td>
 </tr>
 <tr class="even">
-<td style="text-align: left;"><code>error.errortype(classname[, super]) -&gt; eclass</code></td>
+<td style="text-align: left;"><code>error.errortype([classname], [super]) -&gt; eclass</code></td>
 <td style="text-align: left;">create an error class</td>
 </tr>
 <tr class="odd">
-<td style="text-align: left;"><code>error.new(class|classname, [e], ...) -&gt; e</code></td>
-<td style="text-align: left;">create/wrap an error object</td>
+<td style="text-align: left;"><code>eclass(...) -&gt; e</code></td>
+<td style="text-align: left;">create an error object</td>
 </tr>
 <tr class="even">
+<td style="text-align: left;"><code>error.new(classname, [e], ... | e) -&gt; e</code></td>
+<td style="text-align: left;">create/wrap/pass-through an error object</td>
+</tr>
+<tr class="odd">
 <td style="text-align: left;"><code>error.is(v[, classes]) -&gt; t|f</code></td>
 <td style="text-align: left;">check an error object type</td>
 </tr>
-<tr class="odd">
-<td style="text-align: left;"><code>error.raise(class|classname,... | e)</code></td>
+<tr class="even">
+<td style="text-align: left;"><code>error.raise(classname,... | e)</code></td>
 <td style="text-align: left;">(create and) raise an error</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td style="text-align: left;"><code>error.catch(classes, f, ...) -&gt; t,... | f,e</code></td>
 <td style="text-align: left;">pcall <code>f</code> and catch errors</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td style="text-align: left;"><code>error.pcall(f, ...) -&gt; ...</code></td>
 <td style="text-align: left;">pcall that stores traceback in <code>e.traceback</code></td>
 </tr>
-<tr class="even">
-<td style="text-align: left;"><code>error.check(class, v, ...) -&gt; v | raise(class,...)</code></td>
+<tr class="odd">
+<td style="text-align: left;"><code>error.check(v, ...) -&gt; v | raise(...)</code></td>
 <td style="text-align: left;">assert with specifying an error class</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td style="text-align: left;"><code>error.protect(classes, f) -&gt; protected_f</code></td>
 <td style="text-align: left;">turn raising <code>f</code> into a <code>nil,e</code> function</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td style="text-align: left;"><code>eclass:__call(...) -&gt; e</code></td>
 <td style="text-align: left;">error class constructor</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td style="text-align: left;"><code>eclass:__tostring() -&gt; s</code></td>
 <td style="text-align: left;">to make <code>error(e)</code> work</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>e.message</code></td>
+<td style="text-align: left;">formatted error message</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>e.traceback</code></td>
+<td style="text-align: left;">traceback at error site</td>
 </tr>
 </tbody>
 </table>

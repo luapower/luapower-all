@@ -28,154 +28,140 @@ return {
 		},
 		text_spans={
 			{
-				span_font='SourceHanSans.ttc',
+				span_color=4211081983,
 				span_font_face_index=37,
 				span_font_size=52,
 				span_lang='en-us',
-				span_text_color=4211081983,
 				span_underline=2,
 				span_underline_color=255
 			},
 			{
-				span_font='Font Awesome 5 Free-Solid-900.otf',
+				span_color=255,
 				span_font_size=56,
 				span_lang='en-us',
 				span_offset=5,
-				span_text_color=255,
 				span_underline=2,
 				span_underline_color=255
 			},
 			{
+				span_color=255,
 				span_font='ionicons.ttf',
 				span_font_size=56,
 				span_lang='en-us',
 				span_offset=7,
-				span_text_color=255,
 				span_underline=2,
 				span_underline_color=255
 			},
 			{
-				span_font='SourceHanSans.ttc',
+				span_color=255,
 				span_font_face_index=6,
 				span_font_size=15,
 				span_lang='en-us',
-				span_offset=11,
-				span_text_color=255
+				span_offset=11
 			},
 			{
-				span_font='SourceHanSans.ttc',
+				span_color=255,
 				span_font_face_index=6,
 				span_font_size=15,
 				span_lang='en-us',
 				span_offset=26,
-				span_text_color=255,
 				span_underline=1,
 				span_underline_color=255
 			},
 			{
-				span_font='SourceHanSans.ttc',
+				span_color=255,
 				span_font_face_index=6,
 				span_font_size=15,
 				span_lang='en-us',
-				span_offset=32,
-				span_text_color=255
+				span_offset=32
 			},
 			{
-				span_font='SourceHanSans.ttc',
+				span_color=4279835135,
 				span_font_face_index=15,
 				span_font_size=19,
 				span_lang='en-us',
-				span_offset=40,
-				span_text_color=4279835135
+				span_offset=40
 			},
 			{
-				span_font='SourceHanSans.ttc',
+				span_color=255,
 				span_font_face_index=6,
 				span_font_size=15,
 				span_lang='en-us',
-				span_offset=47,
-				span_text_color=255
+				span_offset=47
 			},
 			{
-				span_font='SourceHanSans.ttc',
+				span_color=255,
 				span_font_face_index=6,
 				span_font_size=15,
 				span_lang='en-us',
 				span_offset=56,
-				span_text_color=255,
 				span_underline=1,
 				span_underline_color=1258346239
 			},
 			{
-				span_font='SourceHanSans.ttc',
+				span_color=255,
 				span_font_face_index=6,
 				span_font_size=15,
 				span_lang='en-us',
 				span_offset=87,
-				span_text_color=255,
 				span_underline_color=1258346239
 			},
 			{
-				span_font='SourceHanSans.ttc',
+				span_color=255,
 				span_font_face_index=6,
 				span_font_size=15,
 				span_lang='en-us',
 				span_offset=256,
-				span_text_color=255,
 				span_underline=2,
 				span_underline_color=4278520319
 			},
 			{
-				span_font='SourceHanSans.ttc',
+				span_color=255,
 				span_font_face_index=6,
 				span_font_size=15,
 				span_lang='en-us',
 				span_offset=260,
-				span_text_color=255,
 				span_underline_color=1258346239
 			},
 			{
 				span_baseline=0.30000001192092896,
-				span_font='SourceHanSans.ttc',
+				span_color=255,
 				span_font_face_index=6,
 				span_font_size=15,
 				span_lang='en-us',
 				span_offset=273,
-				span_text_color=255,
 				span_underline_color=1258346239
 			},
 			{
 				span_baseline=-0.31700000166893005,
-				span_font='SourceHanSans.ttc',
+				span_color=255,
 				span_font_face_index=6,
 				span_font_size=21,
 				span_lang='en-us',
 				span_offset=275,
-				span_text_color=255,
 				span_underline_color=1258346239
 			},
 			{
-				span_font='SourceHanSans.ttc',
+				span_color=255,
 				span_font_face_index=6,
 				span_font_size=15,
 				span_lang='en-us',
 				span_offset=278,
-				span_text_color=255,
 				span_underline_color=1258346239
 			},
 			{
+				span_color=255,
 				span_font='NotoColorEmoji.ttf',
 				span_font_size=48,
 				span_lang='en-us',
-				span_offset=349,
-				span_text_color=255
+				span_offset=349
 			},
 			{
+				span_color=255,
 				span_font='OpenSans-Regular.ttf',
 				span_font_size=19,
 				span_lang='en-us',
-				span_offset=351,
-				span_text_color=255
+				span_offset=351
 			}
 		},
 		w=794.5,

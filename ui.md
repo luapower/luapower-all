@@ -2,10 +2,12 @@
 ## `local ui = require'ui'`
 
 Extensible UI toolkit written in Lua with widgets, layouts, styles and animations.
-Uses [terra.layer] for layouting, drawing and hit-testing, and through that
-it uses [terra.tr] for text rendeding.
 
-See [ui0] for a working prototype in pure Lua.
+Uses [nw] for creating and using native windows, providing a bitmap surface
+to draw on, and for mouse and keyboard input. Uses [terra.layer] for layouting,
+drawing and hit-testing, which in turn uses [cairo] for path filling, stroking,
+clipping, masking and blending, [terra.tr] for text shaping, rendering,
+editing and hit-testing, and [boxblur] for shadows.
 
 ## Status
 
@@ -14,14 +16,14 @@ See [ui0] for a working prototype in pure Lua.
 Still has a few good months of development ahead. You can track the progress
 in the [luapower trello board](https://trello.com/b/xde8hdAZ/luapower).
 Once the API and codebase stabilizes, further progress will be tracked via
-github issues.
+github issues. Also see [ui0] for a working prototype in pure Lua.
 
 ## Highlights
 
   * editable grid that can scroll millions of rows at 60 fps.
   * tab list with animated, moveable, draggable, dockable tabs.
   * extensible rich text editor with BiDi support.
-  * consistent Unicode [text rendering][tr] and editing on all platforms.
+  * consistent Unicode text rendering and editing on all platforms.
   * customization with cascading styles, inheritance and composition.
   * declarative transition animations.
   * flexbox and css-grid-like layouts.
@@ -167,7 +169,7 @@ Custom fonts can be added with:
   * `ui:add_font_file(...)`, which calls `tr:add_font_file(...)`, or
   * `ui:add_mem_font(...)`, which calls `tr:add_mem_font(...)`.
 
-See [tr] for details on those methods. To change the default font used
+See [font_db] for details on those methods. To change the default font used
 for text by all the layers and widgets, set `ui.layer.font` before creating
 any layers or widgets, or add a style on the `layer` tag with that.
 
@@ -298,10 +300,8 @@ if needed (see the code for that).
 Transitions can be created by calling:
 
 ~~~{.lua}
-	elem:transition(
-		attr, val, [duration], [ease], [delay],
-		[times], [backval], [blend], [speed], [from]
-	)
+elem:transition(attr, val, [duration], [ease], [delay],
+  [times], [backval], [blend], [speed], [from])
 ~~~
 
 or they can be defined declaratively as styles:

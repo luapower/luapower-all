@@ -1,0 +1,13 @@
+<h3 id="can-xlsxwriter-use-an-existing-excel-file-as-a-template">Can XlsxWriter use an existing Excel file as a template?</h3>
+<p>No. Xlsxwriter is designed only as a file <em>writer</em>. It cannot read or modify an existing Excel file.</p>
+<h3 id="why-do-my-formulas-show-a-zero-result-in-some-non-excel-applications">Why do my formulas show a zero result in some, non-Excel applications?</h3>
+<p>Due to wide range of possible formulas and interdependencies between them <code>xlsxwriter</code> doesn't, and realistically cannot, calculate the result of a formula when it is written to an XLSX file. Instead, it stores the value 0 as the formula result. It then sets a global flag in the XLSX file to say that all formulas and functions should be recalculated when the file is opened.</p>
+<p>This is the method recommended in the Excel documentation and in general it works fine with spreadsheet applications. However, applications that don't have a facility to calculate formulas, such as Excel Viewer, or several mobile applications, will only display the 0 results.</p>
+<p>If required, it is also possible to specify the calculated result of the formula using the optional <code>value</code> parameter in <code class="interpreted-text" role="func">write_formula()</code>:</p>
+<pre><code> worksheet:write_formula(&#39;A1&#39;, &#39;=2+2&#39;, num_format, 4)</code></pre>
+<h3 id="can-i-apply-a-format-to-a-range-of-cells-in-one-go">Can I apply a format to a range of cells in one go?</h3>
+<p>Currently no. However, it is a planned features to allow cell formats and data to be written separately.</p>
+<h3 id="is-feature-x-supported-or-will-it-be-supported">Is feature X supported or will it be supported?</h3>
+<p>All supported features are documented. In time the feature set should expand to be the same as the <a href="http://xlsxwriter.readthedocs.org">Python XlsxWriter</a> module.</p>
+<h3 id="is-there-an-autofit-option-for-columns">Is there an "AutoFit" option for columns?</h3>
+<p>Unfortunately, there is no way to specify "AutoFit" for a column in the Excel file format. This feature is only available at runtime from within Excel. It is possible to simulate "AutoFit" by tracking the width of the data in the column as your write it.</p>

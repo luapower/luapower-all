@@ -17,29 +17,24 @@ return {
 		},
 		text_spans={
 			{
-				span_font='NotoNaskhArabic-Regular.ttf',
-				span_font_size=100,
-				span_text_color=4280888831
+				span_color=4280888831,
+				span_font_size=100
 			},
 			{
-				span_font='NotoNaskhArabic-Regular.ttf',
+				span_color=4164157439,
 				span_font_size=100,
-				span_offset=1,
-				span_text_color=4164157439
+				span_offset=1
 			},
 			{
-				span_font='NotoNaskhArabic-Regular.ttf',
 				span_font_size=100,
 				span_offset=4
 			},
 			{
-				span_font='NotoNaskhArabic-Regular.ttf',
+				span_color=2749951,
 				span_font_size=100,
-				span_offset=5,
-				span_text_color=2749951
+				span_offset=5
 			},
 			{
-				span_font='NotoNaskhArabic-Regular.ttf',
 				span_font_size=100,
 				span_offset=6
 			},
@@ -49,47 +44,47 @@ return {
 				span_offset=7
 			},
 			{
+				span_color=4160688127,
 				span_font='Amiri-Regular.ttf',
 				span_font_size=100,
 				span_offset=8,
-				span_text_color=4160688127,
 				span_underline_color=3426237183
 			},
 			{
+				span_color=2914189567,
 				span_font='Amiri-Regular.ttf',
 				span_font_size=100,
-				span_offset=9,
-				span_text_color=2914189567
+				span_offset=9
 			},
 			{
+				span_color=4177485055,
 				span_font='Amiri-Regular.ttf',
 				span_font_size=100,
-				span_offset=13,
-				span_text_color=4177485055
+				span_offset=13
 			},
 			{
+				span_color=4145741823,
 				span_font='Amiri-Regular.ttf',
 				span_font_size=100,
-				span_offset=16,
-				span_text_color=4145741823
+				span_offset=16
 			},
 			{
+				span_color=4280887807,
 				span_font='Amiri-Regular.ttf',
 				span_font_size=100,
-				span_offset=18,
-				span_text_color=4280887807
+				span_offset=18
 			},
 			{
+				span_color=4280282367,
 				span_font='Amiri-Regular.ttf',
 				span_font_size=100,
-				span_offset=19,
-				span_text_color=4280282367
+				span_offset=19
 			},
 			{
+				span_color=4281875455,
 				span_font='Amiri-Regular.ttf',
 				span_font_size=100,
-				span_offset=23,
-				span_text_color=4281875455
+				span_offset=23
 			},
 			{
 				span_font='Amiri-Regular.ttf',
@@ -97,28 +92,28 @@ return {
 				span_offset=25
 			},
 			{
+				span_color=2914189567,
 				span_font='Amiri-Regular.ttf',
 				span_font_size=100,
-				span_offset=27,
-				span_text_color=2914189567
+				span_offset=27
 			},
 			{
+				span_color=2477776127,
 				span_font='Amiri-Regular.ttf',
 				span_font_size=100,
-				span_offset=29,
-				span_text_color=2477776127
+				span_offset=29
 			},
 			{
+				span_color=4294967236,
 				span_font='Amiri-Regular.ttf',
 				span_font_size=100,
-				span_offset=33,
-				span_text_color=4294967236
+				span_offset=33
 			},
 			{
+				span_color=2914189567,
 				span_font='Amiri-Regular.ttf',
 				span_font_size=100,
-				span_offset=37,
-				span_text_color=2914189567
+				span_offset=37
 			}
 		},
 		w=619.5,

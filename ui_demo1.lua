@@ -1,9 +1,7 @@
 --go @ luajit -jp *
 local time = require'time'
 local ui = require'ui'
-local color = require'color'
 ui.use_google_fonts = true
-ui = ui()
 
 local win = ui:window{
 	w = 800, h = 600,
@@ -22,6 +20,10 @@ local scale = 2
 local pad = 0
 
 local function test_layerlib()
+
+	win.view.layout = 'flexbox'
+
+	print(ui.layer.font_size)
 
 	local layer = ui:layer{
 
@@ -53,7 +55,7 @@ local function test_layerlib()
 		snap_x = true,
 		snap_y = false,
 
-		clip_content = 'padding',
+		clip_content = true,
 		opacity = .8,
 		--operator = 'xor',
 
@@ -103,7 +105,7 @@ local function test_layerlib()
 		lang   = 'en-us',
 		dir    = 'ltr',
 
-		nowrap = true,
+		wrap = false,
 		line_spacing = 1.2,
 		hardline_spacing = 2,
 		paragraph_spacing = 3,
@@ -256,9 +258,9 @@ ui:runevery(1, function()
 end)
 
 
---test_layerlib()
+test_layerlib()
 --test_flex()
-test_grid()
+--test_grid()
 
 ui:run()
 

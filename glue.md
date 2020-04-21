@@ -18,22 +18,21 @@ __varargs__
 `glue.pack(...) -> t`                                              pack varargs
 `glue.unpack(t, [i] [,j]) -> ...`                                  unpack varargs
 __tables__
-`glue.count(t) -> n`                                               number of keys in table
+`glue.count(t[, maxn]) -> n`                                       number of keys in table
 `glue.index(t) -> dt`                                              switch keys with values
 `glue.keys(t[,sorted|cmp]) -> dt`                                  make a list of all the keys
 `glue.sortedpairs(t [,cmp]) -> iter() -> k, v`                     like pairs() but in key order
 `glue.update(dt, t1, ...) -> dt`                                   merge tables - overwrites keys
 `glue.merge(dt, t1, ...) -> dt`                                    merge tables - no overwriting
 `glue.attr(t, k1 [,v])[k2] = v`                                    autofield pattern
-__lists__
-`glue.extend(dt, t1, ...) -> dt`                                   extend a list
-`glue.append(dt, v1, ...) -> dt`                                   append non-nil values to a list
-`glue.shift(t, i, n) -> t`                                         shift list elements
-`glue.map(t, field|f,...) -> t`                                    map f over t or select a column from a list of records
 __arrays__
+`glue.extend(dt, t1, ...) -> dt`                                   extend an array
+`glue.append(dt, v1, ...) -> dt`                                   append non-nil values to an array
+`glue.shift(t, i, n) -> t`                                         shift array elements
+`glue.map(t, field|f,...) -> t`                                    map f over t or select a column from an array of records
 `glue.indexof(v, t, [i], [j]) -> i`                                scan array for value
-`glue.binsearch(v, t, [cmp], [i], [j]) -> i`                       binary search in sorted list
-`glue.reverse(t, [i], [j]) -> t`                                   reverse list in place
+`glue.binsearch(v, t, [cmp], [i], [j]) -> i`                       binary search in sorted array
+`glue.reverse(t, [i], [j]) -> t`                                   reverse array in place
 __strings__
 `glue.gsplit(s,sep[,start[,plain]]) -> iter() -> e[,captures...]`  split a string by a pattern
 `glue.lines(s[, opt]) -> iter() -> s`                              iterate the lines of a string
@@ -43,11 +42,13 @@ __strings__
 `glue.fromhex(s) -> s`                                             hex to string
 `glue.starts(s, prefix) -> t|f`                                    find if string `s` starts with string `prefix`
 `glue.ends(s, suffix) -> t|f`                                      find if string `s` ends with string `suffix`
+`glue.subst(s, t) -> s`                                            string interpolation of `{foo}` occurences
 __iterators__
-`glue.collect([i,] iterator) -> t`                                 collect iterated values into a list
-__closures__
+`glue.collect([i,] iterator) -> t`                                 collect iterated values into an array
+__stubs__
 `glue.pass(...) -> ...`                                            does nothing, returns back all arguments
 `glue.noop(...)`                                                   does nothing, returns nothing
+__caching__
 `glue.memoize(f[, narg]) -> f`                                     memoize pattern
 `glue.memoize_multiret(f[, narg]) -> f`                            memoize for multiple-return-value functions
 `glue.tuples([narg]) -> f(...) -> t`                               tuple pattern
@@ -57,6 +58,7 @@ __objects__
 `glue.before(class, method_name, f)`                               call f at the beginning of a method
 `glue.after(class, method_name, f)`                                call f at the end of a method
 `glue.override(class, method_name, f)`                             override a method
+`glue.gettersandsetters([getters], [setters], [super]) -> mt`      create a metatable that supports virtual properties
 __i/o__
 `glue.canopen(filename[, mode]) -> filename | nil`                 check if a file exists and can be opened
 `glue.readfile(filename[, format][, open]) -> s | nil, err`        read the contents of a file into a string
@@ -64,7 +66,12 @@ __i/o__
 `glue.writefile(filename, s|t|read, [format], [tmpfile])`          write data to file safely
 `glue.printer(out[, format]) -> f`                                 virtualize the print() function
 __time__
-`glue.time([t, [utc]]) -> timestamp`                               like `os.time()` but can do UTC
+`glue.time([utc, ][t]) -> ts`                                      like `os.time()` with optional UTC and date args
+`glue.time([utc, ][y, [m], [d], [h], [min], [s], [isdst]]) -> ts`  like `os.time()` with optional UTC and date args
+`glue.utc_diff() -> seconds`                                       seconds to UTC
+`glue.day([utc, ][ts], [plus_days]) -> ts`                         timestamp at day's beginning from `ts`
+`glue.month([utc, ][ts], [plus_months]) -> ts`                     timestamp at month's beginning from `ts`
+`glue.year([utc, ][ts], [plus_years]) -> ts`                       timestamp at year's beginning from `ts`
 __errors__
 `glue.assert(v [,message [,format_args...]]) -> v`                 assert with error message formatting
 `glue.protect(func) -> protected_func`                             wrap an error-raising function
@@ -81,11 +88,13 @@ __modules__
 __allocation__
 `glue.freelist([create], [destroy]) -> alloc, free`                freelist allocation pattern
 `glue.buffer(ctype) -> alloc(minlen) -> buf,capacity`              auto-growing buffer
+`glue.dynarray(ctype) -> alloc(minlen|false) -> buf, minlen`       auto-growing buffer that preserves data
 __ffi__
 `glue.addr(ptr) -> number | string`                                store pointer address in Lua value
 `glue.ptr([ctype, ]number|string) -> ptr`                          convert address to pointer
 `glue.getbit(val, mask) -> true|false`                             get the value of a single bit from an integer
-`glue.setbit(val, mask, bitval)`                                   set the value of a single bit from an integer
+`glue.setbit(val, mask, bitval) -> val`                            set the value of a single bit from an integer
+`glue.bor(flags, bits, [strict]) -> mask`                          `bit.bor()` that takes a string or table
 ------------------------------------------------------------------ ---------------------------------------------------------
 
 ## Math
@@ -139,9 +148,9 @@ Unpack varargs. Implemented as `unpack(t, i or 1, j or t.n or #t)`.
 
 ## Tables
 
-### `glue.count(t) -> n`
+### `glue.count(t[, maxn]) -> n`
 
-Count all the keys in a table.
+Count the keys in a table, optionally up to `maxn`.
 
 ------------------------------------------------------------------------------
 
@@ -208,16 +217,16 @@ Output
 
 ### `glue.keys(t[,sorted|cmp]) -> dt`
 
-Make a list of all the keys of `t`, optionally sorted. The second arg
+Make an array of all the keys of `t`, optionally sorted. The second arg
 can be `true`, `'asc'`, `'desc'` or a comparison function.
 
 #### Examples
 
-An API expects a list of things but you have them as keys in a table because
+An API expects an array of things but you have them as keys in a table because
 you are indexing something on them.
 
 For instance, you have a table of the form `{socket = thread}` but
-`socket.select` wants a list of sockets.
+`socket.select` wants an array of sockets.
 
 ------------------------------------------------------------------------------
 
@@ -282,35 +291,35 @@ Idiom for `t[k1][k2] = v` with auto-creating of `t[k1]` if not present.
 
 ------------------------------------------------------------------------------
 
-## Lists
+## Arrays
 
 ### `glue.extend(dt,t1,...) -> dt`
 
-Extend the list with the elements of other lists.
+Extend an array with the elements of other arrays.
 
   * falsey arguments are skipped.
-  * list elements are the ones from 1 to `#dt`.
+  * array elements are the ones from 1 to `#dt`.
 
 #### Uses
 
-Accumulating values from multiple list sources.
+Accumulating values from multiple array sources.
 
 ------------------------------------------------------------------------------
 
 ### `glue.append(dt,v1,...) -> dt`
 
-Append non-nil arguments to a list.
+Append non-nil arguments to an array.
 
 #### Uses
 
-Appending an object to a flattened list of lists (eg. appending a path element
-to a 2d path).
+Appending an object to a flattened array of arrays (eg. appending a path
+element to a 2d path).
 
 ------------------------------------------------------------------------------
 
 ### `glue.shift(t,i,n) -> t`
 
-Shift all the list elements starting at index `i`, `n` positions to the left
+Shift all the array elements starting at index `i`, `n` positions to the left
 or further to the right.
 
 For a positive `n`, shift the elements further to the right, effectively
@@ -324,7 +333,7 @@ For a negative `n`, shift the elements to the left, effectively removing
 
 #### Uses
 
-Removing a portion of a list or making room for more elements inside the list.
+Removing a portion of an array or making room for more elements inside the array.
 
 ------------------------------------------------------------------------------
 
@@ -336,12 +345,10 @@ part is empty, map `f(k, v, ...) -> v1` over the pairs of `t`.
 If `f` is not a function, then the values of `t` must be themselves tables,
 in which case `f` is a key to pluck from those tables. Plucked functions
 are called as methods and their result is selected instead (this allows eg.
-calling a method for each element in a list or map of objects and collecting
-the results in a list/map).
+calling a method for each element in an array or map of objects and collecting
+the results in an array/map).
 
 ------------------------------------------------------------------------------
-
-## Arrays
 
 ### `glue.indexof(v, t, [i], [j]) -> i`
 
@@ -353,7 +360,7 @@ __NOTE:__ Works on ffi arrays too if `i` and `j` are provided.
 
 ### `glue.binsearch(v, t, [cmp], [i], [j]) -> i`
 
-Return the smallest index whereby inserting the value `v` in sorted list `t`
+Return the smallest index whereby inserting the value `v` in sorted array `t`
 will keep `t` sorted i.e. `t[i-1] < v` and `t[i] >= v`. Return `nil` if `v`
 is larger than the largest value or if `t` is empty.
 
@@ -362,7 +369,7 @@ The comparison function `cmp` is called as `cmp(t, i, v)` and must return
 one of `'<'`, `'>'`, `'<='`, `'>='`.
 
 __TIP:__ Use a `cmp` that returns `true` when `t[i] > v` to search in a
-reverse-sorted list (i.e. use `'>'`).
+reverse-sorted array (i.e. use `'>'`).
 
 __TIP:__ Use a `cmp` that returns `true` when `t[i] <= v` to get the *largest*
 index (as opposed to the *smallest* index) that will keep `t` sorted when
@@ -374,7 +381,7 @@ __NOTE:__ Works on ffi arrays too if `i` and `j` are provided.
 
 ### `glue.reverse(t, [i], [j]) -> t`
 
-Reverse a list in-place and return the input arg.
+Reverse an array in-place and return the input arg.
 
 __NOTE:__ Works on ffi arrays too if `i` and `j` are provided.
 
@@ -478,11 +485,17 @@ Find if string `s` ends with `suffix`.
 
 ------------------------------------------------------------------------------
 
+### `glue.subst(s, t) -> s`
+
+Replace all `{foo}` occurences within `s` with `t.foo`.
+
+------------------------------------------------------------------------------
+
 ## Iterators
 
 ### `glue.collect([i,]iterator) -> t`
 
-Iterate an iterator and collect its i'th return value of every step into a list.
+Iterate an iterator and collect its i'th return value of every step into an array.
 
   * i defaults to 1
 
@@ -509,7 +522,7 @@ for i=1,#t do print(t[i]) end
 
 ------------------------------------------------------------------------------
 
-## Closures
+## Stubs
 
 ### `glue.pass(...) -> ...`
 
@@ -533,6 +546,8 @@ end
 Does nothing. Returns nothing.
 
 ------------------------------------------------------------------------------
+
+## Caching
 
 ### `glue.memoize(f[, narg]) -> f`
 
@@ -648,6 +663,8 @@ This simple object model has the following qualities:
   explicitly when overriding can be incorporated into the base class with
   `base.override = glue.override`.
 
+------------------------------------------------------------------------------
+
 ### `glue.before(class, method_name, f)`
 
 Modify a method such that it calls `f` at the beginning. `f` receives all
@@ -669,6 +686,7 @@ foo:before('bar', function(self, ...)
   ...
 end)
 ```
+------------------------------------------------------------------------------
 
 ### `glue.after(class, method_name, f)`
 
@@ -691,6 +709,7 @@ foo:after('bar', function(self, ...)
   ...
 end)
 ```
+------------------------------------------------------------------------------
 
 ### `glue.override(class, method_name, f)`
 
@@ -718,6 +737,13 @@ foo:override('bar', function(inherited, self, ...)
   ...
 end)
 ```
+------------------------------------------------------------------------------
+
+### `glue.gettersandsetters([getters], [setters], [super]) -> mt`
+
+Return a metatable that supports virtual properties with getters and setters.
+Can be used with setmetatable() and ffi.metatype(). `super` is for preserving
+the functionality of `__index` while `__index` is being used for getters.
 
 ------------------------------------------------------------------------------
 
@@ -785,10 +811,43 @@ the standard `print()` function.
 
 ------------------------------------------------------------------------------
 
-`glue.time([t, [utc]]) -> timestamp`
+### `glue.time([utc, ][t]) -> ts` <br> `glue.time([utc, ][year, [month], [day], [hour], [min], [sec], [isdst]]) -> ts`
 
 Like `os.time()` but considers the time to be in UTC if either `utc`
 or `t.utc` is `true`.
+
+__NOTE:__ You should only use `os.date()` and `os.time()` and therefore
+`glue.time()` for current dates and use something else for historical dates
+because these functions don't work with negative timestamps because
+apparently time didn't exist before UNIX. At least they don't suffer from
+Y2038 so that's that.
+
+__NOTE:__ `os.time()` has second accuracy (so those timestamps are integers).
+For sub-second accuracy use the [time] module.
+
+------------------------------------------------------------------------------
+
+### `glue.utc_diff() -> seconds`
+
+Difference between local time and UTC in seconds.
+
+------------------------------------------------------------------------------
+
+### `glue.day([utc, ][ts], [plus_days]) -> ts`
+
+Timestamp at day's beginning from `ts`, plus/minus some days.
+
+------------------------------------------------------------------------------
+
+### `glue.month([utc, ][ts], [plus_months]) -> ts`
+
+Timestamp at month's beginning from `ts`, plus/minus some months.
+
+------------------------------------------------------------------------------
+
+### `glue.year([utc, ][ts], [plus_years]) -> ts`
+
+Timestamp at year's beginning from `ts`, plus/minus some years.
 
 ------------------------------------------------------------------------------
 
@@ -900,6 +959,8 @@ declared in `foo.bar` style instead of `_M.bar`.
 
 Setting `foo.module = glue.module` makes module `foo` directly extensible
 by calling `foo:module'bar'` or `require'foo':module'bar'`.
+
+_This function is 27 LOC._
 
 ### `glue.autoload(t, submodules) -> t` <br> `glue.autoload(t, key, module|loader) -> t`
 
@@ -1019,6 +1080,8 @@ Lua objects. The allocator returns the last freed object or calls `create()`
 to create a new one if the freelist is empty. `create` defaults to
 `function() return {} end`; `destroy` defaults to `glue.noop`.
 
+------------------------------------------------------------------------------
+
 ### `glue.buffer(ctype) -> alloc(minlen|false) -> buf, capacity`
 
 (LuaJIT only) Return an allocation function that reuses or reallocates
@@ -1038,6 +1101,13 @@ an internal buffer based on the `len` argument.
 
 ------------------------------------------------------------------------------
 
+### `glue.dynarray(ctype) -> alloc(minlen|false) -> buf, minlen`
+
+Like `glue.buffer()` but preserves data between reallocations, and always
+returns `minlen` instead of capacity.
+
+------------------------------------------------------------------------------
+
 ## FFI
 
 ### `glue.addr(ptr) -> number | string`
@@ -1052,6 +1122,27 @@ on 64bit platforms). This is useful for:
 
 Convert an address value stored as a Lua number or string to a cdata pointer,
 optionally specifying a ctype for the pointer (defaults to `void*`).
+
+------------------------------------------------------------------------------
+
+### `glue.getbit(val, mask) -> true|false`
+
+Get the value of a single bit from an integer.
+
+### `glue.setbit(val, mask, bitval) -> val`
+
+Set the value of a single bit from an integer.
+
+### `glue.bor(flags, bits, [strict]) -> mask`
+
+`bit.bor()` that takes its arguments as a string of form `'opt1 opt2 ...'`,
+a list of form `{'opt1', 'opt2', ...}` or a map of form `{opt->true}`
+and performs `bit.bor()` on the numeric values of those arguments where
+the numeric values are given as the `bits` table of form `{opt->bitvalue}`.
+
+Useful for Luaizing C functions that take bitmask flags.
+
+Example: `glue.bor('a c', {a=1, b=2, c=4}) -> 5`.
 
 ------------------------------------------------------------------------------
 

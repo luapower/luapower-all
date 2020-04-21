@@ -22,7 +22,10 @@ Opens a ZIP file for reading or writing, depending on the mode argument:
   * `"w"` - open for writing (creating a new ZIP archive)
   * `"a"` - open for appending (adding more files to an existing archive)
 
-If the file is opened for reading, only the reading methods are available in the zip object, and similarly, if the file was opened for writing, only the writing methods are available. Deleting files is not supported, but see `z:copy_from_zip()`.
+If the file is opened for reading, only the reading methods are available
+in the zip object, and similarly, if the file was opened for writing, only
+the writing methods are available. Deleting files is not supported,
+but see `z:copy_from_zip()`.
 
 ### `z:close([global_comment])`
 
@@ -30,7 +33,10 @@ Close the ZIP file. If the file was opened for writing, a global comment can als
 
 ### `z:add_file(filename | options_t)`
 
-Add a new file to a ZIP archive that was opened for writing, and set it as the current file. After this, you can write the file contents with `z:write()` and finally close it with `z:close_file()` (or `z:close_file_raw()` if opened in raw mode). Options can be specified with `options_t`:
+Add a new file to a ZIP archive that was opened for writing, and set it as
+the current file. After this, you can write the file contents with `z:write()`
+and finally close it with `z:close_file()` (or `z:close_file_raw()` if opened
+in raw mode). Options can be specified with `options_t`:
 
   * `filename` - the path and file name - to add an empty directory, suffix the name with a slash (`/`) character
   * `date` - an optional file date in `os.date'*t'` format

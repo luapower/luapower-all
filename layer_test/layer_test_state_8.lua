@@ -17,59 +17,59 @@ return {
 		},
 		text_spans={
 			{
+				span_color=2080313343,
 				span_font='Amiri-Regular.ttf',
-				span_font_size=82,
-				span_text_color=2080313343
+				span_font_size=82
 			},
 			{
+				span_color=429916159,
 				span_font='Amiri-Regular.ttf',
 				span_font_size=82,
-				span_offset=1,
-				span_text_color=429916159
+				span_offset=1
 			},
 			{
+				span_color=452960511,
 				span_font='Amiri-Regular.ttf',
 				span_font_size=82,
 				span_offset=2,
-				span_text_color=452960511,
 				span_underline_color=1472921599
 			},
 			{
+				span_color=3976263167,
 				span_font='Amiri-Regular.ttf',
 				span_font_size=82,
 				span_offset=3,
-				span_text_color=3976263167,
 				span_underline_color=1472921599
 			},
 			{
+				span_color=3976263167,
 				span_font='Amiri-Regular.ttf',
 				span_font_size=82,
-				span_offset=4,
-				span_text_color=3976263167
+				span_offset=4
 			},
 			{
+				span_color=1057028863,
 				span_font='Amiri-Regular.ttf',
 				span_font_size=82,
-				span_offset=5,
-				span_text_color=1057028863
+				span_offset=5
 			},
 			{
+				span_color=4076470527,
 				span_font='Amiri-Regular.ttf',
 				span_font_size=82,
-				span_offset=6,
-				span_text_color=4076470527
+				span_offset=6
 			},
 			{
+				span_color=4278519295,
 				span_font='Amiri-Regular.ttf',
 				span_font_size=82,
-				span_offset=7,
-				span_text_color=4278519295
+				span_offset=7
 			},
 			{
+				span_color=436183039,
 				span_font='Amiri-Regular.ttf',
 				span_font_size=82,
-				span_offset=8,
-				span_text_color=436183039
+				span_offset=8
 			},
 			{
 				span_font='Amiri-Regular.ttf',
@@ -94,34 +94,34 @@ return {
 				span_offset=16
 			},
 			{
+				span_color=3892268543,
 				span_font='Amiri-Regular.ttf',
 				span_font_size=82,
-				span_offset=18,
-				span_text_color=3892268543
+				span_offset=18
 			},
 			{
+				span_color=1486407423,
 				span_font='Amiri-Regular.ttf',
 				span_font_size=82,
-				span_offset=20,
-				span_text_color=1486407423
+				span_offset=20
 			},
 			{
+				span_color=268430079,
 				span_font='Amiri-Regular.ttf',
 				span_font_size=82,
-				span_offset=22,
-				span_text_color=268430079
+				span_offset=22
 			},
 			{
+				span_color=834226943,
 				span_font='Amiri-Regular.ttf',
 				span_font_size=82,
-				span_offset=24,
-				span_text_color=834226943
+				span_offset=24
 			},
 			{
+				span_color=1098173951,
 				span_font='Amiri-Regular.ttf',
 				span_font_size=82,
-				span_offset=26,
-				span_text_color=1098173951
+				span_offset=26
 			}
 		},
 		w=619.5,

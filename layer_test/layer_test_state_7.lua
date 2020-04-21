@@ -49,7 +49,6 @@ return {
 				w=82
 			}
 		},
-		h=464,
 		layout_type=1,
 		min_cw=352.5,
 		span_count=1,
@@ -64,7 +63,6 @@ return {
 		},
 		text_spans={
 			{
-				span_font='SourceHanSans.ttc',
 				span_font_face_index=15,
 				span_font_size=100
 			}

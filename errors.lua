@@ -64,7 +64,9 @@ local function class_table(s)
 end
 
 local function is_error_of(e, classes)
-	return is_error(e) and (not classes or class_table(classes)[e.__index] or false)
+	if not is_error(e) then return false end
+	if not classes then return true end
+	return class_table(classes)[e.__index] or false
 end
 
 function error:__call(arg1, ...)
@@ -84,16 +86,18 @@ function error:__tostring()
 end
 
 local function raise(...)
-	lua_error(error_object(...), 2)
+	lua_error((error_object(...)))
 end
 
 local function pass(classes, ok, ...)
 	if ok then return true, ... end
 	local e = ...
-	if is_error_of(e, classes) then
+	if not classes then --catch-all
+		return false, e
+	elseif is_error_of(e, classes) then
 		return false, e
 	end
-	lua_error(e, 2)
+	lua_error(e)
 end
 local function onerror(e)
 	if is_error(e) then

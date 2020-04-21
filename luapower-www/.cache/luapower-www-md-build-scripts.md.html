@@ -38,14 +38,13 @@ g++ -c options... files...</code></pre>
 <li><code>-D_WIN32_WINNT=0x601</code> : Windows: set API level to Windows 7 (set WINVER too)</li>
 <li><code>-DWINVER=0x601</code> : Windows: set API level to Windows 7</li>
 <li><code>-mmacosx-version-min=10.7</code> : OSX: set API level to 10.7</li>
-<li><code>-D_XOPEN_SOURCE=700</code> : Linux: set API level to X/Open 7 (POSIX 2008)</li>
+<li><code>-D_POSIX_SOURCE</code> : Linux and MinGW: enable POSIX 1003.1-1990 APIs</li>
+<li><code>-D_XOPEN_SOURCE=700</code> : Linux: enable POSIX.1 + POSIX.2 + X/Open 7 (SUSv4) APIs</li>
 <li><code>-arch x86_64</code> : OSX: create 64bit x86 binaries</li>
-<li><code>-include _memcpy.h</code> : Linux on x64: fix the memcpy@GLIBC_2.14 disaster (*)</li>
-<li><code>-U_FORTIFY_SOURCE</code> : Linux: preserve compatibility with GLIBC 2.7</li>
+<li><code>-U_FORTIFY_SOURCE=1</code> : gcc: enable some runtime checks</li>
 <li><code>-std=c++11</code> : for C++11 libraries</li>
 <li><code>-stdlib=libc++ -mmacosx-version-min=10.7</code> : for all C++ libraries on OSX</li>
 </ul>
-<p>(*) put the line <code>__asm__(".symver memcpy,memcpy@GLIBC_2.2.5");</code> in _memcpy.h. This is <em>not needed</em> if building on Ubuntu 10 or older.</p>
 <h3 id="dynamic-linking-with-gccg">Dynamic linking with gcc/g++</h3>
 <pre><code>gcc -shared options... files...
 g++ -shared options... files...</code></pre>

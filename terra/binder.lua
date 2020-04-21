@@ -574,7 +574,7 @@ ffi.metatype(']], o.cname, [[', {
 		add(t, "local ffi = require'ffi'\n")
 		append(t, "local C = ffi.load'", modulename, "'\n")
 		add(t, 'local M = {C = C, types = {}, __index = C}\n')
-		add(t, 'setmetatable(M, M)')
+		add(t, 'setmetatable(M, M)\n')
 		add(t, 'ffi.cdef[[\n')
 		add(t, cdefs:dump())
 		add(t, ']]\n')

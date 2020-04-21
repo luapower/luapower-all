@@ -71,7 +71,8 @@ elseif ffi.os == 'Linux' or ffi.os == 'OSX' then
 		local CLOCK_REALTIME = 0
 		local CLOCK_MONOTONIC = 1
 
-		local clock_gettime = ffi.load'rt'.time_clock_gettime
+		local ok, rt_C = pcall(ffi.load, 'rt')
+		local clock_gettime = (ok and rt_C or C).time_clock_gettime
 
 		local function tos(t)
 			return tonumber(t.s) + tonumber(t.ns) / 1e9
@@ -124,6 +125,38 @@ elseif ffi.os == 'Linux' or ffi.os == 'OSX' then
 	end --OSX
 
 end --Linux or OSX
+
+function M.install()
+
+	--replace os.time() with a more accurate version...
+	--glue.time() will also benefit.
+	local os_time = os.time
+	local time = M.time
+	function os.time(t)
+		if not t then return time() end
+		return os_time(t)
+	end
+
+	--replace os.date() with a more accurate version...
+	local os_date = os.date
+	local time = M.time
+	function os.date(fmt, t)
+		t = t or time()
+		local d = os_date(fmt, t)
+		if type(d) == 'table' then
+			d.sec = d.sec + t - floor(t) --increase accuracy in d.sec
+		end
+		return d
+	end
+
+	--replace os.clock() with a more accurate version...
+	local clock = M.clock
+	local t0 = clock()
+	function os.clock()
+		return clock() - t0
+	end
+
+end
 
 
 if not ... then

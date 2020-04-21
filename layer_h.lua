@@ -2,7 +2,8 @@
 local ffi = require'ffi'
 local C = ffi.load'layer'
 local M = {C = C, types = {}, __index = C}
-setmetatable(M, M)ffi.cdef[[
+setmetatable(M, M)
+ffi.cdef[[
 uint64_t memtotal(void);
 void memreport(void);
 enum {
@@ -315,6 +316,7 @@ double layer_get_shadow_y(layer_t*, int32_t);
 bool layer_get_snap_x(layer_t*);
 bool layer_get_snap_y(layer_t*);
 double layer_get_span_baseline(layer_t*, int32_t);
+uint32_t layer_get_span_color(layer_t*, int32_t);
 int32_t layer_get_span_count(layer_t*);
 int8_t* layer_get_span_features(layer_t*, int32_t);
 int32_t layer_get_span_font_face_index(layer_t*, int32_t);
@@ -322,11 +324,10 @@ int32_t layer_get_span_font_id(layer_t*, int32_t);
 double layer_get_span_font_size(layer_t*, int32_t);
 int8_t* layer_get_span_lang(layer_t*, int32_t);
 int32_t layer_get_span_offset(layer_t*, int32_t);
+double layer_get_span_opacity(layer_t*, int32_t);
+int8_t layer_get_span_operator(layer_t*, int32_t);
 int32_t layer_get_span_paragraph_dir(layer_t*, int32_t);
 int8_t* layer_get_span_script(layer_t*, int32_t);
-uint32_t layer_get_span_text_color(layer_t*, int32_t);
-double layer_get_span_text_opacity(layer_t*, int32_t);
-int8_t layer_get_span_text_operator(layer_t*, int32_t);
 int8_t layer_get_span_underline(layer_t*, int32_t);
 uint32_t layer_get_span_underline_color(layer_t*, int32_t);
 double layer_get_span_underline_opacity(layer_t*, int32_t);
@@ -508,6 +509,7 @@ void layer_set_shadow_y(layer_t*, int32_t, double);
 void layer_set_snap_x(layer_t*, bool);
 void layer_set_snap_y(layer_t*, bool);
 void layer_set_span_baseline(layer_t*, int32_t, double);
+void layer_set_span_color(layer_t*, int32_t, uint32_t);
 void layer_set_span_count(layer_t*, int32_t);
 void layer_set_span_features(layer_t*, int32_t, const int8_t*);
 void layer_set_span_font_face_index(layer_t*, int32_t, int32_t);
@@ -515,11 +517,10 @@ void layer_set_span_font_id(layer_t*, int32_t, int32_t);
 void layer_set_span_font_size(layer_t*, int32_t, double);
 void layer_set_span_lang(layer_t*, int32_t, const int8_t*);
 void layer_set_span_offset(layer_t*, int32_t, int32_t);
+void layer_set_span_opacity(layer_t*, int32_t, double);
+void layer_set_span_operator(layer_t*, int32_t, int8_t);
 void layer_set_span_paragraph_dir(layer_t*, int32_t, int32_t);
 void layer_set_span_script(layer_t*, int32_t, const int8_t*);
-void layer_set_span_text_color(layer_t*, int32_t, uint32_t);
-void layer_set_span_text_opacity(layer_t*, int32_t, double);
-void layer_set_span_text_operator(layer_t*, int32_t, int8_t);
 void layer_set_span_underline(layer_t*, int32_t, int8_t);
 void layer_set_span_underline_color(layer_t*, int32_t, uint32_t);
 void layer_set_span_underline_opacity(layer_t*, int32_t, double);
@@ -869,17 +870,17 @@ t.methods = {
 	get_shadow_x = C.layer_get_shadow_x,
 	get_shadow_y = C.layer_get_shadow_y,
 	get_span_baseline = C.layer_get_span_baseline,
+	get_span_color = C.layer_get_span_color,
 	get_span_features = C.layer_get_span_features,
 	get_span_font_face_index = C.layer_get_span_font_face_index,
 	get_span_font_id = C.layer_get_span_font_id,
 	get_span_font_size = C.layer_get_span_font_size,
 	get_span_lang = C.layer_get_span_lang,
 	get_span_offset = C.layer_get_span_offset,
+	get_span_opacity = C.layer_get_span_opacity,
+	get_span_operator = C.layer_get_span_operator,
 	get_span_paragraph_dir = C.layer_get_span_paragraph_dir,
 	get_span_script = C.layer_get_span_script,
-	get_span_text_color = C.layer_get_span_text_color,
-	get_span_text_opacity = C.layer_get_span_text_opacity,
-	get_span_text_operator = C.layer_get_span_text_operator,
 	get_span_underline = C.layer_get_span_underline,
 	get_span_underline_color = C.layer_get_span_underline_color,
 	get_span_underline_opacity = C.layer_get_span_underline_opacity,
@@ -947,17 +948,17 @@ t.methods = {
 	set_shadow_x = C.layer_set_shadow_x,
 	set_shadow_y = C.layer_set_shadow_y,
 	set_span_baseline = C.layer_set_span_baseline,
+	set_span_color = C.layer_set_span_color,
 	set_span_features = C.layer_set_span_features,
 	set_span_font_face_index = C.layer_set_span_font_face_index,
 	set_span_font_id = C.layer_set_span_font_id,
 	set_span_font_size = C.layer_set_span_font_size,
 	set_span_lang = C.layer_set_span_lang,
 	set_span_offset = C.layer_set_span_offset,
+	set_span_opacity = C.layer_set_span_opacity,
+	set_span_operator = C.layer_set_span_operator,
 	set_span_paragraph_dir = C.layer_set_span_paragraph_dir,
 	set_span_script = C.layer_set_span_script,
-	set_span_text_color = C.layer_set_span_text_color,
-	set_span_text_opacity = C.layer_set_span_text_opacity,
-	set_span_text_operator = C.layer_set_span_text_operator,
 	set_span_underline = C.layer_set_span_underline,
 	set_span_underline_color = C.layer_set_span_underline_color,
 	set_span_underline_opacity = C.layer_set_span_underline_opacity,

@@ -445,7 +445,7 @@
             intermediateValue = intermediateValue[names[index++]];
           }
         } else {
-          intermediateValue = context.view[name];
+          intermediateValue = context.view && context.view[name];
 
           /**
            * Only checking against `hasProperty`, which always returns `false` if

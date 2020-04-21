@@ -5,20 +5,20 @@
 if not ... then DEMO=true; require'ui_demo1'; return end
 
 --pure-Lua libs.
-local oo = require'oo'
-local events = require'events'
-local glue = require'glue'
-local box2d = require'box2d'
-local easing = require'easing'
-local color = require'color'
+local oo      = require'oo'
+local events  = require'events'
+local glue    = require'glue'
+local box2d   = require'box2d'
+local easing  = require'easing'
+local color   = require'color'
 local font_db = require'font_db'
 --C bindings.
-local ffi = require'ffi'
-local bit = require'bit'
-local nw = require'nw'
-local time = require'time'
-local cairo = require'cairo'
-local C = require'layer_h'
+local ffi     = require'ffi'
+local bit     = require'bit'
+local nw      = require'nw'
+local time    = require'time'
+local cairo   = require'cairo'
+local C       = require'layer'
 
 local zone = glue.noop
 local zone = require'jit.zone' --enable for profiling
@@ -85,7 +85,7 @@ function object:before_init()
 	--all its fields. With this change, runtime patching of non-final classes
 	--after the first instantiation doesn't have an effect anymore (it will
 	--require calling inherit() manually on all those final classes).
-	--That's ok, you shouldn't patch classes anyway.
+	--That's ok, you shouldn't patch classes anyway, you should subclass them.
 	if not rawget(self.super, 'isfinalclass') then
 		self.super:inherit()
 		self.super.isfinalclass = true
@@ -100,6 +100,7 @@ end
 
 function object:warn(...)
 	io.stderr:write(string.format(...))
+	io.stderr:write'\n'
 	io.stderr:write(debug.traceback())
 	io.stderr:write'\n'
 end
@@ -143,10 +144,12 @@ end
 
 --forward method calls to a sub-component.
 function object:forward_methods(component_name, methods)
-	for method, wrap in pairs(methods) do
+	for component_method, wrap in pairs(methods) do
+		local method = type(wrap) == 'string' and wrap or component_method
+		local wrap = type(wrap) == 'function' and wrap or pass
 		self[method] = function(self,...)
 			local e = self[component_name]
-			return wrap(e[method](e, ...))
+			return wrap(e[component_method](e, ...))
 		end
 	end
 end
@@ -165,11 +168,13 @@ function object:forward_property(prop, sub, readonly)
 	end
 end
 
-function object:forward_properties(sub, prefix, t)
-	if not t then sub, prefix, t = sub, '', prefix end
+function object:forward_properties(sub, readonly, t)
+	if type(readonly) == 'table' then
+		readonly, t = false, readonly
+	end
 	for prop, sub_prop in pairs(t) do
 		sub_prop = type(sub_prop) == 'string' and sub_prop or prop
-		self:forward_property(prefix..prop, sub..'.'..sub_prop)
+		self:forward_property(prop, sub..'.'..sub_prop, readonly)
 	end
 end
 
@@ -276,12 +281,6 @@ end
 local ui = object:subclass'ui'
 ui.object = object
 
-function ui:override_create(inherited) --singleton
-	local instance = inherited(self)
-	function self:create() return instance end
-	return instance
-end
-
 function ui:after_init()
 	self.app = nw:app()
 
@@ -300,56 +299,52 @@ end
 --native app proxy methods ---------------------------------------------------
 
 function ui:native_window(t)
-	return self().app:window(t)
+	return self.app:window(t)
 end
 
 function ui:get_active_window()
-	local win = self().app:active_window()
+	local win = self.app:active_window()
 	return win and win.ui_window
 end
 
 function ui:clock()                return time.clock() end
-function ui:run(func)              return self().app:run(func) end
-function ui:poll(timeout)          return self().app:poll(timeout) end
-function ui:stop()                 return self().app:stop() end
-function ui:quit()                 return self().app:quit() end
-function ui:get_autoquit()         return self().app:autoquit() end
-function ui:set_autoquit(aq)       return self().app:autoquit(aq or false) end
-function ui:get_maxfps()           return self().app:maxfps() end
-function ui:set_maxfps(fps)        return self().app:maxfps(fps or false) end
-function ui:runevery(t, f)         return self().app:runevery(t, f) end
-function ui:runafter(t, f)         return self().app:runafter(t, f) end
-function ui:sleep(s)               return self().app:sleep(s) end
+function ui:run(func)              return self.app:run(func) end
+function ui:poll(timeout)          return self.app:poll(timeout) end
+function ui:stop()                 return self.app:stop() end
+function ui:quit()                 return self.app:quit() end
+function ui:get_autoquit()         return self.app:autoquit() end
+function ui:set_autoquit(aq)       return self.app:autoquit(aq or false) end
+function ui:get_maxfps()           return self.app:maxfps() end
+function ui:set_maxfps(fps)        return self.app:maxfps(fps or false) end
+function ui:runevery(t, f)         return self.app:runevery(t, f) end
+function ui:runafter(t, f)         return self.app:runafter(t, f) end
+function ui:sleep(s)               return self.app:sleep(s) end
 
-function ui:get_app_active()       return self().app:active() end
-function ui:activate_app()         return self().app:activate() end
-function ui:get_app_visible()      return self().app:visible() end
-function ui:set_app_visible(v)     return self().app:visible(v or false) end
-function ui:hide_app()             return self().app:hide() end
-function ui:unhide_app()           return self().app:unhide() end
+function ui:get_app_active()       return self.app:active() end
+function ui:activate_app()         return self.app:activate() end
+function ui:get_app_visible()      return self.app:visible() end
+function ui:set_app_visible(v)     return self.app:visible(v or false) end
+function ui:hide_app()             return self.app:hide() end
+function ui:unhide_app()           return self.app:unhide() end
 
-function ui:key(query)             return self().app:key(query) end
-function ui:get_caret_blink_time() return self().app:caret_blink_time() end
+function ui:key(query)             return self.app:key(query) end
+function ui:get_caret_blink_time() return self.app:caret_blink_time() end
 
-function ui:get_displays()         return self().app:displays() end
-function ui:get_main_display()     return self().app:main_display() end
-function ui:get_active_display()   return self().app:active_display() end
+function ui:get_displays()         return self.app:displays() end
+function ui:get_main_display()     return self.app:main_display() end
+function ui:get_active_display()   return self.app:active_display() end
 
-function ui:getclipboard(type)     return self().app:getclipboard(type) end
-function ui:setclipboard(s, type)  return self().app:setclipboard(s, type) end
+function ui:getclipboard(type)     return self.app:getclipboard(type) end
+function ui:setclipboard(s, type)  return self.app:setclipboard(s, type) end
 
-function ui:opendialog(t)          return self().app:opendialog(t) end
-function ui:savedialog(t)          return self().app:savedialog(t) end
+function ui:opendialog(t)          return self.app:opendialog(t) end
+function ui:savedialog(t)          return self.app:savedialog(t) end
 
-function ui:set_app_id(id)         self().app.nw.app_id = id end
+function ui:set_app_id(id)         self.app.nw.app_id = id end
 function ui:get_app_id(id)         return nw.app_id end
-function ui:app_already_running()  return self().app:already_running() end
-function ui:wakeup_other_app_instances()
-	return self().app:wakeup_other_instances()
-end
-function ui:check_single_app_instance()
-	return self().app:check_single_instance()
-end
+function ui:app_already_running()  return self.app:already_running() end
+function ui:wakeup_other_app_instances() return self.app:wakeup_other_instances() end
+function ui:check_single_app_instance() return self.app:check_single_instance() end
 
 --local files ----------------------------------------------------------------
 
@@ -363,17 +358,50 @@ function ui:load_file(file)
 	return self:check(bundle.load(file), 'file not found: "%s"', file)
 end
 
+--layerlib proxy properties & methods ----------------------------------------
+
+ui:forward_properties('layerlib', true, {
+	glyph_cache_count=1,
+	glyph_cache_size=1,
+	glyph_run_cache_count=1,
+	glyph_run_cache_size=1,
+	mem_font_cache_count=1,
+	mem_font_cache_size=1,
+	mmapped_font_cache_count=1,
+})
+
+ui:forward_properties('layerlib', {
+	error_function=1,
+	font_size_resolution=1,
+	glyph_cache_max_size=1,
+	glyph_run_cache_max_size=1,
+	mem_font_cache_max_size=1,
+	mmapped_font_cache_max_count=1,
+	subpixel_x_resolution=1,
+	word_subpixel_x_resolution=1,
+})
+
+ui:forward_methods('layerlib', {
+	font_face_num=1,
+})
+
 --fonts ----------------------------------------------------------------------
 
+function ui:gen_font_id()
+	local id = (self.font_id or 0) + 1
+	self.font_id = id
+	return id
+end
+
 function ui:add_mem_font(data, size, ...)
-	local font_id = self.layerlib:font()
+	local font_id = self:gen_font_id()
 	local font = {id = font_id, data = data, size = size}
 	self.fonts[font_id] = font
 	self.font_db:add_font(font, ...)
 end
 
 function ui:add_font_file(file, ...)
-	local font_id = self.layerlib:font()
+	local font_id = self:gen_font_id()
 	local font = {id = font_id, file = file}
 	self.fonts[font_id] = font
 	self.font_db:add_font(font, ...)
@@ -1622,7 +1650,6 @@ function window:override_init(inherited, t)
 	else
 
 		win:on({'mousemove', self}, function(win, mx, my)
-
 			if setmouse(mx, my) then
 				self.ui:_window_mousemove(self, mx, my)
 			end
@@ -2345,7 +2372,6 @@ function window:_key_event(event_name, key)
 	until not widget
 end
 
-
 --window sync'ing & rendering ------------------------------------------------
 
 function window:sync()
@@ -2488,7 +2514,7 @@ function ui:after_init()
 end
 
 function layer:before_init_fields()
-	self.l = self.ui.layerlib:layer(nil)
+	self.l = self.ui.layerlib:layer()
 	self.ui.layers[addr(self.l)] = self
 end
 
@@ -2709,19 +2735,16 @@ layer:forward_properties('l', {
 
 layer:enum_property('operator', operators)
 
-local function retpoint(p)
-	return p._0, p._1
-end
-
 layer:forward_methods('l', {
-	from_box_to_parent = retpoint,
-	from_parent_to_box = retpoint,
-	to_parent          = retpoint,
-	from_parent        = retpoint,
-	to_window          = retpoint,
-	from_window        = retpoint,
-	to_content         = retpoint,
-	from_content       = retpoint,
+	from_window=1,
+	--from_box_to_parent = retpoint,
+	--from_parent_to_box = retpoint,
+	--to_parent          = retpoint,
+	--from_parent        = retpoint,
+	--to_window          = retpoint,
+	--from_window        = retpoint,
+	--to_content         = retpoint,
+	--from_content       = retpoint,
 })
 
 --padding
@@ -2954,6 +2977,9 @@ layer:forward_properties('l', {
 	maxlen='text_maxlen',
 	text_align_x=1,
 	text_align_y=1,
+	line_spacing=1,
+	hardline_spacing=1,
+	paragraph_spacing=1,
 })
 
 layer._text = false
@@ -2972,8 +2998,10 @@ local function after_set_font_prop(self, k)
 	local slant = self.italic and 'italic' or self.font_slant
 	local font_size = self.font_size or font_size
 	if font and font_size then
-		self.l:set_text_span_font_id(0, font.id)
-		self.l:set_text_span_font_size(0, font_size)
+		self.l:set_span_font_id(0, font.id)
+		self.l:set_span_font_size(0, font_size)
+	else
+		self:warn('font not found: %s,%s', font_name, font_size or 'n/a')
 	end
 end
 
@@ -2998,19 +3026,17 @@ function layer:get_text_utf32()
 	return ffi.string(self.l.text_utf32, self.l.text_utf32_len)
 end
 
-for k in pairs{
-	nowrap=1,
-	dir=1,
+for k, sk in pairs{
+	wrap=1,
+	dir='paragraph_dir',
 	script=1,
 	lang=1,
 	text_opacity=1,
-	line_spacing=1,
-	hardline_spacing=1,
-	paragraph_spacing=1,
 	text_operator=1,
 } do
-	local getter = 'get_text_span_'..k:gsub('^text_', '')
-	local setter = 'set_text_span_'..k:gsub('^text_', '')
+	sk = type(sk) == 'string' and sk or k
+	local getter = 'get_span_'..sk:gsub('^text_', '')
+	local setter = 'set_span_'..sk:gsub('^text_', '')
 	layer['get_'..k] = function(self)
 		return self.l[getter](self.l, 0)
 	end
@@ -3019,10 +3045,17 @@ for k in pairs{
 	end
 end
 
+layer:enum_property('wrap', {
+	[false] = C.WRAP_NONE,
+	word    = C.WRAP_WORD,
+	char    = C.WRAP_CHAR,
+})
+layer.wrap = 'word'
+
 layer._text_color = '#fff'
 
 layer:stored_property('text_color', function(self, v)
-	self.l:set_text_span_color(0, self.ui:rgba32(v))
+	self.l:set_span_color(0, self.ui:rgba32(v))
 end)
 
 layer:enum_property('dir', {
@@ -3696,33 +3729,6 @@ end
 
 --layer drawing & hit testing ------------------------------------------------
 
-function layer:bbox(strict) --child interface
-	if not self.visible then
-		return 0, 0, 0, 0
-	end
-	local x, y, w, h = 0, 0, 0, 0
-	local cc = self.clip_content
-	if strict or not cc then
-		x, y, w, h = self:content_bbox(strict)
-		if cc then
-			x, y, w, h = box2d.clip(x, y, w, h, self:background_rect())
-			if cc == true then
-				x, y, w, h = box2d.clip(x, y, w, h, self:padding_rect())
-			end
-		end
-	end
-	if (not strict and cc)
-		or self.background_hittable
-		or self:background_visible()
-	then
-		x, y, w, h = box2d.bounding_box(x, y, w, h, self:background_rect())
-	end
-	if self:border_visible() then
-		x, y, w, h = box2d.bounding_box(x, y, w, h, self:border_rect(1))
-	end
-	return x, y, w, h
-end
-
 --element interface
 
 function layer:get_clock()
@@ -3858,20 +3864,6 @@ function layer:set_value(val)
 	if val == old_val then return end
 	self:fire('value_changed', val, old_val)
 	return true
-end
-
---text geometry & drawing ----------------------------------------------------
-
-function layer:get_baseline()
-	if not self:text_visible() then return end
-	return self.text_segments.lines.baseline
-end
-
-function layer:text_bbox()
-	if not self:text_visible() then
-		return 0, 0, 0, 0
-	end
-	return self.text_segments:bbox()
 end
 
 --text caret & selection drawing ---------------------------------------------
@@ -4044,8 +4036,8 @@ function layer:filter_input_text(s)
 	if self.text_multiline then
 		return
 			s:gsub('\u{2029}', '') --PS
-				:gsub('\u{2028}', '') --LS
-				:gsub('[%z\1-\31\127]', '')
+			 :gsub('\u{2028}', '') --LS
+			 :gsub('[%z\1-\31\127]', '')
 	end
 	return s:gsub('[%z\1-\8\11\12\14-\31\127]', '') --allow \t \n \r
 end
@@ -4395,7 +4387,10 @@ view.from_window = view.from_parent
 function view:sync_with_window(w, h)
 	zone'sync'
 	self:sync()
-	self.l:sync_top(w, h)
+	self.l.min_cw = w - self.l.padding_left - self.l.padding_right
+	self.l.min_ch = h - self.l.padding_top  - self.l.padding_bottom
+	self.l.w = w
+	self.l.h = h
 	zone()
 	self:run_after_layout_funcs()
 end
@@ -4411,11 +4406,11 @@ local hit_test_areas = index{
 	text_selection = C.HIT_TEXT_SELECTION,
 }
 
-local layer_buf = ffi.new'layer_t*[1]'
 function view:hit_test(x, y, reason)
-	local area = self.l:hit_test(self.window.cr, x, y, hit_test_bits[reason], layer_buf)
-	local layer = self.ui.layers[addr(layer_buf[0])]
-	local area = layer and hit_test_areas[area]
+	local hit = self.l:hit_test(self.window.cr, x, y, hit_test_bits[reason])
+	if not hit then return nil end
+	local layer = self.ui.layers[addr(self.l.hit_test_layer)]
+	local area = layer and hit_test_areas[self.l.hit_test_area]
 	return layer, area
 end
 
@@ -4461,4 +4456,4 @@ ui:autoload{
 	dropdown     = 'ui_dropdown',
 }
 
-return ui
+return ui()

@@ -1,15 +1,15 @@
 <h2 id="local-ui-requireui"><code>local ui = require'ui'</code></h2>
-<p>Extensible UI toolkit written in Lua with widgets, layouts, styles and animations. Uses <a href="/terra.layer">terra.layer</a> for layouting, drawing and hit-testing, and through that it uses <a href="/terra.tr">terra.tr</a> for text rendeding.</p>
-<p>See <a href="/ui0">ui0</a> for a working prototype in pure Lua.</p>
+<p>Extensible UI toolkit written in Lua with widgets, layouts, styles and animations.</p>
+<p>Uses <a href="/nw">nw</a> for creating and using native windows, providing a bitmap surface to draw on, and for mouse and keyboard input. Uses <a href="/terra.layer">terra.layer</a> for layouting, drawing and hit-testing, which in turn uses <a href="/cairo">cairo</a> for path filling, stroking, clipping, masking and blending, <a href="/terra.tr">terra.tr</a> for text shaping, rendering, editing and hit-testing, and <a href="/boxblur">boxblur</a> for shadows.</p>
 <h2 id="status">Status</h2>
 <p><warn>In active development.</warn></p>
-<p>Still has a few good months of development ahead. You can track the progress in the <a href="https://trello.com/b/xde8hdAZ/luapower">luapower trello board</a>. Once the API and codebase stabilizes, further progress will be tracked via github issues.</p>
+<p>Still has a few good months of development ahead. You can track the progress in the <a href="https://trello.com/b/xde8hdAZ/luapower">luapower trello board</a>. Once the API and codebase stabilizes, further progress will be tracked via github issues. Also see <a href="/ui0">ui0</a> for a working prototype in pure Lua.</p>
 <h2 id="highlights">Highlights</h2>
 <ul>
 <li>editable grid that can scroll millions of rows at 60 fps.</li>
 <li>tab list with animated, moveable, draggable, dockable tabs.</li>
 <li>extensible rich text editor with BiDi support.</li>
-<li>consistent Unicode [text rendering][tr] and editing on all platforms.</li>
+<li>consistent Unicode text rendering and editing on all platforms.</li>
 <li>customization with cascading styles, inheritance and composition.</li>
 <li>declarative transition animations.</li>
 <li>flexbox and css-grid-like layouts.</li>
@@ -145,7 +145,7 @@
 <li><code>ui:add_font_file(...)</code>, which calls <code>tr:add_font_file(...)</code>, or</li>
 <li><code>ui:add_mem_font(...)</code>, which calls <code>tr:add_mem_font(...)</code>.</li>
 </ul>
-<p>See [tr] for details on those methods. To change the default font used for text by all the layers and widgets, set <code>ui.layer.font</code> before creating any layers or widgets, or add a style on the <code>layer</code> tag with that.</p>
+<p>See <a href="/font_db">font_db</a> for details on those methods. To change the default font used for text by all the layers and widgets, set <code>ui.layer.font</code> before creating any layers or widgets, or add a style on the <code>layer</code> tag with that.</p>
 <h4 id="fonts-from-google-fonts">Fonts from google fonts</h4>
 <p>Fonts from the google fonts repository can be used directly by name without the need to register them. To enable this, clone the google fonts repository with:</p>
 <pre><code>$ git clone https://github.com/google/fonts media/fonts/gfonts</code></pre>
@@ -207,10 +207,8 @@
 <p>Transitions are about gradually changing the value of an element attribute from its current value to a new value using linear interpolation.</p>
 <p>Every attribute can be animated providing it has a data type that can be interpolated. Currently, numbers, colors and color gradients can be interpolated, but more data types and interpolator functions can be added if needed (see the code for that).</p>
 <p>Transitions can be created by calling:</p>
-<div class="sourceCode" id="cb5"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb5-1"><a href="#cb5-1"></a>   elem<span class="op">:</span>transition<span class="op">(</span></span>
-<span id="cb5-2"><a href="#cb5-2"></a>      attr<span class="op">,</span> val<span class="op">,</span> <span class="op">[</span>duration<span class="op">],</span> <span class="op">[</span>ease<span class="op">],</span> <span class="op">[</span>delay<span class="op">],</span></span>
-<span id="cb5-3"><a href="#cb5-3"></a>      <span class="op">[</span>times<span class="op">],</span> <span class="op">[</span>backval<span class="op">],</span> <span class="op">[</span>blend<span class="op">],</span> <span class="op">[</span>speed<span class="op">],</span> <span class="op">[</span>from<span class="op">]</span></span>
-<span id="cb5-4"><a href="#cb5-4"></a>   <span class="op">)</span></span></code></pre></div>
+<div class="sourceCode" id="cb5"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb5-1"><a href="#cb5-1"></a>elem<span class="op">:</span>transition<span class="op">(</span>attr<span class="op">,</span> val<span class="op">,</span> <span class="op">[</span>duration<span class="op">],</span> <span class="op">[</span>ease<span class="op">],</span> <span class="op">[</span>delay<span class="op">],</span></span>
+<span id="cb5-2"><a href="#cb5-2"></a>  <span class="op">[</span>times<span class="op">],</span> <span class="op">[</span>backval<span class="op">],</span> <span class="op">[</span>blend<span class="op">],</span> <span class="op">[</span>speed<span class="op">],</span> <span class="op">[</span>from<span class="op">])</span></span></code></pre></div>
 <p>or they can be defined declaratively as styles:</p>
 <table>
 <tbody>

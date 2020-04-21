@@ -2,6 +2,8 @@
 --Full-spec mustache parser and bytecode-based renderer.
 --Written by Cosmin Apreutesei. Public Domain.
 
+if not ... then require'mustache_test'; return end
+
 local push = table.insert
 local pop = table.remove
 local _ = string.format
@@ -158,7 +160,7 @@ local cache = setmetatable({}, {__mode = 'kv'}) --{template -> prog} cache
 --  'render', i, j, partial, i1 : render partial (**)
 --(*) for sections, nexpc is the index in the program where the next command
 --after the section is (for jumping to it); ti and tj are such that
---template:(ti, tj) gives the unparsed text inside the section (for lambdas),
+--template:sub(ti, tj) gives the unparsed text inside the section (for lambdas),
 --and d1 and d2 are the current set delimiters (for lambdas).
 --(**) for partials, i1 is such that template:sub(i, i1) gives the
 --indent of the partial which must be applied to the lines of the result.
@@ -514,11 +516,6 @@ local function render(prog, view, getpartial, write, d1, d2, escape)
 	local ctx_stack = {view}
 	escape = escape or escape_html
 	return internal_render(prog, ctx_stack, getpartial, write, d1, d2, escape)
-end
-
-
-if not ... then
-	require'mustache_test'
 end
 
 return {

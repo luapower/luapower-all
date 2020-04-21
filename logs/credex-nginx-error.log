@@ -1,0 +1,505 @@
+2020/04/03 18:27:55 [emerg] 342#0: bind() to 0.0.0.0:80 failed (13: Permission denied)
+2020/04/03 18:30:49 [emerg] 577#0: bind() to 0.0.0.0:8100 failed (98: Address already in use)
+2020/04/03 18:30:49 [emerg] 577#0: bind() to 0.0.0.0:8100 failed (98: Address already in use)
+2020/04/03 18:30:49 [emerg] 577#0: bind() to 0.0.0.0:8100 failed (98: Address already in use)
+2020/04/03 18:30:49 [emerg] 577#0: bind() to 0.0.0.0:8100 failed (98: Address already in use)
+2020/04/03 18:30:49 [emerg] 577#0: bind() to 0.0.0.0:8100 failed (98: Address already in use)
+2020/04/03 18:30:49 [emerg] 577#0: still could not bind()
+2020/04/03 18:31:03 [emerg] 594#0: bind() to 0.0.0.0:8100 failed (98: Address already in use)
+2020/04/03 18:31:03 [emerg] 594#0: bind() to 0.0.0.0:8100 failed (98: Address already in use)
+2020/04/03 18:31:03 [emerg] 594#0: bind() to 0.0.0.0:8100 failed (98: Address already in use)
+2020/04/03 18:31:03 [emerg] 594#0: bind() to 0.0.0.0:8100 failed (98: Address already in use)
+2020/04/03 18:31:03 [emerg] 594#0: bind() to 0.0.0.0:8100 failed (98: Address already in use)
+2020/04/03 18:31:57 [emerg] 652#0: bind() to 0.0.0.0:8100 failed (98: Address already in use)
+2020/04/03 18:31:57 [emerg] 652#0: bind() to 0.0.0.0:8100 failed (98: Address already in use)
+2020/04/03 18:31:57 [emerg] 652#0: bind() to 0.0.0.0:8100 failed (98: Address already in use)
+2020/04/03 18:32:00 [emerg] 665#0: bind() to 0.0.0.0:8100 failed (98: Address already in use)
+2020/04/03 18:32:00 [emerg] 665#0: bind() to 0.0.0.0:8100 failed (98: Address already in use)
+2020/04/03 18:32:00 [emerg] 665#0: bind() to 0.0.0.0:8100 failed (98: Address already in use)
+D 2020-04-03 18:33:13 note   fs     mkdir    credex
+D 2020-04-03 18:33:13 note   fs     mkdir    tmp/credex
+D 2020-04-03 18:33:35 note   fs     save     credex/next_order_num (1 bytes)
+D 2020-04-03 18:33:35 note   fs     save     credex/next_order_num (1 bytes)
+D 2020-04-03 18:33:35 note   fs     gen_id   order_num: 1
+D 2020-04-03 18:33:35 CRASH                  ./errors.lua:100: ./credex.lua:35: attempt to call method 'subst' (a nil value)
+                                             uri: /plateste-rata
+D 2020-04-03 18:43:43 ERROR  fs     touch    could not set mtime/btime for credex/next_order_num: nil
+D 2020-04-03 18:43:43 CRASH                  could not set mtime/btime for credex/next_order_num: nil
+                                             uri: /plateste-rata
+D 2020-04-03 18:44:53 ERROR  fs     touch    could not set mtime/btime for credex/next_order_num: nil
+D 2020-04-03 18:44:53 CRASH                  could not set mtime/btime for credex/next_order_num: nil
+                                             uri: /plateste-rata
+D 2020-04-03 18:53:56 ERROR  fs     touch    could not set mtime/btime for credex/next_order_num: nil
+D 2020-04-03 18:53:56 CRASH                  could not set mtime/btime for credex/next_order_num: nil
+                                             uri: /plateste-rata
+D 2020-04-03 19:51:20 note   fs     save     credex/next_order_num (2 bytes)
+D 2020-04-03 19:51:20 note   fs     gen_id   order_num: 50
+D 2020-04-03 19:51:20 note   bt     http >   https://ecclients.btrl.ro:5443/payment/rest/register.do
+                                             {
+                                               password='credex_api1',
+                                               returnUrl='http://127.0.0.1:8100/multumim',
+                                               orderNumber=50,
+                                               description='1820307046271',
+                                               currency=946,
+                                               userName='credex_api',
+                                               amount='12300',
+                                               language='ro'
+                                             }
+D 2020-04-03 19:51:21 note   bt     http <   {
+                                               formUrl='https://ecclients.btrl.ro:5443/payment/merchants/credex/payment.html?mdOrder=9bf69312-2627-46e0-a0be-cb63efad2ea0&language=ro',
+                                               orderId='9bf69312-2627-46e0-a0be-cb63efad2ea0'
+                                             }
+D 2020-04-03 20:15:39 note   fs     save     credex/next_order_num (2 bytes)
+D 2020-04-03 20:15:39 note   fs     gen_id   order_num: 51
+D 2020-04-03 20:15:39 note   bt     http >   https://ecclients.btrl.ro:5443/payment/rest/register.do
+                                             {
+                                               password='credex_api1',
+                                               returnUrl='http://127.0.0.1:8100/multumim',
+                                               orderNumber=51,
+                                               description='1851208460065 CRDX20201000001',
+                                               currency=946,
+                                               userName='credex_api',
+                                               amount='10000',
+                                               language='ro'
+                                             }
+D 2020-04-03 20:15:40 note   bt     http <   {
+                                               formUrl='https://ecclients.btrl.ro:5443/payment/merchants/credex/payment.html?mdOrder=ba08b7b3-2e3a-4cf8-a1ba-8bcb4b1e23f8&language=ro',
+                                               orderId='ba08b7b3-2e3a-4cf8-a1ba-8bcb4b1e23f8'
+                                             }
+D 2020-04-03 20:19:51 note   fs     save     credex/next_order_num (2 bytes)
+D 2020-04-03 20:19:51 note   fs     gen_id   order_num: 52
+D 2020-04-03 20:19:51 note   bt     http >   https://ecclients.btrl.ro:5443/payment/rest/register.do
+                                             {
+                                               password='credex_api1',
+                                               returnUrl='http://127.0.0.1:8100/multumim',
+                                               orderNumber=52,
+                                               description='1851208460065 CRDX20181000000',
+                                               currency=946,
+                                               userName='credex_api',
+                                               amount='100',
+                                               language='ro'
+                                             }
+D 2020-04-03 20:19:52 note   bt     http <   {
+                                               formUrl='https://ecclients.btrl.ro:5443/payment/merchants/credex/payment.html?mdOrder=11f712db-4ddd-4a74-8a09-3e124b633829&language=ro',
+                                               orderId='11f712db-4ddd-4a74-8a09-3e124b633829'
+                                             }
+D 2020-04-03 20:22:00 ERROR  client url      orderId missing in return url
+D 2020-04-03 20:22:00 CRASH                  orderId missing in return url
+                                             uri: /multumim
+D 2020-04-03 20:24:13 note   fs     save     credex/next_order_num (2 bytes)
+D 2020-04-03 20:24:13 note   fs     gen_id   order_num: 53
+D 2020-04-03 20:24:13 note   bt     http >   https://ecclients.btrl.ro:5443/payment/rest/register.do
+                                             {
+                                               password='credex_api1',
+                                               returnUrl='http://luapower.com:8100/multumim',
+                                               orderNumber=53,
+                                               description='1851208460065 CRDX20201000001',
+                                               currency=946,
+                                               userName='credex_api',
+                                               amount='10000',
+                                               language='ro'
+                                             }
+D 2020-04-03 20:24:14 note   bt     http <   {
+                                               formUrl='https://ecclients.btrl.ro:5443/payment/merchants/credex/payment.html?mdOrder=be4ae45b-f411-4fb1-9c67-f2caa073aad9&language=ro',
+                                               orderId='be4ae45b-f411-4fb1-9c67-f2caa073aad9'
+                                             }
+D 2020-04-03 20:25:06 note   bt     http >   https://ecclients.btrl.ro:5443/payment/rest/getOrderStatusExtended.do
+                                             {
+                                               password='credex_api1',
+                                               orderId='be4ae45b-f411-4fb1-9c67-f2caa073aad9',
+                                               language='ro',
+                                               userName='credex_api'
+                                             }
+D 2020-04-03 20:25:07 note   bt     http <   {
+                                               orderNumber='53',
+                                               errorCode='0',
+                                               orderStatus=2,
+                                               paymentAmountInfo={
+                                                 depositedAmount=10000,
+                                                 refundedAmount=0,
+                                                 paymentState='DEPOSITED',
+                                                 approvedAmount=10000
+                                               },
+                                               cardAuthInfo={
+                                                 expiration='202202',
+                                                 pan='414049**6081',
+                                                 approvalCode='727456',
+                                                 cardholderName='gfafas'
+                                               },
+                                               orderDescription='1851208460065 CRDX20201000001',
+                                               actionCodeDescription='Request processed successfully',
+                                               authRefNum='002264727456',
+                                               date=1585941854324,
+                                               bankInfo={
+                                                 bankCountryName='Romania',
+                                                 bankName='BANCA TRANSILVANIA S.A.',
+                                                 bankCountryCode='RO'
+                                               },
+                                               errorMessage='Success',
+                                               amount=10000,
+                                               ip='81.196.185.15',
+                                               terminalId='056061ER',
+                                               actionCode=0,
+                                               authDateTime=1585941905905,
+                                               currency='946',
+                                               merchantOrderParams={
+                                                 {
+                                                   name='numberTime',
+                                                   value='4.7330000000000005'
+                                                 },
+                                                 {
+                                                   name='paymentTime',
+                                                   value='37.204'
+                                                 }
+                                               },
+                                               attributes={
+                                                 {
+                                                   name='mdOrder',
+                                                   value='be4ae45b-f411-4fb1-9c67-f2caa073aad9'
+                                                 }
+                                               }
+                                             }
+D 2020-04-03 20:29:51 note   fs     save     credex/next_order_num (2 bytes)
+D 2020-04-03 20:29:51 note   fs     gen_id   order_num: 54
+D 2020-04-03 20:29:51 note   bt     http >   https://ecclients.btrl.ro:5443/payment/rest/register.do
+                                             {
+                                               password='credex_api1',
+                                               returnUrl='http://luapower.com:8100/multumim',
+                                               orderNumber=54,
+                                               description='1820307046271',
+                                               currency=946,
+                                               userName='credex_api',
+                                               amount='11100',
+                                               language='ro'
+                                             }
+D 2020-04-03 20:29:51 note   bt     http <   {
+                                               formUrl='https://ecclients.btrl.ro:5443/payment/merchants/credex/payment.html?mdOrder=c266624e-44a7-4da4-9367-1389ed9155ec&language=ro',
+                                               orderId='c266624e-44a7-4da4-9367-1389ed9155ec'
+                                             }
+D 2020-04-03 20:30:19 note   bt     http >   https://ecclients.btrl.ro:5443/payment/rest/getOrderStatusExtended.do
+                                             {
+                                               password='credex_api1',
+                                               orderId='c266624e-44a7-4da4-9367-1389ed9155ec',
+                                               language='ro',
+                                               userName='credex_api'
+                                             }
+D 2020-04-03 20:30:19 note   bt     http <   {
+                                               orderNumber='54',
+                                               errorCode='0',
+                                               orderStatus=2,
+                                               paymentAmountInfo={
+                                                 depositedAmount=11100,
+                                                 refundedAmount=0,
+                                                 paymentState='DEPOSITED',
+                                                 approvedAmount=11100
+                                               },
+                                               cardAuthInfo={
+                                                 expiration='202202',
+                                                 pan='414049**6081',
+                                                 approvalCode='727780',
+                                                 cardholderName='xxx'
+                                               },
+                                               orderDescription='1820307046271',
+                                               actionCodeDescription='Request processed successfully',
+                                               authRefNum='002264727780',
+                                               date=1585942191776,
+                                               bankInfo={
+                                                 bankCountryName='Romania',
+                                                 bankName='BANCA TRANSILVANIA S.A.',
+                                                 bankCountryCode='RO'
+                                               },
+                                               errorMessage='Success',
+                                               amount=11100,
+                                               ip='188.26.251.21',
+                                               terminalId='056061ER',
+                                               actionCode=0,
+                                               authDateTime=1585942218480,
+                                               currency='946',
+                                               merchantOrderParams={
+                                                 {
+                                                   name='paymentTime',
+                                                   value='21.056'
+                                                 },
+                                                 {
+                                                   name='numberTime',
+                                                   value='4.276'
+                                                 }
+                                               },
+                                               attributes={
+                                                 {
+                                                   name='mdOrder',
+                                                   value='c266624e-44a7-4da4-9367-1389ed9155ec'
+                                                 }
+                                               }
+                                             }
+D 2020-04-03 20:35:21 note   fs     save     credex/next_order_num (2 bytes)
+D 2020-04-03 20:35:21 note   fs     gen_id   order_num: 55
+D 2020-04-03 20:35:21 note   bt     http >   https://ecclients.btrl.ro:5443/payment/rest/register.do
+                                             {
+                                               password='credex_api1',
+                                               returnUrl='http://luapower.com:8100/multumim',
+                                               orderNumber=55,
+                                               description='1710927384218',
+                                               currency=946,
+                                               userName='credex_api',
+                                               amount='20000',
+                                               language='ro'
+                                             }
+D 2020-04-03 20:35:22 note   bt     http <   {
+                                               formUrl='https://ecclients.btrl.ro:5443/payment/merchants/credex/payment.html?mdOrder=770223be-f669-4111-8269-13f446756501&language=ro',
+                                               orderId='770223be-f669-4111-8269-13f446756501'
+                                             }
+D 2020-04-03 21:00:11 note   bt     http >   https://ecclients.btrl.ro:5443/payment/rest/getOrderStatusExtended.do
+                                             {
+                                               password='credex_api1',
+                                               orderId='770223be-f669-4111-8269-13f446756501',
+                                               language='ro',
+                                               userName='credex_api'
+                                             }
+D 2020-04-03 21:00:12 note   bt     http <   {
+                                               orderDescription='1710927384218',
+                                               orderNumber='55',
+                                               attributes={
+                                                 {
+                                                   name='mdOrder',
+                                                   value='770223be-f669-4111-8269-13f446756501'
+                                                 }
+                                               },
+                                               paymentAmountInfo={
+                                                 depositedAmount=0,
+                                                 refundedAmount=0,
+                                                 paymentState='DECLINED',
+                                                 approvedAmount=0
+                                               },
+                                               terminalId='056061ER',
+                                               bankInfo={
+                                                 bankCountryName='<Unknown>',
+                                                 bankCountryCode='UNKNOWN'
+                                               },
+                                               errorMessage='Success',
+                                               amount=20000,
+                                               errorCode='0',
+                                               orderStatus=6,
+                                               actionCode=-2007,
+                                               currency='946',
+                                               merchantOrderParams={
+                                               },
+                                               actionCodeDescription='Session time limit',
+                                               date=1585942522429
+                                             }
+D 2020-04-05 18:27:49 note   fs     save     credex/next_order_num (2 bytes)
+D 2020-04-05 18:27:49 note   fs     gen_id   order_num: 56
+D 2020-04-05 18:27:49 note   bt     http >   https://ecclients.btrl.ro:5443/payment/rest/register.do
+                                             {
+                                               password='credex_api1',
+                                               returnUrl='http://luapower.com:8100/multumim',
+                                               orderNumber=56,
+                                               description='1910616358508',
+                                               currency=946,
+                                               userName='credex_api',
+                                               amount='1000',
+                                               language='ro'
+                                             }
+D 2020-04-05 18:27:50 note   bt     http <   {
+                                               formUrl='https://ecclients.btrl.ro:5443/payment/merchants/credex/payment.html?mdOrder=a4a01c08-ad6b-4159-9d3b-4ec0dfb9134e&language=ro',
+                                               orderId='a4a01c08-ad6b-4159-9d3b-4ec0dfb9134e'
+                                             }
+D 2020-04-05 18:31:22 note   bt     http >   https://ecclients.btrl.ro:5443/payment/rest/getOrderStatusExtended.do
+                                             {
+                                               password='credex_api1',
+                                               orderId='a4a01c08-ad6b-4159-9d3b-4ec0dfb9134e',
+                                               language='ro',
+                                               userName='credex_api'
+                                             }
+D 2020-04-05 18:31:23 note   bt     http <   {
+                                               orderNumber='56',
+                                               errorCode='0',
+                                               orderStatus=2,
+                                               paymentAmountInfo={
+                                                 depositedAmount=1000,
+                                                 refundedAmount=0,
+                                                 paymentState='DEPOSITED',
+                                                 approvedAmount=1000
+                                               },
+                                               cardAuthInfo={
+                                                 expiration='202202',
+                                                 pan='414049**6081',
+                                                 approvalCode='903144',
+                                                 cardholderName='ffff gggg'
+                                               },
+                                               orderDescription='1910616358508',
+                                               actionCodeDescription='Request processed successfully',
+                                               authRefNum='002264903144',
+                                               date=1586107670115,
+                                               bankInfo={
+                                                 bankCountryName='Romania',
+                                                 bankName='BANCA TRANSILVANIA S.A.',
+                                                 bankCountryCode='RO'
+                                               },
+                                               errorMessage='Success',
+                                               amount=1000,
+                                               ip='86.124.95.4',
+                                               terminalId='056061ER',
+                                               actionCode=0,
+                                               authDateTime=1586107863831,
+                                               currency='946',
+                                               merchantOrderParams={
+                                                 {
+                                                   name='paymentTime',
+                                                   value='70.508'
+                                                 },
+                                                 {
+                                                   name='numberTime',
+                                                   value='23.397000000000002'
+                                                 }
+                                               },
+                                               attributes={
+                                                 {
+                                                   name='mdOrder',
+                                                   value='a4a01c08-ad6b-4159-9d3b-4ec0dfb9134e'
+                                                 }
+                                               }
+                                             }
+D 2020-04-05 18:50:56 note   fs     save     credex/next_order_num (2 bytes)
+D 2020-04-05 18:50:56 note   fs     gen_id   order_num: 57
+D 2020-04-05 18:50:56 note   bt     http >   https://ecclients.btrl.ro:5443/payment/rest/register.do
+                                             {
+                                               password='credex_api1',
+                                               returnUrl='http://luapower.com:8100/multumim',
+                                               orderNumber=57,
+                                               description='1910605296324 CRDX20193300000',
+                                               currency=946,
+                                               userName='credex_api',
+                                               amount='910',
+                                               language='ro'
+                                             }
+D 2020-04-05 18:50:57 note   bt     http <   {
+                                               formUrl='https://ecclients.btrl.ro:5443/payment/merchants/credex/payment.html?mdOrder=84e7e300-b310-4bc1-9608-83a79c8dad54&language=ro',
+                                               orderId='84e7e300-b310-4bc1-9608-83a79c8dad54'
+                                             }
+D 2020-04-05 19:24:30 ERROR  client url      no action _
+D 2020-04-05 19:24:30 CRASH                  no action _
+                                             uri: /-
+D 2020-04-06 07:49:41 ERROR  client url      no action _
+D 2020-04-06 07:49:41 CRASH                  no action _
+                                             uri: /-
+D 2020-04-06 09:03:06 ERROR  client url      no action robots.txt
+D 2020-04-06 09:03:06 CRASH                  no action robots.txt
+                                             uri: /robots.txt
+D 2020-04-06 09:03:17 ERROR  client url      no action robots.txt
+D 2020-04-06 09:03:17 CRASH                  no action robots.txt
+                                             uri: /robots.txt
+D 2020-04-06 09:03:31 ERROR  client url      no action robots.txt
+D 2020-04-06 09:03:31 CRASH                  no action robots.txt
+                                             uri: /robots.txt
+D 2020-04-06 09:13:29 note   fs     save     credex/next_order_num (2 bytes)
+D 2020-04-06 09:13:29 note   fs     gen_id   order_num: 58
+D 2020-04-06 09:13:29 note   bt     http >   https://ecclients.btrl.ro:5443/payment/rest/register.do
+                                             {
+                                               password='credex_api1',
+                                               returnUrl='http://luapower.com:8100/multumim',
+                                               orderNumber=58,
+                                               description='2770424135913',
+                                               currency=946,
+                                               userName='credex_api',
+                                               amount='123400',
+                                               language='ro'
+                                             }
+D 2020-04-06 09:13:30 note   bt     http <   {
+                                               formUrl='https://ecclients.btrl.ro:5443/payment/merchants/credex/payment.html?mdOrder=3a3060e5-7258-410b-acb2-1b43702d8ee9&language=ro',
+                                               orderId='3a3060e5-7258-410b-acb2-1b43702d8ee9'
+                                             }
+D 2020-04-06 09:13:36 ERROR  client url      no action robots.txt
+D 2020-04-06 09:13:36 CRASH                  no action robots.txt
+                                             uri: /robots.txt
+D 2020-04-06 09:13:49 note   fs     save     credex/next_order_num (2 bytes)
+D 2020-04-06 09:13:49 note   fs     gen_id   order_num: 59
+D 2020-04-06 09:13:49 note   bt     http >   https://ecclients.btrl.ro:5443/payment/rest/register.do
+                                             {
+                                               password='credex_api1',
+                                               returnUrl='http://luapower.com:8100/multumim',
+                                               orderNumber=59,
+                                               description='2770424135913',
+                                               currency=946,
+                                               userName='credex_api',
+                                               amount='123400',
+                                               language='ro'
+                                             }
+D 2020-04-06 09:13:50 note   bt     http <   {
+                                               formUrl='https://ecclients.btrl.ro:5443/payment/merchants/credex/payment.html?mdOrder=3ddc884f-1322-4807-bae5-31731e5d86b0&language=ro',
+                                               orderId='3ddc884f-1322-4807-bae5-31731e5d86b0'
+                                             }
+D 2020-04-06 09:15:13 note   bt     http >   https://ecclients.btrl.ro:5443/payment/rest/getOrderStatusExtended.do
+                                             {
+                                               password='credex_api1',
+                                               orderId='3ddc884f-1322-4807-bae5-31731e5d86b0',
+                                               language='ro',
+                                               userName='credex_api'
+                                             }
+D 2020-04-06 09:15:14 note   bt     http <   {
+                                               orderNumber='59',
+                                               errorCode='0',
+                                               orderStatus=6,
+                                               paymentAmountInfo={
+                                                 depositedAmount=0,
+                                                 refundedAmount=0,
+                                                 paymentState='DECLINED',
+                                                 approvedAmount=0
+                                               },
+                                               cardAuthInfo={
+                                                 expiration='202202',
+                                                 pan='411111**1111',
+                                                 cardholderName='Test'
+                                               },
+                                               orderDescription='2770424135913',
+                                               date=1586160829961,
+                                               bankInfo={
+                                                 bankCountryName='<Unknown>',
+                                                 bankCountryCode='UNKNOWN'
+                                               },
+                                               errorMessage='Success',
+                                               amount=123400,
+                                               actionCodeDescription='VERes status is "U"',
+                                               terminalId='056061ER',
+                                               actionCode=-2016,
+                                               attributes={
+                                                 {
+                                                   name='mdOrder',
+                                                   value='3ddc884f-1322-4807-bae5-31731e5d86b0'
+                                                 }
+                                               },
+                                               ip='82.79.61.132',
+                                               merchantOrderParams={
+                                                 {
+                                                   name='numberTime',
+                                                   value='23.11'
+                                                 },
+                                                 {
+                                                   name='paymentTime',
+                                                   value='82.178'
+                                                 }
+                                               },
+                                               currency='946'
+                                             }
+D 2020-04-06 09:15:15 ERROR  client url      no action robots.txt
+D 2020-04-06 09:15:15 CRASH                  no action robots.txt
+                                             uri: /robots.txt
+D 2020-04-06 09:16:11 ERROR  client url      no action robots.txt
+D 2020-04-06 09:16:11 CRASH                  no action robots.txt
+                                             uri: /robots.txt
+D 2020-04-06 09:16:14 ERROR  client url      no action robots.txt
+D 2020-04-06 09:16:14 CRASH                  no action robots.txt
+                                             uri: /robots.txt
+D 2020-04-06 09:55:09 ERROR  client url      no action robots.txt
+D 2020-04-06 09:55:09 CRASH                  no action robots.txt
+                                             uri: /robots.txt
+D 2020-04-07 08:53:06 ERROR  mail   send     ./resty/mail/smtp.lua:129: SMTP response was not successful: 535 5.7.8 Error: authentication failed: 
+                                             {
+                                               agree2='checked',
+                                               first_name='popesti',
+                                               last_name='pop',
+                                               phone='0762685401',
+                                               email='flrn.nedelcu@gmail.com',
+                                               message='test floirj',
+                                               agree1='checked'
+                                             }

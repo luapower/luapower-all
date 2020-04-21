@@ -40,25 +40,25 @@ return {
 			{
 				span_font='OpenSans-Regular.ttf',
 				span_font_size=12,
-				span_text_opacity=2
+				span_opacity=2
 			},
 			{
 				span_font='Amiri-Regular.ttf',
 				span_font_size=12,
 				span_offset=275,
-				span_text_opacity=2
+				span_opacity=2
 			},
 			{
 				span_font='OpenSans-Regular.ttf',
 				span_font_size=12,
 				span_offset=421,
-				span_text_opacity=2
+				span_opacity=2
 			},
 			{
 				span_font='Amiri-Regular.ttf',
 				span_font_size=12,
 				span_offset=1352,
-				span_text_opacity=2
+				span_opacity=2
 			}
 		},
 		w=652.5,

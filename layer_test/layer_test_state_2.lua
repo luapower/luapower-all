@@ -65,10 +65,10 @@ return {
 				text_cursor_count=1,
 				text_spans={
 					{
+						span_color=2912214015,
 						span_font_size=55,
-						span_text_color=2912214015,
-						span_text_opacity=0.81699997186660767,
-						span_text_operator=1
+						span_opacity=0.81699997186660767,
+						span_operator=1
 					}
 				},
 				w=93,

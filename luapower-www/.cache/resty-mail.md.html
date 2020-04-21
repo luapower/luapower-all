@@ -1,0 +1,104 @@
+<h1 id="lua-resty-mail">lua-resty-mail</h1>
+<p><a href="https://circleci.com/gh/GUI/lua-resty-mail"><img src="https://circleci.com/gh/GUI/lua-resty-mail.svg?style=svg" alt="CircleCI" /></a></p>
+<p>A high-level, easy to use, and non-blocking email and SMTP library for OpenResty.</p>
+<h1 id="features">Features</h1>
+<ul>
+<li>SMTP authentication, STARTTLS, and SSL support.</li>
+<li>Multipart plain text and HTML message bodies.</li>
+<li>From, To, Cc, Bcc, Reply-To, and Subject fields (custom headers also supported).</li>
+<li>Email addresses in “test@example.com” and “Name &lt;test@example.com&gt;” formats.</li>
+<li>File attachments.</li>
+</ul>
+<h1 id="installation">Installation</h1>
+<p>Via <a href="https://opm.openresty.org">OPM</a>:</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode sh"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1"></a><span class="ex">opm</span> get GUI/lua-resty-mail</span></code></pre></div>
+<p>Or via <a href="https://luarocks.org">LuaRocks</a>:</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode sh"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1"></a><span class="ex">luarocks</span> install lua-resty-mail</span></code></pre></div>
+<h1 id="usage">Usage</h1>
+<div class="sourceCode" id="cb3"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb3-1"><a href="#cb3-1"></a><span class="kw">local</span> mail <span class="op">=</span> <span class="fu">require</span> <span class="st">&quot;resty.mail&quot;</span></span>
+<span id="cb3-2"><a href="#cb3-2"></a></span>
+<span id="cb3-3"><a href="#cb3-3"></a><span class="kw">local</span> mailer<span class="op">,</span> err <span class="op">=</span> mail<span class="op">.</span>new<span class="op">({</span></span>
+<span id="cb3-4"><a href="#cb3-4"></a>  host <span class="op">=</span> <span class="st">&quot;smtp.gmail.com&quot;</span><span class="op">,</span></span>
+<span id="cb3-5"><a href="#cb3-5"></a>  port <span class="op">=</span> <span class="dv">587</span><span class="op">,</span></span>
+<span id="cb3-6"><a href="#cb3-6"></a>  starttls <span class="op">=</span> <span class="kw">true</span><span class="op">,</span></span>
+<span id="cb3-7"><a href="#cb3-7"></a>  username <span class="op">=</span> <span class="st">&quot;example@gmail.com&quot;</span><span class="op">,</span></span>
+<span id="cb3-8"><a href="#cb3-8"></a>  password <span class="op">=</span> <span class="st">&quot;password&quot;</span><span class="op">,</span></span>
+<span id="cb3-9"><a href="#cb3-9"></a><span class="op">})</span></span>
+<span id="cb3-10"><a href="#cb3-10"></a><span class="cf">if</span> err <span class="cf">then</span></span>
+<span id="cb3-11"><a href="#cb3-11"></a>  ngx<span class="op">.</span>log<span class="op">(</span>ngx<span class="op">.</span><span class="cn">ERR</span><span class="op">,</span> <span class="st">&quot;mail.new error: &quot;</span><span class="op">,</span> err<span class="op">)</span></span>
+<span id="cb3-12"><a href="#cb3-12"></a>  <span class="cf">return</span> ngx<span class="op">.</span>exit<span class="op">(</span>ngx<span class="op">.</span><span class="cn">HTTP_INTERNAL_SERVER_ERROR</span><span class="op">)</span></span>
+<span id="cb3-13"><a href="#cb3-13"></a><span class="cf">end</span></span>
+<span id="cb3-14"><a href="#cb3-14"></a></span>
+<span id="cb3-15"><a href="#cb3-15"></a><span class="kw">local</span> ok<span class="op">,</span> err <span class="op">=</span> mailer<span class="op">:</span>send<span class="op">({</span></span>
+<span id="cb3-16"><a href="#cb3-16"></a>  from <span class="op">=</span> <span class="st">&quot;Master Splinter &lt;splinter@example.com&gt;&quot;</span><span class="op">,</span></span>
+<span id="cb3-17"><a href="#cb3-17"></a>  to <span class="op">=</span> <span class="op">{</span> <span class="st">&quot;michelangelo@example.com&quot;</span> <span class="op">},</span></span>
+<span id="cb3-18"><a href="#cb3-18"></a>  cc <span class="op">=</span> <span class="op">{</span> <span class="st">&quot;leo@example.com&quot;</span><span class="op">,</span> <span class="st">&quot;Raphael &lt;raph@example.com&gt;&quot;</span><span class="op">,</span> <span class="st">&quot;donatello@example.com&quot;</span> <span class="op">},</span></span>
+<span id="cb3-19"><a href="#cb3-19"></a>  subject <span class="op">=</span> <span class="st">&quot;Pizza is here!&quot;</span><span class="op">,</span></span>
+<span id="cb3-20"><a href="#cb3-20"></a>  text <span class="op">=</span> <span class="st">&quot;There&#39;s pizza in the sewer.&quot;</span><span class="op">,</span></span>
+<span id="cb3-21"><a href="#cb3-21"></a>  html <span class="op">=</span> <span class="st">&quot;&lt;h1&gt;There&#39;s pizza in the sewer.&lt;/h1&gt;&quot;</span><span class="op">,</span></span>
+<span id="cb3-22"><a href="#cb3-22"></a>  attachments <span class="op">=</span> <span class="op">{</span></span>
+<span id="cb3-23"><a href="#cb3-23"></a>    <span class="op">{</span></span>
+<span id="cb3-24"><a href="#cb3-24"></a>      filename <span class="op">=</span> <span class="st">&quot;toppings.txt&quot;</span><span class="op">,</span></span>
+<span id="cb3-25"><a href="#cb3-25"></a>      content_type <span class="op">=</span> <span class="st">&quot;text/plain&quot;</span><span class="op">,</span></span>
+<span id="cb3-26"><a href="#cb3-26"></a>      content <span class="op">=</span> <span class="st">&quot;1. Cheese</span><span class="sc">\n</span><span class="st">2. Pepperoni&quot;</span><span class="op">,</span></span>
+<span id="cb3-27"><a href="#cb3-27"></a>    <span class="op">},</span></span>
+<span id="cb3-28"><a href="#cb3-28"></a>  <span class="op">},</span></span>
+<span id="cb3-29"><a href="#cb3-29"></a><span class="op">})</span></span>
+<span id="cb3-30"><a href="#cb3-30"></a><span class="cf">if</span> err <span class="cf">then</span></span>
+<span id="cb3-31"><a href="#cb3-31"></a>  ngx<span class="op">.</span>log<span class="op">(</span>ngx<span class="op">.</span><span class="cn">ERR</span><span class="op">,</span> <span class="st">&quot;mailer:send error: &quot;</span><span class="op">,</span> err<span class="op">)</span></span>
+<span id="cb3-32"><a href="#cb3-32"></a>  <span class="cf">return</span> ngx<span class="op">.</span>exit<span class="op">(</span>ngx<span class="op">.</span><span class="cn">HTTP_INTERNAL_SERVER_ERROR</span><span class="op">)</span></span>
+<span id="cb3-33"><a href="#cb3-33"></a><span class="cf">end</span></span></code></pre></div>
+<h1 id="api">API</h1>
+<h2 id="new">new</h2>
+<p><strong>syntax:</strong> <code>mailer, err = mail.new(options)</code></p>
+<p>Create and return a new mail object. In case of errors, returns <code>nil</code> and a string describing the error.</p>
+<p>The <code>options</code> table accepts the following fields:</p>
+<ul>
+<li><code>host</code>: The host of the SMTP server to connect to. (default: <code>localhost</code>)</li>
+<li><code>port</code>: The port number on the SMTP server to connect to. (default: <code>25</code>)</li>
+<li><code>starttls</code>: Set to <code>true</code> to ensure <a href="https://en.wikipedia.org/wiki/STARTTLS">STARTTLS</a> is always used to encrypt communication with the SMTP server. If not set, STARTTLS will automatically be enabled if the server supports it (but explicitly setting this to true if your server supports it is preferable to prevent STRIPTLS attacks). This is usually used in conjunction with port 587. (default: <code>nil</code>)</li>
+<li><code>ssl</code>: Set to <code>true</code> to use <a href="https://en.wikipedia.org/wiki/SMTPS">SMTPS</a> to encrypt communication with the SMTP server (not needed if STARTTLS is being used instead). This is usually used in conjunction with port 465. (default: <code>nil</code>)</li>
+<li><code>username</code>: Username to use for SMTP authentication. (default: <code>nil</code>)</li>
+<li><code>password</code>: Password to use for SMTP authentication. (default: <code>nil</code>)</li>
+<li><code>auth_type</code>: The type of SMTP authentication to perform. Can either be <code>plain</code> or <code>login</code>. (default: <code>plain</code> if username and password are present)</li>
+<li><code>domain</code>: The domain name presented to the SMTP server during the <code>EHLO</code> connection and used as part of the Message-ID header. (default: <code>localhost.localdomain</code>)</li>
+<li><code>timeout_connect</code>: The timeout (in milliseconds) for connecting to the SMTP server. (default: OpenResty’s global <code>lua_socket_connect_timeout</code> timeout, which defaults to 60s)</li>
+<li><code>timeout_send</code>: The timeout (in milliseconds) for sending data to the SMTP server. (default: OpenResty’s global <code>lua_socket_send_timeout</code> timeout, which defaults to 60s)</li>
+<li><code>timeout_read</code>: The timeout (in milliseconds) for reading data from the SMTP server. (default: OpenResty’s global <code>lua_socket_read_timeout</code> timeout, which defaults to 60s)</li>
+</ul>
+<h2 id="mailersend">mailer:send</h2>
+<p><strong>syntax:</strong> <code>ok, err = mailer:send(data)</code></p>
+<p>Send an email via the SMTP server. This function returns <code>true</code> on success. In case of errors, returns <code>nil</code> and a string describing the error.</p>
+<p>The <code>data</code> table accepts the following fields:</p>
+<ul>
+<li><code>from</code>: Email address for the <code>From</code> header.</li>
+<li><code>reply_to</code>: Email address for the <code>Reply-To</code> header.</li>
+<li><code>to</code>: A table (list-like) of email addresses for the <code>To</code> recipients.</li>
+<li><code>cc</code>: A table (list-like) of email addresses for the <code>Cc</code> recipients.</li>
+<li><code>bcc</code>: A table (list-like) of email addresses for the <code>Bcc</code> recipients.</li>
+<li><code>subject</code>: Message subject.</li>
+<li><code>text</code>: Body of the message (plain text version).</li>
+<li><code>html</code>: Body of the message (HTML verion).</li>
+<li><code>headers</code>: A table of additional headers to set on the message.</li>
+<li><code>attachments</code>: A table (list-like) of file attachments for the message. Each attachment must be an table (map-like) with the following fields:
+<ul>
+<li><code>filename</code>: The filename of the attachment.</li>
+<li><code>content_type</code>: The <code>Content-Type</code> of the file attachment.</li>
+<li><code>content</code>: The contents of the file attachment as a string.</li>
+<li><code>disposition</code>: The <code>Content-Disposition</code> of the file attachment. Can either be <code>attachment</code> or <code>inline</code>. (default: <code>attachment</code>)</li>
+<li><code>content_id</code>: The <code>Content-ID</code> of the file attachment. (default: randomly generated ID)</li>
+</ul></li>
+</ul>
+<h1 id="development">Development</h1>
+<p>After checking out the repo, Docker can be used to run the test suite:</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode sh"><code class="sourceCode bash"><span id="cb4-1"><a href="#cb4-1"></a><span class="ex">docker-compose</span> run --rm app make test</span></code></pre></div>
+<h2 id="release-process">Release Process</h2>
+<p>To release a new version to LuaRocks and OPM:</p>
+<ul>
+<li>Ensure <code>CHANGELOG.md</code> is up to date.</li>
+<li>Update the <code>_VERSION</code> in <code>lib/resty/mail.lua</code>.</li>
+<li>Update the <code>version</code> in <code>dist.ini</code>.</li>
+<li>Move the rockspec file to the new version number (<code>git mv lua-resty-mail-X.X.X-1.rockspec lua-resty-mail-X.X.X-1.rockspec</code>), and update the <code>version</code> and <code>tag</code> variables in the rockspec file.</li>
+<li>Commit and tag the release (<code>git tag -a vX.X.X -m "Tagging vX.X.X" &amp;&amp; git push origin vX.X.X</code>).</li>
+<li>Run <code>make release VERSION=X.X.X</code>.</li>
+</ul>

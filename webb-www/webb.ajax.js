@@ -31,9 +31,9 @@ AJAX REQUESTS
 function _ajax_opt(url, opt) {
 	var t
 	if (typeof(url) == 'string')
-		t = $.extend({url: url}, opt)
+		t = update({url: url}, opt)
 	else
-		t = $.extend({}, url)
+		t = update({}, url)
 	assert(t.url, 'ajax(): url missing')
 	return t
 }
@@ -46,7 +46,7 @@ function _ajax_opt(url, opt) {
 // +`this` is preserved on ^success, ^error, ^slow_loading.
 function ajax(url, opt) {
 
-	opt = $.extend({}, ajax.defaults, _ajax_opt(url, opt))
+	opt = update({}, ajax.defaults, _ajax_opt(url, opt))
 	var self = this
 
 	if (opt.adjust_url)
@@ -127,7 +127,7 @@ function _ajax_args(expect_data, arg1, arg2, arg3, arg4) {
 	assert(!(url && opt && opt.url))
 	assert(!(data && opt && opt.data))
 	assert(!(success && opt && opt.success))
-	return $.extend({url: url, data: data, success: success}, opt)
+	return update({url: url, data: data, success: success}, opt)
 }
 
 function get(arg1, arg2, arg3, arg4) {

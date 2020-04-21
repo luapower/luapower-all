@@ -1,0 +1,1306 @@
+
+/* variables -------------------------------------------------------------- */
+
+:root {
+
+	--x-input-padding               : .25em .5em; /* padding for inputs and grid cells */
+	--x-input-padding-x             : .5em;  /* x-padding for inputs and grid cells */
+
+	--x-input-il-padding            : 1em .5em;
+	--x-input-il-padding-value      : 1.6em .5em .4em .5em;
+	--x-input-il-padding-top-label  : .2em;
+	--x-input-il-padding-top-label-animation-start : .6em;
+
+	--x-inverted-fg-color           : white; /* fg color for inverted backgrounds */
+
+	--x-input-focused-bg-color      : #fff;  /* bg color for focused inputs, dropdowns and pickers */
+	--x-modified-bg-color           : #ddffdd;
+	--x-new-bg-color                : #eeeeff;
+	--x-info-bg-color               : #069;  /* bg color for info bubbles */
+	--x-error-bg-color              : #a33;  /* bg color for invalid inputs and error bubbles */
+
+	--x-focus-shadow                : 0 0 0 1px #99f; /* to be used in place of focus outline */
+	--x-item-unfocused-bg-color     : #333;
+	--x-item-focused-bg-color       : #47a;
+	--x-item-hover-bg-color         : #00000011;
+	--x-item-bg-only-bg-color       : #eee;  /* slider background */
+	--x-item-bg-only-hover-bg-color : #ddd;  /* slider background */
+	--x-input-min-width             : 12em;
+}
+
+/* defaults --------------------------------------------------------------- */
+
+.x-widget, .x-widget * {
+	box-sizing: border-box;
+}
+
+.x-widget {
+	font-size: 13px;
+	font-family: x-widget, sans-serif;
+}
+
+/* item states ------------------------------------------------------------ */
+
+.x-widget:focus {
+	/* standardize focus outline appearance between browsers and element types */
+	outline: none;
+	box-shadow: var(--x-focus-shadow);
+}
+
+.x-focusable:focus {
+	/* focusables show focus through their focused x-item */
+	outline: none;
+	box-shadow: none;
+}
+
+.x-widget .disabled { color: #999; }
+.x-widget .null { color: #999; }
+
+.x-item:not(.focused):not(:hover) > .x-item:not(.invalid).new {
+	background-color: var(--x-new-bg-color);
+}
+
+.x-item:not(.focused):not(:hover) > .x-item:not(.invalid).modified {
+	background-color: var(--x-modified-bg-color);
+}
+
+.x-item.invalid,
+.x-item > .x-item.invalid:hover {
+	background-color: var(--x-error-bg-color);
+	color: var(--x-inverted-fg-color);
+}
+
+                  .x-item.focused           { color: #fff; }
+                  .x-item.disabled.focused  { color: #ccc; }
+.x-item.focused > .x-item.disabled          { color: #ccc; }
+.x-item.focused > .x-item.disabled.focused  { color: #fff; }
+
+                  .x-item:hover             { background-color: var(--x-item-hover-bg-color); }
+.x-item         > .x-item:hover             { background-color: #f8f8f8; }
+
+                  .x-item.focused           { background-color: var(--x-item-unfocused-bg-color); color: var(--x-inverted-fg-color); }
+                  .x-item.focused:hover     { background-color: #444; color: var(--x-inverted-fg-color); }
+.x-item.focused > .x-item:hover             { background-color: #555; color: var(--x-inverted-fg-color); }
+.x-item.focused > .x-item.focused           { background-color: #666; color: var(--x-inverted-fg-color); }
+.x-item.focused > .x-item.focused:hover     { background-color: #777; color: var(--x-inverted-fg-color); }
+
+.x-focusable:focus-within                   .x-item.focused       { background-color: var(--x-item-focused-bg-color); }
+.x-focusable:focus-within                   .x-item.focused:hover { background-color: #58b; }
+.x-focusable:focus-within .x-item.focused > .x-item:hover         { background-color: #69c; }
+.x-focusable:focus-within .x-item.focused > .x-item.focused       { background-color: #7ad; }
+.x-focusable:focus-within .x-item.focused > .x-item.focused:hover { background-color: #8be; }
+
+/* scrollbars ------------------------------------------------------------- */
+
+.x-widget::-webkit-scrollbar-track,
+.x-widget ::-webkit-scrollbar-track  { background-color: #eee; }
+.x-widget::-webkit-scrollbar-thumb,
+.x-widget ::-webkit-scrollbar-thumb  { background-color: #c0c0c0; border-color: #eee; }
+.x-widget::-webkit-scrollbar-corner,
+.x-widget ::-webkit-scrollbar-corner { background-color: #eee; }
+.x-widget                            { scrollbar-color: #c0c0c0 #eee; }
+
+/* button ----------------------------------------------------------------- */
+
+.x-button {
+
+	/* positioning for inline use */
+	display: inline-flex;    /* more options than inline, but no collapsible margins! */
+	align-items: baseline;   /* required */
+	position: relative;      /* anchor stuff to the button */
+
+	/* sizing for inline use */
+	padding: var(--x-input-padding);
+	margin: .25em;
+	border: 1px solid rgba(27,31,35,.2);
+	border-radius: .25em;
+	font-size: 100%;
+	font-weight: bold;
+	line-height: initial;
+
+	/* behavior */
+	cursor: pointer;
+	user-select: none;
+}
+
+.x-button-icon {
+	margin-right: .25em;
+}
+
+.x-button-text {
+}
+
+/* styling (from github) */
+
+.x-button {
+	background-color: #eff3f6;
+	background-image: linear-gradient(-180deg,#fafbfc,#eff3f6 90%);
+}
+
+.x-button:hover {
+	border-color: rgba(27,31,35,.35);
+	background-color: #e6ebf1;
+	background-image: linear-gradient(-180deg,#f0f3f6,#e6ebf1 90%);
+	text-decoration: none;
+}
+
+.x-button:active, .x-button.active {
+	outline: none;
+	border-color: rgba(27,31,35,.35);
+	background-color: #e9ecef;
+	background-image: none;
+	box-shadow: inset 0 0.15em 0.3em rgba(27,31,35,.15);
+}
+
+.x-button.primary {
+	color: white;
+	border: 1px solid rgba(27,31,35,.2);
+	background-color: #28a745;
+	background-image: linear-gradient(-180deg,#34d058,#28a745 90%);
+}
+
+.x-button.primary:hover {
+	border-color: rgba(27,31,35,.5);
+	background-color: #269f42;
+	background-image: linear-gradient(-180deg,#2fcb53,#269f42 90%);
+}
+
+.x-button.primary:active, .x-button.primary.active {
+	outline: none;
+	border-color: rgba(27,31,35,.5);
+	background-color: #279f43;
+	background-image: none;
+	box-shadow: inset 0 0.15em 0.3em rgba(27,31,35,.15);
+}
+
+/* tooltip ---------------------------------------------------------------- */
+
+.x-tooltip {
+
+	display: flex;
+	align-items: flex-start;
+	justify-content: flex-start;
+
+	/* positioning */
+	position: absolute;
+	overflow: visible;
+	z-index: 1;
+
+	/* sizing */
+	width: 400px;                 /* max. width of the message bubble before wrapping */
+
+	/* hit-testing */
+	pointer-events: none;         /* click-through */
+
+	/* animation */
+	opacity: 0;
+
+	animation-duration: .2s;
+	animation-timing-function: ease-out;
+	animation-fill-mode: forwards;
+}
+
+/* visibility animation */
+
+.x-tooltip.visible {
+	opacity: 1;
+}
+
+@keyframes x-tooltip-left   { from { opacity: 0; transform: translate(-1em, 0); } }
+@keyframes x-tooltip-right  { from { opacity: 0; transform: translate( 1em, 0); } }
+@keyframes x-tooltip-top    { from { opacity: 0; transform: translate(0, -.5em); } }
+@keyframes x-tooltip-bottom { from { opacity: 0; transform: translate(0,  .5em); } }
+
+.x-tooltip.visible[side=left]   { animation-name: x-tooltip-left; }
+.x-tooltip.visible[side=right]  { animation-name: x-tooltip-right; }
+.x-tooltip.visible[side=top]    { animation-name: x-tooltip-top; }
+.x-tooltip.visible[side=bottom] { animation-name: x-tooltip-bottom; }
+
+.x-tooltip-text {
+
+	/* layouting */
+	display: inline-block;        /* shrink-wrap and also word-wrap when reaching container width */
+
+	/* sizing */
+	padding: .5em 1em;
+
+	/* styling */
+	border-radius: .25em;
+	background-color: white;
+
+	cursor: default;
+
+	box-shadow: 2px 2px 10px #00000044;
+}
+
+.x-tooltip-tip {
+
+	/* border-based triangle shape */
+	display: block;
+	box-sizing: content-box;
+	border-width: .5em;
+	border-color: transparent;
+	border-style: solid;
+	z-index: 1; /* draw over the parent's box shadow */
+
+	/* styling */
+	color: white;
+}
+
+.x-tooltip[side=left]   > .x-tooltip-tip { border-left-color   : inherit; }
+.x-tooltip[side=right]  > .x-tooltip-tip { border-right-color  : inherit; }
+.x-tooltip[side=top]    > .x-tooltip-tip { border-top-color    : inherit; }
+.x-tooltip[side=bottom] > .x-tooltip-tip { border-bottom-color : inherit; }
+
+/* side & align combinations */
+
+.x-tooltip[side=top],
+.x-tooltip[side=bottom]  { flex-flow: column; }
+
+.x-tooltip[side=left]    { justify-content: flex-end; }
+
+.x-tooltip[align=end]    { align-items: flex-end; }
+.x-tooltip[align=center] { align-items: center; }
+
+.x-tooltip[side=right]  > .x-tooltip-text,
+.x-tooltip[side=bottom] > .x-tooltip-text { order: 2; }
+
+.x-tooltip[side=top][align=center] > .x-tooltip-text,
+.x-tooltip[side=bottom][align=center] > .x-tooltip-text { text-align: center; }
+
+.x-tooltip[side=top][align=end] > .x-tooltip-text,
+.x-tooltip[side=bottom][align=end] > .x-tooltip-text { text-align: right; }
+
+.x-tooltip[side=top] > .x-tooltip-tip,
+.x-tooltip[side=bottom] > .x-tooltip-tip { margin: 0 .5em; }
+
+.x-tooltip[side=left] > .x-tooltip-tip,
+.x-tooltip[side=right] > .x-tooltip-tip { margin: .5em 0; }
+
+.x-tooltip[side=right]  { margin-left   : -.25em; }
+.x-tooltip[side=left]   { margin-left   :  .25em; }
+.x-tooltip[side=top]    { margin-top    :  .25em; }
+.x-tooltip[side=bottom] { margin-top    : -.25em; }
+
+/* styling based on type attr */
+
+.x-tooltip[type=info] > .x-tooltip-text { background-color: var(--x-info-bg-color); color: var(--x-inverted-fg-color); }
+.x-tooltip[type=info] > .x-tooltip-tip  { color: var(--x-info-bg-color); }
+
+.x-tooltip[type=error] > .x-tooltip-text { background-color: var(--x-error-bg-color); color: var(--x-inverted-fg-color); }
+.x-tooltip[type=error] > .x-tooltip-tip  { color: var(--x-error-bg-color); }
+
+/* checkbox & radiogroup = markbox ---------------------------------------- */
+
+.x-markbox {
+
+	/* layouting of self & children */
+	display: inline-flex;
+
+	/* layouting of children */
+	align-items: baseline;
+	flex-flow: row nowrap;
+
+	/* sizing for inline use */
+	margin: .25em;
+	padding: .5em;
+
+	cursor: default;
+}
+
+.x-markbox-icon {
+	color: #333;
+}
+
+.x-markbox:focus {
+	box-shadow: none;
+	outline: 1px dashed #aaf;
+}
+
+.x-markbox > .x-markbox-icon {
+	color: var(--x-item-focused-bg-color);
+}
+
+.x-markbox.invalid > .x-markbox-icon {
+	color: var(--x-error-bg-color);
+}
+
+.x-markbox[align=right] > .x-markbox-icon {
+	order: 2;
+}
+.x-markbox[align=right] > .x-markbox-text {
+	text-align: right;
+}
+
+.x-markbox.center {
+	justify-content: center;
+}
+
+.x-markbox[align=left]  > .x-markbox-text:not(:empty) { padding-left : .5em; }
+.x-markbox[align=right] > .x-markbox-text:not(:empty) { padding-right: .5em; }
+
+/* radiogroup ------------------------------------------------------------- */
+
+.x-radiogroup {
+	display: inline-flex;
+	flex-flow: column wrap;
+	margin: .25em;
+	padding: 0;
+}
+
+.x-radio-item {
+	margin: 0;
+	padding: .25em .5em;
+}
+
+.x-radio-item:focus > .x-radio-icon {
+	color: #333;
+}
+
+.x-radiogroup.invalid > .x-markbox,
+.x-radiogroup.invalid > .x-markbox > .x-radio-icon {
+	color: var(--x-error-bg-color);
+}
+
+.x-radiogroup[align=right] > .x-markbox {
+	justify-content: flex-end;
+}
+
+/* input ------------------------------------------------------------------ */
+
+.x-input {
+	/* layouting */
+	display: inline-flex;    /* the only way to get variable-width inputs */
+	align-items: baseline;   /* ...that are baseline-aligned */
+	position: relative;      /* anchor the inner label to it */
+
+	/* sizing */
+	width: 0;                /* don't set this, set min-width */
+	min-width: var(--x-input-min-width);
+
+	/* sizing for inline use */
+	margin: .25em;
+	padding: 0;              /* required: set from code */
+	border-width: 1px;
+	border-radius: .2em;
+	font-size: 100%;
+
+	/* styling */
+	border-color: #ccc;
+	border-style: solid;
+}
+
+.x-input-value {
+	/* defaults */
+	margin: 0;
+	border: 0;
+	padding: var(--x-input-padding);
+	font-size: inherit;
+	font-family: inherit;
+	height: 100%;            /* stretch vertically */
+	flex: auto;              /* stretch horizontally */
+	min-width: 0;            /* reset, let parent set this */
+	color: inherit;
+	background: none;
+	text-align: left;
+}
+
+.x-input-value:focus {
+	outline: none;
+}
+
+.x-input[align=right] .x-input-value {
+	text-align: right;
+}
+
+.x-input[mode=inline] {
+	border: 0;
+	border-radius: 0;
+}
+
+.x-input[mode=inline] {
+	border-bottom: 1px dashed black;
+}
+
+.x-input[mode=inline] > .x-input-value {
+	padding-bottom: .1em;
+}
+
+.x-input[mode=inline]:focus-within {
+	box-shadow: none;
+}
+
+.x-input.modified {
+	background-color: var(--x-modified-bg-color);
+}
+
+/* input with animated inner label/placeholder ---------------------------- */
+
+.x-input.with-inner-label {
+	border-radius: .3em;
+	line-height: initial;  /* prevent inheriting it */
+}
+
+.x-input.with-inner-label[mode=inline] {
+	border-radius: 0;
+}
+
+.x-input.with-inner-label > .x-input-value {
+	padding: var(--x-input-il-padding);
+}
+
+.x-input-inner-label {
+	vertical-align: top;
+	align-self: flex-start;
+	position: absolute;
+	padding: var(--x-input-il-padding);
+	pointer-events: none;       /* click-through */
+	color: #777;
+	white-space: nowrap;
+}
+
+.x-input.with-inner-label > .x-input-value:not(.empty) {
+	top: 0; /* fixate to top so we only have to set the top padding */
+	padding: var(--x-input-il-padding-value);
+}
+
+.x-input[mode=inline].with-inner-label > .x-input-value:not(.empty) {
+	padding-bottom: .1em;
+}
+
+.x-input.with-inner-label > .x-input-inner-label:not(.empty) {
+	top: 0; /* fixate to top so we only have to set the top padding */
+	user-select: none;
+	color: inherit;
+	font-size: 85%;
+	padding-top: var(--x-input-il-padding-top-label);
+	animation: x-input-inner-label-focused .2s;
+}
+
+.x-input[mode=inline].with-inner-label > .x-input-inner-label:not(.empty) {
+	font-weight: bold;
+	opacity: .5;
+}
+
+@keyframes x-input-inner-label-focused {
+	from {
+		opacity: 0;
+		padding-top: var(--x-input-il-padding-top-label-animation-start);
+	}
+}
+
+/* spin_input ------------------------------------------------------------- */
+
+.x-spin-input-button {
+	border-style: solid;
+	border-color: #999;
+	border-width: 0;
+	padding-left : var(--x-input-padding-x);
+	padding-right: var(--x-input-padding-x);
+}
+
+.x-spin-input-button.left  { border-right-width: 1px; }
+.x-spin-input-button.right { border-left-width : 1px; }
+
+.x-spin-input-button.fa-plus,
+.x-spin-input-button.fa-minus {
+	font-size: 70%;
+	align-self: center;
+}
+.x-spin-input-button.fa-minus.leftmost { padding-left  : calc(1.428 * var(--x-input-padding-x)); }
+.x-spin-input-button.fa-plus.rightmost { padding-right : calc(1.428 * var(--x-input-padding-x)); }
+
+.x-spin-input-button.fa-caret-left  { padding-right : calc(.5 * var(--x-input-padding-x)); }
+.x-spin-input-button.fa-caret-right { padding-left  : calc(.5 * var(--x-input-padding-x)); }
+
+/* inner label adjustments */
+
+.x-spin-input[button-placement=left]      > .x-input-inner-label.empty,
+.x-spin-input[button-placement=each-side] > .x-input-inner-label.empty {
+	padding-left: 2em;
+}
+
+.x-spin-input[button-style=left-right][button-placement=left]      > .x-input-inner-label.empty,
+.x-spin-input[button-style=left-right][button-placement=each-side] > .x-input-inner-label.empty {
+	padding-left: 1.5em;
+}
+
+.x-spin-input.with-inner-label > .x-spin-input-button.fa-plus,
+.x-spin-input.with-inner-label > .x-spin-input-button.fa-minus {
+	align-self: baseline;
+}
+
+/* slider ----------------------------------------------------------------- */
+
+.x-slider {
+	/* inline layouting */
+	display: inline-block;
+	vertical-align: middle;
+	margin: .75em;
+
+	/* sizing */
+	width: var(--x-input-min-width);
+	height: 7px;
+
+	/* styling */
+	background: var(--x-item-bg-only-bg-color);
+	border-radius: 10em;
+
+	/* layouting content */
+	position: relative;           /* anchor slider */
+	overflow: visible;
+}
+
+.x-slider-fill {
+	position: absolute;
+	height: 100%;
+	background-color: var(--x-item-unfocused-bg-color);
+	border-radius: 10em;
+}
+
+.x-slider-range-fill {
+	background-color: #ccc;
+}
+
+.x-slider-thumb {
+
+	/* center vertically to track */
+	position: absolute;
+	top: 50%;
+	transform: translateX(-50%) translateY(-55%);
+
+	/* sizing */
+	width: 1em;
+	height: 1em;
+
+	/* styling */
+	background-color: #eee;
+	border: 1px solid #ddd;
+	box-shadow: 1px 1px 2px #000000aa;
+
+	border-radius: 10em;
+
+}
+
+.x-slider-value-thumb.different {
+	opacity: .5;
+}
+
+.x-slider:focus {
+	box-shadow: none;
+}
+
+.x-slider:focus > .x-slider-value-fill {
+	background-color: var(--x-item-focused-bg-color);
+}
+
+.x-slider:focus > .x-slider-thumb {
+	border: 1px solid var(--x-item-focused-bg-color);
+	background-color: #eee;
+}
+
+.x-slider.invalid > .x-slider-input-thumb {
+	border: 1px solid var(--x-error-bg-color);
+	background-color: var(--x-error-bg-color);
+}
+
+.x-slider.invalid:focus > .x-slider-thumb {
+	border: 1px solid #ddd;
+}
+
+.x-slider.animated > .x-slider-thumb      { transition: left  .1s; }
+.x-slider.animated > .x-slider-value-fill { transition: width .1s; }
+
+/* dropdown --------------------------------------------------------------- */
+
+/* NOTE: .x-input is applied too on dropdowns so consider this a class extension! */
+
+.x-dropdown {
+
+	/* content layouting */
+	align-items: center;
+	line-height: initial;       /* prevent y-stretching to surrounding text's line height */
+
+	/* styling */
+	cursor: default;
+
+	/* default mode: variable-width, no-wrap but with .x-input's min-width applied */
+	width: auto;                /* shrink-wrap */
+	white-space: nowrap;
+}
+
+.x-dropdown-value {
+
+	/* self positioning & alignment */
+	flex: 1;                 /* stretch horizontally */
+	width: auto;
+	padding: var(--x-input-padding);
+	padding-right : .25em;
+	padding-left  : var(--x-input-padding-x);
+
+	/* content layouting */
+	display: flex;
+	align-items: center;
+}
+
+.x-dropdown-button {
+	padding-left : var(--x-input-padding-x);
+	padding-right: var(--x-input-padding-x);
+
+	border-left-style: inherit;
+	border-left-color: inherit;
+	border-left-width: 1px;
+}
+
+.x-dropdown[align=right] > .x-dropdown-value {
+	order: 2;
+	padding-left  : .25em;
+	padding-right : var(--x-input-padding-x);
+
+	justify-content: flex-end;
+}
+
+/* inline mode: variable-width, no-wrap with no min-width */
+.x-dropdown[mode=inline] {
+	min-width: 0;            /* reset from x-input's min-width */
+	align-items: baseline;
+}
+
+/* wrap mode: fixed-width, auto-wrap */
+.x-dropdown[mode=wrap] {
+	width: 0;                /* fixed width, constrained by x-input's min-width */
+}
+.x-dropdown[mode=wrap] > .x-dropdown-value {
+	white-space: normal;
+}
+
+/* fixed mode: fixed-width, no-wrap, hide-overflow */
+.x-dropdown[mode=fixed] {
+	width: 0;                /* fixed width, constrained by x-input's min-width */
+}
+.x-dropdown[mode=fixed] > .x-dropdown-value {
+	white-space: nowrap;
+	overflow: hidden;
+}
+
+/* override with more specificity: .x-widget.x-<foo>.picker */
+.x-widget.picker {
+	margin: 0;
+	position: absolute;
+	border: 1px solid #999;
+	background-color: var(--x-input-focused-bg-color);
+	box-shadow: 5px 5px 5px #000000aa;
+	z-index: 1;
+}
+
+/* input & dropdown common styles ----------------------------------------- */
+
+.x-input:focus-within,
+.x-dropdown.open
+{
+	outline: none;
+	background-color: var(--x-input-focused-bg-color);
+	box-shadow: var(--x-focus-shadow);
+}
+.x-dropdown[mode=inline]:focus,
+.x-dropdown[mode=inline].open {
+	box-shadow: none;
+}
+
+.x-input.invalid {
+	background-color: var(--x-error-bg-color);
+	color: var(--x-inverted-fg-color);
+}
+
+/* listbox ---------------------------------------------------------------- */
+
+.x-listbox {
+
+	/* layout */
+	display: inline-flex;        /* the only way for it to shrink-wrap */
+	flex-flow: column nowrap;
+	margin: .25em;
+
+}
+
+.x-listbox[flow=horizontal] {
+	flex-direction: row;
+}
+
+.x-listbox-item {
+
+	/* sizing */
+	padding: var(--x-input-padding);
+
+	/* behavior */
+	cursor: default;
+
+}
+
+.x-widget.x-listbox.picker {
+	max-height: 300px;
+	overflow: auto;
+}
+
+/* calendar --------------------------------------------------------------- */
+
+.x-calendar {
+	display: inline-block;
+	padding: 2em;
+}
+
+.x-calendar-weekday {
+	color: #999;
+	font-weight: normal;
+}
+
+.x-calendar:focus {
+	outline: none;
+}
+
+.x-calendar:focus .x-calendar-day.focused {
+	box-shadow: var(--x-focus-shadow);
+}
+
+.x-calendar-day,
+.x-calendar-weekday {
+	text-align: right;
+}
+.x-calendar-day {
+	padding: .4em;
+	padding-left : .6em;
+	padding-right: .6em;
+}
+.x-calendar-weekday {
+	padding: .4em 0;
+}
+
+.x-calendar-day                     { cursor: default; }
+.x-calendar-day:not(.current-month) { color: #999; }
+.x-calendar-day.today               { background-color: #f33; color: white; }
+.x-calendar-day.today:hover         { background-color: #f66; }
+
+.x-calendar-header {
+	display: flex;
+	align-items: center;     /* vertical align */
+}
+
+.x-calendar-sel-day {
+	font-size: 300%;
+}
+
+.x-calendar-sel-day-suffix {
+	flex: 1;                 /* stretch to fill width */
+	font-size: 150%;
+	padding-left: .1em;
+	padding-top: .25em;
+	align-self: flex-start;
+}
+
+.x-calendar-sel-month.x-input,
+.x-calendar-sel-year.x-input {
+	border: 0;
+}
+
+.x-calendar-sel-month.x-input {
+	min-width: 4.5em;        /* limit shrinking */
+	margin: .25em;           /* separate from day suffix */
+}
+
+.x-input.x-calendar-sel-month .x-listbox {
+	width: 100%;
+}
+
+.x-input.x-calendar-sel-year {
+	min-width: 6.5em;
+}
+
+/* calendar as picker ----------------------------------------------------- */
+
+.x-widget.x-calendar.picker {
+	padding: 1.5em;
+}
+.x-widget.x-calendar.picker .x-calendar-sel-day {
+	font-size: 200%;
+}
+.x-widget.x-calendar.picker .x-calendar-day {
+	padding-top: 0em;
+	padding-bottom: 0em;
+	padding-left : .5em;
+	padding-right: .5em;
+}
+
+/* menu ------------------------------------------------------------------- */
+
+.x-menu-table,
+.x-menu-table:focus-within
+{
+
+	/* layouting */
+	display: inline-block;     /* required: don't expand to fit parent width */
+	position: absolute;        /* required: submenus are positioned manually */
+	overflow: visible;         /* required: submenus are outside clipping area */
+	border-collapse: collapse; /* required: separators are done with borders */
+	background: white;         /* required: submenus overlap their parent */
+
+	/* styling */
+	color: #000;
+	width: 200px;
+	border: 1px solid #ccc;
+	box-shadow: 2px 2px 2px #666;
+}
+
+.x-menu-tr {
+	position: relative;        /* required: submenus are anchored to item trs */
+}
+
+tr.x-menu-tr > td {
+	padding: .4em;
+	padding-left : .5em;
+	padding-right: .5em;
+}
+
+tr.x-menu-separator-tr > td {
+	height: 1em;
+}
+
+tr.x-menu-separator-tr > td > hr {
+	border: 0;
+	border-top: 1px solid #ccc;
+}
+
+td.x-menu-title-td {
+	padding: 0;
+	width: 100%;
+	padding-left: 0;
+}
+
+.x-menu-tr.focused > td {
+	cursor: default;
+}
+
+/* pagelist --------------------------------------------------------------- */
+
+.x-pagelist {
+
+	/* layouting */
+	display: flex;
+	position: relative;
+
+	/* sizing for layout use */
+	margin: 0;
+	padding: 0;
+
+	/* styling */
+	border-bottom: 1px solid #ccc;
+}
+
+.x-pagelist-item {
+
+	/* sizing */
+	padding: .25em 1em;
+
+	/* styling */
+	color: #666;
+	cursor: default;
+}
+
+.x-pagelist-selection-bar {
+	position: absolute;
+	bottom: 0;
+	height: 2px;
+	background-color: #66f;
+	transition: width .1s;
+	transition: left .1s;
+}
+
+.x-pagelist-item.selected {
+	color: black;
+}
+
+.x-pagelist-item:focus {
+	outline: none;
+}
+
+.x-pagelist-item:hover,
+.x-pagelist-item:focus {
+	background-color: var(--x-item-hover-bg-color);
+}
+
+/* split ------------------------------------------------------------------ */
+
+.x-split {
+
+	/* layouting */
+	display: flex;
+	flex-wrap: nowrap;
+	align-items: stretch;
+	align-content: stretch;
+	justify-content: stretch;
+
+	height: 100%;  /* width: 100% is covered by flex-grow: 1 */
+}
+.x-split.horizontal { flex-direction: row; }
+.x-split.vertical   { flex-direction: column; }
+
+.x-split.resize {
+	cursor: ns-resize;
+}
+.x-split.horizontal.resize {
+	cursor: ew-resize;
+}
+
+.x-split-pane {
+	overflow: auto;
+}
+
+.x-split-pane-auto {
+	flex-grow: 1;  /* expand-to-fit container */
+}
+
+.x-split.horizontal > .x-split-pane.collapsed {
+	min-width: 0 !important;
+	width: 0 !important;
+}
+.x-split.vertical > .x-split-pane.collapsed {
+	min-height: 0 !important;
+	height: 0 !important;
+}
+
+/* sizer */
+
+.x-split-sizer {
+
+	/* layouting */
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+
+	min-width : 6px;
+	min-height: 6px;
+
+	/* styling */
+	background-color: var(--x-item-bg-only-bg-color);
+
+}
+.x-split.horizontal > .x-split-sizer {
+	flex-direction: row;
+}
+
+.x-split.resize > .x-split-sizer {
+	background-color: var(--x-item-bg-only-hover-bg-color);
+	transition: background-color 200ms;
+}
+
+/* grip */
+
+.x-split-sizer::before {
+	content: '';
+	box-sizing: border-box;
+	border: 1.25px #999;
+}
+
+.x-split.horizontal > .x-split-sizer::before {
+	width: 4px;
+	height: 24px;
+	border-style: none solid;
+}
+.x-split.vertical > .x-split-sizer::before {
+	width: 24px;
+	height: 4px;
+	border-style: solid none;
+}
+
+/* notifystack ------------------------------------------------------------ */
+
+.x-notifystack {
+	position: absolute;
+}
+
+/* grid ------------------------------------------------------------------- */
+
+.x-grid {
+	display: inline-block;     /* required: don't expand to fit parent width */
+	margin: .25em;
+	overflow: hidden;          /* required: hide header overflow */
+	cursor: default;           /* required: don't show caret over text */
+	border: 0px solid #ccc;
+}
+
+.x-grid-header-table, .x-grid-rows-table {
+	position: relative;        /* required: make movable */
+	width: 0;                  /* required: expand up-to the sum of cell widths */
+	table-layout: fixed;       /* required */
+	border-collapse: collapse; /* required */
+}
+
+/* header */
+
+.x-grid-header-th-table {
+	width: 100%;               /* required: expand to fit column width */
+	table-layout: fixed;       /* required: don't expand based on content */
+}
+
+.x-grid-header-title-td {
+	padding: 0;
+	overflow: hidden;          /* required: hide title under the sort icon */
+}
+
+.x-grid-header-sort-icon-td {
+	padding: 0;
+	width: 1em;                /* required: leave the rest of the space to the title */
+}
+
+.x-grid-header-sort-icon-pri {
+	font-family: inherit;
+	font-size: 85%;
+}
+
+.x-grid-header-th {           /* default: header column style */
+	height: 2.5em;
+	vertical-align: bottom;
+	padding-bottom: .3em;
+	border-bottom: 1px solid #999;
+}
+
+/* progress bar */
+
+.x-grid-progress-bar {
+	position: absolute;
+	width: 0%;
+	height: 3px;
+	bottom: 0;
+	pointer-events: none;
+}
+
+.x-grid.loading > .x-grid-header-table > .x-grid-progress-bar {
+	background-color: green;
+}
+
+.x-grid.loading {
+	opacity: .7;
+}
+
+/* rows */
+
+.x-grid-rows-view-div {
+	overflow: auto;            /* required: show scrollbars as needed */
+	position: relative;        /* required: anchor rows-div */
+}
+
+.x-grid-rows-div {
+	position: absolute;        /* required: keep at y=0 while scrolling */
+	overflow: hidden;          /* required: hide surplus bottom rows */
+}
+
+/* grid col resizing -------------------------------------------------------*/
+
+/* NOTE: `col-resize` is almost invisible on a light background on Windows 7 */
+.x-grid.col-resize {
+	cursor: ew-resize;
+}
+.x-grid:not(.col-resize) .x-grid-header-th {
+	cursor: pointer;           /* required: resizing area is underneath */
+}
+
+/* cells */
+
+.x-grid-header-th, .x-grid-td {
+	overflow: hidden;          /* required */
+	white-space: nowrap;       /* required: height must be kept constant */
+
+	/* sizing & styling */
+	padding: var(--x-input-padding);
+	border-right: 0px solid #ccc;
+}
+
+.x-grid-td {
+	vertical-align: middle;
+	border-bottom: 0px solid #eee;  /* border width set from code */
+}
+
+/* grid cell & row states ------------------------------------------------- */
+
+.x-grid:focus {
+	outline: none;
+}
+
+/* grid editing ----------------------------------------------------------- */
+
+.x-grid-error {
+	position: absolute;
+}
+
+.x-widget.grid-editor {
+
+	position: absolute;
+	min-width: 0;
+	border: 0;
+	margin: 0;
+	border-radius: 0;
+
+	font-size: inherit;
+	font-family: inherit;
+	cursor: initial;
+	outline: none;
+}
+
+.x-widget.grid-editor,
+.x-widget.grid-editor.open,            /* more specificity over x-dropdown */
+.x-widget.grid-editor:focus-within     /* more specificity over x-input */
+{
+	box-shadow: inset 2px 2px 6px -2px rgba(0,0,0,0.75);
+}
+
+.x-grid-td.editing {
+	visibility: hidden;
+}
+
+/* grid scrollbars -------------------------------------------------------- */
+
+.x-grid-rows-view-div::-webkit-scrollbar {
+	width  : 8px;
+	height : 8px;
+}
+
+.x-grid-rows-view-div {
+  scrollbar-width: thin;
+}
+
+/* grid as picker --------------------------------------------------------- */
+
+.x-dropdown .x-widget.x-grid.picker {
+	margin: 0;
+	min-height: 100px;
+	max-height: 300px;
+	min-width: 100%;
+}
+
+/* ------------------------------------------------------------------------ */
+/* dark theme                                                               */
+/* ------------------------------------------------------------------------ */
+
+.x-dark {
+
+	color: white;
+	background-color: #1f1f22;
+
+	--x-inverted-fg-color           : white; /* fg color for inverted backgrounds */
+
+	--x-item-unfocused-bg-color     : #444;
+	--x-item-bg-only-bg-color       : #444;
+	--x-item-bg-only-hover-bg-color : #555;
+	--x-focus-shadow                : 0 0 1px 1px #336;
+}
+
+/* focusable item shades -------------------------------------------------- */
+
+.x-dark                   .x-item:hover         { background-color: #18181a; }
+.x-dark .x-item         > .x-item:hover         { background-color: #1f1f22; }
+
+.x-dark                   .x-item.focused:hover { background-color: #555; }
+.x-dark .x-item.focused > .x-item:hover         { background-color: #666; }
+.x-dark .x-item.focused > .x-item.focused       { background-color: #777; }
+.x-dark .x-item.focused > .x-item.focused:hover { background-color: #888; }
+
+//.x-dark .x-focusable:focus-within                   .x-item.focused       { background-color: #47a; }
+//.x-dark .x-focusable:focus-within                   .x-item.focused:hover { background-color: #58b; }
+//.x-dark .x-focusable:focus-within .x-item.focused > .x-item:hover         { background-color: #69c; }
+//.x-dark .x-focusable:focus-within .x-item.focused > .x-item.focused       { background-color: #7ad; }
+//.x-dark .x-focusable:focus-within .x-item.focused > .x-item.focused:hover { background-color: #8be; }
+
+/* button ----------------------------------------------------------------- */
+
+.x-dark .x-button:not(.primary) {
+	color: white;
+	border-color: #181818;
+	background-color: #333;
+	background-image: linear-gradient(-180deg,#555,#333 90%);
+}
+
+.x-dark .x-button:not(.primary):hover {
+	background-color: #444;
+	background-image: linear-gradient(-180deg,#666,#444 90%);
+}
+
+.x-dark .x-button.primary:hover {
+	border: 1px solid #269f42;
+}
+
+/* inputs & dropdown ------------------------------------------------------ */
+
+.x-dark .x-input {
+	border-color: #444;
+}
+
+.x-dark .x-input:focus-within,
+.x-dark .x-input-value:focus,
+.x-dark .x-dropdown.open {
+	background-color: #080808;
+}
+
+.x-dark .x-dropdown.open .x-calendar {
+	background-color: #2a303e;
+}
+
+.x-dark .x-input.invalid > .x-input-value {
+	background-color: var(--x-error-bg-color);
+}
+
+/* slider ----------------------------------------------------------------- */
+
+.x-dark .x-slider-thumb {
+	border-color: #999;
+}
+
+.x-dark .x-slider-fill {
+	background-color: #ccc;
+}
+
+.x-dark .x-slider:focus > .x-slider-thumb {
+	background-color: #fff;
+	border-color: #ccc;
+}
+
+/* pickers of dropdowns --------------------------------------------------- */
+
+.x-dark .x-dropdown .x-widget.picker {
+	border: 1px solid #222;
+	box-shadow: 5px 5px 5px #000;
+}
+
+/* pagelist --------------------------------------------------------------- */
+
+.x-dark .x-pagelist                  { border-bottom-color: #5a606e; }
+.x-dark .x-pagelist-item             { color: #aaa; }
+.x-dark .x-pagelist-item:hover,
+.x-dark .x-pagelist-item:focus       { background-color: #0004; }
+.x-dark .x-pagelist-item.selected    { color: white; }
+.x-dark .x-pagelist-selection-bar    { background-color: #fff; }
+
+/* grid ------------------------------------------------------------------- */
+
+.x-dark .x-grid-header-th { border-bottom-color: #666; }
+.x-dark .x-grid-td        { border-bottom-color: #333; }
+
+//.x-dark .x-grid-tr:hover                        { background-color: #0004; }
+
+/* TODO:
+.x-dark .x-grid-tr.new                          { background-color: #eef; }
+.x-dark .x-grid-tr.new.focused                  { background-color: #dde; }
+.x-dark .x-grid-td.modified                     { background-color: #ddffdd; }
+.x-dark .x-grid-tr.focused .x-grid-td.modified  { background-color: #cceecc; }
+.x-dark .x-grid-td.invalid                      { background-color: #ffcccc; }
+.x-dark .x-grid-tr.focused .x-grid-td.invalid   { background-color: #eebbbb; }
+*/
+
+.x-dark .x-grid.col-resize {
+	cursor: col-resize;
+}
+
+/* scrollbars ------------------------------------------------------------- */
+
+.x-dark .x-widget ::-webkit-scrollbar-track  { background-color: #222; }
+.x-dark .x-widget ::-webkit-scrollbar-thumb  { background-color: #444; border-color: #222; }
+.x-dark .x-widget ::-webkit-scrollbar-corner { background-color: #00000000; }

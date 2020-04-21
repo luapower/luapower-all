@@ -61,15 +61,12 @@ because we want to build both static and dynamic versions the libraries.
   * `-D_WIN32_WINNT=0x601`       : Windows: set API level to Windows 7 (set WINVER too)
   * `-DWINVER=0x601`             : Windows: set API level to Windows 7
   * `-mmacosx-version-min=10.7`  : OSX: set API level to 10.7
-  * `-D_XOPEN_SOURCE=700`        : Linux: set API level to X/Open 7 (POSIX 2008)
+  * `-D_POSIX_SOURCE`            : Linux and MinGW: enable POSIX 1003.1-1990 APIs
+  * `-D_XOPEN_SOURCE=700`        : Linux: enable POSIX.1 + POSIX.2 + X/Open 7 (SUSv4) APIs
   * `-arch x86_64`               : OSX: create 64bit x86 binaries
-  * `-include _memcpy.h`         : Linux on x64: fix the memcpy@GLIBC_2.14 disaster (*)
-  * `-U_FORTIFY_SOURCE`          : Linux: preserve compatibility with GLIBC 2.7
+  * `-U_FORTIFY_SOURCE=1`        : gcc: enable some runtime checks
   * `-std=c++11`                 : for C++11 libraries
   * `-stdlib=libc++ -mmacosx-version-min=10.7` : for all C++ libraries on OSX
-
- (*) put the line `__asm__(".symver memcpy,memcpy@GLIBC_2.2.5");` in _memcpy.h.
- This is _not needed_ if building on Ubuntu 10 or older.
 
 ### Dynamic linking with gcc/g++
 

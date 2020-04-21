@@ -1,0 +1,102 @@
+<h1 id="tutorial3">Tutorial 3: Writing different types of data to the XLSX File</h1>
+<p>In the previous section we created a simple spreadsheet with formatting using Lua and the <code>xlsxwriter</code> module.</p>
+<p>This time let's extend the data we want to write to include some dates:</p>
+<pre><code> expenses = {
+   {&quot;Rent&quot;, &quot;2013-01-13&quot;, 1000},
+   {&quot;Gas&quot;,  &quot;2013-01-14&quot;,  100},
+   {&quot;Food&quot;, &quot;2013-01-16&quot;,  300},
+   {&quot;Gym&quot;,  &quot;2013-01-20&quot;,   50},
+ }</code></pre>
+<p>The corresponding spreadsheet will look like this:</p>
+<p><img src="/files/luapower/xlsxwriter/_images/tutorial03.png" /></p>
+<p>The differences here are that we have added a Date column with formatting and made that column a little wider to accommodate the dates.</p>
+<p>To do this we can extend our program as follows:</p>
+<div class="only">
+<p>html</p>
+<p>(The significant changes are shown with a red line.)</p>
+</div>
+<div class="sourceCode" id="cb2"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb2-1"><a href="#cb2-1"></a><span class="kw">local</span> Workbook <span class="op">=</span> <span class="fu">require</span> <span class="st">&quot;xlsxwriter.workbook&quot;</span></span>
+<span id="cb2-2"><a href="#cb2-2"></a></span>
+<span id="cb2-3"><a href="#cb2-3"></a></span>
+<span id="cb2-4"><a href="#cb2-4"></a><span class="co">-- Create a workbook and add a worksheet.</span></span>
+<span id="cb2-5"><a href="#cb2-5"></a><span class="kw">local</span> workbook  <span class="op">=</span> Workbook<span class="op">:</span>new<span class="op">(</span><span class="st">&quot;Expensese03.xlsx&quot;</span><span class="op">)</span></span>
+<span id="cb2-6"><a href="#cb2-6"></a><span class="kw">local</span> worksheet <span class="op">=</span> workbook<span class="op">:</span>add_worksheet<span class="op">()</span></span>
+<span id="cb2-7"><a href="#cb2-7"></a></span>
+<span id="cb2-8"><a href="#cb2-8"></a><span class="co">-- Add a bold format to use to highlight cells.</span></span>
+<span id="cb2-9"><a href="#cb2-9"></a><span class="kw">local</span> bold <span class="op">=</span> workbook<span class="op">:</span>add_format<span class="op">({</span>bold <span class="op">=</span> <span class="kw">true</span><span class="op">})</span></span>
+<span id="cb2-10"><a href="#cb2-10"></a></span>
+<span id="cb2-11"><a href="#cb2-11"></a><span class="co">-- Add a number format for cells with money.</span></span>
+<span id="cb2-12"><a href="#cb2-12"></a><span class="kw">local</span> money <span class="op">=</span> workbook<span class="op">:</span>add_format<span class="op">({</span>num_format <span class="op">=</span> <span class="st">&quot;$#,##0&quot;</span><span class="op">})</span></span>
+<span id="cb2-13"><a href="#cb2-13"></a></span>
+<span id="cb2-14"><a href="#cb2-14"></a><span class="co">-- Add an Excel date format.</span></span>
+<span id="cb2-15"><a href="#cb2-15"></a><span class="kw">local</span> date_format <span class="op">=</span> workbook<span class="op">:</span>add_format<span class="op">({</span>num_format <span class="op">=</span> <span class="st">&quot;mmmm d yyyy&quot;</span><span class="op">})</span></span>
+<span id="cb2-16"><a href="#cb2-16"></a></span>
+<span id="cb2-17"><a href="#cb2-17"></a><span class="co">-- Adjust the column width.</span></span>
+<span id="cb2-18"><a href="#cb2-18"></a>worksheet<span class="op">:</span>set_column<span class="op">(</span><span class="st">&quot;B:B&quot;</span><span class="op">,</span> <span class="dv">15</span><span class="op">)</span></span>
+<span id="cb2-19"><a href="#cb2-19"></a></span>
+<span id="cb2-20"><a href="#cb2-20"></a><span class="co">-- Write some data header.</span></span>
+<span id="cb2-21"><a href="#cb2-21"></a>worksheet<span class="op">:</span><span class="fu">write</span><span class="op">(</span><span class="st">&quot;A1&quot;</span><span class="op">,</span> <span class="st">&quot;Item&quot;</span><span class="op">,</span> bold<span class="op">)</span></span>
+<span id="cb2-22"><a href="#cb2-22"></a>worksheet<span class="op">:</span><span class="fu">write</span><span class="op">(</span><span class="st">&quot;B1&quot;</span><span class="op">,</span> <span class="st">&quot;Date&quot;</span><span class="op">,</span> bold<span class="op">)</span></span>
+<span id="cb2-23"><a href="#cb2-23"></a>worksheet<span class="op">:</span><span class="fu">write</span><span class="op">(</span><span class="st">&quot;C1&quot;</span><span class="op">,</span> <span class="st">&quot;Cost&quot;</span><span class="op">,</span> bold<span class="op">)</span></span>
+<span id="cb2-24"><a href="#cb2-24"></a></span>
+<span id="cb2-25"><a href="#cb2-25"></a><span class="co">-- Some data we want to write to the worksheet.</span></span>
+<span id="cb2-26"><a href="#cb2-26"></a><span class="kw">local</span> expenses <span class="op">=</span> <span class="op">{</span></span>
+<span id="cb2-27"><a href="#cb2-27"></a>  <span class="op">{</span><span class="st">&quot;Rent&quot;</span><span class="op">,</span> <span class="st">&quot;2013-01-13&quot;</span><span class="op">,</span> <span class="dv">1000</span><span class="op">},</span></span>
+<span id="cb2-28"><a href="#cb2-28"></a>  <span class="op">{</span><span class="st">&quot;Gas&quot;</span><span class="op">,</span>  <span class="st">&quot;2013-01-14&quot;</span><span class="op">,</span>  <span class="dv">100</span><span class="op">},</span></span>
+<span id="cb2-29"><a href="#cb2-29"></a>  <span class="op">{</span><span class="st">&quot;Food&quot;</span><span class="op">,</span> <span class="st">&quot;2013-01-16&quot;</span><span class="op">,</span>  <span class="dv">300</span><span class="op">},</span></span>
+<span id="cb2-30"><a href="#cb2-30"></a>  <span class="op">{</span><span class="st">&quot;Gym&quot;</span><span class="op">,</span>  <span class="st">&quot;2013-01-20&quot;</span><span class="op">,</span>   <span class="dv">50</span><span class="op">},</span></span>
+<span id="cb2-31"><a href="#cb2-31"></a><span class="op">}</span></span>
+<span id="cb2-32"><a href="#cb2-32"></a></span>
+<span id="cb2-33"><a href="#cb2-33"></a><span class="co">-- Start from the first cell below the headers.</span></span>
+<span id="cb2-34"><a href="#cb2-34"></a><span class="kw">local</span> row <span class="op">=</span> <span class="dv">1</span></span>
+<span id="cb2-35"><a href="#cb2-35"></a><span class="kw">local</span> col <span class="op">=</span> <span class="dv">0</span></span>
+<span id="cb2-36"><a href="#cb2-36"></a></span>
+<span id="cb2-37"><a href="#cb2-37"></a><span class="co">-- Iterate over the data and write it out element by element.</span></span>
+<span id="cb2-38"><a href="#cb2-38"></a><span class="cf">for</span> <span class="cn">_</span><span class="op">,</span> expense <span class="kw">in</span> <span class="fu">ipairs</span><span class="op">(</span>expenses<span class="op">)</span> <span class="cf">do</span></span>
+<span id="cb2-39"><a href="#cb2-39"></a>  <span class="kw">local</span> item<span class="op">,</span> date<span class="op">,</span> cost <span class="op">=</span> <span class="fu">unpack</span><span class="op">(</span>expense<span class="op">)</span></span>
+<span id="cb2-40"><a href="#cb2-40"></a></span>
+<span id="cb2-41"><a href="#cb2-41"></a>  worksheet<span class="op">:</span>write_string     <span class="op">(</span>row<span class="op">,</span> col<span class="op">,</span>     item<span class="op">)</span></span>
+<span id="cb2-42"><a href="#cb2-42"></a>  worksheet<span class="op">:</span>write_date_string<span class="op">(</span>row<span class="op">,</span> col <span class="op">+</span> <span class="dv">1</span><span class="op">,</span> date<span class="op">,</span> date_format<span class="op">)</span></span>
+<span id="cb2-43"><a href="#cb2-43"></a>  worksheet<span class="op">:</span>write_number     <span class="op">(</span>row<span class="op">,</span> col <span class="op">+</span> <span class="dv">2</span><span class="op">,</span> cost<span class="op">,</span> money<span class="op">)</span></span>
+<span id="cb2-44"><a href="#cb2-44"></a>  row <span class="op">=</span> row <span class="op">+</span> <span class="dv">1</span></span>
+<span id="cb2-45"><a href="#cb2-45"></a><span class="cf">end</span></span>
+<span id="cb2-46"><a href="#cb2-46"></a></span>
+<span id="cb2-47"><a href="#cb2-47"></a><span class="co">-- Write a total using a formula.</span></span>
+<span id="cb2-48"><a href="#cb2-48"></a>worksheet<span class="op">:</span><span class="fu">write</span><span class="op">(</span>row<span class="op">,</span> <span class="dv">0</span><span class="op">,</span> <span class="st">&quot;Total&quot;</span><span class="op">,</span>       bold<span class="op">)</span></span>
+<span id="cb2-49"><a href="#cb2-49"></a>worksheet<span class="op">:</span><span class="fu">write</span><span class="op">(</span>row<span class="op">,</span> <span class="dv">2</span><span class="op">,</span> <span class="st">&quot;=SUM(C2:C5)&quot;</span><span class="op">,</span> money<span class="op">)</span></span>
+<span id="cb2-50"><a href="#cb2-50"></a></span>
+<span id="cb2-51"><a href="#cb2-51"></a>workbook<span class="op">:</span><span class="fu">close</span><span class="op">()</span></span></code></pre></div>
+<p>The main difference between this and the previous program is that we have added a new <code class="interpreted-text" role="ref">Format &lt;Format&gt;</code> object for dates and we have additional handling for data types.</p>
+<p>Excel treats different types of input data, such as strings and numbers, differently although it generally does it transparently to the user. Xlsxwriter tries to emulate this in the <code class="interpreted-text" role="ref">worksheet: &lt;Worksheet&gt;</code><code class="interpreted-text" role="func">write()</code> method by mapping Lua data types to types that Excel supports.</p>
+<p>The <code>write()</code> method acts as a general alias for several more specific methods:</p>
+<ul>
+<li><code class="interpreted-text" role="func">write_string()</code></li>
+<li><code class="interpreted-text" role="func">write_number()</code></li>
+<li><code class="interpreted-text" role="func">write_blank()</code></li>
+<li><code class="interpreted-text" role="func">write_formula()</code></li>
+<li><code class="interpreted-text" role="func">write_boolean()</code></li>
+</ul>
+<p>In this version of our program we have used some of these explicit <code>write_</code> methods for different types of data:</p>
+<pre><code> worksheet:write_string     (row, col,     item)
+ worksheet:write_date_string(row, col + 1, date, date_format)
+ worksheet:write_number     (row, col + 2, cost, money)</code></pre>
+<p>This is mainly to show that if you need more control over the type of data you write to a worksheet you can use the appropriate method. In this simplified example the <code class="interpreted-text" role="func">write()</code> method would actually have worked just as well.</p>
+<p>The handling of dates is also new to our program.</p>
+<p>Dates and times in Excel are floating point numbers that have a number format applied to display them in the correct format. Since there is no native Lua date or time types <code>xlsxwriter</code> provides the <code class="interpreted-text" role="func">write_date_string()</code> and <code class="interpreted-text" role="func">write_date_time()</code> methods to convert dates and times into Excel date and time numbers.</p>
+<p>In the example above we use <code class="interpreted-text" role="func">write_date_string()</code> but we also need to add the number format to ensure that Excel displays it as as date:</p>
+<pre><code> ...
+
+ local date_format = workbook:add_format({num_format = &quot;mmmm d yyyy&quot;})
+ ...
+
+ for _, expense in ipairs(expenses) do
+   ...
+   worksheet:write_date_string(row, col + 1, date, date_format)
+   ...
+ end</code></pre>
+<p>Date handling is explained in more detail in <code class="interpreted-text" role="ref">working_with_dates_and_time</code>.</p>
+<p>The last addition to our program is the <code class="interpreted-text" role="func">set_column</code> method to adjust the width of column "B" so that the dates are more clearly visible:</p>
+<pre><code> -- Adjust the column width.
+ worksheet:set_column(&quot;B:B&quot;, 15)</code></pre>
+<p>That completes the tutorial section.</p>
+<p>In the next sections we will look at the API in more detail starting with <code class="interpreted-text" role="ref">workbook</code>.</p>

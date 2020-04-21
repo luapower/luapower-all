@@ -1,0 +1,38 @@
+<h2 id="local-csv-requirecsv"><code>local csv = require'csv'</code></h2>
+<p>This is a fork of <a href="https://github.com/geoffleyland/lua-csv">Lua-CSV</a>.</p>
+<p>Lua-CSV is a Lua module for reading delimited text files (popularly CSV and tab-separated files, but you can specify the separator).</p>
+<p>Lua-CSV tries to auto-detect whether a file is delimited with commas or tabs, copes with non-native newlines, survives newlines and quotes inside quoted fields and offers an iterator interface so it can handle large files.</p>
+<h2 id="how">How?</h2>
+<pre><code> local csv = require(&quot;csv&quot;)
+ local f = csv.open(&quot;file.csv&quot;)
+ for fields in f:lines() do
+   for i, v in ipairs(fields) do print(i, v) end
+ end</code></pre>
+<p><code>csv.open</code> takes a second argument <code>parameters</code>, a table of parameters controlling how the file is read:</p>
+<ul>
+<li><p><code>separator</code> sets the separator. It’ll probably guess the separator correctly if it’s a comma or a tab (unless, say, the first field in a tab-delimited file contains a comma), but if you want something else you’ll have to set this. It could be more than one character, but it’s used as part of a set: <code>"["..sep.."\n\r]"</code></p></li>
+<li><p>Set <code>header</code> to true if the file contains a header and each set of fields will be keyed by the names in the header rather than by integer index.</p></li>
+<li><p><code>columns</code> provides a mechanism for column remapping. Suppose you have a csv file as follows:</p>
+<pre><code>   Word,Number
+   ONE,10</code></pre>
+<p>And columns is:</p>
+<ul>
+<li><p><code>{ word = true }</code> then the only field in the file would be <code>{ word = "ONE" }</code></p></li>
+<li><p><code>{ first = { name = "word"} }</code> then it would be <code>{ first = "ONE" }</code></p></li>
+<li><p><code>{ word = { transform = string.lower }}</code> would give <code>{ word = "one" }</code></p></li>
+<li><p>finally,</p>
+<pre><code>   { word = true
+     number = { transform = function(x) return tonumber(x) / 10 end }}</code></pre>
+<p>would give <code>{ word = "ONE", number = 1 }</code></p></li>
+</ul>
+<p>A column can have more than one name: <code>{ first = { names = {"word", "worm"}}}</code> to help cope with badly specified file formats and spelling mistakes.</p></li>
+<li><p><code>buffer_size</code> controls the size of the blocks the file is read in. The default is 1MB. It used to be 4096 bytes which is what <code>pagesize</code> says on my system, but that seems kind of small.</p></li>
+</ul>
+<p><code>csv.openstring</code> works exactly like <code>csv.open</code> except the first argument is the contents of the csv file. In this case <code>buffer_size</code> is set to the length of the string.</p>
+<h2 id="issues">Issues</h2>
+<ul>
+<li><p>Some whitespace-delimited files might use more than one space between fields, for example if the columns are “manually” aligned:</p>
+<pre><code>   street           nr  city
+   &quot;Oneway Street&quot;   1  Toontown</code></pre>
+<p>It won’t cope with this - you’ll get lots of extra empty fields.</p></li>
+</ul>

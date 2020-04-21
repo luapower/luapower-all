@@ -2,12 +2,8 @@
 local ffi = require'ffi'
 
 if ffi.abi'win' then
-	if ffi.abi'64bit' then
-		ffi.cdef'typedef uint64_t UINT_PTR;'
-	else
-		ffi.cdef'typedef uint32_t UINT_PTR;'
-	end
 	ffi.cdef[[
+		typedef uint64_t UINT_PTR;
 		typedef UINT_PTR SOCKET;
 		typedef SOCKET curl_socket_t;
 	]]
@@ -21,7 +17,7 @@ ffi.cdef[[
 typedef struct CURL CURL;
 typedef void curl_fd_set;
 typedef long long curl_off_t;
-typedef long time_t;
+typedef long long time_t;
 
 typedef enum {
 	CURLOPT_WRITEDATA                     = 10000 + 1,

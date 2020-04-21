@@ -3,12 +3,6 @@
 	webbjs | client-side main module
 	Written by Cosmin Apreutesei. Public Domain.
 
-GLUE
-
-	assert(arg, msg) -> arg
-	s.trim(s)
-	s.format(args...) -> s                    '{0} ... {1}' formatting
-
 CONFIG API
 
 	config(name[, default]) -> value       for global config options
@@ -70,33 +64,6 @@ PERSISTENCE
 	getback(key) -> value                     get back the stored value
 
 */
-
-// glue ----------------------------------------------------------------------
-
-function assert(arg, msg) {
-	if (!arg)
-		$.error(msg)
-	else
-		return arg
-}
-
-String.prototype.trim = String.prototype.trim || $.trim
-
-// usage:
-//		'{1} of {0}'.format(total, current)
-//		'{1} of {0}'.format([total, current])
-//		'{current} of {total}'.format({'current': current, 'total': total})
-assert(!String.prototype.format)
-String.prototype.format = function() {
-	var s = this.toString()
-	if (!arguments.length)
-		return s
-	var type1 = typeof arguments[0]
-	var args = ((type1 == 'string' || type1 == 'number') ? arguments : arguments[0])
-	for (arg in args)
-		s = s.replace(RegExp('\\{' + arg + '\\}', 'gi'), args[arg])
-	return s
-}
 
 // config --------------------------------------------------------------------
 
@@ -580,3 +547,13 @@ function getback(key) {
 	return value && JSON.parse(value)
 }
 
+// init ----------------------------------------------------------------------
+
+$(function() {
+	analytics_init()
+	load_templates(function() {
+		$(document).setup()
+		if (client_action)
+			url_changed()
+	})
+})

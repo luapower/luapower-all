@@ -59,3 +59,48 @@
 2020/01/06 16:26:17 [notice] 15758#0: signal process started
 2020/01/06 16:27:23 [notice] 16681#0: signal process started
 2020/01/06 16:44:09 [notice] 17774#0: signal process started
+2020/01/17 11:47:32 [notice] 26613#0: signal process started
+2020/01/27 12:54:00 [notice] 8775#0: signal process started
+2020/01/27 13:07:10 [notice] 10004#0: signal process started
+2020/01/27 13:55:40 [notice] 11467#0: signal process started
+2020/01/30 10:09:06 [notice] 3756#0: signal process started
+2020/01/30 10:10:40 [notice] 4813#0: signal process started
+2020/02/11 19:14:05 [notice] 2031#0: signal process started
+2020/02/13 17:43:25 [notice] 23377#0: signal process started
+2020/02/13 17:44:11 [notice] 23771#0: signal process started
+2020/02/17 06:56:29 [notice] 11942#0: signal process started
+2020/02/18 10:52:38 [notice] 10970#0: signal process started
+2020/03/14 13:05:41 [notice] 6437#0: signal process started
+2020/03/20 19:46:29 [notice] 31453#0: signal process started
+2020/03/20 20:36:36 [notice] 1081#0: signal process started
+2020/03/20 20:59:17 [notice] 3846#0: signal process started
+2020/03/27 22:53:51 [notice] 22308#0: signal process started
+2020/03/27 22:56:22 [notice] 22793#0: signal process started
+2020/03/27 22:58:19 [notice] 23211#0: signal process started
+2020/04/03 18:27:55 [alert] 342#0: lua_code_cache is off; this will hurt performance in ./credex-nginx.conf:5
+2020/04/03 18:30:49 [alert] 577#0: lua_code_cache is off; this will hurt performance in ./credex-nginx.conf:5
+2020/04/03 18:30:56 [alert] 581#0: lua_code_cache is off; this will hurt performance in ./credex-nginx.conf:5
+2020/04/03 18:30:56 [notice] 581#0: signal process started
+2020/04/03 18:30:59 [alert] 586#0: lua_code_cache is off; this will hurt performance in ./credex-nginx.conf:5
+2020/04/03 18:30:59 [notice] 586#0: signal process started
+2020/04/03 18:30:59 [error] 586#0: open() "./logs/nginx.pid" failed (2: No such file or directory)
+2020/04/03 18:31:03 [alert] 594#0: lua_code_cache is off; this will hurt performance in ./credex-nginx.conf:5
+2020/04/03 18:31:57 [alert] 652#0: lua_code_cache is off; this will hurt performance in ./credex-nginx.conf:5
+2020/04/03 18:32:00 [alert] 665#0: lua_code_cache is off; this will hurt performance in ./credex-nginx.conf:5
+2020/04/03 18:33:06 [alert] 788#0: lua_code_cache is off; this will hurt performance in ./credex-nginx.conf:5
+2020/04/03 18:36:09 [notice] 850#0: signal process started
+2020/04/03 18:42:40 [notice] 2223#0: signal process started
+2020/04/03 18:42:40 [error] 2223#0: open() "./logs/luapower-nginx.pid" failed (2: No such file or directory)
+2020/04/03 18:42:44 [notice] 2236#0: signal process started
+2020/04/03 18:42:44 [error] 2236#0: open() "./logs/luapower-nginx.pid" failed (2: No such file or directory)
+2020/04/03 18:42:45 [notice] 2243#0: signal process started
+2020/04/03 18:42:45 [error] 2243#0: open() "./logs/luapower-nginx.pid" failed (2: No such file or directory)
+2020/04/03 18:42:55 [notice] 2255#0: signal process started
+2020/04/03 18:42:55 [error] 2255#0: open() "./logs/luapower-nginx.pid" failed (2: No such file or directory)
+2020/04/03 18:43:13 [alert] 2283#0: lua_code_cache is off; this will hurt performance in ./credex-nginx.conf:6
+2020/04/03 20:22:46 [alert] 4643#0: lua_code_cache is off; this will hurt performance in ./credex-nginx.conf:6
+2020/04/03 20:22:46 [notice] 4643#0: signal process started
+2020/04/03 20:22:49 [alert] 4647#0: lua_code_cache is off; this will hurt performance in ./credex-nginx.conf:6
+2020/04/07 15:45:12 [alert] 21824#0: lua_code_cache is off; this will hurt performance in ./credex-nginx.conf:6
+2020/04/07 15:45:12 [notice] 21824#0: signal process started
+2020/04/11 13:20:48 [notice] 30758#0: signal process started

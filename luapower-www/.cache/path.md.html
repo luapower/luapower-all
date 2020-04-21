@@ -76,11 +76,11 @@
 <td style="text-align: left;">get the number of non-empty path components</td>
 </tr>
 <tr class="odd">
-<td style="text-align: left;"><code>path.combine(p1, p2, [pl], [sep], [dsep]) -&gt; s|nil</code></td>
+<td style="text-align: left;"><code>path.combine(s1, s2, [pl], [sep], [dsep]) -&gt; s|nil</code></td>
 <td style="text-align: left;">combine two paths if possible</td>
 </tr>
 <tr class="even">
-<td style="text-align: left;"><code>path.abs(s, pwd, [pl], [sep], [dsep]) -&gt; s|nil,err</code></td>
+<td style="text-align: left;"><code>path.abs(dir, s, [pl], [sep], [dsep]) -&gt; s|nil,err</code></td>
 <td style="text-align: left;">convert relative path to absolute</td>
 </tr>
 <tr class="odd">
@@ -168,7 +168,7 @@
 <p>Get the number of non-empty path components, excluding prefixes like <code>C:\</code>, <code>\\server\</code>, etc.</p>
 <h3 id="path.combines1-s2-pl-sep-dsep---snilerr"><code>path.combine(s1, s2, [pl], [sep], [dsep]) -&gt; s|nil,err</code></h3>
 <p>Combine two paths if possible (return <code>nil, err</code> if not). Supported combinations are between anything except <code>dev_alias</code> and <code>rel</code> paths, between <code>abs_nodrive</code> and <code>rel_drive</code>, and between <code>rel_drive</code> and <code>abs</code> or <code>abs_long</code>. When the paths can only be combined in one way, paths can be given in any order. The separator with which paths are combined is either <code>sep</code> or if <code>sep</code> is nil it’s detected and if that fails <code>dsep</code> or the default separator is used.</p>
-<h3 id="path.abss-pwd-pl-sep-dsep---snilerr"><code>path.abs(s, pwd, [pl], [sep], [dsep]) -&gt; s|nil,err</code></h3>
+<h3 id="path.absdir-s-pl-sep-dsep---snilerr"><code>path.abs(dir, s, [pl], [sep], [dsep]) -&gt; s|nil,err</code></h3>
 <p>Convert a relative path to an absolute path given a base dir (this is currently an alias of <code>path.combine()</code>).</p>
 <h3 id="path.rels-pwd-pl-sep-dsep---snil"><code>path.rel(s, pwd, [pl], [sep], [dsep]) -&gt; s|nil</code></h3>
 <p>Convert an absolute path into a relative path which is relative to <code>pwd</code>. Returns <code>nil</code> if the paths are of different types or don’t have a base path in common. The ending (back)slash is preserved if present.</p>

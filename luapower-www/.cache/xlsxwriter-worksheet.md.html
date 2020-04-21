@@ -1,0 +1,736 @@
+<h1 id="worksheet">The Worksheet Class</h1>
+<p>The worksheet class represents an Excel worksheet. It handles operations such as writing data to cells or formatting worksheet layout.</p>
+<p>A worksheet object isn't instantiated directly. Instead a new worksheet is created by calling the <code class="interpreted-text" role="func">add_worksheet()</code> method from a <code class="interpreted-text" role="func">Workbook</code> object:</p>
+<pre><code> workbook   = Workbook:new(&quot;filename.xlsx&quot;)
+
+ worksheet1 = workbook:add_worksheet()
+ worksheet2 = workbook:add_worksheet()
+
+ worksheet1:write(&quot;A1&quot;, 123)</code></pre>
+<p><img src="/files/luapower/xlsxwriter/_images/worksheet00.png" /></p>
+<h2 id="worksheetwrite">worksheet:write()</h2>
+<div class="function">
+<p>write(row, col, args)</p>
+<p>Write generic data to a worksheet cell.</p>
+<dl>
+<dt>param row</dt>
+<dd><p>The cell row (zero indexed).</p>
+</dd>
+<dt>param col</dt>
+<dd><p>The cell column (zero indexed).</p>
+</dd>
+<dt>param args</dt>
+<dd><p>The additional args that are passed to the sub methods such as number, string or format.</p>
+</dd>
+</dl>
+</div>
+<p>Excel makes a distinction between data types such as strings, numbers, blanks and formulas. To simplify the process of writing data using <code>xlsxwriter</code> the <code>write()</code> method acts as a general alias for several more specific methods:</p>
+<ul>
+<li><code class="interpreted-text" role="func">write_string()</code></li>
+<li><code class="interpreted-text" role="func">write_number()</code></li>
+<li><code class="interpreted-text" role="func">write_blank()</code></li>
+<li><code class="interpreted-text" role="func">write_formula()</code></li>
+<li><code class="interpreted-text" role="func">write_boolean()</code></li>
+</ul>
+<p>The rules for handling data in <code>write()</code> are as follows:</p>
+<ul>
+<li>Variables of Lua type <code>number</code> are written using <code class="interpreted-text" role="func">write_number()</code>.</li>
+<li>Empty strings and <code>nil</code> are written using <code class="interpreted-text" role="func">write_blank()</code>.</li>
+<li>Variables of Lua type <code>boolean</code> are written using <code class="interpreted-text" role="func">write_boolean()</code>.</li>
+</ul>
+<p>Strings are then handled as follows:</p>
+<ul>
+<li>Strings that start with <code>"="</code> are taken to match a formula and are written using <code class="interpreted-text" role="func">write_formula()</code>.</li>
+<li>Strings that don't match any of the above criteria are written using <code class="interpreted-text" role="func">write_string()</code>.</li>
+</ul>
+<p>Here are some examples:</p>
+<pre><code> worksheet:write(0, 0, &quot;Hello&quot;)        -- write_string()
+ worksheet:write(1, 0, &quot;World&quot;)        -- write_string()
+ worksheet:write(2, 0, 2)              -- write_number()
+ worksheet:write(3, 0, 3.00001)        -- write_number()
+ worksheet:write(4, 0, &quot;=SIN(PI()/4)&quot;) -- write_formula()
+ worksheet:write(5, 0, &quot;&quot;)             -- write_blank()
+ worksheet:write(6, 0, nil)            -- write_blank()</code></pre>
+<p>This creates a worksheet like the following:</p>
+<p><img src="/files/luapower/xlsxwriter/_images/worksheet01.png" /></p>
+<p>The <code>write()</code> method supports two forms of notation to designate the position of cells: <strong>Row-column</strong> notation and <strong>A1</strong> notation:</p>
+<pre><code> -- These are equivalent.
+ worksheet:write(0, 0, &quot;Hello&quot;)
+ worksheet:write(&quot;A1&quot;, &quot;Hello&quot;)</code></pre>
+<p>See <code class="interpreted-text" role="ref">cell_notation</code> for more details.</p>
+<p>The <code>format</code> parameter in the sub <code>write</code> methods is used to apply formatting to the cell. This parameter is optional but when present it should be a valid <code class="interpreted-text" role="ref">Format &lt;format&gt;</code> object:</p>
+<pre><code> format = workbook:add_format({bold = true, italic = true})
+
+ worksheet:write(0, 0, &quot;Hello&quot;, format) -- Cell is bold and italic.</code></pre>
+<h2 id="worksheetwrite_string">worksheet:write_string()</h2>
+<div class="function">
+<p>write_string(row, col, string[, format])</p>
+<p>Write a string to a worksheet cell.</p>
+<dl>
+<dt>param row</dt>
+<dd><p>The cell row (zero indexed).</p>
+</dd>
+<dt>param col</dt>
+<dd><p>The cell column (zero indexed).</p>
+</dd>
+<dt>param string</dt>
+<dd><p>String to write to cell.</p>
+</dd>
+<dt>param format</dt>
+<dd><p>Optional <code class="interpreted-text" role="ref">Format &lt;format&gt;</code> object.</p>
+</dd>
+</dl>
+</div>
+<p>The <code>write_string()</code> method writes a string to the cell specified by <code>row</code> and <code>column</code>:</p>
+<pre><code> worksheet:write_string(0, 0, &quot;Your text here&quot;)
+ worksheet:write_string(&quot;A2&quot;, &quot;or here&quot;)</code></pre>
+<p>Both row-column and A1 style notation are supported. See <code class="interpreted-text" role="ref">cell_notation</code> for more details.</p>
+<p>The <code>format</code> parameter is used to apply formatting to the cell. This parameter is optional but when present is should be a valid <code class="interpreted-text" role="ref">Format &lt;format&gt;</code> object.</p>
+<p>Unicode strings in Excel must be UTF-8 encoded. With <code>xlsxwriter</code> all that is required is that the source file is UTF-8 encoded and Lua will handle the UTF-8 strings like any other strings:</p>
+<pre><code> worksheet:write(&quot;A1&quot;, &quot;Some UTF-8 text&quot;)</code></pre>
+<p><img src="/files/luapower/xlsxwriter/_images/worksheet02.png" /></p>
+<p>There are some sample UTF-8 sample programs in the <code>examples</code> directory of the <code>xlsxwriter</code> repository.</p>
+<p>The maximum string size supported by Excel is 32,767 characters. Strings longer than this will be ignored by <code>write_string()</code>.</p>
+<div class="note">
+<div class="title">
+<p>Note</p>
+</div>
+<p>Even though Excel allows strings of 32,767 characters it can only <strong>display</strong> 1000 in a cell. However, all 32,767 characters are displayed in the formula bar.</p>
+</div>
+<h2 id="worksheetwrite_number">worksheet:write_number()</h2>
+<div class="function">
+<p>write_number(row, col, number[, format])</p>
+<p>Write a number to a worksheet cell.</p>
+<dl>
+<dt>param row</dt>
+<dd><p>The cell row (zero indexed).</p>
+</dd>
+<dt>param col</dt>
+<dd><p>The cell column (zero indexed).</p>
+</dd>
+<dt>param number</dt>
+<dd><p>Number to write to cell.</p>
+</dd>
+<dt>param format</dt>
+<dd><p>Optional <code class="interpreted-text" role="ref">Format &lt;format&gt;</code> object.</p>
+</dd>
+</dl>
+</div>
+<p>The <code>write_number()</code> method writes Lua number type variable to the cell specified by <code>row</code> and <code>column</code>:</p>
+<pre><code> worksheet:write_number(0, 0, 123456)
+ worksheet:write_number(&quot;A2&quot;, 2.3451)</code></pre>
+<p>Like Lua, Excel stores numbers as IEEE-754 64-bit double-precision floating points. This means that, in most cases, the maximum number of digits that can be stored in Excel without losing precision is 15.</p>
+<p>Both row-column and A1 style notation are supported. See <code class="interpreted-text" role="ref">cell_notation</code> for more details.</p>
+<p>The <code>format</code> parameter is used to apply formatting to the cell. This parameter is optional but when present is should be a valid <code class="interpreted-text" role="ref">Format &lt;format&gt;</code> object.</p>
+<h2 id="worksheetwrite_formula">worksheet:write_formula()</h2>
+<div class="function">
+<p>write_formula(row, col, formula[, format[, value]])</p>
+<p>Write a formula to a worksheet cell.</p>
+<dl>
+<dt>param row</dt>
+<dd><p>The cell row (zero indexed).</p>
+</dd>
+<dt>param col</dt>
+<dd><p>The cell column (zero indexed).</p>
+</dd>
+<dt>param formula</dt>
+<dd><p>Formula to write to cell.</p>
+</dd>
+<dt>param format</dt>
+<dd><p>Optional <code class="interpreted-text" role="ref">Format &lt;format&gt;</code> object.</p>
+</dd>
+</dl>
+</div>
+<p>The <code>write_formula()</code> method writes a formula or function to the cell specified by <code>row</code> and <code>column</code>:</p>
+<pre><code> worksheet:write_formula(0, 0, &quot;=B3 + B4&quot;)
+ worksheet:write_formula(1, 0, &quot;=SIN(PI()/4)&quot;)
+ worksheet:write_formula(2, 0, &quot;=SUM(B1:B5)&quot;)
+ worksheet:write_formula(&quot;A4&quot;, &quot;=IF(A3&gt;1,&quot;Yes&quot;, &quot;No&quot;)&quot;)
+ worksheet:write_formula(&quot;A5&quot;, &quot;=AVERAGE(1, 2, 3, 4)&quot;)
+ worksheet:write_formula(&quot;A6&quot;, &quot;=DATEVALUE(&quot;1-Jan-2013&quot;)&quot;)</code></pre>
+<p>Array formulas are also supported:</p>
+<pre><code> worksheet:write_formula(&quot;A7&quot;, &quot;{=SUM(A1:B1*A2:B2)}&quot;)</code></pre>
+<p>See also the <code>write_array_formula()</code> method below.</p>
+<p>Both row-column and A1 style notation are supported. See <code class="interpreted-text" role="ref">cell_notation</code> for more details.</p>
+<p>The <code>format</code> parameter is used to apply formatting to the cell. This parameter is optional but when present is should be a valid <code class="interpreted-text" role="ref">Format &lt;format&gt;</code> object.</p>
+<p>Xlsxwriter doesn't calculate the value of a formula and instead stores the value 0 as the formula result. It then sets a global flag in the XLSX file to say that all formulas and functions should be recalculated when the file is opened. This is the method recommended in the Excel documentation and in general it works fine with spreadsheet applications. However, applications that don't have a facility to calculate formulas, such as Excel Viewer, or some mobile applications will only display the 0 results.</p>
+<p>If required, it is also possible to specify the calculated result of the formula using the optional <code>value</code> parameter. This is occasionally necessary when working with non-Excel applications that don't calculate the value of the formula. The calculated <code>value</code> is added at the end of the argument list:</p>
+<pre><code> worksheet:write(&quot;A1&quot;, &quot;=2+2&quot;, num_format, 4)</code></pre>
+<p>Excel stores formulas in US style formatting regardless of the Locale or Language of the Excel version. Therefore all formula names written using <code>xlsxwriter</code> must be in English (use the following <a href="http://fr.excel-translator.de">formula translator</a> if necessary). Also, formulas must be written with the US style separator/range operator which is a comma (not semi-colon). Therefore a formula with multiple values should be written as follows:</p>
+<pre><code> worksheet:write_formula(&quot;A1&quot;, &quot;=SUM(1, 2, 3)&quot;) -- OK
+ worksheet:write_formula(&quot;A2&quot;, &quot;=SUM(1; 2; 3)&quot;) -- NO. Error on load.</code></pre>
+<p>Excel 2010 and 2013 added functions which weren't defined in the original file specification. These functions are referred to as <em>future</em> functions. Examples of these functions are <code>ACOT</code>, <code>CHISQ.DIST.RT</code> , <code>CONFIDENCE.NORM</code>, <code>STDEV.P</code>, <code>STDEV.S</code> and <code>WORKDAY.INTL</code>. The full list is given in the <a href="http://msdn.microsoft.com/en-us/library/dd907480%28v=office.12%29.aspx">MS XLSX extensions documentation on future functions</a>.</p>
+<p>When written using <code>write_formula()</code> these functions need to be fully qualified with the <code>_xlfn.</code> prefix as they are shown in the MS XLSX documentation link above. For example:</p>
+<pre><code> worksheet:write_formula(&quot;A1&quot;, &quot;=_xlfn.STDEV.S(B1:B10)&quot;)</code></pre>
+<h2 id="worksheetwrite_array_formula">worksheet:write_array_formula()</h2>
+<div class="function">
+<p>write_array_formula(first_row, first_col, last_row, last_col, formula[, format[, value]])</p>
+<p>Write an array formula to a worksheet cell.</p>
+<dl>
+<dt>param first_row</dt>
+<dd><p>The first row of the range. (All zero indexed.)</p>
+</dd>
+<dt>param first_col</dt>
+<dd><p>The first column of the range.</p>
+</dd>
+<dt>param last_row</dt>
+<dd><p>The last row of the range.</p>
+</dd>
+<dt>param last_col</dt>
+<dd><p>The last col of the range.</p>
+</dd>
+<dt>param formula</dt>
+<dd><p>Array formula to write to cell.</p>
+</dd>
+<dt>param format</dt>
+<dd><p>Optional <code class="interpreted-text" role="ref">Format &lt;format&gt;</code> object.</p>
+</dd>
+</dl>
+</div>
+<p>The <code>write_array_formula()</code> method write an array formula to a cell range. In Excel an array formula is a formula that performs a calculation on a set of values. It can return a single value or a range of values.</p>
+<p>An array formula is indicated by a pair of braces around the formula: <code>{=SUM(A1:B1*A2:B2)}</code>.</p>
+<p>For array formulas that return a range of values you must specify the range that the return values will be written to:</p>
+<pre><code> worksheet:write_array_formula(&quot;A1:A3&quot;,    &quot;{=TREND(C1:C3,B1:B3)}&quot;)
+ worksheet:write_array_formula(0, 0, 2, 0, &quot;{=TREND(C1:C3,B1:B3)}&quot;)</code></pre>
+<p>If the array formula returns a single value then the <code>first_</code> and <code>last_</code> parameters should be the same:</p>
+<pre><code> worksheet:write_array_formula(&quot;A1:A1&quot;, &quot;{=SUM(B1:C1*B2:C2)}&quot;)</code></pre>
+<p>It this case however it is easier to just use the <code>write_formula()</code> or <code>write()</code> methods:</p>
+<pre><code> -- Same as above but more concise.
+ worksheet:write(&quot;A1&quot;, &quot;{=SUM(B1:C1*B2:C2)}&quot;)
+ worksheet:write_formula(&quot;A1&quot;, &quot;{=SUM(B1:C1*B2:C2)}&quot;)</code></pre>
+<p>As shown above, both row-column and A1 style notation are supported. See <code class="interpreted-text" role="ref">cell_notation</code> for more details.</p>
+<p>The <code>format</code> parameter is used to apply formatting to the cell. This parameter is optional but when present is should be a valid <code class="interpreted-text" role="ref">Format &lt;format&gt;</code> object.</p>
+<p>If required, it is also possible to specify the calculated value of the formula. This is occasionally necessary when working with non-Excel applications that don't calculate the value of the formula. The calculated <code>value</code> is added at the end of the argument list:</p>
+<pre><code> worksheet:write_array_formula(&quot;A1:A3&quot;, &quot;{=TREND(C1:C3,B1:B3)}&quot;, format, 105)</code></pre>
+<p>See also <code class="interpreted-text" role="ref">ex_array_formula</code>.</p>
+<h2 id="worksheetwrite_blank">worksheet:write_blank()</h2>
+<div class="function">
+<p>write_blank(row, col, blank[, format])</p>
+<p>Write a blank worksheet cell.</p>
+<dl>
+<dt>param row</dt>
+<dd><p>The cell row (zero indexed).</p>
+</dd>
+<dt>param col</dt>
+<dd><p>The cell column (zero indexed).</p>
+</dd>
+<dt>param blank</dt>
+<dd><p><code>nil</code> or empty string. The value is ignored.</p>
+</dd>
+<dt>param format</dt>
+<dd><p>Optional <code class="interpreted-text" role="ref">Format &lt;format&gt;</code> object.</p>
+</dd>
+</dl>
+</div>
+<p>Write a blank cell specified by <code>row</code> and <code>column</code>:</p>
+<pre><code> worksheet:write_blank(0, 0, nil, format)</code></pre>
+<p>This method is used to add formatting to a cell which doesn't contain a string or number value.</p>
+<p>Excel differentiates between an "Empty" cell and a "Blank" cell. An "Empty" cell is a cell which doesn't contain data or formatting whilst a "Blank" cell doesn't contain data but does contain formatting. Excel stores "Blank" cells but ignores "Empty" cells.</p>
+<p>As such, if you write an empty cell without formatting it is ignored:</p>
+<pre><code> worksheet:write(0, 0, nil, format) -- write_blank()
+ worksheet:write(0, 1, nil)         -- Ignored</code></pre>
+<p>This seemingly uninteresting fact means that you can write tables of data without special treatment for <code>nil</code> or empty string values.</p>
+<p>As shown above, both row-column and A1 style notation are supported. See <code class="interpreted-text" role="ref">cell_notation</code> for more details.</p>
+<h2 id="worksheetwrite_boolean">worksheet:write_boolean()</h2>
+<div class="function">
+<p>write_boolean(row, col, boolean[, format])</p>
+<p>Write a boolean value to a worksheet cell.</p>
+<dl>
+<dt>param row</dt>
+<dd><p>The cell row (zero indexed).</p>
+</dd>
+<dt>param col</dt>
+<dd><p>The cell column (zero indexed).</p>
+</dd>
+<dt>param boolean</dt>
+<dd><p>Boolean value to write to cell.</p>
+</dd>
+<dt>param format</dt>
+<dd><p>Optional <code class="interpreted-text" role="ref">Format &lt;format&gt;</code> object.</p>
+</dd>
+</dl>
+</div>
+<p>The <code>write_boolean()</code> method writes a boolean value to the cell specified by <code>row</code> and <code>column</code>:</p>
+<pre><code> worksheet:write_boolean(0, 0, true)
+ worksheet:write_boolean(&quot;A2&quot;, false)</code></pre>
+<p>Both row-column and A1 style notation are supported. See <code class="interpreted-text" role="ref">cell_notation</code> for more details.</p>
+<p>The <code>format</code> parameter is used to apply formatting to the cell. This parameter is optional but when present is should be a valid <code class="interpreted-text" role="ref">Format &lt;format&gt;</code> object.</p>
+<h2 id="worksheetwrite_date_time">worksheet:write_date_time()</h2>
+<div class="function">
+<p>write_date_time(row, col, date_time [, format])</p>
+<p>Write a date or time to a worksheet cell.</p>
+<dl>
+<dt>param row</dt>
+<dd><p>The cell row (zero indexed).</p>
+</dd>
+<dt>param col</dt>
+<dd><p>The cell column (zero indexed).</p>
+</dd>
+<dt>param date_time</dt>
+<dd><p>A <code>os.time()</code> style table of date values.</p>
+</dd>
+<dt>param format</dt>
+<dd><p>Optional <code class="interpreted-text" role="ref">Format &lt;format&gt;</code> object.</p>
+</dd>
+</dl>
+</div>
+<p>The <code>write_date_time()</code> method can be used to write a date or time in <code>os.time()</code> style format to the cell specified by <code>row</code> and <code>column</code>:</p>
+<pre><code> worksheet:write_date_time(0, 0, date_time, date_format)</code></pre>
+<p>The date_time should be a table of values like those used for <a href="http://www.lua.org/manual/5.2/manual.html#pdf-os.time">os.time()</a>:</p>
+<table style="width:33%;">
+<colgroup>
+<col style="width: 12%" />
+<col style="width: 20%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Key</th>
+<th style="text-align: left;">Value</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">year</td>
+<td style="text-align: left;">4 digit year</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">month</td>
+<td style="text-align: left;">1 - 12</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">day</td>
+<td style="text-align: left;">1 - 31</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">hour</td>
+<td style="text-align: left;">0 - 23</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">min</td>
+<td style="text-align: left;">0 - 59</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">sec</td>
+<td style="text-align: left;">0 - 59.999</td>
+</tr>
+</tbody>
+</table>
+<p>A date/time should have a <code>format</code> of type <code class="interpreted-text" role="ref">Format &lt;format&gt;</code>, otherwise it will appear as a number:</p>
+<pre><code> date_format = workbook:add_format({num_format = &quot;d mmmm yyyy&quot;})
+ date_time   = {year = 2014, month = 3, day = 17}
+
+ worksheet:write_date_time(&quot;A1&quot;, date_time, date_format)</code></pre>
+<p>See <code class="interpreted-text" role="ref">working_with_dates_and_time</code> for more details.</p>
+<h2 id="worksheetwrite_date_string">worksheet:write_date_string()</h2>
+<div class="function">
+<p>write_date_string(row, col, date_string [, format])</p>
+<p>Write a date or time to a worksheet cell.</p>
+<dl>
+<dt>param row</dt>
+<dd><p>The cell row (zero indexed).</p>
+</dd>
+<dt>param col</dt>
+<dd><p>The cell column (zero indexed).</p>
+</dd>
+<dt>param date_string</dt>
+<dd><p>A <code>os.time()</code> style table of date values.</p>
+</dd>
+<dt>param format</dt>
+<dd><p>Optional <code class="interpreted-text" role="ref">Format &lt;format&gt;</code> object.</p>
+</dd>
+</dl>
+</div>
+<p>The <code>write_date_string()</code> method can be used to write a date or time string to the cell specified by <code>row</code> and <code>column</code>:</p>
+<pre><code> worksheet:write_date_string(0, 0, date_string, date_format)</code></pre>
+<p>The <code>date_string</code> should be in the following format:</p>
+<pre><code> yyyy-mm-ddThh:mm:ss.sss</code></pre>
+<p>This conforms to an ISO8601 date but it should be noted that the full range of ISO8601 formats are not supported.</p>
+<p>The following variations on the <code>date_string</code> parameter are permitted:</p>
+<pre><code> yyyy-mm-ddThh:mm:ss.sss  -- Standard format.
+ yyyy-mm-ddThh:mm:ss.sssZ -- Additional Z (but not time zones).
+ yyyy-mm-dd               -- Date only, no time.
+            hh:mm:ss.sss  -- Time only, no date.
+            hh:mm:ss      -- No fractional seconds.</code></pre>
+<p>Note that the T is required for cases with both date and time and seconds are required for all times.</p>
+<p>A date/time should have a <code>format</code> of type <code class="interpreted-text" role="ref">Format &lt;format&gt;</code>, otherwise it will appear as a number:</p>
+<pre><code> date_format = workbook:add_format({num_format = &quot;d mmmm yyyy&quot;})
+
+ worksheet:write_date_string(&quot;A1&quot;, &quot;2014-03-17&quot;, date_format)</code></pre>
+<p>See <code class="interpreted-text" role="ref">working_with_dates_and_time</code> for more details.</p>
+<h2 id="worksheetwrite_url">worksheet:write_url()</h2>
+<div class="function">
+<p>write_url(row, col, url[, format[, string[, tip]]])</p>
+<p>Write a hyperlink to a worksheet cell.</p>
+<dl>
+<dt>param row</dt>
+<dd><p>The cell row (zero indexed).</p>
+</dd>
+<dt>param col</dt>
+<dd><p>The cell column (zero indexed).</p>
+</dd>
+<dt>param url</dt>
+<dd><p>Hyperlink url.</p>
+</dd>
+<dt>param format</dt>
+<dd><p>Optional <code class="interpreted-text" role="ref">Format &lt;format&gt;</code> object.</p>
+</dd>
+<dt>param string</dt>
+<dd><p>An optional display string for the hyperlink.</p>
+</dd>
+<dt>param tip</dt>
+<dd><p>An optional tooltip.</p>
+</dd>
+</dl>
+</div>
+<p>The <code>write_url()</code> method is used to write a hyperlink in a worksheet cell. The url is comprised of two elements: the displayed string and the non-displayed link. The displayed string is the same as the link unless an alternative string is specified.</p>
+<p>Both row-column and A1 style notation are supported. See <code class="interpreted-text" role="ref">cell_notation</code> for more details.</p>
+<p>The <code>format</code> parameter is used to apply formatting to the cell. This parameter is generally required since a hyperlink without a format doesn't look like a link the following <code class="interpreted-text" role="ref">Format &lt;format&gt;</code> should be used:</p>
+<pre><code> workbook:add_format({color = &quot;blue&quot;, underline = 1})</code></pre>
+<p>For example:</p>
+<pre><code> link_format = workbook:add_format({color = &quot;blue&quot;, underline = 1})
+ worksheet:write_url(&quot;A1&quot;, &quot;http://www.lua.org/&quot;, link_format)</code></pre>
+<p>Four web style URI's are supported: <code>http://</code>, <code>https://</code>, <code>ftp://</code> and <code>mailto:</code>:</p>
+<pre><code> worksheet:write_url(&quot;A1&quot;, &quot;ftp://www.lua.org/&quot;)
+ worksheet:write_url(&quot;A2&quot;, &quot;http://www.lua.org/&quot;)
+ worksheet:write_url(&quot;A3&quot;, &quot;https://www.lua.org/&quot;)
+ worksheet:write_url(&quot;A4&quot;, &quot;mailto:jmcnamaracpan.org&quot;)</code></pre>
+<p>You can display an alternative string using the <code>string</code> parameter:</p>
+<pre><code> worksheet:write_url(&quot;A1&quot;, &quot;http://www.lua.org&quot;, link_format, &quot;Lua&quot;)</code></pre>
+<div class="note">
+<div class="title">
+<p>Note</p>
+</div>
+<p>If you wish to have some other cell data such as a number or a formula you can overwrite the cell using another call to <code>write_*()</code>:</p>
+<pre><code> worksheet:write_url(&quot;A1&quot;, &quot;http://www.lua.org/&quot;, link_format)
+
+ -- Overwrite the URL string with a formula. The cell is still a link.
+ worksheet:write_formula(&quot;A1&quot;, &quot;=1+1&quot;, link_format)</code></pre>
+</div>
+<p>There are two local URIs supported: <code>internal:</code> and <code>external:</code>. These are used for hyperlinks to internal worksheet references or external workbook and worksheet references:</p>
+<pre><code> worksheet:write_url(&quot;A1&quot;,  &quot;internal:Sheet2!A1&quot;)
+ worksheet:write_url(&quot;A2&quot;,  &quot;internal:Sheet2!A1&quot;)
+ worksheet:write_url(&quot;A3&quot;,  &quot;internal:Sheet2!A1:B2&quot;)
+ worksheet:write_url(&quot;A4&quot;,  &quot;internal:&#39;Sales Data&#39;!A1&quot;)
+ worksheet:write_url(&quot;A5&quot;, [[external:c:\temp\foo.xlsx]])
+ worksheet:write_url(&quot;A6&quot;, [[external:c:\foo.xlsx#Sheet2!A1]])
+ worksheet:write_url(&quot;A7&quot;, [[external:..\foo.xlsx]])
+ worksheet:write_url(&quot;A8&quot;, [[external:..\foo.xlsx#Sheet2!A1]])
+ worksheet:write_url(&quot;A9&quot;, [[external:\\NET\share\foo.xlsx]])</code></pre>
+<p>Worksheet references are typically of the form <code>Sheet1!A1</code>. You can also link to a worksheet range using the standard Excel notation: <code>Sheet1!A1:B2</code>.</p>
+<p>In external links the workbook and worksheet name must be separated by the <code>#</code> character: <code>external:Workbook:xlsx#Sheet1!A1'</code>.</p>
+<p>You can also link to a named range in the target worksheet: For example say you have a named range called <code>my_name</code> in the workbook <code>c:\temp\foo.xlsx</code> you could link to it as follows:</p>
+<pre><code> worksheet:write_url(&quot;A14&quot;, [[external:c:\temp\foo.xlsx#my_name]])</code></pre>
+<p>Excel requires that worksheet names containing spaces or non alphanumeric characters are single quoted as follows <code>'Sales Data'!A1</code>.</p>
+<p>Links to network files are also supported. Network files normally begin with two back slashes as follows <code>\\NETWORK\etc</code>. In order to generate this in a single or double quoted string you will have to escape the backslashes, <code>'\\\\NETWORK\\etc'</code> or use a block quoted string <code>[[\\NETWORK\etc]]</code>.</p>
+<p>Alternatively, you can avoid most of these quoting problems by using forward slashes. These are translated internally to backslashes:</p>
+<pre><code> worksheet:write_url(&quot;A14&quot;, &quot;external:c:/temp/foo.xlsx&quot;)
+ worksheet:write_url(&quot;A15&quot;, &quot;external://NETWORK/share/foo.xlsx&quot;)</code></pre>
+<p>See also <code class="interpreted-text" role="ref">ex_hyperlink</code>.</p>
+<div class="note">
+<div class="title">
+<p>Note</p>
+</div>
+<p>XlsxWriter will escape the following characters in URLs as required by Excel: <code>\s " &lt; &gt; \ [ ] ` ^ { }</code> unless the URL already contains <code>%xx</code> style escapes. In which case it is assumed that the URL was escaped correctly by the user and will by passed directly to Excel.</p>
+</div>
+<h2 id="worksheetset_row">worksheet:set_row()</h2>
+<div class="function">
+<p>set_row(row, height, format, options)</p>
+<p>Set properties for a row of cells.</p>
+<dl>
+<dt>param row</dt>
+<dd><p>The worksheet row (zero indexed).</p>
+</dd>
+<dt>param height</dt>
+<dd><p>The row height.</p>
+</dd>
+<dt>param format</dt>
+<dd><p>Optional <code class="interpreted-text" role="ref">Format &lt;format&gt;</code> object.</p>
+</dd>
+<dt>param options</dt>
+<dd><p>Optional row parameters: hidden, level, collapsed.</p>
+</dd>
+</dl>
+</div>
+<p>The <code>set_row()</code> method is used to change the default properties of a row. The most common use for this method is to change the height of a row:</p>
+<pre><code> worksheet:set_row(0, 20) -- Set the height of Row 1 to 20.</code></pre>
+<p>The other common use for <code>set_row()</code> is to set the <code class="interpreted-text" role="ref">Format &lt;format&gt;</code> for all cells in the row:</p>
+<pre><code> format = workbook:add_format({bold = true})
+
+ worksheet:set_row(0, 20, format)</code></pre>
+<p>If you wish to set the format of a row without changing the height you can pass <code>nil</code> as the height parameter or use the default row height of 15:</p>
+<pre><code> worksheet:set_row(1, nil, format)
+ worksheet:set_row(1, 15,  format) -- Same as above.</code></pre>
+<p>The <code>format</code> parameter will be applied to any cells in the row that don't have a format. As with Excel it is overridden by an explicit cell format. For example:</p>
+<pre><code> worksheet:set_row(0, nil, format1)     -- Row 1 has format1.
+
+ worksheet:write(&quot;A1&quot;, &quot;Hello&quot;)          -- Cell A1 defaults to format1.
+ worksheet:write(&quot;B1&quot;, &quot;Hello&quot;, format2) -- Cell B1 keeps format2.</code></pre>
+<p>The <code>options</code> parameter is a table with the following possible keys:</p>
+<ul>
+<li><code>"hidden"</code></li>
+<li><code>"level"</code></li>
+<li><code>"collapsed"</code></li>
+</ul>
+<p>Options can be set as follows:</p>
+<pre><code> worksheet:set_row(0, 20, format, {hidden = true})
+
+ -- Or use defaults for other properties and set the options only.
+ worksheet:set_row(0, nil, nil, {hidden = true})</code></pre>
+<p>The <code>"hidden"</code> option is used to hide a row. This can be used, for example, to hide intermediary steps in a complicated calculation:</p>
+<pre><code> worksheet:set_row(0, nil, nil, {hidden = true})</code></pre>
+<p>The <code>"level"</code> parameter is used to set the outline level of the row. Adjacent rows with the same outline level are grouped together into a single outline.</p>
+<p>The following example sets an outline level of 1 for some rows:</p>
+<pre><code> worksheet:set_row(0, nil, nil, {level = 1})
+ worksheet:set_row(1, nil, nil, {level = 1})
+ worksheet:set_row(2, nil, nil, {level = 1})</code></pre>
+<p>Excel allows up to 7 outline levels. The <code>"level"</code> parameter should be in the range <code>0 &lt;= level &lt;= 7</code>.</p>
+<p>The <code>"hidden"</code> parameter can also be used to hide collapsed outlined rows when used in conjunction with the <code>"level"</code> parameter:</p>
+<pre><code> worksheet:set_row(1, nil, nil, {hidden = true, level = 1})
+ worksheet:set_row(2, nil, nil, {hidden = true, level = 1})</code></pre>
+<p>The <code>"collapsed"</code> parameter is used in collapsed outlines to indicate which row has the collapsed <code>'+'</code> symbol:</p>
+<pre><code> worksheet:set_row(3, nil, nil, {collapsed = true})</code></pre>
+<h2 id="worksheetset_column">worksheet:set_column()</h2>
+<div class="function">
+<p>set_column(first_col, last_col, width, format, options)</p>
+<p>Set properties for one or more columns of cells.</p>
+<dl>
+<dt>param first_col</dt>
+<dd><p>First column (zero-indexed).</p>
+</dd>
+<dt>param last_col</dt>
+<dd><p>Last column (zero-indexed). Can be same as firstcol.</p>
+</dd>
+<dt>param width</dt>
+<dd><p>The width of the column(s).</p>
+</dd>
+<dt>param format</dt>
+<dd><p>Optional <code class="interpreted-text" role="ref">Format &lt;format&gt;</code> object.</p>
+</dd>
+<dt>param options</dt>
+<dd><p>Optional parameters: hidden, level, collapsed.</p>
+</dd>
+</dl>
+</div>
+<p>The <code>set_column()</code> method can be used to change the default properties of a single column or a range of columns:</p>
+<pre><code> worksheet:set_column(1, 3, 30) -- Width of columns B:D set to 30.</code></pre>
+<p>If <code>set_column()</code> is applied to a single column the value of <code>first_col</code> and <code>last_col</code> should be the same:</p>
+<pre><code> worksheet:set_column(1, 1, 30) -- Width of column B set to 30.</code></pre>
+<p>It is also possible, and generally clearer, to specify a column range using the form of A1 notation used for columns. See <code class="interpreted-text" role="ref">cell_notation</code> for more details.</p>
+<p>Examples:</p>
+<pre><code> worksheet:set_column(0, 0,  20) -- Column  A   width set to 20.
+ worksheet:set_column(1, 3,  30) -- Columns B-D width set to 30.
+ worksheet:set_column(&quot;E:E&quot;, 20) -- Column  E   width set to 20.
+ worksheet:set_column(&quot;F:H&quot;, 30) -- Columns F-H width set to 30.</code></pre>
+<p>The width corresponds to the column width value that is specified in Excel. It is approximately equal to the length of a string in the default font of Calibri 11. Unfortunately, there is no way to specify "AutoFit" for a column in the Excel file format. This feature is only available at runtime from within Excel. It is possible to simulate "AutoFit" by tracking the width of the data in the column as your write it.</p>
+<p>As usual the <code>format</code> <code class="interpreted-text" role="ref">Format &lt;format&gt;</code> parameter is optional. If you wish to set the format without changing the width you can pass <code>nil</code> as the width parameter:</p>
+<pre><code> format = workbook:add_format({bold = true})
+
+ worksheet:set_column(0, 0, nil, format)</code></pre>
+<p>The <code>format</code> parameter will be applied to any cells in the column that don't have a format. For example:</p>
+<pre><code> worksheet:set_column(&quot;A:A&quot;, nil, format1) -- Col 1 has format1.
+
+ worksheet:write(&quot;A1&quot;, &quot;Hello&quot;)             -- Cell A1 defaults to format1.
+ worksheet:write(&quot;A2&quot;, &quot;Hello&quot;, format2)    -- Cell A2 keeps format2.</code></pre>
+<p>A row format takes precedence over a default column format:</p>
+<pre><code> worksheet:set_row(0, nil, format1)        -- Set format for row 1.
+ worksheet:set_column(&quot;A:A&quot;, nil, format2) -- Set format for col 1.
+
+ worksheet:write(&quot;A1&quot;, &quot;Hello&quot;)             -- Defaults to format1
+ worksheet:write(&quot;A2&quot;, &quot;Hello&quot;)             -- Defaults to format2</code></pre>
+<p>The <code>options</code> parameters are the same as shown in <code>set_row()</code> above.</p>
+<h2 id="worksheetget_name">worksheet:get_name()</h2>
+<div class="function">
+<p>get_name()</p>
+<p>Retrieve the worksheet name.</p>
+</div>
+<p>The <code>get_name()</code> method is used to retrieve the name of a worksheet: This is sometimes useful for debugging or logging:</p>
+<pre><code> print(worksheet:get_name())</code></pre>
+<p>There is no <code>set_name()</code> method since the name needs to set when the worksheet object is created. The only safe way to set the worksheet nameis via the <code>add_worksheet()</code> method.</p>
+<h2 id="worksheetactivate">worksheet:activate()</h2>
+<div class="function">
+<p>activate()</p>
+<p>Make a worksheet the active, i.e., visible worksheet:</p>
+</div>
+<p>The <code>activate()</code> method is used to specify which worksheet is initially visible in a multi-sheet workbook:</p>
+<pre><code> worksheet1 = workbook:add_worksheet()
+ worksheet2 = workbook:add_worksheet()
+ worksheet3 = workbook:add_worksheet()
+
+ worksheet3:activate()</code></pre>
+<p><img src="/files/luapower/xlsxwriter/_images/worksheet_activate.png" /></p>
+<p>More than one worksheet can be selected via the <code>select()</code> method, see below, however only one worksheet can be active.</p>
+<p>The default active worksheet is the first worksheet:</p>
+<h2 id="worksheetselect">worksheet:select()</h2>
+<div class="function">
+<p>select()</p>
+<p>Set a worksheet tab as selected.</p>
+</div>
+<p>The <code>select()</code> method is used to indicate that a worksheet is selected in a multi-sheet workbook:</p>
+<pre><code> worksheet1:activate()
+ worksheet2:select()
+ worksheet3:select()</code></pre>
+<p>A selected worksheet has its tab highlighted. Selecting worksheets is a way of grouping them together so that, for example, several worksheets could be printed in one go. A worksheet that has been activated via the <code>activate()</code> method will also appear as selected.</p>
+<h2 id="worksheethide">worksheet:hide()</h2>
+<div class="function">
+<p>hide()</p>
+<p>Hide the current worksheet:</p>
+</div>
+<p>The <code>hide()</code> method is used to hide a worksheet:</p>
+<pre><code> worksheet2:hide()</code></pre>
+<p>You may wish to hide a worksheet in order to avoid confusing a user with intermediate data or calculations.</p>
+<p><img src="/files/luapower/xlsxwriter/_images/hide_sheet.png" /></p>
+<p>A hidden worksheet can not be activated or selected so this method is mutually exclusive with the <code class="interpreted-text" role="func">activate()</code> and <code class="interpreted-text" role="func">select()</code> methods. In addition, since the first worksheet will default to being the active worksheet, you cannot hide the first worksheet without activating another sheet:</p>
+<pre><code> worksheet2:activate()
+ worksheet1:hide()</code></pre>
+<p>See <code class="interpreted-text" role="ref">ex_hide_sheet</code> for more details.</p>
+<h2 id="worksheetset_first_sheet">worksheet:set_first_sheet()</h2>
+<div class="function">
+<p>set_first_sheet()</p>
+<p>Set current worksheet as the first visible sheet tab.</p>
+</div>
+<p>The <code class="interpreted-text" role="func">activate()</code> method determines which worksheet is initially selected. However, if there are a large number of worksheets the selected worksheet may not appear on the screen. To avoid this you can select which is the leftmost visible worksheet tab using <code>set_first_sheet()</code>:</p>
+<pre><code> for i = 1, 20 do
+   workbook:add_worksheet
+ end
+
+ worksheet19:set_first_sheet() -- First visible worksheet tab.
+ worksheet20:activate()        -- First visible worksheet.</code></pre>
+<p>This method is not required very often. The default value is the first worksheet:</p>
+<h2 id="worksheetmerge_range">worksheet:merge_range()</h2>
+<div class="function">
+<p>merge_range(first_row, first_col, last_row, last_col, format)</p>
+<p>Merge a range of cells.</p>
+<dl>
+<dt>param first_row</dt>
+<dd><p>The first row of the range. (All zero indexed.)</p>
+</dd>
+<dt>param first_col</dt>
+<dd><p>The first column of the range.</p>
+</dd>
+<dt>param last_row</dt>
+<dd><p>The last row of the range.</p>
+</dd>
+<dt>param last_col</dt>
+<dd><p>The last col of the range.</p>
+</dd>
+<dt>param data</dt>
+<dd><p>Cell data to write.</p>
+</dd>
+<dt>param format</dt>
+<dd><p>Optional <code class="interpreted-text" role="ref">Format &lt;format&gt;</code> object.</p>
+</dd>
+</dl>
+</div>
+<p>The <code>merge_range()</code> method allows cells to be merged together so that they act as a single area.</p>
+<p>Excel generally merges and centers cells at same time. to get similar behaviour with xlsxwriter you need to apply a <code class="interpreted-text" role="ref">Format &lt;format&gt;</code>:</p>
+<pre><code> merge_format = workbook:add_format({align = &quot;center&quot;})
+
+ worksheet:merge_range(&quot;B3:D4&quot;, &quot;Merged Cells&quot;, merge_format)</code></pre>
+<p>It is possible to apply other formatting to the merged cells as well:</p>
+<pre><code> merge_format = workbook:add_format({
+     bold     = true,
+     border   = 6,
+     align    = &quot;center&quot;,
+     valign   = &quot;vcenter&quot;,
+     fg_color = &quot;#D7E4BC&quot;,
+ })
+
+ worksheet:merge_range(&quot;B3:D4&quot;, &quot;Merged Cells&quot;, merge_format)</code></pre>
+<p><img src="/files/luapower/xlsxwriter/_images/merge_range.png" /></p>
+<p>See <code class="interpreted-text" role="ref">ex_merge1</code> for more details.</p>
+<p>The <code>merge_range()</code> method writes its <code>data</code> argument using <code class="interpreted-text" role="func">write()</code>. Therefore it will handle numbers, strings and formulas as usual. If this doesn't handle your data correctly then you can overwrite the first cell with a call to one of the other <code>write_*()</code> methods using the same <code class="interpreted-text" role="ref">Format &lt;format&gt;</code> as in the merged cells.</p>
+<h2 id="worksheetset_zoom">worksheet:set_zoom()</h2>
+<div class="function">
+<p>set_zoom(zoom)</p>
+<p>Set the worksheet zoom factor.</p>
+<dl>
+<dt>param zoom</dt>
+<dd><p>Worksheet zoom factor.</p>
+</dd>
+</dl>
+</div>
+<p>Set the worksheet zoom factor in the range <code>10 &lt;= zoom &lt;= 400</code>:</p>
+<pre><code> worksheet1:set_zoom(50)
+ worksheet2:set_zoom(75)
+ worksheet3:set_zoom(300)
+ worksheet4:set_zoom(400)</code></pre>
+<p>The default zoom factor is 100. It isn't possible to set the zoom to "Selection" because it is calculated by Excel at run-time.</p>
+<p>Note, <code>set_zoom()</code> does not affect the scale of the printed page. For that you should use <code class="interpreted-text" role="func">set_print_scale()</code>.</p>
+<h2 id="worksheetright_to_left">worksheet:right_to_left()</h2>
+<div class="function">
+<p>right_to_left()</p>
+<p>Display the worksheet cells from right to left for some versions of Excel.</p>
+</div>
+<p>The <code>right_to_left()</code> method is used to change the default direction of the worksheet from left-to-right, with the A1 cell in the top left, to right-to-left, with the A1 cell in the top right.</p>
+<blockquote>
+<p>worksheet:right_to_left()</p>
+</blockquote>
+<p>This is useful when creating Arabic, Hebrew or other near or far eastern worksheets that use right-to-left as the default direction.</p>
+<h2 id="worksheethide_zero">worksheet:hide_zero()</h2>
+<div class="function">
+<p>hide_zero()</p>
+<p>Hide zero values in worksheet cells.</p>
+</div>
+<p>The <code>hide_zero()</code> method is used to hide any zero values that appear in cells:</p>
+<pre><code> worksheet:hide_zero()</code></pre>
+<h2 id="worksheetset_tab_color">worksheet:set_tab_color()</h2>
+<div class="function">
+<p>set_tab_color()</p>
+<p>Set the colour of the worksheet tab.</p>
+<dl>
+<dt>param color</dt>
+<dd><p>The tab color.</p>
+</dd>
+</dl>
+</div>
+<p>The <code>set_tab_color()</code> method is used to change the colour of the worksheet tab:</p>
+<pre><code> worksheet1:set_tab_color(&quot;red&quot;)
+ worksheet2:set_tab_color(&quot;#FF9900&quot;) -- Orange</code></pre>
+<p>The colour can be a Html style <code>#RRGGBB</code> string or a limited number named colours, see <code class="interpreted-text" role="ref">colors</code> and <code class="interpreted-text" role="ref">ex_tab_colors</code> for more details.</p>
+<h2 id="worksheetprotect">worksheet:protect()</h2>
+<div class="function">
+<p>protect()</p>
+<p>Protect elements of a worksheet from modification.</p>
+<dl>
+<dt>param password</dt>
+<dd><p>A worksheet password.</p>
+</dd>
+<dt>param options</dt>
+<dd><p>A table of worksheet options to protect.</p>
+</dd>
+</dl>
+</div>
+<p>The <code>protect()</code> method is used to protect a worksheet from modification:</p>
+<pre><code> worksheet:protect()</code></pre>
+<p>The <code>protect()</code> method also has the effect of enabling a cell's <code>locked</code> and <code>hidden</code> properties if they have been set. A <em>locked</em> cell cannot be edited and this property is on by default for all cells. A <em>hidden</em> cell will display the results of a formula but not the formula itself. These properties can be set using the <code class="interpreted-text" role="func">set_locked</code> and <code class="interpreted-text" role="func">set_hidden</code> format methods.</p>
+<p>You can optionally add a password to the worksheet protection:</p>
+<pre><code> worksheet:protect(&quot;abc123&quot;)</code></pre>
+<p>Passing the empty string <code>""</code> is the same as turning on protection without a password.</p>
+<p>You can specify which worksheet elements you wish to protect by passing a table in the <code>options</code> argument with any or all of the following keys:</p>
+<pre><code> -- Default values are shown.
+ options = {
+   [&quot;objects&quot;]               = false,
+   [&quot;scenarios&quot;]             = false,
+   [&quot;format_cells&quot;]          = false,
+   [&quot;format_columns&quot;]        = false,
+   [&quot;format_rows&quot;]           = false,
+   [&quot;insert_columns&quot;]        = false,
+   [&quot;insert_rows&quot;]           = false,
+   [&quot;insert_hyperlinks&quot;]     = false,
+   [&quot;delete_columns&quot;]        = false,
+   [&quot;delete_rows&quot;]           = false,
+   [&quot;select_locked_cells&quot;]   = true,
+   [&quot;sort&quot;]                  = false,
+   [&quot;autofilter&quot;]            = false,
+   [&quot;pivot_tables&quot;]          = false,
+   [&quot;select_unlocked_cells&quot;] = true,
+ }</code></pre>
+<p>The default boolean values are shown above. Individual elements can be protected as follows:</p>
+<pre><code> worksheet:protect(&quot;acb123&quot;, {[&quot;insert_rows&quot;] = 1})</code></pre>
+<p>See also the <code class="interpreted-text" role="func">set_locked</code> and <code class="interpreted-text" role="func">set_hidden</code> format methods and <code class="interpreted-text" role="ref">ex_protection</code>.</p>
+<div class="note">
+<div class="title">
+<p>Note</p>
+</div>
+<p>Worksheet level passwords in Excel offer very weak protection. They do not encrypt your data and are very easy to deactivate. Full workbook encryption is not supported by <code>xlsxwriter.lua</code> since it requires a completely different file format and would take several man months to implement.</p>
+</div>

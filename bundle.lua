@@ -3,8 +3,13 @@
 -- Written by Cosmin Apreutesei. Public Domain.
 
 local ffi = require'ffi'
-local exedir = require'package.exedir'
+local external_dir = require'package.exedir'
 local BBIN_PREFIX = 'Bbin_'
+
+if not package.loaded.bundle_loader then
+	--standalone luajit exe. files are in luapower dir at ../..
+	external_dir = external_dir..'/../..'
+end
 
 local bundle = {}
 
@@ -97,7 +102,7 @@ end
 --reading the filesystem
 
 local function load_file(file)
-	file = exedir..'/'..file
+	file = external_dir..'/'..file
 	local f = io.open(file, 'rb')
 	if not f then return nil end
 	local s = f:read'*a'

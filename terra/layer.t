@@ -3,11 +3,11 @@
 	HTML-like box-model layouting and rendering engine in Terra with a C API.
 	Written by Cosmin Apreutesei. Public Domain.
 
-	Discuss at luapower.com/forum or at github.com/luapower/terra-layer/issues.
+	Discuss at luapower.com/forum or at github.com/luapower/terra.layer/issues.
 
 	Uses `cairo` for path filling, stroking, clipping, masking and blending.
-	Uses `terra-tr` for text shaping and rendering.
-	Uses `terra-boxblur` and `boxblur` for shadows.
+	Uses `terra.tr` for text shaping and rendering.
+	Uses `terra.boxblur` and `boxblur` for shadows.
 
 	NOTE: This is the implementation module. In here, invalid input data is
 	undefined behavior and changing layer properties does not keep the internal

@@ -18,7 +18,7 @@ API
 
 	page_title([title], [body]) -> s    set/infer page title
 
-	webbjs(t)                           webbjs html action
+	webbjs(t)                           webbjs single-page app html action
 		t.head: s                        content for <head>
 		t.body: s                        content for <body>
 		t.title: s                       content for <title> (optional)
@@ -119,22 +119,22 @@ local function sepbuffer(sep)
 end
 
 cssfile = sepbuffer'\n'
-readfile['all.css.cat'] = function()
+wwwfile['all.css.cat'] = function()
 	return cssfile() .. ' inline.css' --append inline code at the end
 end
 
 jsfile = sepbuffer'\n'
-readfile['all.js.cat'] = function()
+wwwfile['all.js.cat'] = function()
 	return jsfile() .. ' inline.js' --append inline code at the end
 end
 
 css = sepbuffer'\n'
-readfile['inline.css'] = function()
+wwwfile['inline.css'] = function()
 	return css()
 end
 
 js = sepbuffer';\n'
-readfile['inline.js'] = function()
+wwwfile['inline.js'] = function()
 	return js()
 end
 
@@ -147,6 +147,7 @@ jquery.js
 jquery.history.js  // for exec() and ^url_changed
 mustache.js        // for render()
 
+glue.js
 webb.js
 webb.ajax.js
 webb.timeago.js
@@ -164,7 +165,7 @@ function jslist(cataction, separate)
 		return string.format('	<script src="%s" async></script>', lang_url('/'..cataction))
 	end
 	local out = stringbuffer()
-	for i,file in ipairs(catlist_files(readfile(cataction..'.cat'))) do
+	for i,file in ipairs(catlist_files(wwwfile(cataction..'.cat'))) do
 		out(string.format('	<script src="%s"></script>\n', lang_url('/'..file)))
 	end
 	return out()
@@ -175,7 +176,7 @@ function csslist(cataction, separate)
 		return string.format('	<link rel="stylesheet" type="text/css" href="/%s">', cataction)
 	end
 	local out = stringbuffer()
-	for i,file in ipairs(catlist_files(readfile(cataction..'.cat'))) do
+	for i,file in ipairs(catlist_files(wwwfile(cataction..'.cat'))) do
 		out(string.format('	<link rel="stylesheet" type="text/css" href="/%s">\n', file))
 	end
 	return out()
@@ -192,17 +193,9 @@ local webbjs_template = [[
 {{{all_js}}}
 {{{all_css}}}
 {{{head}}}
-	<script>
-		$(function() {
-			analytics_init()
-			load_templates(function() {
-				$(document).setup()
-				{{#client_action}}
-					url_changed()
-				{{/client_action}}
-			})
-		})
-	</{{undefined}}script>
+<script>
+	var client_action = {{client_action}}
+</{{undefined}}script>
 </head>
 <body>
 	<div style="display: none;" id="__templates"></div>
@@ -226,7 +219,7 @@ function webbjs(p)
 	t.head = p.head
 	t.title = page_title(p.title, t.body)
 	t.title_suffix = config('page_title_suffix', ' - '..host())
-	t.client_action = p.client_action
+	t.client_action = p.client_action or false
 	t.all_js = jslist('all.js', config('separate_js_refs', false))
 	t.all_css = csslist('all.css', config('separate_css_refs', false))
 	out(render_string(webbjs_template, t))

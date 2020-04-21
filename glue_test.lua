@@ -222,6 +222,10 @@ assert(glue.writefile('glue_test.tmp', 'def', nil, 'glue_test.tmp.tmp'))
 assert(glue.readfile('glue_test.tmp') == 'def')
 os.remove('glue_test.tmp')
 
+--dates & timestamps ---------------------------------------------------------
+
+--TODO: time, utc_diff, year, month, day
+
 --errors ---------------------------------------------------------------------
 
 --TODO: assert, protect, pcall, fpcall, fcall

@@ -1,0 +1,197 @@
+<h1 id="memory_perf">Working with Memory and Performance</h1>
+<p>By default <code>xlsxwriter</code> holds all cell data in memory. This is to allow future features where formatting is applied separately from the data.</p>
+<p>The effect of this is that for large files <code>xlsxwriter</code> can consume a lot of memory and it is even possible to run out of memory.</p>
+<p>Fortunately, this memory usage can be reduced almost completely by setting the <code class="interpreted-text" role="ref">Workbook:new() &lt;constructor&gt;</code> <code>'constant_memory'</code> property:</p>
+<pre><code> workbook = Workbook:new(filename, {constant_memory = true})</code></pre>
+<p>The optimisation works by flushing each row after a subsequent row is written. In this way the largest amount of data held in memory for a worksheet is the amount of memory required to hold a single row of data.</p>
+<p>Since each new row flushes the previous row, data must be written in sequential row order when <code>'constant_memory'</code> mode is on:</p>
+<pre><code> -- With &#39;constant_memory&#39; you must write data in row column order.
+ for row = 0, row_max do
+   for col = 0, col_max do
+     worksheet:write(row, col, some_data)
+   end
+ end
+
+ -- With &#39;constant_memory&#39; the following would only write the first column.
+ for col = 0, col_max do  -- !!
+   for row = 0, row_max do
+     worksheet:write(row, col, some_data)
+   end
+ end</code></pre>
+<p>Another optimisation that is used to reduce memory usage is that cell strings aren't stored in an Excel structure call "shared strings" and instead are written "in-line". This is a documented Excel feature that is supported by most spreadsheet applications. One known exception is Apple Numbers for Mac where the string data isn't displayed.</p>
+<p>The trade-off when using <code>'constant_memory'</code> mode is that you won't be able to take advantage of any features that manipulate cell data after it is written. Currently there aren't any such features.</p>
+<p>For larger files <code>'constant_memory'</code> mode also gives an increase in execution speed, see below.</p>
+<h2 id="performance-figures">Performance Figures</h2>
+<p>The performance figures below show execution time and memory usage for worksheets of size <code>N</code> rows x 50 columns with a 50/50 mixture of strings and numbers. The figures are taken from an arbitrary, mid-range, machine. Specific figures will vary from machine to machine but the trends should be the same.</p>
+<p>Xlsxwriter in normal operation mode: the execution time and memory usage increase more of less linearly with the number of rows:</p>
+<table style="width:64%;">
+<colgroup>
+<col style="width: 11%" />
+<col style="width: 13%" />
+<col style="width: 15%" />
+<col style="width: 23%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Rows</th>
+<th>Columns</th>
+<th>Time (s)</th>
+<th>Memory (bytes)</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><blockquote>
+<p>200</p>
+</blockquote></td>
+<td>50</td>
+<td><blockquote>
+<p>0.20</p>
+</blockquote></td>
+<td>2071819</td>
+</tr>
+<tr class="even">
+<td><blockquote>
+<p>400</p>
+</blockquote></td>
+<td>50</td>
+<td><blockquote>
+<p>0.40</p>
+</blockquote></td>
+<td>4149803</td>
+</tr>
+<tr class="odd">
+<td><blockquote>
+<p>800</p>
+</blockquote></td>
+<td>50</td>
+<td><blockquote>
+<p>0.86</p>
+</blockquote></td>
+<td>8305771</td>
+</tr>
+<tr class="even">
+<td><blockquote>
+<p>1600</p>
+</blockquote></td>
+<td>50</td>
+<td><blockquote>
+<p>1.87</p>
+</blockquote></td>
+<td>16617707</td>
+</tr>
+<tr class="odd">
+<td><blockquote>
+<p>3200</p>
+</blockquote></td>
+<td>50</td>
+<td><blockquote>
+<p>3.84</p>
+</blockquote></td>
+<td>33271579</td>
+</tr>
+<tr class="even">
+<td><blockquote>
+<p>6400</p>
+</blockquote></td>
+<td>50</td>
+<td><blockquote>
+<p>8.02</p>
+</blockquote></td>
+<td>66599323</td>
+</tr>
+<tr class="odd">
+<td>12800</td>
+<td>50</td>
+<td>16.54</td>
+<td>133254811</td>
+</tr>
+</tbody>
+</table>
+<p>Xlsxwriter in <code>constant_memory</code> mode: the execution time still increases linearly with the number of rows but the memory usage remains small and mainly constant:</p>
+<table style="width:64%;">
+<colgroup>
+<col style="width: 11%" />
+<col style="width: 13%" />
+<col style="width: 15%" />
+<col style="width: 23%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Rows</th>
+<th>Columns</th>
+<th>Time (s)</th>
+<th>Memory (bytes)</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><blockquote>
+<p>200</p>
+</blockquote></td>
+<td>50</td>
+<td><blockquote>
+<p>0.18</p>
+</blockquote></td>
+<td>41119</td>
+</tr>
+<tr class="even">
+<td><blockquote>
+<p>400</p>
+</blockquote></td>
+<td>50</td>
+<td><blockquote>
+<p>0.36</p>
+</blockquote></td>
+<td>24735</td>
+</tr>
+<tr class="odd">
+<td><blockquote>
+<p>800</p>
+</blockquote></td>
+<td>50</td>
+<td><blockquote>
+<p>0.69</p>
+</blockquote></td>
+<td>24735</td>
+</tr>
+<tr class="even">
+<td><blockquote>
+<p>1600</p>
+</blockquote></td>
+<td>50</td>
+<td><blockquote>
+<p>1.41</p>
+</blockquote></td>
+<td>24735</td>
+</tr>
+<tr class="odd">
+<td><blockquote>
+<p>3200</p>
+</blockquote></td>
+<td>50</td>
+<td><blockquote>
+<p>2.83</p>
+</blockquote></td>
+<td>41119</td>
+</tr>
+<tr class="even">
+<td><blockquote>
+<p>6400</p>
+</blockquote></td>
+<td>50</td>
+<td><blockquote>
+<p>5.83</p>
+</blockquote></td>
+<td>41119</td>
+</tr>
+<tr class="odd">
+<td>12800</td>
+<td>50</td>
+<td>11.29</td>
+<td>24735</td>
+</tr>
+</tbody>
+</table>
+<p>These figures were generated using the <code>perf_tester.lua</code> program in the <code>examples</code> directory of the xlsxwriter repo.</p>
+<p>Note, there will be further optimisation in both modes in later releases.</p>

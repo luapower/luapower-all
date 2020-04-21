@@ -11,6 +11,7 @@ platforms: mingw, linux, osx
 `time.time() -> n`        wall clock time with ~100us precision
 `time.clock() -> n`       monotonic time in seconds with ~1us precision
 `time.sleep(s)`           sleep with sub-second precision (~10-100ms)
+`time.install()`          increase accuracy of `os.date()` and `os.time()`
 ------------------------- ----------------------------------------------------
 
 ### `time.time() -> n`
@@ -28,3 +29,4 @@ Reads a monotonic performance counter, and is thus more accurate than
 `time.time()`, it should never go back or drift, but it doesn't have
 a fixed time base between program executions. It can be used
 for measuring short time intervals for thread synchronization, etc.
+

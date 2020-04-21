@@ -204,7 +204,7 @@ local function slist(t)
 		dt = {slist}
 		for i=1,#t do
 			local s = t[i]
-			slist[i-1].data = ffi.cast('const char*', s)
+			slist[i-1].data = ffi.cast('char*', s)
 			slist[i-1].next = i < #t and slist[i] or nil
 			table.insert(dt, s)
 		end
@@ -280,7 +280,7 @@ end
 
 function easy:_ret(code, retval)
 	if code == C.CURLE_OK then return retval or self end
-	return nil, self.strerror(code), code
+	return nil, self.strerror(code), tonumber(code)
 end
 
 function easy:_check(code, retval)

@@ -1,0 +1,345 @@
+<h2 id="local-http-requireresty.http"><code>local http = require'resty.http'</code></h2>
+<p>Lua HTTP client cosocket driver for OpenResty.</p>
+<h1 id="status">Status</h1>
+<p>Production ready.</p>
+<h1 id="features">Features</h1>
+<ul>
+<li>HTTP 1.0 and 1.1</li>
+<li>SSL</li>
+<li>Streaming interface to the response body, for predictable memory usage</li>
+<li>Alternative simple interface for singleshot requests without manual connection step</li>
+<li>Chunked and non-chunked transfer encodings</li>
+<li>Keepalive</li>
+<li>Pipelining</li>
+<li>Trailers</li>
+</ul>
+<h1 id="api">API</h1>
+<ul>
+<li><a href="#new">new</a></li>
+<li><a href="#connect">connect</a></li>
+<li><a href="#connect_proxy">connect_proxy</a></li>
+<li><a href="#set_proxy_options">set_proxy_options</a></li>
+<li><a href="#set_timeout">set_timeout</a></li>
+<li><a href="#set_timeouts">set_timeouts</a></li>
+<li><a href="#ssl_handshake">ssl_handshake</a></li>
+<li><a href="#set_keepalive">set_keepalive</a></li>
+<li><a href="#get_reused_times">get_reused_times</a></li>
+<li><a href="#close">close</a></li>
+<li><a href="#request">request</a></li>
+<li><a href="#request_uri">request_uri</a></li>
+<li><a href="#request_pipeline">request_pipeline</a></li>
+<li><a href="#response">Response</a>
+<ul>
+<li><a href="#resbody_reader">body_reader</a></li>
+<li><a href="#resread_body">read_body</a></li>
+<li><a href="#resread_trailers">read_trailers</a></li>
+</ul></li>
+<li><a href="#proxy">Proxy</a>
+<ul>
+<li><a href="#proxy_request">proxy_request</a></li>
+<li><a href="#proxy_response">proxy_response</a></li>
+</ul></li>
+<li><a href="#utility">Utility</a>
+<ul>
+<li><a href="#parse_uri">parse_uri</a></li>
+<li><a href="#get_client_body_reader">get_client_body_reader</a></li>
+</ul></li>
+</ul>
+<h2 id="synopsis">Synopsis</h2>
+<div class="sourceCode" id="cb1"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb1-1"><a href="#cb1-1"></a>lua_package_path <span class="st">&quot;/path/to/lua-resty-http/lib/?.lua;;&quot;</span><span class="op">;</span></span>
+<span id="cb1-2"><a href="#cb1-2"></a></span>
+<span id="cb1-3"><a href="#cb1-3"></a>server <span class="op">{</span></span>
+<span id="cb1-4"><a href="#cb1-4"></a></span>
+<span id="cb1-5"><a href="#cb1-5"></a></span>
+<span id="cb1-6"><a href="#cb1-6"></a>  location <span class="op">/</span>simpleinterface <span class="op">{</span></span>
+<span id="cb1-7"><a href="#cb1-7"></a>    resolver <span class="dv">8.8.8.8</span><span class="op">;</span>  <span class="op">#</span> use Google<span class="st">&#39;s open DNS server for an example</span></span>
+<span id="cb1-8"><a href="#cb1-8"></a></span>
+<span id="cb1-9"><a href="#cb1-9"></a><span class="er">    content_by_lua_block {</span></span>
+<span id="cb1-10"><a href="#cb1-10"></a></span>
+<span id="cb1-11"><a href="#cb1-11"></a><span class="er">      -- For simple singleshot requests, use the URI interface.</span></span>
+<span id="cb1-12"><a href="#cb1-12"></a><span class="er">      local http = require &quot;resty.http&quot;</span></span>
+<span id="cb1-13"><a href="#cb1-13"></a><span class="er">      local httpc = http.new()</span></span>
+<span id="cb1-14"><a href="#cb1-14"></a><span class="er">      local res, err = httpc:request_uri(&quot;http://example.com/helloworld&quot;, {</span></span>
+<span id="cb1-15"><a href="#cb1-15"></a><span class="er">        method = &quot;POST&quot;,</span></span>
+<span id="cb1-16"><a href="#cb1-16"></a><span class="er">        body = &quot;a=1&amp;b=2&quot;,</span></span>
+<span id="cb1-17"><a href="#cb1-17"></a><span class="er">        headers = {</span></span>
+<span id="cb1-18"><a href="#cb1-18"></a><span class="er">          [&quot;Content-Type&quot;] = &quot;application/x-www-form-urlencoded&quot;,</span></span>
+<span id="cb1-19"><a href="#cb1-19"></a><span class="er">        },</span></span>
+<span id="cb1-20"><a href="#cb1-20"></a><span class="er">        keepalive_timeout = 60,</span></span>
+<span id="cb1-21"><a href="#cb1-21"></a><span class="er">        keepalive_pool = 10</span></span>
+<span id="cb1-22"><a href="#cb1-22"></a><span class="er">      })</span></span>
+<span id="cb1-23"><a href="#cb1-23"></a></span>
+<span id="cb1-24"><a href="#cb1-24"></a><span class="er">      if not res then</span></span>
+<span id="cb1-25"><a href="#cb1-25"></a><span class="er">        ngx.say(&quot;failed to request: &quot;, err)</span></span>
+<span id="cb1-26"><a href="#cb1-26"></a><span class="er">        return</span></span>
+<span id="cb1-27"><a href="#cb1-27"></a><span class="er">      end</span></span>
+<span id="cb1-28"><a href="#cb1-28"></a></span>
+<span id="cb1-29"><a href="#cb1-29"></a><span class="er">      -- In this simple form, there is no manual connection step, so the body is read</span></span>
+<span id="cb1-30"><a href="#cb1-30"></a><span class="er">      -- all in one go, including any trailers, and the connection closed or keptalive</span></span>
+<span id="cb1-31"><a href="#cb1-31"></a><span class="er">      -- for you.</span></span>
+<span id="cb1-32"><a href="#cb1-32"></a></span>
+<span id="cb1-33"><a href="#cb1-33"></a><span class="er">      ngx.status = res.status</span></span>
+<span id="cb1-34"><a href="#cb1-34"></a></span>
+<span id="cb1-35"><a href="#cb1-35"></a><span class="er">      for k,v in pairs(res.headers) do</span></span>
+<span id="cb1-36"><a href="#cb1-36"></a><span class="er">          --</span></span>
+<span id="cb1-37"><a href="#cb1-37"></a><span class="er">      end</span></span>
+<span id="cb1-38"><a href="#cb1-38"></a></span>
+<span id="cb1-39"><a href="#cb1-39"></a><span class="er">      ngx.say(res.body)</span></span>
+<span id="cb1-40"><a href="#cb1-40"></a><span class="er">    }</span></span>
+<span id="cb1-41"><a href="#cb1-41"></a><span class="er">  }</span></span>
+<span id="cb1-42"><a href="#cb1-42"></a></span>
+<span id="cb1-43"><a href="#cb1-43"></a></span>
+<span id="cb1-44"><a href="#cb1-44"></a><span class="er">  location /genericinterface {</span></span>
+<span id="cb1-45"><a href="#cb1-45"></a><span class="er">    content_by_lua_block {</span></span>
+<span id="cb1-46"><a href="#cb1-46"></a></span>
+<span id="cb1-47"><a href="#cb1-47"></a><span class="er">      local http = require &quot;resty.http&quot;</span></span>
+<span id="cb1-48"><a href="#cb1-48"></a><span class="er">      local httpc = http.new()</span></span>
+<span id="cb1-49"><a href="#cb1-49"></a></span>
+<span id="cb1-50"><a href="#cb1-50"></a><span class="er">      -- The generic form gives us more control. We must connect manually.</span></span>
+<span id="cb1-51"><a href="#cb1-51"></a><span class="er">      httpc:set_timeout(500)</span></span>
+<span id="cb1-52"><a href="#cb1-52"></a><span class="er">      httpc:connect(&quot;127.0.0.1&quot;, 80)</span></span>
+<span id="cb1-53"><a href="#cb1-53"></a></span>
+<span id="cb1-54"><a href="#cb1-54"></a><span class="er">      -- And request using a path, rather than a full URI.</span></span>
+<span id="cb1-55"><a href="#cb1-55"></a><span class="er">      local res, err = httpc:request({</span></span>
+<span id="cb1-56"><a href="#cb1-56"></a><span class="er">          path = &quot;/helloworld&quot;,</span></span>
+<span id="cb1-57"><a href="#cb1-57"></a><span class="er">          headers = {</span></span>
+<span id="cb1-58"><a href="#cb1-58"></a><span class="er">              [&quot;Host&quot;] = &quot;example.com&quot;,</span></span>
+<span id="cb1-59"><a href="#cb1-59"></a><span class="er">          },</span></span>
+<span id="cb1-60"><a href="#cb1-60"></a><span class="er">      })</span></span>
+<span id="cb1-61"><a href="#cb1-61"></a></span>
+<span id="cb1-62"><a href="#cb1-62"></a><span class="er">      if not res then</span></span>
+<span id="cb1-63"><a href="#cb1-63"></a><span class="er">        ngx.say(&quot;failed to request: &quot;, err)</span></span>
+<span id="cb1-64"><a href="#cb1-64"></a><span class="er">        return</span></span>
+<span id="cb1-65"><a href="#cb1-65"></a><span class="er">      end</span></span>
+<span id="cb1-66"><a href="#cb1-66"></a></span>
+<span id="cb1-67"><a href="#cb1-67"></a><span class="er">      -- Now we can use the body_reader iterator, to stream the body according to our desired chunk size.</span></span>
+<span id="cb1-68"><a href="#cb1-68"></a><span class="er">      local reader = res.body_reader</span></span>
+<span id="cb1-69"><a href="#cb1-69"></a></span>
+<span id="cb1-70"><a href="#cb1-70"></a><span class="er">      repeat</span></span>
+<span id="cb1-71"><a href="#cb1-71"></a><span class="er">        local chunk, err = reader(8192)</span></span>
+<span id="cb1-72"><a href="#cb1-72"></a><span class="er">        if err then</span></span>
+<span id="cb1-73"><a href="#cb1-73"></a><span class="er">          ngx.log(ngx.ERR, err)</span></span>
+<span id="cb1-74"><a href="#cb1-74"></a><span class="er">          break</span></span>
+<span id="cb1-75"><a href="#cb1-75"></a><span class="er">        end</span></span>
+<span id="cb1-76"><a href="#cb1-76"></a></span>
+<span id="cb1-77"><a href="#cb1-77"></a><span class="er">        if chunk then</span></span>
+<span id="cb1-78"><a href="#cb1-78"></a><span class="er">          -- process</span></span>
+<span id="cb1-79"><a href="#cb1-79"></a><span class="er">        end</span></span>
+<span id="cb1-80"><a href="#cb1-80"></a><span class="er">      until not chunk</span></span>
+<span id="cb1-81"><a href="#cb1-81"></a></span>
+<span id="cb1-82"><a href="#cb1-82"></a><span class="er">      local ok, err = httpc:set_keepalive()</span></span>
+<span id="cb1-83"><a href="#cb1-83"></a><span class="er">      if not ok then</span></span>
+<span id="cb1-84"><a href="#cb1-84"></a><span class="er">        ngx.say(&quot;failed to set keepalive: &quot;, err)</span></span>
+<span id="cb1-85"><a href="#cb1-85"></a><span class="er">        return</span></span>
+<span id="cb1-86"><a href="#cb1-86"></a><span class="er">      end</span></span>
+<span id="cb1-87"><a href="#cb1-87"></a><span class="er">    }</span></span>
+<span id="cb1-88"><a href="#cb1-88"></a><span class="er">  }</span></span>
+<span id="cb1-89"><a href="#cb1-89"></a><span class="er">}</span></span></code></pre></div>
+<h1 id="connection">Connection</h1>
+<h2 id="new">new</h2>
+<p><code>syntax: httpc = http.new()</code></p>
+<p>Creates the http object. In case of failures, returns <code>nil</code> and a string describing the error.</p>
+<h2 id="connect">connect</h2>
+<p><code>syntax: ok, err = httpc:connect(host, port, options_table?)</code></p>
+<p><code>syntax: ok, err = httpc:connect("unix:/path/to/unix.sock", options_table?)</code></p>
+<p>Attempts to connect to the web server.</p>
+<p>Before actually resolving the host name and connecting to the remote backend, this method will always look up the connection pool for matched idle connections created by previous calls of this method.</p>
+<p>An optional Lua table can be specified as the last argument to this method to specify various connect options:</p>
+<ul>
+<li><dl>
+<dt><code>pool</code></dt>
+<dd>Specifies a custom name for the connection pool being used. If omitted, then the connection pool name will be generated from the string template <code>&lt;host&gt;:&lt;port&gt;</code> or <code>&lt;unix-socket-path&gt;</code>.
+</dd>
+</dl></li>
+</ul>
+<h2 id="connect_proxy">connect_proxy</h2>
+<p><code>syntax: ok, err = httpc:connect_proxy(proxy_uri, scheme, host, port, proxy_authorization)</code></p>
+<p>Attempts to connect to the web server through the given proxy server. The method accepts the following arguments:</p>
+<ul>
+<li><code>proxy_uri</code> - Full URI of the proxy server to use (e.g. <code>http://proxy.example.com:3128/</code>). Note: Only <code>http</code> protocol is supported.</li>
+<li><code>scheme</code> - The protocol to use between the proxy server and the remote host (<code>http</code> or <code>https</code>). If <code>https</code> is specified as the scheme, <code>connect_proxy()</code> makes a <code>CONNECT</code> request to establish a TCP tunnel to the remote host through the proxy server.</li>
+<li><code>host</code> - The hostname of the remote host to connect to.</li>
+<li><code>port</code> - The port of the remote host to connect to.</li>
+<li><code>proxy_authorization</code> - The <code>Proxy-Authorization</code> header value sent to the proxy server via <code>CONNECT</code> when the <code>scheme</code> is <code>https</code>.</li>
+</ul>
+<p>If an error occurs during the connection attempt, this method returns <code>nil</code> with a string describing the error. If the connection was successfully established, the method returns <code>1</code>.</p>
+<p>There’s a few key points to keep in mind when using this api:</p>
+<ul>
+<li>If the scheme is <code>https</code>, you need to perform the TLS handshake with the remote server manually using the <code>ssl_handshake()</code> method before sending any requests through the proxy tunnel.</li>
+<li>If the scheme is <code>http</code>, you need to ensure that the requests you send through the connections conforms to <a href="https://tools.ietf.org/html/rfc7230">RFC 7230</a> and especially <a href="https://tools.ietf.org/html/rfc7230#section-5.3.2">Section 5.3.2.</a> which states that the request target must be in absolute form. In practice, this means that when you use <code>send_request()</code>, the <code>path</code> must be an absolute URI to the resource (e.g. <code>http://example.com/index.html</code> instead of just <code>/index.html</code>).</li>
+</ul>
+<h2 id="set_timeout">set_timeout</h2>
+<p><code>syntax: httpc:set_timeout(time)</code></p>
+<p>Sets the timeout (in ms) protection for subsequent operations, including the <code>connect</code> method.</p>
+<h2 id="set_timeouts">set_timeouts</h2>
+<p><code>syntax: httpc:set_timeouts(connect_timeout, send_timeout, read_timeout)</code></p>
+<p>Sets the connect timeout threshold, send timeout threshold, and read timeout threshold, respectively, in milliseconds, for subsequent socket operations (connect, send, receive, and iterators returned from receiveuntil).</p>
+<h2 id="ssl_handshake">ssl_handshake</h2>
+<p><code>syntax: session, err = httpc:ssl_handshake(session, host, verify)</code></p>
+<p>Performs an SSL handshake on the TCP connection, only available in ngx_lua &gt; v0.9.11</p>
+<p>See docs for <a href="https://github.com/openresty/lua-nginx-module#ngxsockettcp">ngx.socket.tcp</a> for details.</p>
+<h2 id="set_keepalive">set_keepalive</h2>
+<p><code>syntax: ok, err = httpc:set_keepalive(max_idle_timeout, pool_size)</code></p>
+<p>Attempts to puts the current connection into the ngx_lua cosocket connection pool.</p>
+<p>You can specify the max idle timeout (in ms) when the connection is in the pool and the maximal size of the pool every nginx worker process.</p>
+<p>Only call this method in the place you would have called the <code>close</code> method instead. Calling this method will immediately turn the current http object into the <code>closed</code> state. Any subsequent operations other than <code>connect()</code> on the current object will return the <code>closed</code> error.</p>
+<p>Note that calling this instead of <code>close</code> is “safe” in that it will conditionally close depending on the type of request. Specifically, a <code>1.0</code> request without <code>Connection: Keep-Alive</code> will be closed, as will a <code>1.1</code> request with <code>Connection: Close</code>.</p>
+<p>In case of success, returns <code>1</code>. In case of errors, returns <code>nil, err</code>. In the case where the connection is conditionally closed as described above, returns <code>2</code> and the error string <code>connection must be closed</code>.</p>
+<h2 id="set_proxy_options">set_proxy_options</h2>
+<p><code>syntax: httpc:set_proxy_options(opts)</code></p>
+<p>Configure an http proxy to be used with this client instance. The <code>opts</code> is a table that accepts the following fields:</p>
+<ul>
+<li><code>http_proxy</code> - an URI to a proxy server to be used with http requests</li>
+<li><code>http_proxy_authorization</code> - a default <code>Proxy-Authorization</code> header value to be used with <code>http_proxy</code>, e.g. <code>Basic ZGVtbzp0ZXN0</code>, which will be overriden if the <code>Proxy-Authorization</code> request header is present.</li>
+<li><code>https_proxy</code> - an URI to a proxy server to be used with https requests</li>
+<li><code>https_proxy_authorization</code> - as <code>http_proxy_authorization</code> but for use with <code>https_proxy</code>.</li>
+<li><code>no_proxy</code> - a comma separated list of hosts that should not be proxied.</li>
+</ul>
+<p>Note that proxy options are only applied when using the high-level <code>request_uri()</code> API.</p>
+<h2 id="get_reused_times">get_reused_times</h2>
+<p><code>syntax: times, err = httpc:get_reused_times()</code></p>
+<p>This method returns the (successfully) reused times for the current connection. In case of error, it returns <code>nil</code> and a string describing the error.</p>
+<p>If the current connection does not come from the built-in connection pool, then this method always returns <code>0</code>, that is, the connection has never been reused (yet). If the connection comes from the connection pool, then the return value is always non-zero. So this method can also be used to determine if the current connection comes from the pool.</p>
+<h2 id="close">close</h2>
+<p><code>syntax: ok, err = http:close()</code></p>
+<p>Closes the current connection and returns the status.</p>
+<p>In case of success, returns <code>1</code>. In case of errors, returns <code>nil</code> with a string describing the error.</p>
+<h1 id="requesting">Requesting</h1>
+<h2 id="request">request</h2>
+<p><code>syntax: res, err = httpc:request(params)</code></p>
+<p>Returns a <code>res</code> table or <code>nil</code> and an error message.</p>
+<p>The <code>params</code> table accepts the following fields:</p>
+<ul>
+<li><code>version</code> The HTTP version number, currently supporting 1.0 or 1.1.</li>
+<li><code>method</code> The HTTP method string.</li>
+<li><code>path</code> The path string.</li>
+<li><code>query</code> The query string, presented as either a literal string or Lua table..</li>
+<li><code>headers</code> A table of request headers.</li>
+<li><code>body</code> The request body as a string, or an iterator function (see <a href="#get_client_body_reader">get_client_body_reader</a>).</li>
+<li><code>ssl_verify</code> Verify SSL cert matches hostname</li>
+</ul>
+<p>When the request is successful, <code>res</code> will contain the following fields:</p>
+<ul>
+<li><code>status</code> The status code.</li>
+<li><code>reason</code> The status reason phrase.</li>
+<li><code>headers</code> A table of headers. Multiple headers with the same field name will be presented as a table of values.</li>
+<li><code>has_body</code> A boolean flag indicating if there is a body to be read.</li>
+<li><code>body_reader</code> An iterator function for reading the body in a streaming fashion.</li>
+<li><code>read_body</code> A method to read the entire body into a string.</li>
+<li><code>read_trailers</code> A method to merge any trailers underneath the headers, after reading the body.</li>
+</ul>
+<h2 id="request_uri">request_uri</h2>
+<p><code>syntax: res, err = httpc:request_uri(uri, params)</code></p>
+<p>The simple interface. Options supplied in the <code>params</code> table are the same as in the generic interface, and will override components found in the uri itself.</p>
+<p>There are 3 additional parameters for controlling keepalives:</p>
+<ul>
+<li><code>keepalive</code> Set to <code>false</code> to disable keepalives and immediately close the connection.</li>
+<li><code>keepalive_timeout</code> The maximal idle timeout (ms). Defaults to <code>lua_socket_keepalive_timeout</code>.</li>
+<li><code>keepalive_pool</code> The maximum number of connections in the pool. Defaults to <code>lua_socket_pool_size</code>.</li>
+</ul>
+<p>In this mode, there is no need to connect manually first. The connection is made on your behalf, suiting cases where you simply need to grab a URI without too much hassle.</p>
+<p>Additionally there is no ability to stream the response body in this mode. If the request is successful, <code>res</code> will contain the following fields:</p>
+<ul>
+<li><code>status</code> The status code.</li>
+<li><code>headers</code> A table of headers.</li>
+<li><code>body</code> The response body as a string.</li>
+</ul>
+<h2 id="request_pipeline">request_pipeline</h2>
+<p><code>syntax: responses, err = httpc:request_pipeline(params)</code></p>
+<p>This method works as per the <a href="#request">request</a> method above, but <code>params</code> is instead a table of param tables. Each request is sent in order, and <code>responses</code> is returned as a table of response handles. For example:</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb2-1"><a href="#cb2-1"></a><span class="kw">local</span> responses <span class="op">=</span> httpc<span class="op">:</span>request_pipeline<span class="op">{</span></span>
+<span id="cb2-2"><a href="#cb2-2"></a>  <span class="op">{</span></span>
+<span id="cb2-3"><a href="#cb2-3"></a>    path <span class="op">=</span> <span class="st">&quot;/b&quot;</span><span class="op">,</span></span>
+<span id="cb2-4"><a href="#cb2-4"></a>  <span class="op">},</span></span>
+<span id="cb2-5"><a href="#cb2-5"></a>  <span class="op">{</span></span>
+<span id="cb2-6"><a href="#cb2-6"></a>    path <span class="op">=</span> <span class="st">&quot;/c&quot;</span><span class="op">,</span></span>
+<span id="cb2-7"><a href="#cb2-7"></a>  <span class="op">},</span></span>
+<span id="cb2-8"><a href="#cb2-8"></a>  <span class="op">{</span></span>
+<span id="cb2-9"><a href="#cb2-9"></a>    path <span class="op">=</span> <span class="st">&quot;/d&quot;</span><span class="op">,</span></span>
+<span id="cb2-10"><a href="#cb2-10"></a>  <span class="op">}</span></span>
+<span id="cb2-11"><a href="#cb2-11"></a><span class="op">}</span></span>
+<span id="cb2-12"><a href="#cb2-12"></a></span>
+<span id="cb2-13"><a href="#cb2-13"></a><span class="cf">for</span> i<span class="op">,</span>r <span class="kw">in</span> <span class="fu">ipairs</span><span class="op">(</span>responses<span class="op">)</span> <span class="cf">do</span></span>
+<span id="cb2-14"><a href="#cb2-14"></a>  <span class="cf">if</span> r<span class="op">.</span>status <span class="cf">then</span></span>
+<span id="cb2-15"><a href="#cb2-15"></a>    ngx<span class="op">.</span>say<span class="op">(</span>r<span class="op">.</span>status<span class="op">)</span></span>
+<span id="cb2-16"><a href="#cb2-16"></a>    ngx<span class="op">.</span>say<span class="op">(</span>r<span class="op">:</span>read_body<span class="op">())</span></span>
+<span id="cb2-17"><a href="#cb2-17"></a>  <span class="cf">end</span></span>
+<span id="cb2-18"><a href="#cb2-18"></a><span class="cf">end</span></span></code></pre></div>
+<p>Due to the nature of pipelining, no responses are actually read until you attempt to use the response fields (status / headers etc). And since the responses are read off in order, you must read the entire body (and any trailers if you have them), before attempting to read the next response.</p>
+<p>Note this doesn’t preclude the use of the streaming response body reader. Responses can still be streamed, so long as the entire body is streamed before attempting to access the next response.</p>
+<p>Be sure to test at least one field (such as status) before trying to use the others, in case a socket read error has occurred.</p>
+<h1 id="response">Response</h1>
+<h2 id="res.body_reader">res.body_reader</h2>
+<p>The <code>body_reader</code> iterator can be used to stream the response body in chunk sizes of your choosing, as follows:</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb3-1"><a href="#cb3-1"></a><span class="kw">local</span> reader <span class="op">=</span> res<span class="op">.</span>body_reader</span>
+<span id="cb3-2"><a href="#cb3-2"></a></span>
+<span id="cb3-3"><a href="#cb3-3"></a><span class="cf">repeat</span></span>
+<span id="cb3-4"><a href="#cb3-4"></a>  <span class="kw">local</span> chunk<span class="op">,</span> err <span class="op">=</span> reader<span class="op">(</span><span class="dv">8192</span><span class="op">)</span></span>
+<span id="cb3-5"><a href="#cb3-5"></a>  <span class="cf">if</span> err <span class="cf">then</span></span>
+<span id="cb3-6"><a href="#cb3-6"></a>    ngx<span class="op">.</span>log<span class="op">(</span>ngx<span class="op">.</span><span class="cn">ERR</span><span class="op">,</span> err<span class="op">)</span></span>
+<span id="cb3-7"><a href="#cb3-7"></a>    <span class="cf">break</span></span>
+<span id="cb3-8"><a href="#cb3-8"></a>  <span class="cf">end</span></span>
+<span id="cb3-9"><a href="#cb3-9"></a></span>
+<span id="cb3-10"><a href="#cb3-10"></a>  <span class="cf">if</span> chunk <span class="cf">then</span></span>
+<span id="cb3-11"><a href="#cb3-11"></a>    <span class="co">-- process</span></span>
+<span id="cb3-12"><a href="#cb3-12"></a>  <span class="cf">end</span></span>
+<span id="cb3-13"><a href="#cb3-13"></a><span class="cf">until</span> <span class="kw">not</span> chunk</span></code></pre></div>
+<p>If the reader is called with no arguments, the behaviour depends on the type of connection. If the response is encoded as chunked, then the iterator will return the chunks as they arrive. If not, it will simply return the entire body.</p>
+<p>Note that the size provided is actually a <strong>maximum</strong> size. So in the chunked transfer case, you may get chunks smaller than the size you ask, as a remainder of the actual HTTP chunks.</p>
+<h2 id="resread_body">res:read_body</h2>
+<p><code>syntax: body, err = res:read_body()</code></p>
+<p>Reads the entire body into a local string.</p>
+<h2 id="resread_trailers">res:read_trailers</h2>
+<p><code>syntax: res:read_trailers()</code></p>
+<p>This merges any trailers underneath the <code>res.headers</code> table itself. Must be called after reading the body.</p>
+<h1 id="proxy">Proxy</h1>
+<p>There are two convenience methods for when one simply wishes to proxy the current request to the connected upstream, and safely send it downstream to the client, as a reverse proxy. A complete example:</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb4-1"><a href="#cb4-1"></a><span class="kw">local</span> http <span class="op">=</span> <span class="fu">require</span> <span class="st">&quot;resty.http&quot;</span></span>
+<span id="cb4-2"><a href="#cb4-2"></a><span class="kw">local</span> httpc <span class="op">=</span> http<span class="op">.</span>new<span class="op">()</span></span>
+<span id="cb4-3"><a href="#cb4-3"></a></span>
+<span id="cb4-4"><a href="#cb4-4"></a>httpc<span class="op">:</span>set_timeout<span class="op">(</span><span class="dv">500</span><span class="op">)</span></span>
+<span id="cb4-5"><a href="#cb4-5"></a><span class="kw">local</span> ok<span class="op">,</span> err <span class="op">=</span> httpc<span class="op">:</span><span class="fu">connect</span><span class="op">(</span><span class="cn">HOST</span><span class="op">,</span> <span class="cn">PORT</span><span class="op">)</span></span>
+<span id="cb4-6"><a href="#cb4-6"></a></span>
+<span id="cb4-7"><a href="#cb4-7"></a><span class="cf">if</span> <span class="kw">not</span> ok <span class="cf">then</span></span>
+<span id="cb4-8"><a href="#cb4-8"></a>  ngx<span class="op">.</span>log<span class="op">(</span>ngx<span class="op">.</span><span class="cn">ERR</span><span class="op">,</span> err<span class="op">)</span></span>
+<span id="cb4-9"><a href="#cb4-9"></a>  <span class="cf">return</span></span>
+<span id="cb4-10"><a href="#cb4-10"></a><span class="cf">end</span></span>
+<span id="cb4-11"><a href="#cb4-11"></a></span>
+<span id="cb4-12"><a href="#cb4-12"></a>httpc<span class="op">:</span>set_timeout<span class="op">(</span><span class="dv">2000</span><span class="op">)</span></span>
+<span id="cb4-13"><a href="#cb4-13"></a>httpc<span class="op">:</span>proxy_response<span class="op">(</span>httpc<span class="op">:</span>proxy_request<span class="op">())</span></span>
+<span id="cb4-14"><a href="#cb4-14"></a>httpc<span class="op">:</span>set_keepalive<span class="op">()</span></span></code></pre></div>
+<h2 id="proxy_request">proxy_request</h2>
+<p><code>syntax: local res, err = httpc:proxy_request(request_body_chunk_size?)</code></p>
+<p>Performs a request using the current client request arguments, effectively proxying to the connected upstream. The request body will be read in a streaming fashion, according to <code>request_body_chunk_size</code> (see <a href="#get_client_body_reader">documentation on the client body reader</a> below).</p>
+<h2 id="proxy_response">proxy_response</h2>
+<p><code>syntax: httpc:proxy_response(res, chunksize?)</code></p>
+<p>Sets the current response based on the given <code>res</code>. Ensures that hop-by-hop headers are not sent downstream, and will read the response according to <code>chunksize</code> (see <a href="#resbody_reader">documentation on the body reader</a> above).</p>
+<h1 id="utility">Utility</h1>
+<h2 id="parse_uri">parse_uri</h2>
+<p><code>syntax: local scheme, host, port, path, query? = unpack(httpc:parse_uri(uri, query_in_path?))</code></p>
+<p>This is a convenience function allowing one to more easily use the generic interface, when the input data is a URI.</p>
+<p>As of version <code>0.10</code>, the optional <code>query_in_path</code> parameter was added, which specifies whether the querystring is to be included in the <code>path</code> return value, or separately as its own return value. This defaults to <code>true</code> in order to maintain backwards compatibility. When set to <code>false</code>, <code>path</code> will only include the path, and <code>query</code> will contain the URI args, not including the <code>?</code> delimiter.</p>
+<h2 id="get_client_body_reader">get_client_body_reader</h2>
+<p><code>syntax: reader, err = httpc:get_client_body_reader(chunksize?, sock?)</code></p>
+<p>Returns an iterator function which can be used to read the downstream client request body in a streaming fashion. You may also specify an optional default chunksize (default is <code>65536</code>), or an already established socket in place of the client request.</p>
+<p>Example:</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb5-1"><a href="#cb5-1"></a><span class="kw">local</span> req_reader <span class="op">=</span> httpc<span class="op">:</span>get_client_body_reader<span class="op">()</span></span>
+<span id="cb5-2"><a href="#cb5-2"></a></span>
+<span id="cb5-3"><a href="#cb5-3"></a><span class="cf">repeat</span></span>
+<span id="cb5-4"><a href="#cb5-4"></a>  <span class="kw">local</span> chunk<span class="op">,</span> err <span class="op">=</span> req_reader<span class="op">(</span><span class="dv">8192</span><span class="op">)</span></span>
+<span id="cb5-5"><a href="#cb5-5"></a>  <span class="cf">if</span> err <span class="cf">then</span></span>
+<span id="cb5-6"><a href="#cb5-6"></a>    ngx<span class="op">.</span>log<span class="op">(</span>ngx<span class="op">.</span><span class="cn">ERR</span><span class="op">,</span> err<span class="op">)</span></span>
+<span id="cb5-7"><a href="#cb5-7"></a>    <span class="cf">break</span></span>
+<span id="cb5-8"><a href="#cb5-8"></a>  <span class="cf">end</span></span>
+<span id="cb5-9"><a href="#cb5-9"></a></span>
+<span id="cb5-10"><a href="#cb5-10"></a>  <span class="cf">if</span> chunk <span class="cf">then</span></span>
+<span id="cb5-11"><a href="#cb5-11"></a>    <span class="co">-- process</span></span>
+<span id="cb5-12"><a href="#cb5-12"></a>  <span class="cf">end</span></span>
+<span id="cb5-13"><a href="#cb5-13"></a><span class="cf">until</span> <span class="kw">not</span> chunk</span></code></pre></div>
+<p>This iterator can also be used as the value for the body field in request params, allowing one to stream the request body into a proxied upstream request.</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb6-1"><a href="#cb6-1"></a><span class="kw">local</span> client_body_reader<span class="op">,</span> err <span class="op">=</span> httpc<span class="op">:</span>get_client_body_reader<span class="op">()</span></span>
+<span id="cb6-2"><a href="#cb6-2"></a></span>
+<span id="cb6-3"><a href="#cb6-3"></a><span class="kw">local</span> res<span class="op">,</span> err <span class="op">=</span> httpc<span class="op">:</span>request<span class="op">{</span></span>
+<span id="cb6-4"><a href="#cb6-4"></a>   path <span class="op">=</span> <span class="st">&quot;/helloworld&quot;</span><span class="op">,</span></span>
+<span id="cb6-5"><a href="#cb6-5"></a>   body <span class="op">=</span> client_body_reader<span class="op">,</span></span>
+<span id="cb6-6"><a href="#cb6-6"></a><span class="op">}</span></span></code></pre></div>

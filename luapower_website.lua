@@ -154,7 +154,7 @@ local function md_refs()
 end
 
 local function render_docfile(infile)
-	local outfile = wwwpath('.cache/'..escape_filename(infile)..'.html')
+	local outfile = config('www_dir')..'/.cache/'..escape_filename(infile)..'.html'
 	if older(outfile, infile) then
 		local s1 = glue.readfile(infile)
 		local s2 = md_refs()

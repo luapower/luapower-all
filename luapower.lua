@@ -61,8 +61,9 @@ CONVENTIONS:
 
 	* not installed packages are those known but not installed.
 
-	* modules can be anywhere in the tree except in `csrc`, `media`, `.mgit`,
-	`bin`, `tmp`, `logs`, `*-www` and they can be in `bin/<platform>/clib`.
+	* modules can be anywhere in the tree except in `/csrc`, `/media`,
+	`examples`, `/.mgit`, `/bin`, `/tmp`, `/logs`, `/*-www` and they can be
+	in `bin/<platform>/clib`.
 
 	* docs are `*.md` files in Pandoc Markdown format and can be anywhere in
 	the tree where modules can be.
@@ -1313,6 +1314,7 @@ local function is_module_path(p)
 		   p:find'^bin/'     --can't have modules in bin
 		or p:find'^csrc/'    --can't have modules in csrc
 		or p:find'^media/'   --can't have modules in media
+		or p:find'/examples/'--can't have modules in examples
 		or p:find'^tmp/'     --can't have modules in tmp
 		or p:find'^logs/'    --can't have modules in logs
 		or p:find'^.-%-www/' --can't have modules in www dirs
