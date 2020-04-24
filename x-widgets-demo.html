@@ -1,10 +1,6 @@
 <!DOCTYPE html>
 <html>
 <head>
-<script src="https://pagecdn.io/lib/ace/1.4.8/ace.js"
-	crossorigin="anonymous"
-	integrity="sha256-+svOVB1WmhKhTy7N21gWvtyXn91qF0r52P2hIArRRug=">
-</script>
 <style>
 
 * { box-sizing: border-box; }
@@ -87,16 +83,19 @@ h2 {
 
 </style>
 
+<script src="ace.js" integrity="sha256-+svOVB1WmhKhTy7N21gWvtyXn91qF0r52P2hIArRRug="></script>
+
 <link rel="stylesheet" type="text/css" href="fontawesome.css">
 <link rel="stylesheet" type="text/css" href="x-widgets.css">
 
 <script src="glue.js"></script>
 <script src="divs.js"></script>
+<script src="ajax.js"></script>
+<script src="url.js"></script>
 <script src="x-rowset-widget.js"></script>
 <script src="x-widgets.js"></script>
 <script src="x-grid.js"></script>
 <script src="x-listbox.js"></script>
-<script src="ajax.js"></script>
 
 </head>
 
@@ -409,8 +408,8 @@ main.add(H.div({},
 	spin_input({button_style: 'left-right', label: 'Dis look good?'})
 ))
 main.add(H.div({},
-	spin_input({min: -2, max: 5, step: 1.5, button_placement: 'right', value: 1}),
-	spin_input({min: -2, max: 5, step: 1.5, button_placement: 'right', label: 'How bout dis?'}),
+	spin_input({min: -2, max: 5, multiple_of: 1.5, button_placement: 'right', value: 1}),
+	spin_input({min: -2, max: 5, multiple_of: 1.5, button_placement: 'right', label: 'How bout dis?'}),
 ))
 
 </script>
@@ -433,7 +432,7 @@ main.add(H.div({},
 
 main.add(H.div({},
 	'Slider 2',
-	slider({value: 1500, from: 1000, to: 2000, step: 200, min: 1300, max: 1700}))
+	slider({value: 1500, from: 1000, to: 2000, multiple_of: 200, min: 1300, max: 1700}))
 )
 
 </script>
@@ -846,18 +845,21 @@ r = rowset({
 
 g = grid({w: 200, h: 200, rowset: r})
 
-i1 = input({rowset: r, navigator: g, field: 'name'})
-
-// nav = navigator({rowset: r, value: 1})
+i1 = input({rowset: r, nav: g, col: 'name'})
 
 main.add(H.div({}, g), i1)
+
+main.add(button({
+	text: 'unfocus row',
+	onclick: function() { g.focused_row = null },
+}))
 
 </script>
 </template>
 
 <!--------------------------------------------------------------------------->
 
-<template id=lookup_field_demo>
+<template id=lookup_col_demo>
 <help>
 
 </help>
@@ -881,7 +883,7 @@ r = rowset({
 		{w: 100, name: 'fruit_id', type: 'number', align: 'left', text: 'fruit',
 			lookup_rowset: fruits,
 			lookup_col: 'id',
-			display_field: 'name',
+			display_col: 'name',
 		},
 	],
 	rows: [
@@ -963,7 +965,7 @@ var data = {
 		{name: 'date'      , w: 140, allow_null: true, type: 'date'},
 	],
 	pk: 'id',
-	url: 'rowset-test.json',
+	url: 'rowset.json/test_static',
 }
 
 d = rowset(data)
@@ -982,6 +984,29 @@ main.add(log)
 d.on('row_changed', function() {
 	log.html = json(d.pack_changeset(), null, 3)
 })
+
+d.load()
+
+</script>
+</template>
+
+<!--------------------------------------------------------------------------->
+
+<template id=query_demo>
+<help>
+
+</help>
+<script>
+
+d = global_rowset('test_query')
+
+g = grid({
+	rowset: d,
+	w: 500,
+	h: 200,
+})
+
+main.add(g)
 
 d.load()
 
@@ -1040,13 +1065,13 @@ run_button.on('click', function() {
 })
 
 reload_button.on('click', function() {
-	acec_editor.getSession().setValue(editor.initial_script)
+	ace_editor.getSession().setValue(editor.initial_script)
 	run_script()
 })
 
 demo_list_ct.add(demo_list)
 
-demo_list.value = 23
+demo_list.value = 24
 
 lights_button.on('click', function() {
 	let dark = !document.body.hasclass('x-dark')

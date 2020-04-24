@@ -5,7 +5,7 @@
 
 QUERY
 
-	quote(s) -> s                             quote sql string
+	quote_sql(s) -> s                         quote sql string
 	print_queries([t|f]) -> t|f               control printing of queries
 	query(s, args...) -> res                  query and return result table
 	query1(s, args...) -> t                   query and return first row
@@ -31,26 +31,38 @@ local mysql = require'webb_mysql'
 
 --db connection --------------------------------------------------------------
 
-local db --global db object
-
 local function assert_db(ret, ...)
 	if ret ~= nil then return ret, ... end
 	local err, errno, sqlstate = ...
 	error('db error: '..err..': '..(errno or '')..' '..(sqlstate or ''))
 end
 
-local function connect()
-	if db then return end
-	db = assert(mysql:new())
-	db:set_timeout(config('db_conn_timeout', 3) * 1000)
-	assert_db(db:connect{
-		host     = config('db_host', '127.0.0.1'),
-		port     = config('db_port', 3306),
-		database = config('db_name'),
-		user     = config('db_user', 'root'),
-		password = config('db_pass'),
-	})
-	db:set_timeout(config('db_query_timeout', 30) * 1000)
+local function pconfig(ns, k, default)
+	if ns then
+		return config(ns..'_'..k, config(k, default))
+	else
+		return config(k, default)
+	end
+end
+
+local dbs = {} --connected db objects
+
+local function connect(ns)
+	local db = dbs[ns]
+	if not db then
+		db = assert(mysql:new())
+		db:set_timeout(pconfig(ns, 'db_conn_timeout', 3) * 1000)
+		assert_db(db:connect{
+			host     = pconfig(ns, 'db_host', '127.0.0.1'),
+			port     = pconfig(ns, 'db_port', 3306),
+			database = pconfig(ns, 'db_name'),
+			user     = pconfig(ns, 'db_user', 'root'),
+			password = pconfig(ns, 'db_pass'),
+		})
+		db:set_timeout(pconfig(ns, 'db_query_timeout', 30) * 1000)
+		dbs[ns] = db
+	end
+	return db
 end
 
 --macro substitution ---------------------------------------------------------
@@ -58,7 +70,7 @@ end
 local substs = {}
 
 function qsubst(def) --'name type'
-	local name, val = def:match'(%w+)%s+(.*)'
+	local name, val = def:match'([%w_]+)%s+(.*)'
 	substs[name] = val
 end
 
@@ -77,15 +89,15 @@ end
 
 local function preprocess(sql)
 	sql = sql:gsub('%-%-[^\r\n]*', '') --remove comments
-	sql = sql:gsub('$(%w+)(%b())', macro_subst)
-	sql = sql:gsub('$(%w+)', substs)
+	sql = sql:gsub('$([%w_]+)(%b())', macro_subst)
+	sql = sql:gsub('$([%w_]+)', substs)
 	return sql
 end
 
 --arg substitution -----------------------------------------------------------
 
-function quote(v)
-	if v == nil then
+function quote_sql(v)
+	if v == nil or v == null then
 		return 'null'
 	elseif v == true then
 		return 1
@@ -97,12 +109,29 @@ function quote(v)
 		return nil, 'invalid arg '.. require'pp'.format(v)
 	end
 end
+quote = quote_sql --TODO: remove this (conflicts with terra)
+
+local function set_named_params(sql, t)
+	local dt = {}
+	for k,v in pairs(t) do
+		local v, err = quote_sql(v)
+		if err then
+			error(err .. ' in query "' .. sql .. '"')
+		end
+		dt[k] = v
+	end
+	local i = 0
+	return sql:gsub('$([%w_]+)', dt), keys(dt, true)
+end
 
 local function set_params(sql, ...)
+	if type((...)) == 'table' then
+		return set_named_params(sql, ...)
+	end
 	local t = {}
 	for i = 1, select('#', ...) do
 		local arg = select(i, ...)
-		local v, err = quote(arg)
+		local v, err = quote_sql(arg)
 		if err then
 			error(err .. ' in query "' .. sql .. '"')
 		end
@@ -110,18 +139,6 @@ local function set_params(sql, ...)
 	end
 	local i = 0
 	return sql:gsub('%?', function() i = i + 1; return t[i] end)
-end
-
---result processing ----------------------------------------------------------
-
-local function remove_nulls(t)
-	for i,t in ipairs(t) do
-		for k,v in pairs(t) do
-			if v == ngx.null then
-				t[k] = nil
-			end
-		end
-	end
 end
 
 --query execution ------------------------------------------------------------
@@ -138,7 +155,7 @@ local function outdent(s)
 	local indent = s:match'^[\t%s]+'
 	if not indent then return s end
 	local t = {}
-	for s in (s..'\n'):gmatch'(.-)\r?\n' do
+	for s in s:lines() do
 		local indent1 = s:sub(1, #indent)
 		if indent1 ~= indent then
 			goto fail
@@ -151,7 +168,6 @@ local function outdent(s)
 end
 
 local function process_result(t, cols)
-	remove_nulls(t)
 	if cols and #cols == 1 then --single column result: return it as array
 		local t0 = t
 		local name = cols[1].name
@@ -163,12 +179,18 @@ local function process_result(t, cols)
 	return t
 end
 
-local function run_query(sql)
+local function run_query_on(ns, compact, sql, ...)
+	local db = connect(ns)
+	local sql = preprocess(sql)
+	local sql, params = set_params(sql, ...)
 	if print_queries() then
 		print(outdent(sql))
 	end
 	assert_db(db:send_query(sql))
+	local old_compact = db.compact
+	db.compact = compact
 	local t, err, cols = assert_db(db:read_result())
+	db.compact = old_compact
 	t = process_result(t, cols)
 	if err == 'again' then --multi-result/multi-statement query
 		t = {t}
@@ -178,30 +200,40 @@ local function run_query(sql)
 			t[#t+1] = t1
 		until not err
 	end
-	return t, cols
+	return t, cols, params
 end
 
-function query(sql, ...) --execute, iterate rows, close
-	connect()
-	sql = preprocess(sql)
-	sql = set_params(sql, ...)
-	return run_query(sql)
+function query_on(ns, ...) --execute, iterate rows, close
+	return run_query_on(ns, true, ...)
+end
+
+function query(...)
+	return query_on(false, ...)
 end
 
 --query frontends ------------------------------------------------------------
 
-function query1(sql, ...) --query first row (or first row/column) and close
-	local t, cols = query(sql, ...)
+function query1_on(ns, ...) --query first row (or first row/column) and close
+	local t, cols, params = run_query_on(ns, false, ...)
 	local row = t[1]
 	if not row then return end
 	if #cols == 1 then
-		return row --row is actually the value
+		return row, params --row is actually the value
 	end --first row/col
-	return row --first row
+	return row, params --first row
 end
 
-function iquery(sql, ...) --insert query: return autoincremented id
-	return query(sql, ...).insert_id
+function query1(...)
+	return query1_on(false, ...)
+end
+
+function iquery_on(ns, ...) --insert query: return autoincremented id
+	local t, cols, params = run_query_on(ns, true, ...)
+	return t.insert_id, params
+end
+
+function iquery(...)
+	return iquery_on(false, ...)
 end
 
 function changed(res)
@@ -276,8 +308,8 @@ local function fkname(tbl, col)
 end
 
 function qmacro.fk(tbl, col, ftbl, fcol, ondelete, onupdate)
-	ondelete = ondelete or 'cascade'
-	onupdate = onupdate or 'restrict'
+	ondelete = ondelete or 'restrict'
+	onupdate = onupdate or 'cascade'
 	local a1 = ondelete ~= 'restrict' and ' on delete '..ondelete or ''
 	local a2 = onupdate ~= 'restrict' and ' on update '..onupdate or ''
 	return string.format(

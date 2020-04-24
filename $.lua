@@ -72,6 +72,7 @@ band = bit.band
 bor  = bit.bor
 xor  = bit.bxor
 
+C       = ffi.C
 cast    = ffi.cast
 Windows = false
 Linux   = false

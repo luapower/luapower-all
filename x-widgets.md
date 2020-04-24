@@ -35,11 +35,13 @@ To install the library you need docker, kubernetes, webpack, redis, memcached
 Look, it's just one .js file and one .css file. Load them as they are or
 bundle, minify and gzip them, do what you have to do. Just make it look professional.
 
-The dependencies are `glue.js` and `divs.js` from [webb] so get those first.
+The dependencies are `glue.js`, `divs.js` and `ajax.js` from [webb] so get those first.
 
 `glue.js` extends JavaScript with basic routines similar to [glue] from Lua.
 
 `divs.js` is a tiny jQuery-like library for DOM manipulation.
+
+`ajax.js` is an even tinier wrapper over XMLHttpRequest().
 
 ## Styling
 

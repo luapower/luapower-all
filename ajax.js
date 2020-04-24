@@ -30,7 +30,7 @@ function ajax(req) {
 	xhr.open(method, req.url, true, req.user, req.pass)
 
 	let upload = req.upload
-	if (typeof(upload) == 'object') {
+	if (typeof upload == 'object') {
 		upload = json(upload)
 		xhr.setRequestHeader('content-type', 'application/json')
 	}

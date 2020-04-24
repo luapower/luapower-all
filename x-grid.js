@@ -11,6 +11,7 @@ grid = component('x-grid', function(e) {
 	e.w = 400
 	e.h = 400
 	e.row_h = 26
+	e.row_border_w = 1
 	e.row_border_h = 1
 	e.min_col_w = 20
 
@@ -37,16 +38,17 @@ grid = component('x-grid', function(e) {
 	e.rows_view_div.on('scroll', update_view)
 
 	e.init = function() {
+		e.rowset = global_rowset(e.rowset, {param_nav: e.param_nav})
 		e.init_fields_array()
 		e.init_rows_array()
 		e.init_nav()
-		init_header()
+		e.init_fields()
 	}
 
 	function bind_document(on) {
-		document.onoff('mousedown', document_mousedown, on)
-		document.onoff('mouseup'  , document_mouseup  , on)
-		document.onoff('mousemove', document_mousemove, on)
+		document.on('mousedown', document_mousedown, on)
+		document.on('mouseup'  , document_mouseup  , on)
+		document.on('mousemove', document_mousemove, on)
 	}
 
 	e.attach = function() {
@@ -112,6 +114,8 @@ grid = component('x-grid', function(e) {
 	}
 
 	function tr_at(ri) {
+		if (ri == null)
+			return
 		let sy = e.scroll_y
 		let i0 = first_visible_row(sy)
 		let i1 = i0 + e.visible_row_count
@@ -125,17 +129,20 @@ grid = component('x-grid', function(e) {
 	// rendering --------------------------------------------------------------
 
 	function field_w(field, w) {
-		return max(e.min_col_w, clamp(or(w, field.w), field.min_w || -1/0, field.max_w || 1/0))
+		return max(e.min_col_w, clamp(or(w, field.w), field.min_w, field.max_w))
 	}
 
 	// when: fields changed.
-	function init_header() {
+	e.init_fields = function() {
 		set_header_visibility()
 		e.header_tr.clear()
 		for (let field of e.fields) {
 			let sort_icon     = H.span({class: 'fa x-grid-sort-icon'})
 			let sort_icon_pri = H.span({class: 'x-grid-header-sort-icon-pri'})
-			let e1 = H.td({class: 'x-grid-header-title-td'}, H(field.text) || field.name)
+			let e1 = H.td({
+					class: 'x-grid-header-title-td',
+					title: field.text || field.name
+				}, H(field.text) || field.name)
 			let e2 = H.td({class: 'x-grid-header-sort-icon-td'}, sort_icon, sort_icon_pri)
 			if (field.align == 'right')
 				[e1, e2] = [e2, e1]
@@ -153,10 +160,6 @@ grid = component('x-grid', function(e) {
 
 			th.w = field_w(field)
 			th.style['border-right-width' ] = e.row_border_w + 'px'
-
-			th.on('mousedown', header_cell_mousedown)
-			th.on('rightmousedown', header_cell_rightmousedown)
-			th.on('contextmenu', function() { return false })
 
 			e.header_tr.add(th)
 		}
@@ -179,7 +182,6 @@ grid = component('x-grid', function(e) {
 				td.style['border-bottom-width'] = e.row_border_h + 'px'
 				if (field.align)
 					td.attr('align', field.align)
-				td.on('mousedown', cell_mousedown)
 				tr.add(td)
 			}
 			e.rows_table.add(tr)
@@ -188,7 +190,7 @@ grid = component('x-grid', function(e) {
 
 	// when: widget height changed.
 	let cw, ch
-	e.on('attr_changed' , function() {
+	e.on('attr_changed', function() {
 		if (e.clientWidth === cw && e.clientHeight === ch)
 			return
 		if (e.clientHeight !== ch) {
@@ -358,6 +360,7 @@ grid = component('x-grid', function(e) {
 
 	e.init_rows = function() {
 		update_heights()
+		init_rows_table()
 		update_view()
 	}
 
@@ -383,34 +386,51 @@ grid = component('x-grid', function(e) {
 
 	// mouse bindings ---------------------------------------------------------
 
-	function header_cell_mousedown(ev) {
+	function find_th(e) {
+		return e && (e.field ? e : find_th(e.parent))
+	}
+
+	e.header_table.on('mousedown', function header_cell_mousedown(ev) {
+		let th = find_th(ev.target)
+		if (!th) // didn't click on the th.
+			return
 		if (e.hasclass('col-resize'))
 			return
 		e.focus()
-		e.toggle_order(this.field, ev.shiftKey)
+		e.toggle_order(th.field, ev.shiftKey)
 		return false
-	}
+	})
 
-	function header_cell_rightmousedown(ev) {
+	e.header_table.on('rightmousedown', function header_cell_rightmousedown(ev) {
+		let th = find_th(ev.target)
+		if (!th) // didn't click on the th.
+			return
 		if (e.hasclass('col-resize'))
 			return
 		e.focus()
 		if (ev.shiftKey) {
-			field_context_menu_popup(ev.target, this.field)
+			field_context_menu_popup(th, th.field)
 			return false
 		}
 		e.clear_order()
 		return false
+	})
+
+	e.header_table.on('contextmenu', function() { return false })
+
+	function find_td(e) {
+		return e && (e.field_index ? e : find_td(e.parent))
 	}
 
-	function cell_mousedown() {
+	e.rows_table.on('mousedown', function cell_mousedown(ev) {
+		let td = ev.target
 		if (e.hasclass('col-resize'))
 			return
 		let had_focus = e.hasfocus
 		if (!had_focus)
 			e.focus()
-		let ri = this.parent.row_index
-		let fi = this.field_index
+		let ri = td.parent.row_index
+		let fi = td.field_index
 		if (e.focused_row_index == ri && e.focused_field_index == fi) {
 			if (had_focus) {
 				// TODO: what we want here is `e.enter_edit()` without `return false`
@@ -425,7 +445,7 @@ grid = component('x-grid', function(e) {
 				e.fire('value_picked') // picker protocol.
 			return false
 		}
-	}
+	})
 
 	// make columns resizeable ------------------------------------------------
 

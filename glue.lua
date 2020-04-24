@@ -1,5 +1,5 @@
 
---Lua extended vocabulary of tools.
+--Lua extended vocabulary of basic tools.
 --Written by Cosmin Apreutesei. Public domain.
 
 if not ... then require'glue_test'; return end

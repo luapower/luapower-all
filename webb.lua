@@ -146,40 +146,44 @@ glue = require'glue'
 
 --cached config function -----------------------------------------------------
 
-local conf = {}
-local null = conf
-function config(var, default)
-	if type(var) == 'table' then
-		for var, val in pairs(var) do
-			config(var, val)
-		end
-		return
-	end
-	local val = conf[var]
-	if val == nil then
-		val = os.getenv(var:upper())
-		if val == nil then
-			val = ngx.var[var]
-			if val == nil then
-				val = default
+do
+	local conf = {}
+	local null = conf
+	function config(var, default)
+		if type(var) == 'table' then
+			for var, val in pairs(var) do
+				config(var, val)
 			end
+			return
 		end
-		conf[var] = val == nil and null or val
-	end
-	if val == null then
-		return nil
-	else
-		return val
+		local val = conf[var]
+		if val == nil then
+			val = os.getenv(var:upper())
+			if val == nil then
+				val = ngx.var[var]
+				if val == nil then
+					val = default
+				end
+			end
+			conf[var] = val == nil and null or val
+		end
+		if val == null then
+			return nil
+		else
+			return val
+		end
 	end
 end
 
 --separate config function for internationalizing strings.
-local S_ = {}
-function S(name, val)
-	if val and not S_[name] then
-		S_[name] = val
+do
+	local S_ = {}
+	function S(name, val)
+		if val and not S_[name] then
+			S_[name] = val
+		end
+		return S_[name] or name
 	end
-	return S_[name] or name
 end
 
 --per-request environment ----------------------------------------------------
@@ -639,8 +643,10 @@ end
 local cjson = require'cjson'
 cjson.encode_sparse_array(false, 0, 0) --encode all sparse arrays
 
+null = cjson.null
+
 local function remove_nulls(t)
-	if t == cjson.null then
+	if t == null then
 		return nil
 	elseif type(t) == 'table' then
 		for k,v in pairs(t) do
@@ -659,8 +665,6 @@ function json(v)
 		error('invalid arg '..type(v))
 	end
 end
-
-null = cjson.null
 
 function out_json(v)
 	local s = cjson.encode(v)

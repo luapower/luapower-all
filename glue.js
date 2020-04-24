@@ -1,5 +1,9 @@
 /*
 
+	JavaScript extended vocabulary of basic tools.
+	Written by Cosmin Apreutesei. Public domain.
+
+
 	clamp(x, x0, x1)
 	sign(x)
 
@@ -128,7 +132,7 @@ method(String, 'format', function(...args) {
 		return s
 	if (isarray(args[0]))
 		args = args[0]
-	if (typeof(args[0]) == 'object')
+	if (typeof args[0] == 'object')
 		for (let k in args)
 			s = s.replace(RegExp('\\{' + k + '\\}', 'gi'), args[k])
 	else
@@ -171,7 +175,7 @@ method(Array, 'remove_value', function(v) {
 // hash maps -----------------------------------------------------------------
 
 function keys(o, cmp) {
-	let t = Object.getOwnPropertyNames(o)
+	let t = Object.keys(o)
 	if (typeof sort == 'function')
 		t.sort(cmp)
 	else if (cmp)
@@ -197,7 +201,10 @@ function array_attr(t, k) {
 
 function events_mixin(o) {
 	let obs = new Map()
-	o.on = function(topic, handler) {
+	o.on = function(topic, handler, enable) {
+		assert(enable === undefined || typeof enable == 'boolean')
+		if (enable !== undefined && enable !== true)
+			return o.off(topic, handler)
 		if (!handler)
 			return
 		let handlers = obs.get(topic)
@@ -214,12 +221,6 @@ function events_mixin(o) {
 				handlers.remove_value(handler)
 			else
 				handlers.clear()
-	}
-	o.onoff = function(topic, handler, enable) {
-		if (enable)
-			o.on(topic, handler)
-		else
-			o.off(topic, handler)
 	}
 	o.fire = function(topic, ...args) {
 		var a = obs.get(topic)

@@ -101,7 +101,7 @@ alias(DocumentFragment, '$', 'querySelectorAll')
 function $(s) { return document.querySelectorAll(s) }
 
 function E(s) {
-	return typeof(s) == 'string' ? document.querySelector(s) : s
+	return typeof s == 'string' ? document.querySelector(s) : s
 }
 
 // dom tree manipulation -----------------------------------------------------
@@ -142,13 +142,13 @@ alias(Element, 'html', 'innerHTML')
 
 // create a text node from a string, quoting it automatically.
 function T(s) {
-	return typeof(s) == 'string' ? document.createTextNode(s) : s
+	return typeof s == 'string' ? document.createTextNode(s) : s
 }
 
 // create a html element from a html string.
 // if the string contains more than one element or text node, wrap them in a span.
 function H(s) {
-	if (typeof(s) != 'string') // pass-through nulls and elements
+	if (typeof s != 'string') // pass-through nulls and elements
 		return s
 	var span = H.span(0)
 	span.html = s.trim()
@@ -176,7 +176,7 @@ function tag(tag, attrs, ...children) {
 let callers = {}
 
 function passthrough_caller(e, f) {
-	if (typeof(e.detail) == 'object' && e.detail.args)
+	if (typeof e.detail == 'object' && e.detail.args)
 		return f.call(this, ...e.detail.args, e)
 	else
 		return f.call(this, e)
@@ -231,7 +231,10 @@ installers.attr_changed = function(e) {
 	}
 }
 
-let on = function(e, f) {
+let on = function(e, f, enable) {
+	assert(enable === undefined || typeof enable == 'boolean')
+	if (enable !== undefined && enable !== true)
+		return this.off(e, f)
 	let install = installers[e]
 	if (install)
 		install(this)
@@ -261,16 +264,8 @@ let off = function(e, f) {
 	return this
 }
 
-let onoff = function(e, f, enable) {
-	if (enable)
-		this.on(e, f)
-	else
-		this.off(e, f)
-	return this
-}
-
 let fire = function(name, ...args) {
-	let e = typeof(name) == 'string' ?
+	let e = typeof name == 'string' ?
 		new CustomEvent(name, {detail: {args}}) : name
 	return this.dispatchEvent(e)
 }
@@ -278,7 +273,6 @@ let fire = function(name, ...args) {
 for (let e of [Window, Document, Element]) {
 	method(e, 'on'   , on)
 	method(e, 'off'  , off)
-	method(e, 'onoff', onoff)
 	method(e, 'fire' , fire)
 }
 
@@ -586,19 +580,19 @@ function popup_state(e) {
 	}
 
 	function events(on) {
-		window.onoff('resize', update, on)
+		window.ono('resize', update, on)
 
 		// NOTE: this detects target element size changes but there's no
 		// observer that can monitor position changes relative to document.body.
-		target.onoff('attr_changed', update, on)
+		target.ono('attr_changed', update, on)
 
 		// allow popup_update() to change popup visibility on hover.
-		target.onoff('mouseenter', update, on)
-		target.onoff('mouseleave', update, on)
+		target.on('mouseenter', update, on)
+		target.on('mouseleave', update, on)
 
 		// allow popup_update() to change popup visibility on focus.
-		target.onoff('focusin' , update, on)
-		target.onoff('focusout', update, on)
+		target.on('focusin' , update, on)
+		target.on('focusout', update, on)
 
 		// TODO: add events for other things that could cause popups to misalign:
 		// * scrolling on any of the target's parents.

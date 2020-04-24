@@ -15,6 +15,8 @@
 
 function rowset_widget(e) {
 
+	e.rowset_owner = true
+
 	e.can_edit = true
 	e.can_add_rows = true
 	e.can_remove_rows = true
@@ -99,19 +101,23 @@ function rowset_widget(e) {
 	// rowset binding ---------------------------------------------------------
 
 	e.bind_rowset = function(on) {
+		e.focused_row_bind_rowset(on)
 		// structural changes.
-		e.rowset.onoff('reload'      , reload     , on)
-		e.rowset.onoff('row_added'   , row_added  , on)
-		e.rowset.onoff('row_removed' , row_removed, on)
+		e.rowset.on('loaded'      , rowset_loaded , on)
+		e.rowset.on('row_added'   , row_added     , on)
+		e.rowset.on('row_removed' , row_removed   , on)
 		// cell value & state changes.
-		e.rowset.onoff('cell_state_changed'     , cell_state_changed     , on)
-		e.rowset.onoff('display_values_changed' , display_values_changed , on)
+		e.rowset.on('cell_state_changed'     , cell_state_changed     , on)
+		e.rowset.on('display_values_changed' , display_values_changed , on)
 		// network events
 		e.rowset.on('loading', rowset_loading, on)
 		e.rowset.on('load_slow', rowset_load_slow, on)
 		e.rowset.on('load_progress', rowset_load_progress, on)
 		// misc.
 		e.rowset.on('notify', rowset_notify, on)
+		// take/release ownership of the rowset.
+		if (e.rowset_owner)
+			e.rowset.owner = on ? e : null
 	}
 
 	// adding & removing rows -------------------------------------------------
@@ -144,11 +150,14 @@ function rowset_widget(e) {
 
 	// responding to structural updates ---------------------------------------
 
-	function reload() {
+	function rowset_loaded() {
+		free_editor()
 		e.focused_row_index = null
 		e.focused_field_index = null
+		e.init_fields_array()
 		e.init_rows_array()
 		rowmap = null
+		e.init_fields()
 		e.init_rows()
 	}
 
@@ -213,10 +222,6 @@ function rowset_widget(e) {
 	e.update_load_slow = noop // stub
 	function rowset_load_slow(on) {
 		e.update_load_slow(on)
-	}
-
-	function rowset_saving(on) {
-		//
 	}
 
 	// focusing ---------------------------------------------------------------
@@ -383,13 +388,16 @@ function rowset_widget(e) {
 	// responding to navigation -----------------------------------------------
 
 	e.on('focused_row_changed', function(row, source, ri, fi, source1, do_update) {
-		if (source1 == e && do_update == false) // got here from update_value().
-			return
-		if (source != e || ri == null) // didn't get here from set_focused_cell().
-			ri = e.row_index(row)
-		let v = e.value_field ? e.rowset.value(e.focused_row, e.value_field) : ri
-		e.set_value(v, false)
-		e.update_cell_focus(ri, fi)
+		if (source != e) { // got here from outside: focus row's index and same col.
+			e.focused_row_index = e.row_index(row)
+			e.update_cell_focus(e.focused_row_index, e.focused_cell_index)
+		} else if (source1 == e && do_update == false) { // got here from update_value().
+			e.update_cell_focus(ri, fi)
+		} else {  // got here from focus_cell().
+			let v = e.value_field ? (row ? e.rowset.value(row, e.value_field) : null) : ri
+			e.set_value(v, false)
+			e.update_cell_focus(ri, fi)
+		}
 	})
 
 	// responding to value changes --------------------------------------------
@@ -407,7 +415,6 @@ function rowset_widget(e) {
 				ri = null
 		}
 		set_focused_cell(ri, null, e, false)
-		e.update_cell_focus(ri)
 	}
 
 	// editing ----------------------------------------------------------------
@@ -437,7 +444,13 @@ function rowset_widget(e) {
 		return true
 	}
 
-	e.free_editor = function() {}
+	function free_editor() {
+		let editor = e.editor
+		if (editor) {
+			e.editor = null // removing the editor first as a barrier for lost_focus().
+			editor.remove()
+		}
+	}
 
 	e.exit_edit = function() {
 		if (!e.editor)
@@ -451,12 +464,8 @@ function rowset_widget(e) {
 				return false
 
 		let had_focus = e.hasfocus
-
-		let editor = e.editor
-		e.editor = null // removing the editor first as a barrier for lost_focus().
-		editor.remove()
+		free_editor()
 		e.update_cell_editing(e.focused_row_index, e.focused_field_index, false)
-
 		if (had_focus)
 			e.focus()
 
