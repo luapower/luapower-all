@@ -1,0 +1,37 @@
+2020/04/24 10:02:02 [emerg] 21274#0: bind() to 0.0.0.0:8000 failed (98: Address already in use)
+2020/04/24 10:02:02 [emerg] 21274#0: bind() to 0.0.0.0:8000 failed (98: Address already in use)
+2020/04/24 10:02:02 [emerg] 21274#0: bind() to 0.0.0.0:8000 failed (98: Address already in use)
+2020/04/24 10:02:02 [emerg] 21274#0: bind() to 0.0.0.0:8000 failed (98: Address already in use)
+2020/04/24 10:02:02 [emerg] 21274#0: bind() to 0.0.0.0:8000 failed (98: Address already in use)
+2020/04/24 10:02:17 [error] 21298#0: *6 [lua] webb_nginx.lua:17: try_call(): 404, client: 188.26.251.21, server: , request: "GET /ace.js HTTP/1.1", host: "luapower.com:8000", referrer: "http://luapower.com:8000/"
+2020/04/24 10:02:17 [error] 21298#0: *6 [lua] webb_nginx.lua:17: try_call(): ./webb_query.lua:37: db error: Client does not support authentication protocol requested by server; consider upgrading MySQL client: 1251 08004
+stack traceback:
+	[C]: in function 'error'
+	./webb_query.lua:37: in function 'assert_db'
+	./webb_query.lua:55: in function 'connect'
+	./webb_query.lua:183: in function 'query'
+	./xrowset.lua:156: in function 'handler'
+	./webb_action.lua:226: in function 'filter'
+	./webb_action.lua:315: in function 'action'
+	./luamyadmin.lua:36: in function 'main'
+	./webb_nginx.lua:43: in function <./webb_nginx.lua:37>
+	[C]: in function 'xpcall'
+	./webb_nginx.lua:34: in function 'try_call'
+	./webb_nginx.lua:37: in main chunk, client: 188.26.251.21, server: , request: "GET /rowset.json/tables HTTP/1.1", host: "luapower.com:8000", referrer: "http://luapower.com:8000/"
+2020/04/24 10:02:17 [error] 21298#0: *4 [lua] webb_nginx.lua:17: try_call(): ./webb_query.lua:37: db error: Client does not support authentication protocol requested by server; consider upgrading MySQL client: 1251 08004
+stack traceback:
+	[C]: in function 'error'
+	./webb_query.lua:37: in function 'assert_db'
+	./webb_query.lua:55: in function 'connect'
+	./webb_query.lua:183: in function 'query'
+	./xrowset.lua:156: in function 'handler'
+	./webb_action.lua:226: in function 'filter'
+	./webb_action.lua:315: in function 'action'
+	./luamyadmin.lua:36: in function 'main'
+	./webb_nginx.lua:43: in function <./webb_nginx.lua:37>
+	[C]: in function 'xpcall'
+	./webb_nginx.lua:34: in function 'try_call'
+	./webb_nginx.lua:37: in main chunk, client: 188.26.251.21, server: , request: "GET /rowset.json/columns HTTP/1.1", host: "luapower.com:8000", referrer: "http://luapower.com:8000/"
+2020/04/24 10:02:17 [error] 21298#0: *3 [lua] webb_nginx.lua:17: try_call(): 404, client: 188.26.251.21, server: , request: "GET /favicon.ico HTTP/1.1", host: "luapower.com:8000", referrer: "http://luapower.com:8000/"
+2020/04/24 10:12:08 [error] 21298#0: *13 [lua] webb_nginx.lua:17: try_call(): 404, client: 188.26.251.21, server: , request: "GET /ace.js HTTP/1.1", host: "luapower.com:8000", referrer: "http://luapower.com:8000/"
+2020/04/24 10:12:08 [error] 21298#0: *14 [lua] webb_nginx.lua:17: try_call(): 404, client: 188.26.251.21, server: , request: "GET /ace.js HTTP/1.1", host: "luapower.com:8000", referrer: "http://luapower.com:8000/"

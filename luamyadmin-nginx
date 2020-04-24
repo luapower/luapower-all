@@ -1,0 +1,2 @@
+#!/bin/bash
+cd "${0%luamyadmin-nginx}" && ./nginx -c luamyadmin-nginx.conf "$@"

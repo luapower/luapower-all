@@ -104,3 +104,14 @@
 2020/04/07 15:45:12 [alert] 21824#0: lua_code_cache is off; this will hurt performance in ./credex-nginx.conf:6
 2020/04/07 15:45:12 [notice] 21824#0: signal process started
 2020/04/11 13:20:48 [notice] 30758#0: signal process started
+2020/04/24 10:01:18 [alert] 21229#0: lua_code_cache is off; this will hurt performance in ./luamyadmin-nginx.conf:5
+2020/04/24 10:01:33 [alert] 21244#0: lua_code_cache is off; this will hurt performance in ./luamyadmin-nginx.conf:5
+2020/04/24 10:01:33 [notice] 21244#0: signal process started
+2020/04/24 10:01:39 [alert] 21250#0: lua_code_cache is off; this will hurt performance in ./luamyadmin-nginx.conf:5
+2020/04/24 10:02:02 [alert] 21274#0: lua_code_cache is off; this will hurt performance in ./luamyadmin-nginx.conf:5
+2020/04/24 10:02:05 [alert] 21281#0: lua_code_cache is off; this will hurt performance in ./luamyadmin-nginx.conf:5
+2020/04/24 10:02:05 [notice] 21281#0: signal process started
+2020/04/24 10:02:13 [alert] 21288#0: lua_code_cache is off; this will hurt performance in ./luamyadmin-nginx.conf:5
+2020/04/24 10:02:13 [notice] 21288#0: signal process started
+2020/04/24 10:02:13 [error] 21288#0: open() "./logs/luamyadmin.pid" failed (2: No such file or directory)
+2020/04/24 10:02:14 [alert] 21294#0: lua_code_cache is off; this will hurt performance in ./luamyadmin-nginx.conf:5

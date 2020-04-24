@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html>
+<head>
+<link rel="stylesheet" type="text/css" href="fontawesome.css">
+<link rel="stylesheet" type="text/css" href="x-widgets.css">
+<script src="glue.js"></script>
+<script src="divs.js"></script>
+<script src="ajax.js"></script>
+<script src="url.js"></script>
+<script src="x-widgets.js"></script>
+<script src="x-rowset-widget.js"></script>
+<script src="x-listbox.js"></script>
+<script src="x-grid.js"></script>
+<script src="ace.js" integrity="sha256-+svOVB1WmhKhTy7N21gWvtyXn91qF0r52P2hIArRRug="></script>
+<style>
+* {
+	box-sizing: border-box;
+}
+
+html {
+	width: 100%;
+	height: 100%;
+}
+
+html, body, #main {
+	display: flex;
+	width: 100%;
+	padding: 0;
+	margin: 0;
+}
+
+.x-widget {
+	font-size: 12px;
+}
+
+</style>
+</head>
+<body>
+<div id=main></div>
+<script>
+
+tables = listbox({
+	rowset: 'tables',
+	display_col: 'table_name',
+	attrs: {
+		style: 'margin: 0; max-width: 600px; width: 200px',
+	},
+})
+
+columns = grid({
+	rowset: 'columns',
+	param_nav: tables,
+	attrs: {
+		style: 'width: 100%',
+	},
+})
+
+tables.rowset.load()
+columns.rowset.load()
+
+main.add(hsplit({
+	1: tables,
+	2: columns,
+	attrs: {
+		style: 'margin: 0; width: 100%',
+	}
+}))
+
+</script>
+</body>
+</html>
