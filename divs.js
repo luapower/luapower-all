@@ -580,11 +580,11 @@ function popup_state(e) {
 	}
 
 	function events(on) {
-		window.ono('resize', update, on)
+		window.on('resize', update, on)
 
 		// NOTE: this detects target element size changes but there's no
 		// observer that can monitor position changes relative to document.body.
-		target.ono('attr_changed', update, on)
+		target.on('attr_changed', update, on)
 
 		// allow popup_update() to change popup visibility on hover.
 		target.on('mouseenter', update, on)

@@ -35,3 +35,7 @@ stack traceback:
 2020/04/24 10:02:17 [error] 21298#0: *3 [lua] webb_nginx.lua:17: try_call(): 404, client: 188.26.251.21, server: , request: "GET /favicon.ico HTTP/1.1", host: "luapower.com:8000", referrer: "http://luapower.com:8000/"
 2020/04/24 10:12:08 [error] 21298#0: *13 [lua] webb_nginx.lua:17: try_call(): 404, client: 188.26.251.21, server: , request: "GET /ace.js HTTP/1.1", host: "luapower.com:8000", referrer: "http://luapower.com:8000/"
 2020/04/24 10:12:08 [error] 21298#0: *14 [lua] webb_nginx.lua:17: try_call(): 404, client: 188.26.251.21, server: , request: "GET /ace.js HTTP/1.1", host: "luapower.com:8000", referrer: "http://luapower.com:8000/"
+2020/04/24 12:17:55 [error] 21298#0: *375 [lua] webb_nginx.lua:17: try_call(): 404, client: 188.26.251.21, server: , request: "GET /ace.js HTTP/1.1", host: "luapower.com:8000", referrer: "http://luapower.com:8000/"
+2020/04/24 12:19:11 [error] 21298#0: *380 [lua] webb_nginx.lua:17: try_call(): 404, client: 188.26.251.21, server: , request: "GET /ace.js HTTP/1.1", host: "luapower.com:8000", referrer: "http://luapower.com:8000/"
+2020/04/24 12:19:19 [error] 21298#0: *380 [lua] webb_nginx.lua:17: try_call(): 404, client: 188.26.251.21, server: , request: "GET /ace.js HTTP/1.1", host: "luapower.com:8000", referrer: "http://luapower.com:8000/"
+2020/04/24 12:19:19 [error] 21298#0: *386 [lua] webb_nginx.lua:17: try_call(): 404, client: 188.26.251.21, server: , request: "GET /ace.js HTTP/1.1", host: "luapower.com:8000", referrer: "http://luapower.com:8000/"

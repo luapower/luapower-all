@@ -2696,6 +2696,11 @@ vsplit = component('x-split', function(e) {
 		window.split_resizing = true // view_mousemove barrier.
 		document.on('mousemove', document_mousemove)
 		document.on('mouseup'  , document_mouseup)
+
+		e.tooltip = e.tooltip || tooltip({
+			side: left ? 'right' : 'left',
+		})
+		e.tooltip.target = e.sizer
 	}
 
 	function document_mousemove(rmx, rmy) {
@@ -2716,6 +2721,8 @@ vsplit = component('x-split', function(e) {
 			w = w0 + (w - w0) * .2 // show resistance
 
 		e.fixed_pane[horiz ? 'w' : 'h'] = w
+
+		e.tooltip.text = round(w)
 
 		if (e.collapsable != false) {
 			let w1 = e.fixed_pane.client_rect()[horiz ? 'width' : 'height']
@@ -2742,6 +2749,7 @@ vsplit = component('x-split', function(e) {
 		window.split_resizing = null
 		document.off('mousemove', document_mousemove)
 		document.off('mouseup'  , document_mouseup)
+		e.tooltip.target = false
 	}
 
 })

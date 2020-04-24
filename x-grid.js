@@ -489,7 +489,7 @@ grid = component('x-grid', function(e) {
 		let w = mx - (e.header_table.offsetLeft + hit_th.offsetLeft + hit_x)
 		field.w = field_w(field, w)
 		hit_th.w = field.w
-		update_col_width(hit_th.index, hit_th.clientWidth)
+		update_col_width(hit_th.index, field.w)
 		init_editor_geometry()
 		return false
 	}
