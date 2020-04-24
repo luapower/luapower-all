@@ -8,9 +8,10 @@
 <p>This will probably only work on desktop Firefox and Chrome/Edge for the forseeable future. Something might be done for Safari (if it doesn’t catch up all by itself, or you know, dies and spares us all some grief) and maybe mobile Chrome and Firefox too. Anything else is out.</p>
 <h2 id="installation">Installation</h2>
 <p>To install the library you need docker, kubernetes, webpack, redis, memcached (because RAM is cheap) four medium AWS instances and an Apple developer account. Look, it’s just one .js file and one .css file. Load them as they are or bundle, minify and gzip them, do what you have to do. Just make it look professional.</p>
-<p>The dependencies are <code>glue.js</code> and <code>divs.js</code> from <a href="/webb">webb</a> so get those first.</p>
+<p>The dependencies are <code>glue.js</code>, <code>divs.js</code> and <code>ajax.js</code> from <a href="/webb">webb</a> so get those first.</p>
 <p><code>glue.js</code> extends JavaScript with basic routines similar to <a href="/glue">glue</a> from Lua.</p>
 <p><code>divs.js</code> is a tiny jQuery-like library for DOM manipulation.</p>
+<p><code>ajax.js</code> is an even tinier wrapper over XMLHttpRequest().</p>
 <h2 id="styling">Styling</h2>
 <p>Even though they’re web components, the widgets don’t use shadow DOMs so both their sub-elements and their styling are up for grabs. All widgets get the <code>.x-widget</code> class that you can set global styling like a custom font to, without disturbing your other styles.</p>
 <h2 id="web-developers-beware">Web developers beware</h2>
