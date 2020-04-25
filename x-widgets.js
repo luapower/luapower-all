@@ -81,9 +81,9 @@ rowset = function(...options) {
 	let d = {}
 
 	d.can_edit        = true
-	d.can_add_rows    = true
-	d.can_remove_rows = true
-	d.can_change_rows = true
+	d.can_add_rows    = false
+	d.can_remove_rows = false
+	d.can_change_rows = false
 
 	events_mixin(d)
 
@@ -114,12 +114,15 @@ rowset = function(...options) {
 
 	function init_pk(pk) {
 		d.pk_fields = []
-		if (pk)
-			for (let col of pk.split(' ')) {
+		if (pk) {
+			if (typeof pk == 'string')
+				pk = pk.split(' ')
+			for (let col of pk) {
 				let field = d.field(col)
 				d.pk_fields.push(field)
 				field.is_pk = true
 			}
+		}
 	}
 
 	function init_rows(rows) {
@@ -581,15 +584,15 @@ rowset = function(...options) {
 	function make_url(params) {
 		if (!d.param_nav)
 			return d.url
-		if (params)
-			return url(d.url, params)
-		params = {}
-		for (let param of d.params) {
-			let field = d.param_nav.rowset.field(param)
-			let v = d.param_nav.focused_row_value(field)
-			params[field.name] = v
+		if (!params) {
+			params = {}
+			for (let param of d.params) {
+				let field = d.param_nav.rowset.field(param)
+				let v = d.param_nav.focused_row_value(field)
+				params[field.name] = v
+			}
 		}
-		return url(d.url, params)
+		return url(d.url, {params: json(params)})
 	}
 
 	// loading ----------------------------------------------------------------
@@ -654,17 +657,29 @@ rowset = function(...options) {
 		return ok
 	}
 
-	function load_success(result) {
-		if (result.fields) {
-			if (!check_fields(result.fields))
+	function load_success(res) {
+
+		changes = null
+
+		d.can_edit        = res.can_edit
+		d.can_add_rows    = res.can_add_rows
+		d.can_remove_rows = res.can_remove_rows
+		d.can_change_rows = res.can_change_rows
+
+		if (res.fields) {
+			if (!check_fields(res.fields))
 				return
-			init_fields(result.fields)
-			init_pk(result.pk)
+			init_fields(res.fields)
+			init_pk(res.pk)
+			d.id_col = res.id_col
 			d.fire('fields_changed')
 		}
-		if (result.params)
-			init_params(result.params)
-		init_rows(result.rows)
+
+		if (res.params)
+			init_params(res.params)
+
+		init_rows(res.rows)
+
 		d.fire('loaded')
 	}
 
@@ -681,23 +696,16 @@ rowset = function(...options) {
 
 	// saving changes ---------------------------------------------------------
 
-	let changeset
+	let changes
 
 	function row_changed(row) {
-		if (!changeset)
-			changeset = new Set()
+		if (!changes)
+			changes = new Set()
 		if (row.is_new && row.removed)
-			changeset.delete(row)
+			changes.delete(row)
 		else
-			changeset.add(row)
+			changes.add(row)
 		d.fire('row_changed', row)
-	}
-
-	function where_fields(row) {
-		let t = {}
-		for (let field of d.pk_fields)
-			t[field.name] = d.old_value(row, field)
-		return t
 	}
 
 	function add_row_changes(row, upload) {
@@ -713,7 +721,10 @@ rowset = function(...options) {
 			}
 			upload.new_rows.push(t)
 		} else if (row.removed) {
-			upload.removed_rows.push(where_fields(row))
+			let t = {}
+			for (let field of d.pk_fields)
+				t[field.name] = d.old_value(row, field)
+			upload.removed_rows.push(t)
 		} else if (row.modified) {
 			let t = {}
 			let found
@@ -723,25 +734,40 @@ rowset = function(...options) {
 					found = true
 				}
 			}
-			if (found)
-				upload.updated_rows.push({values: t, where: where_fields(row)})
+			if (found) {
+				for (let field of d.pk_fields)
+					t[field.name+':old'] = d.old_value(row, field)
+				upload.updated_rows.push(t)
+			}
 		}
 	}
 
-	d.pack_changeset = function(row) {
-		let upload = {new_rows: [], updated_rows: [], removed_rows: []}
+	d.pack_changes = function(row) {
+		let pk = d.pk_fields.map(field => field.name)
+		let upload = {new_rows: [], updated_rows: [], removed_rows: [], pk: pk}
+		if (d.id_col)
+			upload.id_col = d.id_col
 		if (!row) {
-			for (let row of changeset)
+			for (let row of changes)
 				add_row_changes(row, upload)
 		} else
 			add_row_changes(row, upload)
 		return upload
 	}
 
-	d.apply_resultset = function(resultset) {
-		for (let row of resultset) {
+	d.apply_results = function(results, changes) {
+		console.log(results)
+		console.log(changes)
+		for (let i = 0; i < results.new_rows.length; i++) {
+			let row = changes.new_rows[i]
 			//d.set_cell_state(
 			//d.set_row_state(
+		}
+		for (let i = 0; i < results.updated_rows.length; i++) {
+			let row = changes.updated_rows[i]
+		}
+		for (let i = 0; i < results.removed_rows.length; i++) {
+			let row = changes.removed_rows[i]
 		}
 	}
 
@@ -753,18 +779,18 @@ rowset = function(...options) {
 	d.save = function(row) {
 		if (!d.url)
 			return
-		if (!d.changeset)
+		if (!changes)
 			return
 		let req = ajax({
 			url: d.url,
-			upload: d.pack_changeset(row),
-			rows: changeset,
+			upload: d.pack_changes(row),
+			rows: changes,
 			success: save_success,
 			fail: save_fail,
 			done: save_done,
 			slow: save_slow,
 		})
-		changeset = null
+		changes = null
 		add_request(req)
 		set_save_state(req.rows, req)
 		d.fire('saving', true)
@@ -783,8 +809,8 @@ rowset = function(...options) {
 		d.fire('saving', false)
 	}
 
-	function save_success(resultset) {
-		d.apply_resultset(resultset)
+	function save_success(results) {
+		d.apply_results(results, this.upload)
 	}
 
 	function save_fail(...args) {
@@ -1083,6 +1109,7 @@ function value_widget(e) {
 			let internal_rowset = rowset({
 				fields: [field],
 				rows: [row],
+				can_change_rows: true,
 			})
 
 			e.nav = rowset_nav({rowset: internal_rowset, focused_row: row})
@@ -2749,7 +2776,8 @@ vsplit = component('x-split', function(e) {
 		window.split_resizing = null
 		document.off('mousemove', document_mousemove)
 		document.off('mouseup'  , document_mouseup)
-		e.tooltip.target = false
+		if (e.tooltip)
+			e.tooltip.target = false
 	}
 
 })

@@ -23,6 +23,7 @@ shift       = glue.shift
 add         = table.insert
 push        = table.insert
 pop         = table.remove
+del         = table.remove
 append      = glue.append
 extend      = glue.extend
 sort        = table.sort
@@ -45,6 +46,7 @@ _           = string.format
 rep         = string.rep
 char        = string.char
 esc         = glue.esc
+subst       = glue.subst
 
 string.starts  = glue.starts
 string.ends    = glue.ends
@@ -64,6 +66,8 @@ noop     = glue.noop
 pass     = glue.pass
 
 memoize  = glue.memoize
+
+assertf  = glue.assert
 
 bnot = bit.bnot
 shl  = bit.lshift

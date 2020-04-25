@@ -661,6 +661,8 @@ function json(v)
 		return cjson.encode(v)
 	elseif type(v) == 'string' then
 		return remove_nulls(cjson.decode(v))
+	elseif v == nil then
+		return nil
 	else
 		error('invalid arg '..type(v))
 	end

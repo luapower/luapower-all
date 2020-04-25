@@ -133,14 +133,18 @@ function rowset_widget(e) {
 		let row = e.rowset.add_row(e, ri, focus_it, ...args)
 		if (!row && adjust_ri)
 			e.focused_row_index--
-		return row != null
+		if (e.save_row_on)
+			e.save(row)
+		return row
 	}
 
 	e.remove_row = function(ri, refocus, ...args) {
 		if (!e.can_edit || !e.can_remove_rows)
 			return false
-		let row = e.rows[ri]
-		return e.rowset.remove_row(row, e, ri, refocus, ...args)
+		let row = e.rowset.remove_row(e.rows[ri], e, ri, refocus, ...args)
+		if (e.save_row_on)
+			e.save(row)
+		return row
 	}
 
 	e.remove_focused_row = function(refocus) {

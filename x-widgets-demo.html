@@ -566,6 +566,9 @@ var data = {
 	],
 	pk: 'id',
 	rows: [],
+	can_add_rows: true,
+	can_remove_rows: true,
+	can_change_rows: true,
 }
 
 for (let i = 1; i <= 1e5; i++) {
@@ -600,7 +603,7 @@ log = tag('pre')
 main.add(log)
 
 d.on('row_changed', function() {
-	log.html = json(d.pack_changeset(), null, 3)
+	log.html = json(d.pack_changes(), null, 3)
 })
 
 </script>
@@ -982,7 +985,7 @@ log = tag('pre')
 main.add(log)
 
 d.on('row_changed', function() {
-	log.html = json(d.pack_changeset(), null, 3)
+	log.html = json(d.pack_changes(), null, 3)
 })
 
 d.load()

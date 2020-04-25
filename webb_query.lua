@@ -5,7 +5,9 @@
 
 QUERY
 
-	quote_sql(s) -> s                         quote sql string
+	quote_sql(s) -> s                         quote string to mysql literal
+	quote_sqlname(s) -> s                     quote string to mysql identifier
+	quote_sqlparams(s, t) -> s                quote query with ? and :name placeholders.
 	print_queries([t|f]) -> t|f               control printing of queries
 	query(s, args...) -> res                  query and return result table
 	query1(s, args...) -> t                   query and return first row
@@ -96,6 +98,8 @@ end
 
 --arg substitution -----------------------------------------------------------
 
+sql_default = {}
+
 function quote_sql(v)
 	if v == nil or v == null then
 		return 'null'
@@ -103,42 +107,50 @@ function quote_sql(v)
 		return 1
 	elseif v == false then
 		return 0
-	elseif type(v) == 'string' or type(v) == 'number' then
-		return ngx.quote_sql_str(tostring(v))
+	elseif v == sql_default then
+		return 'default'
+	elseif type(v) == 'string' then
+		return ngx.quote_sql_str(v)
+	elseif type(v) == 'number' then
+		if v ~= v or v == 1/0 or v == -1/0 then
+			return 'null' --avoid syntax error for what ends up as null anyway.
+		else
+			return format('%0.17g', v) --max precision, min. length.
+		end
 	else
-		return nil, 'invalid arg '.. require'pp'.format(v)
+		return nil, 'invalid value '.. pp.format(v)
 	end
 end
 quote = quote_sql --TODO: remove this (conflicts with terra)
 
-local function set_named_params(sql, t)
-	local dt = {}
-	for k,v in pairs(t) do
-		local v, err = quote_sql(v)
-		if err then
-			error(err .. ' in query "' .. sql .. '"')
-		end
-		dt[k] = v
-	end
-	local i = 0
-	return sql:gsub('$([%w_]+)', dt), keys(dt, true)
+function quote_sqlname(v)
+	assert(not v:find('`', 1, true))
+	return '`'..v..'`'
 end
 
-local function set_params(sql, ...)
-	if type((...)) == 'table' then
-		return set_named_params(sql, ...)
-	end
-	local t = {}
-	for i = 1, select('#', ...) do
-		local arg = select(i, ...)
-		local v, err = quote_sql(arg)
-		if err then
-			error(err .. ' in query "' .. sql .. '"')
-		end
-		t[i] = v
-	end
+local function quote_named_params(sql, t)
+	local names = {}
+	local sql = sql:gsub(':([%w_:]+)', function(k)
+		add(names, k)
+		local v, err = quote_sql(t[k])
+		return assertf(v, 'param %s: %s\n%s', k, err, sql)
+	end)
+	return sql, names
+end
+
+local function quote_indexed_params(sql, t)
 	local i = 0
-	return sql:gsub('%?', function() i = i + 1; return t[i] end)
+	return (sql:gsub('%?', function()
+		i = i + 1
+		local v, err = quote_sql(t[i])
+		return assertf(v, 'param %d: %s\n%s', i, err, sql)
+	end))
+end
+
+function quote_sqlparams(sql, ...)
+	local param_values = type((...)) ~= 'table' and {...} or ...
+	local sql = quote_indexed_params(sql, param_values)
+	return quote_named_params(sql, param_values)
 end
 
 --query execution ------------------------------------------------------------
@@ -180,9 +192,9 @@ local function process_result(t, cols)
 end
 
 local function run_query_on(ns, compact, sql, ...)
-	local db = connect(ns)
+	local db = connect(ns or false)
 	local sql = preprocess(sql)
-	local sql, params = set_params(sql, ...)
+	local sql, params = quote_sqlparams(sql, ...)
 	if print_queries() then
 		print(outdent(sql))
 	end
@@ -227,9 +239,10 @@ function query1(...)
 	return query1_on(false, ...)
 end
 
-function iquery_on(ns, ...) --insert query: return autoincremented id
+function iquery_on(ns, ...) --insert query: return the value of the auto_increment field.
 	local t, cols, params = run_query_on(ns, true, ...)
-	return t.insert_id, params
+	local id = t.insert_id
+	return id ~= 0 and id or nil, params
 end
 
 function iquery(...)
