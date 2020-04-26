@@ -17,16 +17,16 @@ most useful in network I/O contexts.
 ## API
 
 ---------------------------------------------------- -------------------------
-`error.error`                                        base class for errors
-`error.errortype([classname], [super]) -> eclass`    create an error class
+`errors.error`                                       base class for errors
+`errors.errortype([classname], [super]) -> eclass`   create an error class
 `eclass(...) -> e`                                   create an error object
-`error.new(classname, [e], ... | e) -> e`            create/wrap/pass-through an error object
-`error.is(v[, classes]) -> t|f`                      check an error object type
-`error.raise(classname,... | e)`                     (create and) raise an error
-`error.catch(classes, f, ...) -> t,... | f,e`        pcall `f` and catch errors
-`error.pcall(f, ...) -> ...`                         pcall that stores traceback in `e.traceback`
-`error.check(v, ...) -> v | raise(...)`              assert with specifying an error class
-`error.protect(classes, f) -> protected_f`           turn raising `f` into a `nil,e` function
+`errors.new(classname, [e], ... | e) -> e`           create/wrap/pass-through an error object
+`errors.is(v[, classes]) -> t|f`                     check an error object type
+`errors.raise(classname,... | e)`                    (create and) raise an error
+`errors.catch(classes, f, ...) -> t,... | f,e`       pcall `f` and catch errors
+`errors.pcall(f, ...) -> ...`                        pcall that stores traceback in `e.traceback`
+`errors.check(v, ...) -> v | raise(...)`             assert with specifying an error class
+`errors.protect(classes, f) -> protected_f`          turn raising `f` into a `nil,e` function
 `eclass:__call(...) -> e`                            error class constructor
 `eclass:__tostring() -> s`                           to make `error(e)` work
 `e.message`                                          formatted error message
