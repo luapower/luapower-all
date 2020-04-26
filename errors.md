@@ -22,7 +22,7 @@ most useful in network I/O contexts.
 `eclass(...) -> e`                                   create an error object
 `errors.new(classname, [e], ... | e) -> e`           create/wrap/pass-through an error object
 `errors.is(v[, classes]) -> t|f`                     check an error object type
-`errors.raise(classname,... | e)`                    (create and) raise an error
+`errors.raise(classname,[e],... | e)`                (create and) raise an error
 `errors.catch(classes, f, ...) -> t,... | f,e`       pcall `f` and catch errors
 `errors.pcall(f, ...) -> ...`                        pcall that stores traceback in `e.traceback`
 `errors.check(v, ...) -> v | raise(...)`             assert with specifying an error class

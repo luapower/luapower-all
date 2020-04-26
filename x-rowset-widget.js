@@ -6,8 +6,10 @@
 /*
 	rowset widgets must implement:
 		init_rows()
-		update_cell_value(ri, fi, old_val, ...set_value_args)
-		update_cell_error(ri, fi, err, old_err, ...set_value_args)
+		update_cell_value(ri, fi, ev)
+		update_cell_error(ri, fi, err, ev)
+		update_cell_modified(ri, fi, modified, ev)
+		update_row_is_new(ri, is_new, ev)
 		update_cell_focus(ri, [fi])
 		update_cell_editing(ri, [fi], editing)
 		scroll_to_cell(ri, [fi])
@@ -106,6 +108,8 @@ function rowset_widget(e) {
 		e.rowset.on('loaded'      , rowset_loaded , on)
 		e.rowset.on('row_added'   , row_added     , on)
 		e.rowset.on('row_removed' , row_removed   , on)
+		// row state changes.
+		e.rowset.on('row_state_changed'      , row_state_changed      , on)
 		// cell value & state changes.
 		e.rowset.on('cell_state_changed'     , cell_state_changed     , on)
 		e.rowset.on('display_values_changed' , display_values_changed , on)
@@ -122,7 +126,7 @@ function rowset_widget(e) {
 
 	// adding & removing rows -------------------------------------------------
 
-	e.insert_row = function(ri, focus_it, ...args) {
+	e.insert_row = function(ri, focus_it, ev) {
 		if (!e.can_edit || !e.can_add_rows)
 			return false
 		if (ri == true)
@@ -130,7 +134,7 @@ function rowset_widget(e) {
 		let adjust_ri = e.focused_row && ri != null
 		if (adjust_ri)
 			e.focused_row_index++
-		let row = e.rowset.add_row(e, ri, focus_it, ...args)
+		let row = e.rowset.add_row(update({row_index: ri, focus_it: focus_it}, ev))
 		if (!row && adjust_ri)
 			e.focused_row_index--
 		if (e.save_row_on)
@@ -138,10 +142,10 @@ function rowset_widget(e) {
 		return row
 	}
 
-	e.remove_row = function(ri, refocus, ...args) {
+	e.remove_row = function(ri, refocus, ev) {
 		if (!e.can_edit || !e.can_remove_rows)
 			return false
-		let row = e.rowset.remove_row(e.rows[ri], e, ri, refocus, ...args)
+		let row = e.rowset.remove_row(e.rows[ri], update({row_index: ri, refocus: refocus}, ev))
 		if (e.save_row_on)
 			e.save(row)
 		return row
@@ -165,42 +169,53 @@ function rowset_widget(e) {
 		e.init_rows()
 	}
 
-	function row_added(row, source, ri, focus) {
-		if (source == e && ri != null)
+	function row_added(row, ev) {
+		let ri = ev && ev.row_index
+		if (ri != null)
 			e.rows.insert(ri, row)
 		else
 			ri = e.rows.push(row)
 		rowmap = null
 		e.init_rows()
-		if (source == e && focus)
+		if (ev && ev.focus_it)
 			e.focus_cell(ri, true)
 	}
 
-	function row_removed(row, source, ri, refocus) {
-		e.rows.remove(e.row_index(row, source == e && ri))
+	function row_removed(row, ev) {
+		let ri = ev && ev.row_index
+		e.rows.remove(e.row_index(row, ri))
 		rowmap = null
 		e.init_rows()
-		if (source == e && refocus)
+		if (ev && ev.refocus)
 			if (!e.focus_cell(ri, true))
 				e.focus_cell(ri, true, -0)
 	}
 
 	// responding to cell updates ---------------------------------------------
 
-	e.init_cell = function(ri, fi, ...args) {
+	e.init_cell = function(ri, fi, ev) {
 		let row = e.rows[ri]
 		let err = e.rowset.cell_state(row, field, 'error')
-		e.update_cell_value(ri, fi, ...args)
-		e.update_cell_error(ri, fi, err, ...args)
+		let modified = e.rowset.cell_state(row, field, 'modified')
+		e.update_cell_value(ri, fi, ev)
+		e.update_cell_error(ri, fi, err, ev)
+		e.update_cell_modified(ri, fi, modified, ev)
 	}
 
-	function cell_state_changed(row, field, key, val, old_val, source, ri, fi, ...args) {
-		ri = e.row_index  (row  , source == e && ri)
-		fi = e.field_index(field, source == e && fi)
+	function row_state_changed(row, key, val, old_val, ev) {
+		let ri = e.row_index(row, ev && ev.row_index)
+		e.update_row_is_new(ri, val, ev)
+	}
+
+	function cell_state_changed(row, field, key, val, old_val, ev) {
+		let ri = e.row_index(row, ev && ev.row_index)
+		let fi = e.field_index(field, ev && ev.field_index)
 		if (key == 'input_value')
-			e.update_cell_value(ri, fi, ...args)
+			e.update_cell_value(ri, fi, ev)
 		else if (key == 'error')
-			e.update_cell_error(ri, fi, val, ...args)
+			e.update_cell_error(ri, fi, val, ev)
+		else if (key == 'modified')
+			e.update_cell_modified(ri, fi, val, ev)
 	}
 
 	function display_values_changed(field) {
@@ -233,7 +248,7 @@ function rowset_widget(e) {
 	e.focused_row_index = null
 	e.focused_field_index = null
 
-	function set_focused_cell(ri, fi, ...args) {
+	function set_focused_cell(ri, fi, ev) {
 
 		let ri0 = e.focused_row_index
 
@@ -246,7 +261,8 @@ function rowset_widget(e) {
 			return
 		}
 
-		e.set_focused_row(ri != null ? e.rows[ri] : null, e, ri, fi, ...args)
+		e.set_focused_row(ri != null ? e.rows[ri] : null,
+			update({row_index: ri, field_index: fi}, ev))
 	}
 
 	e.property('focused_field', function() {
@@ -258,6 +274,10 @@ function rowset_widget(e) {
 	e.can_change_value = function(row, field) {
 		return e.can_edit && e.can_change_rows
 			&& e.rowset.can_change_value(row, field)
+	}
+
+	e.is_cell_disabled = function(row, field) {
+		return !e.rowset.can_focus_cell(row, field)
 	}
 
 	e.can_focus_cell = function(row, field, for_editing) {
@@ -391,23 +411,26 @@ function rowset_widget(e) {
 
 	// responding to navigation -----------------------------------------------
 
-	e.on('focused_row_changed', function(row, source, ri, fi, source1, do_update) {
-		if (source != e) { // got here from outside: focus row's index and same col.
+	e.on('focused_row_changed', function(row, ev) {
+		if (!ev || ev.row_index === undefined) {
+			// got here from outside: focus row's index and same col.
 			e.focused_row_index = e.row_index(row)
 			e.update_cell_focus(e.focused_row_index, e.focused_cell_index)
-		} else if (source1 == e && do_update == false) { // got here from update_value().
-			e.update_cell_focus(ri, fi)
-		} else {  // got here from focus_cell().
-			let v = e.value_field ? (row ? e.rowset.value(row, e.value_field) : null) : ri
-			e.set_value(v, false)
-			e.update_cell_focus(ri, fi)
+		} else if (ev.update == false) {
+			// got here from update_value().
+			e.update_cell_focus(ev.row_index, ev.field_index)
+		} else {
+			// got here from focus_cell().
+			let v = e.value_field ? (row ? e.rowset.value(row, e.value_field) : null) : ev.row_index
+			e.set_value(v, update({update: false}, ev))
+			e.update_cell_focus(ev.row_index, ev.field_index)
 		}
 	})
 
 	// responding to value changes --------------------------------------------
 
-	e.update_value = function(source, do_update) {
-		if (source == e && do_update == false) // got here from `focused_row_changed`.
+	e.update_value = function(ev) {
+		if (ev && ev.update == false) // got here from `focused_row_changed`.
 			return
 		let v = e.input_value
 		let ri
@@ -418,7 +441,7 @@ function rowset_widget(e) {
 			if (!(typeof(v) == 'number' && v >= 0 && v < e.rows.length))
 				ri = null
 		}
-		set_focused_cell(ri, null, e, false)
+		set_focused_cell(ri, null, update({update: false}, ev))
 	}
 
 	// editing ----------------------------------------------------------------

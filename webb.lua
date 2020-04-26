@@ -10,6 +10,7 @@ Exports
 CONFIG
 
 	config'base_url'                        optional, for absurl()
+	config'hide_errors'                     production mode.
 
 CONFIG API
 

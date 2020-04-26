@@ -963,9 +963,9 @@ function starts_with_a(s) {
 
 var data = {
 	fields: [
-		{name: 'id'        , w:  60, min_w:  30, type: 'number', editable: false},
-		{name: 'name'      , w:  70, min_w:  50, max_w: 200, validate: starts_with_a},
-		{name: 'date'      , w: 140, allow_null: true, type: 'date'},
+		{name: 'id'   , w:  60, min_w:  30, type: 'number', editable: false},
+		{name: 'name' , w:  70, min_w:  50, max_w: 200, validate: starts_with_a},
+		{name: 'date' , w: 140, allow_null: true, type: 'date'},
 	],
 	pk: 'id',
 	url: 'rowset.json/test_static',

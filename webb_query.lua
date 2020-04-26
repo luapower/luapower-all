@@ -9,6 +9,7 @@ QUERY
 	quote_sqlname(s) -> s                     quote string to mysql identifier
 	quote_sqlparams(s, t) -> s                quote query with ? and :name placeholders.
 	print_queries([t|f]) -> t|f               control printing of queries
+	trace_queries(t|f) -> s                   start/stop tracing of SQL statements
 	query(s, args...) -> res                  query and return result table
 	query1(s, args...) -> t                   query and return first row
 	iquery(s, args...) -> id                  query and return insert id
@@ -30,13 +31,15 @@ QUERY/DDL
 
 require'webb'
 local mysql = require'webb_mysql'
+local errors = require'errors'
 
 --db connection --------------------------------------------------------------
 
 local function assert_db(ret, ...)
 	if ret ~= nil then return ret, ... end
 	local err, errno, sqlstate = ...
-	error('db error: '..err..': '..(errno or '')..' '..(sqlstate or ''))
+	raise('db', {err = err, errno = errno, sqlstate = sqlstate},
+		'db error: %s: %s %s', err, errno, sqlstate)
 end
 
 local function pconfig(ns, k, default)
@@ -163,6 +166,27 @@ function print_queries(on)
 	end
 end
 
+local log_sql do
+	local sql_log, sql_log_t0
+	function trace_queries(on)
+		if on == nil then
+			return sql_log and true or false
+		elseif on then
+			sql_log = {}
+			sql_log_t0 = time()
+		else
+			local t = sql_log
+			sql_log = nil
+			return t
+		end
+	end
+	function log_sql(sql)
+		local t = time()
+		add(sql_log, _('%.2f %s', t - sql_log_t0, sql))
+		sql_log_t0 = t
+	end
+end
+
 local function outdent(s)
 	local indent = s:match'^[\t%s]+'
 	if not indent then return s end
@@ -197,6 +221,9 @@ local function run_query_on(ns, compact, sql, ...)
 	local sql, params = quote_sqlparams(sql, ...)
 	if print_queries() then
 		print(outdent(sql))
+	end
+	if trace_queries() then
+		log_sql(outdent(sql))
 	end
 	assert_db(db:send_query(sql))
 	local old_compact = db.compact
