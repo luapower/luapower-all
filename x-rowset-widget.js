@@ -6,10 +6,8 @@
 /*
 	rowset widgets must implement:
 		init_rows()
-		update_cell_value(ri, fi, ev)
-		update_cell_error(ri, fi, err, ev)
-		update_cell_modified(ri, fi, modified, ev)
-		update_row_is_new(ri, is_new, ev)
+		update_cell_state(ri, fi, prop, val, ev)
+		update_row_state(ri, prop, val, ev)
 		update_cell_focus(ri, [fi])
 		update_cell_editing(ri, [fi], editing)
 		scroll_to_cell(ri, [fi])
@@ -104,21 +102,20 @@ function rowset_widget(e) {
 
 	e.bind_rowset = function(on) {
 		e.focused_row_bind_rowset(on)
-		// structural changes.
+		// structural changes
 		e.rowset.on('loaded'      , rowset_loaded , on)
 		e.rowset.on('row_added'   , row_added     , on)
 		e.rowset.on('row_removed' , row_removed   , on)
-		// row state changes.
-		e.rowset.on('row_state_changed'      , row_state_changed      , on)
-		// cell value & state changes.
-		e.rowset.on('cell_state_changed'     , cell_state_changed     , on)
-		e.rowset.on('display_values_changed' , display_values_changed , on)
+		// state changes
+		e.rowset.on('row_state_changed', row_state_changed, on)
+		e.rowset.on('cell_state_changed', cell_state_changed, on)
+		e.rowset.on('display_values_changed', display_values_changed, on)
 		// network events
 		e.rowset.on('loading', rowset_loading, on)
 		e.rowset.on('load_slow', rowset_load_slow, on)
 		e.rowset.on('load_progress', rowset_load_progress, on)
 		// misc.
-		e.rowset.on('notify', rowset_notify, on)
+		e.rowset.on('notify', e.notify, on)
 		// take/release ownership of the rowset.
 		if (e.rowset_owner)
 			e.rowset.owner = on ? e : null
@@ -145,7 +142,7 @@ function rowset_widget(e) {
 	e.remove_row = function(ri, refocus, ev) {
 		if (!e.can_edit || !e.can_remove_rows)
 			return false
-		let row = e.rowset.remove_row(e.rows[ri], update({row_index: ri, refocus: refocus}, ev))
+		let row = e.rowset.remove_row(e.rows[ri], false, update({row_index: ri, refocus: refocus}, ev))
 		if (e.save_row_on)
 			e.save(row)
 		return row
@@ -183,7 +180,8 @@ function rowset_widget(e) {
 
 	function row_removed(row, ev) {
 		let ri = ev && ev.row_index
-		e.rows.remove(e.row_index(row, ri))
+		ri = e.row_index(row, ri)
+		e.rows.remove(ri)
 		rowmap = null
 		e.init_rows()
 		if (ev && ev.refocus)
@@ -193,29 +191,31 @@ function rowset_widget(e) {
 
 	// responding to cell updates ---------------------------------------------
 
+	e.init_row = function(ri, ev) {
+		let row = e.rows[ri]
+		e.update_row_state(ri, 'row_is_new'   , !!row.is_new   , ev)
+		e.update_row_state(ri, 'row_modified' , !!row.modified , ev)
+		e.update_row_state(ri, 'row_removed'  , !!row.removed  , ev)
+	}
+
 	e.init_cell = function(ri, fi, ev) {
 		let row = e.rows[ri]
-		let err = e.rowset.cell_state(row, field, 'error')
-		let modified = e.rowset.cell_state(row, field, 'modified')
-		e.update_cell_value(ri, fi, ev)
-		e.update_cell_error(ri, fi, err, ev)
-		e.update_cell_modified(ri, fi, modified, ev)
+		let field = e.fields[fi]
+		let rs = e.rowset
+		e.update_cell_state(ri, fi, 'input_value'  , rs.input_value   (row, field), ev)
+		e.update_cell_state(ri, fi, 'cell_error'   , rs.cell_error    (row, field), ev)
+		e.update_cell_state(ri, fi, 'cell_modified', rs.cell_modified (row, field), ev)
 	}
 
-	function row_state_changed(row, key, val, old_val, ev) {
+	function row_state_changed(row, prop, val, ev) {
 		let ri = e.row_index(row, ev && ev.row_index)
-		e.update_row_is_new(ri, val, ev)
+		e.update_row_state(ri, prop, val, ev)
 	}
 
-	function cell_state_changed(row, field, key, val, old_val, ev) {
+	function cell_state_changed(row, field, prop, val, ev) {
 		let ri = e.row_index(row, ev && ev.row_index)
 		let fi = e.field_index(field, ev && ev.field_index)
-		if (key == 'input_value')
-			e.update_cell_value(ri, fi, ev)
-		else if (key == 'error')
-			e.update_cell_error(ri, fi, val, ev)
-		else if (key == 'modified')
-			e.update_cell_modified(ri, fi, val, ev)
+		e.update_cell_state(ri, fi, prop, val, ev)
 	}
 
 	function display_values_changed(field) {
@@ -224,8 +224,8 @@ function rowset_widget(e) {
 
 	// responding to notifications from rowset --------------------------------
 
-	function rowset_notify(type, message) {
-		console.log(type, message)
+	e.notify = function(type, message) {
+		// TODO: global notify
 	}
 
 	function rowset_loading(on) {
@@ -429,10 +429,9 @@ function rowset_widget(e) {
 
 	// responding to value changes --------------------------------------------
 
-	e.update_value = function(ev) {
+	e.update_value = function(v, ev) {
 		if (ev && ev.update == false) // got here from `focused_row_changed`.
 			return
-		let v = e.input_value
 		let ri
 		if (e.value_field)
 			ri = e.row_index(e.rowset.lookup(e.value_field, v))

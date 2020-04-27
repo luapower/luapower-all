@@ -205,17 +205,14 @@ grid = component('x-grid', function(e) {
 		ch = e.clientHeight
 	})
 
-	e.update_td_value = function(td, row, field) {
+	e.update_td_value = function(td, row, field, input_val) {
 		td.html = e.rowset.display_value(row, field)
-		td.class('null', e.rowset.input_value(row, field) == null)
-		td.class('modified', !!e.rowset.cell_state(row, field, 'modified'))
-		td.parent.class('new', !!row.is_new)
+		td.class('null', input_val == null)
 	}
 
-	e.update_td_error = function(td, row, field, has_err, err) {
-		if (!has_err)
-			err = e.rowset.cell_state(row, field, 'error')
-		td.class('invalid', err != null)
+	e.update_td_error = function(td, row, field, err) {
+		let invalid = typeof err == 'string'
+		td.class('invalid', invalid)
 	}
 
 	// when: scroll_y changed.
@@ -223,18 +220,24 @@ grid = component('x-grid', function(e) {
 		let row = e.rows[ri]
 		tr.row = row
 		tr.row_index = ri
-		if (row)
+		if (row) {
 			tr.class('x-item', e.can_focus_cell(row))
+			tr.class('new'     , !!row.is_new)
+			tr.class('modified', !!row.modified)
+			tr.class('removed' , !!row.removed)
+		}
 		for (let fi = 0; fi < e.fields.length; fi++) {
-			let field = e.fields[fi]
 			let td = tr.at[fi]
-			td.field = field
-			td.field_index = fi
 			if (row) {
+				let field = e.fields[fi]
+				td.field = field
+				td.field_index = fi
 				td.class('x-item', e.can_focus_cell(row, field))
 				td.class('disabled', e.is_cell_disabled(row, field))
-				e.update_td_value(td, row, field)
-				e.update_td_error(td, row, field)
+				let input_val = e.rowset.cell_error(row, field)
+				e.update_td_value(td, row, field, e.rowset.input_value(row, field))
+				e.update_td_error(td, row, field, e.rowset.cell_error(row, field))
+				td.class('modified', e.rowset.cell_modified(row, field))
 				td.show()
 			} else {
 				td.clear()
@@ -363,28 +366,28 @@ grid = component('x-grid', function(e) {
 		update_focus()
 	}
 
-	e.update_cell_value = function(ri, fi) {
+	e.update_cell_state = function(ri, fi, prop, val) {
 		let td = td_at(tr_at(ri), fi)
-		if (td)
-			e.update_td_value(td, e.rows[ri], e.fields[fi])
+		if (!td)
+			return
+		if (prop == 'input_value')
+			e.update_td_value(td, e.rows[ri], e.fields[fi], val)
+		else if (prop == 'error')
+			e.update_td_error(td, e.rows[ri], e.fields[fi], val)
+		else if (prop == 'cell_modified')
+			td.class('modified', val)
 	}
 
-	e.update_cell_error = function(ri, fi, err) {
-		let td = td_at(tr_at(ri), fi)
-		if (td)
-			e.update_td_error(td, e.rows[ri], e.fields[fi], true, err)
-	}
-
-	e.update_cell_modified = function(ri, fi, modified) {
-		let td = td_at(tr_at(ri), fi)
-		if (td)
-			td.class('modified', !!modified)
-	}
-
-	e.update_row_is_new = function(ri, is_new, ev) {
+	e.update_row_state = function(ri, prop, val, ev) {
 		let tr = tr_at(ri)
-		if (tr)
-			tr.class('new', is_new)
+		if (!tr)
+			return
+		if (prop == 'row_is_new')
+			tr.class('new', val)
+		else if (prop == 'row_modified')
+			tr.class('modified', val)
+		else if (prop == 'row_removed')
+			tr.class('removed', val)
 	}
 
 	e.update_load_progress = function(p) {

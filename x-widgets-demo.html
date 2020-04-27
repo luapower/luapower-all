@@ -396,8 +396,8 @@ main.add(
 <script>
 
 main.add(H.div({},
-	spin_input({value: 42}),
-	spin_input({value: 42, label: 'Heeey'})
+	spin_input({default_value: 42}),
+	spin_input({default_value: 42, label: 'Heeey'})
 ))
 main.add(H.div({},
 	spin_input({button_style: 'up-down', value: 42}),
@@ -577,10 +577,9 @@ for (let i = 1; i <= 1e5; i++) {
 	let parent_id  = floor((random() * i))
 	let random_num = floor(random() * 1e9)
 	let random_date = day(i * 24 * 3600 * 1000)
-	data.rows.push({
-		focusable: i % 10 >= 2,
-		values: [id, i % 5 == 0, name, parent_id, random_num, random_date]
-	})
+	let row = [id, i % 5 == 0, name, parent_id, random_num, random_date]
+	row.focusable = i % 10 >= 2
+	data.rows.push(row)
 }
 
 d = rowset(data)
@@ -690,9 +689,9 @@ r1 = rowset({
 		{w: 150, name: 'date', type: 'date'},
 	],
 	rows: [
-		{values: [1, 'Hey Dude', day(now())]},
-		{values: [2, 'Wasup'   , month(now())]},
-		{values: [3, 'Nuthin'  , year(now())]},
+		[1, 'Hey Dude', day(now())],
+		[2, 'Wasup'   , month(now())],
+		[3, 'Nuthin'  , year(now())],
 	],
 })
 
@@ -712,7 +711,7 @@ main.add(
 
 rows2 = []
 for (let i = 1; i <= 1e5; i++)
-	rows2.push({values: [i, 'Hey Dude #'+i]})
+	rows2.push([i, 'Hey Dude #'+i])
 
 r2 = rowset({
 	fields: [
@@ -841,8 +840,8 @@ r = rowset({
 		{w: 100, name: 'name'},
 	],
 	rows: [
-		{values: [1, 'apples']},
-		{values: [2, 'bananas']},
+		[1, 'apples'],
+		[2, 'bananas'],
 	],
 })
 
@@ -874,9 +873,10 @@ fruits = rowset({
 		{w: 150, name: 'name'},
 	],
 	rows: [
-		{values: [1, 'apples']},
-		{values: [2, 'bananas']},
+		[1, 'apples'],
+		[2, 'bananas'],
 	],
+	can_change_rows: true,
 })
 
 main.add(grid({w: 200, h: 200, rowset: fruits}))
@@ -890,9 +890,9 @@ r = rowset({
 		},
 	],
 	rows: [
-		{values: [1]},
-		{values: [2]},
-		{values: [1]},
+		[1],
+		[2],
+		[1],
 	],
 })
 
@@ -1007,6 +1007,7 @@ g = grid({
 	rowset: d,
 	w: 500,
 	h: 200,
+	//save_row_on: false,
 })
 
 main.add(g)
@@ -1050,7 +1051,7 @@ $('template').forEach(function(e) {
 	let t = window[name+'_demo'].content
 	let h = t.$('help')[0]; h = h && h.innerHTML.trim() || ''
 	let s = t.$('script')[0]; s = s && s.innerHTML.trim() || ''
-	demos.push({text: name, help: h, code: s})
+	demos.push([{text: name, help: h, code: s}])
 })
 
 demo_list = listbox({items: demos, attrs: {id: 'demo_list'}})

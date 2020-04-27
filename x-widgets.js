@@ -10,9 +10,14 @@
 // ---------------------------------------------------------------------------
 
 /*
-	rowset.types : {type -> {attr->val}}
+	rowset(...options) -> rs
 
-	d.fields: [{attr->val}, ...]
+	rs.can_edit        : can edit at all (true)
+	rs.can_add_rows    : allow adding/inserting rows (false)
+	rs.can_remove_rows : allow removing rows (false)
+	rs.can_change_rows : allow editing cell values (false)
+
+	rs.fields: [{attr->val}, ...]
 
 	identification:
 		name           : field name (defaults to field's numeric index)
@@ -52,15 +57,18 @@
 		compare_types  : f(v1, v2) -> -1|0|1  (for sorting)
 		compare_values : f(v1, v2) -> -1|0|1  (for sorting)
 
-	d.rows: Set({k->v})
-		values         : [v1,...]
-		state          : [{k->v},...]
-			input_value : currently set value, whether valid or not.
+	rs.rows: Set(row)
+		row            : [v1,...;k->v]; currently set values (validated) + row state.
+		state          : [{k->v},...]; cell state.
+			input_val   : currently set value, whether valid or not.
 			error       : error message if invalid.
 			modified    : value was modified, change not on server yet.
 			old_value   : initial value before modifying.
 		is_new         : new row, not added on server yet.
+		modified       : one or more row cells were modified.
 		removed        : removed row, not removed on server yet.
+
+	rowset.types : {type -> {attr->val}}
 
 */
 
@@ -95,6 +103,7 @@ rowset = function(...options) {
 	}
 
 	function init_fields(fields) {
+		unbind_fields()
 		d.fields = fields || []
 		for (let i = 0; i < d.fields.length; i++) {
 			let f1 = d.fields[i]
@@ -171,44 +180,60 @@ rowset = function(...options) {
 
 	// vlookup ----------------------------------------------------------------
 
-	function lookup_function(field) {
+	function lookup_function(field, on) {
+
 		let index = new Map()
 
-		let rebuild = function() {
+		function rebuild() {
 			let fi = field.index
 			for (let row of d.rows) {
-				index.set(row.values[fi], row)
+				index.set(row[fi], row)
 			}
 		}
 
-		d.on('loaded', rebuild)
+		function row_added(row) {
+			index.set(row[field.index], row)
+		}
 
-		d.on('row_added', function(row) {
-			index.set(row.values[field.index], row)
-		})
+		function row_removed(row) {
+			index.delete(row[field.index])
+		}
 
-		d.on('row_removed', function(row) {
-			index.delete(row.values[field.index])
-		})
-
-		d.on('value_changed', function(row, changed_field, val, old_val) {
-			if (changed_field == field) {
-				index.delete(old_val)
-				index.set(val, row)
-			}
-		})
+		function value_changed_for_field(row, val) {
+			let prev_val = d.prev_value(row, field)
+			index.delete(prev_val)
+			index.set(val, row)
+		}
 
 		rebuild()
 
-		return function(v) {
+		function lookup(v) {
 			return index.get(v)
 		}
+
+		function bind(on) {
+			d.on('loaded', rebuild, on)
+			d.on('row_added', row_added, on)
+			d.on('row_removed', row_removed, on)
+			d.on('value_changed_for_'+field.name, value_changed_for_field, on)
+		}
+
+		bind(true)
+
+		return [lookup, bind]
 	}
 
 	d.lookup = function(field, v) {
 		if (!field.lookup)
-			field.lookup = lookup_function(field)
+			[field.lookup, field.bind_lookup] = lookup_function(field, true)
 		return field.lookup(v)
+	}
+
+	function unbind_fields() {
+		if (d.fields)
+			for (let field of d.fields)
+				if (field.bind_lookup)
+					field.bind_lookup(false)
 	}
 
 	// sorting ----------------------------------------------------------------
@@ -245,8 +270,8 @@ rowset = function(...options) {
 			var r = compare_rows(row1, row2)
 			if (r) return r
 
-			let v1 = row1.values[field_index]
-			let v2 = row2.values[field_index]
+			let v1 = row1[field_index]
+			let v2 = row2[field_index]
 
 			var r = compare_types(v1, v2)
 			if (r) return r
@@ -283,7 +308,7 @@ rowset = function(...options) {
 		return eval(s)
 	}
 
-	// get/set cell state -----------------------------------------------------
+	// get/set cell & row state (storage api) ---------------------------------
 
 	d.cell_state = function(row, field, key, default_val) {
 		let t = row.state && row.state[field.index]
@@ -291,42 +316,63 @@ rowset = function(...options) {
 		return v !== undefined ? v : default_val
 	}
 
-	d.set_cell_state = function(row, field, key, val, ev) {
+	function cell_state_changed(row, field, prop, val, ev) {
+		d.fire('cell_state_changed', row, field, prop, val, ev)
+		d.fire('cell_state_changed_for_'+field.name, row, prop, val, ev)
+		d.fire(prop+'_changed', row, field, val, ev)
+		d.fire(prop+'_changed_for_'+field.name, row, val, ev)
+	}
+
+	d.set_cell_state = function(row, field, key, val, default_val, prop, ev) {
 		let t = attr(array_attr(row, 'state'), field.index)
 		let old_val = t[key]
-		if (old_val === val)
-			return
-		t[key] = val
-		d.fire('cell_state_changed', row, field, key, val, old_val, ev)
-		d.fire(key+'_changed_for_'+field.name, row, val, old_val, ev)
+		if (old_val === undefined)
+			old_val = default_val
+		let changed = old_val !== val
+		if (changed) {
+			t[key] = val
+			if (prop)
+				cell_state_changed(row, field, prop, val, ev)
+		}
+		return changed
 	}
 
-	// get/set row state ------------------------------------------------------
-
-	d.set_row_state = function(row, key, val, ev) {
+	d.set_row_state = function(row, key, val, default_val, prop, ev) {
 		let old_val = row[key]
-		if (old_val === val)
-			return
-		row[key] = val
-		d.fire('row_state_changed', row, key, val, old_val, ev)
-		d.fire('row_'+key+'_changed', row, key, val, old_val, ev)
+		if (old_val === undefined)
+			old_val = default_val
+		let changed = old_val !== val
+		if (changed) {
+			row[key] = val
+			if (prop) {
+				d.fire('row_state_changed', row, prop, val, ev)
+				d.fire(prop+'_changed', row, val, ev)
+			}
+		}
+		return changed
 	}
 
-	// get/set cell values ----------------------------------------------------
+	// get/set cell values and cell & row state -------------------------------
 
 	d.value = function(row, field) {
 		let get_value = field.get_value // computed value?
-		return get_value ? field.get_value(row) : row.values[field.index]
+		return get_value ? field.get_value(row) : row[field.index]
 	}
 
 	d.input_value = function(row, field) {
-		let v = d.cell_state(row, field, 'input_value')
-		return v !== undefined ? v : d.value(row, field)
+		return d.cell_state(row, field, 'input_value', d.value(row, field))
+	}
+
+	function set_input_value(row, field, v, ev) {
+		d.set_cell_state(row, field, 'input_value', v, d.value(row, field), 'input_value', ev)
 	}
 
 	d.old_value = function(row, field) {
-		let v = d.cell_state(row, field, 'old_value')
-		return v !== undefined ? v : d.value(row, field)
+		return d.cell_state(row, field, 'old_value', d.value(row, field))
+	}
+
+	d.prev_value = function(row, field) {
+		return d.cell_state(row, field, 'prev_value', d.value(row, field))
 	}
 
 	d.validate_value = function(field, val, row) {
@@ -361,8 +407,8 @@ rowset = function(...options) {
 		return d.fire('validate_'+field.name, val, row)
 	}
 
-	d.on_validate_value = function(field, validate, on) {
-		d.on('validate_'+field.name, validate, on === undefined || on)
+	d.on_validate_value = function(col, validate, on) {
+		d.on('validate_'+col, validate, on)
 	}
 
 	d.validate_row = function(row) {
@@ -390,45 +436,79 @@ rowset = function(...options) {
 			return d.create_row_editor(...options)
 	}
 
+	d.cell_error = function(row, field) {
+		return d.cell_state(row, field, 'error')
+	}
+
+	d.set_cell_error = function(row, field, err, ev) {
+		err = typeof err == 'string' ? err : undefined
+		d.set_cell_state(row, field, 'error', err, undefined, 'cell_error', ev)
+	}
+
+	d.cell_modified = function(row, field) {
+		return d.cell_state(row, field, 'modified', false)
+	}
+
+	d.set_cell_modified = function(row, field, modified, ev) {
+		d.set_cell_state(row, field, 'modified', !!modified, false, 'cell_modified', ev)
+	}
+
+	d.set_row_modified = function(row, modified, ev) {
+		d.set_row_state(row, 'modified', !!modified, false, 'row_modified', ev)
+	}
+
+	d.set_row_is_new = function(row, is_new, ev) {
+		d.set_row_state(row, 'is_new', !!is_new, false, 'row_is_new', ev)
+	}
+
+	d.set_row_error = function(row, err, ev) {
+		err = typeof err == 'string' ? err : undefined
+		d.set_row_state(row, 'error', err, undefined, 'row_error', ev)
+	}
+
+	function value_changed(row, field, val, ev) {
+		d.fire('cell_state_changed', row, field, 'value', val, ev)
+		d.fire('cell_state_changed_for_'+field.name, row, 'value', val, ev)
+		d.fire('value_changed', row, field, val, ev)
+		d.fire('value_changed_for_'+field.name, row, val, ev)
+	}
+
 	d.set_value = function(row, field, val, ev) {
 		if (val === undefined)
 			val = null
 		let err = d.validate_value(field, val, row)
 		let invalid = typeof err == 'string'
-		d.set_cell_state(row, field, 'input_value', val, ev)
-		d.set_cell_state(row, field, 'error', invalid ? err : undefined, ev)
-		if (!invalid) {
-			let old_val = row.values[field.index]
-			if (val !== old_val) {
-				row.values[field.index] = val
-				if (!d.cell_state(row, field, 'modified')) {
-					d.set_cell_state(row, field, 'old_value', old_val, ev)
-					d.set_cell_state(row, field, 'modified', true, ev)
-					d.set_row_state(row, 'modified', true, ev)
-				} else if (val === d.cell_state(row, field, 'old_value')) {
-					d.set_cell_state(row, field, 'modified', false, ev)
-				}
-				d.fire('value_changed', row, field, val, old_val, ev)
-				d.fire('value_changed_for_'+field.name, row, val, old_val, ev)
-				row_changed(row, true)
-			}
+		set_input_value(row, field, val, ev)
+		d.set_cell_error(row, field, err, ev)
+		let cur_val = row[field.index]
+		if (!invalid && val !== cur_val) {
+			let was_modified = d.cell_modified(row, field)
+			let modified = val !== d.old_value(row, field)
+			row[field.index] = val
+			d.set_cell_state(row, field, 'prev_value', cur_val)
+			if (!was_modified)
+				d.set_cell_state(row, field, 'old_value', cur_val)
+			d.set_cell_modified(row, field, modified, ev)
+			if (modified)
+				d.set_row_modified(row, true, ev)
+			cell_state_changed(row, field, 'value', val, ev)
+			row_changed(row)
 		}
 		return !invalid
 	}
 
-	d.reset_value = function(row, field, val, ev) {
+	d.reset_value = function(row, field, val, err, ev) {
 		if (val === undefined)
 			val = null
-		d.set_cell_state(row, field, 'error', undefined, ev)
-		d.set_cell_state(row, field, 'input_value', val, ev)
-		d.set_cell_state(row, field, 'old_value', undefined, ev)
-		d.set_cell_state(row, field, 'modified', undefined, ev)
-		let old_val = row.values[field.index]
-		if (val !== old_val) {
-			row.values[field.index] = val
-			d.fire('value_changed', row, field, val, old_val, ev)
-			d.fire('value_changed_for_'+field.name, row, val, old_val, ev)
-			row_changed(row, false)
+		set_input_value(row, field, val, ev)
+		d.set_cell_error(row, field, err, ev)
+		d.set_cell_modified(row, field, false, ev)
+		let cur_val = row[field.index]
+		d.set_cell_state(row, field, 'old_value', undefined)
+		if (val !== cur_val) {
+			row[field.index] = val
+			d.set_cell_state(row, field, 'prev_value', cur_val)
+			cell_state_changed(row, field, 'value', val, ev)
 		}
 	}
 
@@ -445,19 +525,19 @@ rowset = function(...options) {
 						d.fire('display_values_changed', field)
 						d.fire('display_values_changed_for_'+field.name)
 					}
-					field.lookup_display_values_changed = function() {
+					field.lookup_rowset_display_values_changed = function() {
 						d.fire('display_values_changed', field)
 						d.fire('display_values_changed_for_'+field.name)
 					}
 					field.lookup_rowset_loaded()
 				}
 				lr.on('loaded'      , field.lookup_rowset_loaded, on)
-				lr.on('row_added'   , field.lookup_display_values_changed, on)
-				lr.on('row_removed' , field.lookup_display_values_changed, on)
+				lr.on('row_added'   , field.lookup_rowset_display_values_changed, on)
+				lr.on('row_removed' , field.lookup_rowset_display_values_changed, on)
 				lr.on('input_value_changed_for_'+field.lookup_col,
-					field.lookup_display_values_changed, on)
+					field.lookup_rowset_display_values_changed, on)
 				lr.on('input_value_changed_for_'+field.display_col,
-					field.lookup_display_values_changed, on)
+					field.lookup_rowset_display_values_changed, on)
 			}
 		}
 	}
@@ -480,13 +560,14 @@ rowset = function(...options) {
 	// add/remove rows --------------------------------------------------------
 
 	function create_row() {
-		let values = []
+		let row = []
 		// add server_default values or null
 		for (let field of d.fields) {
 			let val = field.server_default
-			values.push(val != null ? val : null)
+			row.push(val != null ? val : null)
 		}
-		return {values: values, is_new: true}
+		row.is_new = true
+		return row
 	}
 
 	d.add_row = function(ev) {
@@ -495,14 +576,14 @@ rowset = function(...options) {
 		let row = create_row()
 		d.rows.add(row)
 		d.fire('row_added', row, ev)
-		// set default client values as if they were added by the user.
+		// set default client values as if they were typed in by the user.
 		for (let field of d.fields)
 			if (field.client_default != null)
 				d.set_value(row, field, field.client_default, ev)
 		// ... except we don't consider the row modified so that we can
 		// remove it with the up-arrow key if no further edits are made.
-		d.set_row_state(row, 'modified', false, ev)
-		row_changed(row, true)
+		d.set_row_modified(row, false, ev)
+		row_changed(row)
 		return row
 	}
 
@@ -519,13 +600,16 @@ rowset = function(...options) {
 		return true
 	}
 
-	d.remove_row = function(row, ev) {
-		if (!d.can_remove_row(row))
-			return
-		row.removed = true
-		d.rows.delete(row)
-		d.fire('row_removed', row, ev)
-		row_changed(row, true)
+	d.remove_row = function(row, forever, ev) {
+		if (forever) {
+			d.rows.delete(row)
+			d.fire('row_removed', row, ev)
+		} else {
+			if (!d.can_remove_row(row))
+				return
+			d.set_row_state(row, 'removed', true, false, 'row_removed', ev)
+			row_changed(row)
+		}
 		return row
 	}
 
@@ -599,7 +683,8 @@ rowset = function(...options) {
 			params = {}
 			for (let param of d.params) {
 				let field = d.param_nav.rowset.field(param)
-				let v = d.param_nav.focused_row_value(field)
+				let row = d.param_nav.focused_row
+				let v = row ? d.param_nav.rowset.value(row, field) : null
 				params[field.name] = v
 			}
 		}
@@ -712,47 +797,45 @@ rowset = function(...options) {
 
 	let changed_rows
 
-	function row_changed(row, from_input) {
-		if (from_input) {
-			if (!changed_rows)
-				changed_rows = new Set()
-			if (row.is_new && row.removed)
-				changed_rows.delete(row)
-			else
-				changed_rows.add(row)
-		}
-		d.fire('row_changed', row, from_input)
+	function row_changed(row) {
+		if (!changed_rows)
+			changed_rows = new Set()
+		if (row.is_new && row.removed)
+			changed_rows.delete(row)
+		else
+			changed_rows.add(row)
+		d.fire('row_changed', row)
 	}
 
 	function add_row_changes(row, rows) {
 		if (row.save_request)
 			return // currently saving this row.
 		if (row.is_new) {
-			let t = {type: 'new'}
+			let t = {type: 'new', values: {}}
 			for (let fi = 0; fi < d.fields.length; fi++) {
 				let field = d.fields[fi]
-				let val = row.values[fi]
+				let val = row[fi]
 				if (val !== field.server_default)
-					t[field.name] = val
+					t.values[field.name] = val
 			}
 			rows.push(t)
 		} else if (row.removed) {
-			let t = {type: 'remove'}
+			let t = {type: 'remove', values: {}}
 			for (let field of d.pk_fields)
-				t[field.name] = d.old_value(row, field)
+				t.values[field.name] = d.old_value(row, field)
 			rows.push(t)
 		} else if (row.modified) {
-			let t = {type: 'update'}
+			let t = {type: 'update', values: {}}
 			let found
 			for (let field of d.fields) {
-				if (d.cell_state(row, field, 'modified')) {
-					t[field.name] = row.values[field.index]
+				if (d.cell_modified(row, field)) {
+					t.values[field.name] = row[field.index]
 					found = true
 				}
 			}
 			if (found) {
 				for (let field of d.pk_fields)
-					t[field.name+':old'] = d.old_value(row, field)
+					t.values[field.name+':old'] = d.old_value(row, field)
 				rows.push(t)
 			}
 		}
@@ -772,38 +855,33 @@ rowset = function(...options) {
 	}
 
 	d.apply_result = function(result, changed_rows) {
-		console.log(result)
-		console.log(changed_rows)
 		for (let i = 0; i < result.rows.length; i++) {
 			let rt = result.rows[i]
 			let row = changed_rows[i]
 
-			let invalid = typeof(rt.error) == 'string'
-			d.set_row_state(row, 'error', rt.error)
-			if (invalid)
+			let invalid = typeof rt.error == 'string'
+			d.set_row_error(row, rt.error)
+			if (invalid) {
 				d.fire('notify', 'error',
-					S('row_save_error', 'Error saving row.\n' + rt.error))
+					S('row_save_error', 'Error saving row\n' + rt.error))
+				print(rt.error)
+			}
 
 			if (rt.remove) {
-
+				d.remove_row(row, true, {refocus: true})
 			} else {
-
-				if (rt.type == 'remove') {
-					d.set_row_state(row, 'removed', undefined)
-				} else {
-					if (!invalid) {
-						d.set_row_state(row, 'modified', undefined)
-						d.set_row_state(row, 'is_new', undefined)
-					}
+				if (!invalid) {
+					d.set_row_modified(row, false)
+					d.set_row_is_new(row, false)
 				}
-
 				if (rt.values) {
 					for (let k in rt.values)
-						d.reset_value(row, d.field(k), rt.values[k])
+						d.reset_value(row, d.field(k), rt.values[k], rt.errors && rt.errors[k])
 				}
-
 			}
 		}
+		if (result.sql_trace)
+			print(result.sql_trace.join('\n'))
 	}
 
 	function set_save_state(rows, req) {
@@ -1024,8 +1102,8 @@ function focused_row_mixin(e) {
 	e.focused_row_bind_rowset = function(on) {
 		e.rowset.on('loaded'             , rowset_loaded      , on)
 		e.rowset.on('row_removed'        , row_removed        , on)
-		e.rowset.on('value_changed'      , value_changed      , on)
 		e.rowset.on('cell_state_changed' , cell_state_changed , on)
+		e.rowset.on('row_state_changed'  , row_state_changed  , on)
 	}
 
 	// losing the focused row -------------------------------------------------
@@ -1039,46 +1117,20 @@ function focused_row_mixin(e) {
 			e.set_focused_row(null)
 	}
 
-	// responding to value changes --------------------------------------------
+	// responding to row & cell state changes ---------------------------------
 
-	function value_changed(row, field, val, old_val, ev) {
+	function cell_state_changed(row, field, prop, val, ev) {
 		if (row != focused_row)
 			return
-		e.fire('focused_row_value_changed_for_'+field.name, val, old_val, ev)
+		e.fire('focused_row_cell_state_changed_for_'+field.name, prop, val, ev)
+		e.fire('focused_row_'+prop+'_changed_for_'+field.name, val, ev)
 	}
 
-	function cell_state_changed(row, field, key, val, old_val, ev) {
+	function row_state_changed(row, prop, val, ev) {
 		if (row != focused_row)
 			return
-		e.fire('focused_row_'+key+'_changed_for_'+field.name, val, old_val, ev)
-	}
-
-	// getters/setters --------------------------------------------------------
-
-	e.focused_row_value = function(field) {
-		return focused_row ? e.rowset.value(focused_row, field) : null
-	}
-
-	e.focused_row_set_value = function(field, v, ev) {
-		if (focused_row)
-			e.rowset.set_value(focused_row, field, v, ev)
-	}
-
-	e.focused_row_cell_state = function(field, key, default_val) {
-		return focused_row ? e.rowset.cell_state(focused_row, field, key, default_val) : undefined
-	}
-
-	e.focused_row_set_cell_state = function(field, key, val, ev) {
-		if (focused_row)
-			e.rowset.set_cell_state(focused_row, field, key, val, ev)
-	}
-
-	e.focused_row_input_value = function(field) {
-		return focused_row ? e.rowset.input_value(focused_row, field) : null
-	}
-
-	e.focused_row_display_value = function(field) {
-		return focused_row ? e.rowset.display_value(focused_row, field) : ''
+		e.fire('focused_row_state_changed', prop, val, ev)
+		e.fire('focused_row_'+prop+'_changed', val, ev)
 	}
 
 }
@@ -1115,8 +1167,8 @@ rowset_nav = function(...options) {
 /*
 	value widgets must implement:
 		field_prop_map: {prop->field_prop}
-		update_value()
-		update_error(err)
+		update_value(input_val, ev)
+		update_error(err, ev)
 */
 
 function value_widget(e) {
@@ -1139,7 +1191,7 @@ function value_widget(e) {
 				field[field_k] = e[e_k]
 			}
 
-			let row = {values: [e.default_value]}
+			let row = [e.default_value]
 
 			let internal_rowset = rowset({
 				fields: [field],
@@ -1154,7 +1206,7 @@ function value_widget(e) {
 			e.col = e.field.name
 
 			if (e.validate) // inline validator, only for internal-rowset widgets.
-				e.nav.rowset.on_validate_value(e.field, e.validate, true)
+				e.nav.rowset.on_validate_value(e.col, e.validate)
 
 			e.internal_nav = true
 		} else {
@@ -1167,12 +1219,9 @@ function value_widget(e) {
 	}
 
 	e.bind_nav = function(on) {
-		e.nav.on('focused_row_changed'                        , e.init_value, on)
-		e.nav.on('focused_row_value_changed_for_'+e.col       , value_changed, on)
-		e.nav.on('focused_row_input_value_changed_for_'+e.col , input_value_changed, on)
-		e.nav.on('focused_row_error_changed_for_'+e.col       , error_changed, on)
-		e.nav.on('focused_row_modified_changed_for_'+e.col    , modified_changed, on)
-		e.nav.rowset.on('display_values_changed_for_'+e.col   , e.init_value, on)
+		e.nav.on('focused_row_changed', e.init_value, on)
+		e.nav.on('focused_row_cell_state_changed_for_'+e.col, cell_state_changed, on)
+		e.nav.rowset.on('display_values_changed_for_'+e.col, e.init_value, on)
 		e.nav.rowset.on('fields_changed', fields_changed)
 	}
 
@@ -1196,33 +1245,23 @@ function value_widget(e) {
 		e.init_field()
 	}
 
-	e.init_value = function(ev) {
-		e.update_value(ev)
-		update_error_state(e.cell_state('error'))
-		e.class('modified', !!e.cell_state('modified'))
-		e.class('modified', !!e.cell_state('modified'))
+	e.init_value = function() {
+		cell_state_changed('input_value', e.input_value)
+		cell_state_changed('cell_error', e.error)
+		cell_state_changed('cell_modified', e.modified)
 	}
 
-	function value_changed(val, old_val, ev) {
-		e.fire('value_changed', val, old_val, ev)
-	}
-
-	function input_value_changed(val, old_val, ev) {
-		e.update_value(ev)
-	}
-
-	function error_changed(val, old_val, ev) {
-		update_error_state(val, ev)
-	}
-
-	function modified_changed(val) {
-		e.class('modified', val)
-	}
-
-	function update_error_state(err, ev) {
-		e.invalid = err != null
-		e.class('invalid', e.invalid)
-		e.update_error(err, ev)
+	function cell_state_changed(prop, val, ev) {
+		if (prop == 'input_value')
+			e.update_value(val, ev)
+		else if (prop == 'value')
+			e.fire('value_changed', val, ev)
+		else if (prop == 'cell_error') {
+			e.invalid = val != null
+			e.class('invalid', e.invalid)
+			e.update_error(val, ev)
+		} else if (prop == 'cell_modified')
+			e.class('modified', val)
 	}
 
 	e.error_tooltip_check = function() {
@@ -1244,27 +1283,35 @@ function value_widget(e) {
 
 	// getters/setters --------------------------------------------------------
 
-	function get_value() { return e.nav.focused_row_value(e.field) }
-	e.set_value = function(v, ev) {
-		e.nav.focused_row_set_value(e.field, v, ev)
+	function get_value() {
+		let row = e.nav.focused_row
+		return row ? e.nav.rowset.value(row, e.field) : null
 	}
-
+	e.set_value = function(v, ev) {
+		let row = e.nav.focused_row
+		if (row)
+			e.nav.rowset.set_value(row, e.field, v, ev)
+	}
 	e.late_property('value', get_value, e.set_value)
 
-	e.cell_state = function(key, default_val) {
-		return e.nav.focused_row_cell_state(e.field, key, default_val)
-	}
-
-	e.set_cell_state = function(key, val, ev) {
-		return e.nav.focused_row_set_cell_state(e.field, key, val, ev)
-	}
-
 	e.property('input_value', function() {
-		return e.nav.focused_row_input_value(e.field)
+		let row = e.nav.focused_row
+		return row ? e.nav.rowset.input_value(row, e.field) : null
+	})
+
+	e.property('error', function() {
+		let row = e.nav.focused_row
+		return row ? e.nav.rowset.cell_error(row, e.field) : undefined
+	})
+
+	e.property('modified', function() {
+		let row = e.nav.focused_row
+		return row ? e.nav.rowset.cell_modified(row, e.field) : false
 	})
 
 	e.property('display_value', function() {
-		return e.nav.focused_row_display_value(e.field)
+		let row = e.nav.focused_row
+		return row ? e.nav.rowset.display_value(row, e.field) : ''
 	})
 
 }
@@ -1434,8 +1481,8 @@ checkbox = component('x-checkbox', function(e) {
 		e.text_div.html = s
 	})
 
-	e.update_value = function() {
-		v = e.input_value === e.checked_value
+	e.update_value = function(v) {
+		v = v === e.checked_value
 		e.class('checked', v)
 		e.icon_div.class('fa-check-square', v)
 		e.icon_div.class('fa-square', !v)
@@ -1511,13 +1558,12 @@ radiogroup = component('x-radiogroup', function(e) {
 
 	let sel_item
 
-	e.update_value = function() {
+	e.update_value = function(i) {
 		if (sel_item) {
 			sel_item.class('selected', false)
 			sel_item.at[0].class('fa-dot-circle', false)
 			sel_item.at[0].class('fa-circle', true)
 		}
-		let i = e.input_value
 		sel_item = i != null ? e.at[i] : null
 		if (sel_item) {
 			sel_item.class('selected', true)
@@ -1611,9 +1657,9 @@ input = component('x-input', function(e) {
 		e.inner_label_div.class('empty', s == '')
 	}
 
-	e.update_value = function() {
+	e.update_value = function(v) {
 		if (!from_input) {
-			let s = e.field.to_text(e.input_value)
+			let s = e.field.to_text(v)
 			e.input.value = s
 			update_state(s)
 		}
@@ -1906,8 +1952,8 @@ slider = component('x-slider', function(e) {
 		fill.style.width = ((p2 - p1) * 100)+'%'
 	}
 
-	e.update_value = function() {
-		let input_p = progress_for(e.input_value)
+	e.update_value = function(v) {
+		let input_p = progress_for(v)
 		let value_p = progress_for(e.value)
 		let diff = input_p != value_p
 		update_thumb(e.value_thumb, value_p, diff)
@@ -2020,11 +2066,11 @@ dropdown = component('x-dropdown', function(e) {
 
 	// value updating
 
-	e.update_value = function(ev) {
+	e.update_value = function(v, ev) {
 		let html = e.display_value
 		let empty = html === ''
 		e.value_div.class('empty', empty)
-		e.value_div.class('null', e.input_value == null)
+		e.value_div.class('null', v == null)
 		e.inner_label_div.class('empty', empty)
 		e.value_div.html = empty ? '&nbsp;' : html
 		if (ev && ev.focus)
@@ -2217,8 +2263,8 @@ calendar = component('x-calendar', function(e) {
 		e.bind_nav(false)
 	}
 
-	e.update_value = function() {
-		t = day(e.input_value)
+	e.update_value = function(v) {
+		t = day(v)
 		update_weekview(t, 6)
 		let y = year_of(t)
 		let n = floor(1 + days(t - month(t)))

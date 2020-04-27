@@ -32,6 +32,7 @@ QUERY/DDL
 require'webb'
 local mysql = require'webb_mysql'
 local errors = require'errors'
+local raise = errors.raise
 
 --db connection --------------------------------------------------------------
 
@@ -39,7 +40,7 @@ local function assert_db(ret, ...)
 	if ret ~= nil then return ret, ... end
 	local err, errno, sqlstate = ...
 	raise('db', {err = err, errno = errno, sqlstate = sqlstate},
-		'db error: %s: %s %s', err, errno, sqlstate)
+		'%s: %s %s', err, errno, sqlstate)
 end
 
 local function pconfig(ns, k, default)

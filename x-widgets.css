@@ -56,8 +56,12 @@
 .x-widget .disabled { color: #999; }
 .x-widget .null { color: #999; }
 
-.x-item:not(.focused):not(:hover) > .x-item:not(.invalid).new {
+.x-item:not(.focused):not(:hover).new > .x-item:not(.invalid) {
 	background-color: var(--x-new-bg-color);
+}
+
+.x-item.removed {
+	text-decoration: line-through;
 }
 
 .x-item:not(.focused):not(:hover) > .x-item:not(.invalid).modified {

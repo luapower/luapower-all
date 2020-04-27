@@ -51,18 +51,18 @@ function virtual_rowset(init, ...)
 			local rt = {type = row.type}
 			if row.type == 'new' then
 				if rs.can_add_rows then
-					local ok, affected_rows, id = catch('db', rs.insert_row, rs, row)
+					local ok, affected_rows, id = catch('db', rs.insert_row, rs, row.values)
 					if ok then
 						if (affected_rows or 1) == 0 then
 							rt.error = S('row_not_inserted', 'row not inserted')
 						else
 							if id then
 								local id_col = assert(changes.id_col)
-								row[id_col] = id
+								row.values[id_col] = id
 								rt.values = {[id_col] = id}
 							end
 							if rs.select_row then
-								local ok, values = catch('db', rs.select_row, rs, row)
+								local ok, values = catch('db', rs.select_row, rs, row.values)
 								if ok then
 									if values then
 										rt.values = values
@@ -89,13 +89,13 @@ function virtual_rowset(init, ...)
 				add(res.rows, rt)
 			elseif row.type == 'update' then
 				if rs.can_change_rows then
-					local ok, affected_rows = catch('db', rs.update_row, rs, row)
+					local ok, affected_rows = catch('db', rs.update_row, rs, row.values)
 					if ok then
 						if (affected_rows or 1) == 0 then
 							rt.error = S('row_not_updated', 'row not updated')
 						else
 							if rs.select_row_update then
-								local ok, values = catch('db', rs.select_row_update, rs, row)
+								local ok, values = catch('db', rs.select_row_update, rs, row.values)
 								if ok then
 									if values then
 										rt.values = values
@@ -123,13 +123,13 @@ function virtual_rowset(init, ...)
 				add(res.rows, rt)
 			elseif row.type == 'remove' then
 				if rs.can_remove_rows then
-					local ok, affected_rows = catch('db', rs.delete_row, rs, row)
+					local ok, affected_rows = catch('db', rs.delete_row, rs, row.values)
 					if ok then
 						if (affected_rows or 1) == 0 then
 							rt.error = S('row_not_removed', 'row not removed')
 						else
 							if rs.select_row then
-								local ok, values = catch('db', rs.select_row, rs, row)
+								local ok, values = catch('db', rs.select_row, rs, row.values)
 								if ok then
 									if values then
 										rt.error = S('rmeoved_row_found',
@@ -390,13 +390,9 @@ function sql_rowset(...)
 
 		function rs:select_rows(res, param_values)
 			trace_queries(not config'hide_errors')
-			local t, cols, params = query_on(rs.db, rs.select, param_values)
+			local rows, cols, params = query_on(rs.db, rs.select, param_values)
 			local fields, pk, id_col =
-				field_defs_from_query_result_cols(cols, t.field_attrs, rs.update_table)
-			local rows = {}
-			for i,row in ipairs(t) do
-				rows[i] = {values = row}
-			end
+				field_defs_from_query_result_cols(cols, rs.field_attrs, rs.update_table)
 			local sql_trace = trace_queries(false)
 			merge(res, {
 				fields = fields,
@@ -497,7 +493,7 @@ function rowset.test_static()
 	else
 		local rows = {}
 		for i = 1, 1e5 do
-			rows[i] = {values = {i, 'Row '..i, 0}}
+			rows[i] = {i, 'Row '..i, 0}
 		end
 		local t = {
 			fields = {

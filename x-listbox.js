@@ -51,16 +51,19 @@ listbox = component('x-listbox', function(e) {
 
 	function update_rowset_from_items() {
 		e.rowset.rows = new Set()
-		for (let item of e.items)
-			e.rowset.rows.add({values: [item]})
+		for (let item of e.items) {
+			if (typeof item == 'string')
+				item = [item]
+			e.rowset.rows.add(item)
+		}
 	}
 
 	e.format_item = function(item) {
-		return typeof(item) == 'string' ? item : item.text
+		return typeof item == 'string' ? item : item.text
 	}
 
 	e.property('focused_item', function() {
-		return e.focused_row ? e.focused_row.values[0] : null
+		return e.focused_row ? e.focused_row[0] : null
 	})
 
 	// responding to rowset changes -------------------------------------------

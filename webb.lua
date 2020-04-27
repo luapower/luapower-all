@@ -646,22 +646,11 @@ cjson.encode_sparse_array(false, 0, 0) --encode all sparse arrays
 
 null = cjson.null
 
-local function remove_nulls(t)
-	if t == null then
-		return nil
-	elseif type(t) == 'table' then
-		for k,v in pairs(t) do
-			t[k] = remove_nulls(v)
-		end
-	end
-	return t
-end
-
 function json(v)
 	if type(v) == 'table' then
 		return cjson.encode(v)
 	elseif type(v) == 'string' then
-		return remove_nulls(cjson.decode(v))
+		return cjson.decode(v)
 	elseif v == nil then
 		return nil
 	else
