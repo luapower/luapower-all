@@ -23,10 +23,12 @@ function rowset_widget(e) {
 	e.can_change_rows = true
 
 	e.can_focus_cells = true
-	e.auto_advance_row = true   // jump row on horiz. navigation limits
-	e.save_row_on = 'exit_edit' // save row on 'input'|'exit_edit'|'exit_row'|false
-	e.prevent_exit_edit = false // prevent exiting edit mode on validation errors
-	e.prevent_exit_row = true   // prevent changing row on validation errors
+	e.auto_advance_row = true       // jump row on horiz. navigation limits
+	e.save_row_on = 'exit_edit'     // save row on 'input'|'exit_edit'|'exit_row'|false
+	e.insert_row_on = 'exit_edit'   // insert row on 'input'|'exit_edit'|'exit_row'|false
+	e.remove_row_on = 'input'       // remove row on 'input'|'exit_row'|false
+	e.prevent_exit_edit = false     // prevent exiting edit mode on validation errors
+	e.prevent_exit_row = true       // prevent changing row on validation errors
 
 	focused_row_mixin(e)
 	value_widget(e)
@@ -134,7 +136,7 @@ function rowset_widget(e) {
 		let row = e.rowset.add_row(update({row_index: ri, focus_it: focus_it}, ev))
 		if (!row && adjust_ri)
 			e.focused_row_index--
-		if (e.save_row_on)
+		if (e.save_row_on && e.insert_row_on == 'input')
 			e.save(row)
 		return row
 	}
@@ -143,7 +145,7 @@ function rowset_widget(e) {
 		if (!e.can_edit || !e.can_remove_rows)
 			return false
 		let row = e.rowset.remove_row(e.rows[ri], false, update({row_index: ri, refocus: refocus}, ev))
-		if (e.save_row_on)
+		if (e.save_row_on && e.remove_row_on == 'input')
 			e.save(row)
 		return row
 	}
@@ -507,19 +509,25 @@ function rowset_widget(e) {
 	}
 
 	e.exit_row = function() {
-		/*
-		let tr = e.focused_tr
-		if (!tr)
+		let row = e.focused_row
+		if (!row)
 			return true
-		let td = e.focused_td
-		if (e.save_row_on == 'exit_row')
-			e.save_row(tr)
-		if (e.prevent_exit_row)
-			if (tr.hasclass('invalid_values') || tr.hasclass('invalid'))
+		if (row.modified) {
+			let err = e.rowset.validate_row(row)
+			d.set_row_error(row, err)
+			if (!!err)
 				return false
-		*/
+		}
 		if (!e.exit_edit())
 			return false
+		if (e.prevent_exit_row && row.error)
+			return false
+		if (e.save_row_on == 'exit_row'
+			|| (e.save_row_on && row.is_new  && e.insert_row_on == 'exit_row')
+			|| (e.save_row_on && row.removed && e.remove_row_on == 'exit_row')
+		) {
+			e.save(row)
+		}
 		return true
 	}
 

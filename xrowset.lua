@@ -91,31 +91,26 @@ function virtual_rowset(init, ...)
 				if rs.can_change_rows then
 					local ok, affected_rows = catch('db', rs.update_row, rs, row.values)
 					if ok then
-						if (affected_rows or 1) == 0 then
-							rt.error = S('row_not_updated', 'row not updated')
-						else
-							if rs.select_row_update then
-								local ok, values = catch('db', rs.select_row_update, rs, row.values)
-								if ok then
-									if values then
-										rt.values = values
-									else
-										rt.remove = true
-										rt.error = S('updated_row_not_found',
-											'updated row could not be selected back')
-									end
+						if rs.select_row_update then
+							local ok, values = catch('db', rs.select_row_update, rs, row.values)
+							if ok then
+								if values then
+									rt.values = values
 								else
-									local err = values
-									rt.error = db_error(err,
-										S('select_updated_row_error',
-											'db error on selecting back updated row'))
+									rt.remove = true
+									rt.error = S('updated_row_not_found',
+										'updated row could not be selected back')
 								end
+							else
+								local err = values
+								rt.error = db_error(err,
+									S('select_updated_row_error',
+										'db error on selecting back updated row'))
 							end
 						end
 					else
 						local err = affected_rows
-						rt.error = db_error(err,
-							S('update_error', 'db error on updating row'))
+						rt.error = db_error(err, S('update_error', 'db error on updating row'))
 					end
 				else
 					rt.error = 'updating rows not allowed'

@@ -412,8 +412,6 @@ rowset = function(...options) {
 	}
 
 	d.validate_row = function(row) {
-		if (!d.can_change_value(row))
-			return S('error_row_read_only', 'row is read-only')
 		return d.fire('validate', row)
 	}
 
@@ -441,7 +439,7 @@ rowset = function(...options) {
 	}
 
 	d.set_cell_error = function(row, field, err, ev) {
-		err = typeof err == 'string' ? err : undefined
+		err = err || undefined
 		d.set_cell_state(row, field, 'error', err, undefined, 'cell_error', ev)
 	}
 
@@ -453,17 +451,25 @@ rowset = function(...options) {
 		d.set_cell_state(row, field, 'modified', !!modified, false, 'cell_modified', ev)
 	}
 
-	d.set_row_modified = function(row, modified, ev) {
-		d.set_row_state(row, 'modified', !!modified, false, 'row_modified', ev)
-	}
-
 	d.set_row_is_new = function(row, is_new, ev) {
 		d.set_row_state(row, 'is_new', !!is_new, false, 'row_is_new', ev)
 	}
 
+	d.set_row_modified = function(row, modified, ev) {
+		d.set_row_state(row, 'modified', !!modified, false, 'row_modified', ev)
+	}
+
+	d.set_row_removed = function(row, removed, ev) {
+		d.set_row_state(row, 'removed', !!removed, false, 'row_removed', ev)
+	}
+
 	d.set_row_error = function(row, err, ev) {
-		err = typeof err == 'string' ? err : undefined
+		err = err || undefined
 		d.set_row_state(row, 'error', err, undefined, 'row_error', ev)
+		if (!!err) {
+			d.fire('notify', 'error', err)
+			print(err)
+		}
 	}
 
 	function value_changed(row, field, val, ev) {
@@ -477,9 +483,10 @@ rowset = function(...options) {
 		if (val === undefined)
 			val = null
 		let err = d.validate_value(field, val, row)
-		let invalid = typeof err == 'string'
+		let invalid = !!err
 		set_input_value(row, field, val, ev)
 		d.set_cell_error(row, field, err, ev)
+		d.set_row_error(row, undefined, ev)
 		let cur_val = row[field.index]
 		if (!invalid && val !== cur_val) {
 			let was_modified = d.cell_modified(row, field)
@@ -500,11 +507,13 @@ rowset = function(...options) {
 	d.reset_value = function(row, field, val, err, ev) {
 		if (val === undefined)
 			val = null
-		set_input_value(row, field, val, ev)
 		d.set_cell_error(row, field, err, ev)
-		d.set_cell_modified(row, field, false, ev)
+		if (!err) {
+			set_input_value(row, field, val, ev)
+			d.set_cell_modified(row, field, false, ev)
+		}
+		d.set_cell_state(row, field, 'old_value', val)
 		let cur_val = row[field.index]
-		d.set_cell_state(row, field, 'old_value', undefined)
 		if (val !== cur_val) {
 			row[field.index] = val
 			d.set_cell_state(row, field, 'prev_value', cur_val)
@@ -601,13 +610,13 @@ rowset = function(...options) {
 	}
 
 	d.remove_row = function(row, forever, ev) {
-		if (forever) {
+		if (forever || row.is_new) {
 			d.rows.delete(row)
 			d.fire('row_removed', row, ev)
 		} else {
 			if (!d.can_remove_row(row))
 				return
-			d.set_row_state(row, 'removed', true, false, 'row_removed', ev)
+			d.set_row_removed(row, true, ev)
 			row_changed(row)
 		}
 		return row
@@ -798,12 +807,8 @@ rowset = function(...options) {
 	let changed_rows
 
 	function row_changed(row) {
-		if (!changed_rows)
-			changed_rows = new Set()
-		if (row.is_new && row.removed)
-			changed_rows.delete(row)
-		else
-			changed_rows.add(row)
+		changed_rows = changed_rows || new Set()
+		changed_rows.add(row)
 		d.fire('row_changed', row)
 	}
 
@@ -859,20 +864,15 @@ rowset = function(...options) {
 			let rt = result.rows[i]
 			let row = changed_rows[i]
 
-			let invalid = typeof rt.error == 'string'
+			let row_failed = !!rt.error
 			d.set_row_error(row, rt.error)
-			if (invalid) {
-				d.fire('notify', 'error',
-					S('row_save_error', 'Error saving row\n' + rt.error))
-				print(rt.error)
-			}
 
 			if (rt.remove) {
 				d.remove_row(row, true, {refocus: true})
 			} else {
-				if (!invalid) {
-					d.set_row_modified(row, false)
+				if (!row_failed) {
 					d.set_row_is_new(row, false)
+					d.set_row_modified(row, false)
 				}
 				if (rt.values) {
 					for (let k in rt.values)
