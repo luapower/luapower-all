@@ -185,3 +185,21 @@ listbox = component('x-listbox', function(e) {
 
 })
 
+list_dropdown = component('x-list-dropdown', function(e) {
+
+	e.lookup_col = '0'
+	e.display_col = '0'
+
+	dropdown.construct(e)
+
+	init = e.init
+	e.init = function() {
+		e.picker = listbox({
+			items: e.items,
+			value_col: '0',
+		})
+		init()
+	}
+
+})
+

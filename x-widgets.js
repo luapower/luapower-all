@@ -205,8 +205,6 @@ rowset = function(...options) {
 			index.set(val, row)
 		}
 
-		rebuild()
-
 		function lookup(v) {
 			return index.get(v)
 		}
@@ -218,6 +216,7 @@ rowset = function(...options) {
 			d.on('value_changed_for_'+field.name, value_changed_for_field, on)
 		}
 
+		rebuild()
 		bind(true)
 
 		return [lookup, bind]
@@ -1173,7 +1172,7 @@ function value_widget(e) {
 
 	e.default_value = null
 	e.field_prop_map = {
-		field_name: 'name', label: 'text',
+		field_name: 'name', field_type: 'type', label: 'text',
 		min: 'min', max: 'max', multiple_of: 'multiple_of',
 		lookup_rowset: 'lookup_rowset', lookup_col: 'lookup_col', display_col: 'display_col',
 	}
@@ -2425,6 +2424,12 @@ calendar = component('x-calendar', function(e) {
 		e.fire('value_picked')
 	}
 
+})
+
+date_dropdown = component('x-date-dropdown', function(e) {
+	e.field_type = 'date'
+	e.picker = calendar()
+	dropdown.construct(e)
 })
 
 // ---------------------------------------------------------------------------

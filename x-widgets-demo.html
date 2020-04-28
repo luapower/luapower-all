@@ -628,25 +628,21 @@ function thousand_items() {
 }
 
 main.add(
-	dropdown({
+	list_dropdown({
 		field_name: 'Here we are',
-		picker: listbox({
-			items: [
-				'Apples',
-				'Mananas',
-				'Bangos',
-				'Something Else Entirely',
-			],
-		}),
-		validate: function(v) { return v != 1 || 'Can\'t have mananas.' },
-		value: 1,
+		items: [
+			'Apples',
+			'Mananas',
+			'Bangos',
+			'Something Else Entirely',
+		],
+		validate: function(v) { return v != 'Mananas' || 'Can\'t have mananas.' },
+		value: 'Mananas',
 	}),
 
-	dropdown({
+	list_dropdown({
 		field_name: 'Here we are again',
-		picker: listbox({
-			items: thousand_items(),
-		}),
+		items: thousand_items(),
 		value: 'not-in-list',
 	}),
 )
@@ -663,8 +659,7 @@ main.add(
 <script>
 
 main.add(
-	dropdown({
-		picker: calendar(),
+	date_dropdown({
 		value: now(),
 		validate: function(v) {
 			if (day(v) == day(now()))
@@ -766,22 +761,22 @@ function p(mode, ...args) {
 
 main.add(
 	p('default', 'variable-width, no-wrap with min-width aligned with other inputs'),
-	dropdown({picker: calendar(), value: now()}),
+	date_dropdown({value: now()}),
 	H.div(),
 	dropdown({picker: list()}),
 
 	p('inline', 'variable-width, no-wrap, with no min-width (shrink-wrapped), baseline-aligned'),
-	dropdown({mode: 'inline', picker: calendar(), value: now()}),
+	date_dropdown({mode: 'inline', value: now()}),
 	H.div(),
 	dropdown({mode: 'inline', picker: list()}),
 
 	p('wrap', 'fixed-width, auto-wrap'),
-	dropdown({mode: 'wrap', picker: calendar(), value: now()}),
+	date_dropdown({mode: 'wrap', value: now()}),
 	H.div(),
 	dropdown({classes: 'wrap', picker: list()}),
 
 	p('fixed', 'fixed-width, no-wrap, overflow hidden'),
-	dropdown({mode: 'fixed', picker: calendar(), value: now()}),
+	date_dropdown({mode: 'fixed', value: now()}),
 	H.div(),
 	dropdown({mode: 'fixed', picker: list()})
 )
@@ -813,10 +808,9 @@ main.add(H.div({style: 'line-height: 3'},
 		value: 42,
 	}),
 	', including dropdowns ',
-	dropdown({
+	date_dropdown({
 		label: 'imma date',
 		mode: 'inline',
-		picker: calendar(),
 	}),
 	', which can be made to wrap-to-fit or grow-to-fit, and even',
 	button({
