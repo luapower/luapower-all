@@ -49,6 +49,9 @@ function lerp(x, x0, x1, y0, y1) {
 // `||` operator that considers `0` and `''` to be truth values.
 function or(x, z) { return x != null ? x : z }
 
+// `||` operator that considers `null` to be truth value as well.
+function opt(x, z) { return x !== undefined ? x : z }
+
 // `&&` operator that considers `0` and `''` to be truth values.
 function and(x, z) { return x != null ? z : null }
 

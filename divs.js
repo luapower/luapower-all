@@ -233,7 +233,7 @@ installers.attr_changed = function(e) {
 
 let on = function(e, f, enable) {
 	assert(enable === undefined || typeof enable == 'boolean')
-	if (enable !== undefined && enable !== true)
+	if (enable == false)
 		return this.off(e, f)
 	let install = installers[e]
 	if (install)
@@ -514,6 +514,11 @@ method(HTMLElement, 'attr_property', function(name, setter = noop_setter, type) 
 			setter.call(this, v)
 		}
 	} else {
+		if (type == 'number') {
+			function get() {
+				return Number(this.getAttribute(name))
+			}
+		}
 		function set(v) {
 			this.setAttribute(name, v)
 			setter.call(this, v)
@@ -524,6 +529,10 @@ method(HTMLElement, 'attr_property', function(name, setter = noop_setter, type) 
 
 method(HTMLElement, 'bool_attr_property', function(name, setter) {
 	this.attr_property(name, setter, 'bool')
+})
+
+method(HTMLElement, 'num_attr_property', function(name, setter) {
+	this.attr_property(name, setter, 'number')
 })
 
 // popup pattern -------------------------------------------------------------
@@ -545,16 +554,48 @@ method(HTMLElement, 'bool_attr_property', function(name, setter) {
 // `popup_target_changed` event allows changing/animating popup's visibility
 // based on target's hover state or focused state.
 
-function popup_state(e) {
+{
+
+let popup_timer = function() {
+
+	let tm = {}
+	let timer_id
+	let handlers = new Set()
+	let frequency = .25
+
+	function tick() {
+		for (f of handlers)
+			f()
+	}
+
+	tm.add = function(f) {
+		handlers.add(f)
+		timer_id = timer_id || setInterval(tick, frequency * 1000)
+	}
+
+	tm.remove = function(f) {
+		handlers.delete(f)
+		if (!handlers.size) {
+			clearInterval(timer_id)
+			timer_id = null
+		}
+	}
+
+	return tm
+}
+
+popup_timer = popup_timer()
+
+let popup_state = function(e) {
 
 	let s = {}
 
-	let target, side, align, margin_x, margin_y
+	let target, side, align, px, py
 
-	s.update = function(target1, side1, align1, margin_x1, margin_y1) {
-		[side, align, margin_x, margin_y] = [side1, align1, margin_x1, margin_y1]
-		margin_x = margin_x || 0
-		margin_y = margin_y || 0
+	s.update = function(target1, side1, align1, px1, py1) {
+		[side, align, px, py] = [side1, align1, px1, py1]
+		px = px || 0
+		py = py || 0
 		if (target1 != target) {
 			if (target)
 				free()
@@ -573,13 +614,15 @@ function popup_state(e) {
 	}
 
 	function free() {
-		if (target)
+		if (target) {
 			target_detached()
-		target.off('attach', target_attached)
-		target.off('detach', target_detached)
+			target.off('attach', target_attached)
+			target.off('detach', target_detached)
+			target = null
+		}
 	}
 
-	function events(on) {
+	function bind_target(on) {
 		window.on('resize', update, on)
 
 		// NOTE: this detects target element size changes but there's no
@@ -601,27 +644,24 @@ function popup_state(e) {
 
 	}
 
-	let timer_id
-
 	function target_attached() {
 		if (e.popup_target_attached)
 			e.popup_target_attached(target)
 		e.fire('popup_target_attached')
 		update()
-		document.body.add(e)
 		e.style.position = 'absolute'
-		events(true)
-		timer_id = setInterval(update, 250)
+		document.body.add(e)
+		bind_target(true)
+		popup_timer.add(update)
 	}
 
 	function target_detached() {
 		e.remove()
-		clearInterval(timer_id)
-		events(false)
+		popup_timer.remove(update)
+		bind_target(false)
 		if (e.popup_target_detached)
 			e.popup_target_detached(target)
 		e.fire('popup_target_detached')
-		target_changed()
 	}
 
 	function target_changed() {
@@ -639,25 +679,27 @@ function popup_state(e) {
 
 		let x0, y0
 		if (side == 'right')
-			[x0, y0] = [tr.right + margin_x, tr.top + margin_y]
+			[x0, y0] = [tr.right + px, tr.top + py]
 		else if (side == 'left')
-			[x0, y0] = [tr.left - er.width - margin_x, tr.top + margin_y]
+			[x0, y0] = [tr.left - er.width - px, tr.top + py]
 		else if (side == 'top')
-			[x0, y0] = [tr.left + margin_x, tr.top - er.height - margin_y]
+			[x0, y0] = [tr.left + px, tr.top - er.height - py]
 		else if (side == 'inner-right')
-			[x0, y0] = [tr.right - er.width - margin_x, tr.top + margin_y]
+			[x0, y0] = [tr.right - er.width - px, tr.top + py]
 		else if (side == 'inner-left')
-			[x0, y0] = [tr.left + margin_x, tr.top + margin_y]
+			[x0, y0] = [tr.left + px, tr.top + py]
 		else if (side == 'inner-top')
-			[x0, y0] = [tr.left + margin_x, tr.top + margin_y]
+			[x0, y0] = [tr.left + px, tr.top + py]
 		else if (side == 'inner-bottom')
-			[x0, y0] = [tr.left + margin_y, tr.bottom - er.height - margin_y]
+			[x0, y0] = [tr.left + py, tr.bottom - er.height - py]
 		else {
 			side = 'bottom'; // default
 			[x0, y0] = [tr.left, tr.bottom]
 		}
 
 		if (align == 'center' && (side == 'top' || side == 'bottom'))
+			x0 = x0 - er.width / 2 + tr.width / 2
+		else if (align == 'center' && (side == 'inner-top' || side == 'inner-bottom'))
 			x0 = x0 - er.width / 2 + tr.width / 2
 		else if (align == 'center' && (side == 'left' || side == 'right'))
 			y0 = y0 - er.height / 2 + tr.height / 2
@@ -675,8 +717,9 @@ function popup_state(e) {
 	return s
 }
 
-method(HTMLElement, 'popup', function(target, side, align, x, y) {
+method(HTMLElement, 'popup', function(target, side, align, px, py) {
 	this.__popup_state = this.__popup_state || popup_state(this)
-	this.__popup_state.update(target, side, align, x, y)
+	this.__popup_state.update(target, side, align, px, py)
 })
 
+}
