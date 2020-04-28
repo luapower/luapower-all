@@ -435,7 +435,7 @@
 }
 
 .x-input.modified {
-	background-color: var(--x-modified-bg-color);
+	/* background-color: var(--x-modified-bg-color); */
 }
 
 /* input with animated inner label/placeholder ---------------------------- */
@@ -1024,7 +1024,12 @@ td.x-menu-title-td {
 /* notifystack ------------------------------------------------------------ */
 
 .x-notifystack {
-	position: absolute;
+	display: none;  /* don't mess up the layout */
+}
+
+.x-notify {
+	position: fixed;
+	transition: top 200ms;
 }
 
 /* grid ------------------------------------------------------------------- */

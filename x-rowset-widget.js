@@ -227,7 +227,7 @@ function rowset_widget(e) {
 	// responding to notifications from rowset --------------------------------
 
 	e.notify = function(type, message) {
-		// TODO: global notify
+		notify(message, type)
 	}
 
 	function rowset_loading(on) {
@@ -371,7 +371,7 @@ function rowset_widget(e) {
 		return [last_valid_ri, last_valid_fi]
 	}
 
-	e.focus_cell = function(ri, fi, rows, cols, options) {
+	e.focus_cell = function(ri, fi, rows, cols, options, ev) {
 
 		if (ri === false) { // explicit `false` means remove focus only.
 			[ri, fi] = [null, null]
@@ -390,7 +390,7 @@ function rowset_widget(e) {
 		} else if (!(options && options.force))
 			return true // same cell.
 
-		set_focused_cell(ri, fi)
+		set_focused_cell(ri, fi, ev)
 
 		if (!options || options.make_visible != false)
 			if (e.isConnected)

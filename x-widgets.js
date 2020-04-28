@@ -34,7 +34,7 @@
 
 	validation:
 		allow_null     : allow null (true).
-		validate       : f(v, field) -> undefined|true|err
+		validate       : f(v, field) -> undefined|err_string
 		min            : min value.
 		max            : max value.
 		multiple_of    : number that the value must be multiple of.
@@ -316,24 +316,14 @@ rowset = function(...options) {
 		return v !== undefined ? v : default_val
 	}
 
-	function cell_state_changed(row, field, prop, val, ev) {
-		d.fire('cell_state_changed', row, field, prop, val, ev)
-		d.fire('cell_state_changed_for_'+field.name, row, prop, val, ev)
-		d.fire(prop+'_changed', row, field, val, ev)
-		d.fire(prop+'_changed_for_'+field.name, row, val, ev)
-	}
-
-	d.set_cell_state = function(row, field, key, val, default_val, prop, ev) {
+	d.set_cell_state = function(row, field, key, val, default_val) {
 		let t = attr(array_attr(row, 'state'), field.index)
 		let old_val = t[key]
 		if (old_val === undefined)
 			old_val = default_val
 		let changed = old_val !== val
-		if (changed) {
+		if (changed)
 			t[key] = val
-			if (prop)
-				cell_state_changed(row, field, prop, val, ev)
-		}
 		return changed
 	}
 
@@ -342,14 +332,21 @@ rowset = function(...options) {
 		if (old_val === undefined)
 			old_val = default_val
 		let changed = old_val !== val
-		if (changed) {
+		if (changed)
 			row[key] = val
-			if (prop) {
-				d.fire('row_state_changed', row, prop, val, ev)
-				d.fire(prop+'_changed', row, val, ev)
-			}
-		}
 		return changed
+	}
+
+	function cell_state_changed(row, field, prop, val, ev) {
+		d.fire('cell_state_changed', row, field, prop, val, ev)
+		d.fire('cell_state_changed_for_'+field.name, row, prop, val, ev)
+		d.fire(prop+'_changed', row, field, val, ev)
+		d.fire(prop+'_changed_for_'+field.name, row, val, ev)
+	}
+
+	function row_state_changed(row, prop, val, ev) {
+		d.fire('row_state_changed', row, prop, val, ev)
+		d.fire(prop+'_changed', row, val, ev)
 	}
 
 	// get/set cell values and cell & row state -------------------------------
@@ -361,10 +358,6 @@ rowset = function(...options) {
 
 	d.input_value = function(row, field) {
 		return d.cell_state(row, field, 'input_value', d.value(row, field))
-	}
-
-	function set_input_value(row, field, v, ev) {
-		d.set_cell_state(row, field, 'input_value', v, d.value(row, field), 'input_value', ev)
 	}
 
 	d.old_value = function(row, field) {
@@ -438,87 +431,82 @@ rowset = function(...options) {
 		return d.cell_state(row, field, 'error')
 	}
 
-	d.set_cell_error = function(row, field, err, ev) {
-		err = err || undefined
-		d.set_cell_state(row, field, 'error', err, undefined, 'cell_error', ev)
-	}
-
 	d.cell_modified = function(row, field) {
 		return d.cell_state(row, field, 'modified', false)
 	}
 
-	d.set_cell_modified = function(row, field, modified, ev) {
-		d.set_cell_state(row, field, 'modified', !!modified, false, 'cell_modified', ev)
-	}
-
-	d.set_row_is_new = function(row, is_new, ev) {
-		d.set_row_state(row, 'is_new', !!is_new, false, 'row_is_new', ev)
-	}
-
-	d.set_row_modified = function(row, modified, ev) {
-		d.set_row_state(row, 'modified', !!modified, false, 'row_modified', ev)
-	}
-
-	d.set_row_removed = function(row, removed, ev) {
-		d.set_row_state(row, 'removed', !!removed, false, 'row_removed', ev)
-	}
-
 	d.set_row_error = function(row, err, ev) {
-		err = err || undefined
-		d.set_row_state(row, 'error', err, undefined, 'row_error', ev)
-		if (!!err) {
+		err = typeof err == 'string' ? err : undefined
+		if (err !== undefined) {
 			d.fire('notify', 'error', err)
 			print(err)
 		}
+		if (d.set_row_state(row, 'error', err))
+			row_state_changed(row, 'row_error', ev)
 	}
 
-	function value_changed(row, field, val, ev) {
-		d.fire('cell_state_changed', row, field, 'value', val, ev)
-		d.fire('cell_state_changed_for_'+field.name, row, 'value', val, ev)
-		d.fire('value_changed', row, field, val, ev)
-		d.fire('value_changed_for_'+field.name, row, val, ev)
-	}
-
-	d.set_value = function(row, field, val, ev) {
+	d.set_value = function(row, field, val, ev, row_not_modified) {
 		if (val === undefined)
 			val = null
 		let err = d.validate_value(field, val, row)
-		let invalid = !!err
-		set_input_value(row, field, val, ev)
-		d.set_cell_error(row, field, err, ev)
-		d.set_row_error(row, undefined, ev)
+		err = typeof err == 'string' ? err : undefined
+		let invalid = err !== undefined
 		let cur_val = row[field.index]
-		if (!invalid && val !== cur_val) {
+		let val_changed = !invalid && val !== cur_val
+
+		let input_val_changed = d.set_cell_state(row, field, 'input_value', val, cur_val)
+		let cell_err_changed = d.set_cell_state(row, field, 'error', err)
+		let row_err_changed = d.set_row_state(row, 'error')
+
+		if (val_changed) {
 			let was_modified = d.cell_modified(row, field)
 			let modified = val !== d.old_value(row, field)
+
 			row[field.index] = val
 			d.set_cell_state(row, field, 'prev_value', cur_val)
 			if (!was_modified)
 				d.set_cell_state(row, field, 'old_value', cur_val)
-			d.set_cell_modified(row, field, modified, ev)
-			if (modified)
-				d.set_row_modified(row, true, ev)
+			let cell_modified_changed = d.set_cell_state(row, field, 'modified', modified, false)
+			let row_modified_changed = modified && !row_not_modified
+				&& d.set_row_state(row, 'modified', true, false)
+
 			cell_state_changed(row, field, 'value', val, ev)
+			if (cell_modified_changed)
+				cell_state_changed(row, field, 'cell_modified', modified, ev)
+			if (row_modified_changed)
+				row_state_changed(row, 'row_modified', true, ev)
 			row_changed(row)
 		}
+
+		if (input_val_changed)
+			cell_state_changed(row, field, 'input_value', val, ev)
+		if (cell_err_changed)
+			cell_state_changed(row, field, 'cell_error', err, ev)
+		if (row_err_changed)
+			row_state_changed(row, 'row_error', undefined, ev)
+
 		return !invalid
 	}
 
-	d.reset_value = function(row, field, val, err, ev) {
+	d.reset_value = function(row, field, val, ev) {
 		if (val === undefined)
 			val = null
-		d.set_cell_error(row, field, err, ev)
-		if (!err) {
-			set_input_value(row, field, val, ev)
-			d.set_cell_modified(row, field, false, ev)
-		}
-		d.set_cell_state(row, field, 'old_value', val)
 		let cur_val = row[field.index]
+		let input_val_changed = d.set_cell_state(row, field, 'input_value', val, cur_val)
+		let cell_modified_changed = d.set_cell_state(row, field, 'modified', false, false)
+		d.set_cell_state(row, field, 'old_value', val)
 		if (val !== cur_val) {
 			row[field.index] = val
 			d.set_cell_state(row, field, 'prev_value', cur_val)
+
 			cell_state_changed(row, field, 'value', val, ev)
 		}
+
+		if (input_val_changed)
+			cell_state_changed(row, field, 'input_value', val, ev)
+		if (cell_modified_changed)
+			cell_state_changed(row, field, 'cell_modified', false, ev)
+
 	}
 
 	// get/set display value --------------------------------------------------
@@ -588,10 +576,7 @@ rowset = function(...options) {
 		// set default client values as if they were typed in by the user.
 		for (let field of d.fields)
 			if (field.client_default != null)
-				d.set_value(row, field, field.client_default, ev)
-		// ... except we don't consider the row modified so that we can
-		// remove it with the up-arrow key if no further edits are made.
-		d.set_row_modified(row, false, ev)
+				d.set_value(row, field, field.client_default, ev, false)
 		row_changed(row)
 		return row
 	}
@@ -616,7 +601,8 @@ rowset = function(...options) {
 		} else {
 			if (!d.can_remove_row(row))
 				return
-			d.set_row_removed(row, true, ev)
+			if (d.set_row_state(row, 'removed', true, false))
+				row_state_changed(row, 'row_removed', ev)
 			row_changed(row)
 		}
 		return row
@@ -864,19 +850,31 @@ rowset = function(...options) {
 			let rt = result.rows[i]
 			let row = changed_rows[i]
 
-			let row_failed = !!rt.error
-			d.set_row_error(row, rt.error)
+			let err = typeof rt.error == 'string' ? rt.error : undefined
+			let row_failed = rt.error !== undefined
+			d.set_row_error(row, err)
 
 			if (rt.remove) {
 				d.remove_row(row, true, {refocus: true})
 			} else {
 				if (!row_failed) {
-					d.set_row_is_new(row, false)
-					d.set_row_modified(row, false)
+					if (d.set_row_state(row, 'is_new', false, false))
+						row_state_changed(row, 'row_is_new', false)
+					if (d.set_row_state(row, 'modified', false, false))
+						row_state_changed(row, 'row_modified', false)
 				}
-				if (rt.values) {
-					for (let k in rt.values)
-						d.reset_value(row, d.field(k), rt.values[k], rt.errors && rt.errors[k])
+				if (rt.field_errors) {
+					for (let k in rt.field_errors) {
+						let field = d.field(k)
+						let err = rt.field_errors[k]
+						err = typeof err == 'string' ? err : undefined
+						if (d.set_cell_state(row, field, 'error', err))
+							cell_state_changed(row, field, 'cell_error', err)
+					}
+				} else {
+					if (rt.values)
+						for (let k in rt.values)
+							d.reset_value(row, d.field(k), rt.values[k])
 				}
 			}
 		}
@@ -1231,6 +1229,7 @@ function value_widget(e) {
 		e.bind_nav(false)
 		e.nav = nav
 		e.col = col
+		e.field = e.nav.rowset.field(e.col)
 		e.init_field()
 		if (e.isConnected) {
 			e.bind_nav(true)
@@ -1333,6 +1332,7 @@ tooltip = component('x-tooltip', function(e) {
 	e.attrval('align', 'center')
 
 	let target
+	let expires
 
 	e.popup_target_changed = function(target) {
 		let visible = !!(!e.check || e.check(target))
@@ -1340,7 +1340,7 @@ tooltip = component('x-tooltip', function(e) {
 	}
 
 	e.update = function() {
-		e.popup(target, e.side, e.align)
+		e.popup(target, e.side, e.align, e.px, e.py)
 	}
 
 	e.property('text',
@@ -1353,9 +1353,20 @@ tooltip = component('x-tooltip', function(e) {
 		function(v) { return e.show(v); e.update() }
 	)
 
-	e.attr_property('side' , e.update)
-	e.attr_property('align', e.update)
-	e.attr_property('type' , e.update)
+	e.attr_property('side'    , e.update)
+	e.attr_property('align'   , e.update)
+	e.attr_property('type'    , e.update)
+	e.num_attr_property('px'  , e.update)
+	e.num_attr_property('py'  , e.update)
+
+	e.reading_speed = 68 // letters-per-minute.
+
+	e.num_attr_property('timeout' , function(t) {
+		if (!t) return
+		if (t == 'auto')
+			t = (e.text.length) * e.reading_speed / 60
+		setTimeout(function() { e.target = false }, t * 1000)
+	})
 
 	e.late_property('target',
 		function()  { return target },
@@ -2040,8 +2051,10 @@ dropdown = component('x-dropdown', function(e) {
 	e.init = function() {
 
 		e.init_nav()
+		if (e.internal_nav)
+			e.nolabel = !e.field.text
 
-		e.picker.rebind_value(e.nav, e.field.name)
+		e.picker.rebind_value(e.nav, e.col)
 
 		e.picker.on('value_picked', picker_value_picked)
 		e.picker.on('keydown', picker_keydown)
@@ -2234,7 +2247,7 @@ calendar = component('x-calendar', function(e) {
 	e.sel_day = H.div({class: 'x-calendar-sel-day'})
 	e.sel_day_suffix = H.div({class: 'x-calendar-sel-day-suffix'})
 	e.sel_month = dropdown({
-		classes: 'x-calendar-sel-month x-dropdown-nowrap',
+		classes: 'x-calendar-sel-month',
 		picker: listbox({
 			items: month_names(),
 		}),
@@ -2878,15 +2891,65 @@ notifystack = component('x-notifystack', function(e) {
 	e.class('x-widget')
 	e.class('x-notifystack')
 
-	e.notify = function(text, type) {
+	e.tooltips = new Set()
 
+	e.target = document.body
+	e.side = 'inner-top'
+	e.align = 'center'
+	e.timeout = 'auto'
+	e.spacing = 6
+
+	function update_stack() {
+		let py = 0
+		for (let t of e.tooltips) {
+			t.py = py
+			py += t.client_rect().height + e.spacing
+		}
+	}
+
+	function popup_removed() {
+		e.tooltips.delete(this)
+		update_stack()
+	}
+
+	function popup_check() {
+		this.style.position = 'fixed'
+		return true
+	}
+
+	e.notify = function(text, type, timeout) {
 		let t = tooltip({
-			type: type,
-			target: e,
+			classes: 'x-notify',
+			type: opt(type, e.type),
+			target: e.target,
 			text: text,
-
+			side: e.side,
+			align: e.align,
+			timeout: opt(timeout, e.timeout),
+			check: popup_check,
+			popup_target_detached: popup_removed,
 		})
+		e.tooltips.add(t)
+		update_stack()
+	}
+
+	e.close_all = function() {
+		for (t of e.tooltips)
+			t.target = false
+	}
+
+	e.detach = function() {
+		e.close_all()
 	}
 
 })
+
+// global notify function.
+{
+	let nstack
+	function notify(...args) {
+		nstack = nstack || notifystack()
+		nstack.notify(...args)
+	}
+}
 

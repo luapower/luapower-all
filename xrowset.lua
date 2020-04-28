@@ -39,8 +39,49 @@ function virtual_rowset(init, ...)
 		return res
 	end
 
+	function rs:validate_field(name, val)
+		local validate = rs.validators and rs.validators[name]
+		if validate then
+			return validate(val)
+		end
+	end
+
+	function rs:validate_fields(values)
+		local errors
+		for k,v in sortedpairs(values) do --TODO: get these pre-sorted in UI order!
+			local err = rs:validate_field(k, v)
+			if type(err) == 'string' then
+				errors = errors or {}
+				errors[k] = err
+			end
+		end
+		return errors
+	end
+
 	local function db_error(err, s)
 		return config'hide_errors' and s or s..'\n'..err.message
+	end
+
+	function rs:can_add_row(row)
+		if not rs.can_add_rows then
+			return false, 'adding rows not allowed'
+		end
+		local errors = rs:validate_fields(values)
+		if errors then return false, nil, errors end
+	end
+
+	function rs:can_change_row(values)
+		if not rs.can_change_rows then
+			return false, 'updating rows not allowed'
+		end
+		local errors = rs:validate_fields(values)
+		if errors then return false, nil, errors end
+	end
+
+	function rs:can_remove_row(values)
+		if not rs.can_remove_rows then
+			return false, 'removing rows not allowed'
+		end
 	end
 
 	function rs:apply_changes(changes)
@@ -50,7 +91,8 @@ function virtual_rowset(init, ...)
 		for _,row in ipairs(changes.rows) do
 			local rt = {type = row.type}
 			if row.type == 'new' then
-				if rs.can_add_rows then
+				local can, err, field_errors = rs:can_add_row(row.values)
+				if can ~= false then
 					local ok, affected_rows, id = catch('db', rs.insert_row, rs, row.values)
 					if ok then
 						if (affected_rows or 1) == 0 then
@@ -84,11 +126,12 @@ function virtual_rowset(init, ...)
 							S('insert_error', 'db error on inserting row'))
 					end
 				else
-					rt.error = 'adding rows not allowed'
+					rt.error = err or true
+					rt.field_errors = field_errors
 				end
-				add(res.rows, rt)
 			elseif row.type == 'update' then
-				if rs.can_change_rows then
+				local can, err, field_errors = rs:can_change_row(row.values)
+				if can ~= false then
 					local ok, affected_rows = catch('db', rs.update_row, rs, row.values)
 					if ok then
 						if rs.select_row_update then
@@ -113,11 +156,12 @@ function virtual_rowset(init, ...)
 						rt.error = db_error(err, S('update_error', 'db error on updating row'))
 					end
 				else
-					rt.error = 'updating rows not allowed'
+					rt.error = err or true
+					rt.field_errors = field_errors
 				end
-				add(res.rows, rt)
 			elseif row.type == 'remove' then
-				if rs.can_remove_rows then
+				local can, err, field_errors = rs:can_remove_row(row.values)
+				if can ~= false then
 					local ok, affected_rows = catch('db', rs.delete_row, rs, row.values)
 					if ok then
 						if (affected_rows or 1) == 0 then
@@ -144,11 +188,14 @@ function virtual_rowset(init, ...)
 							S('delete_error', 'db error on removing row'))
 					end
 				else
-					rt.error = 'removing rows not allowed'
+					rt.error = err or true
+					rt.field_errors = field_errors
 				end
 				rt.remove = not rt.error
-				add(res.rows, rt)
+			else
+				assert(false)
 			end
+			add(res.rows, rt)
 		end
 
 		return res
@@ -273,6 +320,7 @@ local function field_defs_from_query_result_cols(cols, extra_defs, update_table)
 		field.type = type
 		field.allow_null = col.allow_null
 		if col.auto_increment then
+			field.focusable = false
 			field.editable = false
 			field.is_id = true
 			if col.orig_table == update_table then
@@ -520,7 +568,20 @@ function rowset.test_query()
 		update_table = 'rowset_test',
 		update_fields = 'name',
 		pk = 'id',
+		validators = {
+			name = function(s)
+				if not s:starts'aaa' then
+					return 'Not starting with "aaa"'
+				end
+			end,
+		},
 	}:respond()
 
 end
 
+function rowset.loan_limit()
+	query'use ifn_fin'
+	return sql_rowset{
+		select_all = 'select * from loan_limit',
+	}:respond()
+end

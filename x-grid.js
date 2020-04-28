@@ -52,18 +52,13 @@ grid = component('x-grid', function(e) {
 	}
 
 	e.attach = function() {
-
 		set_header_visibility()
 		set_picker_options()
-		update_heights()
-		init_rows_table()
-		update_view()
-		bind_document(true)
-
-		e.focus_cell(null, null, 0, 0, {force: true})
-
+		e.init_rows()
+		e.init_value()
 		e.bind_rowset(true)
 		e.bind_nav(true)
+		bind_document(true)
 	}
 
 	e.detach = function() {
@@ -211,8 +206,9 @@ grid = component('x-grid', function(e) {
 	}
 
 	e.update_td_error = function(td, row, field, err) {
-		let invalid = typeof err == 'string'
+		let invalid = !!err
 		td.class('invalid', invalid)
+		td.attr('title', err || null)
 	}
 
 	// when: scroll_y changed.
@@ -372,7 +368,7 @@ grid = component('x-grid', function(e) {
 			return
 		if (prop == 'input_value')
 			e.update_td_value(td, e.rows[ri], e.fields[fi], val)
-		else if (prop == 'error')
+		else if (prop == 'cell_error')
 			e.update_td_error(td, e.rows[ri], e.fields[fi], val)
 		else if (prop == 'cell_modified')
 			td.class('modified', val)

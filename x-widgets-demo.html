@@ -235,7 +235,9 @@ ns = notifystack({
 
 main.add(ns)
 
-ns.notify('Hello there')
+ns.notify('Hello there', null, 1)
+ns.notify('I\'ve got something to tell you...', 'info', 2)
+ns.notify('Pay attention!', 'error', 3)
 
 </script>
 </template>
@@ -252,7 +254,9 @@ ns.notify('Hello there')
 main.add(checkbox({
 	text: 'Wassup homie',
 	value: 'wrong',
-	validate: function(v) { return typeof(v) == 'boolean' || 'Value not a boolean' }
+	validate: function(v) {
+		return typeof(v) == 'boolean' || 'Value not a boolean'
+	}
 }))
 
 c2 = checkbox({
@@ -1007,7 +1011,7 @@ g = grid({
 	rowset: d,
 	w: 500,
 	h: 200,
-	remove_row_on: 'exit_row',
+	//remove_row_on: 'exit_row',
 })
 
 main.add(g)
