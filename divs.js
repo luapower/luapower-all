@@ -645,12 +645,12 @@ let popup_state = function(e) {
 	}
 
 	function target_attached() {
-		if (e.popup_target_attached)
-			e.popup_target_attached(target)
-		e.fire('popup_target_attached')
 		update()
 		e.style.position = 'absolute'
 		document.body.add(e)
+		if (e.popup_target_attached)
+			e.popup_target_attached(target)
+		e.fire('popup_target_attached')
 		bind_target(true)
 		popup_timer.add(update)
 	}
