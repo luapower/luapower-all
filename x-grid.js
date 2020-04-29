@@ -549,7 +549,7 @@ grid = component('x-grid', function(e) {
 			if (e.is_last_row_focused()) {
 				let row = e.focused_row
 				if (row.is_new && !row.modified) {
-					e.remove_focused_row(true)
+					e.remove_focused_row({refocus: true})
 					return false
 				}
 			}
@@ -570,7 +570,7 @@ grid = component('x-grid', function(e) {
 			let editor_state = e.editor
 				&& e.editor.editor_state && e.editor.editor_state()
 
-			if (e.focus_cell(true, true, rows, 0, {input: e}))
+			if (e.focus_cell(true, true, rows, 0, {editable: true, input: e}))
 				if (reenter_edit)
 					e.enter_edit(editor_state)
 
@@ -619,7 +619,7 @@ grid = component('x-grid', function(e) {
 
 		// delete key: delete active row
 		if (!e.editor && key == 'Delete') {
-			if (e.remove_focused_row(true))
+			if (e.remove_focused_row({refocus: true}))
 				return false
 		}
 

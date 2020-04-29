@@ -594,8 +594,8 @@ rowset = function(...options) {
 		return true
 	}
 
-	d.remove_row = function(row, forever, ev) {
-		if (forever || row.is_new) {
+	d.remove_row = function(row, ev) {
+		if ((ev && ev.forever) || row.is_new) {
 			d.rows.delete(row)
 			d.fire('row_removed', row, ev)
 		} else {
@@ -793,6 +793,10 @@ rowset = function(...options) {
 	let changed_rows
 
 	function row_changed(row) {
+		if (row.is_new)
+			if (!row.modified)
+				return
+			else assert(!row.removed)
 		changed_rows = changed_rows || new Set()
 		changed_rows.add(row)
 		d.fire('row_changed', row)
@@ -855,7 +859,7 @@ rowset = function(...options) {
 			d.set_row_error(row, err)
 
 			if (rt.remove) {
-				d.remove_row(row, true, {refocus: true})
+				d.remove_row(row, {forever: true, refocus: true})
 			} else {
 				if (!row_failed) {
 					if (d.set_row_state(row, 'is_new', false, false))
@@ -878,7 +882,7 @@ rowset = function(...options) {
 				}
 			}
 		}
-		if (result.sql_trace)
+		if (result.sql_trace && result.sql_trace.length)
 			print(result.sql_trace.join('\n'))
 	}
 
@@ -924,7 +928,7 @@ rowset = function(...options) {
 		d.apply_result(result, this.changed_rows)
 	}
 
-	function save_fail() {
+	function save_fail(type, status, message, body) {
 		if (type == 'http')
 			d.fire('notify', 'error',
 				S('rowset_save_http_error',
@@ -932,7 +936,7 @@ rowset = function(...options) {
 		else if (type == 'network')
 			d.fire('notify', 'error', S('rowset_save_network_error', 'Saving failed: network error.'))
 		else if (type == 'timeout')
-			d.filre('notify', 'error', S('rowset_save_timeout_error', 'Saving failed: timed out.'))
+			d.fire('notify', 'error', S('rowset_save_timeout_error', 'Saving failed: timed out.'))
 	}
 
 	init()

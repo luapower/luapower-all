@@ -141,18 +141,18 @@ function rowset_widget(e) {
 		return row
 	}
 
-	e.remove_row = function(ri, refocus, ev) {
+	e.remove_row = function(ri, ev) {
 		if (!e.can_edit || !e.can_remove_rows)
 			return false
-		let row = e.rowset.remove_row(e.rows[ri], false, update({row_index: ri, refocus: refocus}, ev))
+		let row = e.rowset.remove_row(e.rows[ri], update({row_index: ri}, ev))
 		if (e.save_row_on && e.remove_row_on == 'input')
 			e.save(row)
 		return row
 	}
 
-	e.remove_focused_row = function(refocus) {
+	e.remove_focused_row = function(ev) {
 		if (e.focused_row)
-			return e.remove_row(e.focused_row_index, refocus)
+			return e.remove_row(e.focused_row_index, ev)
 	}
 
 	// responding to structural updates ---------------------------------------

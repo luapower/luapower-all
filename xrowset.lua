@@ -62,7 +62,7 @@ function virtual_rowset(init, ...)
 		return config'hide_errors' and s or s..'\n'..err.message
 	end
 
-	function rs:can_add_row(row)
+	function rs:can_add_row(values)
 		if not rs.can_add_rows then
 			return false, 'adding rows not allowed'
 		end
