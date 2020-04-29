@@ -444,7 +444,7 @@ rowset = function(...options) {
 			row_state_changed(row, 'row_error', ev)
 	}
 
-	d.set_value = function(row, field, val, ev, row_not_modified) {
+	d.set_value = function(row, field, val, ev) {
 		if (val === undefined)
 			val = null
 		let err = d.validate_value(field, val, row)
@@ -466,7 +466,7 @@ rowset = function(...options) {
 			if (!was_modified)
 				d.set_cell_state(row, field, 'old_value', cur_val)
 			let cell_modified_changed = d.set_cell_state(row, field, 'modified', modified, false)
-			let row_modified_changed = modified && !row_not_modified
+			let row_modified_changed = modified && (!(ev && ev.row_not_modified))
 				&& d.set_row_state(row, 'modified', true, false)
 
 			cell_state_changed(row, field, 'value', val, ev)
@@ -573,9 +573,10 @@ rowset = function(...options) {
 		d.rows.add(row)
 		d.fire('row_added', row, ev)
 		// set default client values as if they were typed in by the user.
+		let set_value_ev = update({row_not_modified: true}, ev)
 		for (let field of d.fields)
 			if (field.client_default != null)
-				d.set_value(row, field, field.client_default, ev, false)
+				d.set_value(row, field, field.client_default, set_value_ev)
 		row_changed(row)
 		return row
 	}
@@ -973,8 +974,6 @@ rowset = function(...options) {
 		sortable: true,
 		true_text: 'true',
 		false_text: 'false',
-		min: 0,
-		max: 1/0,
 		multiple_of: 1,
 		lookup_failed_display_value: default_lookup_failed_display_value,
 	}
@@ -997,7 +996,7 @@ rowset = function(...options) {
 	}
 
 	rowset.types = {
-		number: {align: 'right'},
+		number: {align: 'right', min: 0, max: 1/0},
 		date  : {align: 'right', min: -(2**52), max: 2**52},
 		bool  : {align: 'center'},
 	}
@@ -1479,7 +1478,7 @@ checkbox = component('x-checkbox', function(e) {
 			return e.value == e.checked_value
 		},
 		function(v) {
-			e.value = v ? e.checked_value : e.unchecked_value
+			e.set_value(v ? e.checked_value : e.unchecked_value, {input: e})
 		}
 	)
 
@@ -1583,7 +1582,7 @@ radiogroup = component('x-radiogroup', function(e) {
 	}
 
 	function select_item(item) {
-		e.value = item.index
+		e.set_value(item.index, {input: e})
 		item.focus()
 	}
 
@@ -1660,26 +1659,22 @@ input = component('x-input', function(e) {
 		e.bind_nav(false)
 	}
 
-	let from_input
-
 	function update_state(s) {
 		e.input.class('empty', s == '')
 		e.inner_label_div.class('empty', s == '')
 	}
 
-	e.update_value = function(v) {
-		if (!from_input) {
-			let s = e.field.to_text(v)
-			e.input.value = s
-			update_state(s)
-		}
+	e.update_value = function(v, ev) {
+		if (ev && ev.input == e && e.typing)
+			return
+		let s = e.field.to_text(v)
+		e.input.value = s
+		update_state(s)
 	}
 
 	e.input.on('input', function() {
-		from_input = true
-		e.value = e.field.from_text(e.input.value)
+		e.set_value(e.field.from_text(e.input.value), {input: e, typing: true})
 		update_state(e.input.value)
-		from_input = false
 	})
 
 	// grid editor protocol ---------------------------------------------------
@@ -1844,7 +1839,7 @@ spin_input = component('x-spin-input', function(e) {
 	}
 
 	e.input.on('wheel', function(dy) {
-		e.value = e.input_value + (dy / 100)
+		e.set_value(e.input_value + (dy / 100), {input: e})
 		e.input.select(0, -1)
 		return false
 	})
@@ -1856,7 +1851,7 @@ spin_input = component('x-spin-input', function(e) {
 		if (!increment) return
 		let v = e.input_value + increment
 		let r = v % or(e.field.multiple_of, 1)
-		e.value = v - r
+		e.set_value(v - r, {input: e})
 		e.input.select(0, -1)
 	}
 	let increment_timer
@@ -1938,16 +1933,18 @@ slider = component('x-slider', function(e) {
 	function cmin() { return max(or(e.field.min, -1/0), e.from) }
 	function cmax() { return min(or(e.field.max, 1/0), e.to) }
 
+	e.set_progress = function(p, ev) {
+		let v = lerp(p, 0, 1, e.from, e.to)
+		if (e.field.multiple_of != null)
+			v = floor(v / e.field.multiple_of + .5) * e.field.multiple_of
+		e.set_value(clamp(v, cmin(), cmax()), ev)
+	}
+
 	e.late_property('progress',
 		function() {
 			return progress_for(e.input_value)
 		},
-		function(p) {
-			let v = lerp(p, 0, 1, e.from, e.to)
-			if (e.field.multiple_of != null)
-				v = floor(v / e.field.multiple_of + .5) * e.field.multiple_of
-			e.value = clamp(v, cmin(), cmax())
-		},
+		e.set_progress,
 		0
 	)
 
@@ -1992,7 +1989,7 @@ slider = component('x-slider', function(e) {
 
 	function document_mousemove(mx, my) {
 		let r = e.client_rect()
-		e.progress = (mx - r.left - hit_x) / r.width
+		e.set_progress((mx - r.left - hit_x) / r.width, {input: e})
 		return false
 	}
 
@@ -2004,7 +2001,7 @@ slider = component('x-slider', function(e) {
 
 	e.on('mousedown', function(ev) {
 		let r = e.client_rect()
-		e.progress = (ev.clientX - r.left) / r.width
+		e.set_progress((ev.clientX - r.left) / r.width, {input: e})
 	})
 
 	e.on('keydown', function(key, shift) {
@@ -2020,7 +2017,7 @@ slider = component('x-slider', function(e) {
 			case 'End'        : d =  1/0; break
 		}
 		if (d) {
-			e.progress += d * (shift ? .1 : 1)
+			e.set_progress(e.progress + d * (shift ? .1 : 1), {input: e})
 			return false
 		}
 	})
@@ -2173,7 +2170,7 @@ dropdown = component('x-dropdown', function(e) {
 		}
 		if (key == 'ArrowDown' || key == 'ArrowUp') {
 			if (!e.hasclass('grid-editor')) {
-				e.picker.pick_near_value(key == 'ArrowDown' ? 1 : -1)
+				e.picker.pick_near_value(key == 'ArrowDown' ? 1 : -1, {input: e})
 				return false
 			}
 		}
@@ -2194,7 +2191,7 @@ dropdown = component('x-dropdown', function(e) {
 	}
 
 	e.on('wheel', function(dy) {
-		e.picker.pick_near_value(dy / 100)
+		e.picker.pick_near_value(dy / 100, {input: e})
 		return false
 	})
 
@@ -2258,7 +2255,7 @@ calendar = component('x-calendar', function(e) {
 	})
 	e.sel_year = spin_input({
 		classes: 'x-calendar-sel-year',
-		min: 1000,
+		min: 100,
 		max: 3000,
 		button_style: 'left-right',
 	})
@@ -2323,27 +2320,31 @@ calendar = component('x-calendar', function(e) {
 	// controller
 
 	function day_mousedown() {
-		e.value = this.day
+		e.set_value(this.day, {input: e})
 		e.sel_month.cancel()
 		e.focus()
 		e.fire('value_picked') // picker protocol
 		return false
 	}
 
-	e.sel_month.on('value_changed', function() {
-		_d.setTime(e.value)
-		_d.setMonth(this.value)
-		e.value = _d.valueOf()
+	e.sel_month.on('value_changed', function(v, ev) {
+		if (ev && ev.input) {
+			_d.setTime(e.value)
+			_d.setMonth(this.value)
+			e.set_value(_d.valueOf(), {input: e})
+		}
 	})
 
-	e.sel_year.on('value_changed', function() {
-		_d.setTime(e.value)
-		_d.setFullYear(this.value)
-		e.value = _d.valueOf()
+	e.sel_year.on('value_changed', function(v, ev) {
+		if (ev && ev.input) {
+			_d.setTime(e.value)
+			_d.setFullYear(this.value)
+			e.set_value(_d.valueOf(), {input: e})
+		}
 	})
 
 	e.weekview.on('wheel', function(dy) {
-		e.value = day(e.input_value, 7 * dy / 100)
+		e.set_value(day(e.input_value, 7 * dy / 100), {input: e})
 		return false
 	})
 
@@ -2367,7 +2368,7 @@ calendar = component('x-calendar', function(e) {
 			case 'PageDown'   : m =  1; break
 		}
 		if (d) {
-			e.value = day(e.input_value, d)
+			e.set_value(day(e.input_value, d), {input: e})
 			return false
 		}
 		if (m) {
@@ -2376,19 +2377,19 @@ calendar = component('x-calendar', function(e) {
 				_d.setFullYear(year_of(e.input_value) + m)
 			else
 				_d.setMonth(month_of(e.input_value) + m)
-			e.value = _d.valueOf()
+			e.set_value(_d.valueOf(), {input: e})
 			return false
 		}
 		if (key == 'Home') {
-			e.value = shift ? year(e.input_value) : month(e.input_value)
+			e.set_value(shift ? year(e.input_value) : month(e.input_value), {input: e})
 			return false
 		}
 		if (key == 'End') {
-			e.value = day(shift ? year(e.input_value, 1) : month(e.input_value, 1), -1)
+			e.set_value(day(shift ? year(e.input_value, 1) : month(e.input_value, 1), -1), {input: e})
 			return false
 		}
 		if (key == 'Enter') {
-			e.fire('value_picked') // picker protocol
+			e.fire('value_picked', {input: e}) // picker protocol
 			return false
 		}
 	})
@@ -2424,9 +2425,9 @@ calendar = component('x-calendar', function(e) {
 		return builtin_contains.call(this, e1) || e.sel_month.picker.contains(e1)
 	}
 
-	e.pick_near_value = function(delta) {
-		e.value = day(e.input_value, delta)
-		e.fire('value_picked')
+	e.pick_near_value = function(delta, ev) {
+		e.set_value(day(e.input_value, delta), ev)
+		e.fire('value_picked', ev)
 	}
 
 })

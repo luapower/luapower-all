@@ -447,7 +447,7 @@ grid = component('x-grid', function(e) {
 				return false
 			}
 		} else {
-			if (e.focus_cell(ri, fi, 0, 0, {must_not_move_row: true}))
+			if (e.focus_cell(ri, fi, 0, 0, {must_not_move_row: true, input: e}))
 				e.fire('value_picked') // picker protocol.
 			return false
 		}
@@ -516,7 +516,7 @@ grid = component('x-grid', function(e) {
 					&& (!e.editor.editor_state
 						|| e.editor.editor_state(cols < 0 ? 'left' : 'right')))
 
-			if (move && e.focus_next_cell(cols, null, reenter_edit)) {
+			if (move && e.focus_next_cell(cols, {editable: reenter_edit, input: e})) {
 				if (reenter_edit)
 					e.enter_edit(cols > 0 ? 'left' : 'right')
 				return false
@@ -530,7 +530,7 @@ grid = component('x-grid', function(e) {
 
 			let reenter_edit = e.editor && e.keep_editing
 
-			if (e.focus_next_cell(cols, true, reenter_edit))
+			if (e.focus_next_cell(cols, {editable: reenter_edit, auto_advance_row: true, input: e}))
 				if (reenter_edit)
 					e.enter_edit(cols > 0 ? 'left' : 'right')
 
@@ -570,7 +570,7 @@ grid = component('x-grid', function(e) {
 			let editor_state = e.editor
 				&& e.editor.editor_state && e.editor.editor_state()
 
-			if (e.focus_cell(true, true, rows))
+			if (e.focus_cell(true, true, rows, 0, {input: e}))
 				if (reenter_edit)
 					e.enter_edit(editor_state)
 
@@ -591,11 +591,11 @@ grid = component('x-grid', function(e) {
 				e.enter_edit('select_all')
 			} else if (e.exit_edit()) {
 				if (e.auto_advance == 'next_row') {
-					if (e.focus_cell(true, true, 1))
+					if (e.focus_cell(true, true, 1, 0, {input: e}))
 						if (e.keep_editing)
 							e.enter_edit('select_all')
 				} else if (e.auto_advance == 'next_cell')
-					if (e.focus_next_cell(shift ? -1 : 1, null, e.keep_editing))
+					if (e.focus_next_cell(shift ? -1 : 1, {editable: e.keep_editing, input: e}))
 						if (e.keep_editing)
 							e.enter_edit('select_all')
 			}

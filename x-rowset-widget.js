@@ -177,7 +177,7 @@ function rowset_widget(e) {
 		rowmap = null
 		e.init_rows()
 		if (ev && ev.focus_it)
-			e.focus_cell(ri, true)
+			e.focus_cell(ri, true, 0, 0, ev)
 	}
 
 	function row_removed(row, ev) {
@@ -187,8 +187,8 @@ function rowset_widget(e) {
 		rowmap = null
 		e.init_rows()
 		if (ev && ev.refocus)
-			if (!e.focus_cell(ri, true))
-				e.focus_cell(ri, true, -0)
+			if (!e.focus_cell(ri, true, 0, 0, ev))
+				e.focus_cell(ri, true, -0, 0, ev)
 	}
 
 	// responding to cell updates ---------------------------------------------
@@ -295,7 +295,7 @@ function rowset_widget(e) {
 		rows = or(rows, 0) // by default find the first focusable row.
 		cols = or(cols, 0) // by default find the first focusable col.
 
-		let for_editing = options && options.for_editing // skip non-editable cells.
+		let editable = options && options.editable // skip non-editable cells.
 		let must_move = options && options.must_move // return only if moved.
 		let must_not_move_row = options && options.must_not_move_row // return only if row not moved.
 		let must_not_move_col = options && options.must_not_move_col // return only if col not moved.
@@ -331,7 +331,7 @@ function rowset_widget(e) {
 		// find the last valid row, stopping after the specified row count.
 		while (ri >= 0 && ri < e.rows.length) {
 			let row = e.rows[ri]
-			if (e.can_focus_cell(row, null, for_editing)) {
+			if (e.can_focus_cell(row, null, editable)) {
 				last_valid_ri = ri
 				last_valid_row = row
 				if (rows <= 0)
@@ -351,7 +351,7 @@ function rowset_widget(e) {
 
 		while (fi >= 0 && fi < e.fields.length) {
 			let field = e.fields[fi]
-			if (e.can_focus_cell(last_valid_row, field, for_editing)) {
+			if (e.can_focus_cell(last_valid_row, field, editable)) {
 				last_valid_fi = fi
 				if (cols <= 0)
 					break
@@ -371,12 +371,11 @@ function rowset_widget(e) {
 		return [last_valid_ri, last_valid_fi]
 	}
 
-	e.focus_cell = function(ri, fi, rows, cols, options, ev) {
-
+	e.focus_cell = function(ri, fi, rows, cols, ev) {
 		if (ri === false) { // explicit `false` means remove focus only.
 			[ri, fi] = [null, null]
 		} else {
-			[ri, fi] = e.first_focusable_cell(ri, fi, rows, cols, options)
+			[ri, fi] = e.first_focusable_cell(ri, fi, rows, cols, ev)
 			if (ri == null) // failure to find cell means cancel.
 				return false
 		}
@@ -387,23 +386,23 @@ function rowset_widget(e) {
 		} else if (e.focused_field_index != fi) {
 			if (!e.exit_edit())
 				return false
-		} else if (!(options && options.force))
+		} else if (!(ev && ev.force))
 			return true // same cell.
 
 		set_focused_cell(ri, fi, ev)
 
-		if (!options || options.make_visible != false)
+		if (!ev || ev.make_visible != false)
 			if (e.isConnected)
 				e.scroll_to_cell(ri, fi)
 
 		return true
 	}
 
-	e.focus_next_cell = function(cols, auto_advance_row, for_editing) {
+	e.focus_next_cell = function(cols, ev) {
 		let dir = strict_sign(cols)
-		return e.focus_cell(true, true, dir * 0, cols, {must_move: true, for_editing: for_editing})
-			|| ((auto_advance_row || e.auto_advance_row)
-				&& e.focus_cell(true, true, dir, dir * -1/0, {for_editing: for_editing}))
+		let auto_advance_row = ev && ev.auto_advance_row || e.auto_advance_row
+		return e.focus_cell(true, true, dir * 0, cols, update({must_move: true}, ev))
+			|| (auto_advance_row && e.focus_cell(true, true, dir, dir * -1/0, ev))
 	}
 
 	e.is_last_row_focused = function() {
@@ -607,7 +606,7 @@ function rowset_widget(e) {
 		while (ri != null) {
 			let s = e.rowset.display_value(e.rows[ri], field)
 			if (s.starts(c.lower()) || s.starts(c.upper())) {
-				e.focus_cell(ri, true)
+				e.focus_cell(ri, true, 0, 0, {input: e})
 				break
 			}
 			ri++
@@ -629,9 +628,9 @@ function rowset_widget(e) {
 
 	// picker protocol --------------------------------------------------------
 
-	e.pick_near_value = function(delta) {
-		if (e.focus_cell(e.focused_row_index, e.focused_field_index, delta))
-			e.fire('value_picked')
+	e.pick_near_value = function(delta, ev) {
+		if (e.focus_cell(e.focused_row_index, e.focused_field_index, delta, 0, ev))
+			e.fire('value_picked', ev)
 	}
 
 }

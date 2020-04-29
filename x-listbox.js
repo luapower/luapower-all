@@ -117,8 +117,8 @@ listbox = component('x-listbox', function(e) {
 	function item_mousedown() {
 		e.focus()
 		let ri = this.row_index
-		if (e.focus_cell(ri, null, 0, 0, {must_not_move_row: true}))
-			e.fire('value_picked') // picker protocol.
+		if (e.focus_cell(ri, null, 0, 0, {must_not_move_row: true, input: e}))
+			e.fire('value_picked', {input: e}) // picker protocol.
 		return false
 	}
 
@@ -150,20 +150,20 @@ listbox = component('x-listbox', function(e) {
 			case 'End'       : rows =  1/0; break
 		}
 		if (rows) {
-			e.focus_cell(true, null, rows)
+			e.focus_cell(true, null, rows, 0, {input: e})
 			return false
 		}
 
 		if (key == 'PageUp' || key == 'PageDown') {
 			let item = page_item(key == 'PageDown')
 			if (item)
-				e.focus_cell(item.row_index, null, 0)
+				e.focus_cell(item.row_index, null, 0, 0, {input: e})
 			return false
 		}
 
 		if (key == 'Enter') {
 			if (e.focused_row)
-				e.fire('value_picked') // picker protocol
+				e.fire('value_picked', {input: e}) // picker protocol
 			return false
 		}
 	})
