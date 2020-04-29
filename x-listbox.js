@@ -88,6 +88,7 @@ listbox = component('x-listbox', function(e) {
 			item.row_index = i
 			item.on('mousedown', item_mousedown)
 		}
+		e.update_cell_focus(e.focused_row_index, e.focused_cell_index)
 	}
 
 	e.update_cell_value = function(ri, fi) {
@@ -107,7 +108,6 @@ listbox = component('x-listbox', function(e) {
 		if (item1) {
 			item1.class('focused')
 			item1.class('selected')
-			item1.make_visible()
 		}
 		selected_row_index = ri
 	}

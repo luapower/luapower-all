@@ -1,7 +1,6 @@
 
 BUGS
 ------------------------------------------------------------------------------
-- GRID dropdown open, scroll-to-view focused row.
 - GRID resizing starts when outside the hit-testing area.
 - GRID keep columns resizeable when header is hidden.
 

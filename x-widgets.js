@@ -2333,7 +2333,7 @@ calendar = component('x-calendar', function(e) {
 
 	e.sel_month.on('value_changed', function(v, ev) {
 		if (ev && ev.input) {
-			_d.setTime(e.value)
+			_d.setTime(e.input_value)
 			_d.setMonth(this.value)
 			e.set_value(_d.valueOf(), {input: e})
 		}
@@ -2341,7 +2341,7 @@ calendar = component('x-calendar', function(e) {
 
 	e.sel_year.on('value_changed', function(v, ev) {
 		if (ev && ev.input) {
-			_d.setTime(e.value)
+			_d.setTime(e.input_value)
 			_d.setFullYear(this.value)
 			e.set_value(_d.valueOf(), {input: e})
 		}

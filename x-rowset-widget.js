@@ -8,7 +8,7 @@
 		init_rows()
 		update_cell_state(ri, fi, prop, val, ev)
 		update_row_state(ri, prop, val, ev)
-		update_cell_focus(ri, [fi])
+		update_cell_focus(ri, [fi], ev)
 		update_cell_editing(ri, [fi], editing)
 		scroll_to_cell(ri, [fi])
 */
@@ -159,13 +159,12 @@ function rowset_widget(e) {
 
 	function rowset_loaded() {
 		free_editor()
-		e.focused_row_index = null
-		e.focused_field_index = null
 		e.init_fields_array()
 		e.init_rows_array()
 		rowmap = null
 		e.init_fields()
 		e.init_rows()
+		e.focus_cell(true, true, 0, 0, {must_not_move_row: true})
 	}
 
 	function row_added(row, ev) {
@@ -244,32 +243,6 @@ function rowset_widget(e) {
 	function rowset_load_slow(on) {
 		e.update_load_slow(on)
 	}
-
-	// focusing ---------------------------------------------------------------
-
-	e.focused_row_index = null
-	e.focused_field_index = null
-
-	function set_focused_cell(ri, fi, ev) {
-
-		let ri0 = e.focused_row_index
-
-		e.focused_row_index   = ri
-		e.focused_field_index = fi
-
-		if (ri0 == ri) {
-			// row didn't change, set_focused_row() will do nothing.
-			e.update_cell_focus(ri, fi)
-			return
-		}
-
-		e.set_focused_row(ri != null ? e.rows[ri] : null,
-			update({row_index: ri, field_index: fi}, ev))
-	}
-
-	e.property('focused_field', function() {
-		return e.fields[e.focused_field_index]
-	})
 
 	// navigating -------------------------------------------------------------
 
@@ -351,7 +324,7 @@ function rowset_widget(e) {
 
 		while (fi >= 0 && fi < e.fields.length) {
 			let field = e.fields[fi]
-			if (e.can_focus_cell(last_valid_row, field, editable)) {
+			if (e.can_focus_cell(last_valid_row, field, editable)) {4
 				last_valid_fi = fi
 				if (cols <= 0)
 					break
@@ -371,15 +344,23 @@ function rowset_widget(e) {
 		return [last_valid_ri, last_valid_fi]
 	}
 
+	e.focused_row_index = null
+	e.focused_field_index = null
+
+	e.property('focused_field', function() {
+		return e.fields[e.focused_field_index]
+	})
+
 	e.focus_cell = function(ri, fi, rows, cols, ev) {
-		if (ri === false) { // explicit `false` means remove focus only.
+		if (ri === false) { // explicit `false` row means remove focus only.
 			[ri, fi] = [null, null]
 		} else {
 			[ri, fi] = e.first_focusable_cell(ri, fi, rows, cols, ev)
-			if (ri == null) // failure to find cell means cancel.
+			if (ri == null) // failure to find row means cancel.
 				return false
 		}
 
+		let same_cell
 		if (e.focused_row_index != ri) {
 			if (!e.exit_row())
 				return false
@@ -387,9 +368,17 @@ function rowset_widget(e) {
 			if (!e.exit_edit())
 				return false
 		} else if (!(ev && ev.force))
-			return true // same cell.
+			same_cell = true
 
-		set_focused_cell(ri, fi, ev)
+		if (!same_cell) {
+			e.focused_row_index   = ri
+			e.focused_field_index = fi
+
+			let row = e.rows[ri]
+			e.set_focused_row(row, update({input: e}, ev))
+			e.set_value(e.rowset.value(row, e.field), update({input: e}, ev))
+			e.update_cell_focus(ri, fi, ev)
+		}
 
 		if (!ev || ev.make_visible != false)
 			if (e.isConnected)
@@ -413,28 +402,19 @@ function rowset_widget(e) {
 	// responding to navigation -----------------------------------------------
 
 	e.on('focused_row_changed', function(row, ev) {
-		if (!ev || ev.row_index === undefined) {
-			// got here from outside: focus row's index and same col.
-			e.focused_row_index = e.row_index(row)
-			e.update_cell_focus(e.focused_row_index, e.focused_cell_index)
-		} else if (ev.update == false) {
-			// got here from update_value().
-			e.update_cell_focus(ev.row_index, ev.field_index)
-		} else {
-			// got here from focus_cell().
-			let v = row ? e.rowset.value(row, e.field) : null
-			e.set_value(v, update({update: false}, ev))
-			e.update_cell_focus(ev.row_index, ev.field_index)
-		}
+		if (ev && ev.input == e)
+			return
+		let ri = e.row_index(row)
+		e.focus_cell(ri, null, 0, 0, ev)
 	})
 
 	// responding to value changes --------------------------------------------
 
 	e.update_value = function(v, ev) {
-		if (ev && ev.update == false) // got here from `focused_row_changed`.
+		if (ev && ev.input == e)
 			return
 		let ri = e.row_index(e.rowset.lookup(e.field, v))
-		set_focused_cell(ri, null, update({update: false}, ev))
+		e.focus_cell(ri, null, 0, 0, update({must_not_move_row: true}, ev))
 	}
 
 	// editing ----------------------------------------------------------------
