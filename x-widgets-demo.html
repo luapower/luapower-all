@@ -457,7 +457,7 @@ main.add(
 			'Bananas',
 			'Something Else Entirely',
 		],
-		value: 1,
+		value: 'Bananas',
 	})
 )
 
@@ -468,7 +468,7 @@ main.add(
 			'Horizontally',
 			'Too',
 		],
-		value: 2,
+		value: 'Too',
 		flow: 'horizontal',
 	})
 )
@@ -540,7 +540,15 @@ main.add(
 <script>
 
 main.add(calendar())
-main.add(calendar({value: day(now(), 2)}))
+main.add(calendar({
+	value: day(now(), 1),
+	validate: function(v) {
+		if (day(v) == day(now()))
+			return 'Can\'t have today.'
+		if (day(v) == day(now(), 1))
+			return 'Can\'t have tomorrow.'
+	}
+}))
 
 </script>
 </template>
@@ -614,7 +622,7 @@ d.on('row_changed', function() {
 
 <!--------------------------------------------------------------------------->
 
-<template id=dropdown_listbox_demo>
+<template id=list_dropdown_demo>
 <help>
 
 </help>
@@ -652,7 +660,7 @@ main.add(
 
 <!--------------------------------------------------------------------------->
 
-<template id=dropdown_calendar_demo>
+<template id=date_dropdown_demo>
 <help>
 
 </help>
@@ -675,7 +683,7 @@ main.add(
 
 <!--------------------------------------------------------------------------->
 
-<template id=dropdown_grid_demo>
+<template id=grid_dropdown_demo>
 <help>
 
 </help>
@@ -694,17 +702,15 @@ r1 = rowset({
 	],
 })
 
-g1 = grid({
-	w: 302,
-	pick_value_col: 'id',
-	pick_display_col: 'name',
-	rowset: r1,
-})
-
 main.add(
-	dropdown({
+	grid_dropdown({
 		value: 2,
-		picker: g1,
+		col: 'id',
+		display_col: 'name',
+		grid: {
+			w: 302,
+			rowset: r1,
+		},
 	})
 )
 
@@ -720,17 +726,15 @@ r2 = rowset({
 	rows: rows2,
 })
 
-g2 = grid({
-	w: 210,
-	pick_value_col: 'id',
-	pick_display_col: 'name',
-	rowset: r2,
-})
-
 main.add(
-	dropdown({
+	grid_dropdown({
 		value: 42,
-		picker: g2,
+		display_col: 'name',
+		grid: {
+			w: 210,
+			rowset: r2,
+			value_col: 'id',
+		},
 	})
 )
 
@@ -745,14 +749,12 @@ main.add(
 </help>
 <script>
 
-function list() {
-	return listbox({
-		items: [
-			'Apples',
-			'Bananas',
-			'Something Else Entirely',
-		],
-	})
+function items() {
+	return [
+		'Apples',
+		'Bananas',
+		'Something Else Entirely',
+	]
 }
 
 function p(mode, ...args) {
@@ -763,22 +765,22 @@ main.add(
 	p('default', 'variable-width, no-wrap with min-width aligned with other inputs'),
 	date_dropdown({value: now()}),
 	H.div(),
-	dropdown({picker: list()}),
+	list_dropdown({items: items()}),
 
 	p('inline', 'variable-width, no-wrap, with no min-width (shrink-wrapped), baseline-aligned'),
 	date_dropdown({mode: 'inline', value: now()}),
 	H.div(),
-	dropdown({mode: 'inline', picker: list()}),
+	list_dropdown({mode: 'inline', items: items()}),
 
 	p('wrap', 'fixed-width, auto-wrap'),
 	date_dropdown({mode: 'wrap', value: now()}),
 	H.div(),
-	dropdown({classes: 'wrap', picker: list()}),
+	list_dropdown({mode: 'wrap', items: items(), value: 'Something Else Entirely'}),
 
 	p('fixed', 'fixed-width, no-wrap, overflow hidden'),
 	date_dropdown({mode: 'fixed', value: now()}),
 	H.div(),
-	dropdown({mode: 'fixed', picker: list()})
+	list_dropdown({mode: 'fixed', items: items(), value: 'Something Else Entirely'})
 )
 
 </script>
@@ -1049,7 +1051,7 @@ $('template').forEach(function(e) {
 	let t = window[name+'_demo'].content
 	let h = t.$('help')[0]; h = h && h.innerHTML.trim() || ''
 	let s = t.$('script')[0]; s = s && s.innerHTML.trim() || ''
-	demos.push([{text: name, help: h, code: s}])
+	demos.push({text: name, help: h, code: s})
 })
 
 demo_list = listbox({items: demos, attrs: {id: 'demo_list'}})
@@ -1073,7 +1075,7 @@ reload_button.on('click', function() {
 
 demo_list_ct.add(demo_list)
 
-demo_list.value = 24
+demo_list.focus_cell(12)
 
 lights_button.on('click', function() {
 	let dark = !document.body.hasclass('x-dark')

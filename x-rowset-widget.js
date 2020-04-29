@@ -423,7 +423,7 @@ function rowset_widget(e) {
 			e.update_cell_focus(ev.row_index, ev.field_index)
 		} else {
 			// got here from focus_cell().
-			let v = e.value_field ? (row ? e.rowset.value(row, e.value_field) : null) : ev.row_index
+			let v = row ? e.rowset.value(row, e.field) : null
 			e.set_value(v, update({update: false}, ev))
 			e.update_cell_focus(ev.row_index, ev.field_index)
 		}
@@ -434,14 +434,7 @@ function rowset_widget(e) {
 	e.update_value = function(v, ev) {
 		if (ev && ev.update == false) // got here from `focused_row_changed`.
 			return
-		let ri
-		if (e.value_field)
-			ri = e.row_index(e.rowset.lookup(e.value_field, v))
-		else {
-			ri = v
-			if (!(typeof(v) == 'number' && v >= 0 && v < e.rows.length))
-				ri = null
-		}
+		let ri = e.row_index(e.rowset.lookup(e.field, v))
 		set_focused_cell(ri, null, update({update: false}, ev))
 	}
 
@@ -593,17 +586,13 @@ function rowset_widget(e) {
 	}
 
 	function sort() {
-
-		if (!order_by || !order_by.size)
-			return
-
-		let cmp = e.rowset.comparator(order_by)
-		e.rows.sort(cmp)
-
-		rowmap = null
-		e.init_rows()
+		if (order_by && order_by.size) {
+			let cmp = e.rowset.comparator(order_by)
+			e.rows.sort(cmp)
+			rowmap = null
+			e.init_rows()
+		}
 		e.fire('sort_order_changed')
-
 	}
 
 	// crude quick-search only for the first letter ---------------------------

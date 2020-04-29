@@ -14,6 +14,8 @@ listbox = component('x-listbox', function(e) {
 	e.attrval('flow', 'vertical')
 	e.attr_property('flow')
 
+	e.display_col = '0'
+
 	e.init = function() {
 		if(e.items) {
 			assert(!e.rowset)
@@ -52,14 +54,12 @@ listbox = component('x-listbox', function(e) {
 	function update_rowset_from_items() {
 		e.rowset.rows = new Set()
 		for (let item of e.items) {
-			if (typeof item == 'string')
-				item = [item]
-			e.rowset.rows.add(item)
+			e.rowset.rows.add([item])
 		}
 	}
 
 	e.format_item = function(item) {
-		return typeof item == 'string' ? item : item.text
+		return typeof item == 'object' ? item.text : item
 	}
 
 	e.property('focused_item', function() {
@@ -74,12 +74,7 @@ listbox = component('x-listbox', function(e) {
 	}
 
 	e.init_fields = function() {
-		if (e.value_col)
-			e.value_field = e.rowset.field(e.value_col)
-		if (e.display_col)
-			e.display_field = e.rowset.field(e.display_col)
-		else if (!e.items)
-			e.display_field = e.value_field
+		e.display_field = e.rowset.field(e.display_col)
 	}
 
 	e.init_rows = function() {
@@ -187,17 +182,13 @@ listbox = component('x-listbox', function(e) {
 
 list_dropdown = component('x-list-dropdown', function(e) {
 
-	e.lookup_col = '0'
-	e.display_col = '0'
-
 	dropdown.construct(e)
 
 	init = e.init
 	e.init = function() {
-		e.picker = listbox({
+		e.picker = listbox(update({
 			items: e.items,
-			value_col: '0',
-		})
+		}, e.listbox))
 		init()
 	}
 

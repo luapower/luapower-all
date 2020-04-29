@@ -1173,6 +1173,7 @@ function value_widget(e) {
 	e.default_value = null
 	e.field_prop_map = {
 		field_name: 'name', field_type: 'type', label: 'text',
+		format: 'format',
 		min: 'min', max: 'max', multiple_of: 'multiple_of',
 		lookup_rowset: 'lookup_rowset', lookup_col: 'lookup_col', display_col: 'display_col',
 	}
@@ -1185,7 +1186,8 @@ function value_widget(e) {
 			let field = {}
 			for (let e_k in e.field_prop_map) {
 				let field_k = e.field_prop_map[e_k]
-				field[field_k] = e[e_k]
+				if (e_k in e)
+					field[field_k] = e[e_k]
 			}
 
 			let row = [e.default_value]
@@ -1207,12 +1209,10 @@ function value_widget(e) {
 
 			e.internal_nav = true
 		} else {
-			if (e.field)
-				e.col = e.field.name
+			e.col = e.field ? e.field.name : '0'
 			e.field = e.nav.rowset.field(e.col)
 		}
-		if (e.field)
-			e.init_field()
+		e.init_field()
 	}
 
 	e.bind_nav = function(on) {
@@ -1898,6 +1898,7 @@ slider = component('x-slider', function(e) {
 
 	e.from = 0
 	e.to = 1
+	e.multiple_of = null
 
 	e.class('x-widget')
 	e.class('x-slider')
@@ -1918,7 +1919,7 @@ slider = component('x-slider', function(e) {
 
 	e.init = function() {
 		e.init_nav()
-		e.class('animated', e.field.multiple_of >= 5)
+		e.class('animated', e.field.multiple_of >= 5) // TODO: that's not the point of this.
 	}
 
 	e.attach = function() {
@@ -2225,10 +2226,10 @@ dropdown = component('x-dropdown', function(e) {
 // calendar
 // ---------------------------------------------------------------------------
 
-function month_names() {
+function month_rows() {
 	let a = []
 	for (let i = 0; i <= 11; i++)
-		a.push(month_name(utctime(0, i), 'short'))
+		a.push([i, month_name(utctime(0, i), 'short')])
 	return a
 }
 
@@ -2239,17 +2240,21 @@ calendar = component('x-calendar', function(e) {
 	e.class('x-focusable')
 	e.attrval('tabindex', 0)
 
-	e.format = {weekday: 'short', year: 'numeric', month: 'short', day: 'numeric'}
-
 	value_widget(e)
+
+	function format_month(i) {
+		return month_name(utctime(0, i), 'short')
+	}
 
 	e.sel_day = H.div({class: 'x-calendar-sel-day'})
 	e.sel_day_suffix = H.div({class: 'x-calendar-sel-day-suffix'})
-	e.sel_month = dropdown({
+	e.sel_month = list_dropdown({
 		classes: 'x-calendar-sel-month',
-		picker: listbox({
-			items: month_names(),
-		}),
+		items: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+		format: format_month,
+		listbox: {
+			format_item: format_month,
+		},
 	})
 	e.sel_year = spin_input({
 		classes: 'x-calendar-sel-year',

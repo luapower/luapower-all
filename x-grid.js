@@ -253,7 +253,7 @@ grid = component('x-grid', function(e) {
 	}
 
 	// when: order_by changed.
-	function update_sort_icons() {
+	e.on('sort_order_changed', function() {
 		for (let th of e.header_tr.children) {
 			let dir = e.order_by_dir(th.field)
 			let pri = e.order_by_priority(th.field)
@@ -266,7 +266,7 @@ grid = component('x-grid', function(e) {
 			th.sort_icon.class('fa-angle'+(pri ? '-double' : '')+'-down', dir == 'desc')
 			th.sort_icon_pri.html = pri > 1 ? pri : ''
 		}
-	}
+	})
 
 	let focused_tr, focused_td
 	function update_focus() {
@@ -658,16 +658,13 @@ grid = component('x-grid', function(e) {
 
 grid_dropdown = component('x-grid-dropdown', function(e) {
 
-	e.lookup_col = '0'
-	e.display_col = '0'
-
 	dropdown.construct(e)
 
 	init = e.init
 	e.init = function() {
-		e.picker = grid({
-			// TODO
-		})
+		e.picker = grid(update({
+			col: e.pick_col || '0',
+		}, e.grid))
 		init()
 	}
 
