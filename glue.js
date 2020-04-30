@@ -32,7 +32,7 @@ max = Math.max
 random = Math.random
 
 function clamp(x, x0, x1) {
-	return min(max(x, x0), x1)
+	return min(max(x, or(x0, -1/0)), or(x1, 1/0))
 }
 
 // sign() that only returns -1 or 1, never 0, and returns -1 for -0.
@@ -42,6 +42,11 @@ function strict_sign(x) {
 
 function lerp(x, x0, x1, y0, y1) {
 	return y0 + (x-x0) * ((y1-y0) / (x1 - x0))
+}
+
+function num(s) {
+	let x = parseFloat(s)
+	return x != x ? undefined : x
 }
 
 // logic ---------------------------------------------------------------------

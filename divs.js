@@ -68,6 +68,10 @@ property(Element, 'classes', {
 	}
 })
 
+method(Element, 'css', function(prop) {
+	return getComputedStyle(this)[prop]
+})
+
 /*
 function css(classname, prop) {
 	let div = H.div({class: classname, style: 'position: absolute; visibility: hidden'})
@@ -280,14 +284,14 @@ for (let e of [Window, Document, Element]) {
 
 // geometry wrappers ---------------------------------------------------------
 
-property(Element, 'x'    , { set: function(x) { this.style.left          = x + 'px'; } })
-property(Element, 'y'    , { set: function(y) { this.style.top           = y + 'px'; } })
-property(Element, 'w'    , { set: function(w) { this.style.width         = w + 'px'; } })
-property(Element, 'h'    , { set: function(h) { this.style.height        = h + 'px'; } })
-property(Element, 'min_w', { set: function(w) { this.style['min-width' ] = w + 'px'; } })
-property(Element, 'min_h', { set: function(h) { this.style['min-height'] = h + 'px'; } })
-property(Element, 'max_w', { set: function(w) { this.style['max-width' ] = w + 'px'; } })
-property(Element, 'max_h', { set: function(h) { this.style['max-height'] = h + 'px'; } })
+property(Element, 'x'    , { set: function(v) { this.style.left          = and(v, v+'px'); } })
+property(Element, 'y'    , { set: function(v) { this.style.top           = and(v, v+'px'); } })
+property(Element, 'w'    , { set: function(v) { this.style.width         = and(v, v+'px'); } })
+property(Element, 'h'    , { set: function(v) { this.style.height        = and(v, v+'px'); } })
+property(Element, 'min_w', { set: function(v) { this.style['min-width' ] = and(v, v+'px'); } })
+property(Element, 'min_h', { set: function(v) { this.style['min-height'] = and(v, v+'px'); } })
+property(Element, 'max_w', { set: function(v) { this.style['max-width' ] = and(v, v+'px'); } })
+property(Element, 'max_h', { set: function(v) { this.style['max-height'] = and(v, v+'px'); } })
 
 alias(Element, 'client_rect', 'getBoundingClientRect')
 
