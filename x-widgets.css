@@ -1171,24 +1171,18 @@ td.x-menu-title-td {
 	visibility: hidden;
 }
 
-/* grid scrollbars -------------------------------------------------------- */
-
-.x-grid-rows-view-div::-webkit-scrollbar {
-	width  : 8px;
-	height : 8px;
-}
-
-.x-grid-rows-view-div {
-  scrollbar-width: thin;
-}
-
 /* grid as picker --------------------------------------------------------- */
 
-.x-dropdown .x-widget.x-grid.picker {
+.x-grid.picker {
 	margin: 0;
-	min-height: 100px;
+	min-height: 40px;
 	max-height: 300px;
-	min-width: 100%;
+	max-width: 800px;
+	resize: both;
+}
+
+.x-grid.picker > .x-grid-rows-view-div {
+	overflow-y: scroll;        /* required: show vert-scrollbars always when a picker */
 }
 
 /* ------------------------------------------------------------------------ */

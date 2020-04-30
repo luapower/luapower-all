@@ -23,6 +23,7 @@ function rowset_widget(e) {
 	e.can_change_rows = true
 
 	e.can_focus_cells = true
+	e.auto_focus_first_cell = true  // focus first cell automatically on loading.
 	e.auto_advance_row = true       // jump row on horiz. navigation limits
 	e.save_row_on = 'exit_edit'     // save row on 'input'|'exit_edit'|'exit_row'|false
 	e.insert_row_on = 'exit_edit'   // insert row on 'input'|'exit_edit'|'exit_row'|false
@@ -164,7 +165,7 @@ function rowset_widget(e) {
 		rowmap = null
 		e.init_fields()
 		e.init_rows()
-		e.focus_cell(true, true, 0, 0, {must_not_move_row: true})
+		e.init_focused_row()
 	}
 
 	function row_added(row, ev) {
@@ -302,17 +303,18 @@ function rowset_widget(e) {
 		let last_valid_row
 
 		// find the last valid row, stopping after the specified row count.
-		while (ri >= 0 && ri < e.rows.length) {
-			let row = e.rows[ri]
-			if (e.can_focus_cell(row, null, editable)) {
-				last_valid_ri = ri
-				last_valid_row = row
-				if (rows <= 0)
-					break
+		if (e.can_focus_cell(null, null, editable))
+			while (ri >= 0 && ri < e.rows.length) {
+				let row = e.rows[ri]
+				if (e.can_focus_cell(row, null, editable)) {
+					last_valid_ri = ri
+					last_valid_row = row
+					if (rows <= 0)
+						break
+				}
+				rows--
+				ri += ri_inc
 			}
-			rows--
-			ri += ri_inc
-		}
 
 		if (last_valid_ri == null)
 			return [null, null]
@@ -397,6 +399,10 @@ function rowset_widget(e) {
 	e.is_last_row_focused = function() {
 		let [ri] = e.first_focusable_cell(true, true, 1, 0, {must_move: true})
 		return ri == null
+	}
+
+	e.init_focused_row = function() {
+		e.focus_cell(true, true, 0, 0, {must_not_move_row: !e.auto_focus_first_cell})
 	}
 
 	// responding to navigation -----------------------------------------------

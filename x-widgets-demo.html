@@ -470,7 +470,6 @@ main.add(
 			'Horizontally',
 			'Too',
 		],
-		value: 'Too',
 		flow: 'horizontal',
 	})
 )
@@ -707,12 +706,9 @@ r1 = rowset({
 main.add(
 	grid_dropdown({
 		value: 2,
-		col: 'id',
+		lookup_rowset: r1,
+		lookup_col: 'id',
 		display_col: 'name',
-		grid: {
-			w: 302,
-			rowset: r1,
-		},
 	})
 )
 
@@ -731,12 +727,9 @@ r2 = rowset({
 main.add(
 	grid_dropdown({
 		value: 42,
+		lookup_rowset: r2,
+		lookup_col: 'id',
 		display_col: 'name',
-		grid: {
-			w: 210,
-			rowset: r2,
-			value_col: 'id',
-		},
 	})
 )
 
@@ -1077,7 +1070,7 @@ reload_button.on('click', function() {
 
 demo_list_ct.add(demo_list)
 
-demo_list.focus_cell(1/0)
+demo_list.focus_cell(16)
 
 lights_button.on('click', function() {
 	let dark = !document.body.hasclass('x-dark')

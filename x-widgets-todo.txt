@@ -1,22 +1,15 @@
 
-BUGS
+FINISH
 ------------------------------------------------------------------------------
-- GRID resizing starts when outside the hit-testing area.
-- GRID keep columns resizeable when header is hidden.
+
+- GRID 100% width with resizeable columns.
 
 - SPLIT fixed pane wrong size when other pane is larger than 100% but shrunk to 100%.
 
-
-FINISH
-------------------------------------------------------------------------------
 - GRID slow saving rowset.
 - ROWSET retry after failure.
 - GRID show row-level errors.
 - ROWSET_WIDGET review operations that create a rowmap.
-
-- GRID_DROPDOWN auto-width wrong: shows horizontal scrollbar.
-- GRID 100% width with resizeable columns.
-- GRID_DROPDOWN resize corner grip.
 
 - ROWSET: FK introspection to get lookup_rowset, lookup_field, display_field = lookup_field.
 - ROWSET: error messages on FK errors & check constraint violations.

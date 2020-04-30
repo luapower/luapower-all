@@ -22,7 +22,13 @@
 	identification:
 		name           : field name (defaults to field's numeric index)
 		type           : for choosing a field template.
+
+	visual:
 		text           : field name for display purposes (auto-generated default).
+		visible        : field can be visible in a grid (true).
+
+	navigation:
+		focusable      : field can be focused (true).
 
 	editing:
 		client_default : default value that new rows are initialized with.
@@ -59,6 +65,7 @@
 
 	rs.rows: Set(row)
 		row            : [v1,...;k->v]; currently set values (validated) + row state.
+		focusable      : row can be focused (true).
 		state          : [{k->v},...]; cell state.
 			input_val   : currently set value, whether valid or not.
 			error       : error message if invalid.
@@ -408,11 +415,11 @@ rowset = function(...options) {
 	}
 
 	d.can_focus_cell = function(row, field) {
-		return row.focusable != false && (field == null || field.focusable != false)
+		return !row || (row.focusable != false && (field == null || field.focusable != false))
 	}
 
 	d.can_change_value = function(row, field) {
-		return d.can_edit && d.can_change_rows && row.editable != false
+		return d.can_edit && d.can_change_rows && (!row || row.editable != false)
 			&& (field == null || (field.editable && !field.get_value))
 			&& d.can_focus_cell(row, field)
 	}
@@ -2118,7 +2125,7 @@ dropdown = component('x-dropdown', function(e) {
 			e.picker.class('picker', open)
 			if (open) {
 				e.cancel_value = e.input_value
-				e.picker.min_w = e.clientWidth
+				e.picker.min_w = e.offsetWidth
 				e.picker.popup(e, 'bottom', e.align)
 				e.fire('opened')
 			} else {
@@ -2836,7 +2843,7 @@ vsplit = component('x-split', function(e) {
 		document.on('mouseup'  , document_mouseup)
 
 		e.tooltip = e.tooltip || tooltip({
-			side: left ? 'right' : 'left',
+			side: horiz ? (left ? 'right' : 'left') : (left ? 'bottom' : 'top'),
 		})
 		e.tooltip.target = e.sizer
 	}

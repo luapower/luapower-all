@@ -11,9 +11,10 @@ grid = component('x-grid', function(e) {
 	e.w = 400
 	e.h = 400
 	e.row_h = 26
-	e.row_border_w = 1
-	e.row_border_h = 1
+	e.cell_border_w = 1
+	e.cell_border_h = 1
 	e.min_col_w = 20
+	e.header_visible = true
 
 	// keyboard behavior
 	e.tab_navigation = false    // disabled as it prevents jumping out of the grid.
@@ -53,9 +54,10 @@ grid = component('x-grid', function(e) {
 
 	e.attach = function() {
 		set_header_visibility()
-		set_picker_options()
+		update_width()
 		e.init_rows()
 		e.init_value()
+		e.init_focused_row()
 		e.bind_rowset(true)
 		e.bind_nav(true)
 		bind_document(true)
@@ -93,14 +95,39 @@ grid = component('x-grid', function(e) {
 		return floor(sy - sy % e.row_h)
 	}
 
+	function col_w(field, w) {
+		return max(e.min_col_w, clamp(or(w, field.w), field.min_w, field.max_w))
+	}
+
+	function cols_width() {
+		let w =
+			e.offsetWidth - e.clientWidth
+			+ e.rows_view_div.offsetWidth - e.rows_view_div.clientWidth
+		for (let field of e.fields)
+			w += col_w(field) + e.cell_border_w
+		return w
+	}
+
+	function update_width() {
+		e.max_w = null // reset it so we can get the inherited one.
+		let min_w = num(e.css('min-width'))
+		let max_w = num(e.css('max-width'))
+		e.max_w = clamp(max_w, min_w, cols_width())
+	}
+
 	// when: row count or height changed, rows viewport height changed, header height changed.
 	function update_heights() {
-		e.rows_h = e.row_h * e.rows.length - floor(e.row_border_h / 2)
-		if (e.picker_h != null && e.picker_max_h != null) {
-			e.h = 0 // compute e.offsetHeight with 0 clientHeight. relayouting...
-			e.h = max(e.picker_h, min(e.rows_h, e.picker_max_h)) + e.offsetHeight
-		}
-		e.rows_view_h = e.clientHeight - e.header_table.clientHeight
+		e.rows_h = e.row_h * e.rows.length - floor(e.cell_border_h / 2)
+
+		e.max_h = null // reset it so we can get the inherited one.
+		let min_h = num(e.css('min-height'))
+		let max_h = num(e.css('max-height'))
+		let client_h = e.clientHeight
+		let border_h = e.offsetHeight - client_h
+		let header_h = e.header_table.offsetHeight
+		e.max_h = clamp(max_h, min_h, e.rows_h + header_h + border_h)
+
+		e.rows_view_h = client_h - header_h
 		e.rows_div.h = e.rows_h
 		e.rows_view_div.h = e.rows_view_h
 		e.visible_row_count = floor(e.rows_view_h / e.row_h) + 2
@@ -122,10 +149,6 @@ grid = component('x-grid', function(e) {
 	}
 
 	// rendering --------------------------------------------------------------
-
-	function field_w(field, w) {
-		return max(e.min_col_w, clamp(or(w, field.w), field.min_w, field.max_w))
-	}
 
 	// when: fields changed.
 	e.init_fields = function() {
@@ -153,11 +176,12 @@ grid = component('x-grid', function(e) {
 			th.sort_icon = sort_icon
 			th.sort_icon_pri = sort_icon_pri
 
-			th.w = field_w(field)
-			th.style['border-right-width' ] = e.row_border_w + 'px'
+			th.w = col_w(field)
+			th.style['border-right-width' ] = e.cell_border_w + 'px'
 
 			e.header_tr.add(th)
 		}
+		update_width()
 	}
 
 	// when: fields changed, rows viewport height changed.
@@ -171,10 +195,10 @@ grid = component('x-grid', function(e) {
 				let th = e.header_tr.at[i]
 				let field = e.fields[i]
 				let td = H.td({class: 'x-grid-td'})
-				td.w = field_w(field)
+				td.w = col_w(field)
 				td.h = e.row_h
-				td.style['border-right-width' ] = e.row_border_w + 'px'
-				td.style['border-bottom-width'] = e.row_border_h + 'px'
+				td.style['border-right-width' ] = e.cell_border_w + 'px'
+				td.style['border-bottom-width'] = e.cell_border_h + 'px'
 				if (field.align)
 					td.attr('align', field.align)
 				tr.add(td)
@@ -184,21 +208,27 @@ grid = component('x-grid', function(e) {
 	}
 
 	// when: widget height changed.
-	let cw, ch
-	e.on('attr_changed', function() {
-		if (e.clientWidth === cw && e.clientHeight === ch)
-			return
-		if (e.clientHeight !== ch) {
-			let vrc = e.visible_row_count
-			update_heights()
-			if (e.visible_row_count != vrc) {
-				init_rows_table()
-				update_view()
+	{
+		let w0, h0
+		e.on('attr_changed', function() {
+			let w1 = e.offsetWidth
+			let h1 = e.offsetHeight
+			if (w1 == 0 && h1 == 0)
+				return // hidden
+			if (w1 === w0 && h1 === h0)
+				return
+			if (h1 !== h0) {
+				let vrc = e.visible_row_count
+				update_heights()
+				if (e.visible_row_count != vrc) {
+					init_rows_table()
+					update_view()
+				}
 			}
-		}
-		cw = e.clientWidth
-		ch = e.clientHeight
-	})
+			w0 = w1
+			h0 = h1
+		})
+	}
 
 	e.update_td_value = function(td, row, field, input_val) {
 		td.html = e.rowset.display_value(row, field)
@@ -284,11 +314,11 @@ grid = component('x-grid', function(e) {
 		if (!editor)
 			return
 		let th = e.header_tr.at[e.focused_field_index]
-		let fix = floor(e.row_border_h / 2 + (window.chrome ? .5 : 0))
+		let fix = floor(e.cell_border_h / 2 + (window.chrome ? .5 : 0))
 		editor.x = th.offsetLeft + th.clientLeft
 		editor.y = e.row_h * e.focused_row_index + fix
 		editor.w = th.clientWidth
-		editor.h = e.row_h - e.row_border_h
+		editor.h = e.row_h - e.cell_border_h
 		editor.style['padding-bottom'] = fix + 'px'
 	}
 
@@ -306,10 +336,7 @@ grid = component('x-grid', function(e) {
 	}
 
 	function set_header_visibility() {
-		if (e.header_visible != false && !e.hasclass('picker'))
-			e.header_table.show()
-		else
-			e.header_table.hide()
+		e.header_table.show(e.header_visible)
 	}
 
 	// when: scroll_y changed.
@@ -321,16 +348,6 @@ grid = component('x-grid', function(e) {
 		update_rows()
 		update_focus()
 		update_header_x(sx)
-	}
-
-	// when: attaching as picker.
-	function set_picker_options() {
-		if (!e.hasclass('picker'))
-			return
-		e.can_edit        = false
-		e.can_focus_cells = false
-		e.picker_h     = or(e.picker_h    , 0)
-		e.picker_max_h = or(e.picker_max_h, 200)
 	}
 
 	let create_editor = e.create_editor
@@ -448,7 +465,7 @@ grid = component('x-grid', function(e) {
 			}
 		} else {
 			if (e.focus_cell(ri, fi, 0, 0, {must_not_move_row: true, input: e}))
-				e.fire('value_picked') // picker protocol.
+				e.fire('value_picked', {input: e}) // picker protocol.
 			return false
 		}
 	})
@@ -475,14 +492,11 @@ grid = component('x-grid', function(e) {
 			return
 		// hit-test for column resizing.
 		hit_th = null
-		if (mx <= e.rows_view_div.offsetLeft + e.rows_view_div.clientWidth) {
-			// ^^ not over vertical scrollbar.
-			for (let th of e.header_tr.children) {
-				hit_x = mx - (e.header_table.offsetLeft + th.offsetLeft + th.offsetWidth)
-				if (hit_x >= -5 && hit_x <= 5) {
-					hit_th = th
-					break
-				}
+		for (let th of e.header_tr.children) {
+			hit_x = mx - th.client_rect().right
+			if (hit_x >= -5 && hit_x <= 5) {
+				hit_th = th
+				break
 			}
 		}
 		e.class('col-resize', hit_th != null)
@@ -492,10 +506,11 @@ grid = component('x-grid', function(e) {
 		if (!e.hasclass('col-resizing'))
 			return
 		let field = e.fields[hit_th.index]
-		let w = mx - (e.header_table.offsetLeft + hit_th.offsetLeft + hit_x)
-		field.w = field_w(field, w)
+		let w = mx - hit_th.client_rect().left - hit_x
+		field.w = col_w(field, w)
 		hit_th.w = field.w
 		update_col_width(hit_th.index, field.w)
+		update_width()
 		init_editor_geometry()
 		return false
 	}
@@ -570,7 +585,7 @@ grid = component('x-grid', function(e) {
 			let editor_state = e.editor
 				&& e.editor.editor_state && e.editor.editor_state()
 
-			if (e.focus_cell(true, true, rows, 0, {editable: true, input: e}))
+			if (e.focus_cell(true, true, rows, 0, {editable: reenter_edit, input: e}))
 				if (reenter_edit)
 					e.enter_edit(editor_state)
 
@@ -663,8 +678,13 @@ grid_dropdown = component('x-grid-dropdown', function(e) {
 	init = e.init
 	e.init = function() {
 		e.picker = grid(update({
-			col: e.pick_col || '0',
+			rowset: e.lookup_rowset,
+			col: e.lookup_col,
+			can_edit: false,
+			can_focus_cells: false,
+			auto_focus_first_cell: false,
 		}, e.grid))
+
 		init()
 	}
 
