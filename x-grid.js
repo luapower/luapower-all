@@ -101,14 +101,12 @@ grid = component('x-grid', function(e) {
 	function update_heights() {
 		e.rows_h = e.row_h * e.rows.length - floor(e.cell_border_h / 2)
 
-		e.max_h = null // reset it so we can get the inherited one.
-		let min_h = num(e.css('min-height'))
-		let max_h = num(e.css('max-height'))
 		let client_h = e.clientHeight
 		let border_h = e.offsetHeight - client_h
 		let header_h = e.header_table.offsetHeight
 
-		//e.max_h = clamp(max_h, min_h, e.rows_h + header_h + border_h)
+		if (e.auto_h)
+			e.h = e.rows_h + header_h + border_h
 
 		e.rows_view_h = client_h - header_h
 		e.rows_div.h = e.rows_h
@@ -161,10 +159,9 @@ grid = component('x-grid', function(e) {
 			let col_w = col_ws[fi]
 			let free_w = total_free_w * (col_w / cols_w)
 			let own_border_w = e.cell_border_w * (fi == 0 ? .5 : 1)
-			col_w = round(col_w + free_w + own_border_w)
+			col_w = floor(col_w + free_w + own_border_w)
 			if (fi == e.fields.length - 1) {
 				let remaining_w = cw - total_col_w - e.cell_border_w / 2
-				print(col_w, remaining_w)
 				if (total_free_w > 0)
 					// set width exactly to prevent showing the horizontal scrollbar.
 					col_w = remaining_w
