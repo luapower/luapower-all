@@ -290,7 +290,7 @@ local _post_args = once(function()
 	if ct then
 		if ct:find'^application/x%-www%-form%-urlencoded' then
 			return ngx.req.get_post_args()
-		elseif ct:find'^application/json' then
+		elseif ct:find'^application/json' then --prevent ENCTYPE CORS
 			local s = ngx.req.get_body_data()
 			return s and json(s)
 		end

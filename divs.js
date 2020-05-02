@@ -16,7 +16,6 @@ method(Element, 'attr', function(k, v) {
 		this.removeAttribute(k)
 	else
 		this.setAttribute(k, v)
-	return this
 })
 
 property(Element, 'attrs', {
@@ -27,7 +26,6 @@ property(Element, 'attrs', {
 		if (attrs)
 			for (let k in attrs)
 				this.attr(k, attrs[k])
-		return this
 	}
 })
 
@@ -44,7 +42,6 @@ method(Element, 'class', function(name, enable) {
 		this.classList.add(name)
 	else
 		this.classList.remove(name)
-	return this
 })
 
 method(Element, 'hasclass', function(name) {
@@ -74,7 +71,7 @@ method(Element, 'css', function(prop) {
 
 /*
 function css(classname, prop) {
-	let div = H.div({class: classname, style: 'position: absolute; visibility: hidden'})
+	let div = div({class: classname, style: 'position: absolute; visibility: hidden'})
 	document.children[0].appendChild(div)
 	let v = getComputedStyle(div)[prop]
 	document.children[0].removeChild(div)
@@ -114,7 +111,6 @@ method(Element, 'add', function(...args) {
 	for (let e of args)
 		if (e != null)
 			this.append(e)
-	return this
 })
 
 method(Element, 'insert', function(i0, ...args) {
@@ -123,7 +119,6 @@ method(Element, 'insert', function(i0, ...args) {
 		if (e != null)
 			this.insertBefore(e, this.at[i0])
 	}
-	return this
 })
 
 method(Element, 'replace', function(i, e) {
@@ -132,15 +127,23 @@ method(Element, 'replace', function(i, e) {
 		this.replaceChild(e, e0)
 	else if (e != null)
 		this.append(e)
-	return this
 })
 
 method(Element, 'clear', function() {
 	this.innerHTML = null
-	return this
 })
 
 alias(Element, 'html', 'innerHTML')
+
+method(Element, 'set', function(s) {
+	if (typeof s == 'function')
+		s = s()
+	if (s instanceof Node) {
+		this.innerHTML = null
+		this.append(s)
+	} else
+		this.textContent = s
+})
 
 // creating html elements ----------------------------------------------------
 
@@ -154,7 +157,7 @@ function T(s) {
 function H(s) {
 	if (typeof s != 'string') // pass-through nulls and elements
 		return s
-	var span = H.span(0)
+	let span = H.span(0)
 	span.html = s.trim()
 	return span.childNodes.length > 1 ? span : span.firstChild
 }
@@ -173,6 +176,9 @@ function tag(tag, attrs, ...children) {
 'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'].forEach(function(s) {
 	H[s] = function(...a) { return tag(s, ...a) }
 })
+
+div = H.div
+span = H.span
 
 // easy custom events & event wrappers ---------------------------------------
 
@@ -260,12 +266,10 @@ let on = function(e, f, enable) {
 		f.listener = listener
 	}
 	this.addEventListener(e, listener)
-	return this
 }
 
 let off = function(e, f) {
 	this.removeEventListener(e, f.listener || f)
-	return this
 }
 
 let fire = function(name, ...args) {
@@ -284,14 +288,18 @@ for (let e of [Window, Document, Element]) {
 
 // geometry wrappers ---------------------------------------------------------
 
-property(Element, 'x'    , { set: function(v) { this.style.left          = and(v, v+'px'); } })
-property(Element, 'y'    , { set: function(v) { this.style.top           = and(v, v+'px'); } })
-property(Element, 'w'    , { set: function(v) { this.style.width         = and(v, v+'px'); } })
-property(Element, 'h'    , { set: function(v) { this.style.height        = and(v, v+'px'); } })
-property(Element, 'min_w', { set: function(v) { this.style['min-width' ] = and(v, v+'px'); } })
-property(Element, 'min_h', { set: function(v) { this.style['min-height'] = and(v, v+'px'); } })
-property(Element, 'max_w', { set: function(v) { this.style['max-width' ] = and(v, v+'px'); } })
-property(Element, 'max_h', { set: function(v) { this.style['max-height'] = and(v, v+'px'); } })
+function px(v) {
+	return typeof v == 'number' ? v+'px' : v
+}
+
+property(Element, 'x'    , { set: function(v) { this.style.left          = px(v) } })
+property(Element, 'y'    , { set: function(v) { this.style.top           = px(v) } })
+property(Element, 'w'    , { set: function(v) { this.style.width         = px(v) } })
+property(Element, 'h'    , { set: function(v) { this.style.height        = px(v) } })
+property(Element, 'min_w', { set: function(v) { this.style['min-width' ] = px(v) } })
+property(Element, 'min_h', { set: function(v) { this.style['min-height'] = px(v) } })
+property(Element, 'max_w', { set: function(v) { this.style['max-width' ] = px(v) } })
+property(Element, 'max_h', { set: function(v) { this.style['max-height'] = px(v) } })
 
 alias(Element, 'client_rect', 'getBoundingClientRect')
 
@@ -480,23 +488,6 @@ method(HTMLElement, 'late_property', function(prop, getter, setter, default_valu
 function noop_setter(v) {
 	return v
 }
-
-/*
-// create a boolean property that sets or removes a css class.
-method(HTMLElement, 'css_property', function(name, setter = noop_setter) {
-	name = name.replace('_', '-')
-	function get() {
-		return this.hasclass(name)
-	}
-	function set(v) {
-		if (!!v == this.hasclass(name))
-			return
-		setter.call(this, v)
-		this.class(name, v)
-	}
-	this.late_property(name.replace('-', '_'), get, set)
-})
-*/
 
 // create a property that represents a html attribute.
 // NOTE: a property `foo_bar` is created for an attribute `foo-bar`.
