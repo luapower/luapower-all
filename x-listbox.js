@@ -60,7 +60,7 @@ listbox = component('x-listbox', function(e) {
 	}
 
 	e.format_item = function(item) {
-		return typeof item == 'object' ? item.text : item
+		return (typeof item == 'string' || item instanceof Node) ? item : item.text
 	}
 
 	e.property('focused_item', function() {
@@ -71,7 +71,7 @@ listbox = component('x-listbox', function(e) {
 
 	e.update_item = function(item, row) { // stub
 		if (e.display_field)
-			item.html = e.rowset.display_value(row, e.display_field)
+			item.set(e.rowset.display_value(row, e.display_field))
 	}
 
 	e.init_fields = function() {
@@ -181,8 +181,13 @@ listbox = component('x-listbox', function(e) {
 
 })
 
+hlistbox = function(...options) {
+	return listbox({flow: 'horizontal'}, ...options)
+}
+
 list_dropdown = component('x-list-dropdown', function(e) {
 
+	e.class('x-list-dropdown')
 	dropdown.construct(e)
 
 	init = e.init
@@ -193,6 +198,17 @@ list_dropdown = component('x-list-dropdown', function(e) {
 		}, e.listbox))
 		init()
 	}
+
+})
+
+select_button = component('x-select-button', function(e) {
+
+	e.attrval('flow', 'horizontal')
+	e.class('x-select-button')
+	listbox.construct(e)
+	e.auto_focus_first_cell = false
+
+	//
 
 })
 

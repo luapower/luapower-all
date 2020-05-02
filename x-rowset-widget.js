@@ -92,13 +92,17 @@ function rowset_widget(e) {
 		if (e.cols) {
 			for (let col of e.cols.split(' ')) {
 				let field = e.rowset.field(col)
-				if (field && field.visible != false)
+				if (field && field.visible != false) {
 					e.fields.push(field)
+					e.fields.last = field
+				}
 			}
 		} else
 			for (let field of e.rowset.fields)
-				if (field.visible != false)
+				if (field.visible != false) {
 					e.fields.push(field)
+					e.fields.last = field
+				}
 	}
 
 	// rowset binding ---------------------------------------------------------
@@ -479,6 +483,7 @@ function rowset_widget(e) {
 	}
 
 	function editor_lost_focus(ev) {
+		return
 		if (!e.editor) // editor is being removed.
 			return
 		if (ev.target != e.editor) // other input that bubbled up.

@@ -43,3 +43,11 @@ FEATURES
 - POPUP auto side/align when not fitting container (test with dropdown & menu)
 - PAGELIST auto-menu with items that don't fit the bar
 
+
+SECURITY
+------------------------------------------------------------------------------
+CSRF:
+- no need for CRSF tokens, just send normal session cookie with `Secure; SameSite=Lax`.
+- on the server just check that the `Origin` header matches a static string on POST.
+XSS:
+- strings are never rendered directly as html.

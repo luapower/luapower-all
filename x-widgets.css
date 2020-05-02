@@ -751,6 +751,55 @@
 	overflow: auto;
 }
 
+/* select-button ---------------------------------------------------------- */
+
+.x-select-button > .x-item {
+	margin: 0;
+
+	/* geometry */
+	border-radius: 0;
+	border: 1px solid rgba(27,31,35,.2);
+
+	/* styling */
+	background-color: #eff3f6;
+	background-image: linear-gradient(-180deg,#fafbfc,#eff3f6 90%);
+
+	/* behavior */
+	user-select: none;
+}
+
+.x-select-button > .x-item:hover {
+	background-color: #e6ebf1;
+	background-image: linear-gradient(-180deg,#f0f3f6,#e6ebf1 90%);
+	text-decoration: none;
+}
+
+.x-select-button > .x-item:active, .x-select-button > .x-item.active {
+	outline: none;
+	background-color: #e9ecef;
+	background-image: none;
+	box-shadow: inset 0 0.15em 0.3em rgba(27,31,35,.15);
+}
+
+.x-select-button > .x-item.focused.selected {
+	background-color: var(--x-item-focused-bg-color);
+	background-image: none;
+}
+
+.x-select-button > .x-item:first-child {
+	border-top-left-radius    : .25em;
+	border-bottom-left-radius : .25em;
+}
+
+.x-select-button > .x-item:last-child {
+	border-top-right-radius    : .25em;
+	border-bottom-right-radius : .25em;
+}
+
+.x-select-button > .x-item:not(:first-child) {
+	border-left: 0;
+}
+
 /* calendar --------------------------------------------------------------- */
 
 .x-calendar {
@@ -1021,13 +1070,13 @@ td.x-menu-title-td {
 	border-style: solid none;
 }
 
-/* notifystack ------------------------------------------------------------ */
+/* toaster ---------------------------------------------------------------- */
 
-.x-notifystack {
+.x-toaster {
 	display: none;  /* don't mess up the layout */
 }
 
-.x-notify {
+.x-notify-toaster {
 	position: fixed;
 	transition: top 200ms;
 }
@@ -1042,14 +1091,20 @@ td.x-menu-title-td {
 	border: 0px solid #ccc;
 }
 
-.x-grid-header-table, .x-grid-rows-table {
-	position: relative;        /* required: make movable */
-	width: 0;                  /* required: expand up-to the sum of cell widths */
-	table-layout: fixed;       /* required */
-	border-collapse: collapse; /* required */
+/* header table & rows table must have the exact same horizontal layouting */
+
+.x-grid-header-view {
+	position: relative;        /* required: make movable for scrolling horizontally */
 }
 
-/* header */
+.x-grid-header-table,
+.x-grid-rows-table {
+	width: 0;                  /* required: expand up-to the sum of cell widths */
+	table-layout: fixed;       /* required: column widths must not depend on content */
+	border-collapse: collapse; /* required: single border between cells */
+}
+
+/* header cells */
 
 .x-grid-header-th-table {
 	width: 100%;               /* required: expand to fit column width */
@@ -1078,7 +1133,7 @@ td.x-menu-title-td {
 	border-bottom: 1px solid #999;
 }
 
-/* progress bar */
+/* load/save progress bar */
 
 .x-grid-progress-bar {
 	position: absolute;
@@ -1088,7 +1143,7 @@ td.x-menu-title-td {
 	pointer-events: none;
 }
 
-.x-grid.loading > .x-grid-header-table > .x-grid-progress-bar {
+.x-grid.loading > .x-grid-header-view > .x-grid-header-table > .x-grid-progress-bar {
 	background-color: green;
 }
 
@@ -1098,14 +1153,17 @@ td.x-menu-title-td {
 
 /* rows */
 
-.x-grid-rows-view-div {
+.x-grid-rows-view {
 	overflow: auto;            /* required: show scrollbars as needed */
-	position: relative;        /* required: anchor rows-div */
+	position: relative;        /* required: anchor rows div */
 }
 
-.x-grid-rows-div {
-	position: absolute;        /* required: keep at y=0 while scrolling */
+.x-grid-rows {
 	overflow: hidden;          /* required: hide surplus bottom rows */
+}
+
+.x-grid-rows-table {
+	position: absolute;        /* required: keep at y=0 while scrolling */
 }
 
 /* grid col resizing -------------------------------------------------------*/
@@ -1127,6 +1185,7 @@ td.x-menu-title-td {
 	/* sizing & styling */
 	padding: var(--x-input-padding);
 	border-right: 0px solid #eee;   /* border width set from code */
+	min-width: 20px;
 }
 
 .x-grid-td {
@@ -1181,7 +1240,7 @@ td.x-menu-title-td {
 	resize: both;
 }
 
-.x-grid.picker > .x-grid-rows-view-div {
+.x-grid.picker > .x-grid-rows-view {
 	overflow-y: scroll;        /* required: show vert-scrollbars always when a picker */
 }
 

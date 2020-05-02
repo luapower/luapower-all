@@ -35,16 +35,20 @@ mobile Chrome and Firefox too. Anything else is out.
 
 To install the library you need docker, kubernetes, webpack, redis, memcached
 (because RAM is cheap) four medium AWS instances and an Apple developer account.
-Look, it's just one .js file and one .css file. Load them as they are or
+Look, it's just a few .js files and one .css file. Load them as they are or
 bundle, minify and gzip them, do what you have to do. Just make it look professional.
 
-The dependencies are `glue.js`, `divs.js` and `ajax.js` from [webb] so get those first.
+The dependencies are `glue.js`, `divs.js`, `ajax.js` and `url.js`
+from [webb] so get those first.
 
 `glue.js` extends JavaScript with basic routines similar to [glue] from Lua.
 
-`divs.js` is a tiny jQuery-like library for DOM manipulation.
+`divs.js` is a tiny jQuery-like library for DOM manipulation and creating
+web components.
 
 `ajax.js` is an even tinier wrapper over XMLHttpRequest().
+
+`url.js` does URL composing and decomposing.
 
 ## Styling
 
@@ -52,6 +56,12 @@ Even though they're web components, the widgets don't use shadow DOMs so
 both their sub-elements and their styling are up for grabs. All widgets
 get the `.x-widget` class that you can set global styling like a custom
 font to, without disturbing your other styles.
+
+## Security
+
+Strings are never rendered directly as HTML to avoid accidentally creating
+XSS holes. For formatting rich text safely use templates (`mustache.js` from
+[webb] is a good candidate and it also has a server-side Lua implementation).
 
 ## Web developers beware
 

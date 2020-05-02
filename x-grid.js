@@ -13,8 +13,10 @@ grid = component('x-grid', function(e) {
 	e.row_h = 26
 	e.cell_border_w = 1
 	e.cell_border_h = 1
-	e.min_col_w = 20
 	e.header_visible = true
+	e.auto_w = false
+	e.auto_h = false
+	e.auto_cols_w = true
 
 	// keyboard behavior
 	e.tab_navigation = false    // disabled as it prevents jumping out of the grid.
@@ -28,13 +30,14 @@ grid = component('x-grid', function(e) {
 	e.class('x-focusable')
 	e.attrval('tabindex', 0)
 
-	e.progress_bar = H.div({class: 'x-grid-progress-bar'})
+	e.progress_bar = div({class: 'x-grid-progress-bar'})
 	e.header_tr = H.tr()
 	e.header_table = H.table({class: 'x-grid-header-table'}, e.header_tr, e.progress_bar)
+	e.header_view_div = div({class: 'x-grid-header-view'}, e.header_table)
 	e.rows_table = H.table({class: 'x-grid-rows-table'})
-	e.rows_div = H.div({class: 'x-grid-rows-div'}, e.rows_table)
-	e.rows_view_div = H.div({class: 'x-grid-rows-view-div'}, e.rows_div)
-	e.add(e.header_table, e.rows_view_div)
+	e.rows_div = div({class: 'x-grid-rows'}, e.rows_table)
+	e.rows_view_div = div({class: 'x-grid-rows-view'}, e.rows_div)
+	e.add(e.header_view_div, e.rows_view_div)
 
 	e.rows_view_div.on('scroll', update_view)
 
@@ -54,7 +57,6 @@ grid = component('x-grid', function(e) {
 
 	e.attach = function() {
 		set_header_visibility()
-		update_width()
 		e.init_rows()
 		e.init_value()
 		e.init_focused_row()
@@ -69,7 +71,7 @@ grid = component('x-grid', function(e) {
 		bind_document(false)
 	}
 
-	// rendering / geometry ---------------------------------------------------
+	// geometry on y ----------------------------------------------------------
 
 	function scroll_y(sy) {
 		return clamp(sy, 0, max(0, e.rows_h - e.rows_view_h))
@@ -95,26 +97,6 @@ grid = component('x-grid', function(e) {
 		return floor(sy - sy % e.row_h)
 	}
 
-	function col_w(field, w) {
-		return max(e.min_col_w, clamp(or(w, field.w), field.min_w, field.max_w))
-	}
-
-	function cols_width() {
-		let w =
-			e.offsetWidth - e.clientWidth
-			+ e.rows_view_div.offsetWidth - e.rows_view_div.clientWidth
-		for (let field of e.fields)
-			w += col_w(field) + e.cell_border_w
-		return w
-	}
-
-	function update_width() {
-		e.max_w = null // reset it so we can get the inherited one.
-		let min_w = num(e.css('min-width'))
-		let max_w = num(e.css('max-width'))
-		e.max_w = clamp(max_w, min_w, cols_width())
-	}
-
 	// when: row count or height changed, rows viewport height changed, header height changed.
 	function update_heights() {
 		e.rows_h = e.row_h * e.rows.length - floor(e.cell_border_h / 2)
@@ -125,7 +107,8 @@ grid = component('x-grid', function(e) {
 		let client_h = e.clientHeight
 		let border_h = e.offsetHeight - client_h
 		let header_h = e.header_table.offsetHeight
-		e.max_h = clamp(max_h, min_h, e.rows_h + header_h + border_h)
+
+		//e.max_h = clamp(max_h, min_h, e.rows_h + header_h + border_h)
 
 		e.rows_view_h = client_h - header_h
 		e.rows_div.h = e.rows_h
@@ -133,7 +116,77 @@ grid = component('x-grid', function(e) {
 		e.visible_row_count = floor(e.rows_view_h / e.row_h) + 2
 		e.page_row_count = floor(e.rows_view_h / e.row_h)
 		init_editor_geometry()
+
 	}
+
+	// geometry on x ----------------------------------------------------------
+
+	let col_ws
+
+	function init_col_widths() {
+		col_ws = []
+		for (field of e.fields)
+			col_ws.push(clamp(field.w || 0, field.min_w, field.max_w))
+	}
+
+	function set_col_w(fi, w) {
+		let field = e.fields[fi]
+		col_ws[fi] = clamp(w, field.min_w, field.max_w)
+	}
+
+	// when: vertical scroll bar changes visibility, field width changes (col resizing).
+	function update_widths() {
+
+		let cols_w = 0
+		for (let fi = 0; fi < e.fields.length; fi++)
+			cols_w += col_ws[fi]
+
+		let border_w = e.offsetWidth - e.clientWidth
+		let client_w = e.rows_view_div.clientWidth
+		let vscrollbar_w = e.rows_view_div.offsetWidth - client_w
+		let borders_w = e.cell_border_w * e.fields.length // all collapsed cell borders.
+		if (e.auto_w) {
+			e.w = cols_w + borders_w + border_w + vscrollbar_w
+			client_w = e.rows_view_div.clientWidth
+		}
+
+		let total_free_w = 0
+		let cw = cols_w + borders_w
+		if (e.auto_cols_w) {
+			cw = client_w
+			total_free_w = max(0, cw - cols_w - borders_w)
+		}
+		let total_col_w = 0
+		for (let fi = 0; fi < e.fields.length; fi++) {
+			let col_w = col_ws[fi]
+			let free_w = total_free_w * (col_w / cols_w)
+			let own_border_w = e.cell_border_w * (fi == 0 ? .5 : 1)
+			col_w = round(col_w + free_w + own_border_w)
+			if (fi == e.fields.length - 1) {
+				let remaining_w = cw - total_col_w - e.cell_border_w / 2
+				print(col_w, remaining_w)
+				if (total_free_w > 0)
+					// set width exactly to prevent showing the horizontal scrollbar.
+					col_w = remaining_w
+				else
+					// stretch last col to include leftovers from rounding.
+					col_w = max(col_w, remaining_w)
+			}
+			total_col_w += col_w
+
+			e.header_tr.at[fi].w = col_w
+			for (let tr of e.rows_table.children)
+				tr.at[fi].w = col_w
+		}
+
+	}
+
+	// when: horizontal scrolling, widget width changed.
+	function update_header_x(sx) {
+		e.header_view_div.x = -sx
+	}
+
+	// finding visible cells --------------------------------------------------
 
 	function tr_at(ri) {
 		if (ri == null)
@@ -157,10 +210,9 @@ grid = component('x-grid', function(e) {
 		for (let field of e.fields) {
 			let sort_icon     = H.span({class: 'fa x-grid-sort-icon'})
 			let sort_icon_pri = H.span({class: 'x-grid-header-sort-icon-pri'})
-			let e1 = H.td({
-					class: 'x-grid-header-title-td',
-					title: field.text || field.name
-				}, H(field.text) || field.name)
+			let e1 = H.td({class: 'x-grid-header-title-td'})
+			e1.set(field.text || field.name)
+			e1.title = e1.textContent
 			let e2 = H.td({class: 'x-grid-header-sort-icon-td'}, sort_icon, sort_icon_pri)
 			if (field.align == 'right')
 				[e1, e2] = [e2, e1]
@@ -176,12 +228,11 @@ grid = component('x-grid', function(e) {
 			th.sort_icon = sort_icon
 			th.sort_icon_pri = sort_icon_pri
 
-			th.w = col_w(field)
-			th.style['border-right-width' ] = e.cell_border_w + 'px'
+			th.style['border-right-width'] = e.cell_border_w + 'px'
 
 			e.header_tr.add(th)
 		}
-		update_width()
+		init_col_widths()
 	}
 
 	// when: fields changed, rows viewport height changed.
@@ -195,7 +246,6 @@ grid = component('x-grid', function(e) {
 				let th = e.header_tr.at[i]
 				let field = e.fields[i]
 				let td = H.td({class: 'x-grid-td'})
-				td.w = col_w(field)
 				td.h = e.row_h
 				td.style['border-right-width' ] = e.cell_border_w + 'px'
 				td.style['border-bottom-width'] = e.cell_border_h + 'px'
@@ -215,23 +265,24 @@ grid = component('x-grid', function(e) {
 			let h1 = e.offsetHeight
 			if (w1 == 0 && h1 == 0)
 				return // hidden
-			if (w1 === w0 && h1 === h0)
-				return
 			if (h1 !== h0) {
 				let vrc = e.visible_row_count
 				update_heights()
 				if (e.visible_row_count != vrc) {
 					init_rows_table()
+					update_widths()
 					update_view()
 				}
 			}
+			if (w1 !== w0)
+				update_widths()
 			w0 = w1
 			h0 = h1
 		})
 	}
 
 	e.update_td_value = function(td, row, field, input_val) {
-		td.html = e.rowset.display_value(row, field)
+		td.set(e.rowset.display_value(row, field))
 		td.class('null', input_val == null)
 	}
 
@@ -294,7 +345,7 @@ grid = component('x-grid', function(e) {
 			th.sort_icon.class('fa-angle-double-down', false)
 			th.sort_icon.class('fa-angle'+(pri ? '-double' : '')+'-up'  , dir == 'asc')
 			th.sort_icon.class('fa-angle'+(pri ? '-double' : '')+'-down', dir == 'desc')
-			th.sort_icon_pri.html = pri > 1 ? pri : ''
+			th.sort_icon_pri.set(pri > 1 ? pri : '')
 		}
 	})
 
@@ -322,21 +373,8 @@ grid = component('x-grid', function(e) {
 		editor.style['padding-bottom'] = fix + 'px'
 	}
 
-	// when: col resizing.
-	function update_col_width(td_index, w) {
-		for (let tr of e.rows_table.children) {
-			let td = tr.at[td_index]
-			td.w = w
-		}
-	}
-
-	// when: horizontal scrolling, widget width changed.
-	function update_header_x(sx) {
-		e.header_table.x = -sx
-	}
-
 	function set_header_visibility() {
-		e.header_table.show(e.header_visible)
+		e.header_view_div.show(e.header_visible)
 	}
 
 	// when: scroll_y changed.
@@ -372,6 +410,7 @@ grid = component('x-grid', function(e) {
 	e.init_rows = function() {
 		update_heights()
 		init_rows_table()
+		update_widths()
 		update_view()
 	}
 
@@ -456,10 +495,7 @@ grid = component('x-grid', function(e) {
 		let fi = td.field_index
 		if (e.focused_row_index == ri && e.focused_field_index == fi) {
 			if (had_focus) {
-				// TODO: what we want here is `e.enter_edit()` without `return false`
-				// to let mousedown click-through to the input box and focus the input
-				// and move the caret under the mouse all by itself.
-				// Unfortunately, this only works in Chrome no luck with Firefox.
+				// TODO: instead of `select_all`, put the caret where the mouse is.
 				e.enter_edit('select_all')
 				return false
 			}
@@ -505,12 +541,10 @@ grid = component('x-grid', function(e) {
 	function document_mousemove(mx, my) {
 		if (!e.hasclass('col-resizing'))
 			return
-		let field = e.fields[hit_th.index]
+		let fi = hit_th.index
 		let w = mx - hit_th.client_rect().left - hit_x
-		field.w = col_w(field, w)
-		hit_th.w = field.w
-		update_col_width(hit_th.index, field.w)
-		update_width()
+		set_col_w(fi, w)
+		update_widths()
 		init_editor_geometry()
 		return false
 	}
@@ -673,6 +707,7 @@ grid = component('x-grid', function(e) {
 
 grid_dropdown = component('x-grid-dropdown', function(e) {
 
+	e.class('x-grid-dropdown')
 	dropdown.construct(e)
 
 	init = e.init
@@ -683,9 +718,13 @@ grid_dropdown = component('x-grid-dropdown', function(e) {
 			can_edit: false,
 			can_focus_cells: false,
 			auto_focus_first_cell: false,
+			//rowset_owner: false,
+			auto_w: true,
+			auto_h: true,
 		}, e.grid))
 
 		init()
+
 	}
 
 })

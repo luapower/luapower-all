@@ -180,6 +180,8 @@ method(Array, 'remove_value', function(v) {
 	return v
 })
 
+property(Array, 'last', {get: function() { return this[this.length-1] } })
+
 // hash maps -----------------------------------------------------------------
 
 function keys(o, cmp) {

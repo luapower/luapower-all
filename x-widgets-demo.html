@@ -154,7 +154,7 @@ h2 {
 <help>
 
 button({
-	text: 'html text',
+	text: 'text',
 	icon_classes: 'class1 class2',
 	primary: true,
 })
@@ -170,12 +170,12 @@ main.add(
 		onclick: function() { print('clicked') },
 	}),
 	button({
-		text: 'Click&nbsp;<i>me</i>&nbsp;too!',
+		text: H('Click&nbsp;<i>me</i>&nbsp;too!'),
 		icon_classes: 'fa fa-biohazard',
 		onclick: function() { print('clicked') },
 	}),
 	button({
-		text: 'Multiline text<br>works too!',
+		text: H('Multiline text<br>works too!'),
 		icon_classes: 'fa fa-folder-open',
 		onclick: function() { print('clicked') },
 	})
@@ -193,9 +193,9 @@ main.add(
 
 <script>
 
-b1 = button({text: 'aaa ^ aaa<br>aaa aaa aaa v aaa aaa aaa'})
-b2 = button({text: 'aaa ^ aaa<br>aaa aaa aaa v aaa aaa aaa'})
-b3 = button({text: 'aaa ^ aaa<br>aaa aaa aaa v aaa aaa aaa'})
+b1 = button({text: H('aaa ^ aaa<br>aaa aaa aaa v aaa aaa aaa')})
+b2 = button({text: H('aaa ^ aaa<br>aaa aaa aaa v aaa aaa aaa')})
+b3 = button({text: H('aaa ^ aaa<br>aaa aaa aaa v aaa aaa aaa')})
 main.add(H.div({style: 'text-align: center'}, H.div({}, b1), H.div({}, b2), H.div({}, b3)))
 
 b1.style['margin-bottom'] = '10em'
@@ -205,41 +205,41 @@ let s = 'aaa v aaa<br>aaa aaa v aaa aaa'
 
 function check(e) { return e.hovered }
 
-t1 = tooltip({text: s, side: 'right' , align: 'center', target: b1, type: 'info', check: check})
-t2 = tooltip({text: s, side: 'top'   , align: 'center', target: b1, type: 'info', check: check})
-t3 = tooltip({text: s, side: 'bottom', align: 'center', target: b1, type: 'info', check: check})
-t4 = tooltip({text: s, side: 'left'  , align: 'center', target: b1, type: 'info', check: check})
+tooltip({text: H(s), side: 'right' , align: 'center', target: b1, type: 'info', check: check})
+tooltip({text: H(s), side: 'top'   , align: 'center', target: b1, type: 'info', check: check})
+tooltip({text: H(s), side: 'bottom', align: 'center', target: b1, type: 'info', check: check})
+tooltip({text: H(s), side: 'left'  , align: 'center', target: b1, type: 'info', check: check})
 
-t1 = tooltip({text: s, side: 'right' , align: 'start', target: b2})
-t2 = tooltip({text: s, side: 'top'   , align: 'start', target: b2})
-t3 = tooltip({text: s, side: 'bottom', align: 'start', target: b2})
-t4 = tooltip({text: s, side: 'left'  , align: 'start', target: b2})
+tooltip({text: H(s), side: 'right' , align: 'start', target: b2})
+tooltip({text: H(s), side: 'top'   , align: 'start', target: b2})
+tooltip({text: H(s), side: 'bottom', align: 'start', target: b2})
+tooltip({text: H(s), side: 'left'  , align: 'start', target: b2})
 
-t1 = tooltip({text: s, side: 'right' , align: 'end', target: b3, type: 'error'})
-t2 = tooltip({text: s, side: 'top'   , align: 'end', target: b3, type: 'error'})
-t3 = tooltip({text: s, side: 'bottom', align: 'end', target: b3, type: 'error'})
-t4 = tooltip({text: s, side: 'left'  , align: 'end', target: b3, type: 'error'})
+tooltip({text: H(s), side: 'right' , align: 'end', target: b3, type: 'error'})
+tooltip({text: H(s), side: 'top'   , align: 'end', target: b3, type: 'error'})
+tooltip({text: H(s), side: 'bottom', align: 'end', target: b3, type: 'error'})
+tooltip({text: H(s), side: 'left'  , align: 'end', target: b3, type: 'error'})
 
 </script>
 </template>
 
 <!--------------------------------------------------------------------------->
 
-<template id=notifystack_demo>
+<template id=toaster_demo>
 <help>
 
 </help>
 <script>
 
-ns = notifystack({
+t = toaster({
 	//
 })
 
-main.add(ns)
+main.add(t)
 
-ns.notify('Hello there', null, 1)
-ns.notify('I\'ve got something to tell you...', 'info', 2)
-ns.notify('Pay attention!', 'error', 3)
+t.post('Hello there', null, 1)
+t.post('I\'ve got something to tell you...', 'info', 2)
+t.post('Pay attention!', 'error', 3)
 
 </script>
 </template>
@@ -262,7 +262,7 @@ main.add(checkbox({
 }))
 
 c2 = checkbox({
-	text: 'Yo wasup<br>I am multiline and right-aligned.',
+	text: H('Yo wasup<br>I am multiline and right-aligned.'),
 	align: 'right',
 	checked: true,
 })
@@ -288,7 +288,7 @@ main.add(
 		items: [
 			'Option 1',
 			'Option 2',
-			'Option 3<br>Multiple lines',
+			H('Option 3<br>Multiple lines'),
 		],
 		value: 1,
 	}),
@@ -297,7 +297,7 @@ main.add(
 		items: [
 			'Option 1',
 			'Option 2',
-			'Option 3<br>Multiple lines long text',
+			H('Option 3<br>Multiple lines long text'),
 		],
 		value: 1/0,
 		validate: function(v) { return v >= 0 && v < 3 || 'Selected option out of range' },
@@ -452,27 +452,33 @@ main.add(H.div({},
 </help>
 <script>
 
-main.add(
-	listbox({
-		items: [
-			'Apples',
-			'Bananas',
-			'Something Else Entirely',
-		],
-		value: 'Bananas',
-	})
-)
+lb = listbox({
+	items: [
+		'Apples',
+		'Bananas',
+		'Something Else Entirely',
+	],
+	value: 'Bananas',
+})
 
-main.add(
-	listbox({
-		items: [
-			'Works',
-			'Horizontally',
-			'Too',
-		],
-		flow: 'horizontal',
-	})
-)
+hlb = hlistbox({
+	items: [
+		'Works',
+		'Horizontally',
+		'Too',
+	],
+})
+
+sb = select_button({
+	items: [
+		'Choose',
+		'One',
+		'Of',
+		'Us',
+	],
+})
+
+main.add(lb, hlb, div({}, H('<h3>select_button</h3>'), sb))
 
 </script>
 </template>
@@ -571,14 +577,14 @@ function starts_with_a(s) {
 var data = {
 	fields: [
 		{name: 'id'        , w:  60, min_w:  30, type: 'number', editable: false},
-		{name: 'X'         , w:  30, type: 'bool', true_text: checked, false_text: ''},
+		{name: 'X'         , w:  30, type: 'bool', true_text: H(checked), false_text: ''},
 		{name: 'name'      , w:  70, min_w:  50, max_w: 200, validate: starts_with_a},
 		{name: 'parent_id' , w:  60, min_w:  50, type: 'number', allow_null: true, editable: false, focusable: false},
-		{name: 'random_num', w: 130, allow_null: true, type: 'number', text: 'Random<br>Number'},
+		{name: 'random_num', w: 130, allow_null: true, type: 'number', text: () => H('<i>Random</i><br>Number')},
 		{name: 'date'      , w: 140, allow_null: true, type: 'date'},
 	],
 	pk: 'id',
-	rows: [],
+	rows: new Set(),
 	can_add_rows: true,
 	can_remove_rows: true,
 	can_change_rows: true,
@@ -589,22 +595,23 @@ for (let i = 1; i <= 1e5; i++) {
 	let name       = 'record '+i
 	let parent_id  = floor((random() * i))
 	let random_num = floor(random() * 1e9)
-	let random_date = day(i * 24 * 3600 * 1000)
+	let random_date = i * 24 * 3600 * 1000
 	let row = [id, i % 5 == 0, name, parent_id, random_num, random_date]
 	row.focusable = i % 10 >= 2
-	data.rows.push(row)
+	data.rows.add(row)
 }
 
 d = rowset(data)
 
 g = grid({
 	rowset: d,
-	w: 500,
+	w: 550,
 	h: 200,
 	//row_border_h: 1,
 	//row_h: 40,
 	//row_border_h: 1,
 	//order_by: 'parent_id, name desc',
+	col_width: 'autoz',
 })
 
 g.style.resize = 'both'
@@ -1068,9 +1075,9 @@ reload_button.on('click', function() {
 	run_script()
 })
 
-demo_list_ct.add(demo_list)
-
 demo_list.focus_cell(16)
+
+demo_list_ct.add(demo_list)
 
 lights_button.on('click', function() {
 	let dark = !document.body.hasclass('x-dark')

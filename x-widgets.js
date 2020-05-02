@@ -23,7 +23,7 @@
 		name           : field name (defaults to field's numeric index)
 		type           : for choosing a field template.
 
-	visual:
+	rendering:
 		text           : field name for display purposes (auto-generated default).
 		visible        : field can be visible in a grid (true).
 
@@ -157,7 +157,7 @@ rowset = function(...options) {
 	}
 
 	let owner
-	function set_owner_events(on) {
+	function bind_owner(on) {
 		if (!owner)
 			return
 		owner.on('attach', d.attach, on)
@@ -166,9 +166,9 @@ rowset = function(...options) {
 	property(d, 'owner', {
 		get: function() { return owner },
 		set: function(owner1) {
-			set_owner_events(false)
+			bind_owner(false)
 			owner = owner1
-			set_owner_events(true)
+			bind_owner(true)
 		},
 	})
 
@@ -1206,6 +1206,7 @@ function value_widget(e) {
 				fields: [field],
 				rows: [row],
 				can_change_rows: true,
+				owner: e,
 			})
 
 			e.nav = rowset_nav({rowset: internal_rowset, focused_row: row})
@@ -1333,8 +1334,8 @@ tooltip = component('x-tooltip', function(e) {
 	e.class('x-widget')
 	e.class('x-tooltip')
 
-	e.text_div = H.div({class: 'x-tooltip-text'})
-	e.pin = H.div({class: 'x-tooltip-tip'})
+	e.text_div = div({class: 'x-tooltip-text'})
+	e.pin = div({class: 'x-tooltip-tip'})
 	e.add(e.text_div, e.pin)
 
 	e.attrval('side', 'top')
@@ -1352,9 +1353,9 @@ tooltip = component('x-tooltip', function(e) {
 		e.popup(target, e.side, e.align, e.px, e.py)
 	}
 
-	e.property('text',
+	e.late_property('text',
 		function()  { return e.text_div.html },
-		function(s) { e.text_div.html = s; e.update() }
+		function(s) { e.text_div.set(s); e.update() }
 	)
 
 	e.property('visible',
@@ -1394,28 +1395,27 @@ button = component('x-button', function(e) {
 	e.class('x-button')
 	e.attrval('tabindex', 0)
 
-	e.icon_span = H.span({class: 'x-button-icon'})
-	e.text_span = H.span({class: 'x-button-text'})
-	e.add(e.icon_span, e.text_span)
+	e.icon_div = span({class: 'x-button-icon'})
+	e.text_div = span({class: 'x-button-text'})
+	e.add(e.icon_div, e.text_div)
 
 	e.init = function() {
 
-		e.icon_span.add(e.icon)
-		e.icon_span.classes = e.icon_classes
+		e.icon_div.add(e.icon)
+		e.icon_div.classes = e.icon_classes
 
 		// can't use CSS for this because margins don't collapse with paddings.
 		if (!(e.icon_classes || e.icon))
-			e.icon_span.hide()
+			e.icon_div.hide()
 
 		e.on('keydown', keydown)
 		e.on('keyup', keyup)
 	}
 
-	e.property('text', function() {
-		return e.text_span.html
-	}, function(s) {
-		e.text_span.html = s
-	})
+	e.late_property('text',
+		function()  { return e.text_div.html },
+		function(s) { e.text_div.set(s) }
+	)
 
 	e.late_property('primary', function() {
 		return e.hasclass('primary')
@@ -1462,8 +1462,8 @@ checkbox = component('x-checkbox', function(e) {
 	e.checked_value = true
 	e.unchecked_value = false
 
-	e.icon_div = H.span({class: 'x-markbox-icon x-checkbox-icon fa fa-square'})
-	e.text_div = H.span({class: 'x-markbox-text x-checkbox-text'})
+	e.icon_div = span({class: 'x-markbox-icon x-checkbox-icon fa fa-square'})
+	e.text_div = span({class: 'x-markbox-text x-checkbox-text'})
 	e.add(e.icon_div, e.text_div)
 
 	// model
@@ -1495,11 +1495,10 @@ checkbox = component('x-checkbox', function(e) {
 
 	// view
 
-	e.property('text', function() {
-		return e.text_div.html
-	}, function(s) {
-		e.text_div.html = s
-	})
+	e.late_property('text',
+		function()  { return e.text_div.html },
+		function(s) { e.text_div.set(s) }
+	)
 
 	e.update_value = function(v) {
 		v = v === e.checked_value
@@ -1551,12 +1550,12 @@ radiogroup = component('x-radiogroup', function(e) {
 	e.init = function() {
 		e.init_nav()
 		for (let item of e.items) {
-			if (typeof item == 'string')
+			if (typeof item == 'string' || item instanceof Node)
 				item = {text: item}
-			let radio_div = H.span({class: 'x-markbox-icon x-radio-icon far fa-circle'})
-			let text_div = H.span({class: 'x-markbox-text x-radio-text'})
-			text_div.html = item.text
-			let item_div = H.div({class: 'x-widget x-markbox x-radio-item', tabindex: 0},
+			let radio_div = span({class: 'x-markbox-icon x-radio-icon far fa-circle'})
+			let text_div = span({class: 'x-markbox-text x-radio-text'})
+			text_div.set(item.text)
+			let item_div = div({class: 'x-widget x-markbox x-radio-item', tabindex: 0},
 				radio_div, text_div)
 			item_div.attrval('align', e.align)
 			item_div.class('center', !!e.center)
@@ -1637,7 +1636,7 @@ function input_widget(e) {
 	e.class('with-inner-label', true)
 
 	e.init_field = function() {
-		e.inner_label_div.html = e.field.text
+		e.inner_label_div.set(e.field.text)
 	}
 
 }
@@ -1648,7 +1647,7 @@ input = component('x-input', function(e) {
 	e.class('x-input')
 
 	e.input = H.input({class: 'x-input-value'})
-	e.inner_label_div = H.div({class: 'x-input-inner-label'})
+	e.inner_label_div = div({class: 'x-input-inner-label'})
 	e.input.set_input_filter() // must be set as first event handler!
 	e.add(e.input, e.inner_label_div)
 
@@ -1783,9 +1782,8 @@ input = component('x-input', function(e) {
 
 spin_input = component('x-spin-input', function(e) {
 
-	input.construct(e)
-
 	e.class('x-spin-input')
+	input.construct(e)
 
 	e.align = 'right'
 
@@ -1794,8 +1792,8 @@ spin_input = component('x-spin-input', function(e) {
 	e.attr_property('button-style')
 	e.attr_property('button-placement')
 
-	e.up   = H.div({class: 'x-spin-input-button fa'})
-	e.down = H.div({class: 'x-spin-input-button fa'})
+	e.up   = div({class: 'x-spin-input-button fa'})
+	e.down = div({class: 'x-spin-input-button fa'})
 
 	e.field_type = 'number'
 	update(e.field_prop_map, {field_type: 'type'})
@@ -1910,10 +1908,10 @@ slider = component('x-slider', function(e) {
 	e.class('x-slider')
 	e.attrval('tabindex', 0)
 
-	e.value_fill = H.div({class: 'x-slider-fill x-slider-value-fill'})
-	e.range_fill = H.div({class: 'x-slider-fill x-slider-range-fill'})
-	e.input_thumb = H.div({class: 'x-slider-thumb x-slider-input-thumb'})
-	e.value_thumb = H.div({class: 'x-slider-thumb x-slider-value-thumb'})
+	e.value_fill = div({class: 'x-slider-fill x-slider-value-fill'})
+	e.range_fill = div({class: 'x-slider-fill x-slider-range-fill'})
+	e.input_thumb = div({class: 'x-slider-thumb x-slider-input-thumb'})
+	e.value_thumb = div({class: 'x-slider-thumb x-slider-value-thumb'})
 	e.add(e.range_fill, e.value_fill, e.value_thumb, e.input_thumb)
 
 	// model
@@ -2048,9 +2046,9 @@ dropdown = component('x-dropdown', function(e) {
 	e.class('x-dropdown')
 	e.attrval('tabindex', 0)
 
-	e.value_div = H.span({class: 'x-input-value x-dropdown-value'})
-	e.button = H.span({class: 'x-dropdown-button fa fa-caret-down'})
-	e.inner_label_div = H.div({class: 'x-input-inner-label x-dropdown-inner-label'})
+	e.value_div = span({class: 'x-input-value x-dropdown-value'})
+	e.button = span({class: 'x-dropdown-button fa fa-caret-down'})
+	e.inner_label_div = div({class: 'x-input-inner-label x-dropdown-inner-label'})
 	e.add(e.value_div, e.button, e.inner_label_div)
 
 	value_widget(e)
@@ -2088,12 +2086,12 @@ dropdown = component('x-dropdown', function(e) {
 	// value updating
 
 	e.update_value = function(v, ev) {
-		let html = e.display_value
-		let empty = html === ''
+		let text = e.display_value
+		let empty = text === ''
 		e.value_div.class('empty', empty)
 		e.value_div.class('null', v == null)
 		e.inner_label_div.class('empty', empty)
-		e.value_div.html = empty ? '&nbsp;' : html
+		e.value_div.set(empty ? H('&nbsp;') : text)
 		if (ev && ev.focus)
 			e.focus()
 	}
@@ -2254,8 +2252,8 @@ calendar = component('x-calendar', function(e) {
 		return month_name(utctime(0, i), 'short')
 	}
 
-	e.sel_day = H.div({class: 'x-calendar-sel-day'})
-	e.sel_day_suffix = H.div({class: 'x-calendar-sel-day-suffix'})
+	e.sel_day = div({class: 'x-calendar-sel-day'})
+	e.sel_day_suffix = div({class: 'x-calendar-sel-day-suffix'})
 	e.sel_month = list_dropdown({
 		classes: 'x-calendar-sel-month',
 		items: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
@@ -2270,7 +2268,7 @@ calendar = component('x-calendar', function(e) {
 		max: 3000,
 		button_style: 'left-right',
 	})
-	e.header = H.div({class: 'x-calendar-header'},
+	e.header = div({class: 'x-calendar-header'},
 		e.sel_day, e.sel_day_suffix, e.sel_month, e.sel_year)
 	e.weekview = H.table({class: 'x-calendar-weekview'})
 	e.add(e.header, e.weekview)
@@ -2293,10 +2291,10 @@ calendar = component('x-calendar', function(e) {
 		update_weekview(t, 6)
 		let y = year_of(t)
 		let n = floor(1 + days(t - month(t)))
-		e.sel_day.html = n
+		e.sel_day.set(n)
 		let day_suffixes = ['', 'st', 'nd', 'rd']
-		e.sel_day_suffix.html = locale.starts('en') ?
-			(n < 11 || n > 13) && day_suffixes[n % 10] || 'th' : ''
+		e.sel_day_suffix.set(locale.starts('en') ?
+			(n < 11 || n > 13) && day_suffixes[n % 10] || 'th' : '')
 		e.sel_month.value = month_of(t)
 		e.sel_year.value = y
 	}
@@ -2458,12 +2456,12 @@ menu = component('x-menu', function(e) {
 	// view
 
 	function create_item(item) {
-		let check_div = H.div({class: 'x-menu-check-div fa fa-check'})
-		let icon_div  = H.div({class: 'x-menu-icon-div '+(item.icon_class || '')})
+		let check_div = div({class: 'x-menu-check-div fa fa-check'})
+		let icon_div  = div({class: 'x-menu-icon-div '+(item.icon_class || '')})
 		let check_td  = H.td ({class: 'x-menu-check-td'}, check_div, icon_div)
 		let title_td  = H.td ({class: 'x-menu-title-td'}, item.text)
 		let key_td    = H.td ({class: 'x-menu-key-td'}, item.key)
-		let sub_div   = H.div({class: 'x-menu-sub-div fa fa-caret-right'})
+		let sub_div   = div({class: 'x-menu-sub-div fa fa-caret-right'})
 		let sub_td    = H.td ({class: 'x-menu-sub-td'}, sub_div)
 		sub_div.style.visibility = item.items ? null : 'hidden'
 		let tr = H.tr({class: 'x-item x-menu-tr'}, check_td, title_td, key_td, sub_td)
@@ -2686,16 +2684,16 @@ pagelist = component('x-pagelist', function(e) {
 		if (e.items)
 			for (let i = 0; i < e.items.length; i++) {
 				let item = e.items[i]
-				if (typeof item == 'string')
+				if (typeof item == 'string' || item instanceof Node)
 					item = {text: item}
-				let item_div = H.div({class: 'x-pagelist-item', tabindex: 0}, item.text)
+				let item_div = div({class: 'x-pagelist-item', tabindex: 0}, item.text)
 				item_div.on('mousedown', item_mousedown)
 				item_div.on('keydown'  , item_keydown)
 				item_div.item = item
 				item_div.index = i
 				e.add(item_div)
 			}
-		e.selection_bar = H.div({class: 'x-pagelist-selection-bar'})
+		e.selection_bar = div({class: 'x-pagelist-selection-bar'})
 		e.add(e.selection_bar)
 	}
 
@@ -2795,7 +2793,7 @@ vsplit = component('x-split', function(e) {
 		e[2].class('x-split-pane', true)
 		e.fixed_pane.class('x-split-pane-fixed')
 		e. auto_pane.class('x-split-pane-auto')
-		e.sizer = H.div({class: 'x-split-sizer'})
+		e.sizer = div({class: 'x-split-sizer'})
 		e.add(e[1], e.sizer, e[2])
 
 		e.class('resizeable', e.resizeable != false)
@@ -2905,13 +2903,13 @@ function hsplit(...args) {
 }
 
 // ---------------------------------------------------------------------------
-// notifystack
+// toaster
 // ---------------------------------------------------------------------------
 
-notifystack = component('x-notifystack', function(e) {
+toaster = component('x-toaster', function(e) {
 
 	e.class('x-widget')
-	e.class('x-notifystack')
+	e.class('x-toaster')
 
 	e.tooltips = new Set()
 
@@ -2939,9 +2937,9 @@ notifystack = component('x-notifystack', function(e) {
 		return true
 	}
 
-	e.notify = function(text, type, timeout) {
+	e.post = function(text, type, timeout) {
 		let t = tooltip({
-			classes: 'x-notify',
+			classes: 'x-toaster-message',
 			type: opt(type, e.type),
 			target: e.target,
 			text: text,
@@ -2968,10 +2966,10 @@ notifystack = component('x-notifystack', function(e) {
 
 // global notify function.
 {
-	let nstack
+	let t
 	function notify(...args) {
-		nstack = nstack || notifystack()
-		nstack.notify(...args)
+		t = t || toaster({classes: 'x-notify-toaster'})
+		t.message(...args)
 	}
 }
 
