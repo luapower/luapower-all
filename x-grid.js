@@ -103,12 +103,12 @@ grid = component('x-grid', function(e) {
 
 		let client_h = e.clientHeight
 		let border_h = e.offsetHeight - client_h
-		let header_h = e.header_table.offsetHeight
+		e.header_h = e.header_table.offsetHeight
 
 		if (e.auto_h)
-			e.h = e.rows_h + header_h + border_h
+			e.h = e.rows_h + e.header_h + border_h
 
-		e.rows_view_h = client_h - header_h
+		e.rows_view_h = client_h - e.header_h
 		e.rows_div.h = e.rows_h
 		e.rows_view_div.h = e.rows_view_h
 		e.visible_row_count = floor(e.rows_view_h / e.row_h) + 2
@@ -120,16 +120,20 @@ grid = component('x-grid', function(e) {
 	// geometry on x ----------------------------------------------------------
 
 	let col_ws
+	let frozen_col_ws
 
 	function init_col_widths() {
 		col_ws = []
 		for (field of e.fields)
 			col_ws.push(clamp(field.w || 0, field.min_w, field.max_w))
+		frozen_col_ws = []
 	}
 
 	function set_col_w(fi, w) {
 		let field = e.fields[fi]
-		col_ws[fi] = clamp(w, field.min_w, field.max_w)
+		w = clamp(w, field.min_w, field.max_w)
+		col_ws[fi] = w
+		frozen_col_ws[fi] = w
 	}
 
 	// when: vertical scroll bar changes visibility, field width changes (col resizing).
@@ -150,16 +154,18 @@ grid = component('x-grid', function(e) {
 
 		let total_free_w = 0
 		let cw = cols_w + borders_w
-		if (e.auto_cols_w) {
+		if (e.auto_cols_w && !e.col_resizing) {
 			cw = client_w
 			total_free_w = max(0, cw - cols_w - borders_w)
 		}
 		let total_col_w = 0
 		for (let fi = 0; fi < e.fields.length; fi++) {
-			let col_w = col_ws[fi]
+			let col_w = e.col_resizing ? frozen_col_ws[fi] : col_ws[fi]
 			let free_w = total_free_w * (col_w / cols_w)
+			col_w = col_w + free_w
+			frozen_col_ws[fi] = col_w
 			let own_border_w = e.cell_border_w * (fi == 0 ? .5 : 1)
-			col_w = floor(col_w + free_w + own_border_w)
+			col_w = floor(col_w + own_border_w)
 			if (fi == e.fields.length - 1) {
 				let remaining_w = cw - total_col_w - e.cell_border_w / 2
 				if (total_free_w > 0)
@@ -503,21 +509,28 @@ grid = component('x-grid', function(e) {
 		}
 	})
 
-	// make columns resizeable ------------------------------------------------
+	// column resizing --------------------------------------------------------
 
 	let hit_th, hit_x
 
 	function document_mousedown() {
-		if (window.grid_col_resizing || !hit_th)
+		if (window.grid_col_resizing)
+			return // other grid is currently resizing.
+		if (!hit_th)
 			return
 		e.focus()
 		window.grid_col_resizing = true
+		e.col_resizing = true
 		e.class('col-resizing')
 	}
 
 	function document_mouseup() {
+		if (!e.col_resizing)
+			return
 		window.grid_col_resizing = false
+		e.col_resizing = false
 		e.class('col-resizing', false)
+		update_widths()
 	}
 
 	e.on('mousemove', function(mx, my, ev) {

@@ -1166,7 +1166,7 @@ td.x-menu-title-td {
 	position: absolute;        /* required: keep at y=0 while scrolling */
 }
 
-/* grid col resizing -------------------------------------------------------*/
+/* grid col resizing */
 
 /* NOTE: `col-resize` is almost invisible on a light background on Windows 7 */
 .x-grid.col-resize {
@@ -1176,10 +1176,16 @@ td.x-menu-title-td {
 	cursor: pointer;           /* required: resizing area is underneath */
 }
 
+.x-grid-resize-marker {
+	position: absolute;
+	top: 0;
+	width: 0;
+	border-right: 1px dashed #aaa;
+}
+
 /* cells */
 
 .x-grid-header-th, .x-grid-td {
-	overflow: hidden;          /* required */
 	white-space: nowrap;       /* required: height must be kept constant */
 
 	/* sizing & styling */
@@ -1189,17 +1195,18 @@ td.x-menu-title-td {
 }
 
 .x-grid-td {
+	overflow: hidden;          /* required */
 	vertical-align: middle;
 	border-bottom: 0px solid #eee;  /* border width set from code */
 }
 
-/* grid cell & row states ------------------------------------------------- */
+/* grid cell & row states */
 
 .x-grid:focus {
 	outline: none;
 }
 
-/* grid editing ----------------------------------------------------------- */
+/* grid editing */
 
 .x-grid-error {
 	position: absolute;
@@ -1230,7 +1237,7 @@ td.x-menu-title-td {
 	visibility: hidden;
 }
 
-/* grid as picker --------------------------------------------------------- */
+/* grid as picker */
 
 .x-grid.picker {
 	margin: 0;
@@ -1348,12 +1355,11 @@ td.x-menu-title-td {
 
 /* grid ------------------------------------------------------------------- */
 
-.x-dark .x-grid-header-th { border-bottom-color: #666; }
+.x-dark .x-grid-header-th { background-color: #222; border-bottom-color: #666; }
 .x-dark .x-grid-td        { border-bottom-color: #333; }
 
-//.x-dark .x-grid-tr:hover                        { background-color: #0004; }
-
 /* TODO:
+.x-dark .x-grid-tr:hover                        { background-color: #0004; }
 .x-dark .x-grid-tr.new                          { background-color: #eef; }
 .x-dark .x-grid-tr.new.focused                  { background-color: #dde; }
 .x-dark .x-grid-td.modified                     { background-color: #ddffdd; }

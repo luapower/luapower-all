@@ -2,8 +2,6 @@
 FINISH
 ------------------------------------------------------------------------------
 
-- GRID 100% width with resizeable columns.
-
 - SPLIT fixed pane wrong size when other pane is larger than 100% but shrunk to 100%.
 
 - GRID slow saving rowset.
