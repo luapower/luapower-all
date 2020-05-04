@@ -568,7 +568,7 @@ main.add(calendar({
 </help>
 <script>
 
-var checked = '<div class="fa fa-check"></div>'
+var checked = () => H('<div class="fa fa-check"></div>')
 
 function starts_with_a(s) {
 	return s.lower().starts('a') || 'Name must start with "A"'
@@ -577,9 +577,9 @@ function starts_with_a(s) {
 var data = {
 	fields: [
 		{name: 'id'        , w:  60, min_w:  30, type: 'number', editable: false},
-		{name: 'X'         , w:  30, type: 'bool', true_text: H(checked), false_text: ''},
+		{name: 'active'    , w:  30, type: 'bool', true_text: checked, false_text: ''},
 		{name: 'name'      , w:  70, min_w:  50, max_w: 200, validate: starts_with_a},
-		{name: 'parent_id' , w:  60, min_w:  50, type: 'number', allow_null: true, editable: false, focusable: false},
+		{name: 'parent_id' , w:  80, min_w:  50, type: 'number', allow_null: true, editable: false, focusable: false},
 		{name: 'random_num', w: 130, allow_null: true, type: 'number', text: () => H('<i>Random</i><br>Number')},
 		{name: 'date'      , w: 140, allow_null: true, type: 'date'},
 	],
@@ -605,13 +605,12 @@ d = rowset(data)
 
 g = grid({
 	rowset: d,
-	w: 550,
+	w: 600,
 	h: 200,
 	//row_border_h: 1,
 	//row_h: 40,
 	//row_border_h: 1,
 	//order_by: 'parent_id, name desc',
-	col_width: 'autoz',
 })
 
 g.style.resize = 'both'
@@ -1075,7 +1074,7 @@ reload_button.on('click', function() {
 	run_script()
 })
 
-demo_list.focus_cell(16)
+demo_list.focus_cell(13)
 
 demo_list_ct.add(demo_list)
 

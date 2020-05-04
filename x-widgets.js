@@ -77,6 +77,8 @@
 
 	rowset.types : {type -> {attr->val}}
 
+	rowset.name_col   : default `display_col` of rowsets that lookup into this rowset.
+
 */
 
 {
@@ -524,7 +526,7 @@ rowset = function(...options) {
 				if (on && !field.lookup_rowset_loaded) {
 					field.lookup_rowset_loaded = function() {
 						field.lookup_field  = lr.field(field.lookup_col)
-						field.display_field = lr.field(field.display_col)
+						field.display_field = lr.field(field.display_col || lr.name_col)
 						d.fire('display_values_changed', field)
 						d.fire('display_values_changed_for_'+field.name)
 					}
@@ -1375,7 +1377,7 @@ tooltip = component('x-tooltip', function(e) {
 		if (!t) return
 		if (t == 'auto')
 			t = (e.text.length) * e.reading_speed / 60
-		setTimeout(function() { e.target = false }, t * 1000)
+		after(t, function() { e.target = false })
 	})
 
 	e.late_property('target',
@@ -1876,7 +1878,7 @@ spin_input = component('x-spin-input', function(e) {
 			e.input.focus()
 			increment = or(e.field.multiple_of, 1) * sign
 			increment_value()
-			start_incrementing_timer = setTimeout(start_incrementing, 500)
+			start_incrementing_timer = after(.5, start_incrementing)
 			return false
 		})
 		function mouseup() {
@@ -2068,6 +2070,7 @@ dropdown = component('x-dropdown', function(e) {
 
 	function bind_document(on) {
 		document.on('mousedown', document_mousedown, on)
+		document.on('rightmousedown', document_mousedown, on)
 		document.on('stopped_event', document_stopped_event, on)
 	}
 
@@ -2215,7 +2218,7 @@ dropdown = component('x-dropdown', function(e) {
 
 	// clicking outside the picker closes the picker, even if the click did something.
 	function document_stopped_event(ev) {
-		if (ev.type == 'mousedown')
+		if (ev.type.ends('mousedown'))
 			document_mousedown(ev)
 	}
 
@@ -2543,12 +2546,32 @@ menu = component('x-menu', function(e) {
 
 	// popup protocol
 
+	function bind_document(on) {
+		document.on('mousedown', document_mousedown, on)
+		document.on('rightmousedown', document_mousedown, on)
+		document.on('stopped_event', document_stopped_event, on)
+	}
+
 	e.popup_target_attached = function(target) {
-		document.on('mousedown', e.close)
+		bind_document(true)
 	}
 
 	e.popup_target_detached = function(target) {
-		document.off('mousedown', e.close)
+		bind_document(false)
+	}
+
+	function document_mousedown(ev) {
+		if (e.contains(ev.target)) // clicked inside the menu.
+			return
+		e.close()
+	}
+
+	// clicking outside the menu closes the menu, even if the click did something.
+	function document_stopped_event(ev) {
+		if (e.contains(ev.target)) // clicked inside the menu.
+			return
+		if (ev.type.ends('mousedown'))
+			e.close()
 	}
 
 	let popup_target

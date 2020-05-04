@@ -56,15 +56,15 @@
 .x-widget .disabled { color: #999; }
 .x-widget .null { color: #999; }
 
-.x-item:not(.focused):not(:hover).new > .x-item:not(.invalid) {
-	background-color: var(--x-new-bg-color);
-}
-
 .x-item.removed {
 	text-decoration: line-through;
 }
 
-.x-item:not(.focused):not(:hover) > .x-item:not(.invalid).modified {
+.x-item:not(.focused):not(:hover):not(.invalid).new {
+	background-color: var(--x-new-bg-color);
+}
+
+.x-item:not(.focused):not(:hover):not(.invalid).modified {
 	background-color: var(--x-modified-bg-color);
 }
 
@@ -1085,26 +1085,29 @@ td.x-menu-title-td {
 
 .x-grid {
 	display: inline-block;     /* required: don't expand to fit parent width */
+	position: relative;        /* required: attach col-move-marker to it */
 	margin: .25em;
 	overflow: hidden;          /* required: hide header overflow */
 	cursor: default;           /* required: don't show caret over text */
 	border: 0px solid #ccc;
 }
 
-/* header table & rows table must have the exact same horizontal layouting */
+/* header table & rows table (must vertically align) */
 
-.x-grid-header-view {
+.x-grid-header {
 	position: relative;        /* required: make movable for scrolling horizontally */
+	border-bottom: 1px solid #999;
+	height: calc(3.5em + 1px);
 }
 
-.x-grid-header-table,
-.x-grid-rows-table {
-	width: 0;                  /* required: expand up-to the sum of cell widths */
-	table-layout: fixed;       /* required: column widths must not depend on content */
-	border-collapse: collapse; /* required: single border between cells */
-}
+/* grid header cells */
 
-/* header cells */
+.x-grid-header-th {           /* default: header column style */
+	position: absolute;
+	height: 3.5em;
+	vertical-align: bottom;
+	padding-bottom: .3em;
+}
 
 .x-grid-header-th-table {
 	width: 100%;               /* required: expand to fit column width */
@@ -1118,7 +1121,12 @@ td.x-menu-title-td {
 
 .x-grid-header-sort-icon-td {
 	padding: 0;
-	width: 1em;                /* required: leave the rest of the space to the title */
+	width: 0;
+	vertical-align: baseline;
+}
+
+.x-grid-header-sort-icon-td.sorted {
+	width: 1em;                /* required: make space for it */
 }
 
 .x-grid-header-sort-icon-pri {
@@ -1126,24 +1134,18 @@ td.x-menu-title-td {
 	font-size: 85%;
 }
 
-.x-grid-header-th {           /* default: header column style */
-	height: 2.5em;
-	vertical-align: bottom;
-	padding-bottom: .3em;
-	border-bottom: 1px solid #999;
-}
-
 /* load/save progress bar */
 
 .x-grid-progress-bar {
 	position: absolute;
+	top: 3.5em;
 	width: 0%;
 	height: 3px;
 	bottom: 0;
 	pointer-events: none;
 }
 
-.x-grid.loading > .x-grid-header-view > .x-grid-header-table > .x-grid-progress-bar {
+.x-grid.loading > .x-grid-progress-bar {
 	background-color: green;
 }
 
@@ -1151,7 +1153,7 @@ td.x-menu-title-td {
 	opacity: .7;
 }
 
-/* rows */
+/* grid rows */
 
 .x-grid-rows-view {
 	overflow: auto;            /* required: show scrollbars as needed */
@@ -1162,7 +1164,7 @@ td.x-menu-title-td {
 	overflow: hidden;          /* required: hide surplus bottom rows */
 }
 
-.x-grid-rows-table {
+.x-grid-cells {
 	position: absolute;        /* required: keep at y=0 while scrolling */
 }
 
@@ -1176,28 +1178,55 @@ td.x-menu-title-td {
 	cursor: pointer;           /* required: resizing area is underneath */
 }
 
-.x-grid-resize-marker {
-	position: absolute;
-	top: 0;
-	width: 0;
-	border-right: 1px dashed #aaa;
+.x-grid-header,
+.x-grid-header-th {
+	overflow: visible;
 }
 
-/* cells */
+.x-grid-resize-markers {
+	position: absolute;
+	top: 0;
+	left: 0;
+}
 
-.x-grid-header-th, .x-grid-td {
+.x-grid-resize-marker {
+	position: absolute;
+	width: 0;
+	margin-left: -1px;  /* TODO: see why this is needed and remove it */
+	border-left: 1px dashed #aaa;
+}
+
+/* grid cells */
+
+.x-grid-header-th,
+.x-grid-cell {
 	white-space: nowrap;       /* required: height must be kept constant */
 
 	/* sizing & styling */
 	padding: var(--x-input-padding);
-	border-right: 0px solid #eee;   /* border width set from code */
+	border-right: 1px solid #eee;
 	min-width: 20px;
+	background-color: white;
 }
 
-.x-grid-td {
+/* grid col moving */
+
+.x-grid-header-th.col-moving,
+.x-grid-cell.col-moving {
+	background-color: #eee;
+	opacity: .5;
+}
+
+.x-grid.col-moving .x-grid-header-th:not(.col-moving),
+.x-grid.col-moving .x-grid-cell:not(.col-moving) {
+	transition: left .1s;
+}
+
+.x-grid-cell {
+	position: absolute;
 	overflow: hidden;          /* required */
 	vertical-align: middle;
-	border-bottom: 0px solid #eee;  /* border width set from code */
+	border-bottom: 1px solid #eee;
 }
 
 /* grid cell & row states */
@@ -1233,7 +1262,7 @@ td.x-menu-title-td {
 	box-shadow: inset 2px 2px 6px -2px rgba(0,0,0,0.75);
 }
 
-.x-grid-td.editing {
+.x-grid-cell.editing {
 	visibility: hidden;
 }
 
@@ -1356,17 +1385,7 @@ td.x-menu-title-td {
 /* grid ------------------------------------------------------------------- */
 
 .x-dark .x-grid-header-th { background-color: #222; border-bottom-color: #666; }
-.x-dark .x-grid-td        { border-bottom-color: #333; }
-
-/* TODO:
-.x-dark .x-grid-tr:hover                        { background-color: #0004; }
-.x-dark .x-grid-tr.new                          { background-color: #eef; }
-.x-dark .x-grid-tr.new.focused                  { background-color: #dde; }
-.x-dark .x-grid-td.modified                     { background-color: #ddffdd; }
-.x-dark .x-grid-tr.focused .x-grid-td.modified  { background-color: #cceecc; }
-.x-dark .x-grid-td.invalid                      { background-color: #ffcccc; }
-.x-dark .x-grid-tr.focused .x-grid-td.invalid   { background-color: #eebbbb; }
-*/
+.x-dark .x-grid-cell      { border-bottom-color: #333; }
 
 .x-dark .x-grid.col-resize {
 	cursor: col-resize;

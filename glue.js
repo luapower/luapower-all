@@ -325,6 +325,11 @@ function week_start_offset() {
 	return locale.starts('en') ? 0 : 1
 }
 
+// timers --------------------------------------------------------------------
+
+function after(t, f) {
+	return setTimeout(f, t * 1000)
+}
 
 // serialization -------------------------------------------------------------
 

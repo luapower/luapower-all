@@ -2,6 +2,9 @@
 FINISH
 ------------------------------------------------------------------------------
 
+- GRID move columns.
+
+- DROPDOWN lookup rowset ownership issue.
 - SPLIT fixed pane wrong size when other pane is larger than 100% but shrunk to 100%.
 
 - GRID slow saving rowset.
@@ -9,8 +12,8 @@ FINISH
 - GRID show row-level errors.
 - ROWSET_WIDGET review operations that create a rowmap.
 
-- ROWSET: FK introspection to get lookup_rowset, lookup_field, display_field = lookup_field.
-- ROWSET: error messages on FK errors & check constraint violations.
+- ROWSET FK introspection to get lookup_rowset, lookup_field, display_field = lookup_field.
+- ROWSET error messages on FK errors & check constraint violations.
 -
 
 

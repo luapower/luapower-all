@@ -202,8 +202,9 @@ callers.click = function(e, f) {
 callers.mousedown = function(e, f) {
 	if (e.which == 1)
 		return f.call(this, e)
-	else if (e.which == 3)
+	else if (e.which == 3) {
 		return this.fire('rightmousedown', e)
+	}
 }
 
 callers.mouseup = function(e, f) {
@@ -274,7 +275,7 @@ let off = function(e, f) {
 
 let fire = function(name, ...args) {
 	let e = typeof name == 'string' ?
-		new CustomEvent(name, {detail: {args}}) : name
+		new CustomEvent(name, {detail: {args}, cancelable: true, bubbles: true}) : name
 	return this.dispatchEvent(e)
 }
 
@@ -689,7 +690,7 @@ let popup_state = function(e) {
 			[x0, y0] = [tr.left + py, tr.bottom - er.height - py]
 		else {
 			side = 'bottom'; // default
-			[x0, y0] = [tr.left, tr.bottom]
+			[x0, y0] = [tr.left + px, tr.bottom + py]
 		}
 
 		if (align == 'center' && (side == 'top' || side == 'bottom'))
@@ -717,4 +718,88 @@ method(HTMLElement, 'popup', function(target, side, align, px, py) {
 	this.__popup_state.update(target, side, align, px, py)
 })
 
+}
+
+// list element live move pattern --------------------------------------------
+
+// implements:
+//   move_element_start(elem_i, elem_count)
+//   move_element_update(elem_x)
+// uses:
+//   movable_element_size(elem_i) -> w
+//   set_movable_element_pos(i, x)
+//
+function live_move_mixin(e) {
+
+	let n, move_i, move_x, over_i, over_x, xs
+
+	e.move_element_start = function(elem_i, elem_count) {
+		move_i = elem_i
+		n = elem_count
+		move_x = null
+		over_i = null
+		over_x = null
+		xs = []
+	}
+
+	e.move_element_stop = function() {
+		e.set_movable_element_pos(move_i, over_x)
+		return over_i
+	}
+
+
+ 	// 0..n-1 index generator with index `move_i` moved to position `over_i`.
+	function each_index(f) {
+		let j = min(over_i, move_i)
+		let k = max(over_i, move_i)
+		for (let i = 0; i < j; i++)
+			f(i)
+		if (j == over_i) {
+			f(move_i)
+			for (let i = j; i < k; i++)
+				f(i)
+		} else {
+			for (let i = j+1; i <= k; i++)
+				f(i)
+			f(move_i)
+		}
+		for (let i = k+1; i < n; i++)
+			f(i)
+	}
+
+	function hit_test(elem_x) {
+		let x = 0
+		for (let i = 0; i < n; i++) {
+			if (i != move_i) {
+				let w = e.movable_element_size(i)
+				if (elem_x < x + w / 2)
+					return i - (i < move_i ? 0 : 1)
+				x += w
+			}
+		}
+		return n-1
+	}
+
+	e.move_element_update = function(elem_x) {
+		if (elem_x == move_x)
+			return
+		move_x = elem_x
+		e.set_movable_element_pos(move_i, move_x)
+		let new_over_i = hit_test(move_x)
+		if (new_over_i != over_i) {
+			over_i = new_over_i
+			let x = 0
+			each_index(function(i) {
+				if (i == move_i)
+					over_x = x
+				else if (xs[i] != x) {
+					e.set_movable_element_pos(i, x)
+					xs[i] = x
+				}
+				x += e.movable_element_size(i)
+			})
+		}
+	}
+
+	return e
 }
