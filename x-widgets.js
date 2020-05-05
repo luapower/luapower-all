@@ -790,8 +790,7 @@ rowset = function(...options) {
 	function load_fail(type, status, message, body) {
 		if (type == 'http')
 			d.fire('notify', 'error',
-				S('rowset_load_http_error',
-					'Server returned {0} {1}<pre>{2}</pre>'.format(status, message, body)))
+				S('rowset_load_http_error', 'Server returned {0} {1}<pre>{2}</pre>').format(status, message, body))
 		else if (type == 'network')
 			d.fire('notify', 'error', S('rowset_load_network_error', 'Loading failed: network error.'))
 		else if (type == 'timeout')
@@ -941,8 +940,7 @@ rowset = function(...options) {
 	function save_fail(type, status, message, body) {
 		if (type == 'http')
 			d.fire('notify', 'error',
-				S('rowset_save_http_error',
-					'Server returned {0} {1}<pre>{2}</pre>'.format(status, message, body)))
+				S('rowset_save_http_error', 'Server returned {0} {1}<pre>{2}</pre>').format(status, message, body))
 		else if (type == 'network')
 			d.fire('notify', 'error', S('rowset_save_network_error', 'Saving failed: network error.'))
 		else if (type == 'timeout')
@@ -2463,7 +2461,8 @@ menu = component('x-menu', function(e) {
 		let check_div = div({class: 'x-menu-check-div fa fa-check'})
 		let icon_div  = div({class: 'x-menu-icon-div '+(item.icon_class || '')})
 		let check_td  = H.td ({class: 'x-menu-check-td'}, check_div, icon_div)
-		let title_td  = H.td ({class: 'x-menu-title-td'}, item.text)
+		let title_td  = H.td ({class: 'x-menu-title-td'})
+		title_td.set(item.text)
 		let key_td    = H.td ({class: 'x-menu-key-td'}, item.key)
 		let sub_div   = div({class: 'x-menu-sub-div fa fa-caret-right'})
 		let sub_td    = H.td ({class: 'x-menu-sub-td'}, sub_div)
@@ -2473,14 +2472,23 @@ menu = component('x-menu', function(e) {
 		tr.item = item
 		tr.check_div = check_div
 		update_check(tr)
-		tr.on('mousedown' , item_mousedown)
+		tr.on('mouseup'   , item_mouseup)
 		tr.on('mouseenter', item_mouseenter)
+		tr.on('mouseleave', item_mouseleave)
+		return tr
+	}
+
+	function create_heading(item) {
+		let td = H.td({class: 'x-menu-heading', colspan: 5})
+		td.set(item.heading)
+		let tr = H.tr({}, td)
+		tr.focusable = false
 		return tr
 	}
 
 	function create_separator() {
-		let td = H.td({colspan: 5}, H.hr())
-		let tr = H.tr({class: 'x-menu-separator-tr'}, td)
+		let td = H.td({class: 'x-menu-separator', colspan: 5}, H.hr())
+		let tr = H.tr({}, td)
 		tr.focusable = false
 		return tr
 	}
@@ -2489,7 +2497,7 @@ menu = component('x-menu', function(e) {
 		let table = H.table({class: 'x-widget x-focusable x-menu-table', tabindex: 0})
 		for (let i = 0; i < items.length; i++) {
 			let item = items[i]
-			let tr = create_item(item)
+			let tr = item.heading ? create_heading(item) : create_item(item)
 			table.add(tr)
 			if (item.separator)
 				table.add(create_separator())
@@ -2635,7 +2643,7 @@ menu = component('x-menu', function(e) {
 
 	// mouse bindings
 
-	function item_mousedown() {
+	function item_mouseup() {
 		click_item(this)
 		return false
 	}
@@ -2646,6 +2654,10 @@ menu = component('x-menu', function(e) {
 		this.parent.focus()
 		select_item(this.parent, this)
 		show_submenu(this)
+	}
+
+	function item_mouseleave(ev) {
+		select_item(this.parent)
 	}
 
 	// keyboard binding

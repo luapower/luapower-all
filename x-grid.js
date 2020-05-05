@@ -650,12 +650,10 @@ grid = component('x-grid', function(e) {
 
 	// column context menu ----------------------------------------------------
 
-	function set_field_visibility(rowset_fi, view_fi, on) {
-		let field = e.rowset.fields[rowset_fi]
-		print(view_fi)
+	function set_field_visibility(field, view_fi, on) {
 		if (on)
 			if (view_fi != null)
-				e.fields.insert(view_fi+1, field)
+				e.fields.insert(view_fi, field)
 			else
 				e.fields.push(field)
 		else
@@ -668,29 +666,59 @@ grid = component('x-grid', function(e) {
 
 	let context_menu
 	function field_context_menu_popup(th, mx, my) {
-		let fi = th && th.index
 		if (context_menu) {
 			context_menu.close()
 			context_menu = null
 		}
-		function toggle_field(item) {
-			set_field_visibility(item.field.index, fi, item.checked)
-			return false
-		}
+
 		let items = []
-		for (let field of e.rowset.fields) {
+
+		if (th) {
+			function hide_field(item) {
+				set_field_visibility(item.field, null, false)
+			}
+			let field = e.fields[th.index]
+			let hide_field_text = span(); hide_field_text.set(field.text)
+			let hide_text = span({}, S('hide_field', 'Hide '), hide_field_text)
 			items.push({
 				field: field,
-				text: field.name,
-				checked: e.fields.indexOf(field) != -1,
-				action: toggle_field,
+				text: hide_text,
+				action: hide_field,
+				separator: true,
 			})
 		}
+
+		items.push({
+			heading: S('show_more_fields', 'Show more fields'),
+		})
+
+		let fi = th && th.index
+		function show_field(item) {
+			set_field_visibility(item.field, fi, true)
+		}
+		let items_added
+		for (let field of e.rowset.fields) {
+			if (e.fields.indexOf(field) == -1) {
+				items_added = true
+				items.push({
+					field: field,
+					text: field.text,
+					action: show_field,
+				})
+			}
+		}
+		if (!items_added)
+			items.push({
+				text: S('all_fields_shown', 'All fields are shown'),
+				enabled: false,
+			})
+
 		context_menu = menu({items: items})
-		let r = (th || e).client_rect()
+		let target = th || e.header
+		let r = target.client_rect()
 		let px = mx - r.left
 		let py = my - r.top
-		context_menu.popup(th, 'inner-top', null, px, py)
+		context_menu.popup(target, 'inner-top', null, px, py)
 	}
 
 	// mouse bindings ---------------------------------------------------------
@@ -756,7 +784,7 @@ grid = component('x-grid', function(e) {
 		if (e.hasclass('col-resize'))
 			return // clicked on the resizing area.
 		e.focus()
-		let th = ev.target != e.header && find_th(ev.target) || e.header
+		let th = ev.target != e.header && find_th(ev.target)
 		field_context_menu_popup(th, ev.clientX, ev.clientY)
 		return false
 	})

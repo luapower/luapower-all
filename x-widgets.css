@@ -907,26 +907,37 @@
 	position: relative;        /* required: submenus are anchored to item trs */
 }
 
-tr.x-menu-tr > td {
+.x-menu-tr > td {
 	padding: .4em;
 	padding-left : .5em;
 	padding-right: .5em;
 }
 
-tr.x-menu-separator-tr > td {
+.x-menu-separator {
 	height: 1em;
 }
 
-tr.x-menu-separator-tr > td > hr {
+.x-menu-heading {
+	padding-left: 1em;
+	font-weight: bold;
+	color: #999;
+	background-color: #f0f0f0;
+	cursor: default;
+	padding-top   : .5em;
+	padding-bottom: .5em;
+}
+
+.x-menu-separator > hr {
 	border: 0;
 	border-top: 1px solid #ccc;
 }
 
-td.x-menu-title-td {
+.x-menu-title-td {
 	padding: 0;
 	width: 100%;
 	padding-left: 0;
 	overflow: hidden;
+	white-space: nowrap;
 }
 
 .x-menu-tr.focused > td {
