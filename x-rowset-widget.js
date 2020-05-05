@@ -559,14 +559,19 @@ function rowset_widget(e) {
 		return order_by.get(field)
 	}
 
-	e.toggle_order = function(field, keep_others) {
+	e.set_order_by_dir = function(field, dir, keep_others) {
 		if (!field.sortable)
 			return
-		let dir = order_by.get(field)
-		dir = dir == 'asc' ? 'desc' : 'asc'
+		if (dir == 'toggle') {
+			dir = order_by.get(field)
+			dir = dir == 'asc' ? 'desc' : 'asc'
+		}
 		if (!keep_others)
 			order_by.clear()
-		order_by.set(field, dir)
+		if (dir)
+			order_by.set(field, dir)
+		else
+			order_by.delete(field)
 		sort()
 	}
 

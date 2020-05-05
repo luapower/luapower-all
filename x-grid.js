@@ -266,6 +266,8 @@ grid = component('x-grid', function(e) {
 			th.sort_icon = sort_icon
 			th.sort_icon_pri = sort_icon_pri
 
+			sort_icon.on('click', sort_icon_click)
+
 			e.header.add(th)
 		}
 		update_sort_icons()
@@ -684,7 +686,7 @@ grid = component('x-grid', function(e) {
 				field: field,
 				text: hide_text,
 				action: hide_field,
-				separator: true,
+				//separator: true,
 			})
 		}
 
@@ -760,7 +762,7 @@ grid = component('x-grid', function(e) {
 		return true
 	}
 
-	e.header.on('mouseup', function header_mousedown(ev) {
+	function click_th(ev) {
 		if (e.col_dragging)
 			col_drag_mouseup()
 		else if (e.col_moving)
@@ -773,12 +775,24 @@ grid = component('x-grid', function(e) {
 		if (!th) // didn't click on the th.
 			return
 		e.focus()
-		if (ev.shiftKey)
-			e.clear_order()
-		else
-			e.toggle_order(e.fields[th.index], ev.shiftKey)
+		return th
+	}
+
+	e.header.on('click', function header_click(ev) {
+		let th = click_th(ev)
+		if (!th)
+			return
+		e.set_order_by_dir(e.fields[th.index], 'toggle', ev.shiftKey)
 		return false
 	})
+
+	function sort_icon_click(ev) {
+		let th = click_th(ev)
+		if (!th)
+			return
+		e.set_order_by_dir(e.fields[th.index], false, ev.shiftKey)
+		return false
+	}
 
 	e.header.on('contextmenu', function(ev) {
 		if (e.hasclass('col-resize'))

@@ -888,7 +888,6 @@
 .x-menu-table,
 .x-menu-table:focus-within
 {
-
 	/* layouting */
 	display: inline-block;     /* required: don't expand to fit parent width */
 	position: absolute;        /* required: submenus are positioned manually */
@@ -896,7 +895,10 @@
 	border-collapse: collapse; /* required: separators are done with borders */
 	background: white;         /* required: submenus overlap their parent */
 
+	z-index: 1;
+
 	/* styling */
+	font-size: 12px;
 	color: #000;
 	min-width: 200px;
 	border: 1px solid #ccc;
@@ -921,7 +923,6 @@
 	padding-left: 1em;
 	font-weight: bold;
 	color: #999;
-	background-color: #f0f0f0;
 	cursor: default;
 	padding-top   : .5em;
 	padding-bottom: .5em;
