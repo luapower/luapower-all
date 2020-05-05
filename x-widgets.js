@@ -120,6 +120,7 @@ rowset = function(...options) {
 			let f2 = d.field_attrs ? d.field_attrs[f1.name] : null
 			let field = update({index: i, rowset: d},
 				rowset.default_type, d.default_type, f0, f1, f2)
+			field.w = clamp(field.w, field.min_w, field.max_w)
 			if (field.text == null)
 				field.text = auto_display_name(field.name)
 			field.name = field.name || i+''

@@ -1096,8 +1096,12 @@ td.x-menu-title-td {
 
 	/* sizing & styling */
 	padding: var(--x-input-padding);
-	border-right: 1px solid #eee;
+	border-right: 1px dotted #ccc;
 	min-width: 20px;
+}
+
+.x-grid-cell {
+	border-right-color: transparent;
 }
 
 /* grid header */
@@ -1185,7 +1189,7 @@ td.x-menu-title-td {
 	overflow: hidden;          /* required */
 	display: flex;             /* because vertical-align doesn't work with `position: absolute` */
 	align-items: center;       /* works as `vertical-align: middle` */
-	border-bottom: 1px solid #eee;
+	border-bottom: 0px solid #eee;
 }
 
 .x-grid-cell[align=center] { justify-content: center; }

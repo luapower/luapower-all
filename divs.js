@@ -234,7 +234,7 @@ let installers = {}
 installers.attr_changed = function(e) {
 	let obs = e.__attr_observer
 	if (!obs) {
-		obs = new MutationObserver(function(mutations) {
+		obs = new MutationObserver(function() {
 			e.fire('attr_changed')
 		})
 		obs.observe(e, {attributes: true})

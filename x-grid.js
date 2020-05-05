@@ -153,19 +153,10 @@ grid = component('x-grid', function(e) {
 
 	// geometry on x ----------------------------------------------------------
 
-	let min_col_ws
-
-	function init_min_col_ws() {
-		min_col_ws = []
-		for (field of e.fields)
-			min_col_ws.push(clamp(field.w || 0, field.min_w, field.max_w))
-	}
-
 	function set_col_w(fi, w) {
 		let field = e.fields[fi]
-		w = clamp(w, field.min_w, field.max_w)
-		min_col_ws[fi] = w
-		e.header.at[fi]._w = w
+		field.w = clamp(w, field.min_w, field.max_w)
+		e.header.at[fi]._w = field.w
 	}
 
 	// when: vertical scroll bar changes visibility, field width changes (col resizing).
@@ -173,7 +164,7 @@ grid = component('x-grid', function(e) {
 
 		let cols_w = 0
 		for (let fi = 0; fi < e.fields.length; fi++)
-			cols_w += min_col_ws[fi]
+			cols_w += e.fields[fi].w
 
 		if (e.auto_w) {
 			let client_w = e.rows_view.clientWidth
@@ -192,7 +183,7 @@ grid = component('x-grid', function(e) {
 		for (let fi = 0; fi < e.fields.length; fi++) {
 			let hcell = e.header.at[fi]
 
-			let min_col_w = e.col_resizing ? hcell._w : min_col_ws[fi]
+			let min_col_w = e.col_resizing ? hcell._w : e.fields[fi].w
 			let free_w = total_free_w * (min_col_w / cols_w)
 			let col_w = floor(min_col_w + free_w)
 			if (fi == e.fields.length - 1) {
@@ -223,7 +214,7 @@ grid = component('x-grid', function(e) {
 
 			col_x += col_w
 		}
-		e.header.w = col_x
+		e.header.w = e.fields.length ? col_x : cw
 
 	}
 
@@ -252,7 +243,6 @@ grid = component('x-grid', function(e) {
 
 	// when: fields changed.
 	e.init_fields = function() {
-		init_min_col_ws()
 		set_header_visibility()
 		e.header.clear()
 		for (let fi = 0; fi < e.fields.length; fi++) {
@@ -419,9 +409,7 @@ grid = component('x-grid', function(e) {
 		editor.x = th.offsetLeft + th.clientLeft
 		editor.y = e.row_h * e.focused_row_index
 		editor.w = th.clientWidth
-		editor.h = e.row_h
-		if (window.chrome)
-			editor.style['padding-bottom'] = '1px'
+		editor.h = e.row_h - num(e.cells.at[0].css('border-bottom-width'))
 	}
 
 	function set_header_visibility() {
@@ -580,7 +568,7 @@ grid = component('x-grid', function(e) {
 		function update_resize_markers() {
 			for (let fi = 0; fi < e.fields.length; fi++) {
 				let marker = resize_markers.at[fi]
-				marker.x = e.header.at[fi]._x + min_col_ws[fi]
+				marker.x = e.header.at[fi]._x + e.fields[fi].w
 				marker.h = e.header_h + e.rows_view_h
 			}
 		}
@@ -662,20 +650,31 @@ grid = component('x-grid', function(e) {
 
 	// column context menu ----------------------------------------------------
 
-	function field_context_menu_popup(fi, field, mx, my) {
-		let th = e.header.at[fi]
-		//let field = e.fields[fi]
-		if (th.menu)
-			th.menu.close()
-		function toggle_field(item) {
-			if (item.checked)
-				e.fields.insert(th.index+1, item.field)
+	function set_field_visibility(rowset_fi, view_fi, on) {
+		let field = e.rowset.fields[rowset_fi]
+		print(view_fi)
+		if (on)
+			if (view_fi != null)
+				e.fields.insert(view_fi+1, field)
 			else
-				e.fields.remove_value(item.field)
-			e.init_fields()
-			e.init_rows()
-			e.init_value()
-			e.init_focused_row()
+				e.fields.push(field)
+		else
+			e.fields.remove_value(field)
+		e.init_fields()
+		e.init_rows()
+		e.init_value()
+		e.init_focused_row()
+	}
+
+	let context_menu
+	function field_context_menu_popup(th, mx, my) {
+		let fi = th && th.index
+		if (context_menu) {
+			context_menu.close()
+			context_menu = null
+		}
+		function toggle_field(item) {
+			set_field_visibility(item.field.index, fi, item.checked)
 			return false
 		}
 		let items = []
@@ -687,11 +686,11 @@ grid = component('x-grid', function(e) {
 				action: toggle_field,
 			})
 		}
-		th.menu = menu({items: items})
-		let r = th.client_rect()
+		context_menu = menu({items: items})
+		let r = (th || e).client_rect()
 		let px = mx - r.left
 		let py = my - r.top
-		th.menu.popup(th, 'inner-top', null, px, py)
+		context_menu.popup(th, 'inner-top', null, px, py)
 	}
 
 	// mouse bindings ---------------------------------------------------------
@@ -703,7 +702,7 @@ grid = component('x-grid', function(e) {
 	e.header.on('mousedown', function header_mousedown(ev) {
 		if (e.hasclass('col-resize'))
 			return // clicked on the resizing area.
-		let th = find_th(ev.target)
+		let th = ev.target != e.header && find_th(ev.target)
 		if (!th) // didn't click on the th.
 			return
 		e.focus()
@@ -754,13 +753,11 @@ grid = component('x-grid', function(e) {
 	})
 
 	e.header.on('contextmenu', function(ev) {
-		let th = find_th(ev.target)
-		if (!th) // didn't click on the th.
-			return
 		if (e.hasclass('col-resize'))
-			return
+			return // clicked on the resizing area.
 		e.focus()
-		field_context_menu_popup(th.index, ev.clientX, ev.clientY)
+		let th = ev.target != e.header && find_th(ev.target) || e.header
+		field_context_menu_popup(th, ev.clientX, ev.clientY)
 		return false
 	})
 
