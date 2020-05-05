@@ -38,12 +38,12 @@ function rowset_widget(e) {
 
 	let rowmap
 
-	e.row_index = function(row, ri) {
+	e.row_index = function(row, ri, force) {
 		if (!row)
 			return null
 		if (ri != null && ri != false)
 			return ri
-		if (row == e.focused_row) // most likely true (avoid maiking a rowmap).
+		if (row == e.focused_row && !force) // most likely true (avoid maiking a rowmap).
 			return e.focused_row_index
 		if (!rowmap) {
 			rowmap = new Map()
@@ -580,7 +580,10 @@ function rowset_widget(e) {
 			let cmp = e.rowset.comparator(order_by)
 			e.rows.sort(cmp)
 			rowmap = null
+			e.focused_row_index = e.row_index(e.focused_row, null, true)
 			e.init_rows()
+			if (e.isConnected)
+				e.scroll_to_cell(e.focused_row_index, e.focused_cell_index)
 		}
 		e.fire('sort_order_changed')
 	}

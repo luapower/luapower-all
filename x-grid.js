@@ -223,6 +223,7 @@ grid = component('x-grid', function(e) {
 
 			col_x += col_w
 		}
+		e.header.w = col_x
 
 	}
 
@@ -361,20 +362,25 @@ grid = component('x-grid', function(e) {
 	{
 		let sy, focused_ri
 		function update_focus() {
-			if (sy != null)
+			if (sy != null) {
 				each_cell_of_row(focused_ri, sy, function(cell) {
-					cell.class('focused', false)
-					cell.class('editing', false)
-					cell.class('row-focused', false)
-				})
+						cell.class('focused', false)
+						cell.class('editing', false)
+						cell.class('row-focused', false)
+					}
+				)
+			}
 			sy = e.scroll_y
 			focused_ri = e.focused_row_index
-			if (e.focused_row_index != null)
+			if (focused_ri != null) {
 				each_cell_of_row(focused_ri, sy, function(cell, fi, focused_fi, editing) {
-					cell.class('focused', fi == focused_fi)
-					cell.class('editing', fi == focused_fi && editing)
-					cell.class('row-focused', true)
-			}, e.focused_field_index, e.editor || false)
+						let focused = !e.can_focus_cells || fi == focused_fi
+						cell.class('focused', focused)
+						cell.class('editing', focused && editing)
+						cell.class('row-focused', true)
+					}, e.focused_field_index, e.editor || false
+				)
+			}
 		}
 	}
 
@@ -612,6 +618,13 @@ grid = component('x-grid', function(e) {
 			hit_x  = t && t[1]
 			e.class('col-resize', hit_fi != null)
 			return true
+		})
+
+		e.on('mouseleave', function col_resize_mouseleave() {
+			if (window.grid_dragging)
+				return
+			hit_fi = null
+			e.class('col-resize', false)
 		})
 
 		function col_resize_document_mousemove(mx, my) {

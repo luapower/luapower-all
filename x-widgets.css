@@ -22,6 +22,7 @@
 	--x-focus-shadow                : 0 0 0 1px #99f; /* to be used in place of focus outline */
 	--x-item-unfocused-bg-color     : #333;
 	--x-item-focused-bg-color       : #47a;
+	--x-row-focused-bg-color        : #f0f0f0;
 	--x-item-hover-bg-color         : #00000011;
 	--x-item-bg-only-bg-color       : #eee;  /* slider background */
 	--x-item-bg-only-hover-bg-color : #ddd;  /* slider background */
@@ -45,19 +46,22 @@
 	box-shadow: var(--x-focus-shadow);
 }
 
-/* item states ------------------------------------------------------------ */
-
 .x-focusable:focus {
 	/* focusables show focus through their focused x-item */
 	outline: none;
 	box-shadow: none;
 }
 
-.x-item.disabled { color: #999; }
-.x-item.null { color: #999; }
+/* item states ------------------------------------------------------------ */
 
-.x-item.removed {
-	text-decoration: line-through;
+.x-item.disabled { color: #999; }
+.x-item.disabled.focused { color: #ccc; }
+.x-item.null     { color: #999; }
+.x-item.removed  { text-decoration: line-through; }
+
+.x-item.invalid {
+	background-color: var(--x-error-bg-color);
+	color: var(--x-inverted-fg-color);
 }
 
 .x-item:not(.focused):not(:hover):not(.invalid).new {
@@ -68,34 +72,22 @@
 	background-color: var(--x-modified-bg-color);
 }
 
-.x-item.invalid,
-.x-item.invalid:hover {
-	background-color: var(--x-error-bg-color);
+.x-item:not(.invalid):not(.focused):hover {
+	background-color: var(--x-item-hover-bg-color);
+}
+
+.x-item.row-focused {
+	background-color: var(--x-row-focused-bg-color);
+}
+
+.x-item.focused {
+	background-color: var(--x-item-unfocused-bg-color);
 	color: var(--x-inverted-fg-color);
 }
 
-.x-item.focused           { color: #fff; }
-.x-item.disabled.focused  { color: #ccc; }
-
-.x-item:hover             { background-color: var(--x-item-hover-bg-color); }
-
-.x-item.focused           { background-color: var(--x-item-unfocused-bg-color); color: var(--x-inverted-fg-color); }
-.x-item.focused:hover     { background-color: #444; color: var(--x-inverted-fg-color); }
-
-.x-focusable:focus-within  .x-item.focused       { background-color: var(--x-item-focused-bg-color); }
-.x-focusable:focus-within  .x-item.focused:hover { background-color: #58b; }
-
-/*
-.x-item.focused > .x-item.disabled          { color: #ccc; }
-.x-item.focused > .x-item.disabled.focused  { color: #fff; }
-.x-item         > .x-item:hover             { background-color: #f8f8f8; }
-.x-item.focused > .x-item:hover             { background-color: #555; color: var(--x-inverted-fg-color); }
-.x-item.focused > .x-item.focused           { background-color: #666; color: var(--x-inverted-fg-color); }
-.x-item.focused > .x-item.focused:hover     { background-color: #777; color: var(--x-inverted-fg-color); }
-.x-focusable:focus-within .x-item.focused > .x-item:hover         { background-color: #69c; }
-.x-focusable:focus-within .x-item.focused > .x-item.focused       { background-color: #7ad; }
-.x-focusable:focus-within .x-item.focused > .x-item.focused:hover { background-color: #8be; }
-*/
+.x-focusable:focus-within .x-item.focused {
+	background-color: var(--x-item-focused-bg-color);
+}
 
 /* scrollbars ------------------------------------------------------------- */
 
@@ -1096,7 +1088,19 @@ td.x-menu-title-td {
 	border: 0px solid #ccc;
 }
 
-/* header table & rows table (must vertically align) */
+/* grid header & row cell common styles that make them align vertically */
+
+.x-grid-header-th,
+.x-grid-cell {
+	white-space: nowrap;       /* required: row height is fixed */
+
+	/* sizing & styling */
+	padding: var(--x-input-padding);
+	border-right: 1px solid #eee;
+	min-width: 20px;
+}
+
+/* grid header */
 
 .x-grid-header {
 	position: relative;        /* required: make movable for scrolling horizontally */
@@ -1121,6 +1125,7 @@ td.x-menu-title-td {
 .x-grid-header-title-td {
 	padding: 0;
 	overflow: hidden;          /* required: hide title under the sort icon */
+	font-weight: bold;
 }
 
 .x-grid-header-sort-icon-td {
@@ -1173,46 +1178,18 @@ td.x-menu-title-td {
 	position: absolute;        /* required: keep at y=0 while scrolling */
 }
 
-/* grid col resizing */
-
-/* NOTE: `col-resize` is almost invisible on a light background on Windows 7 */
-.x-grid.col-resize {
-	cursor: ew-resize;
-}
-.x-grid:not(.col-resize) .x-grid-header-th {
-	cursor: pointer;           /* required: resizing area is underneath */
-}
-
-.x-grid-header,
-.x-grid-header-th {
-	overflow: visible;
-}
-
-.x-grid-resize-markers {
-	position: absolute;
-	top: 0;
-	left: 0;
-}
-
-.x-grid-resize-marker {
-	position: absolute;
-	width: 0;
-	margin-left: -1px;  /* TODO: see why this is needed and remove it */
-	border-left: 1px dashed #aaa;
-}
-
 /* grid cells */
 
-.x-grid-header-th,
 .x-grid-cell {
-	white-space: nowrap;       /* required: height must be kept constant */
-
-	/* sizing & styling */
-	padding: var(--x-input-padding);
-	border-right: 1px solid #eee;
-	min-width: 20px;
-	background-color: white;
+	position: absolute;        /* required */
+	overflow: hidden;          /* required */
+	display: flex;             /* because vertical-align doesn't work with `position: absolute` */
+	align-items: center;       /* works as `vertical-align: middle` */
+	border-bottom: 1px solid #eee;
 }
+
+.x-grid-cell[align=center] { justify-content: center; }
+.x-grid-cell[align=right]  { justify-content: flex-end; }
 
 /* grid col moving */
 
@@ -1227,21 +1204,27 @@ td.x-menu-title-td {
 	transition: left .1s;
 }
 
-.x-grid-cell {
-	position: absolute;
-	overflow: hidden;          /* required */
-	display: flex;             /* because vertical-align doesn't work with `position: absolute` */
-	align-items: center;       /* works as `vertical-align: middle` */
-	border-bottom: 1px solid #eee;
+/* grid col resizing */
+
+/* NOTE: `col-resize` is almost invisible on a light background on Windows 7 */
+.x-grid.col-resize {
+	cursor: ew-resize;
+}
+.x-grid:not(.col-resize) .x-grid-header-th {
+	cursor: pointer;           /* required: resizing area is underneath */
 }
 
-.x-grid-cell[align=center] { justify-content: center; }
-.x-grid-cell[align=right]  { justify-content: flex-end; }
+.x-grid-resize-markers {
+	position: absolute;
+	top: 0;
+	left: 0;
+}
 
-/* grid cell & row states */
-
-.x-grid:focus {
-	outline: none;
+.x-grid-resize-marker {
+	position: absolute;
+	width: 0;
+	margin-left: -1px;  /* TODO: see why this is needed and remove it */
+	border-left: 1px dashed #aaa;
 }
 
 /* grid editing */
