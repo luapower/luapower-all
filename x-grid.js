@@ -110,15 +110,14 @@ grid = component('x-grid', function(e) {
 		e.visible_row_count = floor(e.rows_view_h / e.row_h) + 2
 		e.page_row_count = floor(e.rows_view_h / e.row_h)
 		init_editor_geometry()
-
 	}
 
 	// ri/fi to visible cell and back -----------------------------------------
 
-	function cell_index(ri, fi) {
+	function cell_index(ri, fi, sy) {
 		if (ri == null || fi == null)
 			return
-		let ri0 = first_visible_row(e.scroll_y)
+		let ri0 = first_visible_row(or(sy, e.scroll_y))
 		let ri1 = min(ri0 + e.visible_row_count, e.rows.length)
 		if (ri >= ri0 && ri < ri1)
 			return (ri - ri0) * e.fields.length + fi
@@ -142,6 +141,14 @@ grid = component('x-grid', function(e) {
 			f(cell, ...args)
 			fi += e.fields.length
 		}
+	}
+
+	function each_cell_of_row(ri, sy, f, ...args) {
+		let ci = cell_index(ri, 0, sy)
+		if (ci == null)
+			return
+		for (let fi = 0; fi < e.fields.length; fi++)
+			f(e.cells.at[ci+fi], fi, ...args)
 	}
 
 	// geometry on x ----------------------------------------------------------
@@ -263,12 +270,30 @@ grid = component('x-grid', function(e) {
 				H.table({class: 'x-grid-header-th-table'},
 					H.tr(0, e1, e2))
 
-			let th = div({class: 'x-grid-header-th', draggable: 'true'}, title_table)
+			let th = div({class: 'x-grid-header-th'}, title_table)
 
 			th.sort_icon = sort_icon
 			th.sort_icon_pri = sort_icon_pri
 
 			e.header.add(th)
+		}
+		update_sort_icons()
+	}
+
+	function update_sort_icons() {
+		for (let fi = 0; fi < e.fields.length; fi++) {
+			let field = e.fields[fi]
+			let th = e.header.at[fi]
+			let dir = e.order_by_dir(field)
+			let pri = e.order_by_priority(field)
+			th.sort_icon.class('fa-angle-up'         , false)
+			th.sort_icon.class('fa-angle-double-up'  , false)
+			th.sort_icon.class('fa-angle-down'       , false)
+			th.sort_icon.class('fa-angle-double-down', false)
+			th.sort_icon.class('fa-angle'+(pri ? '-double' : '')+'-up'  , dir == 'asc')
+			th.sort_icon.class('fa-angle'+(pri ? '-double' : '')+'-down', dir == 'desc')
+			th.sort_icon.parent.class('sorted', !!dir)
+			th.sort_icon_pri.set(pri > 1 ? pri : '')
 		}
 	}
 
@@ -280,37 +305,13 @@ grid = component('x-grid', function(e) {
 		for (let i = 0; i < e.visible_row_count; i++) {
 			for (let i = 0; i < e.fields.length; i++) {
 				let field = e.fields[i]
-				let cell = div({class: 'x-grid-cell'})
+				let cell = div({class: 'x-grid-cell x-item'})
 				cell.y = y
 				cell.h = e.row_h
 				e.cells.add(cell)
 			}
 			y += e.row_h
 		}
-	}
-
-	// when: widget height changed.
-	{
-		let w0, h0
-		e.on('attr_changed', function() {
-			let w1 = e.offsetWidth
-			let h1 = e.offsetHeight
-			if (w1 == 0 && h1 == 0)
-				return // hidden
-			if (h1 !== h0) {
-				let vrc = e.visible_row_count
-				update_heights()
-				if (e.visible_row_count != vrc) {
-					init_cells()
-					update_widths()
-					update_view()
-				}
-			}
-			if (w1 !== w0)
-				update_widths()
-			w0 = w1
-			h0 = h1
-		})
 	}
 
 	e.update_cell_value = function(cell, row, field, input_val) {
@@ -335,14 +336,14 @@ grid = component('x-grid', function(e) {
 				if (row) {
 					let field = e.fields[fi]
 					cell.attr('align', field.align)
+					cell.class('focusable', e.can_focus_cell(row, field))
+					cell.class('disabled', e.is_cell_disabled(row, field))
 					cell.class('new', !!row.is_new)
 					cell.class('removed', !!row.removed)
-					cell.class('x-item', e.can_focus_cell(row, field))
-					cell.class('disabled', e.is_cell_disabled(row, field))
+					cell.class('modified', e.rowset.cell_modified(row, field))
 					let input_val = e.rowset.cell_error(row, field)
 					e.update_cell_value(cell, row, field, e.rowset.input_value(row, field))
 					e.update_cell_error(cell, row, field, e.rowset.cell_error(row, field))
-					cell.class('modified', e.rowset.cell_modified(row, field))
 					cell.show()
 				} else {
 					cell.clear()
@@ -354,28 +355,54 @@ grid = component('x-grid', function(e) {
 
 	// when: order_by changed.
 	e.on('sort_order_changed', function() {
-		for (let fi = 0; fi < e.fields.length; fi++) {
-			let field = e.fields[fi]
-			let th = e.header.at[fi]
-			let dir = e.order_by_dir(field)
-			let pri = e.order_by_priority(field)
-			th.sort_icon.class('fa-angle-up'         , false)
-			th.sort_icon.class('fa-angle-double-up'  , false)
-			th.sort_icon.class('fa-angle-down'       , false)
-			th.sort_icon.class('fa-angle-double-down', false)
-			th.sort_icon.class('fa-angle'+(pri ? '-double' : '')+'-up'  , dir == 'asc')
-			th.sort_icon.class('fa-angle'+(pri ? '-double' : '')+'-down', dir == 'desc')
-			th.sort_icon.parent.class('sorted', !!dir)
-			th.sort_icon_pri.set(pri > 1 ? pri : '')
-		}
+		update_sort_icons()
 	})
 
-	let focused_cell
-	function update_focus() {
-		if (focused_cell) { focused_cell.class('focused', false); focused_cell.class('editing', false); }
-		focused_cell = e.cells.at[cell_index(e.focused_row_index, e.focused_field_index)]
-		if (focused_cell) { focused_cell.class('focused'); focused_cell.class('editing', e.editor || false); }
+	{
+		let sy, focused_ri
+		function update_focus() {
+			if (sy != null)
+				each_cell_of_row(focused_ri, sy, function(cell) {
+					cell.class('focused', false)
+					cell.class('editing', false)
+					cell.class('row-focused', false)
+				})
+			sy = e.scroll_y
+			focused_ri = e.focused_row_index
+			if (e.focused_row_index != null)
+				each_cell_of_row(focused_ri, sy, function(cell, fi, focused_fi, editing) {
+					cell.class('focused', fi == focused_fi)
+					cell.class('editing', fi == focused_fi && editing)
+					cell.class('row-focused', true)
+			}, e.focused_field_index, e.editor || false)
+		}
 	}
+
+	// when: width/height changed.
+	{
+		let w0, h0
+		e.on('attr_changed', function() {
+			let w1 = e.style.width
+			let h1 = e.style.height
+			if (w1 == 0 && h1 == 0)
+				return // hidden
+			if (h1 !== h0) {
+				let vrc = e.visible_row_count
+				update_heights()
+				if (e.visible_row_count != vrc) {
+					init_cells()
+					update_widths()
+					update_view()
+				}
+			}
+			if (w1 !== w0)
+				update_widths()
+			w0 = w1
+			h0 = h1
+		})
+	}
+
+	// inline editing ---------------------------------------------------------
 
 	// when: input created, heights changed, column width changed.
 	function init_editor_geometry(editor) {
@@ -458,8 +485,9 @@ grid = component('x-grid', function(e) {
 		else if (prop == 'row_removed')
 			cls = 'removed'
 		if (cls)
-			for (let fi = 0; fi < e.fields.length; fi++)
-				e.cells.at[ci+fi].class(cls, val)
+			each_cell_of_row(ri, null, function(cell, fi, cls, val) {
+				cell.class(cls, val)
+			}, cls, val)
 	}
 
 	e.update_load_progress = function(p) {
@@ -474,7 +502,7 @@ grid = component('x-grid', function(e) {
 		let move_px, move_fi
 
 		function col_move_start_drag(fi, mx, my) {
-			if (e.col_moving)
+			if (e.col_finishing_moving)
 				return // finishing animations still running.
 			e.col_moving = true
 			window.grid_dragging = true
@@ -493,6 +521,8 @@ grid = component('x-grid', function(e) {
 		function col_move_document_mousemove(mx, my) {
 			if (!e.col_moving)
 				return
+			if (e.col_finishing_moving)
+				return
 			let col_x = mx - e.header.client_rect().left - move_px
 			e.move_element_update(col_x)
 			return true
@@ -502,16 +532,20 @@ grid = component('x-grid', function(e) {
 			if (!e.col_moving)
 				return
 			let over_fi = e.move_element_stop() // sets x of moved element.
+			e.col_finishing_moving = true
 			after(.1, function() { // delay to allow the transition on x to finish.
 				e.col_moving = false
+				e.col_finishing_moving = false
 				e.class('col-moving', false)
 				each_cell_of_col(move_fi, function(cell) {
 					cell.class('col-moving', false)
 					cell.style['z-index'] = null
 				})
 				if (over_fi != move_fi) {
+					let focused_field = e.fields[e.focused_field_index]
 					let field = e.fields.remove(move_fi)
 					e.fields.insert(over_fi, field)
+					e.focused_field_index = focused_field && e.fields.indexOf(focused_field)
 					e.init_fields()
 					update_widths()
 					update_view()
@@ -615,15 +649,30 @@ grid = component('x-grid', function(e) {
 
 	// column context menu ----------------------------------------------------
 
-	function field_context_menu_popup(th, field, mx, my) {
+	function field_context_menu_popup(fi, field, mx, my) {
+		let th = e.header.at[fi]
+		//let field = e.fields[fi]
 		if (th.menu)
 			th.menu.close()
 		function toggle_field(item) {
+			if (item.checked)
+				e.fields.insert(th.index+1, item.field)
+			else
+				e.fields.remove_value(item.field)
+			e.init_fields()
+			e.init_rows()
+			e.init_value()
+			e.init_focused_row()
 			return false
 		}
 		let items = []
-		for (let field of e.fields) {
-			items.push({field: field, text: field.name, checked: true, click: toggle_field})
+		for (let field of e.rowset.fields) {
+			items.push({
+				field: field,
+				text: field.name,
+				checked: e.fields.indexOf(field) != -1,
+				action: toggle_field,
+			})
 		}
 		th.menu = menu({items: items})
 		let r = th.client_rect()
@@ -684,7 +733,10 @@ grid = component('x-grid', function(e) {
 		if (!th) // didn't click on the th.
 			return
 		e.focus()
-		e.toggle_order(e.fields[th.index], ev.shiftKey)
+		if (ev.shiftKey)
+			e.clear_order()
+		else
+			e.toggle_order(e.fields[th.index], ev.shiftKey)
 		return false
 	})
 
@@ -695,10 +747,7 @@ grid = component('x-grid', function(e) {
 		if (e.hasclass('col-resize'))
 			return
 		e.focus()
-		if (ev.shiftKey)
-			e.clear_order()
-		else
-			field_context_menu_popup(th, e.fields[th.index], ev.clientX, ev.clientY)
+		field_context_menu_popup(th.index, ev.clientX, ev.clientY)
 		return false
 	})
 

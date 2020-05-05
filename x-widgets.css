@@ -39,13 +39,13 @@
 	font-family: x-widget, sans-serif;
 }
 
-/* item states ------------------------------------------------------------ */
-
 .x-widget:focus {
 	/* standardize focus outline appearance between browsers and element types */
 	outline: none;
 	box-shadow: var(--x-focus-shadow);
 }
+
+/* item states ------------------------------------------------------------ */
 
 .x-focusable:focus {
 	/* focusables show focus through their focused x-item */
@@ -53,8 +53,8 @@
 	box-shadow: none;
 }
 
-.x-widget .disabled { color: #999; }
-.x-widget .null { color: #999; }
+.x-item.disabled { color: #999; }
+.x-item.null { color: #999; }
 
 .x-item.removed {
 	text-decoration: line-through;
@@ -69,30 +69,33 @@
 }
 
 .x-item.invalid,
-.x-item > .x-item.invalid:hover {
+.x-item.invalid:hover {
 	background-color: var(--x-error-bg-color);
 	color: var(--x-inverted-fg-color);
 }
 
-                  .x-item.focused           { color: #fff; }
-                  .x-item.disabled.focused  { color: #ccc; }
+.x-item.focused           { color: #fff; }
+.x-item.disabled.focused  { color: #ccc; }
+
+.x-item:hover             { background-color: var(--x-item-hover-bg-color); }
+
+.x-item.focused           { background-color: var(--x-item-unfocused-bg-color); color: var(--x-inverted-fg-color); }
+.x-item.focused:hover     { background-color: #444; color: var(--x-inverted-fg-color); }
+
+.x-focusable:focus-within  .x-item.focused       { background-color: var(--x-item-focused-bg-color); }
+.x-focusable:focus-within  .x-item.focused:hover { background-color: #58b; }
+
+/*
 .x-item.focused > .x-item.disabled          { color: #ccc; }
 .x-item.focused > .x-item.disabled.focused  { color: #fff; }
-
-                  .x-item:hover             { background-color: var(--x-item-hover-bg-color); }
 .x-item         > .x-item:hover             { background-color: #f8f8f8; }
-
-                  .x-item.focused           { background-color: var(--x-item-unfocused-bg-color); color: var(--x-inverted-fg-color); }
-                  .x-item.focused:hover     { background-color: #444; color: var(--x-inverted-fg-color); }
 .x-item.focused > .x-item:hover             { background-color: #555; color: var(--x-inverted-fg-color); }
 .x-item.focused > .x-item.focused           { background-color: #666; color: var(--x-inverted-fg-color); }
 .x-item.focused > .x-item.focused:hover     { background-color: #777; color: var(--x-inverted-fg-color); }
-
-.x-focusable:focus-within                   .x-item.focused       { background-color: var(--x-item-focused-bg-color); }
-.x-focusable:focus-within                   .x-item.focused:hover { background-color: #58b; }
 .x-focusable:focus-within .x-item.focused > .x-item:hover         { background-color: #69c; }
 .x-focusable:focus-within .x-item.focused > .x-item.focused       { background-color: #7ad; }
 .x-focusable:focus-within .x-item.focused > .x-item.focused:hover { background-color: #8be; }
+*/
 
 /* scrollbars ------------------------------------------------------------- */
 
@@ -903,7 +906,7 @@
 
 	/* styling */
 	color: #000;
-	width: 200px;
+	min-width: 200px;
 	border: 1px solid #ccc;
 	box-shadow: 2px 2px 2px #666;
 }
@@ -931,6 +934,7 @@ td.x-menu-title-td {
 	padding: 0;
 	width: 100%;
 	padding-left: 0;
+	overflow: hidden;
 }
 
 .x-menu-tr.focused > td {
@@ -1126,11 +1130,12 @@ td.x-menu-title-td {
 }
 
 .x-grid-header-sort-icon-td.sorted {
-	width: 1em;                /* required: make space for it */
+	width: 1.2em;              /* required: make space for it */
 }
 
 .x-grid-header-sort-icon-pri {
-	font-family: inherit;
+	padding-left: 2px;
+	padding-right: 2px;
 	font-size: 85%;
 }
 
@@ -1225,9 +1230,13 @@ td.x-menu-title-td {
 .x-grid-cell {
 	position: absolute;
 	overflow: hidden;          /* required */
-	vertical-align: middle;
+	display: flex;             /* because vertical-align doesn't work with `position: absolute` */
+	align-items: center;       /* works as `vertical-align: middle` */
 	border-bottom: 1px solid #eee;
 }
+
+.x-grid-cell[align=center] { justify-content: center; }
+.x-grid-cell[align=right]  { justify-content: flex-end; }
 
 /* grid cell & row states */
 

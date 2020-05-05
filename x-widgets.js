@@ -2485,7 +2485,7 @@ menu = component('x-menu', function(e) {
 	}
 
 	function create_menu(items) {
-		let table = H.table({class: 'x-focusable x-menu-table', tabindex: 0})
+		let table = H.table({class: 'x-widget x-focusable x-menu-table', tabindex: 0})
 		for (let i = 0; i < items.length; i++) {
 			let item = items[i]
 			let tr = create_item(item)

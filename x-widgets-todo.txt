@@ -2,7 +2,9 @@
 FINISH
 ------------------------------------------------------------------------------
 
-- GRID move columns.
+- GRID fix x-item css.
+- ROWSET_WIDGET fix focused row after sort.
+-
 
 - DROPDOWN lookup rowset ownership issue.
 - SPLIT fixed pane wrong size when other pane is larger than 100% but shrunk to 100%.
