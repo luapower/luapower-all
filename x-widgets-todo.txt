@@ -2,8 +2,6 @@
 FINISH
 ------------------------------------------------------------------------------
 
-- GRID fix x-item css.
-- ROWSET_WIDGET fix focused row after sort.
 - ROWSET quicksearch bugs.
 
 - DROPDOWN lookup rowset ownership issue.

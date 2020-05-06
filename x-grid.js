@@ -223,7 +223,8 @@ grid = component('x-grid', function(e) {
 		e.header.x = -sx
 	}
 
-	function col_resize_hit_test(mx) {
+	function col_resize_hit_test(mx, my) {
+		//TODO: if (my
 		for (let fi = 0; fi < e.fields.length; fi++) {
 			let hcell = e.header.at[fi]
 			let x = mx - (hcell._x + hcell._w)
@@ -602,8 +603,10 @@ grid = component('x-grid', function(e) {
 		e.on('mousemove', function col_resize_mousemove(mx, my) {
 			if (window.grid_dragging)
 				return
-			mx = mx - e.header.client_rect().left
-			let t = col_resize_hit_test(mx)
+			let r = e.header.client_rect()
+			mx = mx - r.left
+			my = my - r.top
+			let t = col_resize_hit_test(mx, my)
 			hit_fi = t && t[0]
 			hit_x  = t && t[1]
 			e.class('col-resize', hit_fi != null)

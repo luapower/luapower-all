@@ -1402,15 +1402,15 @@ button = component('x-button', function(e) {
 
 	e.init = function() {
 
-		e.icon_div.add(e.icon)
-		e.icon_div.classes = e.icon_classes
+		if (typeof e.icon == 'string')
+			e.icon_div.classes = e.icon
+		else
+			e.icon_div.set(e.icon)
 
 		// can't use CSS for this because margins don't collapse with paddings.
 		if (!(e.icon_classes || e.icon))
 			e.icon_div.hide()
 
-		e.on('keydown', keydown)
-		e.on('keyup', keyup)
 	}
 
 	e.late_property('text',
@@ -1424,14 +1424,14 @@ button = component('x-button', function(e) {
 		e.class('primary', on)
 	})
 
-	function keydown(key) {
+	e.on('keydown', function keydown(key) {
 		if (key == ' ' || key == 'Enter') {
 			e.class('active', true)
 			return false
 		}
-	}
+	})
 
-	function keyup(key) {
+	e.on('keyup', function keyup(key) {
 		if (e.hasclass('active')) {
 			// ^^ always match keyups with keydowns otherwise we might catch
 			// a keyup from someone else's keydown, eg. a dropdown menu item
@@ -1443,7 +1443,13 @@ button = component('x-button', function(e) {
 			}
 			return false
 		}
-	}
+	})
+
+	e.on('click', function() {
+		if(e.action)
+			e.action()
+		e.fire('action')
+	})
 
 })
 
@@ -3005,7 +3011,122 @@ toaster = component('x-toaster', function(e) {
 	let t
 	function notify(...args) {
 		t = t || toaster({classes: 'x-notify-toaster'})
-		t.message(...args)
+		t.post(...args)
 	}
 }
 
+// ---------------------------------------------------------------------------
+// modal dialog with standard buttons
+// ---------------------------------------------------------------------------
+
+dialog = component('x-dialog', function(e) {
+
+	e.classes = 'x-widget x-dialog'
+	e.attrval('tabindex', 0)
+
+	e.x_button = true
+	e.footer = 'ok:ok cancel:cancel'
+
+	function make_footer(footer) {
+		if (footer instanceof Node)
+			e.footer = footer
+		else {
+			e.footer = div({class: 'x-dialog-footer'})
+			let ct = e.footer
+			for (let s of footer.split(' ')) {
+				if (s == '<') {
+					ct = div({style: `
+							flex: auto;
+							display: flex;
+							flex-flow: row wrap;
+							justify-content: center;
+						`})
+					e.footer.add(ct)
+					continue
+				} else if (s == '>') {
+					align = 'right'
+					ct = e.footer
+					continue
+				}
+				s = s.split(':')
+				let name = s.shift()
+				let spec = new Set(s)
+				let btn = e.buttons && e.buttons[name]
+				if (!(btn instanceof Node)) {
+					btn = update({}, dialog.buttons[name], btn)
+					if (spec.has('primary') || spec.has('ok'))
+						btn.primary = true
+					btn = button(btn)
+				}
+				btn.class('x-dialog-button-'+name)
+				btn.dialog = e
+				if (!btn.text) {
+					btn.text = S(name.replace('-', '_'), name.replace('-', ' ').replace('_', ' '))
+					btn.style['text-transform'] = 'capitalize'
+				}
+				if (name == 'ok' || spec.has('ok')) {
+					btn.on('action', function() {
+						e.ok()
+					})
+				}
+				if (name == 'cancel' || spec.has('cancel')) {
+					btn.on('action', function() {
+						e.cancel()
+					})
+				}
+				ct.add(btn)
+			}
+		}
+	}
+
+	e.init = function() {
+		let title = div({class: 'x-dialog-title'})
+		title.set(e.title)
+		e.title = title
+		e.header = div({class: 'x-dialog-header'}, title)
+		if (!e.content)
+			e.content = div()
+		e.content.class('x-dialog-content')
+		make_footer(e.footer)
+		e.add(e.header, e.content, e.footer)
+		if (e.x_button) {
+			e.x_button = div({class: 'x-dialog-button-close fa fa-times'})
+			e.x_button.on('click', function() {
+				e.cancel()
+			})
+			e.add(e.x_button)
+		}
+	}
+
+	e.on('keydown', function(key) {
+		if (key == 'Escape')
+			if (e.x_button)
+				e.x_button.class('active', true)
+	})
+
+	e.on('keyup', function(key) {
+		if (key == 'Escape')
+			e.cancel()
+		else if (key == 'Enter')
+			e.ok()
+	})
+
+	e.close = function() {
+		e.modal(false)
+		if (e.x_button)
+			e.x_button.class('active', false)
+	}
+
+	e.cancel = function() {
+		if (e.fire('cancel'))
+			e.close()
+	}
+
+	e.ok = function() {
+		if (e.fire('ok'))
+			e.close()
+	}
+
+})
+
+dialog.buttons = {}

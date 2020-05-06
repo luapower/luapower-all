@@ -69,16 +69,6 @@ method(Element, 'css', function(prop) {
 	return getComputedStyle(this)[prop]
 })
 
-/*
-function css(classname, prop) {
-	let div = div({class: classname, style: 'position: absolute; visibility: hidden'})
-	document.children[0].appendChild(div)
-	let v = getComputedStyle(div)[prop]
-	document.children[0].removeChild(div)
-	return v
-}
-*/
-
 // dom tree navigation for elements, skipping text nodes ---------------------
 
 alias(Element, 'at'     , 'children')
@@ -179,6 +169,21 @@ function tag(tag, attrs, ...children) {
 
 div = H.div
 span = H.span
+
+// quick flex layouts --------------------------------------------------------
+
+function hflex(...children) {
+	return div({style: `
+			display: flex;
+		`}, ...children)
+}
+
+function vflex(...children) {
+	return div({style: `
+			display: flex;
+			flex-flow: column;
+		`}, ...children)
+}
 
 // easy custom events & event wrappers ---------------------------------------
 
@@ -603,8 +608,10 @@ let popup_state = function(e) {
 	}
 
 	function init() {
-		target.on('attach', target_attached)
-		target.on('detach', target_detached)
+		if (target != document.body) { // prevent infinite recursion.
+			target.on('attach', target_attached)
+			target.on('detach', target_detached)
+		}
 		if (target.isConnected)
 			target_attached()
 	}
@@ -688,6 +695,8 @@ let popup_state = function(e) {
 			[x0, y0] = [tr.left + px, tr.top + py]
 		else if (side == 'inner-bottom')
 			[x0, y0] = [tr.left + py, tr.bottom - er.height - py]
+		else if (side == 'inner-center')
+			[x0, y0] = [tr.left + (tr.width - er.width) / 2, tr.top + (tr.height - er.height) / 2]
 		else {
 			side = 'bottom'; // default
 			[x0, y0] = [tr.left + px, tr.bottom + py]
@@ -719,6 +728,40 @@ method(HTMLElement, 'popup', function(target, side, align, px, py) {
 })
 
 }
+
+// modal window pattern ------------------------------------------------------
+
+method(HTMLElement, 'modal', function(on) {
+	let e = this
+	if (on == false) {
+		if (e.__dialog) {
+			e.__dialog.remove()
+			e.__dialog = null
+		}
+	} else if (!e.__dialog) {
+		let dialog = tag('dialog', {
+			style: `
+				position: fixed;
+				left: 0;
+				top: 0;
+				width: 100%;
+				height: 100%;
+				overflow: auto;
+				border: 0;
+				background-color: rgba(0,0,0,0.4);
+				display: flex;
+				align-items: center;
+				justify-content: center;
+			`,
+		}, e)
+		dialog.on('mousedown', () => false)
+		e.__dialog = dialog
+		document.body.add(dialog)
+		dialog.showModal()
+		e.focus()
+	}
+})
+
 
 // list element live move pattern --------------------------------------------
 
@@ -803,3 +846,4 @@ function live_move_mixin(e) {
 
 	return e
 }
+

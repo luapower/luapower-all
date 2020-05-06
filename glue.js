@@ -73,7 +73,6 @@ print = console.log
 
 function assert(ret, err, ...args) {
 	if (ret == null || ret === false || ret === undefined) {
-		console.trace()
 		throw ((err && err.format(...args) || 'assertion failed'))
 	}
 	return ret

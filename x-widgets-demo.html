@@ -155,7 +155,7 @@ h2 {
 
 button({
 	text: 'text',
-	icon_classes: 'class1 class2',
+	icon: 'class1 class2',
 	primary: true,
 })
 
@@ -167,17 +167,17 @@ main.add(
 	button({
 		text: 'Click me!',
 		primary: true,
-		onclick: function() { print('clicked') },
+		action: function() { print('clicked') },
 	}),
 	button({
 		text: H('Click&nbsp;<i>me</i>&nbsp;too!'),
-		icon_classes: 'fa fa-biohazard',
-		onclick: function() { print('clicked') },
+		icon: 'fa fa-biohazard',
+		action: function() { print('clicked') },
 	}),
 	button({
 		text: H('Multiline text<br>works too!'),
-		icon_classes: 'fa fa-folder-open',
-		onclick: function() { print('clicked') },
+		icon: 'fa fa-folder-open',
+		action: function() { print('clicked') },
 	})
 )
 
@@ -240,6 +240,34 @@ main.add(t)
 t.post('Hello there', null, 1)
 t.post('I\'ve got something to tell you...', 'info', 2)
 t.post('Pay attention!', 'error', 3)
+
+</script>
+</template>
+
+<!--------------------------------------------------------------------------->
+
+<template id=dialog_demo>
+<help>
+
+</help>
+<script>
+
+win = dialog({
+	title: 'I\'m playing the title',
+	content: div({}, 'I\'m just here for the demo.'),
+	footer: 'some-button < yes no > apply:ok cancel',
+	buttons: {
+		yes: { icon: 'fa fa-thumbs-up' },
+		no: { icon: 'fa fa-thumbs-down' },
+	},
+})
+
+main.add(button({
+	text: 'Click for modal',
+	action: function() {
+		win.modal()
+	}
+}))
 
 </script>
 </template>
@@ -341,7 +369,7 @@ m = menu({
 b = button({
 	text: 'Click for menu',
 	primary: true,
-	onclick: function() { m.popup(b, 'bottom', 'left', 0, 2) },
+	action: function() { m.popup(b, 'bottom', 'left', 0, 2) },
 })
 
 main.add(b)
@@ -817,7 +845,7 @@ main.add(H.div({style: 'line-height: 3'},
 	button({
 		text: 'buttons.',
 		primary: true,
-		onclick: function() { print('clicked') },
+		action: function() { print('clicked') },
 	}),
 	'This stays true under different fonts, font sizes and line heights.'
 ))
@@ -852,7 +880,7 @@ main.add(H.div({}, g), i1)
 
 main.add(button({
 	text: 'unfocus row',
-	onclick: function() { g.focused_row = null },
+	action: function() { g.focused_row = null },
 }))
 
 </script>
@@ -1036,7 +1064,7 @@ ace_editor.commands.removeCommand(ace_editor.commands.byName.outdent)
 function run_script() {
 	let s = ace_editor.getSession().getValue()
 	main.innerHTML = ''
-	let f = eval('let f = function() {\n' + s + '}; f')
+	let f = eval('let f = function() {\n' + s + '\n}; f')
 	f()
 }
 
