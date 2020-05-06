@@ -122,7 +122,9 @@ function rowset_widget(e) {
 		e.rowset.on('load_slow', rowset_load_slow, on)
 		e.rowset.on('load_progress', rowset_load_progress, on)
 		// misc.
-		e.rowset.on('notify', e.notify, on)
+		e.rowset.on('notify', function(type, msg) {
+			e.notify(msg, type)
+		}, on)
 		// take/release ownership of the rowset.
 		if (e.rowset_owner)
 			e.rowset.owner = on ? e : null

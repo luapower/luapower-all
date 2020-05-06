@@ -1356,7 +1356,17 @@ tooltip = component('x-tooltip', function(e) {
 
 	e.late_property('text',
 		function()  { return e.text_div.html },
-		function(s) { e.text_div.set(s); e.update() }
+		function(s) {
+			e.text_div.set(s)
+			let t = e.timeout
+			if (t == 'auto')
+				t = (e.text.length) / (tooltip.reading_speed / 60)
+			else
+				t = num(t)
+			if (t != null)
+				after(t, function() { e.target = false })
+			e.update()
+		}
 	)
 
 	e.property('visible',
@@ -1369,15 +1379,7 @@ tooltip = component('x-tooltip', function(e) {
 	e.attr_property('type'    , e.update)
 	e.num_attr_property('px'  , e.update)
 	e.num_attr_property('py'  , e.update)
-
-	e.reading_speed = 68 // letters-per-minute.
-
-	e.num_attr_property('timeout' , function(t) {
-		if (!t) return
-		if (t == 'auto')
-			t = (e.text.length) * e.reading_speed / 60
-		after(t, function() { e.target = false })
-	})
+	e.attr_property('timeout')
 
 	e.late_property('target',
 		function()  { return target },
@@ -1385,6 +1387,8 @@ tooltip = component('x-tooltip', function(e) {
 	)
 
 })
+
+tooltip.reading_speed = 800 // letters-per-minute.
 
 // ---------------------------------------------------------------------------
 // button
