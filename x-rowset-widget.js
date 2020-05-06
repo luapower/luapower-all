@@ -199,9 +199,9 @@ function rowset_widget(e) {
 
 	e.init_row = function(ri, ev) {
 		let row = e.rows[ri]
-		e.update_row_state(ri, 'row_is_new'   , !!row.is_new   , ev)
-		e.update_row_state(ri, 'row_modified' , !!row.modified , ev)
-		e.update_row_state(ri, 'row_removed'  , !!row.removed  , ev)
+		e.update_row_state(ri, 'row_is_new'   , !!row.is_new         , ev)
+		e.update_row_state(ri, 'row_modified' , !!row.cells_modified , ev)
+		e.update_row_state(ri, 'row_removed'  , !!row.removed        , ev)
 	}
 
 	e.init_cell = function(ri, fi, ev) {
@@ -495,7 +495,7 @@ function rowset_widget(e) {
 		let row = e.focused_row
 		if (!row)
 			return true
-		if (row.modified) {
+		if (row.cells_modified) {
 			let err = e.rowset.validate_row(row)
 			d.set_row_error(row, err)
 			if (!!err)

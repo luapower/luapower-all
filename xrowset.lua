@@ -531,7 +531,6 @@ action['ajax_test.json'] = function()
 end
 
 function rowset.test_static()
-	error'duude'
 	if method'post' then
 		--
 	else

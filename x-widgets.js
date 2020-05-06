@@ -64,16 +64,16 @@
 		compare_values : f(v1, v2) -> -1|0|1  (for sorting)
 
 	rs.rows: Set(row)
-		row            : [v1,...;k->v]; currently set values (validated) + row state.
-		focusable      : row can be focused (true).
-		state          : [{k->v},...]; cell state.
-			input_val   : currently set value, whether valid or not.
-			error       : error message if invalid.
-			modified    : value was modified, change not on server yet.
-			old_value   : initial value before modifying.
-		is_new         : new row, not added on server yet.
-		modified       : one or more row cells were modified.
-		removed        : removed row, not removed on server yet.
+		row[i]             : current cell value (always valid).
+		row.focusable      : row can be focused (true).
+		row.input_val[i]   : currently set cell value, whether valid or not.
+		row.error[i]       : error message if cell is invalid.
+		row.row_error      : error message if row is invalid.
+		row.modified[i]    : value was modified, change not on server yet.
+		row.old_value[i]   : initial value before modifying.
+		row.is_new         : new row, not added on server yet.
+		row.cells_modified : one or more row cells were modified.
+		row.removed        : removed row, not removed on server yet.
 
 	rowset.types : {type -> {attr->val}}
 
@@ -297,14 +297,19 @@ rowset = function(...options) {
 			let i = field.index
 			cmps[i] = field_comparator(field)
 			let r = dir == 'desc' ? -1 : 1
-			// invalid values come first
-			s.push('var v1 = !(r1.state && r1.state['+i+'].error)')
-			s.push('var v2 = !(r2.state && r2.state['+i+'].error)')
+			// invalid rows come first
+			s.push('var v1 = !r1.row_error')
+			s.push('var v2 = !r2.row_error')
 			s.push('if (v1 < v2) return -1')
 			s.push('if (v1 > v2) return  1')
-			// modified values come second
-			s.push('var v1 = !(r1.state && r1.state['+i+'].modified)')
-			s.push('var v2 = !(r2.state && r2.state['+i+'].modified)')
+			// invalid values come after
+			s.push('var v1 = !(r1.error && r1.error['+i+'])')
+			s.push('var v2 = !(r2.error && r2.error['+i+'])')
+			s.push('if (v1 < v2) return -1')
+			s.push('if (v1 > v2) return  1')
+			// modified rows come after
+			s.push('var v1 = !r1.cells_modified')
+			s.push('var v2 = !r2.cells_modified')
 			s.push('if (v1 < v2) return -1')
 			s.push('if (v1 > v2) return  1')
 			// compare values using the rowset comparator
@@ -320,19 +325,18 @@ rowset = function(...options) {
 	// get/set cell & row state (storage api) ---------------------------------
 
 	d.cell_state = function(row, field, key, default_val) {
-		let t = row.state && row.state[field.index]
-		let v = t && t[key]
+		let v = row[key] && row[key][field.index]
 		return v !== undefined ? v : default_val
 	}
 
 	d.set_cell_state = function(row, field, key, val, default_val) {
-		let t = attr(array_attr(row, 'state'), field.index)
-		let old_val = t[key]
+		let t = array_attr(row, key)
+		let old_val = t[field.index]
 		if (old_val === undefined)
 			old_val = default_val
 		let changed = old_val !== val
 		if (changed)
-			t[key] = val
+			t[field.index] = val
 		return changed
 	}
 
@@ -477,7 +481,7 @@ rowset = function(...options) {
 				d.set_cell_state(row, field, 'old_value', cur_val)
 			let cell_modified_changed = d.set_cell_state(row, field, 'modified', modified, false)
 			let row_modified_changed = modified && (!(ev && ev.row_not_modified))
-				&& d.set_row_state(row, 'modified', true, false)
+				&& d.set_row_state(row, 'cells_modified', true, false)
 
 			cell_state_changed(row, field, 'value', val, ev)
 			if (cell_modified_changed)
@@ -802,7 +806,7 @@ rowset = function(...options) {
 
 	function row_changed(row) {
 		if (row.is_new)
-			if (!row.modified)
+			if (!row.row_modified)
 				return
 			else assert(!row.removed)
 		changed_rows = changed_rows || new Set()
@@ -827,7 +831,7 @@ rowset = function(...options) {
 			for (let field of d.pk_fields)
 				t.values[field.name] = d.old_value(row, field)
 			rows.push(t)
-		} else if (row.modified) {
+		} else if (row.cells_modified) {
 			let t = {type: 'update', values: {}}
 			let found
 			for (let field of d.fields) {
@@ -872,7 +876,7 @@ rowset = function(...options) {
 				if (!row_failed) {
 					if (d.set_row_state(row, 'is_new', false, false))
 						row_state_changed(row, 'row_is_new', false)
-					if (d.set_row_state(row, 'modified', false, false))
+					if (d.set_row_state(row, 'cells_modified', false, false))
 						row_state_changed(row, 'row_modified', false)
 				}
 				if (rt.field_errors) {

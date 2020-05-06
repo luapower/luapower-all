@@ -918,7 +918,7 @@ grid = component('x-grid', function(e) {
 		if (key == 'ArrowUp') {
 			if (e.is_last_row_focused()) {
 				let row = e.focused_row
-				if (row.is_new && !row.modified) {
+				if (row.is_new && !row.cells_modified) {
 					e.remove_focused_row({refocus: true})
 					return false
 				}
