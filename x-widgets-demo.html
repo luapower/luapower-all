@@ -253,7 +253,9 @@ t.post('Pay attention!', 'error', 3)
 </help>
 <script>
 
-notify('Did you see that?', 'error')
+notify('Did you see that?', 'info')
+notify('Where?')
+notify('There!', 'error', 2)
 
 </script>
 </template>
@@ -411,9 +413,9 @@ main.add(H.div({}, 'type in "Klaus" to validate: ', input({
 main.add(H.div({}, 'type in "Klaus" to validate: ', input({
 	validate: function(v) {
 		return v == null || v == 'Klaus'
-			|| ('You have to type in "Klaus" or leave empty. <br>' +
+			|| 'You have to type in "Klaus" or leave empty.\n' +
 				'This error message is purposefully long to show that the default error box ' +
-				'wraps decently and stays centered.')
+				'wraps decently and stays centered.'
 	},
 })))
 
@@ -1010,6 +1012,7 @@ var data = {
 	],
 	pk: 'id',
 	url: 'rowset.json/test_static',
+	slow_timeout: 1,
 }
 
 d = rowset(data)
@@ -1114,7 +1117,7 @@ reload_button.on('click', function() {
 	run_script()
 })
 
-demo_list.focus_cell(13)
+demo_list.focus_cell(15)
 
 demo_list_ct.add(demo_list)
 

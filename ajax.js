@@ -20,7 +20,7 @@
 
 function ajax(req) {
 
-	req = update({slow_timeout: 4}, req)
+	req = update_opt({slow_timeout: 4}, req)
 	events_mixin(req)
 
 	let xhr = new XMLHttpRequest()
@@ -54,13 +54,13 @@ function ajax(req) {
 		}
 	}
 
-	function slow_timeout() {
+	function slow_expired() {
 		req.fire('slow', true)
 		slow_watch = false
 	}
 
 	req.send = function() {
-		slow_watch = setTimeout(slow_timeout, req.slow_timeout * 1000)
+		slow_watch = after(req.slow_timeout, slow_expired)
 		xhr.send(upload)
 		return req
 	}

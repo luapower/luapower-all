@@ -105,7 +105,10 @@
 
 	/* positioning for inline use */
 	display: inline-flex;    /* more options than inline, but no collapsible margins! */
+
+	/* content layout */
 	align-items: baseline;   /* required */
+	justify-content: center;
 	position: relative;      /* anchor stuff to the button */
 
 	/* sizing for inline use */
@@ -116,7 +119,6 @@
 	font-size: 100%;
 	font-weight: bold;
 	line-height: initial;
-	justify-content: center;
 
 	/* behavior */
 	cursor: pointer;
@@ -187,10 +189,7 @@
 	z-index: 1;
 
 	/* sizing */
-	width: 400px;                 /* max. width of the message bubble before wrapping */
-
-	/* hit-testing */
-	pointer-events: none;         /* click-through */
+	max-width: 400px;                 /* max. width of the message bubble before wrapping */
 
 	/* animation */
 	opacity: 0;
@@ -227,8 +226,6 @@
 	/* styling */
 	border-radius: .25em;
 	background-color: white;
-
-	cursor: default;
 
 	box-shadow: 2px 2px 10px #00000044;
 }

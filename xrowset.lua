@@ -531,6 +531,7 @@ action['ajax_test.json'] = function()
 end
 
 function rowset.test_static()
+	error'duude'
 	if method'post' then
 		--
 	else
@@ -546,7 +547,7 @@ function rowset.test_static()
 			},
 			rows = rows,
 		}
-		--sleep(5)
+		sleep(2) --trigger slow timeout
 		send_slowly(json(t), 1)
 		--return t
 	end

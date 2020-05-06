@@ -125,14 +125,17 @@ method(Element, 'clear', function() {
 
 alias(Element, 'html', 'innerHTML')
 
-method(Element, 'set', function(s) {
+method(Element, 'set', function(s, whitespace) {
 	if (typeof s == 'function')
 		s = s()
 	if (s instanceof Node) {
 		this.innerHTML = null
 		this.append(s)
-	} else
+	} else {
 		this.textContent = s
+		if (whitespace)
+			this.style['white-space'] = whitespace
+	}
 })
 
 // creating html elements ----------------------------------------------------
@@ -648,9 +651,9 @@ let popup_state = function(e) {
 	}
 
 	function target_attached() {
-		update()
 		e.style.position = 'absolute'
 		document.body.add(e)
+		update()
 		if (e.popup_target_attached)
 			e.popup_target_attached(target)
 		e.fire('popup_target_attached')

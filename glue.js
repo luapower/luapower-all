@@ -194,6 +194,17 @@ function keys(o, cmp) {
 
 update = Object.assign
 
+// like update() but skips assigning `undefined` values.
+function update_opt(dt, ...args) {
+	for (let arg of args)
+		if (typeof arg == 'object') {
+			for (k in arg)
+				if (arg[k] !== undefined)
+					dt[k] = arg[k]
+		}
+	return dt
+}
+
 function attr(t, k) {
 	let v = t[k]
 	if (!v) { v = {}; t[k] = v }

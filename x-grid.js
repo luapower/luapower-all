@@ -491,6 +491,18 @@ grid = component('x-grid', function(e) {
 		e.progress_bar.style.width = (p * 100) + '%'
 	}
 
+	e.update_load_slow = function(on) {
+		if (on)
+			e.load_slow_tooltip = tooltip({
+				text: S('slow', 'Still working on it...'),
+				side: 'inner-center',
+				target: e.rows_view,
+				timeout: null,
+			})
+		else if (e.load_slow_tooltip)
+			e.load_slow_tooltip.target = null
+	}
+
 	// column moving ----------------------------------------------------------
 
 	{

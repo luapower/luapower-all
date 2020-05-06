@@ -715,6 +715,7 @@ rowset = function(...options) {
 			fail: load_fail,
 			done: load_done,
 			slow: load_slow,
+			slow_timeout: d.slow_timeout,
 		})
 		add_request(req)
 		d.load_request = req
@@ -728,9 +729,7 @@ rowset = function(...options) {
 	}
 
 	function load_slow(show) {
-		d.fire('loading_slow', show)
-		if (show)
-			d.fire('notify', 'info', S('slow', 'Still working on it...'))
+		d.fire('load_slow', show)
 	}
 
 	function load_done() {
@@ -790,7 +789,7 @@ rowset = function(...options) {
 	function load_fail(type, status, message, body) {
 		if (type == 'http')
 			d.fire('notify', 'error',
-				S('rowset_load_http_error', 'Server returned {0} {1}<pre>{2}</pre>').format(status, message, body))
+				S('rowset_load_http_error', 'Server returned {0} {1}\n{2}').format(status, message, body))
 		else if (type == 'network')
 			d.fire('notify', 'error', S('rowset_load_network_error', 'Loading failed: network error.'))
 		else if (type == 'timeout')
@@ -913,6 +912,7 @@ rowset = function(...options) {
 			fail: save_fail,
 			done: save_done,
 			slow: save_slow,
+			slow_timeout: d.slow_timeout,
 		})
 		changed_rows = null
 		add_request(req)
@@ -1354,18 +1354,22 @@ tooltip = component('x-tooltip', function(e) {
 		e.popup(target, e.side, e.align, e.px, e.py)
 	}
 
+	function set_timeout_timer() {
+		let t = e.timeout
+		if (t == 'auto')
+			t = clamp(e.text.length / (tooltip.reading_speed / 60), 1, 10)
+		else
+			t = num(t)
+		if (t != null)
+			after(t, function() { e.target = false })
+	}
+
 	e.late_property('text',
 		function()  { return e.text_div.html },
 		function(s) {
-			e.text_div.set(s)
-			let t = e.timeout
-			if (t == 'auto')
-				t = (e.text.length) / (tooltip.reading_speed / 60)
-			else
-				t = num(t)
-			if (t != null)
-				after(t, function() { e.target = false })
+			e.text_div.set(s, 'pre-wrap')
 			e.update()
+			set_timeout_timer()
 		}
 	)
 
