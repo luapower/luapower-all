@@ -469,7 +469,7 @@ rowset = function(...options) {
 
 		let input_val_changed = d.set_cell_state(row, field, 'input_value', val, cur_val)
 		let cell_err_changed = d.set_cell_state(row, field, 'error', err)
-		let row_err_changed = d.set_row_state(row, 'error')
+		let row_err_changed = d.set_row_state(row, 'row_error')
 
 		if (val_changed) {
 			let was_modified = d.cell_modified(row, field)
@@ -2492,7 +2492,6 @@ menu = component('x-menu', function(e) {
 		update_check(tr)
 		tr.on('mouseup'   , item_mouseup)
 		tr.on('mouseenter', item_mouseenter)
-		tr.on('mouseleave', item_mouseleave)
 		return tr
 	}
 
@@ -2501,6 +2500,7 @@ menu = component('x-menu', function(e) {
 		td.set(item.heading)
 		let tr = H.tr({}, td)
 		tr.focusable = false
+		tr.on('mouseenter', separator_mouseenter)
 		return tr
 	}
 
@@ -2508,6 +2508,7 @@ menu = component('x-menu', function(e) {
 		let td = H.td({class: 'x-menu-separator', colspan: 5}, H.hr())
 		let tr = H.tr({}, td)
 		tr.focusable = false
+		tr.on('mouseenter', separator_mouseenter)
 		return tr
 	}
 
@@ -2674,7 +2675,7 @@ menu = component('x-menu', function(e) {
 		show_submenu(this)
 	}
 
-	function item_mouseleave(ev) {
+	function separator_mouseenter(ev) {
 		select_item(this.parent)
 	}
 
