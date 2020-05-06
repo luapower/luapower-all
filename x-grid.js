@@ -33,7 +33,7 @@ grid = component('x-grid', function(e) {
 	e.rows_div = div({class: 'x-grid-rows'}, e.cells)
 	e.rows_view = div({class: 'x-grid-rows-view'}, e.rows_div)
 	e.progress_bar = div({class: 'x-grid-progress-bar'})
-	e.add(e.header, e.rows_view, e.progress_bar)
+	e.add(e.header, e.progress_bar, e.rows_view)
 
 	e.rows_view.on('scroll', update_view)
 
@@ -487,8 +487,13 @@ grid = component('x-grid', function(e) {
 			}, cls, val)
 	}
 
+	e.update_loading = function(on) {
+		e.progress_bar.w = 0
+		e.progress_bar.show(on)
+	}
+
 	e.update_load_progress = function(p) {
-		e.progress_bar.style.width = (p * 100) + '%'
+		e.progress_bar.w = (p * 100) + '%'
 	}
 
 	e.update_load_slow = function(on) {
@@ -682,7 +687,7 @@ grid = component('x-grid', function(e) {
 	}
 
 	let context_menu
-	function field_context_menu_popup(th, mx, my) {
+	function field_context_menu_popup(fi, mx, my) {
 		if (context_menu) {
 			context_menu.close()
 			context_menu = null
@@ -690,18 +695,26 @@ grid = component('x-grid', function(e) {
 
 		let items = []
 
-		if (th) {
+		items.push({
+			text: S('reload', 'Reload'),
+			icon: 'fa fa-sync',
+			action: function() {
+				e.rowset.load()
+			},
+			separator: true,
+		})
+
+		if (fi != null) {
 			function hide_field(item) {
 				set_field_visibility(item.field, null, false)
 			}
-			let field = e.fields[th.index]
+			let field = e.fields[fi]
 			let hide_field_text = span(); hide_field_text.set(field.text)
 			let hide_text = span({}, S('hide_field', 'Hide '), hide_field_text)
 			items.push({
 				field: field,
 				text: hide_text,
 				action: hide_field,
-				//separator: true,
 			})
 		}
 
@@ -709,7 +722,6 @@ grid = component('x-grid', function(e) {
 			heading: S('show_more_fields', 'Show more fields'),
 		})
 
-		let fi = th && th.index
 		function show_field(item) {
 			set_field_visibility(item.field, fi, true)
 		}
@@ -731,23 +743,18 @@ grid = component('x-grid', function(e) {
 			})
 
 		context_menu = menu({items: items})
-		let target = th || e.header
-		let r = target.client_rect()
+		let r = e.client_rect()
 		let px = mx - r.left
 		let py = my - r.top
-		context_menu.popup(target, 'inner-top', null, px, py)
+		context_menu.popup(e, 'inner-top', null, px, py)
 	}
 
 	// mouse bindings ---------------------------------------------------------
 
-	function find_th(e) {
-		return e && (e.hasclass('x-grid-header-th') ? e : find_th(e.parent))
-	}
-
 	e.header.on('mousedown', function header_mousedown(ev) {
 		if (e.hasclass('col-resize'))
 			return // clicked on the resizing area.
-		let th = ev.target != e.header && find_th(ev.target)
+		let th = ev.target.closest('.x-grid-header-th')
 		if (!th) // didn't click on the th.
 			return
 		e.focus()
@@ -786,7 +793,7 @@ grid = component('x-grid', function(e) {
 			return
 		if (e.hasclass('col-resize'))
 			return // clicked on the resizing area.
-		let th = find_th(ev.target)
+		let th = ev.target.closest('.x-grid-header-th')
 		if (!th) // didn't click on the th.
 			return
 		e.focus()
@@ -809,12 +816,20 @@ grid = component('x-grid', function(e) {
 		return false
 	}
 
-	e.header.on('contextmenu', function(ev) {
+	e.on('contextmenu', function(ev) {
+		if (e.hasclass('loading'))
+			return false
 		if (e.hasclass('col-resize'))
-			return // clicked on the resizing area.
+			return false // clicked on the resizing area.
 		e.focus()
-		let th = ev.target != e.header && find_th(ev.target)
-		field_context_menu_popup(th, ev.clientX, ev.clientY)
+		let fi
+		if (ev.target.hasclass('x-grid-cell'))
+			fi = cell_address(ev.target)[1]
+		else {
+			let th = ev.target.closest('.x-grid-header-th')
+			fi = th && th.index
+		}
+		field_context_menu_popup(fi, ev.clientX, ev.clientY)
 		return false
 	})
 

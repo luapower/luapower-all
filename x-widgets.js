@@ -2477,7 +2477,11 @@ menu = component('x-menu', function(e) {
 
 	function create_item(item) {
 		let check_div = div({class: 'x-menu-check-div fa fa-check'})
-		let icon_div  = div({class: 'x-menu-icon-div '+(item.icon_class || '')})
+		let icon_div  = div({class: 'x-menu-icon-div'})
+		if (typeof item.icon == 'string')
+			icon_div.classes = item.icon
+		else
+			icon_div.set(item.icon)
 		let check_td  = H.td ({class: 'x-menu-check-td'}, check_div, icon_div)
 		let title_td  = H.td ({class: 'x-menu-title-td'})
 		title_td.set(item.text)

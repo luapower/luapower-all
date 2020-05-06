@@ -1234,10 +1234,9 @@
 
 .x-grid-progress-bar {
 	position: absolute;
-	top: 3.5em;
+	top: calc(3.5em - 3px);
 	width: 0%;
 	height: 3px;
-	bottom: 0;
 	pointer-events: none;
 }
 

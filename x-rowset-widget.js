@@ -234,9 +234,10 @@ function rowset_widget(e) {
 		notify(message, type)
 	}
 
+	e.update_loading = noop
 	function rowset_loading(on) {
-		e.disabled = !on
 		e.class('loading', on)
+		e.update_loading(on)
 	}
 
 	e.update_load_progress = noop // stub
