@@ -655,8 +655,12 @@ grid = component('x-grid', function(e) {
 
 		function update_resize_markers() {
 			for (let fi = 0; fi < e.fields.length; fi++) {
+				let field = e.fields[fi]
 				let marker = resize_markers.at[fi]
-				marker.x = e.header.at[fi]._x + e.fields[fi].w
+				let th = e.header.at[fi]
+				marker.x = field.align == 'right'
+					? th._x + th._w - field.w
+					: th._x + field.w
 				marker.h = e.header_h + e.rows_view_h
 			}
 		}

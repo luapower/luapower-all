@@ -1514,7 +1514,7 @@ checkbox = component('x-checkbox', function(e) {
 	e.checked_value = true
 	e.unchecked_value = false
 
-	e.icon_div = span({class: 'x-markbox-icon x-checkbox-icon fa fa-square'})
+	e.icon_div = span({class: 'x-markbox-icon x-checkbox-icon far fa-square'})
 	e.text_div = span({class: 'x-markbox-text x-checkbox-text'})
 	e.add(e.icon_div, e.text_div)
 
@@ -1555,7 +1555,9 @@ checkbox = component('x-checkbox', function(e) {
 	e.update_value = function(v) {
 		v = v === e.checked_value
 		e.class('checked', v)
+		e.icon_div.class('fa', v)
 		e.icon_div.class('fa-check-square', v)
+		e.icon_div.class('far', !v)
 		e.icon_div.class('fa-square', !v)
 	}
 
