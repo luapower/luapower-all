@@ -487,25 +487,62 @@ grid = component('x-grid', function(e) {
 			}, cls, val)
 	}
 
-	e.update_loading = function(on) {
-		e.progress_bar.w = 0
-		e.progress_bar.show(on)
-	}
-
 	e.update_load_progress = function(p) {
 		e.progress_bar.w = (p * 100) + '%'
 	}
 
-	e.update_load_slow = function(on) {
-		if (on)
-			e.load_slow_tooltip = tooltip({
-				text: S('slow', 'Still working on it...'),
-				side: 'inner-center',
-				target: e.rows_view,
-				timeout: null,
+	{
+	let oe
+	function load_overlay(on, cls, text) {
+		if (oe) {
+			oe.remove()
+			oe = null
+		}
+		if (!on)
+			return
+		oe = overlay({class: 'x-grid-loading-overlay'})
+		oe.content.class('x-grid-loading-overlay-message')
+		oe.class(cls)
+		if (cls == 'error') {
+			let error = text.match(/[^\r\n]*/)[0]
+			let detail = text.slice(error.length)
+			let more_div = div({})
+			let band = action_band({
+				actions: 'more... less... < > retry:ok forget-it:cancel',
+				buttons: {
+					more: function() {
+						more_div.set(detail, 'pre-wrap')
+						band.at[0].hide()
+						band.at[1].show()
+					},
+					less: function() {
+						more_div.clear()
+						band.at[0].show()
+						band.at[1].hide()
+					},
+					retry: function() {
+						e.rowset.load()
+					},
+					forget_it: function() {
+						load_overlay(false)
+					},
+				},
 			})
-		else if (e.load_slow_tooltip)
-			e.load_slow_tooltip.target = null
+			band.at[1].hide()
+			let error_icon = span({class: 'x-grid-loading-error-icon fa fa-exclamation-circle'})
+			oe.content.add(div({}, error_icon, error, more_div, band))
+		} else
+			oe.content.set(text)
+		e.add(oe)
+	}
+	}
+
+	e.update_load_slow = function(on) {
+		load_overlay(on, 'slow', S('slow', 'Still working on it...'))
+	}
+
+	e.update_load_fail = function(on, error, type, status, message, body) {
+		load_overlay(on, 'error', error)
 	}
 
 	// column moving ----------------------------------------------------------

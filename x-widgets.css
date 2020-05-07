@@ -118,7 +118,7 @@
 	border-radius: .25em;
 	font-size: 100%;
 	font-weight: bold;
-	line-height: initial;
+	line-height: normal;
 
 	/* behavior */
 	cursor: pointer;
@@ -173,6 +173,14 @@
 	background-color: #279f43;
 	background-image: none;
 	box-shadow: inset 0 0.15em 0.3em rgba(27,31,35,.15);
+}
+
+/* action band ------------------------------------------------------------ */
+
+.x-action-band {
+	display: flex;
+	padding: .5em 0;
+	justify-content: flex-end;
 }
 
 /* tooltip ---------------------------------------------------------------- */
@@ -1132,6 +1140,7 @@
 .x-dialog {
 	display: flex;
 	flex-flow: column;
+	padding: .5em 1em;
 }
 
 .x-dialog-title {
@@ -1148,7 +1157,7 @@
 .x-dialog-footer,
 .x-dialog-content {
 	display: flex;
-	padding: 1em 1em;
+	padding: 1em 0;
 }
 
 .x-dialog-content {
@@ -1246,6 +1255,32 @@
 
 .x-grid.loading {
 	opacity: .7;
+}
+
+.x-grid-loading-overlay {
+	padding: .5em;
+}
+
+.x-grid-loading-overlay.error {
+	background: #00000011;
+}
+
+.x-grid-loading-overlay-message {
+	padding: .5em 1em;
+	background: white;
+}
+
+.x-grid-loading-overlay-message .x-button {
+	line-height: 1em;
+}
+
+.x-grid-loading-error-icon {
+	margin: 0 .5em;
+	color: var(--x-error-bg-color);
+}
+
+.x-grid-loading-overlay-message {
+	box-shadow: 2px 2px 10px #00000044;
 }
 
 /* grid rows */

@@ -531,6 +531,7 @@ action['ajax_test.json'] = function()
 end
 
 function rowset.test_static()
+	error'duude'
 	if method'post' then
 		--
 	else
@@ -553,6 +554,7 @@ function rowset.test_static()
 end
 
 function rowset.test_query()
+	error'duude'
 
 	query'create database if not exists rowset_test'
 	query'use rowset_test'

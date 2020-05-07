@@ -163,6 +163,7 @@ rowset = function(...options) {
 	function bind_owner(on) {
 		if (!owner)
 			return
+		assert(owner.has_attach_events)
 		owner.on('attach', d.attach, on)
 		owner.on('detach', d.detach, on)
 	}
@@ -791,13 +792,15 @@ rowset = function(...options) {
 	}
 
 	function load_fail(type, status, message, body) {
+		let err
 		if (type == 'http')
-			d.fire('notify', 'error',
-				S('rowset_load_http_error', 'Server returned {0} {1}\n{2}').format(status, message, body))
+			err = S('rowset_load_http_error', 'Server returned {0} {1}\n{2}').format(status, message, body)
 		else if (type == 'network')
-			d.fire('notify', 'error', S('rowset_load_network_error', 'Loading failed: network error.'))
+			err = S('rowset_load_network_error', 'Loading failed: network error.')
 		else if (type == 'timeout')
-			d.fire('notify', 'error', S('rowset_load_timeout_error', 'Loading failed: timed out.'))
+			err = S('rowset_load_timeout_error', 'Loading failed: timed out.')
+		d.fire('notify', 'error', err)
+		d.fire('load_fail', err, type, status, message, body)
 	}
 
 	// saving changes ---------------------------------------------------------
@@ -1369,7 +1372,7 @@ tooltip = component('x-tooltip', function(e) {
 	}
 
 	e.late_property('text',
-		function()  { return e.text_div.html },
+		function()  { return e.text_div.textContent },
 		function(s) {
 			e.text_div.set(s, 'pre-wrap')
 			e.update()
@@ -3033,7 +3036,75 @@ toaster = component('x-toaster', function(e) {
 }
 
 // ---------------------------------------------------------------------------
-// modal dialog with standard buttons
+// action band
+// ---------------------------------------------------------------------------
+
+action_band = component('x-action-band', function(e) {
+
+	e.classes = 'x-widget x-action-band'
+	e.actions = 'ok:ok cancel:cancel'
+
+	e.init = function() {
+		let ct = e
+		for (let s of e.actions.split(' ')) {
+			if (s == '<') {
+				ct = div({style: `
+						flex: auto;
+						display: flex;
+						flex-flow: row wrap;
+						justify-content: center;
+					`})
+				e.add(ct)
+				continue
+			} else if (s == '>') {
+				align = 'right'
+				ct = e
+				continue
+			}
+			s = s.split(':')
+			let name = s.shift()
+			let spec = new Set(s)
+			let btn = e.buttons && e.buttons[name.replace('-', '_').replace(/[^\w]/g, '')]
+			if (!(btn instanceof Node)) {
+				if (typeof btn == 'function')
+					btn = {action: btn}
+				btn = update({}, btn)
+				if (spec.has('primary') || spec.has('ok'))
+					btn.primary = true
+				btn = button(btn)
+			}
+			btn.class('x-dialog-button-'+name)
+			btn.dialog = e
+			if (!btn.text) {
+				btn.text = S(name.replace('-', '_'), name.replace(/[_\-]/g, ' '))
+				btn.style['text-transform'] = 'capitalize'
+			}
+			if (name == 'ok' || spec.has('ok')) {
+				btn.on('action', function() {
+					e.ok()
+				})
+			}
+			if (name == 'cancel' || spec.has('cancel')) {
+				btn.on('action', function() {
+					e.cancel()
+				})
+			}
+			ct.add(btn)
+		}
+	}
+
+	e.ok = function() {
+		e.fire('ok')
+	}
+
+	e.cancel = function() {
+		e.fire('cancel')
+	}
+
+})
+
+// ---------------------------------------------------------------------------
+// modal dialog with action band footer
 // ---------------------------------------------------------------------------
 
 dialog = component('x-dialog', function(e) {
@@ -3044,58 +3115,6 @@ dialog = component('x-dialog', function(e) {
 	e.x_button = true
 	e.footer = 'ok:ok cancel:cancel'
 
-	function make_footer(footer) {
-		if (footer instanceof Node)
-			e.footer = footer
-		else {
-			e.footer = div({class: 'x-dialog-footer'})
-			let ct = e.footer
-			for (let s of footer.split(' ')) {
-				if (s == '<') {
-					ct = div({style: `
-							flex: auto;
-							display: flex;
-							flex-flow: row wrap;
-							justify-content: center;
-						`})
-					e.footer.add(ct)
-					continue
-				} else if (s == '>') {
-					align = 'right'
-					ct = e.footer
-					continue
-				}
-				s = s.split(':')
-				let name = s.shift()
-				let spec = new Set(s)
-				let btn = e.buttons && e.buttons[name]
-				if (!(btn instanceof Node)) {
-					btn = update({}, dialog.buttons[name], btn)
-					if (spec.has('primary') || spec.has('ok'))
-						btn.primary = true
-					btn = button(btn)
-				}
-				btn.class('x-dialog-button-'+name)
-				btn.dialog = e
-				if (!btn.text) {
-					btn.text = S(name.replace('-', '_'), name.replace('-', ' ').replace('_', ' '))
-					btn.style['text-transform'] = 'capitalize'
-				}
-				if (name == 'ok' || spec.has('ok')) {
-					btn.on('action', function() {
-						e.ok()
-					})
-				}
-				if (name == 'cancel' || spec.has('cancel')) {
-					btn.on('action', function() {
-						e.cancel()
-					})
-				}
-				ct.add(btn)
-			}
-		}
-	}
-
 	e.init = function() {
 		let title = div({class: 'x-dialog-title'})
 		title.set(e.title)
@@ -3104,7 +3123,8 @@ dialog = component('x-dialog', function(e) {
 		if (!e.content)
 			e.content = div()
 		e.content.class('x-dialog-content')
-		make_footer(e.footer)
+		if (!(e.footer instanceof Node))
+			e.footer = action_band({actions: e.footer})
 		e.add(e.header, e.content, e.footer)
 		if (e.x_button) {
 			e.x_button = div({class: 'x-dialog-button-close fa fa-times'})
@@ -3146,4 +3166,3 @@ dialog = component('x-dialog', function(e) {
 
 })
 
-dialog.buttons = {}

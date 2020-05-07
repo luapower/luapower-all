@@ -173,6 +173,25 @@ function tag(tag, attrs, ...children) {
 div = H.div
 span = H.span
 
+// quick overlays ------------------------------------------------------------
+
+function overlay(attrs) {
+	let e = div(attrs)
+	e.style = `
+		position: absolute;
+		left: 0;
+		top: 0;
+		right: 0;
+		bottom: 0;
+		display: flex;
+		overflow: auto;
+		justify-content: center;
+	` + (attrs && attrs.style || '')
+	e.content = div({style: 'margin: auto;'})
+	e.add(e.content)
+	return e
+}
+
 // quick flex layouts --------------------------------------------------------
 
 function hflex(...children) {
@@ -430,6 +449,7 @@ function component(tag, cons) {
 
 		constructor(...args) {
 			super()
+			this.has_attach_events = true
 			cons(this)
 
 			// add user options, overriding any defaults and stub methods.

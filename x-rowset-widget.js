@@ -121,6 +121,7 @@ function rowset_widget(e) {
 		e.rowset.on('loading', rowset_loading, on)
 		e.rowset.on('load_slow', rowset_load_slow, on)
 		e.rowset.on('load_progress', rowset_load_progress, on)
+		e.rowset.on('load_fail', rowset_load_fail, on)
 		// misc.
 		e.rowset.on('notify', e.notify, on)
 		// take/release ownership of the rowset.
@@ -163,6 +164,7 @@ function rowset_widget(e) {
 	// responding to structural updates ---------------------------------------
 
 	function rowset_loaded() {
+		e.update_load_fail(false)
 		free_editor()
 		e.init_fields_array()
 		e.init_rows_array()
@@ -234,20 +236,24 @@ function rowset_widget(e) {
 		notify(message, type)
 	}
 
-	e.update_loading = noop
 	function rowset_loading(on) {
 		e.class('loading', on)
-		e.update_loading(on)
+		e.update_load_progress(0)
 	}
 
 	e.update_load_progress = noop // stub
-	function rowset_load_progress(...args) {
-		e.update_load_progress(...args)
+	function rowset_load_progress(p) {
+		e.update_load_progress(p)
 	}
 
 	e.update_load_slow = noop // stub
 	function rowset_load_slow(on) {
 		e.update_load_slow(on)
+	}
+
+	e.update_load_fail = noop // stub
+	function rowset_load_fail(...args) {
+		e.update_load_fail(true, ...args)
 	}
 
 	// navigating -------------------------------------------------------------
