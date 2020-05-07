@@ -125,8 +125,8 @@ function rowset_widget(e) {
 		// misc.
 		e.rowset.on('notify', e.notify, on)
 		// take/release ownership of the rowset.
-		if (e.rowset_owner)
-			e.rowset.owner = on ? e : null
+		if (e.rowset_owner && on)
+			e.rowset.owner = e
 	}
 
 	// adding & removing rows -------------------------------------------------
@@ -236,8 +236,10 @@ function rowset_widget(e) {
 		notify(message, type)
 	}
 
+	e.update_loading = noop // stub
 	function rowset_loading(on) {
 		e.class('loading', on)
+		e.update_loading(on)
 		e.update_load_progress(0)
 	}
 
@@ -504,7 +506,7 @@ function rowset_widget(e) {
 			return true
 		if (row.cells_modified) {
 			let err = e.rowset.validate_row(row)
-			d.set_row_error(row, err)
+			e.rowset.set_row_error(row, err)
 			if (!!err)
 				return false
 		}

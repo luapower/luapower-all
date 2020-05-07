@@ -715,17 +715,17 @@ main.add(
 </help>
 <script>
 
-main.add(
-	date_dropdown({
-		value: now(),
-		validate: function(v) {
-			if (day(v) == day(now()))
-				return 'Can\'t have today.'
-			if (day(v) == day(now(), 1))
-				return 'Can\'t have tomorrow.'
-		}
-	})
-)
+d = date_dropdown({
+	value: now(),
+	validate: function(v) {
+		if (day(v) == day(now()))
+			return 'Can\'t have today.'
+		if (day(v) == day(now(), 1))
+			return 'Can\'t have tomorrow.'
+	}
+})
+
+main.add(d)
 
 </script>
 </template>
@@ -753,7 +753,7 @@ r1 = rowset({
 
 main.add(
 	grid_dropdown({
-		value: 2,
+		value: 4,
 		lookup_rowset: r1,
 		lookup_col: 'id',
 		display_col: 'name',
@@ -1117,7 +1117,7 @@ reload_button.on('click', function() {
 	run_script()
 })
 
-demo_list.focus_cell(15)
+demo_list.focus_cell(18)
 
 demo_list_ct.add(demo_list)
 

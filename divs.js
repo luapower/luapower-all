@@ -175,7 +175,7 @@ span = H.span
 
 // quick overlays ------------------------------------------------------------
 
-function overlay(attrs) {
+function overlay(attrs, content) {
 	let e = div(attrs)
 	e.style = `
 		position: absolute;
@@ -187,10 +187,19 @@ function overlay(attrs) {
 		overflow: auto;
 		justify-content: center;
 	` + (attrs && attrs.style || '')
-	e.content = div({style: 'margin: auto;'})
-	e.add(e.content)
+	if (content == null)
+		content = div()
+	e.set(content)
+	e.content = e.at[0]
+	e.content.style['margin'] = 'auto' // center it.
 	return e
 }
+
+method(Element, 'overlay', function(target, attrs, content) {
+	let e = overlay(attrs, content)
+	target.add(e)
+	return e
+})
 
 // quick flex layouts --------------------------------------------------------
 
@@ -754,7 +763,7 @@ method(HTMLElement, 'popup', function(target, side, align, px, py) {
 
 // modal window pattern ------------------------------------------------------
 
-method(HTMLElement, 'modal', function(on) {
+method(Element, 'modal', function(on) {
 	let e = this
 	if (on == false) {
 		if (e.__dialog) {
@@ -784,7 +793,6 @@ method(HTMLElement, 'modal', function(on) {
 		e.focus()
 	}
 })
-
 
 // list element live move pattern --------------------------------------------
 

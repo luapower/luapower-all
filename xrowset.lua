@@ -531,7 +531,10 @@ action['ajax_test.json'] = function()
 end
 
 function rowset.test_static()
-	error'duude'
+	math.randomseed(time())
+	if random() > .5 then
+		error'iiiiiiiiiiiiiiii mmmmmmmmmmmmmmmmmmmmmmmm iiiiiiiiiiiiii mmmmmmmmmmmmmmm'
+	end
 	if method'post' then
 		--
 	else
@@ -547,14 +550,17 @@ function rowset.test_static()
 			},
 			rows = rows,
 		}
-		sleep(2) --trigger slow timeout
-		send_slowly(json(t), 1)
+		sleep(5) --trigger slow timeout
+		send_slowly(json(t), 5)
 		--return t
 	end
 end
 
 function rowset.test_query()
-	error'duude'
+	math.randomseed(time())
+	if random() > .5 then
+		error'duude'
+	end
 
 	query'create database if not exists rowset_test'
 	query'use rowset_test'

@@ -93,6 +93,31 @@
 	}
 }
 
+function owner_mixin(e) {
+
+	let owner
+
+	function bind_owner(on) {
+		if (!owner)
+			return
+		assert(owner.has_attach_events)
+		owner.on('attach', e.attach, on)
+		owner.on('detach', e.detach, on)
+	}
+
+	property(e, 'owner', {
+		get: function() { return owner },
+		set: function(owner1) {
+			if (owner1 == owner)
+				return
+			bind_owner(false)
+			owner = owner1
+			bind_owner(true)
+		},
+	})
+
+}
+
 rowset = function(...options) {
 
 	let d = {}
@@ -103,6 +128,7 @@ rowset = function(...options) {
 	d.can_change_rows = false
 
 	events_mixin(d)
+	owner_mixin(d)
 
 	let field_map = new Map() // field_name->field
 
@@ -158,23 +184,6 @@ rowset = function(...options) {
 		init_params(d.params)
 		init_rows(d.rows)
 	}
-
-	let owner
-	function bind_owner(on) {
-		if (!owner)
-			return
-		assert(owner.has_attach_events)
-		owner.on('attach', d.attach, on)
-		owner.on('detach', d.detach, on)
-	}
-	property(d, 'owner', {
-		get: function() { return owner },
-		set: function(owner1) {
-			bind_owner(false)
-			owner = owner1
-			bind_owner(true)
-		},
-	})
 
 	d.attach = function() {
 		bind_lookup_rowsets(true)
@@ -385,7 +394,7 @@ rowset = function(...options) {
 	d.validate_value = function(field, val, row) {
 
 		if (!d.can_change_value(row, field))
-			return S('error_cell_read_only', 'cell is read-only')
+			return S('error_cell_read_only', 'Cell is read-only')
 
 		if (val == null)
 			if (!field.allow_null)
@@ -394,18 +403,18 @@ rowset = function(...options) {
 				return
 
 		if (field.min != null && val < field.min)
-			return S('error_min_value', 'value must be at least {0}').format(field.min)
+			return S('error_min_value', 'Value must be at least {0}').format(field.min)
 
 		if (field.max != null && val > field.max)
-			return S('error_max_value', 'value must be at most {0}').format(field.max)
+			return S('error_max_value', 'Value must be at most {0}').format(field.max)
 
 		let lr = field.lookup_rowset
-		let lf = field.lookup_field
-		if (lr)
-			if (!lf)
-				return S('error_lookup_not_loaded', 'lookup rowset not loaded')
-			else if (!lr.lookup(lf, val))
-				return S('error_lookup', 'value not found in lookup')
+		if (lr) {
+			field.lookup_field = field.lookup_field || lr.field(field.lookup_col)
+			field.display_field = field.display_field || lr.field(field.display_col || lr.name_col)
+			if (!lr.lookup(field.lookup_field, val))
+				return S('error_lookup', 'Value not found in lookup rowset')
+		}
 
 		let err = field.validate && field.validate.call(d, val, field)
 		if (typeof err == 'string')
@@ -603,7 +612,8 @@ rowset = function(...options) {
 			return false
 		if (row.is_new && row.save_request) {
 			d.fire('notify', 'error',
-				S('cannot remove a row that is in the process of being added to the server'))
+				S('error_remove_while_saving',
+					'Cannot remove a row that is in the process of being added to the server'))
 			return false
 		}
 		return true
@@ -708,11 +718,10 @@ rowset = function(...options) {
 			return
 		if (requests && requests.size && !d.load_request) {
 			d.fire('notify', 'error',
-				S('load_while_saving', 'Cannot refresh while saving.'))
+				S('error_load_while_saving', 'Cannot reload while saving is in progress.'))
 			return
 		}
-		if (d.load_request)
-			d.load_request.abort()
+		d.abort_loading()
 		let req = ajax({
 			url: make_url(params),
 			progress: load_progress,
@@ -728,6 +737,14 @@ rowset = function(...options) {
 		d.fire('loading', true)
 		req.send()
 	}
+
+	d.abort_loading = function() {
+		if (!d.load_request)
+			return
+		d.load_request.abort()
+		d.load_request = null
+	}
+
 
 	function load_progress(p, loaded, total) {
 		d.fire('load_progress', p, loaded, total)
@@ -761,13 +778,13 @@ rowset = function(...options) {
 			ok = true
 		}
 		if (!ok)
-			d.fire('notify', 'error', 'client fields do not match server fields')
+			d.fire('notify', 'error', 'Client fields do not match server fields')
 		return ok
 	}
 
 	function load_success(res) {
 
-		changed_rows = null
+		d.changed_rows = null
 
 		d.can_edit        = res.can_edit
 		d.can_add_rows    = res.can_add_rows
@@ -794,26 +811,25 @@ rowset = function(...options) {
 	function load_fail(type, status, message, body) {
 		let err
 		if (type == 'http')
-			err = S('rowset_load_http_error', 'Server returned {0} {1}\n{2}').format(status, message, body)
+			err = S('error_http', 'Server returned {0} {1}').format(status, message)
 		else if (type == 'network')
-			err = S('rowset_load_network_error', 'Loading failed: network error.')
+			err = S('error_load_network', 'Loading failed: network error.')
 		else if (type == 'timeout')
-			err = S('rowset_load_timeout_error', 'Loading failed: timed out.')
-		d.fire('notify', 'error', err)
+			err = S('error_load_timeout', 'Loading failed: timed out.')
+		if (err)
+			d.fire('notify', 'error', err, body)
 		d.fire('load_fail', err, type, status, message, body)
 	}
 
 	// saving changes ---------------------------------------------------------
-
-	let changed_rows
 
 	function row_changed(row) {
 		if (row.is_new)
 			if (!row.row_modified)
 				return
 			else assert(!row.removed)
-		changed_rows = changed_rows || new Set()
-		changed_rows.add(row)
+		d.changed_rows = d.changed_rows || new Set()
+		d.changed_rows.add(row)
 		d.fire('row_changed', row)
 	}
 
@@ -857,7 +873,7 @@ rowset = function(...options) {
 		if (d.id_col)
 			changes.id_col = d.id_col
 		if (!row) {
-			for (let row of changed_rows)
+			for (let row of d.changed_rows)
 				add_row_changes(row, changes.rows)
 		} else
 			add_row_changes(row, changes.rows)
@@ -909,19 +925,19 @@ rowset = function(...options) {
 	d.save = function(row) {
 		if (!d.url)
 			return
-		if (!changed_rows)
+		if (!d.changed_rows)
 			return
 		let req = ajax({
 			url: d.url,
 			upload: d.pack_changes(row),
-			changed_rows: Array.from(changed_rows),
+			changed_rows: Array.from(d.changed_rows),
 			success: save_success,
 			fail: save_fail,
 			done: save_done,
 			slow: save_slow,
 			slow_timeout: d.slow_timeout,
 		})
-		changed_rows = null
+		d.changed_rows = null
 		add_request(req)
 		set_save_state(req.rows, req)
 		d.fire('saving', true)
@@ -930,8 +946,6 @@ rowset = function(...options) {
 
 	function save_slow(show) {
 		d.fire('saving_slow', show)
-		if (show)
-			d.fire('notify', 'info', S('slow', 'Still working on it...'))
 	}
 
 	function save_done() {
@@ -945,13 +959,31 @@ rowset = function(...options) {
 	}
 
 	function save_fail(type, status, message, body) {
+		let err
 		if (type == 'http')
-			d.fire('notify', 'error',
-				S('rowset_save_http_error', 'Server returned {0} {1}<pre>{2}</pre>').format(status, message, body))
+			err = S('error_http', 'Server returned {0} {1}').format(status, message)
 		else if (type == 'network')
-			d.fire('notify', 'error', S('rowset_save_network_error', 'Saving failed: network error.'))
+			err = S('error_save_network', 'Saving failed: network error.')
 		else if (type == 'timeout')
-			d.fire('notify', 'error', S('rowset_save_timeout_error', 'Saving failed: timed out.'))
+			err = S('error_save_timeout', 'Saving failed: timed out.')
+		if (err)
+			d.fire('notify', 'error', err, body)
+		d.fire('save_fail', err, type, status, message, body)
+	}
+
+	d.revert = function() {
+		if (!d.changed_rows)
+			return
+			/*
+		for (let row of d.changed_rows)
+			if (row.is_new)
+				//
+			else if (row.removed)
+				//
+			else if (row.cells_modified)
+				//
+			*/
+		d.changed_rows = null
 	}
 
 	init()
@@ -1026,13 +1058,13 @@ rowset = function(...options) {
 		val = parseFloat(val)
 
 		if (typeof val != 'number' || val !== val)
-			return S('error_invalid_number', 'invalid number')
+			return S('error_invalid_number', 'Invalid number')
 
 		if (field.multiple_of != null)
 			if (val % field.multiple_of != 0) {
 				if (field.multiple_of == 1)
-					return S('error_integer', 'value must be an integer')
-				return S('error_multiple', 'value must be multiple of {0}').format(field.multiple_of)
+					return S('error_integer', 'Value must be an integer')
+				return S('error_multiple', 'Value must be multiple of {0}').format(field.multiple_of)
 			}
 	}
 
@@ -1055,7 +1087,7 @@ rowset = function(...options) {
 
 	rowset.types.date.validate = function(val, field) {
 		if (typeof val != 'number' || val !== val)
-			return S('error_date', 'invalid date')
+			return S('error_date', 'Invalid date')
 	}
 
 	rowset.types.date.format = function(t) {
@@ -1079,7 +1111,7 @@ rowset = function(...options) {
 
 	rowset.types.bool.validate = function(val, field) {
 		if (typeof val != 'boolean')
-			return S('error_boolean', 'value not true or false')
+			return S('error_boolean', 'Value not true or false')
 	}
 
 	rowset.types.bool.format = function(val) {
@@ -1154,24 +1186,23 @@ function focused_row_mixin(e) {
 
 rowset_nav = function(...options) {
 	let nav = {}
+
 	events_mixin(nav)
+	owner_mixin(nav)
 	focused_row_mixin(nav)
-	update(nav, ...options)
-	nav.rowset = global_rowset(nav.rowset, {param_nav: nav.param_nav})
-	property(nav, 'owner', {
-		get: function() { return nav.rowset.owner },
-		set: function(owner) { nav.rowset.owner = owner }
-	})
-	let rowset_attach = nav.rowset.attach
-	nav.rowset.attach = function() {
-		rowset_attach()
+
+	nav.attach = function() {
 		nav.focused_row_bind_rowset(true)
 	}
-	let rowset_detach = nav.rowset.detach
-	nav.rowset.detach = function() {
-		rowset_detach()
+
+	nav.detach = function() {
 		nav.focused_row_bind_rowset(false)
 	}
+
+	update(nav, ...options)
+
+	nav.rowset = global_rowset(nav.rowset, {param_nav: nav.param_nav})
+
 	return nav
 }
 
@@ -1217,8 +1248,7 @@ function value_widget(e) {
 				owner: e,
 			})
 
-			e.nav = rowset_nav({rowset: internal_rowset, focused_row: row})
-			e.nav.owner = e
+			e.nav = rowset_nav({rowset: internal_rowset, focused_row: row, owner: e})
 
 			e.field = e.nav.rowset.field(0)
 			e.col = e.field.name
@@ -3042,11 +3072,11 @@ toaster = component('x-toaster', function(e) {
 action_band = component('x-action-band', function(e) {
 
 	e.classes = 'x-widget x-action-band'
-	e.actions = 'ok:ok cancel:cancel'
+	e.layout = 'ok:ok cancel:cancel'
 
 	e.init = function() {
 		let ct = e
-		for (let s of e.actions.split(' ')) {
+		for (let s of e.layout.split(' ')) {
 			if (s == '<') {
 				ct = div({style: `
 						flex: auto;
@@ -3065,17 +3095,20 @@ action_band = component('x-action-band', function(e) {
 			let name = s.shift()
 			let spec = new Set(s)
 			let btn = e.buttons && e.buttons[name.replace('-', '_').replace(/[^\w]/g, '')]
+			let btn_sets_text
 			if (!(btn instanceof Node)) {
 				if (typeof btn == 'function')
 					btn = {action: btn}
-				btn = update({}, btn)
+				else
+					btn = update({}, btn)
 				if (spec.has('primary') || spec.has('ok'))
 					btn.primary = true
+				btn_sets_text = btn.text != null
 				btn = button(btn)
 			}
 			btn.class('x-dialog-button-'+name)
 			btn.dialog = e
-			if (!btn.text) {
+			if (!btn_sets_text) {
 				btn.text = S(name.replace('-', '_'), name.replace(/[_\-]/g, ' '))
 				btn.style['text-transform'] = 'capitalize'
 			}
@@ -3116,15 +3149,17 @@ dialog = component('x-dialog', function(e) {
 	e.footer = 'ok:ok cancel:cancel'
 
 	e.init = function() {
-		let title = div({class: 'x-dialog-title'})
-		title.set(e.title)
-		e.title = title
-		e.header = div({class: 'x-dialog-header'}, title)
+		if (e.title != null) {
+			let title = div({class: 'x-dialog-title'})
+			title.set(e.title)
+			e.title = title
+			e.header = div({class: 'x-dialog-header'}, title)
+		}
 		if (!e.content)
 			e.content = div()
 		e.content.class('x-dialog-content')
 		if (!(e.footer instanceof Node))
-			e.footer = action_band({actions: e.footer})
+			e.footer = action_band({layout: e.footer, buttons: e.buttons})
 		e.add(e.header, e.content, e.footer)
 		if (e.x_button) {
 			e.x_button = div({class: 'x-dialog-button-close fa fa-times'})

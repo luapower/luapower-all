@@ -20,7 +20,7 @@
 
 function ajax(req) {
 
-	req = update_opt({slow_timeout: 4}, req)
+	req = update({slow_timeout: 4}, req)
 	events_mixin(req)
 
 	let xhr = new XMLHttpRequest()

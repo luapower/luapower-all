@@ -72,7 +72,7 @@ function return_true() { return true; }
 print = console.log
 
 function assert(ret, err, ...args) {
-	if (ret == null || ret === false || ret === undefined) {
+	if (ret == null || ret === false) {
 		throw ((err && err.format(...args) || 'assertion failed'))
 	}
 	return ret
@@ -192,16 +192,13 @@ function keys(o, cmp) {
 	return t
 }
 
-update = Object.assign
-
-// like update() but skips assigning `undefined` values.
-function update_opt(dt, ...args) {
+// like Object.assign() but skips assigning `undefined` values.
+function update(dt, ...args) {
 	for (let arg of args)
-		if (typeof arg == 'object') {
+		if (arg != null)
 			for (k in arg)
 				if (arg[k] !== undefined)
 					dt[k] = arg[k]
-		}
 	return dt
 }
 

@@ -487,28 +487,35 @@ grid = component('x-grid', function(e) {
 			}, cls, val)
 	}
 
+	e.update_loading = function(on) {
+		if (on)
+			load_overlay(true)
+	}
+
 	e.update_load_progress = function(p) {
-		e.progress_bar.w = (p * 100) + '%'
+		e.progress_bar.w = (lerp(p, 0, 1, .2, 1) * 100) + '%'
 	}
 
 	{
 	let oe
-	function load_overlay(on, cls, text) {
+	function load_overlay(on, cls, text, cancel_text, detail) {
 		if (oe) {
 			oe.remove()
 			oe = null
 		}
+		e.disabled = on
+		e.class('disabled', e.disabled)
 		if (!on)
 			return
 		oe = overlay({class: 'x-grid-loading-overlay'})
 		oe.content.class('x-grid-loading-overlay-message')
-		oe.class(cls)
+		if (cls)
+			oe.class(cls)
+		let focus_e
 		if (cls == 'error') {
-			let error = text.match(/[^\r\n]*/)[0]
-			let detail = text.slice(error.length)
-			let more_div = div({})
+			let more_div = div({class: 'x-grid-loading-overlay-detail'})
 			let band = action_band({
-				actions: 'more... less... < > retry:ok forget-it:cancel',
+				layout: 'more... less... < > retry:ok forget-it:cancel',
 				buttons: {
 					more: function() {
 						more_div.set(detail, 'pre-wrap')
@@ -521,6 +528,7 @@ grid = component('x-grid', function(e) {
 						band.at[1].hide()
 					},
 					retry: function() {
+						load_overlay(false)
 						e.rowset.load()
 					},
 					forget_it: function() {
@@ -530,19 +538,42 @@ grid = component('x-grid', function(e) {
 			})
 			band.at[1].hide()
 			let error_icon = span({class: 'x-grid-loading-error-icon fa fa-exclamation-circle'})
-			oe.content.add(div({}, error_icon, error, more_div, band))
+			oe.content.add(div({}, error_icon, text, more_div, band))
+			focus_e = band.last.prev
+		} else if (cls == 'waiting') {
+			let cancel = button({
+				text: cancel_text,
+				action: function() {
+					e.rowset.abort_loading()
+				},
+				attrs: {style: 'margin-left: 1em;'},
+			})
+			oe.content.add(text, cancel)
+			focus_e = cancel
 		} else
-			oe.content.set(text)
+			oe.content.remove()
 		e.add(oe)
+		if(focus_e && e.hasfocus)
+			focus_e.focus()
 	}
 	}
 
 	e.update_load_slow = function(on) {
-		load_overlay(on, 'slow', S('slow', 'Still working on it...'))
+		if (on)
+			load_overlay(true, 'waiting',
+				S('slow', 'Still working on it...'),
+				S('stop_waiting', 'Stop waiting'))
+		else
+			load_overlay(true, 'waiting',
+				S('loading', 'Loading...'),
+				S('stop_loading', 'Stop loading'))
 	}
 
 	e.update_load_fail = function(on, error, type, status, message, body) {
-		load_overlay(on, 'error', error)
+		if (type == 'abort')
+			load_overlay(false)
+		else
+			load_overlay(on, 'error', error, null, body)
 	}
 
 	// column moving ----------------------------------------------------------
@@ -654,7 +685,14 @@ grid = component('x-grid', function(e) {
 	{
 		let hit_fi, hit_x
 
-		e.on('mousemove', function col_resize_mousemove(mx, my) {
+		e.on('mousemove', function mousemove(mx, my) {
+			if (e.disabled) {
+				if (hit_fi != null) {
+					hit_fi = null
+					e.class('col-resize', false)
+				}
+				return
+			}
 			if (window.grid_dragging)
 				return
 			let r = e.header.client_rect()
@@ -667,7 +705,7 @@ grid = component('x-grid', function(e) {
 			return true
 		})
 
-		e.on('mouseleave', function col_resize_mouseleave() {
+		e.on('mouseleave', function mouseleave() {
 			if (window.grid_dragging)
 				return
 			hit_fi = null
@@ -724,7 +762,8 @@ grid = component('x-grid', function(e) {
 	}
 
 	let context_menu
-	function field_context_menu_popup(fi, mx, my) {
+	function context_menu_popup(fi, mx, my) {
+
 		if (context_menu) {
 			context_menu.close()
 			context_menu = null
@@ -733,10 +772,31 @@ grid = component('x-grid', function(e) {
 		let items = []
 
 		items.push({
-			text: S('reload', 'Reload'),
+			text: e.rowset.changed_rows ?
+				S('discard_changes_and_reload', 'Discard changes and reload') : S('reload', 'Reload'),
 			icon: 'fa fa-sync',
 			action: function() {
 				e.rowset.load()
+			},
+			separator: true,
+		})
+
+		items.push({
+			text: S('save', 'Save'),
+			icon: 'fa fa-save',
+			enabled: !!e.rowset.changed_rows,
+			action: function() {
+				e.rowset.save()
+			},
+			separator: true,
+		})
+
+		items.push({
+			text: S('revert_changes', 'Revert changes'),
+			icon: 'fa fa-undo',
+			enabled: !!e.rowset.changed_rows,
+			action: function() {
+				e.rowset.revert()
 			},
 			separator: true,
 		})
@@ -866,7 +926,7 @@ grid = component('x-grid', function(e) {
 			let th = ev.target.closest('.x-grid-header-th')
 			fi = th && th.index
 		}
-		field_context_menu_popup(fi, ev.clientX, ev.clientY)
+		context_menu_popup(fi, ev.clientX, ev.clientY)
 		return false
 	})
 
@@ -925,6 +985,9 @@ grid = component('x-grid', function(e) {
 	// keyboard bindings ------------------------------------------------------
 
 	e.on('keydown', function(key, shift) {
+
+		if (e.disabled)
+			return
 
 		// Arrows: horizontal navigation.
 		if (key == 'ArrowLeft' || key == 'ArrowRight') {
@@ -1049,6 +1112,10 @@ grid = component('x-grid', function(e) {
 
 	// printable characters: enter quick edit mode.
 	e.on('keypress', function(c) {
+
+		if (e.disabled)
+			return
+
 		if (e.quick_edit) {
 			if (!e.editor && e.focused_row && e.focused_field) {
 				e.enter_edit('select_all')
@@ -1071,11 +1138,11 @@ grid_dropdown = component('x-grid-dropdown', function(e) {
 	e.init = function() {
 		e.picker = grid(update({
 			rowset: e.lookup_rowset,
+			rowset_owner: false,
 			col: e.lookup_col,
 			can_edit: false,
 			can_focus_cells: false,
 			auto_focus_first_cell: false,
-			//rowset_owner: false,
 			auto_w: true,
 			auto_h: true,
 		}, e.grid))

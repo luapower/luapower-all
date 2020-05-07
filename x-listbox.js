@@ -208,7 +208,5 @@ select_button = component('x-select-button', function(e) {
 	listbox.construct(e)
 	e.auto_focus_first_cell = false
 
-	//
-
 })
 
