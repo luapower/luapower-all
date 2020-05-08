@@ -896,7 +896,7 @@ main.add(H.div({}, g), i1)
 
 main.add(button({
 	text: 'unfocus row',
-	action: function() { g.focus_cell(null, null, 0, 0, {must_not_move_row: true, unfocus_if_not_found: true}) },
+	action: function() { g.focus_cell(false) },
 }))
 
 </script>

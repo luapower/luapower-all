@@ -96,26 +96,26 @@
 
 function owner_mixin(e) {
 
-	let owner
+	let refcount = 0
 
-	function bind_owner(on) {
-		if (!owner)
-			return
+	e.bind_owner = function(owner, on) {
 		assert(owner.has_attach_events)
-		owner.on('attach', e.attach, on)
-		owner.on('detach', e.detach, on)
+		owner.on('attach', owner_attached, on)
+		owner.on('detach', owner_detached, on)
 	}
 
-	property(e, 'owner', {
-		get: function() { return owner },
-		set: function(owner1) {
-			if (owner1 == owner)
-				return
-			bind_owner(false)
-			owner = owner1
-			bind_owner(true)
-		},
-	})
+	function owner_attached() {
+		refcount++
+		if (refcount == 1)
+			e.attach()
+	}
+
+	function owner_detached() {
+		refcount--
+		assert(refcount >= 0)
+		if (refcount == 0)
+			e.detach()
+	}
 
 }
 
@@ -472,7 +472,7 @@ rowset = function(...options) {
 	d.row_has_errors = function(row) {
 		if (row.row_error != null)
 			return true
-		for (let field of e.fields)
+		for (let field of d.fields)
 			if (d.cell_error(row, field) != null)
 				return true
 		return false
@@ -1175,8 +1175,8 @@ function value_widget(e) {
 				fields: [field],
 				rows: [row],
 				can_change_rows: true,
-				owner: e,
 			})
+			internal_rowset.bind_owner(e)
 
 			// create a fake navigator.
 

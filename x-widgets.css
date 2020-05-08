@@ -188,13 +188,15 @@
 
 .x-tooltip {
 
+	/* content layout */
 	display: flex;
 	align-items: flex-start;
 	justify-content: flex-start;
+	overflow: visible; /* TODO: why? */
+	pointer-events: none;
 
 	/* positioning */
 	position: absolute;
-	overflow: visible;
 	z-index: 1;
 
 	/* sizing */

@@ -85,7 +85,7 @@ property(Element, 'index', { get: function() {
 }})
 }
 
-// dom tree querying & element list manipulation -----------------------------
+// dom tree querying ---------------------------------------------------------
 
 alias(Element, '$', 'querySelectorAll')
 alias(DocumentFragment, '$', 'querySelectorAll')
@@ -95,28 +95,71 @@ function E(s) {
 	return typeof s == 'string' ? document.querySelector(s) : s
 }
 
-// dom tree manipulation -----------------------------------------------------
+// safe dom tree manipulation ------------------------------------------------
+
+// create a text node from a string, quoting it automatically.
+function T(s, whitespace) {
+	if (typeof s == 'function')
+		s = s()
+	if (s instanceof Node)
+		return s
+	if (whitespace) {
+		let e = document.createElement('span')
+		e.style['white-space'] = whitespace
+		e.textContent = s
+		return e
+	}
+	return document.createTextNode(s)
+}
+
+// create a html element from a html string.
+// if the string contains more than one element or text node, wrap them in a span.
+function H(s) {
+	if (typeof s != 'string') // pass-through nulls and elements
+		return s
+	let span = H.span(0)
+	span.html = s.trim()
+	return span.childNodes.length > 1 ? span : span.firstChild
+}
+
+// create a HTML element from an attribute map and a list of child nodes.
+function tag(tag, attrs, ...children) {
+	let e = document.createElement(tag)
+	e.attrs = attrs
+	if (children)
+		e.add(...children)
+	return e
+}
+
+['div', 'span', 'button', 'input', 'textarea', 'label', 'table', 'thead',
+'tbody', 'tr', 'td', 'th', 'a', 'i', 'b', 'hr',
+'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'].forEach(function(s) {
+	H[s] = function(...a) { return tag(s, ...a) }
+})
+
+div = H.div
+span = H.span
 
 method(Element, 'add', function(...args) {
-	for (let e of args)
-		if (e != null)
-			this.append(e)
+	for (let s of args)
+		if (s != null)
+			this.append(T(s))
 })
 
 method(Element, 'insert', function(i0, ...args) {
 	for (let i = args.length-1; i >= 0; i--) {
-		let e = args[i]
-		if (e != null)
-			this.insertBefore(e, this.at[i0])
+		let s = args[i]
+		if (s != null)
+			this.insertBefore(T(s), this.at[i0])
 	}
 })
 
-method(Element, 'replace', function(i, e) {
+method(Element, 'replace', function(i, s) {
 	let e0 = this.at[i]
 	if (e0 != null)
-		this.replaceChild(e, e0)
-	else if (e != null)
-		this.append(e)
+		this.replaceChild(T(s), e0)
+	else if (s != null)
+		this.append(T(s))
 })
 
 method(Element, 'clear', function() {
@@ -137,41 +180,6 @@ method(Element, 'set', function(s, whitespace) {
 			this.style['white-space'] = whitespace
 	}
 })
-
-// creating html elements ----------------------------------------------------
-
-// create a text node from a string, quoting it automatically.
-function T(s) {
-	return typeof s == 'string' ? document.createTextNode(s) : s
-}
-
-// create a html element from a html string.
-// if the string contains more than one element or text node, wrap them in a span.
-function H(s) {
-	if (typeof s != 'string') // pass-through nulls and elements
-		return s
-	let span = H.span(0)
-	span.html = s.trim()
-	return span.childNodes.length > 1 ? span : span.firstChild
-}
-
-// create a HTML element from an attribute map and a list of child elements or text.
-function tag(tag, attrs, ...children) {
-	let e = document.createElement(tag)
-	e.attrs = attrs
-	if (children)
-		e.add(...children)
-	return e
-}
-
-['div', 'span', 'button', 'input', 'textarea', 'label', 'table', 'thead',
-'tbody', 'tr', 'td', 'th', 'a', 'i', 'b', 'hr',
-'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'].forEach(function(s) {
-	H[s] = function(...a) { return tag(s, ...a) }
-})
-
-div = H.div
-span = H.span
 
 // quick overlays ------------------------------------------------------------
 

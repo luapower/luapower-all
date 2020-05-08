@@ -15,8 +15,6 @@
 
 function rowset_widget(e) {
 
-	e.rowset_owner = true
-
 	e.can_edit = true
 	e.can_add_rows = true
 	e.can_remove_rows = true
@@ -125,8 +123,7 @@ function rowset_widget(e) {
 		// misc.
 		e.rowset.on('notify', e.notify, on)
 		// take/release ownership of the rowset.
-		if (e.rowset_owner && on)
-			e.rowset.owner = e
+		e.rowset.bind_owner(e, on)
 	}
 
 	// adding & removing rows -------------------------------------------------
@@ -379,10 +376,23 @@ function rowset_widget(e) {
 	}
 
 	e.focus_cell = function(ri, fi, rows, cols, ev) {
-		[ri, fi] = e.first_focusable_cell(ri, fi, rows, cols, ev)
+
+		if (ri === false || fi === false) // false means unfocus.
+			return e.focus_cell(
+				ri === false ? null : ri,
+				fi === false ? null : fi, 0, 0,
+				update({
+					must_not_move_row: ri === false,
+					must_not_move_col: fi === false,
+					unfocus_if_not_found: true,
+				}, ev)
+			)
+
+		;[ri, fi] = e.first_focusable_cell(ri, fi, rows, cols, ev)
 		if (ri == null) // failure to find row means cancel.
 			if (!(ev && ev.unfocus_if_not_found))
 				return false
+
 		let row_changed = e.focused_row_index != ri
 		let field_changed = e.focused_field_index != fi
 		if (row_changed) {
@@ -392,6 +402,7 @@ function rowset_widget(e) {
 			if (!e.exit_edit())
 				return false
 		}
+
 		if (row_changed || field_changed) {
 			e.focused_row_index   = ri
 			e.focused_field_index = fi
@@ -403,9 +414,12 @@ function rowset_widget(e) {
 			if (row_changed)
 				e.fire('focused_row_changed', row, ev)
 		}
-		if (!(ev && ev.make_visible == false))
-			if (e.isConnected)
-				e.scroll_to_cell(ri, fi)
+
+		if (ri != null)
+			if (!(ev && ev.make_visible == false))
+				if (e.isConnected)
+					e.scroll_to_cell(ri, fi)
+
 		return true
 	}
 
@@ -598,8 +612,9 @@ function rowset_widget(e) {
 			e.focused_row_index = null // avoid row_index()'s short circuit.
 			e.focused_row_index = e.row_index(focused_row)
 			e.init_rows()
-			if (e.isConnected)
-				e.scroll_to_cell(e.focused_row_index, e.focused_cell_index)
+			if (e.focused_row_index != null)
+				if (e.isConnected)
+					e.scroll_to_cell(e.focused_row_index, e.focused_cell_index)
 		}
 		e.fire('sort_order_changed')
 	}
