@@ -66,6 +66,7 @@
 	rs.rows: Set(row)
 		row[i]             : current cell value (always valid).
 		row.focusable      : row can be focused (true).
+		row.editable       : allow modifying (true).
 		row.input_val[i]   : currently set cell value, whether valid or not.
 		row.error[i]       : error message if cell is invalid.
 		row.row_error      : error message if row is invalid.
@@ -308,13 +309,13 @@ rowset = function(...options) {
 			cmps[i] = field_comparator(field)
 			let r = dir == 'desc' ? -1 : 1
 			// invalid rows come first
-			s.push('var v1 = !r1.row_error')
-			s.push('var v2 = !r2.row_error')
+			s.push('var v1 = r1.row_error == null')
+			s.push('var v2 = r2.row_error == null')
 			s.push('if (v1 < v2) return -1')
 			s.push('if (v1 > v2) return  1')
 			// invalid values come after
-			s.push('var v1 = !(r1.error && r1.error['+i+'])')
-			s.push('var v2 = !(r2.error && r2.error['+i+'])')
+			s.push('var v1 = !(r1.error && r1.error['+i+'] != null)')
+			s.push('var v2 = !(r2.error && r2.error['+i+'] != null)')
 			s.push('if (v1 < v2) return -1')
 			s.push('if (v1 > v2) return  1')
 			// modified rows come after
@@ -432,7 +433,7 @@ rowset = function(...options) {
 	}
 
 	d.can_focus_cell = function(row, field) {
-		return !row || (row.focusable != false && (field == null || field.focusable != false))
+		return (!row || row.focusable != false) && (field == null || field.focusable != false)
 	}
 
 	d.can_change_value = function(row, field) {
@@ -460,7 +461,7 @@ rowset = function(...options) {
 
 	d.set_row_error = function(row, err, ev) {
 		err = typeof err == 'string' ? err : undefined
-		if (err !== undefined) {
+		if (err != null) {
 			d.fire('notify', 'error', err)
 			print(err)
 		}
@@ -468,12 +469,21 @@ rowset = function(...options) {
 			row_state_changed(row, 'row_error', ev)
 	}
 
+	d.row_has_errors = function(row) {
+		if (row.row_error != null)
+			return true
+		for (let field of e.fields)
+			if (d.cell_error(row, field) != null)
+				return true
+		return false
+	}
+
 	d.set_value = function(row, field, val, ev) {
 		if (val === undefined)
 			val = null
 		let err = d.validate_value(field, val, row)
 		err = typeof err == 'string' ? err : undefined
-		let invalid = err !== undefined
+		let invalid = err != null
 		let cur_val = row[field.index]
 		let val_changed = !invalid && val !== cur_val
 
@@ -886,7 +896,7 @@ rowset = function(...options) {
 			let row = changed_rows[i]
 
 			let err = typeof rt.error == 'string' ? rt.error : undefined
-			let row_failed = rt.error !== undefined
+			let row_failed = rt.error != null
 			d.set_row_error(row, err)
 
 			if (rt.remove) {
@@ -1127,86 +1137,6 @@ rowset = function(...options) {
 }
 
 // ---------------------------------------------------------------------------
-// focused_row mixin
-// ---------------------------------------------------------------------------
-
-function focused_row_mixin(e) {
-
-	let focused_row = null
-
-	e.set_focused_row = function(row, ev) {
-		if (row == focused_row)
-			return
-		focused_row = row
-		e.fire('focused_row_changed', row, ev)
-	}
-
-	property(e, 'focused_row', {
-		get: function() { return focused_row },
-		set: function(row) { e.set_focused_row(row) },
-	})
-
-	e.focused_row_bind_rowset = function(on) {
-		e.rowset.on('loaded'             , rowset_loaded      , on)
-		e.rowset.on('row_removed'        , row_removed        , on)
-		e.rowset.on('cell_state_changed' , cell_state_changed , on)
-		e.rowset.on('row_state_changed'  , row_state_changed  , on)
-	}
-
-	// losing the focused row -------------------------------------------------
-
-	function rowset_loaded() {
-		e.set_focused_row(null)
-	}
-
-	function row_removed(row) {
-		if (focused_row == row)
-			e.set_focused_row(null)
-	}
-
-	// responding to row & cell state changes ---------------------------------
-
-	function cell_state_changed(row, field, prop, val, ev) {
-		if (row != focused_row)
-			return
-		e.fire('focused_row_cell_state_changed_for_'+field.name, prop, val, ev)
-		e.fire('focused_row_'+prop+'_changed_for_'+field.name, val, ev)
-	}
-
-	function row_state_changed(row, prop, val, ev) {
-		if (row != focused_row)
-			return
-		e.fire('focused_row_state_changed', prop, val, ev)
-		e.fire('focused_row_'+prop+'_changed', val, ev)
-	}
-
-}
-
-// standalone rowset navigator object ----------------------------------------
-
-rowset_nav = function(...options) {
-	let nav = {}
-
-	events_mixin(nav)
-	owner_mixin(nav)
-	focused_row_mixin(nav)
-
-	nav.attach = function() {
-		nav.focused_row_bind_rowset(true)
-	}
-
-	nav.detach = function() {
-		nav.focused_row_bind_rowset(false)
-	}
-
-	update(nav, ...options)
-
-	nav.rowset = global_rowset(nav.rowset, {param_nav: nav.param_nav})
-
-	return nav
-}
-
-// ---------------------------------------------------------------------------
 // value_widget mixin
 // ---------------------------------------------------------------------------
 
@@ -1229,7 +1159,7 @@ function value_widget(e) {
 
 	e.init_nav = function() {
 		if (!e.nav) {
-			// create an internal one-row-one-field rowset and a rowset_nav.
+			// create an internal one-row-one-field rowset.
 
 			// transfer value of e.foo to field.bar based on field_prop_map.
 			let field = {}
@@ -1248,7 +1178,9 @@ function value_widget(e) {
 				owner: e,
 			})
 
-			e.nav = rowset_nav({rowset: internal_rowset, focused_row: row, owner: e})
+			// create a fake navigator.
+
+			e.nav = {rowset: internal_rowset, focused_row: row, is_fake: true}
 
 			e.field = e.nav.rowset.field(0)
 			e.col = e.field.name
@@ -1256,17 +1188,22 @@ function value_widget(e) {
 			if (e.validate) // inline validator, only for internal-rowset widgets.
 				e.nav.rowset.on_validate_value(e.col, e.validate)
 
-			e.internal_nav = true
+			e.nav.rowset.on('cell_state_changed', function(row, field, prop, val, ev) {
+				cell_state_changed(prop, val, ev)
+			})
+
 		} else {
-			e.col = e.field ? e.field.name : '0'
+			e.col = e.field ? e.field.name : e.col || '0'
 			e.field = e.nav.rowset.field(e.col)
 		}
 		e.init_field()
 	}
 
 	e.bind_nav = function(on) {
-		e.nav.on('focused_row_changed', e.init_value, on)
-		e.nav.on('focused_row_cell_state_changed_for_'+e.col, cell_state_changed, on)
+		if (!e.nav.is_fake) {
+			e.nav.on('focused_row_changed', e.init_value, on)
+			e.nav.on('focused_row_cell_state_changed_for_'+e.col, cell_state_changed, on)
+		}
 		e.nav.rowset.on('display_values_changed_for_'+e.col, e.init_value, on)
 		e.nav.rowset.on('fields_changed', fields_changed)
 	}
@@ -1294,6 +1231,7 @@ function value_widget(e) {
 
 	e.init_value = function() {
 		cell_state_changed('input_value', e.input_value)
+		cell_state_changed('value', e.value)
 		cell_state_changed('cell_error', e.error)
 		cell_state_changed('cell_modified', e.modified)
 	}
@@ -1710,7 +1648,7 @@ input = component('x-input', function(e) {
 
 	e.init = function() {
 		e.init_nav()
-		if (e.internal_nav)
+		if (e.nav.is_fake)
 			e.nolabel = !e.field.text
 	}
 
@@ -2111,7 +2049,7 @@ dropdown = component('x-dropdown', function(e) {
 	e.init = function() {
 
 		e.init_nav()
-		if (e.internal_nav)
+		if (e.nav.is_fake)
 			e.nolabel = !e.field.text
 
 		e.picker.rebind_value(e.nav, e.col)
@@ -2583,7 +2521,7 @@ menu = component('x-menu', function(e) {
 		return table
 	}
 
-	function hide_submenu(tr, force) {
+	function hide_submenu(tr) {
 		if (!tr.submenu_table)
 			return
 		tr.submenu_table.remove()

@@ -890,13 +890,13 @@ r = rowset({
 
 g = grid({w: 200, h: 200, rowset: r})
 
-i1 = input({rowset: r, nav: g, col: 'name'})
+i1 = input({nav: g, col: 'name'})
 
 main.add(H.div({}, g), i1)
 
 main.add(button({
 	text: 'unfocus row',
-	action: function() { g.focused_row = null },
+	action: function() { g.focus_cell(null, null, 0, 0, {must_not_move_row: true, unfocus_if_not_found: true}) },
 }))
 
 </script>

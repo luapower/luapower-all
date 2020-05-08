@@ -55,7 +55,7 @@ grid = component('x-grid', function(e) {
 		set_header_visibility()
 		e.init_rows()
 		e.init_value()
-		e.init_focused_row()
+		e.init_focused_cell()
 		e.bind_rowset(true)
 		e.bind_nav(true)
 		bind_document(true)
@@ -762,7 +762,7 @@ grid = component('x-grid', function(e) {
 		e.init_fields()
 		e.init_rows()
 		e.init_value()
-		e.init_focused_row()
+		e.init_focused_cell()
 	}
 
 	let context_menu

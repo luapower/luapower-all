@@ -4,11 +4,9 @@ FINISH
 
 - ROWSET quicksearch bugs.
 
-- DROPDOWN lookup rowset ownership issue.
 - SPLIT fixed pane wrong size when other pane is larger than 100% but shrunk to 100%.
 
-- GRID slow saving rowset.
-- ROWSET retry after failure.
+- GRID saving per-row, all, revert per-row, revert all.
 - GRID show row-level errors.
 - ROWSET_WIDGET review operations that create a rowmap.
 
@@ -22,9 +20,10 @@ NEW
 - rowform widget
 - contenteditable-based auto-growing inline input box
 - textarea
-- modal window
 - checklistbox
 - global shortcuts
+- file upload with progress
+-
 
 
 FEATURES

@@ -32,7 +32,7 @@ listbox = component('x-listbox', function(e) {
 	e.attach = function() {
 		e.init_rows()
 		e.init_value()
-		e.init_focused_row()
+		e.init_focused_cell()
 		e.bind_rowset(true)
 		e.bind_nav(true)
 	}

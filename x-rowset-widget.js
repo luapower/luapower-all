@@ -31,19 +31,18 @@ function rowset_widget(e) {
 	e.prevent_exit_edit = false     // prevent exiting edit mode on validation errors
 	e.prevent_exit_row = true       // prevent changing row on validation errors
 
-	focused_row_mixin(e)
 	value_widget(e)
 
 	// row -> row_index mapping -----------------------------------------------
 
 	let rowmap
 
-	e.row_index = function(row, ri, force) {
+	e.row_index = function(row, ri) {
 		if (!row)
 			return null
 		if (ri != null && ri != false)
 			return ri
-		if (row == e.focused_row && !force) // most likely true (avoid maiking a rowmap).
+		if (row == e.focused_row) // most likely true (avoid maiking a rowmap).
 			return e.focused_row_index
 		if (!rowmap) {
 			rowmap = new Map()
@@ -77,6 +76,7 @@ function rowset_widget(e) {
 	// rows array -------------------------------------------------------------
 
 	e.init_rows_array = function() {
+		rowmap = null
 		e.rows = []
 		let i = 0
 		for (let row of e.rowset.rows) {
@@ -88,6 +88,7 @@ function rowset_widget(e) {
 	// fields array -----------------------------------------------------------
 
 	e.init_fields_array = function() {
+		fieldmap = null
 		e.fields = []
 		if (e.cols) {
 			for (let col of e.cols.split(' ')) {
@@ -108,7 +109,6 @@ function rowset_widget(e) {
 	// rowset binding ---------------------------------------------------------
 
 	e.bind_rowset = function(on) {
-		e.focused_row_bind_rowset(on)
 		// structural changes
 		e.rowset.on('loaded'      , rowset_loaded , on)
 		e.rowset.on('row_added'   , row_added     , on)
@@ -168,10 +168,9 @@ function rowset_widget(e) {
 		free_editor()
 		e.init_fields_array()
 		e.init_rows_array()
-		rowmap = null
 		e.init_fields()
 		e.init_rows()
-		e.init_focused_row()
+		e.init_focused_cell()
 	}
 
 	function row_added(row, ev) {
@@ -218,12 +217,20 @@ function rowset_widget(e) {
 	function row_state_changed(row, prop, val, ev) {
 		let ri = e.row_index(row, ev && ev.row_index)
 		e.update_row_state(ri, prop, val, ev)
+		if (row == e.focused_row) {
+			e.fire('focused_row_state_changed', prop, val, ev)
+			e.fire('focused_row_'+prop+'_changed', val, ev)
+		}
 	}
 
 	function cell_state_changed(row, field, prop, val, ev) {
 		let ri = e.row_index(row, ev && ev.row_index)
 		let fi = e.field_index(field, ev && ev.field_index)
 		e.update_cell_state(ri, fi, prop, val, ev)
+		if (row == e.focused_row) {
+			e.fire('focused_row_cell_state_changed_for_'+field.name, prop, val, ev)
+			e.fire('focused_row_'+prop+'_changed_for_'+field.name, val, ev)
+		}
 	}
 
 	function display_values_changed(field) {
@@ -275,10 +282,22 @@ function rowset_widget(e) {
 			&& (!for_editing || e.can_change_value(row, field))
 	}
 
+	e.focused_row_index = null
+	e.focused_field_index = null
+	e.last_focused_field_index = null
+
+	e.property('focused_row', function() {
+		return e.rows[e.focused_row_index]
+	})
+
+	e.property('focused_field', function() {
+		return e.fields[e.focused_field_index]
+	})
+
 	e.first_focusable_cell = function(ri, fi, rows, cols, options) {
 
 		if (ri === true) ri = e.focused_row_index
-		if (fi === true) fi = e.focused_field_index
+		if (fi === true) fi = e.last_focused_field_index
 		rows = or(rows, 0) // by default find the first focusable row.
 		cols = or(cols, 0) // by default find the first focusable col.
 
@@ -359,46 +378,34 @@ function rowset_widget(e) {
 		return [last_valid_ri, last_valid_fi]
 	}
 
-	e.focused_row_index = null
-	e.focused_field_index = null
-
-	e.property('focused_field', function() {
-		return e.fields[e.focused_field_index]
-	})
-
 	e.focus_cell = function(ri, fi, rows, cols, ev) {
-		if (ri === false) { // explicit `false` row means remove focus only.
-			[ri, fi] = [null, null]
-		} else {
-			[ri, fi] = e.first_focusable_cell(ri, fi, rows, cols, ev)
-			if (ri == null) // failure to find row means cancel.
+		[ri, fi] = e.first_focusable_cell(ri, fi, rows, cols, ev)
+		if (ri == null) // failure to find row means cancel.
+			if (!(ev && ev.unfocus_if_not_found))
 				return false
-		}
-
-		let same_cell
-		if (e.focused_row_index != ri) {
-			if (!e.exit_row())
+		let row_changed = e.focused_row_index != ri
+		let field_changed = e.focused_field_index != fi
+		if (row_changed) {
+			if (!e.exit_focused_row())
 				return false
-		} else if (e.focused_field_index != fi) {
+		} else if (field_changed) {
 			if (!e.exit_edit())
 				return false
-		} else if (!(ev && ev.force))
-			same_cell = true
-
-		if (!same_cell) {
+		}
+		if (row_changed || field_changed) {
 			e.focused_row_index   = ri
 			e.focused_field_index = fi
-
-			let row = e.rows[ri]
-			e.set_focused_row(row, update({input: e}, ev))
-			e.set_value(e.rowset.value(row, e.field), update({input: e}, ev))
+			e.last_focused_field_index = or(fi, e.last_focused_field_index)
 			e.update_cell_focus(ri, fi, ev)
+			let row = e.rows[ri]
+			let val = row ? e.rowset.value(row, e.field) : null
+			e.set_value(val, update({input: e}, ev))
+			if (row_changed)
+				e.fire('focused_row_changed', row, ev)
 		}
-
-		if (!ev || ev.make_visible != false)
+		if (!(ev && ev.make_visible == false))
 			if (e.isConnected)
 				e.scroll_to_cell(ri, fi)
-
 		return true
 	}
 
@@ -414,26 +421,19 @@ function rowset_widget(e) {
 		return ri == null
 	}
 
-	e.init_focused_row = function() {
+	e.init_focused_cell = function() {
 		e.focus_cell(true, true, 0, 0, {must_not_move_row: !e.auto_focus_first_cell})
 	}
-
-	// responding to navigation -----------------------------------------------
-
-	e.on('focused_row_changed', function(row, ev) {
-		if (ev && ev.input == e)
-			return
-		let ri = e.row_index(row)
-		e.focus_cell(ri, null, 0, 0, ev)
-	})
 
 	// responding to value changes --------------------------------------------
 
 	e.update_value = function(v, ev) {
 		if (ev && ev.input == e)
-			return
-		let ri = e.row_index(e.rowset.lookup(e.field, v))
-		e.focus_cell(ri, null, 0, 0, update({must_not_move_row: true}, ev))
+			return // coming from focus_cell(), avoid recursion.
+		let row = e.rowset.lookup(e.field, v)
+		let ri = e.row_index(row)
+		e.focus_cell(ri, true, 0, 0,
+			update({must_not_move_row: true, unfocus_if_not_found: true}, ev))
 	}
 
 	// editing ----------------------------------------------------------------
@@ -475,12 +475,14 @@ function rowset_widget(e) {
 		if (!e.editor)
 			return true
 
+		if (e.prevent_exit_edit && e.rowset.row_has_errors(e.focused_row))
+			return false
+
 		if (e.save_row_on == 'exit_edit')
 			e.save(e.focused_row)
 
-		if (e.prevent_exit_edit)
-			if (e.focused_td.hasclass('invalid'))
-				return false
+		if (e.prevent_exit_edit && e.rowset.row_has_errors(e.focused_row))
+			return false
 
 		let had_focus = e.hasfocus
 		free_editor()
@@ -500,19 +502,17 @@ function rowset_widget(e) {
 		e.exit_edit()
 	}
 
-	e.exit_row = function() {
+	e.exit_focused_row = function() {
 		let row = e.focused_row
 		if (!row)
 			return true
+		if (!e.exit_edit())
+			return false
 		if (row.cells_modified) {
 			let err = e.rowset.validate_row(row)
 			e.rowset.set_row_error(row, err)
-			if (!!err)
-				return false
 		}
-		if (!e.exit_edit())
-			return false
-		if (e.prevent_exit_row && row.error)
+		if (e.prevent_exit_row && e.rowset.row_has_errors(row))
 			return false
 		if (e.save_row_on == 'exit_row'
 			|| (e.save_row_on && row.is_new  && e.insert_row_on == 'exit_row')
@@ -591,10 +591,12 @@ function rowset_widget(e) {
 
 	function sort() {
 		if (order_by && order_by.size) {
+			let focused_row = e.focused_row
 			let cmp = e.rowset.comparator(order_by)
 			e.rows.sort(cmp)
 			rowmap = null
-			e.focused_row_index = e.row_index(e.focused_row, null, true)
+			e.focused_row_index = null // avoid row_index()'s short circuit.
+			e.focused_row_index = e.row_index(focused_row)
 			e.init_rows()
 			if (e.isConnected)
 				e.scroll_to_cell(e.focused_row_index, e.focused_cell_index)
@@ -637,7 +639,7 @@ function rowset_widget(e) {
 	// picker protocol --------------------------------------------------------
 
 	e.pick_near_value = function(delta, ev) {
-		if (e.focus_cell(e.focused_row_index, e.focused_field_index, delta, 0, ev))
+		if (e.focus_cell(true, true, delta, 0, ev))
 			e.fire('value_picked', ev)
 	}
 
