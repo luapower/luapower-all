@@ -317,10 +317,14 @@ let off = function(e, f) {
 	this.removeEventListener(e, f.listener || f)
 }
 
+function event(name, bubbles, ...args) {
+	return typeof name == 'string'
+		? new CustomEvent(name, {detail: {args}, cancelable: true, bubbles: bubbles})
+		: name
+}
+
 let fire = function(name, ...args) {
-	let e = typeof name == 'string' ?
-		new CustomEvent(name, {detail: {args}, cancelable: true, bubbles: true}) : name
-	return this.dispatchEvent(e)
+	return this.dispatchEvent(event(name, true, ...args))
 }
 
 for (let e of [Window, Document, Element]) {
@@ -490,12 +494,12 @@ function component(tag, cons) {
 			if (!this.isConnected)
 				return
 			this.attach()
-			this.fire('attach') // for popup() and setting rowset.owner.
+			this.fire(event('attach', false)) // for popup().
 		}
 
 		disconnectedCallback() {
 			this.detach()
-			this.fire('detach') // for popup() and setting rowset.owner.
+			this.fire(event('detach', false)) // for popup().
 		}
 	}
 

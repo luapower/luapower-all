@@ -123,7 +123,7 @@ function rowset_widget(e) {
 		// misc.
 		e.rowset.on('notify', e.notify, on)
 		// take/release ownership of the rowset.
-		e.rowset.bind_owner(e, on)
+		e.rowset.bind_user_widget(e, on)
 	}
 
 	// adding & removing rows -------------------------------------------------

@@ -94,27 +94,33 @@
 	}
 }
 
-function owner_mixin(e) {
+function widget_multiuser_mixin(e) {
 
 	let refcount = 0
 
-	e.bind_owner = function(owner, on) {
-		assert(owner.has_attach_events)
-		owner.on('attach', owner_attached, on)
-		owner.on('detach', owner_detached, on)
+	e.bind_user_widget = function(user, on) {
+		assert(user.has_attach_events)
+		if (on)
+			user_attached()
+		else
+			user_detached()
 	}
 
-	function owner_attached() {
+	function user_attached() {
 		refcount++
-		if (refcount == 1)
+		if (refcount == 1) {
+			e.isConnected = true
 			e.attach()
+		}
 	}
 
-	function owner_detached() {
+	function user_detached() {
 		refcount--
 		assert(refcount >= 0)
-		if (refcount == 0)
+		if (refcount == 0) {
+			e.isConnected = false
 			e.detach()
+		}
 	}
 
 }
@@ -129,7 +135,7 @@ rowset = function(...options) {
 	d.can_change_rows = false
 
 	events_mixin(d)
-	owner_mixin(d)
+	widget_multiuser_mixin(d)
 
 	let field_map = new Map() // field_name->field
 
@@ -189,14 +195,12 @@ rowset = function(...options) {
 	d.attach = function() {
 		bind_lookup_rowsets(true)
 		bind_param_nav(true)
-		d.isConnected = true
 	}
 
 	d.detach = function() {
 		bind_lookup_rowsets(false)
 		bind_param_nav(false)
 		abort_ajax_requests()
-		d.isConnected = false
 	}
 
 	// vlookup ----------------------------------------------------------------
@@ -1176,7 +1180,6 @@ function value_widget(e) {
 				rows: [row],
 				can_change_rows: true,
 			})
-			internal_rowset.bind_owner(e)
 
 			// create a fake navigator.
 
@@ -1200,18 +1203,19 @@ function value_widget(e) {
 	}
 
 	e.bind_nav = function(on) {
-		if (!e.nav.is_fake) {
+		if (e.nav.is_fake) {
+			e.nav.rowset.bind_user_widget(e, on)
+		} else {
 			e.nav.on('focused_row_changed', e.init_value, on)
 			e.nav.on('focused_row_cell_state_changed_for_'+e.col, cell_state_changed, on)
 		}
 		e.nav.rowset.on('display_values_changed_for_'+e.col, e.init_value, on)
-		e.nav.rowset.on('fields_changed', fields_changed)
+		e.nav.rowset.on('fields_changed', fields_changed, on)
 	}
 
 	e.rebind_value = function(nav, col) {
-		if (e.nav.owner == e)
-			e.nav.owner = null
-		e.bind_nav(false)
+		if (e.isConnected)
+			e.bind_nav(false)
 		e.nav = nav
 		e.col = col
 		e.field = e.nav.rowset.field(e.col)
