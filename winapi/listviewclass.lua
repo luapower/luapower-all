@@ -266,17 +266,16 @@ end
 
 function ListView:LVN_ITEMCHANGING(i, subitem, newstate, oldstate)
 	if getbit(newstate, LVIS_SELECTED) ~= getbit(oldstate, LVIS_SELECTED) then
-		if self.on_selection_changing then
-			self:on_selection_changing(i, subitem, getbit(newstate, LVIS_SELECTED))
-		end
+		self:fire(getbit(newstate, LVIS_SELECTED) and 'item_selecting' or 'item_unselecting', i, subitem)
 	end
 end
 
 function ListView:LVN_ITEMCHANGED(i, subitem, newstate, oldstate)
+	if getbit(newstate, LVIS_FOCUSED) ~= getbit(oldstate, LVIS_FOCUSED) then
+		self:fire(getbit(newstate, LVIS_FOCUSED) and 'item_focused' or 'item_unfocused', i, subitem)
+	end
 	if getbit(newstate, LVIS_SELECTED) ~= getbit(oldstate, LVIS_SELECTED) then
-		if self.on_selection_change then
-			self:on_selection_change(i, subitem, getbit(newstate, LVIS_SELECTED))
-		end
+		self:fire(getbit(newstate, LVIS_SELECTED) and 'item_selected' or 'item_unselected', i, subitem)
 	end
 end
 
