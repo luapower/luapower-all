@@ -74,6 +74,7 @@ function LVItemList:add(i, item)
 			self:set_subitem(i, si, item)
 		end
 	end
+	return item
 end
 
 function LVItemList:remove(i)
