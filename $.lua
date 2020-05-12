@@ -15,6 +15,9 @@ abs         = math.abs
 sqrt        = math.sqrt
 random      = math.random
 randomseed  = math.randomseed
+clamp       = glue.clamp
+round       = glue.round
+lerp        = glue.lerp
 
 concat      = table.concat
 insert      = table.insert
