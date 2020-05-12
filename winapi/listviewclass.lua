@@ -128,6 +128,26 @@ function LVItemList:get_rect(i, j, what)
 	end
 end
 
+function LVItemList:get_focused(i)
+	return ListView_GetItemState(self.hwnd, i, LVIS_FOCUSED) ~= 0
+end
+
+function LVItemList:set_focused(i, on)
+	ListView_SetItemState(self.hwnd, i, on ~= false and LVIS_FOCUSED or 0, LVIS_FOCUSED)
+end
+
+function LVItemList:get_selected(i)
+	return ListView_GetItemState(self.hwnd, i, LVIS_SELECTED) ~= 0
+end
+
+function LVItemList:set_selected(i, on)
+	ListView_SetItemState(self.hwnd, i, on ~= false and LVIS_SELECTED or 0, LVIS_SELECTED)
+end
+
+function LVItemList:ensure_visible(i, partial_ok)
+	ListView_EnsureVisible(self.hwnd, i, partial_ok)
+end
+
 --BIG TODO: separate styles for icon view, report view etc.
 
 ListView = {

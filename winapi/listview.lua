@@ -299,6 +299,24 @@ function ListView_DeleteAllItems(lv)
 	return checkpoz(SNDMSG(lv, LVM_DELETEALLITEMS))
 end
 
+LVM_GETITEMSTATE         = (LVM_FIRST + 44)
+function ListView_GetItemState(lv, i, mask)
+	return SNDMSG(lv, LVM_GETITEMSTATE, countfrom0(i), mask)
+end
+
+LVM_SETITEMSTATE         = (LVM_FIRST + 43)
+function ListView_SetItemState(lv, i, state, mask)
+	local item = LVITEM()
+	item.stateMask = mask
+	item.state = state
+	return checkpoz(SNDMSG(lv, LVM_SETITEMSTATE, countfrom0(i), ffi.cast('LVITEMW*', item)))
+end
+
+LVM_ENSUREVISIBLE        = (LVM_FIRST + 19)
+function ListView_EnsureVisible(lv, i, partial_ok)
+	return checkpoz(SNDMSG(lv, LVM_ENSUREVISIBLE, countfrom0(i), MAKELPARAM(partial_ok and 1 or 0, 0)))
+end
+
 --commands/owner drawing
 
 LVIR_BOUNDS              = 0
@@ -532,11 +550,6 @@ ListView_HitTest(hwndLV,  = pinfo) \
 	 (int)SNDMSG((hwndLV), LVM_HITTEST, 0, (LPARAM)(LV_HITTESTINFO *)(pinfo))
 
 
-LVM_ENSUREVISIBLE        = (LVM_FIRST + 19)
-ListView_EnsureVisible(hwndLV,  = i, fPartialOK) \
-	 (BOOL)SNDMSG((hwndLV), LVM_ENSUREVISIBLE, (WPARAM)(int)(i), MAKELPARAM((fPartialOK), 0))
-
-
 LVM_SCROLL               = (LVM_FIRST + 20)
 ListView_Scroll(hwndLV,  = dx, dy) \
 	 (BOOL)SNDMSG((hwndLV), LVM_SCROLL, (WPARAM)(int)(dx), (LPARAM)(int)(dy))
@@ -619,20 +632,8 @@ LVM_UPDATE               = (LVM_FIRST + 42)
 ListView_Update(hwndLV,  = i) \
 	 (BOOL)SNDMSG((hwndLV), LVM_UPDATE, (WPARAM)(i), 0L)
 
-LVM_SETITEMSTATE         = (LVM_FIRST + 43)
-ListView_SetItemState(hwndLV,  = i, data, mask) \
-{ LV_ITEM _ms_lvi;\
-  _ms_lvi.stateMask = mask;\
-  _ms_lvi.state = data;\
-  SNDMSG((hwndLV), LVM_SETITEMSTATE, (WPARAM)(i), (LPARAM)(LV_ITEM *)&_ms_lvi);\
-}
-
 ListView_SetCheckState(hwndLV,  = i, fCheck) \
   ListView_SetItemState(hwndLV, i, INDEXTOSTATEIMAGEMASK((fCheck)?2:1), LVIS_STATEIMAGEMASK)
-
-LVM_GETITEMSTATE         = (LVM_FIRST + 44)
-ListView_GetItemState(hwndLV,  = i, mask) \
-	(UINT)SNDMSG((hwndLV), LVM_GETITEMSTATE, (WPARAM)(i), (LPARAM)(mask))
 
 ListView_GetCheckState(hwndLV,  = i) \
 	((((UINT)(SNDMSG((hwndLV), LVM_GETITEMSTATE, (WPARAM)(i), LVIS_STATEIMAGEMASK))) >> 12) -1)
