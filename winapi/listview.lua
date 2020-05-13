@@ -328,8 +328,8 @@ LVNI_TOLEFT              = 0x0400
 LVNI_TORIGHT             = 0x0800
 
 LVM_GETNEXTITEM          = (LVM_FIRST + 12)
-function ListView_GetNextItem(lv, i, flags)
-	return countfrom1(SNDMSG(lv, LVM_GETNEXTITEM, i or -1, MAKELPARAM(flags, 0)))
+function ListView_GetNextItem(lv, i, LVNI)
+	return countfrom1(SNDMSG(lv, LVM_GETNEXTITEM, countfrom0(i), MAKELPARAM(flags(LVNI), 0)))
 end
 
 

@@ -711,20 +711,27 @@ end
 
 function SendMessagePtr(hwnd, WM, wParam, lParam)
 	if wParam == nil then wParam = 0 end
-	if type(lParam) == 'nil' then lParam = 0 end
+	if lParam == nil then lParam = 0 end
 	return C.SendMessageW(hwnd, flags(WM),
 		ffi.cast('WPARAM', wParam),
 		ffi.cast('LPARAM', lParam))
 end
 if ffi.abi'64bit' then
-	function SendMessage(...) --converts int64_t results on x64
-		return tonumber(SendMessagePtr(...))
+	local uint32_ct = ffi.typeof'uint32_t'
+	local int32_ct  = ffi.typeof'int32_t'
+	function SendMessage(hwnd, WM, wParam, lParam)
+		--WPARAM sometimes accepts negative values and those must be 32bit zero-extended.
+		if type(wParam) == 'number' and wParam < 0 then
+			wParam = ffi.cast(uint32_ct, wParam) --zero-extend negative numbers.
+		end
+		--LRESULT and LPARAM are sign-extended 32bit integers.
+		return tonumber(ffi.cast(int32_ct, SendMessagePtr(hwnd, WM, wParam, lParam)))
 	end
 else
 	SendMessage = SendMessagePtr
 end
 SNDMSG = SendMessage
-SNDMSG_PTR = SendMessagePtr --use this when the return value is a pointer
+SNDMSG_PTR = SendMessagePtr --use this when the return value is a pointer.
 
 function PostMessage(hwnd, WM, wParam, lParam)
 	if wParam == nil then wParam = 0 end

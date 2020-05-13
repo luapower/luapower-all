@@ -144,10 +144,6 @@ function LVItemList:set_selected(i, on)
 	ListView_SetItemState(self.hwnd, i, on ~= false and LVIS_SELECTED or 0, LVIS_SELECTED)
 end
 
-function LVItemList:ensure_visible(i, partial_ok)
-	ListView_EnsureVisible(self.hwnd, i, partial_ok)
-end
-
 --BIG TODO: separate styles for icon view, report view etc.
 
 ListView = {
@@ -270,22 +266,36 @@ function ListView:unfocus_focused_item()
 	self.items:set_focused(i, false)
 end
 
+function ListView:make_item_visible(i, partial_ok)
+	ListView_EnsureVisible(self.hwnd, i, partial_ok)
+end
+
+function ListView:click_item(i, make_visible)
+	for i1 = 1, self.items.count do
+		self.items:set_selected(i1, i1 == i)
+	end
+	self.items:set_focused(i)
+	if make_visible ~= false then
+		self:make_item_visible(i)
+	end
+end
+
 function ListView:set_hoover_time(time)
 	ListView_SetHooverTime(self.hwmd, time)
 end
 
 function ListView:LVN_ITEMCHANGING(i, subitem, newstate, oldstate)
 	if getbit(newstate, LVIS_SELECTED) ~= getbit(oldstate, LVIS_SELECTED) then
-		self:fire(getbit(newstate, LVIS_SELECTED) and 'item_selecting' or 'item_unselecting', i, subitem)
+		self:fire(getbit(newstate, LVIS_SELECTED) and 'on_item_selecting' or 'on_item_unselecting', i, subitem)
 	end
 end
 
 function ListView:LVN_ITEMCHANGED(i, subitem, newstate, oldstate)
 	if getbit(newstate, LVIS_FOCUSED) ~= getbit(oldstate, LVIS_FOCUSED) then
-		self:fire(getbit(newstate, LVIS_FOCUSED) and 'item_focused' or 'item_unfocused', i, subitem)
+		self:fire(getbit(newstate, LVIS_FOCUSED) and 'on_item_focused' or 'on_item_unfocused', i, subitem)
 	end
 	if getbit(newstate, LVIS_SELECTED) ~= getbit(oldstate, LVIS_SELECTED) then
-		self:fire(getbit(newstate, LVIS_SELECTED) and 'item_selected' or 'item_unselected', i, subitem)
+		self:fire(getbit(newstate, LVIS_SELECTED) and 'on_item_selected' or 'on_item_unselected', i, subitem)
 	end
 end
 
