@@ -260,6 +260,16 @@ function ListView:after___init(info)
 	self.items:add_items(info.items)
 end
 
+function ListView:get_focused_item_index()
+	return ListView_GetNextItem(self.hwnd, nil, LVNI_FOCUSED)
+end
+
+function ListView:unfocus_focused_item()
+	local i = self.focused_item_index
+	if not i then return end
+	self.items:set_focused(i, false)
+end
+
 function ListView:set_hoover_time(time)
 	ListView_SetHooverTime(self.hwmd, time)
 end

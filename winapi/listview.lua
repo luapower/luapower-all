@@ -317,6 +317,22 @@ function ListView_EnsureVisible(lv, i, partial_ok)
 	return checkpoz(SNDMSG(lv, LVM_ENSUREVISIBLE, countfrom0(i), MAKELPARAM(partial_ok and 1 or 0, 0)))
 end
 
+LVNI_ALL                 = 0x0000
+LVNI_FOCUSED             = 0x0001
+LVNI_SELECTED            = 0x0002
+LVNI_CUT                 = 0x0004
+LVNI_DROPHILITED         = 0x0008
+LVNI_ABOVE               = 0x0100
+LVNI_BELOW               = 0x0200
+LVNI_TOLEFT              = 0x0400
+LVNI_TORIGHT             = 0x0800
+
+LVM_GETNEXTITEM          = (LVM_FIRST + 12)
+function ListView_GetNextItem(lv, i, flags)
+	return countfrom1(SNDMSG(lv, LVM_GETNEXTITEM, i or -1, MAKELPARAM(flags, 0)))
+end
+
+
 --commands/owner drawing
 
 LVIR_BOUNDS              = 0
@@ -501,22 +517,6 @@ ListView_GetCallbackMask(hwnd)  = \
 LVM_SETCALLBACKMASK      = (LVM_FIRST + 11)
 ListView_SetCallbackMask(hwnd,  = mask) \
 	 (BOOL)SNDMSG((hwnd), LVM_SETCALLBACKMASK, (WPARAM)(UINT)(mask), 0)
-
-LVNI_ALL                 = 0x0000
-LVNI_FOCUSED             = 0x0001
-LVNI_SELECTED            = 0x0002
-LVNI_CUT                 = 0x0004
-LVNI_DROPHILITED         = 0x0008
-LVNI_ABOVE               = 0x0100
-LVNI_BELOW               = 0x0200
-LVNI_TOLEFT              = 0x0400
-LVNI_TORIGHT             = 0x0800
-
---[[
-LVM_GETNEXTITEM          = (LVM_FIRST + 12)
-ListView_GetNextItem(hwnd,  = i, flags) \
-	 (int)SNDMSG((hwnd), LVM_GETNEXTITEM, (WPARAM)(int)(i), MAKELPARAM((flags), 0))
-]]
 
 LVFI_PARAM               = 0x0001
 LVFI_STRING              = 0x0002
