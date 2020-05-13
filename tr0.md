@@ -5,7 +5,7 @@ Text shaping and rendering engine for Unicode text using portable technologies
 exclusively for pixel-perfect consistent output across platforms. Uses
 [harfbuzz] for complex text shaping, [fribidi] for bidirectional text,
 [libunibreak] for line breaking and [freetype] for glyph rasterization.
-Used by [ui] for all text rendering.
+Used by [ui0] for all text rendering.
 
 Supports subpixel positioning, color bitmap fonts (emoticons!), word
 wrapping, alignments, hit testing, clipping, cursors, selections, editing,
