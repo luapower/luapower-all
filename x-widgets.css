@@ -808,7 +808,7 @@
 
 .x-calendar {
 	display: inline-block;
-	padding: 2em;
+	padding: 1em;
 }
 
 .x-calendar-weekday {
@@ -837,10 +837,13 @@
 	padding: .4em 0;
 }
 
-.x-calendar-day                     { cursor: default; }
-.x-calendar-day:not(.current-month) { color: #999; }
-.x-calendar-day.today               { background-color: #f33; color: white; }
-.x-calendar-day.today:hover         { background-color: #f66; }
+.x-calendar-day                          { cursor: default; }
+.x-calendar-day:not(.current-month)      { color: #999; }
+.x-calendar-day.today                    { background-color: #f33; color: white; }
+.x-calendar .x-calendar-day.today:hover  { background-color: #f66; }
+.x-calendar.invalid .x-calendar-day.focused {
+	background-color: var(--x-error-bg-color);
+}
 
 .x-calendar-header {
 	display: flex;

@@ -533,7 +533,7 @@ end
 function rowset.test_static()
 	math.randomseed(time())
 	if random() > .5 then
-		error'iiiiiiiiiiiiiiii mmmmmmmmmmmmmmmmmmmmmmmm iiiiiiiiiiiiii mmmmmmmmmmmmmmm'
+		error'This is an error message in an error message box'
 	end
 	if method'post' then
 		--

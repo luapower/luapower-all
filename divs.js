@@ -653,6 +653,7 @@ let popup_state = function(e) {
 
 	function init() {
 		if (target != document.body) { // prevent infinite recursion.
+			assert(target.has_attach_events)
 			target.on('attach', target_attached)
 			target.on('detach', target_detached)
 		}

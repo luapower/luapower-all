@@ -41,9 +41,12 @@
 	validation:
 		allow_null     : allow null (true).
 		validate       : f(v, field) -> undefined|err_string
-		min            : min value.
-		max            : max value.
-		multiple_of    : number that the value must be multiple of.
+		min            : min value (0).
+		max            : max value (inf).
+		maxlen         : max text length (256).
+		multiple_of    : number that the value must be multiple of (1).
+		max_digits     : max number of digits allowed.
+		max_decimals   : max number of decimals allowed.
 
 	formatting:
 		align          : 'left'|'right'|'center'
@@ -139,20 +142,24 @@ rowset = function(...options) {
 
 	let field_map = new Map() // field_name->field
 
-	d.field = function(v) {
-		return typeof v == 'string' ? field_map.get(v) :
-			(typeof v == 'number' ? d.fields[v] : v)
+	d.field = function(name) {
+		if (typeof name == 'number')
+			return d.fields[name] // by index
+		if (typeof name != 'string')
+			return name // pass-through
+		return field_map.get(name)
 	}
 
 	function init_fields(fields) {
 		unbind_fields()
-		d.fields = fields || []
-		for (let i = 0; i < d.fields.length; i++) {
-			let f1 = d.fields[i]
-			let f0 = f1.type ? (d.types[f1.type] || rowset.types[f1.type]) : null
-			let f2 = d.field_attrs ? d.field_attrs[f1.name] : null
+		d.fields = []
+		for (let i = 0; i < fields.length; i++) {
+			let f = fields[i]
+			let custom_attrs = d.field_attrs && d.field_attrs[f.name]
+			let type = f.type || (custom_attrs && custom_attrs.type)
+			let type_attrs = type && (d.types[type] || rowset.types[type])
 			let field = update({index: i, rowset: d},
-				rowset.default_type, d.default_type, f0, f1, f2)
+				rowset.all_types, d.all_types, type_attrs, f, custom_attrs)
 			field.w = clamp(field.w, field.min_w, field.max_w)
 			if (field.text == null)
 				field.text = auto_display_name(field.name)
@@ -380,8 +387,7 @@ rowset = function(...options) {
 	// get/set cell values and cell & row state -------------------------------
 
 	d.value = function(row, field) {
-		let get_value = field.get_value // computed value?
-		return get_value ? field.get_value(row) : row[field.index]
+		return row[field.index]
 	}
 
 	d.input_value = function(row, field) {
@@ -396,7 +402,7 @@ rowset = function(...options) {
 		return d.cell_state(row, field, 'prev_value', d.value(row, field))
 	}
 
-	d.validate_value = function(field, val, row) {
+	d.validate_value = function(field, val, row, ev) {
 
 		if (!d.can_change_value(row, field))
 			return S('error_cell_read_only', 'Cell is read-only')
@@ -425,7 +431,7 @@ rowset = function(...options) {
 		if (typeof err == 'string')
 			return err
 
-		return d.fire('validate_'+field.name, val, row)
+		return d.fire('validate_'+field.name, val, row, ev)
 	}
 
 	d.on_validate_value = function(col, validate, on) {
@@ -442,7 +448,7 @@ rowset = function(...options) {
 
 	d.can_change_value = function(row, field) {
 		return d.can_edit && d.can_change_rows && (!row || row.editable != false)
-			&& (field == null || (field.editable && !field.get_value))
+			&& (field == null || field.editable)
 			&& d.can_focus_cell(row, field)
 	}
 
@@ -485,7 +491,7 @@ rowset = function(...options) {
 	d.set_value = function(row, field, val, ev) {
 		if (val === undefined)
 			val = null
-		let err = d.validate_value(field, val, row)
+		let err = d.validate_value(field, val, row, ev)
 		err = typeof err == 'string' ? err : undefined
 		let invalid = err != null
 		let cur_val = row[field.index]
@@ -1023,11 +1029,8 @@ rowset = function(...options) {
 // ---------------------------------------------------------------------------
 
 {
-	let default_lookup_failed_display_value = function(v) {
-		return this.format(v)
-	}
 
-	rowset.default_type = {
+	rowset.all_types = {
 		w: 100,
 		min_w: 20,
 		max_w: 2000,
@@ -1037,31 +1040,33 @@ rowset = function(...options) {
 		allow_null: true,
 		editable: true,
 		sortable: true,
+		maxlen: 256,
 		true_text: 'true',
 		false_text: 'false',
-		multiple_of: 1,
-		lookup_failed_display_value: default_lookup_failed_display_value,
+		lookup_failed_display_value: function(v) {
+			return this.format(v)
+		},
 	}
 
-	rowset.default_type.format = function(v) {
+	rowset.all_types.format = function(v) {
 		return v == null ? 'null' : String(v)
 	}
 
-	rowset.default_type.editor = function(...options) {
+	rowset.all_types.editor = function(...options) {
 		return input({nolabel: true}, ...options)
 	}
 
-	rowset.default_type.to_text = function(v) {
+	rowset.all_types.to_text = function(v) {
 		return v != null ? String(v) : ''
 	}
 
-	rowset.default_type.from_text = function(s) {
+	rowset.all_types.from_text = function(s) {
 		s = s.trim()
 		return s !== '' ? s : null
 	}
 
 	rowset.types = {
-		number: {align: 'right', min: 0, max: 1/0},
+		number: {align: 'right', min: 0, max: 1/0, multiple_of: 1},
 		date  : {align: 'right', min: -(2**52), max: 2**52},
 		bool  : {align: 'center'},
 	}
@@ -1090,7 +1095,7 @@ rowset = function(...options) {
 	}
 
 	rowset.types.number.from_text = function(s) {
-		return s !== '' ? Number(s) : null
+		return num(s)
 	}
 
 	rowset.types.number.to_text = function(x) {
@@ -1109,7 +1114,7 @@ rowset = function(...options) {
 		return _d.toLocaleString(locale, this.date_format)
 	}
 
-	rowset.default_type.date_format =
+	rowset.types.date.date_format =
 		{weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' }
 
 	rowset.types.date.editor = function(...options) {
@@ -1157,7 +1162,7 @@ function value_widget(e) {
 	e.field_prop_map = {
 		field_name: 'name', field_type: 'type', label: 'text',
 		format: 'format',
-		min: 'min', max: 'max', multiple_of: 'multiple_of',
+		min: 'min', max: 'max', maxlen: 'maxlen', multiple_of: 'multiple_of',
 		lookup_rowset: 'lookup_rowset', lookup_col: 'lookup_col', display_col: 'display_col',
 	}
 
@@ -1191,20 +1196,22 @@ function value_widget(e) {
 			if (e.validate) // inline validator, only for internal-rowset widgets.
 				e.nav.rowset.on_validate_value(e.col, e.validate)
 
-			e.nav.rowset.on('cell_state_changed', function(row, field, prop, val, ev) {
-				cell_state_changed(prop, val, ev)
-			})
-
-		} else {
+			e.init_field()
+		} else if (e.nav !== true) {
 			e.col = e.field ? e.field.name : e.col || '0'
 			e.field = e.nav.rowset.field(e.col)
+			e.init_field()
 		}
-		e.init_field()
+	}
+
+	function rowset_cell_state_changed(row, field, prop, val, ev) {
+		cell_state_changed(prop, val, ev)
 	}
 
 	e.bind_nav = function(on) {
 		if (e.nav.is_fake) {
 			e.nav.rowset.bind_user_widget(e, on)
+			e.nav.rowset.on('cell_state_changed', rowset_cell_state_changed, on)
 		} else {
 			e.nav.on('focused_row_changed', e.init_value, on)
 			e.nav.on('focused_row_cell_state_changed_for_'+e.col, cell_state_changed, on)
@@ -1272,20 +1279,24 @@ function value_widget(e) {
 
 	// getters/setters --------------------------------------------------------
 
+	e.to_value = function(v) { return v; }
+	e.from_value = function(v) { return v; }
+
 	function get_value() {
 		let row = e.nav.focused_row
 		return row ? e.nav.rowset.value(row, e.field) : null
 	}
 	e.set_value = function(v, ev) {
 		let row = e.nav.focused_row
-		if (row)
-			e.nav.rowset.set_value(row, e.field, v, ev)
+		if (!row)
+			return
+		e.nav.rowset.set_value(row, e.field, e.to_value(v), ev)
 	}
 	e.late_property('value', get_value, e.set_value)
 
 	e.property('input_value', function() {
 		let row = e.nav.focused_row
-		return row ? e.nav.rowset.input_value(row, e.field) : null
+		return row ? e.from_value(e.nav.rowset.input_value(row, e.field)) : null
 	})
 
 	e.property('error', function() {
@@ -1298,10 +1309,10 @@ function value_widget(e) {
 		return row ? e.nav.rowset.cell_modified(row, e.field) : false
 	})
 
-	e.property('display_value', function() {
+	e.display_value = function() {
 		let row = e.nav.focused_row
 		return row ? e.nav.rowset.display_value(row, e.field) : ''
-	})
+	}
 
 }
 
@@ -1632,6 +1643,7 @@ function input_widget(e) {
 	e.class('with-inner-label', true)
 
 	e.init_field = function() {
+		e.nolabel = !e.field.text
 		e.inner_label_div.set(e.field.text)
 	}
 
@@ -1652,8 +1664,6 @@ input = component('x-input', function(e) {
 
 	e.init = function() {
 		e.init_nav()
-		if (e.nav.is_fake)
-			e.nolabel = !e.field.text
 	}
 
 	e.attach = function() {
@@ -1670,18 +1680,25 @@ input = component('x-input', function(e) {
 		e.inner_label_div.class('empty', s == '')
 	}
 
+	e.from_text = function(s) { return e.field.from_text(s) }
+	e.to_text = function(v) { return e.field.to_text(v) }
+
 	e.update_value = function(v, ev) {
 		if (ev && ev.input == e && e.typing)
 			return
-		let s = e.field.to_text(v)
+		let s = e.to_text(v)
 		e.input.value = s
 		update_state(s)
 	}
 
 	e.input.on('input', function() {
-		e.set_value(e.field.from_text(e.input.value), {input: e, typing: true})
+		e.set_value(e.from_text(e.input.value), {input: e, typing: true})
 		update_state(e.input.value)
 	})
+
+	e.input.input_filter = function(s) {
+		return s.length <= or(e.maxlen, e.field.maxlen)
+	}
 
 	// grid editor protocol ---------------------------------------------------
 
@@ -1839,8 +1856,31 @@ spin_input = component('x-spin-input', function(e) {
 
 	// controller
 
-	e.input.input_filter = function(v) {
-		return /^[\-]?\d*\.?\d*$/.test(v) // allow digits and '.' only
+	let input_filter = e.input.input_filter
+	e.input.input_filter = function(s) {
+		if (!input_filter(s))
+			return false
+		if (or(e.min, e.field.min) >= 0)
+			if (/\-/.test(s))
+				return false // no minus
+		let max_dec = or(e.max_decimals, e.field.max_decimals)
+		if (or(e.multiple_of, e.field.multiple_of) == 1)
+			max_dec = 0
+		if (max_dec == 0)
+			if (/\./.test(s))
+				return false // no dots
+		if (max_dec != null) {
+			let m = s.match(/\.(\d+)$/)
+			if (m != null && m[1].length > max_dec)
+				return false // too many decimals
+		}
+		let max_digits = or(e.max_digits, e.field.max_digits)
+		if (max_digits != null) {
+			let digits = s.replace(/[^\d]/g, '').length
+			if (digits > max_digits)
+				return false // too many digits
+		}
+		return /^[\-]?\d*\.?\d*$/.test(s) // allow digits and '.' only
 	}
 
 	e.input.on('wheel', function(dy) {
@@ -2050,14 +2090,15 @@ dropdown = component('x-dropdown', function(e) {
 	value_widget(e)
 	input_widget(e)
 
+	let init_nav = e.init_nav
+	e.init_nav = function() {
+		init_nav()
+		if (e.nav !== true)
+			e.picker.rebind_value(e.nav, e.col)
+	}
+
 	e.init = function() {
-
 		e.init_nav()
-		if (e.nav.is_fake)
-			e.nolabel = !e.field.text
-
-		e.picker.rebind_value(e.nav, e.col)
-
 		e.picker.on('value_picked', picker_value_picked)
 		e.picker.on('keydown', picker_keydown)
 	}
@@ -2083,7 +2124,7 @@ dropdown = component('x-dropdown', function(e) {
 	// value updating
 
 	e.update_value = function(v, ev) {
-		let text = e.display_value
+		let text = e.display_value()
 		let empty = text === ''
 		e.value_div.class('empty', empty)
 		e.value_div.class('null', v == null)
@@ -2223,225 +2264,6 @@ dropdown = component('x-dropdown', function(e) {
 		e.fire('lost_focus') // grid editor protocol
 	})
 
-})
-
-// ---------------------------------------------------------------------------
-// calendar
-// ---------------------------------------------------------------------------
-
-function month_rows() {
-	let a = []
-	for (let i = 0; i <= 11; i++)
-		a.push([i, month_name(utctime(0, i), 'short')])
-	return a
-}
-
-calendar = component('x-calendar', function(e) {
-
-	e.class('x-widget')
-	e.class('x-calendar')
-	e.class('x-focusable')
-	e.attrval('tabindex', 0)
-
-	value_widget(e)
-
-	function format_month(i) {
-		return month_name(utctime(0, i), 'short')
-	}
-
-	e.sel_day = div({class: 'x-calendar-sel-day'})
-	e.sel_day_suffix = div({class: 'x-calendar-sel-day-suffix'})
-	e.sel_month = list_dropdown({
-		classes: 'x-calendar-sel-month',
-		items: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
-		format: format_month,
-		listbox: {
-			format_item: format_month,
-		},
-	})
-	e.sel_year = spin_input({
-		classes: 'x-calendar-sel-year',
-		min: 100,
-		max: 3000,
-		button_style: 'left-right',
-	})
-	e.header = div({class: 'x-calendar-header'},
-		e.sel_day, e.sel_day_suffix, e.sel_month, e.sel_year)
-	e.weekview = H.table({class: 'x-calendar-weekview'})
-	e.add(e.header, e.weekview)
-
-	e.init = function() {
-		e.init_nav()
-	}
-
-	e.attach = function() {
-		e.init_value()
-		e.bind_nav(true)
-	}
-
-	e.detach = function() {
-		e.bind_nav(false)
-	}
-
-	e.update_value = function(v) {
-		t = day(v)
-		update_weekview(t, 6)
-		let y = year_of(t)
-		let n = floor(1 + days(t - month(t)))
-		e.sel_day.set(n)
-		let day_suffixes = ['', 'st', 'nd', 'rd']
-		e.sel_day_suffix.set(locale.starts('en') ?
-			(n < 11 || n > 13) && day_suffixes[n % 10] || 'th' : '')
-		e.sel_month.value = month_of(t)
-		e.sel_year.value = y
-	}
-
-	function update_weekview(d, weeks) {
-		let today = day(now())
-		let this_month = month(d)
-		d = week(this_month)
-		e.weekview.clear()
-		for (let week = 0; week <= weeks; week++) {
-			let tr = H.tr()
-			for (let weekday = 0; weekday < 7; weekday++) {
-				if (!week) {
-					let th = H.th({class: 'x-calendar-weekday'}, weekday_name(day(d, weekday)))
-					tr.add(th)
-				} else {
-					let m = month(d)
-					let s = d == today ? ' today' : ''
-					s = s + (m == this_month ? ' current-month' : '')
-					s = s + (d == day(e.input_value) ? ' focused selected' : '')
-					let td = H.td({class: 'x-calendar-day x-item'+s}, floor(1 + days(d - m)))
-					td.day = d
-					td.on('mousedown', day_mousedown)
-					tr.add(td)
-					d = day(d, 1)
-				}
-			}
-			e.weekview.add(tr)
-		}
-	}
-
-	// controller
-
-	function day_mousedown() {
-		e.set_value(this.day, {input: e})
-		e.sel_month.cancel()
-		e.focus()
-		e.fire('value_picked') // picker protocol
-		return false
-	}
-
-	e.sel_month.on('value_changed', function(v, ev) {
-		if (ev && ev.input) {
-			_d.setTime(e.input_value)
-			_d.setMonth(this.value)
-			e.set_value(_d.valueOf(), {input: e})
-		}
-	})
-
-	e.sel_year.on('value_changed', function(v, ev) {
-		if (ev && ev.input) {
-			_d.setTime(e.input_value)
-			_d.setFullYear(this.value)
-			e.set_value(_d.valueOf(), {input: e})
-		}
-	})
-
-	e.weekview.on('wheel', function(dy) {
-		e.set_value(day(e.input_value, 7 * dy / 100), {input: e})
-		return false
-	})
-
-	e.on('keydown', function(key, shift) {
-		if (!e.focused) // other inside element got focus
-			return
-		if (key == 'Tab' && e.hasclass('picker')) { // capture Tab navigation.
-			if (shift)
-				e.sel_year.focus()
-			else
-				e.sel_month.focus()
-			return false
-		}
-		let d, m
-		switch (key) {
-			case 'ArrowLeft'  : d = -1; break
-			case 'ArrowRight' : d =  1; break
-			case 'ArrowUp'    : d = -7; break
-			case 'ArrowDown'  : d =  7; break
-			case 'PageUp'     : m = -1; break
-			case 'PageDown'   : m =  1; break
-		}
-		if (d) {
-			e.set_value(day(e.input_value, d), {input: e})
-			return false
-		}
-		if (m) {
-			_d.setTime(e.input_value)
-			if (shift)
-				_d.setFullYear(year_of(e.input_value) + m)
-			else
-				_d.setMonth(month_of(e.input_value) + m)
-			e.set_value(_d.valueOf(), {input: e})
-			return false
-		}
-		if (key == 'Home') {
-			e.set_value(shift ? year(e.input_value) : month(e.input_value), {input: e})
-			return false
-		}
-		if (key == 'End') {
-			e.set_value(day(shift ? year(e.input_value, 1) : month(e.input_value, 1), -1), {input: e})
-			return false
-		}
-		if (key == 'Enter') {
-			e.fire('value_picked', {input: e}) // picker protocol
-			return false
-		}
-	})
-
-	e.sel_month.on('keydown', function(key, shift) {
-		if (key == 'Tab' && e.hasclass('picker')) {// capture Tab navigation.
-			if (shift)
-				e.focus()
-			else
-				e.sel_year.focus()
-			return false
-		}
-	})
-
-	e.sel_year.on('keydown', function(key, shift) {
-		if (key == 'Tab' && e.hasclass('picker')) { // capture Tab navigation.
-			if (shift)
-				e.sel_month.focus()
-			else
-				e.focus()
-			return false
-		}
-	})
-
-	// picker protocol
-
-	// hack: trick dropdown into thinking that our own opened dropdown picker
-	// is our child, which is how we would implement dropdowns if this fucking
-	// rendering model would allow us to decouple painting order from element's
-	// position in the tree (IOW we need the concept of global z-index).
-	let builtin_contains = e.contains
-	e.contains = function(e1) {
-		return builtin_contains.call(this, e1) || e.sel_month.picker.contains(e1)
-	}
-
-	e.pick_near_value = function(delta, ev) {
-		e.set_value(day(e.input_value, delta), ev)
-		e.fire('value_picked', ev)
-	}
-
-})
-
-date_dropdown = component('x-date-dropdown', function(e) {
-	e.field_type = 'date'
-	e.picker = calendar()
-	dropdown.construct(e)
 })
 
 // ---------------------------------------------------------------------------

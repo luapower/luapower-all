@@ -46,7 +46,7 @@ listbox = component('x-listbox', function(e) {
 
 	function create_rowset_for_items() {
 		e.rowset = rowset({
-			fields: [{format: e.format_item}],
+			fields: [{format: function(v) { return e.format_item(v) } }],
 			rows: [],
 		})
 		e.display_field = e.rowset.field(0)
