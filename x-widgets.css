@@ -22,6 +22,7 @@
 	--x-focus-shadow                : 0 0 0 1px #99f; /* to be used in place of focus outline */
 	--x-item-unfocused-bg-color     : #333;
 	--x-item-focused-bg-color       : #47a;
+	--x-item-focused-invalid-bg-color : #f33;
 	--x-row-focused-bg-color        : #f0f0f0;
 	--x-item-hover-bg-color         : #00000011;
 	--x-item-bg-only-bg-color       : #eee;  /* slider background */
@@ -76,17 +77,21 @@
 	background-color: var(--x-item-hover-bg-color);
 }
 
-.x-item.row-focused {
+.x-item.row-focused:not(.invalid) {
 	background-color: var(--x-row-focused-bg-color);
 }
 
-.x-item.focused {
+.x-item.focused:not(.invalid) {
 	background-color: var(--x-item-unfocused-bg-color);
 	color: var(--x-inverted-fg-color);
 }
 
-.x-focusable:focus-within .x-item.focused {
+.x-focusable:focus-within .x-item.focused:not(.invalid) {
 	background-color: var(--x-item-focused-bg-color);
+}
+
+.x-focusable:focus-within .x-item.focused.invalid {
+	background-color: var(--x-item-focused-invalid-bg-color);
 }
 
 /* scrollbars ------------------------------------------------------------- */

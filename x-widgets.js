@@ -153,6 +153,8 @@ rowset = function(...options) {
 	function init_fields(fields) {
 		unbind_fields()
 		d.fields = []
+		if (!fields)
+			return
 		for (let i = 0; i < fields.length; i++) {
 			let f = fields[i]
 			let custom_attrs = d.field_attrs && d.field_attrs[f.name]
@@ -475,7 +477,7 @@ rowset = function(...options) {
 			d.fire('notify', 'error', err)
 			print(err)
 		}
-		if (d.set_row_state(row, 'error', err))
+		if (d.set_row_state(row, 'row_error', err))
 			row_state_changed(row, 'row_error', ev)
 	}
 
@@ -1637,13 +1639,15 @@ function input_widget(e) {
 	e.attrval('mode', 'default')
 	e.attr_property('mode')
 
-	e.bool_attr_property('nolabel', function(v) {
-		e.class('with-inner-label', !v)
-	})
+	function update_inner_label() {
+		e.class('with-inner-label', !e.nolabel && e.field && !!e.field.text)
+	}
+
+	e.bool_attr_property('nolabel', update_inner_label)
 	e.class('with-inner-label', true)
 
 	e.init_field = function() {
-		e.nolabel = !e.field.text
+		update_inner_label()
 		e.inner_label_div.set(e.field.text)
 	}
 
