@@ -269,6 +269,14 @@ grid = component('x-grid', function(e) {
 
 			sort_icon.on('click', sort_icon_click)
 
+			/*
+			th.filter_dropdown = grid_dropdown({
+				lookup_rowset : e.rowset.group_by(field),
+				lookup_col    : ,
+				display_col   : ,
+			})
+			*/
+
 			e.header.add(th)
 		}
 		update_sort_icons()

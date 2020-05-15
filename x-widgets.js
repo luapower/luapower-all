@@ -66,6 +66,9 @@
 		compare_types  : f(v1, v2) -> -1|0|1  (for sorting)
 		compare_values : f(v1, v2) -> -1|0|1  (for sorting)
 
+	grouping:
+		group_by(col) -> group_rowset
+
 	rs.rows: Set(row)
 		row[i]             : current cell value (always valid).
 		row.focusable      : row can be focused (true).
@@ -384,6 +387,40 @@ rowset = function(...options) {
 	function row_state_changed(row, prop, val, ev) {
 		d.fire('row_state_changed', row, prop, val, ev)
 		d.fire(prop+'_changed', row, val, ev)
+	}
+
+	// grouping ---------------------------------------------------------------
+
+	let group_rowsets // {field -> rowset}
+
+	d.group_by = function(field) {
+		field = d.field(field)
+		let fi = field.index
+		group_rowsets = group_rowsets || new Map()
+		let rs = group_rowsets.get(field)
+		if (!rs) {
+			let rows = new Set()
+			let val_set = new Set()
+			for (let row of d.rows) {
+				let v = row[fi]
+				if (!val_set.has(v)) {
+					rows.add([false, v])
+					val_set.add(v)
+				}
+			}
+			let rs_field = update({}, field)
+			rs_field.name = undefined
+			rs_field.rowset = undefined
+			rs = rowset({
+				fields: [
+					{type: 'bool'},
+					rs_field,
+				],
+				rows: rows,
+			})
+			group_rowsets.set(field, rs)
+		}
+		return rs
 	}
 
 	// get/set cell values and cell & row state -------------------------------
@@ -1335,7 +1372,6 @@ tooltip = component('x-tooltip', function(e) {
 	e.attrval('align', 'center')
 
 	let target
-	let expires
 
 	e.popup_target_changed = function(target) {
 		let visible = !!(!e.check || e.check(target))
@@ -2802,7 +2838,7 @@ toaster = component('x-toaster', function(e) {
 	e.post = function(text, type, timeout) {
 		let t = tooltip({
 			classes: 'x-toaster-message',
-			type: opt(type, e.type),
+			type: type,
 			target: e.target,
 			text: text,
 			side: e.side,

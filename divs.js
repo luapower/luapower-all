@@ -547,10 +547,10 @@ function noop_setter(v) {
 // constructor or else you won't be able to do css based on the attribute!
 method(HTMLElement, 'attr_property', function(name, setter = noop_setter, type) {
 	name = name.replace('_', '-')
-	function get() {
-		return this.getAttribute(name)
-	}
 	if (type == 'bool') {
+		function get() {
+			return this.hasAttribute(name)
+		}
 		function set(v) {
 			if (v)
 				this.setAttribute(name, '')
@@ -558,11 +558,17 @@ method(HTMLElement, 'attr_property', function(name, setter = noop_setter, type) 
 				this.removeAttribute(name)
 			setter.call(this, v)
 		}
+	} else if (type == 'number') {
+		function get() {
+			return num(this.getAttribute(name))
+		}
+		function set(v) {
+			this.setAttribute(name, v+'')
+			setter.call(this, v)
+		}
 	} else {
-		if (type == 'number') {
-			function get() {
-				return Number(this.getAttribute(name))
-			}
+		function get() {
+			return this.getAttribute(name)
 		}
 		function set(v) {
 			this.setAttribute(name, v)

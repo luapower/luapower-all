@@ -29,6 +29,8 @@ NEW
 FEATURES
 ------------------------------------------------------------------------------
 
+- INPUT slim style.
+
 - PAGELIST close button.
 
 - CALENDAR select range
