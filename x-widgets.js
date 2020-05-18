@@ -50,10 +50,11 @@
 
 	formatting:
 		align          : 'left'|'right'|'center'
-		format         : f(v, field) -> s
+		format         : f(v, row) -> s
 		date_format    : toLocaleString format options for the date type
 		true_text      : display value for boolean true
 		false_text     : display value for boolean false
+		null_text      : display value for null
 
 	vlookup:
 		lookup_rowset  : rowset to look up values of this field into
@@ -160,7 +161,7 @@ rowset = function(...options) {
 			return
 		for (let i = 0; i < fields.length; i++) {
 			let f = fields[i]
-			let custom_attrs = d.field_attrs && d.field_attrs[f.name]
+			let custom_attrs = d.field_attrs && d.field_attrs[f.name || i+'']
 			let type = f.type || (custom_attrs && custom_attrs.type)
 			let type_attrs = type && (d.types[type] || rowset.types[type])
 			let field = update({index: i, rowset: d},
@@ -389,38 +390,87 @@ rowset = function(...options) {
 		d.fire(prop+'_changed', row, val, ev)
 	}
 
-	// grouping ---------------------------------------------------------------
+	// filtering --------------------------------------------------------------
 
-	let group_rowsets // {field -> rowset}
+	d.filter_rowset = function(field, ...opt) {
 
-	d.group_by = function(field) {
 		field = d.field(field)
-		let fi = field.index
-		group_rowsets = group_rowsets || new Map()
-		let rs = group_rowsets.get(field)
-		if (!rs) {
+		let rs_field = {}
+		for (let k of [
+			'name', 'text', 'type', 'align', 'min_w', 'max_w',
+			'format', 'true_text', 'false_text', 'null_text',
+			'lookup_rowset', 'lookup_col', 'display_col', 'lookup_failed_display_value',
+			'sortable',
+		])
+			rs_field[k] = field[k]
+
+		let rs = rowset({
+			fields: [
+				{text: '', type: 'bool'},
+				rs_field,
+			],
+			filtered_field: field,
+		}, ...opt)
+
+		rs.load = function() {
+			let fi = field.index
 			let rows = new Set()
 			let val_set = new Set()
 			for (let row of d.rows) {
 				let v = row[fi]
 				if (!val_set.has(v)) {
-					rows.add([false, v])
+					rows.add([true, v])
 					val_set.add(v)
 				}
 			}
-			let rs_field = update({}, field)
-			rs_field.name = undefined
-			rs_field.rowset = undefined
-			rs = rowset({
-				fields: [
-					{type: 'bool'},
-					rs_field,
-				],
-				rows: rows,
-			})
-			group_rowsets.set(field, rs)
+			rs.rows = rows
+			rs.fire('loaded')
 		}
+
 		return rs
+	}
+
+	d.row_filter = function(expr) {
+		let expr_bin_ops = {'&&': 1, '||': 1}
+		let expr_un_ops = {'!': 1}
+		let s = []
+		function push_expr(expr) {
+			let op = expr[0]
+			if (op in expr_bin_ops) {
+				s.push('(')
+				for (let i = 1; i < expr.length; i++) {
+					if (i > 1)
+						s.push(' '+op+' ')
+					push_expr(expr[i])
+				}
+				s.push(')')
+			} else if (op in expr_un_ops) {
+				s.push('(')
+				s.push(op)
+				s.push('(')
+				for (let i = 1; i < expr.length; i++)
+					push_expr(expr[i])
+				s.push('))')
+			} else
+				s.push('row['+d.field(expr[1]).index+'] '+expr[0]+' '+json(expr[2]))
+		}
+		push_expr(expr)
+		s = 'let f = function(row) {\n\treturn ' + s.join('') + '\n}; f'
+		return eval(s)
+	}
+
+	d.filter_rowsets_filter = function(filter_rowsets) {
+		let expr = ['&&']
+		if (filter_rowsets)
+			for (let [field, rs] of filter_rowsets) {
+				let e = ['&&']
+				for (let row of rs.rows)
+					if (!row[0])
+						e.push(['!=', rs.filtered_field.index, row[1]])
+				if (e.length > 1)
+					expr.push(e)
+			}
+		return expr.length > 1 ? d.row_filter(expr) : return_true
 	}
 
 	// get/set cell values and cell & row state -------------------------------
@@ -442,9 +492,6 @@ rowset = function(...options) {
 	}
 
 	d.validate_value = function(field, val, row, ev) {
-
-		if (!d.can_change_value(row, field))
-			return S('error_cell_read_only', 'Cell is read-only')
 
 		if (val == null)
 			if (!field.allow_null)
@@ -633,7 +680,7 @@ rowset = function(...options) {
 			}
 			return field.lookup_failed_display_value(v)
 		} else
-			return field.format(v)
+			return field.format(v, row)
 	}
 
 	// add/remove rows --------------------------------------------------------
@@ -1050,17 +1097,16 @@ rowset = function(...options) {
 	return d
 }
 
-{
-	let rowsets = {}
-
-	function global_rowset(name, ...options) {
-		let d = name
-		if (typeof name == 'string') {
+function global_rowset(name, ...options) {
+	let d = name
+	if (typeof name == 'string') {
+		d = global_rowset[name]
+		if (!d) {
 			d = rowset({url: 'rowset.json/'+name}, ...options)
-			rowsets[name] = d
+			global_rowset[name] = d
 		}
-		return d
 	}
+	return d
 }
 
 // ---------------------------------------------------------------------------
@@ -1080,15 +1126,16 @@ rowset = function(...options) {
 		editable: true,
 		sortable: true,
 		maxlen: 256,
-		true_text: 'true',
-		false_text: 'false',
+		true_text: () => H('<div class="fa fa-check"></div>'),
+		false_text: '',
+		null_text: S('null', 'null'),
 		lookup_failed_display_value: function(v) {
 			return this.format(v)
 		},
 	}
 
 	rowset.all_types.format = function(v) {
-		return v == null ? 'null' : String(v)
+		return v == null ? this.null_text : String(v)
 	}
 
 	rowset.all_types.editor = function(...options) {
@@ -1237,7 +1284,10 @@ function value_widget(e) {
 
 			e.init_field()
 		} else if (e.nav !== true) {
-			e.col = e.field ? e.field.name : e.col || '0'
+			if (e.field)
+				e.col = e.field.name
+			if (e.col == null)
+				e.col = 0
 			e.field = e.nav.rowset.field(e.col)
 			e.init_field()
 		}
@@ -2243,9 +2293,9 @@ dropdown = component('x-dropdown', function(e) {
 		e.close(true)
 	}
 
-	// kb & mouse binding
+	// keyboard & mouse binding
 
-	e.on('mousedown', function() {
+	e.on('click', function() {
 		e.toggle(true)
 		return false
 	})

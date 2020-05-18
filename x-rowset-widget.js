@@ -29,6 +29,8 @@ function rowset_widget(e) {
 	e.prevent_exit_edit = false     // prevent exiting edit mode on validation errors
 	e.prevent_exit_row = true       // prevent changing row on validation errors
 
+	e.value_col = 0
+
 	value_widget(e)
 
 	// row -> row_index mapping -----------------------------------------------
@@ -77,8 +79,9 @@ function rowset_widget(e) {
 		rowmap = null
 		e.rows = []
 		let i = 0
+		let passes = e.rowset.filter_rowsets_filter(e.filter_rowsets)
 		for (let row of e.rowset.rows) {
-			if (!row.removed)
+			if (!row.removed && passes(row))
 				e.rows.push(row)
 		}
 	}
@@ -88,6 +91,7 @@ function rowset_widget(e) {
 	e.init_fields_array = function() {
 		fieldmap = null
 		e.fields = []
+		e.value_field = e.rowset.field(e.value_col)
 		if (e.cols) {
 			for (let col of e.cols.split(' ')) {
 				let field = e.rowset.field(col)
@@ -163,9 +167,11 @@ function rowset_widget(e) {
 	function rowset_loaded() {
 		e.update_load_fail(false)
 		free_editor()
+		e.unbind_filter_rowsets()
 		e.init_fields_array()
 		e.init_rows_array()
 		e.init_fields()
+		e.sort()
 		e.init_rows()
 		e.init_focused_cell()
 	}
@@ -409,7 +415,7 @@ function rowset_widget(e) {
 			e.last_focused_field_index = or(fi, e.last_focused_field_index)
 			e.update_cell_focus(ri, fi, ev)
 			let row = e.rows[ri]
-			let val = row ? e.rowset.value(row, e.field) : null
+			let val = row ? e.rowset.value(row, e.value_field) : null
 			e.set_value(val, update({input: e}, ev))
 			if (row_changed)
 				e.fire('focused_row_changed', row, ev)
@@ -444,7 +450,7 @@ function rowset_widget(e) {
 	e.update_value = function(v, ev) {
 		if (ev && ev.input == e)
 			return // coming from focus_cell(), avoid recursion.
-		let row = e.rowset.lookup(e.field, v)
+		let row = e.rowset.lookup(e.value_field, v)
 		let ri = e.row_index(row)
 		e.focus_cell(ri, true, 0, 0,
 			update({must_not_move_row: true, unfocus_if_not_found: true}, ev))
@@ -555,13 +561,13 @@ function rowset_widget(e) {
 		},
 		function(s) {
 			order_by = new Map()
-			let ea = s.split(/\s*,\s*/)
+			let ea = s.split(/\s*/)
 			for (let e of ea) {
-				let m = e.match(/^([^\s]*)\s*(.*)$/)
-				let name = m[1]
+				let m = e.split(':')
+				let name = m[0]
 				let field = e.rowset.field(name)
 				if (field && field.sortable) {
-					let dir = m[2] || 'asc'
+					let dir = m[1] || 'asc'
 					if (dir == 'asc' || dir == 'desc')
 						order_by.set(field, dir)
 				}
@@ -587,7 +593,7 @@ function rowset_widget(e) {
 			return
 		if (dir == 'toggle') {
 			dir = order_by.get(field)
-			dir = dir == 'asc' ? 'desc' : 'asc'
+			dir = dir == 'asc' ? 'desc' : (dir == 'desc' ? false : 'asc')
 		}
 		if (!keep_others)
 			order_by.clear()
@@ -595,15 +601,15 @@ function rowset_widget(e) {
 			order_by.set(field, dir)
 		else
 			order_by.delete(field)
-		sort()
+		e.sort()
 	}
 
 	e.clear_order = function() {
 		order_by.clear()
-		sort()
+		e.sort()
 	}
 
-	function sort() {
+	e.sort = function() {
 		if (order_by && order_by.size) {
 			let focused_row = e.focused_row
 			let cmp = e.rowset.comparator(order_by)
@@ -617,6 +623,30 @@ function rowset_widget(e) {
 					e.scroll_to_cell(e.focused_row_index, e.focused_cell_index)
 		}
 		e.fire('sort_order_changed')
+	}
+
+	// filtering --------------------------------------------------------------
+
+
+	e.unbind_filter_rowsets = function() {
+		if (!e.filter_rowsets)
+			return
+		for (let [field, rs] of e.filter_rowsets) {
+			//TODO: rs.unbind()
+		}
+		e.filter_rowsets = null
+	}
+
+	e.filter_rowset = function(field) {
+		e.filter_rowsets = e.filter_rowsets || new Map()
+		let rs = e.filter_rowsets.get(field)
+		if (!rs) {
+			rs = e.rowset.filter_rowset(field, {
+				field_attrs: {'0': {w: 20}},
+			})
+			e.filter_rowsets.set(field, rs)
+		}
+		return rs
 	}
 
 	// crude quick-search only for the first letter ---------------------------

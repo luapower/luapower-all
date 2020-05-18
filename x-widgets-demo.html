@@ -99,6 +99,7 @@ h2 {
 <script src="x-listbox.js"></script>
 <script src="x-grid.js"></script>
 <script src="x-calendar.js"></script>
+<script src="x-country-dropdown.js"></script>
 
 </head>
 
@@ -754,11 +755,11 @@ cal = calendar({
 
 main.add(calendar())
 main.add(calendar({
-	value: day(now(), 1),
+	value: day(time(), 1),
 	validate: function(v) {
-		if (day(v) == day(now()))
+		if (day(v) == day(time()))
 			return 'Can\'t have today.'
-		if (day(v) == day(now(), 1))
+		if (day(v) == day(time(), 1))
 			return 'Can\'t have tomorrow.'
 	}
 }))
@@ -803,10 +804,10 @@ var data = {
 	fields: [
 		{name: 'id'        , w:  60, min_w:  30, type: 'number', editable: false},
 		{name: 'active'    , w:  30, type: 'bool', true_text: checked, false_text: ''},
-		{name: 'name'      , w:  70, min_w:  50, max_w: 200, validate: starts_with_a},
+		{name: 'name'      , w:  70, min_w:  50, max_w: 200, validate: starts_with_a, filter_by: true},
 		{name: 'parent_id' , w:  80, min_w:  50, type: 'number', allow_null: true, editable: false, focusable: false},
 		{name: 'random_num', w: 130, allow_null: true, type: 'number', text: () => H('<i>Random</i><br>Number')},
-		{name: 'date'      , w: 140, allow_null: true, type: 'date'},
+		{name: 'date'      , w: 140, allow_null: true, type: 'date', filter_by: true},
 	],
 	pk: 'id',
 	rows: new Set(),
@@ -832,6 +833,7 @@ g = grid({
 	rowset: d,
 	w: 600,
 	h: 200,
+	can_change_header_visibility: true,
 	//can_focus_cells: false,
 	//TODO: order_by: 'parent_id, name desc',
 })
@@ -895,6 +897,22 @@ main.add(
 
 <!--------------------------------------------------------------------------->
 
+<template id=country_dropdown_demo>
+<help>
+
+cd = country_dropdown()
+
+</help>
+<script>
+
+cd = country_dropdown()
+main.add(cd)
+
+</script>
+</template>
+
+<!--------------------------------------------------------------------------->
+
 <template id=date_dropdown_demo>
 <help>
 
@@ -906,11 +924,11 @@ dd = date_dropdown({
 <script>
 
 d = date_dropdown({
-	value: now(),
+	value: time(),
 	validate: function(v) {
-		if (day(v) == day(now()))
+		if (day(v) == day(time()))
 			return 'Can\'t have today.'
-		if (day(v) == day(now(), 1))
+		if (day(v) == day(time(), 1))
 			return 'Can\'t have tomorrow.'
 	}
 })
@@ -939,9 +957,9 @@ r1 = rowset({
 		{w: 150, name: 'date', type: 'date'},
 	],
 	rows: [
-		[1, 'Hey Dude', day(now())],
-		[2, 'Wasup'   , month(now())],
-		[3, 'Nuthin'  , year(now())],
+		[1, 'Hey Dude', day(time())],
+		[2, 'Wasup'   , month(time())],
+		[3, 'Nuthin'  , year(time())],
 	],
 })
 
@@ -1000,22 +1018,22 @@ function p(mode, ...args) {
 
 main.add(
 	p('default', 'variable-width, no-wrap with min-width aligned with other inputs'),
-	date_dropdown({value: now()}),
+	date_dropdown({value: time()}),
 	H.div(),
 	list_dropdown({items: items()}),
 
 	p('inline', 'variable-width, no-wrap, with no min-width (shrink-wrapped), baseline-aligned'),
-	date_dropdown({mode: 'inline', value: now()}),
+	date_dropdown({mode: 'inline', value: time()}),
 	H.div(),
 	list_dropdown({mode: 'inline', items: items()}),
 
 	p('wrap', 'fixed-width, auto-wrap'),
-	date_dropdown({mode: 'wrap', value: now()}),
+	date_dropdown({mode: 'wrap', value: time()}),
 	H.div(),
 	list_dropdown({mode: 'wrap', items: items(), value: 'Something Else Entirely'}),
 
 	p('fixed', 'fixed-width, no-wrap, overflow hidden'),
-	date_dropdown({mode: 'fixed', value: now()}),
+	date_dropdown({mode: 'fixed', value: time()}),
 	H.div(),
 	list_dropdown({mode: 'fixed', items: items(), value: 'Something Else Entirely'})
 )

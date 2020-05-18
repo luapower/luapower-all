@@ -22,6 +22,7 @@ listbox = component('x-listbox', function(e) {
 			create_rowset_for_items()
 			update_rowset_from_items()
 		}
+		e.unbind_filter_rowsets()
 		e.rowset = global_rowset(e.rowset)
 		e.init_fields_array()
 		e.init_rows_array()
@@ -69,9 +70,13 @@ listbox = component('x-listbox', function(e) {
 
 	// responding to rowset changes -------------------------------------------
 
-	e.update_item = function(item, row) { // stub
+	e.row_display_value = function(row) { // stub
 		if (e.display_field)
-			item.set(e.rowset.display_value(row, e.display_field))
+			return e.rowset.display_value(row, e.display_field)
+	}
+
+	e.update_item = function(item, row) { // stub
+		item.set(e.row_display_value(row))
 	}
 
 	e.init_fields = function() {
@@ -185,21 +190,33 @@ hlistbox = function(...options) {
 	return listbox({flow: 'horizontal'}, ...options)
 }
 
+// ---------------------------------------------------------------------------
+// list_dropdown
+// ---------------------------------------------------------------------------
+
 list_dropdown = component('x-list-dropdown', function(e) {
 
 	e.class('x-list-dropdown')
 	dropdown.construct(e)
-
+	let display_value = e.display_value
+	e.display_value = function() {
+		let row = e.picker.focused_row
+		return row ? e.picker.row_display_value(row) : display_value()
+	}
 	init = e.init
 	e.init = function() {
-		e.picker = listbox(update({
+		e.picker = e.picker || listbox(update({
 			items: e.items,
-			auto_focus_first_cell: false,
 		}, e.listbox))
+		e.picker.auto_focus_first_cell = false
 		init()
 	}
 
 })
+
+// ---------------------------------------------------------------------------
+// select_button
+// ---------------------------------------------------------------------------
 
 select_button = component('x-select-button', function(e) {
 
@@ -209,4 +226,3 @@ select_button = component('x-select-button', function(e) {
 	e.auto_focus_first_cell = false
 
 })
-

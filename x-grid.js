@@ -11,7 +11,6 @@ grid = component('x-grid', function(e) {
 	e.w = 400
 	e.h = 400
 	e.row_h = 26
-	e.header_visible = true
 	e.auto_w = false
 	e.auto_h = false
 	e.auto_cols_w = true
@@ -22,6 +21,10 @@ grid = component('x-grid', function(e) {
 	e.auto_jump_cells = true    // jump to next/prev cell on caret limits
 	e.quick_edit = false        // quick edit (vs. quick-search) when pressing keys
 	e.keep_editing = true       // re-enter edit mode after navigating
+
+	e.enable_context_menu = true
+	e.can_change_header_visibility = false
+	e.can_change_filters_visibility = true
 
 	e.class('x-widget')
 	e.class('x-grid')
@@ -38,11 +41,13 @@ grid = component('x-grid', function(e) {
 	e.rows_view.on('scroll', update_view)
 
 	e.init = function() {
+		e.unbind_filter_rowsets()
 		e.rowset = global_rowset(e.rowset, {param_nav: e.param_nav})
 		e.init_fields_array()
 		e.init_rows_array()
 		e.init_nav()
 		e.init_fields()
+		e.sort()
 	}
 
 	function bind_document(on) {
@@ -52,7 +57,6 @@ grid = component('x-grid', function(e) {
 	}
 
 	e.attach = function() {
-		set_header_visibility()
 		e.init_rows()
 		e.init_value()
 		e.init_focused_cell()
@@ -77,11 +81,11 @@ grid = component('x-grid', function(e) {
 		if (ri == null)
 			return
 		let view = e.rows_view
-		let th = fi != null && e.header.at[fi]
+		let hcell = fi != null && e.header.at[fi]
 		let h = e.row_h
 		let y = h * ri
-		let x = th ? th.offsetLeft  : 0
-		let w = th ? th.clientWidth : 0
+		let x = hcell ? hcell.offsetLeft  : 0
+		let w = hcell ? hcell.clientWidth : 0
 		view.scroll_to_view_rect(null, null, x, y, w, h)
 	}
 
@@ -109,7 +113,17 @@ grid = component('x-grid', function(e) {
 		e.rows_view.h = e.rows_view_h
 		e.visible_row_count = floor(e.rows_view_h / e.row_h) + 2
 		e.page_row_count = floor(e.rows_view_h / e.row_h)
-		init_editor_geometry()
+
+		if (e.editor)
+			update_editor_height(e.editor, e.focused_field_index)
+
+		for (let fi = 0; fi < e.fields.length; fi++) {
+			let hcell = e.header.at[fi]
+			let fd = hcell.filter_dropdown
+			if (fd)
+				update_filter_height(fd, fi)
+		}
+
 	}
 
 	// ri/fi to visible cell and back -----------------------------------------
@@ -212,9 +226,15 @@ grid = component('x-grid', function(e) {
 				i += e.fields.length
 			}
 
+			if (hcell.filter_dropdown)
+				update_filter_width(hcell.filter_dropdown, fi)
+
 			col_x += col_w
 		}
 		e.header.w = e.fields.length ? col_x : cw
+
+		if (e.editor)
+			update_editor_width(e.editor, e.focused_field_index)
 
 	}
 
@@ -244,14 +264,13 @@ grid = component('x-grid', function(e) {
 
 	// when: fields changed.
 	e.init_fields = function() {
-		set_header_visibility()
 		e.header.clear()
 		for (let fi = 0; fi < e.fields.length; fi++) {
 			let field = e.fields[fi]
 			let sort_icon     = H.span({class: 'fa x-grid-sort-icon'})
 			let sort_icon_pri = H.span({class: 'x-grid-header-sort-icon-pri'})
 			let e1 = H.td({class: 'x-grid-header-title-td'})
-			e1.set(field.text || field.name)
+			e1.set(field.text)
 			e1.title = e1.textContent
 			let e2 = H.td({class: 'x-grid-header-sort-icon-td'}, sort_icon, sort_icon_pri)
 			if (field.align == 'right')
@@ -259,25 +278,66 @@ grid = component('x-grid', function(e) {
 			e1.attr('align', 'left')
 			e2.attr('align', 'right')
 			let title_table =
-				H.table({class: 'x-grid-header-th-table'},
+				H.table({class: 'x-grid-header-cell-table'},
 					H.tr(0, e1, e2))
 
-			let th = div({class: 'x-grid-header-th'}, title_table)
+			let hcell = div({class: 'x-grid-header-cell'}, title_table)
 
-			th.sort_icon = sort_icon
-			th.sort_icon_pri = sort_icon_pri
+			hcell.sort_icon = sort_icon
+			hcell.sort_icon_pri = sort_icon_pri
 
 			sort_icon.on('click', sort_icon_click)
 
-			/*
-			th.filter_dropdown = grid_dropdown({
-				lookup_rowset : e.rowset.group_by(field),
-				lookup_col    : ,
-				display_col   : ,
-			})
-			*/
+			if (e.filters_visible && field.filter_by) {
+				let rs = e.filter_rowset(field)
+				let dd = grid_dropdown({
+					lookup_rowset : rs,
+					lookup_col    : 1,
+					classes       : 'x-grid-filter-dropdown',
+					mode          : 'fixed',
+					grid: {
+						row_h: 22,
+						classes: 'x-grid-filter-dropdown-grid',
+					},
+				})
 
-			e.header.add(th)
+				let f0 = rs.field(0)
+				let f1 = rs.field(1)
+
+				dd.display_value = function() {
+					if (!rs.filtered_count)
+						return () => div({class: 'x-item disabled'}, S('all', 'all'))
+					else
+						return () => span({}, div({class: 'x-grid-filter fa fa-filter'}), rs.filtered_count+'')
+				}
+
+				dd.on('opened', function() {
+					if (!rs.is_loaded) {
+						rs.load()
+						rs.is_loaded = true
+					}
+				})
+
+				dd.picker.pick_value = function() {
+					let checked = !rs.value(this.focused_row, f0)
+					rs.set_value(this.focused_row, f0, checked)
+					rs.filtered_count = (rs.filtered_count || 0) + (checked ? -1 : 1)
+					dd.update_value()
+					e.init_rows_array()
+					e.init_rows()
+					e.sort()
+				}
+
+				dd.picker.on('keydown', function(key) {
+					if (key == ' ')
+						this.pick_value()
+				})
+
+				hcell.filter_dropdown = dd
+				hcell.add(dd)
+			}
+
+			e.header.add(hcell)
 		}
 		update_sort_icons()
 	}
@@ -285,17 +345,17 @@ grid = component('x-grid', function(e) {
 	function update_sort_icons() {
 		for (let fi = 0; fi < e.fields.length; fi++) {
 			let field = e.fields[fi]
-			let th = e.header.at[fi]
+			let hcell = e.header.at[fi]
 			let dir = e.order_by_dir(field)
 			let pri = e.order_by_priority(field)
-			th.sort_icon.class('fa-angle-up'         , false)
-			th.sort_icon.class('fa-angle-double-up'  , false)
-			th.sort_icon.class('fa-angle-down'       , false)
-			th.sort_icon.class('fa-angle-double-down', false)
-			th.sort_icon.class('fa-angle'+(pri ? '-double' : '')+'-up'  , dir == 'asc')
-			th.sort_icon.class('fa-angle'+(pri ? '-double' : '')+'-down', dir == 'desc')
-			th.sort_icon.parent.class('sorted', !!dir)
-			th.sort_icon_pri.set(pri > 1 ? pri : '')
+			hcell.sort_icon.class('fa-angle-up'         , false)
+			hcell.sort_icon.class('fa-angle-double-up'  , false)
+			hcell.sort_icon.class('fa-angle-down'       , false)
+			hcell.sort_icon.class('fa-angle-double-down', false)
+			hcell.sort_icon.class('fa-angle'+(pri ? '-double' : '')+'-up'  , dir == 'asc')
+			hcell.sort_icon.class('fa-angle'+(pri ? '-double' : '')+'-down', dir == 'desc')
+			hcell.sort_icon.parent.class('sorted', !!dir)
+			hcell.sort_icon_pri.set(pri > 1 ? pri : '')
 		}
 	}
 
@@ -409,22 +469,44 @@ grid = component('x-grid', function(e) {
 		})
 	}
 
+	let header_visible = true
+	e.property('header_visible',
+		function() {
+			return header_visible
+		},
+		function(v) {
+			header_visible = !!v
+			e.header.show(!!v)
+			e.init_rows()
+		}
+	)
+
+	let filters_visible = false
+	e.property('filters_visible',
+		function() {
+			return filters_visible
+		},
+		function(v) {
+			filters_visible = !!v
+			e.header.class('with-filters', !!v)
+			e.init_fields()
+			e.init_rows()
+		}
+	)
+
 	// inline editing ---------------------------------------------------------
 
-	// when: input created, heights changed, column width changed.
-	function init_editor_geometry(editor) {
-		editor = editor || e.editor
-		if (!editor)
-			return
-		let th = e.header.at[e.focused_field_index]
-		editor.x = th.offsetLeft + th.clientLeft
+	// when: input created, heights changed.
+	function update_editor_height(editor, fi) {
 		editor.y = e.row_h * e.focused_row_index
-		editor.w = th.clientWidth
 		editor.h = e.row_h - num(e.cells.at[0].css('border-bottom-width'))
 	}
 
-	function set_header_visibility() {
-		e.header.show(e.header_visible)
+	// when: input created, column width changed.
+	function update_editor_width(editor, fi) {
+		let hcell = e.header.at[fi]
+		editor.x = hcell.offsetLeft + hcell.clientLeft
+		editor.w = hcell.clientWidth
 	}
 
 	// when: scroll_y changed.
@@ -444,7 +526,8 @@ grid = component('x-grid', function(e) {
 		if (!editor)
 			return
 		editor.class('grid-editor')
-		init_editor_geometry(editor)
+		update_editor_height(editor, e.focused_field_index)
+		update_editor_width(editor, e.focused_field_index)
 		e.rows_div.add(editor)
 		return editor
 	}
@@ -453,6 +536,21 @@ grid = component('x-grid', function(e) {
 		let cell = e.cells.at[cell_index(ri, fi)]
 		if (cell)
 			cell.class('editing', editing)
+	}
+
+	// filter dropdowns -------------------------------------------------------
+
+	// when: fields changed, row height changes.
+	function update_filter_height(fd, fi) {
+		let hcell = e.header.at[fi]
+		//fd.y = e.header.clientHeight - e.row_h
+		//fd.h = e.row_h
+	}
+
+	// when: fields changed, column width changed.
+	function update_filter_width(fd, fi) {
+		let hcell = e.header.at[fi]
+		fd.w = hcell.clientWidth
 	}
 
 	// responding to rowset changes -------------------------------------------
@@ -665,10 +763,10 @@ grid = component('x-grid', function(e) {
 			for (let fi = 0; fi < e.fields.length; fi++) {
 				let field = e.fields[fi]
 				let marker = resize_markers.at[fi]
-				let th = e.header.at[fi]
+				let hcell = e.header.at[fi]
 				marker.x = field.align == 'right'
-					? th._x + th._w - field.w
-					: th._x + field.w
+					? hcell._x + hcell._w - field.w
+					: hcell._x + field.w
 				marker.h = e.header_h + e.rows_view_h
 			}
 		}
@@ -677,9 +775,8 @@ grid = component('x-grid', function(e) {
 			if (!e.auto_cols_w)
 				return
 			resize_markers = div({class: 'x-grid-resize-markers'})
-			for (let fi = 0; fi < e.fields.length; fi++) {
+			for (let fi = 0; fi < e.fields.length; fi++)
 				resize_markers.add(div({class: 'x-grid-resize-marker'}))
-			}
 			e.add(resize_markers)
 			update_resize_markers()
 		}
@@ -732,7 +829,6 @@ grid = component('x-grid', function(e) {
 			set_col_w(hit_fi, w)
 			update_widths()
 			update_resize_markers()
-			init_editor_geometry()
 			return true
 		}
 
@@ -776,6 +872,9 @@ grid = component('x-grid', function(e) {
 	let context_menu
 	function context_menu_popup(fi, mx, my) {
 
+		if (!e.enable_context_menu)
+			return
+
 		if (context_menu) {
 			context_menu.close()
 			context_menu = null
@@ -812,6 +911,26 @@ grid = component('x-grid', function(e) {
 			},
 			separator: true,
 		})
+
+		if (e.can_change_filters_visibility)
+			items.push({
+				text: S('show_filters', 'Show filters'),
+				checked: e.filters_visible,
+				action: function(item) {
+					e.filters_visible = item.checked
+				},
+				separator: true,
+			})
+
+		if (e.can_change_header_visibility)
+			items.push({
+				text: S('show_header', 'Show header'),
+				checked: e.header_visible,
+				action: function(item) {
+					e.header_visible = item.checked
+				},
+				separator: true,
+			})
 
 		if (fi != null) {
 			function hide_field(item) {
@@ -860,15 +979,19 @@ grid = component('x-grid', function(e) {
 
 	// mouse bindings ---------------------------------------------------------
 
+	e.pick_value = function() {
+		e.fire('value_picked', {input: e}) // picker protocol.
+	}
+
 	e.header.on('mousedown', function header_mousedown(ev) {
 		if (e.hasclass('col-resize'))
 			return // clicked on the resizing area.
-		let th = ev.target.closest('.x-grid-header-th')
-		if (!th) // didn't click on the th.
+		let hcell = ev.target.closest('.x-grid-header-cell')
+		if (!hcell) // didn't click on the hcell.
 			return
 		e.focus()
 		e.col_dragging = true
-		e.col_drag_index = th.index
+		e.col_drag_index = hcell.index
 		window.grid_dragging = true
 		e.col_drag_mx = ev.clientX
 		e.col_drag_my = ev.clientY
@@ -893,7 +1016,7 @@ grid = component('x-grid', function(e) {
 		return true
 	}
 
-	function click_th(ev) {
+	function click_hcell(ev) {
 		if (e.col_dragging)
 			col_drag_mouseup()
 		else if (e.col_moving)
@@ -902,26 +1025,26 @@ grid = component('x-grid', function(e) {
 			return
 		if (e.hasclass('col-resize'))
 			return // clicked on the resizing area.
-		let th = ev.target.closest('.x-grid-header-th')
-		if (!th) // didn't click on the th.
+		let hcell = ev.target.closest('.x-grid-header-cell')
+		if (!hcell) // didn't click on the hcell.
 			return
 		e.focus()
-		return th
+		return hcell
 	}
 
 	e.header.on('click', function header_click(ev) {
-		let th = click_th(ev)
-		if (!th)
+		let hcell = click_hcell(ev)
+		if (!hcell)
 			return
-		e.set_order_by_dir(e.fields[th.index], 'toggle', ev.shiftKey)
+		e.set_order_by_dir(e.fields[hcell.index], 'toggle', ev.shiftKey)
 		return false
 	})
 
 	function sort_icon_click(ev) {
-		let th = click_th(ev)
-		if (!th)
+		let hcell = click_hcell(ev)
+		if (!hcell)
 			return
-		e.set_order_by_dir(e.fields[th.index], false, ev.shiftKey)
+		e.set_order_by_dir(e.fields[hcell.index], false, ev.shiftKey)
 		return false
 	}
 
@@ -935,8 +1058,8 @@ grid = component('x-grid', function(e) {
 		if (ev.target.hasclass('x-grid-cell'))
 			fi = cell_address(ev.target)[1]
 		else {
-			let th = ev.target.closest('.x-grid-header-th')
-			fi = th && th.index
+			let hcell = ev.target.closest('.x-grid-header-cell')
+			fi = hcell && hcell.index
 		}
 		context_menu_popup(fi, ev.clientX, ev.clientY)
 		return false
@@ -962,7 +1085,7 @@ grid = component('x-grid', function(e) {
 			}
 		} else {
 			if (e.focus_cell(ri, fi, 0, 0, {must_not_move_row: true, input: e}))
-				e.fire('value_picked', {input: e}) // picker protocol.
+				e.pick_value()
 			return false
 		}
 	})
@@ -1083,7 +1206,7 @@ grid = component('x-grid', function(e) {
 		// Enter: toggle edit mode, and navigate on exit
 		if (key == 'Enter') {
 			if (e.hasclass('picker')) {
-				e.fire('value_picked')
+				e.pick_value()
 			} else if (!e.editor) {
 				e.enter_edit('select_all')
 			} else if (e.exit_edit()) {
@@ -1150,11 +1273,11 @@ grid_dropdown = component('x-grid-dropdown', function(e) {
 	e.init = function() {
 		e.picker = grid(update({
 			rowset: e.lookup_rowset,
-			rowset_owner: false,
-			col: e.lookup_col,
+			value_col: e.lookup_col,
 			can_edit: false,
 			can_focus_cells: false,
 			auto_focus_first_cell: false,
+			enable_context_menu: false,
 			auto_w: true,
 			auto_h: true,
 		}, e.grid))
@@ -1164,3 +1287,4 @@ grid_dropdown = component('x-grid-dropdown', function(e) {
 	}
 
 })
+

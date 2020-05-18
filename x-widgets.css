@@ -1195,7 +1195,7 @@
 
 /* grid header & row cell common styles that make them align vertically */
 
-.x-grid-header-th,
+.x-grid-header-cell,
 .x-grid-cell {
 	white-space: nowrap;       /* required: row height is fixed */
 
@@ -1217,16 +1217,20 @@
 	height: calc(3.5em + 1px);
 }
 
+.x-grid-header.with-filters {
+	height: calc(3.5em + 1px + .9em);
+}
+
 /* grid header cells */
 
-.x-grid-header-th {           /* default: header column style */
+.x-grid-header-cell {           /* default: header column style */
 	position: absolute;
-	height: 3.5em;
+	height: 100%;
 	vertical-align: bottom;
 	padding-bottom: .3em;
 }
 
-.x-grid-header-th-table {
+.x-grid-header-cell-table {
 	width: 100%;               /* required: expand to fit column width */
 	table-layout: fixed;       /* required: don't expand based on content */
 }
@@ -1331,13 +1335,17 @@
 
 /* grid col moving */
 
-.x-grid-header-th.col-moving,
+.x-grid.col-moving {
+	cursor: grabbing;
+}
+
+.x-grid-header-cell.col-moving,
 .x-grid-cell.col-moving {
 	background-color: #eee;
 	opacity: .5;
 }
 
-.x-grid.col-moving .x-grid-header-th:not(.col-moving),
+.x-grid.col-moving .x-grid-header-cell:not(.col-moving),
 .x-grid.col-moving .x-grid-cell:not(.col-moving) {
 	transition: left .1s;
 }
@@ -1348,14 +1356,13 @@
 .x-grid.col-resize {
 	cursor: ew-resize;
 }
-.x-grid:not(.col-resize) .x-grid-header-th {
+.x-grid:not(.col-resize) .x-grid-header-cell {
 	cursor: pointer;           /* required: resizing area is underneath */
 }
 
 .x-grid-resize-markers {
 	position: absolute;
 	top: 0;
-	left: 0;
 }
 
 .x-grid-resize-marker {
@@ -1408,6 +1415,30 @@
 
 .x-grid.picker > .x-grid-rows-view {
 	overflow-y: scroll;        /* required: show vert-scrollbars always when a picker */
+}
+
+/* grid filter dropdowns */
+
+.x-widget.x-grid-filter-dropdown {
+	font-size: 85%;
+	bottom: 0;
+	left: 0;
+
+	position: absolute;
+	min-width: 0;
+	border: 0;
+	margin: 0;
+	border-radius: 0;
+
+	color: #36f;
+}
+
+.x-dropdown.x-grid-filter-dropdown.open {
+	box-shadow: none;
+}
+
+.x-grid-filter-dropdown-grid {
+	font-size: 90%;
 }
 
 /* ------------------------------------------------------------------------ */
@@ -1514,8 +1545,8 @@
 
 /* grid ------------------------------------------------------------------- */
 
-.x-dark .x-grid-header-th { background-color: #222; border-bottom-color: #666; }
-.x-dark .x-grid-cell      { border-bottom-color: #333; }
+.x-dark .x-grid-header-cell  { background-color: #222; border-bottom-color: #666; }
+.x-dark .x-grid-cell         { border-bottom-color: #333; }
 
 .x-dark .x-grid.col-resize {
 	cursor: col-resize;

@@ -64,7 +64,7 @@ calendar = component('x-calendar', function(e) {
 	}
 
 	function update_weekview(d, weeks) {
-		let today = day(now())
+		let today = day(time())
 		let this_month = month(d)
 		d = week(this_month)
 		e.weekview.clear()
