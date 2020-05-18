@@ -661,6 +661,8 @@
 	align-items: center;
 }
 
+.x-dropdown-value.null { color: #999; }
+
 .x-dropdown-button {
 	padding-left : var(--x-input-padding-x);
 	padding-right: var(--x-input-padding-x);

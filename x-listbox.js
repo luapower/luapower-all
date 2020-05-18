@@ -14,7 +14,7 @@ listbox = component('x-listbox', function(e) {
 	e.attrval('flow', 'vertical')
 	e.attr_property('flow')
 
-	e.display_col = '0'
+	e.display_col = 0
 
 	e.init = function() {
 		if(e.items) {
@@ -200,13 +200,21 @@ list_dropdown = component('x-list-dropdown', function(e) {
 	dropdown.construct(e)
 	let display_value = e.display_value
 	e.display_value = function() {
-		let row = e.picker.focused_row
-		return row ? e.picker.row_display_value(row) : display_value()
+		let lr = e.picker.rowset
+		let lf = e.picker.value_field
+		let row = lr.lookup(lf, e.input_value)
+		if (row)
+			return e.picker.row_display_value(row)
+		else
+			return display_value()
 	}
 	init = e.init
 	e.init = function() {
 		e.picker = e.picker || listbox(update({
 			items: e.items,
+			rowset: e.lookup_rowset,
+			value_col: e.lookup_col,
+			display_col: e.display_col,
 		}, e.listbox))
 		e.picker.auto_focus_first_cell = false
 		init()

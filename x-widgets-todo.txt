@@ -2,6 +2,13 @@
 FINISH
 ------------------------------------------------------------------------------
 
+- LIST_DROPDOWN null element.
+- GRID_DROPDOWN null element.
+- DATE_DROPDOWN null element.
+
+- GRID shortcut to set null.
+- GRID context menu option to set null.
+
 - ROWSET quicksearch bugs.
 
 - SPLIT fixed pane wrong size when other pane is larger than 100% but shrunk to 100%.

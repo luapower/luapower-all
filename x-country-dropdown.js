@@ -276,5 +276,9 @@ function countries_listbox(...opt) {
 }
 
 function country_dropdown(...opt) {
-	return list_dropdown({picker: countries_listbox()}, ...opt)
+	return list_dropdown({
+		lookup_rowset: global_rowset('countries'),
+		lookup_col: 'country_code',
+		picker: countries_listbox(),
+	}, ...opt)
 }

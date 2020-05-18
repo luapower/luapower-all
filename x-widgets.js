@@ -662,7 +662,7 @@ rowset = function(...options) {
 				lr.on('row_removed' , field.lookup_rowset_display_values_changed, on)
 				lr.on('input_value_changed_for_'+field.lookup_col,
 					field.lookup_rowset_display_values_changed, on)
-				lr.on('input_value_changed_for_'+field.display_col,
+				lr.on('input_value_changed_for_'+(field.display_col || lr.name_col),
 					field.lookup_rowset_display_values_changed, on)
 			}
 		}
@@ -670,6 +670,8 @@ rowset = function(...options) {
 
 	d.display_value = function(row, field) {
 		let v = d.input_value(row, field)
+		if (v == null)
+			return field.null_text
 		let lr = field.lookup_rowset
 		if (lr) {
 			let lf = field.lookup_field
@@ -1135,7 +1137,7 @@ function global_rowset(name, ...options) {
 	}
 
 	rowset.all_types.format = function(v) {
-		return v == null ? this.null_text : String(v)
+		return String(v)
 	}
 
 	rowset.all_types.editor = function(...options) {

@@ -897,15 +897,35 @@ main.add(
 
 <!--------------------------------------------------------------------------->
 
-<template id=country_dropdown_demo>
+<template id=countries_listbox_demo>
 <help>
 
-cd = country_dropdown()
+clb = countries_listbox({
+	value: 'CC', // country code
+})
 
 </help>
 <script>
 
-cd = country_dropdown()
+clb = countries_listbox({value: 'RO'})
+main.add(clb)
+
+</script>
+</template>
+
+<!--------------------------------------------------------------------------->
+
+<template id=country_dropdown_demo>
+<help>
+
+cd = country_dropdown({
+	value: 'CC', // country code
+})
+
+</help>
+<script>
+
+cd = country_dropdown({value: 'RO'})
 main.add(cd)
 
 </script>
