@@ -132,7 +132,7 @@ function tag(tag, attrs, ...children) {
 }
 
 ['div', 'span', 'button', 'input', 'textarea', 'label', 'table', 'thead',
-'tbody', 'tr', 'td', 'th', 'a', 'i', 'b', 'hr',
+'tbody', 'tr', 'td', 'th', 'a', 'i', 'b', 'hr', 'img',
 'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'].forEach(function(s) {
 	H[s] = function(...a) { return tag(s, ...a) }
 })

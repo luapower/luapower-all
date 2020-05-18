@@ -70,6 +70,7 @@ function return_true() { return true; }
 // error handling ------------------------------------------------------------
 
 print = console.log
+trace = console.trace
 
 function assert(ret, err, ...args) {
 	if (ret == null || ret === false) {
@@ -253,7 +254,7 @@ function events_mixin(o) {
 
 // timestamps ----------------------------------------------------------------
 
-now = Date.now
+time = Date.now
 utctime = Date.UTC
 
 _d = new Date() // public temporary date object.
