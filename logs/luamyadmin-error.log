@@ -93,3 +93,7 @@ stack traceback:
 2020/05/14 00:31:32 [error] 21298#0: *1126 [lua] webb_nginx.lua:17: try_call(): 404, client: 106.75.85.117, server: , request: "GET /favicon.ico HTTP/1.1", host: "168.235.102.143:8000"
 2020/05/16 04:06:27 [error] 21298#0: *1171 [lua] webb_nginx.lua:17: try_call(): 404 <h1>404 Not Found</h1>, client: 96.248.7.16, server: , request: "GET /adv,/cgi-bin/weblogin.cgi?username=admin%27%3Bls%20%23&password=asdf HTTP/1.1", host: "127.0.0.1"
 2020/05/18 01:03:17 [error] 21298#0: *1221 [lua] webb_nginx.lua:17: try_call(): 404 <h1>404 Not Found</h1>, client: 185.87.71.182, server: , request: "GET /adv,/cgi-bin/weblogin.cgi?username=admin%27%3Bls%20%23&password=asdf HTTP/1.1", host: "127.0.0.1"
+2020/05/20 11:15:07 [error] 21298#0: *1279 [lua] webb_nginx.lua:17: try_call(): 404 <h1>404 Not Found</h1>, client: 185.100.87.245, server: , request: "POST /sdk HTTP/1.1", host: "168.235.102.143:8000"
+2020/05/20 11:15:07 [error] 21298#0: *1280 [lua] webb_nginx.lua:17: try_call(): 404 <h1>404 Not Found</h1>, client: 185.100.87.245, server: , request: "GET /nmaplowercheck1589969704 HTTP/1.1", host: "168.235.102.143:8000"
+2020/05/20 11:15:08 [error] 21298#0: *1281 [lua] webb_nginx.lua:17: try_call(): 404 <h1>404 Not Found</h1>, client: 185.100.87.245, server: , request: "GET /HNAP1 HTTP/1.1", host: "168.235.102.143:8000"
+2020/05/20 11:15:08 [error] 21298#0: *1283 [lua] webb_nginx.lua:17: try_call(): 404 <h1>404 Not Found</h1>, client: 185.100.87.245, server: , request: "GET /evox/about HTTP/1.1", host: "168.235.102.143:8000"
