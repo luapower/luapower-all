@@ -514,7 +514,6 @@ function rowset_widget(e) {
 	}
 
 	function editor_lost_focus(ev) {
-		return
 		if (!e.editor) // editor is being removed.
 			return
 		if (ev.target != e.editor) // other input that bubbled up.

@@ -197,7 +197,7 @@
 	display: flex;
 	align-items: flex-start;
 	justify-content: flex-start;
-	overflow: visible; /* TODO: why? */
+	overflow: visible; /* for the tip */
 	pointer-events: none;
 
 	/* positioning */
@@ -1100,6 +1100,76 @@
 	border-style: solid none;
 }
 
+/* cssgrid ---------------------------------------------------------------- */
+
+.x-cssgrid {
+	position: relative;
+	height: 100%;
+
+	display: grid;
+	grid-gap: 0px;
+	border: 1px solid gray;
+
+	justify-items: center;
+	align-items: center;
+}
+
+.x-cssgrid-resize-tip {
+	position: absolute;
+
+	/* border-based triangle shape */
+	display: block;
+	border-width: .5em;
+
+	border-color: #04a;
+	border-style: solid;
+}
+
+.x-cssgrid-resize-tip:hover {
+	border-color: #28f;
+}
+
+.x-cssgrid-resize-tip[side=top] {
+	border-right-color : transparent;
+	border-left-color  : transparent;
+	border-bottom-color: transparent;
+	cursor: ew-resize;
+	margin-left: -.5em;
+	transform: scale(1, 2);
+}
+
+.x-cssgrid-resize-tip[side=left] {
+	border-right-color : transparent;
+	border-top-color   : transparent;
+	border-bottom-color: transparent;
+	cursor: ns-resize;
+	margin-top: -.5em;
+	transform: scale(2, 1);
+}
+
+.x-cssgrid-resize-guide {
+	position: absolute;
+	pointer-events: none;
+}
+
+.x-cssgrid-resize-guide[side=left] {
+	width: 0;
+	margin-top: -1px;
+	border-top: 1px dashed #aaa;
+}
+
+.x-cssgrid-resize-guide[side=top] {
+	height: 0;
+	margin-left: -1px;
+	border-left: 1px dashed #aaa;
+}
+
+.x-cssgrid-overlay {
+	position: absolute;
+	background-color: #00000011;
+	z-index: 1;
+}
+
 /* toaster ---------------------------------------------------------------- */
 
 .x-toaster {
@@ -1362,12 +1432,12 @@
 	cursor: pointer;           /* required: resizing area is underneath */
 }
 
-.x-grid-resize-markers {
+.x-grid-resize-guides {
 	position: absolute;
 	top: 0;
 }
 
-.x-grid-resize-marker {
+.x-grid-resize-guide {
 	position: absolute;
 	width: 0;
 	margin-left: -1px;  /* TODO: see why this is needed and remove it */

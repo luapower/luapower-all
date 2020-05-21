@@ -693,7 +693,7 @@ grid = component('x-grid', function(e) {
 			if (e.col_finishing_moving)
 				return // finishing animations still running.
 			e.col_moving = true
-			window.grid_dragging = true
+			window.x_widget_dragging = true
 			e.class('col-moving')
 			mx = mx - e.header.client_rect().left
 			move_px = mx - e.header.at[fi]._x
@@ -757,35 +757,35 @@ grid = component('x-grid', function(e) {
 	// column resizing --------------------------------------------------------
 
 	{
-		let resize_markers
+		let resize_guides
 
-		function update_resize_markers() {
+		function update_resize_guides() {
 			for (let fi = 0; fi < e.fields.length; fi++) {
 				let field = e.fields[fi]
-				let marker = resize_markers.at[fi]
+				let guide = resize_guides.at[fi]
 				let hcell = e.header.at[fi]
-				marker.x = field.align == 'right'
+				guide.x = field.align == 'right'
 					? hcell._x + hcell._w - field.w
 					: hcell._x + field.w
-				marker.h = e.header_h + e.rows_view_h
+				guide.h = e.header_h + e.rows_view_h
 			}
 		}
 
-		function create_resize_markers() {
+		function create_resize_guides() {
 			if (!e.auto_cols_w)
 				return
-			resize_markers = div({class: 'x-grid-resize-markers'})
+			resize_guides = div({class: 'x-grid-resize-guides'})
 			for (let fi = 0; fi < e.fields.length; fi++)
-				resize_markers.add(div({class: 'x-grid-resize-marker'}))
-			e.add(resize_markers)
-			update_resize_markers()
+				resize_guides.add(div({class: 'x-grid-resize-guide'}))
+			e.add(resize_guides)
+			update_resize_guides()
 		}
 
-		function remove_resize_markers() {
-			if (!resize_markers)
+		function remove_resize_guides() {
+			if (!resize_guides)
 				return
-			resize_markers.remove()
-			resize_markers = null
+			resize_guides.remove()
+			resize_guides = null
 		}
 	}
 
@@ -802,7 +802,7 @@ grid = component('x-grid', function(e) {
 				}
 				return
 			}
-			if (window.grid_dragging)
+			if (window.x_widget_dragging)
 				return
 			let r = e.header.client_rect()
 			mx = mx - r.left
@@ -815,7 +815,7 @@ grid = component('x-grid', function(e) {
 		})
 
 		e.on('mouseleave', function mouseleave() {
-			if (window.grid_dragging)
+			if (window.x_widget_dragging)
 				return
 			hit_fi = null
 			e.class('col-resize', false)
@@ -828,7 +828,7 @@ grid = component('x-grid', function(e) {
 			let w = mx - e.header.at[hit_fi]._x - hit_x
 			set_col_w(hit_fi, w)
 			update_widths()
-			update_resize_markers()
+			update_resize_guides()
 			return true
 		}
 
@@ -838,7 +838,7 @@ grid = component('x-grid', function(e) {
 			e.focus()
 			e.col_resizing = true
 			e.class('col-resizing')
-			create_resize_markers()
+			create_resize_guides()
 			return true
 		}
 
@@ -848,7 +848,7 @@ grid = component('x-grid', function(e) {
 			e.col_resizing = false
 			e.class('col-resizing', false)
 			update_widths()
-			remove_resize_markers()
+			remove_resize_guides()
 			return true
 		}
 	}
@@ -992,7 +992,7 @@ grid = component('x-grid', function(e) {
 		e.focus()
 		e.col_dragging = true
 		e.col_drag_index = hcell.index
-		window.grid_dragging = true
+		window.x_widget_dragging = true
 		e.col_drag_mx = ev.clientX
 		e.col_drag_my = ev.clientY
 		return false
@@ -1012,7 +1012,7 @@ grid = component('x-grid', function(e) {
 		if (!e.col_dragging)
 			return
 		e.col_dragging = false
-		window.grid_dragging = false
+		window.x_widget_dragging = false
 		return true
 	}
 
@@ -1093,17 +1093,17 @@ grid = component('x-grid', function(e) {
 	// document mouse bindings
 
 	function document_mousedown() {
-		if (window.grid_dragging)
+		if (window.x_widget_dragging)
 			return // other grid is currently using the mouse.
 		if (col_resize_document_mousedown()) {
-			window.grid_dragging = true
+			window.x_widget_dragging = true
 			return false
 		}
 	}
 
 	function document_mouseup() {
 		if (col_drag_mouseup() || col_resize_document_mouseup() || col_move_document_mouseup()) {
-			window.grid_dragging = false
+			window.x_widget_dragging = false
 			return false
 		}
 	}

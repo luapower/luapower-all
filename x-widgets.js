@@ -1455,7 +1455,7 @@ tooltip = component('x-tooltip', function(e) {
 
 	e.property('visible',
 		function()  { return e.style.display != 'none' },
-		function(v) { return e.show(v); e.update() }
+		function(v) { e.show(v); e.update() }
 	)
 
 	e.attr_property('side'    , e.update)
@@ -2763,7 +2763,7 @@ vsplit = component('x-split', function(e) {
 	let hit, hit_x, mx0, w0, resist
 
 	function view_mousemove(rmx, rmy) {
-		if (window.split_resizing)
+		if (window.x_widget_dragging)
 			return
 		// hit-test for split resizing.
 		hit = false
@@ -2786,7 +2786,7 @@ vsplit = component('x-split', function(e) {
 		if (!hit)
 			return
 		e.class('resizing')
-		window.split_resizing = true // view_mousemove barrier.
+		window.x_widget_dragging = true // view_mousemove barrier.
 		document.on('mousemove', document_mousemove)
 		document.on('mouseup'  , document_mouseup)
 
@@ -2839,7 +2839,7 @@ vsplit = component('x-split', function(e) {
 		if (resist) // reset width
 			e[1][horiz ? 'w' : 'h'] = w0
 		e.class('resizing', false)
-		window.split_resizing = null
+		window.x_widget_dragging = null
 		document.off('mousemove', document_mousemove)
 		document.off('mouseup'  , document_mouseup)
 		if (e.tooltip)

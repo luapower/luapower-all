@@ -262,6 +262,25 @@ callers.mousemove = function(e, f) {
 	return f.call(this, e.clientX, e.clientY, e)
 }
 
+callers.pointerdown = function(e, f) {
+	if (e.which == 1)
+		return f.call(this, e)
+	else if (e.which == 3) {
+		return this.fire('rightpointerdown', e)
+	}
+}
+
+callers.pointerup = function(e, f) {
+	if (e.which == 1)
+		return f.call(this, e)
+	else if (e.which == 3)
+		return this.fire('rightpointerup', e)
+}
+
+callers.pointermove = function(e, f) {
+	return f.call(this, e.clientX, e.clientY, e)
+}
+
 callers.keydown = function(e, f) {
 	return f.call(this, e.key, e.shiftKey, e.ctrlKey, e.altKey, e)
 }
@@ -659,7 +678,7 @@ let popup_state = function(e) {
 
 	function init() {
 		if (target != document.body) { // prevent infinite recursion.
-			assert(target.has_attach_events)
+			// TODO: assert(target.has_attach_events)
 			target.on('attach', target_attached)
 			target.on('detach', target_detached)
 		}
@@ -813,7 +832,7 @@ method(Element, 'modal', function(on) {
 	}
 })
 
-// list element live move pattern --------------------------------------------
+// live-move list element pattern --------------------------------------------
 
 // implements:
 //   move_element_start(elem_i, elem_count)
@@ -897,3 +916,79 @@ function live_move_mixin(e) {
 	return e
 }
 
+// hit-testing ---------------------------------------------------------------
+
+{
+
+// check if a point (x0, y0) is inside rect (x, y, w, h) offseted by d.
+let hit = function(x0, y0, d, x, y, w, h) {
+	x = x - d
+	y = y - d
+	w = w + 2*d
+	h = h + 2*d
+	return x0 >= x && x0 <= x + w && y0 >= y && y0 <= y + h
+}
+
+function hit_test_rect_sides(x0, y0, d, x, y, w, h) {
+	if (hit(x0, y0, d, x, y, 0, 0))
+		return 'top_left'
+	else if (hit(x0, y0, d, x + w, y, 0, 0))
+		return 'top_right'
+	else if (hit(x0, y0, d, x, y + h, 0, 0))
+		return 'bottom_left'
+	else if (hit(x0, y0, d, x + w, y + h, 0, 0))
+		return 'bottom_right'
+	else if (hit(x0, y0, d, x, y, w, 0))
+		return 'top'
+	else if (hit(x0, y0, d, x, y + h, w, 0))
+		return 'bottom'
+	else if (hit(x0, y0, d, x, y, 0, h))
+		return 'left'
+	else if (hit(x0, y0, d, x + w, y, 0, h))
+		return 'right'
+}
+
+method(Element, 'hit_test_sides', function(d, ev) {
+	let r = this.client_rect()
+	return hit_test_rect_sides(ev.clientX, ev.clientY, d, r.left, r.top, r.width, r.height)
+})
+
+}
+
+// drag-element-by-sides-and-corners pattern ---------------------------------
+
+/*
+let make_resizeable = function(e) { e.make_resizeable() }
+installers.resize_start = make_resizeable
+installers.resizing     = make_resizeable
+installers.resize_end   = make_resizeable
+
+function resize_state(e) {
+	let rs = {}
+
+	function pointermove() {
+
+	}
+
+	function bind(on) {
+		e.on('pointermove', pointermove, on)
+	}
+
+	rs.unbind = function() {
+		bind(false)
+	}
+
+	return rs
+}
+
+method(Element, 'make_resizeable', function(on) {
+	on = on !== false
+	let e = this
+	if (on && e.__resize_state) {
+		e.__resize_state.unbind()
+		e.__resize_state = null
+	} else if (!on && !e.__resize_state)
+		e.__resize_state = resize_state(e)
+})
+
+*/

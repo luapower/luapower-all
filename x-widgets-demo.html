@@ -100,6 +100,7 @@ h2 {
 <script src="x-grid.js"></script>
 <script src="x-calendar.js"></script>
 <script src="x-country-dropdown.js"></script>
+<script src="x-cssgrid.js"></script>
 
 </head>
 
@@ -740,6 +741,28 @@ main.add(
 
 <!--------------------------------------------------------------------------->
 
+<template id=cssgrid_demo>
+<help>
+
+
+</help>
+<script>
+
+g = cssgrid({
+	items: [
+		date_dropdown({attrs: {style: 'grid-area: 1 / 3'}, value: day(time())}),
+		input({attrs: {style: 'grid-area: 3 / 1'}, value: 'hello1'}),
+		input({attrs: {style: 'grid-area: 2 / 2'}, value: 'hello2'}),
+	],
+})
+
+main.add(g)
+
+</script>
+</template>
+
+<!--------------------------------------------------------------------------->
+
 <template id=calendar_demo>
 <help>
 
@@ -1349,7 +1372,7 @@ reload_button.on('click', function() {
 	run_script()
 })
 
-demo_list.focus_cell(15)
+demo_list.focus_cell(14)
 
 demo_list_ct.add(demo_list)
 
