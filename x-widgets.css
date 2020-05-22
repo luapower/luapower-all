@@ -27,7 +27,8 @@
 	--x-item-hover-bg-color         : #00000011;
 	--x-item-bg-only-bg-color       : #eee;  /* slider background */
 	--x-item-bg-only-hover-bg-color : #ddd;  /* slider background */
-	--x-input-min-width             : 12em;
+	--x-input-width                 : 12em;
+	--x-spin-input-width            : 12em;
 }
 
 /* defaults --------------------------------------------------------------- */
@@ -388,8 +389,7 @@
 	position: relative;      /* anchor the inner label to it */
 
 	/* sizing */
-	width: 0;                /* don't set this, set min-width */
-	min-width: var(--x-input-min-width);
+	width: var(--x-input-width);
 
 	/* sizing for inline use */
 	margin: .25em;
@@ -411,8 +411,7 @@
 	font-size: inherit;
 	font-family: inherit;
 	height: 100%;            /* stretch vertically */
-	flex: auto;              /* stretch horizontally */
-	min-width: 0;            /* reset, let parent set this */
+	width: 100%;             /* stretch horizontally */
 	color: inherit;
 	background: none;
 	text-align: left;
@@ -509,6 +508,10 @@
 
 /* spin_input ------------------------------------------------------------- */
 
+.x-spin-input {
+	width: var(--x-spin-input-width);
+}
+
 .x-spin-input-button {
 	border-style: solid;
 	border-color: #999;
@@ -557,7 +560,7 @@
 	margin: .75em;
 
 	/* sizing */
-	width: var(--x-input-min-width);
+	width: var(--x-input-width);
 	height: 7px;
 
 	/* styling */
@@ -644,6 +647,7 @@
 
 	/* default mode: variable-width, no-wrap but with .x-input's min-width applied */
 	width: auto;                /* shrink-wrap */
+	min-width: var(--x-input-width);
 	white-space: nowrap;
 }
 
@@ -884,7 +888,7 @@
 }
 
 .x-input.x-calendar-sel-year {
-	min-width: 6.5em;
+	width: 6.5em;
 }
 
 /* calendar as picker ----------------------------------------------------- */
@@ -1164,11 +1168,18 @@
 	border-left: 1px dashed #aaa;
 }
 
-.x-cssgrid-overlay {
+.x-cssgrid-item-overlay {
 	position: absolute;
 	background-color: #00000011;
 	z-index: 1;
 }
+
+.x-cssgrid-item-ph {
+	border: 1px dashed #aaa;
+}
+
+.x-cssgrid-dragging { }
+.x-cssgrid-moving   { cursor: move !important; }
 
 /* toaster ---------------------------------------------------------------- */
 

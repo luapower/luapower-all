@@ -66,7 +66,8 @@ property(Element, 'classes', {
 })
 
 method(Element, 'css', function(prop) {
-	return getComputedStyle(this)[prop]
+	let css = getComputedStyle(this)
+	return prop ? css[prop] : css
 })
 
 // dom tree navigation for elements, skipping text nodes ---------------------
