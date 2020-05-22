@@ -921,37 +921,38 @@ function live_move_mixin(e) {
 
 {
 
-// check if a point (x0, y0) is inside rect (x, y, w, h) offseted by d.
-let hit = function(x0, y0, d, x, y, w, h) {
-	x = x - d
-	y = y - d
-	w = w + 2*d
-	h = h + 2*d
+// check if a point (x0, y0) is inside rect (x, y, w, h)
+// offseted by d1 internally and d2 externally.
+let hit = function(x0, y0, d1, d2, x, y, w, h) {
+	x = x - d1
+	y = y - d1
+	w = w + d2
+	h = h + d2
 	return x0 >= x && x0 <= x + w && y0 >= y && y0 <= y + h
 }
 
-function hit_test_rect_sides(x0, y0, d, x, y, w, h) {
-	if (hit(x0, y0, d, x, y, 0, 0))
+function hit_test_rect_sides(x0, y0, d1, d2, x, y, w, h) {
+	if (hit(x0, y0, d1, d2, x, y, 0, 0))
 		return 'top_left'
-	else if (hit(x0, y0, d, x + w, y, 0, 0))
+	else if (hit(x0, y0, d1, d2, x + w, y, 0, 0))
 		return 'top_right'
-	else if (hit(x0, y0, d, x, y + h, 0, 0))
+	else if (hit(x0, y0, d1, d2, x, y + h, 0, 0))
 		return 'bottom_left'
-	else if (hit(x0, y0, d, x + w, y + h, 0, 0))
+	else if (hit(x0, y0, d1, d2, x + w, y + h, 0, 0))
 		return 'bottom_right'
-	else if (hit(x0, y0, d, x, y, w, 0))
+	else if (hit(x0, y0, d1, d2, x, y, w, 0))
 		return 'top'
-	else if (hit(x0, y0, d, x, y + h, w, 0))
+	else if (hit(x0, y0, d1, d2, x, y + h, w, 0))
 		return 'bottom'
-	else if (hit(x0, y0, d, x, y, 0, h))
+	else if (hit(x0, y0, d1, d2, x, y, 0, h))
 		return 'left'
-	else if (hit(x0, y0, d, x + w, y, 0, h))
+	else if (hit(x0, y0, d1, d2, x + w, y, 0, h))
 		return 'right'
 }
 
-method(Element, 'hit_test_sides', function(d, ev) {
+method(Element, 'hit_test_sides', function(mx, my, d1, d2) {
 	let r = this.client_rect()
-	return hit_test_rect_sides(ev.clientX, ev.clientY, d, r.left, r.top, r.width, r.height)
+	return hit_test_rect_sides(mx, my, d1, d2, r.left, r.top, r.width, r.height)
 })
 
 }

@@ -105,6 +105,41 @@
 .x-widget ::-webkit-scrollbar-corner { background-color: #eee; }
 .x-widget                            { scrollbar-color: #c0c0c0 #eee; }
 
+/* border-based triangle shapes ------------------------------------------- */
+
+.x-arrow {
+	border-width: .5em;
+	border-style: solid;
+}
+
+.x-arrow[side=top], .x-arrow[side=top]:hover {
+	border-right-color : transparent;
+	border-left-color  : transparent;
+	border-bottom-color: transparent;
+	margin-left: -.5em;
+}
+
+.x-arrow[side=bottom], .x-arrow[side=bottom]:hover {
+	border-right-color : transparent;
+	border-left-color  : transparent;
+	border-top-color   : transparent;
+	margin-left: -.5em;
+}
+
+.x-arrow[side=left], .x-arrow[side=left]:hover {
+	border-right-color : transparent;
+	border-top-color   : transparent;
+	border-bottom-color: transparent;
+	margin-top: -.5em;
+}
+
+.x-arrow[side=right], .x-arrow[side=right]:hover {
+	border-left-color  : transparent;
+	border-top-color   : transparent;
+	border-bottom-color: transparent;
+	margin-top: -.5em;
+}
+
 /* button ----------------------------------------------------------------- */
 
 .x-button {
@@ -1082,7 +1117,7 @@
 
 .x-split.resize > .x-split-sizer {
 	background-color: var(--x-item-bg-only-hover-bg-color);
-	transition: background-color 200ms;
+	transition: background-color .2s;
 }
 
 /* grip */
@@ -1112,21 +1147,18 @@
 
 	display: grid;
 	grid-gap: 0px;
-	border: 1px solid gray;
 
 	justify-items: center;
 	align-items: center;
 }
 
+.x-cssgrid.editing {
+	border: 1px solid gray;
+}
+
 .x-cssgrid-resize-tip {
 	position: absolute;
-
-	/* border-based triangle shape */
-	display: block;
-	border-width: .5em;
-
 	border-color: #04a;
-	border-style: solid;
 }
 
 .x-cssgrid-resize-tip:hover {
@@ -1134,20 +1166,12 @@
 }
 
 .x-cssgrid-resize-tip[side=top] {
-	border-right-color : transparent;
-	border-left-color  : transparent;
-	border-bottom-color: transparent;
 	cursor: ew-resize;
-	margin-left: -.5em;
 	transform: scale(1, 2);
 }
 
 .x-cssgrid-resize-tip[side=left] {
-	border-right-color : transparent;
-	border-top-color   : transparent;
-	border-bottom-color: transparent;
 	cursor: ns-resize;
-	margin-top: -.5em;
 	transform: scale(2, 1);
 }
 
@@ -1178,8 +1202,16 @@
 	border: 1px dashed #aaa;
 }
 
-.x-cssgrid-dragging { }
 .x-cssgrid-moving   { cursor: move !important; }
+
+.x-cssgrid-span-ph {
+	position: absolute;
+	border: 1px dashed blue;
+}
+
+.x-cssgrid-align-arrow {
+
+}
 
 /* toaster ---------------------------------------------------------------- */
 
@@ -1189,7 +1221,7 @@
 
 .x-notify-toaster {
 	position: fixed;
-	transition: top 200ms;
+	transition: top .2s;
 }
 
 /* dialog ----------------------------------------------------------------- */

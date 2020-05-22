@@ -2,6 +2,9 @@
 FINISH
 ------------------------------------------------------------------------------
 
+- REFACTORING: replace mouse events with pointer events & mouse capturing.
+- REFACTORING: use x-arrow classes for tooltip tips.
+
 - LIST_DROPDOWN null element.
 - GRID_DROPDOWN null element.
 - DATE_DROPDOWN null element.

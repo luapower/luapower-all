@@ -2,16 +2,24 @@
 cssgrid = component('x-cssgrid', function(e) {
 
 	e.class('x-cssgrid')
+	e.class('editing')
 
 	e.init = function() {
 		if (e.items)
-			for (let item of e.items) {
+			for (let item of e.items)
 				e.add(item)
-			}
-
 	}
 
 	e.attach = function() {
+
+		// normalize positions in grid.
+		for (let item of e.items) {
+			let css = item.css()
+			item.style['grid-column-start'] = css['grid-column-start']
+			item.style['grid-column-end'  ] = (css['grid-column-end'  ] == 'auto' ? css['grid-column-start'] : css['grid-column-end'])
+			item.style['grid-row-start'   ] = css['grid-row-start'   ]
+			item.style['grid-row-end'     ] = (css['grid-row-end'     ] == 'auto' ? css['grid-row-start'   ] : css['grid-row-end'   ])
+		}
 
 		create_resize_tips()
 
@@ -25,6 +33,45 @@ cssgrid = component('x-cssgrid', function(e) {
 
 	}
 
+	// geometry ---------------------------------------------------------------
+
+	function track_sizes(type) {
+		return e.css(`grid-template-${type}s`).split(' ').map(num)
+	}
+
+	function item_track_bounds_for(sizes, gap, i1, i2) {
+		let x1, x2
+		let x = 0
+		for (let i = 0; i < sizes.length; i++) {
+			if (i1 == i)
+				x1 = x
+			if (i > 0)
+				x += gap / 2
+			x += sizes[i]
+			if (i < sizes.length-1)
+				x += gap / 2
+			if (i2 == i)
+				x2 = x
+		}
+		return [x1, x2]
+	}
+
+	function item_track_bounds(item) {
+		let css = item.css()
+		let e_css = e.css()
+		let col_gap = num(e_css['column-gap'])
+		let row_gap = num(e_css['row-gap'])
+		let i1 = num(css['grid-column-start'])-1
+		let i2 = num(css['grid-column-end'])-1
+		let j1 = num(css['grid-row-start'])-1
+		let j2 = num(css['grid-row-end'])-1
+		let col_sizes = track_sizes('column')
+		let row_sizes = track_sizes('row')
+		let [x1, x2] = item_track_bounds_for(col_sizes, col_gap, i1, i2)
+		let [y1, y2] = item_track_bounds_for(row_sizes, row_gap, j1, j2)
+		return [x1, y1, x2, y2]
+	}
+
 	// resize tips ------------------------------------------------------------
 
 	{
@@ -32,7 +79,8 @@ cssgrid = component('x-cssgrid', function(e) {
 
 		function tip_mousedown(ev) {
 			dragging = true
-			sizes = e.css(`grid-template-${this.type}s`).split(' ').map(num)
+			this.setPointerCapture(ev.pointerId)
+			sizes = track_sizes(this.type)
 			let cr = this.client_rect()
 			let pcr = this.parent.client_rect()
 			let left = this.type == 'column' ? 'left' : 'top'
@@ -40,7 +88,7 @@ cssgrid = component('x-cssgrid', function(e) {
 			drag_mx = ev[this.type == 'column' ? 'clientX' : 'clientY'] - cr[left]
 			s0 = sizes[this.track_index  ]
 			s1 = sizes[this.track_index+1]
-			this.setPointerCapture(ev.pointerId)
+			return false
 		}
 
 		function tip_mousemove(mx, my) {
@@ -53,16 +101,19 @@ cssgrid = component('x-cssgrid', function(e) {
 			sizes[this.track_index+1] = max(0, s1 - dx)
 			e.style[`grid-template-${this.type}s`] = sizes.join('fr ')+'fr'
 			update_resize_tips(this.type)
+			return false
 		}
 
 		function tip_mouseup(ev) {
+			if (!dragging) return
 			dragging = false
 			this.releasePointerCapture(ev.pointerId)
+			return false
 		}
 	}
 
 	function tip_dblclick() {
-		let tracks = e.css(`grid-template-${this.type}s`).split(' ').map(num)
+		let tracks = track_sizes(this.type)
 		let i = this.track_index+1
 		tracks.insert(i, 20)
 		e.style[`grid-template-${this.type}s`] = tracks.join('fr ')+'fr'
@@ -87,7 +138,7 @@ cssgrid = component('x-cssgrid', function(e) {
 
 	function update_resize_tips_for(type) {
 		let gap = num(e.css(`grid-${type}-gap`))
-		let t = e.css(`grid-template-${type}s`).split(' ')
+		let tracks = track_sizes(type)
 		let X = type == 'column' ? 'x' : 'y'
 		let Y = type == 'column' ? 'y' : 'x'
 		let x = gap / 2
@@ -95,7 +146,7 @@ cssgrid = component('x-cssgrid', function(e) {
 		let guide_w = e.client_rect()[type == 'column' ? 'height' : 'width']
 		for (let tip of e.tips)
 			if (tip.type == type) {
-				x += num(t[ti++])
+				x += tracks[ti++]
 				tip[X] = x
 				tip[Y] = 0
 				tip.guide[type == 'column' ? 'h' : 'w'] = guide_w
@@ -117,10 +168,9 @@ cssgrid = component('x-cssgrid', function(e) {
 	}
 
 	function create_resize_tips_for(type) {
-		let t = e.css(`grid-template-${type}s`).split(' ')
 		let side = type == 'column' ? 'top' : 'left'
-		for (let i = 0; i < t.length-1; i++) {
-			let tip = div({class: 'x-cssgrid-resize-tip', side: side})
+		for (let i = 0; i < track_sizes(type).length-1; i++) {
+			let tip = div({class: 'x-arrow x-cssgrid-resize-tip', side: side})
 			tip.hide()
 			tip.guide = div({class: 'x-cssgrid-resize-guide', side: side})
 			tip.track_index = i
@@ -138,30 +188,17 @@ cssgrid = component('x-cssgrid', function(e) {
 
 	// dragging items ---------------------------------------------------------
 
-	let cursors = {
-		left         : 'ew-resize',
-		right        : 'ew-resize',
-		top          : 'ns-resize',
-		bottom       : 'ns-resize',
-	}
-
 	{
-		let dragging, drag_mx, drag_my
-		let hit_item, hit_side, hit_x, hit_y, moving
+		let item_ph = div({class: 'x-cssgrid-item-ph'}) // ph=placeholder
+		let span_ph = div({class: 'x-cssgrid-span-ph'}) // ph=placeholder
+		let align_arrow = div({class: 'x-arrow x-cssgrid-align-arrow'})
 
-		function start_move_item(mx, my) {
-			moving = true
+		let hit_item, hit_area, hit_x, hit_y, moving
 
+		function pop_out_item() {
+			if (hit_item.parent != e)
+				return
 			let css = hit_item.css()
-			let r = hit_item.client_rect()
-			hit_x = drag_mx - r.left + num(css['margin-left'])
-			hit_y = drag_my - r.top  + num(css['margin-top' ])
-
-			hit_item.style['grid-column-start'] = css['grid-column-start']
-			hit_item.style['grid-column-end'  ] = css['grid-column-end'  ] == 'auto' ? css['grid-column-start'] : css['grid-column-end']
-			hit_item.style['grid-row-start'   ] = css['grid-row-start'   ]
-			hit_item.style['grid-row-end'     ] = css['grid-row-end'     ] == 'auto' ? css['grid-row-start'   ] : css['grid-row-end'   ]
-
 			item_ph.style['grid-column-start'] = css['grid-column-start']
 			item_ph.style['grid-column-end'  ] = css['grid-column-end'  ]
 			item_ph.style['grid-row-start'   ] = css['grid-row-start'   ]
@@ -173,29 +210,18 @@ cssgrid = component('x-cssgrid', function(e) {
 			item_ph.h = hit_item.offsetHeight
 			item_ph.w = hit_item.offsetWidth
 			e.add(item_ph)
-
 			hit_item.remove()
 			item_overlay.remove()
 			hit_item.style.position = 'absolute'
 			item_overlay.style.position = 'absolute'
-			move_item(mx, my)
 			document.body.add(hit_item)
 			document.body.add(item_overlay)
 			update_item_overlay()
-			item_overlay.class('x-cssgrid-moving', true)
-			item_overlay.style.cursor = 'moving'
-
 		}
 
-		function move_item(mx, my) {
-			hit_item.x = mx - hit_x
-			hit_item.y = my - hit_y
-			update_item_overlay()
-		}
-
-		function stop_move_item() {
-			moving = false
-			item_overlay.class('x-cssgrid-moving', false)
+		function pop_in_item() {
+			if (hit_item.parent == e)
+				return
 			item_ph.remove()
 			hit_item.x = null
 			hit_item.y = null
@@ -206,7 +232,67 @@ cssgrid = component('x-cssgrid', function(e) {
 			e.add(item_overlay)
 		}
 
-		let item_ph = div({class: 'x-cssgrid-item-ph'}) // ph=placeholder
+		function start_move_item(mx, my) {
+			let css = hit_item.css()
+			let r = hit_item.client_rect()
+			hit_x = drag_mx - r.left + num(css['margin-left'])
+			hit_y = drag_my - r.top  + num(css['margin-top' ])
+
+			moving = true
+			item_overlay.class('x-cssgrid-moving', true)
+
+			let [bx1, by1, bx2, by2] = item_track_bounds(hit_item)
+			span_ph.x = bx1
+			span_ph.y = by1
+			span_ph.w = bx2-bx1
+			span_ph.h = by2-by1
+			//e.add(span_ph)
+
+			move_item(mx, my)
+		}
+
+		function stop_move_item() {
+			hit_item.style['justify-self'] = item_ph.style['justify-self']
+			hit_item.style['align-self'  ] = item_ph.style['align-self'  ]
+			pop_in_item()
+			span_ph.remove()
+
+			moving = false
+			item_overlay.class('x-cssgrid-moving', false)
+		}
+
+		function align(dx, x1, x2, bx1, bx2) {
+			let a1 = x1 <= bx1 + dx && 'start'
+			let a2 = x2 >= bx2 - dx && 'end'
+			//if (a1 && a2 && abs())
+			return a1 || a2 || 'center'
+		}
+
+		function move_item(mx, my) {
+
+			let x = mx - hit_x
+			let y = my - hit_y
+
+			pop_out_item()
+			hit_item.x = x
+			hit_item.y = y
+			update_item_overlay()
+
+			let x1 = x - e.offsetLeft
+			let y1 = y - e.offsetTop
+			let x2 = x1 + hit_item.offsetWidth
+			let y2 = y1 + hit_item.offsetHeight
+			let [bx1, by1, bx2, by2] = item_track_bounds(hit_item)
+			let align_x = align(20, x1, x2, bx1, bx2)
+			let align_y = align(20, y1, y2, by1, by2)
+			if (align_x)
+				item_ph.style['justify-self'] = align_x
+			if (align_y)
+				item_ph.style['align-self'  ] = align_y
+
+		}
+
+		let dragging, drag_mx, drag_my
 
 		e.on('pointerdown', function(ev) {
 			if (!hit_item) return
@@ -214,12 +300,6 @@ cssgrid = component('x-cssgrid', function(e) {
 			drag_mx = ev.clientX
 			drag_my = ev.clientY
 			this.setPointerCapture(ev.pointerId)
-			if (hit_side == 'move') {
-
-			}
-			if (hit_side == 'right') {
-				//
-			}
 			return false
 		})
 
@@ -257,26 +337,34 @@ cssgrid = component('x-cssgrid', function(e) {
 			item_overlay.show(!!hit_item)
 		}
 
+		let cursors = {
+			left         : 'ew-resize',
+			right        : 'ew-resize',
+			top          : 'ns-resize',
+			bottom       : 'ns-resize',
+		}
+
 		e.on('pointermove', function(mx, my, ev) {
 			if (moving) {
 				move_item(mx, my)
 				return false
 			} else if (dragging) {
-				if (max(abs(mx - drag_mx), abs(my - drag_my)) > 10)
-					start_move_item(mx, my)
+				if (hit_area = 'move')
+					if (max(abs(mx - drag_mx), abs(my - drag_my)) > 10)
+						start_move_item(mx, my)
 				return false
 			}
 			hit_item = null
-			hit_side = null
+			hit_area = null
 			let cur
 			for (let item of e.items) {
 				if (item.client_rect().contains(mx, my)) {
-					hit_side = 'move'
+					hit_area = 'move'
 					hit_item = item
 					break
 				}
-				hit_side = item.hit_test_sides(10, ev)
-				cur = cursors[hit_side]
+				hit_area = item.hit_test_sides(ev.clientX, ev.clientY, 10, 10)
+				cur = cursors[hit_area]
 				if (cur) {
 					hit_item = item
 					break
