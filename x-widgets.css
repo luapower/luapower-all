@@ -1198,10 +1198,6 @@
 	z-index: 1;
 }
 
-.x-cssgrid-item-ph {
-	border: 1px dashed #aaa;
-}
-
 .x-cssgrid-moving   { cursor: move !important; }
 
 .x-cssgrid-span-ph {

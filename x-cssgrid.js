@@ -134,6 +134,7 @@ cssgrid = component('x-cssgrid', function(e) {
 	function update_resize_tips() {
 		update_resize_tips_for('column')
 		update_resize_tips_for('row')
+		update_item_overlay()
 	}
 
 	function update_resize_tips_for(type) {
@@ -189,7 +190,7 @@ cssgrid = component('x-cssgrid', function(e) {
 	// dragging items ---------------------------------------------------------
 
 	{
-		let item_ph = div({class: 'x-cssgrid-item-ph'}) // ph=placeholder
+		let item_ph = div()
 		let span_ph = div({class: 'x-cssgrid-span-ph'}) // ph=placeholder
 		let align_arrow = div({class: 'x-arrow x-cssgrid-align-arrow'})
 
@@ -219,7 +220,7 @@ cssgrid = component('x-cssgrid', function(e) {
 			update_item_overlay()
 		}
 
-		function pop_in_item() {
+		function push_in_item() {
 			if (hit_item.parent == e)
 				return
 			item_ph.remove()
@@ -252,20 +253,27 @@ cssgrid = component('x-cssgrid', function(e) {
 		}
 
 		function stop_move_item() {
-			hit_item.style['justify-self'] = item_ph.style['justify-self']
-			hit_item.style['align-self'  ] = item_ph.style['align-self'  ]
-			pop_in_item()
+			push_in_item()
 			span_ph.remove()
 
 			moving = false
 			item_overlay.class('x-cssgrid-moving', false)
 		}
 
-		function align(dx, x1, x2, bx1, bx2) {
-			let a1 = x1 <= bx1 + dx && 'start'
-			let a2 = x2 >= bx2 - dx && 'end'
-			//if (a1 && a2 && abs())
-			return a1 || a2 || 'center'
+		function hit_test_edge(dx, x1, x2, bx1, bx2) {
+			let dx1 = abs(bx1 - x1)
+			let dx2 = abs(bx2 - x2)
+			if (dx1 <= dx && dx2 <= dx) // close to both edges
+				if (abs(dx1 - dx2) <= (dx1 + dx2) / 2)
+					return 'center'
+				else
+					return dx1 < dx2 ? 'start' : 'end'
+			else if (dx1 <= dx)
+				return 'start'
+			else if (dx2 <= dx)
+				return 'end'
+			else if (abs(dx1 - dx2) <= dx)
+				return 'center'
 		}
 
 		function move_item(mx, my) {
@@ -273,22 +281,28 @@ cssgrid = component('x-cssgrid', function(e) {
 			let x = mx - hit_x
 			let y = my - hit_y
 
-			pop_out_item()
-			hit_item.x = x
-			hit_item.y = y
-			update_item_overlay()
-
 			let x1 = x - e.offsetLeft
 			let y1 = y - e.offsetTop
 			let x2 = x1 + hit_item.offsetWidth
 			let y2 = y1 + hit_item.offsetHeight
 			let [bx1, by1, bx2, by2] = item_track_bounds(hit_item)
-			let align_x = align(20, x1, x2, bx1, bx2)
-			let align_y = align(20, y1, y2, by1, by2)
-			if (align_x)
-				item_ph.style['justify-self'] = align_x
-			if (align_y)
-				item_ph.style['align-self'  ] = align_y
+			let align_x = hit_test_edge(20, x1, x2, bx1, bx2)
+			let align_y = hit_test_edge(20, y1, y2, by1, by2)
+			let stretch_x = hit_item.style['justify-self'] == 'stretch'
+			let stretch_y = hit_item.style['align-self'  ] == 'stretch'
+			if (align_x && align_y) {
+				push_in_item()
+				if (align_x && !stretch_x)
+					hit_item.style['justify-self'] = align_x
+				if (align_y && !stretch_y)
+					hit_item.style['align-self'  ] = align_y
+				update_item_overlay()
+			} else {
+				pop_out_item()
+				hit_item.x = !stretch_x ? x : e.client_rect().left
+				hit_item.y = !stretch_y ? y : e.client_rect().top
+				update_item_overlay()
+			}
 
 		}
 
@@ -315,9 +329,18 @@ cssgrid = component('x-cssgrid', function(e) {
 
 		e.on('dblclick', function(ev) {
 			if (!hit_item) return
-			hit_item.style['justify-self'] = hit_item.style['justify-self'] == 'stretch' ? 'center' : 'stretch'
-			hit_item.style['align-self'  ] = hit_item.style['align-self'  ] == 'stretch' ? 'center' : 'stretch'
-			hit_item.style.width = hit_item.style['justify-self'] == 'stretch' ? 'auto' : null
+			let align_x = hit_item.style['justify-self']
+			let align_y = hit_item.style['align-self'  ]
+			if (align_x == 'stretch' || align_x == 'center') {
+				align_x = align_x == 'stretch' ? 'center' : 'stretch'
+				hit_item.style['justify-self'] = align_x
+			}
+			if (align_y == 'stretch' || align_y == 'center') {
+				align_y = align_y == 'stretch' ? 'center' : 'stretch'
+				hit_item.style['align-self'  ] = align_y
+			}
+			hit_item.w = align_x == 'stretch' ? 'auto' : null
+			hit_item.h = align_y == 'stretch' ? 'auto' : null
 			update_resize_tips()
 			update_item_overlay()
 			return false
