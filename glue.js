@@ -29,6 +29,7 @@ round = Math.round
 abs = Math.abs
 min = Math.min
 max = Math.max
+sqrt = Math.sqrt
 random = Math.random
 
 function clamp(x, x0, x1) {
@@ -53,6 +54,11 @@ function num(s) {
 function mod(a, b) {
 	return (a % b + b) % b
 }
+
+PI = Math.PI
+sin = Math.sin
+cos = Math.cos
+tan = Math.tan
 
 // logic ---------------------------------------------------------------------
 

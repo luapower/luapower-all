@@ -139,6 +139,23 @@ cssgrid = component('x-cssgrid', function(e) {
 
 	// line tips & guides -----------------------------------------------------
 
+	let hit_line_tip
+
+	function tip_set_cursor(tip, shift) {
+		// TODO: find a "remove" cursor.
+		tip.style.cursor = shift ? 'not-allowed' : null
+	}
+
+	function tip_mouseenter(ev) {
+		hit_line_tip = this
+		tip_set_cursor(hit_line_tip, ev.shiftKey)
+	}
+
+	function tip_mouseleave() {
+		tip_set_cursor(hit_line_tip)
+		hit_line_tip = null
+	}
+
 	{
 		let dragging, drag_mx, cx, s0, s1, sizes
 
@@ -226,10 +243,12 @@ cssgrid = component('x-cssgrid', function(e) {
 			tip.track_index = i
 			tip.type = type
 			e.tips.push(tip)
-			tip.on('pointerdown', tip_mousedown)
-			tip.on('pointermove', tip_mousemove)
-			tip.on('pointerup'  , tip_mouseup)
-			tip.on('dblclick'   , tip_dblclick)
+			tip.on('pointerdown' , tip_mousedown)
+			tip.on('pointermove' , tip_mousemove)
+			tip.on('pointerup'   , tip_mouseup)
+			tip.on('dblclick'    , tip_dblclick)
+			tip.on('pointerenter', tip_mouseenter)
+			tip.on('pointerleave', tip_mouseleave)
 
 			e.add(tip.guide)
 			e.add(tip)
@@ -688,6 +707,16 @@ cssgrid = component('x-cssgrid', function(e) {
 			enter_editmode()
 	}
 
+	e.on('keydown', function(key) {
+		if (key == 'Shift' && hit_line_tip)
+			tip_set_cursor(hit_line_tip, true)
+	})
+
+	e.on('keyup', function(key) {
+		if (key == 'Shift' && hit_line_tip)
+			tip_set_cursor(hit_line_tip, false)
+	})
+
 	e.on('keydown', function(key, shift, ctrl) {
 		if (key == 'F2') {
 			e.set_editing(!e.editing)
@@ -726,7 +755,9 @@ cssgrid = component('x-cssgrid', function(e) {
 				} else { // resize span or move to diff. span
 					let css = focused_item.css()
 					if (shift) { // resize span
-						let i = max(span1(css, type)+1, span2(css, type) + (fw ? 1 : -1))
+						let i1 = span1(css, type)
+						let i2 = span2(css, type)
+						let i = max(i1+1, i2 + (fw ? 1 : -1))
 						set_span2(focused_item, type, i)
 					} else {
 						let i = max(0, span1(css, type) + (fw ? 1 : -1))

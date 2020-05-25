@@ -65,8 +65,8 @@ property(Element, 'classes', {
 	}
 })
 
-method(Element, 'css', function(prop) {
-	let css = getComputedStyle(this)
+method(Element, 'css', function(prop, state) {
+	let css = getComputedStyle(this, state)
 	return prop ? css[prop] : css
 })
 
@@ -999,4 +999,44 @@ method(Element, 'make_resizeable', function(on) {
 		e.__resize_state = resize_state(e)
 })
 
+*/
+
+// using font-awesome icons as cursors ---------------------------------------
+
+/*
+{
+
+let cursors = new Map()
+
+let fa_chars = {
+	trash: '\uf1f8',
+}
+
+property(Element, 'fa_cursor', {
+	set: function(name) {
+		if (!name) {
+			this.style.cursor = null
+			return
+		}
+		let url = cursors.get(name)
+		if (!url) {
+			let canvas = tag('canvas')
+			canvas.w = 24
+			canvas.h = 24
+			//document.body.appendChild(canvas);
+			let ctx = canvas.getContext('2d')
+			ctx.fillStyle = '#000000'
+			ctx.font = '24px Font Awesome 5 Free'
+			ctx.textAlign = 'center'
+			ctx.textBaseline = 'middle'
+			ctx.fillText(fa_chars[name], 12, 12)
+			url = canvas.toDataURL('image/png')
+			cursors.set(name, url)
+		}
+		print(url)
+		this.style.cursor = 'url('+url+'), auto'
+	},
+})
+
+}
 */
