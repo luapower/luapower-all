@@ -49,6 +49,11 @@ function num(s) {
 	return x != x ? undefined : x
 }
 
+// % that works with negative numbers.
+function mod(a, b) {
+	return (a % b + b) % b
+}
+
 // logic ---------------------------------------------------------------------
 
 // `||` operator that considers `0` and `''` to be truth values.
@@ -58,9 +63,9 @@ function or(x, z) { return x != null ? x : z }
 function opt(x, z) { return x !== undefined ? x : z }
 
 // `&&` operator that considers `0` and `''` to be truth values.
-function and(x, z) { return x != null ? z : null }
+function and(x, z) { return x != null ? z : x }
 
-//function tonull(x, v) { return x == v ? null : x }
+function repl(x, v, z) { return x == v ? z : x }
 
 // callbacks -----------------------------------------------------------------
 

@@ -1146,7 +1146,7 @@
 	height: 100%;
 
 	display: grid;
-	grid-gap: 0px;
+	grid-gap: 20px;
 
 	justify-items: center;
 	align-items: center;
@@ -1156,40 +1156,39 @@
 	border: 1px solid gray;
 }
 
-.x-cssgrid-resize-tip {
+.x-cssgrid-line-tip {
 	position: absolute;
 	border-color: #04a;
 }
 
-.x-cssgrid-resize-tip:hover {
+.x-cssgrid-line-tip:hover {
 	border-color: #28f;
 }
 
-.x-cssgrid-resize-tip[side=top] {
+.x-cssgrid-line-tip[side=top] {
 	cursor: ew-resize;
 	transform: scale(1, 2);
 }
 
-.x-cssgrid-resize-tip[side=left] {
+.x-cssgrid-line-tip[side=left] {
 	cursor: ns-resize;
 	transform: scale(2, 1);
 }
 
-.x-cssgrid-resize-guide {
+.x-cssgrid-line-guide {
 	position: absolute;
 	pointer-events: none;
+	border: 0 dashed #aaa;
 }
 
-.x-cssgrid-resize-guide[side=left] {
+.x-cssgrid-line-guide[side=left] {
 	width: 0;
-	margin-top: -1px;
-	border-top: 1px dashed #aaa;
+	border-top-width: 1px;
 }
 
-.x-cssgrid-resize-guide[side=top] {
+.x-cssgrid-line-guide[side=top] {
 	height: 0;
-	margin-left: -1px;
-	border-left: 1px dashed #aaa;
+	border-left-width: 1px;
 }
 
 .x-cssgrid-item-overlay {
@@ -1198,16 +1197,38 @@
 	z-index: 1;
 }
 
-.x-cssgrid-moving   { cursor: move !important; }
+.x-cssgrid-item-overlay.focused {
+	background-color: #0000ff11;
+}
 
-.x-cssgrid-span-ph {
+.x-cssgrid-item-ph {
+	/* enable this for debugging: */
+	/* border: 1px dashed #aaa; */
+}
+
+.x-cssgrid-moving { cursor: move; }
+
+.x-cssgrid-span {
 	position: absolute;
-	border: 1px dashed blue;
+	border: 1px dashed #24a;
+	z-index: 2;
 }
 
-.x-cssgrid-align-arrow {
-
+.x-cssgrid-span-handle {
+	position: absolute;
+	width : 4px;
+	height: 4px;
+	background-color: #24a;
 }
+
+.x-cssgrid-span-handle[side=top   ] { margin-top   : -1px; margin-left  : -2px; left: 50%; }
+.x-cssgrid-span-handle[side=left  ] { margin-left  : -1px; margin-top   : -2px; top : 50%; }
+.x-cssgrid-span-handle[side=right ] { margin-right : -1px; margin-top   : -2px; top : 50%; right: 0; }
+.x-cssgrid-span-handle[side=bottom] { margin-bottom: -1px; margin-left  : -2px; left: 50%; bottom: 0; }
+
+
+.x-cssgrid-span-move { border-color: #2a4; }
+.x-cssgrid-span-move > .x-cssgrid-span-handle { background-color: #2a4; }
 
 /* toaster ---------------------------------------------------------------- */
 

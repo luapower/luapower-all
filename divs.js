@@ -70,6 +70,8 @@ method(Element, 'css', function(prop) {
 	return prop ? css[prop] : css
 })
 
+raf = requestAnimationFrame
+
 // dom tree navigation for elements, skipping text nodes ---------------------
 
 alias(Element, 'at'     , 'children')
@@ -376,6 +378,10 @@ method(DOMRect, 'contains', function(x, y) {
 	return (
 		(x >= this.left && x <= this.right) &&
 		(y >= this.top  && y <= this.bottom))
+})
+
+method(DOMRect, 'intersects', function(x, y, w, h) {
+	// TODO:
 })
 
 // common style wrappers -----------------------------------------------------
@@ -926,8 +932,8 @@ function live_move_mixin(e) {
 let hit = function(x0, y0, d1, d2, x, y, w, h) {
 	x = x - d1
 	y = y - d1
-	w = w + d2
-	h = h + d2
+	w = w + d1 + d2
+	h = h + d1 + d2
 	return x0 >= x && x0 <= x + w && y0 >= y && y0 <= y + h
 }
 
