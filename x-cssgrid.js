@@ -33,14 +33,16 @@ cssgrid = component('x-cssgrid', function(e) {
 
 	}
 
-	// track geometry ---------------------------------------------------------
+	// spans ------------------------------------------------------------------
 
 	function span1(css, type) { return num(css[`grid-${type}-start`])-1 }
 	function span2(css, type) { return num(css[`grid-${type}-end`  ])-1 }
-	function css_gap(css, type) { return num(css[`${type}-gap`]) }
-
 	function set_span1(item, type, i) { item.style[`grid-${type}-start`] = i+1 }
 	function set_span2(item, type, i) { item.style[`grid-${type}-end`  ] = i+1 }
+
+	// tracks -----------------------------------------------------------------
+
+	function css_gap(css, type) { return num(css[`${type}-gap`]) }
 
 	function track_sizes(type) {
 		return e.css(`grid-template-${type}s`).split(' ').map(num)
@@ -93,12 +95,60 @@ cssgrid = component('x-cssgrid', function(e) {
 		return [x1, y1, x2, y2]
 	}
 
+	// add/remove inter-track lines -------------------------------------------
+
+	function remove_line(type, i) {
+		let sizes = track_sizes(type)
+		sizes.remove(i)
+		set_track_sizes(sizes, type)
+		for (let item of e.items) {
+			let css = item.css()
+			let i1 = span1(css, type)
+			let i2 = span2(css, type)
+			if (i1 >= i)
+				set_span1(item, type, max(0, i1-1))
+			if (i2 > i)
+				set_span2(item, type, i2-1)
+		}
+	}
+
+	function insert_line(type, i) {
+		let sizes = track_sizes(type)
+		sizes.insert(i, 20)
+		set_track_sizes(sizes, type)
+		for (let item of e.items) {
+			let css = item.css()
+			let i1 = span1(css, type)
+			let i2 = span2(css, type)
+			if (i1 >= i)
+				set_span1(item, type, i1+1)
+			if (i2 > i)
+				set_span2(item, type, i2+1)
+		}
+	}
+
+	// add-remove items -------------------------------------------------------
+
+	function	remove_item(item) {
+		select_item(null, true)
+		item.remove()
+		let i = e.items.indexOf(item)
+		e.items.remove(i)
+		select_item(e.items[i] || e.items[0], true)
+	}
+
 	// line tips & guides -----------------------------------------------------
 
 	{
 		let dragging, drag_mx, cx, s0, s1, sizes
 
 		function tip_mousedown(ev) {
+			if (ev.shiftKey) {
+				remove_line(this.type, this.track_index+1)
+				create_lines()
+				update()
+				return false
+			}
 			dragging = true
 			this.setPointerCapture(ev.pointerId)
 			sizes = track_sizes(this.type)
@@ -134,21 +184,10 @@ cssgrid = component('x-cssgrid', function(e) {
 	}
 
 	function tip_dblclick() {
-		let sizes = track_sizes(this.type)
-		let i = this.track_index+1
-		sizes.insert(i, 20)
-		set_track_sizes(sizes, this.type)
-		for (let item of e.items) {
-			let css = item.css()
-			let i1 = span1(css, this.type)
-			let i2 = span2(css, this.type)
-			if (i1 >= i)
-				item.style[`grid-${this.type}-start`] = i1+2
-			if (i2 >= i)
-				item.style[`grid-${this.type}-end`] = i2+2
-		}
+		insert_line(this.type, this.track_index+1)
 		create_lines()
 		update()
+		return false
 	}
 
 	function update_lines_for(type) {
@@ -217,7 +256,8 @@ cssgrid = component('x-cssgrid', function(e) {
 		e.set_editing(true)
 		if (single)
 			selected_items.clear()
-		selected_items.add(item)
+		if (item)
+			selected_items.add(item)
 		focused_item = selected_items.size == 1
 			? selected_items.values().next().value : null
 		update_item_overlays()
@@ -555,7 +595,11 @@ cssgrid = component('x-cssgrid', function(e) {
 	let dragging, drag_mx, drag_my
 
 	e.on('pointerdown', function(ev) {
-		if (!hit_item) return
+		if (!hit_item) {
+			if (!ev.shiftKey)
+				select_item(null, true)
+			return
+		}
 		dragging = true
 		drag_mx = ev.clientX
 		drag_my = ev.clientY
@@ -658,6 +702,11 @@ cssgrid = component('x-cssgrid', function(e) {
 		if (focused_item) {
 			if (key == 'Enter') { // toggle stretch
 				toggle_stretch(focused_item, !shift, !ctrl)
+				raf(update)
+				return false
+			}
+			if (key == 'Delete') {
+				remove_item(focused_item)
 				raf(update)
 				return false
 			}

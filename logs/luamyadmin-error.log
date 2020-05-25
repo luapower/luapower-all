@@ -99,3 +99,4 @@ stack traceback:
 2020/05/20 11:15:08 [error] 21298#0: *1283 [lua] webb_nginx.lua:17: try_call(): 404 <h1>404 Not Found</h1>, client: 185.100.87.245, server: , request: "GET /evox/about HTTP/1.1", host: "168.235.102.143:8000"
 2020/05/20 12:10:44 [error] 21298#0: *1290 [lua] webb_nginx.lua:17: try_call(): 404 <h1>404 Not Found</h1>, client: 110.136.207.150, server: , request: "GET /adv,/cgi-bin/weblogin.cgi?username=admin%27%3Bls%20%23&password=asdf HTTP/1.1", host: "127.0.0.1"
 2020/05/22 19:05:04 [error] 21298#0: *1317 [lua] webb_nginx.lua:17: try_call(): 404, client: 208.91.109.50, server: , request: "HEAD /robots.txt HTTP/1.0"
+2020/05/25 14:36:17 [error] 21298#0: *1337 [lua] webb_nginx.lua:17: try_call(): 404, client: 208.91.109.50, server: , request: "HEAD /robots.txt HTTP/1.0"
