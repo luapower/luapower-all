@@ -1212,6 +1212,7 @@
 	position: absolute;
 	border: 1px dashed #24a;
 	z-index: 2;
+	pointer-events: none;
 }
 
 .x-cssgrid-span-handle {

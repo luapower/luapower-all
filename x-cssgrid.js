@@ -143,7 +143,7 @@ cssgrid = component('x-cssgrid', function(e) {
 
 	function tip_set_cursor(tip, shift) {
 		// TODO: find a "remove" cursor.
-		tip.style.cursor = shift ? 'not-allowed' : null
+		// tip.style.cursor = shift ? 'not-allowed' : null
 	}
 
 	function tip_mouseenter(ev) {
@@ -402,7 +402,7 @@ cssgrid = component('x-cssgrid', function(e) {
 		let bx1
 		each_track_line(type, function(i, bx2) {
 			if (i > 0) {
-				let dx = abs(bx1 - x1) + abs(bx2 - x2)
+				let dx = (x1 >= bx1 && x2 <= bx2) ? 0 : abs((x1 + x2) / 2 - (bx1 + bx2) / 2)
 				if (dx < min_dx) {
 					min_dx = dx
 					closest_i = i-1
@@ -485,6 +485,10 @@ cssgrid = component('x-cssgrid', function(e) {
 				set_span1(hit_item, 'row'   , j)
 				set_span2(hit_item, 'column', i+1)
 				set_span2(hit_item, 'row'   , j+1)
+				set_span1(item_ph , 'column', i)
+				set_span1(item_ph , 'row'   , j)
+				set_span2(item_ph , 'column', i+1)
+				set_span2(item_ph , 'row'   , j+1)
 			}
 
 			raf(update)
@@ -523,6 +527,10 @@ cssgrid = component('x-cssgrid', function(e) {
 		focused_item_span.show(!!focused_item)
 	}
 
+	function hit_test_edge_center(mx, my, bx1, bx2, by, side) {
+		return abs((bx1 + bx2) / 2 - mx) <= 5 && abs(by - my) <= 5 && side
+	}
+
 	function hit_test_focused_item_span(mx, my) {
 		if (!focused_item)
 			return
@@ -530,7 +538,12 @@ cssgrid = component('x-cssgrid', function(e) {
 		let r = e.client_rect()
 		mx -= r.left
 		my -= r.top
-		return hit_test_rect_sides(mx, my, 5, 5, bx1, by1, bx2-bx1, by2-by1)
+		return (
+			hit_test_edge_center(mx, my, bx1, bx2, by1, 'top'   ) ||
+			hit_test_edge_center(mx, my, bx1, bx2, by2, 'bottom') ||
+			hit_test_edge_center(my, mx, by1, by2, bx1, 'left'  ) ||
+			hit_test_edge_center(my, mx, by1, by2, bx2, 'right' )
+		)
 	}
 
 	function start_resize_focused_item_span(mx, my) {
@@ -669,18 +682,21 @@ cssgrid = component('x-cssgrid', function(e) {
 				}
 			}
 		} else {
-			hit_area = hit_test_focused_item_span(mx, my)
-			let cur = cursors[hit_area]
-			hit_item = cur && focused_item
-			if (!hit_item) {
-				hit_item = hit_test_item(mx, my)
-				if (hit_item) {
-					cur = 'move'
-					hit_area = 'item'
+			let cur
+			if (!ev.target.hasclass('x-cssgrid-line-tip')) {
+				hit_area = hit_test_focused_item_span(mx, my)
+				cur = cursors[hit_area]
+				hit_item = cur && focused_item
+				if (!hit_item) {
+					hit_item = hit_test_item(mx, my)
+					if (hit_item) {
+						cur = 'move'
+						hit_area = 'item'
+					}
 				}
+				update_item_overlays()
 			}
-			e.style.cursor = cur || 'default'
-			update_item_overlays()
+			e.style.cursor = cur || null
 		}
 		return false
 	})
