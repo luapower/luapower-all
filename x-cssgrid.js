@@ -56,9 +56,9 @@ cssgrid = component('x-cssgrid', function(e) {
 		e.style[`grid-template-${type}s`] = sizes.join(' ')
 	}
 
-	function set_template_size(type, i, s0, dx) {
+	function set_template_size(type, i, sz) {
 		let tsizes = template_sizes(type)
-		tsizes[i] = round(s0 + dx) + 'px'
+		tsizes[i] = sz
 		set_template_sizes(type, tsizes)
 	}
 
@@ -74,6 +74,8 @@ cssgrid = component('x-cssgrid', function(e) {
 			x += sizes[i]
 			if (i < sizes.length-1)
 				x += gap / 2
+			else
+				x -= 1 // make it fit the grid since it's overflow hidden
 		}
 		f(sizes.length, x)
 	}
@@ -167,10 +169,10 @@ cssgrid = component('x-cssgrid', function(e) {
 	}
 
 	{
-		let dragging, drag_mx, cx, s0
+		let dragging, drag_mx, cx, s0, z0
 
 		function tip_mousedown(ev) {
-			if (ev.shiftKey) {
+			if (ev.ctrlKey) {
 				remove_line(this.type, this.track_index+1)
 				create_lines()
 				update()
@@ -185,16 +187,48 @@ cssgrid = component('x-cssgrid', function(e) {
 			cx = cr[left] - pcr[left]
 			drag_mx = ev[this.type == 'column' ? 'clientX' : 'clientY'] - cr[left]
 			s0 = sizes[this.track_index]
+
+			let tsizes = template_sizes(this.type)
+			z0 = tsizes[this.track_index]
+			if (z0 == 'auto') {
+				z0 = track_sizes(this.type)[this.track_index]
+				z0 = z0.toFixed(0) + 'px'
+				tsizes[this.track_index] = z0
+				set_template_sizes(this.type, tsizes)
+			}
+			z0 = num(z0)
+
 			return false
 		}
 
-		function tip_mousemove(mx, my) {
+		function tip_mousemove(mx, my, ev) {
 			if (!dragging) return
 			let cr = this.parent.client_rect()
 			let left = this.type == 'column' ? 'left' : 'top'
 			mx = (this.type == 'column' ? mx : my) - drag_mx - cr[left]
-			let dx = mx - cx
-			set_template_size(this.type, this.track_index, s0, dx)
+			let ds = mx - cx
+			let tsizes = template_sizes(this.type)
+			let z = tsizes[this.track_index]
+			if (z.ends('px')) {
+				z = s0 + ds
+				if (!ev.shiftKey)
+					z = round(z / 10) * 10
+				z = z.toFixed(0) + 'px'
+			} else if (z.ends('%')) {
+				z = num(z)
+				let dz = lerp(ds, 0, s0, 0, z0)
+				z = z0 + dz
+				if (!ev.shiftKey) {
+					let z1 = round(z / 5) * 5
+					let z2 = round(z / (100 / 3)) * (100 / 3)
+					z = abs(z1 - z) < abs(z2 - z) ? z1 : z2
+				}
+				z = z.toFixed(1) + '%'
+			} else if (z.ends('fr')) {
+
+			}
+			tsizes[this.track_index] = z
+			set_template_sizes(this.type, tsizes)
 			update()
 			return false
 		}
@@ -210,6 +244,25 @@ cssgrid = component('x-cssgrid', function(e) {
 	function tip_dblclick() {
 		insert_line(this.type, this.track_index+1)
 		create_lines()
+		update()
+		return false
+	}
+
+	function label_mousedown(ev) {
+		let z = template_sizes(this.tip.type)[this.tip.track_index]
+		if (z == 'auto') {
+			z = track_sizes(this.tip.type)[this.tip.track_index]
+			z = z.toFixed(0) + 'px'
+		} else if (z.ends('px')) {
+			let px = track_sizes(this.tip.type)[this.tip.track_index]
+			z = lerp(px, 0, e.clientWidth, 0, 100)
+			z = z.toFixed(1) + '%'
+		} else if (z.ends('fr')) {
+			z = 'auto'
+		} else if (z.ends('%')) {
+			z = 'auto'
+		}
+		set_template_size(this.tip.type, this.tip.track_index, z)
 		update()
 		return false
 	}
@@ -232,9 +285,10 @@ cssgrid = component('x-cssgrid', function(e) {
 				tip.guide[X] = x
 				tip.label[Y] = 0
 				tip.label[X] = x
-				tip.label.set(tsizes[ti])
+				tip.label.set(tsizes[ti].ends('px') ? num(tsizes[ti]) : tsizes[ti])
 				tip.show()
-				x += (ti < sizes.length-2) ? gap : gap / 2
+				// -1 is to place it inside the grid because it has overflow hidden.
+				x += (ti < sizes.length-2) ? gap : gap / 2 - 1
 				ti++
 			}
 	}
@@ -255,6 +309,7 @@ cssgrid = component('x-cssgrid', function(e) {
 			tip.guide = div({class: 'x-cssgrid-line-guide', side: side})
 			tip.track_index = i
 			tip.type = type
+			tip.label.tip = tip
 			e.tips.push(tip)
 			tip.on('pointerdown' , tip_mousedown)
 			tip.on('pointermove' , tip_mousemove)
@@ -262,10 +317,11 @@ cssgrid = component('x-cssgrid', function(e) {
 			tip.on('dblclick'    , tip_dblclick)
 			tip.on('pointerenter', tip_mouseenter)
 			tip.on('pointerleave', tip_mouseleave)
+			tip.label.on('pointerdown', label_mousedown)
 
+			e.add(tip)
 			e.add(tip.guide)
 			e.add(tip.label)
-			e.add(tip)
 		}
 	}
 

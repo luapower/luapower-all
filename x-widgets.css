@@ -1150,17 +1150,18 @@
 
 	justify-items: center;
 	align-items: center;
-
-	overflow: hidden;
 }
 
 .x-cssgrid.editing {
-	border: 1px solid gray;
+	outline: 1px dashed #aaa;
+	outline-offset: -1px;
+	overflow: hidden;
 }
 
 .x-cssgrid-line-tip {
 	position: absolute;
 	border-color: #04a;
+	z-index: 3;           /* over items, item overlay, span */
 }
 
 .x-cssgrid-line-tip:hover {
@@ -1179,13 +1180,15 @@
 
 .x-cssgrid-line-label {
 	position: absolute;
+	z-index: 4;           /* over items, item overlay, tip */
+	/* style */
 	font-size: 75%;
-	padding: 0 2px;
 	color: #333;
+	cursor: pointer;
 }
 
-.x-cssgrid-line-label[side=top]  { transform: translate(-100%, 0); }
-.x-cssgrid-line-label[side=left] { transform: translate(0, -100%); }
+.x-cssgrid-line-label[side=top]  { margin: 3px -6px; transform: translate(-100%, 0); }
+.x-cssgrid-line-label[side=left] { margin: -3px 5px; transform: translate(0, -100%); }
 
 .x-cssgrid-line-guide {
 	position: absolute;
@@ -1201,12 +1204,13 @@
 .x-cssgrid-line-guide[side=top] {
 	height: 0;
 	border-left-width: 1px;
+	pointer-events: none;
 }
 
 .x-cssgrid-item-overlay {
 	position: absolute;
 	background-color: #00000011;
-	z-index: 1;
+	z-index: 1;           /* over items */
 }
 
 .x-cssgrid-item-overlay.focused {
@@ -1223,7 +1227,7 @@
 .x-cssgrid-span {
 	position: absolute;
 	border: 1px dashed #24a;
-	z-index: 2;
+	z-index: 2;           /* over items, item overlay */
 	pointer-events: none;
 }
 
@@ -1238,7 +1242,6 @@
 .x-cssgrid-span-handle[side=left  ] { margin-left  : -1px; margin-top   : -2px; top : 50%; }
 .x-cssgrid-span-handle[side=right ] { margin-right : -1px; margin-top   : -2px; top : 50%; right: 0; }
 .x-cssgrid-span-handle[side=bottom] { margin-bottom: -1px; margin-left  : -2px; left: 50%; bottom: 0; }
-
 
 .x-cssgrid-span-move { border-color: #2a4; }
 .x-cssgrid-span-move > .x-cssgrid-span-handle { background-color: #2a4; }
