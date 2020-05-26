@@ -1150,6 +1150,8 @@
 
 	justify-items: center;
 	align-items: center;
+
+	overflow: hidden;
 }
 
 .x-cssgrid.editing {
@@ -1174,6 +1176,16 @@
 	cursor: ns-resize;
 	transform: scale(2, 1);
 }
+
+.x-cssgrid-line-label {
+	position: absolute;
+	font-size: 75%;
+	padding: 0 2px;
+	color: #333;
+}
+
+.x-cssgrid-line-label[side=top]  { transform: translate(-100%, 0); }
+.x-cssgrid-line-label[side=left] { transform: translate(0, -100%); }
 
 .x-cssgrid-line-guide {
 	position: absolute;

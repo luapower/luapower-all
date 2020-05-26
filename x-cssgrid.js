@@ -21,10 +21,6 @@ cssgrid = component('x-cssgrid', function(e) {
 			set_span2(item, 'row'   , (css['grid-row-end'   ] == 'auto' ? span1(css, 'row'   )+1 : span2(css, 'row'   )))
 		}
 
-		// nornalize track sizes.
-		set_track_sizes(track_sizes('column'), 'column')
-		set_track_sizes(track_sizes('row'), 'row')
-
 		create_lines()
 		after(0.1, () => raf(update))
 	}
@@ -48,8 +44,22 @@ cssgrid = component('x-cssgrid', function(e) {
 		return e.css(`grid-template-${type}s`).split(' ').map(num)
 	}
 
-	function set_track_sizes(sizes, type) {
-		e.style[`grid-template-${type}s`] = sizes.join('fr ')+'fr'
+	function template_sizes(type) {
+		let tsizes = e.style[`grid-template-${type}s`].split(' ')
+		let sizes = track_sizes(type)
+		for (let i = 0; i < sizes.length; i++)
+			tsizes[i] = tsizes[i] || 'auto'
+		return tsizes
+	}
+
+	function set_template_sizes(type, sizes) {
+		e.style[`grid-template-${type}s`] = sizes.join(' ')
+	}
+
+	function set_template_size(type, i, s0, dx) {
+		let tsizes = template_sizes(type)
+		tsizes[i] = round(s0 + dx) + 'px'
+		set_template_sizes(type, tsizes)
 	}
 
 	function each_track_line(type, f) {
@@ -98,9 +108,9 @@ cssgrid = component('x-cssgrid', function(e) {
 	// add/remove inter-track lines -------------------------------------------
 
 	function remove_line(type, i) {
-		let sizes = track_sizes(type)
-		sizes.remove(i)
-		set_track_sizes(sizes, type)
+		let tsizes = template_sizes(type)
+		tsizes.remove(i)
+		set_template_sizes(type, tsizes)
 		for (let item of e.items) {
 			let css = item.css()
 			let i1 = span1(css, type)
@@ -113,9 +123,9 @@ cssgrid = component('x-cssgrid', function(e) {
 	}
 
 	function insert_line(type, i) {
-		let sizes = track_sizes(type)
-		sizes.insert(i, 20)
-		set_track_sizes(sizes, type)
+		let tsizes = template_sizes(type)
+		tsizes.insert(i, 20)
+		set_template_sizes(type, tsizes)
 		for (let item of e.items) {
 			let css = item.css()
 			let i1 = span1(css, type)
@@ -157,7 +167,7 @@ cssgrid = component('x-cssgrid', function(e) {
 	}
 
 	{
-		let dragging, drag_mx, cx, s0, s1, sizes
+		let dragging, drag_mx, cx, s0
 
 		function tip_mousedown(ev) {
 			if (ev.shiftKey) {
@@ -168,14 +178,13 @@ cssgrid = component('x-cssgrid', function(e) {
 			}
 			dragging = true
 			this.setPointerCapture(ev.pointerId)
-			sizes = track_sizes(this.type)
+			let sizes = track_sizes(this.type)
 			let cr = this.client_rect()
 			let pcr = this.parent.client_rect()
 			let left = this.type == 'column' ? 'left' : 'top'
 			cx = cr[left] - pcr[left]
 			drag_mx = ev[this.type == 'column' ? 'clientX' : 'clientY'] - cr[left]
-			s0 = sizes[this.track_index  ]
-			s1 = sizes[this.track_index+1]
+			s0 = sizes[this.track_index]
 			return false
 		}
 
@@ -185,9 +194,7 @@ cssgrid = component('x-cssgrid', function(e) {
 			let left = this.type == 'column' ? 'left' : 'top'
 			mx = (this.type == 'column' ? mx : my) - drag_mx - cr[left]
 			let dx = mx - cx
-			sizes[this.track_index  ] = max(0, s0 + dx)
-			sizes[this.track_index+1] = max(0, s1 - dx)
-			set_track_sizes(sizes, this.type)
+			set_template_size(this.type, this.track_index, s0, dx)
 			update()
 			return false
 		}
@@ -209,6 +216,7 @@ cssgrid = component('x-cssgrid', function(e) {
 
 	function update_lines_for(type) {
 		let gap = css_gap(e.css(), type)
+		let tsizes = template_sizes(type)
 		let sizes = track_sizes(type)
 		let X = type == 'column' ? 'x' : 'y'
 		let Y = type == 'column' ? 'y' : 'x'
@@ -217,13 +225,17 @@ cssgrid = component('x-cssgrid', function(e) {
 		let guide_w = e.client_rect()[type == 'column' ? 'height' : 'width']
 		for (let tip of e.tips)
 			if (tip.type == type) {
-				x += sizes[ti++]
+				x += sizes[ti]
 				tip[X] = x
 				tip[Y] = 0
 				tip.guide[type == 'column' ? 'h' : 'w'] = guide_w
 				tip.guide[X] = x
+				tip.label[Y] = 0
+				tip.label[X] = x
+				tip.label.set(tsizes[ti])
 				tip.show()
-				x += gap
+				x += (ti < sizes.length-2) ? gap : gap / 2
+				ti++
 			}
 	}
 
@@ -236,9 +248,10 @@ cssgrid = component('x-cssgrid', function(e) {
 
 	function create_lines_for(type) {
 		let side = type == 'column' ? 'top' : 'left'
-		for (let i = 0; i < track_sizes(type).length-1; i++) {
+		for (let i = 0; i < track_sizes(type).length; i++) {
 			let tip = div({class: 'x-arrow x-cssgrid-line-tip', side: side})
 			tip.hide()
+			tip.label = div({class: 'x-cssgrid-line-label', side: side})
 			tip.guide = div({class: 'x-cssgrid-line-guide', side: side})
 			tip.track_index = i
 			tip.type = type
@@ -251,6 +264,7 @@ cssgrid = component('x-cssgrid', function(e) {
 			tip.on('pointerleave', tip_mouseleave)
 
 			e.add(tip.guide)
+			e.add(tip.label)
 			e.add(tip)
 		}
 	}
@@ -259,6 +273,7 @@ cssgrid = component('x-cssgrid', function(e) {
 		if (e.tips)
 			for (let tip of e.tips) {
 				tip.guide.remove()
+				tip.label.remove()
 				tip.remove()
 			}
 		e.tips = []
