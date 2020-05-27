@@ -19,7 +19,7 @@ grid = component('x-grid', function(e) {
 	e.tab_navigation = false    // disabled as it prevents jumping out of the grid.
 	e.auto_advance = 'next_row' // advance on enter = false|'next_row'|'next_cell'
 	e.auto_jump_cells = true    // jump to next/prev cell on caret limits
-	e.quick_edit = false        // quick edit (vs. quick-search) when pressing keys
+	e.quick_edit = false        // quick edit (vs. quick-search) when pressing a key
 	e.keep_editing = true       // re-enter edit mode after navigating
 
 	e.enable_context_menu = true

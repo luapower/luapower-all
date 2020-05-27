@@ -2630,22 +2630,66 @@ pagelist = component('x-pagelist', function(e) {
 	e.class('x-widget')
 	e.class('x-pagelist')
 
+	e.add_button = div({class: 'x-pagelist-item x-pagelist-add-button fa fa-plus', tabindex: 0})
+
+	function add_item(item) {
+		if (typeof item == 'string' || item instanceof Node)
+			item = {text: item}
+		let xbutton = div({class: 'x-pagelist-xbutton fa fa-times'})
+		xbutton.hide()
+		let tdiv = div({class: 'x-pagelist-text'})
+		let idiv = div({class: 'x-pagelist-item', tabindex: 0}, tdiv, xbutton)
+		idiv.text_div = tdiv
+		idiv.xbutton = xbutton
+		tdiv.set(item.text)
+		tdiv.title = item.text
+		idiv.on('mousedown', item_mousedown)
+		idiv.on('dblclick' , item_dblclick)
+		idiv.on('keydown'  , item_keydown)
+		tdiv.on('input'    , tdiv_input)
+		idiv.on('blur'     , item_blur)
+		xbutton.on('mousedown', xbutton_mousedown)
+		idiv.item = item
+		e.add(idiv)
+		e.items.push(item)
+		idiv.index = e.items.length-1
+	}
+
 	e.init = function() {
-		if (e.items)
-			for (let i = 0; i < e.items.length; i++) {
-				let item = e.items[i]
-				if (typeof item == 'string' || item instanceof Node)
-					item = {text: item}
-				let item_div = div({class: 'x-pagelist-item', tabindex: 0}, item.text)
-				item_div.on('mousedown', item_mousedown)
-				item_div.on('keydown'  , item_keydown)
-				item_div.item = item
-				item_div.index = i
-				e.add(item_div)
-			}
+		if (e.items) {
+			let items = e.items
+			e.items = []
+			for (let item of items)
+				add_item(item)
+		}
+		e.add(e.add_button)
 		e.selection_bar = div({class: 'x-pagelist-selection-bar'})
 		e.add(e.selection_bar)
 	}
+
+	function update_selection_bar() {
+		let idiv = e.selected_item
+		e.selection_bar.show(!!idiv)
+		if (idiv) {
+			e.selection_bar.x = idiv.offsetLeft
+			e.selection_bar.w = idiv.clientWidth
+		} else {
+			e.selection_bar.w = 0
+		}
+	}
+
+	function update_xbuttons() {
+		for (let item of e.items)
+			item.xbutton.show(can_remove_items)
+	}
+
+	let can_remove_items = false
+	e.property('can_remove_items',
+		() => can_remove_items,
+		function(v) {
+			can_remove_items = v
+			update_xbuttons()
+		})
 
 	// controller
 
@@ -2654,18 +2698,17 @@ pagelist = component('x-pagelist', function(e) {
 	}
 
 	function select_item(idiv) {
+		exit_editing()
 		if (e.selected_item) {
 			e.selected_item.class('selected', false)
 			e.fire('close', e.selected_item.index)
 			if (e.page_container)
 				e.page_container.clear()
 		}
-		e.selection_bar.show(idiv)
 		e.selected_item = idiv
+		update_selection_bar()
 		if (idiv) {
 			idiv.class('selected', true)
-			e.selection_bar.x = idiv.offsetLeft
-			e.selection_bar.w = idiv.clientWidth
 			e.fire('open', idiv.index)
 			if (e.page_container) {
 				let page = idiv.item.page
@@ -2680,21 +2723,37 @@ pagelist = component('x-pagelist', function(e) {
 	}
 
 	function item_mousedown() {
+		if (this.text_div.contenteditable)
+			return
 		this.focus()
 		select_item(this)
 		return false
 	}
 
 	function item_keydown(key) {
-		if (key == ' ' || key == 'Enter') {
-			select_item(this)
+		if (key == 'F2') {
+			if (this.text_div.contenteditable)
+				exit_editing()
+			else
+				enter_editing()
 			return false
 		}
-		if (key == 'ArrowRight' || key == 'ArrowLeft') {
-			e.selected_index += (key == 'ArrowRight' ? 1 : -1)
-			if (e.selected_item)
-				e.selected_item.focus()
-			return false
+		if (this.text_div.contenteditable) {
+			if (key == 'Enter' || key == 'Escape') {
+				exit_editing()
+				return false
+			}
+		} else {
+			if (key == ' ' || key == 'Enter') {
+				select_item(this)
+				return false
+			}
+			if (key == 'ArrowRight' || key == 'ArrowLeft') {
+				e.selected_index += (key == 'ArrowRight' ? 1 : -1)
+				if (e.selected_item)
+					e.selected_item.focus()
+				return false
+			}
 		}
 	}
 
@@ -2705,12 +2764,61 @@ pagelist = component('x-pagelist', function(e) {
 			return e.selected_item ? e.selected_item.index : null
 		},
 		function(i) {
-			let idiv = e.at[clamp(i, 0, e.children.length-2)]
-			if (!idiv)
-				return
+			let idiv = i != null ? e.at[clamp(i, 0, e.items.length-1)] : null
 			select_item(idiv)
 		}
 	)
+
+	// editing the pagelist itself.
+
+	function enter_editing() {
+		if (!e.selected_item) return
+		e.selected_item.text_div.contenteditable = true
+		e.selected_item.xbutton.show()
+	}
+
+	function exit_editing() {
+		if (!e.selected_item) return
+		e.selected_item.text_div.contenteditable = false
+		e.selected_item.xbutton.hide()
+	}
+
+	e.add_button.on('click', function() {
+		if (e.selected_item == this)
+			return
+		exit_editing()
+		let item = {text: 'New'}
+		e.selection_bar.remove()
+		e.add_button.remove()
+		add_item(item)
+		e.add(e.selection_bar)
+		e.add(e.add_button)
+		return false
+	})
+
+	function item_dblclick() {
+		if (this.text_div.contenteditable)
+			return
+		enter_editing()
+		this.focus()
+		return false
+	}
+
+	function tdiv_input() {
+		update_selection_bar()
+	}
+
+	function item_blur() {
+		//exit_editing()
+	}
+
+	function xbutton_mousedown() {
+		let idiv = this.parent
+		select_item(null)
+		idiv.remove()
+		e.items.remove_value(idiv.item)
+		return false
+	}
 
 })
 
@@ -3056,6 +3164,68 @@ dialog = component('x-dialog', function(e) {
 		if (e.fire('ok'))
 			e.close()
 	}
+
+})
+
+// ---------------------------------------------------------------------------
+// floating toolbox
+// ---------------------------------------------------------------------------
+
+toolbox = component('x-toolbox', function(e) {
+
+	e.classes = 'x-widget x-toolbox'
+	e.attrval('tabindex', 0)
+
+	let xbutton = div({class: 'x-toolbox-xbutton fa fa-times'})
+	let title_div = div({class: 'x-toolbox-title'})
+	e.titlebar = div({class: 'x-toolbox-titlebar'}, title_div, xbutton)
+	e.add(e.titlebar)
+
+	e.hide()
+	document.body.add(e)
+
+	e.init = function() {
+		title_div.set(e.title)
+		e.title = ''
+
+		let content = div({class: 'x-toolbox-content'})
+		content.set(e.content)
+		e.add(content)
+		e.content = content
+
+	}
+
+	{
+		let moving, drag_x, drag_y
+
+		e.titlebar.on('pointerdown', function(ev) {
+			e.focus()
+			moving = true
+			let r = e.client_rect()
+			drag_x = ev.clientX - r.left
+			drag_y = ev.clientY - r.top
+			this.setPointerCapture(ev.pointerId)
+			return false
+		})
+
+		e.titlebar.on('pointerup', function(ev) {
+			moving = false
+			this.releasePointerCapture(ev.pointerId)
+			return false
+		})
+
+		e.titlebar.on('pointermove', function(mx, my) {
+			if (!moving) return
+			e.x = clamp(0, mx - drag_x, window.innerWidth  - this.offsetWidth)
+			e.y = clamp(0, my - drag_y, window.innerHeight - this.offsetHeight)
+			return false
+		})
+	}
+
+	xbutton.on('pointerdown', function() {
+		e.hide()
+		return false
+	})
 
 })
 

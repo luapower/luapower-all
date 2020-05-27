@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>X-MODULE</title>
+<meta charset="utf-8">
+<style>
+
+* { box-sizing: border-box; }
+
+@font-face {
+	font-family: "x-widget";
+	src: url("/OpenSans-Regular.ttf");
+}
+
+@font-face {
+	font-family: "x-widget";
+	src: url("/OpenSans-SemiBold.ttf");
+	font-weight: bold;
+}
+
+</style>
+
+<script src="ace.js" integrity="sha256-+svOVB1WmhKhTy7N21gWvtyXn91qF0r52P2hIArRRug="></script>
+
+<link rel="stylesheet" type="text/css" href="fontawesome.css">
+<link rel="stylesheet" type="text/css" href="x-widgets.css">
+
+<script src="glue.js"></script>
+<script src="divs.js"></script>
+<script src="ajax.js"></script>
+<script src="url.js"></script>
+<script src="x-widgets.js"></script>
+<script src="x-rowset-widget.js"></script>
+<script src="x-listbox.js"></script>
+<script src="x-grid.js"></script>
+<script src="x-calendar.js"></script>
+<script src="x-country-dropdown.js"></script>
+<script src="x-cssgrid.js"></script>
+
+</head>
+
+<body>
+<script>
+body = document.body
+
+function properties_toolbox() {
+	let pg = property_inspector({
+
+	})
+	let tb = toolbox({
+		title: 'properties',
+		content: pg,
+	})
+	return tb
+}
+
+function widgets_toolbox() {
+
+	let lb = listbox({
+		items: [
+			'button', 'cssgrid',
+		],
+	})
+
+	let tb = toolbox({
+		title: 'widgets',
+		content: lb,
+	})
+
+	return tb
+}
+
+
+widgets_tb = widgets_toolbox()
+widgets_tb.show()
+body.add(widgets_tb)
+
+</script>
+</body>
+</html>
