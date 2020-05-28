@@ -246,7 +246,11 @@ function rowset_widget(e) {
 		notify(message, type)
 	}
 
-	e.update_loading = noop // stub
+	e.update_loading = function(on) { // stub
+		if (!on) return
+		e.load_overlay(true)
+	}
+
 	function rowset_loading(on) {
 		e.class('loading', on)
 		e.update_loading(on)
@@ -254,18 +258,99 @@ function rowset_widget(e) {
 	}
 
 	e.update_load_progress = noop // stub
+
 	function rowset_load_progress(p) {
 		e.update_load_progress(p)
 	}
 
-	e.update_load_slow = noop // stub
+	e.update_load_slow = function(on) { // stub
+		if (on)
+			e.load_overlay(true, 'waiting',
+				S('slow', 'Still working on it...'),
+				S('stop_waiting', 'Stop waiting'))
+		else
+			e.load_overlay(true, 'waiting',
+				S('loading', 'Loading...'),
+				S('stop_loading', 'Stop loading'))
+	}
+
 	function rowset_load_slow(on) {
 		e.update_load_slow(on)
 	}
 
-	e.update_load_fail = noop // stub
+	e.update_load_fail = function(on, error, type, status, message, body) {
+		if (type == 'abort')
+			e.load_overlay(false)
+		else
+			e.load_overlay(on, 'error', error, null, body)
+	}
+
 	function rowset_load_fail(...args) {
 		e.update_load_fail(true, ...args)
+	}
+
+	// loading overlay --------------------------------------------------------
+
+	{
+	let oe
+	e.load_overlay = function(on, cls, text, cancel_text, detail) {
+		if (oe) {
+			oe.remove()
+			oe = null
+		}
+		e.disabled = on
+		e.class('disabled', e.disabled)
+		if (!on)
+			return
+		oe = overlay({class: 'x-loading-overlay'})
+		oe.content.class('x-loading-overlay-message')
+		if (cls)
+			oe.class(cls)
+		let focus_e
+		if (cls == 'error') {
+			let more_div = div({class: 'x-loading-overlay-detail'})
+			let band = action_band({
+				layout: 'more... less... < > retry:ok forget-it:cancel',
+				buttons: {
+					more: function() {
+						more_div.set(detail, 'pre-wrap')
+						band.at[0].hide()
+						band.at[1].show()
+					},
+					less: function() {
+						more_div.clear()
+						band.at[0].show()
+						band.at[1].hide()
+					},
+					retry: function() {
+						e.load_overlay(false)
+						e.rowset.load()
+					},
+					forget_it: function() {
+						e.load_overlay(false)
+					},
+				},
+			})
+			band.at[1].hide()
+			let error_icon = span({class: 'x-loading-error-icon fa fa-exclamation-circle'})
+			oe.content.add(div({}, error_icon, text, more_div, band))
+			focus_e = band.last.prev
+		} else if (cls == 'waiting') {
+			let cancel = button({
+				text: cancel_text,
+				action: function() {
+					e.rowset.abort_loading()
+				},
+				attrs: {style: 'margin-left: 1em;'},
+			})
+			oe.content.add(text, cancel)
+			focus_e = cancel
+		} else
+			oe.content.remove()
+		e.add(oe)
+		if(focus_e && e.hasfocus)
+			focus_e.focus()
+	}
 	}
 
 	// navigating -------------------------------------------------------------
@@ -560,9 +645,8 @@ function rowset_widget(e) {
 		},
 		function(s) {
 			order_by = new Map()
-			let ea = s.split(/\s*/)
-			for (let e of ea) {
-				let m = e.split(':')
+			for (let s1 of s.split(/\s+/)) {
+				let m = s1.split(':')
 				let name = m[0]
 				let field = e.rowset.field(name)
 				if (field && field.sortable) {
@@ -571,6 +655,7 @@ function rowset_widget(e) {
 						order_by.set(field, dir)
 				}
 			}
+			e.sort()
 		}
 	)
 

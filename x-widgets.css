@@ -507,6 +507,10 @@
 	visibility: hidden;
 }
 
+.x-input:not(.with-inner-label) > .x-input-inner-label {
+	display: none;
+}
+
 .x-input.with-inner-label > .x-input-inner-label {
 	visibility: visible;
 }
@@ -1413,11 +1417,41 @@
 	background-color: #f8f8f8;
 }
 
+/* x-rowset-widget -------------------------------------------------------- */
+
+.x-loading-overlay {
+	padding: .5em;
+}
+
+.x-loading-overlay.error {
+	background: #00000011;
+}
+
+.x-loading-overlay-message {
+	padding: 1em 1em;
+	background: white;
+	box-shadow: 2px 2px 10px #00000044;
+}
+
+.x-loading-overlay-message .x-button {
+	line-height: 1em;
+}
+
+.x-loading-overlay-detail {
+	font-family: monospace;
+	margin: 1em 0;
+}
+
+.x-loading-error-icon {
+	margin: 0 .5em;
+	color: var(--x-error-bg-color);
+}
+
 /* grid ------------------------------------------------------------------- */
 
 .x-grid {
 	display: inline-block;     /* required: don't expand to fit parent width */
-	position: relative;        /* required: attach col-move-marker to it */
+	position: relative;        /* required for `position: absolute` elements */
 	margin: .25em;
 	overflow: hidden;          /* required: hide header overflow */
 	cursor: default;           /* required: don't show caret over text */
@@ -1506,34 +1540,6 @@
 .x-grid.loading > .x-grid-rows-view
 {
 	opacity: .7;
-}
-
-.x-grid-loading-overlay {
-	padding: .5em;
-}
-
-.x-grid-loading-overlay.error {
-	background: #00000011;
-}
-
-.x-grid-loading-overlay-message {
-	padding: 1em 1em;
-	background: white;
-	box-shadow: 2px 2px 10px #00000044;
-}
-
-.x-grid-loading-overlay-message .x-button {
-	line-height: 1em;
-}
-
-.x-grid-loading-error-icon {
-	margin: 0 .5em;
-	color: var(--x-error-bg-color);
-}
-
-.x-grid-loading-overlay-detail {
-	font-family: monospace;
-	margin: 1em 0;
 }
 
 /* grid rows */
@@ -1675,8 +1681,8 @@
 /* vertical grid ---------------------------------------------------------- */
 
 .x-vgrid {
-	display: inline-block;     /* required: don't expand to fit parent width */
-	position: relative;        /* required: attach col-move-marker to it */
+	display: inline-flex;      /* required: don't expand to fit parent width */
+	position: relative;        /* required for `position: absolute` elements */
 	margin: .25em;
 	overflow: hidden;          /* required: hide header overflow */
 	cursor: default;           /* required: don't show caret over text */
@@ -1691,33 +1697,23 @@
 
 	/* sizing & styling */
 	padding: var(--x-input-padding);
-	border-right: 1px dotted #ccc;
 	min-width: 20px;
-}
-
-.x-vgrid-cell {
-	border-right-color: transparent;
 }
 
 /* vgrid header */
 
 .x-vgrid-header {
-	position: relative;        /* required: make movable for scrolling horizontally */
-	border-bottom: 1px solid #999;
-	height: calc(3.5em + 1px);
-}
-
-.x-vgrid-header.with-filters {
-	height: calc(3.5em + 1px + .9em);
+	position: relative;        /* required: make movable for vertical scrolling */
+	border-right: 1px solid #999;
 }
 
 /* vgrid header cells */
 
-.x-vgrid-header-cell {           /* default: header column style */
+.x-vgrid-header-cell {
 	position: absolute;
-	height: 100%;
-	vertical-align: bottom;
-	padding-bottom: .3em;
+	width: 100%;
+	text-align: left;
+	padding-right: .3em;
 }
 
 .x-vgrid-header-cell-table {
@@ -1767,43 +1763,21 @@
 	opacity: .7;
 }
 
-.x-vgrid-loading-overlay {
-	padding: .5em;
-}
-
-.x-vgrid-loading-overlay.error {
-	background: #00000011;
-}
-
-.x-vgrid-loading-overlay-message {
-	padding: 1em 1em;
-	background: white;
-	box-shadow: 2px 2px 10px #00000044;
-}
-
-.x-vgrid-loading-overlay-message .x-button {
-	line-height: 1em;
-}
-
 .x-vgrid-loading-error-icon {
 	margin: 0 .5em;
 	color: var(--x-error-bg-color);
 }
 
-.x-grid-loading-overlay-detail {
-	font-family: monospace;
-	margin: 1em 0;
-}
-
 /* vgrid rows */
 
 .x-vgrid-rows-view {
+	display: inline-block;
 	overflow: auto;            /* required: show scrollbars as needed */
 	position: relative;        /* required: anchor rows div */
 }
 
 .x-vgrid-rows {
-	overflow: hidden;          /* required: hide surplus bottom rows */
+	overflow: hidden;          /* required: hide surplus left & right rows */
 }
 
 .x-vgrid-cells {
@@ -1853,13 +1827,6 @@
 .x-vgrid-resize-guides {
 	position: absolute;
 	top: 0;
-}
-
-.x-vgrid-resize-guide {
-	position: absolute;
-	width: 0;
-	margin-left: -1px;  /* TODO: see why this is needed and remove it */
-	border-left: 1px dashed #aaa;
 }
 
 /* vgrid as picker */

@@ -1731,8 +1731,8 @@ function input_widget(e) {
 		e.class('with-inner-label', !e.nolabel && e.field && !!e.field.text)
 	}
 
-	e.bool_attr_property('nolabel', update_inner_label)
 	e.class('with-inner-label', true)
+	e.bool_attr_property('nolabel', update_inner_label)
 
 	e.init_field = function() {
 		update_inner_label()

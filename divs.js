@@ -438,6 +438,11 @@ method(HTMLInputElement, 'set_input_filter', function() {
 		this.on('raw:'+e, filter)
 })
 
+property(Element, 'contenteditable', {
+	get: function() { return this.contentEditable == 'true' },
+	set: function(v) { this.contentEditable = v ? 'true' : 'false' },
+})
+
 // scrolling -----------------------------------------------------------------
 
 // box scroll-to-view box. from box2d.lua.
@@ -670,9 +675,11 @@ let popup_state = function(e) {
 	let target, side, align, px, py
 
 	s.update = function(target1, side1, align1, px1, py1) {
-		[side, align, px, py] = [side1, align1, px1, py1]
-		px = px || 0
-		py = py || 0
+		side    = or(side1  , side)
+		align   = or(align1 , align)
+		px      = or(px1, px) || 0
+		py      = or(py1, py) || 0
+		target1 = or(target1, target)
 		if (target1 != target) {
 			if (target)
 				free()
