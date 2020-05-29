@@ -1450,7 +1450,8 @@
 /* grid ------------------------------------------------------------------- */
 
 .x-grid {
-	display: inline-block;     /* required: don't expand to fit parent width */
+	display: inline-flex;      /* required: don't expand to fit parent width */
+	flex-flow: column;
 	position: relative;        /* required for `position: absolute` elements */
 	margin: .25em;
 	overflow: hidden;          /* required: hide header overflow */
@@ -1458,7 +1459,11 @@
 	border: 0px solid #ccc;
 }
 
-/* grid header & row cell common styles that make them align vertically */
+.x-vgrid {
+	flex-flow: row;
+}
+
+/* grid header & row cell common styles that make them align */
 
 .x-grid-header-cell,
 .x-grid-cell {
@@ -1466,19 +1471,22 @@
 
 	/* sizing & styling */
 	padding: var(--x-input-padding);
-	border-right: 1px dotted #ccc;
+	border-right: 1px solid #ddd;
 	min-width: 20px;
 }
 
 .x-grid-cell {
-	border-right-color: transparent;
+	//border-right-color: transparent;
 }
 
 /* grid header */
 
 .x-grid-header {
 	position: relative;        /* required: make movable for scrolling horizontally */
-	border-bottom: 1px solid #999;
+	border-width: 0;
+	border-color: #999;
+	border-style: solid;
+	border-bottom-width: 1px;
 	height: calc(3.5em + 1px);
 }
 
@@ -1486,13 +1494,24 @@
 	height: calc(3.5em + 1px + .9em);
 }
 
+.x-vgrid > .x-grid-header {
+	border-bottom-width: 0;
+	border-right-width: 1px;
+	//overflow: hidden;
+}
+
 /* grid header cells */
 
 .x-grid-header-cell {           /* default: header column style */
 	position: absolute;
+}
+
+.x-hgrid > .x-grid-header > .x-grid-header-cell {
 	height: 100%;
-	vertical-align: bottom;
-	padding-bottom: .3em;
+}
+
+.x-vgrid > .x-grid-header > .x-grid-header-cell {
+
 }
 
 .x-grid-header-cell-table {
@@ -1537,19 +1556,19 @@
 }
 
 .x-grid.loading > .x-grid-header,
-.x-grid.loading > .x-grid-rows-view
+.x-grid.loading > .x-grid-cells-view
 {
 	opacity: .7;
 }
 
 /* grid rows */
 
-.x-grid-rows-view {
+.x-grid-cells-view {
 	overflow: auto;            /* required: show scrollbars as needed */
 	position: relative;        /* required: anchor rows div */
 }
 
-.x-grid-rows {
+.x-grid-cells-ct {
 	overflow: hidden;          /* required: hide surplus bottom rows */
 }
 
@@ -1584,7 +1603,7 @@
 
 .x-grid.col-moving .x-grid-header-cell:not(.col-moving),
 .x-grid.col-moving .x-grid-cell:not(.col-moving) {
-	transition: left .1s;
+	transition: top  .1s, left .1s;
 }
 
 /* grid col resizing */
@@ -1650,7 +1669,7 @@
 	resize: both;
 }
 
-.x-grid.picker > .x-grid-rows-view {
+.x-grid.picker > .x-grid-cells-view {
 	overflow-y: scroll;        /* required: show vert-scrollbars always when a picker */
 }
 
@@ -1676,171 +1695,6 @@
 
 .x-grid-filter-dropdown-grid {
 	font-size: 90%;
-}
-
-/* vertical grid ---------------------------------------------------------- */
-
-.x-vgrid {
-	display: inline-flex;      /* required: don't expand to fit parent width */
-	position: relative;        /* required for `position: absolute` elements */
-	margin: .25em;
-	overflow: hidden;          /* required: hide header overflow */
-	cursor: default;           /* required: don't show caret over text */
-	border: 0px solid #ccc;
-}
-
-/* vgrid header & row cell common styles that make them align vertically */
-
-.x-vgrid-header-cell,
-.x-vgrid-cell {
-	white-space: nowrap;       /* required: row height is fixed */
-
-	/* sizing & styling */
-	padding: var(--x-input-padding);
-	min-width: 20px;
-}
-
-/* vgrid header */
-
-.x-vgrid-header {
-	position: relative;        /* required: make movable for vertical scrolling */
-	border-right: 1px solid #999;
-}
-
-/* vgrid header cells */
-
-.x-vgrid-header-cell {
-	position: absolute;
-	width: 100%;
-	text-align: left;
-	padding-right: .3em;
-}
-
-.x-vgrid-header-cell-table {
-	width: 100%;               /* required: expand to fit column width */
-	table-layout: fixed;       /* required: don't expand based on content */
-}
-
-.x-vgrid-header-title-td {
-	padding: 0;
-	overflow: hidden;          /* required: hide title under the sort icon */
-	font-weight: bold;
-}
-
-.x-vgrid-header-sort-icon-td {
-	padding: 0;
-	width: 0;
-	vertical-align: baseline;
-}
-
-.x-vgrid-header-sort-icon-td.sorted {
-	width: 1.2em;              /* required: make space for it */
-}
-
-.x-vgrid-header-sort-icon-pri {
-	padding-left: 2px;
-	padding-right: 2px;
-	font-size: 85%;
-}
-
-/* vgrid load/save progress bar */
-
-.x-vgrid-progress-bar {
-	position: absolute;
-	top: calc(3.5em - 2px);
-	width: 0%;
-	height: 2px;
-	pointer-events: none;
-}
-
-.x-vgrid.loading > .x-grid-progress-bar {
-	background-color: green;
-}
-
-.x-vgrid.loading > .x-grid-header,
-.x-vgrid.loading > .x-grid-rows-view
-{
-	opacity: .7;
-}
-
-.x-vgrid-loading-error-icon {
-	margin: 0 .5em;
-	color: var(--x-error-bg-color);
-}
-
-/* vgrid rows */
-
-.x-vgrid-rows-view {
-	display: inline-block;
-	overflow: auto;            /* required: show scrollbars as needed */
-	position: relative;        /* required: anchor rows div */
-}
-
-.x-vgrid-rows {
-	overflow: hidden;          /* required: hide surplus left & right rows */
-}
-
-.x-vgrid-cells {
-	position: absolute;        /* required: keep at y=0 while scrolling */
-}
-
-/* vgrid cells */
-
-.x-vgrid-cell {
-	position: absolute;        /* required */
-	overflow: hidden;          /* required */
-	display: flex;             /* because vertical-align doesn't work with `position: absolute` */
-	align-items: center;       /* works as `vertical-align: middle` */
-	border-bottom: 0px solid #eee;
-}
-
-.x-vgrid-cell[align=center] { justify-content: center; }
-.x-vgrid-cell[align=right]  { justify-content: flex-end; }
-
-/* vgrid col moving */
-
-.x-vgrid.col-moving {
-	cursor: grabbing;
-}
-
-.x-vgrid-header-cell.col-moving,
-.x-vgrid-cell.col-moving {
-	background-color: #eee;
-	opacity: .5;
-}
-
-.x-vgrid.col-moving .x-grid-header-cell:not(.col-moving),
-.x-vgrid.col-moving .x-grid-cell:not(.col-moving) {
-	transition: left .1s;
-}
-
-/* grid col resizing */
-
-/* NOTE: `col-resize` is almost invisible on a light background on Windows 7 */
-.x-vgrid.col-resize {
-	cursor: ew-resize;
-}
-.x-vgrid:not(.col-resize) .x-grid-header-cell {
-	cursor: pointer;           /* required: resizing area is underneath */
-}
-
-.x-vgrid-resize-guides {
-	position: absolute;
-	top: 0;
-}
-
-/* vgrid as picker */
-
-.x-vgrid.picker {
-	margin: 0;
-	min-height: 40px;
-	max-height: 300px;
-	max-width: 800px;
-	resize: both;
-}
-
-.x-vgrid.picker > .x-vgrid-rows-view {
-	overflow-y: scroll;        /* required: show vert-scrollbars always when a picker */
 }
 
 /* ------------------------------------------------------------------------ */
