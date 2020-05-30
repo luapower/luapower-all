@@ -219,15 +219,15 @@ grid = component('x-grid', function(e) {
 		}
 	}
 
-	function cell_x(rel_ri, fi) {
+	function cell_x(ri, fi) {
 		return horiz
 			? e.header.at[fi]._x
-			: rel_ri * e.cell_w
+			: ri * e.cell_w
 	}
 
-	function cell_y(rel_ri, fi) {
+	function cell_y(ri, fi) {
 		return horiz
-			? rel_ri * e.cell_h
+			? ri * e.cell_h
 			: fi * e.cell_h
 	}
 
@@ -259,9 +259,9 @@ grid = component('x-grid', function(e) {
 	e.scroll_to_cell = function(ri, fi) {
 		if (ri == null)
 			return
-		let x = cell_x(ri, fi)
+		let x = fi != null ? cell_x(ri, fi) : 0
 		let y = cell_y(ri, fi)
-		let w = cell_w(fi)
+		let w = fi != null ? cell_w(fi) : 0
 		let h = e.cell_h
 		e.cells_view.scroll_to_view_rect(null, null, x, y, w, h)
 	}
@@ -481,16 +481,17 @@ grid = component('x-grid', function(e) {
 
 	function update_cells() {
 		let ri0 = first_visible_row()
-		for (let ri = 0; ri < e.visible_row_count; ri++) {
-			let row = e.rows[ri0 + ri]
+		for (let rel_ri = 0; rel_ri < e.visible_row_count; rel_ri++) {
+			let ri = ri0 + rel_ri
+			let row = e.rows[ri]
 			for (let fi = 0; fi < e.fields.length; fi++) {
-				let cell = e.cells.at[ri * e.fields.length + fi]
+				let cell = e.cells.at[rel_ri * e.fields.length + fi]
 				if (row) {
 					let field = e.fields[fi]
-					cell.ri = ri0 + ri
+					cell.ri = ri
 					cell.fi = fi
-					cell.x = cell_x(ri, fi)
-					cell.y = cell_y(ri, fi)
+					cell.x = cell_x(rel_ri, fi)
+					cell.y = cell_y(rel_ri, fi)
 					cell.w = cell_w(fi)
 					cell.h = e.cell_h
 					update_cell(cell, row, field)
@@ -761,7 +762,7 @@ grid = component('x-grid', function(e) {
 	function mm_col_resize_horiz(mx, my, hit) {
 		let w = mx - e.header.at[hit.fi]._x - hit.x
 		set_col_w(hit.fi, w)
-		update_cell_widths()
+		update_cell_widths(true)
 		update_resize_guides()
 	}
 
@@ -832,6 +833,7 @@ grid = component('x-grid', function(e) {
 				e.fields.insert(over_fi, field)
 				e.focused_field_index = focused_field && e.fields.indexOf(focused_field)
 				e.init_fields()
+				update_sizes()
 				update_viewport()
 			}
 		})
@@ -904,11 +906,13 @@ grid = component('x-grid', function(e) {
 		if (hit.state == 'header_resizing') {
 			e.class('col-resizing', false)
 			hit.state = null
+			update_sizes()
 			return false
 		} else if (hit.state == 'col_resizing') {
 			e.class('col-resizing', false)
 			hit.state = null
 			remove_resize_guides()
+			update_sizes()
 			return false
 		} else if (hit.state == 'col_dragging') {
 			e.set_order_by_dir(e.fields[hit.fi], 'toggle', ev.shiftKey)
