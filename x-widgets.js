@@ -833,7 +833,7 @@ rowset = function(...options) {
 		let req = ajax({
 			url: make_url(params),
 			progress: load_progress,
-			success: load_success,
+			success: e.reset,
 			fail: load_fail,
 			done: load_done,
 			slow: load_slow,
@@ -890,14 +890,14 @@ rowset = function(...options) {
 		return ok
 	}
 
-	function load_success(res) {
+	d.reset = function(res) {
 
 		d.changed_rows = null
 
-		d.can_edit        = res.can_edit
-		d.can_add_rows    = res.can_add_rows
-		d.can_remove_rows = res.can_remove_rows
-		d.can_change_rows = res.can_change_rows
+		d.can_edit        = or(res.can_edit         , d.can_edit)
+		d.can_add_rows    = or(res.can_add_rows     , d.can_add_rows)
+		d.can_remove_rows = or(res.can_remove_rows  , d.can_remove_rows)
+		d.can_change_rows = or(res.can_change_rows  , d.can_change_rows)
 
 		if (res.fields) {
 			if (!check_fields(res.fields))
@@ -1030,13 +1030,9 @@ rowset = function(...options) {
 			d.set_row_state(row, 'save_request', req)
 	}
 
-	d.save = function(row) {
-		if (!d.url)
-			return
-		if (!d.changed_rows)
-			return
+	d.save_to_url = function(row, url) {
 		let req = ajax({
-			url: d.url,
+			url: url,
 			upload: d.pack_changes(row),
 			changed_rows: Array.from(d.changed_rows),
 			success: save_success,
@@ -1050,6 +1046,13 @@ rowset = function(...options) {
 		set_save_state(req.rows, req)
 		d.fire('saving', true)
 		req.send()
+	}
+
+	d.save = function(row) {
+		if (!d.changed_rows)
+			return
+		if (d.url)
+			d.save_to_url(d.url, row)
 	}
 
 	function save_slow(show) {
@@ -1488,18 +1491,19 @@ button = component('x-button', function(e) {
 	e.text_div = span({class: 'x-button-text'})
 	e.add(e.icon_div, e.text_div)
 
-	e.init = function() {
-
-		if (typeof e.icon == 'string')
-			e.icon_div.classes = e.icon
-		else
-			e.icon_div.set(e.icon)
-
-		// can't use CSS for this because margins don't collapse with paddings.
-		if (!(e.icon_classes || e.icon))
-			e.icon_div.hide()
-
-	}
+	let icon
+	e.icon_div.hide()
+	e.late_property('icon',
+		function() { return icon },
+		function(v) {
+			icon = v
+			if (typeof v == 'string')
+				e.icon_div.attr('class', 'x-button-icon '+v)
+			else
+				e.icon_div.set(v)
+			e.icon_div.show(!!v)
+		}
+	)
 
 	e.late_property('text',
 		function()  { return e.text_div.html },
@@ -1538,6 +1542,12 @@ button = component('x-button', function(e) {
 			e.action()
 		e.fire('action')
 	})
+
+	e.inspect_fields = [
+		{name: 'text'},
+		{name: 'icon'},
+		{name: 'primary', type: 'bool'},
+	]
 
 })
 

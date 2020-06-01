@@ -41,8 +41,6 @@ FEATURES
 
 - INPUT slim style.
 
-- PAGELIST close button.
-
 - CALENDAR select range
 - SLIDER select range
 - ROWSET_WIDGET select range

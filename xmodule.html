@@ -43,9 +43,12 @@
 <script>
 body = document.body
 
+let test_elem = button()
+body.add(test_elem)
+
 function properties_toolbox() {
 	let pg = property_inspector({
-
+		element: test_elem,
 	})
 	let tb = toolbox({
 		title: 'properties',
@@ -72,8 +75,15 @@ function widgets_toolbox() {
 
 
 widgets_tb = widgets_toolbox()
+widgets_tb.x = 500
 widgets_tb.show()
 body.add(widgets_tb)
+
+props_tb = properties_toolbox()
+props_tb.x = 700
+props_tb.show()
+body.add(props_tb)
+
 
 </script>
 </body>

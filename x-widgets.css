@@ -157,7 +157,6 @@
 	margin: .25em;
 	border: 1px solid rgba(27,31,35,.2);
 	border-radius: .25em;
-	font-size: 100%;
 	font-weight: bold;
 	line-height: normal;
 
@@ -1496,8 +1495,6 @@
 
 .x-vgrid > .x-grid-header {
 	border-bottom-width: 0;
-	border-right-width: 1px;
-	//overflow: hidden;
 }
 
 /* grid header cells */

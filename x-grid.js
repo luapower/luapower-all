@@ -13,13 +13,9 @@ grid = component('x-grid', function(e) {
 	e.cell_h = 26
 	e.auto_w = false
 	e.auto_h = false
-
-	// hgrid geometry
-	e.auto_cols_w = true
-
-	// vgrid geometry
-	e.header_w = 120
-	e.cell_w = 120
+	e.auto_cols_w = true        // horizontal grid
+	e.header_w = 120            // vertical grid
+	e.cell_w = 120              // vertical grid
 
 	// keyboard behavior
 	e.tab_navigation = false    // disabled as it prevents jumping out of the grid.
@@ -28,9 +24,16 @@ grid = component('x-grid', function(e) {
 	e.quick_edit = false        // quick edit (vs. quick-search) when pressing a key
 	e.keep_editing = true       // re-enter edit mode after navigating
 
+	// mouse behavior
+	e.can_sort_rows = true
+	e.can_reorder_fields = true
+	e.auto_enter_edit = false
+
+	// context menu features
 	e.enable_context_menu = true
 	e.can_change_header_visibility = false
 	e.can_change_filters_visibility = true
+	e.can_change_fields_visibility = true
 
 	e.class('x-widget')
 	e.class('x-grid')
@@ -153,6 +156,11 @@ grid = component('x-grid', function(e) {
 			e.header_h = e.header.offsetHeight
 
 			if (e.auto_w) {
+
+				let cols_w = 0
+				for (let field of e.fields)
+					cols_w += field.w
+
 				let client_w = e.cells_view.clientWidth
 				let border_w = e.offsetWidth - e.clientWidth
 				let vscrollbar_w = e.cells_view.offsetWidth - client_w
@@ -178,11 +186,13 @@ grid = component('x-grid', function(e) {
 			e.cells_w = e.cell_w * e.rows.length
 			e.cells_h = e.cell_h * e.fields.length
 
+			let border_w = e.offsetWidth - e.clientWidth
+
 			if (e.auto_w)
 				e.w = e.cells_w + e.header_w + border_w
 
 			let client_w = e.clientWidth
-			let border_w = e.offsetWidth - client_w
+			border_w = e.offsetWidth - client_w
 			let header_w = e.header.offsetWidth
 
 			if (e.auto_h) {
@@ -718,6 +728,7 @@ grid = component('x-grid', function(e) {
 	// hit-testing and mouse-based moving & resizing --------------------------
 
 	function ht_header_resize(mx, my, hit) {
+		if (horiz) return
 		let r = e.header.client_rect()
 		let x = mx - r.right
 		if (!(x >= -5 && x <= 5)) return
@@ -781,10 +792,9 @@ grid = component('x-grid', function(e) {
 	}
 
 	function ht_col_drag(mx, my, hit, ev) {
-		let hcell = ev.target.closest('.x-grid-header-cell')
-		if (!hcell) return
-		e.focus()
-		hit.fi = hcell.index
+		let hcell_table = ev.target.closest('.x-grid-header-cell-table')
+		if (!hcell_table) return
+		hit.fi = hcell_table.parent.index
 		hit.mx = ev.clientX
 		hit.my = ev.clientY
 		return true
@@ -849,7 +859,7 @@ grid = component('x-grid', function(e) {
 		} else if (hit.state == 'col_resizing') {
 			mm_col_resize(mx, my, hit)
 		} else if (hit.state == 'col_dragging') {
-			if (ht_col_move(mx, my, hit)) {
+			if (e.can_reorder_fields && ht_col_move(mx, my, hit)) {
 				hit.state = 'col_moving'
 				mm_col_move(mx, my, hit)
 			}
@@ -915,7 +925,8 @@ grid = component('x-grid', function(e) {
 			update_sizes()
 			return false
 		} else if (hit.state == 'col_dragging') {
-			e.set_order_by_dir(e.fields[hit.fi], 'toggle', ev.shiftKey)
+			if (e.can_sort_rows)
+				e.set_order_by_dir(e.fields[hit.fi], 'toggle', ev.shiftKey)
 			hit.state = null
 			return false
 		} else if (hit.state == 'col_moving') {
@@ -931,20 +942,31 @@ grid = component('x-grid', function(e) {
 		let cell = ev.target
 		if (hit.state)
 			return
+
 		let had_focus = e.hasfocus
 		if (!had_focus)
 			e.focus()
-		if (e.focused_row_index == cell.ri && e.focused_field_index == cell.fi) {
-			if (had_focus) {
-				// TODO: instead of `select_all`, put the caret where the mouse is.
-				e.enter_edit('select_all')
-				return false
-			}
-		} else {
-			if (e.focus_cell(cell.ri, cell.fi, 0, 0, {must_not_move_row: true, input: e}))
-				e.pick_value()
-			return false
-		}
+
+		let already_on_it =
+			e.focused_row_index   == cell.ri &&
+			e.focused_field_index == cell.fi
+
+		if (e.focus_cell(cell.ri, cell.fi, 0, 0, {must_not_move_row: true, input: e}))
+			e.pick_value()
+
+		if (e.auto_enter_edit || already_on_it)
+			// TODO: instead of `select_all`, put the caret where the mouse is.
+			e.enter_edit('select_all')
+
+		return false
+
+	})
+
+	e.on('contextmenu', function(ev) {
+		let hcell = ev.target.closest('.x-grid-header-cell')
+		if (!hcell) return
+		context_menu_popup(hcell.index, ev.clientX, ev.clientY)
+		return false
 	})
 
 	// keyboard bindings ------------------------------------------------------
@@ -959,7 +981,7 @@ grid = component('x-grid', function(e) {
 		let up_arrow    = !horiz ? 'ArrowLeft'  : 'ArrowUp'
 		let down_arrow  = !horiz ? 'ArrowRight' : 'ArrowDown'
 
-		// horizontal navigation.
+		// same-row field navigation.
 		if (key == left_arrow || key == right_arrow) {
 
 			let cols = key == left_arrow ? -1 : 1
@@ -968,12 +990,13 @@ grid = component('x-grid', function(e) {
 
 			let move = !e.editor
 				|| (e.auto_jump_cells && !shift
-					&& (!e.editor.editor_state
+					&& (!horiz
+						|| !e.editor.editor_state
 						|| e.editor.editor_state(cols < 0 ? 'left' : 'right')))
 
 			if (move && e.focus_next_cell(cols, {editable: reenter_edit, input: e})) {
 				if (reenter_edit)
-					e.enter_edit(cols > 0 ? 'left' : 'right')
+					e.enter_edit(horiz ? (cols > 0 ? 'left' : 'right') : 'select_all')
 				return false
 			}
 		}
@@ -1010,7 +1033,7 @@ grid = component('x-grid', function(e) {
 			}
 		}
 
-		// vertical navigation.
+		// row navigation.
 		let rows
 		switch (key) {
 			case up_arrow    : rows = -1; break
@@ -1025,11 +1048,16 @@ grid = component('x-grid', function(e) {
 			let editor_state = e.editor
 				&& e.editor.editor_state && e.editor.editor_state()
 
-			if (e.focus_cell(true, true, rows, 0, {editable: reenter_edit, input: e}))
-				if (reenter_edit)
-					e.enter_edit(editor_state)
+			let move = !e.editor
+				|| (e.auto_jump_cells && !horiz && !shift
+					&& (!e.editor.editor_state
+						|| e.editor.editor_state(rows < 0 ? 'left' : 'right')))
 
-			return false
+			if (move && e.focus_cell(true, true, rows, 0, {editable: reenter_edit, input: e})) {
+				if (reenter_edit)
+					e.enter_edit(rows > 0 ? 'left' : 'right')
+				return false
+			}
 		}
 
 		// F2: enter edit mode
@@ -1057,7 +1085,7 @@ grid = component('x-grid', function(e) {
 			return false
 		}
 
-		// Esc: revert cell edits or row edits.
+		// Esc: exit edit mode.
 		if (key == 'Escape') {
 			if (e.hasclass('picker'))
 				return
@@ -1142,7 +1170,7 @@ grid = component('x-grid', function(e) {
 			separator: true,
 		})
 
-		if (e.can_change_filters_visibility)
+		if (horiz && e.can_change_filters_visibility)
 			items.push({
 				text: S('show_filters', 'Show filters'),
 				checked: e.filters_visible,
@@ -1162,43 +1190,47 @@ grid = component('x-grid', function(e) {
 				separator: true,
 			})
 
-		if (fi != null) {
-			function hide_field(item) {
-				set_field_visibility(item.field, null, false)
-			}
-			let field = e.fields[fi]
-			let hide_field_text = span(); hide_field_text.set(field.text)
-			let hide_text = span({}, S('hide_field', 'Hide '), hide_field_text)
-			items.push({
-				field: field,
-				text: hide_text,
-				action: hide_field,
-			})
-		}
+		if (e.can_change_fields_visibility) {
 
-		items.push({
-			heading: S('show_more_fields', 'Show more fields'),
-		})
-
-		function show_field(item) {
-			set_field_visibility(item.field, fi, true)
-		}
-		let items_added
-		for (let field of e.rowset.fields) {
-			if (e.fields.indexOf(field) == -1) {
-				items_added = true
+			if (fi != null) {
+				function hide_field(item) {
+					set_field_visibility(item.field, null, false)
+				}
+				let field = e.fields[fi]
+				let hide_field_text = span(); hide_field_text.set(field.text)
+				let hide_text = span({}, S('hide_field', 'Hide '), hide_field_text)
 				items.push({
 					field: field,
-					text: field.text,
-					action: show_field,
+					text: hide_text,
+					action: hide_field,
 				})
 			}
-		}
-		if (!items_added)
+
 			items.push({
-				text: S('all_fields_shown', 'All fields are shown'),
-				enabled: false,
+				heading: S('show_more_fields', 'Show more fields'),
 			})
+
+			function show_field(item) {
+				set_field_visibility(item.field, fi, true)
+			}
+			let items_added
+			for (let field of e.rowset.fields) {
+				if (e.fields.indexOf(field) == -1) {
+					items_added = true
+					items.push({
+						field: field,
+						text: field.text,
+						action: show_field,
+					})
+				}
+			}
+			if (!items_added)
+				items.push({
+					text: S('all_fields_shown', 'All fields are shown'),
+					enabled: false,
+				})
+
+		}
 
 		context_menu = menu({items: items})
 		let r = e.client_rect()
@@ -1234,3 +1266,53 @@ grid_dropdown = component('x-grid-dropdown', function(e) {
 	}
 
 })
+
+property_inspector = component('x-property-inspector', function(e) {
+
+	grid.construct(e)
+
+	e.vertical = true
+	e.auto_w = true
+
+	e.save_row_on = 'input'
+	e.exit_edit_on_lost_focus = false
+	e.can_sort_rows = false
+	e.enable_context_menu = false
+	e.auto_enter_edit = true
+
+	e.rowset = rowset({
+		can_change_rows: true,
+	})
+
+	init = e.init
+	e.init = function() {
+		init_rowset(e.element)
+		init()
+	}
+
+	e.rowset.on('value_changed', function(row, field, val) {
+		e.element[field.name] = val
+	})
+
+	let element
+	e.property('element',
+		function() { return element },
+		function(v) {
+			element = v
+			if (!e.__init_later)
+				init_rowset(v)
+		}
+	)
+
+	function init_rowset(element) {
+		let props = []
+		let res = {}
+		res.fields = element.inspect_fields
+		res.rows = [props]
+		for (let field of res.fields)
+			props.push(element[field.name])
+		e.rowset.reset(res)
+	}
+
+})
+
