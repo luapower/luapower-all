@@ -22,12 +22,13 @@ function rowset_widget(e) {
 
 	e.can_focus_cells = true
 	e.auto_focus_first_cell = true   // focus first cell automatically on loading.
+	e.auto_edit_first_cell = false   // automatically enter edit mode on loading.
 	e.auto_advance_row = true        // jump row on horiz. navigation limits
 	e.save_row_on = 'exit_edit'      // save row on 'input'|'exit_edit'|'exit_row'|false
 	e.insert_row_on = 'exit_edit'    // insert row on 'input'|'exit_edit'|'exit_row'|false
 	e.remove_row_on = 'input'        // remove row on 'input'|'exit_row'|false
-	e.exit_edit_on_errors = true     // allow exiting edit mode on validation errors
-	e.exit_row_on_errors = false     // allow changing row on validation errors
+	e.can_exit_edit_on_errors = true // allow exiting edit mode on validation errors
+	e.can_exit_row_on_errors = false // allow changing row on validation errors
 	e.exit_edit_on_lost_focus = true // exit edit mode when losing focus
 
 	e.value_col = 0
@@ -528,7 +529,11 @@ function rowset_widget(e) {
 	}
 
 	e.init_focused_cell = function() {
-		e.focus_cell(true, true, 0, 0, {must_not_move_row: !e.auto_focus_first_cell})
+		if (e.focus_cell(true, true, 0, 0, {
+			must_not_move_row: !e.auto_focus_first_cell,
+			for_editing: e.auto_edit_first_cell
+		}))
+			e.enter_edit()
 	}
 
 	// responding to value changes --------------------------------------------
@@ -583,13 +588,13 @@ function rowset_widget(e) {
 		if (!e.editor)
 			return true
 
-		if (!e.exit_edit_on_errors && e.rowset.row_has_errors(e.focused_row))
+		if (!e.can_exit_edit_on_errors && e.rowset.row_has_errors(e.focused_row))
 			return false
 
 		if (e.save_row_on == 'exit_edit')
 			e.save(e.focused_row)
 
-		if (!e.exit_row_on_errors && e.rowset.row_has_errors(e.focused_row))
+		if (!e.can_exit_row_on_errors && e.rowset.row_has_errors(e.focused_row))
 			return false
 
 		let had_focus = e.hasfocus
@@ -620,7 +625,7 @@ function rowset_widget(e) {
 			let err = e.rowset.validate_row(row)
 			e.rowset.set_row_error(row, err)
 		}
-		if (!e.exit_row_on_errors && e.rowset.row_has_errors(row))
+		if (!e.can_exit_row_on_errors && e.rowset.row_has_errors(row))
 			return false
 		if (e.save_row_on == 'exit_row'
 			|| (e.save_row_on && row.is_new  && e.insert_row_on == 'exit_row')

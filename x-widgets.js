@@ -1487,12 +1487,11 @@ button = component('x-button', function(e) {
 	e.class('x-button')
 	e.attrval('tabindex', 0)
 
-	e.icon_div = span({class: 'x-button-icon'})
+	e.icon_div = span({class: 'x-button-icon', style: 'display: none'})
 	e.text_div = span({class: 'x-button-text'})
 	e.add(e.icon_div, e.text_div)
 
 	let icon
-	e.icon_div.hide()
 	e.late_property('icon',
 		function() { return icon },
 		function(v) {

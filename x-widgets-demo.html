@@ -846,8 +846,8 @@ g = grid({
 	save_row_on           : 'exit_edit' // |input|exit_row|false
 	insert_row_on         : 'exit_edit' // |input|exit_row|false
 	remove_row_on         : 'input'     // |false
-	prevent_exit_edit     : false
-	prevent_exit_row      : true
+	can_exit_edit_on_errors : true
+	can_exit_row_on_errors  : true
 
 	rowset    : rowset
 	col       : field_name
@@ -920,22 +920,8 @@ d.on('row_changed', function() {
 <help>
 
 g = vgrid({
-	can_edit              : true
-	can_add_rows          : true
-	can_remove_rows       : true
-	can_change_rows       : true
-
-	can_focus_cells       : true
-	auto_focus_first_cell : true
-	auto_advance_row      : true
-	save_row_on           : 'exit_edit' // |input|exit_row|false
-	insert_row_on         : 'exit_edit' // |input|exit_row|false
-	remove_row_on         : 'input'     // |false
-	prevent_exit_edit     : false
-	prevent_exit_row      : true
-
-	rowset    : rowset
-	col       : field_name
+	rowset : rowset,
+	col    : field_name
 })
 
 </help>
@@ -943,15 +929,11 @@ g = vgrid({
 
 var checked = () => H('<div class="fa fa-check"></div>')
 
-function starts_with_a(s) {
-	return s.lower().starts('a') || 'Name must start with "A"'
-}
-
 var data = {
 	fields: [
 		{name: 'id'        , w:  60, min_w:  30, type: 'number', editable: false},
 		{name: 'active'    , w:  30, type: 'bool', true_text: checked, false_text: ''},
-		{name: 'name'      , w:  70, min_w:  50, max_w: 200, validate: starts_with_a, filter_by: true},
+		{name: 'name'      , w:  70, min_w:  50, max_w: 200, filter_by: true},
 		{name: 'parent_id' , w:  80, min_w:  50, type: 'number', allow_null: true, editable: false, focusable: false},
 		{name: 'random_num', w: 130, allow_null: true, type: 'number', text: () => H('<i>Random</i> Number')},
 		{name: 'date'      , w: 140, allow_null: true, type: 'date', filter_by: true},
@@ -963,7 +945,7 @@ var data = {
 	can_change_rows: true,
 }
 
-for (let i = 1; i <= 5; i++) {
+for (let i = 1; i <= 1e5; i++) {
 	let id         = i
 	let name       = 'record '+i
 	let parent_id  = floor((random() * i))
