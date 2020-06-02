@@ -1546,6 +1546,7 @@ button = component('x-button', function(e) {
 		{name: 'text'},
 		{name: 'icon'},
 		{name: 'primary', type: 'bool'},
+		//{name: 'rowset', type: 'rowset'},
 	]
 
 })
@@ -1635,6 +1636,11 @@ checkbox = component('x-checkbox', function(e) {
 			return false
 		}
 	})
+
+	e.inspect_fields = [
+		{name: 'text'},
+		{name: 'icon'},
+	]
 
 })
 
@@ -1747,6 +1753,11 @@ function input_widget(e) {
 		update_inner_label()
 		e.inner_label_div.set(e.field.text)
 	}
+
+	e.inspect_fields = [
+		{name: 'align'},
+		{name: 'icon'},
+	]
 
 }
 
@@ -1887,6 +1898,12 @@ input = component('x-input', function(e) {
 		if (i1 < 0) i1 = imax + i1 + 1
 		e.input.select(i0, i1)
 	}
+
+	e.inspect_fields = [
+		{name: 'text'},
+		{name: 'icon'},
+	]
+
 
 })
 
@@ -3237,4 +3254,3 @@ toolbox = component('x-toolbox', function(e) {
 	})
 
 })
-

@@ -5,9 +5,9 @@ cssgrid = component('x-cssgrid', function(e) {
 	e.class('editing')
 
 	e.init = function() {
-		if (e.items)
-			for (let item of e.items)
-				e.add(item)
+		e.items = e.items || []
+		for (let item of e.items)
+			e.add(item)
 	}
 
 	e.attach = function() {

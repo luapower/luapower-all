@@ -57,19 +57,34 @@ function properties_toolbox() {
 	return tb
 }
 
-function widgets_toolbox() {
+function tree_toolbox() {
+	let tb = toolbox({
+		title: 'widget tree',
+	})
+	return tb
+}
 
+function widgets_toolbox() {
 	let lb = listbox({
 		items: [
-			'button', 'cssgrid',
+			'button', 'checkbox', 'radiogroup',
+			'input', 'spin_input', 'slider',
+			'list_dropdown', 'date_dropdown', 'grid_dropdown',
+			'listbox', 'grid',
+			'split', 'pagelist', 'cssgrid',
 		],
 	})
-
 	let tb = toolbox({
 		title: 'widgets',
 		content: lb,
 	})
-
+	tb.on('dblclick', function(ev) {
+		let i = ev.target.index
+		let name = lb.items[i]
+		let cons = window[name]
+		let e = cons()
+		body.add(e)
+	})
 	return tb
 }
 
@@ -84,6 +99,10 @@ props_tb.x = 700
 props_tb.show()
 body.add(props_tb)
 
+tree_tb = tree_toolbox()
+tree_tb.x = 1000
+tree_tb.show()
+body.add(tree_tb)
 
 </script>
 </body>
