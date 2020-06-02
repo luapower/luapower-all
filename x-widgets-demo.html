@@ -872,6 +872,7 @@ var data = {
 		{name: 'date'      , w: 140, allow_null: true, type: 'date', filter_by: true},
 	],
 	pk: 'id',
+	parent_col: 'parent_id',
 	rows: new Set(),
 	can_add_rows: true,
 	can_remove_rows: true,
@@ -897,7 +898,8 @@ g = grid({
 	h: 200,
 	can_change_header_visibility: true,
 	//can_focus_cells: false,
-	order_by: 'parent_id name:desc',
+	//order_by: 'parent_id name:desc',
+	tree_col: 'name',
 })
 
 g.style.resize = 'both'
@@ -939,6 +941,7 @@ var data = {
 		{name: 'date'      , w: 140, allow_null: true, type: 'date', filter_by: true},
 	],
 	pk: 'id',
+	parent_col: 'parent_id',
 	rows: new Set(),
 	can_add_rows: true,
 	can_remove_rows: true,
@@ -1480,7 +1483,7 @@ reload_button.on('click', function() {
 	run_script()
 })
 
-demo_list.focus_cell(18)
+demo_list.focus_cell(17)
 
 demo_list_ct.add(demo_list)
 

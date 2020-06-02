@@ -492,6 +492,7 @@ grid = component('x-grid', function(e) {
 	}
 
 	function update_cells() {
+		let tree_fi = e.tree_field && e.tree_field.index
 		let ri0 = first_visible_row()
 		for (let rel_ri = 0; rel_ri < e.visible_row_count; rel_ri++) {
 			let ri = ri0 + rel_ri
@@ -506,6 +507,8 @@ grid = component('x-grid', function(e) {
 					cell.y = cell_y(rel_ri, fi)
 					cell.w = cell_w(fi)
 					cell.h = e.cell_h
+					if (fi == tree_fi && row.parent_rows)
+						cell.style['padding-left'] = (4 + row.parent_rows.length * 10)+'px'
 					update_cell(cell, row, field)
 					cell.show()
 				} else {

@@ -94,6 +94,7 @@ function rowset_widget(e) {
 		fieldmap = null
 		e.fields = []
 		e.value_field = e.rowset.field(e.value_col)
+		e.tree_field  = e.rowset.field(e.tree_col)
 		if (e.cols) {
 			for (let col of e.cols.split(' ')) {
 				let field = e.rowset.field(col)
@@ -704,7 +705,7 @@ function rowset_widget(e) {
 
 	e.sort = function() {
 		let focused_row = e.focused_row
-		if (order_by && order_by.size) {
+		if (e.rowset.parent_field || (order_by && order_by.size)) {
 			let cmp = e.rowset.comparator(order_by)
 			e.rows.sort(cmp)
 		} else

@@ -430,7 +430,6 @@
 	padding: 0;              /* required: set from code */
 	border-width: 1px;
 	border-radius: .2em;
-	font-size: 100%;
 
 	/* styling */
 	border-color: #ccc;

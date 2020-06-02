@@ -203,6 +203,7 @@ rowset = function(...options) {
 		init_pk(d.pk)
 		init_params(d.params)
 		init_rows(d.rows)
+		init_parents()
 	}
 
 	d.attach = function() {
@@ -273,6 +274,30 @@ rowset = function(...options) {
 					field.bind_lookup(false)
 	}
 
+	// tree -------------------------------------------------------------------
+
+	function init_parents() {
+		d.parent_field = d.parent_col && d.field(d.parent_col)
+		if (!d.parent_field) return
+		let fi = d.parent_field.index
+		let id_field = d.pk_fields[0]
+		for (let row of d.rows) {
+			let child_rows = new Set()
+			row.parent_rows = []
+			child_row = row
+			while (1) {
+				let parent_row = d.lookup(id_field, child_row[fi])
+				if (!parent_row)
+					break
+				if (child_rows.has(parent_row)) // circular ref: abort.
+					break
+				child_rows.add(parent_row)
+				row.parent_rows.push(parent_row)
+				child_row = parent_row
+			}
+		}
+	}
+
 	// sorting ----------------------------------------------------------------
 
 	d.compare_rows = function(row1, row2) {
@@ -298,20 +323,20 @@ rowset = function(...options) {
 
 	function field_comparator(field) {
 
-		var compare_rows = d.compare_rows
-		var compare_types  = field.compare_types  || d.compare_types
-		var compare_values = field.compare_values || d.compare_values
-		var field_index = field.index
+		let compare_rows = d.compare_rows
+		let compare_types  = field.compare_types  || d.compare_types
+		let compare_values = field.compare_values || d.compare_values
+		let field_index = field.index
 
 		return function(row1, row2) {
-			var r = compare_rows(row1, row2)
-			if (r) return r
+			let r1 = compare_rows(row1, row2)
+			if (r1) return r1
 
 			let v1 = row1[field_index]
 			let v2 = row2[field_index]
 
-			var r = compare_types(v1, v2)
-			if (r) return r
+			let r2 = compare_types(v1, v2)
+			if (r2) return r2
 
 			return compare_values(v1, v2)
 		}
@@ -319,6 +344,14 @@ rowset = function(...options) {
 
 	// order_by: [[field1,'desc'|'asc'],...]
 	d.comparator = function(order_by) {
+
+		if (d.parent_field) {
+			// the tree-building comparator requires a stable sort order
+			// for all parents so we must always compare rows by id after all.
+			order_by = new Map(order_by)
+			order_by.set(d.pk_fields[0], 'asc')
+		}
+
 		let s = []
 		let cmps = []
 		for (let [field, dir] of order_by) {
@@ -326,28 +359,51 @@ rowset = function(...options) {
 			cmps[i] = field_comparator(field)
 			let r = dir == 'desc' ? -1 : 1
 			// invalid rows come first
-			s.push('var v1 = r1.row_error == null')
-			s.push('var v2 = r2.row_error == null')
-			s.push('if (v1 < v2) return -1')
-			s.push('if (v1 > v2) return  1')
+			s.push('{')
+			s.push('  {')
+			s.push('    let v1 = r1.row_error == null')
+			s.push('    let v2 = r2.row_error == null')
+			s.push('    if (v1 < v2) return -1')
+			s.push('    if (v1 > v2) return  1')
+			s.push('  }')
 			// invalid values come after
-			s.push('var v1 = !(r1.error && r1.error['+i+'] != null)')
-			s.push('var v2 = !(r2.error && r2.error['+i+'] != null)')
-			s.push('if (v1 < v2) return -1')
-			s.push('if (v1 > v2) return  1')
+			s.push('  {')
+			s.push('    let v1 = !(r1.error && r1.error['+i+'] != null)')
+			s.push('    let v2 = !(r2.error && r2.error['+i+'] != null)')
+			s.push('    if (v1 < v2) return -1')
+			s.push('    if (v1 > v2) return  1')
+			s.push('  }')
 			// modified rows come after
-			s.push('var v1 = !r1.cells_modified')
-			s.push('var v2 = !r2.cells_modified')
-			s.push('if (v1 < v2) return -1')
-			s.push('if (v1 > v2) return  1')
+			s.push('  {')
+			s.push('    let v1 = !r1.cells_modified')
+			s.push('    let v2 = !r2.cells_modified')
+			s.push('    if (v1 < v2) return -1')
+			s.push('    if (v1 > v2) return  1')
+			s.push('  }')
 			// compare values using the rowset comparator
-			s.push('var cmp = cmps['+i+']')
-			s.push('var r = cmp(r1, r2, '+i+')')
-			s.push('if (r) return r * '+r)
+			s.push('  let cmp = cmps['+i+']')
+			s.push('  let r = cmp(r1, r2, '+i+')')
+			s.push('  if (r) return r * '+r)
+			s.push('}')
 		}
 		s.push('return 0')
-		s = 'let f = function(r1, r2) {\n\t' + s.join('\n\t') + '\n}; f'
-		return eval(s)
+		let cmp = 'let cmp = function(r1, r2) {\n\t' + s.join('\n\t') + '\n}\n'
+
+		// tree-building comparator: order elements by their position in the tree.
+		if (d.parent_field) {
+			// find the closest sibling ancestors of the two rows and compare them.
+			let s = []
+			s.push('let i1 = r1.parent_rows.length-1')
+			s.push('let i2 = r2.parent_rows.length-1')
+			s.push('while (i1 >= 0 && i2 >= 0 && r1.parent_rows[i1] == r2.parent_rows[i2]) { i1--; i2--; }')
+			s.push('let p1 = i1 >= 0 ? r1.parent_rows[i1] : r1')
+			s.push('let p2 = i2 >= 0 ? r2.parent_rows[i2] : r2')
+			s.push('if (p1 == p2) return i1 < i2 ? -1 : 1') // one is parent of another.
+			s.push('return cmp_direct(p1, p2)')
+			cmp = cmp+'let cmp_direct = cmp; cmp = function(r1, r2) {\n\t' + s.join('\n\t') + '\n}\n'
+		}
+
+		return eval(cmp)
 	}
 
 	// get/set cell & row state (storage api) ---------------------------------
