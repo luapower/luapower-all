@@ -2,11 +2,13 @@
 FINISH
 ------------------------------------------------------------------------------
 
-- TREEGRID: remove with child rows.
-	- option to not add child rows to changeset.
-
+- REFACTORING: remove all attr properties (we're never going to do html templates).
 - REFACTORING: replace mouse events with pointer events & mouse capturing.
 - REFACTORING: use x-arrow classes for tooltip tips.
+
+- TREEGRID: sort by id not working.
+- TREEGRID: remove child rows on remove row.
+	- option to not add child rows to changeset.
 
 - LIST_DROPDOWN null element.
 - GRID_DROPDOWN null element.

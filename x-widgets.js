@@ -357,7 +357,7 @@ rowset = function(...options) {
 	// order_by: [[field1,'desc'|'asc'],...]
 	d.comparator = function(order_by) {
 
-		if (d.parent_field) {
+		if (d.parent_field && !order_by.has(d.id_field)) {
 			// the tree-building comparator requires a stable sort order
 			// for all parents so we must always compare rows by id after all.
 			order_by = new Map(order_by)

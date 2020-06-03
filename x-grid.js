@@ -1010,7 +1010,8 @@ grid = component('x-grid', function(e) {
 	e.cells.on('dblclick', function(ev) {
 		let cell = ev.target.closest('.x-grid-cell')
 		if (!cell) return
-		e.fire('cell_dblclick', cell.ri, cell.fi, ev)
+		ev.row_index = cell.ri
+		e.fire('cell_dblclick', e.rows[cell.ri], ev)
 	})
 
 	// keyboard bindings ------------------------------------------------------
