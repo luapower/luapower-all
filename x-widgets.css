@@ -1477,6 +1477,26 @@
 	//border-right-color: transparent;
 }
 
+.x-grid-cell-indent {
+	display: inline-flex;
+	align-items: center;
+	justify-content: flex-end;
+	//font-family: 'Font Awesome 5 Free';
+	//font-weight: 400;
+	font-size: 10px;
+	width: 20px;
+	padding: 0 4px;
+	height: 100%;
+}
+
+.x-grid-cell.focused > .x-grid-cell-indent:hover::before {
+	color: #eee;
+}
+
+.x-grid-cell-indent:hover::before {
+	color: #666;
+}
+
 /* grid header */
 
 .x-grid-header {

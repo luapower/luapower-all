@@ -157,8 +157,7 @@ method(Element, 'insert', function(i0, ...args) {
 	}
 })
 
-method(Element, 'replace', function(i, s) {
-	let e0 = this.at[i]
+method(Element, 'replace', function(e0, s) {
 	if (e0 != null)
 		this.replaceChild(T(s), e0)
 	else if (s != null)

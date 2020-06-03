@@ -188,6 +188,7 @@ rowset = function(...options) {
 				field.is_pk = true
 			}
 		}
+		d.id_field = d.pk_fields[0]
 	}
 
 	function init_rows(rows) {
@@ -276,25 +277,36 @@ rowset = function(...options) {
 
 	// tree -------------------------------------------------------------------
 
+	function init_parents_for(row) {
+		if (!d.parent_field) return
+		row.parent_rows = []
+		let child_row = row
+		while (1) {
+			let parent_row = d.lookup(d.id_field, child_row[d.parent_field.index])
+			if (!parent_row)
+				break
+			if (parent_row == row || row.parent_rows.indexOf(parent_row) >= 0) // circular ref: abort.
+				break
+			row.parent_rows.push(parent_row)
+			child_row = parent_row
+		}
+		row.parent_row = row.parent_rows[0]
+		if (row.parent_row)
+			row.parent_row.child_row_count = (row.parent_row.child_row_count || 0) + 1
+	}
+
 	function init_parents() {
 		d.parent_field = d.parent_col && d.field(d.parent_col)
 		if (!d.parent_field) return
-		let fi = d.parent_field.index
-		let id_field = d.pk_fields[0]
+		for (let row of d.rows)
+			init_parents_for(row)
+	}
+
+	d.set_collapsed = function(target_row, collapsed) {
+		target_row.collapsed = collapsed
 		for (let row of d.rows) {
-			let child_rows = new Set()
-			row.parent_rows = []
-			child_row = row
-			while (1) {
-				let parent_row = d.lookup(id_field, child_row[fi])
-				if (!parent_row)
-					break
-				if (child_rows.has(parent_row)) // circular ref: abort.
-					break
-				child_rows.add(parent_row)
-				row.parent_rows.push(parent_row)
-				child_row = parent_row
-			}
+			if (row.parent_rows.indexOf(target_row) >= 0)
+				row.parent_collapsed = collapsed
 		}
 	}
 
@@ -349,7 +361,7 @@ rowset = function(...options) {
 			// the tree-building comparator requires a stable sort order
 			// for all parents so we must always compare rows by id after all.
 			order_by = new Map(order_by)
-			order_by.set(d.pk_fields[0], 'asc')
+			order_by.set(d.id_field, 'asc')
 		}
 
 		let s = []
@@ -435,6 +447,8 @@ rowset = function(...options) {
 	}
 
 	function cell_state_changed(row, field, prop, val, ev) {
+		if (ev && ev.fire_changed_events === false)
+			return
 		d.fire('cell_state_changed', row, field, prop, val, ev)
 		d.fire('cell_state_changed_for_'+field.name, row, prop, val, ev)
 		d.fire(prop+'_changed', row, field, val, ev)
@@ -759,12 +773,22 @@ rowset = function(...options) {
 			return
 		let row = create_row()
 		d.rows.add(row)
+
+		// silently set parent id to be the id of the parent row before firing `row_added` event.
+		if (ev && ev.parent_row) {
+			let parent_id = d.value(ev.parent_row, d.id_field)
+			d.set_value(row, d.parent_field, parent_id, update({fire_changed_events: false}, ev))
+		}
+		init_parents_for(row)
+
 		d.fire('row_added', row, ev)
+
 		// set default client values as if they were typed in by the user.
 		let set_value_ev = update({row_not_modified: true}, ev)
 		for (let field of d.fields)
 			if (field.client_default != null)
 				d.set_value(row, field, field.client_default, set_value_ev)
+
 		row_changed(row)
 		return row
 	}
@@ -2902,6 +2926,17 @@ pagelist = component('x-pagelist', function(e) {
 		return false
 	}
 
+	// xmodule interface.
+
+	e.child_widgets = function() {
+		let widgets = []
+		for (let item of e.items)
+			if (item.page)
+				widgets.push(item.page)
+		return widgets
+	}
+
+
 })
 
 // ---------------------------------------------------------------------------
@@ -3034,6 +3069,12 @@ vsplit = component('x-split', function(e) {
 		document.off('mouseup'  , document_mouseup)
 		if (e.tooltip)
 			e.tooltip.target = false
+	}
+
+	// xmodule interface.
+
+	e.child_widgets = function() {
+		return [e[1], e[2]]
 	}
 
 })

@@ -860,6 +860,11 @@ cssgrid = component('x-cssgrid', function(e) {
 
 	})
 
+	// xmodule interface.
+
+	e.child_widgets = function() {
+		return e.items.slice()
+	}
 
 })
 

@@ -41,25 +41,124 @@
 
 <body>
 <script>
+
+// ---------------------------------------------------------------------------
+// property inspector
+// ---------------------------------------------------------------------------
+
+property_inspector = component('x-property-inspector', function(e) {
+
+	grid.construct(e)
+
+	e.vertical = true
+	e.auto_w = true
+
+	e.save_row_on = 'input'
+	e.exit_edit_on_lost_focus = false
+	e.can_sort_rows = false
+	e.enable_context_menu = false
+
+	e.auto_edit_first_cell = true
+	e.auto_enter_edit = true
+	e.exit_edit_on_escape = false
+
+	e.rowset = rowset({
+		can_change_rows: true,
+	})
+
+	init = e.init
+	e.init = function() {
+		init_rowset(e.element)
+		init()
+	}
+
+	e.rowset.on('value_changed', function(row, field, val) {
+		e.element[field.name] = val
+	})
+
+	let element
+	e.property('element',
+		function() { return element },
+		function(v) {
+			element = v
+			if (!e.__init_later)
+				init_rowset(v)
+		}
+	)
+
+	function init_rowset(element) {
+		let props = []
+		let res = {}
+		res.fields = element.inspect_fields || []
+		res.rows = [props]
+		for (let field of res.fields)
+			props.push(element[field.name])
+		e.rowset.reset(res)
+	}
+
+})
+
+// ---------------------------------------------------------------------------
+// main app
+// ---------------------------------------------------------------------------
+
 body = document.body
 
-let test_elem = button()
-body.add(test_elem)
+root_widget = hsplit({
+	1: button({text: 'Hello'}),
+	2: button({text: 'Wazaa', primary: true}),
+})
+
+body.add(root_widget)
 
 function properties_toolbox() {
 	let pg = property_inspector({
-		element: test_elem,
+		element: root_widget[1],
 	})
 	let tb = toolbox({
 		title: 'properties',
 		content: pg,
 	})
+	tb.inspector = pg
 	return tb
 }
 
 function tree_toolbox() {
+	function widget_name(e) {
+		return e.tagName.lower()
+	}
+	let rows = new Set()
+
+	function add_widget(e, pe) {
+		if (!e) return
+		rows.add([e, pe])
+		if (e.child_widgets)
+			for (let ce of e.child_widgets())
+				add_widget(ce, e)
+	}
+	add_widget(root_widget)
+
+	let rs = rowset({
+		fields: [
+			{name: 'widget', format: widget_name},
+			{name: 'parent_widget', visible: false},
+		],
+		rows: rows,
+		pk: 'widget',
+		parent_col: 'parent_widget',
+	})
+	let g = grid({
+		rowset: rs,
+		tree_col: 'widget',
+		header_visible: false,
+	})
+	g.on('focused_row_changed', function(row) {
+		let e = row[0]
+		props_tb.inspector.element = e
+	})
 	let tb = toolbox({
 		title: 'widget tree',
+		content: g,
 	})
 	return tb
 }

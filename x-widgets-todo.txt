@@ -2,6 +2,9 @@
 FINISH
 ------------------------------------------------------------------------------
 
+- TREEGRID: remove with child rows.
+	- option to not add child rows to changeset.
+
 - REFACTORING: replace mouse events with pointer events & mouse capturing.
 - REFACTORING: use x-arrow classes for tooltip tips.
 

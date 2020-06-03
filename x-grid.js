@@ -249,6 +249,16 @@ grid = component('x-grid', function(e) {
 			: e.cell_w
 	}
 
+	function cell_indent(row, field) {
+		return horiz && field == e.tree_field && row.parent_rows
+			? 16 + row.parent_rows.length * 16 : 0
+	}
+
+	function row_has_visible_children(ri, row) {
+		let next_row = e.rows[ri+1]
+		return next_row && next_row.parent_rows.length > row.parent_rows.length
+	}
+
 	function scroll_x(sx) {
 		return horiz ? sx : clamp(sx, 0, max(0, e.cells_w - e.cells_view_w))
 	}
@@ -339,8 +349,7 @@ grid = component('x-grid', function(e) {
 			let h1 = e.style.height
 			if (w1 == 0 && h1 == 0)
 				return // hidden
-			let updated
-			if ((horiz && h1 !== h0) || (!horiz && w1 !== w0)) {
+			if (h1 !== h0 || w1 !== w0) {
 				let vrc = e.visible_row_count
 				update_sizes()
 				if (e.visible_row_count != vrc) {
@@ -349,8 +358,6 @@ grid = component('x-grid', function(e) {
 					updated = true
 				}
 			}
-			if (!updated && horiz && (w1 !== w0))
-				update_cell_widths()
 			w0 = w1
 			h0 = h1
 		})
@@ -457,19 +464,23 @@ grid = component('x-grid', function(e) {
 	})
 
 	function init_cells() {
+		let tree_field = horiz && e.tree_field
 		focused_td = null
 		e.cells.clear()
 		for (let j = 0; j < e.visible_row_count; j++) {
 			for (let i = 0; i < e.fields.length; i++) {
 				let field = e.fields[i]
-				let cell = div({class: 'x-grid-cell x-item'})
+				let indent = field == tree_field && div({class: 'x-grid-cell-indent'}) || null
+				let cell = div({class: 'x-grid-cell x-item'}, indent)
+				cell.indent = indent
 				e.cells.add(cell)
 			}
 		}
 	}
 
 	e.update_cell_value = function(cell, row, field, input_val) {
-		cell.set(e.rowset.display_value(row, field))
+		let content_node = cell.childNodes[cell.indent ? 1 : 0]
+		cell.replace(content_node, e.rowset.display_value(row, field))
 		cell.class('null', input_val == null)
 	}
 
@@ -491,8 +502,16 @@ grid = component('x-grid', function(e) {
 		e.update_cell_error(cell, row, field, e.rowset.cell_error(row, field))
 	}
 
+	function update_cell_tree_aspect(cell, ri, row, field) {
+		let has_children = (row.child_row_count || 0) > 0
+		let has_visible_children = row_has_visible_children(ri, row)
+		cell.indent.class('far', has_children)
+		cell.indent.class('fa-plus-square' , has_children && !has_visible_children)
+		cell.indent.class('fa-minus-square', has_children && has_visible_children)
+		cell.indent.style['padding-left'] = (cell_indent(row, field) - 4)+'px'
+	}
+
 	function update_cells() {
-		let tree_fi = e.tree_field && e.tree_field.index
 		let ri0 = first_visible_row()
 		for (let rel_ri = 0; rel_ri < e.visible_row_count; rel_ri++) {
 			let ri = ri0 + rel_ri
@@ -507,9 +526,9 @@ grid = component('x-grid', function(e) {
 					cell.y = cell_y(rel_ri, fi)
 					cell.w = cell_w(fi)
 					cell.h = e.cell_h
-					if (fi == tree_fi && row.parent_rows)
-						cell.style['padding-left'] = (4 + row.parent_rows.length * 10)+'px'
 					update_cell(cell, row, field)
+					if (cell.indent)
+						update_cell_tree_aspect(cell, ri, row, field)
 					cell.show()
 				} else {
 					cell.clear()
@@ -644,9 +663,10 @@ grid = component('x-grid', function(e) {
 		let fi = e.focused_field_index
 		let hcell = e.header.at[fi]
 		let css = e.cells.at[0].css()
-		editor.x = cell_x(ri, fi)
+		let iw = cell_indent(e.rows[ri], e.fields[fi])
+		editor.x = cell_x(ri, fi) + iw
 		editor.y = cell_y(ri, fi)
-		editor.w = cell_w(fi) - num(css['border-right-width'])
+		editor.w = cell_w(fi) - num(css['border-right-width']) - iw
 		editor.h = e.cell_h - num(css['border-bottom-width'])
 	}
 
@@ -670,6 +690,7 @@ grid = component('x-grid', function(e) {
 	// responding to rowset changes -------------------------------------------
 
 	e.init_rows = function() {
+		if (!e.isConnected) return
 		update_sizes()
 		init_cells()
 		update_viewport()
@@ -948,20 +969,32 @@ grid = component('x-grid', function(e) {
 			return
 
 		let cell = ev.target.closest('.x-grid-cell')
+		let indent = ev.target.closest('.x-grid-cell-indent')
+
 		let had_focus = e.hasfocus
 		if (!had_focus)
 			e.focus()
+
+		if (!cell)
+			return
 
 		let already_on_it =
 			e.focused_row_index   == cell.ri &&
 			e.focused_field_index == cell.fi
 
-		if (e.focus_cell(cell.ri, cell.fi, 0, 0, {must_not_move_row: true, input: e}))
-			e.pick_value()
+		if (indent)
+			e.toggle_collapsed(cell.ri)
 
-		if (e.auto_enter_edit || already_on_it)
-			// TODO: instead of `select_all`, put the caret where the mouse is.
-			e.enter_edit('select_all')
+		if (!already_on_it)
+			if (e.focus_cell(cell.ri, cell.fi, 0, 0, {must_not_move_row: true, input: e}))
+				e.pick_value()
+			else
+				return
+
+		if (!indent)
+			if (e.auto_enter_edit || already_on_it)
+				// TODO: instead of `select_all`, put the caret where the mouse is.
+				e.enter_edit('select_all')
 
 		return false
 
@@ -972,6 +1005,12 @@ grid = component('x-grid', function(e) {
 		if (!hcell) return
 		context_menu_popup(hcell.index, ev.clientX, ev.clientY)
 		return false
+	})
+
+	e.cells.on('dblclick', function(ev) {
+		let cell = ev.target.closest('.x-grid-cell')
+		if (!cell) return
+		e.fire('cell_dblclick', cell.ri, cell.fi, ev)
 	})
 
 	// keyboard bindings ------------------------------------------------------
@@ -1054,8 +1093,9 @@ grid = component('x-grid', function(e) {
 				&& e.editor.editor_state && e.editor.editor_state()
 
 			let move = !e.editor
-				|| (e.auto_jump_cells && !horiz && !shift
-					&& (!e.editor.editor_state
+				|| (e.auto_jump_cells && !shift
+					&& (horiz
+						|| !e.editor.editor_state
 						|| e.editor.editor_state(rows < 0 ? 'left' : 'right')))
 
 			if (move && e.focus_cell(true, true, rows, 0, {editable: reenter_edit, input: e})) {
@@ -1110,6 +1150,12 @@ grid = component('x-grid', function(e) {
 		if (!e.editor && key == 'Delete') {
 			if (e.remove_focused_row({refocus: true}))
 				return false
+		}
+
+		if (!e.editor && key == ' ') {
+			if (e.focused_row_index)
+				e.toggle_collapsed(e.focused_row_index)
+			return false
 		}
 
 	})
@@ -1269,58 +1315,6 @@ grid_dropdown = component('x-grid-dropdown', function(e) {
 			auto_h: true,
 		}, e.grid))
 		init()
-	}
-
-})
-
-property_inspector = component('x-property-inspector', function(e) {
-
-	grid.construct(e)
-
-	e.vertical = true
-	e.auto_w = true
-
-	e.save_row_on = 'input'
-	e.exit_edit_on_lost_focus = false
-	e.can_sort_rows = false
-	e.enable_context_menu = false
-
-	e.auto_edit_first_cell = true
-	e.auto_enter_edit = true
-	e.exit_edit_on_escape = false
-
-	e.rowset = rowset({
-		can_change_rows: true,
-	})
-
-	init = e.init
-	e.init = function() {
-		init_rowset(e.element)
-		init()
-	}
-
-	e.rowset.on('value_changed', function(row, field, val) {
-		e.element[field.name] = val
-	})
-
-	let element
-	e.property('element',
-		function() { return element },
-		function(v) {
-			element = v
-			if (!e.__init_later)
-				init_rowset(v)
-		}
-	)
-
-	function init_rowset(element) {
-		let props = []
-		let res = {}
-		res.fields = element.inspect_fields
-		res.rows = [props]
-		for (let field of res.fields)
-			props.push(element[field.name])
-		e.rowset.reset(res)
 	}
 
 })

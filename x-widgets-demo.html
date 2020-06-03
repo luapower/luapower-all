@@ -866,7 +866,7 @@ var data = {
 	fields: [
 		{name: 'id'        , w:  60, min_w:  30, type: 'number', editable: false},
 		{name: 'active'    , w:  30, type: 'bool', true_text: checked, false_text: ''},
-		{name: 'name'      , w:  70, min_w:  50, max_w: 200, validate: starts_with_a, filter_by: true},
+		{name: 'name'      , w: 150, min_w:  50, max_w: 400, validate: starts_with_a, filter_by: true},
 		{name: 'parent_id' , w:  80, min_w:  50, type: 'number', allow_null: true, editable: false, focusable: false},
 		{name: 'random_num', w: 130, allow_null: true, type: 'number', text: () => H('<i>Random</i><br>Number')},
 		{name: 'date'      , w: 140, allow_null: true, type: 'date', filter_by: true},
@@ -879,7 +879,7 @@ var data = {
 	can_change_rows: true,
 }
 
-for (let i = 1; i <= 1e5; i++) {
+for (let i = 1; i <= 1e4; i++) {
 	let id         = i
 	let name       = 'record '+i
 	let parent_id  = floor((random() * i))
@@ -895,7 +895,7 @@ d = rowset(data)
 g = grid({
 	rowset: d,
 	w: 600,
-	h: 200,
+	h: 500,
 	can_change_header_visibility: true,
 	//can_focus_cells: false,
 	//order_by: 'parent_id name:desc',
@@ -941,7 +941,6 @@ var data = {
 		{name: 'date'      , w: 140, allow_null: true, type: 'date', filter_by: true},
 	],
 	pk: 'id',
-	parent_col: 'parent_id',
 	rows: new Set(),
 	can_add_rows: true,
 	can_remove_rows: true,
