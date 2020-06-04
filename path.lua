@@ -102,7 +102,7 @@ function path.format(type, path, drive, pl)
 	elseif type == 'abs_long' then
 		return '\\\\?\\' .. drive .. ':' .. path
 	elseif type == 'unc' then
-		local path = '\\\\' .. drive .. path
+		return '\\\\' .. drive .. path
 	elseif type == 'unc_long' then
 		return '\\\\?\\UNC\\' .. drive .. path
 	elseif type == 'dev' then
