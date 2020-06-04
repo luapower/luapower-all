@@ -168,9 +168,7 @@ function rowset_widget(e) {
 
 	// responding to structural updates ---------------------------------------
 
-	function rowset_loaded() {
-		e.update_load_fail(false)
-		free_editor()
+	function init() {
 		e.unbind_filter_rowsets()
 		e.init_fields_array()
 		e.init_rows_array()
@@ -178,6 +176,30 @@ function rowset_widget(e) {
 		e.sort()
 		e.init_rows()
 		e.init_focused_cell()
+	}
+
+	e.rowset_widget_init = function() {
+		e.rowset = global_rowset(e.rowset, {param_nav: e.param_nav})
+		e.init_nav()
+		init()
+	}
+
+	e.rowset_widget_attach = function() {
+		init()
+		e.init_value()
+		e.bind_rowset(true)
+		e.bind_nav(true)
+	}
+
+	e.rowset_widget_detach = function() {
+		e.bind_rowset(false)
+		e.bind_nav(false)
+	}
+
+	function rowset_loaded() {
+		e.update_load_fail(false)
+		free_editor()
+		init()
 	}
 
 	function row_added(row, ev) {
@@ -802,6 +824,27 @@ function rowset_widget(e) {
 		if (e.focus_cell(true, true, delta, 0, ev))
 			e.fire('value_picked', ev)
 	}
+
+	// xmodule protocol -------------------------------------------------------
+
+	e.inspect_fields = [
+
+		{name: 'can_edit', type: 'bool'},
+		{name: 'can_add_rows', type: 'bool'},
+		{name: 'can_remove_rows', type: 'bool'},
+		{name: 'can_change_rows', type: 'bool'},
+		{name: 'can_focus_cells', type: 'bool'},
+		{name: 'auto_focus_first_cell', type: 'bool'},
+		{name: 'auto_edit_first_cell', type: 'bool'},
+		{name: 'auto_advance_row', type: 'bool'},
+		{name: 'save_row_on', type: 'enum', enum_values: ['input', 'exit_edit', 'exit_row', false]},
+		{name: 'insert_row_on', type: 'enum', enum_values: ['input', 'exit_edit', 'exit_row', false]},
+		{name: 'remove_row_on', type: 'enum', enum_values: ['input', 'exit_row', false]},
+		{name: 'can_exit_edit_on_errors', type: 'bool'},
+		{name: 'can_exit_row_on_errors', type: 'bool'},
+		{name: 'exit_edit_on_lost_focus', type: 'bool'},
+
+	]
 
 }
 

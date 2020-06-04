@@ -1,5 +1,5 @@
 
-cssgrid = component('x-cssgrid', function(e) {
+component('x-cssgrid', function(e) {
 
 	e.class('x-cssgrid')
 	e.class('editing')
@@ -31,8 +31,8 @@ cssgrid = component('x-cssgrid', function(e) {
 
 	// spans ------------------------------------------------------------------
 
-	function span1(css, type) { return num(css[`grid-${type}-start`])-1 }
-	function span2(css, type) { return num(css[`grid-${type}-end`  ])-1 }
+	function span1(css, type) { return or(num(css[`grid-${type}-start`]), 1)-1 }
+	function span2(css, type) { return or(num(css[`grid-${type}-end`  ]), 1)-1 }
 	function set_span1(item, type, i) { item.style[`grid-${type}-start`] = i+1 }
 	function set_span2(item, type, i) { item.style[`grid-${type}-end`  ] = i+1 }
 
@@ -865,6 +865,10 @@ cssgrid = component('x-cssgrid', function(e) {
 	e.child_widgets = function() {
 		return e.items.slice()
 	}
+
+	e.inspect_fields = [
+		{name: 'gap', type: 'number'},
+	]
 
 })
 

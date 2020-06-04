@@ -251,6 +251,14 @@ function events_mixin(o) {
 			else
 				handlers.clear()
 	}
+	o.once = function(topic, handler) {
+		let wrapper = function(...args) {
+			let ret = handler(...args)
+			o.off(topic, wrapper)
+			return ret
+		}
+		o.on(topic, wrapper)
+	}
 	o.fire = function(topic, ...args) {
 		var a = obs.get(topic)
 		if (!a) return

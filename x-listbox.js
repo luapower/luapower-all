@@ -3,7 +3,7 @@
 // listbox
 // ---------------------------------------------------------------------------
 
-listbox = component('x-listbox', function(e) {
+component('x-listbox', function(e) {
 
 	rowset_widget(e)
 
@@ -22,25 +22,15 @@ listbox = component('x-listbox', function(e) {
 			create_rowset_for_items()
 			update_rowset_from_items()
 		}
-		e.unbind_filter_rowsets()
-		e.rowset = global_rowset(e.rowset)
-		e.init_fields_array()
-		e.init_rows_array()
-		e.init_nav()
-		e.init_fields()
+		e.rowset_widget_init()
 	}
 
 	e.attach = function() {
-		e.init_rows()
-		e.init_value()
-		e.init_focused_cell()
-		e.bind_rowset(true)
-		e.bind_nav(true)
+		e.rowset_widget_attach()
 	}
 
 	e.detach = function() {
-		e.bind_rowset(false)
-		e.bind_nav(false)
+		e.rowset_widget_detach()
 	}
 
 	// item-based rowset ------------------------------------------------------
@@ -194,7 +184,7 @@ hlistbox = function(...options) {
 // list_dropdown
 // ---------------------------------------------------------------------------
 
-list_dropdown = component('x-list-dropdown', function(e) {
+component('x-list-dropdown', function(e) {
 
 	e.class('x-list-dropdown')
 	dropdown.construct(e)
@@ -202,7 +192,7 @@ list_dropdown = component('x-list-dropdown', function(e) {
 	e.display_value = function() {
 		let lr = e.picker.rowset
 		let lf = e.picker.value_field
-		let row = lr.lookup(lf, e.input_value)
+		let row = lf && lr.lookup(lf, e.input_value)
 		if (row)
 			return e.picker.row_display_value(row)
 		else
@@ -226,7 +216,7 @@ list_dropdown = component('x-list-dropdown', function(e) {
 // select_button
 // ---------------------------------------------------------------------------
 
-select_button = component('x-select-button', function(e) {
+component('x-select-button', function(e) {
 
 	e.attrval('flow', 'horizontal')
 	e.class('x-select-button')

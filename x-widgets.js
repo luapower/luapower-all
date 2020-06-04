@@ -37,6 +37,7 @@
 		editor         : f() -> editor instance
 		from_text      : f(s) -> v
 		to_text        : f(v) -> s
+		enum_values    : [v1, ...]
 
 	validation:
 		allow_null     : allow null (true).
@@ -97,7 +98,7 @@
 		return ' ' + s.slice(1).toUpperCase()
 	}
 	function auto_display_name(s) {
-		return (s || '').replace(/[\w]/, upper).replace(/(_[\w])/, upper2)
+		return (s || '').replace(/[\w]/, upper).replace(/(_[\w])/g, upper2)
 	}
 }
 
@@ -879,9 +880,8 @@ rowset = function(...options) {
 		if (!d.params || !d.params.length)
 			return
 		d.param_nav.on('focused_row_changed', params_changed, on)
-		//TODO:
-		//for (let param of d.params)
-		//	d.param_nav.on('focused_row_value_changed_for_'+param, params_changed, on)
+		for (let param of d.params)
+			d.param_nav.on('focused_row_value_changed_for_'+param, params_changed, on)
 	}
 
 	function make_url(params) {
@@ -913,7 +913,7 @@ rowset = function(...options) {
 		let req = ajax({
 			url: make_url(params),
 			progress: load_progress,
-			success: e.reset,
+			success: d.reset,
 			fail: load_fail,
 			done: load_done,
 			slow: load_slow,
@@ -1240,6 +1240,7 @@ function global_rowset(name, ...options) {
 		number: {align: 'right', min: 0, max: 1/0, multiple_of: 1},
 		date  : {align: 'right', min: -(2**52), max: 2**52},
 		bool  : {align: 'center'},
+		enum  : {},
 	}
 
 	// numbers
@@ -1289,9 +1290,8 @@ function global_rowset(name, ...options) {
 		{weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' }
 
 	rowset.types.date.editor = function(...options) {
-		return dropdown(update({
+		return date_dropdown(update({
 			nolabel: true,
-			picker: calendar(),
 			align: 'right',
 			mode: 'fixed',
 		}, ...options))
@@ -1314,10 +1314,53 @@ function global_rowset(name, ...options) {
 		}, ...options))
 	}
 
+	// enums
+
+	rowset.types.enum.editor = function(...options) {
+		return list_dropdown(update({
+			nolabel: true,
+			items: this.enum_values,
+		}, ...options))
+	}
+
 }
 
 // ---------------------------------------------------------------------------
-// value_widget mixin
+// serializable widget mixin
+// ---------------------------------------------------------------------------
+
+function serializable_widget(e) {
+
+	e.serialize = function() {
+		let t = {name: e.component, fields: {}}
+		if (e.inspect_fields)
+			for (let field of e.inspect_fields)
+				t.fields[field.name] = e[field.name]
+		return t
+	}
+
+}
+
+function deserialize_component(t) {
+	let make = components[t.name]
+	return make(t.fields)
+}
+
+// ---------------------------------------------------------------------------
+// layouted widget mixin
+// ---------------------------------------------------------------------------
+
+function layouted_widget(e) {
+
+	e.property('grid_area',
+		function() { return e.style['grid-area'] },
+		function(s) { e.style['grid-area'] = s }
+	)
+
+}
+
+// ---------------------------------------------------------------------------
+// value widget mixin
 // ---------------------------------------------------------------------------
 
 /*
@@ -1328,6 +1371,9 @@ function global_rowset(name, ...options) {
 */
 
 function value_widget(e) {
+
+	layouted_widget(e)
+	serializable_widget(e)
 
 	e.default_value = null
 	e.field_prop_map = {
@@ -1494,7 +1540,7 @@ function value_widget(e) {
 // tooltip
 // ---------------------------------------------------------------------------
 
-tooltip = component('x-tooltip', function(e) {
+component('x-tooltip', function(e) {
 
 	e.class('x-widget')
 	e.class('x-tooltip')
@@ -1561,7 +1607,9 @@ tooltip.reading_speed = 800 // letters-per-minute.
 // button
 // ---------------------------------------------------------------------------
 
-button = component('x-button', function(e) {
+component('x-button', function(e) {
+
+	layouted_widget(e)
 
 	e.class('x-widget')
 	e.class('x-button')
@@ -1623,10 +1671,13 @@ button = component('x-button', function(e) {
 	})
 
 	e.inspect_fields = [
+
 		{name: 'text'},
 		{name: 'icon'},
 		{name: 'primary', type: 'bool'},
-		//{name: 'rowset', type: 'rowset'},
+
+		{name: 'grid_area'},
+		{name: 'tabIndex', type: 'number'},
 	]
 
 })
@@ -1635,7 +1686,7 @@ button = component('x-button', function(e) {
 // checkbox
 // ---------------------------------------------------------------------------
 
-checkbox = component('x-checkbox', function(e) {
+component('x-checkbox', function(e) {
 
 	e.class('x-widget')
 	e.class('x-markbox')
@@ -1718,8 +1769,16 @@ checkbox = component('x-checkbox', function(e) {
 	})
 
 	e.inspect_fields = [
+
+		//{name: 'nav', type: 'nav'},
+		//{name: 'col', type: 'rowset_field', rowset_col: 'rowset'},
+
 		{name: 'text'},
 		{name: 'icon'},
+		{name: 'align', type: 'enum', enum_values: ['left', 'right']},
+
+		{name: 'grid_area'},
+		{name: 'tabIndex', type: 'number'},
 	]
 
 })
@@ -1728,7 +1787,7 @@ checkbox = component('x-checkbox', function(e) {
 // radiogroup
 // ---------------------------------------------------------------------------
 
-radiogroup = component('x-radiogroup', function(e) {
+component('x-radiogroup', function(e) {
 
 	e.class('x-widget')
 	e.class('x-radiogroup')
@@ -1808,6 +1867,14 @@ radiogroup = component('x-radiogroup', function(e) {
 		}
 	}
 
+	e.inspect_fields = [
+
+		{name: 'align', type: 'enum', enum_values: ['left', 'right']},
+
+		{name: 'grid_area'},
+		{name: 'tabIndex', type: 'number'},
+	]
+
 })
 
 // ---------------------------------------------------------------------------
@@ -1835,13 +1902,14 @@ function input_widget(e) {
 	}
 
 	e.inspect_fields = [
-		{name: 'align'},
+		{name: 'align', type: 'enum', enum_values: ['left', 'right']},
+		{name: 'mode', type: 'enum', enum_values: ['default', 'inline']},
 		{name: 'icon'},
 	]
 
 }
 
-input = component('x-input', function(e) {
+component('x-input', function(e) {
 
 	e.class('x-widget')
 	e.class('x-input')
@@ -1979,19 +2047,13 @@ input = component('x-input', function(e) {
 		e.input.select(i0, i1)
 	}
 
-	e.inspect_fields = [
-		{name: 'text'},
-		{name: 'icon'},
-	]
-
-
 })
 
 // ---------------------------------------------------------------------------
 // spin_input
 // ---------------------------------------------------------------------------
 
-spin_input = component('x-spin-input', function(e) {
+component('x-spin-input', function(e) {
 
 	e.class('x-spin-input')
 	input.construct(e)
@@ -2126,13 +2188,20 @@ spin_input = component('x-spin-input', function(e) {
 	add_events(e.up  , 1)
 	add_events(e.down, -1)
 
+	e.inspect_fields.push(...[
+
+		{name: 'button_style', type: 'enum', enum_values: ['plus-minus', 'up-down', 'left-right']},
+		{name: 'button_placement', type: 'enum', enum_values: ['each-side', 'left', 'right']},
+
+	])
+
 })
 
 // ---------------------------------------------------------------------------
 // slider
 // ---------------------------------------------------------------------------
 
-slider = component('x-slider', function(e) {
+component('x-slider', function(e) {
 
 	e.from = 0
 	e.to = 1
@@ -2265,13 +2334,24 @@ slider = component('x-slider', function(e) {
 		}
 	})
 
+	e.inspect_fields = [
+
+		{name: 'from', type: 'number'},
+		{name: 'to', type: 'number'},
+		{name: 'multiple_of', type: 'number'},
+
+		{name: 'grid_area'},
+		{name: 'tabIndex', type: 'number'},
+
+	]
+
 })
 
 // ---------------------------------------------------------------------------
 // dropdown
 // ---------------------------------------------------------------------------
 
-dropdown = component('x-dropdown', function(e) {
+component('x-dropdown', function(e) {
 
 	// view
 
@@ -2462,13 +2542,20 @@ dropdown = component('x-dropdown', function(e) {
 		e.fire('lost_focus') // grid editor protocol
 	})
 
+	e.inspect_fields = [
+
+		{name: 'grid_area'},
+		{name: 'tabIndex', type: 'number'},
+
+	]
+
 })
 
 // ---------------------------------------------------------------------------
 // menu
 // ---------------------------------------------------------------------------
 
-menu = component('x-menu', function(e) {
+component('x-menu', function(e) {
 
 	// view
 
@@ -2731,7 +2818,7 @@ menu = component('x-menu', function(e) {
 // pagelist
 // ---------------------------------------------------------------------------
 
-pagelist = component('x-pagelist', function(e) {
+component('x-pagelist', function(e) {
 
 	e.class('x-widget')
 	e.class('x-pagelist')
@@ -2762,12 +2849,11 @@ pagelist = component('x-pagelist', function(e) {
 	}
 
 	e.init = function() {
-		if (e.items) {
-			let items = e.items
-			e.items = []
+		let items = e.items
+		e.items = []
+		if (items)
 			for (let item of items)
 				add_item(item)
-		}
 		e.add(e.add_button)
 		e.selection_bar = div({class: 'x-pagelist-selection-bar'})
 		e.add(e.selection_bar)
@@ -2926,7 +3012,7 @@ pagelist = component('x-pagelist', function(e) {
 		return false
 	}
 
-	// xmodule interface.
+	// xmodule protocol.
 
 	e.child_widgets = function() {
 		let widgets = []
@@ -2936,6 +3022,14 @@ pagelist = component('x-pagelist', function(e) {
 		return widgets
 	}
 
+	e.inspect_fields = [
+
+		{name: 'can_remove_items', type: 'bool'},
+
+		{name: 'grid_area'},
+		{name: 'tabIndex', type: 'number'},
+
+	]
 
 })
 
@@ -2943,7 +3037,7 @@ pagelist = component('x-pagelist', function(e) {
 // split-view
 // ---------------------------------------------------------------------------
 
-vsplit = component('x-split', function(e) {
+component('x-vsplit', function(e) {
 
 	e.class('x-widget')
 	e.class('x-split')
@@ -2953,6 +3047,9 @@ vsplit = component('x-split', function(e) {
 	e.init = function() {
 
 		horiz = e.horizontal == true
+
+		if (!e[1]) e[1] = div()
+		if (!e[2]) e[2] = div()
 
 		// check which pane is the one with a fixed width.
 		let fixed_pi =
@@ -3071,23 +3168,32 @@ vsplit = component('x-split', function(e) {
 			e.tooltip.target = false
 	}
 
-	// xmodule interface.
+	// xmodule protocol.
 
 	e.child_widgets = function() {
 		return [e[1], e[2]]
 	}
 
+	e.inspect_fields = [
+
+		{name: 'resizeable', type: 'bool'},
+
+		{name: 'grid_area'},
+
+	]
+
 })
 
-function hsplit(...args) {
-	return vsplit({horizontal: true}, ...args)
-}
+component('x-hsplit', function(e) {
+	e.horizontal = true
+	vsplit.construct(e)
+})
 
 // ---------------------------------------------------------------------------
 // toaster
 // ---------------------------------------------------------------------------
 
-toaster = component('x-toaster', function(e) {
+component('x-toaster', function(e) {
 
 	e.class('x-widget')
 	e.class('x-toaster')
@@ -3158,7 +3264,7 @@ toaster = component('x-toaster', function(e) {
 // action band
 // ---------------------------------------------------------------------------
 
-action_band = component('x-action-band', function(e) {
+component('x-action-band', function(e) {
 
 	e.classes = 'x-widget x-action-band'
 	e.layout = 'ok:ok cancel:cancel'
@@ -3229,7 +3335,7 @@ action_band = component('x-action-band', function(e) {
 // modal dialog with action band footer
 // ---------------------------------------------------------------------------
 
-dialog = component('x-dialog', function(e) {
+component('x-dialog', function(e) {
 
 	e.classes = 'x-widget x-dialog'
 	e.attrval('tabindex', 0)
@@ -3294,7 +3400,7 @@ dialog = component('x-dialog', function(e) {
 // floating toolbox
 // ---------------------------------------------------------------------------
 
-toolbox = component('x-toolbox', function(e) {
+component('x-toolbox', function(e) {
 
 	e.classes = 'x-widget x-toolbox'
 	e.attrval('tabindex', 0)

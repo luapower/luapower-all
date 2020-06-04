@@ -5,6 +5,12 @@
 <meta charset="utf-8">
 <style>
 
+html, body {
+	position: relative;
+	margin: 0;
+	height: 100%;
+}
+
 * { box-sizing: border-box; }
 
 @font-face {
@@ -43,6 +49,46 @@
 <script>
 
 // ---------------------------------------------------------------------------
+// rowset types
+// ---------------------------------------------------------------------------
+
+rowset.types.rowset = {}
+
+rowsets_rowset = global_rowset('rowsets')
+rowsets_rowset.load({limit: 0})
+
+rowset.types.rowset.editor = function(...options) {
+	return list_dropdown(update({
+		nolabel: true,
+		lookup_rowset: rowsets_rowset,
+	}, ...options))
+}
+
+rowset.types.rowset_field = {}
+
+rowset.types.rowset_field.editor = function(...options) {
+	let e = list_dropdown(update({
+		nolabel: true,
+		lookup_rowset: rowset({
+			fields: [{name: 'name'}],
+		}),
+	}, ...options))
+	let rs_field = e.nav.rowset.field(this.rowset_col)
+	let rs_name = e.nav.rowset.value(e.nav.focused_row, rs_field)
+	let rs = rs_name && global_rowset(rs_name)
+	if (rs) {
+		rs.once('loaded', function() {
+			let rows = rs.fields.map((field) => [field.name])
+			e.lookup_rowset.reset({
+				rows: rows,
+			})
+		})
+		rs.load({limit: 0})
+	}
+	return e
+}
+
+// ---------------------------------------------------------------------------
 // property inspector
 // ---------------------------------------------------------------------------
 
@@ -52,6 +98,8 @@ property_inspector = component('x-property-inspector', function(e) {
 
 	e.vertical = true
 	e.auto_w = true
+
+	e.auto_focus_first_cell = false
 
 	e.save_row_on = 'input'
 	e.exit_edit_on_lost_focus = false
@@ -89,10 +137,12 @@ property_inspector = component('x-property-inspector', function(e) {
 	function init_rowset(element) {
 		let props = []
 		let res = {}
-		res.fields = element.inspect_fields || []
-		res.rows = [props]
-		for (let field of res.fields)
-			props.push(element[field.name])
+		if (element) {
+			res.fields = element.inspect_fields || []
+			res.rows = [props]
+			for (let field of res.fields)
+				props.push(element[field.name])
+		}
 		e.rowset.reset(res)
 	}
 
@@ -104,17 +154,25 @@ property_inspector = component('x-property-inspector', function(e) {
 
 body = document.body
 
-root_widget = hsplit({
-	1: button({text: 'Hello'}),
-	2: button({text: 'Wazaa', primary: true}),
+root_widget = cssgrid({
+	items: [
+		checkbox({text: 'Hello'}),
+		button({text: 'Wazaa', primary: true}),
+		spin_input(),
+		slider(),
+		pagelist(),
+		vsplit({
+			1: button(),
+			2: button(),
+		}),
+		listbox({rowset: rowset({})}),
+	],
 })
 
 body.add(root_widget)
 
 function properties_toolbox() {
-	let pg = property_inspector({
-		element: root_widget[1],
-	})
+	let pg = property_inspector({})
 	let tb = toolbox({
 		title: 'properties',
 		content: pg,
@@ -189,17 +247,20 @@ function widgets_toolbox() {
 
 
 widgets_tb = widgets_toolbox()
-widgets_tb.x = 500
+widgets_tb.y = 150
+widgets_tb.x = 1100
 widgets_tb.show()
 body.add(widgets_tb)
 
 props_tb = properties_toolbox()
-props_tb.x = 700
+props_tb.y = 150
+props_tb.x = 1250
 props_tb.show()
 body.add(props_tb)
 
 tree_tb = tree_toolbox()
-tree_tb.x = 1000
+tree_tb.y = 150
+tree_tb.x = 1500
 tree_tb.show()
 body.add(tree_tb)
 

@@ -750,7 +750,7 @@
 	position: absolute;
 	border: 1px solid #999;
 	background-color: var(--x-input-focused-bg-color);
-	box-shadow: 5px 5px 5px #000000aa;
+	box-shadow: 2px 2px 2px #000000aa;
 	z-index: 1;
 }
 
@@ -1178,7 +1178,7 @@
 	height: 100%;
 
 	display: grid;
-	grid-gap: 20px;
+	grid-gap: 0px;
 
 	justify-items: center;
 	align-items: center;
@@ -1371,10 +1371,11 @@
 	background: white;
 	overflow: auto; /* make resize work */
 	resize: both;
+	z-index: 1;
 }
 
 .x-toolbox, .x-toolbox:focus-within {
-	box-shadow: 2px 2px 2px #666;
+	box-shadow: 2px 2px 2px #000000aa;
 }
 
 .x-toolbox-titlebar {
@@ -1481,10 +1482,8 @@
 	display: inline-flex;
 	align-items: center;
 	justify-content: flex-end;
-	//font-family: 'Font Awesome 5 Free';
-	//font-weight: 400;
 	font-size: 10px;
-	width: 20px;
+	width: 0;
 	padding: 0 4px;
 	height: 100%;
 }
@@ -1618,7 +1617,8 @@
 }
 
 .x-grid.col-moving .x-grid-header-cell:not(.col-moving),
-.x-grid.col-moving .x-grid-cell:not(.col-moving) {
+.x-grid.col-moving .x-grid-cell:not(.col-moving),
+.x-grid.col-moving .grid-editor:not(.col-moving) {
 	transition: top  .1s, left .1s;
 }
 
@@ -1660,7 +1660,6 @@
 
 	font-size: inherit;
 	font-family: inherit;
-	cursor: initial;
 	outline: none;
 }
 

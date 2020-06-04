@@ -3,7 +3,7 @@
 // calendar
 // ---------------------------------------------------------------------------
 
-calendar = component('x-calendar', function(e) {
+component('x-calendar', function(e) {
 
 	e.class('x-widget')
 	e.class('x-calendar')
@@ -205,7 +205,7 @@ calendar = component('x-calendar', function(e) {
 
 })
 
-date_dropdown = component('x-date-dropdown', function(e) {
+component('x-date-dropdown', function(e) {
 	e.field_type = 'date'
 	e.picker = calendar()
 	dropdown.construct(e)

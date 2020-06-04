@@ -338,6 +338,15 @@ let off = function(e, f) {
 	this.removeEventListener(e, f.listener || f)
 }
 
+let once = function(e, f) {
+	let wrapper = function(...args) {
+		let ret = f(...args)
+		e.off(wrapper)
+		return ret
+	}
+	e.on(wrapper)
+}
+
 function event(name, bubbles, ...args) {
 	return typeof name == 'string'
 		? new CustomEvent(name, {detail: {args}, cancelable: true, bubbles: bubbles})
@@ -351,6 +360,7 @@ let fire = function(name, ...args) {
 for (let e of [Window, Document, Element]) {
 	method(e, 'on'   , on)
 	method(e, 'off'  , off)
+	method(e, 'once' , once)
 	method(e, 'fire' , fire)
 }
 
@@ -493,14 +503,19 @@ HTMLElement.prototype.attach = noop
 HTMLElement.prototype.detach = noop
 HTMLElement.prototype.init   = noop
 
+components = {} // {name->constructor(...options)}
+
 // component(tag, cons) -> create({option: value}) -> element.
 function component(tag, cons) {
+
+	let name = tag.replace(/^[^\-]+\-/, '').replace('-', '_')
 
 	let cls = class extends HTMLElement {
 
 		constructor(...args) {
 			super()
 			this.has_attach_events = true
+			this.component_name = name
 			cons(this)
 
 			// add user options, overriding any defaults and stub methods.
@@ -540,6 +555,10 @@ function component(tag, cons) {
 	}
 	make.class = cls
 	make.construct = cons
+
+	components[name] = make
+	window[name] = make
+
 	return make
 }
 
@@ -572,7 +591,7 @@ function noop_setter(v) {
 // create a property that represents a html attribute.
 // NOTE: a property `foo_bar` is created for an attribute `foo-bar`.
 // NOTE: attr properties are not late properties so that their value
-// can be available to init()!
+// is available to init()!
 // NOTE: you need to call `e.setattr(<name>, <default_val>)` on your
 // constructor or else you won't be able to do css based on the attribute!
 method(HTMLElement, 'attr_property', function(name, setter = noop_setter, type) {

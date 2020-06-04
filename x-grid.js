@@ -3,7 +3,7 @@
 // grid
 // ---------------------------------------------------------------------------
 
-grid = component('x-grid', function(e) {
+component('x-grid', function(e) {
 
 	rowset_widget(e)
 
@@ -61,26 +61,15 @@ grid = component('x-grid', function(e) {
 	e.cells_view.on('scroll', update_viewport)
 
 	e.init = function() {
-		e.unbind_filter_rowsets()
-		e.rowset = global_rowset(e.rowset, {param_nav: e.param_nav})
-		e.init_fields_array()
-		e.init_rows_array()
-		e.init_nav()
-		e.init_fields()
-		e.sort()
+		e.rowset_widget_init()
 	}
 
 	e.attach = function() {
-		e.init_rows()
-		e.init_value()
-		e.init_focused_cell()
-		e.bind_rowset(true)
-		e.bind_nav(true)
+		e.rowset_widget_attach()
 	}
 
 	e.detach = function() {
-		e.bind_rowset(false)
-		e.bind_nav(false)
+		e.rowset_widget_detach()
 	}
 
 	// geometry ---------------------------------------------------------------
@@ -251,7 +240,7 @@ grid = component('x-grid', function(e) {
 
 	function cell_indent(row, field) {
 		return horiz && field == e.tree_field && row.parent_rows
-			? 16 + row.parent_rows.length * 16 : 0
+			? 12 + row.parent_rows.length * 16 : 0
 	}
 
 	function row_has_visible_children(ri, row) {
@@ -658,14 +647,14 @@ grid = component('x-grid', function(e) {
 	// inline editing ---------------------------------------------------------
 
 	// when: input created, column width or height changed.
-	function update_editor(editor) {
+	function update_editor(editor, x, y) {
 		let ri = e.focused_row_index
 		let fi = e.focused_field_index
 		let hcell = e.header.at[fi]
 		let css = e.cells.at[0].css()
 		let iw = cell_indent(e.rows[ri], e.fields[fi])
-		editor.x = cell_x(ri, fi) + iw
-		editor.y = cell_y(ri, fi)
+		editor.x = or(x, cell_x(ri, fi) + iw)
+		editor.y = or(y, cell_y(ri, fi))
 		editor.w = cell_w(fi) - num(css['border-right-width']) - iw
 		editor.h = e.cell_h - num(css['border-bottom-width'])
 	}
@@ -749,6 +738,8 @@ grid = component('x-grid', function(e) {
 	function set_cell_y(cell, y) { cell.y = y }
 	e.set_movable_element_pos = function(fi, x) {
 		each_cell_of_col(fi, horiz ? set_cell_x : set_cell_y, x)
+		if (e.editor && e.focused_field_index == fi)
+			update_editor(e.editor, horiz ? x : null, !horiz ? x : null)
 	}
 
 	// hit-testing and mouse-based moving & resizing --------------------------
@@ -836,9 +827,11 @@ grid = component('x-grid', function(e) {
 		hit.my -= num(e.header.at[hit.fi].style.top)
 		e.class('col-moving')
 		each_cell_of_col(hit.fi, function(cell) {
-			cell.class('col-moving', true)
+			cell.class('col-moving')
 			cell.style['z-index'] = 1
 		})
+		if (e.editor && e.focused_field_index == hit.fi)
+			e.editor.class('col-moving')
 		e.move_element_start(hit.fi, e.fields.length)
 		return true
 	}
@@ -863,6 +856,8 @@ grid = component('x-grid', function(e) {
 				cell.class('col-moving', false)
 				cell.style['z-index'] = null
 			})
+			if (e.editor)
+				e.editor.class('col-moving', false)
 			if (over_fi != hit.fi) {
 				let focused_field = e.fields[e.focused_field_index]
 				let field = e.fields.remove(hit.fi)
@@ -1298,7 +1293,7 @@ vgrid = function(...options) {
 	return grid({vertical: true}, ...options)
 }
 
-grid_dropdown = component('x-grid-dropdown', function(e) {
+component('x-grid-dropdown', function(e) {
 
 	e.class('x-grid-dropdown')
 	dropdown.construct(e)
