@@ -10,7 +10,7 @@ component('x-calendar', function(e) {
 	e.class('x-focusable')
 	e.attrval('tabindex', 0)
 
-	value_widget(e)
+	val_widget(e)
 
 	function format_month(i) {
 		return month_name(utctime(0, i), 'short')
@@ -42,7 +42,7 @@ component('x-calendar', function(e) {
 	}
 
 	e.attach = function() {
-		e.init_value()
+		e.init_val()
 		e.bind_nav(true)
 	}
 
@@ -50,7 +50,7 @@ component('x-calendar', function(e) {
 		e.bind_nav(false)
 	}
 
-	e.update_value = function(v) {
+	e.update_val = function(v) {
 		t = day(v)
 		update_weekview(t, 6)
 		let y = year_of(t)
@@ -59,8 +59,8 @@ component('x-calendar', function(e) {
 		let day_suffixes = ['', 'st', 'nd', 'rd']
 		e.sel_day_suffix.set(locale.starts('en') ?
 			(n < 11 || n > 13) && day_suffixes[n % 10] || 'th' : '')
-		e.sel_month.value = month_of(t)
-		e.sel_year.value = y
+		e.sel_month.val = month_of(t)
+		e.sel_year.val = y
 	}
 
 	function update_weekview(d, weeks) {
@@ -78,7 +78,7 @@ component('x-calendar', function(e) {
 					let m = month(d)
 					let s = d == today ? ' today' : ''
 					s = s + (m == this_month ? ' current-month' : '')
-					s = s + (d == day(e.input_value) ? ' focused selected' : '')
+					s = s + (d == day(e.input_val) ? ' focused selected' : '')
 					let td = H.td({class: 'x-calendar-day x-item'+s}, floor(1 + days(d - m)))
 					td.day = d
 					td.on('mousedown', day_mousedown)
@@ -93,31 +93,31 @@ component('x-calendar', function(e) {
 	// controller
 
 	function day_mousedown() {
-		e.set_value(this.day, {input: e})
+		e.set_val(this.day, {input: e})
 		e.sel_month.cancel()
 		e.focus()
-		e.fire('value_picked') // picker protocol
+		e.fire('val_picked') // picker protocol
 		return false
 	}
 
-	e.sel_month.on('value_changed', function(v, ev) {
+	e.sel_month.on('val_changed', function(v, ev) {
 		if (ev && ev.input) {
-			_d.setTime(e.input_value)
-			_d.setMonth(this.value)
-			e.set_value(_d.valueOf(), {input: e})
+			_d.setTime(e.input_val)
+			_d.setMonth(this.val)
+			e.set_val(_d.valueOf(), {input: e})
 		}
 	})
 
-	e.sel_year.on('value_changed', function(v, ev) {
+	e.sel_year.on('val_changed', function(v, ev) {
 		if (ev && ev.input) {
-			_d.setTime(e.input_value)
-			_d.setFullYear(this.value)
-			e.set_value(_d.valueOf(), {input: e})
+			_d.setTime(e.input_val)
+			_d.setFullYear(this.val)
+			e.set_val(_d.valueOf(), {input: e})
 		}
 	})
 
 	e.weekview.on('wheel', function(dy) {
-		e.set_value(day(e.input_value, 7 * dy / 100), {input: e})
+		e.set_val(day(e.input_val, 7 * dy / 100), {input: e})
 		return false
 	})
 
@@ -141,28 +141,28 @@ component('x-calendar', function(e) {
 			case 'PageDown'   : m =  1; break
 		}
 		if (d) {
-			e.set_value(day(e.input_value, d), {input: e})
+			e.set_val(day(e.input_val, d), {input: e})
 			return false
 		}
 		if (m) {
-			_d.setTime(e.input_value)
+			_d.setTime(e.input_val)
 			if (shift)
-				_d.setFullYear(year_of(e.input_value) + m)
+				_d.setFullYear(year_of(e.input_val) + m)
 			else
-				_d.setMonth(month_of(e.input_value) + m)
-			e.set_value(_d.valueOf(), {input: e})
+				_d.setMonth(month_of(e.input_val) + m)
+			e.set_val(_d.valueOf(), {input: e})
 			return false
 		}
 		if (key == 'Home') {
-			e.set_value(shift ? year(e.input_value) : month(e.input_value), {input: e})
+			e.set_val(shift ? year(e.input_val) : month(e.input_val), {input: e})
 			return false
 		}
 		if (key == 'End') {
-			e.set_value(day(shift ? year(e.input_value, 1) : month(e.input_value, 1), -1), {input: e})
+			e.set_val(day(shift ? year(e.input_val, 1) : month(e.input_val, 1), -1), {input: e})
 			return false
 		}
 		if (key == 'Enter') {
-			e.fire('value_picked', {input: e}) // picker protocol
+			e.fire('val_picked', {input: e}) // picker protocol
 			return false
 		}
 	})
@@ -198,9 +198,9 @@ component('x-calendar', function(e) {
 		return builtin_contains.call(this, e1) || e.sel_month.picker.contains(e1)
 	}
 
-	e.pick_near_value = function(delta, ev) {
-		e.set_value(day(e.input_value, delta), ev)
-		e.fire('value_picked', ev)
+	e.pick_near_val = function(delta, ev) {
+		e.set_val(day(e.input_val, delta), ev)
+		e.fire('val_picked', ev)
 	}
 
 })

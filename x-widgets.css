@@ -1011,14 +1011,16 @@
 /* pagelist --------------------------------------------------------------- */
 
 .x-pagelist {
+	display: flex;
+	flex-flow: column;
+	position: relative;
+}
+
+.x-pagelist-header {
 
 	/* layouting */
 	display: flex;
 	position: relative;
-
-	/* sizing for layout use */
-	margin: 0;
-	padding: 0;
 
 	/* styling */
 	border-bottom: 1px solid #ccc;

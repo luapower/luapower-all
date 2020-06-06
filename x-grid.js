@@ -364,7 +364,7 @@ component('x-grid', function(e) {
 			e1.set(field.text)
 			e1.title = e1.textContent
 			let e2 = H.td({class: 'x-grid-header-sort-icon-td'}, sort_icon, sort_icon_pri)
-			if (field.align == 'right')
+			if (horiz && field.align == 'right')
 				[e1, e2] = [e2, e1]
 			e1.attr('align', 'left')
 			e2.attr('align', 'right')
@@ -396,7 +396,7 @@ component('x-grid', function(e) {
 		let f0 = rs.field(0)
 		let f1 = rs.field(1)
 
-		dd.display_value = function() {
+		dd.display_val = function() {
 			if (!rs.filtered_count)
 				return () => div({class: 'x-item disabled'}, S('all', 'all'))
 			else
@@ -410,11 +410,11 @@ component('x-grid', function(e) {
 			}
 		})
 
-		dd.picker.pick_value = function() {
-			let checked = !rs.value(this.focused_row, f0)
-			rs.set_value(this.focused_row, f0, checked)
+		dd.picker.pick_val = function() {
+			let checked = !rs.val(this.focused_row, f0)
+			rs.set_val(this.focused_row, f0, checked)
 			rs.filtered_count = (rs.filtered_count || 0) + (checked ? -1 : 1)
-			dd.update_value()
+			dd.update_val()
 			e.init_rows_array()
 			e.init_rows()
 			e.sort()
@@ -422,7 +422,7 @@ component('x-grid', function(e) {
 
 		dd.picker.on('keydown', function(key) {
 			if (key == ' ')
-				this.pick_value()
+				this.pick_val()
 		})
 
 		hcell.filter_dropdown = dd
@@ -467,9 +467,9 @@ component('x-grid', function(e) {
 		}
 	}
 
-	e.update_cell_value = function(cell, row, field, input_val) {
+	e.update_cell_val = function(cell, row, field, input_val) {
 		let content_node = cell.childNodes[cell.indent ? 1 : 0]
-		cell.replace(content_node, e.rowset.display_value(row, field))
+		cell.replace(content_node, e.rowset.display_val(row, field))
 		cell.class('null', input_val == null)
 	}
 
@@ -487,7 +487,7 @@ component('x-grid', function(e) {
 		cell.class('removed', !!row.removed)
 		cell.class('modified', e.rowset.cell_modified(row, field))
 		let input_val = e.rowset.cell_error(row, field)
-		e.update_cell_value(cell, row, field, e.rowset.input_value(row, field))
+		e.update_cell_val(cell, row, field, e.rowset.input_val(row, field))
 		e.update_cell_error(cell, row, field, e.rowset.cell_error(row, field))
 	}
 
@@ -576,7 +576,7 @@ component('x-grid', function(e) {
 			e.fields.remove_value(field)
 		e.init_fields()
 		e.init_rows()
-		e.init_value()
+		e.init_val()
 		e.init_focused_cell()
 	}
 
@@ -693,8 +693,8 @@ component('x-grid', function(e) {
 		let cell = e.cells.at[cell_index(ri, fi)]
 		if (!cell)
 			return
-		if (prop == 'input_value')
-			e.update_cell_value(cell, e.rows[ri], e.fields[fi], val)
+		if (prop == 'input_val')
+			e.update_cell_val(cell, e.rows[ri], e.fields[fi], val)
 		else if (prop == 'cell_error')
 			e.update_cell_error(cell, e.rows[ri], e.fields[fi], val)
 		else if (prop == 'cell_modified')
@@ -722,8 +722,8 @@ component('x-grid', function(e) {
 
 	// picker protocol --------------------------------------------------------
 
-	e.pick_value = function() {
-		e.fire('value_picked', {input: e})
+	e.pick_val = function() {
+		e.fire('val_picked', {input: e})
 	}
 
 	// live column moving -----------------------------------------------------
@@ -982,7 +982,7 @@ component('x-grid', function(e) {
 
 		if (!already_on_it)
 			if (e.focus_cell(cell.ri, cell.fi, 0, 0, {must_not_move_row: true, input: e}))
-				e.pick_value()
+				e.pick_val()
 			else
 				return
 
@@ -1110,7 +1110,7 @@ component('x-grid', function(e) {
 		// Enter: toggle edit mode, and navigate on exit
 		if (key == 'Enter') {
 			if (e.hasclass('picker')) {
-				e.pick_value()
+				e.pick_val()
 			} else if (!e.editor) {
 				e.enter_edit('select_all')
 			} else if (e.exit_edit()) {
@@ -1166,7 +1166,7 @@ component('x-grid', function(e) {
 			if (!e.editor && e.focused_row && e.focused_field) {
 				e.enter_edit('select_all')
 				let v = e.focused_field.from_text(c)
-				e.rowset.set_value(e.focused_row, e.focused_field, v)
+				e.rowset.set_val(e.focused_row, e.focused_field, v)
 				return false
 			}
 		} else if (!e.editor)
@@ -1302,7 +1302,7 @@ component('x-grid-dropdown', function(e) {
 	e.init = function() {
 		e.picker = grid(update({
 			rowset: e.lookup_rowset,
-			value_col: e.lookup_col,
+			val_col: e.lookup_col,
 			can_edit: false,
 			can_focus_cells: false,
 			auto_focus_first_cell: false,

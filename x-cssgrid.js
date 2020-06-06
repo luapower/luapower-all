@@ -1,13 +1,20 @@
 
 component('x-cssgrid', function(e) {
 
+	layouted_widget(e)
+	serializable_widget(e)
+
 	e.class('x-cssgrid')
 	e.class('editing')
 
 	e.init = function() {
-		e.items = e.items || []
-		for (let item of e.items)
+		let items = e.items
+		e.items = []
+		for (let item of items) {
+			item = component.create(item)
+			e.items.push(item)
 			e.add(item)
+		}
 	}
 
 	e.attach = function() {
@@ -33,8 +40,8 @@ component('x-cssgrid', function(e) {
 
 	function span1(css, type) { return or(num(css[`grid-${type}-start`]), 1)-1 }
 	function span2(css, type) { return or(num(css[`grid-${type}-end`  ]), 1)-1 }
-	function set_span1(item, type, i) { item.style[`grid-${type}-start`] = i+1 }
-	function set_span2(item, type, i) { item.style[`grid-${type}-end`  ] = i+1 }
+	function set_span1(item, type, i) { item[type == 'column' ? 'pos_x' : 'pos_y'] = i+1 }
+	function set_span2(item, type, i) { item[type == 'column' ? 'span_x' : 'span_y'] = i+1 - item[type == 'column' ? 'pos_x' : 'pos_y'] }
 
 	// tracks -----------------------------------------------------------------
 
@@ -531,15 +538,15 @@ component('x-cssgrid', function(e) {
 		let [bx1, by1, bx2, by2] = track_bounds(i1, j1, i2, j2)
 		let align_x = hit_test_span_edge(20, x1, x2, bx1, bx2)
 		let align_y = hit_test_span_edge(20, y1, y2, by1, by2)
-		let stretch_x = hit_item.style['justify-self'] == 'stretch'
-		let stretch_y = hit_item.style['align-self'  ] == 'stretch'
+		let stretch_x = hit_item.align_x == 'stretch'
+		let stretch_y = hit_item.align_y == 'stretch'
 
 		if (align_x && align_y) {
 			push_in_item()
 			if (align_x && !stretch_x)
-				hit_item.style['justify-self'] = align_x
+				hit_item.align_x = align_x
 			if (align_y && !stretch_y)
-				hit_item.style['align-self'  ] = align_y
+				hit_item.align_y = align_y
 			raf(update)
 		} else {
 			pop_out_item()
@@ -660,24 +667,23 @@ component('x-cssgrid', function(e) {
 	// setting stretch alignment ----------------------------------------------
 
 	function toggle_stretch_for(item, horiz) {
-		let attr = (horiz ? 'justify' : 'align')+'-self'
-		let align = item.css(attr)
+		let attr = horiz ? 'align_x' : 'align_y'
+		let align = item[attr]
 		if (align == 'stretch')
 			align = item['_'+attr] || 'center'
 		else {
-			item['_'+attr] = repl(align, 'auto', 'center')
+			item['_'+attr] = align
 			align = 'stretch'
 		}
-		item.style[attr] = align
+		item[attr] = align
 		item[horiz ? 'w' : 'h'] = align == 'stretch' ? 'auto' : null
 		return align
 	}
 
 	function toggle_stretch(item, horiz, vert) {
 		if (horiz && vert) {
-			let css = item.css()
-			let stretch_x = css['justify-self'] == 'stretch'
-			let stretch_y = css['align-self'  ] == 'stretch'
+			let stretch_x = item.align_x == 'stretch'
+			let stretch_y = item.align_y == 'stretch'
 			if (stretch_x != stretch_y) {
 				toggle_stretch(item, !stretch_x, !stretch_y)
 			} else {
@@ -869,6 +875,14 @@ component('x-cssgrid', function(e) {
 	e.inspect_fields = [
 		{name: 'gap', type: 'number'},
 	]
+
+	e.serialize = function() {
+		let t = e.serialize_fields()
+		t.items = []
+		for (let item of e.items)
+			t.items.push(item.serialize())
+		return t
+	}
 
 })
 

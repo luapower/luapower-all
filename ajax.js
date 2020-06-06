@@ -102,10 +102,9 @@ function ajax(req) {
 		if (xhr.readyState == 4) {
 			if (xhr.status == 200) {
 				let res = xhr.response
-				if (!xhr.responseType || xhr.responseType == 'text') {
-					if (xhr.getResponseHeader('content-type') == 'application/json')
-						res = JSON.parse(xhr.response)
-				}
+				if (!xhr.responseType || xhr.responseType == 'text')
+					if (xhr.getResponseHeader('content-type') == 'application/json' && res)
+						res = JSON.parse(res)
 				req.fire('success', res)
 				req.fire('done', 'success', res)
 			} else if (xhr.status) { // status is 0 for network errors, incl. timeout.

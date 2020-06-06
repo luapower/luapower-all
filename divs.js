@@ -503,19 +503,17 @@ HTMLElement.prototype.attach = noop
 HTMLElement.prototype.detach = noop
 HTMLElement.prototype.init   = noop
 
-components = {} // {name->constructor(...options)}
-
 // component(tag, cons) -> create({option: value}) -> element.
 function component(tag, cons) {
 
-	let name = tag.replace(/^[^\-]+\-/, '').replace('-', '_')
+	let typename = tag.replace(/^[^\-]+\-/, '').replace('-', '_')
 
 	let cls = class extends HTMLElement {
 
 		constructor(...args) {
 			super()
 			this.has_attach_events = true
-			this.component_name = name
+			this.type = typename
 			cons(this)
 
 			// add user options, overriding any defaults and stub methods.
@@ -527,7 +525,9 @@ function component(tag, cons) {
 			update(this, ...args)
 
 			// finish configuring the object, now that user options are in.
+			this.initializing = true
 			this.init()
+			this.initializing = false
 
 			// call the setters again, this time without the barrier.
 			this.__init_later = null
@@ -550,20 +550,142 @@ function component(tag, cons) {
 
 	customElements.define(tag, cls)
 
-	function make(...args) {
+	function create(...args) {
 		return new cls(...args)
 	}
-	make.class = cls
-	make.construct = cons
+	create.class = cls
+	create.construct = cons
 
-	components[name] = make
-	window[name] = make
+	component.types[typename] = create
+	window[typename] = create
 
-	return make
+	return create
+}
+
+component.types = {} // {typename->create}
+
+component.create = function(t) {
+	if (t instanceof HTMLElement)
+		return t
+	let create = component.types[t.type]
+	return create(t)
 }
 
 method(HTMLElement, 'override', function(method, func) {
 	override(this, method, func)
+})
+
+method(HTMLElement, 'prop', function(prop, opt) {
+	opt = opt || {}
+	let getter = 'get_'+prop
+	let setter = 'set_'+prop
+	opt.name = prop
+	if (!this[setter])
+		this[setter] = noop
+	if (opt.store == 'var') {
+		let v = opt.default
+		function get() {
+			return v
+		}
+		function set(v1) {
+			let v0 = v
+			if (v1 === v0)
+				return
+			v = v1
+			if (this.initializing && opt.noinit)
+				return
+			this[setter](v, v0)
+			this.fire('prop_changed', prop, v, v0)
+		}
+	} else if (opt.attr) {
+		let attr = opt.attr
+		let type = opt.type
+		if (type == 'bool') {
+			if (!!opt.default && !this.hasAttribute(attr))
+				this.setAttribute(attr, '')
+			function get() {
+				return this.hasAttribute(attr)
+			}
+			function set(v) {
+				v = !!v
+				let v0 = this.hasAttribute(attr)
+				if (v == v0)
+					return
+				if (v)
+					this.setAttribute(attr, '')
+				else
+					this.removeAttribute(attr)
+				if (this.initializing && opt.noinit)
+					return
+				this[setter](v, v0)
+				this.fire('prop_changed', prop, v, v0)
+			}
+		} else if (type == 'number') {
+			if (opt.default != null && !this.hasAttribute(attr))
+				this.setAttribute(attr, opt.default+'')
+			function get() {
+				return num(this.getAttribute(attr))
+			}
+			function set(v) {
+				let v0 = num(this.getAttribute(attr))
+				if (v == v0)
+					return
+				this.setAttribute(attr, v+'')
+				if (this.initializing && opt.noinit)
+					return
+				this[setter](v, v0)
+				this.fire('prop_changed', prop, v, v0)
+			}
+		} else {
+			if (opt.default != null && !this.hasAttribute(attr))
+				this.setAttribute(attr, opt.default)
+			function get() {
+				return this.getAttribute(attr)
+			}
+			function set(v) {
+				let v0 = this.getAttribute(attr)
+				if (v == v0)
+					return
+				this.setAttribute(attr, v)
+				if (this.initializing && opt.noinit)
+					return
+				this[setter](v, v0)
+				this.fire('prop_changed', prop, v, v0)
+			}
+		}
+	} else if (opt.style) {
+		let style = opt.style
+		if (opt.default != null && !this.style[style])
+			this.style[style] = opt.default
+		function get() {
+			return this.style[style]
+		}
+		function set(v) {
+			let v0 = this.style[style]
+			if (v == v0)
+				return
+			this.style[style] = v
+			if (this.initializing && opt.noinit)
+				return
+			this[setter](v, v0)
+			this.fire('prop_changed', prop, v, v0)
+		}
+	} else {
+		function get() {
+			return this[getter]()
+		}
+		function set(v) {
+			let v0 = this[getter]()
+			if (v === v0)
+				return
+			if (this.initializing && opt.noinit)
+				return
+			this[setter](v, v0)
+			this.fire('prop_changed', prop, v, v0)
+		}
+	}
+	property(this, prop, {get: get, set: set})
+	array_attr(this, 'props').push(opt)
 })
 
 method(HTMLElement, 'property', function(prop, getter, setter) {

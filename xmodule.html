@@ -92,7 +92,7 @@ rowset.types.rowset_field.editor = function(...options) {
 // property inspector
 // ---------------------------------------------------------------------------
 
-property_inspector = component('x-property-inspector', function(e) {
+prop_inspector = component('x-prop-inspector', function(e) {
 
 	grid.construct(e)
 
@@ -120,14 +120,21 @@ property_inspector = component('x-property-inspector', function(e) {
 		init()
 	}
 
-	e.rowset.on('value_changed', function(row, field, val) {
+	e.rowset.on('val_changed', function(row, field, val) {
 		e.element[field.name] = val
 	})
+
+	function prop_changed(k, v) {
+		e.focus_cell(0)
+		e.rowset.reset_val(e.focused_row, e.rowset.field(k), v)
+	}
 
 	let element
 	e.property('element',
 		function() { return element },
 		function(v) {
+			if (element)
+				element.off('prop_changed', prop_changed)
 			element = v
 			if (!e.__init_later)
 				init_rowset(v)
@@ -135,13 +142,16 @@ property_inspector = component('x-property-inspector', function(e) {
 	)
 
 	function init_rowset(element) {
-		let props = []
 		let res = {}
+		res.fields = []
+		let vals = []
+		res.rows = [vals]
 		if (element) {
-			res.fields = element.inspect_fields || []
-			res.rows = [props]
-			for (let field of res.fields)
-				props.push(element[field.name])
+			for (let prop of element.props) {
+				res.fields.push(prop)
+				vals.push(element[prop.name])
+			}
+			element.on('prop_changed', prop_changed)
 		}
 		e.rowset.reset(res)
 	}
@@ -154,6 +164,32 @@ property_inspector = component('x-property-inspector', function(e) {
 
 body = document.body
 
+function xmodule_load() {
+	function loaded(t) {
+		if (root_widget)
+			root_widget.remove()
+		root_widget	= component.create(t)
+		body.add(root_widget)
+	}
+	ajax({url: '/xmodule.json', success: loaded}).send()
+}
+
+function xmodule_save() {
+	ajax({url: '/xmodule.json', upload: root_widget.serialize()}).send()
+}
+
+body.on('keydown', function(key, shift, ctrl) {
+	if (key == 's' && ctrl) {
+		xmodule_save()
+		return false
+	}
+	if (key == 'F5') {
+		xmodule_load()
+		return false
+	}
+
+})
+
 root_widget = cssgrid({
 	items: [
 		checkbox({text: 'Hello'}),
@@ -165,14 +201,14 @@ root_widget = cssgrid({
 			1: button(),
 			2: button(),
 		}),
-		listbox({rowset: rowset({})}),
+		//listbox({rowset: rowset({})}),
 	],
 })
 
 body.add(root_widget)
 
 function properties_toolbox() {
-	let pg = property_inspector({})
+	let pg = prop_inspector({})
 	let tb = toolbox({
 		title: 'properties',
 		content: pg,

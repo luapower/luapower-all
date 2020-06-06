@@ -223,9 +223,11 @@ local function html_filter(handler, action, ...)
 end
 
 local function json_filter(handler, action, ...)
-	local t = handler(action, ...)
-	if type(t) == 'table' then
-		local s = json(t)
+	local s = handler(action, ...)
+	if type(s) == 'table' then
+		s = json(s)
+	end
+	if s then
 		setheader('content-length', #s)
 		check_etag(s)
 		out(s)

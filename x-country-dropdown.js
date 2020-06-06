@@ -265,12 +265,12 @@ global_rowset.countries = rowset({
 function countries_listbox(...opt) {
 	return listbox({
 		rowset: global_rowset('countries'),
-		value_col: 'country_code',
-		row_display_value: function(row) {
+		val_col: 'country_code',
+		row_display_val: function(row) {
 			let rs = this.rowset
 			return div({},
-				rs.display_value(row, rs.field(0)),
-				rs.display_value(row, rs.field(2)))
+				rs.display_val(row, rs.field(0)),
+				rs.display_val(row, rs.field(2)))
 		},
 	}, ...opt)
 }

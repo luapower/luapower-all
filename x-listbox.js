@@ -60,13 +60,13 @@ component('x-listbox', function(e) {
 
 	// responding to rowset changes -------------------------------------------
 
-	e.row_display_value = function(row) { // stub
+	e.row_display_val = function(row) { // stub
 		if (e.display_field)
-			return e.rowset.display_value(row, e.display_field)
+			return e.rowset.display_val(row, e.display_field)
 	}
 
 	e.update_item = function(item, row) { // stub
-		item.set(e.row_display_value(row))
+		item.set(e.row_display_val(row))
 	}
 
 	e.init_fields = function() {
@@ -87,7 +87,7 @@ component('x-listbox', function(e) {
 		e.update_cell_focus(e.focused_row_index, e.focused_cell_index)
 	}
 
-	e.update_cell_value = function(ri, fi) {
+	e.update_cell_val = function(ri, fi) {
 		e.update_item(e.at[ri], e.rows[ri])
 	}
 
@@ -114,7 +114,7 @@ component('x-listbox', function(e) {
 		e.focus()
 		let ri = this.row_index
 		if (e.focus_cell(ri, null, 0, 0, {must_not_move_row: true, input: e}))
-			e.fire('value_picked', {input: e}) // picker protocol.
+			e.fire('val_picked', {input: e}) // picker protocol.
 		return false
 	}
 
@@ -159,7 +159,7 @@ component('x-listbox', function(e) {
 
 		if (key == 'Enter') {
 			if (e.focused_row)
-				e.fire('value_picked', {input: e}) // picker protocol
+				e.fire('val_picked', {input: e}) // picker protocol
 			return false
 		}
 	})
@@ -188,22 +188,22 @@ component('x-list-dropdown', function(e) {
 
 	e.class('x-list-dropdown')
 	dropdown.construct(e)
-	let display_value = e.display_value
-	e.display_value = function() {
+	let display_val = e.display_val
+	e.display_val = function() {
 		let lr = e.picker.rowset
-		let lf = e.picker.value_field
-		let row = lf && lr.lookup(lf, e.input_value)
+		let lf = e.picker.val_field
+		let row = lf && lr.lookup(lf, e.input_val)
 		if (row)
-			return e.picker.row_display_value(row)
+			return e.picker.row_display_val(row)
 		else
-			return display_value()
+			return display_val()
 	}
 	init = e.init
 	e.init = function() {
 		e.picker = e.picker || listbox(update({
 			items: e.items,
 			rowset: e.lookup_rowset,
-			value_col: e.lookup_col,
+			val_col: e.lookup_col,
 			display_col: e.display_col,
 		}, e.listbox))
 		e.picker.auto_focus_first_cell = false

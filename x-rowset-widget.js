@@ -31,9 +31,9 @@ function rowset_widget(e) {
 	e.can_exit_row_on_errors = false // allow changing row on validation errors
 	e.exit_edit_on_lost_focus = true // exit edit mode when losing focus
 
-	e.value_col = 0
+	e.val_col = 0
 
-	value_widget(e)
+	val_widget(e)
 
 	// row -> row_index mapping -----------------------------------------------
 
@@ -93,7 +93,7 @@ function rowset_widget(e) {
 	e.init_fields_array = function() {
 		fieldmap = null
 		e.fields = []
-		e.value_field = e.rowset.field(e.value_col)
+		e.val_field = e.rowset.field(e.val_col)
 		e.tree_field  = e.rowset.field(e.tree_col)
 		if (e.cols) {
 			for (let col of e.cols.split(' ')) {
@@ -121,7 +121,7 @@ function rowset_widget(e) {
 		// state changes
 		e.rowset.on('row_state_changed', row_state_changed, on)
 		e.rowset.on('cell_state_changed', cell_state_changed, on)
-		e.rowset.on('display_values_changed', display_values_changed, on)
+		e.rowset.on('display_vals_changed', display_vals_changed, on)
 		// network events
 		e.rowset.on('loading', rowset_loading, on)
 		e.rowset.on('load_slow', rowset_load_slow, on)
@@ -186,7 +186,7 @@ function rowset_widget(e) {
 
 	e.rowset_widget_attach = function() {
 		init()
-		e.init_value()
+		e.init_val()
 		e.bind_rowset(true)
 		e.bind_nav(true)
 	}
@@ -238,7 +238,7 @@ function rowset_widget(e) {
 		let row = e.rows[ri]
 		let field = e.fields[fi]
 		let rs = e.rowset
-		e.update_cell_state(ri, fi, 'input_value'  , rs.input_value   (row, field), ev)
+		e.update_cell_state(ri, fi, 'input_val'    , rs.input_val     (row, field), ev)
 		e.update_cell_state(ri, fi, 'cell_error'   , rs.cell_error    (row, field), ev)
 		e.update_cell_state(ri, fi, 'cell_modified', rs.cell_modified (row, field), ev)
 	}
@@ -262,7 +262,7 @@ function rowset_widget(e) {
 		}
 	}
 
-	function display_values_changed(field) {
+	function display_vals_changed(field) {
 		e.init_rows()
 	}
 
@@ -381,9 +381,9 @@ function rowset_widget(e) {
 
 	// navigating -------------------------------------------------------------
 
-	e.can_change_value = function(row, field) {
+	e.can_change_val = function(row, field) {
 		return e.can_edit && e.can_change_rows
-			&& e.rowset.can_change_value(row, field)
+			&& e.rowset.can_change_val(row, field)
 	}
 
 	e.is_cell_disabled = function(row, field) {
@@ -393,7 +393,7 @@ function rowset_widget(e) {
 	e.can_focus_cell = function(row, field, for_editing) {
 		return (field == null || e.can_focus_cells)
 			&& e.rowset.can_focus_cell(row, field)
-			&& (!for_editing || e.can_change_value(row, field))
+			&& (!for_editing || e.can_change_val(row, field))
 	}
 
 	e.focused_row_index = null
@@ -526,8 +526,8 @@ function rowset_widget(e) {
 			e.last_focused_field_index = or(fi, e.last_focused_field_index)
 			e.update_cell_focus(ri, fi, ev)
 			let row = e.rows[ri]
-			let val = row && e.value_field ? e.rowset.value(row, e.value_field) : null
-			e.set_value(val, update({input: e}, ev))
+			let val = row && e.val_field ? e.rowset.val(row, e.val_field) : null
+			e.set_val(val, update({input: e}, ev))
 			if (row_changed)
 				e.fire('focused_row_changed', row, ev)
 		}
@@ -560,14 +560,14 @@ function rowset_widget(e) {
 			e.enter_edit()
 	}
 
-	// responding to value changes --------------------------------------------
+	// responding to val changes ----------------------------------------------
 
-	e.update_value = function(v, ev) {
+	e.update_val = function(v, ev) {
 		if (ev && ev.input == e)
 			return // coming from focus_cell(), avoid recursion.
-		if (!e.value_field)
+		if (!e.val_field)
 			return // fields not initialized yet.
-		let row = e.rowset.lookup(e.value_field, v)
+		let row = e.rowset.lookup(e.val_field, v)
 		let ri = e.row_index(row)
 		e.focus_cell(ri, true, 0, 0,
 			update({must_not_move_row: true, unfocus_if_not_found: true}, ev))
@@ -796,7 +796,7 @@ function rowset_widget(e) {
 		if (ri >= e.rows.length)
 			ri = null
 		while (ri != null) {
-			let s = e.rowset.display_value(e.rows[ri], field)
+			let s = e.rowset.display_val(e.rows[ri], field)
 			if (s.starts(c.lower()) || s.starts(c.upper())) {
 				e.focus_cell(ri, true, 0, 0, {input: e})
 				break
@@ -820,9 +820,9 @@ function rowset_widget(e) {
 
 	// picker protocol --------------------------------------------------------
 
-	e.pick_near_value = function(delta, ev) {
+	e.pick_near_val = function(delta, ev) {
 		if (e.focus_cell(true, true, delta, 0, ev))
-			e.fire('value_picked', ev)
+			e.fire('val_picked', ev)
 	}
 
 	// xmodule protocol -------------------------------------------------------
