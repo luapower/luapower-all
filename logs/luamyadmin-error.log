@@ -103,3 +103,4 @@ stack traceback:
 2020/05/27 11:08:18 [error] 21298#0: *1358 [lua] webb_nginx.lua:17: try_call(): 404, client: 208.91.109.50, server: , request: "HEAD /robots.txt HTTP/1.0"
 2020/06/01 08:19:49 [error] 21298#0: *1406 [lua] webb_nginx.lua:17: try_call(): 404, client: 193.37.255.114, server: , request: "GET /favicon.ico HTTP/1.1", host: "168.235.102.143:8000"
 2020/06/07 19:22:10 [error] 21298#0: *1486 [lua] webb_nginx.lua:17: try_call(): 404, client: 185.142.236.35, server: , request: "GET /favicon.ico HTTP/1.1", host: "168.235.102.143:8000"
+2020/06/07 22:40:46 [error] 21298#0: *1489 [lua] webb_nginx.lua:17: try_call(): 404, client: 198.20.87.98, server: , request: "GET /favicon.ico HTTP/1.1", host: "168.235.102.143:8000"
