@@ -307,7 +307,7 @@ installers.attr_changed = function(e) {
 	}
 }
 
-let on = function(e, f, enable) {
+let on = function(e, f, enable, capture) {
 	assert(enable === undefined || typeof enable == 'boolean')
 	if (enable == false)
 		return this.off(e, f)
@@ -331,7 +331,7 @@ let on = function(e, f, enable) {
 		}
 		f.listener = listener
 	}
-	this.addEventListener(e, listener)
+	this.addEventListener(e, listener, capture)
 }
 
 let off = function(e, f) {
@@ -513,7 +513,7 @@ function component(tag, cons) {
 		constructor(...args) {
 			super()
 			this.has_attach_events = true
-			this.type = typename
+			this.typename = typename
 			cons(this)
 
 			// add user options, overriding any defaults and stub methods.
@@ -567,7 +567,7 @@ component.types = {} // {typename->create}
 component.create = function(t) {
 	if (t instanceof HTMLElement)
 		return t
-	let create = component.types[t.type]
+	let create = component.types[t.typename]
 	return create(t)
 }
 
@@ -579,6 +579,7 @@ method(HTMLElement, 'prop', function(prop, opt) {
 	opt = opt || {}
 	let getter = 'get_'+prop
 	let setter = 'set_'+prop
+	let type = opt.type
 	opt.name = prop
 	if (!this[setter])
 		this[setter] = noop
@@ -599,7 +600,6 @@ method(HTMLElement, 'prop', function(prop, opt) {
 		}
 	} else if (opt.attr) {
 		let attr = opt.attr
-		let type = opt.type
 		if (type == 'bool') {
 			if (!!opt.default && !this.hasAttribute(attr))
 				this.setAttribute(attr, '')
@@ -655,17 +655,26 @@ method(HTMLElement, 'prop', function(prop, opt) {
 		}
 	} else if (opt.style) {
 		let style = opt.style
+		let format = opt.style_format || function(v) { return v }
 		if (opt.default != null && !this.style[style])
-			this.style[style] = opt.default
-		function get() {
-			return this.style[style]
-		}
+			this.style[style] = format(opt.default)
+		if (type == 'number')
+			function get() {
+				return num(this.style[style])
+			}
+		else
+			function get() {
+				return this.style[style]
+			}
 		function set(v) {
-			let v0 = this.style[style]
+			let v0 = get.call(this)
 			if (v == v0)
 				return
-			this.style[style] = v
+			this.style[style] = format(v)
 			if (this.initializing && opt.noinit)
+				return
+			v = get.call(this) // take it again (browser only sets valid values)
+			if (v == v0)
 				return
 			this[setter](v, v0)
 			this.fire('prop_changed', prop, v, v0)
@@ -684,8 +693,8 @@ method(HTMLElement, 'prop', function(prop, opt) {
 			this.fire('prop_changed', prop, v, v0)
 		}
 	}
-	property(this, prop, {get: get, set: set})
-	array_attr(this, 'props').push(opt)
+	this.property(prop, get, set)
+	attr(this, 'props')[prop] = opt
 })
 
 method(HTMLElement, 'property', function(prop, getter, setter) {
@@ -849,25 +858,30 @@ let popup_state = function(e) {
 		}
 	}
 
+	function window_scroll(ev) {
+		if (target && ev.target.contains(target))
+			raf(update)
+	}
+
 	function bind_target(on) {
 		window.on('resize', update, on)
 
-		// NOTE: this detects target element size changes but there's no
-		// observer that can monitor position changes relative to document.body.
+		// this detects explicit target element size changes which is not much.
 		target.on('attr_changed', update, on)
 
-		// allow popup_update() to change popup visibility on hover.
+		// allow popup_update() to change popup visibility on target hover.
 		target.on('mouseenter', update, on)
 		target.on('mouseleave', update, on)
 
-		// allow popup_update() to change popup visibility on focus.
+		// allow popup_update() to change popup visibility on target focus.
 		target.on('focusin' , update, on)
 		target.on('focusout', update, on)
 
-		// TODO: add events for other things that could cause popups to misalign:
-		// * scrolling on any of the target's parents.
-		// * moving the split widget.
-		// * any layouting changes due to changes in content.
+		// scrolling on any of the target's parents updates the popup position.
+		window.on('scroll', window_scroll, on, true)
+
+		// layout changes update the popup position.
+		document.on('layout_changed', update, on)
 
 	}
 

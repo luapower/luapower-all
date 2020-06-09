@@ -156,7 +156,6 @@ rowset = function(...options) {
 	}
 
 	function init_fields(fields) {
-		unbind_fields()
 		d.fields = []
 		if (!fields)
 			return
@@ -194,6 +193,8 @@ rowset = function(...options) {
 
 	function init_rows(rows) {
 		d.rows = (!rows || isarray(rows)) && new Set(rows) || rows
+		each_lookup('rebuild')
+		init_parents()
 	}
 
 	property(d, 'row_count', { get: function() { return d.rows.size } })
@@ -205,7 +206,6 @@ rowset = function(...options) {
 		init_pk(d.pk)
 		init_params(d.params)
 		init_rows(d.rows)
-		init_parents()
 	}
 
 	d.attach = function() {
@@ -223,60 +223,62 @@ rowset = function(...options) {
 
 	function lookup_function(field, on) {
 
-		let index = new Map()
+		let index
 
-		function rebuild() {
+		function lookup(v) {
+			return index.get(v)
+		}
+
+		lookup.rebuild = function() {
+			index = new Map()
 			let fi = field.index
 			for (let row of d.rows) {
 				index.set(row[fi], row)
 			}
 		}
 
-		function row_added(row) {
+		lookup.row_added = function(row) {
 			index.set(row[field.index], row)
 		}
 
-		function row_removed(row) {
+		lookup.row_removed = function(row) {
 			index.delete(row[field.index])
 		}
 
-		function val_changed_for_field(row, val) {
-			let prev_val = d.prev_val(row, field)
-			index.delete(prev_val)
-			index.set(val, row)
+		lookup.val_changed = function(row, changed_field, val) {
+			if (changed_field == field) {
+				let prev_val = d.prev_val(row, field)
+				index.delete(prev_val)
+				index.set(val, row)
+			}
 		}
 
-		function lookup(v) {
-			return index.get(v)
-		}
+		lookup.rebuild()
 
-		function bind(on) {
-			d.on('loaded', rebuild, on)
-			d.on('row_added', row_added, on)
-			d.on('row_removed', row_removed, on)
-			d.on('val_changed_for_'+field.name, val_changed_for_field, on)
-		}
-
-		rebuild()
-		bind(true)
-
-		return [lookup, bind]
+		return lookup
 	}
 
 	d.lookup = function(field, v) {
 		if (!field.lookup)
-			[field.lookup, field.bind_lookup] = lookup_function(field, true)
+			field.lookup = lookup_function(field, true)
 		return field.lookup(v)
 	}
 
-	function unbind_fields() {
+	function each_lookup(method, ...args) {
 		if (d.fields)
 			for (let field of d.fields)
-				if (field.bind_lookup)
-					field.bind_lookup(false)
+				if (field.lookup)
+					field.lookup[method](...args)
 	}
 
 	// tree -------------------------------------------------------------------
+
+	function each_child_row(row, f) {
+		if (d.parent_field)
+			for (let child_row of d.rows)
+				if (child_row.parent_rows.indexOf(row) >= 0)
+					f(child_row)
+	}
 
 	function init_parents_for(row) {
 		if (!d.parent_field) return
@@ -303,12 +305,11 @@ rowset = function(...options) {
 			init_parents_for(row)
 	}
 
-	d.set_collapsed = function(target_row, collapsed) {
-		target_row.collapsed = collapsed
-		for (let row of d.rows) {
-			if (row.parent_rows.indexOf(target_row) >= 0)
-				row.parent_collapsed = collapsed
-		}
+	d.set_collapsed = function(row, collapsed) {
+		row.collapsed = collapsed
+		each_child_row(row, function(row) {
+			row.parent_collapsed = collapsed
+		})
 	}
 
 	// sorting ----------------------------------------------------------------
@@ -670,6 +671,8 @@ rowset = function(...options) {
 			let row_modified_changed = modified && (!(ev && ev.row_not_modified))
 				&& d.set_row_state(row, 'cells_modified', true, false)
 
+			each_lookup('val_changed', row, field, val)
+
 			cell_state_changed(row, field, 'val', val, ev)
 			if (cell_modified_changed)
 				cell_state_changed(row, field, 'cell_modified', modified, ev)
@@ -780,6 +783,7 @@ rowset = function(...options) {
 			let parent_id = d.val(ev.parent_row, d.id_field)
 			d.set_val(row, d.parent_field, parent_id, update({fire_changed_events: false}, ev))
 		}
+		each_lookup('row_added', row)
 		init_parents_for(row)
 
 		d.fire('row_added', row, ev)
@@ -810,11 +814,21 @@ rowset = function(...options) {
 
 	d.remove_row = function(row, ev) {
 		if ((ev && ev.forever) || row.is_new) {
+			each_child_row(row, function(row) {
+				d.rows.delete(row)
+			})
 			d.rows.delete(row)
+			if (row.parent_row)
+				row.parent_row.child_row_count--
+			each_lookup('row_removed', row)
 			d.fire('row_removed', row, ev)
 		} else {
 			if (!d.can_remove_row(row))
 				return
+			each_child_row(row, function(row) {
+				if (d.set_row_state(row, 'removed', true, false))
+					row_state_changed(row, 'row_removed', ev)
+			})
 			if (d.set_row_state(row, 'removed', true, false))
 				row_state_changed(row, 'row_removed', ev)
 			row_changed(row)
@@ -1056,8 +1070,7 @@ rowset = function(...options) {
 	}
 
 	d.pack_changes = function(row) {
-		let pk = d.pk_fields.map(field => field.name)
-		let changes = {rows: [], pk: pk}
+		let changes = {rows: []}
 		if (d.id_col)
 			changes.id_col = d.id_col
 		if (!row) {
@@ -1330,16 +1343,18 @@ function global_rowset(name, ...options) {
 function serializable_widget(e) {
 
 	e.serialize_fields = function() {
-		let t = {type: e.type}
-		if (e.inspect_fields)
-			for (let field of e.inspect_fields) {
-				let v = e[field.name]
-				if (v !== null && typeof v == 'object' && v.serialize) {
-					attr(t, 'components')[field.name] = true
-					v = v.serialize()
+		let t = {typename: e.typename}
+		if (e.props)
+			for (let prop in e.props) {
+				let v = e[prop]
+				if (v !== e.props[prop].default) {
+					if (v !== null && typeof v == 'object' && v.serialize) {
+						attr(t, 'components')[prop] = true
+						v = v.serialize()
+					}
+					if (v !== undefined)
+						t[prop] = v
 				}
-				if (v !== undefined)
-					t[field.name] = v
 			}
 		return t
 	}
@@ -1354,18 +1369,27 @@ function serializable_widget(e) {
 
 function layouted_widget(e) {
 
-	e.prop('pos_x', {style: 'grid-column-start', type: 'number'})
-	e.prop('pos_y', {style: 'grid-row-start'   , type: 'number'})
+	e.property('parent_widget', function() {
+		let parent = this.parent
+		while (parent) {
+			if (parent.child_widgets)
+				return parent
+			parent = parent.parent
+		}
+	})
 
-	e.get_span_x = function() { return num(this.style['grid-column-end']) - num(this.style['grid-column-start']) }
-	e.get_span_y = function() { return num(this.style['grid-row-end'   ]) - num(this.style['grid-row-start'   ]) }
-	e.set_span_x = function(v) { this.style['grid-column-end'] = num(this.pos_x) + v }
-	e.set_span_y = function(v) { this.style['grid-row-end'   ] = num(this.pos_y) + v }
-	e.prop('span_x', {type: 'number'})
-	e.prop('span_y', {type: 'number'})
+	e.prop('pos_x', {style: 'grid-column-start', type: 'number', default: 1})
+	e.prop('pos_y', {style: 'grid-row-start'   , type: 'number', default: 1})
 
-	e.prop('align_x', {style: 'justify-self', type: 'enum', enum_values: ['start', 'end', 'center', 'stretch'], default: 'center'})
-	e.prop('align_y', {style: 'align-self'  , type: 'enum', enum_values: ['start', 'end', 'center', 'stretch'], default: 'center'})
+	e.get_span_x = function() { return num((this.style['grid-column-end'] || 'span 1').replace('span ', '')) }
+	e.get_span_y = function() { return num((this.style['grid-row-end'   ] || 'span 1').replace('span ', '')) }
+	e.set_span_x = function(v) { this.style['grid-column-end'] = 'span '+v }
+	e.set_span_y = function(v) { this.style['grid-row-end'   ] = 'span '+v }
+	e.prop('span_x', {type: 'number', default: 1})
+	e.prop('span_y', {type: 'number', default: 1})
+
+	e.prop('align_x', {style: 'justify-self', type: 'enum', enum_values: ['start', 'end', 'center', 'stretch'], default: e.default_align_x || 'center'})
+	e.prop('align_y', {style: 'align-self'  , type: 'enum', enum_values: ['start', 'end', 'center', 'stretch'], default: e.default_align_y || 'center'})
 
 }
 
@@ -1599,7 +1623,7 @@ component('x-tooltip', function(e) {
 
 	e.attr_property('side'    , e.update)
 	e.attr_property('align'   , e.update)
-	e.attr_property('type'    , e.update)
+	e.attr_property('kind'    , e.update)
 	e.num_attr_property('px'  , e.update)
 	e.num_attr_property('py'  , e.update)
 	e.attr_property('timeout')
@@ -2826,11 +2850,67 @@ component('x-menu', function(e) {
 })
 
 // ---------------------------------------------------------------------------
+// widget placeholder
+// ---------------------------------------------------------------------------
+
+component('x-widget-placeholder', function(e) {
+
+	layouted_widget(e)
+
+	e.class('x-widget')
+	e.class('x-widget-placeholder')
+
+	let widgets = [
+		['VS', 'vsplit'],
+		['HS', 'hsplit'],
+		['CG', 'cssgrid'],
+		['PL', 'pagelist', true],
+		['I' , 'input'],
+		['SI', 'spin_input'],
+		['CB', 'checkbox'],
+		['SL', 'slider'],
+		['LD', 'list_dropdown'],
+		['GD', 'grid_dropdown'],
+		['DD', 'date_dropdown', true],
+		['L', 'listbox'],
+		['G', 'grid', true],
+		['B', 'button'],
+	]
+
+	function create_widget() {
+		let widget = component.create({typename: this.typename})
+		let pe = e.parent_widget
+		if (pe)
+			pe.replace_widget(e, widget)
+		else {
+			e.parent.replace(e, widget)
+			e.parent.fire('widget_replaced', widget, e)
+		}
+	}
+
+	let i = 1
+	for (let [s, typename, sep] of widgets) {
+		let btn = button({text: s, title: typename, pos_x: i++})
+		btn.class('x-widget-placeholder-button')
+		if (sep)
+			btn.style['margin-right'] = '.5em'
+		e.add(btn)
+		btn.typename = typename
+		btn.action = create_widget
+	}
+
+	e.serialize = function() {}
+
+})
+
+// ---------------------------------------------------------------------------
 // pagelist
 // ---------------------------------------------------------------------------
 
 component('x-pagelist', function(e) {
 
+	e.default_align_x = 'stretch'
+	e.default_align_y = 'stretch'
 	layouted_widget(e)
 	serializable_widget(e)
 
@@ -2845,7 +2925,7 @@ component('x-pagelist', function(e) {
 	function add_item(item) {
 		if (typeof item == 'string' || item instanceof Node)
 			item = {text: item}
-		item.page = item.page && component.create(item.page)
+		item.page = component.create(item.page || {typename: 'widget_placeholder'})
 		let xbutton = div({class: 'x-pagelist-xbutton fa fa-times'})
 		xbutton.hide()
 		let tdiv = div({class: 'x-pagelist-text'})
@@ -2858,9 +2938,9 @@ component('x-pagelist', function(e) {
 		idiv.on('dblclick' , item_dblclick)
 		idiv.on('keydown'  , item_keydown)
 		tdiv.on('input'    , tdiv_input)
-		idiv.on('blur'     , item_blur)
 		xbutton.on('mousedown', xbutton_mousedown)
 		idiv.item = item
+		item.idiv = idiv
 		e.header.add(idiv)
 		e.items.push(item)
 		idiv.index = e.items.length-1
@@ -2875,57 +2955,70 @@ component('x-pagelist', function(e) {
 		e.header.add(e.add_button)
 		e.selection_bar = div({class: 'x-pagelist-selection-bar'})
 		e.header.add(e.selection_bar)
+		e.update()
 	}
 
-	function update_selection_bar() {
+	function update_item(idiv, select) {
+		idiv.xbutton.show(select && (e.can_remove_items || e.editing))
+		idiv.text_div.contenteditable = select && (e.editing || e.renaming)
+	}
+
+	e.update = function() {
 		let idiv = e.selected_item
-		e.selection_bar.show(!!idiv)
 		if (idiv) {
 			e.selection_bar.x = idiv.offsetLeft
 			e.selection_bar.w = idiv.clientWidth
+			update_item(idiv, true)
 		} else {
 			e.selection_bar.w = 0
 		}
+		e.selection_bar.show(!!idiv)
+		e.add_button.show(e.can_add_items || e.editing)
 	}
 
-	function update_xbuttons() {
-		for (let item of e.items)
-			item.xbutton.show(can_remove_items)
-	}
+	e.set_can_add_items    = update
+	e.set_can_remove_items = update
+	e.set_can_rename_items = update
 
-	let can_remove_items = false
-	e.late_property('can_remove_items',
-		() => can_remove_items,
-		function(v) {
-			can_remove_items = v
-			update_xbuttons()
-		})
-
-	// controller
+	e.prop('can_rename_items', {store: 'var', type: 'bool', default: false})
+	e.prop('can_add_items'   , {store: 'var', type: 'bool', default: false})
+	e.prop('can_remove_items', {store: 'var', type: 'bool', default: false})
 
 	e.attach = function() {
-		e.selected_index = e.selected_index
+		e.selected_index = or(e.selected_index, 0)
 	}
 
 	function select_item(idiv) {
-		exit_editing()
 		if (e.selected_item) {
 			e.selected_item.class('selected', false)
 			e.fire('close', e.selected_item.index)
 			e.content.clear()
+			update_item(e.selected_item, false)
 		}
 		e.selected_item = idiv
-		update_selection_bar()
+		e.update()
 		if (idiv) {
 			idiv.class('selected', true)
 			e.fire('open', idiv.index)
 			let page = idiv.item.page
 			e.content.set(page)
-			let first_focusable = page.focusables()[0]
-			if (first_focusable)
-				first_focusable.focus()
+			if (page) {
+				let first_focusable = page.focusables()[0]
+				if (first_focusable)
+					first_focusable.focus()
+			}
 		}
 	}
+
+	e.late_property('selected_index',
+		function() {
+			return e.selected_item ? e.selected_item.index : null
+		},
+		function(i) {
+			let idiv = i != null ? e.header.at[clamp(i, 0, e.items.length-1)] : null
+			select_item(idiv)
+		}
+	)
 
 	function item_mousedown() {
 		if (this.text_div.contenteditable)
@@ -2935,20 +3028,23 @@ component('x-pagelist', function(e) {
 		return false
 	}
 
+	function set_renaming(renaming) {
+		e.renaming = !!renaming
+		e.selected_item.text_div.contenteditable = e.renaming
+	}
+
 	function item_keydown(key) {
-		if (key == 'F2') {
-			if (this.text_div.contenteditable)
-				exit_editing()
-			else
-				enter_editing()
+		if (key == 'F2' && e.can_rename_items) {
+			set_renaming(!e.renaming)
 			return false
 		}
-		if (this.text_div.contenteditable) {
+		if (e.renaming) {
 			if (key == 'Enter' || key == 'Escape') {
-				exit_editing()
+				set_renaming(false)
 				return false
 			}
-		} else {
+		}
+		if (!e.editing && !e.renaming) {
 			if (key == ' ' || key == 'Enter') {
 				select_item(this)
 				return false
@@ -2962,77 +3058,71 @@ component('x-pagelist', function(e) {
 		}
 	}
 
-	// selected_index property.
-
-	e.late_property('selected_index',
-		function() {
-			return e.selected_item ? e.selected_item.index : null
-		},
-		function(i) {
-			let idiv = i != null ? e.at[clamp(i, 0, e.items.length-1)] : null
-			select_item(idiv)
+	let editing = false
+	e.property('editing',
+		function() { return editing },
+		function(v) {
+			editing = !!v
+			e.update()
 		}
 	)
-
-	// editing the pagelist itself.
-
-	function enter_editing() {
-		if (!e.selected_item) return
-		e.selected_item.text_div.contenteditable = true
-		e.selected_item.xbutton.show()
-	}
-
-	function exit_editing() {
-		if (!e.selected_item) return
-		e.selected_item.text_div.contenteditable = false
-		e.selected_item.xbutton.hide()
-	}
 
 	e.add_button.on('click', function() {
 		if (e.selected_item == this)
 			return
-		exit_editing()
 		let item = {text: 'New'}
 		e.selection_bar.remove()
 		e.add_button.remove()
 		add_item(item)
-		e.add(e.selection_bar)
-		e.add(e.add_button)
+		e.header.add(e.selection_bar)
+		e.header.add(e.add_button)
 		return false
 	})
 
 	function item_dblclick() {
-		if (this.text_div.contenteditable)
+		if (e.renaming || !e.can_rename_items)
 			return
-		enter_editing()
+		set_renaming(true)
 		this.focus()
 		return false
 	}
 
 	function tdiv_input() {
-		update_selection_bar()
-	}
-
-	function item_blur() {
-		//exit_editing()
+		e.items[e.selected_index].text = e.selected_item.text_div.textContent
+		e.update()
 	}
 
 	function xbutton_mousedown() {
 		let idiv = this.parent
 		select_item(null)
 		idiv.remove()
-		e.items.remove_val(idiv.item)
+		e.items.remove_value(idiv.item)
 		return false
 	}
 
-	// xmodule protocol.
+	// xmodule protocol -------------------------------------------------------
 
 	e.child_widgets = function() {
 		let widgets = []
 		for (let item of e.items)
-			if (item.page)
-				widgets.push(item.page)
+			widgets.push(item.page)
 		return widgets
+	}
+
+	e.replace_widget = function(old_widget, new_widget) {
+		for (let item of e.items)
+			if (item.page == old_widget) {
+				old_widget.parent.replace(old_widget, new_widget)
+				item.page = new_widget
+				e.fire('widget_replaced', new_widget, old_widget)
+				break
+			}
+	}
+
+	e.select_child_widget = function(widget) {
+		for (let item of e.items)
+			if (item.page == widget)
+				select_item(item.idiv)
 	}
 
 	e.inspect_fields = [
@@ -3048,9 +3138,8 @@ component('x-pagelist', function(e) {
 		let t = e.serialize_fields()
 		t.items = []
 		for (let item of e.items) {
-			let sitem = update({}, item)
-			if (item.page)
-				sitem.page = item.page.serialize()
+			let sitem = {text: item.text}
+			sitem.page = item.page.serialize()
 			t.items.push(sitem)
 		}
 		return t
@@ -3064,6 +3153,8 @@ component('x-pagelist', function(e) {
 
 component('x-vsplit', function(e) {
 
+	e.default_align_x = 'stretch'
+	e.default_align_y = 'stretch'
 	layouted_widget(e)
 	serializable_widget(e)
 
@@ -3076,8 +3167,8 @@ component('x-vsplit', function(e) {
 
 		horiz = e.horizontal == true
 
-		e[1] = component.create(or(e[1], div()))
-		e[2] = component.create(or(e[2], div()))
+		e[1] = component.create(or(e[1], widget_placeholder()))
+		e[2] = component.create(or(e[2], widget_placeholder()))
 
 		// check which pane is the one with a fixed width.
 		let fixed_pi =
@@ -3196,18 +3287,29 @@ component('x-vsplit', function(e) {
 			e.tooltip.target = false
 	}
 
-	// xmodule protocol.
+	// xmodule protocol -------------------------------------------------------
 
 	e.child_widgets = function() {
 		return [e[1], e[2]]
 	}
 
+	function widget_index(ce) {
+		return e[1] == ce && 1 || e[2] == ce && 2 || null
+	}
+
+	e.replace_widget = function(old_widget, new_widget) {
+		e[widget_index(old_widget)] = new_widget
+		old_widget.parent.replace(old_widget, new_widget)
+		e.fire('widget_replaced', new_widget, old_widget)
+	}
+
+	e.select_child_widget = function(widget) {
+		// TODO
+	}
+
 	e.inspect_fields = [
-
 		{name: 'resizeable', type: 'bool'},
-
 		{name: 'grid_area'},
-
 	]
 
 	e.serialize = function() {

@@ -788,9 +788,9 @@ main.add(
 
 g = cssgrid({
 	items: [
-		date_dropdown({attrs: {style: 'grid-area: 1 / 3'}, value: day(time())}),
-		input({attrs: {style: 'grid-area: 3 / 1'}, value: 'hello1'}),
-		input({attrs: {style: 'grid-area: 2 / 2'}, value: 'hello2'}),
+		date_dropdown({pos_x: 3, pos_y: 1, value: day(time())}),
+		input({pos_x: 2, pos_y: 2, value: 'hello1'}),
+		input({pos_x: 1, pos_y: 3, value: 'hello2'}),
 	],
 })
 
@@ -878,7 +878,7 @@ var data = {
 	can_change_rows: true,
 }
 
-for (let i = 1; i <= 1e4; i++) {
+for (let i = 1; i <= 6; i++) {
 	let id         = i
 	let name       = 'record '+i
 	let parent_id  = floor((random() * i))
@@ -893,7 +893,7 @@ d = rowset(data)
 
 g = grid({
 	rowset: d,
-	w: 600,
+	w: 606,
 	h: 500,
 	can_change_header_visibility: true,
 	//can_focus_cells: false,
@@ -1481,7 +1481,7 @@ reload_button.on('click', function() {
 	run_script()
 })
 
-demo_list.focus_cell(13)
+demo_list.focus_cell(17)
 
 demo_list_ct.add(demo_list)
 

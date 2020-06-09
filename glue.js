@@ -45,9 +45,9 @@ function lerp(x, x0, x1, y0, y1) {
 	return y0 + (x-x0) * ((y1-y0) / (x1 - x0))
 }
 
-function num(s) {
+function num(s, z) {
 	let x = parseFloat(s)
-	return x != x ? undefined : x
+	return x != x ? z : x
 }
 
 // % that works with negative numbers.
@@ -178,9 +178,9 @@ method(Array, 'insert', function(i, e) {
 	this.splice(i, 0, e)
 })
 
-method(Array, 'remove', function(i) {
+method(Array, 'remove', function(i, n) {
 	let v = this[i]
-	this.splice(i, 1)
+	this.splice(i, or(n, 1))
 	return v
 })
 

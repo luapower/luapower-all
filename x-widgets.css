@@ -1008,6 +1008,23 @@
 	cursor: default;
 }
 
+/* widget placeholder ----------------------------------------------------- */
+
+.x-widget-placeholder {
+	display: grid;
+	justify-content: center;
+	outline: 1px dashed #eee;
+	outline-offset: -1px;
+}
+
+.x-widget-placeholder-button {
+	margin: 1px;
+	padding: .1em;
+	min-width: 2em;
+	font-size: 80%;
+	border-radius: 0;
+}
+
 /* pagelist --------------------------------------------------------------- */
 
 .x-pagelist {
@@ -1024,6 +1041,11 @@
 
 	/* styling */
 	border-bottom: 1px solid #ccc;
+}
+
+.x-pagelist-content {
+	flex: 1;
+	display: grid;
 }
 
 .x-pagelist-item {
@@ -1184,6 +1206,8 @@
 
 	justify-items: center;
 	align-items: center;
+
+	z-index: 0;           /* create a z-index stack for overlays */
 }
 
 .x-cssgrid.editing {

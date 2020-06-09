@@ -1,14 +1,16 @@
 
 component('x-cssgrid', function(e) {
 
+	e.default_align_x = 'stretch'
+	e.default_align_y = 'stretch'
 	layouted_widget(e)
 	serializable_widget(e)
 
+	e.class('x-widget')
 	e.class('x-cssgrid')
-	e.class('editing')
 
 	e.init = function() {
-		let items = e.items
+		let items = e.items || [widget_placeholder()]
 		e.items = []
 		for (let item of items) {
 			item = component.create(item)
@@ -18,34 +20,26 @@ component('x-cssgrid', function(e) {
 	}
 
 	e.attach = function() {
-
-		// normalize positions in grid.
-		for (let item of e.items) {
-			let css = item.css()
-			set_span1(item, 'column', span1(css, 'column'))
-			set_span1(item, 'row'   , span1(css, 'row'   ))
-			set_span2(item, 'column', (css['grid-column-end'] == 'auto' ? span1(css, 'column')+1 : span2(css, 'column')))
-			set_span2(item, 'row'   , (css['grid-row-end'   ] == 'auto' ? span1(css, 'row'   )+1 : span2(css, 'row'   )))
-		}
-
 		create_lines()
 		after(0.1, () => raf(update))
+		document.on('layout_changed', update)
 	}
 
 	e.detach = function() {
-
+		document.off('layout_changed', update)
 	}
 
 	// spans ------------------------------------------------------------------
 
-	function span1(css, type) { return or(num(css[`grid-${type}-start`]), 1)-1 }
-	function span2(css, type) { return or(num(css[`grid-${type}-end`  ]), 1)-1 }
+	function span1(item, type) { return e[type == 'column' ? 'pos_x' : 'pos_y']-1 }
+	function span2(item, type) { return span1(item, type) + e[type == 'column' ? 'span_x' : 'span_y'] }
 	function set_span1(item, type, i) { item[type == 'column' ? 'pos_x' : 'pos_y'] = i+1 }
-	function set_span2(item, type, i) { item[type == 'column' ? 'span_x' : 'span_y'] = i+1 - item[type == 'column' ? 'pos_x' : 'pos_y'] }
+	function set_span2(item, type, i) { item[type == 'column' ? 'span_x' : 'span_y'] = i - span1(item, type) }
 
 	// tracks -----------------------------------------------------------------
 
-	function css_gap(css, type) { return num(css[`${type}-gap`]) }
+	e.prop('gap_x', {style: 'column-gap', type: 'number', default: 0, style_format: (v) => v+'px'})
+	e.prop('gap_y', {style: 'row-gap'   , type: 'number', default: 0, style_format: (v) => v+'px'})
 
 	function track_sizes(type) {
 		return e.css(`grid-template-${type}s`).split(' ').map(num)
@@ -59,9 +53,20 @@ component('x-cssgrid', function(e) {
 		return tsizes
 	}
 
-	function set_template_sizes(type, sizes) {
-		e.style[`grid-template-${type}s`] = sizes.join(' ')
+	function set_template_sizes_s(type, s) {
+		e.style[`grid-template-${type}s`] = s
 	}
+
+	function set_template_sizes(type, sizes) {
+		set_template_sizes_s(type, sizes.join(' '))
+	}
+
+	e.get_sizes_x = function() { return template_sizes('column').join(' ') }
+	e.get_sizes_y = function() { return template_sizes('row'   ).join(' ') }
+	e.set_sizes_x = function(s) { set_template_sizes_s('column', s) }
+	e.set_sizes_y = function(s) { set_template_sizes_s('row'   , s) }
+	e.prop('sizes_x')
+	e.prop('sizes_y')
 
 	function set_template_size(type, i, sz) {
 		let tsizes = template_sizes(type)
@@ -71,7 +76,7 @@ component('x-cssgrid', function(e) {
 
 	function each_track_line(type, f) {
 		let sizes = track_sizes(type)
-		let gap = css_gap(e.css(), type)
+		let gap = e[type == 'column' ? 'gap_x' : 'gap_y']
 		let x1, x2
 		let x = 0
 		for (let i = 0; i < sizes.length; i++) {
@@ -105,12 +110,9 @@ component('x-cssgrid', function(e) {
 	}
 
 	function item_track_bounds(item) {
-		let css = item.css()
-		return track_bounds(
-			span1(css, 'column'),
-			span1(css, 'row'   ),
-			span2(css, 'column'),
-			span2(css, 'row'   ))
+		let i = item.pos_x-1
+		let j = item.pos_y-1
+		return track_bounds(i, j, i + item.span_x, j + item.span_y)
 		return [x1, y1, x2, y2]
 	}
 
@@ -121,9 +123,8 @@ component('x-cssgrid', function(e) {
 		tsizes.remove(i)
 		set_template_sizes(type, tsizes)
 		for (let item of e.items) {
-			let css = item.css()
-			let i1 = span1(css, type)
-			let i2 = span2(css, type)
+			let i1 = span1(item, type)
+			let i2 = span2(item, type)
 			if (i1 >= i)
 				set_span1(item, type, max(0, i1-1))
 			if (i2 > i)
@@ -133,12 +134,11 @@ component('x-cssgrid', function(e) {
 
 	function insert_line(type, i) {
 		let tsizes = template_sizes(type)
-		tsizes.insert(i, 20)
+		tsizes.insert(i, '20px')
 		set_template_sizes(type, tsizes)
 		for (let item of e.items) {
-			let css = item.css()
-			let i1 = span1(css, type)
-			let i2 = span2(css, type)
+			let i1 = span1(item, type)
+			let i2 = span2(item, type)
 			if (i1 >= i)
 				set_span1(item, type, i1+1)
 			if (i2 > i)
@@ -275,7 +275,9 @@ component('x-cssgrid', function(e) {
 	}
 
 	function update_lines_for(type) {
-		let gap = css_gap(e.css(), type)
+		if (!e.tips)
+			return
+		let gap = e[type == 'column' ? 'gap_x' : 'gap_y']
 		let tsizes = template_sizes(type)
 		let sizes = track_sizes(type)
 		let X = type == 'column' ? 'x' : 'y'
@@ -332,13 +334,19 @@ component('x-cssgrid', function(e) {
 		}
 	}
 
-	function create_lines() {
+	function remove_lines() {
 		if (e.tips)
 			for (let tip of e.tips) {
 				tip.guide.remove()
 				tip.label.remove()
 				tip.remove()
 			}
+	}
+
+	function create_lines() {
+		remove_lines()
+		if (!e.editing || !e.isConnected)
+			return
 		e.tips = []
 		create_lines_for('column')
 		create_lines_for('row')
@@ -350,7 +358,6 @@ component('x-cssgrid', function(e) {
 	let focused_item
 
 	function select_item(item, single) {
-		e.set_editing(true)
 		if (single)
 			selected_items.clear()
 		if (item)
@@ -371,13 +378,14 @@ component('x-cssgrid', function(e) {
 	}
 
 	function update_item_overlay(overlay, item) {
-		if (item) {
+		let show = !!item && e.editing
+		if (show) {
 			overlay.x = item.offsetLeft
 			overlay.y = item.offsetTop
 			overlay.w = item.offsetWidth
 			overlay.h = item.offsetHeight
 		}
-		overlay.show(!!item)
+		overlay.show(show)
 	}
 
 	let hit_item_overlay     = item_overlay('hover')
@@ -530,14 +538,14 @@ component('x-cssgrid', function(e) {
 		let y1 = y - e.offsetTop
 		let x2 = x1 + hit_item.offsetWidth
 		let y2 = y1 + hit_item.offsetHeight
-		let css = hit_item.css()
-		let i1 = span1(css, 'column')
-		let j1 = span1(css, 'row'   )
-		let i2 = span2(css, 'column')
-		let j2 = span2(css, 'row'   )
+		let i1 = span1(hit_item, 'column')
+		let j1 = span1(hit_item, 'row'   )
+		let i2 = span2(hit_item, 'column')
+		let j2 = span2(hit_item, 'row'   )
 		let [bx1, by1, bx2, by2] = track_bounds(i1, j1, i2, j2)
 		let align_x = hit_test_span_edge(20, x1, x2, bx1, bx2)
 		let align_y = hit_test_span_edge(20, y1, y2, by1, by2)
+		print(bx1, by1, bx2, by2, align_x, align_y)
 		let stretch_x = hit_item.align_x == 'stretch'
 		let stretch_y = hit_item.align_y == 'stretch'
 
@@ -550,9 +558,8 @@ component('x-cssgrid', function(e) {
 			raf(update)
 		} else {
 			pop_out_item()
-			let e_css = e.css()
-			hit_item.x = !stretch_x ? x : e.client_rect().left + bx1 + (i1 > 0 ? css_gap(e_css, 'column') / 2 : 0)
-			hit_item.y = !stretch_y ? y : e.client_rect().top  + by1 + (j1 > 0 ? css_gap(e_css, 'row'   ) / 2 : 0)
+			hit_item.x = !stretch_x ? x : e.client_rect().left + bx1 + (i1 > 0 ? e.gap_x / 2 : 0)
+			hit_item.y = !stretch_y ? y : e.client_rect().top  + by1 + (j1 > 0 ? e.gap_y / 2 : 0)
 
 			let [i, j, mbx1, mby1, mbx2, mby2] = hit_test_inside_span(hit_item)
 			let can_move_item =
@@ -600,9 +607,10 @@ component('x-cssgrid', function(e) {
 	let focused_item_span = span_outline()
 
 	function update_focused_item_span() {
-		if (focused_item)
+		let show = e.editing && !!focused_item
+		if (show)
 			update_span_outline(focused_item_span, ...item_track_bounds(focused_item))
-		focused_item_span.show(!!focused_item)
+		focused_item_span.show(show)
 	}
 
 	function hit_test_edge_center(mx, my, bx1, bx2, by, side) {
@@ -642,9 +650,8 @@ component('x-cssgrid', function(e) {
 		let type = horiz ? 'column' : 'row'
 		let second = hit_area == 'right' || hit_area == 'bottom'
 		mx = horiz ? mx - drag_mx : my - drag_my
-		let css = hit_item.css()
-		let i1 = span1(css, type)
-		let i2 = span2(css, type)
+		let i1 = span1(e.hit_item, type)
+		let i2 = span2(e.hit_item, type)
 		let dx = 1/0
 		let closest_i
 		each_track_line(type, function(i, x) {
@@ -704,6 +711,8 @@ component('x-cssgrid', function(e) {
 	let dragging, drag_mx, drag_my
 
 	e.on('pointerdown', function(ev) {
+		if (!e.editing)
+			return
 		if (!hit_item) {
 			if (!ev.shiftKey)
 				select_item(null, true)
@@ -718,6 +727,8 @@ component('x-cssgrid', function(e) {
 	})
 
 	e.on('pointerup', function(ev) {
+		if (!e.editing)
+			return
 		if (!hit_item) return
 		this.releasePointerCapture(ev.pointerId)
 		if (dragging == 'move_item') {
@@ -730,6 +741,8 @@ component('x-cssgrid', function(e) {
 	})
 
 	e.on('dblclick', function(ev) {
+		if (!e.editing)
+			return
 		if (!hit_item) return
 		toggle_stretch(hit_item, !ev.shiftKey, !ev.ctrlKey)
 		raf(update)
@@ -737,13 +750,15 @@ component('x-cssgrid', function(e) {
 	})
 
 	let cursors = {
-		left         : 'ew-resize',
-		right        : 'ew-resize',
-		top          : 'ns-resize',
-		bottom       : 'ns-resize',
+		left   : 'ew-resize',
+		right  : 'ew-resize',
+		top    : 'ns-resize',
+		bottom : 'ns-resize',
 	}
 
 	e.on('pointermove', function(mx, my, ev) {
+		if (!e.editing)
+			return
 		if (dragging == 'move_item') {
 			move_item(mx, my)
 		} else if (dragging == 'resize_focused_item_span') {
@@ -780,42 +795,48 @@ component('x-cssgrid', function(e) {
 
 	// keyboard bindings ------------------------------------------------------
 
-	e.editing = false
-
-	function enter_editmode() {
-		e.editing = true
-		e.attrval('tabindex', 0)
-		e.focus()
-	}
-
-	function exit_editmode() {
-		e.editing = false
-		e.attrval('tabindex', null)
-	}
-
-	e.set_editing = function() {
-		if (e.editing)
-			exit_editmode()
-		else
-			enter_editmode()
-	}
+	let editing = false
+	e.property('editing',
+		function() { return editing },
+		function(v) {
+			v = !!v
+			if (editing == v)
+				return
+			editing = v
+			e.attrval('tabindex', editing ? 0 : null)
+			e.class('editing', v)
+			create_lines()
+			raf(update)
+			if (v)
+				e.focus()
+		}
+	)
 
 	e.on('keydown', function(key) {
-		if (key == 'Shift' && hit_line_tip)
+		if (!e.editing)
+			return
+		if (key == 'Shift' && hit_line_tip) {
 			tip_set_cursor(hit_line_tip, true)
+			return false
+		}
 	})
 
 	e.on('keyup', function(key) {
-		if (key == 'Shift' && hit_line_tip)
+		if (!e.editing)
+			return
+		if (key == 'Shift' && hit_line_tip) {
 			tip_set_cursor(hit_line_tip, false)
+			return false
+		}
 	})
 
 	e.on('keydown', function(key, shift, ctrl) {
 		if (key == 'F2') {
-			e.set_editing(!e.editing)
-			raf(update)
+			e.editing = !e.editing
 			return false
 		}
+		if (!e.editing)
+			return
 		if (key == 'Tab') {
 			let item = e.items[mod(e.items.indexOf(focused_item) + (shift ? -1 : 1), e.items.length)]
 			select_item(item, true)
@@ -837,23 +858,22 @@ component('x-cssgrid', function(e) {
 				let fw = key == 'ArrowRight' || key == 'ArrowDown'
 				let type = horiz ? 'column' : 'row'
 				if (ctrl) { // change alignment
-					let attr = (horiz ? 'justify' : 'align')+'-self'
-					let align = focused_item.css(attr)
+					let attr = horiz ? 'align_x' : 'align_y'
+					let align = focused_item[attr]
 					if (align == 'stretch')
 						align = toggle_stretch(focused_item, horiz, !horiz)
 					let align_indices = {start: 0, center: 1, end: 2}
 					let align_map = keys(align_indices)
 					align = align_map[align_indices[align] + (fw ? 1 : -1)]
-					focused_item.style[attr] = align
+					focused_item[attr] = align
 				} else { // resize span or move to diff. span
-					let css = focused_item.css()
 					if (shift) { // resize span
-						let i1 = span1(css, type)
-						let i2 = span2(css, type)
+						let i1 = span1(focused_item, type)
+						let i2 = span2(focused_item, type)
 						let i = max(i1+1, i2 + (fw ? 1 : -1))
 						set_span2(focused_item, type, i)
 					} else {
-						let i = max(0, span1(css, type) + (fw ? 1 : -1))
+						let i = max(0, span1(focused_item, type) + (fw ? 1 : -1))
 						set_span1(focused_item, type, i)
 						set_span2(focused_item, type, i+1)
 					}
@@ -866,10 +886,24 @@ component('x-cssgrid', function(e) {
 
 	})
 
-	// xmodule interface.
+	// xmodule interface ------------------------------------------------------
 
 	e.child_widgets = function() {
 		return e.items.slice()
+	}
+
+	e.replace_widget = function(old_widget, new_widget) {
+		let i = e.items.indexOf(old_widget)
+		e.items[i] = new_widget
+		old_widget.parent.replace(old_widget, new_widget)
+		e.fire('widget_replaced', new_widget, old_widget)
+	}
+
+	e.select_child_widget = function(widget) {
+		// select_item(widget, true)
+		e.editing = false
+		if (widget.editing != null)
+			widget.editing = true
 	}
 
 	e.inspect_fields = [

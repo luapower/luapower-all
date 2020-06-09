@@ -83,7 +83,7 @@ function rowset_widget(e) {
 		let i = 0
 		let passes = e.rowset.filter_rowsets_filter(e.filter_rowsets)
 		for (let row of e.rowset.rows) {
-			if (!row.removed && !row.parent_collapsed && passes(row))
+			if (!row.parent_collapsed && passes(row))
 				e.rows.push(row)
 		}
 	}
@@ -174,7 +174,6 @@ function rowset_widget(e) {
 		e.init_rows_array()
 		e.init_fields()
 		e.sort()
-		e.init_rows()
 		e.init_focused_cell()
 	}
 
@@ -217,7 +216,18 @@ function rowset_widget(e) {
 	function row_removed(row, ev) {
 		let ri = ev && ev.row_index
 		ri = e.row_index(row, ri)
-		e.rows.remove(ri)
+		let n = 1
+		if (row.parent_rows) {
+			let min_parent_rows = row.parent_rows.length + 1
+			while (1) {
+				let row = e.rows[ri + n]
+				print(row && row.parent_rows.length, min_parent_rows)
+				if (!row || row.parent_rows.length < min_parent_rows)
+					break
+				n++
+			}
+		}
+		e.rows.remove(ri, n)
 		rowmap = null
 		e.init_rows()
 		if (ev && ev.refocus)
@@ -521,6 +531,7 @@ function rowset_widget(e) {
 		}
 
 		if (row_changed || field_changed) {
+			let old_focused_row = e.focused_row
 			e.focused_row_index   = ri
 			e.focused_field_index = fi
 			e.last_focused_field_index = or(fi, e.last_focused_field_index)
@@ -529,7 +540,7 @@ function rowset_widget(e) {
 			let val = row && e.val_field ? e.rowset.val(row, e.val_field) : null
 			e.set_val(val, update({input: e}, ev))
 			if (row_changed)
-				e.fire('focused_row_changed', row, ev)
+				e.fire('focused_row_changed', row, old_focused_row, ev)
 		}
 
 		if (ri != null)
@@ -613,6 +624,9 @@ function rowset_widget(e) {
 			return true
 
 		if (!e.can_exit_edit_on_errors && e.rowset.row_has_errors(e.focused_row))
+			return false
+
+		if (!e.fire('exit_edit', e.focused_row_index, e.focused_field_index))
 			return false
 
 		if (e.save_row_on == 'exit_edit')
@@ -726,16 +740,6 @@ function rowset_widget(e) {
 		e.sort()
 	}
 
-	function init_rows(focused_row) {
-		rowmap = null
-		e.focused_row_index = null // avoid row_index()'s short circuit.
-		e.focused_row_index = e.row_index(focused_row)
-		e.init_rows()
-		if (e.focused_row_index != null)
-			if (e.isConnected)
-				e.scroll_to_cell(e.focused_row_index, e.focused_cell_index)
-	}
-
 	e.sort = function(focused_row) {
 		focused_row = or(focused_row, e.focused_row)
 		if (e.rowset.parent_field || (order_by && order_by.size)) {
@@ -743,7 +747,13 @@ function rowset_widget(e) {
 			e.rows.sort(cmp)
 		} else
 			e.init_rows_array()
-		init_rows(focused_row)
+		rowmap = null
+		e.focused_row_index = null // avoid row_index()'s short circuit.
+		e.focused_row_index = e.row_index(focused_row)
+		e.init_rows()
+		if (e.focused_row_index != null)
+			if (e.isConnected)
+				e.scroll_to_cell(e.focused_row_index, e.focused_cell_index)
 		e.fire('sort_order_changed')
 	}
 

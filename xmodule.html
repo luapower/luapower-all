@@ -99,9 +99,6 @@ prop_inspector = component('x-prop-inspector', function(e) {
 	e.vertical = true
 	e.auto_w = true
 
-	e.auto_focus_first_cell = false
-
-	e.save_row_on = 'input'
 	e.exit_edit_on_lost_focus = false
 	e.can_sort_rows = false
 	e.enable_context_menu = false
@@ -116,42 +113,47 @@ prop_inspector = component('x-prop-inspector', function(e) {
 
 	init = e.init
 	e.init = function() {
-		init_rowset(e.element)
+		init_rowset(e.widget)
 		init()
 	}
 
 	e.rowset.on('val_changed', function(row, field, val) {
-		e.element[field.name] = val
+		e.widget[field.name] = val
 	})
 
 	function prop_changed(k, v) {
-		e.focus_cell(0)
-		e.rowset.reset_val(e.focused_row, e.rowset.field(k), v)
+		if (!e.focused_row)
+			e.focus_cell(0)
 	}
 
-	let element
-	e.property('element',
-		function() { return element },
+	e.on('exit_edit', function(ri, fi) {
+		let field = e.fields[fi]
+		e.rowset.reset_val(e.rows[ri], field, e.widget[field.name])
+	})
+
+	let widget
+	e.property('widget',
+		function() { return widget },
 		function(v) {
-			if (element)
-				element.off('prop_changed', prop_changed)
-			element = v
+			if (widget)
+				widget.off('prop_changed', prop_changed)
+			widget = v
 			if (!e.__init_later)
 				init_rowset(v)
 		}
 	)
 
-	function init_rowset(element) {
+	function init_rowset(widget) {
 		let res = {}
 		res.fields = []
 		let vals = []
 		res.rows = [vals]
-		if (element) {
-			for (let prop of element.props) {
-				res.fields.push(prop)
-				vals.push(element[prop.name])
+		if (widget) {
+			for (let prop in widget.props) {
+				res.fields.push(widget.props[prop])
+				vals.push(widget[prop])
 			}
-			element.on('prop_changed', prop_changed)
+			widget.on('prop_changed', prop_changed)
 		}
 		e.rowset.reset(res)
 	}
@@ -170,6 +172,7 @@ function xmodule_load() {
 			root_widget.remove()
 		root_widget	= component.create(t)
 		body.add(root_widget)
+		body.fire('widget_replaced', root_widget)
 	}
 	ajax({url: '/xmodule.json', success: loaded}).send()
 }
@@ -192,15 +195,17 @@ body.on('keydown', function(key, shift, ctrl) {
 
 root_widget = cssgrid({
 	items: [
-		checkbox({text: 'Hello'}),
-		button({text: 'Wazaa', primary: true}),
-		spin_input(),
-		slider(),
-		pagelist(),
-		vsplit({
-			1: button(),
-			2: button(),
+		checkbox   ({pos_y: 1, text: 'Hello'}),
+		button     ({pos_y: 2, text: 'Wazaa', primary: true}),
+		spin_input ({pos_y: 3, }),
+		slider     ({pos_y: 4}),
+		pagelist   ({pos_y: 5,
+			items: [
+				{text: 'Page 1'},
+				{text: 'Page 2', page: button({text: 'Hey'})},
+			],
 		}),
+		hsplit     ({pos_y: 6 }),
 		//listbox({rowset: rowset({})}),
 	],
 })
@@ -217,12 +222,8 @@ function properties_toolbox() {
 	return tb
 }
 
-function tree_toolbox() {
-	function widget_name(e) {
-		return e.tagName.lower()
-	}
+function widget_tree_rows() {
 	let rows = new Set()
-
 	function add_widget(e, pe) {
 		if (!e) return
 		rows.add([e, pe])
@@ -231,13 +232,19 @@ function tree_toolbox() {
 				add_widget(ce, e)
 	}
 	add_widget(root_widget)
+	return rows
+}
 
+function tree_toolbox() {
+	function widget_name(e) {
+		return e.typename.replace('_', ' ')
+	}
 	let rs = rowset({
 		fields: [
 			{name: 'widget', format: widget_name},
 			{name: 'parent_widget', visible: false},
 		],
-		rows: rows,
+		rows: widget_tree_rows(),
 		pk: 'widget',
 		parent_col: 'parent_widget',
 	})
@@ -245,14 +252,25 @@ function tree_toolbox() {
 		rowset: rs,
 		tree_col: 'widget',
 		header_visible: false,
+		auto_focus_first_cell: false,
 	})
-	g.on('focused_row_changed', function(row) {
+	g.on('focused_row_changed', function(row, row0) {
 		let e = row[0]
-		props_tb.inspector.element = e
+		let e0 = row0 && row0[0]
+		if (e0)
+			e0.editing = false
+		props_tb.inspector.widget = e
+		if (e)
+			e.editing = true
 	})
+	g.auto_focus_first_cell = true
+	g.init_focused_cell()
 	let tb = toolbox({
 		title: 'widget tree',
 		content: g,
+	})
+	document.on('widget_replaced', function() {
+		rs.reset({rows: widget_tree_rows()})
 	})
 	return tb
 }
