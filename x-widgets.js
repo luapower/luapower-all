@@ -2883,8 +2883,10 @@ component('x-widget-placeholder', function(e) {
 		if (pe)
 			pe.replace_widget(e, widget)
 		else {
-			e.parent.replace(e, widget)
-			e.parent.fire('widget_replaced', widget, e)
+			let pe = e.parent
+			pe.replace(e, widget)
+			root_widget = widget
+			pe.fire('widget_tree_changed')
 		}
 	}
 
@@ -3076,6 +3078,7 @@ component('x-pagelist', function(e) {
 		add_item(item)
 		e.header.add(e.selection_bar)
 		e.header.add(e.add_button)
+		e.fire('widget_tree_changed')
 		return false
 	})
 
@@ -3097,6 +3100,7 @@ component('x-pagelist', function(e) {
 		select_item(null)
 		idiv.remove()
 		e.items.remove_value(idiv.item)
+		e.fire('widget_tree_changed')
 		return false
 	}
 
@@ -3114,7 +3118,7 @@ component('x-pagelist', function(e) {
 			if (item.page == old_widget) {
 				old_widget.parent.replace(old_widget, new_widget)
 				item.page = new_widget
-				e.fire('widget_replaced', new_widget, old_widget)
+				e.fire('widget_tree_changed')
 				break
 			}
 	}
@@ -3300,7 +3304,7 @@ component('x-vsplit', function(e) {
 	e.replace_widget = function(old_widget, new_widget) {
 		e[widget_index(old_widget)] = new_widget
 		old_widget.parent.replace(old_widget, new_widget)
-		e.fire('widget_replaced', new_widget, old_widget)
+		e.fire('widget_tree_changed')
 	}
 
 	e.select_child_widget = function(widget) {

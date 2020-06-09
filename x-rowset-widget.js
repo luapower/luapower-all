@@ -119,14 +119,14 @@ function rowset_widget(e) {
 		e.rowset.on('row_added'   , row_added     , on)
 		e.rowset.on('row_removed' , row_removed   , on)
 		// state changes
-		e.rowset.on('row_state_changed', row_state_changed, on)
-		e.rowset.on('cell_state_changed', cell_state_changed, on)
-		e.rowset.on('display_vals_changed', display_vals_changed, on)
+		e.rowset.on('row_state_changed'    , row_state_changed    , on)
+		e.rowset.on('cell_state_changed'   , cell_state_changed   , on)
+		e.rowset.on('display_vals_changed' , display_vals_changed , on)
 		// network events
-		e.rowset.on('loading', rowset_loading, on)
-		e.rowset.on('load_slow', rowset_load_slow, on)
-		e.rowset.on('load_progress', rowset_load_progress, on)
-		e.rowset.on('load_fail', rowset_load_fail, on)
+		e.rowset.on('loading'       , rowset_loading       , on)
+		e.rowset.on('load_slow'     , rowset_load_slow     , on)
+		e.rowset.on('load_progress' , rowset_load_progress , on)
+		e.rowset.on('load_fail'     , rowset_load_fail     , on)
 		// misc.
 		e.rowset.on('notify', e.notify, on)
 		// take/release ownership of the rowset.
@@ -169,11 +169,14 @@ function rowset_widget(e) {
 	// responding to structural updates ---------------------------------------
 
 	function init() {
+		e.focused_row_index = null
+		e.focused_field_index = null
 		e.unbind_filter_rowsets()
 		e.init_fields_array()
 		e.init_rows_array()
 		e.init_fields()
 		e.sort()
+		e.init_val()
 		e.init_focused_cell()
 	}
 
@@ -184,8 +187,6 @@ function rowset_widget(e) {
 	}
 
 	e.rowset_widget_attach = function() {
-		init()
-		e.init_val()
 		e.bind_rowset(true)
 		e.bind_nav(true)
 	}

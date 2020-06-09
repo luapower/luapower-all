@@ -172,7 +172,7 @@ function xmodule_load() {
 			root_widget.remove()
 		root_widget	= component.create(t)
 		body.add(root_widget)
-		body.fire('widget_replaced', root_widget)
+		body.fire('widget_tree_changed')
 	}
 	ajax({url: '/xmodule.json', success: loaded}).send()
 }
@@ -209,6 +209,8 @@ root_widget = cssgrid({
 		//listbox({rowset: rowset({})}),
 	],
 })
+
+root_widget = widget_placeholder()
 
 body.add(root_widget)
 
@@ -255,7 +257,7 @@ function tree_toolbox() {
 		auto_focus_first_cell: false,
 	})
 	g.on('focused_row_changed', function(row, row0) {
-		let e = row[0]
+		let e = row && row[0]
 		let e0 = row0 && row0[0]
 		if (e0)
 			e0.editing = false
@@ -269,7 +271,7 @@ function tree_toolbox() {
 		title: 'widget tree',
 		content: g,
 	})
-	document.on('widget_replaced', function() {
+	document.on('widget_tree_changed', function() {
 		rs.reset({rows: widget_tree_rows()})
 	})
 	return tb

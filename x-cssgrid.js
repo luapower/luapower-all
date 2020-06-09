@@ -896,7 +896,7 @@ component('x-cssgrid', function(e) {
 		let i = e.items.indexOf(old_widget)
 		e.items[i] = new_widget
 		old_widget.parent.replace(old_widget, new_widget)
-		e.fire('widget_replaced', new_widget, old_widget)
+		e.fire('widget_tree_changed')
 	}
 
 	e.select_child_widget = function(widget) {
