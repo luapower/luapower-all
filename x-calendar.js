@@ -5,12 +5,9 @@
 
 component('x-calendar', function(e) {
 
-	e.class('x-widget')
-	e.class('x-calendar')
-	e.class('x-focusable')
-	e.attrval('tabindex', 0)
-
+	tabindex_widget(e)
 	val_widget(e)
+	e.classes = 'x-widget x-focusable x-calendar'
 
 	function format_month(i) {
 		return month_name(utctime(0, i), 'short')

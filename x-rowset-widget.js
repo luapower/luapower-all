@@ -187,6 +187,8 @@ function rowset_widget(e) {
 	}
 
 	e.rowset_widget_attach = function() {
+		e.init_fields()
+		e.init_rows()
 		e.bind_rowset(true)
 		e.bind_nav(true)
 	}
@@ -194,6 +196,12 @@ function rowset_widget(e) {
 	e.rowset_widget_detach = function() {
 		e.bind_rowset(false)
 		e.bind_nav(false)
+	}
+
+	// TODO:
+	function fields_changed() {
+		// e.focused_field_index = null
+		// e.init_fields()
 	}
 
 	function rowset_loaded() {
@@ -222,7 +230,6 @@ function rowset_widget(e) {
 			let min_parent_rows = row.parent_rows.length + 1
 			while (1) {
 				let row = e.rows[ri + n]
-				print(row && row.parent_rows.length, min_parent_rows)
 				if (!row || row.parent_rows.length < min_parent_rows)
 					break
 				n++

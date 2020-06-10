@@ -3,11 +3,9 @@ component('x-cssgrid', function(e) {
 
 	e.default_align_x = 'stretch'
 	e.default_align_y = 'stretch'
-	layouted_widget(e)
+	cssgrid_child_widget(e)
 	serializable_widget(e)
-
-	e.class('x-widget')
-	e.class('x-cssgrid')
+	e.classes = 'x-widget x-cssgrid'
 
 	e.init = function() {
 		let items = e.items || [widget_placeholder()]
@@ -113,7 +111,6 @@ component('x-cssgrid', function(e) {
 		let i = item.pos_x-1
 		let j = item.pos_y-1
 		return track_bounds(i, j, i + item.span_x, j + item.span_y)
-		return [x1, y1, x2, y2]
 	}
 
 	// add/remove inter-track lines -------------------------------------------
@@ -545,7 +542,6 @@ component('x-cssgrid', function(e) {
 		let [bx1, by1, bx2, by2] = track_bounds(i1, j1, i2, j2)
 		let align_x = hit_test_span_edge(20, x1, x2, bx1, bx2)
 		let align_y = hit_test_span_edge(20, y1, y2, by1, by2)
-		print(bx1, by1, bx2, by2, align_x, align_y)
 		let stretch_x = hit_item.align_x == 'stretch'
 		let stretch_y = hit_item.align_y == 'stretch'
 
@@ -887,6 +883,8 @@ component('x-cssgrid', function(e) {
 	})
 
 	// xmodule interface ------------------------------------------------------
+
+	e.accepts_form_widgets = true
 
 	e.child_widgets = function() {
 		return e.items.slice()

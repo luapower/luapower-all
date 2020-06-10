@@ -395,8 +395,18 @@ method(DOMRect, 'intersects', function(x, y, w, h) {
 
 // common style wrappers -----------------------------------------------------
 
-method(Element, 'show', function(v) { this.style.display = (v === undefined || v) ? null : 'none' })
-method(Element, 'hide', function() { this.style.display = 'none' })
+method(Element, 'show', function(v, affects_layout) {
+	let d0 = this.style.display
+	let d1 = (v === undefined || v) ? null : 'none'
+	if (d0 == d1)
+		return
+	this.style.display = d1
+	if (affects_layout)
+		this.fire('layout_changed')
+})
+method(Element, 'hide', function() {
+	this.show(false)
+})
 
 // common state wrappers -----------------------------------------------------
 
@@ -512,7 +522,6 @@ function component(tag, cons) {
 
 		constructor(...args) {
 			super()
-			this.has_attach_events = true
 			this.typename = typename
 			cons(this)
 
@@ -692,6 +701,8 @@ method(HTMLElement, 'prop', function(prop, opt) {
 			this[setter](v, v0)
 			this.fire('prop_changed', prop, v, v0)
 		}
+		if (opt.default !== undefined)
+			set.call(this, opt.default)
 	}
 	this.property(prop, get, set)
 	attr(this, 'props')[prop] = opt
@@ -841,9 +852,10 @@ let popup_state = function(e) {
 
 	function init() {
 		if (target != document.body) { // prevent infinite recursion.
-			// TODO: assert(target.has_attach_events)
-			target.on('attach', target_attached)
-			target.on('detach', target_detached)
+			if (target.typename) { // component
+				target.on('attach', target_attached)
+				target.on('detach', target_detached)
+			}
 		}
 		if (target.isConnected)
 			target_attached()
@@ -852,8 +864,10 @@ let popup_state = function(e) {
 	function free() {
 		if (target) {
 			target_detached()
-			target.off('attach', target_attached)
-			target.off('detach', target_detached)
+			if (target.typename) { // component
+				target.off('attach', target_attached)
+				target.off('detach', target_detached)
+			}
 			target = null
 		}
 	}

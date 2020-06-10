@@ -8,11 +8,9 @@ component('x-listbox', function(e) {
 	e.default_align_x = 'stretch'
 	e.default_align_y = 'stretch'
 	rowset_widget(e)
+	tabindex_widget(e)
+	e.classes = 'x-widget x-focusable x-listbox'
 
-	e.class('x-widget')
-	e.class('x-listbox')
-	e.class('x-focusable')
-	e.attrval('tabindex', 0)
 	e.attrval('flow', 'vertical')
 	e.attr_property('flow')
 
@@ -72,10 +70,14 @@ component('x-listbox', function(e) {
 	}
 
 	e.init_fields = function() {
+		if (!e.isConnected)
+			return
 		e.display_field = e.rowset.field(e.display_col)
 	}
 
 	e.init_rows = function() {
+		if (!e.isConnected)
+			return
 		selected_row_index = null
 		found_row_index = null
 		e.clear()
@@ -188,7 +190,6 @@ hlistbox = function(...options) {
 
 component('x-list-dropdown', function(e) {
 
-	e.class('x-list-dropdown')
 	dropdown.construct(e)
 	let display_val = e.display_val
 	e.display_val = function() {
@@ -221,7 +222,6 @@ component('x-list-dropdown', function(e) {
 component('x-select-button', function(e) {
 
 	e.attrval('flow', 'horizontal')
-	e.class('x-select-button')
 	listbox.construct(e)
 	e.auto_focus_first_cell = false
 

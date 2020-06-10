@@ -878,7 +878,7 @@ var data = {
 	can_change_rows: true,
 }
 
-for (let i = 1; i <= 1e4; i++) {
+for (let i = 1; i <= 0; i++) {
 	let id         = i
 	let name       = 'record '+i
 	let parent_id  = floor((random() * i))
@@ -953,7 +953,7 @@ for (let i = 1; i <= 1e5; i++) {
 	let random_num = floor(random() * 1e9)
 	let random_date = i * 24 * 3600 * 1000
 	let row = [id, i % 5 == 0, name, parent_id, random_num, random_date]
-	row.focusable = i % 5 >= 2
+	//row.focusable = i % 5 >= 2
 	data.rows.add(row)
 }
 
@@ -962,7 +962,7 @@ d = rowset(data)
 vg = vgrid({
 	rowset: d,
 	w: 600,
-	h: 150,
+	h: 200,
 	can_change_header_visibility: true,
 	//can_focus_cells: false,
 	//auto_h: true,
@@ -1481,7 +1481,7 @@ reload_button.on('click', function() {
 	run_script()
 })
 
-demo_list.focus_cell(17)
+demo_list.focus_cell(18)
 
 demo_list_ct.add(demo_list)
 

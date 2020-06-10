@@ -9,6 +9,7 @@ html, body {
 	position: relative;
 	margin: 0;
 	height: 100%;
+	display: grid;
 }
 
 * { box-sizing: border-box; }
@@ -97,7 +98,6 @@ prop_inspector = component('x-prop-inspector', function(e) {
 	grid.construct(e)
 
 	e.vertical = true
-	e.auto_w = true
 
 	e.exit_edit_on_lost_focus = false
 	e.can_sort_rows = false
@@ -193,33 +193,15 @@ body.on('keydown', function(key, shift, ctrl) {
 
 })
 
-root_widget = cssgrid({
-	items: [
-		checkbox   ({pos_y: 1, text: 'Hello'}),
-		button     ({pos_y: 2, text: 'Wazaa', primary: true}),
-		spin_input ({pos_y: 3, }),
-		slider     ({pos_y: 4}),
-		pagelist   ({pos_y: 5,
-			items: [
-				{text: 'Page 1'},
-				{text: 'Page 2', page: button({text: 'Hey'})},
-			],
-		}),
-		hsplit     ({pos_y: 6 }),
-		//listbox({rowset: rowset({})}),
-	],
-})
-
 root_widget = widget_placeholder()
-
 body.add(root_widget)
 
-function properties_toolbox() {
-	let pg = prop_inspector({})
-	let tb = toolbox({
+function properties_toolbox(tb_opt, insp_opt) {
+	let pg = prop_inspector(insp_opt)
+	let tb = toolbox(update({
 		title: 'properties',
 		content: pg,
-	})
+	}, tb_opt))
 	tb.inspector = pg
 	return tb
 }
@@ -237,7 +219,7 @@ function widget_tree_rows() {
 	return rows
 }
 
-function tree_toolbox() {
+function tree_toolbox(tb_opt) {
 	function widget_name(e) {
 		return e.typename.replace('_', ' ')
 	}
@@ -265,12 +247,12 @@ function tree_toolbox() {
 		if (e)
 			e.editing = true
 	})
-	g.auto_focus_first_cell = true
-	g.init_focused_cell()
-	let tb = toolbox({
+	let tb = toolbox(update({
 		title: 'widget tree',
 		content: g,
-	})
+	}, tb_opt))
+	g.auto_focus_first_cell = true
+	g.init_focused_cell()
 	document.on('widget_tree_changed', function() {
 		rs.reset({rows: widget_tree_rows()})
 	})
@@ -302,23 +284,27 @@ function widgets_toolbox() {
 }
 
 
-widgets_tb = widgets_toolbox()
-widgets_tb.y = 150
-widgets_tb.x = 1100
-widgets_tb.show()
-body.add(widgets_tb)
+widgets_tb = widgets_toolbox({
+	y: 150,
+	x: 500,
+})
+//widgets_tb.show()
 
-props_tb = properties_toolbox()
-props_tb.y = 150
-props_tb.x = 1250
-props_tb.show()
-body.add(props_tb)
+props_tb = properties_toolbox({
+	y: 520,
+	x: 400,
+	w: 250,
+	h: 400,
+})
+props_tb.show(true, true)
 
-tree_tb = tree_toolbox()
-tree_tb.y = 150
-tree_tb.x = 1500
-tree_tb.show()
-body.add(tree_tb)
+tree_tb = tree_toolbox({
+	y: 520,
+	x: 660,
+	w: 200,
+	h: 400,
+})
+tree_tb.show(true, true)
 
 </script>
 </body>

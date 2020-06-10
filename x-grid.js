@@ -8,10 +8,10 @@ component('x-grid', function(e) {
 	e.default_align_x = 'stretch'
 	e.default_align_y = 'stretch'
 	rowset_widget(e)
+	tabindex_widget(e)
+	e.classes = 'x-widget x-focusable x-grid'
 
 	// geometry
-	e.w = 400
-	e.h = 400
 	e.cell_h = 26
 	e.auto_w = false
 	e.auto_h = false
@@ -38,11 +38,6 @@ component('x-grid', function(e) {
 	e.can_change_filters_visibility = true
 	e.can_change_fields_visibility = true
 
-	e.class('x-widget')
-	e.class('x-grid')
-	e.class('x-focusable')
-	e.attrval('tabindex', 0)
-
 	let horiz = true
 	e.class('x-hgrid', horiz)
 	e.property('vertical',
@@ -66,12 +61,18 @@ component('x-grid', function(e) {
 		e.rowset_widget_init()
 	}
 
+	function bind(on) {
+		document.on('layout_changed', layout_changed, on)
+	}
+
 	e.attach = function() {
 		e.rowset_widget_attach()
+		bind(true)
 	}
 
 	e.detach = function() {
 		e.rowset_widget_detach()
+		bind(false)
 	}
 
 	// geometry ---------------------------------------------------------------
@@ -163,7 +164,8 @@ component('x-grid', function(e) {
 				e.h = e.cells_h + e.header_h + border_h
 
 			e.cells_view_h = client_h - e.header_h
-			e.cells_ct.h = e.cells_h
+			e.cells_ct.h = max(1, e.cells_h) // need at least 1px to show scrollbar.
+			e.cells_ct.w = e.header.offsetWidth
 			e.cells_view.h = e.cells_view_h
 			e.visible_row_count = floor(e.cells_view_h / e.cell_h) + 2
 			e.page_row_count = floor(e.cells_view_h / e.cell_h)
@@ -191,12 +193,12 @@ component('x-grid', function(e) {
 				let client_h = e.cells_view.clientHeight
 				let border_h = e.offsetHeight - e.clientHeight
 				let hscrollbar_h = e.cells_view.offsetHeight - client_h
-				e.h = e.rows_h + border_h + hscrollbar_h
+				e.h = e.cells_h + border_h + hscrollbar_h
 			}
 
 			e.cells_view_w = client_w - header_w
 			e.cells_ct.w = e.cells_w
-			e.cells_ct.h = 1 // horiz. scrollbar doesn't show on height 0.
+			e.cells_ct.h = e.cells_h
 			e.cells_view.w = e.cells_view_w
 			e.visible_row_count = floor(e.cells_view_w / e.cell_w) + 2
 
@@ -331,13 +333,14 @@ component('x-grid', function(e) {
 			f(e.cells.at[ci+fi], fi, ...args)
 	}
 
-	// responding to size changes ---------------------------------------------
+	// responding to layout changes -------------------------------------------
 
 	{
 		let w0, h0
-		e.on('attr_changed', function() {
-			let w1 = e.style.width
-			let h1 = e.style.height
+		function layout_changed() {
+			let r = e.client_rect()
+			let w1 = r.width
+			let h1 = r.height
 			if (w1 == 0 && h1 == 0)
 				return // hidden
 			if (h1 !== h0 || w1 !== w0) {
@@ -346,17 +349,18 @@ component('x-grid', function(e) {
 				if (e.visible_row_count != vrc) {
 					init_cells()
 					update_viewport()
-					updated = true
 				}
 			}
 			w0 = w1
 			h0 = h1
-		})
+		}
 	}
 
 	// rendering --------------------------------------------------------------
 
 	e.init_fields = function() {
+		if (!e.isConnected)
+			return
 		e.header.clear()
 		for (let fi = 0; fi < e.fields.length; fi++) {
 			let field = e.fields[fi]
@@ -432,6 +436,8 @@ component('x-grid', function(e) {
 	}
 
 	function update_sort_icons() {
+		if (!e.isConnected)
+			return
 		for (let fi = 0; fi < e.fields.length; fi++) {
 			let field = e.fields[fi]
 			let hcell = e.header.at[fi]
@@ -681,7 +687,8 @@ component('x-grid', function(e) {
 	// responding to rowset changes -------------------------------------------
 
 	e.init_rows = function() {
-		if (!e.isConnected) return
+		if (!e.isConnected)
+			return
 		update_sizes()
 		init_cells()
 		update_viewport()

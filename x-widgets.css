@@ -1012,7 +1012,8 @@
 
 .x-widget-placeholder {
 	display: grid;
-	justify-content: center;
+	justify-content: safe center;
+	align-content: stretch;
 	outline: 1px dashed #eee;
 	outline-offset: -1px;
 }
@@ -1134,6 +1135,8 @@
 }
 
 .x-split-pane {
+	min-width : 0;                 /* required: content can't overflow the split-view */
+	min-height: 0;                 /* required: content can't overflow the split-view */
 	overflow: auto;
 }
 
@@ -1395,7 +1398,7 @@
 	display: flex;
 	flex-flow: column;
 	background: white;
-	overflow: auto; /* make resize work */
+	overflow: auto;                /* make resize work */
 	resize: both;
 	z-index: 1;
 }
@@ -1439,7 +1442,11 @@
 
 .x-toolbox-content {
 	flex: 1;
+	min-width : 0;                 /* required: content can't overflow the toolbox */
+	min-height: 0;                 /* required: content can't overflow the toolbox */
+	overflow: auto;
 	background-color: #f8f8f8;
+	display: grid;
 }
 
 /* x-rowset-widget -------------------------------------------------------- */
@@ -1475,7 +1482,7 @@
 /* grid ------------------------------------------------------------------- */
 
 .x-grid {
-	display: inline-flex;      /* required: don't expand to fit parent width */
+	display: flex;             /* required */
 	flex-flow: column;
 	position: relative;        /* required for `position: absolute` elements */
 	margin: .25em;

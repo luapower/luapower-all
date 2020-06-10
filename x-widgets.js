@@ -107,7 +107,7 @@ function widget_multiuser_mixin(e) {
 	let refcount = 0
 
 	e.bind_user_widget = function(user, on) {
-		assert(user.has_attach_events)
+		assert(user.typename) // must be a widget
 		if (on)
 			user_attached()
 		else
@@ -1364,10 +1364,10 @@ function serializable_widget(e) {
 }
 
 // ---------------------------------------------------------------------------
-// layouted widget mixin
+// cssgrid child widget mixin
 // ---------------------------------------------------------------------------
 
-function layouted_widget(e) {
+function cssgrid_child_widget(e) {
 
 	e.property('parent_widget', function() {
 		let parent = this.parent
@@ -1394,6 +1394,14 @@ function layouted_widget(e) {
 }
 
 // ---------------------------------------------------------------------------
+// focusable widget mixin ----------------------------------------------------
+// ---------------------------------------------------------------------------
+
+function tabindex_widget(e) {
+	e.prop('tabindex', {attr: 'tabindex'})
+}
+
+// ---------------------------------------------------------------------------
 // val widget mixin
 // ---------------------------------------------------------------------------
 
@@ -1406,7 +1414,7 @@ function layouted_widget(e) {
 
 function val_widget(e) {
 
-	layouted_widget(e)
+	cssgrid_child_widget(e)
 	serializable_widget(e)
 
 	e.default_val = null
@@ -1576,8 +1584,7 @@ function val_widget(e) {
 
 component('x-tooltip', function(e) {
 
-	e.class('x-widget')
-	e.class('x-tooltip')
+	e.classes = 'x-widget x-tooltip'
 
 	e.text_div = div({class: 'x-tooltip-text'})
 	e.pin = div({class: 'x-tooltip-tip'})
@@ -1643,40 +1650,32 @@ tooltip.reading_speed = 800 // letters-per-minute.
 
 component('x-button', function(e) {
 
-	layouted_widget(e)
+	cssgrid_child_widget(e)
 	serializable_widget(e)
+	tabindex_widget(e)
 
-	e.class('x-widget')
-	e.class('x-button')
-	e.attrval('tabindex', 0)
+	e.classes = 'x-widget x-button'
 
 	e.icon_div = span({class: 'x-button-icon', style: 'display: none'})
 	e.text_div = span({class: 'x-button-text'})
 	e.add(e.icon_div, e.text_div)
 
-	let icon
-	e.late_property('icon',
-		function() { return icon },
-		function(v) {
-			icon = v
-			if (typeof v == 'string')
-				e.icon_div.attr('class', 'x-button-icon '+v)
-			else
-				e.icon_div.set(v)
-			e.icon_div.show(!!v)
-		}
-	)
+	e.get_text = function()  { return e.text_div.html }
+	e.set_text = function(s) { e.text_div.set(s) }
+	e.prop('text', {default: 'OK'})
 
-	e.late_property('text',
-		function()  { return e.text_div.html },
-		function(s) { e.text_div.set(s) }
-	)
+	e.set_icon = function(v) {
+		if (typeof v == 'string')
+			e.icon_div.attr('class', 'x-button-icon '+v)
+		else
+			e.icon_div.set(v)
+		e.icon_div.show(!!v)
+	}
+	e.prop('icon', {store: 'var'})
 
-	e.late_property('primary', function() {
-		return e.hasclass('primary')
-	}, function(on) {
-		e.class('primary', on)
-	})
+	e.get_primary = function()  { return e.hasclass('primary') }
+	e.set_primary = function(v) { e.class('primary', v) }
+	e.prop('primary', {type: 'bool'})
 
 	e.on('keydown', function keydown(key) {
 		if (key == ' ' || key == 'Enter') {
@@ -1705,17 +1704,6 @@ component('x-button', function(e) {
 		e.fire('action')
 	})
 
-	e.inspect_fields = [
-
-		{name: 'text'},
-		{name: 'icon'},
-		{name: 'primary', type: 'bool'},
-
-		{name: 'grid_area'},
-		{name: 'tabIndex', type: 'number'},
-
-	]
-
 })
 
 // ---------------------------------------------------------------------------
@@ -1724,10 +1712,9 @@ component('x-button', function(e) {
 
 component('x-checkbox', function(e) {
 
-	e.class('x-widget')
-	e.class('x-markbox')
-	e.class('x-checkbox')
-	e.attrval('tabindex', 0)
+	tabindex_widget(e)
+
+	e.classes = 'x-widget x-markbox x-checkbox'
 	e.attrval('align', 'left')
 	e.attr_property('align')
 
@@ -1825,8 +1812,7 @@ component('x-checkbox', function(e) {
 
 component('x-radiogroup', function(e) {
 
-	e.class('x-widget')
-	e.class('x-radiogroup')
+	e.classes = 'x-widget x-radiogroup'
 	e.attrval('align', 'left')
 	e.attr_property('align')
 
@@ -1947,8 +1933,7 @@ function input_widget(e) {
 
 component('x-input', function(e) {
 
-	e.class('x-widget')
-	e.class('x-input')
+	e.classes = 'x-widget x-input'
 
 	e.input = H.input({class: 'x-input-value'})
 	e.inner_label_div = div({class: 'x-input-inner-label'})
@@ -2091,8 +2076,8 @@ component('x-input', function(e) {
 
 component('x-spin-input', function(e) {
 
-	e.class('x-spin-input')
 	input.construct(e)
+	e.classes = 'x-spin-input'
 
 	e.align = 'right'
 
@@ -2239,12 +2224,12 @@ component('x-spin-input', function(e) {
 
 component('x-slider', function(e) {
 
+	tabindex_widget(e)
+
 	e.from = 0
 	e.to = 1
 
-	e.class('x-widget')
-	e.class('x-slider')
-	e.attrval('tabindex', 0)
+	e.classes = 'x-widget x-slider'
 
 	e.val_fill = div({class: 'x-slider-fill x-slider-value-fill'})
 	e.range_fill = div({class: 'x-slider-fill x-slider-range-fill'})
@@ -2390,10 +2375,9 @@ component('x-dropdown', function(e) {
 
 	// view
 
-	e.class('x-widget')
-	e.class('x-input')
-	e.class('x-dropdown')
-	e.attrval('tabindex', 0)
+	tabindex_widget(e)
+
+	e.classes = 'x-widget x-input x-dropdown'
 
 	e.val_div = span({class: 'x-input-value x-dropdown-value'})
 	e.button = span({class: 'x-dropdown-button fa fa-caret-down'})
@@ -2855,16 +2839,20 @@ component('x-menu', function(e) {
 
 component('x-widget-placeholder', function(e) {
 
-	layouted_widget(e)
+	e.default_align_x = 'stretch'
+	e.default_align_y = 'stretch'
+	cssgrid_child_widget(e)
 
-	e.class('x-widget')
-	e.class('x-widget-placeholder')
+	e.classes = 'x-widget x-widget-placeholder'
 
-	let widgets = [
-		['VS', 'vsplit'],
+	let layout_widgets = [
 		['HS', 'hsplit'],
+		['VS', 'vsplit'],
 		['CG', 'cssgrid'],
 		['PL', 'pagelist', true],
+	]
+
+	let form_widgets = [
 		['I' , 'input'],
 		['SI', 'spin_input'],
 		['CB', 'checkbox'],
@@ -2890,18 +2878,27 @@ component('x-widget-placeholder', function(e) {
 		}
 	}
 
-	let i = 1
-	for (let [s, typename, sep] of widgets) {
-		let btn = button({text: s, title: typename, pos_x: i++})
-		btn.class('x-widget-placeholder-button')
-		if (sep)
-			btn.style['margin-right'] = '.5em'
-		e.add(btn)
-		btn.typename = typename
-		btn.action = create_widget
+	function create_widgets(widgets) {
+		e.clear()
+		let i = 1
+		for (let [s, typename, sep] of widgets) {
+			let btn = button({text: s, title: typename, pos_x: i++})
+			btn.class('x-widget-placeholder-button')
+			if (sep)
+				btn.style['margin-right'] = '.5em'
+			e.add(btn)
+			btn.typename = typename
+			btn.action = create_widget
+		}
 	}
 
-	e.serialize = function() {}
+	e.attach = function() {
+		widgets = layout_widgets
+		let pe = e.parent_widget
+		if (pe && pe.accepts_form_widgets)
+			widgets = [].concat(widgets, form_widgets)
+		create_widgets(widgets)
+	}
 
 })
 
@@ -2913,11 +2910,9 @@ component('x-pagelist', function(e) {
 
 	e.default_align_x = 'stretch'
 	e.default_align_y = 'stretch'
-	layouted_widget(e)
+	cssgrid_child_widget(e)
 	serializable_widget(e)
-
-	e.class('x-widget')
-	e.class('x-pagelist')
+	e.classes = 'x-widget x-pagelist'
 
 	e.header = div({class: 'x-pagelist-header'})
 	e.content = div({class: 'x-pagelist-content'})
@@ -3159,21 +3154,16 @@ component('x-vsplit', function(e) {
 
 	e.default_align_x = 'stretch'
 	e.default_align_y = 'stretch'
-	layouted_widget(e)
+	cssgrid_child_widget(e)
 	serializable_widget(e)
 
-	e.class('x-widget')
-	e.class('x-split')
+	e.classes = 'x-widget x-split x-vsplit'
+
+	e.sizer = div({class: 'x-split-sizer'})
 
 	let horiz, left, fixed_pane, auto_pane
 
-	e.init = function() {
-
-		horiz = e.horizontal == true
-
-		e[1] = component.create(or(e[1], widget_placeholder()))
-		e[2] = component.create(or(e[2], widget_placeholder()))
-
+	function setup_panes() {
 		// check which pane is the one with a fixed width.
 		let fixed_pi =
 			((e[1].style[horiz ? 'width' : 'height'] || '').ends('px') && 1) ||
@@ -3188,7 +3178,15 @@ component('x-vsplit', function(e) {
 		e[2].class('x-split-pane', true)
 		e.fixed_pane.class('x-split-pane-fixed')
 		e. auto_pane.class('x-split-pane-auto')
-		e.sizer = div({class: 'x-split-sizer'})
+	}
+
+	e.init = function() {
+
+		horiz = e.horizontal == true
+
+		e[1] = component.create(or(e[1], widget_placeholder()))
+		e[2] = component.create(or(e[2], widget_placeholder()))
+		setup_panes()
 		e.add(e[1], e.sizer, e[2])
 
 		e.class('resizeable', e.resizeable != false)
@@ -3196,100 +3194,103 @@ component('x-vsplit', function(e) {
 			e.sizer.hide()
 	}
 
-	e.on('mousemove', view_mousemove)
-	e.on('mousedown', view_mousedown)
-
-	e.detach = function() {
-		document_mouseup()
-	}
-
 	// controller
 
-	let hit, hit_x, mx0, w0, resist
+	let hit, hit_x, mx0, w0, resizing, resist
 
-	function view_mousemove(rmx, rmy) {
-		if (window.x_widget_dragging)
-			return
-		// hit-test for split resizing.
-		hit = false
-		if (e.client_rect().contains(rmx, rmy)) {
-			// ^^ mouse is not over some scrollbar.
+	e.on('pointermove', function(rmx, rmy) {
+		if (resizing) {
+
 			let mx = horiz ? rmx : rmy
-			let sr = e.sizer.client_rect()
-			let sx1 = horiz ? sr.left  : sr.top
-			let sx2 = horiz ? sr.right : sr.bottom
-			w0 = e.fixed_pane.client_rect()[horiz ? 'width' : 'height']
-			hit_x = mx - sx1
-			hit = abs(hit_x - (sx2 - sx1) / 2) <= 5
-			resist = true
-			mx0 = mx
-		}
-		e.class('resize', hit)
-	}
+			let w
+			if (left) {
+				let fpx1 = e.fixed_pane.client_rect()[horiz ? 'left' : 'top']
+				w = mx - (fpx1 + hit_x)
+			} else {
+				let ex2 = e.client_rect()[horiz ? 'right' : 'bottom']
+				let sw = e.sizer[horiz ? 'clientWidth' : 'clientHeight']
+				w = ex2 - mx + hit_x - sw
+			}
 
-	function view_mousedown() {
+			resist = resist && abs(mx - mx0) < 20
+			if (resist)
+				w = w0 + (w - w0) * .2 // show resistance
+
+			e.fixed_pane[horiz ? 'w' : 'h'] = w
+
+			e.tooltip.text = round(w)
+
+			if (e.collapsable != false) {
+				let w1 = e.fixed_pane.client_rect()[horiz ? 'width' : 'height']
+
+				let pminw = e.fixed_pane.style[horiz ? 'min-width' : 'min-height']
+				pminw = pminw ? parseInt(pminw) : 0
+
+				if (!e.fixed_pane.hasclass('collapsed')) {
+					if (w < min(max(pminw, 20), 30) - 5)
+						e.fixed_pane.class('collapsed', true)
+				} else {
+					if (w > max(pminw, 30))
+						e.fixed_pane.class('collapsed', false)
+				}
+			}
+
+			return false
+
+		} else {
+
+			// hit-test for split resizing.
+			hit = false
+			if (e.client_rect().contains(rmx, rmy)) {
+				// ^^ mouse is not over some scrollbar.
+				let mx = horiz ? rmx : rmy
+				let sr = e.sizer.client_rect()
+				let sx1 = horiz ? sr.left  : sr.top
+				let sx2 = horiz ? sr.right : sr.bottom
+				w0 = e.fixed_pane.client_rect()[horiz ? 'width' : 'height']
+				hit_x = mx - sx1
+				hit = abs(hit_x - (sx2 - sx1) / 2) <= 5
+				resist = true
+				mx0 = mx
+			}
+			e.class('resize', hit)
+
+			if (hit)
+				return false
+
+		}
+	})
+
+	e.on('pointerdown', function(ev) {
 		if (!hit)
 			return
-		e.class('resizing')
-		window.x_widget_dragging = true // view_mousemove barrier.
-		document.on('mousemove', document_mousemove)
-		document.on('mouseup'  , document_mouseup)
 
 		e.tooltip = e.tooltip || tooltip({
 			side: horiz ? (left ? 'right' : 'left') : (left ? 'bottom' : 'top'),
 		})
 		e.tooltip.target = e.sizer
-	}
 
-	function document_mousemove(rmx, rmy) {
-
-		let mx = horiz ? rmx : rmy
-		let w
-		if (left) {
-			let fpx1 = e.fixed_pane.client_rect()[horiz ? 'left' : 'top']
-			w = mx - (fpx1 + hit_x)
-		} else {
-			let ex2 = e.client_rect()[horiz ? 'right' : 'bottom']
-			let sw = e.sizer[horiz ? 'clientWidth' : 'clientHeight']
-			w = ex2 - mx + hit_x - sw
-		}
-
-		resist = resist && abs(mx - mx0) < 20
-		if (resist)
-			w = w0 + (w - w0) * .2 // show resistance
-
-		e.fixed_pane[horiz ? 'w' : 'h'] = w
-
-		e.tooltip.text = round(w)
-
-		if (e.collapsable != false) {
-			let w1 = e.fixed_pane.client_rect()[horiz ? 'width' : 'height']
-
-			let pminw = e.fixed_pane.style[horiz ? 'min-width' : 'min-height']
-			pminw = pminw ? parseInt(pminw) : 0
-
-			if (!e.fixed_pane.hasclass('collapsed')) {
-				if (w < min(max(pminw, 20), 30) - 5)
-					e.fixed_pane.class('collapsed', true)
-			} else {
-				if (w > max(pminw, 30))
-					e.fixed_pane.class('collapsed', false)
-			}
-		}
-
+		resizing = true
+		e.class('resizing')
+		this.setPointerCapture(ev.pointerId)
 		return false
-	}
+	})
 
-	function document_mouseup() {
+	e.on('pointerup', function(ev) {
+		if (!resizing)
+			return
+
+		this.releasePointerCapture(ev.pointerId)
+		e.class('resizing', false)
+		resizing = false
+
 		if (resist) // reset width
 			e[1][horiz ? 'w' : 'h'] = w0
-		e.class('resizing', false)
-		window.x_widget_dragging = null
-		document.off('mousemove', document_mousemove)
-		document.off('mouseup'  , document_mouseup)
 		if (e.tooltip)
 			e.tooltip.target = false
-	}
+
+		return false
+	})
 
 	// xmodule protocol -------------------------------------------------------
 
@@ -3304,6 +3305,7 @@ component('x-vsplit', function(e) {
 	e.replace_widget = function(old_widget, new_widget) {
 		e[widget_index(old_widget)] = new_widget
 		old_widget.parent.replace(old_widget, new_widget)
+		setup_panes()
 		e.fire('widget_tree_changed')
 	}
 
@@ -3328,6 +3330,7 @@ component('x-vsplit', function(e) {
 component('x-hsplit', function(e) {
 	e.horizontal = true
 	vsplit.construct(e)
+	e.classes = 'x-hsplit'
 })
 
 // ---------------------------------------------------------------------------
@@ -3336,8 +3339,7 @@ component('x-hsplit', function(e) {
 
 component('x-toaster', function(e) {
 
-	e.class('x-widget')
-	e.class('x-toaster')
+	e.classes = 'x-widget x-toaster'
 
 	e.tooltips = new Set()
 
@@ -3478,8 +3480,9 @@ component('x-action-band', function(e) {
 
 component('x-dialog', function(e) {
 
+	tabindex_widget(e)
+
 	e.classes = 'x-widget x-dialog'
-	e.attrval('tabindex', 0)
 
 	e.x_button = true
 	e.footer = 'ok:ok cancel:cancel'
@@ -3543,16 +3546,14 @@ component('x-dialog', function(e) {
 
 component('x-toolbox', function(e) {
 
+	tabindex_widget(e)
+
 	e.classes = 'x-widget x-toolbox'
-	e.attrval('tabindex', 0)
 
 	let xbutton = div({class: 'x-toolbox-xbutton fa fa-times'})
 	let title_div = div({class: 'x-toolbox-title'})
 	e.titlebar = div({class: 'x-toolbox-titlebar'}, title_div, xbutton)
 	e.add(e.titlebar)
-
-	e.hide()
-	document.body.add(e)
 
 	e.init = function() {
 		title_div.set(e.title)
@@ -3563,6 +3564,8 @@ component('x-toolbox', function(e) {
 		e.add(content)
 		e.content = content
 
+		e.hide()
+		document.body.add(e)
 	}
 
 	{
@@ -3595,6 +3598,10 @@ component('x-toolbox', function(e) {
 	xbutton.on('pointerdown', function() {
 		e.hide()
 		return false
+	})
+
+	e.on('attr_changed', function() {
+		e.fire('layout_changed')
 	})
 
 })
