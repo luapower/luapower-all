@@ -1114,29 +1114,23 @@
 /* split ------------------------------------------------------------------ */
 
 .x-split {
-
 	/* layouting */
 	display: flex;
 	flex-wrap: nowrap;
 	align-items: stretch;
 	align-content: stretch;
 	justify-content: stretch;
+}
+.x-split[orientation=horizontal] { flex-direction: row; }
+.x-split[orientation=vertical] { flex-direction: column; }
 
-	height: 100%;  /* width: 100% is covered by flex-grow: 1 */
-}
-.x-split.horizontal { flex-direction: row; }
-.x-split.vertical   { flex-direction: column; }
-
-.x-split.resize {
-	cursor: ns-resize;
-}
-.x-split.horizontal.resize {
-	cursor: ew-resize;
-}
+.x-split[orientation=horizontal].resize { flex-direction: row; cursor: ew-resize; }
+.x-split[orientation=vertical].resize { flex-direction: column; cursor: ns-resize; }
 
 .x-split-pane {
-	min-width : 0;                 /* required: content can't overflow the split-view */
-	min-height: 0;                 /* required: content can't overflow the split-view */
+	display: grid;
+	min-width : 0;    /* required: content can't overflow the split-view */
+	min-height: 0;    /* required: content can't overflow the split-view */
 	overflow: auto;
 }
 
@@ -1144,11 +1138,11 @@
 	flex-grow: 1;  /* expand-to-fit container */
 }
 
-.x-split.horizontal > .x-split-pane.collapsed {
+.x-split[orientation=horizontal] > .x-split-pane.collapsed {
 	min-width: 0 !important;
 	width: 0 !important;
 }
-.x-split.vertical > .x-split-pane.collapsed {
+.x-split[orientation=vertical] > .x-split-pane.collapsed {
 	min-height: 0 !important;
 	height: 0 !important;
 }
@@ -1159,7 +1153,6 @@
 
 	/* layouting */
 	display: flex;
-	flex-direction: column;
 	align-items: center;
 	justify-content: center;
 
@@ -1170,9 +1163,8 @@
 	background-color: var(--x-item-bg-only-bg-color);
 
 }
-.x-split.horizontal > .x-split-sizer {
-	flex-direction: row;
-}
+.x-split[orientation=vertical] > .x-split-sizer { flex-direction: row; }
+.x-split[orientation=horizontal] > .x-split-sizer { flex-direction: row; }
 
 .x-split.resize > .x-split-sizer {
 	background-color: var(--x-item-bg-only-hover-bg-color);
@@ -1187,12 +1179,12 @@
 	border: 1.25px #999;
 }
 
-.x-split.horizontal > .x-split-sizer::before {
+.x-split[orientation=horizontal] > .x-split-sizer::before {
 	width: 4px;
 	height: 24px;
 	border-style: none solid;
 }
-.x-split.vertical > .x-split-sizer::before {
+.x-split[orientation=vertical] > .x-split-sizer::before {
 	width: 24px;
 	height: 4px;
 	border-style: solid none;
@@ -1537,11 +1529,11 @@
 	border-color: #999;
 	border-style: solid;
 	border-bottom-width: 1px;
-	height: calc(3.5em + 1px);
+	min-height: calc(3.5em + 1px);
 }
 
 .x-grid-header.with-filters {
-	height: calc(3.5em + 1px + .9em);
+	min-height: calc(3.5em + 1px + .9em);
 }
 
 .x-vgrid > .x-grid-header {

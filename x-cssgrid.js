@@ -1,9 +1,9 @@
 
 component('x-cssgrid', function(e) {
 
-	e.default_align_x = 'stretch'
-	e.default_align_y = 'stretch'
 	cssgrid_child_widget(e)
+	e.align_x = 'stretch'
+	e.align_y = 'stretch'
 	serializable_widget(e)
 	e.classes = 'x-widget x-cssgrid'
 

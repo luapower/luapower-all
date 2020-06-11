@@ -1388,8 +1388,8 @@ function cssgrid_child_widget(e) {
 	e.prop('span_x', {type: 'number', default: 1})
 	e.prop('span_y', {type: 'number', default: 1})
 
-	e.prop('align_x', {style: 'justify-self', type: 'enum', enum_values: ['start', 'end', 'center', 'stretch'], default: e.default_align_x || 'center'})
-	e.prop('align_y', {style: 'align-self'  , type: 'enum', enum_values: ['start', 'end', 'center', 'stretch'], default: e.default_align_y || 'center'})
+	e.prop('align_x', {style: 'justify-self', type: 'enum', enum_values: ['start', 'end', 'center', 'stretch'], default: 'center'})
+	e.prop('align_y', {style: 'align-self'  , type: 'enum', enum_values: ['start', 'end', 'center', 'stretch'], default: 'center'})
 
 }
 
@@ -2839,17 +2839,18 @@ component('x-menu', function(e) {
 
 component('x-widget-placeholder', function(e) {
 
-	e.default_align_x = 'stretch'
-	e.default_align_y = 'stretch'
 	cssgrid_child_widget(e)
+	e.align_x = 'stretch'
+	e.align_y = 'stretch'
 
 	e.classes = 'x-widget x-widget-placeholder'
 
-	let layout_widgets = [
-		['HS', 'hsplit'],
-		['VS', 'vsplit'],
+	let stretched_widgets = [
+		['SP', 'split'],
 		['CG', 'cssgrid'],
 		['PL', 'pagelist', true],
+		['L', 'listbox'],
+		['G', 'grid', true],
 	]
 
 	let form_widgets = [
@@ -2860,8 +2861,6 @@ component('x-widget-placeholder', function(e) {
 		['LD', 'list_dropdown'],
 		['GD', 'grid_dropdown'],
 		['DD', 'date_dropdown', true],
-		['L', 'listbox'],
-		['G', 'grid', true],
 		['B', 'button'],
 	]
 
@@ -2893,7 +2892,7 @@ component('x-widget-placeholder', function(e) {
 	}
 
 	e.attach = function() {
-		widgets = layout_widgets
+		widgets = stretched_widgets
 		let pe = e.parent_widget
 		if (pe && pe.accepts_form_widgets)
 			widgets = [].concat(widgets, form_widgets)
@@ -2908,9 +2907,9 @@ component('x-widget-placeholder', function(e) {
 
 component('x-pagelist', function(e) {
 
-	e.default_align_x = 'stretch'
-	e.default_align_y = 'stretch'
 	cssgrid_child_widget(e)
+	e.align_x = 'stretch'
+	e.align_y = 'stretch'
 	serializable_widget(e)
 	e.classes = 'x-widget x-pagelist'
 
@@ -3150,51 +3149,57 @@ component('x-pagelist', function(e) {
 // split-view
 // ---------------------------------------------------------------------------
 
-component('x-vsplit', function(e) {
+component('x-split', function(e) {
 
-	e.default_align_x = 'stretch'
-	e.default_align_y = 'stretch'
 	cssgrid_child_widget(e)
+	e.align_x = 'stretch'
+	e.align_y = 'stretch'
 	serializable_widget(e)
+	e.classes = 'x-widget x-split'
 
-	e.classes = 'x-widget x-split x-vsplit'
-
+	e.pane1 = div({class: 'x-split-pane'})
+	e.pane2 = div({class: 'x-split-pane'})
 	e.sizer = div({class: 'x-split-sizer'})
+	e.add(e.pane1, e.sizer, e.pane2)
 
-	let horiz, left, fixed_pane, auto_pane
+	let horiz, left
 
-	function setup_panes() {
-		// check which pane is the one with a fixed width.
-		let fixed_pi =
-			((e[1].style[horiz ? 'width' : 'height'] || '').ends('px') && 1) ||
-			((e[2].style[horiz ? 'width' : 'height'] || '').ends('px') && 2) || 1
-		e.fixed_pane = e[  fixed_pi]
-		e. auto_pane = e[3-fixed_pi]
-		left = fixed_pi == 1
-
-		e.class('horizontal',  horiz)
-		e.class(  'vertical', !horiz)
-		e[1].class('x-split-pane', true)
-		e[2].class('x-split-pane', true)
+	function update_view() {
+		horiz = e.orientation == 'horizontal'
+		left = e.fixed_side == 'first'
+		e.fixed_pane = left ? e.pane1 : e.pane2
+		e.auto_pane  = left ? e.pane2 : e.pane1
 		e.fixed_pane.class('x-split-pane-fixed')
-		e. auto_pane.class('x-split-pane-auto')
+		e.fixed_pane.class('x-split-pane-auto', false)
+		e.auto_pane.class('x-split-pane-auto')
+		e.auto_pane.class('x-split-pane-fixed', false)
+		e.class('resizeable', e.resizeable)
+		e.sizer.show(e.resizeable)
+		e.fixed_pane[horiz ? 'h' : 'w'] = null
+		e.fixed_pane[horiz ? 'w' : 'h'] = e.fixed_size
+		e.auto_pane.w = null
+		e.auto_pane.h = null
 	}
+
+	e.set_orientation = update_view
+	e.set_fixed_side = update_view
+	e.set_resizeable = update_view
+	e.set_fixed_size = update_view
+
+	e.prop('orientation', {attr: 'orientation', type: 'enum', enum_values: ['horizontal', 'vertical'], default: 'horizontal', noinit: true})
+	e.prop('fixed_side',  {attr: 'fixed-side', type: 'enum', enum_values: ['first', 'second'], default: 'first', noinit: true})
+	e.prop('resizeable',  {attr: 'resizeable', type: 'bool', default: true, noinit: true})
+	e.prop('fixed_size', {store: 'var', type: 'number', default: 200, noinit: true})
 
 	e.init = function() {
-
-		horiz = e.horizontal == true
-
 		e[1] = component.create(or(e[1], widget_placeholder()))
 		e[2] = component.create(or(e[2], widget_placeholder()))
-		setup_panes()
-		e.add(e[1], e.sizer, e[2])
-
-		e.class('resizeable', e.resizeable != false)
-		if (e.resizeable == false)
-			e.sizer.hide()
+		e.pane1.set(e[1])
+		e.pane2.set(e[2])
+		update_view()
 	}
 
-	// controller
+	// resizing ---------------------------------------------------------------
 
 	let hit, hit_x, mx0, w0, resizing, resist
 
@@ -3216,7 +3221,7 @@ component('x-vsplit', function(e) {
 			if (resist)
 				w = w0 + (w - w0) * .2 // show resistance
 
-			e.fixed_pane[horiz ? 'w' : 'h'] = w
+			e.fixed_size = round(w)
 
 			e.tooltip.text = round(w)
 
@@ -3265,9 +3270,8 @@ component('x-vsplit', function(e) {
 		if (!hit)
 			return
 
-		e.tooltip = e.tooltip || tooltip({
-			side: horiz ? (left ? 'right' : 'left') : (left ? 'bottom' : 'top'),
-		})
+		e.tooltip = e.tooltip || tooltip()
+		e.tooltip.side = horiz ? (left ? 'left' : 'right') : (left ? 'top' : 'bottom')
 		e.tooltip.target = e.sizer
 
 		resizing = true
@@ -3285,7 +3289,8 @@ component('x-vsplit', function(e) {
 		resizing = false
 
 		if (resist) // reset width
-			e[1][horiz ? 'w' : 'h'] = w0
+			e.fixed_size = w0
+
 		if (e.tooltip)
 			e.tooltip.target = false
 
@@ -3305,18 +3310,13 @@ component('x-vsplit', function(e) {
 	e.replace_widget = function(old_widget, new_widget) {
 		e[widget_index(old_widget)] = new_widget
 		old_widget.parent.replace(old_widget, new_widget)
-		setup_panes()
+		update_view()
 		e.fire('widget_tree_changed')
 	}
 
 	e.select_child_widget = function(widget) {
 		// TODO
 	}
-
-	e.inspect_fields = [
-		{name: 'resizeable', type: 'bool'},
-		{name: 'grid_area'},
-	]
 
 	e.serialize = function() {
 		let t = e.serialize_fields()
@@ -3325,12 +3325,6 @@ component('x-vsplit', function(e) {
 		return t
 	}
 
-})
-
-component('x-hsplit', function(e) {
-	e.horizontal = true
-	vsplit.construct(e)
-	e.classes = 'x-hsplit'
 })
 
 // ---------------------------------------------------------------------------

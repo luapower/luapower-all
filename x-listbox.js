@@ -5,9 +5,9 @@
 
 component('x-listbox', function(e) {
 
-	e.default_align_x = 'stretch'
-	e.default_align_y = 'stretch'
 	rowset_widget(e)
+	e.align_x = 'stretch'
+	e.align_y = 'stretch'
 	tabindex_widget(e)
 	e.classes = 'x-widget x-focusable x-listbox'
 

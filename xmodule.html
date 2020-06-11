@@ -117,13 +117,25 @@ prop_inspector = component('x-prop-inspector', function(e) {
 		init()
 	}
 
+	function bind(on) {
+		document.on('prop_changed', prop_changed, on)
+	}
+	e.on('attach', function() { bind(true) })
+	e.on('detach', function() { bind(false) })
+
 	e.rowset.on('val_changed', function(row, field, val) {
 		e.widget[field.name] = val
 	})
 
-	function prop_changed(k, v) {
-		if (!e.focused_row)
-			e.focus_cell(0)
+	function prop_changed(k, v, v0, ev) {
+		tree_tb.widget = ev.target
+		if (e.widget != ev.target) {
+			print('could not select widget in tree')
+			return
+		}
+		let field = e.rowset.field(k)
+		e.focus_cell(0, e.field_index(field))
+		e.rowset.reset_val(e.focused_row, field, v)
 	}
 
 	e.on('exit_edit', function(ri, fi) {
@@ -135,10 +147,10 @@ prop_inspector = component('x-prop-inspector', function(e) {
 	e.property('widget',
 		function() { return widget },
 		function(v) {
-			if (widget)
-				widget.off('prop_changed', prop_changed)
+			if (v == widget)
+				return
 			widget = v
-			if (!e.__init_later)
+			if (e.initialized)
 				init_rowset(v)
 		}
 	)
@@ -153,7 +165,6 @@ prop_inspector = component('x-prop-inspector', function(e) {
 				res.fields.push(widget.props[prop])
 				vals.push(widget[prop])
 			}
-			widget.on('prop_changed', prop_changed)
 		}
 		e.rowset.reset(res)
 	}
@@ -256,6 +267,17 @@ function tree_toolbox(tb_opt) {
 	document.on('widget_tree_changed', function() {
 		rs.reset({rows: widget_tree_rows()})
 	})
+
+	function get_widget() {
+		return e.focused_row && e.focused_row[0]
+	}
+	function set_widget(widget) {
+		let row = rs.lookup(rs.field(0), widget)
+		let ri = g.row_index(row)
+		g.focus_cell(ri, 0)
+	}
+	tb.property('widget', get_widget, set_widget)
+
 	return tb
 }
 

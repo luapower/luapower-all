@@ -534,9 +534,8 @@ function component(tag, cons) {
 			update(this, ...args)
 
 			// finish configuring the object, now that user options are in.
-			this.initializing = true
 			this.init()
-			this.initializing = false
+			this.initialized = true
 
 			// call the setters again, this time without the barrier.
 			this.__init_later = null
@@ -589,6 +588,7 @@ method(HTMLElement, 'prop', function(prop, opt) {
 	let getter = 'get_'+prop
 	let setter = 'set_'+prop
 	let type = opt.type
+	let noinit = opt.noinit
 	opt.name = prop
 	if (!this[setter])
 		this[setter] = noop
@@ -602,7 +602,7 @@ method(HTMLElement, 'prop', function(prop, opt) {
 			if (v1 === v0)
 				return
 			v = v1
-			if (this.initializing && opt.noinit)
+			if (noinit && !this.initialized)
 				return
 			this[setter](v, v0)
 			this.fire('prop_changed', prop, v, v0)
@@ -624,7 +624,7 @@ method(HTMLElement, 'prop', function(prop, opt) {
 					this.setAttribute(attr, '')
 				else
 					this.removeAttribute(attr)
-				if (this.initializing && opt.noinit)
+				if (noinit && !this.initialized)
 					return
 				this[setter](v, v0)
 				this.fire('prop_changed', prop, v, v0)
@@ -640,7 +640,7 @@ method(HTMLElement, 'prop', function(prop, opt) {
 				if (v == v0)
 					return
 				this.setAttribute(attr, v+'')
-				if (this.initializing && opt.noinit)
+				if (noinit && !this.initialized)
 					return
 				this[setter](v, v0)
 				this.fire('prop_changed', prop, v, v0)
@@ -656,7 +656,7 @@ method(HTMLElement, 'prop', function(prop, opt) {
 				if (v == v0)
 					return
 				this.setAttribute(attr, v)
-				if (this.initializing && opt.noinit)
+				if (noinit && !this.initialized)
 					return
 				this[setter](v, v0)
 				this.fire('prop_changed', prop, v, v0)
@@ -680,7 +680,7 @@ method(HTMLElement, 'prop', function(prop, opt) {
 			if (v == v0)
 				return
 			this.style[style] = format(v)
-			if (this.initializing && opt.noinit)
+			if (noinit && !this.initialized)
 				return
 			v = get.call(this) // take it again (browser only sets valid values)
 			if (v == v0)
@@ -696,7 +696,7 @@ method(HTMLElement, 'prop', function(prop, opt) {
 			let v0 = this[getter]()
 			if (v === v0)
 				return
-			if (this.initializing && opt.noinit)
+			if (noinit && !this.initialized)
 				return
 			this[setter](v, v0)
 			this.fire('prop_changed', prop, v, v0)
