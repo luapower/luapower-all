@@ -126,3 +126,4 @@ stack traceback:
 	./webb_nginx.lua:37: in main chunk, client: 195.135.247.27, server: , request: "GET /rowset.json/columns?params=%7B%7D HTTP/1.1", host: "168.235.102.143:8000", referrer: "http://168.235.102.143:8000/"
 2020/06/08 15:42:00 [error] 21298#0: *1512 [lua] webb_nginx.lua:17: try_call(): 404, client: 195.135.247.27, server: , request: "GET /favicon.ico HTTP/1.1", host: "168.235.102.143:8000", referrer: "http://168.235.102.143:8000/"
 2020/06/12 11:14:35 [error] 21298#0: *1605 [lua] webb_nginx.lua:17: try_call(): 404, client: 82.221.105.6, server: , request: "GET /favicon.ico HTTP/1.1", host: "168.235.102.143:8000"
+2020/06/12 14:01:36 [error] 21298#0: *1613 [lua] webb_nginx.lua:17: try_call(): 404, client: 71.6.146.186, server: , request: "GET /favicon.ico HTTP/1.1", host: "168.235.102.143:8000"
