@@ -212,6 +212,8 @@ body.on('keydown', function(key, shift, ctrl) {
 root_widget = widget_placeholder()
 body.add(root_widget)
 
+xmodule_load()
+
 function properties_toolbox(tb_opt, insp_opt) {
 	let pg = prop_inspector(insp_opt)
 	let tb = toolbox(update({

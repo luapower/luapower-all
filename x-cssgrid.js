@@ -389,8 +389,8 @@ component('x-cssgrid', function(e) {
 	function update_item_overlay(overlay, item) {
 		let show = !!item && e.editing
 		if (show) {
-			overlay.x = item.offsetLeft
-			overlay.y = item.offsetTop
+			overlay.x = item.style.left
+			overlay.y = item.style.top
 			overlay.w = item.offsetWidth
 			overlay.h = item.offsetHeight
 		}
@@ -429,14 +429,25 @@ component('x-cssgrid', function(e) {
 	function pop_out_item() {
 		if (hit_item.parent != e)
 			return
-
-		update_item_ph()
+		print('pop')
 
 		// fixate the size of the poped out item and keep the old values.
 		hit_item._w = hit_item.style.width
 		hit_item._h = hit_item.style.height
+		hit_item._pos_x = hit_item.pos_x
+		hit_item._pos_y = hit_item.pos_y
+		hit_item._span_x = hit_item.span_x
+		hit_item._span_y = hit_item.span_y
+		hit_item._margin_x = hit_item.style['margin-left']
+		hit_item._margin_y = hit_item.style['margin-top']
+		hit_item.style['margin-left'] = 0
+		hit_item.style['margin-top' ] = 0
+		hit_item.pos_x = 1
+		hit_item.pos_y = 1
 		hit_item.w = hit_item.offsetWidth
 		hit_item.h = hit_item.offsetHeight
+
+		update_item_ph()
 
 		hit_item.remove()
 		hit_item_overlay.remove()
@@ -454,12 +465,19 @@ component('x-cssgrid', function(e) {
 	function push_in_item() {
 		if (hit_item.parent == e)
 			return
+		print('push')
 		item_ph.remove()
 
 		hit_item.x = null
 		hit_item.y = null
 		hit_item.w = hit_item._w
 		hit_item.h = hit_item._h
+		hit_item.pos_x = hit_item._pos_x
+		hit_item.pos_y = hit_item._pos_y
+		hit_item.span_x = hit_item._span_x
+		hit_item.span_y = hit_item._span_y
+		hit_item.style['margin-left'] = hit_item._margin_x
+		hit_item.style['margin-top' ] = hit_item._margin_y
 		hit_item.style.position = null
 		hit_item_overlay.style.position = null
 		focused_item_overlay.style.position = null
@@ -579,9 +597,9 @@ component('x-cssgrid', function(e) {
 				(i < i1 || i >= i2) ||
 				(j < j1 || j >= j2)
 			if (can_move_item) {
-				set_span(hit_item, 'column', i, i+1)
-				set_span(hit_item, 'row'   , j, j+1)
-				update_item_ph()
+				//set_span(hit_item, 'column', i, i+1)
+				//set_span(hit_item, 'row'   , j, j+1)
+				//update_item_ph()
 			}
 
 			raf(update)
