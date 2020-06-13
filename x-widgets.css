@@ -1032,6 +1032,7 @@
 	display: flex;
 	flex-flow: column;
 	position: relative;
+	min-height: 0;  /* don't let the content make the pagelist itself overflow */
 }
 
 .x-pagelist-header {
@@ -1047,6 +1048,7 @@
 .x-pagelist-content {
 	flex: 1;
 	display: grid;
+	min-height: 0;  /* don't let the content make the pagelist itself overflow */
 }
 
 .x-pagelist-item {
@@ -1194,7 +1196,6 @@
 
 .x-cssgrid {
 	position: relative;
-	height: 100%;
 
 	display: grid;
 	grid-gap: 0px;
@@ -1550,10 +1551,6 @@
 	height: 100%;
 }
 
-.x-vgrid > .x-grid-header > .x-grid-header-cell {
-
-}
-
 .x-grid-header-cell-table {
 	width: 100%;               /* required: expand to fit column width */
 	table-layout: fixed;       /* required: don't expand based on content */
@@ -1606,6 +1603,8 @@
 .x-grid-cells-view {
 	overflow: auto;            /* required: show scrollbars as needed */
 	position: relative;        /* required: anchor rows div */
+	min-height: 0;
+	flex: 1;
 }
 
 .x-grid-cells-ct {
@@ -1653,7 +1652,7 @@
 .x-grid.col-resize {
 	cursor: ew-resize;
 }
-.x-grid:not(.col-resize) .x-grid-header-cell {
+.x-grid:not(.col-resize) .x-grid-header-cell-table {
 	cursor: pointer;           /* required: resizing area is underneath */
 }
 

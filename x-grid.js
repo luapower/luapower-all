@@ -30,6 +30,8 @@ component('x-grid', function(e) {
 	e.can_reorder_fields = true
 	e.enter_edit_on_click = false
 	e.exit_edit_on_escape = true
+	e.exit_edit_on_enter = true
+	e.focus_cell_on_click_header = false
 
 	// context menu features
 	e.enable_context_menu = true
@@ -38,14 +40,15 @@ component('x-grid', function(e) {
 	e.can_change_fields_visibility = true
 
 	let horiz = true
-	e.class('x-hgrid', horiz)
-	e.property('vertical',
-		function() { return !horiz },
-		function(v) {
-			horiz = !v
-			e.class('x-hgrid',  horiz)
-			e.class('x-vgrid', !horiz)
-		})
+	e.get_vertical = function() { return !horiz }
+	e.set_vertical = function(v) {
+		horiz = !v
+		e.class('x-hgrid',  horiz)
+		e.class('x-vgrid', !horiz)
+		e.init_fields()
+		e.init_rows()
+	}
+	e.prop('vertical', {type: 'bool'})
 
 	e.header       = div({class: 'x-grid-header'})
 	e.cells        = div({class: 'x-grid-cells'})
@@ -97,7 +100,7 @@ component('x-grid', function(e) {
 			let free_w = total_free_w * (min_col_w / cols_w)
 			let col_w = floor(min_col_w + free_w)
 			if (fi == e.fields.length - 1) {
-				let remaining_w = cw - col_x - 1 // -1 to avoid flickering scrollbars.
+				let remaining_w = cw - col_x
 				if (total_free_w > 0)
 					// set width exactly to prevent showing the horizontal scrollbar.
 					col_w = remaining_w
@@ -128,7 +131,9 @@ component('x-grid', function(e) {
 			col_x += col_w
 		}
 
-		e.header.w = e.fields.length ? col_x : cw
+		let header_w = e.fields.length ? col_x : cw
+		e.header.w = header_w
+		e.cells_ct.w = header_w
 	}
 
 	function update_filter_width(fd, fi) {
@@ -140,10 +145,14 @@ component('x-grid', function(e) {
 
 		if (horiz) {
 
+			// these must be reset when changing from !horiz to horiz.
+			e.header.w = null
+			e.header.h = null
+			e.cells.x = null
+			e.cells_view.w = null
+
 			e.cells_h = e.cell_h * e.rows.length
 
-			e.header.h = null // auto
-			e.cells_view.h = 0 // measure the header height
 			let client_h = e.clientHeight
 			let border_h = e.offsetHeight - client_h
 			e.header_h = e.header.offsetHeight
@@ -163,10 +172,8 @@ component('x-grid', function(e) {
 			if (e.auto_h)
 				e.h = e.cells_h + e.header_h + border_h
 
-			e.cells_view_h = client_h - e.header_h
+			e.cells_view_h = floor(e.cells_view.client_rect().height)
 			e.cells_ct.h = max(1, e.cells_h) // need at least 1px to show scrollbar.
-			e.cells_ct.w = e.header.offsetWidth
-			e.cells_view.h = e.cells_view_h
 			e.visible_row_count = floor(e.cells_view_h / e.cell_h) + 2
 			e.page_row_count = floor(e.cells_view_h / e.cell_h)
 
@@ -356,6 +363,12 @@ component('x-grid', function(e) {
 		}
 	}
 
+	// detect w/h changes from resizing made with css 'resize: both'.
+	e.on('attr_changed', function(mutations) {
+		if (mutations[0].attributeName == 'style')
+			layout_changed()
+	})
+
 	// rendering --------------------------------------------------------------
 
 	e.init_fields = function() {
@@ -376,6 +389,7 @@ component('x-grid', function(e) {
 			e2.attr('align', 'right')
 			let title_table = H.table({class: 'x-grid-header-cell-table'}, H.tr(0, e1, e2))
 			let hcell = div({class: 'x-grid-header-cell'}, title_table)
+			hcell.fi = fi
 			hcell.sort_icon = sort_icon
 			hcell.sort_icon_pri = sort_icon_pri
 			e.header.add(hcell)
@@ -954,6 +968,8 @@ component('x-grid', function(e) {
 		} else if (hit.state == 'col_dragging') {
 			if (e.can_sort_rows)
 				e.set_order_by_dir(e.fields[hit.fi], 'toggle', ev.shiftKey)
+			else if (e.focus_cell_on_click_header)
+				e.focus_cell(true, hit.fi)
 			hit.state = null
 			return false
 		} else if (hit.state == 'col_moving') {
@@ -970,7 +986,7 @@ component('x-grid', function(e) {
 			return
 
 		let cell = ev.target.closest('.x-grid-cell')
-		let indent = ev.target.closest('.x-grid-cell-indent')
+		let over_indent = ev.target.closest('.x-grid-cell-indent')
 
 		if (!e.hasfocus)
 			e.focus()
@@ -982,28 +998,26 @@ component('x-grid', function(e) {
 			e.focused_row_index   == cell.ri &&
 			e.focused_field_index == cell.fi
 
-		if (indent)
+		if (over_indent)
 			e.toggle_collapsed(cell.ri)
 
-		if (!already_on_it)
-			if (e.focus_cell(cell.ri, cell.fi, 0, 0, {must_not_move_row: true, input: e}))
+		if (e.focus_cell(cell.ri, cell.fi, 0, 0, {
+			must_not_move_row: true,
+			enter_edit: e.enter_edit_on_click || already_on_it,
+			focus_editor: true,
+			editor_state: 'select_all',
+			input: e,
+		}))
+			if (!already_on_it)
 				e.pick_val()
-			else
-				return
-
-		if (!indent)
-			if (e.enter_edit_on_click || already_on_it)
-				// TODO: instead of `select_all`, put the caret where the mouse is.
-				e.enter_edit('select_all')
 
 		return false
 
 	})
 
 	e.on('contextmenu', function(ev) {
-		let hcell = ev.target.closest('.x-grid-header-cell')
-		if (!hcell) return
-		context_menu_popup(hcell.index, ev.clientX, ev.clientY)
+		let cell = ev.target.closest('.x-grid-header-cell') || ev.target.closest('.x-grid-cell')
+		context_menu_popup(cell && cell.fi, ev.clientX, ev.clientY)
 		return false
 	})
 
@@ -1117,7 +1131,7 @@ component('x-grid', function(e) {
 				e.pick_val()
 			} else if (!e.editor) {
 				e.enter_edit('select_all')
-			} else if (e.exit_edit()) {
+			} else if (e.exit_edit_on_enter && e.exit_edit()) {
 				if (e.auto_advance == 'next_row')
 					e.focus_cell(true, true, 1, 0, {editor_state: 'select_all', input: e})
 				else if (e.auto_advance == 'next_cell')
@@ -1227,6 +1241,15 @@ component('x-grid', function(e) {
 				},
 				separator: true,
 			})
+
+		items.push({
+			text: S('vertical_grid', 'Show as Vertical Grid'),
+			checked: e.vertical,
+			action: function(item) {
+				e.vertical = item.checked
+			},
+			separator: true,
+		})
 
 		if (e.can_change_header_visibility)
 			items.push({

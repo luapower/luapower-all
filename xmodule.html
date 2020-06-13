@@ -102,11 +102,13 @@ prop_inspector = component('x-prop-inspector', function(e) {
 	e.exit_edit_on_lost_focus = false
 	e.can_sort_rows = false
 	e.enable_context_menu = false
+	e.focus_cell_on_click_header = true
 
 	// prevent getting out of edit mode.
 	e.auto_edit_first_cell = true
 	e.enter_edit_on_click = true
 	e.exit_edit_on_escape = false
+	e.exit_edit_on_enter = false
 	e.stay_in_edit_mode = true
 
 	e.rowset = rowset({
@@ -130,6 +132,7 @@ prop_inspector = component('x-prop-inspector', function(e) {
 	})
 
 	function prop_changed(k, v, v0, ev) {
+		return // TODO
 		tree_tb.widget = ev.target
 		if (e.widget != ev.target) {
 			print('could not select widget in tree')

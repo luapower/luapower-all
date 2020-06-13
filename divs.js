@@ -299,8 +299,8 @@ let installers = {}
 installers.attr_changed = function(e) {
 	let obs = e.__attr_observer
 	if (!obs) {
-		obs = new MutationObserver(function() {
-			e.fire('attr_changed')
+		obs = new MutationObserver(function(mutations) {
+			e.fire('attr_changed', mutations)
 		})
 		obs.observe(e, {attributes: true})
 		e.__attr_observer = obs
@@ -392,6 +392,8 @@ method(DOMRect, 'contains', function(x, y) {
 method(DOMRect, 'intersects', function(x, y, w, h) {
 	// TODO:
 })
+
+window.on('resize', function() { document.fire('layout_changed') })
 
 // common style wrappers -----------------------------------------------------
 
@@ -879,7 +881,6 @@ let popup_state = function(e) {
 	}
 
 	function bind_target(on) {
-		window.on('resize', update, on)
 
 		// this detects explicit target element size changes which is not much.
 		target.on('attr_changed', update, on)

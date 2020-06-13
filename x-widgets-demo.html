@@ -786,7 +786,7 @@ main.add(
 </help>
 <script>
 
-g = cssgrid({
+cg = cssgrid({
 	items: [
 		date_dropdown({pos_x: 3, pos_y: 1, value: day(time())}),
 		input({pos_x: 2, pos_y: 2, value: 'hello1'}),
@@ -794,7 +794,11 @@ g = cssgrid({
 	],
 })
 
-main.add(g)
+cg.style.height = '100%'
+
+cg.editing = true
+
+main.add(cg)
 
 </script>
 </template>
@@ -878,7 +882,7 @@ var data = {
 	can_change_rows: true,
 }
 
-for (let i = 1; i <= 0; i++) {
+for (let i = 1; i <= 1e4; i++) {
 	let id         = i
 	let name       = 'record '+i
 	let parent_id  = floor((random() * i))
@@ -1481,7 +1485,7 @@ reload_button.on('click', function() {
 	run_script()
 })
 
-demo_list.focus_cell(18)
+demo_list.focus_cell(15)
 
 demo_list_ct.add(demo_list)
 

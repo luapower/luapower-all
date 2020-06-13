@@ -29,10 +29,14 @@ component('x-cssgrid', function(e) {
 
 	// spans ------------------------------------------------------------------
 
-	function span1(item, type) { return e[type == 'column' ? 'pos_x' : 'pos_y']-1 }
-	function span2(item, type) { return span1(item, type) + e[type == 'column' ? 'span_x' : 'span_y'] }
-	function set_span1(item, type, i) { item[type == 'column' ? 'pos_x' : 'pos_y'] = i+1 }
-	function set_span2(item, type, i) { item[type == 'column' ? 'span_x' : 'span_y'] = i - span1(item, type) }
+	function span1(item, type) { return item[type == 'column' ? 'pos_x' : 'pos_y']-1 }
+	function span2(item, type) { return span1(item, type) + item[type == 'column' ? 'span_x' : 'span_y'] }
+	function set_span(item, type, i1, i2) {
+		if (i1 !== false)
+			item[type == 'column' ? 'pos_x' : 'pos_y'] = i1+1
+		if (i2 !== false)
+			item[type == 'column' ? 'span_x' : 'span_y'] = i2 - (i1 !== false ? i1 : span1(item, type))
+	}
 
 	// tracks -----------------------------------------------------------------
 
@@ -47,16 +51,17 @@ component('x-cssgrid', function(e) {
 		let tsizes = e.style[`grid-template-${type}s`].split(' ')
 		let sizes = track_sizes(type)
 		for (let i = 0; i < sizes.length; i++)
-			tsizes[i] = tsizes[i] || 'auto'
+			tsizes[i] = or(tsizes[i], 'auto')
 		return tsizes
 	}
 
 	function set_template_sizes_s(type, s) {
 		e.style[`grid-template-${type}s`] = s
+		update()
 	}
 
 	function set_template_sizes(type, sizes) {
-		set_template_sizes_s(type, sizes.join(' '))
+		e[type == 'column' ? 'sizes_x' : 'sizes_y'] = sizes.join(' ')
 	}
 
 	e.get_sizes_x = function() { return template_sizes('column').join(' ') }
@@ -122,10 +127,9 @@ component('x-cssgrid', function(e) {
 		for (let item of e.items) {
 			let i1 = span1(item, type)
 			let i2 = span2(item, type)
-			if (i1 >= i)
-				set_span1(item, type, max(0, i1-1))
-			if (i2 > i)
-				set_span2(item, type, i2-1)
+			set_span(item, type,
+				i1 >= i && max(0, i1-1),
+				i2 >  i && i2-1)
 		}
 	}
 
@@ -136,10 +140,9 @@ component('x-cssgrid', function(e) {
 		for (let item of e.items) {
 			let i1 = span1(item, type)
 			let i2 = span2(item, type)
-			if (i1 >= i)
-				set_span1(item, type, i1+1)
-			if (i2 > i)
-				set_span2(item, type, i2+1)
+			set_span(item, type,
+				i1 >= i && i1+1,
+				i2 >  i && i2+1)
 		}
 	}
 
@@ -277,26 +280,27 @@ component('x-cssgrid', function(e) {
 		let gap = e[type == 'column' ? 'gap_x' : 'gap_y']
 		let tsizes = template_sizes(type)
 		let sizes = track_sizes(type)
+		if (e.tips[type].length != tsizes.length)
+			create_lines_for(type)
 		let X = type == 'column' ? 'x' : 'y'
 		let Y = type == 'column' ? 'y' : 'x'
 		let x = gap / 2
 		let ti = 0
 		let guide_w = e.client_rect()[type == 'column' ? 'height' : 'width']
-		for (let tip of e.tips)
-			if (tip.type == type) {
-				x += sizes[ti]
-				tip[X] = x
-				tip[Y] = 0
-				tip.guide[type == 'column' ? 'h' : 'w'] = guide_w
-				tip.guide[X] = x
-				tip.label[Y] = 0
-				tip.label[X] = x
-				tip.label.set(tsizes[ti].ends('px') ? num(tsizes[ti]) : tsizes[ti])
-				tip.show()
-				// -1 is to place it inside the grid because it has overflow hidden.
-				x += (ti < sizes.length-2) ? gap : gap / 2 - 1
-				ti++
-			}
+		for (let tip of e.tips[type]) {
+			x += sizes[ti]
+			tip[X] = x
+			tip[Y] = 0
+			tip.guide[type == 'column' ? 'h' : 'w'] = guide_w
+			tip.guide[X] = x
+			tip.label[Y] = 0
+			tip.label[X] = x
+			tip.label.set(tsizes[ti].ends('px') ? num(tsizes[ti]) : tsizes[ti])
+			tip.show()
+			// -1 is to place it inside the grid because it has overflow hidden.
+			x += (ti < sizes.length-2) ? gap : gap / 2 - 1
+			ti++
+		}
 	}
 
 	function update() {
@@ -307,6 +311,7 @@ component('x-cssgrid', function(e) {
 	}
 
 	function create_lines_for(type) {
+		let tips = []
 		let side = type == 'column' ? 'top' : 'left'
 		for (let i = 0; i < track_sizes(type).length; i++) {
 			let tip = div({class: 'x-arrow x-cssgrid-line-tip', side: side})
@@ -316,7 +321,7 @@ component('x-cssgrid', function(e) {
 			tip.track_index = i
 			tip.type = type
 			tip.label.tip = tip
-			e.tips.push(tip)
+			tips.push(tip)
 			tip.on('pointerdown' , tip_mousedown)
 			tip.on('pointermove' , tip_mousemove)
 			tip.on('pointerup'   , tip_mouseup)
@@ -329,22 +334,29 @@ component('x-cssgrid', function(e) {
 			e.add(tip.guide)
 			e.add(tip.label)
 		}
+		e.tips[type] = tips
+	}
+
+	function remove_line(tip) {
+		tip.guide.remove()
+		tip.label.remove()
+		tip.remove()
 	}
 
 	function remove_lines() {
-		if (e.tips)
-			for (let tip of e.tips) {
-				tip.guide.remove()
-				tip.label.remove()
-				tip.remove()
-			}
+		if (!e.tips)
+			return
+		for (let tip of e.tips.column)
+			remove_line(tip)
+		for (let tip of e.tips.row)
+			remove_line(tip)
 	}
 
 	function create_lines() {
 		remove_lines()
 		if (!e.editing || !e.isConnected)
 			return
-		e.tips = []
+		e.tips = {}
 		create_lines_for('column')
 		create_lines_for('row')
 	}
@@ -397,10 +409,7 @@ component('x-cssgrid', function(e) {
 
 	let item_ph = div({class: 'x-cssgrid-item-ph'}) // ph=placeholder
 
-	function pop_out_item() {
-		if (hit_item.parent != e)
-			return
-
+	function update_item_ph() {
 		// position & size the placeholder in grid so that the tracks don't change.
 		let css = hit_item.css()
 		item_ph.style['grid-column-start'] = css['grid-column-start']
@@ -415,6 +424,13 @@ component('x-cssgrid', function(e) {
 		item_ph.style['align-self'       ] = css['align-self'       ]
 		item_ph.w = hit_item.offsetWidth
 		item_ph.h = hit_item.offsetHeight
+	}
+
+	function pop_out_item() {
+		if (hit_item.parent != e)
+			return
+
+		update_item_ph()
 
 		// fixate the size of the poped out item and keep the old values.
 		hit_item._w = hit_item.style.width
@@ -536,8 +552,8 @@ component('x-cssgrid', function(e) {
 		let x2 = x1 + hit_item.offsetWidth
 		let y2 = y1 + hit_item.offsetHeight
 		let i1 = span1(hit_item, 'column')
-		let j1 = span1(hit_item, 'row'   )
 		let i2 = span2(hit_item, 'column')
+		let j1 = span1(hit_item, 'row'   )
 		let j2 = span2(hit_item, 'row'   )
 		let [bx1, by1, bx2, by2] = track_bounds(i1, j1, i2, j2)
 		let align_x = hit_test_span_edge(20, x1, x2, bx1, bx2)
@@ -554,6 +570,7 @@ component('x-cssgrid', function(e) {
 			raf(update)
 		} else {
 			pop_out_item()
+
 			hit_item.x = !stretch_x ? x : e.client_rect().left + bx1 + (i1 > 0 ? e.gap_x / 2 : 0)
 			hit_item.y = !stretch_y ? y : e.client_rect().top  + by1 + (j1 > 0 ? e.gap_y / 2 : 0)
 
@@ -562,14 +579,9 @@ component('x-cssgrid', function(e) {
 				(i < i1 || i >= i2) ||
 				(j < j1 || j >= j2)
 			if (can_move_item) {
-				set_span1(hit_item, 'column', i)
-				set_span1(hit_item, 'row'   , j)
-				set_span2(hit_item, 'column', i+1)
-				set_span2(hit_item, 'row'   , j+1)
-				set_span1(item_ph , 'column', i)
-				set_span1(item_ph , 'row'   , j)
-				set_span2(item_ph , 'column', i+1)
-				set_span2(item_ph , 'row'   , j+1)
+				set_span(hit_item, 'column', i, i+1)
+				set_span(hit_item, 'row'   , j, j+1)
+				update_item_ph()
 			}
 
 			raf(update)
@@ -646,8 +658,8 @@ component('x-cssgrid', function(e) {
 		let type = horiz ? 'column' : 'row'
 		let second = hit_area == 'right' || hit_area == 'bottom'
 		mx = horiz ? mx - drag_mx : my - drag_my
-		let i1 = span1(e.hit_item, type)
-		let i2 = span2(e.hit_item, type)
+		let i1 = span1(hit_item, type)
+		let i2 = span2(hit_item, type)
 		let dx = 1/0
 		let closest_i
 		each_track_line(type, function(i, x) {
@@ -659,10 +671,9 @@ component('x-cssgrid', function(e) {
 			}
 		})
 
-		if (second)
-			set_span2(hit_item, type, closest_i)
-		else
-			set_span1(hit_item, type, closest_i)
+		set_span(hit_item, type,
+			!second ? closest_i : i1,
+			 second ? closest_i : i2)
 
 		raf(update)
 	}
@@ -827,10 +838,6 @@ component('x-cssgrid', function(e) {
 	})
 
 	e.on('keydown', function(key, shift, ctrl) {
-		if (key == 'F2') {
-			e.editing = !e.editing
-			return false
-		}
 		if (!e.editing)
 			return
 		if (key == 'Tab') {
@@ -867,11 +874,10 @@ component('x-cssgrid', function(e) {
 						let i1 = span1(focused_item, type)
 						let i2 = span2(focused_item, type)
 						let i = max(i1+1, i2 + (fw ? 1 : -1))
-						set_span2(focused_item, type, i)
+						set_span(focused_item, type, false, i)
 					} else {
 						let i = max(0, span1(focused_item, type) + (fw ? 1 : -1))
-						set_span1(focused_item, type, i)
-						set_span2(focused_item, type, i+1)
+						set_span(focused_item, type, i, i+1)
 					}
 				}
 				create_lines()

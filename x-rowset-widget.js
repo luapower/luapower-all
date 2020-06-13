@@ -177,7 +177,7 @@ function rowset_widget(e) {
 
 	function init() {
 		let was_editing = !!e.editor
-		let editor_had_focus = e.editor && e.editor.hasfocus
+		let focus_editor = e.editor && e.editor.hasfocus
 		e.update_load_fail(false)
 		free_editor()
 		e.unbind_filter_rowsets()
@@ -192,7 +192,7 @@ function rowset_widget(e) {
 		e.init_val()
 		e.init_focused_cell({
 			was_editing: was_editing,
-			editor_had_focus: editor_had_focus,
+			focus_editor: focus_editor,
 		})
 	}
 
@@ -549,7 +549,7 @@ function rowset_widget(e) {
 			)
 
 		let was_editing = (ev && ev.was_editing) || !!e.editor
-		let focus_editor = (ev && ev.editor_had_focus) || (e.editor && e.editor.hasfocus)
+		let focus_editor = (ev && ev.focus_editor) || (e.editor && e.editor.hasfocus)
 		let enter_edit = (ev && ev.enter_edit) || (was_editing && e.stay_in_edit_mode)
 		let editable = (ev && ev.editable) || enter_edit
 
