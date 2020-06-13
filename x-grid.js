@@ -24,12 +24,11 @@ component('x-grid', function(e) {
 	e.auto_advance = 'next_row' // advance on enter = false|'next_row'|'next_cell'
 	e.auto_jump_cells = true    // jump to next/prev cell on caret limits
 	e.quick_edit = false        // quick edit (vs. quick-search) when pressing a key
-	e.keep_editing = true       // re-enter edit mode after navigating
 
 	// mouse behavior
 	e.can_sort_rows = true
 	e.can_reorder_fields = true
-	e.auto_enter_edit = false
+	e.enter_edit_on_click = false
 	e.exit_edit_on_escape = true
 
 	// context menu features
@@ -98,7 +97,7 @@ component('x-grid', function(e) {
 			let free_w = total_free_w * (min_col_w / cols_w)
 			let col_w = floor(min_col_w + free_w)
 			if (fi == e.fields.length - 1) {
-				let remaining_w = cw - col_x
+				let remaining_w = cw - col_x - 1 // -1 to avoid flickering scrollbars.
 				if (total_free_w > 0)
 					// set width exactly to prevent showing the horizontal scrollbar.
 					col_w = remaining_w
@@ -144,6 +143,7 @@ component('x-grid', function(e) {
 			e.cells_h = e.cell_h * e.rows.length
 
 			e.header.h = null // auto
+			e.cells_view.h = 0 // measure the header height
 			let client_h = e.clientHeight
 			let border_h = e.offsetHeight - client_h
 			e.header_h = e.header.offsetHeight
@@ -410,10 +410,7 @@ component('x-grid', function(e) {
 		}
 
 		dd.on('opened', function() {
-			if (!rs.is_loaded) {
-				rs.load()
-				rs.is_loaded = true
-			}
+			rs.load()
 		})
 
 		dd.picker.pick_val = function() {
@@ -975,8 +972,7 @@ component('x-grid', function(e) {
 		let cell = ev.target.closest('.x-grid-cell')
 		let indent = ev.target.closest('.x-grid-cell-indent')
 
-		let had_focus = e.hasfocus
-		if (!had_focus)
+		if (!e.hasfocus)
 			e.focus()
 
 		if (!cell)
@@ -996,7 +992,7 @@ component('x-grid', function(e) {
 				return
 
 		if (!indent)
-			if (e.auto_enter_edit || already_on_it)
+			if (e.enter_edit_on_click || already_on_it)
 				// TODO: instead of `select_all`, put the caret where the mouse is.
 				e.enter_edit('select_all')
 
@@ -1035,19 +1031,19 @@ component('x-grid', function(e) {
 
 			let cols = key == left_arrow ? -1 : 1
 
-			let reenter_edit = e.editor && e.keep_editing
-
 			let move = !e.editor
 				|| (e.auto_jump_cells && !shift
 					&& (!horiz
 						|| !e.editor.editor_state
 						|| e.editor.editor_state(cols < 0 ? 'left' : 'right')))
 
-			if (move && e.focus_next_cell(cols, {editable: reenter_edit, input: e})) {
-				if (reenter_edit)
-					e.enter_edit(horiz ? (cols > 0 ? 'left' : 'right') : 'select_all')
-				return false
-			}
+			if (move)
+				if (e.focus_next_cell(cols, {
+					editor_state: horiz ? (cols > 0 ? 'left' : 'right') : 'select_all',
+					input: e,
+				}))
+					return false
+
 		}
 
 		// Tab/Shift+Tab cell navigation.
@@ -1055,13 +1051,13 @@ component('x-grid', function(e) {
 
 			let cols = shift ? -1 : 1
 
-			let reenter_edit = e.editor && e.keep_editing
+			if (e.focus_next_cell(cols, {
+				auto_advance_row: true,
+				editor_state: cols > 0 ? 'left' : 'right',
+				input: e,
+			}))
+				return false
 
-			if (e.focus_next_cell(cols, {editable: reenter_edit, auto_advance_row: true, input: e}))
-				if (reenter_edit)
-					e.enter_edit(cols > 0 ? 'left' : 'right')
-
-			return false
 		}
 
 		// insert with the arrow down key on the last focusable row.
@@ -1093,9 +1089,6 @@ component('x-grid', function(e) {
 			case 'End'       : rows =  1/0; break
 		}
 		if (rows) {
-			let reenter_edit = e.editor && e.keep_editing
-			let editor_state = e.editor
-				&& e.editor.editor_state && e.editor.editor_state()
 
 			let move = !e.editor
 				|| (e.auto_jump_cells && !shift
@@ -1103,11 +1096,13 @@ component('x-grid', function(e) {
 						|| !e.editor.editor_state
 						|| e.editor.editor_state(rows < 0 ? 'left' : 'right')))
 
-			if (move && e.focus_cell(true, true, rows, 0, {editable: reenter_edit, input: e})) {
-				if (reenter_edit)
-					e.enter_edit(rows > 0 ? 'left' : 'right')
-				return false
-			}
+			if (move)
+				if (e.focus_cell(true, true, rows, 0, {
+					editor_state: rows > 0 ? 'left' : 'right',
+					input: e
+				}))
+					return false
+
 		}
 
 		// F2: enter edit mode
@@ -1123,14 +1118,10 @@ component('x-grid', function(e) {
 			} else if (!e.editor) {
 				e.enter_edit('select_all')
 			} else if (e.exit_edit()) {
-				if (e.auto_advance == 'next_row') {
-					if (e.focus_cell(true, true, 1, 0, {input: e}))
-						if (e.keep_editing)
-							e.enter_edit('select_all')
-				} else if (e.auto_advance == 'next_cell')
-					if (e.focus_next_cell(shift ? -1 : 1, {editable: e.keep_editing, input: e}))
-						if (e.keep_editing)
-							e.enter_edit('select_all')
+				if (e.auto_advance == 'next_row')
+					e.focus_cell(true, true, 1, 0, {editor_state: 'select_all', input: e})
+				else if (e.auto_advance == 'next_cell')
+					e.focus_next_cell(shift ? -1 : 1, {editor_state: 'select_all', input: e})
 			}
 			return false
 		}
@@ -1202,7 +1193,7 @@ component('x-grid', function(e) {
 				S('discard_changes_and_reload', 'Discard changes and reload') : S('reload', 'Reload'),
 			icon: 'fa fa-sync',
 			action: function() {
-				e.rowset.load()
+				e.rowset.reload()
 			},
 			separator: true,
 		})

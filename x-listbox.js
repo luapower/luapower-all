@@ -70,8 +70,6 @@ component('x-listbox', function(e) {
 	}
 
 	e.init_fields = function() {
-		if (!e.isConnected)
-			return
 		e.display_field = e.rowset.field(e.display_col)
 	}
 
@@ -208,8 +206,8 @@ component('x-list-dropdown', function(e) {
 			rowset: e.lookup_rowset,
 			val_col: e.lookup_col,
 			display_col: e.display_col,
+			auto_focus_first_cell: false,
 		}, e.listbox))
-		e.picker.auto_focus_first_cell = false
 		init()
 	}
 

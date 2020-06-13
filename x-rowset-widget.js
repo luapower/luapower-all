@@ -23,6 +23,7 @@ function rowset_widget(e) {
 	e.can_focus_cells = true
 	e.auto_focus_first_cell = true   // focus first cell automatically on loading.
 	e.auto_edit_first_cell = false   // automatically enter edit mode on loading.
+	e.stay_in_edit_mode = true       // re-enter edit mode after navigating
 	e.auto_advance_row = true        // jump row on horiz. navigation limits
 	e.save_row_on = 'exit_edit'      // save row on 'input'|'exit_edit'|'exit_row'|false
 	e.insert_row_on = 'exit_edit'    // insert row on 'input'|'exit_edit'|'exit_row'|false
@@ -80,6 +81,8 @@ function rowset_widget(e) {
 	e.init_rows_array = function() {
 		rowmap = null
 		e.rows = []
+		if (!e.rowset)
+			return
 		let i = 0
 		let passes = e.rowset.filter_rowsets_filter(e.filter_rowsets)
 		for (let row of e.rowset.rows) {
@@ -93,8 +96,10 @@ function rowset_widget(e) {
 	e.init_fields_array = function() {
 		fieldmap = null
 		e.fields = []
+		if (!e.rowset)
+			return
 		e.val_field = e.rowset.field(e.val_col)
-		e.tree_field  = e.rowset.field(e.tree_col)
+		e.tree_field = e.rowset.field(e.tree_col)
 		if (e.cols) {
 			for (let col of e.cols.split(' ')) {
 				let field = e.rowset.field(col)
@@ -114,6 +119,8 @@ function rowset_widget(e) {
 	// rowset binding ---------------------------------------------------------
 
 	e.bind_rowset = function(on) {
+		if (!e.rowset)
+			return
 		// structural changes
 		e.rowset.on('loaded'      , rowset_loaded , on)
 		e.rowset.on('row_added'   , row_added     , on)
@@ -169,44 +176,62 @@ function rowset_widget(e) {
 	// responding to structural updates ---------------------------------------
 
 	function init() {
+		let was_editing = !!e.editor
+		let editor_had_focus = e.editor && e.editor.hasfocus
+		e.update_load_fail(false)
+		free_editor()
+		e.unbind_filter_rowsets()
 		e.focused_row_index = null
 		e.focused_field_index = null
-		e.unbind_filter_rowsets()
 		e.init_fields_array()
 		e.init_rows_array()
+		if (!e.rowset)
+			return
 		e.init_fields()
 		e.sort()
 		e.init_val()
-		e.init_focused_cell()
+		e.init_focused_cell({
+			was_editing: was_editing,
+			editor_had_focus: editor_had_focus,
+		})
 	}
 
 	e.rowset_widget_init = function() {
-		e.rowset = global_rowset(e.rowset, {param_nav: e.param_nav})
+		e.rowset = global_rowset(e.rowset_name || e.rowset, {param_nav: e.param_nav})
+		if (e.rowset)
+			e.rowset.load()
 		e.init_nav()
 		init()
 	}
 
 	e.rowset_widget_attach = function() {
+		if (!e.rowset)
+			return
 		e.init_fields()
 		e.init_rows()
 		e.bind_rowset(true)
 		e.bind_nav(true)
+		e.init_val()
 	}
 
 	e.rowset_widget_detach = function() {
+		if (!e.rowset)
+			return
 		e.bind_rowset(false)
 		e.bind_nav(false)
 	}
 
-	// TODO:
-	function fields_changed() {
-		// e.focused_field_index = null
-		// e.init_fields()
+	e.set_rowset_name = function(rs) {
+		e.bind_rowset(false)
+		e.rowset = global_rowset(rs, {param_nav: e.param_nav})
+		e.bind_rowset(true)
+		e.rowset.load()
+		init()
 	}
 
+	e.prop('rowset_name', {store: 'var', type: 'rowset', noinit: true})
+
 	function rowset_loaded() {
-		e.update_load_fail(false)
-		free_editor()
 		init()
 	}
 
@@ -368,7 +393,7 @@ function rowset_widget(e) {
 					},
 					retry: function() {
 						e.load_overlay(false)
-						e.rowset.load()
+						e.rowset.reload()
 					},
 					forget_it: function() {
 						e.load_overlay(false)
@@ -416,7 +441,7 @@ function rowset_widget(e) {
 
 	e.focused_row_index = null
 	e.focused_field_index = null
-	e.last_focused_field_index = null
+	e.focused_field_name = null
 
 	e.property('focused_row', function() {
 		return e.rows[e.focused_row_index]
@@ -429,7 +454,7 @@ function rowset_widget(e) {
 	e.first_focusable_cell = function(ri, fi, rows, cols, options) {
 
 		if (ri === true) ri = e.focused_row_index
-		if (fi === true) fi = e.last_focused_field_index
+		if (fi === true) fi = e.field_index(e.rowset.field(e.focused_field_name))
 		rows = or(rows, 0) // by default find the first focusable row.
 		cols = or(cols, 0) // by default find the first focusable col.
 
@@ -523,13 +548,21 @@ function rowset_widget(e) {
 				}, ev)
 			)
 
-		;[ri, fi] = e.first_focusable_cell(ri, fi, rows, cols, ev)
+		let was_editing = (ev && ev.was_editing) || !!e.editor
+		let focus_editor = (ev && ev.editor_had_focus) || (e.editor && e.editor.hasfocus)
+		let enter_edit = (ev && ev.enter_edit) || (was_editing && e.stay_in_edit_mode)
+		let editable = (ev && ev.editable) || enter_edit
+
+		let opt = update({editable: editable}, ev)
+		;[ri, fi] = e.first_focusable_cell(ri, fi, rows, cols, opt)
+
 		if (ri == null) // failure to find row means cancel.
 			if (!(ev && ev.unfocus_if_not_found))
 				return false
 
 		let row_changed = e.focused_row_index != ri
 		let field_changed = e.focused_field_index != fi
+
 		if (row_changed) {
 			if (!e.exit_focused_row())
 				return false
@@ -542,14 +575,19 @@ function rowset_widget(e) {
 			let old_focused_row = e.focused_row
 			e.focused_row_index   = ri
 			e.focused_field_index = fi
-			e.last_focused_field_index = or(fi, e.last_focused_field_index)
+			if (fi != null)
+				e.focused_field_name = e.fields[fi].name
 			e.update_cell_focus(ri, fi, ev)
 			let row = e.rows[ri]
 			let val = row && e.val_field ? e.rowset.val(row, e.val_field) : null
 			e.set_val(val, update({input: e}, ev))
 			if (row_changed)
 				e.fire('focused_row_changed', row, old_focused_row, ev)
+
 		}
+
+		if (enter_edit && ri != null && fi != null)
+			e.enter_edit(ev && ev.editor_state, focus_editor || false)
 
 		if (ri != null)
 			if (!(ev && ev.make_visible == false))
@@ -571,12 +609,11 @@ function rowset_widget(e) {
 		return ri == null
 	}
 
-	e.init_focused_cell = function() {
-		if (e.focus_cell(true, true, 0, 0, {
+	e.init_focused_cell = function(ev) {
+		e.focus_cell(true, true, 0, 0, update({
 			must_not_move_row: !e.auto_focus_first_cell,
-			for_editing: e.auto_edit_first_cell
-		}))
-			e.enter_edit()
+			enter_edit: e.auto_edit_first_cell,
+		}, ev))
 	}
 
 	// responding to val changes ----------------------------------------------
@@ -603,19 +640,20 @@ function rowset_widget(e) {
 		}, ...editor_options)
 	}
 
-	e.enter_edit = function(editor_state, ...editor_options) {
+	e.enter_edit = function(editor_state, focus) {
 		if (e.editor)
 			return true
 		if (!e.can_focus_cell(e.focused_row, e.focused_field, true))
 			return false
-		e.editor = e.create_editor(e.focused_field, ...editor_options)
+		e.editor = e.create_editor(e.focused_field)
 		if (!e.editor)
 			return false
 		e.update_cell_editing(e.focused_row_index, e.focused_field_index, true)
 		e.editor.on('lost_focus', editor_lost_focus)
 		if (e.editor.enter_editor)
 			e.editor.enter_editor(editor_state)
-		e.editor.focus()
+		if (focus != false)
+			e.editor.focus()
 		return true
 	}
 

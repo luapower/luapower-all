@@ -846,6 +846,7 @@ let popup_state = function(e) {
 			target = target1 && E(target1)
 			if (target)
 				init()
+			e.popup_target = target
 		}
 		update()
 	}

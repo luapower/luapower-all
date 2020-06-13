@@ -204,7 +204,7 @@ rowset = function(...options) {
 		d.client_fields = d.fields
 		init_fields(d.fields)
 		init_pk(d.pk)
-		init_params(d.params)
+		init_params()
 		init_rows(d.rows)
 	}
 
@@ -374,34 +374,32 @@ rowset = function(...options) {
 			let r = dir == 'desc' ? -1 : 1
 			// invalid rows come first
 			s.push('{')
-			s.push('  {')
-			s.push('    let v1 = r1.row_error == null')
-			s.push('    let v2 = r2.row_error == null')
-			s.push('    if (v1 < v2) return -1')
-			s.push('    if (v1 > v2) return  1')
-			s.push('  }')
-			// invalid vals come after
-			s.push('  {')
-			s.push('    let v1 = !(r1.error && r1.error['+i+'] != null)')
-			s.push('    let v2 = !(r2.error && r2.error['+i+'] != null)')
-			s.push('    if (v1 < v2) return -1')
-			s.push('    if (v1 > v2) return  1')
-			s.push('  }')
-			// modified rows come after
-			s.push('  {')
-			s.push('    let v1 = !r1.cells_modified')
-			s.push('    let v2 = !r2.cells_modified')
-			s.push('    if (v1 < v2) return -1')
-			s.push('    if (v1 > v2) return  1')
-			s.push('  }')
-			// compare vals using the rowset comparator
-			s.push('  let cmp = cmps['+i+']')
-			s.push('  let r = cmp(r1, r2, '+i+')')
-			s.push('  if (r) return r * '+r)
+			s.push('  let v1 = r1.row_error == null')
+			s.push('  let v2 = r2.row_error == null')
+			s.push('  if (v1 < v2) return -1')
+			s.push('  if (v1 > v2) return  1')
 			s.push('}')
+			// invalid vals come after
+			s.push('{')
+			s.push('  let v1 = !(r1.error && r1.error['+i+'] != null)')
+			s.push('  let v2 = !(r2.error && r2.error['+i+'] != null)')
+			s.push('  if (v1 < v2) return -1')
+			s.push('  if (v1 > v2) return  1')
+			s.push('}')
+			// modified rows come after
+			s.push('{')
+			s.push('  let v1 = !r1.cells_modified')
+			s.push('  let v2 = !r2.cells_modified')
+			s.push('  if (v1 < v2) return -1')
+			s.push('  if (v1 > v2) return  1')
+			s.push('}')
+			// compare vals using the rowset comparator
+			s.push('let cmp = cmps['+i+']')
+			s.push('let r = cmp(r1, r2)')
+			s.push('if (r) return r * '+r)
 		}
 		s.push('return 0')
-		let cmp = 'let cmp = function(r1, r2) {\n\t' + s.join('\n\t') + '\n}\n'
+		let cmp = 'let cmp = function(r1, r2) {\n\t' + s.join('\n\t') + '\n}\n; cmp;\n'
 
 		// tree-building comparator: order elements by their position in the tree.
 		if (d.parent_field) {
@@ -414,7 +412,7 @@ rowset = function(...options) {
 			s.push('let p2 = i2 >= 0 ? r2.parent_rows[i2] : r2')
 			s.push('if (p1 == p2) return i1 < i2 ? -1 : 1') // one is parent of another.
 			s.push('return cmp_direct(p1, p2)')
-			cmp = cmp+'let cmp_direct = cmp; cmp = function(r1, r2) {\n\t' + s.join('\n\t') + '\n}\n'
+			cmp = cmp+'let cmp_direct = cmp; cmp = function(r1, r2) {\n\t' + s.join('\n\t') + '\n}\n; cmp;\n'
 		}
 
 		return eval(cmp)
@@ -484,7 +482,7 @@ rowset = function(...options) {
 			filtered_field: field,
 		}, ...opt)
 
-		rs.load = function() {
+		rs.reload = function() {
 			let fi = field.index
 			let rows = new Set()
 			let val_set = new Set()
@@ -854,23 +852,22 @@ rowset = function(...options) {
 
 	// params -----------------------------------------------------------------
 
-	function init_params(params) {
+	function init_params() {
 
-		if (typeof params == 'string')
-			params = params.split(' ')
-		else if (!params)
-			params = []
+		if (typeof d.param_names == 'string')
+			d.param_names = d.param_names.split(' ')
+		else if (!d.param_names)
+			d.param_names = []
 
 		bind_param_nav(false)
-		d.params = params
 
-		if (params.length == 0)
+		if (d.param_names.length == 0)
 			return
 
 		if (!d.param_nav) {
 			let param_fields = []
 			let params_row = []
-			for (let param of d.params) {
+			for (let param of d.param_names) {
 				param_fields.push({
 					name: param,
 				})
@@ -885,16 +882,16 @@ rowset = function(...options) {
 	}
 
 	function params_changed(row) {
-		d.load()
+		d.reload()
 	}
 
 	function bind_param_nav(on) {
 		if (!d.param_nav)
 			return
-		if (!d.params || !d.params.length)
+		if (!d.param_names || !d.param_names.length)
 			return
 		d.param_nav.on('focused_row_changed', params_changed, on)
-		for (let param of d.params)
+		for (let param of d.param_names)
 			d.param_nav.on('focused_row_val_changed_for_'+param, params_changed, on)
 	}
 
@@ -903,7 +900,7 @@ rowset = function(...options) {
 			return d.url
 		if (!params) {
 			params = {}
-			for (let param of d.params) {
+			for (let param of d.param_names) {
 				let field = d.param_nav.rowset.field(param)
 				let row = d.param_nav.focused_row
 				let v = row ? d.param_nav.rowset.val(row, field) : null
@@ -915,7 +912,8 @@ rowset = function(...options) {
 
 	// loading ----------------------------------------------------------------
 
-	d.load = function(params) {
+	d.reload = function(params) {
+		params = or(params, d.params)
 		if (!d.url)
 			return
 		if (requests && requests.size && !d.load_request) {
@@ -940,13 +938,22 @@ rowset = function(...options) {
 		req.send()
 	}
 
+	d.load = function() {
+		d.load = noop
+		d.reload()
+	}
+
+	d.load_fields = function() {
+		d.load_fields = noop
+		d.reload(update({limit: 0}, d.params))
+	}
+
 	d.abort_loading = function() {
 		if (!d.load_request)
 			return
 		d.load_request.abort()
 		d.load_request = null
 	}
-
 
 	function load_progress(p, loaded, total) {
 		d.fire('load_progress', p, loaded, total)
@@ -999,15 +1006,16 @@ rowset = function(...options) {
 			init_fields(res.fields)
 			init_pk(res.pk)
 			d.id_col = res.id_col
-			d.fire('fields_changed')
 		}
 
-		if (res.params)
-			init_params(res.params)
+		if (res.params) {
+			d.param_names = res.params
+			init_params()
+		}
 
 		init_rows(res.rows)
 
-		d.fire('loaded')
+		d.fire('loaded', !!res.fields)
 	}
 
 	function load_fail(type, status, message, body) {
@@ -1347,8 +1355,11 @@ function serializable_widget(e) {
 		if (e.props)
 			for (let prop in e.props) {
 				let v = e[prop]
-				if (v !== e.props[prop].default) {
-					if (v !== null && typeof v == 'object' && v.serialize) {
+				let def = e.props[prop]
+				if (v !== def.default) {
+					if (def.serialize)
+						v = def.serialize(v)
+					else if (v !== null && typeof v == 'object' && v.typename && v.serialize) {
 						attr(t, 'components')[prop] = true
 						v = v.serialize()
 					}
@@ -1398,7 +1409,7 @@ function cssgrid_child_widget(e) {
 // ---------------------------------------------------------------------------
 
 function tabindex_widget(e) {
-	e.prop('tabindex', {attr: 'tabindex'})
+	e.prop('tabindex', {attr: 'tabindex', default: 0})
 }
 
 // ---------------------------------------------------------------------------
@@ -1479,7 +1490,7 @@ function val_widget(e) {
 			e.nav.on('focused_row_cell_state_changed_for_'+e.col, cell_state_changed, on)
 		}
 		e.nav.rowset.on('display_vals_changed_for_'+e.col, e.init_val, on)
-		e.nav.rowset.on('fields_changed', fields_changed, on)
+		e.nav.rowset.on('loaded', rowset_loaded, on)
 	}
 
 	e.rebind_val = function(nav, col) {
@@ -1497,7 +1508,7 @@ function val_widget(e) {
 
 	e.init_field = function() {} // stub
 
-	function fields_changed() {
+	function rowset_loaded() {
 		e.field = e.nav.rowset.field(e.col)
 		e.init_field()
 	}
@@ -2561,13 +2572,6 @@ component('x-dropdown', function(e) {
 		e.fire('lost_focus') // grid editor protocol
 	})
 
-	e.inspect_fields = [
-
-		{name: 'grid_area'},
-		{name: 'tabIndex', type: 'number'},
-
-	]
-
 })
 
 // ---------------------------------------------------------------------------
@@ -2840,6 +2844,7 @@ component('x-menu', function(e) {
 component('x-widget-placeholder', function(e) {
 
 	cssgrid_child_widget(e)
+	serializable_widget(e)
 	e.align_x = 'stretch'
 	e.align_y = 'stretch'
 
@@ -2864,7 +2869,7 @@ component('x-widget-placeholder', function(e) {
 		['B', 'button'],
 	]
 
-	function create_widget() {
+	function replace_with_widget() {
 		let widget = component.create({typename: this.typename})
 		let pe = e.parent_widget
 		if (pe)
@@ -2875,9 +2880,10 @@ component('x-widget-placeholder', function(e) {
 			root_widget = widget
 			pe.fire('widget_tree_changed')
 		}
+		widget.focus()
 	}
 
-	function create_widgets(widgets) {
+	function create_widget_buttons(widgets) {
 		e.clear()
 		let i = 1
 		for (let [s, typename, sep] of widgets) {
@@ -2887,7 +2893,7 @@ component('x-widget-placeholder', function(e) {
 				btn.style['margin-right'] = '.5em'
 			e.add(btn)
 			btn.typename = typename
-			btn.action = create_widget
+			btn.action = replace_with_widget
 		}
 	}
 
@@ -2896,7 +2902,7 @@ component('x-widget-placeholder', function(e) {
 		let pe = e.parent_widget
 		if (pe && pe.accepts_form_widgets)
 			widgets = [].concat(widgets, form_widgets)
-		create_widgets(widgets)
+		create_widget_buttons(widgets)
 	}
 
 })
@@ -2998,7 +3004,7 @@ component('x-pagelist', function(e) {
 			e.fire('open', idiv.index)
 			let page = idiv.item.page
 			e.content.set(page)
-			if (page) {
+			if (page && !e.editing) {
 				let first_focusable = page.focusables()[0]
 				if (first_focusable)
 					first_focusable.focus()
@@ -3179,17 +3185,28 @@ component('x-split', function(e) {
 		e.fixed_pane[horiz ? 'w' : 'h'] = e.fixed_size
 		e.auto_pane.w = null
 		e.auto_pane.h = null
+		e.fixed_pane[horiz ? 'min_h' : 'min_w'] = null
+		e.fixed_pane[horiz ? 'min_w' : 'min_h'] = e.min_size
+		e.auto_pane.min_w = null
+		e.auto_pane.min_h = null
+	}
+
+	function update_size() {
+		update_view()
+		e.fire('layout_changed')
 	}
 
 	e.set_orientation = update_view
 	e.set_fixed_side = update_view
 	e.set_resizeable = update_view
-	e.set_fixed_size = update_view
+	e.set_fixed_size = update_size
+	e.set_min_size = update_size
 
 	e.prop('orientation', {attr: 'orientation', type: 'enum', enum_values: ['horizontal', 'vertical'], default: 'horizontal', noinit: true})
-	e.prop('fixed_side',  {attr: 'fixed-side', type: 'enum', enum_values: ['first', 'second'], default: 'first', noinit: true})
-	e.prop('resizeable',  {attr: 'resizeable', type: 'bool', default: true, noinit: true})
-	e.prop('fixed_size', {store: 'var', type: 'number', default: 200, noinit: true})
+	e.prop('fixed_side' , {attr: 'fixed-side' , type: 'enum', enum_values: ['first', 'second'], default: 'first', noinit: true})
+	e.prop('resizeable' , {attr: 'resizeable' , type: 'bool', default: true, noinit: true})
+	e.prop('fixed_size' , {store: 'var', type: 'number', default: 200, noinit: true})
+	e.prop('min_size'   , {store: 'var', type: 'number', default:   0, noinit: true})
 
 	e.init = function() {
 		e[1] = component.create(or(e[1], widget_placeholder()))
@@ -3221,24 +3238,20 @@ component('x-split', function(e) {
 			if (resist)
 				w = w0 + (w - w0) * .2 // show resistance
 
-			e.fixed_size = round(w)
-
-			e.tooltip.text = round(w)
-
-			if (e.collapsable != false) {
-				let w1 = e.fixed_pane.client_rect()[horiz ? 'width' : 'height']
-
-				let pminw = e.fixed_pane.style[horiz ? 'min-width' : 'min-height']
-				pminw = pminw ? parseInt(pminw) : 0
-
-				if (!e.fixed_pane.hasclass('collapsed')) {
-					if (w < min(max(pminw, 20), 30) - 5)
-						e.fixed_pane.class('collapsed', true)
-				} else {
-					if (w > max(pminw, 30))
-						e.fixed_pane.class('collapsed', false)
-				}
+			if (!e.fixed_pane.hasclass('collapsed')) {
+				if (w < min(max(e.min_size, 20), 30) - 5)
+					e.fixed_pane.class('collapsed', true)
+			} else {
+				if (w > max(e.min_size, 30))
+					e.fixed_pane.class('collapsed', false)
 			}
+
+			w = max(w, e.min_size)
+			if (e.fixed_pane.hasclass('collapsed'))
+				w = 0
+
+			e.fixed_size = round(w)
+			e.tooltip.text = round(w)
 
 			return false
 
@@ -3271,12 +3284,14 @@ component('x-split', function(e) {
 			return
 
 		e.tooltip = e.tooltip || tooltip()
-		e.tooltip.side = horiz ? (left ? 'left' : 'right') : (left ? 'top' : 'bottom')
+		e.tooltip.side = horiz ? (left ? 'right' : 'left') : (left ? 'bottom' : 'top')
 		e.tooltip.target = e.sizer
+		e.tooltip.text = e.fixed_size
 
 		resizing = true
 		e.class('resizing')
 		this.setPointerCapture(ev.pointerId)
+
 		return false
 	})
 
@@ -3320,8 +3335,8 @@ component('x-split', function(e) {
 
 	e.serialize = function() {
 		let t = e.serialize_fields()
-		if (e[1].serialize) t[1] = e[1].serialize()
-		if (e[2].serialize) t[2] = e[2].serialize()
+		t[1] = e[1].serialize()
+		t[2] = e[2].serialize()
 		return t
 	}
 
@@ -3599,3 +3614,4 @@ component('x-toolbox', function(e) {
 	})
 
 })
+

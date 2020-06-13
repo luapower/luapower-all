@@ -56,7 +56,7 @@ html, body {
 rowset.types.rowset = {}
 
 rowsets_rowset = global_rowset('rowsets')
-rowsets_rowset.load({limit: 0})
+rowsets_rowset.load()
 
 rowset.types.rowset.editor = function(...options) {
 	return list_dropdown(update({
@@ -84,7 +84,7 @@ rowset.types.rowset_field.editor = function(...options) {
 				rows: rows,
 			})
 		})
-		rs.load({limit: 0})
+		rs.load_fields()
 	}
 	return e
 }
@@ -103,9 +103,11 @@ prop_inspector = component('x-prop-inspector', function(e) {
 	e.can_sort_rows = false
 	e.enable_context_menu = false
 
+	// prevent getting out of edit mode.
 	e.auto_edit_first_cell = true
-	e.auto_enter_edit = true
+	e.enter_edit_on_click = true
 	e.exit_edit_on_escape = false
+	e.stay_in_edit_mode = true
 
 	e.rowset = rowset({
 		can_change_rows: true,
@@ -217,23 +219,25 @@ function properties_toolbox(tb_opt, insp_opt) {
 	return tb
 }
 
-function widget_tree_rows() {
-	let rows = new Set()
-	function add_widget(e, pe) {
-		if (!e) return
-		rows.add([e, pe])
-		if (e.child_widgets)
-			for (let ce of e.child_widgets())
-				add_widget(ce, e)
-	}
-	add_widget(root_widget)
-	return rows
-}
-
 function tree_toolbox(tb_opt) {
+
+	function widget_tree_rows() {
+		let rows = new Set()
+		function add_widget(e, pe) {
+			if (!e) return
+			rows.add([e, pe])
+			if (e.child_widgets)
+				for (let ce of e.child_widgets())
+					add_widget(ce, e)
+		}
+		add_widget(root_widget)
+		return rows
+	}
+
 	function widget_name(e) {
 		return e.typename.replace('_', ' ')
 	}
+
 	let rs = rowset({
 		fields: [
 			{name: 'widget', format: widget_name},
@@ -243,6 +247,7 @@ function tree_toolbox(tb_opt) {
 		pk: 'widget',
 		parent_col: 'parent_widget',
 	})
+
 	let g = grid({
 		rowset: rs,
 		tree_col: 'widget',
@@ -258,15 +263,37 @@ function tree_toolbox(tb_opt) {
 		if (e)
 			e.editing = true
 	})
+
 	let tb = toolbox(update({
 		title: 'widget tree',
 		content: g,
 	}, tb_opt))
+
 	g.auto_focus_first_cell = true
 	g.init_focused_cell()
-	document.on('widget_tree_changed', function() {
+
+	function element_focusin(ev) {
+		let e = ev.target
+		while (e && !e.typename)
+			e = e.popup_target || e.parent
+		let pe = e.popup_target || e.parent
+		while (pe && pe.typename != 'toolbox')
+			pe = pe.popup_target || pe.parent
+		if (e && e.typename && window.tree_tb && !(pe && pe.typename == 'toolbox'))
+			tb.widget = e
+	}
+
+	function widget_tree_changed() {
 		rs.reset({rows: widget_tree_rows()})
-	})
+	}
+
+	function bind(on) {
+		document.on('focusin', element_focusin, on)
+		document.on('widget_tree_changed', widget_tree_changed, on)
+	}
+	tb.on('attach', function() { bind(true) })
+	tb.on('detach', function() { bind(false) })
+	bind(true)
 
 	function get_widget() {
 		return e.focused_row && e.focused_row[0]
