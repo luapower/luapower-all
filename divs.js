@@ -265,18 +265,39 @@ callers.mousemove = function(e, f) {
 }
 
 callers.pointerdown = function(e, f) {
+	let ret
 	if (e.which == 1)
-		return f.call(this, e)
-	else if (e.which == 3) {
-		return this.fire('rightpointerdown', e)
+		ret = f.call(this, e, e.clientX, e.clientY)
+	else if (e.which == 3)
+		ret = this.fire('rightpointerdown', e, e.clientX, e.clientY)
+	if (ret == 'capture') {
+		this.setPointerCapture(e.pointerId)
+		ret = false
 	}
+	return ret
 }
 
+method(Element, 'capture_pointer', function(e, move, up) {
+	up = or(up, return_false)
+	this.on('pointermove', move)
+	function wrap_up(e, mx, my) {
+		this.off('pointermove', move)
+		this.off('pointerup', wrap_up)
+		return up.call(this, e, mx, my)
+	}
+	this.on('pointerup', wrap_up)
+	return 'capture'
+})
+
 callers.pointerup = function(e, f) {
+	let ret
 	if (e.which == 1)
-		return f.call(this, e)
+		ret = f.call(this, e.clientX, e.clientY, e)
 	else if (e.which == 3)
-		return this.fire('rightpointerup', e)
+		ret = this.fire('rightpointerup', e.clientX, e.clientY, e)
+	if (this.hasPointerCapture(e.pointerId))
+		this.releasePointerCapture(e.pointerId)
+	return ret
 }
 
 callers.pointermove = function(e, f) {
@@ -667,16 +688,12 @@ method(HTMLElement, 'prop', function(prop, opt) {
 	} else if (opt.style) {
 		let style = opt.style
 		let format = opt.style_format || function(v) { return v }
+		let parse  = opt.style_parse  || type == 'number' && num || function(v) { return v }
 		if (opt.default != null && !this.style[style])
 			this.style[style] = format(opt.default)
-		if (type == 'number')
-			function get() {
-				return num(this.style[style])
-			}
-		else
-			function get() {
-				return this.style[style]
-			}
+		function get() {
+			return parse(this.style[style])
+		}
 		function set(v) {
 			let v0 = get.call(this)
 			if (v == v0)

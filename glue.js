@@ -77,6 +77,8 @@ function repl(x, v, z) { return x == v ? z : x }
 
 function noop() {}
 function return_true() { return true; }
+function return_false() { return true; }
+function return_arg(arg) { return arg; }
 
 // error handling ------------------------------------------------------------
 
