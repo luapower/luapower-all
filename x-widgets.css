@@ -1195,71 +1195,102 @@
 /* cssgrid ---------------------------------------------------------------- */
 
 .x-cssgrid {
-	position: relative;
-
+	/* layout items */
 	display: grid;
-	grid-gap: 0px;
-
 	justify-items: center;
 	align-items: center;
-
-	z-index: 0;           /* create a z-index stack for overlays */
 }
 
-.x-cssgrid.editing {
+/* edit mode */
+
+.x-cssgrid.x-editing {
+	position: relative;
 	outline: 1px dashed #aaa;
 	outline-offset: -1px;
-	overflow: hidden;
+	z-index: 0;             /* create a z-index stack for overlays */
+	overflow: hidden;       /* hide overflowing tips */
 }
 
-.x-cssgrid-line-tip {
+/* guides */
+
+.x-cssgrid-guide {
 	position: absolute;
-	border-color: #04a;
-	z-index: 3;           /* over items, item overlay, span */
+	align-self: stretch;
+	justify-self: stretch;
+	border: 0 dashed #aaa;
+	display: grid;
+	overflow: visible;
 }
 
-.x-cssgrid-line-tip:hover {
+.x-cssgrid-guide[axis=x] { left: 0; width : 0; height: 100%; justify-self: end; border-right-width : 1px; }
+.x-cssgrid-guide[axis=y] { top : 0; height: 0; width : 100%; align-self  : end; border-bottom-width: 1px; }
+
+/* guide tips */
+
+.x-cssgrid-tip {
+	grid-area: 1 / 1;
+	width: 0;
+	border-color: #04a;
+}
+
+.x-cssgrid-tip:hover {
 	border-color: #28f;
 }
 
-.x-cssgrid-line-tip[side=top] {
+.x-cssgrid-tip[axis=x] {
+	align-self: start;
 	cursor: ew-resize;
 	transform: scale(1, 2);
 }
 
-.x-cssgrid-line-tip[side=left] {
+.x-cssgrid-tip[axis=y] {
 	cursor: ns-resize;
 	transform: scale(2, 1);
 }
 
-.x-cssgrid-line-label {
-	position: absolute;
-	z-index: 4;           /* over items, item overlay, tip */
-	/* style */
+/* guide labels */
+
+.x-cssgrid-label {
+	grid-area: 1 / 1;
+	justify-self: start;
+	align-self: start;
 	font-size: 75%;
 	color: #333;
 	cursor: pointer;
 }
 
-.x-cssgrid-line-label[side=top]  { margin: 3px -6px; transform: translate(-100%, 0); }
-.x-cssgrid-line-label[side=left] { margin: -3px 5px; transform: translate(0, -100%); }
+.x-cssgrid-label[axis=x] { margin: 3px -6px; transform: translate(-100%, 0); }
+.x-cssgrid-label[axis=y] { margin: -3px 5px; transform: translate(0, -100%); }
 
-.x-cssgrid-line-guide {
+/* span outlines */
+
+.x-cssgrid-span {
+	justify-self: stretch;
+	align-self: stretch;
+	border: 1px dashed #24a;
+	pointer-events: none;
+	position: relative;
+}
+
+.x-cssgrid-span-handle {
+	pointer-events: all;
 	position: absolute;
-	pointer-events: none;
-	border: 0 dashed #aaa;
+	width : 14px;
+	height: 14px;
+	padding: 5px;
+	background-color: #24a;
+	background-clip: content-box;
 }
 
-.x-cssgrid-line-guide[side=left] {
-	width: 0;
-	border-top-width: 1px;
-}
+.x-cssgrid-span-handle[side=top   ] { cursor: ns-resize; margin-top   : -6px; margin-left  : -2px; left: 50%; }
+.x-cssgrid-span-handle[side=left  ] { cursor: ew-resize; margin-left  : -6px; margin-top   : -2px; top : 50%; }
+.x-cssgrid-span-handle[side=right ] { cursor: ew-resize; margin-right : -6px; margin-top   : -2px; top : 50%; right: 0; }
+.x-cssgrid-span-handle[side=bottom] { cursor: ns-resize; margin-bottom: -6px; margin-left  : -2px; left: 50%; bottom: 0; }
 
-.x-cssgrid-line-guide[side=top] {
-	height: 0;
-	border-left-width: 1px;
-	pointer-events: none;
-}
+
+
+
+
 
 .x-cssgrid-item-overlay {
 	position: absolute;
@@ -1273,29 +1304,10 @@
 
 .x-cssgrid-item-ph {
 	/* enable this for debugging: */
-	/* border: 1px dashed #aaa; */
+	border: 1px dashed #aaa;
 }
 
 .x-cssgrid-moving { cursor: move; }
-
-.x-cssgrid-span {
-	position: absolute;
-	border: 1px dashed #24a;
-	z-index: 2;           /* over items, item overlay */
-	pointer-events: none;
-}
-
-.x-cssgrid-span-handle {
-	position: absolute;
-	width : 4px;
-	height: 4px;
-	background-color: #24a;
-}
-
-.x-cssgrid-span-handle[side=top   ] { margin-top   : -1px; margin-left  : -2px; left: 50%; }
-.x-cssgrid-span-handle[side=left  ] { margin-left  : -1px; margin-top   : -2px; top : 50%; }
-.x-cssgrid-span-handle[side=right ] { margin-right : -1px; margin-top   : -2px; top : 50%; right: 0; }
-.x-cssgrid-span-handle[side=bottom] { margin-bottom: -1px; margin-left  : -2px; left: 50%; bottom: 0; }
 
 .x-cssgrid-span-move { border-color: #2a4; }
 .x-cssgrid-span-move > .x-cssgrid-span-handle { background-color: #2a4; }

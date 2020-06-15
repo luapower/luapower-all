@@ -929,9 +929,9 @@ component('x-grid', function(e) {
 
 	e.on('pointermove', pointermove)
 
-	e.on('pointerdown', function(ev) {
+	e.on('pointerdown', function(ev, mx, my) {
 		if (!hit.state)
-			pointermove(ev.clientX, ev.clientY, ev)
+			pointermove(mx, my, ev)
 		if (!hit.state)
 			return
 		e.focus()
@@ -946,36 +946,31 @@ component('x-grid', function(e) {
 			hit.state = 'col_dragging'
 		} else
 			assert(false)
-		this.setPointerCapture(ev.pointerId)
-		return false
+		return 'capture'
 	})
 
 	function pointerup(ev) {
 		if (!hit.state)
 			return
-		this.releasePointerCapture(ev.pointerId)
 		if (hit.state == 'header_resizing') {
 			e.class('col-resizing', false)
 			hit.state = null
 			update_sizes()
-			return false
 		} else if (hit.state == 'col_resizing') {
 			e.class('col-resizing', false)
 			hit.state = null
 			remove_resize_guides()
 			update_sizes()
-			return false
 		} else if (hit.state == 'col_dragging') {
 			if (e.can_sort_rows)
 				e.set_order_by_dir(e.fields[hit.fi], 'toggle', ev.shiftKey)
 			else if (e.focus_cell_on_click_header)
 				e.focus_cell(true, hit.fi)
 			hit.state = null
-			return false
 		} else if (hit.state == 'col_moving') {
 			mu_col_move()
-			return false
 		}
+		return false
 	}
 
 	e.on('pointerup', pointerup)

@@ -1389,18 +1389,12 @@ function cssgrid_child_widget(e) {
 		}
 	})
 
-	e.prop('pos_x', {style: 'grid-column-start', type: 'number', default: 1})
-	e.prop('pos_y', {style: 'grid-row-start'   , type: 'number', default: 1})
-
-	e.get_span_x = function() { return num((this.style['grid-column-end'] || 'span 1').replace('span ', '')) }
-	e.get_span_y = function() { return num((this.style['grid-row-end'   ] || 'span 1').replace('span ', '')) }
-	e.set_span_x = function(v) { this.style['grid-column-end'] = 'span '+v }
-	e.set_span_y = function(v) { this.style['grid-row-end'   ] = 'span '+v }
-	e.prop('span_x', {type: 'number', default: 1})
-	e.prop('span_y', {type: 'number', default: 1})
-
-	e.prop('align_x', {style: 'justify-self', type: 'enum', enum_values: ['start', 'end', 'center', 'stretch'], default: 'center'})
-	e.prop('align_y', {style: 'align-self'  , type: 'enum', enum_values: ['start', 'end', 'center', 'stretch'], default: 'center'})
+	e.prop('pos_x'  , {style: 'grid-column-start' , type: 'number', default: 1})
+	e.prop('pos_y'  , {style: 'grid-row-start'    , type: 'number', default: 1})
+	e.prop('span_x' , {style: 'grid-column-end'   , type: 'number', default: 1, style_format: (v) => 'span '+v, style_parse: (v) => num((v || 'span 1').replace('span ', '')) })
+	e.prop('span_y' , {style: 'grid-row-end'      , type: 'number', default: 1, style_format: (v) => 'span '+v, style_parse: (v) => num((v || 'span 1').replace('span ', '')) })
+	e.prop('align_x', {style: 'justify-self'      , type: 'enum', enum_values: ['start', 'end', 'center', 'stretch'], default: 'center'})
+	e.prop('align_y', {style: 'align-self'        , type: 'enum', enum_values: ['start', 'end', 'center', 'stretch'], default: 'center'})
 
 }
 
@@ -3290,16 +3284,14 @@ component('x-split', function(e) {
 
 		resizing = true
 		e.class('resizing')
-		this.setPointerCapture(ev.pointerId)
 
-		return false
+		return 'capture'
 	})
 
-	e.on('pointerup', function(ev) {
+	e.on('pointerup', function() {
 		if (!resizing)
 			return
 
-		this.releasePointerCapture(ev.pointerId)
 		e.class('resizing', false)
 		resizing = false
 
@@ -3580,19 +3572,17 @@ component('x-toolbox', function(e) {
 	{
 		let moving, drag_x, drag_y
 
-		e.titlebar.on('pointerdown', function(ev) {
+		e.titlebar.on('pointerdown', function(_, mx, my) {
 			e.focus()
 			moving = true
 			let r = e.client_rect()
-			drag_x = ev.clientX - r.left
-			drag_y = ev.clientY - r.top
-			this.setPointerCapture(ev.pointerId)
-			return false
+			drag_x = mx - r.left
+			drag_y = my - r.top
+			return 'capture'
 		})
 
-		e.titlebar.on('pointerup', function(ev) {
+		e.titlebar.on('pointerup', function() {
 			moving = false
-			this.releasePointerCapture(ev.pointerId)
 			return false
 		})
 
