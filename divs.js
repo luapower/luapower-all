@@ -80,6 +80,7 @@ alias(Element, 'first'  , 'firstElementChild')
 alias(Element, 'last'   , 'lastElementChild')
 alias(Element, 'next'   , 'nextElementSibling')
 alias(Element, 'prev'   , 'previousElementSibling')
+alias(Element, 'child_count', 'childElementCount')
 
 {
 let indexOf = Array.prototype.indexOf
@@ -279,13 +280,18 @@ callers.pointerdown = function(e, f) {
 
 method(Element, 'capture_pointer', function(e, move, up) {
 	up = or(up, return_false)
-	this.on('pointermove', move)
+	let down_mx = e.clientX
+	let down_my = e.clientY
+	function wrap_move(mx, my, e) {
+		return move.call(this, mx, my, e, down_mx, down_my)
+	}
 	function wrap_up(e, mx, my) {
-		this.off('pointermove', move)
-		this.off('pointerup', wrap_up)
+		this.off('pointermove', wrap_move)
+		this.off('pointerup'  , wrap_up)
 		return up.call(this, e, mx, my)
 	}
-	this.on('pointerup', wrap_up)
+	this.on('pointermove', wrap_move)
+	this.on('pointerup'  , wrap_up)
 	return 'capture'
 })
 
@@ -403,6 +409,15 @@ property(Element, 'max_w', { set: function(v) { this.style['max-width' ] = px(v)
 property(Element, 'max_h', { set: function(v) { this.style['max-height'] = px(v) } })
 
 alias(Element, 'client_rect', 'getBoundingClientRect')
+
+alias(DOMRect, 'x' , 'left')
+alias(DOMRect, 'y' , 'top')
+alias(DOMRect, 'x1', 'left')
+alias(DOMRect, 'y1', 'top')
+alias(DOMRect, 'w' , 'width')
+alias(DOMRect, 'h' , 'height')
+alias(DOMRect, 'x2', 'right')
+alias(DOMRect, 'y2', 'bottom')
 
 method(DOMRect, 'contains', function(x, y) {
 	return (
@@ -796,6 +811,30 @@ method(HTMLElement, 'num_attr_property', function(name, setter) {
 	this.attr_property(name, setter, 'number')
 })
 
+// moving an element out of layout while preserving its position & size ------
+
+method(Element, 'pop_out', function(new_parent) {
+	new_parent = or(new_parent, document.body)
+
+	let cs = this.css()
+	let cr = this.client_rect()
+	let pr = new_parent.client_rect()
+	let ps = this.css()
+
+	assert(cs['box-sizing'] == 'border-box')
+	assert(ps['box-sizing'] == 'border-box')
+	assert(ps.position == 'relative' || ps.position == 'absolute')
+
+	this.style.display = 'absolute'
+	this.style['grid-area'] = '1 / 1'
+	this.x = cr.x - pr.x + ps['padding-left']
+	this.y = cr.y - pr.y + ps['padding-top' ]
+	this.w = cr.w
+	this.h = cr.h
+
+})
+
+
 // popup pattern -------------------------------------------------------------
 
 // NOTE: why is this so complicated? because the forever almost-there-but-
@@ -1044,7 +1083,7 @@ method(Element, 'modal', function(on) {
 //
 function live_move_mixin(e) {
 
-	let n, move_i, move_x, over_i, over_x, xs
+	let n, move_i, move_x, over_i, over_x, xs, ws
 
 	e.move_element_start = function(elem_i, elem_count) {
 		move_i = elem_i
@@ -1053,6 +1092,9 @@ function live_move_mixin(e) {
 		over_i = null
 		over_x = null
 		xs = []
+		ws = []
+		for (let i = 0; i < elem_count; i++)
+			ws[i] = e.movable_element_size(i)
 	}
 
 	e.move_element_stop = function() {
@@ -1084,7 +1126,7 @@ function live_move_mixin(e) {
 		let x = 0
 		for (let i = 0; i < n; i++) {
 			if (i != move_i) {
-				let w = e.movable_element_size(i)
+				let w = ws[i]
 				if (elem_x < x + w / 2)
 					return i - (i < move_i ? 0 : 1)
 				x += w
@@ -1109,7 +1151,7 @@ function live_move_mixin(e) {
 					e.set_movable_element_pos(i, x)
 					xs[i] = x
 				}
-				x += e.movable_element_size(i)
+				x += ws[i]
 			})
 		}
 	}

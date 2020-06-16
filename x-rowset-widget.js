@@ -56,6 +56,10 @@ function rowset_widget(e) {
 		return rowmap.get(row)
 	}
 
+	e.rows_array_changed = function() {
+		rowmap = null
+	}
+
 	// field -> field_index mapping -------------------------------------------
 
 	let fieldmap
@@ -79,7 +83,6 @@ function rowset_widget(e) {
 	// rows array -------------------------------------------------------------
 
 	e.init_rows_array = function() {
-		rowmap = null
 		e.rows = []
 		if (!e.rowset)
 			return
@@ -89,6 +92,7 @@ function rowset_widget(e) {
 			if (!row.parent_collapsed && passes(row))
 				e.rows.push(row)
 		}
+		e.rows_array_changed()
 	}
 
 	// fields array -----------------------------------------------------------
@@ -241,7 +245,7 @@ function rowset_widget(e) {
 			e.rows.insert(ri, row)
 		else
 			ri = e.rows.push(row)
-		rowmap = null
+		e.rows_array_changed()
 		e.init_rows()
 		if (ev && ev.focus_it)
 			e.focus_cell(ri, true, 0, 0, ev)
@@ -261,7 +265,7 @@ function rowset_widget(e) {
 			}
 		}
 		e.rows.remove(ri, n)
-		rowmap = null
+		e.rows_array_changed()
 		e.init_rows()
 		if (ev && ev.refocus)
 			if (!e.focus_cell(ri, true, 0, 0, ev))
@@ -793,7 +797,7 @@ function rowset_widget(e) {
 			e.rows.sort(cmp)
 		} else
 			e.init_rows_array()
-		rowmap = null
+		e.rows_array_changed()
 		e.focused_row_index = null // avoid row_index()'s short circuit.
 		e.focused_row_index = e.row_index(focused_row)
 		e.init_rows()

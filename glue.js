@@ -176,8 +176,8 @@ if (!S)
 
 isarray = Array.isArray
 
-method(Array, 'insert', function(i, e) {
-	this.splice(i, 0, e)
+method(Array, 'insert', function(i, v) {
+	this.splice(i, 0, v)
 })
 
 method(Array, 'remove', function(i, n) {
@@ -185,6 +185,14 @@ method(Array, 'remove', function(i, n) {
 	this.splice(i, or(n, 1))
 	return v
 })
+
+/* tested. not used.
+method(Array, 'move', function(i, j) {
+	let v = this[i]
+	this.splice(i, 1)
+	this.splice(j - (j > i ? 1 : 0), 0, v)
+})
+*/
 
 method(Array, 'remove_value', function(v) {
 	let i = this.indexOf(v)

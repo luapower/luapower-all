@@ -779,14 +779,14 @@
 
 	/* layout */
 	display: inline-flex;        /* the only way for it to shrink-wrap */
-	flex-flow: column nowrap;
+	flex-wrap: nowrap;
 	margin: .25em;
 
+	position: relative; /* for item moving */
 }
 
-.x-listbox[flow=horizontal] {
-	flex-direction: row;
-}
+.x-listbox[orientation=vertical]   { flex-direction: column; }
+.x-listbox[orientation=horizontal] { flex-direction: row; }
 
 .x-listbox-item {
 
@@ -796,6 +796,11 @@
 	/* behavior */
 	cursor: default;
 
+	position: relative;  /* for item moving */
+}
+
+.x-listbox.x-moving > .x-listbox-item:not(.x-moving) {
+	transition: top .1s, left .1s;
 }
 
 .x-widget.x-listbox.picker {
@@ -1042,14 +1047,21 @@
 	position: relative;
 
 	/* styling */
-	border-bottom: 1px solid #ccc;
+	border: 0px solid #ccc;
 }
+
+.x-pagelist[tabs=above] > .x-pagelist-header { border-bottom-width: 1px; }
+.x-pagelist[tabs=below] > .x-pagelist-header { border-top-width   : 1px; }
 
 .x-pagelist-content {
 	flex: 1;
 	display: grid;
 	min-height: 0;  /* don't let the content make the pagelist itself overflow */
 }
+
+.x-pagelist[tabs=below] > .x-pagelist-header  { order: 2; }
+.x-pagelist[tabs=below] > .x-pagelist-content { order: 1; }
+
 
 .x-pagelist-item {
 	position: relative;
@@ -1093,10 +1105,19 @@
 
 .x-pagelist-selection-bar {
 	position: absolute;
-	bottom: 0;
 	height: 2px;
 	background-color: #66f;
+}
+
+.x-pagelist[tabs=above] > .x-pagelist-header > .x-pagelist-selection-bar { bottom: 0; }
+.x-pagelist[tabs=below] > .x-pagelist-header > .x-pagelist-selection-bar { top   : 0; }
+
+.x-pagelist:not(.x-moving) > .x-pagelist-header > .x-pagelist-selection-bar {
 	transition: width .1s;
+	transition: left .1s;
+}
+
+.x-pagelist.x-moving > .x-pagelist-header > .x-pagelist-item:not(.x-moving) {
 	transition: left .1s;
 }
 
@@ -1220,6 +1241,7 @@
 	border: 0 dashed #aaa;
 	display: grid;
 	overflow: visible;
+	z-index: 1;
 }
 
 .x-cssgrid-guide[axis=x] { left: 0; width : 0; height: 100%; justify-self: end; border-right-width : 1px; }
@@ -1270,6 +1292,7 @@
 	border: 1px dashed #24a;
 	pointer-events: none;
 	position: relative;
+	z-index: 3;
 }
 
 .x-cssgrid-span-handle {
@@ -1287,15 +1310,11 @@
 .x-cssgrid-span-handle[side=right ] { cursor: ew-resize; margin-right : -6px; margin-top   : -2px; top : 50%; right: 0; }
 .x-cssgrid-span-handle[side=bottom] { cursor: ns-resize; margin-bottom: -6px; margin-left  : -2px; left: 50%; bottom: 0; }
 
-
-
-
-
+/* item overlays */
 
 .x-cssgrid-item-overlay {
-	position: absolute;
 	background-color: #00000011;
-	z-index: 1;           /* over items */
+	z-index: 2;
 }
 
 .x-cssgrid-item-overlay.focused {

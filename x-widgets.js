@@ -1833,14 +1833,14 @@ component('x-radiogroup', function(e) {
 			let radio_div = span({class: 'x-markbox-icon x-radio-icon far fa-circle'})
 			let text_div = span({class: 'x-markbox-text x-radio-text'})
 			text_div.set(item.text)
-			let item_div = div({class: 'x-widget x-markbox x-radio-item', tabindex: 0},
+			let idiv = div({class: 'x-widget x-markbox x-radio-item', tabindex: 0},
 				radio_div, text_div)
-			item_div.attrval('align', e.align)
-			item_div.class('center', !!e.center)
-			item_div.item = item
-			item_div.on('click', item_click)
-			item_div.on('keydown', item_keydown)
-			e.add(item_div)
+			idiv.attrval('align', e.align)
+			idiv.class('center', !!e.center)
+			idiv.item = item
+			idiv.on('click', idiv_click)
+			idiv.on('keydown', idiv_keydown)
+			e.add(idiv)
 		}
 	}
 
@@ -1874,12 +1874,12 @@ component('x-radiogroup', function(e) {
 		item.focus()
 	}
 
-	function item_click() {
+	function idiv_click() {
 		select_item(this)
 		return false
 	}
 
-	function item_keydown(key) {
+	function idiv_keydown(key) {
 		if (key == ' ' || key == 'Enter') {
 			select_item(this)
 			return false
@@ -2913,6 +2913,8 @@ component('x-pagelist', function(e) {
 	serializable_widget(e)
 	e.classes = 'x-widget x-pagelist'
 
+	e.prop('tabs', {attr: 'tabs', type: 'enum', enum_values: ['above', 'below'], default: 'above'})
+
 	e.header = div({class: 'x-pagelist-header'})
 	e.content = div({class: 'x-pagelist-content'})
 	e.add_button = div({class: 'x-pagelist-item x-pagelist-add-button fa fa-plus', tabindex: 0})
@@ -2930,16 +2932,15 @@ component('x-pagelist', function(e) {
 		idiv.xbutton = xbutton
 		tdiv.set(item.text)
 		tdiv.title = item.text
-		idiv.on('mousedown', item_mousedown)
-		idiv.on('dblclick' , item_dblclick)
-		idiv.on('keydown'  , item_keydown)
-		tdiv.on('input'    , tdiv_input)
-		xbutton.on('mousedown', xbutton_mousedown)
+		idiv.on('pointerdown', idiv_pointerdown)
+		idiv.on('dblclick'   , idiv_dblclick)
+		idiv.on('keydown'    , idiv_keydown)
+		tdiv.on('input'      , tdiv_input)
+		xbutton.on('pointerdown', xbutton_pointerdown)
 		idiv.item = item
 		item.idiv = idiv
 		e.header.add(idiv)
 		e.items.push(item)
-		idiv.index = e.items.length-1
 	}
 
 	e.init = function() {
@@ -2959,16 +2960,18 @@ component('x-pagelist', function(e) {
 		idiv.text_div.contenteditable = select && (e.editing || e.renaming)
 	}
 
-	e.update = function() {
+	function update_selection_bar() {
 		let idiv = e.selected_item
-		if (idiv) {
-			e.selection_bar.x = idiv.offsetLeft
-			e.selection_bar.w = idiv.clientWidth
-			update_item(idiv, true)
-		} else {
-			e.selection_bar.w = 0
-		}
+		e.selection_bar.x = idiv ? idiv.offsetLeft  : 0
+		e.selection_bar.w = idiv ? idiv.clientWidth : 0
 		e.selection_bar.show(!!idiv)
+	}
+
+	e.update = function() {
+		update_selection_bar()
+		let idiv = e.selected_item
+		if (idiv)
+			update_item(idiv, true)
 		e.add_button.show(e.can_add_items || e.editing)
 	}
 
@@ -2984,25 +2987,27 @@ component('x-pagelist', function(e) {
 		e.selected_index = or(e.selected_index, 0)
 	}
 
-	function select_item(idiv) {
-		if (e.selected_item) {
-			e.selected_item.class('selected', false)
-			e.fire('close', e.selected_item.index)
-			e.content.clear()
-			update_item(e.selected_item, false)
-		}
-		e.selected_item = idiv
-		e.update()
-		if (idiv) {
-			idiv.class('selected', true)
-			e.fire('open', idiv.index)
-			let page = idiv.item.page
-			e.content.set(page)
-			if (page && !e.editing) {
-				let first_focusable = page.focusables()[0]
-				if (first_focusable)
-					first_focusable.focus()
+	function select_item(idiv, focus_page) {
+		if (e.selected_item != idiv) {
+			if (e.selected_item) {
+				e.selected_item.class('selected', false)
+				e.fire('close', e.selected_item.index)
+				e.content.clear()
+				update_item(e.selected_item, false)
 			}
+			e.selected_item = idiv
+			e.update()
+			if (idiv) {
+				idiv.class('selected', true)
+				e.fire('open', idiv.index)
+				let page = idiv.item.page
+				e.content.set(page)
+			}
+		}
+		if (!e.editing && focus_page != false) {
+			let first_focusable = e.content.focusables()[0]
+			if (first_focusable)
+				first_focusable.focus()
 		}
 	}
 
@@ -3016,20 +3021,72 @@ component('x-pagelist', function(e) {
 		}
 	)
 
-	function item_mousedown() {
+	// drag-move tabs ---------------------------------------------------------
+
+	live_move_mixin(e)
+
+	e.set_movable_element_pos = function(i, x) {
+		let idiv = e.items[i].idiv
+		idiv.x = x - idiv._offset_x
+	}
+
+	e.movable_element_size = function(i) {
+		return e.items[i].idiv.offsetWidth
+	}
+
+	let dragging, drag_mx
+
+	function idiv_pointerdown(ev, mx, my) {
 		if (this.text_div.contenteditable)
 			return
 		this.focus()
-		select_item(this)
-		return false
+		select_item(this, false)
+		return this.capture_pointer(ev, idiv_pointermove, idiv_pointerup)
 	}
+
+	function idiv_pointermove(mx, my, ev, down_mx, down_my) {
+		if (!dragging) {
+			dragging = abs(down_mx - mx) > 4 || abs(down_my - my) > 4
+			if (dragging) {
+				for (let item of e.items)
+					item.idiv._offset_x = item.idiv.offsetLeft
+				e.move_element_start(this.index, e.items.length)
+				drag_mx = down_mx - this.offsetLeft
+				e.class('x-moving', true)
+				this.class('x-moving', true)
+				update_selection_bar()
+			}
+		} else {
+			e.move_element_update(mx - drag_mx)
+			e.update()
+		}
+	}
+
+	function idiv_pointerup() {
+		if (dragging) {
+			let i = e.move_element_stop()
+			e.items.remove(this.index)
+			e.items.insert(i, this.item)
+			this.remove()
+			e.header.insert(i, this)
+			for (let item of e.items)
+				item.idiv.x = null
+			update_selection_bar()
+			e.class('x-moving', false)
+			this.class('x-moving', false)
+			dragging = false
+		}
+		select_item(this)
+	}
+
+	// key bindings -----------------------------------------------------------
 
 	function set_renaming(renaming) {
 		e.renaming = !!renaming
 		e.selected_item.text_div.contenteditable = e.renaming
 	}
 
-	function item_keydown(key) {
+	function idiv_keydown(key) {
 		if (key == 'F2' && e.can_rename_items) {
 			set_renaming(!e.renaming)
 			return false
@@ -3076,7 +3133,7 @@ component('x-pagelist', function(e) {
 		return false
 	})
 
-	function item_dblclick() {
+	function idiv_dblclick() {
 		if (e.renaming || !e.can_rename_items)
 			return
 		set_renaming(true)
@@ -3089,7 +3146,7 @@ component('x-pagelist', function(e) {
 		e.update()
 	}
 
-	function xbutton_mousedown() {
+	function xbutton_pointerdown() {
 		let idiv = this.parent
 		select_item(null)
 		idiv.remove()

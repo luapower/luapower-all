@@ -684,7 +684,7 @@ lb = listbox({
 	value: 'Bananas',
 })
 
-hlb = hlistbox({
+hlb = listbox({
 	items: [
 		'Works',
 		'Horizontally',
@@ -716,29 +716,33 @@ pl = pagelist({
 })
 
 <pl_item>: string | {
-	text           : string
-	page           : element_to_attach_to_container
-	selected_index : N
+	text             : string
+	page             : element_to_attach_to_container
+	selected_index   : N
+	can_add_items    : t|f
+	can_remove_items : t|f
 }
 
 </help>
 <script>
 
-pages = H.div({style: 'margin-top: 1em'})
-pages.console = H.div({}, 'Console page. Contains focusble element. ', input())
-pages.source = H.div({}, 'Source page contents.')
+console_page = H.div({}, 'Console page. Contains focusble element. ', input())
+source_page = H.div({}, 'Source page contents.')
 
 main.add(
 	pagelist({
 		items: [
 			'Elements',
-			{text: 'Console', page: pages.console},
-			{text: 'Sources', page: pages.source},
+			{text: 'Console', page: console_page},
+			{text: 'Sources', page: source_page},
 			'Network',
 			'Performance',
 		],
 		selected_index: 3,
-		page_container: pages,
+		can_add_items: true,
+		can_remove_items: true,
+		tabs: 'below',
+		attrs: {style: 'height: 100%'},
 	})
 )
 
@@ -1485,7 +1489,7 @@ reload_button.on('click', function() {
 	run_script()
 })
 
-demo_list.focus_cell(15)
+demo_list.focus_cell(13)
 
 demo_list_ct.add(demo_list)
 

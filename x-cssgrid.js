@@ -149,7 +149,6 @@ component('x-cssgrid', function(e) {
 				update_focused_item_span()
 			} else if (k == 'pos_y' || k == 'span_y') {
 				update_guides_for('y')
-				update_focused_item_overlay()
 				update_focused_item_span()
 			}
 	})
@@ -203,8 +202,10 @@ component('x-cssgrid', function(e) {
 			item['_'+attr] = align
 			align = 'stretch'
 		}
-		item[attr] = align
+		// NOTE: must change item's dimensions before changing its alignment
+		// so that the item overlay updates with the right width.
 		item[horiz ? 'w' : 'h'] = align == 'stretch' ? 'auto' : null
+		item[attr] = align
 		return align
 	}
 
@@ -218,12 +219,10 @@ component('x-cssgrid', function(e) {
 				e.toggle_stretch(item, true, false)
 				e.toggle_stretch(item, false, true)
 			}
-			return
-		}
-		if (horiz)
-			return toggle_stretch_for(item, true)
-		if (vert)
-			return toggle_stretch_for(item, false)
+		} else if (horiz)
+			toggle_stretch_for(item, true)
+		else if (vert)
+			toggle_stretch_for(item, false)
 	}
 
 	// visuals ////////////////////////////////////////////////////////////////
@@ -233,10 +232,12 @@ component('x-cssgrid', function(e) {
 	function update_sizes_for(axis) {
 		if (!e.editing) return
 		if (!e.isConnected) return
+		let n = track_sizes(axis).length
 		let ts = get_sizes(axis)
-		for (let i = 0; i < ts.length; i++) {
+		for (let i = 0; i < n; i++) {
 			let guide = e.guides[axis][i]
-			guide.label.set(ts[i].ends('px') ? num(ts[i]) : ts[i])
+			let s = or(ts[i], 'auto')
+			guide.label.set(s.ends('px') ? num(s) : s)
 		}
 	}
 
@@ -363,8 +364,8 @@ component('x-cssgrid', function(e) {
 			ol.style['margin-bottom'    ] = css['margin-bottom'    ]
 			ol.style['justify-self'     ] = css['justify-self'     ]
 			ol.style['align-self'       ] = css['align-self'       ]
-			ol.w = item.offsetWidth
-			ol.h = item.offsetHeight
+			ol.w = ol.style['justify-self'] == 'stretch' ? null : item.offsetWidth
+			ol.h = ol.style['align-self'  ] == 'stretch' ? null : item.offsetHeight
 		}
 		ol.show(show)
 	}
@@ -495,7 +496,7 @@ component('x-cssgrid', function(e) {
 			s0 = track_sizes(this.axis)[this.i]
 			drag_mx =
 				(this.axis == 'x' ? mx : my) -
-				e.client_rect()[this.axis == 'x' ? 'left' : 'top']
+				e.client_rect()[this.axis]
 
 			// transform auto size to pixels to be able to move the line.
 			let tz = get_sizes(this.axis)
@@ -512,8 +513,7 @@ component('x-cssgrid', function(e) {
 		}
 
 		function tip_pointermove(mx, my, ev) {
-			let left = this.axis == 'x' ? 'left' : 'top'
-			let dx = (this.axis == 'x' ? mx : my) - drag_mx - e.client_rect()[left]
+			let dx = (this.axis == 'x' ? mx : my) - drag_mx - e.client_rect()[this.axis]
 			let tz = get_sizes(this.axis)
 			let z = tz[this.i]
 			if (z.ends('px')) {
@@ -574,8 +574,8 @@ component('x-cssgrid', function(e) {
 			return
 		let [bx1, by1, bx2, by2] = item_track_bounds(e.focused_item)
 		let r = e.client_rect()
-		mx -= r.left
-		my -= r.top
+		mx -= r.x
+		my -= r.y
 		return (
 			hit_test_edge_center(mx, my, bx1, bx2, by1, 'top'   ) ||
 			hit_test_edge_center(mx, my, bx1, bx2, by2, 'bottom') ||
@@ -589,8 +589,8 @@ component('x-cssgrid', function(e) {
 
 		let css = hit_item.css()
 		let r = hit_item.client_rect()
-		drag_mx = drag_mx - r.left + num(css['margin-left'])
-		drag_my = drag_my - r.top  + num(css['margin-top' ])
+		drag_mx = drag_mx - r.x + num(css['margin-left'])
+		drag_my = drag_my - r.y + num(css['margin-top' ])
 
 		move_item(mx, my)
 	}
@@ -623,10 +623,10 @@ component('x-cssgrid', function(e) {
 	function hit_test_inside_span(item) {
 		let er = e.client_rect()
 		let ir = item.client_rect()
-		let x1 = ir.left   - er.left
-		let x2 = ir.right  - er.left
-		let y1 = ir.top    - er.top
-		let y2 = ir.bottom - er.top
+		let x1 = ir.x1 - er.x1
+		let x2 = ir.x2 - er.x1
+		let y1 = ir.y1 - er.y1
+		let y2 = ir.y2 - er.y1
 		let [i, bx1, bx2] = hit_test_inside_span_for(true , x1, x2)
 		let [j, by1, by2] = hit_test_inside_span_for(false, y1, y2)
 		return [i, j, bx1, by1, bx2, by2]
@@ -677,8 +677,9 @@ component('x-cssgrid', function(e) {
 		} else {
 			pop_out_item()
 
-			hit_item.x = !stretch_x ? x : e.client_rect().left + bx1 + (i1 > 0 ? e.gap_x / 2 : 0)
-			hit_item.y = !stretch_y ? y : e.client_rect().top  + by1 + (j1 > 0 ? e.gap_y / 2 : 0)
+			let r = e.client_rect()
+			hit_item.x = !stretch_x ? x : r.x + bx1 + (i1 > 0 ? e.gap_x / 2 : 0)
+			hit_item.y = !stretch_y ? y : r.y + by1 + (j1 > 0 ? e.gap_y / 2 : 0)
 
 			let [i, j, mbx1, mby1, mbx2, mby2] = hit_test_inside_span(hit_item)
 			let can_move_item =
@@ -727,7 +728,6 @@ component('x-cssgrid', function(e) {
 			if (!handle) return
 			side = handle.attr('side')
 
-			let r = e.client_rect()
 			let [bx1, by1, bx2, by2] = item_track_bounds(e.focused_item)
 			let second = side == 'right' || side == 'bottom'
 			drag_mx = mx - (second ? bx2 : bx1)
@@ -951,14 +951,15 @@ component('x-cssgrid', function(e) {
 					align = align_map[align_indices[align] + (fw ? 1 : -1)]
 					e.focused_item[attr] = align
 				} else { // resize span or move to diff. span
+					let axis = horiz ? 'x' : 'y'
 					if (shift) { // resize span
-						let i1 = span1(focused_item, horiz)
-						let i2 = span2(focused_item, horiz)
+						let i1 = span1(e.focused_item, axis)
+						let i2 = span2(e.focused_item, axis)
 						let i = max(i1+1, i2 + (fw ? 1 : -1))
-						set_span(focused_item, horiz, false, i)
+						set_span(e.focused_item, axis, false, i)
 					} else {
-						let i = max(0, span1(focused_item, horiz) + (fw ? 1 : -1))
-						set_span(focused_item, horiz, i, i+1)
+						let i = max(0, span1(e.focused_item, axis) + (fw ? 1 : -1))
+						set_span(e.focused_item, axis, i, i+1)
 					}
 				}
 				return false
@@ -966,8 +967,6 @@ component('x-cssgrid', function(e) {
 		}
 
 	})
-
-	/*
 
 	// xmodule interface ------------------------------------------------------
 
@@ -1002,7 +1001,6 @@ component('x-cssgrid', function(e) {
 			t.items.push(item.serialize())
 		return t
 	}
-	*/
 
 })
 

@@ -1198,8 +1198,9 @@ component('x-grid', function(e) {
 		let items = []
 
 		items.push({
-			text: e.rowset.changed_rows ?
+			text: e.rowset && e.rowset.changed_rows ?
 				S('discard_changes_and_reload', 'Discard changes and reload') : S('reload', 'Reload'),
+			enabled: !!e.rowset,
 			icon: 'fa fa-sync',
 			action: function() {
 				e.rowset.reload()
@@ -1210,7 +1211,7 @@ component('x-grid', function(e) {
 		items.push({
 			text: S('save', 'Save'),
 			icon: 'fa fa-save',
-			enabled: !!e.rowset.changed_rows,
+			enabled: !!(e.rowset && e.rowset.changed_rows),
 			action: function() {
 				e.rowset.save()
 			},
@@ -1220,7 +1221,7 @@ component('x-grid', function(e) {
 		items.push({
 			text: S('revert_changes', 'Revert changes'),
 			icon: 'fa fa-undo',
-			enabled: !!e.rowset.changed_rows,
+			enabled: !!(e.rowset && e.rowset.changed_rows),
 			action: function() {
 				e.rowset.revert()
 			},
@@ -1280,16 +1281,17 @@ component('x-grid', function(e) {
 				set_field_visibility(item.field, fi, true)
 			}
 			let items_added
-			for (let field of e.rowset.fields) {
-				if (e.fields.indexOf(field) == -1) {
-					items_added = true
-					items.push({
-						field: field,
-						text: field.text,
-						action: show_field,
-					})
+			if (e.rowset)
+				for (let field of e.rowset.fields) {
+					if (e.fields.indexOf(field) == -1) {
+						items_added = true
+						items.push({
+							field: field,
+							text: field.text,
+							action: show_field,
+						})
+					}
 				}
-			}
 			if (!items_added)
 				items.push({
 					text: S('all_fields_shown', 'All fields are shown'),

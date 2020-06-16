@@ -11,8 +11,8 @@ component('x-listbox', function(e) {
 	tabindex_widget(e)
 	e.classes = 'x-widget x-focusable x-listbox'
 
-	e.attrval('flow', 'vertical')
-	e.attr_property('flow')
+	e.attrval('orientation', 'vertical')
+	e.attr_property('orientation')
 
 	e.display_col = 0
 
@@ -83,8 +83,7 @@ component('x-listbox', function(e) {
 			let item = H.div({class: 'x-listbox-item x-item'})
 			e.update_item(item, e.rows[i])
 			e.add(item)
-			item.row_index = i
-			item.on('mousedown', item_mousedown)
+			item.on('pointerdown', item_pointerdown)
 		}
 		e.update_cell_focus(e.focused_row_index, e.focused_cell_index)
 	}
@@ -110,15 +109,73 @@ component('x-listbox', function(e) {
 		selected_row_index = ri
 	}
 
-	// navigation -------------------------------------------------------------
+	// drag-move items --------------------------------------------------------
 
-	function item_mousedown() {
-		e.focus()
-		let ri = this.row_index
-		if (e.focus_cell(ri, null, 0, 0, {must_not_move_row: true, input: e}))
-			e.fire('val_picked', {input: e}) // picker protocol.
-		return false
+	e.property('axis', function() { return e.orientation == 'horizontal' ? 'x' : 'y' })
+
+	live_move_mixin(e)
+
+	e.set_movable_element_pos = function(i, x) {
+		let item = e.at[i]
+		item[e.axis] = x - item._offset
 	}
+
+	e.movable_element_size = function(i) {
+		return e.at[i][e.axis == 'x' ? 'offsetWidth' : 'offsetHeight']
+	}
+
+	let dragging, drag_mx, drag_my
+
+	function item_pointerdown(ev, mx, my) {
+		e.focus()
+		let ri = this.index
+		if (!e.focus_cell(ri, null, 0, 0, {must_not_move_row: true, input: e}))
+			return false
+		e.fire('val_picked', {input: e}) // picker protocol.
+		return this.capture_pointer(ev, item_pointermove, item_pointerup)
+	}
+
+	function item_pointermove(mx, my, ev, down_mx, down_my) {
+		if (!dragging) {
+			dragging = e.axis == 'x' ? abs(down_mx - mx) > 4 : abs(down_my - my) > 4
+			if (dragging) {
+				for (let item of e.children)
+					item._offset = item[e.axis == 'x' ? 'offsetLeft' : 'offsetTop']
+				e.move_element_start(this.index, e.child_count)
+				drag_mx = down_mx - this.offsetLeft
+				drag_my = down_my - this.offsetTop
+				e.class('x-moving', true)
+				this.class('x-moving', true)
+			}
+		} else
+			e.move_element_update(e.axis == 'x' ? mx - drag_mx : my - drag_my)
+	}
+
+	function item_pointerup() {
+		if (dragging) {
+			let i0 = this.index
+			let i1 = e.move_element_stop()
+
+			this.remove()
+			e.insert(i1, this)
+			for (let item of e.children)
+				item[e.axis] = null
+
+			let row = e.rows[i0]
+			e.rows.remove(i0)
+			e.rows.insert(i1, row)
+			print(e.rows)
+			e.rows_array_changed()
+
+			selected_row_index = i1
+			e.focused_row_index = i1
+		}
+		dragging = false
+		e.class('x-moving', false)
+		this.class('x-moving', false)
+	}
+
+	// key bindings -----------------------------------------------------------
 
 	// find the next item before/after the selected item that would need
 	// scrolling, if the selected item would be on top/bottom of the viewport.
@@ -155,7 +212,7 @@ component('x-listbox', function(e) {
 		if (key == 'PageUp' || key == 'PageDown') {
 			let item = page_item(key == 'PageDown')
 			if (item)
-				e.focus_cell(item.row_index, null, 0, 0, {input: e})
+				e.focus_cell(item.index, null, 0, 0, {input: e})
 			return false
 		}
 
@@ -179,7 +236,7 @@ component('x-listbox', function(e) {
 })
 
 hlistbox = function(...options) {
-	return listbox({flow: 'horizontal'}, ...options)
+	return listbox({orientation: 'horizontal'}, ...options)
 }
 
 // ---------------------------------------------------------------------------
