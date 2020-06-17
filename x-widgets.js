@@ -394,9 +394,11 @@ rowset = function(...options) {
 			s.push('  if (v1 > v2) return  1')
 			s.push('}')
 			// compare vals using the rowset comparator
+			s.push('{')
 			s.push('let cmp = cmps['+i+']')
 			s.push('let r = cmp(r1, r2)')
 			s.push('if (r) return r * '+r)
+			s.push('}')
 		}
 		s.push('return 0')
 		let cmp = 'let cmp = function(r1, r2) {\n\t' + s.join('\n\t') + '\n}\n; cmp;\n'
