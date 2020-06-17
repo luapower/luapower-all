@@ -684,7 +684,7 @@ lb = listbox({
 	value: 'Bananas',
 })
 
-hlb = listbox({
+hlb = hlistbox({
 	items: [
 		'Works',
 		'Horizontally',
@@ -741,12 +741,10 @@ main.add(
 		selected_index: 3,
 		can_add_items: true,
 		can_remove_items: true,
-		tabs: 'below',
+		tabs: 'above',
 		attrs: {style: 'height: 100%'},
 	})
 )
-
-main.add(pages)
 
 </script>
 </template>

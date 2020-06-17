@@ -2982,6 +2982,7 @@ component('x-pagelist', function(e) {
 	e.prop('can_rename_items', {store: 'var', type: 'bool', default: false})
 	e.prop('can_add_items'   , {store: 'var', type: 'bool', default: false})
 	e.prop('can_remove_items', {store: 'var', type: 'bool', default: false})
+	e.prop('can_move_items'  , {store: 'var', type: 'bool', default: true})
 
 	e.attach = function() {
 		e.selected_index = or(e.selected_index, 0)
@@ -3046,7 +3047,8 @@ component('x-pagelist', function(e) {
 
 	function idiv_pointermove(mx, my, ev, down_mx, down_my) {
 		if (!dragging) {
-			dragging = abs(down_mx - mx) > 4 || abs(down_my - my) > 4
+			dragging = e.can_move_items
+				&& abs(down_mx - mx) > 4 || abs(down_my - my) > 4
 			if (dragging) {
 				for (let item of e.items)
 					item.idiv._offset_x = item.idiv.offsetLeft
@@ -3390,6 +3392,9 @@ component('x-split', function(e) {
 	}
 
 })
+
+function hsplit(...options) { return split(...options) }
+function vsplit(...options) { return split(update({orientation: 'vertical'}, ...options)) }
 
 // ---------------------------------------------------------------------------
 // toaster

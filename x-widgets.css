@@ -24,7 +24,7 @@
 	--x-item-focused-bg-color       : #47a;
 	--x-item-focused-invalid-bg-color : #f33;
 	--x-row-focused-bg-color        : #f0f0f0;
-	--x-item-hover-bg-color         : #00000011;
+	--x-item-hover-bg-color         : #e0e0e0aa;
 	--x-item-bg-only-bg-color       : #eee;  /* slider background */
 	--x-item-bg-only-hover-bg-color : #ddd;  /* slider background */
 	--x-input-width                 : 12em;
@@ -799,6 +799,10 @@
 	position: relative;  /* for item moving */
 }
 
+.x-listbox-item.x-moving {
+	z-index: 1;
+}
+
 .x-listbox.x-moving > .x-listbox-item:not(.x-moving) {
 	transition: top .1s, left .1s;
 }
@@ -831,7 +835,8 @@
 	text-decoration: none;
 }
 
-.x-select-button > .x-item:active, .x-select-button > .x-item.active {
+.x-select-button > .x-item:active,
+.x-select-button > .x-item.active {
 	outline: none;
 	background-color: #e9ecef;
 	background-image: none;
@@ -1107,14 +1112,20 @@
 	position: absolute;
 	height: 2px;
 	background-color: #66f;
+	z-index: 2;
 }
 
 .x-pagelist[tabs=above] > .x-pagelist-header > .x-pagelist-selection-bar { bottom: 0; }
 .x-pagelist[tabs=below] > .x-pagelist-header > .x-pagelist-selection-bar { top   : 0; }
 
 .x-pagelist:not(.x-moving) > .x-pagelist-header > .x-pagelist-selection-bar {
-	transition: width .1s;
-	transition: left .1s;
+	transition: width .15s;
+	transition: left .15s;
+}
+
+.x-pagelist-item.x-moving {
+	z-index: 1;
+	opacity: .9;
 }
 
 .x-pagelist.x-moving > .x-pagelist-header > .x-pagelist-item:not(.x-moving) {
@@ -1624,8 +1635,7 @@
 }
 
 .x-grid.loading > .x-grid-header,
-.x-grid.loading > .x-grid-cells-view
-{
+.x-grid.loading > .x-grid-cells-view {
 	opacity: .7;
 }
 

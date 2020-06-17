@@ -11,8 +11,8 @@ component('x-listbox', function(e) {
 	tabindex_widget(e)
 	e.classes = 'x-widget x-focusable x-listbox'
 
-	e.attrval('orientation', 'vertical')
-	e.attr_property('orientation')
+	e.prop('orientation', {attr: 'orientation', type: 'enum', enum_values: ['vertical', 'horizontal'], default: 'vertical'})
+	e.prop('can_move_items', {store: 'var', type: 'bool', default: true})
 
 	e.display_col = 0
 
@@ -137,7 +137,8 @@ component('x-listbox', function(e) {
 
 	function item_pointermove(mx, my, ev, down_mx, down_my) {
 		if (!dragging) {
-			dragging = e.axis == 'x' ? abs(down_mx - mx) > 4 : abs(down_my - my) > 4
+			dragging = e.can_move_items
+				&& e.axis == 'x' ? abs(down_mx - mx) > 4 : abs(down_my - my) > 4
 			if (dragging) {
 				for (let item of e.children)
 					item._offset = item[e.axis == 'x' ? 'offsetLeft' : 'offsetTop']
@@ -164,7 +165,6 @@ component('x-listbox', function(e) {
 			let row = e.rows[i0]
 			e.rows.remove(i0)
 			e.rows.insert(i1, row)
-			print(e.rows)
 			e.rows_array_changed()
 
 			selected_row_index = i1
@@ -276,8 +276,10 @@ component('x-list-dropdown', function(e) {
 
 component('x-select-button', function(e) {
 
-	e.attrval('flow', 'horizontal')
+	e.classes = 'x-select-button'
 	listbox.construct(e)
+	e.orientation = 'horizontal'
+	e.can_move_items = false
 	e.auto_focus_first_cell = false
 
 })
