@@ -1687,6 +1687,17 @@
 	transition: top  .1s, left .1s;
 }
 
+/* grid row moving */
+
+.x-grid-cell.row-moving {
+	z-index: 1;
+}
+
+.x-grid.row-moving .x-grid-cell:not(.row-moving),
+.x-grid.row-moving .x-grid-editor:not(.row-moving) {
+	transition: top .1s, left .1s;
+}
+
 /* grid col resizing */
 
 /* NOTE: `col-resize` is almost invisible on a light background on Windows 7 */

@@ -194,7 +194,7 @@ rowset = function(...options) {
 	function init_rows(rows) {
 		d.rows = (!rows || isarray(rows)) && new Set(rows) || rows
 		each_lookup('rebuild')
-		init_parents()
+		d.init_parents()
 	}
 
 	property(d, 'row_count', { get: function() { return d.rows.size } })
@@ -298,7 +298,7 @@ rowset = function(...options) {
 			row.parent_row.child_row_count = (row.parent_row.child_row_count || 0) + 1
 	}
 
-	function init_parents() {
+	d.init_parents = function() {
 		d.parent_field = d.parent_col && d.field(d.parent_col)
 		if (!d.parent_field) return
 		for (let row of d.rows)

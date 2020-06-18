@@ -884,7 +884,7 @@ var data = {
 	can_change_rows: true,
 }
 
-for (let i = 1; i <= 1e4; i++) {
+for (let i = 1; i <= 10; i++) {
 	let id         = i
 	let name       = 'record '+i
 	let parent_id  = floor((random() * i))
@@ -905,6 +905,7 @@ g = grid({
 	//can_focus_cells: false,
 	//order_by: 'parent_id name:desc',
 	tree_col: 'name',
+	can_move_rows: true,
 })
 
 g.style.resize = 'both'
@@ -1487,7 +1488,7 @@ reload_button.on('click', function() {
 	run_script()
 })
 
-demo_list.focus_cell(13)
+demo_list.focus_cell(17)
 
 demo_list_ct.add(demo_list)
 

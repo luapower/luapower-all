@@ -823,6 +823,37 @@ function rowset_widget(e) {
 		e.set_collapsed(ri, !e.rows[ri].collapsed)
 	}
 
+	// row moving -------------------------------------------------------------
+
+	e.move_row = function(ri0, ri1) {
+		if (ri0 == ri1)
+			return
+
+		let index_field = e.rowset.field(e.index_col)
+		if (index_field) {
+			// NOTE: this is simple like this because ri1 comes as the index
+			// over which to move the row which is the index _after_ the removal
+			// of the row at ri0 from the array.
+			let min_ri = min(ri0, ri1)
+			let max_ri = max(ri0, ri1)
+			let index = e.rowset.val(e.rows[min_ri], index_field)
+			for (let ri = min_ri; ri <= max_ri; ri++)
+				e.rowset.set_val(e.rows[ri], index_field, index++)
+		}
+
+		if (e.rowset.parent_field) {
+			e.rowset.set_val(e.rows[ri0], e.rowset.parent_field,
+				e.rowset.val(e.rows[ri1], e.rowset.parent_field))
+			e.rowset.init_parents()
+			e.sort()
+		}
+
+		let row = e.rows[ri0]
+		e.rows.remove(ri0)
+		e.rows.insert(ri1, row)
+		e.rows_array_changed()
+	}
+
 	// filtering --------------------------------------------------------------
 
 	e.unbind_filter_rowsets = function() {

@@ -1083,75 +1083,86 @@ method(Element, 'modal', function(on) {
 //
 function live_move_mixin(e) {
 
-	let n, move_i, move_x, over_i, over_x, xs, ws
+	let n, move_i1, move_i2, move_x, over_i, over_x, vis_i1, vis_i2, vis_x
 
-	e.move_element_start = function(elem_i, elem_count) {
-		move_i = elem_i
+	e.move_element_start = function(elem_i, elem_count, move_elem_count, vis_i, vis_count, visible_x) {
+		move_i1 = elem_i
+		move_i2 = elem_i + or(move_elem_count, 1)
 		n = elem_count
 		move_x = null
 		over_i = null
 		over_x = null
-		xs = []
-		ws = []
-		for (let i = 0; i < elem_count; i++)
-			ws[i] = e.movable_element_size(i)
+		vis_i1 = or(vis_i, 0)
+		vis_i2 = vis_i1 + or(vis_count, n)
+		vis_x = or(visible_x, 0)
 	}
 
 	e.move_element_stop = function() {
-		e.set_movable_element_pos(move_i, over_x)
+		set_moving_element_pos(over_x)
 		return over_i
 	}
 
 
- 	// 0..n-1 index generator with index `move_i` moved to position `over_i`.
+ 	// 0..n-1 index generator with `move_i1..move_i2-1` moved to position `over_i`.
 	function each_index(f) {
-		let j = min(over_i, move_i)
-		let k = max(over_i, move_i)
-		for (let i = 0; i < j; i++)
-			f(i)
-		if (j == over_i) {
-			f(move_i)
-			for (let i = j; i < k; i++)
+		if (over_i <= move_i1) { // moving upwards or in-place.
+			for (let i = max(0, vis_i1); i < min(over_i, vis_i2); i++)
+				f(i)
+			for (let i = max(move_i1, vis_i1); i < min(move_i2, vis_i2); i++)
+				f(i)
+			for (let i = max(over_i, vis_i1); i < min(move_i1, vis_i2); i++)
+				f(i)
+			for (let i = max(move_i2, vis_i1); i < min(n, vis_i2); i++)
 				f(i)
 		} else {
-			for (let i = j+1; i <= k; i++)
+			for (let i = max(0, vis_i1); i < min(move_i1, vis_i2); i++)
 				f(i)
-			f(move_i)
+			for (let i = max(move_i2, vis_i1); i <= min(over_i, vis_i2); i++)
+				f(i)
+			for (let i = max(move_i1, vis_i1); i < min(move_i2, vis_i2); i++)
+				f(i)
+			for (let i = max(over_i+1, vis_i1); i < min(n, vis_i2); i++)
+				f(i)
 		}
-		for (let i = k+1; i < n; i++)
-			f(i)
 	}
 
 	function hit_test(elem_x) {
-		let x = 0
-		for (let i = 0; i < n; i++) {
-			if (i != move_i) {
-				let w = ws[i]
+		let x = vis_x
+		for (let i = max(0, vis_i1); i < min(n, vis_i2); i++) {
+			if (i < move_i1 || i >= move_i2) {
+				let w = e.movable_element_size(i)
 				if (elem_x < x + w / 2)
-					return i - (i < move_i ? 0 : 1)
+					return i - (i < move_i1 ? 0 : 1)
 				x += w
 			}
 		}
 		return n-1
 	}
 
+	function set_moving_element_pos(x) {
+		for (let i = max(move_i1, vis_i1); i < min(move_i2, vis_i2); i++) {
+			e.set_movable_element_pos(i, x)
+			x += e.movable_element_size(i)
+		}
+	}
+
 	e.move_element_update = function(elem_x) {
 		if (elem_x == move_x)
 			return
 		move_x = elem_x
-		e.set_movable_element_pos(move_i, move_x)
+		set_moving_element_pos(move_x)
 		let new_over_i = hit_test(move_x)
 		if (new_over_i != over_i) {
 			over_i = new_over_i
-			let x = 0
+			let x = vis_x
 			each_index(function(i) {
-				if (i == move_i)
-					over_x = x
-				else if (xs[i] != x) {
+				if (i >= move_i1 && i < move_i2) {
+					if (i == move_i1)
+						over_x = x
+				} else {
 					e.set_movable_element_pos(i, x)
-					xs[i] = x
 				}
-				x += ws[i]
+				x += e.movable_element_size(i)
 			})
 		}
 	}

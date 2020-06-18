@@ -746,30 +746,14 @@ component('x-grid', function(e) {
 		e.fire('val_picked', {input: e})
 	}
 
-	// live column moving -----------------------------------------------------
-
-	live_move_mixin(e)
-
-	e.movable_element_size = function(fi) {
-		return horiz ? cell_w(fi) : e.cell_h
-	}
-
-	function set_cell_x(cell, x) { cell.x = x }
-	function set_cell_y(cell, y) { cell.y = y }
-	e.set_movable_element_pos = function(fi, x) {
-		each_cell_of_col(fi, horiz ? set_cell_x : set_cell_y, x)
-		if (e.editor && e.focused_field_index == fi)
-			update_editor(e.editor, horiz ? x : null, !horiz ? x : null)
-	}
-
-	// hit-testing and mouse-based moving & resizing --------------------------
+	// header resizing --------------------------------------------------------
 
 	function ht_header_resize(mx, my, hit) {
 		if (horiz) return
 		let r = e.header.client_rect()
 		let x = mx - r.right
 		if (!(x >= -5 && x <= 5)) return
-		hit.x = r.left + x
+		hit.x = r.x + x
 		return true
 	}
 
@@ -799,8 +783,8 @@ component('x-grid', function(e) {
 
 	function ht_col_resize(mx, my, hit) {
 		let r = e.cells_ct.client_rect()
-		mx -= r.left
-		my -= r.top
+		mx -= r.x
+		my -= r.y
 		if (horiz)
 			return ht_col_resize_horiz(mx, my, hit)
 		else
@@ -820,20 +804,143 @@ component('x-grid', function(e) {
 
 	function mm_col_resize(mx, my, hit) {
 		let r = e.cells_ct.client_rect()
-		mx -= r.left
-		my -= r.top
+		mx -= r.x
+		my -= r.y
 		if (horiz)
 			return mm_col_resize_horiz(mx, my, hit)
 		else
 			return mm_col_resize_vert(mx, my, hit)
 	}
 
+	// cell clicking ----------------------------------------------------------
+
+	function ht_row_drag(mx, my, hit, ev) {
+		hit.cell = ev.target.closest('.x-grid-cell')
+		if (!hit.cell) return
+		hit.mx = mx
+		hit.my = my
+		return true
+	}
+
+	function md_row_drag(ev, mx, my) {
+
+		let cell = hit.cell
+		let over_indent = ev.target.closest('.x-grid-cell-indent')
+
+		if (!e.hasfocus)
+			e.focus()
+
+		if (!cell)
+			return
+
+		let already_on_it =
+			e.focused_row_index   == cell.ri &&
+			e.focused_field_index == cell.fi
+
+		if (over_indent)
+			e.toggle_collapsed(cell.ri)
+
+		if (e.focus_cell(cell.ri, cell.fi, 0, 0, {
+			must_not_move_row: true,
+			enter_edit: !over_indent && (e.enter_edit_on_click || already_on_it),
+			focus_editor: true,
+			editor_state: 'select_all',
+			input: e,
+		}))
+			if (!already_on_it)
+				e.pick_val()
+	}
+
+	// row moving -------------------------------------------------------------
+
+	function set_cell_of_row_x(cell, fi, x) {
+		cell.x = x
+		if (e.editor && e.focused_row_index == cell.ri)
+			update_editor(e.editor)
+	}
+	function set_cell_of_row_y(cell, fi, y) {
+		cell.y = y
+		if (e.editor && e.focused_row_index == cell.ri)
+			update_editor(e.editor)
+	}
+	let row_mover = live_move_mixin({})
+	row_mover.movable_element_size = function(ri) {
+		return horiz ? e.cell_h : e.cell_w
+	}
+	row_mover.set_movable_element_pos = function(ri, y) {
+		each_cell_of_row(ri, null, null, horiz ? set_cell_of_row_y : set_cell_of_row_x, y)
+	}
+
+	function ht_row_move(mx, my, hit) {
+		if ( horiz && abs(hit.my - my) < 8) return
+		if (!horiz && abs(hit.mx - mx) < 8) return
+		let r = e.cells.client_rect()
+		hit.mx -= r.x
+		hit.my -= r.y
+		hit.mx -= num(hit.cell.style.left)
+		hit.my -= num(hit.cell.style.top)
+		e.class('row-moving')
+		each_cell_of_row(hit.cell.ri, null, null, function(cell) {
+			cell.class('row-moving')
+		})
+		if (e.editor && e.focused_row_index == hit.cell.ri)
+			e.editor.class('row-moving')
+		row_mover.move_element_start(hit.cell.ri, e.rows.length, 1,
+			first_visible_row(), e.visible_row_count)
+		return true
+	}
+
+	function mm_row_move(mx, my, hit) {
+		let r = e.cells.client_rect()
+		mx -= r.x
+		my -= r.y
+		let y = horiz
+			? my - hit.my
+			: mx - hit.mx
+		row_mover.move_element_update(y)
+	}
+
+	function mu_row_move() {
+		let over_ri = row_mover.move_element_stop() // sets y of moved element.
+		e.class('row-moving', false)
+		each_cell_of_row(hit.cell.ri, null, null, function(cell) {
+			cell.class('row-moving', false)
+		})
+		if (e.editor)
+			e.editor.class('row-moving', false)
+		if (over_ri != hit.cell.ri) {
+			//let focused_field = e.fields[e.focused_field_index]
+			//let field = e.fields.remove(hit.fi)
+			//e.fields.insert(over_fi, field)
+			//e.focused_field_index = focused_field && e.fields.indexOf(focused_field)
+			//e.init_fields()
+			//update_sizes()
+			//update_viewport()
+		}
+	}
+
+	// column moving ----------------------------------------------------------
+
+	live_move_mixin(e)
+
+	e.movable_element_size = function(fi) {
+		return horiz ? cell_w(fi) : e.cell_h
+	}
+
+	function set_cell_of_col_x(cell, x) { cell.x = x }
+	function set_cell_of_col_y(cell, y) { cell.y = y }
+	e.set_movable_element_pos = function(fi, x) {
+		each_cell_of_col(fi, horiz ? set_cell_of_col_x : set_cell_of_col_y, x)
+		if (e.editor && e.focused_field_index == fi)
+			update_editor(e.editor, horiz ? x : null, !horiz ? x : null)
+	}
+
 	function ht_col_drag(mx, my, hit, ev) {
 		let hcell_table = ev.target.closest('.x-grid-header-cell-table')
 		if (!hcell_table) return
 		hit.fi = hcell_table.parent.index
-		hit.mx = ev.clientX
-		hit.my = ev.clientY
+		hit.mx = mx
+		hit.my = my
 		return true
 	}
 
@@ -841,8 +948,8 @@ component('x-grid', function(e) {
 		if ( horiz && abs(hit.mx - mx) < 8) return
 		if (!horiz && abs(hit.my - my) < 8) return
 		let r = e.header.client_rect()
-		hit.mx -= r.left
-		hit.my -= r.top
+		hit.mx -= r.x
+		hit.my -= r.y
 		hit.mx -= num(e.header.at[hit.fi].style.left)
 		hit.my -= num(e.header.at[hit.fi].style.top)
 		e.class('col-moving')
@@ -858,8 +965,8 @@ component('x-grid', function(e) {
 
 	function mm_col_move(mx, my, hit) {
 		let r = e.header.client_rect()
-		mx -= r.left
-		my -= r.top
+		mx -= r.x
+		my -= r.y
 		let x = horiz
 			? mx - hit.mx
 			: my - hit.my
@@ -908,6 +1015,13 @@ component('x-grid', function(e) {
 			mm_col_move(mx, my, hit)
 		} else if (hit.state == 'col_moving_finish') {
 			// just wait, timer will finish this.
+		} else if (hit.state == 'row_dragging') {
+			if (e.can_move_rows && ht_row_move(mx, my, hit)) {
+				hit.state = 'row_moving'
+				mm_row_move(mx, my, hit)
+			}
+		} else if (hit.state == 'row_moving') {
+			mm_row_move(mx, my, hit)
 		} else {
 			hit.state = null
 			e.class('col-resize', false)
@@ -920,6 +1034,8 @@ component('x-grid', function(e) {
 					e.class('col-resize', true)
 				} else if (ht_col_drag(mx, my, hit, ev)) {
 					hit.state = 'col_drag'
+				} else if (ht_row_drag(mx, my, hit, ev)) {
+					hit.state = 'row_drag'
 				}
 			}
 			if (hit.state)
@@ -944,6 +1060,9 @@ component('x-grid', function(e) {
 			create_resize_guides()
 		} else if (hit.state == 'col_drag') {
 			hit.state = 'col_dragging'
+		} else if (hit.state == 'row_drag') {
+			hit.state = 'row_dragging'
+			md_row_drag(ev, mx, my)
 		} else
 			assert(false)
 		return 'capture'
@@ -969,46 +1088,17 @@ component('x-grid', function(e) {
 			hit.state = null
 		} else if (hit.state == 'col_moving') {
 			mu_col_move()
+		} else if (hit.state == 'row_dragging') {
+			hit.state = null
+		} else if (hit.state == 'row_moving') {
+			hit.state = null
+			mu_row_move()
 		}
 		return false
 	}
 
 	e.on('pointerup', pointerup)
 	e.on('pointerleave', pointerup)
-
-	e.cells.on('mousedown', function(ev) {
-		if (hit.state)
-			return
-
-		let cell = ev.target.closest('.x-grid-cell')
-		let over_indent = ev.target.closest('.x-grid-cell-indent')
-
-		if (!e.hasfocus)
-			e.focus()
-
-		if (!cell)
-			return
-
-		let already_on_it =
-			e.focused_row_index   == cell.ri &&
-			e.focused_field_index == cell.fi
-
-		if (over_indent)
-			e.toggle_collapsed(cell.ri)
-
-		if (e.focus_cell(cell.ri, cell.fi, 0, 0, {
-			must_not_move_row: true,
-			enter_edit: e.enter_edit_on_click || already_on_it,
-			focus_editor: true,
-			editor_state: 'select_all',
-			input: e,
-		}))
-			if (!already_on_it)
-				e.pick_val()
-
-		return false
-
-	})
 
 	e.on('contextmenu', function(ev) {
 		let cell = ev.target.closest('.x-grid-header-cell') || ev.target.closest('.x-grid-cell')
@@ -1302,8 +1392,8 @@ component('x-grid', function(e) {
 
 		context_menu = menu({items: items})
 		let r = e.client_rect()
-		let px = mx - r.left
-		let py = my - r.top
+		let px = mx - r.x
+		let py = my - r.y
 		context_menu.popup(e, 'inner-top', null, px, py)
 	}
 

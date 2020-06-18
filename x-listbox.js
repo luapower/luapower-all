@@ -162,10 +162,7 @@ component('x-listbox', function(e) {
 			for (let item of e.children)
 				item[e.axis] = null
 
-			let row = e.rows[i0]
-			e.rows.remove(i0)
-			e.rows.insert(i1, row)
-			e.rows_array_changed()
+			e.move_row(i0, i1)
 
 			selected_row_index = i1
 			e.focused_row_index = i1
