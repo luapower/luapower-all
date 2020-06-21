@@ -134,3 +134,4 @@ stack traceback:
 2020/06/19 08:15:35 [error] 21298#0: *1746 [lua] webb_nginx.lua:17: try_call(): 404 <h1>404 Not Found</h1>, client: 185.100.87.249, server: , request: "POST /sdk HTTP/1.1", host: "168.235.102.143:8000"
 2020/06/19 08:15:35 [error] 21298#0: *1748 [lua] webb_nginx.lua:17: try_call(): 404 <h1>404 Not Found</h1>, client: 185.100.87.249, server: , request: "GET /HNAP1 HTTP/1.1", host: "168.235.102.143:8000"
 2020/06/19 08:15:42 [error] 21298#0: *1751 [lua] webb_nginx.lua:17: try_call(): 404 <h1>404 Not Found</h1>, client: 185.100.87.249, server: , request: "GET /evox/about HTTP/1.1", host: "168.235.102.143:8000"
+2020/06/21 08:17:48 [error] 21298#0: *1782 [lua] webb_nginx.lua:17: try_call(): 404, client: 185.142.236.35, server: , request: "GET /favicon.ico HTTP/1.1", host: "168.235.102.143:8000"
