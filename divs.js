@@ -1140,30 +1140,32 @@ function live_move_mixin(e) {
 	}
 
 	function set_moving_element_pos(x) {
-		for (let i = max(move_i1, vis_i1); i < min(move_i2, vis_i2); i++) {
-			e.set_movable_element_pos(i, x)
+		let i1 = max(move_i1, vis_i1)
+		let i2 = min(move_i2, vis_i2)
+		for (let i = i1; i < i2; i++) {
+			e.set_movable_element_pos(i, x, over_i, i1)
 			x += e.movable_element_size(i)
 		}
 	}
 
 	e.move_element_update = function(elem_x) {
-		if (elem_x == move_x)
-			return
-		move_x = elem_x
-		set_moving_element_pos(move_x)
-		let new_over_i = hit_test(move_x)
-		if (new_over_i != over_i) {
-			over_i = new_over_i
-			let x = vis_x
-			each_index(function(i) {
-				if (i >= move_i1 && i < move_i2) {
-					if (i == move_i1)
-						over_x = x
-				} else {
-					e.set_movable_element_pos(i, x)
-				}
-				x += e.movable_element_size(i)
-			})
+		if (elem_x != move_x) {
+			move_x = elem_x
+			let new_over_i = hit_test(move_x)
+			if (new_over_i != over_i) {
+				over_i = new_over_i
+				let x = vis_x
+				each_index(function(i) {
+					if (i >= move_i1 && i < move_i2) {
+						if (i == move_i1)
+							over_x = x
+					} else {
+						e.set_movable_element_pos(i, x)
+					}
+					x += e.movable_element_size(i)
+				})
+			}
+			set_moving_element_pos(move_x)
 		}
 	}
 

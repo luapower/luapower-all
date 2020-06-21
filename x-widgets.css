@@ -1540,6 +1540,7 @@
 	padding: var(--x-input-padding);
 	border-right: 1px solid #ddd;
 	min-width: 20px;
+	height: 100%;
 }
 
 .x-grid-cell {

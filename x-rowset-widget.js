@@ -264,7 +264,7 @@ function rowset_widget(e) {
 				n++
 			}
 		}
-		e.rows.remove(ri, n)
+		e.rows.splice(ri, n)
 		e.rows_array_changed()
 		e.init_rows()
 		if (ev && ev.refocus)
@@ -577,7 +577,7 @@ function rowset_widget(e) {
 
 		if (row_changed || field_changed) {
 			let old_focused_row = e.focused_row
-			e.focused_row_index   = ri
+			e.focused_row_index = ri
 			e.focused_field_index = fi
 			if (fi != null)
 				e.focused_field_name = e.fields[fi].name
@@ -790,8 +790,8 @@ function rowset_widget(e) {
 		e.sort()
 	}
 
-	e.sort = function(focused_row) {
-		focused_row = or(focused_row, e.focused_row)
+	e.sort = function() {
+		let focused_row = e.focused_row
 		if (e.rowset.parent_field || (order_by && order_by.size)) {
 			let cmp = e.rowset.comparator(order_by)
 			e.rows.sort(cmp)
@@ -813,45 +813,82 @@ function rowset_widget(e) {
 		let row = e.rows[ri]
 		if (!row.child_row_count)
 			return
-		let focused_row = e.focused_row
 		e.rowset.set_collapsed(row, collapsed)
 		e.init_rows_array()
-		e.sort(focused_row)
+		e.sort()
 	}
 
 	e.toggle_collapsed = function(ri) {
 		e.set_collapsed(ri, !e.rows[ri].collapsed)
 	}
 
+	e.expanded_child_row_count = function(parent_ri) {
+		let n = 0
+		if (e.rowset.parent_field) {
+			let min_parent_rows = e.rows[parent_ri].parent_rows.length + 1
+			for (let ri = parent_ri + 1; ri < e.rows.length; ri++) {
+				let row = e.rows[ri]
+				if (row.parent_rows.length < min_parent_rows)
+					break
+				n++
+			}
+		}
+		return n
+	}
+
 	// row moving -------------------------------------------------------------
 
+	function reset_indices_for_children_of(row) {
+		let index = 1
+		let min_parent_count = row ? row.parent_rows.length + 1 : 0
+		for (let ri = row ? e.row_index(row) + 1 : 0; ri < e.rows.length; ri++) {
+			let child_row = e.rows[ri]
+			if (child_row.parent_rows.length < min_parent_count)
+				break
+			if (child_row.parent_row == row)
+				e.rowset.set_val(child_row, e.rowset.index_field, index++)
+		}
+	}
+
 	e.move_row = function(ri0, ri1) {
+
 		if (ri0 == ri1)
 			return
 
-		let index_field = e.rowset.field(e.index_col)
-		if (index_field) {
-			// NOTE: this is simple like this because ri1 comes as the index
-			// over which to move the row which is the index _after_ the removal
-			// of the row at ri0 from the array.
-			let min_ri = min(ri0, ri1)
-			let max_ri = max(ri0, ri1)
-			let index = e.rowset.val(e.rows[min_ri], index_field)
-			for (let ri = min_ri; ri <= max_ri; ri++)
-				e.rowset.set_val(e.rows[ri], index_field, index++)
-		}
+		let n = 1 + e.expanded_child_row_count(ri0)
+		let ri1_after_remove = ri1 - (ri1 > ri0 ? (n - 1) : 0)
 
-		if (e.rowset.parent_field) {
-			e.rowset.set_val(e.rows[ri0], e.rowset.parent_field,
-				e.rowset.val(e.rows[ri1], e.rowset.parent_field))
-			e.rowset.init_parents()
-			e.sort()
-		}
+		let row0 = e.rows[ri0]
+		let row1 = e.rows[ri1]
+		let p0 = row0.parent_row
+		let p1 = row1.parent_row
 
-		let row = e.rows[ri0]
-		e.rows.remove(ri0)
-		e.rows.insert(ri1, row)
+		let index_field = e.rowset.index_field
+		let min_index = index_field && e.rowset.val(e.rows[min(ri0, ri1)], index_field)
+
+		let moved_rows = e.rows.splice(ri0, n)
+		e.rows.splice(ri1_after_remove, 0, ...moved_rows)
 		e.rows_array_changed()
+
+		e.rowset.move_row(row0, p1)
+
+		if (index_field)
+			if (e.rowset.parent_field) {
+				reset_indices_for_children_of(p0)
+				if (p1 != p0)
+					reset_indices_for_children_of(p1)
+			} else {
+				let index = min_index
+				for (let ri = min(ri0, ri1); ri <= max(ri0, ri1); ri++)
+					e.rowset.set_val(e.rows[ri], index_field, index++)
+			}
+
+		if (e.focused_row_index == ri0)
+			e.focused_row_index = ri1_after_remove
+
+		if (e.focused_row_index && e.isConnected)
+			e.scroll_to_cell(e.focused_row_index, e.focused_cell_index)
+
 	}
 
 	// filtering --------------------------------------------------------------

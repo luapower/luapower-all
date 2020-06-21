@@ -249,14 +249,12 @@ component('x-grid', function(e) {
 			: e.cell_w
 	}
 
-	function cell_indent(row, field) {
-		return horiz && field == e.tree_field && row.parent_rows
-			? 12 + row.parent_rows.length * 16 : 0
+	function field_has_indent(field) {
+		return field == e.tree_field
 	}
 
-	function row_has_visible_children(ri, row) {
-		let next_row = e.rows[ri+1]
-		return next_row && next_row.parent_rows.length > row.parent_rows.length
+	function row_indent(row) {
+		return 12 + (row.parent_rows ? row.parent_rows.length : 0) * 16
 	}
 
 	function scroll_x(sx) {
@@ -472,23 +470,22 @@ component('x-grid', function(e) {
 	})
 
 	function init_cells() {
-		let tree_field = horiz && e.tree_field
-		focused_td = null
 		e.cells.clear()
 		for (let j = 0; j < e.visible_row_count; j++) {
 			for (let i = 0; i < e.fields.length; i++) {
 				let field = e.fields[i]
-				let indent = field == tree_field && div({class: 'x-grid-cell-indent'}) || null
-				let cell = div({class: 'x-grid-cell x-item'}, indent)
-				cell.indent = indent
+				let cell = div({class: 'x-grid-cell x-item'})
 				e.cells.add(cell)
 			}
 		}
 	}
 
 	e.update_cell_val = function(cell, row, field, input_val) {
-		let content_node = cell.childNodes[cell.indent ? 1 : 0]
-		cell.replace(content_node, e.rowset.display_val(row, field))
+		let v = e.rowset.display_val(row, field)
+		if (cell.indent)
+			cell.replace(cell.childNodes[1], v)
+		else
+			cell.set(v)
 		cell.class('null', input_val == null)
 	}
 
@@ -498,28 +495,12 @@ component('x-grid', function(e) {
 		cell.attr('title', err || null)
 	}
 
-	function update_cell(cell, row, field) {
-		cell.attr('align', field.align)
-		cell.class('focusable', e.can_focus_cell(row, field))
-		cell.class('disabled', e.is_cell_disabled(row, field))
-		cell.class('new', !!row.is_new)
-		cell.class('removed', !!row.removed)
-		cell.class('modified', e.rowset.cell_modified(row, field))
-		let input_val = e.rowset.cell_error(row, field)
-		e.update_cell_val(cell, row, field, e.rowset.input_val(row, field))
-		e.update_cell_error(cell, row, field, e.rowset.cell_error(row, field))
-	}
-
-	function update_cell_tree_aspect(cell, ri, row, field) {
-		let has_children = (row.child_row_count || 0) > 0
-		let has_visible_children = row_has_visible_children(ri, row)
-		cell.indent.class('far', has_children)
-		cell.indent.class('fa-plus-square' , has_children && !has_visible_children)
-		cell.indent.class('fa-minus-square', has_children && has_visible_children)
-		cell.indent.style['padding-left'] = (cell_indent(row, field) - 4)+'px'
+	function set_cell_indent(cell, indent) {
+		cell.indent.style['padding-left'] = (indent - 4)+'px'
 	}
 
 	function update_cells() {
+		let tree_field = horiz && e.tree_field
 		let ri0 = first_visible_row()
 		for (let rel_ri = 0; rel_ri < e.visible_row_count; rel_ri++) {
 			let ri = ri0 + rel_ri
@@ -534,9 +515,32 @@ component('x-grid', function(e) {
 					cell.y = cell_y(rel_ri, fi)
 					cell.w = cell_w(fi)
 					cell.h = e.cell_h
-					update_cell(cell, row, field)
-					if (cell.indent)
-						update_cell_tree_aspect(cell, ri, row, field)
+
+					cell.attr('align', field.align)
+					cell.class('focusable', e.can_focus_cell(row, field))
+					cell.class('disabled', e.is_cell_disabled(row, field))
+					cell.class('new', !!row.is_new)
+					cell.class('removed', !!row.removed)
+					cell.class('modified', e.rowset.cell_modified(row, field))
+
+					if (field == tree_field) {
+						if (!cell.indent) {
+							cell.indent = div({class: 'x-grid-cell-indent'})
+							cell.set(cell.indent)
+						}
+						let has_children = (row.child_row_count || 0) > 0
+						cell.indent.class('far', has_children)
+						cell.indent.class('fa-plus-square' , has_children && !!row.collapsed)
+						cell.indent.class('fa-minus-square', has_children && !row.collapsed)
+						set_cell_indent(cell, field_has_indent(field) ? row_indent(row) : 0)
+					} else if (cell.indent) {
+						cell.set(null)
+						cell.indent = null
+					}
+
+					e.update_cell_val(cell, row, field, e.rowset.input_val(row, field))
+					e.update_cell_error(cell, row, field, e.rowset.cell_error(row, field))
+
 					cell.show()
 				} else {
 					cell.clear()
@@ -671,7 +675,7 @@ component('x-grid', function(e) {
 		let fi = e.focused_field_index
 		let hcell = e.header.at[fi]
 		let css = e.cells.at[0].css()
-		let iw = cell_indent(e.rows[ri], e.fields[fi])
+		let iw = field_has_indent(e.fields[fi] ? row_indent(e.rows[ri]) : 0)
 		editor.x = or(x, cell_x(ri, fi) + iw)
 		editor.y = or(y, cell_y(ri, fi))
 		editor.w = cell_w(fi) - num(css['border-right-width']) - iw
@@ -853,22 +857,29 @@ component('x-grid', function(e) {
 
 	// row moving -------------------------------------------------------------
 
-	function set_cell_of_row_x(cell, fi, x) {
+	function set_cell_of_row_x(cell, fi, ri, x) {
 		cell.x = x
 		if (e.editor && e.focused_row_index == cell.ri)
-			update_editor(e.editor)
+			update_editor(e.editor, x)
 	}
-	function set_cell_of_row_y(cell, fi, y) {
+
+	function set_cell_of_row_y(cell, fi, ri, y, over_ri, ri0) {
 		cell.y = y
+		if (over_ri != null && field_has_indent(e.fields[fi]))
+			set_cell_indent(cell,
+				row_indent(e.rows[over_ri])
+				- row_indent(e.rows[ri0])
+				+ row_indent(e.rows[ri]))
 		if (e.editor && e.focused_row_index == cell.ri)
-			update_editor(e.editor)
+			update_editor(e.editor, null, y)
 	}
 	let row_mover = live_move_mixin({})
 	row_mover.movable_element_size = function(ri) {
 		return horiz ? e.cell_h : e.cell_w
 	}
-	row_mover.set_movable_element_pos = function(ri, y) {
-		each_cell_of_row(ri, null, null, horiz ? set_cell_of_row_y : set_cell_of_row_x, y)
+	row_mover.set_movable_element_pos = function(ri, y, over_ri, ri0) {
+		each_cell_of_row(ri, null, null, horiz ? set_cell_of_row_y : set_cell_of_row_x,
+			ri, y, over_ri, ri0)
 	}
 
 	function ht_row_move(mx, my, hit) {
@@ -880,12 +891,13 @@ component('x-grid', function(e) {
 		hit.mx -= num(hit.cell.style.left)
 		hit.my -= num(hit.cell.style.top)
 		e.class('row-moving')
-		each_cell_of_row(hit.cell.ri, null, null, function(cell) {
-			cell.class('row-moving')
-		})
-		if (e.editor && e.focused_row_index == hit.cell.ri)
+		let ri = hit.cell.ri
+		let n = 1 + e.expanded_child_row_count(ri)
+		for (let i = 0; i < n; i++)
+			each_cell_of_row(ri + i, null, null, (cell) => cell.class('row-moving'))
+		if (e.editor && e.focused_row_index == ri)
 			e.editor.class('row-moving')
-		row_mover.move_element_start(hit.cell.ri, e.rows.length, 1,
+		row_mover.move_element_start(ri, e.rows.length, n,
 			first_visible_row(), e.visible_row_count)
 		return true
 	}
@@ -909,13 +921,8 @@ component('x-grid', function(e) {
 		if (e.editor)
 			e.editor.class('row-moving', false)
 		if (over_ri != hit.cell.ri) {
-			//let focused_field = e.fields[e.focused_field_index]
-			//let field = e.fields.remove(hit.fi)
-			//e.fields.insert(over_fi, field)
-			//e.focused_field_index = focused_field && e.fields.indexOf(focused_field)
-			//e.init_fields()
-			//update_sizes()
-			//update_viewport()
+			e.move_row(hit.cell.ri, over_ri)
+			update_viewport()
 		}
 	}
 
@@ -975,26 +982,22 @@ component('x-grid', function(e) {
 
 	function mu_col_move() {
 		let over_fi = e.move_element_stop() // sets x of moved element.
-		hit.state = 'col_moving_finish'
-		after(.1, function() { // delay to allow the transition on x to finish.
-			hit.state = null
-			e.class('col-moving', false)
-			each_cell_of_col(hit.fi, function(cell) {
-				cell.class('col-moving', false)
-				cell.style['z-index'] = null
-			})
-			if (e.editor)
-				e.editor.class('col-moving', false)
-			if (over_fi != hit.fi) {
-				let focused_field = e.fields[e.focused_field_index]
-				let field = e.fields.remove(hit.fi)
-				e.fields.insert(over_fi, field)
-				e.focused_field_index = focused_field && e.fields.indexOf(focused_field)
-				e.init_fields()
-				update_sizes()
-				update_viewport()
-			}
+		e.class('col-moving', false)
+		each_cell_of_col(hit.fi, function(cell) {
+			cell.class('col-moving', false)
+			cell.style['z-index'] = null
 		})
+		if (e.editor)
+			e.editor.class('col-moving', false)
+		if (over_fi != hit.fi) {
+			let focused_field = e.fields[e.focused_field_index]
+			let field = e.fields.remove(hit.fi)
+			e.fields.insert(over_fi, field)
+			e.focused_field_index = focused_field && e.fields.indexOf(focused_field)
+			e.init_fields()
+			update_sizes()
+			update_viewport()
+		}
 	}
 
 	// mouse bindings ---------------------------------------------------------
@@ -1013,8 +1016,6 @@ component('x-grid', function(e) {
 			}
 		} else if (hit.state == 'col_moving') {
 			mm_col_move(mx, my, hit)
-		} else if (hit.state == 'col_moving_finish') {
-			// just wait, timer will finish this.
 		} else if (hit.state == 'row_dragging') {
 			if (e.can_move_rows && ht_row_move(mx, my, hit)) {
 				hit.state = 'row_moving'
@@ -1073,11 +1074,9 @@ component('x-grid', function(e) {
 			return
 		if (hit.state == 'header_resizing') {
 			e.class('col-resizing', false)
-			hit.state = null
 			update_sizes()
 		} else if (hit.state == 'col_resizing') {
 			e.class('col-resizing', false)
-			hit.state = null
 			remove_resize_guides()
 			update_sizes()
 		} else if (hit.state == 'col_dragging') {
@@ -1085,15 +1084,12 @@ component('x-grid', function(e) {
 				e.set_order_by_dir(e.fields[hit.fi], 'toggle', ev.shiftKey)
 			else if (e.focus_cell_on_click_header)
 				e.focus_cell(true, hit.fi)
-			hit.state = null
 		} else if (hit.state == 'col_moving') {
 			mu_col_move()
-		} else if (hit.state == 'row_dragging') {
-			hit.state = null
 		} else if (hit.state == 'row_moving') {
-			hit.state = null
 			mu_row_move()
 		}
+		hit.state = null
 		return false
 	}
 

@@ -155,7 +155,9 @@ rowset = function(...options) {
 		return field_map.get(name)
 	}
 
-	function init_fields(fields) {
+	function init_fields(def) {
+
+		let fields = def.fields
 		d.fields = []
 		if (!fields)
 			return
@@ -175,9 +177,8 @@ rowset = function(...options) {
 			d.fields[i] = field
 			field_map.set(field.name, field)
 		}
-	}
 
-	function init_pk(pk) {
+		let pk = def.pk
 		d.pk_fields = []
 		if (pk) {
 			if (typeof pk == 'string')
@@ -188,13 +189,16 @@ rowset = function(...options) {
 				field.is_pk = true
 			}
 		}
+
 		d.id_field = d.pk_fields[0]
+
+		d.index_field = d.field(def.index_col)
 	}
 
 	function init_rows(rows) {
 		d.rows = (!rows || isarray(rows)) && new Set(rows) || rows
 		each_lookup('rebuild')
-		d.init_parents()
+		init_parents()
 	}
 
 	property(d, 'row_count', { get: function() { return d.rows.size } })
@@ -202,8 +206,7 @@ rowset = function(...options) {
 	function init() {
 		update(d, rowset, ...options) // set options/override.
 		d.client_fields = d.fields
-		init_fields(d.fields)
-		init_pk(d.pk)
+		init_fields(d)
 		init_params()
 		init_rows(d.rows)
 	}
@@ -295,12 +298,14 @@ rowset = function(...options) {
 		}
 		row.parent_row = row.parent_rows[0]
 		if (row.parent_row)
-			row.parent_row.child_row_count = (row.parent_row.child_row_count || 0) + 1
+			row.parent_row.child_row_count++
 	}
 
-	d.init_parents = function() {
+	function init_parents() {
 		d.parent_field = d.parent_col && d.field(d.parent_col)
 		if (!d.parent_field) return
+		for (let row of d.rows)
+			row.child_row_count = 0
 		for (let row of d.rows)
 			init_parents_for(row)
 	}
@@ -359,12 +364,15 @@ rowset = function(...options) {
 	// order_by: [[field1,'desc'|'asc'],...]
 	d.comparator = function(order_by) {
 
-		if (d.parent_field && !order_by.has(d.id_field)) {
-			// the tree-building comparator requires a stable sort order
-			// for all parents so we must always compare rows by id after all.
-			order_by = new Map(order_by)
+		order_by = new Map(order_by)
+
+		if (d.index_field && order_by.size == 0)
+			order_by.set(d.index_field, 'asc')
+
+		// the tree-building comparator requires a stable sort order
+		// for all parents so we must always compare rows by id after all.
+		if (d.parent_field && !order_by.has(d.id_field))
 			order_by.set(d.id_field, 'asc')
-		}
 
 		let s = []
 		let cmps = []
@@ -759,7 +767,7 @@ rowset = function(...options) {
 			return field.format(v, row)
 	}
 
-	// add/remove rows --------------------------------------------------------
+	// add/remove/move rows ---------------------------------------------------
 
 	function create_row() {
 		let row = []
@@ -834,6 +842,18 @@ rowset = function(...options) {
 			row_changed(row)
 		}
 		return row
+	}
+
+	d.move_row = function(row, parent_row, ev) {
+		if (row.parent_row == parent_row)
+			return
+		assert(!parent_row || parent_row.parent_rows.indexOf(row) == -1)
+		let parent_id = parent_row ? d.val(parent_row, d.id_field) : null
+		d.set_val(row, d.parent_field, parent_id, ev)
+		if (row.parent_row)
+			row.parent_row.child_row_count--
+		init_parents_for(row)
+		each_child_row(row, init_parents_for)
 	}
 
 	// ajax requests ----------------------------------------------------------
@@ -1005,8 +1025,7 @@ rowset = function(...options) {
 		if (res.fields) {
 			if (!check_fields(res.fields))
 				return
-			init_fields(res.fields)
-			init_pk(res.pk)
+			init_fields(res)
 			d.id_col = res.id_col
 		}
 

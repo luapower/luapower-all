@@ -180,10 +180,8 @@ method(Array, 'insert', function(i, v) {
 	this.splice(i, 0, v)
 })
 
-method(Array, 'remove', function(i, n) {
-	let v = this[i]
-	this.splice(i, or(n, 1))
-	return v
+method(Array, 'remove', function(i) {
+	return this.splice(i, 1)[0]
 })
 
 /* tested. not used.
