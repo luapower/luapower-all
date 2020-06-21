@@ -32,6 +32,8 @@ component('x-grid', function(e) {
 	e.exit_edit_on_escape = true
 	e.exit_edit_on_enter = true
 	e.focus_cell_on_click_header = false
+	e.can_move_rows = false
+	e.can_change_parent = true
 
 	// context menu features
 	e.enable_context_menu = true
@@ -250,11 +252,11 @@ component('x-grid', function(e) {
 	}
 
 	function field_has_indent(field) {
-		return field == e.tree_field
+		return horiz && field == e.tree_field
 	}
 
 	function row_indent(row) {
-		return 12 + (row.parent_rows ? row.parent_rows.length : 0) * 16
+		return row.parent_rows ? row.parent_rows.length : 0
 	}
 
 	function scroll_x(sx) {
@@ -495,8 +497,12 @@ component('x-grid', function(e) {
 		cell.attr('title', err || null)
 	}
 
+	function indent_offset(indent) {
+		return 12 + indent * 16
+	}
+
 	function set_cell_indent(cell, indent) {
-		cell.indent.style['padding-left'] = (indent - 4)+'px'
+		cell.indent.style['padding-left'] = (indent_offset(indent) - 4)+'px'
 	}
 
 	function update_cells() {
@@ -670,12 +676,12 @@ component('x-grid', function(e) {
 	// inline editing ---------------------------------------------------------
 
 	// when: input created, column width or height changed.
-	function update_editor(editor, x, y) {
+	function update_editor(editor, x, y, indent) {
 		let ri = e.focused_row_index
 		let fi = e.focused_field_index
 		let hcell = e.header.at[fi]
 		let css = e.cells.at[0].css()
-		let iw = field_has_indent(e.fields[fi] ? row_indent(e.rows[ri]) : 0)
+		let iw = field_has_indent(e.fields[fi]) ? indent_offset(or(indent, row_indent(e.rows[ri]))) : 0
 		editor.x = or(x, cell_x(ri, fi) + iw)
 		editor.y = or(y, cell_y(ri, fi))
 		editor.w = cell_w(fi) - num(css['border-right-width']) - iw
@@ -857,34 +863,49 @@ component('x-grid', function(e) {
 
 	// row moving -------------------------------------------------------------
 
-	function set_cell_of_row_x(cell, fi, ri, x) {
-		cell.x = x
-		if (e.editor && e.focused_row_index == cell.ri)
-			update_editor(e.editor, x)
-	}
-
-	function set_cell_of_row_y(cell, fi, ri, y, over_ri, ri0) {
-		cell.y = y
-		if (over_ri != null && field_has_indent(e.fields[fi]))
-			set_cell_indent(cell,
-				row_indent(e.rows[over_ri])
-				- row_indent(e.rows[ri0])
-				+ row_indent(e.rows[ri]))
-		if (e.editor && e.focused_row_index == cell.ri)
-			update_editor(e.editor, null, y)
-	}
 	let row_mover = live_move_mixin({})
+
 	row_mover.movable_element_size = function(ri) {
 		return horiz ? e.cell_h : e.cell_w
 	}
-	row_mover.set_movable_element_pos = function(ri, y, over_ri, ri0) {
+
+	function set_cell_of_row_x(cell, fi, ri, x) {
+		cell.x = x
+	}
+	function set_cell_of_row_y(cell, fi, ri, y, row0_indent, ri0) {
+		cell.y = y
+		if (row0_indent != null && ri0 != null && cell.indent)
+			set_cell_indent(cell, row0_indent + (row_indent(e.rows[ri]) - row_indent(e.rows[ri0])))
+	}
+	row_mover.set_movable_element_pos = function(ri, y, ri0) {
 		each_cell_of_row(ri, null, null, horiz ? set_cell_of_row_y : set_cell_of_row_x,
-			ri, y, over_ri, ri0)
+			ri, y, hit.indent, ri0)
+		if (e.editor && ri == e.focused_row_index)
+			update_editor(e.editor, horiz ? null : y, horiz ? y : null, hit.indent)
+	}
+
+	row_mover.update_moving_element = function(ri, after_ri, before_ri, over_p) {
+		hit.indent = null
+		hit.parent_row = e.rows[ri].parent_row
+		if (horiz && e.tree_field && e.can_change_parent) {
+			let row1 = e.rows[after_ri]
+			let row2 = e.rows[before_ri]
+			let i1 = row1 ? row_indent(row1) : 0
+			let i2 = row2 ? row_indent(row2) : 0
+			// if the row can be a child of the row above, the indent is increased one unit.
+			let ii1 = i1 + (row1 && !row1.collapsed && e.rowset.can_have_children(row1) ? 1 : 0)
+			hit.indent = min(floor(lerp(over_p, 0, 1, ii1 + 1, i2)), ii1)
+			let parent_i = i1 - hit.indent
+			hit.parent_row = parent_i >= 0 ? row1 && row1.parent_rows[parent_i] : row1
+		}
 	}
 
 	function ht_row_move(mx, my, hit) {
+		if (!e.can_move_rows) return
+		if (e.focused_row_index != hit.cell.ri) return
 		if ( horiz && abs(hit.my - my) < 8) return
 		if (!horiz && abs(hit.mx - mx) < 8) return
+		if (!horiz && e.rowset.parent_field) return
 		let r = e.cells.client_rect()
 		hit.mx -= r.x
 		hit.my -= r.y
@@ -892,12 +913,24 @@ component('x-grid', function(e) {
 		hit.my -= num(hit.cell.style.top)
 		e.class('row-moving')
 		let ri = hit.cell.ri
-		let n = 1 + e.expanded_child_row_count(ri)
-		for (let i = 0; i < n; i++)
+		let move_n = 1 + e.expanded_child_row_count(ri)
+		hit.min_y = 0
+		hit.max_y = horiz
+			? cell_y(e.rows.length - move_n)
+			: cell_x(e.rows.length - move_n)
+		if (!e.can_change_parent && e.rowset.parent_field) {
+			let prow = e.rows[ri].parent_row
+			if (prow) {
+				let pri = e.row_index(prow)
+				hit.min_y = max(hit.min_y, cell_y(pri + 1))
+				hit.max_y = min(hit.max_y, cell_y(pri + e.expanded_child_row_count(pri) - move_n + 1))
+			}
+		}
+		for (let i = 0; i < move_n; i++)
 			each_cell_of_row(ri + i, null, null, (cell) => cell.class('row-moving'))
 		if (e.editor && e.focused_row_index == ri)
 			e.editor.class('row-moving')
-		row_mover.move_element_start(ri, e.rows.length, n,
+		row_mover.move_element_start(ri, e.rows.length, move_n,
 			first_visible_row(), e.visible_row_count)
 		return true
 	}
@@ -907,23 +940,20 @@ component('x-grid', function(e) {
 		mx -= r.x
 		my -= r.y
 		let y = horiz
-			? my - hit.my
-			: mx - hit.mx
+			? clamp(my - hit.my, hit.min_y, hit.max_y)
+			: clamp(mx - hit.mx, hit.min_y, hit.max_y)
 		row_mover.move_element_update(y)
+		hit.indent = null
 	}
 
 	function mu_row_move() {
-		let over_ri = row_mover.move_element_stop() // sets y of moved element.
+		let before_ri = row_mover.move_element_stop() // sets y of moved element.
 		e.class('row-moving', false)
-		each_cell_of_row(hit.cell.ri, null, null, function(cell) {
-			cell.class('row-moving', false)
-		})
+		each_cell_of_row(hit.cell.ri, null, null, (cell) => cell.class('row-moving', false))
 		if (e.editor)
 			e.editor.class('row-moving', false)
-		if (over_ri != hit.cell.ri) {
-			e.move_row(hit.cell.ri, over_ri)
-			update_viewport()
-		}
+		e.move_row(hit.cell.ri, before_ri, hit.parent_row)
+		update_viewport()
 	}
 
 	// column moving ----------------------------------------------------------
@@ -1017,7 +1047,7 @@ component('x-grid', function(e) {
 		} else if (hit.state == 'col_moving') {
 			mm_col_move(mx, my, hit)
 		} else if (hit.state == 'row_dragging') {
-			if (e.can_move_rows && ht_row_move(mx, my, hit)) {
+			if (ht_row_move(mx, my, hit)) {
 				hit.state = 'row_moving'
 				mm_row_move(mx, my, hit)
 			}

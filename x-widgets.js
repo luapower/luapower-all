@@ -618,6 +618,10 @@ rowset = function(...options) {
 			&& d.can_focus_cell(row, field)
 	}
 
+	d.can_have_children = function(row) {
+		return row.can_have_children != false
+	}
+
 	d.create_row_editor = function(row, ...options) {} // stub
 
 	d.create_editor = function(field, ...options) {

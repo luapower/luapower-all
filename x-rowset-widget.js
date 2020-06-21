@@ -824,7 +824,7 @@ function rowset_widget(e) {
 
 	e.expanded_child_row_count = function(parent_ri) {
 		let n = 0
-		if (e.rowset.parent_field) {
+		if (e.rowset.parent_field && parent_ri != null) {
 			let min_parent_rows = e.rows[parent_ri].parent_rows.length + 1
 			for (let ri = parent_ri + 1; ri < e.rows.length; ri++) {
 				let row = e.rows[ri]
@@ -850,43 +850,35 @@ function rowset_widget(e) {
 		}
 	}
 
-	e.move_row = function(ri0, ri1) {
+	e.move_row = function(ri, before_ri, parent_row) {
 
-		if (ri0 == ri1)
-			return
+		assert(ri != before_ri)
+		assert(ri == e.focused_row_index)
 
-		let n = 1 + e.expanded_child_row_count(ri0)
-		let ri1_after_remove = ri1 - (ri1 > ri0 ? (n - 1) : 0)
+		let row_count = 1 + e.expanded_child_row_count(ri)
+		let row = e.rows[ri]
 
-		let row0 = e.rows[ri0]
-		let row1 = e.rows[ri1]
-		let p0 = row0.parent_row
-		let p1 = row1.parent_row
-
-		let index_field = e.rowset.index_field
-		let min_index = index_field && e.rowset.val(e.rows[min(ri0, ri1)], index_field)
-
-		let moved_rows = e.rows.splice(ri0, n)
-		e.rows.splice(ri1_after_remove, 0, ...moved_rows)
+		let moved_rows = e.rows.splice(ri, row_count)
+		let insert_ri = before_ri - (before_ri > ri ? row_count : 0)
+		e.rows.splice(insert_ri, 0, ...moved_rows)
 		e.rows_array_changed()
 
-		e.rowset.move_row(row0, p1)
+		let old_parent_row = row.parent_row
+		e.rowset.move_row(row, parent_row)
 
-		if (index_field)
+		if (e.rowset.index_field)
 			if (e.rowset.parent_field) {
-				reset_indices_for_children_of(p0)
-				if (p1 != p0)
-					reset_indices_for_children_of(p1)
+				reset_indices_for_children_of(old_parent_row)
+				if (parent_row != old_parent_row)
+					reset_indices_for_children_of(parent_row)
 			} else {
-				let index = min_index
-				for (let ri = min(ri0, ri1); ri <= max(ri0, ri1); ri++)
-					e.rowset.set_val(e.rows[ri], index_field, index++)
+				let index = 1
+				for (let ri = 0; ri <= e.rows.length; ri++)
+					e.rowset.set_val(e.rows[ri], e.rowset.index_field, index++)
 			}
 
-		if (e.focused_row_index == ri0)
-			e.focused_row_index = ri1_after_remove
-
-		if (e.focused_row_index && e.isConnected)
+		e.focused_row_index = insert_ri
+		if (e.isConnected)
 			e.scroll_to_cell(e.focused_row_index, e.focused_cell_index)
 
 	}
