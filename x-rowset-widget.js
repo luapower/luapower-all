@@ -88,10 +88,9 @@ function rowset_widget(e) {
 			return
 		let i = 0
 		let passes = e.rowset.filter_rowsets_filter(e.filter_rowsets)
-		for (let row of e.rowset.rows) {
+		for (let row of e.rowset.rows)
 			if (!row.parent_collapsed && passes(row))
 				e.rows.push(row)
-		}
 		e.rows_array_changed()
 	}
 
@@ -811,7 +810,7 @@ function rowset_widget(e) {
 
 	e.set_collapsed = function(ri, collapsed) {
 		let row = e.rows[ri]
-		if (!row.child_row_count)
+		if (!row.child_rows.length)
 			return
 		e.rowset.set_collapsed(row, collapsed)
 		e.init_rows_array()
@@ -873,7 +872,7 @@ function rowset_widget(e) {
 					reset_indices_for_children_of(parent_row)
 			} else {
 				let index = 1
-				for (let ri = 0; ri <= e.rows.length; ri++)
+				for (let ri = 0; ri < e.rows.length; ri++)
 					e.rowset.set_val(e.rows[ri], e.rowset.index_field, index++)
 			}
 

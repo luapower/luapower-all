@@ -29,6 +29,7 @@ component('x-grid', function(e) {
 	e.can_sort_rows = true
 	e.can_reorder_fields = true
 	e.enter_edit_on_click = false
+	e.enter_edit_on_click_focused = true
 	e.exit_edit_on_escape = true
 	e.exit_edit_on_enter = true
 	e.focus_cell_on_click_header = false
@@ -534,7 +535,7 @@ component('x-grid', function(e) {
 							cell.indent = div({class: 'x-grid-cell-indent'})
 							cell.set(cell.indent)
 						}
-						let has_children = (row.child_row_count || 0) > 0
+						let has_children = row.child_rows.length > 0
 						cell.indent.class('far', has_children)
 						cell.indent.class('fa-plus-square' , has_children && !!row.collapsed)
 						cell.indent.class('fa-minus-square', has_children && !row.collapsed)
@@ -852,7 +853,8 @@ component('x-grid', function(e) {
 
 		if (e.focus_cell(cell.ri, cell.fi, 0, 0, {
 			must_not_move_row: true,
-			enter_edit: !over_indent && (e.enter_edit_on_click || already_on_it),
+			enter_edit: !over_indent && (e.enter_edit_on_click
+				|| (e.enter_edit_on_click_focused && already_on_it)),
 			focus_editor: true,
 			editor_state: 'select_all',
 			input: e,

@@ -278,9 +278,10 @@ rowset = function(...options) {
 
 	function each_child_row(row, f) {
 		if (d.parent_field)
-			for (let child_row of d.rows)
-				if (child_row.parent_rows.indexOf(row) >= 0)
-					f(child_row)
+			for (let child_row of row.child_rows) {
+				each_child_row(child_row, f)
+				f(child_row)
+			}
 	}
 
 	function init_parents_for(row) {
@@ -298,23 +299,29 @@ rowset = function(...options) {
 		}
 		row.parent_row = row.parent_rows[0]
 		if (row.parent_row)
-			row.parent_row.child_row_count++
+			row.parent_row.child_rows.push(row)
 	}
 
 	function init_parents() {
 		d.parent_field = d.parent_col && d.field(d.parent_col)
 		if (!d.parent_field) return
 		for (let row of d.rows)
-			row.child_row_count = 0
+			row.child_rows = []
 		for (let row of d.rows)
 			init_parents_for(row)
 	}
 
+	function set_parent_collapsed(row, collapsed) {
+		for (let child_row of row.child_rows) {
+			child_row.parent_collapsed = collapsed
+			if (collapsed || !child_row.collapsed)
+				set_parent_collapsed(child_row, collapsed)
+		}
+	}
+
 	d.set_collapsed = function(row, collapsed) {
 		row.collapsed = collapsed
-		each_child_row(row, function(row) {
-			row.parent_collapsed = collapsed
-		})
+		set_parent_collapsed(row, collapsed)
 	}
 
 	// sorting ----------------------------------------------------------------
@@ -831,7 +838,7 @@ rowset = function(...options) {
 			})
 			d.rows.delete(row)
 			if (row.parent_row)
-				row.parent_row.child_row_count--
+				row.parent_row.child_rows.remove_value(row)
 			each_lookup('row_removed', row)
 			d.fire('row_removed', row, ev)
 		} else {
@@ -855,7 +862,7 @@ rowset = function(...options) {
 		let parent_id = parent_row ? d.val(parent_row, d.id_field) : null
 		d.set_val(row, d.parent_field, parent_id, ev)
 		if (row.parent_row)
-			row.parent_row.child_row_count--
+			row.parent_row.child_rows.remove_value(row)
 		init_parents_for(row)
 		each_child_row(row, init_parents_for)
 	}
