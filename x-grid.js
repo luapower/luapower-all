@@ -848,9 +848,6 @@ component('x-grid', function(e) {
 			e.focused_row_index   == cell.ri &&
 			e.focused_field_index == cell.fi
 
-		if (over_indent)
-			e.toggle_collapsed(cell.ri)
-
 		if (e.focus_cell(cell.ri, cell.fi, 0, 0, {
 			must_not_move_row: true,
 			enter_edit: !over_indent && (e.enter_edit_on_click
@@ -858,9 +855,12 @@ component('x-grid', function(e) {
 			focus_editor: true,
 			editor_state: 'select_all',
 			input: e,
-		}))
+		})) {
+			if (over_indent)
+				e.toggle_collapsed(e.focused_row_index, ev.shiftKey)
 			if (!already_on_it)
 				e.pick_val()
+		}
 	}
 
 	// row moving -------------------------------------------------------------
@@ -886,8 +886,19 @@ component('x-grid', function(e) {
 			update_editor(e.editor, horiz ? null : y, horiz ? y : null, hit.indent)
 	}
 
+	function highlight_parent_row(row, on) {
+		if (!row) return
+		if (!e.tree_field) return
+		let ri = e.row_index(row)
+		let fi = e.fields.indexOf(e.tree_field)
+		let pcell = e.cells.at[cell_index(ri, fi)]
+		if (!pcell) return
+		pcell.class('x-moving-parent-row', on)
+	}
+
 	row_mover.update_moving_element = function(ri, after_ri, before_ri, over_p) {
 		hit.indent = null
+		highlight_parent_row(hit.parent_row, false)
 		hit.parent_row = e.rows[ri].parent_row
 		if (horiz && e.tree_field && e.can_change_parent) {
 			let row1 = e.rows[after_ri]
@@ -900,6 +911,7 @@ component('x-grid', function(e) {
 			let parent_i = i1 - hit.indent
 			hit.parent_row = parent_i >= 0 ? row1 && row1.parent_rows[parent_i] : row1
 		}
+		highlight_parent_row(hit.parent_row, true)
 	}
 
 	function ht_row_move(mx, my, hit) {
@@ -908,24 +920,30 @@ component('x-grid', function(e) {
 		if ( horiz && abs(hit.my - my) < 8) return
 		if (!horiz && abs(hit.mx - mx) < 8) return
 		if (!horiz && e.rowset.parent_field) return
+		if (e.order_by.size > 0) return
+		if (e.filter_rowsets && e.filter_rowsets.size > 0) return
+
 		let r = e.cells.client_rect()
 		hit.mx -= r.x
 		hit.my -= r.y
 		hit.mx -= num(hit.cell.style.left)
 		hit.my -= num(hit.cell.style.top)
 		e.class('row-moving')
+
 		let ri = hit.cell.ri
-		let move_n = 1 + e.expanded_child_row_count(ri)
+		let move_n = 1 + e.child_row_count(ri)
+
 		hit.min_y = 0
 		hit.max_y = horiz
 			? cell_y(e.rows.length - move_n)
 			: cell_x(e.rows.length - move_n)
+
 		if (!e.can_change_parent && e.rowset.parent_field) {
 			let prow = e.rows[ri].parent_row
 			if (prow) {
 				let pri = e.row_index(prow)
 				hit.min_y = max(hit.min_y, cell_y(pri + 1))
-				hit.max_y = min(hit.max_y, cell_y(pri + e.expanded_child_row_count(pri) - move_n + 1))
+				hit.max_y = min(hit.max_y, cell_y(pri + e.child_row_count(pri) - move_n + 1))
 			}
 		}
 		for (let i = 0; i < move_n; i++)
@@ -954,6 +972,7 @@ component('x-grid', function(e) {
 		each_cell_of_row(hit.cell.ri, null, null, (cell) => cell.class('row-moving', false))
 		if (e.editor)
 			e.editor.class('row-moving', false)
+		highlight_parent_row(hit.parent_row, false)
 		e.move_row(hit.cell.ri, before_ri, hit.parent_row)
 		update_viewport()
 	}
@@ -1277,7 +1296,7 @@ component('x-grid', function(e) {
 
 		if (!e.editor && key == ' ') {
 			if (e.focused_row_index)
-				e.toggle_collapsed(e.focused_row_index)
+				e.toggle_collapsed(e.focused_row_index, shift)
 			return false
 		}
 
@@ -1415,6 +1434,19 @@ component('x-grid', function(e) {
 					text: S('all_fields_shown', 'All fields are shown'),
 					enabled: false,
 				})
+
+			if (e.rowset.parent_field) {
+				items.push({
+					text: S('expand_all', 'Expand all'),
+					enabled: horiz && e.tree_field,
+					action: function() { e.set_collapsed(null, false, true) },
+				})
+				items.push({
+					text: S('collapse_all', 'Collapse all'),
+					enabled: horiz && e.tree_field,
+					action: function() { e.set_collapsed(null, true, true) },
+				})
+			}
 
 		}
 

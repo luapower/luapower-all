@@ -190,7 +190,7 @@ rowset = function(...options) {
 			}
 		}
 
-		d.id_field = d.pk_fields[0]
+		d.id_field = d.pk_fields.length == 1 && d.pk_fields[0]
 
 		d.index_field = d.field(def.index_col)
 	}
@@ -198,7 +198,7 @@ rowset = function(...options) {
 	function init_rows(rows) {
 		d.rows = (!rows || isarray(rows)) && new Set(rows) || rows
 		each_lookup('rebuild')
-		init_parents()
+		init_tree()
 	}
 
 	property(d, 'row_count', { get: function() { return d.rows.size } })
@@ -276,52 +276,144 @@ rowset = function(...options) {
 
 	// tree -------------------------------------------------------------------
 
-	function each_child_row(row, f) {
+	d.each_child_row = function(row, f) {
 		if (d.parent_field)
 			for (let child_row of row.child_rows) {
-				each_child_row(child_row, f)
+				d.each_child_row(child_row, f) // depth-first
 				f(child_row)
 			}
 	}
 
-	function init_parents_for(row) {
-		if (!d.parent_field) return
-		row.parent_rows = []
-		let child_row = row
-		while (1) {
-			let parent_row = d.lookup(d.id_field, child_row[d.parent_field.index])
-			if (!parent_row)
-				break
-			if (parent_row == row || row.parent_rows.indexOf(parent_row) >= 0) // circular ref: abort.
-				break
-			row.parent_rows.push(parent_row)
-			child_row = parent_row
+	function init_parents_for_row(row, parent_rows) {
+
+		if (!init_parents_for_rows(row.child_rows))
+			return // circular ref: abort.
+
+		if (!parent_rows) {
+
+			// reuse the parent rows array from a sibling, if any.
+			let sibling_row = (row.parent_row || d).child_rows[0]
+			parent_rows = sibling_row && sibling_row.parent_rows
+
+			if (!parent_rows) {
+
+				parent_rows = []
+				let parent_row = row.parent_row
+				while (parent_row) {
+					if (parent_row == row || parent_rows.includes(parent_row))
+						return // circular ref: abort.
+					parent_rows.push(parent_row)
+					parent_row = parent_row.parent_row
+				}
+			}
 		}
-		row.parent_row = row.parent_rows[0]
-		if (row.parent_row)
-			row.parent_row.child_rows.push(row)
+		row.parent_rows = parent_rows
+		return parent_rows
 	}
 
-	function init_parents() {
-		d.parent_field = d.parent_col && d.field(d.parent_col)
-		if (!d.parent_field) return
+	function init_parents_for_rows(rows) {
+		let parent_rows
+		for (let row of rows) {
+			parent_rows = init_parents_for_row(row, parent_rows)
+			if (!parent_rows)
+				return // circular ref: abort.
+		}
+		return true
+	}
+
+	function remove_parent_rows_for(row) {
+		row.parent_rows = null
+		for (let child_row of row.child_rows)
+			remove_parent_rows_for(child_row)
+	}
+
+	function remove_row_from_tree(row) {
+		;(row.parent_row || d).child_rows.remove_value(row)
+		if (row.parent_row && row.parent_row.child_rows.length == 0)
+			delete row.parent_row.collapsed
+		row.parent_row = null
+		remove_parent_rows_for(row)
+	}
+
+	function add_row_to_tree(row, parent_row) {
+		row.parent_row = parent_row
+		;(parent_row || d).child_rows.push(row)
+	}
+
+	function init_tree() {
+
+		d.parent_field = d.id_field && d.parent_col && d.field(d.parent_col)
+		if (!d.parent_field)
+			return
+
+		d.child_rows = []
 		for (let row of d.rows)
 			row.child_rows = []
+
+		let p_fi = d.parent_field.index
 		for (let row of d.rows)
-			init_parents_for(row)
+			add_row_to_tree(row, d.lookup(d.id_field, row[p_fi]))
+
+		if (!init_parents_for_rows(d.child_rows)) {
+			// circular refs detected: revert to flat mode.
+			for (let row of d.rows) {
+				row.child_rows = null
+				row.parent_rows = null
+				row.parent_row = null
+				print('circular ref detected')
+			}
+			d.child_rows = null
+			d.parent_field = null
+		}
+
 	}
+
+	d.move_row = function(row, parent_row, ev) {
+
+		assert(d.parent_field)
+		if (parent_row == row.parent_row)
+			return
+		assert(parent_row != row)
+		assert(!parent_row || !parent_row.parent_rows.includes(row))
+
+		let parent_id = parent_row ? d.val(parent_row, d.id_field) : null
+		d.set_val(row, d.parent_field, parent_id, ev)
+
+		remove_row_from_tree(row)
+		add_row_to_tree(row, parent_row)
+
+		assert(init_parents_for_row(row))
+	}
+
+	// collapsed state --------------------------------------------------------
 
 	function set_parent_collapsed(row, collapsed) {
 		for (let child_row of row.child_rows) {
 			child_row.parent_collapsed = collapsed
-			if (collapsed || !child_row.collapsed)
+			if (!child_row.collapsed)
 				set_parent_collapsed(child_row, collapsed)
 		}
 	}
 
-	d.set_collapsed = function(row, collapsed) {
-		row.collapsed = collapsed
-		set_parent_collapsed(row, collapsed)
+	function set_collapsed_all(row, collapsed) {
+		if (row.child_rows.length > 0) {
+			row.collapsed = collapsed
+			for (let child_row of row.child_rows) {
+				child_row.parent_collapsed = collapsed
+				set_collapsed_all(child_row, collapsed)
+			}
+		}
+	}
+
+	d.set_collapsed = function(row, collapsed, recursive) {
+		if (!row.child_rows.length)
+			return
+		if (recursive)
+			set_collapsed_all(row, collapsed)
+		else if (row.collapsed != collapsed) {
+			row.collapsed = collapsed
+			set_parent_collapsed(row, collapsed)
+		}
 	}
 
 	// sorting ----------------------------------------------------------------
@@ -373,6 +465,7 @@ rowset = function(...options) {
 
 		order_by = new Map(order_by)
 
+		// use index-based ordering by default, unless otherwise specified.
 		if (d.index_field && order_by.size == 0)
 			order_by.set(d.index_field, 'asc')
 
@@ -797,14 +890,18 @@ rowset = function(...options) {
 		let row = create_row()
 		d.rows.add(row)
 
-		// silently set parent id to be the id of the parent row before firing `row_added` event.
-		if (ev && ev.parent_row) {
-			let parent_id = d.val(ev.parent_row, d.id_field)
-			d.set_val(row, d.parent_field, parent_id, update({fire_changed_events: false}, ev))
+		if (d.parent_field) {
+			row.parent_row = ev && ev.parent_row || null
+			;(row.parent_row || d).child_rows.push(row)
+			if (row.parent_row) {
+				// silently set parent id to be the id of the parent row before firing `row_added` event.
+				let parent_id = d.val(row.parent_row, d.id_field)
+				d.set_val(row, d.parent_field, parent_id, update({fire_changed_events: false}, ev))
+			}
+			assert(init_parents_for_row(row))
 		}
-		each_lookup('row_added', row)
-		init_parents_for(row)
 
+		each_lookup('row_added', row)
 		d.fire('row_added', row, ev)
 
 		// set default client values as if they were typed in by the user.
@@ -833,18 +930,17 @@ rowset = function(...options) {
 
 	d.remove_row = function(row, ev) {
 		if ((ev && ev.forever) || row.is_new) {
-			each_child_row(row, function(row) {
+			d.each_child_row(row, function(row) {
 				d.rows.delete(row)
 			})
 			d.rows.delete(row)
-			if (row.parent_row)
-				row.parent_row.child_rows.remove_value(row)
+			remove_row_from_tree(row)
 			each_lookup('row_removed', row)
 			d.fire('row_removed', row, ev)
 		} else {
 			if (!d.can_remove_row(row))
 				return
-			each_child_row(row, function(row) {
+			d.each_child_row(row, function(row) {
 				if (d.set_row_state(row, 'removed', true, false))
 					row_state_changed(row, 'row_removed', ev)
 			})
@@ -853,18 +949,6 @@ rowset = function(...options) {
 			row_changed(row)
 		}
 		return row
-	}
-
-	d.move_row = function(row, parent_row, ev) {
-		if (row.parent_row == parent_row)
-			return
-		assert(!parent_row || parent_row.parent_rows.indexOf(row) == -1)
-		let parent_id = parent_row ? d.val(parent_row, d.id_field) : null
-		d.set_val(row, d.parent_field, parent_id, ev)
-		if (row.parent_row)
-			row.parent_row.child_rows.remove_value(row)
-		init_parents_for(row)
-		each_child_row(row, init_parents_for)
 	}
 
 	// ajax requests ----------------------------------------------------------

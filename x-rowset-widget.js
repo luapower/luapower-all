@@ -301,6 +301,8 @@ function rowset_widget(e) {
 	function cell_state_changed(row, field, prop, val, ev) {
 		let ri = e.row_index(row, ev && ev.row_index)
 		let fi = e.field_index(field, ev && ev.field_index)
+		if (fi == null)
+			return
 		e.update_cell_state(ri, fi, prop, val, ev)
 		if (row == e.focused_row) {
 			e.fire('focused_row_cell_state_changed_for_'+field.name, prop, val, ev)
@@ -789,8 +791,8 @@ function rowset_widget(e) {
 		e.sort()
 	}
 
-	e.sort = function() {
-		let focused_row = e.focused_row
+	e.sort = function(focused_row) {
+		focused_row = or(focused_row, e.focused_row)
 		if (e.rowset.parent_field || (order_by && order_by.size)) {
 			let cmp = e.rowset.comparator(order_by)
 			e.rows.sort(cmp)
@@ -808,34 +810,35 @@ function rowset_widget(e) {
 
 	// row collapsing ---------------------------------------------------------
 
-	e.set_collapsed = function(ri, collapsed) {
-		let row = e.rows[ri]
-		if (!row.child_rows.length)
-			return
-		e.rowset.set_collapsed(row, collapsed)
+	e.set_collapsed = function(ri, collapsed, recursive) {
+		let focused_row = e.focused_row
+		if (ri != null)
+			e.rowset.set_collapsed(e.rows[ri], collapsed, recursive)
+		else
+			for (let row of e.rowset.child_rows)
+				e.rowset.set_collapsed(row, collapsed, recursive)
 		e.init_rows_array()
-		e.sort()
+		e.sort(focused_row)
 	}
 
-	e.toggle_collapsed = function(ri) {
-		e.set_collapsed(ri, !e.rows[ri].collapsed)
-	}
-
-	e.expanded_child_row_count = function(parent_ri) {
-		let n = 0
-		if (e.rowset.parent_field && parent_ri != null) {
-			let min_parent_rows = e.rows[parent_ri].parent_rows.length + 1
-			for (let ri = parent_ri + 1; ri < e.rows.length; ri++) {
-				let row = e.rows[ri]
-				if (row.parent_rows.length < min_parent_rows)
-					break
-				n++
-			}
-		}
-		return n
+	e.toggle_collapsed = function(ri, recursive) {
+		e.set_collapsed(ri, !e.rows[ri].collapsed, recursive)
 	}
 
 	// row moving -------------------------------------------------------------
+
+	e.child_row_count = function(ri) {
+		let n = 0
+		let row = e.rows[ri]
+		let min_parent_count = row.parent_rows.length + 1
+		for (ri++; ri < e.rows.length; ri++) {
+			let child_row = e.rows[ri]
+			if (child_row.parent_rows.length < min_parent_count)
+				break
+			n++
+		}
+		return n
+	}
 
 	function reset_indices_for_children_of(row) {
 		let index = 1
@@ -854,8 +857,8 @@ function rowset_widget(e) {
 		assert(ri != before_ri)
 		assert(ri == e.focused_row_index)
 
-		let row_count = 1 + e.expanded_child_row_count(ri)
 		let row = e.rows[ri]
+		let row_count = 1 + e.child_row_count(ri)
 
 		let moved_rows = e.rows.splice(ri, row_count)
 		let insert_ri = before_ri - (before_ri > ri ? row_count : 0)
