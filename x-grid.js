@@ -1032,7 +1032,7 @@ component('x-grid', function(e) {
 	}
 
 	function mu_col_move() {
-		let over_fi = e.move_element_stop() // sets x of moved element.
+		let before_fi = e.move_element_stop() // sets x of moved element.
 		e.class('col-moving', false)
 		each_cell_of_col(hit.fi, function(cell) {
 			cell.class('col-moving', false)
@@ -1040,10 +1040,11 @@ component('x-grid', function(e) {
 		})
 		if (e.editor)
 			e.editor.class('col-moving', false)
-		if (over_fi != hit.fi) {
+		if (before_fi != hit.fi) {
+			let insert_fi = before_fi - (before_fi > hit.fi ? 1 : 0)
 			let focused_field = e.fields[e.focused_field_index]
 			let field = e.fields.remove(hit.fi)
-			e.fields.insert(over_fi, field)
+			e.fields.insert(insert_fi, field)
 			e.focused_field_index = focused_field && e.fields.indexOf(focused_field)
 			e.init_fields()
 			update_sizes()

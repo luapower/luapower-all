@@ -1700,8 +1700,8 @@
 }
 
 .x-moving-parent-row {
-	outline: 1px dashed #47a;
-	//background-color: var(--x-modified-bg-color);
+	outline: 1px dashed #999;
+	background-color: var(--x-item-hover-bg-color);
 }
 
 /* grid col resizing */

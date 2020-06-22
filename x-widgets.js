@@ -3182,11 +3182,12 @@ component('x-pagelist', function(e) {
 
 	function idiv_pointerup() {
 		if (dragging) {
-			let i = e.move_element_stop()
+			let before_i = e.move_element_stop()
+			let insert_i = before_i - (before_i > this.index ? 1 : 0)
 			e.items.remove(this.index)
-			e.items.insert(i, this.item)
+			e.items.insert(insert_i, this.item)
 			this.remove()
-			e.header.insert(i, this)
+			e.header.insert(insert_i, this)
 			for (let item of e.items)
 				item.idiv.x = null
 			update_selection_bar()
