@@ -1547,6 +1547,8 @@
 	//border-right-color: transparent;
 }
 
+/* tree node indent */
+
 .x-grid-cell-indent {
 	display: inline-flex;
 	align-items: center;
@@ -1558,16 +1560,16 @@
 	color: #999;
 }
 
+.x-grid-cell-indent:hover::before {
+	color: #666;
+}
+
 .x-grid-cell.focused > .x-grid-cell-indent {
-	color: #bbb;
+	color: #ccc;
 }
 
 .x-grid-cell.focused > .x-grid-cell-indent:hover::before {
 	color: #eee;
-}
-
-.x-grid-cell-indent:hover::before {
-	color: #bbb;
 }
 
 /* grid header */
