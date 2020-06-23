@@ -829,13 +829,15 @@ function rowset_widget(e) {
 
 	e.child_row_count = function(ri) {
 		let n = 0
-		let row = e.rows[ri]
-		let min_parent_count = row.parent_rows.length + 1
-		for (ri++; ri < e.rows.length; ri++) {
-			let child_row = e.rows[ri]
-			if (child_row.parent_rows.length < min_parent_count)
-				break
-			n++
+		if (d.parent_field) {
+			let row = e.rows[ri]
+			let min_parent_count = row.parent_rows.length + 1
+			for (ri++; ri < e.rows.length; ri++) {
+				let child_row = e.rows[ri]
+				if (child_row.parent_rows.length < min_parent_count)
+					break
+				n++
+			}
 		}
 		return n
 	}

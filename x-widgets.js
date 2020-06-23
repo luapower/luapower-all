@@ -369,8 +369,8 @@ rowset = function(...options) {
 	}
 
 	d.move_row = function(row, parent_row, ev) {
-
-		assert(d.parent_field)
+		if (!d.parent_field)
+			return
 		if (parent_row == row.parent_row)
 			return
 		assert(parent_row != row)

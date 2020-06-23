@@ -939,12 +939,12 @@ component('x-grid', function(e) {
 		e.class('row-moving')
 
 		let ri = hit.cell.ri
-		let move_n = 1 + e.child_row_count(ri)
+		hit.n = 1 + e.child_row_count(ri)
 
 		hit.min_y = 0
 		hit.max_y = horiz
-			? cell_y(e.rows.length - move_n)
-			: cell_x(e.rows.length - move_n)
+			? cell_y(e.rows.length - hit.n)
+			: cell_x(e.rows.length - hit.n)
 		hit.last_ri = e.rows.length - 1
 
 		if (!e.can_change_parent && e.rowset.parent_field) {
@@ -954,16 +954,17 @@ component('x-grid', function(e) {
 				hit.first_ri = parent_ri + 1
 				hit.last_ri = parent_ri + e.child_row_count(parent_ri)
 				hit.min_y = max(hit.min_y, cell_y(parent_ri + 1))
-				hit.max_y = min(hit.max_y, cell_y(hit.last_ri - move_n + 1))
+				hit.max_y = min(hit.max_y, cell_y(hit.last_ri - hit.n + 1))
 			}
 		}
 
-		for (let i = 0; i < move_n; i++)
-			each_cell_of_row(ri + i, null, null, (cell) => cell.class('row-moving'))
+		for (let i = 0; i < hit.n; i++)
+			each_cell_of_row(ri + i, null, null,
+				(cell) => cell.class('row-moving'))
 		if (e.editor && e.focused_row_index == ri)
 			e.editor.class('row-moving')
 
-		row_mover.move_element_start(ri, e.rows.length, move_n,
+		row_mover.move_element_start(ri, e.rows.length, hit.n,
 			first_visible_row(), e.visible_row_count)
 		return true
 	}
@@ -982,7 +983,9 @@ component('x-grid', function(e) {
 	function mu_row_move() {
 		let before_ri = row_mover.move_element_stop() // sets y of moved element.
 		e.class('row-moving', false)
-		each_cell_of_row(hit.cell.ri, null, null, (cell) => cell.class('row-moving', false))
+		for (let i = 0; i < hit.n; i++)
+			each_cell_of_row(hit.cell.ri + i, null, null,
+				(cell) => cell.class('row-moving', false))
 		if (e.editor)
 			e.editor.class('row-moving', false)
 		highlight_parent_row(hit.parent_row, false)
@@ -1024,10 +1027,7 @@ component('x-grid', function(e) {
 		hit.mx -= num(e.header.at[hit.fi].style.left)
 		hit.my -= num(e.header.at[hit.fi].style.top)
 		e.class('col-moving')
-		each_cell_of_col(hit.fi, function(cell) {
-			cell.class('col-moving')
-			cell.style['z-index'] = 1
-		})
+		each_cell_of_col(hit.fi, (cell) => cell.class('col-moving'))
 		if (e.editor && e.focused_field_index == hit.fi)
 			e.editor.class('col-moving')
 		e.move_element_start(hit.fi, e.fields.length)
@@ -1047,10 +1047,7 @@ component('x-grid', function(e) {
 	function mu_col_move() {
 		let before_fi = e.move_element_stop() // sets x of moved element.
 		e.class('col-moving', false)
-		each_cell_of_col(hit.fi, function(cell) {
-			cell.class('col-moving', false)
-			cell.style['z-index'] = null
-		})
+		each_cell_of_col(hit.fi, (cell) => cell.class('col-moving', false))
 		if (e.editor)
 			e.editor.class('col-moving', false)
 		if (before_fi != hit.fi) {

@@ -1555,6 +1555,11 @@
 	width: 0;
 	padding: 0 4px;
 	height: 100%;
+	color: #999;
+}
+
+.x-grid-cell.focused > .x-grid-cell-indent {
+	color: #bbb;
 }
 
 .x-grid-cell.focused > .x-grid-cell-indent:hover::before {
@@ -1562,7 +1567,7 @@
 }
 
 .x-grid-cell-indent:hover::before {
-	color: #666;
+	color: #bbb;
 }
 
 /* grid header */
@@ -1665,6 +1670,7 @@
 	display: flex;             /* because vertical-align doesn't work with `position: absolute` */
 	align-items: center;       /* works as `vertical-align: middle` */
 	border-bottom: 0px solid #eee;
+	background-color: white;
 }
 
 .x-grid-cell[align=center] { justify-content: center; }
@@ -1679,7 +1685,8 @@
 .x-grid-header-cell.col-moving,
 .x-grid-cell.col-moving {
 	background-color: #eee;
-	opacity: .5;
+	opacity: .7;
+	z-index: 1;
 }
 
 .x-grid.col-moving .x-grid-header-cell:not(.col-moving),
@@ -1691,6 +1698,8 @@
 /* grid row moving */
 
 .x-grid-cell.row-moving {
+	background-color: #eee;
+	opacity: .7;
 	z-index: 1;
 }
 
