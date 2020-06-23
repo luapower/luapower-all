@@ -891,6 +891,7 @@ rowset = function(...options) {
 		d.rows.add(row)
 
 		if (d.parent_field) {
+			row.child_rows = []
 			row.parent_row = ev && ev.parent_row || null
 			;(row.parent_row || d).child_rows.push(row)
 			if (row.parent_row) {
@@ -3182,8 +3183,8 @@ component('x-pagelist', function(e) {
 
 	function idiv_pointerup() {
 		if (dragging) {
-			let before_i = e.move_element_stop()
-			let insert_i = before_i - (before_i > this.index ? 1 : 0)
+			let over_i = e.move_element_stop()
+			let insert_i = over_i - (over_i > this.index ? 1 : 0)
 			e.items.remove(this.index)
 			e.items.insert(insert_i, this.item)
 			this.remove()

@@ -852,16 +852,16 @@ function rowset_widget(e) {
 		}
 	}
 
-	e.move_row = function(ri, before_ri, parent_row) {
+	e.move_row = function(ri, over_ri, parent_row) {
 
-		assert(ri != before_ri)
+		assert(ri != over_ri)
 		assert(ri == e.focused_row_index)
 
 		let row = e.rows[ri]
 		let row_count = 1 + e.child_row_count(ri)
 
 		let moved_rows = e.rows.splice(ri, row_count)
-		let insert_ri = before_ri - (before_ri > ri ? row_count : 0)
+		let insert_ri = over_ri - (over_ri > ri ? row_count : 0)
 		e.rows.splice(insert_ri, 0, ...moved_rows)
 		e.rows_array_changed()
 

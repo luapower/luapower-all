@@ -896,13 +896,13 @@ component('x-grid', function(e) {
 		pcell.class('x-moving-parent-row', on)
 	}
 
-	row_mover.update_moving_element = function(ri, after_ri, before_ri, over_p) {
+	row_mover.update_moving_element = function(ri, before_ri1, over_ri, over_p) {
 		hit.indent = null
 		highlight_parent_row(hit.parent_row, false)
 		hit.parent_row = e.rows[ri].parent_row
 		if (horiz && e.tree_field && e.can_change_parent) {
-			let row1 = e.rows[after_ri]
-			let row2 = e.rows[before_ri]
+			let row1 = e.rows[before_ri1]
+			let row2 = e.rows[over_ri]
 			let i1 = row1 ? row_indent(row1) : 0
 			let i2 = row2 ? row_indent(row2) : 0
 			// if the row can be a child of the row above, the indent is increased one unit.
@@ -912,6 +912,14 @@ component('x-grid', function(e) {
 			hit.parent_row = parent_i >= 0 ? row1 && row1.parent_rows[parent_i] : row1
 		}
 		highlight_parent_row(hit.parent_row, true)
+	}
+
+	row_mover.movable_element_can_move_after = function(before_ri) {
+		let hit_row = e.rows[hit.cell.ri]
+		let over_row = e.rows[before_ri+1]
+		return e.can_change_parent
+			|| (over_row && over_row.parent_row) == hit_row.parent_row
+			|| before_ri == hit.last_ri
 	}
 
 	function ht_row_move(mx, my, hit) {
@@ -937,19 +945,24 @@ component('x-grid', function(e) {
 		hit.max_y = horiz
 			? cell_y(e.rows.length - move_n)
 			: cell_x(e.rows.length - move_n)
+		hit.last_ri = e.rows.length - 1
 
 		if (!e.can_change_parent && e.rowset.parent_field) {
-			let prow = e.rows[ri].parent_row
-			if (prow) {
-				let pri = e.row_index(prow)
-				hit.min_y = max(hit.min_y, cell_y(pri + 1))
-				hit.max_y = min(hit.max_y, cell_y(pri + e.child_row_count(pri) - move_n + 1))
+			let parent_row = e.rows[ri].parent_row
+			if (parent_row) {
+				let parent_ri = e.row_index(parent_row)
+				hit.first_ri = parent_ri + 1
+				hit.last_ri = parent_ri + e.child_row_count(parent_ri)
+				hit.min_y = max(hit.min_y, cell_y(parent_ri + 1))
+				hit.max_y = min(hit.max_y, cell_y(hit.last_ri - move_n + 1))
 			}
 		}
+
 		for (let i = 0; i < move_n; i++)
 			each_cell_of_row(ri + i, null, null, (cell) => cell.class('row-moving'))
 		if (e.editor && e.focused_row_index == ri)
 			e.editor.class('row-moving')
+
 		row_mover.move_element_start(ri, e.rows.length, move_n,
 			first_visible_row(), e.visible_row_count)
 		return true

@@ -909,6 +909,7 @@ g = grid({
 	tree_col: 'name',
 	can_move_rows: true,
 	enter_edit_on_click_focused: false,
+	can_change_parent: false,
 })
 
 g.style.resize = 'both'
@@ -919,7 +920,7 @@ log = tag('pre')
 main.add(log)
 
 d.on('row_changed', function() {
-	log.html = json(d.pack_changes(), null, 3)
+	//log.html = json(d.pack_changes(), null, 3)
 })
 
 </script>
