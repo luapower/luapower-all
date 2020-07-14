@@ -1,0 +1,8 @@
+2020/07/14 22:13:20 [emerg] 18279#0: bind() to 0.0.0.0:8080 failed (98: Address already in use)
+2020/07/14 22:13:20 [emerg] 18279#0: bind() to 0.0.0.0:8080 failed (98: Address already in use)
+2020/07/14 22:13:20 [emerg] 18279#0: bind() to 0.0.0.0:8080 failed (98: Address already in use)
+2020/07/14 22:13:20 [emerg] 18279#0: bind() to 0.0.0.0:8080 failed (98: Address already in use)
+2020/07/14 22:13:20 [emerg] 18279#0: bind() to 0.0.0.0:8080 failed (98: Address already in use)
+2020/07/14 22:13:20 [emerg] 18279#0: still could not bind()
+2020/07/14 22:14:22 [error] 18390#0: *2 [lua] webb_nginx.lua:17: try_call(): 404, client: 188.26.49.123, server: , request: "GET /favicon.ico HTTP/1.1", host: "luapower.com:8080"
+2020/07/14 22:16:53 [error] 18390#0: *12 [lua] webb_nginx.lua:17: try_call(): 404, client: 109.166.130.143, server: , request: "GET /favicon.ico HTTP/1.1", host: "luapower.com:8080"

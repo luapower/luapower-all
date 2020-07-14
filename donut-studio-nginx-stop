@@ -1,0 +1,2 @@
+#!/bin/bash
+./donut-studio-nginx -s stop

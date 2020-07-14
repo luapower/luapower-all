@@ -1,0 +1,2 @@
+#!/bin/bash
+cd "${0%donut-studio-nginx}" && ./nginx -c donut-studio-nginx.conf "$@"

@@ -115,3 +115,8 @@
 2020/04/24 10:02:13 [notice] 21288#0: signal process started
 2020/04/24 10:02:13 [error] 21288#0: open() "./logs/luamyadmin.pid" failed (2: No such file or directory)
 2020/04/24 10:02:14 [alert] 21294#0: lua_code_cache is off; this will hurt performance in ./luamyadmin-nginx.conf:5
+2020/07/14 22:12:14 [alert] 18215#0: lua_code_cache is off; this will hurt performance in ./donut-studio-nginx.conf:5
+2020/07/14 22:13:20 [alert] 18279#0: lua_code_cache is off; this will hurt performance in ./donut-studio-nginx.conf:5
+2020/07/14 22:14:13 [alert] 18380#0: lua_code_cache is off; this will hurt performance in ./donut-studio-nginx.conf:5
+2020/07/14 22:14:13 [notice] 18380#0: signal process started
+2020/07/14 22:14:16 [alert] 18386#0: lua_code_cache is off; this will hurt performance in ./donut-studio-nginx.conf:5

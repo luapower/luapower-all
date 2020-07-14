@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+.shadow {
+	filter: drop-shadow(5px 5px 5px #222);
+}
+html, body {
+	width: 100%;
+	margin: 0;
+	padding: 0;
+	font-family: sans-serif;
+}
+body {
+	display: flex;
+	justify-content: center;
+}
+#main {
+	width: 400px;
+	height: 100%;
+	display: flex;
+	flex-flow: column;
+	border: 1px solid #ccc;
+	overflow: hidden;
+}
+#logo {
+	margin: 40px;
+	max-width: 50%;
+	z-index: 1;
+	align-self: center;
+	filter: drop-shadow(2px 2px 2px #222);
+}
+#products {
+	display: flex;
+	justify-content: center;
+	margin-top: -100px;
+	//box-shadow: 0px 4px 4px #00000088;
+}
+.product {
+	width: 100%;
+	align-self: center;
+	filter: drop-shadow(5px 5px 5px #222);
+}
+.cart {
+	background: rgb(255, 206, 111);
+	color: white;
+}
+#cart {
+	padding: 10px 5px;
+	z-index: 2;
+}
+.cart-product {
+	height: 50px;
+	filter: drop-shadow(2px 2px 2px #222);
+}
+#order {
+	height: 60px;
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	border-top: 1px solid #999;
+}
+#totals {
+	padding: 20px 20px;
+	flex: 1;
+	display: grid;
+	grid: auto / auto auto;
+}
+#order_btn {
+	font-size: 30px;
+	margin: 0 20px;
+}
+.total {
+	font-size: 24px;
+}
+.discount {
+	font-size: 14px;
+}
+#total {
+	justify-self: right;
+}
+#discount {
+	justify-self: right;
+}
+#footer {
+	padding: 10px 20px;
+	background: rgb(51, 51, 51);
+	color: white;
+	font-size: 13px;
+	line-height: 1.5em;
+	min-height: 60px;
+	display: flex;
+	justify-content: space-between;
+}
+#footer_left {
+	flex: 1;
+}
+#footer_right {
+}
+</style>
+<script>
+
+</script>
+</head>
+<body>
+	<div id=main>
+		<img id=logo src=logo.png>
+		<div id=products>
+			<img class=product src=donut1.png>
+			<img class=product src=donut2.png>
+			<img class=product src=donut1.png>
+		</div>
+		<div id=cart class=cart>
+			<img class=cart-product src=box1.png>
+			<img class=cart-product src=donut1.png>
+			<img class=cart-product src=donut2.png>
+			<img class=cart-product src=donut1.png>
+			<img class=cart-product src=donut2.png>
+		</div>
+		<div id=order class=cart>
+			<div id=totals>
+				<div class=total>Total</div>
+				<div class=total id=total>120</div>
+				<div class=discount>Discount</div>
+				<div class=discount id=discount>120</div>
+			</div>
+			<div id=order_btn>COMANDA</div>
+		</div>
+		<div id=footer>
+			<div id=footer_left>
+				<div>Events / Corporate</div>
+				<div>Contact</div>
+			</div>
+			<div id=footer_right>
+				<img src=facebook.png style="width: 50%">
+			</div>
+		</div>
+	</div>
+</body>
+</html>
