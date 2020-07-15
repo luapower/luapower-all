@@ -14,33 +14,32 @@ html, body {
 	padding: 0;
 	font-family: sans-serif;
 }
-body {
-	display: flex;
-	justify-content: center;
-}
 #main {
 	display: flex;
 	flex-flow: column;
-	overflow: hidden;
 }
 #logo {
 	margin: 20px 0 40px 0;
-	max-width: 40%;
+	min-width: 0;
+	min-height: 0;
+	max-height: 30%;
 	z-index: 1;
 	align-self: center;
 	filter: drop-shadow(2px 2px 2px #222);
 	pointer-events: none;
 }
 #product_viewport {
-	margin-top: -120px;
+	margin-top: -100px;
 	flex: 1;
 	position: relative;
 	display: flex;
 	touch-action: none;
+	overflow: hidden;
 }
 #product_list {
 	position: relative;
 	display: flex;
+	align-items: center;
 }
 #product_list:not(.swiping) {
 	transition: left .1s;
@@ -57,6 +56,7 @@ body {
 #cart {
 	padding: 10px 5px;
 	z-index: 2;
+	overflow: hidden;
 }
 .product_image_cart {
 	height: 50px;
@@ -110,42 +110,41 @@ body {
 <script src="glue.js"></script>
 <script src="divs.js"></script>
 </head>
-<body>
-	<div id=main>
-		<img id=logo src=logo.png>
-		<div id=product_viewport>
-			<div id=product_list>
-				<img class=product_image src=1.png>
-				<img class=product_image src=2.png>
-				<img class=product_image src=3.png>
-			</div>
-		</div>
-		<div id=cart class=order_bar>
-			<img class=product_image_cart src=1.png>
-			<img class=product_image_cart src=2.png>
-			<img class=product_image_cart src=3.png>
-			<img class=product_image_cart src=2.png>
-			<img class=product_image_cart src=3.png>
-		</div>
-		<div id=order_bar class=order_bar>
-			<div id=totals>
-				<div class=total>Total</div>
-				<div class=total id=total>120</div>
-				<div class=discount>Discount</div>
-				<div class=discount id=discount>120</div>
-			</div>
-			<div id=order_btn>COMANDA</div>
-		</div>
-		<div id=footer>
-			<div id=footer_left>
-				<div>Events / Corporate</div>
-				<div>Contact</div>
-			</div>
-			<div id=footer_right>
-				<img src=facebook.png style="width: 50%">
-			</div>
-		</div>
+
+<body id=main>
+<img id=logo src=logo.png>
+<div id=product_viewport>
+	<div id=product_list>
+		<img class=product_image src=1.png>
+		<img class=product_image src=2.png>
+		<img class=product_image src=3.png>
 	</div>
+</div>
+<div id=cart class=order_bar>
+	<img class=product_image_cart src=1.png>
+	<img class=product_image_cart src=2.png>
+	<img class=product_image_cart src=3.png>
+	<img class=product_image_cart src=2.png>
+	<img class=product_image_cart src=3.png>
+</div>
+<div id=order_bar class=order_bar>
+	<div id=totals>
+		<div class=total>Total</div>
+		<div class=total id=total>120</div>
+		<div class=discount>Discount</div>
+		<div class=discount id=discount>120</div>
+	</div>
+	<div id=order_btn>COMANDA</div>
+</div>
+<div id=footer>
+	<div id=footer_left>
+		<div>Events / Corporate</div>
+		<div>Contact</div>
+	</div>
+	<div id=footer_right>
+		<img src=facebook.png style="width: 50%">
+	</div>
+</div>
 <script>
 
 p = [
@@ -165,13 +164,19 @@ p = [
 
 // product image fit container height ----------------------------------------
 
+view_w = null
+view_h = null
+
+function get_product_viewport_size() {
+	view_w = product_viewport.clientWidth
+	view_h = product_viewport.clientHeight
+}
+
 function resize_product_image(p) {
 	let w0 = p.naturalWidth
 	let h0 = p.naturalHeight
-	let w = product_viewport.clientWidth
-	let h = product_viewport.clientHeight
-	p.h = min(w, h)
-	p.w = min(w, h)
+	p.h = min(view_w, view_h)
+	p.w = min(view_w, view_h)
 	p.style.display = 'flex'
 	select_product(selected_product_index)
 }
@@ -184,6 +189,7 @@ for (let p of product_list.children)
 document.on('layout_changed', function() {
 	for (let p of product_list.children)
 		p.hide()
+	get_product_viewport_size()
 	for (let p of product_list.children)
 		resize_product_image(p)
 })
@@ -229,6 +235,10 @@ product_viewport.on('pointerdown', function(ev, mx, my) {
 	product_list.class('swiping', true)
 	return this.capture_pointer(ev, pointermove, pointerup)
 })
+
+window.onload = function() {
+	document.fire('layout_changed')
+}
 
 </script>
 </body>
