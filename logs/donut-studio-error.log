@@ -12,3 +12,6 @@
 2020/07/14 23:57:45 [error] 18390#0: *21 [lua] webb_nginx.lua:17: try_call(): 404, client: 203.210.157.13, server: , request: "POST /tmUnblock.cgi HTTP/1.1", host: "164.90.154.158:80"
 2020/07/15 03:38:53 [error] 18390#0: *41 [lua] webb_nginx.lua:17: try_call(): 404, client: 128.14.134.170, server: , request: "GET /Telerik.Web.UI.WebResource.axd?type=rau HTTP/1.1", host: "168.235.102.143:8080"
 2020/07/15 06:31:29 [error] 18390#0: *45 [lua] webb_nginx.lua:17: try_call(): 404, client: 194.87.138.186, server: , request: "GET /card_scan_decoder.php HTTP/1.0"
+2020/07/15 14:16:01 [error] 18390#0: *66 [lua] webb_nginx.lua:17: try_call(): 404, client: 109.166.130.143, server: , request: "GET /favicon.ico HTTP/1.1", host: "luapower.com:8080"
+2020/07/15 14:18:36 [error] 18390#0: *79 [lua] webb_nginx.lua:17: try_call(): 404, client: 213.233.108.100, server: , request: "GET /favicon.ico HTTP/1.1", host: "luapower.com:8080"
+2020/07/15 14:24:05 [error] 18390#0: *88 [lua] webb_nginx.lua:17: try_call(): 404 <h1>404 Not Found</h1>, client: 112.98.36.42, server: , request: "GET /manager/html HTTP/1.1", host: "168.235.102.143:8080"

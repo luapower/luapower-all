@@ -1,12 +1,15 @@
 <!DOCTYPE html>
 <html>
 <head>
+<title>Donut Studio</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
 .shadow {
 	filter: drop-shadow(5px 5px 5px #222);
 }
 html, body {
 	width: 100%;
+	height: 100%;
 	margin: 0;
 	padding: 0;
 	font-family: sans-serif;
@@ -16,11 +19,8 @@ body {
 	justify-content: center;
 }
 #main {
-	width: 400px;
-	height: 100%;
 	display: flex;
 	flex-flow: column;
-	border: 1px solid #ccc;
 	overflow: hidden;
 }
 #logo {
@@ -30,18 +30,26 @@ body {
 	align-self: center;
 	filter: drop-shadow(2px 2px 2px #222);
 }
-#products {
-	display: flex;
-	justify-content: center;
+#product_viewport {
 	margin-top: -100px;
-	//box-shadow: 0px 4px 4px #00000088;
+	flex: 1;
+	position: relative;
+	display: flex;
+	touch-action: none;
 }
-.product {
-	width: 100%;
-	align-self: center;
+#product_list {
+	position: relative;
+	display: flex;
+}
+#product_list:not(.swiping) {
+	transition: left .1s;
+}
+.product_image {
+	display: none;
+	object-fit: contain;
 	filter: drop-shadow(5px 5px 5px #222);
 }
-.cart {
+.order_bar {
 	background: rgb(255, 206, 111);
 	color: white;
 }
@@ -49,11 +57,11 @@ body {
 	padding: 10px 5px;
 	z-index: 2;
 }
-.cart-product {
+.product_image_cart {
 	height: 50px;
 	filter: drop-shadow(2px 2px 2px #222);
 }
-#order {
+#order_bar {
 	height: 60px;
 	display: flex;
 	justify-content: space-between;
@@ -62,7 +70,6 @@ body {
 }
 #totals {
 	padding: 20px 20px;
-	flex: 1;
 	display: grid;
 	grid: auto / auto auto;
 }
@@ -98,26 +105,27 @@ body {
 #footer_right {
 }
 </style>
-<script>
-
-</script>
+<script src="glue.js"></script>
+<script src="divs.js"></script>
 </head>
 <body>
 	<div id=main>
 		<img id=logo src=logo.png>
-		<div id=products>
-			<img class=product src=donut1.png>
-			<img class=product src=donut2.png>
-			<img class=product src=donut1.png>
+		<div id=product_viewport>
+			<div id=product_list>
+				<img class=product_image src=1.png>
+				<img class=product_image src=2.png>
+				<img class=product_image src=3.png>
+			</div>
 		</div>
-		<div id=cart class=cart>
-			<img class=cart-product src=box1.png>
-			<img class=cart-product src=donut1.png>
-			<img class=cart-product src=donut2.png>
-			<img class=cart-product src=donut1.png>
-			<img class=cart-product src=donut2.png>
+		<div id=cart class=order_bar>
+			<img class=product_image_cart src=1.png>
+			<img class=product_image_cart src=2.png>
+			<img class=product_image_cart src=3.png>
+			<img class=product_image_cart src=2.png>
+			<img class=product_image_cart src=3.png>
 		</div>
-		<div id=order class=cart>
+		<div id=order_bar class=order_bar>
 			<div id=totals>
 				<div class=total>Total</div>
 				<div class=total id=total>120</div>
@@ -136,5 +144,86 @@ body {
 			</div>
 		</div>
 	</div>
+<script>
+
+p = [
+	{
+		title: 'Box o\'donuts',
+		id: 1,
+	},
+	{
+		title: 'Sweet donut',
+		id: 2,
+	},
+	{
+		title: 'Even sweeter',
+		id: 3,
+	},
+]
+
+// product image fit container height ----------------------------------------
+
+function resize_product_image(p) {
+	let w0 = p.naturalWidth
+	let h0 = p.naturalHeight
+	let h = product_viewport.clientHeight
+	p.h = h
+	p.w = h * (w0 / h0)
+	p.style.display = 'flex'
+	select_product(selected_product_index)
+}
+function product_image_loaded(ev) {
+	resize_product_image(this)
+}
+for (let p of product_list.children)
+	p.onload = product_image_loaded
+
+document.on('layout_changed', function() {
+	for (let p of product_list.children)
+		p.hide()
+	for (let p of product_list.children)
+		resize_product_image(p)
+})
+
+// product selection ---------------------------------------------------------
+
+selected_product_index = 0
+
+function select_product(index) {
+	index = clamp(index, 0, product_list.at.length - 1)
+	selected_product_index = index
+	let x = 0
+	for (let i = 0; i < index; i++) {
+		let p = product_list.at[i]
+		x += p.offsetWidth
+	}
+	product_list.x = -x
+		- product_list.at[index].offsetWidth / 2
+		+ product_viewport.clientWidth / 2
+}
+
+document.on('keydown', function(key) {
+	if (key == 'ArrowLeft' || key == 'ArrowRight') {
+		select_product(selected_product_index += (key == 'ArrowLeft' ? -1 : 1))
+		return false
+	}
+})
+
+product_viewport.on('pointerdown', function(ev, mx, my) {
+	let dx = mx - this.client_rect().x - product_list.offsetLeft
+	function pointermove(mx, my) {
+		mx -= this.client_rect().x
+		product_list.x = mx - dx
+		return false
+	}
+	function pointerup() {
+		product_list.class('swiping', false)
+		return false
+	}
+	product_list.class('swiping', true)
+	return this.capture_pointer(ev, pointermove, pointerup)
+})
+
+</script>
 </body>
 </html>
