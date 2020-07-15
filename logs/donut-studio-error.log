@@ -24,3 +24,5 @@
 2020/07/15 19:20:34 [error] 18390#0: *250 [lua] webb_nginx.lua:17: try_call(): 404, client: 109.166.139.106, server: , request: "GET /favicon.ico HTTP/1.1", host: "luapower.com:8080"
 2020/07/15 19:43:17 [error] 18390#0: *262 [lua] webb_nginx.lua:17: try_call(): 404, client: 109.166.139.106, server: , request: "GET /favicon.ico HTTP/1.1", host: "luapower.com:8080"
 2020/07/15 22:20:28 [error] 18390#0: *290 [lua] webb_nginx.lua:17: try_call(): 404, client: 109.166.130.143, server: , request: "GET /favicon.ico HTTP/1.1", host: "luapower.com:8080"
+2020/07/15 22:42:31 [error] 18390#0: *306 [lua] webb_nginx.lua:17: try_call(): 404, client: 190.94.151.195, server: , request: "GET /admin-scripts.asp HTTP/1.1", host: "168.235.102.143"
+2020/07/15 22:42:31 [error] 18390#0: *307 [lua] webb_nginx.lua:17: try_call(): 404, client: 190.94.151.195, server: , request: "GET /admin-scripts.asp HTTP/1.1", host: "168.235.102.143"

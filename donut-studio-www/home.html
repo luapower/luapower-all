@@ -86,7 +86,7 @@ html, body {
 	position: relative;
 	opacity: 1;
 	top: 0px;
-	transition: width .4s, top .4s, opacity .4s;
+	transition: width .2s, top .2s, opacity .2s;
 }
 #order_bar {
 	height: 60px;
@@ -312,11 +312,12 @@ function add_to_cart() {
 }
 
 {
+	let allow_remove = true
 	let cart_img, mx0, my0
 	cart_viewport.on('pointerdown', function(ev, mx, my) {
 		mx0 = mx
 		my0 = my
-		cart_img = ev.target.product_index != null ? ev.target : null
+		cart_img = allow_remove && ev.target.product_index != null && ev.target || null
 	})
 
 	cart_viewport.on('pointerup', function(mx, my, ev) {
@@ -324,11 +325,14 @@ function add_to_cart() {
 			return
 		if (abs(mx - mx0) > 4 || abs(my - my0) > 4)
 			return
+		allow_remove = false
 		cart_img.style.top = '-20px'
 		cart_img.w = 0
 		cart_img.style.opacity = 0
-		after(.4, function() {
-			cart_img.remove()
+		let cart_img1 = cart_img
+		after(.2, function() {
+			cart_img1.remove()
+			allow_remove = true
 		})
 		return false
 	})
