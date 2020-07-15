@@ -67,7 +67,7 @@ html, body {
 #cart_viewport {
 	padding: 10px 5px;
 	z-index: 2;
-	overflow: hidden;
+	overflow: auto;
 	display: flex;
 }
 #cart_list {
@@ -270,59 +270,7 @@ product_viewport.on('pointerdown', function(ev, mx, my) {
 	return this.capture_pointer(ev, pointermove, pointerup)
 })
 
-// cart page selection -------------------------------------------------------
-
-selected_cart_page_index = 0
-
-function select_cart_page(index) {
-	return
-	index = clamp(index, 0, product_list.at.length - 1)
-	selected_cart_page_index = index
-	let x = 0
-	for (let i = 0; i < index; i++) {
-		let p = product_list.at[i]
-		x += p.offsetWidth
-	}
-	cart_list.x = -x
-		- cart_list.at[index].offsetWidth / 2
-		+ cart_list.clientWidth / 2
-}
-
-cart_viewport.on('pointerdown', function(ev, mx, my) {
-
-	let cart_img = ev.target
-	if (cart_img.product_index == null)
-		return
-
-	let x0 = cart_list.offsetLeft
-	let dx = mx - this.client_rect().x - x0
-
-	function pointermove(mx, my) {
-		mx -= this.client_rect().x
-		cart_list.x = mx - dx
-		return false
-	}
-
-	function pointerup(mx, my, ev) {
-		cart_list.class('swiping', false)
-		let dx = x0 - cart_list.offsetLeft
-		if (abs(dx) <= 10) {
-			select_cart_page(selected_cart_page_index)
-			remove_from_cart(cart_img)
-		} else {
-			let i = selected_cart_page_index + (dx < 0 ? -1 : 1)
-			select_cart_page(i)
-		}
-		return false
-	}
-	cart_list.class('swiping', true)
-
-	return this.capture_pointer(ev, pointermove, pointerup)
-})
-
 // cart operations -----------------------------------------------------------
-
-cart = []
 
 function add_to_cart() {
 
@@ -337,7 +285,6 @@ function add_to_cart() {
 	cart_img.product_index = prod_img.index
 	cart_img.w = 50 * aspect_ratio
 	cart_list.add(cart_img)
-	cart.push(prod_img.index)
 
 	let cr = cart_img.client_rect()
 	let pr = prod_img.client_rect()
@@ -364,12 +311,26 @@ function add_to_cart() {
 
 }
 
-function remove_from_cart(cart_img) {
-	cart_img.style.top = '-20px'
-	cart_img.w = 0
-	cart_img.style.opacity = 0
-	after(.4, function() {
-		cart_img.remove()
+{
+	let cart_img, mx0, my0
+	cart_viewport.on('pointerdown', function(ev, mx, my) {
+		mx0 = mx
+		my0 = my
+		cart_img = ev.target.product_index != null ? ev.target : null
+	})
+
+	cart_viewport.on('pointerup', function(mx, my, ev) {
+		if (!cart_img)
+			return
+		if (abs(mx - mx0) > 4 || abs(my - my0) > 4)
+			return
+		cart_img.style.top = '-20px'
+		cart_img.w = 0
+		cart_img.style.opacity = 0
+		after(.4, function() {
+			cart_img.remove()
+		})
+		return false
 	})
 }
 
