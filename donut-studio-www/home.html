@@ -17,6 +17,7 @@ html, body {
 #main {
 	display: flex;
 	flex-flow: column;
+	position: relative;
 }
 #logo {
 	margin: 20px 0 40px 0;
@@ -49,6 +50,14 @@ html, body {
 	object-fit: contain;
 	filter: drop-shadow(5px 5px 5px #222);
 }
+.product_image.move_to_cart {
+	position: absolute;
+	pointer-events: none;
+}
+.product_image.move_to_cart_moving {
+	z-index: 3;
+	transition: top .4s, left .4s, width .4s, height .4s;
+}
 .order_bar {
 	background: rgb(255, 206, 111);
 	color: white;
@@ -57,10 +66,13 @@ html, body {
 	padding: 10px 5px;
 	z-index: 2;
 	overflow: hidden;
+	height: 50px;
+	display: flex;
 }
 .product_image_cart {
 	height: 50px;
 	filter: drop-shadow(2px 2px 2px #222);
+	position: relative;
 }
 #order_bar {
 	height: 60px;
@@ -120,13 +132,7 @@ html, body {
 		<img class=product_image src=3.png>
 	</div>
 </div>
-<div id=cart class=order_bar>
-	<img class=product_image_cart src=1.png>
-	<img class=product_image_cart src=2.png>
-	<img class=product_image_cart src=3.png>
-	<img class=product_image_cart src=2.png>
-	<img class=product_image_cart src=3.png>
-</div>
+<div id=cart class=order_bar></div>
 <div id=order_bar class=order_bar>
 	<div id=totals>
 		<div class=total>Total</div>
@@ -228,13 +234,57 @@ product_viewport.on('pointerdown', function(ev, mx, my) {
 	}
 	function pointerup() {
 		product_list.class('swiping', false)
-		let i = selected_product_index + (product_list.offsetLeft <= x0 ? 1 : -1)
-		select_product(i)
+		let dx = x0 - product_list.offsetLeft
+		if (abs(dx) <= 10) {
+			select_product(selected_product_index)
+			add_to_cart()
+		} else {
+			let i = selected_product_index + (dx < 0 ? -1 : 1)
+			select_product(i)
+		}
 		return false
 	}
 	product_list.class('swiping', true)
 	return this.capture_pointer(ev, pointermove, pointerup)
 })
+
+// cart operations -----------------------------------------------------------
+
+function add_to_cart() {
+
+	let prod_img = product_list.at[selected_product_index]
+
+	let cart_img = H.img({
+		class: 'product_image_cart',
+		src: prod_img.attr('src'),
+		style: 'visibility: hidden',
+	})
+	cart.add(cart_img)
+
+	let cr = cart_img.client_rect()
+	let pr = prod_img.client_rect()
+	let mr = main.client_rect()
+
+	let move_img = prod_img.cloneNode()
+	move_img.classes = 'move_to_cart'
+	move_img.style.left = (pr.x - mr.x)+'px'
+	move_img.style.top  = (pr.y - mr.y)+'px'
+	main.add(move_img)
+
+	after(.4, function() {
+		move_img.remove()
+		cart_img.style.visibility = null
+	})
+
+	after(0, function() {
+		move_img.classes = 'move_to_cart_moving'
+		move_img.style.left   = (cr.x - mr.x)+'px'
+		move_img.style.top    = (cr.y - mr.y)+'px'
+		move_img.style.width  = (cr.h * prod_img.naturalWidth / prod_img.naturalHeight)+'px'
+		move_img.style.height = (cr.h)+'px'
+	})
+
+}
 
 window.onload = function() {
 	document.fire('layout_changed')
