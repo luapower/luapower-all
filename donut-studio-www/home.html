@@ -7,6 +7,7 @@
 * {
 	box-sizing: border-box;
 	user-select: text;
+	touch-action: manipulation;
 }
 
 html, body {
@@ -33,7 +34,7 @@ html, body {
 	flex-flow: column;
 	position: relative;
 }
-#order_page {
+#order_page, #thanks_page {
 	display: none;
 	flex-flow: column;
 	position: relative;
@@ -130,7 +131,7 @@ html, body {
 	align-items: center;
 	border-top: 1px solid #fff;
 }
-#order_btn, #order_btn:active, #order_btn:focus {
+#order_btn {
 	border: none;
 	background: none;
 	color: white;
@@ -206,7 +207,7 @@ html, body {
 
 #phone { margin-top: 1em; }
 
-.x-input, select, #place_order_btn {
+.x-input, select, #place_order_btn, #back_btn {
 	margin: .5em 1em;
 	border: 1px solid #999;
 	border-radius: .3em;
@@ -221,11 +222,17 @@ html, body {
 	align-items: center;
 	justify-content: center;
 }
+#back_btn {
+	background: #ccc;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
 .x-input-value {
 	font-family: inherit;
 	font-size: inherit;
 }
-.x-input-value, .x-input-inner-label, select, #place_order_btn {
+.x-input-value, .x-input-inner-label, select, #place_order_btn, #back_btn {
 	padding: 1em .5em;
 	max-width: 100%;
 }
@@ -304,9 +311,35 @@ html, body {
 	color: white;
 }
 
+/* thanks page ------------------------------------------------------------ */
+
+#thanks_page {
+	display: flex;
+	flex-flow: column;
+	justify-content: center;
+	align-items: center;
+
+	background-color: black;
+	background: url("smile.jpg");
+	background-position: calc(50% - 160px) calc(50% - 130px);
+}
+
+#order_placed_message {
+	padding: .2em 1em;
+	color: white;
+	background: black;
+	font-size: 24px;
+}
+#order_placed_subtext {
+	padding: .3em .4em;
+	color: white;
+	background: black;
+	font-size: 14px;
+}
+
 /* landscape mode --------------------------------------------------------- */
 
-#turn {
+#turn_overlay {
 	display: none;
 	z-index: 100;
 	position: fixed;
@@ -324,7 +357,7 @@ html, body {
 }
 
 @media (orientation: landscape) {
-	#turn {
+	#turn_overlay {
 		display: flex;
 		align-items: center;
 		justify-content: center;
@@ -339,9 +372,9 @@ html, body {
 
 <body id=body>
 
-<div id=turn>
+<div id=turn_overlay>
 	<div id=turn_message>
-		Te rugam intoarce telefonul :)
+		Te rug&#259;m intoarce telefonul :)
 	</div>
 </div>
 
@@ -414,6 +447,16 @@ html, body {
 		<button id=place_order_btn>Plaseaza Comanda</button>
 	</div>
 
+	<div id=thanks_page>
+		<div id=order_placed_message>
+			Comanda a fost plasat&#259;
+			<div id=order_placed_subtext>
+				In scurt timp veti primi un mesaj scris de confirmare.
+			</div>
+		</div>
+		<button id=back_btn>Inapoi la site</button>
+	</div>
+
 </div>
 
 <script>
@@ -425,15 +468,18 @@ selected_page_index = 0
 pages = [
 	{title: 'Donut Studio', url: '/'},
 	{title: 'Comanda - Donut Studo', url: '/comanda'},
+	{title: 'Multumim - Donut Studo', url: '/multumim'},
 ]
 
-window.onpopstate = function(ev) {
+function select_page_on_url_bar() {
 	for (let i = 0; i < pages.length; i++)
 		if (pages[i].url == location.pathname) {
 			select_page(i, true)
 			break
 		}
 }
+
+window.onpopstate = select_page_on_url_bar
 
 function select_page(i, nopush) {
 	selected_page_index = i
@@ -447,7 +493,9 @@ document.on('layout_changed', function() {
 	let w = body.client_rect().w
 	browse_page.min_w = w
 	order_page.min_w = w
+	thanks_page.min_w = w
 	order_page.style.display = 'flex'
+	thanks_page.style.display = 'flex'
 	select_page(selected_page_index)
 })
 
@@ -687,11 +735,20 @@ document.on('click', function(ev) {
 	select_pay_method(ev.target.index)
 })
 
+// thank you page ------------------------------------------------------------
+
+place_order_btn.on('click', function() {
+	select_page(2)
+})
+
+back_btn.on('click', function() {
+	select_page(0)
+})
+
 // init ----------------------------------------------------------------------
 
-window.onload = function() {
 
-	document.fire('layout_changed')
+window.onload = function() {
 
 	for (let id of ['phone', 'address']) {
 		let input = window[id].at[0]
@@ -716,6 +773,9 @@ window.onload = function() {
 		if (i != null)
 			add_to_cart(i)
 	}
+
+	select_page_on_url_bar()
+	document.fire('layout_changed')
 
 }
 
