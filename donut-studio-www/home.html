@@ -60,7 +60,7 @@ html, body {
 #product_list:not(.swiping) {
 	transition: left .1s;
 }
-.product_image {
+.product-image {
 	display: none;
 	object-fit: contain;
 	filter: drop-shadow(5px 5px 5px #222);
@@ -68,15 +68,15 @@ html, body {
 	transform: translatey(0px);
 	animation: float 6s ease-in-out infinite;
 }
-.product_image:nth-child(3n+0) { animation-delay: -1s; }
-.product_image:nth-child(3n+1) { animation-delay: -4s; }
-.product_image:nth-child(3n+2) { animation-delay: -2s; }
-.product_image.move_to_cart {
+.product-image:nth-child(3n+0) { animation-delay: -1s; }
+.product-image:nth-child(3n+1) { animation-delay: -4s; }
+.product-image:nth-child(3n+2) { animation-delay: -2s; }
+.product-image.move_to_cart {
 	position: absolute;
 	pointer-events: none;
 	filter: none;
 }
-.product_image.move_to_cart_moving {
+.product-image.move_to_cart_moving {
 	z-index: 3;
 	transition: top .4s, left .4s, width .4s, height .4s;
 }
@@ -110,7 +110,7 @@ html, body {
 	align-items: center;
 	height: 50px;
 }
-.product_image_cart {
+.product-image-cart {
 	height: 50px;
 	object-fit: contain;
 	filter: drop-shadow(2px 2px 2px #222);
@@ -195,28 +195,46 @@ html, body {
 
 /* input with inner label ------------------------------------------------- */
 
-.x-input {
-	display: flex;
-	position: relative; /* anchor the inner label to it */
-	margin: 1em;
-	border-width: 1px;
-	border-radius: .3em;
+#phone { margin-top: 1em; }
+
+.x-input, select, #place_order_btn {
+	margin: .5em 1em;
 	border: 1px solid #999;
+	border-radius: .3em;
 	line-height: initial;  /* prevent inheriting it */
-}
-.x-input-value, .x-input-inner-label {
 	font-size: 18px;
 	font-family: inherit;
-	padding: 1em .5em;
-	margin: 0;
-	border: 0;
-	height: 100%;            /* stretch vertically */
-	width: 100%;             /* stretch horizontally */
+}
+#place_order_btn {
+	margin-top: 0;
+	background: rgb(255, 206, 111);
+	display: flex;
+	align-items: center;
+	justify-content: center;
 }
 .x-input-value {
+	font-family: inherit;
+	font-size: inherit;
+}
+.x-input-value, .x-input-inner-label, select, #place_order_btn {
+	padding: 1em .5em;
+	max-width: 100%;
+}
+.x-input-value, select {
 	background: none;
 	color: inherit;
 	text-align: left;
+	min-width: 0;
+}
+.x-input {
+	display: flex;
+	position: relative; /* anchor the inner label to it */
+}
+.x-input-value, .x-input-inner-label {
+	margin: 0;
+	border: 0;
+	width: 100%;             /* stretch horizontally */
+	height: 100%;            /* stretch vertically */
 }
 .x-input-value:focus {
 	outline: none;
@@ -249,34 +267,34 @@ html, body {
 }
 
 /* payment method chooser */
-#pay_method_label {
+.section-label {
 	font-size: 18px;
 	color: #777;
-	margin: 0 0 0 1em;
+	margin: .5em 0 -.25em 1em;
 }
 #pay_methods {
-	margin: .5em 1em 0 1em;
+	margin: .5em 1em;
 	display: flex;
 	justify-content: stretch;
 }
-.pay_method {
+.pay-method {
 	flex: 1;
 	padding: .5em;
 	border: 1px solid #999;
 	display: flex;
 	align-items: center;
 }
-.pay_method:nth-child(1) {
+.pay-method:nth-child(1) {
 	border-top-left-radius: .3em;
 	border-bottom-left-radius: .3em;
 	border-right: none;
 }
-.pay_method:nth-child(3) {
+.pay-method:nth-child(3) {
 	border-top-right-radius: .3em;
 	border-bottom-right-radius: .3em;
 	border-left: none;
 }
-.pay_method.selected {
+.pay-method.selected {
 	background: #47a;
 	color: white;
 }
@@ -294,9 +312,9 @@ html, body {
 		<img id=logo src=logo.png>
 		<div id=product_viewport>
 			<div id=product_list>
-				<img class=product_image src=1.png>
-				<img class=product_image src=2.png>
-				<img class=product_image src=3.png>
+				<img class=product-image src=1.png>
+				<img class=product-image src=2.png>
+				<img class=product-image src=3.png>
 			</div>
 		</div>
 		<div id=cart_viewport class=order_bar>
@@ -337,13 +355,26 @@ html, body {
 				<input class="x-input-value empty">
 				<div class="x-input-inner-label empty">Strada, Bloc, Scara, Etaj, Ap., Interfon</div>
 			</div>
-			<div id=pay_method_label>Metoda de plata</div>
+			<div class=section-label>Metoda de plata</div>
 			<div id=pay_methods>
-				<div class="pay_method selected" name="cash">Cash</div>
-				<div class=pay_method name="POS">Card la livrare</div>
-				<div class=pay_method name="bank">In cont</div>
+				<div class="pay-method selected" name="cash">Cash</div>
+				<div class=pay-method name="POS">Card la<br>livrare</div>
+				<div class=pay-method name="bank">In cont</div>
+			</div>
+			<div class=section-label>Data &#537;i ora livr&#259rii</div>
+			<div style="display: flex">
+				<select id=delivery_date style="flex: 2; margin-right: 0"></select>
+				<select id=delivery_time style="flex: 1; margin-left: .5em">
+					<option value=8>8-10</option>
+					<option value=10>10-12</option>
+					<option value=12>12-14</option>
+					<option value=14>14-16</option>
+					<option value=16>16-18</option>
+					<option value=18>Dupa 18</option>
+				</select>
 			</div>
 		</div>
+		<button id=place_order_btn>Plaseaza Comanda</button>
 	</div>
 
 </div>
@@ -491,7 +522,7 @@ function add_to_cart() {
 	let aspect_ratio = prod_img.naturalWidth / prod_img.naturalHeight
 
 	let cart_img = H.img({
-		class: 'product_image_cart',
+		class: 'product-image-cart',
 		src: prod_img.attr('src'),
 		style: 'visibility: hidden',
 	})
@@ -586,10 +617,11 @@ function select_pay_method(i) {
 	pay_methods.at[pay_method_index].class('selected', false)
 	pay_method_index = i
 	pay_methods.at[i].class('selected')
+	localStorage.setItem('pay_method', i)
 }
 
 document.on('click', function(ev) {
-	if (!ev.target.hasclass('pay_method'))
+	if (!ev.target.hasclass('pay-method'))
 		return
 	select_pay_method(ev.target.index)
 })
@@ -604,6 +636,17 @@ window.onload = function() {
 		let input = window[id].at[0]
 		input.value = localStorage.getItem(id)
 		input.fire('input')
+	}
+	select_pay_method(localStorage.getItem('pay_method') || 0)
+
+	let t = time()
+	let opt = {weekday: 'long', month: 'long', day: 'numeric'}
+	for (let i = 1; i <= 60; i++) {
+		let d = day(t, i)
+		let s = _d.toLocaleDateString('ro', opt)
+		if (i == 1)
+			s = 'maine, '+s
+		delivery_date.add(tag('option', {value: d}, s))
 	}
 
 }
