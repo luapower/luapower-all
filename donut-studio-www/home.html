@@ -2,10 +2,13 @@
 <html>
 <head>
 <title>Donut Studio</title>
-<meta http-equiv="ScreenOrientation" content="autoRotate:disabled">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <style>
-* { box-sizing: border-box; }
+* {
+	box-sizing: border-box;
+	user-select: text;
+}
+
 html, body {
 	margin: 0;
 	padding: 0;
@@ -39,14 +42,14 @@ html, body {
 	margin: 20px 0 40px 0;
 	min-width: 0;
 	min-height: 0;
-	max-height: 30%;
+	max-height: 20%;
 	z-index: 1;
 	align-self: center;
 	filter: drop-shadow(2px 2px 2px #222);
 	pointer-events: none;
 }
 #product_viewport {
-	margin-top: -100px;
+	margin-top: -20%;
 	flex: 1;
 	position: relative;
 	display: flex;
@@ -193,6 +196,11 @@ html, body {
 	text-decoration: none;
 	white-space: nowrap;
 }
+.section-label {
+	font-size: 18px;
+	color: #777;
+	margin: .5em 0 -.25em 1em;
+}
 
 /* input with inner label ------------------------------------------------- */
 
@@ -267,12 +275,8 @@ html, body {
 	}
 }
 
-/* payment method chooser */
-.section-label {
-	font-size: 18px;
-	color: #777;
-	margin: .5em 0 -.25em 1em;
-}
+/* payment method choser -------------------------------------------------- */
+
 #pay_methods {
 	margin: .5em 1em;
 	display: flex;
@@ -299,6 +303,34 @@ html, body {
 	background: #47a;
 	color: white;
 }
+
+/* landscape mode --------------------------------------------------------- */
+
+#turn {
+	display: none;
+	z-index: 100;
+	position: fixed;
+	width: 100%;
+	height: 100%;
+	background-color: black;
+	background: url("smile.jpg");
+	background-position: center;
+}
+#turn_message {
+	padding: .1em .4em;
+	color: white;
+	background: black;
+	font-size: 24px;
+}
+
+@media (orientation: landscape) {
+	#turn {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+	}
+}
+
 </style>
 <script src="glue.js"></script>
 <script src="divs.js"></script>
@@ -306,6 +338,12 @@ html, body {
 </head>
 
 <body id=body>
+
+<div id=turn>
+	<div id=turn_message>
+		Te rugam intoarce telefonul :)
+	</div>
+</div>
 
 <div id=page_list>
 
@@ -384,10 +422,25 @@ html, body {
 
 selected_page_index = 0
 
-function select_page(i) {
+pages = [
+	{title: 'Donut Studio', url: '/'},
+	{title: 'Comanda - Donut Studo', url: '/comanda'},
+]
+
+window.onpopstate = function(ev) {
+	for (let i = 0; i < pages.length; i++)
+		if (pages[i].url == location.pathname) {
+			select_page(i, true)
+			break
+		}
+}
+
+function select_page(i, nopush) {
 	selected_page_index = i
 	let w = body.client_rect().w
 	page_list.x = -i * w
+	if (!nopush)
+		window.history.pushState('', pages[i].title, pages[i].url)
 }
 
 document.on('layout_changed', function() {
