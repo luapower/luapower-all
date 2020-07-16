@@ -2,6 +2,7 @@
 <html>
 <head>
 <title>Donut Studio</title>
+<meta http-equiv="ScreenOrientation" content="autoRotate:disabled">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
 * { box-sizing: border-box; }
@@ -365,12 +366,10 @@ html, body {
 			<div style="display: flex">
 				<select id=delivery_date style="flex: 2; margin-right: 0"></select>
 				<select id=delivery_time style="flex: 1; margin-left: .5em">
-					<option value=8>8-10</option>
-					<option value=10>10-12</option>
-					<option value=12>12-14</option>
-					<option value=14>14-16</option>
-					<option value=16>16-18</option>
-					<option value=18>Dupa 18</option>
+					<option>8-10</option>
+					<option selected>10-14</option>
+					<option>14-18</option>
+					<option>18-20</option>
 				</select>
 			</div>
 		</div>
@@ -418,6 +417,12 @@ products = [
 		price: 6,
 	},
 ]
+
+function product_index_by_id(id) {
+	for (let i = 0; i < products.length; i++)
+		if (products[i].id == id)
+			return i
+}
 
 // product image fit container height ----------------------------------------
 
@@ -491,7 +496,7 @@ product_viewport.on('pointerdown', function(ev, mx, my) {
 		let dx = x0 - product_list.offsetLeft
 		if (abs(dx) <= 10) {
 			select_product(selected_product_index)
-			add_to_cart()
+			add_to_cart(selected_product_index)
 		} else {
 			let i = selected_product_index + (dx < 0 ? -1 : 1)
 			select_product(i)
@@ -509,16 +514,19 @@ product_viewport.on('pointerdown', function(ev, mx, my) {
 function update_totals() {
 	let x = 0
 	let d = 0
+	let pids = []
 	for (let cart_img of cart_list.children) {
 		let p = products[cart_img.product_index]
 		x += p.price
+		pids.push(p.id)
 	}
 	total.set(x)
+	localStorage.setItem('product_ids', pids)
 }
 
-function add_to_cart() {
+function add_to_cart(product_index) {
 
-	let prod_img = product_list.at[selected_product_index]
+	let prod_img = product_list.at[product_index]
 	let aspect_ratio = prod_img.naturalWidth / prod_img.naturalHeight
 
 	let cart_img = H.img({
@@ -647,6 +655,13 @@ window.onload = function() {
 		if (i == 1)
 			s = 'maine, '+s
 		delivery_date.add(tag('option', {value: d}, s))
+	}
+
+	let pids = localStorage.getItem('product_ids') || []
+	for (let pid of pids) {
+		let i = product_index_by_id(pid)
+		if (i != null)
+			add_to_cart(i)
 	}
 
 }
