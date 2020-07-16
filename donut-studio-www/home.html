@@ -4,19 +4,24 @@
 <title>Donut Studio</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
-html, body, #pages {
-	width: 100%;
-	height: 100%;
+* { box-sizing: border-box; }
+html, body {
 	margin: 0;
 	padding: 0;
-	font-family: sans-serif;
-	overflow: hidden;
+	width: 100%;
+	height: 100%;
 	position: relative;
+	overflow: hidden;
+	font-family: sans-serif;
 }
-#pages {
-	display: flex;
+#page_list {
+	width: 100%;
+	height: 100%;
+	position: relative;
+	overflow: visible;
 	left: 0;
 	transition: left .2s;
+	display: flex;
 }
 #browse_page {
 	width: 100%;
@@ -63,6 +68,9 @@ html, body, #pages {
 	transform: translatey(0px);
 	animation: float 6s ease-in-out infinite;
 }
+.product_image:nth-child(3n+0) { animation-delay: -1s; }
+.product_image:nth-child(3n+1) { animation-delay: -4s; }
+.product_image:nth-child(3n+2) { animation-delay: -2s; }
 .product_image.move_to_cart {
 	position: absolute;
 	pointer-events: none;
@@ -128,24 +136,6 @@ html, body, #pages {
 	overflow: hidden;
 	user-select: none;
 }
-#order_btn:after {
-	content: "";
-	background: #eee;
-	display: block;
-	position: absolute;
-	padding-top: 300%;
-	padding-left: 350%;
-	margin-left: -20px!important;
-	margin-top: -120%;
-	opacity: 0;
-	transition: all 0.8s
-}
-#order_btn:active:after {
-	padding: 0;
-	margin: 0;
-	opacity: 1;
-	transition: 0s
-}
 .totals {
 	padding: 20px 20px;
 	display: grid;
@@ -202,14 +192,71 @@ html, body, #pages {
 	text-decoration: none;
 	white-space: nowrap;
 }
+
+/* input with inner label ------------------------------------------------- */
+
+.x-input {
+	display: flex;
+	position: relative; /* anchor the inner label to it */
+	margin: 1em;
+	border-width: 1px;
+	border-radius: .2em;
+	border: 1px solid #999;
+	line-height: initial;  /* prevent inheriting it */
+}
+.x-input-value, .x-input-inner-label {
+	font-size: 18px;
+	font-family: inherit;
+	padding: 1em .5em;
+	margin: 0;
+	border: 0;
+	height: 100%;            /* stretch vertically */
+	width: 100%;             /* stretch horizontally */
+}
+.x-input-value {
+	background: none;
+	color: inherit;
+	text-align: left;
+}
+.x-input-value:focus {
+	outline: none;
+}
+.x-input-inner-label {
+	align-self: flex-start;
+	position: absolute;
+	pointer-events: none;       /* click-through */
+	color: #777;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+.x-input > .x-input-value:not(.empty) {
+	top: 0; /* fixate to top so we only have to set the top padding */
+	padding: 1.6em .5em .4em .5em;
+}
+.x-input > .x-input-inner-label:not(.empty) {
+	top: 0; /* fixate to top so we only have to set the top padding */
+	user-select: none;
+	font-size: 85%;
+	padding-top: .2em;
+	animation: x-input-inner-label-focused .2s;
+}
+@keyframes x-input-inner-label-focused {
+	from {
+		opacity: 0;
+		padding-top: .6em;
+	}
+}
+
 </style>
 <script src="glue.js"></script>
 <script src="divs.js"></script>
+
 </head>
 
 <body id=body>
 
-<div id=pages>
+<div id=page_list>
 
 	<div id=browse_page>
 		<img id=logo src=logo.png>
@@ -247,31 +294,41 @@ html, body, #pages {
 	</div>
 
 	<div id=order_page>
-		hello!
+		<div id=order_products>
+		</div>
+		<div>
+			<div class="x-input" id=phone>
+				<input class="x-input-value empty" type=tel>
+				<div class="x-input-inner-label empty">Telefon</div>
+			</div>
+			<div class="x-input" id=address>
+				<input class="x-input-value empty">
+				<div class="x-input-inner-label empty">Strada, Bloc, Scara, Etaj, Ap., Interfon</div>
+			</div>
+		</div>
 	</div>
 
 </div>
 
 <script>
 
-// main slider ---------------------------------------------------------------
+// page slider ---------------------------------------------------------------
 
 selected_page_index = 0
 
 function select_page(i) {
 	selected_page_index = i
 	let w = body.client_rect().w
-	pages.x = -i * w
+	page_list.x = -i * w
 }
 
 document.on('layout_changed', function() {
 	let w = body.client_rect().w
-	browse_page.w = w
-	order_page.w = w
+	browse_page.min_w = w
+	order_page.min_w = w
 	order_page.style.display = 'flex'
 	select_page(selected_page_index)
 })
-
 
 // products ------------------------------------------------------------------
 
@@ -459,7 +516,7 @@ function add_to_cart() {
 	})
 }
 
-// order ---------------------------------------------------------------------
+// ordering ------------------------------------------------------------------
 
 order_btn.oncontextmenu = (() => false)
 
@@ -467,10 +524,32 @@ order_btn.on('click', function() {
 	select_page(1)
 })
 
+document.on('input', function(ev) {
+
+	// input inner label state change.
+	let e = ev.target.parent
+	let input = e.at[0]
+	let inner_label = e.at[1]
+	let s = input.value
+	input.class('empty', s == '')
+	inner_label.class('empty', s == '')
+
+	// save value to local storage.
+	localStorage.setItem(e.attr('id'), input.value)
+})
+
 // init ----------------------------------------------------------------------
 
 window.onload = function() {
+
 	document.fire('layout_changed')
+
+	for (let id of ['phone', 'address']) {
+		let input = window[id].at[0]
+		input.value = localStorage.getItem(id)
+		input.fire('input')
+	}
+
 }
 
 </script>
