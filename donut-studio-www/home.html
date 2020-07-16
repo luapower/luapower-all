@@ -50,6 +50,9 @@ html, body {
 	display: none;
 	object-fit: contain;
 	filter: drop-shadow(5px 5px 5px #222);
+
+	transform: translatey(0px);
+	animation: float 6s ease-in-out infinite;
 }
 .product_image.move_to_cart {
 	position: absolute;
@@ -59,6 +62,20 @@ html, body {
 .product_image.move_to_cart_moving {
 	z-index: 3;
 	transition: top .4s, left .4s, width .4s, height .4s;
+}
+@keyframes float {
+	0% {
+		filter: drop-shadow(5px 5px 2px rgba(0,0,0,0.3));
+		transform: translatey(0px);
+	}
+	50% {
+		filter: drop-shadow(5px 5px 15px rgba(0,0,0,0.6));
+		transform: translatey(-15px);
+	}
+	100% {
+		filter: drop-shadow(5px 5px 2px rgba(0,0,0,0.3));
+		transform: translatey(0px);
+	}
 }
 .order_bar {
 	background: rgb(255, 206, 111);
@@ -93,16 +110,48 @@ html, body {
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
-	border-top: 1px solid #999;
-}
-#totals {
-	padding: 20px 20px;
-	display: grid;
-	grid: auto / auto auto;
+	border-top: 1px solid #fff;
 }
 #order_btn {
 	font-size: 30px;
-	margin: 0 20px;
+	padding: .4em;
+	position: relative;
+	overflow: hidden;
+}
+#order_btn:after {
+	content: "";
+	background: #eee;
+	display: block;
+	position: absolute;
+	padding-top: 300%;
+	padding-left: 350%;
+	margin-left: -20px!important;
+	margin-top: -120%;
+	opacity: 0;
+	transition: all 0.8s
+}
+#order_btn:active:after {
+	padding: 0;
+	margin: 0;
+	opacity: 1;
+	transition: 0s
+}
+.totals {
+	padding: 20px 20px;
+	display: grid;
+	grid: auto auto / auto auto auto;
+	flex: 1;
+}
+.ron {
+	font-size: 14px;
+	padding-left: .4em;
+	align-self: top;
+	padding-top: 3px;
+}
+.percent {
+	font-size: 14px;
+	padding-left: .4em;
+	align-self: center;
 }
 .total {
 	font-size: 24px;
@@ -111,7 +160,7 @@ html, body {
 	font-size: 14px;
 }
 #total {
-	justify-self: right;
+	text-align: right;
 }
 #discount {
 	justify-self: right;
@@ -125,12 +174,17 @@ html, body {
 	min-height: 40px;
 	display: flex;
 	justify-content: space-between;
+	box-shadow: inset 0px 2px 4px #222;
 }
 #footer_left {
 	flex: 1;
 }
 #footer_right {
 	text-align: right;
+	align-self: center;
+	display: flex;
+	align-items: center;
+	justify-content: flex-end;
 }
 </style>
 <script src="glue.js"></script>
@@ -151,13 +205,15 @@ html, body {
 	</div>
 </div>
 <div id=order_bar class=order_bar>
-	<div id=totals>
+	<div class=totals>
 		<div class=total>Total</div>
-		<div class=total id=total>120</div>
+			<div class=total id=total>0</div>
+			<div class=ron>RON</div>
 		<div class=discount>Discount</div>
-		<div class=discount id=discount>120</div>
+			<div class=discount id=discount>0</div>
+			<div class=percent>%</div>
 	</div>
-	<div id=order_btn>COMANDA</div>
+	<div id=order_btn>Comand&#259;</div>
 </div>
 <div id=footer>
 	<div id=footer_left>
@@ -170,18 +226,21 @@ html, body {
 </div>
 <script>
 
-p = [
+products = [
 	{
 		title: 'Box o\'donuts',
 		id: 1,
+		price: 50,
 	},
 	{
 		title: 'Sweet donut',
 		id: 2,
+		price: 5,
 	},
 	{
 		title: 'Even sweeter',
 		id: 3,
+		price: 6,
 	},
 ]
 
@@ -272,6 +331,16 @@ product_viewport.on('pointerdown', function(ev, mx, my) {
 
 // cart operations -----------------------------------------------------------
 
+function update_totals() {
+	let x = 0
+	let d = 0
+	for (let cart_img of cart_list.children) {
+		let p = products[cart_img.product_index]
+		x += p.price
+	}
+	total.set(x)
+}
+
 function add_to_cart() {
 
 	let prod_img = product_list.at[selected_product_index]
@@ -309,6 +378,8 @@ function add_to_cart() {
 		move_img.style.height = (cr.h)+'px'
 	})
 
+	update_totals()
+
 }
 
 {
@@ -332,6 +403,7 @@ function add_to_cart() {
 		let cart_img1 = cart_img
 		after(.2, function() {
 			cart_img1.remove()
+			update_totals()
 			allow_remove = true
 		})
 		return false
