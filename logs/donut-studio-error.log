@@ -55,3 +55,4 @@
 2020/07/17 16:22:37 [error] 18390#0: *623 [lua] webb_nginx.lua:17: try_call(): 404, client: 93.122.248.53, server: , request: "GET /favicon.ico HTTP/1.1", host: "luapower.com:8080"
 2020/07/17 16:24:43 [error] 18390#0: *626 [lua] webb_nginx.lua:17: try_call(): 404, client: 93.122.248.53, server: , request: "GET /favicon.ico HTTP/1.1", host: "luapower.com:8080"
 2020/07/17 16:24:43 [error] 18390#0: *626 [lua] webb_nginx.lua:17: try_call(): 404, client: 93.122.248.53, server: , request: "GET /favicon.ico HTTP/1.1", host: "luapower.com:8080"
+2020/07/17 21:29:11 [error] 19339#0: *3 [lua] webb_nginx.lua:17: try_call(): 404 <h1>404 Not Found</h1>, client: 175.0.82.233, server: , request: "POST /GponForm/diag_Form?images/ HTTP/1.1", host: "127.0.0.1:8080"
