@@ -49,3 +49,4 @@
 2020/07/16 21:04:10 [error] 18390#0: *512 [lua] webb_nginx.lua:17: try_call(): 404, client: 93.122.248.53, server: , request: "GET /favicon.ico HTTP/1.1", host: "luapower.com:8080"
 2020/07/17 00:23:32 [error] 18390#0: *525 [lua] webb_nginx.lua:17: try_call(): 404 <h1>404 Not Found</h1>, client: 213.233.108.100, server: , request: "GET /comanda HTTP/1.1", host: "luapower.com:8080"
 2020/07/17 00:23:32 [error] 18390#0: *525 [lua] webb_nginx.lua:17: try_call(): 404, client: 213.233.108.100, server: , request: "GET /favicon.ico HTTP/1.1", host: "luapower.com:8080", referrer: "http://luapower.com:8080/comanda"
+2020/07/17 08:39:06 [error] 18390#0: *566 [lua] webb_nginx.lua:17: try_call(): 404 <h1>404 Not Found</h1>, client: 213.233.108.100, server: , request: "GET /contact HTTP/1.1", host: "luapower.com:8080"
