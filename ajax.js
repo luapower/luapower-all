@@ -11,7 +11,7 @@
 	^slow(show|hide)
 	^progress(p, loaded, [total])
 	^upload_progress(p, loaded, [total])
-	^success('success', response_object)
+	^success(response_object)
 	^fail('timeout'|'network'|'abort')
 	^fail('http', status, message, body_text)
 	^done('success' | 'fail', ...)

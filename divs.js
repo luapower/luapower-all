@@ -1075,93 +1075,63 @@ method(Element, 'modal', function(on) {
 // live-move list element pattern --------------------------------------------
 
 // implements:
-//   move_element_start(elem_i, total_elem_count, [move_elem_count, visible_i, visible_count, visible_x])
-//   move_element_update(elem_x)
+//   move_element_start(move_i, move_n, i1, i2[, x1, x2])
+//   move_element_update(elem_x, [i1, i2, x1, x2])
 // uses:
 //   movable_element_size(elem_i) -> w
-//   set_movable_element_pos(i, x)
+//   set_movable_element_pos(i, x, moving)
 //
 function live_move_mixin(e) {
 
 	e = e || {}
 
-	let n, move_i1, move_i2, move_x, over_i, before_i1, over_p, over_x, vis_i1, vis_i2, vis_x
+	let move_i1, move_i2, i1, i2, i1x, i2x
+	let move_x, over_i, over_p, over_x
+	let advance
 
-	e.move_element_start = function(
-		elem_i, total_elem_count,
-		move_elem_count,
-		visible_i, visible_count, visible_x,
-	) {
-		move_i1 = elem_i
-		move_i2 = elem_i + or(move_elem_count, 1)
-		n = total_elem_count
+	e.move_element_start = function(move_i, move_n, _i1, _i2, _i1x, _i2x) {
+		move_n = or(move_n, 1)
+		move_i1 = move_i
+		move_i2 = move_i + move_n
 		move_x = null
-		over_i = move_i2
-		before_i1 = move_i1 - 1
+		over_i = null
 		over_x = null
-		vis_i1 = or(visible_i, 0)
-		vis_i2 = vis_i1 + or(visible_count, n)
-		vis_x = or(visible_x, 0)
+		i1  = _i1
+		i2  = _i2
+		i1x = _i1x
+		i2x = _i2x
+		advance = advance || e.movable_element_advance || (() => 1)
+		if (i1x == null) {
+			assert(i1 == 0)
+			i1x = 0
+			i2x = i1x
+			for (let i = i1, n; i < i2; i += n) {
+				n = advance(i)
+				if (i < move_i1 || i >= move_i2)
+					i2x += e.movable_element_size(i, n)
+			}
+		}
 	}
 
 	e.move_element_stop = function() {
 		set_moving_element_pos(over_x)
-		e.before_i1 = before_i1
-		e.over_i = over_i
-		e.over_p = over_p
 		return over_i
 	}
 
- 	// 0..n-1 index generator with `move_i1..move_i2-1` moved to position `over_i`.
-	function each_index(f) {
-		if (over_i < move_i1) { // moving upwards
-			for (let i = max(0, vis_i1); i < min(over_i, vis_i2); i++)
-				f(i)
-			for (let i = max(move_i1, vis_i1); i < min(move_i2, vis_i2); i++)
-				f(i)
-			for (let i = max(over_i, vis_i1); i < min(move_i1, vis_i2); i++)
-				f(i)
-			for (let i = max(move_i2, vis_i1); i < min(n, vis_i2); i++)
-				f(i)
-		} else {
-			for (let i = max(0, vis_i1); i < min(move_i1, vis_i2); i++)
-				f(i)
-			for (let i = max(move_i2, vis_i1); i < min(over_i, vis_i2); i++)
-				f(i)
-			for (let i = max(move_i1, vis_i1); i < min(move_i2, vis_i2); i++)
-				f(i)
-			for (let i = max(over_i, vis_i1); i < min(n, vis_i2); i++)
-				f(i)
-		}
-	}
-
-	e.movable_element_can_move_after = e.movable_element_can_move_after || return_true
-	e.update_moving_element = e.update_moving_element || noop
-
 	function hit_test(elem_x) {
-		let x = vis_x
-		let x0 = x
+		let x = i1x
+		let x0 = i1x
 		let last_over_i = over_i
-		let i1 = max(0, vis_i1)
-		let i2 = min(n, vis_i2)
-		let new_before_i1 = i1 - 1
 		let new_over_i, new_over_p
-		for (let i = i1; i < i2; i++) {
+		for (let i = i1, n; i < i2; i += n) {
+			n = advance(i)
 			if (i < move_i1 || i >= move_i2) {
-				let w = 0
-				let i0 = i
-				while (i < i2) {
-					w += e.movable_element_size(i)
-					if (e.movable_element_can_move_after(i))
-						break
-					i++
-				}
+				let w = e.movable_element_size(i, n)
 				let x1 = x + w / 2
 				if (elem_x < x1) {
-					new_over_i = i0
+					new_over_i = i
 					new_over_p = lerp(elem_x, x0, x1, 0, 1)
-					if (i0 > i1 || e.movable_element_can_move_after(i1 - 1)) {
-						before_i1 = new_before_i1
+					if (i > i1 || advance(i1 - 1) == 1) {
 						over_i = new_over_i
 						over_p = new_over_p
 						return new_over_i != last_over_i
@@ -1169,51 +1139,66 @@ function live_move_mixin(e) {
 				}
 				x += w
 				x0 = x1
-				new_before_i1 = i0
 			}
 		}
 		new_over_i = i2
-		x1 = x
+		x1 = i2x
 		new_over_p = lerp(elem_x, x0, x1, 0, 1)
-		if (e.movable_element_can_move_after(i2 - 1)) {
-			before_i1 = new_before_i1
+		if (advance(i2 - 1) == 1) {
 			over_i = new_over_i
 			over_p = new_over_p
 			return new_over_i != last_over_i
 		}
 	}
 
-	function set_moving_element_pos(x) {
-		let i1 = max(move_i1, vis_i1)
-		let i2 = min(move_i2, vis_i2)
-		e.update_moving_element(move_i1, before_i1, over_i, over_p)
-		for (let i = i1; i < i2; i++) {
-			e.set_movable_element_pos(i, x, i1)
-			x += e.movable_element_size(i)
+ 	// `[i1..i2)` index generator with `[move_i1..move_i2)` elements moved.
+	function each_index(f) {
+		if (over_i < move_i1) { // moving upwards
+			for (let i = i1     ; i < over_i ; i++) f(i)
+			for (let i = move_i1; i < move_i2; i++) f(i, true)
+			for (let i = over_i ; i < move_i1; i++) f(i)
+			for (let i = move_i2; i < i2     ; i++) f(i)
+		} else {
+			for (let i = i1     ; i < move_i1; i++) f(i)
+			for (let i = move_i2; i < over_i ; i++) f(i)
+			for (let i = move_i1; i < move_i2; i++) f(i, true)
+			for (let i = over_i ; i <  i2    ; i++) f(i)
 		}
 	}
 
-	e.move_element_update = function(elem_x,
-		visible_i, visible_count, visible_x
-	) {
-		if (visible_i != null) {
-			vis_i1 = or(visible_i, 0)
-			vis_i2 = vis_i1 + or(visible_count, n)
-			vis_x = or(visible_x, 0)
-		}
+	let move_ri1, move_ri2, move_vi1
+
+	function set_moving_element_pos(x, moving) {
+		if (move_ri1 != null)
+			for (let i = move_ri1; i < move_ri2; i++) {
+				e.set_movable_element_pos(i, x, moving)
+				x += e.movable_element_size(i, 1)
+			}
+	}
+
+	e.move_element_update = function(elem_x) {
+		elem_x = clamp(elem_x, i1x, i2x)
 		if (elem_x != move_x) {
 			move_x = elem_x
+			e.move_x = move_x
 			if (hit_test(move_x)) {
-				let x = vis_x
-				each_index(function(i) {
-					if (i == move_i1)
-						over_x = x
-					if (i < move_i1 || i >= move_i2)
+				e.over_i = over_i
+				e.over_p = over_p
+				let x = i1x
+				move_ri1 = null
+				move_ri2 = null
+				over_x = null
+				each_index(function(i, moving) {
+					if (moving) {
+						over_x = or(over_x, x)
+						move_ri1 = or(move_ri1, i)
+						move_ri2 = i+1
+					} else
 						e.set_movable_element_pos(i, x)
-					x += e.movable_element_size(i)
+					x += e.movable_element_size(i, 1)
 				})
 			}
-			set_moving_element_pos(move_x)
+			set_moving_element_pos(move_x, true)
 		}
 	}
 
