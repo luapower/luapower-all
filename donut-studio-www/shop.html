@@ -34,6 +34,10 @@ html, body {
 	flex-flow: column;
 	position: relative;
 }
+#order_page {
+	background: white;
+	z-index: 1;
+}
 #order_page, #thanks_page {
 	display: none;
 	flex-flow: column;
@@ -57,6 +61,7 @@ html, body {
 	display: flex;
 	touch-action: none;
 	overflow: hidden;
+	box-shadow: 0px 2px 6px #222;
 }
 #product_list {
 	position: relative;
@@ -101,7 +106,6 @@ html, body {
 	}
 }
 #cart_viewport {
-	height: 80px;
 	padding: 0 5px;
 	z-index: 2;
 	overflow: auto;
@@ -109,6 +113,8 @@ html, body {
 	overflow-y: hidden;
 	display: flex;
 	border-top: 1px solid #ccc;
+	height: 0;
+	transition: height .2s;
 }
 #cart_list {
 	position: relative;
@@ -119,7 +125,7 @@ html, body {
 	position: relative;
 	top: 0px;
 	opacity: 1;
-	transition: width .2s, top .2s, opacity .2s;
+	transition: top .2s, opacity .2s;
 	display: flex;
 	flex-flow: column;
 	align-items: flex-end;
@@ -129,6 +135,7 @@ html, body {
 	min-width: 60px;
 	object-fit: contain;
 	filter: drop-shadow(2px 2px 2px #222);
+	transition: width .2s;
 }
 .cart-qty {
 	font-weight: bold;
@@ -144,9 +151,10 @@ html, body {
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
-	border-top: 1px solid #fff;
 	background: rgb(237, 27, 36);
 	color: white;
+	box-shadow: 0px 2px 4px #222;
+	z-index: 1;
 }
 #order_btn {
 	border: none;
@@ -196,7 +204,6 @@ html, body {
 	min-height: 40px;
 	display: flex;
 	justify-content: space-between;
-	box-shadow: inset 0px 2px 4px #222;
 }
 #footer_left {
 	flex: 1;
@@ -228,12 +235,11 @@ html, body {
 	margin: .5em 1em;
 	border: 1px solid #999;
 	border-radius: .3em;
-	line-height: initial;  /* prevent inheriting it */
+	line-height: 1.5em;
 	font-size: 18px;
 	font-family: inherit;
 }
 #place_order_btn {
-	margin-top: 0;
 	background: rgb(255, 206, 111);
 	display: flex;
 	align-items: center;
@@ -283,7 +289,7 @@ html, body {
 }
 .x-input > .x-input-value:not(.empty) {
 	top: 0; /* fixate to top so we only have to set the top padding */
-	padding: 1.6em .5em .4em .5em;
+	padding: 1.5em .5em .5em .5em;
 }
 .x-input > .x-input-inner-label:not(.empty) {
 	top: 0; /* fixate to top so we only have to set the top padding */
@@ -326,6 +332,11 @@ html, body {
 .pay-method.selected {
 	background: #47a;
 	color: white;
+}
+
+.total2 {
+	color: red;
+	//font-weight: bold;
 }
 
 /* thanks page ------------------------------------------------------------ */
@@ -396,7 +407,7 @@ html, body {
 					<div class=ron>RON</div>
 				<div class=discount>Discount</div>
 					<div class=discount id=discount>0</div>
-					<div class=percent>%</div>
+					<div class=percent>RON</div>
 			</div>
 			<button id=order_btn>Comand&#259;</button>
 		</div>
@@ -414,31 +425,33 @@ html, body {
 	<div id=order_page>
 		<div id=order_products>
 		</div>
-		<div>
-			<div class="x-input" id=phone>
-				<input class="x-input-value empty" type=tel>
-				<div class="x-input-inner-label empty">Telefon</div>
-			</div>
-			<div class="x-input" id=address>
-				<input class="x-input-value empty">
-				<div class="x-input-inner-label empty">Strada, Bloc, Scara, Etaj, Ap., Interfon</div>
-			</div>
-			<div class=section-label>Metoda de plata</div>
-			<div id=pay_methods>
-				<div class="pay-method selected" name="cash">Cash</div>
-				<div class=pay-method name="POS">Card la<br>livrare</div>
-				<div class=pay-method name="bank">In cont</div>
-			</div>
-			<div class=section-label>Data &#537;i ora livr&#259rii</div>
-			<div style="display: flex">
-				<select id=delivery_date style="flex: 2; margin-right: 0"></select>
-				<select id=delivery_time style="flex: 1; margin-left: .5em">
-					<option>8-10</option>
-					<option selected>10-14</option>
-					<option>14-18</option>
-					<option>18-20</option>
-				</select>
-			</div>
+		<div class="x-input" id=phone>
+			<input class="x-input-value empty" type=tel>
+			<div class="x-input-inner-label empty">Telefon</div>
+		</div>
+		<div class="x-input" id=address>
+			<input class="x-input-value empty">
+			<div class="x-input-inner-label empty">Strada, Bloc, Scara, Etaj, Ap., Interfon</div>
+		</div>
+		<div class=section-label>Metoda de plata</div>
+		<div id=pay_methods>
+			<div class="pay-method selected" name="cash">Cash</div>
+			<div class=pay-method name="POS">Card la<br>livrare</div>
+			<div class=pay-method name="bank">In cont</div>
+		</div>
+		<div class=section-label>Data &#537;i ora livr&#259rii</div>
+		<div style="display: flex">
+			<select id=delivery_date style="flex: 2; margin-right: 0"></select>
+			<select id=delivery_time style="flex: 1; margin-left: .5em">
+				<option>8-10</option>
+				<option selected>10-14</option>
+				<option>14-18</option>
+				<option>18-20</option>
+			</select>
+		</div>
+		<div class=section-label>Total de plat&#259:
+			<span id=total2 class=total2></span>
+			<span class=total2>RON</span>
 		</div>
 		<button id=place_order_btn>Plaseaza Comanda</button>
 	</div>
@@ -447,7 +460,7 @@ html, body {
 		<div id=order_placed_message>
 			Comanda a fost plasat&#259;
 			<div id=order_placed_subtext>
-				In scurt timp veti primi un mesaj scris de confirmare.
+				&#206;n scurt timp vei primi un mesaj scris de confirmare.
 			</div>
 		</div>
 		<button id=back_btn>Inapoi la site</button>
@@ -502,16 +515,19 @@ products = [
 		title: 'Box o\'donuts',
 		id: 1,
 		price: 50,
+		qty: 12,
 	},
 	{
 		title: 'Sweet donut',
 		id: 2,
 		price: 5,
+		qty: 1,
 	},
 	{
 		title: 'Even sweeter',
 		id: 3,
 		price: 6,
+		qty: 1,
 	},
 ]
 
@@ -608,22 +624,33 @@ product_viewport.on('pointerdown', function(ev, mx, my) {
 
 // cart operations -----------------------------------------------------------
 
-function update_totals() {
+function update_cart() {
 	let t = 0
-	let d = 0
+	let q = 0
 	let cart = {}
 	for (let cart_item of cart_list.children) {
-		let p = products[cart_item.product_index]
-		cart[p.id] = cart_item.qty
-		t += p.price * cart_item.qty
+		let prod = products[cart_item.product_index]
+		let qc = cart_item.qty
+		t += prod.price * qc
+		q += qc * prod.qty
+		cart[prod.id] = qc
 	}
+	let d = (q >= 72 ? 15 : (q >= 48 ? 10 : (q >= 24 ? 5 : 0))) / 100
+	t = round(t)
+	d = round(-t * d)
 	total.set(t)
+	discount.set(d)
+	total2.set(t + d)
 	localStorage.setItem('cart', json(cart))
+}
+
+function update_cart_height(open) {
+	cart_viewport.h = open ? 80 : 0
 }
 
 function update_cart_item(cart_item) {
 	cart_item.at[1].html = cart_item.qty
-	update_totals()
+	update_cart()
 }
 
 function add_to_cart(product_index, qty, animated) {
@@ -655,12 +682,15 @@ function add_to_cart(product_index, qty, animated) {
 		cart_list.add(cart_item)
 	}
 
+	update_cart_height(true)
+
 	if (animated == false) {
 		cart_item.qty += qty
 		update_cart_item(cart_item)
 		return
 	}
 
+	let or = order_bar.client_rect()
 	let cr = cart_item.at[0].client_rect()
 	let pr = prod_img.client_rect()
 	let mr = body.client_rect()
@@ -681,7 +711,7 @@ function add_to_cart(product_index, qty, animated) {
 	after(0.01, function() {
 		move_img.classes = 'move_to_cart_moving'
 		move_img.style.left   = (cr.x - mr.x)+'px'
-		move_img.style.top    = (cr.y - mr.y)+'px'
+		move_img.style.top    = (or.y - 80 - mr.y)+'px'
 		move_img.style.width  = (cr.w)+'px'
 		move_img.style.height = (cr.h)+'px'
 	})
@@ -711,12 +741,13 @@ function add_to_cart(product_index, qty, animated) {
 		if (cart_item.qty <= 1) {
 
 			cart_item.style.top = '-20px'
-			cart_item.w = 0
 			cart_item.style.opacity = 0
+			cart_item.at[0].w = 0
 
 			after(.2, function() {
 				cart_item.remove()
-				update_totals()
+				update_cart()
+				update_cart_height(cart_list.at.length > 0)
 				allow_remove = true
 			})
 
@@ -732,7 +763,8 @@ function add_to_cart(product_index, qty, animated) {
 
 function empty_cart() {
 	cart_list.clear()
-	update_totals()
+	update_cart()
+	update_cart_height(false)
 }
 
 // ordering ------------------------------------------------------------------
@@ -781,13 +813,24 @@ document.on('click', function(ev) {
 place_order_btn.on('click', function() {
 	ajax({
 		url: '/plaseaza-comanda',
-		upload: localStorage.getItem('cart')
-		})
-
-	empty_cart()
-	select_page(2)
+		upload: localStorage.getItem('cart'),
+		success: function(res) {
+			empty_cart()
+			select_page(2)
+			update_thanks_page(res)
+		},
+		fail: function(err, status, message, body) {
+			print(err, status, message, body)
+		}
+	}).send()
 
 })
+
+// thanks page ---------------------------------------------------------------
+
+function update_thanks_page(res) {
+	print(res.order_id)
+}
 
 back_btn.on('click', function() {
 	select_page(0)
