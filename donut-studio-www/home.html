@@ -66,7 +66,7 @@ html, body {
 #product_list:not(.swiping) {
 	transition: left .1s;
 }
-.product-image {
+.product-img {
 	display: none;
 	object-fit: contain;
 	filter: drop-shadow(5px 5px 5px #222);
@@ -74,15 +74,15 @@ html, body {
 	transform: translatey(0px);
 	animation: float 6s ease-in-out infinite;
 }
-.product-image:nth-child(3n+0) { animation-delay: -1s; }
-.product-image:nth-child(3n+1) { animation-delay: -4s; }
-.product-image:nth-child(3n+2) { animation-delay: -2s; }
-.product-image.move_to_cart {
+.product-img:nth-child(3n+0) { animation-delay: -1s; }
+.product-img:nth-child(3n+1) { animation-delay: -4s; }
+.product-img:nth-child(3n+2) { animation-delay: -2s; }
+.product-img.move_to_cart {
 	position: absolute;
 	pointer-events: none;
 	filter: none;
 }
-.product-image.move_to_cart_moving {
+.product-img.move_to_cart_moving {
 	z-index: 3;
 	transition: top .4s, left .4s, width .4s, height .4s;
 }
@@ -100,30 +100,44 @@ html, body {
 		transform: translatey(0px);
 	}
 }
-.order_bar {
-	background: rgb(255, 206, 111);
-	color: white;
-}
 #cart_viewport {
-	padding: 10px 5px;
+	height: 80px;
+	padding: 0 5px;
 	z-index: 2;
 	overflow: auto;
+	overflow-x: auto;
+	overflow-y: hidden;
 	display: flex;
+	border-top: 1px solid #ccc;
 }
 #cart_list {
 	position: relative;
 	display: flex;
 	align-items: center;
-	height: 50px;
 }
-.product-image-cart {
+.cart-item {
+	position: relative;
+	top: 0px;
+	opacity: 1;
+	transition: width .2s, top .2s, opacity .2s;
+	display: flex;
+	flex-flow: column;
+	align-items: flex-end;
+}
+.cart-img {
 	height: 50px;
+	min-width: 60px;
 	object-fit: contain;
 	filter: drop-shadow(2px 2px 2px #222);
-	position: relative;
-	opacity: 1;
-	top: 0px;
-	transition: width .2s, top .2s, opacity .2s;
+}
+.cart-qty {
+	font-weight: bold;
+	font-size: 12px;
+	padding-right: 6px;
+	padding-top: 4px;
+}
+.cart-qty::after {
+	content: ' buc'
 }
 #order_bar {
 	height: 60px;
@@ -131,6 +145,8 @@ html, body {
 	justify-content: space-between;
 	align-items: center;
 	border-top: 1px solid #fff;
+	background: rgb(237, 27, 36);
+	color: white;
 }
 #order_btn {
 	border: none;
@@ -352,6 +368,7 @@ html, body {
 </style>
 <script src="glue.js"></script>
 <script src="divs.js"></script>
+<script src="ajax.js"></script>
 
 </head>
 
@@ -363,16 +380,16 @@ html, body {
 		<img id=logo src=logo.png>
 		<div id=product_viewport>
 			<div id=product_list>
-				<img class=product-image src=1.png>
-				<img class=product-image src=2.png>
-				<img class=product-image src=3.png>
+				<img class=product-img src=1.png>
+				<img class=product-img src=2.png>
+				<img class=product-img src=3.png>
 			</div>
 		</div>
-		<div id=cart_viewport class=order_bar>
+		<div id=cart_viewport>
 			<div id=cart_list>
 			</div>
 		</div>
-		<div id=order_bar class=order_bar>
+		<div id=order_bar>
 			<div class=totals>
 				<div class=total>Total</div>
 					<div class=total id=total>0</div>
@@ -576,7 +593,7 @@ product_viewport.on('pointerdown', function(ev, mx, my) {
 		let dx = x0 - product_list.offsetLeft
 		if (abs(dx) <= 10) {
 			select_product(selected_product_index)
-			add_to_cart(selected_product_index)
+			add_to_cart(selected_product_index, 1)
 		} else {
 			let i = selected_product_index + (dx < 0 ? -1 : 1)
 			select_product(i)
@@ -592,33 +609,59 @@ product_viewport.on('pointerdown', function(ev, mx, my) {
 // cart operations -----------------------------------------------------------
 
 function update_totals() {
-	let x = 0
+	let t = 0
 	let d = 0
-	let pids = []
-	for (let cart_img of cart_list.children) {
-		let p = products[cart_img.product_index]
-		x += p.price
-		pids.push(p.id)
+	let cart = {}
+	for (let cart_item of cart_list.children) {
+		let p = products[cart_item.product_index]
+		cart[p.id] = cart_item.qty
+		t += p.price * cart_item.qty
 	}
-	total.set(x)
-	localStorage.setItem('product_ids', pids)
+	total.set(t)
+	localStorage.setItem('cart', json(cart))
 }
 
-function add_to_cart(product_index) {
+function update_cart_item(cart_item) {
+	cart_item.at[1].html = cart_item.qty
+	update_totals()
+}
+
+function add_to_cart(product_index, qty, animated) {
 
 	let prod_img = product_list.at[product_index]
 	let aspect_ratio = prod_img.naturalWidth / prod_img.naturalHeight
 
-	let cart_img = H.img({
-		class: 'product-image-cart',
-		src: prod_img.attr('src'),
-		style: 'visibility: hidden',
-	})
-	cart_img.product_index = prod_img.index
-	cart_img.w = 50 * aspect_ratio
-	cart_list.add(cart_img)
+	let cart_item
 
-	let cr = cart_img.client_rect()
+	for (let cart_item1 of cart_list.children)
+		if (cart_item1.product_index == product_index) {
+			cart_item = cart_item1
+			break
+		}
+
+	if (!cart_item) {
+		let cart_img = H.img({
+			class: 'cart-img',
+			src: prod_img.attr('src'),
+		})
+		cart_img.w = 50 * aspect_ratio
+		let cart_qty = div({class: 'cart-qty'})
+		cart_item = div({class: 'cart-item'}, cart_img, cart_qty)
+		if (animated != false)
+			cart_item.style.visibility = 'hidden'
+		cart_item.product_index = prod_img.index
+		cart_item.qty = 0
+		cart_item.on('pointerdown', cart_item_pointerdown)
+		cart_list.add(cart_item)
+	}
+
+	if (animated == false) {
+		cart_item.qty += qty
+		update_cart_item(cart_item)
+		return
+	}
+
+	let cr = cart_item.at[0].client_rect()
 	let pr = prod_img.client_rect()
 	let mr = body.client_rect()
 
@@ -630,7 +673,9 @@ function add_to_cart(product_index) {
 
 	after(.4, function() {
 		move_img.remove()
-		cart_img.style.visibility = null
+		cart_item.qty += qty
+		update_cart_item(cart_item)
+		cart_item.style.visibility = null
 	})
 
 	after(0.01, function() {
@@ -641,36 +686,53 @@ function add_to_cart(product_index) {
 		move_img.style.height = (cr.h)+'px'
 	})
 
-	update_totals()
-
 }
 
 {
 	let allow_remove = true
-	let cart_img, mx0, my0
-	cart_viewport.on('pointerdown', function(ev, mx, my) {
+	let cart_item0, mx0, my0
+	function cart_item_pointerdown(ev, mx, my) {
+		if (!allow_remove)
+			return
 		mx0 = mx
 		my0 = my
-		cart_img = allow_remove && ev.target.product_index != null && ev.target || null
-	})
+		cart_item0 = this
+	}
 
 	cart_viewport.on('pointerup', function(mx, my, ev) {
-		if (!cart_img)
+		if (!cart_item0)
 			return
 		if (abs(mx - mx0) > 4 || abs(my - my0) > 4)
 			return
+
 		allow_remove = false
-		cart_img.style.top = '-20px'
-		cart_img.w = 0
-		cart_img.style.opacity = 0
-		let cart_img1 = cart_img
-		after(.2, function() {
-			cart_img1.remove()
-			update_totals()
+		cart_item = cart_item0
+
+		if (cart_item.qty <= 1) {
+
+			cart_item.style.top = '-20px'
+			cart_item.w = 0
+			cart_item.style.opacity = 0
+
+			after(.2, function() {
+				cart_item.remove()
+				update_totals()
+				allow_remove = true
+			})
+
+		} else {
+			cart_item.qty--
+			update_cart_item(cart_item)
 			allow_remove = true
-		})
+		}
+
 		return false
 	})
+}
+
+function empty_cart() {
+	cart_list.clear()
+	update_totals()
 }
 
 // ordering ------------------------------------------------------------------
@@ -714,10 +776,17 @@ document.on('click', function(ev) {
 	select_pay_method(ev.target.index)
 })
 
-// thank you page ------------------------------------------------------------
+// place order ---------------------------------------------------------------
 
 place_order_btn.on('click', function() {
+	ajax({
+		url: '/plaseaza-comanda',
+		upload: localStorage.getItem('cart')
+		})
+
+	empty_cart()
 	select_page(2)
+
 })
 
 back_btn.on('click', function() {
@@ -746,14 +815,15 @@ window.onload = function() {
 		delivery_date.add(tag('option', {value: d}, s))
 	}
 
-	let pids = localStorage.getItem('product_ids') || []
-	for (let pid of pids) {
+	select_page_on_url_bar()
+
+	let cart = JSON.parse(localStorage.getItem('cart')) || {}
+	for (let pid in cart) {
 		let i = product_index_by_id(pid)
 		if (i != null)
-			add_to_cart(i)
+			add_to_cart(i, cart[pid], selected_page_index == 0)
 	}
 
-	select_page_on_url_bar()
 	document.fire('layout_changed')
 
 }
