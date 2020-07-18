@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
+<meta name="viewport" content="width=300, initial-scale=1, maximum-scale=1, user-scalable=no">
 <title>X-WIDGETS DEMO</title>
 <meta charset="utf-8">
 <style>
@@ -199,14 +200,14 @@ cb = checkbox({
 	text            : string|element
 	align           : 'left' // |right
 	center          : false  // |true
-	checked_value   : true   // |anything
-	unchecked_value : false  // |anything
+	checked_val     : true   // |anything
+	unchecked_val   : false  // |anything
 	checked         : false  // |true
 	validate        : (v) => error_string|anything_else
 })
 
 cb.checked   (r/w) true|false
-cb.value     (r/w) checked_value|unchecked_value
+cb.value     (r/w) checked_val|unchecked_val
 
 cb.toggle()
 
@@ -216,7 +217,7 @@ cb.toggle()
 
 main.add(checkbox({
 	text: 'Wassup homie',
-	value: 'wrong',
+	val: 'wrong',
 	validate: function(v) {
 		return typeof(v) == 'boolean' || 'Value not a boolean'
 	}
@@ -259,7 +260,7 @@ main.add(
 			'Option 2',
 			H('Option 3<br>Multiple lines'),
 		],
-		value: 1,
+		val: 1,
 	}),
 	radiogroup({
 		align: 'right',
@@ -268,7 +269,7 @@ main.add(
 			'Option 2',
 			H('Option 3<br>Multiple lines long text'),
 		],
-		value: 1/0,
+		val: 1/0,
 		validate: function(v) { return v >= 0 && v < 3 || 'Selected option out of range' },
 	})
 )
@@ -544,7 +545,7 @@ function say_my_name(v) {
 }
 
 main.add(H.div({}, 'type in "Klaus" to validate: ', input({
-	value: 'wrong',
+	val: 'wrong',
 	validate: say_my_name,
 })))
 
@@ -599,19 +600,19 @@ si.value   (r/w)  input_value
 <script>
 
 main.add(H.div({},
-	spin_input({default_value: 42}),
-	spin_input({default_value: 42, label: 'Heeey'})
+	spin_input({default_val: 42}),
+	spin_input({default_val: 42, label: 'Heeey'})
 ))
 main.add(H.div({},
-	spin_input({button_style: 'up-down', value: 42}),
+	spin_input({button_style: 'up-down', val: 42}),
 	spin_input({button_style: 'up-down', label: 'Hey hey'})
 ))
 main.add(H.div({},
-	spin_input({button_style: 'left-right', value: 42}),
+	spin_input({button_style: 'left-right', val: 42}),
 	spin_input({button_style: 'left-right', label: 'Dis look good?'})
 ))
 main.add(H.div({},
-	spin_input({min: -2, max: 5, multiple_of: 1.5, button_placement: 'right', value: 1}),
+	spin_input({min: -2, max: 5, multiple_of: 1.5, button_placement: 'right', val: 1}),
 	spin_input({min: -2, max: 5, multiple_of: 1.5, button_placement: 'right', label: 'How bout dis?'}),
 ))
 
@@ -631,7 +632,7 @@ sl = slider({
 	multiple_of : null // N
 })
 
-sl.value     (r/w)  value in min..max range
+sl.val       (r/w)  value in min..max range
 sl.progress  (r/w)  progress in 0..1 range
 
 </help>
@@ -641,12 +642,12 @@ main.add(H.div({},
 	'Slider 1',
 	slider({
 		validate: function(v) { return v >= .2 && v <= .8 || 'Value not between .2 and .8' },
-		value: .5,
+		val: .5,
 	})))
 
 main.add(H.div({},
 	'Slider 2',
-	slider({value: 1500, from: 1000, to: 2000, multiple_of: 200, min: 1300, max: 1700}))
+	slider({val: 1500, from: 1000, to: 2000, multiple_of: 200, min: 1300, max: 1700}))
 )
 
 </script>
@@ -660,7 +661,7 @@ main.add(H.div({},
 lb = listbox({
 	// standalone
 	items   : [lb_item1, ...]
-	value   : item_text
+	val     : item_text
 	// data-driven
 	rowset  : rowset
 	col     : field_name
@@ -670,7 +671,7 @@ lb = listbox({
 	text  : string | elem_cons
 }
 
-lb.value   (r/w)  get/set selected item by its item text.
+lb.val     (r/w)  get/set selected item by its item text.
 
 </help>
 <script>
@@ -681,7 +682,7 @@ lb = listbox({
 		'Bananas',
 		'Something Else Entirely',
 	],
-	value: 'Bananas',
+	val: 'Bananas',
 })
 
 hlb = hlistbox({
@@ -790,9 +791,9 @@ main.add(
 
 cg = cssgrid({
 	items: [
-		date_dropdown({pos_x: 3, pos_y: 1, value: day(time())}),
-		input({pos_x: 2, pos_y: 2, value: 'hello1'}),
-		input({pos_x: 1, pos_y: 3, value: 'hello2'}),
+		date_dropdown({pos_x: 3, pos_y: 1, val: day(time())}),
+		input({pos_x: 2, pos_y: 2, val: 'hello1'}),
+		input({pos_x: 1, pos_y: 3, val: 'hello2'}),
 	],
 })
 
@@ -811,7 +812,7 @@ main.add(cg)
 <help>
 
 cal = calendar({
-	value     : time
+	val       : time
 	validate  : (v) => error_string|anything_else
 	rowset    : rowset
 	col       : field_name
@@ -822,7 +823,7 @@ cal = calendar({
 
 main.add(calendar())
 main.add(calendar({
-	value: day(time(), 1),
+	val: day(time(), 1),
 	validate: function(v) {
 		if (day(v) == day(time()))
 			return 'Can\'t have today.'
@@ -875,7 +876,7 @@ var data = {
 		{name: 'name'      , w: 150, min_w:  50, max_w: 400, validate: starts_with_a, filter_by: true},
 		{name: 'parent_id' , w:  50, min_w:  50, type: 'number', allow_null: true, editable: false, focusable: false},
 		{name: 'random_num', w: 130, allow_null: true, type: 'number', text: () => H('<i>Random</i><br>Number')},
-		{name: 'date'      , w: 140, allow_null: true, type: 'date', filter_by: true},
+		{name: 'date'      , w: 120, allow_null: true, type: 'date', filter_by: true},
 	],
 	pk: 'id',
 	parent_col: 'parent_id',
@@ -886,14 +887,15 @@ var data = {
 	can_change_rows: true,
 }
 
-for (let i = 1; i <= 10; i++) {
+for (let i = 0; i <= 30; i++) {
 	let id         = i
 	let name       = 'record '+i
-	let parent_id  = floor((random() * i))
+	let parent_id  = i > 1 ? (i-1) % 3 : null // floor((random() * i))
 	let random_num = floor(random() * 1e9)
 	let random_date = i * 24 * 3600 * 1000
-	let row = [id, id, i % 5 == 0, name, parent_id, random_num, random_date]
-	row.focusable = i % 10 >= 2
+	let active = i % 5 == 0
+	let row = [id, id, active, name, parent_id, random_num, random_date]
+	//row.focusable = i % 10 >= 2
 	data.rows.add(row)
 }
 
@@ -902,14 +904,15 @@ d = rowset(data)
 g = grid({
 	rowset: d,
 	w: 606,
-	h: 500,
+	h: 400,
+	can_edit: false,
 	can_change_header_visibility: true,
 	//can_focus_cells: false,
 	//order_by: 'parent_id name:desc',
 	tree_col: 'name',
 	can_move_rows: true,
-	enter_edit_on_click_focused: false,
-	can_change_parent: false,
+	//enter_edit_on_click_focused: false,
+	//can_change_parent: false,
 })
 
 g.style.resize = 'both'
@@ -959,7 +962,7 @@ var data = {
 	can_change_rows: true,
 }
 
-for (let i = 1; i <= 1e5; i++) {
+for (let i = 1; i <= 10; i++) {
 	let id         = i
 	let name       = 'record '+i
 	let random_num = floor(random() * 1e9)
@@ -1026,13 +1029,13 @@ main.add(
 			'Something Else Entirely',
 		],
 		validate: function(v) { return v != 'Mananas' || 'Can\'t have mananas.' },
-		value: 'Mananas',
+		val: 'Mananas',
 	}),
 
 	list_dropdown({
 		field_name: 'Here we are again',
 		items: thousand_items(),
-		value: 'not-in-list',
+		val: 'not-in-list',
 	}),
 )
 
@@ -1045,13 +1048,13 @@ main.add(
 <help>
 
 clb = countries_listbox({
-	value: 'CC', // country code
+	val: 'CC', // country code
 })
 
 </help>
 <script>
 
-clb = countries_listbox({value: 'RO'})
+clb = countries_listbox({val: 'RO'})
 main.add(clb)
 
 </script>
@@ -1063,13 +1066,13 @@ main.add(clb)
 <help>
 
 cd = country_dropdown({
-	value: 'CC', // country code
+	val: 'CC', // country code
 })
 
 </help>
 <script>
 
-cd = country_dropdown({value: 'RO'})
+cd = country_dropdown({val: 'RO'})
 main.add(cd)
 
 </script>
@@ -1088,7 +1091,7 @@ dd = date_dropdown({
 <script>
 
 d = date_dropdown({
-	value: time(),
+	val: time(),
 	validate: function(v) {
 		if (day(v) == day(time()))
 			return 'Can\'t have today.'
@@ -1129,7 +1132,7 @@ r1 = rowset({
 
 main.add(
 	grid_dropdown({
-		value: 4,
+		val: 4,
 		lookup_rowset: r1,
 		lookup_col: 'id',
 		display_col: 'name',
@@ -1150,7 +1153,7 @@ r2 = rowset({
 
 main.add(
 	grid_dropdown({
-		value: 42,
+		val: 42,
 		lookup_rowset: r2,
 		lookup_col: 'id',
 		display_col: 'name',
@@ -1182,24 +1185,24 @@ function p(mode, ...args) {
 
 main.add(
 	p('default', 'variable-width, no-wrap with min-width aligned with other inputs'),
-	date_dropdown({value: time()}),
+	date_dropdown({val: time()}),
 	H.div(),
 	list_dropdown({items: items()}),
 
 	p('inline', 'variable-width, no-wrap, with no min-width (shrink-wrapped), baseline-aligned'),
-	date_dropdown({mode: 'inline', value: time()}),
+	date_dropdown({mode: 'inline', val: time()}),
 	H.div(),
 	list_dropdown({mode: 'inline', items: items()}),
 
 	p('wrap', 'fixed-width, auto-wrap'),
-	date_dropdown({mode: 'wrap', value: time()}),
+	date_dropdown({mode: 'wrap', val: time()}),
 	H.div(),
-	list_dropdown({mode: 'wrap', items: items(), value: 'Something Else Entirely'}),
+	list_dropdown({mode: 'wrap', items: items(), val: 'Something Else Entirely'}),
 
 	p('fixed', 'fixed-width, no-wrap, overflow hidden'),
-	date_dropdown({mode: 'fixed', value: time()}),
+	date_dropdown({mode: 'fixed', val: time()}),
 	H.div(),
-	list_dropdown({mode: 'fixed', items: items(), value: 'Something Else Entirely'})
+	list_dropdown({mode: 'fixed', items: items(), val: 'Something Else Entirely'})
 )
 
 </script>
@@ -1219,14 +1222,14 @@ main.add(H.div({style: 'line-height: 3'},
 		style: 'min-width: 4em',
 		label: 'imma input',
 		mode: 'inline',
-		value: 'inputs',
+		val: 'inputs',
 	}),
 	'are baseline-aligned',
 	spin_input({
 		label: 'imma spinner',
 		style: 'min-width: 6em',
 		mode: 'inline',
-		value: 42,
+		val: 42,
 	}),
 	', including dropdowns ',
 	date_dropdown({

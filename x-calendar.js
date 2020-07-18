@@ -10,7 +10,7 @@ component('x-calendar', function(e) {
 	e.classes = 'x-widget x-focusable x-calendar'
 
 	function format_month(i) {
-		return month_name(utctime(0, i), 'short')
+		return month_name(time(0, i), 'short')
 	}
 
 	e.sel_day = div({class: 'x-calendar-sel-day'})

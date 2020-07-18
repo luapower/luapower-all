@@ -3169,7 +3169,7 @@ component('x-pagelist', function(e) {
 			if (dragging) {
 				for (let item of e.items)
 					item.idiv._offset_x = item.idiv.offsetLeft
-				e.move_element_start(this.index, e.items.length)
+				e.move_element_start(this.index, 1, 0, e.items.length)
 				drag_mx = down_mx - this.offsetLeft
 				e.class('x-moving', true)
 				this.class('x-moving', true)

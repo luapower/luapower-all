@@ -2,13 +2,8 @@
 FINISH
 ------------------------------------------------------------------------------
 
-- REFACTORING: remove all attr properties (we're never going to do html templates).
 - REFACTORING: replace mouse events with pointer events & mouse capturing.
 - REFACTORING: use x-arrow classes for tooltip tips.
-
-- TREEGRID: sort by id not working.
-- TREEGRID: remove child rows on remove row.
-	- option to not add child rows to changeset.
 
 - LIST_DROPDOWN null element.
 - GRID_DROPDOWN null element.
@@ -18,8 +13,6 @@ FINISH
 - GRID context menu option to set null.
 
 - ROWSET quicksearch bugs.
-
-- SPLIT fixed pane wrong size when other pane is larger than 100% but shrunk to 100%.
 
 - GRID saving per-row, all, revert per-row, revert all.
 - GRID show row-level errors.
@@ -48,12 +41,10 @@ FEATURES
 
 - CALENDAR select range
 - SLIDER select range
-- ROWSET_WIDGET select range
 - LISTBOX select range
-- GRID select range
 
-- LISTBOX drag-move row (to same list and to other list)
-- GRID drag-move row (to same list and to other list)
+- LISTBOX drag-move row to other list
+- GRID drag-move row to other grid
 
 - POPUP auto side/align when not fitting container (test with dropdown & menu)
 - PAGELIST auto-menu with items that don't fit the bar

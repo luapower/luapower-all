@@ -7,7 +7,7 @@
 	--x-input-padding-x             : .5em;  /* x-padding for inputs and grid cells */
 
 	--x-input-il-padding            : 1em .5em;
-	--x-input-il-padding-value      : 1.6em .5em .4em .5em;
+	--x-input-il-padding-value      : 1.5em .5em .5em .5em;
 	--x-input-il-padding-top-label  : .2em;
 	--x-input-il-padding-top-label-animation-start : .6em;
 
@@ -20,10 +20,14 @@
 	--x-error-bg-color              : #a33;  /* bg color for invalid inputs and error bubbles */
 
 	--x-focus-shadow                : 0 0 0 1px #99f; /* to be used in place of focus outline */
-	--x-item-unfocused-bg-color     : #333;
-	--x-item-focused-bg-color       : #47a;
-	--x-item-focused-invalid-bg-color : #f33;
+	--x-item-unfocused-bg-color          : #999;
+	--x-item-focused-bg-color            : #ddd;
+	--x-item-unfocused-selected-bg-color : #333;
+	--x-item-focused-selected-bg-color   : #258;
+	--x-item-focused-invalid-bg-color    : #f33;
 	--x-row-focused-bg-color        : #f0f0f0;
+	--x-unselected-bg-color         : #888;
+	--x-selected-bg-color           : #69c;
 	--x-item-hover-bg-color         : #e0e0e0aa;
 	--x-item-bg-only-bg-color       : #eee;  /* slider background */
 	--x-item-bg-only-hover-bg-color : #ddd;  /* slider background */
@@ -66,29 +70,47 @@
 	color: var(--x-inverted-fg-color);
 }
 
-.x-item:not(.focused):not(:hover):not(.invalid).new {
+.x-item:not(.focused):not(.selected):not(:hover):not(.invalid).new {
 	background-color: var(--x-new-bg-color);
 }
 
-.x-item:not(.focused):not(:hover):not(.invalid).modified {
+.x-item:not(.focused):not(.selected):not(:hover):not(.invalid).modified {
 	background-color: var(--x-modified-bg-color);
 }
 
-.x-item:not(.invalid):not(.focused):hover {
+.x-item:not(.invalid):not(.focused):not(.selected):hover {
 	background-color: var(--x-item-hover-bg-color);
 }
 
-.x-item.row-focused:not(.invalid) {
+.x-focusable .x-item:not(.focused).selected:not(.invalid) {
+	background-color: var(--x-unselected-bg-color);
+	color: var(--x-inverted-fg-color);
+}
+
+.x-focusable:focus-within .x-item.selected:not(.invalid) {
+	background-color: var(--x-selected-bg-color);
+	color: var(--x-inverted-fg-color);
+}
+
+.x-item.row-focused:not(.selected):not(.invalid) {
 	background-color: var(--x-row-focused-bg-color);
 }
 
-.x-item.focused:not(.invalid) {
+.x-focusable .x-item.focused:not(.invalid) {
 	background-color: var(--x-item-unfocused-bg-color);
-	color: var(--x-inverted-fg-color);
 }
 
 .x-focusable:focus-within .x-item.focused:not(.invalid) {
 	background-color: var(--x-item-focused-bg-color);
+}
+
+.x-focusable .x-item.focused.selected:not(.invalid) {
+	background-color: var(--x-item-unfocused-selected-bg-color);
+	color: var(--x-inverted-fg-color);
+}
+
+.x-focusable:focus-within .x-item.focused.selected:not(.invalid) {
+	background-color: var(--x-item-focused-selected-bg-color);
 }
 
 .x-focusable:focus-within .x-item.focused.invalid {
@@ -776,12 +798,10 @@
 /* listbox ---------------------------------------------------------------- */
 
 .x-listbox {
-
 	/* layout */
 	display: inline-flex;        /* the only way for it to shrink-wrap */
 	flex-wrap: nowrap;
 	margin: .25em;
-
 	position: relative; /* for item moving */
 }
 
@@ -789,18 +809,16 @@
 .x-listbox[orientation=horizontal] { flex-direction: row; }
 
 .x-listbox-item {
-
 	/* sizing */
 	padding: var(--x-input-padding);
-
 	/* behavior */
 	cursor: default;
-
-	position: relative;  /* for item moving */
+	position: relative; /* for item moving */
 }
 
 .x-listbox-item.x-moving {
 	z-index: 1;
+	opacity: .7;
 }
 
 .x-listbox.x-moving > .x-listbox-item:not(.x-moving) {
@@ -1125,7 +1143,7 @@
 
 .x-pagelist-item.x-moving {
 	z-index: 1;
-	opacity: .9;
+	opacity: .7;
 }
 
 .x-pagelist.x-moving > .x-pagelist-header > .x-pagelist-item:not(.x-moving) {
@@ -1540,6 +1558,9 @@
 	padding: var(--x-input-padding);
 	border-right: 1px solid #ddd;
 	min-width: 20px;
+}
+
+.x-grid-header-cell {
 	height: 100%;
 }
 
@@ -1658,6 +1679,7 @@
 
 .x-grid-cells-ct {
 	overflow: hidden;          /* required: hide surplus bottom rows */
+	position: relative;        /* required: to activate `overflow: hidden` on abs. pos. child */
 }
 
 .x-grid-cells {
@@ -1705,13 +1727,7 @@
 	z-index: 1;
 }
 
-.x-grid.row-moving .x-grid-cell:not(.row-moving),
-.x-grid.row-moving .x-grid-editor:not(.row-moving) {
-	transition: top .1s, left .1s;
-}
-
-.x-moving-parent-row {
-	outline: 1px dashed #999;
+.x-moving-parent-cell {
 	background-color: var(--x-item-hover-bg-color);
 }
 
