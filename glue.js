@@ -292,8 +292,7 @@ function events_mixin(o) {
 
 // timestamps ----------------------------------------------------------------
 
-time = () => Date.now() / 1000
-utctime = () => Date.UTC() / 1000
+time = (...args) => new Date(...args) / 1000
 
 _d = new Date() // public temporary date object.
 
@@ -347,7 +346,7 @@ function week(t, offset) {
 }
 
 function days(dt) {
-	return dt / (3600 * 24 * 1000)
+	return dt / (3600 * 24)
 }
 
 function year_of      (t) { _d.setTime(t * 1000); return _d.getFullYear() }
