@@ -799,6 +799,15 @@ function glue.time(utc, y, m, d, h, M, s, isdst)
 	end
 end
 
+--get the time at the start of the week of a given time, plus/minus a number of weeks.
+function glue.sunday(utc, t, offset)
+	if type(utc) ~= 'boolean' then --shift arg#1
+		utc, t, offset = false, utc, t
+	end
+	local d = os.date(utc and '!*t' or '*t', t)
+	return glue.time(false, d.year, d.month, d.day - (d.wday - 1) + (offset or 0) * 7)
+end
+
 --get the time at the start of the day of a given time, plus/minus a number of days.
 function glue.day(utc, t, offset)
 	if type(utc) ~= 'boolean' then --shift arg#1

@@ -91,8 +91,8 @@ win     = Windows
 addr    = glue.addr
 ptr     = glue.ptr
 
-module    = glue.module
-autoload  = glue.autoload
+module   = glue.module
+autoload = glue.autoload
 
 inherit  = glue.inherit
 object   = glue.object
@@ -104,14 +104,15 @@ traceback = debug.traceback
 
 --OS API bindings
 
-date  = os.date
-clock = os.clock
+date   = os.date
+clock  = os.clock
 time.install() --replace os.date and os.time.
-sleep = time.sleep
-time  = glue.time --replace time module with the uber-time function.
-day   = glue.day
-month = glue.month
-year  = glue.year
+sleep  = time.sleep
+time   = glue.time --replace time module with the uber-time function.
+day    = glue.day
+sunday = glue.sunday
+month  = glue.month
+year   = glue.year
 
 canopen   = glue.canopen
 readfile  = glue.readfile
