@@ -19,6 +19,17 @@
 	font-weight: bold;
 }
 
+@font-face {
+	font-family: "x-widget-condensed";
+	src: url("/OpenSansCondensed-Light.ttf");
+}
+
+@font-face {
+	font-family: "x-widget-condensed";
+	src: url("/OpenSansCondensed-Bold.ttf");
+	font-weight: bold;
+}
+
 body {
 	padding: 1em;
 }
@@ -286,7 +297,7 @@ main.add(
 tooltip({
 	side    : 'bottom' // |[inner-]top|left|right|center
 	align   : 'center' // |start|end
-	type    : nothing  // |info|error
+	kind    : nothing  // |info|error
 	target  : widget
 	px      : 0        // x-offset from widget side
 	py      : 0        // y-offset from widget side
@@ -313,20 +324,20 @@ let s = 'aaa v aaa<br>aaa aaa v aaa aaa'
 
 function check(e) { return e.hovered }
 
-tooltip({text: H(s), side: 'right' , align: 'center', target: b1, type: 'info', check: check})
-tooltip({text: H(s), side: 'top'   , align: 'center', target: b1, type: 'info', check: check})
-tooltip({text: H(s), side: 'bottom', align: 'center', target: b1, type: 'info', check: check})
-tooltip({text: H(s), side: 'left'  , align: 'center', target: b1, type: 'info', check: check})
+tooltip({text: H(s), side: 'right' , align: 'center', target: b1, kind: 'info', check: check})
+tooltip({text: H(s), side: 'top'   , align: 'center', target: b1, kind: 'info', check: check})
+tooltip({text: H(s), side: 'bottom', align: 'center', target: b1, kind: 'info', check: check})
+tooltip({text: H(s), side: 'left'  , align: 'center', target: b1, kind: 'info', check: check})
 
 tooltip({text: H(s), side: 'right' , align: 'start', target: b2})
 tooltip({text: H(s), side: 'top'   , align: 'start', target: b2})
 tooltip({text: H(s), side: 'bottom', align: 'start', target: b2})
 tooltip({text: H(s), side: 'left'  , align: 'start', target: b2})
 
-tooltip({text: H(s), side: 'right' , align: 'end', target: b3, type: 'error'})
-tooltip({text: H(s), side: 'top'   , align: 'end', target: b3, type: 'error'})
-tooltip({text: H(s), side: 'bottom', align: 'end', target: b3, type: 'error'})
-tooltip({text: H(s), side: 'left'  , align: 'end', target: b3, type: 'error'})
+tooltip({text: H(s), side: 'right' , align: 'end', target: b3, kind: 'error'})
+tooltip({text: H(s), side: 'top'   , align: 'end', target: b3, kind: 'error'})
+tooltip({text: H(s), side: 'bottom', align: 'end', target: b3, kind: 'error'})
+tooltip({text: H(s), side: 'left'  , align: 'end', target: b3, kind: 'error'})
 
 </script>
 </template>

@@ -292,7 +292,7 @@ function events_mixin(o) {
 
 // timestamps ----------------------------------------------------------------
 
-time = (...args) => new Date(...args) / 1000
+time = (...args) => (new Date(...args)).valueOf() / 1000
 
 _d = new Date() // public temporary date object.
 

@@ -1653,7 +1653,7 @@ function val_widget(e) {
 		if (!e.error_tooltip) {
 			if (!e.invalid)
 				return // don't create it until needed.
-			e.error_tooltip = tooltip({type: 'error', target: e,
+			e.error_tooltip = tooltip({kind: 'error', target: e,
 				check: e.error_tooltip_check})
 		}
 		if (e.invalid)
@@ -3548,10 +3548,10 @@ component('x-toaster', function(e) {
 		return true
 	}
 
-	e.post = function(text, type, timeout) {
+	e.post = function(text, kind, timeout) {
 		let t = tooltip({
 			classes: 'x-toaster-message',
-			type: type,
+			kind: kind,
 			target: e.target,
 			text: text,
 			side: e.side,

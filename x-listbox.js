@@ -150,7 +150,7 @@ component('x-listbox', function(e) {
 		function item_pointermove(mx, my, ev, down_mx, down_my) {
 			if (!dragging) {
 				dragging = e.can_move_items
-					&& e.axis == 'x' ? abs(down_mx - mx) > 4 : abs(down_my - my) > 4
+					&& (e.axis == 'x' ? abs(down_mx - mx) > 4 : abs(down_my - my) > 4)
 				if (dragging) {
 					e.class('x-moving')
 					for (let ri = 0; ri < e.rows.length; ri++) {
@@ -322,5 +322,6 @@ component('x-select-button', function(e) {
 	e.orientation = 'horizontal'
 	e.can_move_items = false
 	e.auto_focus_first_cell = false
+	e.multiple_selection = false
 
 })

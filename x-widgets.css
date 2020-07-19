@@ -352,13 +352,13 @@
 .x-tooltip[side=top]    { margin-top    :  .25em; }
 .x-tooltip[side=bottom] { margin-top    : -.25em; }
 
-/* styling based on type attr */
+/* styling based on kind attr */
 
-.x-tooltip[type=info] > .x-tooltip-text { background-color: var(--x-info-bg-color); color: var(--x-inverted-fg-color); }
-.x-tooltip[type=info] > .x-tooltip-tip  { color: var(--x-info-bg-color); }
+.x-tooltip[kind=info] > .x-tooltip-text { background-color: var(--x-info-bg-color); color: var(--x-inverted-fg-color); }
+.x-tooltip[kind=info] > .x-tooltip-tip  { color: var(--x-info-bg-color); }
 
-.x-tooltip[type=error] > .x-tooltip-text { background-color: var(--x-error-bg-color); color: var(--x-inverted-fg-color); }
-.x-tooltip[type=error] > .x-tooltip-tip  { color: var(--x-error-bg-color); }
+.x-tooltip[kind=error] > .x-tooltip-text { background-color: var(--x-error-bg-color); color: var(--x-inverted-fg-color); }
+.x-tooltip[kind=error] > .x-tooltip-tip  { color: var(--x-error-bg-color); }
 
 /* checkbox & radiogroup = markbox ---------------------------------------- */
 
@@ -388,7 +388,7 @@
 }
 
 .x-markbox > .x-markbox-icon {
-	color: var(--x-item-focused-bg-color);
+	color: var(--x-item-focused-selected-bg-color);
 }
 
 .x-markbox.invalid > .x-markbox-icon {
@@ -1562,6 +1562,8 @@
 
 .x-grid-header-cell {
 	height: 100%;
+	font-family: x-widget-condensed, sans-serif;
+	font-weight: bold;
 }
 
 .x-grid-cell {

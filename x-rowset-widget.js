@@ -31,6 +31,7 @@ function rowset_widget(e) {
 	e.can_exit_edit_on_errors = true // allow exiting edit mode on validation errors
 	e.can_exit_row_on_errors = false // allow changing row on validation errors
 	e.exit_edit_on_lost_focus = true // exit edit mode when losing focus
+	e.multiple_selection = true
 
 	e.val_col = 0
 
@@ -566,8 +567,8 @@ function rowset_widget(e) {
 		let focus_editor = (ev && ev.focus_editor) || (e.editor && e.editor.hasfocus)
 		let enter_edit = (ev && ev.enter_edit) || (was_editing && e.stay_in_edit_mode)
 		let editable = (ev && ev.editable) || enter_edit
-		let expand_selection = ev && ev.expand_selection
-		let keep_selection = ev && ev.keep_selection
+		let expand_selection = ev && ev.expand_selection && e.multiple_selection
+		let keep_selection = ev && ev.keep_selection && e.multiple_selection
 
 		let opt = update({editable: editable}, ev)
 		;[ri, fi] = e.first_focusable_cell(ri, fi, rows, cols, opt)

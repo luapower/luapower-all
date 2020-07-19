@@ -99,17 +99,17 @@ component('x-calendar', function(e) {
 
 	e.sel_month.on('val_changed', function(v, ev) {
 		if (ev && ev.input) {
-			_d.setTime(e.input_val)
+			_d.setTime(e.input_val * 1000)
 			_d.setMonth(this.val)
-			e.set_val(_d.valueOf(), {input: e})
+			e.set_val(_d.valueOf() / 1000, {input: e})
 		}
 	})
 
 	e.sel_year.on('val_changed', function(v, ev) {
 		if (ev && ev.input) {
-			_d.setTime(e.input_val)
+			_d.setTime(e.input_val * 1000)
 			_d.setFullYear(this.val)
-			e.set_val(_d.valueOf(), {input: e})
+			e.set_val(_d.valueOf() / 1000, {input: e})
 		}
 	})
 
@@ -142,12 +142,12 @@ component('x-calendar', function(e) {
 			return false
 		}
 		if (m) {
-			_d.setTime(e.input_val)
+			_d.setTime(e.input_val * 1000)
 			if (shift)
 				_d.setFullYear(year_of(e.input_val) + m)
 			else
 				_d.setMonth(month_of(e.input_val) + m)
-			e.set_val(_d.valueOf(), {input: e})
+			e.set_val(_d.valueOf() / 1000, {input: e})
 			return false
 		}
 		if (key == 'Home') {
