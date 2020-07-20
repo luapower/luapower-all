@@ -130,6 +130,9 @@ component('x-listbox', function(e) {
 
 		e.fire('val_picked', {input: e}) // picker protocol.
 
+		if (!e.can_move_items)
+			return false
+
 		let dragging, drag_mx, drag_my
 
 		let ri1 = e.focused_row_index
@@ -287,7 +290,9 @@ hlistbox = function(...options) {
 component('x-list-dropdown', function(e) {
 
 	dropdown.construct(e)
+
 	let display_val = e.display_val
+
 	e.display_val = function() {
 		let lr = e.picker.rowset
 		let lf = e.picker.val_field
@@ -297,6 +302,7 @@ component('x-list-dropdown', function(e) {
 		else
 			return display_val()
 	}
+
 	init = e.init
 	e.init = function() {
 		e.picker = e.picker || listbox(update({
@@ -305,6 +311,7 @@ component('x-list-dropdown', function(e) {
 			val_col: e.lookup_col,
 			display_col: e.display_col,
 			auto_focus_first_cell: false,
+			can_move_items: false, // can't capture mouse.
 		}, e.listbox))
 		init()
 	}

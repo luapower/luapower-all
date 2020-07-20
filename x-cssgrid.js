@@ -503,7 +503,7 @@ component('x-cssgrid', function(e) {
 
 	function fio_pointerdown(ev, mx, my) {
 		if (e.focused_item.typename == 'cssgrid') {
-			e.focused_item.editmode = true
+			e.focused_item.editing = true
 			e.focused_item.focus()
 		}
 		return false

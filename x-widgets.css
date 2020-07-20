@@ -1590,6 +1590,10 @@
 	font-weight: bold;
 }
 
+.x-vgrid > .x-grid-header > .x-grid-header-cell {
+	height: auto;
+}
+
 .x-grid-cell {
 	//border-right-color: transparent;
 }
