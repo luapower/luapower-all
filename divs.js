@@ -101,7 +101,8 @@ function E(s) {
 
 // safe dom tree manipulation ------------------------------------------------
 
-// create a text node from a string, quoting it automatically.
+// create a text node from a string, quoting it automatically, with wrapping control.
+// can also take a constructor or an existing node as argument.
 function T(s, whitespace) {
 	if (typeof s == 'function')
 		s = s()
@@ -212,22 +213,7 @@ method(Element, 'overlay', function(target, attrs, content) {
 	return e
 })
 
-// quick flex layouts --------------------------------------------------------
-
-function hflex(...children) {
-	return div({style: `
-			display: flex;
-		`}, ...children)
-}
-
-function vflex(...children) {
-	return div({style: `
-			display: flex;
-			flex-flow: column;
-		`}, ...children)
-}
-
-// easy custom events & event wrappers ---------------------------------------
+// events & event wrappers ---------------------------------------------------
 
 {
 let callers = {}
@@ -244,25 +230,6 @@ callers.click = function(e, f) {
 		return f.call(this, e)
 	else if (e.which == 3)
 		return this.fire('rightclick', e)
-}
-
-callers.mousedown = function(e, f) {
-	if (e.which == 1)
-		return f.call(this, e)
-	else if (e.which == 3) {
-		return this.fire('rightmousedown', e)
-	}
-}
-
-callers.mouseup = function(e, f) {
-	if (e.which == 1)
-		return f.call(this, e)
-	else if (e.which == 3)
-		return this.fire('rightmouseup', e)
-}
-
-callers.mousemove = function(e, f) {
-	return f.call(this, e.clientX, e.clientY, e)
 }
 
 callers.pointerdown = function(e, f) {
@@ -408,7 +375,10 @@ property(Element, 'min_h', { set: function(v) { this.style['min-height'] = px(v)
 property(Element, 'max_w', { set: function(v) { this.style['max-width' ] = px(v) } })
 property(Element, 'max_h', { set: function(v) { this.style['max-height'] = px(v) } })
 
-alias(Element, 'client_rect', 'getBoundingClientRect')
+alias(Element, 'rect', 'getBoundingClientRect')
+
+alias(HTMLElement, 'ox', 'offsetLeft')
+alias(HTMLElement, 'oy', 'offsetTop')
 
 alias(DOMRect, 'x' , 'left')
 alias(DOMRect, 'y' , 'top')
@@ -423,10 +393,6 @@ method(DOMRect, 'contains', function(x, y) {
 	return (
 		(x >= this.left && x <= this.right) &&
 		(y >= this.top  && y <= this.bottom))
-})
-
-method(DOMRect, 'intersects', function(x, y, w, h) {
-	// TODO:
 })
 
 window.on('resize', function() { document.fire('layout_changed') })
@@ -489,8 +455,7 @@ method(HTMLInputElement, 'set_input_filter', function() {
 			e.stopImmediatePropagation()
 		}
 	}
-	let events = ['input', 'keydown', 'keyup', 'mousedown', 'mouseup',
-		'select', 'contextmenu', 'drop']
+	let events = ['input', 'keydown', 'keyup', 'select', 'contextmenu', 'drop']
 	for (e of events)
 		this.on('raw:'+e, filter)
 })
@@ -541,7 +506,402 @@ method(Element, 'make_visible', function() {
 	this.parent.scroll(...this.make_visible_scroll_offset())
 })
 
+// moving an element out of layout while preserving its position & size ------
+
+method(Element, 'pop_out', function(new_parent) {
+	new_parent = or(new_parent, document.body)
+
+	let cs = this.css()
+	let cr = this.rect()
+	let pr = new_parent.rect()
+	let ps = this.css()
+
+	assert(cs['box-sizing'] == 'border-box')
+	assert(ps['box-sizing'] == 'border-box')
+	assert(ps.position == 'relative' || ps.position == 'absolute')
+
+	this.style.display = 'absolute'
+	this.style['grid-area'] = '1 / 1'
+	this.x = cr.x - pr.x + ps['padding-left']
+	this.y = cr.y - pr.y + ps['padding-top' ]
+	this.w = cr.w
+	this.h = cr.h
+
+})
+
+// popup pattern -------------------------------------------------------------
+
+// NOTE: why is this so complicated? because the forever almost-there-but-
+// just-not-quite model of the web doesn't have the notion of a global z-index
+// (they'd have to keep two parallel trees, one for painting and one for
+// layouting and they just don't wanna I suppose) so we can't have relatively
+// positioned popups that are also painted last i.e. on top of everything,
+// so we have to choose between popups that are well-positioned but possibly
+// clipped or obscured by other elements, or popups that stay on top but
+// have to be manually positioned and kept in sync with the position of their
+// target. We chose the latter and try to auto-update the popup position the
+// best we can, but there will be cases where you'll have to call popup()
+// to update the popup's position manually. We simply don't have an observer
+// for tracking changes to an element's position relative to another element
+// (or to document.body, which would be enough for our case here).
+
+// `popup_target_changed` event allows changing/animating popup's visibility
+// based on target's hover state or focused state.
+
+{
+
+let popup_timer = function() {
+
+	let tm = {}
+	let timer_id
+	let handlers = new Set()
+	let frequency = .25
+
+	function tick() {
+		for (f of handlers)
+			f()
+	}
+
+	tm.add = function(f) {
+		handlers.add(f)
+		timer_id = timer_id || setInterval(tick, frequency * 1000)
+	}
+
+	tm.remove = function(f) {
+		handlers.delete(f)
+		if (!handlers.size) {
+			clearInterval(timer_id)
+			timer_id = null
+		}
+	}
+
+	return tm
+}
+
+popup_timer = popup_timer()
+
+let popup_state = function(e) {
+
+	let s = {}
+
+	let target, side, align, px, py
+
+	s.update = function(target1, side1, align1, px1, py1) {
+		side    = or(side1  , side)
+		align   = or(align1 , align)
+		px      = or(px1, px) || 0
+		py      = or(py1, py) || 0
+		target1 = or(target1, target)
+		if (target1 != target) {
+			if (target)
+				free()
+			target = target1 && E(target1)
+			if (target)
+				init()
+			e.popup_target = target
+		}
+		update()
+	}
+
+	function init() {
+		if (target != document.body) { // prevent infinite recursion.
+			if (target.typename) { // component
+				target.on('attach', target_attached)
+				target.on('detach', target_detached)
+			}
+		}
+		if (target.isConnected)
+			target_attached()
+	}
+
+	function free() {
+		if (target) {
+			target_detached()
+			if (target.typename) { // component
+				target.off('attach', target_attached)
+				target.off('detach', target_detached)
+			}
+			target = null
+		}
+	}
+
+	function window_scroll(ev) {
+		if (target && ev.target.contains(target))
+			raf(update)
+	}
+
+	function bind_target(on) {
+
+		// this detects explicit target element size changes which is not much.
+		target.on('attr_changed', update, on)
+
+		// allow popup_update() to change popup visibility on target hover.
+		target.on('pointerenter', update, on)
+		target.on('pointerleave', update, on)
+
+		// allow popup_update() to change popup visibility on target focus.
+		target.on('focusin' , update, on)
+		target.on('focusout', update, on)
+
+		// scrolling on any of the target's parents updates the popup position.
+		window.on('scroll', window_scroll, on, true)
+
+		// layout changes update the popup position.
+		document.on('layout_changed', update, on)
+
+	}
+
+	function target_attached() {
+		e.style.position = 'absolute'
+		document.body.add(e)
+		update()
+		if (e.popup_target_attached)
+			e.popup_target_attached(target)
+		e.fire('popup_target_attached')
+		bind_target(true)
+		popup_timer.add(update)
+	}
+
+	function target_detached() {
+		e.remove()
+		popup_timer.remove(update)
+		bind_target(false)
+		if (e.popup_target_detached)
+			e.popup_target_detached(target)
+		e.fire('popup_target_detached')
+	}
+
+	function target_changed() {
+		if (e.popup_target_changed)
+			e.popup_target_changed(target)
+		e.fire('popup_target_changed', target)
+	}
+
+	function update() {
+		if (!target || !target.isConnected)
+			return
+
+		let tr = target.rect()
+		let er = e.rect()
+
+		let x0, y0
+		if (side == 'right')
+			[x0, y0] = [tr.right + px, tr.top + py]
+		else if (side == 'left')
+			[x0, y0] = [tr.left - er.width - px, tr.top + py]
+		else if (side == 'top')
+			[x0, y0] = [tr.left + px, tr.top - er.height - py]
+		else if (side == 'inner-right')
+			[x0, y0] = [tr.right - er.width - px, tr.top + py]
+		else if (side == 'inner-left')
+			[x0, y0] = [tr.left + px, tr.top + py]
+		else if (side == 'inner-top')
+			[x0, y0] = [tr.left + px, tr.top + py]
+		else if (side == 'inner-bottom')
+			[x0, y0] = [tr.left + py, tr.bottom - er.height - py]
+		else if (side == 'inner-center')
+			[x0, y0] = [tr.left + (tr.width - er.width) / 2, tr.top + (tr.height - er.height) / 2]
+		else {
+			side = 'bottom'; // default
+			[x0, y0] = [tr.left + px, tr.bottom + py]
+		}
+
+		if (align == 'center' && (side == 'top' || side == 'bottom'))
+			x0 = x0 - er.width / 2 + tr.width / 2
+		else if (align == 'center' && (side == 'inner-top' || side == 'inner-bottom'))
+			x0 = x0 - er.width / 2 + tr.width / 2
+		else if (align == 'center' && (side == 'left' || side == 'right'))
+			y0 = y0 - er.height / 2 + tr.height / 2
+		else if (align == 'end' && (side == 'top' || side == 'bottom'))
+			x0 = x0 - er.width + tr.width
+		else if (align == 'end' && (side == 'left' || side == 'right'))
+			y0 = y0 - er.height + tr.height
+
+		e.x = window.scrollX + x0
+		e.y = window.scrollY + y0
+
+		target_changed()
+	}
+
+	return s
+}
+
+method(HTMLElement, 'popup', function(target, side, align, px, py) {
+	this.__popup_state = this.__popup_state || popup_state(this)
+	this.__popup_state.update(target, side, align, px, py)
+})
+
+}
+
+// modal window pattern ------------------------------------------------------
+
+method(Element, 'modal', function(on) {
+	let e = this
+	if (on == false) {
+		if (e.__dialog) {
+			e.__dialog.remove()
+			e.__dialog = null
+		}
+	} else if (!e.__dialog) {
+		let dialog = tag('dialog', {
+			style: `
+				position: fixed;
+				left: 0;
+				top: 0;
+				width: 100%;
+				height: 100%;
+				overflow: auto;
+				border: 0;
+				background-color: rgba(0,0,0,0.4);
+				display: flex;
+				align-items: center;
+				justify-content: center;
+			`,
+		}, e)
+		dialog.on('pointerdown', () => false)
+		e.__dialog = dialog
+		document.body.add(dialog)
+		dialog.showModal()
+		e.focus()
+	}
+})
+
+// live-move list element pattern --------------------------------------------
+
+// implements:
+//   move_element_start(move_i, move_n, i1, i2[, x1, x2])
+//   move_element_update(elem_x, [i1, i2, x1, x2])
+// uses:
+//   movable_element_size(elem_i) -> w
+//   set_movable_element_pos(i, x, moving)
+//
+function live_move_mixin(e) {
+
+	e = e || {}
+
+	let move_i1, move_i2, i1, i2, i1x, i2x
+	let move_x, over_i, over_p, over_x
+	let advance
+
+	e.move_element_start = function(move_i, move_n, _i1, _i2, _i1x, _i2x) {
+		move_n = or(move_n, 1)
+		move_i1 = move_i
+		move_i2 = move_i + move_n
+		move_x = null
+		over_i = null
+		over_x = null
+		i1  = _i1
+		i2  = _i2
+		i1x = _i1x
+		i2x = _i2x
+		advance = advance || e.movable_element_advance || (() => 1)
+		if (i1x == null) {
+			assert(i1 == 0)
+			i1x = 0
+			i2x = i1x
+			for (let i = i1, n; i < i2; i += n) {
+				n = advance(i)
+				if (i < move_i1 || i >= move_i2)
+					i2x += e.movable_element_size(i, n)
+			}
+		}
+	}
+
+	e.move_element_stop = function() {
+		set_moving_element_pos(over_x)
+		return over_i
+	}
+
+	function hit_test(elem_x) {
+		let x = i1x
+		let x0 = i1x
+		let last_over_i = over_i
+		let new_over_i, new_over_p
+		for (let i = i1, n; i < i2; i += n) {
+			n = advance(i)
+			if (i < move_i1 || i >= move_i2) {
+				let w = e.movable_element_size(i, n)
+				let x1 = x + w / 2
+				if (elem_x < x1) {
+					new_over_i = i
+					new_over_p = lerp(elem_x, x0, x1, 0, 1)
+					if (i > i1 || advance(i1 - 1) == 1) {
+						over_i = new_over_i
+						over_p = new_over_p
+						return new_over_i != last_over_i
+					}
+				}
+				x += w
+				x0 = x1
+			}
+		}
+		new_over_i = i2
+		x1 = i2x
+		new_over_p = lerp(elem_x, x0, x1, 0, 1)
+		if (advance(i2 - 1) == 1) {
+			over_i = new_over_i
+			over_p = new_over_p
+			return new_over_i != last_over_i
+		}
+	}
+
+ 	// `[i1..i2)` index generator with `[move_i1..move_i2)` elements moved.
+	function each_index(f) {
+		if (over_i < move_i1) { // moving upwards
+			for (let i = i1     ; i < over_i ; i++) f(i)
+			for (let i = move_i1; i < move_i2; i++) f(i, true)
+			for (let i = over_i ; i < move_i1; i++) f(i)
+			for (let i = move_i2; i < i2     ; i++) f(i)
+		} else {
+			for (let i = i1     ; i < move_i1; i++) f(i)
+			for (let i = move_i2; i < over_i ; i++) f(i)
+			for (let i = move_i1; i < move_i2; i++) f(i, true)
+			for (let i = over_i ; i <  i2    ; i++) f(i)
+		}
+	}
+
+	let move_ri1, move_ri2, move_vi1
+
+	function set_moving_element_pos(x, moving) {
+		if (move_ri1 != null)
+			for (let i = move_ri1; i < move_ri2; i++) {
+				e.set_movable_element_pos(i, x, moving)
+				x += e.movable_element_size(i, 1)
+			}
+	}
+
+	e.move_element_update = function(elem_x) {
+		elem_x = clamp(elem_x, i1x, i2x)
+		if (elem_x != move_x) {
+			move_x = elem_x
+			e.move_x = move_x
+			if (hit_test(move_x)) {
+				e.over_i = over_i
+				e.over_p = over_p
+				let x = i1x
+				move_ri1 = null
+				move_ri2 = null
+				over_x = null
+				each_index(function(i, moving) {
+					if (moving) {
+						over_x = or(over_x, x)
+						move_ri1 = or(move_ri1, i)
+						move_ri2 = i+1
+					} else
+						e.set_movable_element_pos(i, x)
+					x += e.movable_element_size(i, 1)
+				})
+			}
+			set_moving_element_pos(move_x, true)
+		}
+	}
+
+	return e
+}
+
+// ---------------------------------------------------------------------------
 // creating & setting up web components --------------------------------------
+// ---------------------------------------------------------------------------
 
 // NOTE: the only reason for using this web components "technology" instead
 // of creating normal elements is because of connectedCallback and
@@ -742,6 +1102,10 @@ method(HTMLElement, 'prop', function(prop, opt) {
 	attr(this, 'props')[prop] = opt
 })
 
+// web component properties --------------------------------------------------
+
+// TODO: remove this (turn all into props)!
+
 method(HTMLElement, 'property', function(prop, getter, setter) {
 	property(this, prop, {get: getter, set: setter})
 })
@@ -811,514 +1175,3 @@ method(HTMLElement, 'num_attr_property', function(name, setter) {
 	this.attr_property(name, setter, 'number')
 })
 
-// moving an element out of layout while preserving its position & size ------
-
-method(Element, 'pop_out', function(new_parent) {
-	new_parent = or(new_parent, document.body)
-
-	let cs = this.css()
-	let cr = this.client_rect()
-	let pr = new_parent.client_rect()
-	let ps = this.css()
-
-	assert(cs['box-sizing'] == 'border-box')
-	assert(ps['box-sizing'] == 'border-box')
-	assert(ps.position == 'relative' || ps.position == 'absolute')
-
-	this.style.display = 'absolute'
-	this.style['grid-area'] = '1 / 1'
-	this.x = cr.x - pr.x + ps['padding-left']
-	this.y = cr.y - pr.y + ps['padding-top' ]
-	this.w = cr.w
-	this.h = cr.h
-
-})
-
-
-// popup pattern -------------------------------------------------------------
-
-// NOTE: why is this so complicated? because the forever almost-there-but-
-// just-not-quite model of the web doesn't have the notion of a global z-index
-// (they'd have to keep two parallel trees, one for painting and one for
-// layouting and they just don't wanna I suppose) so we can't have relatively
-// positioned popups that are also painted last i.e. on top of everything,
-// so we have to choose between popups that are well-positioned but possibly
-// clipped or obscured by other elements, or popups that stay on top but
-// have to be manually positioned and kept in sync with the position of their
-// target. We chose the latter and try to auto-update the popup position the
-// best we can, but there will be cases where you'll have to call popup()
-// to update the popup's position manually. We simply don't have an observer
-// for tracking changes to an element's position relative to another element
-// (or to document.body, which would be enough for our case here).
-
-// `popup_target_changed` event allows changing/animating popup's visibility
-// based on target's hover state or focused state.
-
-{
-
-let popup_timer = function() {
-
-	let tm = {}
-	let timer_id
-	let handlers = new Set()
-	let frequency = .25
-
-	function tick() {
-		for (f of handlers)
-			f()
-	}
-
-	tm.add = function(f) {
-		handlers.add(f)
-		timer_id = timer_id || setInterval(tick, frequency * 1000)
-	}
-
-	tm.remove = function(f) {
-		handlers.delete(f)
-		if (!handlers.size) {
-			clearInterval(timer_id)
-			timer_id = null
-		}
-	}
-
-	return tm
-}
-
-popup_timer = popup_timer()
-
-let popup_state = function(e) {
-
-	let s = {}
-
-	let target, side, align, px, py
-
-	s.update = function(target1, side1, align1, px1, py1) {
-		side    = or(side1  , side)
-		align   = or(align1 , align)
-		px      = or(px1, px) || 0
-		py      = or(py1, py) || 0
-		target1 = or(target1, target)
-		if (target1 != target) {
-			if (target)
-				free()
-			target = target1 && E(target1)
-			if (target)
-				init()
-			e.popup_target = target
-		}
-		update()
-	}
-
-	function init() {
-		if (target != document.body) { // prevent infinite recursion.
-			if (target.typename) { // component
-				target.on('attach', target_attached)
-				target.on('detach', target_detached)
-			}
-		}
-		if (target.isConnected)
-			target_attached()
-	}
-
-	function free() {
-		if (target) {
-			target_detached()
-			if (target.typename) { // component
-				target.off('attach', target_attached)
-				target.off('detach', target_detached)
-			}
-			target = null
-		}
-	}
-
-	function window_scroll(ev) {
-		if (target && ev.target.contains(target))
-			raf(update)
-	}
-
-	function bind_target(on) {
-
-		// this detects explicit target element size changes which is not much.
-		target.on('attr_changed', update, on)
-
-		// allow popup_update() to change popup visibility on target hover.
-		target.on('mouseenter', update, on)
-		target.on('mouseleave', update, on)
-
-		// allow popup_update() to change popup visibility on target focus.
-		target.on('focusin' , update, on)
-		target.on('focusout', update, on)
-
-		// scrolling on any of the target's parents updates the popup position.
-		window.on('scroll', window_scroll, on, true)
-
-		// layout changes update the popup position.
-		document.on('layout_changed', update, on)
-
-	}
-
-	function target_attached() {
-		e.style.position = 'absolute'
-		document.body.add(e)
-		update()
-		if (e.popup_target_attached)
-			e.popup_target_attached(target)
-		e.fire('popup_target_attached')
-		bind_target(true)
-		popup_timer.add(update)
-	}
-
-	function target_detached() {
-		e.remove()
-		popup_timer.remove(update)
-		bind_target(false)
-		if (e.popup_target_detached)
-			e.popup_target_detached(target)
-		e.fire('popup_target_detached')
-	}
-
-	function target_changed() {
-		if (e.popup_target_changed)
-			e.popup_target_changed(target)
-		e.fire('popup_target_changed', target)
-	}
-
-	function update() {
-		if (!target || !target.isConnected)
-			return
-
-		let tr = target.client_rect()
-		let er = e.client_rect()
-
-		let x0, y0
-		if (side == 'right')
-			[x0, y0] = [tr.right + px, tr.top + py]
-		else if (side == 'left')
-			[x0, y0] = [tr.left - er.width - px, tr.top + py]
-		else if (side == 'top')
-			[x0, y0] = [tr.left + px, tr.top - er.height - py]
-		else if (side == 'inner-right')
-			[x0, y0] = [tr.right - er.width - px, tr.top + py]
-		else if (side == 'inner-left')
-			[x0, y0] = [tr.left + px, tr.top + py]
-		else if (side == 'inner-top')
-			[x0, y0] = [tr.left + px, tr.top + py]
-		else if (side == 'inner-bottom')
-			[x0, y0] = [tr.left + py, tr.bottom - er.height - py]
-		else if (side == 'inner-center')
-			[x0, y0] = [tr.left + (tr.width - er.width) / 2, tr.top + (tr.height - er.height) / 2]
-		else {
-			side = 'bottom'; // default
-			[x0, y0] = [tr.left + px, tr.bottom + py]
-		}
-
-		if (align == 'center' && (side == 'top' || side == 'bottom'))
-			x0 = x0 - er.width / 2 + tr.width / 2
-		else if (align == 'center' && (side == 'inner-top' || side == 'inner-bottom'))
-			x0 = x0 - er.width / 2 + tr.width / 2
-		else if (align == 'center' && (side == 'left' || side == 'right'))
-			y0 = y0 - er.height / 2 + tr.height / 2
-		else if (align == 'end' && (side == 'top' || side == 'bottom'))
-			x0 = x0 - er.width + tr.width
-		else if (align == 'end' && (side == 'left' || side == 'right'))
-			y0 = y0 - er.height + tr.height
-
-		e.x = window.scrollX + x0
-		e.y = window.scrollY + y0
-
-		target_changed()
-	}
-
-	return s
-}
-
-method(HTMLElement, 'popup', function(target, side, align, px, py) {
-	this.__popup_state = this.__popup_state || popup_state(this)
-	this.__popup_state.update(target, side, align, px, py)
-})
-
-}
-
-// modal window pattern ------------------------------------------------------
-
-method(Element, 'modal', function(on) {
-	let e = this
-	if (on == false) {
-		if (e.__dialog) {
-			e.__dialog.remove()
-			e.__dialog = null
-		}
-	} else if (!e.__dialog) {
-		let dialog = tag('dialog', {
-			style: `
-				position: fixed;
-				left: 0;
-				top: 0;
-				width: 100%;
-				height: 100%;
-				overflow: auto;
-				border: 0;
-				background-color: rgba(0,0,0,0.4);
-				display: flex;
-				align-items: center;
-				justify-content: center;
-			`,
-		}, e)
-		dialog.on('mousedown', () => false)
-		e.__dialog = dialog
-		document.body.add(dialog)
-		dialog.showModal()
-		e.focus()
-	}
-})
-
-// live-move list element pattern --------------------------------------------
-
-// implements:
-//   move_element_start(move_i, move_n, i1, i2[, x1, x2])
-//   move_element_update(elem_x, [i1, i2, x1, x2])
-// uses:
-//   movable_element_size(elem_i) -> w
-//   set_movable_element_pos(i, x, moving)
-//
-function live_move_mixin(e) {
-
-	e = e || {}
-
-	let move_i1, move_i2, i1, i2, i1x, i2x
-	let move_x, over_i, over_p, over_x
-	let advance
-
-	e.move_element_start = function(move_i, move_n, _i1, _i2, _i1x, _i2x) {
-		move_n = or(move_n, 1)
-		move_i1 = move_i
-		move_i2 = move_i + move_n
-		move_x = null
-		over_i = null
-		over_x = null
-		i1  = _i1
-		i2  = _i2
-		i1x = _i1x
-		i2x = _i2x
-		advance = advance || e.movable_element_advance || (() => 1)
-		if (i1x == null) {
-			assert(i1 == 0)
-			i1x = 0
-			i2x = i1x
-			for (let i = i1, n; i < i2; i += n) {
-				n = advance(i)
-				if (i < move_i1 || i >= move_i2)
-					i2x += e.movable_element_size(i, n)
-			}
-		}
-	}
-
-	e.move_element_stop = function() {
-		set_moving_element_pos(over_x)
-		return over_i
-	}
-
-	function hit_test(elem_x) {
-		let x = i1x
-		let x0 = i1x
-		let last_over_i = over_i
-		let new_over_i, new_over_p
-		for (let i = i1, n; i < i2; i += n) {
-			n = advance(i)
-			if (i < move_i1 || i >= move_i2) {
-				let w = e.movable_element_size(i, n)
-				let x1 = x + w / 2
-				if (elem_x < x1) {
-					new_over_i = i
-					new_over_p = lerp(elem_x, x0, x1, 0, 1)
-					if (i > i1 || advance(i1 - 1) == 1) {
-						over_i = new_over_i
-						over_p = new_over_p
-						return new_over_i != last_over_i
-					}
-				}
-				x += w
-				x0 = x1
-			}
-		}
-		new_over_i = i2
-		x1 = i2x
-		new_over_p = lerp(elem_x, x0, x1, 0, 1)
-		if (advance(i2 - 1) == 1) {
-			over_i = new_over_i
-			over_p = new_over_p
-			return new_over_i != last_over_i
-		}
-	}
-
- 	// `[i1..i2)` index generator with `[move_i1..move_i2)` elements moved.
-	function each_index(f) {
-		if (over_i < move_i1) { // moving upwards
-			for (let i = i1     ; i < over_i ; i++) f(i)
-			for (let i = move_i1; i < move_i2; i++) f(i, true)
-			for (let i = over_i ; i < move_i1; i++) f(i)
-			for (let i = move_i2; i < i2     ; i++) f(i)
-		} else {
-			for (let i = i1     ; i < move_i1; i++) f(i)
-			for (let i = move_i2; i < over_i ; i++) f(i)
-			for (let i = move_i1; i < move_i2; i++) f(i, true)
-			for (let i = over_i ; i <  i2    ; i++) f(i)
-		}
-	}
-
-	let move_ri1, move_ri2, move_vi1
-
-	function set_moving_element_pos(x, moving) {
-		if (move_ri1 != null)
-			for (let i = move_ri1; i < move_ri2; i++) {
-				e.set_movable_element_pos(i, x, moving)
-				x += e.movable_element_size(i, 1)
-			}
-	}
-
-	e.move_element_update = function(elem_x) {
-		elem_x = clamp(elem_x, i1x, i2x)
-		if (elem_x != move_x) {
-			move_x = elem_x
-			e.move_x = move_x
-			if (hit_test(move_x)) {
-				e.over_i = over_i
-				e.over_p = over_p
-				let x = i1x
-				move_ri1 = null
-				move_ri2 = null
-				over_x = null
-				each_index(function(i, moving) {
-					if (moving) {
-						over_x = or(over_x, x)
-						move_ri1 = or(move_ri1, i)
-						move_ri2 = i+1
-					} else
-						e.set_movable_element_pos(i, x)
-					x += e.movable_element_size(i, 1)
-				})
-			}
-			set_moving_element_pos(move_x, true)
-		}
-	}
-
-	return e
-}
-
-// hit-testing ---------------------------------------------------------------
-
-{
-
-// check if a point (x0, y0) is inside rect (x, y, w, h)
-// offseted by d1 internally and d2 externally.
-let hit = function(x0, y0, d1, d2, x, y, w, h) {
-	x = x - d1
-	y = y - d1
-	w = w + d1 + d2
-	h = h + d1 + d2
-	return x0 >= x && x0 <= x + w && y0 >= y && y0 <= y + h
-}
-
-function hit_test_rect_sides(x0, y0, d1, d2, x, y, w, h) {
-	if (hit(x0, y0, d1, d2, x, y, 0, 0))
-		return 'top_left'
-	else if (hit(x0, y0, d1, d2, x + w, y, 0, 0))
-		return 'top_right'
-	else if (hit(x0, y0, d1, d2, x, y + h, 0, 0))
-		return 'bottom_left'
-	else if (hit(x0, y0, d1, d2, x + w, y + h, 0, 0))
-		return 'bottom_right'
-	else if (hit(x0, y0, d1, d2, x, y, w, 0))
-		return 'top'
-	else if (hit(x0, y0, d1, d2, x, y + h, w, 0))
-		return 'bottom'
-	else if (hit(x0, y0, d1, d2, x, y, 0, h))
-		return 'left'
-	else if (hit(x0, y0, d1, d2, x + w, y, 0, h))
-		return 'right'
-}
-
-method(Element, 'hit_test_sides', function(mx, my, d1, d2) {
-	let r = this.client_rect()
-	return hit_test_rect_sides(mx, my, d1, d2, r.left, r.top, r.width, r.height)
-})
-
-}
-
-// drag-element-by-sides-and-corners pattern ---------------------------------
-
-/*
-let make_resizeable = function(e) { e.make_resizeable() }
-installers.resize_start = make_resizeable
-installers.resizing     = make_resizeable
-installers.resize_end   = make_resizeable
-
-function resize_state(e) {
-	let rs = {}
-
-	function pointermove() {
-
-	}
-
-	function bind(on) {
-		e.on('pointermove', pointermove, on)
-	}
-
-	rs.unbind = function() {
-		bind(false)
-	}
-
-	return rs
-}
-
-method(Element, 'make_resizeable', function(on) {
-	on = on !== false
-	let e = this
-	if (on && e.__resize_state) {
-		e.__resize_state.unbind()
-		e.__resize_state = null
-	} else if (!on && !e.__resize_state)
-		e.__resize_state = resize_state(e)
-})
-
-*/
-
-// using font-awesome icons as cursors ---------------------------------------
-
-/*
-{
-
-let cursors = new Map()
-
-let fa_chars = {
-	trash: '\uf1f8',
-}
-
-property(Element, 'fa_cursor', {
-	set: function(name) {
-		if (!name) {
-			this.style.cursor = null
-			return
-		}
-		let url = cursors.get(name)
-		if (!url) {
-			let canvas = tag('canvas')
-			canvas.w = 24
-			canvas.h = 24
-			//document.body.appendChild(canvas);
-			let ctx = canvas.getContext('2d')
-			ctx.fillStyle = '#000000'
-			ctx.font = '24px Font Awesome 5 Free'
-			ctx.textAlign = 'center'
-			ctx.textBaseline = 'middle'
-			ctx.fillText(fa_chars[name], 12, 12)
-			url = canvas.toDataURL('image/png')
-			cursors.set(name, url)
-		}
-		print(url)
-		this.style.cursor = 'url('+url+'), auto'
-	},
-})
-
-}
-*/

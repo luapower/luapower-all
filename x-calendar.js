@@ -78,7 +78,7 @@ component('x-calendar', function(e) {
 					s = s + (d == day(e.input_val) ? ' focused selected' : '')
 					let td = H.td({class: 'x-calendar-day x-item'+s}, floor(1 + days(d - m)))
 					td.day = d
-					td.on('mousedown', day_mousedown)
+					td.on('pointerdown', day_pointerdown)
 					tr.add(td)
 					d = day(d, 1)
 				}
@@ -89,7 +89,7 @@ component('x-calendar', function(e) {
 
 	// controller
 
-	function day_mousedown() {
+	function day_pointerdown() {
 		e.set_val(this.day, {input: e})
 		e.sel_month.cancel()
 		e.focus()

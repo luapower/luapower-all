@@ -680,10 +680,10 @@ rowset = function(...options) {
 				return
 
 		if (field.min != null && val < field.min)
-			return S('error_min_value', 'Value must be at least {0}').format(field.min)
+			return S('error_min_value', 'Value must be at least {0}').subst(field.min)
 
 		if (field.max != null && val > field.max)
-			return S('error_max_value', 'Value must be at most {0}').format(field.max)
+			return S('error_max_value', 'Value must be at most {0}').subst(field.max)
 
 		let lr = field.lookup_rowset
 		if (lr) {
@@ -1138,7 +1138,7 @@ rowset = function(...options) {
 	function load_fail(type, status, message, body) {
 		let err
 		if (type == 'http')
-			err = S('error_http', 'Server returned {0} {1}').format(status, message)
+			err = S('error_http', 'Server returned {0} {1}').subst(status, message)
 		else if (type == 'network')
 			err = S('error_load_network', 'Loading failed: network error.')
 		else if (type == 'timeout')
@@ -1290,7 +1290,7 @@ rowset = function(...options) {
 	function save_fail(type, status, message, body) {
 		let err
 		if (type == 'http')
-			err = S('error_http', 'Server returned {0} {1}').format(status, message)
+			err = S('error_http', 'Server returned {0} {1}').subst(status, message)
 		else if (type == 'network')
 			err = S('error_save_network', 'Saving failed: network error.')
 		else if (type == 'timeout')
@@ -1391,7 +1391,7 @@ function global_rowset(name, ...options) {
 			if (val % field.multiple_of != 0) {
 				if (field.multiple_of == 1)
 					return S('error_integer', 'Value must be an integer')
-				return S('error_multiple', 'Value must be multiple of {0}').format(field.multiple_of)
+				return S('error_multiple', 'Value must be multiple of {0}').subst(field.multiple_of)
 			}
 	}
 
@@ -1795,9 +1795,7 @@ component('x-button', function(e) {
 	}
 	e.prop('icon', {store: 'var'})
 
-	e.get_primary = function()  { return e.hasclass('primary') }
-	e.set_primary = function(v) { e.class('primary', v) }
-	e.prop('primary', {type: 'bool'})
+	e.prop('primary', {attr: 'primary', type: 'bool', default: false})
 
 	e.on('keydown', function keydown(key) {
 		if (key == ' ' || key == 'Enter') {
@@ -1837,8 +1835,7 @@ component('x-checkbox', function(e) {
 	tabindex_widget(e)
 
 	e.classes = 'x-widget x-markbox x-checkbox'
-	e.attrval('align', 'left')
-	e.attr_property('align')
+	e.prop('align', {attr: 'align', type: 'enum', enum_values: ['left', 'right'], default: 'left'})
 
 	e.checked_val = true
 	e.unchecked_val = false
@@ -1865,24 +1862,22 @@ component('x-checkbox', function(e) {
 		e.bind_nav(false)
 	}
 
-	e.late_property('checked',
-		function() {
-			return e.val == e.checked_val
-		},
-		function(v) {
-			e.set_val(v ? e.checked_val : e.unchecked_val, {input: e})
-		}
-	)
+	let get_checked = function() {
+		return e.val === e.checked_val
+	}
+	let set_checked = function(v) {
+		e.set_val(v ? e.checked_val : e.unchecked_val, {input: e})
+	}
+	e.property('checked', get_checked, set_checked)
 
 	// view
 
-	e.late_property('text',
-		function()  { return e.text_div.html },
-		function(s) { e.text_div.set(s) }
-	)
+	e.get_text = function()  { return e.text_div.html }
+	e.set_text = function(s) { e.text_div.set(s) }
+	e.prop('text')
 
-	e.update_val = function(v) {
-		v = v === e.checked_val
+	e.update_val = function() {
+		let v = e.checked
 		e.class('checked', v)
 		e.icon_div.class('fa', v)
 		e.icon_div.class('fa-check-square', v)
@@ -1896,7 +1891,7 @@ component('x-checkbox', function(e) {
 		e.checked = !e.checked
 	}
 
-	e.on('mousedown', function(ev) {
+	e.on('pointerdown', function(ev) {
 		ev.preventDefault() // prevent accidental selection by double-clicking.
 		e.focus()
 	})
@@ -1913,19 +1908,6 @@ component('x-checkbox', function(e) {
 		}
 	})
 
-	e.inspect_fields = [
-
-		//{name: 'nav', type: 'nav'},
-		//{name: 'col', type: 'rowset_field', rowset_col: 'rowset'},
-
-		{name: 'text'},
-		{name: 'icon'},
-		{name: 'align', type: 'enum', enum_values: ['left', 'right']},
-
-		{name: 'grid_area'},
-		{name: 'tabIndex', type: 'number'},
-	]
-
 })
 
 // ---------------------------------------------------------------------------
@@ -1935,8 +1917,7 @@ component('x-checkbox', function(e) {
 component('x-radiogroup', function(e) {
 
 	e.classes = 'x-widget x-radiogroup'
-	e.attrval('align', 'left')
-	e.attr_property('align')
+	e.prop('align', {attr: 'align', type: 'enum', enum_values: ['left', 'right'], default: 'left'})
 
 	val_widget(e)
 
@@ -2011,14 +1992,6 @@ component('x-radiogroup', function(e) {
 		}
 	}
 
-	e.inspect_fields = [
-
-		{name: 'align', type: 'enum', enum_values: ['left', 'right']},
-
-		{name: 'grid_area'},
-		{name: 'tabIndex', type: 'number'},
-	]
-
 })
 
 // ---------------------------------------------------------------------------
@@ -2027,11 +2000,8 @@ component('x-radiogroup', function(e) {
 
 function input_widget(e) {
 
-	e.attrval('align', 'left')
-	e.attr_property('align')
-
-	e.attrval('mode', 'default')
-	e.attr_property('mode')
+	e.prop('align', {attr: 'align', type: 'enum', enum_values: ['left', 'right'], default: 'left'})
+	e.prop('mode', {attr: 'mode', type: 'enum', enum_values: ['default', 'inline'], default: 'default'})
 
 	function update_inner_label() {
 		e.class('with-inner-label', !e.nolabel && e.field && !!e.field.text)
@@ -2044,12 +2014,6 @@ function input_widget(e) {
 		update_inner_label()
 		e.inner_label_div.set(e.field.text)
 	}
-
-	e.inspect_fields = [
-		{name: 'align', type: 'enum', enum_values: ['left', 'right']},
-		{name: 'mode', type: 'enum', enum_values: ['default', 'inline']},
-		{name: 'icon'},
-	]
 
 }
 
@@ -2203,10 +2167,8 @@ component('x-spin-input', function(e) {
 
 	e.align = 'right'
 
-	e.attrval('button-style', 'plus-minus')
-	e.attrval('button-placement', 'each-side')
-	e.attr_property('button-style')
-	e.attr_property('button-placement')
+	e.prop('button_style'    , {attr: 'button-style'    , type: 'enum', enum_values: ['plus-minus', 'up-down', 'left-right'], default: 'plus-minus'})
+	e.prop('button_placement', {attr: 'button-placement', type: 'enum', enum_values: ['each-side', 'left', 'right'], default: 'each-side'})
 
 	e.up   = div({class: 'x-spin-input-button fa'})
 	e.down = div({class: 'x-spin-input-button fa'})
@@ -2309,7 +2271,7 @@ component('x-spin-input', function(e) {
 	}
 	let start_incrementing_timer
 	function add_events(button, sign) {
-		button.on('mousedown', function() {
+		button.on('pointerdown', function() {
 			if (start_incrementing_timer || increment_timer)
 				return
 			e.input.focus()
@@ -2318,25 +2280,18 @@ component('x-spin-input', function(e) {
 			start_incrementing_timer = after(.5, start_incrementing)
 			return false
 		})
-		function mouseup() {
+		function pointerup() {
 			clearTimeout(start_incrementing_timer)
 			clearInterval(increment_timer)
 			start_incrementing_timer = null
 			increment_timer = null
 			increment = 0
 		}
-		button.on('mouseup', mouseup)
-		button.on('mouseleave', mouseup)
+		button.on('pointerup', pointerup)
+		button.on('pointerleave', pointerup)
 	}
 	add_events(e.up  , 1)
 	add_events(e.down, -1)
-
-	e.inspect_fields.push(...[
-
-		{name: 'button_style', type: 'enum', enum_values: ['plus-minus', 'up-down', 'left-right']},
-		{name: 'button_placement', type: 'enum', enum_values: ['each-side', 'left', 'right']},
-
-	])
 
 })
 
@@ -2432,30 +2387,30 @@ component('x-slider', function(e) {
 
 	let hit_x
 
-	e.input_thumb.on('mousedown', function(ev) {
+	e.input_thumb.on('pointerdown', function(ev) {
 		e.focus()
-		let r = e.input_thumb.client_rect()
-		hit_x = ev.clientX - (r.left + r.width / 2)
-		document.on('mousemove', document_mousemove)
-		document.on('mouseup'  , document_mouseup)
+		let r = e.input_thumb.rect()
+		hit_x = ev.clientX - (r.x + r.w / 2)
+		document.on('pointermove', document_pointermove)
+		document.on('pointerup'  , document_pointerup)
 		return false
 	})
 
-	function document_mousemove(mx, my) {
-		let r = e.client_rect()
-		e.set_progress((mx - r.left - hit_x) / r.width, {input: e})
+	function document_pointermove(mx, my) {
+		let r = e.rect()
+		e.set_progress((mx - r.x - hit_x) / r.w, {input: e})
 		return false
 	}
 
-	function document_mouseup() {
+	function document_pointerup() {
 		hit_x = null
-		document.off('mousemove', document_mousemove)
-		document.off('mouseup'  , document_mouseup)
+		document.off('pointermove', document_pointermove)
+		document.off('pointerup'  , document_pointerup)
 	}
 
-	e.on('mousedown', function(ev) {
-		let r = e.client_rect()
-		e.set_progress((ev.clientX - r.left) / r.width, {input: e})
+	e.on('pointerdown', function(ev) {
+		let r = e.rect()
+		e.set_progress((ev.clientX - r.x) / r.w, {input: e})
 	})
 
 	e.on('keydown', function(key, shift) {
@@ -2523,8 +2478,8 @@ component('x-dropdown', function(e) {
 	}
 
 	function bind_document(on) {
-		document.on('mousedown', document_mousedown, on)
-		document.on('rightmousedown', document_mousedown, on)
+		document.on('pointerdown', document_pointerdown, on)
+		document.on('rightpointerdown', document_pointerdown, on)
 		document.on('stopped_event', document_stopped_event, on)
 	}
 
@@ -2580,7 +2535,7 @@ component('x-dropdown', function(e) {
 			e.picker.class('picker', open)
 			if (open) {
 				e.cancel_val = e.input_val
-				e.picker.min_w = e.offsetWidth
+				e.picker.min_w = e.rect().w
 				e.picker.popup(e, 'bottom', e.align)
 				e.fire('opened')
 			} else {
@@ -2662,7 +2617,7 @@ component('x-dropdown', function(e) {
 	})
 
 	// clicking outside the picker closes the picker.
-	function document_mousedown(ev) {
+	function document_pointerdown(ev) {
 		if (e.contains(ev.target)) // clicked inside the dropdown.
 			return
 		if (e.picker.contains(ev.target)) // clicked inside the picker.
@@ -2672,8 +2627,8 @@ component('x-dropdown', function(e) {
 
 	// clicking outside the picker closes the picker, even if the click did something.
 	function document_stopped_event(ev) {
-		if (ev.type.ends('mousedown'))
-			document_mousedown(ev)
+		if (ev.type.ends('pointerdown'))
+			document_pointerdown(ev)
 	}
 
 	e.on('focusout', function(ev) {
@@ -2712,8 +2667,8 @@ component('x-menu', function(e) {
 		tr.item = item
 		tr.check_div = check_div
 		update_check(tr)
-		tr.on('mouseup'   , item_mouseup)
-		tr.on('mouseenter', item_mouseenter)
+		tr.on('pointerup'   , item_pointerup)
+		tr.on('pointerenter', item_pointerenter)
 		return tr
 	}
 
@@ -2722,7 +2677,7 @@ component('x-menu', function(e) {
 		td.set(item.heading)
 		let tr = H.tr({}, td)
 		tr.focusable = false
-		tr.on('mouseenter', separator_mouseenter)
+		tr.on('pointerenter', separator_pointerenter)
 		return tr
 	}
 
@@ -2730,7 +2685,7 @@ component('x-menu', function(e) {
 		let td = H.td({class: 'x-menu-separator', colspan: 5}, H.hr())
 		let tr = H.tr({}, td)
 		tr.focusable = false
-		tr.on('mouseenter', separator_mouseenter)
+		tr.on('pointerenter', separator_pointerenter)
 		return tr
 	}
 
@@ -2797,8 +2752,8 @@ component('x-menu', function(e) {
 	// popup protocol
 
 	function bind_document(on) {
-		document.on('mousedown', document_mousedown, on)
-		document.on('rightmousedown', document_mousedown, on)
+		document.on('pointerdown', document_pointerdown, on)
+		document.on('rightpointerdown', document_pointerdown, on)
 		document.on('stopped_event', document_stopped_event, on)
 	}
 
@@ -2810,7 +2765,7 @@ component('x-menu', function(e) {
 		bind_document(false)
 	}
 
-	function document_mousedown(ev) {
+	function document_pointerdown(ev) {
 		if (e.contains(ev.target)) // clicked inside the menu.
 			return
 		e.close()
@@ -2820,7 +2775,7 @@ component('x-menu', function(e) {
 	function document_stopped_event(ev) {
 		if (e.contains(ev.target)) // clicked inside the menu.
 			return
-		if (ev.type.ends('mousedown'))
+		if (ev.type.ends('pointerdown'))
 			e.close()
 	}
 
@@ -2884,12 +2839,12 @@ component('x-menu', function(e) {
 
 	// mouse bindings
 
-	function item_mouseup() {
+	function item_pointerup() {
 		click_item(this)
 		return false
 	}
 
-	function item_mouseenter(ev) {
+	function item_pointerenter(ev) {
 		if (this.submenu_table)
 			return // mouse entered on the submenu.
 		this.parent.focus()
@@ -2897,7 +2852,7 @@ component('x-menu', function(e) {
 		show_submenu(this)
 	}
 
-	function separator_mouseenter(ev) {
+	function separator_pointerenter(ev) {
 		select_item(this.parent)
 	}
 
@@ -2973,6 +2928,7 @@ component('x-widget-placeholder', function(e) {
 		['I' , 'input'],
 		['SI', 'spin_input'],
 		['CB', 'checkbox'],
+		['RG', 'radiogroup'],
 		['SL', 'slider'],
 		['LD', 'list_dropdown'],
 		['GD', 'grid_dropdown'],
@@ -3079,8 +3035,8 @@ component('x-pagelist', function(e) {
 
 	function update_selection_bar() {
 		let idiv = e.selected_item
-		e.selection_bar.x = idiv ? idiv.offsetLeft  : 0
-		e.selection_bar.w = idiv ? idiv.clientWidth : 0
+		e.selection_bar.x = idiv ? idiv.ox : 0
+		e.selection_bar.w = idiv ? idiv.rect().w   : 0
 		e.selection_bar.show(!!idiv)
 	}
 
@@ -3149,7 +3105,7 @@ component('x-pagelist', function(e) {
 	}
 
 	e.movable_element_size = function(i) {
-		return e.items[i].idiv.offsetWidth
+		return e.items[i].idiv.rect().w
 	}
 
 	let dragging, drag_mx
@@ -3168,9 +3124,9 @@ component('x-pagelist', function(e) {
 				&& abs(down_mx - mx) > 4 || abs(down_my - my) > 4
 			if (dragging) {
 				for (let item of e.items)
-					item.idiv._offset_x = item.idiv.offsetLeft
+					item.idiv._offset_x = item.idiv.ox
 				e.move_element_start(this.index, 1, 0, e.items.length)
-				drag_mx = down_mx - this.offsetLeft
+				drag_mx = down_mx - this.ox
 				e.class('x-moving', true)
 				this.class('x-moving', true)
 				update_selection_bar()
@@ -3397,11 +3353,11 @@ component('x-split', function(e) {
 			let mx = horiz ? rmx : rmy
 			let w
 			if (left) {
-				let fpx1 = e.fixed_pane.client_rect()[horiz ? 'left' : 'top']
+				let fpx1 = e.fixed_pane.rect()[horiz ? 'x' : 'y']
 				w = mx - (fpx1 + hit_x)
 			} else {
-				let ex2 = e.client_rect()[horiz ? 'right' : 'bottom']
-				let sw = e.sizer[horiz ? 'clientWidth' : 'clientHeight']
+				let ex2 = e.rect()[horiz ? 'x2' : 'y2']
+				let sw = e.sizer.rect()[horiz ? 'w' : 'h']
 				w = ex2 - mx + hit_x - sw
 			}
 
@@ -3430,13 +3386,13 @@ component('x-split', function(e) {
 
 			// hit-test for split resizing.
 			hit = false
-			if (e.client_rect().contains(rmx, rmy)) {
+			if (e.rect().contains(rmx, rmy)) {
 				// ^^ mouse is not over some scrollbar.
 				let mx = horiz ? rmx : rmy
-				let sr = e.sizer.client_rect()
-				let sx1 = horiz ? sr.left  : sr.top
-				let sx2 = horiz ? sr.right : sr.bottom
-				w0 = e.fixed_pane.client_rect()[horiz ? 'width' : 'height']
+				let sr = e.sizer.rect()
+				let sx1 = horiz ? sr.x1 : sr.y1
+				let sx2 = horiz ? sr.x2 : sr.y2
+				w0 = e.fixed_pane.rect()[horiz ? 'w' : 'h']
 				hit_x = mx - sx1
 				hit = abs(hit_x - (sx2 - sx1) / 2) <= 5
 				resist = true
@@ -3534,7 +3490,7 @@ component('x-toaster', function(e) {
 		let py = 0
 		for (let t of e.tooltips) {
 			t.py = py
-			py += t.client_rect().height + e.spacing
+			py += t.rect().h + e.spacing
 		}
 	}
 
@@ -3755,9 +3711,9 @@ component('x-toolbox', function(e) {
 		e.titlebar.on('pointerdown', function(_, mx, my) {
 			e.focus()
 			moving = true
-			let r = e.client_rect()
-			drag_x = mx - r.left
-			drag_y = my - r.top
+			let r = e.rect()
+			drag_x = mx - r.x
+			drag_y = my - r.y
 			return 'capture'
 		})
 
@@ -3768,8 +3724,9 @@ component('x-toolbox', function(e) {
 
 		e.titlebar.on('pointermove', function(mx, my) {
 			if (!moving) return
-			e.x = clamp(0, mx - drag_x, window.innerWidth  - this.offsetWidth)
-			e.y = clamp(0, my - drag_y, window.innerHeight - this.offsetHeight)
+			let r = this.rect()
+			e.x = clamp(0, mx - drag_x, window.innerWidth  - r.w)
+			e.y = clamp(0, my - drag_y, window.innerHeight - r.h)
 			return false
 		})
 	}

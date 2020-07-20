@@ -290,7 +290,8 @@ function tree_toolbox(tb_opt) {
 		while (pe && pe.typename != 'toolbox')
 			pe = pe.popup_target || pe.parent
 		if (e && e.typename && window.tree_tb && !(pe && pe.typename == 'toolbox'))
-			tb.widget = e
+			if (rs.lookup(rs.field(0), e))
+				tb.widget = e
 	}
 
 	function widget_tree_changed() {

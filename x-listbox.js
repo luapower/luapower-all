@@ -143,7 +143,7 @@ component('x-listbox', function(e) {
 		let item2 = e.at[move_ri2]
 		let horiz = e.axis == 'x'
 		let move_w = horiz ? 0 : item1.offsetWidth
-		let move_h = horiz ? 0 : item2.offsetTop + item2.offsetHeight - item1.offsetTop
+		let move_h = horiz ? 0 : item2.oy + item2.offsetHeight - item1.oy
 
 		let scroll_timer, mx0, my0
 
@@ -155,12 +155,12 @@ component('x-listbox', function(e) {
 					e.class('x-moving')
 					for (let ri = 0; ri < e.rows.length; ri++) {
 						let item = e.at[ri]
-						item._offset = item[e.axis == 'x' ? 'offsetLeft' : 'offsetTop']
+						item._offset = item[e.axis == 'x' ? 'ox' : 'oy']
 						item.class('x-moving', ri >= move_ri1 && ri <= move_ri2)
 					}
 					e.move_element_start(move_ri1, move_n, 0, e.child_count)
-					drag_mx = down_mx + e.scrollLeft - e.at[move_ri1].offsetLeft
-					drag_my = down_my + e.scrollTop  - e.at[move_ri1].offsetTop
+					drag_mx = down_mx + e.scrollLeft - e.at[move_ri1].ox
+					drag_my = down_my + e.scrollTop  - e.at[move_ri1].oy
 					mx0 = mx
 					my0 = my
 					scroll_timer = every(.1, item_pointermove)
@@ -212,7 +212,7 @@ component('x-listbox', function(e) {
 		if (!e.focused_row)
 			return forward ? e.first : e.last
 		let item = e.at[e.focused_row_index]
-		let sy0 = item.offsetTop + (forward ? 0 : item.offsetHeight - e.clientHeight)
+		let sy0 = item.oy + (forward ? 0 : item.offsetHeight - e.clientHeight)
 		item = forward ? item.next : item.prev
 		while(item) {
 			let [sx, sy] = item.make_visible_scroll_offset(0, sy0)

@@ -5,6 +5,20 @@
 
 */
 
+// logic ---------------------------------------------------------------------
+
+// `||` operator that considers `0` and `''` to be truth values.
+function or(x, z) { return x != null ? x : z }
+
+// `||` operator that considers `null` to be truth value as well.
+function opt(x, z) { return x !== undefined ? x : z }
+
+// `&&` operator that considers `0` and `''` to be truth values.
+function and(x, z) { return x != null ? z : x }
+
+// single-value filter.
+function repl(x, v, z) { return x == v ? z : x }
+
 // math ----------------------------------------------------------------------
 
 floor = Math.floor
@@ -44,20 +58,7 @@ sin = Math.sin
 cos = Math.cos
 tan = Math.tan
 
-// logic ---------------------------------------------------------------------
-
-// `||` operator that considers `0` and `''` to be truth values.
-function or(x, z) { return x != null ? x : z }
-
-// `||` operator that considers `null` to be truth value as well.
-function opt(x, z) { return x !== undefined ? x : z }
-
-// `&&` operator that considers `0` and `''` to be truth values.
-function and(x, z) { return x != null ? z : x }
-
-function repl(x, v, z) { return x == v ? z : x }
-
-// callbacks -----------------------------------------------------------------
+// callback stubs ------------------------------------------------------------
 
 function noop() {}
 function return_true() { return true; }
@@ -71,12 +72,12 @@ trace = console.trace
 
 function assert(ret, err, ...args) {
 	if (ret == null || ret === false) {
-		throw ((err && err.format(...args) || 'assertion failed'))
+		throw ((err && err.subst(...args) || 'assertion failed'))
 	}
 	return ret
 }
 
-// objects -------------------------------------------------------------------
+// extending built-in objects ------------------------------------------------
 
 // extend an object with a property, checking for upstream name clashes.
 function property(cls, prop, descriptor) {
@@ -120,30 +121,25 @@ method(Object, 'getPropertyDescriptor', function(key) {
 function alias(cls, new_name, old_name) {
 	let proto = cls.prototype || cls
 	let d = proto.getPropertyDescriptor(old_name)
-	assert(d, '{0}.{1} does not exist', cls.name, old_name)
+	assert(d, 'Property {0}.{1} does not exist', cls.name, old_name)
 	Object.defineProperty(proto, new_name, d)
 }
 
 // strings -------------------------------------------------------------------
 
 // usage:
-//		'{1} of {0}'.format(total, current)
-//		'{1} of {0}'.format([total, current])
-//		'{current} of {total}'.format({'current': current, 'total': total})
+//		'{1} of {0}'.subst(total, current)
+//		'{1} of {0}'.subst([total, current])
+//		'{current} of {total}'.subst({'current': current, 'total': total})
 
-method(String, 'format', function(...args) {
-	let s = this.toString()
+method(String, 'subst', function(...args) {
 	if (!args.length)
 		return s
 	if (isarray(args[0]))
 		args = args[0]
 	if (typeof args[0] == 'object')
-		for (let k in args)
-			s = s.replace(RegExp('\\{' + k + '\\}', 'gi'), args[k])
-	else
-		for (let i = 0; i < args.length; i++)
-			s = s.replace(RegExp('\\{' + i + '\\}', 'gi'), args[i])
-	return s
+		args = args[0]
+	return this.replace(/{(\w+)}/g, (match, s) => args[s])
 })
 
 alias(String, 'starts', 'startsWith')
@@ -153,8 +149,9 @@ alias(String, 'lower' , 'toLowerCase')
 
 // stub for getting message strings that can be translated multiple languages.
 if (!S)
-	function S(label, msg)
-		{ return msg }
+	function S(label, msg) {
+		return msg
+	}
 
 // arrays --------------------------------------------------------------------
 
@@ -171,14 +168,6 @@ method(Array, 'remove', function(i) {
 	return this.splice(i, 1)[0]
 })
 
-/* tested. not used.
-method(Array, 'move', function(i, j) {
-	let v = this[i]
-	this.splice(i, 1)
-	this.splice(j - (j > i ? 1 : 0), 0, v)
-})
-*/
-
 method(Array, 'remove_value', function(v) {
 	let i = this.indexOf(v)
 	if (i == -1) return
@@ -190,7 +179,6 @@ property(Array, 'last', {get: function() { return this[this.length-1] } })
 
 // binary search for an insert position that keeps the array sorted.
 // using '<' gives the first insert position, while '<=' gives the last.
-// returns null for t.length.
 {
 	let cmps = {}
 	cmps['<' ] = ((a, i, v) => a[i] <  v)
@@ -214,14 +202,7 @@ property(Array, 'last', {get: function() { return this[this.length-1] } })
 
 // hash maps -----------------------------------------------------------------
 
-function keys(o, cmp) {
-	let t = Object.keys(o)
-	if (typeof sort == 'function')
-		t.sort(cmp)
-	else if (cmp)
-		t.sort()
-	return t
-}
+keys = Object.keys
 
 // like Object.assign() but skips assigning `undefined` values.
 function update(dt, ...args) {

@@ -8,7 +8,7 @@ component('x-cssgrid', function(e) {
 	e.classes = 'x-widget x-cssgrid'
 
 	e.init = function() {
-		let items = e.items || [widget_placeholder()]
+		let items = e.items || []
 		e.items = []
 		for (let item of items) {
 			item = component.create(item)
@@ -21,6 +21,29 @@ component('x-cssgrid', function(e) {
 		make_implicit_lines_explicit_for('x')
 		make_implicit_lines_explicit_for('y')
 	}
+
+	// form nav ---------------------------------------------------------------
+
+	/*
+	let form_nav
+	e.property('form_nav',
+		() => form_nav,
+		function(nav) {
+			form_nav = nav
+			for (let item of e.items)
+				item.fire('form_nav_changed', nav)
+		})
+
+	e.set_form_nav_name = function(nav) {
+		e.form_nav = global_nav(
+	}
+	e.prop('form_rowset_name', {store: 'var', type: 'rowset', noinit: true})
+
+	e.on('form_rowset_changed', function(rs) {
+		if (!e.form_rowset_name)
+			e.form_rowset = rs
+	})
+	*/
 
 	// model & geometry ///////////////////////////////////////////////////////
 
@@ -92,13 +115,7 @@ component('x-cssgrid', function(e) {
 		let x = 0
 		for (let i = 0; i < ts.length; i++) {
 			f(i, x)
-			if (i > 0)
-				x += gap / 2
-			x += ts[i]
-			if (i < ts.length-1)
-				x += gap / 2
-			else
-				x -= 1 // make it fit the grid since it's overflow hidden
+			x += ts[i] + (i < ts.length-1 ? gap : 0)
 		}
 		f(ts.length, x)
 	}
@@ -304,6 +321,7 @@ component('x-cssgrid', function(e) {
 	}
 
 	function update_focused_item_span() {
+		if (!e.editing) return
 		let fs = e.focused_item_span
 		let fi = e.focused_item
 		let show = e.editing && !!fi
@@ -333,8 +351,11 @@ component('x-cssgrid', function(e) {
 		for (let item of e.selected_items) {
 			item.selected_overlay = item_overlay('selected')
 			item.selected_overlay.on('pointerdown', sio_pointerdown)
+			item.selected_overlay.style['pointer-events'] = 'none'
+			item.selected_overlay.item = item
 		}
 		e.hit_item_overlay.on('pointerdown', hio_pointerdown)
+		e.focused_item_overlay.on('pointerdown', fio_pointerdown)
 	}
 
 	function remove_item_overlays() {
@@ -358,14 +379,8 @@ component('x-cssgrid', function(e) {
 			ol.style['grid-column-end'  ] = css['grid-column-end'  ]
 			ol.style['grid-row-start'   ] = css['grid-row-start'   ]
 			ol.style['grid-row-end'     ] = css['grid-row-end'     ]
-			ol.style['margin-left'      ] = css['margin-left'      ]
-			ol.style['margin-right'     ] = css['margin-right'     ]
-			ol.style['margin-top'       ] = css['margin-top'       ]
-			ol.style['margin-bottom'    ] = css['margin-bottom'    ]
-			ol.style['justify-self'     ] = css['justify-self'     ]
-			ol.style['align-self'       ] = css['align-self'       ]
-			ol.w = ol.style['justify-self'] == 'stretch' ? null : item.offsetWidth
-			ol.h = ol.style['align-self'  ] == 'stretch' ? null : item.offsetHeight
+			ol.style['justify-self'     ] = 'stretch'
+			ol.style['align-self'       ] = 'stretch'
 		}
 		ol.show(show)
 	}
@@ -381,6 +396,8 @@ component('x-cssgrid', function(e) {
 
 	function update_item_overlays() {
 		update_focused_item_overlay()
+		for (let item of e.selected_items)
+			update_item_overlay(item.selected_overlay, item)
 	}
 
 	// controller /////////////////////////////////////////////////////////////
@@ -417,6 +434,7 @@ component('x-cssgrid', function(e) {
 	}
 
 	function exit_editing() {
+		e.add_button.hide()
 		e.off('pointermove', e_pointermove)
 		remove_item_overlays()
 		remove_focused_item_span()
@@ -461,9 +479,14 @@ component('x-cssgrid', function(e) {
 	// hover items with the mouse ---------------------------------------------
 
 	function hit_test_item(mx, my) {
-		for (let item of e.items)
-			if (item.client_rect().contains(mx, my))
+		let r = e.rect()
+		mx -= r.x
+		my -= r.y
+		for (let item of e.items) {
+			let [x1, y1, x2, y2] = item_track_bounds(item)
+			if (mx >= x1 && mx < x2 && my >= y1 && my < y2)
 				return item
+		}
 	}
 
 	function e_pointermove(mx, my) {
@@ -474,12 +497,20 @@ component('x-cssgrid', function(e) {
 	// select items with the mouse --------------------------------------------
 
 	function hio_pointerdown(ev, mx, my) {
-		e.select_item(e.hit_item, true)
+		e.select_item(e.hit_item, !ev.shiftKey)
+		return false
+	}
+
+	function fio_pointerdown(ev, mx, my) {
+		if (e.focused_item.typename == 'cssgrid') {
+			e.focused_item.editmode = true
+			e.focused_item.focus()
+		}
 		return false
 	}
 
 	function sio_pointerdown(ev, mx, my) {
-		return false
+		//return false
 	}
 
 	// drag-move guide tips => change grid template sizes ---------------------
@@ -496,7 +527,7 @@ component('x-cssgrid', function(e) {
 			s0 = track_sizes(this.axis)[this.i]
 			drag_mx =
 				(this.axis == 'x' ? mx : my) -
-				e.client_rect()[this.axis]
+				e.rect()[this.axis]
 
 			// transform auto size to pixels to be able to move the line.
 			let tz = get_sizes(this.axis)
@@ -513,7 +544,7 @@ component('x-cssgrid', function(e) {
 		}
 
 		function tip_pointermove(mx, my, ev) {
-			let dx = (this.axis == 'x' ? mx : my) - drag_mx - e.client_rect()[this.axis]
+			let dx = (this.axis == 'x' ? mx : my) - drag_mx - e.rect()[this.axis]
 			let tz = get_sizes(this.axis)
 			let z = tz[this.i]
 			if (z.ends('px')) {
@@ -573,7 +604,7 @@ component('x-cssgrid', function(e) {
 		if (!focused_item)
 			return
 		let [bx1, by1, bx2, by2] = item_track_bounds(e.focused_item)
-		let r = e.client_rect()
+		let r = e.rect()
 		mx -= r.x
 		my -= r.y
 		return (
@@ -588,7 +619,7 @@ component('x-cssgrid', function(e) {
 		hit_item_overlay.class('x-cssgrid-moving', true)
 
 		let css = hit_item.css()
-		let r = hit_item.client_rect()
+		let r = hit_item.rect()
 		drag_mx = drag_mx - r.x + num(css['margin-left'])
 		drag_my = drag_my - r.y + num(css['margin-top' ])
 
@@ -621,8 +652,8 @@ component('x-cssgrid', function(e) {
 	}
 
 	function hit_test_inside_span(item) {
-		let er = e.client_rect()
-		let ir = item.client_rect()
+		let er = e.rect()
+		let ir = item.rect()
 		let x1 = ir.x1 - er.x1
 		let x2 = ir.x2 - er.x1
 		let y1 = ir.y1 - er.y1
@@ -653,10 +684,11 @@ component('x-cssgrid', function(e) {
 		let x = mx - drag_mx
 		let y = my - drag_my
 
-		let x1 = x - e.offsetLeft
-		let y1 = y - e.offsetTop
-		let x2 = x1 + hit_item.offsetWidth
-		let y2 = y1 + hit_item.offsetHeight
+		let x1 = x - e.ox
+		let y1 = y - e.oy
+		let hr = hit_item.rect()
+		let x2 = x1 + hr.w
+		let y2 = y1 + hr.h
 		let i1 = span1(hit_item, true)
 		let i2 = span2(hit_item, true)
 		let j1 = span1(hit_item, false)
@@ -677,7 +709,7 @@ component('x-cssgrid', function(e) {
 		} else {
 			pop_out_item()
 
-			let r = e.client_rect()
+			let r = e.rect()
 			hit_item.x = !stretch_x ? x : r.x + bx1 + (i1 > 0 ? e.gap_x / 2 : 0)
 			hit_item.y = !stretch_y ? y : r.y + by1 + (j1 > 0 ? e.gap_y / 2 : 0)
 
@@ -917,6 +949,61 @@ component('x-cssgrid', function(e) {
 	}
 
 	*/
+
+	// show add button when hovering empty grid cells -------------------------
+
+	e.add_button = button({classes: 'x-cssgrid-add-button', text: 'add...'})
+	e.add_button.hide()
+	e.add(e.add_button)
+	e.add_button.on('click', function() {
+		let item = widget_placeholder()
+		item.pos_x = this.pos_x
+		item.pos_y = this.pos_y
+		e.items.push(item)
+		e.add(item)
+		e.fire('widget_tree_changed')
+	})
+
+	function is_cell_empty(i, j) {
+		for (let item of e.items)
+			if (
+				item.pos_x <= i && item.pos_x + item.span_x > i &&
+				item.pos_y <= j && item.pos_y + item.span_y > j
+			) return false
+		return true
+	}
+
+	e.on('pointermove', function(mx, my, ev) {
+		if (ev.buttons)
+			return
+		if (!e.editing)
+			return
+
+		let r = e.rect()
+		my -= r.y
+		mx -= r.x
+		let pos_x, pos_y, x1, y1, x2, y2
+		each_boundary_line('x', function(i, x) {
+			if (mx > x) {
+				pos_x = i + 1
+				x1 = x
+			} else if (x2 == null)
+				x2 = x
+		})
+		each_boundary_line('y', function(j, y) {
+			if (my > y) {
+				pos_y = j + 1
+				y1 = y
+			} else if (y2 == null)
+				y2 = y
+		})
+
+		e.add_button.pos_x = pos_x
+		e.add_button.pos_y = pos_y
+
+		e.add_button.show(is_cell_empty(pos_x, pos_y))
+
+	})
 
 	// keyboard bindings ------------------------------------------------------
 

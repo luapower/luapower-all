@@ -168,7 +168,7 @@ component('x-grid', function(e) {
 			if (e.auto_h)
 				e.h = cells_h + header_h + border_h
 
-			cells_view_h = floor(e.cells_view.client_rect().height)
+			cells_view_h = floor(e.cells_view.rect().h)
 			e.cells_ct.h = max(1, cells_h) // need at least 1px to show scrollbar.
 			vrn = floor(cells_view_h / e.cell_h) + 2
 			page_row_count = floor(cells_view_h / e.cell_h)
@@ -323,9 +323,9 @@ component('x-grid', function(e) {
 	{
 		let w0, h0
 		function layout_changed() {
-			let r = e.client_rect()
-			let w1 = r.width
-			let h1 = r.height
+			let r = e.rect()
+			let w1 = r.w
+			let h1 = r.h
 			if (w1 == 0 && h1 == 0)
 				return // hidden
 			if (h1 !== h0 || w1 !== w0) {
@@ -743,8 +743,8 @@ component('x-grid', function(e) {
 
 	function ht_header_resize(mx, my, hit) {
 		if (horiz) return
-		let r = e.header.client_rect()
-		let x = mx - r.right
+		let r = e.header.rect()
+		let x = mx - r.x2
 		if (!(x >= -5 && x <= 5)) return
 		hit.x = r.x + x
 		return true
@@ -778,13 +778,13 @@ component('x-grid', function(e) {
 			return
 		hit.ri = floor((mx - 6) / e.cell_w)
 		hit.dx = e.cell_w * hit.ri - scroll_x
-		let r = e.cells_view.client_rect()
+		let r = e.cells_view.rect()
 		hit.mx = r.x + hit.dx + x
 		return true
 	}
 
 	function ht_col_resize(mx, my, hit) {
-		let r = e.cells_ct.client_rect()
+		let r = e.cells_ct.rect()
 		mx -= r.x
 		my -= r.y
 		if (horiz)
@@ -800,7 +800,7 @@ component('x-grid', function(e) {
 		if (horiz) {
 
 			mm_col_resize = function(mx, my, hit) {
-				let r = e.cells_ct.client_rect()
+				let r = e.cells_ct.rect()
 				let w = mx - r.x - e.header.at[hit.fi]._x - hit.x
 				set_col_w(hit.fi, w)
 				update_cell_widths_horiz(true)
@@ -898,7 +898,7 @@ component('x-grid', function(e) {
 
 		let hit_mx, hit_my
 		{
-			let r = e.cells.client_rect()
+			let r = e.cells.rect()
 			hit_mx = hit.mx - r.x - num(hit.cell.style.left)
 			hit_my = hit.my - r.y - num(hit.cell.style.top)
 		}
@@ -1176,7 +1176,7 @@ component('x-grid', function(e) {
 				my = or(my, my0)
 				mx0 = mx
 				my0 = my
-				let r = e.cells_ct.client_rect()
+				let r = e.cells_ct.rect()
 				hit_x = horiz
 					? my - r.y - hit_my
 					: mx - r.x - hit_mx
@@ -1264,7 +1264,7 @@ component('x-grid', function(e) {
 	function ht_col_move(mx, my, hit) {
 		if ( horiz && abs(hit.mx - mx) < 8) return
 		if (!horiz && abs(hit.my - my) < 8) return
-		let r = e.header.client_rect()
+		let r = e.header.rect()
 		hit.mx -= r.x
 		hit.my -= r.y
 		hit.mx -= num(e.header.at[hit.fi].style.left)
@@ -1278,7 +1278,7 @@ component('x-grid', function(e) {
 	}
 
 	function mm_col_move(mx, my, hit) {
-		let r = e.header.client_rect()
+		let r = e.header.rect()
 		mx -= r.x
 		my -= r.y
 		let x = horiz
@@ -1720,7 +1720,7 @@ component('x-grid', function(e) {
 		}
 
 		context_menu = menu({items: items})
-		let r = e.client_rect()
+		let r = e.rect()
 		let px = mx - r.x
 		let py = my - r.y
 		context_menu.popup(e, 'inner-top', null, px, py)

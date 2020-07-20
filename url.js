@@ -62,7 +62,7 @@ function url(path, params, update) {
 			a[i] = encodeURIComponent(path[i])
 		path = a.join('/')
 		a = []
-		let keys = Object.keys(params).sort()
+		let keys = keys(params).sort()
 		for (let i = 0; i < keys.length; i++) {
 			let pk = keys[i]
 			let k = encodeURIComponent(pk)
