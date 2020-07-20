@@ -235,16 +235,26 @@ compile_version_info() {
 	[ $OS = mingw ] || return
 	sayt versioninfo "$VERSIONINFO"
 	s="$(echo '
-	1 VERSIONINFO
-		{
+	1 VERSIONINFO'
+	if [ "${#FILEVERSION}" = 7 ]; then
+		echo "
+		FILEVERSION ${FILEVERSION//./,}
+		PRODUCTVERSION ${FILEVERSION//./,}"
+	fi
+	echo '
+	{
 		BLOCK "StringFileInfo" {
 			BLOCK "040904b0" {'
 			while read -d';' -r pair; do
+				[ -z "$pair" ] && continue
 				IFS='=' read -r key val <<<"$pair"
 				echo "				VALUE \"$key\", \"$val\000\""
 			done <<<"$1;"
 	echo '			}
 		}
+		BLOCK "VarFileInfo" {
+	        VALUE "Translation", 0x409, 1200
+	    }
 	}
 	')" o=$ODIR/_versioninfo.res.o compile_resource
 }
@@ -348,6 +358,7 @@ link_mingw() {
 		-Wl,--export-all-symbols \
 		-Wl,--whole-archive `aopt "$ALIBS"` \
 		-Wl,--no-whole-archive \
+		-Wl,--allow-multiple-definition \
 		`lopt "$DLIBS"` $xopt
 }
 
@@ -360,6 +371,7 @@ link_linux() {
 		-pthread \
 		-Wl,--whole-archive `aopt "$ALIBS"` \
 		-Wl,--no-whole-archive `lopt "$DLIBS"` \
+		-Wl,--allow-multiple-definition \
 		-Wl,-rpath,'\$\$ORIGIN'
 	chmod +x "$EXE"
 }
@@ -490,6 +502,7 @@ usage() {
 	echo "  -i  --icon FILE.ico                Set icon (Windows)"
 	echo "  -i  --icon FILE.png                Set icon (OSX; requires -w)"
 	echo "  -vi --versioninfo \"Name=Val;...\"   Set VERSIONINFO fields (Windows)"
+	echo "  -fv --fileversion                  Set FILEVERSION field (Windows)"
 	echo "  -av --appversion VERSION|auto      Set bundle.appversion to VERSION"
 	echo "  -ar --apprepo REPO                 Git repo for -av auto"
 	echo
@@ -586,6 +599,8 @@ parse_opts() {
 				NOCONSOLE=1;;
 			-vi | --versioninfo)
 				VERSIONINFO="$VERSIONINFO;$1"; shift;;
+			-fv | --fileversion)
+				FILEVERSION="$1"; shift;;
 			-av  | --appversion)
 				APPVERSION="$1"; shift;;
 			-ar  | --apprepo)
