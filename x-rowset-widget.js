@@ -32,6 +32,8 @@ function rowset_widget(e) {
 	e.can_exit_row_on_errors = false // allow changing row on validation errors
 	e.exit_edit_on_lost_focus = true // exit edit mode when losing focus
 	e.multiple_selection = true
+	e.can_select_non_siblings = true
+
 
 	e.val_col = 0
 
@@ -450,6 +452,13 @@ function rowset_widget(e) {
 			&& (!for_editing || e.can_change_val(row, field))
 	}
 
+	e.can_select_cell = function(row, field, for_editing) {
+		return e.can_focus_cell(row, field, for_editing)
+			&& (e.can_select_non_siblings
+				|| e.selected_rows.size == 0
+				|| row.parent_row == e.selected_rows.keys().next().value.parent_row)
+	}
+
 	e.property('focused_row', function() {
 		return e.rows[e.focused_row_index]
 	})
@@ -568,7 +577,7 @@ function rowset_widget(e) {
 		let enter_edit = (ev && ev.enter_edit) || (was_editing && e.stay_in_edit_mode)
 		let editable = (ev && ev.editable) || enter_edit
 		let expand_selection = ev && ev.expand_selection && e.multiple_selection
-		let keep_selection = ev && ev.keep_selection && e.multiple_selection
+		let invert_selection = ev && ev.invert_selection && e.multiple_selection
 
 		let opt = update({editable: editable}, ev)
 		;[ri, fi] = e.first_focusable_cell(ri, fi, rows, cols, opt)
@@ -611,22 +620,26 @@ function rowset_widget(e) {
 				let fi2 = max(fi0, fi)
 				for (let ri = ri1; ri <= ri2; ri++) {
 					let row = e.rows[ri]
-					if (e.can_focus_cell(row)) {
+					if (e.can_select_cell(row)) {
 						let a = e.selected_rows.get(row) || []
 						for (let fi = fi1; fi <= fi2; fi++)
-							if (e.can_focus_cell(row, e.fields[fi]))
+							if (e.can_select_cell(row, e.fields[fi]))
 								a[fi] = true
 						e.selected_rows.set(row, a)
 					}
 				}
 			} else {
 				let a = e.selected_rows.get(row) || []
-				if (!keep_selection) {
+				if (!invert_selection) {
 					e.selected_rows.clear()
 					a = []
 				}
 				a[fi] = !a[fi]
-				e.selected_rows.set(row, a)
+				let n = 0; a.map(t => n++)
+				if (n)
+					e.selected_rows.set(row, a)
+				else
+					e.selected_rows.delete(row)
 			}
 		} else {
 			if (expand_selection) {
@@ -634,13 +647,16 @@ function rowset_widget(e) {
 				let ri2 = max(ri0, ri)
 				for (let ri = ri1; ri <= ri2; ri++) {
 					let row = e.rows[ri]
-					if (e.can_focus_cell(row))
+					if (e.can_select_cell(row))
 						e.selected_rows.set(row, true)
 				}
 			} else {
-				if (!keep_selection)
+				if (!invert_selection)
 					e.selected_rows.clear()
-				e.selected_rows.set(row, !e.selected_rows.get(row))
+				if (e.selected_rows.get(row))
+					e.selected_rows.delete(row)
+				else
+					e.selected_rows.set(row, true)
 			}
 		}
 
@@ -711,6 +727,14 @@ function rowset_widget(e) {
 				e.selected_rows.set(row, a)
 			}
 		e.update_cell_focus()
+	}
+
+	e.is_row_selected = function(row) {
+		return e.selected_rows.has(row)
+	}
+
+	e.set_selected_rows = function(rows) {
+		//e.selected_rows =
 	}
 
 	// responding to val changes ----------------------------------------------

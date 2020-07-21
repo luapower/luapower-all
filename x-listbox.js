@@ -124,7 +124,7 @@ component('x-listbox', function(e) {
 			input: e,
 			must_not_move_row: true,
 			expand_selection: ev.shiftKey,
-			keep_selection: ev.ctrlKey,
+			invert_selection: ev.ctrlKey,
 		}))
 			return false
 

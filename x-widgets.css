@@ -58,6 +58,30 @@
 	box-shadow: none;
 }
 
+
+.x-widget.widget-selected {
+	position: relative;
+}
+
+.x-widget.widget-selected,
+.x-widget.widget-selected * {
+	pointer-events: none;
+}
+
+.x-widget.widget-selected::after {
+	content: '';
+	display: block;
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	background: rgba(0,0,0,0.1);
+	outline: 1px dashed red;
+	outline-offset: -1px;
+}
+
+
 /* item states ------------------------------------------------------------ */
 
 .x-item.disabled { color: #999; }

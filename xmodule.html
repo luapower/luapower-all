@@ -41,6 +41,7 @@ html, body {
 <script src="divs.js"></script>
 <script src="ajax.js"></script>
 <script src="url.js"></script>
+<script src="x-rowset.js"></script>
 <script src="x-widgets.js"></script>
 <script src="x-rowset-widget.js"></script>
 <script src="x-listbox.js"></script>
@@ -48,138 +49,12 @@ html, body {
 <script src="x-calendar.js"></script>
 <script src="x-country-dropdown.js"></script>
 <script src="x-cssgrid.js"></script>
+<script src="xmodule.js"></script>
 
 </head>
 
 <body>
 <script>
-
-// ---------------------------------------------------------------------------
-// rowset types
-// ---------------------------------------------------------------------------
-
-rowset.types.rowset = {}
-
-rowsets_rowset = global_rowset('rowsets')
-rowsets_rowset.load()
-
-rowset.types.rowset.editor = function(...options) {
-	return list_dropdown(update({
-		nolabel: true,
-		lookup_rowset: rowsets_rowset,
-	}, ...options))
-}
-
-rowset.types.rowset_field = {}
-
-rowset.types.rowset_field.editor = function(...options) {
-	let e = list_dropdown(update({
-		nolabel: true,
-		lookup_rowset: rowset({
-			fields: [{name: 'name'}],
-		}),
-	}, ...options))
-	let rs_field = e.nav.rowset.field(this.rowset_col)
-	let rs_name = e.nav.rowset.value(e.nav.focused_row, rs_field)
-	let rs = rs_name && global_rowset(rs_name)
-	if (rs) {
-		rs.once('loaded', function() {
-			let rows = rs.fields.map((field) => [field.name])
-			e.lookup_rowset.reset({
-				rows: rows,
-			})
-		})
-		rs.load_fields()
-	}
-	return e
-}
-
-// ---------------------------------------------------------------------------
-// property inspector
-// ---------------------------------------------------------------------------
-
-prop_inspector = component('x-prop-inspector', function(e) {
-
-	grid.construct(e)
-
-	e.vertical = true
-
-	e.exit_edit_on_lost_focus = false
-	e.can_sort_rows = false
-	e.enable_context_menu = false
-	e.focus_cell_on_click_header = true
-
-	// prevent getting out of edit mode.
-	e.auto_edit_first_cell = true
-	e.enter_edit_on_click = true
-	e.exit_edit_on_escape = false
-	e.exit_edit_on_enter = false
-	e.stay_in_edit_mode = true
-
-	e.rowset = rowset({
-		can_change_rows: true,
-	})
-
-	init = e.init
-	e.init = function() {
-		init_rowset(e.widget)
-		init()
-	}
-
-	function bind(on) {
-		document.on('prop_changed', prop_changed, on)
-	}
-	e.on('attach', function() { bind(true) })
-	e.on('detach', function() { bind(false) })
-
-	e.rowset.on('val_changed', function(row, field, val) {
-		e.widget[field.name] = val
-	})
-
-	function prop_changed(k, v, v0, ev) {
-		return // TODO
-		tree_tb.widget = ev.target
-		if (e.widget != ev.target) {
-			print('could not select widget in tree')
-			return
-		}
-		let field = e.rowset.field(k)
-		e.focus_cell(0, e.field_index(field))
-		e.rowset.reset_val(e.focused_row, field, v)
-	}
-
-	e.on('exit_edit', function(ri, fi) {
-		let field = e.fields[fi]
-		e.rowset.reset_val(e.rows[ri], field, e.widget[field.name])
-	})
-
-	let widget
-	e.property('widget',
-		function() { return widget },
-		function(v) {
-			if (v == widget)
-				return
-			widget = v
-			if (e.initialized)
-				init_rowset(v)
-		}
-	)
-
-	function init_rowset(widget) {
-		let res = {}
-		res.fields = []
-		let vals = []
-		res.rows = [vals]
-		if (widget) {
-			for (let prop in widget.props) {
-				res.fields.push(widget.props[prop])
-				vals.push(widget[prop])
-			}
-		}
-		e.rowset.reset(res)
-	}
-
-})
 
 // ---------------------------------------------------------------------------
 // main app
@@ -219,105 +94,23 @@ body.add(root_widget)
 
 xmodule_load()
 
-function properties_toolbox(tb_opt, insp_opt) {
-	let pg = prop_inspector(insp_opt)
-	let tb = toolbox(update({
-		title: 'properties',
-		content: pg,
-	}, tb_opt))
-	tb.inspector = pg
-	return tb
-}
+props_tb = properties_toolbox({
+	y: 520,
+	x: 400,
+	w: 250,
+	h: 400,
+})
+props_tb.show(true, true)
 
-function tree_toolbox(tb_opt) {
+tree_tb = widget_tree_toolbox({
+	y: 520,
+	x: 660,
+	w: 200,
+	h: 400,
+})
+tree_tb.show(true, true)
 
-	function widget_tree_rows() {
-		let rows = new Set()
-		function add_widget(e, pe) {
-			if (!e) return
-			rows.add([e, pe])
-			if (e.child_widgets)
-				for (let ce of e.child_widgets())
-					add_widget(ce, e)
-		}
-		add_widget(root_widget)
-		return rows
-	}
-
-	function widget_name(e) {
-		return e.typename.replace('_', ' ')
-	}
-
-	let rs = rowset({
-		fields: [
-			{name: 'widget', format: widget_name},
-			{name: 'parent_widget', visible: false},
-		],
-		rows: widget_tree_rows(),
-		pk: 'widget',
-		parent_col: 'parent_widget',
-	})
-
-	let g = grid({
-		rowset: rs,
-		tree_col: 'widget',
-		header_visible: false,
-		auto_focus_first_cell: false,
-	})
-	g.on('focused_row_changed', function(row, row0) {
-		let e = row && row[0]
-		let e0 = row0 && row0[0]
-		if (e0)
-			e0.editing = false
-		props_tb.inspector.widget = e
-		if (e)
-			e.editing = true
-	})
-
-	let tb = toolbox(update({
-		title: 'widget tree',
-		content: g,
-	}, tb_opt))
-
-	g.auto_focus_first_cell = true
-	g.init_focused_cell()
-
-	function element_focusin(ev) {
-		let e = ev.target
-		while (e && !e.typename)
-			e = e.popup_target || e.parent
-		let pe = e.popup_target || e.parent
-		while (pe && pe.typename != 'toolbox')
-			pe = pe.popup_target || pe.parent
-		if (e && e.typename && window.tree_tb && !(pe && pe.typename == 'toolbox'))
-			if (rs.lookup(rs.field(0), e))
-				tb.widget = e
-	}
-
-	function widget_tree_changed() {
-		rs.reset({rows: widget_tree_rows()})
-	}
-
-	function bind(on) {
-		document.on('focusin', element_focusin, on)
-		document.on('widget_tree_changed', widget_tree_changed, on)
-	}
-	tb.on('attach', function() { bind(true) })
-	tb.on('detach', function() { bind(false) })
-	bind(true)
-
-	function get_widget() {
-		return e.focused_row && e.focused_row[0]
-	}
-	function set_widget(widget) {
-		let row = rs.lookup(rs.field(0), widget)
-		let ri = g.row_index(row)
-		g.focus_cell(ri, 0)
-	}
-	tb.property('widget', get_widget, set_widget)
-
-	return tb
-}
+/*
 
 function widgets_toolbox() {
 	let lb = listbox({
@@ -343,28 +136,12 @@ function widgets_toolbox() {
 	return tb
 }
 
-
 widgets_tb = widgets_toolbox({
 	y: 150,
 	x: 500,
 })
 //widgets_tb.show()
-
-props_tb = properties_toolbox({
-	y: 520,
-	x: 400,
-	w: 250,
-	h: 400,
-})
-props_tb.show(true, true)
-
-tree_tb = tree_toolbox({
-	y: 520,
-	x: 660,
-	w: 200,
-	h: 400,
-})
-tree_tb.show(true, true)
+*/
 
 </script>
 </body>

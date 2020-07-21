@@ -867,7 +867,7 @@ component('x-grid', function(e) {
 			focus_editor: true,
 			editor_state: 'select_all',
 			expand_selection: ev.shiftKey,
-			keep_selection: ev.ctrlKey,
+			invert_selection: ev.ctrlKey,
 			input: e,
 		})) {
 			if (over_indent)
