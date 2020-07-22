@@ -1,10 +1,11 @@
 
 component('x-cssgrid', function(e) {
 
-	cssgrid_child_widget(e)
+	serializable_widget(e)
+	cssgrid_item_widget(e)
+
 	e.align_x = 'stretch'
 	e.align_y = 'stretch'
-	serializable_widget(e)
 	e.classes = 'x-widget x-cssgrid'
 
 	e.init = function() {
@@ -12,68 +13,55 @@ component('x-cssgrid', function(e) {
 		e.items = []
 		for (let item of items) {
 			item = component.create(item)
-			e.items.push(item)
-			e.add(item)
+			e.add_child_widget(item)
 		}
 	}
 
-	e.attach = function() {
-		make_implicit_lines_explicit_for('x')
-		make_implicit_lines_explicit_for('y')
+	e.serialize = function() {
+		let t = e.serialize_fields()
+		t.items = []
+		for (let item of e.items)
+			t.items.push(item.serialize())
+		return t
 	}
 
-	// form nav ---------------------------------------------------------------
-
-	/*
-	let form_nav
-	e.property('form_nav',
-		() => form_nav,
-		function(nav) {
-			form_nav = nav
-			for (let item of e.items)
-				item.fire('form_nav_changed', nav)
-		})
-
-	e.set_form_nav_name = function(nav) {
-		e.form_nav = global_nav(
+	e.detach = function() {
+		e.editing = false
 	}
-	e.prop('form_rowset_name', {store: 'var', type: 'rowset', noinit: true})
 
-	e.on('form_rowset_changed', function(rs) {
-		if (!e.form_rowset_name)
-			e.form_rowset = rs
-	})
-	*/
+	// add/remove items -------------------------------------------------------
 
-	// model & geometry ///////////////////////////////////////////////////////
+	e.child_widgets = function() {
+		return e.items.slice()
+	}
 
-	// grid lines & tracks ----------------------------------------------------
+	e.add_child_widget = function(item) {
+		e.items.push(item)
+		e.add(item)
+	}
 
-	function type(axis) { return axis == 'x' ? 'column' : 'row' }
-	function other_axis(axis) { return axis == 'x' ? 'y' : 'x' }
+	e.remove_child_widget = function(item) {
+		let i = e.items.indexOf(item)
+		assert(i >= 0)
+		e.items.remove(i)
+		item.remove()
+	}
 
-	// get/set gaps
+	// get/set gaps -----------------------------------------------------------
 
 	e.prop('gap_x', {style: 'column-gap', type: 'number', default: 0, style_format: (v) => v+'px'})
 	e.prop('gap_y', {style: 'row-gap'   , type: 'number', default: 0, style_format: (v) => v+'px'})
 
-	// get computed track sizes
+	// get/set template sizes -------------------------------------------------
 
-	function track_sizes(axis) {
-		return e.css(`grid-template-${type(axis)}s`).split(' ').map(num)
-	}
-
-	// get/set template sizes
+	function type(axis) { return axis == 'x' ? 'column' : 'row' }
 
 	function get_sizes_for(axis) {
 		return e.style[`grid-template-${type(axis)}s`]
 	}
-
 	function set_sizes_for(axis, s) {
 		e.style[`grid-template-${type(axis)}s`] = s
-		update_guides_for(axis)
 	}
-
 	e.get_sizes_x = function() { return get_sizes_for('x') }
 	e.get_sizes_y = function() { return get_sizes_for('y') }
 	e.set_sizes_x = function(s) { set_sizes_for('x', s) }
@@ -81,10 +69,85 @@ component('x-cssgrid', function(e) {
 	e.prop('sizes_x')
 	e.prop('sizes_y')
 
+	// edit mode --------------------------------------------------------------
+
+	let editing
+	e.set_editing = function(v) {
+		if (!v) return
+		cssgrid_widget_editing(e)
+		e.set_editing(true)
+	}
+	e.property('editing', () => editing, function(v) {
+		v = !!v
+		if (editing == v) return
+		editing = v
+		e.set_editing(v)
+	})
+
+})
+
+// ---------------------------------------------------------------------------
+// cssgrid widget editing mixin
+// ---------------------------------------------------------------------------
+
+function cssgrid_widget_editing(e) {
+
+	e.set_editing = function(v) {
+		e.class('x-editing', v)
+		if (v)
+			enter_editing()
+		else
+			exit_editing()
+	}
+
+	function set_item_span(e, axis, i1, i2) {
+		if (i1 !== false)
+			e['pos_'+axis] = i1+1
+		if (i2 !== false)
+			e['span_'+axis] = i2 - (i1 !== false ? i1 : e['pos_'+axis]-1)
+	}
+
+	function type(axis) { return axis == 'x' ? 'column' : 'row' }
+
+	function track_sizes(axis) {
+		return e.css(`grid-template-${type(axis)}s`).split(' ').map(num)
+	}
+
+	e.each_cssgrid_line = function(axis, f) {
+		let ts = track_sizes(axis)
+		let gap = e['gap_'+axis]
+		let x1, x2
+		let x = 0
+		for (let i = 0; i < ts.length; i++) {
+			f(i, x)
+			x += ts[i] + (i < ts.length-1 ? gap : 0)
+		}
+		f(ts.length, x)
+	}
+
+	// track bounds -----------------------------------------------------------
+
+	function track_bounds_for(axis, i1, i2) {
+		let x1, x2
+		e.each_cssgrid_line(axis, function(i, x) {
+			if (i == i1)
+				x1 = x
+			if (i == i2)
+				x2 = x
+		})
+		return [x1, x2]
+	}
+
+	e.cssgrid_track_bounds = function(i1, j1, i2, j2) {
+		let [x1, x2] = track_bounds_for('x', i1, i2)
+		let [y1, y2] = track_bounds_for('y', j1, j2)
+		return [x1, y1, x2, y2]
+	}
+
 	// get/set template sizes from/to array
 
 	function get_sizes(axis) {
-		return get_sizes_for(axis).split(' ')
+		return e['sizes_'+axis].split(' ')
 	}
 
 	function set_sizes(axis, ts, prevent_recreate_guides) {
@@ -108,65 +171,48 @@ component('x-cssgrid', function(e) {
 		set_sizes(axis, ts)
 	}
 
-	function each_boundary_line(axis, f) {
-		let ts = track_sizes(axis)
-		let gap = e['gap_'+axis]
-		let x1, x2
-		let x = 0
-		for (let i = 0; i < ts.length; i++) {
-			f(i, x)
-			x += ts[i] + (i < ts.length-1 ? gap : 0)
+	//
+
+	function update_guides_for(axis) {
+		if (!e.prevent_recreate_guides) {
+			remove_guides_for(axis)
+			create_guides_for(axis)
 		}
-		f(ts.length, x)
+		update_sizes_for(axis)
 	}
 
-	// track bounds -----------------------------------------------------------
-
-	function track_bounds_for(axis, i1, i2) {
-		let x1, x2
-		each_boundary_line(axis, function(i, x) {
-			if (i == i1)
-				x1 = x
-			if (i == i2)
-				x2 = x
-		})
-		return [x1, x2]
+	function update_guides() {
+		update_guides_for('x')
+		update_guides_for('y')
 	}
 
-	function track_bounds(i1, j1, i2, j2) {
-		let [x1, x2] = track_bounds_for('x', i1, i2)
-		let [y1, y2] = track_bounds_for('y', j1, j2)
-		return [x1, y1, x2, y2]
+	function bind(on) {
+		e.on('prop_changed', prop_changed, on)
 	}
 
-	function item_track_bounds(item) {
-		let i = item.pos_x-1
-		let j = item.pos_y-1
-		return track_bounds(i, j, i + item.span_x, j + item.span_y)
+	function enter_editing() {
+		make_implicit_lines_explicit_for('x')
+		make_implicit_lines_explicit_for('y')
+		create_guides_for('x')
+		create_guides_for('y')
+		update_sizes()
+		bind(true)
 	}
 
-	// item spans -------------------------------------------------------------
-
-	function span1(item, axis) { return item['pos_'+axis]-1 }
-	function span2(item, axis) { return span1(item, axis) + item['span_'+axis] }
-
-	function set_span(item, axis, i1, i2) {
-		if (i1 !== false)
-			item['pos_'+axis] = i1+1
-		if (i2 !== false)
-			item['span_'+axis] = i2 - (i1 !== false ? i1 : span1(item, axis))
+	function exit_editing() {
+		bind(false)
+		e.add_button.hide()
+		remove_guides_for('x')
+		remove_guides_for('y')
 	}
 
-	e.on('prop_changed', function(k, v, v0, ev) {
+	function prop_changed(k, v, v0, ev) {
 		if (ev.target.parent == e)
-			if (k == 'pos_x' || k == 'span_x') {
+			if (k == 'pos_x' || k == 'span_x')
 				update_guides_for('x')
-				update_focused_item_span()
-			} else if (k == 'pos_y' || k == 'span_y') {
+			else if (k == 'pos_y' || k == 'span_y')
 				update_guides_for('y')
-				update_focused_item_span()
-			}
-	})
+	}
 
 	// add/remove grid lines --------------------------------------------------
 
@@ -175,9 +221,9 @@ component('x-cssgrid', function(e) {
 		ts.remove(i)
 		set_sizes(axis, ts)
 		for (let item of e.items) {
-			let i1 = span1(item, axis)
-			let i2 = span2(item, axis)
-			set_span(item, axis,
+			let i1 = item['pos_'+axis]-1
+			let i2 = item['pos_'+axis]-1 + e['span_'+axis]
+			set_item_span(item, axis,
 				i1 >= i && max(0, i1-1),
 				i2 >  i && i2-1)
 		}
@@ -188,54 +234,12 @@ component('x-cssgrid', function(e) {
 		ts.insert(i, '20px')
 		set_sizes(axis, ts)
 		for (let item of e.items) {
-			let i1 = span1(item, axis)
-			let i2 = span2(item, axis)
-			set_span(item, axis,
+			let i1 = item['pos_'+axis]-1
+			let i2 = item['pos_'+axis]-1 + e['span_'+axis]
+			set_item_span(item, axis,
 				i1 >= i && i1+1,
 				i2 >  i && i2+1)
 		}
-	}
-
-	// add/remove items -------------------------------------------------------
-
-	function	remove_item(item) {
-		e.select_item(null, true)
-		item.remove()
-		let i = e.items.indexOf(item)
-		e.items.remove(i)
-		return e.items[i] || e.items[0]
-	}
-
-	// setting stretch alignment ----------------------------------------------
-
-	function toggle_stretch_for(item, horiz) {
-		let attr = horiz ? 'align_x' : 'align_y'
-		let align = item[attr]
-		if (align == 'stretch')
-			align = item['_'+attr] || 'center'
-		else {
-			item['_'+attr] = align
-			align = 'stretch'
-		}
-		item[horiz ? 'w' : 'h'] = align == 'stretch' ? 'auto' : null
-		item[attr] = align
-		return align
-	}
-
-	e.toggle_stretch = function(item, horiz, vert) {
-		if (horiz && vert) {
-			let stretch_x = item.align_x == 'stretch'
-			let stretch_y = item.align_y == 'stretch'
-			if (stretch_x != stretch_y) {
-				e.toggle_stretch(item, !stretch_x, !stretch_y)
-			} else {
-				e.toggle_stretch(item, true, false)
-				e.toggle_stretch(item, false, true)
-			}
-		} else if (horiz)
-			toggle_stretch_for(item, true)
-		else if (vert)
-			toggle_stretch_for(item, false)
 	}
 
 	// visuals ////////////////////////////////////////////////////////////////
@@ -243,8 +247,6 @@ component('x-cssgrid', function(e) {
 	// grid line guides -------------------------------------------------------
 
 	function update_sizes_for(axis) {
-		if (!e.editing) return
-		if (!e.isConnected) return
 		let n = track_sizes(axis).length
 		let ts = get_sizes(axis)
 		for (let i = 0; i < n; i++) {
@@ -260,6 +262,8 @@ component('x-cssgrid', function(e) {
 	}
 
 	e.guides = {x: [], y: []}
+
+	function other_axis(axis) { return axis == 'x' ? 'y' : 'x' }
 
 	function create_guides_for(axis) {
 		let n = track_sizes(axis).length
@@ -291,150 +295,7 @@ component('x-cssgrid', function(e) {
 		e.guides[axis] = []
 	}
 
-	// span outlines ----------------------------------------------------------
-
-	function span_outline(cls) {
-		let so = div({class: 'x-cssgrid-span '+(cls||'')},
-			div({class: 'x-cssgrid-span-handle', side: 'top'}),
-			div({class: 'x-cssgrid-span-handle', side: 'left'}),
-			div({class: 'x-cssgrid-span-handle', side: 'right'}),
-			div({class: 'x-cssgrid-span-handle', side: 'bottom'}),
-		)
-		so.hide()
-		e.add(so)
-		return so
-	}
-
-	function create_focused_item_span() {
-		e.focused_item_span = span_outline()
-		e.focused_item_span.on('pointerdown', so_pointerdown)
-	}
-
-	function remove_focused_item_span() {
-		e.focused_item_span.off('pointerdown', so_pointerdown)
-		e.focused_item_span.remove()
-		e.focused_item_span = null
-	}
-
-	function update_focused_item_span() {
-		if (!e.editing) return
-		let fs = e.focused_item_span
-		let fi = e.focused_item
-		let show = e.editing && !!fi
-		if (show) {
-			fs.style['grid-column-start'] = fi.style['grid-column-start']
-			fs.style['grid-row-start'   ] = fi.style['grid-row-start'   ]
-			fs.style['grid-column-end'  ] = fi.style['grid-column-end'  ]
-			fs.style['grid-row-end'     ] = fi.style['grid-row-end'     ]
-		}
-		fs.show(show)
-	}
-
 	// controller /////////////////////////////////////////////////////////////
-
-	// editing mode -----------------------------------------------------------
-
-	function update_guides_for(axis) {
-		if (!e.editing) return
-		if (!e.isConnected) return
-		if (!e.prevent_recreate_guides) {
-			remove_guides_for(axis)
-			create_guides_for(axis)
-		}
-		update_sizes_for(axis)
-	}
-
-	function update_guides() {
-		if (!e.editing) return
-		if (!e.isConnected) return
-		update_guides_for('x')
-		update_guides_for('y')
-	}
-
-	function enter_editing() {
-		e.focused_item = e.items[0]
-		create_guides_for('x')
-		create_guides_for('y')
-		create_focused_item_span()
-		update_sizes()
-		update_focused_item_span()
-		e.on('pointermove', e_pointermove)
-	}
-
-	function exit_editing() {
-		e.add_button.hide()
-		e.off('pointermove', e_pointermove)
-		remove_focused_item_span()
-		remove_guides_for('x')
-		remove_guides_for('y')
-	}
-
-	let editing = false
-	e.property('editing',
-		function() { return editing },
-		function(v) {
-			v = !!v
-			if (editing == v)
-				return
-			editing = v
-			e.attrval('tabindex', v ? 0 : null)
-			e.class('x-editing', v)
-			if (v)
-				enter_editing()
-			else
-				exit_editing()
-		}
-	)
-
-	// selecting items --------------------------------------------------------
-
-	e.selected_items = new Set()
-
-	e.select_item = function(item, single) {
-		if (single)
-			e.selected_items.clear()
-		if (item)
-			e.selected_items.add(item)
-		e.focused_item = e.selected_items.size == 1
-			? e.selected_items.values().next().value : null
-		update_focused_item_span()
-	}
-
-	// hover items with the mouse ---------------------------------------------
-
-	function hit_test_item(mx, my) {
-		let r = e.rect()
-		mx -= r.x
-		my -= r.y
-		for (let item of e.items) {
-			let [x1, y1, x2, y2] = item_track_bounds(item)
-			if (mx >= x1 && mx < x2 && my >= y1 && my < y2)
-				return item
-		}
-	}
-
-	function e_pointermove(mx, my) {
-		e.hit_item = hit_test_item(mx, my)
-	}
-
-	// select items with the mouse --------------------------------------------
-
-	function hio_pointerdown(ev, mx, my) {
-		e.select_item(e.hit_item, !ev.shiftKey)
-		return false
-	}
-
-	function fio_pointerdown(ev, mx, my) {
-		if (e.focused_item.typename == 'cssgrid') {
-			e.focused_item.editing = true
-			e.focused_item.focus()
-		}
-		return false
-	}
-
-	function sio_pointerdown(ev, mx, my) {
-		//return false
-	}
 
 	// drag-move guide tips => change grid template sizes ---------------------
 
@@ -517,358 +378,6 @@ component('x-cssgrid', function(e) {
 		return false
 	}
 
-	// drag-move item => align or move to different grid area -----------------
-
-	function hit_test_edge_center(mx, my, bx1, bx2, by, side) {
-		return abs((bx1 + bx2) / 2 - mx) <= 5 && abs(by - my) <= 5 && side
-	}
-
-	function hit_test_focused_item_span(mx, my) {
-		if (!focused_item)
-			return
-		let [bx1, by1, bx2, by2] = item_track_bounds(e.focused_item)
-		let r = e.rect()
-		mx -= r.x
-		my -= r.y
-		return (
-			hit_test_edge_center(mx, my, bx1, bx2, by1, 'top'   ) ||
-			hit_test_edge_center(mx, my, bx1, bx2, by2, 'bottom') ||
-			hit_test_edge_center(my, mx, by1, by2, bx1, 'left'  ) ||
-			hit_test_edge_center(my, mx, by1, by2, bx2, 'right' )
-		)
-	}
-
-	function start_move_item(mx, my) {
-		let css = hit_item.css()
-		let r = hit_item.rect()
-		drag_mx = drag_mx - r.x + num(css['margin-left'])
-		drag_my = drag_my - r.y + num(css['margin-top' ])
-		move_item(mx, my)
-	}
-
-	function stop_move_item() {
-		push_in_item()
-		raf(update)
-	}
-
-	function hit_test_inside_span_for(horiz, x1, x2) {
-		let min_dx = 1/0
-		let closest_i, closest_bx1, closest_bx2
-		let bx1
-		each_boundary_line(horiz, function(i, bx2) {
-			if (i > 0) {
-				let dx = (x1 >= bx1 && x2 <= bx2) ? 0 : abs((x1 + x2) / 2 - (bx1 + bx2) / 2)
-				if (dx < min_dx) {
-					min_dx = dx
-					closest_i = i-1
-					closest_bx1 = bx1
-					closest_bx2 = bx2
-				}
-			}
-			bx1 = bx2
-		})
-		return [closest_i, closest_bx1, closest_bx2]
-	}
-
-	function hit_test_inside_span(item) {
-		let er = e.rect()
-		let ir = item.rect()
-		let x1 = ir.x1 - er.x1
-		let x2 = ir.x2 - er.x1
-		let y1 = ir.y1 - er.y1
-		let y2 = ir.y2 - er.y1
-		let [i, bx1, bx2] = hit_test_inside_span_for(true , x1, x2)
-		let [j, by1, by2] = hit_test_inside_span_for(false, y1, y2)
-		return [i, j, bx1, by1, bx2, by2]
-	}
-
-	function hit_test_span_edge(dx, x1, x2, bx1, bx2) {
-		let dx1 = abs(bx1 - x1)
-		let dx2 = abs(bx2 - x2)
-		if (dx1 <= dx && dx2 <= dx) // close to both edges
-			if (abs(dx1 - dx2) <= (dx1 + dx2) / 2)
-				return 'center'
-			else
-				return dx1 < dx2 ? 'start' : 'end'
-		else if (dx1 <= dx)
-			return 'start'
-		else if (dx2 <= dx)
-			return 'end'
-		else if (abs(dx1 - dx2) <= dx)
-			return 'center'
-	}
-
-	function move_item(mx, my) {
-
-		let x = mx - drag_mx
-		let y = my - drag_my
-
-		let x1 = x - e.ox
-		let y1 = y - e.oy
-		let hr = hit_item.rect()
-		let x2 = x1 + hr.w
-		let y2 = y1 + hr.h
-		let i1 = span1(hit_item, true)
-		let i2 = span2(hit_item, true)
-		let j1 = span1(hit_item, false)
-		let j2 = span2(hit_item, false)
-		let [bx1, by1, bx2, by2] = track_bounds(i1, j1, i2, j2)
-		let align_x = hit_test_span_edge(20, x1, x2, bx1, bx2)
-		let align_y = hit_test_span_edge(20, y1, y2, by1, by2)
-		let stretch_x = hit_item.align_x == 'stretch'
-		let stretch_y = hit_item.align_y == 'stretch'
-
-		if (align_x && align_y) {
-			push_in_item()
-			if (align_x && !stretch_x)
-				hit_item.align_x = align_x
-			if (align_y && !stretch_y)
-				hit_item.align_y = align_y
-			raf(update)
-		} else {
-			pop_out_item()
-
-			let r = e.rect()
-			hit_item.x = !stretch_x ? x : r.x + bx1 + (i1 > 0 ? e.gap_x / 2 : 0)
-			hit_item.y = !stretch_y ? y : r.y + by1 + (j1 > 0 ? e.gap_y / 2 : 0)
-
-			let [i, j, mbx1, mby1, mbx2, mby2] = hit_test_inside_span(hit_item)
-			let can_move_item =
-				(i < i1 || i >= i2) ||
-				(j < j1 || j >= j2)
-			if (can_move_item) {
-				//set_span(hit_item, 'column', i, i+1)
-				//set_span(hit_item, 'row'   , j, j+1)
-				//update_item_ph()
-			}
-
-			raf(update)
-		}
-
-	}
-
-	// drag-resize item's span outline => change item's grid area -------------
-
-	{
-		let drag_mx, drag_my, side
-
-		function resize_focused_item_span(mx, my) {
-			let horiz = side == 'left' || side == 'right'
-			let axis = horiz ? 'x' : 'y'
-			let second = side == 'right' || side == 'bottom'
-			mx = horiz ? mx - drag_mx : my - drag_my
-			let i1 = span1(e.focused_item, axis)
-			let i2 = span2(e.focused_item, axis)
-			let dx = 1/0
-			let closest_i
-			each_boundary_line(axis, function(i, x) {
-				if (second ? i > i1 : i < i2) {
-					if (abs(x - mx) < dx) {
-						dx = abs(x - mx)
-						closest_i = i
-					}
-				}
-			})
-			set_span(e.focused_item, axis,
-				!second ? closest_i : i1,
-				 second ? closest_i : i2)
-		}
-
-		function so_pointerdown(ev, mx, my) {
-			let handle = ev.target.closest('.x-cssgrid-span-handle')
-			if (!handle) return
-			side = handle.attr('side')
-
-			let [bx1, by1, bx2, by2] = item_track_bounds(e.focused_item)
-			let second = side == 'right' || side == 'bottom'
-			drag_mx = mx - (second ? bx2 : bx1)
-			drag_my = my - (second ? by2 : by1)
-			resize_focused_item_span(mx, my)
-
-			return this.capture_pointer(ev, so_pointermove)
-		}
-
-		function so_pointermove(mx, my) {
-			resize_focused_item_span(mx, my)
-		}
-
-	}
-
-	/*
-	// drag & drop controller ----------------------------------------------
-
-	let hit_item, hit_area
-	let dragging, drag_mx, drag_my
-
-	e.on('pointerdown', function(ev) {
-		if (!e.editing)
-			return
-		e.focus()
-		if (!hit_item) {
-			if (!ev.shiftKey)
-				e.select_item(null, true)
-			return
-		}
-		dragging = true
-		drag_mx = ev.clientX
-		drag_my = ev.clientY
-		this.setPointerCapture(ev.pointerId)
-		e.select_item(hit_item, !ev.shiftKey)
-		return false
-	})
-
-	e.on('pointerup', function(ev) {
-		if (!e.editing)
-			return
-		if (!hit_item) return
-		this.releasePointerCapture(ev.pointerId)
-		if (dragging == 'move_item') {
-			stop_move_item()
-		} else if (dragging == 'resize_focused_item_span') {
-			stop_resize_focused_item_span()
-		}
-		dragging = false
-		return false
-	})
-
-	e.on('dblclick', function(ev) {
-		if (!e.editing)
-			return
-		if (!hit_item) return
-		toggle_stretch(hit_item, !ev.shiftKey, !ev.ctrlKey)
-		raf(update)
-		return false
-	})
-
-	let cursors = {
-		left   : 'ew-resize',
-		right  : 'ew-resize',
-		top    : 'ns-resize',
-		bottom : 'ns-resize',
-	}
-
-	e.on('pointermove', function(mx, my, ev) {
-		if (!e.editing)
-			return
-		if (dragging == 'move_item') {
-			move_item(mx, my)
-		} else if (dragging == 'resize_focused_item_span') {
-			resize_focused_item_span(mx, my)
-		} else if (dragging) {
-			if (max(abs(mx - drag_mx), abs(my - drag_my)) > 10) {
-				if (hit_area == 'item') {
-					dragging = 'move_item'
-					start_move_item(mx, my)
-				} else {
-					dragging = 'resize_focused_item_span'
-					start_resize_focused_item_span(mx, my)
-				}
-			}
-		} else {
-			let cur
-			if (!ev.target.hasclass('x-cssgrid-line-tip')) {
-				hit_area = hit_test_focused_item_span(mx, my)
-				cur = cursors[hit_area]
-				hit_item = cur && focused_item
-				if (!hit_item) {
-					hit_item = hit_test_item(mx, my)
-					if (hit_item) {
-						cur = 'move'
-						hit_area = 'item'
-					}
-				}
-				update_item_overlays()
-			}
-			e.style.cursor = cur || null
-		}
-		return false
-	})
-
-	// item moving in/out of layout ----------------------------------------
-
-	let item_ph = div({class: 'x-cssgrid-item-ph'}) // ph=placeholder
-
-	function update_item_ph() {
-		// position & size the placeholder in grid so that the tracks don't change.
-		let css = hit_item.css()
-		item_ph.style['grid-column-start'] = css['grid-column-start']
-		item_ph.style['grid-column-end'  ] = css['grid-column-end'  ]
-		item_ph.style['grid-row-start'   ] = css['grid-row-start'   ]
-		item_ph.style['grid-row-end'     ] = css['grid-row-end'     ]
-		item_ph.style['margin-left'      ] = css['margin-left'      ]
-		item_ph.style['margin-right'     ] = css['margin-right'     ]
-		item_ph.style['margin-top'       ] = css['margin-top'       ]
-		item_ph.style['margin-bottom'    ] = css['margin-bottom'    ]
-		item_ph.style['justify-self'     ] = css['justify-self'     ]
-		item_ph.style['align-self'       ] = css['align-self'       ]
-		item_ph.w = hit_item.offsetWidth
-		item_ph.h = hit_item.offsetHeight
-	}
-
-	function pop_out_item() {
-		if (hit_item.parent != e)
-			return
-
-		// fixate the size of the poped out item and keep the old values.
-		hit_item._w = hit_item.style.width
-		hit_item._h = hit_item.style.height
-		hit_item._pos_x = hit_item.pos_x
-		hit_item._pos_y = hit_item.pos_y
-		hit_item._span_x = hit_item.span_x
-		hit_item._span_y = hit_item.span_y
-		hit_item._margin_x = hit_item.style['margin-left']
-		hit_item._margin_y = hit_item.style['margin-top']
-
-		hit_item.w = hit_item.offsetWidth
-		hit_item.h = hit_item.offsetHeight
-
-		update_item_ph()
-
-		hit_item.style['margin-left'] = 0
-		hit_item.style['margin-top' ] = 0
-		hit_item.pos_x = 1
-		hit_item.pos_y = 1
-
-		hit_item.remove()
-		hit_item_overlay.remove()
-		focused_item_overlay.remove()
-		hit_item.style.position = 'absolute'
-		hit_item_overlay.style.position = 'absolute'
-		focused_item_overlay.style.position = 'absolute'
-		e.add(item_ph)
-		document.body.add(hit_item)
-		document.body.add(hit_item_overlay)
-		document.body.add(focused_item_overlay)
-		update_item_overlays()
-	}
-
-	function push_in_item() {
-		if (hit_item.parent == e)
-			return
-		item_ph.remove()
-
-		hit_item.x = null
-		hit_item.y = null
-		hit_item.w = hit_item._w
-		hit_item.h = hit_item._h
-		hit_item.pos_x = hit_item._pos_x
-		hit_item.pos_y = hit_item._pos_y
-		hit_item.span_x = hit_item._span_x
-		hit_item.span_y = hit_item._span_y
-		hit_item.style['margin-left'] = hit_item._margin_x
-		hit_item.style['margin-top' ] = hit_item._margin_y
-		hit_item.style.position = null
-		hit_item_overlay.style.position = null
-		focused_item_overlay.style.position = null
-
-		e.add(hit_item)
-		update_item_overlays()
-		e.add(hit_item_overlay)
-		e.add(focused_item_overlay)
-	}
-
-	*/
-
 	// show add button when hovering empty grid cells -------------------------
 
 	e.add_button = button({classes: 'x-cssgrid-add-button', text: 'add...'})
@@ -902,14 +411,14 @@ component('x-cssgrid', function(e) {
 		my -= r.y
 		mx -= r.x
 		let pos_x, pos_y, x1, y1, x2, y2
-		each_boundary_line('x', function(i, x) {
+		e.each_cssgrid_line('x', function(i, x) {
 			if (mx > x) {
 				pos_x = i + 1
 				x1 = x
 			} else if (x2 == null)
 				x2 = x
 		})
-		each_boundary_line('y', function(j, y) {
+		e.each_cssgrid_line('y', function(j, y) {
 			if (my > y) {
 				pos_y = j + 1
 				y1 = y
@@ -924,63 +433,9 @@ component('x-cssgrid', function(e) {
 
 	})
 
-	// keyboard bindings ------------------------------------------------------
-
-	e.on('keydown', function(key, shift, ctrl) {
-		if (!e.editing)
-			return
-		if (key == 'Tab') {
-			let item = e.items[mod(e.items.indexOf(e.focused_item) + (shift ? -1 : 1), e.items.length)]
-			e.select_item(item, true)
-			return false
-		}
-		if (e.focused_item) {
-			if (key == 'Enter') { // toggle stretch
-				e.toggle_stretch(e.focused_item, !shift, !ctrl)
-				return false
-			}
-			if (key == 'Delete') {
-				let next_item = remove_item(e.focused_item)
-				e.select_item(next_item, true)
-				return false
-			}
-			if (key == 'ArrowLeft' || key == 'ArrowRight' || key == 'ArrowUp' || key == 'ArrowDown') {
-				let horiz = key == 'ArrowLeft' || key == 'ArrowRight'
-				let fw = key == 'ArrowRight' || key == 'ArrowDown'
-				if (ctrl) { // change alignment
-					let attr = horiz ? 'align_x' : 'align_y'
-					let align = e.focused_item[attr]
-					if (align == 'stretch')
-						align = e.toggle_stretch(e.focused_item, horiz, !horiz)
-					let align_indices = {start: 0, center: 1, end: 2}
-					let align_map = keys(align_indices)
-					align = align_map[align_indices[align] + (fw ? 1 : -1)]
-					e.focused_item[attr] = align
-				} else { // resize span or move to diff. span
-					let axis = horiz ? 'x' : 'y'
-					if (shift) { // resize span
-						let i1 = span1(e.focused_item, axis)
-						let i2 = span2(e.focused_item, axis)
-						let i = max(i1+1, i2 + (fw ? 1 : -1))
-						set_span(e.focused_item, axis, false, i)
-					} else {
-						let i = max(0, span1(e.focused_item, axis) + (fw ? 1 : -1))
-						set_span(e.focused_item, axis, i, i+1)
-					}
-				}
-				return false
-			}
-		}
-
-	})
-
 	// xmodule interface ------------------------------------------------------
 
 	e.accepts_form_widgets = true
-
-	e.child_widgets = function() {
-		return e.items.slice()
-	}
 
 	e.replace_widget = function(old_widget, new_widget) {
 		let i = e.items.indexOf(old_widget)
@@ -989,24 +444,5 @@ component('x-cssgrid', function(e) {
 		e.fire('widget_tree_changed')
 	}
 
-	e.select_child_widget = function(widget) {
-		// select_item(widget, true)
-		e.editing = false
-		if (widget.editing != null)
-			widget.editing = true
-	}
-
-	e.inspect_fields = [
-		{name: 'gap', type: 'number'},
-	]
-
-	e.serialize = function() {
-		let t = e.serialize_fields()
-		t.items = []
-		for (let item of e.items)
-			t.items.push(item.serialize())
-		return t
-	}
-
-})
+}
 

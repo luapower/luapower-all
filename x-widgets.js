@@ -6,6 +6,396 @@
 */
 
 // ---------------------------------------------------------------------------
+// undo stack, selected widgets and clipboard
+// ---------------------------------------------------------------------------
+
+undo_stack = []
+redo_stack = []
+
+function push_undo(f) {
+	undo_stack.push(f)
+}
+
+function undo() {
+	let f = undo_stack.pop()
+	if (!f)
+		return
+	redo_stack.push(f)
+	f()
+}
+
+function redo() {
+	[undo_stack, redo_stack] = [redo_stack, undo_stack];
+	undo()
+	[undo_stack, redo_stack] = [redo_stack, undo_stack];
+}
+
+selected_widgets = new Set()
+
+function select_only_widget(e) {
+	for (let e of selected_widgets)
+		e.set_widget_selected(false)
+	if (e)
+		e.set_widget_selected(true)
+}
+
+copied_widgets = new Set()
+
+function copy_selected_widgets() {
+	copied_widgets = new Set(selected_widgets)
+}
+
+function cut_selected_widgets() {
+	copy_selected_widgets()
+	for (let e of selected_widgets)
+		e.remove_widget()
+}
+
+function paste_copied_widgets(parent_widget) {
+	for (let e of copied_widgets)
+		parent_widget.add_widget(e)
+}
+
+document.on('keydown', function(key, shift, ctrl) {
+	if (key == 'Escape')
+		select_only_widget()
+	else if (ctrl && key == 'c')
+		copy_selected_widgets()
+	else if (ctrl && key == 'x')
+		cut_selected_widgets()
+	else if (ctrl && key == 'z')
+		if (shift)
+			redo()
+		else
+			undo()
+	else if (ctrl && key == 'y')
+		redo()
+})
+
+// ---------------------------------------------------------------------------
+// selectable widget mixin
+// ---------------------------------------------------------------------------
+
+function selectable_widget(e) {
+
+	e.property('parent_widget', function() {
+		let parent = this.parent
+		while (parent) {
+			if (parent.child_widgets)
+				return parent
+			parent = parent.parent
+		}
+	})
+
+	e.can_select_widget = true
+	e.widget_selected = false
+
+	e.set_widget_selected = function(select, focus, fire_changed_event) {
+		select = select !== false
+		if (e.widget_selected == select)
+			return
+		e.widget_selected = select
+		if (select) {
+			selected_widgets.add(e)
+			e.select_widget(focus)
+		} else {
+			selected_widgets.delete(e)
+			e.unselect_widget()
+		}
+		e.class('widget-selected', select)
+		if (fire_changed_event !== false)
+			document.fire('selected_widgets_changed', selected_widgets)
+	}
+
+	let tabindex
+	e.select_widget = function(focus) {
+		tabindex = e.attr('tabindex')
+		e.attr('tabindex', -1)
+		let overlay = div({class: 'x-widget-selected-overlay', tabindex: 0})
+		e.widget_selected_overlay = overlay
+		e.add(overlay)
+		overlay.on('keydown', function(key) {
+			if (key == 'Delete') {
+				e.remove_widget()
+				return false
+			}
+		})
+		overlay.on('pointerdown', function(ev) {
+			select_only_widget(ev.ctrlKey && e.parent_widget || null)
+			return false
+		})
+		if (focus !== false)
+			overlay.focus()
+	}
+
+	e.unselect_widget = function() {
+		e.attr('tabindex', tabindex)
+		e.widget_selected_overlay.remove()
+		e.widget_selected_overlay = null
+	}
+
+	e.remove_widget = function() {
+		let p = e.parent_widget
+		if (!p) return
+		e.set_widget_selected(false)
+		p.remove_child_widget(e)
+	}
+
+	e.on('pointerdown', function(ev) {
+		if (!e.can_select_widget)
+			return
+		if (e.widget_selected)
+			return false // this should not happen
+		if (ev.ctrlKey && (!e.ctrl_click_used || ev.shiftKey)) {
+			if (!ev.shiftKey)
+				select_only_widget(e)
+			else {
+				// unselect all whose direct or indirect parent is e.
+				for (let e1 of selected_widgets) {
+					let p = e1.parent_widget
+					while (p) {
+						if (p == e) {
+							e1.set_widget_selected(false)
+							break
+						}
+						p = p.parent_widget
+					}
+				}
+				e.set_widget_selected(true)
+			}
+			return false
+		} else if (selected_widgets.size) {
+			select_only_widget()
+			return false
+		}
+	})
+
+	e.on('click', function(ev) {
+		if (e.widget_selected)
+			return false
+	})
+
+}
+
+// ---------------------------------------------------------------------------
+// cssgrid item widget mixin
+// ---------------------------------------------------------------------------
+
+function cssgrid_item_widget(e) {
+
+	selectable_widget(e)
+
+	e.prop('pos_x'  , {style: 'grid-column-start' , type: 'number', default: 1})
+	e.prop('pos_y'  , {style: 'grid-row-start'    , type: 'number', default: 1})
+	e.prop('span_x' , {style: 'grid-column-end'   , type: 'number', default: 1, style_format: (v) => 'span '+v, style_parse: (v) => num((v || 'span 1').replace('span ', '')) })
+	e.prop('span_y' , {style: 'grid-row-end'      , type: 'number', default: 1, style_format: (v) => 'span '+v, style_parse: (v) => num((v || 'span 1').replace('span ', '')) })
+	e.prop('align_x', {style: 'justify-self'      , type: 'enum', enum_values: ['start', 'end', 'center', 'stretch'], default: 'center'})
+	e.prop('align_y', {style: 'align-self'        , type: 'enum', enum_values: ['start', 'end', 'center', 'stretch'], default: 'center'})
+
+	let select_widget = e.select_widget
+	let unselect_widget = e.unselect_widget
+
+	e.select_widget = function(focus) {
+		select_widget(focus)
+		let p = e.parent_widget
+		if (p && p.typename == 'cssgrid') {
+			cssgrid_item_widget_editing(e)
+			e.cssgrid_item_select_widget()
+		}
+	}
+
+	e.unselect_widget = function() {
+		let p = e.parent_widget
+		if (p && p.typename == 'cssgrid')
+			e.cssgrid_item_unselect_widget()
+		unselect_widget()
+	}
+
+}
+
+// ---------------------------------------------------------------------------
+// cssgrid item widget editing mixin
+// ---------------------------------------------------------------------------
+
+function cssgrid_item_widget_editing(e) {
+
+	function track_bounds() {
+		let i = e.pos_x-1
+		let j = e.pos_y-1
+		return e.parent_widget.cssgrid_track_bounds(i, j, i + e.span_x, j + e.span_y)
+	}
+
+	function set_span(axis, i1, i2) {
+		if (i1 !== false)
+			e['pos_'+axis] = i1+1
+		if (i2 !== false)
+			e['span_'+axis] = i2 - (i1 !== false ? i1 : e['pos_'+axis]-1)
+	}
+
+	function toggle_stretch_for(horiz) {
+		let attr = horiz ? 'align_x' : 'align_y'
+		let align = e[attr]
+		if (align == 'stretch')
+			align = e['_'+attr] || 'center'
+		else {
+			e['_'+attr] = align
+			align = 'stretch'
+		}
+		e[horiz ? 'w' : 'h'] = align == 'stretch' ? 'auto' : null
+		e[attr] = align
+		return align
+	}
+	function toggle_stretch(horiz, vert) {
+		if (horiz && vert) {
+			let stretch_x = e.align_x == 'stretch'
+			let stretch_y = e.align_y == 'stretch'
+			if (stretch_x != stretch_y) {
+				toggle_stretch(!stretch_x, !stretch_y)
+			} else {
+				toggle_stretch(true, false)
+				toggle_stretch(false, true)
+			}
+		} else if (horiz)
+			toggle_stretch_for(true)
+		else if (vert)
+			toggle_stretch_for(false)
+	}
+
+	e.cssgrid_item_select_widget = function() {
+
+		let p = e.parent_widget
+		if (!p || p.typename != 'cssgrid')
+			return
+		p.editing = true
+
+		let span_outline = div({class: 'x-cssgrid-span'},
+			div({class: 'x-cssgrid-span-handle', side: 'top'}),
+			div({class: 'x-cssgrid-span-handle', side: 'left'}),
+			div({class: 'x-cssgrid-span-handle', side: 'right'}),
+			div({class: 'x-cssgrid-span-handle', side: 'bottom'}),
+		)
+		span_outline.style['align-self']   = 'stretch'
+		span_outline.style['justify-self'] = 'stretch'
+		span_outline.on('pointerdown', so_pointerdown)
+		p.add(span_outline)
+
+		function update_so() {
+			for (let s of ['grid-column-start', 'grid-column-end', 'grid-row-start', 'grid-row-end'])
+				span_outline.style[s] = e.style[s]
+		}
+		update_so()
+
+		function prop_changed(k, v, v0, ev) {
+			if (ev.target == e)
+				if (k == 'pos_x' || k == 'span_x' || k == 'pos_y' || k == 'span_y')
+					update_so()
+		}
+		e.on('prop_changed', prop_changed)
+
+		// drag-resize item's span outline => change item's grid area ----------
+
+		let drag_mx, drag_my, side
+
+		function resize_span(mx, my) {
+			let horiz = side == 'left' || side == 'right'
+			let axis = horiz ? 'x' : 'y'
+			let second = side == 'right' || side == 'bottom'
+			mx = horiz ? mx - drag_mx : my - drag_my
+			let i1 = e['pos_'+axis]-1
+			let i2 = e['pos_'+axis]-1 + e['span_'+axis]
+			let dx = 1/0
+			let closest_i
+			e.parent_widget.each_cssgrid_line(axis, function(i, x) {
+				if (second ? i > i1 : i < i2) {
+					if (abs(x - mx) < dx) {
+						dx = abs(x - mx)
+						closest_i = i
+					}
+				}
+			})
+			set_span(axis,
+				!second ? closest_i : i1,
+				 second ? closest_i : i2
+			)
+		}
+
+		function so_pointerdown(ev, mx, my) {
+			let handle = ev.target.closest('.x-cssgrid-span-handle')
+			if (!handle) return
+			side = handle.attr('side')
+
+			let [bx1, by1, bx2, by2] = track_bounds()
+			let second = side == 'right' || side == 'bottom'
+			drag_mx = mx - (second ? bx2 : bx1)
+			drag_my = my - (second ? by2 : by1)
+			resize_span(mx, my)
+
+			return this.capture_pointer(ev, so_pointermove)
+		}
+
+		function so_pointermove(mx, my) {
+			resize_span(mx, my)
+		}
+
+		function overlay_keydown(key, shift, ctrl) {
+			if (key == 'Enter') { // toggle stretch
+				toggle_stretch(!shift, !ctrl)
+				return false
+			}
+			if (key == 'ArrowLeft' || key == 'ArrowRight' || key == 'ArrowUp' || key == 'ArrowDown') {
+				let horiz = key == 'ArrowLeft' || key == 'ArrowRight'
+				let fw = key == 'ArrowRight' || key == 'ArrowDown'
+				if (ctrl) { // change alignment
+					let attr = horiz ? 'align_x' : 'align_y'
+					let align = e[attr]
+					if (align == 'stretch')
+						align = toggle_stretch(horiz, !horiz)
+					let align_indices = {start: 0, center: 1, end: 2}
+					let align_map = keys(align_indices)
+					align = align_map[align_indices[align] + (fw ? 1 : -1)]
+					e[attr] = align
+				} else { // resize span or move to diff. span
+					let axis = horiz ? 'x' : 'y'
+					if (shift) { // resize span
+						let i1 = e['pos_'+axis]-1
+						let i2 = e['pos_'+axis]-1 + e['span_'+axis]
+						let i = max(i1+1, i2 + (fw ? 1 : -1))
+						set_span(axis, false, i)
+					} else {
+						let i = max(0, e['pos_'+axis]-1 + (fw ? 1 : -1))
+						set_span(axis, i, i+1)
+					}
+				}
+				return false
+			}
+
+		}
+		e.widget_selected_overlay.on('keydown', overlay_keydown)
+
+		e.cssgrid_item_unselect_widget = function() {
+			e.off('prop_changed', prop_changed)
+			e.widget_selected_overlay.off('keydown', overlay_keydown)
+			span_outline.remove()
+
+			// exit cssgrid editing if this was the last item to be selected.
+			let p = e.parent_widget
+			let only_item = true
+			for (let e1 of selected_widgets)
+				if (e1 != e && e1.parent_widget == p) {
+					only_item = false
+					break
+				}
+			if (only_item)
+				p.editing = false
+
+			e.cssgrid_item_unselect_widget = noop
+		}
+
+	}
+
+}
+
+// ---------------------------------------------------------------------------
 // serializable widget mixin
 // ---------------------------------------------------------------------------
 
@@ -36,96 +426,10 @@ function serializable_widget(e) {
 }
 
 // ---------------------------------------------------------------------------
-// selectable widget mixin
-// ---------------------------------------------------------------------------
-
-selected_widgets = new Set()
-
-function select_only_widget(e) {
-	for (let e of selected_widgets)
-		e.widget_selected = false
-	if (e)
-		e.widget_selected = true
-}
-
-function selectable_widget(e) {
-
-	e.property('parent_widget', function() {
-		let parent = this.parent
-		while (parent) {
-			if (parent.child_widgets)
-				return parent
-			parent = parent.parent
-		}
-	})
-
-	let selected = false
-	e.property('widget_selected', () => selected,
-		function(v) {
-			selected = !!v
-			if (selected)
-				selected_widgets.add(e)
-			else
-				selected_widgets.delete(e)
-			e.class('widget-selected', selected)
-			e.fire('selected_widgets_changed', selected_widgets)
-		}
-	)
-
-	e.on('pointerup', function(ev) {
-		if (e.widget_selected)
-			return false
-	})
-
-	function diff_parent(e) {
-		return selected_widgets.size
-			&& selected_widgets.values().next().value.parent_widget != e.parent_widget
-	}
-
-	e.on('pointerdown', function(ev) {
-		if (ev.ctrlKey) {
-			if (e.widget_selected)
-				select_only_widget(e.parent_widget)
-			else if (diff_parent(e))
-				select_only_widget(e)
-			else
-				e.widget_selected = true
-			return false
-		} else if (selected_widgets.size) {
-			select_only_widget()
-			return false
-		}
-	})
-
-}
-
-document.on('keydown', function(key) {
-	if (key == 'Escape')
-		select_only_widget()
-})
-
-// ---------------------------------------------------------------------------
-// cssgrid child widget mixin
-// ---------------------------------------------------------------------------
-
-function cssgrid_child_widget(e) {
-
-	selectable_widget(e)
-
-	e.prop('pos_x'  , {style: 'grid-column-start' , type: 'number', default: 1})
-	e.prop('pos_y'  , {style: 'grid-row-start'    , type: 'number', default: 1})
-	e.prop('span_x' , {style: 'grid-column-end'   , type: 'number', default: 1, style_format: (v) => 'span '+v, style_parse: (v) => num((v || 'span 1').replace('span ', '')) })
-	e.prop('span_y' , {style: 'grid-row-end'      , type: 'number', default: 1, style_format: (v) => 'span '+v, style_parse: (v) => num((v || 'span 1').replace('span ', '')) })
-	e.prop('align_x', {style: 'justify-self'      , type: 'enum', enum_values: ['start', 'end', 'center', 'stretch'], default: 'center'})
-	e.prop('align_y', {style: 'align-self'        , type: 'enum', enum_values: ['start', 'end', 'center', 'stretch'], default: 'center'})
-
-}
-
-// ---------------------------------------------------------------------------
 // focusable widget mixin ----------------------------------------------------
 // ---------------------------------------------------------------------------
 
-function tabindex_widget(e) {
+function focusable_widget(e) {
 	e.prop('tabindex', {attr: 'tabindex', default: 0})
 }
 
@@ -142,7 +446,7 @@ function tabindex_widget(e) {
 
 function val_widget(e) {
 
-	cssgrid_child_widget(e)
+	cssgrid_item_widget(e)
 	serializable_widget(e)
 
 	e.default_val = null
@@ -378,9 +682,9 @@ tooltip.reading_speed = 800 // letters-per-minute.
 
 component('x-button', function(e) {
 
-	cssgrid_child_widget(e)
+	cssgrid_item_widget(e)
 	serializable_widget(e)
-	tabindex_widget(e)
+	focusable_widget(e)
 
 	e.classes = 'x-widget x-button'
 
@@ -438,7 +742,7 @@ component('x-button', function(e) {
 
 component('x-checkbox', function(e) {
 
-	tabindex_widget(e)
+	focusable_widget(e)
 
 	e.classes = 'x-widget x-markbox x-checkbox'
 	e.prop('align', {attr: 'align', type: 'enum', enum_values: ['left', 'right'], default: 'left'})
@@ -675,8 +979,12 @@ component('x-input', function(e) {
 
 	// grid editor protocol ---------------------------------------------------
 
+	focus = e.focus
 	e.focus = function() {
-		e.input.focus()
+		if (e.widget_selected)
+			focus.call(e)
+		else
+			e.input.focus()
 	}
 
 	e.input.on('blur', function() {
@@ -907,7 +1215,7 @@ component('x-spin-input', function(e) {
 
 component('x-slider', function(e) {
 
-	tabindex_widget(e)
+	focusable_widget(e)
 
 	e.from = 0
 	e.to = 1
@@ -1058,7 +1366,7 @@ component('x-dropdown', function(e) {
 
 	// view
 
-	tabindex_widget(e)
+	focusable_widget(e)
 
 	e.classes = 'x-widget x-input x-dropdown'
 
@@ -1515,7 +1823,7 @@ component('x-menu', function(e) {
 
 component('x-widget-placeholder', function(e) {
 
-	cssgrid_child_widget(e)
+	cssgrid_item_widget(e)
 	serializable_widget(e)
 	e.align_x = 'stretch'
 	e.align_y = 'stretch'
@@ -1586,7 +1894,7 @@ component('x-widget-placeholder', function(e) {
 
 component('x-pagelist', function(e) {
 
-	cssgrid_child_widget(e)
+	cssgrid_item_widget(e)
 	e.align_x = 'stretch'
 	e.align_y = 'stretch'
 	serializable_widget(e)
@@ -1890,7 +2198,7 @@ component('x-pagelist', function(e) {
 
 component('x-split', function(e) {
 
-	cssgrid_child_widget(e)
+	cssgrid_item_widget(e)
 	e.align_x = 'stretch'
 	e.align_y = 'stretch'
 	serializable_widget(e)
@@ -2223,7 +2531,7 @@ component('x-action-band', function(e) {
 
 component('x-dialog', function(e) {
 
-	tabindex_widget(e)
+	focusable_widget(e)
 
 	e.classes = 'x-widget x-dialog'
 
@@ -2289,7 +2597,7 @@ component('x-dialog', function(e) {
 
 component('x-toolbox', function(e) {
 
-	tabindex_widget(e)
+	focusable_widget(e)
 
 	e.classes = 'x-widget x-toolbox'
 

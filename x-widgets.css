@@ -58,18 +58,13 @@
 	box-shadow: none;
 }
 
-
 .x-widget.widget-selected {
 	position: relative;
-}
-
-.x-widget.widget-selected,
-.x-widget.widget-selected * {
 	pointer-events: none;
+	z-index: 0;
 }
 
-.x-widget.widget-selected::after {
-	content: '';
+.x-widget-selected-overlay {
 	display: block;
 	position: absolute;
 	top: 0;
@@ -79,8 +74,13 @@
 	background: rgba(0,0,0,0.1);
 	outline: 1px dashed red;
 	outline-offset: -1px;
+	pointer-events: all;
+	z-index: 100;
 }
 
+.x-widget-selected-overlay:focus {
+	outline-color: blue;
+}
 
 /* item states ------------------------------------------------------------ */
 
@@ -820,7 +820,7 @@
 
 /* input & dropdown common styles ----------------------------------------- */
 
-.x-input:focus-within,
+.x-input:focus-within:not(.widget-selected),
 .x-dropdown.open
 {
 	outline: none;

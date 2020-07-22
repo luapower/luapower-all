@@ -6,10 +6,12 @@
 component('x-listbox', function(e) {
 
 	rowset_widget(e)
+	focusable_widget(e)
+
 	e.can_focus_cells = false
 	e.align_x = 'stretch'
 	e.align_y = 'stretch'
-	tabindex_widget(e)
+
 	e.classes = 'x-widget x-focusable x-listbox'
 
 	e.prop('orientation', {attr: 'orientation', type: 'enum', enum_values: ['vertical', 'horizontal'], default: 'vertical'})
@@ -276,6 +278,8 @@ component('x-listbox', function(e) {
 		if (e.display_field)
 			e.quicksearch(c, e.display_field)
 	})
+
+	e.property('ctrl_click_used', () => e.multiple_selection)
 
 })
 

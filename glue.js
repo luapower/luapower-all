@@ -62,7 +62,7 @@ tan = Math.tan
 
 function noop() {}
 function return_true() { return true; }
-function return_false() { return true; }
+function return_false() { return false; }
 function return_arg(arg) { return arg; }
 
 // error handling ------------------------------------------------------------

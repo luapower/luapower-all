@@ -1412,7 +1412,7 @@ function global_rowset(name, ...options) {
 	}
 
 	rowset.types.date.format = function(t) {
-		_d.setTime(t)
+		_d.setTime(t * 1000)
 		return _d.toLocaleString(locale, this.date_format)
 	}
 

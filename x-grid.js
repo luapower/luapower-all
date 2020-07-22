@@ -6,9 +6,10 @@
 component('x-grid', function(e) {
 
 	rowset_widget(e)
+	focusable_widget(e)
+
 	e.align_x = 'stretch'
 	e.align_y = 'stretch'
-	tabindex_widget(e)
 	e.classes = 'x-widget x-focusable x-grid'
 
 	// geometry
@@ -1587,6 +1588,8 @@ component('x-grid', function(e) {
 		} else if (!e.editor)
 			e.quicksearch(c, e.focused_field)
 	})
+
+	e.property('ctrl_click_used', () => e.multiple_selection)
 
 	// column context menu ----------------------------------------------------
 

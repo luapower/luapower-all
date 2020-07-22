@@ -5,7 +5,7 @@
 
 component('x-calendar', function(e) {
 
-	tabindex_widget(e)
+	focusable_widget(e)
 	val_widget(e)
 	e.classes = 'x-widget x-focusable x-calendar'
 
