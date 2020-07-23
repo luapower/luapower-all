@@ -820,7 +820,7 @@
 
 /* input & dropdown common styles ----------------------------------------- */
 
-.x-input:focus-within:not(.widget-selected),
+.x-input:focus-within:not(.widget-selected):not(.invalid),
 .x-dropdown.open
 {
 	outline: none;

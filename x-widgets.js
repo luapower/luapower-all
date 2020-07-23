@@ -121,6 +121,10 @@ function selectable_widget(e) {
 			}
 		})
 		overlay.on('pointerdown', function(ev) {
+			if (!overlay.focused) {
+				overlay.focus()
+				return false
+			}
 			select_only_widget(ev.ctrlKey && e.parent_widget || null)
 			return false
 		})
