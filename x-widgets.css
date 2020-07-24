@@ -72,7 +72,7 @@
 	width: 100%;
 	height: 100%;
 	background: rgba(0,0,0,0.1);
-	outline: 1px dashed red;
+	outline: 1px dashed #999;
 	outline-offset: -1px;
 	pointer-events: all;
 	z-index: 100;
@@ -94,16 +94,12 @@
 	color: var(--x-inverted-fg-color);
 }
 
-.x-item:not(.focused):not(.selected):not(:hover):not(.invalid).new {
+.x-item:not(.focused):not(.selected):not(.invalid).new {
 	background-color: var(--x-new-bg-color);
 }
 
-.x-item:not(.focused):not(.selected):not(:hover):not(.invalid).modified {
+.x-item:not(.focused):not(.selected):not(.invalid).modified {
 	background-color: var(--x-modified-bg-color);
-}
-
-.x-item:not(.invalid):not(.focused):not(.selected):hover {
-	background-color: var(--x-item-hover-bg-color);
 }
 
 .x-focusable .x-item:not(.focused).selected:not(.invalid) {
@@ -212,7 +208,7 @@
 }
 
 .x-cssgrid > .x-button {
-	align-items: center;   /* required */
+	align-items: center;
 }
 
 .x-button-icon {
@@ -509,7 +505,7 @@
 	outline: none;
 }
 
-.x-input[align=right] .x-input-value {
+.x-input[align=right] > .x-input-value {
 	text-align: right;
 }
 
@@ -858,12 +854,12 @@
 	position: relative; /* for item moving */
 }
 
-.x-listbox-item.x-moving {
+.x-listbox-item.moving {
 	z-index: 1;
 	opacity: .7;
 }
 
-.x-listbox.x-moving > .x-listbox-item:not(.x-moving) {
+.x-listbox.moving > .x-listbox-item:not(.moving) {
 	transition: top .1s, left .1s;
 }
 
@@ -1178,17 +1174,17 @@
 .x-pagelist[tabs=above] > .x-pagelist-header > .x-pagelist-selection-bar { bottom: 0; }
 .x-pagelist[tabs=below] > .x-pagelist-header > .x-pagelist-selection-bar { top   : 0; }
 
-.x-pagelist:not(.x-moving) > .x-pagelist-header > .x-pagelist-selection-bar {
+.x-pagelist:not(.moving) > .x-pagelist-header > .x-pagelist-selection-bar {
 	transition: width .15s;
 	transition: left .15s;
 }
 
-.x-pagelist-item.x-moving {
+.x-pagelist-item.moving {
 	z-index: 1;
 	opacity: .7;
 }
 
-.x-pagelist.x-moving > .x-pagelist-header > .x-pagelist-item:not(.x-moving) {
+.x-pagelist.moving > .x-pagelist-header > .x-pagelist-item:not(.moving) {
 	transition: left .1s;
 }
 
@@ -1296,7 +1292,7 @@
 
 /* edit mode */
 
-.x-cssgrid.x-editing {
+.x-cssgrid.editing {
 	position: relative;
 	outline: 1px dashed #aaa;
 	outline-offset: -1px;
@@ -1359,7 +1355,7 @@
 .x-cssgrid-span {
 	justify-self: stretch;
 	align-self: stretch;
-	border: 1px dashed #24a;
+	border: 1px dashed #888;
 	pointer-events: none;
 	position: relative;
 	z-index: 3;
@@ -1371,14 +1367,14 @@
 	width : 14px;
 	height: 14px;
 	padding: 5px;
-	background-color: #24a;
+	background-color: #888;
 	background-clip: content-box;
 }
 
-.x-cssgrid-span-handle[side=top   ] { cursor: ns-resize; margin-top   : -6px; margin-left  : -2px; left: 50%; }
-.x-cssgrid-span-handle[side=left  ] { cursor: ew-resize; margin-left  : -6px; margin-top   : -2px; top : 50%; }
-.x-cssgrid-span-handle[side=right ] { cursor: ew-resize; margin-right : -6px; margin-top   : -2px; top : 50%; right: 0; }
-.x-cssgrid-span-handle[side=bottom] { cursor: ns-resize; margin-bottom: -6px; margin-left  : -2px; left: 50%; bottom: 0; }
+.x-cssgrid-span-handle[side=top   ] { cursor: ns-resize; margin-top   : -5px; margin-left  : -7px; left: 50%; }
+.x-cssgrid-span-handle[side=bottom] { cursor: ns-resize; margin-bottom: -7px; margin-left  : -7px; left: 50%; bottom: 0; }
+.x-cssgrid-span-handle[side=left  ] { cursor: ew-resize; margin-left  : -6px; margin-top   : -7px; top : 50%; }
+.x-cssgrid-span-handle[side=right ] { cursor: ew-resize; margin-right : -6px; margin-top   : -7px; top : 50%; right: 0; }
 
 /* item overlays */
 
@@ -1781,7 +1777,7 @@
 	z-index: 1;
 }
 
-.x-moving-parent-cell {
+.x-item.moving-parent-cell {
 	background-color: var(--x-item-hover-bg-color);
 }
 
@@ -1827,8 +1823,8 @@
 }
 
 .x-widget.grid-editor,
-.x-widget.grid-editor.open,            /* more specificity over x-dropdown */
-.x-widget.grid-editor:focus-within     /* more specificity over x-input */
+.x-widget.grid-editor.open:not(.widget-selected),            /* more specificity over x-dropdown */
+.x-widget.grid-editor:focus-within:not(.widget-selected)     /* more specificity over x-input */
 {
 	box-shadow: inset 2px 2px 6px -2px rgba(0,0,0,0.75);
 }

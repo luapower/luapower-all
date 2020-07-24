@@ -674,7 +674,10 @@ component('x-grid', function(e) {
 
 	let create_editor = e.create_editor
 	e.create_editor = function(field, ...editor_options) {
-		let editor = create_editor(field, {inner_label: false}, ...editor_options)
+		let editor = create_editor(field, {
+			inner_label: false,
+			can_select_widget: false,
+		}, ...editor_options)
 		if (!editor)
 			return
 		editor.class('grid-editor')
@@ -969,8 +972,7 @@ component('x-grid', function(e) {
 
 				cell.class('row-moving', moving)
 
-
-				cell.class('x-moving-parent-cell',
+				cell.class('moving-parent-cell',
 					row == hit_parent_row && fi == tree_fi)
 			}
 
@@ -1385,7 +1387,7 @@ component('x-grid', function(e) {
 		return 'capture'
 	})
 
-	function pointerup(ev) {
+	function pointerup(mx, my, ev) {
 		if (!hit.state)
 			return
 		if (hit.state == 'header_resizing') {

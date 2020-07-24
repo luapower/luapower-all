@@ -157,11 +157,11 @@ component('x-listbox', function(e) {
 				dragging = e.can_move_items
 					&& (e.axis == 'x' ? abs(down_mx - mx) > 4 : abs(down_my - my) > 4)
 				if (dragging) {
-					e.class('x-moving')
+					e.class('moving')
 					for (let ri = 0; ri < e.rows.length; ri++) {
 						let item = e.at[ri]
 						item._offset = item[e.axis == 'x' ? 'ox' : 'oy']
-						item.class('x-moving', ri >= move_ri1 && ri <= move_ri2)
+						item.class('moving', ri >= move_ri1 && ri <= move_ri2)
 					}
 					e.move_element_start(move_ri1, move_n, 0, e.child_count)
 					drag_mx = down_mx + e.scrollLeft - e.at[move_ri1].ox
@@ -185,7 +185,7 @@ component('x-listbox', function(e) {
 		function item_pointerup() {
 			if (dragging) {
 				clearInterval(scroll_timer)
-				e.class('x-moving', false)
+				e.class('moving', false)
 
 				let over_ri = e.move_element_stop()
 				let insert_ri = over_ri - (over_ri > move_ri1 ? move_n : 0)
@@ -198,7 +198,7 @@ component('x-listbox', function(e) {
 				for (let ri = 0; ri < e.rows.length; ri++) {
 					let item = e.at[ri]
 					e.update_item(item, e.rows[ri])
-					item.class('x-moving', false)
+					item.class('moving', false)
 					item.x = null
 					item.y = null
 				}

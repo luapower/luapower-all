@@ -75,7 +75,8 @@ prop_inspector = component('x-prop-inspector', function(e) {
 
 	function bind(on) {
 		document.on('selected_widgets_changed', init_rowset, on)
-		//document.on('prop_changed', prop_changed, on)
+		document.on('prop_changed', prop_changed, on)
+		document.on('focus', pro
 	}
 	e.on('attach', function() { bind(true) })
 	e.on('detach', function() { bind(false) })
@@ -85,23 +86,24 @@ prop_inspector = component('x-prop-inspector', function(e) {
 			e[field.name] = val
 	})
 
-	/*
 	function prop_changed(k, v, v0, ev) {
-		tree_tb.widget = ev.target
-		if (e.widget != ev.target) {
-			print('could not select widget in tree')
+		return
+		let widget = ev.target
+		if (!selected_widgets.has(widget))
 			return
-		}
 		let field = e.rowset.field(k)
 		e.focus_cell(0, e.field_index(field))
 		e.rowset.reset_val(e.focused_row, field, v)
 	}
-	*/
 
+	/*
 	e.on('exit_edit', function(ri, fi) {
 		let field = e.fields[fi]
 		e.rowset.reset_val(e.rows[ri], field, e.widget[field.name])
 	})
+	*/
+
+	function
 
 	function init_rowset() {
 
@@ -198,7 +200,7 @@ widget_tree = component('x-widget-tree', function(e) {
 		}
 		for (let ce of to_unselect)
 			ce.set_widget_selected(false, false, false)
-		document.fire('selected_widgets_changed', selected_widgets)
+		document.fire('selected_widgets_changed')
 		barrier = false
 	})
 

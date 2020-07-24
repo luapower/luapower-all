@@ -71,18 +71,20 @@ component('x-cssgrid', function(e) {
 
 	// edit mode --------------------------------------------------------------
 
-	let editing
-	e.set_editing = function(v) {
+	let editing = false
+	e.set_editing = function(v, ...args) {
 		if (!v) return
 		cssgrid_widget_editing(e)
-		e.set_editing(true)
+		e.set_editing(true, ...args)
 	}
-	e.property('editing', () => editing, function(v) {
-		v = !!v
-		if (editing == v) return
-		editing = v
-		e.set_editing(v)
-	})
+	e.property('editing', () => editing,
+		function(v, force) {
+			v = !!(v && (force || allow_editing))
+			if (editing == v) return
+			editing = v
+			e.set_editing(v)
+		}
+	)
 
 })
 
@@ -93,7 +95,7 @@ component('x-cssgrid', function(e) {
 function cssgrid_widget_editing(e) {
 
 	e.set_editing = function(v) {
-		e.class('x-editing', v)
+		e.class('editing', v)
 		if (v)
 			enter_editing()
 		else

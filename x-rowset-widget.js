@@ -30,7 +30,7 @@ function rowset_widget(e) {
 	e.remove_row_on = 'input'        // remove row on 'input'|'exit_row'|false
 	e.can_exit_edit_on_errors = true // allow exiting edit mode on validation errors
 	e.can_exit_row_on_errors = false // allow changing row on validation errors
-	e.exit_edit_on_lost_focus = true // exit edit mode when losing focus
+	e.exit_edit_on_lost_focus = false // exit edit mode when losing focus
 	e.multiple_selection = true
 	e.can_select_non_siblings = true
 

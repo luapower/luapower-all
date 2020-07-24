@@ -34,9 +34,9 @@ selected_widgets = new Set()
 
 function select_only_widget(e) {
 	for (let e of selected_widgets)
-		e.set_widget_selected(false)
+		e.widget_selected = false
 	if (e)
-		e.set_widget_selected(true)
+		e.widget_selected = true
 }
 
 copied_widgets = new Set()
@@ -88,13 +88,14 @@ function selectable_widget(e) {
 	})
 
 	e.can_select_widget = true
-	e.widget_selected = false
+
+	let widget_selected = false
 
 	e.set_widget_selected = function(select, focus, fire_changed_event) {
 		select = select !== false
-		if (e.widget_selected == select)
+		if (widget_selected == select)
 			return
-		e.widget_selected = select
+		widget_selected = select
 		if (select) {
 			selected_widgets.add(e)
 			e.select_widget(focus)
@@ -107,10 +108,16 @@ function selectable_widget(e) {
 			document.fire('selected_widgets_changed', selected_widgets)
 	}
 
+	e.property('widget_selected',
+		() => widget_selected,
+		(...args) => e.set_widget_selected(...args))
+
 	let tabindex
 	e.select_widget = function(focus) {
+
 		tabindex = e.attr('tabindex')
 		e.attr('tabindex', -1)
+
 		let overlay = div({class: 'x-widget-selected-overlay', tabindex: 0})
 		e.widget_selected_overlay = overlay
 		e.add(overlay)
@@ -125,7 +132,10 @@ function selectable_widget(e) {
 				overlay.focus()
 				return false
 			}
-			select_only_widget(ev.ctrlKey && e.parent_widget || null)
+			if (selected_widgets.size == 1)
+				select_only_widget(ev.ctrlKey && e.parent_widget || null)
+			else if (ev.ctrlKey)
+				e.widget_selected = !e.widget_selected
 			return false
 		})
 		if (focus !== false)
@@ -141,7 +151,7 @@ function selectable_widget(e) {
 	e.remove_widget = function() {
 		let p = e.parent_widget
 		if (!p) return
-		e.set_widget_selected(false)
+		e.widget_selected = false
 		p.remove_child_widget(e)
 	}
 
@@ -151,22 +161,16 @@ function selectable_widget(e) {
 		if (e.widget_selected)
 			return false // this should not happen
 		if (ev.ctrlKey && (!e.ctrl_click_used || ev.shiftKey)) {
-			if (!ev.shiftKey)
-				select_only_widget(e)
-			else {
-				// unselect all whose direct or indirect parent is e.
-				for (let e1 of selected_widgets) {
-					let p = e1.parent_widget
-					while (p) {
-						if (p == e) {
-							e1.set_widget_selected(false)
-							break
-						}
-						p = p.parent_widget
-					}
+			// check that e is not a parent of any of the selected widgets.
+			for (let e1 of selected_widgets) {
+				let p = e1.parent_widget
+				while (p) {
+					if (p == e)
+						return false
+					p = p.parent_widget
 				}
-				e.set_widget_selected(true)
 			}
+			e.widget_selected = true
 			return false
 		} else if (selected_widgets.size) {
 			select_only_widget()
@@ -270,6 +274,7 @@ function cssgrid_item_widget_editing(e) {
 		let p = e.parent_widget
 		if (!p || p.typename != 'cssgrid')
 			return
+
 		p.editing = true
 
 		let span_outline = div({class: 'x-cssgrid-span'},
@@ -278,8 +283,6 @@ function cssgrid_item_widget_editing(e) {
 			div({class: 'x-cssgrid-span-handle', side: 'right'}),
 			div({class: 'x-cssgrid-span-handle', side: 'bottom'}),
 		)
-		span_outline.style['align-self']   = 'stretch'
-		span_outline.style['justify-self'] = 'stretch'
 		span_outline.on('pointerdown', so_pointerdown)
 		p.add(span_outline)
 
@@ -380,19 +383,21 @@ function cssgrid_item_widget_editing(e) {
 			e.off('prop_changed', prop_changed)
 			e.widget_selected_overlay.off('keydown', overlay_keydown)
 			span_outline.remove()
-
-			// exit cssgrid editing if this was the last item to be selected.
-			let p = e.parent_widget
-			let only_item = true
-			for (let e1 of selected_widgets)
-				if (e1 != e && e1.parent_widget == p) {
-					only_item = false
-					break
-				}
-			if (only_item)
-				p.editing = false
-
 			e.cssgrid_item_unselect_widget = noop
+
+			// exit parent editing if this was the last item to be selected.
+			let p = e.parent_widget
+			if (p && p.editing) {
+				let only_item = true
+				for (let e1 of selected_widgets)
+					if (e1 != e && e1.parent_widget == p) {
+						only_item = false
+						break
+					}
+				if (only_item)
+					p.editing = false
+			}
+
 		}
 
 	}
@@ -1979,7 +1984,7 @@ component('x-pagelist', function(e) {
 		e.selected_index = or(e.selected_index, 0)
 	}
 
-	function select_item(idiv, focus_page) {
+	function select_item(idiv, focus_page, enter_editing) {
 		if (e.selected_item != idiv) {
 			if (e.selected_item) {
 				e.selected_item.class('selected', false)
@@ -1995,6 +2000,10 @@ component('x-pagelist', function(e) {
 				let page = idiv.item.page
 				e.content.set(page)
 			}
+		}
+		if (enter_editing) {
+			e.set_editing(true)
+			return
 		}
 		if (!e.editing && focus_page != false) {
 			let first_focusable = e.content.focusables()[0]
@@ -2031,8 +2040,10 @@ component('x-pagelist', function(e) {
 	function idiv_pointerdown(ev, mx, my) {
 		if (this.text_div.contenteditable)
 			return
-		this.focus()
 		select_item(this, false)
+		if (e.editing)
+			return // let it focus the content-editable.
+		this.focus()
 		return this.capture_pointer(ev, idiv_pointermove, idiv_pointerup)
 	}
 
@@ -2045,8 +2056,8 @@ component('x-pagelist', function(e) {
 					item.idiv._offset_x = item.idiv.ox
 				e.move_element_start(this.index, 1, 0, e.items.length)
 				drag_mx = down_mx - this.ox
-				e.class('x-moving', true)
-				this.class('x-moving', true)
+				e.class('moving', true)
+				this.class('moving', true)
 				update_selection_bar()
 			}
 		} else {
@@ -2055,7 +2066,7 @@ component('x-pagelist', function(e) {
 		}
 	}
 
-	function idiv_pointerup() {
+	function idiv_pointerup(mx, my, ev) {
 		if (dragging) {
 			let over_i = e.move_element_stop()
 			let insert_i = over_i - (over_i > this.index ? 1 : 0)
@@ -2066,11 +2077,11 @@ component('x-pagelist', function(e) {
 			for (let item of e.items)
 				item.idiv.x = null
 			update_selection_bar()
-			e.class('x-moving', false)
-			this.class('x-moving', false)
+			e.class('moving', false)
+			this.class('moving', false)
 			dragging = false
 		}
-		select_item(this)
+		select_item(this, true, ev.ctrlKey)
 	}
 
 	// key bindings -----------------------------------------------------------
@@ -2080,10 +2091,19 @@ component('x-pagelist', function(e) {
 		e.selected_item.text_div.contenteditable = e.renaming
 	}
 
-	function idiv_keydown(key) {
+	function idiv_keydown(key, shift, ctrl) {
 		if (key == 'F2' && e.can_rename_items) {
 			set_renaming(!e.renaming)
 			return false
+		}
+		if (e.editing) {
+			if (key == 'Enter' && ctrl) {
+
+			}
+			if (key == 'Escape' || (key == 'Enter' && !ctrl)) {
+				e.editing = false
+				return false
+			}
 		}
 		if (e.renaming) {
 			if (key == 'Enter' || key == 'Escape') {
@@ -2106,13 +2126,13 @@ component('x-pagelist', function(e) {
 	}
 
 	let editing = false
-	e.property('editing',
-		function() { return editing },
-		function(v) {
-			editing = !!v
-			e.update()
-		}
-	)
+	e.set_editing = function(v, force) {
+		v = !!(v && (force || allow_editing))
+		if (editing == v) return
+		editing = v
+		e.update()
+	}
+	e.property('editing', () => editing, (...args) => e.set_editing(...args))
 
 	e.add_button.on('click', function() {
 		if (e.selected_item == this)
