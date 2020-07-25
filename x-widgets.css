@@ -82,6 +82,10 @@
 	outline-color: blue;
 }
 
+.x-widget [contenteditable] {
+	outline: 0px solid transparent;
+}
+
 /* item states ------------------------------------------------------------ */
 
 .x-item.disabled { color: #999; }
@@ -227,14 +231,15 @@
 	background-size: 110% 110%;
 }
 
-.x-button:hover {
+.x-button:hover:not(.editing) {
 	border-color: rgba(27,31,35,.35);
 	background-color: #e6ebf1;
 	background-image: linear-gradient(-180deg,#f0f3f6,#e6ebf1 90%);
 	text-decoration: none;
 }
 
-.x-button:active, .x-button.active {
+.x-button:active:not(.editing),
+.x-button.active:not(.editing) {
 	outline: none;
 	border-color: rgba(27,31,35,.35);
 	background-color: #e9ecef;
@@ -249,13 +254,14 @@
 	background-image: linear-gradient(-180deg,#34d058,#28a745 90%);
 }
 
-.x-button[primary]:hover {
+.x-button[primary]:hover:not(.editing) {
 	border-color: rgba(27,31,35,.5);
 	background-color: #269f42;
 	background-image: linear-gradient(-180deg,#2fcb53,#269f42 90%);
 }
 
-.x-button[primary]:active, .x-button[primary].active {
+.x-button[primary]:active:not(.editing),
+.x-button[primary].active:not(.editing) {
 	outline: none;
 	border-color: rgba(27,31,35,.5);
 	background-color: #279f43;
@@ -406,7 +412,7 @@
 	color: #333;
 }
 
-.x-markbox:focus {
+.x-markbox:focus-within {
 	box-shadow: none;
 	outline: 1px dashed #aaf;
 }

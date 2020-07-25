@@ -112,10 +112,9 @@ function selectable_widget(e) {
 		() => widget_selected,
 		(...args) => e.set_widget_selected(...args))
 
-	let tabindex
 	e.select_widget = function(focus) {
 
-		tabindex = e.attr('tabindex')
+		e._tabindex = or(e._tabindex, e.attr('tabindex'))
 		e.attr('tabindex', -1)
 
 		let overlay = div({class: 'x-widget-selected-overlay', tabindex: 0})
@@ -138,12 +137,14 @@ function selectable_widget(e) {
 				e.widget_selected = !e.widget_selected
 			return false
 		})
+
 		if (focus !== false)
 			overlay.focus()
 	}
 
 	e.unselect_widget = function() {
-		e.attr('tabindex', tabindex)
+		e.attr('tabindex', e._tabindex)
+		e._tabindex = null
 		e.widget_selected_overlay.remove()
 		e.widget_selected_overlay = null
 	}
@@ -156,10 +157,13 @@ function selectable_widget(e) {
 	}
 
 	e.on('pointerdown', function(ev) {
+
 		if (!e.can_select_widget)
 			return
+
 		if (e.widget_selected)
 			return false // this should not happen
+
 		if (ev.ctrlKey && (!e.ctrl_click_used || ev.shiftKey)) {
 			// check that e is not a parent of any of the selected widgets.
 			for (let e1 of selected_widgets) {
@@ -170,7 +174,13 @@ function selectable_widget(e) {
 					p = p.parent_widget
 				}
 			}
-			e.widget_selected = true
+			if (e.editing === false)
+				e.editing = true
+			else {
+				if (e.editing)
+					e.editing = false
+				e.widget_selected = true
+			}
 			return false
 		} else if (selected_widgets.size) {
 			select_only_widget()
@@ -178,10 +188,45 @@ function selectable_widget(e) {
 		}
 	})
 
+	e.on('detach', () => e.widget_selected = false)
+
 	e.on('click', function(ev) {
 		if (e.widget_selected)
-			return false
+			return false // prevent dropdown from opening.
 	})
+
+}
+
+// ---------------------------------------------------------------------------
+// editable widget mixin
+// ---------------------------------------------------------------------------
+
+editing_widget = null
+
+function editable_widget(e) {
+
+	e.set_editing = noop
+
+	e.property('editing', () => editing_widget == e, function(v, ...args) {
+		v = !!v
+		if (e.editing == v) return
+		e.class('editing', v)
+		if (v) {
+			if (editing_widget)
+				editing_widget.editing = false
+			assert(editing_widget == null)
+			e._tabindex = or(e._tabindex, e.attr('tabindex'))
+			e.attr('tabindex', -1)
+			editing_widget = e
+		} else {
+			e.attr('tabindex', e._tabindex)
+			e._tabindex = null
+			editing_widget = null
+		}
+		e.set_editing(v, ...args)
+	})
+
+	e.on('detach', () => e.editing = false)
 
 }
 
@@ -439,7 +484,16 @@ function serializable_widget(e) {
 // ---------------------------------------------------------------------------
 
 function focusable_widget(e) {
-	e.prop('tabindex', {attr: 'tabindex', default: 0})
+	e.get_tabindex = function() {
+		return or(e._tabindex, e.attr('tabindex'))
+	}
+	e.set_tabindex = function(i) {
+		if (e._tabindex != null)
+			e._tabindex = i
+		else
+			e.attr('tabindex', i)
+	}
+	e.prop('tabindex', {default: 0})
 }
 
 // ---------------------------------------------------------------------------
@@ -691,9 +745,10 @@ tooltip.reading_speed = 800 // letters-per-minute.
 
 component('x-button', function(e) {
 
-	cssgrid_item_widget(e)
 	serializable_widget(e)
 	focusable_widget(e)
+	editable_widget(e)
+	cssgrid_item_widget(e)
 
 	e.classes = 'x-widget x-button'
 
@@ -716,7 +771,23 @@ component('x-button', function(e) {
 
 	e.prop('primary', {attr: 'primary', type: 'bool', default: false})
 
-	e.on('keydown', function keydown(key) {
+	e.on('keydown', function keydown(key, shift, ctrl) {
+		if (e.editing) {
+			if (key == 'Escape') {
+				e.editing = false
+				return false
+			}
+			if (key == 'Enter') {
+				if (ctrl) {
+					e.text_div.insert_at_caret('<br>')
+					return
+				} else {
+					e.editing = false
+					return false
+				}
+			}
+			return
+		}
 		if (key == ' ' || key == 'Enter') {
 			e.class('active', true)
 			return false
@@ -743,6 +814,30 @@ component('x-button', function(e) {
 		e.fire('action')
 	})
 
+	// editing ----------------------------------------------------------------
+
+	e.set_editing = function(v) {
+		e.text_div.contenteditable = v
+		if (v) {
+			e.text_div.focus()
+			e.text_div.select_all()
+		} else
+			e.text_div.unselect()
+	}
+
+	e.on('pointerdown', function(ev) {
+		if (e.editing && ev.target == e)
+			return this.capture_pointer(ev, noop, pointerup)
+	})
+
+	function pointerup() {
+		return false
+	}
+
+	e.text_div.on('blur', function() {
+		e.editing = false
+	})
+
 })
 
 // ---------------------------------------------------------------------------
@@ -752,6 +847,8 @@ component('x-button', function(e) {
 component('x-checkbox', function(e) {
 
 	focusable_widget(e)
+	editable_widget(e)
+	val_widget(e)
 
 	e.classes = 'x-widget x-markbox x-checkbox'
 	e.prop('align', {attr: 'align', type: 'enum', enum_values: ['left', 'right'], default: 'left'})
@@ -764,8 +861,6 @@ component('x-checkbox', function(e) {
 	e.add(e.icon_div, e.text_div)
 
 	// model
-
-	val_widget(e)
 
 	e.init = function() {
 		e.init_nav()
@@ -811,22 +906,63 @@ component('x-checkbox', function(e) {
 	}
 
 	e.on('pointerdown', function(ev) {
+		if (e.editing)
+			return
 		ev.preventDefault() // prevent accidental selection by double-clicking.
 		e.focus()
 	})
 
-	e.on('click', function() {
+	e.on('click', function(ev) {
+		if (e.editing)
+			return
 		e.toggle()
 		return false
 	})
 
-	e.on('keydown', function(key) {
+	e.on('keydown', function(key, shift, ctrl) {
+		if (e.editing) {
+			if (key == 'Escape') {
+				e.editing = false
+				return false
+			}
+			if (key == 'Enter') {
+				if (ctrl)
+					e.text_div.insert_at_caret('<br>')
+				else
+					e.editing = false
+				return false
+			}
+			return
+		}
 		if (key == 'Enter' || key == ' ') {
 			e.toggle()
 			return false
 		}
 	})
 
+	// editing ----------------------------------------------------------------
+
+	e.set_editing = function(v) {
+		e.text_div.contenteditable = v
+		if (v) {
+			e.text_div.focus()
+			e.text_div.select_all()
+		} else
+			e.text_div.unselect()
+	}
+
+	e.on('pointerdown', function(ev) {
+		if (e.editing && ev.target == e)
+			return this.capture_pointer(ev, noop, pointerup)
+	})
+
+	function pointerup() {
+		return false
+	}
+
+	e.text_div.on('blur', function() {
+		e.editing = false
+	})
 })
 
 // ---------------------------------------------------------------------------
@@ -938,15 +1074,16 @@ function input_widget(e) {
 
 component('x-input', function(e) {
 
+	focusable_widget(e)
+	val_widget(e)
+	input_widget(e)
+
 	e.classes = 'x-widget x-input'
 
 	e.input = H.input({class: 'x-input-value'})
 	e.inner_label_div = div({class: 'x-input-inner-label'})
 	e.input.set_input_filter() // must be set as first event handler!
 	e.add(e.input, e.inner_label_div)
-
-	val_widget(e)
-	input_widget(e)
 
 	e.init = function() {
 		e.init_nav()
@@ -1903,6 +2040,7 @@ component('x-widget-placeholder', function(e) {
 
 component('x-pagelist', function(e) {
 
+	editable_widget(e)
 	cssgrid_item_widget(e)
 	e.align_x = 'stretch'
 	e.align_y = 'stretch'
@@ -1932,6 +2070,7 @@ component('x-pagelist', function(e) {
 		idiv.on('dblclick'   , idiv_dblclick)
 		idiv.on('keydown'    , idiv_keydown)
 		tdiv.on('input'      , tdiv_input)
+		idiv.on('focusout'   , idiv_focusout)
 		xbutton.on('pointerdown', xbutton_pointerdown)
 		idiv.item = item
 		item.idiv = idiv
@@ -1949,6 +2088,17 @@ component('x-pagelist', function(e) {
 		e.selection_bar = div({class: 'x-pagelist-selection-bar'})
 		e.header.add(e.selection_bar)
 		e.update()
+	}
+
+	e.serialize = function() {
+		let t = e.serialize_fields()
+		t.items = []
+		for (let item of e.items) {
+			let sitem = {text: item.text}
+			sitem.page = item.page.serialize()
+			t.items.push(sitem)
+		}
+		return t
 	}
 
 	function update_item(idiv, select) {
@@ -2002,7 +2152,7 @@ component('x-pagelist', function(e) {
 			}
 		}
 		if (enter_editing) {
-			e.set_editing(true)
+			e.editing = true
 			return
 		}
 		if (!e.editing && focus_page != false) {
@@ -2041,8 +2191,12 @@ component('x-pagelist', function(e) {
 		if (this.text_div.contenteditable)
 			return
 		select_item(this, false)
-		if (e.editing)
-			return // let it focus the content-editable.
+		if (ev.ctrlKey) {
+			e.editing = true
+			this.text_div.focus()
+			this.text_div.select_all()
+			return false
+		}
 		this.focus()
 		return this.capture_pointer(ev, idiv_pointermove, idiv_pointerup)
 	}
@@ -2066,7 +2220,7 @@ component('x-pagelist', function(e) {
 		}
 	}
 
-	function idiv_pointerup(mx, my, ev) {
+	function idiv_pointerup() {
 		if (dragging) {
 			let over_i = e.move_element_stop()
 			let insert_i = over_i - (over_i > this.index ? 1 : 0)
@@ -2081,7 +2235,7 @@ component('x-pagelist', function(e) {
 			this.class('moving', false)
 			dragging = false
 		}
-		select_item(this, true, ev.ctrlKey)
+		select_item(this, true)
 	}
 
 	// key bindings -----------------------------------------------------------
@@ -2091,17 +2245,24 @@ component('x-pagelist', function(e) {
 		e.selected_item.text_div.contenteditable = e.renaming
 	}
 
+	e.on('keydown', function(key, shift, ctrl) {
+		if (e.editing && key == 'Escape') {
+			e.editing = false
+			return false
+		}
+	})
+
 	function idiv_keydown(key, shift, ctrl) {
 		if (key == 'F2' && e.can_rename_items) {
 			set_renaming(!e.renaming)
 			return false
 		}
-		if (e.editing) {
-			if (key == 'Enter' && ctrl) {
-
-			}
-			if (key == 'Escape' || (key == 'Enter' && !ctrl)) {
-				e.editing = false
+		if (e.editing || e.renaming) {
+			if (key == 'Enter') {
+				if (ctrl)
+					this.text_div.insert_at_caret('<br>')
+				else
+					e.editing = false
 				return false
 			}
 		}
@@ -2125,14 +2286,12 @@ component('x-pagelist', function(e) {
 		}
 	}
 
-	let editing = false
-	e.set_editing = function(v, force) {
-		v = !!(v && (force || allow_editing))
-		if (editing == v) return
-		editing = v
+	e.set_editing = function(v) {
+		if (!v && e.selected_item)
+			e.selected_item.unselect()
+		e.focus()
 		e.update()
 	}
-	e.property('editing', () => editing, (...args) => e.set_editing(...args))
 
 	e.add_button.on('click', function() {
 		if (e.selected_item == this)
@@ -2158,6 +2317,10 @@ component('x-pagelist', function(e) {
 	function tdiv_input() {
 		e.items[e.selected_index].text = e.selected_item.text_div.textContent
 		e.update()
+	}
+
+	function idiv_focusout() {
+		e.editing = false
 	}
 
 	function xbutton_pointerdown() {
@@ -2192,26 +2355,6 @@ component('x-pagelist', function(e) {
 		for (let item of e.items)
 			if (item.page == widget)
 				select_item(item.idiv)
-	}
-
-	e.inspect_fields = [
-
-		{name: 'can_remove_items', type: 'bool'},
-
-		{name: 'grid_area'},
-		{name: 'tabIndex', type: 'number'},
-
-	]
-
-	e.serialize = function() {
-		let t = e.serialize_fields()
-		t.items = []
-		for (let item of e.items) {
-			let sitem = {text: item.text}
-			sitem.page = item.page.serialize()
-			t.items.push(sitem)
-		}
-		return t
 	}
 
 })
@@ -2677,6 +2820,15 @@ component('x-toolbox', function(e) {
 	e.on('attr_changed', function() {
 		e.fire('layout_changed')
 	})
+
+})
+
+// ---------------------------------------------------------------------------
+// richedit
+// ---------------------------------------------------------------------------
+
+component('x-richedit', function(e) {
+
 
 })
 

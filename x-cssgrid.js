@@ -2,6 +2,7 @@
 component('x-cssgrid', function(e) {
 
 	serializable_widget(e)
+	editable_widget(e)
 	cssgrid_item_widget(e)
 
 	e.align_x = 'stretch'
@@ -23,10 +24,6 @@ component('x-cssgrid', function(e) {
 		for (let item of e.items)
 			t.items.push(item.serialize())
 		return t
-	}
-
-	e.detach = function() {
-		e.editing = false
 	}
 
 	// add/remove items -------------------------------------------------------
@@ -71,20 +68,11 @@ component('x-cssgrid', function(e) {
 
 	// edit mode --------------------------------------------------------------
 
-	let editing = false
 	e.set_editing = function(v, ...args) {
 		if (!v) return
 		cssgrid_widget_editing(e)
 		e.set_editing(true, ...args)
 	}
-	e.property('editing', () => editing,
-		function(v, force) {
-			v = !!(v && (force || allow_editing))
-			if (editing == v) return
-			editing = v
-			e.set_editing(v)
-		}
-	)
 
 })
 
@@ -445,6 +433,13 @@ function cssgrid_widget_editing(e) {
 		old_widget.parent.replace(old_widget, new_widget)
 		e.fire('widget_tree_changed')
 	}
+
+	// you won't believe this shit, but page-up/down from inner contenteditables
+	// bubble up on overflow:hidden containers scroll them.
+	e.on('keydown', function(key) {
+		if (key == 'PageUp' || key == 'PageDown')
+			return false
+	})
 
 }
 
