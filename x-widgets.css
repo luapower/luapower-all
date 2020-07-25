@@ -158,28 +158,32 @@
 	border-style: solid;
 }
 
-.x-arrow[side=top], .x-arrow[side=top]:hover {
+.x-arrow[side=top],
+.x-arrow[side=top]:hover {
 	border-right-color : transparent;
 	border-left-color  : transparent;
 	border-bottom-color: transparent;
 	margin-left: -.5em;
 }
 
-.x-arrow[side=bottom], .x-arrow[side=bottom]:hover {
+.x-arrow[side=bottom],
+.x-arrow[side=bottom]:hover {
 	border-right-color : transparent;
 	border-left-color  : transparent;
 	border-top-color   : transparent;
 	margin-left: -.5em;
 }
 
-.x-arrow[side=left], .x-arrow[side=left]:hover {
+.x-arrow[side=left],
+.x-arrow[side=left]:hover {
 	border-right-color : transparent;
 	border-top-color   : transparent;
 	border-bottom-color: transparent;
 	margin-top: -.5em;
 }
 
-.x-arrow[side=right], .x-arrow[side=right]:hover {
+.x-arrow[side=right],
+.x-arrow[side=right]:hover {
 	border-left-color  : transparent;
 	border-top-color   : transparent;
 	border-bottom-color: transparent;
@@ -231,13 +235,6 @@
 	background-size: 110% 110%;
 }
 
-.x-button:hover:not(.editing) {
-	border-color: rgba(27,31,35,.35);
-	background-color: #e6ebf1;
-	background-image: linear-gradient(-180deg,#f0f3f6,#e6ebf1 90%);
-	text-decoration: none;
-}
-
 .x-button:active:not(.editing),
 .x-button.active:not(.editing) {
 	outline: none;
@@ -252,12 +249,6 @@
 	border: 1px solid rgba(27,31,35,.2);
 	background-color: #28a745;
 	background-image: linear-gradient(-180deg,#34d058,#28a745 90%);
-}
-
-.x-button[primary]:hover:not(.editing) {
-	border-color: rgba(27,31,35,.5);
-	background-color: #269f42;
-	background-image: linear-gradient(-180deg,#2fcb53,#269f42 90%);
 }
 
 .x-button[primary]:active:not(.editing),

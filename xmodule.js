@@ -29,7 +29,7 @@ rowset.types.rowset_field.editor = function(...options) {
 	let rs = rs_name && global_rowset(rs_name)
 	if (rs) {
 		rs.once('loaded', function() {
-			let rows = rs.fields.map((field) => [field.name])
+			let rows = rs.fields.map(field => [field.name])
 			e.lookup_rowset.reset({
 				rows: rows,
 			})

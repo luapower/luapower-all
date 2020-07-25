@@ -46,8 +46,8 @@ component('x-cssgrid', function(e) {
 
 	// get/set gaps -----------------------------------------------------------
 
-	e.prop('gap_x', {style: 'column-gap', type: 'number', default: 0, style_format: (v) => v+'px'})
-	e.prop('gap_y', {style: 'row-gap'   , type: 'number', default: 0, style_format: (v) => v+'px'})
+	e.prop('gap_x', {style: 'column-gap', type: 'number', default: 0, style_format: v => v+'px'})
+	e.prop('gap_y', {style: 'row-gap'   , type: 'number', default: 0, style_format: v => v+'px'})
 
 	// get/set template sizes -------------------------------------------------
 

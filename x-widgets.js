@@ -110,7 +110,7 @@ function selectable_widget(e) {
 
 	e.property('widget_selected',
 		() => widget_selected,
-		(...args) => e.set_widget_selected(...args))
+		function(...args) { e.set_widget_selected(...args) })
 
 	e.select_widget = function(focus) {
 
@@ -188,7 +188,7 @@ function selectable_widget(e) {
 		}
 	})
 
-	e.on('detach', () => e.widget_selected = false)
+	e.on('detach', function() { e.widget_selected = false })
 
 	e.on('click', function(ev) {
 		if (e.widget_selected)
@@ -226,7 +226,7 @@ function editable_widget(e) {
 		e.set_editing(v, ...args)
 	})
 
-	e.on('detach', () => e.editing = false)
+	e.on('detach', function() { e.editing = false })
 
 }
 
@@ -240,8 +240,8 @@ function cssgrid_item_widget(e) {
 
 	e.prop('pos_x'  , {style: 'grid-column-start' , type: 'number', default: 1})
 	e.prop('pos_y'  , {style: 'grid-row-start'    , type: 'number', default: 1})
-	e.prop('span_x' , {style: 'grid-column-end'   , type: 'number', default: 1, style_format: (v) => 'span '+v, style_parse: (v) => num((v || 'span 1').replace('span ', '')) })
-	e.prop('span_y' , {style: 'grid-row-end'      , type: 'number', default: 1, style_format: (v) => 'span '+v, style_parse: (v) => num((v || 'span 1').replace('span ', '')) })
+	e.prop('span_x' , {style: 'grid-column-end'   , type: 'number', default: 1, style_format: v => 'span '+v, style_parse: v => num((v || 'span 1').replace('span ', '')) })
+	e.prop('span_y' , {style: 'grid-row-end'      , type: 'number', default: 1, style_format: v => 'span '+v, style_parse: v => num((v || 'span 1').replace('span ', '')) })
 	e.prop('align_x', {style: 'justify-self'      , type: 'enum', enum_values: ['start', 'end', 'center', 'stretch'], default: 'center'})
 	e.prop('align_y', {style: 'align-self'        , type: 'enum', enum_values: ['start', 'end', 'center', 'stretch'], default: 'center'})
 
@@ -882,7 +882,7 @@ component('x-checkbox', function(e) {
 	let set_checked = function(v) {
 		e.set_val(v ? e.checked_val : e.unchecked_val, {input: e})
 	}
-	e.property('checked', get_checked, set_checked)
+	e.late_property('checked', get_checked, set_checked)
 
 	// view
 
@@ -2768,13 +2768,13 @@ component('x-toolbox', function(e) {
 
 	e.classes = 'x-widget x-toolbox'
 
-	let xbutton = div({class: 'x-toolbox-xbutton fa fa-times'})
-	let title_div = div({class: 'x-toolbox-title'})
-	e.titlebar = div({class: 'x-toolbox-titlebar'}, title_div, xbutton)
+	e.xbutton = div({class: 'x-toolbox-xbutton fa fa-times'})
+	e.title_div = div({class: 'x-toolbox-title'})
+	e.titlebar = div({class: 'x-toolbox-titlebar'}, e.title_div, e.xbutton)
 	e.add(e.titlebar)
 
 	e.init = function() {
-		title_div.set(e.title)
+		e.title_div.set(e.title)
 		e.title = ''
 
 		let content = div({class: 'x-toolbox-content'})
@@ -2787,32 +2787,26 @@ component('x-toolbox', function(e) {
 	}
 
 	{
-		let moving, drag_x, drag_y
+		let drag_x, drag_y
 
-		e.titlebar.on('pointerdown', function(_, mx, my) {
+		e.titlebar.on('pointerdown', function(ev, mx, my) {
 			e.focus()
-			moving = true
+			if (ev.target == e.xbutton)
+				return
 			let r = e.rect()
 			drag_x = mx - r.x
 			drag_y = my - r.y
-			return 'capture'
+			return this.capture_pointer(ev, pointermove)
 		})
 
-		e.titlebar.on('pointerup', function() {
-			moving = false
-			return false
-		})
-
-		e.titlebar.on('pointermove', function(mx, my) {
-			if (!moving) return
+		function pointermove(mx, my) {
 			let r = this.rect()
 			e.x = clamp(0, mx - drag_x, window.innerWidth  - r.w)
 			e.y = clamp(0, my - drag_y, window.innerHeight - r.h)
-			return false
-		})
+		}
 	}
 
-	xbutton.on('pointerdown', function() {
+	e.xbutton.on('pointerup', function() {
 		e.hide()
 		return false
 	})

@@ -1273,7 +1273,7 @@ component('x-grid', function(e) {
 		hit.mx -= num(e.header.at[hit.fi].style.left)
 		hit.my -= num(e.header.at[hit.fi].style.top)
 		e.class('col-moving')
-		each_cell_of_col(hit.fi, (cell) => cell.class('col-moving'))
+		each_cell_of_col(hit.fi, cell => cell.class('col-moving'))
 		if (e.editor && e.focused_field_index == hit.fi)
 			e.editor.class('col-moving')
 		e.move_element_start(hit.fi, 1, 0, e.fields.length)
@@ -1293,7 +1293,7 @@ component('x-grid', function(e) {
 	function mu_col_move() {
 		let over_fi = e.move_element_stop() // sets x of moved element.
 		e.class('col-moving', false)
-		each_cell_of_col(hit.fi, (cell) => cell.class('col-moving', false))
+		each_cell_of_col(hit.fi, cell => cell.class('col-moving', false))
 		if (e.editor)
 			e.editor.class('col-moving', false)
 		if (over_fi != hit.fi) {
