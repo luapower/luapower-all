@@ -465,6 +465,33 @@ property(Element, 'contenteditable', {
 	set: function(v) { this.contentEditable = v ? 'true' : 'false' },
 })
 
+// for contenteditables.
+method(HTMLElement, 'insert_at_caret', function(s) {
+	let node = H(s)
+	let sel = getSelection()
+	let range = sel.getRangeAt(0)
+	range.insertNode(node)
+	range.setStartAfter(node)
+	range.setEndAfter(node)
+	sel.removeAllRanges()
+	sel.addRange(range)
+})
+
+method(HTMLElement, 'select_all', function() {
+	let range = document.createRange()
+	range.selectNodeContents(this)
+	let sel = getSelection()
+	sel.removeAllRanges()
+	sel.addRange(range)
+})
+
+method(HTMLElement, 'unselect', function() {
+	let range = document.createRange()
+	range.selectNodeContents(this)
+	let sel = getSelection()
+	sel.removeAllRanges()
+})
+
 // scrolling -----------------------------------------------------------------
 
 // box scroll-to-view box. from box2d.lua.
