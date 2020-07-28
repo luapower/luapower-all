@@ -3000,6 +3000,10 @@ function richtext_widget_editing(e) {
 			ev.stopPropagation() // prevent exit editing.
 	})
 
+	e.actionbar.on('pointerdown', function(ev) {
+		ev.stopPropagation() // prevent exit editing.
+	})
+
 	e.set_widget_editing = function(v) {
 		e.content_div.contentEditable = v
 		e.actionbar.show(v)

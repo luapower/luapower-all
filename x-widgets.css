@@ -64,7 +64,7 @@
 	z-index: 0;
 }
 
-.x-widget.widget-editing:focus-within {
+.x-widget.x-widget.widget-editing {
 	outline: 1px dotted #999;
 	outline-offset: -1px;
 }
@@ -224,7 +224,7 @@
 	cursor: initial;
 }
 
-.x-button.widget-editing:focus-within {
+.x-widget.widget-editing.x-button {
 	outline-offset: -4px;
 }
 

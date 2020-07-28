@@ -196,11 +196,17 @@ function cssgrid_widget_editing(e) {
 	}
 
 	function prop_changed(k, v, v0, ev) {
-		if (ev.target.parent == e)
+		if (ev.target.parent == e) {
 			if (k == 'pos_x' || k == 'span_x')
 				update_guides_for('x')
 			else if (k == 'pos_y' || k == 'span_y')
 				update_guides_for('y')
+		} else if (ev.target == e) {
+			if (k == 'sizes_x')
+				update_sizes_for('x')
+			else if (k == 'sizes_y')
+				update_sizes_for('y')
+		}
 	}
 
 	// add/remove grid lines --------------------------------------------------
@@ -288,35 +294,29 @@ function cssgrid_widget_editing(e) {
 
 	// drag-move guide tips => change grid template sizes ---------------------
 
-	{
-		let drag_mx, s0, z0
-
-		function tip_pointerdown(ev, mx, my) {
-			if (ev.ctrlKey) {
-				remove_line(this.axis, this.i+1)
-				return false
-			}
-
-			s0 = track_sizes(this.axis)[this.i]
-			drag_mx =
-				(this.axis == 'x' ? mx : my) -
-				e.rect()[this.axis]
-
-			// transform auto size to pixels to be able to move the line.
-			let tz = get_sizes(this.axis)
-			z0 = tz[this.i]
-			if (z0 == 'auto') {
-				z0 = s0
-				z0 = z0.toFixed(0) + 'px'
-				tz[this.i] = z0
-				set_sizes(this.axis, tz, true)
-			}
-			z0 = num(z0)
-
-			return this.capture_pointer(ev, tip_pointermove)
+	function tip_pointerdown(ev, mx, my) {
+		if (ev.ctrlKey) {
+			remove_line(this.axis, this.i+1)
+			return false
 		}
 
-		function tip_pointermove(mx, my, ev) {
+		let s0 = track_sizes(this.axis)[this.i]
+		let drag_mx =
+			(this.axis == 'x' ? mx : my) -
+			e.rect()[this.axis]
+
+		// transform auto size to pixels to be able to move the line.
+		let tz = get_sizes(this.axis)
+		let z0 = tz[this.i]
+		if (z0 == 'auto') {
+			z0 = s0
+			z0 = z0.toFixed(0) + 'px'
+			tz[this.i] = z0
+			set_sizes(this.axis, tz, true)
+		}
+		z0 = num(z0)
+
+		return this.capture_pointer(ev, function(mx, my, ev) {
 			let dx = (this.axis == 'x' ? mx : my) - drag_mx - e.rect()[this.axis]
 			let tz = get_sizes(this.axis)
 			let z = tz[this.i]
@@ -340,7 +340,7 @@ function cssgrid_widget_editing(e) {
 			}
 			tz[this.i] = z
 			set_sizes(this.axis, tz, true)
-		}
+		})
 
 	}
 
