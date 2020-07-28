@@ -6,7 +6,7 @@
 */
 
 // ---------------------------------------------------------------------------
-// undo stack, selected widgets and clipboard
+// undo stack, selected widgets, editing widget and clipboard.
 // ---------------------------------------------------------------------------
 
 undo_stack = []
@@ -25,18 +25,19 @@ function undo() {
 }
 
 function redo() {
-	[undo_stack, redo_stack] = [redo_stack, undo_stack];
+	;[undo_stack, redo_stack] = [redo_stack, undo_stack]
 	undo()
-	[undo_stack, redo_stack] = [redo_stack, undo_stack];
+	;[undo_stack, redo_stack] = [redo_stack, undo_stack]
 }
 
+editing_widget = null
 selected_widgets = new Set()
 
-function select_only_widget(e) {
+function unselect_all_widgets() {
+	if (editing_widget)
+		editing_widget.widget_editing = false
 	for (let e of selected_widgets)
 		e.widget_selected = false
-	if (e)
-		e.widget_selected = true
 }
 
 copied_widgets = new Set()
@@ -58,7 +59,7 @@ function paste_copied_widgets(parent_widget) {
 
 document.on('keydown', function(key, shift, ctrl) {
 	if (key == 'Escape')
-		select_only_widget()
+		unselect_all_widgets()
 	else if (ctrl && key == 'c')
 		copy_selected_widgets()
 	else if (ctrl && key == 'x')
@@ -70,6 +71,10 @@ document.on('keydown', function(key, shift, ctrl) {
 			undo()
 	else if (ctrl && key == 'y')
 		redo()
+})
+
+document.on('pointerdown', function() {
+	unselect_all_widgets()
 })
 
 // ---------------------------------------------------------------------------
@@ -89,19 +94,16 @@ function selectable_widget(e) {
 
 	e.can_select_widget = true
 
-	let widget_selected = false
-
 	e.set_widget_selected = function(select, focus, fire_changed_event) {
 		select = select !== false
-		if (widget_selected == select)
+		if (e.widget_selected == select)
 			return
-		widget_selected = select
 		if (select) {
 			selected_widgets.add(e)
 			e.select_widget(focus)
 		} else {
 			selected_widgets.delete(e)
-			e.unselect_widget()
+			e.unselect_widget(focus)
 		}
 		e.class('widget-selected', select)
 		if (fire_changed_event !== false)
@@ -109,44 +111,59 @@ function selectable_widget(e) {
 	}
 
 	e.property('widget_selected',
-		() => widget_selected,
-		function(...args) { e.set_widget_selected(...args) })
+		() => selected_widgets.has(e),
+		function(v, ...args) { e.set_widget_selected(v, ...args) })
 
 	e.select_widget = function(focus) {
 
+		// make widget unfocusable: the overlay will be focusable instead.
 		e._tabindex = or(e._tabindex, e.attr('tabindex'))
 		e.attr('tabindex', -1)
 
 		let overlay = div({class: 'x-widget-selected-overlay', tabindex: 0})
 		e.widget_selected_overlay = overlay
 		e.add(overlay)
+
 		overlay.on('keydown', function(key) {
 			if (key == 'Delete') {
 				e.remove_widget()
 				return false
 			}
 		})
+
 		overlay.on('pointerdown', function(ev) {
+
 			if (!overlay.focused) {
 				overlay.focus()
 				return false
 			}
-			if (selected_widgets.size == 1)
-				select_only_widget(ev.ctrlKey && e.parent_widget || null)
-			else if (ev.ctrlKey)
-				e.widget_selected = !e.widget_selected
-			return false
+
+			if (ev.ctrlKey) {
+				if (selected_widgets.size == 1) {
+					unselect_all_widgets()
+					if (e.parent_widget)
+						e.parent_widget.widget_selected = true
+				} else
+					e.widget_selected = !e.widget_selected
+				return false
+			}
+
 		})
 
 		if (focus !== false)
 			overlay.focus()
 	}
 
-	e.unselect_widget = function() {
+	e.unselect_widget = function(focus_other) {
+
 		e.attr('tabindex', e._tabindex)
 		e._tabindex = null
+
 		e.widget_selected_overlay.remove()
 		e.widget_selected_overlay = null
+
+		if (focus_other !== false && selected_widgets.size)
+			[...selected_widgets].last.widget_selected_overlay.focus()
 	}
 
 	e.remove_widget = function() {
@@ -161,11 +178,9 @@ function selectable_widget(e) {
 		if (!e.can_select_widget)
 			return
 
-		if (e.widget_selected)
-			return false // this should not happen
-
 		if (ev.ctrlKey && (!e.ctrl_click_used || ev.shiftKey)) {
-			// check that e is not a parent of any of the selected widgets.
+
+			// prevent accidentally clicking on the parent of any of the selected widgets.
 			for (let e1 of selected_widgets) {
 				let p = e1.parent_widget
 				while (p) {
@@ -174,18 +189,23 @@ function selectable_widget(e) {
 					p = p.parent_widget
 				}
 			}
-			if (e.editing === false)
-				e.editing = true
-			else {
-				if (e.editing)
-					e.editing = false
+
+			if (e.can_edit_widget && !selected_widgets.size) {
+				if (!e.widget_editing) {
+					e.widget_editing = true
+					ev.stopPropagation()
+					// don't prevent default to let the caret land under the mouse.
+				} else {
+					e.widget_editing = false
+					e.widget_selected = true
+					return false
+				}
+			} else {
 				e.widget_selected = true
+				return false
 			}
-			return false
-		} else if (selected_widgets.size) {
-			select_only_widget()
-			return false
 		}
+
 	})
 
 	e.on('detach', function() { e.widget_selected = false })
@@ -201,32 +221,33 @@ function selectable_widget(e) {
 // editable widget mixin
 // ---------------------------------------------------------------------------
 
-editing_widget = null
-
 function editable_widget(e) {
 
-	e.set_editing = noop
+	e.can_edit_widget = true
+	e.set_widget_editing = noop
 
-	e.property('editing', () => editing_widget == e, function(v, ...args) {
-		v = !!v
-		if (e.editing == v) return
-		e.class('editing', v)
-		if (v) {
-			if (editing_widget)
-				editing_widget.editing = false
-			assert(editing_widget == null)
-			e._tabindex = or(e._tabindex, e.attr('tabindex'))
-			e.attr('tabindex', -1)
-			editing_widget = e
-		} else {
-			e.attr('tabindex', e._tabindex)
-			e._tabindex = null
-			editing_widget = null
-		}
-		e.set_editing(v, ...args)
-	})
+	e.property('widget_editing',
+		() => editing_widget == e,
+		function(v) {
+			v = !!v
+			if (e.widget_editing == v) return
+			e.class('widget-editing', v)
+			if (v) {
+				if (editing_widget)
+					editing_widget.widget_editing = false
+				assert(editing_widget == null)
+				e._tabindex = or(e._tabindex, e.attr('tabindex'))
+				e.attr('tabindex', -1)
+				editing_widget = e
+			} else {
+				e.attr('tabindex', e._tabindex)
+				e._tabindex = null
+				editing_widget = null
+			}
+			e.set_widget_editing(v)
+		})
 
-	e.on('detach', function() { e.editing = false })
+	e.on('detach', function() { e.widget_editing = false })
 
 }
 
@@ -320,7 +341,11 @@ function cssgrid_item_widget_editing(e) {
 		if (!p || p.typename != 'cssgrid')
 			return
 
-		p.editing = true
+		p.widget_editing = true
+
+		e.widget_selected_overlay.on('focus', function() {
+			p.widget_editing = true
+		})
 
 		let span_outline = div({class: 'x-cssgrid-span'},
 			div({class: 'x-cssgrid-span-handle', side: 'top'}),
@@ -432,7 +457,7 @@ function cssgrid_item_widget_editing(e) {
 
 			// exit parent editing if this was the last item to be selected.
 			let p = e.parent_widget
-			if (p && p.editing) {
+			if (p && p.widget_editing) {
 				let only_item = true
 				for (let e1 of selected_widgets)
 					if (e1 != e && e1.parent_widget == p) {
@@ -440,7 +465,7 @@ function cssgrid_item_widget_editing(e) {
 						break
 					}
 				if (only_item)
-					p.editing = false
+					p.widget_editing = false
 			}
 
 		}
@@ -483,7 +508,7 @@ function serializable_widget(e) {
 // focusable widget mixin ----------------------------------------------------
 // ---------------------------------------------------------------------------
 
-function focusable_widget(e) {
+function focusable_widget(e, fe) {
 	e.get_tabindex = function() {
 		return or(e._tabindex, e.attr('tabindex'))
 	}
@@ -491,7 +516,7 @@ function focusable_widget(e) {
 		if (e._tabindex != null)
 			e._tabindex = i
 		else
-			e.attr('tabindex', i)
+			(fe || e).attr('tabindex', i)
 	}
 	e.prop('tabindex', {default: 0})
 }
@@ -772,17 +797,13 @@ component('x-button', function(e) {
 	e.prop('primary', {attr: 'primary', type: 'bool', default: false})
 
 	e.on('keydown', function keydown(key, shift, ctrl) {
-		if (e.editing) {
-			if (key == 'Escape') {
-				e.editing = false
-				return false
-			}
+		if (e.widget_editing) {
 			if (key == 'Enter') {
 				if (ctrl) {
 					e.text_div.insert_at_caret('<br>')
 					return
 				} else {
-					e.editing = false
+					e.widget_editing = false
 					return false
 				}
 			}
@@ -814,28 +835,29 @@ component('x-button', function(e) {
 		e.fire('action')
 	})
 
-	// editing ----------------------------------------------------------------
+	// widget editing ---------------------------------------------------------
 
-	e.set_editing = function(v) {
+	e.set_widget_editing = function(v) {
 		e.text_div.contenteditable = v
-		if (v) {
-			e.text_div.focus()
-			e.text_div.select_all()
-		} else
-			e.text_div.unselect()
 	}
 
 	e.on('pointerdown', function(ev) {
-		if (e.editing && ev.target == e)
-			return this.capture_pointer(ev, noop, pointerup)
+		if (e.widget_editing && ev.target != e.text_div) // prevent :active state
+			return this.capture_pointer(ev, noop, function() {
+				e.text_div.focus()
+				e.text_div.select_all()
+			})
 	})
 
-	function pointerup() {
-		return false
+	function prevent_bubbling(ev) {
+		if (e.widget_editing && !ev.ctrlKey)
+			ev.stopPropagation()
 	}
+	e.text_div.on('pointerdown', prevent_bubbling)
+	e.text_div.on('click', prevent_bubbling)
 
 	e.text_div.on('blur', function() {
-		e.editing = false
+		e.widget_editing = false
 	})
 
 })
@@ -906,30 +928,30 @@ component('x-checkbox', function(e) {
 	}
 
 	e.on('pointerdown', function(ev) {
-		if (e.editing)
+		if (e.widget_editing)
 			return
 		ev.preventDefault() // prevent accidental selection by double-clicking.
 		e.focus()
 	})
 
 	e.on('click', function(ev) {
-		if (e.editing)
+		if (e.widget_editing)
 			return
 		e.toggle()
 		return false
 	})
 
 	e.on('keydown', function(key, shift, ctrl) {
-		if (e.editing) {
+		if (e.widget_editing) {
 			if (key == 'Escape') {
-				e.editing = false
+				e.widget_editing = false
 				return false
 			}
 			if (key == 'Enter') {
 				if (ctrl)
 					e.text_div.insert_at_caret('<br>')
 				else
-					e.editing = false
+					e.widget_editing = false
 				return false
 			}
 			return
@@ -940,29 +962,31 @@ component('x-checkbox', function(e) {
 		}
 	})
 
-	// editing ----------------------------------------------------------------
+	// widget editing ---------------------------------------------------------
 
-	e.set_editing = function(v) {
+	e.set_widget_editing = function(v) {
 		e.text_div.contenteditable = v
-		if (v) {
-			e.text_div.focus()
-			e.text_div.select_all()
-		} else
-			e.text_div.unselect()
 	}
 
 	e.on('pointerdown', function(ev) {
-		if (e.editing && ev.target == e)
-			return this.capture_pointer(ev, noop, pointerup)
+		if (e.widget_editing && ev.target != e.text_div)
+			return this.capture_pointer(ev, noop, function() {
+				e.text_div.focus()
+				e.text_div.select_all()
+			})
 	})
 
-	function pointerup() {
-		return false
+	function prevent_bubbling(ev) {
+		if (e.widget_editing && !ev.ctrlKey)
+			ev.stopPropagation()
 	}
+	e.text_div.on('pointerdown', prevent_bubbling)
+	e.text_div.on('click', prevent_bubbling)
 
 	e.text_div.on('blur', function() {
-		e.editing = false
+		e.widget_editing = false
 	})
+
 })
 
 // ---------------------------------------------------------------------------
@@ -1074,7 +1098,6 @@ function input_widget(e) {
 
 component('x-input', function(e) {
 
-	focusable_widget(e)
 	val_widget(e)
 	input_widget(e)
 
@@ -1123,7 +1146,9 @@ component('x-input', function(e) {
 		return s.length <= or(e.maxlen, e.field.maxlen)
 	}
 
-	// grid editor protocol ---------------------------------------------------
+	// focusing
+
+	focusable_widget(e, e.input)
 
 	focus = e.focus
 	e.focus = function() {
@@ -1132,6 +1157,8 @@ component('x-input', function(e) {
 		else
 			e.input.focus()
 	}
+
+	// grid editor protocol ---------------------------------------------------
 
 	e.input.on('blur', function() {
 		e.fire('lost_focus')
@@ -1445,28 +1472,16 @@ component('x-slider', function(e) {
 
 	// controller
 
-	let hit_x
-
 	e.input_thumb.on('pointerdown', function(ev) {
 		e.focus()
 		let r = e.input_thumb.rect()
-		hit_x = ev.clientX - (r.x + r.w / 2)
-		document.on('pointermove', document_pointermove)
-		document.on('pointerup'  , document_pointerup)
-		return false
+		let hit_x = ev.clientX - (r.x + r.w / 2)
+		return this.capture_pointer(ev, function(mx, my) {
+			let r = e.rect()
+			e.set_progress((mx - r.x - hit_x) / r.w, {input: e})
+			return false
+		})
 	})
-
-	function document_pointermove(mx, my) {
-		let r = e.rect()
-		e.set_progress((mx - r.x - hit_x) / r.w, {input: e})
-		return false
-	}
-
-	function document_pointerup() {
-		hit_x = null
-		document.off('pointermove', document_pointermove)
-		document.off('pointerup'  , document_pointerup)
-	}
 
 	e.on('pointerdown', function(ev) {
 		let r = e.rect()
@@ -1985,6 +2000,7 @@ component('x-widget-placeholder', function(e) {
 	]
 
 	let form_widgets = [
+		['RT', 'richtext'],
 		['I' , 'input'],
 		['SI', 'spin_input'],
 		['CB', 'checkbox'],
@@ -2070,7 +2086,7 @@ component('x-pagelist', function(e) {
 		idiv.on('dblclick'   , idiv_dblclick)
 		idiv.on('keydown'    , idiv_keydown)
 		tdiv.on('input'      , tdiv_input)
-		idiv.on('focusout'   , idiv_focusout)
+		tdiv.on('blur'       , tdiv_blur)
 		xbutton.on('pointerdown', xbutton_pointerdown)
 		idiv.item = item
 		item.idiv = idiv
@@ -2102,8 +2118,8 @@ component('x-pagelist', function(e) {
 	}
 
 	function update_item(idiv, select) {
-		idiv.xbutton.show(select && (e.can_remove_items || e.editing))
-		idiv.text_div.contenteditable = select && (e.editing || e.renaming)
+		idiv.xbutton.show(select && (e.can_remove_items || e.widget_editing))
+		idiv.text_div.contenteditable = select && (e.widget_editing || e.renaming)
 	}
 
 	function update_selection_bar() {
@@ -2118,7 +2134,7 @@ component('x-pagelist', function(e) {
 		let idiv = e.selected_item
 		if (idiv)
 			update_item(idiv, true)
-		e.add_button.show(e.can_add_items || e.editing)
+		e.add_button.show(e.can_add_items || e.widget_editing)
 	}
 
 	e.set_can_add_items    = update
@@ -2152,10 +2168,10 @@ component('x-pagelist', function(e) {
 			}
 		}
 		if (enter_editing) {
-			e.editing = true
+			e.widget_editing = true
 			return
 		}
-		if (!e.editing && focus_page != false) {
+		if (!e.widget_editing && focus_page != false) {
 			let first_focusable = e.content.focusables()[0]
 			if (first_focusable)
 				first_focusable.focus()
@@ -2188,15 +2204,13 @@ component('x-pagelist', function(e) {
 	let dragging, drag_mx
 
 	function idiv_pointerdown(ev, mx, my) {
-		if (this.text_div.contenteditable)
+		if (this.text_div.contenteditable && !ev.ctrlKey) {
+			ev.stopPropagation()
 			return
-		select_item(this, false)
-		if (ev.ctrlKey) {
-			e.editing = true
-			this.text_div.focus()
-			this.text_div.select_all()
-			return false
 		}
+		select_item(this)
+		if (ev.ctrlKey)
+			return // bubble-up to enter editing mode.
 		this.focus()
 		return this.capture_pointer(ev, idiv_pointermove, idiv_pointerup)
 	}
@@ -2245,24 +2259,17 @@ component('x-pagelist', function(e) {
 		e.selected_item.text_div.contenteditable = e.renaming
 	}
 
-	e.on('keydown', function(key, shift, ctrl) {
-		if (e.editing && key == 'Escape') {
-			e.editing = false
-			return false
-		}
-	})
-
 	function idiv_keydown(key, shift, ctrl) {
 		if (key == 'F2' && e.can_rename_items) {
 			set_renaming(!e.renaming)
 			return false
 		}
-		if (e.editing || e.renaming) {
+		if (e.widget_editing || e.renaming) {
 			if (key == 'Enter') {
 				if (ctrl)
 					this.text_div.insert_at_caret('<br>')
 				else
-					e.editing = false
+					e.widget_editing = false
 				return false
 			}
 		}
@@ -2272,7 +2279,7 @@ component('x-pagelist', function(e) {
 				return false
 			}
 		}
-		if (!e.editing && !e.renaming) {
+		if (!e.widget_editing && !e.renaming) {
 			if (key == ' ' || key == 'Enter') {
 				select_item(this)
 				return false
@@ -2286,10 +2293,7 @@ component('x-pagelist', function(e) {
 		}
 	}
 
-	e.set_editing = function(v) {
-		if (!v && e.selected_item)
-			e.selected_item.unselect()
-		e.focus()
+	e.set_widget_editing = function(v) {
 		e.update()
 	}
 
@@ -2319,8 +2323,8 @@ component('x-pagelist', function(e) {
 		e.update()
 	}
 
-	function idiv_focusout() {
-		e.editing = false
+	function tdiv_blur() {
+		e.widget_editing = false
 	}
 
 	function xbutton_pointerdown() {
@@ -2365,10 +2369,11 @@ component('x-pagelist', function(e) {
 
 component('x-split', function(e) {
 
+	serializable_widget(e)
 	cssgrid_item_widget(e)
+
 	e.align_x = 'stretch'
 	e.align_y = 'stretch'
-	serializable_widget(e)
 	e.classes = 'x-widget x-split'
 
 	e.pane1 = div({class: 'x-split-pane'})
@@ -2818,11 +2823,194 @@ component('x-toolbox', function(e) {
 })
 
 // ---------------------------------------------------------------------------
-// richedit
+// richtext
 // ---------------------------------------------------------------------------
 
-component('x-richedit', function(e) {
+component('x-richtext', function(e) {
 
+	serializable_widget(e)
+	editable_widget(e)
+	cssgrid_item_widget(e)
+
+	e.classes = 'x-widget x-richtext'
+	e.align_x = 'stretch'
+	e.align_y = 'stretch'
+
+	e.content_div = div({class: 'x-richedit-content'})
+	e.add(e.content_div)
+
+	// content property
+
+	e.get_content = function()  { return e.content_div.html }
+	e.set_content = function(s) { e.content_div.html = s }
+	e.prop('content')
+
+	// widget editing ---------------------------------------------------------
+
+	e.set_widget_editing = function(v) {
+		if (!v) return
+		richtext_widget_editing(e)
+		e.set_widget_editing(true)
+	}
 
 })
+
+// ---------------------------------------------------------------------------
+// richedit widget editing mixin
+// ---------------------------------------------------------------------------
+
+{
+
+let exec = (command, value = null) => document.execCommand(command, false, value)
+let cstate = (command) => document.queryCommandState(command)
+
+let actions = {
+	bold: {
+		//icon: '<b>B</b>',
+		icon_class: 'fa fa-bold',
+		result: () => exec('bold'),
+		state: () => cstate('bold'),
+		title: 'Bold (Ctrl+B)',
+	},
+	italic: {
+		//icon: '<i>I</i>',
+		icon_class: 'fa fa-italic',
+		result: () => exec('italic'),
+		state: () => cstate('italic'),
+		title: 'Italic (Ctrl+I)',
+	},
+	underline: {
+		//icon: '<u>U</u>',
+		icon_class: 'fa fa-underline',
+		result: () => exec('underline'),
+		state: () => cstate('underline'),
+		title: 'Underline (Ctrl+U)',
+	},
+	code: {
+		//icon: '&lt/&gt',
+		icon_class: 'fa fa-code',
+		result: () => exec('formatBlock', '<pre>'),
+		title: 'Code',
+	},
+	heading1: {
+		icon: '<b>H<sub>1</sub></b>',
+		result: () => exec('formatBlock', '<h1>'),
+		title: 'Heading 1',
+	},
+	heading2: {
+		icon: '<b>H<sub>2</sub></b>',
+		result: () => exec('formatBlock', '<h2>'),
+		title: 'Heading 2',
+	},
+	line: {
+		icon: '&#8213',
+		result: () => exec('insertHorizontalRule'),
+		title: 'Horizontal Line',
+	},
+	link: {
+		//icon: '&#128279',
+		icon_class: 'fa fa-link',
+		result: function() {
+			let url = window.prompt('Enter the link URL')
+			if (url) exec('createLink', url)
+		},
+		title: 'Link',
+	},
+	olist: {
+		//icon: '&#35',
+		icon_class: 'fa fa-list-ol',
+		result: () => exec('insertOrderedList'),
+		title: 'Ordered List',
+	},
+	ulist: {
+		//icon: '&#8226',
+		icon_class: 'fa fa-list-ul',
+		result: () => exec('insertUnorderedList'),
+		title: 'Unordered List',
+	},
+	paragraph: {
+		//icon: '&#182',
+		icon_class: 'fa fa-paragraph',
+		result: () => exec('formatBlock', '<p>'),
+		title: 'Paragraph',
+	},
+	quote: {
+		//icon: '&#8220 &#8221',
+		icon_class: 'fa fa-quote-left',
+		result: () => exec('formatBlock', '<blockquote>'),
+		title: 'Quote',
+	},
+	strikethrough: {
+		//icon: '<strike>S</strike>',
+		icon_class: 'fa fa-strikethrough',
+		result: () => exec('strikeThrough'),
+		state: () => cstate('strikeThrough'),
+		title: 'Strike-through',
+	},
+}
+
+function richtext_widget_editing(e) {
+
+	let button_pressed
+	function press_button() { button_pressed = true }
+
+	e.actionbar = div({class: 'x-richtext-actionbar'})
+	for (let k in actions) {
+		let action = actions[k]
+		let button = tag('button', {class: 'x-richtext-button', title: action.title})
+		button.html = action.icon || ''
+		button.classes = action.icon_class
+		button.on('pointerdown', press_button)
+		button.on('click', function() {
+			button_pressed = false
+			if (action.result())
+				e.content_div.focus()
+			return false
+		})
+		if (action.state) {
+			let update_button = function() {
+				button.class('x-richtext-button-selected', action.state())
+			}
+			e.content_div.on('keyup', update_button)
+			e.content_div.on('pointerup', update_button)
+			button.on('click', update_button)
+		}
+		e.actionbar.add(button)
+	}
+	e.actionbar.popup(e, 'top', 'left')
+
+	e.content_div.on('input', function(ev) {
+		let e1 = ev.target.first
+		if (e1 && e1.nodeType == 3)
+			exec('formatBlock', '<p>')
+		else if (e.content_div.html == '<br>')
+			e.content_div.html = ''
+	})
+
+	e.content_div.on('keydown', function(ev) {
+		if (ev.key === 'Enter' && document.queryCommandValue('formatBlock') === 'blockquote') {
+			after(0, function() {
+				return exec('formatBlock', '<p>')
+			})
+		}
+	})
+
+	e.content_div.on('pointerdown', function(ev) {
+		if (!ev.ctrlKey)
+			ev.stopPropagation() // prevent exit editing.
+	})
+
+	e.set_widget_editing = function(v) {
+		e.content_div.contentEditable = v
+		e.actionbar.show(v)
+	}
+
+	e.content_div.on('blur', function() {
+		if (!button_pressed)
+			e.widget_editing = false
+	})
+
+}
+
+}
 

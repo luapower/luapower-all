@@ -68,10 +68,10 @@ component('x-cssgrid', function(e) {
 
 	// edit mode --------------------------------------------------------------
 
-	e.set_editing = function(v, ...args) {
+	e.set_widget_editing = function(v, ...args) {
 		if (!v) return
 		cssgrid_widget_editing(e)
-		e.set_editing(true, ...args)
+		e.set_widget_editing(true, ...args)
 	}
 
 })
@@ -82,8 +82,7 @@ component('x-cssgrid', function(e) {
 
 function cssgrid_widget_editing(e) {
 
-	e.set_editing = function(v) {
-		e.class('editing', v)
+	e.set_widget_editing = function(v) {
 		if (v)
 			enter_editing()
 		else
@@ -394,7 +393,7 @@ function cssgrid_widget_editing(e) {
 	e.on('pointermove', function(mx, my, ev) {
 		if (ev.buttons)
 			return
-		if (!e.editing)
+		if (!e.widget_editing)
 			return
 
 		let r = e.rect()
