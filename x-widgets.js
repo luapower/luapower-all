@@ -30,6 +30,11 @@ function redo() {
 	;[undo_stack, redo_stack] = [redo_stack, undo_stack]
 }
 
+function focused_widget(e) {
+	e = e || document.activeElement
+	return e && e != window && e != document && e.hasclass('x-widget') && e || (e.parent && focused_widget(e.parent))
+}
+
 editing_widget = null
 selected_widgets = new Set()
 
@@ -81,15 +86,20 @@ document.on('pointerdown', function() {
 // selectable widget mixin
 // ---------------------------------------------------------------------------
 
+function parent_widget(e) {
+	assert(e != window)
+	let parent = e.parent
+	while (parent) {
+		if (parent.child_widgets)
+			return parent
+		parent = parent.parent
+	}
+}
+
 function selectable_widget(e) {
 
 	e.property('parent_widget', function() {
-		let parent = this.parent
-		while (parent) {
-			if (parent.child_widgets)
-				return parent
-			parent = parent.parent
-		}
+		return parent_widget(this)
 	})
 
 	e.can_select_widget = true
@@ -117,8 +127,7 @@ function selectable_widget(e) {
 	e.select_widget = function(focus) {
 
 		// make widget unfocusable: the overlay will be focusable instead.
-		e._tabindex = or(e._tabindex, e.attr('tabindex'))
-		e.attr('tabindex', -1)
+		e.widget_focusable = false
 
 		let overlay = div({class: 'x-widget-selected-overlay', tabindex: 0})
 		e.widget_selected_overlay = overlay
@@ -133,20 +142,19 @@ function selectable_widget(e) {
 
 		overlay.on('pointerdown', function(ev) {
 
-			if (!overlay.focused) {
-				overlay.focus()
-				return false
-			}
-
-			if (ev.ctrlKey) {
+			if (ev.ctrlKey && ev.shiftKey) {
+				if (!overlay.focused)
+					overlay.focus()
 				if (selected_widgets.size == 1) {
 					unselect_all_widgets()
 					if (e.parent_widget)
 						e.parent_widget.widget_selected = true
 				} else
 					e.widget_selected = !e.widget_selected
-				return false
-			}
+			} else
+				unselect_all_widgets()
+
+			return false
 
 		})
 
@@ -154,15 +162,14 @@ function selectable_widget(e) {
 			overlay.focus()
 	}
 
-	e.unselect_widget = function(focus_other) {
+	e.unselect_widget = function(focus_prev) {
 
-		e.attr('tabindex', e._tabindex)
-		e._tabindex = null
+		e.widget_focusable = true
 
 		e.widget_selected_overlay.remove()
 		e.widget_selected_overlay = null
 
-		if (focus_other !== false && selected_widgets.size)
+		if (focus_prev !== false && selected_widgets.size)
 			[...selected_widgets].last.widget_selected_overlay.focus()
 	}
 
@@ -190,17 +197,16 @@ function selectable_widget(e) {
 				}
 			}
 
-			if (e.can_edit_widget && !selected_widgets.size) {
-				if (!e.widget_editing) {
+			if (!ev.shiftKey) {
+				if (e.can_edit_widget) {
+					unselect_all_widgets()
 					e.widget_editing = true
 					ev.stopPropagation()
 					// don't prevent default to let the caret land under the mouse.
-				} else {
-					e.widget_editing = false
-					e.widget_selected = true
+				} else
 					return false
-				}
 			} else {
+				e.widget_editing = false
 				e.widget_selected = true
 				return false
 			}
@@ -236,12 +242,10 @@ function editable_widget(e) {
 				if (editing_widget)
 					editing_widget.widget_editing = false
 				assert(editing_widget == null)
-				e._tabindex = or(e._tabindex, e.attr('tabindex'))
-				e.attr('tabindex', -1)
+				e.widget_focusable = false
 				editing_widget = e
 			} else {
-				e.attr('tabindex', e._tabindex)
-				e._tabindex = null
+				e.widget_focusable = true
 				editing_widget = null
 			}
 			e.set_widget_editing(v)
@@ -278,11 +282,11 @@ function cssgrid_item_widget(e) {
 		}
 	}
 
-	e.unselect_widget = function() {
+	e.unselect_widget = function(focus_prev) {
 		let p = e.parent_widget
 		if (p && p.typename == 'cssgrid')
 			e.cssgrid_item_unselect_widget()
-		unselect_widget()
+		unselect_widget(focus_prev)
 	}
 
 }
@@ -509,16 +513,23 @@ function serializable_widget(e) {
 // ---------------------------------------------------------------------------
 
 function focusable_widget(e, fe) {
+	fe = fe || e
+	let tabindex
+	let focusable = true
 	e.get_tabindex = function() {
-		return or(e._tabindex, e.attr('tabindex'))
+		return tabindex
 	}
 	e.set_tabindex = function(i) {
-		if (e._tabindex != null)
-			e._tabindex = i
-		else
-			(fe || e).attr('tabindex', i)
+		tabindex = i
+		fe.attr('tabindex', focusable ? i : -1)
 	}
 	e.prop('tabindex', {default: 0})
+	e.property('widget_focusable', () => focusable, function(v) {
+		v = !!v
+		if (v == focusable) return
+		focusable = v
+		e.set_tabindex(tabindex)
+	})
 }
 
 // ---------------------------------------------------------------------------
@@ -2782,34 +2793,32 @@ component('x-toolbox', function(e) {
 		e.title_div.set(e.title)
 		e.title = ''
 
-		let content = div({class: 'x-toolbox-content'})
-		content.set(e.content)
-		e.add(content)
-		e.content = content
+		e.content_div = div({class: 'x-toolbox-content'})
+		e.content_div.set(e.content)
+		e.add(e.content_div)
 
 		e.hide()
 		document.body.add(e)
 	}
 
-	{
-		let drag_x, drag_y
+	e.titlebar.on('pointerdown', function(ev, mx, my) {
+		e.focus()
 
-		e.titlebar.on('pointerdown', function(ev, mx, my) {
-			e.focus()
-			if (ev.target == e.xbutton)
-				return
-			let r = e.rect()
-			drag_x = mx - r.x
-			drag_y = my - r.y
-			return this.capture_pointer(ev, pointermove)
-		})
+		let first_focusable = e.content_div.focusables()[0]
+		if (first_focusable)
+			first_focusable.focus()
 
-		function pointermove(mx, my) {
+		if (ev.target == e.xbutton)
+			return
+		let r = e.rect()
+		let drag_x = mx - r.x
+		let drag_y = my - r.y
+		return this.capture_pointer(ev, function(mx, my) {
 			let r = this.rect()
 			e.x = clamp(0, mx - drag_x, window.innerWidth  - r.w)
 			e.y = clamp(0, my - drag_y, window.innerHeight - r.h)
-		}
-	}
+		})
+	})
 
 	e.xbutton.on('pointerup', function() {
 		e.hide()
@@ -2988,10 +2997,11 @@ function richtext_widget_editing(e) {
 	})
 
 	e.content_div.on('keydown', function(ev) {
-		if (ev.key === 'Enter' && document.queryCommandValue('formatBlock') === 'blockquote') {
-			after(0, function() {
-				return exec('formatBlock', '<p>')
-			})
+		if (ev.key === 'Enter')
+			if (document.queryCommandValue('formatBlock') === 'blockquote') {
+				after(0, function() { exec('formatBlock', '<p>') })
+			else if (document.queryCommandValue('formatBlock') === 'pre')
+				after(0, function() { print('here'); exec('formatBlock', '<br>') })
 		}
 	})
 

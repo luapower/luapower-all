@@ -69,27 +69,42 @@ prop_inspector = component('x-prop-inspector', function(e) {
 
 	init = e.init
 	e.init = function() {
+		init_widgets()
 		init_rowset()
 		init()
 	}
 
 	function bind(on) {
-		document.on('selected_widgets_changed', init_rowset, on)
+		document.on('selected_widgets_changed', selected_widgets_changed, on)
 		document.on('prop_changed', prop_changed, on)
-		//document.on('focus', pro
 	}
 	e.on('attach', function() { bind(true) })
 	e.on('detach', function() { bind(false) })
 
+	let widgets
+
+	function init_widgets() {
+		widgets = selected_widgets
+		if (!selected_widgets.size && focused_widget())
+			widgets = new Set([focused_widget()])
+	}
+
 	e.rowset.on('val_changed', function(row, field, val) {
-		for (let e of selected_widgets)
+		if (!widgets)
+			init_widgets()
+		for (let e of widgets)
 			e[field.name] = val
 	})
+
+	function selected_widgets_changed() {
+		init_widgets()
+		init_rowset()
+	}
 
 	function prop_changed(k, v, v0, ev) {
 		return
 		let widget = ev.target
-		if (!selected_widgets.has(widget))
+		if (!widgets.has(widget))
 			return
 		let field = e.rowset.field(k)
 		e.focus_cell(0, e.field_index(field))
@@ -113,7 +128,8 @@ prop_inspector = component('x-prop-inspector', function(e) {
 		let prop_counts = {}
 		let props = {}
 		let prop_vals = {}
-		for (let e of selected_widgets)
+
+		for (let e of widgets)
 			for (let prop in e.props) {
 				prop_counts[prop] = (prop_counts[prop] || 0) + 1
 				props[prop] = e.props[prop]
@@ -121,13 +137,16 @@ prop_inspector = component('x-prop-inspector', function(e) {
 			}
 
 		for (let prop in prop_counts)
-			if (prop_counts[prop] == selected_widgets.size) {
+			if (prop_counts[prop] == widgets.size) {
 				res.fields.push(props[prop])
 				vals.push(prop_vals[prop])
 			}
 
 		e.rowset.reset(res)
 	}
+
+	// prevent unselecting all widgets by default on document.pointerdown.
+	e.on('pointerdown', function(ev) { ev.stopPropagation() })
 
 })
 

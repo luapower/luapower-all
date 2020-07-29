@@ -370,6 +370,7 @@ function cssgrid_widget_editing(e) {
 	// show add button when hovering empty grid cells -------------------------
 
 	e.add_button = button({classes: 'x-cssgrid-add-button', text: 'add...'})
+	e.add_button.can_select_widget = false
 	e.add_button.hide()
 	e.add(e.add_button)
 	e.add_button.on('click', function() {

@@ -1543,9 +1543,10 @@ component('x-grid', function(e) {
 		if (key == 'Escape') {
 			if (e.hasclass('picker'))
 				return
-			if (e.exit_edit_on_escape)
+			if (e.exit_edit_on_escape) {
 				e.exit_edit()
-			e.focus()
+				e.focus()
+			}
 			return false
 		}
 
